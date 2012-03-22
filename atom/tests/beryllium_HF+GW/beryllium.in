@@ -1,0 +1,6 @@
+HF+GW                 # calculation type HF, G0W0
+1   4.0   4.0   0.0   # spin pol    Z   N   magnetization
+cc-pVDZ               # basis set
+15  0.80              # nscf, alpha_mixing
+01                    # print_volume
+
