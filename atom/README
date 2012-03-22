@@ -32,7 +32,7 @@ Usage:
 The basis file needs to be located in the working directory.
 ./atom < helium.in > helium.out
 
-Input files can be found in ./tests/
+Sample input files can be found in ./tests/
 
 
 To be done:
