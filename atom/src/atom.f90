@@ -83,25 +83,51 @@ program atom
  write(*,*)
 
 
-#if 0
+ !
+ ! Development tests are commented below
+#ifdef MOLECULES
 
- call init_gaussian_general(0,0,5,0.4361_dp,(/0.0_dp,0.0_dp,3.0_dp/),gatmp)
+ call init_gaussian_general(2,0,0,0.4361_dp,(/0.0_dp,0.0_dp,0.0_dp/),gatmp)
  call print_gaussian(gatmp)
 
  call init_gaussian_general(0,0,0,0.8120_dp,(/0.0_dp,0.0_dp,0.0_dp/),gbtmp)
  call print_gaussian(gbtmp)
 
-! call overlap(gatmp,gbtmp,rtmp)
-! write(*,*) 'unnormalized S_ab',rtmp
+
+
+ write(*,*)
+ write(*,*) ' === CHECK OVERLAP === '
+
 ! call overlap_normalized(gatmp,gbtmp,rtmp)
 ! write(*,*) 'normalized S_ab',rtmp
 
  call overlap_recurrence(gatmp,gbtmp,rtmp)
+ write(*,*) 'normalized S_ab from recurrence',rtmp
+ call overlap_recurrence(gbtmp,gatmp,rtmp)
+ write(*,*) 'normalized S_ba from recurrence',rtmp
 
  call numerical_overlap(gatmp,gbtmp)
 
-! call overlap_normalized_general(gatmp,gatmp,rtmp)
-! write(*,*) 'normalized S_ab',rtmp
+
+ write(*,*)
+ write(*,*) ' === CHECK KINETIC === '
+
+! call kinetic_gaussian(gatmp,gbtmp,rtmp)
+! write(*,*) 'kinetic matrix element [Ha]',rtmp
+
+
+ call kinetic_recurrence(gatmp,gbtmp,rtmp)
+ write(*,*) 'new kinetic matrix element K_ab',rtmp
+ call kinetic_recurrence(gbtmp,gatmp,rtmp)
+ write(*,*) 'new kinetic matrix element K_ba',rtmp
+
+ call numerical_kinetic(gatmp,gbtmp)
+
+ write(*,*)
+ write(*,*) ' === CHECK NUCLEUS === '
+
+ call numerical_nucleus(gatmp,gbtmp)
+
  stop'ENOUGH FOR TODAY'
 #endif
 
@@ -137,45 +163,6 @@ program atom
    x(1) = ( REAL(ix,dp)/DBLE(ntmp) - 0.5 ) * 20.0
    write(101,*) x(1),eval_basis_function(bftmp,x)
  enddo
-
-
- call kinetic_gaussian(gatmp,gbtmp,rtmp)
- write(*,*)
- write(*,*) 'kinetic matrix element [Ha]',rtmp
-
-#if 0
- ! test manually the integral of the laplacian
- ntmp=100
- dx=20./DBLE(ntmp)
- dh=0.001
- dhx(:) = 0.
- dhx(1) = dh
- dhy(:) = 0.
- dhy(2) = dh
- dhz(:) = 0.
- dhz(3) = dh
-
- rtmp=0.0d0
- do ix=1,ntmp
-   x(1) = ( REAL(ix,dp)/DBLE(ntmp) - 0.5 ) * 20.0
-!   write(*,*) x(1)
- do iy=1,ntmp
-   x(2) = ( REAL(iy,dp)/DBLE(ntmp) - 0.5 ) * 20.0
- do iz=1,ntmp
-   x(3) = ( REAL(iz,dp)/DBLE(ntmp) - 0.5 ) * 20.0
-
-   rtmp = rtmp - 0.5 * eval_gaussian(gatmp,x) * dx**3 &
-                * ( eval_gaussian(gbtmp,x+dhx) + eval_gaussian(gbtmp,x-dhx) &
-                   +eval_gaussian(gbtmp,x+dhy) + eval_gaussian(gbtmp,x-dhy) &
-                   +eval_gaussian(gbtmp,x+dhz) + eval_gaussian(gbtmp,x-dhz) &
-                   - 6.0 * eval_gaussian(gbtmp,x) ) / dh**2 
-
- enddo
- enddo
- enddo
- write(*,*) 'CHECK kinetic matrix element [Ha]',rtmp
- stop'END TEST KINETIC'
-#endif
 
 
  call nucleus_pot_gaussian(gatmp,gbtmp,zatom,rtmp)
