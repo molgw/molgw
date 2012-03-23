@@ -115,7 +115,6 @@ program atom
 ! call kinetic_gaussian(gatmp,gbtmp,rtmp)
 ! write(*,*) 'kinetic matrix element [Ha]',rtmp
 
-
  call kinetic_recurrence(gatmp,gbtmp,rtmp)
  write(*,*) 'new kinetic matrix element K_ab',rtmp
  call kinetic_recurrence(gbtmp,gatmp,rtmp)
@@ -125,6 +124,14 @@ program atom
 
  write(*,*)
  write(*,*) ' === CHECK NUCLEUS === '
+
+ call nucleus_pot_gaussian(gatmp,gbtmp,1.0_dp,rtmp)
+ write(*,*) 'nucleus pot [Ha]',rtmp
+
+ call nucleus_recurrence(1.0_dp,(/0.0_dp,0.0_dp,0.0_dp/),gatmp,gbtmp,rtmp)
+ write(*,*) 'new nucleus matrix element V_ba',rtmp
+ call nucleus_recurrence(1.0_dp,(/0.0_dp,0.0_dp,0.0_dp/),gbtmp,gatmp,rtmp)
+ write(*,*) 'new nucleus matrix element V_ba',rtmp
 
  call numerical_nucleus(gatmp,gbtmp)
 
@@ -156,13 +163,6 @@ program atom
  rtmp2 = rtmp2 + rtmp
  write(*,*) 'nucleus',rtmp
  write(*,*) 'matrix element basis function',rtmp2
-
- ntmp=400
- x(:)=0.0d0
- do ix=1,ntmp
-   x(1) = ( REAL(ix,dp)/DBLE(ntmp) - 0.5 ) * 20.0
-   write(101,*) x(1),eval_basis_function(bftmp,x)
- enddo
 
 
  call nucleus_pot_gaussian(gatmp,gbtmp,zatom,rtmp)
