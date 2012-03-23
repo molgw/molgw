@@ -330,44 +330,44 @@ subroutine overlap_normalized(ga,gb,s_ab)
 
 end subroutine overlap_normalized
 
-!=========================================================================
-subroutine overlap_normalized_general(ga,gb,s_ab)
- implicit none
- type(gaussian),intent(in) :: ga,gb
- real(dp),intent(out) :: s_ab
-!=====
- type(gaussian),pointer :: gprod(:)
- integer                :: igprod
-!=====
-
- call product_gaussian_general(ga,gb,gprod)
- write(*,*) 'SIZE',SIZE(gprod(:))
- s_ab=0.0_dp
- do igprod=1,SIZE(gprod(:))
-   s_ab = s_ab &
-         +integral_1d(gprod(igprod)%alpha,gprod(igprod)%nx) &
-         *integral_1d(gprod(igprod)%alpha,gprod(igprod)%ny) &
-         *integral_1d(gprod(igprod)%alpha,gprod(igprod)%nz) * gprod(igprod)%norm_factor
- enddo
- deallocate(gprod)
-
-contains
-  function integral_1d(alpha,nx)
-   real(dp),intent(in) :: alpha
-   integer,intent(in) :: nx
-   real(dp) :: integral_1d
-  
-   !
-   ! formula obtained from Wolfram online integrator!
-   !
-   if( mod(nx,2) == 1 ) then
-     integral_1d=0.0_dp
-   else
-     integral_1d = alpha**( -0.5_dp * ( nx + 1 ) ) * gamma_function( 0.5_dp * ( nx + 1 ) )
-   endif
-  
-  end function
-end subroutine overlap_normalized_general
+!TOBEREMOVED  !=========================================================================
+!TOBEREMOVED  subroutine overlap_normalized_general(ga,gb,s_ab)
+!TOBEREMOVED   implicit none
+!TOBEREMOVED   type(gaussian),intent(in) :: ga,gb
+!TOBEREMOVED   real(dp),intent(out) :: s_ab
+!TOBEREMOVED  !=====
+!TOBEREMOVED   type(gaussian),pointer :: gprod(:)
+!TOBEREMOVED   integer                :: igprod
+!TOBEREMOVED  !=====
+!TOBEREMOVED  
+!TOBEREMOVED   call product_gaussian_general(ga,gb,gprod)
+!TOBEREMOVED   write(*,*) 'SIZE',SIZE(gprod(:))
+!TOBEREMOVED   s_ab=0.0_dp
+!TOBEREMOVED   do igprod=1,SIZE(gprod(:))
+!TOBEREMOVED     s_ab = s_ab &
+!TOBEREMOVED           +integral_1d(gprod(igprod)%alpha,gprod(igprod)%nx) &
+!TOBEREMOVED           *integral_1d(gprod(igprod)%alpha,gprod(igprod)%ny) &
+!TOBEREMOVED           *integral_1d(gprod(igprod)%alpha,gprod(igprod)%nz) * gprod(igprod)%norm_factor
+!TOBEREMOVED   enddo
+!TOBEREMOVED   deallocate(gprod)
+!TOBEREMOVED  
+!TOBEREMOVED  contains
+!TOBEREMOVED    function integral_1d(alpha,nx)
+!TOBEREMOVED     real(dp),intent(in) :: alpha
+!TOBEREMOVED     integer,intent(in) :: nx
+!TOBEREMOVED     real(dp) :: integral_1d
+!TOBEREMOVED    
+!TOBEREMOVED     !
+!TOBEREMOVED     ! formula obtained from Wolfram online integrator!
+!TOBEREMOVED     !
+!TOBEREMOVED     if( mod(nx,2) == 1 ) then
+!TOBEREMOVED       integral_1d=0.0_dp
+!TOBEREMOVED     else
+!TOBEREMOVED       integral_1d = alpha**( -0.5_dp * ( nx + 1 ) ) * gamma_function( 0.5_dp * ( nx + 1 ) )
+!TOBEREMOVED     endif
+!TOBEREMOVED    
+!TOBEREMOVED    end function
+!TOBEREMOVED  end subroutine overlap_normalized_general
 
 !=========================================================================
 subroutine overlap(ga,gb,s_ab)
@@ -402,7 +402,7 @@ contains
      integral_1d = alpha**( -0.5_dp * ( nx + 1 ) ) * gamma_function( 0.5_dp * ( nx + 1 ) )
    endif
   
-  end function
+  end function integral_1d
 end subroutine overlap
 
 !=========================================================================
@@ -571,33 +571,151 @@ subroutine overlap_recurrence(ga,gb,s_ab)
  type(gaussian),intent(in) :: ga,gb
  real(dp),intent(out) :: s_ab
 !=====
- real(dp)             :: alpha_ab,ksi_ab,d2_ab
- real(dp)             :: xp(3)
+ real(dp)             :: zeta_ab,ksi_ab,ab2,fact
+ real(dp)             :: p(3),ap(3),bp(3)
  real(dp)             :: s_tmp(0:ga%nx,0:ga%ny,0:ga%nz,0:gb%nx,0:gb%ny,0:gb%nz)
+ real(dp)             :: s_tmp_x(0:ga%nx,0:gb%nx)
+ real(dp)             :: s_tmp_y(0:ga%ny,0:gb%ny)
+ real(dp)             :: s_tmp_z(0:ga%nz,0:gb%nz)
+ integer              :: ix,iy,iz
+ integer              :: ixa,iya,iza
+ integer              :: ixb,iyb,izb
+ integer              :: ixap,iyap,izap
+ integer              :: ixbp,iybp,izbp
 !=====
 
- alpha_ab = ga%alpha + gb%alpha
- ksi_ab   = ga%alpha * gb%alpha / alpha_ab
- d2_ab    = SUM( ( ga%x0(:)-gb%x0(:) )**2 )
- xp(:)    = ( ga%alpha * ga%x0(:) + gb%alpha * gb%x0(:) ) / alpha_ab
+ ! Follow the notation of Obara and Saika, JCP  87 3963 (1986)
+ zeta_ab = ga%alpha + gb%alpha
+ ksi_ab   = ga%alpha * gb%alpha / zeta_ab
+ ab2    = SUM( ( ga%x0(:)-gb%x0(:) )**2 )
+ p(:)    = ( ga%alpha * ga%x0(:) + gb%alpha * gb%x0(:) ) / zeta_ab
+ ap(:) =  p(:) - ga%x0(:)
+ bp(:) =  p(:) - gb%x0(:)
+ fact = 0.5_dp / zeta_ab
 
- s_tmp(0,0,0,0,0,0) = (pi/alpha_ab)**1.5_dp * EXP( - ksi_ab * d2_ab )
 
- s_tmp(1,0,0,0,0,0) = ( xp(1) - ga%x0(1) ) * s_tmp(0,0,0,0,0,0)
+ !
+ ! direction X
+ !
+ s_tmp_x(0,0) = (pi/zeta_ab)**1.5_dp * EXP( - ksi_ab * ab2 )
 
- s_tmp(2,0,0,0,0,0) = ( xp(1) - ga%x0(1) ) * s_tmp(1,0,0,0,0,0) + 1.0 / ( 2.0 * alpha_ab) * s_tmp(0,0,0,0,0,0) 
+ do ix=1,ga%nx+gb%nx
 
- write(*,*) 's_tmp',s_tmp(0,0,0,0,0,0)
- write(*,*) 's_tmp',s_tmp(1,0,0,0,0,0)
- write(*,*) 's_tmp',s_tmp(2,0,0,0,0,0)
+   do ixa=0,MIN(ga%nx,ix)
+     ixb=ix-ixa
+     if(ixb>gb%nx) cycle
 
- s_ab = 0.0_dp
+     if(ixa>0) then
+       ixap=ixa-1
+       s_tmp_x(ixap+1,ixb) = ap(1) * s_tmp_x(ixap,ixb)
+       if(ixap>0)  s_tmp_x(ixap+1,ixb) = s_tmp_x(ixap+1,ixb) + fact * ixap * s_tmp_x(ixap-1,ixb)
+       if(ixb>0)   s_tmp_x(ixap+1,ixb) = s_tmp_x(ixap+1,ixb) + fact * ixb  * s_tmp_x(ixap,ixb-1)
+     else
+       ixbp=ixb-1
+       s_tmp_x(ixa,ixbp+1) = bp(1) * s_tmp_x(ixa,ixbp)
+       if(ixbp>0) s_tmp_x(ixa,ixbp+1) = s_tmp_x(ixa,ixbp+1) + fact * ixbp * s_tmp_x(ixa,ixbp-1)
+       if(ixa>0)  s_tmp_x(ixa,ixbp+1) = s_tmp_x(ixa,ixbp+1) + fact * ixa  * s_tmp_x(ixa-1,ixbp)
+     endif
 
- stop'ENOUGH'
+   enddo
+
+ enddo
+
+ !
+ ! direction Y
+ !
+ s_tmp_y(0,0) = s_tmp_x(ga%nx,gb%nx)
+
+ do iy=1,ga%ny+gb%ny
+
+   do iya=0,MIN(ga%ny,iy)
+     iyb=iy-iya
+     if(iyb>gb%ny) cycle
+
+     if(iya>0) then
+       iyap=iya-1
+       s_tmp_y(iyap+1,iyb) = ap(2) * s_tmp_y(iyap,iyb)
+       if(iyap>0)  s_tmp_y(iyap+1,iyb) = s_tmp_y(iyap+1,iyb) + fact * iyap * s_tmp_y(iyap-1,iyb)
+       if(iyb>0)   s_tmp_y(iyap+1,iyb) = s_tmp_y(iyap+1,iyb) + fact * iyb  * s_tmp_y(iyap,iyb-1)
+     else
+       iybp=iyb-1
+       s_tmp_y(iya,iybp+1) = bp(2) * s_tmp_y(iya,iybp)
+       if(iybp>0) s_tmp_y(iya,iybp+1) = s_tmp_y(iya,iybp+1) + fact * iybp * s_tmp_y(iya,iybp-1)
+       if(iya>0)  s_tmp_y(iya,iybp+1) = s_tmp_y(iya,iybp+1) + fact * iya  * s_tmp_y(iya-1,iybp)
+     endif
+
+   enddo
+
+ enddo
+
+ !
+ ! direction Z
+ !
+ s_tmp_z(0,0) = s_tmp_y(ga%ny,gb%ny)
+
+ do iz=1,ga%nz+gb%nz
+
+   do iza=0,MIN(ga%nz,iz)
+     izb=iz-iza
+     if(izb>gb%nz) cycle
+
+     if(iza>0) then
+       izap=iza-1
+       s_tmp_z(izap+1,izb) = ap(3) * s_tmp_z(izap,izb)
+       if(izap>0)  s_tmp_z(izap+1,izb) = s_tmp_z(izap+1,izb) + fact * izap * s_tmp_z(izap-1,izb)
+       if(izb>0)   s_tmp_z(izap+1,izb) = s_tmp_z(izap+1,izb) + fact * izb  * s_tmp_z(izap,izb-1)
+     else
+       izbp=izb-1
+       s_tmp_z(iza,izbp+1) = bp(3) * s_tmp_z(iza,izbp)
+       if(izbp>0) s_tmp_z(iza,izbp+1) = s_tmp_z(iza,izbp+1) + fact * izbp * s_tmp_z(iza,izbp-1)
+       if(iza>0)  s_tmp_z(iza,izbp+1) = s_tmp_z(iza,izbp+1) + fact * iza  * s_tmp_z(iza-1,izbp)
+     endif
+
+   enddo
+
+ enddo
+
+
+ s_ab = s_tmp_z(ga%nz,gb%nz) * ga%norm_factor * gb%norm_factor 
+
+
 end subroutine overlap_recurrence
 
 
 #endif
+
+
+!=========================================================================
+subroutine numerical_overlap(ga,gb)
+ implicit none
+ type(gaussian),intent(in) :: ga,gb
+!=====
+ integer,parameter  :: nx=100
+ real(dp),parameter :: rmax=10.
+ real(dp)           :: dx,rtmp,x(3)
+ integer            :: ix,iy,iz
+!=====
+
+ dx = rmax/REAL(nx,dp)
+
+ rtmp=0.0d0
+ do ix=1,nx
+   x(1) = ( REAL(ix,dp)/DBLE(nx) - 0.5 ) * rmax
+   do iy=1,nx
+     x(2) = ( REAL(iy,dp)/DBLE(nx) - 0.5 ) * rmax
+     do iz=1,nx
+       x(3) = ( REAL(iz,dp)/DBLE(nx) - 0.5 ) * rmax
+  
+       rtmp = rtmp + eval_gaussian(ga,x) * eval_gaussian(gb,x) * dx**3
+  
+     enddo
+   enddo
+ enddo
+
+ write(*,*) 'check S_ab',rtmp
+
+
+end subroutine numerical_overlap
 
 !=========================================================================
 end module m_gaussian

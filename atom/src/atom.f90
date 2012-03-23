@@ -84,18 +84,24 @@ program atom
 
 
 #if 0
- call init_gaussian_general(2,0,0,0.5000_dp,(/0.0_dp,0.0_dp,0.0_dp/),gatmp)
+
+ call init_gaussian_general(0,0,5,0.4361_dp,(/0.0_dp,0.0_dp,3.0_dp/),gatmp)
  call print_gaussian(gatmp)
 
- call init_gaussian_general(0,0,0,1.0000_dp,(/0.0_dp,0.0_dp,0.0_dp/),gbtmp)
+ call init_gaussian_general(0,0,0,0.8120_dp,(/0.0_dp,0.0_dp,0.0_dp/),gbtmp)
  call print_gaussian(gbtmp)
 
- call overlap(gatmp,gbtmp,rtmp)
- write(*,*) 'normalized S_ab',rtmp
+! call overlap(gatmp,gbtmp,rtmp)
+! write(*,*) 'unnormalized S_ab',rtmp
+! call overlap_normalized(gatmp,gbtmp,rtmp)
+! write(*,*) 'normalized S_ab',rtmp
+
  call overlap_recurrence(gatmp,gbtmp,rtmp)
 
- call overlap_normalized_general(gatmp,gatmp,rtmp)
- write(*,*) 'normalized S_ab',rtmp
+ call numerical_overlap(gatmp,gbtmp)
+
+! call overlap_normalized_general(gatmp,gatmp,rtmp)
+! write(*,*) 'normalized S_ab',rtmp
  stop'ENOUGH FOR TODAY'
 #endif
 
@@ -132,28 +138,6 @@ program atom
    write(101,*) x(1),eval_basis_function(bftmp,x)
  enddo
 
-#if 0
- ! test manually the integral
- ntmp=200
- dx=20./DBLE(ntmp)
- rtmp=0.0d0
- do ix=1,ntmp
-   x(1) = ( REAL(ix,dp)/DBLE(ntmp) - 0.5 ) * 20.0
-!   write(*,*) x(1)
- do iy=1,ntmp
-   x(2) = ( REAL(iy,dp)/DBLE(ntmp) - 0.5 ) * 20.0
- do iz=1,ntmp
-   x(3) = ( REAL(iz,dp)/DBLE(ntmp) - 0.5 ) * 20.0
-
-   rtmp = rtmp + eval_gaussian(gatmp,x) * eval_gaussian(gbtmp,x) * dx**3
-
- enddo
- enddo
- enddo
-
- write(*,*) 'check S_ab',rtmp
- stop'TEST FINISHED'
-#endif
 
  call kinetic_gaussian(gatmp,gbtmp,rtmp)
  write(*,*)
