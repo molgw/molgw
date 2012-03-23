@@ -64,35 +64,6 @@ subroutine init_gaussian_general(nx,ny,nz,alpha,x0,ga)
 
 end subroutine init_gaussian_general
 
-!=========================================================================
-subroutine overlap_recurrence(ga,gb,s_ab)
- implicit none
- type(gaussian),intent(in) :: ga,gb
- real(dp),intent(out) :: s_ab
-!=====
- real(dp)             :: alpha_ab,ksi_ab,d2_ab
- real(dp)             :: xp(3)
- real(dp)             :: s_tmp(0:ga%nx,0:ga%ny,0:ga%nz,0:gb%nx,0:gb%ny,0:gb%nz)
-!=====
-
- alpha_ab = ga%alpha + gb%alpha
- ksi_ab   = ga%alpha * gb%alpha / alpha_ab
- d2_ab    = SUM( ( ga%x0(:)-gb%x0(:) )**2 )
- xp(:)    = ( ga%alpha * ga%x0(:) + gb%alpha * gb%x0(:) ) / alpha_ab
-
- s_tmp(0,0,0,0,0,0) = (pi/alpha_ab)**1.5_dp * EXP( - ksi_ab * d2_ab )
-
- s_tmp(1,0,0,0,0,0) = ( xp(1) - ga%x0(1) ) * s_tmp(0,0,0,0,0,0)
-
- s_tmp(2,0,0,0,0,0) = ( xp(1) - ga%x0(1) ) * s_tmp(1,0,0,0,0,0) + 1.0 / ( 2.0 * alpha_ab) * s_tmp(0,0,0,0,0,0) 
-
- write(*,*) 's_tmp',s_tmp(0,0,0,0,0,0)
- write(*,*) 's_tmp',s_tmp(1,0,0,0,0,0)
- write(*,*) 's_tmp',s_tmp(2,0,0,0,0,0)
-
- stop'ENOUGH'
-end subroutine overlap_recurrence
-
 
 !=========================================================================
 subroutine shift_gaussian(ga,x0,ngshifted,gshifted)
@@ -592,6 +563,41 @@ function orbital_momentum_name(am)
  end select
 
 end function orbital_momentum_name
+
+#ifdef MOLECULES
+!=========================================================================
+subroutine overlap_recurrence(ga,gb,s_ab)
+ implicit none
+ type(gaussian),intent(in) :: ga,gb
+ real(dp),intent(out) :: s_ab
+!=====
+ real(dp)             :: alpha_ab,ksi_ab,d2_ab
+ real(dp)             :: xp(3)
+ real(dp)             :: s_tmp(0:ga%nx,0:ga%ny,0:ga%nz,0:gb%nx,0:gb%ny,0:gb%nz)
+!=====
+
+ alpha_ab = ga%alpha + gb%alpha
+ ksi_ab   = ga%alpha * gb%alpha / alpha_ab
+ d2_ab    = SUM( ( ga%x0(:)-gb%x0(:) )**2 )
+ xp(:)    = ( ga%alpha * ga%x0(:) + gb%alpha * gb%x0(:) ) / alpha_ab
+
+ s_tmp(0,0,0,0,0,0) = (pi/alpha_ab)**1.5_dp * EXP( - ksi_ab * d2_ab )
+
+ s_tmp(1,0,0,0,0,0) = ( xp(1) - ga%x0(1) ) * s_tmp(0,0,0,0,0,0)
+
+ s_tmp(2,0,0,0,0,0) = ( xp(1) - ga%x0(1) ) * s_tmp(1,0,0,0,0,0) + 1.0 / ( 2.0 * alpha_ab) * s_tmp(0,0,0,0,0,0) 
+
+ write(*,*) 's_tmp',s_tmp(0,0,0,0,0,0)
+ write(*,*) 's_tmp',s_tmp(1,0,0,0,0,0)
+ write(*,*) 's_tmp',s_tmp(2,0,0,0,0,0)
+
+ s_ab = 0.0_dp
+
+ stop'ENOUGH'
+end subroutine overlap_recurrence
+
+
+#endif
 
 !=========================================================================
 end module m_gaussian
