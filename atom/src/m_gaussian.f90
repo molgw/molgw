@@ -843,13 +843,18 @@ end subroutine numerical_kinetic
 
 !=========================================================================
 subroutine numerical_nucleus(ga,gb)
+ use m_tools,only: coeffs_gausslegint
  implicit none
  type(gaussian),intent(in) :: ga,gb
 !=====
  integer,parameter  :: nx=400
- real(dp),parameter :: rmax=10.
+ integer,parameter  :: n1=86
+ real(dp),parameter :: rmax=5.
  real(dp)           :: dx,rtmp,x(3)
  integer            :: ix,iy,iz
+ integer            :: iangular,na
+ real(dp)           :: wu(nx),u(nx),weight
+ real(dp)           :: x1(n1),y1(n1),z1(n1),w1(n1)
 !=====
 
  dx = rmax/REAL(nx,dp)
@@ -857,20 +862,46 @@ subroutine numerical_nucleus(ga,gb)
  write(*,*) 'hydrogen atom in zero'
 
  rtmp=0.0d0
+! do ix=1,nx
+!   x(1) = ( REAL(ix,dp)/DBLE(nx) - 0.5 ) * rmax
+!   do iy=1,nx
+!     x(2) = ( REAL(iy,dp)/DBLE(nx) - 0.5 ) * rmax
+!     do iz=1,nx
+!       x(3) = ( REAL(iz,dp)/DBLE(nx) - 0.5 ) * rmax
+!
+!       if( SUM(x(:)**2) < 1.d-8 ) cycle ! skip the singularity
+!
+!       rtmp = rtmp + eval_gaussian(ga,x) * eval_gaussian(gb,x) * dx**3 * -1.0 / SQRT(SUM(x(:)**2))
+!  
+!     enddo
+!   enddo
+! enddo
+
+ !
+ ! spherical integration
+ ! radial part with Gauss-Legendre
+ call coeffs_gausslegint(-1.0_dp,1.0_dp,u,wu,nx)
+ !
+ ! Transformation from [-1;1] to [0;+\infty[
+ ! taken from M. Krack JCP 1998
+ wu(:) = wu(:) * ( 1.0_dp / log(2.0_dp) / ( 1.0_dp - u(:) ) )
+ u(:)  = log( 2.0_dp / (1.0_dp - u(:) ) ) / log(2.0_dp)
+ call ld0086(x1,y1,z1,w1,na)
+
  do ix=1,nx
-   x(1) = ( REAL(ix,dp)/DBLE(nx) - 0.5 ) * rmax
-   do iy=1,nx
-     x(2) = ( REAL(iy,dp)/DBLE(nx) - 0.5 ) * rmax
-     do iz=1,nx
-       x(3) = ( REAL(iz,dp)/DBLE(nx) - 0.5 ) * rmax
+   do iangular=1,n1
+     x(1) = u(ix) * x1(iangular)
+     x(2) = u(ix) * y1(iangular)
+     x(3) = u(ix) * z1(iangular)
+     weight = wu(ix) * w1(iangular) * u(ix)**2 * 4.0_dp * pi
 
-       if( SUM(x(:)**2) < 1.d-8 ) cycle ! skip the singularity
+     if( SUM(x(:)**2) < 1.d-8 ) cycle ! skip the singularity
 
-       rtmp = rtmp + eval_gaussian(ga,x) * eval_gaussian(gb,x) * dx**3 * -1.0 / SQRT(SUM(x(:)**2))
-  
-     enddo
+     rtmp = rtmp + eval_gaussian(ga,x) * eval_gaussian(gb,x) * weight * -1.0 / SQRT(SUM(x(:)**2))
+
    enddo
  enddo
+
 
  write(*,*) 'check V_ab',rtmp
 

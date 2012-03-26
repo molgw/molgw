@@ -1,6 +1,6 @@
-OPENMP= -openmp -DOPENMP
+OPENMP= #-openmp -DOPENMP
 
-FC=ifort -fpp $(OPENMP) -DHAVE_LIBXC -DMOLECULES #-DCHI0  #-DSYMMETRIZED #-DCHI0 # -DAUXIL_BASIS
+FC=ifort -fpp $(OPENMP) -DMOLECULES #-DHAVE_LIBXC -DMOLECULES #-DCHI0  #-DSYMMETRIZED #-DCHI0 # -DAUXIL_BASIS
 #FC=ifort -fpp  -DHAVE_LIBXC -DCHI0 # -DAUXIL_BASIS
 #FC=ifort -fpp -DHAVE_LIBXC  #-DCHI0 # -DAUXIL_BASIS
 #FC=gfortran -cpp  -ffree-line-length-none
@@ -13,13 +13,13 @@ FCOPTS= -O3
 #LAPACK=  -Wl,--start-group  $(MKLROOT)/lib/em64t/libmkl_intel_lp64.a $(MKLROOT)/lib/em64t/libmkl_sequential.a $(MKLROOT)/lib/em64t/libmkl_core.a -Wl,--end-group -lpthread
 LAPACK= -lmkl_intel_lp64 -lmkl_sequential -lmkl_lapack95_lp64 -lmkl_core
 
-LIBXC_INCS= -I/home/bruneval/src/libxc-1.0_ifort/include
-LIBXC=  -L/home/bruneval/src/libxc-1.0_ifort/lib -Bstatic -lxc -Bdynamic
+LIBXC_INCS= #-I/home/bruneval/src/libxc-1.0_ifort/include
+LIBXC= # -L/home/bruneval/src/libxc-1.0_ifort/lib -Bstatic -lxc -Bdynamic
 
 LINKS= -lstdc++ -lm
-LIBINT_ROOT=/home/bruneval/src/libint-2.0.0_install/
+LIBINT_ROOT=/home/bruneval/src/libint-2.0.0-prealpha
 LIBINT=-L$(LIBINT_ROOT)/lib -lint2
-LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
+LIBINT_INCS=-I$(LIBINT_ROOT)/include/
 
 ../atom: m_definitions.o m_timing.o m_warning.o m_calculation_type.o m_tools.o \
        m_gaussian.o m_basis_set.o m_dft.o m_eri.o m_gw.o wrapper_libint.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o atom.o
