@@ -654,26 +654,38 @@ end subroutine kinetic_recurrence
 
 !=========================================================================
 subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
- use m_tools, only: coeffs_gausslegint
+ use ISO_C_BINDING
+ use m_tools, only: boys_function
  implicit none
  real(dp),intent(in)       :: zatom,c(3)
  type(gaussian),intent(in) :: ga,gb
  real(dp),intent(out)      :: v_ab
 !=====
- integer,parameter    :: NSAMP=20
+! integer,parameter    :: NSAMP=20
  real(dp)             :: zeta_ab,ksi_ab,ab2,fact
  real(dp)             :: p(3),ap(3),bp(3),cp(3)
- real(dp)             :: v_tmp_x(0:ga%nx,0:gb%nx)
- real(dp)             :: v_tmp_y(0:ga%ny,0:gb%ny)
- real(dp)             :: v_tmp_z(0:ga%nz,0:gb%nz)
+ real(dp)             :: v_tmp_x_m(0:ga%nx,0:gb%nx)
+ real(dp)             :: v_tmp_y_m(0:ga%ny,0:gb%ny)
+ real(dp)             :: v_tmp_z_m(0:ga%nz,0:gb%nz)
+ real(dp)             :: v_tmp_x_mp1(0:ga%nx,0:gb%nx)
+ real(dp)             :: v_tmp_y_mp1(0:ga%ny,0:gb%ny)
+ real(dp)             :: v_tmp_z_mp1(0:ga%nz,0:gb%nz)
  integer              :: ix,iy,iz
  integer              :: ixa,iya,iza
  integer              :: ixb,iyb,izb
  integer              :: ixap,iyap,izap
  integer              :: ixbp,iybp,izbp
- integer              :: isamp
- real(dp)             :: u(NSAMP),wu(NSAMP)
- real(dp)             :: u2,fact2,bigu
+ integer              :: mm
+! integer              :: isamp
+! real(dp)             :: u(NSAMP),wu(NSAMP)
+! real(dp)             :: u2,fact2
+!=====
+! variables used to call C++ 
+! integer(C_INT)               :: zero_c_int=0
+! real(C_DOUBLE)               :: fmu(1)
+! real(C_DOUBLE)               :: bigu
+ real(dp),allocatable         :: fmu(:)
+ real(dp)                     :: bigu
 !=====
 
  ! Follow the notation of Obara and Saika, JCP  87 3963 (1986)
@@ -687,52 +699,39 @@ subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
  fact  = 0.5_dp / zeta_ab
  bigu  = zeta_ab * SUM( cp(:)**2 )
 
- !
- ! based on the identity (found in Obara and Saika):
- ! 1 / |r_1 - r_2| = 2 / sqrt(pi) \int_0^{+\infty} du exp( - u^2 (r_1-r_2)^2 )
- !
 
- !
- ! set up the gauss-legendre integration scheme from 0 to infinity
- !
- ! first get the coefficient from 0 to 1
- call coeffs_gausslegint(0.0_dp,1.0_dp,u,wu,NSAMP)
- ! second apply variable changei
- !  u' =  u / (1-u)
- ! wu' = wu / (1-u)^2
- wu(:) = wu(:) / ( 1 - u(:) )**2
- u(:)  =  u(:) / ( 1 - u(:) )
+ v_tmp_x_mp1(:,:) =  0.0_dp
+ v_tmp_y_mp1(:,:) =  0.0_dp
+ v_tmp_z_mp1(:,:) =  0.0_dp
 
- v_ab = 0.0_dp
- do isamp=1,NSAMP
+ do mm=ga%am+gb%am,0,-1
 
-   u2 = u(isamp)**2
-   fact2 = u2 / ( zeta_ab + u2 )
-
+!   call calc_f(fmu(1),zero_c_int,bigu)
+   allocate(fmu(0:mm))
+   write(*,*) 'boys_function',mm
+   call boys_function(fmu,mm,bigu)
 
 
    !
    ! direction X
    !
-!   v_tmp_x(0,0) = 2.0 * Fm(u) * (pi/zeta_ab) * EXP( - ksi_ab * ab2 )
-   stop'FIXME implement Fm(u)'
-  
-   do ix=1,ga%nx+gb%nx
-  
+   v_tmp_x_m(0,0) = 2.0 * fmu(mm) * (pi/zeta_ab) * EXP( - ksi_ab * ab2 )
+   do ix=1,ga%nx+gb%nx-mm
+     write(*,*) ' ----- m ',ix
      do ixa=0,MIN(ga%nx,ix)
        ixb=ix-ixa
        if(ixb>gb%nx) cycle
-  
+       write(*,*) ' = ',mm,ixa,ixb
        if(ixa>0) then
          ixap=ixa-1
-         v_tmp_x(ixap+1,ixb) = ap(1) * v_tmp_x(ixap,ixb)
-         if(ixap>0)  v_tmp_x(ixap+1,ixb) = v_tmp_x(ixap+1,ixb) + fact * ixap * v_tmp_x(ixap-1,ixb)
-         if(ixb>0)   v_tmp_x(ixap+1,ixb) = v_tmp_x(ixap+1,ixb) + fact * ixb  * v_tmp_x(ixap,ixb-1)
+         v_tmp_x_m(ixap+1,ixb) = ap(1) * v_tmp_x_m(ixap,ixb) - cp(1) * v_tmp_x_mp1(ixap,ixb)
+         if(ixap>0) v_tmp_x_m(ixap+1,ixb) = v_tmp_x_m(ixap+1,ixb) + fact * ixap * ( v_tmp_x_m(ixap-1,ixb) -  v_tmp_x_mp1(ixap-1,ixb) )
+         if(ixb>0)  v_tmp_x_m(ixap+1,ixb) = v_tmp_x_m(ixap+1,ixb) + fact * ixb  * ( v_tmp_x_m(ixap,ixb-1) -  v_tmp_x_mp1(ixap,ixb-1) )
        else
          ixbp=ixb-1
-         v_tmp_x(ixa,ixbp+1) = bp(1) * v_tmp_x(ixa,ixbp)
-         if(ixbp>0) v_tmp_x(ixa,ixbp+1) = v_tmp_x(ixa,ixbp+1) + fact * ixbp * v_tmp_x(ixa,ixbp-1)
-         if(ixa>0)  v_tmp_x(ixa,ixbp+1) = v_tmp_x(ixa,ixbp+1) + fact * ixa  * v_tmp_x(ixa-1,ixbp)
+         v_tmp_x_m(ixa,ixbp+1) = bp(1) * v_tmp_x_m(ixa,ixbp) - cp(1) * v_tmp_x_mp1(ixa,ixbp)
+         if(ixbp>0) v_tmp_x_m(ixa,ixbp+1) = v_tmp_x_m(ixa,ixbp+1) + fact * ixbp * ( v_tmp_x_m(ixa,ixbp-1) -  v_tmp_x_mp1(ixa,ixbp-1) )
+         if(ixa>0)  v_tmp_x_m(ixa,ixbp+1) = v_tmp_x_m(ixa,ixbp+1) + fact * ixa  * ( v_tmp_x_m(ixa-1,ixbp) -  v_tmp_x_mp1(ixa-1,ixbp) )
        endif
   
      enddo
@@ -742,22 +741,25 @@ subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
    !
    ! direction Y
    !
-   v_tmp_y(0,0) = v_tmp_x(ga%nx,gb%nx)
+   v_tmp_y_m(0,0) = v_tmp_x_m(ga%nx,gb%nx)
+
   
    !
    ! direction Z
    !
-   v_tmp_z(0,0) = v_tmp_y(ga%ny,gb%ny)
+   v_tmp_z_m(0,0) = v_tmp_y_m(ga%ny,gb%ny)
+
+
+   v_tmp_x_mp1(:,:) =  v_tmp_x_m(:,:)
+   v_tmp_y_mp1(:,:) =  v_tmp_y_m(:,:)
+   v_tmp_z_mp1(:,:) =  v_tmp_z_m(:,:)
+
+   deallocate(fmu)
+ enddo
 
 
 
-
-
-
-   v_ab = v_ab + wu(isamp) * v_tmp_z(ga%nz,gb%nz)
-
- enddo !isamp
- v_ab = - zatom * v_ab * 2.0_dp / SQRT(pi) * ga%norm_factor * gb%norm_factor
+ v_ab = - zatom * v_tmp_z_m(ga%nz,gb%nz) * ga%norm_factor * gb%norm_factor
 
 
 end subroutine nucleus_recurrence
@@ -844,7 +846,7 @@ subroutine numerical_nucleus(ga,gb)
  implicit none
  type(gaussian),intent(in) :: ga,gb
 !=====
- integer,parameter  :: nx=100
+ integer,parameter  :: nx=400
  real(dp),parameter :: rmax=10.
  real(dp)           :: dx,rtmp,x(3)
  integer            :: ix,iy,iz

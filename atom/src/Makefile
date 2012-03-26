@@ -5,8 +5,8 @@ FC=ifort -fpp $(OPENMP) -DHAVE_LIBXC -DMOLECULES #-DCHI0  #-DSYMMETRIZED #-DCHI0
 #FC=ifort -fpp -DHAVE_LIBXC  #-DCHI0 # -DAUXIL_BASIS
 #FC=gfortran -cpp  -ffree-line-length-none
 CC=g++
-FCOPTS= -O0 -g #-check all
-#FCOPTS= -O3
+#FCOPTS= -O0 -g -check all
+FCOPTS= -O3
 
 #LAPACK= -L/home/bruneval/src/lapack-3.3.1/ -llapack_LINUX -lblas_LINUX 
 #LAPACK=  -Wl,--start-group  $(MKLROOT)/lib/em64t/libmkl_intel_lp64.a $(MKLROOT)/lib/em64t/libmkl_intel_thread.a $(MKLROOT)/lib/em64t/libmkl_core.a -Wl,--end-group -openmp -lpthread

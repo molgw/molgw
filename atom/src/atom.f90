@@ -87,10 +87,10 @@ program atom
  ! Development tests are commented below
 #ifdef MOLECULES
 
- call init_gaussian_general(2,0,0,0.4361_dp,(/0.0_dp,0.0_dp,0.0_dp/),gatmp)
+ call init_gaussian_general(0,0,0,0.4361_dp,(/-1.0_dp,0.0_dp,0.0_dp/),gatmp)
  call print_gaussian(gatmp)
 
- call init_gaussian_general(0,0,0,0.8120_dp,(/0.0_dp,0.0_dp,0.0_dp/),gbtmp)
+ call init_gaussian_general(0,0,0,0.8120_dp,(/1.0_dp,0.0_dp,0.0_dp/),gbtmp)
  call print_gaussian(gbtmp)
 
 
@@ -106,7 +106,7 @@ program atom
  call overlap_recurrence(gbtmp,gatmp,rtmp)
  write(*,*) 'normalized S_ba from recurrence',rtmp
 
- call numerical_overlap(gatmp,gbtmp)
+! call numerical_overlap(gatmp,gbtmp)
 
 
  write(*,*)
@@ -120,13 +120,13 @@ program atom
  call kinetic_recurrence(gbtmp,gatmp,rtmp)
  write(*,*) 'new kinetic matrix element K_ba',rtmp
 
- call numerical_kinetic(gatmp,gbtmp)
+! call numerical_kinetic(gatmp,gbtmp)
 
  write(*,*)
  write(*,*) ' === CHECK NUCLEUS === '
 
- call nucleus_pot_gaussian(gatmp,gbtmp,1.0_dp,rtmp)
- write(*,*) 'nucleus pot [Ha]',rtmp
+! call nucleus_pot_gaussian(gatmp,gbtmp,1.0_dp,rtmp)
+! write(*,*) 'nucleus pot [Ha]',rtmp
 
  call nucleus_recurrence(1.0_dp,(/0.0_dp,0.0_dp,0.0_dp/),gatmp,gbtmp,rtmp)
  write(*,*) 'new nucleus matrix element V_ba',rtmp

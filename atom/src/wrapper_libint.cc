@@ -218,7 +218,11 @@ static double *df;
 static double *fac;
 static double **bc;
 
-void calc_f(double *, int, double);
+extern "C"{
+void calc_f(double*, int, double);
+void calc_f_(double*, int, double);
+}
+
 double norm_const(unsigned int l1, unsigned int m1, unsigned int n1,
                   double alpha1, const double* A);
 double* init_array(unsigned long int size);
@@ -477,6 +481,11 @@ double eri(unsigned int l1, unsigned int m1, unsigned int n1, double alpha1,
 
  \ingroup (QT)
  */
+
+void calc_f_(double *F, int n, double t) {
+  calc_f(F,n,t);
+}
+
 void calc_f(double *F, int n, double t) {
   int i, m, k;
   int m2;

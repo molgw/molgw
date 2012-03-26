@@ -524,6 +524,68 @@ subroutine gequad(p,w)
 !
 end subroutine gequad
 
+
+subroutine boys_function(fnt,n,t)
+ implicit none
+ integer,intent(in)   :: n
+ real(dp),intent(in)  :: t
+ real(dp),intent(out) :: fnt(0:n)
+!=====
+ integer,parameter  :: maxfac=100
+ real(dp),parameter :: eps=1.0d-17
+ integer :: i,m,k
+ integer :: m2
+ real(dp) :: t2,num,sum,term1,term2,et,tt
+ real(dp),parameter :: kk = 2.0_dp / SQRT( pi )
+ real(dp),save :: df(2*maxfac)=0.0_dp
+!=====
+
+ if( ABS(df(1))<1.d-10 ) then
+   write(*,*) 'initialize df'
+   df(1:3) = 1.0_dp
+   do i=4,2*maxfac
+     df(i) = (i-1) * df(i-2)
+   enddo
+ endif
+
+ if( t > 20.0 ) then ! For big t's do upward recursion 
+   t2 = 2 * t
+   et = exp(-t)
+   tt  = sqrt(t)
+   fnt(1) = kk *erf(tt) / tt
+   do m=1,n-1
+     fnt(m+1) = ( (2*m+1) * fnt(m) - et ) / t2
+   enddo
+
+ else
+   !   For smaller t's compute F with highest n using
+   !   asymptotic series (see I. Shavitt in
+   !   Methods in Computational Physics, ed. B. Alder eta l,
+   !   vol 2, 1963, page 8)
+
+   et = exp(-t)
+   t2 = 2 * t
+   m2 = 2 * n
+   num = df(m2+1)
+   sum = 1.0_dp / ( m2 + 1 )
+   do i=1,maxfac-1
+     num = num * t2
+     term1 = num / df(m2 + 2*i + 3)
+     sum = sum + term1
+     if(ABS(term1) < eps) exit
+   enddo
+   fnt(n) = sum * et 
+   !
+   ! And then do downward recursion 
+   do m=n-1,0,-1
+     fnt(m)= ( t2 * fnt(m+1) + et ) / ( 2 * m + 1 )
+   enddo
+
+ endif
+
+
+end subroutine boys_function
+
 subroutine check_unitarity(n,cmat)
  implicit none
  integer,intent(in) :: n
