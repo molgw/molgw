@@ -697,6 +697,7 @@ end subroutine gw_selfenergy_casida
 !=========================================================================
 subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy)
  use m_basis_set
+ use m_io
  implicit none
 
  integer,intent(in)  :: method,nspin

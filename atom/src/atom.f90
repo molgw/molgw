@@ -10,6 +10,7 @@ program atom
  use m_eri
  use m_gw
  use m_dft
+ use m_io
 #ifdef OPENMP
  use omp_lib
 #endif
@@ -18,12 +19,13 @@ program atom
  !
  ! Input parameters will be set in read_inputparameters
  type(calculation_type)       :: calc_type
- integer                      :: nspin,nscf
+ integer                      :: nspin,nscf,natom
  real(dp)                     :: alpha_mixing
  integer                      :: PRINT_VOLUME
- integer                      :: basis_element
+ integer,pointer              :: basis_element(:)
  character(len=100)           :: basis_name
- real(dp)                     :: zatom
+ real(dp),pointer             :: zatom(:)
+ real(dp),pointer             :: x(:,:)
  real(dp)                     :: electrons
  real(dp)                     :: magnetization
 !=====
@@ -31,7 +33,7 @@ program atom
 !=====
  type(gaussian) :: gatmp,gbtmp
  type(basis_function) :: bftmp
- real(dp) :: rtmp,rtmp2,x(3),dx,dh,dhx(3),dhy(3),dhz(3)
+ real(dp) :: rtmp,rtmp2
  integer :: ix,iy,iz,ntmp,ng
  real(dp),allocatable :: alpha(:),coeff(:)
 !=====
@@ -39,7 +41,7 @@ program atom
  type(basis_set)         :: prod_basis
  type(spectral_function) :: wpol
  integer                 :: ibf,jbf,kbf,lbf,ijbf,klbf
- integer                 :: ispin,iscf,istate
+ integer                 :: ispin,iscf,istate,iatom,jatom
  integer                 :: iprodbf,jprodbf,nprodbf_max
  character(len=100)      :: title
  real(dp)                :: energy_tmp,overlap_tmp,spin_fact,rms
@@ -48,7 +50,7 @@ program atom
  real(dp),allocatable    :: hamiltonian_nucleus(:,:,:)           !TODO remove spin
  real(dp),allocatable    :: matrix(:,:,:)
  real(dp),allocatable    :: vxc_matrix(:,:,:)
- real(dp),allocatable    :: s_matrix(:,:)                      !TODO remove spin
+ real(dp),allocatable    :: s_matrix(:,:)
  real(dp),allocatable    :: c_matrix(:,:,:)
  real(dp),allocatable    :: p_matrix(:,:,:),p_matrix_old(:,:,:)
  real(dp),allocatable    :: energy(:,:),energy_old(:,:)
@@ -64,6 +66,7 @@ program atom
  real(dp),allocatable    :: eigval(:),eigvec(:,:),matrix_tmp(:,:) 
 !=====
  type energy_contributions
+   real(dp) :: nuc_nuc
    real(dp) :: kin
    real(dp) :: nuc
    real(dp) :: hart
@@ -194,11 +197,22 @@ program atom
 #endif
  !
  ! 
- call read_inputparameter(calc_type,nspin,nscf,alpha_mixing,print_volume,basis_name,zatom,electrons,magnetization,basis_element)
+ write(*,*) 'before read'
+! call read_inputparameter(calc_type,nspin,nscf,alpha_mixing,print_volume,basis_name,zatom,electrons,magnetization,basis_element)
+ call read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
+                                   basis_name,zatom,electrons,magnetization,basis_element,natom,x)
 
  !
+ ! Nucleus-nucleus repulsion contribution to the energy
+ en%nuc_nuc=0.0_dp
+ do iatom=1,natom
+   do jatom=iatom+1,natom
+     en%nuc_nuc = en%nuc_nuc + 1.0_dp / SQRT( SUM( (x(:,iatom) - x(:,jatom))**2) )
+   enddo
+ enddo
+ !
  ! start build up the basis set
- call init_basis_set(PRINT_VOLUME,zatom,basis_name,basis_element,basis)
+ call init_basis_set(PRINT_VOLUME,natom,x,zatom,basis_name,basis_element,basis)
  
  !
  ! allocate everything
@@ -352,10 +366,13 @@ program atom
 
  !
  ! nucleus-electron interaction
+ hamiltonian_nucleus(:,:,:) =  0.0_dp
  do ibf=1,basis%nbf
    do jbf=1,basis%nbf
-     call nucleus_pot_basis_function(basis%bf(ibf),basis%bf(jbf),zatom,energy_tmp)
-     hamiltonian_nucleus(ibf,jbf,:) = energy_tmp
+     do iatom=1,natom
+       call nucleus_pot_basis_function(basis%bf(ibf),basis%bf(jbf),zatom(iatom),x(:,iatom),energy_tmp)
+       hamiltonian_nucleus(ibf,jbf,:) =  hamiltonian_nucleus(ibf,jbf,:) + energy_tmp
+     enddo
    enddo
  enddo
  title='=== nucleus contribution ==='
@@ -561,12 +578,13 @@ program atom
 
  
    write(*,*)
+   write(*,*) 'Nucleus-Nucleus [Ha]:',en%nuc_nuc
    write(*,*) 'Kinetic Energy  [Ha]:',en%kin
    write(*,*) 'Nucleus Energy  [Ha]:',en%nuc
    write(*,*) 'Hartree Energy  [Ha]:',en%hart
    if(calc_type%need_exchange) write(*,*) 'Exchange Energy [Ha]:',en%exx
    if(calc_type%need_dft_xc)   write(*,*) 'XC Energy       [Ha]:',en%xc
-   en%tot = en%kin + en%nuc + en%hart + en%exx + en%xc
+   en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%xc
    write(*,*)
    write(*,*) 'Total Energy    [Ha]:',en%tot
    write(*,*)
