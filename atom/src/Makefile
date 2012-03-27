@@ -1,6 +1,6 @@
 OPENMP= -openmp -DOPENMP
 
-FC=ifort -fpp $(OPENMP) -DHAVE_LIBXC -DMOLECULES #-DCHI0  #-DSYMMETRIZED #-DCHI0 # -DAUXIL_BASIS
+FC=ifort -fpp $(OPENMP) -DHAVE_LIBXC #-DCHI0  #-DSYMMETRIZED #-DCHI0 # -DAUXIL_BASIS
 #FC=ifort -fpp  -DHAVE_LIBXC -DCHI0 # -DAUXIL_BASIS
 #FC=ifort -fpp -DHAVE_LIBXC  #-DCHI0 # -DAUXIL_BASIS
 #FC=gfortran -cpp  -ffree-line-length-none

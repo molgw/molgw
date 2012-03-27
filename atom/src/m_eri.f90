@@ -446,6 +446,7 @@ end subroutine calculate_eri
 subroutine calculate_eri2(basis)
  use ISO_C_BINDING
  use m_definitions
+ use m_tools,only: boys_function
  use m_timing
  use m_basis_set
 #ifdef OPENMP
@@ -479,10 +480,13 @@ subroutine calculate_eri2(basis)
  integer                      :: index_tmp
  integer                      :: ami,amj,amk,aml
  real(dp),allocatable         :: int_tmp(:,:,:,:)
+ real(dp)                     :: zeta_12,zeta_34,rho,f0t(0:0),tt
+ real(dp)                     :: p(3),q(3)
 !=====
  type shell_type
    integer  :: am
    real(dp) :: alpha
+   real(dp) :: x0(3)
    integer  :: nmember              !
    integer  :: index_bf(NMEMBER)    ! correspondance from shell to basis functions and primitive gaussians
    integer  :: index_g(NMEMBER)     !
@@ -493,6 +497,7 @@ subroutine calculate_eri2(basis)
  integer(C_INT),external      :: calculate_integral
  integer(C_INT)               :: am1,am2,am3,am4
  real(C_DOUBLE)               :: alpha1,alpha2,alpha3,alpha4
+ real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
 
@@ -512,7 +517,8 @@ subroutine calculate_eri2(basis)
      ! check if the shell has already been created
      shell_already_exists=.FALSE.
      do jshell=1,ishell
-       if( g_current%am == shell(jshell)%am .AND. ABS( g_current%alpha - shell(jshell)%alpha ) < 1.d-8 ) then
+       if( g_current%am == shell(jshell)%am .AND. ABS( g_current%alpha - shell(jshell)%alpha ) < 1.d-8 &
+           .AND.  ALL( g_current%x0(:) - shell(jshell)%x0(:) < 1.d-8 ) ) then
 
          shell_already_exists=.TRUE.
          shell(jshell)%nmember = shell(jshell)%nmember + 1
@@ -530,6 +536,7 @@ subroutine calculate_eri2(basis)
 
        shell(ishell)%am      = g_current%am
        shell(ishell)%alpha   = g_current%alpha
+       shell(ishell)%x0(:)   = g_current%x0(:)
        shell(ishell)%nmember = 1
        shell(ishell)%index_bf(shell(ishell)%nmember) = ibf
        shell(ishell)%index_g (shell(ishell)%nmember) = ig
@@ -575,22 +582,30 @@ subroutine calculate_eri2(basis)
              am4 = shell(lshell)%am
              alpha3 = shell(kshell)%alpha
              alpha4 = shell(lshell)%alpha
+             x03(:) = shell(kshell)%x0(:)
+             x04(:) = shell(lshell)%x0(:)
            else
              am3 = shell(lshell)%am
              am4 = shell(kshell)%am
              alpha3 = shell(lshell)%alpha
              alpha4 = shell(kshell)%alpha
+             x03(:) = shell(lshell)%x0(:)
+             x04(:) = shell(kshell)%x0(:)
            endif
            if(ami>=amj) then
              am1 = shell(ishell)%am
              am2 = shell(jshell)%am
              alpha1 = shell(ishell)%alpha
              alpha2 = shell(jshell)%alpha
+             x01(:) = shell(ishell)%x0(:)
+             x02(:) = shell(jshell)%x0(:)
            else
              am1 = shell(jshell)%am
              am2 = shell(ishell)%am
              alpha1 = shell(jshell)%alpha
              alpha2 = shell(ishell)%alpha
+             x01(:) = shell(jshell)%x0(:)
+             x02(:) = shell(ishell)%x0(:)
            endif
          else
            if(amk>=aml) then
@@ -598,22 +613,30 @@ subroutine calculate_eri2(basis)
              am2 = shell(lshell)%am
              alpha1 = shell(kshell)%alpha
              alpha2 = shell(lshell)%alpha
+             x01(:) = shell(kshell)%x0(:)
+             x02(:) = shell(lshell)%x0(:)
            else
              am1 = shell(lshell)%am
              am2 = shell(kshell)%am
              alpha1 = shell(lshell)%alpha
              alpha2 = shell(kshell)%alpha
+             x01(:) = shell(lshell)%x0(:)
+             x02(:) = shell(kshell)%x0(:)
            endif
            if(ami>=amj) then
              am3 = shell(ishell)%am
              am4 = shell(jshell)%am
              alpha3 = shell(ishell)%alpha
              alpha4 = shell(jshell)%alpha
+             x03(:) = shell(ishell)%x0(:)
+             x04(:) = shell(jshell)%x0(:)
            else
              am3 = shell(jshell)%am
              am4 = shell(ishell)%am
              alpha3 = shell(jshell)%alpha
              alpha4 = shell(ishell)%alpha
+             x03(:) = shell(jshell)%x0(:)
+             x04(:) = shell(ishell)%x0(:)
            endif
          endif
 
@@ -637,12 +660,26 @@ subroutine calculate_eri2(basis)
          !
          if(am1+am2+am3+am4==0) then
 
-           int_shell(1) = 2.0_dp*pi**(2.5_dp) &
-                         / ( (alpha1+alpha2)*(alpha3+alpha4)*SQRT(alpha1+alpha2+alpha3+alpha4) )
+!           int_shell(1) = 2.0_dp*pi**(2.5_dp) &
+!                         / ( (alpha1+alpha2)*(alpha3+alpha4)*SQRT(alpha1+alpha2+alpha3+alpha4) )
+           zeta_12 = alpha1 + alpha2
+           zeta_34 = alpha3 + alpha4
+           p(:) = ( alpha1 * x01(:) + alpha2 * x02(:) ) / zeta_12 
+           q(:) = ( alpha3 * x03(:) + alpha4 * x04(:) ) / zeta_34 
+           rho = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
+           tt = rho * SUM( (p(:)-q(:))**2 )
+           call boys_function(f0t(0),0,tt)
+           int_shell(1) = 2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
+                 / zeta_12 * exp( -alpha1*alpha2/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
+                 / zeta_34 * exp( -alpha3*alpha4/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) 
 
          else
 
            info=calculate_integral(am1,am2,am3,am4,alpha1,alpha2,alpha3,alpha4,&
+                                 x01(1),x01(2),x01(3),&
+                                 x02(1),x02(2),x02(3),&
+                                 x03(1),x03(2),x03(3),&
+                                 x04(1),x04(2),x04(3),&
                                  int_shell(1))
            if(info/=0) then
              write(*,*) am1,am2,am3,am4

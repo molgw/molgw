@@ -85,15 +85,13 @@ program atom
 
  !
  ! Development tests are commented below
-#ifdef MOLECULES
+#if 0
 
  call init_gaussian_general(1,2,3,0.4361_dp,(/0.0_dp,0.0_dp,-1.0_dp/),gatmp)
  call print_gaussian(gatmp)
 
  call init_gaussian_general(1,4,1,0.8120_dp,(/0.0_dp,0.0_dp,1.2_dp/),gbtmp)
  call print_gaussian(gbtmp)
-
-
 
  write(*,*)
  write(*,*) ' === CHECK OVERLAP === '
@@ -139,7 +137,7 @@ program atom
 #endif
 
 #if 0
-
+! TESTING CONTRACTION
 !H STO-3G
  ng=3
  allocate(alpha(ng),coeff(ng))
@@ -167,27 +165,6 @@ program atom
 
  call nucleus_pot_gaussian(gatmp,gbtmp,zatom,rtmp)
  write(*,*) 'nucleus pot [Ha]',rtmp
-
-#if 0
- ! test manually the integral
- ntmp=201
- dx=20./DBLE(ntmp)
- rtmp=0.0d0
- do ix=1,ntmp
-   x(1) = ( REAL(ix,dp)/DBLE(ntmp) - 0.5 ) * 20.0
-!   write(*,*) x(1)
- do iy=1,ntmp
-   x(2) = ( REAL(iy,dp)/DBLE(ntmp) - 0.5 ) * 20.0
- do iz=1,ntmp
-   x(3) = ( REAL(iz,dp)/DBLE(ntmp) - 0.5 ) * 20.0
-   if( SUM(x(:)**2) < 1.d-8 ) cycle ! skip the singularity
-   rtmp = rtmp + eval_gaussian(gatmp,x) * eval_gaussian(gbtmp,x) * dx**3 * -1.0 / SQRT(SUM(x(:)**2))
-
- enddo
- enddo
- enddo
- write(*,*) 'check nucl pot',rtmp
-#endif
 
 
  write(*,*)
@@ -610,7 +587,7 @@ program atom
  write(*,*) '=================================================='
  write(*,*)
 
-#if 1
+#if 0
  call plot_wfn(nspin,basis,c_matrix)
 #endif
 
@@ -625,13 +602,6 @@ program atom
  !
  ! in case of DFT + GW
  if( calc_type%need_final_exchange ) then
-
-#if 1
-   msg='hacking here'
-   call issue_warning(msg)
-   occupation(1:5,:)=0.0_dp
-   call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
-#endif
 
    spin_fact = REAL(-nspin+3,dp)
    matrix(:,:,:)=0.0_dp

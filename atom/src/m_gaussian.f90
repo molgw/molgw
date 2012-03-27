@@ -362,7 +362,6 @@ function orbital_momentum_name(am)
 end function orbital_momentum_name
 
 
-#ifdef MOLECULES
 !=========================================================================
 subroutine overlap_recurrence(ga,gb,s_ab)
  implicit none
@@ -706,35 +705,24 @@ subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
  v_tmp_y_mp1(:,:) =  0.0_dp
  v_tmp_z_mp1(:,:) =  0.0_dp
 
-! do mm=MAX(ga%nx+gb%nx,ga%ny+gb%ny,ga%nz+gb%nz),0,-1
  do mm=ga%am+gb%am,0,-1
-!   write(*,*) '================== mm ============================',mm
    allocate(fmu(0:mm))
    call boys_function(fmu,mm,bigu)
-!   write(*,* )'boys',mm,bigu,fmu(mm)
-!   mm_c_int=mm
-!   bigu_c=bigu
-!   call calc_f(fmu_c,mm_c_int,bigu_c)
-!   write(*,* )'boys',mm_c_int,bigu_c,fmu_c
 
 
    !
    ! direction X
    !
    v_tmp_x_m(0,0) = 2.0 * fmu(mm) * (pi/zeta_ab) * EXP( - ksi_ab * ab2 )
-!   if(mm==0) write(*,*) 'm=0, (000|000)=',v_tmp_x_m(0,0) !* ga%norm_factor * gb%norm_factor * -zatom
+
    ixam=0
    ixbm=0
-!   write(*,*) 'X,a,b',0,0
-!   write(*,*) mm,ga%nx+gb%nx-(ga%am+gb%am-mm)
-!   do ix=1,ga%nx+gb%nx-mm
    do ix=1,ga%am+gb%am-mm
      do ixa=0,MIN(ga%nx,ix)
        ixb=ix-ixa
        if(ixb>gb%nx) cycle
        ixam=MAX(ixam,ixa)
        ixbm=MAX(ixbm,ixb)
-!       write(*,*) 'X,a,b',ixa,ixb
 
        if(ixa>0) then
          ixap=ixa-1
@@ -755,31 +743,22 @@ subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
    !
    ! direction Y
    !
-!   v_tmp_y_m(0,0) = v_tmp_x_m(ga%nx,gb%nx)
-!   write(*,*) 'x finished',ixam,ixbm
-!   write(*,*) '  --------',ga%nx,gb%nx
    v_tmp_y_m(0,0) = v_tmp_x_m(ixam,ixbm)
+
    iyam=0
    iybm=0
-!   write(*,*) 'Y,a,b',0,0
-!   do iy=1,ga%ny+gb%ny-mm
    do iy=1,ga%am+gb%am-mm
      do iya=0,MIN(ga%ny,iy)
        iyb=iy-iya
        if(iyb>gb%ny) cycle
        iyam=MAX(iyam,iya)
        iybm=MAX(iybm,iyb)
-!       write(*,*) 'Y,a,b',iya,iyb
 
        if(iya>0) then
          iyap=iya-1
          v_tmp_y_m(iyap+1,iyb) = ap(2) * v_tmp_y_m(iyap,iyb) - cp(2) * v_tmp_y_mp1(iyap,iyb)
-!         if(iya==2 .AND. iyb==0 .AND. mm==0) write(*,*) 'term1',v_tmp_y_m(iyap+1,iyb)
          if(iyap>0) v_tmp_y_m(iyap+1,iyb) = v_tmp_y_m(iyap+1,iyb) + fact * iyap * ( v_tmp_y_m(iyap-1,iyb) -  v_tmp_y_mp1(iyap-1,iyb) )
-!         if(iya==2 .AND. iyb==0 .AND. mm==0) write(*,*) 'term2',fact * iyap * ( v_tmp_y_m(iyap-1,iyb) ) ,  v_tmp_y_m(iyap-1,iyb), iyap
-!         if(iya==2 .AND. iyb==0 .AND. mm==0) write(*,*) 'term3',fact * iyap * ( -  v_tmp_y_mp1(iyap-1,iyb) )
          if(iyb>0)  v_tmp_y_m(iyap+1,iyb) = v_tmp_y_m(iyap+1,iyb) + fact * iyb  * ( v_tmp_y_m(iyap,iyb-1) -  v_tmp_y_mp1(iyap,iyb-1) )
-!         if(iya==2 .AND. iyb==0 .AND. mm==0) write(*,*) 'term3', fact * iyb  * ( v_tmp_y_m(iyap,iyb-1) -  v_tmp_y_mp1(iyap,iyb-1) )
        else
          iybp=iyb-1
          v_tmp_y_m(iya,iybp+1) = bp(2) * v_tmp_y_m(iya,iybp) - cp(2) * v_tmp_y_mp1(iya,iybp)
@@ -794,38 +773,16 @@ subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
    !
    ! direction Z
    !
-!   v_tmp_z_m(0,0) = v_tmp_y_m(ga%ny,gb%ny)
    v_tmp_z_m(0,0) = v_tmp_y_m(iyam,iybm)
-!    write(*,*) 'y finished',iyam,iybm
-!    write(*,*) '  --------',ga%ny,gb%ny
-!    if(mm==1) then
-!      write(*,*)
-!      write(*,*) ' mm =',mm
-!      write(*,*) ' final result',0,0,0,0,v_tmp_x_m(0,0)
-!      write(*,*) ' final result',ixam,iyam,ixbm,iybm,v_tmp_y_m(iyam,iybm)
-! !     write(*,*) 'final result for x',0,0,v_tmp_x_m(0,0) 
-! !     write(*,*) 'final result for x',1,0,v_tmp_x_m(1,0) 
-! !     write(*,*) 'final result for x',2,0,v_tmp_x_m(2,0) 
-! !     write(*,*) 'final result for x',0,0,v_tmp_y_m(0,0)
-! !     write(*,*) 'final result for y',1,0,v_tmp_y_m(1,0)
-! !     write(*,*) 'final result for y',2,0,v_tmp_y_m(2,0)
-! !     write(*,*) 'final result for y',iyam,iybm,v_tmp_y_m(iyam,iybm)
-! !     write(*,*) 'normalized final result for z',2,0,v_tmp_y_m(2,0) *  ga%norm_factor * gb%norm_factor * -zatom
-!      write(*,*)
-!      write(*,*)
-!    endif
 
    izam=0
    izbm=0
-!   write(*,*) 'Z,a,b',0,0
-!   do iz=1,ga%nz+gb%nz-mm
    do iz=1,ga%am+gb%am-mm
      do iza=0,MIN(ga%nz,iz)
        izb=iz-iza
        if(izb>gb%nz) cycle
        izam=MAX(izam,iza)
        izbm=MAX(izbm,izb)
-!       write(*,*) 'Z,a,b',iza,izb
 
        if(iza>0) then
          izap=iza-1
@@ -843,10 +800,6 @@ subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
   
    enddo
 
-!   v_tmp_x_mp1(:,:) =  1.d8
-!   v_tmp_y_mp1(:,:) =  1.d8
-!   v_tmp_z_mp1(:,:) =  1.d8
-
    v_tmp_x_mp1(0:ixam,0:ixbm) =  v_tmp_x_m(0:ixam,0:ixbm)
    v_tmp_y_mp1(0:iyam,0:iybm) =  v_tmp_y_m(0:iyam,0:iybm)
    v_tmp_z_mp1(0:izam,0:izbm) =  v_tmp_z_m(0:izam,0:izbm)
@@ -855,15 +808,12 @@ subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
  enddo
 
 
-
-! v_ab = - zatom * v_tmp_z_m(ga%nz,gb%nz) * ga%norm_factor * gb%norm_factor
  v_ab = - zatom * v_tmp_z_m(izam,izbm) * ga%norm_factor * gb%norm_factor
 
 
 end subroutine nucleus_recurrence
 
 
-#endif
 
 
 !=========================================================================
@@ -984,8 +934,8 @@ subroutine numerical_nucleus(ga,gb)
  ! taken from M. Krack JCP 1998
  wu(:) = wu(:) * ( 1.0_dp / log(2.0_dp) / ( 1.0_dp - u(:) ) )
  u(:)  = log( 2.0_dp / (1.0_dp - u(:) ) ) / log(2.0_dp)
- call ld0086(x1,y1,z1,w1,na)
 ! call ld0038(x1,y1,z1,w1,na)
+ call ld0086(x1,y1,z1,w1,na)
 
  do ix=1,nx
    do iangular=1,n1
@@ -997,9 +947,6 @@ subroutine numerical_nucleus(ga,gb)
      if( SUM(x(:)**2) < 1.d-8 ) cycle ! skip the singularity
 
      rtmp = rtmp + eval_gaussian(ga,x) * eval_gaussian(gb,x) * weight  / SQRT(SUM(x(:)**2)) * -1.0_dp
-
-!     rtmp = rtmp + eval_gaussian(ga,x) * eval_gaussian(gb,x) * weight  / SQRT(SUM(x(:)**2))   & ! * -1.0_dp
-!                  / ga%norm_factor / gb%norm_factor
 
    enddo
  enddo

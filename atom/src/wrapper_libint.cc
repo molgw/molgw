@@ -44,22 +44,43 @@ double eri(unsigned int l1, unsigned int m1, unsigned int n1, double alpha1,
            int norm_flag);
 
 extern "C"{
- int calculate_integral(int*, int*, int*,int*, 
-                        double*, double*, double*, double*,
+ int calculate_integral(int*, int*, int*,int*,                   // am's
+                        double*, double*, double*, double*,      // alpha's
+                        double*, double*, double*,               // x1
+                        double*, double*, double*,               // x2
+                        double*, double*, double*,               // x3
+                        double*, double*, double*,               // x4
                         double*);
- int calculate_integral_(int*, int*, int*, int*,
-                         double*, double*, double*, double*,
-                         double*);
+ int calculate_integral_(int*, int*, int*,int*,                   // am's
+                        double*, double*, double*, double*,      // alpha's
+                        double*, double*, double*,               // x1
+                        double*, double*, double*,               // x2
+                        double*, double*, double*,               // x3
+                        double*, double*, double*,               // x4
+                        double*);
 }
 
 int calculate_integral_(int* am1_in, int* am2_in, int* am3_in, int* am4_in,
                         double* alpha1, double* alpha2, double* alpha3, double* alpha4,
+                        double* x1x, double* x1y, double* x1z,
+                        double* x2x, double* x2y, double* x2z,
+                        double* x3x, double* x3y, double* x3z,
+                        double* x4x, double* x4y, double* x4z,
                         double* integrals) {
-  return calculate_integral(am1_in,am2_in,am3_in,am4_in,alpha1,alpha2,alpha3,alpha4,integrals);
+  return calculate_integral(am1_in,am2_in,am3_in,am4_in,alpha1,alpha2,alpha3,alpha4,
+                            x1x, x1y, x1z,
+                            x2x, x2y, x2z,
+                            x3x, x3y, x3z,
+                            x4x, x4y, x4z,
+                            integrals);
 }
 
 int calculate_integral(int* am1_in, int* am2_in, int* am3_in, int* am4_in,
                        double* alpha1, double* alpha2, double* alpha3, double* alpha4,
+                       double* x1x, double* x1y, double* x1z,
+                       double* x2x, double* x2y, double* x2z,
+                       double* x3x, double* x3y, double* x3z,
+                       double* x4x, double* x4y, double* x4z,
                        double* integrals) {
 
   typedef unsigned int uint;
@@ -76,6 +97,19 @@ int calculate_integral(int* am1_in, int* am2_in, int* am3_in, int* am4_in,
   double B[3] = { 0.0, 0.0, 0.0 }; // etc.
   double C[3] = { 0.0, 0.0, 0.0 };
   double D[3] = { 0.0, 0.0, 0.0 };
+
+  A[0] = *x1x;
+  A[1] = *x1y;
+  A[2] = *x1z;
+  B[0] = *x2x;
+  B[1] = *x2y;
+  B[2] = *x2z;
+  C[0] = *x3x;
+  C[1] = *x3y;
+  C[2] = *x3z;
+  D[0] = *x4x;
+  D[1] = *x4y;
+  D[2] = *x4z;
 
   alpha[0] = *alpha1;
   alpha[1] = *alpha2;
