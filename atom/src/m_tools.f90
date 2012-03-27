@@ -540,11 +540,13 @@ subroutine boys_function(fnt,n,t)
  real(dp),save :: df(2*maxfac)=0.0_dp
 !=====
 
+ if(n>maxfac) stop' boys function Fm(t) for a too high m value'
+
  if( ABS(df(1))<1.d-10 ) then
-   write(*,*) 'initialize df'
+!   write(*,*) 'initialize df'
    df(1:3) = 1.0_dp
    do i=4,2*maxfac
-     df(i) = (i-1) * df(i-2)
+     df(i) = (i-2) * df(i-2)
    enddo
  endif
 
@@ -552,8 +554,8 @@ subroutine boys_function(fnt,n,t)
    t2 = 2 * t
    et = exp(-t)
    tt  = sqrt(t)
-   fnt(1) = kk *erf(tt) / tt
-   do m=1,n-1
+   fnt(0) = kk *erf(tt) / tt
+   do m=0,n-1
      fnt(m+1) = ( (2*m+1) * fnt(m) - et ) / t2
    enddo
 
@@ -564,7 +566,7 @@ subroutine boys_function(fnt,n,t)
    !   vol 2, 1963, page 8)
 
    et = exp(-t)
-   t2 = 2 * t
+   t2 = 2.0_dp * t
    m2 = 2 * n
    num = df(m2+1)
    sum = 1.0_dp / ( m2 + 1 )

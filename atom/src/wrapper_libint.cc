@@ -220,7 +220,7 @@ static double **bc;
 
 extern "C"{
 void calc_f(double*, int, double);
-void calc_f_(double*, int, double);
+void calc_f_(double*, int*, double*);
 }
 
 double norm_const(unsigned int l1, unsigned int m1, unsigned int n1,
@@ -482,8 +482,8 @@ double eri(unsigned int l1, unsigned int m1, unsigned int n1, double alpha1,
  \ingroup (QT)
  */
 
-void calc_f_(double *F, int n, double t) {
-  calc_f(F,n,t);
+void calc_f_(double *F, int *n, double *t) {
+  calc_f(F,*n,*t);
 }
 
 void calc_f(double *F, int n, double t) {
@@ -518,6 +518,7 @@ void calc_f(double *F, int n, double t) {
    asymptotic series (see I. Shavitt in
    Methods in Computational Physics, ed. B. Alder eta l,
    vol 2, 1963, page 8) */
+
     et = exp(-t);
     t2 = 2 * t;
     m2 = 2 * n;
@@ -535,6 +536,7 @@ void calc_f(double *F, int n, double t) {
       F[m] = (t2 * F[m + 1] + et) / (2 * m + 1);
     }
   }
+/* std::cout << "F[n] " <<  F[n] << std::endl; */
 }
 
 /*!

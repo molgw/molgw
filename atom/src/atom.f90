@@ -87,10 +87,10 @@ program atom
  ! Development tests are commented below
 #ifdef MOLECULES
 
- call init_gaussian_general(0,0,0,0.4361_dp,(/-1.2_dp,0.0_dp,0.0_dp/),gatmp)
+ call init_gaussian_general(1,2,3,0.4361_dp,(/0.0_dp,0.0_dp,-1.0_dp/),gatmp)
  call print_gaussian(gatmp)
 
- call init_gaussian_general(0,0,0,0.8120_dp,(/2.2_dp,0.0_dp,0.0_dp/),gbtmp)
+ call init_gaussian_general(1,4,1,0.8120_dp,(/0.0_dp,0.0_dp,1.2_dp/),gbtmp)
  call print_gaussian(gbtmp)
 
 
