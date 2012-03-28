@@ -1,0 +1,942 @@
+ 
+ Welcome to the fascinating world of ATOM
+ 
+ 
+
+ WARNING: OPENMP option is activated with threads number     1
+ before read
+ inside read_input
+
+ WARNING: calculation name: HF
+
+ Summary of the input parameters 
+
+  calculation type:   HF
+             Natom:   2
+         Electrons:   2.0000
+            Charge:   0.0000
+     Magnetization:   0.0000
+         Basis set:   STO-3G                                                                                              
+ Spin polarization:   1
+         SCF steps:  15
+            Mixing:   0.8000
+ 
+ 
+ Element used for Z value:    H
+ Element used for the basis:  H
+ Basis type: STO-3G
+
+ WARNING: basis file used: H_STO-3G
+ 
+ open the basis set file H_STO-3G
+ 
+ Element used for Z value:    H
+ Element used for the basis:  H
+ Basis type: STO-3G
+
+ WARNING: basis file used: H_STO-3G
+ 
+ open the basis set file H_STO-3G
+ Total number of basis functions           2
+ 
+ 
+ ======  print out a basis function ======
+    contraction of N gaussians     3
+              orbital momentum     s
+                   coefficient     1      0.444635
+                   coefficient     2      0.535328
+                   coefficient     3      0.154329
+ 
+ 
+ *** output information of a cartesian gaussian function ***
+              orbital momentum     s
+          momentum composition     0   0   0
+                   alpha coeff     0.168856
+        center of the function    -0.700000     0.000000     0.000000
+ 
+ 
+ *** output information of a cartesian gaussian function ***
+              orbital momentum     s
+          momentum composition     0   0   0
+                   alpha coeff     0.623913
+        center of the function    -0.700000     0.000000     0.000000
+ 
+ 
+ *** output information of a cartesian gaussian function ***
+              orbital momentum     s
+          momentum composition     0   0   0
+                   alpha coeff     3.425250
+        center of the function    -0.700000     0.000000     0.000000
+ 
+ ====== end of basis function ======
+ 
+ 
+ ======  print out a basis function ======
+    contraction of N gaussians     3
+              orbital momentum     s
+                   coefficient     1      0.444635
+                   coefficient     2      0.535328
+                   coefficient     3      0.154329
+ 
+ 
+ *** output information of a cartesian gaussian function ***
+              orbital momentum     s
+          momentum composition     0   0   0
+                   alpha coeff     0.168856
+        center of the function     0.700000     0.000000     0.000000
+ 
+ 
+ *** output information of a cartesian gaussian function ***
+              orbital momentum     s
+          momentum composition     0   0   0
+                   alpha coeff     0.623913
+        center of the function     0.700000     0.000000     0.000000
+ 
+ 
+ *** output information of a cartesian gaussian function ***
+              orbital momentum     s
+          momentum composition     0   0   0
+                   alpha coeff     3.425250
+        center of the function     0.700000     0.000000     0.000000
+ 
+ ====== end of basis function ======
+ 
+ Basis set is ready and fit
+
+ === overlap matrix S ===
+   1      1.00000      0.65932
+   2      0.65932      1.00000
+ 
+ 
+
+ Allocating the ERI array:    0.000 [Mb]
+ success
+
+ Calculate and store all the Electron Repulsion Integrals (ERI)
+ number of shells           6
+ Done.
+ 
+
+ === occupations ===
+   1      2.00000
+   2      0.00000
+ 
+
+ === 1st density matrix P ===
+   1      2.00000      0.00000
+   2      0.00000      0.00000
+ 
+ 
+
+ === kinetic energy contribution ===
+   1      0.76003      0.23646
+   2      0.23646      0.76003
+ 
+ 
+
+ === nucleus contribution ===
+   1     -1.88044     -1.19484
+   2     -1.19484     -1.88044
+ 
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    1
+
+
+ === Hartree contribution ===
+   1      1.54922      0.88822
+   2      0.88822      1.13935
+ 
+ 
+
+ === Exchange contribution ===
+   1     -0.77461     -0.44411
+   2     -0.44411     -0.29703
+ 
+ 
+
+ === Total Hamiltonian ===
+   1     -0.34580     -0.51427
+   2     -0.51427     -0.27809
+ 
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.49978    -13.59968
+   2      0.59575     16.21108
+ 
+
+ === C coefficients ===
+   1     -0.59831     -1.18785
+   2     -0.49863      1.23302
+ 
+ 
+
+ === density matrix P ===
+   1      0.71595      0.59667
+   2      0.59667      0.49726
+ 
+ 
+ convergence criterium on the density matrix   1.61495429090277     
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.5200647036
+    Nucleus Energy  [Ha]:    -3.7608860500
+    Hartree Energy  [Ha]:     1.5492158110
+    Exchange Energy [Ha]:    -0.7746079055
+ 
+    Total Energy    [Ha]:    -0.7519277266
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    2
+
+
+ === Hartree contribution ===
+   1      1.40411      0.89225
+   2      0.89225      1.28628
+ 
+ 
+
+ === Exchange contribution ===
+   1     -0.64782     -0.51120
+   2     -0.51120     -0.51053
+ 
+ 
+
+ === Total Hamiltonian ===
+   1     -0.36413     -0.57733
+   2     -0.57733     -0.34466
+ 
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.56165    -15.28320
+   2      0.65452     17.81047
+ 
+
+ === C coefficients ===
+   1     -0.56180     -1.20555
+   2     -0.53601      1.21724
+ 
+ 
+
+ === density matrix P ===
+   1      0.63124      0.60226
+   2      0.60226      0.57460
+ 
+ 
+ convergence criterium on the density matrix  0.423209102465983     
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.2674119338
+    Nucleus Energy  [Ha]:    -3.7179467878
+    Hartree Energy  [Ha]:     1.3646749434
+    Exchange Energy [Ha]:    -0.6606451885
+ 
+    Total Energy    [Ha]:    -1.0322193848
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    3
+
+
+ === Hartree contribution ===
+   1      1.36181      0.89309
+   2      0.89309      1.32896
+ 
+ 
+
+ === Exchange contribution ===
+   1     -0.60739     -0.52524
+   2     -0.52524     -0.56912
+ 
+ 
+
+ === Total Hamiltonian ===
+   1     -0.36599     -0.59053
+   2     -0.59053     -0.36057
+ 
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.57483    -15.64198
+   2      0.66706     18.15164
+ 
+
+ === C coefficients ===
+   1     -0.55245     -1.20986
+   2     -0.54541      1.21305
+ 
+ 
+
+ === density matrix P ===
+   1      0.61041      0.60263
+   2      0.60263      0.59495
+ 
+ 
+ convergence criterium on the density matrix  0.111054742557833     
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.2145154740
+    Nucleus Energy  [Ha]:    -3.7089568762
+    Hartree Energy  [Ha]:     1.3501929161
+    Exchange Energy [Ha]:    -0.6691006144
+ 
+    Total Energy    [Ha]:    -1.0990633862
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    4
+
+
+ === Hartree contribution ===
+   1      1.34997      0.89326
+   2      0.89326      1.34087
+ 
+ 
+
+ === Exchange contribution ===
+   1     -0.59540     -0.52809
+   2     -0.52809     -0.58479
+ 
+ 
+
+ === Total Hamiltonian ===
+   1     -0.36584     -0.59321
+   2     -0.59321     -0.36433
+ 
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.57752    -15.71524
+   2      0.66962     18.22133
+ 
+
+ === C coefficients ===
+   1     -0.54991     -1.21102
+   2     -0.54796      1.21190
+ 
+ 
+
+ === density matrix P ===
+   1      0.60479      0.60265
+   2      0.60265      0.60052
+ 
+ 
+ convergence criterium on the density matrix  2.968254812523986E-002
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.2037790634
+    Nucleus Energy  [Ha]:    -3.7071321933
+    Hartree Energy  [Ha]:     1.3492260413
+    Exchange Energy [Ha]:    -0.6732915388
+ 
+    Total Energy    [Ha]:    -1.1131329132
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    5
+
+
+ === Hartree contribution ===
+   1      1.34669      0.89329
+   2      0.89329      1.34417
+ 
+ 
+
+ === Exchange contribution ===
+   1     -0.59194     -0.52866
+   2     -0.52866     -0.58900
+ 
+ 
+
+ === Total Hamiltonian ===
+   1     -0.36566     -0.59375
+   2     -0.59375     -0.36524
+ 
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.57807    -15.73001
+   2      0.67014     18.23537
+ 
+
+ === C coefficients ===
+   1     -0.54920     -1.21134
+   2     -0.54866      1.21159
+ 
+ 
+
+ === density matrix P ===
+   1      0.60325      0.60266
+   2      0.60266      0.60207
+ 
+ 
+ convergence criterium on the density matrix  8.050787537085893E-003
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.2016200913
+    Nucleus Energy  [Ha]:    -3.7067652702
+    Hartree Energy  [Ha]:     1.3491833295
+    Exchange Energy [Ha]:    -0.6743182526
+ 
+    Total Energy    [Ha]:    -1.1159943878
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    6
+
+
+ === Hartree contribution ===
+   1      1.34578      0.89330
+   2      0.89330      1.34508
+ 
+ 
+
+ === Exchange contribution ===
+   1     -0.59095     -0.52878
+   2     -0.52878     -0.59013
+ 
+ 
+
+ === Total Hamiltonian ===
+   1     -0.36558     -0.59386
+   2     -0.59386     -0.36546
+ 
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.57818    -15.73297
+   2      0.67024     18.23819
+ 
+
+ === C coefficients ===
+   1     -0.54901     -1.21143
+   2     -0.54886      1.21150
+ 
+ 
+
+ === density matrix P ===
+   1      0.60282      0.60266
+   2      0.60266      0.60249
+ 
+ 
+ convergence criterium on the density matrix  2.203600856806035E-003
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.2011874067
+    Nucleus Energy  [Ha]:    -3.7066917343
+    Hartree Energy  [Ha]:     1.3491863554
+    Exchange Energy [Ha]:    -0.6745378082
+ 
+    Total Energy    [Ha]:    -1.1165700661
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    7
+
+
+ === Hartree contribution ===
+   1      1.34553      0.89330
+   2      0.89330      1.34534
+ 
+ 
+
+ === Exchange contribution ===
+   1     -0.59067     -0.52880
+   2     -0.52880     -0.59044
+ 
+ 
+
+ === Total Hamiltonian ===
+   1     -0.36555     -0.59388
+   2     -0.59388     -0.36552
+ 
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.57820    -15.73356
+   2      0.67026     18.23875
+ 
+
+ === C coefficients ===
+   1     -0.54895     -1.21145
+   2     -0.54891      1.21147
+ 
+ 
+
+ === density matrix P ===
+   1      0.60270      0.60266
+   2      0.60266      0.60261
+ 
+ 
+ convergence criterium on the density matrix  6.062677061484900E-004
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.2011008017
+    Nucleus Energy  [Ha]:    -3.7066770155
+    Hartree Energy  [Ha]:     1.3491878465
+    Exchange Energy [Ha]:    -0.6745827972
+ 
+    Total Energy    [Ha]:    -1.1166854502
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    8
+
+
+ === Hartree contribution ===
+   1      1.34546      0.89330
+   2      0.89330      1.34541
+ 
+ 
+
+ === Exchange contribution ===
+   1     -0.59059     -0.52881
+   2     -0.52881     -0.59053
+ 
+ 
+
+ === Total Hamiltonian ===
+   1     -0.36554     -0.59388
+   2     -0.59388     -0.36553
+ 
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.57820    -15.73368
+   2      0.67027     18.23887
+ 
+
+ === C coefficients ===
+   1     -0.54894     -1.21146
+   2     -0.54893      1.21147
+ 
+ 
+
+ === density matrix P ===
+   1      0.60267      0.60266
+   2      0.60266      0.60264
+ 
+ 
+ convergence criterium on the density matrix  1.672664450021084E-004
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.2010834755
+    Nucleus Energy  [Ha]:    -3.7066740709
+    Hartree Energy  [Ha]:     1.3491882125
+    Exchange Energy [Ha]:    -0.6745918771
+ 
+    Total Energy    [Ha]:    -1.1167085457
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    9
+
+
+ === Hartree contribution ===
+   1      1.34544      0.89330
+   2      0.89330      1.34542
+ 
+ 
+
+ === Exchange contribution ===
+   1     -0.59057     -0.52881
+   2     -0.52881     -0.59055
+ 
+ 
+
+ === Total Hamiltonian ===
+   1     -0.36554     -0.59389
+   2     -0.59389     -0.36554
+ 
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.57820    -15.73370
+   2      0.67027     18.23889
+ 
+
+ === C coefficients ===
+   1     -0.54894     -1.21146
+   2     -0.54893      1.21146
+ 
+ 
+
+ === density matrix P ===
+   1      0.60266      0.60266
+   2      0.60266      0.60265
+ 
+ 
+ convergence criterium on the density matrix  4.621662573353642E-005
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.2010800098
+    Nucleus Energy  [Ha]:    -3.7066734819
+    Hartree Energy  [Ha]:     1.3491882909
+    Exchange Energy [Ha]:    -0.6745936993
+ 
+    Total Energy    [Ha]:    -1.1167131662
+ 
+
+-------------------------------------------
+ *** SCF cycle No:   10
+
+
+ === Hartree contribution ===
+   1      1.34543      0.89330
+   2      0.89330      1.34543
+ 
+ 
+
+ === Exchange contribution ===
+   1     -0.59056     -0.52881
+   2     -0.52881     -0.59056
+ 
+ 
+
+ === Total Hamiltonian ===
+   1     -0.36554     -0.59389
+   2     -0.59389     -0.36554
+ 
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.57820    -15.73371
+   2      0.67027     18.23889
+ 
+
+ === C coefficients ===
+   1     -0.54893     -1.21146
+   2     -0.54893      1.21146
+ 
+ 
+
+ === density matrix P ===
+   1      0.60266      0.60266
+   2      0.60266      0.60266
+ 
+ 
+ convergence criterium on the density matrix  1.277990151221759E-005
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.2010793167
+    Nucleus Energy  [Ha]:    -3.7066733641
+    Hartree Energy  [Ha]:     1.3491883070
+    Exchange Energy [Ha]:    -0.6745940643
+ 
+    Total Energy    [Ha]:    -1.1167140904
+ 
+
+-------------------------------------------
+ *** SCF cycle No:   11
+
+
+ === Hartree contribution ===
+   1      1.34543      0.89330
+   2      0.89330      1.34543
+ 
+ 
+
+ === Exchange contribution ===
+   1     -0.59056     -0.52881
+   2     -0.52881     -0.59056
+ 
+ 
+
+ === Total Hamiltonian ===
+   1     -0.36554     -0.59389
+   2     -0.59389     -0.36554
+ 
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.57820    -15.73371
+   2      0.67027     18.23889
+ 
+
+ === C coefficients ===
+   1     -0.54893     -1.21146
+   2     -0.54893      1.21146
+ 
+ 
+
+ === density matrix P ===
+   1      0.60266      0.60266
+   2      0.60266      0.60266
+ 
+ 
+ convergence criterium on the density matrix  3.535371487342028E-006
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.2010791780
+    Nucleus Energy  [Ha]:    -3.7066733405
+    Hartree Energy  [Ha]:     1.3491883103
+    Exchange Energy [Ha]:    -0.6745941373
+ 
+    Total Energy    [Ha]:    -1.1167142752
+ 
+
+-------------------------------------------
+ *** SCF cycle No:   12
+
+
+ === Hartree contribution ===
+   1      1.34543      0.89330
+   2      0.89330      1.34543
+ 
+ 
+
+ === Exchange contribution ===
+   1     -0.59056     -0.52881
+   2     -0.52881     -0.59056
+ 
+ 
+
+ === Total Hamiltonian ===
+   1     -0.36554     -0.59389
+   2     -0.59389     -0.36554
+ 
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.57820    -15.73371
+   2      0.67027     18.23889
+ 
+
+ === C coefficients ===
+   1     -0.54893     -1.21146
+   2     -0.54893      1.21146
+ 
+ 
+
+ === density matrix P ===
+   1      0.60266      0.60266
+   2      0.60266      0.60266
+ 
+ 
+ convergence criterium on the density matrix  9.782185877585771E-007
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.2010791503
+    Nucleus Energy  [Ha]:    -3.7066733358
+    Hartree Energy  [Ha]:     1.3491883109
+    Exchange Energy [Ha]:    -0.6745941519
+ 
+    Total Energy    [Ha]:    -1.1167143122
+ 
+
+-------------------------------------------
+ *** SCF cycle No:   13
+
+
+ === Hartree contribution ===
+   1      1.34543      0.89330
+   2      0.89330      1.34543
+ 
+ 
+
+ === Exchange contribution ===
+   1     -0.59056     -0.52881
+   2     -0.52881     -0.59056
+ 
+ 
+
+ === Total Hamiltonian ===
+   1     -0.36554     -0.59389
+   2     -0.59389     -0.36554
+ 
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.57820    -15.73371
+   2      0.67027     18.23889
+ 
+
+ === C coefficients ===
+   1     -0.54893     -1.21146
+   2     -0.54893      1.21146
+ 
+ 
+
+ === density matrix P ===
+   1      0.60266      0.60266
+   2      0.60266      0.60266
+ 
+ 
+ convergence criterium on the density matrix  2.706983128344291E-007
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.2010791448
+    Nucleus Energy  [Ha]:    -3.7066733349
+    Hartree Energy  [Ha]:     1.3491883110
+    Exchange Energy [Ha]:    -0.6745941548
+ 
+    Total Energy    [Ha]:    -1.1167143196
+ 
+
+-------------------------------------------
+ *** SCF cycle No:   14
+
+
+ === Hartree contribution ===
+   1      1.34543      0.89330
+   2      0.89330      1.34543
+ 
+ 
+
+ === Exchange contribution ===
+   1     -0.59056     -0.52881
+   2     -0.52881     -0.59056
+ 
+ 
+
+ === Total Hamiltonian ===
+   1     -0.36554     -0.59389
+   2     -0.59389     -0.36554
+ 
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.57820    -15.73371
+   2      0.67027     18.23889
+ 
+
+ === C coefficients ===
+   1     -0.54893     -1.21146
+   2     -0.54893      1.21146
+ 
+ 
+
+ === density matrix P ===
+   1      0.60266      0.60266
+   2      0.60266      0.60266
+ 
+ 
+ convergence criterium on the density matrix  7.491360265998469E-008
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.2010791437
+    Nucleus Energy  [Ha]:    -3.7066733347
+    Hartree Energy  [Ha]:     1.3491883111
+    Exchange Energy [Ha]:    -0.6745941554
+ 
+    Total Energy    [Ha]:    -1.1167143210
+ 
+
+-------------------------------------------
+ *** SCF cycle No:   15
+
+
+ === Hartree contribution ===
+   1      1.34543      0.89330
+   2      0.89330      1.34543
+ 
+ 
+
+ === Exchange contribution ===
+   1     -0.59056     -0.52881
+   2     -0.52881     -0.59056
+ 
+ 
+
+ === Total Hamiltonian ===
+   1     -0.36554     -0.59389
+   2     -0.59389     -0.36554
+ 
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.57820    -15.73371
+   2      0.67027     18.23889
+ 
+
+ === C coefficients ===
+   1     -0.54893     -1.21146
+   2     -0.54893      1.21146
+ 
+ 
+
+ === density matrix P ===
+   1      0.60266      0.60266
+   2      0.60266      0.60266
+ 
+ 
+ convergence criterium on the density matrix  2.073237755935372E-008
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.2010791434
+    Nucleus Energy  [Ha]:    -3.7066733346
+    Hartree Energy  [Ha]:     1.3491883111
+    Exchange Energy [Ha]:    -0.6745941555
+ 
+    Total Energy    [Ha]:    -1.1167143213
+ 
+ ==================================================
+ The SCF loop ends here
+ ==================================================
+ 
+
+                 --- Timings in (s) and # of calls ---
+                    Total time          0.01
+ 
+         4 gaussians integrals          0.00
+ 
+                       Hartree          0.00        15
+                      Exchange          0.00        15
+                        DFT xc          0.00         0
+ 
+           ERI basis transform          0.00         0
+ 
+         Total GW polarization          0.00         0
+            Diago 2 particle H          0.00         0
+           Invert 2 particle S          0.00         0
+ 
+                GW self-energy          0.00         0
+ 
+                    MP2 energy          0.00         0
+               MP2 self-energy          0.00         0
+                 ----------------------
+
+ SUMMARY of all the WARNINGS issued along the run:
+
+ 1.     OPENMP option is activated with threads number     1                                                
+ 2.     calculation name: HF                                                                                
+ 3.     basis file used: H_STO-3G                                                                           
+
+
+
+ This is the end
+

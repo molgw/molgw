@@ -208,6 +208,7 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  real(dp)                           :: charge
 !=====
 
+ write(*,*) 'inside read_input'
  read(*,*) read_char
  call init_calculation_type(calc_type,read_char)
 

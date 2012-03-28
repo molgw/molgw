@@ -578,15 +578,15 @@ program atom
 
  
    write(*,*)
-   write(*,*) 'Nucleus-Nucleus [Ha]:',en%nuc_nuc
-   write(*,*) 'Kinetic Energy  [Ha]:',en%kin
-   write(*,*) 'Nucleus Energy  [Ha]:',en%nuc
-   write(*,*) 'Hartree Energy  [Ha]:',en%hart
-   if(calc_type%need_exchange) write(*,*) 'Exchange Energy [Ha]:',en%exx
-   if(calc_type%need_dft_xc)   write(*,*) 'XC Energy       [Ha]:',en%xc
+   write(*,'(a25,x,f16.10)') 'Nucleus-Nucleus [Ha]:',en%nuc_nuc
+   write(*,'(a25,x,f16.10)') 'Kinetic Energy  [Ha]:',en%kin
+   write(*,'(a25,x,f16.10)') 'Nucleus Energy  [Ha]:',en%nuc
+   write(*,'(a25,x,f16.10)') 'Hartree Energy  [Ha]:',en%hart
+   if(calc_type%need_exchange) write(*,'(a25,x,f16.10)') 'Exchange Energy [Ha]:',en%exx
+   if(calc_type%need_dft_xc)   write(*,'(a25,x,f16.10)') 'XC Energy       [Ha]:',en%xc
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%xc
    write(*,*)
-   write(*,*) 'Total Energy    [Ha]:',en%tot
+   write(*,'(a25,x,f16.10)') 'Total Energy    [Ha]:',en%tot
    write(*,*)
    
 !   write(*,'(/,a,f15.8,/)') ' HF Total Energy [Ha]: ',&

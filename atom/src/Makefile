@@ -1,25 +1,25 @@
-OPENMP= #-openmp -DOPENMP
+OPENMP= -openmp -DOPENMP
 
-FC=ifort -fpp $(OPENMP) -DMOLECULES #-DHAVE_LIBXC -DMOLECULES #-DCHI0  #-DSYMMETRIZED #-DCHI0 # -DAUXIL_BASIS
+FC=ifort -fpp $(OPENMP) -DMOLECULES -DHAVE_LIBXC #-DCHI0  #-DSYMMETRIZED #-DCHI0 # -DAUXIL_BASIS
 #FC=ifort -fpp  -DHAVE_LIBXC -DCHI0 # -DAUXIL_BASIS
 #FC=ifort -fpp -DHAVE_LIBXC  #-DCHI0 # -DAUXIL_BASIS
 #FC=gfortran -cpp  -ffree-line-length-none
 CC=g++
-FCOPTS= -O0 -g -check all
-#FCOPTS= -O3
+#FCOPTS= -O0 -g -check all
+FCOPTS= -O1
 
 #LAPACK= -L/home/bruneval/src/lapack-3.3.1/ -llapack_LINUX -lblas_LINUX 
 #LAPACK=  -Wl,--start-group  $(MKLROOT)/lib/em64t/libmkl_intel_lp64.a $(MKLROOT)/lib/em64t/libmkl_intel_thread.a $(MKLROOT)/lib/em64t/libmkl_core.a -Wl,--end-group -openmp -lpthread
 #LAPACK=  -Wl,--start-group  $(MKLROOT)/lib/em64t/libmkl_intel_lp64.a $(MKLROOT)/lib/em64t/libmkl_sequential.a $(MKLROOT)/lib/em64t/libmkl_core.a -Wl,--end-group -lpthread
 LAPACK= -lmkl_intel_lp64 -lmkl_sequential -lmkl_lapack95_lp64 -lmkl_core
 
-LIBXC_INCS= #-I/home/bruneval/src/libxc-1.0_ifort/include
-LIBXC= # -L/home/bruneval/src/libxc-1.0_ifort/lib -Bstatic -lxc -Bdynamic
+LIBXC_INCS= -I/home/bruneval/src/libxc-1.0_ifort/include
+LIBXC=  -L/home/bruneval/src/libxc-1.0_ifort/lib -Bstatic -lxc -Bdynamic
 
 LINKS= -lstdc++ -lm
-LIBINT_ROOT=/home/bruneval/src/libint-2.0.0-prealpha
+LIBINT_ROOT=/home/bruneval/src/libint-2.0.0_install/
 LIBINT=-L$(LIBINT_ROOT)/lib -lint2
-LIBINT_INCS=-I$(LIBINT_ROOT)/include/
+LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 
 ../atom: m_definitions.o m_timing.o m_warning.o m_calculation_type.o m_tools.o \
        m_gaussian.o m_basis_set.o m_dft.o m_eri.o m_gw.o wrapper_libint.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o atom.o

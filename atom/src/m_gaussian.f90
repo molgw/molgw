@@ -148,7 +148,7 @@ subroutine product_gaussian(ga,gb,gprod)
  type(gaussian),intent(out) :: gprod
 !=====
 
- if( ANY( ABS(ga%x0(:) - gb%x0(:)) > 1.d-6 ) ) stop'different positions not implemented'
+ if( ANY( ABS(ga%x0(:) - gb%x0(:)) > 1.d-6 ) ) stop'different positions not implemented for product'
 
  call init_gaussian_general(ga%nx+gb%nx,ga%ny+gb%ny,ga%nz+gb%nz,ga%alpha+gb%alpha,ga%x0,gprod)
 
@@ -817,9 +817,10 @@ end subroutine nucleus_recurrence
 
 
 !=========================================================================
-subroutine numerical_overlap(ga,gb)
+subroutine numerical_overlap(ga,gb,s_ab)
  implicit none
  type(gaussian),intent(in) :: ga,gb
+ real(dp),intent(out)      :: s_ab
 !=====
  integer,parameter  :: nx=100
  real(dp),parameter :: rmax=10.
@@ -843,7 +844,8 @@ subroutine numerical_overlap(ga,gb)
    enddo
  enddo
 
- write(*,*) 'check S_ab',rtmp
+! write(*,*) 'check S_ab',rtmp
+ s_ab = rtmp
 
 end subroutine numerical_overlap
 
