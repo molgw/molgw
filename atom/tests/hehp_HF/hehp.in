@@ -1,7 +1,7 @@
 HF                   # calculation type HF, LDA+GW, PBE+GW
 1   1.0   0.0        # spin pol    charge magnetization
 STO-3G               #6-31G # cc-pVTZ                  #          6-311ppGss               # basis set
-10   0.80            # nscf, alpha_mixing
+15   0.80            # nscf, alpha_mixing
 11                   # print_volume
 2
 2.    0.0000 0.0  0.0
