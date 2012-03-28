@@ -32,7 +32,7 @@ program atom
  real(dp),parameter           :: alpha_hybrid=0.25_dp
 !=====
  type(gaussian) :: gatmp,gbtmp
- type(basis_function) :: bftmp
+ type(basis_function) :: bftmp1,bftmp2
  real(dp) :: rtmp,rtmp2
  integer :: ix,iy,iz,ntmp,ng
  real(dp),allocatable :: alpha(:),coeff(:)
@@ -150,25 +150,24 @@ program atom
  coeff(1) = 0.4446350_dp
  coeff(2) = 0.5353280_dp
  coeff(3) = 0.1543290_dp
- call init_basis_function(ng,0,0,0,alpha,coeff,bftmp)
+ call init_basis_function(.TRUE.,ng,0,0,0,(/-0.7_dp,0.0_dp,0.0_dp/),alpha,coeff,bftmp1)
+ call init_basis_function(.TRUE.,ng,0,0,0,(/0.7_dp,0.0_dp,0.0_dp/),alpha,coeff,bftmp2)
  deallocate(alpha,coeff)
 
- call print_basis_function(bftmp)
- call overlap_basis_function(bftmp,bftmp,rtmp)
+ call print_basis_function(bftmp1)
+ call print_basis_function(bftmp2)
+ call overlap_basis_function(bftmp1,bftmp2,rtmp)
  write(*,*) 'overlap_basis_function',rtmp
 
- call kinetic_basis_function(bftmp,bftmp,rtmp)
- rtmp2 = rtmp
+ call kinetic_basis_function(bftmp1,bftmp2,rtmp)
  write(*,*) 'kinetic',rtmp
- call nucleus_pot_basis_function(bftmp,bftmp,zatom,rtmp)
- rtmp2 = rtmp2 + rtmp
- write(*,*) 'nucleus',rtmp
- write(*,*) 'matrix element basis function',rtmp2
+ call nucleus_pot_basis_function(bftmp1,bftmp2,1.0_dp,(/-0.7_dp,0.0_dp,0.0_dp/),rtmp)
+ rtmp2 = rtmp
+ call nucleus_pot_basis_function(bftmp1,bftmp2,1.0_dp,(/0.7_dp,0.0_dp,0.0_dp/),rtmp)
+ rtmp2 = rtmp2 + rtmp 
+ write(*,*) 'nucleus',rtmp2
 
-
- call nucleus_pot_gaussian(gatmp,gbtmp,zatom,rtmp)
- write(*,*) 'nucleus pot [Ha]',rtmp
-
+ stop'ENOUGH'
 
  write(*,*)
  write(*,*) '                   END OF THE TESTS'
@@ -865,6 +864,7 @@ subroutine guess_starting_c_matrix(nbf,nspin,c_matrix)
  c_matrix(:,:,:)=0.0_dp
  do ibf=1,nbf
    c_matrix(ibf,ibf,:) = 1.0_dp
+!   c_matrix(ibf,:,:) = 1.0_dp/SQRT(DBLE(nbf))
  enddo
 
 end subroutine guess_starting_c_matrix

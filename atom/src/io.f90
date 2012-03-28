@@ -250,7 +250,7 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  enddo
  basis_element(:)=NINT(zatom(:))
 
- electrons = SUM(zatom(:)) + charge
+ electrons = SUM(zatom(:)) - charge
 
 
 
@@ -289,7 +289,7 @@ subroutine plot_wfn(nspin,basis,c_matrix)
  x(:)=0.0_dp
 
  do ir=1,nr
-   x(1)=DBLE(ir-1)*5.0d-3
+   x(1)=10.0_dp* ( (ir-1.0_dp) / REAL(nr-1,dp) - 0.5_dp )
    phi1=0.0_dp
    phi2=0.0_dp
 

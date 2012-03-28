@@ -99,6 +99,7 @@ contains
  jbf=0
  do iatom=1,natom
 
+ basis_filename=TRIM(element_name(REAL(basis_element(iatom),dp)))//'_'//TRIM(basis_name)
  open(unit=basis_file,file=TRIM(basis_filename),status='old')
  read(basis_file,*) nbf
  do ibf=1,nbf
@@ -347,11 +348,12 @@ contains
  bf%ngaussian = ng
  allocate(bf%g(bf%ngaussian))
  allocate(bf%coeff(bf%ngaussian))
- bf%nx  = nx
- bf%ny  = ny
- bf%nz  = nz
- bf%am  = nx + ny + nz
- bf%amc = orbital_momentum_name(bf%am)
+ bf%nx    = nx
+ bf%ny    = ny
+ bf%nz    = nz
+ bf%am    = nx + ny + nz
+ bf%amc   = orbital_momentum_name(bf%am)
+ bf%x0(:) = x0(:)
 
  ! All the gaussians of the contraction have the same orbital momentum
  do ig=1,bf%ngaussian
@@ -423,10 +425,11 @@ contains
 
  write(*,*)
  write(*,*) '======  print out a basis function ======'
- write(*,'(a30,2x,1(x,i3))') 'contraction of N gaussians',bf%ngaussian
- write(*,'(a30,5x,a1)')      'orbital momentum',bf%amc
+ write(*,'(a30,2x,1(x,i3))')           'contraction of N gaussians',bf%ngaussian
+ write(*,'(a30,5x,a1)')                'orbital momentum',bf%amc
+ write(*,'(a30,x,3(f12.6,2x))')        'centered in',bf%x0(:)
  do ig=1,bf%ngaussian
-   write(*,'(a30,2x,x,i3,2x,f12.6)')    'coefficient',ig,bf%coeff(ig)
+   write(*,'(a30,2x,x,i3,2x,f12.6)')   'coefficient',ig,bf%coeff(ig)
  enddo
  write(*,*)
  do ig=1,bf%ngaussian
