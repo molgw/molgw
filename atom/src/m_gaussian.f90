@@ -708,8 +708,6 @@ subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
  do mm=ga%am+gb%am,0,-1
    allocate(fmu(0:mm))
    call boys_function(fmu,mm,bigu)
-   write(*,'(a,i3,5(2x,f16.10))') 'call boys ',mm,bigu,fmu(0),0.5*sqrt(pi/bigu)*erf(sqrt(bigu))
-
 
    !
    ! direction X
