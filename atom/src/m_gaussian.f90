@@ -697,9 +697,9 @@ subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
  bigu  = zeta_ab * SUM( cp(:)**2 )
 
 
- v_tmp_x_m(:,:) =  100.0_dp
- v_tmp_y_m(:,:) =  100.0_dp
- v_tmp_z_m(:,:) =  100.0_dp
+! v_tmp_x_m(:,:) =  100.0_dp
+! v_tmp_y_m(:,:) =  100.0_dp
+! v_tmp_z_m(:,:) =  100.0_dp
 
  v_tmp_x_mp1(:,:) =  0.0_dp
  v_tmp_y_mp1(:,:) =  0.0_dp
@@ -708,6 +708,7 @@ subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
  do mm=ga%am+gb%am,0,-1
    allocate(fmu(0:mm))
    call boys_function(fmu,mm,bigu)
+   write(*,'(a,i3,5(2x,f16.10))') 'call boys ',mm,bigu,fmu(0),0.5*sqrt(pi/bigu)*erf(sqrt(bigu))
 
 
    !

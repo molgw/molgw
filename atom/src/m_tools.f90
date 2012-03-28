@@ -536,7 +536,7 @@ subroutine boys_function(fnt,n,t)
  integer :: i,m,k
  integer :: m2
  real(dp) :: t2,num,sum,term1,term2,et,tt
- real(dp),parameter :: kk = 2.0_dp / SQRT( pi )
+ real(dp),parameter :: kk = 0.5_dp * SQRT( pi ) 
  real(dp),save :: df(2*maxfac)=0.0_dp
 !=====
 

@@ -206,7 +206,7 @@ program atom
  en%nuc_nuc=0.0_dp
  do iatom=1,natom
    do jatom=iatom+1,natom
-     en%nuc_nuc = en%nuc_nuc + 1.0_dp / SQRT( SUM( (x(:,iatom) - x(:,jatom))**2) )
+     en%nuc_nuc = en%nuc_nuc + zatom(iatom) * zatom(jatom) / SQRT( SUM( (x(:,iatom) - x(:,jatom))**2) )
    enddo
  enddo
  !
@@ -366,9 +366,9 @@ program atom
  !
  ! nucleus-electron interaction
  hamiltonian_nucleus(:,:,:) =  0.0_dp
- do ibf=1,basis%nbf
-   do jbf=1,basis%nbf
-     do iatom=1,natom
+ do iatom=1,natom
+   do ibf=1,basis%nbf
+     do jbf=1,basis%nbf
        call nucleus_pot_basis_function(basis%bf(ibf),basis%bf(jbf),zatom(iatom),x(:,iatom),energy_tmp)
        hamiltonian_nucleus(ibf,jbf,:) =  hamiltonian_nucleus(ibf,jbf,:) + energy_tmp
      enddo
