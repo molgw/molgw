@@ -86,7 +86,7 @@ subroutine do_simple_mixing(p_matrix_out,p_matrix_in)
 end subroutine do_simple_mixing
 
 !=========================================================================
-subroutine do_simple_mixing(p_matrix_out,p_matrix_in)
+subroutine do_rmdiis(p_matrix_out,p_matrix_in)
  implicit none
  real(dp),intent(in)  :: p_matrix_out(nbf_scf,nbf_scf,nspin_scf)
  real(dp),intent(out) :: p_matrix_in (nbf_scf,nbf_scf,nspin_scf)
@@ -96,7 +96,7 @@ subroutine do_simple_mixing(p_matrix_out,p_matrix_in)
 
  p_matrix_hist(:,:,:,1) = p_matrix_in(:,:,:)
 
-end subroutine do_simple_mixing
+end subroutine do_rmdiis
 
 !=========================================================================
 subroutine check_convergence(p_matrix_old,p_matrix,rms)
