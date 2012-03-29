@@ -5,6 +5,7 @@ program atom
  use m_warning
  use m_calculation_type
  use m_tools
+ use m_scf
  use m_gaussian
  use m_basis_set
  use m_eri
@@ -77,7 +78,6 @@ program atom
  end type
 !=====
  type(energy_contributions) :: en
- real(dp),external       :: hartree_fock_energy_band
 !=============================
 
  write(*,*)
@@ -353,6 +353,10 @@ program atom
  call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,p_matrix)
 
  !
+ ! Initialize the SCF mixing procedure
+ call init_scf(basis%nbf,nspin,p_matrix,simple_mixing,alpha_mixing)
+
+ !
  ! Kinetic energy contribution
  do jbf=1,basis%nbf
    do ibf=1,basis%nbf
@@ -383,6 +387,9 @@ program atom
  do iscf=1,nscf
    write(*,'(/,a)') '-------------------------------------------'
    write(*,'(a,x,i4,/)') ' *** SCF cycle No:',iscf
+
+   p_matrix_old = p_matrix
+   call new_p_matrix(p_matrix_old,p_matrix)
 
    !
    ! Hartree contribution
@@ -561,19 +568,18 @@ program atom
   
    !
    ! Setup the new density matrix: p_matrix
-   ! Save the old one
+   ! Save the old one for the convergence criterium
    p_matrix_old(:,:,:) = p_matrix(:,:,:)
    call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
    title='=== density matrix P ==='
    call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,p_matrix)
   
-   call check_convergence(basis%nbf,nspin,p_matrix_old,p_matrix,rms)
+   call check_convergence(p_matrix_old,p_matrix,rms)
    write(*,*) 'convergence criterium on the density matrix',rms
    !
    ! Simple mixing
-   p_matrix = alpha_mixing * p_matrix + ( 1.0_dp - alpha_mixing ) * p_matrix_old
+!   p_matrix = alpha_mixing * p_matrix + ( 1.0_dp - alpha_mixing ) * p_matrix_old
    
-!   energy = alpha_mixing * energy  + ( 1.0_dp - alpha_mixing ) * energy_old
 
  
    write(*,*)
@@ -588,13 +594,16 @@ program atom
    write(*,'(a25,x,f16.10)') 'Total Energy    [Ha]:',en%tot
    write(*,*)
    
-!   write(*,'(/,a,f15.8,/)') ' HF Total Energy [Ha]: ',&
-!              hartree_fock_energy_band(basis%nbf,nspin,occupation,p_matrix,hamiltonian_kinetic+hamiltonian_nucleus,energy)
-
  !
  ! end of the big SCF loop
  enddo
- if(rms>1.d-4) then
+
+ call destroy_scf()
+
+ if(rms>1.d-3) then
+   msg='SCF convergence is very poor'
+   call issue_warning(msg)
+ else if(rms>1.d-5) then
    msg='SCF convergence is poor'
    call issue_warning(msg)
  endif
@@ -646,13 +655,6 @@ program atom
        enddo
      enddo
    enddo
-
-#if 0
-   msg='hacking here'
-   call issue_warning(msg)
-   occupation(1:5,:)=0.0_dp
-   call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
-#endif
 
    en%exx = 0.5_dp*SUM(matrix(:,:,:)*p_matrix(:,:,:))
    write(*,*) 'EXX [Ha]:',en%exx
@@ -752,19 +754,6 @@ subroutine setup_density_matrix(nbf,nspin,c_matrix,occupation,p_matrix)
 end subroutine setup_density_matrix
 
 !=========================================================================
-subroutine check_convergence(nbf,nspin,p_matrix_old,p_matrix,rms)
- use m_definitions
- implicit none
- integer,intent(in)   :: nbf,nspin
- real(dp),intent(in)  :: p_matrix_old(nbf,nbf,nspin),p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: rms
-!=====
-
- rms = SQRT( SUM( ( p_matrix_old(:,:,:) - p_matrix(:,:,:) )**2 ) )
-
-end subroutine check_convergence
-
-!=========================================================================
 subroutine  set_occupation(electrons,magnetization,nbf,nspin,occupation)
  use m_definitions
  use m_warning
@@ -821,33 +810,6 @@ subroutine  set_occupation(electrons,magnetization,nbf,nspin,occupation)
   endif 
 
 end subroutine set_occupation
-
-!=========================================================================
-function hartree_fock_energy_band(nbf,nspin,occupation,p_matrix,hamiltonian_constant,energy)
- use m_definitions
- implicit none
-
- integer,intent(in)  :: nbf,nspin
- real(dp),intent(in) :: hamiltonian_constant(nbf,nbf,nspin)
- real(dp),intent(in) :: energy(nbf,nspin),p_matrix(nbf,nbf,nspin)
- real(dp),intent(in) :: occupation(nbf,nspin)
- real(dp)            :: hartree_fock_energy_band
- integer             :: ibf,jbf,ispin
-!=====
-
- hartree_fock_energy_band = 0.0_dp
- do ispin=1,nspin
-   do ibf=1,nbf
-     hartree_fock_energy_band = hartree_fock_energy_band &
-            + 0.5_dp * occupation(ibf,ispin) * energy(ibf,ispin)
-     do jbf=1,nbf
-       hartree_fock_energy_band =  hartree_fock_energy_band &
-              + 0.5_dp * p_matrix(ibf,jbf,ispin) * hamiltonian_constant(ibf,jbf,ispin)
-     enddo
-   enddo
- enddo
-
-end function hartree_fock_energy_band
 
 !=========================================================================
 subroutine guess_starting_c_matrix(nbf,nspin,c_matrix)
