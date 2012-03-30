@@ -204,8 +204,8 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  character(len=100)                 :: read_line
  character(len=100)                 :: line_wocomment
  integer                            :: ipos
- integer                            :: istat,iatom
- real(dp)                           :: charge
+ integer                            :: istat,iatom,jatom
+ real(dp)                           :: charge,length_factor
 !=====
 
  write(*,*) 'inside read_input'
@@ -241,17 +241,42 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
 
  read(*,*) print_volume
 
- read(*,*) natom
+ read(*,*) natom,read_char
  if(natom<1) stop'natom<1'
+ !
+ ! lengths are stored internally in bohr
+ !
+ select case(TRIM(read_char))
+ case('A','a','Angstrom','ANGSTROM','angstrom')
+   length_factor=1.0_dp/bohr_A
+ case('bohr','BOHR','Bohr','AU','au','a.u.','a.u','A.U','A.U.')
+   length_factor=1.0_dp
+ case default
+   stop'units for lengths in input file not understood'
+ end select
 
  allocate(zatom(natom),x(3,natom),basis_element(natom))
  do iatom=1,natom
    read(*,*) zatom(iatom),x(:,iatom)
  enddo
+ x(:,:) = x(:,:) * length_factor
+
+ !
+ ! check for atoms too close
+ do iatom=1,natom
+   do jatom=iatom+1,natom
+     if( SQRT( SUM( (x(:,iatom)-x(:,jatom))**2 ) ) < 0.2 ) then
+       write(*,*) 'atoms',iatom,jatom
+       write(*,*) 'are closer than 0.2 bohr'
+       stop'stop here'
+     endif
+   enddo
+ enddo
+
+
  basis_element(:)=NINT(zatom(:))
 
  electrons = SUM(zatom(:)) - charge
-
 
 
  !
@@ -263,9 +288,18 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  write(*,'(a20,2x,a)') ' Basis set: ',basis_name
  write(*,'(a20,i3)')   ' Spin polarization: ',nspin
  write(*,'(a20,i3)')   ' SCF steps: ',nscf
- write(*,'(a20,f8.4)')   ' Mixing: ',alpha_mixing
+ write(*,'(a20,f8.4)') ' Mixing: ',alpha_mixing
+
+ write(*,*)
+ write(*,*) '================================'
+ write(*,*) '      atom list'
+ write(*,*) '                       bohr                                        angstrom'
+ do iatom=1,natom
+   write(*,'(2x,a2,3(x,f12.6),6x,3(x,f12.6))') element_name(zatom(iatom)),x(:,iatom),x(:,iatom)*bohr_A
+ enddo
 
 
+ write(*,*) '================================'
  write(*,*)
 
 end subroutine read_inputparameter_molecule

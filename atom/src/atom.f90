@@ -67,14 +67,14 @@ program atom
  real(dp),allocatable    :: eigval(:),eigvec(:,:),matrix_tmp(:,:) 
 !=====
  type energy_contributions
-   real(dp) :: nuc_nuc
-   real(dp) :: kin
-   real(dp) :: nuc
-   real(dp) :: hart
-   real(dp) :: exx
-   real(dp) :: xc
-   real(dp) :: mp2
-   real(dp) :: tot
+   real(dp) :: nuc_nuc=0.0_dp
+   real(dp) :: kin    =0.0_dp
+   real(dp) :: nuc    =0.0_dp
+   real(dp) :: hart   =0.0_dp
+   real(dp) :: exx    =0.0_dp
+   real(dp) :: xc     =0.0_dp
+   real(dp) :: mp2    =0.0_dp
+   real(dp) :: tot    =0.0_dp
  end type
 !=====
  type(energy_contributions) :: en
@@ -344,17 +344,27 @@ program atom
  call set_occupation(electrons,magnetization,basis%nbf,nspin,occupation)
  title='=== occupations ==='
  call dump_out_array(.FALSE.,title,basis%nbf,nspin,occupation)
- call guess_starting_c_matrix(basis%nbf,nspin,c_matrix)
+! call guess_starting_c_matrix(basis%nbf,nspin,c_matrix)
+ call guess_starting_c_matrix_new(basis,nspin,c_matrix)
+ do ispin=1,nspin
+   matrix(:,:,ispin) = transpose( c_matrix(:,:,ispin) )
+ enddo
+ title='=== Initial C matrix ==='
+ call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,matrix)
 
  !
  ! Setup the density matrix: p_matrix
  call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
  title='=== 1st density matrix P ==='
  call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,p_matrix)
+! matrix(:,:,1) = matmul( p_matrix(:,:,1) ,p_matrix(:,:,1) )
+! matrix(:,:,nspin) = matmul( p_matrix(:,:,nspin) ,p_matrix(:,:,nspin) )
+! title='=== 1st density matrix P ==='
+! call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,matrix)
 
  !
  ! Initialize the SCF mixing procedure
- call init_scf(basis%nbf,nspin,p_matrix,simple_mixing,alpha_mixing)
+ call init_scf(basis%nbf,nspin,simple_mixing,alpha_mixing)
 
  !
  ! Kinetic energy contribution
@@ -559,11 +569,13 @@ program atom
      matrix(:,:,ispin) = transpose( c_matrix(:,:,ispin) )
    enddo
    title='=== C coefficients ==='
-   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,c_matrix)
-   ! test matrix equality C^T S C = I
-   ! matrix(:,:,1) = matmul( transpose(c_matrix(:,:,1)), matmul( s_matrix(:,:), c_matrix(:,:,1) ) )
-   ! title='=== C^T S C = identity ? ==='
-   ! call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,1,matrix)
+   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,matrix)
+!   matrix(:,:,1) = matmul( c_matrix(:,:,1), matmul( s_matrix(:,:), transpose(c_matrix(:,:,1)) ) )
+!   title='=== C S C^T = identity ? ==='
+!   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,1,matrix)
+   matrix(:,:,1) = matmul( transpose(c_matrix(:,:,1)), matmul( s_matrix(:,:), c_matrix(:,:,1) ) )
+   title='=== C^T S C = identity ? ==='
+   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,1,matrix)
 
   
    !
@@ -788,7 +800,7 @@ subroutine  set_occupation(electrons,magnetization,nbf,nspin,occupation)
     call issue_warning(msg)
     open(unit=12,file='manual_occupations',status='old')
     !
-    ! read nlines, all other occupations are set to zero
+    ! read nlines, all other occupations are set to zeroalpha_max_bf(jbf)
     read(12,*) nlines
     do ilines=1,nlines
       read(12,*) occupation(ilines,:)
@@ -825,9 +837,51 @@ subroutine guess_starting_c_matrix(nbf,nspin,c_matrix)
  ! fill the c_matrix with the identity
  c_matrix(:,:,:)=0.0_dp
  do ibf=1,nbf
-   c_matrix(ibf,ibf,:) = 1.0_dp
-!   c_matrix(ibf,:,:) = 1.0_dp/SQRT(DBLE(nbf))
+!   c_matrix(ibf,ibf,:) = 1.0_dp
+   c_matrix(ibf,modulo(ibf,nbf)+1,:) = 1.0_dp
  enddo
 
 end subroutine guess_starting_c_matrix
 
+!=========================================================================
+subroutine guess_starting_c_matrix_new(basis,nspin,c_matrix)
+ use m_definitions
+ use m_gaussian
+ use m_basis_set
+ implicit none
+ type(basis_set),intent(in) :: basis
+ integer,intent(in)         :: nspin
+ real(dp),intent(out)       :: c_matrix(basis%nbf,basis%nbf,nspin)
+!=====
+ integer  :: ibf,jbf,kbf,ig
+ real(dp) :: alpha_max_bf(basis%nbf),alpha_max_remaining
+!=====
+
+ !
+ ! find the sharpest gaussians
+ alpha_max_bf(:)=0.0_dp
+ do ibf=1,basis%nbf
+   do ig=1,basis%bf(ibf)%ngaussian
+     alpha_max_bf(ibf)=MAX(basis%bf(ibf)%g(ig)%alpha,alpha_max_bf(ibf))
+   enddo
+!   write(*,*) ibf,alpha_max_bf(ibf)
+ enddo
+
+ !
+ ! fill the c_matrix 
+ c_matrix(:,:,:)=0.0_dp
+ do ibf=1,basis%nbf
+   alpha_max_remaining=0.0_dp
+   do jbf=1,basis%nbf
+     if( alpha_max_bf(jbf) > alpha_max_remaining ) then
+       alpha_max_remaining = alpha_max_bf(jbf)
+       kbf = jbf
+     endif
+   enddo
+   c_matrix(kbf,ibf,:) = 1.0_dp
+!   write(*,*) 'chosen',ibf,kbf,alpha_max_bf(kbf)
+   alpha_max_bf(kbf)   = -1.0_dp
+   
+ enddo
+
+end subroutine guess_starting_c_matrix_new

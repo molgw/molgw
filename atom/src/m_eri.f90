@@ -518,7 +518,7 @@ subroutine calculate_eri2(basis)
      shell_already_exists=.FALSE.
      do jshell=1,ishell
        if( g_current%am == shell(jshell)%am .AND. ABS( g_current%alpha - shell(jshell)%alpha ) < 1.d-8 &
-           .AND.  ALL( g_current%x0(:) - shell(jshell)%x0(:) < 1.d-8 ) ) then
+           .AND.  ALL( ABS( g_current%x0(:) - shell(jshell)%x0(:) ) < 1.d-8 ) ) then
 
          shell_already_exists=.TRUE.
          shell(jshell)%nmember = shell(jshell)%nmember + 1

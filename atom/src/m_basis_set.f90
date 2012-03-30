@@ -9,6 +9,7 @@ module m_basis_set
  real(dp),parameter             :: FILTERED_EIGENVALUE=1.0d-8 ! 1.0d-6
 
  type basis_function
+   character(len=100)           :: basis_name
    integer                      :: am
    character(len=1)             :: amc
    integer                      :: nx,ny,nz
@@ -19,7 +20,7 @@ module m_basis_set
  end type
 
  !
- ! A basis set is a group of basis function
+ ! A basis set is a list of basis functions
  ! filtering of some elements can be done by rotation 
  type basis_set
    integer                                 :: nbf
@@ -240,6 +241,7 @@ contains
  ! finally output the basis set upon request
  if(PRINT_VOLUME>5) then
    do ibf=1,basis%nbf
+     write(*,*) ' basis function number',ibf
      call print_basis_function(basis%bf(ibf))
    enddo
  endif

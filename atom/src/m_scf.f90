@@ -11,16 +11,17 @@ module m_scf
  real(dp)             :: alpha_scf
 
  real(dp),allocatable :: p_matrix_hist(:,:,:,:)
+ real(dp),allocatable :: residual_hist(:,:,:,:)
 
+ integer              :: n_scf
 
 
 contains
 
 !=========================================================================
-subroutine init_scf(nbf,nspin,p_matrix,mixing_scheme_set,alpha_mixing)
+subroutine init_scf(nbf,nspin,mixing_scheme_set,alpha_mixing)
  implicit none
  integer,intent(in)  :: nbf,nspin,mixing_scheme_set
- real(dp),intent(in) :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(in) :: alpha_mixing
 !=====
 
@@ -28,6 +29,7 @@ subroutine init_scf(nbf,nspin,p_matrix,mixing_scheme_set,alpha_mixing)
  nspin_scf     = nspin
  mixing_scheme = mixing_scheme_set
  alpha_scf     = alpha_mixing
+ n_scf         = 0
 
  select case(mixing_scheme)
  case(simple_mixing)
@@ -39,9 +41,6 @@ subroutine init_scf(nbf,nspin,p_matrix,mixing_scheme_set,alpha_mixing)
  end select
 
  allocate(p_matrix_hist(nbf_scf,nbf_scf,nspin_scf,nhist))
- !
- ! initialize the first p_matrix
- p_matrix_hist(:,:,:,1) = p_matrix(:,:,:)
  
 end subroutine init_scf
 
@@ -51,6 +50,7 @@ subroutine destroy_scf()
 !=====
 
  deallocate(p_matrix_hist)
+ if(allocated(residual_hist)) deallocate(residual_hist)
 
 end subroutine destroy_scf
 
@@ -60,6 +60,15 @@ subroutine new_p_matrix(p_matrix_out,p_matrix_in)
  real(dp),intent(in)  :: p_matrix_out(nbf_scf,nbf_scf,nspin_scf)
  real(dp),intent(out) :: p_matrix_in (nbf_scf,nbf_scf,nspin_scf)
 !=====
+
+ n_scf = n_scf + 1
+
+ !
+ ! special treatment for the first iteration
+ !
+ if( n_scf==1 ) then
+   p_matrix_hist(:,:,:,1) = p_matrix_out(:,:,:)
+ endif
 
  select case(mixing_scheme)
  case(simple_mixing)
