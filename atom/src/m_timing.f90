@@ -112,11 +112,11 @@ subroutine output_timing()
  ! developer's timings
  if( ANY(timing(timing_tmp1:timing_tmp5)>1.d-5) ) then
    write(*,*)
-   write(*,'(a30,2x,f12.2)') 'timing tmp1   '        ,timing(timing_tmp1)
-   write(*,'(a30,2x,f12.2)') 'timing tmp2   '        ,timing(timing_tmp2)
-   write(*,'(a30,2x,f12.2)') 'timing tmp3   '        ,timing(timing_tmp3)
-   write(*,'(a30,2x,f12.2)') 'timing tmp4   '        ,timing(timing_tmp4)
-   write(*,'(a30,2x,f12.2)') 'timing tmp5   '        ,timing(timing_tmp5)
+   write(*,'(a30,2x,f12.2,2x,i8)') 'timing tmp1   ' ,timing(timing_tmp1),calls(timing_tmp1)
+   write(*,'(a30,2x,f12.2,2x,i8)') 'timing tmp2   ' ,timing(timing_tmp2),calls(timing_tmp2)
+   write(*,'(a30,2x,f12.2,2x,i8)') 'timing tmp3   ' ,timing(timing_tmp3),calls(timing_tmp3)
+   write(*,'(a30,2x,f12.2,2x,i8)') 'timing tmp4   ' ,timing(timing_tmp4),calls(timing_tmp4)
+   write(*,'(a30,2x,f12.2,2x,i8)') 'timing tmp5   ' ,timing(timing_tmp5),calls(timing_tmp5)
    write(*,*)
  endif
 

@@ -188,12 +188,12 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
 
  type(calculation_type),intent(out) :: calc_type
  integer,intent(out)                :: nspin,nscf,natom
- integer,pointer,intent(inout)        :: basis_element(:)
+ integer,allocatable,intent(inout)  :: basis_element(:)
  real(dp),intent(out)               :: alpha_mixing
  integer,intent(out)                :: print_volume  
  character(len=100),intent(out)     :: basis_name
- real(dp),pointer,intent(inout)   :: zatom(:)
- real(dp),pointer,intent(inout)   :: x(:,:)
+ real(dp),allocatable,intent(inout) :: zatom(:)
+ real(dp),allocatable,intent(inout) :: x(:,:)
  real(dp),intent(out)               :: electrons 
  real(dp),intent(out)               :: magnetization
 !=====                              
@@ -205,7 +205,6 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  real(dp)                           :: charge,length_factor
 !=====
 
- write(*,*) 'inside read_input'
  read(*,*) read_char
  call init_calculation_type(calc_type,read_char)
 
@@ -240,6 +239,7 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
 
  read(*,*) natom,read_char
  if(natom<1) stop'natom<1'
+
  !
  ! lengths are stored internally in bohr
  !

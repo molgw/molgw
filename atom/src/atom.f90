@@ -22,10 +22,10 @@ program atom
  integer                      :: nspin,nscf,natom
  real(dp)                     :: alpha_mixing
  integer                      :: PRINT_VOLUME
- integer,pointer              :: basis_element(:)
+ integer,allocatable          :: basis_element(:)
  character(len=100)           :: basis_name
- real(dp),pointer             :: zatom(:)
- real(dp),pointer             :: x(:,:)
+ real(dp),allocatable         :: zatom(:)
+ real(dp),allocatable         :: x(:,:)
  real(dp)                     :: electrons
  real(dp)                     :: magnetization
 !=====
@@ -73,10 +73,33 @@ program atom
    real(dp) :: exx    =0.0_dp
    real(dp) :: xc     =0.0_dp
    real(dp) :: mp2    =0.0_dp
+   real(dp) :: rpa    =0.0_dp
    real(dp) :: tot    =0.0_dp
  end type
 !=====
  type(energy_contributions) :: en
+!=============================
+ interface
+   subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
+                        basis_name,zatom,electrons,magnetization,basis_element,natom,x)
+     use m_definitions
+     use m_calculation_type
+     use m_warning
+     use m_tools
+     implicit none
+
+     type(calculation_type),intent(out) :: calc_type
+     integer,intent(out)                :: nspin,nscf,natom
+     integer,allocatable,intent(inout)  :: basis_element(:)
+     real(dp),intent(out)               :: alpha_mixing
+     integer,intent(out)                :: print_volume
+     character(len=100),intent(out)     :: basis_name
+     real(dp),allocatable,intent(inout) :: zatom(:)
+     real(dp),allocatable,intent(inout) :: x(:,:)
+     real(dp),intent(out)               :: electrons
+     real(dp),intent(out)               :: magnetization
+   end subroutine
+ end interface
 !=============================
 
  write(*,*)
@@ -193,9 +216,9 @@ program atom
  msg='OPENMP option is activated with threads number'//msg
  call issue_warning(msg)
 #endif
+
  !
- ! 
- write(*,*) 'before read'
+ ! reading input file
 ! call read_inputparameter(calc_type,nspin,nscf,alpha_mixing,print_volume,basis_name,zatom,electrons,magnetization,basis_element)
  call read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
                                    basis_name,zatom,electrons,magnetization,basis_element,natom,x)
@@ -399,58 +422,22 @@ program atom
 
    p_matrix_old = p_matrix
    call new_p_matrix(p_matrix_old,p_matrix)
+   
 
-   !
-   ! Hartree contribution
-   call start_clock(timing_hartree)
-   matrix(:,:,:)=0.0_dp
-!!! !$OMP PARALLEL DEFAULT(SHARED)
-!!! !$OMP DO SCHEDULE(STATIC) REDUCTION(+:matrix)
-   do lbf=1,basis%nbf
-     do kbf=1,basis%nbf
-       do jbf=1,basis%nbf
-         do ibf=1,basis%nbf
-           matrix(ibf,jbf,:) = matrix(ibf,jbf,:) &
-                      + eri(ibf,jbf,kbf,lbf) * SUM( p_matrix(kbf,lbf,:) )
-         enddo
-       enddo
-     enddo
-   enddo
-!!! !$OMP END DO
-!!! !$OMP END PARALLEL
    en%kin  = SUM(hamiltonian_kinetic(:,:,:)*p_matrix(:,:,:))
    en%nuc  = SUM(hamiltonian_nucleus(:,:,:)*p_matrix(:,:,:))
-   en%hart = 0.5_dp*SUM(matrix(:,:,:)*p_matrix(:,:,:))
+   !
+   ! Hartree contribution to the Hamiltonian
+   !
+   call setup_hartree(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%hart)
 
-   call stop_clock(timing_hartree)
-   title='=== Hartree contribution ==='
-   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,matrix)
    hamiltonian(:,:,:) = hamiltonian_kinetic(:,:,:) + hamiltonian_nucleus(:,:,:) + matrix(:,:,:)
   
    !
-   ! Exchange contribution
+   ! Exchange contribution to the Hamiltonian
    if( calc_type%need_exchange ) then
-     call start_clock(timing_exchange)
 
-     spin_fact = REAL(-nspin+3,dp)
-     matrix(:,:,:)=0.0_dp
-     do ispin=1,nspin
-       do lbf=1,basis%nbf
-         do jbf=1,basis%nbf
-           do kbf=1,basis%nbf
-             do ibf=1,basis%nbf
-               matrix(ibf,jbf,ispin) = matrix(ibf,jbf,ispin) &
-                          - eri(ibf,kbf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact
-             enddo
-           enddo
-         enddo
-       enddo
-     enddo
-     en%exx = 0.5_dp*SUM(matrix(:,:,:)*p_matrix(:,:,:))
-     call stop_clock(timing_exchange)
-
-     title='=== Exchange contribution ==='
-     call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,matrix)
+     call setup_exchange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
 
      if( .NOT. calc_type%need_dft_xc ) then
        hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix(:,:,:) 
@@ -487,12 +474,14 @@ program atom
      call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
      call start_clock(timing_pola)
 #ifdef AUXIL_BASIS
-     call polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matrix,sinv_v_sinv,energy_tmp,wpol)
+     call polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matrix,sinv_v_sinv,en%rpa,wpol)
 #else
-     call polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,energy_tmp,wpol)
+     call polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #endif
      call stop_clock(timing_pola)
-     write(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',energy_tmp
+     write(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',en%rpa
+     en%tot = en%tot + en%rpa
+     write(*,'(/,a,f14.8)') ' RPA Total energy [Ha]: ',en%tot
 
      call start_clock(timing_self)
      exchange_m_vxc_diag(:,:)=0.0_dp
@@ -681,12 +670,15 @@ program atom
    call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
    call start_clock(timing_pola)
 #ifdef AUXIL_BASIS
-   call polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matrix,sinv_v_sinv,energy_tmp,wpol)
+   call polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matrix,sinv_v_sinv,en%rpa,wpol)
 #else
-   call polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,energy_tmp,wpol)
+   call polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #endif
    call stop_clock(timing_pola)
-   write(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',energy_tmp
+   write(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',en%rpa
+   en%tot = en%tot + en%rpa
+   write(*,'(/,a,f14.8)') ' RPA Total energy [Ha]: ',en%tot
+
    call start_clock(timing_self)
 #ifdef AUXIL_BASIS
    call gw_selfenergy_casida(calc_type%method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)

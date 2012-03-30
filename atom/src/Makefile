@@ -5,8 +5,8 @@ FC=ifort -fpp $(OPENMP) -DHAVE_LIBXC #-DCHI0  -DATOM  #-DSYMMETRIZED #-DCHI0 # -
 #FC=ifort -fpp -DHAVE_LIBXC  #-DCHI0 # -DAUXIL_BASIS
 #FC=gfortran -cpp  -ffree-line-length-none
 CC=g++
-FCOPTS= -O0 #-g -check all
-#FCOPTS= -O3
+#FCOPTS= -O0 #-g -check all
+FCOPTS= -O3
 
 #LAPACK= -L/home/bruneval/src/lapack-3.3.1/ -llapack_LINUX -lblas_LINUX 
 #LAPACK=  -Wl,--start-group  $(MKLROOT)/lib/em64t/libmkl_intel_lp64.a $(MKLROOT)/lib/em64t/libmkl_intel_thread.a $(MKLROOT)/lib/em64t/libmkl_core.a -Wl,--end-group -openmp -lpthread
@@ -22,10 +22,10 @@ LIBINT=-L$(LIBINT_ROOT)/lib -lint2
 LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 
 ../atom: m_definitions.o m_timing.o m_warning.o m_calculation_type.o m_tools.o m_scf.o \
-       m_gaussian.o m_basis_set.o m_dft.o m_eri.o m_gw.o wrapper_libint.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o atom.o
+       m_gaussian.o m_basis_set.o m_dft.o m_eri.o m_gw.o wrapper_libint.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o atom.o
 	$(FC) $(FCOPTS) m_definitions.o m_timing.o m_warning.o m_calculation_type.o m_tools.o m_scf.o \
                         m_gaussian.o m_basis_set.o m_gw.o m_dft.o m_eri.o \
-                        wrapper_libint.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o atom.o -o ../atom \
+                        wrapper_libint.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o atom.o -o ../atom \
                         $(LAPACK) \
                         $(LIBXC) $(LIBXC _INCS) \
                         $(LIBINT) $(LIBINT_INCS) \
@@ -34,6 +34,9 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 atom.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_calculation_type.f90 m_tools.f90 m_scf.f90 \
   m_gaussian.f90 m_basis_set.f90 m_gw.f90 m_dft.f90 m_eri.f90 atom.f90
 	$(FC) $(FCOPTS) -c atom.f90 
+
+hamiltonian.o: m_definitions.f90 m_timing.f90 m_eri.f90 hamiltonian.f90
+	$(FC) $(FCOPTS) -c hamiltonian.f90 
 
 io.o: m_definitions.f90 m_warning.f90 io.f90
 	$(FC) $(FCOPTS) -c io.f90 

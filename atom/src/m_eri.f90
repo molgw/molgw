@@ -190,6 +190,7 @@ subroutine calculate_eri(basis,eri)
 
  write(*,'(/,a)') ' Calculate all the Electron Repulsion Integrals (ERI) at once'
 
+ call start_clock(timing_tmp1)
  !
  ! libint works with shells of same angular momentum and same alpha
  ! establish now a list of all gaussian shells
@@ -244,6 +245,8 @@ subroutine calculate_eri(basis,eri)
 
  allocate(int_gaussian(nint_gaussian,nint_gaussian,nint_gaussian,nint_gaussian))
  
+ call stop_clock(timing_tmp1)
+ call start_clock(timing_tmp2)
  ig=0; jg=0; kg=0; lg=0
  
  do lshell=1,nshell
@@ -394,6 +397,8 @@ subroutine calculate_eri(basis,eri)
  enddo
  if( allocated(integrals) ) deallocate( integrals )
 
+ call stop_clock(timing_tmp2)
+
 ! if(DEBUG) write(*,*) '=========================================='
 ! if(DEBUG) write(*,*) int_gaussian(:,:,:,:)
 ! if(DEBUG) write(*,*) '=========================================='
@@ -401,7 +406,7 @@ subroutine calculate_eri(basis,eri)
  !
  ! calculate (ij||kl) over contractions
  
- call start_clock(timing_tmp5)
+ call start_clock(timing_tmp3)
  eri(:,:,:,:) = 0.0_dp
  do lbf=1,basis%nbf
    bf_current_l => basis%bf(lbf)
@@ -431,7 +436,7 @@ subroutine calculate_eri(basis,eri)
      enddo
    enddo
  enddo
- call stop_clock(timing_tmp5)
+ call stop_clock(timing_tmp3)
 
 
  deallocate(int_gaussian)
@@ -504,6 +509,7 @@ subroutine calculate_eri2(basis)
 
  write(*,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
 
+ call start_clock(timing_tmp1)
  
  nint_gaussian=0
  ishell=0
@@ -547,6 +553,8 @@ subroutine calculate_eri2(basis)
  enddo
  nshell=ishell
  
+ call stop_clock(timing_tmp1)
+ call start_clock(timing_tmp2)
  write(*,*) 'number of shells',nshell
 
  !
@@ -565,6 +573,7 @@ subroutine calculate_eri2(basis)
      do lshell=1,nshell
        do kshell=1,nshell
 
+         call start_clock(timing_tmp3)
 
          ami = shell(ishell)%am
          amj = shell(jshell)%am
@@ -801,6 +810,8 @@ subroutine calculate_eri2(basis)
          deallocate(int_tmp)
 
 
+         call stop_clock(timing_tmp3)
+         call start_clock(timing_tmp4)
 !!!!!           !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iindex_in_the_shell,jindex_in_the_shell,kindex_in_the_shell,lindex_in_the_shell,&
 !!!!!           !$OMP&     ig,jg,kg,lg,ibf,jbf,kbf,lbf,index_integral,index_tmp )
 !!!!!           
@@ -848,6 +859,8 @@ subroutine calculate_eri2(basis)
 !!!!          !$OMP END DO
 !!!!          !$OMP END PARALLEL
 
+         call stop_clock(timing_tmp4)
+
        enddo
      enddo
    enddo
@@ -856,7 +869,8 @@ subroutine calculate_eri2(basis)
  if( allocated(int_shell) ) deallocate( int_shell )
 !!!!       !$OMP END PARALLEL
 
- write(*,*) 'Done.'
+ call stop_clock(timing_tmp2)
+ write(*,*) 'Done!'
  write(*,*)
 
 end subroutine calculate_eri2
