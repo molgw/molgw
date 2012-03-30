@@ -490,11 +490,10 @@ contains
  overlap=0.0_dp
  do ig=1,bf1%ngaussian
    do jg=1,bf2%ngaussian
-#ifndef MOLECULES
+#ifdef ATOM
      call overlap_normalized(bf1%g(ig),bf2%g(jg),overlap_one_gaussian)
 #else
      call overlap_recurrence(bf1%g(ig),bf2%g(jg),overlap_one_gaussian)
-!     call numerical_overlap(bf1%g(ig),bf2%g(jg),overlap_one_gaussian)
 #endif
      overlap = overlap + overlap_one_gaussian * bf1%coeff(ig) * bf2%coeff(jg)
    enddo
@@ -555,7 +554,7 @@ contains
  kinetic=0.0_dp
  do ig=1,bf1%ngaussian
    do jg=1,bf2%ngaussian
-#ifndef MOLECULES
+#ifdef ATOM
      call kinetic_gaussian(bf1%g(ig),bf2%g(jg),kinetic_one_gaussian)
 #else
      call kinetic_recurrence(bf1%g(ig),bf2%g(jg),kinetic_one_gaussian)
@@ -581,7 +580,7 @@ contains
  nucleus_pot=0.0_dp
  do ig=1,bf1%ngaussian
    do jg=1,bf2%ngaussian
-#ifndef MOLECULES
+#ifdef ATOM
      call nucleus_pot_gaussian(bf1%g(ig),bf2%g(jg),zatom,nucleus_pot_one_gaussian)
 #else
      call nucleus_recurrence(zatom,x,bf1%g(ig),bf2%g(jg),nucleus_pot_one_gaussian)

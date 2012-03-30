@@ -1,6 +1,3 @@
-module m_io
-
-contains
 !=========================================================================
 subroutine dump_out_array(is_energy,title,n,nspin,array)
  use m_definitions
@@ -343,5 +340,5 @@ subroutine plot_wfn(nspin,basis,c_matrix)
  enddo
 
 end subroutine plot_wfn
+
 !=========================================================================
-end module m_io

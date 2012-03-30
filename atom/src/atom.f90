@@ -11,7 +11,6 @@ program atom
  use m_eri
  use m_gw
  use m_dft
- use m_io
 #ifdef OPENMP
  use omp_lib
 #endif
