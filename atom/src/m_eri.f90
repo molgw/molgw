@@ -29,7 +29,7 @@ subroutine allocate_eri(nbf)
 #endif
 
  allocate(eri_buffer(nsize),stat=info)
- write(*,'(/,a,f8.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*dp/1024**2,' [Mb]'
+ write(*,'(/,a,f8.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*dp/1024**3,' [Gb]'
  if(info==0) then
    write(*,*) 'success'
  else

@@ -6,6 +6,7 @@ program atom
  use m_calculation_type
  use m_tools
  use m_scf
+ use m_atoms
  use m_gaussian
  use m_basis_set
  use m_eri
@@ -19,13 +20,10 @@ program atom
  !
  ! Input parameters will be set in read_inputparameters
  type(calculation_type)       :: calc_type
- integer                      :: nspin,nscf,natom
+ integer                      :: nspin,nscf
  real(dp)                     :: alpha_mixing
  integer                      :: PRINT_VOLUME
- integer,allocatable          :: basis_element(:)
  character(len=100)           :: basis_name
- real(dp),allocatable         :: zatom(:)
- real(dp),allocatable         :: x(:,:)
  real(dp)                     :: electrons
  real(dp)                     :: magnetization
 !=====
@@ -78,29 +76,29 @@ program atom
  end type
 !=====
  type(energy_contributions) :: en
-!=============================
- interface
-   subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
-                        basis_name,zatom,electrons,magnetization,basis_element,natom,x)
-     use m_definitions
-     use m_calculation_type
-     use m_warning
-     use m_tools
-     implicit none
-
-     type(calculation_type),intent(out) :: calc_type
-     integer,intent(out)                :: nspin,nscf,natom
-     integer,allocatable,intent(inout)  :: basis_element(:)
-     real(dp),intent(out)               :: alpha_mixing
-     integer,intent(out)                :: print_volume
-     character(len=100),intent(out)     :: basis_name
-     real(dp),allocatable,intent(inout) :: zatom(:)
-     real(dp),allocatable,intent(inout) :: x(:,:)
-     real(dp),intent(out)               :: electrons
-     real(dp),intent(out)               :: magnetization
-   end subroutine
- end interface
-!=============================
+!!=============================
+! interface
+!   subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
+!                        basis_name,zatom,electrons,magnetization,basis_element,natom,x)
+!     use m_definitions
+!     use m_calculation_type
+!     use m_warning
+!     use m_tools
+!     implicit none
+!
+!     type(calculation_type),intent(out) :: calc_type
+!     integer,intent(out)                :: nspin,nscf,natom
+!     integer,allocatable,intent(inout)  :: basis_element(:)
+!     real(dp),intent(out)               :: alpha_mixing
+!     integer,intent(out)                :: print_volume
+!     character(len=100),intent(out)     :: basis_name
+!     real(dp),allocatable,intent(inout) :: zatom(:)
+!     real(dp),allocatable,intent(inout) :: x(:,:)
+!     real(dp),intent(out)               :: electrons
+!     real(dp),intent(out)               :: magnetization
+!   end subroutine
+! end interface
+!!=============================
 
  write(*,*)
  write(*,*) 'Welcome to the fascinating world of ATOM'
@@ -221,7 +219,7 @@ program atom
  ! reading input file
 ! call read_inputparameter(calc_type,nspin,nscf,alpha_mixing,print_volume,basis_name,zatom,electrons,magnetization,basis_element)
  call read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
-                                   basis_name,zatom,electrons,magnetization,basis_element,natom,x)
+                                   basis_name,electrons,magnetization,basis_element)
 
  !
  ! Nucleus-nucleus repulsion contribution to the energy
@@ -233,7 +231,7 @@ program atom
  enddo
  !
  ! start build up the basis set
- call init_basis_set(PRINT_VOLUME,natom,x,zatom,basis_name,basis_element,basis)
+ call init_basis_set(PRINT_VOLUME,basis_name,basis)
  
  !
  ! allocate everything

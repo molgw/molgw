@@ -108,7 +108,7 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
 
  complex(dp) :: omega(NOMEGA)
  complex(dp) :: eta=(0.0_dp,0.02_dp) ! (0.0_dp,0.00001_dp)          ! =(0.0_dp,0.02_dp)
- real(dp) :: x(NOMEGA),wx(NOMEGA),womega(NOMEGA)
+ real(dp) :: u(NOMEGA),wu(NOMEGA),womega(NOMEGA)
  logical :: TDHF=.FALSE.
 !=====
  spin_fact = REAL(-nspin+3,dp)
@@ -123,12 +123,12 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
    omega(1)=(0.0_dp,0.001_dp)
    omega(2)=(0.0_dp,1.0_dp)
  else if(NOMEGA<200) then
-   call coeffs_gausslegint(0.0_dp,1.0_dp,x,wx,NOMEGA)
+   call coeffs_gausslegint(0.0_dp,1.0_dp,u,wu,NOMEGA)
 !   do iomega=1,NOMEGA
-!     write(*,*) iomega,x(iomega),wx(iomega)
+!     write(*,*) iomega,u(iomega),wu(iomega)
 !   enddo
-   omega(:)  = x(:) / ( 1.0_dp - x(:) ) * im 
-   womega(:) = wx(:) / ( 1.0_dp - x(:) )**2
+   omega(:)  = u(:) / ( 1.0_dp - u(:) ) * im 
+   womega(:) = wu(:) / ( 1.0_dp - u(:) )**2
  else
    do iomega=1,nomega
      omega(iomega) = 0.0_dp + 2.0_dp/REAL(nomega-1)*(iomega-1) + eta
@@ -277,7 +277,7 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 
  complex(dp) :: omega(NOMEGA)
  complex(dp) :: eta=(0.0_dp,0.02_dp) ! (0.0_dp,0.00001_dp)          ! =(0.0_dp,0.02_dp)
- real(dp) :: x(NOMEGA),wx(NOMEGA),womega(NOMEGA)
+ real(dp) :: u(NOMEGA),wu(NOMEGA),womega(NOMEGA)
  logical :: TDHF=.FALSE.
 !=====
  spin_fact = REAL(-nspin+3,dp)
@@ -295,12 +295,12 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
    omega(1)=(0.0_dp,0.001_dp)
    omega(2)=(0.0_dp,1.0_dp)
  else if(NOMEGA<200) then
-   call coeffs_gausslegint(0.0_dp,1.0_dp,x,wx,NOMEGA)
+   call coeffs_gausslegint(0.0_dp,1.0_dp,u,wu,NOMEGA)
 !   do iomega=1,NOMEGA
-!     write(*,*) iomega,x(iomega),wx(iomega)
+!     write(*,*) iomega,u(iomega),wu(iomega)
 !   enddo
-   omega(:)  = x(:) / ( 1.0_dp - x(:) ) * im 
-   womega(:) = wx(:) / ( 1.0_dp - x(:) )**2
+   omega(:)  = u(:) / ( 1.0_dp - u(:) ) * im 
+   womega(:) = wu(:) / ( 1.0_dp - u(:) )**2
  else
    do iomega=1,nomega
      omega(iomega) = 0.0_dp + 2.0_dp/REAL(nomega-1)*(iomega-1) + eta

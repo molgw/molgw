@@ -5,6 +5,7 @@ module m_basis_set
  use m_warning
  use m_tools, only: element_name,diagonalize,invert
  use m_gaussian
+ use m_atoms
 
  real(dp),parameter             :: FILTERED_EIGENVALUE=1.0d-8 ! 1.0d-6
 
@@ -34,13 +35,10 @@ module m_basis_set
 contains
 
 !=========================================================================
- subroutine init_basis_set(PRINT_VOLUME,natom,x,zatom,basis_name,basis_element,basis)
+ subroutine init_basis_set(PRINT_VOLUME,basis_name,basis)
  implicit none
  integer,intent(in)            :: PRINT_VOLUME
- integer,intent(in)            :: natom
- real(dp),intent(in)           :: x(3,natom),zatom(natom)
  character(len=100),intent(in) :: basis_name
- integer,intent(in)            :: basis_element(natom)
  type(basis_set),intent(out)   :: basis
 !====
  character(len=100)            :: basis_filename

@@ -179,21 +179,19 @@ end subroutine read_inputparameter
 
 !=========================================================================
 subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
-      basis_name,zatom,electrons,magnetization,basis_element,natom,x)
+      basis_name,electrons,magnetization)
  use m_definitions
  use m_calculation_type
  use m_warning
  use m_tools
+ use m_atoms
  implicit none
 
  type(calculation_type),intent(out) :: calc_type
- integer,intent(out)                :: nspin,nscf,natom
- integer,allocatable,intent(inout)  :: basis_element(:)
+ integer,intent(out)                :: nspin,nscf
  real(dp),intent(out)               :: alpha_mixing
  integer,intent(out)                :: print_volume  
  character(len=100),intent(out)     :: basis_name
- real(dp),allocatable,intent(inout) :: zatom(:)
- real(dp),allocatable,intent(inout) :: x(:,:)
  real(dp),intent(out)               :: electrons 
  real(dp),intent(out)               :: magnetization
 !=====                              
@@ -304,7 +302,7 @@ end subroutine read_inputparameter_molecule
 !=========================================================================
 subroutine plot_wfn(nspin,basis,c_matrix)
  use m_definitions
- use m_basis_set
+ use m_basis_set,only: basis_set,eval_basis_function
  implicit none
  integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis

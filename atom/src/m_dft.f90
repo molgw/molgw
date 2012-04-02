@@ -6,6 +6,7 @@ contains
 
 subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
  use m_tools,only: coeffs_gausslegint
+ use m_atoms
  use m_basis_set
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
@@ -22,7 +23,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: p_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
- real(dp),intent(out)       ::exc_xc
+ real(dp),intent(out)       :: exc_xc
 !=====
  integer,parameter :: nx=40
  integer,parameter :: nangular=38 ! 86
@@ -34,9 +35,9 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
  real(dp)          :: w1(nangular)
  integer           :: n1,iangular
 
- integer :: ix,iy,iz,ibf,jbf,ispin,ir
- real(dp) :: rhor_r(nspin),rhor(nr,nspin),grad_rhor(3,nspin),sigma2(2*nspin-1),rr(3)
- real(dp) :: x(nx),wx(nx)
+ integer :: ix,iy,iz,ibf,jbf,ispin,ir,iatom,jatom,katom
+ real(dp) :: rhor_r(nspin),grad_rhor(3,nspin),sigma2(2*nspin-1),rr(3)
+ real(dp) :: xa(nx),wxa(nx)
  real(dp) :: normalization(nspin)
 ! integer,parameter :: ixc=1  !Slater exchange
  integer,parameter :: ixc=2  !Teter exchange-correlation
@@ -53,12 +54,13 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
  real(dp) :: tmpx(nr,nspin),tmpy(nr,nspin),tmpz(nr,nspin)
  real(dp),parameter :: dx=1.0d-5
 
+ real(dp) :: mu,s_becke(natom,natom),p_becke(natom),fact_becke
 !=====
 
 #ifdef HAVE_LIBXC
 
  write(*,*) 'Evaluate DFT integrals'
- write(*,'(a,i4,x,i4)') ' discretization grid [radial points , angular points] ',nx,nangular
+ write(*,'(a,i4,x,i4)') ' discretization grid per atom [radial points , angular points] ',nx,nangular
 
  if(nspin==1) then
    call xc_f90_func_init(xc_func1, xc_info1, dft_xc(1), XC_UNPOLARIZED)
@@ -71,12 +73,12 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
  !
  ! spherical integration
  ! radial part with Gauss-Legendre
- call coeffs_gausslegint(-1.0_dp,1.0_dp,x,wx,nx)
+ call coeffs_gausslegint(-1.0_dp,1.0_dp,xa,wxa,nx)
  !
  ! Transformation from [-1;1] to [0;+\infty[
  ! taken from M. Krack JCP 1998
- wx(:) = wx(:) * ( 1.0_dp / log(2.0_dp) / ( 1.0_dp - x(:) ) )
- x(:)  = log( 2.0_dp / (1.0_dp - x(:) ) ) / log(2.0_dp)
+ wxa(:) = wxa(:) * ( 1.0_dp / log(2.0_dp) / ( 1.0_dp - xa(:) ) )
+ xa(:)  = log( 2.0_dp / (1.0_dp - xa(:) ) ) / log(2.0_dp)
 
  ! angular part with Lebedev - Laikov
  ! (x1,y1,z1) on the unit sphere
@@ -103,20 +105,50 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
  
 
  exc_xc=0.0_dp
+ vxc_ij(:,:,:)=0.0_dp
  normalization(:)=0.0_dp
 
+
+ do iatom=1,natom
+
 !$OMP PARALLEL DEFAULT(SHARED)
-
-! write(*,*) 'get_num_thread()/max:',OMP_get_num_threads(),OMP_get_max_threads()
-
 !$OMP DO REDUCTION(+:exc_xc,normalization) PRIVATE(rr,weight,ir,rhor_r,grad_rhor,exc1,exc2,vxc1,vxc2)
  do ix=1,nx
    do iangular=1,nangular
-     rr(1) = x(ix) * x1(iangular)
-     rr(2) = x(ix) * y1(iangular)
-     rr(3) = x(ix) * z1(iangular)
-     weight = wx(ix) * w1(iangular) * x(ix)**2 * 4.0_dp * pi
+     rr(1) = xa(ix) * x1(iangular) + x(1,iatom) 
+     rr(2) = xa(ix) * y1(iangular) + x(2,iatom)
+     rr(3) = xa(ix) * z1(iangular) + x(3,iatom)
+     weight = wxa(ix) * w1(iangular) * xa(ix)**2 * 4.0_dp * pi
      ir=iangular+(ix-1)*nangular
+
+     !
+     ! Partitionning scheme of Axel Becke, J. Chem. Phys. 88, 2547 (1988).
+     !
+     s_becke(:,:) = 0.0_dp
+     do katom=1,natom
+       do jatom=1,natom
+         if(katom==jatom) cycle
+         mu = ( SQRT( SUM( (rr(:)-x(:,katom) )**2 ) ) - SQRT( SUM( (rr(:)-x(:,jatom) )**2 ) ) ) &
+                   / SQRT( SUM( (x(:,katom)-x(:,jatom))**2 ) )
+         s_becke(katom,jatom) = 0.5_dp * ( 1.0_dp - smooth_step(smooth_step(smooth_step(mu))) )
+       enddo
+     enddo
+     p_becke(:) = 1.0_dp
+     do katom=1,natom
+       do jatom=1,natom
+         if(katom==jatom) cycle
+         p_becke(katom) = p_becke(katom) * s_becke(katom,jatom)
+       enddo
+     enddo
+     fact_becke = p_becke(iatom) / SUM( p_becke(:) )
+     write(200,*) '============',iatom,ir
+     write(200,*) 'mu=',mu
+     write(200,*) s_becke(:,:)
+     write(200,*) p_becke(:)
+     write(200,*) fact_becke,p_becke(modulo(iatom,natom)+1) / SUM( p_becke(:) )
+     write(200,*) '======================='
+!     fact_becke = 1.0_dp
+
 
      rhor_r(:)=0.0_dp
      do ispin=1,nspin
@@ -128,7 +160,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
        enddo
      enddo
 
-     normalization(:) = normalization(:) + rhor_r(:) * weight
+     normalization(:) = normalization(:) + rhor_r(:) * weight * fact_becke
 
      if(xc_f90_info_family(xc_info1) == XC_FAMILY_GGA) then
        grad_rhor(:,:)=0.0_dp
@@ -136,8 +168,8 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
          do jbf=1,basis%nbf
            do ibf=1,basis%nbf
              grad_rhor(:,ispin)=grad_rhor(:,ispin)+p_matrix(ibf,jbf,ispin)&
-&                 *( eval_basis_function_derivative(basis%bf(ibf),rr) * eval_basis_function(basis%bf(jbf),rr) &
-&                  + eval_basis_function_derivative(basis%bf(jbf),rr) * eval_basis_function(basis%bf(ibf),rr) ) 
+                  *( eval_basis_function_derivative(basis%bf(ibf),rr) * eval_basis_function(basis%bf(jbf),rr) &
+                   + eval_basis_function_derivative(basis%bf(jbf),rr) * eval_basis_function(basis%bf(ibf),rr) ) 
 
            enddo
          enddo
@@ -181,8 +213,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
        endif
      endif
 
-!     rhor(ir,:) = rhor_r(:)
-     exc_xc = exc_xc + weight * (exc1+exc2) * SUM( rhor_r(:) )
+     exc_xc = exc_xc + weight * fact_becke * (exc1+exc2) * SUM( rhor_r(:) )
 
      dedd(ir,:) = vxc1(:) + vxc2(:)
 
@@ -222,18 +253,39 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
 !$OMP END PARALLEL
 
  ir=0
- vxc_ij(:,:,:)=0.0_dp
  do ix=1,nx
    do iangular=1,nangular
-     rr(1) = x(ix) * x1(iangular)
-     rr(2) = x(ix) * y1(iangular)
-     rr(3) = x(ix) * z1(iangular)
-     weight = wx(ix) * w1(iangular) * x(ix)**2 * 4.0_dp * pi
+     rr(1) = xa(ix) * x1(iangular) + x(1,iatom) 
+     rr(2) = xa(ix) * y1(iangular) + x(2,iatom)
+     rr(3) = xa(ix) * z1(iangular) + x(3,iatom)
+     weight = wxa(ix) * w1(iangular) * xa(ix)**2 * 4.0_dp * pi
      ir=ir+1
+
+     !
+     ! Partitionning scheme of Axel Becke, J. Chem. Phys. 88, 2547 (1988).
+     !
+     s_becke(:,:) = 0.0_dp
+     do katom=1,natom
+       do jatom=1,natom
+         if(katom==jatom) cycle
+         mu = ( SQRT( SUM( (rr(:)-x(:,katom) )**2 ) ) - SQRT( SUM( (rr(:)-x(:,jatom) )**2 ) ) ) &
+                   / SQRT( SUM( (x(:,katom)-x(:,jatom))**2 ) )
+         s_becke(katom,jatom) = 0.5_dp * ( 1.0_dp - smooth_step(smooth_step(smooth_step(mu))) )
+       enddo
+     enddo
+     p_becke(:) = 1.0_dp
+     do katom=1,natom
+       do jatom=1,natom
+         if(katom==jatom) cycle
+         p_becke(katom) = p_becke(katom) * s_becke(katom,jatom)
+       enddo
+     enddo
+     fact_becke = p_becke(iatom) / SUM( p_becke(:) )
+
 
      do jbf=1,basis%nbf
        do ibf=1,basis%nbf
-         vxc_ij(ibf,jbf,:) =  vxc_ij(ibf,jbf,:) + weight &
+         vxc_ij(ibf,jbf,:) =  vxc_ij(ibf,jbf,:) + weight * fact_becke &
              * eval_basis_function(basis%bf(ibf),rr) * eval_basis_function(basis%bf(jbf),rr) &
              * ( dedd(ir,:) - tmpx(ir,:) - tmpy(ir,:) - tmpz(ir,:) )
        enddo
@@ -243,6 +295,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
  enddo ! loop on the radial grid
 
 
+ enddo ! loop on the atoms
 
 
 #else
@@ -253,19 +306,21 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
 ! write(*,*)
 ! write(*,'(a,2(2x,f12.6))') 'Average Vxc',vxc_av
  write(*,*)
- write(*,'(a,2(2x,f12.6))') 'number of electrons',normalization(:)
- write(*,'(a,2x,f12.6)') 'DFT xc energy [Ha]:',exc_xc
+ write(*,'(a,2(2x,f12.6))') ' number of electrons:',normalization(:)
+ write(*,'(a,2x,f12.6)')    '  DFT xc energy [Ha]:',exc_xc
  write(*,*)
 
 contains
- function rho_hydrogen(x,y,z)
- implicit none
- real(dp) :: rho_hydrogen
- real(dp) :: x,y,z
 
- rho_hydrogen =  exp( -2.0 * sqrt( (x-5.)**2 + (y-5.)**2 + (z-5.)**2) ) / (4.0_dp*pi) * 4.0_dp *0.9999 
+ function smooth_step(mu)
+ real(dp) :: smooth_step
+ real(dp),intent(in) :: mu
+!=====
 
- end function
+ smooth_step = 0.5_dp * mu * ( 3.0_dp - mu**2 )
+
+ end function smooth_step
+
  function vlda(ixc,rhor)
  implicit none
  real(dp) :: vlda
@@ -312,6 +367,7 @@ contains
  endif
 
  end function vlda
+
  function elda(ixc,rhor)
  implicit none
  real(dp) :: elda
