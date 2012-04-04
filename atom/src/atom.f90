@@ -40,8 +40,9 @@ program atom
  integer                 :: ibf,jbf,kbf,lbf,ijbf,klbf
  integer                 :: ispin,iscf,istate,iatom,jatom
  integer                 :: iprodbf,jprodbf,nprodbf_max
+ logical                 :: scf_loop_convergence
  character(len=100)      :: title
- real(dp)                :: energy_tmp,overlap_tmp,spin_fact,rms
+ real(dp)                :: energy_tmp,overlap_tmp,spin_fact
  real(dp),allocatable    :: hamiltonian(:,:,:)
  real(dp),allocatable    :: hamiltonian_kinetic(:,:,:)           !TODO remove spin
  real(dp),allocatable    :: hamiltonian_nucleus(:,:,:)           !TODO remove spin
@@ -50,7 +51,7 @@ program atom
  real(dp),allocatable    :: s_matrix(:,:)
  real(dp),allocatable    :: c_matrix(:,:,:)
  real(dp),allocatable    :: p_matrix(:,:,:),p_matrix_old(:,:,:)
- real(dp),allocatable    :: energy(:,:),energy_old(:,:)
+ real(dp),allocatable    :: energy(:,:)
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: s_filtered_basis(:,:)
  real(dp),allocatable    :: sinv_filtered_basis(:,:)
@@ -75,29 +76,7 @@ program atom
  end type
 !=====
  type(energy_contributions) :: en
-!!=============================
-! interface
-!   subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
-!                        basis_name,zatom,electrons,magnetization,basis_element,natom,x)
-!     use m_definitions
-!     use m_calculation_type
-!     use m_warning
-!     use m_tools
-!     implicit none
-!
-!     type(calculation_type),intent(out) :: calc_type
-!     integer,intent(out)                :: nspin,nscf,natom
-!     integer,allocatable,intent(inout)  :: basis_element(:)
-!     real(dp),intent(out)               :: alpha_mixing
-!     integer,intent(out)                :: print_volume
-!     character(len=100),intent(out)     :: basis_name
-!     real(dp),allocatable,intent(inout) :: zatom(:)
-!     real(dp),allocatable,intent(inout) :: x(:,:)
-!     real(dp),intent(out)               :: electrons
-!     real(dp),intent(out)               :: magnetization
-!   end subroutine
-! end interface
-!!=============================
+!=============================
 
  write(*,*)
  write(*,*) 'Welcome to the fascinating world of ATOM'
@@ -218,7 +197,7 @@ program atom
  ! reading input file
 ! call read_inputparameter(calc_type,nspin,nscf,alpha_mixing,print_volume,basis_name,zatom,electrons,magnetization,basis_element)
  call read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
-                                   basis_name,electrons,magnetization,basis_element)
+                                   basis_name,electrons,magnetization)
 
  !
  ! Nucleus-nucleus repulsion contribution to the energy
@@ -243,7 +222,6 @@ program atom
  allocate(p_matrix(basis%nbf,basis%nbf,nspin))
  allocate(p_matrix_old(basis%nbf,basis%nbf,nspin))
  allocate(energy(basis%nbf,nspin))
- allocate(energy_old(basis%nbf,nspin))
  allocate(occupation(basis%nbf,nspin))
  allocate(exchange_m_vxc_diag(basis%nbf,nspin))
  allocate(self_energy_old(basis%nbf,basis%nbf,nspin))
@@ -272,10 +250,10 @@ program atom
  !
  ! Set up the electron repulsion integrals
  !
- ! ERI are stored privately in the module m_eri
+ ! ERI are stored "privately" in the module m_eri
  call start_clock(timing_integrals)
  call allocate_eri(basis%nbf)
- call calculate_eri2(basis)
+ call calculate_eri_faster(basis)
  call stop_clock(timing_integrals)
 ! call negligible_eri(1.0e-8_dp)
  !
@@ -384,7 +362,8 @@ program atom
 
  !
  ! Initialize the SCF mixing procedure
- call init_scf(basis%nbf,nspin,simple_mixing,alpha_mixing)
+! call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
+ call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
 
  !
  ! Kinetic energy contribution
@@ -418,8 +397,9 @@ program atom
    write(*,'(/,a)') '-------------------------------------------'
    write(*,'(a,x,i4,/)') ' *** SCF cycle No:',iscf
 
-   p_matrix_old = p_matrix
-   call new_p_matrix(p_matrix_old,p_matrix)
+   !
+   ! skip the first iteration
+   if(iscf>1) call new_p_matrix(p_matrix)
    
 
    en%kin  = SUM(hamiltonian_kinetic(:,:,:)*p_matrix(:,:,:))
@@ -535,7 +515,6 @@ program atom
    ! Generalized eigenvalue problem with overlap matrix S
    ! H \phi = E S \phi
    ! save the old eigenvalues
-   energy_old = energy
    do ispin=1,nspin
     write(*,*) 'Diagonalization for spin polarization',ispin
     call diagonalize_generalized_sym(basis%nbf,&
@@ -572,14 +551,8 @@ program atom
    title='=== density matrix P ==='
    call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,p_matrix)
   
-   call check_convergence(p_matrix_old,p_matrix,rms)
-   write(*,*) 'convergence criterium on the density matrix',rms
    !
-   ! Simple mixing
-!   p_matrix = alpha_mixing * p_matrix + ( 1.0_dp - alpha_mixing ) * p_matrix_old
-   
-
- 
+   ! Output the total energy and its components
    write(*,*)
    write(*,'(a25,x,f16.10)') 'Nucleus-Nucleus [Ha]:',en%nuc_nuc
    write(*,'(a25,x,f16.10)') 'Kinetic Energy  [Ha]:',en%kin
@@ -591,20 +564,20 @@ program atom
    write(*,*)
    write(*,'(a25,x,f16.10)') 'Total Energy    [Ha]:',en%tot
    write(*,*)
+
+   !
+   ! Store the history of residuals
+   call store_residual(p_matrix_old,p_matrix)
+   !
+   ! Then check the convergence
+   call check_convergence(scf_loop_convergence)
+   if(scf_loop_convergence) exit
    
  !
  ! end of the big SCF loop
  enddo
 
  call destroy_scf()
-
- if(rms>1.d-3) then
-   msg='SCF convergence is very poor'
-   call issue_warning(msg)
- else if(rms>1.d-5) then
-   msg='SCF convergence is poor'
-   call issue_warning(msg)
- endif
 
  write(*,*) '=================================================='
  write(*,*) 'The SCF loop ends here'
@@ -627,21 +600,6 @@ program atom
  ! in case of DFT + GW
  if( calc_type%need_final_exchange ) then
 
-!TOBEREMOVED   spin_fact = REAL(-nspin+3,dp)
-!TOBEREMOVED   matrix(:,:,:)=0.0_dp
-!TOBEREMOVED   do ispin=1,nspin
-!TOBEREMOVED     do ibf=1,basis%nbf
-!TOBEREMOVED       do jbf=1,basis%nbf
-!TOBEREMOVED         do kbf=1,basis%nbf
-!TOBEREMOVED           do lbf=1,basis%nbf
-!TOBEREMOVED             matrix(ibf,jbf,ispin) = matrix(ibf,jbf,ispin) &
-!TOBEREMOVED                        - eri(ibf,kbf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact
-!TOBEREMOVED           enddo
-!TOBEREMOVED         enddo
-!TOBEREMOVED       enddo
-!TOBEREMOVED     enddo
-!TOBEREMOVED   enddo
-!TOBEREMOVED   en%exx = 0.5_dp*SUM(matrix(:,:,:)*p_matrix(:,:,:))
    call setup_exchange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
    write(*,*) 'EXX [Ha]:',en%exx
 
@@ -716,7 +674,6 @@ program atom
  deallocate(matrix,s_matrix,c_matrix,p_matrix,p_matrix_old)
  deallocate(energy,occupation,exchange_m_vxc_diag)
  deallocate(self_energy_old)
-!ERI deallocate(eri)
  call deallocate_eri()
  if( calc_type%need_dft_xc ) deallocate( vxc_matrix )
 
@@ -827,8 +784,8 @@ subroutine guess_starting_c_matrix(nbf,nspin,c_matrix)
  ! fill the c_matrix with the identity
  c_matrix(:,:,:)=0.0_dp
  do ibf=1,nbf
-!   c_matrix(ibf,ibf,:) = 1.0_dp
-   c_matrix(ibf,modulo(ibf,nbf)+1,:) = 1.0_dp
+   c_matrix(ibf,ibf,:) = 1.0_dp
+!   c_matrix(ibf,modulo(ibf,nbf)+1,:) = 1.0_dp
  enddo
 
 end subroutine guess_starting_c_matrix

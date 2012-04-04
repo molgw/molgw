@@ -381,9 +381,9 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
        if( abs(occupation(lbf,klspin)-occupation(kbf,klspin))<completely_empty ) cycle
        t_kl=t_kl+1
 
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO COLLAPSE(2) PRIVATE(ibf,jbf,ijbf_current)
        do ijspin=1,nspin
+!$OMP PARALLEL DEFAULT(SHARED)
+!$OMP DO PRIVATE(ibf,jbf,ijbf_current)
          do ijbf=1,prod_basis%nbf
            ibf = prod_basis%index_ij(1,ijbf)
            jbf = prod_basis%index_ij(2,ijbf)
@@ -398,9 +398,9 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 
 
          enddo
-       enddo
 !$OMP END DO
 !$OMP END PARALLEL
+       enddo
      enddo
    enddo
  enddo
@@ -784,17 +784,6 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
        if(method==QS) then
 
          do borbital=1,basis%nbf
-           !
-           ! Take care about the energies that may lie in the vicinity of the
-           ! poles of Sigma
-!%!                  if( ABS( energy(borbital,ispin) - energy(iorbital,ispin) + wpol%pole(ipole) ) < aimag(eta) ) then
-!%!       !             write(*,*) 'avoid pole', ket(ipole,1:3),bra(ipole,1:3)
-!%!                    energy_complex = energy(borbital,ispin)  + (0.0_dp,1.0_dp) &
-!%!       &                * ( aimag(eta) - ABS( energy(borbital,ispin) - energy(iorbital,ispin) + wpol%pole(ipole) ) )
-!%!                  else
-!%!                    energy_complex = energy(borbital,ispin) 
-!%!                  endif
-
            do aorbital=1,basis%nbf
 
              selfenergy_tmp(1,aorbital,borbital,ispin) = selfenergy_tmp(1,aorbital,borbital,ispin) &
@@ -813,16 +802,6 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
 !           do borbital=1,basis%nbf
            borbital=aorbital
              do iomegai=1,nomegai
-               !
-               ! Take care about the energies that may lie in the vicinity of the
-               ! poles of Sigma
-!%!                    if( ABS( energy(borbital,ispin) + omegai(iomegai) - energy(iorbital,ispin) + wpol%pole(ipole) ) < aimag(eta) ) then
-!%!     !                 write(*,*) 'avoid pole'
-!%!                      energy_complex = energy(borbital,ispin)  + (0.0_dp,1.0_dp) &
-!%!     &                    * ( aimag(eta) - ABS( energy(borbital,ispin) + omegai(iomegai) - energy(iorbital,ispin) + wpol%pole(ipole) ) )
-!%!                    else
-!%!                      energy_complex = energy(borbital,ispin) 
-!%!                    endif
                selfenergy_tmp(iomegai,aorbital,borbital,ispin) = selfenergy_tmp(iomegai,aorbital,borbital,ispin) &
                         - bra(ipole,aorbital) * ket(ipole,borbital) &
                           * REAL(  fact_empty / ( energy(borbital,ispin) + ieta + omegai(iomegai) - energy(iorbital,ispin) + wpol%pole(ipole)     ) &

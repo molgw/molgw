@@ -448,7 +448,7 @@ end subroutine calculate_eri
 #endif
 
 !=========================================================================
-subroutine calculate_eri2(basis)
+subroutine calculate_eri_faster(basis)
  use ISO_C_BINDING
  use m_definitions
  use m_tools,only: boys_function
@@ -870,7 +870,7 @@ subroutine calculate_eri2(basis)
  write(*,*) 'Done!'
  write(*,*)
 
-end subroutine calculate_eri2
+end subroutine calculate_eri_faster
 
 
 !=========================================================================
