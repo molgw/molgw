@@ -706,7 +706,7 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
 !=====
  spin_fact = REAL(-nspin+3,dp)
 
- write(msg,'(es8.2)') AIMAG(ieta)
+ write(msg,'(es9.2)') AIMAG(ieta)
  msg='small complex number is '//msg
  call issue_warning(msg)
 

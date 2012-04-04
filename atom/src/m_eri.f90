@@ -29,7 +29,7 @@ subroutine allocate_eri(nbf)
 #endif
 
  allocate(eri_buffer(nsize),stat=info)
- write(*,'(/,a,f8.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*dp/1024**3,' [Gb]'
+ write(*,'(/,a,f8.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb]'
  if(info==0) then
    write(*,*) 'success'
  else
@@ -51,7 +51,7 @@ subroutine allocate_eri_eigen(nspin)
 !===== 
 
  allocate(eri_eigen_buffer(nsize,nspin,nspin),stat=info)
- write(*,'(/,a,f8.3,a)') ' Allocating the ERI array: ',nspin**2*REAL(nsize,dp)*dp/1024**2,' [Mb]'
+ write(*,'(/,a,f8.3,a)') ' Allocating the ERI array: ',nspin**2*REAL(nsize,dp)*prec_eri/1024**3,' [Gb]'
  if(info==0) then
    write(*,*) 'success'
  else

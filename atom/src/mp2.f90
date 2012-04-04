@@ -411,7 +411,7 @@ subroutine full_ci_2electrons_spin(spinstate,nbf,h_1e,c_matrix)
 
  write(*,*)
  write(*,*) 'normalization',SUM(eigenvector(:,1)**2)
- write(*,'(i4,2x,20(x,f7.5))') 1,eigenvector(1:min(20,nconf),1)
+ write(*,'(i4,2x,20(x,f7.4))') 1,eigenvector(1:min(20,nconf),1)
  write(*,*)
  write(*,'(a30,2x,f12.6)') 'CI ground-state energy [Ha]:',energy(1)
  write(*,'(a30,2x,f12.6)') 'correlation energy [Ha]:',energy(1)-hamiltonian(1,1)

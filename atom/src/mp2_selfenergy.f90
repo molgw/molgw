@@ -52,7 +52,7 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
  emp2_ring = 0.0_dp
  emp2_sox  = 0.0_dp
 
- write(msg,'(es8.2)') AIMAG(ieta)
+ write(msg,'(es9.2)') AIMAG(ieta)
  msg='small complex number is '//msg
  call issue_warning(msg)
 
