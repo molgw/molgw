@@ -23,7 +23,6 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
 !=====
  integer,parameter :: nx=40
  integer,parameter :: nangular=38 ! 86
-! integer,parameter :: nr=nx*nangular
  real(dp)          :: weight
  real(dp)          :: x1(nangular)
  real(dp)          :: y1(nangular)
@@ -35,19 +34,15 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
  real(dp) :: rhor_r(nspin),grad_rhor(3,nspin),sigma2(2*nspin-1),rr(3)
  real(dp) :: xa(nx),wxa(nx)
  real(dp) :: normalization(nspin)
-! integer,parameter :: ixc=1  !Slater exchange
- integer,parameter :: ixc=2  !Teter exchange-correlation
 
 #ifdef HAVE_LIBXC
  type(xc_f90_pointer_t) :: xc_func1,xc_func2
  type(xc_f90_pointer_t) :: xc_info1,xc_info2
 #endif
 
+ real(dp) :: basis_function_r(basis%nbf)
  real(dp) :: vxc1(nspin),vxc2(nspin),exc1,exc2,vsigma1(2*nspin-1),vsigma2(2*nspin-1)
  real(dp) :: vxc_av(nspin)
-! real(dp) :: dedd(nr,nspin)
-! real(dp) :: dedgd(nr,3,nspin)
-! real(dp) :: tmpx(nr,nspin),tmpy(nr,nspin),tmpz(nr,nspin)
  real(dp) :: dedd_r(nspin)
  real(dp) :: dedgd_r(3,nspin)
  real(dp) :: tmpx_r(nspin),tmpy_r(nspin),tmpz_r(nspin)
@@ -110,11 +105,9 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
 
 
  do iatom=1,natom
-
-!!!! !$OMP PARALLEL DEFAULT(SHARED)
-!!!! !$OMP DO REDUCTION(+:exc_xc,normalization,vxc_ij) PRIVATE(rr,weight,mu,s_becke,p_becke,fact_becke,rhor_r,grad_rhor,exc1,exc2,vxc1,vxc2,dedd_r,dedgd_r) COLLAPSE(2)
    do ix=1,nx
      do iangular=1,nangular
+
        rr(1) = xa(ix) * x1(iangular) + x(1,iatom) 
        rr(2) = xa(ix) * y1(iangular) + x(2,iatom)
        rr(3) = xa(ix) * z1(iangular) + x(3,iatom)
@@ -142,7 +135,19 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
        fact_becke = p_becke(iatom) / SUM( p_becke(:) )
   
   
- call start_clock(timing_tmp5)
+       !
+       ! first calculate all the needed basis function evaluations at point rr
+!!! call start_clock(timing_tmp5)
+!!! !$OMP PARALLEL DEFAULT(SHARED)
+!!! !$OMP DO 
+       do ibf=1,basis%nbf
+         basis_function_r(ibf) = eval_basis_function(basis%bf(ibf),rr)
+       enddo
+!!! !$OMP END DO
+!!! !$OMP END PARALLEL
+!!! call stop_clock(timing_tmp5)
+
+
        rhor_r(:)=0.0_dp
        do ispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
@@ -150,13 +155,15 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
          do jbf=1,basis%nbf
            do ibf=1,basis%nbf
              rhor_r(ispin)=rhor_r(ispin)+p_matrix(ibf,jbf,ispin)&
-                               * eval_basis_function(basis%bf(ibf),rr) * eval_basis_function(basis%bf(jbf),rr)
+                               * basis_function_r(ibf) &
+                               * basis_function_r(jbf) 
+!             rhor_r(ispin)=rhor_r(ispin)+p_matrix(ibf,jbf,ispin)&
+!                               * eval_basis_function(basis%bf(ibf),rr) * eval_basis_function(basis%bf(jbf),rr)
            enddo
          enddo
 !$OMP END DO
 !$OMP END PARALLEL
        enddo
- call stop_clock(timing_tmp5)
   
        normalization(:) = normalization(:) + rhor_r(:) * weight * fact_becke
   
@@ -165,9 +172,9 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
          do ispin=1,nspin
            do jbf=1,basis%nbf
              do ibf=1,basis%nbf
-               grad_rhor(:,ispin)=grad_rhor(:,ispin)+p_matrix(ibf,jbf,ispin)&
-                    *( eval_basis_function_derivative(basis%bf(ibf),rr) * eval_basis_function(basis%bf(jbf),rr) &
-                     + eval_basis_function_derivative(basis%bf(jbf),rr) * eval_basis_function(basis%bf(ibf),rr) ) 
+               grad_rhor(:,ispin) = grad_rhor(:,ispin) + p_matrix(ibf,jbf,ispin) &
+                    *( eval_basis_function_derivative(basis%bf(ibf),rr) * basis_function_r(jbf) &
+                     + eval_basis_function_derivative(basis%bf(jbf),rr) * basis_function_r(ibf) ) 
   
              enddo
            enddo
@@ -180,7 +187,9 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
          endif
        endif
   
-!LIBXC called
+       !
+       ! LIBXC call
+       !
        if(xc_f90_info_family(xc_info1) == XC_FAMILY_LDA) then 
          if(dft_xc(1)/=0) then
            call xc_f90_lda_exc_vxc(xc_func1,1,rhor_r(1),exc1,vxc1(1))
@@ -243,27 +252,23 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
          tmpz_r(:) = 0.0_dp
        endif
   
- call start_clock(timing_tmp1)
        do ispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO COLLAPSE(2)
          do jbf=1,basis%nbf
            do ibf=1,basis%nbf
              vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight * fact_becke &
-                 * eval_basis_function(basis%bf(ibf),rr) * eval_basis_function(basis%bf(jbf),rr) &
-                 * ( dedd_r(ispin) - tmpx_r(ispin) - tmpy_r(ispin) - tmpz_r(ispin) )
+                 * ( dedd_r(ispin) - tmpx_r(ispin) - tmpy_r(ispin) - tmpz_r(ispin) ) &
+                               * basis_function_r(ibf) * basis_function_r(jbf)  
            enddo
          enddo
 !$OMP END DO
 !$OMP END PARALLEL
        enddo
- call stop_clock(timing_tmp1)
   
-     enddo
+
+     enddo ! loop on the angular grid
    enddo ! loop on the radial grid
-!!!! !$OMP END DO
-!!!! !$OMP END PARALLEL
-  
  enddo ! loop on the atoms
 
 
