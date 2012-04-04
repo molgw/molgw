@@ -11,7 +11,6 @@ program atom
  use m_basis_set
  use m_eri
  use m_gw
- use m_dft
 #ifdef OPENMP
  use omp_lib
 #endif
@@ -278,6 +277,7 @@ program atom
  call allocate_eri(basis%nbf)
  call calculate_eri2(basis)
  call stop_clock(timing_integrals)
+! call negligible_eri(1.0e-8_dp)
  !
  ! In all the following cases, one needs the Coulomb integral
  ! in the eigenvector basis
@@ -627,20 +627,23 @@ program atom
  ! in case of DFT + GW
  if( calc_type%need_final_exchange ) then
 
-   spin_fact = REAL(-nspin+3,dp)
-   matrix(:,:,:)=0.0_dp
-   do ispin=1,nspin
-     do ibf=1,basis%nbf
-       do jbf=1,basis%nbf
-         do kbf=1,basis%nbf
-           do lbf=1,basis%nbf
-             matrix(ibf,jbf,ispin) = matrix(ibf,jbf,ispin) &
-                        - eri(ibf,kbf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact
-           enddo
-         enddo
-       enddo
-     enddo
-   enddo
+!TOBEREMOVED   spin_fact = REAL(-nspin+3,dp)
+!TOBEREMOVED   matrix(:,:,:)=0.0_dp
+!TOBEREMOVED   do ispin=1,nspin
+!TOBEREMOVED     do ibf=1,basis%nbf
+!TOBEREMOVED       do jbf=1,basis%nbf
+!TOBEREMOVED         do kbf=1,basis%nbf
+!TOBEREMOVED           do lbf=1,basis%nbf
+!TOBEREMOVED             matrix(ibf,jbf,ispin) = matrix(ibf,jbf,ispin) &
+!TOBEREMOVED                        - eri(ibf,kbf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact
+!TOBEREMOVED           enddo
+!TOBEREMOVED         enddo
+!TOBEREMOVED       enddo
+!TOBEREMOVED     enddo
+!TOBEREMOVED   enddo
+!TOBEREMOVED   en%exx = 0.5_dp*SUM(matrix(:,:,:)*p_matrix(:,:,:))
+   call setup_exchange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
+   write(*,*) 'EXX [Ha]:',en%exx
 
    exchange_m_vxc_diag(:,:) = 0.0_dp
    do ispin=1,nspin
@@ -654,8 +657,6 @@ program atom
      enddo
    enddo
 
-   en%exx = 0.5_dp*SUM(matrix(:,:,:)*p_matrix(:,:,:))
-   write(*,*) 'EXX [Ha]:',en%exx
 
  else
    exchange_m_vxc_diag(:,:) = 0.0_dp
@@ -674,7 +675,7 @@ program atom
 #endif
    call stop_clock(timing_pola)
    write(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',en%rpa
-   en%tot = en%tot + en%rpa
+   en%tot = en%tot - en%xc + en%exx + en%rpa
    write(*,'(/,a,f14.8)') ' RPA Total energy [Ha]: ',en%tot
 
    call start_clock(timing_self)

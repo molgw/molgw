@@ -91,6 +91,7 @@ contains
 
  enddo
 
+ write(*,*)
  write(*,*) 'Total number of basis functions',basis%nbf
  write(*,*)
  allocate(basis%bf(basis%nbf))

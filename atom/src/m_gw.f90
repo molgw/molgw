@@ -212,6 +212,7 @@ endif
  call start_clock(timing_diago_h2p)
  call diagonalize_general(wpol%npole,h_2p,eigenvalue,eigenvector)
  call stop_clock(timing_diago_h2p)
+ write(*,*) 'diago finished'
    
  call start_clock(timing_inversion_s2p)
  call invert(wpol%npole,eigenvector,eigenvector_inv)
@@ -329,19 +330,8 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
              t_kl=t_kl+1
 
 #ifndef CHI0
-#ifdef TEST
-             h_2p(t_ij,t_kl) = eri_eigenstate(iorbital,jorbital,korbital,lorbital,ijspin,klspin) &
-                          * deltaf( occupation(iorbital,ijspin) , occupation(jorbital,ijspin) )  
-!                          * deltaf( occupation(korbital,klspin) , occupation(lorbital,klspin) ) 
-!if(t_kl==1) write(111,'(i6,x,3(x,e14.8))') t_ij,occupation(iorbital,ijspin),occupation(jorbital,ijspin),( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
-!if(t_kl==1) write(112,'(i6,x,3(x,e14.8))') t_ij,occupation(iorbital,ijspin),occupation(jorbital,ijspin),deltaf( occupation(iorbital,ijspin) , occupation(jorbital,ijspin) )
-
-!                        * SQRT( ABS(occupation(korbital,klspin)-occupation(lorbital,klspin) ))
-#else
              h_2p(t_ij,t_kl) = eri_eigenstate(iorbital,jorbital,korbital,lorbital,ijspin,klspin) &
                         * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
-#endif
-
 #else
              h_2p(t_ij,t_kl) = 0.0_dp
 #endif
@@ -373,6 +363,7 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  call start_clock(timing_diago_h2p)
  call diagonalize_general(wpol%npole,h_2p,eigenvalue,eigenvector)
  call stop_clock(timing_diago_h2p)
+ write(*,*) 'diago finished'
    
  call start_clock(timing_inversion_s2p)
  call invert(wpol%npole,eigenvector,eigenvector_inv)
@@ -384,38 +375,34 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  wpol%residu_right(:,:) = 0.0_dp
  t_kl=0
  do klspin=1,nspin
- do kbf=1,basis%nbf 
- do lbf=1,basis%nbf
-   if(kbf==lbf) cycle  ! intra state transitions are not allowed!
-   if( abs(occupation(lbf,klspin)-occupation(kbf,klspin))<completely_empty ) cycle
-   t_kl=t_kl+1
+   do kbf=1,basis%nbf 
+     do lbf=1,basis%nbf
+       if(kbf==lbf) cycle  ! intra state transitions are not allowed!
+       if( abs(occupation(lbf,klspin)-occupation(kbf,klspin))<completely_empty ) cycle
+       t_kl=t_kl+1
 
-   do ijspin=1,nspin
-   do ijbf=1,prod_basis%nbf
-     ibf = prod_basis%index_ij(1,ijbf)
-     jbf = prod_basis%index_ij(2,ijbf)
+!$OMP PARALLEL DEFAULT(SHARED)
+!$OMP DO COLLAPSE(2) PRIVATE(ibf,jbf,ijbf_current)
+       do ijspin=1,nspin
+         do ijbf=1,prod_basis%nbf
+           ibf = prod_basis%index_ij(1,ijbf)
+           jbf = prod_basis%index_ij(2,ijbf)
 
-     ijbf_current = ijbf+prod_basis%nbf*(ijspin-1)
-#ifdef TEST
-     wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
-                  + eri_eigenstate(ibf,jbf,kbf,lbf,ijspin,klspin) *  eigenvector(t_kl,:)
+           ijbf_current = ijbf+prod_basis%nbf*(ijspin-1)
 
-     wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
-                  + eri_eigenstate(kbf,lbf,ibf,jbf,klspin,ijspin) * eigenvector_inv(:,t_kl) &
-                                   * deltaf( occupation(kbf,klspin) , occupation(lbf,klspin) )
-#else
-     wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
-                  + eri_eigenstate(ibf,jbf,kbf,lbf,ijspin,klspin) *  eigenvector(t_kl,:)
-     wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
-                  + eri_eigenstate(kbf,lbf,ibf,jbf,klspin,ijspin) * eigenvector_inv(:,t_kl) &
-                                   * ( occupation(kbf,klspin)-occupation(lbf,klspin) )
-#endif
+           wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
+                        + eri_eigenstate(ibf,jbf,kbf,lbf,ijspin,klspin) *  eigenvector(t_kl,:)
+           wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
+                        + eri_eigenstate(kbf,lbf,ibf,jbf,klspin,ijspin) * eigenvector_inv(:,t_kl) &
+                                         * ( occupation(kbf,klspin)-occupation(lbf,klspin) )
 
 
+         enddo
+       enddo
+!$OMP END DO
+!$OMP END PARALLEL
+     enddo
    enddo
-   enddo
- enddo
- enddo
  enddo
 
  write(*,*)
@@ -429,19 +416,12 @@ contains
  real(dp),intent(in) :: occ1,occ2
  real(dp)            :: deltaf
  !=====
-#ifdef TEST
- if(occ1-occ2 > 0.0_dp) then
-   deltaf =   occ1*(spin_fact-occ2)/spin_fact
- else
-   deltaf = - occ2*(spin_fact-occ1)/spin_fact 
- endif
-#else
  if(occ1-occ2 > 0.0_dp) then
    deltaf =  occ1*(spin_fact-occ2)/spin_fact
  else
    deltaf = -occ2*(spin_fact-occ1)/spin_fact
  endif
-#endif
+
  end function deltaf
 end subroutine polarizability_casida_noaux
 #endif

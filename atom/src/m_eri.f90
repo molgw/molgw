@@ -509,8 +509,6 @@ subroutine calculate_eri2(basis)
 
  write(*,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
 
- call start_clock(timing_tmp1)
- 
  nint_gaussian=0
  ishell=0
  do ibf=1,basis%nbf
@@ -553,7 +551,6 @@ subroutine calculate_eri2(basis)
  enddo
  nshell=ishell
  
- call stop_clock(timing_tmp1)
  call start_clock(timing_tmp2)
  write(*,*) 'number of shells',nshell
 
@@ -985,20 +982,19 @@ end function libint_ordering
 
 
 !=========================================================================
-subroutine test_eri(basis,eri)
+subroutine test_eri(basis)
  use m_definitions
  use m_basis_set
  implicit none
  type(basis_set),intent(in)   :: basis
- real(dp),intent(in)          :: eri(basis%nbf,basis%nbf,basis%nbf,basis%nbf)
 !=====
  integer                      :: ibf,jbf,kbf,lbf
 !=====
 
- do ibf=1,basis%nbf
-   do jbf=1,basis%nbf
-     do kbf=1,basis%nbf
-       do lbf=1,basis%nbf
+ do ibf=1,nbf_eri
+   do jbf=1,nbf_eri
+     do kbf=1,nbf_eri
+       do lbf=1,nbf_eri
          if( ABS(eri(ibf,jbf,kbf,lbf) - eri(kbf,lbf,ibf,jbf)) > 1.d-6 ) then
            write(*,*) ibf,jbf,kbf,lbf,eri(ibf,jbf,kbf,lbf)
            write(*,*) kbf,lbf,ibf,jbf,eri(kbf,lbf,ibf,jbf)
@@ -1200,5 +1196,32 @@ subroutine transform_eri_basis_fast(nbf,nspin,c_matrix,eri_eigenstate)
 
 end subroutine transform_eri_basis_fast
 
+!=========================================================================
+subroutine negligible_eri(tol)
+ implicit none
+ real(dp),intent(in) :: tol
+!=====
+ integer             :: icount,ibf,jbf,kbf,lbf
+!=====
 
+ icount=0
+ do lbf=1,nbf_eri
+   do kbf=1,nbf_eri
+     do jbf=1,nbf_eri
+       do ibf=1,nbf_eri
+         if( eri(ibf,jbf,kbf,lbf) < tol ) icount=icount+1
+       enddo
+     enddo
+   enddo
+ enddo
+
+ write(*,*) ' number of negligible integrals <',tol
+ write(*,*) icount, ' / ',nbf_eri**4,REAL(icount,dp)/REAL(nbf_eri,dp)**4*100.0_dp,' [%]'
+
+
+end subroutine negligible_eri
+
+
+
+!=========================================================================
 end module m_eri

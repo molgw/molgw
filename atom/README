@@ -2,7 +2,7 @@
                  ATOM
 =========================================
 
-Ab initio calculations for a single atom
+Ab initio calculations for atoms and molecules
 
 Features:
 _ Hartree-Fock
@@ -40,7 +40,6 @@ To be done:
 * symmetrize the Coulomb integrals to save memory with a factor 8 (not really a good idea for MP2, GW etc.) (i'm not sure it is really interesting)
 
 Future:
-* molecules
 * pure gaussians not only cartesian
 * pseudopotentials (e.g. Goedecker flavor)
 
