@@ -1,31 +1,53 @@
  
- Welcome to the facinating world of ATOM
+ Welcome to the fascinating world of ATOM
  
  
+
+ WARNING: OPENMP option is activated with threads number     1
+
+ WARNING: calculation name: GW
 
  Summary of the input parameters 
 
   calculation type:   GW
-            Atom Z:   3.0000
+             Natom:   1
          Electrons:   3.0000
+            Charge:   0.0000
      Magnetization:   1.0000
          Basis set:   6-31G                                                                                               
  Spin polarization:   2
          SCF steps:  30
+            Mixing:   0.7000
+ 
+ ================================
+       atom list
+                        bohr                                        angstrom
+  Li     0.000000     0.000000     0.000000           0.000000     0.000000     0.000000
+ ================================
  
  
- Element:    Li
+ Element used for Z value:    Li
+ Element used for the basis:  Li
  Basis type: 6-31G
+
+ WARNING: basis file used: Li_6-31G
  
  open the basis set file Li_6-31G
- number of basis functions found           9
+ 
+ Total number of basis functions           9
  
  Basis set is ready and fit
 
+ Allocating the ERI array:    0.000 [Gb]
+ success
+
  Calculate and store all the Electron Repulsion Integrals (ERI)
  number of shells          14
- Done.
+ Done!
  
+
+ Allocating the ERI array:    0.200 [Mb]
+ success
 
  === occupations ===
            spin 1       spin 2 
@@ -59,19 +81,23 @@
    8      0.21610      0.25981      5.88050      7.06975
    9      0.21610      0.25981      5.88050      7.06975
  
- convergence criterium on the density matrix  0.730171789320196     
  
- Kinetic Energy  [Ha]:   7.39741543036234     
- Nucleus Energy  [Ha]:  -17.2549361418740     
- Hartree Energy  [Ha]:   4.19741882687526     
- Exchange Energy [Ha]:  -1.81450512014638     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.3974154304
+    Nucleus Energy  [Ha]:   -17.2549361419
+    Hartree Energy  [Ha]:     4.1974188269
+    Exchange Energy [Ha]:    -1.8145051201
  
- Total Energy    [Ha]:  -7.47460700478278     
+    Total Energy    [Ha]:    -7.4746070048
+ 
+ convergence criterium on the density matrix  0.730171789320218     
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:    2
 
+ A simple mixing of the density matrix is used
  Diagonalization for spin polarization           1
  Diagonalization for spin polarization           2
 
@@ -88,19 +114,23 @@
    8      0.21264      0.24882      5.78634      6.77076
    9      0.21264      0.25019      5.78634      6.80797
  
- convergence criterium on the density matrix  0.356960241687880     
  
- Kinetic Energy  [Ha]:   7.45877340800177     
- Nucleus Energy  [Ha]:  -17.2547776735719     
- Hartree Energy  [Ha]:   4.15593322653283     
- Exchange Energy [Ha]:  -1.79988327328796     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4587734080
+    Nucleus Energy  [Ha]:   -17.2547776736
+    Hartree Energy  [Ha]:     4.1559332265
+    Exchange Energy [Ha]:    -1.7998832733
  
- Total Energy    [Ha]:  -7.43995431232525     
+    Total Energy    [Ha]:    -7.4399543123
+ 
+ convergence criterium on the density matrix  0.356960241687888     
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:    3
 
+ A simple mixing of the density matrix is used
  Diagonalization for spin polarization           1
  Diagonalization for spin polarization           2
 
@@ -117,103 +147,101 @@
    8      0.21019      0.24251      5.71953      6.59905
    9      0.21019      0.24491      5.71953      6.66428
  
- convergence criterium on the density matrix  0.188735095632384     
  
- Kinetic Energy  [Ha]:   7.46789324020170     
- Nucleus Energy  [Ha]:  -17.2344888766086     
- Hartree Energy  [Ha]:   4.12816434510563     
- Exchange Energy [Ha]:  -1.79433844968441     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4678932402
+    Nucleus Energy  [Ha]:   -17.2344888766
+    Hartree Energy  [Ha]:     4.1281643451
+    Exchange Energy [Ha]:    -1.7943384497
  
- Total Energy    [Ha]:  -7.43276974098570     
+    Total Energy    [Ha]:    -7.4327697410
+ 
+ convergence criterium on the density matrix  0.188735095632383     
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:    4
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      4.314582     -4.439909      1.125326
+ DIIS predicted residual  3.590348365031795E-002
+ 
  Diagonalization for spin polarization           1
  Diagonalization for spin polarization           2
 
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.46666     -2.44990    -67.12132    -66.66525
-   2     -0.19500      0.03560     -5.30631      0.96862
-   3      0.04072      0.07317      1.10812      1.99097
-   4      0.04072      0.07317      1.10812      1.99097
-   5      0.04072      0.07317      1.10812      1.99097
-   6      0.19620      0.23878      5.33883      6.49753
-   7      0.20855      0.23878      5.67500      6.49753
-   8      0.20855      0.23878      5.67500      6.49753
-   9      0.20855      0.24179      5.67500      6.57943
+   1     -2.47757     -2.46099    -67.41814    -66.96697
+   2     -0.19522      0.03233     -5.31234      0.87981
+   3      0.03749      0.07160      1.02025      1.94830
+   4      0.03749      0.07160      1.02025      1.94830
+   5      0.03749      0.07160      1.02025      1.94830
+   6      0.19667      0.23350      5.35174      6.35392
+   7      0.20589      0.23350      5.60246      6.35392
+   8      0.20589      0.23350      5.60246      6.35392
+   9      0.20589      0.23737      5.60246      6.45912
  
- convergence criterium on the density matrix  0.107741412772045     
  
- Kinetic Energy  [Ha]:   7.46534946990736     
- Nucleus Energy  [Ha]:  -17.2160919337011     
- Hartree Energy  [Ha]:   4.11044592347823     
- Exchange Energy [Ha]:  -1.79105963921826     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4466551475
+    Nucleus Energy  [Ha]:   -17.1779452633
+    Hartree Energy  [Ha]:     4.0828370520
+    Exchange Energy [Ha]:    -1.7854054883
  
- Total Energy    [Ha]:  -7.43135617953379     
+    Total Energy    [Ha]:    -7.4338585521
+ 
+ convergence criterium on the density matrix  1.312559333242564E-002
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:    5
 
- 
- spectral function initialized with          44 poles
-            second index size          90
- Memory [Mb]             0.
- 
+ A Pulay mixing of the density matrix is used
 
- calculating CHI alla casida
- obtain the ERI in the eigenvector basis
- == ijspin            1
- == ijspin            2
- diago 2-particle hamiltonian
- matrix          44 x          44
+ alpha DIIS:      1.208789     -0.963954      1.051782     -0.296617
+ DIIS predicted residual  3.924969318661464E-003
  
- calculate the RPA energy using the Tamm-Dancoff decomposition
- formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
-
- RPA energy [Ha]:    -0.00774332
- 
- perform a QP self-consistent GW calculation
- 
-HOMO energy    [Ha]:    -0.195003
-LUMO energy    [Ha]:     0.035596
-HOMO-LUMO gap  [Ha]:     0.230599
- 
- 
- spectral function destroyed
  Diagonalization for spin polarization           1
  Diagonalization for spin polarization           2
 
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.44309     -2.42736    -66.47996    -66.05182
-   2     -0.20131      0.02033     -5.47795      0.55323
-   3      0.03983      0.06779      1.08384      1.84453
-   4      0.03983      0.06779      1.08384      1.84453
-   5      0.03983      0.06779      1.08384      1.84453
-   6      0.18794      0.22420      5.11424      6.10080
-   7      0.20158      0.22430      5.48529      6.10352
-   8      0.20158      0.22430      5.48529      6.10352
-   9      0.20158      0.22430      5.48529      6.10352
+   1     -2.47763     -2.46121    -67.41966    -66.97291
+   2     -0.19586      0.03216     -5.32952      0.87499
+   3      0.03728      0.07152      1.01456      1.94617
+   4      0.03728      0.07152      1.01456      1.94617
+   5      0.03728      0.07152      1.01456      1.94617
+   6      0.19679      0.23316      5.35491      6.34462
+   7      0.20581      0.23316      5.60048      6.34462
+   8      0.20581      0.23316      5.60048      6.34462
+   9      0.20581      0.23709      5.60048      6.45168
  
- convergence criterium on the density matrix  5.986833845384149E-002
  
- Kinetic Energy  [Ha]:   7.46149867432722     
- Nucleus Energy  [Ha]:  -17.2031218053359     
- Hartree Energy  [Ha]:   4.09944304500504     
- Exchange Energy [Ha]:  -1.78897560523010     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4530943393
+    Nucleus Energy  [Ha]:   -17.1810566515
+    Hartree Energy  [Ha]:     4.0821534720
+    Exchange Energy [Ha]:    -1.7856078434
  
- Total Energy    [Ha]:  -7.43115569123374     
+    Total Energy    [Ha]:    -7.4314166836
+ 
+ convergence criterium on the density matrix  5.393195336639544E-003
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:    6
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      0.882410      0.200325     -0.347813      0.348416     -0.083338
+ DIIS predicted residual  7.201847277546162E-005
+ 
  
  spectral function initialized with          44 poles
             second index size          90
@@ -222,21 +250,31 @@ HOMO-LUMO gap  [Ha]:     0.230599
 
  calculating CHI alla casida
  obtain the ERI in the eigenvector basis
+ subroutine is order N^5
+ The basis transform is using OPENMP
  == ijspin            1
  == ijspin            2
+ time (s)  2.128839492797852E-003
+ ERI in the eigenvector basis obtained
+ 
  diago 2-particle hamiltonian
  matrix          44 x          44
+ diago finished
  
  calculate the RPA energy using the Tamm-Dancoff decomposition
  formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
 
- RPA energy [Ha]:    -0.00766445
+ RPA energy [Ha]:    -0.00771864
+
+ RPA Total energy [Ha]:    -7.43913533
+
+ WARNING: small complex number is 1.00E-03
  
  perform a QP self-consistent GW calculation
  
-HOMO energy    [Ha]:    -0.201311
-LUMO energy    [Ha]:     0.020331
-HOMO-LUMO gap  [Ha]:     0.221642
+HOMO energy    [Ha]:    -0.195856
+LUMO energy    [Ha]:     0.032155
+HOMO-LUMO gap  [Ha]:     0.228011
  
  
  spectral function destroyed
@@ -246,29 +284,37 @@ HOMO-LUMO gap  [Ha]:     0.221642
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.43670     -2.42124    -66.30588    -65.88524
-   2     -0.20313      0.01543     -5.52742      0.41976
-   3      0.03916      0.06595      1.06561      1.79452
-   4      0.03916      0.06595      1.06561      1.79452
-   5      0.03916      0.06595      1.06561      1.79452
-   6      0.18570      0.21891      5.05325      5.95677
-   7      0.19910      0.21940      5.41776      5.97018
-   8      0.19910      0.21940      5.41776      5.97018
-   9      0.19910      0.21940      5.41776      5.97018
+   1     -2.44907     -2.43368    -66.64266    -66.22391
+   2     -0.20163      0.01795     -5.48672      0.48849
+   3      0.03778      0.06659      1.02793      1.81214
+   4      0.03778      0.06659      1.02793      1.81214
+   5      0.03778      0.06659      1.02793      1.81214
+   6      0.18772      0.22087      5.10803      6.01021
+   7      0.19962      0.22087      5.43192      6.01021
+   8      0.19962      0.22087      5.43192      6.01021
+   9      0.19962      0.22135      5.43192      6.02317
  
- convergence criterium on the density matrix  3.148891677856478E-002
  
- Kinetic Energy  [Ha]:   7.45738288841168     
- Nucleus Energy  [Ha]:  -17.1937096370827     
- Hartree Energy  [Ha]:   4.09264226651080     
- Exchange Energy [Ha]:  -1.78747931164428     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4533076453
+    Nucleus Energy  [Ha]:   -17.1814139509
+    Hartree Energy  [Ha]:     4.0824266276
+    Exchange Energy [Ha]:    -1.7855801452
  
- Total Energy    [Ha]:  -7.43116379380452     
+    Total Energy    [Ha]:    -7.4312598232
+ 
+ convergence criterium on the density matrix  6.770702332837697E-003
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:    7
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      0.023633      0.870648      0.183691     -0.330092      0.330934     -0.078814
+ DIIS predicted residual  2.589398940481980E-006
+ 
  
  spectral function initialized with          44 poles
             second index size          90
@@ -277,21 +323,31 @@ HOMO-LUMO gap  [Ha]:     0.221642
 
  calculating CHI alla casida
  obtain the ERI in the eigenvector basis
+ subroutine is order N^5
+ The basis transform is using OPENMP
  == ijspin            1
  == ijspin            2
+ time (s)  1.893997192382812E-003
+ ERI in the eigenvector basis obtained
+ 
  diago 2-particle hamiltonian
  matrix          44 x          44
+ diago finished
  
  calculate the RPA energy using the Tamm-Dancoff decomposition
  formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
 
- RPA energy [Ha]:    -0.00764775
+ RPA energy [Ha]:    -0.00765747
+
+ RPA Total energy [Ha]:    -7.43891729
+
+ WARNING: small complex number is 1.00E-03
  
  perform a QP self-consistent GW calculation
  
-HOMO energy    [Ha]:    -0.203129
-LUMO energy    [Ha]:     0.015426
-HOMO-LUMO gap  [Ha]:     0.218555
+HOMO energy    [Ha]:    -0.201633
+LUMO energy    [Ha]:     0.017952
+HOMO-LUMO gap  [Ha]:     0.219585
  
  
  spectral function destroyed
@@ -301,29 +357,37 @@ HOMO-LUMO gap  [Ha]:     0.218555
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.43515     -2.41977    -66.26384    -65.84527
-   2     -0.20367      0.01380     -5.54209      0.37545
-   3      0.03878      0.06530      1.05519      1.77699
-   4      0.03878      0.06530      1.05519      1.77699
-   5      0.03878      0.06530      1.05519      1.77699
-   6      0.18505      0.21716      5.03540      5.90918
-   7      0.19817      0.21761      5.39240      5.92155
-   8      0.19817      0.21761      5.39240      5.92155
-   9      0.19817      0.21761      5.39240      5.92155
+   1     -2.44005     -2.42503    -66.39717    -65.98840
+   2     -0.20327      0.01385     -5.53136      0.37677
+   3      0.03787      0.06515      1.03042      1.77272
+   4      0.03787      0.06515      1.03042      1.77272
+   5      0.03787      0.06515      1.03042      1.77272
+   6      0.18542      0.21708      5.04565      5.90699
+   7      0.19779      0.21723      5.38204      5.91103
+   8      0.19779      0.21723      5.38204      5.91103
+   9      0.19779      0.21723      5.38204      5.91103
  
- convergence criterium on the density matrix  1.663567512342751E-002
  
- Kinetic Energy  [Ha]:   7.45484775043689     
- Nucleus Energy  [Ha]:  -17.1883669870499     
- Hartree Energy  [Ha]:   4.08896320249379     
- Exchange Energy [Ha]:  -1.78663100986018     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4532994097
+    Nucleus Energy  [Ha]:   -17.1814292732
+    Hartree Energy  [Ha]:     4.0824539066
+    Exchange Energy [Ha]:    -1.7855807024
  
- Total Energy    [Ha]:  -7.43118704397936     
+    Total Energy    [Ha]:    -7.4312566593
+ 
+ convergence criterium on the density matrix  1.129699353778800E-002
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:    8
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:    -10.913011     13.933462     -1.585412     -0.148198     -0.443265      0.156424
+ DIIS predicted residual  1.525214651137906E-004
+ 
  
  spectral function initialized with          44 poles
             second index size          90
@@ -332,21 +396,31 @@ HOMO-LUMO gap  [Ha]:     0.218555
 
  calculating CHI alla casida
  obtain the ERI in the eigenvector basis
+ subroutine is order N^5
+ The basis transform is using OPENMP
  == ijspin            1
  == ijspin            2
+ time (s)  1.891851425170898E-003
+ ERI in the eigenvector basis obtained
+ 
  diago 2-particle hamiltonian
  matrix          44 x          44
+ diago finished
  
  calculate the RPA energy using the Tamm-Dancoff decomposition
  formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
 
- RPA energy [Ha]:    -0.00764441
+ RPA energy [Ha]:    -0.00764543
+
+ RPA Total energy [Ha]:    -7.43890209
+
+ WARNING: small complex number is 1.00E-03
  
  perform a QP self-consistent GW calculation
  
-HOMO energy    [Ha]:    -0.203668
-LUMO energy    [Ha]:     0.013797
-HOMO-LUMO gap  [Ha]:     0.217465
+HOMO energy    [Ha]:    -0.203273
+LUMO energy    [Ha]:     0.013846
+HOMO-LUMO gap  [Ha]:     0.217120
  
  
  spectral function destroyed
@@ -356,29 +430,37 @@ HOMO-LUMO gap  [Ha]:     0.217465
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.43490     -2.41954    -66.25700    -65.83916
-   2     -0.20383      0.01321     -5.54660      0.35953
-   3      0.03857      0.06506      1.04954      1.77030
-   4      0.03857      0.06506      1.04954      1.77030
-   5      0.03857      0.06506      1.04954      1.77030
-   6      0.18484      0.21652      5.02966      5.89178
-   7      0.19779      0.21691      5.38205      5.90242
-   8      0.19779      0.21691      5.38205      5.90242
-   9      0.19779      0.21691      5.38205      5.90242
+   1     -2.44055     -2.42599    -66.41065    -66.01455
+   2     -0.20374      0.01148     -5.54400      0.31229
+   3      0.03684      0.06412      1.00247      1.74486
+   4      0.03684      0.06412      1.00247      1.74486
+   5      0.03684      0.06412      1.00247      1.74486
+   6      0.18484      0.21449      5.02977      5.83654
+   7      0.19637      0.21449      5.34357      5.83654
+   8      0.19637      0.21449      5.34357      5.83654
+   9      0.19637      0.21455      5.34357      5.83821
  
- convergence criterium on the density matrix  8.954656501063075E-003
  
- Kinetic Energy  [Ha]:   7.45347745363063     
- Nucleus Energy  [Ha]:  -17.1855237052465     
- Hartree Energy  [Ha]:   4.08702345041926     
- Exchange Energy [Ha]:  -1.78617859920853     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4492513047
+    Nucleus Energy  [Ha]:   -17.1704453133
+    Hartree Energy  [Ha]:     4.0737911568
+    Exchange Energy [Ha]:    -1.7839170304
  
- Total Energy    [Ha]:  -7.43120140040515     
+    Total Energy    [Ha]:    -7.4313198822
+ 
+ convergence criterium on the density matrix  4.678169112075000E-002
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:    9
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      0.399240     -5.524706      6.450581     -0.326767      0.011500     -0.009847
+ DIIS predicted residual  3.078261199563156E-005
+ 
  
  spectral function initialized with          44 poles
             second index size          90
@@ -387,21 +469,31 @@ HOMO-LUMO gap  [Ha]:     0.217465
 
  calculating CHI alla casida
  obtain the ERI in the eigenvector basis
+ subroutine is order N^5
+ The basis transform is using OPENMP
  == ijspin            1
  == ijspin            2
+ time (s)  1.891851425170898E-003
+ ERI in the eigenvector basis obtained
+ 
  diago 2-particle hamiltonian
  matrix          44 x          44
+ diago finished
  
  calculate the RPA energy using the Tamm-Dancoff decomposition
  formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
 
- RPA energy [Ha]:    -0.00764390
+ RPA energy [Ha]:    -0.00763826
+
+ RPA Total energy [Ha]:    -7.43895814
+
+ WARNING: small complex number is 1.00E-03
  
  perform a QP self-consistent GW calculation
  
-HOMO energy    [Ha]:    -0.203834
-LUMO energy    [Ha]:     0.013213
-HOMO-LUMO gap  [Ha]:     0.217046
+HOMO energy    [Ha]:    -0.203738
+LUMO energy    [Ha]:     0.011476
+HOMO-LUMO gap  [Ha]:     0.215215
  
  
  spectral function destroyed
@@ -411,29 +503,37 @@ HOMO-LUMO gap  [Ha]:     0.217046
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.43494     -2.41960    -66.25823    -65.84076
-   2     -0.20389      0.01298     -5.54805      0.35317
-   3      0.03846      0.06495      1.04648      1.76746
-   4      0.03846      0.06495      1.04648      1.76746
-   5      0.03846      0.06495      1.04648      1.76746
-   6      0.18476      0.21626      5.02757      5.88466
-   7      0.19762      0.21661      5.37743      5.89421
-   8      0.19762      0.21661      5.37743      5.89421
-   9      0.19762      0.21661      5.37743      5.89421
+   1     -2.43769     -2.42303    -66.33298    -65.93395
+   2     -0.20389      0.01175     -5.54810      0.31966
+   3      0.03739      0.06431      1.01746      1.74992
+   4      0.03739      0.06431      1.01746      1.74992
+   5      0.03739      0.06431      1.01746      1.74992
+   6      0.18456      0.21486      5.02211      5.84653
+   7      0.19661      0.21495      5.34992      5.84918
+   8      0.19661      0.21495      5.34992      5.84918
+   9      0.19661      0.21495      5.34992      5.84918
  
- convergence criterium on the density matrix  4.915944695787449E-003
  
- Kinetic Energy  [Ha]:   7.45276599839685     
- Nucleus Energy  [Ha]:  -17.1840295909081     
- Hartree Energy  [Ha]:   4.08599507609084     
- Exchange Energy [Ha]:  -1.78594030039605     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4516100818
+    Nucleus Energy  [Ha]:   -17.1765356724
+    Hartree Energy  [Ha]:     4.0784826127
+    Exchange Energy [Ha]:    -1.7848277181
  
- Total Energy    [Ha]:  -7.43120881681651     
+    Total Energy    [Ha]:    -7.4312706960
+ 
+ convergence criterium on the density matrix  3.009551206449669E-002
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:   10
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      1.551309     -0.366877     -6.147098      6.033753     -0.069177     -0.001911
+ DIIS predicted residual  2.262076387181645E-006
+ 
  
  spectral function initialized with          44 poles
             second index size          90
@@ -442,21 +542,31 @@ HOMO-LUMO gap  [Ha]:     0.217046
 
  calculating CHI alla casida
  obtain the ERI in the eigenvector basis
+ subroutine is order N^5
+ The basis transform is using OPENMP
  == ijspin            1
  == ijspin            2
+ time (s)  1.891851425170898E-003
+ ERI in the eigenvector basis obtained
+ 
  diago 2-particle hamiltonian
  matrix          44 x          44
+ diago finished
  
  calculate the RPA energy using the Tamm-Dancoff decomposition
  formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
 
- RPA energy [Ha]:    -0.00764392
+ RPA energy [Ha]:    -0.00764194
+
+ RPA Total energy [Ha]:    -7.43891263
+
+ WARNING: small complex number is 1.00E-03
  
  perform a QP self-consistent GW calculation
  
-HOMO energy    [Ha]:    -0.203887
-LUMO energy    [Ha]:     0.012979
-HOMO-LUMO gap  [Ha]:     0.216866
+HOMO energy    [Ha]:    -0.203889
+LUMO energy    [Ha]:     0.011747
+HOMO-LUMO gap  [Ha]:     0.215636
  
  
  spectral function destroyed
@@ -466,29 +576,37 @@ HOMO-LUMO gap  [Ha]:     0.216866
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.43503     -2.41969    -66.26047    -65.84323
-   2     -0.20391      0.01287     -5.54856      0.35032
-   3      0.03840      0.06490      1.04480      1.76611
-   4      0.03840      0.06490      1.04480      1.76611
-   5      0.03840      0.06490      1.04480      1.76611
-   6      0.18473      0.21614      5.02670      5.88142
-   7      0.19753      0.21647      5.37519      5.89038
-   8      0.19753      0.21647      5.37519      5.89038
-   9      0.19753      0.21647      5.37519      5.89038
+   1     -2.43714     -2.42250    -66.31808    -65.91966
+   2     -0.20392      0.01177     -5.54893      0.32027
+   3      0.03748      0.06434      1.01991      1.75072
+   4      0.03748      0.06434      1.01991      1.75072
+   5      0.03748      0.06434      1.01991      1.75072
+   6      0.18456      0.21489      5.02201      5.84744
+   7      0.19666      0.21502      5.35152      5.85091
+   8      0.19666      0.21502      5.35152      5.85091
+   9      0.19666      0.21502      5.35152      5.85091
  
- convergence criterium on the density matrix  2.742179091308861E-003
  
- Kinetic Energy  [Ha]:   7.45239853682073     
- Nucleus Energy  [Ha]:  -17.1832385434580     
- Hartree Energy  [Ha]:   4.08544138687567     
- Exchange Energy [Ha]:  -1.78581392341406     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4522434966
+    Nucleus Energy  [Ha]:   -17.1778122102
+    Hartree Energy  [Ha]:     4.0793311135
+    Exchange Energy [Ha]:    -1.7850295355
  
- Total Energy    [Ha]:  -7.43121254317568     
+    Total Energy    [Ha]:    -7.4312671356
+ 
+ convergence criterium on the density matrix  2.745408424019917E-002
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:   11
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      0.590710      0.583060     -0.096762     -6.244532      6.257099     -0.089575
+ DIIS predicted residual  1.628589782229197E-005
+ 
  
  spectral function initialized with          44 poles
             second index size          90
@@ -497,21 +615,31 @@ HOMO-LUMO gap  [Ha]:     0.216866
 
  calculating CHI alla casida
  obtain the ERI in the eigenvector basis
+ subroutine is order N^5
+ The basis transform is using OPENMP
  == ijspin            1
  == ijspin            2
+ time (s)  1.889944076538086E-003
+ ERI in the eigenvector basis obtained
+ 
  diago 2-particle hamiltonian
  matrix          44 x          44
+ diago finished
  
  calculate the RPA energy using the Tamm-Dancoff decomposition
  formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
 
- RPA energy [Ha]:    -0.00764399
+ RPA energy [Ha]:    -0.00764173
+
+ RPA Total energy [Ha]:    -7.43890886
+
+ WARNING: small complex number is 1.00E-03
  
  perform a QP self-consistent GW calculation
  
-HOMO energy    [Ha]:    -0.203906
-LUMO energy    [Ha]:     0.012874
-HOMO-LUMO gap  [Ha]:     0.216780
+HOMO energy    [Ha]:    -0.203919
+LUMO energy    [Ha]:     0.011770
+HOMO-LUMO gap  [Ha]:     0.215689
  
  
  spectral function destroyed
@@ -521,29 +649,37 @@ HOMO-LUMO gap  [Ha]:     0.216780
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.43509     -2.41976    -66.26220    -65.84513
-   2     -0.20391      0.01282     -5.54875      0.34892
-   3      0.03836      0.06488      1.04387      1.76543
-   4      0.03836      0.06488      1.04387      1.76543
-   5      0.03836      0.06488      1.04387      1.76543
-   6      0.18471      0.21608      5.02629      5.87981
-   7      0.19749      0.21640      5.37402      5.88845
-   8      0.19749      0.21640      5.37402      5.88845
-   9      0.19749      0.21640      5.37402      5.88845
+   1     -2.43722     -2.42262    -66.32027    -65.92275
+   2     -0.20392      0.01170     -5.54906      0.31836
+   3      0.03744      0.06431      1.01869      1.74987
+   4      0.03744      0.06431      1.01869      1.74987
+   5      0.03744      0.06431      1.01869      1.74987
+   6      0.18456      0.21482      5.02226      5.84542
+   7      0.19663      0.21493      5.35058      5.84853
+   8      0.19663      0.21493      5.35058      5.84853
+   9      0.19663      0.21493      5.35058      5.84853
  
- convergence criterium on the density matrix  1.547130984234252E-003
  
- Kinetic Energy  [Ha]:   7.45220678294345     
- Nucleus Energy  [Ha]:  -17.1828135606071     
- Hartree Energy  [Ha]:   4.08513829259109     
- Exchange Energy [Ha]:  -1.78574596509666     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4521670197
+    Nucleus Energy  [Ha]:   -17.1774526728
+    Hartree Energy  [Ha]:     4.0789922216
+    Exchange Energy [Ha]:    -1.7849765906
  
- Total Energy    [Ha]:  -7.43121445016920     
+    Total Energy    [Ha]:    -7.4312700221
+ 
+ convergence criterium on the density matrix  2.895670263159733E-002
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:   12
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:     -3.615140      0.617448      5.970429     -1.432337     -4.632349      4.091949
+ DIIS predicted residual  5.684844890025142E-006
+ 
  
  spectral function initialized with          44 poles
             second index size          90
@@ -552,21 +688,31 @@ HOMO-LUMO gap  [Ha]:     0.216780
 
  calculating CHI alla casida
  obtain the ERI in the eigenvector basis
+ subroutine is order N^5
+ The basis transform is using OPENMP
  == ijspin            1
  == ijspin            2
+ time (s)  1.891851425170898E-003
+ ERI in the eigenvector basis obtained
+ 
  diago 2-particle hamiltonian
  matrix          44 x          44
+ diago finished
  
  calculate the RPA energy using the Tamm-Dancoff decomposition
  formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
 
- RPA energy [Ha]:    -0.00764404
+ RPA energy [Ha]:    -0.00764124
+
+ RPA Total energy [Ha]:    -7.43891126
+
+ WARNING: small complex number is 1.00E-03
  
  perform a QP self-consistent GW calculation
  
-HOMO energy    [Ha]:    -0.203913
-LUMO energy    [Ha]:     0.012822
-HOMO-LUMO gap  [Ha]:     0.216735
+HOMO energy    [Ha]:    -0.203924
+LUMO energy    [Ha]:     0.011700
+HOMO-LUMO gap  [Ha]:     0.215624
  
  
  spectral function destroyed
@@ -576,29 +722,37 @@ HOMO-LUMO gap  [Ha]:     0.216735
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.43513     -2.41981    -66.26333    -65.84637
-   2     -0.20392      0.01280     -5.54883      0.34818
-   3      0.03834      0.06486      1.04334      1.76506
-   4      0.03834      0.06486      1.04334      1.76506
-   5      0.03834      0.06486      1.04334      1.76506
-   6      0.18470      0.21605      5.02608      5.87896
-   7      0.19747      0.21636      5.37339      5.88742
-   8      0.19747      0.21636      5.37339      5.88742
-   9      0.19747      0.21636      5.37339      5.88742
+   1     -2.43620     -2.42133    -66.29235    -65.88776
+   2     -0.20394      0.01213     -5.54947      0.33004
+   3      0.03781      0.06452      1.02888      1.75580
+   4      0.03781      0.06452      1.02888      1.75580
+   5      0.03781      0.06452      1.02888      1.75580
+   6      0.18456      0.21529      5.02227      5.85830
+   7      0.19693      0.21549      5.35885      5.86365
+   8      0.19693      0.21549      5.35885      5.86365
+   9      0.19693      0.21549      5.35885      5.86365
  
- convergence criterium on the density matrix  8.794728847097270E-004
  
- Kinetic Energy  [Ha]:   7.45210507331889     
- Nucleus Energy  [Ha]:  -17.1825816691665     
- Hartree Energy  [Ha]:   4.08497000809097     
- Exchange Energy [Ha]:  -1.78570886873759     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4524877998
+    Nucleus Energy  [Ha]:   -17.1800295426
+    Hartree Energy  [Ha]:     4.0816391304
+    Exchange Energy [Ha]:    -1.7853531213
  
- Total Energy    [Ha]:  -7.43121545649420     
+    Total Energy    [Ha]:    -7.4312557337
+ 
+ convergence criterium on the density matrix  1.675463173643925E-002
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:   13
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      2.136232     -3.322129     -3.658515      8.940378     -2.080196     -1.015770
+ DIIS predicted residual  1.881945339592384E-005
+ 
  
  spectral function initialized with          44 poles
             second index size          90
@@ -607,21 +761,31 @@ HOMO-LUMO gap  [Ha]:     0.216735
 
  calculating CHI alla casida
  obtain the ERI in the eigenvector basis
+ subroutine is order N^5
+ The basis transform is using OPENMP
  == ijspin            1
  == ijspin            2
+ time (s)  1.892089843750000E-003
+ ERI in the eigenvector basis obtained
+ 
  diago 2-particle hamiltonian
  matrix          44 x          44
+ diago finished
  
  calculate the RPA energy using the Tamm-Dancoff decomposition
  formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
 
- RPA energy [Ha]:    -0.00764407
+ RPA energy [Ha]:    -0.00764309
+
+ RPA Total energy [Ha]:    -7.43889882
+
+ WARNING: small complex number is 1.00E-03
  
  perform a QP self-consistent GW calculation
  
-HOMO energy    [Ha]:    -0.203916
-LUMO energy    [Ha]:     0.012795
-HOMO-LUMO gap  [Ha]:     0.216711
+HOMO energy    [Ha]:    -0.203939
+LUMO energy    [Ha]:     0.012129
+HOMO-LUMO gap  [Ha]:     0.216068
  
  
  spectral function destroyed
@@ -631,29 +795,37 @@ HOMO-LUMO gap  [Ha]:     0.216711
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.43516     -2.41984    -66.26401    -65.84713
-   2     -0.20392      0.01278     -5.54887      0.34777
-   3      0.03833      0.06486      1.04304      1.76486
-   4      0.03833      0.06486      1.04304      1.76486
-   5      0.03833      0.06486      1.04304      1.76486
-   6      0.18470      0.21603      5.02596      5.87849
-   7      0.19746      0.21634      5.37304      5.88686
-   8      0.19746      0.21634      5.37304      5.88686
-   9      0.19746      0.21634      5.37304      5.88686
+   1     -2.43453     -2.41913    -66.24705    -65.82790
+   2     -0.20396      0.01293     -5.55001      0.35172
+   3      0.03849      0.06493      1.04732      1.76679
+   4      0.03849      0.06493      1.04732      1.76679
+   5      0.03849      0.06493      1.04732      1.76679
+   6      0.18462      0.21618      5.02368      5.88257
+   7      0.19751      0.21652      5.37459      5.89184
+   8      0.19751      0.21652      5.37459      5.89184
+   9      0.19751      0.21652      5.37459      5.89184
  
- convergence criterium on the density matrix  5.023090663187128E-004
  
- Kinetic Energy  [Ha]:   7.45205018797474     
- Nucleus Energy  [Ha]:  -17.1824533960111     
- Hartree Energy  [Ha]:   4.08487555151969     
- Exchange Energy [Ha]:  -1.78568834649654     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4524983384
+    Nucleus Energy  [Ha]:   -17.1839752453
+    Hartree Energy  [Ha]:     4.0861776421
+    Exchange Energy [Ha]:    -1.7859451132
  
- Total Energy    [Ha]:  -7.43121600301320     
+    Total Energy    [Ha]:    -7.4312443780
+ 
+ convergence criterium on the density matrix  5.657166305149544E-003
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:   14
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      4.998578    -13.512666      0.752727     11.334208     -2.465842     -0.107005
+ DIIS predicted residual  1.745481741259016E-005
+ 
  
  spectral function initialized with          44 poles
             second index size          90
@@ -662,21 +834,31 @@ HOMO-LUMO gap  [Ha]:     0.216711
 
  calculating CHI alla casida
  obtain the ERI in the eigenvector basis
+ subroutine is order N^5
+ The basis transform is using OPENMP
  == ijspin            1
  == ijspin            2
+ time (s)  1.892089843750000E-003
+ ERI in the eigenvector basis obtained
+ 
  diago 2-particle hamiltonian
  matrix          44 x          44
+ diago finished
  
  calculate the RPA energy using the Tamm-Dancoff decomposition
  formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
 
- RPA energy [Ha]:    -0.00764409
+ RPA energy [Ha]:    -0.00764583
+
+ RPA Total energy [Ha]:    -7.43889021
+
+ WARNING: small complex number is 1.00E-03
  
  perform a QP self-consistent GW calculation
  
-HOMO energy    [Ha]:    -0.203917
-LUMO energy    [Ha]:     0.012780
-HOMO-LUMO gap  [Ha]:     0.216697
+HOMO energy    [Ha]:    -0.203959
+LUMO energy    [Ha]:     0.012926
+HOMO-LUMO gap  [Ha]:     0.216885
  
  
  spectral function destroyed
@@ -686,29 +868,37 @@ HOMO-LUMO gap  [Ha]:     0.216697
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.43517     -2.41985    -66.26442    -65.84758
-   2     -0.20392      0.01277     -5.54888      0.34755
-   3      0.03832      0.06485      1.04287      1.76474
-   4      0.03832      0.06485      1.04287      1.76474
-   5      0.03832      0.06485      1.04287      1.76474
-   6      0.18470      0.21602      5.02590      5.87823
-   7      0.19745      0.21633      5.37284      5.88655
-   8      0.19745      0.21633      5.37284      5.88655
-   9      0.19745      0.21633      5.37284      5.88655
+   1     -2.43519     -2.41988    -66.26492    -65.84820
+   2     -0.20390      0.01275     -5.54839      0.34705
+   3      0.03832      0.06484      1.04266      1.76450
+   4      0.03832      0.06484      1.04266      1.76450
+   5      0.03832      0.06484      1.04266      1.76450
+   6      0.18467      0.21600      5.02513      5.87769
+   7      0.19743      0.21631      5.37233      5.88597
+   8      0.19743      0.21631      5.37233      5.88597
+   9      0.19743      0.21631      5.37233      5.88597
  
- convergence criterium on the density matrix  2.877206999811239E-004
  
- Kinetic Energy  [Ha]:   7.45202010738624     
- Nucleus Energy  [Ha]:  -17.1823816603340     
- Hartree Energy  [Ha]:   4.08482211670882     
- Exchange Energy [Ha]:  -1.78567687014622     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4520212708
+    Nucleus Energy  [Ha]:   -17.1822947018
+    Hartree Energy  [Ha]:     4.0847474780
+    Exchange Energy [Ha]:    -1.7856405846
  
- Total Energy    [Ha]:  -7.43121630638515     
+    Total Energy    [Ha]:    -7.4311665376
+ 
+ convergence criterium on the density matrix  1.378357574942858E-003
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:   15
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      0.351086      0.739568     -0.546511     -0.173374      0.311173      0.318057
+ DIIS predicted residual  6.606819580570524E-006
+ 
  
  spectral function initialized with          44 poles
             second index size          90
@@ -717,21 +907,31 @@ HOMO-LUMO gap  [Ha]:     0.216697
 
  calculating CHI alla casida
  obtain the ERI in the eigenvector basis
+ subroutine is order N^5
+ The basis transform is using OPENMP
  == ijspin            1
  == ijspin            2
+ time (s)  1.892089843750000E-003
+ ERI in the eigenvector basis obtained
+ 
  diago 2-particle hamiltonian
  matrix          44 x          44
+ diago finished
  
  calculate the RPA energy using the Tamm-Dancoff decomposition
  formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
 
- RPA energy [Ha]:    -0.00764410
+ RPA energy [Ha]:    -0.00764472
+
+ RPA Total energy [Ha]:    -7.43881125
+
+ WARNING: small complex number is 1.00E-03
  
  perform a QP self-consistent GW calculation
  
-HOMO energy    [Ha]:    -0.203918
-LUMO energy    [Ha]:     0.012772
-HOMO-LUMO gap  [Ha]:     0.216690
+HOMO energy    [Ha]:    -0.203899
+LUMO energy    [Ha]:     0.012754
+HOMO-LUMO gap  [Ha]:     0.216653
  
  
  spectral function destroyed
@@ -741,29 +941,37 @@ HOMO-LUMO gap  [Ha]:     0.216690
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.43518     -2.41986    -66.26466    -65.84784
-   2     -0.20392      0.01277     -5.54889      0.34742
-   3      0.03832      0.06485      1.04277      1.76468
-   4      0.03832      0.06485      1.04277      1.76468
-   5      0.03832      0.06485      1.04277      1.76468
-   6      0.18470      0.21602      5.02586      5.87808
-   7      0.19744      0.21632      5.37273      5.88637
-   8      0.19744      0.21632      5.37273      5.88637
-   9      0.19744      0.21632      5.37273      5.88637
+   1     -2.43516     -2.41985    -66.26423    -65.84742
+   2     -0.20392      0.01277     -5.54888      0.34743
+   3      0.03832      0.06485      1.04285      1.76469
+   4      0.03832      0.06485      1.04285      1.76469
+   5      0.03832      0.06485      1.04285      1.76469
+   6      0.18469      0.21602      5.02575      5.87808
+   7      0.19744      0.21632      5.37270      5.88640
+   8      0.19744      0.21632      5.37270      5.88640
+   9      0.19744      0.21632      5.37270      5.88640
  
- convergence criterium on the density matrix  1.650892434880838E-004
  
- Kinetic Energy  [Ha]:   7.45200340935016     
- Nucleus Energy  [Ha]:  -17.1823412103184     
- Hartree Energy  [Ha]:   4.08479172320586     
- Exchange Energy [Ha]:  -1.78567039953802     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4520268750
+    Nucleus Energy  [Ha]:   -17.1823823426
+    Hartree Energy  [Ha]:     4.0848186272
+    Exchange Energy [Ha]:    -1.7856751247
  
- Total Energy    [Ha]:  -7.43121647730035     
+    Total Energy    [Ha]:    -7.4312119652
+ 
+ convergence criterium on the density matrix  2.307676183170555E-004
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:   16
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      0.728958      0.035213      0.439462     -0.741421      0.131977      0.405812
+ DIIS predicted residual  3.102874020526061E-006
+ 
  
  spectral function initialized with          44 poles
             second index size          90
@@ -772,21 +980,31 @@ HOMO-LUMO gap  [Ha]:     0.216690
 
  calculating CHI alla casida
  obtain the ERI in the eigenvector basis
+ subroutine is order N^5
+ The basis transform is using OPENMP
  == ijspin            1
  == ijspin            2
+ time (s)  1.884937286376953E-003
+ ERI in the eigenvector basis obtained
+ 
  diago 2-particle hamiltonian
  matrix          44 x          44
+ diago finished
  
  calculate the RPA energy using the Tamm-Dancoff decomposition
  formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
 
- RPA energy [Ha]:    -0.00764410
+ RPA energy [Ha]:    -0.00764421
+
+ RPA Total energy [Ha]:    -7.43885617
+
+ WARNING: small complex number is 1.00E-03
  
  perform a QP self-consistent GW calculation
  
 HOMO energy    [Ha]:    -0.203918
-LUMO energy    [Ha]:     0.012767
-HOMO-LUMO gap  [Ha]:     0.216685
+LUMO energy    [Ha]:     0.012768
+HOMO-LUMO gap  [Ha]:     0.216686
  
  
  spectral function destroyed
@@ -796,29 +1014,37 @@ HOMO-LUMO gap  [Ha]:     0.216685
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.43519     -2.41987    -66.26479    -65.84799
-   2     -0.20392      0.01276     -5.54890      0.34734
-   3      0.03832      0.06485      1.04271      1.76464
-   4      0.03832      0.06485      1.04271      1.76464
-   5      0.03832      0.06485      1.04271      1.76464
-   6      0.18470      0.21601      5.02584      5.87799
-   7      0.19744      0.21632      5.37267      5.88627
-   8      0.19744      0.21632      5.37267      5.88627
-   9      0.19744      0.21632      5.37267      5.88627
+   1     -2.43519     -2.41987    -66.26480    -65.84801
+   2     -0.20392      0.01276     -5.54887      0.34731
+   3      0.03832      0.06485      1.04270      1.76462
+   4      0.03832      0.06485      1.04270      1.76462
+   5      0.03832      0.06485      1.04270      1.76462
+   6      0.18469      0.21601      5.02580      5.87796
+   7      0.19744      0.21632      5.37263      5.88624
+   8      0.19744      0.21632      5.37263      5.88624
+   9      0.19744      0.21632      5.37263      5.88624
  
- convergence criterium on the density matrix  9.482161518183137E-005
  
- Kinetic Energy  [Ha]:   7.45199404754979     
- Nucleus Energy  [Ha]:  -17.1823182641665     
- Hartree Energy  [Ha]:   4.08477437144043     
- Exchange Energy [Ha]:  -1.78566672931323     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4519963702
+    Nucleus Energy  [Ha]:   -17.1823156331
+    Hartree Energy  [Ha]:     4.0847710369
+    Exchange Energy [Ha]:    -1.7856646666
  
- Total Energy    [Ha]:  -7.43121657448952     
+    Total Energy    [Ha]:    -7.4312128926
+ 
+ convergence criterium on the density matrix  1.097445976713312E-004
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:   17
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      2.924355     -1.959139     -0.011425      0.008448      0.105167     -0.067407
+ DIIS predicted residual  4.568853024713326E-007
+ 
  
  spectral function initialized with          44 poles
             second index size          90
@@ -827,21 +1053,31 @@ HOMO-LUMO gap  [Ha]:     0.216685
 
  calculating CHI alla casida
  obtain the ERI in the eigenvector basis
+ subroutine is order N^5
+ The basis transform is using OPENMP
  == ijspin            1
  == ijspin            2
+ time (s)  1.891851425170898E-003
+ ERI in the eigenvector basis obtained
+ 
  diago 2-particle hamiltonian
  matrix          44 x          44
+ diago finished
  
  calculate the RPA energy using the Tamm-Dancoff decomposition
  formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
 
- RPA energy [Ha]:    -0.00764411
+ RPA energy [Ha]:    -0.00764415
+
+ RPA Total energy [Ha]:    -7.43885704
+
+ WARNING: small complex number is 1.00E-03
  
  perform a QP self-consistent GW calculation
  
-HOMO energy    [Ha]:    -0.203918
-LUMO energy    [Ha]:     0.012765
-HOMO-LUMO gap  [Ha]:     0.216683
+HOMO energy    [Ha]:    -0.203917
+LUMO energy    [Ha]:     0.012763
+HOMO-LUMO gap  [Ha]:     0.216680
  
  
  spectral function destroyed
@@ -851,29 +1087,37 @@ HOMO-LUMO gap  [Ha]:     0.216683
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.43519     -2.41987    -66.26487    -65.84808
-   2     -0.20392      0.01276     -5.54890      0.34730
-   3      0.03832      0.06485      1.04268      1.76462
-   4      0.03832      0.06485      1.04268      1.76462
-   5      0.03832      0.06485      1.04268      1.76462
-   6      0.18470      0.21601      5.02583      5.87794
-   7      0.19744      0.21631      5.37263      5.88621
-   8      0.19744      0.21631      5.37263      5.88621
-   9      0.19744      0.21631      5.37263      5.88621
+   1     -2.43519     -2.41988    -66.26501    -65.84823
+   2     -0.20392      0.01276     -5.54891      0.34725
+   3      0.03832      0.06485      1.04264      1.76459
+   4      0.03832      0.06485      1.04264      1.76459
+   5      0.03832      0.06485      1.04264      1.76459
+   6      0.18470      0.21601      5.02584      5.87789
+   7      0.19744      0.21631      5.37259      5.88615
+   8      0.19744      0.21631      5.37259      5.88615
+   9      0.19744      0.21631      5.37259      5.88615
  
- convergence criterium on the density matrix  5.449466886547924E-005
  
- Kinetic Energy  [Ha]:   7.45198875969546     
- Nucleus Energy  [Ha]:  -17.1823051918111     
- Hartree Energy  [Ha]:   4.08476444063055     
- Exchange Energy [Ha]:  -1.78566463857458     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4519812369
+    Nucleus Energy  [Ha]:   -17.1822870757
+    Hartree Energy  [Ha]:     4.0847505958
+    Exchange Energy [Ha]:    -1.7856619474
  
- Total Energy    [Ha]:  -7.43121663005964     
+    Total Energy    [Ha]:    -7.4312171904
+ 
+ convergence criterium on the density matrix  1.175060290894930E-005
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:   18
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      1.048426     -0.395131      0.374894     -0.007065     -0.018421     -0.002704
+ DIIS predicted residual  2.546039250839690E-008
+ 
  
  spectral function initialized with          44 poles
             second index size          90
@@ -882,21 +1126,31 @@ HOMO-LUMO gap  [Ha]:     0.216683
 
  calculating CHI alla casida
  obtain the ERI in the eigenvector basis
+ subroutine is order N^5
+ The basis transform is using OPENMP
  == ijspin            1
  == ijspin            2
+ time (s)  1.891851425170898E-003
+ ERI in the eigenvector basis obtained
+ 
  diago 2-particle hamiltonian
  matrix          44 x          44
+ diago finished
  
  calculate the RPA energy using the Tamm-Dancoff decomposition
  formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
 
- RPA energy [Ha]:    -0.00764411
+ RPA energy [Ha]:    -0.00764410
+
+ RPA Total energy [Ha]:    -7.43886129
+
+ WARNING: small complex number is 1.00E-03
  
  perform a QP self-consistent GW calculation
  
-HOMO energy    [Ha]:    -0.203918
-LUMO energy    [Ha]:     0.012763
-HOMO-LUMO gap  [Ha]:     0.216681
+HOMO energy    [Ha]:    -0.203919
+LUMO energy    [Ha]:     0.012761
+HOMO-LUMO gap  [Ha]:     0.216680
  
  
  spectral function destroyed
@@ -906,29 +1160,37 @@ HOMO-LUMO gap  [Ha]:     0.216681
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.43519     -2.41987    -66.26492    -65.84813
-   2     -0.20392      0.01276     -5.54890      0.34728
-   3      0.03832      0.06485      1.04266      1.76460
-   4      0.03832      0.06485      1.04266      1.76460
-   5      0.03832      0.06485      1.04266      1.76460
-   6      0.18470      0.21601      5.02582      5.87792
-   7      0.19744      0.21631      5.37261      5.88618
-   8      0.19744      0.21631      5.37261      5.88618
-   9      0.19744      0.21631      5.37261      5.88618
+   1     -2.43519     -2.41988    -66.26500    -65.84822
+   2     -0.20392      0.01276     -5.54891      0.34725
+   3      0.03832      0.06485      1.04264      1.76459
+   4      0.03832      0.06485      1.04264      1.76459
+   5      0.03832      0.06485      1.04264      1.76459
+   6      0.18470      0.21601      5.02582      5.87788
+   7      0.19744      0.21631      5.37258      5.88615
+   8      0.19744      0.21631      5.37258      5.88615
+   9      0.19744      0.21631      5.37258      5.88615
  
- convergence criterium on the density matrix  3.132933901153916E-005
  
- Kinetic Energy  [Ha]:   7.45198575675081     
- Nucleus Energy  [Ha]:  -17.1822977222617     
- Hartree Energy  [Ha]:   4.08475874758251     
- Exchange Energy [Ha]:  -1.78566344400338     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4519812145
+    Nucleus Energy  [Ha]:   -17.1822864864
+    Hartree Energy  [Ha]:     4.0847501957
+    Exchange Energy [Ha]:    -1.7856616580
  
- Total Energy    [Ha]:  -7.43121666193179     
+    Total Energy    [Ha]:    -7.4312167343
+ 
+ convergence criterium on the density matrix  4.393339194604801E-006
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:   19
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      0.949853      0.062263     -0.039507      0.025002      0.002057      0.000332
+ DIIS predicted residual  1.002400492348769E-008
+ 
  
  spectral function initialized with          44 poles
             second index size          90
@@ -937,21 +1199,31 @@ HOMO-LUMO gap  [Ha]:     0.216681
 
  calculating CHI alla casida
  obtain the ERI in the eigenvector basis
+ subroutine is order N^5
+ The basis transform is using OPENMP
  == ijspin            1
  == ijspin            2
+ time (s)  1.890182495117188E-003
+ ERI in the eigenvector basis obtained
+ 
  diago 2-particle hamiltonian
  matrix          44 x          44
+ diago finished
  
  calculate the RPA energy using the Tamm-Dancoff decomposition
  formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
 
  RPA energy [Ha]:    -0.00764411
+
+ RPA Total energy [Ha]:    -7.43886084
+
+ WARNING: small complex number is 1.00E-03
  
  perform a QP self-consistent GW calculation
  
 HOMO energy    [Ha]:    -0.203918
-LUMO energy    [Ha]:     0.012762
-HOMO-LUMO gap  [Ha]:     0.216681
+LUMO energy    [Ha]:     0.012761
+HOMO-LUMO gap  [Ha]:     0.216680
  
  
  spectral function destroyed
@@ -961,29 +1233,37 @@ HOMO-LUMO gap  [Ha]:     0.216681
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.43519     -2.41987    -66.26494    -65.84816
-   2     -0.20392      0.01276     -5.54891      0.34726
-   3      0.03832      0.06485      1.04265      1.76460
-   4      0.03832      0.06485      1.04265      1.76460
-   5      0.03832      0.06485      1.04265      1.76460
-   6      0.18470      0.21601      5.02582      5.87790
-   7      0.19744      0.21631      5.37260      5.88616
-   8      0.19744      0.21631      5.37260      5.88616
-   9      0.19744      0.21631      5.37260      5.88616
+   1     -2.43519     -2.41988    -66.26498    -65.84820
+   2     -0.20392      0.01276     -5.54891      0.34725
+   3      0.03832      0.06485      1.04264      1.76459
+   4      0.03832      0.06485      1.04264      1.76459
+   5      0.03832      0.06485      1.04264      1.76459
+   6      0.18470      0.21601      5.02582      5.87789
+   7      0.19744      0.21631      5.37259      5.88616
+   8      0.19744      0.21631      5.37259      5.88616
+   9      0.19744      0.21631      5.37259      5.88616
  
- convergence criterium on the density matrix  1.801508044935770E-005
  
- Kinetic Energy  [Ha]:   7.45198404479667     
- Nucleus Energy  [Ha]:  -17.1822934453174     
- Hartree Energy  [Ha]:   4.08475548032133     
- Exchange Energy [Ha]:  -1.78566276004312     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4519820045
+    Nucleus Energy  [Ha]:   -17.1822883365
+    Hartree Energy  [Ha]:     4.0847515733
+    Exchange Energy [Ha]:    -1.7856619427
  
- Total Energy    [Ha]:  -7.43121668024254     
+    Total Energy    [Ha]:    -7.4312167014
+ 
+ convergence criterium on the density matrix  4.986281539545780E-007
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:   20
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      0.894353      0.093106      0.022194     -0.016242      0.005624      0.000965
+ DIIS predicted residual  8.536240104116404E-010
+ 
  
  spectral function initialized with          44 poles
             second index size          90
@@ -992,20 +1272,30 @@ HOMO-LUMO gap  [Ha]:     0.216681
 
  calculating CHI alla casida
  obtain the ERI in the eigenvector basis
+ subroutine is order N^5
+ The basis transform is using OPENMP
  == ijspin            1
  == ijspin            2
+ time (s)  1.883983612060547E-003
+ ERI in the eigenvector basis obtained
+ 
  diago 2-particle hamiltonian
  matrix          44 x          44
+ diago finished
  
  calculate the RPA energy using the Tamm-Dancoff decomposition
  formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
 
  RPA energy [Ha]:    -0.00764411
+
+ RPA Total energy [Ha]:    -7.43886081
+
+ WARNING: small complex number is 1.00E-03
  
  perform a QP self-consistent GW calculation
  
 HOMO energy    [Ha]:    -0.203918
-LUMO energy    [Ha]:     0.012762
+LUMO energy    [Ha]:     0.012761
 HOMO-LUMO gap  [Ha]:     0.216680
  
  
@@ -1016,29 +1306,37 @@ HOMO-LUMO gap  [Ha]:     0.216680
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.43519     -2.41988    -66.26496    -65.84818
-   2     -0.20392      0.01276     -5.54891      0.34726
-   3      0.03832      0.06485      1.04265      1.76459
-   4      0.03832      0.06485      1.04265      1.76459
-   5      0.03832      0.06485      1.04265      1.76459
+   1     -2.43519     -2.41988    -66.26498    -65.84820
+   2     -0.20392      0.01276     -5.54891      0.34725
+   3      0.03832      0.06485      1.04264      1.76459
+   4      0.03832      0.06485      1.04264      1.76459
+   5      0.03832      0.06485      1.04264      1.76459
    6      0.18470      0.21601      5.02582      5.87789
    7      0.19744      0.21631      5.37259      5.88615
    8      0.19744      0.21631      5.37259      5.88615
    9      0.19744      0.21631      5.37259      5.88615
  
- convergence criterium on the density matrix  1.036030245601349E-005
  
- Kinetic Energy  [Ha]:   7.45198306616439     
- Nucleus Energy  [Ha]:  -17.1822909929134     
- Hartree Energy  [Ha]:   4.08475360385034     
- Exchange Energy [Ha]:  -1.78566236787238     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4519819707
+    Nucleus Energy  [Ha]:   -17.1822882281
+    Hartree Energy  [Ha]:     4.0847514806
+    Exchange Energy [Ha]:    -1.7856619257
  
- Total Energy    [Ha]:  -7.43121669077107     
+    Total Energy    [Ha]:    -7.4312167026
+ 
+ convergence criterium on the density matrix  1.136035619870049E-007
+  ===> convergence not yet reached
  
 
 -------------------------------------------
  *** SCF cycle No:   21
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      1.331026     -0.330678     -0.001453      0.000979      0.000117      0.000011
+ DIIS predicted residual  9.767415614922156E-010
+ 
  
  spectral function initialized with          44 poles
             second index size          90
@@ -1047,15 +1345,25 @@ HOMO-LUMO gap  [Ha]:     0.216680
 
  calculating CHI alla casida
  obtain the ERI in the eigenvector basis
+ subroutine is order N^5
+ The basis transform is using OPENMP
  == ijspin            1
  == ijspin            2
+ time (s)  1.892089843750000E-003
+ ERI in the eigenvector basis obtained
+ 
  diago 2-particle hamiltonian
  matrix          44 x          44
+ diago finished
  
  calculate the RPA energy using the Tamm-Dancoff decomposition
  formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
 
  RPA energy [Ha]:    -0.00764411
+
+ RPA Total energy [Ha]:    -7.43886081
+
+ WARNING: small complex number is 1.00E-03
  
  perform a QP self-consistent GW calculation
  
@@ -1071,541 +1379,69 @@ HOMO-LUMO gap  [Ha]:     0.216680
  === Energies ===
    #              [Ha]                      [eV]      
            spin 1       spin 2       spin 1       spin 2
-   1     -2.43519     -2.41988    -66.26496    -65.84819
+   1     -2.43519     -2.41988    -66.26498    -65.84820
    2     -0.20392      0.01276     -5.54891      0.34725
    3      0.03832      0.06485      1.04264      1.76459
    4      0.03832      0.06485      1.04264      1.76459
    5      0.03832      0.06485      1.04264      1.76459
    6      0.18470      0.21601      5.02582      5.87789
-   7      0.19744      0.21631      5.37259      5.88614
-   8      0.19744      0.21631      5.37259      5.88614
-   9      0.19744      0.21631      5.37259      5.88614
+   7      0.19744      0.21631      5.37259      5.88615
+   8      0.19744      0.21631      5.37259      5.88615
+   9      0.19744      0.21631      5.37259      5.88615
  
- convergence criterium on the density matrix  5.958524307916830E-006
  
- Kinetic Energy  [Ha]:   7.45198250566684     
- Nucleus Energy  [Ha]:  -17.1822895853251     
- Hartree Energy  [Ha]:   4.08475252561685     
- Exchange Energy [Ha]:  -1.78566214278592     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     7.4519819631
+    Nucleus Energy  [Ha]:   -17.1822881991
+    Hartree Energy  [Ha]:     4.0847514543
+    Exchange Energy [Ha]:    -1.7856619212
  
- Total Energy    [Ha]:  -7.43121669682731     
+    Total Energy    [Ha]:    -7.4312167029
  
-
--------------------------------------------
- *** SCF cycle No:   22
-
+ convergence criterium on the density matrix  7.544785075693873E-009
+  ===> convergence has been reached
  
- spectral function initialized with          44 poles
-            second index size          90
- Memory [Mb]             0.
+ ==================================================
+ The SCF loop ends here
+ ==================================================
  
 
- calculating CHI alla casida
- obtain the ERI in the eigenvector basis
- == ijspin            1
- == ijspin            2
- diago 2-particle hamiltonian
- matrix          44 x          44
+                 --- Timings in (s) and # of calls ---
+                    Total time          0.23
  
- calculate the RPA energy using the Tamm-Dancoff decomposition
- formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
-
- RPA energy [Ha]:    -0.00764411
+         4 gaussians integrals          0.11
  
- perform a QP self-consistent GW calculation
+                       Hartree          0.01        21
+                      Exchange          0.00        21
+                        DFT xc          0.00         0
  
-HOMO energy    [Ha]:    -0.203918
-LUMO energy    [Ha]:     0.012761
-HOMO-LUMO gap  [Ha]:     0.216680
+           ERI basis transform          0.03        16
  
+        Total RPA polarization          0.08        16
+            Diago 2 particle H          0.04        16
+           Invert 2 particle S          0.00        16
  
- spectral function destroyed
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -2.43519     -2.41988    -66.26497    -65.84819
-   2     -0.20392      0.01276     -5.54891      0.34725
-   3      0.03832      0.06485      1.04264      1.76459
-   4      0.03832      0.06485      1.04264      1.76459
-   5      0.03832      0.06485      1.04264      1.76459
-   6      0.18470      0.21601      5.02582      5.87788
-   7      0.19744      0.21631      5.37258      5.88614
-   8      0.19744      0.21631      5.37258      5.88614
-   9      0.19744      0.21631      5.37258      5.88614
+                GW self-energy          0.02        16
  
- convergence criterium on the density matrix  3.427067978442023E-006
- 
- Kinetic Energy  [Ha]:   7.45198218422490     
- Nucleus Energy  [Ha]:  -17.1822887768794     
- Hartree Energy  [Ha]:   4.08475190585281     
- Exchange Energy [Ha]:  -1.78566201350978     
- 
- Total Energy    [Ha]:  -7.43121670031152     
- 
-
--------------------------------------------
- *** SCF cycle No:   23
-
- 
- spectral function initialized with          44 poles
-            second index size          90
- Memory [Mb]             0.
- 
-
- calculating CHI alla casida
- obtain the ERI in the eigenvector basis
- == ijspin            1
- == ijspin            2
- diago 2-particle hamiltonian
- matrix          44 x          44
- 
- calculate the RPA energy using the Tamm-Dancoff decomposition
- formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
-
- RPA energy [Ha]:    -0.00764411
- 
- perform a QP self-consistent GW calculation
- 
-HOMO energy    [Ha]:    -0.203918
-LUMO energy    [Ha]:     0.012761
-HOMO-LUMO gap  [Ha]:     0.216680
- 
- 
- spectral function destroyed
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -2.43519     -2.41988    -66.26497    -65.84820
-   2     -0.20392      0.01276     -5.54891      0.34725
-   3      0.03832      0.06485      1.04264      1.76459
-   4      0.03832      0.06485      1.04264      1.76459
-   5      0.03832      0.06485      1.04264      1.76459
-   6      0.18470      0.21601      5.02582      5.87788
-   7      0.19744      0.21631      5.37258      5.88613
-   8      0.19744      0.21631      5.37258      5.88613
-   9      0.19744      0.21631      5.37258      5.88613
- 
- convergence criterium on the density matrix  1.971138992298868E-006
- 
- Kinetic Energy  [Ha]:   7.45198199971093     
- Nucleus Energy  [Ha]:  -17.1822883123367     
- Hartree Energy  [Ha]:   4.08475154953648     
- Exchange Energy [Ha]:  -1.78566193922682     
- 
- Total Energy    [Ha]:  -7.43121670231610     
- 
-
--------------------------------------------
- *** SCF cycle No:   24
-
- 
- spectral function initialized with          44 poles
-            second index size          90
- Memory [Mb]             0.
- 
-
- calculating CHI alla casida
- obtain the ERI in the eigenvector basis
- == ijspin            1
- == ijspin            2
- diago 2-particle hamiltonian
- matrix          44 x          44
- 
- calculate the RPA energy using the Tamm-Dancoff decomposition
- formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
-
- RPA energy [Ha]:    -0.00764411
- 
- perform a QP self-consistent GW calculation
- 
-HOMO energy    [Ha]:    -0.203918
-LUMO energy    [Ha]:     0.012761
-HOMO-LUMO gap  [Ha]:     0.216680
- 
- 
- spectral function destroyed
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -2.43519     -2.41988    -66.26497    -65.84820
-   2     -0.20392      0.01276     -5.54891      0.34725
-   3      0.03832      0.06485      1.04264      1.76459
-   4      0.03832      0.06485      1.04264      1.76459
-   5      0.03832      0.06485      1.04264      1.76459
-   6      0.18470      0.21601      5.02581      5.87788
-   7      0.19744      0.21631      5.37258      5.88613
-   8      0.19744      0.21631      5.37258      5.88613
-   9      0.19744      0.21631      5.37258      5.88613
- 
- convergence criterium on the density matrix  1.133752051696051E-006
- 
- Kinetic Energy  [Ha]:   7.45198189372925     
- Nucleus Energy  [Ha]:  -17.1822880453206     
- Hartree Energy  [Ha]:   4.08475134465173     
- Exchange Energy [Ha]:  -1.78566189652971     
- 
- Total Energy    [Ha]:  -7.43121670346937     
- 
-
--------------------------------------------
- *** SCF cycle No:   25
-
- 
- spectral function initialized with          44 poles
-            second index size          90
- Memory [Mb]             0.
- 
-
- calculating CHI alla casida
- obtain the ERI in the eigenvector basis
- == ijspin            1
- == ijspin            2
- diago 2-particle hamiltonian
- matrix          44 x          44
- 
- calculate the RPA energy using the Tamm-Dancoff decomposition
- formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
-
- RPA energy [Ha]:    -0.00764411
- 
- perform a QP self-consistent GW calculation
- 
-HOMO energy    [Ha]:    -0.203918
-LUMO energy    [Ha]:     0.012761
-HOMO-LUMO gap  [Ha]:     0.216680
- 
- 
- spectral function destroyed
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -2.43519     -2.41988    -66.26498    -65.84820
-   2     -0.20392      0.01276     -5.54891      0.34725
-   3      0.03832      0.06485      1.04264      1.76459
-   4      0.03832      0.06485      1.04264      1.76459
-   5      0.03832      0.06485      1.04264      1.76459
-   6      0.18470      0.21601      5.02581      5.87788
-   7      0.19744      0.21631      5.37258      5.88613
-   8      0.19744      0.21631      5.37258      5.88613
-   9      0.19744      0.21631      5.37258      5.88613
- 
- convergence criterium on the density matrix  6.521128166080686E-007
- 
- Kinetic Energy  [Ha]:   7.45198183282861     
- Nucleus Energy  [Ha]:  -17.1822878918085     
- Hartree Energy  [Ha]:   4.08475122682950     
- Exchange Energy [Ha]:  -1.78566187198250     
- 
- Total Energy    [Ha]:  -7.43121670413287     
- 
-
--------------------------------------------
- *** SCF cycle No:   26
-
- 
- spectral function initialized with          44 poles
-            second index size          90
- Memory [Mb]             0.
- 
-
- calculating CHI alla casida
- obtain the ERI in the eigenvector basis
- == ijspin            1
- == ijspin            2
- diago 2-particle hamiltonian
- matrix          44 x          44
- 
- calculate the RPA energy using the Tamm-Dancoff decomposition
- formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
-
- RPA energy [Ha]:    -0.00764411
- 
- perform a QP self-consistent GW calculation
- 
-HOMO energy    [Ha]:    -0.203918
-LUMO energy    [Ha]:     0.012761
-HOMO-LUMO gap  [Ha]:     0.216680
- 
- 
- spectral function destroyed
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -2.43519     -2.41988    -66.26498    -65.84820
-   2     -0.20392      0.01276     -5.54891      0.34725
-   3      0.03832      0.06485      1.04264      1.76459
-   4      0.03832      0.06485      1.04264      1.76459
-   5      0.03832      0.06485      1.04264      1.76459
-   6      0.18470      0.21601      5.02581      5.87788
-   7      0.19744      0.21631      5.37258      5.88613
-   8      0.19744      0.21631      5.37258      5.88613
-   9      0.19744      0.21631      5.37258      5.88613
- 
- convergence criterium on the density matrix  3.750850131632237E-007
- 
- Kinetic Energy  [Ha]:   7.45198179782253     
- Nucleus Energy  [Ha]:  -17.1822878035386     
- Hartree Energy  [Ha]:   4.08475115906934     
- Exchange Energy [Ha]:  -1.78566185786781     
- 
- Total Energy    [Ha]:  -7.43121670451455     
- 
-
--------------------------------------------
- *** SCF cycle No:   27
-
- 
- spectral function initialized with          44 poles
-            second index size          90
- Memory [Mb]             0.
- 
-
- calculating CHI alla casida
- obtain the ERI in the eigenvector basis
- == ijspin            1
- == ijspin            2
- diago 2-particle hamiltonian
- matrix          44 x          44
- 
- calculate the RPA energy using the Tamm-Dancoff decomposition
- formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
-
- RPA energy [Ha]:    -0.00764411
- 
- perform a QP self-consistent GW calculation
- 
-HOMO energy    [Ha]:    -0.203918
-LUMO energy    [Ha]:     0.012761
-HOMO-LUMO gap  [Ha]:     0.216680
- 
- 
- spectral function destroyed
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -2.43519     -2.41988    -66.26498    -65.84820
-   2     -0.20392      0.01276     -5.54891      0.34725
-   3      0.03832      0.06485      1.04264      1.76459
-   4      0.03832      0.06485      1.04264      1.76459
-   5      0.03832      0.06485      1.04264      1.76459
-   6      0.18470      0.21601      5.02581      5.87788
-   7      0.19744      0.21631      5.37258      5.88613
-   8      0.19744      0.21631      5.37258      5.88613
-   9      0.19744      0.21631      5.37258      5.88613
- 
- convergence criterium on the density matrix  2.157437064847826E-007
- 
- Kinetic Energy  [Ha]:   7.45198177769664     
- Nucleus Energy  [Ha]:  -17.1822877527781     
- Hartree Energy  [Ha]:   4.08475112009832     
- Exchange Energy [Ha]:  -1.78566184975102     
- 
- Total Energy    [Ha]:  -7.43121670473412     
- 
-
--------------------------------------------
- *** SCF cycle No:   28
-
- 
- spectral function initialized with          44 poles
-            second index size          90
- Memory [Mb]             0.
- 
-
- calculating CHI alla casida
- obtain the ERI in the eigenvector basis
- == ijspin            1
- == ijspin            2
- diago 2-particle hamiltonian
- matrix          44 x          44
- 
- calculate the RPA energy using the Tamm-Dancoff decomposition
- formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
-
- RPA energy [Ha]:    -0.00764411
- 
- perform a QP self-consistent GW calculation
- 
-HOMO energy    [Ha]:    -0.203918
-LUMO energy    [Ha]:     0.012761
-HOMO-LUMO gap  [Ha]:     0.216680
- 
- 
- spectral function destroyed
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -2.43519     -2.41988    -66.26498    -65.84820
-   2     -0.20392      0.01276     -5.54891      0.34725
-   3      0.03832      0.06485      1.04264      1.76459
-   4      0.03832      0.06485      1.04264      1.76459
-   5      0.03832      0.06485      1.04264      1.76459
-   6      0.18470      0.21601      5.02581      5.87788
-   7      0.19744      0.21631      5.37258      5.88613
-   8      0.19744      0.21631      5.37258      5.88613
-   9      0.19744      0.21631      5.37258      5.88613
- 
- convergence criterium on the density matrix  1.240930419612571E-007
- 
- Kinetic Energy  [Ha]:   7.45198176612410     
- Nucleus Energy  [Ha]:  -17.1822877235856     
- Hartree Energy  [Ha]:   4.08475109768414     
- Exchange Energy [Ha]:  -1.78566184508306     
- 
- Total Energy    [Ha]:  -7.43121670486042     
- 
-
--------------------------------------------
- *** SCF cycle No:   29
-
- 
- spectral function initialized with          44 poles
-            second index size          90
- Memory [Mb]             0.
- 
-
- calculating CHI alla casida
- obtain the ERI in the eigenvector basis
- == ijspin            1
- == ijspin            2
- diago 2-particle hamiltonian
- matrix          44 x          44
- 
- calculate the RPA energy using the Tamm-Dancoff decomposition
- formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
-
- RPA energy [Ha]:    -0.00764411
- 
- perform a QP self-consistent GW calculation
- 
-HOMO energy    [Ha]:    -0.203918
-LUMO energy    [Ha]:     0.012761
-HOMO-LUMO gap  [Ha]:     0.216680
- 
- 
- spectral function destroyed
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -2.43519     -2.41988    -66.26498    -65.84820
-   2     -0.20392      0.01276     -5.54891      0.34725
-   3      0.03832      0.06485      1.04264      1.76459
-   4      0.03832      0.06485      1.04264      1.76459
-   5      0.03832      0.06485      1.04264      1.76459
-   6      0.18470      0.21601      5.02581      5.87788
-   7      0.19744      0.21631      5.37258      5.88613
-   8      0.19744      0.21631      5.37258      5.88613
-   9      0.19744      0.21631      5.37258      5.88613
- 
- convergence criterium on the density matrix  7.137684088437211E-008
- 
- Kinetic Energy  [Ha]:   7.45198175946914     
- Nucleus Energy  [Ha]:  -17.1822877067962     
- Hartree Energy  [Ha]:   4.08475108479235     
- Exchange Energy [Ha]:  -1.78566184239837     
- 
- Total Energy    [Ha]:  -7.43121670493308     
- 
-
--------------------------------------------
- *** SCF cycle No:   30
-
- 
- spectral function initialized with          44 poles
-            second index size          90
- Memory [Mb]             0.
- 
-
- calculating CHI alla casida
- obtain the ERI in the eigenvector basis
- == ijspin            1
- == ijspin            2
- diago 2-particle hamiltonian
- matrix          44 x          44
- 
- calculate the RPA energy using the Tamm-Dancoff decomposition
- formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
-
- RPA energy [Ha]:    -0.00764411
- 
- perform a QP self-consistent GW calculation
- 
-HOMO energy    [Ha]:    -0.203918
-LUMO energy    [Ha]:     0.012761
-HOMO-LUMO gap  [Ha]:     0.216680
- 
- 
- spectral function destroyed
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -2.43519     -2.41988    -66.26498    -65.84820
-   2     -0.20392      0.01276     -5.54891      0.34725
-   3      0.03832      0.06485      1.04264      1.76459
-   4      0.03832      0.06485      1.04264      1.76459
-   5      0.03832      0.06485      1.04264      1.76459
-   6      0.18470      0.21601      5.02581      5.87788
-   7      0.19744      0.21631      5.37258      5.88613
-   8      0.19744      0.21631      5.37258      5.88613
-   9      0.19744      0.21631      5.37258      5.88613
- 
- convergence criterium on the density matrix  4.105514410153150E-008
- 
- Kinetic Energy  [Ha]:   7.45198175564186     
- Nucleus Energy  [Ha]:  -17.1822876971398     
- Hartree Energy  [Ha]:   4.08475107737737     
- Exchange Energy [Ha]:  -1.78566184085429     
- 
- Total Energy    [Ha]:  -7.43121670497487     
- 
-
-                 --- Timings in (s) ---
-                    Total time          0.47
- 
-         4 gaussians integrals          0.07
- 
-                       Hartree          0.00
-                      Exchange          0.00
-                        DFT xc          0.00
- 
-         Coulomb in prod basis          0.00
- 
-         Total GW polarization          0.17
-         Overlap of 3 basis             0.00
-            Diago 2 particle H          0.06
-           Invert 2 particle S          0.00
- 
-                GW self-energy          0.02
- 
-                MP2 energy              0.00
+                    MP2 energy          0.00         0
+               MP2 self-energy          0.00         0
                  ----------------------
+ 
+                timing tmp1             0.00         0
+                timing tmp2             0.11         1
+                timing tmp3             0.08     38416
+                timing tmp4             0.02     38416
+                timing tmp5             0.00         0
+ 
+
+ SUMMARY of all the WARNINGS issued along the run:
+
+ 1.     OPENMP option is activated with threads number     1                                                
+ 2.     calculation name: GW                                                                                
+ 3.     basis file used: Li_6-31G                                                                           
+ 4.     small complex number is 1.00E-03                                                                    
+
+
 
  This is the end
 

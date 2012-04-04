@@ -1,638 +1,244 @@
  
- Welcome to the facinating world of ATOM
+ Welcome to the fascinating world of ATOM
  
  
+
+ WARNING: OPENMP option is activated with threads number     1
+
+ WARNING: calculation name: HF+MP2
 
  Summary of the input parameters 
 
-  calculation type:   MP2
-            Atom Z:   2.0000
+  calculation type:   HF+MP2
+             Natom:   1
          Electrons:   2.0000
+            Charge:   0.0000
      Magnetization:   0.0000
          Basis set:   cc-pVDZ                                                                                             
- Spin polarization:   2
+ Spin polarization:   1
          SCF steps:  20
+            Mixing:   0.8000
+ 
+ ================================
+       atom list
+                        bohr                                        angstrom
+  He     0.000000     0.000000     0.000000           0.000000     0.000000     0.000000
+ ================================
  
  
- Element:    He
+ Element used for Z value:    He
+ Element used for the basis:  He
  Basis type: cc-pVDZ
+
+ WARNING: basis file used: He_cc-pVDZ
  
  open the basis set file He_cc-pVDZ
- number of basis functions found           5
+ 
+ Total number of basis functions           5
  
  Basis set is ready and fit
 
+ Allocating the ERI array:    0.000 [Gb]
+ success
+
  Calculate and store all the Electron Repulsion Integrals (ERI)
  number of shells           5
- Done.
+ Done!
  
 
+ Allocating the ERI array:    0.005 [Mb]
+ success
+
  === occupations ===
-           spin 1       spin 2 
-   1      1.00000      1.00000
-   2      0.00000      0.00000
-   3      0.00000      0.00000
-   4      0.00000      0.00000
-   5      0.00000      0.00000
+   1      2.00000
+   2      0.00000
+   3      0.00000
+   4      0.00000
+   5      0.00000
  
 
 -------------------------------------------
  *** SCF cycle No:    1
 
  Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
 
  === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87523    -24.87523
-   2      1.39744      1.39744     38.02636     38.02636
-   3      2.52437      2.52437     68.69171     68.69171
-   4      2.52437      2.52437     68.69171     68.69171
-   5      2.52437      2.52437     68.69171     68.69171
+   #       [Ha]         [eV]      
+   1     -0.91415    -24.87523
+   2      1.39744     38.02636
+   3      2.52437     68.69171
+   4      2.52437     68.69171
+   5      2.52437     68.69171
  
- convergence criterium on the density matrix  9.596546795512062E-007
  
- Kinetic Energy  [Ha]:   2.85517740161948     
- Nucleus Energy  [Ha]:  -6.73720479068359     
- Hartree Energy  [Ha]:   2.05373158300125     
- Exchange Energy [Ha]:  -1.02686579150063     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     2.8551774016
+    Nucleus Energy  [Ha]:    -6.7372047907
+    Hartree Energy  [Ha]:     2.0537315830
+    Exchange Energy [Ha]:    -1.0268657915
  
- Total Energy    [Ha]:  -2.85516159756348     
+    Total Energy    [Ha]:    -2.8551615976
  
-
- HF Total Energy [Ha]:     -2.85516008
-
+ convergence criterium on the density matrix  1.357156661099337E-006
+  ===> convergence not yet reached
+ 
 
 -------------------------------------------
  *** SCF cycle No:    2
 
+ A simple mixing of the density matrix is used
  Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
 
  === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
+   #       [Ha]         [eV]      
+   1     -0.91415    -24.87524
+   2      1.39744     38.02634
+   3      2.52437     68.69169
+   4      2.52437     68.69169
+   5      2.52437     68.69169
  
- convergence criterium on the density matrix  3.233110303898792E-007
  
- Kinetic Energy  [Ha]:   2.85517591416250     
- Nucleus Energy  [Ha]:  -6.73720138352236     
- Hartree Energy  [Ha]:   2.05372953610618     
- Exchange Energy [Ha]:  -1.02686476805309     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     2.8551759142
+    Nucleus Energy  [Ha]:    -6.7372013835
+    Hartree Energy  [Ha]:     2.0537295361
+    Exchange Energy [Ha]:    -1.0268647681
  
- Total Energy    [Ha]:  -2.85516070130677     
+    Total Energy    [Ha]:    -2.8551607013
  
-
- HF Total Energy [Ha]:     -2.85516043
-
+ convergence criterium on the density matrix  4.572308461748198E-007
+  ===> convergence not yet reached
+ 
 
 -------------------------------------------
  *** SCF cycle No:    3
 
+ A simple mixing of the density matrix is used
  Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
 
  === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
+   #       [Ha]         [eV]      
+   1     -0.91415    -24.87524
+   2      1.39744     38.02634
+   3      2.52437     68.69169
+   4      2.52437     68.69169
+   5      2.52437     68.69169
  
- convergence criterium on the density matrix  1.830165769058654E-007
  
- Kinetic Energy  [Ha]:   2.85517596910141     
- Nucleus Energy  [Ha]:  -6.73720112146565     
- Hartree Energy  [Ha]:   2.05372926061771     
- Exchange Energy [Ha]:  -1.02686463030885     
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     2.8551759691
+    Nucleus Energy  [Ha]:    -6.7372011215
+    Hartree Energy  [Ha]:     2.0537292606
+    Exchange Energy [Ha]:    -1.0268646303
  
- Total Energy    [Ha]:  -2.85516052205539     
+    Total Energy    [Ha]:    -2.8551605221
  
-
- HF Total Energy [Ha]:     -2.85516048
-
+ convergence criterium on the density matrix  2.588245255946739E-007
+  ===> convergence not yet reached
+ 
 
 -------------------------------------------
  *** SCF cycle No:    4
 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      1.690540     -0.778647      0.088108
+ DIIS predicted residual  2.312069648307832E-014
+ 
  Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
 
  === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
- 
- convergence criterium on the density matrix  6.796062663931900E-008
- 
- Kinetic Energy  [Ha]:   2.85517607192937     
- Nucleus Energy  [Ha]:  -6.73720117833982     
- Hartree Energy  [Ha]:   2.05372924041066     
- Exchange Energy [Ha]:  -1.02686462020533     
- 
- Total Energy    [Ha]:  -2.85516048620511     
- 
-
- HF Total Energy [Ha]:     -2.85516048
-
-
--------------------------------------------
- *** SCF cycle No:    5
-
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
- 
- convergence criterium on the density matrix  2.178401863855918E-008
- 
- Kinetic Energy  [Ha]:   2.85517611642770     
- Nucleus Energy  [Ha]:  -6.73720121819348     
- Hartree Energy  [Ha]:   2.05372924546144     
- Exchange Energy [Ha]:  -1.02686462273072     
- 
- Total Energy    [Ha]:  -2.85516047903506     
- 
-
- HF Total Energy [Ha]:     -2.85516048
-
-
--------------------------------------------
- *** SCF cycle No:    6
-
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
- 
- convergence criterium on the density matrix  6.493103926618421E-009
- 
- Kinetic Energy  [Ha]:   2.85517613156401     
- Nucleus Energy  [Ha]:  -6.73720123358553     
- Hartree Energy  [Ha]:   2.05372924884094     
- Exchange Energy [Ha]:  -1.02686462442047     
- 
- Total Energy    [Ha]:  -2.85516047760105     
- 
-
- HF Total Energy [Ha]:     -2.85516048
-
-
--------------------------------------------
- *** SCF cycle No:    7
-
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
- 
- convergence criterium on the density matrix  1.855478475149733E-009
- 
- Kinetic Energy  [Ha]:   2.85517613621649     
- Nucleus Energy  [Ha]:  -6.73720123859787     
- Hartree Energy  [Ha]:   2.05372925013427     
- Exchange Energy [Ha]:  -1.02686462506713     
- 
- Total Energy    [Ha]:  -2.85516047731425     
- 
-
- HF Total Energy [Ha]:     -2.85516048
-
-
--------------------------------------------
- *** SCF cycle No:    8
-
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
- 
- convergence criterium on the density matrix  5.162233391374479E-010
- 
- Kinetic Energy  [Ha]:   2.85517613757050     
- Nucleus Energy  [Ha]:  -6.73720124010430     
- Hartree Energy  [Ha]:   2.05372925055383     
- Exchange Energy [Ha]:  -1.02686462527691     
- 
- Total Energy    [Ha]:  -2.85516047725688     
- 
-
- HF Total Energy [Ha]:     -2.85516048
-
-
--------------------------------------------
- *** SCF cycle No:    9
-
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
- 
- convergence criterium on the density matrix  1.410685524888910E-010
- 
- Kinetic Energy  [Ha]:   2.85517613795167     
- Nucleus Energy  [Ha]:  -6.73720124053692     
- Hartree Energy  [Ha]:   2.05372925067967     
- Exchange Energy [Ha]:  -1.02686462533984     
- 
- Total Energy    [Ha]:  -2.85516047724541     
- 
-
- HF Total Energy [Ha]:     -2.85516048
-
-
--------------------------------------------
- *** SCF cycle No:   10
-
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
- 
- convergence criterium on the density matrix  3.806825234130331E-011
- 
- Kinetic Energy  [Ha]:   2.85517613805666     
- Nucleus Energy  [Ha]:  -6.73720124065767     
- Hartree Energy  [Ha]:   2.05372925071577     
- Exchange Energy [Ha]:  -1.02686462535788     
- 
- Total Energy    [Ha]:  -2.85516047724312     
- 
-
- HF Total Energy [Ha]:     -2.85516048
-
-
--------------------------------------------
- *** SCF cycle No:   11
-
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
- 
- convergence criterium on the density matrix  1.018180510114544E-011
- 
- Kinetic Energy  [Ha]:   2.85517613808516     
- Nucleus Energy  [Ha]:  -6.73720124069073     
- Hartree Energy  [Ha]:   2.05372925072583     
- Exchange Energy [Ha]:  -1.02686462536292     
- 
- Total Energy    [Ha]:  -2.85516047724266     
- 
-
- HF Total Energy [Ha]:     -2.85516048
-
-
--------------------------------------------
- *** SCF cycle No:   12
-
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
- 
- convergence criterium on the density matrix  2.707210316561491E-012
- 
- Kinetic Energy  [Ha]:   2.85517613809281     
- Nucleus Energy  [Ha]:  -6.73720124069967     
- Hartree Energy  [Ha]:   2.05372925072859     
- Exchange Energy [Ha]:  -1.02686462536429     
- 
- Total Energy    [Ha]:  -2.85516047724257     
- 
-
- HF Total Energy [Ha]:     -2.85516048
-
-
--------------------------------------------
- *** SCF cycle No:   13
-
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
- 
- convergence criterium on the density matrix  7.163983711681855E-013
- 
- Kinetic Energy  [Ha]:   2.85517613809485     
- Nucleus Energy  [Ha]:  -6.73720124070206     
- Hartree Energy  [Ha]:   2.05372925072933     
- Exchange Energy [Ha]:  -1.02686462536467     
- 
- Total Energy    [Ha]:  -2.85516047724255     
- 
-
- HF Total Energy [Ha]:     -2.85516048
-
-
--------------------------------------------
- *** SCF cycle No:   14
-
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
- 
- convergence criterium on the density matrix  1.881280474752727E-013
- 
- Kinetic Energy  [Ha]:   2.85517613809539     
- Nucleus Energy  [Ha]:  -6.73720124070270     
- Hartree Energy  [Ha]:   2.05372925072953     
- Exchange Energy [Ha]:  -1.02686462536477     
- 
- Total Energy    [Ha]:  -2.85516047724255     
- 
-
- HF Total Energy [Ha]:     -2.85516048
-
-
--------------------------------------------
- *** SCF cycle No:   15
-
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
- 
- convergence criterium on the density matrix  4.797786062178104E-014
- 
- Kinetic Energy  [Ha]:   2.85517613809553     
- Nucleus Energy  [Ha]:  -6.73720124070287     
- Hartree Energy  [Ha]:   2.05372925072958     
- Exchange Energy [Ha]:  -1.02686462536479     
- 
- Total Energy    [Ha]:  -2.85516047724254     
- 
-
- HF Total Energy [Ha]:     -2.85516048
-
-
--------------------------------------------
- *** SCF cycle No:   16
-
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
- 
- convergence criterium on the density matrix  1.378772317039582E-014
- 
- Kinetic Energy  [Ha]:   2.85517613809557     
- Nucleus Energy  [Ha]:  -6.73720124070291     
- Hartree Energy  [Ha]:   2.05372925072960     
- Exchange Energy [Ha]:  -1.02686462536480     
- 
- Total Energy    [Ha]:  -2.85516047724254     
- 
-
- HF Total Energy [Ha]:     -2.85516048
-
-
--------------------------------------------
- *** SCF cycle No:   17
-
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
- 
- convergence criterium on the density matrix  5.136408579564836E-015
- 
- Kinetic Energy  [Ha]:   2.85517613809558     
- Nucleus Energy  [Ha]:  -6.73720124070292     
- Hartree Energy  [Ha]:   2.05372925072960     
- Exchange Energy [Ha]:  -1.02686462536480     
- 
- Total Energy    [Ha]:  -2.85516047724255     
- 
-
- HF Total Energy [Ha]:     -2.85516048
-
-
--------------------------------------------
- *** SCF cycle No:   18
-
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
- 
- convergence criterium on the density matrix  5.539584725917129E-016
- 
- Kinetic Energy  [Ha]:   2.85517613809558     
- Nucleus Energy  [Ha]:  -6.73720124070293     
- Hartree Energy  [Ha]:   2.05372925072960     
- Exchange Energy [Ha]:  -1.02686462536480     
- 
- Total Energy    [Ha]:  -2.85516047724255     
- 
-
- HF Total Energy [Ha]:     -2.85516048
-
-
--------------------------------------------
- *** SCF cycle No:   19
-
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
- 
- convergence criterium on the density matrix  1.393522858183332E-015
- 
- Kinetic Energy  [Ha]:   2.85517613809558     
- Nucleus Energy  [Ha]:  -6.73720124070293     
- Hartree Energy  [Ha]:   2.05372925072960     
- Exchange Energy [Ha]:  -1.02686462536480     
- 
- Total Energy    [Ha]:  -2.85516047724255     
- 
-
- HF Total Energy [Ha]:     -2.85516048
-
-
--------------------------------------------
- *** SCF cycle No:   20
-
- Diagonalization for spin polarization           1
- Diagonalization for spin polarization           2
-
- === Energies ===
-   #              [Ha]                      [eV]      
-           spin 1       spin 2       spin 1       spin 2
-   1     -0.91415     -0.91415    -24.87524    -24.87524
-   2      1.39744      1.39744     38.02634     38.02634
-   3      2.52437      2.52437     68.69169     68.69169
-   4      2.52437      2.52437     68.69169     68.69169
-   5      2.52437      2.52437     68.69169     68.69169
- 
- convergence criterium on the density matrix  5.511446954148794E-016
- 
- Kinetic Energy  [Ha]:   2.85517613809558     
- Nucleus Energy  [Ha]:  -6.73720124070293     
- Hartree Energy  [Ha]:   2.05372925072960     
- Exchange Energy [Ha]:  -1.02686462536480     
- 
- Total Energy    [Ha]:  -2.85516047724255     
- 
-
- HF Total Energy [Ha]:     -2.85516048
-
-   1     2 /    5
-   1     3 /    5
-   1     4 /    5
-   1     5 /    5
-   2     2 /    5
-   2     3 /    5
-   2     4 /    5
-   2     5 /    5
-
- MP2 contributions
- 2 bubble diagram:   -0.051657
- SOX diagram     :    0.025828
- MP2 correlation :   -0.025828
-
- MP2 Energy       [Ha]: -2.582833955137712E-002
- 
- MP2 Total Energy [Ha]:  -2.88098881679392     
-
-                 --- Timings in (s) ---
-                    Total time          0.03
+   #       [Ha]         [eV]      
+   1     -0.91415    -24.87524
+   2      1.39744     38.02634
+   3      2.52437     68.69169
+   4      2.52437     68.69169
+   5      2.52437     68.69169
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     2.8551761381
+    Nucleus Energy  [Ha]:    -6.7372012407
+    Hartree Energy  [Ha]:     2.0537292507
+    Exchange Energy [Ha]:    -1.0268646254
+ 
+    Total Energy    [Ha]:    -2.8551604772
+ 
+ convergence criterium on the density matrix  1.738222336674594E-014
+  ===> convergence has been reached
+ 
+ ==================================================
+ The SCF loop ends here
+ ==================================================
+ 
+
+ WARNING: small complex number is 1.00E-03
+ 
+ Perform the second-order self-energy calculation
+ with the perturbative approach
+ obtain the ERI in the eigenvector basis
+ subroutine is order N^5
+ The basis transform is using OPENMP
+ == ijspin            1
+ time (s)  6.890296936035156E-005
+ ERI in the eigenvector basis obtained
+ 
+ OPENMP is used for the MP2 self-energy
+
+ MP2 Energy
+ 2-ring diagram  :   -0.05165668
+ SOX diagram     :    0.02582834
+ MP2 correlation :   -0.02582834
+
+ ==============================
+  selfenergy RING + SOX
+ #        Energies           one-ring              SOX             MP2              Z            QP-eigenvalues
+   1        -24.87524          0.95196         -0.47598          0.47598          0.97724        -24.39926
+   2         38.02634         -0.94702          0.47351         -0.47351          0.98551         37.55283
+   3         68.69169         -1.00042          0.00503         -0.99540          0.98170         67.69629
+   4         68.69169         -1.00042          0.00503         -0.99540          0.98170         67.69629
+   5         68.69169         -1.00042          0.00503         -0.99540          0.98170         67.69629
+ ==============================
+ MP2 Energy       [Ha]:     -0.025828
+ 
+ MP2 Total Energy [Ha]:     -2.880989
+
+                 --- Timings in (s) and # of calls ---
+                    Total time          0.01
  
          4 gaussians integrals          0.00
  
-                       Hartree          0.00
-                      Exchange          0.00
-                        DFT xc          0.00
+                       Hartree          0.00         4
+                      Exchange          0.00         4
+                        DFT xc          0.00         0
  
-         Coulomb in prod basis          0.00
+           ERI basis transform          0.00         1
  
-         Total GW polarization          0.00
-         Overlap of 3 basis             0.00
-            Diago 2 particle H          0.00
-           Invert 2 particle S          0.00
+        Total RPA polarization          0.00         0
+            Diago 2 particle H          0.00         0
+           Invert 2 particle S          0.00         0
  
-                GW self-energy          0.00
+                GW self-energy          0.00         0
  
-                MP2 energy              0.00
+                    MP2 energy          0.00         0
+               MP2 self-energy          0.00         1
                  ----------------------
+ 
+                timing tmp1             0.00         0
+                timing tmp2             0.00         1
+                timing tmp3             0.00       625
+                timing tmp4             0.00       625
+                timing tmp5             0.00         0
+ 
+
+ SUMMARY of all the WARNINGS issued along the run:
+
+ 1.     OPENMP option is activated with threads number     1                                                
+ 2.     calculation name: HF+MP2                                                                            
+ 3.     basis file used: He_cc-pVDZ                                                                         
+ 4.     small complex number is 1.00E-03                                                                    
+
+
 
  This is the end
 
