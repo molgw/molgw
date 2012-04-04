@@ -117,6 +117,7 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%dft_c = 134
    if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
  case('GW')
+   calc_type%type          = GW
    calc_type%need_exchange = .TRUE.  
    calc_type%is_gw         = .TRUE.
    calc_type%method        = QS
@@ -131,5 +132,25 @@ subroutine init_calculation_type(calc_type,input_key)
 
 
 end subroutine init_calculation_type
+
+!=========================================================================
+subroutine output_calculation_type(calc_type)
+ implicit none
+ type(calculation_type),intent(in)   :: calc_type
+!=====
+
+  write(*,*) 'type                        ',calc_type%type
+  write(*,*) 'need_exchange               ',calc_type%need_exchange
+  write(*,*) 'need_final_exchange         ',calc_type%need_final_exchange
+  write(*,*) 'need_dft_xc                 ',calc_type%need_dft_xc
+  write(*,*) 'need_rpa                    ',calc_type%need_rpa
+  write(*,*) 'is_gw                       ',calc_type%is_gw
+  write(*,*) 'is_mp2                      ',calc_type%is_mp2
+  write(*,*) 'is_ci                       ',calc_type%is_ci
+  write(*,*) 'method                      ',calc_type%method  
+  write(*,*) 'dft_x                       ',calc_type%dft_x
+  write(*,*) 'dft_c                       ',calc_type%dft_c                       
+
+end subroutine output_calculation_type
 
 end module m_calculation_type

@@ -442,7 +442,7 @@ program atom
 
    !
    ! QPscGW self energy
-   if( calc_type%is_gw .AND. calc_type%method == QS .AND. iscf > nscf/3 ) then
+   if( calc_type%is_gw .AND. calc_type%method == QS .AND. iscf > 5 ) then
 
      call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
      call start_clock(timing_pola)
@@ -628,7 +628,8 @@ program atom
 #endif
    call stop_clock(timing_pola)
    write(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',en%rpa
-   en%tot = en%tot - en%xc + en%exx + en%rpa
+   en%tot = en%tot + en%rpa
+   if(calc_type%need_dft_xc) en%tot = en%tot - en%xc + en%exx
    write(*,'(/,a,f14.8)') ' RPA Total energy [Ha]: ',en%tot
 
    call start_clock(timing_self)

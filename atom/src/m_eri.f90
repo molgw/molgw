@@ -87,12 +87,12 @@ function index_prod(ibf,jbf)
  integer,intent(in) :: ibf,jbf
  integer            :: index_prod
 !=====
- integer            :: imin,jmax
+ integer            :: jmin,imax
 !=====
 
- imin=MIN(ibf,jbf)
- jmax=MAX(ibf,jbf)
- index_prod = (imin-1)*nbf_eri - (imin-1)*(imin-2)/2 + jmax-imin+1
+ imax=MAX(ibf,jbf)
+ jmin=MIN(ibf,jbf)
+ index_prod = (jmin-1)*nbf_eri - (jmin-1)*(jmin-2)/2 + imax-jmin+1
 
 end function index_prod
 
@@ -103,16 +103,17 @@ function index_eri(ibf,jbf,kbf,lbf)
  integer            :: index_eri
 !=====
 ! integer            :: imin,jmax,kmin,lmax
- integer            :: ijmin,klmax
+ integer            :: klmin,ijmax
  integer            :: index_ij,index_kl
 !===== 
 
  index_ij = index_prod(ibf,jbf)
  index_kl = index_prod(kbf,lbf)
 
- ijmin=MIN(index_ij,index_kl)
- klmax=MAX(index_ij,index_kl)
- index_eri = (ijmin-1)*nsize1 - (ijmin-1)*(ijmin-2)/2 + klmax-ijmin+1
+ ijmax=MAX(index_ij,index_kl)
+ klmin=MIN(index_ij,index_kl)
+
+ index_eri = (klmin-1)*nsize1 - (klmin-1)*(klmin-2)/2 + ijmax-klmin+1
 
 end function index_eri
 
@@ -828,9 +829,9 @@ subroutine calculate_eri_faster(basis)
                                  +(jindex_in_the_shell-1)*nl*nk + (iindex_in_the_shell-1)*nl*nk*nj
 
 #if SYMMETRIZED
-                 if(ibf>jbf) cycle
-                 if(kbf>lbf) cycle
-                 if(index_prod(ibf,jbf)>index_prod(kbf,lbf)) cycle
+                 if(ibf<jbf) cycle
+                 if(kbf<lbf) cycle
+                 if(index_prod(ibf,jbf)<index_prod(kbf,lbf)) cycle
 
                  index_tmp=index_eri(ibf,jbf,kbf,lbf)
 #else
@@ -1196,21 +1197,25 @@ subroutine negligible_eri(tol)
  real(dp),intent(in) :: tol
 !=====
  integer             :: icount,ibf,jbf,kbf,lbf
+ integer             :: ibuffer
 !=====
 
  icount=0
- do lbf=1,nbf_eri
-   do kbf=1,nbf_eri
-     do jbf=1,nbf_eri
-       do ibf=1,nbf_eri
-         if( eri(ibf,jbf,kbf,lbf) < tol ) icount=icount+1
-       enddo
-     enddo
-   enddo
+! do lbf=1,nbf_eri
+!   do kbf=1,nbf_eri
+!     do jbf=1,nbf_eri
+!       do ibf=1,nbf_eri
+!         if( eri(ibf,jbf,kbf,lbf) < tol ) icount=icount+1
+!       enddo
+!     enddo
+!   enddo
+! enddo
+ do ibuffer=1,nsize
+   if( eri_buffer(ibuffer) < tol ) icount=icount+1
  enddo
 
  write(*,*) ' number of negligible integrals <',tol
- write(*,*) icount, ' / ',nbf_eri**4,REAL(icount,dp)/REAL(nbf_eri,dp)**4*100.0_dp,' [%]'
+ write(*,*) icount, ' / ',nsize,REAL(icount,dp)/REAL(nsize,dp)*100.0_dp,' [%]'
 
 
 end subroutine negligible_eri

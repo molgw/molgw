@@ -38,7 +38,7 @@ atom.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_calculation_type.f90 m_to
 hamiltonian.o: m_definitions.f90 m_timing.f90 m_eri.f90 hamiltonian.f90
 	$(FC) $(FCOPTS) -c hamiltonian.f90 
 
-io.o: m_definitions.f90 m_warning.f90 io.f90
+io.o: m_definitions.f90 m_warning.f90 m_calculation_type.f90 io.f90
 	$(FC) $(FCOPTS) -c io.f90 
 
 m_eri.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90
@@ -47,7 +47,7 @@ m_eri.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90
 mp2.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 mp2.f90 
 	$(FC) $(FCOPTS) -c mp2.f90
 
-mp2_selfenergy.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 mp2_selfenergy.f90
+mp2_selfenergy.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 m_calculation_type.f90 mp2_selfenergy.f90
 	$(FC) $(FCOPTS) -c mp2_selfenergy.f90
 
 lebedev_quadrature.o: lebedev_quadrature.f
