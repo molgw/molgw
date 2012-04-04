@@ -13,8 +13,8 @@ LIBINT_ROOT=
 include ./my_machine.arch
 
 LINKS= -lstdc++ -lm
-LIBXC_INCS= -I$(LIXC_ROOT)/include
-LIBXC=  -L$(LIBXC_ROOT)/lib -Bstatic -lxc -Bdynamic
+LIBXC_INCS=-I$(LIBXC_ROOT)/include
+LIBXC=-L$(LIBXC_ROOT)/lib -Bstatic -lxc -Bdynamic
 LIBINT=-L$(LIBINT_ROOT)/lib -lint2
 LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 

@@ -2,6 +2,7 @@ module m_definitions
 
  integer,parameter  :: dp=kind(0.d0)
  integer,parameter  :: sp=kind(0.)
+ integer,parameter  :: prec_eri=dp
 
  !
  ! Physical constants

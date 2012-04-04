@@ -12,12 +12,14 @@ subroutine setup_hartree(PRINT_VOLUME,nbf,nspin,p_matrix,pot_hartree,ehartree)
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin
  character(len=100)   :: title
+ integer              :: ii,ii_tmp
 !=====
 
  call start_clock(timing_hartree)
 
  pot_hartree(:,:,:)=0.0_dp
 
+#if 1
  do ispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
@@ -36,6 +38,28 @@ subroutine setup_hartree(PRINT_VOLUME,nbf,nspin,p_matrix,pot_hartree,ehartree)
 !$OMP END DO
 !$OMP END PARALLEL
  enddo
+#else
+ do ispin=1,nspin
+!$OMP PARALLEL DEFAULT(SHARED)
+!$OMP DO REDUCTION(+:pot_hartree) PRIVATE(ii_tmp,ibf,jbf,kbf,lbf) 
+ do ii=1,nbf**4
+   ii_tmp = ii-1
+   lbf = ii_tmp/nbf**3 + 1
+   ii_tmp = ii_tmp - (lbf-1)*nbf**3
+   kbf = ii_tmp/nbf**2 + 1
+   ii_tmp = ii_tmp - (kbf-1)*nbf**2
+   jbf = ii_tmp/nbf    + 1
+   ii_tmp = ii_tmp - (jbf-1)*nbf
+   ibf = ii_tmp + 1
+
+   pot_hartree(ibf,jbf,ispin) = pot_hartree(ibf,jbf,ispin) &
+!                + eri(ibf,jbf,kbf,lbf) * SUM( p_matrix(kbf,lbf,:) )
+                + eri_buffer(ii) * SUM( p_matrix(kbf,lbf,:) )
+ enddo
+!$OMP END DO
+!$OMP END PARALLEL
+ enddo
+#endif
 
  title='=== Hartree contribution ==='
  call dump_out_matrix(PRINT_VOLUME,title,nbf,nspin,pot_hartree)

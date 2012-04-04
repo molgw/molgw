@@ -83,7 +83,6 @@ program atom
  write(*,*)
  write(*,*)
 
-
  !
  ! Development tests are commented below
 #if 0
@@ -277,7 +276,6 @@ program atom
    allocate(s_filtered_basis(prod_basis%nbf_filtered,prod_basis%nbf_filtered))
    allocate(sinv_filtered_basis(prod_basis%nbf_filtered,prod_basis%nbf_filtered))
 
-   call start_clock(timing_tmp3)
    allocate(eri2(prod_basis%nbf,prod_basis%nbf))
    do klbf=1,prod_basis%nbf
      do ijbf=1,prod_basis%nbf
@@ -294,9 +292,7 @@ program atom
 
    title='=== Coulomb matrix in product basis ==='
    call dump_out_matrix(PRINT_VOLUME,title,prod_basis%nbf_filtered,1,v_filtered_basis)
-   call stop_clock(timing_tmp3)
 
-   call start_clock(timing_tmp4)
    allocate(matrix2(prod_basis%nbf,prod_basis%nbf))
    do klbf=1,prod_basis%nbf
      do ijbf=1,klbf ! prod_basis%nbf
@@ -311,7 +307,6 @@ program atom
    ! Remember that the product basis is unnormalized !
    title='=== product overlap matrix S ==='
    call dump_out_matrix(PRINT_VOLUME,title,prod_basis%nbf_filtered,1,s_filtered_basis)
-   call stop_clock(timing_tmp4)
 
    !
    ! calculate S^{-1}

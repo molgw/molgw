@@ -1,12 +1,12 @@
 module m_eri
  use m_definitions
 
- real(dp),allocatable :: eri_buffer(:)
- integer              :: nbf_eri                ! local copy of nbf
- integer              :: nsize                  ! size of the eri_buffer array
- integer              :: nsize1                 ! number of independent pairs (i,j) with i<=j
+ real(prec_eri),allocatable :: eri_buffer(:)
+ integer                    :: nbf_eri                ! local copy of nbf
+ integer                    :: nsize                  ! size of the eri_buffer array
+ integer                    :: nsize1                 ! number of independent pairs (i,j) with i<=j
 
- real(dp),pointer :: eri_eigen_buffer(:,:,:)
+ real(prec_eri),allocatable :: eri_eigen_buffer(:,:,:)
 
 contains
 
@@ -190,7 +190,6 @@ subroutine calculate_eri(basis,eri)
 
  write(*,'(/,a)') ' Calculate all the Electron Repulsion Integrals (ERI) at once'
 
- call start_clock(timing_tmp1)
  !
  ! libint works with shells of same angular momentum and same alpha
  ! establish now a list of all gaussian shells
@@ -245,8 +244,6 @@ subroutine calculate_eri(basis,eri)
 
  allocate(int_gaussian(nint_gaussian,nint_gaussian,nint_gaussian,nint_gaussian))
  
- call stop_clock(timing_tmp1)
- call start_clock(timing_tmp2)
  ig=0; jg=0; kg=0; lg=0
  
  do lshell=1,nshell
@@ -397,7 +394,6 @@ subroutine calculate_eri(basis,eri)
  enddo
  if( allocated(integrals) ) deallocate( integrals )
 
- call stop_clock(timing_tmp2)
 
 ! if(DEBUG) write(*,*) '=========================================='
 ! if(DEBUG) write(*,*) int_gaussian(:,:,:,:)
@@ -406,7 +402,6 @@ subroutine calculate_eri(basis,eri)
  !
  ! calculate (ij||kl) over contractions
  
- call start_clock(timing_tmp3)
  eri(:,:,:,:) = 0.0_dp
  do lbf=1,basis%nbf
    bf_current_l => basis%bf(lbf)
@@ -436,7 +431,6 @@ subroutine calculate_eri(basis,eri)
      enddo
    enddo
  enddo
- call stop_clock(timing_tmp3)
 
 
  deallocate(int_gaussian)

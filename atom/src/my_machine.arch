@@ -7,8 +7,9 @@ FCOPTS= -xHost -O3 #-ipo
 
 #LAPACK= -L/home/bruneval/src/lapack-3.3.1/ -llapack_LINUX -lblas_LINUX 
 #LAPACK=  -Wl,--start-group  $(MKLROOT)/lib/em64t/libmkl_intel_lp64.a $(MKLROOT)/lib/em64t/libmkl_intel_thread.a $(MKLROOT)/lib/em64t/libmkl_core.a -Wl,--end-group -openmp -lpthread
-LAPACK= -lmkl_intel_lp64 -lmkl_sequential -lmkl_lapack95_lp64 -lmkl_core
+LAPACK=  -Wl,--start-group  -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -Wl,--end-group -openmp -lpthread
+#LAPACK= -lmkl_intel_lp64 -lmkl_sequential -lmkl_lapack95_lp64 -lmkl_core
 
-LIBXC_ROOT= /home/bruneval/src/libxc-1.0_ifort
+LIBXC_ROOT=/home/bruneval/src/libxc-1.0_ifort
 LIBINT_ROOT=/home/bruneval/src/libint-2.0.0_install
 
