@@ -1078,7 +1078,8 @@ subroutine transform_eri_basis_robust(nbf,nspin,c_matrix,eri_eigenstate)
 
            do jbf=1,nbf
              do ibf=1,nbf
-               eri_tmp(istate,jstate,kbf,lbf) = eri_tmp(istate,jstate,kbf,lbf) + eri(ibf,jbf,kbf,lbf) * c_matrix(ibf,istate,ijspin) * c_matrix(jbf,jstate,ijspin)
+               eri_tmp(istate,jstate,kbf,lbf) = eri_tmp(istate,jstate,kbf,lbf) &
+                  + eri(ibf,jbf,kbf,lbf) * c_matrix(ibf,istate,ijspin) * c_matrix(jbf,jstate,ijspin)
              enddo
            enddo
 
@@ -1264,10 +1265,10 @@ subroutine negligible_eri(tol)
 
  ibuffer_sparse=0
  ibuffer=0
- do jbf=1,nbf_eri
-   do ibf=jbf,nbf_eri
-     do lbf=1,nbf_eri
-       do kbf=lbf,nbf_eri
+ do lbf=1,nbf_eri
+   do kbf=lbf,nbf_eri
+     do jbf=1,nbf_eri
+       do ibf=jbf,nbf_eri
 
          if( index_prod(ibf,jbf) >= index_prod(kbf,lbf) ) then
            ibuffer = ibuffer + 1
@@ -1286,11 +1287,6 @@ subroutine negligible_eri(tol)
        enddo
      enddo
    enddo
- enddo
- write(*,*) ibuffer_sparse,ibuffer
- do ibuffer_sparse=1,nsize_sparse
-    write(*,*) '==========',ibuffer_sparse
-    write(*,*) index_sparse(:,ibuffer_sparse)
  enddo
 
  deallocate(eri_buffer)

@@ -256,22 +256,6 @@ program atom
  call stop_clock(timing_integrals)
  call negligible_eri(-1.0e-8_dp)
 
- write(*,*) eri( 1, 1, 1, 1)
- write(*,*)
- write(*,*) eri(10, 5, 2, 8)
- write(*,*) eri(10, 5, 8, 2)
- write(*,*) eri( 5,10, 2, 8)
- write(*,*) eri( 5,10, 8, 2)
- write(*,*) eri( 2, 8,10, 5)
- write(*,*) eri( 8, 2,10, 5)
- write(*,*) eri( 8, 2, 5,10)
- write(*,*) eri( 2, 8, 5,10)
- write(*,*)
- write(*,*) eri( 1, 5, 2, 8)
- write(*,*) eri( 1,18, 2, 8)
- write(*,*) eri( 1,10, 2,18)
- write(*,*) eri( 1,10,18, 5)
- stop'TOTO'
  !
  ! In all the following cases, one needs the Coulomb integral
  ! in the eigenvector basis
