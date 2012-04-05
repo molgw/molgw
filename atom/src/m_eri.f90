@@ -2,6 +2,11 @@ module m_eri
  use m_definitions
 
  real(prec_eri),allocatable :: eri_buffer(:)
+
+ integer                    :: nsize_sparse
+ real(prec_eri),allocatable :: eri_buffer_sparse(:)
+ integer*2,allocatable      :: index_sparse(:,:)
+
  integer                    :: nbf_eri                ! local copy of nbf
  integer                    :: nsize                  ! size of the eri_buffer array
  integer                    :: nsize1                 ! number of independent pairs (i,j) with i<=j
@@ -20,16 +25,22 @@ subroutine allocate_eri(nbf)
 !===== 
 
  nbf_eri = nbf
-#if SYMMETRIZED
- nsize1  = index_prod(nbf_eri,nbf_eri) !  nbf_eri*(nbf_eri+1)/2
+#if LOW_MEMORY
+ write(*,'(/,a)') ' Symmetrized ERI stored'
+ nsize1  = index_prod(nbf_eri,nbf_eri) 
  nsize   = index_eri(nbf_eri,nbf_eri,nbf_eri,nbf_eri)
 #else
+ write(*,'(/,a)') ' All ERI are stored'
  nsize1  = nbf_eri**2
  nsize   = nsize1**2
 #endif
 
  allocate(eri_buffer(nsize),stat=info)
- write(*,'(/,a,f8.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb]'
+ if(REAL(nsize,dp)*prec_eri > 1024**3 ) then
+   write(*,'(a,f8.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb]'
+ else
+   write(*,'(a,f8.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**2,' [Mb]'
+ endif
  if(info==0) then
    write(*,*) 'success'
  else
@@ -68,7 +79,9 @@ subroutine deallocate_eri()
  implicit none
 !=====
 
- deallocate(eri_buffer)
+ if(allocated(eri_buffer))        deallocate(eri_buffer)
+ if(allocated(eri_buffer_sparse)) deallocate(eri_buffer_sparse)
+ if(allocated(index_sparse))      deallocate(index_sparse)
 
 end subroutine deallocate_eri
 
@@ -123,9 +136,39 @@ function eri(ibf,jbf,kbf,lbf)
  integer,intent(in) :: ibf,jbf,kbf,lbf
  real(dp)           :: eri
 !=====
+ integer            :: ibuffer_sparse,index_ijkl
+ integer            :: i1,i2,i3,i4
+!=====
 
-#if SYMMETRIZED
- eri = eri_buffer(index_eri(ibf,jbf,kbf,lbf))
+#if LOW_MEMORY
+
+! eri = eri_buffer(index_eri(ibf,jbf,kbf,lbf))
+ eri = 0.0_dp
+
+ if( index_prod(ibf,jbf) >=  index_prod(kbf,lbf) ) then
+   i1=MAX(ibf,jbf)
+   i2=MIN(ibf,jbf)
+   i3=MAX(kbf,lbf)
+   i4=MIN(kbf,lbf)
+ else
+   i3=MAX(ibf,jbf)
+   i4=MIN(ibf,jbf)
+   i1=MAX(kbf,lbf)
+   i2=MIN(kbf,lbf)
+ endif
+
+ do ibuffer_sparse=1,nsize_sparse
+
+   if( index_sparse(1,ibuffer_sparse) == i1 .AND. &
+       index_sparse(2,ibuffer_sparse) == i2 .AND. &
+       index_sparse(3,ibuffer_sparse) == i3 .AND. &
+       index_sparse(4,ibuffer_sparse) == i4 ) then
+     eri = eri_buffer_sparse(ibuffer_sparse)
+     exit
+   endif
+
+ enddo
+
 #else
  eri = eri_buffer(ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3)
 #endif
@@ -170,7 +213,6 @@ subroutine calculate_eri(basis,eri)
  integer                      :: nint_gaussian,igaussian
  integer                      :: index_global(basis%nbf,NPRIMITIVE_MAX)  ! no basis set will contain a function made of more than 10 gaussian
  real(dp),allocatable         :: int_gaussian(:,:,:,:)
-! real*4,allocatable         :: int_gaussian(:,:,:,:)
  logical                      :: shell_already_exists
  integer                      :: ami,amj,amk,aml
  integer                      :: ii,jj,kk,ll
@@ -828,7 +870,7 @@ subroutine calculate_eri_faster(basis)
                  index_integral = lindex_in_the_shell + (kindex_in_the_shell-1)*nl &
                                  +(jindex_in_the_shell-1)*nl*nk + (iindex_in_the_shell-1)*nl*nk*nj
 
-#if SYMMETRIZED
+#if LOW_MEMORY
                  if(ibf<jbf) cycle
                  if(kbf<lbf) cycle
                  if(index_prod(ibf,jbf)<index_prod(kbf,lbf)) cycle
@@ -986,10 +1028,10 @@ subroutine test_eri(basis)
  integer                      :: ibf,jbf,kbf,lbf
 !=====
 
- do ibf=1,nbf_eri
-   do jbf=1,nbf_eri
-     do kbf=1,nbf_eri
-       do lbf=1,nbf_eri
+ do jbf=1,nbf_eri
+   do ibf=1,nbf_eri
+     do lbf=1,nbf_eri
+       do kbf=1,nbf_eri
          if( ABS(eri(ibf,jbf,kbf,lbf) - eri(kbf,lbf,ibf,jbf)) > 1.d-6 ) then
            write(*,*) ibf,jbf,kbf,lbf,eri(ibf,jbf,kbf,lbf)
            write(*,*) kbf,lbf,ibf,jbf,eri(kbf,lbf,ibf,jbf)
@@ -1004,6 +1046,7 @@ subroutine test_eri(basis)
    enddo
  enddo
 
+ stop'TESTING OK'
 
 end subroutine test_eri
 
@@ -1197,25 +1240,61 @@ subroutine negligible_eri(tol)
  real(dp),intent(in) :: tol
 !=====
  integer             :: icount,ibf,jbf,kbf,lbf
- integer             :: ibuffer
+ integer             :: ibuffer,ibuffer_sparse
 !=====
 
  icount=0
-! do lbf=1,nbf_eri
-!   do kbf=1,nbf_eri
-!     do jbf=1,nbf_eri
-!       do ibf=1,nbf_eri
-!         if( eri(ibf,jbf,kbf,lbf) < tol ) icount=icount+1
-!       enddo
-!     enddo
-!   enddo
-! enddo
  do ibuffer=1,nsize
-   if( eri_buffer(ibuffer) < tol ) icount=icount+1
+   if( ABS( eri_buffer(ibuffer) ) < tol ) icount=icount+1
  enddo
 
  write(*,*) ' number of negligible integrals <',tol
  write(*,*) icount, ' / ',nsize,REAL(icount,dp)/REAL(nsize,dp)*100.0_dp,' [%]'
+
+#ifdef LOW_MEMORY
+ nsize_sparse = nsize - icount
+ allocate(eri_buffer_sparse(nsize_sparse))
+ allocate(index_sparse(4,nsize_sparse))
+
+ if(REAL(nsize_sparse,dp)*prec_eri > 1024**3 ) then
+   write(*,'(a,f8.3,a)') ' Allocating the sparse ERI array: ',REAL(nsize_sparse,dp)*prec_eri/1024**3,' [Gb]'
+ else
+   write(*,'(a,f8.3,a)') ' Allocating the sparse ERI array: ',REAL(nsize_sparse,dp)*prec_eri/1024**2,' [Mb]'
+ endif
+
+ ibuffer_sparse=0
+ ibuffer=0
+ do jbf=1,nbf_eri
+   do ibf=jbf,nbf_eri
+     do lbf=1,nbf_eri
+       do kbf=lbf,nbf_eri
+
+         if( index_prod(ibf,jbf) >= index_prod(kbf,lbf) ) then
+           ibuffer = ibuffer + 1
+           if( ABS( eri_buffer(ibuffer) ) > tol ) then
+             ibuffer_sparse = ibuffer_sparse + 1
+             eri_buffer_sparse(ibuffer_sparse) = eri_buffer(ibuffer)
+             index_sparse(1,ibuffer_sparse) = ibf
+             index_sparse(2,ibuffer_sparse) = jbf
+             index_sparse(3,ibuffer_sparse) = kbf
+             index_sparse(4,ibuffer_sparse) = lbf
+
+           endif
+
+         endif
+
+       enddo
+     enddo
+   enddo
+ enddo
+ write(*,*) ibuffer_sparse,ibuffer
+ do ibuffer_sparse=1,nsize_sparse
+    write(*,*) '==========',ibuffer_sparse
+    write(*,*) index_sparse(:,ibuffer_sparse)
+ enddo
+
+ deallocate(eri_buffer)
+#endif
 
 
 end subroutine negligible_eri
