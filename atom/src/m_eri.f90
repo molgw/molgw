@@ -200,7 +200,7 @@ subroutine calculate_eri(basis,eri)
  use m_timing
  use m_basis_set
  implicit none
- type(basis_set),intent(in)   :: basis
+ type(basis_set),intent(in)   ::#ifdef LOW_MEMORY2
  real(dp),intent(out)         :: eri(basis%nbf,basis%nbf,basis%nbf,basis%nbf)
 !=====
  integer,parameter            :: NSHELLMAX=100
@@ -1243,26 +1243,25 @@ end subroutine transform_eri_basis_fast
 
 #ifdef LOW_MEMORY2
 !=================================================================
-subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,jstate,ijspin,eri_eigenstate_ij)
+subroutine transform_eri_basis_lowmem1(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
  use m_definitions
  use m_timing
  implicit none
 
- integer,intent(in)   :: nspin,istate,jstate,ijspin
+ integer,intent(in)   :: nspin,istate,ijspin
  real(dp),intent(in)  :: c_matrix(nbf_eri,nbf_eri,nspin)
- real(dp),intent(out) :: eri_eigenstate_ij(nbf_eri,nbf_eri,nspin)
+ real(dp),intent(out) :: eri_eigenstate_i(nbf_eri,nbf_eri,nbf_eri,nspin)
 !=====
  integer              :: klspin
  integer              :: ibf,jbf,kbf,lbf
- integer              :: kstate,lstate
+ integer              :: jstate,kstate,lstate
  real(dp)             :: eri_tmp3(nbf_eri,nbf_eri,nbf_eri)
- real(dp)             :: eri_tmp2(nbf_eri,nbf_eri)
  real(dp)             :: wtime
 !=====
 
  call start_clock(timing_basis_transform)
 
- eri_eigenstate_ij(:,:,:)=0.0_dp
+ eri_eigenstate_i(:,:,:,:)=0.0_dp
  eri_tmp3(:,:,:)=0.0_dp
 
 !$OMP PARALLEL DEFAULT(SHARED)
@@ -1286,7 +1285,9 @@ subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,jstate,ijspin,eri_ei
  do lbf=1,nbf_eri
    do kbf=1,nbf_eri
 
-     eri_eigenstate_ij(kbf,lbf,nspin) = DOT_PRODUCT( eri_tmp3(:,kbf,lbf) , c_matrix(:,jstate,ijspin) )
+     do jstate=1,nbf_eri
+       eri_eigenstate_i(jstate,kbf,lbf,nspin) = DOT_PRODUCT( eri_tmp3(:,kbf,lbf) , c_matrix(:,jstate,ijspin) )
+     enddo
 
    enddo
  enddo
@@ -1302,9 +1303,9 @@ subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,jstate,ijspin,eri_ei
 !$OMP DO SCHEDULE(STATIC)
    do lbf=1,nbf_eri
      do kstate=1,nbf_eri
-
-       eri_tmp2(kstate,lbf) = DOT_PRODUCT( eri_eigenstate_ij(:,lbf,nspin) , c_matrix(:,kstate,klspin) )
-
+       do jstate=1,nbf_eri
+         eri_tmp3(jstate,kstate,lbf) = DOT_PRODUCT( eri_eigenstate_i(jstate,:,lbf,nspin) , c_matrix(:,kstate,klspin) )
+       enddo
      enddo
    enddo
 !$OMP END DO
@@ -1312,9 +1313,11 @@ subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,jstate,ijspin,eri_ei
 !$OMP DO SCHEDULE(STATIC)
    do lstate=1,nbf_eri
      do kstate=1,nbf_eri
+       do jstate=1,nbf_eri
 
-       eri_eigenstate_ij(kstate,lstate,klspin) = DOT_PRODUCT( eri_tmp2(kstate,:) , c_matrix(:,lstate,klspin) )
+         eri_eigenstate_i(jstate,kstate,lstate,klspin) = DOT_PRODUCT( eri_tmp3(jstate,kstate,:) , c_matrix(:,lstate,klspin) )
 
+       enddo
      enddo
    enddo
 !$OMP END DO
@@ -1325,9 +1328,8 @@ subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,jstate,ijspin,eri_ei
 
  call stop_clock(timing_basis_transform)
 
-end subroutine transform_eri_basis_lowmem
+end subroutine transform_eri_basis_lowmem1
 #endif
-
 
 !=========================================================================
 subroutine negligible_eri(tol)
