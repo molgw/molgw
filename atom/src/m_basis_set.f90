@@ -619,8 +619,6 @@ contains
 
  call init_basis_function(unnormalized,ng,bf1%nx+bf2%nx,bf1%ny+bf2%ny,bf1%nz+bf2%nz,x0_dummy,alpha,coeff,bfprod)
 
-! call print_basis_function(bfprod) ; stop'DEBUG'
-
  !
  ! override the normalization
  ! the product gaussians are UNnormalized
@@ -630,6 +628,45 @@ contains
  deallocate(coeff,alpha)
 
  end subroutine basis_function_prod
+
+!=========================================================================
+subroutine basis_function_dipole(bf1,bf2,dipole)
+ implicit none
+ type(basis_function),intent(in)  :: bf1,bf2
+ real(dp),intent(out)             :: dipole(3)
+!====
+ type(basis_function)             :: bftmp
+ integer                          :: ig
+ logical,parameter                :: normalized=.FALSE.
+!====
+
+ ! 
+ ! Calculate < phi_1 | r | phi_2 >
+ !
+
+ ! first set up | x phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx+1,bf2%ny,bf2%nz,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | x phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole(1))
+
+ ! first set up | y phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+1,bf2%nz,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | y phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole(2))
+
+ ! first set up | z phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz+1,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | z phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole(3))
+
+
+end subroutine basis_function_dipole
 
 !=========================================================================
 end module m_basis_set

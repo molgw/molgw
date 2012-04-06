@@ -1243,7 +1243,7 @@ end subroutine transform_eri_basis_fast
 
 #ifdef LOW_MEMORY2
 !=================================================================
-subroutine transform_eri_basis_lowmem1(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
+subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
  use m_definitions
  use m_timing
  implicit none
@@ -1328,7 +1328,7 @@ subroutine transform_eri_basis_lowmem1(nspin,c_matrix,istate,ijspin,eri_eigensta
 
  call stop_clock(timing_basis_transform)
 
-end subroutine transform_eri_basis_lowmem1
+end subroutine transform_eri_basis_lowmem
 #endif
 
 !=========================================================================

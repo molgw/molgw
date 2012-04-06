@@ -38,11 +38,12 @@ program atom
  type(basis_set)         :: prod_basis
  type(spectral_function) :: wpol
  integer                 :: ibf,jbf,kbf,lbf,ijbf,klbf
- integer                 :: ispin,iscf,istate,iatom,jatom
+ integer                 :: ispin,iscf,istate,jstate,iatom
  integer                 :: iprodbf,jprodbf,nprodbf_max
  logical                 :: scf_loop_convergence
  character(len=100)      :: title
  real(dp)                :: energy_tmp,overlap_tmp,spin_fact
+ real(dp)                :: dipole(3)
  real(dp),allocatable    :: hamiltonian(:,:,:)
  real(dp),allocatable    :: hamiltonian_kinetic(:,:,:)           !TODO remove spin
  real(dp),allocatable    :: hamiltonian_nucleus(:,:,:)           !TODO remove spin
@@ -209,12 +210,8 @@ program atom
 
  !
  ! Nucleus-nucleus repulsion contribution to the energy
- en%nuc_nuc=0.0_dp
- do iatom=1,natom
-   do jatom=iatom+1,natom
-     en%nuc_nuc = en%nuc_nuc + zatom(iatom) * zatom(jatom) / SQRT( SUM( (x(:,iatom) - x(:,jatom))**2) )
-   enddo
- enddo
+ call nucleus_nucleus_energy(en%nuc_nuc)
+
  !
  ! start build up the basis set
  call init_basis_set(PRINT_VOLUME,basis_name,basis)
@@ -593,6 +590,28 @@ program atom
 
 #if 0
  call plot_wfn(nspin,basis,c_matrix)
+#endif
+#if 0
+ do iatom=1,1 ! 3
+   write(*,*) 'CHECK TRK sum-rule along axis',iatom 
+   do jbf=1,basis%nbf
+     do ibf=1,basis%nbf
+       call basis_function_dipole(basis%bf(ibf),basis%bf(jbf),dipole)
+       matrix(ibf,jbf,1) = dipole(iatom)
+     enddo
+   enddo
+  
+   matrix(:,:,1) = MATMUL( TRANSPOSE( c_matrix(:,:,1) ) , MATMUL( matrix(:,:,1) , c_matrix(:,:,1) ) )
+   
+   do jstate=1,basis%nbf
+     energy_tmp=0.0_dp
+     do istate=1,basis%nbf
+       energy_tmp = energy_tmp + ( energy(istate,1) - energy(jstate,1) ) * matrix(istate,jstate,1)**2
+     enddo
+     write(*,*) 'TRK result:',jstate,energy_tmp
+   enddo
+ enddo
+ stop'ENOUGH'
 #endif
 
  !

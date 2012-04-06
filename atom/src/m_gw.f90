@@ -324,7 +324,7 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
    do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
 
 #ifdef LOW_MEMORY2
-       call transform_eri_basis_lowmem1(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
+       call transform_eri_basis_lowmem(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
 #endif
 
      do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
@@ -404,7 +404,7 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  do klspin=1,nspin
    do kbf=1,basis%nbf 
 #ifdef LOW_MEMORY2
-     call transform_eri_basis_lowmem1(nspin,c_matrix,kbf,klspin,eri_eigenstate_k)
+     call transform_eri_basis_lowmem(nspin,c_matrix,kbf,klspin,eri_eigenstate_k)
 #endif
      do lbf=1,basis%nbf
        if(kbf==lbf) cycle  ! intra state transitions are not allowed!

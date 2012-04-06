@@ -22,10 +22,10 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 
 
 ../atom: m_definitions.o m_timing.o m_warning.o m_calculation_type.o m_tools.o m_scf.o m_atoms.o \
-       m_gaussian.o m_basis_set.o xc_dft.o m_eri.o m_gw.o wrapper_libint.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o atom.o
+         m_gaussian.o m_basis_set.o m_eri.o m_gw.o wrapper_libint.o lebedev_quadrature.o xc_dft.o mp2_selfenergy.o mp2.o io.o hamiltonian.o atom.o
 	$(FC) $(FCOPTS) m_definitions.o m_timing.o m_warning.o m_calculation_type.o m_tools.o m_scf.o m_atoms.o \
-                        m_gaussian.o m_basis_set.o m_gw.o xc_dft.o m_eri.o \
-                        wrapper_libint.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o atom.o -o ../atom \
+                        m_gaussian.o m_basis_set.o m_gw.o m_eri.o \
+                        wrapper_libint.o lebedev_quadrature.o xc_dft.o mp2_selfenergy.o mp2.o io.o hamiltonian.o atom.o -o ../atom \
                         $(LAPACK) \
                         $(LIBXC) $(LIBXC _INCS) \
                         $(LIBINT) $(LIBINT_INCS) \
@@ -50,6 +50,9 @@ mp2.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 mp
 mp2_selfenergy.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 m_calculation_type.f90 mp2_selfenergy.f90
 	$(FC) $(FCOPTS) -c mp2_selfenergy.f90
 
+xc_dft.o: m_definitions.f90 xc_dft.f90
+	$(FC) $(FCOPTS) -c xc_dft.f90 $(LIBXC_INCS)
+
 lebedev_quadrature.o: lebedev_quadrature.f
 	$(FC) $(FCOPTS) -c lebedev_quadrature.f
 
@@ -58,9 +61,6 @@ wrapper_libint.o: wrapper_libint.cc
 
 m_gw.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_calculation_type.f90 m_gw.f90 m_eri.f90
 	$(FC) $(FCOPTS) -c m_gw.f90
-
-xc_dft.o: m_definitions.f90 xc_dft.f90
-	$(FC) $(FCOPTS) -c xc_dft.f90 $(LIBXC_INCS)
 
 m_basis_set.o: m_definitions.f90 m_gaussian.f90 m_basis_set.f90
 	$(FC) $(FCOPTS) -c m_basis_set.f90
