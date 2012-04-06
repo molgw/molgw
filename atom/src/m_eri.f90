@@ -3,9 +3,11 @@ module m_eri
 
  real(prec_eri),allocatable :: eri_buffer(:)
 
+#ifdef LOW_MEMORY3
  integer                    :: nsize_sparse
  real(prec_eri),allocatable :: eri_buffer_sparse(:)
  integer*2,allocatable      :: index_sparse(:,:)
+#endif
 
  integer                    :: nbf_eri                ! local copy of nbf
  integer                    :: nsize                  ! size of the eri_buffer array
@@ -25,7 +27,7 @@ subroutine allocate_eri(nbf)
 !===== 
 
  nbf_eri = nbf
-#if LOW_MEMORY
+#if LOW_MEMORY3 || LOW_MEMORY2
  write(*,'(/,a)') ' Symmetrized ERI stored'
  nsize1  = index_prod(nbf_eri,nbf_eri) 
  nsize   = index_eri(nbf_eri,nbf_eri,nbf_eri,nbf_eri)
@@ -80,8 +82,10 @@ subroutine deallocate_eri()
 !=====
 
  if(allocated(eri_buffer))        deallocate(eri_buffer)
+#ifdef LOW_MEMORY3
  if(allocated(eri_buffer_sparse)) deallocate(eri_buffer_sparse)
  if(allocated(index_sparse))      deallocate(index_sparse)
+#endif
 
 end subroutine deallocate_eri
 
@@ -140,9 +144,8 @@ function eri(ibf,jbf,kbf,lbf)
  integer            :: i1,i2,i3,i4
 !=====
 
-#if LOW_MEMORY
+#if LOW_MEMORY3
 
-! eri = eri_buffer(index_eri(ibf,jbf,kbf,lbf))
  eri = 0.0_dp
 
  if( index_prod(ibf,jbf) >=  index_prod(kbf,lbf) ) then
@@ -169,6 +172,8 @@ function eri(ibf,jbf,kbf,lbf)
 
  enddo
 
+#elif LOW_MEMORY2
+ eri = eri_buffer(index_eri(ibf,jbf,kbf,lbf))
 #else
  eri = eri_buffer(ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3)
 #endif
@@ -870,7 +875,7 @@ subroutine calculate_eri_faster(basis)
                  index_integral = lindex_in_the_shell + (kindex_in_the_shell-1)*nl &
                                  +(jindex_in_the_shell-1)*nl*nk + (iindex_in_the_shell-1)*nl*nk*nj
 
-#if LOW_MEMORY
+#if LOW_MEMORY3 || LOW_MEMORY2
                  if(ibf<jbf) cycle
                  if(kbf<lbf) cycle
                  if(index_prod(ibf,jbf)<index_prod(kbf,lbf)) cycle
@@ -1235,6 +1240,95 @@ subroutine transform_eri_basis_fast(nbf,nspin,c_matrix,eri_eigenstate)
 
 end subroutine transform_eri_basis_fast
 
+
+#ifdef LOW_MEMORY2
+!=================================================================
+subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,jstate,ijspin,eri_eigenstate_ij)
+ use m_definitions
+ use m_timing
+ implicit none
+
+ integer,intent(in)   :: nspin,istate,jstate,ijspin
+ real(dp),intent(in)  :: c_matrix(nbf_eri,nbf_eri,nspin)
+ real(dp),intent(out) :: eri_eigenstate_ij(nbf_eri,nbf_eri,nspin)
+!=====
+ integer              :: klspin
+ integer              :: ibf,jbf,kbf,lbf
+ integer              :: kstate,lstate
+ real(dp)             :: eri_tmp3(nbf_eri,nbf_eri,nbf_eri)
+ real(dp)             :: eri_tmp2(nbf_eri,nbf_eri)
+ real(dp)             :: wtime
+!=====
+
+ call start_clock(timing_basis_transform)
+
+ eri_eigenstate_ij(:,:,:)=0.0_dp
+ eri_tmp3(:,:,:)=0.0_dp
+
+!$OMP PARALLEL DEFAULT(SHARED)
+
+!$OMP DO SCHEDULE(STATIC)
+ do lbf=1,nbf_eri
+   do kbf=1,nbf_eri
+     do jbf=1,nbf_eri
+
+       do ibf=1,nbf_eri
+         eri_tmp3(jbf,kbf,lbf) = eri_tmp3(jbf,kbf,lbf) + eri(ibf,jbf,kbf,lbf) * c_matrix(ibf,istate,ijspin) 
+       enddo
+
+     enddo
+   enddo
+ enddo
+!$OMP END DO
+
+
+!$OMP DO SCHEDULE(STATIC)
+ do lbf=1,nbf_eri
+   do kbf=1,nbf_eri
+
+     eri_eigenstate_ij(kbf,lbf,nspin) = DOT_PRODUCT( eri_tmp3(:,kbf,lbf) , c_matrix(:,jstate,ijspin) )
+
+   enddo
+ enddo
+!$OMP END DO
+
+!$OMP END PARALLEL
+
+  
+ do klspin=1,nspin
+
+!$OMP PARALLEL DEFAULT(SHARED)
+
+!$OMP DO SCHEDULE(STATIC)
+   do lbf=1,nbf_eri
+     do kstate=1,nbf_eri
+
+       eri_tmp2(kstate,lbf) = DOT_PRODUCT( eri_eigenstate_ij(:,lbf,nspin) , c_matrix(:,kstate,klspin) )
+
+     enddo
+   enddo
+!$OMP END DO
+
+!$OMP DO SCHEDULE(STATIC)
+   do lstate=1,nbf_eri
+     do kstate=1,nbf_eri
+
+       eri_eigenstate_ij(kstate,lstate,klspin) = DOT_PRODUCT( eri_tmp2(kstate,:) , c_matrix(:,lstate,klspin) )
+
+     enddo
+   enddo
+!$OMP END DO
+
+!$OMP END PARALLEL
+
+ enddo !klspin
+
+ call stop_clock(timing_basis_transform)
+
+end subroutine transform_eri_basis_lowmem
+#endif
+
+
 !=========================================================================
 subroutine negligible_eri(tol)
  implicit none
@@ -1252,7 +1346,7 @@ subroutine negligible_eri(tol)
  write(*,*) ' number of negligible integrals <',tol
  write(*,*) icount, ' / ',nsize,REAL(icount,dp)/REAL(nsize,dp)*100.0_dp,' [%]'
 
-#ifdef LOW_MEMORY
+#ifdef LOW_MEMORY3
  nsize_sparse = nsize - icount
  allocate(eri_buffer_sparse(nsize_sparse))
  allocate(index_sparse(4,nsize_sparse))

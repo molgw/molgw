@@ -20,8 +20,7 @@ subroutine setup_hartree(PRINT_VOLUME,nbf,nspin,p_matrix,pot_hartree,ehartree)
 
  pot_hartree(:,:,:)=0.0_dp
 
-!######ifndef LOW_MEMORY
-#ifndef LOW_MEMORY
+#ifndef LOW_MEMORY3
  do ispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)

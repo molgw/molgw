@@ -191,6 +191,15 @@ program atom
  msg='OPENMP option is activated with threads number'//msg
  call issue_warning(msg)
 #endif
+#ifdef LOW_MEMORY2
+ msg='LOW_MEMORY version 2 option is swichted on'
+ call issue_warning(msg)
+#endif
+#ifdef LOW_MEMORY3
+ msg='LOW_MEMORY version 3 option is swichted on'
+ call issue_warning(msg)
+#endif
+
 
  !
  ! reading input file
@@ -254,7 +263,9 @@ program atom
  call allocate_eri(basis%nbf)
  call calculate_eri_faster(basis)
  call stop_clock(timing_integrals)
+#ifdef LOW_MEMORY3
  call negligible_eri(-1.0e-8_dp)
+#endif
 
  !
  ! In all the following cases, one needs the Coulomb integral

@@ -1,8 +1,8 @@
-OPENMP=  #-openmp -DOPENMP
+OPENMP= -openmp -DOPENMP
 
-FC=ifort -fpp $(OPENMP) -DHAVE_LIBXC -DLOW_MEMORY #-DCHI0  # -DAUXIL_BASIS
+FC=ifort -fpp $(OPENMP) -DHAVE_LIBXC -DLOW_MEMORY2 #-DCHI0  # -DAUXIL_BASIS
 CC=g++
-FCOPTS= -O0 #-g -check all
+FCOPTS= -O1 #-g -check all
 #FCOPTS= -xHost -O3 #-ipo
 
 #LAPACK= -L/home/bruneval/src/lapack-3.3.1/ -llapack_LINUX -lblas_LINUX 
@@ -10,6 +10,6 @@ FCOPTS= -O0 #-g -check all
 LAPACK=  -Wl,--start-group  -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -Wl,--end-group -openmp -lpthread
 #LAPACK= -lmkl_intel_lp64 -lmkl_sequential -lmkl_lapack95_lp64 -lmkl_core
 
-LIBXC_ROOT=/home/bruneval/src/libxc-1.1.0_install
-LIBINT_ROOT=/home/bruneval/src/libint-2.0.0
+LIBXC_ROOT=/home/bruneval/src/libxc-1.0_ifort
+LIBINT_ROOT=/home/bruneval/src/libint-2.0.0_install
 

@@ -267,7 +267,12 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  integer :: ipole
  integer :: t_ij,t_kl
 
+#ifndef LOW_MEMORY2
  real(dp) :: eri_eigenstate(basis%nbf,basis%nbf,basis%nbf,basis%nbf,nspin,nspin)
+#else
+ real(dp),allocatable :: eri_eigenstate_ij(:,:,:)
+ real(dp),allocatable :: eri_eigenstate_kl(:,:,:)
+#endif
  real(dp) :: spin_fact 
  real(dp) :: overlap_tmp
  real(dp) :: h_2p(wpol%npole,wpol%npole)
@@ -290,7 +295,11 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
    call issue_warning(msg)
  endif
 
+#ifndef LOW_MEMORY2
  call transform_eri_basis_fast(basis%nbf,nspin,c_matrix,eri_eigenstate)
+#else
+ allocate(eri_eigenstate_ij(basis%nbf,basis%nbf,nspin))
+#endif
 
  if(NOMEGA==2) then
    omega(1)=(0.0_dp,0.001_dp)
@@ -319,6 +328,10 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
        if( abs(occupation(jorbital,ijspin)-occupation(iorbital,ijspin))<completely_empty ) cycle
        t_ij=t_ij+1
 
+#ifdef LOW_MEMORY2
+       call transform_eri_basis_lowmem(nspin,c_matrix,iorbital,jorbital,ijspin,eri_eigenstate_ij)
+#endif
+
 
        t_kl=0
        do klspin=1,nspin
@@ -330,8 +343,13 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
              t_kl=t_kl+1
 
 #ifndef CHI0
+#ifndef LOW_MEMORY2
              h_2p(t_ij,t_kl) = eri_eigenstate(iorbital,jorbital,korbital,lorbital,ijspin,klspin) &
                         * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
+#else
+             h_2p(t_ij,t_kl) = eri_eigenstate_ij(korbital,lorbital,klspin) &
+                        * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
+#endif
 #else
              h_2p(t_ij,t_kl) = 0.0_dp
 #endif
@@ -339,9 +357,12 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 
            if(TDHF) then
              if(ijspin==klspin) then
+#ifndef LOW_MEMORY2
                h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigenstate(iorbital,korbital,jorbital,lorbital,ijspin,klspin)  &
                         * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) / spin_fact 
-                            ! dot_product(exchange_left, three_bf_overlap(:,jorbital,lorbital,ijspin)) &
+#else
+               stop'TDHF NOT IMPLEMENTED IN LOW MEMORY'
+#endif
              endif
            endif
 
@@ -369,6 +390,10 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  call invert(wpol%npole,eigenvector,eigenvector_inv)
  call stop_clock(timing_inversion_s2p)
 
+#ifdef LOW_MEMORY2
+ deallocate(eri_eigenstate_ij)
+ allocate(eri_eigenstate_kl(basis%nbf,basis%nbf,nspin))
+#endif
 
  wpol%pole = eigenvalue
  wpol%residu_left (:,:) = 0.0_dp
@@ -381,6 +406,10 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
        if( abs(occupation(lbf,klspin)-occupation(kbf,klspin))<completely_empty ) cycle
        t_kl=t_kl+1
 
+#ifdef LOW_MEMORY2
+       call transform_eri_basis_lowmem(nspin,c_matrix,kbf,lbf,klspin,eri_eigenstate_kl)
+#endif
+
        do ijspin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO PRIVATE(ibf,jbf,ijbf_current)
@@ -390,11 +419,19 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 
            ijbf_current = ijbf+prod_basis%nbf*(ijspin-1)
 
+#ifndef LOW_MEMORY2
            wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
                         + eri_eigenstate(ibf,jbf,kbf,lbf,ijspin,klspin) *  eigenvector(t_kl,:)
            wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
                         + eri_eigenstate(kbf,lbf,ibf,jbf,klspin,ijspin) * eigenvector_inv(:,t_kl) &
                                          * ( occupation(kbf,klspin)-occupation(lbf,klspin) )
+#else
+           wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
+                        + eri_eigenstate_kl(ibf,jbf,ijspin) *  eigenvector(t_kl,:)
+           wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
+                        + eri_eigenstate_kl(ibf,jbf,ijspin) * eigenvector_inv(:,t_kl) &
+                                         * ( occupation(kbf,klspin)-occupation(lbf,klspin) )
+#endif
 
 
          enddo
@@ -404,6 +441,10 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
      enddo
    enddo
  enddo
+
+#ifdef LOW_MEMORY2
+ deallocate(eri_eigenstate_kl)
+#endif
 
  write(*,*)
  write(*,*) 'calculate the RPA energy using the Tamm-Dancoff decomposition'

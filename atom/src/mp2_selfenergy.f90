@@ -39,7 +39,11 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
  real(dp)              :: spin_fact
  real(dp)              :: fact_occ1,fact_occ2
  real(dp)              :: fi,fj,fk,ei,ej,ek
+!!!!#ifndef LOW_MEMORY2
  real(dp)              :: eri_eigenstate(basis%nbf,basis%nbf,basis%nbf,basis%nbf,nspin,nspin)
+!!!!#else
+ real(dp)              :: eri_eigenstate_ai(basis%nbf,basis%nbf,nspin)
+!!!!#endif
  real(dp)              :: omega
  real(dp)              :: zz(nspin)
  real(dp)              :: fact_real,fact_nega
@@ -66,7 +70,9 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
  end select
 
 
+#ifndef LOW_MEMORY2
  call transform_eri_basis_fast(basis%nbf,nspin,c_matrix,eri_eigenstate)
+#endif
 
 
  if(method==QS) then
@@ -102,21 +108,27 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
 
  selfenergy_ring(:,:,:,:) = 0.0_dp
  selfenergy_sox(:,:,:,:)  = 0.0_dp
+
 #ifdef OPENMP
  write(*,*) 'OPENMP is used for the MP2 self-energy'
 #endif
+ do abispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED) &
 !$OMP PRIVATE(omega,fi,ei,fj,ej,fk,ek,fact_occ1,fact_occ2,fact_real,fact_nega) 
-
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2) REDUCTION(+:emp2_ring,emp2_sox)
- do aorbital=1,basis%nbf ! external loop ( bra )
-   do borbital=1,basis%nbf ! external loop ( ket )
-   
-     do abispin=1,nspin
-       do iomegai=1,nomegai
-         omega = energy(borbital,abispin) + omegai(iomegai)
+   do aorbital=1,basis%nbf ! external loop ( bra )
+     do iorbital=1,basis%nbf !LOOP of the first Green's function
+
+#ifdef LOW_MEMORY2
+       call transform_eri_basis_lowmem(nspin,c_matrix,aorbital,iorbital,abispin,eri_eigenstate_ai)
+       stop'NOT FINISHED'
+#endif
+
+       do borbital=1,basis%nbf ! external loop ( ket )
+
+         do iomegai=1,nomegai
+           omega = energy(borbital,abispin) + omegai(iomegai)
     
-         do iorbital=1,basis%nbf !LOOP of the first Green's function
     
            fi=occupation(iorbital,abispin)
            ei=energy(iorbital,abispin)
@@ -166,15 +178,12 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
              enddo
            enddo
          enddo
-       enddo ! iomegai
+       enddo 
      enddo
-   
-   
-   
-   enddo ! external loop ( ket )
- enddo ! external loop ( bra )
+   enddo 
 !$OMP END DO
 !$OMP END PARALLEL
+ enddo ! abispin
 
  emp2_ring = 0.5_dp * emp2_ring
  emp2_sox  = 0.5_dp * emp2_sox
