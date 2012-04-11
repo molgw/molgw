@@ -636,37 +636,159 @@ subroutine basis_function_dipole(bf1,bf2,dipole)
  real(dp),intent(out)             :: dipole(3)
 !====
  type(basis_function)             :: bftmp
+ real(dp)                         :: dipole_tmp
  integer                          :: ig
  logical,parameter                :: normalized=.FALSE.
 !====
 
  ! 
  ! Calculate < phi_1 | r | phi_2 >
+ ! using r = ( r - B ) + B
  !
 
- ! first set up | x phi_2 >
+ ! first set up | (x-xB) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx+1,bf2%ny,bf2%nz,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
- ! then overlap < phi1 | x phi2 >
- call overlap_basis_function(bf1,bftmp,dipole(1))
+ ! then overlap < phi1 | (x-xB) phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole_tmp)
+ dipole(1) = dipole_tmp
+ ! first set up | xB phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor 
+ ! then overlap < phi1 | xB phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole_tmp)
+ dipole(1) = dipole(1) + dipole_tmp * bf2%x0(1)
 
- ! first set up | y phi_2 >
+ ! first set up | (y-yB) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+1,bf2%nz,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
- ! then overlap < phi1 | y phi2 >
- call overlap_basis_function(bf1,bftmp,dipole(2))
+ ! then overlap < phi1 | (y-yB) phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole_tmp)
+ dipole(2) = dipole_tmp
+ ! first set up | yB phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor 
+ ! then overlap < phi1 | yB phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole_tmp)
+ dipole(2) = dipole(2) + dipole_tmp * bf2%x0(2)
 
- ! first set up | z phi_2 >
+ ! first set up | (z-zB) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz+1,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
- ! then overlap < phi1 | z phi2 >
- call overlap_basis_function(bf1,bftmp,dipole(3))
+ ! then overlap < phi1 | (z-zB) phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole_tmp)
+ dipole(3) = dipole_tmp
+ ! first set up | zB phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor 
+ ! then overlap < phi1 | zB phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole_tmp)
+ dipole(3) = dipole(3) + dipole_tmp * bf2%x0(3)
 
 
 end subroutine basis_function_dipole
+
+
+!=========================================================================
+subroutine basis_function_dipole_sq(bf1,bf2,dipole)
+ implicit none
+ type(basis_function),intent(in)  :: bf1,bf2
+ real(dp),intent(out)             :: dipole(3)
+!====
+ type(basis_function)             :: bftmp
+ real(dp)                         :: dipole_tmp
+ integer                          :: ig
+ logical,parameter                :: normalized=.FALSE.
+!====
+
+ ! 
+ ! Calculate < phi_1 | r^2 | phi_2 >
+ ! using r^2 = ( r - B )^2 + 2 B ( r - B ) + B^2
+ !
+
+ ! first set up | (x-xB)^2 phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx+2,bf2%ny,bf2%nz,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | (x-xB)^2 phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole_tmp)
+ dipole(1) = dipole_tmp
+
+ ! first set up | 2B*(x-xB) phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx+1,bf2%ny,bf2%nz,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | 2B*(x-xB) phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole_tmp)
+ dipole(1) = dipole(1) + dipole_tmp * 2.0_dp * bf2%x0(1)
+
+ ! first set up | xB phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor 
+ ! then overlap < phi1 | xB phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole_tmp)
+ dipole(1) = dipole(1) + dipole_tmp * bf2%x0(1)**2
+
+
+
+ ! first set up | (y-yB)^2 phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+2,bf2%nz,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | (y-yB)^2 phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole_tmp)
+ dipole(2) = dipole_tmp
+
+ ! first set up | 2B*(y-yB) phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+1,bf2%nz,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | 2B*(y-yB) phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole_tmp)
+ dipole(2) = dipole(2) + dipole_tmp * 2.0_dp * bf2%x0(2)
+
+ ! first set up | yB phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor 
+ ! then overlap < phi1 | yB phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole_tmp)
+ dipole(2) = dipole(2) + dipole_tmp * bf2%x0(2)**2
+
+
+
+ ! first set up | (z-zB)^2 phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz+2,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | (z-zB)^2 phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole_tmp)
+ dipole(3) = dipole_tmp
+
+ ! first set up | 2B*(z-zB) phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz+1,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | 2B*(z-zB) phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole_tmp)
+ dipole(3) = dipole(3) + dipole_tmp * 2.0_dp * bf2%x0(3)
+
+ ! first set up | zB phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,bf2%x0,bf2%g(:)%alpha,bf2%coeff,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor 
+ ! then overlap < phi1 | zB phi2 >
+ call overlap_basis_function(bf1,bftmp,dipole_tmp)
+ dipole(3) = dipole(3) + dipole_tmp * bf2%x0(3)**2
+
+end subroutine basis_function_dipole_sq
 
 !=========================================================================
 end module m_basis_set

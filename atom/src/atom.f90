@@ -27,27 +27,25 @@ program atom
  real(dp)                     :: magnetization
 !=====
  real(dp),parameter           :: alpha_hybrid=0.25_dp
-!=====
+!===== variables for testing
  type(gaussian) :: gatmp,gbtmp
  type(basis_function) :: bftmp1,bftmp2
- real(dp) :: rtmp,rtmp2
- integer :: ix,iy,iz,ntmp,ng
- real(dp),allocatable :: alpha(:),coeff(:)
+ real(dp) :: rtmp
 !=====
  type(basis_set)         :: basis
  type(basis_set)         :: prod_basis
  type(spectral_function) :: wpol
  integer                 :: ibf,jbf,kbf,lbf,ijbf,klbf
  integer                 :: ispin,iscf,istate,jstate,iatom
- integer                 :: iprodbf,jprodbf,nprodbf_max
  logical                 :: scf_loop_convergence
  character(len=100)      :: title
- real(dp)                :: energy_tmp,overlap_tmp,spin_fact
+ real(dp)                :: energy_tmp,overlap_tmp
  real(dp)                :: dipole(3)
  real(dp),allocatable    :: hamiltonian(:,:,:)
  real(dp),allocatable    :: hamiltonian_kinetic(:,:,:)           !TODO remove spin
  real(dp),allocatable    :: hamiltonian_nucleus(:,:,:)           !TODO remove spin
  real(dp),allocatable    :: matrix(:,:,:)
+ real(dp),allocatable    :: matrix3(:,:,:)
  real(dp),allocatable    :: vxc_matrix(:,:,:)
  real(dp),allocatable    :: s_matrix(:,:)
  real(dp),allocatable    :: c_matrix(:,:,:)
@@ -134,38 +132,8 @@ program atom
 
  call numerical_nucleus(gatmp,gbtmp)
 
+
  stop'ENOUGH FOR TODAY'
-#endif
-
-#if 0
-! TESTING CONTRACTION
-!H STO-3G
- ng=3
- allocate(alpha(ng),coeff(ng))
- alpha(1) = 0.1098180_dp
- alpha(2) = 0.4057710_dp
- alpha(3) = 2.2276600_dp
- coeff(1) = 0.4446350_dp
- coeff(2) = 0.5353280_dp
- coeff(3) = 0.1543290_dp
- call init_basis_function(.TRUE.,ng,0,0,0,(/-0.7_dp,0.0_dp,0.0_dp/),alpha,coeff,bftmp1)
- call init_basis_function(.TRUE.,ng,0,0,0,(/0.7_dp,0.0_dp,0.0_dp/),alpha,coeff,bftmp2)
- deallocate(alpha,coeff)
-
- call print_basis_function(bftmp1)
- call print_basis_function(bftmp2)
- call overlap_basis_function(bftmp1,bftmp2,rtmp)
- write(*,*) 'overlap_basis_function',rtmp
-
- call kinetic_basis_function(bftmp1,bftmp2,rtmp)
- write(*,*) 'kinetic',rtmp
- call nucleus_pot_basis_function(bftmp1,bftmp2,1.0_dp,(/-0.7_dp,0.0_dp,0.0_dp/),rtmp)
- rtmp2 = rtmp
- call nucleus_pot_basis_function(bftmp1,bftmp2,1.0_dp,(/0.7_dp,0.0_dp,0.0_dp/),rtmp)
- rtmp2 = rtmp2 + rtmp 
- write(*,*) 'nucleus',rtmp2
-
- stop'ENOUGH'
 
  write(*,*)
  write(*,*) '                   END OF THE TESTS'
@@ -366,8 +334,8 @@ program atom
 
  !
  ! Initialize the SCF mixing procedure
-! call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
- call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
+ call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
+! call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
 
  !
  ! Kinetic energy contribution
@@ -592,25 +560,117 @@ program atom
  call plot_wfn(nspin,basis,c_matrix)
 #endif
 #if 0
- do iatom=1,1 ! 3
+ write(*,*) '==================== TESTS ==================='
+ allocate(matrix3(basis%nbf,basis%nbf,nspin))
+
+ do iatom=1,3
+   write(*,*)
    write(*,*) 'CHECK TRK sum-rule along axis',iatom 
+   write(*,*)
+
    do jbf=1,basis%nbf
      do ibf=1,basis%nbf
        call basis_function_dipole(basis%bf(ibf),basis%bf(jbf),dipole)
        matrix(ibf,jbf,1) = dipole(iatom)
      enddo
    enddo
+   title='=== Dipole matrix === in gaussian basis'
+   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,1,matrix(:,:,1))
   
    matrix(:,:,1) = MATMUL( TRANSPOSE( c_matrix(:,:,1) ) , MATMUL( matrix(:,:,1) , c_matrix(:,:,1) ) )
+
+   title='=== Dipole matrix === in orbital basis'
+   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,1,matrix(:,:,1))
+
+   do jbf=1,basis%nbf
+     do ibf=1,basis%nbf
+       call basis_function_dipole_sq(basis%bf(ibf),basis%bf(jbf),dipole)
+       matrix3(ibf,jbf,1) = dipole(iatom)
+     enddo
+   enddo
+   title='=== Dipole squared matrix === in gaussian basis'
+   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,1,matrix3(:,:,1))
+  
+   matrix3(:,:,1) = MATMUL( TRANSPOSE( c_matrix(:,:,1) ) , MATMUL( matrix3(:,:,1) , c_matrix(:,:,1) ) )
+
+   title='=== Dipole squared matrix === in orbital basis'
+   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,1,matrix3(:,:,1))
    
+
+   write(*,*) 'test completeness \sum_j <i|r|j><j|r|i>'
+   
+   energy_tmp=0.0_dp
    do jstate=1,basis%nbf
+     energy_tmp = energy_tmp + matrix(1,jstate,1)**2
+   enddo
+   write(*,*) 'test 1:',energy_tmp
+   write(*,*) 'test 2:',matrix3(1,1,1)
+   write(*,*)
+
+   rtmp = 10.
+   write(*,*) 'high energy [Ha]',rtmp
+
+
+   do jstate=1,MIN(basis%nbf,1)
+
      energy_tmp=0.0_dp
      do istate=1,basis%nbf
        energy_tmp = energy_tmp + ( energy(istate,1) - energy(jstate,1) ) * matrix(istate,jstate,1)**2
      enddo
      write(*,*) 'TRK result:',jstate,energy_tmp
+
+     do istate=1,basis%nbf
+       energy_tmp = energy_tmp - ( rtmp             - energy(jstate,1) ) * matrix(istate,jstate,1)**2
+     enddo
+     write(*,*) 'TRK result:',jstate,energy_tmp
+     energy_tmp = energy_tmp + ( rtmp             - energy(jstate,1) )  * matrix3(jstate,jstate,1)
+     write(*,*) 'TRK result:',jstate,energy_tmp
+
    enddo
+
+
+   energy_tmp=0.0_dp
+   do jstate=1,basis%nbf
+     do istate=1,basis%nbf
+       if( occupation(jstate,1) - occupation(istate,1)  < 1.0e-6_dp ) cycle
+!       write(*,*) '----------',istate,jstate
+!       write(*,*) occupation(jstate,1) - occupation(istate,1),energy(istate,1) - energy(jstate,1), matrix(istate,jstate,1)**2 
+       energy_tmp = energy_tmp + matrix(istate,jstate,1)**2 / ( energy(istate,1) - energy(jstate,1) ) * ( occupation(jstate,1) - occupation(istate,1) )
+     enddo
+   enddo
+   !
+   ! factor 2 from resonant + anti resonant
+   write(*,*) 'polarizability',2.0_dp*energy_tmp
+
+
+   write(*,*) '---------with completeness'
+
+   energy_tmp=0.0_dp
+   do jstate=1,basis%nbf
+     do istate=1,basis%nbf
+!       if(istate==1) then
+!         energy_tmp = energy_tmp + occupation(istate,1) *
+!       endif
+       if( occupation(jstate,1) - occupation(istate,1)  > 1.0e-6_dp ) then
+         energy_tmp = energy_tmp + matrix(istate,jstate,1)**2 / ( energy(istate,1) - energy(jstate,1) ) * ( occupation(jstate,1) - occupation(istate,1) )
+         energy_tmp = energy_tmp - matrix(istate,jstate,1)**2 / ( rtmp             - energy(jstate,1) ) * ( occupation(jstate,1) - occupation(istate,1) )
+       else if( occupation(istate,1)  > 1.0e-6_dp ) then
+         energy_tmp = energy_tmp - matrix(istate,jstate,1)**2 / ( rtmp             - energy(jstate,1) ) * occupation(istate,1)
+       endif
+     enddo
+   enddo
+   !
+   ! factor 2 from resonant + anti resonant
+   write(*,*) 'polarizability without delta',2.0_dp*energy_tmp
+
+   do jstate=1,basis%nbf
+     energy_tmp = energy_tmp + occupation(jstate,1) * matrix3(jstate,jstate,1) /  ( rtmp             - energy(jstate,1) )      *2.0 ! WHY ?
+   enddo
+   write(*,*) 'polarizability with    delta',2.0_dp*energy_tmp
+
+
  enddo
+ write(*,*) '========= END   OF   TESTS ==================='
  stop'ENOUGH'
 #endif
 

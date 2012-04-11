@@ -337,7 +337,7 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
        t_kl=0
        do klspin=1,nspin
          do korbital=1,basis%nbf 
-!!!!!!!!!!!!TOBEREMOVED if(TDHF)          exchange_left = matmul( three_bf_overlap(:,iorbital,korbital,ijspin), sinv_v_sinv )
+
            do lorbital=1,basis%nbf 
              if(korbital==lorbital) cycle  ! intra state transitions are not allowed!
              if( abs(occupation(lorbital,klspin)-occupation(korbital,klspin))<completely_empty ) cycle
