@@ -98,8 +98,19 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%type          = LDA
    calc_type%need_dft_xc   = .TRUE.  
    calc_type%dft_x = 1
-!   calc_type%dft_c = 7  ! VWN5
    calc_type%dft_c = 12 ! PW
+   if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
+ case('VWN')
+   calc_type%type          = LDA
+   calc_type%need_dft_xc   = .TRUE.  
+   calc_type%dft_x = 1
+   calc_type%dft_c = 7  ! VWN5
+   if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
+ case('VWN_RPA')
+   calc_type%type          = LDA
+   calc_type%need_dft_xc   = .TRUE.  
+   calc_type%dft_x = 1
+   calc_type%dft_c = 8  ! RPA only
    if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
  case('PBEx')
    calc_type%need_dft_xc   = .TRUE.  

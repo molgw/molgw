@@ -89,11 +89,11 @@ function eval_gaussian(ga,x)
 end function eval_gaussian
 
 !=========================================================================
-function eval_gaussian_derivative(ga,x)
+function eval_gaussian_grad(ga,x)
  implicit none
  type(gaussian),intent(in) :: ga
  real(dp),intent(in) :: x(3)
- real(dp) :: eval_gaussian_derivative(3)
+ real(dp) :: eval_gaussian_grad(3)
 !=====
  real(dp) :: dx(3),dx2
  real(dp) :: g_x,g_y,g_z,gp_x,gp_y,gp_z
@@ -113,17 +113,17 @@ function eval_gaussian_derivative(ga,x)
  gp_z = -2.0_dp * ga%alpha * dx(3)**(ga%nz+1)
  if(ga%nz>0) gp_z = gp_z + REAL(ga%nz,dp) * dx(3)**(ga%nz-1)
 
- eval_gaussian_derivative(1) = gp_x * g_y  * g_z 
- eval_gaussian_derivative(2) = g_x  * gp_y * g_z 
- eval_gaussian_derivative(3) = g_x  * g_y  * gp_z
+ eval_gaussian_grad(1) = gp_x * g_y  * g_z 
+ eval_gaussian_grad(2) = g_x  * gp_y * g_z 
+ eval_gaussian_grad(3) = g_x  * g_y  * gp_z
 
  !
  ! multiply by the common exponential factor
  ! and normalize the cartesian gaussian
- eval_gaussian_derivative(:) = eval_gaussian_derivative(:) * ga%norm_factor * exp( - ga%alpha * dx2 )
+ eval_gaussian_grad(:) = eval_gaussian_grad(:) * ga%norm_factor * exp( - ga%alpha * dx2 )
 
 
-end function eval_gaussian_derivative
+end function eval_gaussian_grad
 
 !=========================================================================
 subroutine print_gaussian(ga)

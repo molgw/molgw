@@ -24,9 +24,12 @@ module m_basis_set
  ! A basis set is a list of basis functions
  ! filtering of some elements can be done by rotation 
  type basis_set
+   !
+   ! The list
    integer                                 :: nbf
    type(basis_function),pointer            :: bf(:) 
-   ! additional data needed for product basis
+   !
+   ! then additional data needed for product basis
    integer                                 :: nbf_filtered
    integer,allocatable                     :: index_ij(:,:)
    real(dp),allocatable                    :: rotation(:,:)
@@ -459,21 +462,21 @@ contains
  end function eval_basis_function
 
 !=========================================================================
- function eval_basis_function_derivative(bf,x)
+ function eval_basis_function_grad(bf,x)
  implicit none
  type(basis_function),intent(in) :: bf
  real(dp),intent(in)             :: x(3)
- real(dp)                        :: eval_basis_function_derivative(3)
+ real(dp)                        :: eval_basis_function_grad(3)
 !====
  integer                         :: ig
 !====
 
- eval_basis_function_derivative(:)=0.0_dp
+ eval_basis_function_grad(:)=0.0_dp
  do ig=1,bf%ngaussian
-   eval_basis_function_derivative(:) = eval_basis_function_derivative(:) + eval_gaussian_derivative(bf%g(ig),x) * bf%coeff(ig)
+   eval_basis_function_grad(:) = eval_basis_function_grad(:) + eval_gaussian_grad(bf%g(ig),x) * bf%coeff(ig)
  enddo
 
- end function eval_basis_function_derivative
+ end function eval_basis_function_grad
 
 
 !=========================================================================
