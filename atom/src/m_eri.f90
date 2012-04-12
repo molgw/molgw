@@ -39,9 +39,9 @@ subroutine allocate_eri(nbf)
 
  allocate(eri_buffer(nsize),stat=info)
  if(REAL(nsize,dp)*prec_eri > 1024**3 ) then
-   write(*,'(a,f8.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb]'
+   write(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb]'
  else
-   write(*,'(a,f8.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**2,' [Mb]'
+   write(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**2,' [Mb]'
  endif
  if(info==0) then
    write(*,*) 'success'

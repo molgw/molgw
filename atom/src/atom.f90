@@ -559,7 +559,7 @@ program atom
 #if 0
  call plot_wfn(nspin,basis,c_matrix)
 #endif
-#if 1
+#if 0
  write(*,*) '==================== TESTS ==================='
  allocate(matrix3(basis%nbf,basis%nbf,nspin))
 
