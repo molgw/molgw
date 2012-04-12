@@ -607,7 +607,7 @@ program atom
    write(*,*) 'test 2:',matrix3(1,1,1)
    write(*,*)
 
-   rtmp = 10.
+   rtmp = -0.2
    write(*,*) 'high energy [Ha]',rtmp
 
 
@@ -618,11 +618,14 @@ program atom
        energy_tmp = energy_tmp + ( energy(istate,1) - energy(jstate,1) ) * matrix(istate,jstate,1)**2
      enddo
      write(*,*) 'TRK result:',jstate,energy_tmp
+!     energy_tmp=0.0_dp
 
      do istate=1,basis%nbf
        energy_tmp = energy_tmp - ( rtmp             - energy(jstate,1) ) * matrix(istate,jstate,1)**2
      enddo
      write(*,*) 'TRK result:',jstate,energy_tmp
+!     energy_tmp=0.0_dp
+
      energy_tmp = energy_tmp + ( rtmp             - energy(jstate,1) )  * matrix3(jstate,jstate,1)
      write(*,*) 'TRK result:',jstate,energy_tmp
 
@@ -645,26 +648,19 @@ program atom
 
    write(*,*) '---------with completeness'
 
-   energy_tmp=0.0_dp
+!   energy_tmp=0.0_dp
    do jstate=1,basis%nbf
      do istate=1,basis%nbf
-!       if(istate==1) then
-!         energy_tmp = energy_tmp + occupation(istate,1) *
-!       endif
-       if( occupation(jstate,1) - occupation(istate,1)  > 1.0e-6_dp ) then
-         energy_tmp = energy_tmp + matrix(istate,jstate,1)**2 / ( energy(istate,1) - energy(jstate,1) ) * ( occupation(jstate,1) - occupation(istate,1) )
-         energy_tmp = energy_tmp - matrix(istate,jstate,1)**2 / ( rtmp             - energy(jstate,1) ) * ( occupation(jstate,1) - occupation(istate,1) )
-       else if( occupation(istate,1)  > 1.0e-6_dp ) then
-         energy_tmp = energy_tmp - matrix(istate,jstate,1)**2 / ( rtmp             - energy(jstate,1) ) * occupation(istate,1)
-       endif
+       energy_tmp = energy_tmp - matrix(istate,jstate,1)**2 / ( rtmp             - energy(jstate,1) ) *  occupation(jstate,1)
      enddo
    enddo
    !
    ! factor 2 from resonant + anti resonant
    write(*,*) 'polarizability without delta',2.0_dp*energy_tmp
 
+!   energy_tmp=0.0_dp
    do jstate=1,basis%nbf
-     energy_tmp = energy_tmp + occupation(jstate,1) * matrix3(jstate,jstate,1) /  ( rtmp             - energy(jstate,1) )      *2.0 ! WHY ?
+     energy_tmp = energy_tmp + occupation(jstate,1) * matrix3(jstate,jstate,1) /  ( rtmp             - energy(jstate,1) )  
    enddo
    write(*,*) 'polarizability with    delta',2.0_dp*energy_tmp
 

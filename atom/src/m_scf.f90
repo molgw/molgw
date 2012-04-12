@@ -187,7 +187,7 @@ subroutine check_convergence(scf_loop_converged)
    write(*,*) ' ===> convergence has been reached'
  else
    scf_loop_converged= .FALSE.
-   write(*,*) ' ===> convergence not yet reached'
+   write(*,*) ' ===> convergence not reached yet'
  endif
 
  write(*,*)
