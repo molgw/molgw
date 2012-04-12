@@ -559,7 +559,7 @@ program atom
 #if 0
  call plot_wfn(nspin,basis,c_matrix)
 #endif
-#if 0
+#if 1
  write(*,*) '==================== TESTS ==================='
  allocate(matrix3(basis%nbf,basis%nbf,nspin))
 
@@ -597,21 +597,25 @@ program atom
    call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,1,matrix3(:,:,1))
    
 
-   write(*,*) 'test completeness \sum_j <i|r|j><j|r|i>'
    
-   energy_tmp=0.0_dp
-   do jstate=1,basis%nbf
-     energy_tmp = energy_tmp + matrix(1,jstate,1)**2
+   do istate=1,MIN(basis%nbf,2)
+     write(*,*) '______ state _____',istate
+     energy_tmp=0.0_dp
+     do jstate=1,basis%nbf
+       energy_tmp = energy_tmp + matrix(istate,jstate,1)**2
+     enddo
+     write(*,*) 'test completeness \sum_j <i|r|j><j|r|i>'
+     write(*,*) 'result 1:',istate,energy_tmp
+     write(*,*) 'test completeness <i|r^2|i>'
+     write(*,*) 'result 2:',istate,matrix3(istate,istate,1)
+     write(*,*)
    enddo
-   write(*,*) 'test 1:',energy_tmp
-   write(*,*) 'test 2:',matrix3(1,1,1)
-   write(*,*)
 
    rtmp = -0.2
    write(*,*) 'high energy [Ha]',rtmp
 
 
-   do jstate=1,MIN(basis%nbf,1)
+   do jstate=1,MIN(basis%nbf,2)
 
      energy_tmp=0.0_dp
      do istate=1,basis%nbf
