@@ -1,6 +1,9 @@
 module m_eri
  use m_definitions
 
+ private
+ public :: eri,allocate_eri,allocate_eri_eigen,deallocate_eri,calculate_eri_faster,transform_eri_basis_fast,transform_eri_basis_lowmem
+
  real(prec_eri),allocatable :: eri_buffer(:)
 
 #ifdef LOW_MEMORY3

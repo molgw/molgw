@@ -122,6 +122,16 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%dft_x = 101
    calc_type%dft_c = 130
    if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
+ case('Bx')
+   calc_type%need_dft_xc   = .TRUE.  
+   calc_type%dft_x = 106
+   calc_type%dft_c = 0
+   if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
+ case('BLYP')
+   calc_type%need_dft_xc   = .TRUE.  
+   calc_type%dft_x = 106
+   calc_type%dft_c = 131
+   if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
  case('PW91')
    calc_type%need_dft_xc   = .TRUE.  
    calc_type%dft_x = 109

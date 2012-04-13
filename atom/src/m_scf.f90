@@ -2,10 +2,16 @@
 module m_scf
  use m_definitions
 
+ private
+ 
+ public :: simple_mixing,rmdiis,&
+           init_scf,destroy_scf,store_residual,new_p_matrix,check_convergence
+
  integer,parameter    :: simple_mixing = 1
  integer,parameter    :: rmdiis        = 2
 
  integer              :: mixing_scheme
+
  integer              :: nhist
  integer              :: nhist_current
  integer              :: nbf_scf,nspin_scf                 ! internally saved data
