@@ -20,7 +20,7 @@ module m_calculation_type
  integer,parameter :: perturbative=101
  integer,parameter :: QS          =102
 
- real(dp)          :: alpha_hybrid = 0.0_dp
+ real(dp)          :: alpha_hybrid = 1.0_dp
 
  type calculation_type
    integer :: type
@@ -99,6 +99,11 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%need_exchange = .TRUE.  
    calc_type%is_mp2        = .TRUE.
    calc_type%method        = QS
+ case('GW')
+   calc_type%type          = GW
+   calc_type%need_exchange = .TRUE.  
+   calc_type%is_gw         = .TRUE.
+   calc_type%method        = QS
 #ifdef HAVE_LIBXC
  !
  ! LDA functionals
@@ -156,27 +161,19 @@ subroutine init_calculation_type(calc_type,input_key)
  ! Hybrid functionals
  case('B3LYP')
    calc_type%need_dft_xc   = .TRUE.  
+   calc_type%need_exchange = .TRUE.  
    calc_type%dft_x = XC_HYB_GGA_XC_B3LYP
    calc_type%dft_c = 0
    if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
    alpha_hybrid = 0.20_dp
  case('PBE0','PBE1PBE')
    calc_type%need_dft_xc   = .TRUE.  
+   calc_type%need_exchange = .TRUE.  
    calc_type%dft_x = XC_HYB_GGA_XC_PBEH
    calc_type%dft_c = 0
    if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
    alpha_hybrid = 0.25_dp
 #endif
- case('GW')
-   calc_type%type          = GW
-   calc_type%need_exchange = .TRUE.  
-   calc_type%is_gw         = .TRUE.
-   calc_type%method        = QS
- case('PW0') ! LDA-based Hybrid functional
-   calc_type%need_exchange = .TRUE.  
-   calc_type%need_dft_xc   = .TRUE.  
-   calc_type%dft_x = 1
-   calc_type%dft_c = 12 ! PW
  case default
    stop'error reading calculation type part 1'
  end select

@@ -332,8 +332,8 @@ program atom
 
  !
  ! Initialize the SCF mixing procedure
- call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
-! call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
+! call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
+ call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
 
  !
  ! Kinetic energy contribution
@@ -387,27 +387,30 @@ program atom
 
      call setup_exchange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
 
-     if( .NOT. calc_type%need_dft_xc ) then
-       hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix(:,:,:) 
-     else ! this is an hybrid functional
-       write(*,*) 'this is an hybrid functional ',alpha_hybrid
-       hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix(:,:,:) * alpha_hybrid
-     endif
+!     if( .NOT. calc_type%need_dft_xc ) then
+!       hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix(:,:,:) 
+!     else ! this is an hybrid functional
+!       write(*,*) 'this is an hybrid functional ',alpha_hybrid
+!       hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix(:,:,:) * alpha_hybrid
+!     endif
+
+      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix(:,:,:) * alpha_hybrid
+
    endif
 
    !
    ! DFT XC potential is added here
    if( calc_type%need_dft_xc ) then
      call start_clock(timing_dft)
-     if( .NOT. calc_type%need_exchange ) then
+!     if( .NOT. calc_type%need_exchange ) then
        call dft_exc_vxc(nspin,basis,(/calc_type%dft_x ,calc_type%dft_c/),p_matrix,vxc_matrix,en%xc)
-     else 
-       write(*,*) 'this is an hybrid functional ',alpha_hybrid
-       matrix(:,:,:) = 0.0_dp
-       call dft_exc_vxc(nspin,basis,(/calc_type%dft_x,0/),p_matrix,matrix,en%xc)
-       call dft_exc_vxc(nspin,basis,(/calc_type%dft_c,0/),p_matrix,vxc_matrix,en%xc)
-       vxc_matrix = vxc_matrix + (1.0_dp - alpha_hybrid) * matrix
-     endif
+!     else 
+!       write(*,*) 'this is an hybrid functional ',alpha_hybrid
+!       matrix(:,:,:) = 0.0_dp
+!       call dft_exc_vxc(nspin,basis,(/calc_type%dft_x,0/),p_matrix,matrix,en%xc)
+!       call dft_exc_vxc(nspin,basis,(/calc_type%dft_c,0/),p_matrix,vxc_matrix,en%xc)
+!       vxc_matrix = vxc_matrix + (1.0_dp - alpha_hybrid) * matrix
+!     endif
      call stop_clock(timing_dft)
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + vxc_matrix(:,:,:)
 
@@ -554,7 +557,7 @@ program atom
  write(*,*) '=================================================='
  write(*,*)
 
-#if 1
+#if 0
  call plot_wfn(nspin,basis,c_matrix)
 #endif
 #if 0

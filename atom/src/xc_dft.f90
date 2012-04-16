@@ -21,7 +21,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
  real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: exc_xc
 !=====
- real(dp),parameter :: shift=1.d-7 ! bohr  some shift used
+ real(dp),parameter :: shift=1.d-6 ! bohr  some shift used
                                    ! to evaluate numerically the divergence of the gradient
  integer,parameter :: nx= 40
  integer,parameter :: nangular= 38 ! 86
@@ -173,7 +173,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
        do ibf=1,basis%nbf
          basis_function_r(ibf) = eval_basis_function(basis%bf(ibf),rr)
        enddo
-       if(xc_f90_info_family(xc_info1) == XC_FAMILY_GGA) then 
+       if(xc_f90_info_family(xc_info1) == XC_FAMILY_GGA .OR. xc_f90_info_family(xc_info1) == XC_FAMILY_HYB_GGA) then 
          do ibf=1,basis%nbf
 
            basis_function_gradr(:,ibf)        = eval_basis_function_grad(basis%bf(ibf),rr)
@@ -192,7 +192,6 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
 
          enddo
        endif
-!       stop'ENOUGHr'
 
 
        rhor_r(:)=0.0_dp
@@ -212,7 +211,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
   
        normalization(:) = normalization(:) + rhor_r(:) * weight * fact_becke
   
-       if(xc_f90_info_family(xc_info1) == XC_FAMILY_GGA) then
+       if(xc_f90_info_family(xc_info1) == XC_FAMILY_GGA .OR. xc_f90_info_family(xc_info1) == XC_FAMILY_HYB_GGA) then
          grad_rhor       (:,:)=0.0_dp
          grad_rhor_shiftx(:,:)=0.0_dp
          grad_rhor_shifty(:,:)=0.0_dp
@@ -271,7 +270,8 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
        !
        ! LIBXC call
        !
-       if(xc_f90_info_family(xc_info1) == XC_FAMILY_LDA) then 
+       select case(xc_f90_info_family(xc_info1))
+       case(XC_FAMILY_LDA)
          if(dft_xc(1)/=0) then
            call xc_f90_lda_exc_vxc(xc_func1,1,rhor_r(1),exc1,vxc1(1))
          else
@@ -284,7 +284,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
            exc2=0.0_dp
            vxc2=0.0_dp
          endif
-       else if(xc_f90_info_family(xc_info1) == XC_FAMILY_GGA) then
+       case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
          if(dft_xc(1)/=0) then
            call xc_f90_gga_exc_vxc(xc_func1,1,rhor_r(1)       ,sigma2(1)       ,exc1,vxc1(1),vsigma1(1)       )
            call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shiftx(1),sigma2_shiftx(1),vxc_dummy(1),vsigma1_shiftx(1))
@@ -311,15 +311,15 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
            vsigma2_shifty=0.0_dp
            vsigma2_shiftz=0.0_dp
          endif
-       else
+       case default
          stop'not LDA nor GGA is not implemented'
-       endif
+       end select
   
        exc_xc = exc_xc + weight * fact_becke * ( exc1 + exc2 ) * SUM( rhor_r(:) )
   
        dedd_r(:) = vxc1(:) + vxc2(:)
 
-       if(xc_f90_info_family(xc_info1) == XC_FAMILY_GGA) then
+       if(xc_f90_info_family(xc_info1) == XC_FAMILY_GGA .OR. xc_f90_info_family(xc_info1) == XC_FAMILY_HYB_GGA) then
          if(nspin==1) then
 
            dedgd_r       (:,1) = 2.0_dp * ( vsigma1(1)        + vsigma2(1)        ) * grad_rhor       (:,1) 
