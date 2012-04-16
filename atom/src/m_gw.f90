@@ -842,8 +842,8 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
          do aorbital=1,basis%nbf
            !
            ! calculate only the diagonal !
-!           do borbital=1,basis%nbf
            borbital=aorbital
+!           do borbital=1,basis%nbf
              do iomegai=1,nomegai
                selfenergy_tmp(iomegai,aorbital,borbital,ispin) = selfenergy_tmp(iomegai,aorbital,borbital,ispin) &
                         - bra(ipole,aorbital) * ket(ipole,borbital) &

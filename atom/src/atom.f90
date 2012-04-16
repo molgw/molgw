@@ -25,8 +25,6 @@ program atom
  character(len=100)           :: basis_name
  real(dp)                     :: electrons
  real(dp)                     :: magnetization
-!=====
- real(dp),parameter           :: alpha_hybrid=0.25_dp
 !===== variables for testing
  type(gaussian) :: gatmp,gbtmp
  type(basis_function) :: bftmp1,bftmp2
@@ -556,7 +554,7 @@ program atom
  write(*,*) '=================================================='
  write(*,*)
 
-#if 0
+#if 1
  call plot_wfn(nspin,basis,c_matrix)
 #endif
 #if 0

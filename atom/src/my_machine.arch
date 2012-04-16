@@ -10,6 +10,7 @@ FCOPTS= -O0  #-g -check all
 LAPACK=  -Wl,--start-group  -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -Wl,--end-group -openmp -lpthread
 #LAPACK= -lmkl_intel_lp64 -lmkl_sequential -lmkl_lapack95_lp64 -lmkl_core
 
-LIBXC_ROOT=/home/bruneval/src/libxc-1.1.0-ifort
+LIBXC_ROOT=/home/bruneval/src/libxc-1.2.0_ifort/
+#/home/bruneval/src/libxc-1.1.0-ifort
 LIBINT_ROOT=/home/bruneval/src/libint-2.0.0_install
 

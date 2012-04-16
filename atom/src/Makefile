@@ -33,13 +33,13 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 
 atom.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_calculation_type.f90 m_tools.f90 m_scf.f90 \
   m_gaussian.f90 m_basis_set.f90 m_gw.f90 m_eri.f90 atom.f90
-	$(FC) $(FCOPTS) -c atom.f90 
+	$(FC) $(FCOPTS) -c atom.f90 $(LIBXC_INCS)
 
 hamiltonian.o: m_definitions.f90 m_timing.f90 m_eri.f90 hamiltonian.f90
 	$(FC) $(FCOPTS) -c hamiltonian.f90 
 
 io.o: m_definitions.f90 m_warning.f90 m_calculation_type.f90 io.f90
-	$(FC) $(FCOPTS) -c io.f90 
+	$(FC) $(FCOPTS) -c io.f90 $(LIBXC_INCS)
 
 m_eri.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90
 	$(FC) $(FCOPTS) -c m_eri.f90
@@ -48,7 +48,7 @@ mp2.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 mp
 	$(FC) $(FCOPTS) -c mp2.f90
 
 mp2_selfenergy.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 m_calculation_type.f90 mp2_selfenergy.f90
-	$(FC) $(FCOPTS) -c mp2_selfenergy.f90
+	$(FC) $(FCOPTS) -c mp2_selfenergy.f90 $(LIBXC_INCS)
 
 xc_dft.o: m_definitions.f90 xc_dft.f90
 	$(FC) $(FCOPTS) -c xc_dft.f90 $(LIBXC_INCS)
@@ -60,7 +60,7 @@ wrapper_libint.o: wrapper_libint.cc
 	$(CC) -c wrapper_libint.cc $(LIBINT_INCS)
 
 m_gw.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_calculation_type.f90 m_gw.f90 m_eri.f90
-	$(FC) $(FCOPTS) -c m_gw.f90
+	$(FC) $(FCOPTS) -c m_gw.f90 $(LIBXC_INCS)
 
 m_basis_set.o: m_definitions.f90 m_gaussian.f90 m_basis_set.f90
 	$(FC) $(FCOPTS) -c m_basis_set.f90
@@ -78,7 +78,7 @@ m_tools.o: m_definitions.f90 m_tools.f90
 	$(FC) $(FCOPTS) -c m_tools.f90
 
 m_calculation_type.o: m_definitions.f90 m_calculation_type.f90
-	$(FC) $(FCOPTS) -c m_calculation_type.f90
+	$(FC) $(FCOPTS) -c m_calculation_type.f90 $(LIBXC_INCS)
 
 m_warning.o: m_definitions.f90 m_warning.f90
 	$(FC) $(FCOPTS) -c m_warning.f90

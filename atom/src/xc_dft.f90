@@ -21,7 +21,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
  real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: exc_xc
 !=====
- real(dp),parameter :: shift=1.d-4 ! bohr  some shift used
+ real(dp),parameter :: shift=1.d-7 ! bohr  some shift used
                                    ! to evaluate numerically the divergence of the gradient
  integer,parameter :: nx= 40
  integer,parameter :: nangular= 38 ! 86
@@ -235,38 +235,21 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
                                         * basis_function_r_shiftz(jbf) 
 
                grad_rhor(:,ispin)        = grad_rhor(:,ispin)        + p_matrix(ibf,jbf,ispin) &
-                    *( basis_function_gradr(:,ibf) * basis_function_r(jbf) &
-                     + basis_function_gradr(:,jbf) * basis_function_r(ibf) ) 
+                    *( basis_function_gradr       (:,ibf) * basis_function_r(jbf) &
+                     + basis_function_gradr       (:,jbf) * basis_function_r(ibf) ) 
                grad_rhor_shiftx(:,ispin) = grad_rhor_shiftx(:,ispin) + p_matrix(ibf,jbf,ispin) &
-                    *( basis_function_gradr_shiftx(:,ibf) * basis_function_r(jbf) &
-                     + basis_function_gradr_shiftx(:,jbf) * basis_function_r(ibf) ) 
+                    *( basis_function_gradr_shiftx(:,ibf) * basis_function_r_shiftx(jbf) &
+                     + basis_function_gradr_shiftx(:,jbf) * basis_function_r_shiftx(ibf) ) 
                grad_rhor_shifty(:,ispin) = grad_rhor_shifty(:,ispin) + p_matrix(ibf,jbf,ispin) &
-                    *( basis_function_gradr_shifty(:,ibf) * basis_function_r(jbf) &
-                     + basis_function_gradr_shifty(:,jbf) * basis_function_r(ibf) ) 
+                    *( basis_function_gradr_shifty(:,ibf) * basis_function_r_shifty(jbf) &
+                     + basis_function_gradr_shifty(:,jbf) * basis_function_r_shifty(ibf) ) 
                grad_rhor_shiftz(:,ispin) = grad_rhor_shiftz(:,ispin) + p_matrix(ibf,jbf,ispin) &
-                    *( basis_function_gradr_shiftz(:,ibf) * basis_function_r(jbf) &
-                     + basis_function_gradr_shiftz(:,jbf) * basis_function_r(ibf) ) 
+                    *( basis_function_gradr_shiftz(:,ibf) * basis_function_r_shiftz(jbf) &
+                     + basis_function_gradr_shiftz(:,jbf) * basis_function_r_shiftz(ibf) ) 
              enddo
            enddo
          enddo
 
-!         write(*,*) '__________________'
-!         write(*,'(a,2(3(e14.6,x),4x))') 'point:',rr(:)
-!         write(*,'(2(3(e14.6,x),4x))') grad_rhor(:,:)
-!         write(*,'(2(3(e14.6,x),4x))') (rhor_r_shiftx(1)-rhor_r(1))/shift, &
-!                                       (rhor_r_shifty(1)-rhor_r(1))/shift, &
-!                                       (rhor_r_shiftz(1)-rhor_r(1))/shift, &
-!                                       (rhor_r_shiftx(2)-rhor_r(2))/shift, &
-!                                       (rhor_r_shifty(2)-rhor_r(2))/shift, &
-!                                       (rhor_r_shiftz(2)-rhor_r(2))/shift
-!         write(*,*)
-!         write(*,'(2(3(e14.6,x),4x))') grad_rhor(:,:)
-!         write(*,'(2(3(e14.6,x),4x))') grad_rhor_shiftx(:,:)
-!         write(*,'(2(3(e14.6,x),4x))') grad_rhor_shifty(:,:)
-!         write(*,'(2(3(e14.6,x),4x))') grad_rhor_shiftz(:,:)
-!         write(*,*)
-!         write(*,*)
-  
          sigma2(1)        = SUM( grad_rhor       (:,1)**2 )
          sigma2_shiftx(1) = SUM( grad_rhor_shiftx(:,1)**2 )
          sigma2_shifty(1) = SUM( grad_rhor_shifty(:,1)**2 )
@@ -336,26 +319,6 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
   
        dedd_r(:) = vxc1(:) + vxc2(:)
 
-!       dedd_r        (2) = 0.0
-!
-!       vsigma1       (2) = 0.0
-!       vsigma1_shiftx(2) = 0.0
-!       vsigma1_shifty(2) = 0.0
-!       vsigma1_shiftz(2) = 0.0
-!       vsigma1       (3) = 0.0
-!       vsigma1_shiftx(3) = 0.0
-!       vsigma1_shifty(3) = 0.0
-!       vsigma1_shiftz(3) = 0.0
-!
-!       vsigma2       (2) = 0.0
-!       vsigma2_shiftx(2) = 0.0
-!       vsigma2_shifty(2) = 0.0
-!       vsigma2_shiftz(2) = 0.0
-!       vsigma2       (3) = 0.0
-!       vsigma2_shiftx(3) = 0.0
-!       vsigma2_shifty(3) = 0.0
-!       vsigma2_shiftz(3) = 0.0
-  
        if(xc_f90_info_family(xc_info1) == XC_FAMILY_GGA) then
          if(nspin==1) then
 
@@ -396,17 +359,6 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
          div(:) = 0.0_dp
        endif
 
-!       if(div(1) > 1.0) then 
-!          write(*,*) '-------------'
-!          write(*,*) 'WARNING large div',div(1)
-!          write(*,*) 'for point',rr(:)
-!          write(*,*) dedgd_r(1,:)
-!          write(*,*) dedgd_r_shiftx(1,:)
-!          write(*,*) dedgd_r_shifty(1,:)
-!          write(*,*) dedgd_r_shiftz(1,:)
-!          write(*,*) dedd_r(:)
-!          write(*,*)
-!       endif
   
        do ispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
