@@ -2,15 +2,20 @@
                  ATOM
 =========================================
 
-Ab initio calculations for atoms and molecules
+Ab initio calculations for atoms and very small molecules
 
 Features:
 _ Hartree-Fock
-_ LDA
+_ LDA (PW, VWN)
+_ GGA (PBE, PW91, BLYP)
+_ hybrid functionals (PBE0, B3LYP)
 _ HF+GW
-_ LDA+GW
+_ DFT+GW
+_ Hybrid+GW
 _ QPscGW
 _ HF+MP2
+_ DFT+MP2
+_ Hybrid+MP2
 _ QSscMP2
 _ CI for 2 electrons 
 
@@ -36,12 +41,12 @@ Sample input files can be found in ./tests/
 
 
 To be done:
-* implement GGA : need the gradient of a gaussian
-* symmetrize the Coulomb integrals to save memory with a factor 8 (not really a good idea for MP2, GW etc.) (i'm not sure it is really interesting)
+* filter the vanishing gaussian integrals so to save memory
+* use Schwarz inequality to avoid evaluating integrals
 
 Future:
 * pure gaussians not only cartesian
-* pseudopotentials (e.g. Goedecker flavor)
+* pseudopotentials (e.g. ECP or Goedecker flavor)
 
 Issues:
 * QPscGW scf loop is quite unstable for large basis sets, use a low alpha (<= 0.50)
