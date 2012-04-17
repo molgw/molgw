@@ -203,7 +203,7 @@ subroutine calculate_eri(basis,eri)
  use m_timing
  use m_basis_set
  implicit none
- type(basis_set),intent(in)   ::#ifdef LOW_MEMORY2
+ type(basis_set),intent(in)   :: basis
  real(dp),intent(out)         :: eri(basis%nbf,basis%nbf,basis%nbf,basis%nbf)
 !=====
  integer,parameter            :: NSHELLMAX=100
@@ -1244,7 +1244,6 @@ subroutine transform_eri_basis_fast(nbf,nspin,c_matrix,eri_eigenstate)
 end subroutine transform_eri_basis_fast
 
 
-#ifdef LOW_MEMORY2
 !=================================================================
 subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
  use m_definitions
@@ -1332,7 +1331,6 @@ subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,ijspin,eri_eigenstat
  call stop_clock(timing_basis_transform)
 
 end subroutine transform_eri_basis_lowmem
-#endif
 
 !=========================================================================
 subroutine negligible_eri(tol)
