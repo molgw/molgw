@@ -332,8 +332,8 @@ program atom
 
  !
  ! Initialize the SCF mixing procedure
-! call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
- call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
+ call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
+! call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
 
  !
  ! Kinetic energy contribution
@@ -387,6 +387,7 @@ program atom
 
      call setup_exchange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
 
+     en%exx = en%exx * alpha_hybrid
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix(:,:,:) * alpha_hybrid
 
    endif
@@ -682,7 +683,8 @@ program atom
        do ibf=1,basis%nbf
          do jbf=1,basis%nbf
            exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                   + c_matrix(ibf,istate,ispin) * ( matrix(ibf,jbf,ispin) - vxc_matrix(ibf,jbf,ispin) ) * c_matrix(jbf,istate,ispin)
+                   + c_matrix(ibf,istate,ispin) * ( ( 1.0_dp - alpha_hybrid ) * matrix(ibf,jbf,ispin) - vxc_matrix(ibf,jbf,ispin) )&
+                    * c_matrix(jbf,istate,ispin)
          enddo
        enddo
      enddo
@@ -707,7 +709,7 @@ program atom
    call stop_clock(timing_pola)
    write(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',en%rpa
    en%tot = en%tot + en%rpa
-   if(calc_type%need_dft_xc) en%tot = en%tot - en%xc + en%exx
+   if(calc_type%need_dft_xc) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
    write(*,'(/,a,f14.8)') ' RPA Total energy [Ha]: ',en%tot
 
    call start_clock(timing_self)
@@ -737,6 +739,7 @@ program atom
    write(*,'(a,2x,f12.6)') ' MP2 Energy       [Ha]:',en%mp2
    write(*,*) 
    en%tot = en%tot + en%mp2
+   if(calc_type%need_dft_xc) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
    write(*,'(a,2x,f12.6)') ' MP2 Total Energy [Ha]:',en%tot
 
    title='=== Self-energy === (in the orbital basis)'

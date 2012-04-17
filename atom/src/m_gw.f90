@@ -900,30 +900,30 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
    write(*,*)
    write(*,*) 'G0W0 Eigenvalues [Ha]'
    if(nspin==1) then
-     write(*,*) '  #          E0         Sigc          Z         G0W0'
+     write(*,*) '  #          E0        Sigx-Vxc      Sigc          Z         G0W0'
    else
-     write(*,'(a)') '  #                E0                       Sigc                       Z                        G0W0'
+     write(*,'(a)') '  #                E0                      Sigx-Vxc                    Sigc                       Z                       G0W0'
    endif
    do aorbital=1,basis%nbf
      zz(:) = REAL( selfenergy_tmp(3,aorbital,aorbital,:) - selfenergy_tmp(1,aorbital,aorbital,:) ) / REAL( omegai(3)-omegai(1) )
      zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
 
-     write(*,'(i4,x,12(x,f12.6))') aorbital,energy(aorbital,:),REAL(selfenergy_tmp(2,aorbital,aorbital,:),dp),&
+     write(*,'(i4,x,20(x,f12.6))') aorbital,energy(aorbital,:),exchange_m_vxc_diag(aorbital,:),REAL(selfenergy_tmp(2,aorbital,aorbital,:),dp),&
            zz(:),energy(aorbital,:)+zz(:)*REAL(selfenergy_tmp(2,aorbital,aorbital,:) + exchange_m_vxc_diag(aorbital,:) ,dp)
    enddo
 
    write(*,*)
    write(*,*) 'G0W0 Eigenvalues [eV]'
    if(nspin==1) then
-     write(*,*) '  #          E0         Sigc          Z         G0W0'
+     write(*,*) '  #          E0        Sigx-Vxc      Sigc          Z         G0W0'
    else
-     write(*,'(a)') '  #                E0                       Sigc                       Z                        G0W0'
+     write(*,'(a)') '  #                E0                      Sigx-Vxc                    Sigc                       Z                       G0W0'
    endif
    do aorbital=1,basis%nbf
      zz(:) = REAL( selfenergy_tmp(3,aorbital,aorbital,:) - selfenergy_tmp(1,aorbital,aorbital,:) ) / REAL( omegai(3)-omegai(1) )
      zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
 
-     write(*,'(i4,x,12(x,f12.6))') aorbital,energy(aorbital,:)*Ha_eV,REAL(selfenergy_tmp(2,aorbital,aorbital,:),dp)*Ha_eV,&
+     write(*,'(i4,x,20(x,f12.6))') aorbital,energy(aorbital,:)*Ha_eV,exchange_m_vxc_diag(aorbital,:)*Ha_eV,REAL(selfenergy_tmp(2,aorbital,aorbital,:),dp)*Ha_eV,&
            zz(:),( energy(aorbital,:)+zz(:)*REAL(selfenergy_tmp(2,aorbital,aorbital,:) + exchange_m_vxc_diag(aorbital,:) ,dp) )*Ha_eV
    enddo
 

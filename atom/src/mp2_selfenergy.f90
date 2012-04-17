@@ -241,17 +241,18 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
 
    write(*,*) '=============================='
    write(*,*) ' selfenergy RING + SOX'
-   write(*,'(a)') ' #        Energies           one-ring              SOX             MP2              Z            QP-eigenvalues'
+   write(*,'(a)') ' #         Energies           Sigx-Vxc       one-ring              SOX             MP2              Z            QP-eigenvalues'
    do borbital=1,basis%nbf 
      zz(:) = REAL( selfenergy_ring(3,borbital,borbital,:)+selfenergy_sox(3,borbital,borbital,:) &
                  - selfenergy_ring(1,borbital,borbital,:)-selfenergy_sox(1,borbital,borbital,:) ) / REAL( omegai(3)-omegai(1) )
      zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
-     write(*,'(i4,14(3x,f14.5))') borbital,energy(borbital,:)*Ha_eV,&
+     write(*,'(i4,18(3x,f14.5))') borbital,energy(borbital,:)*Ha_eV,&
+           exchange_m_vxc_diag(borbital,:)*Ha_eV,&
            selfenergy_ring(2,borbital,borbital,:) * Ha_eV,&
            selfenergy_sox (2,borbital,borbital,:) * Ha_eV,&
          ( selfenergy_ring(2,borbital,borbital,:)+selfenergy_sox(2,borbital,borbital,:) ) * Ha_eV,&
          zz(:),&
-         ( energy(borbital,:) + selfenergy_ring(2,borbital,borbital,:) + selfenergy_sox(2,borbital,borbital,:) ) * Ha_eV
+         ( energy(borbital,:) + exchange_m_vxc_diag(borbital,:) + selfenergy_ring(2,borbital,borbital,:) + selfenergy_sox(2,borbital,borbital,:) ) * Ha_eV
    enddo
    write(*,*) '=============================='
 

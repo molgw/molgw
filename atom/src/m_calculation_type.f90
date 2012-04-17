@@ -112,51 +112,60 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%need_dft_xc   = .TRUE.  
    calc_type%dft_x = XC_LDA_X
    calc_type%dft_c = XC_LDA_C_PW
-   if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
+   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
+   alpha_hybrid = 0.0_dp
  case('VWN')
    calc_type%type          = LDA
    calc_type%need_dft_xc   = .TRUE.  
    calc_type%dft_x = XC_LDA_X
    calc_type%dft_c = XC_LDA_C_VWN
-   if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
+   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
+   alpha_hybrid = 0.0_dp
  case('VWN_RPA')
    calc_type%type          = LDA
    calc_type%need_dft_xc   = .TRUE.  
    calc_type%dft_x = XC_LDA_X
    calc_type%dft_c = XC_LDA_C_VWN_RPA
-   if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
+   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
+   alpha_hybrid = 0.0_dp
  !
  ! GGA functionals
  case('PBEx')
    calc_type%need_dft_xc   = .TRUE.  
    calc_type%dft_x = XC_GGA_X_PBE
    calc_type%dft_c = 0
-   if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
+   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
+   alpha_hybrid = 0.0_dp
  case('PBE')
    calc_type%need_dft_xc   = .TRUE.  
    calc_type%dft_x = XC_GGA_X_PBE
    calc_type%dft_c = XC_GGA_C_PBE
-   if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
+   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
+   alpha_hybrid = 0.0_dp
  case('Bx')
    calc_type%need_dft_xc   = .TRUE.  
    calc_type%dft_x = XC_GGA_X_B88
    calc_type%dft_c = 0
-   if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
+   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
+   alpha_hybrid = 0.0_dp
  case('BLYP')
    calc_type%need_dft_xc   = .TRUE.  
    calc_type%dft_x = XC_GGA_X_B88
    calc_type%dft_c = XC_GGA_C_LYP
-   if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
+   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
+   alpha_hybrid = 0.0_dp
  case('PW91')
    calc_type%need_dft_xc   = .TRUE.  
    calc_type%dft_x = XC_GGA_X_PW91
    calc_type%dft_c = XC_GGA_C_PW91
-   if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
+   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
+   alpha_hybrid = 0.0_dp
  case('PW91x')
    calc_type%need_dft_xc   = .TRUE.  
    calc_type%dft_x = XC_GGA_X_PW91
    calc_type%dft_c = 0
-   if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
+   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
+   alpha_hybrid = 0.0_dp
  !
  ! Hybrid functionals
  case('B3LYP')
@@ -164,14 +173,14 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%need_exchange = .TRUE.  
    calc_type%dft_x = XC_HYB_GGA_XC_B3LYP
    calc_type%dft_c = 0
-   if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
+   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
    alpha_hybrid = 0.20_dp
  case('PBE0','PBE1PBE')
    calc_type%need_dft_xc   = .TRUE.  
    calc_type%need_exchange = .TRUE.  
    calc_type%dft_x = XC_HYB_GGA_XC_PBEH
    calc_type%dft_c = 0
-   if(calc_type%is_gw) calc_type%need_final_exchange=.TRUE.
+   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
    alpha_hybrid = 0.25_dp
 #endif
  case default
