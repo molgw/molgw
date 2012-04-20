@@ -332,8 +332,8 @@ program atom
 
  !
  ! Initialize the SCF mixing procedure
- call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
-! call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
+! call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
+ call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
 
  !
  ! Kinetic energy contribution
