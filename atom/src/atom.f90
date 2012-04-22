@@ -36,6 +36,7 @@ program atom
  integer                 :: ibf,jbf,kbf,lbf,ijbf,klbf
  integer                 :: ispin,iscf,istate,jstate,iatom
  logical                 :: scf_loop_convergence
+ logical                 :: file_exists
  character(len=100)      :: title
  real(dp)                :: energy_tmp,overlap_tmp
  real(dp)                :: dipole(3)
@@ -323,6 +324,21 @@ program atom
  !
  ! Setup the density matrix: p_matrix
  call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
+ !
+ ! Possibility offered to override the automatic setup of the initial density
+ ! matrix
+ inquire(file='p_matrix_diag.in',exist=file_exists)
+ if(file_exists) then
+   write(*,*) 'reading input density matrix from file'
+   open(unit=11,file='p_matrix_diag.in',status='old')
+   p_matrix(:,:,:) = 0.0_dp
+   do ispin=1,nspin
+     do ibf=1,basis%nbf
+       read(11,*) p_matrix(ibf,ibf,ispin) 
+     enddo
+   enddo
+   close(11)
+ endif
  title='=== 1st density matrix P ==='
  call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,p_matrix)
 ! matrix(:,:,1) = matmul( p_matrix(:,:,1) ,p_matrix(:,:,1) )
@@ -368,12 +384,13 @@ program atom
    write(*,'(a,x,i4,/)') ' *** SCF cycle No:',iscf
 
    !
-   ! skip the first iteration
+   ! Skip the first iteration
    if(iscf>1) call new_p_matrix(p_matrix)
    
 
    en%kin  = SUM(hamiltonian_kinetic(:,:,:)*p_matrix(:,:,:))
    en%nuc  = SUM(hamiltonian_nucleus(:,:,:)*p_matrix(:,:,:))
+
    !
    ! Hartree contribution to the Hamiltonian
    !
@@ -442,7 +459,7 @@ program atom
 
    !
    ! QPscMP2
-   if( calc_type%is_mp2 .AND. calc_type%method == QS .AND. iscf > nscf/3 ) then
+   if( calc_type%is_mp2 .AND. calc_type%method == QS .AND. iscf > 5 ) then
 
 !     call start_clock(timing_mp2_energy)
 !     call mp2_energy(nspin,basis,occupation,c_matrix,energy,en%mp2)
@@ -544,9 +561,8 @@ program atom
  write(*,*) '=================================================='
  write(*,*)
 
-#if 0
- call plot_wfn(nspin,basis,c_matrix)
-#endif
+ if(PRINT_VOLUME>4) call plot_wfn(nspin,basis,c_matrix)
+
 #if 0
  write(*,*) '==================== TESTS ==================='
  allocate(matrix3(basis%nbf,basis%nbf,nspin))

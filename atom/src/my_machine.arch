@@ -1,4 +1,4 @@
-OPENMP= -openmp -DOPENMP
+OPENMP=# -openmp -DOPENMP
 
 FC=ifort -fpp $(OPENMP) -DHAVE_LIBXC -DLOW_MEMORY2 #-DCHI0  # -DAUXIL_BASIS
 CC=g++

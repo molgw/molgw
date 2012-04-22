@@ -51,7 +51,10 @@ subroutine start_clock(itiming)
  integer            :: count_tmp
 !=====
  
- if(time_running(itiming)) stop'error in start clock'
+ if(time_running(itiming)) then
+   write(*,*) 'clock # is already started:',itiming
+   stop'error in start clock'
+ endif
 
  time_running(itiming)=.TRUE.
 ! call cpu_time(time_tmp)

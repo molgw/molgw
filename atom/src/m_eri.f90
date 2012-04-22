@@ -1142,7 +1142,7 @@ subroutine transform_eri_basis_fast(nbf,nspin,c_matrix,eri_eigenstate)
 
  write(*,*) 'obtain the ERI in the eigenvector basis'
  write(*,*) 'subroutine is order N^5'
- call start_clock(timing_basis_transform)
+! call start_clock(timing_basis_transform)
 
 #ifdef OPENMP
  wtime=OMP_get_wtime()
@@ -1237,7 +1237,7 @@ subroutine transform_eri_basis_fast(nbf,nspin,c_matrix,eri_eigenstate)
   write(*,*) 'time (s)', OMP_get_wtime()-wtime
 #endif
 
- call stop_clock(timing_basis_transform)
+! call stop_clock(timing_basis_transform)
  write(*,*) 'ERI in the eigenvector basis obtained'
  write(*,*)
 
@@ -1261,7 +1261,7 @@ subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,ijspin,eri_eigenstat
  real(dp)             :: wtime
 !=====
 
- call start_clock(timing_basis_transform)
+! call start_clock(timing_basis_transform)
 
  eri_eigenstate_i(:,:,:,:)=0.0_dp
  eri_tmp3(:,:,:)=0.0_dp
@@ -1328,7 +1328,7 @@ subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,ijspin,eri_eigenstat
 
  enddo !klspin
 
- call stop_clock(timing_basis_transform)
+! call stop_clock(timing_basis_transform)
 
 end subroutine transform_eri_basis_lowmem
 
