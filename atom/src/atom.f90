@@ -25,6 +25,7 @@ program atom
  character(len=100)           :: basis_name
  real(dp)                     :: electrons
  real(dp)                     :: magnetization
+ real(dp)                     :: rcut=0.0_dp
 !===== variables for testing
  type(gaussian) :: gatmp,gbtmp
  type(basis_function) :: bftmp1,bftmp2
@@ -225,7 +226,7 @@ program atom
  ! ERI are stored "privately" in the module m_eri
  call start_clock(timing_integrals)
  call allocate_eri(basis%nbf)
- call calculate_eri_faster(basis)
+ call calculate_eri_faster(basis,rcut)
  call stop_clock(timing_integrals)
 #ifdef LOW_MEMORY3
  call negligible_eri(-1.0e-8_dp)
@@ -338,6 +339,10 @@ program atom
      enddo
    enddo
    close(11)
+   if( ABS( SUM(p_matrix(:,:,:)) - electrons ) > 1.d-8 ) &
+     stop'input density matrix does not contain the right number of electrons'
+   msg='manual input of the initial density matrix diagonal'
+   call issue_warning(msg)
  endif
  title='=== 1st density matrix P ==='
  call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,p_matrix)
@@ -348,8 +353,8 @@ program atom
 
  !
  ! Initialize the SCF mixing procedure
-! call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
- call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
+ call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
+! call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
 
  !
  ! Kinetic energy contribution
@@ -434,7 +439,6 @@ program atom
      call polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #endif
      call stop_clock(timing_pola)
-     write(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',en%rpa
      en%tot = en%tot + en%rpa
      write(*,'(/,a,f14.8)') ' RPA Total energy [Ha]: ',en%tot
 
@@ -715,6 +719,18 @@ program atom
  ! final evaluation for G0W0
  if( calc_type%is_gw .AND. calc_type%method == perturbative ) then
 
+   if( calc_type%need_lr_integrals ) then
+     rcut= 0.5_dp
+     call deallocate_eri()
+     call allocate_eri(basis%nbf)
+     call calculate_eri_faster(basis,rcut)
+     if( .NOT. ALLOCATED( vxc_matrix ) ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
+     call dft_exc_vxc(nspin,basis,(/ 1000 ,0/),p_matrix,vxc_matrix,energy_tmp)
+     write(*,'(/,a,f14.8)') '    RPA LDA energy [Ha]: ',energy_tmp
+     call dft_exc_vxc(nspin,basis,(/ 1005 ,0/),p_matrix,vxc_matrix,energy_tmp)
+     write(*,'(/,a,f14.8)') ' LR-RPA LDA energy [Ha]: ',energy_tmp
+   endif
+
    call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
    call start_clock(timing_pola)
 #ifdef AUXIL_BASIS
@@ -723,7 +739,6 @@ program atom
    call polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #endif
    call stop_clock(timing_pola)
-   write(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',en%rpa
    en%tot = en%tot + en%rpa
    if(calc_type%need_dft_xc) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
    write(*,'(/,a,f14.8)') ' RPA Total energy [Ha]: ',en%tot

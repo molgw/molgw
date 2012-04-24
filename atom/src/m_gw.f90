@@ -387,6 +387,12 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  call diagonalize_general(wpol%npole,h_2p,eigenvalue,eigenvector)
  call stop_clock(timing_diago_h2p)
  write(*,*) 'diago finished'
+ write(*,*)
+ write(*,*) 'calculate the RPA energy using the Tamm-Dancoff decomposition'
+ write(*,*) 'formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)'
+ rpa_correlation = rpa_correlation + 0.25_dp * SUM( ABS(eigenvalue(:)) )
+ write(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',rpa_correlation
+
    
  call start_clock(timing_inversion_s2p)
  call invert(wpol%npole,eigenvector,eigenvector_inv)
@@ -447,11 +453,6 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 #ifdef LOW_MEMORY2
  deallocate(eri_eigenstate_k)
 #endif
-
- write(*,*)
- write(*,*) 'calculate the RPA energy using the Tamm-Dancoff decomposition'
- write(*,*) 'formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)'
- rpa_correlation = rpa_correlation + 0.25_dp * SUM( ABS(eigenvalue(:)) )
 
 contains
  function deltaf(occ1,occ2) 

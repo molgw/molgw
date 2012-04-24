@@ -89,13 +89,24 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
  write(*,*) 'Evaluate DFT integrals'
  write(*,'(a,i4,x,i4)') '   discretization grid per atom [radial points , angular points] ',nx,nangular
  write(*,'(a,i8)') '   total number of real-space points',nx*nangular*natom
-
- if(nspin==1) then
-   call xc_f90_func_init(xc_func1, xc_info1, dft_xc(1), XC_UNPOLARIZED)
-   call xc_f90_func_init(xc_func2, xc_info2, dft_xc(2), XC_UNPOLARIZED)
+ 
+ if( dft_xc(1) < 1000 ) then
+   if(nspin==1) then
+     call xc_f90_func_init(xc_func1, xc_info1, dft_xc(1), XC_UNPOLARIZED)
+     call xc_f90_func_init(xc_func2, xc_info2, dft_xc(2), XC_UNPOLARIZED)
+   else
+     call xc_f90_func_init(xc_func1, xc_info1, dft_xc(1), XC_POLARIZED)
+     call xc_f90_func_init(xc_func2, xc_info2, dft_xc(2), XC_POLARIZED)
+   endif
  else
-   call xc_f90_func_init(xc_func1, xc_info1, dft_xc(1), XC_POLARIZED)
-   call xc_f90_func_init(xc_func2, xc_info2, dft_xc(2), XC_POLARIZED)
+   write(*,*) 'Home-made functional'
+   if(nspin==1) then
+     call xc_f90_func_init(xc_func1, xc_info1, XC_LDA_X, XC_UNPOLARIZED)
+     call xc_f90_func_init(xc_func2, xc_info2, 0, XC_UNPOLARIZED)
+   else
+     call xc_f90_func_init(xc_func1, xc_info1, XC_LDA_X, XC_POLARIZED)
+     call xc_f90_func_init(xc_func2, xc_info2, 0, XC_POLARIZED)
+   endif
  endif
 
  !
@@ -273,7 +284,11 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
        select case(xc_f90_info_family(xc_info1))
        case(XC_FAMILY_LDA)
          if(dft_xc(1)/=0) then
-           call xc_f90_lda_exc_vxc(xc_func1,1,rhor_r(1),exc1,vxc1(1))
+           if( dft_xc(1) < 1000 ) then 
+             call xc_f90_lda_exc_vxc(xc_func1,1,rhor_r(1),exc1,vxc1(1))
+           else
+             call my_lda_exc_vxc(nspin,dft_xc(1),rhor_r,exc1,vxc1)
+           endif
          else
            exc1=0.0_dp
            vxc1=0.0_dp
@@ -406,3 +421,231 @@ contains
 
 end subroutine dft_exc_vxc
 
+!=========================================================================
+subroutine my_lda_exc_vxc(nspin,ixc,rhor,exc,vxc)
+ use m_definitions
+ implicit none
+
+!Arguments ------------------------------------
+!scalars
+ integer,intent(in)  :: nspin,ixc
+ real(dp),intent(in) :: rhor(nspin)
+!arrays
+ real(dp),intent(out) :: exc,vxc(nspin)
+
+ real(dp) :: a0p
+ real(dp) :: a1p
+ real(dp) :: a2p
+ real(dp) :: a3p
+ real(dp) :: b1p
+ real(dp) :: b2p
+ real(dp) :: b3p
+ real(dp) :: b4p
+ real(dp) :: da0
+ real(dp) :: da1
+ real(dp) :: da2
+ real(dp) :: da3
+ real(dp) :: db1
+ real(dp) :: db2
+ real(dp) :: db3
+ real(dp) :: db4
+
+ real(dp),parameter :: alpha_zeta=1.0_dp-1.0d-6
+ real(dp),parameter :: ft=4._dp/3._dp,rsfac=0.6203504908994000_dp
+ real(dp),parameter :: rsfacm3=rsfac**(-3)
+ real(dp) :: a0,a1,a2,a3,b1,b2,b3,b4,d1,d1m1,d2d1drs2,d2d1drsdf,d2excdf2
+ real(dp) :: d2excdrs2,d2excdrsdf,d2excdz2,d2fxcdz2,d2n1drs2,d2n1drsdf,dd1df
+ real(dp) :: dd1drs,dexcdf,dexcdrs,dexcdz,dfxcdz,dn1df,dn1drs,dvxcdrs
+ real(dp) :: dvxcpdrho,dvxcpdz,fact,fxc,n1
+ real(dp) :: rhom1,rs,vxcp,zet,zetm,zetm_third
+ real(dp) :: zetp,zetp_third
+!no_abirules
+!Set a minimum rho below which terms are 0
+ real(dp),parameter :: rhotol=1.d-28
+!real(dp) :: delta,rho,rho_dn,rho_dnm,rho_dnp,rho_up,rho_upm,rho_upp,zeta_mean
+
+! *************************************************************************
+
+ select case(ixc)
+ case(1100)
+   !
+   ! The usual full LDA parameters of Teter
+   a0p=.4581652932831429_dp
+   a1p=2.217058676663745_dp
+   a2p=0.7405551735357053_dp
+   a3p=0.01968227878617998_dp
+   b1p=1.0_dp
+   b2p=4.504130959426697_dp
+   b3p=1.110667363742916_dp
+   b4p=0.02359291751427506_dp
+   da0=.119086804055547_dp
+   da1=0.6157402568883345_dp
+   da2=0.1574201515892867_dp
+   da3=0.003532336663397157_dp
+   db1=0.0_dp
+   db2=0.2673612973836267_dp
+   db3=0.2052004607777787_dp
+   db4=0.004200005045691381_dp
+ case(1000)
+   !
+   ! full range RPA 
+   a0p= 0.00033959499_dp
+   a1p= 0.1912460_dp
+   a2p= 0.8008790_dp
+   a3p= 0.092956297_dp
+   b1p=1.0_dp
+   b2p= 8.710930_dp
+   b3p= 3.945600_dp
+   b4p= 0.087989897_dp
+   da0=-0.00015974799_dp
+   da1=-0.082753003_dp
+   da2=-0.3675560_dp
+   da3=-0.044320997_dp
+   db1=0.0_dp
+   db2=-1.113190_dp
+   db3=-1.221470_dp
+   db4=-0.040220797_dp
+ case(1020)
+   !
+   ! Long-range only RPA parameters with rc=2.0
+   a0p=-0.000012396600_dp
+   a1p= 0.0014478000_dp
+   a2p= 0.021771301_dp
+   a3p= 0.00025572101_dp
+   b1p=1.0_dp
+   b2p= 0.3820980_dp
+   b3p= 0.042663701_dp
+   b4p= 0.00010346600_dp
+   da0= 0.0000018310002_dp
+   da1=-0.00021740992_dp
+   da2=-0.0077045010_dp
+   da3=-0.00020484751_dp
+   db1=0.0_dp
+   db2= 0.021046013_dp
+   db3=-0.018320801_dp
+   db4=-0.00012402580_dp
+ case(1010)
+   !
+   ! Long-range only RPA parameters with rc=1.0
+   a0p=-0.000028384500_dp
+   a1p= 0.0037404201_dp
+   a2p= 0.063176401_dp
+   a3p= 0.0023404600_dp
+   b1p=1.0_dp
+   b2p= 0.8482450_dp
+   b3p= 0.1845470_dp
+   b4p= 0.0016536200_dp
+   da0= 0.0000059325994_dp
+   da1=-0.00076668011_dp
+   da2=-0.024234399_dp
+   da3=-0.0014384059_dp
+   db1=0.0_dp
+   db2= 0.025729001_dp
+   db3=-0.071891010_dp
+   db4=-0.0010981541_dp
+ case(1005)
+   !
+   ! Long-range only RPA parameters with rc=0.5
+   a0p=-5.8032401E-05
+   a1p= 8.9607602E-03
+   a2p= 0.1718570
+   a3p= 1.3439300E-02
+   b1p=1.0_dp
+   b2p= 1.849290
+   b3p= 0.7096860
+   b4p= 1.1346900E-02
+   da0= 1.3963599E-05
+   da1= -2.1155602E-03
+   da2= -7.3816001E-02
+   da3= -7.0218993E-03
+   db1=0.0_dp
+   db2=-7.2860003E-02
+   db3=-0.2463360
+   db4=-5.8700801E-03
+ end select
+
+!Although fact is parameter value, some compilers are not able to evaluate
+!it at compile time.
+ fact=1.0_dp/(2.0_dp**(4.0_dp/3.0_dp)-2.0_dp)
+
+
+ if (nspin==1) then
+
+       rs=( 3.0_dp / (4.0_dp*pi*rhor(1)) )**(1.0_dp/3.0_dp) 
+       n1=a0p+rs*(a1p+rs*(a2p+rs*a3p))
+       d1=rs*(b1p+rs*(b2p+rs*(b3p+rs*b4p)))
+       d1m1=1.0_dp/d1
+
+!      Exchange-correlation energy
+       exc=-n1*d1m1
+
+!      Exchange-correlation potential
+       dn1drs=a1p+rs*(2._dp*a2p+rs*(3._dp*a3p))
+       dd1drs=b1p+rs*(2._dp*b2p+rs*(3._dp*b3p+rs*(4._dp*b4p)))
+
+!      dexcdrs is d(exc)/d(rs)
+       dexcdrs=-(dn1drs+exc*dd1drs)*d1m1
+       vxc(1)=exc-rs*dexcdrs/3.0_dp
+
+ else 
+
+!    Allow for spin polarization. This part could be optimized for speed.
+
+       rs=( 3.0_dp / (4.0_dp*pi*SUM(rhor(:))) )**(1.0_dp/3.0_dp) 
+       zet= ( rhor(1) - rhor(2) ) / SUM( rhor(:) )
+       zetp=1.0_dp+zet*alpha_zeta
+       zetm=1.0_dp-zet*alpha_zeta
+       zetp_third=zetp**(1.0_dp/3.0_dp)
+       zetm_third=zetm**(1.0_dp/3.0_dp)
+!      Exchange energy spin interpolation function f(zeta)
+       fxc=( zetp*zetp_third + zetm*zetm_third - 2.0_dp ) *fact
+
+       a0=a0p+fxc*da0
+       a1=a1p+fxc*da1
+       a2=a2p+fxc*da2
+       a3=a3p+fxc*da3
+       b1=b1p+fxc*db1
+       b2=b2p+fxc*db2
+       b3=b3p+fxc*db3
+       b4=b4p+fxc*db4
+
+       n1= a0+rs*(a1+rs*(a2+rs*a3))
+       d1=rs*(b1+rs*(b2+rs*(b3+rs*b4)))
+       d1m1=1.0_dp/d1
+
+!      Exchange-correlation energy
+       exc=-n1*d1m1
+
+!      Exchange-correlation potential
+       dn1drs=a1+rs*(2._dp*a2+rs*(3._dp*a3))
+       dd1drs=b1+rs*(2._dp*b2+rs*(3._dp*b3+rs*(4._dp*b4)))
+!      dexcdrs is d(exc)/d(rs)
+       dexcdrs=-(dn1drs+exc*dd1drs)*d1m1
+
+!      Only vxcp contributes when paramagnetic
+       vxcp=exc-rs*dexcdrs/3.0_dp
+
+!      d(fxc)/d(zeta)  (which is 0 at zeta=0)
+       dfxcdz=ft*alpha_zeta*(zetp_third-zetm_third)*fact
+
+!      dn1df=d(n1)/d(fxc) and dd1df=d(d1)/d(fxc)
+       dn1df=da0+rs*(da1+rs*(da2+rs*da3))
+       dd1df=rs*(db1+rs*(db2+rs*(db3+rs*db4)))
+
+!      dexcdz is d(exc)/d(zeta)
+       dexcdf=-(dn1df+exc*dd1df)*d1m1
+       dexcdz=dfxcdz*dexcdf
+
+!      Compute Vxc for both spin channels
+
+       vxc(1)=vxcp - (zet-1.0_dp)*dexcdz
+       vxc(2)=vxcp - (zet+1.0_dp)*dexcdz
+
+ end if
+
+
+
+
+
+end subroutine my_lda_exc_vxc
+!=========================================================================

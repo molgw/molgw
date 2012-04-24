@@ -14,8 +14,7 @@ module m_calculation_type
  integer,parameter :: G0W0=8
  integer,parameter :: COHSEX=9
  integer,parameter :: HYBRID=10
- integer,parameter :: GWmu=11
- integer,parameter :: LDA0=12
+ integer,parameter :: LRGW=12
 ! Method definitions
  integer,parameter :: perturbative=101
  integer,parameter :: QS          =102
@@ -28,6 +27,7 @@ module m_calculation_type
    logical :: need_final_exchange
    logical :: need_dft_xc
    logical :: need_rpa
+   logical :: need_lr_integrals
    logical :: is_gw
    logical :: is_mp2
    logical :: is_ci
@@ -56,6 +56,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%need_final_exchange = .FALSE.
  calc_type%need_dft_xc         = .FALSE.
  calc_type%need_rpa            = .FALSE.
+ calc_type%need_lr_integrals   = .FALSE.
  calc_type%is_gw               = .FALSE.
  calc_type%is_mp2              = .FALSE.
  calc_type%is_ci               = .FALSE.
@@ -74,6 +75,10 @@ subroutine init_calculation_type(calc_type,input_key)
    case('GW')
      calc_type%is_gw  =.TRUE.
      calc_type%method = perturbative
+   case('LRGW')
+     calc_type%is_gw  =.TRUE.
+     calc_type%method = perturbative
+     calc_type%need_lr_integrals = .TRUE.
    case('MP2')
      calc_type%is_mp2 =.TRUE.
      calc_type%method = perturbative

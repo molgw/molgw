@@ -5,6 +5,7 @@ module m_eri
  public :: eri,allocate_eri,allocate_eri_eigen,deallocate_eri,calculate_eri_faster,transform_eri_basis_fast,transform_eri_basis_lowmem
 
  real(prec_eri),allocatable :: eri_buffer(:)
+ real(prec_eri),allocatable :: eri_buffer_erf(:)
 
 #ifdef LOW_MEMORY3
  integer                    :: nsize_sparse
@@ -493,7 +494,7 @@ end subroutine calculate_eri
 #endif
 
 !=========================================================================
-subroutine calculate_eri_faster(basis)
+subroutine calculate_eri_faster(basis,rcut)
  use ISO_C_BINDING
  use m_definitions
  use m_tools,only: boys_function
@@ -504,6 +505,7 @@ subroutine calculate_eri_faster(basis)
 #endif
  implicit none
  type(basis_set),intent(in)   :: basis
+ real(dp),intent(in)          :: rcut
 !=====
  integer,parameter            :: NSHELLMAX=100
  integer,parameter            :: NMEMBER=28
@@ -530,7 +532,7 @@ subroutine calculate_eri_faster(basis)
  integer                      :: index_tmp
  integer                      :: ami,amj,amk,aml
  real(dp),allocatable         :: int_tmp(:,:,:,:)
- real(dp)                     :: zeta_12,zeta_34,rho,f0t(0:0),tt
+ real(dp)                     :: zeta_12,zeta_34,rho,rho1,f0t(0:0),tt
  real(dp)                     :: p(3),q(3)
 !=====
  type shell_type
@@ -549,10 +551,19 @@ subroutine calculate_eri_faster(basis)
  real(C_DOUBLE)               :: alpha1,alpha2,alpha3,alpha4
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
  real(C_DOUBLE),allocatable   :: int_shell(:)
+ real(C_DOUBLE)               :: omega_range
 !=====
 
 
  write(*,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
+
+ if( rcut > 1.0e-6_dp ) then
+   omega_range = 1.0_dp / rcut
+   write(*,'(a40,x,f9.4)') ' Long-Range only integrals with rcut=',rcut
+   write(*,'(a40,x,f9.4)') ' or omega=',omega_range
+ else 
+   omega_range = 1.0e6_dp
+ endif
 
  nint_gaussian=0
  ishell=0
@@ -713,25 +724,36 @@ subroutine calculate_eri_faster(basis)
 
 !           int_shell(1) = 2.0_dp*pi**(2.5_dp) &
 !                         / ( (alpha1+alpha2)*(alpha3+alpha4)*SQRT(alpha1+alpha2+alpha3+alpha4) )
+
            zeta_12 = alpha1 + alpha2
            zeta_34 = alpha3 + alpha4
            p(:) = ( alpha1 * x01(:) + alpha2 * x02(:) ) / zeta_12 
            q(:) = ( alpha3 * x03(:) + alpha4 * x04(:) ) / zeta_34 
-           rho = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
+           !
+           ! Full range or long-range only integrals
+           if( rcut < 1.0e-6_dp ) then
+             rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
+             rho1 = rho
+           else
+             rho  = zeta_12 * zeta_34 * omega_range**2 / ( zeta_12*omega_range**2 + zeta_34*omega_range**2 + zeta_12*zeta_34 )
+             rho1 = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
+           endif
            tt = rho * SUM( (p(:)-q(:))**2 )
            call boys_function(f0t(0),0,tt)
            int_shell(1) = 2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
                  / zeta_12 * exp( -alpha1*alpha2/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
-                 / zeta_34 * exp( -alpha3*alpha4/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) 
+                 / zeta_34 * exp( -alpha3*alpha4/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
+                 * SQRT( rho / rho1 )
 
          else
 
-           info=calculate_integral(am1,am2,am3,am4,alpha1,alpha2,alpha3,alpha4,&
-                                 x01(1),x01(2),x01(3),&
-                                 x02(1),x02(2),x02(3),&
-                                 x03(1),x03(2),x03(3),&
-                                 x04(1),x04(2),x04(3),&
-                                 int_shell(1))
+           info=calculate_integral(omega_range,&
+                                   am1,am2,am3,am4,alpha1,alpha2,alpha3,alpha4,&
+                                   x01(1),x01(2),x01(3),&
+                                   x02(1),x02(2),x02(3),&
+                                   x03(1),x03(2),x03(3),&
+                                   x04(1),x04(2),x04(3),&
+                                   int_shell(1))
            if(info/=0) then
              write(*,*) am1,am2,am3,am4
              stop 'ERI calculated by libint failed'
