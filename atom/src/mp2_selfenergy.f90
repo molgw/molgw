@@ -114,7 +114,11 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
 #endif
  do abispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED) &
+#ifdef LOW_MEMORY2
 !$OMP PRIVATE(omega,fi,ei,fj,ej,fk,ek,fact_occ1,fact_occ2,fact_real,fact_nega,eri_eigenstate_i) 
+#else
+!$OMP PRIVATE(omega,fi,ei,fj,ej,fk,ek,fact_occ1,fact_occ2,fact_real,fact_nega) 
+#endif
 !$OMP DO SCHEDULE(STATIC) REDUCTION(+:emp2_ring,emp2_sox,selfenergy_ring,selfenergy_sox)
    do iorbital=1,basis%nbf !LOOP of the first Green's function
 #ifdef LOW_MEMORY2

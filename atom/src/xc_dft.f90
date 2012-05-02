@@ -38,8 +38,8 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
  real(dp) :: normalization(nspin)
 
 #ifdef HAVE_LIBXC
- type(xc_f90_pointer_t) :: xc_func1,xc_func2
- type(xc_f90_pointer_t) :: xc_info1,xc_info2
+ type(xc_f90_pointer_t) :: xc_func1,xc_func2,xc_functest
+ type(xc_f90_pointer_t) :: xc_info1,xc_info2,xc_infotest
 #endif
 
  real(dp) :: basis_function_r       (basis%nbf)
@@ -64,7 +64,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
  real(dp) :: sigma2_shiftz(2*nspin-1)
  real(dp) :: vxc1(nspin),vxc2(nspin)
  real(dp) :: vxc_dummy(nspin)
- real(dp) :: exc1,exc2
+ real(dp) :: exc1(1),exc2(1)
  real(dp) :: vsigma1       (2*nspin-1)
  real(dp) :: vsigma1_shiftx(2*nspin-1)
  real(dp) :: vsigma1_shifty(2*nspin-1)
@@ -85,6 +85,18 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
 !=====
 
 #ifdef HAVE_LIBXC
+
+#if 0
+ call xc_f90_func_init(xc_functest, xc_infotest, XC_LDA_X, XC_UNPOLARIZED)
+! call xc_f90_func_init(xc_functest, xc_infotest, XC_LDA_C_VWN_RPA , XC_UNPOLARIZED)
+ do ix=1,200
+   exc2(1) = exp(0.08*(DBLE(ix)-1.0))*0.05
+   rhor_r(1)= 3.0/ (4.0*pi*exc2(1)**3)
+   call xc_f90_lda_exc_vxc(xc_functest,1,rhor_r(1),exc1(1),vxc1(1))
+   write(105,'(10(e16.8,2x))') exc2(1),rhor_r(1),exc1(1),vxc1(1)
+ enddo 
+ stop'ENOUGH'
+#endif
 
  write(*,*) 'Evaluate DFT integrals'
  write(*,'(a,i4,x,i4)') '   discretization grid per atom [radial points , angular points] ',nx,nangular
@@ -285,42 +297,42 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
        case(XC_FAMILY_LDA)
          if(dft_xc(1)/=0) then
            if( dft_xc(1) < 1000 ) then 
-             call xc_f90_lda_exc_vxc(xc_func1,1,rhor_r(1),exc1,vxc1(1))
+             call xc_f90_lda_exc_vxc(xc_func1,1,rhor_r(1),exc1(1),vxc1(1))
            else
-             call my_lda_exc_vxc(nspin,dft_xc(1),rhor_r,exc1,vxc1)
+             call my_lda_exc_vxc(nspin,dft_xc(1),rhor_r,exc1(1),vxc1)
            endif
          else
-           exc1=0.0_dp
-           vxc1=0.0_dp
+           exc1(1)=0.0_dp
+           vxc1(1)=0.0_dp
          endif
          if(dft_xc(2)/=0) then
-           call xc_f90_lda_exc_vxc(xc_func2,1,rhor_r(1),exc2,vxc2(1))
+           call xc_f90_lda_exc_vxc(xc_func2,1,rhor_r(1),exc2(1),vxc2(1))
          else
-           exc2=0.0_dp
-           vxc2=0.0_dp
+           exc2(1)=0.0_dp
+           vxc2(1)=0.0_dp
          endif
        case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
          if(dft_xc(1)/=0) then
-           call xc_f90_gga_exc_vxc(xc_func1,1,rhor_r(1)       ,sigma2(1)       ,exc1,vxc1(1),vsigma1(1)       )
+           call xc_f90_gga_exc_vxc(xc_func1,1,rhor_r(1)       ,sigma2(1)       ,exc1(1),vxc1(1),vsigma1(1)       )
            call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shiftx(1),sigma2_shiftx(1),vxc_dummy(1),vsigma1_shiftx(1))
            call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shifty(1),sigma2_shifty(1),vxc_dummy(1),vsigma1_shifty(1))
            call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shiftz(1),sigma2_shiftz(1),vxc_dummy(1),vsigma1_shiftz(1))
          else
-           exc1=0.0_dp
-           vxc1=0.0_dp
+           exc1(1)=0.0_dp
+           vxc1(1)=0.0_dp
            vsigma1=0.0_dp
            vsigma1_shiftx=0.0_dp
            vsigma1_shifty=0.0_dp
            vsigma1_shiftz=0.0_dp
          endif
          if(dft_xc(2)/=0) then
-           call xc_f90_gga_exc_vxc(xc_func2,1,rhor_r(1)       ,sigma2(1)       ,exc2,vxc2(1),vsigma2(1)       )
+           call xc_f90_gga_exc_vxc(xc_func2,1,rhor_r(1)       ,sigma2(1)       ,exc2(1),vxc2(1),vsigma2(1)       )
            call xc_f90_gga_vxc    (xc_func2,1,rhor_r_shiftx(1),sigma2_shiftx(1),vxc_dummy(1),vsigma2_shiftx(1))
            call xc_f90_gga_vxc    (xc_func2,1,rhor_r_shifty(1),sigma2_shifty(1),vxc_dummy(1),vsigma2_shifty(1))
            call xc_f90_gga_vxc    (xc_func2,1,rhor_r_shiftz(1),sigma2_shiftz(1),vxc_dummy(1),vsigma2_shiftz(1))
          else
-           exc2=0.0_dp
-           vxc2=0.0_dp
+           exc2(1)=0.0_dp
+           vxc2(1)=0.0_dp
            vsigma2=0.0_dp
            vsigma2_shiftx=0.0_dp
            vsigma2_shifty=0.0_dp
@@ -330,7 +342,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
          stop'not LDA nor GGA is not implemented'
        end select
   
-       exc_xc = exc_xc + weight * fact_becke * ( exc1 + exc2 ) * SUM( rhor_r(:) )
+       exc_xc = exc_xc + weight * fact_becke * ( exc1(1) + exc2(1) ) * SUM( rhor_r(:) )
   
        dedd_r(:) = vxc1(:) + vxc2(:)
 

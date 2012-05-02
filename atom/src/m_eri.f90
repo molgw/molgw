@@ -5,7 +5,6 @@ module m_eri
  public :: eri,allocate_eri,allocate_eri_eigen,deallocate_eri,calculate_eri_faster,transform_eri_basis_fast,transform_eri_basis_lowmem
 
  real(prec_eri),allocatable :: eri_buffer(:)
- real(prec_eri),allocatable :: eri_buffer_erf(:)
 
 #ifdef LOW_MEMORY3
  integer                    :: nsize_sparse
@@ -59,28 +58,6 @@ subroutine allocate_eri(nbf)
 end subroutine allocate_eri
 
 !=========================================================================
-subroutine allocate_eri_eigen(nspin)
- implicit none
-!===== 
- integer,intent(in) :: nspin
-!===== 
- integer            :: info
-!===== 
-
- allocate(eri_eigen_buffer(nsize,nspin,nspin),stat=info)
- write(*,'(/,a,f8.3,a)') ' Allocating the ERI array: ',nspin**2*REAL(nsize,dp)*prec_eri/1024**3,' [Gb]'
- if(info==0) then
-   write(*,*) 'success'
- else
-   write(*,*) 'failure'
-   stop'Not enough memory. Ask Santa Claus for a bigger computer'
- endif
-
- eri_eigen_buffer(:,:,:) = 0.0_dp
-
-end subroutine allocate_eri_eigen
-
-!=========================================================================
 subroutine deallocate_eri()
  implicit none
 !=====
@@ -92,15 +69,6 @@ subroutine deallocate_eri()
 #endif
 
 end subroutine deallocate_eri
-
-!=========================================================================
-subroutine deallocate_eri_eigen()
- implicit none
-!=====
-
- deallocate(eri_eigen_buffer)
-
-end subroutine deallocate_eri_eigen
 
 !=========================================================================
 function index_prod(ibf,jbf)
@@ -183,18 +151,6 @@ function eri(ibf,jbf,kbf,lbf)
 #endif
 
 end function eri
-
-!=========================================================================
-function eri_eigen(ibf,jbf,kbf,lbf,ijspin,klspin)
- implicit none
- integer,intent(in) :: ibf,jbf,kbf,lbf
- integer,intent(in) :: ijspin,klspin
- real(dp)           :: eri_eigen
-!=====
-
- eri_eigen = eri_eigen_buffer(index_eri(ibf,jbf,kbf,lbf),ijspin,klspin)
-
-end function eri_eigen
 
 #if 0
 !=========================================================================

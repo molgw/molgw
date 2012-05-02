@@ -172,7 +172,6 @@ program atom
 
  !
  ! reading input file
-! call read_inputparameter(calc_type,nspin,nscf,alpha_mixing,print_volume,basis_name,zatom,electrons,magnetization,basis_element)
  call read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
                                    basis_name,electrons,magnetization)
 
@@ -231,13 +230,6 @@ program atom
 #ifdef LOW_MEMORY3
  call negligible_eri(-1.0e-8_dp)
 #endif
-
- !
- ! In all the following cases, one needs the Coulomb integral
- ! in the eigenvector basis
- if( calc_type%is_gw .OR. calc_type%is_mp2 .OR. calc_type%type==CI) then
-   call allocate_eri_eigen(nspin)
- endif
 
 
  !
@@ -686,7 +678,8 @@ program atom
  ! CI calculation is done here
  ! implemented for 2 electrons only!
  if(calc_type%type==CI) then
-   if (nspin/=1) stop'for CI, nspin should be 1'
+   if(nspin/=1) stop'for CI, nspin should be 1'
+   if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) stop'CI is implemented for 2 electrons only'
    call full_ci_2electrons_spin(0,basis%nbf,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix)
  endif
   
