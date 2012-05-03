@@ -345,8 +345,8 @@ program atom
 
  !
  ! Initialize the SCF mixing procedure
-! call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
- call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
+ call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
+! call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
 
  !
  ! Kinetic energy contribution
@@ -680,7 +680,7 @@ program atom
  if(calc_type%type==CI) then
    if(nspin/=1) stop'for CI, nspin should be 1'
    if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) stop'CI is implemented for 2 electrons only'
-   call full_ci_2electrons_spin(0,basis%nbf,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix)
+   call full_ci_2electrons_spin(0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix)
  endif
   
  !

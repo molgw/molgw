@@ -335,6 +335,7 @@ subroutine plot_wfn(nspin,basis,c_matrix)
    endif
 
    write(101,*) x(1),phi1*phase1,phi2*phase2
+   write(102,*) x(1),phi1**2,phi2**2
  enddo
 
 end subroutine plot_wfn

@@ -127,22 +127,24 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
 end subroutine mp2_energy
 
 !==================================================================
-subroutine full_ci_2electrons_spin(spinstate,nbf,h_1e,c_matrix)
+subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix)
  use m_definitions
  use m_tools
+ use m_basis_set
  use m_eri
 ! use wavefunction_object
 ! use basis_object
  implicit none
 !
  integer,parameter :: cip=dp
- integer,parameter :: nx=60
+ integer,parameter :: nx=4000
 !
- integer,intent(in) :: spinstate,nbf
- real(dp),intent(in) :: h_1e(nbf,nbf),c_matrix(nbf,nbf)
+ integer,intent(in)         :: spinstate
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in) :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,basis%nbf)
 !=====
- real(dp) :: h_1e_hf(nbf,nbf)
- integer :: nconf,iconf,jconf
+ real(dp) :: h_1e_hf(basis%nbf,basis%nbf)
+ integer :: nconf,iconf,jconf,kconf
  integer :: ibf,jbf,kbf,lbf
  integer :: istate,jstate,kstate,lstate
  integer :: istate1,istate2,jstate1,jstate2,ispin1,ispin2,jspin1,jspin2
@@ -151,30 +153,31 @@ subroutine full_ci_2electrons_spin(spinstate,nbf,h_1e,c_matrix)
  real(cip),allocatable :: test1(:),test2(:),test3(:),hphi(:),gr1(:),gr2(:)
  real(cip) :: delta,eigen,hessian,norm_gr1
  integer :: iline,ix
- real(dp) :: rhor(nx),rr(3)
+ real(dp) :: rhor(nx),rhor_hf(nx),rr(3)
  real(dp) :: rhor_t(nx)
+ real(dp) :: eval_wfn(basis%nbf)
 #ifndef LOW_MEMORY2
- real(dp) :: eri_hf(nbf,nbf,nbf,nbf)
+ real(dp) :: eri_hf(basis%nbf,basis%nbf,basis%nbf,basis%nbf)
 #else
- real(dp) :: eri_hf_i(nbf,nbf,nbf,1)
+ real(dp) :: eri_hf_i(basis%nbf,basis%nbf,basis%nbf,1)
 #endif
 !
  integer,parameter :: ny=nx,nz=nx
  integer :: iy,iz
- real(dp) :: x(nx),y(ny),z(nz)
+ real(dp) :: xxx(nx),y(ny),z(nz)
  real(dp) :: wx(nx),wy(ny),wz(nz)
  real(dp) :: norm
-!
+!=====
  write(*,*) 
  write(*,*) 'Enter full CI subroutine'
  write(*,*) 
 
  write(*,*) 'obtain the one-electron Hamiltonian in the HF basis'
  h_1e_hf(:,:) = 0.0_dp
- do jstate=1,nbf
-   do istate=1,nbf
-     do jbf=1,nbf
-       do ibf=1,nbf
+ do jstate=1,basis%nbf
+   do istate=1,basis%nbf
+     do jbf=1,basis%nbf
+       do ibf=1,basis%nbf
          h_1e_hf(istate,jstate) = h_1e_hf(istate,jstate) + h_1e(ibf,jbf) * c_matrix(ibf,istate) * c_matrix(jbf,jstate)
        enddo
      enddo
@@ -182,7 +185,7 @@ subroutine full_ci_2electrons_spin(spinstate,nbf,h_1e,c_matrix)
  enddo
 
 #ifndef LOW_MEMORY2
- call transform_eri_basis_fast(nbf,1,c_matrix,eri_hf)
+ call transform_eri_basis_fast(basis%nbf,1,c_matrix,eri_hf)
 #endif
 
  select case(spinstate)
@@ -194,20 +197,20 @@ subroutine full_ci_2electrons_spin(spinstate,nbf,h_1e,c_matrix)
    stop'BUG: spin state not possible'
  end select
 
- nconf = ( 2*nbf * (2*nbf -1) ) / 2
+ nconf = ( 2*basis%nbf * (2*basis%nbf -1) ) / 2
  write(*,*)
  write(*,*) 'CI matrix lower than',nconf,' x ',nconf
  allocate(hamiltonian(nconf,nconf))
  hamiltonian(:,:) = 0.0_dp
 
  iconf=0
- do istate1=1,nbf
+ do istate1=1,basis%nbf
 #ifdef LOW_MEMORY2
      call transform_eri_basis_lowmem(1,c_matrix,istate1,1,eri_hf_i)
 #endif
    do ispin1=1,2
 
-     do istate2=istate1,nbf
+     do istate2=istate1,basis%nbf
        do ispin2=1,2
          if(istate1==istate2 .AND. (ispin2==1 .OR. ispin1==2) ) cycle
          !
@@ -220,9 +223,9 @@ subroutine full_ci_2electrons_spin(spinstate,nbf,h_1e,c_matrix)
          iconf=iconf+1
 
          jconf=0
-         do jstate1=1,nbf
+         do jstate1=1,basis%nbf
            do jspin1=1,2
-             do jstate2=jstate1,nbf
+             do jstate2=jstate1,basis%nbf
                do jspin2=1,2
                  if(jstate1==jstate2 .AND. (jspin2==1 .OR. jspin1==2) ) cycle
                  !
@@ -400,16 +403,16 @@ subroutine full_ci_2electrons_spin(spinstate,nbf,h_1e,c_matrix)
 
  write(*,*) 'Hartree-Fock ground state energy [Ha]',hamiltonian(1,1)
 ! write(*,*) '=========== H_1e ============== '
-! do istate=1,nbf
-!   write(*,'(i4,2x,20(x,f12.6))') iconf,h_1e_hf(istate,1:nbf)
+! do istate=1,basis%nbf
+!   write(*,'(i4,2x,20(x,f12.6))') iconf,h_1e_hf(istate,1:basis%nbf)
 ! enddo
 ! write(*,*) '=========== J_ij ============== '
-! do istate=1,nbf
-!   write(*,'(i4,2x,20(x,f12.6))') iconf,(eri_hf(istate,istate,jstate,jstate),jstate=1,nbf)
+! do istate=1,basis%nbf
+!   write(*,'(i4,2x,20(x,f12.6))') iconf,(eri_hf(istate,istate,jstate,jstate),jstate=1,basis%nbf)
 ! enddo
 ! write(*,*) '=========== K_ij ============== '
-! do istate=1,nbf
-!   write(*,'(i4,2x,20(x,f12.6))') iconf,(eri_hf(istate,jstate,jstate,istate),jstate=1,nbf)
+! do istate=1,basis%nbf
+!   write(*,'(i4,2x,20(x,f12.6))') iconf,(eri_hf(istate,jstate,jstate,istate),jstate=1,basis%nbf)
 ! enddo
 ! write(*,*) '=========== full H ============== '
 ! do iconf=1,nconf
@@ -487,98 +490,130 @@ subroutine full_ci_2electrons_spin(spinstate,nbf,h_1e,c_matrix)
   
   ! deallocate(hamiltonian)
 
-#if 0
+#if 1
 ! Plot the ground state density
  write(*,*)
  write(*,*) 'calculate the density'
 
- call coeffs_gausslegint(0.0_dp,Lx,x,wx,nx)
- call coeffs_gausslegint(0.0_dp,Ly,y,wy,ny)
- call coeffs_gausslegint(0.0_dp,Lz,z,wz,nz)
 
-! norm=0.0_dp
  rhor(:)=0.0_dp
- iconf=0
- do istate1=1,nbf
-   do ispin1=1,2
-     do istate2=istate1,nbf
-       do ispin2=1,2
-         if(istate1==istate2 .AND. (ispin2==1 .OR. ispin1==2) ) cycle
-         !
-         ! S^2 selection
-         if(ABS(ispin1-ispin2)==spinstate) cycle
-         !
-         ! for two electrons, the two electron wavefunction is even in space
-         ! the two one-particle wavefunctions have then to have the parity 
-!TODO         if(.NOT.symmetry(istate1,istate2)) cycle
-         iconf=iconf+1
-         if(modulo(iconf,100)==0) write(*,*) iconf
-
-         jconf=0
-         do jstate1=1,nbf
-           do jspin1=1,2
-             do jstate2=jstate1,nbf
-               do jspin2=1,2
-                 if(jstate1==jstate2 .AND. (jspin2==1 .OR. jspin1==2) ) cycle
-                 !
-                 ! S^2 selection
-                 if(ABS(jspin1-jspin2)==spinstate) cycle
-                 !
-                 ! for two electrons, the two electron wavefunction is even in space
-                 ! the two one-particle wavefunctions have then to have the parity 
-!TODO                 if(.NOT.symmetry(jstate1,jstate2)) cycle
-                 jconf=jconf+1
-
-                 do ix=1,nx
-!                 do iy=1,ny
-!                 do iz=1,nz
-!                   rr(1)= x(ix)
-!                   rr(2)= y(iy)
-!                   rr(3)= z(iz)
-                   rr(1)= DBLE(ix-1)/DBLE(nx-1)*Lx
-                   rr(2)= DBLE(ix-1)/DBLE(nx-1)*Ly
-                   rr(3)= DBLE(ix-1)/DBLE(nx-1)*Lz
-
-                   if( istate2==jstate2 .AND. ispin2==jspin2 .AND. ispin1==jspin1 ) then
-                     rhor(ix) = rhor(ix)  &
-&                     + eigenvector(iconf,1) * eigenvector(jconf,1) &
-&                      * evaluate_wavefunction(basis(istate1),rr) * evaluate_wavefunction(basis(jstate1),rr) !* wy(iy) * wz(iz)
-!                     if(istate1==jstate1) norm = norm + eigenvector(iconf,1) * eigenvector(jconf,1) * 0.5
-                   endif
-                   if( istate1==jstate1 .AND. ispin1==jspin1 .AND. ispin2==jspin2 ) then 
-                     rhor(ix) = rhor(ix)  &
-&                     + eigenvector(iconf,1) * eigenvector(jconf,1) &
-&                      * evaluate_wavefunction(basis(istate2),rr) * evaluate_wavefunction(basis(jstate2),rr) !* wy(iy) * wz(iz)
-!                     if(istate2==jstate2) norm = norm + eigenvector(iconf,1) * eigenvector(jconf,1) *0.5
-                   endif
-                   if( istate2==jstate1 .AND. ispin2==jspin1 .AND. ispin1==jspin2 ) then
-                     rhor(ix) = rhor(ix)  &
-&                     - eigenvector(iconf,1) * eigenvector(jconf,1) &
-&                      * evaluate_wavefunction(basis(istate1),rr) * evaluate_wavefunction(basis(jstate2),rr) !* wy(iy) * wz(iz)
-!                     if(istate1==jstate2) norm = norm + eigenvector(iconf,1) * eigenvector(jconf,1) * 0.5
-                   endif
-                   if( istate1==jstate2 .AND. ispin1==jspin2 .AND. ispin2==jspin1 ) then
-                     rhor(ix) = rhor(ix)  &
-&                     - eigenvector(iconf,1) * eigenvector(jconf,1) &
-&                      * evaluate_wavefunction(basis(istate2),rr) * evaluate_wavefunction(basis(jstate1),rr) !* wy(iy) * wz(iz)
-!                     if(istate2==jstate1) norm = norm + eigenvector(iconf,1) * eigenvector(jconf,1) *0.5
-                   endif
-
-!                 enddo !iz
-!                 enddo !iy
-                 enddo !ix
+ rhor_hf(:)=0.0_dp
+ do ix=1,nx
+   rr(1)= ( DBLE(ix-1)/DBLE(nx-1) - 0.5 ) * 10.0
+   rr(2)= 0.0
+   rr(3)= 0.0
 
 
+   eval_wfn(:)=0.0_dp
+   do istate=1,basis%nbf
+     do ibf=1,basis%nbf
+       eval_wfn(istate) = eval_wfn(istate) + c_matrix(ibf,istate) *  eval_basis_function(basis%bf(ibf),rr)
+     enddo
+   enddo
+  
+  do kconf=1,1
+  
+   iconf=0
+   do istate1=1,basis%nbf
+     do ispin1=1,2
+       do istate2=istate1,basis%nbf
+         do ispin2=1,2
+           if(istate1==istate2 .AND. (ispin2==1 .OR. ispin1==2) ) cycle
+!           !
+!           ! S^2 selection
+!           if(ABS(ispin1-ispin2)==spinstate) cycle
+           !
+           ! for two electrons, the two electron wavefunction is even in space
+           ! the two one-particle wavefunctions have then to have the parity 
+  !TODO         if(.NOT.symmetry(istate1,istate2)) cycle
+           iconf=iconf+1
+  
+           jconf=0
+           do jstate1=1,basis%nbf
+             do jspin1=1,2
+               do jstate2=jstate1,basis%nbf
+                 do jspin2=1,2
+                   if(jstate1==jstate2 .AND. (jspin2==1 .OR. jspin1==2) ) cycle
+  !                 !
+  !                 ! S^2 selection
+  !                 if(ABS(jspin1-jspin2)==spinstate) cycle
+                   !
+                   ! for two electrons, the two electron wavefunction is even in space
+                   ! the two one-particle wavefunctions have then to have the parity 
+  !TODO                 if(.NOT.symmetry(jstate1,jstate2)) cycle
+                   jconf=jconf+1
+  
+  
+                     if( istate2==jstate2 .AND. ispin2==jspin2 .AND. ispin1==jspin1 ) then
+                       rhor(ix) = rhor(ix)  &
+                        + eigenvector(iconf,kconf) * eigenvector(jconf,kconf) &
+                         * eval_wfn(istate1) * eval_wfn(jstate1) 
+                     endif
+                     if( istate1==jstate1 .AND. ispin1==jspin1 .AND. ispin2==jspin2 ) then 
+                       rhor(ix) = rhor(ix)  &
+                        + eigenvector(iconf,kconf) * eigenvector(jconf,kconf) &
+                         * eval_wfn(istate2) * eval_wfn(jstate2) 
+                     endif
+                     if( istate2==jstate1 .AND. ispin2==jspin1 .AND. ispin1==jspin2 ) then
+                       rhor(ix) = rhor(ix)  &
+                        - eigenvector(iconf,kconf) * eigenvector(jconf,kconf) &
+                         * eval_wfn(istate1) * eval_wfn(jstate2)
+                     endif
+                     if( istate1==jstate2 .AND. ispin1==jspin2 .AND. ispin2==jspin1 ) then
+                       rhor(ix) = rhor(ix)  &
+                        - eigenvector(iconf,kconf) * eigenvector(jconf,kconf) &
+                         * eval_wfn(istate2) * eval_wfn(jstate1)
+                     endif
+
+                     !
+                     ! HARTREE-FOCK PART
+                     if( iconf==kconf .AND. jconf==kconf ) then
+                       if(ix==1) then
+                         write(*,*) '******************'
+                         write(*,*) istate1,ispin1,istate2,ispin2
+                         write(*,*) jstate1,jspin1,jstate2,jspin2
+                         write(*,*)
+                         write(*,*) istate2==jstate2 .AND. ispin2==jspin2 .AND. ispin1==jspin1 
+                         write(*,*) istate1==jstate1 .AND. ispin1==jspin1 .AND. ispin2==jspin2 
+                         write(*,*) istate2==jstate1 .AND. ispin2==jspin1 .AND. ispin1==jspin2 
+                         write(*,*) istate1==jstate2 .AND. ispin1==jspin2 .AND. ispin2==jspin1
+                         write(*,*)
+                       endif
+                       if( istate2==jstate2 .AND. ispin2==jspin2 .AND. ispin1==jspin1 ) then
+                         rhor_hf(ix) = rhor_hf(ix)  &
+                          + eval_wfn(istate1) * eval_wfn(jstate1) 
+                       endif
+                       if( istate1==jstate1 .AND. ispin1==jspin1 .AND. ispin2==jspin2 ) then 
+                         rhor_hf(ix) = rhor_hf(ix)  &
+                          + eval_wfn(istate2) * eval_wfn(jstate2) 
+                       endif
+                       if( istate2==jstate1 .AND. ispin2==jspin1 .AND. ispin1==jspin2 ) then
+                         rhor_hf(ix) = rhor_hf(ix)  &
+                          - eval_wfn(istate1) * eval_wfn(jstate2)
+                       endif
+                       if( istate1==jstate2 .AND. ispin1==jspin2 .AND. ispin2==jspin1 ) then
+                         rhor_hf(ix) = rhor_hf(ix)  &
+                          - eval_wfn(istate2) * eval_wfn(jstate1)
+                       endif
+                     endif
+  
+  
+  
+                 enddo
                enddo
              enddo
            enddo
+  
          enddo
-
        enddo
      enddo
    enddo
- enddo
+
+   enddo  !kconf
+
+ enddo !ix
  rhor(:) = rhor(:) * 0.5_dp
+ rhor_hf(:) = rhor_hf(:) * 0.5_dp
 
 ! write(*,*) 'NORM',norm / DBLE(nx*ny*nz)
 ! write(*,*) 'norm',SUM(rhor(:)*wx(:))
@@ -590,7 +625,7 @@ subroutine full_ci_2electrons_spin(spinstate,nbf,h_1e,c_matrix)
 !   rr(1)= x(ix)
 !   rr(2)= y(iy)
 !   rr(3)= z(iz)
-!   rhor_t(ix)=rhor_t(ix)+ evaluate_wavefunction(basis(1),rr)**2 * wy(iy) * wz(iz)
+!   rhor_t(ix)=rhor_t(ix)+ eval_basis_function(basis%bf(1),rr)**2 * wy(iy) * wz(iz)
 ! enddo !iz
 ! enddo !iy
 ! enddo !ix
@@ -602,11 +637,10 @@ subroutine full_ci_2electrons_spin(spinstate,nbf,h_1e,c_matrix)
 
  do ix=1,nx
 !   rr(1)= x(ix)
-   rr(1)= DBLE(ix-1)/DBLE(nx-1)*Lx
-   rr(2)= DBLE(ix-1)/DBLE(nx-1)*Lx
-   rr(3)= DBLE(ix-1)/DBLE(nx-1)*Lx
-   write(10,'(5(e12.6,2x))') rr(1),(evaluate_wavefunction(basis(1),rr))**2,rhor(ix),&
-&         rhor(ix)-(evaluate_wavefunction(basis(1),rr))**2
+   rr(1)= (DBLE(ix-1)/DBLE(nx-1)-0.5)*10.00
+   rr(2)= 0.0
+   rr(3)= 0.0
+   write(10,'(5(e14.6,2x))') rr(1),rhor(ix),rhor_hf(ix)
  enddo
 
 #endif

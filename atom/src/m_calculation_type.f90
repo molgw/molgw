@@ -172,6 +172,14 @@ subroutine init_calculation_type(calc_type,input_key)
    if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
    alpha_hybrid = 0.0_dp
  !
+ ! Meta-GGA functionals
+ case('BJ')
+   calc_type%need_dft_xc   = .TRUE.
+   calc_type%dft_x = XC_MGGA_X_BJ06
+   calc_type%dft_c = 0
+   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
+   alpha_hybrid = 0.0_dp
+ !
  ! Hybrid functionals
  case('B3LYP')
    calc_type%need_dft_xc   = .TRUE.  

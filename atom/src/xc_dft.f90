@@ -47,6 +47,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
  real(dp) :: basis_function_r_shifty(basis%nbf)
  real(dp) :: basis_function_r_shiftz(basis%nbf)
  real(dp) :: basis_function_gradr       (3,basis%nbf)
+ real(dp) :: basis_function_laplr       (3,basis%nbf)
  real(dp) :: basis_function_gradr_shiftx(3,basis%nbf)
  real(dp) :: basis_function_gradr_shifty(3,basis%nbf)
  real(dp) :: basis_function_gradr_shiftz(3,basis%nbf)
@@ -62,6 +63,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
  real(dp) :: sigma2_shiftx(2*nspin-1)
  real(dp) :: sigma2_shifty(2*nspin-1)
  real(dp) :: sigma2_shiftz(2*nspin-1)
+ real(dp) :: tau(nspin),lapl_rhor(nspin)
  real(dp) :: vxc1(nspin),vxc2(nspin)
  real(dp) :: vxc_dummy(nspin)
  real(dp) :: exc1(1),exc2(1)
@@ -73,6 +75,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
  real(dp) :: vsigma2_shiftx(2*nspin-1)
  real(dp) :: vsigma2_shifty(2*nspin-1)
  real(dp) :: vsigma2_shiftz(2*nspin-1)
+ real(dp) :: vlapl_rho(nspin),vtau(nspin)
  real(dp) :: vxc_av(nspin)
  real(dp) :: dedd_r(nspin)
  real(dp) :: dedgd_r       (3,nspin)
@@ -120,6 +123,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
      call xc_f90_func_init(xc_func2, xc_info2, 0, XC_POLARIZED)
    endif
  endif
+ write(*,*) 'LIBXC functional index',dft_xc(:)
 
  !
  ! spherical integration
@@ -196,6 +200,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
        do ibf=1,basis%nbf
          basis_function_r(ibf) = eval_basis_function(basis%bf(ibf),rr)
        enddo
+
        if(xc_f90_info_family(xc_info1) == XC_FAMILY_GGA .OR. xc_f90_info_family(xc_info1) == XC_FAMILY_HYB_GGA) then 
          do ibf=1,basis%nbf
 
@@ -213,6 +218,13 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
            basis_function_r_shiftz(ibf)       = eval_basis_function(basis%bf(ibf),rr_shift)
            basis_function_gradr_shiftz(:,ibf) = eval_basis_function_grad(basis%bf(ibf),rr_shift)
 
+         enddo
+       endif
+
+       if(xc_f90_info_family(xc_info1) == XC_FAMILY_MGGA ) then
+         do ibf=1,basis%nbf
+           basis_function_gradr(:,ibf)        = eval_basis_function_grad(basis%bf(ibf),rr)
+           basis_function_laplr(:,ibf)        = eval_basis_function_lapl(basis%bf(ibf),rr)
          enddo
        endif
 
@@ -268,6 +280,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
                grad_rhor_shiftz(:,ispin) = grad_rhor_shiftz(:,ispin) + p_matrix(ibf,jbf,ispin) &
                     *( basis_function_gradr_shiftz(:,ibf) * basis_function_r_shiftz(jbf) &
                      + basis_function_gradr_shiftz(:,jbf) * basis_function_r_shiftz(ibf) ) 
+
              enddo
            enddo
          enddo
@@ -290,6 +303,38 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
 
        endif
   
+       if(xc_f90_info_family(xc_info1) == XC_FAMILY_MGGA) then
+
+         grad_rhor(:,:)=0.0_dp
+         tau(:)        =0.0_dp
+         lapl_rhor(:)  =0.0_dp
+         do ispin=1,nspin
+           do jbf=1,basis%nbf
+             do ibf=1,basis%nbf
+
+               grad_rhor(:,ispin) = grad_rhor(:,ispin)        + p_matrix(ibf,jbf,ispin) &
+                    *( basis_function_gradr       (:,ibf) * basis_function_r(jbf) &
+                     + basis_function_gradr       (:,jbf) * basis_function_r(ibf) ) 
+
+               tau(ispin)        = tau(ispin)        + p_matrix(ibf,jbf,ispin) &
+                    * DOT_PRODUCT( basis_function_gradr(:,ibf) , basis_function_gradr(:,jbf) )
+
+               lapl_rhor(ispin)  = lapl_rhor(ispin)  + p_matrix(ibf,jbf,ispin) &
+                                  * (  SUM( basis_function_laplr(:,ibf) ) * basis_function_r(jbf)               &
+                                     + basis_function_r(ibf)              * SUM( basis_function_laplr(:,jbf) )  &
+                                     + 2.0_dp * DOT_PRODUCT( basis_function_gradr(:,ibf) , basis_function_gradr(:,jbf) ) )
+
+             enddo
+           enddo
+         enddo
+         sigma2(1)        = SUM( grad_rhor       (:,1)**2 )
+         if(nspin==2) then
+           sigma2(2)        = SUM( grad_rhor       (:,1) * grad_rhor       (:,2) )
+           sigma2(3)        = SUM( grad_rhor       (:,2)**2 )
+         endif
+
+       endif
+
        !
        ! LIBXC call
        !
@@ -338,8 +383,25 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
            vsigma2_shifty=0.0_dp
            vsigma2_shiftz=0.0_dp
          endif
+       case(XC_FAMILY_MGGA)
+         if(dft_xc(1)/=0) then
+           call xc_f90_mgga_vxc(xc_func1,1,rhor_r(1),sigma2(1),lapl_rhor(1),tau(1),vxc1(1),vsigma1(1),vlapl_rho(1),vtau(1))
+           exc1(1)=0.0_dp
+         else
+           exc1(1)=0.0_dp
+           vxc1(1)=0.0_dp
+           vsigma1=0.0_dp
+         endif
+         if(dft_xc(2)/=0) then
+           call xc_f90_mgga_vxc(xc_func2,1,rhor_r(1),sigma2(1),lapl_rhor(1),tau(1),vxc2(1),vsigma1(1),vlapl_rho(1),vtau(1))
+           exc2(1)=0.0_dp
+         else
+           exc2(1)=0.0_dp
+           vxc2(1)=0.0_dp
+           vsigma2=0.0_dp
+         endif
        case default
-         stop'not LDA nor GGA is not implemented'
+         stop'functional is not LDA nor GGA nor hybrid nor meta-GGA'
        end select
   
        exc_xc = exc_xc + weight * fact_becke * ( exc1(1) + exc2(1) ) * SUM( rhor_r(:) )
