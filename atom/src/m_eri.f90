@@ -2,9 +2,11 @@ module m_eri
  use m_definitions
 
  private
- public :: eri,allocate_eri,allocate_eri_eigen,deallocate_eri,calculate_eri_faster,transform_eri_basis_fast,transform_eri_basis_lowmem
+ public :: eri,allocate_eri,allocate_eri_eigen,deallocate_eri,calculate_eri_faster,transform_eri_basis_fast,transform_eri_basis_lowmem, &
+           eri_scr,allocate_eri_scr,deallocate_eri_scr
 
  real(prec_eri),allocatable :: eri_buffer(:)
+ real(prec_eri),allocatable :: eri_buffer_scr(:)
 
 #ifdef LOW_MEMORY3
  integer                    :: nsize_sparse
@@ -69,6 +71,57 @@ subroutine deallocate_eri()
 #endif
 
 end subroutine deallocate_eri
+
+!=========================================================================
+subroutine allocate_eri_scr(nbf)
+ implicit none
+!===== 
+ integer,intent(in) :: nbf
+!===== 
+ integer            :: info
+!===== 
+
+ nbf_eri = nbf
+#if LOW_MEMORY3 || LOW_MEMORY2
+ write(*,'(/,a)') ' Symmetrized ERI stored'
+ nsize1  = index_prod(nbf_eri,nbf_eri) 
+ nsize   = index_eri(nbf_eri,nbf_eri,nbf_eri,nbf_eri)
+#else
+ write(*,'(/,a)') ' All ERI are stored'
+ nsize1  = nbf_eri**2
+ nsize   = nsize1**2
+#endif
+
+ allocate(eri_buffer_scr(nsize),stat=info)
+ if(REAL(nsize,dp)*prec_eri > 1024**3 ) then
+   write(*,'(a,f10.3,a)') ' Allocating the Long-Range ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb]'
+ else
+   write(*,'(a,f10.3,a)') ' Allocating the Long-Range ERI array: ',REAL(nsize,dp)*prec_eri/1024**2,' [Mb]'
+ endif
+ if(info==0) then
+   write(*,*) 'success'
+ else
+   write(*,*) 'failure'
+   stop'Not enough memory. Buy a bigger computer'
+ endif
+
+ eri_buffer_scr(:) = 0.0_dp
+
+end subroutine allocate_eri_scr
+
+!=========================================================================
+subroutine deallocate_eri_scr()
+ implicit none
+!=====
+
+ if(allocated(eri_buffer_scr))    deallocate(eri_buffer_scr)
+#ifdef LOW_MEMORY3
+ if(allocated(eri_buffer_sparse)) deallocate(eri_buffer_sparse)
+ if(allocated(index_sparse))      deallocate(index_sparse)
+#endif
+
+end subroutine deallocate_eri_scr
+
 
 !=========================================================================
 function index_prod(ibf,jbf)
@@ -151,6 +204,24 @@ function eri(ibf,jbf,kbf,lbf)
 #endif
 
 end function eri
+
+!=========================================================================
+function eri_scr(ibf,jbf,kbf,lbf)
+ implicit none
+ integer,intent(in) :: ibf,jbf,kbf,lbf
+ real(dp)           :: eri_scr
+!=====
+ integer            :: ibuffer_sparse,index_ijkl
+ integer            :: i1,i2,i3,i4
+!=====
+
+#ifdef LOW_MEMORY2
+ eri_scr = eri_buffer_scr(index_eri(ibf,jbf,kbf,lbf))
+#else
+ eri_scr = eri_buffer_scr(ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3)
+#endif
+
+end function eri_scr
 
 #if 0
 !=========================================================================
@@ -832,52 +903,113 @@ subroutine calculate_eri_faster(basis,rcut)
 
          call stop_clock(timing_tmp3)
          call start_clock(timing_tmp4)
+
+         !
+         ! different treatments if full-range or long-range only
+         !
+ 
+         if( rcut < 1.0e-6_dp ) then
+
 !!!!!           !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iindex_in_the_shell,jindex_in_the_shell,kindex_in_the_shell,lindex_in_the_shell,&
 !!!!!           !$OMP&     ig,jg,kg,lg,ibf,jbf,kbf,lbf,index_integral,index_tmp )
 !!!!!           
 !!!!!           !$OMP DO SCHEDULE(STATIC)
-         do lmember=1,shell(lshell)%nmember
-           lbf = shell(lshell)%index_bf(lmember)
-           lg  = shell(lshell)%index_g (lmember)
-           lindex_in_the_shell = libint_ordering(basis%bf(lbf)%nx,basis%bf(lbf)%ny,basis%bf(lbf)%nz)
-           do kmember=1,shell(kshell)%nmember
-             kbf = shell(kshell)%index_bf(kmember)
-             kg  = shell(kshell)%index_g (kmember)
-             kindex_in_the_shell = libint_ordering(basis%bf(kbf)%nx,basis%bf(kbf)%ny,basis%bf(kbf)%nz)
-             do jmember=1,shell(jshell)%nmember
-               jbf = shell(jshell)%index_bf(jmember)
-               jg  = shell(jshell)%index_g (jmember)
-               jindex_in_the_shell = libint_ordering(basis%bf(jbf)%nx,basis%bf(jbf)%ny,basis%bf(jbf)%nz)
-               do imember=1,shell(ishell)%nmember
-                 ibf = shell(ishell)%index_bf(imember)
-                 ig  = shell(ishell)%index_g (imember)
-                 iindex_in_the_shell = libint_ordering(basis%bf(ibf)%nx,basis%bf(ibf)%ny,basis%bf(ibf)%nz)
+           do lmember=1,shell(lshell)%nmember
+             lbf = shell(lshell)%index_bf(lmember)
+             lg  = shell(lshell)%index_g (lmember)
+             lindex_in_the_shell = libint_ordering(basis%bf(lbf)%nx,basis%bf(lbf)%ny,basis%bf(lbf)%nz)
+             do kmember=1,shell(kshell)%nmember
+               kbf = shell(kshell)%index_bf(kmember)
+               kg  = shell(kshell)%index_g (kmember)
+               kindex_in_the_shell = libint_ordering(basis%bf(kbf)%nx,basis%bf(kbf)%ny,basis%bf(kbf)%nz)
+               do jmember=1,shell(jshell)%nmember
+                 jbf = shell(jshell)%index_bf(jmember)
+                 jg  = shell(jshell)%index_g (jmember)
+                 jindex_in_the_shell = libint_ordering(basis%bf(jbf)%nx,basis%bf(jbf)%ny,basis%bf(jbf)%nz)
+                 do imember=1,shell(ishell)%nmember
+                   ibf = shell(ishell)%index_bf(imember)
+                   ig  = shell(ishell)%index_g (imember)
+                   iindex_in_the_shell = libint_ordering(basis%bf(ibf)%nx,basis%bf(ibf)%ny,basis%bf(ibf)%nz)
 
-                 index_integral = lindex_in_the_shell + (kindex_in_the_shell-1)*nl &
-                                 +(jindex_in_the_shell-1)*nl*nk + (iindex_in_the_shell-1)*nl*nk*nj
+                   index_integral = lindex_in_the_shell + (kindex_in_the_shell-1)*nl &
+                                   +(jindex_in_the_shell-1)*nl*nk + (iindex_in_the_shell-1)*nl*nk*nj
 
 #if LOW_MEMORY3 || LOW_MEMORY2
-                 if(ibf<jbf) cycle
-                 if(kbf<lbf) cycle
-                 if(index_prod(ibf,jbf)<index_prod(kbf,lbf)) cycle
+                   if(ibf<jbf) cycle
+                   if(kbf<lbf) cycle
+                   if(index_prod(ibf,jbf)<index_prod(kbf,lbf)) cycle
 
-                 index_tmp=index_eri(ibf,jbf,kbf,lbf)
+                   index_tmp=index_eri(ibf,jbf,kbf,lbf)
 #else
-                 index_tmp=ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3
+                   index_tmp=ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3
 #endif
-                 eri_buffer(index_tmp) = eri_buffer(index_tmp) &
-                           + basis%bf(ibf)%coeff(ig) *  basis%bf(ibf)%g(ig)%norm_factor &
-                           * basis%bf(jbf)%coeff(jg) *  basis%bf(jbf)%g(jg)%norm_factor &
-                           * basis%bf(kbf)%coeff(kg) *  basis%bf(kbf)%g(kg)%norm_factor &
-                           * basis%bf(lbf)%coeff(lg) *  basis%bf(lbf)%g(lg)%norm_factor &
-                             * int_shell(index_integral) 
+                   eri_buffer(index_tmp) = eri_buffer(index_tmp) &
+                             + basis%bf(ibf)%coeff(ig) *  basis%bf(ibf)%g(ig)%norm_factor &
+                             * basis%bf(jbf)%coeff(jg) *  basis%bf(jbf)%g(jg)%norm_factor &
+                             * basis%bf(kbf)%coeff(kg) *  basis%bf(kbf)%g(kg)%norm_factor &
+                             * basis%bf(lbf)%coeff(lg) *  basis%bf(lbf)%g(lg)%norm_factor &
+                               * int_shell(index_integral) 
 
+                 enddo
                enddo
              enddo
            enddo
-         enddo
 !!!!          !$OMP END DO
 !!!!          !$OMP END PARALLEL
+
+
+         else    ! *******        long-range      ******* !
+
+
+!!!!!           !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iindex_in_the_shell,jindex_in_the_shell,kindex_in_the_shell,lindex_in_the_shell,&
+!!!!!           !$OMP&     ig,jg,kg,lg,ibf,jbf,kbf,lbf,index_integral,index_tmp )
+!!!!!           
+!!!!!           !$OMP DO SCHEDULE(STATIC)
+           do lmember=1,shell(lshell)%nmember
+             lbf = shell(lshell)%index_bf(lmember)
+             lg  = shell(lshell)%index_g (lmember)
+             lindex_in_the_shell = libint_ordering(basis%bf(lbf)%nx,basis%bf(lbf)%ny,basis%bf(lbf)%nz)
+             do kmember=1,shell(kshell)%nmember
+               kbf = shell(kshell)%index_bf(kmember)
+               kg  = shell(kshell)%index_g (kmember)
+               kindex_in_the_shell = libint_ordering(basis%bf(kbf)%nx,basis%bf(kbf)%ny,basis%bf(kbf)%nz)
+               do jmember=1,shell(jshell)%nmember
+                 jbf = shell(jshell)%index_bf(jmember)
+                 jg  = shell(jshell)%index_g (jmember)
+                 jindex_in_the_shell = libint_ordering(basis%bf(jbf)%nx,basis%bf(jbf)%ny,basis%bf(jbf)%nz)
+                 do imember=1,shell(ishell)%nmember
+                   ibf = shell(ishell)%index_bf(imember)
+                   ig  = shell(ishell)%index_g (imember)
+                   iindex_in_the_shell = libint_ordering(basis%bf(ibf)%nx,basis%bf(ibf)%ny,basis%bf(ibf)%nz)
+
+                   index_integral = lindex_in_the_shell + (kindex_in_the_shell-1)*nl &
+                                   +(jindex_in_the_shell-1)*nl*nk + (iindex_in_the_shell-1)*nl*nk*nj
+
+#if LOW_MEMORY3 || LOW_MEMORY2
+                   if(ibf<jbf) cycle
+                   if(kbf<lbf) cycle
+                   if(index_prod(ibf,jbf)<index_prod(kbf,lbf)) cycle
+
+                   index_tmp=index_eri(ibf,jbf,kbf,lbf)
+#else
+                   index_tmp=ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3
+#endif
+                   eri_buffer_scr(index_tmp) = eri_buffer_scr(index_tmp) &
+                             + basis%bf(ibf)%coeff(ig) *  basis%bf(ibf)%g(ig)%norm_factor &
+                             * basis%bf(jbf)%coeff(jg) *  basis%bf(jbf)%g(jg)%norm_factor &
+                             * basis%bf(kbf)%coeff(kg) *  basis%bf(kbf)%g(kg)%norm_factor &
+                             * basis%bf(lbf)%coeff(lg) *  basis%bf(lbf)%g(lg)%norm_factor &
+                               * int_shell(index_integral) 
+
+                 enddo
+               enddo
+             enddo
+           enddo
+!!!!          !$OMP END DO
+!!!!          !$OMP END PARALLEL
+
+         endif      ! if full-range or long-range
+
 
          call stop_clock(timing_tmp4)
 

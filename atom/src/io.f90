@@ -95,9 +95,9 @@ subroutine output_homolumo(nbf,nspin,occupation,energy,homo,lumo)
 
 
  write(*,*)
- write(*,'(a,2(3x,f12.6))') 'HOMO energy    [Ha]:',homo(:)
- write(*,'(a,2(3x,f12.6))') 'LUMO energy    [Ha]:',lumo(:)
- write(*,'(a,2(3x,f12.6))') 'HOMO-LUMO gap  [Ha]:',lumo(:)-homo(:)
+ write(*,'(a,2(3x,f12.6))') ' HOMO energy    [Ha]:',homo(:)
+ write(*,'(a,2(3x,f12.6))') ' LUMO energy    [Ha]:',lumo(:)
+ write(*,'(a,2(3x,f12.6))') ' HOMO-LUMO gap  [Ha]:',lumo(:)-homo(:)
  write(*,*)
 
 

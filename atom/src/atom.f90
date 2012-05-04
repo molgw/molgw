@@ -25,7 +25,6 @@ program atom
  character(len=100)           :: basis_name
  real(dp)                     :: electrons
  real(dp)                     :: magnetization
- real(dp)                     :: rcut=0.0_dp
 !===== variables for testing
  type(gaussian) :: gatmp,gbtmp
  type(basis_function) :: bftmp1,bftmp2
@@ -232,7 +231,13 @@ program atom
  ! ERI are stored "privately" in the module m_eri
  call start_clock(timing_integrals)
  call allocate_eri(basis%nbf)
- call calculate_eri_faster(basis,rcut)
+ call calculate_eri_faster(basis,0.0_dp)
+ !
+ ! for HSE functionals, calculate the long-range ERI
+ if(calc_type%need_lr_integrals) then
+   call allocate_eri_scr(basis%nbf)
+   call calculate_eri_faster(basis,rcut)
+ endif
  call stop_clock(timing_integrals)
 #ifdef LOW_MEMORY3
  call negligible_eri(-1.0e-8_dp)
@@ -242,12 +247,12 @@ program atom
  !
  ! in case of GW run, set up product basis 
  !                    set up coulomb integrals
-#ifdef AUXIL_BASIS
  if( calc_type%is_gw ) then
    call start_clock(timing_prodbasis)
 
    call init_product_basis_set(basis,prod_basis)
 
+#ifdef AUXIL_BASIS
    allocate(v_filtered_basis(prod_basis%nbf_filtered,prod_basis%nbf_filtered))
    allocate(s_filtered_basis(prod_basis%nbf_filtered,prod_basis%nbf_filtered))
    allocate(sinv_filtered_basis(prod_basis%nbf_filtered,prod_basis%nbf_filtered))
@@ -303,10 +308,10 @@ program atom
    sinv_v_sinv = MATMUL( TRANSPOSE(prod_basis%rotation), MATMUL( sinv_v_sinv_filtered , prod_basis%rotation ) )
 
    deallocate(sinv_v_sinv_filtered)
+#endif
    
    call stop_clock(timing_prodbasis)
  endif
-#endif
 
  !
  ! build occupation array, initial c_matrix
@@ -413,7 +418,11 @@ program atom
    ! Exchange contribution to the Hamiltonian
    if( calc_type%need_exchange ) then
 
-     call setup_exchange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
+     if(.NOT.calc_type%is_screened_hybrid) then
+       call setup_exchange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
+     else
+       call setup_exchange_shortrange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
+     endif
 
      en%exx = en%exx * alpha_hybrid
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix(:,:,:) * alpha_hybrid
@@ -790,6 +799,7 @@ program atom
  deallocate(energy,occupation,exchange_m_vxc_diag)
  deallocate(self_energy_old)
  call deallocate_eri()
+ call deallocate_eri_scr()
  if( calc_type%need_dft_xc ) deallocate( vxc_matrix )
 
  call destroy_basis_set(basis)

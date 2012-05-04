@@ -20,6 +20,7 @@ module m_calculation_type
  integer,parameter :: QS          =102
 
  real(dp)          :: alpha_hybrid = 1.0_dp
+ real(dp)          :: rcut = 0.0_dp
 
  type calculation_type
    integer :: type
@@ -28,6 +29,7 @@ module m_calculation_type
    logical :: need_dft_xc
    logical :: need_rpa
    logical :: need_lr_integrals
+   logical :: is_screened_hybrid
    logical :: is_gw
    logical :: is_mp2
    logical :: is_ci
@@ -57,6 +59,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%need_dft_xc         = .FALSE.
  calc_type%need_rpa            = .FALSE.
  calc_type%need_lr_integrals   = .FALSE.
+ calc_type%is_screened_hybrid  = .FALSE.
  calc_type%is_gw               = .FALSE.
  calc_type%is_mp2              = .FALSE.
  calc_type%is_ci               = .FALSE.
@@ -201,6 +204,16 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%dft_c = 0
    if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
    alpha_hybrid = 0.25_dp
+ case('HSE06')
+   calc_type%is_screened_hybrid  = .TRUE.
+   calc_type%need_dft_xc         = .TRUE.  
+   calc_type%need_exchange       = .TRUE.  
+   calc_type%need_lr_integrals   = .TRUE.
+   calc_type%dft_x               = XC_HYB_GGA_X_HSE06
+   calc_type%dft_c               = XC_GGA_C_PBE
+   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
+   alpha_hybrid = 0.25_dp
+   rcut         = 1.0_dp / 0.11_dp
 #endif
  case default
    stop'error reading calculation type part 1'
