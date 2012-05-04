@@ -41,6 +41,7 @@ program atom
  character(len=100)      :: title
  real(dp)                :: energy_tmp,overlap_tmp
  real(dp)                :: dipole(3)
+ real(dp),allocatable    :: ehomo(:),elumo(:)
  real(dp),allocatable    :: hamiltonian(:,:,:)
  real(dp),allocatable    :: hamiltonian_kinetic(:,:,:)           !TODO remove spin
  real(dp),allocatable    :: hamiltonian_nucleus(:,:,:)           !TODO remove spin
@@ -197,8 +198,14 @@ program atom
  allocate(occupation(basis%nbf,nspin))
  allocate(exchange_m_vxc_diag(basis%nbf,nspin))
  allocate(self_energy_old(basis%nbf,basis%nbf,nspin))
- self_energy_old(:,:,:) = 0.0_dp
+ allocate(ehomo(nspin))
+ allocate(elumo(nspin))
  if( calc_type%need_dft_xc ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
+
+ !
+ ! Some required initializations
+ energy(:,:)            = 0.0_dp
+ self_energy_old(:,:,:) = 0.0_dp
 
  !
  ! Build up the overlap matrix S
@@ -235,12 +242,12 @@ program atom
  !
  ! in case of GW run, set up product basis 
  !                    set up coulomb integrals
+#ifdef AUXIL_BASIS
  if( calc_type%is_gw ) then
    call start_clock(timing_prodbasis)
 
    call init_product_basis_set(basis,prod_basis)
 
-#ifdef AUXIL_BASIS
    allocate(v_filtered_basis(prod_basis%nbf_filtered,prod_basis%nbf_filtered))
    allocate(s_filtered_basis(prod_basis%nbf_filtered,prod_basis%nbf_filtered))
    allocate(sinv_filtered_basis(prod_basis%nbf_filtered,prod_basis%nbf_filtered))
@@ -297,9 +304,9 @@ program atom
 
    deallocate(sinv_v_sinv_filtered)
    
-#endif
    call stop_clock(timing_prodbasis)
  endif
+#endif
 
  !
  ! build occupation array, initial c_matrix
@@ -348,6 +355,10 @@ program atom
  call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
 ! call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
 
+
+ !
+ ! Calculate the parts of the hamiltonian that does not change along
+ ! with the SCF cycles
  !
  ! Kinetic energy contribution
  do jbf=1,basis%nbf
@@ -373,12 +384,15 @@ program atom
  title='=== nucleus contribution ==='
  call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,hamiltonian_nucleus)
 
+
  !
  ! start the big scf loop
  !
  do iscf=1,nscf
    write(*,'(/,a)') '-------------------------------------------'
    write(*,'(a,x,i4,/)') ' *** SCF cycle No:',iscf
+
+   call output_homolumo(basis%nbf,nspin,occupation,energy,ehomo,elumo)
 
    !
    ! Skip the first iteration
@@ -410,7 +424,7 @@ program atom
    ! DFT XC potential is added here
    if( calc_type%need_dft_xc ) then
      call start_clock(timing_dft)
-     call dft_exc_vxc(nspin,basis,(/calc_type%dft_x ,calc_type%dft_c/),p_matrix,vxc_matrix,en%xc)
+     call dft_exc_vxc(nspin,basis,(/calc_type%dft_x ,calc_type%dft_c/),p_matrix,ehomo,vxc_matrix,en%xc)
      call stop_clock(timing_dft)
 
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + vxc_matrix(:,:,:)
@@ -718,9 +732,9 @@ program atom
      call allocate_eri(basis%nbf)
      call calculate_eri_faster(basis,rcut)
      if( .NOT. ALLOCATED( vxc_matrix ) ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
-     call dft_exc_vxc(nspin,basis,(/ 1000 ,0/),p_matrix,vxc_matrix,energy_tmp)
+     call dft_exc_vxc(nspin,basis,(/ 1000 ,0/),p_matrix,ehomo,vxc_matrix,energy_tmp)
      write(*,'(/,a,f14.8)') '    RPA LDA energy [Ha]: ',energy_tmp
-     call dft_exc_vxc(nspin,basis,(/ 1005 ,0/),p_matrix,vxc_matrix,energy_tmp)
+     call dft_exc_vxc(nspin,basis,(/ 1005 ,0/),p_matrix,ehomo,vxc_matrix,energy_tmp)
      write(*,'(/,a,f14.8)') ' LR-RPA LDA energy [Ha]: ',energy_tmp
    endif
 

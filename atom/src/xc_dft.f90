@@ -1,5 +1,5 @@
 !=========================================================================
-subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
+subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
  use m_tools,only: coeffs_gausslegint
  use m_timing
  use m_atoms
@@ -18,6 +18,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
  integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: p_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)        :: ehomo(nspin)
  real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: exc_xc
 !=====
@@ -356,6 +357,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
            exc2(1)=0.0_dp
            vxc2(1)=0.0_dp
          endif
+
        case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
          if(dft_xc(1)/=0) then
            call xc_f90_gga_exc_vxc(xc_func1,1,rhor_r(1)       ,sigma2(1)       ,exc1(1),vxc1(1),vsigma1(1)       )
@@ -383,6 +385,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
            vsigma2_shifty=0.0_dp
            vsigma2_shiftz=0.0_dp
          endif
+
        case(XC_FAMILY_MGGA)
          if(dft_xc(1)/=0) then
            call xc_f90_mgga_vxc(xc_func1,1,rhor_r(1),sigma2(1),lapl_rhor(1),tau(1),vxc1(1),vsigma1(1),vlapl_rho(1),vtau(1))
@@ -400,6 +403,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
            vxc2(1)=0.0_dp
            vsigma2=0.0_dp
          endif
+
        case default
          stop'functional is not LDA nor GGA nor hybrid nor meta-GGA'
        end select
@@ -446,6 +450,15 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,vxc_ij,exc_xc)
   
        else
          div(:) = 0.0_dp
+       endif
+ 
+
+       !
+       ! In the case of the BJ06 meta-GGA functional, a spin-dependent shift is applied
+       ! since the potential does not vanish at infinity
+       !
+       if( dft_xc(1) == XC_MGGA_X_BJ06 ) then
+         dedd_r(:) = dedd_r(:) - SQRT( 5.0_dp * ABS(ehomo(:)) / 6.0_dp ) / pi
        endif
 
   

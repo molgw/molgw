@@ -71,14 +71,14 @@ subroutine output_homolumo(nbf,nspin,occupation,energy,homo,lumo)
  implicit none
  integer,intent(in)  :: nbf,nspin
  real(dp),intent(in) :: occupation(nbf,nspin),energy(nbf,nspin)
- real(dp),intent(out) :: homo,lumo
+ real(dp),intent(out) :: homo(nspin),lumo(nspin)
  real(dp) :: homo_tmp,lumo_tmp
  integer :: ispin,ibf
 
- homo_tmp=-1.d+5
- lumo_tmp= 1.d+5
 
  do ispin=1,nspin
+   homo_tmp=-1.d+5
+   lumo_tmp= 1.d+5
    do ibf=1,nbf
      if(occupation(ibf,ispin)>completely_empty) then
        homo_tmp = MAX( homo_tmp , energy(ibf,ispin) )
@@ -89,15 +89,15 @@ subroutine output_homolumo(nbf,nspin,occupation,energy,homo,lumo)
      endif
 
    enddo
+   homo(ispin) = homo_tmp
+   lumo(ispin) = lumo_tmp
  enddo
 
- homo = homo_tmp
- lumo = lumo_tmp
 
  write(*,*)
- write(*,'(a,x,f12.6)') 'HOMO energy    [Ha]:',homo_tmp
- write(*,'(a,x,f12.6)') 'LUMO energy    [Ha]:',lumo_tmp
- write(*,'(a,x,f12.6)') 'HOMO-LUMO gap  [Ha]:',lumo_tmp-homo_tmp
+ write(*,'(a,2(3x,f12.6))') 'HOMO energy    [Ha]:',homo(:)
+ write(*,'(a,2(3x,f12.6))') 'LUMO energy    [Ha]:',lumo(:)
+ write(*,'(a,2(3x,f12.6))') 'HOMO-LUMO gap  [Ha]:',lumo(:)-homo(:)
  write(*,*)
 
 

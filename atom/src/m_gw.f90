@@ -501,7 +501,7 @@ subroutine gw_selfenergy_casida(method,nspin,basis,prod_basis,occupation,energy,
  real(dp)    :: spin_fact,overlap_tmp
  real(dp)    :: three_state_overlap_i(prod_basis%nbf,basis%nbf)
  real(dp)    :: bra(wpol%npole,basis%nbf),ket(wpol%npole,basis%nbf)
- real(dp)    :: homo,lumo,fact_full,fact_empty
+ real(dp)    :: fact_full,fact_empty
  real(dp)    :: zz(nspin)
  complex(dp) :: energy_complex
 !=====
@@ -515,7 +515,6 @@ subroutine gw_selfenergy_casida(method,nspin,basis,prod_basis,occupation,energy,
    write(*,*) 'perform a one-shot G0W0 calculation'
  end select
 
- call output_homolumo(basis%nbf,nspin,occupation,energy,homo,lumo)
 
  if(method==QS) then
    nomegai=1
@@ -590,7 +589,6 @@ subroutine gw_selfenergy_casida(method,nspin,basis,prod_basis,occupation,energy,
            ! Take care about the energies that may lie in the vicinity of the
            ! poles of Sigma
            if( ABS( energy(borbital,ispin) - energy(iorbital,ispin) + wpol%pole(ipole) ) < aimag(eta) ) then
-!             energy_complex = energy(borbital,ispin) + eta * ABS(MIN( 1.0_dp, (energy(borbital,ispin)-lumo-wpol%pole(ipole))/aimag(eta)-1.0_dp))
              energy_complex = energy(borbital,ispin)  + (0.0_dp,1.0_dp) &
 &                * ( aimag(eta) - ABS( energy(borbital,ispin) - energy(iorbital,ispin) + wpol%pole(ipole) ) )
            else
@@ -743,7 +741,7 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
  integer     :: iorbital,ispin,ipole
  real(dp)    :: spin_fact,overlap_tmp
  real(dp)    :: bra(wpol%npole,basis%nbf),ket(wpol%npole,basis%nbf)
- real(dp)    :: homo,lumo,fact_full,fact_empty
+ real(dp)    :: fact_full,fact_empty
  real(dp)    :: zz(nspin)
  real(dp)    :: energy_re
  character(len=2) :: ctmp
@@ -761,8 +759,6 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
  case(perturbative)
    write(*,*) 'perform a one-shot G0W0 calculation'
  end select
-
- call output_homolumo(basis%nbf,nspin,occupation,energy,homo,lumo)
 
  if(method==QS) then
    nomegai=1
@@ -959,7 +955,6 @@ subroutine cohsex_selfenergy(nstate,nspin,occupation,energy,c_matrix,w_pol,selfe
  integer :: iorbital,ispin
  real(dp) :: three_state_overlap_kai,three_state_overlap_ib(nstate_pola)
  complex(dp) :: ket(nstate_pola,nstate)
- real(dp) :: homo,lumo
 
  real(dp) :: density_matrix(nstate,nstate,nspin)
  real(dp) :: partial(nstate_pola,nstate,nstate)
@@ -968,8 +963,6 @@ subroutine cohsex_selfenergy(nstate,nspin,occupation,energy,c_matrix,w_pol,selfe
  complex(dp) :: selfenergy_tmp(nstate,nstate,nspin)
 !=====
 
-
- call output_homolumo(occupation,energy,homo,lumo)
 
 
  write(*,*) 'building COHSEX self-energy'
