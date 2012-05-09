@@ -88,6 +88,10 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
  real(dp) :: mu,s_becke(natom,natom),p_becke(natom),fact_becke
 !=====
 
+ exc_xc = 0.0_dp
+ vxc_ij(:,:,:) = 0.0_dp
+ if( ALL(dft_xc(:)==0) ) return
+
 #ifdef HAVE_LIBXC
 
 #if 0
@@ -328,7 +332,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
              enddo
            enddo
          enddo
-         sigma2(1)        = SUM( grad_rhor       (:,1)**2 )
+         sigma2(1)          = SUM( grad_rhor       (:,1)**2 )
          if(nspin==2) then
            sigma2(2)        = SUM( grad_rhor       (:,1) * grad_rhor       (:,2) )
            sigma2(3)        = SUM( grad_rhor       (:,2)**2 )

@@ -3,10 +3,10 @@ module m_eri
 
  private
  public :: eri,allocate_eri,allocate_eri_eigen,deallocate_eri,calculate_eri_faster,transform_eri_basis_fast,transform_eri_basis_lowmem, &
-           eri_scr,allocate_eri_scr,deallocate_eri_scr
+           eri_lr,allocate_eri_lr,deallocate_eri_lr
 
  real(prec_eri),allocatable :: eri_buffer(:)
- real(prec_eri),allocatable :: eri_buffer_scr(:)
+ real(prec_eri),allocatable :: eri_buffer_lr(:)
 
 #ifdef LOW_MEMORY3
  integer                    :: nsize_sparse
@@ -73,7 +73,7 @@ subroutine deallocate_eri()
 end subroutine deallocate_eri
 
 !=========================================================================
-subroutine allocate_eri_scr(nbf)
+subroutine allocate_eri_lr(nbf)
  implicit none
 !===== 
  integer,intent(in) :: nbf
@@ -92,7 +92,7 @@ subroutine allocate_eri_scr(nbf)
  nsize   = nsize1**2
 #endif
 
- allocate(eri_buffer_scr(nsize),stat=info)
+ allocate(eri_buffer_lr(nsize),stat=info)
  if(REAL(nsize,dp)*prec_eri > 1024**3 ) then
    write(*,'(a,f10.3,a)') ' Allocating the Long-Range ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb]'
  else
@@ -105,22 +105,22 @@ subroutine allocate_eri_scr(nbf)
    stop'Not enough memory. Buy a bigger computer'
  endif
 
- eri_buffer_scr(:) = 0.0_dp
+ eri_buffer_lr(:) = 0.0_dp
 
-end subroutine allocate_eri_scr
+end subroutine allocate_eri_lr
 
 !=========================================================================
-subroutine deallocate_eri_scr()
+subroutine deallocate_eri_lr()
  implicit none
 !=====
 
- if(allocated(eri_buffer_scr))    deallocate(eri_buffer_scr)
+ if(allocated(eri_buffer_lr))    deallocate(eri_buffer_lr)
 #ifdef LOW_MEMORY3
  if(allocated(eri_buffer_sparse)) deallocate(eri_buffer_sparse)
  if(allocated(index_sparse))      deallocate(index_sparse)
 #endif
 
-end subroutine deallocate_eri_scr
+end subroutine deallocate_eri_lr
 
 
 !=========================================================================
@@ -206,22 +206,22 @@ function eri(ibf,jbf,kbf,lbf)
 end function eri
 
 !=========================================================================
-function eri_scr(ibf,jbf,kbf,lbf)
+function eri_lr(ibf,jbf,kbf,lbf)
  implicit none
  integer,intent(in) :: ibf,jbf,kbf,lbf
- real(dp)           :: eri_scr
+ real(dp)           :: eri_lr
 !=====
  integer            :: ibuffer_sparse,index_ijkl
  integer            :: i1,i2,i3,i4
 !=====
 
 #ifdef LOW_MEMORY2
- eri_scr = eri_buffer_scr(index_eri(ibf,jbf,kbf,lbf))
+ eri_lr = eri_buffer_lr(index_eri(ibf,jbf,kbf,lbf))
 #else
- eri_scr = eri_buffer_scr(ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3)
+ eri_lr = eri_buffer_lr(ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3)
 #endif
 
-end function eri_scr
+end function eri_lr
 
 #if 0
 !=========================================================================
@@ -994,7 +994,7 @@ subroutine calculate_eri_faster(basis,rcut)
 #else
                    index_tmp=ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3
 #endif
-                   eri_buffer_scr(index_tmp) = eri_buffer_scr(index_tmp) &
+                   eri_buffer_lr(index_tmp) = eri_buffer_lr(index_tmp) &
                              + basis%bf(ibf)%coeff(ig) *  basis%bf(ibf)%g(ig)%norm_factor &
                              * basis%bf(jbf)%coeff(jg) *  basis%bf(jbf)%g(jg)%norm_factor &
                              * basis%bf(kbf)%coeff(kg) *  basis%bf(kbf)%g(kg)%norm_factor &

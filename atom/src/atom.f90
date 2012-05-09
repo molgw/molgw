@@ -234,8 +234,8 @@ program atom
  call calculate_eri_faster(basis,0.0_dp)
  !
  ! for HSE functionals, calculate the long-range ERI
- if(calc_type%need_lr_integrals) then
-   call allocate_eri_scr(basis%nbf)
+ if(calc_type%is_screened_hybrid .OR. calc_type%need_lr_integrals) then
+   call allocate_eri_lr(basis%nbf)
    call calculate_eri_faster(basis,rcut)
  endif
  call stop_clock(timing_integrals)
@@ -357,8 +357,8 @@ program atom
 
  !
  ! Initialize the SCF mixing procedure
- call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
-! call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
+! call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
+ call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
 
 
  !
@@ -712,6 +712,12 @@ program atom
 
    call setup_exchange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
    write(*,*) 'EXX [Ha]:',en%exx
+   write(*,*) 'test',rcut
+   vxc_matrix(:,:,:)=0.0_dp
+   call setup_exchange_shortrange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
+!   matrix = 0.0_dp
+   write(*,*) 'EXX [Ha]:',en%exx
+   write(*,*) 'test'
 
    exchange_m_vxc_diag(:,:) = 0.0_dp
    do ispin=1,nspin
@@ -726,6 +732,9 @@ program atom
      enddo
    enddo
 
+  write(*,*) 'test'
+  write(*,*) '<Sigx>', exchange_m_vxc_diag(1:2,:)*27.211
+  write(*,*) 'test'
 
  else
    exchange_m_vxc_diag(:,:) = 0.0_dp
@@ -736,7 +745,7 @@ program atom
  if( calc_type%is_gw .AND. calc_type%method == perturbative ) then
 
    if( calc_type%need_lr_integrals ) then
-     rcut= 0.5_dp
+     rcut= 5.0_dp
      call deallocate_eri()
      call allocate_eri(basis%nbf)
      call calculate_eri_faster(basis,rcut)
@@ -799,7 +808,7 @@ program atom
  deallocate(energy,occupation,exchange_m_vxc_diag)
  deallocate(self_energy_old)
  call deallocate_eri()
- call deallocate_eri_scr()
+ call deallocate_eri_lr()
  if( calc_type%need_dft_xc ) deallocate( vxc_matrix )
 
  call destroy_basis_set(basis)

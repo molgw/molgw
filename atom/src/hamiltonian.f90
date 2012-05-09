@@ -196,7 +196,7 @@ subroutine setup_exchange_shortrange(PRINT_VOLUME,nbf,nspin,p_matrix,pot_exchang
            !
            ! symmetry (ik|lj) = (ki|lj) has been used to loop in the fast order
            pot_exchange(ibf,jbf,ispin) = pot_exchange(ibf,jbf,ispin) &
-                      - ( eri(kbf,ibf,lbf,jbf) - eri_scr(kbf,ibf,lbf,jbf) ) &     !  short-range only 
+                      - ( eri(kbf,ibf,lbf,jbf) - eri_lr(kbf,ibf,lbf,jbf) ) &     !  short-range only 
                        * p_matrix(kbf,lbf,ispin) / spin_fact 
          enddo
        enddo
