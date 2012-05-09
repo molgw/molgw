@@ -712,12 +712,12 @@ program atom
 
    call setup_exchange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
    write(*,*) 'EXX [Ha]:',en%exx
-   write(*,*) 'test',rcut
-   vxc_matrix(:,:,:)=0.0_dp
-   call setup_exchange_shortrange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
-!   matrix = 0.0_dp
-   write(*,*) 'EXX [Ha]:',en%exx
-   write(*,*) 'test'
+!   write(*,*) 'test',rcut
+!   vxc_matrix(:,:,:)=0.0_dp
+!   call setup_exchange_shortrange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
+!!   matrix = 0.0_dp
+!   write(*,*) 'EXX [Ha]:',en%exx
+!   write(*,*) 'test'
 
    exchange_m_vxc_diag(:,:) = 0.0_dp
    do ispin=1,nspin
@@ -732,9 +732,9 @@ program atom
      enddo
    enddo
 
-  write(*,*) 'test'
-  write(*,*) '<Sigx>', exchange_m_vxc_diag(1:2,:)*27.211
-  write(*,*) 'test'
+!  write(*,*) 'test'
+!  write(*,*) '<Sigx>', exchange_m_vxc_diag(1:2,:)*27.211
+!  write(*,*) 'test'
 
  else
    exchange_m_vxc_diag(:,:) = 0.0_dp

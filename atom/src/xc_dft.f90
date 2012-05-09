@@ -84,8 +84,9 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
  real(dp) :: dedgd_r_shifty(3,nspin)
  real(dp) :: dedgd_r_shiftz(3,nspin)
  real(dp) :: div(nspin)
-
  real(dp) :: mu,s_becke(natom,natom),p_becke(natom),fact_becke
+ real(dp) :: rtmp
+ character(len=256) :: string
 !=====
 
  exc_xc = 0.0_dp
@@ -108,7 +109,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
 
  write(*,*) 'Evaluate DFT integrals'
  write(*,'(a,i4,x,i4)') '   discretization grid per atom [radial points , angular points] ',nx,nangular
- write(*,'(a,i8)') '   total number of real-space points',nx*nangular*natom
+ write(*,'(a,i8)')      '   total number of real-space points',nx*nangular*natom
  
  if( dft_xc(1) < 1000 ) then
    if(nspin==1) then
@@ -128,7 +129,20 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
      call xc_f90_func_init(xc_func2, xc_info2, 0, XC_POLARIZED)
    endif
  endif
- write(*,*) 'LIBXC functional index',dft_xc(:)
+! write(*,*) 'LIBXC functional index',dft_xc(:)
+! write(*,*) xc_f90_info_number(xc_info1)
+! write(*,*) xc_f90_info_kind(xc_info1)
+! write(*,*) 'name   ',TRIM(string)
+! call xc_f90_hyb_gga_exx_coef(xc_func1,rtmp)
+! write(*,*) 'exx',rtmp
+ if( dft_xc(1) /=0 ) then
+   call xc_f90_info_name(xc_info1,string)
+   write(*,'(a,10x,a)') '   XC functional 1: ',TRIM(string)
+ endif
+ if( dft_xc(2) /=0 ) then
+   call xc_f90_info_name(xc_info2,string)
+   write(*,'(a,10x,a)') '   XC functional 2: ',TRIM(string)
+ endif
 
  !
  ! spherical integration
@@ -498,6 +512,11 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
  write(*,'(a,2(2x,f12.6))') ' number of electrons:',normalization(:)
  write(*,'(a,2x,f12.6)')    '  DFT xc energy [Ha]:',exc_xc
  write(*,*)
+
+ !
+ ! Destroy operations
+ if( dft_xc(1) /= 0 ) call xc_f90_func_end(xc_func1)
+ if( dft_xc(2) /= 0 ) call xc_f90_func_end(xc_func2)
 
 contains
 
