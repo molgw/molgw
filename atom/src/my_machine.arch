@@ -12,7 +12,7 @@ FCOPTS= -O0  #-g -check all
 LAPACK=
 
 #LIBXC_ROOT=/home/bruneval/src/libxc-1.2.0_ifort/
-LIBXC_ROOT=/home/bruneval/src/libxc_svn_ifort/
+LIBXC_ROOT=/home/bruneval/src/libxc_ifort/
 
 LIBINT_ROOT=/home/bruneval/src/libint-2.0.0_install
 

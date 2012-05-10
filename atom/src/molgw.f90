@@ -1,5 +1,5 @@
 !=========================================================================
-program atom
+program molgw
  use m_definitions
  use m_timing
  use m_warning
@@ -78,7 +78,7 @@ program atom
 !=============================
 
  write(*,*)
- write(*,*) 'Welcome to the fascinating world of ATOM'
+ write(*,*) 'Welcome to the fascinating world of MOLGW'
  write(*,*)
  write(*,*)
 
@@ -821,7 +821,7 @@ program atom
 
  write(*,'(/,a,/)') ' This is the end'
 
-end program atom
+end program molgw
 
 !=========================================================================
 subroutine setup_density_matrix(nbf,nspin,c_matrix,occupation,p_matrix)

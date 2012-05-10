@@ -21,19 +21,19 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 
 
 
-../atom: m_definitions.o m_timing.o m_warning.o m_calculation_type.o m_tools.o m_scf.o m_atoms.o \
-         m_gaussian.o m_basis_set.o m_eri.o m_gw.o wrapper_libint.o lebedev_quadrature.o xc_dft.o mp2_selfenergy.o mp2.o io.o hamiltonian.o atom.o
+../molgw: m_definitions.o m_timing.o m_warning.o m_calculation_type.o m_tools.o m_scf.o m_atoms.o \
+         m_gaussian.o m_basis_set.o m_eri.o m_gw.o wrapper_libint.o lebedev_quadrature.o xc_dft.o mp2_selfenergy.o mp2.o io.o hamiltonian.o molgw.o
 	$(FC) $(FCOPTS) m_definitions.o m_timing.o m_warning.o m_calculation_type.o m_tools.o m_scf.o m_atoms.o \
                         m_gaussian.o m_basis_set.o m_gw.o m_eri.o \
-                        wrapper_libint.o lebedev_quadrature.o xc_dft.o mp2_selfenergy.o mp2.o io.o hamiltonian.o atom.o -o ../atom \
+                        wrapper_libint.o lebedev_quadrature.o xc_dft.o mp2_selfenergy.o mp2.o io.o hamiltonian.o molgw.o -o ../molgw \
                         $(LAPACK) \
                         $(LIBXC) $(LIBXC _INCS) \
                         $(LIBINT) $(LIBINT_INCS) \
                         $(LINKS)
 
-atom.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_calculation_type.f90 m_tools.f90 m_scf.f90 \
-  m_gaussian.f90 m_basis_set.f90 m_gw.f90 m_eri.f90 atom.f90
-	$(FC) $(FCOPTS) -c atom.f90 $(LIBXC_INCS)
+molgw.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_calculation_type.f90 m_tools.f90 m_scf.f90 \
+  m_gaussian.f90 m_basis_set.f90 m_gw.f90 m_eri.f90 molgw.f90
+	$(FC) $(FCOPTS) -c molgw.f90 $(LIBXC_INCS)
 
 hamiltonian.o: m_definitions.f90 m_timing.f90 m_eri.f90 hamiltonian.f90
 	$(FC) $(FCOPTS) -c hamiltonian.f90 
@@ -90,9 +90,9 @@ m_definitions.o: m_definitions.f90
 	$(FC) $(FCOPTS) -c m_definitions.f90
 
 archive:
-	tar czf atom.tgz ../../atom/README ../../atom/src/Makefile ../../atom/src/*.f90 ../../atom/src/*.f ../../atom/src/*.cc ../../atom/basis/* ../../atom/util/* ../../atom/tests/
-#	tar czf atom.tgz ../src/README ../src/Makefile ../src/*.f90 ../src/*.f ../src/*.cc ../basis/* ../doc/notes.tex ../doc/figs/* ../util/* ../tests/
-	scp atom.tgz 132.166.68.166:
+	tar czf molgw.tgz ../../molgw/README ../../molgw/src/Makefile ../../molgw/src/*.f90 ../../molgw/src/*.f ../../molgw/src/*.cc ../../molgw/basis/* ../../molgw/util/* ../../molgw/tests/
+#	tar czf molgw.tgz ../src/README ../src/Makefile ../src/*.f90 ../src/*.f ../src/*.cc ../basis/* ../doc/notes.tex ../doc/figs/* ../util/* ../tests/
+	scp molgw.tgz 132.166.68.166:
 
 doc:
 	pdflatex ../doc/notes.tex	

@@ -1,5 +1,5 @@
 =========================================
-                 ATOM
+                 molgw
 =========================================
 
 Ab initio calculations for atoms and very small molecules
@@ -30,12 +30,12 @@ Atom needs fortran, c and c++ compilers
 Basis sets:
 Basis sets can be obtained from https://bse.pnl.gov/bse/portal
 The file can be generated from a NWChem file using the script
-./util/basis_nwchem2atom.py B_aug-cc-pVDZ.nwchem
+./util/basis_nwchem2molgw.py B_aug-cc-pVDZ.nwchem
 
 
 Usage:
 The basis file needs to be located in the working directory.
-./atom < helium.in > helium.out
+./molgw < helium.in > helium.out
 
 Sample input files can be found in ./tests/
 

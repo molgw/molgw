@@ -130,18 +130,18 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
    endif
  endif
 ! write(*,*) 'LIBXC functional index',dft_xc(:)
-! write(*,*) xc_f90_info_number(xc_info1)
 ! write(*,*) xc_f90_info_kind(xc_info1)
 ! write(*,*) 'name   ',TRIM(string)
 ! call xc_f90_hyb_gga_exx_coef(xc_func1,rtmp)
 ! write(*,*) 'exx',rtmp
+ write(*,'(/,a)') ' LIBXC info'
  if( dft_xc(1) /=0 ) then
    call xc_f90_info_name(xc_info1,string)
-   write(*,'(a,10x,a)') '   XC functional 1: ',TRIM(string)
+   write(*,'(a,i6,5x,a)') '   XC functional 1: ', xc_f90_info_number(xc_info1),TRIM(string)
  endif
  if( dft_xc(2) /=0 ) then
    call xc_f90_info_name(xc_info2,string)
-   write(*,'(a,10x,a)') '   XC functional 2: ',TRIM(string)
+   write(*,'(a,i6,5x,a)') '   XC functional 2: ', xc_f90_info_number(xc_info2),TRIM(string)
  endif
 
  !
