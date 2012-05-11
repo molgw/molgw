@@ -24,8 +24,8 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
 !=====
  real(dp),parameter :: shift=1.d-6 ! bohr  some shift used
                                    ! to evaluate numerically the divergence of the gradient
- integer,parameter :: nx= 40
- integer,parameter :: nangular= 38 ! 86
+ integer,parameter :: nx=40  ! 80
+ integer,parameter :: nangular=38 ! 86
 
  real(dp) :: weight
  real(dp) :: x1(nangular)
@@ -85,7 +85,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
  real(dp) :: dedgd_r_shiftz(3,nspin)
  real(dp) :: div(nspin)
  real(dp) :: mu,s_becke(natom,natom),p_becke(natom),fact_becke
- real(dp) :: rtmp
+ real(dp) :: omega,rs(1)
  character(len=256) :: string
 !=====
 
@@ -96,13 +96,20 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
 #ifdef HAVE_LIBXC
 
 #if 0
- call xc_f90_func_init(xc_functest, xc_infotest, XC_LDA_X, XC_UNPOLARIZED)
-! call xc_f90_func_init(xc_functest, xc_infotest, XC_LDA_C_VWN_RPA , XC_UNPOLARIZED)
- do ix=1,200
-   exc2(1) = exp(0.08*(DBLE(ix)-1.0))*0.05
-   rhor_r(1)= 3.0/ (4.0*pi*exc2(1)**3)
-   call xc_f90_lda_exc_vxc(xc_functest,1,rhor_r(1),exc1(1),vxc1(1))
-   write(105,'(10(e16.8,2x))') exc2(1),rhor_r(1),exc1(1),vxc1(1)
+! call xc_f90_func_init(xc_functest, xc_infotest, XC_LDA_X , XC_UNPOLARIZED)
+ call xc_f90_func_init(xc_functest, xc_infotest, XC_GGA_X_WPBEH, XC_UNPOLARIZED)
+! call xc_f90_func_init(xc_functest, xc_infotest, XC_GGA_X_PBE, XC_UNPOLARIZED)
+ omega=0.11
+ call xc_f90_gga_x_wpbeh_set_par(xc_functest,omega)
+ do ix=1,90 
+   rs(1) = exp(0.08*(DBLE(ix)-1.0))*0.05
+   rhor_r(1)= 3.0/ (4.0*pi*rs(1)**3)
+   sigma2(:)= 0.0000
+!   call xc_f90_lda_exc_vxc(xc_functest,1,rhor_r(1),exc1(1),vxc1(1))
+!   call xc_f90_gga_exc_vxc(xc_functest,1,rhor_r(1),sigma2(1),exc1(1),vxc1(1),vsigma1(1))
+!   call my_lda_exc_vxc_mu(omega,rs(1),exc1(1),vxc1(1))
+   call my_gga_exc_vxc_mu(omega,rhor_r(1),sigma2(1),exc1(1),vxc1(1),vsigma1(1))
+   write(105,'(10(e16.8,2x))') rs(1),rhor_r(1),exc1(1),vxc1(1),vsigma1(1)
  enddo 
  stop'ENOUGH'
 #endif
@@ -378,10 +385,17 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
 
        case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
          if(dft_xc(1)/=0) then
-           call xc_f90_gga_exc_vxc(xc_func1,1,rhor_r(1)       ,sigma2(1)       ,exc1(1),vxc1(1),vsigma1(1)       )
-           call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shiftx(1),sigma2_shiftx(1),vxc_dummy(1),vsigma1_shiftx(1))
-           call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shifty(1),sigma2_shifty(1),vxc_dummy(1),vsigma1_shifty(1))
-           call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shiftz(1),sigma2_shiftz(1),vxc_dummy(1),vsigma1_shiftz(1))
+           if( dft_xc(1) < 1000 ) then 
+             call xc_f90_gga_exc_vxc(xc_func1,1,rhor_r(1)       ,sigma2(1)       ,exc1(1),vxc1(1),vsigma1(1)    )
+             call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shiftx(1),sigma2_shiftx(1),vxc_dummy(1),vsigma1_shiftx(1))
+             call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shifty(1),sigma2_shifty(1),vxc_dummy(1),vsigma1_shifty(1))
+             call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shiftz(1),sigma2_shiftz(1),vxc_dummy(1),vsigma1_shiftz(1))
+           else
+             call my_gga_exc_vxc_mu(0.11_dp,rhor_r_shiftx(1),sigma2_shiftx(1),exc1(1),vxc_dummy(1),vsigma1_shiftx(1))
+             call my_gga_exc_vxc_mu(0.11_dp,rhor_r_shifty(1),sigma2_shifty(1),exc1(1),vxc_dummy(1),vsigma1_shifty(1))
+             call my_gga_exc_vxc_mu(0.11_dp,rhor_r_shiftz(1),sigma2_shiftz(1),exc1(1),vxc_dummy(1),vsigma1_shiftz(1))
+             call my_gga_exc_vxc_mu(0.11_dp,rhor_r(1)       ,sigma2(1)       ,exc1(1),vxc1(1)     ,vsigma1(1)       )
+           endif
          else
            exc1(1)=0.0_dp
            vxc1(1)=0.0_dp
@@ -391,7 +405,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
            vsigma1_shiftz=0.0_dp
          endif
          if(dft_xc(2)/=0) then
-           call xc_f90_gga_exc_vxc(xc_func2,1,rhor_r(1)       ,sigma2(1)       ,exc2(1),vxc2(1),vsigma2(1)       )
+           call xc_f90_gga_exc_vxc(xc_func2,1,rhor_r(1)       ,sigma2(1)       ,exc2(1),vxc2(1),vsigma2(1)    )
            call xc_f90_gga_vxc    (xc_func2,1,rhor_r_shiftx(1),sigma2_shiftx(1),vxc_dummy(1),vsigma2_shiftx(1))
            call xc_f90_gga_vxc    (xc_func2,1,rhor_r_shifty(1),sigma2_shifty(1),vxc_dummy(1),vsigma2_shifty(1))
            call xc_f90_gga_vxc    (xc_func2,1,rhor_r_shiftz(1),sigma2_shiftz(1),vxc_dummy(1),vsigma2_shiftz(1))
@@ -758,4 +772,257 @@ subroutine my_lda_exc_vxc(nspin,ixc,rhor,exc,vxc)
 
 
 end subroutine my_lda_exc_vxc
+
+!=========================================================================
+subroutine my_lda_exc_vxc_mu(mu,rspts,exc,vxc)
+ use m_definitions
+ implicit none
+
+!Arguments ------------------------------------
+!scalars
+ real(dp),intent(in) :: mu
+ integer,parameter :: npt=1
+ integer,parameter :: order=1
+!arrays
+ real(dp),intent(in) :: rspts(npt)
+ real(dp),intent(out) :: exc(npt),vxc(npt)
+
+!Local variables-------------------------------
+!Set value of alpha in "X-alpha" method
+!scalars
+ integer :: ipt
+ real(dp),parameter :: alpha=1.0_dp
+ real(dp) :: dfac,efac,rs,rsm1,vfac
+ character(len=500) :: message
+
+ real(dp)           :: rcut
+ real(dp)           :: biga,kf,fact_mu
+ real(dp)           :: rs_step=1.0e-5_dp
+ real(dp)           :: rsp,rsm1p
+ real(dp)           :: bigap,kfp,fact_mup
+
+! *************************************************************************
+
+ rcut = 1.0_dp / mu
+ write(*,*) 'rcut [bohr]=',rcut
+
+
+!Compute vfac=(3/(2*Pi))^(2/3)
+ vfac=(1.5_dp/pi)**(2.0_dp/3.0_dp)
+!Compute efac=(3/4)*vfac
+ efac=0.75_dp*vfac
+!Compute dfac=(4*Pi/9)*vfac
+ dfac=(4.0_dp*pi/9.0_dp)*vfac
+
+!separate cases with respect to order
+ if(order==2) then
+   stop 'not implemented'
+ else
+!  Loop over grid points
+   do ipt=1,npt
+     rs=rspts(ipt)
+     rsp=rs+rs_step
+     rsm1 =1.0_dp/rs
+     rsm1p=1.0_dp/rsp
+     kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) *rsm1
+     kfp= (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) *rsm1p
+
+     biga  = 0.5_dp*mu / kf
+     bigap = 0.5_dp*mu / kfp
+
+     fact_mu = 8.0/3.0 * biga &
+          * ( SQRT(pi) * ERF(0.5_dp/biga) &
+             + (2.0_dp * biga - 4.0_dp * biga**3) * EXP(-0.25_dp/biga**2) &
+             - 3.0_dp * biga  &
+             + 4.0_dp * biga**3 )
+     fact_mup= 8.0/3.0 * bigap&
+          * ( SQRT(pi) * ERF(0.5_dp/bigap) &
+             + (2.0_dp * bigap - 4.0_dp * bigap**3) * EXP(-0.25_dp/bigap**2) &
+             - 3.0_dp * bigap  &
+             + 4.0_dp * bigap**3 )
+
+
+!    compute energy density (hartree)   SHORT RANGE ONLY
+     exc(ipt)=-alpha*efac*rsm1 * (1.0-fact_mu)
+!    compute potential (hartree)
+     vxc(ipt)=-alpha*vfac*rsm1 * (1.0-fact_mu)   -alpha*efac * (fact_mup-fact_mu)/rs_step  / 3.0_dp
+   end do
+ end if
+!
+
+end subroutine my_lda_exc_vxc_mu
+
+!=========================================================================
+subroutine my_gga_exc_vxc_mu(omega,nn,sigma,exc,vxc,vsigma)
+ use m_definitions
+ implicit none
+!=====
+ real(dp),intent(in)  :: omega,nn,sigma
+ real(dp),intent(out) :: exc,vxc,vsigma
+!=====
+ real(dp),parameter :: shift=1.e6_dp
+
+ real(dp),parameter :: ss0=2.0
+ ! HJS parameters
+ real(dp),parameter :: aabar= 0.757211
+ real(dp),parameter :: bb   =-0.106364
+ real(dp),parameter :: cc   =-0.118649
+ real(dp),parameter :: dd   = 0.609650
+ real(dp),parameter :: ee   =-0.0477963
+ ! PBE parameters
+ real(dp),parameter :: a2= 0.0159941
+ real(dp),parameter :: a3= 0.0852995
+ real(dp),parameter :: a4=-0.160368
+ real(dp),parameter :: a5= 0.152645
+ real(dp),parameter :: a6=-0.0971263
+ real(dp),parameter :: a7= 0.0422061
+ real(dp),parameter :: b1= 5.33319
+ real(dp),parameter :: b2=-12.4780
+ real(dp),parameter :: b3=11.0988
+ real(dp),parameter :: b4=-5.11013
+ real(dp),parameter :: b5= 1.71468
+ real(dp),parameter :: b6=-0.610380
+ real(dp),parameter :: b7= 0.307555
+ real(dp),parameter :: b8=-0.0770547
+ real(dp),parameter :: b9= 0.0334840
+!=====
+ real(dp) :: efac
+ real(dp) :: nn_local,sigma_local,rs
+ real(dp) :: ss
+ real(dp) :: kf
+ real(dp) :: nu
+ real(dp) :: chi
+ real(dp) :: lambda,eta,zeta
+ real(dp) :: hh_s
+ real(dp) :: ffbar_s
+ real(dp) :: ggbar_s
+ real(dp) :: factor_w
+ real(dp) :: exc_nn,exc_sigma
+!=====
+
+ efac=0.75_dp * (1.5_dp/pi)**(2.0_dp/3.0_dp)
+
+ nn_local = nn
+ sigma_local = sigma
+ 
+ !
+ ! first calculation
+ rs = ( 3.0 / (4.0 *pi * nn_local) )**(1./3.)
+ kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) / rs
+ nu = omega / kf
+
+ ss = SQRT(sigma_local) / ( 2.0_dp * kf * nn_local )
+ hh_s = ( a2*ss**2 + a3*ss**3 + a4*ss**4 + a5*ss**5 + a6*ss**6 + a7*ss**7 ) &
+      / ( 1.0_dp + b1*ss + b2*ss**2 + b3*ss**3 + b4*ss**4 + b5*ss**5 + b6*ss**6 + b7*ss**7 + b8*ss**8 + b9*ss**9 )
+
+ ffbar_s = 1.0_dp - ss**2 / ( 27.0_dp * cc * (1.0_dp + ss**2/ss0**2 ) ) &
+            - ss**2 * hh_s / (2.0_dp * cc )
+
+
+ zeta   = ss**2 * hh_s
+ eta    = aabar + ss**2 * hh_s
+ lambda = dd    + ss**2 * hh_s
+ chi = nu / SQRT( lambda + nu**2)
+
+ ggbar_s = -2./5.*cc*ffbar_s*lambda -4./15.*bb*lambda**2 - 6./5.*aabar*lambda**3 &
+          -4./5.*SQRT(pi)*lambda**(7./2.) &
+          -12./5.*lambda**(7./2.) * ( SQRT(zeta)-SQRT(eta) )
+ ggbar_s = ggbar_s / ee
+
+
+ factor_w = aabar - 4./9.*bb/lambda*(1.0-chi) - 4./9.*cc*ffbar_s/lambda**2 * (1.0 - 1.5*chi+0.5*chi**3)  &
+           -8./9.*ee*ggbar_s/lambda**3 * ( 1.0 - 15./8.*chi + 5./4.*chi**3 -3./8.*chi**5 ) &
+           + 2.*nu   * ( SQRT(zeta+nu**2)- SQRT(eta+nu**2) ) &
+           + 2.*zeta * LOG( ( nu + SQRT(zeta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) &
+           - 2.*eta  * LOG( ( nu + SQRT( eta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) 
+
+
+ exc = -efac/rs * factor_w
+
+
+! finite diff
+! nn = nn + shift
+ nn_local = nn_local + shift
+ rs = ( 3.0 / (4.0*pi*nn_local) )**(1.0/3.0)
+
+
+ kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) / rs
+ nu = omega / kf
+
+ ss = SQRT(sigma_local) / ( 2.0_dp * kf * nn_local )
+ hh_s = ( a2*ss**2 + a3*ss**3 + a4*ss**4 + a5*ss**5 + a6*ss**6 + a7*ss**7 ) &
+      / ( 1.0_dp + b1*ss + b2*ss**2 + b3*ss**3 + b4*ss**4 + b5*ss**5 + b6*ss**6 + b7*ss**7 + b8*ss**8 + b9*ss**9 )
+
+ ffbar_s = 1.0_dp - ss**2 / ( 27.0_dp * cc * (1.0_dp + ss**2/ss0**2 ) ) &
+            - ss**2 * hh_s / (2.0_dp * cc )
+
+
+ zeta   = ss**2 * hh_s
+ eta    = aabar + ss**2 * hh_s
+ lambda = dd    + ss**2 * hh_s
+ chi = nu / SQRT( lambda + nu**2)
+
+ ggbar_s = -2./5.*cc*ffbar_s*lambda -4./15.*bb*lambda**2 - 6./5.*aabar*lambda**3 &
+          -4./5.*SQRT(pi)*lambda**(7./2.) &
+          -12./5.*lambda**(7./2.) * ( SQRT(zeta)-SQRT(eta) )
+ ggbar_s = ggbar_s / ee
+
+
+ factor_w = aabar - 4./9.*bb/lambda*(1.0-chi) - 4./9.*cc*ffbar_s/lambda**2 * (1.0 - 1.5*chi+0.5*chi**3)  &
+           -8./9.*ee*ggbar_s/lambda**3 * ( 1.0 - 15./8.*chi + 5./4.*chi**3 -3./8.*chi**5 ) &
+           + 2.*nu   * ( SQRT(zeta+nu**2)- SQRT(eta+nu**2) ) &
+           + 2.*zeta * LOG( ( nu + SQRT(zeta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) &
+           - 2.*eta  * LOG( ( nu + SQRT( eta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) 
+
+
+ exc_nn = -efac/rs * factor_w
+
+ vxc = ( exc_nn - exc ) / shift
+
+
+
+
+! finite diff
+! sigma = sigma + shift
+ nn_local = nn_local - shift
+ sigma_local = sigma_local + shift
+ rs = ( 3.0 / (4.0*pi*nn_local) )**(1.0/3.0)
+
+
+ kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) / rs
+ nu = omega / kf
+
+ ss = SQRT(sigma_local) / ( 2.0_dp * kf * nn_local )
+ hh_s = ( a2*ss**2 + a3*ss**3 + a4*ss**4 + a5*ss**5 + a6*ss**6 + a7*ss**7 ) &
+      / ( 1.0_dp + b1*ss + b2*ss**2 + b3*ss**3 + b4*ss**4 + b5*ss**5 + b6*ss**6 + b7*ss**7 + b8*ss**8 + b9*ss**9 )
+
+ ffbar_s = 1.0_dp - ss**2 / ( 27.0_dp * cc * (1.0_dp + ss**2/ss0**2 ) ) &
+            - ss**2 * hh_s / (2.0_dp * cc )
+
+
+ zeta   = ss**2 * hh_s
+ eta    = aabar + ss**2 * hh_s
+ lambda = dd    + ss**2 * hh_s
+ chi = nu / SQRT( lambda + nu**2)
+
+ ggbar_s = -2./5.*cc*ffbar_s*lambda -4./15.*bb*lambda**2 - 6./5.*aabar*lambda**3 &
+          -4./5.*SQRT(pi)*lambda**(7./2.) &
+          -12./5.*lambda**(7./2.) * ( SQRT(zeta)-SQRT(eta) )
+ ggbar_s = ggbar_s / ee
+
+
+ factor_w = aabar - 4./9.*bb/lambda*(1.0-chi) - 4./9.*cc*ffbar_s/lambda**2 * (1.0 - 1.5*chi+0.5*chi**3)  &
+           -8./9.*ee*ggbar_s/lambda**3 * ( 1.0 - 15./8.*chi + 5./4.*chi**3 -3./8.*chi**5 ) &
+           + 2.*nu   * ( SQRT(zeta+nu**2)- SQRT(eta+nu**2) ) &
+           + 2.*zeta * LOG( ( nu + SQRT(zeta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) &
+           - 2.*eta  * LOG( ( nu + SQRT( eta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) 
+
+
+ exc_sigma = -efac/rs * factor_w
+
+ vsigma = ( exc_sigma - exc ) / shift
+
+
+
+end subroutine my_gga_exc_vxc_mu
 !=========================================================================
