@@ -498,6 +498,10 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
    enddo ! loop on the radial grid
  enddo ! loop on the atoms
 
+ !
+ ! Destroy operations
+ if( dft_xc(1) /= 0 ) call xc_f90_func_end(xc_func1)
+ if( dft_xc(2) /= 0 ) call xc_f90_func_end(xc_func2)
 
 #else
  write(*,*) 'XC energy and potential set to zero'
@@ -513,10 +517,6 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
  write(*,'(a,2x,f12.6)')    '  DFT xc energy [Ha]:',exc_xc
  write(*,*)
 
- !
- ! Destroy operations
- if( dft_xc(1) /= 0 ) call xc_f90_func_end(xc_func1)
- if( dft_xc(2) /= 0 ) call xc_f90_func_end(xc_func2)
 
 contains
 
