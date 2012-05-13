@@ -99,17 +99,17 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
 ! call xc_f90_func_init(xc_functest, xc_infotest, XC_LDA_X , XC_UNPOLARIZED)
  call xc_f90_func_init(xc_functest, xc_infotest, XC_GGA_X_WPBEH, XC_UNPOLARIZED)
 ! call xc_f90_func_init(xc_functest, xc_infotest, XC_GGA_X_PBE, XC_UNPOLARIZED)
- omega=0.11
- call xc_f90_gga_x_wpbeh_set_par(xc_functest,omega)
  do ix=1,90 
-   rs(1) = exp(0.08*(DBLE(ix)-1.0))*0.05
+   omega=0.01*ix
+   call xc_f90_gga_x_wpbeh_set_par(xc_functest,omega)
+   rs(1) =  2.0 ! exp(0.08*(DBLE(ix)-1.0))*0.05
    rhor_r(1)= 3.0/ (4.0*pi*rs(1)**3)
    sigma2(:)= 0.0000
 !   call xc_f90_lda_exc_vxc(xc_functest,1,rhor_r(1),exc1(1),vxc1(1))
 !   call xc_f90_gga_exc_vxc(xc_functest,1,rhor_r(1),sigma2(1),exc1(1),vxc1(1),vsigma1(1))
-!   call my_lda_exc_vxc_mu(omega,rs(1),exc1(1),vxc1(1))
-   call my_gga_exc_vxc_mu(omega,rhor_r(1),sigma2(1),exc1(1),vxc1(1),vsigma1(1))
-   write(105,'(10(e16.8,2x))') rs(1),rhor_r(1),exc1(1),vxc1(1),vsigma1(1)
+   call my_lda_exc_vxc_mu(omega,rs(1),exc1(1),vxc1(1))
+!   call my_gga_exc_vxc_mu(omega,rhor_r(1),sigma2(1),exc1(1),vxc1(1),vsigma1(1))
+   write(105,'(10(e16.8,2x))') rs(1),omega,exc1(1),vxc1(1),vsigma1(1)
  enddo 
  stop'ENOUGH'
 #endif
@@ -126,8 +126,8 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
      call xc_f90_func_init(xc_func1, xc_info1, dft_xc(1), XC_POLARIZED)
      call xc_f90_func_init(xc_func2, xc_info2, dft_xc(2), XC_POLARIZED)
    endif
- else
-   write(*,*) 'Home-made functional'
+ else if(dft_xc(1) < 2000) then
+   write(*,*) 'Home-made functional LDA functional'
    if(nspin==1) then
      call xc_f90_func_init(xc_func1, xc_info1, XC_LDA_X, XC_UNPOLARIZED)
      call xc_f90_func_init(xc_func2, xc_info2, 0, XC_UNPOLARIZED)
@@ -135,6 +135,15 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
      call xc_f90_func_init(xc_func1, xc_info1, XC_LDA_X, XC_POLARIZED)
      call xc_f90_func_init(xc_func2, xc_info2, 0, XC_POLARIZED)
    endif
+ else
+   write(*,*) 'Home-made functional GGA functional'
+   if(nspin==1) then
+     call xc_f90_func_init(xc_func1, xc_info1, XC_GGA_X_PBE, XC_UNPOLARIZED)
+     call xc_f90_func_init(xc_func2, xc_info2, 0, XC_UNPOLARIZED)
+   else
+     call xc_f90_func_init(xc_func1, xc_info1, XC_GGA_X_PBE, XC_POLARIZED)
+     call xc_f90_func_init(xc_func2, xc_info2, 0, XC_POLARIZED)
+  endif
  endif
 ! write(*,*) 'LIBXC functional index',dft_xc(:)
 ! write(*,*) xc_f90_info_kind(xc_info1)
@@ -142,11 +151,11 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
 ! call xc_f90_hyb_gga_exx_coef(xc_func1,rtmp)
 ! write(*,*) 'exx',rtmp
  write(*,'(/,a)') ' LIBXC info'
- if( dft_xc(1) /=0 ) then
+ if( dft_xc(1) /=0 .AND. dft_xc(1) < 1000 ) then
    call xc_f90_info_name(xc_info1,string)
    write(*,'(a,i6,5x,a)') '   XC functional 1: ', xc_f90_info_number(xc_info1),TRIM(string)
  endif
- if( dft_xc(2) /=0 ) then
+ if( dft_xc(2) /=0 .AND. dft_xc(2) < 1000 ) then
    call xc_f90_info_name(xc_info2,string)
    write(*,'(a,i6,5x,a)') '   XC functional 2: ', xc_f90_info_number(xc_info2),TRIM(string)
  endif
@@ -186,7 +195,6 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
  
 
  exc_xc=0.0_dp
- vxc_ij(:,:,:)=0.0_dp
  normalization(:)=0.0_dp
 
 
@@ -385,16 +393,19 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
 
        case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
          if(dft_xc(1)/=0) then
-           if( dft_xc(1) < 1000 ) then 
+           if( dft_xc(1) < 2000 ) then 
+!TOBEREMOVED             omega=0.11
+!TOBEREMOVED             call xc_f90_gga_x_wpbeh_set_par(xc_func1,omega)
              call xc_f90_gga_exc_vxc(xc_func1,1,rhor_r(1)       ,sigma2(1)       ,exc1(1),vxc1(1),vsigma1(1)    )
              call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shiftx(1),sigma2_shiftx(1),vxc_dummy(1),vsigma1_shiftx(1))
              call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shifty(1),sigma2_shifty(1),vxc_dummy(1),vsigma1_shifty(1))
              call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shiftz(1),sigma2_shiftz(1),vxc_dummy(1),vsigma1_shiftz(1))
            else
-             call my_gga_exc_vxc_mu(0.11_dp,rhor_r_shiftx(1),sigma2_shiftx(1),exc1(1),vxc_dummy(1),vsigma1_shiftx(1))
-             call my_gga_exc_vxc_mu(0.11_dp,rhor_r_shifty(1),sigma2_shifty(1),exc1(1),vxc_dummy(1),vsigma1_shifty(1))
-             call my_gga_exc_vxc_mu(0.11_dp,rhor_r_shiftz(1),sigma2_shiftz(1),exc1(1),vxc_dummy(1),vsigma1_shiftz(1))
-             call my_gga_exc_vxc_mu(0.11_dp,rhor_r(1)       ,sigma2(1)       ,exc1(1),vxc1(1)     ,vsigma1(1)       )
+             omega=0.11 ! 0.11_dp
+             call my_gga_exc_vxc_mu(omega,rhor_r_shiftx(1),sigma2_shiftx(1),exc1(1),vxc_dummy(1),vsigma1_shiftx(1))
+             call my_gga_exc_vxc_mu(omega,rhor_r_shifty(1),sigma2_shifty(1),exc1(1),vxc_dummy(1),vsigma1_shifty(1))
+             call my_gga_exc_vxc_mu(omega,rhor_r_shiftz(1),sigma2_shiftz(1),exc1(1),vxc_dummy(1),vsigma1_shiftz(1))
+             call my_gga_exc_vxc_mu(omega,rhor_r(1)       ,sigma2(1)       ,exc1(1),vxc1(1)     ,vsigma1(1)       )
            endif
          else
            exc1(1)=0.0_dp
@@ -484,6 +495,8 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
          div(:) = 0.0_dp
        endif
  
+!TOBEREM   write(*,*) 'wanrg'
+!TOBEREM   div(:) = 0.0
 
        !
        ! In the case of the BJ06 meta-GGA functional, a spin-dependent shift is applied
@@ -792,7 +805,7 @@ subroutine my_lda_exc_vxc_mu(mu,rspts,exc,vxc)
 !scalars
  integer :: ipt
  real(dp),parameter :: alpha=1.0_dp
- real(dp) :: dfac,efac,rs,rsm1,vfac
+ real(dp) :: efac,rs,rsm1,vfac
  character(len=500) :: message
 
  real(dp)           :: rcut
@@ -811,8 +824,6 @@ subroutine my_lda_exc_vxc_mu(mu,rspts,exc,vxc)
  vfac=(1.5_dp/pi)**(2.0_dp/3.0_dp)
 !Compute efac=(3/4)*vfac
  efac=0.75_dp*vfac
-!Compute dfac=(4*Pi/9)*vfac
- dfac=(4.0_dp*pi/9.0_dp)*vfac
 
 !separate cases with respect to order
  if(order==2) then
@@ -860,7 +871,8 @@ subroutine my_gga_exc_vxc_mu(omega,nn,sigma,exc,vxc,vsigma)
  real(dp),intent(in)  :: omega,nn,sigma
  real(dp),intent(out) :: exc,vxc,vsigma
 !=====
- real(dp),parameter :: shift=1.e6_dp
+ real(dp),parameter :: shift_nn   =1.e-07_dp
+ real(dp),parameter :: shift_sigma=1.e-03_dp
 
  real(dp),parameter :: ss0=2.0
  ! HJS parameters
@@ -898,20 +910,22 @@ subroutine my_gga_exc_vxc_mu(omega,nn,sigma,exc,vxc,vsigma)
  real(dp) :: ggbar_s
  real(dp) :: factor_w
  real(dp) :: exc_nn,exc_sigma
+ real(dp) :: fx,dfxds,dfxdnu
+ real(dp) :: dsdsigma,dsdn,dnudn
 !=====
 
  efac=0.75_dp * (1.5_dp/pi)**(2.0_dp/3.0_dp)
 
+ !
+ ! first calculation
  nn_local = nn
  sigma_local = sigma
  
- !
- ! first calculation
  rs = ( 3.0 / (4.0 *pi * nn_local) )**(1./3.)
  kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) / rs
  nu = omega / kf
-
  ss = SQRT(sigma_local) / ( 2.0_dp * kf * nn_local )
+
  hh_s = ( a2*ss**2 + a3*ss**3 + a4*ss**4 + a5*ss**5 + a6*ss**6 + a7*ss**7 ) &
       / ( 1.0_dp + b1*ss + b2*ss**2 + b3*ss**3 + b4*ss**4 + b5*ss**5 + b6*ss**6 + b7*ss**7 + b8*ss**8 + b9*ss**9 )
 
@@ -940,12 +954,14 @@ subroutine my_gga_exc_vxc_mu(omega,nn,sigma,exc,vxc,vsigma)
  exc = -efac/rs * factor_w
 
 
+
+
 ! finite diff
 ! nn = nn + shift
- nn_local = nn_local + shift
+ nn_local    = nn + shift_nn ! *nn
+ sigma_local = sigma
+
  rs = ( 3.0 / (4.0*pi*nn_local) )**(1.0/3.0)
-
-
  kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) / rs
  nu = omega / kf
 
@@ -977,18 +993,15 @@ subroutine my_gga_exc_vxc_mu(omega,nn,sigma,exc,vxc,vsigma)
 
  exc_nn = -efac/rs * factor_w
 
- vxc = ( exc_nn - exc ) / shift
-
-
+ vxc = ( exc_nn - exc ) / shift_nn !  (shift_nn*nn)
 
 
 ! finite diff
 ! sigma = sigma + shift
- nn_local = nn_local - shift
- sigma_local = sigma_local + shift
+ nn_local    = nn 
+ sigma_local = sigma + shift_sigma*sigma
+
  rs = ( 3.0 / (4.0*pi*nn_local) )**(1.0/3.0)
-
-
  kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) / rs
  nu = omega / kf
 
@@ -1020,9 +1033,324 @@ subroutine my_gga_exc_vxc_mu(omega,nn,sigma,exc,vxc,vsigma)
 
  exc_sigma = -efac/rs * factor_w
 
- vsigma = ( exc_sigma - exc ) / shift
+ vsigma = ( exc_sigma - exc ) / (shift_sigma*sigma)
 
 
+ !
+ ! warning
+! vsigma = 0
+! vxc = 0
+! write(*,'(10(e16.8,2x))') sigma,sigma_local,ss,exc_sigma
+
+ rs = ( 3.0 / (4.0*pi*nn) )**(1.0/3.0)
+ kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) / rs
+ ss = SQRT(sigma) / ( 2.0_dp * kf * nn )
+
+ call HSE08Fx(omega,1,nn,ss,fx,dfxds,dfxdnu)
+
+ exc = -efac/rs*fx
+
+ dsdsigma= 1.0_dp / ( 4.0_dp * kf * nn * SQRT(sigma) )
+
+ vsigma = -efac/rs * nn * dfxds * dsdsigma
+
+ dsdn  = SQRT(sigma) / (2.0_dp * (3.0*pi**2)**(1./3.) ) * (-4.0/3.0) * nn**(-7.0/3.0)
+ dnudn = omega / (3.0*pi**2)**(1./3.) * (-1.0/3.0) * nn**(-4.0/3.0)
+ vxc = -efac/rs * nn * ( dfxds * dsdn + dfxdnu * dnudn ) - (4.0/3.0)*efac/rs *fx
 
 end subroutine my_gga_exc_vxc_mu
 !=========================================================================
+subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
+
+ implicit none
+!
+!case...start
+! #include "case.fh"
+!case...end
+!
+! HSE evaluates the Heyd et al. Screened Coulomb
+! Exchange Functional
+!
+! Calculates the enhancement factor
+!
+ double precision omega
+ integer ipol
+ double precision rho,s,Fxhse,d10Fxhse,d01Fxhse
+
+ double precision  A,B,C,D,E
+ double precision  ha2,ha3,ha4,ha5,ha6,ha7
+ double precision  hb1,hb2,hb3,hb4,hb5,hb6,hb7,hb8,hb9
+ double precision  smax,strans,sconst
+
+ double precision  zero,one,two,three,four,five,six,seven,eight
+ double precision  nine,ten
+ double precision  fifteen,sixteen
+
+ double precision  H,hnum,hden 
+ double precision  d1H,d1hnum,d1hden 
+ double precision  s2,s3,s4,s5,s6,s7,s8,s9
+ double precision  Fs, d1Fs
+ double precision  zeta, lambda, eta, kf, nu, chi, lambda2
+ double precision  d1zeta,d1lambda,d1eta,d1nu,d1chi,d1lambda2
+ double precision  EGs,d1EGs
+ double precision  nu2,L2,L3,nu3,nu4,nu5,nu6
+ double precision  Js,Ks,Ms,Ns
+ double precision  d1Js,d1Ks,d1Ms,d1Ns
+
+ double precision  tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8
+ double precision  tmp9,tmp10,tmp11,tmp12,tmp13,tmp14,tmp15
+ double precision  Fxhse1,Fxhse2,Fxhse3,Fxhse4,Fxhse5,Fxhse6
+ double precision  d1Fxhse1,d1Fxhse2,d1Fxhse3,d1Fxhse4,d1Fxhse5
+ double precision  d1Fxhse6,d1Fxhse7
+
+ double precision  r42,r27,r12,r15,r14,r18,r20,r30,r56,r72
+ double precision  r16,r32,r24,r48,r11,r64,r35
+ double precision  pi,pi2,srpi,s02
+ double precision  f12,f13,f32,f52,f72,f92
+
+!
+!Constants for HJS hole
+!
+ Data A,B,C,D,E  &
+     / 7.57211D-1,-1.06364D-1,-1.18649D-1, &
+       6.09650D-1,-4.77963D-2 /
+!
+!Constants for fit of H(s) (PBE hole)
+!Taken from JCTC_5_754 (2009)
+!
+ Data ha2,ha3,ha4,ha5,ha6,ha7 &
+     / 1.59941D-2,8.52995D-2,-1.60368D-1,1.52645D-1, &
+      -9.71263D-2,4.22061D-2 /
+
+ Data hb1,hb2,hb3,hb4,hb5,hb6,hb7,hb8,hb9 &
+      / 5.33319D0,-12.4780D0,11.0988D0,-5.11013D0,&
+       1.71468D0,-6.10380D-1,3.07555D-1,-7.70547D-2,&
+       3.34840D-2 /
+
+!
+!Whole numbers used during evaluation
+!
+ Data zero,one,two,three,four,five,six,seven,eight,nine,ten &
+      / 0D0,1D0,2D0,3D0,4D0,5D0,6D0,7D0,8D0,9D0,10D0 /
+  
+ Data r11,r12,r14,r15,r16,r18,r20,r24,r27,r30,r32 &
+      / 11D0,12D0,14D0,15D0,16D0,18D0,20D0,24D0,27d0,30D0,32D0 /
+
+ Data r35,r42,r48,r56,r64,r72 &
+      / 35D0,42D0,48D0,56D0,64D0,72D0 /
+!
+!Fractions used during evaluation
+!
+ Data f12     / 0.5D0 /
+!
+!General constants
+!
+ f13   = one/three
+ f32   = three/two
+ f52   = five/two
+ f72   = seven/two
+ f92   = nine/two
+ pi    = ACos(-one)
+ pi2   = pi*pi
+ srpi = dsqrt(pi)
+!
+!
+!Calculate prelim variables
+!
+ s2 = s*s
+ s02 = s2/four
+ s3 = s2*s
+ s4 = s3*s
+ s5 = s4*s
+ s6 = s5*s
+ s7 = s6*s
+ s8 = s7*s
+ s9 = s8*s
+
+!
+!Calculate H(s) the model exhange hole
+!
+ hnum = ha2*s2 + ha3*s3 + ha4*s4 + ha5*s5 + ha6*s6 + ha7*s7 
+ hden = one + hb1*s + hb2*s2 + hb3*s3 + hb4*s4 + hb5*s5 + &
+        hb6*s6 + hb7*s7 + hb8*s8 + hb9*s9
+ H = hnum/hden
+
+!
+!Calculate helper variables
+!
+ zeta = s2*H
+ eta = A + zeta
+ lambda = D + zeta
+ if (ipol.eq.1) then
+    kf = (three*pi2*rho)**f13 
+ else
+    kf = (six*pi2*rho)**f13 
+ endif
+ nu = omega/kf
+ chi = nu/dsqrt(lambda+nu**two)
+ lambda2 = (one+chi)*(lambda+nu**two)
+
+!
+!Calculate F(H(s)) for the model exhange hole
+!
+ Fs = one-s2/(r27*C*(one+s02))-zeta/(two*C)
+
+!
+!Calculate EG(s) 
+!
+ EGs = -(two/five)*C*Fs*lambda - (four/r15)*B*lambda**two - &
+       (six/five)*A*lambda**three - &
+       (four/five)*srpi*lambda**(seven/two) -&
+       (r12/five)*(lambda**(seven/two))*(dsqrt(zeta)-dsqrt(eta))
+ 
+!
+!Calculate the denominators needed
+!
+
+ nu2 = nu*nu
+ Js = (dsqrt(zeta+nu2)+dsqrt(eta+nu2))*(dsqrt(zeta+nu2)+nu) 
+ Ks = (dsqrt(zeta+nu2)+dsqrt(eta+nu2))*(dsqrt(eta+nu2)+nu) 
+ Ms = (dsqrt(zeta+nu2)+dsqrt(lambda+nu2))*(dsqrt(lambda+nu2)+nu) 
+ Ns = (dsqrt(eta+nu2)+dsqrt(lambda+nu2))*(dsqrt(lambda+nu2)+nu) 
+
+!
+!  The final value for the enhancement factor is
+!
+ tmp1 = one + f12*chi
+ tmp2 = one + (nine/eight)*chi + (three/eight)*chi**two 
+ Fxhse1  = A*(zeta/Js + eta/Ks) 
+ Fxhse2  = -(four/nine)*B/lambda2
+ Fxhse3  = -(four/nine)*C*Fs*tmp1/lambda2**two
+ Fxhse4  = -(eight/nine)*EGs*tmp2/lambda2**three
+ Fxhse5  = two*zeta*dlog(one -D/Ms)
+ Fxhse6  = -two*eta*dlog(one -(D-A)/Ns)
+
+ Fxhse = Fxhse1+Fxhse2+Fxhse3+Fxhse4+Fxhse5+Fxhse6
+!
+!Calculate the first derivative of H with respect to the
+!reduced density gradient, s.
+!
+ d1hnum = two*ha2*s + three*ha3*s2 + four*ha4*s3 + &
+           five*ha5*s4 + six*ha6*s5 + seven*ha7*s6
+
+ d1hden  = hb1 + two*hb2*s +three*hb3*s2 + four*hb4*s3 + &
+           five*hb5*s4 + six*hb6*s5 + seven*hb7*s6 +&
+           eight*hb8*s7 + nine*hb9*s8 
+ d1H =   (hden*d1hnum -hnum*d1hden)/hden**two
+
+!
+!calculate first derivative of variables needed with respect to s
+!
+ d1zeta = two*s*H + s2*d1H
+ d1eta  = d1zeta
+ d1lambda = d1zeta
+ d1chi = -f12*nu*d1zeta/(lambda + nu2)**f32
+ d1lambda2 = d1chi*(lambda + nu**two) + (one+chi)*d1lambda
+ !d1lambda2 = (d1lambda*(one-chi)+lambda*d1chi)/(one-chi)**two
+
+!
+!calculate the first derivative of Fs with respect to s
+!
+ d1Fs = -two*s/(r27*C*(one+s02)**two) - d1zeta/(two*C)
+
+!
+!Calculate the first derivate of EGs with respect to s
+!
+ d1EGs = -(two/five)*C*(d1Fs*lambda + Fs*d1lambda) -&
+         (eight/r15)*B*lambda*d1lambda -&
+         (r18/five)*A*lambda*lambda*d1lambda -&
+         (r14/five)*srpi*d1lambda*lambda**f52 -&
+         (r42/five)*(lambda**f52)*&
+         d1lambda*(dsqrt(zeta)-dsqrt(eta))-&
+         (six/five)*(lambda**(seven/two))*&
+         (d1zeta/dsqrt(zeta)-d1eta/dsqrt(eta))
+
+!
+!Calculate the first derivate of denominators needed with respect
+!to s
+!
+ tmp1 = (dsqrt(zeta+nu2)+nu)/(dsqrt(eta+nu2)) 
+ tmp2 = (dsqrt(eta+nu2)+nu)/(dsqrt(zeta+nu2))
+
+ d1Js = f12*d1zeta*(two+tmp1+tmp2)
+ d1Ks = d1Js
+
+ tmp3 = (dsqrt(zeta+nu2)+nu)/(dsqrt(lambda+nu2))
+ tmp4 = (dsqrt(lambda+nu2)+nu)/(dsqrt(zeta+nu2)) 
+ d1Ms = f12*d1zeta*(two +tmp3+tmp4)
+
+ tmp5 = (dsqrt(lambda+nu2)+nu)/(dsqrt(eta+nu2))
+ tmp6 = (dsqrt(eta+nu2)+nu)/(dsqrt(lambda+nu2))
+ d1Ns = f12*d1zeta*(two + tmp5+tmp6)
+!
+!Calculate the derivative of the 08-Fxhse with respect to s
+!
+ L2 = lambda2*lambda2
+ L3 = lambda2*lambda2*lambda2
+ d1Fxhse1  = A*( (Js*d1zeta - zeta*d1Js)/(Js*Js) +&
+                 (Ks*d1zeta - eta*d1Ks)/(Ks*Ks) ) 
+
+ d1Fxhse2  = (four/nine)*B*d1lambda2/L2 
+
+ tmp9 = d1lambda2/lambda2
+ tmp7 = d1Fs - two*Fs*tmp9
+ tmp8 = one + f12*chi
+ tmp10 =  f12*Fs*d1chi
+
+ d1Fxhse3 = -(four*C/(nine*L2))*(tmp7*tmp8+tmp10)
+
+
+   tmp7 = one + (nine/eight)*chi+(three/eight)*chi*chi
+   tmp8 = (nine/eight)*d1chi + (six/eight)*chi*d1chi
+
+  d1Fxhse4 = -(eight/(nine*L3))*((d1EGs-three*EGs*tmp9)*tmp7 &
+            + EGs*tmp8)
+ d1Fxhse5  = two*d1zeta*dlog(one-D/Ms) + &
+            two*zeta*D*d1Ms/(Ms*Ms*(one-D/Ms)) 
+
+ d1Fxhse6  = -two*d1eta*dlog(one- (D-A)/Ns) - &
+            two*eta*(D-A)*d1Ns/(Ns*Ns*(one-(D-A)/Ns)) 
+
+ d10Fxhse = d1Fxhse1+d1Fxhse2+d1Fxhse3+d1Fxhse4+d1Fxhse5+d1Fxhse6
+!
+!Calculate the derivative of 08-Fxhse with respect to nu
+!
+ nu3 = nu2*nu
+
+ d1Fxhse1 = -((A*(nu + dsqrt(eta + nu2))*zeta)/ &
+             (dsqrt(eta + nu2)*dsqrt(nu2 + zeta)*&
+             (nu + dsqrt(nu2 + zeta))*&
+             (dsqrt(eta + nu2) + dsqrt(nu2 + zeta))))
+
+ d1Fxhse2 = -((A*eta*(nu/dsqrt(eta + nu2) + nu/ &
+             dsqrt(nu2 + zeta)))/&
+             ((nu + dsqrt(eta + nu2))*&
+             (dsqrt(eta + nu2) + dsqrt(nu2 + zeta))**two)) -&
+             (A*eta*(one + nu/dsqrt(eta + nu2)))/&
+             ((nu + dsqrt(eta + nu2))**two*&
+             (dsqrt(eta + nu2) + dsqrt(nu2 + zeta)))
+
+ d1Fxhse3 = (four*B)/(nine*(lambda + nu2)**(f32))
+
+ d1Fxhse4 = (two*C*Fs)/(three*(lambda + nu2)**(f52))
+
+ d1Fxhse5 = (five*EGs*(lambda**two + four*nu3* &
+             (nu + dsqrt(lambda + nu2)) +&
+             lambda*nu*(five*nu + three*dsqrt(lambda + nu2))))/&
+    (three*(lambda + nu2)**four*(nu + dsqrt(lambda + nu2))**three)
+
+ d1Fxhse6 = (two*D*zeta*(nu + dsqrt(nu2 + zeta)))/&
+             (dsqrt(lambda + nu2)*dsqrt(nu2 + zeta)*&
+             (-D + lambda + (nu + dsqrt(lambda + nu2))*&
+             (nu + dsqrt(nu2 + zeta))))
+
+ d1Fxhse7 = (two*(A - D)*eta*(nu + dsqrt(eta + nu2)))/ &
+             (dsqrt(eta + nu2)*dsqrt(lambda + nu2)*&
+             (A - D + lambda + nu2 + nu*dsqrt(eta + nu2) +&
+             nu*dsqrt(lambda + nu2) +&
+             dsqrt(eta + nu2)*dsqrt(lambda + nu2)))
+
+
+ d01Fxhse = d1Fxhse1+d1Fxhse2+d1Fxhse3+d1Fxhse4+d1Fxhse5+d1Fxhse6+d1Fxhse7
+ 
+end subroutine
