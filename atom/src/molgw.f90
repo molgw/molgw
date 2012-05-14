@@ -201,7 +201,7 @@ program molgw
  allocate(self_energy_old(basis%nbf,basis%nbf,nspin))
  allocate(ehomo(nspin))
  allocate(elumo(nspin))
- if( calc_type%need_dft_xc ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
+ if( ndft_xc /= 0 ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
 
  !
  ! Some required initializations
@@ -359,8 +359,8 @@ program molgw
 
  !
  ! Initialize the SCF mixing procedure
-! call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
- call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
+ call init_scf(nscf,basis%nbf,nspin,simple_mixing,alpha_mixing)
+! call init_scf(nscf,basis%nbf,nspin,rmdiis,alpha_mixing)
 
 
  !
@@ -436,9 +436,9 @@ program molgw
 
    !
    ! DFT XC potential is added here
-   if( calc_type%need_dft_xc ) then
+   if( ndft_xc /= 0 ) then
      call start_clock(timing_dft)
-     call dft_exc_vxc(nspin,basis,(/calc_type%dft_x ,calc_type%dft_c/),p_matrix,ehomo,vxc_matrix,en%xc)
+     call dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehomo,vxc_matrix,en%xc)
      call stop_clock(timing_dft)
 
      hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + vxc_matrix(:,:,:)
@@ -564,7 +564,7 @@ program molgw
    write(*,'(a25,x,f16.10)') 'Nucleus Energy  [Ha]:',en%nuc
    write(*,'(a25,x,f16.10)') 'Hartree Energy  [Ha]:',en%hart
    if(calc_type%need_exchange) write(*,'(a25,x,f16.10)') 'Exchange Energy [Ha]:',en%exx
-   if(calc_type%need_dft_xc)   write(*,'(a25,x,f16.10)') 'XC Energy       [Ha]:',en%xc
+   if( ndft_xc /= 0 )   write(*,'(a25,x,f16.10)') 'XC Energy       [Ha]:',en%xc
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%xc
    write(*,*)
    write(*,'(a25,x,f16.10)') 'Total Energy    [Ha]:',en%tot
@@ -709,7 +709,7 @@ program molgw
  !
  ! CI calculation is done here
  ! implemented for 2 electrons only!
- if(calc_type%type==CI) then
+ if(calc_type%is_ci) then
    if(nspin/=1) stop'for CI, nspin should be 1'
    if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) stop'CI is implemented for 2 electrons only'
    call full_ci_2electrons_spin(0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix)
@@ -757,9 +757,9 @@ program molgw
      call allocate_eri(basis%nbf)
      call calculate_eri_faster(basis,rcut)
      if( .NOT. ALLOCATED( vxc_matrix ) ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
-     call dft_exc_vxc(nspin,basis,(/ 1000 ,0/),p_matrix,ehomo,vxc_matrix,energy_tmp)
+     call dft_exc_vxc(nspin,basis,1,(/1000/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
      write(*,'(/,a,f14.8)') '    RPA LDA energy [Ha]: ',energy_tmp
-     call dft_exc_vxc(nspin,basis,(/ 1005 ,0/),p_matrix,ehomo,vxc_matrix,energy_tmp)
+     call dft_exc_vxc(nspin,basis,1,(/1005/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
      write(*,'(/,a,f14.8)') ' LR-RPA LDA energy [Ha]: ',energy_tmp
    endif
 
@@ -772,7 +772,7 @@ program molgw
 #endif
    call stop_clock(timing_pola)
    en%tot = en%tot + en%rpa
-   if(calc_type%need_dft_xc) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
+   if( ndft_xc /= 0 ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
    write(*,'(/,a,f14.8)') ' RPA Total energy [Ha]: ',en%tot
 
    call start_clock(timing_self)
@@ -802,7 +802,7 @@ program molgw
    write(*,'(a,2x,f12.6)') ' MP2 Energy       [Ha]:',en%mp2
    write(*,*) 
    en%tot = en%tot + en%mp2
-   if(calc_type%need_dft_xc) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
+   if( ndft_xc /= 0 ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
    write(*,'(a,2x,f12.6)') ' MP2 Total Energy [Ha]:',en%tot
 
    title='=== Self-energy === (in the orbital basis)'
@@ -816,7 +816,7 @@ program molgw
  deallocate(self_energy_old)
  call deallocate_eri()
  call deallocate_eri_lr()
- if( calc_type%need_dft_xc ) deallocate( vxc_matrix )
+ if( ndft_xc /= 0 ) deallocate( vxc_matrix )
 
  call destroy_basis_set(basis)
  if(calc_type%is_gw) call destroy_basis_set(prod_basis)

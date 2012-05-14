@@ -1,5 +1,5 @@
 !=========================================================================
-subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
+subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehomo,vxc_ij,exc_xc)
  use m_tools,only: coeffs_gausslegint
  use m_timing
  use m_atoms
@@ -14,9 +14,11 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
 #endif
  implicit none
 
- integer,intent(in)         :: dft_xc(2)
  integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
+ integer,intent(in)         :: ndft_xc
+ integer,intent(in)         :: dft_xc_type(ndft_xc)
+ real(dp),intent(in)        :: dft_xc_coef(ndft_xc)
  real(dp),intent(in)        :: p_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)        :: ehomo(nspin)
  real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
@@ -24,9 +26,11 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
 !=====
  real(dp),parameter :: shift=1.d-6 ! bohr  some shift used
                                    ! to evaluate numerically the divergence of the gradient
- integer,parameter :: nx=40  ! 80
+ integer,parameter :: nx=40       ! 80
  integer,parameter :: nangular=38 ! 86
 
+ integer  :: idft_xc
+ logical  :: require_gradient,require_laplacian
  real(dp) :: weight
  real(dp) :: x1(nangular)
  real(dp) :: y1(nangular)
@@ -39,8 +43,8 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
  real(dp) :: normalization(nspin)
 
 #ifdef HAVE_LIBXC
- type(xc_f90_pointer_t) :: xc_func1,xc_func2,xc_functest
- type(xc_f90_pointer_t) :: xc_info1,xc_info2,xc_infotest
+ type(xc_f90_pointer_t) :: xc_func(ndft_xc),xc_functest
+ type(xc_f90_pointer_t) :: xc_info(ndft_xc),xc_infotest
 #endif
 
  real(dp) :: basis_function_r       (basis%nbf)
@@ -65,17 +69,13 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
  real(dp) :: sigma2_shifty(2*nspin-1)
  real(dp) :: sigma2_shiftz(2*nspin-1)
  real(dp) :: tau(nspin),lapl_rhor(nspin)
- real(dp) :: vxc1(nspin),vxc2(nspin)
+ real(dp) :: vxc(nspin),vxc_libxc(nspin)
  real(dp) :: vxc_dummy(nspin)
- real(dp) :: exc1(1),exc2(1)
- real(dp) :: vsigma1       (2*nspin-1)
- real(dp) :: vsigma1_shiftx(2*nspin-1)
- real(dp) :: vsigma1_shifty(2*nspin-1)
- real(dp) :: vsigma1_shiftz(2*nspin-1)
- real(dp) :: vsigma2       (2*nspin-1)
- real(dp) :: vsigma2_shiftx(2*nspin-1)
- real(dp) :: vsigma2_shifty(2*nspin-1)
- real(dp) :: vsigma2_shiftz(2*nspin-1)
+ real(dp) :: exc_libxc(1)
+ real(dp) :: vsigma        (2*nspin-1)
+ real(dp) :: vsigma_shiftx(2*nspin-1)
+ real(dp) :: vsigma_shifty(2*nspin-1)
+ real(dp) :: vsigma_shiftz(2*nspin-1)
  real(dp) :: vlapl_rho(nspin),vtau(nspin)
  real(dp) :: vxc_av(nspin)
  real(dp) :: dedd_r(nspin)
@@ -91,11 +91,11 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
 
  exc_xc = 0.0_dp
  vxc_ij(:,:,:) = 0.0_dp
- if( ALL(dft_xc(:)==0) ) return
+ if( ndft_xc == 0 ) return
 
 #ifdef HAVE_LIBXC
 
-#if 0
+#if 1
 ! call xc_f90_func_init(xc_functest, xc_infotest, XC_LDA_X , XC_UNPOLARIZED)
  call xc_f90_func_init(xc_functest, xc_infotest, XC_GGA_X_WPBEH, XC_UNPOLARIZED)
 ! call xc_f90_func_init(xc_functest, xc_infotest, XC_GGA_X_PBE, XC_UNPOLARIZED)
@@ -105,11 +105,11 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
    rs(1) =  2.0 ! exp(0.08*(DBLE(ix)-1.0))*0.05
    rhor_r(1)= 3.0/ (4.0*pi*rs(1)**3)
    sigma2(:)= 0.0000
-!   call xc_f90_lda_exc_vxc(xc_functest,1,rhor_r(1),exc1(1),vxc1(1))
-!   call xc_f90_gga_exc_vxc(xc_functest,1,rhor_r(1),sigma2(1),exc1(1),vxc1(1),vsigma1(1))
-   call my_lda_exc_vxc_mu(omega,rs(1),exc1(1),vxc1(1))
-!   call my_gga_exc_vxc_mu(omega,rhor_r(1),sigma2(1),exc1(1),vxc1(1),vsigma1(1))
-   write(105,'(10(e16.8,2x))') rs(1),omega,exc1(1),vxc1(1),vsigma1(1)
+!   call xc_f90_lda_exc_vxc(xc_functest,1,rhor_r(1),exc_libxc(1),vxc_libxc(1))
+!   call xc_f90_gga_exc_vxc(xc_functest,1,rhor_r(1),sigma2(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
+   call my_lda_exc_vxc_mu(omega,rs(1),exc_libxc(1),vxc_libxc(1))
+!   call my_gga_exc_vxc_hjs(omega,rhor_r(1),sigma2(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
+   write(105,'(10(e16.8,2x))') rs(1),omega,exc_libxc(1),vxc_libxc(1),vsigma(1)
  enddo 
  stop'ENOUGH'
 #endif
@@ -118,47 +118,47 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
  write(*,'(a,i4,x,i4)') '   discretization grid per atom [radial points , angular points] ',nx,nangular
  write(*,'(a,i8)')      '   total number of real-space points',nx*nangular*natom
  
- if( dft_xc(1) < 1000 ) then
-   if(nspin==1) then
-     call xc_f90_func_init(xc_func1, xc_info1, dft_xc(1), XC_UNPOLARIZED)
-     call xc_f90_func_init(xc_func2, xc_info2, dft_xc(2), XC_UNPOLARIZED)
+ require_gradient =.FALSE.
+ require_laplacian=.FALSE.
+ do idft_xc=1,ndft_xc
+   if( dft_xc_type(idft_xc) < 1000 ) then
+     if(nspin==1) then
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_UNPOLARIZED)
+     else
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_POLARIZED)
+     endif
+   else if(dft_xc_type(idft_xc) < 2000) then
+     write(*,*) 'Home-made functional LDA functional'
+     ! Fake LIBXC descriptor 
+     if(nspin==1) then
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_LDA_X, XC_UNPOLARIZED)
+     else
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_LDA_X, XC_POLARIZED)
+     endif
    else
-     call xc_f90_func_init(xc_func1, xc_info1, dft_xc(1), XC_POLARIZED)
-     call xc_f90_func_init(xc_func2, xc_info2, dft_xc(2), XC_POLARIZED)
+     write(*,*) 'Home-made functional GGA functional'
+     ! Fake LIBXC descriptor 
+     if(nspin==1) then
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_GGA_X_PBE, XC_UNPOLARIZED)
+     else
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_GGA_X_PBE, XC_POLARIZED)
+    endif
    endif
- else if(dft_xc(1) < 2000) then
-   write(*,*) 'Home-made functional LDA functional'
-   if(nspin==1) then
-     call xc_f90_func_init(xc_func1, xc_info1, XC_LDA_X, XC_UNPOLARIZED)
-     call xc_f90_func_init(xc_func2, xc_info2, 0, XC_UNPOLARIZED)
+
+   write(*,'(/,a)') ' LIBXC info'
+   if( dft_xc_type(idft_xc) < 1000 ) then
+     call xc_f90_info_name(xc_info(idft_xc),string)
+     write(*,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),TRIM(string)
    else
-     call xc_f90_func_init(xc_func1, xc_info1, XC_LDA_X, XC_POLARIZED)
-     call xc_f90_func_init(xc_func2, xc_info2, 0, XC_POLARIZED)
+     write(*,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),'FAKE LIBXC DESCRIPTOR'
    endif
- else
-   write(*,*) 'Home-made functional GGA functional'
-   if(nspin==1) then
-     call xc_f90_func_init(xc_func1, xc_info1, XC_GGA_X_PBE, XC_UNPOLARIZED)
-     call xc_f90_func_init(xc_func2, xc_info2, 0, XC_UNPOLARIZED)
-   else
-     call xc_f90_func_init(xc_func1, xc_info1, XC_GGA_X_PBE, XC_POLARIZED)
-     call xc_f90_func_init(xc_func2, xc_info2, 0, XC_POLARIZED)
-  endif
- endif
-! write(*,*) 'LIBXC functional index',dft_xc(:)
-! write(*,*) xc_f90_info_kind(xc_info1)
-! write(*,*) 'name   ',TRIM(string)
-! call xc_f90_hyb_gga_exx_coef(xc_func1,rtmp)
-! write(*,*) 'exx',rtmp
- write(*,'(/,a)') ' LIBXC info'
- if( dft_xc(1) /=0 .AND. dft_xc(1) < 1000 ) then
-   call xc_f90_info_name(xc_info1,string)
-   write(*,'(a,i6,5x,a)') '   XC functional 1: ', xc_f90_info_number(xc_info1),TRIM(string)
- endif
- if( dft_xc(2) /=0 .AND. dft_xc(2) < 1000 ) then
-   call xc_f90_info_name(xc_info2,string)
-   write(*,'(a,i6,5x,a)') '   XC functional 2: ', xc_f90_info_number(xc_info2),TRIM(string)
- endif
+
+   if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
+   if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) require_gradient  =.TRUE.
+   if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_MGGA    ) require_laplacian =.TRUE.
+
+ enddo
+
 
  !
  ! spherical integration
@@ -194,9 +194,8 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
  end select
  
 
- exc_xc=0.0_dp
- normalization(:)=0.0_dp
 
+ normalization(:)=0.0_dp
 
  do iatom=1,natom
    do ix=1,nx
@@ -230,12 +229,12 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
   
   
        !
-       ! first calculate all the needed basis function evaluations at point rr
+       ! First calculate all the needed basis function evaluations at point rr
        do ibf=1,basis%nbf
          basis_function_r(ibf) = eval_basis_function(basis%bf(ibf),rr)
        enddo
 
-       if(xc_f90_info_family(xc_info1) == XC_FAMILY_GGA .OR. xc_f90_info_family(xc_info1) == XC_FAMILY_HYB_GGA) then 
+       if( require_gradient ) then 
          do ibf=1,basis%nbf
 
            basis_function_gradr(:,ibf)        = eval_basis_function_grad(basis%bf(ibf),rr)
@@ -255,7 +254,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
          enddo
        endif
 
-       if(xc_f90_info_family(xc_info1) == XC_FAMILY_MGGA ) then
+       if( require_laplacian ) then
          do ibf=1,basis%nbf
            basis_function_gradr(:,ibf)        = eval_basis_function_grad(basis%bf(ibf),rr)
            basis_function_laplr(:,ibf)        = eval_basis_function_lapl(basis%bf(ibf),rr)
@@ -280,7 +279,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
   
        normalization(:) = normalization(:) + rhor_r(:) * weight * fact_becke
   
-       if(xc_f90_info_family(xc_info1) == XC_FAMILY_GGA .OR. xc_f90_info_family(xc_info1) == XC_FAMILY_HYB_GGA) then
+       if( require_gradient ) then 
          grad_rhor       (:,:)=0.0_dp
          grad_rhor_shiftx(:,:)=0.0_dp
          grad_rhor_shifty(:,:)=0.0_dp
@@ -337,7 +336,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
 
        endif
   
-       if(xc_f90_info_family(xc_info1) == XC_FAMILY_MGGA) then
+       if( require_laplacian ) then
 
          grad_rhor(:,:)=0.0_dp
          tau(:)        =0.0_dp
@@ -370,155 +369,122 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
        endif
 
        !
-       ! LIBXC call
+       ! LIBXC calls
        !
-       select case(xc_f90_info_family(xc_info1))
-       case(XC_FAMILY_LDA)
-         if(dft_xc(1)/=0) then
-           if( dft_xc(1) < 1000 ) then 
-             call xc_f90_lda_exc_vxc(xc_func1,1,rhor_r(1),exc1(1),vxc1(1))
-           else
-             call my_lda_exc_vxc(nspin,dft_xc(1),rhor_r,exc1(1),vxc1)
-           endif
-         else
-           exc1(1)=0.0_dp
-           vxc1(1)=0.0_dp
-         endif
-         if(dft_xc(2)/=0) then
-           call xc_f90_lda_exc_vxc(xc_func2,1,rhor_r(1),exc2(1),vxc2(1))
-         else
-           exc2(1)=0.0_dp
-           vxc2(1)=0.0_dp
-         endif
+       vxc(:)    = 0.0_dp
 
-       case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
-         if(dft_xc(1)/=0) then
-           if( dft_xc(1) < 2000 ) then 
-!TOBEREMOVED             omega=0.11
-!TOBEREMOVED             call xc_f90_gga_x_wpbeh_set_par(xc_func1,omega)
-             call xc_f90_gga_exc_vxc(xc_func1,1,rhor_r(1)       ,sigma2(1)       ,exc1(1),vxc1(1),vsigma1(1)    )
-             call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shiftx(1),sigma2_shiftx(1),vxc_dummy(1),vsigma1_shiftx(1))
-             call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shifty(1),sigma2_shifty(1),vxc_dummy(1),vsigma1_shifty(1))
-             call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shiftz(1),sigma2_shiftz(1),vxc_dummy(1),vsigma1_shiftz(1))
+       do idft_xc=1,ndft_xc
+
+         select case(xc_f90_info_family(xc_info(idft_xc)))
+
+         case(XC_FAMILY_LDA)
+           if( dft_xc_type(idft_xc) < 1000 ) then 
+             call xc_f90_lda_exc_vxc(xc_func(idft_xc),1,rhor_r(1),exc_libxc(1),vxc_libxc(1))
            else
+             call my_lda_exc_vxc(nspin,dft_xc_type(idft_xc),rhor_r,exc_libxc(1),vxc_libxc)
+           endif
+
+         case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
+           if( dft_xc_type(idft_xc) < 2000 ) then 
+             call xc_f90_gga_exc_vxc(xc_func(idft_xc),1,rhor_r(1)       ,sigma2(1)       ,exc_libxc(1),vxc_libxc(1),vsigma(1)       )
+             call xc_f90_gga_vxc    (xc_func(idft_xc),1,rhor_r_shiftx(1),sigma2_shiftx(1),             vxc_dummy(1),vsigma_shiftx(1))
+             call xc_f90_gga_vxc    (xc_func(idft_xc),1,rhor_r_shifty(1),sigma2_shifty(1),             vxc_dummy(1),vsigma_shifty(1))
+             call xc_f90_gga_vxc    (xc_func(idft_xc),1,rhor_r_shiftz(1),sigma2_shiftz(1),             vxc_dummy(1),vsigma_shiftz(1))
+           else
+             !FIXME  Hard coding !
              omega=0.11_dp
-             call my_gga_exc_vxc_mu(omega,rhor_r_shiftx(1),sigma2_shiftx(1),exc1(1),vxc_dummy(1),vsigma1_shiftx(1))
-             call my_gga_exc_vxc_mu(omega,rhor_r_shifty(1),sigma2_shifty(1),exc1(1),vxc_dummy(1),vsigma1_shifty(1))
-             call my_gga_exc_vxc_mu(omega,rhor_r_shiftz(1),sigma2_shiftz(1),exc1(1),vxc_dummy(1),vsigma1_shiftz(1))
-             call my_gga_exc_vxc_mu(omega,rhor_r(1)       ,sigma2(1)       ,exc1(1),vxc1(1)     ,vsigma1(1)       )
+             call my_gga_exc_vxc_hjs(omega,rhor_r_shiftx(1),sigma2_shiftx(1),exc_libxc(1),vxc_dummy(1),vsigma_shiftx(1))
+             call my_gga_exc_vxc_hjs(omega,rhor_r_shifty(1),sigma2_shifty(1),exc_libxc(1),vxc_dummy(1),vsigma_shifty(1))
+             call my_gga_exc_vxc_hjs(omega,rhor_r_shiftz(1),sigma2_shiftz(1),exc_libxc(1),vxc_dummy(1),vsigma_shiftz(1))
+             call my_gga_exc_vxc_hjs(omega,rhor_r(1)       ,sigma2(1)       ,exc_libxc(1),vxc_libxc(1),vsigma(1)       )
            endif
-         else
-           exc1(1)=0.0_dp
-           vxc1(1)=0.0_dp
-           vsigma1=0.0_dp
-           vsigma1_shiftx=0.0_dp
-           vsigma1_shifty=0.0_dp
-           vsigma1_shiftz=0.0_dp
-         endif
-         if(dft_xc(2)/=0) then
-           call xc_f90_gga_exc_vxc(xc_func2,1,rhor_r(1)       ,sigma2(1)       ,exc2(1),vxc2(1),vsigma2(1)    )
-           call xc_f90_gga_vxc    (xc_func2,1,rhor_r_shiftx(1),sigma2_shiftx(1),vxc_dummy(1),vsigma2_shiftx(1))
-           call xc_f90_gga_vxc    (xc_func2,1,rhor_r_shifty(1),sigma2_shifty(1),vxc_dummy(1),vsigma2_shifty(1))
-           call xc_f90_gga_vxc    (xc_func2,1,rhor_r_shiftz(1),sigma2_shiftz(1),vxc_dummy(1),vsigma2_shiftz(1))
-         else
-           exc2(1)=0.0_dp
-           vxc2(1)=0.0_dp
-           vsigma2=0.0_dp
-           vsigma2_shiftx=0.0_dp
-           vsigma2_shifty=0.0_dp
-           vsigma2_shiftz=0.0_dp
-         endif
 
-       case(XC_FAMILY_MGGA)
-         if(dft_xc(1)/=0) then
-           call xc_f90_mgga_vxc(xc_func1,1,rhor_r(1),sigma2(1),lapl_rhor(1),tau(1),vxc1(1),vsigma1(1),vlapl_rho(1),vtau(1))
-           exc1(1)=0.0_dp
-         else
-           exc1(1)=0.0_dp
-           vxc1(1)=0.0_dp
-           vsigma1=0.0_dp
-         endif
-         if(dft_xc(2)/=0) then
-           call xc_f90_mgga_vxc(xc_func2,1,rhor_r(1),sigma2(1),lapl_rhor(1),tau(1),vxc2(1),vsigma1(1),vlapl_rho(1),vtau(1))
-           exc2(1)=0.0_dp
-         else
-           exc2(1)=0.0_dp
-           vxc2(1)=0.0_dp
-           vsigma2=0.0_dp
-         endif
+         case(XC_FAMILY_MGGA)
+           call xc_f90_mgga_vxc(xc_func(idft_xc),1,rhor_r(1),sigma2(1),lapl_rhor(1),tau(1),vxc_libxc(1),vsigma(1),vlapl_rho(1),vtau(1))
+           ! no expression for the energy
+           exc_libxc(1) = 0.0_dp
 
-       case default
-         stop'functional is not LDA nor GGA nor hybrid nor meta-GGA'
-       end select
+         case default
+           stop'functional is not LDA nor GGA nor hybrid nor meta-GGA'
+         end select
   
-       exc_xc = exc_xc + weight * fact_becke * ( exc1(1) + exc2(1) ) * SUM( rhor_r(:) )
+         exc_xc = exc_xc + weight * fact_becke * exc_libxc(1) * SUM( rhor_r(:) ) * dft_xc_coef(idft_xc)
   
-       dedd_r(:) = vxc1(:) + vxc2(:)
 
-       if(xc_f90_info_family(xc_info1) == XC_FAMILY_GGA .OR. xc_f90_info_family(xc_info1) == XC_FAMILY_HYB_GGA) then
-         if(nspin==1) then
-
-           dedgd_r       (:,1) = 2.0_dp * ( vsigma1(1)        + vsigma2(1)        ) * grad_rhor       (:,1) 
-           dedgd_r_shiftx(:,1) = 2.0_dp * ( vsigma1_shiftx(1) + vsigma2_shiftx(1) ) * grad_rhor_shiftx(:,1) 
-           dedgd_r_shifty(:,1) = 2.0_dp * ( vsigma1_shifty(1) + vsigma2_shifty(1) ) * grad_rhor_shifty(:,1) 
-           dedgd_r_shiftz(:,1) = 2.0_dp * ( vsigma1_shiftz(1) + vsigma2_shiftz(1) ) * grad_rhor_shiftz(:,1) 
-
-         else
-
-           dedgd_r(:,1)        = 2.0_dp * ( vsigma1(1)        + vsigma2(1)        ) * grad_rhor       (:,1) &
-                                        + ( vsigma1(2)        + vsigma2(2)        ) * grad_rhor       (:,2)
-           dedgd_r_shiftx(:,1) = 2.0_dp * ( vsigma1_shiftx(1) + vsigma2_shiftx(1) ) * grad_rhor_shiftx(:,1) &
-                                        + ( vsigma1_shiftx(2) + vsigma2_shiftx(2) ) * grad_rhor_shiftx(:,2)
-           dedgd_r_shifty(:,1) = 2.0_dp * ( vsigma1_shifty(1) + vsigma2_shifty(1) ) * grad_rhor_shifty(:,1) &
-                                        + ( vsigma1_shifty(2) + vsigma2_shifty(2) ) * grad_rhor_shifty(:,2)
-           dedgd_r_shiftz(:,1) = 2.0_dp * ( vsigma1_shiftz(1) + vsigma2_shiftz(1) ) * grad_rhor_shiftz(:,1) &
-                                        + ( vsigma1_shiftz(2) + vsigma2_shiftz(2) ) * grad_rhor_shiftz(:,2)
-
-           dedgd_r(:,2)        = 2.0_dp * ( vsigma1(3)        + vsigma2(3)        ) * grad_rhor       (:,2) &
-                                        + ( vsigma1(2)        + vsigma2(2)        ) * grad_rhor       (:,1)
-           dedgd_r_shiftx(:,2) = 2.0_dp * ( vsigma1_shiftx(3) + vsigma2_shiftx(3) ) * grad_rhor_shiftx(:,2) &
-                                        + ( vsigma1_shiftx(2) + vsigma2_shiftx(2) ) * grad_rhor_shiftx(:,1)
-           dedgd_r_shifty(:,2) = 2.0_dp * ( vsigma1_shifty(3) + vsigma2_shifty(3) ) * grad_rhor_shifty(:,2) &
-                                        + ( vsigma1_shifty(2) + vsigma2_shifty(2) ) * grad_rhor_shifty(:,1)
-           dedgd_r_shiftz(:,2) = 2.0_dp * ( vsigma1_shiftz(3) + vsigma2_shiftz(3) ) * grad_rhor_shiftz(:,2) &
-                                        + ( vsigma1_shiftz(2) + vsigma2_shiftz(2) ) * grad_rhor_shiftz(:,1)
-
-         endif
-  
-  
-         div(:) = ( dedgd_r_shiftx(1,:) - dedgd_r(1,:) ) / shift &
-                + ( dedgd_r_shifty(2,:) - dedgd_r(2,:) ) / shift &
-                + ( dedgd_r_shiftz(3,:) - dedgd_r(3,:) ) / shift
-
-  
-       else
+         dedd_r(:) = vxc_libxc(:) 
          div(:) = 0.0_dp
-       endif
- 
-!TOBEREM   write(*,*) 'wanrg'
-!TOBEREM   div(:) = 0.0
 
-       !
-       ! In the case of the BJ06 meta-GGA functional, a spin-dependent shift is applied
-       ! since the potential does not vanish at infinity
-       !
-       if( dft_xc(1) == XC_MGGA_X_BJ06 ) then
-         dedd_r(:) = dedd_r(:) - SQRT( 5.0_dp * ABS(ehomo(:)) / 6.0_dp ) / pi
-       endif
+         !
+         ! Set up divergence term if needed (GGA case)
+         !
+         if( xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_GGA &
+            .OR. xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) then
+           if(nspin==1) then
+
+             dedgd_r       (:,1) = 2.0_dp * ( vsigma(1)        ) * grad_rhor       (:,1) 
+             dedgd_r_shiftx(:,1) = 2.0_dp * ( vsigma_shiftx(1) ) * grad_rhor_shiftx(:,1) 
+             dedgd_r_shifty(:,1) = 2.0_dp * ( vsigma_shifty(1) ) * grad_rhor_shifty(:,1) 
+             dedgd_r_shiftz(:,1) = 2.0_dp * ( vsigma_shiftz(1) ) * grad_rhor_shiftz(:,1) 
+
+           else
+
+             dedgd_r(:,1)        = 2.0_dp * ( vsigma(1)        ) * grad_rhor       (:,1) &
+                                          + ( vsigma(2)        ) * grad_rhor       (:,2)
+             dedgd_r_shiftx(:,1) = 2.0_dp * ( vsigma_shiftx(1) ) * grad_rhor_shiftx(:,1) &
+                                          + ( vsigma_shiftx(2) ) * grad_rhor_shiftx(:,2)
+             dedgd_r_shifty(:,1) = 2.0_dp * ( vsigma_shifty(1) ) * grad_rhor_shifty(:,1) &
+                                          + ( vsigma_shifty(2) ) * grad_rhor_shifty(:,2)
+             dedgd_r_shiftz(:,1) = 2.0_dp * ( vsigma_shiftz(1) ) * grad_rhor_shiftz(:,1) &
+                                          + ( vsigma_shiftz(2) ) * grad_rhor_shiftz(:,2)
+
+             dedgd_r(:,2)        = 2.0_dp * ( vsigma(3)        ) * grad_rhor       (:,2) &
+                                          + ( vsigma(2)        ) * grad_rhor       (:,1)
+             dedgd_r_shiftx(:,2) = 2.0_dp * ( vsigma_shiftx(3) ) * grad_rhor_shiftx(:,2) &
+                                          + ( vsigma_shiftx(2) ) * grad_rhor_shiftx(:,1)
+             dedgd_r_shifty(:,2) = 2.0_dp * ( vsigma_shifty(3) ) * grad_rhor_shifty(:,2) &
+                                          + ( vsigma_shifty(2) ) * grad_rhor_shifty(:,1)
+             dedgd_r_shiftz(:,2) = 2.0_dp * ( vsigma_shiftz(3) ) * grad_rhor_shiftz(:,2) &
+                                          + ( vsigma_shiftz(2) ) * grad_rhor_shiftz(:,1)
+
+           endif
+  
+  
+           div(:) = ( dedgd_r_shiftx(1,:) - dedgd_r(1,:) ) / shift &
+                  + ( dedgd_r_shifty(2,:) - dedgd_r(2,:) ) / shift &
+                  + ( dedgd_r_shiftz(3,:) - dedgd_r(3,:) ) / shift
 
   
-       do ispin=1,nspin
+         endif
+ 
+
+         !
+         ! In the case of the BJ06 meta-GGA functional, a spin-dependent shift is applied
+         ! since the potential does not vanish at infinity
+         !
+         if( dft_xc_type(idft_xc) == XC_MGGA_X_BJ06 ) then
+           dedd_r(:) = dedd_r(:) - SQRT( 5.0_dp * ABS(ehomo(:)) / 6.0_dp ) / pi
+         endif
+
+  
+         !
+         ! Eventually set up the vxc term
+         !
+         do ispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO COLLAPSE(2)
-         do jbf=1,basis%nbf
-           do ibf=1,basis%nbf
-             vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight * fact_becke &
-                 * ( dedd_r(ispin) - div(ispin) ) * basis_function_r(ibf) * basis_function_r(jbf)  
+           do jbf=1,basis%nbf
+             do ibf=1,basis%nbf
+               vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight * fact_becke &
+                   * ( dedd_r(ispin) - div(ispin) ) * basis_function_r(ibf) * basis_function_r(jbf)  &
+                   * dft_xc_coef(idft_xc)
+             enddo
            enddo
-         enddo
 !$OMP END DO
 !$OMP END PARALLEL
-       enddo
+         enddo
+
+
+       enddo ! loop on the XC functional
   
 
      enddo ! loop on the angular grid
@@ -527,18 +493,15 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
 
  !
  ! Destroy operations
- if( dft_xc(1) /= 0 ) call xc_f90_func_end(xc_func1)
- if( dft_xc(2) /= 0 ) call xc_f90_func_end(xc_func2)
+ do idft_xc=1,ndft_xc
+   call xc_f90_func_end(xc_func(idft_xc))
+ enddo
 
 #else
  write(*,*) 'XC energy and potential set to zero'
- write(*,*) 'libxc is not present'
- exc_xc=0.0_dp
- vxc_ij(:,:,:)=0.0_dp
+ write(*,*) 'LIBXC is not present'
 #endif
 
-! write(*,*)
-! write(*,'(a,2(2x,f12.6))') 'Average Vxc',vxc_av
  write(*,*)
  write(*,'(a,2(2x,f12.6))') ' number of electrons:',normalization(:)
  write(*,'(a,2x,f12.6)')    '  DFT xc energy [Ha]:',exc_xc
@@ -804,15 +767,17 @@ subroutine my_lda_exc_vxc_mu(mu,rspts,exc,vxc)
 !Set value of alpha in "X-alpha" method
 !scalars
  integer :: ipt
- real(dp),parameter :: alpha=1.0_dp
  real(dp) :: efac,rs,rsm1,vfac
  character(len=500) :: message
 
  real(dp)           :: rcut
  real(dp)           :: biga,kf,fact_mu
- real(dp)           :: rs_step=1.0e-5_dp
+ real(dp)           :: rs_step=1.0e-6_dp
  real(dp)           :: rsp,rsm1p
  real(dp)           :: bigap,kfp,fact_mup
+ real(dp)           :: omega
+ real(dp)           :: rho,aa,f_aa
+ real(dp)           :: exp4aa2,rhodaadrho,dfdaa
 
 ! *************************************************************************
 
@@ -846,7 +811,7 @@ subroutine my_lda_exc_vxc_mu(mu,rspts,exc,vxc)
              + (2.0_dp * biga - 4.0_dp * biga**3) * EXP(-0.25_dp/biga**2) &
              - 3.0_dp * biga  &
              + 4.0_dp * biga**3 )
-     fact_mup= 8.0/3.0 * bigap&
+     fact_mup= 8.0/3.0 * bigap &
           * ( SQRT(pi) * ERF(0.5_dp/bigap) &
              + (2.0_dp * bigap - 4.0_dp * bigap**3) * EXP(-0.25_dp/bigap**2) &
              - 3.0_dp * bigap  &
@@ -854,17 +819,46 @@ subroutine my_lda_exc_vxc_mu(mu,rspts,exc,vxc)
 
 
 !    compute energy density (hartree)   SHORT RANGE ONLY
-     exc(ipt)=-alpha*efac*rsm1 * (1.0-fact_mu)
+     exc(ipt)=-efac*rsm1 * (1.0-fact_mu)
 !    compute potential (hartree)
-     vxc(ipt)=-alpha*vfac*rsm1 * (1.0-fact_mu)   -alpha*efac * (fact_mup-fact_mu)/rs_step  / 3.0_dp
+     vxc(ipt)=-vfac*rsm1 * (1.0-fact_mu)   -efac * (fact_mup-fact_mu)/rs_step  / 3.0_dp
+
+     write(*,*) ' 1',exc(1),vxc(1)
+
    end do
  end if
 !
 
+ efac=0.75_dp*(1.5_dp/pi)**(2.0_dp/3.0_dp)
+ vfac=4.0/3.0 * efact
+
+ omega = mu
+ rho = 3.0 / ( 4.0 * pi * rs**3 )
+ kf  = ( 3.0 * pi**2 * rho )**(1.0/3.0)
+ aa  = omega / ( 2.0 * kf )
+
+ exp4aa2 = EXP(-1.0/(4.0*aa**2))
+
+ f_aa = 8.0/3.0 * aa &
+       * ( SQRT(pi) * ERF(0.5/aa) &
+          + (2.0 * aa - 4.0 * aa**3) * exp4aa2 &
+          - 3.0 * aa + 4.0 * aa**3 )
+
+ rhodaadrho = - omega/ ( 6.0 * kf )
+
+ dfdaa = f_aa / aa + 8.0 * aa * ( 4.0 * aa**2 * ( 1.0 - exp4aa2 ) - 1.0 )
+
+ exc(1) = -efac/rs * (1.0 - f_aa)
+
+ vxc(1) = -vfac/rs * (1.0 - f_aa) + efac/rs * dfdaa * rhodaadrho
+
+
 end subroutine my_lda_exc_vxc_mu
 
+
+
 !=========================================================================
-subroutine my_gga_exc_vxc_mu(omega,nn,sigma,exc,vxc,vsigma)
+subroutine my_gga_exc_vxc_hjs(omega,nn,sigma,exc,vxc,vsigma)
  use m_definitions
  implicit none
 !=====
@@ -914,45 +908,47 @@ subroutine my_gga_exc_vxc_mu(omega,nn,sigma,exc,vxc,vsigma)
  real(dp) :: dsdsigma,dsdn,dnudn
 !=====
 
-!HOME MADE HSE08    efac=0.75_dp * (1.5_dp/pi)**(2.0_dp/3.0_dp)
-!HOME MADE HSE08   
-!HOME MADE HSE08    !
-!HOME MADE HSE08    ! first calculation
-!HOME MADE HSE08    nn_local = nn
-!HOME MADE HSE08    sigma_local = sigma
-!HOME MADE HSE08    
-!HOME MADE HSE08    rs = ( 3.0 / (4.0 *pi * nn_local) )**(1./3.)
-!HOME MADE HSE08    kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) / rs
-!HOME MADE HSE08    nu = omega / kf
-!HOME MADE HSE08    ss = SQRT(sigma_local) / ( 2.0_dp * kf * nn_local )
-!HOME MADE HSE08   
-!HOME MADE HSE08    hh_s = ( a2*ss**2 + a3*ss**3 + a4*ss**4 + a5*ss**5 + a6*ss**6 + a7*ss**7 ) &
-!HOME MADE HSE08         / ( 1.0_dp + b1*ss + b2*ss**2 + b3*ss**3 + b4*ss**4 + b5*ss**5 + b6*ss**6 + b7*ss**7 + b8*ss**8 + b9*ss**9 )
-!HOME MADE HSE08   
-!HOME MADE HSE08    ffbar_s = 1.0_dp - ss**2 / ( 27.0_dp * cc * (1.0_dp + ss**2/ss0**2 ) ) &
-!HOME MADE HSE08               - ss**2 * hh_s / (2.0_dp * cc )
-!HOME MADE HSE08   
-!HOME MADE HSE08   
-!HOME MADE HSE08    zeta   = ss**2 * hh_s
-!HOME MADE HSE08    eta    = aabar + ss**2 * hh_s
-!HOME MADE HSE08    lambda = dd    + ss**2 * hh_s
-!HOME MADE HSE08    chi = nu / SQRT( lambda + nu**2)
-!HOME MADE HSE08   
-!HOME MADE HSE08    ggbar_s = -2./5.*cc*ffbar_s*lambda -4./15.*bb*lambda**2 - 6./5.*aabar*lambda**3 &
-!HOME MADE HSE08             -4./5.*SQRT(pi)*lambda**(7./2.) &
-!HOME MADE HSE08             -12./5.*lambda**(7./2.) * ( SQRT(zeta)-SQRT(eta) )
-!HOME MADE HSE08    ggbar_s = ggbar_s / ee
-!HOME MADE HSE08   
-!HOME MADE HSE08   
-!HOME MADE HSE08    factor_w = aabar - 4./9.*bb/lambda*(1.0-chi) - 4./9.*cc*ffbar_s/lambda**2 * (1.0 - 1.5*chi+0.5*chi**3)  &
-!HOME MADE HSE08              -8./9.*ee*ggbar_s/lambda**3 * ( 1.0 - 15./8.*chi + 5./4.*chi**3 -3./8.*chi**5 ) &
-!HOME MADE HSE08              + 2.*nu   * ( SQRT(zeta+nu**2)- SQRT(eta+nu**2) ) &
-!HOME MADE HSE08              + 2.*zeta * LOG( ( nu + SQRT(zeta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) &
-!HOME MADE HSE08              - 2.*eta  * LOG( ( nu + SQRT( eta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) 
-!HOME MADE HSE08   
-!HOME MADE HSE08   
-!HOME MADE HSE08    exc = -efac/rs * factor_w
+ efac=0.75_dp * (1.5_dp/pi)**(2.0_dp/3.0_dp)
 
+
+!HOME MADE    !
+!HOME MADE    ! first calculation
+!HOME MADE    nn_local = nn
+!HOME MADE    sigma_local = sigma
+!HOME MADE    
+!HOME MADE    rs = ( 3.0 / (4.0 *pi * nn_local) )**(1./3.)
+!HOME MADE    kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) / rs
+!HOME MADE    nu = omega / kf
+!HOME MADE    ss = SQRT(sigma_local) / ( 2.0_dp * kf * nn_local )
+!HOME MADE   
+!HOME MADE    hh_s = ( a2*ss**2 + a3*ss**3 + a4*ss**4 + a5*ss**5 + a6*ss**6 + a7*ss**7 ) &
+!HOME MADE         / ( 1.0_dp + b1*ss + b2*ss**2 + b3*ss**3 + b4*ss**4 + b5*ss**5 + b6*ss**6 + b7*ss**7 + b8*ss**8 + b9*ss**9 )
+!HOME MADE   
+!HOME MADE    ffbar_s = 1.0_dp - ss**2 / ( 27.0_dp * cc * (1.0_dp + ss**2/ss0**2 ) ) &
+!HOME MADE               - ss**2 * hh_s / (2.0_dp * cc )
+!HOME MADE   
+!HOME MADE   
+!HOME MADE    zeta   = ss**2 * hh_s
+!HOME MADE    eta    = aabar + ss**2 * hh_s
+!HOME MADE    lambda = dd    + ss**2 * hh_s
+!HOME MADE    chi = nu / SQRT( lambda + nu**2)
+!HOME MADE   
+!HOME MADE    ggbar_s = -2./5.*cc*ffbar_s*lambda -4./15.*bb*lambda**2 - 6./5.*aabar*lambda**3 &
+!HOME MADE             -4./5.*SQRT(pi)*lambda**(7./2.) &
+!HOME MADE             -12./5.*lambda**(7./2.) * ( SQRT(zeta)-SQRT(eta) )
+!HOME MADE    ggbar_s = ggbar_s / ee
+!HOME MADE   
+!HOME MADE   
+!HOME MADE    factor_w = aabar - 4./9.*bb/lambda*(1.0-chi) - 4./9.*cc*ffbar_s/lambda**2 * (1.0 - 1.5*chi+0.5*chi**3)  &
+!HOME MADE              -8./9.*ee*ggbar_s/lambda**3 * ( 1.0 - 15./8.*chi + 5./4.*chi**3 -3./8.*chi**5 ) &
+!HOME MADE              + 2.*nu   * ( SQRT(zeta+nu**2)- SQRT(eta+nu**2) ) &
+!HOME MADE              + 2.*zeta * LOG( ( nu + SQRT(zeta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) &
+!HOME MADE              - 2.*eta  * LOG( ( nu + SQRT( eta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) 
+!HOME MADE   
+!HOME MADE   
+!HOME MADE    exc = -efac/rs * factor_w
+!HOME MADE
+!HOME MADE write(*,*) 'exc1=',exc
 
  !
  ! call to the nwchem subroutine
@@ -973,7 +969,8 @@ subroutine my_gga_exc_vxc_mu(omega,nn,sigma,exc,vxc,vsigma)
  dnudn = omega / (3.0*pi**2)**(1./3.) * (-1.0/3.0) * nn**(-4.0/3.0)
  vxc = -efac/rs * nn * ( dfxds * dsdn + dfxdnu * dnudn ) - (4.0/3.0)*efac/rs *fx
 
-end subroutine my_gga_exc_vxc_mu
+
+end subroutine my_gga_exc_vxc_hjs
 !=========================================================================
 subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
 

@@ -1,32 +1,26 @@
+!=========================================================================
 module m_calculation_type
  use m_warning
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
 #endif
 
- integer,parameter :: HF=1
- integer,parameter :: GW=2
- integer,parameter :: LDA=3
- integer,parameter :: CI=4
- integer,parameter :: MP2=5
- integer,parameter :: HARTREE=6
- integer,parameter :: RPA=7
- integer,parameter :: G0W0=8
- integer,parameter :: COHSEX=9
- integer,parameter :: HYBRID=10
- integer,parameter :: LRGW=12
+!
 ! Method definitions
- integer,parameter :: perturbative=101
- integer,parameter :: QS          =102
+ integer,parameter :: perturbative = 101
+ integer,parameter :: QS           = 102
 
  real(dp)          :: alpha_hybrid = 1.0_dp
- real(dp)          :: rcut = 0.0_dp
+ real(dp)          :: rcut         = 0.0_dp
+
+ integer           :: ndft_xc      = 0
+ integer,pointer   :: dft_xc_type(:)
+ real(dp),pointer  :: dft_xc_coef(:)
 
  type calculation_type
    integer :: type
    logical :: need_exchange
    logical :: need_final_exchange
-   logical :: need_dft_xc
    logical :: need_rpa
    logical :: is_lr_mbpt
    logical :: is_screened_hybrid
@@ -34,20 +28,19 @@ module m_calculation_type
    logical :: is_mp2
    logical :: is_ci
    integer :: method                    ! perturbative or quasiparticle self-consistent
-   integer :: dft_x
-   integer :: dft_c
  end type calculation_type
 
 contains
 
+!=========================================================================
 subroutine init_calculation_type(calc_type,input_key)
  implicit none
 !=====
  type(calculation_type),intent(out)   :: calc_type
- character(len=100),intent(in)             :: input_key
+ character(len=100),intent(in)        :: input_key
 !=====
- integer                       :: ipos
- character(len=100)            :: key1,key2
+ integer                              :: ipos
+ character(len=100)                   :: key1,key2
 !=====
 
  msg='calculation name: '//TRIM(input_key)
@@ -56,7 +49,7 @@ subroutine init_calculation_type(calc_type,input_key)
  ! default values
  calc_type%need_exchange       = .FALSE.
  calc_type%need_final_exchange = .FALSE.
- calc_type%need_dft_xc         = .FALSE.
+! calc_type%need_dft_xc         = .FALSE.
  calc_type%need_rpa            = .FALSE.
  calc_type%is_lr_mbpt          = .FALSE.
  calc_type%is_screened_hybrid  = .FALSE.
@@ -64,8 +57,8 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%is_mp2              = .FALSE.
  calc_type%is_ci               = .FALSE.
  calc_type%method              = 0
- calc_type%dft_x               = 0
- calc_type%dft_c               = 0
+! calc_type%dft_x               = 0
+! calc_type%dft_c               = 0
 
  ipos=index(input_key,'+',.TRUE.)
 
@@ -97,150 +90,138 @@ subroutine init_calculation_type(calc_type,input_key)
 
  select case(TRIM(key1))
  case('CI')
-   calc_type%type          = CI
+   calc_type%is_ci =.TRUE.
    calc_type%need_exchange = .TRUE.
  case('HF')
-   calc_type%type          = HF
    calc_type%need_exchange = .TRUE.  
  case('MP2')
-   calc_type%type          = MP2
    calc_type%need_exchange = .TRUE.  
    calc_type%is_mp2        = .TRUE.
    calc_type%method        = QS
  case('GW')
-   calc_type%type          = GW
    calc_type%need_exchange = .TRUE.  
    calc_type%is_gw         = .TRUE.
    calc_type%method        = QS
+ case default
+   !
+   ! If the calculation type is none of the above, let's assume it is DFT-type
+   call init_dft_type(key1,calc_type)
+ end select
+
+end subroutine init_calculation_type
+
+
+
+!=========================================================================
+subroutine init_dft_type(key,calc_type)
+ implicit none
+!=====
+ character(len=100),intent(in) :: key
+ type(calculation_type),intent(inout)   :: calc_type
+!=====
+
+ alpha_hybrid = 0.0_dp
+ if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
+
+ select case(TRIM(key))
+ case('LDAx','PBEx','PBEhx','Bx','PW91x','BJx','RPPx','B3LYP','PBE0','HSE03','HSE06')
+   ndft_xc=1
+ case('LDA','VWN','VWN_RPA','PBE','PBEh','BLYP','PW91')
+   ndft_xc=2
+ case('HSE08')
+   ndft_xc=3
+ case('TEST')
+   ndft_xc=1
+ case default
+   write(*,*) 'error reading calculation type'
+   write(*,*) TRIM(key)
+   stop' is unknown'
+ end select
+
+ allocate(dft_xc_type(ndft_xc))
+ allocate(dft_xc_coef(ndft_xc))
+ !
+ ! default is one, otherwise it is modified later
+ dft_xc_coef(:) = 1.0_dp
+
+ select case(TRIM(key))
 #ifdef HAVE_LIBXC
  !
  ! LDA functionals
+ case('LDAx')
+   dft_xc_type(1) = XC_LDA_X
  case('LDA')
-   calc_type%type          = LDA
-   calc_type%need_dft_xc   = .TRUE.  
-   calc_type%dft_x = XC_LDA_X
-   calc_type%dft_c = XC_LDA_C_PW
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
-   alpha_hybrid = 0.0_dp
+   dft_xc_type(1) = XC_LDA_X
+   dft_xc_type(2) = XC_LDA_C_PW
  case('VWN')
-   calc_type%type          = LDA
-   calc_type%need_dft_xc   = .TRUE.  
-   calc_type%dft_x = XC_LDA_X
-   calc_type%dft_c = XC_LDA_C_VWN
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
-   alpha_hybrid = 0.0_dp
+   dft_xc_type(1) = XC_LDA_X
+   dft_xc_type(2) = XC_LDA_C_VWN
  case('VWN_RPA')
-   calc_type%type          = LDA
-   calc_type%need_dft_xc   = .TRUE.  
-   calc_type%dft_x = XC_LDA_X
-   calc_type%dft_c = XC_LDA_C_VWN_RPA
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
-   alpha_hybrid = 0.0_dp
+   dft_xc_type(1) = XC_LDA_X
+   dft_xc_type(2) = XC_LDA_C_VWN_RPA
  !
  ! GGA functionals
  case('PBEx')
-   calc_type%need_dft_xc   = .TRUE.  
-   calc_type%dft_x = XC_GGA_X_PBE
-   calc_type%dft_c = 0
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
-   alpha_hybrid = 0.0_dp
+   dft_xc_type(1) = XC_GGA_X_PBE
  case('PBE')
-   calc_type%need_dft_xc   = .TRUE.  
-   calc_type%dft_x = XC_GGA_X_PBE
-   calc_type%dft_c = XC_GGA_C_PBE
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
-   alpha_hybrid = 0.0_dp
+   dft_xc_type(1) = XC_GGA_X_PBE
+   dft_xc_type(2) = XC_GGA_C_PBE
  case('PBEhx')
-   calc_type%need_dft_xc   = .TRUE.  
-   calc_type%dft_x = XC_GGA_X_WPBEH
-   calc_type%dft_c = 0
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
-   alpha_hybrid = 0.0_dp
+   dft_xc_type(1) = XC_GGA_X_WPBEH
  case('PBEh')
-   calc_type%need_dft_xc   = .TRUE.  
-   calc_type%dft_x = XC_GGA_X_WPBEH
-   calc_type%dft_c = XC_GGA_C_PBE
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
-   alpha_hybrid = 0.0_dp
+   dft_xc_type(1) = XC_GGA_X_WPBEH
+   dft_xc_type(2) = XC_GGA_C_PBE
  case('Bx')
-   calc_type%need_dft_xc   = .TRUE.  
-   calc_type%dft_x = XC_GGA_X_B88
-   calc_type%dft_c = 0
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
-   alpha_hybrid = 0.0_dp
+   dft_xc_type(1) = XC_GGA_X_B88
  case('BLYP')
-   calc_type%need_dft_xc   = .TRUE.  
-   calc_type%dft_x = XC_GGA_X_B88
-   calc_type%dft_c = XC_GGA_C_LYP
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
-   alpha_hybrid = 0.0_dp
- case('PW91')
-   calc_type%need_dft_xc   = .TRUE.  
-   calc_type%dft_x = XC_GGA_X_PW91
-   calc_type%dft_c = XC_GGA_C_PW91
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
-   alpha_hybrid = 0.0_dp
+   dft_xc_type(1) = XC_GGA_X_B88
+   dft_xc_type(2) = XC_GGA_C_LYP
  case('PW91x')
-   calc_type%need_dft_xc   = .TRUE.  
-   calc_type%dft_x = XC_GGA_X_PW91
-   calc_type%dft_c = 0
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
-   alpha_hybrid = 0.0_dp
+   dft_xc_type(1) = XC_GGA_X_PW91
+ case('PW91')
+   dft_xc_type(1) = XC_GGA_X_PW91
+   dft_xc_type(2) = XC_GGA_C_PW91
  !
  ! Meta-GGA functionals
- case('BJ')
-   calc_type%need_dft_xc   = .TRUE.
-   calc_type%dft_x = XC_MGGA_X_BJ06
-   calc_type%dft_c = 0
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
-   alpha_hybrid = 0.0_dp
- case('RPP')
-   calc_type%need_dft_xc   = .TRUE.
-   calc_type%dft_x = XC_MGGA_X_RPP09
-   calc_type%dft_c = 0
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
-   alpha_hybrid = 0.0_dp
+ case('BJx')
+   dft_xc_type(1) = XC_MGGA_X_BJ06
+ case('RPPx')
+   dft_xc_type(1) = XC_MGGA_X_RPP09
  !
  ! Hybrid functionals
  case('B3LYP')
-   calc_type%need_dft_xc   = .TRUE.  
    calc_type%need_exchange = .TRUE.  
-   calc_type%dft_x = XC_HYB_GGA_XC_B3LYP
-   calc_type%dft_c = 0
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
+   dft_xc_type(1) = XC_HYB_GGA_XC_B3LYP
    alpha_hybrid = 0.20_dp
- case('PBE0','PBE1PBE')
-   calc_type%need_dft_xc   = .TRUE.  
+ case('PBE0')
    calc_type%need_exchange = .TRUE.  
-   calc_type%dft_x = XC_HYB_GGA_XC_PBEH
-   calc_type%dft_c = 0
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
+   dft_xc_type(1) = XC_HYB_GGA_XC_PBEH
    alpha_hybrid = 0.25_dp
  case('HSE03')
    calc_type%is_screened_hybrid  = .TRUE.
-   calc_type%need_dft_xc         = .TRUE.  
    calc_type%need_exchange       = .TRUE.  
-   calc_type%dft_x               = XC_HYB_GGA_XC_HSE03
-   calc_type%dft_c               = 0
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
+   dft_xc_type(1) = XC_HYB_GGA_XC_HSE03
    alpha_hybrid = 0.25_dp
    rcut         = 1.0_dp / ( 0.15_dp / SQRT(2.0_dp) )
  case('HSE06')
    calc_type%is_screened_hybrid  = .TRUE.
-   calc_type%need_dft_xc         = .TRUE.  
    calc_type%need_exchange       = .TRUE.  
-   calc_type%dft_x               = XC_HYB_GGA_XC_HSE06
-   calc_type%dft_c               = 0 
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
+   dft_xc_type(1) = XC_HYB_GGA_XC_HSE06
+   alpha_hybrid = 0.25_dp
+   rcut         = 1.0_dp / 0.11_dp
+ case('HSE08')
+   calc_type%is_screened_hybrid  = .TRUE.
+   calc_type%need_exchange       = .TRUE.  
+   dft_xc_type(1) = XC_GGA_X_wPBEh
+   dft_xc_type(2) = 2001
+   dft_xc_type(3) = XC_GGA_C_PBE
+   dft_xc_coef(2) = -0.25_dp
    alpha_hybrid = 0.25_dp
    rcut         = 1.0_dp / 0.11_dp
  case('TEST')
    calc_type%is_screened_hybrid  = .TRUE.
-   calc_type%need_dft_xc         = .TRUE.
    calc_type%need_exchange       = .TRUE.
-   calc_type%dft_x               = 2001 ! XC_GGA_X_wPBEh ! 2001
-   calc_type%dft_c               = 0 
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
+   dft_xc_type(1) = 2001 ! XC_GGA_X_wPBEh ! 2001
    alpha_hybrid = 1. ! 0.25_dp
    rcut         =  1.0_dp / 0.11_dp
 #endif
@@ -249,7 +230,7 @@ subroutine init_calculation_type(calc_type,input_key)
  end select
 
 
-end subroutine init_calculation_type
+end subroutine init_dft_type
 
 !=========================================================================
 subroutine output_calculation_type(calc_type)
@@ -260,14 +241,11 @@ subroutine output_calculation_type(calc_type)
   write(*,*) 'type                        ',calc_type%type
   write(*,*) 'need_exchange               ',calc_type%need_exchange
   write(*,*) 'need_final_exchange         ',calc_type%need_final_exchange
-  write(*,*) 'need_dft_xc                 ',calc_type%need_dft_xc
   write(*,*) 'need_rpa                    ',calc_type%need_rpa
   write(*,*) 'is_gw                       ',calc_type%is_gw
   write(*,*) 'is_mp2                      ',calc_type%is_mp2
   write(*,*) 'is_ci                       ',calc_type%is_ci
   write(*,*) 'method                      ',calc_type%method  
-  write(*,*) 'dft_x                       ',calc_type%dft_x
-  write(*,*) 'dft_c                       ',calc_type%dft_c                       
 
 end subroutine output_calculation_type
 
