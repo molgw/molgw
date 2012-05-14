@@ -28,7 +28,7 @@ module m_calculation_type
    logical :: need_final_exchange
    logical :: need_dft_xc
    logical :: need_rpa
-   logical :: need_lr_integrals
+   logical :: is_lr_mbpt
    logical :: is_screened_hybrid
    logical :: is_gw
    logical :: is_mp2
@@ -58,7 +58,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%need_final_exchange = .FALSE.
  calc_type%need_dft_xc         = .FALSE.
  calc_type%need_rpa            = .FALSE.
- calc_type%need_lr_integrals   = .FALSE.
+ calc_type%is_lr_mbpt          = .FALSE.
  calc_type%is_screened_hybrid  = .FALSE.
  calc_type%is_gw               = .FALSE.
  calc_type%is_mp2              = .FALSE.
@@ -81,7 +81,7 @@ subroutine init_calculation_type(calc_type,input_key)
    case('LRGW')
      calc_type%is_gw  =.TRUE.
      calc_type%method = perturbative
-     calc_type%need_lr_integrals = .TRUE.
+     calc_type%is_lr_mbpt        = .TRUE.
    case('MP2')
      calc_type%is_mp2 =.TRUE.
      calc_type%method = perturbative
@@ -220,7 +220,6 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%is_screened_hybrid  = .TRUE.
    calc_type%need_dft_xc         = .TRUE.  
    calc_type%need_exchange       = .TRUE.  
-   calc_type%need_lr_integrals   = .TRUE.
    calc_type%dft_x               = XC_HYB_GGA_XC_HSE03
    calc_type%dft_c               = 0
    if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
@@ -230,7 +229,6 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%is_screened_hybrid  = .TRUE.
    calc_type%need_dft_xc         = .TRUE.  
    calc_type%need_exchange       = .TRUE.  
-   calc_type%need_lr_integrals   = .TRUE.
    calc_type%dft_x               = XC_HYB_GGA_XC_HSE06
    calc_type%dft_c               = 0 
    if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
@@ -240,7 +238,6 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%is_screened_hybrid  = .TRUE.
    calc_type%need_dft_xc         = .TRUE.
    calc_type%need_exchange       = .TRUE.
-   calc_type%need_lr_integrals   = .TRUE.
    calc_type%dft_x               = 2001 ! XC_GGA_X_wPBEh ! 2001
    calc_type%dft_c               = 0 
    if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.

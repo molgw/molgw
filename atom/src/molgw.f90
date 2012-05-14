@@ -42,6 +42,7 @@ program molgw
  real(dp)                :: dipole(3)
  real(dp),allocatable    :: ehomo(:),elumo(:)
  real(dp),allocatable    :: hamiltonian(:,:,:)
+ real(dp),allocatable    :: hamiltonian_xc(:,:,:)
  real(dp),allocatable    :: hamiltonian_kinetic(:,:,:)           !TODO remove spin
  real(dp),allocatable    :: hamiltonian_nucleus(:,:,:)           !TODO remove spin
  real(dp),allocatable    :: matrix(:,:,:)
@@ -186,6 +187,7 @@ program molgw
  !
  ! allocate everything
  allocate(hamiltonian(basis%nbf,basis%nbf,nspin))
+ allocate(hamiltonian_xc(basis%nbf,basis%nbf,nspin))
  allocate(hamiltonian_kinetic(basis%nbf,basis%nbf,nspin))
  allocate(hamiltonian_nucleus(basis%nbf,basis%nbf,nspin))
  allocate(matrix(basis%nbf,basis%nbf,nspin))
@@ -234,7 +236,7 @@ program molgw
  call calculate_eri_faster(basis,0.0_dp)
  !
  ! for HSE functionals, calculate the long-range ERI
- if(calc_type%is_screened_hybrid .OR. calc_type%need_lr_integrals) then
+ if(calc_type%is_screened_hybrid) then
    call allocate_eri_lr(basis%nbf)
    call calculate_eri_faster(basis,rcut)
  endif
@@ -412,7 +414,10 @@ program molgw
    !
    call setup_hartree(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%hart)
 
-   hamiltonian(:,:,:) = hamiltonian_kinetic(:,:,:) + hamiltonian_nucleus(:,:,:) + matrix(:,:,:)
+   hamiltonian(:,:,:)    = hamiltonian_kinetic(:,:,:) + hamiltonian_nucleus(:,:,:) + matrix(:,:,:)
+   !
+   ! Reset XC part of the Hamiltonian
+   hamiltonian_xc(:,:,:) = 0.0_dp
   
    !
    ! Exchange contribution to the Hamiltonian
@@ -425,7 +430,7 @@ program molgw
      endif
 
      en%exx = en%exx * alpha_hybrid
-     hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix(:,:,:) * alpha_hybrid
+     hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix(:,:,:) * alpha_hybrid
 
    endif
 
@@ -436,7 +441,7 @@ program molgw
      call dft_exc_vxc(nspin,basis,(/calc_type%dft_x ,calc_type%dft_c/),p_matrix,ehomo,vxc_matrix,en%xc)
      call stop_clock(timing_dft)
 
-     hamiltonian(:,:,:) = hamiltonian(:,:,:) + vxc_matrix(:,:,:)
+     hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + vxc_matrix(:,:,:)
 
      title='=== DFT XC contribution ==='
      call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,vxc_matrix)
@@ -503,6 +508,10 @@ program molgw
    endif
 
   
+   !
+   ! Add the XC part of the hamiltonian to the total hamiltonian
+   hamiltonian(:,:,:) = hamiltonian(:,:,:) + hamiltonian_xc(:,:,:)
+   
    title='=== Total Hamiltonian ==='
    call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,hamiltonian)
   
@@ -712,12 +721,6 @@ program molgw
 
    call setup_exchange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
    write(*,*) 'EXX [Ha]:',en%exx
-!   write(*,*) 'test',rcut
-!   vxc_matrix(:,:,:)=0.0_dp
-!   call setup_exchange_shortrange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
-!!   matrix = 0.0_dp
-!   write(*,*) 'EXX [Ha]:',en%exx
-!   write(*,*) 'test'
 
    exchange_m_vxc_diag(:,:) = 0.0_dp
    do ispin=1,nspin
@@ -725,7 +728,7 @@ program molgw
        do ibf=1,basis%nbf
          do jbf=1,basis%nbf
            exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                   + c_matrix(ibf,istate,ispin) * ( ( 1.0_dp - alpha_hybrid ) * matrix(ibf,jbf,ispin) - vxc_matrix(ibf,jbf,ispin) )&
+                   + c_matrix(ibf,istate,ispin) * ( matrix(ibf,jbf,ispin) - hamiltonian_xc(ibf,jbf,ispin) )&
                     * c_matrix(jbf,istate,ispin)
          enddo
        enddo
@@ -744,8 +747,12 @@ program molgw
  ! final evaluation for G0W0
  if( calc_type%is_gw .AND. calc_type%method == perturbative ) then
 
-   if( calc_type%need_lr_integrals ) then
+   if( calc_type%is_lr_mbpt ) then
+     !
+     ! Hard-coded cutoff radius
      rcut= 5.0_dp
+     write(msg,'(a,f10.4)') ' hard coded cutoff radius  ',rcut
+     call issue_warning(msg)
      call deallocate_eri()
      call allocate_eri(basis%nbf)
      call calculate_eri_faster(basis,rcut)
@@ -803,7 +810,7 @@ program molgw
 
  endif
 
- deallocate(hamiltonian,hamiltonian_kinetic,hamiltonian_nucleus)
+ deallocate(hamiltonian,hamiltonian_xc,hamiltonian_kinetic,hamiltonian_nucleus)
  deallocate(matrix,s_matrix,c_matrix,p_matrix,p_matrix_old)
  deallocate(energy,occupation,exchange_m_vxc_diag)
  deallocate(self_energy_old)
