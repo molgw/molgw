@@ -236,16 +236,6 @@ subroutine init_calculation_type(calc_type,input_key)
    if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
    alpha_hybrid = 0.25_dp
    rcut         = 1.0_dp / 0.11_dp
- case('HSE06test')
-   calc_type%is_screened_hybrid  = .TRUE.
-   calc_type%need_dft_xc         = .TRUE.
-   calc_type%need_exchange       = .TRUE.
-   calc_type%need_lr_integrals   = .TRUE.
-   calc_type%dft_x               = XC_HYB_GGA_XC_HSE06 ! XC_GGA_X_wPBEh
-   calc_type%dft_c               = 0 ! XC_GGA_X_wPBEh
-   if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
-   alpha_hybrid = 0. ! 0.25_dp
-   rcut         = 1.0_dp / 0.11_dp
  case('TEST')
    calc_type%is_screened_hybrid  = .TRUE.
    calc_type%need_dft_xc         = .TRUE.

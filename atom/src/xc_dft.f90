@@ -401,7 +401,7 @@ subroutine dft_exc_vxc(nspin,basis,dft_xc,p_matrix,ehomo,vxc_ij,exc_xc)
              call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shifty(1),sigma2_shifty(1),vxc_dummy(1),vsigma1_shifty(1))
              call xc_f90_gga_vxc    (xc_func1,1,rhor_r_shiftz(1),sigma2_shiftz(1),vxc_dummy(1),vsigma1_shiftz(1))
            else
-             omega=0.11 ! 0.11_dp
+             omega=0.11_dp
              call my_gga_exc_vxc_mu(omega,rhor_r_shiftx(1),sigma2_shiftx(1),exc1(1),vxc_dummy(1),vsigma1_shiftx(1))
              call my_gga_exc_vxc_mu(omega,rhor_r_shifty(1),sigma2_shifty(1),exc1(1),vxc_dummy(1),vsigma1_shifty(1))
              call my_gga_exc_vxc_mu(omega,rhor_r_shiftz(1),sigma2_shiftz(1),exc1(1),vxc_dummy(1),vsigma1_shiftz(1))
@@ -914,134 +914,49 @@ subroutine my_gga_exc_vxc_mu(omega,nn,sigma,exc,vxc,vsigma)
  real(dp) :: dsdsigma,dsdn,dnudn
 !=====
 
- efac=0.75_dp * (1.5_dp/pi)**(2.0_dp/3.0_dp)
-
- !
- ! first calculation
- nn_local = nn
- sigma_local = sigma
- 
- rs = ( 3.0 / (4.0 *pi * nn_local) )**(1./3.)
- kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) / rs
- nu = omega / kf
- ss = SQRT(sigma_local) / ( 2.0_dp * kf * nn_local )
-
- hh_s = ( a2*ss**2 + a3*ss**3 + a4*ss**4 + a5*ss**5 + a6*ss**6 + a7*ss**7 ) &
-      / ( 1.0_dp + b1*ss + b2*ss**2 + b3*ss**3 + b4*ss**4 + b5*ss**5 + b6*ss**6 + b7*ss**7 + b8*ss**8 + b9*ss**9 )
-
- ffbar_s = 1.0_dp - ss**2 / ( 27.0_dp * cc * (1.0_dp + ss**2/ss0**2 ) ) &
-            - ss**2 * hh_s / (2.0_dp * cc )
-
-
- zeta   = ss**2 * hh_s
- eta    = aabar + ss**2 * hh_s
- lambda = dd    + ss**2 * hh_s
- chi = nu / SQRT( lambda + nu**2)
-
- ggbar_s = -2./5.*cc*ffbar_s*lambda -4./15.*bb*lambda**2 - 6./5.*aabar*lambda**3 &
-          -4./5.*SQRT(pi)*lambda**(7./2.) &
-          -12./5.*lambda**(7./2.) * ( SQRT(zeta)-SQRT(eta) )
- ggbar_s = ggbar_s / ee
-
-
- factor_w = aabar - 4./9.*bb/lambda*(1.0-chi) - 4./9.*cc*ffbar_s/lambda**2 * (1.0 - 1.5*chi+0.5*chi**3)  &
-           -8./9.*ee*ggbar_s/lambda**3 * ( 1.0 - 15./8.*chi + 5./4.*chi**3 -3./8.*chi**5 ) &
-           + 2.*nu   * ( SQRT(zeta+nu**2)- SQRT(eta+nu**2) ) &
-           + 2.*zeta * LOG( ( nu + SQRT(zeta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) &
-           - 2.*eta  * LOG( ( nu + SQRT( eta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) 
-
-
- exc = -efac/rs * factor_w
-
-
-
-
-! finite diff
-! nn = nn + shift
- nn_local    = nn + shift_nn ! *nn
- sigma_local = sigma
-
- rs = ( 3.0 / (4.0*pi*nn_local) )**(1.0/3.0)
- kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) / rs
- nu = omega / kf
-
- ss = SQRT(sigma_local) / ( 2.0_dp * kf * nn_local )
- hh_s = ( a2*ss**2 + a3*ss**3 + a4*ss**4 + a5*ss**5 + a6*ss**6 + a7*ss**7 ) &
-      / ( 1.0_dp + b1*ss + b2*ss**2 + b3*ss**3 + b4*ss**4 + b5*ss**5 + b6*ss**6 + b7*ss**7 + b8*ss**8 + b9*ss**9 )
-
- ffbar_s = 1.0_dp - ss**2 / ( 27.0_dp * cc * (1.0_dp + ss**2/ss0**2 ) ) &
-            - ss**2 * hh_s / (2.0_dp * cc )
-
-
- zeta   = ss**2 * hh_s
- eta    = aabar + ss**2 * hh_s
- lambda = dd    + ss**2 * hh_s
- chi = nu / SQRT( lambda + nu**2)
-
- ggbar_s = -2./5.*cc*ffbar_s*lambda -4./15.*bb*lambda**2 - 6./5.*aabar*lambda**3 &
-          -4./5.*SQRT(pi)*lambda**(7./2.) &
-          -12./5.*lambda**(7./2.) * ( SQRT(zeta)-SQRT(eta) )
- ggbar_s = ggbar_s / ee
-
-
- factor_w = aabar - 4./9.*bb/lambda*(1.0-chi) - 4./9.*cc*ffbar_s/lambda**2 * (1.0 - 1.5*chi+0.5*chi**3)  &
-           -8./9.*ee*ggbar_s/lambda**3 * ( 1.0 - 15./8.*chi + 5./4.*chi**3 -3./8.*chi**5 ) &
-           + 2.*nu   * ( SQRT(zeta+nu**2)- SQRT(eta+nu**2) ) &
-           + 2.*zeta * LOG( ( nu + SQRT(zeta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) &
-           - 2.*eta  * LOG( ( nu + SQRT( eta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) 
-
-
- exc_nn = -efac/rs * factor_w
-
- vxc = ( exc_nn - exc ) / shift_nn !  (shift_nn*nn)
-
-
-! finite diff
-! sigma = sigma + shift
- nn_local    = nn 
- sigma_local = sigma + shift_sigma*sigma
-
- rs = ( 3.0 / (4.0*pi*nn_local) )**(1.0/3.0)
- kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) / rs
- nu = omega / kf
-
- ss = SQRT(sigma_local) / ( 2.0_dp * kf * nn_local )
- hh_s = ( a2*ss**2 + a3*ss**3 + a4*ss**4 + a5*ss**5 + a6*ss**6 + a7*ss**7 ) &
-      / ( 1.0_dp + b1*ss + b2*ss**2 + b3*ss**3 + b4*ss**4 + b5*ss**5 + b6*ss**6 + b7*ss**7 + b8*ss**8 + b9*ss**9 )
-
- ffbar_s = 1.0_dp - ss**2 / ( 27.0_dp * cc * (1.0_dp + ss**2/ss0**2 ) ) &
-            - ss**2 * hh_s / (2.0_dp * cc )
-
-
- zeta   = ss**2 * hh_s
- eta    = aabar + ss**2 * hh_s
- lambda = dd    + ss**2 * hh_s
- chi = nu / SQRT( lambda + nu**2)
-
- ggbar_s = -2./5.*cc*ffbar_s*lambda -4./15.*bb*lambda**2 - 6./5.*aabar*lambda**3 &
-          -4./5.*SQRT(pi)*lambda**(7./2.) &
-          -12./5.*lambda**(7./2.) * ( SQRT(zeta)-SQRT(eta) )
- ggbar_s = ggbar_s / ee
-
-
- factor_w = aabar - 4./9.*bb/lambda*(1.0-chi) - 4./9.*cc*ffbar_s/lambda**2 * (1.0 - 1.5*chi+0.5*chi**3)  &
-           -8./9.*ee*ggbar_s/lambda**3 * ( 1.0 - 15./8.*chi + 5./4.*chi**3 -3./8.*chi**5 ) &
-           + 2.*nu   * ( SQRT(zeta+nu**2)- SQRT(eta+nu**2) ) &
-           + 2.*zeta * LOG( ( nu + SQRT(zeta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) &
-           - 2.*eta  * LOG( ( nu + SQRT( eta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) 
-
-
- exc_sigma = -efac/rs * factor_w
-
- vsigma = ( exc_sigma - exc ) / (shift_sigma*sigma)
+!HOME MADE HSE08    efac=0.75_dp * (1.5_dp/pi)**(2.0_dp/3.0_dp)
+!HOME MADE HSE08   
+!HOME MADE HSE08    !
+!HOME MADE HSE08    ! first calculation
+!HOME MADE HSE08    nn_local = nn
+!HOME MADE HSE08    sigma_local = sigma
+!HOME MADE HSE08    
+!HOME MADE HSE08    rs = ( 3.0 / (4.0 *pi * nn_local) )**(1./3.)
+!HOME MADE HSE08    kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) / rs
+!HOME MADE HSE08    nu = omega / kf
+!HOME MADE HSE08    ss = SQRT(sigma_local) / ( 2.0_dp * kf * nn_local )
+!HOME MADE HSE08   
+!HOME MADE HSE08    hh_s = ( a2*ss**2 + a3*ss**3 + a4*ss**4 + a5*ss**5 + a6*ss**6 + a7*ss**7 ) &
+!HOME MADE HSE08         / ( 1.0_dp + b1*ss + b2*ss**2 + b3*ss**3 + b4*ss**4 + b5*ss**5 + b6*ss**6 + b7*ss**7 + b8*ss**8 + b9*ss**9 )
+!HOME MADE HSE08   
+!HOME MADE HSE08    ffbar_s = 1.0_dp - ss**2 / ( 27.0_dp * cc * (1.0_dp + ss**2/ss0**2 ) ) &
+!HOME MADE HSE08               - ss**2 * hh_s / (2.0_dp * cc )
+!HOME MADE HSE08   
+!HOME MADE HSE08   
+!HOME MADE HSE08    zeta   = ss**2 * hh_s
+!HOME MADE HSE08    eta    = aabar + ss**2 * hh_s
+!HOME MADE HSE08    lambda = dd    + ss**2 * hh_s
+!HOME MADE HSE08    chi = nu / SQRT( lambda + nu**2)
+!HOME MADE HSE08   
+!HOME MADE HSE08    ggbar_s = -2./5.*cc*ffbar_s*lambda -4./15.*bb*lambda**2 - 6./5.*aabar*lambda**3 &
+!HOME MADE HSE08             -4./5.*SQRT(pi)*lambda**(7./2.) &
+!HOME MADE HSE08             -12./5.*lambda**(7./2.) * ( SQRT(zeta)-SQRT(eta) )
+!HOME MADE HSE08    ggbar_s = ggbar_s / ee
+!HOME MADE HSE08   
+!HOME MADE HSE08   
+!HOME MADE HSE08    factor_w = aabar - 4./9.*bb/lambda*(1.0-chi) - 4./9.*cc*ffbar_s/lambda**2 * (1.0 - 1.5*chi+0.5*chi**3)  &
+!HOME MADE HSE08              -8./9.*ee*ggbar_s/lambda**3 * ( 1.0 - 15./8.*chi + 5./4.*chi**3 -3./8.*chi**5 ) &
+!HOME MADE HSE08              + 2.*nu   * ( SQRT(zeta+nu**2)- SQRT(eta+nu**2) ) &
+!HOME MADE HSE08              + 2.*zeta * LOG( ( nu + SQRT(zeta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) &
+!HOME MADE HSE08              - 2.*eta  * LOG( ( nu + SQRT( eta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) 
+!HOME MADE HSE08   
+!HOME MADE HSE08   
+!HOME MADE HSE08    exc = -efac/rs * factor_w
 
 
  !
- ! warning
-! vsigma = 0
-! vxc = 0
-! write(*,'(10(e16.8,2x))') sigma,sigma_local,ss,exc_sigma
-
+ ! call to the nwchem subroutine
+ !
  rs = ( 3.0 / (4.0*pi*nn) )**(1.0/3.0)
  kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) / rs
  ss = SQRT(sigma) / ( 2.0_dp * kf * nn )
