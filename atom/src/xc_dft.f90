@@ -95,7 +95,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
 
 #ifdef HAVE_LIBXC
 
-#if 1
+#if 0
 ! call xc_f90_func_init(xc_functest, xc_infotest, XC_LDA_X , XC_UNPOLARIZED)
  call xc_f90_func_init(xc_functest, xc_infotest, XC_GGA_X_WPBEH, XC_UNPOLARIZED)
 ! call xc_f90_func_init(xc_functest, xc_infotest, XC_GGA_X_PBE, XC_UNPOLARIZED)
@@ -784,7 +784,7 @@ subroutine my_lda_exc_vxc_mu(mu,rspts,exc,vxc)
  rcut = 1.0_dp / mu
  write(*,*) 'rcut [bohr]=',rcut
 
-
+#if 0
 !Compute vfac=(3/(2*Pi))^(2/3)
  vfac=(1.5_dp/pi)**(2.0_dp/3.0_dp)
 !Compute efac=(3/4)*vfac
@@ -823,14 +823,13 @@ subroutine my_lda_exc_vxc_mu(mu,rspts,exc,vxc)
 !    compute potential (hartree)
      vxc(ipt)=-vfac*rsm1 * (1.0-fact_mu)   -efac * (fact_mup-fact_mu)/rs_step  / 3.0_dp
 
-     write(*,*) ' 1',exc(1),vxc(1)
-
    end do
  end if
 !
+#endif
 
  efac=0.75_dp*(1.5_dp/pi)**(2.0_dp/3.0_dp)
- vfac=4.0/3.0 * efact
+ vfac=4.0/3.0 * efac
 
  omega = mu
  rho = 3.0 / ( 4.0 * pi * rs**3 )
