@@ -8,7 +8,9 @@ Features:
 _ Hartree-Fock
 _ LDA (PW, VWN)
 _ GGA (PBE, PW91, BLYP)
+_ potential-only meta-GGA (BJ, RPP)
 _ hybrid functionals (PBE0, B3LYP)
+_ screened hybrid functionals (HSE03, HSE06)
 _ HF+GW
 _ DFT+GW
 _ Hybrid+GW
