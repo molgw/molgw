@@ -4,11 +4,11 @@ module m_scf
 
  private
  
- public :: simple_mixing,rmdiis,&
+ public :: simple_mixing,pulay_mixing,mixing_scheme,&
            init_scf,destroy_scf,store_residual,new_p_matrix,check_convergence
 
  integer,parameter    :: simple_mixing = 1
- integer,parameter    :: rmdiis        = 2
+ integer,parameter    :: pulay_mixing  = 2
 
  integer              :: mixing_scheme
 
@@ -26,23 +26,22 @@ module m_scf
 contains
 
 !=========================================================================
-subroutine init_scf(nscf,nbf,nspin,mixing_scheme_set,alpha_mixing)
+subroutine init_scf(nscf,nbf,nspin,alpha_mixing)
  implicit none
- integer,intent(in)  :: nscf,nbf,nspin,mixing_scheme_set
+ integer,intent(in)  :: nscf,nbf,nspin
  real(dp),intent(in) :: alpha_mixing
 !=====
 
  n_scf_max     = nscf
  nbf_scf       = nbf
  nspin_scf     = nspin
- mixing_scheme = mixing_scheme_set
  alpha_scf     = alpha_mixing
  n_scf         = 1                 ! initialize with 1, since the new_p_matrix is not called for the first scf cycle
 
  select case(mixing_scheme)
  case(simple_mixing)
    nhist=1
- case(rmdiis)
+ case(pulay_mixing)
    nhist=6
  case default
    stop'mixing scheme not implemented'
@@ -97,11 +96,11 @@ subroutine new_p_matrix(p_matrix_in)
  select case(mixing_scheme)
  case(simple_mixing)
    call do_simple_mixing(p_matrix_in)
- case(rmdiis)
+ case(pulay_mixing)
    if(n_scf<=3) then ! for safety, just do simple mixing at the begining
      call do_simple_mixing(p_matrix_in)
    else
-     call do_rmdiis(p_matrix_in)
+     call do_pulay_mixing(p_matrix_in)
    endif
  case default
    stop'mixing scheme not implemented'
@@ -122,7 +121,7 @@ subroutine do_simple_mixing(p_matrix_in)
 end subroutine do_simple_mixing
 
 !=========================================================================
-subroutine do_rmdiis(p_matrix_in)
+subroutine do_pulay_mixing(p_matrix_in)
  use m_tools,only:       invert
  implicit none
  real(dp),intent(out) :: p_matrix_in (nbf_scf,nbf_scf,nspin_scf)
@@ -173,7 +172,7 @@ subroutine do_rmdiis(p_matrix_in)
  
  deallocate(alpha_diis)
 
-end subroutine do_rmdiis
+end subroutine do_pulay_mixing
 
 !=========================================================================
 subroutine check_convergence(scf_loop_converged)

@@ -185,6 +185,7 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  use m_warning
  use m_tools
  use m_atoms
+ use m_scf
  implicit none
 
  type(calculation_type),intent(out) :: calc_type
@@ -198,6 +199,7 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  character(len=100)                 :: read_char
  character(len=100)                 :: read_line
  character(len=100)                 :: line_wocomment
+ character(len=100)                 :: mixing_name
  integer                            :: ipos
  integer                            :: istat,iatom,jatom
  real(dp)                           :: charge,length_factor
@@ -229,9 +231,17 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
 !   call issue_warning(msg)
 ! endif
 
- read(*,*) nscf,alpha_mixing
+ read(*,*) nscf,alpha_mixing,mixing_name
  if(nscf<1) stop'nscf too small'
  if(alpha_mixing<0.0 .OR. alpha_mixing > 1.0 ) stop'alpha_mixing should be inside [0,1]'
+ select case(TRIM(mixing_name))
+ case('SIMPLE')
+   mixing_scheme = simple_mixing
+ case('PULAY')
+   mixing_scheme = pulay_mixing
+ case default
+   stop'mixing scheme not recognized'
+ end select
 
  read(*,*) print_volume
 

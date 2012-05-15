@@ -5,10 +5,11 @@ module m_calculation_type
  use libxc_funcs_m
 #endif
 
-!
-! Method definitions
+ !
+ ! Method definitions
  integer,parameter :: perturbative = 101
  integer,parameter :: QS           = 102
+
 
  real(dp)          :: alpha_hybrid = 1.0_dp
  real(dp)          :: rcut         = 0.0_dp
@@ -49,7 +50,6 @@ subroutine init_calculation_type(calc_type,input_key)
  ! default values
  calc_type%need_exchange       = .FALSE.
  calc_type%need_final_exchange = .FALSE.
-! calc_type%need_dft_xc         = .FALSE.
  calc_type%need_rpa            = .FALSE.
  calc_type%is_lr_mbpt          = .FALSE.
  calc_type%is_screened_hybrid  = .FALSE.
@@ -57,8 +57,6 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%is_mp2              = .FALSE.
  calc_type%is_ci               = .FALSE.
  calc_type%method              = 0
-! calc_type%dft_x               = 0
-! calc_type%dft_c               = 0
 
  ipos=index(input_key,'+',.TRUE.)
 
