@@ -3,7 +3,7 @@ module m_eri
 
  private
  public :: eri,allocate_eri,allocate_eri_eigen,deallocate_eri,calculate_eri_faster,transform_eri_basis_fast,transform_eri_basis_lowmem, &
-           eri_lr,allocate_eri_lr,deallocate_eri_lr
+           eri_lr,allocate_eri_lr,deallocate_eri_lr,negligible_eri
 
  real(prec_eri),allocatable :: eri_buffer(:)
  real(prec_eri),allocatable :: eri_buffer_lr(:)
@@ -234,7 +234,7 @@ subroutine calculate_eri(basis,eri)
  type(basis_set),intent(in)   :: basis
  real(dp),intent(out)         :: eri(basis%nbf,basis%nbf,basis%nbf,basis%nbf)
 !=====
- integer,parameter            :: NSHELLMAX=100
+ integer,parameter            :: NSHELLMAX=400
  integer,parameter            :: NPRIMITIVE_MAX=20
  logical,parameter            :: DEBUG=.TRUE.
  integer                      :: info
@@ -534,9 +534,8 @@ subroutine calculate_eri_faster(basis,rcut)
  type(basis_set),intent(in)   :: basis
  real(dp),intent(in)          :: rcut
 !=====
- integer,parameter            :: NSHELLMAX=100
+ integer,parameter            :: NSHELLMAX=400
  integer,parameter            :: NMEMBER=28
- integer,parameter            :: NPRIMITIVE_MAX=20
  logical,parameter            :: DEBUG=.TRUE.
  integer                      :: info
  integer                      :: ibf,jbf,kbf,lbf
@@ -549,7 +548,6 @@ subroutine calculate_eri_faster(basis,rcut)
  type(basis_function),pointer :: bf_current_i,bf_current_j,bf_current_k,bf_current_l
  type(gaussian),pointer       :: g_current
  integer                      :: nint_gaussian,igaussian
- integer                      :: index_global(basis%nbf,NPRIMITIVE_MAX)  
  real(dp),allocatable         :: int_gaussian(:)
  logical                      :: shell_already_exists
  integer                      :: iint,nint_tot
@@ -910,10 +908,10 @@ subroutine calculate_eri_faster(basis,rcut)
  
          if( rcut < 1.0e-6_dp ) then
 
-!!!!!           !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iindex_in_the_shell,jindex_in_the_shell,kindex_in_the_shell,lindex_in_the_shell,&
-!!!!!           !$OMP&     ig,jg,kg,lg,ibf,jbf,kbf,lbf,index_integral,index_tmp )
-!!!!!           
-!!!!!           !$OMP DO SCHEDULE(STATIC)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iindex_in_the_shell,jindex_in_the_shell,kindex_in_the_shell,lindex_in_the_shell,&
+!$OMP&     ig,jg,kg,lg,ibf,jbf,kbf,lbf,index_integral,index_tmp )
+
+!$OMP DO SCHEDULE(STATIC)
            do lmember=1,shell(lshell)%nmember
              lbf = shell(lshell)%index_bf(lmember)
              lg  = shell(lshell)%index_g (lmember)
@@ -954,8 +952,8 @@ subroutine calculate_eri_faster(basis,rcut)
                enddo
              enddo
            enddo
-!!!!          !$OMP END DO
-!!!!          !$OMP END PARALLEL
+!$OMP END DO
+!$OMP END PARALLEL
 
 
          else    ! *******        long-range      ******* !
@@ -1127,6 +1125,43 @@ function libint_ordering(nx,ny,nz)
    if(nx==0.AND.ny==2.AND.nz==4) libint_ordering=26
    if(nx==0.AND.ny==1.AND.nz==5) libint_ordering=27
    if(nx==0.AND.ny==0.AND.nz==6) libint_ordering=28
+ case(7)
+   if(nx==7.AND.ny==0.AND.nz==0) libint_ordering=1
+   if(nx==6.AND.ny==1.AND.nz==0) libint_ordering=2
+   if(nx==6.AND.ny==0.AND.nz==1) libint_ordering=3
+   if(nx==5.AND.ny==2.AND.nz==0) libint_ordering=4
+   if(nx==5.AND.ny==1.AND.nz==1) libint_ordering=5
+   if(nx==5.AND.ny==0.AND.nz==2) libint_ordering=6
+   if(nx==4.AND.ny==3.AND.nz==0) libint_ordering=7
+   if(nx==4.AND.ny==2.AND.nz==1) libint_ordering=8
+   if(nx==4.AND.ny==1.AND.nz==2) libint_ordering=9
+   if(nx==4.AND.ny==0.AND.nz==3) libint_ordering=10
+   if(nx==3.AND.ny==4.AND.nz==0) libint_ordering=11
+   if(nx==3.AND.ny==3.AND.nz==1) libint_ordering=12
+   if(nx==3.AND.ny==2.AND.nz==2) libint_ordering=13
+   if(nx==3.AND.ny==1.AND.nz==3) libint_ordering=14
+   if(nx==3.AND.ny==0.AND.nz==4) libint_ordering=15
+   if(nx==2.AND.ny==5.AND.nz==0) libint_ordering=16
+   if(nx==2.AND.ny==4.AND.nz==1) libint_ordering=17
+   if(nx==2.AND.ny==3.AND.nz==2) libint_ordering=18
+   if(nx==2.AND.ny==2.AND.nz==3) libint_ordering=19
+   if(nx==2.AND.ny==1.AND.nz==4) libint_ordering=20
+   if(nx==2.AND.ny==0.AND.nz==5) libint_ordering=21
+   if(nx==1.AND.ny==6.AND.nz==0) libint_ordering=22
+   if(nx==1.AND.ny==5.AND.nz==1) libint_ordering=23
+   if(nx==1.AND.ny==4.AND.nz==2) libint_ordering=24
+   if(nx==1.AND.ny==3.AND.nz==3) libint_ordering=25
+   if(nx==1.AND.ny==2.AND.nz==4) libint_ordering=26
+   if(nx==1.AND.ny==1.AND.nz==5) libint_ordering=27
+   if(nx==1.AND.ny==0.AND.nz==6) libint_ordering=28
+   if(nx==0.AND.ny==7.AND.nz==0) libint_ordering=29
+   if(nx==0.AND.ny==6.AND.nz==1) libint_ordering=30
+   if(nx==0.AND.ny==5.AND.nz==2) libint_ordering=31
+   if(nx==0.AND.ny==4.AND.nz==3) libint_ordering=32
+   if(nx==0.AND.ny==3.AND.nz==4) libint_ordering=33
+   if(nx==0.AND.ny==2.AND.nz==5) libint_ordering=34
+   if(nx==0.AND.ny==1.AND.nz==6) libint_ordering=35
+   if(nx==0.AND.ny==0.AND.nz==7) libint_ordering=36
 
  case default
    stop'libint_ordering not coded for this orbital momentum'

@@ -9,11 +9,15 @@ module m_basis_set
 
  real(dp),parameter             :: FILTERED_EIGENVALUE=1.0d-8 ! 1.0d-6
 
+ integer,parameter              :: CARTESIAN=1
+ integer,parameter              :: PURE     =2
+
  type basis_function
    character(len=100)           :: basis_name
    integer                      :: am
    character(len=1)             :: amc
    integer                      :: nx,ny,nz
+   integer                      :: mm
    real(dp)                     :: x0(3)
    integer                      :: ngaussian
    type(gaussian),allocatable   :: g(:) 
@@ -27,6 +31,7 @@ module m_basis_set
    !
    ! The list
    integer                                 :: nbf
+   integer                                 :: gaussian_type
    type(basis_function),pointer            :: bf(:) 
    !
    ! then additional data needed for product basis
@@ -34,6 +39,9 @@ module m_basis_set
    integer,allocatable                     :: index_ij(:,:)
    real(dp),allocatable                    :: rotation(:,:)
  end type basis_set
+
+
+
 
 contains
 
@@ -410,6 +418,8 @@ contains
  case(5)
    number_basis_function_am = 21
  case(6)
+   number_basis_function_am = 28
+ case(7)
    number_basis_function_am = 28
  case(10) ! stands for SP orbitals
    number_basis_function_am = 4 

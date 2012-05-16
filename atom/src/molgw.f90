@@ -241,9 +241,7 @@ program molgw
    call calculate_eri_faster(basis,rcut)
  endif
  call stop_clock(timing_integrals)
-#ifdef LOW_MEMORY3
- call negligible_eri(-1.0e-8_dp)
-#endif
+ call negligible_eri(1.0e-15_dp)
 
 
  !
