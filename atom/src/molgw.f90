@@ -490,10 +490,10 @@ program molgw
      call start_clock(timing_mp2_self)
      call mp2_selfenergy(calc_type%method,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix,en%mp2)
      call stop_clock(timing_mp2_self)
-     write(*,'(a,2x,f12.6)') ' MP2 Energy       [Ha]:',en%mp2
+     write(*,'(a,2x,f14.8)') ' MP2 Energy       [Ha]:',en%mp2
      write(*,*) 
      en%tot = en%tot + en%mp2
-     write(*,'(a,2x,f12.6)') ' MP2 Total Energy [Ha]:',en%tot
+     write(*,'(a,2x,f14.8)') ' MP2 Total Energy [Ha]:',en%tot
 
      matrix = alpha_mixing * matrix + (1.0_dp-alpha_mixing) * self_energy_old
      self_energy_old = matrix
@@ -709,7 +709,7 @@ program molgw
  if(calc_type%is_ci) then
    if(nspin/=1) stop'for CI, nspin should be 1'
    if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) stop'CI is implemented for 2 electrons only'
-   call full_ci_2electrons_spin(0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix)
+   call full_ci_2electrons_spin(0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
  endif
   
  !

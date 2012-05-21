@@ -123,9 +123,9 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
  do idft_xc=1,ndft_xc
    if( dft_xc_type(idft_xc) < 1000 ) then
      if(nspin==1) then
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_UNPOLARIZED)
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), INT(dft_xc_type(idft_xc),4), XC_UNPOLARIZED)
      else
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_POLARIZED)
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), INT(dft_xc_type(idft_xc),4), XC_POLARIZED)
      endif
    else if(dft_xc_type(idft_xc) < 2000) then
      write(*,*) 'Home-made functional LDA functional'

@@ -127,13 +127,13 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
 end subroutine mp2_energy
 
 !==================================================================
-subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix)
+subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix,nuc_nuc)
  use m_definitions
  use m_tools
  use m_basis_set
  use m_eri
 ! use wavefunction_object
-! use basis_object
+! use basis
  implicit none
 !
  integer,parameter :: cip=dp
@@ -141,7 +141,8 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix)
 !
  integer,intent(in)         :: spinstate
  type(basis_set),intent(in) :: basis
- real(dp),intent(in) :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,basis%nbf)
+ real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,basis%nbf)
+ real(dp),intent(in)        :: nuc_nuc
 !=====
  real(dp) :: h_1e_hf(basis%nbf,basis%nbf)
  integer :: nconf,iconf,jconf,kconf
@@ -161,7 +162,6 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix)
 #else
  real(dp) :: eri_hf_i(basis%nbf,basis%nbf,basis%nbf,1)
 #endif
-!
  integer,parameter :: ny=nx,nz=nx
  integer :: iy,iz
  real(dp) :: xxx(nx),y(ny),z(nz)
@@ -202,6 +202,9 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix)
  write(*,*) 'CI matrix lower than',nconf,' x ',nconf
  allocate(hamiltonian(nconf,nconf))
  hamiltonian(:,:) = 0.0_dp
+ do iconf=1,nconf
+   hamiltonian(iconf,iconf) = nuc_nuc
+ enddo
 
  iconf=0
  do istate1=1,basis%nbf
@@ -239,149 +242,22 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix)
 
 !         write(*,'(10(i4,x))') jconf,jstate1,jspin1,jstate2,jspin2
 
-
-                 if( jspin1==ispin1 .AND. jspin2==ispin2 ) then
-                   if(istate1==jstate1) then
-                     if(istate2==jstate2) then
-                       hamiltonian(iconf,jconf) = h_1e_hf(istate1,jstate1)  + h_1e_hf(istate2,jstate2) 
-                     else
-                       hamiltonian(iconf,jconf) = h_1e_hf(istate2,jstate2) 
-                     endif
-                   else
-                     if(istate2==jstate2) then
-                       hamiltonian(iconf,jconf) = h_1e_hf(istate1,jstate1) 
-                     endif
-                   endif
-                 endif
-                 if( jspin1==ispin2 .AND. jspin2==ispin1 ) then
-                   if(istate1==jstate2) then
-                     if(istate2==jstate1) then
-                       hamiltonian(iconf,jconf) = h_1e_hf(istate1,jstate2)  + h_1e_hf(istate2,jstate1) 
-                     else
-                       hamiltonian(iconf,jconf) = h_1e_hf(istate2,jstate1) 
-                     endif
-                   else
-                     if(istate2==jstate1) then
-                       hamiltonian(iconf,jconf) = h_1e_hf(istate1,jstate2) 
-                     endif
-                   endif
-                 endif
+                 if( istate2==jstate2 .AND. ispin2==jspin2 .AND. ispin1==jspin1 ) hamiltonian(iconf,jconf) = hamiltonian(iconf,jconf) + h_1e_hf(istate1,jstate1)
+                 if( istate1==jstate1 .AND. ispin1==jspin1 .AND. ispin2==jspin2 ) hamiltonian(iconf,jconf) = hamiltonian(iconf,jconf) + h_1e_hf(istate2,jstate2)
+                 if( istate2==jstate1 .AND. ispin2==jspin1 .AND. ispin1==jspin2 ) hamiltonian(iconf,jconf) = hamiltonian(iconf,jconf) - h_1e_hf(istate1,jstate2)
+                 if( istate1==jstate2 .AND. ispin1==jspin2 .AND. ispin2==jspin1 ) hamiltonian(iconf,jconf) = hamiltonian(iconf,jconf) - h_1e_hf(istate2,jstate1)
 
 
                  !
                  ! Painful implementation of the determinant rules as shown in
                  ! p. 70 of "Modern Quantum Chemistry" by A. Szabo and N. S. Ostlung
 
-#ifndef LOW_MEMORY2
-                 if( istate1==jstate1 .AND. ispin1==jspin1 .AND.  istate2==jstate2 .AND. ispin2==jspin2 ) then
-
-                   hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf(istate1,jstate1,istate2,jstate2)
-                   if(ispin1==ispin2) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) - eri_hf(istate1,jstate2,istate2,jstate1)
-                   endif
-
-                 else if ( istate1==jstate1 .AND. ispin1==jspin1 ) then
-
-                   if(ispin2==jspin2) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf(istate2,jstate2,istate1,jstate1)
-                   endif
-                   if(ispin2==jspin1 .AND. jspin2==ispin1 ) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf(istate2,jstate1,istate1,jstate2)
-                   endif
-
-                 else if ( istate2==jstate2 .AND. ispin2==jspin2 ) then
-
-                   if(ispin1==jspin1) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf(istate1,jstate1,istate2,jstate2)
-                   endif
-                   if(ispin1==jspin2 .AND. jspin1==ispin2 ) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf(istate1,jstate2,istate2,jstate1)
-                   endif
-
-                 else if ( istate2==jstate1 .AND. ispin2==jspin1 ) then   ! some assymetry due to here
-
-                   if(ispin1==jspin2) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf(istate1,jstate2,istate2,jstate1)
-                   endif
-                   if(ispin1==jspin1 .AND. jspin2==ispin2 ) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf(istate1,jstate1,istate2,jstate2)
-                   endif
-
-                 else if ( istate1==jstate2 .AND. ispin1==jspin2 ) then  !  corrected here 
-
-                   if(ispin2==jspin1) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf(istate2,jstate1,istate1,jstate2)
-                   endif
-                   if(ispin2==jspin2 .AND. jspin1==ispin1 ) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf(istate2,jstate2,istate1,jstate1)
-                   endif
-
-                 else ! both states are different
-
-                   if( ispin1==jspin1 .AND. ispin2==jspin2 ) then
-                      hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf(istate1,jstate1,istate2,jstate2)
-                   endif
-                   if( ispin1==jspin2 .AND. ispin2==jspin1 ) then
-                      hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) - eri_hf(istate1,jstate2,istate2,jstate1)
-                   endif
-
-                 endif
-
+#ifdef LOW_MEMORY2
+                 if( ispin1==jspin1 .AND. ispin2==jspin2 ) hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf_i(jstate1,istate2,jstate2,1)
+                 if( ispin1==jspin2 .AND. ispin2==jspin1 ) hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) - eri_hf_i(jstate2,istate2,jstate1,1)
 #else
-
-                 if( istate1==jstate1 .AND. ispin1==jspin1 .AND.  istate2==jstate2 .AND. ispin2==jspin2 ) then
-
-                   hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf_i(jstate1,istate2,jstate2,1)
-                   if(ispin1==ispin2) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) - eri_hf_i(jstate2,istate2,jstate1,1)
-                   endif
-
-                 else if ( istate1==jstate1 .AND. ispin1==jspin1 ) then
-
-                   if(ispin2==jspin2) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf_i(jstate1,istate2,jstate2,1)
-                   endif
-                   if(ispin2==jspin1 .AND. jspin2==ispin1 ) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf_i(jstate2,istate2,jstate1,1)
-                   endif
-
-                 else if ( istate2==jstate2 .AND. ispin2==jspin2 ) then
-
-                   if(ispin1==jspin1) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf_i(jstate1,istate2,jstate2,1)
-                   endif
-                   if(ispin1==jspin2 .AND. jspin1==ispin2 ) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf_i(jstate2,istate2,jstate1,1)
-                   endif
-
-                 else if ( istate2==jstate1 .AND. ispin2==jspin1 ) then   ! some assymetry due to here
-
-                   if(ispin1==jspin2) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf_i(jstate2,istate2,jstate1,1)
-                   endif
-                   if(ispin1==jspin1 .AND. jspin2==ispin2 ) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf_i(jstate1,istate2,jstate2,1)
-                   endif
-
-                 else if ( istate1==jstate2 .AND. ispin1==jspin2 ) then  !  corrected here 
-
-                   if(ispin2==jspin1) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf_i(jstate2,istate2,jstate1,1)
-                   endif
-                   if(ispin2==jspin2 .AND. jspin1==ispin1 ) then
-                     hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf_i(jstate1,istate2,jstate2,1)
-                   endif
-
-                 else ! both states are different
-
-                   if( ispin1==jspin1 .AND. ispin2==jspin2 ) then
-                      hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf_i(jstate1,istate2,jstate2,1)
-                   endif
-                   if( ispin1==jspin2 .AND. ispin2==jspin1 ) then
-                      hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) - eri_hf_i(jstate2,istate2,jstate1,1)
-                   endif
-
-                 endif
+                 if( ispin1==jspin1 .AND. ispin2==jspin2 ) hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf(istate1,jstate1,istate2,jstate2)
+                 if( ispin1==jspin2 .AND. ispin2==jspin1 ) hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) - eri_hf(istate1,jstate2,istate2,jstate1)
 #endif
 
 
@@ -406,6 +282,7 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix)
 ! do istate=1,basis%nbf
 !   write(*,'(i4,2x,20(x,f12.6))') iconf,h_1e_hf(istate,1:basis%nbf)
 ! enddo
+!#ifndef LOW_MEMORY2
 ! write(*,*) '=========== J_ij ============== '
 ! do istate=1,basis%nbf
 !   write(*,'(i4,2x,20(x,f12.6))') iconf,(eri_hf(istate,istate,jstate,jstate),jstate=1,basis%nbf)
@@ -414,6 +291,7 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix)
 ! do istate=1,basis%nbf
 !   write(*,'(i4,2x,20(x,f12.6))') iconf,(eri_hf(istate,jstate,jstate,istate),jstate=1,basis%nbf)
 ! enddo
+!#endif
 ! write(*,*) '=========== full H ============== '
 ! do iconf=1,nconf
 !   write(*,'(i4,2x,20(x,f12.6))') iconf,hamiltonian(iconf,1:nconf)
@@ -484,8 +362,8 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix)
  write(*,*) 'normalization',SUM(eigenvector(:,1)**2)
  write(*,'(i4,2x,20(x,f7.4))') 1,eigenvector(1:min(20,nconf),1)
  write(*,*)
- write(*,'(a30,2x,f12.6)') 'CI ground-state energy [Ha]:',energy(1)
- write(*,'(a30,2x,f12.6)') 'correlation energy [Ha]:',energy(1)-hamiltonian(1,1)
+ write(*,'(a30,2x,f14.8)') 'CI ground-state energy [Ha]:',energy(1)
+ write(*,'(a30,2x,f14.8)') 'correlation energy [Ha]:',energy(1)-hamiltonian(1,1)
  write(*,*)
   
   ! deallocate(hamiltonian)
@@ -568,17 +446,6 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix)
                      !
                      ! HARTREE-FOCK PART
                      if( iconf==kconf .AND. jconf==kconf ) then
-                       if(ix==1) then
-                         write(*,*) '******************'
-                         write(*,*) istate1,ispin1,istate2,ispin2
-                         write(*,*) jstate1,jspin1,jstate2,jspin2
-                         write(*,*)
-                         write(*,*) istate2==jstate2 .AND. ispin2==jspin2 .AND. ispin1==jspin1 
-                         write(*,*) istate1==jstate1 .AND. ispin1==jspin1 .AND. ispin2==jspin2 
-                         write(*,*) istate2==jstate1 .AND. ispin2==jspin1 .AND. ispin1==jspin2 
-                         write(*,*) istate1==jstate2 .AND. ispin1==jspin2 .AND. ispin2==jspin1
-                         write(*,*)
-                       endif
                        if( istate2==jstate2 .AND. ispin2==jspin2 .AND. ispin1==jspin1 ) then
                          rhor_hf(ix) = rhor_hf(ix)  &
                           + eval_wfn(istate1) * eval_wfn(jstate1) 

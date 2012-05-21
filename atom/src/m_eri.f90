@@ -42,6 +42,10 @@ subroutine allocate_eri(nbf)
  nsize   = nsize1**2
 #endif
 
+ write(*,*) 'number of integrals to be stored:',nsize
+ write(*,*) 'max index size',HUGE(nsize)
+ if(nsize<1) stop'too many integrals to be stored'
+
  allocate(eri_buffer(nsize),stat=info)
  if(REAL(nsize,dp)*prec_eri > 1024**3 ) then
    write(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb]'
@@ -559,6 +563,7 @@ subroutine calculate_eri_faster(basis,rcut)
  real(dp),allocatable         :: int_tmp(:,:,:,:)
  real(dp)                     :: zeta_12,zeta_34,rho,rho1,f0t(0:0),tt
  real(dp)                     :: p(3),q(3)
+ integer                      :: am1f,am2f,am3f,am4f
 !=====
  type shell_type
    integer  :: am
@@ -732,10 +737,14 @@ subroutine calculate_eri_faster(basis,rcut)
          nk = number_basis_function_am( amk )
          nl = number_basis_function_am( aml )
 
-         n1 = number_basis_function_am( am1 )
-         n2 = number_basis_function_am( am2 )
-         n3 = number_basis_function_am( am3 )
-         n4 = number_basis_function_am( am4 )
+         am1f=am1
+         am2f=am2
+         am3f=am3
+         am4f=am4
+         n1 = number_basis_function_am( am1f )
+         n2 = number_basis_function_am( am2f )
+         n3 = number_basis_function_am( am3f )
+         n4 = number_basis_function_am( am4f )
          
          nint_shell = n1 * n2 * n3 *n4
          if( allocated(int_shell) ) deallocate( int_shell )
@@ -959,10 +968,10 @@ subroutine calculate_eri_faster(basis,rcut)
          else    ! *******        long-range      ******* !
 
 
-!!!!!           !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iindex_in_the_shell,jindex_in_the_shell,kindex_in_the_shell,lindex_in_the_shell,&
-!!!!!           !$OMP&     ig,jg,kg,lg,ibf,jbf,kbf,lbf,index_integral,index_tmp )
-!!!!!           
-!!!!!           !$OMP DO SCHEDULE(STATIC)
+!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iindex_in_the_shell,jindex_in_the_shell,kindex_in_the_shell,lindex_in_the_shell,&
+!$OMP&     ig,jg,kg,lg,ibf,jbf,kbf,lbf,index_integral,index_tmp )
+
+!$OMP DO SCHEDULE(STATIC)
            do lmember=1,shell(lshell)%nmember
              lbf = shell(lshell)%index_bf(lmember)
              lg  = shell(lshell)%index_g (lmember)
@@ -1003,8 +1012,8 @@ subroutine calculate_eri_faster(basis,rcut)
                enddo
              enddo
            enddo
-!!!!          !$OMP END DO
-!!!!          !$OMP END PARALLEL
+!$OMP END DO
+!$OMP END PARALLEL
 
          endif      ! if full-range or long-range
 

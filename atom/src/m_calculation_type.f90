@@ -14,9 +14,9 @@ module m_calculation_type
  real(dp)          :: alpha_hybrid = 1.0_dp
  real(dp)          :: rcut         = 0.0_dp
 
- integer           :: ndft_xc      = 0
- integer,pointer   :: dft_xc_type(:)
- real(dp),pointer  :: dft_xc_coef(:)
+ integer                   :: ndft_xc      = 0
+ integer,pointer           :: dft_xc_type(:)
+ real(dp),pointer          :: dft_xc_coef(:)
 
  type calculation_type
    integer :: type
@@ -129,7 +129,7 @@ subroutine init_dft_type(key,calc_type)
  case('HSE08')
    ndft_xc=3
  case('TEST')
-   ndft_xc=1
+   ndft_xc=2
  case default
    write(*,*) 'error reading calculation type'
    write(*,*) TRIM(key)
@@ -211,17 +211,19 @@ subroutine init_dft_type(key,calc_type)
    calc_type%is_screened_hybrid  = .TRUE.
    calc_type%need_exchange       = .TRUE.  
    dft_xc_type(1) = XC_GGA_X_wPBEh
-   dft_xc_type(2) = 2001
+   dft_xc_type(2) = 2001  ! XC_GGA_X_HJS_PBE   ! 2001
    dft_xc_type(3) = XC_GGA_C_PBE
    dft_xc_coef(2) = -0.25_dp
-   alpha_hybrid = 0.25_dp
-   rcut         = 1.0_dp / 0.11_dp
+   alpha_hybrid   = 0.25_dp
+   rcut           = 1.0_dp / 0.11_dp
  case('TEST')
-   calc_type%is_screened_hybrid  = .TRUE.
+   calc_type%is_screened_hybrid  = .FALSE.
    calc_type%need_exchange       = .TRUE.
-   dft_xc_type(1) = 2001 ! XC_GGA_X_wPBEh ! 2001
-   alpha_hybrid = 1. ! 0.25_dp
-   rcut         =  1.0_dp / 0.11_dp
+   alpha_hybrid   = 3.00_dp
+   dft_xc_type(1) = XC_GGA_X_PBE
+   dft_xc_type(2) = XC_GGA_C_PBE
+   dft_xc_coef(1) =  1.00_dp - alpha_hybrid
+   dft_xc_coef(2) =  1.00_dp
 #endif
  case default
    stop'error reading calculation type part 1'
