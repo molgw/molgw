@@ -1,0 +1,575 @@
+ 
+ Welcome to the fascinating world of MOLGW
+ 
+ 
+
+ WARNING: OPENMP option is activated with threads number     8
+
+ WARNING: LOW_MEMORY version 2 option is swichted on
+
+ WARNING: calculation name: LDA+CI
+
+ Summary of the input parameters 
+
+  calculation type:   LDA+CI
+             Natom:   2
+         Electrons:   2.0000
+            Charge:   0.0000
+     Magnetization:   0.0000
+         Basis set:   6-31Gss                                                                                             
+ Spin polarization:   1
+         SCF steps:  50
+            Mixing:   0.7000
+ 
+ ================================
+       atom list
+                        bohr                                        angstrom
+  H     -0.700000     0.000000     0.000000          -0.370424     0.000000     0.000000
+  H      0.700000     0.000000     0.000000           0.370424     0.000000     0.000000
+ ================================
+ 
+ 
+ Element used for Z value:    H
+ Element used for the basis:  H
+ Basis type: 6-31Gss
+
+ WARNING: basis file used: H_6-31Gss
+ 
+ open the basis set file H_6-31Gss
+ 
+ Element used for Z value:    H
+ Element used for the basis:  H
+ Basis type: 6-31Gss
+
+ WARNING: basis file used: H_6-31Gss
+ 
+ open the basis set file H_6-31Gss
+ 
+ Total number of basis functions          10
+ 
+ Basis set is ready and fit
+
+ Symmetrized ERI stored
+ number of integrals to be stored:        1540
+ max index size  2147483647
+ Allocating the ERI array:      0.012 [Mb]
+ success
+
+ Calculate and store all the Electron Repulsion Integrals (ERI)
+ number of shells          10
+ Done!
+ 
+  number of negligible integrals <  1.000000000000000E-015
+        1028  /         1540   66.7532467532468       [%]
+
+ === occupations ===
+   1      2.00000
+   2      0.00000
+   3      0.00000
+   4      0.00000
+   5      0.00000
+   6      0.00000
+   7      0.00000
+   8      0.00000
+   9      0.00000
+  10      0.00000
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    1
+
+ 
+ HOMO energy    [Ha]:       0.000000
+ LUMO energy    [Ha]:       0.000000
+ HOMO-LUMO gap  [Ha]:       0.000000
+ 
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    3040
+
+ LIBXC info
+   XC functional    1 :       1     Slater exchange
+
+ LIBXC info
+   XC functional    2 :      12     Perdew & Wang
+ 
+ number of electrons:      2.001231
+  DFT xc energy [Ha]:     -1.034921
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.20798     -5.65934
+   2      0.26221      7.13520
+   3      0.70373     19.14946
+   4      1.32231     35.98194
+   5      1.79834     48.93539
+   6      1.79834     48.93539
+   7      2.58470     70.33333
+   8      2.82536     76.88202
+   9      2.82536     76.88202
+  10      4.39649    119.63466
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     2.7913566421
+    Nucleus Energy  [Ha]:    -4.7112248597
+    Hartree Energy  [Ha]:     2.1531323454
+    XC Energy       [Ha]:    -1.0349206464
+ 
+    Total Energy    [Ha]:    -0.0873708043
+ 
+ convergence criterium on the density matrix   2.26452348319487     
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    2
+
+ 
+ HOMO energy    [Ha]:      -0.207977
+ LUMO energy    [Ha]:       0.262214
+ HOMO-LUMO gap  [Ha]:       0.470191
+ 
+ A simple mixing of the density matrix is used
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    3040
+
+ LIBXC info
+   XC functional    1 :       1     Slater exchange
+
+ LIBXC info
+   XC functional    2 :      12     Perdew & Wang
+ 
+ number of electrons:      2.000159
+  DFT xc energy [Ha]:     -0.680800
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.36273     -9.87030
+   2      0.09037      2.45923
+   3      0.56322     15.32604
+   4      1.01731     27.68243
+   5      1.62353     44.17853
+   6      1.62353     44.17853
+   7      2.33133     63.43866
+   8      2.56496     69.79607
+   9      2.56496     69.79607
+  10      4.11424    111.95429
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.5580126812
+    Nucleus Energy  [Ha]:    -3.7687298690
+    Hartree Energy  [Ha]:     1.3330085772
+    XC Energy       [Ha]:    -0.6808000290
+ 
+    Total Energy    [Ha]:    -0.8442229253
+ 
+ convergence criterium on the density matrix  0.789121300862744     
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    3
+
+ 
+ HOMO energy    [Ha]:      -0.362727
+ LUMO energy    [Ha]:       0.090375
+ HOMO-LUMO gap  [Ha]:       0.453101
+ 
+ A simple mixing of the density matrix is used
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    3040
+
+ LIBXC info
+   XC functional    1 :       1     Slater exchange
+
+ LIBXC info
+   XC functional    2 :      12     Perdew & Wang
+ 
+ number of electrons:      2.000070
+  DFT xc energy [Ha]:     -0.660226
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.37238    -10.13306
+   2      0.07899      2.14946
+   3      0.55395     15.07389
+   4      1.00560     27.36391
+   5      1.61443     43.93079
+   6      1.61443     43.93079
+   7      2.31983     63.12574
+   8      2.55590     69.54974
+   9      2.55590     69.54974
+  10      4.10303    111.64904
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.2411586406
+    Nucleus Energy  [Ha]:    -3.6505726832
+    Hartree Energy  [Ha]:     1.3072358783
+    XC Energy       [Ha]:    -0.6602255371
+ 
+    Total Energy    [Ha]:    -1.0481179871
+ 
+ convergence criterium on the density matrix  0.239260199283680     
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    4
+
+ 
+ HOMO energy    [Ha]:      -0.372383
+ LUMO energy    [Ha]:       0.078991
+ HOMO-LUMO gap  [Ha]:       0.451374
+ 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      1.434300     -0.434596      0.000295
+ DIIS predicted residual  1.171508168085107E-002
+ 
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    3040
+
+ LIBXC info
+   XC functional    1 :       1     Slater exchange
+
+ LIBXC info
+   XC functional    2 :      12     Perdew & Wang
+ 
+ number of electrons:      2.000046
+  DFT xc energy [Ha]:     -0.655044
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.37465    -10.19470
+   2      0.07695      2.09384
+   3      0.55233     15.02956
+   4      1.00337     27.30317
+   5      1.61202     43.86536
+   6      1.61202     43.86536
+   7      2.31682     63.04402
+   8      2.55347     69.48341
+   9      2.55347     69.48341
+  10      4.10027    111.57400
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.1093828548
+    Nucleus Energy  [Ha]:    -3.6054991477
+    Hartree Energy  [Ha]:     1.3010726691
+    XC Energy       [Ha]:    -0.6550443974
+ 
+    Total Energy    [Ha]:    -1.1358023069
+ 
+ convergence criterium on the density matrix  3.059780248597626E-003
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    5
+
+ 
+ HOMO energy    [Ha]:      -0.374648
+ LUMO energy    [Ha]:       0.076947
+ HOMO-LUMO gap  [Ha]:       0.451595
+ 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      1.257323     -0.368209      0.110118      0.000768
+ DIIS predicted residual  1.073020212278144E-003
+ 
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    3040
+
+ LIBXC info
+   XC functional    1 :       1     Slater exchange
+
+ LIBXC info
+   XC functional    2 :      12     Perdew & Wang
+ 
+ number of electrons:      2.000051
+  DFT xc energy [Ha]:     -0.655451
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.37430    -10.18520
+   2      0.07714      2.09904
+   3      0.55261     15.03733
+   4      1.00369     27.31190
+   5      1.61240     43.87565
+   6      1.61240     43.87565
+   7      2.31720     63.05429
+   8      2.55380     69.49254
+   9      2.55380     69.49254
+  10      4.10065    111.58435
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.1114862423
+    Nucleus Energy  [Ha]:    -3.6076492685
+    Hartree Energy  [Ha]:     1.3018991575
+    XC Energy       [Ha]:    -0.6554513539
+ 
+    Total Energy    [Ha]:    -1.1354295083
+ 
+ convergence criterium on the density matrix  1.022817052338508E-003
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    6
+
+ 
+ HOMO energy    [Ha]:      -0.374299
+ LUMO energy    [Ha]:       0.077138
+ HOMO-LUMO gap  [Ha]:       0.451437
+ 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      1.145547     -0.171947      0.039169     -0.012879      0.000110
+ DIIS predicted residual  5.558406846798289E-004
+ 
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    3040
+
+ LIBXC info
+   XC functional    1 :       1     Slater exchange
+
+ LIBXC info
+   XC functional    2 :      12     Perdew & Wang
+ 
+ number of electrons:      2.000050
+  DFT xc energy [Ha]:     -0.655404
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.37434    -10.18634
+   2      0.07712      2.09849
+   3      0.55258     15.03644
+   4      1.00366     27.31089
+   5      1.61235     43.87440
+   6      1.61235     43.87440
+   7      2.31716     63.05304
+   8      2.55376     69.49144
+   9      2.55376     69.49144
+  10      4.10060    111.58309
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.1111731508
+    Nucleus Energy  [Ha]:    -3.6073923634
+    Hartree Energy  [Ha]:     1.3018004223
+    XC Energy       [Ha]:    -0.6554035886
+ 
+    Total Energy    [Ha]:    -1.1355366647
+ 
+ convergence criterium on the density matrix  8.191147234141491E-005
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    7
+
+ 
+ HOMO energy    [Ha]:      -0.374341
+ LUMO energy    [Ha]:       0.077118
+ HOMO-LUMO gap  [Ha]:       0.451459
+ 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      1.008084     -0.033489      0.035356     -0.014398      0.004447      0.000000
+ DIIS predicted residual  1.268387017040604E-005
+ 
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    3040
+
+ LIBXC info
+   XC functional    1 :       1     Slater exchange
+
+ LIBXC info
+   XC functional    2 :      12     Perdew & Wang
+ 
+ number of electrons:      2.000050
+  DFT xc energy [Ha]:     -0.655406
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.37434    -10.18630
+   2      0.07712      2.09851
+   3      0.55258     15.03647
+   4      1.00366     27.31092
+   5      1.61236     43.87444
+   6      1.61236     43.87444
+   7      2.31716     63.05308
+   8      2.55376     69.49147
+   9      2.55376     69.49147
+  10      4.10060    111.58314
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.1112128722
+    Nucleus Energy  [Ha]:    -3.6074101113
+    Hartree Energy  [Ha]:     1.3018038931
+    XC Energy       [Ha]:    -0.6554058210
+ 
+    Total Energy    [Ha]:    -1.1355134527
+ 
+ convergence criterium on the density matrix  5.214049207874068E-005
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    8
+
+ 
+ HOMO energy    [Ha]:      -0.374340
+ LUMO energy    [Ha]:       0.077119
+ HOMO-LUMO gap  [Ha]:       0.451459
+ 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      1.014558      0.043450     -0.057151     -0.001046      0.000245     -0.000056
+ DIIS predicted residual  1.095093324529978E-006
+ 
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    3040
+
+ LIBXC info
+   XC functional    1 :       1     Slater exchange
+
+ LIBXC info
+   XC functional    2 :      12     Perdew & Wang
+ 
+ number of electrons:      2.000050
+  DFT xc energy [Ha]:     -0.655404
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.37434    -10.18636
+   2      0.07712      2.09849
+   3      0.55258     15.03642
+   4      1.00366     27.31087
+   5      1.61235     43.87439
+   6      1.61235     43.87439
+   7      2.31716     63.05303
+   8      2.55376     69.49142
+   9      2.55376     69.49142
+  10      4.10060    111.58308
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.1112045060
+    Nucleus Energy  [Ha]:    -3.6073997620
+    Hartree Energy  [Ha]:     1.3017992950
+    XC Energy       [Ha]:    -0.6554036866
+ 
+    Total Energy    [Ha]:    -1.1355139333
+ 
+ convergence criterium on the density matrix  5.862491770623579E-007
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    9
+
+ 
+ HOMO energy    [Ha]:      -0.374342
+ LUMO energy    [Ha]:       0.077118
+ HOMO-LUMO gap  [Ha]:       0.451460
+ 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      1.397998     -0.397168     -0.024071      0.022909      0.000357     -0.000025
+ DIIS predicted residual  1.977574358857234E-008
+ 
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    3040
+
+ LIBXC info
+   XC functional    1 :       1     Slater exchange
+
+ LIBXC info
+   XC functional    2 :      12     Perdew & Wang
+ 
+ number of electrons:      2.000050
+  DFT xc energy [Ha]:     -0.655404
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.37434    -10.18636
+   2      0.07712      2.09849
+   3      0.55258     15.03643
+   4      1.00366     27.31087
+   5      1.61235     43.87439
+   6      1.61235     43.87439
+   7      2.31716     63.05303
+   8      2.55376     69.49142
+   9      2.55376     69.49142
+  10      4.10060    111.58308
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.1112044909
+    Nucleus Energy  [Ha]:    -3.6073997847
+    Hartree Energy  [Ha]:     1.3017993504
+    XC Energy       [Ha]:    -0.6554037028
+ 
+    Total Energy    [Ha]:    -1.1355139318
+ 
+ convergence criterium on the density matrix  6.838219905638072E-009
+  ===> convergence has been reached
+ 
+ ==================================================
+ The SCF loop ends here
+ ==================================================
+ 
+ 
+ Enter full CI subroutine
+ 
+ obtain the one-electron Hamiltonian in the HF basis
+ calculate spin singlet state
+ 
+ CI matrix lower than         190  x          190
+ 
+ CI matrix finally is         190  x          190
+ Single determinant ground state energy [Ha]  -1.13100990514612     
+ starting the diago
+ diago DONE
+ 
+ normalization   1.00000000000000     
+   1    0.9922  0.0000  0.0000  0.0000  0.0150  0.0000  0.0000  0.0000  0.0000  0.0000  0.0000  0.0000 -0.0021  0.0000  0.0000  0.0000  0.0000  0.0000  0.0000  0.0000
+ 
+  CI ground-state energy [Ha]:     -1.16515344
+      correlation energy [Ha]:     -0.03414353
+ 
+ 
+ calculate the density
+CI calculation stops here

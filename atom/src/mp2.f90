@@ -277,7 +277,7 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix,nuc_nuc)
  write(*,*)
  write(*,*) 'CI matrix finally is',nconf,' x ',nconf
 
- write(*,*) 'Hartree-Fock ground state energy [Ha]',hamiltonian(1,1)
+ write(*,*) 'Single determinant ground state energy [Ha]',hamiltonian(1,1)
 ! write(*,*) '=========== H_1e ============== '
 ! do istate=1,basis%nbf
 !   write(*,'(i4,2x,20(x,f12.6))') iconf,h_1e_hf(istate,1:basis%nbf)
@@ -341,6 +341,7 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix,nuc_nuc)
   
      if(modulo(iline,20)==0) write(*,*) 'diff',iline,eigen,SUM(ABS(test2(:)-test1(:)))/DBLE(nconf)
 !     write(*,*) '==================='
+     if( SUM(ABS(test2(:)-test1(:)))/DBLE(nconf) < 1.e-12_dp ) exit
      test1(:) = test2(:)
   
    enddo

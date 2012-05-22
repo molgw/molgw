@@ -1,0 +1,398 @@
+ 
+ Welcome to the fascinating world of MOLGW
+ 
+ 
+
+ WARNING: OPENMP option is activated with threads number     8
+
+ WARNING: LOW_MEMORY version 2 option is swichted on
+
+ WARNING: calculation name: HF+CI
+
+ Summary of the input parameters 
+
+  calculation type:   HF+CI
+             Natom:   2
+         Electrons:   2.0000
+            Charge:   0.0000
+     Magnetization:   0.0000
+         Basis set:   4-31G                                                                                               
+ Spin polarization:   1
+         SCF steps:  50
+            Mixing:   0.7000
+ 
+ ================================
+       atom list
+                        bohr                                        angstrom
+  H     -0.700000     0.000000     0.000000          -0.370424     0.000000     0.000000
+  H      0.700000     0.000000     0.000000           0.370424     0.000000     0.000000
+ ================================
+ 
+ 
+ Element used for Z value:    H
+ Element used for the basis:  H
+ Basis type: 4-31G
+
+ WARNING: basis file used: H_4-31G
+ 
+ open the basis set file H_4-31G
+ 
+ Element used for Z value:    H
+ Element used for the basis:  H
+ Basis type: 4-31G
+
+ WARNING: basis file used: H_4-31G
+ 
+ open the basis set file H_4-31G
+ 
+ Total number of basis functions           4
+ 
+ Basis set is ready and fit
+
+ Symmetrized ERI stored
+ number of integrals to be stored:          55
+ max index size  2147483647
+ Allocating the ERI array:      0.000 [Mb]
+ success
+
+ Calculate and store all the Electron Repulsion Integrals (ERI)
+ number of shells           8
+ Done!
+ 
+  number of negligible integrals <  1.000000000000000E-015
+           0  /           55  0.000000000000000E+000  [%]
+
+ === occupations ===
+   1      2.00000
+   2      0.00000
+   3      0.00000
+   4      0.00000
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    1
+
+ 
+ HOMO energy    [Ha]:       0.000000
+ LUMO energy    [Ha]:       0.000000
+ HOMO-LUMO gap  [Ha]:       0.000000
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.32343     -8.80106
+   2      0.25509      6.94140
+   3      0.82088     22.33739
+   4      1.46474     39.85753
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     2.7913562186
+    Nucleus Energy  [Ha]:    -4.7112241041
+    Hartree Energy  [Ha]:     2.1531316068
+    Exchange Energy [Ha]:    -1.0765658034
+ 
+    Total Energy    [Ha]:    -0.1290163679
+ 
+ convergence criterium on the density matrix   1.86800497742892     
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    2
+
+ 
+ HOMO energy    [Ha]:      -0.323433
+ LUMO energy    [Ha]:       0.255092
+ HOMO-LUMO gap  [Ha]:       0.578524
+ 
+ A simple mixing of the density matrix is used
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.51051    -13.89162
+   2      0.24828      6.75594
+   3      0.79029     21.50486
+   4      1.42420     38.75443
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.6492296517
+    Nucleus Energy  [Ha]:    -3.9734763001
+    Hartree Energy  [Ha]:     1.4720085233
+    Exchange Energy [Ha]:    -0.6636494225
+ 
+    Total Energy    [Ha]:    -0.8016018333
+ 
+ convergence criterium on the density matrix  0.592284107829101     
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    3
+
+ 
+ HOMO energy    [Ha]:      -0.510507
+ LUMO energy    [Ha]:       0.248276
+ HOMO-LUMO gap  [Ha]:       0.758783
+ 
+ A simple mixing of the density matrix is used
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.56883    -15.47878
+   2      0.24238      6.59544
+   3      0.78044     21.23689
+   4      1.41120     38.40082
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.2909643140
+    Nucleus Energy  [Ha]:    -3.7340056955
+    Hartree Energy  [Ha]:     1.3457993972
+    Exchange Energy [Ha]:    -0.6436422662
+ 
+    Total Energy    [Ha]:    -1.0265985363
+ 
+ convergence criterium on the density matrix  0.190513730948635     
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    4
+
+ 
+ HOMO energy    [Ha]:      -0.568834
+ LUMO energy    [Ha]:       0.242378
+ HOMO-LUMO gap  [Ha]:       0.811212
+ 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      2.511106     -1.842027      0.330921
+ DIIS predicted residual  1.014166855563087E-002
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.59531    -16.19914
+   2      0.23823      6.48252
+   3      0.77514     21.09253
+   4      1.40324     38.18413
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.1257773620
+    Nucleus Energy  [Ha]:    -3.6159413813
+    Hartree Energy  [Ha]:     1.2999646874
+    Exchange Energy [Ha]:    -0.6495509979
+ 
+    Total Energy    [Ha]:    -1.1254646155
+ 
+ convergence criterium on the density matrix  3.220491726459920E-003
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    5
+
+ 
+ HOMO energy    [Ha]:      -0.595307
+ LUMO energy    [Ha]:       0.238228
+ HOMO-LUMO gap  [Ha]:       0.833535
+ 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      1.413683     -1.004170      0.717482     -0.126995
+ DIIS predicted residual  5.132791899099668E-004
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.59562    -16.20756
+   2      0.23822      6.48232
+   3      0.77511     21.09173
+   4      1.40324     38.18405
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.1239950607
+    Nucleus Energy  [Ha]:    -3.6149275927
+    Hartree Energy  [Ha]:     1.2996606503
+    Exchange Energy [Ha]:    -0.6498657091
+ 
+    Total Energy    [Ha]:    -1.1268518765
+ 
+ convergence criterium on the density matrix  7.278905126631480E-004
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    6
+
+ 
+ HOMO energy    [Ha]:      -0.595617
+ LUMO energy    [Ha]:       0.238221
+ HOMO-LUMO gap  [Ha]:       0.833838
+ 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      1.442650     -0.520452      0.185404     -0.131104      0.023502
+ DIIS predicted residual  1.147316999907155E-004
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.59556    -16.20592
+   2      0.23824      6.48297
+   3      0.77513     21.09239
+   4      1.40329     38.18544
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.1244128023
+    Nucleus Energy  [Ha]:    -3.6153263324
+    Hartree Energy  [Ha]:     1.2998127261
+    Exchange Energy [Ha]:    -0.6498971006
+ 
+    Total Energy    [Ha]:    -1.1267121903
+ 
+ convergence criterium on the density matrix  1.278561264690012E-004
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    7
+
+ 
+ HOMO energy    [Ha]:      -0.595556
+ LUMO energy    [Ha]:       0.238245
+ HOMO-LUMO gap  [Ha]:       0.833801
+ 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      1.392213     -0.546935      0.160982     -0.013157      0.008564     -0.001667
+ DIIS predicted residual  6.739283106147886E-006
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.59556    -16.20604
+   2      0.23825      6.48299
+   3      0.77513     21.09242
+   4      1.40329     38.18554
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.1243867556
+    Nucleus Energy  [Ha]:    -3.6153240959
+    Hartree Energy  [Ha]:     1.2998148362
+    Exchange Energy [Ha]:    -0.6499080155
+ 
+    Total Energy    [Ha]:    -1.1267448053
+ 
+ convergence criterium on the density matrix  9.680469825375552E-006
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    8
+
+ 
+ HOMO energy    [Ha]:      -0.595561
+ LUMO energy    [Ha]:       0.238246
+ HOMO-LUMO gap  [Ha]:       0.833806
+ 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      1.675953     -0.927819      0.346917     -0.095648      0.000040      0.000558
+ DIIS predicted residual  1.505840680353999E-007
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.59556    -16.20602
+   2      0.23825      6.48300
+   3      0.77513     21.09243
+   4      1.40329     38.18556
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.1243932017
+    Nucleus Energy  [Ha]:    -3.6153299931
+    Hartree Energy  [Ha]:     1.2998170415
+    Exchange Energy [Ha]:    -0.6499084725
+ 
+    Total Energy    [Ha]:    -1.1267425081
+ 
+ convergence criterium on the density matrix  9.214872241787325E-007
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    9
+
+ 
+ HOMO energy    [Ha]:      -0.595560
+ LUMO energy    [Ha]:       0.238246
+ HOMO-LUMO gap  [Ha]:       0.833806
+ 
+ A Pulay mixing of the density matrix is used
+
+ alpha DIIS:      0.881599      0.119040      0.003396     -0.004742      0.000722     -0.000014
+ DIIS predicted residual  1.358558427793694E-009
+ 
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.59556    -16.20602
+   2      0.23825      6.48300
+   3      0.77513     21.09243
+   4      1.40329     38.18556
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.7142857143
+    Kinetic Energy  [Ha]:     1.1243929784
+    Nucleus Energy  [Ha]:    -3.6153299113
+    Hartree Energy  [Ha]:     1.2998170292
+    Exchange Energy [Ha]:    -0.6499085148
+ 
+    Total Energy    [Ha]:    -1.1267427042
+ 
+ convergence criterium on the density matrix  4.685956174901577E-009
+  ===> convergence has been reached
+ 
+ ==================================================
+ The SCF loop ends here
+ ==================================================
+ 
+ 
+ Enter full CI subroutine
+ 
+ obtain the one-electron Hamiltonian in the HF basis
+ calculate spin singlet state
+ 
+ CI matrix lower than          28  x           28
+ 
+ CI matrix finally is          28  x           28
+ Single determinant ground state energy [Ha]  -1.12674270343551     
+ starting the diago
+ diago DONE
+ 
+ normalization   1.00000000000000     
+   1    0.9928  0.0000  0.0000  0.0000 -0.0057  0.0000  0.0000  0.0000  0.0000  0.0057  0.0000  0.0000  0.0000 -0.0767  0.0000  0.0000  0.0000 -0.0454  0.0000  0.0000
+ 
+  CI ground-state energy [Ha]:     -1.15167903
+      correlation energy [Ha]:     -0.02493633
+ 
+ 
+ calculate the density
+CI calculation stops here
