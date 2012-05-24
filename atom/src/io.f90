@@ -1,4 +1,32 @@
 !=========================================================================
+subroutine header()
+ use m_definitions
+ implicit none
+ integer :: values(8) 
+!=====
+
+ write(*,'(/,/,a,/,/)') ' Welcome to the fascinating world of MOLGW'
+
+ call date_and_time(VALUES=values)
+
+ write(*,'(a,i2.2,a,i2.2,a,i4.4)') ' Today is ',values(3),'/',values(2),'/',values(1)
+ write(*,'(a,i2.2,a,i2.2)')        ' It is now ',values(5),':',values(6)
+ select case(values(5))
+ case(03,04,05,06,07)
+   write(*,*) 'And it is too early to work. Go back to sleep'
+ case(22,23,00,01,02)
+   write(*,*) 'And it is too late to work. Go to bed and have a sleep'
+ case(12,13)
+   write(*,*) 'Go and get some good food'
+ case(17)
+   write(*,*) 'Dont forget to go and get the kids'
+ case default
+   write(*,*) 'And it is perfect time to work'
+ end select
+
+end subroutine header
+
+!=========================================================================
 subroutine dump_out_array(is_energy,title,n,nspin,array)
  use m_definitions
  implicit none

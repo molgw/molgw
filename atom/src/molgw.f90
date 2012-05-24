@@ -78,10 +78,7 @@ program molgw
  type(energy_contributions) :: en
 !=============================
 
- write(*,*)
- write(*,*) 'Welcome to the fascinating world of MOLGW'
- write(*,*)
- write(*,*)
+ call header()
 
  !
  ! Development tests are commented below
