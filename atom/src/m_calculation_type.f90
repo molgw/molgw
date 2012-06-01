@@ -122,11 +122,11 @@ subroutine init_dft_type(key,calc_type)
  if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
 
  select case(TRIM(key))
- case('LDAx','PBEx','PBEhx','Bx','PW91x','BJx','RPPx','B3LYP','PBE0','HSE03','HSE06')
+ case('LDAx','PBEx','PBEhx','Bx','PW91x','BJx','RPPx','B3LYP','PBE0','HSE03','HSE06','HSE08')
    ndft_xc=1
  case('LDA','VWN','VWN_RPA','PBE','PBEh','BLYP','PW91')
    ndft_xc=2
- case('HSE08')
+ case('TESTHSE08')
    ndft_xc=3
  case('TEST')
    ndft_xc=2
@@ -208,6 +208,12 @@ subroutine init_dft_type(key,calc_type)
    alpha_hybrid = 0.25_dp
    rcut         = 1.0_dp / 0.11_dp
  case('HSE08')
+   calc_type%is_screened_hybrid  = .TRUE.
+   calc_type%need_exchange       = .TRUE.
+   dft_xc_type(1) = XC_HYB_GGA_XC_HJS_PBE
+   alpha_hybrid   = 0.25_dp
+   rcut           = 1.0_dp / 0.11_dp
+ case('TESTHSE08')
    calc_type%is_screened_hybrid  = .TRUE.
    calc_type%need_exchange       = .TRUE.  
    dft_xc_type(1) = XC_GGA_X_wPBEh

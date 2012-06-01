@@ -374,6 +374,14 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 
        h_2p(t_ij,t_ij) =  h_2p(t_ij,t_ij) + ( energy(jorbital,ijspin) - energy(iorbital,ijspin) )
 
+#if 0
+       if(iorbital<=2) then
+         h_2p(t_ij,t_ij) =  h_2p(t_ij,t_ij) - 1.0d3
+         msg='skip core state in W'
+         call issue_warning(msg)
+       endif
+#endif
+
        rpa_correlation = rpa_correlation - 0.25_dp * ABS( h_2p(t_ij,t_ij) )
 
 !       write(*,'(4(i4,2x),2(2x,f12.6))') t_ij,iorbital,jorbital,ijspin,( energy(jorbital,ijspin) - energy(iorbital,ijspin) ),h_2p(t_ij,t_ij)
@@ -794,6 +802,14 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
 
  do ispin=1,nspin
    do iorbital=1,basis%nbf !INNER LOOP of G
+
+#if 0
+     if(iorbital<=2) then
+       msg='skip core states in G'
+       call issue_warning(msg)
+       cycle
+     endif
+#endif
 
      bra(:,:)=0.0_dp
      ket(:,:)=0.0_dp

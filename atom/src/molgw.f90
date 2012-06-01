@@ -404,15 +404,28 @@ program molgw
    en%nuc  = SUM(hamiltonian_nucleus(:,:,:)*p_matrix(:,:,:))
 
    !
+   ! Setup kinetic and nucleus contributions (that are independant of the
+   ! density matrix)
+   !
+   hamiltonian(:,:,:)    = hamiltonian_kinetic(:,:,:) + hamiltonian_nucleus(:,:,:) 
+
+   !
+   ! Reset XC part of the Hamiltonian
+   hamiltonian_xc(:,:,:) = 0.0_dp
+
+   !
+   ! for the first step skip everything
+   !
+   if(iscf>1) then
+
+   !
    ! Hartree contribution to the Hamiltonian
    !
    call setup_hartree(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%hart)
 
-   hamiltonian(:,:,:)    = hamiltonian_kinetic(:,:,:) + hamiltonian_nucleus(:,:,:) + matrix(:,:,:)
-   !
-   ! Reset XC part of the Hamiltonian
-   hamiltonian_xc(:,:,:) = 0.0_dp
+   hamiltonian(:,:,:)    = hamiltonian(:,:,:) + matrix(:,:,:)
   
+
    !
    ! Exchange contribution to the Hamiltonian
    if( calc_type%need_exchange ) then
@@ -501,6 +514,9 @@ program molgw
 
    endif
 
+   !
+   ! iscf>1
+   endif
   
    !
    ! Add the XC part of the hamiltonian to the total hamiltonian
