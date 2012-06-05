@@ -416,7 +416,7 @@ program molgw
    !
    ! for the first step skip everything
    !
-   if(iscf>1) then
+   if(iscf>0) then
 
    !
    ! Hartree contribution to the Hamiltonian
