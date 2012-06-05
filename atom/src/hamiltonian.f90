@@ -1,10 +1,10 @@
 !=========================================================================
-subroutine setup_hartree(PRINT_VOLUME,nbf,nspin,p_matrix,pot_hartree,ehartree)
+subroutine setup_hartree(print_volume,nbf,nspin,p_matrix,pot_hartree,ehartree)
  use m_definitions
  use m_timing
  use m_eri
  implicit none
- integer,intent(in)   :: PRINT_VOLUME
+ integer,intent(in)   :: print_volume
  integer,intent(in)   :: nbf,nspin
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: pot_hartree(nbf,nbf,nspin)
@@ -104,7 +104,7 @@ subroutine setup_hartree(PRINT_VOLUME,nbf,nspin,p_matrix,pot_hartree,ehartree)
 #endif
 
  title='=== Hartree contribution ==='
- call dump_out_matrix(PRINT_VOLUME,title,nbf,nspin,pot_hartree)
+ call dump_out_matrix(print_volume,title,nbf,nspin,pot_hartree)
 
  ehartree = 0.5_dp*SUM(pot_hartree(:,:,:)*p_matrix(:,:,:))
 
@@ -113,12 +113,12 @@ subroutine setup_hartree(PRINT_VOLUME,nbf,nspin,p_matrix,pot_hartree,ehartree)
 end subroutine setup_hartree
 
 !=========================================================================
-subroutine setup_exchange(PRINT_VOLUME,nbf,nspin,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange(print_volume,nbf,nspin,p_matrix,pot_exchange,eexchange)
  use m_definitions
  use m_timing
  use m_eri
  implicit none
- integer,intent(in)   :: PRINT_VOLUME
+ integer,intent(in)   :: print_volume
  integer,intent(in)   :: nbf,nspin
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
@@ -155,7 +155,7 @@ subroutine setup_exchange(PRINT_VOLUME,nbf,nspin,p_matrix,pot_exchange,eexchange
  enddo
 
  title='=== Exchange contribution ==='
- call dump_out_matrix(PRINT_VOLUME,title,nbf,nspin,pot_exchange)
+ call dump_out_matrix(print_volume,title,nbf,nspin,pot_exchange)
 
  eexchange = 0.5_dp*SUM(pot_exchange(:,:,:)*p_matrix(:,:,:))
 
@@ -164,12 +164,12 @@ subroutine setup_exchange(PRINT_VOLUME,nbf,nspin,p_matrix,pot_exchange,eexchange
 end subroutine setup_exchange
 
 !=========================================================================
-subroutine setup_exchange_shortrange(PRINT_VOLUME,nbf,nspin,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange_shortrange(print_volume,nbf,nspin,p_matrix,pot_exchange,eexchange)
  use m_definitions
  use m_timing
  use m_eri
  implicit none
- integer,intent(in)   :: PRINT_VOLUME
+ integer,intent(in)   :: print_volume
  integer,intent(in)   :: nbf,nspin
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
@@ -207,7 +207,7 @@ subroutine setup_exchange_shortrange(PRINT_VOLUME,nbf,nspin,p_matrix,pot_exchang
  enddo
 
  title='=== Exchange contribution ==='
- call dump_out_matrix(PRINT_VOLUME,title,nbf,nspin,pot_exchange)
+ call dump_out_matrix(print_volume,title,nbf,nspin,pot_exchange)
 
  eexchange = 0.5_dp*SUM(pot_exchange(:,:,:)*p_matrix(:,:,:))
 

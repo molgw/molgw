@@ -46,9 +46,9 @@ module m_basis_set
 contains
 
 !=========================================================================
- subroutine init_basis_set(PRINT_VOLUME,basis_name,basis)
+ subroutine init_basis_set(print_volume,basis_name,basis)
  implicit none
- integer,intent(in)            :: PRINT_VOLUME
+ integer,intent(in)            :: print_volume
  character(len=100),intent(in) :: basis_name
  type(basis_set),intent(out)   :: basis
 !====
@@ -286,7 +286,7 @@ contains
 
  !
  ! finally output the basis set upon request
- if(PRINT_VOLUME>5) then
+ if(MODULO(print_volume,100)>5) then
    do ibf=1,basis%nbf
      write(*,*) ' basis function number',ibf
      call print_basis_function(basis%bf(ibf))

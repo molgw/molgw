@@ -21,7 +21,7 @@ program molgw
  type(calculation_type)       :: calc_type
  integer                      :: nspin,nscf
  real(dp)                     :: alpha_mixing
- integer                      :: PRINT_VOLUME
+ integer                      :: print_volume
  character(len=100)           :: basis_name
  real(dp)                     :: electrons
  real(dp)                     :: magnetization
@@ -179,7 +179,7 @@ program molgw
 
  !
  ! start build up the basis set
- call init_basis_set(PRINT_VOLUME,basis_name,basis)
+ call init_basis_set(print_volume,basis_name,basis)
  
  !
  ! allocate everything
@@ -222,7 +222,7 @@ program molgw
    endif
  enddo
  title='=== overlap matrix S ==='
- call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,1,s_matrix)
+ call dump_out_matrix(print_volume,title,basis%nbf,1,s_matrix)
 
  !
  ! Set up the electron repulsion integrals
@@ -230,12 +230,12 @@ program molgw
  ! ERI are stored "privately" in the module m_eri
  call start_clock(timing_integrals)
  call allocate_eri(basis%nbf)
- call calculate_eri_faster(basis,0.0_dp)
+ call calculate_eri(print_volume,basis,0.0_dp)
  !
  ! for HSE functionals, calculate the long-range ERI
  if(calc_type%is_screened_hybrid) then
    call allocate_eri_lr(basis%nbf)
-   call calculate_eri_faster(basis,rcut)
+   call calculate_eri(print_volume,basis,rcut)
  endif
  call stop_clock(timing_integrals)
  call negligible_eri(1.0e-15_dp)
@@ -269,7 +269,7 @@ program molgw
    deallocate(eri2)
 
    title='=== Coulomb matrix in product basis ==='
-   call dump_out_matrix(PRINT_VOLUME,title,prod_basis%nbf_filtered,1,v_filtered_basis)
+   call dump_out_matrix(print_volume,title,prod_basis%nbf_filtered,1,v_filtered_basis)
 
    allocate(matrix2(prod_basis%nbf,prod_basis%nbf))
    do klbf=1,prod_basis%nbf
@@ -284,7 +284,7 @@ program molgw
 
    ! Remember that the product basis is unnormalized !
    title='=== product overlap matrix S ==='
-   call dump_out_matrix(PRINT_VOLUME,title,prod_basis%nbf_filtered,1,s_filtered_basis)
+   call dump_out_matrix(print_volume,title,prod_basis%nbf_filtered,1,s_filtered_basis)
 
    !
    ! calculate S^{-1}
@@ -296,7 +296,7 @@ program molgw
    sinv_v_sinv_filtered = matmul( v_filtered_basis , sinv_filtered_basis )
    sinv_v_sinv_filtered = matmul( sinv_filtered_basis , sinv_v_sinv_filtered )
    title='=== S-1 V S-1 ==='
-   call dump_out_matrix(PRINT_VOLUME,title,prod_basis%nbf_filtered,1,sinv_v_sinv_filtered)
+   call dump_out_matrix(print_volume,title,prod_basis%nbf_filtered,1,sinv_v_sinv_filtered)
 
    !
    ! S^-1 V S^-1 is then transposed to the full product basis
@@ -321,7 +321,7 @@ program molgw
    matrix(:,:,ispin) = transpose( c_matrix(:,:,ispin) )
  enddo
  title='=== Initial C matrix ==='
- call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,matrix)
+ call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
 
  !
  ! Setup the density matrix: p_matrix
@@ -346,11 +346,11 @@ program molgw
    call issue_warning(msg)
  endif
  title='=== 1st density matrix P ==='
- call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,p_matrix)
+ call dump_out_matrix(print_volume,title,basis%nbf,nspin,p_matrix)
 ! matrix(:,:,1) = matmul( p_matrix(:,:,1) ,p_matrix(:,:,1) )
 ! matrix(:,:,nspin) = matmul( p_matrix(:,:,nspin) ,p_matrix(:,:,nspin) )
 ! title='=== 1st density matrix P ==='
-! call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,matrix)
+! call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
 
  !
  ! Initialize the SCF mixing procedure
@@ -369,7 +369,7 @@ program molgw
    enddo
  enddo
  title='=== kinetic energy contribution ==='
- call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,hamiltonian_kinetic)
+ call dump_out_matrix(print_volume,title,basis%nbf,nspin,hamiltonian_kinetic)
 
  !
  ! nucleus-electron interaction
@@ -383,7 +383,7 @@ program molgw
    enddo
  enddo
  title='=== nucleus contribution ==='
- call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,hamiltonian_nucleus)
+ call dump_out_matrix(print_volume,title,basis%nbf,nspin,hamiltonian_nucleus)
 
 
  !
@@ -421,7 +421,7 @@ program molgw
    !
    ! Hartree contribution to the Hamiltonian
    !
-   call setup_hartree(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%hart)
+   call setup_hartree(print_volume,basis%nbf,nspin,p_matrix,matrix,en%hart)
 
    hamiltonian(:,:,:)    = hamiltonian(:,:,:) + matrix(:,:,:)
   
@@ -431,9 +431,9 @@ program molgw
    if( calc_type%need_exchange ) then
 
      if(.NOT.calc_type%is_screened_hybrid) then
-       call setup_exchange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
+       call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
      else
-       call setup_exchange_shortrange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
+       call setup_exchange_shortrange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
      endif
 
      en%exx = en%exx * alpha_hybrid
@@ -451,7 +451,7 @@ program molgw
      hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + vxc_matrix(:,:,:)
 
      title='=== DFT XC contribution ==='
-     call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,vxc_matrix)
+     call dump_out_matrix(print_volume,title,basis%nbf,nspin,vxc_matrix)
    endif
 
    !
@@ -481,7 +481,7 @@ program molgw
      matrix = alpha_mixing * matrix + (1.0_dp-alpha_mixing) * self_energy_old
      self_energy_old = matrix
      title='=== Self-energy ==='
-     call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,matrix)
+     call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
      call destroy_spectral_function(wpol)
 
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix(:,:,:)
@@ -508,7 +508,7 @@ program molgw
      matrix = alpha_mixing * matrix + (1.0_dp-alpha_mixing) * self_energy_old
      self_energy_old = matrix
      title='=== Self-energy ==='
-     call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,matrix)
+     call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
   
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix(:,:,:)
 
@@ -523,7 +523,7 @@ program molgw
    hamiltonian(:,:,:) = hamiltonian(:,:,:) + hamiltonian_xc(:,:,:)
    
    title='=== Total Hamiltonian ==='
-   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,hamiltonian)
+   call dump_out_matrix(print_volume,title,basis%nbf,nspin,hamiltonian)
   
    !
    ! Diagonalize the Hamiltonian H
@@ -549,13 +549,13 @@ program molgw
      matrix(:,:,ispin) = transpose( c_matrix(:,:,ispin) )
    enddo
    title='=== C coefficients ==='
-   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,matrix)
+   call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
 !   matrix(:,:,1) = matmul( c_matrix(:,:,1), matmul( s_matrix(:,:), transpose(c_matrix(:,:,1)) ) )
 !   title='=== C S C^T = identity ? ==='
-!   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,1,matrix)
+!   call dump_out_matrix(print_volume,title,basis%nbf,1,matrix)
    matrix(:,:,1) = matmul( transpose(c_matrix(:,:,1)), matmul( s_matrix(:,:), c_matrix(:,:,1) ) )
    title='=== C^T S C = identity ? ==='
-   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,1,matrix)
+   call dump_out_matrix(print_volume,title,basis%nbf,1,matrix)
 
   
    !
@@ -564,7 +564,7 @@ program molgw
    p_matrix_old(:,:,:) = p_matrix(:,:,:)
    call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
    title='=== density matrix P ==='
-   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,p_matrix)
+   call dump_out_matrix(print_volume,title,basis%nbf,nspin,p_matrix)
   
    !
    ! Output the total energy and its components
@@ -599,7 +599,7 @@ program molgw
  write(*,*) '=================================================='
  write(*,*)
 
- if(PRINT_VOLUME>4) call plot_wfn(nspin,basis,c_matrix)
+ if(MODULO(print_volume,100)>4) call plot_wfn(nspin,basis,c_matrix)
 
 #if 0
  write(*,*) '==================== TESTS ==================='
@@ -617,12 +617,12 @@ program molgw
      enddo
    enddo
    title='=== Dipole matrix === in gaussian basis'
-   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,1,matrix(:,:,1))
+   call dump_out_matrix(print_volume,title,basis%nbf,1,matrix(:,:,1))
   
    matrix(:,:,1) = MATMUL( TRANSPOSE( c_matrix(:,:,1) ) , MATMUL( matrix(:,:,1) , c_matrix(:,:,1) ) )
 
    title='=== Dipole matrix === in orbital basis'
-   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,1,matrix(:,:,1))
+   call dump_out_matrix(print_volume,title,basis%nbf,1,matrix(:,:,1))
 
    do jbf=1,basis%nbf
      do ibf=1,basis%nbf
@@ -631,12 +631,12 @@ program molgw
      enddo
    enddo
    title='=== Dipole squared matrix === in gaussian basis'
-   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,1,matrix3(:,:,1))
+   call dump_out_matrix(print_volume,title,basis%nbf,1,matrix3(:,:,1))
   
    matrix3(:,:,1) = MATMUL( TRANSPOSE( c_matrix(:,:,1) ) , MATMUL( matrix3(:,:,1) , c_matrix(:,:,1) ) )
 
    title='=== Dipole squared matrix === in orbital basis'
-   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,1,matrix3(:,:,1))
+   call dump_out_matrix(print_volume,title,basis%nbf,1,matrix3(:,:,1))
    
 
    
@@ -729,7 +729,7 @@ program molgw
  ! in case of DFT + GW
  if( calc_type%need_final_exchange ) then
 
-   call setup_exchange(PRINT_VOLUME,basis%nbf,nspin,p_matrix,matrix,en%exx)
+   call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
    write(*,*) 'EXX [Ha]:',en%exx
 
    exchange_m_vxc_diag(:,:) = 0.0_dp
@@ -765,7 +765,7 @@ program molgw
      call issue_warning(msg)
      call deallocate_eri()
      call allocate_eri(basis%nbf)
-     call calculate_eri_faster(basis,rcut)
+     call calculate_eri(print_volume,basis,rcut)
      if( .NOT. ALLOCATED( vxc_matrix ) ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
      call dft_exc_vxc(nspin,basis,1,(/1000/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
      write(*,'(/,a,f14.8)') '    RPA LDA energy [Ha]: ',energy_tmp
@@ -794,7 +794,7 @@ program molgw
    call stop_clock(timing_self)
 
    title='=== Self-energy === (in the orbital basis)'
-   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,matrix)
+   call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
    call destroy_spectral_function(wpol)
 
    if(allocated(sinv_v_sinv)) deallocate(sinv_v_sinv)
@@ -816,7 +816,7 @@ program molgw
    write(*,'(a,2x,f12.6)') ' MP2 Total Energy [Ha]:',en%tot
 
    title='=== Self-energy === (in the orbital basis)'
-   call dump_out_matrix(PRINT_VOLUME,title,basis%nbf,nspin,matrix)
+   call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
 
  endif
 

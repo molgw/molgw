@@ -1,9 +1,14 @@
 module m_eri
  use m_definitions
+ use m_basis_set
 
  private
- public :: eri,allocate_eri,allocate_eri_eigen,deallocate_eri,calculate_eri_faster,transform_eri_basis_fast,transform_eri_basis_lowmem, &
+ public :: eri,allocate_eri,allocate_eri_eigen,deallocate_eri,calculate_eri,transform_eri_basis_fast,transform_eri_basis_lowmem, &
            eri_lr,allocate_eri_lr,deallocate_eri_lr,negligible_eri
+
+ !
+ ! max length of a record in the ERI file
+ integer,parameter :: line_length=1000
 
  real(prec_eri),allocatable :: eri_buffer(:)
  real(prec_eri),allocatable :: eri_buffer_lr(:)
@@ -227,310 +232,27 @@ function eri_lr(ibf,jbf,kbf,lbf)
 
 end function eri_lr
 
-#if 0
 !=========================================================================
-subroutine calculate_eri(basis,eri)
- use ISO_C_BINDING
- use m_definitions
- use m_timing
- use m_basis_set
+subroutine calculate_eri(print_volume,basis,rcut)
  implicit none
+ integer,intent(in)           :: print_volume
  type(basis_set),intent(in)   :: basis
- real(dp),intent(out)         :: eri(basis%nbf,basis%nbf,basis%nbf,basis%nbf)
-!=====
- integer,parameter            :: NSHELLMAX=400
- integer,parameter            :: NPRIMITIVE_MAX=20
- logical,parameter            :: DEBUG=.TRUE.
- integer                      :: info
- integer                      :: ibf,jbf,kbf,lbf
- integer                      :: ig,jg,kg,lg
- integer                      :: ni,nj,nk,nl
- integer                      :: i_current,i,j,k,l
- integer                      :: nshell,nintegrals
- integer                      :: ishell,jshell,kshell,lshell
- type(basis_function),pointer :: bf_current_i,bf_current_j,bf_current_k,bf_current_l
- type(gaussian),pointer       :: g_current
- integer                      :: nint_gaussian,igaussian
- integer                      :: index_global(basis%nbf,NPRIMITIVE_MAX)  ! no basis set will contain a function made of more than 10 gaussian
- real(dp),allocatable         :: int_gaussian(:,:,:,:)
- logical                      :: shell_already_exists
- integer                      :: ami,amj,amk,aml
- integer                      :: ii,jj,kk,ll
-!=====
- type shell_type
-   integer  :: am
-   real(dp) :: alpha
-   integer  :: index_global(NPRIMITIVE_MAX)=0
- end type shell_type
- type(shell_type)             :: shell(NSHELLMAX)
-!=====
-! variables used to call C++ 
- integer(C_INT),external      :: calculate_integral
- integer(C_INT)               :: am1,am2,am3,am4
- real(C_DOUBLE)               :: alpha1,alpha2,alpha3,alpha4
- real(C_DOUBLE),allocatable   :: integrals(:)
+ real(dp),intent(in)          :: rcut
 !=====
 
- write(*,'(/,a)') ' Calculate all the Electron Repulsion Integrals (ERI) at once'
+ if( .NOT. read_eri(rcut) ) call do_calculate_eri(basis,rcut)
 
- !
- ! libint works with shells of same angular momentum and same alpha
- ! establish now a list of all gaussian shells
-
- nint_gaussian=0
- igaussian=0
- ishell=0
- do ibf=1,basis%nbf
-   bf_current_i => basis%bf(ibf)
-
-   do ig=1,bf_current_i%ngaussian
-     g_current => bf_current_i%g(ig)
-
-     igaussian=igaussian+1
-     !
-     ! check if the shell has already been created
-     shell_already_exists=.FALSE.
-     do jshell=1,ishell
-       if( g_current%am == shell(jshell)%am .AND. ABS( g_current%alpha - shell(jshell)%alpha ) < 1.d-8 ) then
-         !TODO
-         shell(jshell)%index_global(libint_ordering(g_current%nx,g_current%ny,g_current%nz)) = igaussian
-         shell_already_exists=.TRUE.
-         index_global(ibf,ig) = igaussian
-         exit
-       endif
-     enddo
-
-     if(.NOT.shell_already_exists) then
-       ishell=ishell+1
-       if(ishell > NSHELLMAX) stop'NSHELLMAX internal parameter is too small'
-       nint_gaussian = nint_gaussian + number_basis_function_am( g_current%am )
-
-       shell(ishell)%am                                                                    = g_current%am
-       shell(ishell)%alpha                                                                 = g_current%alpha
-       shell(ishell)%index_global(libint_ordering(g_current%nx,g_current%ny,g_current%nz)) = igaussian
-       index_global(ibf,ig)                                                                = igaussian
-
-     endif
-
-   enddo
- enddo
- nshell=ishell
- if(igaussian/=nint_gaussian) then
-   write(*,*) igaussian,nint_gaussian
-   stop'one shell is not complete'
+ if(print_volume>100) then
+   call dump_out_eri(rcut)
  endif
- if(DEBUG) write(*,*) 
- if(DEBUG) write(*,*) 'found nshell=',nshell,nint_gaussian
- if(DEBUG) write(*,*) 'alpha=',shell(1:nshell)%alpha
- if(DEBUG) write(*,*) 'am   =',shell(1:nshell)%am
- if(DEBUG) write(*,*)
-
- allocate(int_gaussian(nint_gaussian,nint_gaussian,nint_gaussian,nint_gaussian))
- 
- ig=0; jg=0; kg=0; lg=0
- 
- do lshell=1,nshell
-   write(*,*) lshell,nshell
-   do kshell=1,nshell
-     do jshell=1,nshell
-       do ishell=1,nshell
-
-         ni = number_basis_function_am(  shell(ishell)%am )
-         nj = number_basis_function_am(  shell(jshell)%am )
-         nk = number_basis_function_am(  shell(kshell)%am )
-         nl = number_basis_function_am(  shell(lshell)%am )
-         
-         nintegrals = ni * nj * nk *nl
-         if( allocated(integrals) ) deallocate( integrals )
-         allocate( integrals( nintegrals ) )
-
-         !
-         ! If all the angular momentum are S type, do the calculation immediately
-         ! else call the libint library
-         !
-         ami = shell(ishell)%am
-         amj = shell(jshell)%am
-         amk = shell(kshell)%am
-         aml = shell(lshell)%am
-         if(ami+amj+amk+aml==0) then
-
-           alpha1 = shell(ishell)%alpha
-           alpha2 = shell(jshell)%alpha
-           alpha3 = shell(kshell)%alpha
-           alpha4 = shell(lshell)%alpha
-           integrals(1) = 2.0_dp*pi**(2.5_dp) &
-&                        / ( (alpha1+alpha2)*(alpha3+alpha4)*SQRT(alpha1+alpha2+alpha3+alpha4) )
-
-           int_gaussian( shell(ishell)%index_global(1),&
-                         shell(jshell)%index_global(1),&
-                         shell(kshell)%index_global(1),&
-                         shell(lshell)%index_global(1) ) = integrals(1)
-
-         else
-           !
-           ! Order the angular momenta so that libint is pleased
-           ! 1) am3+am4 >= am1+am2
-           ! 2) am3>=am4
-           ! 3) am1>=am2
-           if(amk+aml>=ami+amj) then
-             if(amk>=aml) then
-               am3 = shell(kshell)%am
-               am4 = shell(lshell)%am
-               alpha3 = shell(kshell)%alpha
-               alpha4 = shell(lshell)%alpha
-             else
-               cycle  ! SAVE
-!               am3 = shell(lshell)%am
-!               am4 = shell(kshell)%am
-!               alpha3 = shell(lshell)%alpha
-!               alpha4 = shell(kshell)%alpha
-             endif
-             if(ami>=amj) then
-               am1 = shell(ishell)%am
-               am2 = shell(jshell)%am
-               alpha1 = shell(ishell)%alpha
-               alpha2 = shell(jshell)%alpha
-             else
-               cycle  ! SAVE
-!               am1 = shell(jshell)%am
-!               am2 = shell(ishell)%am
-!               alpha1 = shell(jshell)%alpha
-!               alpha2 = shell(ishell)%alpha
-             endif
-           else
-               cycle  ! SAVE
-!             if(amk>=aml) then
-!               am1 = shell(kshell)%am
-!               am2 = shell(lshell)%am
-!               alpha1 = shell(kshell)%alpha
-!               alpha2 = shell(lshell)%alpha
-!             else
-!               am1 = shell(lshell)%am
-!               am2 = shell(kshell)%am
-!               alpha1 = shell(lshell)%alpha
-!               alpha2 = shell(kshell)%alpha
-!             endif
-!             if(ami>=amj) then
-!               am3 = shell(ishell)%am
-!               am4 = shell(jshell)%am
-!               alpha3 = shell(ishell)%alpha
-!               alpha4 = shell(jshell)%alpha
-!             else
-!               am3 = shell(jshell)%am
-!               am4 = shell(ishell)%am
-!               alpha3 = shell(jshell)%alpha
-!               alpha4 = shell(ishell)%alpha
-!             endif
-           endif
-!           if(DEBUG) write(*,*) 'just before the call to libint'
-!           if(DEBUG) write(*,*) nintegrals
-!           if(DEBUG) write(*,*) shell(ishell)%am,shell(jshell)%am,shell(kshell)%am,shell(lshell)%am
-!           if(DEBUG) write(*,*) am1,am2,am3,am4
-!           if(DEBUG) write(*,*) alpha1,alpha2,alpha3,alpha4
-!           write(*,*) 'call to C library'
-
-           info=calculate_integral(am1,am2,am3,am4,alpha1,alpha2,alpha3,alpha4,&
-                                 integrals(1))
-           if(info/=0) then
-              write(*,*) 'failed'
-!           else
-!             write(*,*) 'success'
-           endif
-!          write(*,*) ishell,jshell,kshell,lshell
-!         if(DEBUG) write(*,*) 'shell i j k l,    result'
-!         if(DEBUG) write(*,*) ishell,jshell,kshell,lshell
-!         if(DEBUG) write(*,*) integrals(1)
-!         if(DEBUG) write(*,*) integrals(:)
-!         if(DEBUG) write(*,*) '------------------------'
-
-           i_current=0
-           do i=1,ni
-           do j=1,nj
-           do k=1,nk
-           do l=1,nl
-             i_current=i_current+1
-             ii = shell(ishell)%index_global(i)
-             jj = shell(jshell)%index_global(j)
-             kk = shell(kshell)%index_global(k)
-             ll = shell(lshell)%index_global(l)
-             int_gaussian( ii , jj , kk , ll ) = integrals(i_current)
-             int_gaussian( ii , jj , ll , kk ) = integrals(i_current)
-             int_gaussian( jj , ii , kk , ll ) = integrals(i_current)
-             int_gaussian( jj , ii , ll , kk ) = integrals(i_current)
-             int_gaussian( kk , ll , ii , jj ) = integrals(i_current)
-             int_gaussian( kk , ll , jj , ii ) = integrals(i_current)
-             int_gaussian( ll , kk , ii , jj ) = integrals(i_current)
-             int_gaussian( ll , kk , jj , ii ) = integrals(i_current)
-
-           enddo
-           enddo
-           enddo
-           enddo
-
-         endif
-
-
-
-       enddo
-     enddo
-   enddo
- enddo
- if( allocated(integrals) ) deallocate( integrals )
-
-
-! if(DEBUG) write(*,*) '=========================================='
-! if(DEBUG) write(*,*) int_gaussian(:,:,:,:)
-! if(DEBUG) write(*,*) '=========================================='
-
- !
- ! calculate (ij||kl) over contractions
- 
- eri(:,:,:,:) = 0.0_dp
- do lbf=1,basis%nbf
-   bf_current_l => basis%bf(lbf)
-   do kbf=1,basis%nbf
-     bf_current_k => basis%bf(kbf)
-     do jbf=1,basis%nbf
-       bf_current_j => basis%bf(jbf)
-       do ibf=1,basis%nbf
-         bf_current_i => basis%bf(ibf)
-
-         do lg=1,bf_current_l%ngaussian
-           do kg=1,bf_current_k%ngaussian
-             do jg=1,bf_current_j%ngaussian
-               do ig=1,bf_current_i%ngaussian
-                 eri(ibf,jbf,kbf,lbf) = eri(ibf,jbf,kbf,lbf) &
-                            + bf_current_i%coeff(ig) * bf_current_j%coeff(jg) * bf_current_k%coeff(kg) * bf_current_l%coeff(lg) &
-                              * int_gaussian( index_global(ibf,ig) , index_global(jbf,jg) , index_global(kbf,kg) , index_global(lbf,lg) ) &
-                               * bf_current_i%g(ig)%norm_factor * bf_current_j%g(jg)%norm_factor &
-                               * bf_current_k%g(kg)%norm_factor * bf_current_l%g(lg)%norm_factor
-               enddo
-             enddo
-           enddo
-         enddo
-
-
-       enddo
-     enddo
-   enddo
- enddo
-
-
- deallocate(int_gaussian)
-          
- write(*,*) 'Done.'
- write(*,*)
 
 end subroutine calculate_eri
-#endif
 
 !=========================================================================
-subroutine calculate_eri_faster(basis,rcut)
+subroutine do_calculate_eri(basis,rcut)
  use ISO_C_BINDING
- use m_definitions
  use m_tools,only: boys_function
  use m_timing
- use m_basis_set
 #ifdef OPENMP
  use omp_lib
 #endif
@@ -1032,7 +754,7 @@ subroutine calculate_eri_faster(basis,rcut)
  write(*,*) 'Done!'
  write(*,*)
 
-end subroutine calculate_eri_faster
+end subroutine do_calculate_eri
 
 
 !=========================================================================
@@ -1182,8 +904,6 @@ end function libint_ordering
 
 !=========================================================================
 subroutine test_eri(basis)
- use m_definitions
- use m_basis_set
  implicit none
  type(basis_set),intent(in)   :: basis
 !=====
@@ -1214,7 +934,6 @@ end subroutine test_eri
 
 !=================================================================
 subroutine transform_eri_basis_robust(nbf,nspin,c_matrix,eri_eigenstate)
- use m_definitions
  implicit none
 
  integer,intent(in) :: nspin,nbf
@@ -1276,7 +995,6 @@ end subroutine transform_eri_basis_robust
 
 !=================================================================
 subroutine transform_eri_basis_fast(nbf,nspin,c_matrix,eri_eigenstate)
- use m_definitions
  use m_timing
 #ifdef OPENMP
  use omp_lib
@@ -1400,7 +1118,6 @@ end subroutine transform_eri_basis_fast
 
 !=================================================================
 subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
- use m_definitions
  use m_timing
  implicit none
 
@@ -1546,7 +1263,88 @@ subroutine negligible_eri(tol)
 
 end subroutine negligible_eri
 
+!=========================================================================
+subroutine dump_out_eri(rcut)
+ implicit none
+ real(dp),intent(in) :: rcut
+!====
+ character(len=50) :: filename
+ integer           :: nline,iline,icurrent
+!====
 
+ if(rcut < 1.0e-6_dp) then
+   filename='molgw_eri.data'
+ else
+   filename='molgw_eri_lr.data'
+ endif
+ write(*,*) 'Dump out the ERI into file'
+ write(*,*) 'Size of file [bytes]',REAL(nsize,dp)*prec_eri
+
+ open(unit=111,file=TRIM(filename),form='unformatted')
+ write(111) nsize
+ write(111) rcut
+
+ nline = nsize / line_length + 1
+ icurrent=0
+ do iline=1,nline
+   write(111) eri_buffer(icurrent+1:MIN(nsize,icurrent+line_length+1))
+   icurrent = icurrent + line_length + 1
+ enddo
+
+ close(111)
+
+ write(*,'(a,/)') ' file written'
+
+end subroutine dump_out_eri
+
+!=========================================================================
+logical function read_eri(rcut)
+ implicit none
+ real(dp),intent(in) :: rcut
+!====
+ character(len=50) :: filename
+ integer           :: nline,iline,icurrent
+ integer           :: integer_read
+ real(dp)          :: real_read
+!====
+
+ if(rcut < 1.0e-6_dp) then
+   filename='molgw_eri.data'
+ else
+   filename='molgw_eri_lr.data'
+ endif
+ 
+ inquire(file=TRIM(filename),exist=read_eri)
+
+ if(read_eri) then
+
+   write(*,*) 'Try to read ERI file'
+   open(unit=111,file=TRIM(filename),form='unformatted',status='old')
+   read(111) integer_read
+   if(integer_read /= nsize) read_eri=.FALSE.
+   read(111) real_read
+   if(ABS(real_read-rcut) > 1.0d-6) read_eri=.FALSE.
+
+   if(read_eri) then
+
+     nline = nsize / line_length + 1
+     icurrent=0
+     do iline=1,nline
+       read(111) eri_buffer(icurrent+1:MIN(nsize,icurrent+line_length+1))
+       icurrent = icurrent + line_length + 1
+     enddo
+     write(*,'(a,/)') ' ERI file read'
+
+   else
+     write(*,'(a,/)') ' reading aborted'
+   endif
+
+   close(111)
+
+ endif
+
+
+end function read_eri
 
 !=========================================================================
 end module m_eri
