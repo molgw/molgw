@@ -1,4 +1,6 @@
 !=========================================================================
+#include "macros.h"
+!=========================================================================
 module m_gw
  use m_definitions
  use m_calculation_type
@@ -40,23 +42,23 @@ subroutine init_spectral_function(nbf,prod_nbf,nspin,occupation,sf)
    enddo
  enddo
 
- write(*,*) 
- write(*,*) 'spectral function initialized with',sf%npole,'poles'
+ WRITE_MASTER(*,*) 
+ WRITE_MASTER(*,*) 'spectral function initialized with',sf%npole,'poles'
 
  allocate(sf%pole(sf%npole))
 
 #ifdef AUXIL_BASIS
  allocate(sf%residu_left(sf%npole,prod_nbf))
  allocate(sf%residu_right(sf%npole,prod_nbf))
- write(*,*) '           second index size',prod_nbf
+ WRITE_MASTER(*,*) '           second index size',prod_nbf
 #else
  allocate(sf%residu_left(sf%npole,prod_nbf*nspin))
  allocate(sf%residu_right(sf%npole,prod_nbf*nspin))
- write(*,*) '           second index size',prod_nbf*nspin
+ WRITE_MASTER(*,*) '           second index size',prod_nbf*nspin
 #endif
 
- write(*,'(a,f14.0)') ' Memory [Mb] ',REAL(SIZE(sf%residu_left(:,:)),dp)*2.0_dp/1024.0_dp**2*dp
- write(*,*)
+ WRITE_MASTER(*,'(a,f14.0)') ' Memory [Mb] ',REAL(SIZE(sf%residu_left(:,:)),dp)*2.0_dp/1024.0_dp**2*dp
+ WRITE_MASTER(*,*)
 
 end subroutine init_spectral_function
 
@@ -70,8 +72,8 @@ subroutine destroy_spectral_function(sf)
  deallocate(sf%residu_left)
  deallocate(sf%residu_right)
 
- write(*,*) 
- write(*,*) 'spectral function destroyed'
+ WRITE_MASTER(*,*) 
+ WRITE_MASTER(*,*) 'spectral function destroyed'
 
 end subroutine destroy_spectral_function
 
@@ -113,7 +115,7 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
 !=====
  spin_fact = REAL(-nspin+3,dp)
 
- write(*,'(/,a)') ' calculating CHI alla casida'
+ WRITE_MASTER(*,'(/,a)') ' calculating CHI alla casida'
  if(TDHF) then
    msg='calculating the TDHF polarizability'
    call issue_warning(msg)
@@ -125,7 +127,7 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
  else if(NOMEGA<200) then
    call coeffs_gausslegint(0.0_dp,1.0_dp,u,wu,NOMEGA)
 !   do iomega=1,NOMEGA
-!     write(*,*) iomega,u(iomega),wu(iomega)
+!     WRITE_MASTER(*,*) iomega,u(iomega),wu(iomega)
 !   enddo
    omega(:)  = u(:) / ( 1.0_dp - u(:) ) * im 
    womega(:) = wu(:) / ( 1.0_dp - u(:) )**2
@@ -136,7 +138,7 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
    enddo
  endif
 
- write(*,*) 'three wf overlaps'
+ WRITE_MASTER(*,*) 'three wf overlaps'
  call start_clock(timing_overlap3)
  !
  ! set up overlaps (aux function * orbital * orbital)
@@ -163,7 +165,7 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
      enddo
    enddo
  call stop_clock(timing_overlap3)
- write(*,*) 'three wf overlaps: DONE'
+ WRITE_MASTER(*,*) 'three wf overlaps: DONE'
 
  t_ij=0
  do ijspin=1,nspin
@@ -202,17 +204,17 @@ endif
 
        h_2p(t_ij,t_ij) =  h_2p(t_ij,t_ij) + ( energy(jorbital,ijspin) - energy(iorbital,ijspin) )
 
-!       write(*,'(4(i4,2x),2(2x,f12.6))') t_ij,iorbital,jorbital,ijspin,( energy(jorbital,ijspin) - energy(iorbital,ijspin) ),h_2p(t_ij,t_ij)
+!       WRITE_MASTER(*,'(4(i4,2x),2(2x,f12.6))') t_ij,iorbital,jorbital,ijspin,( energy(jorbital,ijspin) - energy(iorbital,ijspin) ),h_2p(t_ij,t_ij)
      enddo !jorbital
    enddo !iorbital
  enddo ! ijspin
 
- write(*,*) 'diago 2-particle hamiltonian'
- write(*,*) 'matrix',wpol%npole,'x',wpol%npole
+ WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
+ WRITE_MASTER(*,*) 'matrix',wpol%npole,'x',wpol%npole
  call start_clock(timing_diago_h2p)
  call diagonalize_general(wpol%npole,h_2p,eigenvalue,eigenvector)
  call stop_clock(timing_diago_h2p)
- write(*,*) 'diago finished'
+ WRITE_MASTER(*,*) 'diago finished'
    
  call start_clock(timing_inversion_s2p)
  call invert(wpol%npole,eigenvector,eigenvector_inv)
@@ -289,7 +291,7 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  spin_fact = REAL(-nspin+3,dp)
  rpa_correlation = 0.0_dp
 
- write(*,'(/,a)') ' calculating CHI alla casida'
+ WRITE_MASTER(*,'(/,a)') ' calculating CHI alla casida'
  if(TDHF) then
    msg='calculating the TDHF polarizability'
    call issue_warning(msg)
@@ -307,7 +309,7 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  else if(NOMEGA<200) then
    call coeffs_gausslegint(0.0_dp,1.0_dp,u,wu,NOMEGA)
 !   do iomega=1,NOMEGA
-!     write(*,*) iomega,u(iomega),wu(iomega)
+!     WRITE_MASTER(*,*) iomega,u(iomega),wu(iomega)
 !   enddo
    omega(:)  = u(:) / ( 1.0_dp - u(:) ) * im 
    womega(:) = wu(:) / ( 1.0_dp - u(:) )**2
@@ -384,22 +386,22 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 
        rpa_correlation = rpa_correlation - 0.25_dp * ABS( h_2p(t_ij,t_ij) )
 
-!       write(*,'(4(i4,2x),2(2x,f12.6))') t_ij,iorbital,jorbital,ijspin,( energy(jorbital,ijspin) - energy(iorbital,ijspin) ),h_2p(t_ij,t_ij)
+!       WRITE_MASTER(*,'(4(i4,2x),2(2x,f12.6))') t_ij,iorbital,jorbital,ijspin,( energy(jorbital,ijspin) - energy(iorbital,ijspin) ),h_2p(t_ij,t_ij)
      enddo !jorbital
    enddo !iorbital
  enddo ! ijspin
 
- write(*,*) 'diago 2-particle hamiltonian'
- write(*,*) 'matrix',wpol%npole,'x',wpol%npole
+ WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
+ WRITE_MASTER(*,*) 'matrix',wpol%npole,'x',wpol%npole
  call start_clock(timing_diago_h2p)
  call diagonalize_general(wpol%npole,h_2p,eigenvalue,eigenvector)
  call stop_clock(timing_diago_h2p)
- write(*,*) 'diago finished'
- write(*,*)
- write(*,*) 'calculate the RPA energy using the Tamm-Dancoff decomposition'
- write(*,*) 'formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)'
+ WRITE_MASTER(*,*) 'diago finished'
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) 'calculate the RPA energy using the Tamm-Dancoff decomposition'
+ WRITE_MASTER(*,*) 'formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)'
  rpa_correlation = rpa_correlation + 0.25_dp * SUM( ABS(eigenvalue(:)) )
- write(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',rpa_correlation
+ WRITE_MASTER(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',rpa_correlation
 
    
  call start_clock(timing_inversion_s2p)
@@ -515,12 +517,12 @@ subroutine gw_selfenergy_casida(method,nspin,basis,prod_basis,occupation,energy,
 !=====
  spin_fact = REAL(-nspin+3,dp)
 
- write(*,*)
+ WRITE_MASTER(*,*)
  select case(method)
  case(QS)
-   write(*,*) 'perform a QP self-consistent GW calculation'
+   WRITE_MASTER(*,*) 'perform a QP self-consistent GW calculation'
  case(perturbative)
-   write(*,*) 'perform a one-shot G0W0 calculation'
+   WRITE_MASTER(*,*) 'perform a one-shot G0W0 calculation'
  end select
 
 
@@ -529,7 +531,7 @@ subroutine gw_selfenergy_casida(method,nspin,basis,prod_basis,occupation,energy,
  else
    ! look for manual omegas
    inquire(file='manual_omega',exist=file_exists)
-   write(*,*) file_exists
+   WRITE_MASTER(*,*) file_exists
    if(file_exists) then 
      msg='reading frequency file for self-energy evaluation'
      call issue_warning(msg)
@@ -602,7 +604,7 @@ subroutine gw_selfenergy_casida(method,nspin,basis,prod_basis,occupation,energy,
            else
              energy_complex = energy(borbital,ispin) 
            endif
-!           write(*,'(i4,x,i4,x,i4,x,10(2x,f12.6))') borbital,iorbital,ipole,&
+!           WRITE_MASTER(*,'(i4,x,i4,x,i4,x,10(2x,f12.6))') borbital,iorbital,ipole,&
 !&                energy(borbital,ispin),energy(iorbital,ispin),wpol%pole(ipole),aimag(energy_complex)
            do aorbital=1,basis%nbf
 
@@ -626,7 +628,7 @@ subroutine gw_selfenergy_casida(method,nspin,basis,prod_basis,occupation,energy,
                ! Take care about the energies that may lie in the vicinity of the
                ! poles of Sigma
                if( ABS( energy(borbital,ispin) + omegai(iomegai) - energy(iorbital,ispin) + wpol%pole(ipole) ) < aimag(eta) ) then
-!                 write(*,*) 'avoid pole'
+!                 WRITE_MASTER(*,*) 'avoid pole'
                  energy_complex = energy(borbital,ispin)  + (0.0_dp,1.0_dp) &
 &                    * ( aimag(eta) - ABS( energy(borbital,ispin) + omegai(iomegai) - energy(iorbital,ispin) + wpol%pole(ipole) ) )
                else
@@ -658,10 +660,10 @@ subroutine gw_selfenergy_casida(method,nspin,basis,prod_basis,occupation,energy,
    do ispin=1,nspin
      selfenergy_tmp(1,:,:,ispin) = 0.5_dp * REAL( ( selfenergy_tmp(1,:,:,ispin) + transpose(selfenergy_tmp(1,:,:,ispin)) ) )
    enddo
-!   write(*,*) '  diagonal on the eigenvector basis'
-!   write(*,*) '  #        e_GW         Sigc                   '
+!   WRITE_MASTER(*,*) '  diagonal on the eigenvector basis'
+!   WRITE_MASTER(*,*) '  #        e_GW         Sigc                   '
 !   do aorbital=1,basis%nbf
-!     write(*,'(i4,x,12(x,f12.6))') aorbital,energy(aorbital,:),REAL(selfenergy_tmp(1,aorbital,aorbital,:),dp)
+!     WRITE_MASTER(*,'(i4,x,12(x,f12.6))') aorbital,energy(aorbital,:),REAL(selfenergy_tmp(1,aorbital,aorbital,:),dp)
 !   enddo
 
    ! Transform the matrix elements back to the non interacting states
@@ -679,39 +681,39 @@ subroutine gw_selfenergy_casida(method,nspin,basis,prod_basis,occupation,energy,
    if(file_exists) then
      open(13,file='selfenergy_omega')
      do iomegai=1,nomegai
-       write(13,'(20(f12.6,2x))') DBLE(omegai(iomegai)),( DBLE(selfenergy_tmp(iomegai,aorbital,aorbital,:)), aorbital=1,5 )
+       WRITE_MASTER(13,'(20(f12.6,2x))') DBLE(omegai(iomegai)),( DBLE(selfenergy_tmp(iomegai,aorbital,aorbital,:)), aorbital=1,5 )
      enddo
      close(13)
      stop'output the self energy in a file'
    endif
    selfenergy(:,:,:) = REAL( selfenergy_tmp(2,:,:,:) )
-   write(*,*)
-   write(*,*) 'G0W0 Eigenvalues [Ha]'
+   WRITE_MASTER(*,*)
+   WRITE_MASTER(*,*) 'G0W0 Eigenvalues [Ha]'
    if(nspin==1) then
-     write(*,*) '  #          E0         Sigc          Z         G0W0'
+     WRITE_MASTER(*,*) '  #          E0         Sigc          Z         G0W0'
    else
-     write(*,'(a)') '  #                E0                       Sigc                       Z                        G0W0'
+     WRITE_MASTER(*,'(a)') '  #                E0                       Sigc                       Z                        G0W0'
    endif
    do aorbital=1,basis%nbf
      zz(:) = REAL( selfenergy_tmp(3,aorbital,aorbital,:) - selfenergy_tmp(1,aorbital,aorbital,:) ) / REAL( omegai(3)-omegai(1) )
      zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
 
-     write(*,'(i4,x,12(x,f12.6))') aorbital,energy(aorbital,:),REAL(selfenergy_tmp(2,aorbital,aorbital,:),dp),&
+     WRITE_MASTER(*,'(i4,x,12(x,f12.6))') aorbital,energy(aorbital,:),REAL(selfenergy_tmp(2,aorbital,aorbital,:),dp),&
            zz(:),energy(aorbital,:)+zz(:)*REAL(selfenergy_tmp(2,aorbital,aorbital,:) + exchange_m_vxc_diag(aorbital,:) ,dp)
    enddo
 
-   write(*,*)
-   write(*,*) 'G0W0 Eigenvalues [eV]'
+   WRITE_MASTER(*,*)
+   WRITE_MASTER(*,*) 'G0W0 Eigenvalues [eV]'
    if(nspin==1) then
-     write(*,*) '  #          E0         Sigc          Z         G0W0'
+     WRITE_MASTER(*,*) '  #          E0         Sigc          Z         G0W0'
    else
-     write(*,'(a)') '  #                E0                       Sigc                       Z                        G0W0'
+     WRITE_MASTER(*,'(a)') '  #                E0                       Sigc                       Z                        G0W0'
    endif
    do aorbital=1,basis%nbf
      zz(:) = REAL( selfenergy_tmp(3,aorbital,aorbital,:) - selfenergy_tmp(1,aorbital,aorbital,:) ) / REAL( omegai(3)-omegai(1) )
      zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
 
-     write(*,'(i4,x,12(x,f12.6))') aorbital,energy(aorbital,:)*Ha_eV,REAL(selfenergy_tmp(2,aorbital,aorbital,:),dp)*Ha_eV,&
+     WRITE_MASTER(*,'(i4,x,12(x,f12.6))') aorbital,energy(aorbital,:)*Ha_eV,REAL(selfenergy_tmp(2,aorbital,aorbital,:),dp)*Ha_eV,&
            zz(:),( energy(aorbital,:)+zz(:)*REAL(selfenergy_tmp(2,aorbital,aorbital,:) + exchange_m_vxc_diag(aorbital,:) ,dp) )*Ha_eV
    enddo
 
@@ -760,12 +762,12 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
  msg='small complex number is '//msg
  call issue_warning(msg)
 
- write(*,*)
+ WRITE_MASTER(*,*)
  select case(method)
  case(QS)
-   write(*,*) 'perform a QP self-consistent GW calculation'
+   WRITE_MASTER(*,*) 'perform a QP self-consistent GW calculation'
  case(perturbative)
-   write(*,*) 'perform a one-shot G0W0 calculation'
+   WRITE_MASTER(*,*) 'perform a one-shot G0W0 calculation'
  end select
 
  if(method==QS) then
@@ -900,43 +902,43 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
        write(ctmp,'(i2.2)') aorbital
        open(20+aorbital,file='selfenergy_omega_state'//TRIM(ctmp))
        do iomegai=1,nomegai
-         write(20+aorbital,'(20(f12.6,2x))') DBLE(omegai(iomegai))+energy(aorbital,:),DBLE(selfenergy_tmp(iomegai,aorbital,aorbital,:)),&
+         WRITE_MASTER(20+aorbital,'(20(f12.6,2x))') DBLE(omegai(iomegai))+energy(aorbital,:),DBLE(selfenergy_tmp(iomegai,aorbital,aorbital,:)),&
 &                    DBLE(omegai(iomegai))-exchange_m_vxc_diag(aorbital,:)
        enddo
-       write(20+aorbital,*)
+       WRITE_MASTER(20+aorbital,*)
      enddo
      close(20+aorbital)
      stop'output the self energy in a file'
    endif
 
    selfenergy(:,:,:) = REAL( selfenergy_tmp(2,:,:,:) )
-   write(*,*)
-   write(*,*) 'G0W0 Eigenvalues [Ha]'
+   WRITE_MASTER(*,*)
+   WRITE_MASTER(*,*) 'G0W0 Eigenvalues [Ha]'
    if(nspin==1) then
-     write(*,*) '  #          E0        Sigx-Vxc      Sigc          Z         G0W0'
+     WRITE_MASTER(*,*) '  #          E0        Sigx-Vxc      Sigc          Z         G0W0'
    else
-     write(*,'(a)') '  #                E0                      Sigx-Vxc                    Sigc                       Z                       G0W0'
+     WRITE_MASTER(*,'(a)') '  #                E0                      Sigx-Vxc                    Sigc                       Z                       G0W0'
    endif
    do aorbital=1,basis%nbf
      zz(:) = REAL( selfenergy_tmp(3,aorbital,aorbital,:) - selfenergy_tmp(1,aorbital,aorbital,:) ) / REAL( omegai(3)-omegai(1) )
      zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
 
-     write(*,'(i4,x,20(x,f12.6))') aorbital,energy(aorbital,:),exchange_m_vxc_diag(aorbital,:),REAL(selfenergy_tmp(2,aorbital,aorbital,:),dp),&
+     WRITE_MASTER(*,'(i4,x,20(x,f12.6))') aorbital,energy(aorbital,:),exchange_m_vxc_diag(aorbital,:),REAL(selfenergy_tmp(2,aorbital,aorbital,:),dp),&
            zz(:),energy(aorbital,:)+zz(:)*REAL(selfenergy_tmp(2,aorbital,aorbital,:) + exchange_m_vxc_diag(aorbital,:) ,dp)
    enddo
 
-   write(*,*)
-   write(*,*) 'G0W0 Eigenvalues [eV]'
+   WRITE_MASTER(*,*)
+   WRITE_MASTER(*,*) 'G0W0 Eigenvalues [eV]'
    if(nspin==1) then
-     write(*,*) '  #          E0        Sigx-Vxc      Sigc          Z         G0W0'
+     WRITE_MASTER(*,*) '  #          E0        Sigx-Vxc      Sigc          Z         G0W0'
    else
-     write(*,'(a)') '  #                E0                      Sigx-Vxc                    Sigc                       Z                       G0W0'
+     WRITE_MASTER(*,'(a)') '  #                E0                      Sigx-Vxc                    Sigc                       Z                       G0W0'
    endif
    do aorbital=1,basis%nbf
      zz(:) = REAL( selfenergy_tmp(3,aorbital,aorbital,:) - selfenergy_tmp(1,aorbital,aorbital,:) ) / REAL( omegai(3)-omegai(1) )
      zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
 
-     write(*,'(i4,x,20(x,f12.6))') aorbital,energy(aorbital,:)*Ha_eV,exchange_m_vxc_diag(aorbital,:)*Ha_eV,REAL(selfenergy_tmp(2,aorbital,aorbital,:),dp)*Ha_eV,&
+     WRITE_MASTER(*,'(i4,x,20(x,f12.6))') aorbital,energy(aorbital,:)*Ha_eV,exchange_m_vxc_diag(aorbital,:)*Ha_eV,REAL(selfenergy_tmp(2,aorbital,aorbital,:),dp)*Ha_eV,&
            zz(:),( energy(aorbital,:)+zz(:)*REAL(selfenergy_tmp(2,aorbital,aorbital,:) + exchange_m_vxc_diag(aorbital,:) ,dp) )*Ha_eV
    enddo
 
@@ -981,8 +983,8 @@ subroutine cohsex_selfenergy(nstate,nspin,occupation,energy,c_matrix,w_pol,selfe
 
 
 
- write(*,*) 'building COHSEX self-energy'
- write(*,*)
+ WRITE_MASTER(*,*) 'building COHSEX self-energy'
+ WRITE_MASTER(*,*)
 
 
 ! Poor man implementation of the COHSEX:
@@ -994,7 +996,7 @@ subroutine cohsex_selfenergy(nstate,nspin,occupation,energy,c_matrix,w_pol,selfe
 ! SEX
  if(.TRUE.) then
 
-   write(*,*) 'calculate first the SEX term'
+   WRITE_MASTER(*,*) 'calculate first the SEX term'
 
    density_matrix(:,:,:) = 0.0_dp
    do kstate=1,nstate
@@ -1027,7 +1029,7 @@ subroutine cohsex_selfenergy(nstate,nspin,occupation,energy,c_matrix,w_pol,selfe
    enddo
 
  else
-   write(*,*) 'WARNING: SEX term skipped!'
+   WRITE_MASTER(*,*) 'WARNING: SEX term skipped!'
  endif
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1039,7 +1041,7 @@ subroutine cohsex_selfenergy(nstate,nspin,occupation,energy,c_matrix,w_pol,selfe
    do iorbital=1,nstate !INNER LOOP of G
 
 !     fact = 0.5_dp - occupation(iorbital,ispin) / spin_fact
-!SEX     write(*,*) 'Screened exchange only'
+!SEX     WRITE_MASTER(*,*) 'Screened exchange only'
 
      if( occupation(iorbital,ispin)<completely_empty ) cycle
      fact =  - occupation(iorbital,ispin) / spin_fact
@@ -1078,7 +1080,7 @@ subroutine cohsex_selfenergy(nstate,nspin,occupation,energy,c_matrix,w_pol,selfe
 
 ! COH
  if(.TRUE.) then
-   write(*,*) 'then build the COulomb Hole'
+   WRITE_MASTER(*,*) 'then build the COulomb Hole'
    do astate=1,nstate
      do bstate=1,nstate
        do kstate=1,nstate_pola
@@ -1091,18 +1093,18 @@ subroutine cohsex_selfenergy(nstate,nspin,occupation,energy,c_matrix,w_pol,selfe
      enddo
    enddo
  else 
-   write(*,*) 'WARNING: COH term skipped!'
+   WRITE_MASTER(*,*) 'WARNING: COH term skipped!'
  endif
 
 ! selfenergy_tmp(:,:,:,:) = -selfenergy_tmp(:,:,:,:) / ( 2.0_dp * pi )
 
  selfenergy(:,:,:) = selfenergy_tmp(:,:,:)
 
-! write(*,'(a,6(2x,f12.6))') 'COHSEX [Ha]:',selfenergy(1,1,:)
-! write(*,'(a,6(2x,f12.6))') 'COHSEX [Ha]:',selfenergy(2,2,:)
-! write(*,'(a,6(2x,f12.6))') 'COHSEX [Ha]:',selfenergy(1,3,:)
-! write(*,'(a,6(2x,f12.6))') 'COHSEX [Ha]:',selfenergy(3,1,:)
-! write(*,'(a,6(2x,f12.6))') 'COHSEX [Ha]:',selfenergy(3,3,:)
+! WRITE_MASTER(*,'(a,6(2x,f12.6))') 'COHSEX [Ha]:',selfenergy(1,1,:)
+! WRITE_MASTER(*,'(a,6(2x,f12.6))') 'COHSEX [Ha]:',selfenergy(2,2,:)
+! WRITE_MASTER(*,'(a,6(2x,f12.6))') 'COHSEX [Ha]:',selfenergy(1,3,:)
+! WRITE_MASTER(*,'(a,6(2x,f12.6))') 'COHSEX [Ha]:',selfenergy(3,1,:)
+! WRITE_MASTER(*,'(a,6(2x,f12.6))') 'COHSEX [Ha]:',selfenergy(3,3,:)
 
 
 end subroutine cohsex_selfenergy

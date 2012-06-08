@@ -1,3 +1,6 @@
+!=========================================================================
+#include "macros.h"
+!=========================================================================
 module m_timing
  use m_definitions
 
@@ -52,7 +55,7 @@ subroutine start_clock(itiming)
 !=====
  
  if(time_running(itiming)) then
-   write(*,*) 'clock # is already started:',itiming
+   WRITE_MASTER(*,*) 'clock # is already started:',itiming
    stop'error in start clock'
  endif
 
@@ -87,40 +90,40 @@ subroutine output_timing()
  implicit none
 !=====
 
- write(*,'(/,a)') '                 --- Timings in (s) and # of calls ---'
- write(*,'(a30,2x,f12.2)') 'Total time',timing(timing_total)
- write(*,*)
- write(*,'(a30,2x,f12.2)') '4 gaussians integrals' ,timing(timing_integrals)
- write(*,*)
- write(*,'(a30,2x,f12.2,2x,i8)') 'Hartree'         ,timing(timing_hartree),calls(timing_hartree)
- write(*,'(a30,2x,f12.2,2x,i8)') 'Exchange'        ,timing(timing_exchange),calls(timing_exchange)
- write(*,'(a30,2x,f12.2,2x,i8)') 'DFT xc'          ,timing(timing_dft),calls(timing_dft)
- write(*,*)
- write(*,'(a30,2x,f12.2,2x,i8)') 'ERI basis transform' ,timing(timing_basis_transform),calls(timing_basis_transform)
- write(*,*)
-! write(*,'(a30,2x,f12.2)') 'Coulomb in prod basis' ,timing(timing_prodbasis)
-! write(*,*)
- write(*,'(a30,2x,f12.2,2x,i8)') 'Total RPA polarization' ,timing(timing_pola),calls(timing_pola)
-! write(*,'(a30,2x,f12.2)') 'Overlap of 3 basis   ' ,timing(timing_overlap3)
- write(*,'(a30,2x,f12.2,2x,i8)') 'Diago 2 particle H' ,timing(timing_diago_h2p),calls(timing_diago_h2p)
- write(*,'(a30,2x,f12.2,2x,i8)') 'Invert 2 particle S' ,timing(timing_inversion_s2p),calls(timing_inversion_s2p)
- write(*,*)
- write(*,'(a30,2x,f12.2,2x,i8)') 'GW self-energy'  ,timing(timing_self),calls(timing_self)
- write(*,*)
- write(*,'(a30,2x,f12.2,2x,i8)') 'MP2 energy'      ,timing(timing_mp2_energy),calls(timing_mp2_energy)
- write(*,'(a30,2x,f12.2,2x,i8)') 'MP2 self-energy' ,timing(timing_mp2_self),calls(timing_mp2_self)
- write(*,'(a)') '                 ----------------------'
+ WRITE_MASTER(*,'(/,a)') '                 --- Timings in (s) and # of calls ---'
+ WRITE_MASTER(*,'(a30,2x,f12.2)') 'Total time',timing(timing_total)
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,'(a30,2x,f12.2)') '4 gaussians integrals' ,timing(timing_integrals)
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Hartree'         ,timing(timing_hartree),calls(timing_hartree)
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Exchange'        ,timing(timing_exchange),calls(timing_exchange)
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'DFT xc'          ,timing(timing_dft),calls(timing_dft)
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'ERI basis transform' ,timing(timing_basis_transform),calls(timing_basis_transform)
+ WRITE_MASTER(*,*)
+! WRITE_MASTER(*,'(a30,2x,f12.2)') 'Coulomb in prod basis' ,timing(timing_prodbasis)
+! WRITE_MASTER(*,*)
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Total RPA polarization' ,timing(timing_pola),calls(timing_pola)
+! WRITE_MASTER(*,'(a30,2x,f12.2)') 'Overlap of 3 basis   ' ,timing(timing_overlap3)
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Diago 2 particle H' ,timing(timing_diago_h2p),calls(timing_diago_h2p)
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Invert 2 particle S' ,timing(timing_inversion_s2p),calls(timing_inversion_s2p)
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'GW self-energy'  ,timing(timing_self),calls(timing_self)
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'MP2 energy'      ,timing(timing_mp2_energy),calls(timing_mp2_energy)
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'MP2 self-energy' ,timing(timing_mp2_self),calls(timing_mp2_self)
+ WRITE_MASTER(*,'(a)') '                 ----------------------'
 
  !
  ! developer's timings
  if( ANY(timing(timing_tmp1:timing_tmp5)>1.d-5) ) then
-   write(*,*)
-   write(*,'(a30,2x,f12.2,2x,i8)') 'timing tmp1   ' ,timing(timing_tmp1),calls(timing_tmp1)
-   write(*,'(a30,2x,f12.2,2x,i8)') 'timing tmp2   ' ,timing(timing_tmp2),calls(timing_tmp2)
-   write(*,'(a30,2x,f12.2,2x,i8)') 'timing tmp3   ' ,timing(timing_tmp3),calls(timing_tmp3)
-   write(*,'(a30,2x,f12.2,2x,i8)') 'timing tmp4   ' ,timing(timing_tmp4),calls(timing_tmp4)
-   write(*,'(a30,2x,f12.2,2x,i8)') 'timing tmp5   ' ,timing(timing_tmp5),calls(timing_tmp5)
-   write(*,*)
+   WRITE_MASTER(*,*)
+   WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'timing tmp1   ' ,timing(timing_tmp1),calls(timing_tmp1)
+   WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'timing tmp2   ' ,timing(timing_tmp2),calls(timing_tmp2)
+   WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'timing tmp3   ' ,timing(timing_tmp3),calls(timing_tmp3)
+   WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'timing tmp4   ' ,timing(timing_tmp4),calls(timing_tmp4)
+   WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'timing tmp5   ' ,timing(timing_tmp5),calls(timing_tmp5)
+   WRITE_MASTER(*,*)
  endif
 
 end subroutine

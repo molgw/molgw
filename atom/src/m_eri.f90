@@ -1,11 +1,17 @@
+!=========================================================================
+#include "macros.h"
+!=========================================================================
 module m_eri
  use m_definitions
  use m_basis_set
 
  private
  public :: eri,allocate_eri,allocate_eri_eigen,deallocate_eri,calculate_eri,transform_eri_basis_fast,transform_eri_basis_lowmem, &
-           eri_lr,allocate_eri_lr,deallocate_eri_lr,negligible_eri
+           eri_lr,allocate_eri_lr,deallocate_eri_lr,negligible_eri,&
+           BUFFER1,BUFFER2
 
+ integer,parameter :: BUFFER1 = 1
+ integer,parameter :: BUFFER2 = 2
  !
  ! max length of a record in the ERI file
  integer,parameter :: line_length=1000
@@ -38,29 +44,29 @@ subroutine allocate_eri(nbf)
 
  nbf_eri = nbf
 #if LOW_MEMORY3 || LOW_MEMORY2
- write(*,'(/,a)') ' Symmetrized ERI stored'
+ WRITE_MASTER(*,'(/,a)') ' Symmetrized ERI stored'
  nsize1  = index_prod(nbf_eri,nbf_eri) 
  nsize   = index_eri(nbf_eri,nbf_eri,nbf_eri,nbf_eri)
 #else
- write(*,'(/,a)') ' All ERI are stored'
+ WRITE_MASTER(*,'(/,a)') ' All ERI are stored'
  nsize1  = nbf_eri**2
  nsize   = nsize1**2
 #endif
 
- write(*,*) 'number of integrals to be stored:',nsize
- write(*,*) 'max index size',HUGE(nsize)
+ WRITE_MASTER(*,*) 'number of integrals to be stored:',nsize
+ WRITE_MASTER(*,*) 'max index size',HUGE(nsize)
  if(nsize<1) stop'too many integrals to be stored'
 
  allocate(eri_buffer(nsize),stat=info)
  if(REAL(nsize,dp)*prec_eri > 1024**3 ) then
-   write(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb]'
+   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb]'
  else
-   write(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**2,' [Mb]'
+   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**2,' [Mb]'
  endif
  if(info==0) then
-   write(*,*) 'success'
+   WRITE_MASTER(*,*) 'success'
  else
-   write(*,*) 'failure'
+   WRITE_MASTER(*,*) 'failure'
    stop'Not enough memory. Buy a bigger computer'
  endif
 
@@ -92,25 +98,25 @@ subroutine allocate_eri_lr(nbf)
 
  nbf_eri = nbf
 #if LOW_MEMORY3 || LOW_MEMORY2
- write(*,'(/,a)') ' Symmetrized ERI stored'
+ WRITE_MASTER(*,'(/,a)') ' Symmetrized ERI stored'
  nsize1  = index_prod(nbf_eri,nbf_eri) 
  nsize   = index_eri(nbf_eri,nbf_eri,nbf_eri,nbf_eri)
 #else
- write(*,'(/,a)') ' All ERI are stored'
+ WRITE_MASTER(*,'(/,a)') ' All ERI are stored'
  nsize1  = nbf_eri**2
  nsize   = nsize1**2
 #endif
 
  allocate(eri_buffer_lr(nsize),stat=info)
  if(REAL(nsize,dp)*prec_eri > 1024**3 ) then
-   write(*,'(a,f10.3,a)') ' Allocating the Long-Range ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb]'
+   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the Long-Range ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb]'
  else
-   write(*,'(a,f10.3,a)') ' Allocating the Long-Range ERI array: ',REAL(nsize,dp)*prec_eri/1024**2,' [Mb]'
+   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the Long-Range ERI array: ',REAL(nsize,dp)*prec_eri/1024**2,' [Mb]'
  endif
  if(info==0) then
-   write(*,*) 'success'
+   WRITE_MASTER(*,*) 'success'
  else
-   write(*,*) 'failure'
+   WRITE_MASTER(*,*) 'failure'
    stop'Not enough memory. Buy a bigger computer'
  endif
 
@@ -233,14 +239,15 @@ function eri_lr(ibf,jbf,kbf,lbf)
 end function eri_lr
 
 !=========================================================================
-subroutine calculate_eri(print_volume,basis,rcut)
+subroutine calculate_eri(print_volume,basis,rcut,which_buffer)
  implicit none
  integer,intent(in)           :: print_volume
  type(basis_set),intent(in)   :: basis
  real(dp),intent(in)          :: rcut
+ integer,intent(in)           :: which_buffer
 !=====
 
- if( .NOT. read_eri(rcut) ) call do_calculate_eri(basis,rcut)
+ if( .NOT. read_eri(rcut) ) call do_calculate_eri(basis,rcut,which_buffer)
 
  if(print_volume>100) then
    call dump_out_eri(rcut)
@@ -249,7 +256,7 @@ subroutine calculate_eri(print_volume,basis,rcut)
 end subroutine calculate_eri
 
 !=========================================================================
-subroutine do_calculate_eri(basis,rcut)
+subroutine do_calculate_eri(basis,rcut,which_buffer)
  use ISO_C_BINDING
  use m_tools,only: boys_function
  use m_timing
@@ -259,6 +266,7 @@ subroutine do_calculate_eri(basis,rcut)
  implicit none
  type(basis_set),intent(in)   :: basis
  real(dp),intent(in)          :: rcut
+ integer,intent(in)           :: which_buffer
 !=====
  integer,parameter            :: NSHELLMAX=400
  integer,parameter            :: NMEMBER=28
@@ -307,12 +315,12 @@ subroutine do_calculate_eri(basis,rcut)
 !=====
 
 
- write(*,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
+ WRITE_MASTER(*,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
 
  if( rcut > 1.0e-6_dp ) then
    omega_range = 1.0_dp / rcut
-   write(*,'(a40,x,f9.4)') ' Long-Range only integrals with rcut=',rcut
-   write(*,'(a40,x,f9.4)') ' or omega=',omega_range
+   WRITE_MASTER(*,'(a40,x,f9.4)') ' Long-Range only integrals with rcut=',rcut
+   WRITE_MASTER(*,'(a40,x,f9.4)') ' or omega=',omega_range
  else 
    omega_range = 1.0e6_dp
  endif
@@ -360,7 +368,7 @@ subroutine do_calculate_eri(basis,rcut)
  nshell=ishell
  
  call start_clock(timing_tmp2)
- write(*,*) 'number of shells',nshell
+ WRITE_MASTER(*,*) 'number of shells',nshell
 
  !
  ! (ij||kl)
@@ -511,7 +519,7 @@ subroutine do_calculate_eri(basis,rcut)
                                    x04(1),x04(2),x04(3),&
                                    int_shell(1))
            if(info/=0) then
-             write(*,*) am1,am2,am3,am4
+             WRITE_MASTER(*,*) am1,am2,am3,am4
              stop 'ERI calculated by libint failed'
            endif
 
@@ -634,10 +642,10 @@ subroutine do_calculate_eri(basis,rcut)
          call start_clock(timing_tmp4)
 
          !
-         ! different treatments if full-range or long-range only
+         ! different storage according to which_buffer
          !
  
-         if( rcut < 1.0e-6_dp ) then
+         if( which_buffer == BUFFER1 ) then
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iindex_in_the_shell,jindex_in_the_shell,kindex_in_the_shell,lindex_in_the_shell,&
 !$OMP&     ig,jg,kg,lg,ibf,jbf,kbf,lbf,index_integral,index_tmp )
@@ -687,7 +695,7 @@ subroutine do_calculate_eri(basis,rcut)
 !$OMP END PARALLEL
 
 
-         else    ! *******        long-range      ******* !
+         else    ! Store the result in the arry eri_buffer_lr
 
 
 !$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iindex_in_the_shell,jindex_in_the_shell,kindex_in_the_shell,lindex_in_the_shell,&
@@ -751,8 +759,8 @@ subroutine do_calculate_eri(basis,rcut)
 !!!!       !$OMP END PARALLEL
 
  call stop_clock(timing_tmp2)
- write(*,*) 'Done!'
- write(*,*)
+ WRITE_MASTER(*,*) 'Done!'
+ WRITE_MASTER(*,*)
 
 end subroutine do_calculate_eri
 
@@ -915,12 +923,12 @@ subroutine test_eri(basis)
      do lbf=1,nbf_eri
        do kbf=1,nbf_eri
          if( ABS(eri(ibf,jbf,kbf,lbf) - eri(kbf,lbf,ibf,jbf)) > 1.d-6 ) then
-           write(*,*) ibf,jbf,kbf,lbf,eri(ibf,jbf,kbf,lbf)
-           write(*,*) kbf,lbf,ibf,jbf,eri(kbf,lbf,ibf,jbf)
-           write(*,*) ibf,basis%bf(ibf)%amc
-           write(*,*) jbf,basis%bf(jbf)%amc
-           write(*,*) kbf,basis%bf(kbf)%amc
-           write(*,*) lbf,basis%bf(lbf)%amc
+           WRITE_MASTER(*,*) ibf,jbf,kbf,lbf,eri(ibf,jbf,kbf,lbf)
+           WRITE_MASTER(*,*) kbf,lbf,ibf,jbf,eri(kbf,lbf,ibf,jbf)
+           WRITE_MASTER(*,*) ibf,basis%bf(ibf)%amc
+           WRITE_MASTER(*,*) jbf,basis%bf(jbf)%amc
+           WRITE_MASTER(*,*) kbf,basis%bf(kbf)%amc
+           WRITE_MASTER(*,*) lbf,basis%bf(lbf)%amc
            stop'ERI array not symmetric'
          endif
        enddo
@@ -946,11 +954,11 @@ subroutine transform_eri_basis_robust(nbf,nspin,c_matrix,eri_eigenstate)
  real(dp) :: eri_tmp(nbf,nbf,nbf,nbf)
 !=====
 
- write(*,*) 'obtain the ERI in the eigenvector basis'
+ WRITE_MASTER(*,*) 'obtain the ERI in the eigenvector basis'
 
  eri_eigenstate(:,:,:,:,:,:)=0.0_dp
  do ijspin=1,nspin
-   write(*,*) '== ijspin ',ijspin
+   WRITE_MASTER(*,*) '== ijspin ',ijspin
    eri_tmp(:,:,:,:)=0.0_dp
    do lbf=1,nbf
      do kbf=1,nbf
@@ -1012,17 +1020,17 @@ subroutine transform_eri_basis_fast(nbf,nspin,c_matrix,eri_eigenstate)
  real(dp) :: wtime
 !=====
 
- write(*,*) 'obtain the ERI in the eigenvector basis'
- write(*,*) 'subroutine is order N^5'
+ WRITE_MASTER(*,*) 'obtain the ERI in the eigenvector basis'
+ WRITE_MASTER(*,*) 'subroutine is order N^5'
 ! call start_clock(timing_basis_transform)
 
 #ifdef OPENMP
  wtime=OMP_get_wtime()
- write(*,*) 'The basis transform is using OPENMP'
+ WRITE_MASTER(*,*) 'The basis transform is using OPENMP'
 #endif
 
  do ijspin=1,nspin
-   write(*,*) '== ijspin ',ijspin
+   WRITE_MASTER(*,*) '== ijspin ',ijspin
    eri_eigenstate(:,:,:,:,ijspin,:)=0.0_dp
    eri_tmp1(:,:,:,:)=0.0_dp
 
@@ -1106,12 +1114,12 @@ subroutine transform_eri_basis_fast(nbf,nspin,c_matrix,eri_eigenstate)
  enddo !ijspin
 
 #ifdef OPENMP
-  write(*,*) 'time (s)', OMP_get_wtime()-wtime
+  WRITE_MASTER(*,*) 'time (s)', OMP_get_wtime()-wtime
 #endif
 
 ! call stop_clock(timing_basis_transform)
- write(*,*) 'ERI in the eigenvector basis obtained'
- write(*,*)
+ WRITE_MASTER(*,*) 'ERI in the eigenvector basis obtained'
+ WRITE_MASTER(*,*)
 
 end subroutine transform_eri_basis_fast
 
@@ -1208,8 +1216,9 @@ subroutine negligible_eri(tol)
  implicit none
  real(dp),intent(in) :: tol
 !=====
- integer             :: icount,ibf,jbf,kbf,lbf
+ integer             :: icount,ibf,jbf,kbf,lbf,jcount
  integer             :: ibuffer,ibuffer_sparse
+ real(dp)            :: integral_ij(nbf_eri,nbf_eri)
 !=====
 
  icount=0
@@ -1217,8 +1226,32 @@ subroutine negligible_eri(tol)
    if( ABS( eri_buffer(ibuffer) ) < tol ) icount=icount+1
  enddo
 
- write(*,*) ' number of negligible integrals <',tol
- write(*,*) icount, ' / ',nsize,REAL(icount,dp)/REAL(nsize,dp)*100.0_dp,' [%]'
+ WRITE_MASTER(*,*) ' number of negligible integrals <',tol
+ WRITE_MASTER(*,*) icount, ' / ',nsize,REAL(icount,dp)/REAL(nsize,dp)*100.0_dp,' [%]'
+
+
+ do ibf=1,nbf_eri
+   do jbf=1,nbf_eri
+     integral_ij(ibf,jbf) = eri(ibf,jbf,ibf,jbf)
+   enddo
+ enddo
+
+ WRITE_MASTER(*,*) 'testing Cauchy-Schwarz condition'
+ icount=0
+ jcount=0
+ do ibf=1,nbf_eri
+   do jbf=1,nbf_eri
+     do kbf=1,nbf_eri
+       do lbf=1,nbf_eri
+         if( SQRT( integral_ij(ibf,jbf) * integral_ij(kbf,lbf) ) < tol ) icount = icount + 1
+         if( ABS( eri(ibf,jbf,kbf,lbf) ) < tol ) jcount = jcount + 1
+       enddo
+     enddo
+   enddo
+ enddo
+ WRITE_MASTER(*,*) ' number of negligible integrals <',tol
+ WRITE_MASTER(*,*) icount, ' / ',nbf_eri**4,REAL(icount,dp)/REAL(nbf_eri,dp)**4*100.0_dp,' [%]'
+ WRITE_MASTER(*,*) jcount, ' / ',nbf_eri**4,REAL(jcount,dp)/REAL(nbf_eri,dp)**4*100.0_dp,' [%]'
 
 #ifdef LOW_MEMORY3
  nsize_sparse = nsize - icount
@@ -1226,9 +1259,9 @@ subroutine negligible_eri(tol)
  allocate(index_sparse(4,nsize_sparse))
 
  if(REAL(nsize_sparse,dp)*prec_eri > 1024**3 ) then
-   write(*,'(a,f8.3,a)') ' Allocating the sparse ERI array: ',REAL(nsize_sparse,dp)*prec_eri/1024**3,' [Gb]'
+   WRITE_MASTER(*,'(a,f8.3,a)') ' Allocating the sparse ERI array: ',REAL(nsize_sparse,dp)*prec_eri/1024**3,' [Gb]'
  else
-   write(*,'(a,f8.3,a)') ' Allocating the sparse ERI array: ',REAL(nsize_sparse,dp)*prec_eri/1024**2,' [Mb]'
+   WRITE_MASTER(*,'(a,f8.3,a)') ' Allocating the sparse ERI array: ',REAL(nsize_sparse,dp)*prec_eri/1024**2,' [Mb]'
  endif
 
  ibuffer_sparse=0
@@ -1277,23 +1310,23 @@ subroutine dump_out_eri(rcut)
  else
    filename='molgw_eri_lr.data'
  endif
- write(*,*) 'Dump out the ERI into file'
- write(*,*) 'Size of file [bytes]',REAL(nsize,dp)*prec_eri
+ WRITE_MASTER(*,*) 'Dump out the ERI into file'
+ WRITE_MASTER(*,*) 'Size of file [bytes]',REAL(nsize,dp)*prec_eri
 
  open(unit=111,file=TRIM(filename),form='unformatted')
- write(111) nsize
- write(111) rcut
+ WRITE_MASTER(111) nsize
+ WRITE_MASTER(111) rcut
 
  nline = nsize / line_length + 1
  icurrent=0
  do iline=1,nline
-   write(111) eri_buffer(icurrent+1:MIN(nsize,icurrent+line_length+1))
+   WRITE_MASTER(111) eri_buffer(icurrent+1:MIN(nsize,icurrent+line_length+1))
    icurrent = icurrent + line_length + 1
  enddo
 
  close(111)
 
- write(*,'(a,/)') ' file written'
+ WRITE_MASTER(*,'(a,/)') ' file written'
 
 end subroutine dump_out_eri
 
@@ -1318,7 +1351,7 @@ logical function read_eri(rcut)
 
  if(read_eri) then
 
-   write(*,*) 'Try to read ERI file'
+   WRITE_MASTER(*,*) 'Try to read ERI file'
    open(unit=111,file=TRIM(filename),form='unformatted',status='old')
    read(111) integer_read
    if(integer_read /= nsize) read_eri=.FALSE.
@@ -1333,10 +1366,10 @@ logical function read_eri(rcut)
        read(111) eri_buffer(icurrent+1:MIN(nsize,icurrent+line_length+1))
        icurrent = icurrent + line_length + 1
      enddo
-     write(*,'(a,/)') ' ERI file read'
+     WRITE_MASTER(*,'(a,/)') ' ERI file read'
 
    else
-     write(*,'(a,/)') ' reading aborted'
+     WRITE_MASTER(*,'(a,/)') ' reading aborted'
    endif
 
    close(111)

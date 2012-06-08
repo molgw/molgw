@@ -90,7 +90,9 @@ m_definitions.o: m_definitions.f90
 	$(FC) $(FCOPTS) -c m_definitions.f90
 
 archive:
-	tar czf molgw.tgz ../../molgw/README ../../molgw/src/Makefile ../../molgw/src/*.f90 ../../molgw/src/*.f ../../molgw/src/*.cc ../../molgw/basis/* ../../molgw/util/* ../../molgw/tests/ ../../molgw/src/my_machine.arch
+	tar czf molgw.tgz ../../molgw/README ../../molgw/src/Makefile ../../molgw/src/*.f90 ../../molgw/src/*.f ../../molgw/src/*.cc \
+                          ../../molgw/src/macros.h \
+                          ../../molgw/basis/* ../../molgw/util/* ../../molgw/tests/ ../../molgw/src/my_machine.arch
 #	tar czf molgw.tgz ../src/README ../src/Makefile ../src/*.f90 ../src/*.f ../src/*.cc ../basis/* ../doc/notes.tex ../doc/figs/* ../util/* ../tests/
 	scp molgw.tgz 132.166.68.166:
 

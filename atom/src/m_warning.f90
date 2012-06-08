@@ -1,3 +1,6 @@
+!=========================================================================
+#include "macros.h"
+!=========================================================================
 module m_warning
  use m_definitions
 
@@ -21,7 +24,7 @@ subroutine issue_warning(msgw)
  character(len=100),intent(in) :: msgw
 !===== 
   
- write(*,'(/,a,a)') ' WARNING: ',TRIM(msgw)
+ WRITE_MASTER(*,'(/,a,a)') ' WARNING: ',TRIM(msgw)
 
  !
  ! Eliminate the storage of identical warnings
@@ -39,11 +42,11 @@ subroutine output_all_warnings()
 !=====
 
  if(current_warning>1) then
-   write(*,'(/,a,/)') ' SUMMARY of all the WARNINGS issued along the run:'
+   WRITE_MASTER(*,'(/,a,/)') ' SUMMARY of all the WARNINGS issued along the run:'
    do iwarning=1,current_warning-1
-     write(*,'(i2,a,5x,a)') iwarning,'.',warning_list(iwarning)
+     WRITE_MASTER(*,'(i2,a,5x,a)') iwarning,'.',warning_list(iwarning)
    enddo
-   write(*,'(/)')
+   WRITE_MASTER(*,'(/)')
  endif
 
 end subroutine output_all_warnings

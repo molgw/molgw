@@ -1,4 +1,6 @@
 !=========================================================================
+#include "macros.h"
+!=========================================================================
 subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehomo,vxc_ij,exc_xc)
  use m_tools,only: coeffs_gausslegint
  use m_timing
@@ -110,14 +112,14 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
 !   call xc_f90_gga_exc_vxc(xc_functest,1,rhor_r(1),sigma2(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
    call my_lda_exc_vxc_mu(omega,rs(1),exc_libxc(1),vxc_libxc(1))
 !   call my_gga_exc_vxc_hjs(omega,rhor_r(1),sigma2(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
-   write(105,'(10(e16.8,2x))') rs(1),omega,exc_libxc(1),vxc_libxc(1),vsigma(1)
+   WRITE_MASTER(105,'(10(e16.8,2x))') rs(1),omega,exc_libxc(1),vxc_libxc(1),vsigma(1)
  enddo 
  stop'ENOUGH'
 #endif
 
- write(*,*) 'Evaluate DFT integrals'
- write(*,'(a,i4,x,i4)') '   discretization grid per atom [radial points , angular points] ',nx,nangular
- write(*,'(a,i8)')      '   total number of real-space points',nx*nangular*natom
+ WRITE_MASTER(*,*) 'Evaluate DFT integrals'
+ WRITE_MASTER(*,'(a,i4,x,i4)') '   discretization grid per atom [radial points , angular points] ',nx,nangular
+ WRITE_MASTER(*,'(a,i8)')      '   total number of real-space points',nx*nangular*natom
  
  require_gradient =.FALSE.
  require_laplacian=.FALSE.
@@ -129,7 +131,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
        call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), INT(dft_xc_type(idft_xc),intxc), XC_POLARIZED)
      endif
    else if(dft_xc_type(idft_xc) < 2000) then
-     write(*,*) 'Home-made functional LDA functional'
+     WRITE_MASTER(*,*) 'Home-made functional LDA functional'
      ! Fake LIBXC descriptor 
      if(nspin==1) then
        call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_LDA_X, XC_UNPOLARIZED)
@@ -137,7 +139,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
        call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_LDA_X, XC_POLARIZED)
      endif
    else
-     write(*,*) 'Home-made functional GGA functional'
+     WRITE_MASTER(*,*) 'Home-made functional GGA functional'
      ! Fake LIBXC descriptor 
      if(nspin==1) then
        call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_GGA_X_PBE, XC_UNPOLARIZED)
@@ -146,12 +148,12 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
     endif
    endif
 
-   write(*,'(/,a)') ' LIBXC info'
+   WRITE_MASTER(*,'(/,a)') ' LIBXC info'
    if( dft_xc_type(idft_xc) < 1000 ) then
      call xc_f90_info_name(xc_info(idft_xc),string)
-     write(*,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),TRIM(string)
+     WRITE_MASTER(*,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),TRIM(string)
    else
-     write(*,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),'FAKE LIBXC DESCRIPTOR'
+     WRITE_MASTER(*,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),'FAKE LIBXC DESCRIPTOR'
    endif
 
    if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
@@ -190,7 +192,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
  case(86)
    call ld0086(x1,y1,z1,w1,n1)
  case default
-   write(*,*) 'grid points: ',nangular
+   WRITE_MASTER(*,*) 'grid points: ',nangular
    stop'Lebedev grid is not available'
  end select
  
@@ -499,14 +501,12 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
  enddo
 
 #else
- write(*,*) 'XC energy and potential set to zero'
- write(*,*) 'LIBXC is not present'
+ WRITE_MASTER(*,*) 'XC energy and potential set to zero'
+ WRITE_MASTER(*,*) 'LIBXC is not present'
 #endif
 
- write(*,*)
- write(*,'(a,2(2x,f12.6))') ' number of electrons:',normalization(:)
- write(*,'(a,2x,f12.6)')    '  DFT xc energy [Ha]:',exc_xc
- write(*,*)
+ WRITE_MASTER(*,'(/,a,2(2x,f12.6))') ' number of electrons:',normalization(:)
+ WRITE_MASTER(*,'(a,2x,f12.6,/)')    '  DFT xc energy [Ha]:',exc_xc
 
 
 contains
@@ -568,6 +568,25 @@ subroutine my_lda_exc_vxc(nspin,ixc,rhor,exc,vxc)
 ! *************************************************************************
 
  select case(ixc)
+ case(1200)
+   !
+   ! The Slater exchange
+   a0p=3.0_dp/8.0_dp*(18.0_dp/pi**2)**(1.0_dp/3.0_dp)
+   a1p=0.0_dp
+   a2p=0.0_dp
+   a3p=0.0_dp
+   b1p=1.0_dp
+   b2p=0.0_dp
+   b3p=0.0_dp
+   b4p=0.0_dp
+   da0=0.0_dp
+   da1=0.0_dp
+   da2=0.0_dp
+   da3=0.0_dp
+   db1=0.0_dp
+   db2=0.0_dp
+   db3=0.0_dp
+   db4=0.0_dp
  case(1100)
    !
    ! The usual full LDA parameters of Teter
@@ -783,7 +802,7 @@ subroutine my_lda_exc_vxc_mu(mu,rspts,exc,vxc)
 ! *************************************************************************
 
  rcut = 1.0_dp / mu
- write(*,*) 'rcut [bohr]=',rcut
+ WRITE_MASTER(*,*) 'rcut [bohr]=',rcut
 
 #if 0
 !Compute vfac=(3/(2*Pi))^(2/3)
@@ -948,7 +967,7 @@ subroutine my_gga_exc_vxc_hjs(omega,nn,sigma,exc,vxc,vsigma)
 !HOME MADE   
 !HOME MADE    exc = -efac/rs * factor_w
 !HOME MADE
-!HOME MADE write(*,*) 'exc1=',exc
+!HOME MADE WRITE_MASTER(*,*) 'exc1=',exc
 
  !
  ! call to the nwchem subroutine

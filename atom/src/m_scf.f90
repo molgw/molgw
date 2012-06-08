@@ -1,4 +1,6 @@
 !=========================================================================
+#include "macros.h"
+!=========================================================================
 module m_scf
  use m_definitions
 
@@ -114,7 +116,7 @@ subroutine do_simple_mixing(p_matrix_in)
  real(dp),intent(out) :: p_matrix_in (nbf_scf,nbf_scf,nspin_scf)
 !=====
 
- write(*,*) 'A simple mixing of the density matrix is used'
+ WRITE_MASTER(*,*) 'A simple mixing of the density matrix is used'
 
  p_matrix_in(:,:,:) = alpha_scf * residual_hist(:,:,:,1) + p_matrix_in_hist(:,:,:,1)
 
@@ -132,7 +134,7 @@ subroutine do_pulay_mixing(p_matrix_in)
  real(dp)             :: residual_pred(nbf_scf,nbf_scf,nspin_scf)
 !=====
 
- write(*,*) 'A Pulay mixing of the density matrix is used'
+ WRITE_MASTER(*,*) 'A Pulay mixing of the density matrix is used'
 
  allocate(amat    (nhist_current+1,nhist_current+1))
  allocate(amat_inv(nhist_current+1,nhist_current+1))
@@ -155,14 +157,14 @@ subroutine do_pulay_mixing(p_matrix_in)
 
  deallocate(amat,amat_inv)
 
- write(*,'(/,a,30(2x,f12.6))') ' alpha DIIS:',alpha_diis(1:nhist_current)
+ WRITE_MASTER(*,'(/,a,30(2x,f12.6))') ' alpha DIIS:',alpha_diis(1:nhist_current)
  
  residual_pred(:,:,:) = 0.0_dp
  do ihist=1,nhist_current
    residual_pred(:,:,:) = residual_pred(:,:,:) + alpha_diis(ihist) * residual_hist(:,:,:,ihist)
  enddo
- write(*,*) 'DIIS predicted residual',SQRT( SUM( residual_pred(:,:,:)**2 ) )
- write(*,*)
+ WRITE_MASTER(*,*) 'DIIS predicted residual',SQRT( SUM( residual_pred(:,:,:)**2 ) )
+ WRITE_MASTER(*,*)
 
  p_matrix_in(:,:,:) = 0.0_dp
  do ihist=1,nhist_current
@@ -186,16 +188,16 @@ subroutine check_convergence(scf_loop_converged)
 
  rms = SQRT( SUM( residual_hist(:,:,:,1)**2 ) )
 
- write(*,*) 'convergence criterium on the density matrix',rms
+ WRITE_MASTER(*,*) 'convergence criterium on the density matrix',rms
  if( rms < 1.0e-8_dp ) then 
    scf_loop_converged= .TRUE.
-   write(*,*) ' ===> convergence has been reached'
+   WRITE_MASTER(*,*) ' ===> convergence has been reached'
  else
    scf_loop_converged= .FALSE.
-   write(*,*) ' ===> convergence not reached yet'
+   WRITE_MASTER(*,*) ' ===> convergence not reached yet'
  endif
 
- write(*,*)
+ WRITE_MASTER(*,*)
 
  if(n_scf == n_scf_max) then
    if(rms>1.d-4) then

@@ -1,4 +1,6 @@
 !=========================================================================
+#include "macros.h"
+!=========================================================================
 program molgw
  use m_definitions
  use m_timing
@@ -90,56 +92,56 @@ program molgw
  call init_gaussian_general(1,4,1,0.8120_dp,(/0.0_dp,0.0_dp,1.2_dp/),gbtmp)
  call print_gaussian(gbtmp)
 
- write(*,*)
- write(*,*) ' === CHECK OVERLAP === '
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) ' === CHECK OVERLAP === '
 
 ! call overlap_normalized(gatmp,gbtmp,rtmp)
-! write(*,*) 'normalized S_ab',rtmp
+! WRITE_MASTER(*,*) 'normalized S_ab',rtmp
 
  call overlap_recurrence(gatmp,gbtmp,rtmp)
- write(*,*) 'normalized S_ab from recurrence',rtmp
+ WRITE_MASTER(*,*) 'normalized S_ab from recurrence',rtmp
  call overlap_recurrence(gbtmp,gatmp,rtmp)
- write(*,*) 'normalized S_ba from recurrence',rtmp
+ WRITE_MASTER(*,*) 'normalized S_ba from recurrence',rtmp
 
 ! call numerical_overlap(gatmp,gbtmp)
 
 
- write(*,*)
- write(*,*) ' === CHECK KINETIC === '
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) ' === CHECK KINETIC === '
 
 ! call kinetic_gaussian(gatmp,gbtmp,rtmp)
-! write(*,*) 'kinetic matrix element [Ha]',rtmp
+! WRITE_MASTER(*,*) 'kinetic matrix element [Ha]',rtmp
 
  call kinetic_recurrence(gatmp,gbtmp,rtmp)
- write(*,*) 'new kinetic matrix element K_ab',rtmp
+ WRITE_MASTER(*,*) 'new kinetic matrix element K_ab',rtmp
  call kinetic_recurrence(gbtmp,gatmp,rtmp)
- write(*,*) 'new kinetic matrix element K_ba',rtmp
+ WRITE_MASTER(*,*) 'new kinetic matrix element K_ba',rtmp
 
 ! call numerical_kinetic(gatmp,gbtmp)
 
- write(*,*)
- write(*,*) ' === CHECK NUCLEUS === '
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) ' === CHECK NUCLEUS === '
 
 ! call nucleus_pot_gaussian(gatmp,gbtmp,1.0_dp,rtmp)
-! write(*,*) 'nucleus pot [Ha]',rtmp
+! WRITE_MASTER(*,*) 'nucleus pot [Ha]',rtmp
 
  call nucleus_recurrence(1.0_dp,(/0.0_dp,0.0_dp,0.0_dp/),gatmp,gbtmp,rtmp)
- write(*,*) 'new nucleus matrix element V_ba',rtmp
+ WRITE_MASTER(*,*) 'new nucleus matrix element V_ba',rtmp
  call nucleus_recurrence(1.0_dp,(/0.0_dp,0.0_dp,0.0_dp/),gbtmp,gatmp,rtmp)
- write(*,*) 'new nucleus matrix element V_ba',rtmp
+ WRITE_MASTER(*,*) 'new nucleus matrix element V_ba',rtmp
 
  call numerical_nucleus(gatmp,gbtmp)
 
 
  stop'ENOUGH FOR TODAY'
 
- write(*,*)
- write(*,*) '                   END OF THE TESTS'
- write(*,*) '==========================================================='
- write(*,*) '==========================================================='
- write(*,*) '==========================================================='
- write(*,*) '                   START REAL LIFE CALCULATION'
- write(*,*)
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) '                   END OF THE TESTS'
+ WRITE_MASTER(*,*) '==========================================================='
+ WRITE_MASTER(*,*) '==========================================================='
+ WRITE_MASTER(*,*) '==========================================================='
+ WRITE_MASTER(*,*) '                   START REAL LIFE CALCULATION'
+ WRITE_MASTER(*,*)
 #endif 
 
  !
@@ -215,9 +217,9 @@ program molgw
      s_matrix(jbf,ibf) = overlap_tmp
    enddo
    if( ABS( s_matrix(jbf,jbf) - 1.0_dp ) > 1.0d-4 ) then
-     write(*,*) 'A diagonal term of the overlap matrix is not equal to 1.0'
-     write(*,*) jbf,jbf,s_matrix(jbf,jbf)
-     write(*,*) 'check the basis set definition'
+     WRITE_MASTER(*,*) 'A diagonal term of the overlap matrix is not equal to 1.0'
+     WRITE_MASTER(*,*) jbf,jbf,s_matrix(jbf,jbf)
+     WRITE_MASTER(*,*) 'check the basis set definition'
      stop'ERROR'
    endif
  enddo
@@ -230,15 +232,15 @@ program molgw
  ! ERI are stored "privately" in the module m_eri
  call start_clock(timing_integrals)
  call allocate_eri(basis%nbf)
- call calculate_eri(print_volume,basis,0.0_dp)
+ call calculate_eri(print_volume,basis,0.0_dp,BUFFER1)
  !
  ! for HSE functionals, calculate the long-range ERI
  if(calc_type%is_screened_hybrid) then
    call allocate_eri_lr(basis%nbf)
-   call calculate_eri(print_volume,basis,rcut)
+   call calculate_eri(print_volume,basis,rcut,BUFFER2)
  endif
  call stop_clock(timing_integrals)
- call negligible_eri(1.0e-15_dp)
+ call negligible_eri(1.0e-10_dp)
 
 
  !
@@ -331,7 +333,7 @@ program molgw
  ! matrix
  inquire(file='p_matrix_diag.in',exist=file_exists)
  if(file_exists) then
-   write(*,*) 'reading input density matrix from file'
+   WRITE_MASTER(*,*) 'reading input density matrix from file'
    open(unit=11,file='p_matrix_diag.in',status='old')
    p_matrix(:,:,:) = 0.0_dp
    do ispin=1,nspin
@@ -390,8 +392,8 @@ program molgw
  ! start the big scf loop
  !
  do iscf=1,nscf
-   write(*,'(/,a)') '-------------------------------------------'
-   write(*,'(a,x,i4,/)') ' *** SCF cycle No:',iscf
+   WRITE_MASTER(*,'(/,a)') '-------------------------------------------'
+   WRITE_MASTER(*,'(a,x,i4,/)') ' *** SCF cycle No:',iscf
 
    call output_homolumo(basis%nbf,nspin,occupation,energy,ehomo,elumo)
 
@@ -414,18 +416,12 @@ program molgw
    hamiltonian_xc(:,:,:) = 0.0_dp
 
    !
-   ! for the first step skip everything
-   !
-   if(iscf>0) then
-
-   !
    ! Hartree contribution to the Hamiltonian
    !
    call setup_hartree(print_volume,basis%nbf,nspin,p_matrix,matrix,en%hart)
 
    hamiltonian(:,:,:)    = hamiltonian(:,:,:) + matrix(:,:,:)
   
-
    !
    ! Exchange contribution to the Hamiltonian
    if( calc_type%need_exchange ) then
@@ -467,7 +463,7 @@ program molgw
 #endif
      call stop_clock(timing_pola)
      en%tot = en%tot + en%rpa
-     write(*,'(/,a,f14.8)') ' RPA Total energy [Ha]: ',en%tot
+     WRITE_MASTER(*,'(/,a,f14.8)') ' RPA Total energy [Ha]: ',en%tot
 
      call start_clock(timing_self)
      exchange_m_vxc_diag(:,:)=0.0_dp
@@ -500,10 +496,10 @@ program molgw
      call start_clock(timing_mp2_self)
      call mp2_selfenergy(calc_type%method,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix,en%mp2)
      call stop_clock(timing_mp2_self)
-     write(*,'(a,2x,f14.8)') ' MP2 Energy       [Ha]:',en%mp2
-     write(*,*) 
+     WRITE_MASTER(*,'(a,2x,f14.8)') ' MP2 Energy       [Ha]:',en%mp2
+     WRITE_MASTER(*,*) 
      en%tot = en%tot + en%mp2
-     write(*,'(a,2x,f14.8)') ' MP2 Total Energy [Ha]:',en%tot
+     WRITE_MASTER(*,'(a,2x,f14.8)') ' MP2 Total Energy [Ha]:',en%tot
 
      matrix = alpha_mixing * matrix + (1.0_dp-alpha_mixing) * self_energy_old
      self_energy_old = matrix
@@ -514,10 +510,6 @@ program molgw
 
    endif
 
-   !
-   ! iscf>1
-   endif
-  
    !
    ! Add the XC part of the hamiltonian to the total hamiltonian
    hamiltonian(:,:,:) = hamiltonian(:,:,:) + hamiltonian_xc(:,:,:)
@@ -531,10 +523,10 @@ program molgw
    ! H \phi = E S \phi
    ! save the old eigenvalues
    do ispin=1,nspin
-    write(*,*) 'Diagonalization for spin polarization',ispin
-    call diagonalize_generalized_sym(basis%nbf,&
-                                     hamiltonian(:,:,ispin),s_matrix(:,:),&
-                                     energy(:,ispin),c_matrix(:,:,ispin))
+     WRITE_MASTER(*,*) 'Diagonalization for spin polarization',ispin
+     call diagonalize_generalized_sym(basis%nbf,&
+                                      hamiltonian(:,:,ispin),s_matrix(:,:),&
+                                      energy(:,ispin),c_matrix(:,:,ispin))
    enddo
   
    title='=== Energies ==='
@@ -568,17 +560,19 @@ program molgw
   
    !
    ! Output the total energy and its components
-   write(*,*)
-   write(*,'(a25,x,f16.10)') 'Nucleus-Nucleus [Ha]:',en%nuc_nuc
-   write(*,'(a25,x,f16.10)') 'Kinetic Energy  [Ha]:',en%kin
-   write(*,'(a25,x,f16.10)') 'Nucleus Energy  [Ha]:',en%nuc
-   write(*,'(a25,x,f16.10)') 'Hartree Energy  [Ha]:',en%hart
-   if(calc_type%need_exchange) write(*,'(a25,x,f16.10)') 'Exchange Energy [Ha]:',en%exx
-   if( ndft_xc /= 0 )   write(*,'(a25,x,f16.10)') 'XC Energy       [Ha]:',en%xc
+   WRITE_MASTER(*,*)
+   WRITE_MASTER(*,'(a25,x,f16.10)') 'Nucleus-Nucleus [Ha]:',en%nuc_nuc
+   WRITE_MASTER(*,'(a25,x,f16.10)') 'Kinetic Energy  [Ha]:',en%kin
+   WRITE_MASTER(*,'(a25,x,f16.10)') 'Nucleus Energy  [Ha]:',en%nuc
+   WRITE_MASTER(*,'(a25,x,f16.10)') 'Hartree Energy  [Ha]:',en%hart
+   if(calc_type%need_exchange) then
+     WRITE_MASTER(*,'(a25,x,f16.10)') 'Exchange Energy [Ha]:',en%exx
+   endif
+   if( ndft_xc /= 0 ) then
+     WRITE_MASTER(*,'(a25,x,f16.10)') 'XC Energy       [Ha]:',en%xc
+   endif
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%xc
-   write(*,*)
-   write(*,'(a25,x,f16.10)') 'Total Energy    [Ha]:',en%tot
-   write(*,*)
+   WRITE_MASTER(*,'(/,a25,x,f16.10,/)') 'Total Energy    [Ha]:',en%tot
 
    !
    ! Store the history of residuals
@@ -594,21 +588,25 @@ program molgw
 
  call destroy_scf()
 
- write(*,*) '=================================================='
- write(*,*) 'The SCF loop ends here'
- write(*,*) '=================================================='
- write(*,*)
+
+ WRITE_MASTER(*,*) '=================================================='
+ WRITE_MASTER(*,*) 'The SCF loop ends here'
+ WRITE_MASTER(*,*) '=================================================='
+ WRITE_MASTER(*,*)
 
  if(MODULO(print_volume,100)>4) call plot_wfn(nspin,basis,c_matrix)
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!TESTING SECTION TO BE REMOVED IN THE FUTURE
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #if 0
- write(*,*) '==================== TESTS ==================='
+ WRITE_MASTER(*,*) '==================== TESTS ==================='
  allocate(matrix3(basis%nbf,basis%nbf,nspin))
 
  do iatom=1,3
-   write(*,*)
-   write(*,*) 'CHECK TRK sum-rule along axis',iatom 
-   write(*,*)
+   WRITE_MASTER(*,*)
+   WRITE_MASTER(*,*) 'CHECK TRK sum-rule along axis',iatom 
+   WRITE_MASTER(*,*)
 
    do jbf=1,basis%nbf
      do ibf=1,basis%nbf
@@ -641,20 +639,20 @@ program molgw
 
    
    do istate=1,MIN(basis%nbf,2)
-     write(*,*) '______ state _____',istate
+     WRITE_MASTER(*,*) '______ state _____',istate
      energy_tmp=0.0_dp
      do jstate=1,basis%nbf
        energy_tmp = energy_tmp + matrix(istate,jstate,1)**2
      enddo
-     write(*,*) 'test completeness \sum_j <i|r|j><j|r|i>'
-     write(*,*) 'result 1:',istate,energy_tmp
-     write(*,*) 'test completeness <i|r^2|i>'
-     write(*,*) 'result 2:',istate,matrix3(istate,istate,1)
-     write(*,*)
+     WRITE_MASTER(*,*) 'test completeness \sum_j <i|r|j><j|r|i>'
+     WRITE_MASTER(*,*) 'result 1:',istate,energy_tmp
+     WRITE_MASTER(*,*) 'test completeness <i|r^2|i>'
+     WRITE_MASTER(*,*) 'result 2:',istate,matrix3(istate,istate,1)
+     WRITE_MASTER(*,*)
    enddo
 
    rtmp = -0.2
-   write(*,*) 'high energy [Ha]',rtmp
+   WRITE_MASTER(*,*) 'high energy [Ha]',rtmp
 
 
    do jstate=1,MIN(basis%nbf,2)
@@ -663,17 +661,17 @@ program molgw
      do istate=1,basis%nbf
        energy_tmp = energy_tmp + ( energy(istate,1) - energy(jstate,1) ) * matrix(istate,jstate,1)**2
      enddo
-     write(*,*) 'TRK result:',jstate,energy_tmp
+     WRITE_MASTER(*,*) 'TRK result:',jstate,energy_tmp
 !     energy_tmp=0.0_dp
 
      do istate=1,basis%nbf
        energy_tmp = energy_tmp - ( rtmp             - energy(jstate,1) ) * matrix(istate,jstate,1)**2
      enddo
-     write(*,*) 'TRK result:',jstate,energy_tmp
+     WRITE_MASTER(*,*) 'TRK result:',jstate,energy_tmp
 !     energy_tmp=0.0_dp
 
      energy_tmp = energy_tmp + ( rtmp             - energy(jstate,1) )  * matrix3(jstate,jstate,1)
-     write(*,*) 'TRK result:',jstate,energy_tmp
+     WRITE_MASTER(*,*) 'TRK result:',jstate,energy_tmp
 
    enddo
 
@@ -682,17 +680,17 @@ program molgw
    do jstate=1,basis%nbf
      do istate=1,basis%nbf
        if( occupation(jstate,1) - occupation(istate,1)  < 1.0e-6_dp ) cycle
-!       write(*,*) '----------',istate,jstate
-!       write(*,*) occupation(jstate,1) - occupation(istate,1),energy(istate,1) - energy(jstate,1), matrix(istate,jstate,1)**2 
+!       WRITE_MASTER(*,*) '----------',istate,jstate
+!       WRITE_MASTER(*,*) occupation(jstate,1) - occupation(istate,1),energy(istate,1) - energy(jstate,1), matrix(istate,jstate,1)**2 
        energy_tmp = energy_tmp + matrix(istate,jstate,1)**2 / ( energy(istate,1) - energy(jstate,1) ) * ( occupation(jstate,1) - occupation(istate,1) )
      enddo
    enddo
    !
    ! factor 2 from resonant + anti resonant
-   write(*,*) 'polarizability',2.0_dp*energy_tmp
+   WRITE_MASTER(*,*) 'polarizability',2.0_dp*energy_tmp
 
 
-   write(*,*) '---------with completeness'
+   WRITE_MASTER(*,*) '---------with completeness'
 
 !   energy_tmp=0.0_dp
    do jstate=1,basis%nbf
@@ -702,19 +700,22 @@ program molgw
    enddo
    !
    ! factor 2 from resonant + anti resonant
-   write(*,*) 'polarizability without delta',2.0_dp*energy_tmp
+   WRITE_MASTER(*,*) 'polarizability without delta',2.0_dp*energy_tmp
 
 !   energy_tmp=0.0_dp
    do jstate=1,basis%nbf
      energy_tmp = energy_tmp + occupation(jstate,1) * matrix3(jstate,jstate,1) /  ( rtmp             - energy(jstate,1) )  
    enddo
-   write(*,*) 'polarizability with    delta',2.0_dp*energy_tmp
+   WRITE_MASTER(*,*) 'polarizability with    delta',2.0_dp*energy_tmp
 
 
  enddo
- write(*,*) '========= END   OF   TESTS ==================='
+ WRITE_MASTER(*,*) '========= END   OF   TESTS ==================='
  stop'ENOUGH'
 #endif
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!END OF SECTION TO BE REMOVED
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
  !
  ! CI calculation is done here
@@ -730,7 +731,7 @@ program molgw
  if( calc_type%need_final_exchange ) then
 
    call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
-   write(*,*) 'EXX [Ha]:',en%exx
+   WRITE_MASTER(*,*) 'EXX [Ha]:',en%exx
 
    exchange_m_vxc_diag(:,:) = 0.0_dp
    do ispin=1,nspin
@@ -745,9 +746,9 @@ program molgw
      enddo
    enddo
 
-!  write(*,*) 'test'
-!  write(*,*) '<Sigx>', exchange_m_vxc_diag(1:2,:)*27.211
-!  write(*,*) 'test'
+!  WRITE_MASTER(*,*) 'test'
+!  WRITE_MASTER(*,*) '<Sigx>', exchange_m_vxc_diag(1:2,:)*27.211
+!  WRITE_MASTER(*,*) 'test'
 
  else
    exchange_m_vxc_diag(:,:) = 0.0_dp
@@ -760,17 +761,52 @@ program molgw
    if( calc_type%is_lr_mbpt ) then
      !
      ! Hard-coded cutoff radius
-     rcut= 5.0_dp
-     write(msg,'(a,f10.4)') ' hard coded cutoff radius  ',rcut
+     rcut= 0.5_dp
+     write(msg,'(a,f10.4)') 'hard coded cutoff radius  ',rcut
      call issue_warning(msg)
      call deallocate_eri()
      call allocate_eri(basis%nbf)
-     call calculate_eri(print_volume,basis,rcut)
+     call calculate_eri(print_volume,basis,rcut,BUFFER1)
+
      if( .NOT. ALLOCATED( vxc_matrix ) ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
      call dft_exc_vxc(nspin,basis,1,(/1000/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
-     write(*,'(/,a,f14.8)') '    RPA LDA energy [Ha]: ',energy_tmp
+     WRITE_MASTER(*,'(/,a,f14.8)') '    RPA LDA energy [Ha]: ',energy_tmp
+     exchange_m_vxc_diag(:,:) = 0.0_dp
+     do ispin=1,nspin
+       do istate=1,basis%nbf
+         do ibf=1,basis%nbf
+           do jbf=1,basis%nbf
+             exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
+                     + c_matrix(ibf,istate,ispin) * ( vxc_matrix(ibf,jbf,ispin) )&
+                      * c_matrix(jbf,istate,ispin)
+           enddo
+         enddo
+       enddo
+     enddo
+     WRITE_MASTER(*,*) 'test'
+     WRITE_MASTER(*,*) '<vxc RPA FR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
+     WRITE_MASTER(*,*) 'test'
+
+     vxc_matrix(:,:,:) = 0.0_dp
      call dft_exc_vxc(nspin,basis,1,(/1005/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
-     write(*,'(/,a,f14.8)') ' LR-RPA LDA energy [Ha]: ',energy_tmp
+     WRITE_MASTER(*,'(/,a,f14.8)') ' LR-RPA LDA energy [Ha]: ',energy_tmp
+     exchange_m_vxc_diag(:,:) = 0.0_dp
+     do ispin=1,nspin
+       do istate=1,basis%nbf
+         do ibf=1,basis%nbf
+           do jbf=1,basis%nbf
+             exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
+                     + c_matrix(ibf,istate,ispin) * ( vxc_matrix(ibf,jbf,ispin) )&
+                      * c_matrix(jbf,istate,ispin)
+           enddo
+         enddo
+       enddo
+     enddo
+     WRITE_MASTER(*,*) 'test'
+     WRITE_MASTER(*,*) '<vxc RPA LR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
+     WRITE_MASTER(*,*) 'test'
+     exchange_m_vxc_diag(:,:) = 0.0_dp
+
    endif
 
    call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
@@ -783,7 +819,7 @@ program molgw
    call stop_clock(timing_pola)
    en%tot = en%tot + en%rpa
    if( ndft_xc /= 0 ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
-   write(*,'(/,a,f14.8)') ' RPA Total energy [Ha]: ',en%tot
+   WRITE_MASTER(*,'(/,a,f14.8)') ' RPA Total energy [Ha]: ',en%tot
 
    call start_clock(timing_self)
 #ifdef AUXIL_BASIS
@@ -809,11 +845,11 @@ program molgw
    call start_clock(timing_mp2_self)
    call mp2_selfenergy(calc_type%method,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix,en%mp2)
    call stop_clock(timing_mp2_self)
-   write(*,'(a,2x,f12.6)') ' MP2 Energy       [Ha]:',en%mp2
-   write(*,*) 
+   WRITE_MASTER(*,'(a,2x,f12.6)') ' MP2 Energy       [Ha]:',en%mp2
+   WRITE_MASTER(*,*) 
    en%tot = en%tot + en%mp2
    if( ndft_xc /= 0 ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
-   write(*,'(a,2x,f12.6)') ' MP2 Total Energy [Ha]:',en%tot
+   WRITE_MASTER(*,'(a,2x,f12.6)') ' MP2 Total Energy [Ha]:',en%tot
 
    title='=== Self-energy === (in the orbital basis)'
    call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
@@ -836,7 +872,7 @@ program molgw
 
  call output_all_warnings()
 
- write(*,'(/,a,/)') ' This is the end'
+ WRITE_MASTER(*,'(/,a,/)') ' This is the end'
 
 end program molgw
 
@@ -892,8 +928,8 @@ subroutine  set_occupation(electrons,magnetization,nbf,nspin,occupation)
       remaining_electrons(:)  = remaining_electrons(:) - occupation(ibf,:)
     end do
   else
-    write(*,*)
-    write(*,*) 'occupations are read from file: manual_occupations'
+    WRITE_MASTER(*,*)
+    WRITE_MASTER(*,*) 'occupations are read from file: manual_occupations'
     msg='reading manual occupations from file'
     call issue_warning(msg)
     open(unit=12,file='manual_occupations',status='old')
@@ -904,17 +940,17 @@ subroutine  set_occupation(electrons,magnetization,nbf,nspin,occupation)
       read(12,*) occupation(ilines,:)
     enddo
     close(12)
-    write(*,*) 'occupations set, closing file'
+    WRITE_MASTER(*,*) 'occupations set, closing file'
   endif
  
   !
   ! final check
   if( ABS( SUM(occupation(:,:)) - electrons ) > 1.0d-7 ) then
-    write(*,*) 'occupation set up failed to give the right number of electrons'
-    write(*,*) 'sum of occupations',SUM(occupation(:,:))
-    write(*,*) 'electrons',electrons
+    WRITE_MASTER(*,*) 'occupation set up failed to give the right number of electrons'
+    WRITE_MASTER(*,*) 'sum of occupations',SUM(occupation(:,:))
+    WRITE_MASTER(*,*) 'electrons',electrons
     do ibf=1,nbf
-      write(*,*) ibf,occupation(ibf,:)
+      WRITE_MASTER(*,*) ibf,occupation(ibf,:)
     enddo
     stop'FAILURE in set_occupations'
   endif 
@@ -962,7 +998,7 @@ subroutine guess_starting_c_matrix_new(basis,nspin,c_matrix)
    do ig=1,basis%bf(ibf)%ngaussian
      alpha_max_bf(ibf)=MAX(basis%bf(ibf)%g(ig)%alpha,alpha_max_bf(ibf))
    enddo
-!   write(*,*) ibf,alpha_max_bf(ibf)
+!   WRITE_MASTER(*,*) ibf,alpha_max_bf(ibf)
  enddo
 
  !
@@ -977,7 +1013,7 @@ subroutine guess_starting_c_matrix_new(basis,nspin,c_matrix)
      endif
    enddo
    c_matrix(kbf,ibf,:) = 1.0_dp
-!   write(*,*) 'chosen',ibf,kbf,alpha_max_bf(kbf)
+!   WRITE_MASTER(*,*) 'chosen',ibf,kbf,alpha_max_bf(kbf)
    alpha_max_bf(kbf)   = -1.0_dp
    
  enddo

@@ -1,4 +1,6 @@
 !=========================================================================
+#include "macros.h"
+!=========================================================================
 module m_basis_set
  use m_definitions
  use m_timing
@@ -70,16 +72,16 @@ contains
  !
  do iatom=1,natom
 
-   write(*,*)
-   write(*,*) 'Element used for Z value:    ',TRIM(element_name(zatom(iatom)))
-   write(*,*) 'Element used for the basis:  ',TRIM(element_name(REAL(basis_element(iatom),dp)))
-   write(*,*) 'Basis type: ',TRIM(basis_name)
+   WRITE_MASTER(*,*)
+   WRITE_MASTER(*,*) 'Element used for Z value:    ',TRIM(element_name(zatom(iatom)))
+   WRITE_MASTER(*,*) 'Element used for the basis:  ',TRIM(element_name(REAL(basis_element(iatom),dp)))
+   WRITE_MASTER(*,*) 'Basis type: ',TRIM(basis_name)
    basis_filename=TRIM(element_name(REAL(basis_element(iatom),dp)))//'_'//TRIM(basis_name)
    msg='basis file used: '//basis_filename
    call issue_warning(msg)
   
-   write(*,*)
-   write(*,*) 'open the basis set file ',TRIM(basis_filename)
+   WRITE_MASTER(*,*)
+   WRITE_MASTER(*,*) 'open the basis set file ',TRIM(basis_filename)
    inquire(file=TRIM(basis_filename),exist=file_exists)
    if(.NOT.file_exists) stop'basis set file not found'
   
@@ -98,13 +100,13 @@ contains
    enddo
    close(basis_file)
   
-!   write(*,*) 'Number of basis functions for atom',iatom,nbf
+!   WRITE_MASTER(*,*) 'Number of basis functions for atom',iatom,nbf
 
  enddo
 
- write(*,*)
- write(*,*) 'Total number of basis functions',basis%nbf
- write(*,*)
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) 'Total number of basis functions',basis%nbf
+ WRITE_MASTER(*,*)
  allocate(basis%bf(basis%nbf))
 
  jbf=0
@@ -130,8 +132,8 @@ contains
    ! rescale the gaussian decay rate whenever zatom /= basis_element
    if( abs( zatom(iatom) - REAL(basis_element(iatom),dp) ) > 1.d-6 ) then
      alpha(:) = alpha(:) * ( zatom(iatom) / REAL(basis_element(iatom),dp) )**2
-     write(*,*) 'rescaling momentum',am_tmp
-     write(*,*) 'smallest rescaled alpha:',MINVAL(alpha(:))
+     WRITE_MASTER(*,*) 'rescaling momentum',am_tmp
+     WRITE_MASTER(*,*) 'smallest rescaled alpha:',MINVAL(alpha(:))
    endif
 
    x0(:) = x(:,iatom)
@@ -288,12 +290,12 @@ contains
  ! finally output the basis set upon request
  if(MODULO(print_volume,100)>5) then
    do ibf=1,basis%nbf
-     write(*,*) ' basis function number',ibf
+     WRITE_MASTER(*,*) ' basis function number',ibf
      call print_basis_function(basis%bf(ibf))
    enddo
  endif
 
- write(*,*) 'Basis set is ready and fit'
+ WRITE_MASTER(*,*) 'Basis set is ready and fit'
 
  end subroutine init_basis_set
 
@@ -350,8 +352,8 @@ contains
    if( eigval(iprodbf) > FILTERED_EIGENVALUE ) prod_basis%nbf_filtered = prod_basis%nbf_filtered + 1
  enddo
 
- write(*,'(a,es12.6)') ' filtering below ',FILTERED_EIGENVALUE
- write(*,'(a,i4,a,i4)') ' Conserve ',prod_basis%nbf_filtered,' out of ',prod_basis%nbf
+ WRITE_MASTER(*,'(a,es12.6)') ' filtering below ',FILTERED_EIGENVALUE
+ WRITE_MASTER(*,'(a,i4,a,i4)') ' Conserve ',prod_basis%nbf_filtered,' out of ',prod_basis%nbf
 
  allocate(prod_basis%rotation(prod_basis%nbf_filtered,prod_basis%nbf))
 
@@ -415,9 +417,9 @@ contains
  if( normalized ) then
    call overlap_basis_function(bf,bf,overlap)
    if( ABS(overlap-1.0_dp) > 2.0d-5 ) then
-     write(*,*) 'normalization is different from 1.0',overlap
-     write(*,*) bf%nx,bf%ny,bf%nz
-     write(*,*) 'assuming this is a generalized contraction and rescaling coefficients'
+     WRITE_MASTER(*,*) 'normalization is different from 1.0',overlap
+     WRITE_MASTER(*,*) bf%nx,bf%ny,bf%nz
+     WRITE_MASTER(*,*) 'assuming this is a generalized contraction and rescaling coefficients'
      bf%coeff(:) = coeff(:) / SQRT( overlap )
    endif
  endif
@@ -474,20 +476,20 @@ contains
  integer :: ig
 !====
 
- write(*,*)
- write(*,*) '======  print out a basis function ======'
- write(*,'(a30,2x,1(x,i3))')           'contraction of N gaussians',bf%ngaussian
- write(*,'(a30,5x,a1)')                'orbital momentum',bf%amc
- write(*,'(a30,x,3(f12.6,2x))')        'centered in',bf%x0(:)
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) '======  print out a basis function ======'
+ WRITE_MASTER(*,'(a30,2x,1(x,i3))')           'contraction of N gaussians',bf%ngaussian
+ WRITE_MASTER(*,'(a30,5x,a1)')                'orbital momentum',bf%amc
+ WRITE_MASTER(*,'(a30,x,3(f12.6,2x))')        'centered in',bf%x0(:)
  do ig=1,bf%ngaussian
-   write(*,'(a30,2x,x,i3,2x,f12.6)')   'coefficient',ig,bf%coeff(ig)
+   WRITE_MASTER(*,'(a30,2x,x,i3,2x,f12.6)')   'coefficient',ig,bf%coeff(ig)
  enddo
- write(*,*)
+ WRITE_MASTER(*,*)
  do ig=1,bf%ngaussian
    call print_gaussian(bf%g(ig))
  enddo
- write(*,*) '====== end of basis function ======'
- write(*,*)
+ WRITE_MASTER(*,*) '====== end of basis function ======'
+ WRITE_MASTER(*,*)
 
  end subroutine print_basis_function
 

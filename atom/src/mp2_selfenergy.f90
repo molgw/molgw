@@ -1,4 +1,6 @@
 !=========================================================================
+#include "macros.h"
+!=========================================================================
 subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,selfenergy,emp2)
  use m_definitions
  use m_calculation_type
@@ -60,13 +62,13 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
  msg='small complex number is '//msg
  call issue_warning(msg)
 
- write(*,*)
- write(*,*) 'Perform the second-order self-energy calculation'
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) 'Perform the second-order self-energy calculation'
  select case(method)
  case(QS)
-   write(*,*) 'with the QP self-consistent approach'
+   WRITE_MASTER(*,*) 'with the QP self-consistent approach'
  case(perturbative)
-   write(*,*) 'with the perturbative approach'
+   WRITE_MASTER(*,*) 'with the perturbative approach'
  end select
 
 
@@ -110,7 +112,7 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
  selfenergy_sox(:,:,:,:)  = 0.0_dp
 
 #ifdef OPENMP
- write(*,*) 'OPENMP is used for the MP2 self-energy'
+ WRITE_MASTER(*,*) 'OPENMP is used for the MP2 self-energy'
 #endif
  do abispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED) &
@@ -217,10 +219,10 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
  emp2_ring = 0.5_dp * emp2_ring
  emp2_sox  = 0.5_dp * emp2_sox
  emp2 = emp2_ring + emp2_sox
- write(*,'(/,a)')       ' MP2 Energy'
- write(*,'(a,f14.8)')   ' 2-ring diagram  :',emp2_ring
- write(*,'(a,f14.8)')   ' SOX diagram     :',emp2_sox
- write(*,'(a,f14.8,/)') ' MP2 correlation :',emp2
+ WRITE_MASTER(*,'(/,a)')       ' MP2 Energy'
+ WRITE_MASTER(*,'(a,f14.8)')   ' 2-ring diagram  :',emp2_ring
+ WRITE_MASTER(*,'(a,f14.8)')   ' SOX diagram     :',emp2_sox
+ WRITE_MASTER(*,'(a,f14.8,/)') ' MP2 correlation :',emp2
 
  if(method==perturbative) then
 
@@ -229,28 +231,28 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
        write(ctmp,'(i2.2)') aorbital
        open(20+aorbital,file='selfenergy_omega_state'//TRIM(ctmp))
        do iomegai=1,nomegai
-         write(20+aorbital,'(20(f12.6,2x))') DBLE(omegai(iomegai))+energy(aorbital,:),&
+         WRITE_MASTER(20+aorbital,'(20(f12.6,2x))') DBLE(omegai(iomegai))+energy(aorbital,:),&
 &                         DBLE(selfenergy_ring(iomegai,aorbital,aorbital,:)),&
 &                         DBLE(selfenergy_sox(iomegai,aorbital,aorbital,:)),&
 &                         DBLE(selfenergy_ring(iomegai,aorbital,aorbital,:))+&
 &                         DBLE(selfenergy_sox(iomegai,aorbital,aorbital,:)),&
 &                         DBLE(omegai(iomegai))-exchange_m_vxc_diag(aorbital,:)
        enddo
-       write(20+aorbital,*)
+       WRITE_MASTER(20+aorbital,*)
      enddo
      close(20+aorbital)
      stop'output the self energy in a file'
    endif
 
 
-   write(*,*) '=============================='
-   write(*,*) ' selfenergy RING + SOX'
-   write(*,'(a)') ' #         Energies           Sigx-Vxc       one-ring              SOX             MP2              Z            QP-eigenvalues'
+   WRITE_MASTER(*,*) '=============================='
+   WRITE_MASTER(*,*) ' selfenergy RING + SOX'
+   WRITE_MASTER(*,'(a)') ' #         Energies           Sigx-Vxc       one-ring              SOX             MP2              Z            QP-eigenvalues'
    do borbital=1,basis%nbf 
      zz(:) = REAL( selfenergy_ring(3,borbital,borbital,:)+selfenergy_sox(3,borbital,borbital,:) &
                  - selfenergy_ring(1,borbital,borbital,:)-selfenergy_sox(1,borbital,borbital,:) ) / REAL( omegai(3)-omegai(1) )
      zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
-     write(*,'(i4,18(3x,f14.5))') borbital,energy(borbital,:)*Ha_eV,&
+     WRITE_MASTER(*,'(i4,18(3x,f14.5))') borbital,energy(borbital,:)*Ha_eV,&
            exchange_m_vxc_diag(borbital,:)*Ha_eV,&
            selfenergy_ring(2,borbital,borbital,:) * Ha_eV,&
            selfenergy_sox (2,borbital,borbital,:) * Ha_eV,&
@@ -258,7 +260,7 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
          zz(:),&
          ( energy(borbital,:) + exchange_m_vxc_diag(borbital,:) + selfenergy_ring(2,borbital,borbital,:) + selfenergy_sox(2,borbital,borbital,:) ) * Ha_eV
    enddo
-   write(*,*) '=============================='
+   WRITE_MASTER(*,*) '=============================='
 
    selfenergy(:,:,:) = 0.0_dp
    if(.NOT.ring_only) then
@@ -281,7 +283,7 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
        selfenergy_final(:,:,abispin) = 0.5_dp * ( selfenergy_ring(1,:,:,abispin) + selfenergy_sox(1,:,:,abispin) &
                                                +  transpose( selfenergy_ring(1,:,:,abispin) + selfenergy_sox(1,:,:,abispin) ) )
      else
-       write(*,*) 'ring_only'
+       WRITE_MASTER(*,*) 'ring_only'
        selfenergy_final(:,:,abispin) = 0.5_dp * ( selfenergy_ring(1,:,:,abispin)  &
                                                +  transpose( selfenergy_ring(1,:,:,abispin) ) )
      endif

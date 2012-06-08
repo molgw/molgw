@@ -1,27 +1,32 @@
 !=========================================================================
+#include "macros.h"
+!=========================================================================
 subroutine header()
  use m_definitions
  implicit none
  integer :: values(8) 
 !=====
 
- write(*,'(/,/,a,/,/)') ' Welcome to the fascinating world of MOLGW'
+ WRITE_MASTER(*,'(x,70("="))') 
+ WRITE_MASTER(*,'(/,/,12x,a,/,/)') ' Welcome to the fascinating world of MOLGW'
+ WRITE_MASTER(*,'(x,70("="))') 
+ WRITE_MASTER(*,*)
 
  call date_and_time(VALUES=values)
 
- write(*,'(a,i2.2,a,i2.2,a,i4.4)') ' Today is ',values(3),'/',values(2),'/',values(1)
- write(*,'(a,i2.2,a,i2.2)')        ' It is now ',values(5),':',values(6)
+ WRITE_MASTER(*,'(a,i2.2,a,i2.2,a,i4.4)') ' Today is ',values(3),'/',values(2),'/',values(1)
+ WRITE_MASTER(*,'(a,i2.2,a,i2.2)')        ' It is now ',values(5),':',values(6)
  select case(values(5))
  case(03,04,05,06,07)
-   write(*,*) 'And it is too early to work. Go back to sleep'
+   WRITE_MASTER(*,*) 'And it is too early to work. Go back to sleep'
  case(22,23,00,01,02)
-   write(*,*) 'And it is too late to work. Go to bed and have a sleep'
+   WRITE_MASTER(*,*) 'And it is too late to work. Go to bed and have a sleep'
  case(12,13)
-   write(*,*) 'Go and get some good food'
+   WRITE_MASTER(*,*) 'Go and get some good food'
  case(17)
-   write(*,*) 'Dont forget to go and get the kids'
+   WRITE_MASTER(*,*) 'Dont forget to go and get the kids'
  case default
-   write(*,*) 'And it is perfect time to work'
+   WRITE_MASTER(*,*) 'And it is perfect time to work'
  end select
 
 end subroutine header
@@ -40,27 +45,27 @@ subroutine dump_out_array(is_energy,title,n,nspin,array)
  integer :: i,ispin
 !=====
 
- write(*,'(/,x,a)') TRIM(title)
+ WRITE_MASTER(*,'(/,x,a)') TRIM(title)
 
  if(is_energy) then
    if(nspin==1) then
-     write(*,'(a)') '   #       [Ha]         [eV]      '
+     WRITE_MASTER(*,'(a)') '   #       [Ha]         [eV]      '
    else
-     write(*,'(a)') '   #              [Ha]                      [eV]      '
-     write(*,'(a)') '           spin 1       spin 2       spin 1       spin 2'
+     WRITE_MASTER(*,'(a)') '   #              [Ha]                      [eV]      '
+     WRITE_MASTER(*,'(a)') '           spin 1       spin 2       spin 1       spin 2'
    endif
    do i=1,MIN(n,MAXSIZE)
-     write(*,'(x,i3,2(2(x,f12.5)),2x)') i,array(i,:),array(i,:)*Ha_eV
+     WRITE_MASTER(*,'(x,i3,2(2(x,f12.5)),2x)') i,array(i,:),array(i,:)*Ha_eV
    enddo
  else
    if(nspin==2) then
-     write(*,'(a)') '           spin 1       spin 2 '
+     WRITE_MASTER(*,'(a)') '           spin 1       spin 2 '
    endif
    do i=1,MIN(n,MAXSIZE)
-     write(*,'(x,i3,2(2(x,f12.5)),2x)') i,array(i,:)
+     WRITE_MASTER(*,'(x,i3,2(2(x,f12.5)),2x)') i,array(i,:)
    enddo
  endif
- write(*,*)
+ WRITE_MASTER(*,*)
 
 end subroutine dump_out_array
 
@@ -80,16 +85,18 @@ subroutine dump_out_matrix(print_volume,title,n,nspin,matrix)
 
  if(MODULO(print_volume,100)<10) return
 
- write(*,'(/,x,a)') TRIM(title)
+ WRITE_MASTER(*,'(/,x,a)') TRIM(title)
 
  do ispin=1,nspin
-   if(nspin==2) write(*,'(a,i1)') ' spin polarization # ',ispin
+   if(nspin==2) then
+     WRITE_MASTER(*,'(a,i1)') ' spin polarization # ',ispin
+   endif
    do i=1,MIN(n,MAXSIZE)
-     write(*,'(x,i3,100(x,f12.5))') i,matrix(i,1:MIN(n,MAXSIZE),ispin)
+     WRITE_MASTER(*,'(x,i3,100(x,f12.5))') i,matrix(i,1:MIN(n,MAXSIZE),ispin)
    enddo
-   write(*,*)
+   WRITE_MASTER(*,*)
  enddo
- write(*,*)
+ WRITE_MASTER(*,*)
 
 end subroutine dump_out_matrix
 
@@ -122,11 +129,11 @@ subroutine output_homolumo(nbf,nspin,occupation,energy,homo,lumo)
  enddo
 
 
- write(*,*)
- write(*,'(a,2(3x,f12.6))') ' HOMO energy    [Ha]:',homo(:)
- write(*,'(a,2(3x,f12.6))') ' LUMO energy    [Ha]:',lumo(:)
- write(*,'(a,2(3x,f12.6))') ' HOMO-LUMO gap  [Ha]:',lumo(:)-homo(:)
- write(*,*)
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,'(a,2(3x,f12.6))') ' HOMO energy    [Ha]:',homo(:)
+ WRITE_MASTER(*,'(a,2(3x,f12.6))') ' LUMO energy    [Ha]:',lumo(:)
+ WRITE_MASTER(*,'(a,2(3x,f12.6))') ' HOMO-LUMO gap  [Ha]:',lumo(:)-homo(:)
+ WRITE_MASTER(*,*)
 
 
 end subroutine output_homolumo
@@ -160,8 +167,8 @@ subroutine read_inputparameter(calc_type,nspin,nscf,alpha_mixing,print_volume,ba
  read(*,*) read_char
  call init_calculation_type(calc_type,read_char)
 
- write(*,'(/,a,/)')    ' Summary of the input parameters '
- write(*,'(a20,2x,a)') ' calculation type: ',TRIM(read_char)
+ WRITE_MASTER(*,'(/,a,/)')    ' Summary of the input parameters '
+ WRITE_MASTER(*,'(a20,2x,a)') ' calculation type: ',TRIM(read_char)
 
  read(*,*) nspin,zatom,electrons,magnetization
  if(nspin/=1 .AND. nspin/=2) stop'nspin in incorrect'
@@ -193,15 +200,15 @@ subroutine read_inputparameter(calc_type,nspin,nscf,alpha_mixing,print_volume,ba
 
  !
  ! summarize input parameters
- write(*,'(a20,f8.4)') ' Atom Z: ',zatom
- write(*,'(a20,f8.4)') ' Electrons: ',electrons
- write(*,'(a20,f8.4)') ' Magnetization: ',magnetization
- write(*,'(a20,2x,a)') ' Basis set: ',basis_name
- write(*,'(a20,i3)')   ' Spin polarization: ',nspin
- write(*,'(a20,i3)')   ' SCF steps: ',nscf
+ WRITE_MASTER(*,'(a20,f8.4)') ' Atom Z: ',zatom
+ WRITE_MASTER(*,'(a20,f8.4)') ' Electrons: ',electrons
+ WRITE_MASTER(*,'(a20,f8.4)') ' Magnetization: ',magnetization
+ WRITE_MASTER(*,'(a20,2x,a)') ' Basis set: ',basis_name
+ WRITE_MASTER(*,'(a20,i3)')   ' Spin polarization: ',nspin
+ WRITE_MASTER(*,'(a20,i3)')   ' SCF steps: ',nscf
 
 
- write(*,*)
+ WRITE_MASTER(*,*)
 
 end subroutine read_inputparameter
 
@@ -236,8 +243,8 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  read(*,*) read_char
  call init_calculation_type(calc_type,read_char)
 
- write(*,'(/,a,/)')    ' Summary of the input parameters '
- write(*,'(a20,2x,a)') ' calculation type: ',TRIM(read_char)
+ WRITE_MASTER(*,'(/,a,/)')    ' Summary of the input parameters '
+ WRITE_MASTER(*,'(a20,2x,a)') ' calculation type: ',TRIM(read_char)
 
  read(*,*) nspin,charge,magnetization
  if(nspin/=1 .AND. nspin/=2) stop'nspin in incorrect'
@@ -299,8 +306,8 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  do iatom=1,natom
    do jatom=iatom+1,natom
      if( SQRT( SUM( (x(:,iatom)-x(:,jatom))**2 ) ) < 0.2 ) then
-       write(*,*) 'atoms',iatom,jatom
-       write(*,*) 'are closer than 0.2 bohr'
+       WRITE_MASTER(*,*) 'atoms',iatom,jatom
+       WRITE_MASTER(*,*) 'are closer than 0.2 bohr'
        stop'stop here'
      endif
    enddo
@@ -314,26 +321,26 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
 
  !
  ! summarize input parameters
- write(*,'(a20,i3)')   ' Natom: ',natom
- write(*,'(a20,f8.4)') ' Electrons: ',electrons
- write(*,'(a20,f8.4)') ' Charge: ',charge
- write(*,'(a20,f8.4)') ' Magnetization: ',magnetization
- write(*,'(a20,2x,a)') ' Basis set: ',basis_name
- write(*,'(a20,i3)')   ' Spin polarization: ',nspin
- write(*,'(a20,i3)')   ' SCF steps: ',nscf
- write(*,'(a20,f8.4)') ' Mixing: ',alpha_mixing
+ WRITE_MASTER(*,'(a20,i3)')   ' Natom: ',natom
+ WRITE_MASTER(*,'(a20,f8.4)') ' Electrons: ',electrons
+ WRITE_MASTER(*,'(a20,f8.4)') ' Charge: ',charge
+ WRITE_MASTER(*,'(a20,f8.4)') ' Magnetization: ',magnetization
+ WRITE_MASTER(*,'(a20,2x,a)') ' Basis set: ',basis_name
+ WRITE_MASTER(*,'(a20,i3)')   ' Spin polarization: ',nspin
+ WRITE_MASTER(*,'(a20,i3)')   ' SCF steps: ',nscf
+ WRITE_MASTER(*,'(a20,f8.4)') ' Mixing: ',alpha_mixing
 
- write(*,*)
- write(*,*) '================================'
- write(*,*) '      atom list'
- write(*,*) '                       bohr                                        angstrom'
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) '================================'
+ WRITE_MASTER(*,*) '      atom list'
+ WRITE_MASTER(*,*) '                       bohr                                        angstrom'
  do iatom=1,natom
-   write(*,'(2x,a2,3(x,f12.6),6x,3(x,f12.6))') element_name(zatom(iatom)),x(:,iatom),x(:,iatom)*bohr_A
+   WRITE_MASTER(*,'(2x,a2,3(x,f12.6),6x,3(x,f12.6))') element_name(zatom(iatom)),x(:,iatom),x(:,iatom)*bohr_A
  enddo
 
 
- write(*,*) '================================'
- write(*,*)
+ WRITE_MASTER(*,*) '================================'
+ WRITE_MASTER(*,*)
 
 end subroutine read_inputparameter_molecule
 
@@ -372,8 +379,8 @@ subroutine plot_wfn(nspin,basis,c_matrix)
      if(phi2<0.0_dp) phase2=-1.0_dp
    endif
 
-   write(101,*) x(1),phi1*phase1,phi2*phase2
-   write(102,*) x(1),phi1**2,phi2**2
+   WRITE_MASTER(101,*) x(1),phi1*phase1,phi2*phase2
+   WRITE_MASTER(102,*) x(1),phi1**2,phi2**2
  enddo
 
 end subroutine plot_wfn

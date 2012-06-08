@@ -1,5 +1,6 @@
 !=========================================================================
-!ERI subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,eri,emp2)
+#include "macros.h"
+!=========================================================================
 subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
  use m_definitions
  use m_basis_set
@@ -9,7 +10,6 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
  integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin),energy(basis%nbf,nspin)
-!ERI real(dp),intent(in)        :: eri(basis%nbf,basis%nbf,basis%nbf,basis%nbf)
  real(dp),intent(out)       :: emp2
 !=====
  integer                    :: aorbital,borbital,iorbital,jorbital
@@ -36,7 +36,7 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
 
    do aorbital=1,basis%nbf
      if(occupation(aorbital,ispin)>spin_fact-completely_empty) cycle
-     write(*,'(i4,2x,i4,a,i4)') &
+     WRITE_MASTER(*,'(i4,2x,i4,a,i4)') &
 &             ispin,aorbital,' / ',basis%nbf
 
      tmp_xaxx(:,:,:) = 0.0_dp
@@ -92,7 +92,7 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
 &                                    - energy(aorbital,ispin) - energy(borbital,jspin)
              ! Avoid the zero denominators
              if( ABS(energy_denom) < 1.d-18) then
-               write(*,*) 'write that you skipped something'
+               WRITE_MASTER(*,*) 'you skipped something'
                cycle
              endif
              energy_denom =  fact / energy_denom 
@@ -118,16 +118,16 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
 
 
  emp2 = contrib1 + contrib2
- write(*,'(/,a)')       ' MP2 contributions'
- write(*,'(a,f14.8)')   ' 2-ring diagram  :',contrib1
- write(*,'(a,f14.8)')   ' SOX diagram     :',contrib2
- write(*,'(a,f14.8,/)') ' MP2 correlation :',emp2
+ WRITE_MASTER(*,'(/,a)')       ' MP2 contributions'
+ WRITE_MASTER(*,'(a,f14.8)')   ' 2-ring diagram  :',contrib1
+ WRITE_MASTER(*,'(a,f14.8)')   ' SOX diagram     :',contrib2
+ WRITE_MASTER(*,'(a,f14.8,/)') ' MP2 correlation :',emp2
 
 
 end subroutine mp2_energy
 
 !==================================================================
-subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix,nuc_nuc)
+subroutine full_ci_2electrons_spin(print_volume,spinstate,basis,h_1e,c_matrix,nuc_nuc)
  use m_definitions
  use m_tools
  use m_basis_set
@@ -139,6 +139,7 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix,nuc_nuc)
  integer,parameter :: cip=dp
  integer,parameter :: nx=4000
 !
+ integer,intent(in)         :: print_volume
  integer,intent(in)         :: spinstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,basis%nbf)
@@ -168,11 +169,11 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix,nuc_nuc)
  real(dp) :: wx(nx),wy(ny),wz(nz)
  real(dp) :: norm
 !=====
- write(*,*) 
- write(*,*) 'Enter full CI subroutine'
- write(*,*) 
+ WRITE_MASTER(*,*) 
+ WRITE_MASTER(*,*) 'Enter full CI subroutine'
+ WRITE_MASTER(*,*) 
 
- write(*,*) 'obtain the one-electron Hamiltonian in the HF basis'
+ WRITE_MASTER(*,*) 'obtain the one-electron Hamiltonian in the HF basis'
  h_1e_hf(:,:) = 0.0_dp
  do jstate=1,basis%nbf
    do istate=1,basis%nbf
@@ -190,16 +191,16 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix,nuc_nuc)
 
  select case(spinstate)
  case(0)
-   write(*,*) 'calculate spin singlet state'
+   WRITE_MASTER(*,*) 'calculate spin singlet state'
  case(1)
-   write(*,*) 'calculate spin triplet state'
+   WRITE_MASTER(*,*) 'calculate spin triplet state'
  case default
    stop'BUG: spin state not possible'
  end select
 
  nconf = ( 2*basis%nbf * (2*basis%nbf -1) ) / 2
- write(*,*)
- write(*,*) 'CI matrix lower than',nconf,' x ',nconf
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) 'CI matrix lower than',nconf,' x ',nconf
  allocate(hamiltonian(nconf,nconf))
  hamiltonian(:,:) = 0.0_dp
  do iconf=1,nconf
@@ -240,7 +241,7 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix,nuc_nuc)
 !TODO                 if(.NOT.symmetry(jstate1,jstate2)) cycle
                  jconf=jconf+1
 
-!         write(*,'(10(i4,x))') jconf,jstate1,jspin1,jstate2,jspin2
+!         WRITE_MASTER(*,'(10(i4,x))') jconf,jstate1,jspin1,jstate2,jspin2
 
                  if( istate2==jstate2 .AND. ispin2==jspin2 .AND. ispin1==jspin1 ) hamiltonian(iconf,jconf) = hamiltonian(iconf,jconf) + h_1e_hf(istate1,jstate1)
                  if( istate1==jstate1 .AND. ispin1==jspin1 .AND. ispin2==jspin2 ) hamiltonian(iconf,jconf) = hamiltonian(iconf,jconf) + h_1e_hf(istate2,jstate2)
@@ -274,27 +275,27 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix,nuc_nuc)
 
  ! Adjust the real size of the CI hamiltonian
  nconf=iconf
- write(*,*)
- write(*,*) 'CI matrix finally is',nconf,' x ',nconf
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) 'CI matrix finally is',nconf,' x ',nconf
 
- write(*,*) 'Single determinant ground state energy [Ha]',hamiltonian(1,1)
-! write(*,*) '=========== H_1e ============== '
+ WRITE_MASTER(*,*) 'Single determinant ground state energy [Ha]',hamiltonian(1,1)
+! WRITE_MASTER(*,*) '=========== H_1e ============== '
 ! do istate=1,basis%nbf
-!   write(*,'(i4,2x,20(x,f12.6))') iconf,h_1e_hf(istate,1:basis%nbf)
+!   WRITE_MASTER(*,'(i4,2x,20(x,f12.6))') iconf,h_1e_hf(istate,1:basis%nbf)
 ! enddo
 !#ifndef LOW_MEMORY2
-! write(*,*) '=========== J_ij ============== '
+! WRITE_MASTER(*,*) '=========== J_ij ============== '
 ! do istate=1,basis%nbf
-!   write(*,'(i4,2x,20(x,f12.6))') iconf,(eri_hf(istate,istate,jstate,jstate),jstate=1,basis%nbf)
+!   WRITE_MASTER(*,'(i4,2x,20(x,f12.6))') iconf,(eri_hf(istate,istate,jstate,jstate),jstate=1,basis%nbf)
 ! enddo
-! write(*,*) '=========== K_ij ============== '
+! WRITE_MASTER(*,*) '=========== K_ij ============== '
 ! do istate=1,basis%nbf
-!   write(*,'(i4,2x,20(x,f12.6))') iconf,(eri_hf(istate,jstate,jstate,istate),jstate=1,basis%nbf)
+!   WRITE_MASTER(*,'(i4,2x,20(x,f12.6))') iconf,(eri_hf(istate,jstate,jstate,istate),jstate=1,basis%nbf)
 ! enddo
 !#endif
-! write(*,*) '=========== full H ============== '
+! WRITE_MASTER(*,*) '=========== full H ============== '
 ! do iconf=1,nconf
-!   write(*,'(i4,2x,20(x,f12.6))') iconf,hamiltonian(iconf,1:nconf)
+!   WRITE_MASTER(*,'(i4,2x,20(x,f12.6))') iconf,hamiltonian(iconf,1:nconf)
 ! enddo
 
  allocate(energy(nconf),eigenvector(nconf,nconf))
@@ -307,10 +308,10 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix,nuc_nuc)
 
  if(nconf>1000) then ! iterative partial diago or full diago
    ! home made steepest descent algo
-   write(*,*)
-   write(*,*) 'hamiltonian too big to be diagonalized'
-   write(*,*) 'Slow steepest descent algorithm'
-   write(*,*) 'home cooked'
+   WRITE_MASTER(*,*)
+   WRITE_MASTER(*,*) 'hamiltonian too big to be diagonalized'
+   WRITE_MASTER(*,*) 'Slow steepest descent algorithm'
+   WRITE_MASTER(*,*) 'home cooked'
    allocate(test1(nconf),test2(nconf),hphi(nconf),gr1(nconf),gr2(nconf))
    test1(:) = 0.001
    test1(1) = 1. 
@@ -323,24 +324,26 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix,nuc_nuc)
      eigen = dot_product(test1,hphi)
      gr1(:) = 2. * ( hphi(:) - eigen * test1(:) )
      norm_gr1 = SQRT(dot_product(gr1,gr1))
-!     write(*,*) 'x1',norm_gr1
+!     WRITE_MASTER(*,*) 'x1',norm_gr1
   
-!     write(*,*) 'guessed delta',delta
+!     WRITE_MASTER(*,*) 'guessed delta',delta
      test2(:) = test1(:) - delta * gr1(:) / norm_gr1
      test2(:) = test2(:) / SQRT( SUM( test2(:)**2 ) )
   
      hphi = matmul(eigenvector,test2)
      eigen = dot_product(test2,hphi)
      gr2(:) = 2. * ( hphi(:) - eigen * test2(:) )
-!     write(*,*) 'x2',dot_product(gr2,gr1)/norm_gr1
+!     WRITE_MASTER(*,*) 'x2',dot_product(gr2,gr1)/norm_gr1
      hessian = dot_product(gr1,gr2-gr1) / ( delta * norm_gr1 )
      delta = -norm_gr1 / hessian
-!     write(*,*) 'optimal delta',delta
+!     WRITE_MASTER(*,*) 'optimal delta',delta
      test2(:) = test1(:) - delta * gr1(:) / norm_gr1
      test2(:) = test2(:) / SQRT( SUM( test2(:)**2 ) )
   
-     if(modulo(iline,20)==0) write(*,*) 'diff',iline,eigen,SUM(ABS(test2(:)-test1(:)))/DBLE(nconf)
-!     write(*,*) '==================='
+     if(modulo(iline,20)==0) then
+       WRITE_MASTER(*,*) 'diff',iline,eigen,SUM(ABS(test2(:)-test1(:)))/DBLE(nconf)
+     endif
+!     WRITE_MASTER(*,*) '==================='
      if( SUM(ABS(test2(:)-test1(:)))/DBLE(nconf) < 1.e-12_dp ) exit
      test1(:) = test2(:)
   
@@ -353,165 +356,168 @@ subroutine full_ci_2electrons_spin(spinstate,basis,h_1e,c_matrix,nuc_nuc)
 
  else
    ! full LAPACK diago
-   write(*,*) 'starting the diago'
+   WRITE_MASTER(*,*) 'starting the diago'
    call diagonalize(nconf,hamiltonian,energy,eigenvector)
-   write(*,*) 'diago DONE'
+   WRITE_MASTER(*,*) 'diago DONE'
 
  endif
 
- write(*,*)
- write(*,*) 'normalization',SUM(eigenvector(:,1)**2)
- write(*,'(i4,2x,20(x,f7.4))') 1,eigenvector(1:min(20,nconf),1)
- write(*,*)
- write(*,'(a30,2x,f14.8)') 'CI ground-state energy [Ha]:',energy(1)
- write(*,'(a30,2x,f14.8)') 'correlation energy [Ha]:',energy(1)-hamiltonian(1,1)
- write(*,*)
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) 'normalization',SUM(eigenvector(:,1)**2)
+ WRITE_MASTER(*,'(i4,2x,20(x,f7.4))') 1,eigenvector(1:min(20,nconf),1)
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,'(a30,2x,f14.8)') 'CI ground-state energy [Ha]:',energy(1)
+ WRITE_MASTER(*,'(a30,2x,f14.8)') 'correlation energy [Ha]:',energy(1)-hamiltonian(1,1)
+ WRITE_MASTER(*,*)
   
-  ! deallocate(hamiltonian)
-
-#if 1
-! Plot the ground state density
- write(*,*)
- write(*,*) 'calculate the density'
+ deallocate(hamiltonian)
 
 
- rhor(:)=0.0_dp
- rhor_hf(:)=0.0_dp
- do ix=1,nx
-   rr(1)= ( DBLE(ix-1)/DBLE(nx-1) - 0.5 ) * 10.0
-   rr(2)= 0.0
-   rr(3)= 0.0
-
-
-   eval_wfn(:)=0.0_dp
-   do istate=1,basis%nbf
-     do ibf=1,basis%nbf
-       eval_wfn(istate) = eval_wfn(istate) + c_matrix(ibf,istate) *  eval_basis_function(basis%bf(ibf),rr)
+ !
+ ! Plot the ground state density if requested
+ !
+ if(print_volume>5) then
+   WRITE_MASTER(*,*)
+   WRITE_MASTER(*,*) 'calculate the density'
+  
+  
+   rhor(:)=0.0_dp
+   rhor_hf(:)=0.0_dp
+   do ix=1,nx
+     rr(1)= ( DBLE(ix-1)/DBLE(nx-1) - 0.5 ) * 10.0
+     rr(2)= 0.0
+     rr(3)= 0.0
+  
+  
+     eval_wfn(:)=0.0_dp
+     do istate=1,basis%nbf
+       do ibf=1,basis%nbf
+         eval_wfn(istate) = eval_wfn(istate) + c_matrix(ibf,istate) *  eval_basis_function(basis%bf(ibf),rr)
+       enddo
      enddo
-   enddo
-  
-  do kconf=1,1
-  
-   iconf=0
-   do istate1=1,basis%nbf
-     do ispin1=1,2
-       do istate2=istate1,basis%nbf
-         do ispin2=1,2
-           if(istate1==istate2 .AND. (ispin2==1 .OR. ispin1==2) ) cycle
-!           !
-!           ! S^2 selection
-!           if(ABS(ispin1-ispin2)==spinstate) cycle
-           !
-           ! for two electrons, the two electron wavefunction is even in space
-           ! the two one-particle wavefunctions have then to have the parity 
-  !TODO         if(.NOT.symmetry(istate1,istate2)) cycle
-           iconf=iconf+1
-  
-           jconf=0
-           do jstate1=1,basis%nbf
-             do jspin1=1,2
-               do jstate2=jstate1,basis%nbf
-                 do jspin2=1,2
-                   if(jstate1==jstate2 .AND. (jspin2==1 .OR. jspin1==2) ) cycle
-  !                 !
-  !                 ! S^2 selection
-  !                 if(ABS(jspin1-jspin2)==spinstate) cycle
-                   !
-                   ! for two electrons, the two electron wavefunction is even in space
-                   ! the two one-particle wavefunctions have then to have the parity 
-  !TODO                 if(.NOT.symmetry(jstate1,jstate2)) cycle
-                   jconf=jconf+1
-  
-  
-                     if( istate2==jstate2 .AND. ispin2==jspin2 .AND. ispin1==jspin1 ) then
-                       rhor(ix) = rhor(ix)  &
-                        + eigenvector(iconf,kconf) * eigenvector(jconf,kconf) &
-                         * eval_wfn(istate1) * eval_wfn(jstate1) 
-                     endif
-                     if( istate1==jstate1 .AND. ispin1==jspin1 .AND. ispin2==jspin2 ) then 
-                       rhor(ix) = rhor(ix)  &
-                        + eigenvector(iconf,kconf) * eigenvector(jconf,kconf) &
-                         * eval_wfn(istate2) * eval_wfn(jstate2) 
-                     endif
-                     if( istate2==jstate1 .AND. ispin2==jspin1 .AND. ispin1==jspin2 ) then
-                       rhor(ix) = rhor(ix)  &
-                        - eigenvector(iconf,kconf) * eigenvector(jconf,kconf) &
-                         * eval_wfn(istate1) * eval_wfn(jstate2)
-                     endif
-                     if( istate1==jstate2 .AND. ispin1==jspin2 .AND. ispin2==jspin1 ) then
-                       rhor(ix) = rhor(ix)  &
-                        - eigenvector(iconf,kconf) * eigenvector(jconf,kconf) &
-                         * eval_wfn(istate2) * eval_wfn(jstate1)
-                     endif
-
+    
+    do kconf=1,1
+    
+     iconf=0
+     do istate1=1,basis%nbf
+       do ispin1=1,2
+         do istate2=istate1,basis%nbf
+           do ispin2=1,2
+             if(istate1==istate2 .AND. (ispin2==1 .OR. ispin1==2) ) cycle
+  !           !
+  !           ! S^2 selection
+  !           if(ABS(ispin1-ispin2)==spinstate) cycle
+             !
+             ! for two electrons, the two electron wavefunction is even in space
+             ! the two one-particle wavefunctions have then to have the parity 
+    !TODO         if(.NOT.symmetry(istate1,istate2)) cycle
+             iconf=iconf+1
+    
+             jconf=0
+             do jstate1=1,basis%nbf
+               do jspin1=1,2
+                 do jstate2=jstate1,basis%nbf
+                   do jspin2=1,2
+                     if(jstate1==jstate2 .AND. (jspin2==1 .OR. jspin1==2) ) cycle
+    !                 !
+    !                 ! S^2 selection
+    !                 if(ABS(jspin1-jspin2)==spinstate) cycle
                      !
-                     ! HARTREE-FOCK PART
-                     if( iconf==kconf .AND. jconf==kconf ) then
+                     ! for two electrons, the two electron wavefunction is even in space
+                     ! the two one-particle wavefunctions have then to have the parity 
+    !TODO                 if(.NOT.symmetry(jstate1,jstate2)) cycle
+                     jconf=jconf+1
+    
+    
                        if( istate2==jstate2 .AND. ispin2==jspin2 .AND. ispin1==jspin1 ) then
-                         rhor_hf(ix) = rhor_hf(ix)  &
-                          + eval_wfn(istate1) * eval_wfn(jstate1) 
+                         rhor(ix) = rhor(ix)  &
+                          + eigenvector(iconf,kconf) * eigenvector(jconf,kconf) &
+                           * eval_wfn(istate1) * eval_wfn(jstate1) 
                        endif
                        if( istate1==jstate1 .AND. ispin1==jspin1 .AND. ispin2==jspin2 ) then 
-                         rhor_hf(ix) = rhor_hf(ix)  &
-                          + eval_wfn(istate2) * eval_wfn(jstate2) 
+                         rhor(ix) = rhor(ix)  &
+                          + eigenvector(iconf,kconf) * eigenvector(jconf,kconf) &
+                           * eval_wfn(istate2) * eval_wfn(jstate2) 
                        endif
                        if( istate2==jstate1 .AND. ispin2==jspin1 .AND. ispin1==jspin2 ) then
-                         rhor_hf(ix) = rhor_hf(ix)  &
-                          - eval_wfn(istate1) * eval_wfn(jstate2)
+                         rhor(ix) = rhor(ix)  &
+                          - eigenvector(iconf,kconf) * eigenvector(jconf,kconf) &
+                           * eval_wfn(istate1) * eval_wfn(jstate2)
                        endif
                        if( istate1==jstate2 .AND. ispin1==jspin2 .AND. ispin2==jspin1 ) then
-                         rhor_hf(ix) = rhor_hf(ix)  &
-                          - eval_wfn(istate2) * eval_wfn(jstate1)
+                         rhor(ix) = rhor(ix)  &
+                          - eigenvector(iconf,kconf) * eigenvector(jconf,kconf) &
+                           * eval_wfn(istate2) * eval_wfn(jstate1)
                        endif
-                     endif
   
-  
-  
+                       !
+                       ! HARTREE-FOCK PART
+                       if( iconf==kconf .AND. jconf==kconf ) then
+                         if( istate2==jstate2 .AND. ispin2==jspin2 .AND. ispin1==jspin1 ) then
+                           rhor_hf(ix) = rhor_hf(ix)  &
+                            + eval_wfn(istate1) * eval_wfn(jstate1) 
+                         endif
+                         if( istate1==jstate1 .AND. ispin1==jspin1 .AND. ispin2==jspin2 ) then 
+                           rhor_hf(ix) = rhor_hf(ix)  &
+                            + eval_wfn(istate2) * eval_wfn(jstate2) 
+                         endif
+                         if( istate2==jstate1 .AND. ispin2==jspin1 .AND. ispin1==jspin2 ) then
+                           rhor_hf(ix) = rhor_hf(ix)  &
+                            - eval_wfn(istate1) * eval_wfn(jstate2)
+                         endif
+                         if( istate1==jstate2 .AND. ispin1==jspin2 .AND. ispin2==jspin1 ) then
+                           rhor_hf(ix) = rhor_hf(ix)  &
+                            - eval_wfn(istate2) * eval_wfn(jstate1)
+                         endif
+                       endif
+    
+    
+    
+                   enddo
                  enddo
                enddo
              enddo
+    
            enddo
-  
          enddo
        enddo
      enddo
+  
+     enddo  !kconf
+  
+   enddo !ix
+   rhor(:) = rhor(:) * 0.5_dp
+   rhor_hf(:) = rhor_hf(:) * 0.5_dp
+  
+  ! WRITE_MASTER(*,*) 'NORM',norm / DBLE(nx*ny*nz)
+  ! WRITE_MASTER(*,*) 'norm',SUM(rhor(:)*wx(:))
+  
+  ! rhor_t(:)=0.0_dp
+  ! do ix=1,nx
+  ! do iy=1,ny
+  ! do iz=1,nz
+  !   rr(1)= x(ix)
+  !   rr(2)= y(iy)
+  !   rr(3)= z(iz)
+  !   rhor_t(ix)=rhor_t(ix)+ eval_basis_function(basis%bf(1),rr)**2 * wy(iy) * wz(iz)
+  ! enddo !iz
+  ! enddo !iy
+  ! enddo !ix
+  ! WRITE_MASTER(*,*) 'norm',SUM(rhor_t(:)*wx(:))
+  ! do ix=1,nx
+  !   rr(1)= x(ix)
+  !   WRITE_MASTER(11,'(5(e12.6,2x))') rr(1),rhor_t(ix)
+  ! enddo
+  
+   do ix=1,nx
+  !   rr(1)= x(ix)
+     rr(1)= (DBLE(ix-1)/DBLE(nx-1)-0.5)*10.00
+     rr(2)= 0.0
+     rr(3)= 0.0
+     WRITE_MASTER(10,'(5(e14.6,2x))') rr(1),rhor(ix),rhor_hf(ix)
    enddo
 
-   enddo  !kconf
-
- enddo !ix
- rhor(:) = rhor(:) * 0.5_dp
- rhor_hf(:) = rhor_hf(:) * 0.5_dp
-
-! write(*,*) 'NORM',norm / DBLE(nx*ny*nz)
-! write(*,*) 'norm',SUM(rhor(:)*wx(:))
-
-! rhor_t(:)=0.0_dp
-! do ix=1,nx
-! do iy=1,ny
-! do iz=1,nz
-!   rr(1)= x(ix)
-!   rr(2)= y(iy)
-!   rr(3)= z(iz)
-!   rhor_t(ix)=rhor_t(ix)+ eval_basis_function(basis%bf(1),rr)**2 * wy(iy) * wz(iz)
-! enddo !iz
-! enddo !iy
-! enddo !ix
-! write(*,*) 'norm',SUM(rhor_t(:)*wx(:))
-! do ix=1,nx
-!   rr(1)= x(ix)
-!   write(11,'(5(e12.6,2x))') rr(1),rhor_t(ix)
-! enddo
-
- do ix=1,nx
-!   rr(1)= x(ix)
-   rr(1)= (DBLE(ix-1)/DBLE(nx-1)-0.5)*10.00
-   rr(2)= 0.0
-   rr(3)= 0.0
-   write(10,'(5(e14.6,2x))') rr(1),rhor(ix),rhor_hf(ix)
- enddo
-
-#endif
+ endif
 
  ! finalize the CI calculation
  deallocate(energy,eigenvector)

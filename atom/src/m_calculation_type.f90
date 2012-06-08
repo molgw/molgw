@@ -1,4 +1,6 @@
 !=========================================================================
+#include "macros.h"
+!=========================================================================
 module m_calculation_type
  use m_warning
 #ifdef HAVE_LIBXC
@@ -131,8 +133,8 @@ subroutine init_dft_type(key,calc_type)
  case('TEST')
    ndft_xc=2
  case default
-   write(*,*) 'error reading calculation type'
-   write(*,*) TRIM(key)
+   WRITE_MASTER(*,*) 'error reading calculation type'
+   WRITE_MASTER(*,*) TRIM(key)
    stop' is unknown'
  end select
 
@@ -244,14 +246,14 @@ subroutine output_calculation_type(calc_type)
  type(calculation_type),intent(in)   :: calc_type
 !=====
 
-  write(*,*) 'type                        ',calc_type%type
-  write(*,*) 'need_exchange               ',calc_type%need_exchange
-  write(*,*) 'need_final_exchange         ',calc_type%need_final_exchange
-  write(*,*) 'need_rpa                    ',calc_type%need_rpa
-  write(*,*) 'is_gw                       ',calc_type%is_gw
-  write(*,*) 'is_mp2                      ',calc_type%is_mp2
-  write(*,*) 'is_ci                       ',calc_type%is_ci
-  write(*,*) 'method                      ',calc_type%method  
+  WRITE_MASTER(*,*) 'type                        ',calc_type%type
+  WRITE_MASTER(*,*) 'need_exchange               ',calc_type%need_exchange
+  WRITE_MASTER(*,*) 'need_final_exchange         ',calc_type%need_final_exchange
+  WRITE_MASTER(*,*) 'need_rpa                    ',calc_type%need_rpa
+  WRITE_MASTER(*,*) 'is_gw                       ',calc_type%is_gw
+  WRITE_MASTER(*,*) 'is_mp2                      ',calc_type%is_mp2
+  WRITE_MASTER(*,*) 'is_ci                       ',calc_type%is_ci
+  WRITE_MASTER(*,*) 'method                      ',calc_type%method  
 
 end subroutine output_calculation_type
 

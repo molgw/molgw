@@ -1,4 +1,6 @@
 !=========================================================================
+#include "macros.h"
+!=========================================================================
 module m_gaussian
  use m_definitions
 
@@ -173,13 +175,13 @@ subroutine print_gaussian(ga)
  type(gaussian),intent(in) :: ga
 !=====
 
- write(*,*)
- write(*,*) '*** output information of a cartesian gaussian function ***'
- write(*,'(a30,5x,a1)')      'orbital momentum',ga%amc
- write(*,'(a30,2x,3(x,i3))') 'momentum composition',ga%nx,ga%ny,ga%nz
- write(*,'(a30,(x,f12.6))')  'alpha coeff',ga%alpha
- write(*,'(a30,3(x,f12.6))') 'center of the function',ga%x0(:)
- write(*,*)
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) '*** output information of a cartesian gaussian function ***'
+ WRITE_MASTER(*,'(a30,5x,a1)')      'orbital momentum',ga%amc
+ WRITE_MASTER(*,'(a30,2x,3(x,i3))') 'momentum composition',ga%nx,ga%ny,ga%nz
+ WRITE_MASTER(*,'(a30,(x,f12.6))')  'alpha coeff',ga%alpha
+ WRITE_MASTER(*,'(a30,3(x,f12.6))') 'center of the function',ga%x0(:)
+ WRITE_MASTER(*,*)
 
 end subroutine print_gaussian
 
@@ -885,7 +887,7 @@ subroutine numerical_overlap(ga,gb,s_ab)
    enddo
  enddo
 
-! write(*,*) 'check S_ab',rtmp
+! WRITE_MASTER(*,*) 'check S_ab',rtmp
  s_ab = rtmp
 
 end subroutine numerical_overlap
@@ -928,7 +930,7 @@ subroutine numerical_kinetic(ga,gb)
    enddo
  enddo
 
- write(*,*) 'check K_ab',rtmp
+ WRITE_MASTER(*,*) 'check K_ab',rtmp
 
 end subroutine numerical_kinetic
 
@@ -950,7 +952,7 @@ subroutine numerical_nucleus(ga,gb)
 
  dx = rmax/REAL(nx,dp)
 
- write(*,*) 'hydrogen atom in zero'
+ WRITE_MASTER(*,*) 'hydrogen atom in zero'
 
  rtmp=0.0d0
 ! do ix=1,nx
@@ -989,13 +991,13 @@ subroutine numerical_nucleus(ga,gb)
 
      if( SUM(x(:)**2) < 1.d-8 ) cycle ! skip the singularity
 
-     rtmp = rtmp + eval_gaussian(ga,x) * eval_gaussian(gb,x) * weight  / SQRT(SUM(x(:)**2)) * -1.0_dp
+     rtmp = rtmp + eval_gaussian(ga,x) * eval_gaussian(gb,x) * weight  / SQRT(SUM(x(:)**2)) * (-1.0_dp)
 
    enddo
  enddo
 
 
- write(*,*) 'check V_ab',rtmp
+ WRITE_MASTER(*,*) 'check V_ab',rtmp
 
 end subroutine numerical_nucleus
 

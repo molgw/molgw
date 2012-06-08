@@ -1,4 +1,6 @@
 !=========================================================================
+#include "macros.h"
+!=========================================================================
 module m_tools
  use m_definitions
 
@@ -36,7 +38,7 @@ contains
    call system_clock(idum,i,j)
   endif
 
-  write(*,'(a,x,i12)') 'Random seed set to',idum
+  WRITE_MASTER(*,'(a,x,i12)') 'Random seed set to',idum
 
 
  end subroutine
@@ -257,17 +259,17 @@ subroutine diagonalize_generalized_sym(n,matrix,overlap,eigval,eigvec)
  integer :: info
 !=====
 
- ! write(*,*) 'diagonalize_generalized_sym: Enter'
+ ! WRITE_MASTER(*,*) 'diagonalize_generalized_sym: Enter'
  eigvec(:,:) = matrix(:,:)
  tmp(:,:) = overlap(:,:)
 
  ! A*x = lambda * B * x
  call DSYGV(1,'V','U',n,eigvec,n,tmp,n,eigval,work,3*n-1,info)
  if(info/=0) stop'ERROR in the symmetric generalized eigenvalue problem'
-! write(*,*) 'optimal lwork',REAL(work(1))
+! WRITE_MASTER(*,*) 'optimal lwork',REAL(work(1))
 
 
- ! write(*,*) 'diagonalize_generalized_sym: Exit'
+ ! WRITE_MASTER(*,*) 'diagonalize_generalized_sym: Exit'
 end subroutine diagonalize_generalized_sym
 
 
@@ -543,7 +545,7 @@ subroutine boys_function(fnt,n,t)
  if(n>maxfac) stop' boys function Fm(t) for a too high m value'
 
  if( ABS(df(1))<1.d-10 ) then
-!   write(*,*) 'initialize df'
+!   WRITE_MASTER(*,*) 'initialize df'
    df(1:3) = 1.0_dp
    do i=4,2*maxfac
      df(i) = (i-2) * df(i-2)
@@ -602,12 +604,12 @@ subroutine check_unitarity(n,cmat)
     do j=1,n
       if(i==j) then
        if(ABS(cmat_tmp(i,j)-1.0_dp)>tol) then
-         write(*,*) i,j,cmat_tmp(i,j)
+         WRITE_MASTER(*,*) i,j,cmat_tmp(i,j)
          stop'MATRIX IS NOT UNITARY/ORTHOGONAL'
        endif
       else
        if(ABS(cmat_tmp(i,j))>tol) then
-         write(*,*) i,j,cmat_tmp(i,j)
+         WRITE_MASTER(*,*) i,j,cmat_tmp(i,j)
          stop'MATRIX IS NOT UNITARY/ORTHOGONAL'
        endif
       endif
@@ -618,12 +620,12 @@ subroutine check_unitarity(n,cmat)
     do j=1,n
       if(i==j) then
        if(ABS(cmat_tmp(i,j)-1.0_dp)>tol) then
-         write(*,*) i,j,cmat_tmp(i,j)
+         WRITE_MASTER(*,*) i,j,cmat_tmp(i,j)
          stop'MATRIX IS NOT UNITARY/ORTHOGONAL'
        endif
       else
        if(ABS(cmat_tmp(i,j))>tol) then
-         write(*,*) i,j,cmat_tmp(i,j)
+         WRITE_MASTER(*,*) i,j,cmat_tmp(i,j)
          stop'MATRIX IS NOT UNITARY/ORTHOGONAL'
        endif
       endif
@@ -681,14 +683,14 @@ function element_name(zatom)
  case(47)
    element_name='Ag'
  case default
-   write(*,*) 'Z too large: element not yet coded'
-   write(*,*) 'Give a generic element name: X'
+   WRITE_MASTER(*,*) 'Z too large: element not yet coded'
+   WRITE_MASTER(*,*) 'Give a generic element name: X'
    element_name='X'
  end select
 
 
 ! if( ABS( zatom -NINT(zatom) ) > 1.0d-6 ) then
-!   write(*,*) 'basis set is hard coded to be helium-like for fractional charge nucleus'
+!   WRITE_MASTER(*,*) 'basis set is hard coded to be helium-like for fractional charge nucleus'
 !   element_name='He'
 ! endif
 
