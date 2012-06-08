@@ -1,6 +1,7 @@
 !=========================================================================
 subroutine setup_hartree(print_volume,nbf,nspin,p_matrix,pot_hartree,ehartree)
  use m_definitions
+ use m_mpi
  use m_timing
  use m_eri
  implicit none
@@ -21,10 +22,12 @@ subroutine setup_hartree(print_volume,nbf,nspin,p_matrix,pot_hartree,ehartree)
  pot_hartree(:,:,:)=0.0_dp
 
 #ifndef LOW_MEMORY3
+
  do ispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
    do jbf=1,nbf
+     if( .NOT. is_my_task(jbf) ) cycle
      do ibf=1,nbf
        do lbf=1,nbf
          do kbf=1,nbf
@@ -39,6 +42,9 @@ subroutine setup_hartree(print_volume,nbf,nspin,p_matrix,pot_hartree,ehartree)
 !$OMP END DO
 !$OMP END PARALLEL
  enddo
+ call xsum(pot_hartree)
+
+
 #else
  do ispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
@@ -115,6 +121,7 @@ end subroutine setup_hartree
 !=========================================================================
 subroutine setup_exchange(print_volume,nbf,nspin,p_matrix,pot_exchange,eexchange)
  use m_definitions
+ use m_mpi
  use m_timing
  use m_eri
  implicit none
@@ -166,6 +173,7 @@ end subroutine setup_exchange
 !=========================================================================
 subroutine setup_exchange_shortrange(print_volume,nbf,nspin,p_matrix,pot_exchange,eexchange)
  use m_definitions
+ use m_mpi
  use m_timing
  use m_eri
  implicit none

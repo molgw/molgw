@@ -2,6 +2,8 @@
 #include "macros.h"
 !=========================================================================
 subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehomo,vxc_ij,exc_xc)
+ use m_definitions
+ use m_mpi
  use m_tools,only: coeffs_gausslegint
  use m_timing
  use m_atoms
@@ -525,6 +527,7 @@ end subroutine dft_exc_vxc
 !=========================================================================
 subroutine my_lda_exc_vxc(nspin,ixc,rhor,exc,vxc)
  use m_definitions
+ use m_mpi
  implicit none
 
 !Arguments ------------------------------------
@@ -772,6 +775,7 @@ end subroutine my_lda_exc_vxc
 !=========================================================================
 subroutine my_lda_exc_vxc_mu(mu,rspts,exc,vxc)
  use m_definitions
+ use m_mpi
  implicit none
 
 !Arguments ------------------------------------
@@ -879,6 +883,7 @@ end subroutine my_lda_exc_vxc_mu
 !=========================================================================
 subroutine my_gga_exc_vxc_hjs(omega,nn,sigma,exc,vxc,vsigma)
  use m_definitions
+ use m_mpi
  implicit none
 !=====
  real(dp),intent(in)  :: omega,nn,sigma

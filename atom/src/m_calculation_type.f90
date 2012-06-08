@@ -2,6 +2,8 @@
 #include "macros.h"
 !=========================================================================
 module m_calculation_type
+ use m_definitions
+ use m_mpi
  use m_warning
 #ifdef HAVE_LIBXC
  use libxc_funcs_m

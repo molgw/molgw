@@ -3,6 +3,7 @@
 !=========================================================================
 program molgw
  use m_definitions
+ use m_mpi
  use m_timing
  use m_warning
  use m_calculation_type
@@ -80,7 +81,10 @@ program molgw
  type(energy_contributions) :: en
 !=============================
 
+ call init_mpi()
+
  call header()
+
 
  !
  ! Development tests are commented below
@@ -182,6 +186,11 @@ program molgw
  !
  ! start build up the basis set
  call init_basis_set(print_volume,basis_name,basis)
+
+ !
+ ! first attempt to distribute the work load among procs
+ call distribute_workload(basis%nbf)
+ 
  
  !
  ! allocate everything
@@ -874,11 +883,14 @@ program molgw
 
  WRITE_MASTER(*,'(/,a,/)') ' This is the end'
 
+ call finish_mpi()
+
 end program molgw
 
 !=========================================================================
 subroutine setup_density_matrix(nbf,nspin,c_matrix,occupation,p_matrix)
  use m_definitions
+ use m_mpi
  implicit none
  integer,intent(in)   :: nbf,nspin
  real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin)
@@ -902,6 +914,7 @@ end subroutine setup_density_matrix
 !=========================================================================
 subroutine  set_occupation(electrons,magnetization,nbf,nspin,occupation)
  use m_definitions
+ use m_mpi
  use m_warning
  implicit none
  real(dp),intent(in)  :: electrons,magnetization
@@ -960,6 +973,7 @@ end subroutine set_occupation
 !=========================================================================
 subroutine guess_starting_c_matrix(nbf,nspin,c_matrix)
  use m_definitions
+ use m_mpi
  implicit none
  integer,intent(in)   :: nbf,nspin
  real(dp),intent(out) :: c_matrix(nbf,nbf,nspin)
@@ -980,6 +994,7 @@ end subroutine guess_starting_c_matrix
 !=========================================================================
 subroutine guess_starting_c_matrix_new(basis,nspin,c_matrix)
  use m_definitions
+ use m_mpi
  use m_gaussian
  use m_basis_set
  implicit none

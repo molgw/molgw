@@ -3,6 +3,7 @@
 !=========================================================================
 module m_gaussian
  use m_definitions
+ use m_mpi
 
  ! type containing all the information for one unnormalized cartesian gaussian
  ! x**nx * y**ny * z**nz * exp( - alpha * ( x**2 + y**2 + z**2 ) )
@@ -20,6 +21,7 @@ contains
 
 !=========================================================================
 subroutine init_gaussian(nx,ny,nz,alpha,ga)
+ use m_tools
  implicit none
  integer,intent(in) :: nx,ny,nz
  real(dp),intent(in) :: alpha
@@ -44,6 +46,7 @@ end subroutine init_gaussian
 
 !=========================================================================
 subroutine init_gaussian_general(nx,ny,nz,alpha,x0,ga)
+ use m_tools
  implicit none
  integer,intent(in) :: nx,ny,nz
  real(dp),intent(in) :: alpha,x0(3)
@@ -212,6 +215,7 @@ end subroutine overlap_normalized
 
 !=========================================================================
 subroutine overlap(ga,gb,s_ab)
+ use m_tools
  implicit none
  type(gaussian),intent(in) :: ga,gb
  real(dp),intent(out) :: s_ab

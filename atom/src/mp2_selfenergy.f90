@@ -3,6 +3,7 @@
 !=========================================================================
 subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,selfenergy,emp2)
  use m_definitions
+ use m_mpi
  use m_calculation_type
  use m_warning
  use m_basis_set

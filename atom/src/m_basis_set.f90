@@ -3,6 +3,7 @@
 !=========================================================================
 module m_basis_set
  use m_definitions
+ use m_mpi
  use m_timing
  use m_warning
  use m_tools, only: element_name,diagonalize,invert

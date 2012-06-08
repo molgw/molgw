@@ -3,6 +3,7 @@
 !=========================================================================
 subroutine header()
  use m_definitions
+ use m_mpi
  implicit none
  integer :: values(8) 
 !=====
@@ -34,6 +35,7 @@ end subroutine header
 !=========================================================================
 subroutine dump_out_array(is_energy,title,n,nspin,array)
  use m_definitions
+ use m_mpi
  implicit none
  logical,intent(in)            :: is_energy
  character(len=100),intent(in) :: title
@@ -72,6 +74,7 @@ end subroutine dump_out_array
 !=========================================================================
 subroutine dump_out_matrix(print_volume,title,n,nspin,matrix)
  use m_definitions
+ use m_mpi
  implicit none
  integer,intent(in)            :: print_volume       
  character(len=100),intent(in) :: title
@@ -103,6 +106,7 @@ end subroutine dump_out_matrix
 !=========================================================================
 subroutine output_homolumo(nbf,nspin,occupation,energy,homo,lumo)
  use m_definitions
+ use m_mpi
  implicit none
  integer,intent(in)  :: nbf,nspin
  real(dp),intent(in) :: occupation(nbf,nspin),energy(nbf,nspin)
@@ -141,6 +145,7 @@ end subroutine output_homolumo
 !=========================================================================
 subroutine read_inputparameter(calc_type,nspin,nscf,alpha_mixing,print_volume,basis_name,zatom,electrons,magnetization,basis_element)
  use m_definitions
+ use m_mpi
  use m_calculation_type
  use m_warning
  use m_tools
@@ -216,6 +221,7 @@ end subroutine read_inputparameter
 subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
       basis_name,electrons,magnetization)
  use m_definitions
+ use m_mpi
  use m_calculation_type
  use m_warning
  use m_tools
@@ -347,6 +353,7 @@ end subroutine read_inputparameter_molecule
 !=========================================================================
 subroutine plot_wfn(nspin,basis,c_matrix)
  use m_definitions
+ use m_mpi
  use m_basis_set,only: basis_set,eval_basis_function
  implicit none
  integer,intent(in)         :: nspin

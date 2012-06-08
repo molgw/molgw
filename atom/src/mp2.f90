@@ -3,6 +3,7 @@
 !=========================================================================
 subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
  use m_definitions
+ use m_mpi
  use m_basis_set
  use m_eri
  implicit none
@@ -129,6 +130,7 @@ end subroutine mp2_energy
 !==================================================================
 subroutine full_ci_2electrons_spin(print_volume,spinstate,basis,h_1e,c_matrix,nuc_nuc)
  use m_definitions
+ use m_mpi
  use m_tools
  use m_basis_set
  use m_eri

@@ -3,6 +3,7 @@
 !=========================================================================
 module m_warning
  use m_definitions
+ use m_mpi
 
 
  integer,parameter  :: NWARNING=100
