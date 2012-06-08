@@ -21,8 +21,6 @@ subroutine setup_hartree(print_volume,nbf,nspin,p_matrix,pot_hartree,ehartree)
 
  pot_hartree(:,:,:)=0.0_dp
 
-#ifndef LOW_MEMORY3
-
  do ispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
@@ -44,70 +42,6 @@ subroutine setup_hartree(print_volume,nbf,nspin,p_matrix,pot_hartree,ehartree)
  enddo
  call xsum(pot_hartree)
 
-
-#else
- do ispin=1,nspin
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO REDUCTION(+:pot_hartree) PRIVATE(ibf,jbf,kbf,lbf) 
- do ii=1,nsize_sparse
-   ibf = index_sparse(1,ii)
-   jbf = index_sparse(2,ii)
-   kbf = index_sparse(3,ii)
-   lbf = index_sparse(4,ii)
-   eri_tmp = eri_buffer_sparse(ii)
-
-   pot_hartree(ibf,jbf,ispin) = pot_hartree(ibf,jbf,ispin) &
-                + eri_tmp * SUM( p_matrix(kbf,lbf,:) )
-
-   if( ibf/=kbf .AND. jbf/=lbf ) then
-     pot_hartree(kbf,lbf,ispin) = pot_hartree(kbf,lbf,ispin) &
-                  + eri_tmp * SUM( p_matrix(ibf,jbf,:) )
-     if(ibf/=jbf) then
-       pot_hartree(jbf,ibf,ispin) = pot_hartree(jbf,ibf,ispin) &
-                  + eri_tmp * SUM( p_matrix(kbf,lbf,:) )
-       pot_hartree(kbf,lbf,ispin) = pot_hartree(kbf,lbf,ispin) &
-                    + eri_tmp * SUM( p_matrix(jbf,ibf,:) )
-       if(kbf/=lbf) then
-         pot_hartree(ibf,jbf,ispin) = pot_hartree(ibf,jbf,ispin) &
-                      + eri_tmp * SUM( p_matrix(lbf,kbf,:) )
-         pot_hartree(jbf,ibf,ispin) = pot_hartree(jbf,ibf,ispin) &
-                      + eri_tmp * SUM( p_matrix(lbf,kbf,:) )
-         pot_hartree(lbf,kbf,ispin) = pot_hartree(lbf,kbf,ispin) &
-                      + eri_tmp * SUM( p_matrix(ibf,jbf,:) )
-         pot_hartree(lbf,kbf,ispin) = pot_hartree(lbf,kbf,ispin) &
-                      + eri_tmp * SUM( p_matrix(jbf,ibf,:) )
-       endif
-     else
-       if(kbf/=lbf) then
-         pot_hartree(ibf,jbf,ispin) = pot_hartree(ibf,jbf,ispin) &
-                      + eri_tmp * SUM( p_matrix(lbf,kbf,:) )
-         pot_hartree(lbf,kbf,ispin) = pot_hartree(lbf,kbf,ispin) &
-                      + eri_tmp * SUM( p_matrix(ibf,jbf,:) )
-       endif
-     endif
-   else
-     if(ibf/=jbf) then
-       pot_hartree(jbf,ibf,ispin) = pot_hartree(jbf,ibf,ispin) &
-                  + eri_tmp * SUM( p_matrix(kbf,lbf,:) )
-       if(kbf/=lbf) then
-         pot_hartree(ibf,jbf,ispin) = pot_hartree(ibf,jbf,ispin) &
-                    + eri_tmp * SUM( p_matrix(lbf,kbf,:) )
-         pot_hartree(jbf,ibf,ispin) = pot_hartree(jbf,ibf,ispin) &
-                    + eri_tmp * SUM( p_matrix(lbf,kbf,:) )
-       endif
-     else
-       if(kbf/=lbf) then
-         pot_hartree(ibf,jbf,ispin) = pot_hartree(ibf,jbf,ispin) &
-                    + eri_tmp * SUM( p_matrix(lbf,kbf,:) )
-       endif
-     endif
-   endif
-
- enddo
-!$OMP END DO
-!$OMP END PARALLEL
- enddo
-#endif
 
  title='=== Hartree contribution ==='
  call dump_out_matrix(print_volume,title,nbf,nspin,pot_hartree)
@@ -146,6 +80,7 @@ subroutine setup_exchange(print_volume,nbf,nspin,p_matrix,pot_exchange,eexchange
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
    do jbf=1,nbf
+     if( .NOT. is_my_task(jbf) ) cycle
      do ibf=1,nbf
        do lbf=1,nbf
          do kbf=1,nbf
@@ -160,6 +95,8 @@ subroutine setup_exchange(print_volume,nbf,nspin,p_matrix,pot_exchange,eexchange
 !$OMP END DO
 !$OMP END PARALLEL
  enddo
+ call xsum(pot_exchange)
+
 
  title='=== Exchange contribution ==='
  call dump_out_matrix(print_volume,title,nbf,nspin,pot_exchange)
