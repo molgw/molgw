@@ -397,8 +397,8 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  do lshell=1,nshell
    do kshell=1,nshell
 
-! work section HERE
-
+     !
+     ! Choose whether the calculation is required on the proc
      need_calculation = .FALSE.
      do lmember=1,shell(lshell)%nmember
        lbf = shell(lshell)%index_bf(lmember)
@@ -407,11 +407,10 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
          if( is_my_task(kbf,lbf) ) need_calculation=.TRUE.
        enddo
      enddo
-
+     !
+     ! Cycle if not required
      if( .NOT. need_calculation ) cycle
 
-
-! end of work section
 
      do jshell=1,nshell
        do ishell=1,nshell
