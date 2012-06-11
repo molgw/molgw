@@ -25,8 +25,8 @@ subroutine setup_hartree(print_volume,nbf,nspin,p_matrix,pot_hartree,ehartree)
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
    do jbf=1,nbf
-     if( .NOT. is_my_task(jbf) ) cycle
      do ibf=1,nbf
+       if( .NOT. is_my_task(ibf,jbf) ) cycle
        do lbf=1,nbf
          do kbf=1,nbf
            !
@@ -80,9 +80,9 @@ subroutine setup_exchange(print_volume,nbf,nspin,p_matrix,pot_exchange,eexchange
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
    do jbf=1,nbf
-     if( .NOT. is_my_task(jbf) ) cycle
-     do ibf=1,nbf
-       do lbf=1,nbf
+     do lbf=1,nbf
+       if( .NOT. is_my_task(lbf,jbf) ) cycle
+       do ibf=1,nbf
          do kbf=1,nbf
            !
            ! symmetry (ik|lj) = (ki|lj) has been used to loop in the fast order

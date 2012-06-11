@@ -10,6 +10,7 @@ module m_eri
  public :: eri,allocate_eri,allocate_eri_eigen,deallocate_eri,calculate_eri,transform_eri_basis_fast,transform_eri_basis_lowmem, &
            eri_lr,allocate_eri_lr,deallocate_eri_lr,negligible_eri,&
            BUFFER1,BUFFER2
+ public :: index_prod
 
  integer,parameter :: BUFFER1 = 1
  integer,parameter :: BUFFER2 = 2
@@ -48,6 +49,10 @@ subroutine allocate_eri(nbf)
  WRITE_MASTER(*,'(/,a)') ' Symmetrized ERI stored'
  nsize1  = index_prod(nbf_eri,nbf_eri) 
  nsize   = index_eri(nbf_eri,nbf_eri,nbf_eri,nbf_eri)
+#elif LOW_MEMORY1
+ WRITE_MASTER(*,'(/,a)') ' Semi-symmetrized ERI stored (4 symmetries)'
+ nsize1  = index_prod(nbf_eri,nbf_eri) 
+ nsize   = nsize1*get_ntask()
 #else
  WRITE_MASTER(*,'(/,a)') ' All ERI are stored'
  nsize1  = nbf_eri**2
@@ -166,12 +171,18 @@ function index_eri(ibf,jbf,kbf,lbf)
 !===== 
 
  index_ij = index_prod(ibf,jbf)
+
+#ifdef LOW_MEMORY1
+ index_kl  = get_task_number(kbf,lbf)
+ index_eri = index_ij + ( index_kl - 1 ) * nsize1
+#else
  index_kl = index_prod(kbf,lbf)
 
  ijmax=MAX(index_ij,index_kl)
  klmin=MIN(index_ij,index_kl)
 
  index_eri = (klmin-1)*nsize1 - (klmin-1)*(klmin-2)/2 + ijmax-klmin+1
+#endif
 
 end function index_eri
 
@@ -213,7 +224,7 @@ function eri(ibf,jbf,kbf,lbf)
 
  enddo
 
-#elif LOW_MEMORY2
+#elif LOW_MEMORY2 || LOW_MEMORY1
  eri = eri_buffer(index_eri(ibf,jbf,kbf,lbf))
 #else
  eri = eri_buffer(ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3)
@@ -231,7 +242,7 @@ function eri_lr(ibf,jbf,kbf,lbf)
  integer            :: i1,i2,i3,i4
 !=====
 
-#ifdef LOW_MEMORY2
+#if LOW_MEMORY2 || LOW_MEMORY1
  eri_lr = eri_buffer_lr(index_eri(ibf,jbf,kbf,lbf))
 #else
  eri_lr = eri_buffer_lr(ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3)
@@ -672,11 +683,15 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
                    index_integral = lindex_in_the_shell + (kindex_in_the_shell-1)*nl &
                                    +(jindex_in_the_shell-1)*nl*nk + (iindex_in_the_shell-1)*nl*nk*nj
 
-#if LOW_MEMORY3 || LOW_MEMORY2
+#if LOW_MEMORY3 || LOW_MEMORY2 || LOW_MEMORY1
                    if(ibf<jbf) cycle
                    if(kbf<lbf) cycle
+#ifndef LOW_MEMORY1
                    if(index_prod(ibf,jbf)<index_prod(kbf,lbf)) cycle
-
+#endif
+#ifdef MPI
+                   if( .NOT. is_my_task(kbf,lbf) ) cycle
+#endif
                    index_tmp=index_eri(ibf,jbf,kbf,lbf)
 #else
                    index_tmp=ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3
@@ -723,10 +738,15 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
                    index_integral = lindex_in_the_shell + (kindex_in_the_shell-1)*nl &
                                    +(jindex_in_the_shell-1)*nl*nk + (iindex_in_the_shell-1)*nl*nk*nj
 
-#if LOW_MEMORY3 || LOW_MEMORY2
+#if LOW_MEMORY3 || LOW_MEMORY2 || LOW_MEMORY1
                    if(ibf<jbf) cycle
                    if(kbf<lbf) cycle
+#ifndef LOW_MEMORY1
                    if(index_prod(ibf,jbf)<index_prod(kbf,lbf)) cycle
+#endif
+#ifdef MPI
+                   if( .NOT. is_my_task(kbf,lbf) ) cycle
+#endif
 
                    index_tmp=index_eri(ibf,jbf,kbf,lbf)
 #else

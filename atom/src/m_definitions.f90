@@ -19,6 +19,5 @@ module m_definitions
 
  integer,parameter  :: NOMEGA=12 !TODO remove this parameter
 
-
 end module m_definitions
 

@@ -164,6 +164,10 @@ program molgw
  msg='OPENMP option is activated with threads number'//msg
  call issue_warning(msg)
 #endif
+#ifdef LOW_MEMORY1
+ msg='LOW_MEMORY version 1 option is swichted on'
+ call issue_warning(msg)
+#endif
 #ifdef LOW_MEMORY2
  msg='LOW_MEMORY version 2 option is swichted on'
  call issue_warning(msg)
@@ -171,6 +175,11 @@ program molgw
 #ifdef LOW_MEMORY3
  msg='LOW_MEMORY version 3 option is swichted on'
  call issue_warning(msg)
+#endif
+#ifdef MPI
+#ifndef LOW_MEMORY1
+ stop'MPI and LOW_MEMORY1 should be set to on'
+#endif
 #endif
 
 
@@ -189,8 +198,7 @@ program molgw
 
  !
  ! first attempt to distribute the work load among procs
- call distribute_workload(basis%nbf)
- 
+ call init_distribution(basis%nbf)
  
  !
  ! allocate everything
@@ -249,7 +257,7 @@ program molgw
    call calculate_eri(print_volume,basis,rcut,BUFFER2)
  endif
  call stop_clock(timing_integrals)
- call negligible_eri(1.0e-10_dp)
+! call negligible_eri(1.0e-10_dp)
 
 
  !
