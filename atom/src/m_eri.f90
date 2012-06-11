@@ -65,9 +65,9 @@ subroutine allocate_eri(nbf)
 
  allocate(eri_buffer(nsize),stat=info)
  if(REAL(nsize,dp)*prec_eri > 1024**3 ) then
-   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb]'
+   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb] / proc'
  else
-   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**2,' [Mb]'
+   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**2,' [Mb] / proc'
  endif
  if(info==0) then
    WRITE_MASTER(*,*) 'success'
@@ -296,6 +296,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  integer                      :: nint_gaussian,igaussian
  real(dp),allocatable         :: int_gaussian(:)
  logical                      :: shell_already_exists
+ logical                      :: need_calculation
  integer                      :: iint,nint_tot
  integer                      :: imember,jmember,kmember,lmember
  integer                      :: iindex_in_the_shell,jindex_in_the_shell,kindex_in_the_shell,lindex_in_the_shell
@@ -392,11 +393,28 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
 !!!!    
 !!!!    
 !!!!    !$OMP DO SCHEDULE(STATIC)
- do jshell=1,nshell
-   do ishell=1,nshell
 
-     do lshell=1,nshell
-       do kshell=1,nshell
+ do lshell=1,nshell
+   do kshell=1,nshell
+
+! work section HERE
+
+     need_calculation = .FALSE.
+     do lmember=1,shell(lshell)%nmember
+       lbf = shell(lshell)%index_bf(lmember)
+       do kmember=1,shell(kshell)%nmember
+         kbf = shell(kshell)%index_bf(kmember)
+         if( is_my_task(kbf,lbf) ) need_calculation=.TRUE.
+       enddo
+     enddo
+
+     if( .NOT. need_calculation ) cycle
+
+
+! end of work section
+
+     do jshell=1,nshell
+       do ishell=1,nshell
 
          call start_clock(timing_tmp3)
 
