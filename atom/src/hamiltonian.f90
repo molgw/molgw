@@ -108,7 +108,7 @@ subroutine setup_exchange(print_volume,nbf,nspin,p_matrix,pot_exchange,eexchange
 end subroutine setup_exchange
 
 !=========================================================================
-subroutine setup_exchange_shortrange(print_volume,nbf,nspin,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange_longrange(print_volume,nbf,nspin,p_matrix,pot_exchange,eexchange)
  use m_definitions
  use m_mpi
  use m_timing
@@ -141,8 +141,7 @@ subroutine setup_exchange_shortrange(print_volume,nbf,nspin,p_matrix,pot_exchang
            !
            ! symmetry (ik|lj) = (ki|lj) has been used to loop in the fast order
            pot_exchange(ibf,jbf,ispin) = pot_exchange(ibf,jbf,ispin) &
-                      - ( eri(kbf,ibf,lbf,jbf) - eri_lr(kbf,ibf,lbf,jbf) ) &     !  short-range only 
-                       * p_matrix(kbf,lbf,ispin) / spin_fact 
+                      - eri_lr(kbf,ibf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact 
          enddo
        enddo
      enddo
@@ -158,4 +157,4 @@ subroutine setup_exchange_shortrange(print_volume,nbf,nspin,p_matrix,pot_exchang
 
  call stop_clock(timing_exchange)
 
-end subroutine setup_exchange_shortrange
+end subroutine setup_exchange_longrange

@@ -439,14 +439,16 @@ program molgw
    ! Exchange contribution to the Hamiltonian
    if( calc_type%need_exchange ) then
 
-     if(.NOT.calc_type%is_screened_hybrid) then
-       call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
-     else
-       call setup_exchange_shortrange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
+     call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,energy_tmp)
+     en%exx = alpha_hybrid * energy_tmp
+     hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix(:,:,:) * alpha_hybrid
+
+     if(calc_type%is_screened_hybrid) then
+       call setup_exchange_longrange(print_volume,basis%nbf,nspin,p_matrix,matrix,energy_tmp)
+       en%exx = en%exx + alpha_hybrid_lr * energy_tmp
+       hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix(:,:,:) * alpha_hybrid_lr
      endif
 
-     en%exx = en%exx * alpha_hybrid
-     hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix(:,:,:) * alpha_hybrid
 
    endif
 

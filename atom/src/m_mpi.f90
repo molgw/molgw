@@ -232,7 +232,7 @@ subroutine xsum_rrr(array)
  real(dp),intent(inout) :: array(:,:,:)
 !=====
  integer :: n1,n2,n3
- integer :: ier
+ integer :: ier=0
 !=====
 
  n1 = SIZE( array, DIM=1 )

@@ -15,7 +15,8 @@ module m_calculation_type
  integer,parameter :: QS           = 102
 
 
- real(dp)          :: alpha_hybrid = 1.0_dp
+ real(dp)          :: alpha_hybrid    = 1.0_dp
+ real(dp)          :: alpha_hybrid_lr = 0.0_dp
  real(dp)          :: rcut         = 0.0_dp
 
  integer                   :: ndft_xc      = 0
@@ -126,7 +127,7 @@ subroutine init_dft_type(key,calc_type)
  if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
 
  select case(TRIM(key))
- case('LDAx','PBEx','PBEhx','Bx','PW91x','BJx','RPPx','B3LYP','PBE0','HSE03','HSE06','HSE08','HCTH')
+ case('LDAx','PBEx','PBEhx','Bx','PW91x','BJx','RPPx','B3LYP','PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP')
    ndft_xc=1
  case('LDA','VWN','VWN_RPA','PBE','PBEh','BLYP','PW91')
    ndft_xc=2
@@ -185,6 +186,8 @@ subroutine init_dft_type(key,calc_type)
    dft_xc_type(2) = XC_GGA_C_PW91
  case('HCTH')
    dft_xc_type(1) = XC_GGA_XC_HCTH_407
+ case('TH')
+   dft_xc_type(1) = XC_GGA_XC_TH1
  !
  ! Meta-GGA functionals
  case('BJx')
@@ -205,20 +208,31 @@ subroutine init_dft_type(key,calc_type)
    calc_type%is_screened_hybrid  = .TRUE.
    calc_type%need_exchange       = .TRUE.  
    dft_xc_type(1) = XC_HYB_GGA_XC_HSE03
-   alpha_hybrid = 0.25_dp
+   alpha_hybrid    = 0.25_dp
+   alpha_hybrid_lr = -alpha_hybrid
    rcut         = 1.0_dp / ( 0.15_dp / SQRT(2.0_dp) )
  case('HSE06')
    calc_type%is_screened_hybrid  = .TRUE.
    calc_type%need_exchange       = .TRUE.  
    dft_xc_type(1) = XC_HYB_GGA_XC_HSE06
-   alpha_hybrid = 0.25_dp
+   alpha_hybrid    = 0.25_dp
+   alpha_hybrid_lr = -alpha_hybrid
    rcut         = 1.0_dp / 0.11_dp
  case('HSE08')
    calc_type%is_screened_hybrid  = .TRUE.
    calc_type%need_exchange       = .TRUE.
    dft_xc_type(1) = XC_HYB_GGA_XC_HJS_PBE
-   alpha_hybrid   = 0.25_dp
+   alpha_hybrid    = 0.25_dp
+   alpha_hybrid_lr = -alpha_hybrid
    rcut           = 1.0_dp / 0.11_dp
+ case('CAM-B3LYP')
+   calc_type%is_screened_hybrid  = .TRUE.
+   calc_type%need_exchange       = .TRUE.
+   dft_xc_type(1) = XC_HYB_GGA_XC_CAM_B3LYP
+   alpha_hybrid    = 0.19_dp
+   alpha_hybrid_lr = alpha_hybrid + 0.46_dp
+   rcut           = 1.0_dp / 0.33_dp
+ ! Testing
  case('TESTHSE08')
    calc_type%is_screened_hybrid  = .TRUE.
    calc_type%need_exchange       = .TRUE.  
