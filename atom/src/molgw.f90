@@ -172,10 +172,6 @@ program molgw
  msg='LOW_MEMORY version 2 option is swichted on'
  call issue_warning(msg)
 #endif
-#ifdef LOW_MEMORY3
- msg='LOW_MEMORY version 3 option is swichted on'
- call issue_warning(msg)
-#endif
 #ifdef MPI
 #ifndef LOW_MEMORY1
  stop'MPI and LOW_MEMORY1 should be set to on'

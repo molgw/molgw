@@ -465,19 +465,6 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  deallocate(eri_eigenstate_k)
 #endif
 
-contains
- function deltaf(occ1,occ2) 
- implicit none
- real(dp),intent(in) :: occ1,occ2
- real(dp)            :: deltaf
- !=====
- if(occ1-occ2 > 0.0_dp) then
-   deltaf =  occ1*(spin_fact-occ2)/spin_fact
- else
-   deltaf = -occ2*(spin_fact-occ1)/spin_fact
- endif
-
- end function deltaf
 end subroutine polarizability_casida_noaux
 #endif
 

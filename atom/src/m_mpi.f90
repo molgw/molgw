@@ -109,7 +109,7 @@ subroutine init_distribution(nbf)
  nbf_mpi = nbf
 
  if(nproc>1) then
-   WRITE_MASTER(*,'(/,a)') ' Distribution initialized: 1 index distribution'
+   WRITE_MASTER(*,'(/,a)') ' Initializing distribution: 2-index distribution'
  endif
 
  ntask = index_prod(nbf,nbf)

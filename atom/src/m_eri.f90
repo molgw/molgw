@@ -21,12 +21,6 @@ module m_eri
  real(prec_eri),allocatable :: eri_buffer(:)
  real(prec_eri),allocatable :: eri_buffer_lr(:)
 
-#ifdef LOW_MEMORY3
- integer                    :: nsize_sparse
- real(prec_eri),allocatable :: eri_buffer_sparse(:)
- integer*2,allocatable      :: index_sparse(:,:)
-#endif
-
  integer                    :: nbf_eri                ! local copy of nbf
  integer                    :: nsize                  ! size of the eri_buffer array
  integer                    :: nsize1                 ! number of independent pairs (i,j) with i<=j
@@ -45,11 +39,7 @@ subroutine allocate_eri(nbf)
 !===== 
 
  nbf_eri = nbf
-#if LOW_MEMORY3 || LOW_MEMORY2
- WRITE_MASTER(*,'(/,a)') ' Symmetrized ERI stored'
- nsize1  = index_prod(nbf_eri,nbf_eri) 
- nsize   = index_eri(nbf_eri,nbf_eri,nbf_eri,nbf_eri)
-#elif LOW_MEMORY1
+#if LOW_MEMORY1
  WRITE_MASTER(*,'(/,a)') ' Semi-symmetrized ERI stored (4 symmetries)'
  nsize1  = index_prod(nbf_eri,nbf_eri) 
  nsize   = nsize1*get_ntask()
@@ -86,10 +76,6 @@ subroutine deallocate_eri()
 !=====
 
  if(allocated(eri_buffer))        deallocate(eri_buffer)
-#ifdef LOW_MEMORY3
- if(allocated(eri_buffer_sparse)) deallocate(eri_buffer_sparse)
- if(allocated(index_sparse))      deallocate(index_sparse)
-#endif
 
 end subroutine deallocate_eri
 
@@ -103,7 +89,7 @@ subroutine allocate_eri_lr(nbf)
 !===== 
 
  nbf_eri = nbf
-#if LOW_MEMORY3 || LOW_MEMORY2
+#if LOW_MEMORY2
  WRITE_MASTER(*,'(/,a)') ' Symmetrized ERI stored'
  nsize1  = index_prod(nbf_eri,nbf_eri) 
  nsize   = index_eri(nbf_eri,nbf_eri,nbf_eri,nbf_eri)
@@ -136,10 +122,6 @@ subroutine deallocate_eri_lr()
 !=====
 
  if(allocated(eri_buffer_lr))    deallocate(eri_buffer_lr)
-#ifdef LOW_MEMORY3
- if(allocated(eri_buffer_sparse)) deallocate(eri_buffer_sparse)
- if(allocated(index_sparse))      deallocate(index_sparse)
-#endif
 
 end subroutine deallocate_eri_lr
 
@@ -196,35 +178,7 @@ function eri(ibf,jbf,kbf,lbf)
  integer            :: i1,i2,i3,i4
 !=====
 
-#if LOW_MEMORY3
-
- eri = 0.0_dp
-
- if( index_prod(ibf,jbf) >=  index_prod(kbf,lbf) ) then
-   i1=MAX(ibf,jbf)
-   i2=MIN(ibf,jbf)
-   i3=MAX(kbf,lbf)
-   i4=MIN(kbf,lbf)
- else
-   i3=MAX(ibf,jbf)
-   i4=MIN(ibf,jbf)
-   i1=MAX(kbf,lbf)
-   i2=MIN(kbf,lbf)
- endif
-
- do ibuffer_sparse=1,nsize_sparse
-
-   if( index_sparse(1,ibuffer_sparse) == i1 .AND. &
-       index_sparse(2,ibuffer_sparse) == i2 .AND. &
-       index_sparse(3,ibuffer_sparse) == i3 .AND. &
-       index_sparse(4,ibuffer_sparse) == i4 ) then
-     eri = eri_buffer_sparse(ibuffer_sparse)
-     exit
-   endif
-
- enddo
-
-#elif LOW_MEMORY2 || LOW_MEMORY1
+#if LOW_MEMORY2 || LOW_MEMORY1
  eri = eri_buffer(index_eri(ibf,jbf,kbf,lbf))
 #else
  eri = eri_buffer(ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3)
@@ -700,7 +654,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
                    index_integral = lindex_in_the_shell + (kindex_in_the_shell-1)*nl &
                                    +(jindex_in_the_shell-1)*nl*nk + (iindex_in_the_shell-1)*nl*nk*nj
 
-#if LOW_MEMORY3 || LOW_MEMORY2 || LOW_MEMORY1
+#if LOW_MEMORY2 || LOW_MEMORY1
                    if(ibf<jbf) cycle
                    if(kbf<lbf) cycle
 #ifndef LOW_MEMORY1
@@ -755,7 +709,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
                    index_integral = lindex_in_the_shell + (kindex_in_the_shell-1)*nl &
                                    +(jindex_in_the_shell-1)*nl*nk + (iindex_in_the_shell-1)*nl*nk*nj
 
-#if LOW_MEMORY3 || LOW_MEMORY2 || LOW_MEMORY1
+#if LOW_MEMORY2 || LOW_MEMORY1
                    if(ibf<jbf) cycle
                    if(kbf<lbf) cycle
 #ifndef LOW_MEMORY1
@@ -1249,6 +1203,77 @@ subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,ijspin,eri_eigenstat
 
 end subroutine transform_eri_basis_lowmem
 
+!=================================================================
+subroutine transform_eri_basis_lowmem1(nspin,c_matrix,istate,jstate,ijspin,eri_eigenstate_l)
+ use m_timing
+ implicit none
+
+ integer,intent(in)   :: nspin,istate,ijspin
+ real(dp),intent(in)  :: c_matrix(nbf_eri,nbf_eri,nspin)
+ real(dp),intent(out) :: eri_eigenstate_l(nbf_eri,nbf_eri,nbf_eri,nspin)
+!=====
+ integer              :: klspin
+ integer              :: ibf,jbf,kbf,lbf
+ integer              :: jstate,kstate,lstate
+ real(dp)             :: eri_tmp3(nbf_eri,nbf_eri,nbf_eri)
+ real(dp)             :: wtime
+!=====
+
+ eri_eigenstate_l(:,:,:,:)=0.0_dp
+ eri_tmp3(:,:,:)=0.0_dp
+
+ do lbf=1,nbf_eri
+   do kbf=1,nbf_eri
+     do jbf=1,nbf_eri
+
+       do ibf=1,nbf_eri
+         eri_tmp3(jbf,kbf,lbf) = eri_tmp3(jbf,kbf,lbf) + eri(ibf,jbf,kbf,lbf) * c_matrix(ibf,istate,ijspin) 
+       enddo
+
+     enddo
+   enddo
+ enddo
+
+
+ do lbf=1,nbf_eri
+   do kbf=1,nbf_eri
+
+     do jstate=1,nbf_eri
+       eri_eigenstate_l(jstate,kbf,lbf,nspin) = DOT_PRODUCT( eri_tmp3(:,kbf,lbf) , c_matrix(:,jstate,ijspin) )
+     enddo
+
+   enddo
+ enddo
+  
+
+ do klspin=1,nspin
+
+   do lbf=1,nbf_eri
+     do kstate=1,nbf_eri
+       do jstate=1,nbf_eri
+         eri_tmp3(jstate,kstate,lbf) = DOT_PRODUCT( eri_eigenstate_l(jstate,:,lbf,nspin) , c_matrix(:,kstate,klspin) )
+       enddo
+     enddo
+   enddo
+
+   do lstate=1,nbf_eri
+     do kstate=1,nbf_eri
+       do jstate=1,nbf_eri
+
+         do lbf=1,nbf_eri
+           eri_eigenstate_l(jstate,kstate,lstate,klspin) =  eri_eigenstate_l(jstate,kstate,lstate,klspin) &
+                    + eri_tmp3(jstate,kstate,lbf) * c_matrix(lbf,lstate,klspin) 
+         enddo
+
+       enddo
+     enddo
+   enddo
+
+ enddo !klspin
+
+
+end subroutine transform_eri_basis_lowmem1
+
 !=========================================================================
 subroutine negligible_eri(tol)
  implicit none
@@ -1290,46 +1315,6 @@ subroutine negligible_eri(tol)
  WRITE_MASTER(*,*) ' number of negligible integrals <',tol
  WRITE_MASTER(*,*) icount, ' / ',nbf_eri**4,REAL(icount,dp)/REAL(nbf_eri,dp)**4*100.0_dp,' [%]'
  WRITE_MASTER(*,*) jcount, ' / ',nbf_eri**4,REAL(jcount,dp)/REAL(nbf_eri,dp)**4*100.0_dp,' [%]'
-
-#ifdef LOW_MEMORY3
- nsize_sparse = nsize - icount
- allocate(eri_buffer_sparse(nsize_sparse))
- allocate(index_sparse(4,nsize_sparse))
-
- if(REAL(nsize_sparse,dp)*prec_eri > 1024**3 ) then
-   WRITE_MASTER(*,'(a,f8.3,a)') ' Allocating the sparse ERI array: ',REAL(nsize_sparse,dp)*prec_eri/1024**3,' [Gb]'
- else
-   WRITE_MASTER(*,'(a,f8.3,a)') ' Allocating the sparse ERI array: ',REAL(nsize_sparse,dp)*prec_eri/1024**2,' [Mb]'
- endif
-
- ibuffer_sparse=0
- ibuffer=0
- do lbf=1,nbf_eri
-   do kbf=lbf,nbf_eri
-     do jbf=1,nbf_eri
-       do ibf=jbf,nbf_eri
-
-         if( index_prod(ibf,jbf) >= index_prod(kbf,lbf) ) then
-           ibuffer = ibuffer + 1
-           if( ABS( eri_buffer(ibuffer) ) > tol ) then
-             ibuffer_sparse = ibuffer_sparse + 1
-             eri_buffer_sparse(ibuffer_sparse) = eri_buffer(ibuffer)
-             index_sparse(1,ibuffer_sparse) = ibf
-             index_sparse(2,ibuffer_sparse) = jbf
-             index_sparse(3,ibuffer_sparse) = kbf
-             index_sparse(4,ibuffer_sparse) = lbf
-
-           endif
-
-         endif
-
-       enddo
-     enddo
-   enddo
- enddo
-
- deallocate(eri_buffer)
-#endif
 
 
 end subroutine negligible_eri

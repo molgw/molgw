@@ -126,7 +126,7 @@ subroutine init_dft_type(key,calc_type)
  if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
 
  select case(TRIM(key))
- case('LDAx','PBEx','PBEhx','Bx','PW91x','BJx','RPPx','B3LYP','PBE0','HSE03','HSE06','HSE08')
+ case('LDAx','PBEx','PBEhx','Bx','PW91x','BJx','RPPx','B3LYP','PBE0','HSE03','HSE06','HSE08','HCTH')
    ndft_xc=1
  case('LDA','VWN','VWN_RPA','PBE','PBEh','BLYP','PW91')
    ndft_xc=2
@@ -183,6 +183,8 @@ subroutine init_dft_type(key,calc_type)
  case('PW91')
    dft_xc_type(1) = XC_GGA_X_PW91
    dft_xc_type(2) = XC_GGA_C_PW91
+ case('HCTH')
+   dft_xc_type(1) = XC_GGA_XC_HCTH_407
  !
  ! Meta-GGA functionals
  case('BJx')
