@@ -43,6 +43,10 @@ subroutine allocate_eri(nbf)
  WRITE_MASTER(*,'(/,a)') ' Semi-symmetrized ERI stored (4 symmetries)'
  nsize1  = index_prod(nbf_eri,nbf_eri) 
  nsize   = nsize1*get_ntask()
+#elif LOW_MEMORY2
+ WRITE_MASTER(*,'(/,a)') ' Symmetrized ERI stored (8 symmetries)' 
+ nsize1  = index_prod(nbf_eri,nbf_eri) 
+ nsize   = index_eri(nbf_eri,nbf_eri,nbf_eri,nbf_eri)
 #else
  WRITE_MASTER(*,'(/,a)') ' All ERI are stored'
  nsize1  = nbf_eri**2
@@ -90,7 +94,7 @@ subroutine allocate_eri_lr(nbf)
 
  nbf_eri = nbf
 #if LOW_MEMORY2
- WRITE_MASTER(*,'(/,a)') ' Symmetrized ERI stored'
+ WRITE_MASTER(*,'(/,a)') ' Symmetrized ERI stored (8 symmetries)'
  nsize1  = index_prod(nbf_eri,nbf_eri) 
  nsize   = index_eri(nbf_eri,nbf_eri,nbf_eri,nbf_eri)
 #else
@@ -98,6 +102,10 @@ subroutine allocate_eri_lr(nbf)
  nsize1  = nbf_eri**2
  nsize   = nsize1**2
 #endif
+
+ WRITE_MASTER(*,*) 'number of integrals to be stored:',nsize
+ WRITE_MASTER(*,*) 'max index size',HUGE(nsize)
+ if(nsize<1) stop'too many integrals to be stored'
 
  allocate(eri_buffer_lr(nsize),stat=info)
  if(REAL(nsize,dp)*prec_eri > 1024**3 ) then
@@ -157,13 +165,15 @@ function index_eri(ibf,jbf,kbf,lbf)
 #ifdef LOW_MEMORY1
  index_kl  = get_task_number(kbf,lbf)
  index_eri = index_ij + ( index_kl - 1 ) * nsize1
-#else
+#elif LOW_MEMORY2
  index_kl = index_prod(kbf,lbf)
 
  ijmax=MAX(index_ij,index_kl)
  klmin=MIN(index_ij,index_kl)
 
  index_eri = (klmin-1)*nsize1 - (klmin-1)*(klmin-2)/2 + ijmax-klmin+1
+#else
+ index_eri = ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3
 #endif
 
 end function index_eri
@@ -178,11 +188,13 @@ function eri(ibf,jbf,kbf,lbf)
  integer            :: i1,i2,i3,i4
 !=====
 
-#if LOW_MEMORY2 || LOW_MEMORY1
  eri = eri_buffer(index_eri(ibf,jbf,kbf,lbf))
-#else
- eri = eri_buffer(ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3)
-#endif
+
+!!#if LOW_MEMORY2 || LOW_MEMORY1
+!! eri = eri_buffer(index_eri(ibf,jbf,kbf,lbf))
+!!#else
+!! eri = eri_buffer(ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3)
+!!#endif
 
 end function eri
 
@@ -196,11 +208,13 @@ function eri_lr(ibf,jbf,kbf,lbf)
  integer            :: i1,i2,i3,i4
 !=====
 
-#if LOW_MEMORY2 || LOW_MEMORY1
  eri_lr = eri_buffer_lr(index_eri(ibf,jbf,kbf,lbf))
-#else
- eri_lr = eri_buffer_lr(ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3)
-#endif
+
+!#if LOW_MEMORY2 || LOW_MEMORY1
+! eri_lr = eri_buffer_lr(index_eri(ibf,jbf,kbf,lbf))
+!#else
+! eri_lr = eri_buffer_lr(ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3)
+!#endif
 
 end function eri_lr
 
@@ -663,10 +677,9 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
 #ifdef MPI
                    if( .NOT. is_my_task(kbf,lbf) ) cycle
 #endif
-                   index_tmp=index_eri(ibf,jbf,kbf,lbf)
-#else
-                   index_tmp=ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3
 #endif
+                   index_tmp=index_eri(ibf,jbf,kbf,lbf)
+
                    eri_buffer(index_tmp) = eri_buffer(index_tmp) &
                              + basis%bf(ibf)%coeff(ig) *  basis%bf(ibf)%g(ig)%norm_factor &
                              * basis%bf(jbf)%coeff(jg) *  basis%bf(jbf)%g(jg)%norm_factor &
@@ -718,11 +731,9 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
 #ifdef MPI
                    if( .NOT. is_my_task(kbf,lbf) ) cycle
 #endif
-
-                   index_tmp=index_eri(ibf,jbf,kbf,lbf)
-#else
-                   index_tmp=ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3
 #endif
+                   index_tmp=index_eri(ibf,jbf,kbf,lbf)
+
                    eri_buffer_lr(index_tmp) = eri_buffer_lr(index_tmp) &
                              + basis%bf(ibf)%coeff(ig) *  basis%bf(ibf)%g(ig)%norm_factor &
                              * basis%bf(jbf)%coeff(jg) *  basis%bf(jbf)%g(jg)%norm_factor &

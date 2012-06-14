@@ -243,7 +243,6 @@ subroutine init_dft_type(key,calc_type)
    alpha_hybrid   = 0.25_dp
    rcut           = 1.0_dp / 0.11_dp
  case('TEST')
-   calc_type%is_screened_hybrid  = .FALSE.
    calc_type%need_exchange       = .TRUE.
    alpha_hybrid   = 3.00_dp
    dft_xc_type(1) = XC_GGA_X_PBE
