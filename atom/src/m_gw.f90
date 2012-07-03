@@ -730,7 +730,7 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
  logical               :: file_exists=.FALSE.
  integer               :: nomegai
  integer               :: iomegai
- complex(dp),parameter :: ieta=(0.0_dp,0.0001_dp)
+ complex(dp),parameter :: ieta=(0.0_dp,0.0007_dp) ! (0.0_dp,0.0001_dp)
  real(dp),allocatable  :: omegai(:)
  real(dp),allocatable  :: selfenergy_tmp(:,:,:,:)
 
@@ -890,8 +890,10 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
        write(ctmp,'(i2.2)') aorbital
        open(20+aorbital,file='selfenergy_omega_state'//TRIM(ctmp))
        do iomegai=1,nomegai
-         WRITE_MASTER(20+aorbital,'(20(f12.6,2x))') DBLE(omegai(iomegai))+energy(aorbital,:),DBLE(selfenergy_tmp(iomegai,aorbital,aorbital,:)),&
-&                    DBLE(omegai(iomegai))-exchange_m_vxc_diag(aorbital,:)
+         WRITE_MASTER(20+aorbital,'(20(f12.6,2x))') ( DBLE(omegai(iomegai))+energy(aorbital,:) )*Ha_eV,&
+                                                    ( DBLE(selfenergy_tmp(iomegai,aorbital,aorbital,:)) )*Ha_eV,&
+                                                    ( DBLE(omegai(iomegai))-exchange_m_vxc_diag(aorbital,:) )*Ha_eV,&
+                                                    ( 1.0_dp/pi/ABS( DBLE(omegai(iomegai))-exchange_m_vxc_diag(aorbital,:) - DBLE(selfenergy_tmp(iomegai,aorbital,aorbital,:)) ) ) / Ha_eV
        enddo
        WRITE_MASTER(20+aorbital,*)
      enddo

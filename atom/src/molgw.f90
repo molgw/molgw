@@ -19,6 +19,7 @@ program molgw
 #endif
  implicit none
 
+ integer,parameter            :: gaussian_type=CARTESIAN
  !
  ! Input parameters will be set in read_inputparameters
  type(calculation_type)       :: calc_type
@@ -34,6 +35,7 @@ program molgw
  real(dp) :: rtmp
 !=====
  type(basis_set)         :: basis
+ type(basis_set)         :: basis_cart
  type(basis_set)         :: prod_basis
  type(spectral_function) :: wpol
  integer                 :: ibf,jbf,kbf,lbf,ijbf,klbf
@@ -189,8 +191,16 @@ program molgw
  call nucleus_nucleus_energy(en%nuc_nuc)
 
  !
- ! start build up the basis set
- call init_basis_set(print_volume,basis_name,basis)
+ ! Build up the basis set
+ !
+ select case(gaussian_type)
+ case(CARTESIAN)
+   call init_basis_set(print_volume,basis_name,CARTESIAN,basis)
+ case(PURE)
+   call init_basis_set(print_volume,basis_name,CARTESIAN,basis_cart)
+   call init_basis_set(print_volume,basis_name,PURE     ,basis)
+   call set_cart_to_pure_transform(basis_cart,basis)
+ end select
 
  !
  ! first attempt to distribute the work load among procs

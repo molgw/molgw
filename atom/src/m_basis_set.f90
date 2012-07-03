@@ -10,13 +10,16 @@ module m_basis_set
  use m_gaussian
  use m_atoms
 
- real(dp),parameter             :: FILTERED_EIGENVALUE=1.0d-8 ! 1.0d-6
+ real(dp),parameter             :: FILTERED_EIGENVALUE=1.0d-8 
 
  integer,parameter              :: CARTESIAN=1
  integer,parameter              :: PURE     =2
 
+ real(dp),allocatable           :: cart_to_pure(:,:)
+
  type basis_function
    character(len=100)           :: basis_name
+   integer                      :: gaussian_type              ! CARTESIAN or PURE
    integer                      :: am
    character(len=1)             :: amc
    integer                      :: nx,ny,nz
@@ -34,7 +37,7 @@ module m_basis_set
    !
    ! The list
    integer                                 :: nbf
-   integer                                 :: gaussian_type
+   integer                                 :: gaussian_type              ! CARTESIAN or PURE
    type(basis_function),pointer            :: bf(:) 
    !
    ! then additional data needed for product basis
@@ -43,30 +46,36 @@ module m_basis_set
    real(dp),allocatable                    :: rotation(:,:)
  end type basis_set
 
-
+ interface init_basis_function
+   module procedure init_basis_function_cartesian
+   module procedure init_basis_function_pure
+ end interface
 
 
 contains
 
 !=========================================================================
- subroutine init_basis_set(print_volume,basis_name,basis)
+ subroutine init_basis_set(print_volume,basis_name,gaussian_type,basis)
  implicit none
  integer,intent(in)            :: print_volume
+ integer,intent(in)            :: gaussian_type
  character(len=100),intent(in) :: basis_name
  type(basis_set),intent(out)   :: basis
 !====
  character(len=100)            :: basis_filename
- integer                       :: ibf,jbf,ng,ig
+ integer                       :: ibf,jbf,kbf,ng,ig
  real(dp),allocatable          :: alpha(:),coeff(:),coeff2(:)
  logical                       :: file_exists
  integer,parameter             :: basis_file=11
- integer                       :: am_tmp,nbf
+ integer                       :: am_tmp,mm,nbf
  logical,parameter             :: normalized=.TRUE.
  integer                       :: iatom
  real(dp)                      :: x0(3)
 !====
 
  basis%nbf=0
+ basis%gaussian_type = gaussian_type
+
  !
  ! LOOP OVER ATOMS
  ! TODO could be reduced to the type of atoms in the future
@@ -94,15 +103,13 @@ contains
    do ibf=1,nbf
      read(basis_file,*) ng,am_tmp
      if(ng<1) stop'ERROR in basis set file'
-     basis%nbf = basis%nbf + number_basis_function_am(am_tmp)
+     basis%nbf = basis%nbf + number_basis_function_am(basis%gaussian_type,am_tmp)
      do ig=1,ng
        read(basis_file,*) 
      enddo
    enddo
    close(basis_file)
   
-!   WRITE_MASTER(*,*) 'Number of basis functions for atom',iatom,nbf
-
  enddo
 
  WRITE_MASTER(*,*)
@@ -139,142 +146,151 @@ contains
 
    x0(:) = x(:,iatom)
 
-   select case(am_tmp)
-   case( 0)
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,0,x0,alpha,coeff,basis%bf(jbf))
-   case( 1)
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,1,x0,alpha,coeff,basis%bf(jbf))
-   case( 2)
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,2,x0,alpha,coeff,basis%bf(jbf))
-   case( 3)
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,3,0,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,1,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,2,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,3,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,3,x0,alpha,coeff,basis%bf(jbf))
-   case( 4)
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,4,0,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,3,1,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,3,0,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,2,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,1,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,3,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,2,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,3,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,4,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,3,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,3,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,4,x0,alpha,coeff,basis%bf(jbf))
-   case( 5)
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,5,0,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,4,1,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,4,0,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,3,2,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,3,1,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,3,0,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,3,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,2,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,1,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,3,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,4,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,3,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,2,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,3,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,4,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,5,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,4,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,3,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,3,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,4,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,5,x0,alpha,coeff,basis%bf(jbf))
-   case( 6)
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,6,0,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,5,1,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,5,0,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,4,2,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,4,1,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,4,0,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,3,3,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,3,2,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,3,1,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,3,0,3,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,4,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,3,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,2,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,1,3,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,4,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,5,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,4,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,3,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,2,3,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,4,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,5,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,6,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,5,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,4,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,3,3,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,4,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,5,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,6,x0,alpha,coeff,basis%bf(jbf))
-   case( 7)
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,7,0,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,6,1,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,6,0,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,5,2,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,5,1,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,5,0,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,4,3,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,4,2,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,4,1,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,4,0,3,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,3,4,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,3,3,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,3,2,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,3,1,3,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,3,0,4,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,5,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,4,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,3,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,2,3,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,1,4,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,5,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,6,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,5,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,4,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,3,3,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,2,4,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,5,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,6,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,7,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,6,1,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,5,2,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,4,3,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,3,4,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,5,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,6,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,7,x0,alpha,coeff,basis%bf(jbf))
-   case(10)
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,0,x0,alpha,coeff,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,0,x0,alpha,coeff2,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,0,x0,alpha,coeff2,basis%bf(jbf))
-     jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,1,x0,alpha,coeff2,basis%bf(jbf))
-   case default
-     stop'not implemented'
+   select case(basis%gaussian_type)
+   case(CARTESIAN)
+     select case(am_tmp)
+     case( 0)
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,0,x0,alpha,coeff,basis%bf(jbf))
+     case( 1)
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,1,x0,alpha,coeff,basis%bf(jbf))
+     case( 2)
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,2,x0,alpha,coeff,basis%bf(jbf))
+     case( 3)
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,0,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,1,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,2,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,3,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,3,x0,alpha,coeff,basis%bf(jbf))
+     case( 4)
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,0,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,1,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,0,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,2,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,1,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,3,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,2,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,3,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,4,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,3,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,3,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,4,x0,alpha,coeff,basis%bf(jbf))
+     case( 5)
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,5,0,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,1,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,0,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,2,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,1,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,0,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,3,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,2,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,1,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,3,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,4,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,3,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,2,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,3,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,4,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,5,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,4,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,3,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,3,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,4,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,5,x0,alpha,coeff,basis%bf(jbf))
+     case( 6)
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,6,0,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,5,1,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,5,0,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,2,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,1,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,0,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,3,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,2,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,1,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,0,3,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,4,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,3,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,2,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,1,3,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,4,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,5,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,4,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,3,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,2,3,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,4,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,5,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,6,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,5,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,4,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,3,3,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,4,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,5,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,6,x0,alpha,coeff,basis%bf(jbf))
+     case( 7)
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,7,0,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,6,1,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,6,0,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,5,2,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,5,1,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,5,0,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,3,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,2,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,1,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,0,3,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,4,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,3,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,2,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,1,3,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,0,4,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,5,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,4,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,3,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,2,3,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,1,4,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,5,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,6,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,5,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,4,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,3,3,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,2,4,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,5,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,6,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,7,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,6,1,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,5,2,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,4,3,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,3,4,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,5,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,6,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,7,x0,alpha,coeff,basis%bf(jbf))
+     case(10)
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,0,x0,alpha,coeff,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,0,x0,alpha,coeff2,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,0,x0,alpha,coeff2,basis%bf(jbf))
+       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,1,x0,alpha,coeff2,basis%bf(jbf))
+     case default
+       stop'not implemented'
+     end select
+   case(PURE)
+     do kbf=1,number_basis_function_am(PURE,am_tmp)
+       jbf = jbf + 1
+       mm = kbf - 1 - am_tmp
+       call init_basis_function(normalized,ng,am_tmp,mm,x0,alpha,coeff,basis%bf(jbf))
+     enddo
    end select
 
 
@@ -385,7 +401,7 @@ contains
  end subroutine destroy_basis_set
 
 !=========================================================================
- subroutine init_basis_function(normalized,ng,nx,ny,nz,x0,alpha,coeff,bf)
+ subroutine init_basis_function_cartesian(normalized,ng,nx,ny,nz,x0,alpha,coeff,bf)
  implicit none
  logical,intent(in)               :: normalized
  integer,intent(in)               :: ng,nx,ny,nz
@@ -426,7 +442,50 @@ contains
  endif
  
 
- end subroutine init_basis_function
+ end subroutine init_basis_function_cartesian
+
+!=========================================================================
+ subroutine init_basis_function_pure(normalized,ng,am,mm,x0,alpha,coeff,bf)
+ implicit none
+ logical,intent(in)               :: normalized
+ integer,intent(in)               :: ng,am,mm
+ real(dp),intent(in)              :: x0(3),alpha(ng)
+ real(dp),intent(in)              :: coeff(ng)
+ type(basis_function),intent(out) :: bf
+!====
+ integer                          :: ig
+ real(dp)                         :: overlap
+!====
+
+ bf%ngaussian = ng
+ allocate(bf%g(bf%ngaussian))
+ allocate(bf%coeff(bf%ngaussian))
+ bf%am    = am
+ bf%mm    = mm
+ bf%amc   = orbital_momentum_name(bf%am)
+ bf%x0(:) = x0(:)
+
+! ! All the gaussians of the contraction have the same orbital momentum
+! do ig=1,bf%ngaussian
+!TODO
+!   call init_gaussian_general(nx,ny,nz,alpha(ig),x0,bf%g(ig))
+!   bf%coeff(ig) = coeff(ig)
+! enddo
+!
+! !
+! ! check the normalization if requested
+! if( normalized ) then
+!   call overlap_basis_function(bf,bf,overlap)
+!   if( ABS(overlap-1.0_dp) > 2.0d-5 ) then
+!     WRITE_MASTER(*,*) 'normalization is different from 1.0',overlap
+!     WRITE_MASTER(*,*) bf%nx,bf%ny,bf%nz
+!     WRITE_MASTER(*,*) 'assuming this is a generalized contraction and rescaling coefficients'
+!     bf%coeff(:) = coeff(:) / SQRT( overlap )
+!   endif
+! endif
+! 
+
+ end subroutine init_basis_function_pure
 
 !=========================================================================
  subroutine destroy_basis_function(bf)
@@ -439,32 +498,41 @@ contains
  end subroutine destroy_basis_function
 
 !=========================================================================
- function number_basis_function_am(am)
- integer,intent(in) :: am
+ function number_basis_function_am(gaussian_type,am)
+ integer,intent(in) :: gaussian_type,am
  integer            :: number_basis_function_am
 !=====
 
- select case(am)
- case(0)
-   number_basis_function_am = 1
- case(1)
-   number_basis_function_am = 3
- case(2)
-   number_basis_function_am = 6
- case(3)
-   number_basis_function_am = 10
- case(4)
-   number_basis_function_am = 15
- case(5)
-   number_basis_function_am = 21
- case(6)
-   number_basis_function_am = 28
- case(7)
-   number_basis_function_am = 28
- case(10) ! stands for SP orbitals
-   number_basis_function_am = 4 
- case default
-   stop'number_basis_function_am: not implemented'
+ select case(gaussian_type)
+ case(CARTESIAN)
+   select case(am)
+   case(0)
+     number_basis_function_am = 1
+   case(1)
+     number_basis_function_am = 3
+   case(2)
+     number_basis_function_am = 6
+   case(3)
+     number_basis_function_am = 10
+   case(4)
+     number_basis_function_am = 15
+   case(5)
+     number_basis_function_am = 21
+   case(6)
+     number_basis_function_am = 28
+   case(7)
+     number_basis_function_am = 36
+   case(10) ! stands for SP orbitals
+     number_basis_function_am = 4 
+   case default
+     stop'number_basis_function_am: not implemented'
+   end select
+ case(PURE)
+   if(am/=10) then
+     number_basis_function_am = 2 * am + 1
+   else ! stands for SP orbitals
+     number_basis_function_am = 4 
+   endif
  end select
 
  end function number_basis_function_am
@@ -858,6 +926,35 @@ subroutine basis_function_dipole_sq(bf1,bf2,dipole)
  dipole(3) = dipole(3) + dipole_tmp * bf2%x0(3)**2
 
 end subroutine basis_function_dipole_sq
+
+!=========================================================================
+subroutine set_cart_to_pure_transform(basis_cart,basis_pure)
+ implicit none
+ type(basis_set),intent(in) :: basis_cart
+ type(basis_set),intent(in) :: basis_pure
+!====
+ integer  :: ibf,jbf
+ integer  :: ibf_pure,jbf_pure
+ integer  :: am_pure
+!====
+
+ !
+ ! first check
+ if( basis_cart%gaussian_type /= CARTESIAN ) stop'ERROR in the input of set_cart_to_pure_transform'
+ if( basis_pure%gaussian_type /= PURE      ) stop'ERROR in the input of set_cart_to_pure_transform'
+
+ allocate(cart_to_pure(basis_cart%nbf,basis_pure%nbf))
+
+ do ibf_pure=1,basis_pure%nbf
+   am_pure = basis_pure%bf(ibf_pure)%am
+
+
+
+
+ enddo
+
+
+end subroutine set_cart_to_pure_transform
 
 !=========================================================================
 end module m_basis_set

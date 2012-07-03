@@ -459,19 +459,19 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
            endif
          endif
 
-         ni = number_basis_function_am( ami )
-         nj = number_basis_function_am( amj )
-         nk = number_basis_function_am( amk )
-         nl = number_basis_function_am( aml )
+         ni = number_basis_function_am( CARTESIAN , ami )
+         nj = number_basis_function_am( CARTESIAN , amj )
+         nk = number_basis_function_am( CARTESIAN , amk )
+         nl = number_basis_function_am( CARTESIAN , aml )
 
          am1f=am1
          am2f=am2
          am3f=am3
          am4f=am4
-         n1 = number_basis_function_am( am1f )
-         n2 = number_basis_function_am( am2f )
-         n3 = number_basis_function_am( am3f )
-         n4 = number_basis_function_am( am4f )
+         n1 = number_basis_function_am( CARTESIAN , am1f )
+         n2 = number_basis_function_am( CARTESIAN , am2f )
+         n3 = number_basis_function_am( CARTESIAN , am3f )
+         n4 = number_basis_function_am( CARTESIAN , am4f )
          
          nint_shell = n1 * n2 * n3 *n4
          if( allocated(int_shell) ) deallocate( int_shell )
