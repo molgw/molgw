@@ -846,6 +846,11 @@ program molgw
    if( ndft_xc /= 0 ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
    WRITE_MASTER(*,'(/,a,f14.8)') ' RPA Total energy [Ha]: ',en%tot
 
+!   call write_spectral_function(wpol)
+!   call read_spectral_function(wpol)
+!   msg='read or write spectral function'
+!   call issue_warning(msg)
+
    call start_clock(timing_self)
 #ifdef AUXIL_BASIS
    call gw_selfenergy_casida(calc_type%method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)

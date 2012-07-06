@@ -16,6 +16,7 @@ module m_gw
  !
  type spectral_function 
    integer :: npole
+   integer :: nprodbasis
    real(dp),allocatable :: pole(:)
    real(dp),allocatable :: residu_left(:,:)       ! first index runs on n, second index on i
    real(dp),allocatable :: residu_right(:,:)      ! first index runs on n, second index on j
@@ -49,19 +50,20 @@ subroutine init_spectral_function(nbf,prod_nbf,nspin,occupation,sf)
  allocate(sf%pole(sf%npole))
 
 #ifdef AUXIL_BASIS
- allocate(sf%residu_left(sf%npole,prod_nbf))
- allocate(sf%residu_right(sf%npole,prod_nbf))
- WRITE_MASTER(*,*) '           second index size',prod_nbf
+ sf%nprodbasis = prod_nbf
 #else
- allocate(sf%residu_left(sf%npole,prod_nbf*nspin))
- allocate(sf%residu_right(sf%npole,prod_nbf*nspin))
- WRITE_MASTER(*,*) '           second index size',prod_nbf*nspin
+ sf%nprodbasis = prod_nbf * nspin
 #endif
+
+ allocate(sf%residu_left (sf%npole,sf%nprodbasis))
+ allocate(sf%residu_right(sf%npole,sf%nprodbasis))
+ WRITE_MASTER(*,*) '           second index size',sf%nprodbasis
 
  WRITE_MASTER(*,'(a,f14.0)') ' Memory [Mb] ',REAL(SIZE(sf%residu_left(:,:)),dp)*2.0_dp/1024.0_dp**2*dp
  WRITE_MASTER(*,*)
 
 end subroutine init_spectral_function
+
 
 !=========================================================================
 subroutine destroy_spectral_function(sf)
@@ -77,6 +79,67 @@ subroutine destroy_spectral_function(sf)
  WRITE_MASTER(*,*) 'spectral function destroyed'
 
 end subroutine destroy_spectral_function
+
+
+!=========================================================================
+subroutine write_spectral_function(sf)
+ implicit none
+ type(spectral_function),intent(in) :: sf
+!=====
+ integer,parameter :: spectralfile=50
+ integer :: iprodbasis
+!=====
+
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) 'dumping spectral function on file' 
+
+ open(spectralfile,file='spectral_file',form='unformatted')
+
+ write(spectralfile) sf%npole
+ write(spectralfile) sf%nprodbasis
+ write(spectralfile) sf%pole(:)
+ do iprodbasis=1,sf%nprodbasis
+   write(spectralfile) sf%residu_left(:,iprodbasis)
+ enddo
+ do iprodbasis=1,sf%nprodbasis
+   write(spectralfile) sf%residu_right(:,iprodbasis)
+ enddo
+
+ close(spectralfile)
+
+end subroutine write_spectral_function
+
+
+!=========================================================================
+subroutine read_spectral_function(sf)
+ implicit none
+ type(spectral_function),intent(inout) :: sf
+!=====
+ integer,parameter :: spectralfile=50
+ integer :: iprodbasis
+!=====
+
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) 'reading spectral function from file' 
+
+ open(spectralfile,file='spectral_file',status='old',form='unformatted')
+
+ read(spectralfile) sf%npole
+ read(spectralfile) sf%nprodbasis
+ read(spectralfile) sf%pole(:)
+ do iprodbasis=1,sf%nprodbasis
+   read(spectralfile) sf%residu_left(:,iprodbasis)
+ enddo
+ do iprodbasis=1,sf%nprodbasis
+   read(spectralfile) sf%residu_right(:,iprodbasis)   
+ enddo
+
+ close(spectralfile)
+
+ write(*,*) 'Reading done'
+
+end subroutine read_spectral_function
+
 
 #ifdef AUXIL_BASIS
 !=========================================================================
@@ -818,6 +881,7 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
      enddo
 
      do ipole=1,wpol%npole
+
        if( wpol%pole(ipole) < 0.0_dp ) then
          fact_empty = (spin_fact - occupation(iorbital,ispin)) / spin_fact
          fact_full = 0.0_dp
@@ -888,16 +952,16 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
    if(file_exists) then
      do aorbital=1,basis%nbf ! MIN(2,basis%nbf)
        write(ctmp,'(i2.2)') aorbital
-       open(20+aorbital,file='selfenergy_omega_state'//TRIM(ctmp))
+       open(200+aorbital,file='selfenergy_omega_state'//TRIM(ctmp))
        do iomegai=1,nomegai
-         WRITE_MASTER(20+aorbital,'(20(f12.6,2x))') ( DBLE(omegai(iomegai))+energy(aorbital,:) )*Ha_eV,&
-                                                    ( DBLE(selfenergy_tmp(iomegai,aorbital,aorbital,:)) )*Ha_eV,&
-                                                    ( DBLE(omegai(iomegai))-exchange_m_vxc_diag(aorbital,:) )*Ha_eV,&
-                                                    ( 1.0_dp/pi/ABS( DBLE(omegai(iomegai))-exchange_m_vxc_diag(aorbital,:) - DBLE(selfenergy_tmp(iomegai,aorbital,aorbital,:)) ) ) / Ha_eV
+         WRITE_MASTER(200+aorbital,'(20(f12.6,2x))') ( DBLE(omegai(iomegai))+energy(aorbital,:) )*Ha_eV,&
+                                                     ( DBLE(selfenergy_tmp(iomegai,aorbital,aorbital,:)) )*Ha_eV,&
+                                                     ( DBLE(omegai(iomegai))-exchange_m_vxc_diag(aorbital,:) )*Ha_eV,&
+                                                     ( 1.0_dp/pi/ABS( DBLE(omegai(iomegai))-exchange_m_vxc_diag(aorbital,:) - DBLE(selfenergy_tmp(iomegai,aorbital,aorbital,:)) ) ) / Ha_eV
        enddo
-       WRITE_MASTER(20+aorbital,*)
+       WRITE_MASTER(200+aorbital,*)
      enddo
-     close(20+aorbital)
+     close(200+aorbital)
      stop'output the self energy in a file'
    endif
 
