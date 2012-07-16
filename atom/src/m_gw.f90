@@ -805,7 +805,7 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
  real(dp)    :: fact_full,fact_empty
  real(dp)    :: zz(nspin)
  real(dp)    :: energy_re
- character(len=2) :: ctmp
+ character(len=3) :: ctmp
 !=====
  spin_fact = REAL(-nspin+3,dp)
 
@@ -951,7 +951,7 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
 
    if(file_exists) then
      do aorbital=1,basis%nbf ! MIN(2,basis%nbf)
-       write(ctmp,'(i2.2)') aorbital
+       write(ctmp,'(i3.3)') aorbital
        open(200+aorbital,file='selfenergy_omega_state'//TRIM(ctmp))
        do iomegai=1,nomegai
          WRITE_MASTER(200+aorbital,'(20(f12.6,2x))') ( DBLE(omegai(iomegai))+energy(aorbital,:) )*Ha_eV,&
