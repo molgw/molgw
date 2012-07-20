@@ -127,7 +127,8 @@ subroutine init_dft_type(key,calc_type)
  if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
 
  select case(TRIM(key))
- case('LDAx','PBEx','PBEhx','Bx','PW91x','BJx','RPPx','B3LYP','PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP')
+ case('LDAx','PBEx','PBEhx','Bx','PW91x','BJx','RPPx',&
+      'BHANDH','BHANDHLYP','B3LYP','PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP')
    ndft_xc=1
  case('LDA','VWN','VWN_RPA','PBE','PBEh','BLYP','PW91')
    ndft_xc=2
@@ -196,6 +197,14 @@ subroutine init_dft_type(key,calc_type)
    dft_xc_type(1) = XC_MGGA_X_RPP09
  !
  ! Hybrid functionals
+ case('BHANDH')
+   calc_type%need_exchange = .TRUE.  
+   dft_xc_type(1) = XC_HYB_GGA_XC_BHANDH
+   alpha_hybrid = 0.50_dp
+ case('BHANDHLYP')
+   calc_type%need_exchange = .TRUE.  
+   dft_xc_type(1) = XC_HYB_GGA_XC_BHANDHLYP
+   alpha_hybrid = 0.50_dp
  case('B3LYP')
    calc_type%need_exchange = .TRUE.  
    dft_xc_type(1) = XC_HYB_GGA_XC_B3LYP
@@ -230,7 +239,7 @@ subroutine init_dft_type(key,calc_type)
    calc_type%need_exchange       = .TRUE.
    dft_xc_type(1) = XC_HYB_GGA_XC_CAM_B3LYP
    alpha_hybrid    = 0.19_dp
-   alpha_hybrid_lr = alpha_hybrid + 0.46_dp
+   alpha_hybrid_lr = 0.46_dp
    rcut           = 1.0_dp / 0.33_dp
  ! Testing
  case('TESTHSE08')

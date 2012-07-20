@@ -126,6 +126,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
  require_gradient =.FALSE.
  require_laplacian=.FALSE.
  do idft_xc=1,ndft_xc
+
    if( dft_xc_type(idft_xc) < 1000 ) then
      if(nspin==1) then
        call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), INT(dft_xc_type(idft_xc),intxc), XC_UNPOLARIZED)
@@ -391,10 +392,22 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
 
          case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
            if( dft_xc_type(idft_xc) < 2000 ) then 
-             call xc_f90_gga_exc_vxc(xc_func(idft_xc),1_intxc,rhor_r(1)       ,sigma2(1)       ,exc_libxc(1),vxc_libxc(1),vsigma(1)       )
-             call xc_f90_gga_vxc    (xc_func(idft_xc),1_intxc,rhor_r_shiftx(1),sigma2_shiftx(1),             vxc_dummy(1),vsigma_shiftx(1))
-             call xc_f90_gga_vxc    (xc_func(idft_xc),1_intxc,rhor_r_shifty(1),sigma2_shifty(1),             vxc_dummy(1),vsigma_shifty(1))
-             call xc_f90_gga_vxc    (xc_func(idft_xc),1_intxc,rhor_r_shiftz(1),sigma2_shiftz(1),             vxc_dummy(1),vsigma_shiftz(1))
+             !
+             ! Remove too small densities to stabilize the computation
+             ! especially useful for Becke88
+             if( ALL( rhor_r(:) > 1.0e-9_dp ) ) then
+               call xc_f90_gga_exc_vxc(xc_func(idft_xc),1_intxc,rhor_r(1)       ,sigma2(1)       ,exc_libxc(1),vxc_libxc(1),vsigma(1)       )
+               call xc_f90_gga_vxc    (xc_func(idft_xc),1_intxc,rhor_r_shiftx(1),sigma2_shiftx(1),             vxc_dummy(1),vsigma_shiftx(1))
+               call xc_f90_gga_vxc    (xc_func(idft_xc),1_intxc,rhor_r_shifty(1),sigma2_shifty(1),             vxc_dummy(1),vsigma_shifty(1))
+               call xc_f90_gga_vxc    (xc_func(idft_xc),1_intxc,rhor_r_shiftz(1),sigma2_shiftz(1),             vxc_dummy(1),vsigma_shiftz(1))
+             else
+               exc_libxc(:)     = 0.0_dp
+               vxc_libxc(:)     = 0.0_dp
+               vsigma(:)        = 0.0_dp
+               vsigma_shiftx(:) = 0.0_dp
+               vsigma_shifty(:) = 0.0_dp
+               vsigma_shiftz(:) = 0.0_dp
+             endif
            else
              !FIXME  Hard coding !
              omega=0.11_dp
