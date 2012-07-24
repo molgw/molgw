@@ -847,8 +847,9 @@ program molgw
    WRITE_MASTER(*,'(/,a,f14.8)') ' RPA Total energy [Ha]: ',en%tot
 
 !   call write_spectral_function(wpol)
+!   msg='write spectral function'
 !   call read_spectral_function(wpol)
-!   msg='read or write spectral function'
+!   msg='read spectral function'
 !   call issue_warning(msg)
 
    call start_clock(timing_self)
