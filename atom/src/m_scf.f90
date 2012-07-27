@@ -45,7 +45,7 @@ subroutine init_scf(nscf,nbf,nspin,alpha_mixing)
  case(simple_mixing)
    nhist=1
  case(pulay_mixing)
-   nhist=6
+   nhist=12
  case default
    stop'mixing scheme not implemented'
  end select

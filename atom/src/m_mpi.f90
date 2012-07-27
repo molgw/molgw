@@ -159,18 +159,38 @@ subroutine distribute_workload(ntask)
 !=====
  integer            :: itask,iproc
  integer            :: itask_current
+ integer            :: max_task_per_proc
 !=====
+
+ WRITE_MASTER(*,*) 
+ WRITE_MASTER(*,*) 'Distributing the work load among procs'
 
  allocate(task_proc(ntask))
  allocate(ntask_proc(0:nproc-1))
  allocate(task_number(ntask))
  
  ntask_proc(:)=0
+ max_task_per_proc = CEILING( DBLE(ntask)/DBLE(nproc) )
+ WRITE_MASTER(*,*) 'Maximum number of tasks for a single proc',max_task_per_proc
+ iproc=0
  do itask=1,ntask
+
 !   iproc = MODULO(itask,nproc)
-   iproc = FLOOR( itask / ( DBLE(ntask)/DBLE(nproc) ) -0.0001 )  ! This distribution should better preserve the shell structures
+!   iproc = FLOOR( itask / ( DBLE(ntask)/DBLE(nproc) ) )  ! This distribution should better preserve the shell structures
+
+   !
+   ! A simple check to avoid unexpected surprises
+   if(iproc < 0 .OR. iproc >= nproc) then
+     WRITE_MASTER(*,*) 'error in the distribution'
+     stop'STOP'
+   endif
+
    task_proc(itask)  = iproc
    ntask_proc(iproc) = ntask_proc(iproc) + 1 
+   if( ntask_proc(iproc) == max_task_per_proc ) then
+     iproc = iproc + 1
+   endif
+
  enddo
 
  task_number(:)=0

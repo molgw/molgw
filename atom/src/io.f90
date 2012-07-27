@@ -42,7 +42,7 @@ subroutine dump_out_array(is_energy,title,n,nspin,array)
  integer,intent(in)            :: n,nspin
  real(dp),intent(in)           :: array(n,nspin)
 !=====
- integer,parameter :: MAXSIZE=200
+ integer,parameter :: MAXSIZE=300
 !=====
  integer :: i,ispin
 !=====

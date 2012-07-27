@@ -173,7 +173,7 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
  real(dp) :: left(wpol%npole,prod_basis%nbf),right(wpol%npole,prod_basis%nbf)
 
  complex(dp) :: omega(NOMEGA)
- complex(dp) :: eta=(0.0_dp,0.02_dp) ! (0.0_dp,0.00001_dp)          ! =(0.0_dp,0.02_dp)
+ complex(dp) :: eta=(0.0_dp,0.0001_dp) ! (0.0_dp,0.00001_dp)          ! =(0.0_dp,0.02_dp)
  real(dp) :: u(NOMEGA),wu(NOMEGA),womega(NOMEGA)
  logical :: TDHF=.FALSE.
 !=====
@@ -348,7 +348,7 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  real(dp) :: exchange_left(prod_basis%nbf)
 
  complex(dp) :: omega(NOMEGA)
- complex(dp) :: eta=(0.0_dp,0.02_dp) ! (0.0_dp,0.00001_dp)          ! =(0.0_dp,0.02_dp)
+ complex(dp) :: eta=(0.0_dp,0.0001_dp) ! (0.0_dp,0.00001_dp)          ! =(0.0_dp,0.02_dp)
  real(dp) :: u(NOMEGA),wu(NOMEGA),womega(NOMEGA)
  logical :: TDHF=.FALSE.
 !=====
@@ -548,7 +548,7 @@ subroutine gw_selfenergy_casida(method,nspin,basis,prod_basis,occupation,energy,
 
  integer :: nomegai
  integer :: iomegai
- complex(dp) :: eta=(0.0_dp,0.001_dp)
+ complex(dp) :: eta=(0.0_dp,0.0001_dp)
 ! complex(dp) :: eta=(0.0_dp,1.50_dp)
 ! complex(dp) :: eta=(0.0_dp,0.0_dp)
  complex(dp),allocatable :: omegai(:)
@@ -793,7 +793,7 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
  logical               :: file_exists=.FALSE.
  integer               :: nomegai
  integer               :: iomegai
- complex(dp),parameter :: ieta=(0.0_dp,0.0007_dp) ! (0.0_dp,0.0001_dp)
+ complex(dp),parameter :: ieta=(0.0_dp,0.0001_dp) ! (0.0_dp,0.0001_dp)
  real(dp),allocatable  :: omegai(:)
  real(dp),allocatable  :: selfenergy_tmp(:,:,:,:)
 
