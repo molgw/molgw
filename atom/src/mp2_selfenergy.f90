@@ -52,7 +52,7 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
  real(dp)              :: fact_real,fact_nega
  real(dp)              :: emp2_sox,emp2_ring
  logical               :: file_exists
- character(len=2)      :: ctmp
+ character(len=3)      :: ctmp
 !=====
 
  spin_fact = REAL(-nspin+3,dp)
@@ -229,7 +229,7 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
 
    if(file_exists) then
      do aorbital=1,MIN(2,basis%nbf)
-       write(ctmp,'(i2.2)') aorbital
+       write(ctmp,'(i3.3)') aorbital
        open(20+aorbital,file='selfenergy_omega_state'//TRIM(ctmp))
        do iomegai=1,nomegai
          WRITE_MASTER(20+aorbital,'(20(f12.6,2x))') DBLE(omegai(iomegai))+energy(aorbital,:),&

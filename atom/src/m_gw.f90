@@ -95,14 +95,14 @@ subroutine write_spectral_function(sf)
 
  open(spectralfile,file='spectral_file',form='unformatted')
 
- write(spectralfile) sf%npole
- write(spectralfile) sf%nprodbasis
- write(spectralfile) sf%pole(:)
+ WRITE_MASTER(spectralfile) sf%npole
+ WRITE_MASTER(spectralfile) sf%nprodbasis
+ WRITE_MASTER(spectralfile) sf%pole(:)
  do iprodbasis=1,sf%nprodbasis
-   write(spectralfile) sf%residu_left(:,iprodbasis)
+   WRITE_MASTER(spectralfile) sf%residu_left(:,iprodbasis)
  enddo
  do iprodbasis=1,sf%nprodbasis
-   write(spectralfile) sf%residu_right(:,iprodbasis)
+   WRITE_MASTER(spectralfile) sf%residu_right(:,iprodbasis)
  enddo
 
  close(spectralfile)
@@ -136,7 +136,7 @@ subroutine read_spectral_function(sf)
 
  close(spectralfile)
 
- write(*,*) 'Reading done'
+ WRITE_MASTER(*,*) 'Reading done'
 
 end subroutine read_spectral_function
 

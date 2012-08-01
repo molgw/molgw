@@ -238,9 +238,9 @@ subroutine init_dft_type(key,calc_type)
    calc_type%is_screened_hybrid  = .TRUE.
    calc_type%need_exchange       = .TRUE.
    dft_xc_type(1) = XC_HYB_GGA_XC_CAM_B3LYP
-   alpha_hybrid    = 0.19_dp
-   alpha_hybrid_lr = 0.46_dp
-   rcut           = 1.0_dp / 0.33_dp
+   alpha_hybrid    =  0.19_dp ! 0.00_dp ! 0.19_dp
+   alpha_hybrid_lr =  0.46_dp ! 1.00_dp ! 0.46_dp
+   rcut           =  1.0_dp / 0.33_dp  ! 1.0_dp / 0.33_dp
  ! Testing
  case('TESTHSE08')
    calc_type%is_screened_hybrid  = .TRUE.

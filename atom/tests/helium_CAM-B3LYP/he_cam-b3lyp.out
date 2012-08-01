@@ -1,0 +1,510 @@
+ ======================================================================
+
+
+             Welcome to the fascinating world of MOLGW
+
+
+ ======================================================================
+ 
+ Today is 01/08/2012
+ It is now 10:53
+ And it is perfect time to work
+
+ WARNING: LOW_MEMORY version 2 option is swichted on
+
+ WARNING: calculation name: CAM-B3LYP
+
+ Summary of the input parameters 
+
+  calculation type:   CAM-B3LYP
+             Natom:   1
+         Electrons:   2.0000
+            Charge:   0.0000
+     Magnetization:   0.0000
+         Basis set:   cc-pVDZ                                                                                             
+ Spin polarization:   1
+         SCF steps:  50
+            Mixing:   0.7000
+ 
+ ================================
+       atom list
+                        bohr                                        angstrom
+  He     0.000000     0.000000     0.000000           0.000000     0.000000     0.000000
+ ================================
+ 
+ 
+ Element used for Z value:    He
+ Element used for the basis:  He
+ Basis type: cc-pVDZ
+
+ WARNING: basis file used: He_cc-pVDZ
+ 
+ open the basis set file He_cc-pVDZ
+ 
+ Total number of basis functions           5
+ 
+ Basis set is ready and fit
+ 
+ Distributing the work load among procs
+ Maximum number of tasks for a single proc          15
+
+ Symmetrized ERI stored (8 symmetries)
+ number of integrals to be stored:         120
+ max index size  2147483647
+ Allocating the ERI array:      0.001 [Mb] / proc
+ success
+
+ Calculate and store all the Electron Repulsion Integrals (ERI)
+ number of shells           5
+ Done!
+ 
+
+ Symmetrized ERI stored (8 symmetries)
+ number of integrals to be stored:         120
+ max index size  2147483647
+ Allocating the Long-Range ERI array:      0.001 [Mb]
+ success
+
+ Calculate and store all the Electron Repulsion Integrals (ERI)
+    Long-Range only integrals with rcut=    3.0303
+                               or omega=    0.3300
+ number of shells           5
+ Done!
+ 
+
+ === occupations ===
+   1      2.00000
+   2      0.00000
+   3      0.00000
+   4      0.00000
+   5      0.00000
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    1
+
+ 
+ HOMO energy    [Ha]:       0.000000
+ LUMO energy    [Ha]:       0.000000
+ HOMO-LUMO gap  [Ha]:       0.000000
+ 
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    1520
+
+ LIBXC info
+   XC functional    1 :     433     CAM version of B3LYP
+
+ number of electrons:      2.000001
+  DFT xc energy [Ha]:     -0.710813
+
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.71894    -19.56345
+   2      1.18926     32.36135
+   3      2.27010     61.77255
+   4      2.27010     61.77255
+   5      2.27010     61.77255
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     2.8551774016
+    Nucleus Energy  [Ha]:    -6.7372047907
+    Hartree Energy  [Ha]:     2.0537315830
+    Exchange Energy [Ha]:    -0.3538666699
+    XC Energy       [Ha]:    -0.7108128372
+
+    Total Energy    [Ha]:    -2.8929753132
+
+ convergence criterium on the density matrix  2.462878059508807E-002
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    2
+
+ 
+ HOMO energy    [Ha]:      -0.718943
+ LUMO energy    [Ha]:       1.189257
+ HOMO-LUMO gap  [Ha]:       1.908200
+ 
+ A simple mixing of the density matrix is used
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    1520
+
+ LIBXC info
+   XC functional    1 :     433     CAM version of B3LYP
+
+ number of electrons:      2.000000
+  DFT xc energy [Ha]:     -0.709102
+
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.72065    -19.60985
+   2      1.18791     32.32469
+   3      2.26856     61.73064
+   4      2.26856     61.73064
+   5      2.26856     61.73064
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     2.8435712361
+    Nucleus Energy  [Ha]:    -6.7233735302
+    Hartree Energy  [Ha]:     2.0493177214
+    Exchange Energy [Ha]:    -0.3534029411
+    XC Energy       [Ha]:    -0.7091018399
+
+    Total Energy    [Ha]:    -2.8929893536
+
+ convergence criterium on the density matrix  4.540194886856937E-003
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    3
+
+ 
+ HOMO energy    [Ha]:      -0.720648
+ LUMO energy    [Ha]:       1.187910
+ HOMO-LUMO gap  [Ha]:       1.908559
+ 
+ A simple mixing of the density matrix is used
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    1520
+
+ LIBXC info
+   XC functional    1 :     433     CAM version of B3LYP
+
+ number of electrons:      2.000000
+  DFT xc energy [Ha]:     -0.708787
+
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.72096    -19.61839
+   2      1.18766     32.31795
+   3      2.26828     61.72293
+   4      2.26828     61.72293
+   5      2.26828     61.72293
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     2.8414335373
+    Nucleus Energy  [Ha]:    -6.7208277872
+    Hartree Energy  [Ha]:     2.0485067124
+    Exchange Energy [Ha]:    -0.3533183146
+    XC Energy       [Ha]:    -0.7087872951
+
+    Total Energy    [Ha]:    -2.8929931472
+
+ convergence criterium on the density matrix  8.384264804383710E-004
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    4
+
+ 
+ HOMO energy    [Ha]:      -0.720962
+ LUMO energy    [Ha]:       1.187662
+ HOMO-LUMO gap  [Ha]:       1.908625
+ 
+ A simple mixing of the density matrix is used
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    1520
+
+ LIBXC info
+   XC functional    1 :     433     CAM version of B3LYP
+
+ number of electrons:      2.000000
+  DFT xc energy [Ha]:     -0.708729
+
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.72102    -19.61996
+   2      1.18762     32.31671
+   3      2.26822     61.72151
+   4      2.26822     61.72151
+   5      2.26822     61.72151
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     2.8410392710
+    Nucleus Energy  [Ha]:    -6.7203587429
+    Hartree Energy  [Ha]:     2.0483573755
+    Exchange Energy [Ha]:    -0.3533028058
+    XC Energy       [Ha]:    -0.7087293690
+
+    Total Energy    [Ha]:    -2.8929942711
+
+ convergence criterium on the density matrix  1.550341825879474E-004
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    5
+
+ 
+ HOMO energy    [Ha]:      -0.721020
+ LUMO energy    [Ha]:       1.187617
+ HOMO-LUMO gap  [Ha]:       1.908637
+ 
+ A simple mixing of the density matrix is used
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    1520
+
+ LIBXC info
+   XC functional    1 :     433     CAM version of B3LYP
+
+ number of electrons:      2.000000
+  DFT xc energy [Ha]:     -0.708719
+
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.72103    -19.62025
+   2      1.18761     32.31648
+   3      2.26821     61.72125
+   4      2.26821     61.72125
+   5      2.26821     61.72125
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     2.8409665147
+    Nucleus Energy  [Ha]:    -6.7202723292
+    Hartree Energy  [Ha]:     2.0483298781
+    Exchange Energy [Ha]:    -0.3532999689
+    XC Energy       [Ha]:    -0.7087187025
+
+    Total Energy    [Ha]:    -2.8929946078
+
+ convergence criterium on the density matrix  2.885313787696725E-005
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    6
+
+ 
+ HOMO energy    [Ha]:      -0.721031
+ LUMO energy    [Ha]:       1.187608
+ HOMO-LUMO gap  [Ha]:       1.908639
+ 
+ A simple mixing of the density matrix is used
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    1520
+
+ LIBXC info
+   XC functional    1 :     433     CAM version of B3LYP
+
+ number of electrons:      2.000000
+  DFT xc energy [Ha]:     -0.708717
+
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.72103    -19.62031
+   2      1.18761     32.31644
+   3      2.26821     61.72120
+   4      2.26821     61.72120
+   5      2.26821     61.72120
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     2.8409530183
+    Nucleus Energy  [Ha]:    -6.7202563415
+    Hartree Energy  [Ha]:     2.0483247949
+    Exchange Energy [Ha]:    -0.3532994500
+    XC Energy       [Ha]:    -0.7087167306
+
+    Total Energy    [Ha]:    -2.8929947088
+
+ convergence criterium on the density matrix  5.237748770756745E-006
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    7
+
+ 
+ HOMO energy    [Ha]:      -0.721033
+ LUMO energy    [Ha]:       1.187607
+ HOMO-LUMO gap  [Ha]:       1.908640
+ 
+ A simple mixing of the density matrix is used
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    1520
+
+ LIBXC info
+   XC functional    1 :     433     CAM version of B3LYP
+
+ number of electrons:      2.000000
+  DFT xc energy [Ha]:     -0.708716
+
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.72103    -19.62032
+   2      1.18761     32.31644
+   3      2.26821     61.72120
+   4      2.26821     61.72120
+   5      2.26821     61.72120
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     2.8409505823
+    Nucleus Energy  [Ha]:    -6.7202534690
+    Hartree Energy  [Ha]:     2.0483238830
+    Exchange Energy [Ha]:    -0.3532993586
+    XC Energy       [Ha]:    -0.7087163768
+
+    Total Energy    [Ha]:    -2.8929947391
+
+ convergence criterium on the density matrix  1.022415424032700E-006
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    8
+
+ 
+ HOMO energy    [Ha]:      -0.721033
+ LUMO energy    [Ha]:       1.187607
+ HOMO-LUMO gap  [Ha]:       1.908640
+ 
+ A simple mixing of the density matrix is used
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    1520
+
+ LIBXC info
+   XC functional    1 :     433     CAM version of B3LYP
+
+ number of electrons:      2.000000
+  DFT xc energy [Ha]:     -0.708716
+
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.72103    -19.62032
+   2      1.18761     32.31643
+   3      2.26821     61.72119
+   4      2.26821     61.72119
+   5      2.26821     61.72119
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     2.8409501105
+    Nucleus Energy  [Ha]:    -6.7202529162
+    Hartree Energy  [Ha]:     2.0483237078
+    Exchange Energy [Ha]:    -0.3532993415
+    XC Energy       [Ha]:    -0.7087163088
+
+    Total Energy    [Ha]:    -2.8929947482
+
+ convergence criterium on the density matrix  2.633247091850126E-007
+  ===> convergence not reached yet
+ 
+
+-------------------------------------------
+ *** SCF cycle No:    9
+
+ 
+ HOMO energy    [Ha]:      -0.721033
+ LUMO energy    [Ha]:       1.187607
+ HOMO-LUMO gap  [Ha]:       1.908640
+ 
+ A simple mixing of the density matrix is used
+ Evaluate DFT integrals
+   discretization grid per atom [radial points , angular points]   40   38
+   total number of real-space points    1520
+
+ LIBXC info
+   XC functional    1 :     433     CAM version of B3LYP
+
+ number of electrons:      2.000000
+  DFT xc energy [Ha]:     -0.708716
+
+ Diagonalization for spin polarization           1
+
+ === Energies ===
+   #       [Ha]         [eV]      
+   1     -0.72103    -19.62032
+   2      1.18761     32.31643
+   3      2.26821     61.72119
+   4      2.26821     61.72119
+   5      2.26821     61.72119
+ 
+ 
+    Nucleus-Nucleus [Ha]:     0.0000000000
+    Kinetic Energy  [Ha]:     2.8409499895
+    Nucleus Energy  [Ha]:    -6.7202527749
+    Hartree Energy  [Ha]:     2.0483236631
+    Exchange Energy [Ha]:    -0.3532993372
+    XC Energy       [Ha]:    -0.7087162914
+
+    Total Energy    [Ha]:    -2.8929947509
+
+ convergence criterium on the density matrix  5.148733955905064E-009
+  ===> convergence has been reached
+ 
+ ==================================================
+ The SCF loop ends here
+ ==================================================
+ 
+
+                 --- Timings in (s) and # of calls ---
+                    Total time          1.18
+ 
+         4 gaussians integrals          0.02
+ 
+                       Hartree          0.00         9
+                      Exchange          0.00        18
+                        DFT xc          1.14         9
+ 
+           ERI basis transform          0.00         0
+ 
+        Total RPA polarization          0.00         0
+            Diago 2 particle H          0.00         0
+           Invert 2 particle S          0.00         0
+ 
+                GW self-energy          0.00         0
+ 
+                    MP2 energy          0.00         0
+               MP2 self-energy          0.00         0
+                 ----------------------
+ 
+                timing tmp1             0.00         0
+                timing tmp2             0.01         2
+                timing tmp3             0.01      1250
+                timing tmp4             0.01      1250
+                timing tmp5             0.00         0
+ 
+
+ SUMMARY of all the WARNINGS issued along the run:
+
+ 1.     LOW_MEMORY version 2 option is swichted on                                                          
+ 2.     calculation name: CAM-B3LYP                                                                         
+ 3.     basis file used: He_cc-pVDZ                                                                         
+
+
+
+ This is the end
+
