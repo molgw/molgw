@@ -128,7 +128,7 @@ subroutine init_dft_type(key,calc_type)
 
  select case(TRIM(key))
  case('LDAx','PBEx','PBEhx','Bx','PW91x','BJx','RPPx',&
-      'BHANDH','BHANDHLYP','B3LYP','PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP')
+      'BHANDH','BHANDHLYP','B3LYP','PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TD-CAM-B3LYP')
    ndft_xc=1
  case('LDA','VWN','VWN_RPA','PBE','PBEh','BLYP','PW91')
    ndft_xc=2
@@ -237,10 +237,17 @@ subroutine init_dft_type(key,calc_type)
  case('CAM-B3LYP')
    calc_type%is_screened_hybrid  = .TRUE.
    calc_type%need_exchange       = .TRUE.
-   dft_xc_type(1) = XC_HYB_GGA_XC_CAM_B3LYP
-   alpha_hybrid    =  0.19_dp ! 0.00_dp ! 0.19_dp
-   alpha_hybrid_lr =  0.46_dp ! 1.00_dp ! 0.46_dp
-   rcut           =  1.0_dp / 0.33_dp  ! 1.0_dp / 0.33_dp
+   dft_xc_type(1)  = XC_HYB_GGA_XC_CAM_B3LYP
+   alpha_hybrid    =  0.19_dp 
+   alpha_hybrid_lr =  0.46_dp 
+   rcut            =  1.0_dp / 0.33_dp  
+ case('TD-CAM-B3LYP')
+   calc_type%is_screened_hybrid  = .TRUE.
+   calc_type%need_exchange       = .TRUE.
+   dft_xc_type(1)  = XC_HYB_GGA_XC_TD_CAM_B3LYP
+   alpha_hybrid    =  0.0799_dp 
+   alpha_hybrid_lr =  0.9201_dp
+   rcut            =  1.0_dp / 0.150_dp  
  ! Testing
  case('TESTHSE08')
    calc_type%is_screened_hybrid  = .TRUE.
