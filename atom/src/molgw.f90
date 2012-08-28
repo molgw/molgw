@@ -748,7 +748,7 @@ program molgw
  if(calc_type%is_ci) then
    if(nspin/=1) stop'for CI, nspin should be 1'
    if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) stop'CI is implemented for 2 electrons only'
-   call full_ci_2electrons_spin(0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
+   call full_ci_2electrons_spin(print_volume,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
  endif
   
  !
