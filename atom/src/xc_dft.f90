@@ -395,7 +395,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
              !
              ! Remove too small densities to stabilize the computation
              ! especially useful for Becke88
-             if( ALL( rhor_r(:) > 1.0e-9_dp ) ) then
+             if( ANY( rhor_r(:) > 1.0e-9_dp ) ) then
                call xc_f90_gga_exc_vxc(xc_func(idft_xc),1_intxc,rhor_r(1)       ,sigma2(1)       ,exc_libxc(1),vxc_libxc(1),vsigma(1)       )
                call xc_f90_gga_vxc    (xc_func(idft_xc),1_intxc,rhor_r_shiftx(1),sigma2_shiftx(1),             vxc_dummy(1),vsigma_shiftx(1))
                call xc_f90_gga_vxc    (xc_func(idft_xc),1_intxc,rhor_r_shifty(1),sigma2_shifty(1),             vxc_dummy(1),vsigma_shifty(1))

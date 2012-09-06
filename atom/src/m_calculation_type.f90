@@ -119,7 +119,7 @@ end subroutine init_calculation_type
 subroutine init_dft_type(key,calc_type)
  implicit none
 !=====
- character(len=100),intent(in) :: key
+ character(len=100),intent(in)          :: key
  type(calculation_type),intent(inout)   :: calc_type
 !=====
 
@@ -132,8 +132,8 @@ subroutine init_dft_type(key,calc_type)
    ndft_xc=1
  case('LDA','VWN','VWN_RPA','PBE','PBEh','BLYP','PW91')
    ndft_xc=2
- case('TESTHSE08')
-   ndft_xc=3
+ case('TESTHSE')
+   ndft_xc=1
  case('TEST')
    ndft_xc=2
  case default
@@ -249,12 +249,10 @@ subroutine init_dft_type(key,calc_type)
    alpha_hybrid_lr =  0.9201_dp
    rcut            =  1.0_dp / 0.150_dp  
  ! Testing
- case('TESTHSE08')
+ case('TESTHSE')
    calc_type%is_screened_hybrid  = .TRUE.
    calc_type%need_exchange       = .TRUE.  
    dft_xc_type(1) = XC_GGA_X_wPBEh
-   dft_xc_type(2) = 2001  ! XC_GGA_X_HJS_PBE   ! 2001
-   dft_xc_type(3) = XC_GGA_C_PBE
    dft_xc_coef(2) = -0.25_dp
    alpha_hybrid   = 0.25_dp
    rcut           = 1.0_dp / 0.11_dp
