@@ -1,4 +1,4 @@
-OPENMP= #-openmp -DOPENMP
+OPENMP= -openmp -DOPENMP
 
 #FC=gfortran -cpp -DLOW_MEMORY2  -fno-range-check  -ffree-line-length-256 #-DHAVE_LIBXC -DLOW_MEMORY2 #-DCHI0  # -DAUXIL_BASIS
 FC=ifort -fpp $(OPENMP) -mkl=parallel -DHAVE_LIBXC -DLOW_MEMORY2 # -DCHI0  # -DAUXIL_BASIS

@@ -254,7 +254,7 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
 
  read(*,*) nspin,charge,magnetization
  if(nspin/=1 .AND. nspin/=2) stop'nspin in incorrect'
- if(magnetization<-1.d-5)    stop'magnetization is negative'
+! if(magnetization<-1.d-5)    stop'magnetization is negative'
  if(magnetization>1.d-5 .AND. nspin==1) stop'magnetization is non-zero and nspin is 1'
 
 ! basis_element=NINT(zatom)

@@ -33,6 +33,7 @@ module m_calculation_type
    logical :: is_gw
    logical :: is_mp2
    logical :: is_ci
+   logical :: read_potential
    integer :: method                    ! perturbative or quasiparticle self-consistent
  end type calculation_type
 
@@ -62,6 +63,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%is_mp2              = .FALSE.
  calc_type%is_ci               = .FALSE.
  calc_type%method              = 0
+ calc_type%read_potential      = .FALSE.
 
  ipos=index(input_key,'+',.TRUE.)
 
@@ -105,6 +107,8 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%need_exchange = .TRUE.  
    calc_type%is_gw         = .TRUE.
    calc_type%method        = QS
+ case('VIN')
+   calc_type%read_potential= .TRUE.  
  case default
    !
    ! If the calculation type is none of the above, let's assume it is DFT-type
@@ -134,7 +138,7 @@ subroutine init_dft_type(key,calc_type)
    ndft_xc=2
  case('TESTHSE')
    ndft_xc=1
- case('TEST')
+ case('TESTPBE0')
    ndft_xc=2
  case default
    WRITE_MASTER(*,*) 'error reading calculation type'
@@ -256,9 +260,9 @@ subroutine init_dft_type(key,calc_type)
    dft_xc_coef(2) = -0.25_dp
    alpha_hybrid   = 0.25_dp
    rcut           = 1.0_dp / 0.11_dp
- case('TEST')
+ case('TESTPBE0')
    calc_type%need_exchange       = .TRUE.
-   alpha_hybrid   = 3.00_dp
+   alpha_hybrid   = 0.25_dp
    dft_xc_type(1) = XC_GGA_X_PBE
    dft_xc_type(2) = XC_GGA_C_PBE
    dft_xc_coef(1) =  1.00_dp - alpha_hybrid

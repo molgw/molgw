@@ -438,10 +438,14 @@ program molgw
    ! Reset XC part of the Hamiltonian
    hamiltonian_xc(:,:,:) = 0.0_dp
 
-   !
-   ! Hartree contribution to the Hamiltonian
-   !
-   call setup_hartree(print_volume,basis%nbf,nspin,p_matrix,matrix,en%hart)
+   if( calc_type%read_potential ) then
+     call read_potential(print_volume,basis%nbf,nspin,p_matrix,matrix,en%hart)
+   else
+     !
+     ! Hartree contribution to the Hamiltonian
+     !
+     call setup_hartree(print_volume,basis%nbf,nspin,p_matrix,matrix,en%hart)
+   endif
 
    hamiltonian(:,:,:)    = hamiltonian(:,:,:) + matrix(:,:,:)
   
@@ -488,7 +492,7 @@ program molgw
 #endif
      call stop_clock(timing_pola)
      en%tot = en%tot + en%rpa
-     WRITE_MASTER(*,'(/,a,f14.8)') ' RPA Total energy [Ha]: ',en%tot
+     WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
 
      call start_clock(timing_self)
      exchange_m_vxc_diag(:,:)=0.0_dp
@@ -521,10 +525,10 @@ program molgw
      call start_clock(timing_mp2_self)
      call mp2_selfenergy(calc_type%method,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix,en%mp2)
      call stop_clock(timing_mp2_self)
-     WRITE_MASTER(*,'(a,2x,f14.8)') ' MP2 Energy       [Ha]:',en%mp2
+     WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Energy       [Ha]:',en%mp2
      WRITE_MASTER(*,*) 
      en%tot = en%tot + en%mp2
-     WRITE_MASTER(*,'(a,2x,f14.8)') ' MP2 Total Energy [Ha]:',en%tot
+     WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Total Energy [Ha]:',en%tot
 
      matrix = alpha_mixing * matrix + (1.0_dp-alpha_mixing) * self_energy_old
      self_energy_old = matrix
@@ -795,7 +799,7 @@ program molgw
 
      if( .NOT. ALLOCATED( vxc_matrix ) ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
      call dft_exc_vxc(nspin,basis,1,(/1000/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
-     WRITE_MASTER(*,'(/,a,f14.8)') '    RPA LDA energy [Ha]: ',energy_tmp
+     WRITE_MASTER(*,'(/,a,f16.10)') '    RPA LDA energy [Ha]: ',energy_tmp
      exchange_m_vxc_diag(:,:) = 0.0_dp
      do ispin=1,nspin
        do istate=1,basis%nbf
@@ -814,7 +818,7 @@ program molgw
 
      vxc_matrix(:,:,:) = 0.0_dp
      call dft_exc_vxc(nspin,basis,1,(/1005/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
-     WRITE_MASTER(*,'(/,a,f14.8)') ' LR-RPA LDA energy [Ha]: ',energy_tmp
+     WRITE_MASTER(*,'(/,a,f16.10)') ' LR-RPA LDA energy [Ha]: ',energy_tmp
      exchange_m_vxc_diag(:,:) = 0.0_dp
      do ispin=1,nspin
        do istate=1,basis%nbf
@@ -844,7 +848,7 @@ program molgw
    call stop_clock(timing_pola)
    en%tot = en%tot + en%rpa
    if( ndft_xc /= 0 ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
-   WRITE_MASTER(*,'(/,a,f14.8)') ' RPA Total energy [Ha]: ',en%tot
+   WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
 
 !   call write_spectral_function(wpol)
 !   msg='write spectral function'
@@ -873,14 +877,21 @@ program molgw
 !   call start_clock(timing_mp2_energy)
 !   call mp2_energy(nspin,basis,occupation,c_matrix,energy,en%mp2)
 !   call stop_clock(timing_mp2_energy)
+
+   call setup_hartree(print_volume,basis%nbf,nspin,p_matrix,matrix,en%hart)
+   WRITE_MASTER(*,*) 'Hartree [Ha]:',en%hart
+   call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
+   WRITE_MASTER(*,*) 'EXX     [Ha]:',en%exx
+
    call start_clock(timing_mp2_self)
    call mp2_selfenergy(calc_type%method,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix,en%mp2)
    call stop_clock(timing_mp2_self)
-   WRITE_MASTER(*,'(a,2x,f12.6)') ' MP2 Energy       [Ha]:',en%mp2
+   WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Energy       [Ha]:',en%mp2
    WRITE_MASTER(*,*) 
-   en%tot = en%tot + en%mp2
-   if( ndft_xc /= 0 ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
-   WRITE_MASTER(*,'(a,2x,f12.6)') ' MP2 Total Energy [Ha]:',en%tot
+   en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%mp2
+!   en%tot = en%tot + en%mp2
+!   if( ndft_xc /= 0 ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
+   WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Total Energy [Ha]:',en%tot
 
    title='=== Self-energy === (in the orbital basis)'
    call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
@@ -969,7 +980,7 @@ subroutine  set_occupation(electrons,magnetization,nbf,nspin,occupation)
     call issue_warning(msg)
     open(unit=12,file='manual_occupations',status='old')
     !
-    ! read nlines, all other occupations are set to zeroalpha_max_bf(jbf)
+    ! read nlines, all other occupations are set to zero
     read(12,*) nlines
     do ilines=1,nlines
       read(12,*) occupation(ilines,:)

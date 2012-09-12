@@ -22,6 +22,11 @@ module m_gw
    real(dp),allocatable :: residu_right(:,:)      ! first index runs on n, second index on j
  end type spectral_function
 
+ !
+ ! frozen core approximation parameters
+ integer :: ncore_G=0
+ integer :: ncore_W=0
+
 contains
 
 !=========================================================================
@@ -31,14 +36,34 @@ subroutine init_spectral_function(nbf,prod_nbf,nspin,occupation,sf)
  real(dp),intent(in)                   :: occupation(nbf,nspin)
  type(spectral_function),intent(inout) :: sf
 !=====
- integer :: ispin,ibf,jbf
+ integer                               :: ispin,ibf,jbf
+ logical                               :: file_exists
 !=====
+
+ !
+ ! Deal with frozen core initialization
+ inquire(file='manual_frozencore',exist=file_exists)
+ if(file_exists) then
+   !
+   ! ncore_G and ncore_W contain the highest core state to be discarded
+   open(13,file='manual_frozencore')
+   read(13,*) ncore_G
+   read(13,*) ncore_W
+   close(13)
+   ncore_G = MAX(ncore_G,0)
+   ncore_W = MAX(ncore_W,0)
+   WRITE_MASTER(msg,'(a,i4,2x,i4)') 'frozen core approximation switched on up to state (G,W) = ',ncore_G,ncore_W
+   call issue_warning(msg)
+ endif
+
 
  sf%npole=0
  do ispin=1,nspin
    do ibf=1,nbf
      do jbf=1,nbf
-       if( ABS(occupation(jbf,ispin)-occupation(ibf,ispin)) < completely_empty ) cycle
+!INTRA    if( ibf==jbf ) cycle
+!SKIP       if( ABS(occupation(jbf,ispin)-occupation(ibf,ispin)) < completely_empty ) cycle
+       if( skip_transition(nspin,ibf,jbf,occupation(ibf,ispin),occupation(jbf,ispin)) ) cycle
        sf%npole = sf%npole+1
      enddo
    enddo
@@ -62,8 +87,34 @@ subroutine init_spectral_function(nbf,prod_nbf,nspin,occupation,sf)
  WRITE_MASTER(*,'(a,f14.0)') ' Memory [Mb] ',REAL(SIZE(sf%residu_left(:,:)),dp)*2.0_dp/1024.0_dp**2*dp
  WRITE_MASTER(*,*)
 
+
 end subroutine init_spectral_function
 
+!=========================================================================
+function skip_transition(nspin,ib1,ib2,occ1,occ2)
+ implicit none
+ logical             :: skip_transition
+ integer,intent(in)  :: nspin,ib1,ib2
+ real(dp),intent(in) :: occ1,occ2
+!=====
+ real(dp)            :: spin_fact
+!=====
+ spin_fact = REAL(-nspin+3,dp)
+
+ skip_transition = .FALSE.
+
+ !
+ ! skip the core states if asked for a frozen-core calculation
+ if( ib1 <= ncore_W .OR. ib2 <= ncore_W ) skip_transition=.TRUE.
+
+#if 1
+ if( occ1 < completely_empty           .AND. occ2 < completely_empty )             skip_transition=.TRUE.
+ if( occ1 > spin_fact-completely_empty .AND. occ2 > spin_fact - completely_empty ) skip_transition=.TRUE.
+#else
+ if( abs(occ1-occ2) < completely_empty ) skip_transition=.TRUE.
+#endif
+
+end function skip_transition
 
 !=========================================================================
 subroutine destroy_spectral_function(sf)
@@ -394,8 +445,9 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 #endif
 
      do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
-       if(iorbital==jorbital) cycle  ! intra state transitions are not allowed!
-       if( abs(occupation(jorbital,ijspin)-occupation(iorbital,ijspin))<completely_empty ) cycle
+!INTRA       if(iorbital==jorbital) cycle  ! intra state transitions are not allowed!
+!SKIP       if( abs(occupation(jorbital,ijspin)-occupation(iorbital,ijspin))<completely_empty ) cycle
+       if( skip_transition(nspin,iorbital,jorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
        t_ij=t_ij+1
 
 
@@ -405,8 +457,9 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
          do korbital=1,basis%nbf 
 
            do lorbital=1,basis%nbf 
-             if(korbital==lorbital) cycle  ! intra state transitions are not allowed!
-             if( abs(occupation(lorbital,klspin)-occupation(korbital,klspin))<completely_empty ) cycle
+!INTRA             if(korbital==lorbital) cycle  ! intra state transitions are not allowed!
+!SKIP             if( abs(occupation(lorbital,klspin)-occupation(korbital,klspin))<completely_empty ) cycle
+             if( skip_transition(nspin,korbital,lorbital,occupation(lorbital,klspin),occupation(korbital,klspin)) ) cycle
              t_kl=t_kl+1
 
 #ifndef CHI0
@@ -416,6 +469,21 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 #else
              h_2p(t_ij,t_kl) = eri_eigenstate_i(jorbital,korbital,lorbital,klspin) &
                         * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
+
+!!Testing the formula for partial occupations of WT Yang.
+!             h_2p(t_ij,t_kl) = eri_eigenstate_i(jorbital,korbital,lorbital,klspin) &
+!                        * SIGN( 1.0_dp , occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) &
+!                        * SQRT(    MAX( occupation(iorbital,ijspin) , occupation(jorbital,ijspin) )   &
+!                               *   MAX( occupation(korbital,klspin) , occupation(lorbital,klspin) )   &
+!                               * ( spin_fact - MIN( occupation(iorbital,ijspin) , occupation(jorbital,ijspin) )  )&
+!                               * ( spin_fact - MIN( occupation(korbital,klspin) , occupation(lorbital,klspin) )  )  )
+!!Testing my formula
+!             h_2p(t_ij,t_kl) = eri_eigenstate_i(jorbital,korbital,lorbital,klspin) &
+!                        * SIGN( 1.0_dp , occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) &
+!                        *         MAX( occupation(iorbital,ijspin) , occupation(jorbital,ijspin) ) &
+!                              * ( spin_fact - MIN( occupation(iorbital,ijspin) , occupation(jorbital,ijspin) )  ) / spin_fact
+
+
 #endif
 #else
              h_2p(t_ij,t_kl) = 0.0_dp
@@ -440,14 +508,6 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 
        h_2p(t_ij,t_ij) =  h_2p(t_ij,t_ij) + ( energy(jorbital,ijspin) - energy(iorbital,ijspin) )
 
-#if 0
-       if(iorbital<=2) then
-         h_2p(t_ij,t_ij) =  h_2p(t_ij,t_ij) - 1.0d3
-         msg='skip core state in W'
-         call issue_warning(msg)
-       endif
-#endif
-
        rpa_correlation = rpa_correlation - 0.25_dp * ABS( h_2p(t_ij,t_ij) )
 
 !       WRITE_MASTER(*,'(4(i4,2x),2(2x,f12.6))') t_ij,iorbital,jorbital,ijspin,( energy(jorbital,ijspin) - energy(iorbital,ijspin) ),h_2p(t_ij,t_ij)
@@ -457,6 +517,21 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 
  WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
  WRITE_MASTER(*,*) 'matrix',wpol%npole,'x',wpol%npole
+! WRITE_MASTER(*,*) '=============='
+! t_ij=0
+! do ijspin=1,nspin
+!   do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
+!     do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
+!!INTRA       if(iorbital==jorbital) cycle  ! intra state transitions are not allowed!
+!!SKIP       if( abs(occupation(jorbital,ijspin)-occupation(iorbital,ijspin))<completely_empty ) cycle
+!       if( skip_transition(nspin,iorbital,jorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
+!
+!       t_ij=t_ij+1
+!       WRITE_MASTER(*,'(3(i4,2x),20(2x,f12.6))') ijspin,iorbital,jorbital,h_2p(t_ij,:)
+!     enddo
+!   enddo
+! enddo
+! WRITE_MASTER(*,*) '=============='
  call start_clock(timing_diago_h2p)
  call diagonalize_general(wpol%npole,h_2p,eigenvalue,eigenvector)
  call stop_clock(timing_diago_h2p)
@@ -487,8 +562,9 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
      call transform_eri_basis_lowmem(nspin,c_matrix,kbf,klspin,eri_eigenstate_k)
 #endif
      do lbf=1,basis%nbf
-       if(kbf==lbf) cycle  ! intra state transitions are not allowed!
-       if( abs(occupation(lbf,klspin)-occupation(kbf,klspin))<completely_empty ) cycle
+!INTRA       if(kbf==lbf) cycle  ! intra state transitions are not allowed!
+!SKIP       if( abs(occupation(lbf,klspin)-occupation(kbf,klspin))<completely_empty ) cycle
+       if( skip_transition(nspin,kbf,lbf,occupation(lbf,klspin),occupation(kbf,klspin)) ) cycle
        t_kl=t_kl+1
 
 
@@ -856,13 +932,9 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
  do ispin=1,nspin
    do iorbital=1,basis%nbf !INNER LOOP of G
 
-#if 0
-     if(iorbital<=2) then
-       msg='skip core states in G'
-       call issue_warning(msg)
-       cycle
-     endif
-#endif
+     !
+     ! Apply the frozen core approximation to G
+     if(iorbital <= ncore_G) cycle
 
      bra(:,:)=0.0_dp
      ket(:,:)=0.0_dp
