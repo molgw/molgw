@@ -1,4 +1,3 @@
-!=========================================================================
 #include "macros.h"
 !=========================================================================
 program molgw
@@ -352,30 +351,11 @@ program molgw
  ! Setup the density matrix: p_matrix
  call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
  !
- ! Possibility offered to override the automatic setup of the initial density
- ! matrix
- inquire(file='p_matrix_diag.in',exist=file_exists)
- if(file_exists) then
-   WRITE_MASTER(*,*) 'reading input density matrix from file'
-   open(unit=11,file='p_matrix_diag.in',status='old')
-   p_matrix(:,:,:) = 0.0_dp
-   do ispin=1,nspin
-     do ibf=1,basis%nbf
-       read(11,*) p_matrix(ibf,ibf,ispin) 
-     enddo
-   enddo
-   close(11)
-   if( ABS( SUM(p_matrix(:,:,:)) - electrons ) > 1.d-8 ) &
-     stop'input density matrix does not contain the right number of electrons'
-   msg='manual input of the initial density matrix diagonal'
-   call issue_warning(msg)
- endif
+ ! Read the density matrix if asked and override the previously guessed matrix
+ call read_density_matrix(basis%nbf,nspin,p_matrix)
+
  title='=== 1st density matrix P ==='
  call dump_out_matrix(print_volume,title,basis%nbf,nspin,p_matrix)
-! matrix(:,:,1) = matmul( p_matrix(:,:,1) ,p_matrix(:,:,1) )
-! matrix(:,:,nspin) = matmul( p_matrix(:,:,nspin) ,p_matrix(:,:,nspin) )
-! title='=== 1st density matrix P ==='
-! call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
 
  !
  ! Initialize the SCF mixing procedure
@@ -394,7 +374,7 @@ program molgw
    enddo
  enddo
  title='=== kinetic energy contribution ==='
- call dump_out_matrix(print_volume,title,basis%nbf,nspin,hamiltonian_kinetic)
+ call dump_out_matrix(print_volume,title,basis%nbf,1,hamiltonian_kinetic(:,:,1))
 
  !
  ! nucleus-electron interaction
@@ -408,7 +388,14 @@ program molgw
    enddo
  enddo
  title='=== nucleus contribution ==='
- call dump_out_matrix(print_volume,title,basis%nbf,nspin,hamiltonian_nucleus)
+ call dump_out_matrix(print_volume,title,basis%nbf,1,hamiltonian_nucleus(:,:,1))
+
+
+! call setup_initial_c_matrix(print_volume,basis%nbf,nspin,hamiltonian_nucleus,s_matrix,occupation,c_matrix)
+!
+! call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
+! title='=== 1st density matrix P ==='
+! call dump_out_matrix(print_volume,title,basis%nbf,nspin,p_matrix)
 
 
  !
@@ -623,7 +610,8 @@ program molgw
  WRITE_MASTER(*,*) '=================================================='
  WRITE_MASTER(*,*)
 
- if(MODULO(print_volume,100)>4) call plot_wfn(nspin,basis,c_matrix)
+ if(MODULO(print_volume/1000 ,2)>0) call write_density_matrix(nspin,basis%nbf,p_matrix)
+ if(MODULO(print_volume/10000,2)>0) call plot_wfn(nspin,basis,c_matrix)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !TESTING SECTION TO BE REMOVED IN THE FUTURE
@@ -945,6 +933,68 @@ subroutine setup_density_matrix(nbf,nspin,c_matrix,occupation,p_matrix)
 end subroutine setup_density_matrix
 
 !=========================================================================
+subroutine read_density_matrix(nbf,nspin,p_matrix)
+ use m_definitions
+ use m_warning
+ implicit none
+ integer,intent(in)   :: nbf,nspin
+ real(dp),intent(out) :: p_matrix(nbf,nbf,nspin)
+!=====
+ logical              :: file_exists
+ integer              :: ispin,ibf,jbf
+!=====
+
+ inquire(file='manual_densitymatrix',exist=file_exists)
+
+ if(file_exists) then
+   msg='reading input density matrix'
+   call issue_warning(msg)
+
+   open(11,file='manual_densitymatrix',status='old')
+   do ispin=1,nspin
+     do jbf=1,nbf
+       do ibf=1,nbf
+         read(11,*) p_matrix(ibf,jbf,ispin) 
+       enddo
+     enddo
+   enddo
+   close(11)
+
+ endif
+
+
+end subroutine read_density_matrix
+
+!=========================================================================
+subroutine write_density_matrix(nspin,nbf,p_matrix)
+ use m_definitions
+ use m_warning
+ use m_mpi
+ implicit none
+ integer,intent(in)   :: nbf,nspin
+ real(dp),intent(in) :: p_matrix(nbf,nbf,nspin)
+!=====
+ integer              :: ispin,ibf,jbf
+!=====
+
+
+ WRITE_MASTER(*,*) 'output final density matrix on file'
+ WRITE_MASTER(*,'(a,i5,a,i5,a,i2,/)') ' dimensions',nbf,' x ',nbf,' x ',nspin
+ open(11,file='output_densitymatrix')
+ do ispin=1,nspin
+   do jbf=1,nbf
+     do ibf=1,nbf
+       WRITE_MASTER(11,*) p_matrix(ibf,jbf,ispin) 
+     enddo
+   enddo
+ enddo
+ close(11)
+
+
+end subroutine write_density_matrix
+
+
+!=========================================================================
 subroutine  set_occupation(electrons,magnetization,nbf,nspin,occupation)
  use m_definitions
  use m_mpi
@@ -1002,6 +1052,44 @@ subroutine  set_occupation(electrons,magnetization,nbf,nspin,occupation)
   endif 
 
 end subroutine set_occupation
+
+!=========================================================================
+subroutine  set_occupation_fd(nbf,nspin,nelectron,temp,energy,occupation)
+ use m_definitions
+ use m_mpi
+ use m_warning
+ implicit none
+ integer,intent(in)   :: nbf,nspin
+ real(dp),intent(in)  :: nelectron,temp
+ real(dp),intent(in)  :: energy(nbf,nspin)
+ real(dp),intent(out) :: occupation(nbf,nspin)
+!=====
+ real(dp)             :: mu,spin_fact,nelectron_tmp
+ integer              :: ibf,nlines,ilines
+ logical              :: file_exists
+!=====
+
+ spin_fact = REAL(-nspin+3,dp)
+
+ if(nspin/=1) stop'not implemented for spin'
+
+ mu = energy( NINT(nelectron/nspin) , 1)
+
+ nelectron_tmp = 0.0_dp
+
+! do while( ABS(nelectron_tmp-nelectron)>1.e-8_dp )
+   occupation(:,:)= spin_fact / ( exp( (energy(:,:)-mu)/temp) + 1.0 )
+
+   nelectron_tmp = SUM( occupation(:,:) )
+
+!   mu = mu -0.01 * (nelectron_tmp-nelectron)
+!
+! enddo
+
+ occupation(:,:) = occupation(:,:) / nelectron_tmp * nelectron
+
+
+end subroutine set_occupation_fd
 
 !=========================================================================
 subroutine guess_starting_c_matrix(nbf,nspin,c_matrix)
@@ -1067,3 +1155,82 @@ subroutine guess_starting_c_matrix_new(basis,nspin,c_matrix)
  enddo
 
 end subroutine guess_starting_c_matrix_new
+
+!=========================================================================
+subroutine setup_initial_c_matrix(print_volume,nbf,nspin,hamiltonian_nucleus,s_matrix,occupation,c_matrix)
+ use m_definitions
+ use m_mpi
+ use m_tools
+ implicit none
+ integer,intent(in)         :: print_volume,nspin,nbf
+ real(dp),intent(in)        :: hamiltonian_nucleus(nbf,nbf,nspin),s_matrix(nbf,nbf)
+ real(dp),intent(in)        :: occupation(nbf,nspin)
+ real(dp),intent(out)       :: c_matrix(nbf,nbf,nspin)
+!=====
+ integer                    :: ibf,jbf,kbf,lbf
+ real(dp)                   :: hamiltonian(nbf,nbf),matrix(nbf,nbf),energy(nbf)
+ real(dp)                   :: coeff_max,bonding
+ real(dp)                   :: line(nbf)
+ character(len=100)         :: title
+!=====
+
+
+ !
+ ! Diagonalize a spin independant hamiltonian
+ ! to obtain a starting point for matrix C
+! hamiltonian(:,:) = hamiltonian_kinetic(:,:,1) + hamiltonian_nucleus(:,:,1)
+ hamiltonian(:,:) = hamiltonian_nucleus(:,:,1)
+
+ title='=== bare hamiltonian ==='
+ call dump_out_matrix(print_volume,title,nbf,1,hamiltonian)
+
+ WRITE_MASTER(*,*) 'Diagonalization of an initial hamiltonian'
+ call diagonalize_generalized_sym(nbf,hamiltonian,s_matrix,energy,matrix)
+
+ title='=== Energies ==='
+ call dump_out_array(.TRUE.,title,nbf,1,energy)
+
+
+ ibf=1
+ do while( ibf < nbf )
+!   if( ALL( occupation(ibf,:) < completely_empty ) cycle
+
+   jbf = ibf + 1
+   !
+   ! Find degenerate energies
+   if( ABS( energy(ibf) - energy(jbf) ) < 1.0e-3_dp ) then
+     !
+     ! Find the bonding and anti bonding states
+     coeff_max = MAXVAL( ABS( matrix(:,ibf) ) )
+     bonding = 1.0_dp
+     do kbf=1,nbf
+       if( ABS( matrix(kbf,ibf) ) > coeff_max - 1.0e-3_dp ) then
+         bonding = SIGN( 1.0_dp, matrix(kbf,ibf) ) * bonding
+       endif
+     enddo
+     if( bonding < 0.0_dp ) then
+       line(:)       = matrix(:,ibf)
+       matrix(:,ibf) = matrix(:,jbf)
+       matrix(:,jbf) = line(:)
+     endif
+
+     ibf = ibf + 2
+   else
+     ibf = ibf + 1
+   endif
+
+ enddo
+
+ c_matrix(:,:,1)     = matrix(:,:)
+ c_matrix(:,:,nspin) = matrix(:,:)
+
+ matrix(:,:) = transpose( matrix(:,:) )
+ title='=== C matrix ==='
+ call dump_out_matrix(print_volume,title,nbf,1,matrix)
+
+
+
+
+
+end subroutine setup_initial_c_matrix
+

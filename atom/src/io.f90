@@ -86,7 +86,7 @@ subroutine dump_out_matrix(print_volume,title,n,nspin,matrix)
  integer :: i,ispin
 !=====
 
- if(MODULO(print_volume,100)<10) return
+ if(MODULO(print_volume,2)<1) return
 
  WRITE_MASTER(*,'(/,x,a)') TRIM(title)
 

@@ -229,7 +229,7 @@ subroutine calculate_eri(print_volume,basis,rcut,which_buffer)
 
  if( .NOT. read_eri(rcut) ) call do_calculate_eri(basis,rcut,which_buffer)
 
- if(print_volume>100) then
+ if(MODULO(print_volume/100,2)>0) then
    call dump_out_eri(rcut)
  endif
 

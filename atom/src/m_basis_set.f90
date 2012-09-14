@@ -305,7 +305,7 @@ contains
 
  !
  ! finally output the basis set upon request
- if(MODULO(print_volume,100)>5) then
+ if(MODULO(print_volume/10,2)>0) then
    do ibf=1,basis%nbf
      WRITE_MASTER(*,*) ' basis function number',ibf
      call print_basis_function(basis%bf(ibf))
