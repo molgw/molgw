@@ -38,7 +38,7 @@ program molgw
  type(basis_set)         :: prod_basis
  type(spectral_function) :: wpol
  integer                 :: ibf,jbf,kbf,lbf,ijbf,klbf
- integer                 :: ispin,iscf,istate,jstate,iatom
+ integer                 :: ispin,iscf,istate,jstate,iatom,ncore
  logical                 :: scf_loop_convergence
  logical                 :: file_exists
  character(len=100)      :: title
@@ -353,6 +353,9 @@ program molgw
  !
  ! Read the density matrix if asked and override the previously guessed matrix
  call read_density_matrix(basis%nbf,nspin,p_matrix)
+ !
+ ! Test PSP = P
+ call test_density_matrix(basis%nbf,nspin,p_matrix,s_matrix)
 
  title='=== 1st density matrix P ==='
  call dump_out_matrix(print_volume,title,basis%nbf,nspin,p_matrix)
@@ -406,11 +409,6 @@ program molgw
    WRITE_MASTER(*,'(a,x,i4,/)') ' *** SCF cycle No:',iscf
 
    call output_homolumo(basis%nbf,nspin,occupation,energy,ehomo,elumo)
-
-   !
-   ! Skip the first iteration
-   if(iscf>1) call new_p_matrix(p_matrix)
-   
 
    en%kin  = SUM(hamiltonian_kinetic(:,:,:)*p_matrix(:,:,:))
    en%nuc  = SUM(hamiltonian_nucleus(:,:,:)*p_matrix(:,:,:))
@@ -596,6 +594,9 @@ program molgw
    !
    ! Then check the convergence
    call check_convergence(scf_loop_convergence)
+   !
+   ! Produce the next density matrix
+   call new_p_matrix(p_matrix)
    if(scf_loop_convergence) exit
    
  !
@@ -612,6 +613,9 @@ program molgw
 
  if(MODULO(print_volume/1000 ,2)>0) call write_density_matrix(nspin,basis%nbf,p_matrix)
  if(MODULO(print_volume/10000,2)>0) call plot_wfn(nspin,basis,c_matrix)
+
+!! Overide occuaptions for testing
+! call set_occupation2(electrons,magnetization,basis%nbf,nspin,occupation)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !TESTING SECTION TO BE REMOVED IN THE FUTURE
@@ -746,6 +750,23 @@ program molgw
  !
  ! in case of DFT + GW
  if( calc_type%need_final_exchange ) then
+
+   inquire(file='manual_coresplitting',exist=file_exists)
+   if(file_exists) then
+     WRITE_MASTER(*,*) 'TESTING CORE-VALENCE SPLITTING'
+     open(13,file='manual_coresplitting')
+     read(13,*) ncore
+     close(13)
+     WRITE_MASTER(msg,'(a,i4,2x,i4)') 'core-valence splitting switched on up to state = ',ncore
+     call issue_warning(msg)
+     do istate=1,ncore
+       occupation(istate,:) = 0.0_dp
+     enddo
+     call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
+     call dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehomo,vxc_matrix,en%xc)
+     hamiltonian_xc(:,:,:) = vxc_matrix
+   endif
+
 
    call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
    WRITE_MASTER(*,*) 'EXX [Ha]:',en%exx
@@ -933,6 +954,39 @@ subroutine setup_density_matrix(nbf,nspin,c_matrix,occupation,p_matrix)
 end subroutine setup_density_matrix
 
 !=========================================================================
+subroutine test_density_matrix(nbf,nspin,p_matrix,s_matrix)
+ use m_definitions
+ use m_warning
+ implicit none
+ integer,intent(in)   :: nbf,nspin
+ real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin),s_matrix(nbf,nbf)
+!=====
+ integer              :: ispin,ibf,jbf
+ real(dp)             :: matrix(nbf,nbf)
+ character(len=100)   :: title
+!=====
+
+ WRITE_MASTER(*,*) 'Check equality PSP = P'
+ WRITE_MASTER(*,*) ' valid only for integer occupation numbers'
+ do ispin=1,nspin
+
+   !
+   ! Calculate PSP
+   matrix(:,:) = MATMUL( p_matrix(:,:,ispin), MATMUL( s_matrix(:,:) , p_matrix(:,:,ispin) ) )
+
+
+   title='=== PSP ==='
+   call dump_out_matrix(1,title,nbf,1,matrix)
+   title='===  P  ==='
+   call dump_out_matrix(1,title,nbf,1,p_matrix(:,:,ispin))
+
+ enddo
+
+
+end subroutine test_density_matrix
+
+
+!=========================================================================
 subroutine read_density_matrix(nbf,nspin,p_matrix)
  use m_definitions
  use m_warning
@@ -1048,48 +1102,69 @@ subroutine  set_occupation(electrons,magnetization,nbf,nspin,occupation)
     do ibf=1,nbf
       WRITE_MASTER(*,*) ibf,occupation(ibf,:)
     enddo
-    stop'FAILURE in set_occupations'
+    stop'FAILURE in set_occupation'
   endif 
 
 end subroutine set_occupation
 
 !=========================================================================
-subroutine  set_occupation_fd(nbf,nspin,nelectron,temp,energy,occupation)
+subroutine  set_occupation2(electrons,magnetization,nbf,nspin,occupation)
  use m_definitions
  use m_mpi
  use m_warning
  implicit none
+ real(dp),intent(in)  :: electrons,magnetization
  integer,intent(in)   :: nbf,nspin
- real(dp),intent(in)  :: nelectron,temp
- real(dp),intent(in)  :: energy(nbf,nspin)
  real(dp),intent(out) :: occupation(nbf,nspin)
 !=====
- real(dp)             :: mu,spin_fact,nelectron_tmp
+ real(dp)             :: remaining_electrons(nspin),spin_fact
  integer              :: ibf,nlines,ilines
  logical              :: file_exists
 !=====
 
- spin_fact = REAL(-nspin+3,dp)
 
- if(nspin/=1) stop'not implemented for spin'
+  occupation(:,:)=0.0_dp
+  spin_fact = REAL(-nspin+3,dp)
 
- mu = energy( NINT(nelectron/nspin) , 1)
+  inquire(file='manual_occupations2',exist=file_exists)
 
- nelectron_tmp = 0.0_dp
+  if(.NOT. file_exists) then
+    remaining_electrons(1) = (electrons+magnetization) / REAL(nspin,dp)
+    if(nspin==2) remaining_electrons(2) = (electrons-magnetization) / REAL(nspin,dp)
 
-! do while( ABS(nelectron_tmp-nelectron)>1.e-8_dp )
-   occupation(:,:)= spin_fact / ( exp( (energy(:,:)-mu)/temp) + 1.0 )
+    do ibf=1,nbf
+      occupation(ibf,:) = MIN(remaining_electrons(:), spin_fact)
+      remaining_electrons(:)  = remaining_electrons(:) - occupation(ibf,:)
+    end do
+  else
+    WRITE_MASTER(*,*)
+    WRITE_MASTER(*,*) 'occupations are read from file: manual_occupations2'
+    msg='reading manual occupations from file'
+    call issue_warning(msg)
+    open(unit=12,file='manual_occupations2',status='old')
+    !
+    ! read nlines, all other occupations are set to zero
+    read(12,*) nlines
+    do ilines=1,nlines
+      read(12,*) occupation(ilines,:)
+    enddo
+    close(12)
+    WRITE_MASTER(*,*) 'occupations set, closing file'
+  endif
+ 
+!  !
+!  ! final check
+!  if( ABS( SUM(occupation(:,:)) - electrons ) > 1.0d-7 ) then
+!    WRITE_MASTER(*,*) 'occupation set up failed to give the right number of electrons'
+!    WRITE_MASTER(*,*) 'sum of occupations',SUM(occupation(:,:))
+!    WRITE_MASTER(*,*) 'electrons',electrons
+!    do ibf=1,nbf
+!      WRITE_MASTER(*,*) ibf,occupation(ibf,:)
+!    enddo
+!    stop'FAILURE in set_occupation'
+!  endif 
 
-   nelectron_tmp = SUM( occupation(:,:) )
-
-!   mu = mu -0.01 * (nelectron_tmp-nelectron)
-!
-! enddo
-
- occupation(:,:) = occupation(:,:) / nelectron_tmp * nelectron
-
-
-end subroutine set_occupation_fd
+end subroutine set_occupation2
 
 !=========================================================================
 subroutine guess_starting_c_matrix(nbf,nspin,c_matrix)

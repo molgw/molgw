@@ -360,7 +360,8 @@ subroutine plot_wfn(nspin,basis,c_matrix)
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
 !=====
- integer,parameter          :: nr=4000
+ integer,parameter          :: nr=10000
+ real(dp),parameter         :: length=15.0_dp
  integer                    :: ir,ibf
  real(dp)                   :: x(3),phi1,phi2,phase1,phase2
 !=====
@@ -370,17 +371,17 @@ subroutine plot_wfn(nspin,basis,c_matrix)
  x(:)=0.0_dp
 
  do ir=1,nr
-   x(1)=10.0_dp* ( (ir-1.0_dp) / REAL(nr-1,dp) - 0.5_dp )
+   x(1)= length * 2.0_dp * ( (ir-1.0_dp) / REAL(nr-1,dp) - 0.5_dp )
    phi1=0.0_dp
    phi2=0.0_dp
 
    do ibf=1,basis%nbf
-     phi1=phi1+eval_basis_function(basis%bf(ibf),x)*c_matrix(ibf,1,1)
-     phi2=phi2+eval_basis_function(basis%bf(ibf),x)*c_matrix(ibf,1,nspin)
+     phi1=phi1+eval_basis_function(basis%bf(ibf),x)*c_matrix(ibf,1,2)
+     phi2=phi2+eval_basis_function(basis%bf(ibf),x)*c_matrix(ibf,2,2)
    enddo
 
    !
-   ! turn the wfns so that they are all positive at r=0
+   ! turn the wfns so that they are all positive at a given point
    if(ir==1) then
      if(phi1<0.0_dp) phase1=-1.0_dp
      if(phi2<0.0_dp) phase2=-1.0_dp
