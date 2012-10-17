@@ -784,10 +784,6 @@ program molgw
      enddo
    enddo
 
-!  WRITE_MASTER(*,*) 'test'
-!  WRITE_MASTER(*,*) '<Sigx>', exchange_m_vxc_diag(1:2,:)*27.211
-!  WRITE_MASTER(*,*) 'test'
-
  else
    exchange_m_vxc_diag(:,:) = 0.0_dp
  endif
@@ -799,7 +795,7 @@ program molgw
    if( calc_type%is_lr_mbpt ) then
      !
      ! Hard-coded cutoff radius
-     rcut= 0.5_dp
+     rcut= 9.0909_dp
      write(msg,'(a,f10.4)') 'hard coded cutoff radius  ',rcut
      call issue_warning(msg)
      call deallocate_eri()
@@ -843,6 +839,46 @@ program molgw
      WRITE_MASTER(*,*) 'test'
      WRITE_MASTER(*,*) '<vxc RPA LR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
      WRITE_MASTER(*,*) 'test'
+
+     call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)  
+     WRITE_MASTER(*,*) 'LR EXX [Ha]:',en%exx
+     exchange_m_vxc_diag(:,:) = 0.0_dp
+     do ispin=1,nspin
+       do istate=1,basis%nbf
+         do ibf=1,basis%nbf
+           do jbf=1,basis%nbf
+             exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
+                     + c_matrix(ibf,istate,ispin) * matrix(ibf,jbf,ispin)&
+                      * c_matrix(jbf,istate,ispin)
+           enddo
+         enddo
+       enddo
+     enddo
+     WRITE_MASTER(*,*) 'test'
+     WRITE_MASTER(*,*) '<sigx LR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
+     WRITE_MASTER(*,*) 'test'
+
+     vxc_matrix(:,:,:) = 0.0_dp
+     call dft_exc_vxc(nspin,basis,1,(/2001/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
+     WRITE_MASTER(*,'(/,a,f16.10)') ' SR-EXX GGA energy [Ha]: ',energy_tmp
+     exchange_m_vxc_diag(:,:) = 0.0_dp
+     do ispin=1,nspin
+       do istate=1,basis%nbf
+         do ibf=1,basis%nbf
+           do jbf=1,basis%nbf
+             exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
+                     + c_matrix(ibf,istate,ispin) * ( vxc_matrix(ibf,jbf,ispin))&
+                      * c_matrix(jbf,istate,ispin)
+           enddo
+         enddo
+       enddo
+     enddo
+     WRITE_MASTER(*,*) 'test'
+     WRITE_MASTER(*,*) '<vxc EXX SR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
+     WRITE_MASTER(*,*) 'test'
+
+
+
      exchange_m_vxc_diag(:,:) = 0.0_dp
 
    endif

@@ -410,6 +410,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
              endif
            else
              !FIXME  Hard coding !
+!             omega=0.00_dp
              omega=0.11_dp
              call my_gga_exc_vxc_hjs(omega,rhor_r_shiftx(1),sigma2_shiftx(1),exc_libxc(1),vxc_dummy(1),vsigma_shiftx(1))
              call my_gga_exc_vxc_hjs(omega,rhor_r_shifty(1),sigma2_shifty(1),exc_libxc(1),vxc_dummy(1),vsigma_shifty(1))
