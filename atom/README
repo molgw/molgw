@@ -1,5 +1,5 @@
 =========================================
-                 molgw
+                 MOLGW
 =========================================
 
 Ab initio calculations for atoms and very small molecules
@@ -23,11 +23,16 @@ _ CI for 2 electrons
 
 
 Installation:
-libint is required:
+
+MOLGW needs fortran, c and c++ compilers.
+The machine dependent variables should be set in file ~molgw/src/my_machine.arch
+
+* Blas and Lapack linear algebra libraries are required.
+* libint is required:
 http://sourceforge.net/projects/libint/files/libint-for-beginners/libint-2.0.0-prealpha.tgz/download
-libxc is required:
+* libxc is required:
 http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-1.2.0.tar.gz
-Atom needs fortran, c and c++ compilers
+
 
 Basis sets:
 Basis sets can be obtained from https://bse.pnl.gov/bse/portal
@@ -39,19 +44,19 @@ Usage:
 The basis file needs to be located in the working directory.
 ./molgw < helium.in > helium.out
 
-Sample input files can be found in ./tests/
+Example input files can be found in ./tests/
 
 
 To be done:
 * filter the vanishing gaussian integrals so to save memory
 * use Schwarz inequality to avoid evaluating integrals
-
-Future:
 * pure gaussians not only cartesian
 * pseudopotentials (e.g. ECP or Goedecker flavor)
 
+
 Issues:
 * QPscGW scf loop is quite unstable for large basis sets, use a low alpha (<= 0.50)
+
 
 Author:
 Fabien Bruneval
