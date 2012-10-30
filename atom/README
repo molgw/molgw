@@ -52,6 +52,7 @@ To be done:
 * use Schwarz inequality to avoid evaluating integrals
 * pure gaussians not only cartesian
 * pseudopotentials (e.g. ECP or Goedecker flavor)
+* implement Casida equations to halve the matrix
 
 
 Issues:

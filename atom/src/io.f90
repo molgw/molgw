@@ -143,81 +143,6 @@ subroutine output_homolumo(nbf,nspin,occupation,energy,homo,lumo)
 end subroutine output_homolumo
 
 !=========================================================================
-subroutine read_inputparameter(calc_type,nspin,nscf,alpha_mixing,print_volume,basis_name,zatom,electrons,magnetization,basis_element)
- use m_definitions
- use m_mpi
- use m_calculation_type
- use m_warning
- use m_tools
- implicit none
-
- type(calculation_type),intent(out) :: calc_type
- integer,intent(out)                :: nspin,nscf
- integer,intent(out)                :: basis_element
- real(dp),intent(out)               :: alpha_mixing
- integer,intent(out)                :: print_volume  
- character(len=100),intent(out)     :: basis_name
- real(dp),intent(out)               :: zatom
- real(dp),intent(out)               :: electrons 
- real(dp),intent(out)               :: magnetization
-!=====                              
- character(len=100)                 :: read_char
- character(len=100)                 :: read_line
- character(len=100)                 :: line_wocomment
- integer                            :: ipos
- integer                            :: istat
-!=====
-
-
- read(*,*) read_char
- call init_calculation_type(calc_type,read_char)
-
- WRITE_MASTER(*,'(/,a,/)')    ' Summary of the input parameters '
- WRITE_MASTER(*,'(a20,2x,a)') ' calculation type: ',TRIM(read_char)
-
- read(*,*) nspin,zatom,electrons,magnetization
- if(nspin/=1 .AND. nspin/=2) stop'nspin in incorrect'
- if(zatom<1.d-5)             stop'zatom is negative'
- if(electrons<1.d-5)         stop'electrons is negative'
- if(magnetization<-1.d-5)    stop'magnetization is negative'
- if(magnetization>1.d-5 .AND. nspin==1) stop'magnetization is non-zero and nspin is 1'
-
- basis_element=NINT(zatom)
- read(*,fmt='(a100)') read_line !,basis_element
- ipos=index(read_line,'#',back=.false.)
- if(ipos==0) ipos=101
- line_wocomment(:ipos-1)=read_line(:ipos-1)
- line_wocomment=ADJUSTL(line_wocomment)
- ipos=index(line_wocomment,' ',back=.false.)
- basis_name = line_wocomment(:ipos-1)
- line_wocomment(1:)=line_wocomment(ipos+1:)
- read(line_wocomment,*,iostat=istat) basis_element
- if(istat==0) then
-   msg='override the automatic basis set selection with the rescaled basis for element '//element_name(REAL(basis_element,dp))
-   call issue_warning(msg)
- endif
-
- read(*,*) nscf,alpha_mixing
- if(nscf<1) stop'nscf too small'
- if(alpha_mixing<0.0 .OR. alpha_mixing > 1.0 ) stop'alpha_mixing should be inside [0,1]'
-
- read(*,*) print_volume
-
- !
- ! summarize input parameters
- WRITE_MASTER(*,'(a20,f8.4)') ' Atom Z: ',zatom
- WRITE_MASTER(*,'(a20,f8.4)') ' Electrons: ',electrons
- WRITE_MASTER(*,'(a20,f8.4)') ' Magnetization: ',magnetization
- WRITE_MASTER(*,'(a20,2x,a)') ' Basis set: ',basis_name
- WRITE_MASTER(*,'(a20,i3)')   ' Spin polarization: ',nspin
- WRITE_MASTER(*,'(a20,i3)')   ' SCF steps: ',nscf
-
-
- WRITE_MASTER(*,*)
-
-end subroutine read_inputparameter
-
-!=========================================================================
 subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
       basis_name,electrons,magnetization)
  use m_definitions
@@ -335,6 +260,14 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  WRITE_MASTER(*,'(a20,i3)')   ' Spin polarization: ',nspin
  WRITE_MASTER(*,'(a20,i3)')   ' SCF steps: ',nscf
  WRITE_MASTER(*,'(a20,f8.4)') ' Mixing: ',alpha_mixing
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,'(a19)')      ' Print volume:'
+ WRITE_MASTER(*,'(a30,l3)')   ' - matrices details:   ',MODULO(print_volume      ,2)==1
+ WRITE_MASTER(*,'(a30,l3)')   ' - basis set details:  ',MODULO(print_volume/10   ,2)==1
+ WRITE_MASTER(*,'(a30,l3)')   ' - ERI file:           ',MODULO(print_volume/100  ,2)==1
+ WRITE_MASTER(*,'(a30,l3)')   ' - density matrix file:',MODULO(print_volume/1000 ,2)==1
+ WRITE_MASTER(*,'(a30,l3)')   ' - plot some wfns:     ',MODULO(print_volume/10000,2)==1
+
 
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,*) '================================'
