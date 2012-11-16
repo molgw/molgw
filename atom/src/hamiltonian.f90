@@ -1,3 +1,201 @@
+#include "macros.h"
+!=========================================================================
+subroutine setup_overlap(print_volume,basis,s_matrix)
+ use m_definitions
+ use m_basis_set
+ implicit none
+ integer,intent(in)         :: print_volume
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(out)       :: s_matrix(basis%nbf,basis%nbf)
+!====
+ integer              :: ibf,jbf
+ integer              :: ibf_cart,jbf_cart
+ integer              :: i_cart,j_cart
+ integer              :: ni,nj,ni_cart,nj_cart,li,lj
+ character(len=100)   :: title
+ real(dp),allocatable :: matrix_cart(:,:)
+ real(dp)             :: overlap_tmp
+!====
+
+#if 0
+ do ibf=1,basis%nbf
+   do jbf=1,basis%nbf 
+     call overlap_basis_function(basis%bf(ibf),basis%bf(jbf),overlap_tmp)
+     s_matrix(ibf,jbf) = overlap_tmp
+   enddo
+ enddo
+
+#else
+
+ ibf_cart = 1
+ jbf_cart = 1
+ ibf      = 1
+ jbf      = 1
+ do while(ibf_cart<=basis%nbf_cart)
+   li      = basis%bf(ibf_cart)%am
+   ni_cart = number_basis_function_am(CARTESIAN,li)
+   ni      = number_basis_function_am(basis%gaussian_type,li)
+
+   do while(jbf_cart<=basis%nbf_cart)
+     lj      = basis%bf(jbf_cart)%am
+     nj_cart = number_basis_function_am(CARTESIAN,lj)
+     nj      = number_basis_function_am(basis%gaussian_type,lj)
+
+     allocate(matrix_cart(ni_cart,nj_cart))
+     do i_cart=1,ni_cart
+       do j_cart=1,nj_cart
+         call overlap_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
+       enddo
+     enddo
+     s_matrix(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
+                                                   MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+
+
+     deallocate(matrix_cart)
+     jbf      = jbf      + nj
+     jbf_cart = jbf_cart + nj_cart
+   enddo
+   jbf      = 1
+   jbf_cart = 1
+
+   ibf      = ibf      + ni
+   ibf_cart = ibf_cart + ni_cart
+
+ enddo
+
+#endif
+
+ title='=== Overlap matrix S ==='
+ call dump_out_matrix(print_volume,title,basis%nbf,1,s_matrix)
+
+
+end subroutine setup_overlap
+
+!=========================================================================
+subroutine setup_kinetic(print_volume,basis,hamiltonian_kinetic)
+ use m_definitions
+ use m_basis_set
+ implicit none
+ integer,intent(in)         :: print_volume
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(out)       :: hamiltonian_kinetic(basis%nbf,basis%nbf)
+!====
+ integer              :: ibf,jbf
+ integer              :: ibf_cart,jbf_cart
+ integer              :: i_cart,j_cart
+ integer              :: ni,nj,ni_cart,nj_cart,li,lj
+ character(len=100)   :: title
+ real(dp),allocatable :: matrix_cart(:,:)
+ real(dp)             :: kinetic_tmp
+!====
+
+ ibf_cart = 1
+ jbf_cart = 1
+ ibf      = 1
+ jbf      = 1
+ do while(ibf_cart<=basis%nbf_cart)
+   li      = basis%bf(ibf_cart)%am
+   ni_cart = number_basis_function_am(CARTESIAN,li)
+   ni      = number_basis_function_am(basis%gaussian_type,li)
+
+   do while(jbf_cart<=basis%nbf_cart)
+     lj      = basis%bf(jbf_cart)%am
+     nj_cart = number_basis_function_am(CARTESIAN,lj)
+     nj      = number_basis_function_am(basis%gaussian_type,lj)
+
+     allocate(matrix_cart(ni_cart,nj_cart))
+     do i_cart=1,ni_cart
+       do j_cart=1,nj_cart
+         call kinetic_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
+       enddo
+     enddo
+     hamiltonian_kinetic(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
+                                                              MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+
+
+     deallocate(matrix_cart)
+     jbf      = jbf      + nj
+     jbf_cart = jbf_cart + nj_cart
+   enddo
+   jbf      = 1
+   jbf_cart = 1
+
+   ibf      = ibf      + ni
+   ibf_cart = ibf_cart + ni_cart
+
+ enddo
+
+ title='===  Kinetic energy contribution ==='
+ call dump_out_matrix(print_volume,title,basis%nbf,1,hamiltonian_kinetic)
+
+
+end subroutine setup_kinetic
+
+!=========================================================================
+subroutine setup_nucleus(print_volume,basis,hamiltonian_nucleus)
+ use m_definitions
+ use m_basis_set
+ use m_atoms
+ implicit none
+ integer,intent(in)         :: print_volume
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(out)       :: hamiltonian_nucleus(basis%nbf,basis%nbf)
+!====
+ integer              :: ibf,jbf
+ integer              :: ibf_cart,jbf_cart
+ integer              :: i_cart,j_cart
+ integer              :: ni,nj,ni_cart,nj_cart,li,lj
+ integer              :: iatom
+ character(len=100)   :: title
+ real(dp),allocatable :: matrix_cart(:,:)
+ real(dp)             :: nucleus_tmp
+!====
+
+ ibf_cart = 1
+ jbf_cart = 1
+ ibf      = 1
+ jbf      = 1
+ do while(ibf_cart<=basis%nbf_cart)
+   li      = basis%bf(ibf_cart)%am
+   ni_cart = number_basis_function_am(CARTESIAN,li)
+   ni      = number_basis_function_am(basis%gaussian_type,li)
+
+   do while(jbf_cart<=basis%nbf_cart)
+     lj      = basis%bf(jbf_cart)%am
+     nj_cart = number_basis_function_am(CARTESIAN,lj)
+     nj      = number_basis_function_am(basis%gaussian_type,lj)
+
+     allocate(matrix_cart(ni_cart,nj_cart))
+     do i_cart=1,ni_cart
+       do j_cart=1,nj_cart
+         do iatom=1,natom
+           call nucleus_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),matrix_cart(i_cart,j_cart))
+         enddo
+       enddo
+     enddo
+     hamiltonian_nucleus(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
+                                                              MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) ) 
+
+
+     deallocate(matrix_cart)
+     jbf      = jbf      + nj
+     jbf_cart = jbf_cart + nj_cart
+   enddo
+   jbf      = 1
+   jbf_cart = 1
+
+   ibf      = ibf      + ni
+   ibf_cart = ibf_cart + ni_cart
+
+ enddo
+
+
+ title='===  Nucleus potential contribution ==='
+ call dump_out_matrix(print_volume,title,basis%nbf,1,hamiltonian_nucleus)
+
+
+end subroutine setup_nucleus
+
 !=========================================================================
 subroutine setup_hartree(print_volume,nbf,nspin,p_matrix,pot_hartree,ehartree)
  use m_definitions
@@ -200,3 +398,322 @@ subroutine read_potential(print_volume,nbf,nspin,p_matrix,pot_read,eread)
  eread = 0.5_dp*SUM(pot_read(:,:,:)*p_matrix(:,:,:))
 
 end subroutine read_potential
+
+!=========================================================================
+subroutine setup_density_matrix(nbf,nspin,c_matrix,occupation,p_matrix)
+ use m_definitions
+ use m_mpi
+ implicit none
+ integer,intent(in)   :: nbf,nspin
+ real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin)
+ real(dp),intent(in)  :: occupation(nbf,nspin)
+ real(dp),intent(out) :: p_matrix(nbf,nbf,nspin)
+!=====
+ integer :: ispin,ibf,jbf
+!=====
+
+ do ispin=1,nspin
+   do jbf=1,nbf
+     do ibf=1,nbf
+       p_matrix(ibf,jbf,ispin) = SUM( occupation(:,ispin) * c_matrix(ibf,:,ispin) * c_matrix(jbf,:,ispin) )
+     enddo
+   enddo
+ enddo
+
+
+end subroutine setup_density_matrix
+
+!=========================================================================
+subroutine test_density_matrix(nbf,nspin,p_matrix,s_matrix)
+ use m_definitions
+ use m_warning
+ implicit none
+ integer,intent(in)   :: nbf,nspin
+ real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin),s_matrix(nbf,nbf)
+!=====
+ integer              :: ispin,ibf,jbf
+ real(dp)             :: matrix(nbf,nbf)
+ character(len=100)   :: title
+!=====
+
+ WRITE_MASTER(*,*) 'Check equality PSP = P'
+ WRITE_MASTER(*,*) ' valid only for integer occupation numbers'
+ do ispin=1,nspin
+
+   !
+   ! Calculate PSP
+   matrix(:,:) = MATMUL( p_matrix(:,:,ispin), MATMUL( s_matrix(:,:) , p_matrix(:,:,ispin) ) )
+
+
+   title='=== PSP ==='
+   call dump_out_matrix(1,title,nbf,1,matrix)
+   title='===  P  ==='
+   call dump_out_matrix(1,title,nbf,1,p_matrix(:,:,ispin))
+
+ enddo
+
+
+end subroutine test_density_matrix
+
+
+!=========================================================================
+subroutine read_density_matrix(nbf,nspin,p_matrix)
+ use m_definitions
+ use m_warning
+ implicit none
+ integer,intent(in)   :: nbf,nspin
+ real(dp),intent(out) :: p_matrix(nbf,nbf,nspin)
+!=====
+ logical              :: file_exists
+ integer              :: ispin,ibf,jbf
+!=====
+
+ inquire(file='manual_densitymatrix',exist=file_exists)
+
+ if(file_exists) then
+   msg='reading input density matrix'
+   call issue_warning(msg)
+
+   open(11,file='manual_densitymatrix',status='old')
+   do ispin=1,nspin
+     do jbf=1,nbf
+       do ibf=1,nbf
+         read(11,*) p_matrix(ibf,jbf,ispin) 
+       enddo
+     enddo
+   enddo
+   close(11)
+
+ endif
+
+
+end subroutine read_density_matrix
+
+!=========================================================================
+subroutine write_density_matrix(nspin,nbf,p_matrix)
+ use m_definitions
+ use m_warning
+ use m_mpi
+ implicit none
+ integer,intent(in)   :: nbf,nspin
+ real(dp),intent(in) :: p_matrix(nbf,nbf,nspin)
+!=====
+ integer              :: ispin,ibf,jbf
+!=====
+
+
+ WRITE_MASTER(*,*) 'output final density matrix on file'
+ WRITE_MASTER(*,'(a,i5,a,i5,a,i2,/)') ' dimensions',nbf,' x ',nbf,' x ',nspin
+ open(11,file='output_densitymatrix')
+ do ispin=1,nspin
+   do jbf=1,nbf
+     do ibf=1,nbf
+       WRITE_MASTER(11,*) p_matrix(ibf,jbf,ispin) 
+     enddo
+   enddo
+ enddo
+ close(11)
+
+
+end subroutine write_density_matrix
+
+
+!=========================================================================
+subroutine set_occupation(electrons,magnetization,nbf,nspin,occupation)
+ use m_definitions
+ use m_mpi
+ use m_warning
+ implicit none
+ real(dp),intent(in)  :: electrons,magnetization
+ integer,intent(in)   :: nbf,nspin
+ real(dp),intent(out) :: occupation(nbf,nspin)
+!=====
+ real(dp)             :: remaining_electrons(nspin),spin_fact
+ integer              :: ibf,nlines,ilines
+ logical              :: file_exists
+!=====
+
+
+  occupation(:,:)=0.0_dp
+  spin_fact = REAL(-nspin+3,dp)
+
+  inquire(file='manual_occupations',exist=file_exists)
+
+  if(.NOT. file_exists) then
+    remaining_electrons(1) = (electrons+magnetization) / REAL(nspin,dp)
+    if(nspin==2) remaining_electrons(2) = (electrons-magnetization) / REAL(nspin,dp)
+
+    do ibf=1,nbf
+      occupation(ibf,:) = MIN(remaining_electrons(:), spin_fact)
+      remaining_electrons(:)  = remaining_electrons(:) - occupation(ibf,:)
+    end do
+  else
+    WRITE_MASTER(*,*)
+    WRITE_MASTER(*,*) 'occupations are read from file: manual_occupations'
+    msg='reading manual occupations from file'
+    call issue_warning(msg)
+    open(unit=12,file='manual_occupations',status='old')
+    !
+    ! read nlines, all other occupations are set to zero
+    read(12,*) nlines
+    do ilines=1,nlines
+      read(12,*) occupation(ilines,:)
+    enddo
+    close(12)
+    WRITE_MASTER(*,*) 'occupations set, closing file'
+  endif
+ 
+  !
+  ! final check
+  if( ABS( SUM(occupation(:,:)) - electrons ) > 1.0d-7 ) then
+    WRITE_MASTER(*,*) 'occupation set up failed to give the right number of electrons'
+    WRITE_MASTER(*,*) 'sum of occupations',SUM(occupation(:,:))
+    WRITE_MASTER(*,*) 'electrons',electrons
+    do ibf=1,nbf
+      WRITE_MASTER(*,*) ibf,occupation(ibf,:)
+    enddo
+    stop'FAILURE in set_occupation'
+  endif 
+
+end subroutine set_occupation
+
+!=========================================================================
+subroutine guess_starting_c_matrix(nbf,nspin,c_matrix)
+ use m_definitions
+ use m_mpi
+ implicit none
+ integer,intent(in)   :: nbf,nspin
+ real(dp),intent(out) :: c_matrix(nbf,nbf,nspin)
+!=====
+ integer :: ibf
+!=====
+
+ !
+ ! fill the c_matrix with the identity
+ c_matrix(:,:,:)=0.0_dp
+ do ibf=1,nbf
+   c_matrix(ibf,ibf,:) = 1.0_dp
+!   c_matrix(ibf,modulo(ibf,nbf)+1,:) = 1.0_dp
+ enddo
+
+end subroutine guess_starting_c_matrix
+
+!=========================================================================
+subroutine guess_starting_c_matrix_new(basis,nspin,c_matrix)
+ use m_definitions
+ use m_mpi
+ use m_gaussian
+ use m_basis_set
+ implicit none
+ type(basis_set),intent(in) :: basis
+ integer,intent(in)         :: nspin
+ real(dp),intent(out)       :: c_matrix(basis%nbf,basis%nbf,nspin)
+!=====
+ integer  :: ibf,jbf,kbf,ig
+ real(dp) :: alpha_max_bf(basis%nbf),alpha_max_remaining
+!=====
+
+ !
+ ! find the sharpest gaussians
+ alpha_max_bf(:)=0.0_dp
+ do ibf=1,basis%nbf
+   do ig=1,basis%bf(ibf)%ngaussian
+     alpha_max_bf(ibf)=MAX(basis%bf(ibf)%g(ig)%alpha,alpha_max_bf(ibf))
+   enddo
+!   WRITE_MASTER(*,*) ibf,alpha_max_bf(ibf)
+ enddo
+
+ !
+ ! fill the c_matrix 
+ c_matrix(:,:,:)=0.0_dp
+ do ibf=1,basis%nbf
+   alpha_max_remaining=0.0_dp
+   do jbf=1,basis%nbf
+     if( alpha_max_bf(jbf) > alpha_max_remaining ) then
+       alpha_max_remaining = alpha_max_bf(jbf)
+       kbf = jbf
+     endif
+   enddo
+   c_matrix(kbf,ibf,:) = 1.0_dp
+!   WRITE_MASTER(*,*) 'chosen',ibf,kbf,alpha_max_bf(kbf)
+   alpha_max_bf(kbf)   = -1.0_dp
+   
+ enddo
+
+end subroutine guess_starting_c_matrix_new
+
+!=========================================================================
+subroutine setup_initial_c_matrix(print_volume,nbf,nspin,hamiltonian_nucleus,s_matrix,occupation,c_matrix)
+ use m_definitions
+ use m_mpi
+ use m_tools
+ implicit none
+ integer,intent(in)         :: print_volume,nspin,nbf
+ real(dp),intent(in)        :: hamiltonian_nucleus(nbf,nbf),s_matrix(nbf,nbf)
+ real(dp),intent(in)        :: occupation(nbf,nspin)
+ real(dp),intent(out)       :: c_matrix(nbf,nbf,nspin)
+!=====
+ integer                    :: ibf,jbf,kbf,lbf
+ real(dp)                   :: hamiltonian(nbf,nbf),matrix(nbf,nbf),energy(nbf)
+ real(dp)                   :: coeff_max,bonding
+ real(dp)                   :: line(nbf)
+ character(len=100)         :: title
+!=====
+
+
+ !
+ ! Diagonalize a spin independant hamiltonian
+ ! to obtain a starting point for matrix C
+! hamiltonian(:,:) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+ hamiltonian(:,:) = hamiltonian_nucleus(:,:)
+
+ title='=== bare hamiltonian ==='
+ call dump_out_matrix(print_volume,title,nbf,1,hamiltonian)
+
+ WRITE_MASTER(*,*) 'Diagonalization of an initial hamiltonian'
+ call diagonalize_generalized_sym(nbf,hamiltonian,s_matrix,energy,matrix)
+
+ title='=== Energies ==='
+ call dump_out_eigenenergy(title,nbf,1,occupation,energy)
+
+
+ ibf=1
+ do while( ibf < nbf )
+!   if( ALL( occupation(ibf,:) < completely_empty ) cycle
+
+   jbf = ibf + 1
+   !
+   ! Find degenerate energies
+   if( ABS( energy(ibf) - energy(jbf) ) < 1.0e-3_dp ) then
+     !
+     ! Find the bonding and anti bonding states
+     coeff_max = MAXVAL( ABS( matrix(:,ibf) ) )
+     bonding = 1.0_dp
+     do kbf=1,nbf
+       if( ABS( matrix(kbf,ibf) ) > coeff_max - 1.0e-3_dp ) then
+         bonding = SIGN( 1.0_dp, matrix(kbf,ibf) ) * bonding
+       endif
+     enddo
+     if( bonding < 0.0_dp ) then
+       line(:)       = matrix(:,ibf)
+       matrix(:,ibf) = matrix(:,jbf)
+       matrix(:,jbf) = line(:)
+     endif
+
+     ibf = ibf + 2
+   else
+     ibf = ibf + 1
+   endif
+
+ enddo
+
+ c_matrix(:,:,1)     = matrix(:,:)
+ c_matrix(:,:,nspin) = matrix(:,:)
+
+ matrix(:,:) = transpose( matrix(:,:) )
+ title='=== C matrix ==='
+ call dump_out_matrix(print_volume,title,nbf,1,matrix)
+
+
+
+end subroutine setup_initial_c_matrix

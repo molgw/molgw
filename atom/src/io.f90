@@ -33,43 +33,73 @@ subroutine header()
 end subroutine header
 
 !=========================================================================
-subroutine dump_out_array(is_energy,title,n,nspin,array)
+subroutine dump_out_occupation(title,n,nspin,occupation)
  use m_definitions
  use m_mpi
  implicit none
- logical,intent(in)            :: is_energy
  character(len=100),intent(in) :: title
  integer,intent(in)            :: n,nspin
- real(dp),intent(in)           :: array(n,nspin)
+ real(dp),intent(in)           :: occupation(n,nspin)
 !=====
- integer,parameter :: MAXSIZE=300
+ integer,parameter :: MAXSIZE=1000
 !=====
  integer :: i,ispin
 !=====
 
  WRITE_MASTER(*,'(/,x,a)') TRIM(title)
 
- if(is_energy) then
-   if(nspin==1) then
-     WRITE_MASTER(*,'(a)') '   #       [Ha]         [eV]      '
-   else
-     WRITE_MASTER(*,'(a)') '   #              [Ha]                      [eV]      '
-     WRITE_MASTER(*,'(a)') '           spin 1       spin 2       spin 1       spin 2'
-   endif
-   do i=1,MIN(n,MAXSIZE)
-     WRITE_MASTER(*,'(x,i3,2(2(x,f12.5)),2x)') i,array(i,:),array(i,:)*Ha_eV
-   enddo
- else
-   if(nspin==2) then
-     WRITE_MASTER(*,'(a)') '           spin 1       spin 2 '
-   endif
-   do i=1,MIN(n,MAXSIZE)
-     WRITE_MASTER(*,'(x,i3,2(2(x,f12.5)),2x)') i,array(i,:)
-   enddo
+ if(nspin==2) then
+   WRITE_MASTER(*,'(a)') '           spin 1       spin 2 '
  endif
+ do i=1,MIN(n,MAXSIZE)
+   WRITE_MASTER(*,'(x,i3,2(2(x,f12.5)),2x)') i,occupation(i,:)
+ enddo
+
  WRITE_MASTER(*,*)
 
-end subroutine dump_out_array
+end subroutine dump_out_occupation
+
+!=========================================================================
+subroutine dump_out_eigenenergy(title,n,nspin,occupation,energy)
+ use m_definitions
+ use m_mpi
+ implicit none
+ character(len=100),intent(in) :: title
+ integer,intent(in)            :: n,nspin
+ real(dp),intent(in)           :: occupation(n,nspin),energy(n,nspin)
+!=====
+ integer,parameter :: MAXSIZE=300
+!=====
+ integer  :: i,ispin
+ real(dp) :: spin_fact
+!=====
+
+ spin_fact = REAL(-nspin+3,dp)
+
+ WRITE_MASTER(*,'(/,x,a)') TRIM(title)
+
+ if(nspin==1) then
+   WRITE_MASTER(*,'(a)') '   #       [Ha]         [eV]      '
+ else
+   WRITE_MASTER(*,'(a)') '   #              [Ha]                      [eV]      '
+   WRITE_MASTER(*,'(a)') '           spin 1       spin 2       spin 1       spin 2'
+ endif
+ do i=1,MIN(n,MAXSIZE)
+   WRITE_MASTER(*,'(x,i3,2(2(x,f12.5)),2x)') i,energy(i,:),energy(i,:)*Ha_eV
+   if(i<n) then
+     if( ANY( occupation(i+1,:) < spin_fact/2.0_dp .AND. occupation(i,:) > spin_fact/2.0 ) ) then 
+        if(nspin==1) then
+          WRITE_MASTER(*,'(a)') '  -----------------------------'
+        else
+          WRITE_MASTER(*,'(a)') '  -------------------------------------------------------'
+        endif
+     endif
+   endif
+ enddo
+
+ WRITE_MASTER(*,*)
+
+end subroutine dump_out_eigenenergy
 
 !=========================================================================
 subroutine dump_out_matrix(print_volume,title,n,nspin,matrix)

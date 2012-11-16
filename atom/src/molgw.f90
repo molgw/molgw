@@ -19,6 +19,7 @@ program molgw
  implicit none
 
  integer,parameter            :: gaussian_type=CARTESIAN
+! integer,parameter            :: gaussian_type=PURE
  !
  ! Input parameters will be set in read_inputparameters
  type(calculation_type)       :: calc_type
@@ -34,7 +35,6 @@ program molgw
  real(dp) :: rtmp
 !=====
  type(basis_set)         :: basis
- type(basis_set)         :: basis_cart
  type(basis_set)         :: prod_basis
  type(spectral_function) :: wpol
  integer                 :: ibf,jbf,kbf,lbf,ijbf,klbf
@@ -47,8 +47,8 @@ program molgw
  real(dp),allocatable    :: ehomo(:),elumo(:)
  real(dp),allocatable    :: hamiltonian(:,:,:)
  real(dp),allocatable    :: hamiltonian_xc(:,:,:)
- real(dp),allocatable    :: hamiltonian_kinetic(:,:,:)           !TODO remove spin
- real(dp),allocatable    :: hamiltonian_nucleus(:,:,:)           !TODO remove spin
+ real(dp),allocatable    :: hamiltonian_kinetic(:,:)
+ real(dp),allocatable    :: hamiltonian_nucleus(:,:)
  real(dp),allocatable    :: matrix(:,:,:)
  real(dp),allocatable    :: matrix3(:,:,:)
  real(dp),allocatable    :: vxc_matrix(:,:,:)
@@ -86,69 +86,6 @@ program molgw
 
  call header()
 
-
- !
- ! Development tests are commented below
-#if 0
-
- call init_gaussian_general(1,2,3,0.4361_dp,(/0.0_dp,0.0_dp,-1.0_dp/),gatmp)
- call print_gaussian(gatmp)
-
- call init_gaussian_general(1,4,1,0.8120_dp,(/0.0_dp,0.0_dp,1.2_dp/),gbtmp)
- call print_gaussian(gbtmp)
-
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,*) ' === CHECK OVERLAP === '
-
-! call overlap_normalized(gatmp,gbtmp,rtmp)
-! WRITE_MASTER(*,*) 'normalized S_ab',rtmp
-
- call overlap_recurrence(gatmp,gbtmp,rtmp)
- WRITE_MASTER(*,*) 'normalized S_ab from recurrence',rtmp
- call overlap_recurrence(gbtmp,gatmp,rtmp)
- WRITE_MASTER(*,*) 'normalized S_ba from recurrence',rtmp
-
-! call numerical_overlap(gatmp,gbtmp)
-
-
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,*) ' === CHECK KINETIC === '
-
-! call kinetic_gaussian(gatmp,gbtmp,rtmp)
-! WRITE_MASTER(*,*) 'kinetic matrix element [Ha]',rtmp
-
- call kinetic_recurrence(gatmp,gbtmp,rtmp)
- WRITE_MASTER(*,*) 'new kinetic matrix element K_ab',rtmp
- call kinetic_recurrence(gbtmp,gatmp,rtmp)
- WRITE_MASTER(*,*) 'new kinetic matrix element K_ba',rtmp
-
-! call numerical_kinetic(gatmp,gbtmp)
-
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,*) ' === CHECK NUCLEUS === '
-
-! call nucleus_pot_gaussian(gatmp,gbtmp,1.0_dp,rtmp)
-! WRITE_MASTER(*,*) 'nucleus pot [Ha]',rtmp
-
- call nucleus_recurrence(1.0_dp,(/0.0_dp,0.0_dp,0.0_dp/),gatmp,gbtmp,rtmp)
- WRITE_MASTER(*,*) 'new nucleus matrix element V_ba',rtmp
- call nucleus_recurrence(1.0_dp,(/0.0_dp,0.0_dp,0.0_dp/),gbtmp,gatmp,rtmp)
- WRITE_MASTER(*,*) 'new nucleus matrix element V_ba',rtmp
-
- call numerical_nucleus(gatmp,gbtmp)
-
-
- stop'ENOUGH FOR TODAY'
-
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,*) '                   END OF THE TESTS'
- WRITE_MASTER(*,*) '==========================================================='
- WRITE_MASTER(*,*) '==========================================================='
- WRITE_MASTER(*,*) '==========================================================='
- WRITE_MASTER(*,*) '                   START REAL LIFE CALCULATION'
- WRITE_MASTER(*,*)
-#endif 
-
  !
  ! start counting time here
  call init_timing()
@@ -181,7 +118,7 @@ program molgw
 
 
  !
- ! reading input file
+ ! Reading input file
  call read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
                                    basis_name,electrons,magnetization)
 
@@ -192,25 +129,19 @@ program molgw
  !
  ! Build up the basis set
  !
- select case(gaussian_type)
- case(CARTESIAN)
-   call init_basis_set(print_volume,basis_name,CARTESIAN,basis)
- case(PURE)
-   call init_basis_set(print_volume,basis_name,CARTESIAN,basis_cart)
-   call init_basis_set(print_volume,basis_name,PURE     ,basis)
-   call set_cart_to_pure_transform(basis_cart,basis)
- end select
+ call init_basis_set(print_volume,basis_name,gaussian_type,basis)
+ call setup_cart_to_pure_transforms(basis)
 
  !
- ! first attempt to distribute the work load among procs
+ ! First attempt to distribute the work load among procs
  call init_distribution(basis%nbf)
  
  !
- ! allocate everything
+ ! Allocate the main arrays
  allocate(hamiltonian(basis%nbf,basis%nbf,nspin))
  allocate(hamiltonian_xc(basis%nbf,basis%nbf,nspin))
- allocate(hamiltonian_kinetic(basis%nbf,basis%nbf,nspin))
- allocate(hamiltonian_nucleus(basis%nbf,basis%nbf,nspin))
+ allocate(hamiltonian_kinetic(basis%nbf,basis%nbf))
+ allocate(hamiltonian_nucleus(basis%nbf,basis%nbf))
  allocate(matrix(basis%nbf,basis%nbf,nspin))
  allocate(c_matrix(basis%nbf,basis%nbf,nspin))
  allocate(s_matrix(basis%nbf,basis%nbf))
@@ -232,21 +163,7 @@ program molgw
  !
  ! Build up the overlap matrix S
  ! S only depends onto the basis set
- do jbf=1,basis%nbf
-   do ibf=1,jbf ! basis%nbf ! use the symmetry of the matrix
-     call overlap_basis_function(basis%bf(ibf),basis%bf(jbf),overlap_tmp)
-     s_matrix(ibf,jbf) = overlap_tmp
-     s_matrix(jbf,ibf) = overlap_tmp
-   enddo
-   if( ABS( s_matrix(jbf,jbf) - 1.0_dp ) > 1.0d-4 ) then
-     WRITE_MASTER(*,*) 'A diagonal term of the overlap matrix is not equal to 1.0'
-     WRITE_MASTER(*,*) jbf,jbf,s_matrix(jbf,jbf)
-     WRITE_MASTER(*,*) 'check the basis set definition'
-     stop'ERROR'
-   endif
- enddo
- title='=== overlap matrix S ==='
- call dump_out_matrix(print_volume,title,basis%nbf,1,s_matrix)
+ call setup_overlap(print_volume,basis,s_matrix)
 
  !
  ! Set up the electron repulsion integrals
@@ -264,16 +181,19 @@ program molgw
  call stop_clock(timing_integrals)
 ! call negligible_eri(1.0e-10_dp)
 
-
  !
- ! in case of GW run, set up product basis 
- !                    set up coulomb integrals
+ ! In case of GW run, set up the product basis 
+ if( calc_type%is_gw ) call init_product_basis_set(basis,prod_basis)
+
+!========================================================
+! AUXILIARY basis set GW
+!========================================================
+! not supported any longer...
+! should be removed in the future (or not)
+!
+#ifdef AUXIL_BASIS
  if( calc_type%is_gw ) then
    call start_clock(timing_prodbasis)
-
-   call init_product_basis_set(basis,prod_basis)
-
-#ifdef AUXIL_BASIS
    allocate(v_filtered_basis(prod_basis%nbf_filtered,prod_basis%nbf_filtered))
    allocate(s_filtered_basis(prod_basis%nbf_filtered,prod_basis%nbf_filtered))
    allocate(sinv_filtered_basis(prod_basis%nbf_filtered,prod_basis%nbf_filtered))
@@ -329,16 +249,20 @@ program molgw
    sinv_v_sinv = MATMUL( TRANSPOSE(prod_basis%rotation), MATMUL( sinv_v_sinv_filtered , prod_basis%rotation ) )
 
    deallocate(sinv_v_sinv_filtered)
-#endif
-   
+
    call stop_clock(timing_prodbasis)
  endif
+#endif
+!========================================================
+! end of AUXILIARY basis set GW
+!========================================================
+   
 
  !
- ! build occupation array, initial c_matrix
+ ! Build occupation array, initial c_matrix
  call set_occupation(electrons,magnetization,basis%nbf,nspin,occupation)
- title='=== occupations ==='
- call dump_out_array(.FALSE.,title,basis%nbf,nspin,occupation)
+ title='=== Occupations ==='
+ call dump_out_occupation(title,basis%nbf,nspin,occupation)
 ! call guess_starting_c_matrix(basis%nbf,nspin,c_matrix)
  call guess_starting_c_matrix_new(basis,nspin,c_matrix)
  do ispin=1,nspin
@@ -353,9 +277,9 @@ program molgw
  !
  ! Read the density matrix if asked and override the previously guessed matrix
  call read_density_matrix(basis%nbf,nspin,p_matrix)
- !
- ! Test PSP = P
- call test_density_matrix(basis%nbf,nspin,p_matrix,s_matrix)
+!!
+!! Test PSP = P
+! call test_density_matrix(basis%nbf,nspin,p_matrix,s_matrix)
 
  title='=== 1st density matrix P ==='
  call dump_out_matrix(print_volume,title,basis%nbf,nspin,p_matrix)
@@ -370,29 +294,11 @@ program molgw
  ! with the SCF cycles
  !
  ! Kinetic energy contribution
- do jbf=1,basis%nbf
-   do ibf=1,basis%nbf
-     call kinetic_basis_function(basis%bf(ibf),basis%bf(jbf),energy_tmp)
-     hamiltonian_kinetic(ibf,jbf,:) = energy_tmp
-   enddo
- enddo
- title='=== kinetic energy contribution ==='
- call dump_out_matrix(print_volume,title,basis%nbf,1,hamiltonian_kinetic(:,:,1))
+ call setup_kinetic(print_volume,basis,hamiltonian_kinetic)
 
  !
- ! nucleus-electron interaction
- hamiltonian_nucleus(:,:,:) =  0.0_dp
- do iatom=1,natom
-   do ibf=1,basis%nbf
-     do jbf=1,basis%nbf
-       call nucleus_pot_basis_function(basis%bf(ibf),basis%bf(jbf),zatom(iatom),x(:,iatom),energy_tmp)
-       hamiltonian_nucleus(ibf,jbf,:) =  hamiltonian_nucleus(ibf,jbf,:) + energy_tmp
-     enddo
-   enddo
- enddo
- title='=== nucleus contribution ==='
- call dump_out_matrix(print_volume,title,basis%nbf,1,hamiltonian_nucleus(:,:,1))
-
+ ! Nucleus-electron interaction
+ call setup_nucleus(print_volume,basis,hamiltonian_nucleus)
 
 ! call setup_initial_c_matrix(print_volume,basis%nbf,nspin,hamiltonian_nucleus,s_matrix,occupation,c_matrix)
 !
@@ -410,14 +316,15 @@ program molgw
 
    call output_homolumo(basis%nbf,nspin,occupation,energy,ehomo,elumo)
 
-   en%kin  = SUM(hamiltonian_kinetic(:,:,:)*p_matrix(:,:,:))
-   en%nuc  = SUM(hamiltonian_nucleus(:,:,:)*p_matrix(:,:,:))
+   en%kin  = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+   en%nuc  = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
 
    !
-   ! Setup kinetic and nucleus contributions (that are independant of the
-   ! density matrix)
+   ! Setup kinetic and nucleus contributions (that are independent of the
+   ! density matrix and therefore of spin polarization)
    !
-   hamiltonian(:,:,:)    = hamiltonian_kinetic(:,:,:) + hamiltonian_nucleus(:,:,:) 
+   hamiltonian(:,:,1)        = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) 
+   hamiltonian(:,:,nspin)    = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) 
 
    !
    ! Reset XC part of the Hamiltonian
@@ -544,7 +451,7 @@ program molgw
    enddo
   
    title='=== Energies ==='
-   call dump_out_array(.TRUE.,title,basis%nbf,nspin,energy)
+   call dump_out_eigenenergy(title,basis%nbf,nspin,occupation,energy)
   
    !
    ! REMEMBER:
@@ -614,8 +521,6 @@ program molgw
  if(MODULO(print_volume/1000 ,2)>0) call write_density_matrix(nspin,basis%nbf,p_matrix)
  if(MODULO(print_volume/10000,2)>0) call plot_wfn(nspin,basis,c_matrix)
 
-!! Overide occuaptions for testing
-! call set_occupation2(electrons,magnetization,basis%nbf,nspin,occupation)
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !TESTING SECTION TO BE REMOVED IN THE FUTURE
@@ -943,6 +848,11 @@ program molgw
 
  endif
 
+
+
+ !
+ ! Cleanly exiting the code
+ !
  deallocate(hamiltonian,hamiltonian_xc,hamiltonian_kinetic,hamiltonian_nucleus)
  deallocate(matrix,s_matrix,c_matrix,p_matrix,p_matrix_old)
  deallocate(energy,occupation,exchange_m_vxc_diag)
@@ -964,384 +874,4 @@ program molgw
  call finish_mpi()
 
 end program molgw
-
 !=========================================================================
-subroutine setup_density_matrix(nbf,nspin,c_matrix,occupation,p_matrix)
- use m_definitions
- use m_mpi
- implicit none
- integer,intent(in)   :: nbf,nspin
- real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin)
- real(dp),intent(in)  :: occupation(nbf,nspin)
- real(dp),intent(out) :: p_matrix(nbf,nbf,nspin)
-!=====
- integer :: ispin,ibf,jbf
-!=====
-
- do ispin=1,nspin
-   do jbf=1,nbf
-     do ibf=1,nbf
-       p_matrix(ibf,jbf,ispin) = SUM( occupation(:,ispin) * c_matrix(ibf,:,ispin) * c_matrix(jbf,:,ispin) )
-     enddo
-   enddo
- enddo
-
-
-end subroutine setup_density_matrix
-
-!=========================================================================
-subroutine test_density_matrix(nbf,nspin,p_matrix,s_matrix)
- use m_definitions
- use m_warning
- implicit none
- integer,intent(in)   :: nbf,nspin
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin),s_matrix(nbf,nbf)
-!=====
- integer              :: ispin,ibf,jbf
- real(dp)             :: matrix(nbf,nbf)
- character(len=100)   :: title
-!=====
-
- WRITE_MASTER(*,*) 'Check equality PSP = P'
- WRITE_MASTER(*,*) ' valid only for integer occupation numbers'
- do ispin=1,nspin
-
-   !
-   ! Calculate PSP
-   matrix(:,:) = MATMUL( p_matrix(:,:,ispin), MATMUL( s_matrix(:,:) , p_matrix(:,:,ispin) ) )
-
-
-   title='=== PSP ==='
-   call dump_out_matrix(1,title,nbf,1,matrix)
-   title='===  P  ==='
-   call dump_out_matrix(1,title,nbf,1,p_matrix(:,:,ispin))
-
- enddo
-
-
-end subroutine test_density_matrix
-
-
-!=========================================================================
-subroutine read_density_matrix(nbf,nspin,p_matrix)
- use m_definitions
- use m_warning
- implicit none
- integer,intent(in)   :: nbf,nspin
- real(dp),intent(out) :: p_matrix(nbf,nbf,nspin)
-!=====
- logical              :: file_exists
- integer              :: ispin,ibf,jbf
-!=====
-
- inquire(file='manual_densitymatrix',exist=file_exists)
-
- if(file_exists) then
-   msg='reading input density matrix'
-   call issue_warning(msg)
-
-   open(11,file='manual_densitymatrix',status='old')
-   do ispin=1,nspin
-     do jbf=1,nbf
-       do ibf=1,nbf
-         read(11,*) p_matrix(ibf,jbf,ispin) 
-       enddo
-     enddo
-   enddo
-   close(11)
-
- endif
-
-
-end subroutine read_density_matrix
-
-!=========================================================================
-subroutine write_density_matrix(nspin,nbf,p_matrix)
- use m_definitions
- use m_warning
- use m_mpi
- implicit none
- integer,intent(in)   :: nbf,nspin
- real(dp),intent(in) :: p_matrix(nbf,nbf,nspin)
-!=====
- integer              :: ispin,ibf,jbf
-!=====
-
-
- WRITE_MASTER(*,*) 'output final density matrix on file'
- WRITE_MASTER(*,'(a,i5,a,i5,a,i2,/)') ' dimensions',nbf,' x ',nbf,' x ',nspin
- open(11,file='output_densitymatrix')
- do ispin=1,nspin
-   do jbf=1,nbf
-     do ibf=1,nbf
-       WRITE_MASTER(11,*) p_matrix(ibf,jbf,ispin) 
-     enddo
-   enddo
- enddo
- close(11)
-
-
-end subroutine write_density_matrix
-
-
-!=========================================================================
-subroutine  set_occupation(electrons,magnetization,nbf,nspin,occupation)
- use m_definitions
- use m_mpi
- use m_warning
- implicit none
- real(dp),intent(in)  :: electrons,magnetization
- integer,intent(in)   :: nbf,nspin
- real(dp),intent(out) :: occupation(nbf,nspin)
-!=====
- real(dp)             :: remaining_electrons(nspin),spin_fact
- integer              :: ibf,nlines,ilines
- logical              :: file_exists
-!=====
-
-
-  occupation(:,:)=0.0_dp
-  spin_fact = REAL(-nspin+3,dp)
-
-  inquire(file='manual_occupations',exist=file_exists)
-
-  if(.NOT. file_exists) then
-    remaining_electrons(1) = (electrons+magnetization) / REAL(nspin,dp)
-    if(nspin==2) remaining_electrons(2) = (electrons-magnetization) / REAL(nspin,dp)
-
-    do ibf=1,nbf
-      occupation(ibf,:) = MIN(remaining_electrons(:), spin_fact)
-      remaining_electrons(:)  = remaining_electrons(:) - occupation(ibf,:)
-    end do
-  else
-    WRITE_MASTER(*,*)
-    WRITE_MASTER(*,*) 'occupations are read from file: manual_occupations'
-    msg='reading manual occupations from file'
-    call issue_warning(msg)
-    open(unit=12,file='manual_occupations',status='old')
-    !
-    ! read nlines, all other occupations are set to zero
-    read(12,*) nlines
-    do ilines=1,nlines
-      read(12,*) occupation(ilines,:)
-    enddo
-    close(12)
-    WRITE_MASTER(*,*) 'occupations set, closing file'
-  endif
- 
-  !
-  ! final check
-  if( ABS( SUM(occupation(:,:)) - electrons ) > 1.0d-7 ) then
-    WRITE_MASTER(*,*) 'occupation set up failed to give the right number of electrons'
-    WRITE_MASTER(*,*) 'sum of occupations',SUM(occupation(:,:))
-    WRITE_MASTER(*,*) 'electrons',electrons
-    do ibf=1,nbf
-      WRITE_MASTER(*,*) ibf,occupation(ibf,:)
-    enddo
-    stop'FAILURE in set_occupation'
-  endif 
-
-end subroutine set_occupation
-
-!=========================================================================
-subroutine  set_occupation2(electrons,magnetization,nbf,nspin,occupation)
- use m_definitions
- use m_mpi
- use m_warning
- implicit none
- real(dp),intent(in)  :: electrons,magnetization
- integer,intent(in)   :: nbf,nspin
- real(dp),intent(out) :: occupation(nbf,nspin)
-!=====
- real(dp)             :: remaining_electrons(nspin),spin_fact
- integer              :: ibf,nlines,ilines
- logical              :: file_exists
-!=====
-
-
-  occupation(:,:)=0.0_dp
-  spin_fact = REAL(-nspin+3,dp)
-
-  inquire(file='manual_occupations2',exist=file_exists)
-
-  if(.NOT. file_exists) then
-    remaining_electrons(1) = (electrons+magnetization) / REAL(nspin,dp)
-    if(nspin==2) remaining_electrons(2) = (electrons-magnetization) / REAL(nspin,dp)
-
-    do ibf=1,nbf
-      occupation(ibf,:) = MIN(remaining_electrons(:), spin_fact)
-      remaining_electrons(:)  = remaining_electrons(:) - occupation(ibf,:)
-    end do
-  else
-    WRITE_MASTER(*,*)
-    WRITE_MASTER(*,*) 'occupations are read from file: manual_occupations2'
-    msg='reading manual occupations from file'
-    call issue_warning(msg)
-    open(unit=12,file='manual_occupations2',status='old')
-    !
-    ! read nlines, all other occupations are set to zero
-    read(12,*) nlines
-    do ilines=1,nlines
-      read(12,*) occupation(ilines,:)
-    enddo
-    close(12)
-    WRITE_MASTER(*,*) 'occupations set, closing file'
-  endif
- 
-!  !
-!  ! final check
-!  if( ABS( SUM(occupation(:,:)) - electrons ) > 1.0d-7 ) then
-!    WRITE_MASTER(*,*) 'occupation set up failed to give the right number of electrons'
-!    WRITE_MASTER(*,*) 'sum of occupations',SUM(occupation(:,:))
-!    WRITE_MASTER(*,*) 'electrons',electrons
-!    do ibf=1,nbf
-!      WRITE_MASTER(*,*) ibf,occupation(ibf,:)
-!    enddo
-!    stop'FAILURE in set_occupation'
-!  endif 
-
-end subroutine set_occupation2
-
-!=========================================================================
-subroutine guess_starting_c_matrix(nbf,nspin,c_matrix)
- use m_definitions
- use m_mpi
- implicit none
- integer,intent(in)   :: nbf,nspin
- real(dp),intent(out) :: c_matrix(nbf,nbf,nspin)
-!=====
- integer :: ibf
-!=====
-
- !
- ! fill the c_matrix with the identity
- c_matrix(:,:,:)=0.0_dp
- do ibf=1,nbf
-   c_matrix(ibf,ibf,:) = 1.0_dp
-!   c_matrix(ibf,modulo(ibf,nbf)+1,:) = 1.0_dp
- enddo
-
-end subroutine guess_starting_c_matrix
-
-!=========================================================================
-subroutine guess_starting_c_matrix_new(basis,nspin,c_matrix)
- use m_definitions
- use m_mpi
- use m_gaussian
- use m_basis_set
- implicit none
- type(basis_set),intent(in) :: basis
- integer,intent(in)         :: nspin
- real(dp),intent(out)       :: c_matrix(basis%nbf,basis%nbf,nspin)
-!=====
- integer  :: ibf,jbf,kbf,ig
- real(dp) :: alpha_max_bf(basis%nbf),alpha_max_remaining
-!=====
-
- !
- ! find the sharpest gaussians
- alpha_max_bf(:)=0.0_dp
- do ibf=1,basis%nbf
-   do ig=1,basis%bf(ibf)%ngaussian
-     alpha_max_bf(ibf)=MAX(basis%bf(ibf)%g(ig)%alpha,alpha_max_bf(ibf))
-   enddo
-!   WRITE_MASTER(*,*) ibf,alpha_max_bf(ibf)
- enddo
-
- !
- ! fill the c_matrix 
- c_matrix(:,:,:)=0.0_dp
- do ibf=1,basis%nbf
-   alpha_max_remaining=0.0_dp
-   do jbf=1,basis%nbf
-     if( alpha_max_bf(jbf) > alpha_max_remaining ) then
-       alpha_max_remaining = alpha_max_bf(jbf)
-       kbf = jbf
-     endif
-   enddo
-   c_matrix(kbf,ibf,:) = 1.0_dp
-!   WRITE_MASTER(*,*) 'chosen',ibf,kbf,alpha_max_bf(kbf)
-   alpha_max_bf(kbf)   = -1.0_dp
-   
- enddo
-
-end subroutine guess_starting_c_matrix_new
-
-!=========================================================================
-subroutine setup_initial_c_matrix(print_volume,nbf,nspin,hamiltonian_nucleus,s_matrix,occupation,c_matrix)
- use m_definitions
- use m_mpi
- use m_tools
- implicit none
- integer,intent(in)         :: print_volume,nspin,nbf
- real(dp),intent(in)        :: hamiltonian_nucleus(nbf,nbf,nspin),s_matrix(nbf,nbf)
- real(dp),intent(in)        :: occupation(nbf,nspin)
- real(dp),intent(out)       :: c_matrix(nbf,nbf,nspin)
-!=====
- integer                    :: ibf,jbf,kbf,lbf
- real(dp)                   :: hamiltonian(nbf,nbf),matrix(nbf,nbf),energy(nbf)
- real(dp)                   :: coeff_max,bonding
- real(dp)                   :: line(nbf)
- character(len=100)         :: title
-!=====
-
-
- !
- ! Diagonalize a spin independant hamiltonian
- ! to obtain a starting point for matrix C
-! hamiltonian(:,:) = hamiltonian_kinetic(:,:,1) + hamiltonian_nucleus(:,:,1)
- hamiltonian(:,:) = hamiltonian_nucleus(:,:,1)
-
- title='=== bare hamiltonian ==='
- call dump_out_matrix(print_volume,title,nbf,1,hamiltonian)
-
- WRITE_MASTER(*,*) 'Diagonalization of an initial hamiltonian'
- call diagonalize_generalized_sym(nbf,hamiltonian,s_matrix,energy,matrix)
-
- title='=== Energies ==='
- call dump_out_array(.TRUE.,title,nbf,1,energy)
-
-
- ibf=1
- do while( ibf < nbf )
-!   if( ALL( occupation(ibf,:) < completely_empty ) cycle
-
-   jbf = ibf + 1
-   !
-   ! Find degenerate energies
-   if( ABS( energy(ibf) - energy(jbf) ) < 1.0e-3_dp ) then
-     !
-     ! Find the bonding and anti bonding states
-     coeff_max = MAXVAL( ABS( matrix(:,ibf) ) )
-     bonding = 1.0_dp
-     do kbf=1,nbf
-       if( ABS( matrix(kbf,ibf) ) > coeff_max - 1.0e-3_dp ) then
-         bonding = SIGN( 1.0_dp, matrix(kbf,ibf) ) * bonding
-       endif
-     enddo
-     if( bonding < 0.0_dp ) then
-       line(:)       = matrix(:,ibf)
-       matrix(:,ibf) = matrix(:,jbf)
-       matrix(:,jbf) = line(:)
-     endif
-
-     ibf = ibf + 2
-   else
-     ibf = ibf + 1
-   endif
-
- enddo
-
- c_matrix(:,:,1)     = matrix(:,:)
- c_matrix(:,:,nspin) = matrix(:,:)
-
- matrix(:,:) = transpose( matrix(:,:) )
- title='=== C matrix ==='
- call dump_out_matrix(print_volume,title,nbf,1,matrix)
-
-
-
-
-
-end subroutine setup_initial_c_matrix
-

@@ -5,7 +5,7 @@ FC=ifort -fpp $(OPENMP) -mkl=parallel -DHAVE_LIBXC -DLOW_MEMORY2 # -DCHI0  # -DA
 #FC=mpif90 -fpp -mkl=parallel -DMPI -DLOW_MEMORY1 -DHAVE_LIBXC #-DLOW_MEMORY2 #-DCHI0  # -DAUXIL_BASIS
 
 CC=g++
-FCOPTS= -O1  #-g -check all
+FCOPTS= -O0 -g -check all -check noarg_temp_created
 #FCOPTS= -xHost -O3 #-ipo
 
 #LAPACK= -L/home/bruneval/src/lapack-3.3.1/ -llapack_LINUX -lblas_LINUX 
