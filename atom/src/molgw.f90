@@ -18,8 +18,8 @@ program molgw
 #endif
  implicit none
 
- integer,parameter            :: gaussian_type=CARTESIAN
-! integer,parameter            :: gaussian_type=PURE
+! integer,parameter            :: gaussian_type=CARTESIAN
+ integer,parameter            :: gaussian_type=PURE
  !
  ! Input parameters will be set in read_inputparameters
  type(calculation_type)       :: calc_type
