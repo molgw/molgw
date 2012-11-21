@@ -220,6 +220,9 @@ subroutine calculate_eri(print_volume,basis,rcut,which_buffer)
 #else
  if( .NOT. read_eri(rcut) ) call do_calculate_eri_new(basis,rcut,which_buffer)
 #endif
+ write(*,*) 'ERI BUFFER'
+ write(*,*) eri_buffer(:)
+ write(*,*) '=========='
 
  if(MODULO(print_volume/100,2)>0) then
    call dump_out_eri(rcut)
@@ -826,8 +829,9 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
  do ishell=1,basis%nshell
    do ibf=1,basis%nbf_cart
      if(basis%bf(ibf)%shell_index==ishell) then
-       shell(ishell)%am = basis%bf(ibf)%am
-       shell(ishell)%ng = basis%bf(ibf)%ngaussian
+       shell(ishell)%am    = basis%bf(ibf)%am
+       shell(ishell)%x0(:) = basis%bf(ibf)%x0(:)
+       shell(ishell)%ng    = basis%bf(ibf)%ngaussian
        allocate( shell(ishell)%alpha(shell(ishell)%ng) )
        allocate( shell(ishell)%coeff(shell(ishell)%ng) )
        shell(ishell)%alpha(:) = basis%bf(ibf)%g(:)%alpha
@@ -854,7 +858,7 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
 !$OMP&   zeta_12,zeta_34,p,q,rho,rho1,tt,&
 !$OMP&   info,iibf)
 
-!$OMP DO SCHEDULE(DYNAMIC)
+!$OMP DO SCHEDULE(DYNAMIC) COLLAPSE(2)
  do lshell=1,basis%nshell
    do kshell=1,basis%nshell
      !

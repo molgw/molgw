@@ -148,7 +148,7 @@ subroutine setup_nucleus(print_volume,basis,hamiltonian_nucleus)
  integer              :: iatom
  character(len=100)   :: title
  real(dp),allocatable :: matrix_cart(:,:)
- real(dp)             :: nucleus_tmp
+ real(dp)             :: vnucleus_ij
 !====
 
  ibf_cart = 1
@@ -166,10 +166,12 @@ subroutine setup_nucleus(print_volume,basis,hamiltonian_nucleus)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
      allocate(matrix_cart(ni_cart,nj_cart))
+     matrix_cart(:,:) = 0.0_dp
      do i_cart=1,ni_cart
        do j_cart=1,nj_cart
          do iatom=1,natom
-           call nucleus_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),matrix_cart(i_cart,j_cart))
+           call nucleus_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
+           matrix_cart(i_cart,j_cart) = matrix_cart(i_cart,j_cart) + vnucleus_ij
          enddo
        enddo
      enddo
