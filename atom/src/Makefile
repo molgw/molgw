@@ -3,6 +3,7 @@ OPENMP=
 FC=ifort $(OPENMP)
 CC=g++
 FCOPTS= -O0
+CCOPTS= 
 
 LAPACK=
 
@@ -57,7 +58,7 @@ lebedev_quadrature.o: macros.h lebedev_quadrature.f
 	$(FC) $(FCOPTS) -c lebedev_quadrature.f
 
 wrapper_libint.o: macros.h wrapper_libint.cc
-	$(CC) -c wrapper_libint.cc $(LIBINT_INCS)
+	$(CC) $(CCOPTS) -c wrapper_libint.cc $(LIBINT_INCS)
 
 m_gw.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_calculation_type.f90 m_gw.f90 m_eri.f90
 	$(FC) $(FCOPTS) -c m_gw.f90 $(LIBXC_INCS)

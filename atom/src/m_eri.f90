@@ -220,9 +220,6 @@ subroutine calculate_eri(print_volume,basis,rcut,which_buffer)
 #else
  if( .NOT. read_eri(rcut) ) call do_calculate_eri_new(basis,rcut,which_buffer)
 #endif
- write(*,*) 'ERI BUFFER'
- write(*,*) eri_buffer(:)
- write(*,*) '=========='
 
  if(MODULO(print_volume/100,2)>0) then
    call dump_out_eri(rcut)
@@ -855,10 +852,10 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
 !$OMP& PRIVATE(ami,amj,amk,aml,ni,nj,nk,nl,am1,am2,am3,am4,n1,n2,n3,n4,ng1,ng2,ng3,ng4,&
 !$OMP&   alpha1,alpha2,alpha3,alpha4,x01,x02,x03,x04,&
 !$OMP&   integrals_libint,integrals_cart,integrals_tmp,&
-!$OMP&   zeta_12,zeta_34,p,q,rho,rho1,tt,&
+!$OMP&   zeta_12,zeta_34,p,q,rho,rho1,tt,f0t,&
 !$OMP&   info,iibf)
 
-!$OMP DO SCHEDULE(DYNAMIC) COLLAPSE(2)
+!$OMP DO SCHEDULE(DYNAMIC) 
  do lshell=1,basis%nshell
    do kshell=1,basis%nshell
      !
@@ -964,6 +961,7 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
                                            x03(1),x03(2),x03(3),&
                                            x04(1),x04(2),x04(3),&
                                            integrals_libint(1))
+
                    if(info/=0) then
                      WRITE_MASTER(*,*) am1,am2,am3,am4
                      stop 'ERI calculated by libint failed'
@@ -1057,8 +1055,8 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
 
 
 
-         deallocate( integrals_cart )
-         deallocate( integrals_tmp )
+         deallocate(integrals_cart)
+         deallocate(integrals_tmp)
          deallocate(integrals_libint)
          deallocate(alpha1,alpha2,alpha3,alpha4)
 

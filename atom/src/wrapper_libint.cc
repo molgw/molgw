@@ -486,8 +486,7 @@ void prep_libint2(LibintEval* erieval, unsigned int am1, double alpha1,
 
   double K1 = exp(-alpha1 * alpha2 * AB2 / gammap);
   double K2 = exp(-alpha3 * alpha4 * CD2 / gammaq);
-  double pfac = 2 * pow(M_PI, 2.5) * K1 * K2 / (gammap * gammaq
-      * sqrt(gammap + gammaq));
+  double pfac = 2 * pow(M_PI, 2.5) * K1 * K2 / (gammap * gammaq * sqrt(gammap + gammaq));
 
   if (norm_flag > 0) {
     /*    pfac *= norm_const(l1,m1,n1,alpha1,A);
