@@ -42,7 +42,8 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
  real(dp) :: z1(nangular)
  real(dp) :: w1(nangular)
  integer  :: n1,iangular
- integer  :: ix,iy,iz,ibf,jbf,ispin,iatom,jatom,katom
+ integer  :: ix,iy,iz,ibf,jbf,ibf_cart,ispin,iatom,jatom,katom
+ integer  :: li,ni_cart,ni,i_cart
  real(dp) :: rr(3),rr_shift(3)
  real(dp) :: xa(nx),wxa(nx)
  real(dp) :: normalization(nspin)
@@ -53,14 +54,24 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
 #endif
 
  real(dp) :: basis_function_r       (basis%nbf)
+ real(dp),allocatable :: basis_function_r_cart(:)
  real(dp) :: basis_function_r_shiftx(basis%nbf)
  real(dp) :: basis_function_r_shifty(basis%nbf)
  real(dp) :: basis_function_r_shiftz(basis%nbf)
+ real(dp),allocatable :: basis_function_r_shiftx_cart(:)
+ real(dp),allocatable :: basis_function_r_shifty_cart(:)
+ real(dp),allocatable :: basis_function_r_shiftz_cart(:)
  real(dp) :: basis_function_gradr       (3,basis%nbf)
- real(dp) :: basis_function_laplr       (3,basis%nbf)
+ real(dp),allocatable :: basis_function_gradr_cart(:,:)
  real(dp) :: basis_function_gradr_shiftx(3,basis%nbf)
  real(dp) :: basis_function_gradr_shifty(3,basis%nbf)
  real(dp) :: basis_function_gradr_shiftz(3,basis%nbf)
+ real(dp),allocatable :: basis_function_gradr_shiftx_cart(:,:)
+ real(dp),allocatable :: basis_function_gradr_shifty_cart(:,:)
+ real(dp),allocatable :: basis_function_gradr_shiftz_cart(:,:)
+ real(dp) :: basis_function_laplr       (3,basis%nbf)
+ real(dp),allocatable :: basis_function_laplr_cart(:,:)
+
  real(dp) :: rhor_r       (nspin)
  real(dp) :: rhor_r_shiftx(nspin)
  real(dp) :: rhor_r_shifty(nspin)
@@ -235,37 +246,88 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
   
   
        !
-       ! First calculate all the needed basis function evaluations at point rr
-       do ibf=1,basis%nbf
-         basis_function_r(ibf) = eval_basis_function(basis%bf(ibf),rr)
+       ! First precalculate all the needed basis function evaluations at point rr
+       !
+       ibf_cart = 1
+       ibf      = 1
+       do while(ibf_cart<=basis%nbf_cart)
+         li      = basis%bf(ibf_cart)%am
+         ni_cart = number_basis_function_am(CARTESIAN,li)
+         ni      = number_basis_function_am(basis%gaussian_type,li)
+
+         allocate(basis_function_r_cart(ni_cart))
+
+         if( require_gradient ) then 
+           allocate(basis_function_r_shiftx_cart    (ni_cart))
+           allocate(basis_function_r_shifty_cart    (ni_cart))
+           allocate(basis_function_r_shiftz_cart    (ni_cart))
+           allocate(basis_function_gradr_cart       (3,ni_cart))
+           allocate(basis_function_gradr_shiftx_cart(3,ni_cart))
+           allocate(basis_function_gradr_shifty_cart(3,ni_cart))
+           allocate(basis_function_gradr_shiftz_cart(3,ni_cart))
+         endif
+
+         if( require_laplacian ) then
+           allocate(basis_function_gradr_cart       (3,ni_cart))
+           allocate(basis_function_laplr_cart       (3,ni_cart))
+         endif
+
+         do i_cart=1,ni_cart
+           basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
+
+           if( require_gradient ) then 
+
+             basis_function_gradr_cart(:,i_cart)        = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr)
+
+             rr_shift(:) = rr(:) + (/ shift , 0.0_dp , 0.0_dp /)
+             basis_function_r_shiftx_cart(i_cart)       = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr_shift)
+             basis_function_gradr_shiftx_cart(:,i_cart) = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr_shift)
+
+             rr_shift(:) = rr(:) + (/ 0.0_dp , shift , 0.0_dp /)
+             basis_function_r_shifty_cart(i_cart)       = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr_shift)
+             basis_function_gradr_shifty_cart(:,i_cart) = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr_shift)
+
+             rr_shift(:) = rr(:) + (/ 0.0_dp , 0.0_dp , shift /)
+             basis_function_r_shiftz_cart(i_cart)       = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr_shift)
+             basis_function_gradr_shiftz_cart(:,i_cart) = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr_shift)
+
+           endif
+
+           if( require_laplacian ) then
+             basis_function_gradr_cart(:,i_cart)        = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr)
+             basis_function_laplr_cart(:,i_cart)        = eval_basis_function_lapl(basis%bf(ibf_cart+i_cart-1),rr)
+           endif
+
+         enddo
+         basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li)%matrix(:,:) )
+         deallocate(basis_function_r_cart)
+
+         if( require_gradient ) then 
+           basis_function_gradr       (:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_cart       (:,:) , cart_to_pure(li)%matrix(:,:) )
+           basis_function_gradr_shiftx(:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_shiftx_cart(:,:) , cart_to_pure(li)%matrix(:,:) )
+           basis_function_gradr_shifty(:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_shifty_cart(:,:) , cart_to_pure(li)%matrix(:,:) )
+           basis_function_gradr_shiftz(:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_shiftz_cart(:,:) , cart_to_pure(li)%matrix(:,:) )
+           basis_function_r_shiftx(ibf:ibf+ni-1) = MATMUL(  basis_function_r_shiftx_cart(:) , cart_to_pure(li)%matrix(:,:) )
+           basis_function_r_shifty(ibf:ibf+ni-1) = MATMUL(  basis_function_r_shifty_cart(:) , cart_to_pure(li)%matrix(:,:) )
+           basis_function_r_shiftz(ibf:ibf+ni-1) = MATMUL(  basis_function_r_shiftz_cart(:) , cart_to_pure(li)%matrix(:,:) )
+           deallocate(basis_function_gradr_cart)
+           deallocate(basis_function_gradr_shiftx_cart,basis_function_gradr_shifty_cart,basis_function_gradr_shiftz_cart)
+           deallocate(basis_function_r_shiftx_cart,basis_function_r_shifty_cart,basis_function_r_shiftz_cart)
+         endif
+
+         if( require_laplacian ) then
+           basis_function_gradr       (:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_cart       (:,:) , cart_to_pure(li)%matrix(:,:) )
+           basis_function_laplr       (:,ibf:ibf+ni-1) = MATMUL(  basis_function_laplr_cart       (:,:) , cart_to_pure(li)%matrix(:,:) )
+           deallocate(basis_function_gradr_cart,basis_function_laplr_cart)
+         endif
+
+         ibf      = ibf      + ni
+         ibf_cart = ibf_cart + ni_cart
        enddo
+       !
+       ! Precalculation done!
+       !
 
-       if( require_gradient ) then 
-         do ibf=1,basis%nbf
-
-           basis_function_gradr(:,ibf)        = eval_basis_function_grad(basis%bf(ibf),rr)
-
-           rr_shift(:) = rr(:) + (/ shift , 0.0_dp , 0.0_dp /)
-           basis_function_r_shiftx(ibf)       = eval_basis_function(basis%bf(ibf),rr_shift)
-           basis_function_gradr_shiftx(:,ibf) = eval_basis_function_grad(basis%bf(ibf),rr_shift)
-
-           rr_shift(:) = rr(:) + (/ 0.0_dp , shift , 0.0_dp /)
-           basis_function_r_shifty(ibf)       = eval_basis_function(basis%bf(ibf),rr_shift)
-           basis_function_gradr_shifty(:,ibf) = eval_basis_function_grad(basis%bf(ibf),rr_shift)
-
-           rr_shift(:) = rr(:) + (/ 0.0_dp , 0.0_dp , shift /)
-           basis_function_r_shiftz(ibf)       = eval_basis_function(basis%bf(ibf),rr_shift)
-           basis_function_gradr_shiftz(:,ibf) = eval_basis_function_grad(basis%bf(ibf),rr_shift)
-
-         enddo
-       endif
-
-       if( require_laplacian ) then
-         do ibf=1,basis%nbf
-           basis_function_gradr(:,ibf)        = eval_basis_function_grad(basis%bf(ibf),rr)
-           basis_function_laplr(:,ibf)        = eval_basis_function_lapl(basis%bf(ibf),rr)
-         enddo
-       endif
 
 
        rhor_r(:)=0.0_dp
