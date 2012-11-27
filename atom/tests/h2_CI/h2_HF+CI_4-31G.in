@@ -1,6 +1,6 @@
 HF+CI                # calculation type HF, LDA+GW, PBE+GW
 1   0.0   0.0        # spin pol    charge magnetization
-4-31G    
+4-31G  CART
 50   0.70  PULAY     # nscf, alpha_mixing
 01                   # print_volume
 2  bohr

@@ -1,6 +1,6 @@
 GW                    # calculation type HF, G0W0
 2   0.0   1.0         # spin pol   charge   magnetization
-6-31G                 # 6-311ppGss               # basis set
+6-31G  CART           # 6-311ppGss               # basis set
 30  0.70              # nscf, alpha_mixing
 01                    # print_volume
 1 bohr

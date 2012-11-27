@@ -198,6 +198,7 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  character(len=100)                 :: read_line
  character(len=100)                 :: line_wocomment
  character(len=100)                 :: mixing_name
+ character(len=100)                 :: gaussian_name
  integer                            :: ipos,jpos
  integer                            :: istat,iatom,jatom
  real(dp)                           :: charge,length_factor
@@ -227,8 +228,10 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  select case(TRIM(ADJUSTL(line_wocomment(1:ipos-jpos-1))))
  case('PURE','pure')
    gaussian_type=PURE
+   gaussian_name='PURE'
  case('CART','cart')
    gaussian_type=CARTESIAN
+   gaussian_name='CARTESIAN'
  case default
    stop'Error in input line 3: second keyword should either PURE or CART'
  end select
@@ -293,6 +296,7 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  WRITE_MASTER(*,'(a20,f8.4)') ' Charge: ',charge
  WRITE_MASTER(*,'(a20,f8.4)') ' Magnetization: ',magnetization
  WRITE_MASTER(*,'(a20,2x,a)') ' Basis set: ',basis_name
+ WRITE_MASTER(*,'(a20,2x,a)') ' Gaussian type: ',gaussian_name
  WRITE_MASTER(*,'(a20,i3)')   ' Spin polarization: ',nspin
  WRITE_MASTER(*,'(a20,i3)')   ' SCF steps: ',nscf
  WRITE_MASTER(*,'(a20,f8.4)') ' Mixing: ',alpha_mixing

@@ -1,6 +1,6 @@
 HF+GW                 # calculation type HF, G0W0
 1   0.0   0.0         # spin pol   charge   magnetization
-cc-pVDZ               # basis set
+cc-pVDZ CART          # basis set
 20  0.80              # nscf, alpha_mixing
 01                    # print_volume
 1    bohr
