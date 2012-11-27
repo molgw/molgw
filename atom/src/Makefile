@@ -39,7 +39,7 @@ molgw.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_calculation_typ
 hamiltonian.o: macros.h m_definitions.f90 m_timing.f90 m_eri.f90 hamiltonian.f90
 	$(FC) $(FCOPTS) -c hamiltonian.f90 
 
-io.o: macros.h m_definitions.f90 m_warning.f90 m_calculation_type.f90 io.f90
+io.o: macros.h m_definitions.f90 m_warning.f90 m_calculation_type.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 io.f90
 	$(FC) $(FCOPTS) -c io.f90 $(LIBXC_INCS)
 
 m_eri.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90

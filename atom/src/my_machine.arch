@@ -5,9 +5,9 @@ FC=ifort -fpp $(OPENMP) -mkl=parallel -DHAVE_LIBXC -DLOW_MEMORY2 # -DCHI0  # -DA
 #FC=mpif90 -fpp -mkl=parallel -DMPI -DLOW_MEMORY1 -DHAVE_LIBXC #-DLOW_MEMORY2 #-DCHI0  # -DAUXIL_BASIS
 
 CC=g++
-FCOPTS= -O0 -g -check all -check noarg_temp_created -traceback
-CCOPTS= -O0 -g -fbounds-check
-#FCOPTS= -xHost -O3 #-ipo
+#FCOPTS= -O0 -g -check all -check noarg_temp_created -traceback
+CCOPTS= -O2 # -O0 -g -fbounds-check
+FCOPTS= -xHost -O3 #-ipo
 
 #LAPACK= -L/home/bruneval/src/lapack-3.3.1/ -llapack_LINUX -lblas_LINUX 
 #LAPACK=  -Wl,--start-group  $(MKLROOT)/lib/em64t/libmkl_intel_lp64.a $(MKLROOT)/lib/em64t/libmkl_intel_thread.a $(MKLROOT)/lib/em64t/libmkl_core.a -Wl,--end-group -openmp -lpthread

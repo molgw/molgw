@@ -561,9 +561,9 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 #ifdef LOW_MEMORY2
      call transform_eri_basis_lowmem(nspin,c_matrix,kbf,klspin,eri_eigenstate_k)
 #endif
+
+
      do lbf=1,basis%nbf
-!INTRA       if(kbf==lbf) cycle  ! intra state transitions are not allowed!
-!SKIP       if( abs(occupation(lbf,klspin)-occupation(kbf,klspin))<completely_empty ) cycle
        if( skip_transition(nspin,kbf,lbf,occupation(lbf,klspin),occupation(kbf,klspin)) ) cycle
        t_kl=t_kl+1
 
@@ -576,6 +576,7 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
            jbf = prod_basis%index_ij(2,ijbf)
 
            ijbf_current = ijbf+prod_basis%nbf*(ijspin-1)
+
 
 #ifndef LOW_MEMORY2
            wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &

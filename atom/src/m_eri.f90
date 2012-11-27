@@ -18,6 +18,8 @@ module m_eri
  ! max length of a record in the ERI file
  integer,parameter :: line_length=1000
 
+ real(dp),parameter :: TOL_INT=1.0e-10_dp
+
  real(prec_eri),allocatable :: eri_buffer(:)
  real(prec_eri),allocatable :: eri_buffer_lr(:)
 
@@ -491,8 +493,8 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
            call boys_function(f0t(0),0,tt)
 
            int_shell(1) = 2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
-                 / zeta_12 * exp( -alpha1*alpha2/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
-                 / zeta_34 * exp( -alpha3*alpha4/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
+                 / zeta_12 * EXP( -alpha1*alpha2/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
+                 / zeta_34 * EXP( -alpha3*alpha4/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
                  * SQRT( rho / rho1 )
 
          else
@@ -784,6 +786,7 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
  real(dp),allocatable         :: integrals_libint(:)
+ logical                      :: negligible_shellpair(basis%nshell,basis%nshell)
 !=====
  type shell_type
    integer              :: am
@@ -818,7 +821,6 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
    omega_range = 1.0e6_dp
  endif
 
- call start_clock(timing_tmp2)
 
  !
  ! Set up shells information
@@ -848,6 +850,10 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
  enddo
 
 
+ call start_clock(timing_tmp1)
+ call identify_negligible_shellpair()
+ call stop_clock(timing_tmp1)
+
 !$OMP PARALLEL DEFAULT(SHARED) &
 !$OMP& PRIVATE(ami,amj,amk,aml,ni,nj,nk,nl,am1,am2,am3,am4,n1,n2,n3,n4,ng1,ng2,ng3,ng4,&
 !$OMP&   alpha1,alpha2,alpha3,alpha4,x01,x02,x03,x04,&
@@ -866,6 +872,7 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
      amk = shell(kshell)%am
      aml = shell(lshell)%am
      if( amk < aml ) cycle
+     if( negligible_shellpair(kshell,lshell) ) cycle
 
      do jshell=1,basis%nshell
        do ishell=1,basis%nshell
@@ -873,6 +880,7 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
          amj = shell(jshell)%am
          if( ami < amj ) cycle
          if( amk+aml < ami+amj ) cycle
+         if( negligible_shellpair(ishell,jshell) ) cycle
 
 
          ni = number_basis_function_am( basis%gaussian_type , ami )
@@ -934,8 +942,8 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
 
                    integrals_cart(1,1,1,1) = integrals_cart(1,1,1,1) + &
                          2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
-                         / zeta_12 * exp( -alpha1(ig1)*alpha2(ig2)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
-                         / zeta_34 * exp( -alpha3(ig3)*alpha4(ig4)/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
+                         / zeta_12 * EXP( -alpha1(ig1)*alpha2(ig2)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
+                         / zeta_34 * EXP( -alpha3(ig3)*alpha4(ig4)/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
                          * SQRT( rho / rho1 ) &
                          * shell(ishell)%coeff(ig1) &
                          * shell(jshell)%coeff(ig2) &
@@ -954,6 +962,7 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
                do ig2=1,ng2
                  do ig1=1,ng1
 
+! call start_clock(timing_tmp2)
                    info=calculate_integral(omega_range,&
                                            am1,am2,am3,am4,alpha1(ig1),alpha2(ig2),alpha3(ig3),alpha4(ig4),&
                                            x01(1),x01(2),x01(3),&
@@ -966,6 +975,8 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
                      WRITE_MASTER(*,*) am1,am2,am3,am4
                      stop 'ERI calculated by libint failed'
                    endif
+! call stop_clock(timing_tmp2)
+! call start_clock(timing_tmp1)
 
                    iibf=0
                    do ibf=1,n1
@@ -980,12 +991,14 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
                        enddo
                      enddo
                    enddo
+! call stop_clock(timing_tmp1)
 
                  enddo
                enddo
              enddo
            enddo
 
+! call start_clock(timing_tmp3)
 
            do lbf=1,n4
              do kbf=1,n3
@@ -1027,11 +1040,13 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
              enddo
            enddo
 
+! call stop_clock(timing_tmp3)
 
 
 
          endif
          
+! call start_clock(timing_tmp4)
 
          do lbf=1,nl
            do kbf=1,nk
@@ -1052,6 +1067,7 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
              enddo
            enddo
          enddo
+! call stop_clock(timing_tmp4)
 
 
 
@@ -1075,8 +1091,189 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
  enddo
 
 
- call stop_clock(timing_tmp2)
- WRITE_MASTER(*,'(a,/)') ' All ERI calculated'
+ WRITE_MASTER(*,'(a,/)') ' All ERI have been calculated'
+
+contains
+
+!
+! A first screening implementation
+! Find negligible shell pair with
+! Cauchy-Schwarz inequality
+! (ij||kl)**2 <= (ij||ij) (kl||(kl) 
+!
+subroutine identify_negligible_shellpair()
+ implicit none
+!====
+ integer :: neval,nneglect
+!====
+
+ neval    = 0
+ nneglect = 0
+
+
+ do jshell=1,basis%nshell
+   do ishell=1,basis%nshell
+     ami = shell(ishell)%am
+     amj = shell(jshell)%am
+     if( ami < amj ) cycle
+     neval = neval + 1
+
+     ni = number_basis_function_am( basis%gaussian_type , ami )
+     nj = number_basis_function_am( basis%gaussian_type , amj )
+     n1 = number_basis_function_am( CARTESIAN , ami )
+     n2 = number_basis_function_am( CARTESIAN , amj )
+     am1 = shell(ishell)%am
+     am2 = shell(jshell)%am
+     ng1 = shell(ishell)%ng
+     ng2 = shell(jshell)%ng
+
+     allocate(alpha1(ng1),alpha2(ng2))
+     alpha1(:) = shell(ishell)%alpha(:)
+     alpha2(:) = shell(jshell)%alpha(:)
+     x01(:) = shell(ishell)%x0(:)
+     x02(:) = shell(jshell)%x0(:)
+
+     allocate( integrals_libint( n1*n2*n1*n2 ) )
+     allocate( integrals_cart(n1,n2,n1,n2) )
+     allocate( integrals_tmp (n1,n2,n1,n2) )
+
+     integrals_cart(:,:,:,:) = 0.0_dp
+
+     if(ami+amj==0) then
+
+       do ig4=1,ng2
+         do ig3=1,ng1
+           do ig2=1,ng2
+             do ig1=1,ng1
+
+               zeta_12 = alpha1(ig1) + alpha2(ig2)
+               p(:) = ( alpha1(ig1) * x01(:) + alpha2(ig2) * x02(:) ) / zeta_12 
+               q(:) = ( alpha1(ig3) * x01(:) + alpha2(ig4) * x02(:) ) / zeta_12 
+               !
+               ! Full range or long-range only integrals
+               if( rcut < 1.0e-6_dp ) then
+                 rho  = zeta_12 * zeta_12 / ( zeta_12 + zeta_12 )
+                 rho1 = rho
+               else
+                 rho  = zeta_12 * zeta_12 * omega_range**2 / ( zeta_12*omega_range**2 + zeta_12*omega_range**2 + zeta_12*zeta_12 )
+                 rho1 = zeta_12 * zeta_12 / ( zeta_12 + zeta_12 )
+               endif
+               tt = rho * SUM( (p(:)-q(:))**2 )
+               call boys_function(f0t(0),0,tt)
+
+               integrals_cart(1,1,1,1) = integrals_cart(1,1,1,1) + &
+                     2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_12 ) * f0t(0) &
+                     / zeta_12 * EXP( -alpha1(ig1)*alpha2(ig2)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
+                     / zeta_12 * EXP( -alpha1(ig3)*alpha2(ig4)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) &
+                     * SQRT( rho / rho1 ) &
+                     * shell(ishell)%coeff(ig1) &
+                     * shell(jshell)%coeff(ig2) &
+                     * shell(ishell)%coeff(ig3) &
+                     * shell(jshell)%coeff(ig4) * cart_to_pure_norm(0)%matrix(1,1)**4
+
+             enddo
+           enddo
+         enddo
+       enddo
+
+     else
+       do ig4=1,ng2
+         do ig3=1,ng1
+           do ig2=1,ng2
+             do ig1=1,ng1
+               info=calculate_integral(omega_range,&
+                                       am1,am2,am1,am2,alpha1(ig1),alpha2(ig2),alpha1(ig3),alpha2(ig4),&
+                                       x01(1),x01(2),x01(3),&
+                                       x02(1),x02(2),x02(3),&
+                                       x01(1),x01(2),x01(3),&
+                                       x02(1),x02(2),x02(3),&
+                                       integrals_libint(1))
+               if(info/=0) then
+                 WRITE_MASTER(*,*) am1,am2,am1,am2
+                 WRITE_MASTER(*,*) ig1,ig2,ig3,ig4
+                 stop 'ERI calculated by libint failed'
+               endif
+               iibf=0
+               do ibf=1,n1
+                 do jbf=1,n2
+                   do kbf=1,n1
+                     do lbf=1,n2
+                       iibf=iibf+1
+                       integrals_cart(ibf,jbf,kbf,lbf) = integrals_cart(ibf,jbf,kbf,lbf) &
+                                                        + integrals_libint(iibf) * shell(ishell)%coeff(ig1) * shell(jshell)%coeff(ig2) &
+                                                                                 * shell(ishell)%coeff(ig3) * shell(jshell)%coeff(ig4)
+                     enddo
+                   enddo
+                 enddo
+               enddo
+
+             enddo
+           enddo
+         enddo
+       enddo
+
+       do lbf=1,n2
+         do kbf=1,n1
+           do jbf=1,n2
+             do ibf=1,ni
+               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1,jbf,kbf,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1,ibf) )
+             enddo
+           enddo
+         enddo
+       enddo
+
+       do lbf=1,n2
+         do kbf=1,n1
+           do jbf=1,nj
+             do ibf=1,ni
+               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2,kbf,lbf) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2,jbf) )
+             enddo
+           enddo
+         enddo
+       enddo
+
+       do lbf=1,n2
+         do kbf=1,ni
+           do jbf=1,nj
+             do ibf=1,ni
+               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n1,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1,kbf) )
+             enddo
+           enddo
+         enddo
+       enddo
+
+       do lbf=1,nj
+         do kbf=1,ni
+           do jbf=1,nj
+             do ibf=1,ni
+               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n2) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2,lbf) )
+             enddo
+           enddo
+         enddo
+       enddo
+            
+     endif
+
+     negligible_shellpair(ishell,jshell)=.TRUE.
+     do ibf=1,ni
+       do jbf=1,nj
+         if( ABS( integrals_cart(ibf,jbf,ibf,jbf) ) > TOL_INT ) negligible_shellpair(ishell,jshell)=.FALSE.
+       enddo
+     enddo
+
+     if( negligible_shellpair(ishell,jshell) ) nneglect = nneglect + 1
+
+     deallocate(integrals_cart)
+     deallocate(integrals_tmp)
+     deallocate(integrals_libint)
+     deallocate(alpha1,alpha2)
+
+   enddo
+ enddo
+
+ WRITE_MASTER(*,*) 'Neglible shell pairs',nneglect,'/',neval
+
+end subroutine identify_negligible_shellpair
 
 end subroutine do_calculate_eri_new
 

@@ -18,8 +18,6 @@ program molgw
 #endif
  implicit none
 
-! integer,parameter            :: gaussian_type=CARTESIAN
- integer,parameter            :: gaussian_type=PURE
  !
  ! Input parameters will be set in read_inputparameters
  type(calculation_type)       :: calc_type
@@ -27,6 +25,7 @@ program molgw
  real(dp)                     :: alpha_mixing
  integer                      :: print_volume
  character(len=100)           :: basis_name
+ integer                      :: gaussian_type
  real(dp)                     :: electrons
  real(dp)                     :: magnetization
 !===== variables for testing
@@ -120,7 +119,7 @@ program molgw
  !
  ! Reading input file
  call read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
-                                   basis_name,electrons,magnetization)
+                                   basis_name,gaussian_type,electrons,magnetization)
 
  !
  ! Nucleus-nucleus repulsion contribution to the energy

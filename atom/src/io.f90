@@ -174,7 +174,7 @@ end subroutine output_homolumo
 
 !=========================================================================
 subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
-      basis_name,electrons,magnetization)
+      basis_name,gaussian_type,electrons,magnetization)
  use m_definitions
  use m_mpi
  use m_calculation_type
@@ -182,6 +182,7 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  use m_tools
  use m_atoms
  use m_scf
+ use m_basis_set
  implicit none
 
  type(calculation_type),intent(out) :: calc_type
@@ -189,6 +190,7 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  real(dp),intent(out)               :: alpha_mixing
  integer,intent(out)                :: print_volume  
  character(len=100),intent(out)     :: basis_name
+ integer,intent(out)                :: gaussian_type
  real(dp),intent(out)               :: electrons 
  real(dp),intent(out)               :: magnetization
 !=====                              
@@ -196,7 +198,7 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  character(len=100)                 :: read_line
  character(len=100)                 :: line_wocomment
  character(len=100)                 :: mixing_name
- integer                            :: ipos
+ integer                            :: ipos,jpos
  integer                            :: istat,iatom,jatom
  real(dp)                           :: charge,length_factor
 !=====
@@ -209,23 +211,27 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
 
  read(*,*) nspin,charge,magnetization
  if(nspin/=1 .AND. nspin/=2) stop'nspin in incorrect'
-! if(magnetization<-1.d-5)    stop'magnetization is negative'
+ if(magnetization<-1.d-5)    stop'magnetization is negative'
  if(magnetization>1.d-5 .AND. nspin==1) stop'magnetization is non-zero and nspin is 1'
 
-! basis_element=NINT(zatom)
- read(*,fmt='(a100)') read_line !,basis_element
+ read(*,fmt='(a100)') read_line 
  ipos=index(read_line,'#',back=.false.)
  if(ipos==0) ipos=101
  line_wocomment(:ipos-1)=read_line(:ipos-1)
  line_wocomment=ADJUSTL(line_wocomment)
- ipos=index(line_wocomment,' ',back=.false.)
- basis_name = line_wocomment(:ipos-1)
-! line_wocomment(1:)=line_wocomment(ipos+1:)
-! read(line_wocomment,*,iostat=istat) basis_element
-! if(istat==0) then
-!   msg='override the automatic basis set selection with the rescaled basis for element '//element_name(REAL(basis_element,dp))
-!   call issue_warning(msg)
-! endif
+ jpos=index(line_wocomment,' ',back=.false.)
+ basis_name = line_wocomment(:jpos-1)
+ line_wocomment(1:ipos-jpos-1)=line_wocomment(jpos+1:ipos-1)
+ write(*,*) line_wocomment(1:ipos-jpos-1)
+ write(*,*) 'BB'//TRIM(ADJUSTL(line_wocomment(1:ipos-jpos-1)))//'AA'
+ select case(TRIM(ADJUSTL(line_wocomment(1:ipos-jpos-1))))
+ case('PURE','pure')
+   gaussian_type=PURE
+ case('CART','cart')
+   gaussian_type=CARTESIAN
+ case default
+   stop'Error in input line 3: second keyword should either PURE or CART'
+ end select
 
  read(*,*) nscf,alpha_mixing,mixing_name
  if(nscf<1) stop'nscf too small'
