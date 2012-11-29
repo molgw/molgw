@@ -49,8 +49,6 @@ Example input files can be found in ./tests/
 
 To be done:
 * filter the vanishing gaussian integrals so to save memory
-* use Schwarz inequality to avoid evaluating integrals
-* pure gaussians not only cartesian
 * pseudopotentials (e.g. ECP or Goedecker flavor)
 * implement Casida equations to halve the matrix
 

@@ -223,8 +223,6 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  jpos=index(line_wocomment,' ',back=.false.)
  basis_name = line_wocomment(:jpos-1)
  line_wocomment(1:ipos-jpos-1)=line_wocomment(jpos+1:ipos-1)
- write(*,*) line_wocomment(1:ipos-jpos-1)
- write(*,*) 'BB'//TRIM(ADJUSTL(line_wocomment(1:ipos-jpos-1)))//'AA'
  select case(TRIM(ADJUSTL(line_wocomment(1:ipos-jpos-1))))
  case('PURE','pure')
    gaussian_type=PURE

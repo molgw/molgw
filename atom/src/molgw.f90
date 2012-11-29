@@ -515,7 +515,7 @@ program molgw
  WRITE_MASTER(*,*) '=================================================='
  WRITE_MASTER(*,*) 'The SCF loop ends here'
  WRITE_MASTER(*,*) '=================================================='
- WRITE_MASTER(*,*)
+ WRITE_MASTER(*,'(/,/,a25,x,f16.10,/,/)') 'SCF Total Energy [Ha]:',en%tot
 
  if(MODULO(print_volume/1000 ,2)>0) call write_density_matrix(nspin,basis%nbf,p_matrix)
  if(MODULO(print_volume/10000,2)>0) call plot_wfn(nspin,basis,c_matrix)
