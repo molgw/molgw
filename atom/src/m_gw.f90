@@ -27,6 +27,11 @@ module m_gw
  integer :: ncore_G=0
  integer :: ncore_W=0
 
+ !
+ ! frozen virtual approximation parameters
+ integer :: nvirtual_G=HUGE(dp)
+ integer :: nvirtual_W=HUGE(dp)
+
 contains
 
 !=========================================================================
@@ -55,14 +60,29 @@ subroutine init_spectral_function(nbf,prod_nbf,nspin,occupation,sf)
    WRITE_MASTER(msg,'(a,i4,2x,i4)') 'frozen core approximation switched on up to state (G,W) = ',ncore_G,ncore_W
    call issue_warning(msg)
  endif
+ !
+ ! Deal with frozen virtual initialization
+ inquire(file='manual_frozenvirtual',exist=file_exists)
+ if(file_exists) then
+   !
+   ! nvirtual_G and nvirtual_W contain the first virtual state to be discarded
+   open(13,file='manual_frozenvirtual')
+   read(13,*) nvirtual_G
+   read(13,*) nvirtual_W
+   close(13)
+   nvirtual_G = MAX(nvirtual_G,0)
+   nvirtual_W = MAX(nvirtual_W,0)
+   WRITE_MASTER(msg,'(a,i4,2x,i4)') 'frozen virtual approximation switched on up to state (G,W) = ',nvirtual_G,nvirtual_W
+   call issue_warning(msg)
+ endif
+
+
 
 
  sf%npole=0
  do ispin=1,nspin
    do ibf=1,nbf
      do jbf=1,nbf
-!INTRA    if( ibf==jbf ) cycle
-!SKIP       if( ABS(occupation(jbf,ispin)-occupation(ibf,ispin)) < completely_empty ) cycle
        if( skip_transition(nspin,ibf,jbf,occupation(ibf,ispin),occupation(jbf,ispin)) ) cycle
        sf%npole = sf%npole+1
      enddo
@@ -106,6 +126,9 @@ function skip_transition(nspin,ib1,ib2,occ1,occ2)
  !
  ! skip the core states if asked for a frozen-core calculation
  if( ib1 <= ncore_W .OR. ib2 <= ncore_W ) skip_transition=.TRUE.
+ !
+ ! skip the virtual states if asked for a frozen-virtual calculation
+ if( ib1 >= nvirtual_W .OR. ib2 >= nvirtual_W ) skip_transition=.TRUE.
 
 #if 1
  if( occ1 < completely_empty           .AND. occ2 < completely_empty )             skip_transition=.TRUE.
@@ -532,6 +555,9 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 !   enddo
 ! enddo
 ! WRITE_MASTER(*,*) '=============='
+! do t_ij=1,wpol%npole
+!   WRITE_MASTER(*,'(1(i4,2x),20(2x,f12.6))') t_ij,h_2p(t_ij,:)
+! enddo
  call start_clock(timing_diago_h2p)
  call diagonalize_general(wpol%npole,h_2p,eigenvalue,eigenvector)
  call stop_clock(timing_diago_h2p)
@@ -542,6 +568,9 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  rpa_correlation = rpa_correlation + 0.25_dp * SUM( ABS(eigenvalue(:)) )
  WRITE_MASTER(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',rpa_correlation
 
+! do t_ij=1,wpol%npole
+!   WRITE_MASTER(*,'(1(i4,2x),20(2x,f12.6))') t_ij,eigenvalue(t_ij)
+! enddo
    
  call start_clock(timing_inversion_s2p)
  call invert(wpol%npole,eigenvector,eigenvector_inv)
@@ -934,8 +963,9 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
    do iorbital=1,basis%nbf !INNER LOOP of G
 
      !
-     ! Apply the frozen core approximation to G
-     if(iorbital <= ncore_G) cycle
+     ! Apply the frozen core and frozen virtual approximation to G
+     if(iorbital <= ncore_G)    cycle
+     if(iorbital >= nvirtual_G) cycle
 
      bra(:,:)=0.0_dp
      ket(:,:)=0.0_dp

@@ -252,7 +252,7 @@ subroutine full_ci_2electrons_spin(print_volume,spinstate,basis,h_1e,c_matrix,nu
 
 
                  !
-                 ! Painful implementation of the determinant rules as shown in
+                 ! Not so painful implementation of the determinant rules as shown in
                  ! p. 70 of "Modern Quantum Chemistry" by A. Szabo and N. S. Ostlung
 
 #ifdef LOW_MEMORY2
@@ -361,7 +361,7 @@ subroutine full_ci_2electrons_spin(print_volume,spinstate,basis,h_1e,c_matrix,nu
    WRITE_MASTER(*,*) 'starting the diago'
    call diagonalize(nconf,hamiltonian,energy,eigenvector)
    WRITE_MASTER(*,*) 'diago DONE'
-
+   WRITE_MASTER(*,*) energy(1:min(6,nconf))
  endif
 
  WRITE_MASTER(*,*)
