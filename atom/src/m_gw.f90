@@ -9,7 +9,7 @@ module m_gw
  use m_warning
 
  !
- ! general form of any spectral function
+ ! General form of any spectral function
  ! z complex number
  ! i, j running on the basis set
  ! sf_ij(z) = \sum_n L_n(i) R_n(j) / ( z - w_n )
@@ -130,11 +130,12 @@ function skip_transition(nspin,ib1,ib2,occ1,occ2)
  ! skip the virtual states if asked for a frozen-virtual calculation
  if( ib1 >= nvirtual_W .OR. ib2 >= nvirtual_W ) skip_transition=.TRUE.
 
-#if 1
- if( occ1 < completely_empty           .AND. occ2 < completely_empty )             skip_transition=.TRUE.
- if( occ1 > spin_fact-completely_empty .AND. occ2 > spin_fact - completely_empty ) skip_transition=.TRUE.
+#ifndef CASIDA
+ if( occ1 < completely_empty             .AND. occ2 < completely_empty )             skip_transition=.TRUE.
+ if( occ1 > spin_fact - completely_empty .AND. occ2 > spin_fact - completely_empty ) skip_transition=.TRUE.
 #else
- if( abs(occ1-occ2) < completely_empty ) skip_transition=.TRUE.
+ ! Casida case only positive transition are retained
+ if( occ1 > spin_fact - completely_empty .OR.  occ2 < completely_empty )             skip_transition=.TRUE.
 #endif
 
 end function skip_transition
@@ -217,7 +218,7 @@ end subroutine read_spectral_function
 
 #ifdef AUXIL_BASIS
 !=========================================================================
-subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matrix,sinv_v_sinv,rpa_correlation,wpol,w_pol)
+subroutine polarizability_rpa(nspin,basis,prod_basis,occupation,energy,c_matrix,sinv_v_sinv,rpa_correlation,wpol,w_pol)
  use m_tools
  use m_basis_set
  implicit none
@@ -231,7 +232,7 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
  type(spectral_function),intent(inout) :: wpol
  complex(dp),optional :: w_pol(prod_basis%nbf_filtered,prod_basis%nbf_filtered,NOMEGA)
 !=====
- integer :: pbf,qbf,ibf,jbf,iomega,ijspin,klspin
+ integer :: pbf,qbf,ibf,jbf,ijspin,klspin
  integer :: iorbital,jorbital,korbital,lorbital
  integer :: ipole
  integer :: t_ij,t_kl
@@ -246,34 +247,14 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
  real(dp) :: exchange_left(prod_basis%nbf)
  real(dp) :: left(wpol%npole,prod_basis%nbf),right(wpol%npole,prod_basis%nbf)
 
- complex(dp) :: omega(NOMEGA)
- complex(dp) :: eta=(0.0_dp,0.0001_dp) ! (0.0_dp,0.00001_dp)          ! =(0.0_dp,0.02_dp)
- real(dp) :: u(NOMEGA),wu(NOMEGA),womega(NOMEGA)
  logical :: TDHF=.FALSE.
 !=====
  spin_fact = REAL(-nspin+3,dp)
 
- WRITE_MASTER(*,'(/,a)') ' calculating CHI alla casida'
+ WRITE_MASTER(*,'(/,a)') ' calculating CHI alla rpa'
  if(TDHF) then
    msg='calculating the TDHF polarizability'
    call issue_warning(msg)
- endif
-
- if(NOMEGA==2) then
-   omega(1)=(0.0_dp,0.001_dp)
-   omega(2)=(0.0_dp,1.0_dp)
- else if(NOMEGA<200) then
-   call coeffs_gausslegint(0.0_dp,1.0_dp,u,wu,NOMEGA)
-!   do iomega=1,NOMEGA
-!     WRITE_MASTER(*,*) iomega,u(iomega),wu(iomega)
-!   enddo
-   omega(:)  = u(:) / ( 1.0_dp - u(:) ) * im 
-   womega(:) = wu(:) / ( 1.0_dp - u(:) )**2
- else
-   do iomega=1,nomega
-     omega(iomega) = 0.0_dp + 2.0_dp/REAL(nomega-1)*(iomega-1) + eta
-     womega(iomega)= 0.0_dp
-   enddo
  endif
 
  WRITE_MASTER(*,*) 'three wf overlaps'
@@ -383,12 +364,12 @@ endif
 
  rpa_correlation=0.0_dp
 
-end subroutine polarizability_casida
+end subroutine polarizability_rpa
 #endif
 
 #ifndef AUXIL_BASIS
 !=========================================================================
-subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,rpa_correlation,wpol,w_pol)
+subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,rpa_correlation,wpol)
  use m_tools
  use m_basis_set
  use m_eri
@@ -400,9 +381,8 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  real(dp),intent(in) :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out) :: rpa_correlation
  type(spectral_function),intent(inout) :: wpol
- complex(dp),optional :: w_pol(prod_basis%nbf_filtered,prod_basis%nbf_filtered,NOMEGA)
 !=====
- integer :: pbf,qbf,ibf,jbf,kbf,lbf,ijbf,klbf,ijbf_current,iomega,ijspin,klspin
+ integer :: pbf,qbf,ibf,jbf,kbf,lbf,ijbf,klbf,ijbf_current,ijspin,klspin
  integer :: iorbital,jorbital,korbital,lorbital
  integer :: ipole
  integer :: t_ij,t_kl
@@ -414,22 +394,16 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  real(dp),allocatable :: eri_eigenstate_k(:,:,:,:)
 #endif
  real(dp) :: spin_fact 
- real(dp) :: overlap_tmp
  real(dp) :: h_2p(wpol%npole,wpol%npole)
  real(dp) :: eigenvalue(wpol%npole),eigenvector(wpol%npole,wpol%npole),eigenvector_inv(wpol%npole,wpol%npole)
  real(dp) :: matrix(wpol%npole,wpol%npole)
- real(dp) :: coulomb_left(prod_basis%nbf)
- real(dp) :: exchange_left(prod_basis%nbf)
 
- complex(dp) :: omega(NOMEGA)
- complex(dp) :: eta=(0.0_dp,0.0001_dp) ! (0.0_dp,0.00001_dp)          ! =(0.0_dp,0.02_dp)
- real(dp) :: u(NOMEGA),wu(NOMEGA),womega(NOMEGA)
  logical :: TDHF=.FALSE.
 !=====
  spin_fact = REAL(-nspin+3,dp)
  rpa_correlation = 0.0_dp
 
- WRITE_MASTER(*,'(/,a)') ' calculating CHI alla casida'
+ WRITE_MASTER(*,'(/,a)') ' calculating CHI alla rpa'
  if(TDHF) then
    msg='calculating the TDHF polarizability'
    call issue_warning(msg)
@@ -440,23 +414,6 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 #else
  allocate(eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin))
 #endif
-
- if(NOMEGA==2) then
-   omega(1)=(0.0_dp,0.001_dp)
-   omega(2)=(0.0_dp,1.0_dp)
- else if(NOMEGA<200) then
-   call coeffs_gausslegint(0.0_dp,1.0_dp,u,wu,NOMEGA)
-!   do iomega=1,NOMEGA
-!     WRITE_MASTER(*,*) iomega,u(iomega),wu(iomega)
-!   enddo
-   omega(:)  = u(:) / ( 1.0_dp - u(:) ) * im 
-   womega(:) = wu(:) / ( 1.0_dp - u(:) )**2
- else
-   do iomega=1,nomega
-     omega(iomega) = 0.0_dp + 2.0_dp/REAL(nomega-1)*(iomega-1) + eta
-     womega(iomega)= 0.0_dp
-   enddo
- endif
 
 
  t_ij=0
@@ -634,13 +591,201 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  deallocate(eri_eigenstate_k)
 #endif
 
+end subroutine polarizability_rpa_noaux
+
+!=========================================================================
+subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,rpa_correlation,wpol)
+ use m_tools
+ use m_basis_set
+ use m_eri
+ implicit none
+
+ integer,intent(in)  :: nspin
+ type(basis_set)     :: basis,prod_basis
+ real(dp),intent(in) :: occupation(basis%nbf,nspin)
+ real(dp),intent(in) :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(out) :: rpa_correlation
+ type(spectral_function),intent(inout) :: wpol
+!=====
+ integer :: pbf,qbf,ibf,jbf,kbf,lbf,ijbf,klbf,ijbf_current,ijspin,klspin
+ integer :: iorbital,jorbital,korbital,lorbital
+ integer :: ipole
+ integer :: t_ij,t_kl
+
+ real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
+ real(dp),allocatable :: eri_eigenstate_k(:,:,:,:)
+
+ real(dp) :: spin_fact 
+ real(dp) :: apb(wpol%npole,wpol%npole)
+ real(dp) :: amb_diag(wpol%npole)
+ real(dp) :: eigenvalue(wpol%npole),eigenvector(wpol%npole,wpol%npole),eigenvector_inv(wpol%npole,wpol%npole)
+ real(dp) :: matrix(wpol%npole,wpol%npole)
+
+ logical :: TDHF=.FALSE.
+!=====
+ spin_fact = REAL(-nspin+3,dp)
+ rpa_correlation = 0.0_dp
+
+#ifndef LOW_MEMORY2
+ stop 'NOT implemented'
+#endif
+
+ !
+ ! The implementation closely follows the notation of F. Furche in JCP 132, 234114 (2010).
+ !
+ WRITE_MASTER(*,'(/,a)') ' calculating CHI a la Casida'
+ if(TDHF) then
+   msg='calculating the TDHF polarizability'
+   call issue_warning(msg)
+ endif
+
+ allocate(eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin))
+
+ apb(:,:) = 0.0_dp
+
+ t_ij=0
+ do ijspin=1,nspin
+   do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
+
+     !
+     ! TODO: Add check if it is OK like this 
+     if( occupation(iorbital,ijspin) < completely_empty ) cycle
+     call transform_eri_basis_lowmem(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
+
+
+     do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
+
+       if( skip_transition(nspin,iorbital,jorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
+       t_ij=t_ij+1
+
+       amb_diag(t_ij) = energy(jorbital,ijspin) - energy(iorbital,ijspin)
+       apb(t_ij,t_ij) = amb_diag(t_ij)
+
+       t_kl=0
+       do klspin=1,nspin
+         do korbital=1,basis%nbf 
+
+           do lorbital=1,basis%nbf 
+             if( skip_transition(nspin,korbital,lorbital,occupation(lorbital,klspin),occupation(korbital,klspin)) ) cycle
+             t_kl=t_kl+1
+
+             apb(t_ij,t_kl) = apb(t_ij,t_kl) + 2.0_dp * eri_eigenstate_i(jorbital,korbital,lorbital,klspin) &
+                                                      * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
+
+
+!TODO check TDHF implementation
+!           if(TDHF) then
+!             if(ijspin==klspin) then
+!               h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigenstate_i(korbital,jorbital,lorbital,klspin)  &
+!                        * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) / spin_fact 
+!             endif
+!           endif
+
+           enddo
+         enddo
+       enddo ! klspin
+
+
+
+       rpa_correlation = rpa_correlation - 0.25_dp * ( amb_diag(t_ij) + apb(t_ij,t_ij) )
+
+     enddo !jorbital
+   enddo !iorbital
+ enddo ! ijspin
+
+ do t_kl=1,wpol%npole
+   do t_ij=1,wpol%npole
+     matrix(t_ij,t_kl) = SQRT( amb_diag(t_ij) ) * apb(t_ij,t_kl) * SQRT( amb_diag(t_kl) )
+   enddo
+ enddo
+
+ WRITE_MASTER(*,*) 'diago Casida matrix'
+ WRITE_MASTER(*,*) 'matrix',wpol%npole,'x',wpol%npole
+! WRITE_MASTER(*,*) '=============='
+! t_ij=0
+! do ijspin=1,nspin
+!   do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
+!     do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
+!!INTRA       if(iorbital==jorbital) cycle  ! intra state transitions are not allowed!
+!!SKIP       if( abs(occupation(jorbital,ijspin)-occupation(iorbital,ijspin))<completely_empty ) cycle
+!       if( skip_transition(nspin,iorbital,jorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
+!
+!       t_ij=t_ij+1
+!       WRITE_MASTER(*,'(3(i4,2x),20(2x,f12.6))') ijspin,iorbital,jorbital,h_2p(t_ij,:)
+!     enddo
+!   enddo
+! enddo
+! WRITE_MASTER(*,*) '=============='
+! do t_ij=1,wpol%npole
+!   WRITE_MASTER(*,'(1(i4,2x),20(2x,f12.6))') t_ij,h_2p(t_ij,:)
+! enddo
+
+ !
+ ! Symmetric in-place diagonalization
+ call start_clock(timing_diago_h2p)
+! call diagonalize_general(wpol%npole,matrix,eigenvalue,eigenvector)
+ call diagonalize(wpol%npole,matrix,eigenvalue)
+ call stop_clock(timing_diago_h2p)
+ WRITE_MASTER(*,*) 'diago finished'
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) 'calculate the RPA energy using the Tamm-Dancoff decomposition'
+ WRITE_MASTER(*,*) 'formula (9) from J. Chem. Phys. 132, 234114 (2010)'
+ rpa_correlation = rpa_correlation + 0.50_dp * SUM( SQRT(eigenvalue(:)) )
+ WRITE_MASTER(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',rpa_correlation
+
+
+ deallocate(eri_eigenstate_i)
+!§  stop'ENOUGH'
+!§  allocate(eri_eigenstate_k(basis%nbf,basis%nbf,basis%nbf,nspin))
+!§ 
+!§  wpol%pole(:)           = SQRT(eigenvalue(:))
+!§  wpol%residu_left (:,:) = 0.0_dp
+!§  wpol%residu_right(:,:) = 0.0_dp
+!§  t_kl=0
+!§  do klspin=1,nspin
+!§    do kbf=1,basis%nbf 
+!§ 
+!§      call transform_eri_basis_lowmem(nspin,c_matrix,kbf,klspin,eri_eigenstate_k)
+!§ 
+!§      do lbf=1,basis%nbf
+!§        if( skip_transition(nspin,kbf,lbf,occupation(lbf,klspin),occupation(kbf,klspin)) ) cycle
+!§        t_kl=t_kl+1
+!§ 
+!§ 
+!§        do ijspin=1,nspin
+!§ !$OMP PARALLEL DEFAULT(SHARED)
+!§ !$OMP DO PRIVATE(ibf,jbf,ijbf_current)
+!§          do ijbf=1,prod_basis%nbf
+!§            ibf = prod_basis%index_ij(1,ijbf)
+!§            jbf = prod_basis%index_ij(2,ijbf)
+!§ 
+!§            ijbf_current = ijbf+prod_basis%nbf*(ijspin-1)
+!§ 
+!§ 
+!§            wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
+!§                         + eri_eigenstate_k(lbf,ibf,jbf,ijspin) *  eigenvector(t_kl,:)
+!§            wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
+!§                         + eri_eigenstate_k(lbf,ibf,jbf,ijspin) * eigenvector_inv(:,t_kl) &
+!§                                          * ( occupation(kbf,klspin)-occupation(lbf,klspin) )
+!§ 
+!§ 
+!§          enddo
+!§ !$OMP END DO
+!§ !$OMP END PARALLEL
+!§        enddo
+!§      enddo
+!§    enddo
+!§  enddo
+!§ 
+!§  deallocate(eri_eigenstate_k)
+
 end subroutine polarizability_casida_noaux
 #endif
 
 
 #ifdef AUXIL_BASIS
 !=========================================================================
-subroutine gw_selfenergy_casida(method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy)
+subroutine gw_selfenergy(method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy)
  use m_basis_set
  implicit none
 
@@ -879,12 +1024,12 @@ subroutine gw_selfenergy_casida(method,nspin,basis,prod_basis,occupation,energy,
  deallocate(omegai)
  deallocate(selfenergy_tmp)
 
-end subroutine gw_selfenergy_casida
+end subroutine gw_selfenergy
 #endif
 
 #ifndef AUXIL_BASIS
 !=========================================================================
-subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy)
+subroutine gw_selfenergy_noaux(method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy)
  use m_basis_set
  implicit none
 
@@ -1105,7 +1250,7 @@ subroutine gw_selfenergy_casida_noaux(method,nspin,basis,prod_basis,occupation,e
  deallocate(selfenergy_tmp)
 
 
-end subroutine gw_selfenergy_casida_noaux
+end subroutine gw_selfenergy_noaux
 #endif
 
 

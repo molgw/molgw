@@ -377,9 +377,9 @@ program molgw
      call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
      call start_clock(timing_pola)
 #ifdef AUXIL_BASIS
-     call polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matrix,sinv_v_sinv,en%rpa,wpol)
+     call polarizability_rpa(nspin,basis,prod_basis,occupation,energy,c_matrix,sinv_v_sinv,en%rpa,wpol)
 #else
-     call polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
+     call polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #endif
      call stop_clock(timing_pola)
      en%tot = en%tot + en%rpa
@@ -388,9 +388,9 @@ program molgw
      call start_clock(timing_self)
      exchange_m_vxc_diag(:,:)=0.0_dp
 #ifdef AUXIL_BASIS
-     call gw_selfenergy_casida(calc_type%method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
+     call gw_selfenergy(calc_type%method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
 #else
-     call gw_selfenergy_casida_noaux(calc_type%method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
+     call gw_selfenergy_noaux(calc_type%method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
 #endif
      call stop_clock(timing_self)
 
@@ -790,9 +790,13 @@ program molgw
    call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
    call start_clock(timing_pola)
 #ifdef AUXIL_BASIS
-   call polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matrix,sinv_v_sinv,en%rpa,wpol)
+   call polarizability_rpa(nspin,basis,prod_basis,occupation,energy,c_matrix,sinv_v_sinv,en%rpa,wpol)
 #else
+#ifdef CASIDA
    call polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
+#else
+   call polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
+#endif
 #endif
    call stop_clock(timing_pola)
    en%tot = en%tot + en%rpa
@@ -806,10 +810,12 @@ program molgw
 !   call issue_warning(msg)
 
    call start_clock(timing_self)
+#ifndef CASIDA
 #ifdef AUXIL_BASIS
-   call gw_selfenergy_casida(calc_type%method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
+   call gw_selfenergy(calc_type%method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
 #else
-   call gw_selfenergy_casida_noaux(calc_type%method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
+   call gw_selfenergy_noaux(calc_type%method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
+#endif
 #endif
    call stop_clock(timing_self)
 
