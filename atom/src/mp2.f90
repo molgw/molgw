@@ -308,7 +308,7 @@ subroutine full_ci_2electrons_spin(print_volume,spinstate,basis,h_1e,c_matrix,nu
  allocate(hamiltonian(nconf,nconf))
  hamiltonian(:,:) = eigenvector(:,:)
 
- if(nconf>1000) then ! iterative partial diago or full diago
+ if(nconf>2000) then ! iterative partial diago or full diago
    ! home made steepest descent algo
    WRITE_MASTER(*,*)
    WRITE_MASTER(*,*) 'hamiltonian too big to be diagonalized'

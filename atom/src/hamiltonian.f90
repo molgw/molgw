@@ -457,7 +457,6 @@ subroutine test_density_matrix(nbf,nspin,p_matrix,s_matrix)
 
 end subroutine test_density_matrix
 
-
 !=========================================================================
 subroutine read_density_matrix(nbf,nspin,p_matrix)
  use m_definitions
@@ -717,5 +716,37 @@ subroutine setup_initial_c_matrix(print_volume,nbf,nspin,hamiltonian_nucleus,s_m
  call dump_out_matrix(print_volume,title,nbf,1,matrix)
 
 
-
 end subroutine setup_initial_c_matrix
+
+!=========================================================================
+subroutine matrix_basis_to_eigen(nspin,nbf,c_matrix,matrix_inout)
+ use m_definitions
+ implicit none
+ integer,intent(in)      :: nspin,nbf
+ real(dp),intent(in)     :: c_matrix(nbf,nbf,nspin)
+ real(dp),intent(inout)  :: matrix_inout(nbf,nbf,nspin)
+!====
+ integer                 :: ispin,ibf,jbf,istate,jstate
+ real(dp)                :: matrix_tmp(nbf,nbf,nspin)
+!====
+
+ matrix_tmp(:,:,:) = 0.0_dp
+ do ispin=1,nspin
+   do jstate=1,nbf
+     do istate=1,nbf
+       do jbf=1,nbf
+         do ibf=1,nbf
+           matrix_tmp(istate,jstate,ispin) = matrix_tmp(istate,jstate,ispin) &
+                   + c_matrix(ibf,istate,ispin) * matrix_inout(ibf,jbf,ispin)   &
+                    * c_matrix(jbf,jstate,ispin)
+         enddo
+       enddo
+     enddo
+   enddo
+ enddo
+
+ matrix_inout(:,:,:) = matrix_tmp(:,:,:)
+
+
+end subroutine matrix_basis_to_eigen
+!=========================================================================

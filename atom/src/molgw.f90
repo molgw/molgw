@@ -37,10 +37,11 @@ program molgw
  type(basis_set)         :: prod_basis
  type(spectral_function) :: wpol
  integer                 :: ibf,jbf,kbf,lbf,ijbf,klbf
- integer                 :: ispin,iscf,istate,jstate,iatom,ncore
+ integer                 :: ispin,iscf,istate,jstate,astate,iatom,ncore
  logical                 :: scf_loop_convergence
  logical                 :: file_exists
  character(len=100)      :: title
+ real(dp)                :: spin_fact
  real(dp)                :: energy_tmp,overlap_tmp
  real(dp)                :: dipole(3)
  real(dp),allocatable    :: ehomo(:),elumo(:)
@@ -67,15 +68,16 @@ program molgw
  real(dp),allocatable    :: eigval(:),eigvec(:,:),matrix_tmp(:,:) 
 !=====
  type energy_contributions
-   real(dp) :: nuc_nuc=0.0_dp
-   real(dp) :: kin    =0.0_dp
-   real(dp) :: nuc    =0.0_dp
-   real(dp) :: hart   =0.0_dp
-   real(dp) :: exx    =0.0_dp
-   real(dp) :: xc     =0.0_dp
-   real(dp) :: mp2    =0.0_dp
-   real(dp) :: rpa    =0.0_dp
-   real(dp) :: tot    =0.0_dp
+   real(dp) :: nuc_nuc= 0.0_dp
+   real(dp) :: kin    = 0.0_dp
+   real(dp) :: nuc    = 0.0_dp
+   real(dp) :: hart   = 0.0_dp
+   real(dp) :: exx    = 0.0_dp
+   real(dp) :: xc     = 0.0_dp
+   real(dp) :: se     = 0.0_dp      ! single-excitation contribution
+   real(dp) :: mp2    = 0.0_dp
+   real(dp) :: rpa    = 0.0_dp
+   real(dp) :: tot    = 0.0_dp
  end type
 !=====
  type(energy_contributions) :: en
@@ -651,6 +653,44 @@ program molgw
    call full_ci_2electrons_spin(print_volume,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
  endif
   
+
+ !
+ ! Single excitation term
+ if( .TRUE.) then
+
+   !
+   ! Obtain the Fock matrix
+   call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
+   matrix(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + matrix(:,:,:)
+
+   !
+   ! Rotate the Fock matrix to the eigenstate basis
+   call matrix_basis_to_eigen(nspin,basis%nbf,c_matrix,matrix)
+
+   title='=== Fock matrix ==='
+   call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
+
+   spin_fact = REAL(-nspin+3,dp)
+   en%se = 0.0_dp
+   do ispin=1,nspin
+     ! loop on occupied states
+     do istate=1,basis%nbf
+       if( occupation(istate,ispin) < completely_empty ) cycle
+       ! loop on virtual states
+       do astate=1,basis%nbf
+         if( occupation(astate,ispin) > spin_fact - completely_empty ) cycle
+         en%se = en%se + matrix(istate,astate,ispin)**2 / ( energy(istate,ispin) - energy(astate,ispin) ) * spin_fact
+       enddo
+     enddo
+   enddo
+
+   WRITE_MASTER(*,'(a,2x,f16.10)') ' Etotal EXX       [Ha]:',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx 
+   WRITE_MASTER(*,'(a,2x,f16.10)') ' Single-Excitation[Ha]:',en%se
+
+ endif
+
+
+
  !
  ! in case of DFT + GW
  if( calc_type%need_final_exchange ) then
@@ -833,8 +873,8 @@ program molgw
 !   call mp2_energy(nspin,basis,occupation,c_matrix,energy,en%mp2)
 !   call stop_clock(timing_mp2_energy)
 
-   call setup_hartree(print_volume,basis%nbf,nspin,p_matrix,matrix,en%hart)
-   WRITE_MASTER(*,*) 'Hartree [Ha]:',en%hart
+!   call setup_hartree(print_volume,basis%nbf,nspin,p_matrix,matrix,en%hart)
+!   WRITE_MASTER(*,*) 'Hartree [Ha]:',en%hart
    call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
    WRITE_MASTER(*,*) 'EXX     [Ha]:',en%exx
 
@@ -844,8 +884,7 @@ program molgw
    WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Energy       [Ha]:',en%mp2
    WRITE_MASTER(*,*) 
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%mp2
-!   en%tot = en%tot + en%mp2
-!   if( ndft_xc /= 0 ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
+
    WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Total Energy [Ha]:',en%tot
 
    title='=== Self-energy === (in the orbital basis)'

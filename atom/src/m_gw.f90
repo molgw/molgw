@@ -32,6 +32,11 @@ module m_gw
  integer :: nvirtual_G=HUGE(dp)
  integer :: nvirtual_W=HUGE(dp)
 
+#ifdef CRPA
+ integer,parameter :: band1=1
+ integer,parameter :: band2=2
+#endif
+
 contains
 
 !=========================================================================
@@ -136,6 +141,13 @@ function skip_transition(nspin,ib1,ib2,occ1,occ2)
 #else
  ! Casida case only positive transition are retained
  if( occ1 > spin_fact - completely_empty .OR.  occ2 < completely_empty )             skip_transition=.TRUE.
+#endif
+
+#ifdef CRPA
+ if( ib1==band1 .AND. ib2==band1 )  skip_transition=.TRUE.
+ if( ib1==band1 .AND. ib2==band2 )  skip_transition=.TRUE.
+ if( ib1==band2 .AND. ib2==band1 )  skip_transition=.TRUE.
+ if( ib1==band2 .AND. ib2==band2 )  skip_transition=.TRUE.
 #endif
 
 end function skip_transition
@@ -397,6 +409,7 @@ subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_m
  real(dp) :: h_2p(wpol%npole,wpol%npole)
  real(dp) :: eigenvalue(wpol%npole),eigenvector(wpol%npole,wpol%npole),eigenvector_inv(wpol%npole,wpol%npole)
  real(dp) :: matrix(wpol%npole,wpol%npole)
+ real(dp) :: rtmp
 
  logical :: TDHF=.FALSE.
 !=====
@@ -422,11 +435,20 @@ subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_m
 
 #ifdef LOW_MEMORY2
        call transform_eri_basis_lowmem(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
+#ifdef CRPA
+       if( iorbital==band1 .OR. iorbital==band2) then
+         do jorbital=band1,band2
+           do korbital=band1,band2
+             do lorbital=band1,band2
+               write(1000,'(4(i6,x),2x,f16.8)') iorbital,jorbital,korbital,lorbital,eri_eigenstate_i(jorbital,korbital,lorbital,1)
+             enddo
+           enddo
+         enddo
+       endif
+#endif
 #endif
 
      do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
-!INTRA       if(iorbital==jorbital) cycle  ! intra state transitions are not allowed!
-!SKIP       if( abs(occupation(jorbital,ijspin)-occupation(iorbital,ijspin))<completely_empty ) cycle
        if( skip_transition(nspin,iorbital,jorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
        t_ij=t_ij+1
 
@@ -437,8 +459,6 @@ subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_m
          do korbital=1,basis%nbf 
 
            do lorbital=1,basis%nbf 
-!INTRA             if(korbital==lorbital) cycle  ! intra state transitions are not allowed!
-!SKIP             if( abs(occupation(lorbital,klspin)-occupation(korbital,klspin))<completely_empty ) cycle
              if( skip_transition(nspin,korbital,lorbital,occupation(lorbital,klspin),occupation(korbital,klspin)) ) cycle
              t_kl=t_kl+1
 
@@ -586,6 +606,29 @@ subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_m
      enddo
    enddo
  enddo
+
+
+#ifdef CRPA
+ do ijbf=1,prod_basis%nbf
+   iorbital = prod_basis%index_ij(1,ijbf)
+   jorbital = prod_basis%index_ij(2,ijbf)
+   if(iorbital /=band1 .AND. iorbital /=band2) cycle
+   if(jorbital /=band1 .AND. jorbital /=band2) cycle
+   do klbf=1,prod_basis%nbf
+     korbital = prod_basis%index_ij(1,klbf)
+     lorbital = prod_basis%index_ij(2,klbf)
+     if(korbital /=band1 .AND. korbital /=band2) cycle
+     if(lorbital /=band1 .AND. lorbital /=band2) cycle
+     rtmp=0.0_dp
+     do ipole=1,wpol%npole
+       rtmp = rtmp + wpol%residu_left(ipole,ijbf) * wpol%residu_right(ipole,klbf) / ( -wpol%pole(ipole) )
+     enddo
+     write(1001,'(4(i6,x),2x,f16.8)') iorbital,jorbital,korbital,lorbital,rtmp
+   enddo
+ enddo
+#endif
+ 
+
 
 #ifdef LOW_MEMORY2
  deallocate(eri_eigenstate_k)

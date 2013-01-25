@@ -32,7 +32,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
  real(dp),parameter :: shift=1.d-6 ! bohr  some shift used
                                    ! to evaluate numerically the divergence of the gradient
  integer,parameter :: nx=40       ! 80
- integer,parameter :: nangular=38 ! 86
+ integer,parameter :: nangular=50 ! 86
 
  integer  :: idft_xc
  logical  :: require_gradient,require_laplacian
@@ -554,7 +554,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO COLLAPSE(2)
            do jbf=1,basis%nbf
-             do ibf=1,basis%nbf
+             do ibf=1,basis%nbf 
                vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight * fact_becke &
                    * ( dedd_r(ispin) - div(ispin) ) * basis_function_r(ibf) * basis_function_r(jbf)  &
                    * dft_xc_coef(idft_xc)
