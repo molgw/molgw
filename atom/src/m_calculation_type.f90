@@ -248,7 +248,7 @@ subroutine init_dft_type(key,calc_type)
  case('TD-CAM-B3LYP')
    calc_type%is_screened_hybrid  = .TRUE.
    calc_type%need_exchange       = .TRUE.
-   dft_xc_type(1)  = XC_HYB_GGA_XC_TD_CAM_B3LYP
+   dft_xc_type(1)  = XC_HYB_GGA_XC_TUNED_CAM_B3LYP
    alpha_hybrid    =  0.0799_dp 
    alpha_hybrid_lr =  0.9201_dp
    rcut            =  1.0_dp / 0.150_dp  

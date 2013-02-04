@@ -13,6 +13,7 @@ program molgw
  use m_basis_set
  use m_eri
  use m_gw
+ use m_dft
 #ifdef OPENMP
  use omp_lib
 #endif
@@ -301,12 +302,11 @@ program molgw
  ! Nucleus-electron interaction
  call setup_nucleus(print_volume,basis,hamiltonian_nucleus)
 
-! call setup_initial_c_matrix(print_volume,basis%nbf,nspin,hamiltonian_nucleus,s_matrix,occupation,c_matrix)
-!
-! call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
-! title='=== 1st density matrix P ==='
-! call dump_out_matrix(print_volume,title,basis%nbf,nspin,p_matrix)
-
+ !
+ ! Setup the grids for the quadrature of DFT potential/energy
+ if( ndft_xc /= 0 ) then
+   call setup_dft_grid(40,50)      !   call setup_dft_grid(10,26)
+ endif
 
  !
  ! start the big scf loop
@@ -903,7 +903,10 @@ program molgw
  deallocate(self_energy_old)
  call deallocate_eri()
  call deallocate_eri_lr()
- if( ndft_xc /= 0 ) deallocate( vxc_matrix )
+ if( ndft_xc /= 0 ) then
+   deallocate( vxc_matrix )
+   call destroy_dft_grid()
+ endif
 
  call destroy_basis_set(basis)
  if(calc_type%is_gw) call destroy_basis_set(prod_basis)

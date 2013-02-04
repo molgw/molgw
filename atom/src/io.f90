@@ -325,41 +325,71 @@ end subroutine read_inputparameter_molecule
 subroutine plot_wfn(nspin,basis,c_matrix)
  use m_definitions
  use m_mpi
+ use m_atoms
  use m_basis_set,only: basis_set,eval_basis_function
  implicit none
  integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
 !=====
- integer,parameter          :: nr=10000
- real(dp),parameter         :: length=15.0_dp
+ integer,parameter          :: nr=20000
+ real(dp),parameter         :: length=10.0_dp
  integer                    :: ir,ibf
- real(dp)                   :: x(3),phi1,phi2,phase1,phase2
+ integer                    :: istate1,istate2,istate,ispin
+ real(dp)                   :: r(3)
+ real(dp),allocatable       :: phi(:,:),phase(:,:)
+ real(dp)                   :: u(3)
+ logical                    :: file_exists
+ real(dp)                   :: xmin,xmax
 !=====
 
- phase1=1.0_dp
- phase2=1.0_dp
- x(:)=0.0_dp
+ WRITE_MASTER(*,*) 
+ WRITE_MASTER(*,*) 'Plotting some wavefunctions'
+ inquire(file='manual_plotwfn',exist=file_exists)
+ if(file_exists) then
+   open(100,file='manual_plotwfn',status='old')
+   read(100,*) istate1,istate2
+   read(100,*) u(:)
+   close(100)
+ else
+   istate1=1
+   istate2=2
+   u(:)=0.0_dp
+   u(1)=1.0_dp
+ endif
+ u(:) = u(:) / SQRT(SUM(u(:)**2))
+ allocate(phase(istate1:istate2,nspin),phi(istate1:istate2,nspin))
+ WRITE_MASTER(*,*) 'states:',istate1,istate2
+ WRITE_MASTER(*,*) 'direction',u(:)
+
+ xmin = MINVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) - length
+ xmax = MAXVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) + length
+
+ phase(:,:)=1.0_dp
 
  do ir=1,nr
-   x(1)= length * 2.0_dp * ( (ir-1.0_dp) / REAL(nr-1,dp) - 0.5_dp )
-   phi1=0.0_dp
-   phi2=0.0_dp
+   r(:) = ( xmin + (ir-1)*(xmax-xmin)/REAL(nr-1,dp) ) * u(:)
 
-   do ibf=1,basis%nbf
-     phi1=phi1+eval_basis_function(basis%bf(ibf),x)*c_matrix(ibf,1,2)
-     phi2=phi2+eval_basis_function(basis%bf(ibf),x)*c_matrix(ibf,2,2)
+   phi(:,:) = 0.0_dp
+   do istate=istate1,istate2
+     do ibf=1,basis%nbf
+       phi(istate,:) = phi(istate,:) + eval_basis_function(basis%bf(ibf),r) * c_matrix(ibf,istate,:)
+     enddo
    enddo
 
    !
    ! turn the wfns so that they are all positive at a given point
    if(ir==1) then
-     if(phi1<0.0_dp) phase1=-1.0_dp
-     if(phi2<0.0_dp) phase2=-1.0_dp
+     do ispin=1,nspin
+       do istate=istate1,istate2
+         if( phi(istate,ispin) < 0.0_dp ) phase(istate,ispin) = -1.0_dp
+       enddo
+     enddo
    endif
 
-   WRITE_MASTER(101,*) x(1),phi1*phase1,phi2*phase2
-   WRITE_MASTER(102,*) x(1),phi1**2,phi2**2
+   WRITE_MASTER(101,'(50(e16.8,2x))') DOT_PRODUCT(r(:),u(:)),phi(:,:)*phase(:,:)
+   WRITE_MASTER(102,'(50(e16.8,2x))') DOT_PRODUCT(r(:),u(:)),phi(:,:)**2
+
  enddo
 
 end subroutine plot_wfn

@@ -1,12 +1,151 @@
 !=========================================================================
 #include "macros.h"
 !=========================================================================
-subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehomo,vxc_ij,exc_xc)
+module m_dft
  use m_definitions
  use m_mpi
- use m_tools,only: coeffs_gausslegint
- use m_timing
+ 
+ real(dp),parameter :: shift=1.e-6_dp ! bohr  some shift used
+                                      ! to evaluate numerically the divergence of the gradient
+
+ ! Grid definition
+ integer              :: ngrid
+ real(dp),allocatable :: rr_grid(:,:)
+ real(dp),allocatable :: w_grid(:)
+
+
+contains
+
+!=========================================================================
+subroutine setup_dft_grid(nx,nangular)
  use m_atoms
+ use m_tools,only: coeffs_gausslegint
+ implicit none
+
+ integer,intent(in)   :: nx,nangular
+!=====
+ integer              :: ix,iatom,iangular,ir
+ integer              :: n1
+ real(dp)             :: weight
+ real(dp),allocatable :: x1(:)
+ real(dp),allocatable :: y1(:)
+ real(dp),allocatable :: z1(:)
+ real(dp),allocatable :: w1(:)
+ real(dp),allocatable :: xa(:),wxa(:)
+ real(dp)             :: p_becke(natom),s_becke(natom,natom),fact_becke 
+ real(dp)             :: mu
+ integer              :: jatom,katom
+!=====
+
+ ngrid = natom * nx * nangular
+
+ WRITE_MASTER(*,'(/,a)')       ' Setup the DFT quadrature'
+ WRITE_MASTER(*,'(a,i4,x,i4)') ' discretization grid per atom [radial points , angular points] ',nx,nangular
+ WRITE_MASTER(*,'(a,i8)')      ' total number of real-space points',ngrid
+
+ allocate(xa(nx),wxa(nx))
+ allocate(x1(nangular),y1(nangular),z1(nangular),w1(nangular))
+
+ !
+ ! spherical integration
+ ! radial part with Gauss-Legendre
+ call coeffs_gausslegint(-1.0_dp,1.0_dp,xa,wxa,nx)
+ !
+ ! Transformation from [-1;1] to [0;+\infty[
+ ! taken from M. Krack JCP 1998
+ wxa(:) = wxa(:) * ( 1.0_dp / log(2.0_dp) / ( 1.0_dp - xa(:) ) )
+ xa(:)  = log( 2.0_dp / (1.0_dp - xa(:) ) ) / log(2.0_dp)
+
+ n1 = nangular
+ ! angular part with Lebedev - Laikov
+ ! (x1,y1,z1) on the unit sphere
+ select case(nangular)
+ case(6)
+   call ld0006(x1,y1,z1,w1,n1)
+ case(14)
+   call ld0014(x1,y1,z1,w1,n1)
+ case(26)
+   call ld0026(x1,y1,z1,w1,n1)
+ case(38)
+   call ld0038(x1,y1,z1,w1,n1)
+ case(50)
+   call ld0050(x1,y1,z1,w1,n1)
+ case(74)
+   call ld0074(x1,y1,z1,w1,n1)
+ case(86)
+   call ld0086(x1,y1,z1,w1,n1)
+ case default
+   WRITE_MASTER(*,*) 'grid points: ',nangular
+   stop'Lebedev grid is not available'
+ end select
+ 
+ allocate(rr_grid(3,ngrid),w_grid(ngrid))
+
+ ir = 0
+ do iatom=1,natom
+   do ix=1,nx
+     do iangular=1,nangular
+       ir = ir + 1
+
+       rr_grid(1,ir) = xa(ix) * x1(iangular) + x(1,iatom)
+       rr_grid(2,ir) = xa(ix) * y1(iangular) + x(2,iatom)
+       rr_grid(3,ir) = xa(ix) * z1(iangular) + x(3,iatom)
+
+       weight   = wxa(ix) * w1(iangular) * xa(ix)**2 * 4.0_dp * pi
+
+       !
+       ! Partitionning scheme of Axel Becke, J. Chem. Phys. 88, 2547 (1988).
+       !
+       s_becke(:,:) = 0.0_dp
+       do katom=1,natom
+         do jatom=1,natom
+           if(katom==jatom) cycle
+           mu = ( SQRT( SUM( (rr_grid(:,ir)-x(:,katom) )**2 ) ) - SQRT( SUM( (rr_grid(:,ir)-x(:,jatom) )**2 ) ) ) &
+                     / SQRT( SUM( (x(:,katom)-x(:,jatom))**2 ) )
+           s_becke(katom,jatom) = 0.5_dp * ( 1.0_dp - smooth_step(smooth_step(smooth_step(mu))) )
+         enddo
+       enddo
+       p_becke(:) = 1.0_dp
+       do katom=1,natom
+         do jatom=1,natom
+           if(katom==jatom) cycle
+           p_becke(katom) = p_becke(katom) * s_becke(katom,jatom)
+         enddo
+       enddo
+       fact_becke = p_becke(iatom) / SUM( p_becke(:) )
+
+       w_grid(ir) = weight * fact_becke
+
+     enddo
+   enddo
+ enddo
+
+
+end subroutine setup_dft_grid
+
+!=========================================================================
+subroutine destroy_dft_grid()
+ implicit none
+
+ deallocate(rr_grid)
+ deallocate(w_grid)
+
+end subroutine destroy_dft_grid
+
+!=========================================================================
+function smooth_step(mu)
+ real(dp) :: smooth_step
+ real(dp),intent(in) :: mu
+!=====
+
+ smooth_step = 0.5_dp * mu * ( 3.0_dp - mu**2 )
+
+end function smooth_step
+
+
+!=========================================================================
+subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehomo,vxc_ij,exc_xc)
+ use m_timing
  use m_basis_set
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
@@ -29,24 +168,14 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
  real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: exc_xc
 !=====
- real(dp),parameter :: shift=1.d-6 ! bohr  some shift used
-                                   ! to evaluate numerically the divergence of the gradient
- integer,parameter :: nx=40       ! 80
- integer,parameter :: nangular=50 ! 86
 
  integer  :: idft_xc
  logical  :: require_gradient,require_laplacian
- real(dp) :: weight
- real(dp) :: x1(nangular)
- real(dp) :: y1(nangular)
- real(dp) :: z1(nangular)
- real(dp) :: w1(nangular)
- integer  :: n1,iangular
- integer  :: ix,iy,iz,ibf,jbf,ibf_cart,ispin,iatom,jatom,katom
+ integer  :: ir,ix,iy,iz,ibf,jbf,ibf_cart,ispin,iatom,jatom,katom
  integer  :: li,ni_cart,ni,i_cart
  real(dp) :: rr(3),rr_shift(3)
- real(dp) :: xa(nx),wxa(nx)
  real(dp) :: normalization(nspin)
+ real(dp) :: weight
 
 #ifdef HAVE_LIBXC
  type(xc_f90_pointer_t) :: xc_func(ndft_xc),xc_functest
@@ -100,7 +229,6 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
  real(dp) :: dedgd_r_shifty(3,nspin)
  real(dp) :: dedgd_r_shiftz(3,nspin)
  real(dp) :: div(nspin)
- real(dp) :: mu,s_becke(natom,natom),p_becke(natom),fact_becke
  real(dp) :: omega,rs(1)
  character(len=256) :: string
 !=====
@@ -131,8 +259,6 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
 #endif
 
  WRITE_MASTER(*,*) 'Evaluate DFT integrals'
- WRITE_MASTER(*,'(a,i4,x,i4)') '   discretization grid per atom [radial points , angular points] ',nx,nangular
- WRITE_MASTER(*,'(a,i8)')      '   total number of real-space points',nx*nangular*natom
  
  require_gradient =.FALSE.
  require_laplacian=.FALSE.
@@ -177,400 +303,337 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
  enddo
 
 
- !
- ! spherical integration
- ! radial part with Gauss-Legendre
- call coeffs_gausslegint(-1.0_dp,1.0_dp,xa,wxa,nx)
- !
- ! Transformation from [-1;1] to [0;+\infty[
- ! taken from M. Krack JCP 1998
- wxa(:) = wxa(:) * ( 1.0_dp / log(2.0_dp) / ( 1.0_dp - xa(:) ) )
- xa(:)  = log( 2.0_dp / (1.0_dp - xa(:) ) ) / log(2.0_dp)
-
- ! angular part with Lebedev - Laikov
- ! (x1,y1,z1) on the unit sphere
- n1=nangular
- select case(nangular)
- case(6)
-   call ld0006(x1,y1,z1,w1,n1)
- case(14)
-   call ld0014(x1,y1,z1,w1,n1)
- case(26)
-   call ld0026(x1,y1,z1,w1,n1)
- case(38)
-   call ld0038(x1,y1,z1,w1,n1)
- case(50)
-   call ld0050(x1,y1,z1,w1,n1)
- case(74)
-   call ld0074(x1,y1,z1,w1,n1)
- case(86)
-   call ld0086(x1,y1,z1,w1,n1)
- case default
-   WRITE_MASTER(*,*) 'grid points: ',nangular
-   stop'Lebedev grid is not available'
- end select
- 
-
 
  normalization(:)=0.0_dp
 
- do iatom=1,natom
-   do ix=1,nx
-     do iangular=1,nangular
+ do ir=1,ngrid
 
-       rr(1) = xa(ix) * x1(iangular) + x(1,iatom) 
-       rr(2) = xa(ix) * y1(iangular) + x(2,iatom)
-       rr(3) = xa(ix) * z1(iangular) + x(3,iatom)
-       weight = wxa(ix) * w1(iangular) * xa(ix)**2 * 4.0_dp * pi
-  
-       !
-       ! Partitionning scheme of Axel Becke, J. Chem. Phys. 88, 2547 (1988).
-       !
-       s_becke(:,:) = 0.0_dp
-       do katom=1,natom
-         do jatom=1,natom
-           if(katom==jatom) cycle
-           mu = ( SQRT( SUM( (rr(:)-x(:,katom) )**2 ) ) - SQRT( SUM( (rr(:)-x(:,jatom) )**2 ) ) ) &
-                     / SQRT( SUM( (x(:,katom)-x(:,jatom))**2 ) )
-           s_becke(katom,jatom) = 0.5_dp * ( 1.0_dp - smooth_step(smooth_step(smooth_step(mu))) )
-         enddo
-       enddo
-       p_becke(:) = 1.0_dp
-       do katom=1,natom
-         do jatom=1,natom
-           if(katom==jatom) cycle
-           p_becke(katom) = p_becke(katom) * s_becke(katom,jatom)
-         enddo
-       enddo
-       fact_becke = p_becke(iatom) / SUM( p_becke(:) )
-  
-  
-       !
-       ! First precalculate all the needed basis function evaluations at point rr
-       !
-       ibf_cart = 1
-       ibf      = 1
-       do while(ibf_cart<=basis%nbf_cart)
-         li      = basis%bf(ibf_cart)%am
-         ni_cart = number_basis_function_am(CARTESIAN,li)
-         ni      = number_basis_function_am(basis%gaussian_type,li)
+   rr(:) = rr_grid(:,ir)
+   weight = w_grid(ir)
 
-         allocate(basis_function_r_cart(ni_cart))
+   !
+   ! First precalculate all the needed basis function evaluations at point rr
+   !
+   ibf_cart = 1
+   ibf      = 1
+   do while(ibf_cart<=basis%nbf_cart)
+     li      = basis%bf(ibf_cart)%am
+     ni_cart = number_basis_function_am(CARTESIAN,li)
+     ni      = number_basis_function_am(basis%gaussian_type,li)
 
-         if( require_gradient ) then 
-           allocate(basis_function_r_shiftx_cart    (ni_cart))
-           allocate(basis_function_r_shifty_cart    (ni_cart))
-           allocate(basis_function_r_shiftz_cart    (ni_cart))
-           allocate(basis_function_gradr_cart       (3,ni_cart))
-           allocate(basis_function_gradr_shiftx_cart(3,ni_cart))
-           allocate(basis_function_gradr_shifty_cart(3,ni_cart))
-           allocate(basis_function_gradr_shiftz_cart(3,ni_cart))
-         endif
+     allocate(basis_function_r_cart(ni_cart))
 
-         if( require_laplacian ) then
-           allocate(basis_function_gradr_cart       (3,ni_cart))
-           allocate(basis_function_laplr_cart       (3,ni_cart))
-         endif
+     if( require_gradient ) then 
+       allocate(basis_function_r_shiftx_cart    (ni_cart))
+       allocate(basis_function_r_shifty_cart    (ni_cart))
+       allocate(basis_function_r_shiftz_cart    (ni_cart))
+       allocate(basis_function_gradr_cart       (3,ni_cart))
+       allocate(basis_function_gradr_shiftx_cart(3,ni_cart))
+       allocate(basis_function_gradr_shifty_cart(3,ni_cart))
+       allocate(basis_function_gradr_shiftz_cart(3,ni_cart))
+     endif
 
-         do i_cart=1,ni_cart
-           basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
+     if( require_laplacian ) then
+       allocate(basis_function_gradr_cart       (3,ni_cart))
+       allocate(basis_function_laplr_cart       (3,ni_cart))
+     endif
 
-           if( require_gradient ) then 
+     do i_cart=1,ni_cart
+       basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
 
-             basis_function_gradr_cart(:,i_cart)        = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr)
+       if( require_gradient ) then 
 
-             rr_shift(:) = rr(:) + (/ shift , 0.0_dp , 0.0_dp /)
-             basis_function_r_shiftx_cart(i_cart)       = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr_shift)
-             basis_function_gradr_shiftx_cart(:,i_cart) = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr_shift)
+         basis_function_gradr_cart(:,i_cart)        = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr)
 
-             rr_shift(:) = rr(:) + (/ 0.0_dp , shift , 0.0_dp /)
-             basis_function_r_shifty_cart(i_cart)       = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr_shift)
-             basis_function_gradr_shifty_cart(:,i_cart) = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr_shift)
+         rr_shift(:) = rr(:) + (/ shift , 0.0_dp , 0.0_dp /)
+         basis_function_r_shiftx_cart(i_cart)       = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr_shift)
+         basis_function_gradr_shiftx_cart(:,i_cart) = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr_shift)
 
-             rr_shift(:) = rr(:) + (/ 0.0_dp , 0.0_dp , shift /)
-             basis_function_r_shiftz_cart(i_cart)       = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr_shift)
-             basis_function_gradr_shiftz_cart(:,i_cart) = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr_shift)
+         rr_shift(:) = rr(:) + (/ 0.0_dp , shift , 0.0_dp /)
+         basis_function_r_shifty_cart(i_cart)       = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr_shift)
+         basis_function_gradr_shifty_cart(:,i_cart) = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr_shift)
 
-           endif
+         rr_shift(:) = rr(:) + (/ 0.0_dp , 0.0_dp , shift /)
+         basis_function_r_shiftz_cart(i_cart)       = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr_shift)
+         basis_function_gradr_shiftz_cart(:,i_cart) = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr_shift)
 
-           if( require_laplacian ) then
-             basis_function_gradr_cart(:,i_cart)        = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr)
-             basis_function_laplr_cart(:,i_cart)        = eval_basis_function_lapl(basis%bf(ibf_cart+i_cart-1),rr)
-           endif
+       endif
 
-         enddo
-         basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li)%matrix(:,:) )
-         deallocate(basis_function_r_cart)
+       if( require_laplacian ) then
+         basis_function_gradr_cart(:,i_cart)        = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr)
+         basis_function_laplr_cart(:,i_cart)        = eval_basis_function_lapl(basis%bf(ibf_cart+i_cart-1),rr)
+       endif
 
-         if( require_gradient ) then 
-           basis_function_gradr       (:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_cart       (:,:) , cart_to_pure(li)%matrix(:,:) )
-           basis_function_gradr_shiftx(:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_shiftx_cart(:,:) , cart_to_pure(li)%matrix(:,:) )
-           basis_function_gradr_shifty(:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_shifty_cart(:,:) , cart_to_pure(li)%matrix(:,:) )
-           basis_function_gradr_shiftz(:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_shiftz_cart(:,:) , cart_to_pure(li)%matrix(:,:) )
-           basis_function_r_shiftx(ibf:ibf+ni-1) = MATMUL(  basis_function_r_shiftx_cart(:) , cart_to_pure(li)%matrix(:,:) )
-           basis_function_r_shifty(ibf:ibf+ni-1) = MATMUL(  basis_function_r_shifty_cart(:) , cart_to_pure(li)%matrix(:,:) )
-           basis_function_r_shiftz(ibf:ibf+ni-1) = MATMUL(  basis_function_r_shiftz_cart(:) , cart_to_pure(li)%matrix(:,:) )
-           deallocate(basis_function_gradr_cart)
-           deallocate(basis_function_gradr_shiftx_cart,basis_function_gradr_shifty_cart,basis_function_gradr_shiftz_cart)
-           deallocate(basis_function_r_shiftx_cart,basis_function_r_shifty_cart,basis_function_r_shiftz_cart)
-         endif
+     enddo
+     basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li)%matrix(:,:) )
+     deallocate(basis_function_r_cart)
 
-         if( require_laplacian ) then
-           basis_function_gradr       (:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_cart       (:,:) , cart_to_pure(li)%matrix(:,:) )
-           basis_function_laplr       (:,ibf:ibf+ni-1) = MATMUL(  basis_function_laplr_cart       (:,:) , cart_to_pure(li)%matrix(:,:) )
-           deallocate(basis_function_gradr_cart,basis_function_laplr_cart)
-         endif
+     if( require_gradient ) then 
+       basis_function_gradr       (:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_cart       (:,:) , cart_to_pure(li)%matrix(:,:) )
+       basis_function_gradr_shiftx(:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_shiftx_cart(:,:) , cart_to_pure(li)%matrix(:,:) )
+       basis_function_gradr_shifty(:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_shifty_cart(:,:) , cart_to_pure(li)%matrix(:,:) )
+       basis_function_gradr_shiftz(:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_shiftz_cart(:,:) , cart_to_pure(li)%matrix(:,:) )
+       basis_function_r_shiftx(ibf:ibf+ni-1) = MATMUL(  basis_function_r_shiftx_cart(:) , cart_to_pure(li)%matrix(:,:) )
+       basis_function_r_shifty(ibf:ibf+ni-1) = MATMUL(  basis_function_r_shifty_cart(:) , cart_to_pure(li)%matrix(:,:) )
+       basis_function_r_shiftz(ibf:ibf+ni-1) = MATMUL(  basis_function_r_shiftz_cart(:) , cart_to_pure(li)%matrix(:,:) )
+       deallocate(basis_function_gradr_cart)
+       deallocate(basis_function_gradr_shiftx_cart,basis_function_gradr_shifty_cart,basis_function_gradr_shiftz_cart)
+       deallocate(basis_function_r_shiftx_cart,basis_function_r_shifty_cart,basis_function_r_shiftz_cart)
+     endif
 
-         ibf      = ibf      + ni
-         ibf_cart = ibf_cart + ni_cart
-       enddo
-       !
-       ! Precalculation done!
-       !
+     if( require_laplacian ) then
+       basis_function_gradr       (:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_cart       (:,:) , cart_to_pure(li)%matrix(:,:) )
+       basis_function_laplr       (:,ibf:ibf+ni-1) = MATMUL(  basis_function_laplr_cart       (:,:) , cart_to_pure(li)%matrix(:,:) )
+       deallocate(basis_function_gradr_cart,basis_function_laplr_cart)
+     endif
+
+     ibf      = ibf      + ni
+     ibf_cart = ibf_cart + ni_cart
+   enddo
+   !
+   ! Precalculation done!
+   !
 
 
-
-       rhor_r(:)=0.0_dp
-       do ispin=1,nspin
+   rhor_r(:)=0.0_dp
+   do ispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO REDUCTION(+:rhor_r) COLLAPSE(2)
-         do jbf=1,basis%nbf
-           do ibf=1,basis%nbf
-             rhor_r(ispin)=rhor_r(ispin)+p_matrix(ibf,jbf,ispin)&
-                               * basis_function_r(ibf) &
-                               * basis_function_r(jbf) 
-           enddo
-         enddo
+     do jbf=1,basis%nbf
+       do ibf=1,basis%nbf
+         rhor_r(ispin)=rhor_r(ispin)+p_matrix(ibf,jbf,ispin)&
+                           * basis_function_r(ibf) &
+                           * basis_function_r(jbf) 
+       enddo
+     enddo
 !$OMP END DO
 !$OMP END PARALLEL
+   enddo
+
+   normalization(:) = normalization(:) + rhor_r(:) * weight
+
+   if( require_gradient ) then 
+     grad_rhor       (:,:)=0.0_dp
+     grad_rhor_shiftx(:,:)=0.0_dp
+     grad_rhor_shifty(:,:)=0.0_dp
+     grad_rhor_shiftz(:,:)=0.0_dp
+     rhor_r_shiftx(:)     =0.0_dp
+     rhor_r_shifty(:)     =0.0_dp
+     rhor_r_shiftz(:)     =0.0_dp
+     do ispin=1,nspin
+       do jbf=1,basis%nbf
+         do ibf=1,basis%nbf
+
+           rhor_r_shiftx(ispin) = rhor_r_shiftx(ispin) + p_matrix(ibf,jbf,ispin)&
+                                    * basis_function_r_shiftx(ibf) &
+                                    * basis_function_r_shiftx(jbf) 
+           rhor_r_shifty(ispin) = rhor_r_shifty(ispin) + p_matrix(ibf,jbf,ispin)&
+                                    * basis_function_r_shifty(ibf) &
+                                    * basis_function_r_shifty(jbf) 
+           rhor_r_shiftz(ispin) = rhor_r_shiftz(ispin) + p_matrix(ibf,jbf,ispin)&
+                                    * basis_function_r_shiftz(ibf) &
+                                    * basis_function_r_shiftz(jbf) 
+
+           grad_rhor(:,ispin)        = grad_rhor(:,ispin)        + p_matrix(ibf,jbf,ispin) &
+                *( basis_function_gradr       (:,ibf) * basis_function_r(jbf) &
+                 + basis_function_gradr       (:,jbf) * basis_function_r(ibf) ) 
+           grad_rhor_shiftx(:,ispin) = grad_rhor_shiftx(:,ispin) + p_matrix(ibf,jbf,ispin) &
+                *( basis_function_gradr_shiftx(:,ibf) * basis_function_r_shiftx(jbf) &
+                 + basis_function_gradr_shiftx(:,jbf) * basis_function_r_shiftx(ibf) ) 
+           grad_rhor_shifty(:,ispin) = grad_rhor_shifty(:,ispin) + p_matrix(ibf,jbf,ispin) &
+                *( basis_function_gradr_shifty(:,ibf) * basis_function_r_shifty(jbf) &
+                 + basis_function_gradr_shifty(:,jbf) * basis_function_r_shifty(ibf) ) 
+           grad_rhor_shiftz(:,ispin) = grad_rhor_shiftz(:,ispin) + p_matrix(ibf,jbf,ispin) &
+                *( basis_function_gradr_shiftz(:,ibf) * basis_function_r_shiftz(jbf) &
+                 + basis_function_gradr_shiftz(:,jbf) * basis_function_r_shiftz(ibf) ) 
+
+         enddo
        enddo
-  
-       normalization(:) = normalization(:) + rhor_r(:) * weight * fact_becke
-  
-       if( require_gradient ) then 
-         grad_rhor       (:,:)=0.0_dp
-         grad_rhor_shiftx(:,:)=0.0_dp
-         grad_rhor_shifty(:,:)=0.0_dp
-         grad_rhor_shiftz(:,:)=0.0_dp
-         rhor_r_shiftx(:)     =0.0_dp
-         rhor_r_shifty(:)     =0.0_dp
-         rhor_r_shiftz(:)     =0.0_dp
-         do ispin=1,nspin
-           do jbf=1,basis%nbf
-             do ibf=1,basis%nbf
+     enddo
 
-               rhor_r_shiftx(ispin) = rhor_r_shiftx(ispin) + p_matrix(ibf,jbf,ispin)&
-                                        * basis_function_r_shiftx(ibf) &
-                                        * basis_function_r_shiftx(jbf) 
-               rhor_r_shifty(ispin) = rhor_r_shifty(ispin) + p_matrix(ibf,jbf,ispin)&
-                                        * basis_function_r_shifty(ibf) &
-                                        * basis_function_r_shifty(jbf) 
-               rhor_r_shiftz(ispin) = rhor_r_shiftz(ispin) + p_matrix(ibf,jbf,ispin)&
-                                        * basis_function_r_shiftz(ibf) &
-                                        * basis_function_r_shiftz(jbf) 
+     sigma2(1)        = SUM( grad_rhor       (:,1)**2 )
+     sigma2_shiftx(1) = SUM( grad_rhor_shiftx(:,1)**2 )
+     sigma2_shifty(1) = SUM( grad_rhor_shifty(:,1)**2 )
+     sigma2_shiftz(1) = SUM( grad_rhor_shiftz(:,1)**2 )
+     if(nspin==2) then
+       sigma2(2)        = SUM( grad_rhor       (:,1) * grad_rhor       (:,2) )
+       sigma2_shiftx(2) = SUM( grad_rhor_shiftx(:,1) * grad_rhor_shiftx(:,2) )
+       sigma2_shifty(2) = SUM( grad_rhor_shifty(:,1) * grad_rhor_shifty(:,2) )
+       sigma2_shiftz(2) = SUM( grad_rhor_shiftz(:,1) * grad_rhor_shiftz(:,2) )
 
-               grad_rhor(:,ispin)        = grad_rhor(:,ispin)        + p_matrix(ibf,jbf,ispin) &
-                    *( basis_function_gradr       (:,ibf) * basis_function_r(jbf) &
-                     + basis_function_gradr       (:,jbf) * basis_function_r(ibf) ) 
-               grad_rhor_shiftx(:,ispin) = grad_rhor_shiftx(:,ispin) + p_matrix(ibf,jbf,ispin) &
-                    *( basis_function_gradr_shiftx(:,ibf) * basis_function_r_shiftx(jbf) &
-                     + basis_function_gradr_shiftx(:,jbf) * basis_function_r_shiftx(ibf) ) 
-               grad_rhor_shifty(:,ispin) = grad_rhor_shifty(:,ispin) + p_matrix(ibf,jbf,ispin) &
-                    *( basis_function_gradr_shifty(:,ibf) * basis_function_r_shifty(jbf) &
-                     + basis_function_gradr_shifty(:,jbf) * basis_function_r_shifty(ibf) ) 
-               grad_rhor_shiftz(:,ispin) = grad_rhor_shiftz(:,ispin) + p_matrix(ibf,jbf,ispin) &
-                    *( basis_function_gradr_shiftz(:,ibf) * basis_function_r_shiftz(jbf) &
-                     + basis_function_gradr_shiftz(:,jbf) * basis_function_r_shiftz(ibf) ) 
+       sigma2(3)        = SUM( grad_rhor       (:,2)**2 )
+       sigma2_shiftx(3) = SUM( grad_rhor_shiftx(:,2)**2 )
+       sigma2_shifty(3) = SUM( grad_rhor_shifty(:,2)**2 )
+       sigma2_shiftz(3) = SUM( grad_rhor_shiftz(:,2)**2 )
+     endif
 
-             enddo
-           enddo
+   endif
+
+   if( require_laplacian ) then
+
+     grad_rhor(:,:)=0.0_dp
+     tau(:)        =0.0_dp
+     lapl_rhor(:)  =0.0_dp
+     do ispin=1,nspin
+       do jbf=1,basis%nbf
+         do ibf=1,basis%nbf
+
+           grad_rhor(:,ispin) = grad_rhor(:,ispin)        + p_matrix(ibf,jbf,ispin) &
+                *( basis_function_gradr       (:,ibf) * basis_function_r(jbf) &
+                 + basis_function_gradr       (:,jbf) * basis_function_r(ibf) ) 
+
+           tau(ispin)        = tau(ispin)        + p_matrix(ibf,jbf,ispin) &
+                * DOT_PRODUCT( basis_function_gradr(:,ibf) , basis_function_gradr(:,jbf) )
+
+           lapl_rhor(ispin)  = lapl_rhor(ispin)  + p_matrix(ibf,jbf,ispin) &
+                              * (  SUM( basis_function_laplr(:,ibf) ) * basis_function_r(jbf)               &
+                                 + basis_function_r(ibf)              * SUM( basis_function_laplr(:,jbf) )  &
+                                 + 2.0_dp * DOT_PRODUCT( basis_function_gradr(:,ibf) , basis_function_gradr(:,jbf) ) )
+
          enddo
+       enddo
+     enddo
+     sigma2(1)          = SUM( grad_rhor       (:,1)**2 )
+     if(nspin==2) then
+       sigma2(2)        = SUM( grad_rhor       (:,1) * grad_rhor       (:,2) )
+       sigma2(3)        = SUM( grad_rhor       (:,2)**2 )
+     endif
 
-         sigma2(1)        = SUM( grad_rhor       (:,1)**2 )
-         sigma2_shiftx(1) = SUM( grad_rhor_shiftx(:,1)**2 )
-         sigma2_shifty(1) = SUM( grad_rhor_shifty(:,1)**2 )
-         sigma2_shiftz(1) = SUM( grad_rhor_shiftz(:,1)**2 )
-         if(nspin==2) then
-           sigma2(2)        = SUM( grad_rhor       (:,1) * grad_rhor       (:,2) )
-           sigma2_shiftx(2) = SUM( grad_rhor_shiftx(:,1) * grad_rhor_shiftx(:,2) )
-           sigma2_shifty(2) = SUM( grad_rhor_shifty(:,1) * grad_rhor_shifty(:,2) )
-           sigma2_shiftz(2) = SUM( grad_rhor_shiftz(:,1) * grad_rhor_shiftz(:,2) )
+   endif
 
-           sigma2(3)        = SUM( grad_rhor       (:,2)**2 )
-           sigma2_shiftx(3) = SUM( grad_rhor_shiftx(:,2)**2 )
-           sigma2_shifty(3) = SUM( grad_rhor_shifty(:,2)**2 )
-           sigma2_shiftz(3) = SUM( grad_rhor_shiftz(:,2)**2 )
-         endif
+   !
+   ! LIBXC calls
+   !
+   vxc(:)    = 0.0_dp
 
-       endif
-  
-       if( require_laplacian ) then
+   do idft_xc=1,ndft_xc
 
-         grad_rhor(:,:)=0.0_dp
-         tau(:)        =0.0_dp
-         lapl_rhor(:)  =0.0_dp
-         do ispin=1,nspin
-           do jbf=1,basis%nbf
-             do ibf=1,basis%nbf
+     select case(xc_f90_info_family(xc_info(idft_xc)))
 
-               grad_rhor(:,ispin) = grad_rhor(:,ispin)        + p_matrix(ibf,jbf,ispin) &
-                    *( basis_function_gradr       (:,ibf) * basis_function_r(jbf) &
-                     + basis_function_gradr       (:,jbf) * basis_function_r(ibf) ) 
-
-               tau(ispin)        = tau(ispin)        + p_matrix(ibf,jbf,ispin) &
-                    * DOT_PRODUCT( basis_function_gradr(:,ibf) , basis_function_gradr(:,jbf) )
-
-               lapl_rhor(ispin)  = lapl_rhor(ispin)  + p_matrix(ibf,jbf,ispin) &
-                                  * (  SUM( basis_function_laplr(:,ibf) ) * basis_function_r(jbf)               &
-                                     + basis_function_r(ibf)              * SUM( basis_function_laplr(:,jbf) )  &
-                                     + 2.0_dp * DOT_PRODUCT( basis_function_gradr(:,ibf) , basis_function_gradr(:,jbf) ) )
-
-             enddo
-           enddo
-         enddo
-         sigma2(1)          = SUM( grad_rhor       (:,1)**2 )
-         if(nspin==2) then
-           sigma2(2)        = SUM( grad_rhor       (:,1) * grad_rhor       (:,2) )
-           sigma2(3)        = SUM( grad_rhor       (:,2)**2 )
-         endif
-
+     case(XC_FAMILY_LDA)
+       if( dft_xc_type(idft_xc) < 1000 ) then 
+         call xc_f90_lda_exc_vxc(xc_func(idft_xc),1_intxc,rhor_r(1),exc_libxc(1),vxc_libxc(1))
+       else
+         call my_lda_exc_vxc(nspin,dft_xc_type(idft_xc),rhor_r,exc_libxc(1),vxc_libxc)
        endif
 
-       !
-       ! LIBXC calls
-       !
-       vxc(:)    = 0.0_dp
-
-       do idft_xc=1,ndft_xc
-
-         select case(xc_f90_info_family(xc_info(idft_xc)))
-
-         case(XC_FAMILY_LDA)
-           if( dft_xc_type(idft_xc) < 1000 ) then 
-             call xc_f90_lda_exc_vxc(xc_func(idft_xc),1_intxc,rhor_r(1),exc_libxc(1),vxc_libxc(1))
-           else
-             call my_lda_exc_vxc(nspin,dft_xc_type(idft_xc),rhor_r,exc_libxc(1),vxc_libxc)
-           endif
-
-         case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
-           if( dft_xc_type(idft_xc) < 2000 ) then 
-             !
-             ! Remove too small densities to stabilize the computation
-             ! especially useful for Becke88
-             if( ANY( rhor_r(:) > 1.0e-9_dp ) ) then
-               call xc_f90_gga_exc_vxc(xc_func(idft_xc),1_intxc,rhor_r(1)       ,sigma2(1)       ,exc_libxc(1),vxc_libxc(1),vsigma(1)       )
-               call xc_f90_gga_vxc    (xc_func(idft_xc),1_intxc,rhor_r_shiftx(1),sigma2_shiftx(1),             vxc_dummy(1),vsigma_shiftx(1))
-               call xc_f90_gga_vxc    (xc_func(idft_xc),1_intxc,rhor_r_shifty(1),sigma2_shifty(1),             vxc_dummy(1),vsigma_shifty(1))
-               call xc_f90_gga_vxc    (xc_func(idft_xc),1_intxc,rhor_r_shiftz(1),sigma2_shiftz(1),             vxc_dummy(1),vsigma_shiftz(1))
-             else
-               exc_libxc(:)     = 0.0_dp
-               vxc_libxc(:)     = 0.0_dp
-               vsigma(:)        = 0.0_dp
-               vsigma_shiftx(:) = 0.0_dp
-               vsigma_shifty(:) = 0.0_dp
-               vsigma_shiftz(:) = 0.0_dp
-             endif
-           else
-             !FIXME  Hard coding !
+     case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
+       if( dft_xc_type(idft_xc) < 2000 ) then 
+         !
+         ! Remove too small densities to stabilize the computation
+         ! especially useful for Becke88
+         if( ANY( rhor_r(:) > 1.0e-9_dp ) ) then
+           call xc_f90_gga_exc_vxc(xc_func(idft_xc),1_intxc,rhor_r(1)       ,sigma2(1)       ,exc_libxc(1),vxc_libxc(1),vsigma(1)       )
+           call xc_f90_gga_vxc    (xc_func(idft_xc),1_intxc,rhor_r_shiftx(1),sigma2_shiftx(1),             vxc_dummy(1),vsigma_shiftx(1))
+           call xc_f90_gga_vxc    (xc_func(idft_xc),1_intxc,rhor_r_shifty(1),sigma2_shifty(1),             vxc_dummy(1),vsigma_shifty(1))
+           call xc_f90_gga_vxc    (xc_func(idft_xc),1_intxc,rhor_r_shiftz(1),sigma2_shiftz(1),             vxc_dummy(1),vsigma_shiftz(1))
+         else
+           exc_libxc(:)     = 0.0_dp
+           vxc_libxc(:)     = 0.0_dp
+           vsigma(:)        = 0.0_dp
+           vsigma_shiftx(:) = 0.0_dp
+           vsigma_shifty(:) = 0.0_dp
+           vsigma_shiftz(:) = 0.0_dp
+         endif
+       else
+         !FIXME  Hard coding !
 !             omega=0.00_dp
-             omega=0.11_dp
-             call my_gga_exc_vxc_hjs(omega,rhor_r_shiftx(1),sigma2_shiftx(1),exc_libxc(1),vxc_dummy(1),vsigma_shiftx(1))
-             call my_gga_exc_vxc_hjs(omega,rhor_r_shifty(1),sigma2_shifty(1),exc_libxc(1),vxc_dummy(1),vsigma_shifty(1))
-             call my_gga_exc_vxc_hjs(omega,rhor_r_shiftz(1),sigma2_shiftz(1),exc_libxc(1),vxc_dummy(1),vsigma_shiftz(1))
-             call my_gga_exc_vxc_hjs(omega,rhor_r(1)       ,sigma2(1)       ,exc_libxc(1),vxc_libxc(1),vsigma(1)       )
-           endif
+         omega=0.11_dp
+         call my_gga_exc_vxc_hjs(omega,rhor_r_shiftx(1),sigma2_shiftx(1),exc_libxc(1),vxc_dummy(1),vsigma_shiftx(1))
+         call my_gga_exc_vxc_hjs(omega,rhor_r_shifty(1),sigma2_shifty(1),exc_libxc(1),vxc_dummy(1),vsigma_shifty(1))
+         call my_gga_exc_vxc_hjs(omega,rhor_r_shiftz(1),sigma2_shiftz(1),exc_libxc(1),vxc_dummy(1),vsigma_shiftz(1))
+         call my_gga_exc_vxc_hjs(omega,rhor_r(1)       ,sigma2(1)       ,exc_libxc(1),vxc_libxc(1),vsigma(1)       )
+       endif
 
-         case(XC_FAMILY_MGGA)
-           call xc_f90_mgga_vxc(xc_func(idft_xc),1_intxc,rhor_r(1),sigma2(1),lapl_rhor(1),tau(1),vxc_libxc(1),vsigma(1),vlapl_rho(1),vtau(1))
-           ! no expression for the energy
-           exc_libxc(1) = 0.0_dp
+     case(XC_FAMILY_MGGA)
+       call xc_f90_mgga_vxc(xc_func(idft_xc),1_intxc,rhor_r(1),sigma2(1),lapl_rhor(1),tau(1),vxc_libxc(1),vsigma(1),vlapl_rho(1),vtau(1))
+       ! no expression for the energy
+       exc_libxc(1) = 0.0_dp
 
-         case default
-           stop'functional is not LDA nor GGA nor hybrid nor meta-GGA'
-         end select
-  
-         exc_xc = exc_xc + weight * fact_becke * exc_libxc(1) * SUM( rhor_r(:) ) * dft_xc_coef(idft_xc)
-  
+     case default
+       stop'functional is not LDA nor GGA nor hybrid nor meta-GGA'
+     end select
 
-         dedd_r(:) = vxc_libxc(:) 
-         div(:) = 0.0_dp
+     exc_xc = exc_xc + weight * exc_libxc(1) * SUM( rhor_r(:) ) * dft_xc_coef(idft_xc)
 
-         !
-         ! Set up divergence term if needed (GGA case)
-         !
-         if( xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_GGA &
-            .OR. xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) then
-           if(nspin==1) then
 
-             dedgd_r       (:,1) = 2.0_dp * ( vsigma(1)        ) * grad_rhor       (:,1) 
-             dedgd_r_shiftx(:,1) = 2.0_dp * ( vsigma_shiftx(1) ) * grad_rhor_shiftx(:,1) 
-             dedgd_r_shifty(:,1) = 2.0_dp * ( vsigma_shifty(1) ) * grad_rhor_shifty(:,1) 
-             dedgd_r_shiftz(:,1) = 2.0_dp * ( vsigma_shiftz(1) ) * grad_rhor_shiftz(:,1) 
+     dedd_r(:) = vxc_libxc(:) 
+     div(:) = 0.0_dp
 
-           else
+     !
+     ! Set up divergence term if needed (GGA case)
+     !
+     if( xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_GGA &
+        .OR. xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) then
+       if(nspin==1) then
 
-             dedgd_r(:,1)        = 2.0_dp * ( vsigma(1)        ) * grad_rhor       (:,1) &
-                                          + ( vsigma(2)        ) * grad_rhor       (:,2)
-             dedgd_r_shiftx(:,1) = 2.0_dp * ( vsigma_shiftx(1) ) * grad_rhor_shiftx(:,1) &
-                                          + ( vsigma_shiftx(2) ) * grad_rhor_shiftx(:,2)
-             dedgd_r_shifty(:,1) = 2.0_dp * ( vsigma_shifty(1) ) * grad_rhor_shifty(:,1) &
-                                          + ( vsigma_shifty(2) ) * grad_rhor_shifty(:,2)
-             dedgd_r_shiftz(:,1) = 2.0_dp * ( vsigma_shiftz(1) ) * grad_rhor_shiftz(:,1) &
-                                          + ( vsigma_shiftz(2) ) * grad_rhor_shiftz(:,2)
+         dedgd_r       (:,1) = 2.0_dp * ( vsigma(1)        ) * grad_rhor       (:,1) 
+         dedgd_r_shiftx(:,1) = 2.0_dp * ( vsigma_shiftx(1) ) * grad_rhor_shiftx(:,1) 
+         dedgd_r_shifty(:,1) = 2.0_dp * ( vsigma_shifty(1) ) * grad_rhor_shifty(:,1) 
+         dedgd_r_shiftz(:,1) = 2.0_dp * ( vsigma_shiftz(1) ) * grad_rhor_shiftz(:,1) 
 
-             dedgd_r(:,2)        = 2.0_dp * ( vsigma(3)        ) * grad_rhor       (:,2) &
-                                          + ( vsigma(2)        ) * grad_rhor       (:,1)
-             dedgd_r_shiftx(:,2) = 2.0_dp * ( vsigma_shiftx(3) ) * grad_rhor_shiftx(:,2) &
-                                          + ( vsigma_shiftx(2) ) * grad_rhor_shiftx(:,1)
-             dedgd_r_shifty(:,2) = 2.0_dp * ( vsigma_shifty(3) ) * grad_rhor_shifty(:,2) &
-                                          + ( vsigma_shifty(2) ) * grad_rhor_shifty(:,1)
-             dedgd_r_shiftz(:,2) = 2.0_dp * ( vsigma_shiftz(3) ) * grad_rhor_shiftz(:,2) &
-                                          + ( vsigma_shiftz(2) ) * grad_rhor_shiftz(:,1)
+       else
 
-           endif
-  
-  
-           div(:) = ( dedgd_r_shiftx(1,:) - dedgd_r(1,:) ) / shift &
-                  + ( dedgd_r_shifty(2,:) - dedgd_r(2,:) ) / shift &
-                  + ( dedgd_r_shiftz(3,:) - dedgd_r(3,:) ) / shift
+         dedgd_r(:,1)        = 2.0_dp * ( vsigma(1)        ) * grad_rhor       (:,1) &
+                                      + ( vsigma(2)        ) * grad_rhor       (:,2)
+         dedgd_r_shiftx(:,1) = 2.0_dp * ( vsigma_shiftx(1) ) * grad_rhor_shiftx(:,1) &
+                                      + ( vsigma_shiftx(2) ) * grad_rhor_shiftx(:,2)
+         dedgd_r_shifty(:,1) = 2.0_dp * ( vsigma_shifty(1) ) * grad_rhor_shifty(:,1) &
+                                      + ( vsigma_shifty(2) ) * grad_rhor_shifty(:,2)
+         dedgd_r_shiftz(:,1) = 2.0_dp * ( vsigma_shiftz(1) ) * grad_rhor_shiftz(:,1) &
+                                      + ( vsigma_shiftz(2) ) * grad_rhor_shiftz(:,2)
 
-  
-         endif
- 
+         dedgd_r(:,2)        = 2.0_dp * ( vsigma(3)        ) * grad_rhor       (:,2) &
+                                      + ( vsigma(2)        ) * grad_rhor       (:,1)
+         dedgd_r_shiftx(:,2) = 2.0_dp * ( vsigma_shiftx(3) ) * grad_rhor_shiftx(:,2) &
+                                      + ( vsigma_shiftx(2) ) * grad_rhor_shiftx(:,1)
+         dedgd_r_shifty(:,2) = 2.0_dp * ( vsigma_shifty(3) ) * grad_rhor_shifty(:,2) &
+                                      + ( vsigma_shifty(2) ) * grad_rhor_shifty(:,1)
+         dedgd_r_shiftz(:,2) = 2.0_dp * ( vsigma_shiftz(3) ) * grad_rhor_shiftz(:,2) &
+                                      + ( vsigma_shiftz(2) ) * grad_rhor_shiftz(:,1)
 
-         !
-         ! In the case of the BJ06 meta-GGA functional, a spin-dependent shift is applied
-         ! since the potential does not vanish at infinity
-         !
-         if( dft_xc_type(idft_xc) == XC_MGGA_X_BJ06 ) then
-           dedd_r(:) = dedd_r(:) - SQRT( 5.0_dp * ABS(ehomo(:)) / 6.0_dp ) / pi
-         endif
+       endif
 
-  
-         !
-         ! Eventually set up the vxc term
-         !
-         do ispin=1,nspin
+
+       div(:) = ( dedgd_r_shiftx(1,:) - dedgd_r(1,:) ) / shift &
+              + ( dedgd_r_shifty(2,:) - dedgd_r(2,:) ) / shift &
+              + ( dedgd_r_shiftz(3,:) - dedgd_r(3,:) ) / shift
+
+
+     endif
+
+
+     !
+     ! In the case of the BJ06 meta-GGA functional, a spin-dependent shift is applied
+     ! since the potential does not vanish at infinity
+     !
+     if( dft_xc_type(idft_xc) == XC_MGGA_X_BJ06 ) then
+       dedd_r(:) = dedd_r(:) - SQRT( 5.0_dp * ABS(ehomo(:)) / 6.0_dp ) / pi
+     endif
+
+
+     !
+     ! Eventually set up the vxc term
+     !
+     do ispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO COLLAPSE(2)
            do jbf=1,basis%nbf
              do ibf=1,basis%nbf 
-               vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight * fact_becke &
+               vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight &
                    * ( dedd_r(ispin) - div(ispin) ) * basis_function_r(ibf) * basis_function_r(jbf)  &
                    * dft_xc_coef(idft_xc)
              enddo
            enddo
 !$OMP END DO
 !$OMP END PARALLEL
-         enddo
+     enddo
 
 
-       enddo ! loop on the XC functional
+   enddo ! loop on the XC functional
   
 
-     enddo ! loop on the angular grid
-   enddo ! loop on the radial grid
- enddo ! loop on the atoms
+ enddo ! loop on the grid point
 
  !
  ! Destroy operations
@@ -587,23 +650,10 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
  WRITE_MASTER(*,'(a,2x,f12.6,/)')    '  DFT xc energy [Ha]:',exc_xc
 
 
-contains
-
- function smooth_step(mu)
- real(dp) :: smooth_step
- real(dp),intent(in) :: mu
-!=====
-
- smooth_step = 0.5_dp * mu * ( 3.0_dp - mu**2 )
-
- end function smooth_step
-
 end subroutine dft_exc_vxc
 
 !=========================================================================
 subroutine my_lda_exc_vxc(nspin,ixc,rhor,exc,vxc)
- use m_definitions
- use m_mpi
  implicit none
 
 !Arguments ------------------------------------
@@ -850,8 +900,6 @@ end subroutine my_lda_exc_vxc
 
 !=========================================================================
 subroutine my_lda_exc_vxc_mu(mu,rspts,exc,vxc)
- use m_definitions
- use m_mpi
  implicit none
 
 !Arguments ------------------------------------
@@ -958,8 +1006,6 @@ end subroutine my_lda_exc_vxc_mu
 
 !=========================================================================
 subroutine my_gga_exc_vxc_hjs(omega,nn,sigma,exc,vxc,vsigma)
- use m_definitions
- use m_mpi
  implicit none
 !=====
  real(dp),intent(in)  :: omega,nn,sigma
@@ -1366,3 +1412,5 @@ subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
  d01Fxhse = d1Fxhse1+d1Fxhse2+d1Fxhse3+d1Fxhse4+d1Fxhse5+d1Fxhse6+d1Fxhse7
  
 end subroutine
+
+end module m_dft
