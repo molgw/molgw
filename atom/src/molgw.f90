@@ -521,7 +521,8 @@ program molgw
  WRITE_MASTER(*,'(/,/,a25,x,f16.10,/,/)') 'SCF Total Energy [Ha]:',en%tot
 
  if(MODULO(print_volume/1000 ,2)>0) call write_density_matrix(nspin,basis%nbf,p_matrix)
- if(MODULO(print_volume/10000,2)>0) call plot_wfn(nspin,basis,c_matrix)
+ if(MODULO(print_volume/10000,10)==1) call plot_wfn(nspin,basis,c_matrix)
+ if(MODULO(print_volume/10000,10)==2) call plot_cube_wfn(nspin,basis,c_matrix)
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

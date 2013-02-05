@@ -349,7 +349,7 @@ subroutine plot_wfn(nspin,basis,c_matrix)
  use m_definitions
  use m_mpi
  use m_atoms
- use m_basis_set,only: basis_set,eval_basis_function
+ use m_basis_set
  implicit none
  integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
@@ -359,31 +359,37 @@ subroutine plot_wfn(nspin,basis,c_matrix)
  real(dp),parameter         :: length=10.0_dp
  integer                    :: ir,ibf
  integer                    :: istate1,istate2,istate,ispin
- real(dp)                   :: r(3)
+ real(dp)                   :: rr(3)
  real(dp),allocatable       :: phi(:,:),phase(:,:)
- real(dp)                   :: u(3)
+ real(dp)                   :: u(3),a(3)
  logical                    :: file_exists
  real(dp)                   :: xmin,xmax
+ real(dp)                   :: basis_function_r(basis%nbf)
+ integer                    :: ibf_cart,ni_cart,ni,li,i_cart
+ real(dp),allocatable       :: basis_function_r_cart(:)
 !=====
 
  WRITE_MASTER(*,*) 
- WRITE_MASTER(*,*) 'Plotting some wavefunctions'
+ WRITE_MASTER(*,*) 'Plotting some selected wavefunctions'
  inquire(file='manual_plotwfn',exist=file_exists)
  if(file_exists) then
    open(100,file='manual_plotwfn',status='old')
    read(100,*) istate1,istate2
    read(100,*) u(:)
+   read(100,*) a(:)
    close(100)
  else
    istate1=1
    istate2=2
    u(:)=0.0_dp
    u(1)=1.0_dp
+   a(:)=0.0_dp
  endif
  u(:) = u(:) / SQRT(SUM(u(:)**2))
  allocate(phase(istate1:istate2,nspin),phi(istate1:istate2,nspin))
- WRITE_MASTER(*,*) 'states:',istate1,istate2
- WRITE_MASTER(*,*) 'direction',u(:)
+ WRITE_MASTER(*,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
+ WRITE_MASTER(*,'(a,3(2x,f8.3))') ' direction:',u(:)
+ WRITE_MASTER(*,'(a,3(2x,f8.3))') ' origin:   ',a(:)
 
  xmin = MINVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) - length
  xmax = MAXVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) + length
@@ -391,13 +397,37 @@ subroutine plot_wfn(nspin,basis,c_matrix)
  phase(:,:)=1.0_dp
 
  do ir=1,nr
-   r(:) = ( xmin + (ir-1)*(xmax-xmin)/REAL(nr-1,dp) ) * u(:)
+   rr(:) = ( xmin + (ir-1)*(xmax-xmin)/REAL(nr-1,dp) ) * u(:) + a(:)
 
    phi(:,:) = 0.0_dp
-   do istate=istate1,istate2
-     do ibf=1,basis%nbf
-       phi(istate,:) = phi(istate,:) + eval_basis_function(basis%bf(ibf),r) * c_matrix(ibf,istate,:)
+   
+   !
+   ! First precalculate all the needed basis function evaluations at point rr
+   !
+   ibf_cart = 1
+   ibf      = 1
+   do while(ibf_cart<=basis%nbf_cart)
+     li      = basis%bf(ibf_cart)%am
+     ni_cart = number_basis_function_am(CARTESIAN,li)
+     ni      = number_basis_function_am(basis%gaussian_type,li)
+
+     allocate(basis_function_r_cart(ni_cart))
+
+     do i_cart=1,ni_cart
+       basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
      enddo
+     basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li)%matrix(:,:) )
+     deallocate(basis_function_r_cart)
+
+     ibf      = ibf      + ni
+     ibf_cart = ibf_cart + ni_cart
+   enddo
+   !
+   ! Precalculation done!
+   !
+
+   do ispin=1,nspin
+     phi(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,istate1:istate2,ispin) )
    enddo
 
    !
@@ -410,11 +440,154 @@ subroutine plot_wfn(nspin,basis,c_matrix)
      enddo
    endif
 
-   WRITE_MASTER(101,'(50(e16.8,2x))') DOT_PRODUCT(r(:),u(:)),phi(:,:)*phase(:,:)
-   WRITE_MASTER(102,'(50(e16.8,2x))') DOT_PRODUCT(r(:),u(:)),phi(:,:)**2
+   WRITE_MASTER(101,'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),phi(:,:)*phase(:,:)
+   WRITE_MASTER(102,'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),phi(:,:)**2
 
  enddo
 
+ deallocate(phase,phi)
+
 end subroutine plot_wfn
+
+!=========================================================================
+subroutine plot_cube_wfn(nspin,basis,c_matrix)
+ use m_definitions
+ use m_mpi
+ use m_atoms
+ use m_basis_set
+ implicit none
+ integer,intent(in)         :: nspin
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
+!=====
+ integer,parameter          :: nx=60
+ integer,parameter          :: ny=60
+ integer,parameter          :: nz=60
+ real(dp),parameter         :: length=4.0_dp
+ integer                    :: ir,ibf
+ integer                    :: istate1,istate2,istate,ispin
+ real(dp)                   :: rr(3)
+ real(dp),allocatable       :: phi(:,:),phase(:,:)
+ real(dp)                   :: u(3),a(3)
+ logical                    :: file_exists
+ real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
+ real(dp)                   :: basis_function_r(basis%nbf)
+ integer                    :: ix,iy,iz,iatom
+ integer                    :: ibf_cart,ni_cart,ni,li,i_cart
+ real(dp),allocatable       :: basis_function_r_cart(:)
+ integer                    :: file_unit
+ character(len=200)         :: file_name
+!=====
+
+ WRITE_MASTER(*,*) 
+ WRITE_MASTER(*,*) 'Plotting some selected wavefunctions in a cube file'
+ inquire(file='manual_plotwfn',exist=file_exists)
+ if(file_exists) then
+   open(100,file='manual_plotwfn',status='old')
+   read(100,*) istate1,istate2
+   close(100)
+ else
+   istate1=1
+   istate2=2
+ endif
+ allocate(phase(istate1:istate2,nspin),phi(istate1:istate2,nspin))
+ WRITE_MASTER(*,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
+
+ xmin = MINVAL( x(1,:) ) - length
+ xmax = MAXVAL( x(1,:) ) + length
+ ymin = MINVAL( x(2,:) ) - length
+ ymax = MAXVAL( x(2,:) ) + length
+ zmin = MINVAL( x(3,:) ) - length
+ zmax = MAXVAL( x(3,:) ) + length
+
+ do istate=istate1,istate2
+   do ispin=1,nspin
+     file_unit=1000+istate-istate1+(ispin-1)*(istate2-istate1+1)
+     WRITE_ME(file_name,'(a,i3.3,a,i1,a)') 'wfn_',istate,'_',ispin,'.cube'
+     open(unit=file_unit,file=file_name)
+     WRITE_MASTER(file_unit,'(a)') 'cube file generated from MOLGW'
+     WRITE_MASTER(file_unit,'(a,i4)') 'wavefunction ',istate1
+     WRITE_MASTER(file_unit,'(i6,3(f12.6,2x))') natom,xmin,ymin,zmin
+     WRITE_MASTER(file_unit,'(i6,3(f12.6,2x))') nx,(xmax-xmin)/REAL(nx,dp),0.,0.
+     WRITE_MASTER(file_unit,'(i6,3(f12.6,2x))') ny,0.,(ymax-ymin)/REAL(ny,dp),0.
+     WRITE_MASTER(file_unit,'(i6,3(f12.6,2x))') nz,0.,0.,(zmax-zmin)/REAL(nz,dp)
+     do iatom=1,natom
+       WRITE_MASTER(file_unit,'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,x(:,iatom)
+     enddo
+   enddo
+ enddo
+
+ phase(:,:)=1.0_dp
+
+ do ix=1,nx
+   rr(1) = ( xmin + (ix-1)*(xmax-xmin)/REAL(nx,dp) ) 
+   do iy=1,ny
+     rr(2) = ( ymin + (iy-1)*(ymax-ymin)/REAL(ny,dp) ) 
+     do iz=1,nz
+       rr(3) = ( zmin + (iz-1)*(zmax-zmin)/REAL(nz,dp) ) 
+
+
+       phi(:,:) = 0.0_dp
+       
+       !
+       ! First precalculate all the needed basis function evaluations at point rr
+       !
+       ibf_cart = 1
+       ibf      = 1
+       do while(ibf_cart<=basis%nbf_cart)
+         li      = basis%bf(ibf_cart)%am
+         ni_cart = number_basis_function_am(CARTESIAN,li)
+         ni      = number_basis_function_am(basis%gaussian_type,li)
+    
+         allocate(basis_function_r_cart(ni_cart))
+    
+         do i_cart=1,ni_cart
+           basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
+         enddo
+         basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li)%matrix(:,:) )
+         deallocate(basis_function_r_cart)
+    
+         ibf      = ibf      + ni
+         ibf_cart = ibf_cart + ni_cart
+       enddo
+       !
+       ! Precalculation done!
+       !
+
+       do ispin=1,nspin
+         phi(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,istate1:istate2,ispin) )
+       enddo
+
+       !
+       ! turn the wfns so that they are all positive at a given point
+       if(ir==1) then
+         do ispin=1,nspin
+           do istate=istate1,istate2
+             if( phi(istate,ispin) < 0.0_dp ) phase(istate,ispin) = -1.0_dp
+           enddo
+         enddo
+       endif
+
+       do istate=istate1,istate2
+         do ispin=1,nspin
+           file_unit=1000+istate-istate1+(ispin-1)*(istate2-istate1+1)
+           WRITE_MASTER(file_unit,'(50(e16.8,2x))') phi(istate,ispin)*phase(istate,ispin)
+         enddo
+       enddo
+
+     enddo
+   enddo
+ enddo
+
+ deallocate(phase,phi)
+
+ do istate=istate1,istate2
+   do ispin=1,nspin
+     file_unit=1000+istate-istate1+(ispin-1)*(istate2-istate1+1)
+     close(file_unit)
+   enddo
+ enddo
+
+end subroutine plot_cube_wfn
 
 !=========================================================================
