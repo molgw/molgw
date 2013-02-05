@@ -871,23 +871,25 @@ program molgw
  !
  ! final evaluation for MP2
  if( calc_type%is_mp2 .AND. calc_type%method == perturbative ) then
-!   call start_clock(timing_mp2_energy)
-!   call mp2_energy(nspin,basis,occupation,c_matrix,energy,en%mp2)
-!   call stop_clock(timing_mp2_energy)
 
-!   call setup_hartree(print_volume,basis%nbf,nspin,p_matrix,matrix,en%hart)
-!   WRITE_MASTER(*,*) 'Hartree [Ha]:',en%hart
    call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
    WRITE_MASTER(*,*) 'EXX     [Ha]:',en%exx
-
+#ifdef CASIDA
+   call start_clock(timing_mp2_energy)
+!   call mp2_energy(nspin,basis,occupation,c_matrix,energy,en%mp2)
+   call mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,en%mp2)
+   call stop_clock(timing_mp2_energy)
+#else
    call start_clock(timing_mp2_self)
    call mp2_selfenergy(calc_type%method,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix,en%mp2)
    call stop_clock(timing_mp2_self)
+#endif
    WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Energy       [Ha]:',en%mp2
    WRITE_MASTER(*,*) 
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%mp2
 
    WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Total Energy [Ha]:',en%tot
+   WRITE_MASTER(*,'(a,2x,f16.10)') ' SE+MP2  Total En [Ha]:',en%tot+en%se
 
    title='=== Self-energy === (in the orbital basis)'
    call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)

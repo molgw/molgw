@@ -37,10 +37,12 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
 
    do aorbital=1,basis%nbf
      if(occupation(aorbital,ispin)>spin_fact-completely_empty) cycle
-     WRITE_MASTER(*,'(i4,2x,i4,a,i4)') &
-&             ispin,aorbital,' / ',basis%nbf
+
+     WRITE_MASTER(*,'(i4,2x,i4,a,i4)') ispin,aorbital,' / ',basis%nbf
 
      tmp_xaxx(:,:,:) = 0.0_dp
+!$OMP PARALLEL DEFAULT(SHARED)
+!$OMP DO REDUCTION(+:tmp_xaxx)
      do bbf=1,basis%nbf
        do jbf=1,basis%nbf
          do abf=1,basis%nbf
@@ -51,12 +53,16 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
          enddo
        enddo
      enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
      do jspin=1,nspin
        do borbital=1,basis%nbf
          if(occupation(borbital,jspin)>spin_fact-completely_empty) cycle
        
          tmp_xaxb(:,:) = 0.0_dp
+!$OMP PARALLEL DEFAULT(SHARED)
+!$OMP DO REDUCTION(+:tmp_xaxb)
          do bbf=1,basis%nbf
            do jbf=1,basis%nbf
              do ibf=1,basis%nbf
@@ -64,6 +70,8 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
              enddo
            enddo
          enddo
+!$OMP END DO
+!$OMP END PARALLEL
 
          do iorbital=1,basis%nbf
            if(occupation(iorbital,ispin)<completely_empty) cycle
@@ -83,9 +91,7 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
 
            do jorbital=1,basis%nbf
              if(occupation(jorbital,jspin)<completely_empty) cycle
-!             fact = ( occupation(iorbital,ispin) - occupation(aorbital,ispin) ) &
-!&                     * ( occupation(jorbital,jspin) - occupation(borbital,jspin) )
-!             if( ABS(fact) < 1.d-6 ) cycle
+
              fact =  occupation(iorbital,ispin) * ( 1.0_dp - occupation(aorbital,ispin) ) &
 &                   *occupation(jorbital,jspin) * ( 1.0_dp - occupation(borbital,jspin) )
 
@@ -126,6 +132,167 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
 
 
 end subroutine mp2_energy
+
+
+!==================================================================
+subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
+ use m_definitions
+ use m_mpi
+ use m_basis_set
+ use m_eri
+ implicit none
+
+ integer,intent(in)         :: nspin
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin),energy(basis%nbf,nspin)
+ real(dp),intent(out)       :: emp2
+!=====
+ integer                    :: aorbital,borbital,iorbital,jorbital
+ integer                    :: ibf,jbf,abf,bbf,iaspin,jbspin
+ real(dp)                   :: energy_denom
+ real(dp)                   :: tmp_ixjx(basis%nbf,basis%nbf)
+ real(dp)                   :: tmp_iajx(basis%nbf),tmp_ixja(basis%nbf)
+ real(dp)                   :: tmp_iajb,tmp_ibja
+ real(dp)                   :: contrib1,contrib2
+ real(dp)                   :: fact,spin_fact
+ real(dp),allocatable       :: tmp_ixxx(:,:,:)
+ integer                    :: nocc,ncore
+ logical                    :: file_exists
+!=====
+
+ !
+ ! Deal with frozen core initialization
+ inquire(file='manual_frozencore',exist=file_exists)
+ if(file_exists) then
+   !
+   ! ncore_G and ncore_W contain the highest core state to be discarded
+   open(13,file='manual_frozencore')
+   read(13,*) ncore
+   close(13)
+   ncore = MAX(ncore,0)
+   WRITE_MASTER(msg,'(a,i4,2x,i4)') 'frozen core approximation for MP2 switched on up to state = ',ncore
+   call issue_warning(msg)
+ endif
+
+
+ emp2 = 0.0_dp
+ contrib1 = 0.0_dp
+ contrib2 = 0.0_dp
+
+ spin_fact = REAL(-nspin+3,dp)
+
+
+ allocate(tmp_ixxx(basis%nbf,basis%nbf,basis%nbf))
+
+ do iaspin=1,nspin
+   nocc = 0
+   do iorbital=ncore+1,basis%nbf
+     if( occupation(iorbital,iaspin) < completely_empty ) cycle
+     nocc = nocc + 1
+   enddo
+
+   do iorbital=ncore+1,basis%nbf
+     if( occupation(iorbital,iaspin) < completely_empty ) cycle
+
+     WRITE_MASTER(*,'(i4,2x,i4,a,i4)') iaspin,iorbital-ncore,' / ',nocc
+
+     tmp_ixxx(:,:,:) = 0.0_dp
+!$OMP PARALLEL DEFAULT(SHARED)
+!$OMP DO REDUCTION(+:tmp_ixxx)
+     do bbf=1,basis%nbf
+       do jbf=1,basis%nbf
+         do abf=1,basis%nbf
+           do ibf=1,basis%nbf
+             tmp_ixxx(abf,jbf,bbf) = tmp_ixxx(abf,jbf,bbf) &
+&               + c_matrix(ibf,iorbital,iaspin) * eri(ibf,abf,jbf,bbf)
+           enddo
+         enddo
+       enddo
+     enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
+     do jbspin=1,nspin
+       do jorbital=ncore+1,basis%nbf
+         if( occupation(jorbital,jbspin) < completely_empty ) cycle
+       
+         tmp_ixjx(:,:) = 0.0_dp
+!$OMP PARALLEL DEFAULT(SHARED)
+!$OMP DO REDUCTION(+:tmp_ixjx)
+         do bbf=1,basis%nbf
+           do jbf=1,basis%nbf
+             do abf=1,basis%nbf
+               tmp_ixjx(abf,bbf) = tmp_ixjx(abf,bbf) + c_matrix(jbf,jorbital,jbspin) * tmp_ixxx(abf,jbf,bbf)
+             enddo
+           enddo
+         enddo
+!$OMP END DO
+!$OMP END PARALLEL
+
+         do aorbital=1,basis%nbf
+           if( occupation(aorbital,iaspin) > spin_fact - completely_empty ) cycle
+
+           tmp_iajx(:) = 0.0_dp
+           do bbf=1,basis%nbf
+             do abf=1,basis%nbf
+               tmp_iajx(bbf) = tmp_iajx(bbf) + c_matrix(abf,aorbital,iaspin) * tmp_ixjx(abf,bbf)
+             enddo
+           enddo
+
+           if(iaspin==jbspin) then 
+             tmp_ixja(:) = 0.0_dp
+             do abf=1,basis%nbf
+               do bbf=1,basis%nbf
+                 tmp_ixja(bbf) = tmp_ixja(bbf) + c_matrix(abf,aorbital,iaspin) * tmp_ixjx(bbf,abf)
+               enddo
+             enddo
+           endif
+
+           do borbital=1,basis%nbf
+             if( occupation(borbital,jbspin) > spin_fact - completely_empty ) cycle
+
+             fact =  occupation(iorbital,iaspin) * ( 1.0_dp - occupation(aorbital,iaspin) ) &
+&                   *occupation(jorbital,jbspin) * ( 1.0_dp - occupation(borbital,jbspin) )
+
+             energy_denom = energy(iorbital,iaspin) + energy(jorbital,jbspin) &
+&                                    - energy(aorbital,iaspin) - energy(borbital,jbspin)
+             ! Avoid the zero denominators
+             if( ABS(energy_denom) < 1.d-18) then
+               WRITE_MASTER(*,*) 'you skipped something'
+               cycle
+             endif
+
+             energy_denom =  fact / energy_denom 
+
+             tmp_iajb = SUM( tmp_iajx(:) * c_matrix(:,borbital,jbspin) )
+
+             contrib1 = contrib1 + 0.5_dp * energy_denom * tmp_iajb**2 
+
+             if(iaspin==jbspin) then
+               tmp_ibja = SUM( tmp_ixja(:) * c_matrix(:,borbital,jbspin) )
+               contrib2 = contrib2 - 0.5_dp * energy_denom * tmp_iajb*tmp_ibja / spin_fact
+             endif
+
+           enddo
+         enddo
+       enddo
+     enddo !jbspin
+
+   enddo ! aorbital
+
+ enddo !iaspin
+
+ deallocate(tmp_ixxx)
+
+
+ emp2 = contrib1 + contrib2
+ WRITE_MASTER(*,'(/,a)')       ' MP2 contributions'
+ WRITE_MASTER(*,'(a,f14.8)')   ' 2-ring diagram  :',contrib1
+ WRITE_MASTER(*,'(a,f14.8)')   ' SOX diagram     :',contrib2
+ WRITE_MASTER(*,'(a,f14.8,/)') ' MP2 correlation :',emp2
+
+
+end subroutine mp2_energy_fast
 
 !==================================================================
 subroutine full_ci_2electrons_spin(print_volume,spinstate,basis,h_1e,c_matrix,nuc_nuc)
