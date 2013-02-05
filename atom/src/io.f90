@@ -172,9 +172,10 @@ subroutine output_homolumo(nbf,nspin,occupation,energy,homo,lumo)
 
 end subroutine output_homolumo
 
+
 !=========================================================================
 subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
-      basis_name,gaussian_type,electrons,magnetization)
+      basis_name,gaussian_type,electrons,magnetization,nradial_grid,nangular_grid)
  use m_definitions
  use m_mpi
  use m_calculation_type
@@ -191,6 +192,7 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  integer,intent(out)                :: print_volume  
  character(len=100),intent(out)     :: basis_name
  integer,intent(out)                :: gaussian_type
+ integer,intent(out)                :: nradial_grid,nangular_grid
  real(dp),intent(out)               :: electrons 
  real(dp),intent(out)               :: magnetization
 !=====                              
@@ -198,6 +200,7 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  character(len=100)                 :: read_line
  character(len=100)                 :: line_wocomment
  character(len=100)                 :: mixing_name
+ character(len=100)                 :: dft_accuracy
  character(len=100)                 :: gaussian_name
  integer                            :: ipos,jpos
  integer                            :: istat,iatom,jatom
@@ -234,7 +237,7 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
    stop'Error in input line 3: second keyword should either PURE or CART'
  end select
 
- read(*,*) nscf,alpha_mixing,mixing_name
+ read(*,*) nscf,alpha_mixing,mixing_name,dft_accuracy
  if(nscf<1) stop'nscf too small'
  if(alpha_mixing<0.0 .OR. alpha_mixing > 1.0 ) stop'alpha_mixing should be inside [0,1]'
  select case(TRIM(mixing_name))
@@ -244,6 +247,26 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
    mixing_scheme = pulay_mixing
  case default
    stop'mixing scheme not recognized'
+ end select
+
+ select case(TRIM(dft_accuracy))
+ case('VERYLOW','verylow','VL','vl')
+   nradial_grid  =  6
+   nangular_grid =  6 
+ case('LOW','low','L','l')
+   nradial_grid  = 10
+   nangular_grid = 14 
+ case('MEDIUM','medium','M','m')
+   nradial_grid  = 20
+   nangular_grid = 26 
+ case('HIGH','high','H','h')
+   nradial_grid  = 40
+   nangular_grid = 50 
+ case('VERYHIGH','veryhigh','VH','vh')
+   nradial_grid  = 80
+   nangular_grid = 86 
+ case default
+   stop'integration quality not recognized'
  end select
 
  read(*,*) print_volume

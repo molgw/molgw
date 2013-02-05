@@ -27,6 +27,7 @@ program molgw
  integer                      :: print_volume
  character(len=100)           :: basis_name
  integer                      :: gaussian_type
+ integer                      :: nangular_grid,nradial_grid
  real(dp)                     :: electrons
  real(dp)                     :: magnetization
 !===== variables for testing
@@ -122,7 +123,7 @@ program molgw
  !
  ! Reading input file
  call read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
-                                   basis_name,gaussian_type,electrons,magnetization)
+                                   basis_name,gaussian_type,electrons,magnetization,nradial_grid,nangular_grid)
 
  !
  ! Nucleus-nucleus repulsion contribution to the energy
@@ -305,7 +306,7 @@ program molgw
  !
  ! Setup the grids for the quadrature of DFT potential/energy
  if( ndft_xc /= 0 ) then
-   call setup_dft_grid(40,50)      !   call setup_dft_grid(10,26)
+   call setup_dft_grid(nradial_grid,nangular_grid)
  endif
 
  !
