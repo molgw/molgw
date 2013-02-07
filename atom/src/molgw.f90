@@ -262,17 +262,40 @@ program molgw
    
 
  !
- ! Build occupation array, initial c_matrix
+ ! Build the occupation array
  call set_occupation(electrons,magnetization,basis%nbf,nspin,occupation)
  title='=== Occupations ==='
  call dump_out_occupation(title,basis%nbf,nspin,occupation)
+
+ !
+ ! Calculate the parts of the hamiltonian that does not change along
+ ! with the SCF cycles
+ !
+ ! Kinetic energy contribution
+ call setup_kinetic(print_volume,basis,hamiltonian_kinetic)
+
+ !
+ ! Nucleus-electron interaction
+ call setup_nucleus(print_volume,basis,hamiltonian_nucleus)
+
+ !
+ ! Setup the initial c_matrix by diagonalizing the bare hamiltonian
+ hamiltonian(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+ WRITE_MASTER(*,*) 'Diagonalization of the bare hamiltonian'
+ call diagonalize_generalized_sym(basis%nbf,&
+                                  hamiltonian(:,:,1),s_matrix(:,:),&
+                                  energy(:,1),c_matrix(:,:,1))
+ ! The hamiltonian is still spin-independent:
+ c_matrix(:,:,nspin) = c_matrix(:,:,1)
+
 ! call guess_starting_c_matrix(basis%nbf,nspin,c_matrix)
- call guess_starting_c_matrix_new(basis,nspin,c_matrix)
+! call guess_starting_c_matrix_new(basis,nspin,c_matrix)
  do ispin=1,nspin
    matrix(:,:,ispin) = transpose( c_matrix(:,:,ispin) )
  enddo
  title='=== Initial C matrix ==='
  call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
+
 
  !
  ! Setup the density matrix: p_matrix
@@ -290,18 +313,6 @@ program molgw
  !
  ! Initialize the SCF mixing procedure
  call init_scf(nscf,basis%nbf,nspin,alpha_mixing)
-
-
- !
- ! Calculate the parts of the hamiltonian that does not change along
- ! with the SCF cycles
- !
- ! Kinetic energy contribution
- call setup_kinetic(print_volume,basis,hamiltonian_kinetic)
-
- !
- ! Nucleus-electron interaction
- call setup_nucleus(print_volume,basis,hamiltonian_nucleus)
 
  !
  ! Setup the grids for the quadrature of DFT potential/energy

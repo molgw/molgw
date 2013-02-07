@@ -460,9 +460,9 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
 !=====
- integer,parameter          :: nx=60
- integer,parameter          :: ny=60
- integer,parameter          :: nz=60
+ integer                    :: nx
+ integer                    :: ny
+ integer                    :: nz
  real(dp),parameter         :: length=4.0_dp
  integer                    :: ir,ibf
  integer                    :: istate1,istate2,istate,ispin
@@ -481,14 +481,18 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
 
  WRITE_MASTER(*,*) 
  WRITE_MASTER(*,*) 'Plotting some selected wavefunctions in a cube file'
- inquire(file='manual_plotwfn',exist=file_exists)
+ inquire(file='manual_cubewfn',exist=file_exists)
  if(file_exists) then
-   open(100,file='manual_plotwfn',status='old')
+   open(100,file='manual_cubewfn',status='old')
    read(100,*) istate1,istate2
+   read(100,*) nx,ny,nz
    close(100)
  else
    istate1=1
    istate2=2
+   nx=40
+   ny=40
+   nz=40
  endif
  allocate(phase(istate1:istate2,nspin),phi(istate1:istate2,nspin))
  WRITE_MASTER(*,'(a,2(2x,i4))')   ' states:   ',istate1,istate2

@@ -160,6 +160,7 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
  logical                    :: file_exists
 !=====
 
+ WRITE_MASTER(*,*) 'starting the MP2 calculation'
  !
  ! Deal with frozen core initialization
  inquire(file='manual_frozencore',exist=file_exists)
