@@ -11,6 +11,7 @@ module m_eri
            eri_lr,allocate_eri_lr,deallocate_eri_lr,negligible_eri,&
            BUFFER1,BUFFER2
  public :: index_prod
+ public :: negligible_basispair
 
  integer,parameter :: BUFFER1 = 1
  integer,parameter :: BUFFER2 = 2
@@ -18,7 +19,7 @@ module m_eri
  ! max length of a record in the ERI file
  integer,parameter :: line_length=1000
 
- real(dp),parameter :: TOL_INT=1.0e-10_dp
+ real(dp)                   :: TOL_INT=1.0e-10_dp
 
  real(prec_eri),allocatable :: eri_buffer(:)
  real(prec_eri),allocatable :: eri_buffer_lr(:)
@@ -55,9 +56,21 @@ subroutine allocate_eri(basis,rcut)
  real(dp),intent(in)        :: rcut
 !===== 
  integer            :: info
+ logical            :: file_exists
 !===== 
 
  nbf_eri = basis%nbf
+ inquire(file='manual_tol_int',exist=file_exists)
+ if( file_exists ) then
+   open(unit=22,file='manual_tol_int',status='old')
+   read(22,*) TOL_INT
+   close(22)
+   TOL_INT = MAX(TOL_INT,0.0_dp)
+   WRITE_MASTER(msg,'(a,x,es14.4)') 'TOL_INT manually set to',TOL_INT
+   call issue_warning(msg)
+ else
+   TOL_INT = 1.0e-10_dp
+ endif
 
  call setup_shell_list(basis)
  allocate(negligible_shellpair(nshell,nshell))

@@ -17,15 +17,7 @@ subroutine setup_overlap(print_volume,basis,s_matrix)
  real(dp)             :: overlap_tmp
 !====
 
-#if 0
- do ibf=1,basis%nbf
-   do jbf=1,basis%nbf 
-     call overlap_basis_function(basis%bf(ibf),basis%bf(jbf),overlap_tmp)
-     s_matrix(ibf,jbf) = overlap_tmp
-   enddo
- enddo
-
-#else
+ WRITE_MASTER(*,*) 'Setup overlap matrix S'
 
  ibf_cart = 1
  jbf_cart = 1
@@ -63,8 +55,6 @@ subroutine setup_overlap(print_volume,basis,s_matrix)
 
  enddo
 
-#endif
-
  title='=== Overlap matrix S ==='
  call dump_out_matrix(print_volume,title,basis%nbf,1,s_matrix)
 
@@ -88,6 +78,8 @@ subroutine setup_kinetic(print_volume,basis,hamiltonian_kinetic)
  real(dp),allocatable :: matrix_cart(:,:)
  real(dp)             :: kinetic_tmp
 !====
+
+ WRITE_MASTER(*,*) 'Setup kinetic part of the Hamiltonian'
 
  ibf_cart = 1
  jbf_cart = 1
@@ -150,6 +142,8 @@ subroutine setup_nucleus(print_volume,basis,hamiltonian_nucleus)
  real(dp),allocatable :: matrix_cart(:,:)
  real(dp)             :: vnucleus_ij
 !====
+
+ WRITE_MASTER(*,*) 'Setup nucleus-electron part of the Hamiltonian'
 
  ibf_cart = 1
  jbf_cart = 1
@@ -225,14 +219,20 @@ subroutine setup_hartree(print_volume,nbf,nspin,p_matrix,pot_hartree,ehartree)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
    do jbf=1,nbf
      do ibf=1,nbf
+       if( negligible_basispair(ibf,jbf) ) cycle
        if( .NOT. is_my_task(ibf,jbf) ) cycle
        do lbf=1,nbf
-         do kbf=1,nbf
+         !
+         ! symmetry k <-> l
+         do kbf=1,lbf-1 ! nbf
+           if( negligible_basispair(kbf,lbf) ) cycle
            !
            ! symmetry (ij|kl) = (kl|ij) has been used to loop in the fast order
            pot_hartree(ibf,jbf,ispin) = pot_hartree(ibf,jbf,ispin) &
-                      + eri(kbf,lbf,ibf,jbf) * SUM( p_matrix(kbf,lbf,:) )
+                      + eri(kbf,lbf,ibf,jbf) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
          enddo
+         pot_hartree(ibf,jbf,ispin) = pot_hartree(ibf,jbf,ispin) &
+                    + eri(lbf,lbf,ibf,jbf) * SUM( p_matrix(lbf,lbf,:) )
        enddo
      enddo
    enddo
@@ -276,18 +276,43 @@ subroutine setup_exchange(print_volume,nbf,nspin,p_matrix,pot_exchange,eexchange
 
  pot_exchange(:,:,:)=0.0_dp
 
+#if 0
  do ispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
+!$OMP DO 
    do jbf=1,nbf
-     do lbf=1,nbf
-       if( .NOT. is_my_task(lbf,jbf) ) cycle
-       do ibf=1,nbf
-         do kbf=1,nbf
+     do ibf=1,nbf
+       do lbf=1,nbf
+         !
+         ! symmetry k <-> l
+         do kbf=1,lbf-1 ! nbf
            !
            ! symmetry (ik|lj) = (ki|lj) has been used to loop in the fast order
            pot_exchange(ibf,jbf,ispin) = pot_exchange(ibf,jbf,ispin) &
-                      - eri(kbf,ibf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact
+                      - ( eri(kbf,ibf,lbf,jbf) + eri(lbf,ibf,kbf,jbf) ) * p_matrix(kbf,lbf,ispin) / spin_fact 
+         enddo
+         pot_exchange(ibf,jbf,ispin) = pot_exchange(ibf,jbf,ispin) &
+                    - eri(lbf,ibf,lbf,jbf) * p_matrix(lbf,lbf,ispin) / spin_fact
+       enddo
+     enddo
+   enddo
+!$OMP END DO
+!$OMP END PARALLEL
+ enddo
+#else
+ do ispin=1,nspin
+!$OMP PARALLEL DEFAULT(SHARED)
+!$OMP DO 
+   do jbf=1,nbf
+     do lbf=1,nbf
+       if( negligible_basispair(lbf,jbf) ) cycle
+       do ibf=1,nbf
+         do kbf=1,nbf
+           if( negligible_basispair(kbf,ibf) ) cycle
+           !
+           ! symmetry (ik|lj) = (ki|lj) has been used to loop in the fast order
+           pot_exchange(ibf,jbf,ispin) = pot_exchange(ibf,jbf,ispin) &
+                      - eri(kbf,ibf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact 
          enddo
        enddo
      enddo
@@ -295,8 +320,7 @@ subroutine setup_exchange(print_volume,nbf,nspin,p_matrix,pot_exchange,eexchange
 !$OMP END DO
 !$OMP END PARALLEL
  enddo
- call xsum(pot_exchange)
-
+#endif
 
  title='=== Exchange contribution ==='
  call dump_out_matrix(print_volume,title,nbf,nspin,pot_exchange)
