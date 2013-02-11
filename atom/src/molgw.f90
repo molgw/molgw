@@ -97,7 +97,7 @@ program molgw
  ! initialize the warning counter
  call init_warning()
 #ifdef CHI0
- msg='CHI0 preprocessing option is set'
+ msg='CHI0 option has been swichted on at compilation time'
  call issue_warning(msg)
 #endif
 #ifdef OPENMP
@@ -105,18 +105,20 @@ program molgw
  msg='OPENMP option is activated with threads number'//msg
  call issue_warning(msg)
 #endif
-#ifdef LOW_MEMORY1
- msg='LOW_MEMORY version 1 option is swichted on'
+#ifdef LOW_MEMORY2
+ msg='LOW_MEMORY version 2 option has been swichted on at compilation time'
  call issue_warning(msg)
 #endif
-#ifdef LOW_MEMORY2
- msg='LOW_MEMORY version 2 option is swichted on'
+#ifdef LOW_MEMORY3
+ msg='LOW_MEMORY version 3 option has been swichted on at compilation time'
+ call issue_warning(msg)
+#endif
+#ifdef CASIDA
+ msg='CASIDA option has been swichted on at compilation time'
  call issue_warning(msg)
 #endif
 #ifdef MPI
-#ifndef LOW_MEMORY1
- stop'MPI and LOW_MEMORY1 should be set to on'
-#endif
+ stop'MPI not functional'
 #endif
 
 
@@ -173,12 +175,12 @@ program molgw
  !
  ! ERI are stored "privately" in the module m_eri
  call start_clock(timing_integrals)
- call allocate_eri(basis%nbf)
+ call allocate_eri(basis,0.0_dp)
  call calculate_eri(print_volume,basis,0.0_dp,BUFFER1)
  !
  ! for HSE functionals, calculate the long-range ERI
  if(calc_type%is_screened_hybrid) then
-   call allocate_eri_lr(basis%nbf)
+   call allocate_eri(basis,rcut)
    call calculate_eri(print_volume,basis,rcut,BUFFER2)
  endif
  call stop_clock(timing_integrals)
@@ -756,7 +758,8 @@ program molgw
      write(msg,'(a,f10.4)') 'hard coded cutoff radius  ',rcut
      call issue_warning(msg)
      call deallocate_eri()
-     call allocate_eri(basis%nbf)
+     stop'NOT WORKING ANY MORE'
+     call allocate_eri(basis,rcut)
      call calculate_eri(print_volume,basis,rcut,BUFFER1)
 
      if( .NOT. ALLOCATED( vxc_matrix ) ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )

@@ -1,11 +1,11 @@
 OPENMP= -openmp -DOPENMP
 
 #FC=gfortran -cpp -DLOW_MEMORY2  -fno-range-check  -ffree-line-length-256 #-DHAVE_LIBXC -DLOW_MEMORY2 #-DCHI0  # -DAUXIL_BASIS
-FC=ifort -fpp $(OPENMP) -mkl=parallel -DHAVE_LIBXC -DLOW_MEMORY2 -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
+FC=ifort -fpp $(OPENMP) -mkl=parallel -DHAVE_LIBXC -DLOW_MEMORY2 -DCASIDA #-DLOW_MEMORY3 -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
 #FC=mpif90 -fpp -mkl=parallel -DMPI -DLOW_MEMORY1 -DHAVE_LIBXC #-DLOW_MEMORY2 #-DCHI0  # -DAUXIL_BASIS
 
 CC=g++
-FCOPTS= -O2 #-g -check all -check noarg_temp_created -traceback
+FCOPTS= -O0 -g -check all -check noarg_temp_created -traceback
 CCOPTS= -O2 # -O0 -g -fbounds-check
 #FCOPTS= -xHost -O3 #-ipo
 

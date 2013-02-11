@@ -215,6 +215,7 @@ subroutine setup_hartree(print_volume,nbf,nspin,p_matrix,pot_hartree,ehartree)
  character(len=100)   :: title
 !=====
 
+ WRITE_MASTER(*,*) 'Calculate Hartree term'
  call start_clock(timing_hartree)
 
  pot_hartree(:,:,:)=0.0_dp
@@ -268,6 +269,7 @@ subroutine setup_exchange(print_volume,nbf,nspin,p_matrix,pot_exchange,eexchange
  character(len=100)   :: title
 !=====
 
+ WRITE_MASTER(*,*) 'Calculate Exchange term'
  call start_clock(timing_exchange)
 
  spin_fact = REAL(-nspin+3,dp)
@@ -323,6 +325,7 @@ subroutine setup_exchange_longrange(print_volume,nbf,nspin,p_matrix,pot_exchange
  character(len=100)   :: title
 !=====
 
+ WRITE_MASTER(*,*) 'Calculate Long-Range Exchange term'
  call start_clock(timing_exchange)
 
  spin_fact = REAL(-nspin+3,dp)

@@ -399,11 +399,11 @@ subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_m
  integer :: ipole
  integer :: t_ij,t_kl
 
-#ifndef LOW_MEMORY2
- real(dp) :: eri_eigenstate(basis%nbf,basis%nbf,basis%nbf,basis%nbf,nspin,nspin)
-#else
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
  real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
  real(dp),allocatable :: eri_eigenstate_k(:,:,:,:)
+#else
+ real(dp) :: eri_eigenstate(basis%nbf,basis%nbf,basis%nbf,basis%nbf,nspin,nspin)
 #endif
  real(dp) :: spin_fact 
  real(dp) :: h_2p(wpol%npole,wpol%npole)
@@ -422,10 +422,10 @@ subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_m
    call issue_warning(msg)
  endif
 
-#ifndef LOW_MEMORY2
- call transform_eri_basis_fast(basis%nbf,nspin,c_matrix,eri_eigenstate)
-#else
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
  allocate(eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin))
+#else
+ call transform_eri_basis_fast(basis%nbf,nspin,c_matrix,eri_eigenstate)
 #endif
 
 
@@ -433,7 +433,7 @@ subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_m
  do ijspin=1,nspin
    do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
 
-#ifdef LOW_MEMORY2
+#if defined LOW_MEMORY2 || LOW_MEMORY3
        call transform_eri_basis_lowmem(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
 #ifdef CRPA
        if( iorbital==band1 .OR. iorbital==band2) then
@@ -463,28 +463,16 @@ subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_m
              t_kl=t_kl+1
 
 #ifndef CHI0
-#ifndef LOW_MEMORY2
-             h_2p(t_ij,t_kl) = eri_eigenstate(iorbital,jorbital,korbital,lorbital,ijspin,klspin) &
-                        * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
-#else
+
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
              h_2p(t_ij,t_kl) = eri_eigenstate_i(jorbital,korbital,lorbital,klspin) &
                         * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
+#else
 
-!!Testing the formula for partial occupations of WT Yang.
-!             h_2p(t_ij,t_kl) = eri_eigenstate_i(jorbital,korbital,lorbital,klspin) &
-!                        * SIGN( 1.0_dp , occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) &
-!                        * SQRT(    MAX( occupation(iorbital,ijspin) , occupation(jorbital,ijspin) )   &
-!                               *   MAX( occupation(korbital,klspin) , occupation(lorbital,klspin) )   &
-!                               * ( spin_fact - MIN( occupation(iorbital,ijspin) , occupation(jorbital,ijspin) )  )&
-!                               * ( spin_fact - MIN( occupation(korbital,klspin) , occupation(lorbital,klspin) )  )  )
-!!Testing my formula
-!             h_2p(t_ij,t_kl) = eri_eigenstate_i(jorbital,korbital,lorbital,klspin) &
-!                        * SIGN( 1.0_dp , occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) &
-!                        *         MAX( occupation(iorbital,ijspin) , occupation(jorbital,ijspin) ) &
-!                              * ( spin_fact - MIN( occupation(iorbital,ijspin) , occupation(jorbital,ijspin) )  ) / spin_fact
-
-
+             h_2p(t_ij,t_kl) = eri_eigenstate(iorbital,jorbital,korbital,lorbital,ijspin,klspin) &
+                        * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
 #endif
+
 #else
              h_2p(t_ij,t_kl) = 0.0_dp
 #endif
@@ -492,11 +480,11 @@ subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_m
 
            if(TDHF) then
              if(ijspin==klspin) then
-#ifndef LOW_MEMORY2
-               h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigenstate(iorbital,korbital,jorbital,lorbital,ijspin,klspin)  &
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
+               h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigenstate_i(korbital,jorbital,lorbital,klspin)  &
                         * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) / spin_fact 
 #else
-               h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigenstate_i(korbital,jorbital,lorbital,klspin)  &
+               h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigenstate(iorbital,korbital,jorbital,lorbital,ijspin,klspin)  &
                         * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) / spin_fact 
 #endif
              endif
@@ -553,7 +541,7 @@ subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_m
  call invert(wpol%npole,eigenvector,eigenvector_inv)
  call stop_clock(timing_inversion_s2p)
 
-#ifdef LOW_MEMORY2
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
  deallocate(eri_eigenstate_i)
  allocate(eri_eigenstate_k(basis%nbf,basis%nbf,basis%nbf,nspin))
 #endif
@@ -564,7 +552,7 @@ subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_m
  t_kl=0
  do klspin=1,nspin
    do kbf=1,basis%nbf 
-#ifdef LOW_MEMORY2
+#if defined LOW_MEMORY2 || LOW_MEMORY3
      call transform_eri_basis_lowmem(nspin,c_matrix,kbf,klspin,eri_eigenstate_k)
 #endif
 
@@ -584,17 +572,17 @@ subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_m
            ijbf_current = ijbf+prod_basis%nbf*(ijspin-1)
 
 
-#ifndef LOW_MEMORY2
-           wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
-                        + eri_eigenstate(ibf,jbf,kbf,lbf,ijspin,klspin) *  eigenvector(t_kl,:)
-           wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
-                        + eri_eigenstate(kbf,lbf,ibf,jbf,klspin,ijspin) * eigenvector_inv(:,t_kl) &
-                                         * ( occupation(kbf,klspin)-occupation(lbf,klspin) )
-#else
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
            wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
                         + eri_eigenstate_k(lbf,ibf,jbf,ijspin) *  eigenvector(t_kl,:)
            wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
                         + eri_eigenstate_k(lbf,ibf,jbf,ijspin) * eigenvector_inv(:,t_kl) &
+                                         * ( occupation(kbf,klspin)-occupation(lbf,klspin) )
+#else
+           wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
+                        + eri_eigenstate(ibf,jbf,kbf,lbf,ijspin,klspin) *  eigenvector(t_kl,:)
+           wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
+                        + eri_eigenstate(kbf,lbf,ibf,jbf,klspin,ijspin) * eigenvector_inv(:,t_kl) &
                                          * ( occupation(kbf,klspin)-occupation(lbf,klspin) )
 #endif
 
@@ -630,7 +618,7 @@ subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_m
  
 
 
-#ifdef LOW_MEMORY2
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
  deallocate(eri_eigenstate_k)
 #endif
 
@@ -670,7 +658,9 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  rpa_correlation = 0.0_dp
 
 #ifndef LOW_MEMORY2
+#ifndef LOW_MEMORY3
  stop 'NOT implemented'
+#endif
 #endif
 
  !

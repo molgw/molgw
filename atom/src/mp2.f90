@@ -173,6 +173,8 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
    ncore = MAX(ncore,0)
    WRITE_MASTER(msg,'(a,i4,2x,i4)') 'frozen core approximation for MP2 switched on up to state = ',ncore
    call issue_warning(msg)
+ else
+   ncore = 0
  endif
 
 
@@ -328,10 +330,10 @@ subroutine full_ci_2electrons_spin(print_volume,spinstate,basis,h_1e,c_matrix,nu
  real(dp) :: rhor(nx),rhor_hf(nx),rr(3)
  real(dp) :: rhor_t(nx)
  real(dp) :: eval_wfn(basis%nbf)
-#ifndef LOW_MEMORY2
- real(dp) :: eri_hf(basis%nbf,basis%nbf,basis%nbf,basis%nbf)
-#else
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
  real(dp) :: eri_hf_i(basis%nbf,basis%nbf,basis%nbf,1)
+#else
+ real(dp) :: eri_hf(basis%nbf,basis%nbf,basis%nbf,basis%nbf)
 #endif
  integer,parameter :: ny=nx,nz=nx
  integer :: iy,iz
@@ -355,8 +357,10 @@ subroutine full_ci_2electrons_spin(print_volume,spinstate,basis,h_1e,c_matrix,nu
    enddo
  enddo
 
-#ifndef LOW_MEMORY2
+#ifndef LOW_MEMORY2 
+#ifndef LOW_MEMORY3
  call transform_eri_basis_fast(basis%nbf,1,c_matrix,eri_hf)
+#endif
 #endif
 
  select case(spinstate)
@@ -379,7 +383,7 @@ subroutine full_ci_2electrons_spin(print_volume,spinstate,basis,h_1e,c_matrix,nu
 
  iconf=0
  do istate1=1,basis%nbf
-#ifdef LOW_MEMORY2
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
      call transform_eri_basis_lowmem(1,c_matrix,istate1,1,eri_hf_i)
 #endif
    do ispin1=1,2
@@ -423,7 +427,7 @@ subroutine full_ci_2electrons_spin(print_volume,spinstate,basis,h_1e,c_matrix,nu
                  ! Not so painful implementation of the determinant rules as shown in
                  ! p. 70 of "Modern Quantum Chemistry" by A. Szabo and N. S. Ostlung
 
-#ifdef LOW_MEMORY2
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
                  if( ispin1==jspin1 .AND. ispin2==jspin2 ) hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf_i(jstate1,istate2,jstate2,1)
                  if( ispin1==jspin2 .AND. ispin2==jspin1 ) hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) - eri_hf_i(jstate2,istate2,jstate1,1)
 #else

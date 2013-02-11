@@ -42,10 +42,10 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
  real(dp)              :: spin_fact
  real(dp)              :: fact_occ1,fact_occ2
  real(dp)              :: fi,fj,fk,ei,ej,ek
-#ifndef LOW_MEMORY2
- real(dp)              :: eri_eigenstate(basis%nbf,basis%nbf,basis%nbf,basis%nbf,nspin,nspin)
-#else
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
  real(dp)              :: eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin)
+#else
+ real(dp)              :: eri_eigenstate(basis%nbf,basis%nbf,basis%nbf,basis%nbf,nspin,nspin)
 #endif
  real(dp)              :: omega
  real(dp)              :: zz(nspin)
@@ -74,7 +74,9 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
 
 
 #ifndef LOW_MEMORY2
+#ifndef LOW_MEMORY3
  call transform_eri_basis_fast(basis%nbf,nspin,c_matrix,eri_eigenstate)
+#endif
 #endif
 
 
@@ -117,14 +119,14 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
 #endif
  do abispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED) &
-#ifdef LOW_MEMORY2
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
 !$OMP PRIVATE(omega,fi,ei,fj,ej,fk,ek,fact_occ1,fact_occ2,fact_real,fact_nega,eri_eigenstate_i) 
 #else
 !$OMP PRIVATE(omega,fi,ei,fj,ej,fk,ek,fact_occ1,fact_occ2,fact_real,fact_nega) 
 #endif
 !$OMP DO SCHEDULE(STATIC) REDUCTION(+:emp2_ring,emp2_sox,selfenergy_ring,selfenergy_sox)
    do iorbital=1,basis%nbf !LOOP of the first Green's function
-#ifdef LOW_MEMORY2
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
      call transform_eri_basis_lowmem(nspin,c_matrix,iorbital,abispin,eri_eigenstate_i)
 #endif
      do aorbital=1,basis%nbf ! external loop ( bra )
@@ -156,30 +158,7 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
                  fact_real = REAL( fact_occ1 / (omega-ei+ej-ek+ieta) + fact_occ2 / (omega-ei+ej-ek-ieta) , dp)
                  fact_nega = REAL( fact_occ1 / (energy(aorbital,abispin)-ei+ej-ek+ieta) , dp )
     
-#ifndef LOW_MEMORY2
-                 selfenergy_ring(iomegai,aorbital,borbital,abispin) = selfenergy_ring(iomegai,aorbital,borbital,abispin) &
-                          + fact_real * eri_eigenstate(aorbital,iorbital,korbital,jorbital,abispin,jkspin) &
-                                         * eri_eigenstate(jorbital,korbital,iorbital,borbital,jkspin,abispin)
-
-                 if(iomegai==1 .AND. aorbital==borbital .AND. occupation(aorbital,abispin)>completely_empty) then
-                   emp2_ring = emp2_ring + occupation(aorbital,abispin) &
-                                         * fact_nega * eri_eigenstate(aorbital,iorbital,korbital,jorbital,abispin,jkspin) &
-                                                     * eri_eigenstate(jorbital,korbital,iorbital,borbital,jkspin,abispin)
-                 endif
-    
-                 if( abispin == jkspin ) then
-                   selfenergy_sox(iomegai,aorbital,borbital,abispin) = selfenergy_sox(iomegai,aorbital,borbital,abispin) &
-                            - fact_real * eri_eigenstate(aorbital,iorbital,jorbital,korbital,abispin,abispin) &
-                                           * eri_eigenstate(iorbital,jorbital,korbital,borbital,abispin,abispin) / spin_fact
-
-                   if(iomegai==1 .AND. aorbital==borbital .AND. occupation(aorbital,abispin)>completely_empty) then
-                     emp2_sox = emp2_sox - occupation(aorbital,abispin) &
-                               * fact_nega * eri_eigenstate(aorbital,iorbital,jorbital,korbital,abispin,jkspin) &
-                                           * eri_eigenstate(iorbital,jorbital,korbital,borbital,abispin,abispin) / spin_fact
-                   endif
-                 endif
-
-#else
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
                  selfenergy_ring(iomegai,aorbital,borbital,abispin) = selfenergy_ring(iomegai,aorbital,borbital,abispin) &
                           + fact_real * eri_eigenstate_i(aorbital,korbital,jorbital,jkspin) &
                                          * eri_eigenstate_i(borbital,jorbital,korbital,jkspin)
@@ -199,6 +178,28 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
                      emp2_sox = emp2_sox - occupation(aorbital,abispin) &
                                * fact_nega * eri_eigenstate_i(aorbital,jorbital,korbital,jkspin) &
                                            * eri_eigenstate_i(jorbital,korbital,borbital,abispin) / spin_fact
+                   endif
+                 endif
+#else
+                 selfenergy_ring(iomegai,aorbital,borbital,abispin) = selfenergy_ring(iomegai,aorbital,borbital,abispin) &
+                          + fact_real * eri_eigenstate(aorbital,iorbital,korbital,jorbital,abispin,jkspin) &
+                                         * eri_eigenstate(jorbital,korbital,iorbital,borbital,jkspin,abispin)
+
+                 if(iomegai==1 .AND. aorbital==borbital .AND. occupation(aorbital,abispin)>completely_empty) then
+                   emp2_ring = emp2_ring + occupation(aorbital,abispin) &
+                                         * fact_nega * eri_eigenstate(aorbital,iorbital,korbital,jorbital,abispin,jkspin) &
+                                                     * eri_eigenstate(jorbital,korbital,iorbital,borbital,jkspin,abispin)
+                 endif
+    
+                 if( abispin == jkspin ) then
+                   selfenergy_sox(iomegai,aorbital,borbital,abispin) = selfenergy_sox(iomegai,aorbital,borbital,abispin) &
+                            - fact_real * eri_eigenstate(aorbital,iorbital,jorbital,korbital,abispin,abispin) &
+                                           * eri_eigenstate(iorbital,jorbital,korbital,borbital,abispin,abispin) / spin_fact
+
+                   if(iomegai==1 .AND. aorbital==borbital .AND. occupation(aorbital,abispin)>completely_empty) then
+                     emp2_sox = emp2_sox - occupation(aorbital,abispin) &
+                               * fact_nega * eri_eigenstate(aorbital,iorbital,jorbital,korbital,abispin,jkspin) &
+                                           * eri_eigenstate(iorbital,jorbital,korbital,borbital,abispin,abispin) / spin_fact
                    endif
                  endif
 #endif

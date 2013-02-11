@@ -23,6 +23,22 @@ module m_eri
  real(prec_eri),allocatable :: eri_buffer(:)
  real(prec_eri),allocatable :: eri_buffer_lr(:)
 
+ integer                    :: nshell
+ logical,allocatable        :: negligible_shellpair(:,:)
+ logical,allocatable        :: negligible_basispair(:,:)
+ integer,allocatable        :: index_pair(:,:)
+
+ type shell_type
+   integer              :: am
+   integer              :: ng
+   real(dp),allocatable :: alpha(:)
+   real(dp),allocatable :: coeff(:)
+   real(dp)             :: x0(3)
+   integer              :: istart,iend
+ end type shell_type
+ type(shell_type),allocatable :: shell(:)
+
+
  integer                    :: nbf_eri                ! local copy of nbf
  integer                    :: nsize                  ! size of the eri_buffer array
  integer                    :: nsize1                 ! number of independent pairs (i,j) with i<=j
@@ -32,23 +48,31 @@ module m_eri
 contains
 
 !=========================================================================
-subroutine allocate_eri(nbf)
+subroutine allocate_eri(basis,rcut)
  implicit none
 !===== 
- integer,intent(in) :: nbf
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: rcut
 !===== 
  integer            :: info
 !===== 
 
- nbf_eri = nbf
-#if LOW_MEMORY1
- WRITE_MASTER(*,'(/,a)') ' Semi-symmetrized ERI stored (4 symmetries)'
- nsize1  = index_prod(nbf_eri,nbf_eri) 
- nsize   = nsize1*get_ntask()
-#elif LOW_MEMORY2
+ nbf_eri = basis%nbf
+
+ call setup_shell_list(basis)
+ allocate(negligible_shellpair(nshell,nshell))
+ allocate(negligible_basispair(nbf_eri,nbf_eri))
+ allocate(index_pair(nbf_eri,nbf_eri))
+ call identify_negligible_shellpair(basis,rcut)
+ call setup_negligible_basispair()
+
+
+#if LOW_MEMORY2
  WRITE_MASTER(*,'(/,a)') ' Symmetrized ERI stored (8 symmetries)' 
  nsize1  = index_prod(nbf_eri,nbf_eri) 
  nsize   = index_eri(nbf_eri,nbf_eri,nbf_eri,nbf_eri)
+#elif LOW_MEMORY3
+ nsize = (nsize1*(nsize1+1))/2
 #else
  WRITE_MASTER(*,'(/,a)') ' All ERI are stored'
  nsize1  = nbf_eri**2
@@ -59,12 +83,20 @@ subroutine allocate_eri(nbf)
  WRITE_MASTER(*,*) 'max index size',HUGE(nsize)
  if(nsize<1) stop'too many integrals to be stored'
 
- allocate(eri_buffer(nsize),stat=info)
+ if(rcut<1.0e-6_dp) then
+   allocate(eri_buffer(nsize),stat=info)
+   eri_buffer(:) = 0.0_dp
+ else
+   allocate(eri_buffer_lr(nsize),stat=info)
+   eri_buffer_lr(:) = 0.0_dp
+ endif
+
  if(REAL(nsize,dp)*prec_eri > 1024**3 ) then
    WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb] / proc'
  else
    WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**2,' [Mb] / proc'
  endif
+
  if(info==0) then
    WRITE_MASTER(*,*) 'success'
  else
@@ -72,59 +104,22 @@ subroutine allocate_eri(nbf)
    stop'Not enough memory. Buy a bigger computer'
  endif
 
- eri_buffer(:) = 0.0_dp
+
 
 end subroutine allocate_eri
+
 
 !=========================================================================
 subroutine deallocate_eri()
  implicit none
 !=====
 
- if(allocated(eri_buffer))        deallocate(eri_buffer)
+ if(allocated(eri_buffer))           deallocate(eri_buffer)
+ if(allocated(negligible_basispair)) deallocate(negligible_basispair)
+ if(allocated(negligible_shellpair)) deallocate(negligible_shellpair)
 
 end subroutine deallocate_eri
 
-!=========================================================================
-subroutine allocate_eri_lr(nbf)
- implicit none
-!===== 
- integer,intent(in) :: nbf
-!===== 
- integer            :: info
-!===== 
-
- nbf_eri = nbf
-#if LOW_MEMORY2
- WRITE_MASTER(*,'(/,a)') ' Symmetrized ERI stored (8 symmetries)'
- nsize1  = index_prod(nbf_eri,nbf_eri) 
- nsize   = index_eri(nbf_eri,nbf_eri,nbf_eri,nbf_eri)
-#else
- WRITE_MASTER(*,'(/,a)') ' All ERI are stored'
- nsize1  = nbf_eri**2
- nsize   = nsize1**2
-#endif
-
- WRITE_MASTER(*,*) 'number of integrals to be stored:',nsize
- WRITE_MASTER(*,*) 'max index size',HUGE(nsize)
- if(nsize<1) stop'too many integrals to be stored'
-
- allocate(eri_buffer_lr(nsize),stat=info)
- if(REAL(nsize,dp)*prec_eri > 1024**3 ) then
-   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the Long-Range ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb]'
- else
-   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the Long-Range ERI array: ',REAL(nsize,dp)*prec_eri/1024**2,' [Mb]'
- endif
- if(info==0) then
-   WRITE_MASTER(*,*) 'success'
- else
-   WRITE_MASTER(*,*) 'failure'
-   stop'Not enough memory. Buy a bigger computer'
- endif
-
- eri_buffer_lr(:) = 0.0_dp
-
-end subroutine allocate_eri_lr
 
 !=========================================================================
 subroutine deallocate_eri_lr()
@@ -145,11 +140,16 @@ function index_prod(ibf,jbf)
  integer            :: jmin,imax
 !=====
 
+#ifdef LOW_MEMORY3
+ index_prod = index_pair(ibf,jbf)
+#else
  imax=MAX(ibf,jbf)
  jmin=MIN(ibf,jbf)
  index_prod = (jmin-1)*nbf_eri - (jmin-1)*(jmin-2)/2 + imax-jmin+1
+#endif
 
 end function index_prod
+
 
 !=========================================================================
 function index_eri(ibf,jbf,kbf,lbf)
@@ -164,10 +164,7 @@ function index_eri(ibf,jbf,kbf,lbf)
 
  index_ij = index_prod(ibf,jbf)
 
-#ifdef LOW_MEMORY1
- index_kl  = get_task_number(kbf,lbf)
- index_eri = index_ij + ( index_kl - 1 ) * nsize1
-#elif LOW_MEMORY2
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
  index_kl = index_prod(kbf,lbf)
 
  ijmax=MAX(index_ij,index_kl)
@@ -178,7 +175,9 @@ function index_eri(ibf,jbf,kbf,lbf)
  index_eri = ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3
 #endif
 
+
 end function index_eri
+
 
 !=========================================================================
 function eri(ibf,jbf,kbf,lbf)
@@ -190,7 +189,11 @@ function eri(ibf,jbf,kbf,lbf)
  integer            :: i1,i2,i3,i4
 !=====
 
- eri = eri_buffer(index_eri(ibf,jbf,kbf,lbf))
+ if( negligible_basispair(ibf,jbf) .OR. negligible_basispair(kbf,lbf) ) then
+   eri = 0.0_dp
+ else
+   eri = eri_buffer(index_eri(ibf,jbf,kbf,lbf))
+ endif
 
 end function eri
 
@@ -204,7 +207,11 @@ function eri_lr(ibf,jbf,kbf,lbf)
  integer            :: i1,i2,i3,i4
 !=====
 
- eri_lr = eri_buffer_lr(index_eri(ibf,jbf,kbf,lbf))
+ if( negligible_basispair(ibf,jbf) .OR. negligible_basispair(kbf,lbf) ) then
+   eri_lr = 0.0_dp
+ else
+   eri_lr = eri_buffer_lr(index_eri(ibf,jbf,kbf,lbf))
+ endif
 
 end function eri_lr
 
@@ -217,11 +224,9 @@ subroutine calculate_eri(print_volume,basis,rcut,which_buffer)
  integer,intent(in)           :: which_buffer
 !=====
 
-#if 0
- if( .NOT. read_eri(rcut) ) call do_calculate_eri(basis,rcut,which_buffer)
-#else
+
  if( .NOT. read_eri(rcut) ) call do_calculate_eri_new(basis,rcut,which_buffer)
-#endif
+
 
  if(MODULO(print_volume/100,2)>0) then
    call dump_out_eri(rcut)
@@ -229,533 +234,52 @@ subroutine calculate_eri(print_volume,basis,rcut,which_buffer)
 
 end subroutine calculate_eri
 
+
 !=========================================================================
-subroutine do_calculate_eri(basis,rcut,which_buffer)
- use ISO_C_BINDING
- use m_tools,only: boys_function
- use m_timing
-#ifdef OPENMP
- use omp_lib
-#endif
+subroutine setup_shell_list(basis)
  implicit none
+ 
  type(basis_set),intent(in)   :: basis
- real(dp),intent(in)          :: rcut
- integer,intent(in)           :: which_buffer
 !=====
- integer,parameter            :: NSHELLMAX=400
- integer,parameter            :: NMEMBER=28
- logical,parameter            :: DEBUG=.TRUE.
- integer                      :: info
- integer                      :: ibf,jbf,kbf,lbf
- integer                      :: ig,jg,kg,lg
- integer                      :: n1,n2,n3,n4
- integer                      :: ni,nj,nk,nl
- integer                      :: ii,i,j,k,l
- integer                      :: nshell,nint_shell
- integer                      :: ishell,jshell,kshell,lshell
- type(basis_function),pointer :: bf_current_i,bf_current_j,bf_current_k,bf_current_l
- type(gaussian),pointer       :: g_current
- integer                      :: igaussian
- real(dp),allocatable         :: int_gaussian(:)
- logical                      :: shell_already_exists
- logical                      :: need_calculation
- integer                      :: iint,nint_tot
- integer                      :: imember,jmember,kmember,lmember
- integer                      :: iindex_in_the_shell,jindex_in_the_shell,kindex_in_the_shell,lindex_in_the_shell
- integer                      :: index_integral
- integer                      :: index_tmp
- integer                      :: ami,amj,amk,aml
- real(dp),allocatable         :: int_tmp(:,:,:,:)
- real(dp)                     :: zeta_12,zeta_34,rho,rho1,f0t(0:0),tt
- real(dp)                     :: p(3),q(3)
- integer                      :: am1f,am2f,am3f,am4f
-!=====
- type shell_type
-   integer  :: am
-   real(dp) :: alpha
-   real(dp) :: x0(3)
-   integer  :: nmember              !
-   integer  :: index_bf(NMEMBER)    ! correspondance from shell to basis functions and primitive gaussians
-   integer  :: index_g(NMEMBER)     !
- end type shell_type
- type(shell_type)             :: shell(NSHELLMAX)
-!=====
-! variables used to call C++ 
- integer(C_INT),external      :: calculate_integral
- integer(C_INT)               :: am1,am2,am3,am4
- real(C_DOUBLE)               :: alpha1,alpha2,alpha3,alpha4
- real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
- real(C_DOUBLE),allocatable   :: int_shell(:)
- real(C_DOUBLE)               :: omega_range
+ integer :: ibf,jbf
+ integer :: ishell
 !=====
 
 
- WRITE_MASTER(*,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
+ nshell = basis%nshell
+ allocate(shell(nshell))
 
- if( rcut > 1.0e-6_dp ) then
-   omega_range = 1.0_dp / rcut
-   WRITE_MASTER(*,'(a40,x,f9.4)') ' Long-Range only integrals with rcut=',rcut
-   WRITE_MASTER(*,'(a40,x,f9.4)') ' or omega=',omega_range
- else 
-   omega_range = 1.0e6_dp
- endif
+ !
+ ! Set up shells information
+ jbf=0
+ do ishell=1,nshell
+   do ibf=1,basis%nbf_cart
+     if(basis%bf(ibf)%shell_index==ishell) then
+       shell(ishell)%am    = basis%bf(ibf)%am
+       shell(ishell)%x0(:) = basis%bf(ibf)%x0(:)
+       shell(ishell)%ng    = basis%bf(ibf)%ngaussian
+       allocate( shell(ishell)%alpha(shell(ishell)%ng) )
+       allocate( shell(ishell)%coeff(shell(ishell)%ng) )
+       shell(ishell)%alpha(:) = basis%bf(ibf)%g(:)%alpha
+       !
+       ! Include here the normalization part that does not depend on (nx,ny,nz)
+       shell(ishell)%coeff(:) = basis%bf(ibf)%coeff(:) &
+                 * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**shell(ishell)%am * shell(ishell)%alpha(:)**( 0.25_dp * ( 2.0_dp*shell(ishell)%am + 3.0_dp ) )
 
- ishell=0
- do ibf=1,basis%nbf_cart
-   bf_current_i => basis%bf(ibf)
-
-   do ig=1,bf_current_i%ngaussian
-     g_current => bf_current_i%g(ig)
-
-     !
-     ! check if the shell has already been created
-     shell_already_exists=.FALSE.
-     do jshell=1,ishell
-       if( g_current%am == shell(jshell)%am .AND. ABS( g_current%alpha - shell(jshell)%alpha ) < 1.d-8 &
-           .AND.  ALL( ABS( g_current%x0(:) - shell(jshell)%x0(:) ) < 1.d-8 ) ) then
-
-         shell_already_exists=.TRUE.
-         shell(jshell)%nmember = shell(jshell)%nmember + 1
-         if( shell(jshell)%nmember > NMEMBER ) stop'NMEMBER hard coded parameter is too small!'
-         shell(jshell)%index_bf(shell(jshell)%nmember) = ibf
-         shell(jshell)%index_g (shell(jshell)%nmember) = ig
-
-         exit
-       endif
-     enddo
-
-     if(.NOT.shell_already_exists) then
-       ishell=ishell+1
-       if(ishell > NSHELLMAX) stop'NSHELLMAX internal parameter is too small'
-
-       shell(ishell)%am      = g_current%am
-       shell(ishell)%alpha   = g_current%alpha
-       shell(ishell)%x0(:)   = g_current%x0(:)
-       shell(ishell)%nmember = 1
-       shell(ishell)%index_bf(shell(ishell)%nmember) = ibf
-       shell(ishell)%index_g (shell(ishell)%nmember) = ig
+       jbf = jbf + 1
+       shell(ishell)%istart = jbf
+       jbf = jbf + number_basis_function_am( basis%gaussian_type , shell(ishell)%am ) - 1
+       shell(ishell)%iend   = jbf
+       exit
 
      endif
-
-   enddo
- enddo
- nshell=ishell
- 
- call start_clock(timing_tmp2)
- WRITE_MASTER(*,*) 'number of shells',nshell
-
- !
- ! (ij||kl)
- !
-
- do lshell=1,nshell
-   do kshell=1,nshell
-
-     !
-     ! MPI parallelization
-     !
-     ! Choose whether the calculation is required on the proc
-     need_calculation = .FALSE.
-     do lmember=1,shell(lshell)%nmember
-       lbf = shell(lshell)%index_bf(lmember)
-       do kmember=1,shell(kshell)%nmember
-         kbf = shell(kshell)%index_bf(kmember)
-         if( is_my_task(kbf,lbf) ) need_calculation=.TRUE.
-       enddo
-     enddo
-     !
-     ! Cycle if not required
-     if( .NOT. need_calculation ) cycle
-     !
-     ! End of MPI parallelization
-
-
-     do jshell=1,nshell
-       do ishell=1,nshell
-
-         call start_clock(timing_tmp3)
-
-         ami = shell(ishell)%am
-         amj = shell(jshell)%am
-         amk = shell(kshell)%am
-         aml = shell(lshell)%am
-
-         !
-         ! Order the angular momenta so that libint is pleased
-         ! 1) am3+am4 >= am1+am2
-         ! 2) am3>=am4
-         ! 3) am1>=am2
-         if(amk+aml>=ami+amj) then
-           if(amk>=aml) then
-             am3 = shell(kshell)%am
-             am4 = shell(lshell)%am
-             alpha3 = shell(kshell)%alpha
-             alpha4 = shell(lshell)%alpha
-             x03(:) = shell(kshell)%x0(:)
-             x04(:) = shell(lshell)%x0(:)
-           else
-             am3 = shell(lshell)%am
-             am4 = shell(kshell)%am
-             alpha3 = shell(lshell)%alpha
-             alpha4 = shell(kshell)%alpha
-             x03(:) = shell(lshell)%x0(:)
-             x04(:) = shell(kshell)%x0(:)
-           endif
-           if(ami>=amj) then
-             am1 = shell(ishell)%am
-             am2 = shell(jshell)%am
-             alpha1 = shell(ishell)%alpha
-             alpha2 = shell(jshell)%alpha
-             x01(:) = shell(ishell)%x0(:)
-             x02(:) = shell(jshell)%x0(:)
-           else
-             am1 = shell(jshell)%am
-             am2 = shell(ishell)%am
-             alpha1 = shell(jshell)%alpha
-             alpha2 = shell(ishell)%alpha
-             x01(:) = shell(jshell)%x0(:)
-             x02(:) = shell(ishell)%x0(:)
-           endif
-         else
-           if(amk>=aml) then
-             am1 = shell(kshell)%am
-             am2 = shell(lshell)%am
-             alpha1 = shell(kshell)%alpha
-             alpha2 = shell(lshell)%alpha
-             x01(:) = shell(kshell)%x0(:)
-             x02(:) = shell(lshell)%x0(:)
-           else
-             am1 = shell(lshell)%am
-             am2 = shell(kshell)%am
-             alpha1 = shell(lshell)%alpha
-             alpha2 = shell(kshell)%alpha
-             x01(:) = shell(lshell)%x0(:)
-             x02(:) = shell(kshell)%x0(:)
-           endif
-           if(ami>=amj) then
-             am3 = shell(ishell)%am
-             am4 = shell(jshell)%am
-             alpha3 = shell(ishell)%alpha
-             alpha4 = shell(jshell)%alpha
-             x03(:) = shell(ishell)%x0(:)
-             x04(:) = shell(jshell)%x0(:)
-           else
-             am3 = shell(jshell)%am
-             am4 = shell(ishell)%am
-             alpha3 = shell(jshell)%alpha
-             alpha4 = shell(ishell)%alpha
-             x03(:) = shell(jshell)%x0(:)
-             x04(:) = shell(ishell)%x0(:)
-           endif
-         endif
-
-         ni = number_basis_function_am( CARTESIAN , ami )
-         nj = number_basis_function_am( CARTESIAN , amj )
-         nk = number_basis_function_am( CARTESIAN , amk )
-         nl = number_basis_function_am( CARTESIAN , aml )
-
-         am1f=am1
-         am2f=am2
-         am3f=am3
-         am4f=am4
-         n1 = number_basis_function_am( CARTESIAN , am1f )
-         n2 = number_basis_function_am( CARTESIAN , am2f )
-         n3 = number_basis_function_am( CARTESIAN , am3f )
-         n4 = number_basis_function_am( CARTESIAN , am4f )
-         
-         nint_shell = n1 * n2 * n3 *n4
-         if( allocated(int_shell) ) deallocate( int_shell )
-         allocate( int_shell( nint_shell ) )
-
-         !
-         ! If all the angular momentum are S type, do the calculation immediately
-         ! else call the libint library
-         !
-         if(am1+am2+am3+am4==0) then
-
-!           int_shell(1) = 2.0_dp*pi**(2.5_dp) &
-!                         / ( (alpha1+alpha2)*(alpha3+alpha4)*SQRT(alpha1+alpha2+alpha3+alpha4) )
-
-           zeta_12 = alpha1 + alpha2
-           zeta_34 = alpha3 + alpha4
-           p(:) = ( alpha1 * x01(:) + alpha2 * x02(:) ) / zeta_12 
-           q(:) = ( alpha3 * x03(:) + alpha4 * x04(:) ) / zeta_34 
-           !
-           ! Full range or long-range only integrals
-           if( rcut < 1.0e-6_dp ) then
-             rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
-             rho1 = rho
-           else
-             rho  = zeta_12 * zeta_34 * omega_range**2 / ( zeta_12*omega_range**2 + zeta_34*omega_range**2 + zeta_12*zeta_34 )
-             rho1 = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
-           endif
-           tt = rho * SUM( (p(:)-q(:))**2 )
-           call boys_function(f0t(0),0,tt)
-
-           int_shell(1) = 2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
-                 / zeta_12 * EXP( -alpha1*alpha2/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
-                 / zeta_34 * EXP( -alpha3*alpha4/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
-                 * SQRT( rho / rho1 )
-
-         else
-
-           info=calculate_integral(omega_range,&
-                                   am1,am2,am3,am4,alpha1,alpha2,alpha3,alpha4,&
-                                   x01(1),x01(2),x01(3),&
-                                   x02(1),x02(2),x02(3),&
-                                   x03(1),x03(2),x03(3),&
-                                   x04(1),x04(2),x04(3),&
-                                   int_shell(1))
-           if(info/=0) then
-             WRITE_MASTER(*,*) am1,am2,am3,am4
-             stop 'ERI calculated by libint failed'
-           endif
-
-         endif
-
-         !
-         ! Reorder the integrals in the original order
-         ! if the ordering has been changed to please libint
-         allocate(int_tmp(n1,n2,n3,n4))
-         ii=0
-         do i=1,n1
-           do j=1,n2
-             do k=1,n3
-               do l=1,n4
-                 ii=ii+1
-                 int_tmp(i,j,k,l) = int_shell(ii)
-               enddo
-             enddo
-           enddo
-         enddo
-
-         ii=0
-         if(amk+aml>=ami+amj) then
-           if(amk>=aml .AND. ami>=amj) then
-             do i=1,n1
-               do j=1,n2
-                 do k=1,n3
-                   do l=1,n4
-                     ii=ii+1
-                     int_shell(ii) = int_tmp(i,j,k,l)
-                   enddo
-                 enddo
-               enddo
-             enddo
-           else if(amk<aml .AND. ami>=amj) then
-             do i=1,n1
-               do j=1,n2
-                 do l=1,n4
-                   do k=1,n3
-                     ii=ii+1
-                     int_shell(ii) = int_tmp(i,j,k,l)
-                   enddo
-                 enddo
-               enddo
-             enddo
-           else if(amk>=aml .AND. ami<amj) then
-             do j=1,n2
-               do i=1,n1
-                 do k=1,n3
-                   do l=1,n4
-                     ii=ii+1
-                     int_shell(ii) = int_tmp(i,j,k,l)
-                   enddo
-                 enddo
-               enddo
-             enddo
-           else 
-             do j=1,n2
-               do i=1,n1
-                 do l=1,n4
-                   do k=1,n3
-                     ii=ii+1
-                     int_shell(ii) = int_tmp(i,j,k,l)
-                   enddo
-                 enddo
-               enddo
-             enddo
-           endif
-         else ! amk+aml<ami+amj
-           if(amk>=aml .AND. ami>=amj) then
-             do k=1,n3
-               do l=1,n4
-                 do i=1,n1
-                   do j=1,n2
-                     ii=ii+1
-                     int_shell(ii) = int_tmp(i,j,k,l)
-                   enddo
-                 enddo
-               enddo
-             enddo
-           else if(amk<aml .AND. ami>=amj) then
-             do k=1,n3
-               do l=1,n4
-                 do j=1,n2
-                   do i=1,n1
-                     ii=ii+1
-                     int_shell(ii) = int_tmp(i,j,k,l)
-                   enddo
-                 enddo
-               enddo
-             enddo
-           else if(amk>=aml .AND. ami<amj) then
-             do l=1,n4
-               do k=1,n3
-                 do i=1,n1
-                   do j=1,n2
-                     ii=ii+1
-                     int_shell(ii) = int_tmp(i,j,k,l)
-                   enddo
-                 enddo
-               enddo
-             enddo
-           else
-             do l=1,n4
-               do k=1,n3
-                 do j=1,n2
-                   do i=1,n1
-                     ii=ii+1
-                     int_shell(ii) = int_tmp(i,j,k,l)
-                   enddo
-                 enddo
-               enddo
-             enddo
-           endif
-         endif
-         deallocate(int_tmp)
-
-
-         call stop_clock(timing_tmp3)
-         call start_clock(timing_tmp4)
-
-         !
-         ! different storage according to which_buffer
-         !
- 
-         if( which_buffer == BUFFER1 ) then
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iindex_in_the_shell,jindex_in_the_shell,kindex_in_the_shell,lindex_in_the_shell,&
-!$OMP&     ig,jg,kg,lg,ibf,jbf,kbf,lbf,index_integral,index_tmp )
-
-!$OMP DO SCHEDULE(STATIC)
-           do lmember=1,shell(lshell)%nmember
-             lbf = shell(lshell)%index_bf(lmember)
-             lg  = shell(lshell)%index_g (lmember)
-             lindex_in_the_shell = libint_ordering(basis%bf(lbf)%nx,basis%bf(lbf)%ny,basis%bf(lbf)%nz)
-             do kmember=1,shell(kshell)%nmember
-               kbf = shell(kshell)%index_bf(kmember)
-               kg  = shell(kshell)%index_g (kmember)
-               kindex_in_the_shell = libint_ordering(basis%bf(kbf)%nx,basis%bf(kbf)%ny,basis%bf(kbf)%nz)
-               do jmember=1,shell(jshell)%nmember
-                 jbf = shell(jshell)%index_bf(jmember)
-                 jg  = shell(jshell)%index_g (jmember)
-                 jindex_in_the_shell = libint_ordering(basis%bf(jbf)%nx,basis%bf(jbf)%ny,basis%bf(jbf)%nz)
-                 do imember=1,shell(ishell)%nmember
-                   ibf = shell(ishell)%index_bf(imember)
-                   ig  = shell(ishell)%index_g (imember)
-                   iindex_in_the_shell = libint_ordering(basis%bf(ibf)%nx,basis%bf(ibf)%ny,basis%bf(ibf)%nz)
-
-                   index_integral = lindex_in_the_shell + (kindex_in_the_shell-1)*nl &
-                                   +(jindex_in_the_shell-1)*nl*nk + (iindex_in_the_shell-1)*nl*nk*nj
-
-#if LOW_MEMORY2 || LOW_MEMORY1
-                   if(ibf<jbf) cycle
-                   if(kbf<lbf) cycle
-#ifndef LOW_MEMORY1
-                   if(index_prod(ibf,jbf)<index_prod(kbf,lbf)) cycle
-#endif
-#ifdef MPI
-                   if( .NOT. is_my_task(kbf,lbf) ) cycle
-#endif
-#endif
-                   index_tmp=index_eri(ibf,jbf,kbf,lbf)
-
-                   eri_buffer(index_tmp) = eri_buffer(index_tmp) &
-                             + basis%bf(ibf)%coeff(ig) *  basis%bf(ibf)%g(ig)%norm_factor &
-                             * basis%bf(jbf)%coeff(jg) *  basis%bf(jbf)%g(jg)%norm_factor &
-                             * basis%bf(kbf)%coeff(kg) *  basis%bf(kbf)%g(kg)%norm_factor &
-                             * basis%bf(lbf)%coeff(lg) *  basis%bf(lbf)%g(lg)%norm_factor &
-                               * int_shell(index_integral) 
-
-                 enddo
-               enddo
-             enddo
-           enddo
-!$OMP END DO
-!$OMP END PARALLEL
-
-
-         else    ! Store the result in the arry eri_buffer_lr
-
-
-!$OMP PARALLEL DEFAULT(SHARED) PRIVATE(iindex_in_the_shell,jindex_in_the_shell,kindex_in_the_shell,lindex_in_the_shell,&
-!$OMP&     ig,jg,kg,lg,ibf,jbf,kbf,lbf,index_integral,index_tmp )
-
-!$OMP DO SCHEDULE(STATIC)
-           do lmember=1,shell(lshell)%nmember
-             lbf = shell(lshell)%index_bf(lmember)
-             lg  = shell(lshell)%index_g (lmember)
-             lindex_in_the_shell = libint_ordering(basis%bf(lbf)%nx,basis%bf(lbf)%ny,basis%bf(lbf)%nz)
-             do kmember=1,shell(kshell)%nmember
-               kbf = shell(kshell)%index_bf(kmember)
-               kg  = shell(kshell)%index_g (kmember)
-               kindex_in_the_shell = libint_ordering(basis%bf(kbf)%nx,basis%bf(kbf)%ny,basis%bf(kbf)%nz)
-               do jmember=1,shell(jshell)%nmember
-                 jbf = shell(jshell)%index_bf(jmember)
-                 jg  = shell(jshell)%index_g (jmember)
-                 jindex_in_the_shell = libint_ordering(basis%bf(jbf)%nx,basis%bf(jbf)%ny,basis%bf(jbf)%nz)
-                 do imember=1,shell(ishell)%nmember
-                   ibf = shell(ishell)%index_bf(imember)
-                   ig  = shell(ishell)%index_g (imember)
-                   iindex_in_the_shell = libint_ordering(basis%bf(ibf)%nx,basis%bf(ibf)%ny,basis%bf(ibf)%nz)
-
-                   index_integral = lindex_in_the_shell + (kindex_in_the_shell-1)*nl &
-                                   +(jindex_in_the_shell-1)*nl*nk + (iindex_in_the_shell-1)*nl*nk*nj
-
-#if LOW_MEMORY2 || LOW_MEMORY1
-                   if(ibf<jbf) cycle
-                   if(kbf<lbf) cycle
-#ifndef LOW_MEMORY1
-                   if(index_prod(ibf,jbf)<index_prod(kbf,lbf)) cycle
-#endif
-#ifdef MPI
-                   if( .NOT. is_my_task(kbf,lbf) ) cycle
-#endif
-#endif
-                   index_tmp=index_eri(ibf,jbf,kbf,lbf)
-
-                   eri_buffer_lr(index_tmp) = eri_buffer_lr(index_tmp) &
-                             + basis%bf(ibf)%coeff(ig) *  basis%bf(ibf)%g(ig)%norm_factor &
-                             * basis%bf(jbf)%coeff(jg) *  basis%bf(jbf)%g(jg)%norm_factor &
-                             * basis%bf(kbf)%coeff(kg) *  basis%bf(kbf)%g(kg)%norm_factor &
-                             * basis%bf(lbf)%coeff(lg) *  basis%bf(lbf)%g(lg)%norm_factor &
-                               * int_shell(index_integral) 
-
-                 enddo
-               enddo
-             enddo
-           enddo
-!$OMP END DO
-!$OMP END PARALLEL
-
-         endif      ! if full-range or long-range
-
-
-         call stop_clock(timing_tmp4)
-
-       enddo
-     enddo
    enddo
  enddo
 
- if( allocated(int_shell) ) deallocate( int_shell )
 
- call stop_clock(timing_tmp2)
- WRITE_MASTER(*,*) 'Done!'
- WRITE_MASTER(*,*)
 
-end subroutine do_calculate_eri
+end subroutine setup_shell_list
+
 
 !=========================================================================
 subroutine do_calculate_eri_new(basis,rcut,which_buffer)
@@ -786,17 +310,6 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
  real(dp),allocatable         :: integrals_libint(:)
- logical                      :: negligible_shellpair(basis%nshell,basis%nshell)
-!=====
- type shell_type
-   integer              :: am
-   integer              :: ng
-   real(dp),allocatable :: alpha(:)
-   real(dp),allocatable :: coeff(:)
-   real(dp)             :: x0(3)
-   integer              :: istart,iend
- end type shell_type
- type(shell_type)             :: shell(basis%nshell)
 !=====
 ! variables used to call C++ 
  integer(C_INT),external      :: calculate_integral
@@ -807,8 +320,10 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
  real(C_DOUBLE)               :: omega_range
 !=====
 
-#ifndef LOW_MEMORY2
+#ifndef LOW_MEMORY2 
+#ifndef LOW_MEMORY3
  stop'This implementation is only compatible with preprocessing option LOW_MEMORY2'
+#endif
 #endif
 
  WRITE_MASTER(*,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
@@ -822,38 +337,6 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
  endif
 
 
- !
- ! Set up shells information
- jbf=0
- do ishell=1,basis%nshell
-   do ibf=1,basis%nbf_cart
-     if(basis%bf(ibf)%shell_index==ishell) then
-       shell(ishell)%am    = basis%bf(ibf)%am
-       shell(ishell)%x0(:) = basis%bf(ibf)%x0(:)
-       shell(ishell)%ng    = basis%bf(ibf)%ngaussian
-       allocate( shell(ishell)%alpha(shell(ishell)%ng) )
-       allocate( shell(ishell)%coeff(shell(ishell)%ng) )
-       shell(ishell)%alpha(:) = basis%bf(ibf)%g(:)%alpha
-       !
-       ! Include here the normalization part that does not depend on (nx,ny,nz)
-       shell(ishell)%coeff(:) = basis%bf(ibf)%coeff(:) &
-                 * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**shell(ishell)%am * shell(ishell)%alpha(:)**( 0.25_dp * ( 2.0_dp*shell(ishell)%am + 3.0_dp ) )
-
-       jbf = jbf + 1
-       shell(ishell)%istart = jbf 
-       jbf = jbf + number_basis_function_am( basis%gaussian_type , shell(ishell)%am ) - 1
-       shell(ishell)%iend   = jbf 
-       exit
-
-     endif
-   enddo
- enddo
-
-
- call start_clock(timing_tmp1)
- call identify_negligible_shellpair()
- call stop_clock(timing_tmp1)
-
 !$OMP PARALLEL DEFAULT(SHARED) &
 !$OMP& PRIVATE(ami,amj,amk,aml,ni,nj,nk,nl,am1,am2,am3,am4,n1,n2,n3,n4,ng1,ng2,ng3,ng4,&
 !$OMP&   alpha1,alpha2,alpha3,alpha4,x01,x02,x03,x04,&
@@ -862,8 +345,8 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
 !$OMP&   info,iibf)
 
 !$OMP DO SCHEDULE(DYNAMIC) 
- do lshell=1,basis%nshell
-   do kshell=1,basis%nshell
+ do lshell=1,nshell
+   do kshell=1,nshell
      !
      ! Order the angular momenta so that libint is pleased
      ! 1) am3+am4 >= am1+am2
@@ -874,8 +357,8 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
      if( amk < aml ) cycle
      if( negligible_shellpair(kshell,lshell) ) cycle
 
-     do jshell=1,basis%nshell
-       do ishell=1,basis%nshell
+     do jshell=1,nshell
+       do ishell=1,nshell
          ami = shell(ishell)%am
          amj = shell(jshell)%am
          if( ami < amj ) cycle
@@ -1085,7 +568,7 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
 
  ! 
  ! Cleanly deallocate the shell objects
- do ishell=1,basis%nshell
+ do ishell=1,nshell
    deallocate( shell(ishell)%alpha )
    deallocate( shell(ishell)%coeff )
  enddo
@@ -1093,26 +576,99 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
 
  WRITE_MASTER(*,'(a,/)') ' All ERI have been calculated'
 
-contains
 
+end subroutine do_calculate_eri_new
+
+
+!=========================================================================
+subroutine setup_negligible_basispair()
+ implicit none
+!====
+ integer :: ishell,jshell
+ integer :: ibf,jbf
+!====
+
+ negligible_basispair(:,:) = .FALSE.
+ do ishell=1,nshell
+   do jshell=1,nshell
+     if( negligible_shellpair(ishell,jshell) ) then 
+       do ibf=shell(ishell)%istart,shell(ishell)%iend
+         do jbf=shell(jshell)%istart,shell(jshell)%iend
+           negligible_basispair(ibf,jbf) = .TRUE.
+           negligible_basispair(jbf,ibf) = .TRUE.
+         enddo
+       enddo
+     endif
+   enddo
+ enddo
+
+ nsize1 = 0
+ do jbf=1,nbf_eri
+   do ibf=1,jbf
+     if( .NOT. negligible_basispair(ibf,jbf) ) then
+       nsize1 = nsize1 + 1
+       index_pair(ibf,jbf) = nsize1
+       index_pair(jbf,ibf) = nsize1
+     endif
+   enddo
+ enddo
+
+
+end subroutine setup_negligible_basispair
+
+
+!=========================================================================
+subroutine identify_negligible_shellpair(basis,rcut)
 !
 ! A first screening implementation
 ! Find negligible shell pair with
 ! Cauchy-Schwarz inequality
-! (ij||kl)**2 <= (ij||ij) (kl||(kl) 
+! (ij|1/r|kl)**2 <= (ij|1/r|ij) (kl|1/r|(kl) 
 !
-subroutine identify_negligible_shellpair()
+ use ISO_C_BINDING
+ use m_tools,only: boys_function
+ use m_timing
  implicit none
+
+ type(basis_set),intent(in)   :: basis
+ real(dp),intent(in)          :: rcut
 !====
+ integer :: info
+ integer :: iibf
+ integer :: ibf,jbf,kbf,lbf
+ integer :: n1,n2
+ integer :: ni,nj
+ integer :: ng1,ng2
+ integer :: ami,amj
+ integer :: ishell,jshell
+ integer :: ig1,ig2,ig3,ig4
  integer :: neval,nneglect
+ real(dp) :: zeta_12,rho,rho1,f0t(0:0),tt
+ real(dp) :: p(3),q(3)
+ real(dp),allocatable         :: integrals_tmp(:,:,:,:)
+ real(dp),allocatable         :: integrals_cart(:,:,:,:)
+ real(dp),allocatable         :: integrals_libint(:)
 !====
+! variables used to call C++ 
+ integer(C_INT),external      :: calculate_integral
+ integer(C_INT)               :: am1,am2
+ real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:)
+ real(C_DOUBLE)               :: x01(3),x02(3)
+ real(C_DOUBLE)               :: omega_range
+!=====
+
+ if( rcut > 1.0e-6_dp ) then
+   omega_range = 1.0_dp / rcut
+ else 
+   omega_range = 1.0e6_dp
+ endif
 
  neval    = 0
  nneglect = 0
 
 
- do jshell=1,basis%nshell
-   do ishell=1,basis%nshell
+ do jshell=1,nshell
+   do ishell=1,nshell
      ami = shell(ishell)%am
      amj = shell(jshell)%am
      if( ami < amj ) cycle
@@ -1261,6 +817,10 @@ subroutine identify_negligible_shellpair()
        enddo
      enddo
 
+     !
+     ! Symmetrize
+     negligible_shellpair(jshell,ishell)=negligible_shellpair(ishell,jshell)
+
      if( negligible_shellpair(ishell,jshell) ) nneglect = nneglect + 1
 
      deallocate(integrals_cart)
@@ -1275,7 +835,6 @@ subroutine identify_negligible_shellpair()
 
 end subroutine identify_negligible_shellpair
 
-end subroutine do_calculate_eri_new
 
 !=========================================================================
 function libint_ordering(nx,ny,nz)
