@@ -45,8 +45,10 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
 !$OMP DO REDUCTION(+:tmp_xaxx)
      do bbf=1,basis%nbf
        do jbf=1,basis%nbf
+!FIXME         if( negligible_basispair(jbf,bbf) ) cycle
          do abf=1,basis%nbf
            do ibf=1,basis%nbf
+!FIXME             if( negligible_basispair(ibf,abf) ) cycle
              tmp_xaxx(ibf,jbf,bbf) = tmp_xaxx(ibf,jbf,bbf) &
 &               + c_matrix(abf,aorbital,ispin) * eri(ibf,abf,jbf,bbf)
            enddo

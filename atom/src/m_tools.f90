@@ -12,6 +12,10 @@ module m_tools
    module procedure invert_cdp
  end interface
 
+ interface diagonalize_wo_vectors
+   module procedure diagonalize_wo_vectors_dp
+ end interface
+
  interface diagonalize
    module procedure diagonalize_cdp
    module procedure diagonalize_dp
@@ -121,6 +125,26 @@ subroutine invert_cdp(n,matrix,matrix_inv)
  matrix_inv = a
 
 end subroutine invert_cdp
+
+subroutine diagonalize_wo_vectors_dp(n,matrix,eigval)
+ implicit none
+ integer,intent(in) :: n
+ real(dp),intent(inout) :: matrix(n,n)
+ real(dp),intent(out) :: eigval(n)
+
+ real(dp) :: z(1,n)
+ integer  :: iwork(5*n),ifail(n)
+ integer :: info
+ real(dp) :: work(3*n-1)
+! real(dp) :: work(8*n)
+ 
+ call DSYEV('N','U',n,matrix,n,eigval,work,3*n-1,info)
+
+! call DSYEVX('N','A','U',n,matrix,n,0.0_dp,0.0_dp,0,0,&
+!                         1.0e-20_dp,n,eigval,z,1,work,8*n,iwork,&
+!                         ifail,info)
+
+end subroutine diagonalize_wo_vectors_dp
 
 subroutine diagonalize_cdp(n,matrix,eigval,eigvec)
  implicit none

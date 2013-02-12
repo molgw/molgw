@@ -734,30 +734,12 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 
  WRITE_MASTER(*,*) 'diago Casida matrix'
  WRITE_MASTER(*,*) 'matrix',wpol%npole,'x',wpol%npole
-! WRITE_MASTER(*,*) '=============='
-! t_ij=0
-! do ijspin=1,nspin
-!   do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
-!     do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
-!!INTRA       if(iorbital==jorbital) cycle  ! intra state transitions are not allowed!
-!!SKIP       if( abs(occupation(jorbital,ijspin)-occupation(iorbital,ijspin))<completely_empty ) cycle
-!       if( skip_transition(nspin,iorbital,jorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
-!
-!       t_ij=t_ij+1
-!       WRITE_MASTER(*,'(3(i4,2x),20(2x,f12.6))') ijspin,iorbital,jorbital,h_2p(t_ij,:)
-!     enddo
-!   enddo
-! enddo
-! WRITE_MASTER(*,*) '=============='
-! do t_ij=1,wpol%npole
-!   WRITE_MASTER(*,'(1(i4,2x),20(2x,f12.6))') t_ij,h_2p(t_ij,:)
-! enddo
 
  !
  ! Symmetric in-place diagonalization
  call start_clock(timing_diago_h2p)
 ! call diagonalize_general(wpol%npole,matrix,eigenvalue,eigenvector)
- call diagonalize(wpol%npole,matrix,eigenvalue)
+ call diagonalize_wo_vectors(wpol%npole,matrix,eigenvalue)
  call stop_clock(timing_diago_h2p)
  WRITE_MASTER(*,*) 'diago finished'
  WRITE_MASTER(*,*)
@@ -768,49 +750,6 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 
 
  deallocate(eri_eigenstate_i)
-!§  stop'ENOUGH'
-!§  allocate(eri_eigenstate_k(basis%nbf,basis%nbf,basis%nbf,nspin))
-!§ 
-!§  wpol%pole(:)           = SQRT(eigenvalue(:))
-!§  wpol%residu_left (:,:) = 0.0_dp
-!§  wpol%residu_right(:,:) = 0.0_dp
-!§  t_kl=0
-!§  do klspin=1,nspin
-!§    do kbf=1,basis%nbf 
-!§ 
-!§      call transform_eri_basis_lowmem(nspin,c_matrix,kbf,klspin,eri_eigenstate_k)
-!§ 
-!§      do lbf=1,basis%nbf
-!§        if( skip_transition(nspin,kbf,lbf,occupation(lbf,klspin),occupation(kbf,klspin)) ) cycle
-!§        t_kl=t_kl+1
-!§ 
-!§ 
-!§        do ijspin=1,nspin
-!§ !$OMP PARALLEL DEFAULT(SHARED)
-!§ !$OMP DO PRIVATE(ibf,jbf,ijbf_current)
-!§          do ijbf=1,prod_basis%nbf
-!§            ibf = prod_basis%index_ij(1,ijbf)
-!§            jbf = prod_basis%index_ij(2,ijbf)
-!§ 
-!§            ijbf_current = ijbf+prod_basis%nbf*(ijspin-1)
-!§ 
-!§ 
-!§            wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
-!§                         + eri_eigenstate_k(lbf,ibf,jbf,ijspin) *  eigenvector(t_kl,:)
-!§            wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
-!§                         + eri_eigenstate_k(lbf,ibf,jbf,ijspin) * eigenvector_inv(:,t_kl) &
-!§                                          * ( occupation(kbf,klspin)-occupation(lbf,klspin) )
-!§ 
-!§ 
-!§          enddo
-!§ !$OMP END DO
-!§ !$OMP END PARALLEL
-!§        enddo
-!§      enddo
-!§    enddo
-!§  enddo
-!§ 
-!§  deallocate(eri_eigenstate_k)
 
 end subroutine polarizability_casida_noaux
 #endif
