@@ -239,7 +239,9 @@ subroutine setup_hartree(print_volume,nbf,nspin,p_matrix,pot_hartree,ehartree)
 !$OMP END DO
 !$OMP END PARALLEL
  enddo
- call xsum(pot_hartree)
+ !
+ ! Sum up the different contribution from different procs only if needed
+ if( parallel_integral) call xsum(pot_hartree)
 
 
  title='=== Hartree contribution ==='

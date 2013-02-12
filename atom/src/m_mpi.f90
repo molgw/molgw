@@ -8,9 +8,15 @@ module m_mpi
 #endif
 
  private
-! public  :: nproc,rank,ioproc
- public  :: init_mpi,finish_mpi,init_distribution,is_my_task,get_ntask,get_task_number,is_iomaster
+ public  :: init_mpi,finish_mpi,init_distribution,init_grid_distribution,get_ntask,get_task_number,is_iomaster
  public  :: xsum
+ public  :: is_my_task
+ public  :: is_my_grid_task
+ public  :: parallel_grid,parallel_integral
+
+ logical,parameter :: parallel_grid      = .TRUE.
+ logical,parameter :: parallel_integral  = .FALSE.
+
 
  integer :: nproc  = 1
  integer :: rank   = 0
@@ -19,16 +25,25 @@ module m_mpi
  integer :: mpi_comm
 
  integer :: nbf_mpi
+ integer :: ngrid_mpi
 
  integer,allocatable :: task_proc(:)
  integer,allocatable :: ntask_proc(:)
  integer,allocatable :: task_number(:)
 
+ integer,allocatable :: task_grid_proc(:)    ! index of the processor working for this grid point
+ integer,allocatable :: ntask_grid_proc(:)   ! number of grid points for each procressor
+ integer,allocatable :: task_grid_number(:)  ! local index of the grid point
+
  interface xsum
-   module procedure xsum_rrr
+   module procedure xsum_r
+   module procedure xsum_ra1d
+   module procedure xsum_ra3d
  end interface
 
+
 contains
+
 
 !=========================================================================
 subroutine init_mpi()
@@ -48,10 +63,13 @@ subroutine init_mpi()
   WRITE_MASTER(*,'(/,a)')      ' ==== MPI info'
   WRITE_MASTER(*,'(a50,x,i8)') 'Number of proc:',nproc
   WRITE_MASTER(*,'(a50,x,i8)') 'Master proc is:',ioproc
+  WRITE_MASTER(*,'(a50,x,l1)') 'Parallelize Coulomb integrals:',parallel_integral
+  WRITE_MASTER(*,'(a50,x,l1)') 'Parallelize XC grid points   :',parallel_grid
   WRITE_MASTER(*,'(/)')
 #endif
 
 end subroutine init_mpi
+
 
 !=========================================================================
 subroutine finish_mpi()
@@ -62,11 +80,17 @@ subroutine finish_mpi()
  if(allocated(task_proc))   deallocate(task_proc)
  if(allocated(ntask_proc))  deallocate(ntask_proc)
  if(allocated(task_number)) deallocate(task_number)
+
+ if(allocated(task_grid_proc))   deallocate(task_grid_proc)
+ if(allocated(ntask_grid_proc))  deallocate(ntask_grid_proc)
+ if(allocated(task_grid_number)) deallocate(task_grid_number)
+
 #ifdef MPI
  call MPI_FINALIZE(ier)
 #endif
 
 end subroutine finish_mpi
+
 
 !=========================================================================
 subroutine get_size
@@ -83,6 +107,7 @@ subroutine get_size
 
 end subroutine get_size
 
+
 !=========================================================================
 subroutine get_rank
  implicit none
@@ -98,6 +123,7 @@ subroutine get_rank
 
 end subroutine get_rank
 
+
 !=========================================================================
 subroutine init_distribution(nbf)
  implicit none
@@ -108,7 +134,7 @@ subroutine init_distribution(nbf)
 
  nbf_mpi = nbf
 
- if(nproc>1) then
+ if( nproc>1 .AND. parallel_integral ) then
    WRITE_MASTER(*,'(/,a)') ' Initializing distribution: 2-index distribution'
  endif
 
@@ -116,6 +142,26 @@ subroutine init_distribution(nbf)
  call distribute_workload(ntask)
 
 end subroutine init_distribution
+
+
+!=========================================================================
+subroutine init_grid_distribution(ngrid)
+ implicit none
+ integer,intent(inout) :: ngrid
+!=====
+
+ ngrid_mpi = ngrid
+
+ if( nproc>1 .AND. parallel_grid ) then
+   WRITE_MASTER(*,'(/,a)') ' Initializing the distribution of the quadrature grid points'
+ endif
+
+ call distribute_grid_workload()
+
+ ngrid = ntask_grid_proc(rank)
+
+end subroutine init_grid_distribution
+
 
 !=========================================================================
 function is_iomaster()
@@ -126,6 +172,7 @@ function is_iomaster()
  is_iomaster = ( rank == ioproc )
  
 end function is_iomaster
+
 
 !=========================================================================
 function is_my_task(ibf,jbf)
@@ -153,6 +200,89 @@ end function is_my_task
 
 
 !=========================================================================
+function is_my_grid_task(igrid)
+ implicit none
+ integer,intent(in) :: igrid
+ logical            :: is_my_grid_task
+!=====
+ 
+ is_my_grid_task = ( rank == task_grid_proc(igrid) )
+ 
+end function is_my_grid_task
+
+
+!=========================================================================
+subroutine distribute_grid_workload()
+ implicit none
+!=====
+ integer            :: igrid,iproc
+ integer            :: igrid_current
+ integer            :: max_grid_per_proc
+!=====
+
+ allocate(task_grid_proc(ngrid_mpi))
+ allocate(ntask_grid_proc(0:nproc-1))
+ allocate(task_grid_number(ngrid_mpi))
+
+ if( parallel_grid) then
+
+   WRITE_MASTER(*,*) 
+   WRITE_MASTER(*,*) 'Distributing the grid among procs'
+   
+   ntask_grid_proc(:)=0
+   max_grid_per_proc = CEILING( DBLE(ngrid_mpi)/DBLE(nproc) )
+   WRITE_MASTER(*,*) 'Maximum number of grid points for a single proc',max_grid_per_proc
+
+   iproc=0
+   do igrid=1,ngrid_mpi
+
+     iproc = MODULO(igrid-1,nproc)
+
+     !
+     ! A simple check to avoid unexpected surprises
+     if(iproc < 0 .OR. iproc >= nproc) then
+       WRITE_MASTER(*,*) 'error in the distribution'
+       stop'STOP'
+     endif
+
+     task_grid_proc(igrid)  = iproc
+     ntask_grid_proc(iproc) = ntask_grid_proc(iproc) + 1 
+
+   enddo
+
+   task_grid_number(:)=0
+   igrid_current=0
+   do igrid=1,ngrid_mpi
+     if( rank == task_grid_proc(igrid) ) then
+       igrid_current = igrid_current + 1 
+       task_grid_number(igrid) = igrid_current
+     endif
+   enddo
+
+   if(nproc>1) then
+     WRITE_MASTER(*,'(/,a)') ' Distribute work load among procs'
+     WRITE_MASTER(*,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ngrid_mpi,dp)/REAL(nproc,dp)
+     do iproc=0,nproc-1
+       WRITE_MASTER(*,'(a,i6,a,i10)') ' proc # , grid points',iproc,' , ',ntask_grid_proc(iproc)
+     enddo
+   endif
+
+ else
+   !
+   ! if parallel_grid is false,
+   ! faking the code with trivial values
+   ntask_grid_proc(:) = ngrid_mpi
+   task_grid_proc(:)  = rank
+   do igrid=1,ngrid_mpi
+     task_grid_number(igrid) = igrid
+   enddo
+
+ endif
+
+end subroutine distribute_grid_workload
+
+
+!=========================================================================
 subroutine distribute_workload(ntask)
  implicit none
  integer,intent(in) :: ntask
@@ -162,55 +292,69 @@ subroutine distribute_workload(ntask)
  integer            :: max_task_per_proc
 !=====
 
- WRITE_MASTER(*,*) 
- WRITE_MASTER(*,*) 'Distributing the work load among procs'
-
  allocate(task_proc(ntask))
  allocate(ntask_proc(0:nproc-1))
  allocate(task_number(ntask))
- 
- ntask_proc(:)=0
- max_task_per_proc = CEILING( DBLE(ntask)/DBLE(nproc) )
- WRITE_MASTER(*,*) 'Maximum number of tasks for a single proc',max_task_per_proc
- iproc=0
- do itask=1,ntask
 
-!   iproc = MODULO(itask,nproc)
-!   iproc = FLOOR( itask / ( DBLE(ntask)/DBLE(nproc) ) )  ! This distribution should better preserve the shell structures
+ if( parallel_integral) then
+   WRITE_MASTER(*,*) 
+   WRITE_MASTER(*,*) 'Distributing the work load among procs'
+   
+   ntask_proc(:)=0
+   max_task_per_proc = CEILING( DBLE(ntask)/DBLE(nproc) )
+   WRITE_MASTER(*,*) 'Maximum number of tasks for a single proc',max_task_per_proc
+   iproc=0
+   do itask=1,ntask
 
-   !
-   ! A simple check to avoid unexpected surprises
-   if(iproc < 0 .OR. iproc >= nproc) then
-     WRITE_MASTER(*,*) 'error in the distribution'
-     stop'STOP'
-   endif
+!     iproc = MODULO(itask,nproc)
+!     iproc = FLOOR( itask / ( DBLE(ntask)/DBLE(nproc) ) )  ! This distribution should better preserve the shell structures
 
-   task_proc(itask)  = iproc
-   ntask_proc(iproc) = ntask_proc(iproc) + 1 
-   if( ntask_proc(iproc) == max_task_per_proc ) then
-     iproc = iproc + 1
-   endif
+     !
+     ! A simple check to avoid unexpected surprises
+     if(iproc < 0 .OR. iproc >= nproc) then
+       WRITE_MASTER(*,*) 'error in the distribution'
+       stop'STOP'
+     endif
 
- enddo
+     task_proc(itask)  = iproc
+     ntask_proc(iproc) = ntask_proc(iproc) + 1 
+     if( ntask_proc(iproc) == max_task_per_proc ) then
+       iproc = iproc + 1
+     endif
 
- task_number(:)=0
- itask_current=0
- do itask=1,ntask
-   if( rank == task_proc(itask) ) then
-     itask_current = itask_current + 1 
-     task_number(itask) = itask_current
-   endif
- enddo
-
- if(nproc>1) then
-   WRITE_MASTER(*,'(/,a)') ' Distribute work load among procs'
-   WRITE_MASTER(*,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ntask,dp)/REAL(nproc,dp)
-   do iproc=0,nproc-1
-     WRITE_MASTER(*,'(a,i6,a,i10)') ' proc # , tasks',iproc,' , ',ntask_proc(iproc)
    enddo
+
+   task_number(:)=0
+   itask_current=0
+   do itask=1,ntask
+     if( rank == task_proc(itask) ) then
+       itask_current = itask_current + 1 
+       task_number(itask) = itask_current
+     endif
+   enddo
+
+   if(nproc>1) then
+     WRITE_MASTER(*,'(/,a)') ' Distribute work load among procs'
+     WRITE_MASTER(*,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ntask,dp)/REAL(nproc,dp)
+     do iproc=0,nproc-1
+       WRITE_MASTER(*,'(a,i6,a,i10)') ' proc # , tasks',iproc,' , ',ntask_proc(iproc)
+     enddo
+   endif
+
+ else
+   !
+   ! if parallel_integral is false,
+   ! faking the code with trivial values
+   ntask_proc(:) = ntask
+   task_proc(:)  = rank
+   do itask=1,ntask
+     task_number(itask) = itask
+   enddo
+
  endif
 
 end subroutine distribute_workload
+
 
 !=========================================================================
 function get_ntask()
@@ -221,6 +365,7 @@ function get_ntask()
  get_ntask = ntask_proc(rank)
 
 end function get_ntask
+
 
 !=========================================================================
 function get_task_number(ibf,jbf)
@@ -246,8 +391,51 @@ function get_task_number(ibf,jbf)
 
 end function get_task_number
 
+
 !=========================================================================
-subroutine xsum_rrr(array)
+subroutine xsum_r(real_number)
+ implicit none
+ real(dp),intent(inout) :: real_number
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = 1
+
+#ifdef MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_comm, ier)
+#endif
+ if(ier/=0) then
+   WRITE_ME(*,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xsum_r
+
+
+!=========================================================================
+subroutine xsum_ra1d(array)
+ implicit none
+ real(dp),intent(inout) :: array(:)
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+
+#ifdef MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_comm, ier)
+#endif
+ if(ier/=0) then
+   WRITE_ME(*,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xsum_ra1d
+
+
+!=========================================================================
+subroutine xsum_ra3d(array)
  implicit none
  real(dp),intent(inout) :: array(:,:,:)
 !=====
@@ -266,7 +454,8 @@ subroutine xsum_rrr(array)
    WRITE_ME(*,*) 'error in mpi_allreduce'
  endif
 
-end subroutine xsum_rrr
+end subroutine xsum_ra3d
+
 
 !=========================================================================
 function index_prod(ibf,jbf)
@@ -282,6 +471,7 @@ function index_prod(ibf,jbf)
  index_prod = (jmin-1)*nbf_mpi - (jmin-1)*(jmin-2)/2 + imax-jmin+1
 
 end function index_prod
+
 
 !=========================================================================
 end module m_mpi

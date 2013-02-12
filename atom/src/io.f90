@@ -202,6 +202,7 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  character(len=100)                 :: mixing_name
  character(len=100)                 :: dft_accuracy
  character(len=100)                 :: gaussian_name
+ character(len=100)                 :: quadrature_name
  integer                            :: ipos,jpos
  integer                            :: istat,iatom,jatom
  real(dp)                           :: charge,length_factor
@@ -253,18 +254,23 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  case('VERYLOW','verylow','VL','vl')
    nradial_grid  =  6
    nangular_grid =  6 
+   quadrature_name = 'very low'
  case('LOW','low','L','l')
    nradial_grid  = 10
    nangular_grid = 14 
+   quadrature_name = 'low'
  case('MEDIUM','medium','M','m')
    nradial_grid  = 20
    nangular_grid = 26 
+   quadrature_name = 'medium'
  case('HIGH','high','H','h')
    nradial_grid  = 40
    nangular_grid = 50 
+   quadrature_name = 'high'
  case('VERYHIGH','veryhigh','VH','vh')
    nradial_grid  = 80
    nangular_grid = 86 
+   quadrature_name = 'very high'
  case default
    stop'integration quality not recognized'
  end select
@@ -312,15 +318,16 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
 
  !
  ! summarize input parameters
- WRITE_MASTER(*,'(a20,i3)')   ' Natom: ',natom
- WRITE_MASTER(*,'(a20,f8.4)') ' Electrons: ',electrons
- WRITE_MASTER(*,'(a20,f8.4)') ' Charge: ',charge
- WRITE_MASTER(*,'(a20,f8.4)') ' Magnetization: ',magnetization
- WRITE_MASTER(*,'(a20,2x,a)') ' Basis set: ',basis_name
- WRITE_MASTER(*,'(a20,2x,a)') ' Gaussian type: ',gaussian_name
- WRITE_MASTER(*,'(a20,i3)')   ' Spin polarization: ',nspin
- WRITE_MASTER(*,'(a20,i3)')   ' SCF steps: ',nscf
- WRITE_MASTER(*,'(a20,f8.4)') ' Mixing: ',alpha_mixing
+ WRITE_MASTER(*,'(a25,i3)')   ' Natom: ',natom
+ WRITE_MASTER(*,'(a25,f8.4)') ' Electrons: ',electrons
+ WRITE_MASTER(*,'(a25,f8.4)') ' Charge: ',charge
+ WRITE_MASTER(*,'(a25,f8.4)') ' Magnetization: ',magnetization
+ WRITE_MASTER(*,'(a25,2x,a)') ' Basis set: ',basis_name
+ WRITE_MASTER(*,'(a25,2x,a)') ' Gaussian type: ',gaussian_name
+ WRITE_MASTER(*,'(a25,i3)')   ' Spin polarization: ',nspin
+ WRITE_MASTER(*,'(a25,i3)')   ' SCF steps: ',nscf
+ WRITE_MASTER(*,'(a25,f8.4)') ' Mixing: ',alpha_mixing
+ WRITE_MASTER(*,'(a25,2x,a)') ' Quadrature accuracy: ',quadrature_name
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,'(a19)')      ' Print volume:'
  WRITE_MASTER(*,'(a30,l3)')   ' - matrices details:   ',MODULO(print_volume      ,2)==1

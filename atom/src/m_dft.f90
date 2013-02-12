@@ -24,7 +24,7 @@ subroutine setup_dft_grid(nx,nangular)
 
  integer,intent(in)   :: nx,nangular
 !=====
- integer              :: ix,iatom,iangular,ir
+ integer              :: ix,iatom,iangular,ir,igrid
  integer              :: n1
  real(dp)             :: weight
  real(dp),allocatable :: x1(:)
@@ -39,9 +39,11 @@ subroutine setup_dft_grid(nx,nangular)
 
  ngrid = natom * nx * nangular
 
+ call init_grid_distribution(ngrid)
+
  WRITE_MASTER(*,'(/,a)')       ' Setup the DFT quadrature'
  WRITE_MASTER(*,'(a,i4,x,i4)') ' discretization grid per atom [radial points , angular points] ',nx,nangular
- WRITE_MASTER(*,'(a,i8)')      ' total number of real-space points',ngrid
+ WRITE_MASTER(*,'(a,i8)')      ' total number of real-space points for this processor',ngrid
 
  allocate(xa(nx),wxa(nx))
  allocate(x1(nangular),y1(nangular),z1(nangular),w1(nangular))
@@ -81,10 +83,13 @@ subroutine setup_dft_grid(nx,nangular)
  
  allocate(rr_grid(3,ngrid),w_grid(ngrid))
 
- ir = 0
+ igrid = 0
+ ir    = 0
  do iatom=1,natom
    do ix=1,nx
      do iangular=1,nangular
+       igrid = igrid + 1
+       if( .NOT. is_my_grid_task(igrid) ) cycle
        ir = ir + 1
 
        rr_grid(1,ir) = xa(ix) * x1(iangular) + x(1,iatom)
@@ -636,6 +641,14 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
   
 
  enddo ! loop on the grid point
+
+ !
+ ! Sum up the contribution from all CPUs only if needed
+ if( parallel_grid ) then
+   call xsum(normalization)
+   call xsum(vxc_ij)
+   call xsum(exc_xc)
+ endif
 
  !
  ! Destroy operations

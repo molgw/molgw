@@ -118,7 +118,8 @@ program molgw
  call issue_warning(msg)
 #endif
 #ifdef MPI
- stop'MPI not functional'
+ msg='Running with MPI'
+ call issue_warning(msg)
 #endif
 
 
