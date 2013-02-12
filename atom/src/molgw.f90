@@ -672,6 +672,7 @@ program molgw
  !
  ! Single excitation term
  if( .TRUE.) then
+   call start_clock(timing_single_excitation)
 
    !
    ! Obtain the Fock matrix
@@ -702,6 +703,7 @@ program molgw
    WRITE_MASTER(*,'(a,2x,f16.10)') ' Etotal EXX       [Ha]:',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx 
    WRITE_MASTER(*,'(a,2x,f16.10)') ' Single-Excitation[Ha]:',en%se
 
+   call stop_clock(timing_single_excitation)
  endif
 
 

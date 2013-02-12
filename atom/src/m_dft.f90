@@ -182,55 +182,55 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
  type(xc_f90_pointer_t) :: xc_info(ndft_xc),xc_infotest
 #endif
 
- real(dp) :: basis_function_r       (basis%nbf)
+ real(dp)             :: basis_function_r       (basis%nbf)
  real(dp),allocatable :: basis_function_r_cart(:)
- real(dp) :: basis_function_r_shiftx(basis%nbf)
- real(dp) :: basis_function_r_shifty(basis%nbf)
- real(dp) :: basis_function_r_shiftz(basis%nbf)
+ real(dp)             :: basis_function_r_shiftx(basis%nbf)
+ real(dp)             :: basis_function_r_shifty(basis%nbf)
+ real(dp)             :: basis_function_r_shiftz(basis%nbf)
  real(dp),allocatable :: basis_function_r_shiftx_cart(:)
  real(dp),allocatable :: basis_function_r_shifty_cart(:)
  real(dp),allocatable :: basis_function_r_shiftz_cart(:)
- real(dp) :: basis_function_gradr       (3,basis%nbf)
+ real(dp)             :: basis_function_gradr       (3,basis%nbf)
  real(dp),allocatable :: basis_function_gradr_cart(:,:)
- real(dp) :: basis_function_gradr_shiftx(3,basis%nbf)
- real(dp) :: basis_function_gradr_shifty(3,basis%nbf)
- real(dp) :: basis_function_gradr_shiftz(3,basis%nbf)
+ real(dp)             :: basis_function_gradr_shiftx(3,basis%nbf)
+ real(dp)             :: basis_function_gradr_shifty(3,basis%nbf)
+ real(dp)             :: basis_function_gradr_shiftz(3,basis%nbf)
  real(dp),allocatable :: basis_function_gradr_shiftx_cart(:,:)
  real(dp),allocatable :: basis_function_gradr_shifty_cart(:,:)
  real(dp),allocatable :: basis_function_gradr_shiftz_cart(:,:)
- real(dp) :: basis_function_laplr       (3,basis%nbf)
+ real(dp)             :: basis_function_laplr       (3,basis%nbf)
  real(dp),allocatable :: basis_function_laplr_cart(:,:)
 
- real(dp) :: rhor_r       (nspin)
- real(dp) :: rhor_r_shiftx(nspin)
- real(dp) :: rhor_r_shifty(nspin)
- real(dp) :: rhor_r_shiftz(nspin)
- real(dp) :: grad_rhor       (3,nspin)
- real(dp) :: grad_rhor_shiftx(3,nspin)
- real(dp) :: grad_rhor_shifty(3,nspin)
- real(dp) :: grad_rhor_shiftz(3,nspin)
- real(dp) :: sigma2       (2*nspin-1)
- real(dp) :: sigma2_shiftx(2*nspin-1)
- real(dp) :: sigma2_shifty(2*nspin-1)
- real(dp) :: sigma2_shiftz(2*nspin-1)
- real(dp) :: tau(nspin),lapl_rhor(nspin)
- real(dp) :: vxc(nspin),vxc_libxc(nspin)
- real(dp) :: vxc_dummy(nspin)
- real(dp) :: exc_libxc(1)
- real(dp) :: vsigma        (2*nspin-1)
- real(dp) :: vsigma_shiftx(2*nspin-1)
- real(dp) :: vsigma_shifty(2*nspin-1)
- real(dp) :: vsigma_shiftz(2*nspin-1)
- real(dp) :: vlapl_rho(nspin),vtau(nspin)
- real(dp) :: vxc_av(nspin)
- real(dp) :: dedd_r(nspin)
- real(dp) :: dedgd_r       (3,nspin)
- real(dp) :: dedgd_r_shiftx(3,nspin)
- real(dp) :: dedgd_r_shifty(3,nspin)
- real(dp) :: dedgd_r_shiftz(3,nspin)
- real(dp) :: div(nspin)
- real(dp) :: omega,rs(1)
- character(len=256) :: string
+ real(dp)             :: rhor_r       (nspin)
+ real(dp)             :: rhor_r_shiftx(nspin)
+ real(dp)             :: rhor_r_shifty(nspin)
+ real(dp)             :: rhor_r_shiftz(nspin)
+ real(dp)             :: grad_rhor       (3,nspin)
+ real(dp)             :: grad_rhor_shiftx(3,nspin)
+ real(dp)             :: grad_rhor_shifty(3,nspin)
+ real(dp)             :: grad_rhor_shiftz(3,nspin)
+ real(dp)             :: sigma2       (2*nspin-1)
+ real(dp)             :: sigma2_shiftx(2*nspin-1)
+ real(dp)             :: sigma2_shifty(2*nspin-1)
+ real(dp)             :: sigma2_shiftz(2*nspin-1)
+ real(dp)             :: tau(nspin),lapl_rhor(nspin)
+ real(dp)             :: vxc(nspin),vxc_libxc(nspin)
+ real(dp)             :: vxc_dummy(nspin)
+ real(dp)             :: exc_libxc(1)
+ real(dp)             :: vsigma        (2*nspin-1)
+ real(dp)             :: vsigma_shiftx(2*nspin-1)
+ real(dp)             :: vsigma_shifty(2*nspin-1)
+ real(dp)             :: vsigma_shiftz(2*nspin-1)
+ real(dp)             :: vlapl_rho(nspin),vtau(nspin)
+ real(dp)             :: vxc_av(nspin)
+ real(dp)             :: dedd_r(nspin)
+ real(dp)             :: dedgd_r       (3,nspin)
+ real(dp)             :: dedgd_r_shiftx(3,nspin)
+ real(dp)             :: dedgd_r_shifty(3,nspin)
+ real(dp)             :: dedgd_r_shiftz(3,nspin)
+ real(dp)             :: div(nspin)
+ real(dp)             :: omega,rs(1)
+ character(len=256)   :: string
 !=====
 
  exc_xc = 0.0_dp
@@ -239,26 +239,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
 
 #ifdef HAVE_LIBXC
 
-#if 0
-! call xc_f90_func_init(xc_functest, xc_infotest, XC_LDA_X , XC_UNPOLARIZED)
- call xc_f90_func_init(xc_functest, xc_infotest, XC_GGA_X_WPBEH, XC_UNPOLARIZED)
-! call xc_f90_func_init(xc_functest, xc_infotest, XC_GGA_X_PBE, XC_UNPOLARIZED)
- do ix=1,90 
-   omega=0.01*ix
-   call xc_f90_gga_x_wpbeh_set_par(xc_functest,omega)
-   rs(1) =  2.0 ! exp(0.08*(DBLE(ix)-1.0))*0.05
-   rhor_r(1)= 3.0/ (4.0*pi*rs(1)**3)
-   sigma2(:)= 0.0000
-!   call xc_f90_lda_exc_vxc(xc_functest,1,rhor_r(1),exc_libxc(1),vxc_libxc(1))
-!   call xc_f90_gga_exc_vxc(xc_functest,1,rhor_r(1),sigma2(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
-   call my_lda_exc_vxc_mu(omega,rs(1),exc_libxc(1),vxc_libxc(1))
-!   call my_gga_exc_vxc_hjs(omega,rhor_r(1),sigma2(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
-   WRITE_MASTER(105,'(10(e16.8,2x))') rs(1),omega,exc_libxc(1),vxc_libxc(1),vsigma(1)
- enddo 
- stop'ENOUGH'
-#endif
-
- WRITE_MASTER(*,*) 'Evaluate DFT integrals'
+ WRITE_MASTER(*,*) 'Evaluate Kohn-Sham potential'
  
  require_gradient =.FALSE.
  require_laplacian=.FALSE.
@@ -311,6 +292,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
    rr(:) = rr_grid(:,ir)
    weight = w_grid(ir)
 
+!   call start_clock(timing_tmp5)
    !
    ! First precalculate all the needed basis function evaluations at point rr
    !
@@ -393,17 +375,21 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
    !
    ! Precalculation done!
    !
+!   call stop_clock(timing_tmp5)
 
 
+!   call start_clock(timing_tmp1)
    rhor_r(:)=0.0_dp
    do ispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO REDUCTION(+:rhor_r) COLLAPSE(2)
+!$OMP DO REDUCTION(+:rhor_r) 
      do jbf=1,basis%nbf
+       ! implementing i <-> j symmetry does not save much time with ifort
+       ! compiler
        do ibf=1,basis%nbf
          rhor_r(ispin)=rhor_r(ispin)+p_matrix(ibf,jbf,ispin)&
                            * basis_function_r(ibf) &
-                           * basis_function_r(jbf) 
+                           * basis_function_r(jbf)
        enddo
      enddo
 !$OMP END DO
@@ -412,7 +398,10 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
 
    normalization(:) = normalization(:) + rhor_r(:) * weight
 
+!   call stop_clock(timing_tmp1)
+
    if( require_gradient ) then 
+!   call start_clock(timing_tmp6)
      grad_rhor       (:,:)=0.0_dp
      grad_rhor_shiftx(:,:)=0.0_dp
      grad_rhor_shifty(:,:)=0.0_dp
@@ -421,36 +410,44 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
      rhor_r_shifty(:)     =0.0_dp
      rhor_r_shiftz(:)     =0.0_dp
      do ispin=1,nspin
+!$OMP PARALLEL DEFAULT(SHARED)
+!$OMP DO REDUCTION(+:rhor_r_shiftx,rhor_r_shifty,rhor_r_shiftz,grad_rhor,grad_rhor_shiftx,grad_rhor_shifty,grad_rhor_shiftz) 
        do jbf=1,basis%nbf
+         ! implementing i <-> j symmetry does not save much time with ifort
+         ! compiler
          do ibf=1,basis%nbf
 
            rhor_r_shiftx(ispin) = rhor_r_shiftx(ispin) + p_matrix(ibf,jbf,ispin)&
                                     * basis_function_r_shiftx(ibf) &
-                                    * basis_function_r_shiftx(jbf) 
+                                    * basis_function_r_shiftx(jbf)
            rhor_r_shifty(ispin) = rhor_r_shifty(ispin) + p_matrix(ibf,jbf,ispin)&
                                     * basis_function_r_shifty(ibf) &
-                                    * basis_function_r_shifty(jbf) 
+                                    * basis_function_r_shifty(jbf)
            rhor_r_shiftz(ispin) = rhor_r_shiftz(ispin) + p_matrix(ibf,jbf,ispin)&
                                     * basis_function_r_shiftz(ibf) &
-                                    * basis_function_r_shiftz(jbf) 
+                                    * basis_function_r_shiftz(jbf)
 
            grad_rhor(:,ispin)        = grad_rhor(:,ispin)        + p_matrix(ibf,jbf,ispin) &
                 *( basis_function_gradr       (:,ibf) * basis_function_r(jbf) &
-                 + basis_function_gradr       (:,jbf) * basis_function_r(ibf) ) 
+                 + basis_function_gradr       (:,jbf) * basis_function_r(ibf) )
            grad_rhor_shiftx(:,ispin) = grad_rhor_shiftx(:,ispin) + p_matrix(ibf,jbf,ispin) &
                 *( basis_function_gradr_shiftx(:,ibf) * basis_function_r_shiftx(jbf) &
-                 + basis_function_gradr_shiftx(:,jbf) * basis_function_r_shiftx(ibf) ) 
+                 + basis_function_gradr_shiftx(:,jbf) * basis_function_r_shiftx(ibf) )
            grad_rhor_shifty(:,ispin) = grad_rhor_shifty(:,ispin) + p_matrix(ibf,jbf,ispin) &
                 *( basis_function_gradr_shifty(:,ibf) * basis_function_r_shifty(jbf) &
-                 + basis_function_gradr_shifty(:,jbf) * basis_function_r_shifty(ibf) ) 
+                 + basis_function_gradr_shifty(:,jbf) * basis_function_r_shifty(ibf) )
            grad_rhor_shiftz(:,ispin) = grad_rhor_shiftz(:,ispin) + p_matrix(ibf,jbf,ispin) &
                 *( basis_function_gradr_shiftz(:,ibf) * basis_function_r_shiftz(jbf) &
-                 + basis_function_gradr_shiftz(:,jbf) * basis_function_r_shiftz(ibf) ) 
+                 + basis_function_gradr_shiftz(:,jbf) * basis_function_r_shiftz(ibf) )
 
          enddo
        enddo
+!$OMP END DO
+!$OMP END PARALLEL
      enddo
 
+!   call stop_clock(timing_tmp6)
+!   call start_clock(timing_tmp7)
      sigma2(1)        = SUM( grad_rhor       (:,1)**2 )
      sigma2_shiftx(1) = SUM( grad_rhor_shiftx(:,1)**2 )
      sigma2_shifty(1) = SUM( grad_rhor_shifty(:,1)**2 )
@@ -466,6 +463,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
        sigma2_shifty(3) = SUM( grad_rhor_shifty(:,2)**2 )
        sigma2_shiftz(3) = SUM( grad_rhor_shiftz(:,2)**2 )
      endif
+!   call stop_clock(timing_tmp7)
 
    endif
 
@@ -501,6 +499,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
 
    endif
 
+!   call start_clock(timing_tmp2)
    !
    ! LIBXC calls
    !
@@ -611,13 +610,15 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
        dedd_r(:) = dedd_r(:) - SQRT( 5.0_dp * ABS(ehomo(:)) / 6.0_dp ) / pi
      endif
 
+!   call stop_clock(timing_tmp2)
 
+!   call start_clock(timing_tmp4)
      !
      ! Eventually set up the vxc term
      !
      do ispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO COLLAPSE(2)
+!$OMP DO 
            do jbf=1,basis%nbf
              do ibf=1,basis%nbf 
                vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight &
@@ -628,6 +629,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
 !$OMP END DO
 !$OMP END PARALLEL
      enddo
+!   call stop_clock(timing_tmp4)
 
 
    enddo ! loop on the XC functional
