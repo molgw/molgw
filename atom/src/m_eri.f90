@@ -11,7 +11,7 @@ module m_eri
            eri_lr,allocate_eri_lr,deallocate_eri_lr,negligible_eri,&
            BUFFER1,BUFFER2
  public :: index_prod
- public :: negligible_basispair
+ public :: negligible_basispair,refine_negligible_basispair
 
  integer,parameter :: BUFFER1 = 1
  integer,parameter :: BUFFER2 = 2
@@ -43,8 +43,6 @@ module m_eri
  integer                    :: nbf_eri                ! local copy of nbf
  integer                    :: nsize                  ! size of the eri_buffer array
  integer                    :: nsize1                 ! number of independent pairs (i,j) with i<=j
-
- real(prec_eri),allocatable :: eri_eigen_buffer(:,:,:)
 
 contains
 
@@ -628,6 +626,51 @@ subroutine setup_negligible_basispair()
 
 
 end subroutine setup_negligible_basispair
+
+
+!=========================================================================
+subroutine refine_negligible_basispair()
+ implicit none
+
+!=====
+ integer  :: ibf,jbf,kbf,lbf
+ integer  :: npair,npair_refined
+ real(dp) :: max_ij
+!=====
+
+ npair         = 0
+ npair_refined = 0
+
+ do jbf=1,nbf_eri
+   do ibf=1,jbf
+     if( negligible_basispair(ibf,jbf) ) cycle
+     npair = npair + 1
+
+     max_ij=0.0_dp
+     do lbf=1,nbf_eri
+       do kbf=1,lbf
+         if( negligible_basispair(kbf,lbf) ) cycle
+         max_ij = MAX( max_ij , ABS(eri(ibf,jbf,kbf,lbf)) )
+       enddo
+     enddo
+     if( max_ij < TOL_INT ) then
+       WRITE_MASTER(*,*) '    negl',max_ij,max_ij < TOL_INT
+       negligible_basispair(ibf,jbf) = .TRUE.
+     else
+       WRITE_MASTER(*,*) 'non negl',max_ij,max_ij < TOL_INT
+       npair_refined = npair_refined + 1
+     endif
+
+
+   enddo
+ enddo
+
+ WRITE_MASTER(*,*) 'Refining the negligible pairs'
+ WRITE_MASTER(*,*) 'Non negligible pairs stored in memory   ',npair
+ WRITE_MASTER(*,*) 'Non negligible pairs used in calculation',npair_refined
+
+
+end subroutine refine_negligible_basispair
 
 
 !=========================================================================

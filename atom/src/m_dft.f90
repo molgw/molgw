@@ -15,7 +15,7 @@ module m_dft
 
  !
  ! Function evaluation storage
- integer,parameter    :: ngrid_max_stored=1000
+ integer,parameter    :: ngrid_max_stored=5000
  integer              :: ngrid_stored=0
  real(dp),allocatable :: bfr(:,:)
  real(dp),allocatable :: bfr_x(:,:)

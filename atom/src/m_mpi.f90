@@ -13,6 +13,8 @@ module m_mpi
  public  :: is_my_task
  public  :: is_my_grid_task
  public  :: parallel_grid,parallel_integral
+ public  :: init_fast_distribution,destroy_fast_distribution
+ public  :: is_my_fast_task
 
  logical,parameter :: parallel_grid      = .TRUE.
  logical,parameter :: parallel_integral  = .FALSE.
@@ -34,6 +36,10 @@ module m_mpi
  integer,allocatable :: task_grid_proc(:)    ! index of the processor working for this grid point
  integer,allocatable :: ntask_grid_proc(:)   ! number of grid points for each procressor
  integer,allocatable :: task_grid_number(:)  ! local index of the grid point
+
+ integer,allocatable :: task_fast_proc(:)    ! index of the processor working for this grid point
+! integer,allocatable :: ntask_fast_proc(:)   ! number of grid points for each procressor
+! integer,allocatable :: task_fast_number(:)  ! local index of the grid point
 
  interface xsum
    module procedure xsum_r
@@ -161,6 +167,50 @@ subroutine init_grid_distribution(ngrid)
  ngrid = ntask_grid_proc(rank)
 
 end subroutine init_grid_distribution
+
+
+!=========================================================================
+subroutine init_fast_distribution(ntask)
+ implicit none
+ integer,intent(in) :: ntask
+!=====
+ integer            :: itask
+!=====
+
+
+ WRITE_MASTER(*,'(/,a)') ' Initializing the distribution of the lowest level of MPI parallelization'
+
+ allocate(task_fast_proc(ntask))
+ do itask=1,ntask
+   task_fast_proc(itask) = MODULO(itask-1,nproc)
+ enddo
+
+
+end subroutine init_fast_distribution
+
+
+!=========================================================================
+subroutine destroy_fast_distribution()
+ implicit none
+!=====
+
+ WRITE_MASTER(*,'(/,a)') ' End of the lowest level of MPI parallelization'
+
+ deallocate(task_fast_proc)
+
+end subroutine destroy_fast_distribution
+
+
+!=========================================================================
+function is_my_fast_task(itask)
+ implicit none
+ integer,intent(in) :: itask
+ logical            :: is_my_fast_task
+!=====
+ 
+ is_my_fast_task = ( rank == task_fast_proc(itask) )
+ 
+end function is_my_fast_task
 
 
 !=========================================================================

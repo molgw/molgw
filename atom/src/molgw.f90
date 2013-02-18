@@ -178,6 +178,11 @@ program molgw
  call start_clock(timing_integrals)
  call allocate_eri(basis,0.0_dp)
  call calculate_eri(print_volume,basis,0.0_dp,BUFFER1)
+
+ call start_clock(timing_tmp9)
+ call refine_negligible_basispair()
+ call stop_clock(timing_tmp9)
+
  !
  ! for HSE functionals, calculate the long-range ERI
  if(calc_type%is_screened_hybrid) then

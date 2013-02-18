@@ -105,12 +105,14 @@ subroutine init_spectral_function(nbf,prod_nbf,nspin,occupation,sf)
  sf%nprodbasis = prod_nbf * nspin
 #endif
 
+#ifndef CASIDA
  allocate(sf%residu_left (sf%npole,sf%nprodbasis))
  allocate(sf%residu_right(sf%npole,sf%nprodbasis))
  WRITE_MASTER(*,*) '           second index size',sf%nprodbasis
 
  WRITE_MASTER(*,'(a,f14.0)') ' Memory [Mb] ',REAL(SIZE(sf%residu_left(:,:)),dp)*2.0_dp/1024.0_dp**2*dp
  WRITE_MASTER(*,*)
+#endif
 
 
 end subroutine init_spectral_function
@@ -159,8 +161,10 @@ subroutine destroy_spectral_function(sf)
 !=====
 
  deallocate(sf%pole)
+#ifndef CASIDA
  deallocate(sf%residu_left)
  deallocate(sf%residu_right)
+#endif
 
  WRITE_MASTER(*,*) 
  WRITE_MASTER(*,*) 'spectral function destroyed'

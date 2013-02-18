@@ -190,14 +190,18 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
  allocate(tmp_ixxx(basis%nbf,basis%nbf,basis%nbf))
 
  do iaspin=1,nspin
+   !
+   ! First, set up the list of occupied states
    nocc = 0
    do iorbital=ncore+1,basis%nbf
      if( occupation(iorbital,iaspin) < completely_empty ) cycle
      nocc = nocc + 1
    enddo
+   call init_fast_distribution(nocc)
 
    do iorbital=ncore+1,basis%nbf
      if( occupation(iorbital,iaspin) < completely_empty ) cycle
+     if( .NOT. is_my_fast_task(iorbital-ncore) ) cycle
 
      WRITE_MASTER(*,'(i4,2x,i4,a,i4)') iaspin,iorbital-ncore,' / ',nocc
 
@@ -206,8 +210,10 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
 !$OMP DO REDUCTION(+:tmp_ixxx)
      do bbf=1,basis%nbf
        do jbf=1,basis%nbf
+         if( negligible_basispair(jbf,bbf) ) cycle
          do abf=1,basis%nbf
            do ibf=1,basis%nbf
+             if( negligible_basispair(ibf,abf) ) cycle
              tmp_ixxx(abf,jbf,bbf) = tmp_ixxx(abf,jbf,bbf) &
 &               + c_matrix(ibf,iorbital,iaspin) * eri(ibf,abf,jbf,bbf)
            enddo
@@ -283,9 +289,13 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
        enddo
      enddo !jbspin
 
-   enddo ! aorbital
+   enddo ! iorbital
 
+   call destroy_fast_distribution()
  enddo !iaspin
+
+ call xsum(contrib1)
+ call xsum(contrib2)
 
  deallocate(tmp_ixxx)
 
