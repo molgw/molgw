@@ -760,14 +760,69 @@ program molgw
  if( calc_type%is_gw .AND. calc_type%method == perturbative ) then
 
    if( calc_type%is_lr_mbpt ) then
+
+     write(*,*) '========== FABIEN ============'
+     call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
+     WRITE_MASTER(*,*) 'EXX [Ha]:',en%exx
+     exchange_m_vxc_diag(:,:) = 0.0_dp
+     do ispin=1,nspin
+       do istate=1,basis%nbf
+         do ibf=1,basis%nbf
+           do jbf=1,basis%nbf
+             exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
+                     + c_matrix(ibf,istate,ispin) * matrix(ibf,jbf,ispin) &
+                      * c_matrix(jbf,istate,ispin)
+           enddo
+         enddo
+         write(*,*) istate,ispin,exchange_m_vxc_diag(istate,ispin)*Ha_eV
+       enddo
+     enddo
+     write(*,*) '========== END FABIEN ========'
      !
      ! Hard-coded cutoff radius
-     rcut= 0.01_dp !9.0909_dp
+     rcut= 0.50_dp !9.0909_dp
      write(msg,'(a,f10.4)') 'hard coded cutoff radius  ',rcut
      call issue_warning(msg)
      call deallocate_eri()
      call allocate_eri(basis,rcut,BUFFER1)
      call calculate_eri(print_volume,basis,rcut,BUFFER1)
+
+     write(*,*) '========== FABIEN ============'
+     call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
+     WRITE_MASTER(*,*) 'EXX [Ha]:',en%exx
+     exchange_m_vxc_diag(:,:) = 0.0_dp
+     do ispin=1,nspin
+       do istate=1,basis%nbf
+         do ibf=1,basis%nbf
+           do jbf=1,basis%nbf
+             exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
+                     + c_matrix(ibf,istate,ispin) * matrix(ibf,jbf,ispin) &
+                      * c_matrix(jbf,istate,ispin)
+           enddo
+         enddo
+         write(*,*) istate,ispin,exchange_m_vxc_diag(istate,ispin)*Ha_eV
+       enddo
+     enddo
+     write(*,*) '========== END FABIEN ========'
+     write(*,*) '========== FABIEN ============'
+     if( .NOT. ALLOCATED( vxc_matrix ) ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
+     if( ndft_xc == 0 ) call setup_dft_grid(nradial_grid,nangular_grid)
+     call dft_exc_vxc(nspin,basis,1,(/XC_GGA_X_PBE/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
+     WRITE_MASTER(*,'(/,a,f16.10)') '    PBEx energy [Ha]: ',energy_tmp
+     exchange_m_vxc_diag(:,:) = 0.0_dp
+     do ispin=1,nspin
+       do istate=1,basis%nbf
+         do ibf=1,basis%nbf
+           do jbf=1,basis%nbf
+             exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
+                     + c_matrix(ibf,istate,ispin) * ( vxc_matrix(ibf,jbf,ispin) )&
+                      * c_matrix(jbf,istate,ispin)
+           enddo
+         enddo
+         write(*,*) istate,ispin,exchange_m_vxc_diag(istate,ispin)*Ha_eV
+       enddo
+     enddo
+     write(*,*) '========== END FABIEN ========'
 
      if( .NOT. ALLOCATED( vxc_matrix ) ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
      call dft_exc_vxc(nspin,basis,1,(/1000/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
