@@ -8,7 +8,7 @@ module m_eri
 
  private
  public :: eri,allocate_eri,allocate_eri_eigen,deallocate_eri,calculate_eri,transform_eri_basis_fast,transform_eri_basis_lowmem, &
-           eri_lr,allocate_eri_lr,deallocate_eri_lr,negligible_eri,&
+           eri_lr,negligible_eri,&
            BUFFER1,BUFFER2
  public :: index_prod
  public :: negligible_basispair,refine_negligible_basispair
@@ -47,11 +47,12 @@ module m_eri
 contains
 
 !=========================================================================
-subroutine allocate_eri(basis,rcut)
+subroutine allocate_eri(basis,rcut,which_buffer)
  implicit none
 !===== 
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: rcut
+ integer,intent(in)         :: which_buffer
 !===== 
  integer            :: info
  logical            :: file_exists
@@ -70,12 +71,14 @@ subroutine allocate_eri(basis,rcut)
    TOL_INT = 1.0e-10_dp
  endif
 
- call setup_shell_list(basis)
- allocate(negligible_shellpair(nshell,nshell))
- allocate(negligible_basispair(nbf_eri,nbf_eri))
- allocate(index_pair(nbf_eri,nbf_eri))
- call identify_negligible_shellpair(basis,rcut)
- call setup_negligible_basispair()
+ if(.NOT.allocated(negligible_shellpair)) then
+   call setup_shell_list(basis)
+   allocate(negligible_shellpair(nshell,nshell))
+   allocate(negligible_basispair(nbf_eri,nbf_eri))
+   allocate(index_pair(nbf_eri,nbf_eri))
+   call identify_negligible_shellpair(basis,rcut)
+   call setup_negligible_basispair()
+ endif
 
 
 #if LOW_MEMORY2
@@ -94,19 +97,20 @@ subroutine allocate_eri(basis,rcut)
  WRITE_MASTER(*,*) 'max index size',HUGE(nsize)
  if(nsize<1) stop'too many integrals to be stored'
 
- if(rcut<1.0e-6_dp) then
-   allocate(eri_buffer(nsize),stat=info)
-   eri_buffer(:) = 0.0_dp
- else
-   allocate(eri_buffer_lr(nsize),stat=info)
-   eri_buffer_lr(:) = 0.0_dp
- endif
-
  if(REAL(nsize,dp)*prec_eri > 1024**3 ) then
    WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb] / proc'
  else
    WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**2,' [Mb] / proc'
  endif
+
+ select case(which_buffer)
+ case(BUFFER1)
+   allocate(eri_buffer(nsize),stat=info)
+   eri_buffer(:) = 0.0_dp
+ case(BUFFER2)
+   allocate(eri_buffer_lr(nsize),stat=info)
+   eri_buffer_lr(:) = 0.0_dp
+ end select
 
  if(info==0) then
    WRITE_MASTER(*,*) 'success'
@@ -123,23 +127,25 @@ end subroutine allocate_eri
 !=========================================================================
 subroutine deallocate_eri()
  implicit none
+
+ integer :: ishell
 !=====
 
- if(allocated(eri_buffer))           deallocate(eri_buffer)
- if(allocated(negligible_basispair)) deallocate(negligible_basispair)
- if(allocated(negligible_shellpair)) deallocate(negligible_shellpair)
+ if(allocated(eri_buffer))            deallocate(eri_buffer)
+ if(allocated(eri_buffer_lr))         deallocate(eri_buffer_lr)
+ if(allocated(negligible_basispair))  deallocate(negligible_basispair)
+ if(allocated(negligible_shellpair))  deallocate(negligible_shellpair)
+ if(allocated(index_pair))            deallocate(index_pair)
+ ! 
+ ! Cleanly deallocate the shell objects
+ do ishell=1,nshell
+   if(allocated(shell(ishell)%alpha)) deallocate( shell(ishell)%alpha )
+   if(allocated(shell(ishell)%coeff)) deallocate( shell(ishell)%coeff )
+ enddo
+ if(allocated(shell))                 deallocate(shell)
+
 
 end subroutine deallocate_eri
-
-
-!=========================================================================
-subroutine deallocate_eri_lr()
- implicit none
-!=====
-
- if(allocated(eri_buffer_lr))    deallocate(eri_buffer_lr)
-
-end subroutine deallocate_eri_lr
 
 
 !=========================================================================
@@ -196,7 +202,7 @@ function eri(ibf,jbf,kbf,lbf)
  integer,intent(in) :: ibf,jbf,kbf,lbf
  real(dp)           :: eri
 !=====
- integer            :: ibuffer_sparse,index_ijkl
+ integer            :: index_ijkl
  integer            :: i1,i2,i3,i4
 !=====
 
@@ -214,7 +220,7 @@ function eri_lr(ibf,jbf,kbf,lbf)
  integer,intent(in) :: ibf,jbf,kbf,lbf
  real(dp)           :: eri_lr
 !=====
- integer            :: ibuffer_sparse,index_ijkl
+ integer            :: index_ijkl
  integer            :: i1,i2,i3,i4
 !=====
 
@@ -396,7 +402,7 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
          ng3 = shell(kshell)%ng
          ng4 = shell(lshell)%ng
          allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
-         alpha1(:) = shell(ishell)%alpha(:)
+         alpha1(:) = shell(ishell)%alpha(:) 
          alpha2(:) = shell(jshell)%alpha(:)
          alpha3(:) = shell(kshell)%alpha(:)
          alpha4(:) = shell(lshell)%alpha(:)
@@ -577,13 +583,6 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
 !$OMP END DO
 !$OMP END PARALLEL
 
- ! 
- ! Cleanly deallocate the shell objects
- do ishell=1,nshell
-   deallocate( shell(ishell)%alpha )
-   deallocate( shell(ishell)%coeff )
- enddo
-
 
  WRITE_MASTER(*,'(a,/)') ' All ERI have been calculated'
 
@@ -654,10 +653,10 @@ subroutine refine_negligible_basispair()
        enddo
      enddo
      if( max_ij < TOL_INT ) then
-       WRITE_MASTER(*,*) '    negl',max_ij,max_ij < TOL_INT
+!       WRITE_MASTER(*,*) '    negl',max_ij,max_ij < TOL_INT
        negligible_basispair(ibf,jbf) = .TRUE.
      else
-       WRITE_MASTER(*,*) 'non negl',max_ij,max_ij < TOL_INT
+!       WRITE_MASTER(*,*) 'non negl',max_ij,max_ij < TOL_INT
        npair_refined = npair_refined + 1
      endif
 
@@ -1415,7 +1414,7 @@ subroutine negligible_eri(tol)
  real(dp),intent(in) :: tol
 !=====
  integer             :: icount,ibf,jbf,kbf,lbf,jcount
- integer             :: ibuffer,ibuffer_sparse
+ integer             :: ibuffer
  real(dp)            :: integral_ij(nbf_eri,nbf_eri)
 !=====
 

@@ -176,7 +176,7 @@ program molgw
  !
  ! ERI are stored "privately" in the module m_eri
  call start_clock(timing_integrals)
- call allocate_eri(basis,0.0_dp)
+ call allocate_eri(basis,0.0_dp,BUFFER1)
  call calculate_eri(print_volume,basis,0.0_dp,BUFFER1)
 
  call start_clock(timing_tmp9)
@@ -186,7 +186,7 @@ program molgw
  !
  ! for HSE functionals, calculate the long-range ERI
  if(calc_type%is_screened_hybrid) then
-   call allocate_eri(basis,rcut)
+   call allocate_eri(basis,rcut,BUFFER2)
    call calculate_eri(print_volume,basis,rcut,BUFFER2)
  endif
  call stop_clock(timing_integrals)
@@ -762,12 +762,11 @@ program molgw
    if( calc_type%is_lr_mbpt ) then
      !
      ! Hard-coded cutoff radius
-     rcut= 9.0909_dp
+     rcut= 0.01_dp !9.0909_dp
      write(msg,'(a,f10.4)') 'hard coded cutoff radius  ',rcut
      call issue_warning(msg)
      call deallocate_eri()
-     stop'NOT WORKING ANY MORE'
-     call allocate_eri(basis,rcut)
+     call allocate_eri(basis,rcut,BUFFER1)
      call calculate_eri(print_volume,basis,rcut,BUFFER1)
 
      if( .NOT. ALLOCATED( vxc_matrix ) ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
@@ -928,7 +927,6 @@ program molgw
  deallocate(energy,occupation,exchange_m_vxc_diag)
  deallocate(self_energy_old)
  call deallocate_eri()
- call deallocate_eri_lr()
  if( ndft_xc /= 0 ) then
    deallocate( vxc_matrix )
    call destroy_dft_grid()
