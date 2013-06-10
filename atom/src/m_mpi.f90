@@ -15,9 +15,19 @@ module m_mpi
  public  :: parallel_grid,parallel_integral
  public  :: init_fast_distribution,destroy_fast_distribution
  public  :: is_my_fast_task
+ !
+ ! SCALAPACK declarations
+ public  :: init_scalapack,init_desc,finish_scalapack,diagonalize_sca
+ public  :: rowindex_global_to_local,colindex_global_to_local
+ public  :: sum_sca
 
  logical,parameter :: parallel_grid      = .TRUE.
  logical,parameter :: parallel_integral  = .FALSE.
+#ifdef SCALAPACK
+ logical,parameter :: parallel_scalapack = .TRUE.
+#else
+ logical,parameter :: parallel_scalapack = .FALSE.
+#endif
 
 
  integer :: nproc  = 1
@@ -48,6 +58,25 @@ module m_mpi
  end interface
 
 
+ !
+ ! SCALAPACK variables
+ !
+ integer :: nproc_sca = 1
+ integer :: iproc_sca = 0
+ ! SCALAPACK grid
+ integer :: nprow,npcol
+ integer :: iprow,ipcol
+#ifdef SCALAPACK
+ integer :: context_sca
+ integer :: block_col = 1
+ integer :: block_row = 1
+ integer :: first_row = 0
+ integer :: first_col = 0
+#endif
+
+
+
+
 contains
 
 
@@ -71,6 +100,7 @@ subroutine init_mpi()
   WRITE_MASTER(*,'(a50,x,i8)') 'Master proc is:',ioproc
   WRITE_MASTER(*,'(a50,x,l1)') 'Parallelize Coulomb integrals:',parallel_integral
   WRITE_MASTER(*,'(a50,x,l1)') 'Parallelize XC grid points   :',parallel_grid
+  WRITE_MASTER(*,'(a50,x,l1)') 'Use SCALAPACK                :',parallel_scalapack
   WRITE_MASTER(*,'(/)')
 #endif
 
@@ -522,6 +552,176 @@ function index_prod(ibf,jbf)
 
 end function index_prod
 
+
+!=========================================================================
+subroutine init_scalapack()
+ implicit none
+!=====
+
+#ifdef SCALAPACK
+
+ ! Get iproc_sca and nproc_sca
+ call BLACS_PINFO( iproc_sca, nproc_sca )
+ 
+ ! Get context_sca
+ call BLACS_GET( -1, 0, context_sca )
+
+ ! Set nprow, npcol
+ nprow=0
+ do while((nprow+1)**2<=nproc_sca)
+   nprow=nprow+1
+ end do
+ npcol = nprow
+ write(*,*) 'npcol',npcol,nproc_sca
+ call BLACS_GRIDINIT( context_sca, 'R', nprow, npcol )
+
+ ! Get iprow, ipcol
+ call BLACS_GRIDINFO( context_sca, nprow, npcol, iprow, ipcol )
+
+ WRITE_MASTER(*,'(/,a)')           ' ==== SCALAPACK info'
+ WRITE_MASTER(*,'(a50,x,i8)')      'Number of proc:',nprow*npcol
+ WRITE_MASTER(*,'(a50,x,i8,x,i8)') 'Grid of procs:',nprow,npcol
+ WRITE_MASTER(*,'(/)')
+ 
+#endif
+
+end subroutine init_scalapack
+
+
+!=========================================================================
+subroutine init_desc(nglobal,desc,nlocal)
+ implicit none
+ integer,intent(in)  :: nglobal
+ integer,intent(out) :: desc,nlocal
+!=====
+ integer :: info,lld
+ integer :: itoto
+#ifdef SCALAPACK
+ integer,external :: NUMROC 
+#endif
+!=====
+ desc   = 0
+ nlocal = nglobal
+#ifdef SCALAPACK
+ ! fix of nlocal bug
+ itoto = NUMROC(nglobal,block_row,iprow,first_row,nprow)
+ nlocal = itoto
+
+ lld=nlocal
+
+ ! here is the problem with nlocal
+ call descinit(desc,nglobal,nglobal,block_row,block_col,first_row,first_col,context_sca,lld,info)
+
+ nlocal = itoto
+ WRITE_MASTER(*,'(/,a,i6,a,i6)') ' SCALAPACK info: size of the local matrix  ', nlocal,' x ',nlocal
+#endif
+
+end subroutine init_desc
+
+
+
+!=========================================================================
+subroutine sum_sca(real_number)
+ implicit none
+ real(dp),intent(inout) :: real_number
+!=====
+
+#ifdef SCALAPACK
+ call dgsum2d(context_sca, 'All', ' ',1,1,real_number,1,-1,-1)
+#endif
+
+end subroutine
+
+
+!=========================================================================
+subroutine diagonalize_sca(desc,nglobal,nlocal,matrix,eigval)
+ implicit none
+ integer,intent(in)     :: desc,nglobal,nlocal
+ real(dp),intent(inout) :: matrix(nlocal,nlocal)
+ real(dp),intent(out)   :: eigval(nglobal)
+!=====
+ integer              :: desc_tmp
+ integer              :: lwork,info
+ real(dp),allocatable :: work(:)
+ real(dp)             :: eigvec(nlocal,nlocal)
+!=====
+
+ ! fake descriptor
+ desc_tmp = desc
+
+ !
+ ! First call to get the dimension of the array work
+ WRITE_MASTER(*,*) 'First find the work size'
+ lwork = -1
+ allocate(work(1))
+ call PDSYEV('N','U',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_tmp,work,lwork,info)
+ deallocate(work)
+ !
+ ! Second call indeed perform the diago
+ WRITE_MASTER(*,*) 'Then do it'
+ lwork = NINT(work(1))
+ allocate(work(lwork))
+ call PDSYEV('N','U',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_tmp,work,lwork,info)
+ deallocate(work)
+
+
+end subroutine diagonalize_sca
+
+
+!=========================================================================
+function rowindex_global_to_local(iglobal)
+ implicit none
+ integer,intent(in)     :: iglobal
+ integer                :: rowindex_global_to_local
+!=====
+#ifdef SCALAPACK
+ integer,external :: INDXG2P,INDXG2L
+#endif
+!=====
+
+#ifdef SCALAPACK
+ if( iprow == INDXG2P(iglobal,block_row,0,first_row,nprow) ) then
+   rowindex_global_to_local = INDXG2L(iglobal,block_row,0,first_row,nprow)
+ else
+   rowindex_global_to_local = 0
+ endif
+#endif
+
+end function rowindex_global_to_local
+
+
+!=========================================================================
+function colindex_global_to_local(iglobal)
+ implicit none
+ integer,intent(in)     :: iglobal
+ integer                :: colindex_global_to_local
+!=====
+#ifdef SCALAPACK
+ integer,external :: INDXG2P,INDXG2L
+#endif
+!=====
+
+#ifdef SCALAPACK
+ if( ipcol == INDXG2P(iglobal,block_col,0,first_col,npcol) ) then
+   colindex_global_to_local = INDXG2L(iglobal,block_col,0,first_col,npcol)
+ else
+   colindex_global_to_local = 0
+ endif
+#endif
+
+end function colindex_global_to_local
+
+!=========================================================================
+subroutine finish_scalapack()
+ implicit none
+!=====
+
+#ifdef SCALAPACK
+ call BLACS_GRIDEXIT( context_sca )
+ call BLACS_EXIT( 0 )
+#endif
+
+end subroutine finish_scalapack
 
 !=========================================================================
 end module m_mpi

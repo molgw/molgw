@@ -471,6 +471,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
          call xc_f90_lda_exc_vxc(xc_func(idft_xc),1_intxc,rhor_r(1),exc_libxc(1),vxc_libxc(1))
        else
          call my_lda_exc_vxc(nspin,dft_xc_type(idft_xc),rhor_r,exc_libxc(1),vxc_libxc)
+!         call my_lda_exc_vxc_mu(1.00_dp,rhor_r,exc_libxc,vxc_libxc)
        endif
 
      case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
@@ -1218,7 +1219,7 @@ subroutine my_lda_exc_vxc(nspin,ixc,rhor,exc,vxc)
 end subroutine my_lda_exc_vxc
 
 !=========================================================================
-subroutine my_lda_exc_vxc_mu(mu,rspts,exc,vxc)
+subroutine my_lda_exc_vxc_mu(mu,rhor,exc,vxc)
  implicit none
 
 !Arguments ------------------------------------
@@ -1227,7 +1228,7 @@ subroutine my_lda_exc_vxc_mu(mu,rspts,exc,vxc)
  integer,parameter :: npt=1
  integer,parameter :: order=1
 !arrays
- real(dp),intent(in) :: rspts(npt)
+ real(dp),intent(in) :: rhor(npt)
  real(dp),intent(out) :: exc(npt),vxc(npt)
 
 !Local variables-------------------------------
@@ -1249,7 +1250,7 @@ subroutine my_lda_exc_vxc_mu(mu,rspts,exc,vxc)
 ! *************************************************************************
 
  rcut = 1.0_dp / mu
- WRITE_MASTER(*,*) 'rcut [bohr]=',rcut
+! WRITE_MASTER(*,*) 'rcut [bohr]=',rcut
 
 #if 0
 !Compute vfac=(3/(2*Pi))^(2/3)
@@ -1262,8 +1263,9 @@ subroutine my_lda_exc_vxc_mu(mu,rspts,exc,vxc)
    stop 'not implemented'
  else
 !  Loop over grid points
+! 1/rhor = 4*pi/3*rs**3
    do ipt=1,npt
-     rs=rspts(ipt)
+     rs= (3.0_dp/(4.0_dp*pi*rhor(1)))**(1.0_dp/3.0_dp)
      rsp=rs+rs_step
      rsm1 =1.0_dp/rs
      rsm1p=1.0_dp/rsp
@@ -1299,7 +1301,8 @@ subroutine my_lda_exc_vxc_mu(mu,rspts,exc,vxc)
  vfac=4.0/3.0 * efac
 
  omega = mu
- rho = 3.0 / ( 4.0 * pi * rs**3 )
+! rho = 3.0 / ( 4.0 * pi * rs**3 )
+ rs= (3.0_dp/(4.0_dp*pi*rhor(1)))**(1.0_dp/3.0_dp)
  kf  = ( 3.0 * pi**2 * rho )**(1.0/3.0)
  aa  = omega / ( 2.0 * kf )
 

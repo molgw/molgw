@@ -87,6 +87,9 @@ program molgw
 
  call init_mpi()
 
+ call init_scalapack()
+! stop'ENOUGH'
+
  call header()
 
  !
@@ -119,6 +122,10 @@ program molgw
 #endif
 #ifdef MPI
  msg='Running with MPI'
+ call issue_warning(msg)
+#endif
+#ifdef SCALAPACK
+ msg='Running with SCALAPACK'
  call issue_warning(msg)
 #endif
 
@@ -780,7 +787,7 @@ program molgw
      write(*,*) '========== END FABIEN ========'
      !
      ! Hard-coded cutoff radius
-     rcut= 0.50_dp !9.0909_dp
+     rcut= 9.0909_dp ! 0.5000_dp
      write(msg,'(a,f10.4)') 'hard coded cutoff radius  ',rcut
      call issue_warning(msg)
      call deallocate_eri()
@@ -807,7 +814,8 @@ program molgw
      write(*,*) '========== FABIEN ============'
      if( .NOT. ALLOCATED( vxc_matrix ) ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
      if( ndft_xc == 0 ) call setup_dft_grid(nradial_grid,nangular_grid)
-     call dft_exc_vxc(nspin,basis,1,(/XC_GGA_X_PBE/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
+!     call dft_exc_vxc(nspin,basis,1,(/XC_GGA_X_PBE/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
+     call dft_exc_vxc(nspin,basis,1,(/XC_HYB_GGA_XC_HSE06/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
      WRITE_MASTER(*,'(/,a,f16.10)') '    PBEx energy [Ha]: ',energy_tmp
      exchange_m_vxc_diag(:,:) = 0.0_dp
      do ispin=1,nspin

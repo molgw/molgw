@@ -7,6 +7,8 @@ CCOPTS=
 
 LAPACK=
 
+SCALAPACK=
+
 LIBXC_ROOT= 
 
 LIBINT_ROOT=
@@ -27,7 +29,7 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 	$(FC) $(FCOPTS) m_definitions.o m_mpi.o m_timing.o m_warning.o m_calculation_type.o m_tools.o m_scf.o m_atoms.o \
                         m_gaussian.o m_basis_set.o m_gw.o m_eri.o m_dft.o \
                         wrapper_libint.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o molgw.o -o ../molgw \
-                        $(LAPACK) \
+                        $(LAPACK) $(SCALAPACK) \
                         $(LIBXC) $(LIBXC _INCS) \
                         $(LIBINT) $(LIBINT_INCS) \
                         $(LINKS)
