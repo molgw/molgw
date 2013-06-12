@@ -17,7 +17,7 @@ include ./my_machine.arch
 
 LINKS= -lstdc++ -lm
 LIBXC_INCS=-I$(LIBXC_ROOT)/include
-LIBXC=-L$(LIBXC_ROOT)/lib -Bstatic -lxc -Bdynamic
+LIBXC=-L$(LIBXC_ROOT)/lib -Bstatic -lxcf90 -lxc -Bdynamic
 LIBINT=-L$(LIBINT_ROOT)/lib -lint2
 LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 

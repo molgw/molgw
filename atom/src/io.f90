@@ -4,8 +4,10 @@
 subroutine header()
  use m_definitions
  use m_mpi
+ use m_warning
  implicit none
- integer :: values(8) 
+ integer           :: values(8) 
+ character(len=12) :: chartmp
 !=====
 
  WRITE_MASTER(*,'(x,70("="))') 
@@ -29,6 +31,45 @@ subroutine header()
  case default
    WRITE_MASTER(*,*) 'And it is perfect time to work'
  end select
+
+
+ WRITE_MASTER(*,*) 'Compilation options'
+#ifdef HAVE_LIBXC
+ call xc_f90_version(values(1),values(2))
+ WRITE_ME(chartmp,'(i2,a,i2)') values(1),'.',values(2)
+ msg='LIBXC version '//TRIM(chartmp)
+ call issue_warning(msg)
+#endif
+#ifdef CHI0
+ msg='CHI0 option has been swichted on at compilation time'
+ call issue_warning(msg)
+#endif
+#ifdef OPENMP
+ write(msg,'(i6)') OMP_get_max_threads()
+ msg='OPENMP option is activated with threads number'//msg
+ call issue_warning(msg)
+#endif
+#ifdef LOW_MEMORY2
+ msg='LOW_MEMORY version 2 option has been swichted on at compilation time'
+ call issue_warning(msg)
+#endif
+#ifdef LOW_MEMORY3
+ msg='LOW_MEMORY version 3 option has been swichted on at compilation time'
+ call issue_warning(msg)
+#endif
+#ifdef CASIDA
+ msg='CASIDA option has been swichted on at compilation time'
+ call issue_warning(msg)
+#endif
+#ifdef HAVE_MPI
+ msg='Running with MPI'
+ call issue_warning(msg)
+#endif
+#ifdef SCALAPACK
+ msg='Running with SCALAPACK'
+ call issue_warning(msg)
+#endif
+
 
 end subroutine header
 

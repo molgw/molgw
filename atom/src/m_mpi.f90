@@ -3,7 +3,7 @@
 !=========================================================================
 module m_mpi
  use m_definitions
-#ifdef MPI
+#ifdef HAVE_MPI
  use mpi
 #endif
 
@@ -15,11 +15,15 @@ module m_mpi
  public  :: parallel_grid,parallel_integral
  public  :: init_fast_distribution,destroy_fast_distribution
  public  :: is_my_fast_task
+ !FIXME remove this line
+ public  :: rank,nproc
  !
  ! SCALAPACK declarations
  public  :: init_scalapack,init_desc,finish_scalapack,diagonalize_sca
  public  :: rowindex_global_to_local,colindex_global_to_local
- public  :: sum_sca
+ public  :: rowindex_local_to_global,colindex_local_to_global
+ public  :: sum_sca,max_matrix_sca
+ public  :: ndel
 
  logical,parameter :: parallel_grid      = .TRUE.
  logical,parameter :: parallel_integral  = .FALSE.
@@ -38,6 +42,7 @@ module m_mpi
 
  integer :: nbf_mpi
  integer :: ngrid_mpi
+ integer :: nocc_mp
 
  integer,allocatable :: task_proc(:)
  integer,allocatable :: ntask_proc(:)
@@ -67,11 +72,14 @@ module m_mpi
  integer :: nprow,npcol
  integer :: iprow,ipcol
 #ifdef SCALAPACK
+ integer,parameter :: ndel=9
  integer :: context_sca
- integer :: block_col = 1
- integer :: block_row = 1
+ integer :: block_col = 1 ! 64
+ integer :: block_row = 1 ! 64
  integer :: first_row = 0
  integer :: first_col = 0
+#else
+ integer,parameter :: ndel=1
 #endif
 
 
@@ -86,7 +94,7 @@ subroutine init_mpi()
  integer :: ier
 !=====
 
-#ifdef MPI
+#ifdef HAVE_MPI
  call MPI_INIT(ier)
  mpi_comm = MPI_COMM_WORLD
 #endif
@@ -94,7 +102,7 @@ subroutine init_mpi()
  call get_size()
  call get_rank()
 
-#ifdef MPI
+#ifdef HAVE_MPI
   WRITE_MASTER(*,'(/,a)')      ' ==== MPI info'
   WRITE_MASTER(*,'(a50,x,i8)') 'Number of proc:',nproc
   WRITE_MASTER(*,'(a50,x,i8)') 'Master proc is:',ioproc
@@ -121,7 +129,7 @@ subroutine finish_mpi()
  if(allocated(ntask_grid_proc))  deallocate(ntask_grid_proc)
  if(allocated(task_grid_number)) deallocate(task_grid_number)
 
-#ifdef MPI
+#ifdef HAVE_MPI
  call MPI_FINALIZE(ier)
 #endif
 
@@ -134,7 +142,7 @@ subroutine get_size
  integer :: ier=0
 !=====
 
-#ifdef MPI
+#ifdef HAVE_MPI
  call MPI_COMM_SIZE(mpi_comm,nproc,ier)
 #endif
  if(ier/=0) then
@@ -150,7 +158,7 @@ subroutine get_rank
  integer :: ier=0
 !=====
 
-#ifdef MPI
+#ifdef HAVE_MPI
  call MPI_COMM_RANK(mpi_comm,rank,ier)
 #endif
  if(ier/=0) then
@@ -483,7 +491,7 @@ subroutine xsum_r(real_number)
 
  n1 = 1
 
-#ifdef MPI
+#ifdef HAVE_MPI
  call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_comm, ier)
 #endif
  if(ier/=0) then
@@ -504,7 +512,7 @@ subroutine xsum_ra1d(array)
 
  n1 = SIZE( array, DIM=1 )
 
-#ifdef MPI
+#ifdef HAVE_MPI
  call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_comm, ier)
 #endif
  if(ier/=0) then
@@ -527,7 +535,7 @@ subroutine xsum_ra3d(array)
  n2 = SIZE( array, DIM=2 )
  n3 = SIZE( array, DIM=3 )
 
-#ifdef MPI
+#ifdef HAVE_MPI
  call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_comm, ier)
 #endif
  if(ier/=0) then
@@ -567,12 +575,16 @@ subroutine init_scalapack()
  call BLACS_GET( -1, 0, context_sca )
 
  ! Set nprow, npcol
+#if 1
  nprow=0
  do while((nprow+1)**2<=nproc_sca)
    nprow=nprow+1
  end do
  npcol = nprow
- write(*,*) 'npcol',npcol,nproc_sca
+#else
+ nprow = nproc_sca
+ npcol = 1
+#endif
  call BLACS_GRIDINIT( context_sca, 'R', nprow, npcol )
 
  ! Get iprow, ipcol
@@ -589,31 +601,32 @@ end subroutine init_scalapack
 
 
 !=========================================================================
-subroutine init_desc(nglobal,desc,nlocal)
+subroutine init_desc(nglobal,desc,mlocal,nlocal)
  implicit none
  integer,intent(in)  :: nglobal
- integer,intent(out) :: desc,nlocal
+ integer,intent(out) :: desc(ndel),mlocal,nlocal
 !=====
- integer :: info,lld
- integer :: itoto
+ integer :: info
 #ifdef SCALAPACK
  integer,external :: NUMROC 
 #endif
 !=====
- desc   = 0
+
+ desc(:)   = 0
+ mlocal = nglobal
  nlocal = nglobal
 #ifdef SCALAPACK
  ! fix of nlocal bug
- itoto = NUMROC(nglobal,block_row,iprow,first_row,nprow)
- nlocal = itoto
-
- lld=nlocal
+ mlocal = NUMROC(nglobal,block_row,iprow,first_row,nprow)
+ nlocal = NUMROC(nglobal,block_col,ipcol,first_col,npcol)
 
  ! here is the problem with nlocal
- call descinit(desc,nglobal,nglobal,block_row,block_col,first_row,first_col,context_sca,lld,info)
+ call descinit(desc,nglobal,nglobal,block_row,block_col,first_row,first_col,context_sca,mlocal,info)
 
- nlocal = itoto
- WRITE_MASTER(*,'(/,a,i6,a,i6)') ' SCALAPACK info: size of the local matrix  ', nlocal,' x ',nlocal
+ WRITE_ME(*,'(/,a,i6,a,i6,4x,i6)') ' SCALAPACK info: size of the local matrix for proc #', mlocal,' x ',nlocal,iproc_sca
+
+ call blacs_barrier(context_sca,'All')
+
 #endif
 
 end subroutine init_desc
@@ -627,39 +640,54 @@ subroutine sum_sca(real_number)
 !=====
 
 #ifdef SCALAPACK
- call dgsum2d(context_sca, 'All', ' ',1,1,real_number,1,-1,-1)
+ call dgsum2d(context_sca,'All',' ',1,1,real_number,1,-1,-1)
 #endif
 
-end subroutine
+end subroutine sum_sca
 
 
 !=========================================================================
-subroutine diagonalize_sca(desc,nglobal,nlocal,matrix,eigval)
+subroutine max_matrix_sca(m,n,real_matrix)
  implicit none
- integer,intent(in)     :: desc,nglobal,nlocal
- real(dp),intent(inout) :: matrix(nlocal,nlocal)
+ integer, intent(in)    :: m,n
+ real(dp),intent(inout) :: real_matrix(m,n)
+!=====
+ integer :: idum1(1),idum2(1)
+!=====
+
+#ifdef SCALAPACK
+ call dgamx2d(context_sca,'All',' ',m,n,real_matrix,m,-1,idum1,idum2,-1,-1)
+#endif
+
+
+end subroutine max_matrix_sca
+
+
+!=========================================================================
+subroutine diagonalize_sca(desc,nglobal,mlocal,nlocal,matrix,eigval)
+ implicit none
+ integer,intent(in)     :: desc(ndel),nglobal,mlocal,nlocal
+ real(dp),intent(inout) :: matrix(mlocal,nlocal)
  real(dp),intent(out)   :: eigval(nglobal)
 !=====
- integer              :: desc_tmp
+ integer              :: desc_tmp(ndel)
  integer              :: lwork,info
  real(dp),allocatable :: work(:)
- real(dp)             :: eigvec(nlocal,nlocal)
+ real(dp)             :: eigvec(mlocal,nlocal)
 !=====
 
  ! fake descriptor
- desc_tmp = desc
+ desc_tmp(:) = desc(:)
 
  !
  ! First call to get the dimension of the array work
- WRITE_MASTER(*,*) 'First find the work size'
  lwork = -1
  allocate(work(1))
  call PDSYEV('N','U',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_tmp,work,lwork,info)
+ lwork = NINT(work(1))
  deallocate(work)
  !
  ! Second call indeed perform the diago
- WRITE_MASTER(*,*) 'Then do it'
- lwork = NINT(work(1))
  allocate(work(lwork))
  call PDSYEV('N','U',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_tmp,work,lwork,info)
  deallocate(work)
@@ -678,6 +706,9 @@ function rowindex_global_to_local(iglobal)
  integer,external :: INDXG2P,INDXG2L
 #endif
 !=====
+ !
+ ! returns the local index if this is proc in charge
+ ! else returns 0 
 
 #ifdef SCALAPACK
  if( iprow == INDXG2P(iglobal,block_row,0,first_row,nprow) ) then
@@ -685,6 +716,8 @@ function rowindex_global_to_local(iglobal)
  else
    rowindex_global_to_local = 0
  endif
+#else
+ rowindex_global_to_local = iglobal
 #endif
 
 end function rowindex_global_to_local
@@ -700,6 +733,9 @@ function colindex_global_to_local(iglobal)
  integer,external :: INDXG2P,INDXG2L
 #endif
 !=====
+ !
+ ! returns the local index if this is proc in charge
+ ! else returns 0 
 
 #ifdef SCALAPACK
  if( ipcol == INDXG2P(iglobal,block_col,0,first_col,npcol) ) then
@@ -707,9 +743,51 @@ function colindex_global_to_local(iglobal)
  else
    colindex_global_to_local = 0
  endif
+#else
+ colindex_global_to_local = iglobal
 #endif
 
 end function colindex_global_to_local
+
+!=========================================================================
+function rowindex_local_to_global(ilocal)
+ implicit none
+ integer,intent(in)     :: ilocal
+ integer                :: rowindex_local_to_global
+!=====
+#ifdef SCALAPACK
+ integer,external :: INDXL2G
+#endif
+!=====
+
+#ifdef SCALAPACK
+ rowindex_local_to_global = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
+#else
+ rowindex_local_to_global = ilocal
+#endif
+
+end function rowindex_local_to_global
+
+
+!=========================================================================
+function colindex_local_to_global(ilocal)
+ implicit none
+ integer,intent(in)     :: ilocal
+ integer                :: colindex_local_to_global
+!=====
+#ifdef SCALAPACK
+ integer,external :: INDXL2G
+#endif
+!=====
+
+#ifdef SCALAPACK
+ colindex_local_to_global = INDXL2G(ilocal,block_col,ipcol,first_col,npcol)
+#else
+ colindex_local_to_global = ilocal
+#endif
+
+end function colindex_local_to_global
+
 
 !=========================================================================
 subroutine finish_scalapack()

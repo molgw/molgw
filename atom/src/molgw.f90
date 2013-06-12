@@ -88,46 +88,16 @@ program molgw
  call init_mpi()
 
  call init_scalapack()
-! stop'ENOUGH'
 
  call header()
+ !
+ ! initialize the warning counter
+ call init_warning()
 
  !
  ! start counting time here
  call init_timing()
  call start_clock(timing_total)
- !
- ! initialize the warning counter
- call init_warning()
-#ifdef CHI0
- msg='CHI0 option has been swichted on at compilation time'
- call issue_warning(msg)
-#endif
-#ifdef OPENMP
- write(msg,'(i6)') OMP_get_max_threads()
- msg='OPENMP option is activated with threads number'//msg
- call issue_warning(msg)
-#endif
-#ifdef LOW_MEMORY2
- msg='LOW_MEMORY version 2 option has been swichted on at compilation time'
- call issue_warning(msg)
-#endif
-#ifdef LOW_MEMORY3
- msg='LOW_MEMORY version 3 option has been swichted on at compilation time'
- call issue_warning(msg)
-#endif
-#ifdef CASIDA
- msg='CASIDA option has been swichted on at compilation time'
- call issue_warning(msg)
-#endif
-#ifdef MPI
- msg='Running with MPI'
- call issue_warning(msg)
-#endif
-#ifdef SCALAPACK
- msg='Running with SCALAPACK'
- call issue_warning(msg)
-#endif
 
 
  !

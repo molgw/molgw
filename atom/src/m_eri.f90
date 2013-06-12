@@ -1282,6 +1282,7 @@ subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,ijspin,eri_eigenstat
          eri_tmp3(jbf,kbf,lbf) = eri_tmp3(jbf,kbf,lbf) + eri(ibf,jbf,kbf,lbf) * c_matrix(ibf,istate,ijspin) 
        enddo
 
+
      enddo
    enddo
  enddo
@@ -1337,76 +1338,6 @@ subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,ijspin,eri_eigenstat
 
 end subroutine transform_eri_basis_lowmem
 
-!=================================================================
-subroutine transform_eri_basis_lowmem1(nspin,c_matrix,istate,jstate,ijspin,eri_eigenstate_l)
- use m_timing
- implicit none
-
- integer,intent(in)   :: nspin,istate,ijspin
- real(dp),intent(in)  :: c_matrix(nbf_eri,nbf_eri,nspin)
- real(dp),intent(out) :: eri_eigenstate_l(nbf_eri,nbf_eri,nbf_eri,nspin)
-!=====
- integer              :: klspin
- integer              :: ibf,jbf,kbf,lbf
- integer              :: jstate,kstate,lstate
- real(dp)             :: eri_tmp3(nbf_eri,nbf_eri,nbf_eri)
- real(dp)             :: wtime
-!=====
-
- eri_eigenstate_l(:,:,:,:)=0.0_dp
- eri_tmp3(:,:,:)=0.0_dp
-
- do lbf=1,nbf_eri
-   do kbf=1,nbf_eri
-     do jbf=1,nbf_eri
-
-       do ibf=1,nbf_eri
-         eri_tmp3(jbf,kbf,lbf) = eri_tmp3(jbf,kbf,lbf) + eri(ibf,jbf,kbf,lbf) * c_matrix(ibf,istate,ijspin) 
-       enddo
-
-     enddo
-   enddo
- enddo
-
-
- do lbf=1,nbf_eri
-   do kbf=1,nbf_eri
-
-     do jstate=1,nbf_eri
-       eri_eigenstate_l(jstate,kbf,lbf,nspin) = DOT_PRODUCT( eri_tmp3(:,kbf,lbf) , c_matrix(:,jstate,ijspin) )
-     enddo
-
-   enddo
- enddo
-  
-
- do klspin=1,nspin
-
-   do lbf=1,nbf_eri
-     do kstate=1,nbf_eri
-       do jstate=1,nbf_eri
-         eri_tmp3(jstate,kstate,lbf) = DOT_PRODUCT( eri_eigenstate_l(jstate,:,lbf,nspin) , c_matrix(:,kstate,klspin) )
-       enddo
-     enddo
-   enddo
-
-   do lstate=1,nbf_eri
-     do kstate=1,nbf_eri
-       do jstate=1,nbf_eri
-
-         do lbf=1,nbf_eri
-           eri_eigenstate_l(jstate,kstate,lstate,klspin) =  eri_eigenstate_l(jstate,kstate,lstate,klspin) &
-                    + eri_tmp3(jstate,kstate,lbf) * c_matrix(lbf,lstate,klspin) 
-         enddo
-
-       enddo
-     enddo
-   enddo
-
- enddo !klspin
-
-
-end subroutine transform_eri_basis_lowmem1
 
 !=========================================================================
 subroutine negligible_eri(tol)
