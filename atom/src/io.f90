@@ -65,7 +65,7 @@ subroutine header()
  msg='Running with MPI'
  call issue_warning(msg)
 #endif
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  msg='Running with SCALAPACK'
  call issue_warning(msg)
 #endif

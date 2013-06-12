@@ -647,6 +647,7 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  integer :: ipole
  integer :: t_ij,t_kl
  integer :: t_ij_local,t_kl_local
+ integer :: transition_index(basis%nbf,basis%nbf,nspin)
 
  real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
  real(dp),allocatable :: eri_eigenstate_ij(:,:,:)
@@ -663,7 +664,7 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  logical :: TDHF=.FALSE.
 
  integer          :: mlocal,nlocal
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  integer          :: desc(ndel)
 #endif
 !FIXME
@@ -680,7 +681,7 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 #endif
 #endif
 
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  call init_desc(wpol%npole,desc,mlocal,nlocal)
 #else
  mlocal = wpol%npole
@@ -701,16 +702,18 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 
  !
  ! First set up the diagonal for the full matrix
- !
+ ! and transition indexing
 
  allocate(amb_diag(wpol%npole))
  amb_diag(:)=0.0_dp
+ transition_index(:,:,:)=0
  t_ij=0
  do ijspin=1,nspin
    do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
      do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
        if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
        t_ij=t_ij+1
+       transition_index(iorbital,jorbital,ijspin) = t_ij
 
        amb_diag(t_ij) = energy(jorbital,ijspin) - energy(iorbital,ijspin)
 
@@ -729,14 +732,14 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  ! Prepare the SCALAPACK distribution of the ROWS
  !
  task(:,:) = 0
- t_ij=0
  do ijspin=1,nspin
    do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
-     if( occupation(iorbital,ijspin) < completely_empty .AND. iorbital <= ncore_W ) cycle
+     if( occupation(iorbital,ijspin) < completely_empty .OR. iorbital <= ncore_W ) cycle
      do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
 
        if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
-       t_ij=t_ij+1
+
+       t_ij=transition_index(iorbital,jorbital,ijspin)
 
        t_ij_local = rowindex_global_to_local(t_ij)
        if(t_ij_local==0) cycle
@@ -747,34 +750,35 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
    enddo
  enddo
 
+#if 0
  WRITE_ME(111+rank,*) 'rank',rank,nproc
  do ijspin=1,nspin
    do iorbital=1,basis%nbf
      WRITE_ME(111+rank,*) task(iorbital,ijspin)
    enddo
  enddo
+#endif
 
  !
  ! transitions ROWS
  !
- t_ij=0
  do ijspin=1,nspin
    do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
 
-     if( occupation(iorbital,ijspin) < completely_empty .AND. iorbital <= ncore_W ) cycle
+     if( occupation(iorbital,ijspin) < completely_empty .OR. iorbital <= ncore_W ) cycle
      !
      ! SCALAPACK parallelization
      !
-!     if( task(iorbital,ijspin) == 0 ) cycle
+     if( task(iorbital,ijspin) == 0 ) cycle
 
-!     call transform_eri_basis_lowmem(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
-     eri_eigenstate_i(:,:,:,:) = 0.0_dp
+     call transform_eri_basis_lowmem(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
 
 
      do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
 
        if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
-       t_ij=t_ij+1
+
+       t_ij=transition_index(iorbital,jorbital,ijspin)
 
        t_ij_local = rowindex_global_to_local(t_ij)
        if(t_ij_local==0) cycle
@@ -782,17 +786,16 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
        !
        ! transitions COLS
        !
-       t_kl=0
        do klspin=1,nspin
          do korbital=1,basis%nbf 
 
            do lorbital=1,basis%nbf 
              if( skip_transition(nspin,lorbital,korbital,occupation(lorbital,klspin),occupation(korbital,klspin)) ) cycle
-             t_kl=t_kl+1
+
+             t_kl=transition_index(korbital,lorbital,klspin)
 
              t_kl_local = colindex_global_to_local(t_kl)
              if(t_kl_local==0) cycle
-
 
              apb(t_ij_local,t_kl_local) =  2.0_dp * eri_eigenstate_i(jorbital,korbital,lorbital,klspin) &
                                                       * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
@@ -807,9 +810,9 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 !           endif
 
              if(t_ij==t_kl) then
-!               if( task(iorbital,ijspin) == 0 ) then
-!                 WRITE_ME(*,'(a,10(2x,i5))') ' === should have skipped',rank,iorbital,ijspin,t_ij,t_ij_local
-!               endif
+               if( task(iorbital,ijspin) == 0 ) then
+                 WRITE_ME(*,'(a,10(2x,i5))') ' === should have skipped',rank,iorbital,ijspin,t_ij,t_ij_local
+               endif
                apb(t_ij_local,t_kl_local) = apb(t_ij_local,t_kl_local) + amb_diag(t_ij)
                rpa_correlation = rpa_correlation - 0.25_dp * ( amb_diag(t_ij) + apb(t_ij_local,t_kl_local) )
 !               WRITE_ME(*,'(a,5(2x,i5),2(2x,e16.6))') ' === should have skipped',rank,iorbital,t_ij,wpol%npole,t_ij_local,amb_diag(t_ij),apb(t_ij_local,t_kl_local)
@@ -826,10 +829,11 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  enddo ! ijspin
 
 
-
- WRITE_ME(*,*) 'before',rank,rpa_correlation
+ !
+ ! Reduce the rpa_correlation from all cpus
+ !
  call sum_sca(rpa_correlation)
- WRITE_ME(*,*) 'after',rank,rpa_correlation
+
  !
  ! apb is transformed here into (a-b)**1/2 * (a+b) * (a-b)**1/2
  !
@@ -850,7 +854,7 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  ! Symmetric in-place diagonalization
  call start_clock(timing_diago_h2p)
 
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
 
  call diagonalize_sca(desc,wpol%npole,mlocal,nlocal,apb,eigenvalue)
 

@@ -27,7 +27,7 @@ module m_mpi
 
  logical,parameter :: parallel_grid      = .TRUE.
  logical,parameter :: parallel_integral  = .FALSE.
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  logical,parameter :: parallel_scalapack = .TRUE.
 #else
  logical,parameter :: parallel_scalapack = .FALSE.
@@ -71,11 +71,11 @@ module m_mpi
  ! SCALAPACK grid
  integer :: nprow,npcol
  integer :: iprow,ipcol
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  integer,parameter :: ndel=9
  integer :: context_sca
- integer :: block_col = 1 ! 64
- integer :: block_row = 1 ! 64
+ integer :: block_col = 64
+ integer :: block_row = 64
  integer :: first_row = 0
  integer :: first_col = 0
 #else
@@ -566,7 +566,7 @@ subroutine init_scalapack()
  implicit none
 !=====
 
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
 
  ! Get iproc_sca and nproc_sca
  call BLACS_PINFO( iproc_sca, nproc_sca )
@@ -575,7 +575,7 @@ subroutine init_scalapack()
  call BLACS_GET( -1, 0, context_sca )
 
  ! Set nprow, npcol
-#if 1
+#if 0
  nprow=0
  do while((nprow+1)**2<=nproc_sca)
    nprow=nprow+1
@@ -607,7 +607,7 @@ subroutine init_desc(nglobal,desc,mlocal,nlocal)
  integer,intent(out) :: desc(ndel),mlocal,nlocal
 !=====
  integer :: info
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  integer,external :: NUMROC 
 #endif
 !=====
@@ -615,7 +615,7 @@ subroutine init_desc(nglobal,desc,mlocal,nlocal)
  desc(:)   = 0
  mlocal = nglobal
  nlocal = nglobal
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  ! fix of nlocal bug
  mlocal = NUMROC(nglobal,block_row,iprow,first_row,nprow)
  nlocal = NUMROC(nglobal,block_col,ipcol,first_col,npcol)
@@ -639,7 +639,7 @@ subroutine sum_sca(real_number)
  real(dp),intent(inout) :: real_number
 !=====
 
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  call dgsum2d(context_sca,'All',' ',1,1,real_number,1,-1,-1)
 #endif
 
@@ -655,7 +655,7 @@ subroutine max_matrix_sca(m,n,real_matrix)
  integer :: idum1(1),idum2(1)
 !=====
 
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  call dgamx2d(context_sca,'All',' ',m,n,real_matrix,m,-1,idum1,idum2,-1,-1)
 #endif
 
@@ -702,7 +702,7 @@ function rowindex_global_to_local(iglobal)
  integer,intent(in)     :: iglobal
  integer                :: rowindex_global_to_local
 !=====
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  integer,external :: INDXG2P,INDXG2L
 #endif
 !=====
@@ -710,7 +710,7 @@ function rowindex_global_to_local(iglobal)
  ! returns the local index if this is proc in charge
  ! else returns 0 
 
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  if( iprow == INDXG2P(iglobal,block_row,0,first_row,nprow) ) then
    rowindex_global_to_local = INDXG2L(iglobal,block_row,0,first_row,nprow)
  else
@@ -729,7 +729,7 @@ function colindex_global_to_local(iglobal)
  integer,intent(in)     :: iglobal
  integer                :: colindex_global_to_local
 !=====
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  integer,external :: INDXG2P,INDXG2L
 #endif
 !=====
@@ -737,7 +737,7 @@ function colindex_global_to_local(iglobal)
  ! returns the local index if this is proc in charge
  ! else returns 0 
 
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  if( ipcol == INDXG2P(iglobal,block_col,0,first_col,npcol) ) then
    colindex_global_to_local = INDXG2L(iglobal,block_col,0,first_col,npcol)
  else
@@ -755,12 +755,12 @@ function rowindex_local_to_global(ilocal)
  integer,intent(in)     :: ilocal
  integer                :: rowindex_local_to_global
 !=====
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  integer,external :: INDXL2G
 #endif
 !=====
 
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  rowindex_local_to_global = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
 #else
  rowindex_local_to_global = ilocal
@@ -775,12 +775,12 @@ function colindex_local_to_global(ilocal)
  integer,intent(in)     :: ilocal
  integer                :: colindex_local_to_global
 !=====
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  integer,external :: INDXL2G
 #endif
 !=====
 
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  colindex_local_to_global = INDXL2G(ilocal,block_col,ipcol,first_col,npcol)
 #else
  colindex_local_to_global = ilocal
@@ -794,7 +794,7 @@ subroutine finish_scalapack()
  implicit none
 !=====
 
-#ifdef SCALAPACK
+#ifdef HAVE_SCALAPACK
  call BLACS_GRIDEXIT( context_sca )
  call BLACS_EXIT( 0 )
 #endif
