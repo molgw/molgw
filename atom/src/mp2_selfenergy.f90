@@ -114,7 +114,7 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
  selfenergy_ring(:,:,:,:) = 0.0_dp
  selfenergy_sox(:,:,:,:)  = 0.0_dp
 
-#ifdef OPENMP
+#ifdef _OPENMP
  WRITE_MASTER(*,*) 'OPENMP is used for the MP2 self-energy'
 #endif
  do abispin=1,nspin

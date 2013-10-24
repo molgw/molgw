@@ -14,7 +14,7 @@ program molgw
  use m_eri
  use m_gw
  use m_dft
-#ifdef OPENMP
+#ifdef _OPENMP
  use omp_lib
 #endif
  implicit none
@@ -734,7 +734,7 @@ program molgw
 
  !
  ! final evaluation for G0W0
- if( calc_type%is_gw .AND. calc_type%method == perturbative ) then
+ if( calc_type%is_gw .AND. ( calc_type%method == perturbative .OR. calc_type%method == COHSEX ) ) then
 
    if( calc_type%is_lr_mbpt ) then
 
@@ -785,7 +785,9 @@ program molgw
      if( .NOT. ALLOCATED( vxc_matrix ) ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
      if( ndft_xc == 0 ) call setup_dft_grid(nradial_grid,nangular_grid)
 !     call dft_exc_vxc(nspin,basis,1,(/XC_GGA_X_PBE/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
+#ifdef HAVE_LIBXC
      call dft_exc_vxc(nspin,basis,1,(/XC_HYB_GGA_XC_HSE06/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
+#endif
      WRITE_MASTER(*,'(/,a,f16.10)') '    PBEx energy [Ha]: ',energy_tmp
      exchange_m_vxc_diag(:,:) = 0.0_dp
      do ispin=1,nspin

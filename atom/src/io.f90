@@ -44,7 +44,7 @@ subroutine header()
  msg='CHI0 option has been swichted on at compilation time'
  call issue_warning(msg)
 #endif
-#ifdef OPENMP
+#ifdef _OPENMP
  write(msg,'(i6)') OMP_get_max_threads()
  msg='OPENMP option is activated with threads number'//msg
  call issue_warning(msg)

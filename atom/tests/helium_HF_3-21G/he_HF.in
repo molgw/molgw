@@ -1,7 +1,7 @@
 HF                    # calculation type HF, LDA+GW, PBE+GW
 1   0.0  0.0          # spin pol  charge  magnetization
 3-21G   CART          # basis set
-20  0.80              # nscf, alpha_mixing
+20  0.80  PULAY LOW   # nscf, alpha_mixing
 01                    # print_volume
 1  bohr               # natom
 2.    0.0  0.0  0.0   # Z , x, y, z 

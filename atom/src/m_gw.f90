@@ -47,7 +47,7 @@ subroutine init_spectral_function(nbf,prod_nbf,nspin,occupation,sf)
 !=====
  integer                               :: ispin,ibf,jbf
  logical                               :: file_exists
-!=====
+!====
 
  !
  ! Deal with frozen core initialization
@@ -864,6 +864,21 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
 #endif
 
  call stop_clock(timing_diago_h2p)
+
+!!TEST sort eigenvalues
+! WRITE_MASTER(*,*) 'eigenvalue'
+! WRITE_MASTER(*,*) eigenvalue(:)
+! t_kl=wpol%npole
+! do t_ij=1,wpol%npole-1
+!   if( ABS( eigenvalue(t_ij) - eigenvalue(t_ij+1) ) < 1.0e-5_dp ) then
+!      write(*,*) 'remove',t_ij,t_ij+1
+!      t_kl=t_kl-1
+!   endif
+! enddo
+! write(*,*) 't_kl / npole',t_kl ,wpol%npole
+!!END
+
+
  WRITE_MASTER(*,*) 'diago finished'
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,*) 'calculate the RPA energy using the Tamm-Dancoff decomposition'
@@ -1168,9 +1183,11 @@ subroutine gw_selfenergy_noaux(method,nspin,basis,prod_basis,occupation,energy,e
    WRITE_MASTER(*,*) 'perform a QP self-consistent GW calculation'
  case(perturbative)
    WRITE_MASTER(*,*) 'perform a one-shot G0W0 calculation'
+ case(COHSEX)
+   WRITE_MASTER(*,*) 'perform a COHSEX calculation'
  end select
 
- if(method==QS) then
+ if(method==QS .OR. method==COHSEX) then
    nomegai=1
    allocate(omegai(nomegai))
  else
@@ -1237,7 +1254,8 @@ subroutine gw_selfenergy_noaux(method,nspin,basis,prod_basis,occupation,energy,e
        endif
        if( ABS(fact_empty - fact_full) < 0.0001 ) cycle
 
-       if(method==QS) then
+       select case(method)
+       case(QS)
 
          do borbital=1,basis%nbf
            do aorbital=1,basis%nbf
@@ -1250,7 +1268,7 @@ subroutine gw_selfenergy_noaux(method,nspin,basis,prod_basis,occupation,energy,e
            enddo
          enddo
 
-       else if(method==perturbative) then
+       case(perturbative)
 
          do aorbital=1,basis%nbf
            !
@@ -1266,23 +1284,39 @@ subroutine gw_selfenergy_noaux(method,nspin,basis,prod_basis,occupation,energy,e
 !           enddo
          enddo
 
-       else
+       case(COHSEX) 
+
+         !
+         ! SEX
+         !
+         do borbital=1,basis%nbf
+           do aorbital=1,basis%nbf
+             selfenergy_tmp(1,aorbital,borbital,ispin) = selfenergy_tmp(1,aorbital,borbital,ispin) &
+                        + bra(ipole,aorbital) * ket(ipole,borbital) &
+                          *  2.0_dp * fact_full  / wpol%pole(ipole) 
+           enddo
+         enddo
+
+       case default 
          stop'BUG'
-       endif
+       end select
 
      enddo !ipole
 
    enddo !iorbital
  enddo !ispin
 
-
+ !
+ ! Kotani's Hermitianization trick
+ !
  if(method==QS) then
-   !
-   ! Kotani's Hermitianization trick
    do ispin=1,nspin
      selfenergy_tmp(1,:,:,ispin) = 0.5_dp * ( selfenergy_tmp(1,:,:,ispin) + transpose(selfenergy_tmp(1,:,:,ispin)) )
    enddo
+ endif
 
+ select case(method)
+ case(QS)
    ! Transform the matrix elements back to the non interacting states
    ! do not forget the overlap matrix S
    ! C^T S C = I
@@ -1293,7 +1327,24 @@ subroutine gw_selfenergy_noaux(method,nspin,basis,prod_basis,occupation,energy,e
                              MATMUL( TRANSPOSE(c_matrix(:,:,ispin)), s_matrix(:,:) ) ) )
    enddo
 
- else if(method==perturbative) then
+ case(COHSEX) !==========================================================
+
+   selfenergy(:,:,:) = REAL( selfenergy_tmp(1,:,:,:) )
+   WRITE_MASTER(*,*)
+   WRITE_MASTER(*,*) 'COHSEX Eigenvalues [eV]'
+   if(nspin==1) then
+     WRITE_MASTER(*,*) '  #          E0        Sigx-Vxc      Sigc          Z         G0W0'
+   else
+     WRITE_MASTER(*,'(a)') '  #                E0                      Sigx-Vxc                    Sigc                       Z                       G0W0'
+   endif
+   do aorbital=1,basis%nbf
+     zz(:) = 1.0_dp 
+
+     WRITE_MASTER(*,'(i4,x,20(x,f12.6))') aorbital,energy(aorbital,:)*Ha_eV,exchange_m_vxc_diag(aorbital,:)*Ha_eV,REAL(selfenergy_tmp(1,aorbital,aorbital,:),dp)*Ha_eV,&
+           zz(:),( energy(aorbital,:)+zz(:)*REAL(selfenergy_tmp(1,aorbital,aorbital,:) + exchange_m_vxc_diag(aorbital,:) ,dp) )*Ha_eV
+   enddo
+
+ case(perturbative) !==========================================================
 
    if(file_exists) then
      do aorbital=1,basis%nbf ! MIN(2,basis%nbf)
@@ -1342,7 +1393,7 @@ subroutine gw_selfenergy_noaux(method,nspin,basis,prod_basis,occupation,energy,e
            zz(:),( energy(aorbital,:)+zz(:)*REAL(selfenergy_tmp(2,aorbital,aorbital,:) + exchange_m_vxc_diag(aorbital,:) ,dp) )*Ha_eV
    enddo
 
- endif
+ end select
 
  deallocate(omegai)
  deallocate(selfenergy_tmp)
@@ -1432,51 +1483,6 @@ subroutine cohsex_selfenergy(nstate,nspin,occupation,energy,c_matrix,w_pol,selfe
    WRITE_MASTER(*,*) 'WARNING: SEX term skipped!'
  endif
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
- !
- ! the following calculation of the SEX term is wrong and I don't know why
- if(.FALSE.) then
-
- do ispin=1,nspin
-   do iorbital=1,nstate !INNER LOOP of G
-
-!     fact = 0.5_dp - occupation(iorbital,ispin) / spin_fact
-!SEX     WRITE_MASTER(*,*) 'Screened exchange only'
-
-     if( occupation(iorbital,ispin)<completely_empty ) cycle
-     fact =  - occupation(iorbital,ispin) / spin_fact
-
-     ket(:,:) = 0.0_dp
-     do bstate=1,nstate
-
-       three_state_overlap_ib = matmul( three_state_overlap_product(:,:,bstate) , c_matrix(:,iorbital,ispin) )
-
-!       ket(:,bstate) = ket(:,bstate) + fact * matmul( w_pol(:,:,1) ,
-!       three_state_overlap_ib(:) )
-       ket(:,bstate) = matmul( w_pol(:,:,1) , three_state_overlap_ib(:) )
-
-     enddo !INNER LOOP of G
-
-     do astate=1,nstate 
-
-       do kstate=1,nstate_pola
-         three_state_overlap_kai = 0.0_dp
-         do istate=1,nstate
-           three_state_overlap_kai = three_state_overlap_kai &
-&                + c_matrix(istate,iorbital,ispin) * three_state_overlap_product_pola(kstate,astate,istate)
-         enddo
-         do bstate=1,nstate 
-           selfenergy_tmp(astate,bstate,ispin) = selfenergy_tmp(astate,bstate,ispin) + three_state_overlap_kai*ket(kstate,bstate) * fact
-         enddo
-       enddo
-
-     enddo
-
-   enddo ! iorbital
- enddo ! ispin
-
- endif ! WRONG SEX calculation
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ! COH
  if(.TRUE.) then

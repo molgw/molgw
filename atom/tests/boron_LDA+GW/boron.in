@@ -1,7 +1,7 @@
 LDA+GW                   # calculation type HF, G0W0
 2   0.0   1.0            # spin pol  charge   magnetization
 cc-pVTZ  CART            # basis set
-20  0.70                 # nscf, alpha_mixing
+20  0.70 PULAY  HIGH     # nscf, alpha_mixing
 01                       # print_volume
 1  bohr
 5.0   0.0 0.0 0.0

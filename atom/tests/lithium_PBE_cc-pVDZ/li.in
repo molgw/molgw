@@ -1,7 +1,7 @@
-PBE                # calculation type HF, LDA+GW, PBE+GW
-2   0.0   1.0        # spin pol    charge magnetization
-cc-pVDZ  CART        #6-31G # cc-pVTZ                  #          6-311ppGss               # basis set
-20   0.30  SIMPLE    # nscf, alpha_mixing
-01                   # print_volume
+PBE                     # calculation type HF, LDA+GW, PBE+GW
+2   0.0   1.0           # spin pol    charge magnetization
+cc-pVDZ  CART           #6-31G # cc-pVTZ                  #          6-311ppGss               # basis set
+20   0.30  SIMPLE HIGH  # nscf, alpha_mixing
+01                      # print_volume
 1   bohr
 3.  0.000000  0.00000   0.000000

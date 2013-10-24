@@ -184,7 +184,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
  use xc_f90_lib_m
  use xc_f90_types_m
 #endif
-#ifdef OPENMP
+#ifdef _OPENMP
  use omp_lib
 #endif
  implicit none

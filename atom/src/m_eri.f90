@@ -303,7 +303,7 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
  use ISO_C_BINDING
  use m_tools,only: boys_function
  use m_timing
-#ifdef OPENMP
+#ifdef _OPENMP
  use omp_lib
 #endif
  implicit none
@@ -1130,7 +1130,7 @@ end subroutine transform_eri_basis_robust
 !=================================================================
 subroutine transform_eri_basis_fast(nbf,nspin,c_matrix,eri_eigenstate)
  use m_timing
-#ifdef OPENMP
+#ifdef _OPENMP
  use omp_lib
 #endif
  implicit none
@@ -1150,7 +1150,7 @@ subroutine transform_eri_basis_fast(nbf,nspin,c_matrix,eri_eigenstate)
  WRITE_MASTER(*,*) 'subroutine is order N^5'
 ! call start_clock(timing_basis_transform)
 
-#ifdef OPENMP
+#ifdef _OPENMP
  wtime=OMP_get_wtime()
  WRITE_MASTER(*,*) 'The basis transform is using OPENMP'
 #endif
@@ -1239,7 +1239,7 @@ subroutine transform_eri_basis_fast(nbf,nspin,c_matrix,eri_eigenstate)
 
  enddo !ijspin
 
-#ifdef OPENMP
+#ifdef _OPENMP
   WRITE_MASTER(*,*) 'time (s)', OMP_get_wtime()-wtime
 #endif
 

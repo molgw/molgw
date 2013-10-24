@@ -576,12 +576,14 @@ subroutine init_scalapack()
 
  ! Set nprow, npcol
 #if 0
+ ! squared division of tasks
  nprow=0
  do while((nprow+1)**2<=nproc_sca)
    nprow=nprow+1
  end do
  npcol = nprow
 #else
+ ! row-only division of tasks
  nprow = nproc_sca
  npcol = 1
 #endif
@@ -676,6 +678,7 @@ subroutine diagonalize_sca(desc,nglobal,mlocal,nlocal,matrix,eigval)
  real(dp)             :: eigvec(mlocal,nlocal)
 !=====
 
+#ifdef HAVE_SCALAPACK
  ! fake descriptor
  desc_tmp(:) = desc(:)
 
@@ -691,6 +694,10 @@ subroutine diagonalize_sca(desc,nglobal,mlocal,nlocal,matrix,eigval)
  allocate(work(lwork))
  call PDSYEV('N','U',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_tmp,work,lwork,info)
  deallocate(work)
+
+#else
+ eigval(:) = 0.0_dp
+#endif HAVE_SCALAPACK
 
 
 end subroutine diagonalize_sca

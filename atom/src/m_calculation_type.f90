@@ -13,6 +13,8 @@ module m_calculation_type
  ! Method definitions
  integer,parameter :: perturbative = 101
  integer,parameter :: QS           = 102
+ integer,parameter :: COHSEX       = 103
+ integer,parameter :: QSCOHSEX     = 104
 
 
  real(dp)          :: alpha_hybrid    = 1.0_dp
@@ -76,6 +78,9 @@ subroutine init_calculation_type(calc_type,input_key)
    case('GW')
      calc_type%is_gw  =.TRUE.
      calc_type%method = perturbative
+   case('COHSEX')
+     calc_type%is_gw  =.TRUE.
+     calc_type%method = COHSEX
    case('LRGW')
      calc_type%is_gw  =.TRUE.
      calc_type%method = perturbative
