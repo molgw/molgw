@@ -43,7 +43,7 @@ subroutine output_all_warnings()
 !=====
 
  if(current_warning>1) then
-   WRITE_MASTER(*,'(/,a,/)') ' SUMMARY of all the WARNINGS issued along the run:'
+   WRITE_MASTER(*,'(/,a,/)') ' SUMMARY of all the WARNINGS issued during the run:'
    do iwarning=1,current_warning-1
      WRITE_MASTER(*,'(i2,a,5x,a)') iwarning,'.',warning_list(iwarning)
    enddo

@@ -3,7 +3,7 @@ OPENMP= #-openmp
 #FC=gfortran -cpp -DLOW_MEMORY2  -fno-range-check  -ffree-line-length-256 #-DHAVE_LIBXC -DLOW_MEMORY2 #-DCHI0  # -DAUXIL_BASIS
 #FC=mpif90 -fpp -mkl=parallel -DHAVE_MPI -DLOW_MEMORY1 -DHAVE_LIBXC #-DLOW_MEMORY2 #-DCHI0  # -DAUXIL_BASIS
 #FC=ifort -fpp $(OPENMP) -mkl=parallel -DHAVE_LIBXC -DLOW_MEMORY3 -DCASIDA #-DLOW_MEMORY3 -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
-FC=mpif90 -fpp $(OPENMP) -mkl=parallel -DHAVE_MPI -DHAVE_LIBXC -DLOW_MEMORY3 #-DCASIDA  -DHAVE_SCALAPACK #-DLOW_MEMORY3 -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
+FC=mpif90 -fpp $(OPENMP) -mkl=parallel -DHAVE_LIBXC -DLOW_MEMORY3 #-DHAVE_MPI -DCASIDA  -DHAVE_SCALAPACK #-DLOW_MEMORY3 -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
 
 CC=g++
 FCOPTS=  -O2 # -g -check all -traceback  #-O2 #-g -check all -check noarg_temp_created -traceback
@@ -22,5 +22,6 @@ SCALAPACK=-L{MKLROOT}/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_se
 #LIBXC_ROOT=/home/bruneval/src/libxc-1.2.0_ifort/
 LIBXC_ROOT=/home/bruneval/src/libxc-2.0.1_ifort/
 
+#LIBINT_ROOT=/home/bruneval/src/libint-2.0.0_install
 LIBINT_ROOT=/home/bruneval/src/libint-2.0.0_install
 

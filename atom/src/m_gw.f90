@@ -438,7 +438,9 @@ subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_m
    do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
 
 #if defined LOW_MEMORY2 || LOW_MEMORY3
+ call start_clock(timing_tmp1)
        call transform_eri_basis_lowmem(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
+ call stop_clock(timing_tmp1)
 #ifdef CRPA
        if( iorbital==band1 .OR. iorbital==band2) then
          do jorbital=band1,band2
@@ -557,7 +559,9 @@ subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_m
  do klspin=1,nspin
    do kbf=1,basis%nbf 
 #if defined LOW_MEMORY2 || LOW_MEMORY3
+ call start_clock(timing_tmp1)
      call transform_eri_basis_lowmem(nspin,c_matrix,kbf,klspin,eri_eigenstate_k)
+ call stop_clock(timing_tmp1)
 #endif
 
 
