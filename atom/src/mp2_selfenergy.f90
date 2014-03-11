@@ -36,7 +36,7 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
  integer :: iomegai
  real(dp),allocatable :: omegai(:)
 
- complex(dp),parameter :: ieta=(0.0_dp,0.0001_dp)
+ complex(dp),parameter :: ieta=(0.0_dp,0.01_dp)  ! (0.0_dp,0.0001_dp)
  integer               :: iorbital,jorbital,korbital
  integer               :: abispin,jkspin
  real(dp)              :: spin_fact

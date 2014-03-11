@@ -352,6 +352,11 @@ subroutine full_ci_2electrons_spin(print_volume,spinstate,basis,h_1e,c_matrix,nu
  real(dp) :: xxx(nx),y(ny),z(nz)
  real(dp) :: wx(nx),wy(ny),wz(nz)
  real(dp) :: norm
+
+ integer :: ibf_cart,li,ni,ni_cart,i_cart
+ real(dp),allocatable :: basis_function_r_cart(:)
+ real(dp) :: basis_function_r(basis%nbf)
+
 !=====
  WRITE_MASTER(*,*) 
  WRITE_MASTER(*,*) 'Enter full CI subroutine'
@@ -574,11 +579,38 @@ subroutine full_ci_2electrons_spin(print_volume,spinstate,basis,h_1e,c_matrix,nu
      rr(2)= 0.0
      rr(3)= 0.0
   
+
+     !
+     ! First precalculate all the needed basis function evaluations at point rr
+     !
+     ibf_cart = 1
+     ibf      = 1
+     do while(ibf_cart<=basis%nbf_cart)
+       li      = basis%bf(ibf_cart)%am
+       ni_cart = number_basis_function_am(CARTESIAN,li)
+       ni      = number_basis_function_am(basis%gaussian_type,li)
+  
+       allocate(basis_function_r_cart(ni_cart))
+  
+       do i_cart=1,ni_cart
+         basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
+       enddo
+       basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li)%matrix(:,:) )
+       deallocate(basis_function_r_cart)
+  
+       ibf      = ibf      + ni
+       ibf_cart = ibf_cart + ni_cart
+     enddo
+     !
+     ! Precalculation done!
+     !
+
   
      eval_wfn(:)=0.0_dp
      do istate=1,basis%nbf
        do ibf=1,basis%nbf
-         eval_wfn(istate) = eval_wfn(istate) + c_matrix(ibf,istate) *  eval_basis_function(basis%bf(ibf),rr)
+!         eval_wfn(istate) = eval_wfn(istate) + c_matrix(ibf,istate) *  eval_basis_function(basis%bf(ibf),rr)
+         eval_wfn(istate) = eval_wfn(istate) + c_matrix(ibf,istate) * basis_function_r(ibf)
        enddo
      enddo
     
@@ -672,8 +704,8 @@ subroutine full_ci_2electrons_spin(print_volume,spinstate,basis,h_1e,c_matrix,nu
      enddo  !kconf
   
    enddo !ix
-   rhor(:) = rhor(:) * 0.5_dp
-   rhor_hf(:) = rhor_hf(:) * 0.5_dp
+   rhor(:)    = rhor   (:) * 0.5_dp  ! divide by two to compare with phi^star * phi which is normalized to unity
+   rhor_hf(:) = rhor_hf(:) * 0.5_dp  ! divide by two to compare with phi^star * phi which is normalized to unity
   
   ! WRITE_MASTER(*,*) 'NORM',norm / DBLE(nx*ny*nz)
   ! WRITE_MASTER(*,*) 'norm',SUM(rhor(:)*wx(:))
@@ -708,7 +740,6 @@ subroutine full_ci_2electrons_spin(print_volume,spinstate,basis,h_1e,c_matrix,nu
  ! finalize the CI calculation
  deallocate(energy,eigenvector)
 
- stop'CI calculation stops here'
 
 end subroutine full_ci_2electrons_spin
 

@@ -12,8 +12,8 @@ program molgw
  use m_gaussian
  use m_basis_set
  use m_eri
- use m_gw
  use m_dft
+ use m_spectral_function
 #ifdef _OPENMP
  use omp_lib
 #endif
