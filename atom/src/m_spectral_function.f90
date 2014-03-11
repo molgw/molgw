@@ -6,7 +6,7 @@ module m_spectral_function
  use m_mpi
  use m_calculation_type
  use m_timing 
- use m_warning
+ use m_warning,only: issue_warning
 
  !
  ! General form of any spectral function

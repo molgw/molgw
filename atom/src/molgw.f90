@@ -12,7 +12,7 @@ program molgw
  use m_gaussian
  use m_basis_set
  use m_eri
- use m_dft
+ use m_dft_grid
  use m_spectral_function
 #ifdef _OPENMP
  use omp_lib
@@ -88,8 +88,6 @@ program molgw
  call init_mpi()
 
  call init_scalapack()
-
- call header()
  !
  ! initialize the warning counter
  call init_warning()
@@ -99,6 +97,9 @@ program molgw
  call init_timing()
  call start_clock(timing_total)
 
+ !
+ ! Output some welcome message and compilation options
+ call header()
 
  !
  ! Reading input file

@@ -10,7 +10,7 @@ subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_m
  use m_mpi
  use m_calculation_type
  use m_timing 
- use m_warning
+ use m_warning,only: issue_warning
  use m_tools
  use m_basis_set
  use m_eri
@@ -283,7 +283,7 @@ subroutine polarizability_rpa(nspin,basis,prod_basis,occupation,energy,c_matrix,
  use m_mpi
  use m_calculation_type
  use m_timing 
- use m_warning
+ use m_warning,only: issue_warning
  use m_tools
  use m_basis_set
  use m_spectral_function
@@ -439,7 +439,7 @@ subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,
  use m_mpi
  use m_calculation_type
  use m_timing 
- use m_warning
+ use m_warning,only: issue_warning
  use m_tools
  use m_basis_set
  use m_eri
@@ -714,7 +714,7 @@ subroutine gw_selfenergy(method,nspin,basis,prod_basis,occupation,energy,exchang
  use m_mpi
  use m_calculation_type
  use m_timing 
- use m_warning
+ use m_warning,only: issue_warning
  use m_basis_set
  use m_spectral_function
  implicit none
@@ -961,7 +961,7 @@ subroutine gw_selfenergy_noaux(method,nspin,basis,prod_basis,occupation,energy,e
  use m_mpi
  use m_calculation_type
  use m_timing 
- use m_warning
+ use m_warning,only: issue_warning
  use m_basis_set
  use m_spectral_function
  implicit none
@@ -1234,7 +1234,6 @@ subroutine cohsex_selfenergy(nstate,nspin,occupation,energy,c_matrix,w_pol,selfe
  use m_mpi
  use m_calculation_type
  use m_timing 
- use m_warning
  use m_tools,only: coeffs_gausslegint,diagonalize
  use m_spectral_function
  implicit none
@@ -1346,7 +1345,6 @@ function screened_exchange_energy(nstate,nspin,density_matrix,w_pol)
  use m_mpi
  use m_calculation_type
  use m_timing 
- use m_warning
  use m_spectral_function
  implicit none
 

@@ -4,7 +4,7 @@
 subroutine header()
  use m_definitions
  use m_mpi
- use m_warning
+ use m_warning,only: issue_warning,msg
  implicit none
  integer           :: values(8) 
  character(len=12) :: chartmp
@@ -220,7 +220,6 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  use m_definitions
  use m_mpi
  use m_calculation_type
- use m_warning
  use m_tools
  use m_atoms
  use m_scf

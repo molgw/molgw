@@ -6,7 +6,7 @@ OPENMP= #-openmp
 FC=mpif90 -fpp $(OPENMP) -mkl=parallel -DHAVE_LIBXC -DLOW_MEMORY3 #-DHAVE_MPI -DCASIDA  -DHAVE_SCALAPACK #-DLOW_MEMORY3 -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
 
 CC=g++
-FCOPTS=  -O2 # -g -check all -traceback  #-O2 #-g -check all -check noarg_temp_created -traceback
+FCOPTS= -O2 #   -g -check all -traceback  #-O2 #-g -check all -check noarg_temp_created -traceback
 CCOPTS= -O2 # -O0 -g -fbounds-check
 #FCOPTS= -xHost -O3 #-ipo
 

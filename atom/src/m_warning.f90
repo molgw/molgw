@@ -17,6 +17,7 @@ subroutine init_warning()
  implicit none
  
  current_warning=1
+ warning_list(:)=''
 
 end subroutine
 
@@ -29,7 +30,7 @@ subroutine issue_warning(msgw)
 
  !
  ! Eliminate the storage of identical warnings
- if(ANY(warning_list(1:current_warning)==msgw)) return
+ if(ANY(warning_list(1:current_warning-1)==TRIM(msgw))) return
 
  warning_list(current_warning) = TRIM(msgw)
  current_warning = current_warning + 1
