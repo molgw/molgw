@@ -3,6 +3,278 @@
 !=========================================================================
 
 
+#ifndef AUXIL_BASIS
+!=========================================================================
+subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,rpa_correlation,wpol)
+ use m_definitions
+ use m_mpi
+ use m_calculation_type
+ use m_timing 
+ use m_warning
+ use m_tools
+ use m_basis_set
+ use m_eri
+ use m_spectral_function
+ implicit none
+
+ integer,intent(in)  :: nspin
+ type(basis_set)     :: basis,prod_basis
+ real(dp),intent(in) :: occupation(basis%nbf,nspin)
+ real(dp),intent(in) :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(out) :: rpa_correlation
+ type(spectral_function),intent(inout) :: wpol
+!=====
+ integer :: pbf,qbf,ibf,jbf,kbf,lbf,ijbf,klbf,ijbf_current,ijspin,klspin
+ integer :: iorbital,jorbital,korbital,lorbital
+ integer :: ipole
+ integer :: t_ij,t_kl
+
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
+ real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
+ real(dp),allocatable :: eri_eigenstate_k(:,:,:,:)
+#else
+ real(dp) :: eri_eigenstate(basis%nbf,basis%nbf,basis%nbf,basis%nbf,nspin,nspin)
+#endif
+ real(dp) :: spin_fact 
+ real(dp) :: h_2p(wpol%npole,wpol%npole)
+ real(dp) :: eigenvalue(wpol%npole),eigenvector(wpol%npole,wpol%npole),eigenvector_inv(wpol%npole,wpol%npole)
+ real(dp) :: matrix(wpol%npole,wpol%npole)
+ real(dp) :: rtmp
+ real(dp) :: alpha1,alpha2
+
+ logical :: TDHF=.FALSE.
+!=====
+ spin_fact = REAL(-nspin+3,dp)
+ rpa_correlation = 0.0_dp
+
+ WRITE_MASTER(*,'(/,a)') ' calculating CHI alla rpa'
+
+ inquire(file='manual_TDHF',exist=TDHF)
+ if(TDHF) then
+   open(unit=18,file='manual_TDHF',status='old')
+   read(18,*) alpha1
+   read(18,*) alpha2
+   close(18)
+   write(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alphas  ',alpha1,alpha2
+   call issue_warning(msg)
+ else
+   alpha1=0.0_dp
+   alpha2=0.0_dp
+ endif
+
+
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
+ allocate(eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin))
+#else
+ call transform_eri_basis_fast(basis%nbf,nspin,c_matrix,eri_eigenstate)
+#endif
+
+
+ t_ij=0
+ do ijspin=1,nspin
+   do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
+
+#if defined LOW_MEMORY2 || LOW_MEMORY3
+ call start_clock(timing_tmp1)
+       call transform_eri_basis_lowmem(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
+ call stop_clock(timing_tmp1)
+#ifdef CRPA
+       if( iorbital==band1 .OR. iorbital==band2) then
+         do jorbital=band1,band2
+           do korbital=band1,band2
+             do lorbital=band1,band2
+               write(1000,'(4(i6,x),2x,f16.8)') iorbital,jorbital,korbital,lorbital,eri_eigenstate_i(jorbital,korbital,lorbital,1)
+             enddo
+           enddo
+         enddo
+       endif
+#endif
+#endif
+
+     do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
+       if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
+       t_ij=t_ij+1
+
+
+
+       t_kl=0
+       do klspin=1,nspin
+         do korbital=1,basis%nbf 
+
+           do lorbital=1,basis%nbf 
+             if( skip_transition(nspin,lorbital,korbital,occupation(lorbital,klspin),occupation(korbital,klspin)) ) cycle
+             t_kl=t_kl+1
+
+#ifndef CHI0
+
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
+             h_2p(t_ij,t_kl) = eri_eigenstate_i(jorbital,korbital,lorbital,klspin) &
+                        * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
+#else
+
+             h_2p(t_ij,t_kl) = eri_eigenstate(iorbital,jorbital,korbital,lorbital,ijspin,klspin) &
+                        * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
+#endif
+
+#else
+             h_2p(t_ij,t_kl) = 0.0_dp
+#endif
+
+
+           if(TDHF) then
+             if(ijspin==klspin) then
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
+               h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigenstate_i(korbital,jorbital,lorbital,klspin)  &
+                        * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) / spin_fact * alpha1
+#else
+               h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigenstate(iorbital,korbital,jorbital,lorbital,ijspin,klspin)  &
+                        * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) / spin_fact * alpha1
+#endif
+             endif
+           endif
+
+           enddo
+         enddo
+       enddo !klspin
+
+       h_2p(t_ij,t_ij) =  h_2p(t_ij,t_ij) + ( energy(jorbital,ijspin) - energy(iorbital,ijspin) )
+
+       rpa_correlation = rpa_correlation - 0.25_dp * ABS( h_2p(t_ij,t_ij) )
+
+!       WRITE_MASTER(*,'(4(i4,2x),2(2x,f12.6))') t_ij,iorbital,jorbital,ijspin,( energy(jorbital,ijspin) - energy(iorbital,ijspin) ),h_2p(t_ij,t_ij)
+     enddo !jorbital
+   enddo !iorbital
+ enddo ! ijspin
+
+ WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
+ WRITE_MASTER(*,*) 'matrix',wpol%npole,'x',wpol%npole
+! WRITE_MASTER(*,*) '=============='
+! t_ij=0
+! do ijspin=1,nspin
+!   do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
+!     do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
+!!INTRA       if(iorbital==jorbital) cycle  ! intra state transitions are not allowed!
+!!SKIP       if( abs(occupation(jorbital,ijspin)-occupation(iorbital,ijspin))<completely_empty ) cycle
+!       if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
+!
+!       t_ij=t_ij+1
+!       WRITE_MASTER(*,'(3(i4,2x),20(2x,f12.6))') ijspin,iorbital,jorbital,h_2p(t_ij,:)
+!     enddo
+!   enddo
+! enddo
+! WRITE_MASTER(*,*) '=============='
+! do t_ij=1,wpol%npole
+!   WRITE_MASTER(*,'(1(i4,2x),20(2x,f12.6))') t_ij,h_2p(t_ij,:)
+! enddo
+ call start_clock(timing_diago_h2p)
+ call diagonalize_general(wpol%npole,h_2p,eigenvalue,eigenvector)
+ call stop_clock(timing_diago_h2p)
+ WRITE_MASTER(*,*) 'diago finished'
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) 'calculate the RPA energy using the Tamm-Dancoff decomposition'
+ WRITE_MASTER(*,*) 'formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)'
+ rpa_correlation = rpa_correlation + 0.25_dp * SUM( ABS(eigenvalue(:)) )
+ WRITE_MASTER(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',rpa_correlation
+
+! do t_ij=1,wpol%npole
+!   WRITE_MASTER(*,'(1(i4,2x),20(2x,f12.6))') t_ij,eigenvalue(t_ij)
+! enddo
+   
+ call start_clock(timing_inversion_s2p)
+ call invert(wpol%npole,eigenvector,eigenvector_inv)
+ call stop_clock(timing_inversion_s2p)
+
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
+ deallocate(eri_eigenstate_i)
+ allocate(eri_eigenstate_k(basis%nbf,basis%nbf,basis%nbf,nspin))
+#endif
+
+ wpol%pole = eigenvalue
+ wpol%residu_left (:,:) = 0.0_dp
+ wpol%residu_right(:,:) = 0.0_dp
+ t_kl=0
+ do klspin=1,nspin
+   do kbf=1,basis%nbf 
+#if defined LOW_MEMORY2 || LOW_MEMORY3
+ call start_clock(timing_tmp1)
+     call transform_eri_basis_lowmem(nspin,c_matrix,kbf,klspin,eri_eigenstate_k)
+ call stop_clock(timing_tmp1)
+#endif
+
+
+     do lbf=1,basis%nbf
+       if( skip_transition(nspin,lbf,kbf,occupation(lbf,klspin),occupation(kbf,klspin)) ) cycle
+       t_kl=t_kl+1
+
+
+       do ijspin=1,nspin
+!$OMP PARALLEL DEFAULT(SHARED)
+!$OMP DO PRIVATE(ibf,jbf,ijbf_current)
+         do ijbf=1,prod_basis%nbf
+           ibf = prod_basis%index_ij(1,ijbf)
+           jbf = prod_basis%index_ij(2,ijbf)
+
+           ijbf_current = ijbf+prod_basis%nbf*(ijspin-1)
+
+
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
+           wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
+                        + eri_eigenstate_k(lbf,ibf,jbf,ijspin) *  eigenvector(t_kl,:)
+           wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
+                        + eri_eigenstate_k(lbf,ibf,jbf,ijspin) * eigenvector_inv(:,t_kl) &
+                                         * ( occupation(kbf,klspin)-occupation(lbf,klspin) )
+  if( TDHF .AND. ijspin==klspin ) then
+           wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
+                        - eri_eigenstate_k(ibf,jbf,lbf,ijspin) * eigenvector_inv(:,t_kl) &
+                                         * ( occupation(kbf,klspin)-occupation(lbf,klspin) ) /spin_fact * alpha2
+  endif
+
+#else
+           wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
+                        + eri_eigenstate(ibf,jbf,kbf,lbf,ijspin,klspin) *  eigenvector(t_kl,:)
+           wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
+                        + eri_eigenstate(kbf,lbf,ibf,jbf,klspin,ijspin) * eigenvector_inv(:,t_kl) &
+                                         * ( occupation(kbf,klspin)-occupation(lbf,klspin) )
+#endif
+
+
+         enddo
+!$OMP END DO
+!$OMP END PARALLEL
+       enddo
+     enddo
+   enddo
+ enddo
+
+
+#ifdef CRPA
+ do ijbf=1,prod_basis%nbf
+   iorbital = prod_basis%index_ij(1,ijbf)
+   jorbital = prod_basis%index_ij(2,ijbf)
+   if(iorbital /=band1 .AND. iorbital /=band2) cycle
+   if(jorbital /=band1 .AND. jorbital /=band2) cycle
+   do klbf=1,prod_basis%nbf
+     korbital = prod_basis%index_ij(1,klbf)
+     lorbital = prod_basis%index_ij(2,klbf)
+     if(korbital /=band1 .AND. korbital /=band2) cycle
+     if(lorbital /=band1 .AND. lorbital /=band2) cycle
+     rtmp=0.0_dp
+     do ipole=1,wpol%npole
+       rtmp = rtmp + wpol%residu_left(ipole,ijbf) * wpol%residu_right(ipole,klbf) / ( -wpol%pole(ipole) )
+     enddo
+     write(1001,'(4(i6,x),2x,f16.8)') iorbital,jorbital,korbital,lorbital,rtmp
+   enddo
+ enddo
+#endif
+ 
+
+
+#if defined LOW_MEMORY2 || defined LOW_MEMORY3
+ deallocate(eri_eigenstate_k)
+#endif
+
+end subroutine polarizability_rpa_noaux
+
 
 #ifdef AUXIL_BASIS
 !=========================================================================
@@ -160,261 +432,6 @@ endif
 
 end subroutine polarizability_rpa
 #endif
-
-#ifndef AUXIL_BASIS
-!=========================================================================
-subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,rpa_correlation,wpol)
- use m_definitions
- use m_mpi
- use m_calculation_type
- use m_timing 
- use m_warning
- use m_tools
- use m_basis_set
- use m_eri
- use m_spectral_function
- implicit none
-
- integer,intent(in)  :: nspin
- type(basis_set)     :: basis,prod_basis
- real(dp),intent(in) :: occupation(basis%nbf,nspin)
- real(dp),intent(in) :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
- real(dp),intent(out) :: rpa_correlation
- type(spectral_function),intent(inout) :: wpol
-!=====
- integer :: pbf,qbf,ibf,jbf,kbf,lbf,ijbf,klbf,ijbf_current,ijspin,klspin
- integer :: iorbital,jorbital,korbital,lorbital
- integer :: ipole
- integer :: t_ij,t_kl
-
-#if defined LOW_MEMORY2 || defined LOW_MEMORY3
- real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
- real(dp),allocatable :: eri_eigenstate_k(:,:,:,:)
-#else
- real(dp) :: eri_eigenstate(basis%nbf,basis%nbf,basis%nbf,basis%nbf,nspin,nspin)
-#endif
- real(dp) :: spin_fact 
- real(dp) :: h_2p(wpol%npole,wpol%npole)
- real(dp) :: eigenvalue(wpol%npole),eigenvector(wpol%npole,wpol%npole),eigenvector_inv(wpol%npole,wpol%npole)
- real(dp) :: matrix(wpol%npole,wpol%npole)
- real(dp) :: rtmp
-
- logical :: TDHF=.FALSE.
-!=====
- spin_fact = REAL(-nspin+3,dp)
- rpa_correlation = 0.0_dp
-
- WRITE_MASTER(*,'(/,a)') ' calculating CHI alla rpa'
- if(TDHF) then
-   msg='calculating the TDHF polarizability'
-   call issue_warning(msg)
- endif
-
-#if defined LOW_MEMORY2 || defined LOW_MEMORY3
- allocate(eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin))
-#else
- call transform_eri_basis_fast(basis%nbf,nspin,c_matrix,eri_eigenstate)
-#endif
-
-
- t_ij=0
- do ijspin=1,nspin
-   do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
-
-#if defined LOW_MEMORY2 || LOW_MEMORY3
- call start_clock(timing_tmp1)
-       call transform_eri_basis_lowmem(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
- call stop_clock(timing_tmp1)
-#ifdef CRPA
-       if( iorbital==band1 .OR. iorbital==band2) then
-         do jorbital=band1,band2
-           do korbital=band1,band2
-             do lorbital=band1,band2
-               write(1000,'(4(i6,x),2x,f16.8)') iorbital,jorbital,korbital,lorbital,eri_eigenstate_i(jorbital,korbital,lorbital,1)
-             enddo
-           enddo
-         enddo
-       endif
-#endif
-#endif
-
-     do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
-       if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
-       t_ij=t_ij+1
-
-
-
-       t_kl=0
-       do klspin=1,nspin
-         do korbital=1,basis%nbf 
-
-           do lorbital=1,basis%nbf 
-             if( skip_transition(nspin,lorbital,korbital,occupation(lorbital,klspin),occupation(korbital,klspin)) ) cycle
-             t_kl=t_kl+1
-
-#ifndef CHI0
-
-#if defined LOW_MEMORY2 || defined LOW_MEMORY3
-             h_2p(t_ij,t_kl) = eri_eigenstate_i(jorbital,korbital,lorbital,klspin) &
-                        * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
-#else
-
-             h_2p(t_ij,t_kl) = eri_eigenstate(iorbital,jorbital,korbital,lorbital,ijspin,klspin) &
-                        * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
-#endif
-
-#else
-             h_2p(t_ij,t_kl) = 0.0_dp
-#endif
-
-
-           if(TDHF) then
-             if(ijspin==klspin) then
-#if defined LOW_MEMORY2 || defined LOW_MEMORY3
-               h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigenstate_i(korbital,jorbital,lorbital,klspin)  &
-                        * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) / spin_fact 
-#else
-               h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigenstate(iorbital,korbital,jorbital,lorbital,ijspin,klspin)  &
-                        * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) / spin_fact 
-#endif
-             endif
-           endif
-
-           enddo
-         enddo
-       enddo !klspin
-
-       h_2p(t_ij,t_ij) =  h_2p(t_ij,t_ij) + ( energy(jorbital,ijspin) - energy(iorbital,ijspin) )
-
-       rpa_correlation = rpa_correlation - 0.25_dp * ABS( h_2p(t_ij,t_ij) )
-
-!       WRITE_MASTER(*,'(4(i4,2x),2(2x,f12.6))') t_ij,iorbital,jorbital,ijspin,( energy(jorbital,ijspin) - energy(iorbital,ijspin) ),h_2p(t_ij,t_ij)
-     enddo !jorbital
-   enddo !iorbital
- enddo ! ijspin
-
- WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
- WRITE_MASTER(*,*) 'matrix',wpol%npole,'x',wpol%npole
-! WRITE_MASTER(*,*) '=============='
-! t_ij=0
-! do ijspin=1,nspin
-!   do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
-!     do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
-!!INTRA       if(iorbital==jorbital) cycle  ! intra state transitions are not allowed!
-!!SKIP       if( abs(occupation(jorbital,ijspin)-occupation(iorbital,ijspin))<completely_empty ) cycle
-!       if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
-!
-!       t_ij=t_ij+1
-!       WRITE_MASTER(*,'(3(i4,2x),20(2x,f12.6))') ijspin,iorbital,jorbital,h_2p(t_ij,:)
-!     enddo
-!   enddo
-! enddo
-! WRITE_MASTER(*,*) '=============='
-! do t_ij=1,wpol%npole
-!   WRITE_MASTER(*,'(1(i4,2x),20(2x,f12.6))') t_ij,h_2p(t_ij,:)
-! enddo
- call start_clock(timing_diago_h2p)
- call diagonalize_general(wpol%npole,h_2p,eigenvalue,eigenvector)
- call stop_clock(timing_diago_h2p)
- WRITE_MASTER(*,*) 'diago finished'
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,*) 'calculate the RPA energy using the Tamm-Dancoff decomposition'
- WRITE_MASTER(*,*) 'formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)'
- rpa_correlation = rpa_correlation + 0.25_dp * SUM( ABS(eigenvalue(:)) )
- WRITE_MASTER(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',rpa_correlation
-
-! do t_ij=1,wpol%npole
-!   WRITE_MASTER(*,'(1(i4,2x),20(2x,f12.6))') t_ij,eigenvalue(t_ij)
-! enddo
-   
- call start_clock(timing_inversion_s2p)
- call invert(wpol%npole,eigenvector,eigenvector_inv)
- call stop_clock(timing_inversion_s2p)
-
-#if defined LOW_MEMORY2 || defined LOW_MEMORY3
- deallocate(eri_eigenstate_i)
- allocate(eri_eigenstate_k(basis%nbf,basis%nbf,basis%nbf,nspin))
-#endif
-
- wpol%pole = eigenvalue
- wpol%residu_left (:,:) = 0.0_dp
- wpol%residu_right(:,:) = 0.0_dp
- t_kl=0
- do klspin=1,nspin
-   do kbf=1,basis%nbf 
-#if defined LOW_MEMORY2 || LOW_MEMORY3
- call start_clock(timing_tmp1)
-     call transform_eri_basis_lowmem(nspin,c_matrix,kbf,klspin,eri_eigenstate_k)
- call stop_clock(timing_tmp1)
-#endif
-
-
-     do lbf=1,basis%nbf
-       if( skip_transition(nspin,lbf,kbf,occupation(lbf,klspin),occupation(kbf,klspin)) ) cycle
-       t_kl=t_kl+1
-
-
-       do ijspin=1,nspin
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO PRIVATE(ibf,jbf,ijbf_current)
-         do ijbf=1,prod_basis%nbf
-           ibf = prod_basis%index_ij(1,ijbf)
-           jbf = prod_basis%index_ij(2,ijbf)
-
-           ijbf_current = ijbf+prod_basis%nbf*(ijspin-1)
-
-
-#if defined LOW_MEMORY2 || defined LOW_MEMORY3
-           wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
-                        + eri_eigenstate_k(lbf,ibf,jbf,ijspin) *  eigenvector(t_kl,:)
-           wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
-                        + eri_eigenstate_k(lbf,ibf,jbf,ijspin) * eigenvector_inv(:,t_kl) &
-                                         * ( occupation(kbf,klspin)-occupation(lbf,klspin) )
-#else
-           wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
-                        + eri_eigenstate(ibf,jbf,kbf,lbf,ijspin,klspin) *  eigenvector(t_kl,:)
-           wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
-                        + eri_eigenstate(kbf,lbf,ibf,jbf,klspin,ijspin) * eigenvector_inv(:,t_kl) &
-                                         * ( occupation(kbf,klspin)-occupation(lbf,klspin) )
-#endif
-
-
-         enddo
-!$OMP END DO
-!$OMP END PARALLEL
-       enddo
-     enddo
-   enddo
- enddo
-
-
-#ifdef CRPA
- do ijbf=1,prod_basis%nbf
-   iorbital = prod_basis%index_ij(1,ijbf)
-   jorbital = prod_basis%index_ij(2,ijbf)
-   if(iorbital /=band1 .AND. iorbital /=band2) cycle
-   if(jorbital /=band1 .AND. jorbital /=band2) cycle
-   do klbf=1,prod_basis%nbf
-     korbital = prod_basis%index_ij(1,klbf)
-     lorbital = prod_basis%index_ij(2,klbf)
-     if(korbital /=band1 .AND. korbital /=band2) cycle
-     if(lorbital /=band1 .AND. lorbital /=band2) cycle
-     rtmp=0.0_dp
-     do ipole=1,wpol%npole
-       rtmp = rtmp + wpol%residu_left(ipole,ijbf) * wpol%residu_right(ipole,klbf) / ( -wpol%pole(ipole) )
-     enddo
-     write(1001,'(4(i6,x),2x,f16.8)') iorbital,jorbital,korbital,lorbital,rtmp
-   enddo
- enddo
-#endif
- 
-
-
-#if defined LOW_MEMORY2 || defined LOW_MEMORY3
- deallocate(eri_eigenstate_k)
-#endif
-
-end subroutine polarizability_rpa_noaux
 
 !=========================================================================
 subroutine polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,rpa_correlation,wpol)
