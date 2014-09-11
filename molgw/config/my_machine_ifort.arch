@@ -5,9 +5,9 @@ OPENMP= #-openmp
 
 #FC=mpif90 -fpp $(OPENMP) -mkl=parallel -DHAVE_LIBXC -DLOW_MEMORY3 #-DHAVE_MPI -DCASIDA  -DHAVE_SCALAPACK #-DLOW_MEMORY3 -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
 
-FC=gfortran -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC -DLOW_MEMORY3 #-DLOW_MEMORY3 -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
+FC=ifort -i8 -fpp $(OPENMP) -mkl=sequential -DHAVE_LIBXC -DLOW_MEMORY3 #-DLOW_MEMORY3 -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
 
-CC=gcc
+CC=icpc
 FCOPTS= -O2 #   -g -check all -traceback  #-O2 #-g -check all -check noarg_temp_created -traceback
 CCOPTS= -O2 # -O0 -g -fbounds-check
 #FCOPTS= -xHost -O3 #-ipo
@@ -17,12 +17,13 @@ CCOPTS= -O2 # -O0 -g -fbounds-check
 #LAPACK=  -Wl,--start-group  -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -Wl,--end-group -openmp -lpthread
 #LAPACK= -lmkl_intel_lp64 -lmkl_sequential -lmkl_lapack95_lp64 -lmkl_core
 #
-LAPACK=-L${HOME}/src/lapack-3.5.0/ -llapack -lblas
+LAPACK=
 
 #SCALAPACK=-L{MKLROOT}/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -lpthread -lm
 
-LIBXC_ROOT=${HOME}/src/libxc-2.2.0_gfortran/
+#LIBXC_ROOT=/home/bruneval/src/libxc-1.2.0_ifort/
+LIBXC_ROOT=${HOME}/src/libxc-2.2.0_ifort/
 
 #LIBINT_ROOT=/home/bruneval/src/libint-2.0.0_install
-LIBINT_ROOT=${HOME}/src/libint-2.0.3-stable_gcc/
+LIBINT_ROOT=${HOME}/src/libint-2.0.3-stable_ifort
 
