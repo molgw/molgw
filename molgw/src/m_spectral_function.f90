@@ -29,8 +29,8 @@ module m_spectral_function
 
  !
  ! frozen virtual approximation parameters
- integer :: nvirtual_G=HUGE(dp)
- integer :: nvirtual_W=HUGE(dp)
+ integer :: nvirtual_G=HUGE(1)
+ integer :: nvirtual_W=HUGE(1)
 
  !
  ! the boring small complex number eta: (0.0_dp,0.0001_dp) is typically over converged
@@ -78,9 +78,7 @@ subroutine init_spectral_function(nbf,prod_nbf,nspin,occupation,sf)
    read(13,*) nvirtual_G
    read(13,*) nvirtual_W
    close(13)
-   nvirtual_G = MAX(nvirtual_G,0)
-   nvirtual_W = MAX(nvirtual_W,0)
-   WRITE_MASTER(msg,'(a,i4,2x,i4)') 'frozen virtual approximation switched on up to state (G,W) = ',nvirtual_G,nvirtual_W
+   WRITE_MASTER(msg,'(a,i4,2x,i4)') 'frozen virtual approximation switched on starting with state (G,W) = ',nvirtual_G,nvirtual_W
    call issue_warning(msg)
  endif
 

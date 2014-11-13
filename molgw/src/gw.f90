@@ -108,8 +108,17 @@ subroutine polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_m
 #ifndef CHI0
 
 #if defined LOW_MEMORY2 || defined LOW_MEMORY3
+
+!!FBFB
+!             if( t_kl /= t_ij .AND. & 
+!                   ( iorbital >= 30 .OR. jorbital >= 30 .OR. korbital >= 30 .OR. lorbital >= 30 ) ) then
+!               h_2p(t_ij,t_kl) = 0.0_dp
+!             else
              h_2p(t_ij,t_kl) = eri_eigenstate_i(jorbital,korbital,lorbital,klspin) &
                         * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
+!             endif
+
+
 #else
 
              h_2p(t_ij,t_kl) = eri_eigenstate(iorbital,jorbital,korbital,lorbital,ijspin,klspin) &

@@ -25,10 +25,11 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 
 
 ../molgw: macros.h m_definitions.o m_mpi.o m_timing.o m_warning.o m_calculation_type.o m_tools.o m_scf.o m_atoms.o \
-         m_gaussian.o m_basis_set.o m_eri.o m_spectral_function.o m_dft_grid.o gw.o dft_xc.o wrapper_libint.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o molgw.o
+         m_gaussian.o m_basis_set.o m_eri.o m_spectral_function.o m_dft_grid.o gw.o timedependent.o dft_xc.o \
+         wrapper_libint.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o molgw.o
 	$(FC) $(FCOPTS) m_definitions.o m_mpi.o m_timing.o m_warning.o m_calculation_type.o m_tools.o m_scf.o m_atoms.o \
                         m_gaussian.o m_basis_set.o m_eri.o m_dft_grid.o m_spectral_function.o \
-                        wrapper_libint.o lebedev_quadrature.o mp2_selfenergy.o mp2.o gw.o dft_xc.o io.o hamiltonian.o molgw.o -o ../molgw \
+                        wrapper_libint.o lebedev_quadrature.o mp2_selfenergy.o mp2.o gw.o timedependent.o dft_xc.o io.o hamiltonian.o molgw.o -o ../molgw \
                         $(LAPACK) $(SCALAPACK) \
                         $(LIBXC) $(LIBXC _INCS) \
                         $(LIBINT) $(LIBINT_INCS) \
@@ -43,6 +44,9 @@ hamiltonian.o: macros.h m_definitions.f90 m_timing.f90 m_eri.f90 hamiltonian.f90
 
 gw.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_calculation_type.f90 m_spectral_function.f90 m_eri.f90 gw.f90
 	$(FC) $(FCOPTS) -c gw.f90 $(LIBXC_INCS)
+
+timedependent.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_calculation_type.f90 m_spectral_function.f90 m_eri.f90 timedependent.f90
+	$(FC) $(FCOPTS) -c timedependent.f90 $(LIBXC_INCS)
 
 dft_xc.o: macros.h m_definitions.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90 dft_xc.f90
 	$(FC) $(FCOPTS) -c dft_xc.f90 $(LIBXC_INCS)
@@ -105,13 +109,11 @@ archive:
 	tar czf molgw.tgz ../../molgw/README ../../molgw/src/Makefile ../../molgw/src/*.f90 ../../molgw/src/*.f ../../molgw/src/*.cc \
                           ../../molgw/src/macros.h \
                           ../../molgw/basis/* ../../molgw/util/* ../../molgw/tests/ ../../molgw/src/my_machine.arch
-#	tar czf molgw.tgz ../src/README ../src/Makefile ../src/*.f90 ../src/*.f ../src/*.cc ../basis/* ../doc/notes.tex ../doc/figs/* ../util/* ../tests/
 	scp molgw.tgz 132.166.68.166:
 
 doc:
 	pdflatex ../doc/notes.tex	
 	pdflatex ../doc/notes.tex	
-#	rm -f notesNotes.bib notes.aux notes.log
 	mv notes.pdf ../doc/notes.pdf
 clean:
 	rm -f *.o *.mod *.log *.bib *.aux

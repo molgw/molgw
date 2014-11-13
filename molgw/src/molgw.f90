@@ -651,6 +651,15 @@ program molgw
    if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) stop'CI is implemented for 2 electrons only'
    call full_ci_2electrons_spin(print_volume,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
  endif
+
+ !
+ ! Time Dependent calculations
+ ! works for DFT, HF, and hybrid
+ if(calc_type%is_td) then
+   call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
+   call polarizability_td_noaux(calc_type,nspin,basis,prod_basis,occupation,energy,c_matrix,wpol)
+   call destroy_spectral_function(wpol)
+ endif
   
 
  !

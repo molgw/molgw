@@ -19,7 +19,7 @@ module m_calculation_type
 
  real(dp)          :: alpha_hybrid    = 1.0_dp
  real(dp)          :: alpha_hybrid_lr = 0.0_dp
- real(dp)          :: rcut         = 0.0_dp
+ real(dp)          :: rcut            = 0.0_dp
 
  integer                   :: ndft_xc      = 0
  integer,pointer           :: dft_xc_type(:)
@@ -36,6 +36,7 @@ module m_calculation_type
    logical :: is_mp2
    logical :: is_ci
    logical :: read_potential
+   logical :: is_bse,is_td
    integer :: method                    ! perturbative or quasiparticle self-consistent
  end type calculation_type
 
@@ -64,6 +65,8 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%is_gw               = .FALSE.
  calc_type%is_mp2              = .FALSE.
  calc_type%is_ci               = .FALSE.
+ calc_type%is_bse              = .FALSE.
+ calc_type%is_td               = .FALSE.
  calc_type%method              = 0
  calc_type%read_potential      = .FALSE.
 
@@ -71,6 +74,9 @@ subroutine init_calculation_type(calc_type,input_key)
 
  key1=''
  key2=''
+
+ !
+ ! If it exists, first read the last part of the calculation specifier
  if(ipos/=0) then
    key1(:ipos-1) = input_key(:ipos-1)
    key2(1:) = input_key(ipos+1:)
@@ -90,6 +96,10 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%method = perturbative
    case('CI')
      calc_type%is_ci =.TRUE.
+   case('BSE')
+     calc_type%is_bse =.TRUE.
+   case('TD')
+     calc_type%is_td =.TRUE.
    case default
      stop'error reading calculation type part 2'
    end select
@@ -97,7 +107,8 @@ subroutine init_calculation_type(calc_type,input_key)
    key1 = input_key
  endif
 
-
+ !
+ ! Then read the first part of the calculation specifier
  select case(TRIM(key1))
  case('CI')
    calc_type%is_ci =.TRUE.
