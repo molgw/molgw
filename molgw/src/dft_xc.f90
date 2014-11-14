@@ -18,9 +18,9 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
 #ifdef _OPENMP
  use omp_lib
 #endif
+ use iso_c_binding,only: C_INT
  implicit none
 
- integer,parameter          :: intxc=4
  integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
  integer,intent(in)         :: ndft_xc
@@ -100,9 +100,9 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
 
    if( dft_xc_type(idft_xc) < 1000 ) then
      if(nspin==1) then
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), INT(dft_xc_type(idft_xc),intxc), XC_UNPOLARIZED)
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), INT(dft_xc_type(idft_xc),C_INT), XC_UNPOLARIZED)
      else
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), INT(dft_xc_type(idft_xc),intxc), XC_POLARIZED)
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), INT(dft_xc_type(idft_xc),C_INT), XC_POLARIZED)
      endif
    else if(dft_xc_type(idft_xc) < 2000) then
      WRITE_MASTER(*,*) 'Home-made functional LDA functional'
@@ -165,26 +165,9 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
    endif
 
 
-
    !
-   ! Calculate the density rhor
-   rhor_r(:)=0.0_dp
-   do ispin=1,nspin
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO REDUCTION(+:rhor_r) 
-     do jbf=1,basis%nbf
-       ! implementing i <-> j symmetry does not save much time with ifort
-       ! compiler
-       do ibf=1,basis%nbf
-         rhor_r(ispin)=rhor_r(ispin)+p_matrix(ibf,jbf,ispin)&
-                           * basis_function_r(ibf) &
-                           * basis_function_r(jbf)
-       enddo
-     enddo
-!$OMP END DO
-!$OMP END PARALLEL
-   enddo
-
+   ! calculate the density at point r for spin up and spin down
+   call calc_density_r(nspin,basis%nbf,p_matrix,basis_function_r,rhor_r)
    !
    ! Normalization
    normalization(:) = normalization(:) + rhor_r(:) * weight
@@ -299,7 +282,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
 
      case(XC_FAMILY_LDA)
        if( dft_xc_type(idft_xc) < 1000 ) then 
-         call xc_f90_lda_exc_vxc(xc_func(idft_xc),1_intxc,rhor_r(1),exc_libxc(1),vxc_libxc(1))
+         call xc_f90_lda_exc_vxc(xc_func(idft_xc),1_C_INT,rhor_r(1),exc_libxc(1),vxc_libxc(1))
        else
          call my_lda_exc_vxc(nspin,dft_xc_type(idft_xc),rhor_r,exc_libxc(1),vxc_libxc)
 !         call my_lda_exc_vxc_mu(1.00_dp,rhor_r,exc_libxc,vxc_libxc)
@@ -311,10 +294,10 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
          ! Remove too small densities to stabilize the computation
          ! especially useful for Becke88
          if( ANY( rhor_r(:) > 1.0e-9_dp ) ) then
-           call xc_f90_gga_exc_vxc(xc_func(idft_xc),1_intxc,rhor_r(1)       ,sigma2(1)       ,exc_libxc(1),vxc_libxc(1),vsigma(1)       )
-           call xc_f90_gga_vxc    (xc_func(idft_xc),1_intxc,rhor_r_shiftx(1),sigma2_shiftx(1),             vxc_dummy(1),vsigma_shiftx(1))
-           call xc_f90_gga_vxc    (xc_func(idft_xc),1_intxc,rhor_r_shifty(1),sigma2_shifty(1),             vxc_dummy(1),vsigma_shifty(1))
-           call xc_f90_gga_vxc    (xc_func(idft_xc),1_intxc,rhor_r_shiftz(1),sigma2_shiftz(1),             vxc_dummy(1),vsigma_shiftz(1))
+           call xc_f90_gga_exc_vxc(xc_func(idft_xc),1_C_INT,rhor_r(1)       ,sigma2(1)       ,exc_libxc(1),vxc_libxc(1),vsigma(1)       )
+           call xc_f90_gga_vxc    (xc_func(idft_xc),1_C_INT,rhor_r_shiftx(1),sigma2_shiftx(1),             vxc_dummy(1),vsigma_shiftx(1))
+           call xc_f90_gga_vxc    (xc_func(idft_xc),1_C_INT,rhor_r_shifty(1),sigma2_shifty(1),             vxc_dummy(1),vsigma_shifty(1))
+           call xc_f90_gga_vxc    (xc_func(idft_xc),1_C_INT,rhor_r_shiftz(1),sigma2_shiftz(1),             vxc_dummy(1),vsigma_shiftz(1))
          else
            exc_libxc(:)     = 0.0_dp
            vxc_libxc(:)     = 0.0_dp
@@ -334,7 +317,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
        endif
 
      case(XC_FAMILY_MGGA)
-       call xc_f90_mgga_vxc(xc_func(idft_xc),1_intxc,rhor_r(1),sigma2(1),lapl_rhor(1),tau(1),vxc_libxc(1),vsigma(1),vlapl_rho(1),vtau(1))
+       call xc_f90_mgga_vxc(xc_func(idft_xc),1_C_INT,rhor_r(1),sigma2(1),lapl_rhor(1),tau(1),vxc_libxc(1),vsigma(1),vlapl_rho(1),vtau(1))
        ! no expression for the energy
        exc_libxc(1) = 0.0_dp
 
@@ -448,6 +431,40 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
 
 end subroutine dft_exc_vxc
 
+
+!=========================================================================
+subroutine calc_density_r(nspin,nbf,p_matrix,basis_function_r,rhor_r)
+ use m_definitions
+ use m_mpi
+ use m_timing
+ use m_basis_set
+ implicit none
+ integer,intent(in)   :: nspin,nbf
+ real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
+ real(dp),intent(in)  :: basis_function_r(nbf)
+ real(dp),intent(out) :: rhor_r(nspin)
+!=====
+ integer :: ispin,ibf,jbf
+!=====
+ !
+ ! Calculate the density rho at point r
+ rhor_r(:)=0.0_dp
+ do ispin=1,nspin
+!$OMP PARALLEL DEFAULT(SHARED)
+!$OMP DO REDUCTION(+:rhor_r) 
+   do jbf=1,nbf
+     ! implementing i <-> j symmetry does not save much time with ifort
+     ! compiler
+     do ibf=1,nbf
+       rhor_r(ispin)=rhor_r(ispin)+p_matrix(ibf,jbf,ispin)&
+                         * basis_function_r(ibf) &
+                         * basis_function_r(jbf)
+     enddo
+   enddo
+!$OMP END DO
+!$OMP END PARALLEL
+ enddo
+end subroutine calc_density_r
 
 !=========================================================================
 subroutine my_lda_exc_vxc(nspin,ixc,rhor,exc,vxc)
@@ -1213,6 +1230,6 @@ subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
 
  d01Fxhse = d1Fxhse1+d1Fxhse2+d1Fxhse3+d1Fxhse4+d1Fxhse5+d1Fxhse6+d1Fxhse7
  
-end subroutine
+end subroutine HSE08Fx
 
 !=========================================================================

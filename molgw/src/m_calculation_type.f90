@@ -22,8 +22,8 @@ module m_calculation_type
  real(dp)          :: rcut            = 0.0_dp
 
  integer                   :: ndft_xc      = 0
- integer,pointer           :: dft_xc_type(:)
- real(dp),pointer          :: dft_xc_coef(:)
+ integer,allocatable       :: dft_xc_type(:)
+ real(dp),allocatable      :: dft_xc_coef(:)
 
  type calculation_type
    integer :: type
@@ -150,11 +150,11 @@ subroutine init_dft_type(key,calc_type)
  case('LDAx','PBEx','PBEhx','Bx','PW91x','BJx','RPPx',&
       'BHANDH','BHANDHLYP','B3LYP','PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TD-CAM-B3LYP')
    ndft_xc=1
- case('LDA','VWN','VWN_RPA','PBE','PBEh','BLYP','PW91')
+ case('LDA','SPL','VWN','VWN_RPA','PBE','PBEh','BLYP','PW91')
    ndft_xc=2
  case('TESTHSE')
    ndft_xc=1
- case('TESTPBE0')
+ case('TESTPBE0','TESTLDA0')
    ndft_xc=2
  case default
    WRITE_MASTER(*,*) 'error reading calculation type'
@@ -174,6 +174,9 @@ subroutine init_dft_type(key,calc_type)
  ! LDA functionals
  case('LDAx')
    dft_xc_type(1) = XC_LDA_X
+ case('SPL')
+   dft_xc_type(1) = XC_LDA_X
+   dft_xc_type(2) = XC_LDA_C_PZ
  case('LDA')
    dft_xc_type(1) = XC_LDA_X
    dft_xc_type(2) = XC_LDA_C_PW
@@ -276,6 +279,13 @@ subroutine init_dft_type(key,calc_type)
    dft_xc_coef(2) = -0.25_dp
    alpha_hybrid   = 0.25_dp
    rcut           = 1.0_dp / 0.11_dp
+ case('TESTLDA0')
+   calc_type%need_exchange       = .TRUE.
+   alpha_hybrid   = 0.25_dp
+   dft_xc_type(1) = XC_LDA_X
+   dft_xc_type(2) = XC_LDA_C_PW
+   dft_xc_coef(1) =  1.00_dp - alpha_hybrid
+   dft_xc_coef(2) =  1.00_dp
  case('TESTPBE0')
    calc_type%need_exchange       = .TRUE.
    alpha_hybrid   = 0.25_dp

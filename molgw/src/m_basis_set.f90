@@ -46,7 +46,7 @@ module m_basis_set
    integer                                 :: nbf_cart
    integer                                 :: nshell
    integer                                 :: gaussian_type              ! CARTESIAN or PURE
-   type(basis_function),pointer            :: bf(:)                      ! Cartesian basis function
+   type(basis_function),allocatable        :: bf(:)                      ! Cartesian basis function
    !
    ! then additional data needed for product basis
    integer                                 :: nbf_filtered
