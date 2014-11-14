@@ -37,7 +37,7 @@ module m_calculation_type
    logical :: is_ci
    logical :: read_potential
    logical :: is_bse,is_td
-   integer :: method                    ! perturbative or quasiparticle self-consistent
+   integer :: gwmethod                    ! perturbative or quasiparticle self-consistent
  end type calculation_type
 
 contains
@@ -67,7 +67,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%is_ci               = .FALSE.
  calc_type%is_bse              = .FALSE.
  calc_type%is_td               = .FALSE.
- calc_type%method              = 0
+ calc_type%gwmethod            = 0
  calc_type%read_potential      = .FALSE.
 
  ipos=index(input_key,'+',.TRUE.)
@@ -82,18 +82,18 @@ subroutine init_calculation_type(calc_type,input_key)
    key2(1:) = input_key(ipos+1:)
    select case(TRIM(key2))
    case('GW')
-     calc_type%is_gw  =.TRUE.
-     calc_type%method = perturbative
+     calc_type%is_gw    =.TRUE.
+     calc_type%gwmethod = perturbative
    case('COHSEX')
-     calc_type%is_gw  =.TRUE.
-     calc_type%method = COHSEX
+     calc_type%is_gw    =.TRUE.
+     calc_type%gwmethod = COHSEX
    case('LRGW')
-     calc_type%is_gw  =.TRUE.
-     calc_type%method = perturbative
+     calc_type%is_gw    =.TRUE.
+     calc_type%gwmethod = perturbative
      calc_type%is_lr_mbpt        = .TRUE.
    case('MP2')
-     calc_type%is_mp2 =.TRUE.
-     calc_type%method = perturbative
+     calc_type%is_mp2   =.TRUE.
+     calc_type%gwmethod = perturbative
    case('CI')
      calc_type%is_ci =.TRUE.
    case('BSE')
@@ -118,11 +118,15 @@ subroutine init_calculation_type(calc_type,input_key)
  case('MP2')
    calc_type%need_exchange = .TRUE.  
    calc_type%is_mp2        = .TRUE.
-   calc_type%method        = QS
+   calc_type%gwmethod      = QS
  case('GW')
    calc_type%need_exchange = .TRUE.  
    calc_type%is_gw         = .TRUE.
-   calc_type%method        = QS
+   calc_type%gwmethod      = QS
+ case('COHSEX')
+   calc_type%need_exchange = .TRUE.  
+   calc_type%is_gw         = .TRUE.
+   calc_type%gwmethod      = QSCOHSEX
  case('VIN')
    calc_type%read_potential= .TRUE.  
  case default
@@ -314,7 +318,7 @@ subroutine output_calculation_type(calc_type)
   WRITE_MASTER(*,*) 'is_gw                       ',calc_type%is_gw
   WRITE_MASTER(*,*) 'is_mp2                      ',calc_type%is_mp2
   WRITE_MASTER(*,*) 'is_ci                       ',calc_type%is_ci
-  WRITE_MASTER(*,*) 'method                      ',calc_type%method  
+  WRITE_MASTER(*,*) 'method                      ',calc_type%gwmethod  
 
 end subroutine output_calculation_type
 

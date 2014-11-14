@@ -372,7 +372,8 @@ program molgw
 
    !
    ! QPscGW self energy
-   if( calc_type%is_gw .AND. calc_type%method == QS .AND. iscf > 5 ) then
+   if( calc_type%is_gw .AND. ( calc_type%gwmethod == QS .OR. calc_type%gwmethod == QSCOHSEX) &
+       .AND. iscf > 5 ) then
 
      call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
      call start_clock(timing_pola)
@@ -388,9 +389,9 @@ program molgw
      call start_clock(timing_self)
      exchange_m_vxc_diag(:,:)=0.0_dp
 #ifdef AUXIL_BASIS
-     call gw_selfenergy(calc_type%method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
+     call gw_selfenergy(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
 #else
-     call gw_selfenergy_noaux(calc_type%method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
+     call gw_selfenergy_noaux(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
 #endif
      call stop_clock(timing_self)
 
@@ -406,7 +407,7 @@ program molgw
 
    !
    ! QPscMP2
-   if( calc_type%is_mp2 .AND. calc_type%method == QS .AND. iscf > 5 ) then
+   if( calc_type%is_mp2 .AND. calc_type%gwmethod == QS .AND. iscf > 5 ) then
 
 !     call start_clock(timing_mp2_energy)
 !     call mp2_energy(nspin,basis,occupation,c_matrix,energy,en%mp2)
@@ -414,7 +415,7 @@ program molgw
 
      exchange_m_vxc_diag(:,:)=0.0_dp
      call start_clock(timing_mp2_self)
-     call mp2_selfenergy(calc_type%method,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix,en%mp2)
+     call mp2_selfenergy(calc_type%gwmethod,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix,en%mp2)
      call stop_clock(timing_mp2_self)
      WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Energy       [Ha]:',en%mp2
      WRITE_MASTER(*,*) 
@@ -744,7 +745,7 @@ program molgw
 
  !
  ! final evaluation for G0W0
- if( calc_type%is_gw .AND. ( calc_type%method == perturbative .OR. calc_type%method == COHSEX ) ) then
+ if( calc_type%is_gw .AND. ( calc_type%gwmethod == perturbative .OR. calc_type%gwmethod == COHSEX ) ) then
 
    if( calc_type%is_lr_mbpt ) then
 
@@ -920,9 +921,9 @@ program molgw
    call start_clock(timing_self)
 #ifndef CASIDA
 #ifdef AUXIL_BASIS
-   call gw_selfenergy(calc_type%method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
+   call gw_selfenergy(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
 #else
-   call gw_selfenergy_noaux(calc_type%method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
+   call gw_selfenergy_noaux(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
 #endif
 #endif
    call stop_clock(timing_self)
@@ -936,7 +937,7 @@ program molgw
 
  !
  ! final evaluation for MP2
- if( calc_type%is_mp2 .AND. calc_type%method == perturbative ) then
+ if( calc_type%is_mp2 .AND. calc_type%gwmethod == perturbative ) then
 
    call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
    WRITE_MASTER(*,*) 'EXX     [Ha]:',en%exx
@@ -947,7 +948,7 @@ program molgw
    call stop_clock(timing_mp2_energy)
 #else
    call start_clock(timing_mp2_self)
-   call mp2_selfenergy(calc_type%method,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix,en%mp2)
+   call mp2_selfenergy(calc_type%gwmethod,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix,en%mp2)
    call stop_clock(timing_mp2_self)
 #endif
    WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Energy       [Ha]:',en%mp2

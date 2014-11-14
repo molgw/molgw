@@ -1013,9 +1013,11 @@ subroutine gw_selfenergy_noaux(method,nspin,basis,prod_basis,occupation,energy,e
    WRITE_MASTER(*,*) 'perform a one-shot G0W0 calculation'
  case(COHSEX)
    WRITE_MASTER(*,*) 'perform a COHSEX calculation'
+ case(QSCOHSEX)
+   WRITE_MASTER(*,*) 'perform a self-consistent COHSEX calculation'
  end select
 
- if(method==QS .OR. method==COHSEX) then
+ if(method==QS .OR. method==COHSEX .OR. method==QSCOHSEX) then
    nomegai=1
    allocate(omegai(nomegai))
  else
@@ -1112,7 +1114,7 @@ subroutine gw_selfenergy_noaux(method,nspin,basis,prod_basis,occupation,energy,e
 !           enddo
          enddo
 
-       case(COHSEX) 
+       case(COHSEX,QSCOHSEX) 
 
          !
          ! SEX
@@ -1120,8 +1122,18 @@ subroutine gw_selfenergy_noaux(method,nspin,basis,prod_basis,occupation,energy,e
          do borbital=1,basis%nbf
            do aorbital=1,basis%nbf
              selfenergy_tmp(1,aorbital,borbital,ispin) = selfenergy_tmp(1,aorbital,borbital,ispin) &
+                        - bra(ipole,aorbital) * ket(ipole,borbital) &
+                          * fact_full  / (-wpol%pole(ipole))    
+           enddo
+         enddo
+         !
+         ! COH
+         !
+         do borbital=1,basis%nbf
+           do aorbital=1,basis%nbf
+             selfenergy_tmp(1,aorbital,borbital,ispin) = selfenergy_tmp(1,aorbital,borbital,ispin) &
                         + bra(ipole,aorbital) * ket(ipole,borbital) &
-                          *  2.0_dp * fact_full  / wpol%pole(ipole) 
+                          * fact_empty  / (-wpol%pole(ipole))
            enddo
          enddo
 
@@ -1154,6 +1166,18 @@ subroutine gw_selfenergy_noaux(method,nspin,basis,prod_basis,occupation,energy,e
      selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,:,ispin) ) , MATMUL( selfenergy_tmp(1,:,:,ispin), &
                              MATMUL( TRANSPOSE(c_matrix(:,:,ispin)), s_matrix(:,:) ) ) )
    enddo
+
+ case(QSCOHSEX)
+   ! Transform the matrix elements back to the non interacting states
+   ! do not forget the overlap matrix S
+   ! C^T S C = I
+   ! the inverse of C is C^T S
+   ! the inverse of C^T is S C
+   do ispin=1,nspin
+     selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,:,ispin)) , MATMUL( selfenergy_tmp(1,:,:,ispin), &
+                             MATMUL( TRANSPOSE(c_matrix(:,:,ispin)), s_matrix(:,:) ) ) )
+   enddo
+
 
  case(COHSEX) !==========================================================
 
@@ -1347,51 +1371,6 @@ subroutine cohsex_selfenergy(nstate,nspin,occupation,energy,c_matrix,w_pol,selfe
 
 
 end subroutine cohsex_selfenergy
-
-!=========================================================================
-function screened_exchange_energy(nstate,nspin,density_matrix,w_pol)
- use m_definitions
- use m_mpi
- use m_calculation_type
- use m_timing 
- use m_spectral_function
- implicit none
-
- integer,intent(in)  :: nstate,nspin
- real(dp),intent(in) :: density_matrix(nstate,nstate,nspin)
- complex(dp),intent(in) :: w_pol(nstate_pola,nstate_pola,NOMEGA)
- real(dp) :: screened_exchange_energy
-!=====
- integer :: kstate,lstate,astate,bstate
- real(dp) :: pkl,ppq
- real(dp) :: partial(nstate_pola,nstate,nstate)
-!=====
-
- screened_exchange_energy = 0.0_dp
-
- do bstate=1,nstate
-   do lstate=1,nstate
-     partial(:,lstate,bstate) = matmul( three_state_overlap_product_pola(:,lstate,bstate), w_pol(:,:,1) ) 
-   enddo
- enddo
-
- do astate=1,nstate
-   do bstate=1,nstate
-     do lstate=1,nstate
-       do kstate=1,nstate
-
-         screened_exchange_energy = screened_exchange_energy &
-&          - 0.5_dp * dot_product( three_state_overlap_product_pola(:,kstate,astate) ,  partial(:,lstate,bstate) ) &
-&            * SUM( density_matrix(astate,bstate,:) * density_matrix(lstate,kstate,:) ) / spin_fact
-
-       enddo
-     enddo
-   enddo
- enddo
-
-end function screened_exchange_energy
-
-
 #endif
 
 
