@@ -30,14 +30,13 @@ program molgw
  integer                      :: nangular_grid,nradial_grid
  real(dp)                     :: electrons
  real(dp)                     :: magnetization
-!===== variables for testing
- type(gaussian) :: gatmp,gbtmp
- type(basis_function) :: bftmp1,bftmp2
+!===== variables for testing TODO remove in the future
  real(dp) :: rtmp
 !=====
  type(basis_set)         :: basis
  type(basis_set)         :: prod_basis
  type(spectral_function) :: wpol
+ integer                 :: reading_status
  integer                 :: ibf,jbf,kbf,lbf,ijbf,klbf
  integer                 :: ispin,iscf,istate,jstate,astate,iatom,ncore
  logical                 :: scf_loop_convergence
@@ -171,8 +170,8 @@ program molgw
 ! call negligible_eri(1.0e-10_dp)
 
  !
- ! In case of GW run, set up the product basis 
- if( calc_type%is_gw ) call init_product_basis_set(basis,prod_basis)
+ ! In case of GW or BSE run, set up the product basis 
+ if( calc_type%is_gw .OR. calc_type%is_bse) call init_product_basis_set(basis,prod_basis)
 
 !========================================================
 ! AUXILIARY basis set GW
@@ -378,20 +377,22 @@ program molgw
      call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
      call start_clock(timing_pola)
 #ifdef AUXIL_BASIS
-     call polarizability_rpa(nspin,basis,prod_basis,occupation,energy,c_matrix,sinv_v_sinv,en%rpa,wpol)
+     call polarizability_rpa_aux(nspin,basis,prod_basis,occupation,energy,c_matrix,sinv_v_sinv,en%rpa,wpol)
 #else
-     call polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
+     call polarizability_rpa(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #endif
      call stop_clock(timing_pola)
-     en%tot = en%tot + en%rpa
-     WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
+     if( en%rpa > 1.e-6_DP) then
+       en%tot = en%tot + en%rpa
+       WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
+     endif
 
      call start_clock(timing_self)
      exchange_m_vxc_diag(:,:)=0.0_dp
 #ifdef AUXIL_BASIS
-     call gw_selfenergy(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
+     call gw_selfenergy_aux(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
 #else
-     call gw_selfenergy_noaux(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
+     call gw_selfenergy(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
 #endif
      call stop_clock(timing_self)
 
@@ -656,9 +657,17 @@ program molgw
  !
  ! Time Dependent calculations
  ! works for DFT, HF, and hybrid
- if(calc_type%is_td) then
+ if(calc_type%is_td .OR. calc_type%is_bse) then
    call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
-   call polarizability_td_noaux(calc_type,nspin,basis,prod_basis,occupation,energy,c_matrix,wpol)
+
+   ! For BSE calculation, obtain the wpol object from a previous calculation
+   if(calc_type%is_bse) then
+     call read_spectral_function(wpol,reading_status)
+     if(reading_status/=0) then 
+       stop'BSE requires a previous GW calculation stored in a spectral_file'
+     endif
+   endif
+   call polarizability_td(calc_type,nspin,basis,prod_basis,occupation,energy,c_matrix,wpol)
    call destroy_spectral_function(wpol)
  endif
   
@@ -747,6 +756,10 @@ program molgw
  ! final evaluation for G0W0
  if( calc_type%is_gw .AND. ( calc_type%gwmethod == perturbative .OR. calc_type%gwmethod == COHSEX ) ) then
 
+
+!=====================================================
+! DEVELOPMENT PART TO BE IGNORED
+!=====================================================
    if( calc_type%is_lr_mbpt ) then
 
      write(*,*) '========== FABIEN ============'
@@ -895,35 +908,30 @@ program molgw
      exchange_m_vxc_diag(:,:) = 0.0_dp
 
    endif
+!==========================================================
+! END of development part
+!==========================================================
 
    call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
    call start_clock(timing_pola)
-#ifdef AUXIL_BASIS
-   call polarizability_rpa(nspin,basis,prod_basis,occupation,energy,c_matrix,sinv_v_sinv,en%rpa,wpol)
-#else
 #ifdef CASIDA
-   call polarizability_casida_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
+   call polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #else
-   call polarizability_rpa_noaux(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
-#endif
+   call polarizability_rpa(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #endif
    call stop_clock(timing_pola)
    en%tot = en%tot + en%rpa
    if( ndft_xc /= 0 ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
    WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
 
-!   call write_spectral_function(wpol)
-!   msg='write spectral function'
-!   call read_spectral_function(wpol)
-!   msg='read spectral function'
-!   call issue_warning(msg)
+   if( MODULO(print_volume/100000,2)==1 ) call write_spectral_function(wpol)
 
    call start_clock(timing_self)
 #ifndef CASIDA
 #ifdef AUXIL_BASIS
-   call gw_selfenergy(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
+   call gw_selfenergy_aux(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
 #else
-   call gw_selfenergy_noaux(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
+   call gw_selfenergy(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
 #endif
 #endif
    call stop_clock(timing_self)

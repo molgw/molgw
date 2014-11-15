@@ -697,7 +697,7 @@ subroutine diagonalize_sca(desc,nglobal,mlocal,nlocal,matrix,eigval)
 
 #else
  eigval(:) = 0.0_dp
-#endif HAVE_SCALAPACK
+#endif
 
 
 end subroutine diagonalize_sca

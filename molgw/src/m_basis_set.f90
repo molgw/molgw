@@ -51,6 +51,7 @@ module m_basis_set
    ! then additional data needed for product basis
    integer                                 :: nbf_filtered
    integer,allocatable                     :: index_ij(:,:)
+   integer,allocatable                     :: index_prodbasis(:,:)
    real(dp),allocatable                    :: rotation(:,:)
  end type basis_set
 
@@ -335,6 +336,7 @@ contains
  prod_basis%nbf = ( basis%nbf * ( basis%nbf + 1 ) ) / 2
  allocate(prod_basis%bf(prod_basis%nbf))
  allocate(prod_basis%index_ij(2,prod_basis%nbf))
+ allocate(prod_basis%index_prodbasis(basis%nbf,basis%nbf))
 
  !
  ! Construct all products
@@ -344,6 +346,9 @@ contains
      iprodbf = iprodbf + 1
      prod_basis%index_ij(1,iprodbf) = ibf
      prod_basis%index_ij(2,iprodbf) = jbf
+     prod_basis%index_prodbasis(ibf,jbf) = iprodbf
+     prod_basis%index_prodbasis(jbf,ibf) = iprodbf
+     write(*,*) ibf,jbf,iprodbf
      call basis_function_prod(basis%bf(ibf),basis%bf(jbf),prod_basis%bf(iprodbf)) 
    enddo
  enddo
@@ -398,8 +403,9 @@ contains
 !====
 
  deallocate(basis%bf)
- if(allocated(basis%index_ij)) deallocate(basis%index_ij)
- if(allocated(basis%rotation)) deallocate(basis%rotation)
+ if(allocated(basis%index_ij))        deallocate(basis%index_ij)
+ if(allocated(basis%index_prodbasis)) deallocate(basis%index_prodbasis)
+ if(allocated(basis%rotation))        deallocate(basis%rotation)
 
  end subroutine destroy_basis_set
 

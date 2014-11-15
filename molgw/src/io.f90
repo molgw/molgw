@@ -370,11 +370,12 @@ subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_
  WRITE_MASTER(*,'(a25,2x,a)') ' Quadrature accuracy: ',quadrature_name
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,'(a19)')      ' Print volume:'
- WRITE_MASTER(*,'(a30,l3)')   ' - matrices details:   ',MODULO(print_volume      ,2)==1
- WRITE_MASTER(*,'(a30,l3)')   ' - basis set details:  ',MODULO(print_volume/10   ,2)==1
- WRITE_MASTER(*,'(a30,l3)')   ' - ERI file:           ',MODULO(print_volume/100  ,2)==1
- WRITE_MASTER(*,'(a30,l3)')   ' - density matrix file:',MODULO(print_volume/1000 ,2)==1
- WRITE_MASTER(*,'(a30,l3)')   ' - plot some wfns:     ',MODULO(print_volume/10000,2)==1
+ WRITE_MASTER(*,'(a30,l3)')   ' - matrices details:   ',MODULO(print_volume       ,2)==1
+ WRITE_MASTER(*,'(a30,l3)')   ' - basis set details:  ',MODULO(print_volume/10    ,2)==1
+ WRITE_MASTER(*,'(a30,l3)')   ' - ERI file:           ',MODULO(print_volume/100   ,2)==1
+ WRITE_MASTER(*,'(a30,l3)')   ' - density matrix file:',MODULO(print_volume/1000  ,2)==1
+ WRITE_MASTER(*,'(a30,l3)')   ' - plot some wfns:     ',MODULO(print_volume/10000 ,2)==1
+ WRITE_MASTER(*,'(a30,l3)')   ' - dump spectral functs',MODULO(print_volume/100000,2)==1
 
 
  WRITE_MASTER(*,*)

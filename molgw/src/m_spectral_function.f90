@@ -183,8 +183,7 @@ subroutine write_spectral_function(sf)
  integer :: iprodbasis
 !=====
 
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,*) 'dumping spectral function on file' 
+ WRITE_MASTER(*,'(/,a,/)') ' dumping spectral function on file' 
 
  open(spectralfile,file='spectral_file',form='unformatted')
 
@@ -204,32 +203,54 @@ end subroutine write_spectral_function
 
 
 !=========================================================================
-subroutine read_spectral_function(sf)
+subroutine read_spectral_function(sf,reading_status)
  implicit none
  type(spectral_function),intent(inout) :: sf
+ integer,intent(out)                   :: reading_status
 !=====
  integer,parameter :: spectralfile=50
- integer :: iprodbasis
+ integer           :: iprodbasis
+ logical           :: file_exists
+ integer           :: npole_read,nprodbasis_read
 !=====
 
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,*) 'reading spectral function from file' 
+ WRITE_MASTER(*,'(/,a)') ' Try to read spectral function from file spectral_file' 
 
- open(spectralfile,file='spectral_file',status='old',form='unformatted')
+ inquire(file='spectral_file',exist=file_exists)
+ if( .NOT. file_exists ) then
+   WRITE_MASTER(*,'(a,/)') ' File does not exist'
+   reading_status=1
 
- read(spectralfile) sf%npole
- read(spectralfile) sf%nprodbasis
- read(spectralfile) sf%pole(:)
- do iprodbasis=1,sf%nprodbasis
-   read(spectralfile) sf%residu_left(:,iprodbasis)
- enddo
- do iprodbasis=1,sf%nprodbasis
-   read(spectralfile) sf%residu_right(:,iprodbasis)   
- enddo
+ else
 
- close(spectralfile)
+   open(spectralfile,file='spectral_file',status='old',form='unformatted')
 
- WRITE_MASTER(*,*) 'Reading done'
+   read(spectralfile) npole_read
+   read(spectralfile) nprodbasis_read
+
+   if( npole_read /= sf%npole .OR. nprodbasis_read /= sf%nprodbasis ) then
+     WRITE_MASTER(*,'(a,/)')     ' File does not have the correct size'
+     WRITE_MASTER(*,'(i5,a,i5)') npole_read,' vs ',sf%npole
+     WRITE_MASTER(*,'(i5,a,i5)') nprodbasis_read,' vs ',sf%nprodbasis
+     reading_status=2
+   else
+
+     read(spectralfile) sf%pole(:)
+     do iprodbasis=1,sf%nprodbasis
+       read(spectralfile) sf%residu_left(:,iprodbasis)
+     enddo
+     do iprodbasis=1,sf%nprodbasis
+       read(spectralfile) sf%residu_right(:,iprodbasis)   
+     enddo
+
+     reading_status=0
+     msg='reading spectral function from spectral_file'
+     call issue_warning(msg)
+
+   endif
+   close(spectralfile)
+
+ endif
 
 end subroutine read_spectral_function
 

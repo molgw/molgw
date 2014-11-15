@@ -81,11 +81,11 @@ subroutine allocate_eri(basis,rcut,which_buffer)
  endif
 
 
-#if LOW_MEMORY2
+#if defined LOW_MEMORY2
  WRITE_MASTER(*,'(/,a)') ' Symmetrized ERI stored (8 symmetries)' 
  nsize1  = index_prod(nbf_eri,nbf_eri) 
  nsize   = index_eri(nbf_eri,nbf_eri,nbf_eri,nbf_eri)
-#elif LOW_MEMORY3
+#elif defined LOW_MEMORY3
  nsize = (nsize1*(nsize1+1))/2
 #else
  WRITE_MASTER(*,'(/,a)') ' All ERI are stored'
@@ -179,9 +179,8 @@ function index_eri(ibf,jbf,kbf,lbf)
  integer            :: index_ij,index_kl
 !===== 
 
- index_ij = index_prod(ibf,jbf)
-
 #if defined LOW_MEMORY2 || defined LOW_MEMORY3
+ index_ij = index_prod(ibf,jbf)
  index_kl = index_prod(kbf,lbf)
 
  ijmax=MAX(index_ij,index_kl)
@@ -339,7 +338,7 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
 
 #ifndef LOW_MEMORY2 
 #ifndef LOW_MEMORY3
- stop'This implementation is only compatible with preprocessing option LOW_MEMORY2'
+ stop'This implementation is only compatible with preprocessing option LOW_MEMORY2 or LOW_MEMORY3'
 #endif
 #endif
 

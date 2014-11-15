@@ -15,9 +15,7 @@ module m_definitions
  real(dp),parameter :: pi2   =pi**2
  complex(dp)        :: im=(0.0_dp,1.0_dp)
 
- real(dp),parameter :: completely_empty=1.0d-5
-
- integer,parameter  :: NOMEGA=12 !TODO remove this parameter
+ real(dp),parameter :: completely_empty=1.0e-5_dp
 
 end module m_definitions
 
