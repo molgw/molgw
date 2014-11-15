@@ -642,4 +642,75 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
 
 end subroutine plot_cube_wfn
 
+
+!=========================================================================
+subroutine write_energy_qp(nspin,nbf,energy_qp)
+ use m_definitions
+ use m_mpi
+ implicit none
+
+ integer,intent(in)  :: nspin,nbf
+ real(dp),intent(in) :: energy_qp(nbf,nspin)
+!=====
+ integer,parameter :: unit_energy_qp=51
+ integer           :: iorbital
+!=====
+
+ WRITE_MASTER(*,'(/,a)') ' Writing energy_qp file'
+ open(unit_energy_qp,file='energy_qp',form='formatted')
+ WRITE_MASTER(unit_energy_qp,*) nspin
+ WRITE_MASTER(unit_energy_qp,*) nbf
+ do iorbital=1,nbf
+   WRITE_MASTER(unit_energy_qp,*) iorbital,energy_qp(iorbital,:)
+ enddo
+
+ close(unit_energy_qp)
+
+end subroutine write_energy_qp
+
+
+!=========================================================================
+subroutine read_energy_qp(nspin,nbf,energy_qp,reading_status)
+ use m_definitions
+ use m_mpi
+ use m_warning,only: issue_warning,msg
+ implicit none
+
+ integer,intent(in)   :: nspin,nbf
+ integer,intent(out)  :: reading_status
+ real(dp),intent(out) :: energy_qp(nbf,nspin)
+!=====
+ integer,parameter :: unit_energy_qp=51
+ integer           :: iorbital,jorbital
+ integer           :: nspin_read,nbf_read
+ logical           :: file_exists
+!=====
+
+ WRITE_MASTER(*,'(/,a)') ' Reading energy_qp file'
+ inquire(file='energy_qp',exist=file_exists)
+ if(file_exists) then
+   open(unit_energy_qp,file='energy_qp',form='formatted',status='old')
+   read(unit_energy_qp,*) nspin_read
+   read(unit_energy_qp,*) nbf_read
+   if( nbf_read /= nbf .OR. nspin_read /= nspin ) then
+     msg='energy_qp file does not have the correct dimensions'
+     call issue_warning(msg)
+     reading_status=2
+   else
+     do iorbital=1,nbf
+       read(unit_energy_qp,*) jorbital,energy_qp(iorbital,:)
+     enddo
+     reading_status=0
+   endif
+   close(unit_energy_qp)
+ else
+   reading_status=1
+   msg='file energy_qp does not exist'
+   call issue_warning(msg)
+ endif
+
+
+end subroutine read_energy_qp
+
+
 !=========================================================================

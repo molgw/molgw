@@ -567,7 +567,7 @@ end subroutine polarizability_casida
 
 
 !=========================================================================
-subroutine gw_selfenergy(method,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy)
+subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy)
  use m_definitions
  use m_mpi
  use m_calculation_type
@@ -577,7 +577,7 @@ subroutine gw_selfenergy(method,nspin,basis,prod_basis,occupation,energy,exchang
  use m_spectral_function
  implicit none
 
- integer,intent(in)  :: method,nspin
+ integer,intent(in)  :: gwmethod,nspin
  type(basis_set)     :: basis,prod_basis
  real(dp),intent(in) :: occupation(basis%nbf,nspin),energy(basis%nbf,nspin),exchange_m_vxc_diag(basis%nbf,nspin)
  real(dp),intent(in) :: c_matrix(basis%nbf,basis%nbf,nspin)
@@ -600,6 +600,7 @@ subroutine gw_selfenergy(method,nspin,basis,prod_basis,occupation,energy,exchang
  real(dp)    :: fact_full,fact_empty
  real(dp)    :: zz(nspin)
  real(dp)    :: energy_re
+ real(dp)    :: energy_qp(basis%nbf,nspin)
  character(len=3) :: ctmp
 !=====
  spin_fact = REAL(-nspin+3,dp)
@@ -609,7 +610,7 @@ subroutine gw_selfenergy(method,nspin,basis,prod_basis,occupation,energy,exchang
  call issue_warning(msg)
 
  WRITE_MASTER(*,*)
- select case(method)
+ select case(gwmethod)
  case(QS)
    WRITE_MASTER(*,*) 'perform a QP self-consistent GW calculation'
  case(perturbative)
@@ -620,7 +621,7 @@ subroutine gw_selfenergy(method,nspin,basis,prod_basis,occupation,energy,exchang
    WRITE_MASTER(*,*) 'perform a self-consistent COHSEX calculation'
  end select
 
- if(method==QS .OR. method==COHSEX .OR. method==QSCOHSEX) then
+ if(gwmethod==QS .OR. gwmethod==COHSEX .OR. gwmethod==QSCOHSEX) then
    nomegai=1
    allocate(omegai(nomegai))
  else
@@ -680,7 +681,7 @@ subroutine gw_selfenergy(method,nspin,basis,prod_basis,occupation,energy,exchang
        endif
        if( ABS(fact_empty - fact_full) < 0.0001 ) cycle
 
-       select case(method)
+       select case(gwmethod)
        case(QS)
 
          do borbital=1,basis%nbf
@@ -745,13 +746,13 @@ subroutine gw_selfenergy(method,nspin,basis,prod_basis,occupation,energy,exchang
  !
  ! Kotani's Hermitianization trick
  !
- if(method==QS) then
+ if(gwmethod==QS) then
    do ispin=1,nspin
      selfenergy_tmp(1,:,:,ispin) = 0.5_dp * ( selfenergy_tmp(1,:,:,ispin) + transpose(selfenergy_tmp(1,:,:,ispin)) )
    enddo
  endif
 
- select case(method)
+ select case(gwmethod)
  case(QS)
    ! Transform the matrix elements back to the non interacting states
    ! do not forget the overlap matrix S
@@ -787,10 +788,13 @@ subroutine gw_selfenergy(method,nspin,basis,prod_basis,occupation,energy,exchang
    endif
    do aorbital=1,basis%nbf
      zz(:) = 1.0_dp 
+     energy_qp(aorbital,:) = energy(aorbital,:)+zz(:)*REAL(selfenergy_tmp(1,aorbital,aorbital,:) + exchange_m_vxc_diag(aorbital,:))
 
      WRITE_MASTER(*,'(i4,x,20(x,f12.6))') aorbital,energy(aorbital,:)*Ha_eV,exchange_m_vxc_diag(aorbital,:)*Ha_eV,REAL(selfenergy_tmp(1,aorbital,aorbital,:),dp)*Ha_eV,&
-           zz(:),( energy(aorbital,:)+zz(:)*REAL(selfenergy_tmp(1,aorbital,aorbital,:) + exchange_m_vxc_diag(aorbital,:) ,dp) )*Ha_eV
+           zz(:),energy_qp(aorbital,:)*Ha_eV
    enddo
+
+   call write_energy_qp(nspin,basis%nbf,energy_qp)
 
  case(perturbative) !==========================================================
 
@@ -812,21 +816,6 @@ subroutine gw_selfenergy(method,nspin,basis,prod_basis,occupation,energy,exchang
 
    selfenergy(:,:,:) = REAL( selfenergy_tmp(2,:,:,:) )
    WRITE_MASTER(*,*)
-   WRITE_MASTER(*,*) 'G0W0 Eigenvalues [Ha]'
-   if(nspin==1) then
-     WRITE_MASTER(*,*) '  #          E0        Sigx-Vxc      Sigc          Z         G0W0'
-   else
-     WRITE_MASTER(*,'(a)') '  #                E0                      Sigx-Vxc                    Sigc                       Z                       G0W0'
-   endif
-   do aorbital=1,basis%nbf
-     zz(:) = REAL( selfenergy_tmp(3,aorbital,aorbital,:) - selfenergy_tmp(1,aorbital,aorbital,:) ) / REAL( omegai(3)-omegai(1) )
-     zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
-
-     WRITE_MASTER(*,'(i4,x,20(x,f12.6))') aorbital,energy(aorbital,:),exchange_m_vxc_diag(aorbital,:),REAL(selfenergy_tmp(2,aorbital,aorbital,:),dp),&
-           zz(:),energy(aorbital,:)+zz(:)*REAL(selfenergy_tmp(2,aorbital,aorbital,:) + exchange_m_vxc_diag(aorbital,:) ,dp)
-   enddo
-
-   WRITE_MASTER(*,*)
    WRITE_MASTER(*,*) 'G0W0 Eigenvalues [eV]'
    if(nspin==1) then
      WRITE_MASTER(*,*) '  #          E0        Sigx-Vxc      Sigc          Z         G0W0'
@@ -836,10 +825,13 @@ subroutine gw_selfenergy(method,nspin,basis,prod_basis,occupation,energy,exchang
    do aorbital=1,basis%nbf
      zz(:) = REAL( selfenergy_tmp(3,aorbital,aorbital,:) - selfenergy_tmp(1,aorbital,aorbital,:) ) / REAL( omegai(3)-omegai(1) )
      zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
+     energy_qp(aorbital,:) = energy(aorbital,:)+zz(:)*REAL(selfenergy_tmp(2,aorbital,aorbital,:) + exchange_m_vxc_diag(aorbital,:))
 
      WRITE_MASTER(*,'(i4,x,20(x,f12.6))') aorbital,energy(aorbital,:)*Ha_eV,exchange_m_vxc_diag(aorbital,:)*Ha_eV,REAL(selfenergy_tmp(2,aorbital,aorbital,:),dp)*Ha_eV,&
-           zz(:),( energy(aorbital,:)+zz(:)*REAL(selfenergy_tmp(2,aorbital,aorbital,:) + exchange_m_vxc_diag(aorbital,:) ,dp) )*Ha_eV
+           zz(:),energy_qp(aorbital,:)*Ha_eV
    enddo
+
+   call write_energy_qp(nspin,basis%nbf,energy_qp)
 
  end select
 

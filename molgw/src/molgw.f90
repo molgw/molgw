@@ -21,7 +21,6 @@ program molgw
 
  !
  ! Input parameters will be set in read_inputparameters
- type(calculation_type)       :: calc_type
  integer                      :: nspin,nscf
  real(dp)                     :: alpha_mixing
  integer                      :: print_volume
@@ -33,6 +32,7 @@ program molgw
 !===== variables for testing TODO remove in the future
  real(dp) :: rtmp
 !=====
+ type(calculation_type)       :: calc_type
  type(basis_set)         :: basis
  type(basis_set)         :: prod_basis
  type(spectral_function) :: wpol
