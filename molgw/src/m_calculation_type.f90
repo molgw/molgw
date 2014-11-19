@@ -88,9 +88,9 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = COHSEX
    case('LRGW')
-     calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = perturbative
-     calc_type%is_lr_mbpt        = .TRUE.
+     calc_type%is_gw      =.TRUE.
+     calc_type%gwmethod   = perturbative
+     calc_type%is_lr_mbpt = .TRUE.
    case('MP2')
      calc_type%is_mp2   =.TRUE.
      calc_type%gwmethod = perturbative
@@ -147,7 +147,7 @@ subroutine init_dft_type(key,calc_type)
  type(calculation_type),intent(inout)   :: calc_type
 !=====
 
- alpha_hybrid = 0.0_dp
+! alpha_hybrid = 1.0_dp
  if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
 
  select case(TRIM(key))

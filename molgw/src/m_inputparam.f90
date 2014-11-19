@@ -20,6 +20,5 @@ module m_inputparam
  logical,protected            :: print_wfn
  logical,protected            :: print_specfunc
 
-
 end module m_inputparam
 

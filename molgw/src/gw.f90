@@ -61,7 +61,7 @@ subroutine polarizability_rpa(nspin,basis,prod_basis,occupation,energy,c_matrix,
    read(18,*) alpha1
    read(18,*) alpha2
    close(18)
-   write(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alphas  ',alpha1,alpha2
+   WRITE_ME(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alphas  ',alpha1,alpha2
    call issue_warning(msg)
  else
    alpha1=0.0_dp
@@ -240,12 +240,6 @@ subroutine polarizability_rpa(nspin,basis,prod_basis,occupation,energy,c_matrix,
            wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
                         + eri_eigenstate_k(lbf,ibf,jbf,ijspin) * eigenvector_inv(:,t_kl) &
                                          * ( occupation(kbf,klspin)-occupation(lbf,klspin) )
-  if( TDHF .AND. ijspin==klspin ) then
-           wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
-                        - eri_eigenstate_k(ibf,jbf,lbf,ijspin) * eigenvector_inv(:,t_kl) &
-                                         * ( occupation(kbf,klspin)-occupation(lbf,klspin) ) /spin_fact * alpha2
-  endif
-
 #else
            wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
                         + eri_eigenstate(ibf,jbf,kbf,lbf,ijspin,klspin) *  eigenvector(t_kl,:)
@@ -605,7 +599,7 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
 !=====
  spin_fact = REAL(-nspin+3,dp)
 
- write(msg,'(es9.2)') AIMAG(ieta)
+ WRITE_ME(msg,'(es9.2)') AIMAG(ieta)
  msg='small complex number is '//msg
  call issue_warning(msg)
 
@@ -800,7 +794,7 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
 
    if(write_sigma_omega) then
      do aorbital=1,basis%nbf ! MIN(2,basis%nbf)
-       write(ctmp,'(i3.3)') aorbital
+       WRITE_ME(ctmp,'(i3.3)') aorbital
        open(200+aorbital,file='selfenergy_omega_state'//TRIM(ctmp))
        do iomegai=1,nomegai
          WRITE_MASTER(200+aorbital,'(20(f12.6,2x))') ( DBLE(omegai(iomegai))+energy(aorbital,:) )*Ha_eV,&

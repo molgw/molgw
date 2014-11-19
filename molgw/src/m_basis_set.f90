@@ -348,7 +348,6 @@ contains
      prod_basis%index_ij(2,iprodbf) = jbf
      prod_basis%index_prodbasis(ibf,jbf) = iprodbf
      prod_basis%index_prodbasis(jbf,ibf) = iprodbf
-     write(*,*) ibf,jbf,iprodbf
      call basis_function_prod(basis%bf(ibf),basis%bf(jbf),prod_basis%bf(iprodbf)) 
    enddo
  enddo

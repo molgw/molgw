@@ -699,6 +699,12 @@ subroutine read_energy_qp(nspin,nbf,energy_qp,reading_status)
    else
      do iorbital=1,nbf
        read(unit_energy_qp,*) jorbital,energy_qp(iorbital,:)
+       ! Scissor operator
+       if( jorbital == -1 ) then
+         reading_status=-1
+         close(unit_energy_qp)
+         return
+       endif
      enddo
      reading_status=0
    endif

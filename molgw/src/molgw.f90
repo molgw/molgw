@@ -21,24 +21,22 @@ program molgw
 
  !
  ! Input parameters will be set in read_inputparameters
- integer                      :: nspin,nscf
- real(dp)                     :: alpha_mixing
- integer                      :: print_volume
- character(len=100)           :: basis_name
- integer                      :: gaussian_type
- integer                      :: nangular_grid,nradial_grid
- real(dp)                     :: electrons
- real(dp)                     :: magnetization
-!===== variables for testing TODO remove in the future
- real(dp) :: rtmp
+ integer                 :: nspin,nscf
+ real(dp)                :: alpha_mixing
+ integer                 :: print_volume
+ character(len=100)      :: basis_name
+ integer                 :: gaussian_type
+ integer                 :: nangular_grid,nradial_grid
+ real(dp)                :: electrons
+ real(dp)                :: magnetization
 !=====
- type(calculation_type)       :: calc_type
+ type(calculation_type)  :: calc_type
  type(basis_set)         :: basis
  type(basis_set)         :: prod_basis
  type(spectral_function) :: wpol
  integer                 :: reading_status
  integer                 :: ibf,jbf,kbf,lbf,ijbf,klbf
- integer                 :: ispin,iscf,istate,jstate,astate,iatom,ncore
+ integer                 :: ispin,iscf,istate,jstate,astate,ncore
  logical                 :: scf_loop_convergence
  logical                 :: file_exists
  character(len=100)      :: title
@@ -51,22 +49,21 @@ program molgw
  real(dp),allocatable    :: hamiltonian_kinetic(:,:)
  real(dp),allocatable    :: hamiltonian_nucleus(:,:)
  real(dp),allocatable    :: matrix(:,:,:)
- real(dp),allocatable    :: matrix3(:,:,:)
  real(dp),allocatable    :: vxc_matrix(:,:,:)
  real(dp),allocatable    :: s_matrix(:,:)
  real(dp),allocatable    :: c_matrix(:,:,:)
  real(dp),allocatable    :: p_matrix(:,:,:),p_matrix_old(:,:,:)
  real(dp),allocatable    :: energy(:,:)
  real(dp),allocatable    :: occupation(:,:)
+ real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
+ real(dp),allocatable    :: self_energy_old(:,:,:)
+#ifdef AUXIL_BASIS
+ real(dp),allocatable    :: eri2(:,:),matrix2(:,:)
  real(dp),allocatable    :: s_filtered_basis(:,:)
  real(dp),allocatable    :: sinv_filtered_basis(:,:)
  real(dp),allocatable    :: v_filtered_basis(:,:)
  real(dp),allocatable    :: sinv_v_sinv_filtered(:,:),sinv_v_sinv(:,:)
- real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
- real(dp),allocatable    :: eri2(:,:),matrix2(:,:)
- real(dp),allocatable    :: self_energy_old(:,:,:)
-! tmp elements to be removed eventually
- real(dp),allocatable    :: eigval(:),eigvec(:,:),matrix_tmp(:,:) 
+#endif
 !=====
  type energy_contributions
    real(dp) :: nuc_nuc= 0.0_dp
@@ -172,6 +169,7 @@ program molgw
  !
  ! In case of GW or BSE run, set up the product basis 
  if( calc_type%is_gw .OR. calc_type%is_bse) call init_product_basis_set(basis,prod_basis)
+
 
 !========================================================
 ! AUXILIARY basis set GW
@@ -519,131 +517,10 @@ program molgw
  WRITE_MASTER(*,*) '=================================================='
  WRITE_MASTER(*,'(/,/,a25,x,f16.10,/,/)') 'SCF Total Energy [Ha]:',en%tot
 
- if(MODULO(print_volume/1000 ,2)>0) call write_density_matrix(nspin,basis%nbf,p_matrix)
+ if(MODULO(print_volume/1000 ,2)>0)   call write_density_matrix(nspin,basis%nbf,p_matrix)
  if(MODULO(print_volume/10000,10)==1) call plot_wfn(nspin,basis,c_matrix)
  if(MODULO(print_volume/10000,10)==2) call plot_cube_wfn(nspin,basis,c_matrix)
 
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!TESTING SECTION TO BE REMOVED IN THE FUTURE
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-#if 0
- WRITE_MASTER(*,*) '==================== TESTS ==================='
- allocate(matrix3(basis%nbf,basis%nbf,nspin))
-
- do iatom=1,3
-   WRITE_MASTER(*,*)
-   WRITE_MASTER(*,*) 'CHECK TRK sum-rule along axis',iatom 
-   WRITE_MASTER(*,*)
-
-   do jbf=1,basis%nbf
-     do ibf=1,basis%nbf
-       call basis_function_dipole(basis%bf(ibf),basis%bf(jbf),dipole)
-       matrix(ibf,jbf,1) = dipole(iatom)
-     enddo
-   enddo
-   title='=== Dipole matrix === in gaussian basis'
-   call dump_out_matrix(print_volume,title,basis%nbf,1,matrix(:,:,1))
-  
-   matrix(:,:,1) = MATMUL( TRANSPOSE( c_matrix(:,:,1) ) , MATMUL( matrix(:,:,1) , c_matrix(:,:,1) ) )
-
-   title='=== Dipole matrix === in orbital basis'
-   call dump_out_matrix(print_volume,title,basis%nbf,1,matrix(:,:,1))
-
-   do jbf=1,basis%nbf
-     do ibf=1,basis%nbf
-       call basis_function_dipole_sq(basis%bf(ibf),basis%bf(jbf),dipole)
-       matrix3(ibf,jbf,1) = dipole(iatom)
-     enddo
-   enddo
-   title='=== Dipole squared matrix === in gaussian basis'
-   call dump_out_matrix(print_volume,title,basis%nbf,1,matrix3(:,:,1))
-  
-   matrix3(:,:,1) = MATMUL( TRANSPOSE( c_matrix(:,:,1) ) , MATMUL( matrix3(:,:,1) , c_matrix(:,:,1) ) )
-
-   title='=== Dipole squared matrix === in orbital basis'
-   call dump_out_matrix(print_volume,title,basis%nbf,1,matrix3(:,:,1))
-   
-
-   
-   do istate=1,MIN(basis%nbf,2)
-     WRITE_MASTER(*,*) '______ state _____',istate
-     energy_tmp=0.0_dp
-     do jstate=1,basis%nbf
-       energy_tmp = energy_tmp + matrix(istate,jstate,1)**2
-     enddo
-     WRITE_MASTER(*,*) 'test completeness \sum_j <i|r|j><j|r|i>'
-     WRITE_MASTER(*,*) 'result 1:',istate,energy_tmp
-     WRITE_MASTER(*,*) 'test completeness <i|r^2|i>'
-     WRITE_MASTER(*,*) 'result 2:',istate,matrix3(istate,istate,1)
-     WRITE_MASTER(*,*)
-   enddo
-
-   rtmp = -0.2
-   WRITE_MASTER(*,*) 'high energy [Ha]',rtmp
-
-
-   do jstate=1,MIN(basis%nbf,2)
-
-     energy_tmp=0.0_dp
-     do istate=1,basis%nbf
-       energy_tmp = energy_tmp + ( energy(istate,1) - energy(jstate,1) ) * matrix(istate,jstate,1)**2
-     enddo
-     WRITE_MASTER(*,*) 'TRK result:',jstate,energy_tmp
-!     energy_tmp=0.0_dp
-
-     do istate=1,basis%nbf
-       energy_tmp = energy_tmp - ( rtmp             - energy(jstate,1) ) * matrix(istate,jstate,1)**2
-     enddo
-     WRITE_MASTER(*,*) 'TRK result:',jstate,energy_tmp
-!     energy_tmp=0.0_dp
-
-     energy_tmp = energy_tmp + ( rtmp             - energy(jstate,1) )  * matrix3(jstate,jstate,1)
-     WRITE_MASTER(*,*) 'TRK result:',jstate,energy_tmp
-
-   enddo
-
-
-   energy_tmp=0.0_dp
-   do jstate=1,basis%nbf
-     do istate=1,basis%nbf
-       if( occupation(jstate,1) - occupation(istate,1)  < 1.0e-6_dp ) cycle
-!       WRITE_MASTER(*,*) '----------',istate,jstate
-!       WRITE_MASTER(*,*) occupation(jstate,1) - occupation(istate,1),energy(istate,1) - energy(jstate,1), matrix(istate,jstate,1)**2 
-       energy_tmp = energy_tmp + matrix(istate,jstate,1)**2 / ( energy(istate,1) - energy(jstate,1) ) * ( occupation(jstate,1) - occupation(istate,1) )
-     enddo
-   enddo
-   !
-   ! factor 2 from resonant + anti resonant
-   WRITE_MASTER(*,*) 'polarizability',2.0_dp*energy_tmp
-
-
-   WRITE_MASTER(*,*) '---------with completeness'
-
-!   energy_tmp=0.0_dp
-   do jstate=1,basis%nbf
-     do istate=1,basis%nbf
-       energy_tmp = energy_tmp - matrix(istate,jstate,1)**2 / ( rtmp             - energy(jstate,1) ) *  occupation(jstate,1)
-     enddo
-   enddo
-   !
-   ! factor 2 from resonant + anti resonant
-   WRITE_MASTER(*,*) 'polarizability without delta',2.0_dp*energy_tmp
-
-!   energy_tmp=0.0_dp
-   do jstate=1,basis%nbf
-     energy_tmp = energy_tmp + occupation(jstate,1) * matrix3(jstate,jstate,1) /  ( rtmp             - energy(jstate,1) )  
-   enddo
-   WRITE_MASTER(*,*) 'polarizability with    delta',2.0_dp*energy_tmp
-
-
- enddo
- WRITE_MASTER(*,*) '========= END   OF   TESTS ==================='
- stop'ENOUGH'
-#endif
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!END OF SECTION TO BE REMOVED
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
  !
  ! CI calculation is done here
@@ -756,161 +633,8 @@ program molgw
  ! final evaluation for G0W0
  if( calc_type%is_gw .AND. ( calc_type%gwmethod == perturbative .OR. calc_type%gwmethod == COHSEX ) ) then
 
+   if( calc_type%is_lr_mbpt ) call testing_tobe_removed()
 
-!=====================================================
-! DEVELOPMENT PART TO BE IGNORED
-!=====================================================
-   if( calc_type%is_lr_mbpt ) then
-
-     write(*,*) '========== FABIEN ============'
-     call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
-     WRITE_MASTER(*,*) 'EXX [Ha]:',en%exx
-     exchange_m_vxc_diag(:,:) = 0.0_dp
-     do ispin=1,nspin
-       do istate=1,basis%nbf
-         do ibf=1,basis%nbf
-           do jbf=1,basis%nbf
-             exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                     + c_matrix(ibf,istate,ispin) * matrix(ibf,jbf,ispin) &
-                      * c_matrix(jbf,istate,ispin)
-           enddo
-         enddo
-         write(*,*) istate,ispin,exchange_m_vxc_diag(istate,ispin)*Ha_eV
-       enddo
-     enddo
-     write(*,*) '========== END FABIEN ========'
-     !
-     ! Hard-coded cutoff radius
-     rcut= 9.0909_dp ! 0.5000_dp
-     write(msg,'(a,f10.4)') 'hard coded cutoff radius  ',rcut
-     call issue_warning(msg)
-     call deallocate_eri()
-     call allocate_eri(basis,rcut,BUFFER1)
-     call calculate_eri(print_volume,basis,rcut,BUFFER1)
-
-     write(*,*) '========== FABIEN ============'
-     call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
-     WRITE_MASTER(*,*) 'EXX [Ha]:',en%exx
-     exchange_m_vxc_diag(:,:) = 0.0_dp
-     do ispin=1,nspin
-       do istate=1,basis%nbf
-         do ibf=1,basis%nbf
-           do jbf=1,basis%nbf
-             exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                     + c_matrix(ibf,istate,ispin) * matrix(ibf,jbf,ispin) &
-                      * c_matrix(jbf,istate,ispin)
-           enddo
-         enddo
-         write(*,*) istate,ispin,exchange_m_vxc_diag(istate,ispin)*Ha_eV
-       enddo
-     enddo
-     write(*,*) '========== END FABIEN ========'
-     write(*,*) '========== FABIEN ============'
-     if( .NOT. ALLOCATED( vxc_matrix ) ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
-     if( ndft_xc == 0 ) call setup_dft_grid(nradial_grid,nangular_grid)
-!     call dft_exc_vxc(nspin,basis,1,(/XC_GGA_X_PBE/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
-#ifdef HAVE_LIBXC
-     call dft_exc_vxc(nspin,basis,1,(/XC_HYB_GGA_XC_HSE06/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
-#endif
-     WRITE_MASTER(*,'(/,a,f16.10)') '    PBEx energy [Ha]: ',energy_tmp
-     exchange_m_vxc_diag(:,:) = 0.0_dp
-     do ispin=1,nspin
-       do istate=1,basis%nbf
-         do ibf=1,basis%nbf
-           do jbf=1,basis%nbf
-             exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                     + c_matrix(ibf,istate,ispin) * ( vxc_matrix(ibf,jbf,ispin) )&
-                      * c_matrix(jbf,istate,ispin)
-           enddo
-         enddo
-         write(*,*) istate,ispin,exchange_m_vxc_diag(istate,ispin)*Ha_eV
-       enddo
-     enddo
-     write(*,*) '========== END FABIEN ========'
-
-     if( .NOT. ALLOCATED( vxc_matrix ) ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
-     call dft_exc_vxc(nspin,basis,1,(/1000/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
-     WRITE_MASTER(*,'(/,a,f16.10)') '    RPA LDA energy [Ha]: ',energy_tmp
-     exchange_m_vxc_diag(:,:) = 0.0_dp
-     do ispin=1,nspin
-       do istate=1,basis%nbf
-         do ibf=1,basis%nbf
-           do jbf=1,basis%nbf
-             exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                     + c_matrix(ibf,istate,ispin) * ( vxc_matrix(ibf,jbf,ispin) )&
-                      * c_matrix(jbf,istate,ispin)
-           enddo
-         enddo
-       enddo
-     enddo
-     WRITE_MASTER(*,*) 'test'
-     WRITE_MASTER(*,*) '<vxc RPA FR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
-     WRITE_MASTER(*,*) 'test'
-
-     vxc_matrix(:,:,:) = 0.0_dp
-     call dft_exc_vxc(nspin,basis,1,(/1005/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
-     WRITE_MASTER(*,'(/,a,f16.10)') ' LR-RPA LDA energy [Ha]: ',energy_tmp
-     exchange_m_vxc_diag(:,:) = 0.0_dp
-     do ispin=1,nspin
-       do istate=1,basis%nbf
-         do ibf=1,basis%nbf
-           do jbf=1,basis%nbf
-             exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                     + c_matrix(ibf,istate,ispin) * ( vxc_matrix(ibf,jbf,ispin) )&
-                      * c_matrix(jbf,istate,ispin)
-           enddo
-         enddo
-       enddo
-     enddo
-     WRITE_MASTER(*,*) 'test'
-     WRITE_MASTER(*,*) '<vxc RPA LR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
-     WRITE_MASTER(*,*) 'test'
-
-     call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)  
-     WRITE_MASTER(*,*) 'LR EXX [Ha]:',en%exx
-     exchange_m_vxc_diag(:,:) = 0.0_dp
-     do ispin=1,nspin
-       do istate=1,basis%nbf
-         do ibf=1,basis%nbf
-           do jbf=1,basis%nbf
-             exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                     + c_matrix(ibf,istate,ispin) * matrix(ibf,jbf,ispin)&
-                      * c_matrix(jbf,istate,ispin)
-           enddo
-         enddo
-       enddo
-     enddo
-     WRITE_MASTER(*,*) 'test'
-     WRITE_MASTER(*,*) '<sigx LR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
-     WRITE_MASTER(*,*) 'test'
-
-     vxc_matrix(:,:,:) = 0.0_dp
-     call dft_exc_vxc(nspin,basis,1,(/2001/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
-     WRITE_MASTER(*,'(/,a,f16.10)') ' SR-EXX GGA energy [Ha]: ',energy_tmp
-     exchange_m_vxc_diag(:,:) = 0.0_dp
-     do ispin=1,nspin
-       do istate=1,basis%nbf
-         do ibf=1,basis%nbf
-           do jbf=1,basis%nbf
-             exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                     + c_matrix(ibf,istate,ispin) * ( vxc_matrix(ibf,jbf,ispin))&
-                      * c_matrix(jbf,istate,ispin)
-           enddo
-         enddo
-       enddo
-     enddo
-     WRITE_MASTER(*,*) 'test'
-     WRITE_MASTER(*,*) '<vxc EXX SR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
-     WRITE_MASTER(*,*) 'test'
-
-
-
-     exchange_m_vxc_diag(:,:) = 0.0_dp
-
-   endif
-!==========================================================
-! END of development part
-!==========================================================
 
    call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
    call start_clock(timing_pola)
@@ -940,7 +664,6 @@ program molgw
    call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
    call destroy_spectral_function(wpol)
 
-   if(allocated(sinv_v_sinv)) deallocate(sinv_v_sinv)
  endif ! G0W0
 
  !
@@ -997,6 +720,162 @@ program molgw
  WRITE_MASTER(*,'(/,a,/)') ' This is the end'
 
  call finish_mpi()
+
+contains
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!BEGIN OF SECTION TO BE REMOVED
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+subroutine testing_tobe_removed()
+   write(*,*) '========== FABIEN ============'
+   call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
+   WRITE_MASTER(*,*) 'EXX [Ha]:',en%exx
+   exchange_m_vxc_diag(:,:) = 0.0_dp
+   do ispin=1,nspin
+     do istate=1,basis%nbf
+       do ibf=1,basis%nbf
+         do jbf=1,basis%nbf
+           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
+                   + c_matrix(ibf,istate,ispin) * matrix(ibf,jbf,ispin) &
+                    * c_matrix(jbf,istate,ispin)
+         enddo
+       enddo
+       write(*,*) istate,ispin,exchange_m_vxc_diag(istate,ispin)*Ha_eV
+     enddo
+   enddo
+   write(*,*) '========== END FABIEN ========'
+   !
+   ! Hard-coded cutoff radius
+   rcut= 9.0909_dp ! 0.5000_dp
+   write(msg,'(a,f10.4)') 'hard coded cutoff radius  ',rcut
+   call issue_warning(msg)
+   call deallocate_eri()
+   call allocate_eri(basis,rcut,BUFFER1)
+   call calculate_eri(print_volume,basis,rcut,BUFFER1)
+
+   write(*,*) '========== FABIEN ============'
+   call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
+   WRITE_MASTER(*,*) 'EXX [Ha]:',en%exx
+   exchange_m_vxc_diag(:,:) = 0.0_dp
+   do ispin=1,nspin
+     do istate=1,basis%nbf
+       do ibf=1,basis%nbf
+         do jbf=1,basis%nbf
+           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
+                   + c_matrix(ibf,istate,ispin) * matrix(ibf,jbf,ispin) &
+                    * c_matrix(jbf,istate,ispin)
+         enddo
+       enddo
+       write(*,*) istate,ispin,exchange_m_vxc_diag(istate,ispin)*Ha_eV
+     enddo
+   enddo
+   write(*,*) '========== END FABIEN ========'
+   write(*,*) '========== FABIEN ============'
+   if( .NOT. ALLOCATED( vxc_matrix ) ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
+   if( ndft_xc == 0 ) call setup_dft_grid(nradial_grid,nangular_grid)
+    call dft_exc_vxc(nspin,basis,1,(/XC_GGA_X_PBE/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
+#ifdef HAVE_LIBXC
+   call dft_exc_vxc(nspin,basis,1,(/XC_HYB_GGA_XC_HSE06/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
+#endif
+   WRITE_MASTER(*,'(/,a,f16.10)') '    PBEx energy [Ha]: ',energy_tmp
+   exchange_m_vxc_diag(:,:) = 0.0_dp
+   do ispin=1,nspin
+     do istate=1,basis%nbf
+       do ibf=1,basis%nbf
+         do jbf=1,basis%nbf
+           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
+                   + c_matrix(ibf,istate,ispin) * ( vxc_matrix(ibf,jbf,ispin) )&
+                    * c_matrix(jbf,istate,ispin)
+         enddo
+       enddo
+       write(*,*) istate,ispin,exchange_m_vxc_diag(istate,ispin)*Ha_eV
+     enddo
+   enddo
+   write(*,*) '========== END FABIEN ========'
+
+   if( .NOT. ALLOCATED( vxc_matrix ) ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
+   call dft_exc_vxc(nspin,basis,1,(/1000/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
+   WRITE_MASTER(*,'(/,a,f16.10)') '    RPA LDA energy [Ha]: ',energy_tmp
+   exchange_m_vxc_diag(:,:) = 0.0_dp
+   do ispin=1,nspin
+     do istate=1,basis%nbf
+       do ibf=1,basis%nbf
+         do jbf=1,basis%nbf
+           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
+                   + c_matrix(ibf,istate,ispin) * ( vxc_matrix(ibf,jbf,ispin) )&
+                    * c_matrix(jbf,istate,ispin)
+         enddo
+       enddo
+     enddo
+   enddo
+   WRITE_MASTER(*,*) 'test'
+   WRITE_MASTER(*,*) '<vxc RPA FR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
+   WRITE_MASTER(*,*) 'test'
+
+   vxc_matrix(:,:,:) = 0.0_dp
+   call dft_exc_vxc(nspin,basis,1,(/1005/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
+   WRITE_MASTER(*,'(/,a,f16.10)') ' LR-RPA LDA energy [Ha]: ',energy_tmp
+   exchange_m_vxc_diag(:,:) = 0.0_dp
+   do ispin=1,nspin
+     do istate=1,basis%nbf
+       do ibf=1,basis%nbf
+         do jbf=1,basis%nbf
+           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
+                   + c_matrix(ibf,istate,ispin) * ( vxc_matrix(ibf,jbf,ispin) )&
+                    * c_matrix(jbf,istate,ispin)
+         enddo
+       enddo
+     enddo
+   enddo
+   WRITE_MASTER(*,*) 'test'
+   WRITE_MASTER(*,*) '<vxc RPA LR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
+   WRITE_MASTER(*,*) 'test'
+
+   call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)  
+   WRITE_MASTER(*,*) 'LR EXX [Ha]:',en%exx
+   exchange_m_vxc_diag(:,:) = 0.0_dp
+   do ispin=1,nspin
+     do istate=1,basis%nbf
+       do ibf=1,basis%nbf
+         do jbf=1,basis%nbf
+           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
+                   + c_matrix(ibf,istate,ispin) * matrix(ibf,jbf,ispin)&
+                    * c_matrix(jbf,istate,ispin)
+         enddo
+       enddo
+     enddo
+   enddo
+   WRITE_MASTER(*,*) 'test'
+   WRITE_MASTER(*,*) '<sigx LR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
+   WRITE_MASTER(*,*) 'test'
+
+   vxc_matrix(:,:,:) = 0.0_dp
+   call dft_exc_vxc(nspin,basis,1,(/2001/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
+   WRITE_MASTER(*,'(/,a,f16.10)') ' SR-EXX GGA energy [Ha]: ',energy_tmp
+   exchange_m_vxc_diag(:,:) = 0.0_dp
+   do ispin=1,nspin
+     do istate=1,basis%nbf
+       do ibf=1,basis%nbf
+         do jbf=1,basis%nbf
+           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
+                   + c_matrix(ibf,istate,ispin) * ( vxc_matrix(ibf,jbf,ispin))&
+                    * c_matrix(jbf,istate,ispin)
+         enddo
+       enddo
+     enddo
+   enddo
+   WRITE_MASTER(*,*) 'test'
+   WRITE_MASTER(*,*) '<vxc EXX SR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
+   WRITE_MASTER(*,*) 'test'
+
+
+
+   exchange_m_vxc_diag(:,:) = 0.0_dp
+
+end subroutine testing_tobe_removed
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!END OF SECTION TO BE REMOVED
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 end program molgw
 !=========================================================================
