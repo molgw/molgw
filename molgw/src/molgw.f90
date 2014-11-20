@@ -533,7 +533,7 @@ program molgw
        stop'BSE requires a previous GW calculation stored in a spectral_file'
      endif
    endif
-   call polarizability_td(calc_type,nspin,basis,prod_basis,occupation,energy,c_matrix,wpol)
+   call polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
    call destroy_spectral_function(wpol)
  endif
   
