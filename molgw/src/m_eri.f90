@@ -232,9 +232,9 @@ function eri_lr(ibf,jbf,kbf,lbf)
 end function eri_lr
 
 !=========================================================================
-subroutine calculate_eri(print_volume,basis,rcut,which_buffer)
+subroutine calculate_eri(print_eri,basis,rcut,which_buffer)
  implicit none
- integer,intent(in)           :: print_volume
+ logical,intent(in)           :: print_eri
  type(basis_set),intent(in)   :: basis
  real(dp),intent(in)          :: rcut
  integer,intent(in)           :: which_buffer
@@ -244,7 +244,7 @@ subroutine calculate_eri(print_volume,basis,rcut,which_buffer)
  if( .NOT. read_eri(rcut) ) call do_calculate_eri_new(basis,rcut,which_buffer)
 
 
- if(MODULO(print_volume/100,2)>0) then
+ if( print_eri ) then
    call dump_out_eri(rcut)
  endif
 

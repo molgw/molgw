@@ -59,9 +59,9 @@ module m_basis_set
 contains
 
 !=========================================================================
- subroutine init_basis_set(print_volume,basis_name,gaussian_type,basis)
+ subroutine init_basis_set(print_basis,basis_name,gaussian_type,basis)
  implicit none
- integer,intent(in)            :: print_volume
+ logical,intent(in)            :: print_basis
  integer,intent(in)            :: gaussian_type
  character(len=100),intent(in) :: basis_name
  type(basis_set),intent(out)   :: basis
@@ -309,7 +309,7 @@ contains
 
  !
  ! finally output the basis set upon request
- if(MODULO(print_volume/10,2)>0) then
+ if( print_basis ) then
    do ibf=1,basis%nbf
      WRITE_MASTER(*,*) ' Cartesian function number',ibf
      call print_basis_function(basis%bf(ibf))

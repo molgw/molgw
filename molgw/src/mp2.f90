@@ -310,7 +310,7 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
 end subroutine mp2_energy_fast
 
 !==================================================================
-subroutine full_ci_2electrons_spin(print_volume,spinstate,basis,h_1e,c_matrix,nuc_nuc)
+subroutine full_ci_2electrons_spin(print_wfn,spinstate,basis,h_1e,c_matrix,nuc_nuc)
  use m_definitions
  use m_mpi
  use m_tools
@@ -323,7 +323,7 @@ subroutine full_ci_2electrons_spin(print_volume,spinstate,basis,h_1e,c_matrix,nu
  integer,parameter :: cip=dp
  integer,parameter :: nx=4000
 !
- integer,intent(in)         :: print_volume
+ logical,intent(in)         :: print_wfn
  integer,intent(in)         :: spinstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,basis%nbf)
@@ -567,7 +567,7 @@ subroutine full_ci_2electrons_spin(print_volume,spinstate,basis,h_1e,c_matrix,nu
  !
  ! Plot the ground state density if requested
  !
- if(print_volume>5) then
+ if( print_wfn ) then
    WRITE_MASTER(*,*)
    WRITE_MASTER(*,*) 'calculate the density'
   

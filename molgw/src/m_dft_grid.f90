@@ -4,12 +4,16 @@
 module m_dft_grid
  use m_definitions
  use m_mpi
+ use m_inputparam,only: quadrature_name
  
  real(dp),parameter :: shift=1.e-6_dp ! bohr  some shift used
                                       ! to evaluate numerically the divergence of the gradient
  !
  ! Grid definition
- integer              :: ngrid
+ integer,protected    :: ngrid
+ integer,protected    :: nradial
+ integer,protected    :: nangular
+
  real(dp),allocatable :: rr_grid(:,:)
  real(dp),allocatable :: w_grid(:)
 
@@ -32,14 +36,12 @@ contains
 
 
 !=========================================================================
-subroutine setup_dft_grid(nx,nangular)
+subroutine setup_dft_grid()
  use m_atoms
  use m_tools,only: coeffs_gausslegint
  implicit none
 
- integer,intent(in)   :: nx,nangular
-!=====
- integer              :: ix,iatom,iangular,ir,igrid
+ integer              :: iradial,iatom,iangular,ir,igrid
  integer              :: n1
  real(dp)             :: weight
  real(dp),allocatable :: x1(:)
@@ -52,21 +54,42 @@ subroutine setup_dft_grid(nx,nangular)
  integer              :: jatom,katom
 !=====
 
- ngrid = natom * nx * nangular
+ select case(TRIM(quadrature_name))
+ case('very low')
+   nradial  =  6
+   nangular =  6
+ case('low')
+   nradial  = 10
+   nangular = 14
+ case('medium')
+   nradial  = 20
+   nangular = 26
+ case('high')
+   nradial  = 40
+   nangular = 50
+ case('very high')
+   nradial  = 80
+   nangular = 86
+ case default
+   stop'integration quality not recognized'
+ end select
+
+ ! Total number of grid points
+ ngrid = natom * nradial * nangular
 
  call init_grid_distribution(ngrid)
 
  WRITE_MASTER(*,'(/,a)')       ' Setup the DFT quadrature'
- WRITE_MASTER(*,'(a,i4,x,i4)') ' discretization grid per atom [radial points , angular points] ',nx,nangular
+ WRITE_MASTER(*,'(a,i4,x,i4)') ' discretization grid per atom [radial points , angular points] ',nradial,nangular
  WRITE_MASTER(*,'(a,i8)')      ' total number of real-space points for this processor',ngrid
 
- allocate(xa(nx),wxa(nx))
+ allocate(xa(nradial),wxa(nradial))
  allocate(x1(nangular),y1(nangular),z1(nangular),w1(nangular))
 
  !
  ! spherical integration
  ! radial part with Gauss-Legendre
- call coeffs_gausslegint(-1.0_dp,1.0_dp,xa,wxa,nx)
+ call coeffs_gausslegint(-1.0_dp,1.0_dp,xa,wxa,nradial)
  !
  ! Transformation from [-1;1] to [0;+\infty[
  ! taken from M. Krack JCP 1998
@@ -101,17 +124,17 @@ subroutine setup_dft_grid(nx,nangular)
  igrid = 0
  ir    = 0
  do iatom=1,natom
-   do ix=1,nx
+   do iradial=1,nradial
      do iangular=1,nangular
        igrid = igrid + 1
        if( .NOT. is_my_grid_task(igrid) ) cycle
        ir = ir + 1
 
-       rr_grid(1,ir) = xa(ix) * x1(iangular) + x(1,iatom)
-       rr_grid(2,ir) = xa(ix) * y1(iangular) + x(2,iatom)
-       rr_grid(3,ir) = xa(ix) * z1(iangular) + x(3,iatom)
+       rr_grid(1,ir) = xa(iradial) * x1(iangular) + x(1,iatom)
+       rr_grid(2,ir) = xa(iradial) * y1(iangular) + x(2,iatom)
+       rr_grid(3,ir) = xa(iradial) * z1(iangular) + x(3,iatom)
 
-       weight   = wxa(ix) * w1(iangular) * xa(ix)**2 * 4.0_dp * pi
+       weight   = wxa(iradial) * w1(iangular) * xa(iradial)**2 * 4.0_dp * pi
 
        !
        ! Partitionning scheme of Axel Becke, J. Chem. Phys. 88, 2547 (1988).

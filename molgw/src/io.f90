@@ -143,11 +143,11 @@ subroutine dump_out_eigenenergy(title,n,nspin,occupation,energy)
 end subroutine dump_out_eigenenergy
 
 !=========================================================================
-subroutine dump_out_matrix(print_volume,title,n,nspin,matrix)
+subroutine dump_out_matrix(print_matrix,title,n,nspin,matrix)
  use m_definitions
  use m_mpi
  implicit none
- integer,intent(in)            :: print_volume       
+ logical,intent(in)            :: print_matrix       
  character(len=100),intent(in) :: title
  integer,intent(in)            :: n,nspin
  real(dp),intent(in)           :: matrix(n,n,nspin)
@@ -157,7 +157,7 @@ subroutine dump_out_matrix(print_volume,title,n,nspin,matrix)
  integer :: i,ispin
 !=====
 
- if(MODULO(print_volume,2)<1) return
+ if( .NOT. print_matrix ) return
 
  WRITE_MASTER(*,'(/,x,a)') TRIM(title)
 
@@ -214,183 +214,6 @@ subroutine output_homolumo(nbf,nspin,occupation,energy,homo,lumo)
 end subroutine output_homolumo
 
 
-!=========================================================================
-subroutine read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
-      basis_name,gaussian_type,electrons,magnetization,nradial_grid,nangular_grid)
- use m_definitions
- use m_mpi
- use m_calculation_type
- use m_tools
- use m_atoms
- use m_scf
- use m_basis_set
- implicit none
-
- type(calculation_type),intent(out) :: calc_type
- integer,intent(out)                :: nspin,nscf
- real(dp),intent(out)               :: alpha_mixing
- integer,intent(out)                :: print_volume  
- character(len=100),intent(out)     :: basis_name
- integer,intent(out)                :: gaussian_type
- integer,intent(out)                :: nradial_grid,nangular_grid
- real(dp),intent(out)               :: electrons 
- real(dp),intent(out)               :: magnetization
-!=====                              
- character(len=100)                 :: read_char
- character(len=100)                 :: read_line
- character(len=100)                 :: line_wocomment
- character(len=100)                 :: mixing_name
- character(len=100)                 :: dft_accuracy
- character(len=100)                 :: gaussian_name
- character(len=100)                 :: quadrature_name
- integer                            :: ipos,jpos
- integer                            :: istat,iatom,jatom
- real(dp)                           :: charge,length_factor
-!=====
-
- read(*,*) read_char
- call init_calculation_type(calc_type,read_char)
-
- WRITE_MASTER(*,'(/,a,/)')    ' Summary of the input parameters '
- WRITE_MASTER(*,'(a20,2x,a)') ' calculation type: ',TRIM(read_char)
-
- read(*,*) nspin,charge,magnetization
- if(nspin/=1 .AND. nspin/=2) stop'nspin in incorrect'
- if(magnetization<-1.d-5)    stop'magnetization is negative'
- if(magnetization>1.d-5 .AND. nspin==1) stop'magnetization is non-zero and nspin is 1'
-
- read(*,fmt='(a100)') read_line 
- ipos=index(read_line,'#',back=.false.)
- if(ipos==0) ipos=101
- line_wocomment(:ipos-1)=read_line(:ipos-1)
- line_wocomment=ADJUSTL(line_wocomment)
- jpos=index(line_wocomment,' ',back=.false.)
- basis_name = line_wocomment(:jpos-1)
- line_wocomment(1:ipos-jpos-1)=line_wocomment(jpos+1:ipos-1)
- select case(TRIM(ADJUSTL(line_wocomment(1:ipos-jpos-1))))
- case('PURE','pure')
-   gaussian_type=PURE
-   gaussian_name='PURE'
- case('CART','cart')
-   gaussian_type=CARTESIAN
-   gaussian_name='CARTESIAN'
- case default
-   stop'Error in input line 3: second keyword should either PURE or CART'
- end select
-
- read(*,*) nscf,alpha_mixing,mixing_name,dft_accuracy
- if(nscf<1) stop'nscf too small'
- if(alpha_mixing<0.0 .OR. alpha_mixing > 1.0 ) stop'alpha_mixing should be inside [0,1]'
- select case(TRIM(mixing_name))
- case('SIMPLE')
-   mixing_scheme = simple_mixing
- case('PULAY')
-   mixing_scheme = pulay_mixing
- case default
-   stop'mixing scheme not recognized'
- end select
-
- select case(TRIM(dft_accuracy))
- case('VERYLOW','verylow','VL','vl')
-   nradial_grid  =  6
-   nangular_grid =  6 
-   quadrature_name = 'very low'
- case('LOW','low','L','l')
-   nradial_grid  = 10
-   nangular_grid = 14 
-   quadrature_name = 'low'
- case('MEDIUM','medium','M','m')
-   nradial_grid  = 20
-   nangular_grid = 26 
-   quadrature_name = 'medium'
- case('HIGH','high','H','h')
-   nradial_grid  = 40
-   nangular_grid = 50 
-   quadrature_name = 'high'
- case('VERYHIGH','veryhigh','VH','vh')
-   nradial_grid  = 80
-   nangular_grid = 86 
-   quadrature_name = 'very high'
- case default
-   stop'integration quality not recognized'
- end select
-
- read(*,*) print_volume
-
- read(*,*) natom,read_char
- if(natom<1) stop'natom<1'
-
- !
- ! lengths are stored internally in bohr
- !
- select case(TRIM(read_char))
- case('A','a','Angstrom','ANGSTROM','angstrom')
-   length_factor=1.0_dp/bohr_A
- case('bohr','BOHR','Bohr','AU','au','a.u.','a.u','A.U','A.U.')
-   length_factor=1.0_dp
- case default
-   stop'units for lengths in input file not understood'
- end select
-
- allocate(zatom(natom),x(3,natom),basis_element(natom))
- do iatom=1,natom
-   read(*,*) zatom(iatom),x(:,iatom)
- enddo
- x(:,:) = x(:,:) * length_factor
-
- !
- ! check for atoms too close
- do iatom=1,natom
-   do jatom=iatom+1,natom
-     if( SQRT( SUM( (x(:,iatom)-x(:,jatom))**2 ) ) < 0.2 ) then
-       WRITE_MASTER(*,*) 'atoms',iatom,jatom
-       WRITE_MASTER(*,*) 'are closer than 0.2 bohr'
-       stop'stop here'
-     endif
-   enddo
- enddo
-
-
- basis_element(:)=NINT(zatom(:))
-
- electrons = SUM(zatom(:)) - charge
-
-
- !
- ! summarize input parameters
- WRITE_MASTER(*,'(a25,i3)')   ' Natom: ',natom
- WRITE_MASTER(*,'(a25,f8.4)') ' Electrons: ',electrons
- WRITE_MASTER(*,'(a25,f8.4)') ' Charge: ',charge
- WRITE_MASTER(*,'(a25,f8.4)') ' Magnetization: ',magnetization
- WRITE_MASTER(*,'(a25,2x,a)') ' Basis set: ',basis_name
- WRITE_MASTER(*,'(a25,2x,a)') ' Gaussian type: ',gaussian_name
- WRITE_MASTER(*,'(a25,i3)')   ' Spin polarization: ',nspin
- WRITE_MASTER(*,'(a25,i3)')   ' SCF steps: ',nscf
- WRITE_MASTER(*,'(a25,f8.4)') ' Mixing: ',alpha_mixing
- WRITE_MASTER(*,'(a25,2x,a)') ' Quadrature accuracy: ',quadrature_name
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,'(a19)')      ' Print volume:'
- WRITE_MASTER(*,'(a30,l3)')   ' - matrices details:   ',MODULO(print_volume       ,2)==1
- WRITE_MASTER(*,'(a30,l3)')   ' - basis set details:  ',MODULO(print_volume/10    ,2)==1
- WRITE_MASTER(*,'(a30,l3)')   ' - ERI file:           ',MODULO(print_volume/100   ,2)==1
- WRITE_MASTER(*,'(a30,l3)')   ' - density matrix file:',MODULO(print_volume/1000  ,2)==1
- WRITE_MASTER(*,'(a30,l3)')   ' - plot some wfns:     ',MODULO(print_volume/10000 ,2)==1
- WRITE_MASTER(*,'(a30,l3)')   ' - dump spectral functs',MODULO(print_volume/100000,2)==1
-
-
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,*) '================================'
- WRITE_MASTER(*,*) '      atom list'
- WRITE_MASTER(*,*) '                       bohr                                        angstrom'
- do iatom=1,natom
-   WRITE_MASTER(*,'(2x,a2,3(x,f12.6),6x,3(x,f12.6))') element_name(zatom(iatom)),x(:,iatom),x(:,iatom)*bohr_A
- enddo
-
-
- WRITE_MASTER(*,*) '================================'
- WRITE_MASTER(*,*)
-
-end subroutine read_inputparameter_molecule
 
 !=========================================================================
 subroutine plot_wfn(nspin,basis,c_matrix)

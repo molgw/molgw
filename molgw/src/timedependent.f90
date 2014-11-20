@@ -4,7 +4,7 @@
 
 
 !=========================================================================
-subroutine polarizability_td(calc_type,nspin,basis,prod_basis,occupation,energy,c_matrix,wpol)
+subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  use m_definitions
  use m_mpi
  use m_calculation_type,only: calculation_type,alpha_hybrid,alpha_hybrid_lr,dft_xc_type
@@ -15,6 +15,7 @@ subroutine polarizability_td(calc_type,nspin,basis,prod_basis,occupation,energy,
  use m_eri
  use m_dft_grid
  use m_spectral_function
+ use m_inputparam,only: calc_type,nspin
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
  use xc_f90_lib_m
@@ -23,8 +24,6 @@ subroutine polarizability_td(calc_type,nspin,basis,prod_basis,occupation,energy,
  use iso_c_binding,only: C_INT
  implicit none
 
- type(calculation_type),intent(in)     :: calc_type
- integer,intent(in)                    :: nspin
  type(basis_set)                       :: basis,prod_basis
  real(dp),intent(in)                   :: occupation(basis%nbf,nspin)
  real(dp),intent(in)                   :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)

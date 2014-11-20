@@ -1,10 +1,10 @@
 #include "macros.h"
 !=========================================================================
-subroutine setup_overlap(print_volume,basis,s_matrix)
+subroutine setup_overlap(print_matrix,basis,s_matrix)
  use m_definitions
  use m_basis_set
  implicit none
- integer,intent(in)         :: print_volume
+ logical,intent(in)         :: print_matrix
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: s_matrix(basis%nbf,basis%nbf)
 !====
@@ -56,17 +56,17 @@ subroutine setup_overlap(print_volume,basis,s_matrix)
  enddo
 
  title='=== Overlap matrix S ==='
- call dump_out_matrix(print_volume,title,basis%nbf,1,s_matrix)
+ call dump_out_matrix(print_matrix,title,basis%nbf,1,s_matrix)
 
 
 end subroutine setup_overlap
 
 !=========================================================================
-subroutine setup_kinetic(print_volume,basis,hamiltonian_kinetic)
+subroutine setup_kinetic(print_matrix,basis,hamiltonian_kinetic)
  use m_definitions
  use m_basis_set
  implicit none
- integer,intent(in)         :: print_volume
+ logical,intent(in)         :: print_matrix
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: hamiltonian_kinetic(basis%nbf,basis%nbf)
 !====
@@ -118,18 +118,18 @@ subroutine setup_kinetic(print_volume,basis,hamiltonian_kinetic)
  enddo
 
  title='===  Kinetic energy contribution ==='
- call dump_out_matrix(print_volume,title,basis%nbf,1,hamiltonian_kinetic)
+ call dump_out_matrix(print_matrix,title,basis%nbf,1,hamiltonian_kinetic)
 
 
 end subroutine setup_kinetic
 
 !=========================================================================
-subroutine setup_nucleus(print_volume,basis,hamiltonian_nucleus)
+subroutine setup_nucleus(print_matrix,basis,hamiltonian_nucleus)
  use m_definitions
  use m_basis_set
  use m_atoms
  implicit none
- integer,intent(in)         :: print_volume
+ logical,intent(in)         :: print_matrix
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: hamiltonian_nucleus(basis%nbf,basis%nbf)
 !====
@@ -187,19 +187,19 @@ subroutine setup_nucleus(print_volume,basis,hamiltonian_nucleus)
 
 
  title='===  Nucleus potential contribution ==='
- call dump_out_matrix(print_volume,title,basis%nbf,1,hamiltonian_nucleus)
+ call dump_out_matrix(print_matrix,title,basis%nbf,1,hamiltonian_nucleus)
 
 
 end subroutine setup_nucleus
 
 !=========================================================================
-subroutine setup_hartree(print_volume,nbf,nspin,p_matrix,pot_hartree,ehartree)
+subroutine setup_hartree(print_matrix,nbf,nspin,p_matrix,pot_hartree,ehartree)
  use m_definitions
  use m_mpi
  use m_timing
  use m_eri
  implicit none
- integer,intent(in)   :: print_volume
+ logical,intent(in)   :: print_matrix
  integer,intent(in)   :: nbf,nspin
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: pot_hartree(nbf,nbf,nspin)
@@ -245,7 +245,7 @@ subroutine setup_hartree(print_volume,nbf,nspin,p_matrix,pot_hartree,ehartree)
 
 
  title='=== Hartree contribution ==='
- call dump_out_matrix(print_volume,title,nbf,nspin,pot_hartree)
+ call dump_out_matrix(print_matrix,title,nbf,nspin,pot_hartree)
 
  ehartree = 0.5_dp*SUM(pot_hartree(:,:,:)*p_matrix(:,:,:))
 
@@ -254,13 +254,13 @@ subroutine setup_hartree(print_volume,nbf,nspin,p_matrix,pot_hartree,ehartree)
 end subroutine setup_hartree
 
 !=========================================================================
-subroutine setup_exchange(print_volume,nbf,nspin,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange(print_matrix,nbf,nspin,p_matrix,pot_exchange,eexchange)
  use m_definitions
  use m_mpi
  use m_timing
  use m_eri
  implicit none
- integer,intent(in)   :: print_volume
+ logical,intent(in)   :: print_matrix
  integer,intent(in)   :: nbf,nspin
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
@@ -325,7 +325,7 @@ subroutine setup_exchange(print_volume,nbf,nspin,p_matrix,pot_exchange,eexchange
 #endif
 
  title='=== Exchange contribution ==='
- call dump_out_matrix(print_volume,title,nbf,nspin,pot_exchange)
+ call dump_out_matrix(print_matrix,title,nbf,nspin,pot_exchange)
 
  eexchange = 0.5_dp*SUM(pot_exchange(:,:,:)*p_matrix(:,:,:))
 
@@ -334,13 +334,13 @@ subroutine setup_exchange(print_volume,nbf,nspin,p_matrix,pot_exchange,eexchange
 end subroutine setup_exchange
 
 !=========================================================================
-subroutine setup_exchange_longrange(print_volume,nbf,nspin,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange_longrange(print_matrix,nbf,nspin,p_matrix,pot_exchange,eexchange)
  use m_definitions
  use m_mpi
  use m_timing
  use m_eri
  implicit none
- integer,intent(in)   :: print_volume
+ logical,intent(in)   :: print_matrix
  integer,intent(in)   :: nbf,nspin
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
@@ -378,7 +378,7 @@ subroutine setup_exchange_longrange(print_volume,nbf,nspin,p_matrix,pot_exchange
  enddo
 
  title='=== Exchange contribution ==='
- call dump_out_matrix(print_volume,title,nbf,nspin,pot_exchange)
+ call dump_out_matrix(print_matrix,title,nbf,nspin,pot_exchange)
 
  eexchange = 0.5_dp*SUM(pot_exchange(:,:,:)*p_matrix(:,:,:))
 
@@ -387,13 +387,13 @@ subroutine setup_exchange_longrange(print_volume,nbf,nspin,p_matrix,pot_exchange
 end subroutine setup_exchange_longrange
 
 !=========================================================================
-subroutine read_potential(print_volume,nbf,nspin,p_matrix,pot_read,eread)
+subroutine read_potential(print_matrix,nbf,nspin,p_matrix,pot_read,eread)
  use m_definitions
  use m_mpi
  use m_timing
  use m_eri
  implicit none
- integer,intent(in)   :: print_volume
+ logical,intent(in)   :: print_matrix
  integer,intent(in)   :: nbf,nspin
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: pot_read(nbf,nbf,nspin)
@@ -424,7 +424,7 @@ subroutine read_potential(print_volume,nbf,nspin,p_matrix,pot_read,eread)
 
 
  title='=== Read potential contribution ==='
- call dump_out_matrix(print_volume,title,nbf,nspin,pot_read)
+ call dump_out_matrix(print_matrix,title,nbf,nspin,pot_read)
 
  eread = 0.5_dp*SUM(pot_read(:,:,:)*p_matrix(:,:,:))
 
@@ -673,12 +673,12 @@ subroutine guess_starting_c_matrix_new(basis,nspin,c_matrix)
 end subroutine guess_starting_c_matrix_new
 
 !=========================================================================
-subroutine setup_initial_c_matrix(print_volume,nbf,nspin,hamiltonian_nucleus,s_matrix,occupation,c_matrix)
+subroutine setup_initial_c_matrix(print_matrix,nbf,nspin,hamiltonian_nucleus,s_matrix,occupation,c_matrix)
  use m_definitions
  use m_mpi
  use m_tools
  implicit none
- integer,intent(in)         :: print_volume,nspin,nbf
+ integer,intent(in)         :: print_matrix,nspin,nbf
  real(dp),intent(in)        :: hamiltonian_nucleus(nbf,nbf),s_matrix(nbf,nbf)
  real(dp),intent(in)        :: occupation(nbf,nspin)
  real(dp),intent(out)       :: c_matrix(nbf,nbf,nspin)
@@ -698,7 +698,7 @@ subroutine setup_initial_c_matrix(print_volume,nbf,nspin,hamiltonian_nucleus,s_m
  hamiltonian(:,:) = hamiltonian_nucleus(:,:)
 
  title='=== bare hamiltonian ==='
- call dump_out_matrix(print_volume,title,nbf,1,hamiltonian)
+ call dump_out_matrix(print_matrix,title,nbf,1,hamiltonian)
 
  WRITE_MASTER(*,*) 'Diagonalization of an initial hamiltonian'
  call diagonalize_generalized_sym(nbf,hamiltonian,s_matrix,energy,matrix)
@@ -742,7 +742,7 @@ subroutine setup_initial_c_matrix(print_volume,nbf,nspin,hamiltonian_nucleus,s_m
 
  matrix(:,:) = transpose( matrix(:,:) )
  title='=== C matrix ==='
- call dump_out_matrix(print_volume,title,nbf,1,matrix)
+ call dump_out_matrix(print_matrix,title,nbf,1,matrix)
 
 
 end subroutine setup_initial_c_matrix

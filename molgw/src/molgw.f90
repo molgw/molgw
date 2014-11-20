@@ -6,6 +6,7 @@ program molgw
  use m_timing
  use m_warning
  use m_calculation_type
+ use m_inputparam
  use m_tools
  use m_scf
  use m_atoms
@@ -19,18 +20,7 @@ program molgw
 #endif
  implicit none
 
- !
- ! Input parameters will be set in read_inputparameters
- integer                 :: nspin,nscf
- real(dp)                :: alpha_mixing
- integer                 :: print_volume
- character(len=100)      :: basis_name
- integer                 :: gaussian_type
- integer                 :: nangular_grid,nradial_grid
- real(dp)                :: electrons
- real(dp)                :: magnetization
 !=====
- type(calculation_type)  :: calc_type
  type(basis_set)         :: basis
  type(basis_set)         :: prod_basis
  type(spectral_function) :: wpol
@@ -98,9 +88,8 @@ program molgw
  call header()
 
  !
- ! Reading input file
- call read_inputparameter_molecule(calc_type,nspin,nscf,alpha_mixing,print_volume,&
-                                   basis_name,gaussian_type,electrons,magnetization,nradial_grid,nangular_grid)
+ ! Reading input file: the input parameters are stored in the module m_inputparam
+ call read_inputparameter_molecule()
 
  !
  ! Nucleus-nucleus repulsion contribution to the energy
@@ -109,7 +98,7 @@ program molgw
  !
  ! Build up the basis set
  !
- call init_basis_set(print_volume,basis_name,gaussian_type,basis)
+ call init_basis_set(print_basis,basis_name,gaussian_type,basis)
  call setup_cart_to_pure_transforms(basis)
 
  !
@@ -133,7 +122,7 @@ program molgw
  allocate(self_energy_old(basis%nbf,basis%nbf,nspin))
  allocate(ehomo(nspin))
  allocate(elumo(nspin))
- if( ndft_xc /= 0 ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
+ if( calc_type%is_dft ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
 
  !
  ! Some required initializations
@@ -143,7 +132,7 @@ program molgw
  !
  ! Build up the overlap matrix S
  ! S only depends onto the basis set
- call setup_overlap(print_volume,basis,s_matrix)
+ call setup_overlap(print_matrix,basis,s_matrix)
 
  !
  ! Set up the electron repulsion integrals
@@ -151,7 +140,7 @@ program molgw
  ! ERI are stored "privately" in the module m_eri
  call start_clock(timing_integrals)
  call allocate_eri(basis,0.0_dp,BUFFER1)
- call calculate_eri(print_volume,basis,0.0_dp,BUFFER1)
+ call calculate_eri(print_eri,basis,0.0_dp,BUFFER1)
 
  call start_clock(timing_tmp9)
  call refine_negligible_basispair()
@@ -161,7 +150,7 @@ program molgw
  ! for HSE functionals, calculate the long-range ERI
  if(calc_type%is_screened_hybrid) then
    call allocate_eri(basis,rcut,BUFFER2)
-   call calculate_eri(print_volume,basis,rcut,BUFFER2)
+   call calculate_eri(print_eri,basis,rcut,BUFFER2)
  endif
  call stop_clock(timing_integrals)
 ! call negligible_eri(1.0e-10_dp)
@@ -199,7 +188,7 @@ program molgw
    deallocate(eri2)
 
    title='=== Coulomb matrix in product basis ==='
-   call dump_out_matrix(print_volume,title,prod_basis%nbf_filtered,1,v_filtered_basis)
+   call dump_out_matrix(print_matrix,title,prod_basis%nbf_filtered,1,v_filtered_basis)
 
    allocate(matrix2(prod_basis%nbf,prod_basis%nbf))
    do klbf=1,prod_basis%nbf
@@ -214,7 +203,7 @@ program molgw
 
    ! Remember that the product basis is unnormalized !
    title='=== product overlap matrix S ==='
-   call dump_out_matrix(print_volume,title,prod_basis%nbf_filtered,1,s_filtered_basis)
+   call dump_out_matrix(print_matrix,title,prod_basis%nbf_filtered,1,s_filtered_basis)
 
    !
    ! calculate S^{-1}
@@ -226,7 +215,7 @@ program molgw
    sinv_v_sinv_filtered = matmul( v_filtered_basis , sinv_filtered_basis )
    sinv_v_sinv_filtered = matmul( sinv_filtered_basis , sinv_v_sinv_filtered )
    title='=== S-1 V S-1 ==='
-   call dump_out_matrix(print_volume,title,prod_basis%nbf_filtered,1,sinv_v_sinv_filtered)
+   call dump_out_matrix(print_matrix,title,prod_basis%nbf_filtered,1,sinv_v_sinv_filtered)
 
    !
    ! S^-1 V S^-1 is then transposed to the full product basis
@@ -255,11 +244,11 @@ program molgw
  ! with the SCF cycles
  !
  ! Kinetic energy contribution
- call setup_kinetic(print_volume,basis,hamiltonian_kinetic)
+ call setup_kinetic(print_matrix,basis,hamiltonian_kinetic)
 
  !
  ! Nucleus-electron interaction
- call setup_nucleus(print_volume,basis,hamiltonian_nucleus)
+ call setup_nucleus(print_matrix,basis,hamiltonian_nucleus)
 
  !
  ! Setup the initial c_matrix by diagonalizing the bare hamiltonian
@@ -277,7 +266,7 @@ program molgw
    matrix(:,:,ispin) = transpose( c_matrix(:,:,ispin) )
  enddo
  title='=== Initial C matrix ==='
- call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
+ call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix)
 
 
  !
@@ -291,7 +280,7 @@ program molgw
 ! call test_density_matrix(basis%nbf,nspin,p_matrix,s_matrix)
 
  title='=== 1st density matrix P ==='
- call dump_out_matrix(print_volume,title,basis%nbf,nspin,p_matrix)
+ call dump_out_matrix(print_matrix,title,basis%nbf,nspin,p_matrix)
 
  !
  ! Initialize the SCF mixing procedure
@@ -299,8 +288,8 @@ program molgw
 
  !
  ! Setup the grids for the quadrature of DFT potential/energy
- if( ndft_xc /= 0 ) then
-   call setup_dft_grid(nradial_grid,nangular_grid)
+ if( calc_type%is_dft ) then
+   call setup_dft_grid()
  endif
 
  !
@@ -327,12 +316,12 @@ program molgw
    hamiltonian_xc(:,:,:) = 0.0_dp
 
    if( calc_type%read_potential ) then
-     call read_potential(print_volume,basis%nbf,nspin,p_matrix,matrix,en%hart)
+     call read_potential(print_matrix,basis%nbf,nspin,p_matrix,matrix,en%hart)
    else
      !
      ! Hartree contribution to the Hamiltonian
      !
-     call setup_hartree(print_volume,basis%nbf,nspin,p_matrix,matrix,en%hart)
+     call setup_hartree(print_matrix,basis%nbf,nspin,p_matrix,matrix,en%hart)
    endif
 
    hamiltonian(:,:,:)    = hamiltonian(:,:,:) + matrix(:,:,:)
@@ -341,12 +330,12 @@ program molgw
    ! Exchange contribution to the Hamiltonian
    if( calc_type%need_exchange ) then
 
-     call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,energy_tmp)
+     call setup_exchange(print_matrix,basis%nbf,nspin,p_matrix,matrix,energy_tmp)
      en%exx = alpha_hybrid * energy_tmp
      hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix(:,:,:) * alpha_hybrid
 
      if(calc_type%is_screened_hybrid) then
-       call setup_exchange_longrange(print_volume,basis%nbf,nspin,p_matrix,matrix,energy_tmp)
+       call setup_exchange_longrange(print_matrix,basis%nbf,nspin,p_matrix,matrix,energy_tmp)
        en%exx = en%exx + alpha_hybrid_lr * energy_tmp
        hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix(:,:,:) * alpha_hybrid_lr
      endif
@@ -356,7 +345,7 @@ program molgw
 
    !
    ! DFT XC potential is added here
-   if( ndft_xc /= 0 ) then
+   if( calc_type%is_dft ) then
      call start_clock(timing_dft)
      call dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehomo,vxc_matrix,en%xc)
      call stop_clock(timing_dft)
@@ -364,7 +353,7 @@ program molgw
      hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + vxc_matrix(:,:,:)
 
      title='=== DFT XC contribution ==='
-     call dump_out_matrix(print_volume,title,basis%nbf,nspin,vxc_matrix)
+     call dump_out_matrix(print_matrix,title,basis%nbf,nspin,vxc_matrix)
    endif
 
    !
@@ -397,7 +386,7 @@ program molgw
      matrix = alpha_mixing * matrix + (1.0_dp-alpha_mixing) * self_energy_old
      self_energy_old = matrix
      title='=== Self-energy ==='
-     call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
+     call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix)
      call destroy_spectral_function(wpol)
 
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix(:,:,:)
@@ -424,7 +413,7 @@ program molgw
      matrix = alpha_mixing * matrix + (1.0_dp-alpha_mixing) * self_energy_old
      self_energy_old = matrix
      title='=== Self-energy ==='
-     call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
+     call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix)
   
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix(:,:,:)
 
@@ -435,7 +424,7 @@ program molgw
    hamiltonian(:,:,:) = hamiltonian(:,:,:) + hamiltonian_xc(:,:,:)
    
    title='=== Total Hamiltonian ==='
-   call dump_out_matrix(print_volume,title,basis%nbf,nspin,hamiltonian)
+   call dump_out_matrix(print_matrix,title,basis%nbf,nspin,hamiltonian)
   
    !
    ! Diagonalize the Hamiltonian H
@@ -461,13 +450,13 @@ program molgw
      matrix(:,:,ispin) = transpose( c_matrix(:,:,ispin) )
    enddo
    title='=== C coefficients ==='
-   call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
+   call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix)
 !   matrix(:,:,1) = matmul( c_matrix(:,:,1), matmul( s_matrix(:,:), transpose(c_matrix(:,:,1)) ) )
 !   title='=== C S C^T = identity ? ==='
-!   call dump_out_matrix(print_volume,title,basis%nbf,1,matrix)
+!   call dump_out_matrix(print_matrix,title,basis%nbf,1,matrix)
    matrix(:,:,1) = matmul( transpose(c_matrix(:,:,1)), matmul( s_matrix(:,:), c_matrix(:,:,1) ) )
    title='=== C^T S C = identity ? ==='
-   call dump_out_matrix(print_volume,title,basis%nbf,1,matrix)
+   call dump_out_matrix(print_matrix,title,basis%nbf,1,matrix)
 
   
    !
@@ -476,7 +465,7 @@ program molgw
    p_matrix_old(:,:,:) = p_matrix(:,:,:)
    call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
    title='=== density matrix P ==='
-   call dump_out_matrix(print_volume,title,basis%nbf,nspin,p_matrix)
+   call dump_out_matrix(print_matrix,title,basis%nbf,nspin,p_matrix)
   
    !
    ! Output the total energy and its components
@@ -488,7 +477,7 @@ program molgw
    if(calc_type%need_exchange) then
      WRITE_MASTER(*,'(a25,x,f16.10)') 'Exchange Energy [Ha]:',en%exx
    endif
-   if( ndft_xc /= 0 ) then
+   if( calc_type%is_dft ) then
      WRITE_MASTER(*,'(a25,x,f16.10)') 'XC Energy       [Ha]:',en%xc
    endif
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%xc
@@ -517,9 +506,9 @@ program molgw
  WRITE_MASTER(*,*) '=================================================='
  WRITE_MASTER(*,'(/,/,a25,x,f16.10,/,/)') 'SCF Total Energy [Ha]:',en%tot
 
- if(MODULO(print_volume/1000 ,2)>0)   call write_density_matrix(nspin,basis%nbf,p_matrix)
- if(MODULO(print_volume/10000,10)==1) call plot_wfn(nspin,basis,c_matrix)
- if(MODULO(print_volume/10000,10)==2) call plot_cube_wfn(nspin,basis,c_matrix)
+ if( print_densitymatrix )   call write_density_matrix(nspin,basis%nbf,p_matrix)
+ if( print_wfn ) call plot_wfn(nspin,basis,c_matrix)
+! if( print_wfn ) call plot_cube_wfn(nspin,basis,c_matrix)
 
 
  !
@@ -528,7 +517,7 @@ program molgw
  if(calc_type%is_ci) then
    if(nspin/=1) stop'for CI, nspin should be 1'
    if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) stop'CI is implemented for 2 electrons only'
-   call full_ci_2electrons_spin(print_volume,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
+   call full_ci_2electrons_spin(print_wfn,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
  endif
 
  !
@@ -556,7 +545,7 @@ program molgw
 
    !
    ! Obtain the Fock matrix
-   call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
+   call setup_exchange(print_matrix,basis%nbf,nspin,p_matrix,matrix,en%exx)
    matrix(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + matrix(:,:,:)
 
    !
@@ -564,7 +553,7 @@ program molgw
    call matrix_basis_to_eigen(nspin,basis%nbf,c_matrix,matrix)
 
    title='=== Fock matrix ==='
-   call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
+   call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix)
 
    spin_fact = REAL(-nspin+3,dp)
    en%se = 0.0_dp
@@ -609,7 +598,7 @@ program molgw
    endif
 
 
-   call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
+   call setup_exchange(print_matrix,basis%nbf,nspin,p_matrix,matrix,en%exx)
    WRITE_MASTER(*,*) 'EXX [Ha]:',en%exx
 
    exchange_m_vxc_diag(:,:) = 0.0_dp
@@ -633,6 +622,8 @@ program molgw
  ! final evaluation for G0W0
  if( calc_type%is_gw .AND. ( calc_type%gwmethod == perturbative .OR. calc_type%gwmethod == COHSEX ) ) then
 
+   !
+   ! A section under development for the range-separated RPA
    if( calc_type%is_lr_mbpt ) call testing_tobe_removed()
 
 
@@ -645,10 +636,10 @@ program molgw
 #endif
    call stop_clock(timing_pola)
    en%tot = en%tot + en%rpa
-   if( ndft_xc /= 0 ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
+   if( calc_type%is_dft ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
    WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
 
-   if( MODULO(print_volume/100000,2)==1 ) call write_spectral_function(wpol)
+   if( print_specfunc ) call write_spectral_function(wpol)
 
    call start_clock(timing_self)
 #ifndef CASIDA
@@ -661,7 +652,7 @@ program molgw
    call stop_clock(timing_self)
 
    title='=== Self-energy === (in the orbital basis)'
-   call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
+   call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix)
    call destroy_spectral_function(wpol)
 
  endif ! G0W0
@@ -670,7 +661,7 @@ program molgw
  ! final evaluation for MP2
  if( calc_type%is_mp2 .AND. calc_type%gwmethod == perturbative ) then
 
-   call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
+   call setup_exchange(print_matrix,basis%nbf,nspin,p_matrix,matrix,en%exx)
    WRITE_MASTER(*,*) 'EXX     [Ha]:',en%exx
 #ifdef CASIDA
    call start_clock(timing_mp2_energy)
@@ -690,7 +681,7 @@ program molgw
    WRITE_MASTER(*,'(a,2x,f16.10)') ' SE+MP2  Total En [Ha]:',en%tot+en%se
 
    title='=== Self-energy === (in the orbital basis)'
-   call dump_out_matrix(print_volume,title,basis%nbf,nspin,matrix)
+   call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix)
 
  endif
 
@@ -704,7 +695,7 @@ program molgw
  deallocate(energy,occupation,exchange_m_vxc_diag)
  deallocate(self_energy_old)
  call deallocate_eri()
- if( ndft_xc /= 0 ) then
+ if( calc_type%is_dft ) then
    deallocate( vxc_matrix )
    call destroy_dft_grid()
  endif
@@ -728,7 +719,7 @@ contains
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine testing_tobe_removed()
    write(*,*) '========== FABIEN ============'
-   call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
+   call setup_exchange(print_matrix,basis%nbf,nspin,p_matrix,matrix,en%exx)
    WRITE_MASTER(*,*) 'EXX [Ha]:',en%exx
    exchange_m_vxc_diag(:,:) = 0.0_dp
    do ispin=1,nspin
@@ -751,10 +742,10 @@ subroutine testing_tobe_removed()
    call issue_warning(msg)
    call deallocate_eri()
    call allocate_eri(basis,rcut,BUFFER1)
-   call calculate_eri(print_volume,basis,rcut,BUFFER1)
+   call calculate_eri(print_matrix,basis,rcut,BUFFER1)
 
    write(*,*) '========== FABIEN ============'
-   call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)
+   call setup_exchange(print_matrix,basis%nbf,nspin,p_matrix,matrix,en%exx)
    WRITE_MASTER(*,*) 'EXX [Ha]:',en%exx
    exchange_m_vxc_diag(:,:) = 0.0_dp
    do ispin=1,nspin
@@ -772,7 +763,7 @@ subroutine testing_tobe_removed()
    write(*,*) '========== END FABIEN ========'
    write(*,*) '========== FABIEN ============'
    if( .NOT. ALLOCATED( vxc_matrix ) ) allocate( vxc_matrix(basis%nbf,basis%nbf,nspin) )
-   if( ndft_xc == 0 ) call setup_dft_grid(nradial_grid,nangular_grid)
+   if( ndft_xc == 0 ) call setup_dft_grid()
     call dft_exc_vxc(nspin,basis,1,(/XC_GGA_X_PBE/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
 #ifdef HAVE_LIBXC
    call dft_exc_vxc(nspin,basis,1,(/XC_HYB_GGA_XC_HSE06/),(/1.0_dp/),p_matrix,ehomo,vxc_matrix,energy_tmp)
@@ -831,7 +822,7 @@ subroutine testing_tobe_removed()
    WRITE_MASTER(*,*) '<vxc RPA LR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
    WRITE_MASTER(*,*) 'test'
 
-   call setup_exchange(print_volume,basis%nbf,nspin,p_matrix,matrix,en%exx)  
+   call setup_exchange(print_matrix,basis%nbf,nspin,p_matrix,matrix,en%exx)  
    WRITE_MASTER(*,*) 'LR EXX [Ha]:',en%exx
    exchange_m_vxc_diag(:,:) = 0.0_dp
    do ispin=1,nspin

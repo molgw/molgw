@@ -21,12 +21,12 @@ module m_calculation_type
  real(dp)          :: alpha_hybrid_lr = 0.0_dp
  real(dp)          :: rcut            = 0.0_dp
 
- integer                   :: ndft_xc      = 0
+ integer,protected         :: ndft_xc      = 0
  integer,allocatable       :: dft_xc_type(:)
  real(dp),allocatable      :: dft_xc_coef(:)
 
  type calculation_type
-   integer :: type
+   logical :: is_dft
    logical :: need_exchange
    logical :: need_final_exchange
    logical :: need_rpa
@@ -57,6 +57,7 @@ subroutine init_calculation_type(calc_type,input_key)
  call issue_warning(msg)
  !
  ! default values
+ calc_type%is_dft              = .FALSE.
  calc_type%need_exchange       = .FALSE.
  calc_type%need_final_exchange = .FALSE.
  calc_type%need_rpa            = .FALSE.
@@ -132,6 +133,7 @@ subroutine init_calculation_type(calc_type,input_key)
  case default
    !
    ! If the calculation type is none of the above, let's assume it is DFT-type
+   calc_type%is_dft=.TRUE.
    call init_dft_type(key1,calc_type)
  end select
 
@@ -311,7 +313,6 @@ subroutine output_calculation_type(calc_type)
  type(calculation_type),intent(in)   :: calc_type
 !=====
 
-  WRITE_MASTER(*,*) 'type                        ',calc_type%type
   WRITE_MASTER(*,*) 'need_exchange               ',calc_type%need_exchange
   WRITE_MASTER(*,*) 'need_final_exchange         ',calc_type%need_final_exchange
   WRITE_MASTER(*,*) 'need_rpa                    ',calc_type%need_rpa
