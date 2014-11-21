@@ -400,12 +400,10 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
 !$OMP END PARALLEL
      enddo
 
-
    enddo ! loop on the XC functional
   
 
  enddo ! loop on the grid point
-
  !
  ! Sum up the contributions from all procs only if needed
  if( parallel_grid ) then

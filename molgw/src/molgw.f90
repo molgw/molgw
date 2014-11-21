@@ -366,7 +366,7 @@ program molgw
 #ifdef AUXIL_BASIS
      call polarizability_rpa_aux(nspin,basis,prod_basis,occupation,energy,c_matrix,sinv_v_sinv,en%rpa,wpol)
 #else
-     call polarizability_rpa(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
+     call polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #endif
      call stop_clock(timing_pola)
      if( en%rpa > 1.e-6_DP) then
@@ -632,14 +632,12 @@ program molgw
 #ifdef CASIDA
    call polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #else
-   call polarizability_rpa(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
+   call polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #endif
    call stop_clock(timing_pola)
    en%tot = en%tot + en%rpa
    if( calc_type%is_dft ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
    WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
-
-   if( print_specfunc ) call write_spectral_function(wpol)
 
    call start_clock(timing_self)
 #ifndef CASIDA

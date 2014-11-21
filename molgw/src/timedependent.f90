@@ -15,7 +15,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  use m_eri
  use m_dft_grid
  use m_spectral_function
- use m_inputparam,only: calc_type,nspin
+ use m_inputparam,only: calc_type,nspin,print_specfunc
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
  use xc_f90_lib_m
@@ -72,26 +72,27 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
 
  integer              :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
  logical              :: require_gradient
- logical              :: require_tddft
+ logical              :: is_tddft
  character(len=256)   :: string
  logical,parameter    :: TDA=.FALSE.
  integer              :: iomega,idir,jdir
- integer,parameter    :: nomega=200
+ integer,parameter    :: nomega=600
  complex(dp)          :: omega(nomega)
- real(dp)             :: absorp(3,3,nomega)
+ real(dp)             :: absorp(nomega,3,3)
+ real(dp)             :: static_polarizability(3,3)
 
 #ifdef HAVE_LIBXC
  type(xc_f90_pointer_t) :: xc_func(ndft_xc),xc_functest
  type(xc_f90_pointer_t) :: xc_info(ndft_xc),xc_infotest
 #endif
-
 !=====
+
 #ifndef LOW_MEMORY3
  stop'polarizability_td requires LOW_MEMORY3'
 #endif
 
  spin_fact = REAL(-nspin+3,dp)
- require_tddft = calc_type%is_td .AND. (ndft_xc>0)
+ is_tddft = calc_type%is_td .AND. calc_type%is_dft
 
  WRITE_MASTER(*,'(/,a)') ' calculating the polarizability for neutral excitation energies'
 
@@ -100,7 +101,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
    call issue_warning(msg)
  endif
 
- if(require_tddft) then
+ if(is_tddft) then
    !
    ! Prepare DFT kernel calculation with Libxc
    !
@@ -249,7 +250,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
 
              !
              ! Add the kernel for TDDFT
-             if(require_tddft) then
+             if(is_tddft) then
                h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
                           + SUM(  wf_r(:,iorbital,ijspin) * wf_r(:,jorbital,ijspin) &
                                 * wf_r(:,korbital,klspin) * wf_r(:,lorbital,klspin) &
@@ -291,7 +292,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
    enddo !iorbital
  enddo ! ijspin
 
- if(require_tddft)    deallocate(fxc,wf_r)
+ if(is_tddft)    deallocate(fxc,wf_r)
  if(calc_type%is_bse) deallocate(bra,ket)
 
  WRITE_MASTER(*,*)
@@ -317,13 +318,20 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
 
  deallocate(eri_eigenstate_i)
 
+ !
+ ! Calculate Wp= v * chi * v 
+ ! and then write it down on file
+ !
+ if( print_specfunc ) then
+  call chi_to_vchiv(nspin,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+  call write_spectral_function(wpol)
+ endif
 
  !
  ! Calculate the spectrum now
  !
 
-
- WRITE_MASTER(*,'(/,a)') 'Calculate the optical spectrum'
+ WRITE_MASTER(*,'(/,a)') ' Calculate the optical spectrum'
 
  if (nspin/=1) stop'no nspin/=1 allowed'
 
@@ -389,9 +397,13 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
 
  !
  ! set the frequency mesh
- do iomega=1,nomega
-   omega(iomega) = (REAL(iomega-1,dp)*0.2 + 0.4*im ) / Ha_eV
+ omega(1)     =MAX( 0.0_dp      ,MINVAL(ABS(eigenvalue(:)))-3.00/Ha_eV)
+ omega(nomega)=MIN(20.0_dp/Ha_eV,MAXVAL(ABS(eigenvalue(:)))+3.00/Ha_eV)
+ do iomega=2,nomega-1
+   omega(iomega) = omega(1) + ( omega(nomega)-omega(1) ) /REAL(nomega-1,dp) * (iomega-1) 
  enddo
+ ! add the broadening
+ omega(:) = omega(:) + im * 0.10/Ha_eV
 
  allocate(residu_left (3,wpol%npole))
  allocate(residu_right(3,wpol%npole))
@@ -418,25 +430,24 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  enddo
 
 
- t_ij=0
- absorp(:,:,:)=0.0_dp
+ t_ij = 0
+ absorp(:,:,:) = 0.0_dp
+ static_polarizability(:,:) = 0.0_dp
  do ijspin=1,nspin
    do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
 
      do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
        if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin))) cycle
-       t_ij=t_ij+1
+       t_ij = t_ij + 1
 
-       do iomega=1,nomega
-         do idir=1,3
-           do jdir=1,3
-             absorp(idir,jdir,iomega) = absorp(idir,jdir,iomega) &
-                                         + residu_left(idir,t_ij) * residu_right(jdir,t_ij) &
-                                           *AIMAG( -1.0_dp  / ( omega(iomega) - eigenvalue(t_ij) ) )
-           enddo
+       do idir=1,3
+         do jdir=1,3
+           absorp(:,idir,jdir) = absorp(:,idir,jdir) &
+                                       + residu_left(idir,t_ij) * residu_right(jdir,t_ij) &
+                                         *AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ij) ) )
+           static_polarizability(idir,jdir) = static_polarizability(idir,jdir) + residu_left(idir,t_ij) * residu_right(jdir,t_ij) / eigenvalue(t_ij)
          enddo
        enddo
-
 
      enddo
    enddo
@@ -444,17 +455,23 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
 
  WRITE_MASTER(*,'(/,a)') ' Neutral excitation energies [eV] and strengths'
  do t_ij=1,wpol%npole
-   oscillator_strength(t_ij) = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_ij),residu_right(:,t_ij)) * eigenvalue(t_ij)
-   WRITE_MASTER(*,'(i4,10(f18.8,2x))') t_ij,eigenvalue(t_ij)*Ha_eV,oscillator_strength(t_ij)
+   if(eigenvalue(t_ij) > 0.0_dp) then
+     oscillator_strength(t_ij) = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_ij),residu_right(:,t_ij)) * eigenvalue(t_ij)
+     WRITE_MASTER(*,'(i4,10(f18.8,2x))') t_ij,eigenvalue(t_ij)*Ha_eV,oscillator_strength(t_ij)
+   endif
  enddo
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,*) 'TRK SUM RULE: the two following numbers should compare well'
  WRITE_MASTER(*,*) 'Sum over oscillator strengths',SQRT(SUM( oscillator_strength(:) ))
  WRITE_MASTER(*,*) 'Number of electrons          ',SUM( occupation(:,:) )
 
+ WRITE_MASTER(*,'(/,a)') ' Static dipole polarizability'
+ do idir=1,3
+   WRITE_MASTER(*,'(3(4x,f12.6))') static_polarizability(idir,:)
+ enddo
 
  do iomega=1,nomega
-   WRITE_MASTER(101,'(10(e18.8,2x))') REAL(omega(iomega),dp)*Ha_eV,absorp(:,:,iomega)
+   WRITE_MASTER(101,'(10(e18.8,2x))') REAL(omega(iomega),dp)*Ha_eV,absorp(iomega,:,:)
  enddo 
 
 
@@ -462,49 +479,6 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  deallocate(dipole_state)
 
 
- return
-
-!
-! allocate(eri_eigenstate_k(basis%nbf,basis%nbf,basis%nbf,nspin))
-!
-! wpol%pole = eigenvalue
-! wpol%residu_left (:,:) = 0.0_dp
-! wpol%residu_right(:,:) = 0.0_dp
-! t_kl=0
-! do klspin=1,nspin
-!   do kbf=1,basis%nbf 
-!     call transform_eri_basis_lowmem(nspin,c_matrix,kbf,klspin,eri_eigenstate_k)
-!
-!
-!     do lbf=1,basis%nbf
-!       if( skip_transition(nspin,lbf,kbf,occupation(lbf,klspin),occupation(kbf,klspin)) ) cycle
-!       t_kl=t_kl+1
-!
-!
-!       do ijspin=1,nspin
-!         do ijbf=1,prod_basis%nbf
-!           ibf = prod_basis%index_ij(1,ijbf)
-!           jbf = prod_basis%index_ij(2,ijbf)
-!
-!           ijbf_current = ijbf+prod_basis%nbf*(ijspin-1)
-!
-!
-!           wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
-!                        + eri_eigenstate_k(lbf,ibf,jbf,ijspin) *  eigenvector(t_kl,:)
-!           wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
-!                        + eri_eigenstate_k(lbf,ibf,jbf,ijspin) * eigenvector_inv(:,t_kl) &
-!                                         * ( occupation(kbf,klspin)-occupation(lbf,klspin) )
-!
-!
-!         enddo
-!       enddo
-!     enddo
-!   enddo
-! enddo
-!
-!
-!
-! deallocate(eri_eigenstate_k)
 
 end subroutine polarizability_td
 
