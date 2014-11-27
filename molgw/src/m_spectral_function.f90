@@ -118,6 +118,7 @@ subroutine init_spectral_function(nbf,prod_nbf,nspin,occupation,sf)
 
 end subroutine init_spectral_function
 
+
 !=========================================================================
 function skip_transition(nspin,ib1,ib2,occ1,occ2)
  implicit none

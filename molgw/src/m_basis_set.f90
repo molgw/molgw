@@ -320,6 +320,7 @@ contains
 
  end subroutine init_basis_set
 
+
 !=========================================================================
  subroutine init_product_basis_set(basis,prod_basis)
  implicit none
@@ -407,6 +408,7 @@ contains
  if(allocated(basis%rotation))        deallocate(basis%rotation)
 
  end subroutine destroy_basis_set
+
 
 !=========================================================================
  subroutine init_basis_function(normalized,ng,nx,ny,nz,x0,alpha,coeff,shell_index,bf)

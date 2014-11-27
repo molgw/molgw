@@ -38,13 +38,13 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
 
  real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
  real(dp),allocatable :: eri_eigenstate_k(:,:,:,:)
- real(dp)             :: spin_fact 
+ real(dp)             :: spin_fact,alpha_local
  real(dp)             :: scissor_energy(nspin)
  real(dp)             :: h_2p(wpol%npole,wpol%npole)
  real(dp)             :: eigenvalue(wpol%npole),eigenvector(wpol%npole,wpol%npole),eigenvector_inv(wpol%npole,wpol%npole)
  real(dp)             :: matrix(wpol%npole,wpol%npole)
  real(dp)             :: p_matrix(basis%nbf,basis%nbf,nspin)
- real(dp)             :: oscillator_strength(wpol%npole)
+ real(dp)             :: oscillator_strength,trk_sumrule
  real(dp)             :: energy_qp(basis%nbf,nspin)
  real(dp)             :: rr(3)
  real(dp)             :: basis_function_r       (basis%nbf)
@@ -90,6 +90,9 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
 #ifndef LOW_MEMORY3
  stop'polarizability_td requires LOW_MEMORY3'
 #endif
+ if( .NOT. calc_type%is_td .AND. .NOT. calc_type%is_bse) then
+   stop'BUG: this should not happend in timedependent'
+ endif
 
  spin_fact = REAL(-nspin+3,dp)
  is_tddft = calc_type%is_td .AND. calc_type%is_dft
@@ -99,6 +102,12 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  if(TDA) then
    msg='Tamm-Dancoff approximation is switched on'
    call issue_warning(msg)
+ endif
+
+ if(calc_type%is_td) then
+   alpha_local = alpha_hybrid
+ else
+   alpha_local = 1.0_dp
  endif
 
  if(is_tddft) then
@@ -163,12 +172,12 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
        case(XC_FAMILY_LDA)
          call xc_f90_lda_fxc(xc_func(idft_xc),1_C_INT,rhor_r(1),fxc_libxc(1))
        case default
-         stop'bug'
+         stop'GGA kernel not yet implemented'
        end select
 
        ! Store the result with the weight
        ! Remove too large values for stability
-       fxc(igrid,:) = fxc(igrid,:) + MIN(fxc_libxc(:),1d8) * w_grid(igrid) * dft_xc_coef(idft_xc)
+       fxc(igrid,:) = fxc(igrid,:) + MIN(fxc_libxc(:),1.0E8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
 
      enddo
 
@@ -263,7 +272,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
              if(calc_type%need_exchange .OR. calc_type%is_bse) then
                if(ijspin==klspin) then
                  h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigenstate_i(korbital,jorbital,lorbital,klspin)  &
-                          * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) / spin_fact * alpha_hybrid 
+                          * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) / spin_fact * alpha_local
                endif
              endif
 
@@ -454,15 +463,17 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  enddo
 
  WRITE_MASTER(*,'(/,a)') ' Neutral excitation energies [eV] and strengths'
+ trk_sumrule=0.0_dp
  do t_ij=1,wpol%npole
    if(eigenvalue(t_ij) > 0.0_dp) then
-     oscillator_strength(t_ij) = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_ij),residu_right(:,t_ij)) * eigenvalue(t_ij)
-     WRITE_MASTER(*,'(i4,10(f18.8,2x))') t_ij,eigenvalue(t_ij)*Ha_eV,oscillator_strength(t_ij)
+     oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_ij),residu_right(:,t_ij)) * eigenvalue(t_ij)
+     trk_sumrule = trk_sumrule + oscillator_strength
+     WRITE_MASTER(*,'(i4,10(f18.8,2x))') t_ij,eigenvalue(t_ij)*Ha_eV,oscillator_strength
    endif
  enddo
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,*) 'TRK SUM RULE: the two following numbers should compare well'
- WRITE_MASTER(*,*) 'Sum over oscillator strengths',SQRT(SUM( oscillator_strength(:) ))
+ WRITE_MASTER(*,*) 'Sum over oscillator strengths',trk_sumrule
  WRITE_MASTER(*,*) 'Number of electrons          ',SUM( occupation(:,:) )
 
  WRITE_MASTER(*,'(/,a)') ' Static dipole polarizability'

@@ -879,11 +879,11 @@ subroutine numerical_overlap(ga,gb,s_ab)
 
  rtmp=0.0d0
  do ix=1,nx
-   x(1) = ( REAL(ix,dp)/DBLE(nx) - 0.5 ) * rmax
+   x(1) = ( REAL(ix,dp)/REAL(nx,dp) - 0.5 ) * rmax
    do iy=1,nx
-     x(2) = ( REAL(iy,dp)/DBLE(nx) - 0.5 ) * rmax
+     x(2) = ( REAL(iy,dp)/REAL(nx,dp) - 0.5 ) * rmax
      do iz=1,nx
-       x(3) = ( REAL(iz,dp)/DBLE(nx) - 0.5 ) * rmax
+       x(3) = ( REAL(iz,dp)/REAL(nx,dp) - 0.5 ) * rmax
   
        rtmp = rtmp + eval_gaussian(ga,x) * eval_gaussian(gb,x) * dx**3
   
@@ -918,11 +918,11 @@ subroutine numerical_kinetic(ga,gb)
 
  rtmp=0.0d0
  do ix=1,nx
-   x(1) = ( REAL(ix,dp)/DBLE(nx) - 0.5 ) * rmax
+   x(1) = ( REAL(ix,dp)/REAL(nx,dp) - 0.5 ) * rmax
    do iy=1,nx
-     x(2) = ( REAL(iy,dp)/DBLE(nx) - 0.5 ) * rmax
+     x(2) = ( REAL(iy,dp)/REAL(nx,dp) - 0.5 ) * rmax
      do iz=1,nx
-       x(3) = ( REAL(iz,dp)/DBLE(nx) - 0.5 ) * rmax
+       x(3) = ( REAL(iz,dp)/REAL(nx,dp) - 0.5 ) * rmax
   
        rtmp = rtmp - 0.5 * eval_gaussian(ga,x) * dx**3 &
                     * ( eval_gaussian(gb,x+dhx) + eval_gaussian(gb,x-dhx) &
@@ -958,22 +958,6 @@ subroutine numerical_nucleus(ga,gb)
 
  WRITE_MASTER(*,*) 'hydrogen atom in zero'
 
- rtmp=0.0d0
-! do ix=1,nx
-!   x(1) = ( REAL(ix,dp)/DBLE(nx) - 0.5 ) * rmax
-!   do iy=1,nx
-!     x(2) = ( REAL(iy,dp)/DBLE(nx) - 0.5 ) * rmax
-!     do iz=1,nx
-!       x(3) = ( REAL(iz,dp)/DBLE(nx) - 0.5 ) * rmax
-!
-!       if( SUM(x(:)**2) < 1.d-8 ) cycle ! skip the singularity
-!
-!       rtmp = rtmp + eval_gaussian(ga,x) * eval_gaussian(gb,x) * dx**3 * -1.0 / SQRT(SUM(x(:)**2))
-!  
-!     enddo
-!   enddo
-! enddo
-
  !
  ! spherical integration
  ! radial part with Gauss-Legendre
@@ -986,6 +970,7 @@ subroutine numerical_nucleus(ga,gb)
 ! call ld0038(x1,y1,z1,w1,na)
  call ld0086(x1,y1,z1,w1,na)
 
+ rtmp=0.0_dp
  do ix=1,nx
    do iangular=1,n1
      x(1) = u(ix) * x1(iangular)

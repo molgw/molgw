@@ -773,6 +773,7 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
  case(perturbative) !==========================================================
 
    if(write_sigma_omega) then
+
      do aorbital=1,basis%nbf ! MIN(2,basis%nbf)
        WRITE_ME(ctmp,'(i3.3)') aorbital
        open(200+aorbital,file='selfenergy_omega_state'//TRIM(ctmp))
@@ -785,27 +786,28 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
        WRITE_MASTER(200+aorbital,*)
      enddo
      close(200+aorbital)
-     stop'output the self energy in a file'
-   endif
 
-   selfenergy(:,:,:) = REAL( selfenergy_tmp(2,:,:,:) )
-   WRITE_MASTER(*,*)
-   WRITE_MASTER(*,*) 'G0W0 Eigenvalues [eV]'
-   if(nspin==1) then
-     WRITE_MASTER(*,*) '  #          E0        Sigx-Vxc      Sigc          Z         G0W0'
    else
-     WRITE_MASTER(*,'(a)') '  #                E0                      Sigx-Vxc                    Sigc                       Z                       G0W0'
+
+     selfenergy(:,:,:) = REAL( selfenergy_tmp(2,:,:,:) )
+     WRITE_MASTER(*,*)
+     WRITE_MASTER(*,*) 'G0W0 Eigenvalues [eV]'
+     if(nspin==1) then
+       WRITE_MASTER(*,*) '  #          E0        Sigx-Vxc      Sigc          Z         G0W0'
+     else
+       WRITE_MASTER(*,'(a)') '  #                E0                      Sigx-Vxc                    Sigc                       Z                       G0W0'
+     endif
+     do aorbital=1,basis%nbf
+       zz(:) = REAL( selfenergy_tmp(3,aorbital,aorbital,:) - selfenergy_tmp(1,aorbital,aorbital,:) ) / REAL( omegai(3)-omegai(1) )
+       zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
+       energy_qp(aorbital,:) = energy(aorbital,:)+zz(:)*REAL(selfenergy_tmp(2,aorbital,aorbital,:) + exchange_m_vxc_diag(aorbital,:))
+
+       WRITE_MASTER(*,'(i4,x,20(x,f12.6))') aorbital,energy(aorbital,:)*Ha_eV,exchange_m_vxc_diag(aorbital,:)*Ha_eV,REAL(selfenergy_tmp(2,aorbital,aorbital,:),dp)*Ha_eV,&
+             zz(:),energy_qp(aorbital,:)*Ha_eV
+     enddo
+
+     call write_energy_qp(nspin,basis%nbf,energy_qp)
    endif
-   do aorbital=1,basis%nbf
-     zz(:) = REAL( selfenergy_tmp(3,aorbital,aorbital,:) - selfenergy_tmp(1,aorbital,aorbital,:) ) / REAL( omegai(3)-omegai(1) )
-     zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
-     energy_qp(aorbital,:) = energy(aorbital,:)+zz(:)*REAL(selfenergy_tmp(2,aorbital,aorbital,:) + exchange_m_vxc_diag(aorbital,:))
-
-     WRITE_MASTER(*,'(i4,x,20(x,f12.6))') aorbital,energy(aorbital,:)*Ha_eV,exchange_m_vxc_diag(aorbital,:)*Ha_eV,REAL(selfenergy_tmp(2,aorbital,aorbital,:),dp)*Ha_eV,&
-           zz(:),energy_qp(aorbital,:)*Ha_eV
-   enddo
-
-   call write_energy_qp(nspin,basis%nbf,energy_qp)
 
  end select
 

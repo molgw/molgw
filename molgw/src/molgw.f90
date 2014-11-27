@@ -157,7 +157,7 @@ program molgw
 
  !
  ! In case of GW or BSE run, set up the product basis 
- if( calc_type%is_gw .OR. calc_type%is_bse) call init_product_basis_set(basis,prod_basis)
+ if( calc_type%is_gw .OR. calc_type%is_td .OR. calc_type%is_bse) call init_product_basis_set(basis,prod_basis)
 
 
 !========================================================

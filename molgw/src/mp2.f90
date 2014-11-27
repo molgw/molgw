@@ -329,6 +329,13 @@ subroutine full_ci_2electrons_spin(print_wfn,spinstate,basis,h_1e,c_matrix,nuc_n
  real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,basis%nbf)
  real(dp),intent(in)        :: nuc_nuc
 !=====
+ integer,parameter    :: neig=6
+ integer,parameter    :: nblock=2
+ integer,parameter    :: ncycle=12
+ integer              :: ieig,jeig,keig,neigc,icycle,iblock,jblock
+ real(dp),allocatable :: bb(:,:),qq(:,:),atilde(:,:),ab(:,:)
+ real(dp),allocatable :: bb_s(:,:),atilde_s(:,:),ab_s(:,:)
+ real(dp),allocatable :: lambda(:),alphavec(:,:)
  real(dp) :: h_1e_hf(basis%nbf,basis%nbf)
  integer :: nconf,iconf,jconf,kconf
  integer :: ibf,jbf,kbf,lbf
@@ -352,6 +359,7 @@ subroutine full_ci_2electrons_spin(print_wfn,spinstate,basis,h_1e,c_matrix,nuc_n
  real(dp) :: xxx(nx),y(ny),z(nz)
  real(dp) :: wx(nx),wy(ny),wz(nz)
  real(dp) :: norm
+ character(len=100)      :: title
 
  integer :: ibf_cart,li,ni,ni_cart,i_cart
  real(dp),allocatable :: basis_function_r_cart(:)
@@ -545,12 +553,96 @@ subroutine full_ci_2electrons_spin(print_wfn,spinstate,basis,h_1e,c_matrix,nuc_n
    
    deallocate(test1,test2,hphi,gr1,gr2)
 
- else
+ else if( .TRUE. ) then
+   WRITE_MASTER(*,*) 
+   WRITE_MASTER(*,*) 'Davidson diago'
+   WRITE_MASTER(*,*) 'trial vectors'
+
+   allocate(bb_s(nconf,neig+ncycle*nblock))
+   allocate(qq(nconf,nblock))
+   !
+   ! Initialize with stupid coefficients
+   bb_s(:,1:neig)=0.001_dp
+   do ieig=1,neig
+     bb_s(ieig,ieig) = 1.0_dp
+     ! orthogonalize to previous vectors
+     do keig=1,ieig-1
+       bb_s(:,ieig) = bb_s(:,ieig) - bb_s(:,keig) * DOT_PRODUCT( bb_s(:,ieig) , bb_s(:,keig) )
+     enddo
+     ! normalize
+     bb_s(:,ieig) = bb_s(:,ieig) / NORM2( bb_s(:,ieig) )
+   enddo
+
+   do jeig=1,neig,nblock
+
+     do icycle=1,ncycle
+
+       neigc = neig + ( icycle - 1 ) * nblock
+
+       allocate(bb(nconf,neigc))
+       bb(:,:) = bb_s(:,1:neigc)
+
+       allocate(ab(nconf,neigc),atilde(neigc,neigc))
+
+       ab(:,:) = MATMUL( hamiltonian(:,:) , bb(:,:) )
+
+       atilde(:,:) = MATMUL( TRANSPOSE(bb(:,:)) , ab(:,:) )
+
+       allocate(lambda(neigc),alphavec(neigc,neigc))
+       call diagonalize(neigc,atilde,lambda,alphavec)
+
+       do iblock=1,nblock
+         qq(:,iblock) = MATMUL( ab ,  alphavec(:,jeig+iblock-1) ) &
+                 - lambda(jeig+iblock-1) * MATMUL ( bb , alphavec(:,jeig+iblock-1) )
+
+         WRITE_MASTER(*,'(a,i4,x,i4,x,e12.4)') ' Residual norm for eigenvalue,cycle',&
+                       icycle,jeig+iblock-1,NORM2(qq(:,iblock))
+
+         do iconf=1,nconf
+           qq(iconf,iblock) = qq(iconf,iblock) / ( lambda(jeig+iblock-1) - hamiltonian(iconf,iconf) )
+         enddo
+         ! orthogonalize
+         do ieig=1,neigc
+           qq(:,iblock) = qq(:,iblock) - bb(:,ieig) * DOT_PRODUCT( bb(:,ieig) , qq(:,iblock) )
+         enddo
+         do jblock=1,iblock-1
+           qq(:,iblock) = qq(:,iblock) - qq(:,jblock) * DOT_PRODUCT( qq(:,jblock) , qq(:,iblock) )
+         enddo
+         qq(:,iblock) = qq(:,iblock) / NORM2( qq(:,iblock) )
+
+       enddo
+
+       if(icycle<ncycle) then
+         do iblock=1,nblock
+           bb_s(:,neigc+iblock) = qq(:,iblock)
+         enddo
+       else
+         do iblock=1,nblock
+           do ieig=jeig,neig
+             bb_s(:,ieig+iblock-1) = MATMUL( bb , alphavec(:,ieig+iblock-1) )
+           enddo
+           energy(jeig+iblock-1) = lambda(jeig+iblock-1)
+         enddo
+       endif
+       deallocate(ab,atilde,lambda,alphavec,bb)
+
+     enddo ! icycle
+     WRITE_MASTER(*,*) 
+   enddo ! jeig
+
+   WRITE_MASTER(*,*) 'diago DONE'
+   WRITE_MASTER(*,*) energy(1:min(neig,nconf))
+   eigenvector(:,1:neig) = bb_s(:,1:neig)
+
+   deallocate(bb_s,qq)
+
+  else
    ! full LAPACK diago
    WRITE_MASTER(*,*) 'starting the diago'
    call diagonalize(nconf,hamiltonian,energy,eigenvector)
    WRITE_MASTER(*,*) 'diago DONE'
-   WRITE_MASTER(*,*) energy(1:min(6,nconf))
+   WRITE_MASTER(*,*) energy(1:min(neig,nconf))
+
  endif
 
  WRITE_MASTER(*,*)
@@ -609,7 +701,6 @@ subroutine full_ci_2electrons_spin(print_wfn,spinstate,basis,h_1e,c_matrix,nuc_n
      eval_wfn(:)=0.0_dp
      do istate=1,basis%nbf
        do ibf=1,basis%nbf
-!         eval_wfn(istate) = eval_wfn(istate) + c_matrix(ibf,istate) *  eval_basis_function(basis%bf(ibf),rr)
          eval_wfn(istate) = eval_wfn(istate) + c_matrix(ibf,istate) * basis_function_r(ibf)
        enddo
      enddo
