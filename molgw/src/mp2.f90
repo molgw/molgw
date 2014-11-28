@@ -329,7 +329,7 @@ subroutine full_ci_2electrons_spin(print_wfn,spinstate,basis,h_1e,c_matrix,nuc_n
  real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,basis%nbf)
  real(dp),intent(in)        :: nuc_nuc
 !=====
- integer,parameter    :: neig=6
+ integer,parameter    :: neig=12
  integer,parameter    :: nblock=2
  integer,parameter    :: ncycle=12
  integer              :: ieig,jeig,keig,neigc,icycle,iblock,jblock
@@ -505,7 +505,7 @@ subroutine full_ci_2electrons_spin(print_wfn,spinstate,basis,h_1e,c_matrix,nuc_n
  allocate(hamiltonian(nconf,nconf))
  hamiltonian(:,:) = eigenvector(:,:)
 
- if(nconf>2000) then ! iterative partial diago or full diago
+ if(.FALSE.) then 
    ! home made steepest descent algo
    WRITE_MASTER(*,*)
    WRITE_MASTER(*,*) 'hamiltonian too big to be diagonalized'
@@ -553,7 +553,9 @@ subroutine full_ci_2electrons_spin(print_wfn,spinstate,basis,h_1e,c_matrix,nuc_n
    
    deallocate(test1,test2,hphi,gr1,gr2)
 
- else if( .TRUE. ) then
+ endif ! OLD stepest descent
+
+ if( nconf>500 ) then
    WRITE_MASTER(*,*) 
    WRITE_MASTER(*,*) 'Davidson diago'
    WRITE_MASTER(*,*) 'trial vectors'
