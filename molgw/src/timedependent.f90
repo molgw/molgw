@@ -373,7 +373,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
      enddo
 
      do idir=1,3
-       dipole_basis(idir,ibf:ibf+ni-1,jbf:jbf+nj+1) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
+       dipole_basis(idir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
              MATMUL(  dipole_cart(idir,:,:) , cart_to_pure(lj)%matrix(:,:) ) )
      enddo
 

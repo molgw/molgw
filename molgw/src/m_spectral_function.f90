@@ -17,6 +17,7 @@ module m_spectral_function
  type spectral_function 
    integer :: npole
    integer :: nprodbasis
+   integer,allocatable  :: transition_index(:,:,:)
    real(dp),allocatable :: pole(:)
    real(dp),allocatable :: residu_left(:,:)       ! first index runs on n, second index on i
    real(dp),allocatable :: residu_right(:,:)      ! first index runs on n, second index on j
@@ -83,14 +84,16 @@ subroutine init_spectral_function(nbf,prod_nbf,nspin,occupation,sf)
  endif
 
 
+ allocate(sf%transition_index(nbf,nbf,nspin))
 
-
+ sf%transition_index(:,:,:) = 0
  sf%npole=0
  do ispin=1,nspin
    do ibf=1,nbf
      do jbf=1,nbf
        if( skip_transition(nspin,ibf,jbf,occupation(ibf,ispin),occupation(jbf,ispin)) ) cycle
        sf%npole = sf%npole+1
+       sf%transition_index(ibf,jbf,ispin) = sf%npole
      enddo
    enddo
  enddo
@@ -164,6 +167,7 @@ subroutine destroy_spectral_function(sf)
 !=====
 
  deallocate(sf%pole)
+ deallocate(sf%transition_index)
 #ifndef CASIDA
  deallocate(sf%residu_left)
  deallocate(sf%residu_right)

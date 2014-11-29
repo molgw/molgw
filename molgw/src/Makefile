@@ -40,7 +40,7 @@ molgw.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_calculation_typ
 	$(FC) $(FCOPTS) -c molgw.f90 $(LIBXC_INCS)
 
 hamiltonian.o: macros.h m_definitions.f90 m_timing.f90 m_eri.f90 hamiltonian.f90
-	$(FC) $(FCOPTS) -c hamiltonian.f90 
+	$(FC) $(FCOPTS) -c hamiltonian.f90 $(LIBXC_INCS)
 
 gw.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_calculation_type.f90 m_spectral_function.f90 m_eri.f90 m_inputparam.f90 gw.f90
 	$(FC) $(FCOPTS) -c gw.f90 $(LIBXC_INCS)
@@ -58,13 +58,13 @@ io.o: macros.h m_definitions.f90 m_warning.f90 m_calculation_type.f90 m_atoms.f9
 	$(FC) $(FCOPTS) -c io.f90 $(LIBXC_INCS)
 
 mp2.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 mp2.f90 
-	$(FC) $(FCOPTS) -c mp2.f90
+	$(FC) $(FCOPTS) -c mp2.f90 $(LIBXC_INCS)
 
 mp2_selfenergy.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 m_calculation_type.f90 mp2_selfenergy.f90
 	$(FC) $(FCOPTS) -c mp2_selfenergy.f90 $(LIBXC_INCS)
 
 lebedev_quadrature.o: macros.h lebedev_quadrature.f
-	$(FC) $(FCOPTS) -c lebedev_quadrature.f
+	$(FC) $(FCOPTS) -c lebedev_quadrature.f $(LIBXC_INCS)
 
 wrapper_libint.o: macros.h wrapper_libint.cc
 	$(CC) $(CCOPTS) -c wrapper_libint.cc $(LIBINT_INCS)
@@ -76,40 +76,40 @@ m_spectral_function.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_b
 	$(FC) $(FCOPTS) -c m_spectral_function.f90 $(LIBXC_INCS)
 
 m_eri.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90
-	$(FC) $(FCOPTS) -c m_eri.f90
+	$(FC) $(FCOPTS) -c m_eri.f90 $(LIBXC_INCS)
 
 m_basis_set.o: macros.h m_definitions.f90 m_gaussian.f90 m_basis_set.f90
-	$(FC) $(FCOPTS) -c m_basis_set.f90
+	$(FC) $(FCOPTS) -c m_basis_set.f90 $(LIBXC_INCS)
 
 m_gaussian.o: macros.h m_definitions.f90 m_tools.f90 m_gaussian.f90
-	$(FC) $(FCOPTS) -c m_gaussian.f90
+	$(FC) $(FCOPTS) -c m_gaussian.f90 $(LIBXC_INCS)
 
 m_scf.o: macros.h m_definitions.f90 m_scf.f90
-	$(FC) $(FCOPTS) -c m_scf.f90
+	$(FC) $(FCOPTS) -c m_scf.f90 $(LIBXC_INCS)
 
 m_tools.o: macros.h m_definitions.f90 m_tools.f90
-	$(FC) $(FCOPTS) -c m_tools.f90
+	$(FC) $(FCOPTS) -c m_tools.f90 $(LIBXC_INCS)
 
 m_inputparam.o: macros.h m_definitions.f90 m_mpi.f90 m_warning.f90 m_calculation_type.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 m_inputparam.f90
-	$(FC) $(FCOPTS) -c m_inputparam.f90
+	$(FC) $(FCOPTS) -c m_inputparam.f90 $(LIBXC_INCS)
 
 m_calculation_type.o: macros.h m_definitions.f90 m_calculation_type.f90
 	$(FC) $(FCOPTS) -c m_calculation_type.f90 $(LIBXC_INCS)
 
 m_warning.o: macros.h m_definitions.f90 m_warning.f90
-	$(FC) $(FCOPTS) -c m_warning.f90
+	$(FC) $(FCOPTS) -c m_warning.f90 $(LIBXC_INCS)
 
 m_timing.o: macros.h m_definitions.f90 m_timing.f90
-	$(FC) $(FCOPTS) -c m_timing.f90
+	$(FC) $(FCOPTS) -c m_timing.f90 $(LIBXC_INCS)
 
 m_mpi.o: macros.h m_definitions.f90 m_mpi.f90
-	$(FC) $(FCOPTS) -c m_mpi.f90
+	$(FC) $(FCOPTS) -c m_mpi.f90 $(LIBXC_INCS)
 
 m_atoms.o: macros.h m_definitions.f90 m_atoms.f90
-	$(FC) $(FCOPTS) -c m_atoms.f90
+	$(FC) $(FCOPTS) -c m_atoms.f90 $(LIBXC_INCS)
 
 m_definitions.o: macros.h m_definitions.f90
-	$(FC) $(FCOPTS) -c m_definitions.f90
+	$(FC) $(FCOPTS) -c m_definitions.f90 $(LIBXC_INCS)
 
 archive:
 	tar czf molgw.tgz ../../molgw/README ../../molgw/src/Makefile ../../molgw/src/*.f90 ../../molgw/src/*.f ../../molgw/src/*.cc \

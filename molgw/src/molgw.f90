@@ -632,6 +632,7 @@ program molgw
 #ifdef CASIDA
    call polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #else
+!   call polarizability_rpa_paral(basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
    call polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #endif
    call stop_clock(timing_pola)

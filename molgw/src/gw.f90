@@ -202,6 +202,217 @@ end subroutine polarizability_rpa
 
 
 !=========================================================================
+subroutine polarizability_rpa_paral(basis,prod_basis,occupation,energy,c_matrix,rpa_correlation,wpol)
+ use m_definitions
+ use m_mpi
+ use m_calculation_type
+ use m_timing 
+ use m_warning,only: issue_warning
+ use m_tools
+ use m_basis_set
+ use m_eri
+ use m_spectral_function
+ use m_inputparam,only: nspin,print_specfunc
+ implicit none
+
+ type(basis_set)                       :: basis,prod_basis
+ real(dp),intent(in)                   :: occupation(basis%nbf,nspin)
+ real(dp),intent(in)                   :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(out)                  :: rpa_correlation
+ type(spectral_function),intent(inout) :: wpol
+!=====
+ integer :: pbf,qbf,ibf,jbf,kbf,lbf,ijbf,klbf,ijbf_current,ijspin,klspin
+ integer :: abf,bbf,cbf,dbf
+ integer :: iorbital,jorbital,korbital,lorbital
+ integer :: ipole
+ integer :: t_ij,t_kl
+ integer :: reading_status
+ real(dp),parameter :: tol_h2p=1.0e-6_DP
+
+ real(dp) :: spin_fact 
+ real(dp) :: eri_abcd,docc_ij
+ real(dp) :: h_2p(wpol%npole,wpol%npole)
+ real(dp) :: eigenvalue(wpol%npole),eigenvector(wpol%npole,wpol%npole),eigenvector_inv(wpol%npole,wpol%npole)
+ real(dp) :: matrix(wpol%npole,wpol%npole)
+ real(dp) :: rtmp
+ real(dp) :: alpha1,alpha2
+
+ logical :: TDHF=.FALSE.
+!=====
+#ifndef LOW_MEMORY2
+#ifndef LOW_MEMORY3
+ stop'polarizability_rpa_paral needs LOW_MEMORY2 or LOW_MEMORY3'
+#endif 
+#endif 
+
+ spin_fact = REAL(-nspin+3,dp)
+
+ WRITE_MASTER(*,'(/,a)') ' calculating CHI alla rpa PARAL'
+
+ call read_spectral_function(wpol,reading_status)
+ if( reading_status == 0 ) then
+   WRITE_MASTER(*,'(a,/)') ' no need to calculate W: already done'
+   return
+ endif
+
+ inquire(file='manual_tdhf',exist=TDHF)
+ if(TDHF) then
+   open(unit=18,file='manual_tdhf',status='old')
+   read(18,*) alpha1
+   read(18,*) alpha2
+   close(18)
+   WRITE_ME(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alphas  ',alpha1,alpha2
+   call issue_warning(msg)
+ else
+   alpha1=0.0_dp
+   alpha2=0.0_dp
+ endif
+
+ h_2p(:,:)=0.0_dp
+ rpa_correlation = 0.0_dp
+ !
+ ! 
+ ! LOOP OVER COULOMB INTEGRALS
+ do abf=1,basis%nbf
+   do bbf=1,basis%nbf
+     do cbf=1,basis%nbf
+       do dbf=1,basis%nbf
+
+         ! access the integral
+         eri_abcd = eri(abf,bbf,cbf,dbf)
+         if( ABS(eri_abcd) < tol_h2p ) cycle
+
+         t_ij=0
+         do ijspin=1,nspin
+           do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
+ 
+             if( ABS(c_matrix(abf,iorbital,ijspin)) < tol_h2p ) cycle
+
+             do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
+               if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
+
+!               t_ij=t_ij+1
+               t_ij=wpol%transition_index(iorbital,jorbital,ijspin)
+ 
+
+               if( ABS(c_matrix(bbf,jorbital,ijspin)) < tol_h2p ) cycle
+
+               docc_ij = occupation(iorbital,ijspin)-occupation(jorbital,ijspin)
+
+
+               t_kl=0
+               do klspin=1,nspin
+                 do korbital=1,basis%nbf 
+
+                   if( ABS(c_matrix(cbf,korbital,klspin)) < tol_h2p ) cycle
+
+                   do lorbital=1,basis%nbf 
+                     if( skip_transition(nspin,lorbital,korbital,occupation(lorbital,klspin),occupation(korbital,klspin)) ) cycle
+
+!                     t_kl=t_kl+1
+                      t_kl=wpol%transition_index(korbital,lorbital,klspin)
+
+                     if( ABS(c_matrix(dbf,lorbital,klspin)) < tol_h2p ) cycle
+
+                     h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl) &
+                                + c_matrix(abf,iorbital,ijspin) * c_matrix(bbf,jorbital,ijspin)  &
+                                 * c_matrix(cbf,korbital,klspin) * c_matrix(dbf,lorbital,klspin) &
+                                  * eri_abcd                                                     &
+                                   * docc_ij
+
+                   enddo
+                 enddo
+               enddo !klspin
+
+             enddo !jorbital
+           enddo !iorbital
+         enddo ! ijspin
+
+       enddo
+     enddo
+   enddo
+ enddo
+
+ !
+ ! Then add the diagonal
+ !
+ t_ij=0
+ do ijspin=1,nspin
+   do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
+
+     do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
+       if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin))) cycle
+       t_ij=t_ij+1
+
+       h_2p(t_ij,t_ij) =  h_2p(t_ij,t_ij) + ( energy(jorbital,ijspin) - energy(iorbital,ijspin) )
+
+       rpa_correlation = rpa_correlation - 0.25_dp * ABS( h_2p(t_ij,t_ij) )
+
+     enddo
+   enddo
+ enddo
+
+
+
+ WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
+ WRITE_MASTER(*,*) 'matrix',wpol%npole,'x',wpol%npole
+
+ call start_clock(timing_diago_h2p)
+ call diagonalize_general(wpol%npole,h_2p,eigenvalue,eigenvector)
+ call stop_clock(timing_diago_h2p)
+ WRITE_MASTER(*,*) 'diago finished'
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,*) 'calculate the RPA energy using the Tamm-Dancoff decomposition'
+ WRITE_MASTER(*,*) 'formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)'
+ rpa_correlation = rpa_correlation + 0.25_dp * SUM( ABS(eigenvalue(:)) )
+ WRITE_MASTER(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',rpa_correlation
+
+ WRITE_MASTER(*,'(/,a,f14.8)') ' Lowest neutral excitation energy [eV]',MINVAL(ABS(eigenvalue(:)))*Ha_eV
+
+! do t_ij=1,wpol%npole
+!   WRITE_MASTER(*,'(1(i4,2x),20(2x,f12.6))') t_ij,eigenvalue(t_ij)
+! enddo
+   
+ call start_clock(timing_inversion_s2p)
+ call invert(wpol%npole,eigenvector,eigenvector_inv)
+ call stop_clock(timing_inversion_s2p)
+
+
+ !
+ ! Finally calculate v * \chi * v and store it in object wpol
+ !
+ call chi_to_vchiv(nspin,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+
+ ! If requested write the spectral function on file
+ if( print_specfunc ) call write_spectral_function(wpol)
+
+
+#ifdef CRPA
+ ! Constrained RPA attempt
+ do ijbf=1,prod_basis%nbf
+   iorbital = prod_basis%index_ij(1,ijbf)
+   jorbital = prod_basis%index_ij(2,ijbf)
+   if(iorbital /=band1 .AND. iorbital /=band2) cycle
+   if(jorbital /=band1 .AND. jorbital /=band2) cycle
+   do klbf=1,prod_basis%nbf
+     korbital = prod_basis%index_ij(1,klbf)
+     lorbital = prod_basis%index_ij(2,klbf)
+     if(korbital /=band1 .AND. korbital /=band2) cycle
+     if(lorbital /=band1 .AND. lorbital /=band2) cycle
+     rtmp=0.0_dp
+     do ipole=1,wpol%npole
+       rtmp = rtmp + wpol%residu_left(ipole,ijbf) * wpol%residu_right(ipole,klbf) / ( -wpol%pole(ipole) )
+     enddo
+     write(1001,'(4(i6,x),2x,f16.8)') iorbital,jorbital,korbital,lorbital,rtmp
+   enddo
+ enddo
+#endif
+ 
+
+end subroutine polarizability_rpa_paral
+
+
+!=========================================================================
 subroutine chi_to_vchiv(nspin,nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
  use m_definitions
  use m_basis_set
