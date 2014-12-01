@@ -441,22 +441,24 @@ program molgw
    title='=== Energies ==='
    call dump_out_eigenenergy(title,basis%nbf,nspin,occupation,energy)
   
-   !
-   ! REMEMBER:
-   ! \phi_a = \sum_i C_{ia} \varphi_i
-   ! 
-   ! hence transpose the c_matrix for a correct output by dump_out_matrix
-   do ispin=1,nspin
-     matrix(:,:,ispin) = transpose( c_matrix(:,:,ispin) )
-   enddo
-   title='=== C coefficients ==='
-   call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix)
-!   matrix(:,:,1) = matmul( c_matrix(:,:,1), matmul( s_matrix(:,:), transpose(c_matrix(:,:,1)) ) )
-!   title='=== C S C^T = identity ? ==='
-!   call dump_out_matrix(print_matrix,title,basis%nbf,1,matrix)
-   matrix(:,:,1) = matmul( transpose(c_matrix(:,:,1)), matmul( s_matrix(:,:), c_matrix(:,:,1) ) )
-   title='=== C^T S C = identity ? ==='
-   call dump_out_matrix(print_matrix,title,basis%nbf,1,matrix)
+   if(print_matrix) then
+     !
+     ! REMEMBER:
+     ! \phi_i = \sum_alpha C_{alpha i} \varphi_alpha 
+     ! 
+     ! hence transpose the c_matrix for a correct output by dump_out_matrix
+     do ispin=1,nspin
+       matrix(:,:,ispin) = transpose( c_matrix(:,:,ispin) )
+     enddo
+     title='=== C coefficients ==='
+     call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix)
+     matrix(:,:,1) = matmul( c_matrix(:,:,1), matmul( s_matrix(:,:), transpose(c_matrix(:,:,1)) ) )
+     title='=== C S C^T = identity ? ==='
+     call dump_out_matrix(print_matrix,title,basis%nbf,1,matrix)
+     matrix(:,:,1) = matmul( transpose(c_matrix(:,:,1)), matmul( s_matrix(:,:), c_matrix(:,:,1) ) )
+     title='=== C^T S C = identity ? ==='
+     call dump_out_matrix(print_matrix,title,basis%nbf,1,matrix)
+   endif
 
   
    !
@@ -509,7 +511,6 @@ program molgw
  if( print_densitymatrix )   call write_density_matrix(nspin,basis%nbf,p_matrix)
  if( print_wfn ) call plot_wfn(nspin,basis,c_matrix)
 ! if( print_wfn ) call plot_cube_wfn(nspin,basis,c_matrix)
-
 
  !
  ! CI calculation is done here

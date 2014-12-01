@@ -72,6 +72,7 @@ subroutine polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,rpa_co
 
  allocate(eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin))
 
+ call start_clock(timing_tmp1)
  t_ij=0
  do ijspin=1,nspin
    do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
@@ -141,6 +142,7 @@ subroutine polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,rpa_co
      enddo !jorbital
    enddo !iorbital
  enddo ! ijspin
+ call stop_clock(timing_tmp1)
 
  WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
  WRITE_MASTER(*,*) 'matrix',wpol%npole,'x',wpol%npole
@@ -227,7 +229,7 @@ subroutine polarizability_rpa_paral(basis,prod_basis,occupation,energy,c_matrix,
  integer :: ipole
  integer :: t_ij,t_kl
  integer :: reading_status
- real(dp),parameter :: tol_h2p=1.0e-6_DP
+ real(dp),parameter :: tol_h2p=1.0e-3_DP  ! 1.0e-6_DP
 
  real(dp) :: spin_fact 
  real(dp) :: eri_abcd,docc_ij
@@ -268,6 +270,7 @@ subroutine polarizability_rpa_paral(basis,prod_basis,occupation,energy,c_matrix,
    alpha2=0.0_dp
  endif
 
+ call start_clock(timing_tmp1)
  h_2p(:,:)=0.0_dp
  rpa_correlation = 0.0_dp
  !
@@ -352,7 +355,7 @@ subroutine polarizability_rpa_paral(basis,prod_basis,occupation,energy,c_matrix,
    enddo
  enddo
 
-
+ call stop_clock(timing_tmp1)
 
  WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
  WRITE_MASTER(*,*) 'matrix',wpol%npole,'x',wpol%npole
@@ -386,28 +389,6 @@ subroutine polarizability_rpa_paral(basis,prod_basis,occupation,energy,c_matrix,
  ! If requested write the spectral function on file
  if( print_specfunc ) call write_spectral_function(wpol)
 
-
-#ifdef CRPA
- ! Constrained RPA attempt
- do ijbf=1,prod_basis%nbf
-   iorbital = prod_basis%index_ij(1,ijbf)
-   jorbital = prod_basis%index_ij(2,ijbf)
-   if(iorbital /=band1 .AND. iorbital /=band2) cycle
-   if(jorbital /=band1 .AND. jorbital /=band2) cycle
-   do klbf=1,prod_basis%nbf
-     korbital = prod_basis%index_ij(1,klbf)
-     lorbital = prod_basis%index_ij(2,klbf)
-     if(korbital /=band1 .AND. korbital /=band2) cycle
-     if(lorbital /=band1 .AND. lorbital /=band2) cycle
-     rtmp=0.0_dp
-     do ipole=1,wpol%npole
-       rtmp = rtmp + wpol%residu_left(ipole,ijbf) * wpol%residu_right(ipole,klbf) / ( -wpol%pole(ipole) )
-     enddo
-     write(1001,'(4(i6,x),2x,f16.8)') iorbital,jorbital,korbital,lorbital,rtmp
-   enddo
- enddo
-#endif
- 
 
 end subroutine polarizability_rpa_paral
 
