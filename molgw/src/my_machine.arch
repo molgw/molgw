@@ -5,7 +5,7 @@ OPENMP= #-openmp
 
 #FC=mpif90 -fpp $(OPENMP) -mkl=parallel -DHAVE_LIBXC #-DHAVE_MPI -DCASIDA  -DHAVE_SCALAPACK -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
 
-FC=gfortran -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
+FC=gfortran -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC   # -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
 
 CC=gcc -O0 
 FCOPTS= -O0  -g  -fcheck=all -fbacktrace # -g -check all -traceback  #-O2 #-g -check all -check noarg_temp_created -traceback
