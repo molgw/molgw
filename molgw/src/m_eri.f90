@@ -952,7 +952,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
 
  !
  ! Perform in-place inversion here
- call invert(nsize1,eri_2center_m1)
+ call invert(nsize1_auxil,eri_2center_m1)
 
  WRITE_MASTER(*,'(a,/)') ' All 2-center integrals have been calculated, inverted and stored'
 
@@ -1082,7 +1082,8 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
                          / zeta_34 * EXP( -alpha3(ig3)*alpha4(ig4)/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
                          * SQRT( rho / rho1 ) &
                          * shell_auxil(ishell)%coeff(ig1) &
-                         * shell_auxil(kshell)%coeff(ig3) &
+                         * shell(kshell)%coeff(ig3) &
+                         * shell(lshell)%coeff(ig4) &
                          * cart_to_pure_norm(0)%matrix(1,1)**4
 
                  enddo
