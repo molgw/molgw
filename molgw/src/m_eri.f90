@@ -467,7 +467,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
    WRITE_MASTER(*,'(a40,x,f9.4)') ' Long-Range only integrals with rcut=',rcut
    WRITE_MASTER(*,'(a40,x,f9.4)') ' or omega=',omega_range
  else 
-   omega_range = 1.0e6_dp
+   omega_range = 2.0e6_dp
  endif
 
 
@@ -748,7 +748,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
 
  WRITE_MASTER(*,'(/,a)') ' Calculate, invert and store the 2-center Electron Repulsion Integrals'
 
- omega_range = 1.0e6_dp
+ omega_range = 2.0e6_dp
 
  do lshell=1,1  ! FAKE loop
    do kshell=1,nshell_auxil
@@ -1003,7 +1003,7 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
 
  WRITE_MASTER(*,'(/,a)') ' Calculate and store all the 3-center Electron Repulsion Integrals'
 
- omega_range = 1.0e6_dp
+ omega_range = 2.0e6_dp
 
 
  do lshell=1,nshell
@@ -1021,10 +1021,7 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
        do ishell=1,nshell_auxil
          ami = shell_auxil(ishell)%am
          amj = 0
-         if( ami < amj ) cycle
-
-         write(*,*) ishell,jshell,kshell,lshell
-         write(*,*) nshell_auxil,1,nshell,nshell
+         if( ami < amj ) stop'PROBLEM'
 
          ni = number_basis_function_am( auxil_basis%gaussian_type , ami )
          nj = 1
@@ -1037,7 +1034,7 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
            am1 = shell_auxil(ishell)%am
            am2 = 0
            am3 = shell(kshell)%am
-           am4 = shell(kshell)%am
+           am4 = shell(lshell)%am
            n1c = number_basis_function_am( CARTESIAN , ami )
            n2c = 1
            n3c = number_basis_function_am( CARTESIAN , amk )
@@ -1070,7 +1067,7 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
            am3 = shell_auxil(ishell)%am
            am4 = 0
            am1 = shell(kshell)%am
-           am2 = shell(kshell)%am
+           am2 = shell(lshell)%am
            n3c = number_basis_function_am( CARTESIAN , ami )
            n4c = 1
            n1c = number_basis_function_am( CARTESIAN , amk )
@@ -1086,7 +1083,7 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
            allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
            allocate(coeff1(ng1),coeff2(ng2),coeff3(ng3),coeff4(ng4))
            alpha3(:) = shell_auxil(ishell)%alpha(:) 
-           alpha4(:) = 0.0_dp ! shell_auxil(jshell)%alpha(:)
+           alpha4(:) = 0.01  !0.0_dp  FBFB
            alpha1(:) = shell(kshell)%alpha(:)
            alpha2(:) = shell(lshell)%alpha(:)
            coeff3(:) = shell_auxil(ishell)%coeff(:)
@@ -1100,7 +1097,8 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
 
          endif
 
-         allocate( integrals_libint( n1c*n2c*n3c*n4c ) )
+!         allocate( integrals_libint(n1c*n2c*n3c*n4c) )
+         allocate( int_shell(n1c*n2c*n3c*n4c) )
          allocate( integrals_cart(n1c,n2c,n3c,n4c) )
          allocate( integrals_tmp (n1c,n2c,n3c,n4c) )
          integrals_cart(:,:,:,:) = 0.0_dp
@@ -1145,18 +1143,27 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
              do ig3=1,ng3
                do ig2=1,ng2
                  do ig1=1,ng1
-
                    info=calculate_integral(omega_range,&
                                            am1,am2,am3,am4,alpha1(ig1),alpha2(ig2),alpha3(ig3),alpha4(ig4),&
                                            x01(1),x01(2),x01(3),&
                                            x02(1),x02(2),x02(3),&
                                            x03(1),x03(2),x03(3),&
                                            x04(1),x04(2),x04(3),&
-                                           integrals_libint(1))
+                                           int_shell(1))
+!                                           integrals_libint(1))
 
                    if(info/=0) then
+                     WRITE_MASTER(*,*) 'Attempt to calculate omega_range:'
+                     WRITE_MASTER(*,*) omega_range
                      WRITE_MASTER(*,*) 'Attempt to calculate angular momenta:'
                      WRITE_MASTER(*,*) am1,am2,am3,am4
+                     WRITE_MASTER(*,*) 'Attempt to calculate alpha:'
+                     WRITE_MASTER(*,*) alpha1(ig1),alpha2(ig2),alpha3(ig3),alpha4(ig4)
+                     WRITE_MASTER(*,*) 'Attempt to calculate positions:'
+                     WRITE_MASTER(*,*) x01(1),x01(2),x01(3)
+                     WRITE_MASTER(*,*) x02(1),x02(2),x02(3)
+                     WRITE_MASTER(*,*) x03(1),x03(2),x03(3)
+                     WRITE_MASTER(*,*) x04(1),x04(2),x04(3)
                      stop 'ERI calculated by libint failed'
                    endif
 
@@ -1167,7 +1174,8 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
                          do lbf=1,n4c
                            iibf=iibf+1
                            integrals_cart(ibf,jbf,kbf,lbf) = integrals_cart(ibf,jbf,kbf,lbf) &
-                                                            + integrals_libint(iibf)         &
+!                                                            + integrals_libint(iibf)         &
+                                                            + int_shell(iibf)         &
                                                               * coeff1(ig1) * coeff2(ig2)    &
                                                               * coeff3(ig3) * coeff4(ig4)
                          enddo
@@ -1179,7 +1187,6 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
                enddo
              enddo
            enddo
-
 
            do lbf=1,n4c
              do kbf=1,n3c
@@ -1253,17 +1260,12 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
          endif
 
 
-         write(*,*) 'HERE',allocated(integrals_cart),integrals_cart(1,1,1,1)
          deallocate(integrals_cart)
-         write(*,*) 'HERE2'
          deallocate(integrals_tmp)
-         write(*,*) 'HERE3'
-         deallocate(integrals_libint)
-         write(*,*) 'HERE4'
+!         deallocate(integrals_libint)
+         deallocate(int_shell)
          deallocate(alpha1,alpha2,alpha3,alpha4)
-         write(*,*) 'HERE5'
          deallocate(coeff1,coeff2,coeff3,coeff4)
-         write(*,*) 'HERE6'
 
        enddo
      enddo

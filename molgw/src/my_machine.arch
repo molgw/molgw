@@ -7,7 +7,7 @@ OPENMP= #-openmp
 
 FC=gfortran -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC -DLOW_MEMORY3 #-DLOW_MEMORY3 -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
 
-CC=gcc
+CC=gcc -O0 -g  -fcheck=all -fbacktrace 
 FCOPTS= -O0  -g  -fcheck=all -fbacktrace # -g -check all -traceback  #-O2 #-g -check all -check noarg_temp_created -traceback
 CCOPTS= -O2 # -O0 -g -fbounds-check
 #FCOPTS= -xHost -O3 #-ipo
