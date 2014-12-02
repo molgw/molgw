@@ -39,11 +39,6 @@ subroutine polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,rpa_co
 
  logical :: TDHF=.FALSE.
 !=====
-#ifndef LOW_MEMORY2
-#ifndef LOW_MEMORY3
- stop'polarizability_rpa needs LOW_MEMORY2 or LOW_MEMORY3'
-#endif 
-#endif 
 
  spin_fact = REAL(-nspin+3,dp)
  rpa_correlation = 0.0_dp
@@ -241,11 +236,6 @@ subroutine polarizability_rpa_paral(basis,prod_basis,occupation,energy,c_matrix,
 
  logical :: TDHF=.FALSE.
 !=====
-#ifndef LOW_MEMORY2
-#ifndef LOW_MEMORY3
- stop'polarizability_rpa_paral needs LOW_MEMORY2 or LOW_MEMORY3'
-#endif 
-#endif 
 
  spin_fact = REAL(-nspin+3,dp)
 
@@ -511,12 +501,6 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
 
  spin_fact = REAL(-nspin+3,dp)
  rpa_correlation = 0.0_dp
-
-#ifndef LOW_MEMORY2
-#ifndef LOW_MEMORY3
- stop 'NOT implemented'
-#endif
-#endif
 
 #ifdef HAVE_SCALAPACK
  call init_desc(wpol%npole,desc,mlocal,nlocal)

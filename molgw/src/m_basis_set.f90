@@ -351,59 +351,19 @@ contains
  allocate(prod_basis%index_ij(2,prod_basis%nbf))
  allocate(prod_basis%index_prodbasis(basis%nbf,basis%nbf))
 
- !
- ! Construct all products
- iprodbf = 0
- do jbf=1,basis%nbf
-   do ibf=1,jbf
-     iprodbf = iprodbf + 1
-     prod_basis%index_ij(1,iprodbf) = ibf
-     prod_basis%index_ij(2,iprodbf) = jbf
-     prod_basis%index_prodbasis(ibf,jbf) = iprodbf
-     prod_basis%index_prodbasis(jbf,ibf) = iprodbf
-     call basis_function_prod(basis%bf(ibf),basis%bf(jbf),prod_basis%bf(iprodbf)) 
-   enddo
- enddo
-
-
-#ifdef AUXIL_BASIS
- allocate(s_matrix(prod_basis%nbf,prod_basis%nbf))
- allocate(eigval(prod_basis%nbf))
- allocate(eigvec(prod_basis%nbf,prod_basis%nbf))
- !
- ! first build the full overlap matrix S
- ! in order to identify the most singular eigenvectors
- do jprodbf=1,prod_basis%nbf
-   do iprodbf=1,jprodbf  ! the matrix is symmetric S_ab = S_ba
-     call overlap_basis_function(prod_basis%bf(iprodbf),prod_basis%bf(jprodbf),overlap_tmp)
-     s_matrix(iprodbf,jprodbf) = overlap_tmp
-     s_matrix(jprodbf,iprodbf) = overlap_tmp
-   enddo
- enddo
-
- call diagonalize(prod_basis%nbf,s_matrix,eigval,eigvec)
-
-
- prod_basis%nbf_filtered = 0
- do iprodbf=1,prod_basis%nbf
-   if( eigval(iprodbf) > FILTERED_EIGENVALUE ) prod_basis%nbf_filtered = prod_basis%nbf_filtered + 1
- enddo
-
- WRITE_MASTER(*,'(a,es12.6)') ' filtering below ',FILTERED_EIGENVALUE
- WRITE_MASTER(*,'(a,i4,a,i4)') ' Conserve ',prod_basis%nbf_filtered,' out of ',prod_basis%nbf
-
- allocate(prod_basis%rotation(prod_basis%nbf_filtered,prod_basis%nbf))
-
- jprodbf=0
- do iprodbf=1,prod_basis%nbf
-   if( eigval(iprodbf) > FILTERED_EIGENVALUE ) then
-     jprodbf=jprodbf+1
-     prod_basis%rotation(jprodbf,:) = eigvec(:,iprodbf)    ! THIS HAS BEEN CHECKED ALREADY TWICE! This is correct!
-   endif
- enddo
-
- deallocate(s_matrix,eigval,eigvec)
-#endif
+  !
+  ! Construct all products
+  iprodbf = 0
+  do jbf=1,basis%nbf
+    do ibf=1,jbf
+      iprodbf = iprodbf + 1
+      prod_basis%index_ij(1,iprodbf) = ibf
+      prod_basis%index_ij(2,iprodbf) = jbf
+      prod_basis%index_prodbasis(ibf,jbf) = iprodbf
+      prod_basis%index_prodbasis(jbf,ibf) = iprodbf
+!      call basis_function_prod(basis%bf(ibf),basis%bf(jbf),prod_basis%bf(iprodbf)) 
+    enddo
+  enddo
 
  end subroutine init_product_basis_set
 
