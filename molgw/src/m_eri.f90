@@ -9,7 +9,7 @@ module m_eri
  private
  public :: eri,allocate_eri,allocate_eri_eigen,deallocate_eri,calculate_eri,transform_eri_basis_fast,transform_eri_basis_lowmem, &
            eri_lr,negligible_eri,&
-           allocate_eri_auxil,calculate_eri_2center,calculate_eri_3center,&
+           allocate_eri_auxil,calculate_eri_2center,calculate_eri_3center,eri_ri,&
            BUFFER1,BUFFER2
  public :: index_prod
  public :: negligible_basispair,refine_negligible_basispair
@@ -30,6 +30,8 @@ module m_eri
  logical,allocatable        :: negligible_shellpair(:,:)
  logical,allocatable        :: negligible_basispair(:,:)
  integer,allocatable        :: index_pair(:,:)
+ integer,allocatable        :: index_shellpair(:,:)
+ integer                    :: nshellpair
 
  type shell_type
    integer              :: am
@@ -86,6 +88,7 @@ subroutine allocate_eri(basis,rcut,which_buffer)
    allocate(negligible_basispair(nbf_eri,nbf_eri))
    allocate(index_pair(nbf_eri,nbf_eri))
    call identify_negligible_shellpair(basis,rcut)
+   call setup_shellpair()
    call setup_negligible_basispair()
  endif
 
@@ -97,9 +100,6 @@ subroutine allocate_eri(basis,rcut,which_buffer)
 #elif defined LOW_MEMORY3
  nsize = (nsize1*(nsize1+1))/2
 #else
- WRITE_MASTER(*,'(/,a)') ' All ERI are stored'
- nsize1  = nbf_eri**2
- nsize   = nsize1**2
  stop'Not supported anymore'
 #endif
 
@@ -210,6 +210,7 @@ subroutine deallocate_eri()
  if(allocated(negligible_basispair))  deallocate(negligible_basispair)
  if(allocated(negligible_shellpair))  deallocate(negligible_shellpair)
  if(allocated(index_pair))            deallocate(index_pair)
+ if(allocated(index_shellpair))       deallocate(index_shellpair)
  ! 
  ! Cleanly deallocate the shell objects
  do ishell=1,nshell
@@ -253,7 +254,6 @@ function index_eri(ibf,jbf,kbf,lbf)
  integer            :: index_ij,index_kl
 !===== 
 
-#if defined LOW_MEMORY2 || defined LOW_MEMORY3
  index_ij = index_prod(ibf,jbf)
  index_kl = index_prod(kbf,lbf)
 
@@ -261,10 +261,8 @@ function index_eri(ibf,jbf,kbf,lbf)
  klmin=MIN(index_ij,index_kl)
 
  index_eri = (klmin-1)*nsize1 - (klmin-1)*(klmin-2)/2 + ijmax-klmin+1
-#else
- index_eri = ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3
-#endif
 
+! index_eri = ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3
 
 end function index_eri
 
@@ -274,9 +272,6 @@ function eri(ibf,jbf,kbf,lbf)
  implicit none
  integer,intent(in) :: ibf,jbf,kbf,lbf
  real(dp)           :: eri
-!=====
- integer            :: index_ijkl
- integer            :: i1,i2,i3,i4
 !=====
 
  if( negligible_basispair(ibf,jbf) .OR. negligible_basispair(kbf,lbf) ) then
@@ -294,9 +289,6 @@ function eri_lr(ibf,jbf,kbf,lbf)
  integer,intent(in) :: ibf,jbf,kbf,lbf
  real(dp)           :: eri_lr
 !=====
- integer            :: index_ijkl
- integer            :: i1,i2,i3,i4
-!=====
 
  if( negligible_basispair(ibf,jbf) .OR. negligible_basispair(kbf,lbf) ) then
    eri_lr = 0.0_dp
@@ -305,6 +297,26 @@ function eri_lr(ibf,jbf,kbf,lbf)
  endif
 
 end function eri_lr
+
+
+!=========================================================================
+function eri_ri(ibf,jbf,kbf,lbf)
+ implicit none
+ integer,intent(in) :: ibf,jbf,kbf,lbf
+ real(dp)           :: eri_ri
+!=====
+ integer            :: index_ij,index_kl
+!=====
+
+ if( negligible_basispair(ibf,jbf) .OR. negligible_basispair(kbf,lbf) ) then
+   eri_ri = 0.0_dp
+ else
+   index_ij = index_prod(ibf,jbf)
+   index_kl = index_prod(kbf,lbf)
+   eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , MATMUL( eri_2center_m1(:,:) , eri_3center(:,index_kl) ) ) 
+ endif
+
+end function eri_ri
 
 
 !=========================================================================
@@ -429,6 +441,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  integer,intent(in)           :: which_buffer
 !=====
  integer                      :: ishell,jshell,kshell,lshell
+ integer                      :: ijshellpair,klshellpair
  integer                      :: n1,n2,n3,n4
  integer                      :: ng1,ng2,ng3,ng4
  integer                      :: ig1,ig2,ig3,ig4
@@ -479,8 +492,16 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
 !$OMP&   info,iibf)
 
 !$OMP DO SCHEDULE(DYNAMIC) 
+
+#if 0
  do lshell=1,nshell
    do kshell=1,nshell
+#else
+ do klshellpair=1,nshellpair
+     kshell = index_shellpair(1,klshellpair)
+     lshell = index_shellpair(2,klshellpair)
+#endif
+
      !
      ! Order the angular momenta so that libint is pleased
      ! 1) am3+am4 >= am1+am2
@@ -488,16 +509,26 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
      ! 3) am1>=am2
      amk = shell(kshell)%am
      aml = shell(lshell)%am
+#if 0
      if( amk < aml ) cycle
      if( negligible_shellpair(kshell,lshell) ) cycle
+#endif
 
+#if 0
      do jshell=1,nshell
        do ishell=1,nshell
+#else
+     do ijshellpair=1,nshellpair
+         ishell = index_shellpair(1,ijshellpair)
+         jshell = index_shellpair(2,ijshellpair)
+#endif
          ami = shell(ishell)%am
          amj = shell(jshell)%am
-         if( ami < amj ) cycle
          if( amk+aml < ami+amj ) cycle
+#if 0
+         if( ami < amj ) cycle
          if( negligible_shellpair(ishell,jshell) ) cycle
+#endif
 
 
          ni = number_basis_function_am( basis%gaussian_type , ami )
@@ -693,10 +724,15 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
          deallocate(integrals_libint)
          deallocate(alpha1,alpha2,alpha3,alpha4)
 
+#if 0
        enddo
      enddo
    enddo
  enddo
+#else
+     enddo
+ enddo
+#endif
 !$OMP END DO
 !$OMP END PARALLEL
 
@@ -934,6 +970,9 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
                do ibf=1,ni
                  eri_2center_m1( shell_auxil(ishell)%istart+ibf-1,    &
                                  shell_auxil(kshell)%istart+kbf-1 )    = integrals_cart(ibf,jbf,kbf,lbf)
+                 ! And the symmetric too
+                 eri_2center_m1( shell_auxil(kshell)%istart+kbf-1,    &
+                                 shell_auxil(ishell)%istart+ibf-1 )    = integrals_cart(ibf,jbf,kbf,lbf)
                enddo
              enddo
            enddo
@@ -974,6 +1013,7 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
  type(basis_set),intent(in)   :: auxil_basis
 !=====
  integer                      :: ishell,jshell,kshell,lshell
+ integer                      :: klshellpair
  integer                      :: n1,n2,n3,n4,n1c,n2c,n3c,n4c
  integer                      :: ng1,ng2,ng3,ng4
  integer                      :: ig1,ig2,ig3,ig4
@@ -988,7 +1028,6 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
  real(dp)                     :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
- real(dp),allocatable         :: integrals_libint(:)
  real(dp),allocatable         :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
 !=====
 ! variables used to call C++ 
@@ -1006,8 +1045,11 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
  omega_range = 2.0e6_dp
 
 
- do lshell=1,nshell
-   do kshell=1,nshell
+! do lshell=1,nshell
+!   do kshell=1,nshell
+ do klshellpair=1,nshellpair
+     kshell = index_shellpair(1,klshellpair)
+     lshell = index_shellpair(2,klshellpair)
      !
      ! Order the angular momenta so that libint is pleased
      ! 1) am3+am4 >= am1+am2
@@ -1015,7 +1057,8 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
      ! 3) am1>=am2
      amk = shell(kshell)%am
      aml = shell(lshell)%am
-     if( amk < aml ) cycle
+!     if( amk < aml ) cycle
+!     if( amk < aml ) stop'SSHOULD NOT HAPPEN'
 
      do jshell=1,1  ! FAKE LOOP
        do ishell=1,nshell_auxil
@@ -1083,7 +1126,7 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
            allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
            allocate(coeff1(ng1),coeff2(ng2),coeff3(ng3),coeff4(ng4))
            alpha3(:) = shell_auxil(ishell)%alpha(:) 
-           alpha4(:) = 0.01  !0.0_dp  FBFB
+           alpha4(:) = 0.0_dp 
            alpha1(:) = shell(kshell)%alpha(:)
            alpha2(:) = shell(lshell)%alpha(:)
            coeff3(:) = shell_auxil(ishell)%coeff(:)
@@ -1097,7 +1140,6 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
 
          endif
 
-!         allocate( integrals_libint(n1c*n2c*n3c*n4c) )
          allocate( int_shell(n1c*n2c*n3c*n4c) )
          allocate( integrals_cart(n1c,n2c,n3c,n4c) )
          allocate( integrals_tmp (n1c,n2c,n3c,n4c) )
@@ -1150,7 +1192,6 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
                                            x03(1),x03(2),x03(3),&
                                            x04(1),x04(2),x04(3),&
                                            int_shell(1))
-!                                           integrals_libint(1))
 
                    if(info/=0) then
                      WRITE_MASTER(*,*) 'Attempt to calculate omega_range:'
@@ -1174,7 +1215,6 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
                          do lbf=1,n4c
                            iibf=iibf+1
                            integrals_cart(ibf,jbf,kbf,lbf) = integrals_cart(ibf,jbf,kbf,lbf) &
-!                                                            + integrals_libint(iibf)         &
                                                             + int_shell(iibf)         &
                                                               * coeff1(ig1) * coeff2(ig2)    &
                                                               * coeff3(ig3) * coeff4(ig4)
@@ -1262,14 +1302,14 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
 
          deallocate(integrals_cart)
          deallocate(integrals_tmp)
-!         deallocate(integrals_libint)
          deallocate(int_shell)
          deallocate(alpha1,alpha2,alpha3,alpha4)
          deallocate(coeff1,coeff2,coeff3,coeff4)
 
        enddo
      enddo
-   enddo
+!   enddo
+! enddo
  enddo
 
  WRITE_MASTER(*,'(a,/)') ' All 3-center integrals have been calculated and stored'
@@ -1577,6 +1617,55 @@ subroutine identify_negligible_shellpair(basis,rcut)
  WRITE_MASTER(*,*) 'Neglible shell pairs',nneglect,'/',neval
 
 end subroutine identify_negligible_shellpair
+
+
+!=========================================================================
+subroutine setup_shellpair()
+ implicit none
+
+ integer :: ishell,jshell
+ integer :: ami,amj
+ integer :: ishellpair
+!=====
+
+ ishellpair = 0
+ do jshell=1,nshell
+   do ishell=1,jshell ! nshell
+     ! skip the identified negligible shell pairs
+     if( negligible_shellpair(ishell,jshell) ) cycle
+     ami = shell(ishell)%am
+     amj = shell(jshell)%am
+     ishellpair = ishellpair + 1
+
+   enddo
+ enddo
+ nshellpair = ishellpair
+ WRITE_MASTER(*,'(/,a,i12,/)') ' Non negligible shellpairs to be computed',nshellpair
+ allocate(index_shellpair(2,nshellpair))
+
+ ishellpair = 0
+ do jshell=1,nshell
+   do ishell=1,jshell ! nshell
+     ! skip the identified negligible shell pairs
+     if( negligible_shellpair(ishell,jshell) ) cycle
+     ami = shell(ishell)%am
+     amj = shell(jshell)%am
+     ishellpair = ishellpair + 1
+     ! Reverse if needed the order of the shell so to maximize the angular
+     ! momentum of the first shell
+     if( ami >= amj ) then
+       index_shellpair(1,ishellpair) = ishell
+       index_shellpair(2,ishellpair) = jshell
+     else
+       index_shellpair(1,ishellpair) = jshell
+       index_shellpair(2,ishellpair) = ishell
+     endif
+
+   enddo
+ enddo
+
+
+end subroutine setup_shellpair
 
 
 !=========================================================================
