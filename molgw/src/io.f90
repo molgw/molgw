@@ -49,14 +49,6 @@ subroutine header()
  msg='OPENMP option is activated with threads number'//msg
  call issue_warning(msg)
 #endif
-#ifdef LOW_MEMORY2
- msg='LOW_MEMORY version 2 option has been swichted on at compilation time'
- call issue_warning(msg)
-#endif
-#ifdef LOW_MEMORY3
- msg='LOW_MEMORY version 3 option has been swichted on at compilation time'
- call issue_warning(msg)
-#endif
 #ifdef CASIDA
  msg='CASIDA option has been swichted on at compilation time'
  call issue_warning(msg)

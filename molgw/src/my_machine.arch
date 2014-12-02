@@ -1,13 +1,13 @@
 OPENMP= #-openmp
 
-#FC=gfortran -cpp -DLOW_MEMORY2  -fno-range-check  -ffree-line-length-256 #-DHAVE_LIBXC -DLOW_MEMORY2 #-DCHI0  # -DAUXIL_BASIS
-#FC=mpif90 -fpp -mkl=parallel -DHAVE_MPI -DLOW_MEMORY1 -DHAVE_LIBXC #-DLOW_MEMORY2 #-DCHI0  # -DAUXIL_BASIS
+#FC=gfortran -cpp  -fno-range-check  -ffree-line-length-256 #-DHAVE_LIBXC #-DCHI0  # -DAUXIL_BASIS
+#FC=mpif90 -fpp -mkl=parallel -DHAVE_MPI -DHAVE_LIBXC #-DCHI0  # -DAUXIL_BASIS
 
-#FC=mpif90 -fpp $(OPENMP) -mkl=parallel -DHAVE_LIBXC -DLOW_MEMORY3 #-DHAVE_MPI -DCASIDA  -DHAVE_SCALAPACK #-DLOW_MEMORY3 -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
+#FC=mpif90 -fpp $(OPENMP) -mkl=parallel -DHAVE_LIBXC #-DHAVE_MPI -DCASIDA  -DHAVE_SCALAPACK -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
 
-FC=gfortran -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC -DLOW_MEMORY3 #-DLOW_MEMORY3 -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
+FC=gfortran -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
 
-CC=gcc -O0 -g  -fcheck=all -fbacktrace 
+CC=gcc -O0 
 FCOPTS= -O0  -g  -fcheck=all -fbacktrace # -g -check all -traceback  #-O2 #-g -check all -check noarg_temp_created -traceback
 CCOPTS= -O2 # -O0 -g -fbounds-check
 #FCOPTS= -xHost -O3 #-ipo

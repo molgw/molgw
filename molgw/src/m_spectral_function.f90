@@ -103,11 +103,7 @@ subroutine init_spectral_function(nbf,prod_nbf,nspin,occupation,sf)
 
  allocate(sf%pole(sf%npole))
 
-#ifdef AUXIL_BASIS
- sf%nprodbasis = prod_nbf
-#else
  sf%nprodbasis = prod_nbf * nspin
-#endif
 
 #ifndef CASIDA
  allocate(sf%residu_left (sf%npole,sf%nprodbasis))

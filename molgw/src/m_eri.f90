@@ -93,15 +93,7 @@ subroutine allocate_eri(basis,rcut,which_buffer)
  endif
 
 
-#if defined LOW_MEMORY2
- WRITE_MASTER(*,'(/,a)') ' Symmetrized ERI stored (8 symmetries)' 
- nsize1  = index_prod(nbf_eri,nbf_eri) 
- nsize   = index_eri(nbf_eri,nbf_eri,nbf_eri,nbf_eri)
-#elif defined LOW_MEMORY3
  nsize = (nsize1*(nsize1+1))/2
-#else
- stop'Not supported anymore'
-#endif
 
  WRITE_MASTER(*,*) 'number of integrals to be stored:',nsize
  WRITE_MASTER(*,*) 'max index size',HUGE(nsize)
@@ -232,13 +224,7 @@ function index_prod(ibf,jbf)
  integer            :: jmin,imax
 !=====
 
-#ifdef LOW_MEMORY3
  index_prod = index_pair(ibf,jbf)
-#else
- imax=MAX(ibf,jbf)
- jmin=MIN(ibf,jbf)
- index_prod = (jmin-1)*nbf_eri - (jmin-1)*(jmin-2)/2 + imax-jmin+1
-#endif
 
 end function index_prod
 
@@ -467,12 +453,6 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  real(C_DOUBLE)               :: omega_range
 !=====
 
-#ifndef LOW_MEMORY2 
-#ifndef LOW_MEMORY3
- stop'This implementation is only compatible with preprocessing option LOW_MEMORY2 or LOW_MEMORY3'
-#endif
-#endif
-
  WRITE_MASTER(*,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
 
  if( rcut > 1.0e-6_dp ) then
@@ -484,257 +464,209 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  endif
 
 
-!$OMP PARALLEL DEFAULT(SHARED) &
-!$OMP& PRIVATE(ami,amj,amk,aml,ni,nj,nk,nl,am1,am2,am3,am4,n1,n2,n3,n4,ng1,ng2,ng3,ng4,&
-!$OMP&   alpha1,alpha2,alpha3,alpha4,x01,x02,x03,x04,&
-!$OMP&   integrals_libint,integrals_cart,integrals_tmp,&
-!$OMP&   zeta_12,zeta_34,p,q,rho,rho1,tt,f0t,&
-!$OMP&   info,iibf)
-
-!$OMP DO SCHEDULE(DYNAMIC) 
-
-#if 0
- do lshell=1,nshell
-   do kshell=1,nshell
-#else
  do klshellpair=1,nshellpair
-     kshell = index_shellpair(1,klshellpair)
-     lshell = index_shellpair(2,klshellpair)
-#endif
+   kshell = index_shellpair(1,klshellpair)
+   lshell = index_shellpair(2,klshellpair)
 
-     !
-     ! Order the angular momenta so that libint is pleased
-     ! 1) am3+am4 >= am1+am2
-     ! 2) am3>=am4
-     ! 3) am1>=am2
-     amk = shell(kshell)%am
-     aml = shell(lshell)%am
-#if 0
-     if( amk < aml ) cycle
-     if( negligible_shellpair(kshell,lshell) ) cycle
-#endif
-
-#if 0
-     do jshell=1,nshell
-       do ishell=1,nshell
-#else
-     do ijshellpair=1,nshellpair
-         ishell = index_shellpair(1,ijshellpair)
-         jshell = index_shellpair(2,ijshellpair)
-#endif
-         ami = shell(ishell)%am
-         amj = shell(jshell)%am
-         if( amk+aml < ami+amj ) cycle
-#if 0
-         if( ami < amj ) cycle
-         if( negligible_shellpair(ishell,jshell) ) cycle
-#endif
+   !
+   ! Order the angular momenta so that libint is pleased
+   ! 1) am3+am4 >= am1+am2
+   ! 2) am3>=am4
+   ! 3) am1>=am2
+   amk = shell(kshell)%am
+   aml = shell(lshell)%am
 
 
-         ni = number_basis_function_am( basis%gaussian_type , ami )
-         nj = number_basis_function_am( basis%gaussian_type , amj )
-         nk = number_basis_function_am( basis%gaussian_type , amk )
-         nl = number_basis_function_am( basis%gaussian_type , aml )
+   do ijshellpair=1,nshellpair
+     ishell = index_shellpair(1,ijshellpair)
+     jshell = index_shellpair(2,ijshellpair)
+
+     ami = shell(ishell)%am
+     amj = shell(jshell)%am
+     if( amk+aml < ami+amj ) cycle
+
+     ni = number_basis_function_am( basis%gaussian_type , ami )
+     nj = number_basis_function_am( basis%gaussian_type , amj )
+     nk = number_basis_function_am( basis%gaussian_type , amk )
+     nl = number_basis_function_am( basis%gaussian_type , aml )
 
 
-         am1 = shell(ishell)%am
-         am2 = shell(jshell)%am
-         am3 = shell(kshell)%am
-         am4 = shell(lshell)%am
-         n1 = number_basis_function_am( CARTESIAN , ami )
-         n2 = number_basis_function_am( CARTESIAN , amj )
-         n3 = number_basis_function_am( CARTESIAN , amk )
-         n4 = number_basis_function_am( CARTESIAN , aml )
-         ng1 = shell(ishell)%ng
-         ng2 = shell(jshell)%ng
-         ng3 = shell(kshell)%ng
-         ng4 = shell(lshell)%ng
-         allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
-         alpha1(:) = shell(ishell)%alpha(:) 
-         alpha2(:) = shell(jshell)%alpha(:)
-         alpha3(:) = shell(kshell)%alpha(:)
-         alpha4(:) = shell(lshell)%alpha(:)
-         x01(:) = shell(ishell)%x0(:)
-         x02(:) = shell(jshell)%x0(:)
-         x03(:) = shell(kshell)%x0(:)
-         x04(:) = shell(lshell)%x0(:)
+     am1 = shell(ishell)%am
+     am2 = shell(jshell)%am
+     am3 = shell(kshell)%am
+     am4 = shell(lshell)%am
+     n1 = number_basis_function_am( CARTESIAN , ami )
+     n2 = number_basis_function_am( CARTESIAN , amj )
+     n3 = number_basis_function_am( CARTESIAN , amk )
+     n4 = number_basis_function_am( CARTESIAN , aml )
+     ng1 = shell(ishell)%ng
+     ng2 = shell(jshell)%ng
+     ng3 = shell(kshell)%ng
+     ng4 = shell(lshell)%ng
+     allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
+     alpha1(:) = shell(ishell)%alpha(:) 
+     alpha2(:) = shell(jshell)%alpha(:)
+     alpha3(:) = shell(kshell)%alpha(:)
+     alpha4(:) = shell(lshell)%alpha(:)
+     x01(:) = shell(ishell)%x0(:)
+     x02(:) = shell(jshell)%x0(:)
+     x03(:) = shell(kshell)%x0(:)
+     x04(:) = shell(lshell)%x0(:)
 
-         allocate( integrals_libint( n1*n2*n3*n4 ) )
-         allocate( integrals_cart(n1,n2,n3,n4) )
-         allocate( integrals_tmp(n1,n2,n3,n4) )
-         integrals_cart(:,:,:,:) = 0.0_dp
-
-
-         if(am1+am2+am3+am4==0) then
-
-           do ig4=1,ng4
-             do ig3=1,ng3
-               do ig2=1,ng2
-                 do ig1=1,ng1
-
-                   zeta_12 = alpha1(ig1) + alpha2(ig2)
-                   zeta_34 = alpha3(ig3) + alpha4(ig4)
-                   p(:) = ( alpha1(ig1) * x01(:) + alpha2(ig2) * x02(:) ) / zeta_12 
-                   q(:) = ( alpha3(ig3) * x03(:) + alpha4(ig4) * x04(:) ) / zeta_34 
-                   !
-                   ! Full range or long-range only integrals
-                   if( rcut < 2.0e-6_dp ) then
-                     rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
-                     rho1 = rho
-                   else
-                     rho  = zeta_12 * zeta_34 * omega_range**2 / ( zeta_12*omega_range**2 + zeta_34*omega_range**2 + zeta_12*zeta_34 )
-                     rho1 = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
-                   endif
-                   tt = rho * SUM( (p(:)-q(:))**2 )
-                   call boys_function(f0t(0),0,tt)
-
-                   integrals_cart(1,1,1,1) = integrals_cart(1,1,1,1) + &
-                         2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
-                         / zeta_12 * EXP( -alpha1(ig1)*alpha2(ig2)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
-                         / zeta_34 * EXP( -alpha3(ig3)*alpha4(ig4)/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
-                         * SQRT( rho / rho1 ) &
-                         * shell(ishell)%coeff(ig1) &
-                         * shell(jshell)%coeff(ig2) &
-                         * shell(kshell)%coeff(ig3) &
-                         * shell(lshell)%coeff(ig4) * cart_to_pure_norm(0)%matrix(1,1)**4
-
-                 enddo
-               enddo
-             enddo
-           enddo
-
-         else
-
-           do ig4=1,ng4
-             do ig3=1,ng3
-               do ig2=1,ng2
-                 do ig1=1,ng1
-
-! call start_clock(timing_tmp2)
-                   info=calculate_integral(omega_range,&
-                                           am1,am2,am3,am4,alpha1(ig1),alpha2(ig2),alpha3(ig3),alpha4(ig4),&
-                                           x01(1),x01(2),x01(3),&
-                                           x02(1),x02(2),x02(3),&
-                                           x03(1),x03(2),x03(3),&
-                                           x04(1),x04(2),x04(3),&
-                                           integrals_libint(1))
-
-                   if(info/=0) then
-                     WRITE_MASTER(*,*) am1,am2,am3,am4
-                     stop 'ERI calculated by libint failed'
-                   endif
-! call stop_clock(timing_tmp2)
-! call start_clock(timing_tmp1)
-
-                   iibf=0
-                   do ibf=1,n1
-                     do jbf=1,n2
-                       do kbf=1,n3
-                         do lbf=1,n4
-                           iibf=iibf+1
-                           integrals_cart(ibf,jbf,kbf,lbf) = integrals_cart(ibf,jbf,kbf,lbf) &
-                                                            + integrals_libint(iibf) * shell(ishell)%coeff(ig1) * shell(jshell)%coeff(ig2) &
-                                                                                     * shell(kshell)%coeff(ig3) * shell(lshell)%coeff(ig4)
-                         enddo
-                       enddo
-                     enddo
-                   enddo
-! call stop_clock(timing_tmp1)
-
-                 enddo
-               enddo
-             enddo
-           enddo
-
-! call start_clock(timing_tmp3)
-
-           do lbf=1,n4
-             do kbf=1,n3
-               do jbf=1,n2
-                 do ibf=1,ni
-                   integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1,jbf,kbf,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1,ibf) )
-                 enddo
-               enddo
-             enddo
-           enddo
-
-           do lbf=1,n4
-             do kbf=1,n3
-               do jbf=1,nj
-                 do ibf=1,ni
-                   integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2,kbf,lbf) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2,jbf) )
-                 enddo
-               enddo
-             enddo
-           enddo
-
-           do lbf=1,n4
-             do kbf=1,nk
-               do jbf=1,nj
-                 do ibf=1,ni
-                   integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n3,lbf) * cart_to_pure_norm(shell(kshell)%am)%matrix(1:n3,kbf) )
-                 enddo
-               enddo
-             enddo
-           enddo
-
-           do lbf=1,nl
-             do kbf=1,nk
-               do jbf=1,nj
-                 do ibf=1,ni
-                   integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n4) * cart_to_pure_norm(shell(lshell)%am)%matrix(1:n4,lbf) )
-                 enddo
-               enddo
-             enddo
-           enddo
-
-! call stop_clock(timing_tmp3)
+     allocate( integrals_libint( n1*n2*n3*n4 ) )
+     allocate( integrals_cart(n1,n2,n3,n4) )
+     allocate( integrals_tmp(n1,n2,n3,n4) )
+     integrals_cart(:,:,:,:) = 0.0_dp
 
 
+     if(am1+am2+am3+am4==0) then
 
-         endif
-         
-! call start_clock(timing_tmp4)
+       do ig4=1,ng4
+         do ig3=1,ng3
+           do ig2=1,ng2
+             do ig1=1,ng1
 
-         do lbf=1,nl
-           do kbf=1,nk
-             do jbf=1,nj
-               do ibf=1,ni
-                 if( which_buffer == BUFFER1 ) then
-                   eri_buffer( index_eri(shell(ishell)%istart+ibf-1, &
-                                         shell(jshell)%istart+jbf-1, &
-                                         shell(kshell)%istart+kbf-1, &
-                                         shell(lshell)%istart+lbf-1) ) = integrals_cart(ibf,jbf,kbf,lbf)
-                 else
-                   eri_buffer_lr( index_eri(shell(ishell)%istart+ibf-1, &
-                                            shell(jshell)%istart+jbf-1, &
-                                            shell(kshell)%istart+kbf-1, &
-                                            shell(lshell)%istart+lbf-1) ) = integrals_cart(ibf,jbf,kbf,lbf)
-                 endif
-               enddo
+               zeta_12 = alpha1(ig1) + alpha2(ig2)
+               zeta_34 = alpha3(ig3) + alpha4(ig4)
+               p(:) = ( alpha1(ig1) * x01(:) + alpha2(ig2) * x02(:) ) / zeta_12 
+               q(:) = ( alpha3(ig3) * x03(:) + alpha4(ig4) * x04(:) ) / zeta_34 
+               !
+               ! Full range or long-range only integrals
+               if( rcut < 2.0e-6_dp ) then
+                 rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
+                 rho1 = rho
+               else
+                 rho  = zeta_12 * zeta_34 * omega_range**2 / ( zeta_12*omega_range**2 + zeta_34*omega_range**2 + zeta_12*zeta_34 )
+                 rho1 = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
+               endif
+               tt = rho * SUM( (p(:)-q(:))**2 )
+               call boys_function(f0t(0),0,tt)
+
+               integrals_cart(1,1,1,1) = integrals_cart(1,1,1,1) + &
+                     2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
+                     / zeta_12 * EXP( -alpha1(ig1)*alpha2(ig2)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
+                     / zeta_34 * EXP( -alpha3(ig3)*alpha4(ig4)/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
+                     * SQRT( rho / rho1 ) &
+                     * shell(ishell)%coeff(ig1) &
+                     * shell(jshell)%coeff(ig2) &
+                     * shell(kshell)%coeff(ig3) &
+                     * shell(lshell)%coeff(ig4) * cart_to_pure_norm(0)%matrix(1,1)**4
+
              enddo
            enddo
          enddo
-! call stop_clock(timing_tmp4)
+       enddo
+
+     else
+
+       do ig4=1,ng4
+         do ig3=1,ng3
+           do ig2=1,ng2
+             do ig1=1,ng1
+
+               info=calculate_integral(omega_range,&
+                                       am1,am2,am3,am4,alpha1(ig1),alpha2(ig2),alpha3(ig3),alpha4(ig4),&
+                                       x01(1),x01(2),x01(3),&
+                                       x02(1),x02(2),x02(3),&
+                                       x03(1),x03(2),x03(3),&
+                                       x04(1),x04(2),x04(3),&
+                                       integrals_libint(1))
+
+               if(info/=0) then
+                 WRITE_MASTER(*,*) am1,am2,am3,am4
+                 stop 'ERI calculated by libint failed'
+               endif
+
+               iibf=0
+               do ibf=1,n1
+                 do jbf=1,n2
+                   do kbf=1,n3
+                     do lbf=1,n4
+                       iibf=iibf+1
+                       integrals_cart(ibf,jbf,kbf,lbf) = integrals_cart(ibf,jbf,kbf,lbf) &
+                                                        + integrals_libint(iibf) * shell(ishell)%coeff(ig1) * shell(jshell)%coeff(ig2) &
+                                                                                 * shell(kshell)%coeff(ig3) * shell(lshell)%coeff(ig4)
+                     enddo
+                   enddo
+                 enddo
+               enddo
+
+             enddo
+           enddo
+         enddo
+       enddo
 
 
+       do lbf=1,n4
+         do kbf=1,n3
+           do jbf=1,n2
+             do ibf=1,ni
+               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1,jbf,kbf,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1,ibf) )
+             enddo
+           enddo
+         enddo
+       enddo
 
-         deallocate(integrals_cart)
-         deallocate(integrals_tmp)
-         deallocate(integrals_libint)
-         deallocate(alpha1,alpha2,alpha3,alpha4)
+       do lbf=1,n4
+         do kbf=1,n3
+           do jbf=1,nj
+             do ibf=1,ni
+               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2,kbf,lbf) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2,jbf) )
+             enddo
+           enddo
+         enddo
+       enddo
 
-#if 0
+       do lbf=1,n4
+         do kbf=1,nk
+           do jbf=1,nj
+             do ibf=1,ni
+               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n3,lbf) * cart_to_pure_norm(shell(kshell)%am)%matrix(1:n3,kbf) )
+             enddo
+           enddo
+         enddo
+       enddo
+
+       do lbf=1,nl
+         do kbf=1,nk
+           do jbf=1,nj
+             do ibf=1,ni
+               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n4) * cart_to_pure_norm(shell(lshell)%am)%matrix(1:n4,lbf) )
+             enddo
+           enddo
+         enddo
+       enddo
+
+     endif ! is (ss|ss)
+     
+     do lbf=1,nl
+       do kbf=1,nk
+         do jbf=1,nj
+           do ibf=1,ni
+             if( which_buffer == BUFFER1 ) then
+               eri_buffer( index_eri(shell(ishell)%istart+ibf-1, &
+                                     shell(jshell)%istart+jbf-1, &
+                                     shell(kshell)%istart+kbf-1, &
+                                     shell(lshell)%istart+lbf-1) ) = integrals_cart(ibf,jbf,kbf,lbf)
+             else
+               eri_buffer_lr( index_eri(shell(ishell)%istart+ibf-1, &
+                                        shell(jshell)%istart+jbf-1, &
+                                        shell(kshell)%istart+kbf-1, &
+                                        shell(lshell)%istart+lbf-1) ) = integrals_cart(ibf,jbf,kbf,lbf)
+             endif
+           enddo
+         enddo
        enddo
      enddo
+
+
+     deallocate(integrals_cart)
+     deallocate(integrals_tmp)
+     deallocate(integrals_libint)
+     deallocate(alpha1,alpha2,alpha3,alpha4)
+
    enddo
  enddo
-#else
-     enddo
- enddo
-#endif
-!$OMP END DO
-!$OMP END PARALLEL
 
 
  WRITE_MASTER(*,'(a,/)') ' All ERI have been calculated'

@@ -48,13 +48,6 @@ program molgw
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  real(dp),allocatable    :: self_energy_old(:,:,:)
-#ifdef AUXIL_BASIS
- real(dp),allocatable    :: eri2(:,:),matrix2(:,:)
- real(dp),allocatable    :: s_filtered_basis(:,:)
- real(dp),allocatable    :: sinv_filtered_basis(:,:)
- real(dp),allocatable    :: v_filtered_basis(:,:)
- real(dp),allocatable    :: sinv_v_sinv_filtered(:,:),sinv_v_sinv(:,:)
-#endif
 !=====
  type energy_contributions
    real(dp) :: nuc_nuc= 0.0_dp
@@ -173,79 +166,6 @@ program molgw
    call calculate_eri_3center(print_eri,basis,auxil_basis)
    call stop_clock(timing_eri_auxil)
  endif
-
-!========================================================
-! AUXILIARY basis set GW
-!========================================================
-! not supported any longer...
-! should be removed in the future (or not)
-!
-#ifdef AUXIL_BASIS
- if( calc_type%is_gw ) then
-   call start_clock(timing_prodbasis)
-   allocate(v_filtered_basis(prod_basis%nbf_filtered,prod_basis%nbf_filtered))
-   allocate(s_filtered_basis(prod_basis%nbf_filtered,prod_basis%nbf_filtered))
-   allocate(sinv_filtered_basis(prod_basis%nbf_filtered,prod_basis%nbf_filtered))
-
-   allocate(eri2(prod_basis%nbf,prod_basis%nbf))
-   do klbf=1,prod_basis%nbf
-     do ijbf=1,prod_basis%nbf
-       ibf = prod_basis%index_ij(1,ijbf)
-       jbf = prod_basis%index_ij(2,ijbf)
-       kbf = prod_basis%index_ij(1,klbf)
-       lbf = prod_basis%index_ij(2,klbf)
-       eri2(ijbf,klbf) = eri(ibf,jbf,kbf,lbf)
-     enddo
-   enddo
-
-   v_filtered_basis = MATMUL( prod_basis%rotation , MATMUL( eri2 , TRANSPOSE(prod_basis%rotation) ) )
-   deallocate(eri2)
-
-   title='=== Coulomb matrix in product basis ==='
-   call dump_out_matrix(print_matrix,title,prod_basis%nbf_filtered,1,v_filtered_basis)
-
-   allocate(matrix2(prod_basis%nbf,prod_basis%nbf))
-   do klbf=1,prod_basis%nbf
-     do ijbf=1,klbf ! prod_basis%nbf
-       call overlap_basis_function(prod_basis%bf(ijbf),prod_basis%bf(klbf),overlap_tmp)
-       matrix2(ijbf,klbf) = overlap_tmp
-       matrix2(klbf,ijbf) = overlap_tmp
-     enddo
-   enddo
-   s_filtered_basis = MATMUL( prod_basis%rotation , MATMUL( matrix2 , TRANSPOSE(prod_basis%rotation) ) )
-   deallocate(matrix2)
-
-   ! Remember that the product basis is unnormalized !
-   title='=== product overlap matrix S ==='
-   call dump_out_matrix(print_matrix,title,prod_basis%nbf_filtered,1,s_filtered_basis)
-
-   !
-   ! calculate S^{-1}
-   call invert(prod_basis%nbf_filtered,s_filtered_basis,sinv_filtered_basis)
-
-   !
-   ! S^-1 V S^-1 is first calculated on the filtered product basis
-   allocate(sinv_v_sinv_filtered(prod_basis%nbf_filtered,prod_basis%nbf_filtered))
-   sinv_v_sinv_filtered = matmul( v_filtered_basis , sinv_filtered_basis )
-   sinv_v_sinv_filtered = matmul( sinv_filtered_basis , sinv_v_sinv_filtered )
-   title='=== S-1 V S-1 ==='
-   call dump_out_matrix(print_matrix,title,prod_basis%nbf_filtered,1,sinv_v_sinv_filtered)
-
-   !
-   ! S^-1 V S^-1 is then transposed to the full product basis
-   deallocate(v_filtered_basis,s_filtered_basis,sinv_filtered_basis)
-   allocate(sinv_v_sinv(prod_basis%nbf,prod_basis%nbf))
-   sinv_v_sinv = MATMUL( TRANSPOSE(prod_basis%rotation), MATMUL( sinv_v_sinv_filtered , prod_basis%rotation ) )
-
-   deallocate(sinv_v_sinv_filtered)
-
-   call stop_clock(timing_prodbasis)
- endif
-#endif
-!========================================================
-! end of AUXILIARY basis set GW
-!========================================================
-   
 
  !
  ! Build the occupation array
@@ -379,11 +299,7 @@ program molgw
 
      call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
      call start_clock(timing_pola)
-#ifdef AUXIL_BASIS
-     call polarizability_rpa_aux(nspin,basis,prod_basis,occupation,energy,c_matrix,sinv_v_sinv,en%rpa,wpol)
-#else
      call polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
-#endif
      call stop_clock(timing_pola)
      if( en%rpa > 1.e-6_DP) then
        en%tot = en%tot + en%rpa
@@ -392,11 +308,7 @@ program molgw
 
      call start_clock(timing_self)
      exchange_m_vxc_diag(:,:)=0.0_dp
-#ifdef AUXIL_BASIS
-     call gw_selfenergy_aux(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
-#else
      call gw_selfenergy(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
-#endif
      call stop_clock(timing_self)
 
      matrix = alpha_mixing * matrix + (1.0_dp-alpha_mixing) * self_energy_old
@@ -649,7 +561,6 @@ program molgw
 #ifdef CASIDA
    call polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #else
-!   call polarizability_rpa_paral(basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
    call polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #endif
    call stop_clock(timing_pola)
@@ -659,11 +570,7 @@ program molgw
 
    call start_clock(timing_self)
 #ifndef CASIDA
-#ifdef AUXIL_BASIS
-   call gw_selfenergy_aux(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
-#else
    call gw_selfenergy(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix)
-#endif
 #endif
    call stop_clock(timing_self)
 

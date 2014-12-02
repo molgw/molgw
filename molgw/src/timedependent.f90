@@ -87,9 +87,6 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
 #endif
 !=====
 
-#ifndef LOW_MEMORY3
- stop'polarizability_td requires LOW_MEMORY3'
-#endif
  if( .NOT. calc_type%is_td .AND. .NOT. calc_type%is_bse) then
    stop'BUG: this should not happend in timedependent'
  endif
