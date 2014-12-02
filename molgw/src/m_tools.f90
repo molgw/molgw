@@ -9,6 +9,7 @@ module m_tools
 
  interface invert
    module procedure invert_dp
+   module procedure invert_inplace_dp
    module procedure invert_cdp
  end interface
 
@@ -84,6 +85,7 @@ function random()
 
 end function random
 
+
 subroutine invert_dp(n,matrix,matrix_inv)
  implicit none
  integer,intent(in) :: n
@@ -104,6 +106,24 @@ subroutine invert_dp(n,matrix,matrix_inv)
  matrix_inv = a
 
 end subroutine invert_dp
+
+
+subroutine invert_inplace_dp(n,matrix)
+ implicit none
+ integer,intent(in)     :: n
+ real(dp),intent(inout) :: matrix(n,n)
+ real(dp) :: work(n)
+ integer :: ipvt(n),info
+
+ call DGETRF(n,n,matrix,n,ipvt,info)
+ if(info/=0) stop'FAILURE in DGETRF'
+
+ call DGETRI(n,matrix,n,ipvt,work,n,info)
+ if(info/=0) stop'FAILURE in DGETRI'
+
+
+end subroutine invert_inplace_dp
+
 
 subroutine invert_cdp(n,matrix,matrix_inv)
  implicit none

@@ -140,9 +140,10 @@ program molgw
  ! Set up the electron repulsion integrals
  !
  ! ERI are stored "privately" in the module m_eri
- call start_clock(timing_integrals)
+ call start_clock(timing_eri)
  call allocate_eri(basis,0.0_dp,BUFFER1)
  call calculate_eri(print_eri,basis,0.0_dp,BUFFER1)
+ call stop_clock(timing_eri)
 
  call refine_negligible_basispair()
 
@@ -150,9 +151,10 @@ program molgw
  ! for HSE functionals, calculate the long-range ERI
  if(calc_type%is_screened_hybrid) then
    call allocate_eri(basis,rcut,BUFFER2)
+   call start_clock(timing_eri)
    call calculate_eri(print_eri,basis,rcut,BUFFER2)
+   call stop_clock(timing_eri)
  endif
- call stop_clock(timing_integrals)
 ! call negligible_eri(1.0e-10_dp)
 
  !
@@ -161,10 +163,15 @@ program molgw
 
  !
  ! If an auxiliary basis is set up, 
- ! calculate the required ERI
+ ! calculate the required ERI: 2- and 3-center integrals
  if( auxil_basis%nbf > 0 ) then
-   call allocate_eri_auxil(auxil_basis,0.0_dp,BUFFER1)
-   call calculate_eri_auxil(print_eri,auxil_basis,0.0_dp,BUFFER1)
+   call allocate_eri_auxil(auxil_basis)
+   call start_clock(timing_eri_auxil)
+   ! 2-center integrals
+   call calculate_eri_2center(print_eri,auxil_basis)
+   ! 3-center integrals
+   call calculate_eri_3center(print_eri,basis,auxil_basis)
+   call stop_clock(timing_eri_auxil)
  endif
 
 !========================================================

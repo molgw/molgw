@@ -11,7 +11,7 @@ module m_timing
  integer,parameter :: timing_pola              = 3
  integer,parameter :: timing_self              = 4
  integer,parameter :: timing_prodbasis         = 5
- integer,parameter :: timing_integrals         = 6
+ integer,parameter :: timing_eri               = 6
  integer,parameter :: timing_exchange          = 7
  integer,parameter :: timing_hartree           = 8
  integer,parameter :: timing_overlap3          = 9
@@ -21,6 +21,7 @@ module m_timing
  integer,parameter :: timing_mp2_self          = 13
  integer,parameter :: timing_basis_transform   = 14
  integer,parameter :: timing_single_excitation = 15
+ integer,parameter :: timing_eri_auxil         = 16
  
  integer,parameter :: timing_tmp1          = 41
  integer,parameter :: timing_tmp2          = 42
@@ -97,7 +98,10 @@ subroutine output_timing()
  WRITE_MASTER(*,'(/,a)') '                 --- Timings in (s) and # of calls ---'
  WRITE_MASTER(*,'(a30,2x,f12.2)') 'Total time',timing(timing_total)
  WRITE_MASTER(*,*)
- WRITE_MASTER(*,'(a30,2x,f12.2)') '4 gaussians integrals' ,timing(timing_integrals)
+ WRITE_MASTER(*,'(a30,2x,f12.2)')    '4-center integrals' ,timing(timing_eri)
+ if( calls(timing_eri_auxil) > 0 ) then
+   WRITE_MASTER(*,'(a30,2x,f12.2)')    '2- and 3-center integrals' ,timing(timing_eri_auxil)
+ endif
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Hartree'         ,timing(timing_hartree),calls(timing_hartree)
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Exchange'        ,timing(timing_exchange),calls(timing_exchange)
