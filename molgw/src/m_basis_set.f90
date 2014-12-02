@@ -18,9 +18,9 @@ module m_basis_set
  type transform
    real(dp),allocatable         :: matrix(:,:)
  end type
- integer,parameter :: lmax_transform=5
- type(transform)   :: cart_to_pure(0:lmax_transform)
- type(transform)   :: cart_to_pure_norm(0:lmax_transform)
+ integer,parameter              :: lmax_transform=5
+ type(transform)                :: cart_to_pure(0:lmax_transform)
+ type(transform)                :: cart_to_pure_norm(0:lmax_transform)
 
  type basis_function
    character(len=100)           :: basis_name
@@ -53,6 +53,7 @@ module m_basis_set
    integer,allocatable                     :: index_ij(:,:)
    integer,allocatable                     :: index_prodbasis(:,:)
    real(dp),allocatable                    :: rotation(:,:)
+   integer                                 :: ammax
  end type basis_set
 
 
@@ -80,6 +81,9 @@ contains
  basis%nbf           = 0
  basis%nbf_cart      = 0
  basis%gaussian_type = gaussian_type
+ basis%ammax         = -1
+
+ if(TRIM(basis_name)=='none') return
 
  !
  ! LOOP OVER ATOMS
@@ -307,6 +311,14 @@ contains
  basis%nshell = shell_index
  WRITE_MASTER(*,'(a50,i8)') 'Number of shells:',basis%nshell
 
+ ! Find the maximum angular momentum employed in the basis set
+ basis%ammax=-1
+ do ibf=1,basis%nbf
+   basis%ammax = MAX(basis%ammax,basis%bf(ibf)%am)
+ enddo
+ WRITE_MASTER(*,'(a50,i8)') 'Maximum angular momentum in the basis set:',basis%ammax
+ WRITE_MASTER(*,'(a50,a8)') '                                          ',orbital_momentum_name(basis%ammax)
+
  !
  ! finally output the basis set upon request
  if( print_basis ) then
@@ -493,6 +505,7 @@ contains
    case(10) ! stands for SP orbitals
      number_basis_function_am = 4 
    case default
+     WRITE_ME(*,*) 'am=',am
      stop'number_basis_function_am: not implemented'
    end select
  case(PURE)
@@ -896,31 +909,24 @@ subroutine basis_function_dipole_sq(bf1,bf2,dipole)
 end subroutine basis_function_dipole_sq
 
 !=========================================================================
-subroutine setup_cart_to_pure_transforms(basis)
+subroutine setup_cart_to_pure_transforms(ammax,gaussian_type)
  implicit none
- type(basis_set),intent(in) :: basis
+! type(basis_set),intent(in) :: basis
+ integer,intent(in) :: ammax,gaussian_type
 !====
  integer  :: il,ni,ii,jj,kk
  integer  :: ibf,jbf
- integer  :: ammax
  integer  :: nx,ny,nz
 !====
 
  WRITE_MASTER(*,*) 'Setting up the cartesian to pure transforms'
- ! Find the maximum angular momentum employed in the calculation
- ammax=-1
- do ibf=1,basis%nbf
-   ammax = MAX(ammax,basis%bf(ibf)%am)
- enddo
- WRITE_MASTER(*,'(a50,i3)') 'Maximum angular momentum in the basis set: ',ammax
- WRITE_MASTER(*,'(a50,a3)') '                                           ',orbital_momentum_name(ammax)
  if(ammax > lmax_transform ) then      
    stop'angular momentum too high. Not implemented in cart to pure transform'
  endif
 
 
 
- if(basis%gaussian_type == CARTESIAN) then
+ if(gaussian_type == CARTESIAN) then
 
    do il=0,lmax_transform
      ni = number_basis_function_am(CARTESIAN,il)

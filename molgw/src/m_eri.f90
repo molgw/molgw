@@ -9,6 +9,7 @@ module m_eri
  private
  public :: eri,allocate_eri,allocate_eri_eigen,deallocate_eri,calculate_eri,transform_eri_basis_fast,transform_eri_basis_lowmem, &
            eri_lr,negligible_eri,&
+           allocate_eri_auxil,calculate_eri_auxil,&
            BUFFER1,BUFFER2
  public :: index_prod
  public :: negligible_basispair,refine_negligible_basispair
@@ -23,8 +24,9 @@ module m_eri
 
  real(prec_eri),allocatable :: eri_buffer(:)
  real(prec_eri),allocatable :: eri_buffer_lr(:)
+ real(prec_eri),allocatable :: eri_auxil(:,:)
+ real(prec_eri),allocatable :: eri_lr_auxil(:,:)
 
- integer                    :: nshell
  logical,allocatable        :: negligible_shellpair(:,:)
  logical,allocatable        :: negligible_basispair(:,:)
  integer,allocatable        :: index_pair(:,:)
@@ -37,12 +39,19 @@ module m_eri
    real(dp)             :: x0(3)
    integer              :: istart,iend
  end type shell_type
+ integer                      :: nshell
+ integer                      :: nshell_auxil
  type(shell_type),allocatable :: shell(:)
+ type(shell_type),allocatable :: shell_auxil(:)
 
 
  integer                    :: nbf_eri                ! local copy of nbf
  integer                    :: nsize                  ! size of the eri_buffer array
  integer                    :: nsize1                 ! number of independent pairs (i,j) with i<=j
+
+ integer                    :: nbf_eri_auxil          ! local copy of nbf for auxiliary basis
+ integer                    :: nsize_auxil            ! size of the eri_buffer array
+ integer                    :: nsize1_auxil           ! number of independent pairs (i,j) with i<=j
 
 contains
 
@@ -125,6 +134,66 @@ end subroutine allocate_eri
 
 
 !=========================================================================
+subroutine allocate_eri_auxil(auxil_basis,rcut,which_buffer)
+ implicit none
+!===== 
+ type(basis_set),intent(in) :: auxil_basis
+ real(dp),intent(in)        :: rcut
+ integer,intent(in)         :: which_buffer
+!===== 
+ integer            :: info
+ logical            :: file_exists
+!===== 
+
+ nbf_eri_auxil = auxil_basis%nbf
+ inquire(file='manual_tol_int',exist=file_exists)
+ if( file_exists ) then
+   open(unit=22,file='manual_tol_int',status='old')
+   read(22,*) TOL_INT
+   close(22)
+   TOL_INT = MAX(TOL_INT,0.0_dp)
+   WRITE_MASTER(msg,'(a,x,es14.4)') 'TOL_INT manually set to',TOL_INT
+   call issue_warning(msg)
+ else
+   TOL_INT = 1.0e-10_dp
+ endif
+
+ call setup_shell_list_auxil(auxil_basis)
+
+ nsize1_auxil = nbf_eri_auxil 
+ nsize_auxil  = nsize1_auxil**2
+
+ WRITE_MASTER(*,*) 'number of integrals to be stored:',nsize_auxil
+ WRITE_MASTER(*,*) 'max index size',HUGE(nsize_auxil)
+ if(nsize_auxil<1) stop'too many integrals to be stored'
+
+ if(REAL(nsize_auxil,dp)*prec_eri > 1024**3 ) then
+   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize_auxil,dp)*prec_eri/1024**3,' [Gb] / proc'
+ else
+   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize_auxil,dp)*prec_eri/1024**2,' [Mb] / proc'
+ endif
+
+ select case(which_buffer)
+ case(BUFFER1)
+   allocate(eri_auxil(nsize1_auxil,nsize1_auxil),stat=info)
+   eri_auxil(:,:) = 0.0_dp
+ case(BUFFER2)
+   allocate(eri_lr_auxil(nsize1_auxil,nsize1_auxil),stat=info)
+   eri_lr_auxil(:,:) = 0.0_dp
+ end select
+
+ if(info==0) then
+   WRITE_MASTER(*,*) 'success'
+ else
+   WRITE_MASTER(*,*) 'failure'
+   stop'Not enough memory. Buy a bigger computer'
+ endif
+
+
+end subroutine allocate_eri_auxil
+
+
+!=========================================================================
 subroutine deallocate_eri()
  implicit none
 
@@ -133,6 +202,8 @@ subroutine deallocate_eri()
 
  if(allocated(eri_buffer))            deallocate(eri_buffer)
  if(allocated(eri_buffer_lr))         deallocate(eri_buffer_lr)
+ if(allocated(eri_auxil))             deallocate(eri_auxil)
+ if(allocated(eri_lr_auxil))          deallocate(eri_lr_auxil)
  if(allocated(negligible_basispair))  deallocate(negligible_basispair)
  if(allocated(negligible_shellpair))  deallocate(negligible_shellpair)
  if(allocated(index_pair))            deallocate(index_pair)
@@ -213,6 +284,7 @@ function eri(ibf,jbf,kbf,lbf)
 
 end function eri
 
+
 !=========================================================================
 function eri_lr(ibf,jbf,kbf,lbf)
  implicit none
@@ -231,6 +303,7 @@ function eri_lr(ibf,jbf,kbf,lbf)
 
 end function eri_lr
 
+
 !=========================================================================
 subroutine calculate_eri(print_eri,basis,rcut,which_buffer)
  implicit none
@@ -241,7 +314,7 @@ subroutine calculate_eri(print_eri,basis,rcut,which_buffer)
 !=====
 
 
- if( .NOT. read_eri(rcut) ) call do_calculate_eri_new(basis,rcut,which_buffer)
+ if( .NOT. read_eri(rcut) ) call do_calculate_eri(basis,rcut,which_buffer)
 
 
  if( print_eri ) then
@@ -254,7 +327,7 @@ end subroutine calculate_eri
 !=========================================================================
 subroutine setup_shell_list(basis)
  implicit none
- 
+
  type(basis_set),intent(in)   :: basis
 !=====
  integer :: ibf,jbf
@@ -292,13 +365,55 @@ subroutine setup_shell_list(basis)
    enddo
  enddo
 
-
-
 end subroutine setup_shell_list
 
 
 !=========================================================================
-subroutine do_calculate_eri_new(basis,rcut,which_buffer)
+subroutine setup_shell_list_auxil(auxil_basis)
+ implicit none
+ 
+ type(basis_set),intent(in)   :: auxil_basis
+!=====
+ integer :: ibf,jbf
+ integer :: ishell
+!=====
+
+
+ nshell_auxil = auxil_basis%nshell
+ allocate(shell_auxil(nshell_auxil))
+
+ !
+ ! Set up shells information
+ jbf=0
+ do ishell=1,nshell_auxil
+   do ibf=1,auxil_basis%nbf_cart
+     if(auxil_basis%bf(ibf)%shell_index==ishell) then
+       shell_auxil(ishell)%am    = auxil_basis%bf(ibf)%am
+       shell_auxil(ishell)%x0(:) = auxil_basis%bf(ibf)%x0(:)
+       shell_auxil(ishell)%ng    = auxil_basis%bf(ibf)%ngaussian
+       allocate( shell_auxil(ishell)%alpha(shell_auxil(ishell)%ng) )
+       allocate( shell_auxil(ishell)%coeff(shell_auxil(ishell)%ng) )
+       shell_auxil(ishell)%alpha(:) = auxil_basis%bf(ibf)%g(:)%alpha
+       !
+       ! Include here the normalization part that does not depend on (nx,ny,nz)
+       shell_auxil(ishell)%coeff(:) = auxil_basis%bf(ibf)%coeff(:) &
+                 * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**shell_auxil(ishell)%am * shell_auxil(ishell)%alpha(:)**( 0.25_dp * ( 2.0_dp*shell_auxil(ishell)%am + 3.0_dp ) )
+
+       jbf = jbf + 1
+       shell_auxil(ishell)%istart = jbf
+       jbf = jbf + number_basis_function_am( auxil_basis%gaussian_type , shell_auxil(ishell)%am ) - 1
+       shell_auxil(ishell)%iend   = jbf
+       exit
+
+     endif
+   enddo
+ enddo
+
+end subroutine setup_shell_list_auxil
+
+
+!=========================================================================
+subroutine do_calculate_eri(basis,rcut,which_buffer)
  use ISO_C_BINDING
  use m_tools,only: boys_function
  use m_timing
@@ -586,7 +701,281 @@ subroutine do_calculate_eri_new(basis,rcut,which_buffer)
  WRITE_MASTER(*,'(a,/)') ' All ERI have been calculated'
 
 
-end subroutine do_calculate_eri_new
+end subroutine do_calculate_eri
+
+
+!=========================================================================
+subroutine calculate_eri_auxil(print_eri,auxil_basis,rcut,which_buffer)
+ use ISO_C_BINDING
+ use m_tools,only: boys_function
+ use m_timing
+#ifdef _OPENMP
+ use omp_lib
+#endif
+ implicit none
+ logical,intent(in)           :: print_eri
+ type(basis_set),intent(in)   :: auxil_basis
+ real(dp),intent(in)          :: rcut
+ integer,intent(in)           :: which_buffer
+!=====
+ integer                      :: ishell,jshell,kshell,lshell
+ integer                      :: n1,n2,n3,n4
+ integer                      :: ng1,ng2,ng3,ng4
+ integer                      :: ig1,ig2,ig3,ig4
+ integer                      :: ni,nj,nk,nl
+ integer                      :: ami,amj,amk,aml
+ integer                      :: ii,i,j,k,l
+ integer                      :: ibf,jbf,kbf,lbf
+ integer                      :: iibf,jjbf,kkbf,llbf
+ integer                      :: info
+ integer                      :: ordering
+ real(dp)                     :: zeta_12,zeta_34,rho,rho1,f0t(0:0),tt
+ real(dp)                     :: p(3),q(3)
+ real(dp),allocatable         :: integrals_tmp(:,:,:,:)
+ real(dp),allocatable         :: integrals_cart(:,:,:,:)
+ real(dp),allocatable         :: integrals_libint(:)
+!=====
+! variables used to call C++ 
+ integer(C_INT),external      :: calculate_integral
+ integer(C_INT)               :: am1,am2,am3,am4
+ real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
+ real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
+ real(C_DOUBLE),allocatable   :: int_shell(:)
+ real(C_DOUBLE)               :: omega_range
+!=====
+
+#ifndef LOW_MEMORY2 
+#ifndef LOW_MEMORY3
+ stop'This implementation is only compatible with preprocessing option LOW_MEMORY2 or LOW_MEMORY3'
+#endif
+#endif
+
+ WRITE_MASTER(*,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI) AUXIL'
+
+ if( rcut > 1.0e-6_dp ) then
+   omega_range = 1.0_dp / rcut
+   WRITE_MASTER(*,'(a40,x,f9.4)') ' Long-Range only integrals with rcut=',rcut
+   WRITE_MASTER(*,'(a40,x,f9.4)') ' or omega=',omega_range
+ else 
+   omega_range = 1.0e6_dp
+ endif
+
+ do lshell=1,1  ! FAKE loop
+   do kshell=1,nshell_auxil
+     !
+     ! Order the angular momenta so that libint is pleased
+     ! 1) am3+am4 >= am1+am2
+     ! 2) am3>=am4
+     ! 3) am1>=am2
+     amk = shell_auxil(kshell)%am
+     aml = 0
+     if( amk < aml ) cycle
+
+     do jshell=1,1 
+       do ishell=1,nshell_auxil
+         ami = shell_auxil(ishell)%am
+         amj = 0
+         if( ami < amj ) cycle
+         if( amk+aml < ami+amj ) cycle
+
+         ni = number_basis_function_am( auxil_basis%gaussian_type , ami )
+         nj = 1
+         nk = number_basis_function_am( auxil_basis%gaussian_type , amk )
+         nl = 1
+
+
+         am1 = shell_auxil(ishell)%am
+         am2 = 0
+         am3 = shell_auxil(kshell)%am
+         am4 = 0
+         n1 = number_basis_function_am( CARTESIAN , ami )
+         n2 = 1
+         n3 = number_basis_function_am( CARTESIAN , amk )
+         n4 = 1
+         ng1 = shell_auxil(ishell)%ng
+         ng2 = 1
+         ng3 = shell_auxil(kshell)%ng
+         ng4 = 1
+         allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
+         alpha1(:) = shell_auxil(ishell)%alpha(:) 
+         alpha2(:) = 0.0_dp ! shell_auxil(jshell)%alpha(:)
+         alpha3(:) = shell_auxil(kshell)%alpha(:)
+         alpha4(:) = 0.0_dp ! shell_auxil(lshell)%alpha(:)
+         x01(:) = shell_auxil(ishell)%x0(:)
+         x02(:) = shell_auxil(ishell)%x0(:)
+         x03(:) = shell_auxil(kshell)%x0(:)
+         x04(:) = shell_auxil(kshell)%x0(:)
+
+         allocate( integrals_libint( n1*n2*n3*n4 ) )
+         allocate( integrals_cart(n1,n2,n3,n4) )
+         allocate( integrals_tmp(n1,n2,n3,n4) )
+         integrals_cart(:,:,:,:) = 0.0_dp
+
+
+         if(am1+am2+am3+am4==0) then
+
+           do ig4=1,ng4
+             do ig3=1,ng3
+               do ig2=1,ng2
+                 do ig1=1,ng1
+
+                   zeta_12 = alpha1(ig1) + alpha2(ig2)
+                   zeta_34 = alpha3(ig3) + alpha4(ig4)
+                   p(:) = ( alpha1(ig1) * x01(:) + alpha2(ig2) * x02(:) ) / zeta_12 
+                   q(:) = ( alpha3(ig3) * x03(:) + alpha4(ig4) * x04(:) ) / zeta_34 
+                   !
+                   ! Full range or long-range only integrals
+                   if( rcut < 1.0e-6_dp ) then
+                     rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
+                     rho1 = rho
+                   else
+                     rho  = zeta_12 * zeta_34 * omega_range**2 / ( zeta_12*omega_range**2 + zeta_34*omega_range**2 + zeta_12*zeta_34 )
+                     rho1 = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
+                   endif
+                   tt = rho * SUM( (p(:)-q(:))**2 )
+                   call boys_function(f0t(0),0,tt)
+
+                   integrals_cart(1,1,1,1) = integrals_cart(1,1,1,1) + &
+                         2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
+                         / zeta_12 * EXP( -alpha1(ig1)*alpha2(ig2)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
+                         / zeta_34 * EXP( -alpha3(ig3)*alpha4(ig4)/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
+                         * SQRT( rho / rho1 ) &
+                         * shell_auxil(ishell)%coeff(ig1) &
+                         * shell_auxil(kshell)%coeff(ig3) &
+                         * cart_to_pure_norm(0)%matrix(1,1)**4
+
+                 enddo
+               enddo
+             enddo
+           enddo
+
+         else
+
+           do ig4=1,ng4
+             do ig3=1,ng3
+               do ig2=1,ng2
+                 do ig1=1,ng1
+
+! call start_clock(timing_tmp2)
+                   info=calculate_integral(omega_range,&
+                                           am1,am2,am3,am4,alpha1(ig1),alpha2(ig2),alpha3(ig3),alpha4(ig4),&
+                                           x01(1),x01(2),x01(3),&
+                                           x02(1),x02(2),x02(3),&
+                                           x03(1),x03(2),x03(3),&
+                                           x04(1),x04(2),x04(3),&
+                                           integrals_libint(1))
+
+                   if(info/=0) then
+                     WRITE_MASTER(*,*) am1,am2,am3,am4
+                     stop 'ERI calculated by libint failed'
+                   endif
+! call stop_clock(timing_tmp2)
+! call start_clock(timing_tmp1)
+
+                   iibf=0
+                   do ibf=1,n1
+                     do jbf=1,n2
+                       do kbf=1,n3
+                         do lbf=1,n4
+                           iibf=iibf+1
+                           integrals_cart(ibf,jbf,kbf,lbf) = integrals_cart(ibf,jbf,kbf,lbf) &
+                                                            + integrals_libint(iibf) * shell_auxil(ishell)%coeff(ig1)  &
+                                                                                     * shell_auxil(kshell)%coeff(ig3) 
+                         enddo
+                       enddo
+                     enddo
+                   enddo
+! call stop_clock(timing_tmp1)
+
+                 enddo
+               enddo
+             enddo
+           enddo
+
+! call start_clock(timing_tmp3)
+
+           do lbf=1,n4
+             do kbf=1,n3
+               do jbf=1,n2
+                 do ibf=1,ni
+                   integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1,jbf,kbf,lbf) * cart_to_pure_norm(shell_auxil(ishell)%am)%matrix(1:n1,ibf) )
+                 enddo
+               enddo
+             enddo
+           enddo
+
+           do lbf=1,n4
+             do kbf=1,n3
+               do jbf=1,nj
+                 do ibf=1,ni
+                   integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2,kbf,lbf) * cart_to_pure_norm(shell_auxil(jshell)%am)%matrix(1:n2,jbf) )
+                 enddo
+               enddo
+             enddo
+           enddo
+
+           do lbf=1,n4
+             do kbf=1,nk
+               do jbf=1,nj
+                 do ibf=1,ni
+                   integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n3,lbf) * cart_to_pure_norm(shell_auxil(kshell)%am)%matrix(1:n3,kbf) )
+                 enddo
+               enddo
+             enddo
+           enddo
+
+           do lbf=1,nl
+             do kbf=1,nk
+               do jbf=1,nj
+                 do ibf=1,ni
+                   integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n4) * cart_to_pure_norm(shell_auxil(lshell)%am)%matrix(1:n4,lbf) )
+                 enddo
+               enddo
+             enddo
+           enddo
+
+! call stop_clock(timing_tmp3)
+
+
+
+         endif
+         
+! call start_clock(timing_tmp4)
+
+         do lbf=1,nl
+           do kbf=1,nk
+             do jbf=1,nj
+               do ibf=1,ni
+                 if( which_buffer == BUFFER1 ) then
+                   eri_auxil( shell_auxil(ishell)%istart+ibf-1,    &
+                              shell_auxil(kshell)%istart+kbf-1 )    = integrals_cart(ibf,jbf,kbf,lbf)
+                 else
+                   eri_lr_auxil( shell_auxil(ishell)%istart+ibf-1, &
+                                 shell_auxil(kshell)%istart+kbf-1 ) = integrals_cart(ibf,jbf,kbf,lbf)
+                 endif
+               enddo
+             enddo
+           enddo
+         enddo
+! call stop_clock(timing_tmp4)
+
+
+
+         deallocate(integrals_cart)
+         deallocate(integrals_tmp)
+         deallocate(integrals_libint)
+         deallocate(alpha1,alpha2,alpha3,alpha4)
+
+       enddo
+     enddo
+   enddo
+ enddo
+
+
+ WRITE_MASTER(*,'(a,/)') ' All ERI auxil have been calculated'
+
+
+end subroutine calculate_eri_auxil
 
 
 !=========================================================================
@@ -1383,6 +1772,7 @@ subroutine negligible_eri(tol)
 
 end subroutine negligible_eri
 
+
 !=========================================================================
 subroutine dump_out_eri(rcut)
  implicit none
@@ -1416,6 +1806,7 @@ subroutine dump_out_eri(rcut)
  WRITE_MASTER(*,'(a,/)') ' file written'
 
 end subroutine dump_out_eri
+
 
 !=========================================================================
 logical function read_eri(rcut)
@@ -1465,6 +1856,7 @@ logical function read_eri(rcut)
 
 
 end function read_eri
+
 
 !=========================================================================
 end module m_eri

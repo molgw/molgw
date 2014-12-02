@@ -72,7 +72,7 @@ subroutine polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,rpa_co
 
  allocate(eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin))
 
- call start_clock(timing_tmp1)
+! call start_clock(timing_tmp1)
  t_ij=0
  do ijspin=1,nspin
    do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
@@ -142,7 +142,7 @@ subroutine polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,rpa_co
      enddo !jorbital
    enddo !iorbital
  enddo ! ijspin
- call stop_clock(timing_tmp1)
+! call stop_clock(timing_tmp1)
 
  WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
  WRITE_MASTER(*,*) 'matrix',wpol%npole,'x',wpol%npole

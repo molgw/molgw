@@ -13,6 +13,7 @@ module m_inputparam
  integer,protected                   :: nscf
  real(dp),protected                  :: alpha_mixing
  character(len=100),protected        :: basis_name
+ character(len=100),protected        :: auxil_basis_name
  integer,protected                   :: gaussian_type
  real(dp),protected                  :: electrons
  real(dp),protected                  :: magnetization
@@ -36,47 +37,70 @@ subroutine read_inputparameter_molecule()
  implicit none
 
  character(len=100)                 :: read_char
- character(len=100)                 :: read_line
+ character(len=200)                 :: read_line
  character(len=100)                 :: line_wocomment
  character(len=100)                 :: mixing_name
  character(len=100)                 :: dft_accuracy
- character(len=100)                 :: gaussian_name
+ character(len=100)                 :: field1,field2,field3
  integer                            :: print_volume
- integer                            :: ipos,jpos
+ integer                            :: ipos,jpos,kpos
  integer                            :: istat,iatom,jatom
  real(dp)                           :: charge,length_factor
 !=====
 
+ !
+ ! Reading line 1
  read(*,*) read_char
  call init_calculation_type(calc_type,read_char)
 
- WRITE_MASTER(*,'(/,a,/)')    ' Summary of the input parameters '
- WRITE_MASTER(*,'(a20,2x,a)') ' calculation type: ',TRIM(read_char)
-
+ !
+ ! Reading line 2
  read(*,*) nspin,charge,magnetization
  if(nspin/=1 .AND. nspin/=2) stop'nspin in incorrect'
  if(magnetization<-1.d-5)    stop'magnetization is negative'
  if(magnetization>1.d-5 .AND. nspin==1) stop'magnetization is non-zero and nspin is 1'
 
- read(*,fmt='(a100)') read_line 
+ !
+ ! Reading line 3
+ ! 2 mandatory fields + 1 optional field
+ read(*,fmt='(a200)') read_line 
  ipos=index(read_line,'#',back=.false.)
- if(ipos==0) ipos=101
+ if(ipos==0) ipos=201
  line_wocomment(:ipos-1)=read_line(:ipos-1)
  line_wocomment=ADJUSTL(line_wocomment)
  jpos=index(line_wocomment,' ',back=.false.)
  basis_name = line_wocomment(:jpos-1)
+
  line_wocomment(1:ipos-jpos-1)=line_wocomment(jpos+1:ipos-1)
- select case(TRIM(ADJUSTL(line_wocomment(1:ipos-jpos-1))))
+ line_wocomment(ipos-jpos:)=' '
+ line_wocomment=ADJUSTL(line_wocomment)
+
+ kpos=index(line_wocomment,' ',back=.false.)
+ field2=line_wocomment(1:kpos-1)
+ select case(TRIM(field2))
  case('PURE','pure')
    gaussian_type=PURE
-   gaussian_name='PURE'
  case('CART','cart')
    gaussian_type=CARTESIAN
-   gaussian_name='CARTESIAN'
  case default
    stop'Error in input line 3: second keyword should either PURE or CART'
  end select
 
+ ! Optional field: auxiliary basis
+ line_wocomment(1:ipos-kpos-1)=line_wocomment(kpos+1:ipos-1)
+ line_wocomment(ipos-kpos:)=' '
+ line_wocomment=ADJUSTL(line_wocomment)
+ kpos=index(line_wocomment,' ',back=.false.)
+ if(kpos==0 .OR. kpos==1) then
+   auxil_basis_name = 'none'
+ else
+   auxil_basis_name = line_wocomment(:kpos-1)
+ endif
+ 
+
+
+ !
+ ! Reading line 4
  read(*,*) nscf,alpha_mixing,mixing_name,dft_accuracy
  if(nscf<1) stop'nscf too small'
  if(alpha_mixing<0.0 .OR. alpha_mixing > 1.0 ) stop'alpha_mixing should be inside [0,1]'
@@ -104,6 +128,8 @@ subroutine read_inputparameter_molecule()
    stop'integration quality not recognized'
  end select
 
+ !
+ ! Reading line 5
  read(*,*) print_volume
 
  print_matrix        = MODULO(print_volume       ,2)==1
@@ -114,6 +140,8 @@ subroutine read_inputparameter_molecule()
  print_specfunc      = MODULO(print_volume/100000,2)==1
 
  
+ !
+ ! Reading line 6 and following
  read(*,*) natom,read_char
  if(natom<1) stop'natom<1'
 
@@ -154,13 +182,20 @@ subroutine read_inputparameter_molecule()
 
 
  !
- ! summarize input parameters
+ ! Summarize input parameters
+ WRITE_MASTER(*,'(/,a,/)')    ' Summary of the input parameters '
+ WRITE_MASTER(*,'(a25,2x,a)') ' Calculation type: ',calc_type%name
  WRITE_MASTER(*,'(a25,i3)')   ' Natom: ',natom
  WRITE_MASTER(*,'(a25,f8.4)') ' Electrons: ',electrons
  WRITE_MASTER(*,'(a25,f8.4)') ' Charge: ',charge
  WRITE_MASTER(*,'(a25,f8.4)') ' Magnetization: ',magnetization
  WRITE_MASTER(*,'(a25,2x,a)') ' Basis set: ',basis_name
- WRITE_MASTER(*,'(a25,2x,a)') ' Gaussian type: ',gaussian_name
+ WRITE_MASTER(*,'(a25,2x,a)') ' Auxiliary basis set: ',auxil_basis_name
+ if(gaussian_type==PURE) then
+   WRITE_MASTER(*,'(a25,2x,a)') ' Gaussian type: ','pure'
+ else
+   WRITE_MASTER(*,'(a25,2x,a)') ' Gaussian type: ','cartesian'
+ endif
  WRITE_MASTER(*,'(a25,i3)')   ' Spin polarization: ',nspin
  WRITE_MASTER(*,'(a25,i3)')   ' SCF steps: ',nscf
  WRITE_MASTER(*,'(a25,f8.4)') ' Mixing: ',alpha_mixing

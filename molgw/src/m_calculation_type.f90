@@ -26,6 +26,7 @@ module m_calculation_type
  real(dp),allocatable      :: dft_xc_coef(:)
 
  type calculation_type
+   character(len=100) :: name
    logical :: is_dft
    logical :: need_exchange
    logical :: need_final_exchange
@@ -57,6 +58,7 @@ subroutine init_calculation_type(calc_type,input_key)
  call issue_warning(msg)
  !
  ! default values
+ calc_type%name                =  TRIM(input_key)
  calc_type%is_dft              = .FALSE.
  calc_type%need_exchange       = .FALSE.
  calc_type%need_final_exchange = .FALSE.
@@ -319,6 +321,8 @@ subroutine output_calculation_type(calc_type)
   WRITE_MASTER(*,*) 'is_gw                       ',calc_type%is_gw
   WRITE_MASTER(*,*) 'is_mp2                      ',calc_type%is_mp2
   WRITE_MASTER(*,*) 'is_ci                       ',calc_type%is_ci
+  WRITE_MASTER(*,*) 'is_td                       ',calc_type%is_td
+  WRITE_MASTER(*,*) 'is_bse                      ',calc_type%is_bse
   WRITE_MASTER(*,*) 'method                      ',calc_type%gwmethod  
 
 end subroutine output_calculation_type

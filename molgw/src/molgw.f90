@@ -22,6 +22,7 @@ program molgw
 
 !=====
  type(basis_set)         :: basis
+ type(basis_set)         :: auxil_basis
  type(basis_set)         :: prod_basis
  type(spectral_function) :: wpol
  integer                 :: reading_status
@@ -96,10 +97,11 @@ program molgw
  call nucleus_nucleus_energy(en%nuc_nuc)
 
  !
- ! Build up the basis set
+ ! Build up the basis set and the auxiliary basis set if needed
  !
- call init_basis_set(print_basis,basis_name,gaussian_type,basis)
- call setup_cart_to_pure_transforms(basis)
+ call init_basis_set(print_basis,basis_name      ,gaussian_type,basis)
+ call init_basis_set(print_basis,auxil_basis_name,gaussian_type,auxil_basis)
+ call setup_cart_to_pure_transforms(MAX(basis%ammax,auxil_basis%ammax),gaussian_type)
 
  !
  ! First attempt to distribute the work load among procs
@@ -142,9 +144,7 @@ program molgw
  call allocate_eri(basis,0.0_dp,BUFFER1)
  call calculate_eri(print_eri,basis,0.0_dp,BUFFER1)
 
- call start_clock(timing_tmp9)
  call refine_negligible_basispair()
- call stop_clock(timing_tmp9)
 
  !
  ! for HSE functionals, calculate the long-range ERI
@@ -159,6 +159,13 @@ program molgw
  ! In case of GW or BSE run, set up the product basis 
  if( calc_type%is_gw .OR. calc_type%is_td .OR. calc_type%is_bse) call init_product_basis_set(basis,prod_basis)
 
+ !
+ ! If an auxiliary basis is set up, 
+ ! calculate the required ERI
+ if( auxil_basis%nbf > 0 ) then
+   call allocate_eri_auxil(auxil_basis,0.0_dp,BUFFER1)
+   call calculate_eri_auxil(print_eri,auxil_basis,0.0_dp,BUFFER1)
+ endif
 
 !========================================================
 ! AUXILIARY basis set GW
@@ -262,11 +269,13 @@ program molgw
 
 ! call guess_starting_c_matrix(basis%nbf,nspin,c_matrix)
 ! call guess_starting_c_matrix_new(basis,nspin,c_matrix)
- do ispin=1,nspin
-   matrix(:,:,ispin) = transpose( c_matrix(:,:,ispin) )
- enddo
- title='=== Initial C matrix ==='
- call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix)
+ if( print_matrix ) then
+   do ispin=1,nspin
+     matrix(:,:,ispin) = transpose( c_matrix(:,:,ispin) )
+   enddo
+   title='=== Initial C matrix ==='
+   call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix)
+ endif
 
 
  !
