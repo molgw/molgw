@@ -327,7 +327,7 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
  integer                    :: ny
  integer                    :: nz
  real(dp),parameter         :: length=4.0_dp
- integer                    :: ir,ibf
+ integer                    :: ibf
  integer                    :: istate1,istate2,istate,ispin
  real(dp)                   :: rr(3)
  real(dp),allocatable       :: phi(:,:),phase(:,:)
@@ -427,7 +427,7 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
 
        !
        ! turn the wfns so that they are all positive at a given point
-       if(ir==1) then
+       if(iz==1) then
          do ispin=1,nspin
            do istate=istate1,istate2
              if( phi(istate,ispin) < 0.0_dp ) phase(istate,ispin) = -1.0_dp

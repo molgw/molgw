@@ -92,7 +92,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
 
 #ifdef HAVE_LIBXC
 
- WRITE_MASTER(*,*) 'Evaluate Kohn-Sham potential'
+ WRITE_MASTER(*,*) 'Calculate DFT XC potential'
  
  require_gradient =.FALSE.
  require_laplacian=.FALSE.
@@ -795,8 +795,8 @@ subroutine my_lda_exc_vxc_mu(mu,rhor,exc,vxc)
  vfac=4.0/3.0 * efac
 
  omega = mu
-! rho = 3.0 / ( 4.0 * pi * rs**3 )
  rs= (3.0_dp/(4.0_dp*pi*rhor(1)))**(1.0_dp/3.0_dp)
+ rho = 3.0 / ( 4.0 * pi * rs**3 )
  kf  = ( 3.0 * pi**2 * rho )**(1.0/3.0)
  aa  = omega / ( 2.0 * kf )
 

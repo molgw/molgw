@@ -7,7 +7,7 @@
 subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  use m_definitions
  use m_mpi
- use m_calculation_type,only: calculation_type,alpha_hybrid,alpha_hybrid_lr,dft_xc_type
+ use m_calculation_type
  use m_timing 
  use m_warning,only: issue_warning
  use m_tools
@@ -15,7 +15,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  use m_eri
  use m_dft_grid
  use m_spectral_function
- use m_inputparam,only: calc_type,nspin,print_specfunc
+ use m_inputparam
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
  use xc_f90_lib_m
@@ -38,6 +38,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
 
  real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
  real(dp),allocatable :: eri_eigenstate_k(:,:,:,:)
+ real(dp)             :: eri_eigen_ijkl,eri_eigen_ikjl
  real(dp)             :: spin_fact,alpha_local
  real(dp)             :: scissor_energy(nspin)
  real(dp)             :: h_2p(wpol%npole,wpol%npole)
@@ -66,7 +67,6 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  real(dp),allocatable :: bra(:),ket(:)
  real(dp),allocatable :: dipole_basis(:,:,:),dipole_state(:,:,:,:)
  real(dp),allocatable :: dipole_cart(:,:,:)
- real(dp)             :: dipole(3)
  real(dp),allocatable :: residu_left(:,:),residu_right(:,:)
 
 
@@ -138,7 +138,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
    fxc(:,:) = 0.0_dp
 
    do igrid=1,ngrid
-  
+
      rr(:) = rr_grid(:,igrid)
   
      !
@@ -185,7 +185,11 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
 
 
 
- allocate(eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin))
+ if(is_auxil_basis) then
+   call prepare_eri_3center_eigen(c_matrix)
+ else
+   allocate(eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin))
+ endif
 
  !
  ! Prepare the BSE calculation
@@ -231,7 +235,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  do ijspin=1,nspin
    do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
 
-     call transform_eri_basis(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
+     if( .NOT. is_auxil_basis) call transform_eri_basis(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
 
      do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
        if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
@@ -249,10 +253,15 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
              if( TDA .AND. ( iorbital > jorbital ) .AND. ( korbital < lorbital )) cycle
              if( TDA .AND. ( iorbital < jorbital ) .AND. ( lorbital > korbital )) cycle
 
+             if(is_auxil_basis) then
+               eri_eigen_ijkl = eri_eigen_ri(iorbital,jorbital,ijspin,korbital,lorbital,klspin)
+             else
+               eri_eigen_ijkl = eri_eigenstate_i(jorbital,korbital,lorbital,klspin)
+             endif
+
              !
              ! Hartree part
-             h_2p(t_ij,t_kl) = eri_eigenstate_i(jorbital,korbital,lorbital,klspin) &
-                        * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
+             h_2p(t_ij,t_kl) = eri_eigen_ijkl * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
 
              !
              ! Add the kernel for TDDFT
@@ -268,7 +277,14 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
              ! Exchange part
              if(calc_type%need_exchange .OR. calc_type%is_bse) then
                if(ijspin==klspin) then
-                 h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigenstate_i(korbital,jorbital,lorbital,klspin)  &
+
+                 if(is_auxil_basis) then
+                   eri_eigen_ikjl = eri_eigen_ri(iorbital,korbital,ijspin,jorbital,lorbital,klspin)
+                 else
+                   eri_eigen_ikjl = eri_eigenstate_i(korbital,jorbital,lorbital,klspin)
+                 endif
+
+                 h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigen_ikjl  &
                           * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) / spin_fact * alpha_local
                endif
              endif
@@ -298,6 +314,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
    enddo !iorbital
  enddo ! ijspin
 
+ if( .NOT. is_auxil_basis) deallocate(eri_eigenstate_i)
  if(is_tddft)    deallocate(fxc,wf_r)
  if(calc_type%is_bse) deallocate(bra,ket)
 
@@ -322,7 +339,6 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  call invert(wpol%npole,eigenvector,eigenvector_inv)
  call stop_clock(timing_inversion_s2p)
 
- deallocate(eri_eigenstate_i)
 
  !
  ! Calculate Wp= v * chi * v 
@@ -471,7 +487,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,*) 'TRK SUM RULE: the two following numbers should compare well'
  WRITE_MASTER(*,*) 'Sum over oscillator strengths',trk_sumrule
- WRITE_MASTER(*,*) 'Number of electrons          ',SUM( occupation(:,:) )
+ WRITE_MASTER(*,*) 'Number of valence electrons  ',SUM( occupation(ncore_W+1:,:) )
 
  WRITE_MASTER(*,'(/,a)') ' Static dipole polarizability'
  do idir=1,3

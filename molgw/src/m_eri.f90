@@ -96,8 +96,9 @@ subroutine allocate_eri(basis,rcut,which_buffer)
 
  nsize = (nsize1*(nsize1+1))/2
 
- WRITE_MASTER(*,*) 'number of integrals to be stored:',nsize
- WRITE_MASTER(*,*) 'max index size',HUGE(nsize)
+ WRITE_MASTER(*,*) 
+ WRITE_MASTER(*,*) 'Number of integrals to be stored:',nsize
+ WRITE_MASTER(*,*) 'Max index size',HUGE(nsize)
  if(nsize<1) stop'too many integrals to be stored'
 
  if(REAL(nsize,dp)*prec_eri > 1024**3 ) then
@@ -200,6 +201,26 @@ subroutine allocate_eri_auxil(auxil_basis)
 
 
 end subroutine allocate_eri_auxil
+
+
+!=========================================================================
+subroutine deallocate_eri_buffer()
+ implicit none
+!=====
+
+ if(allocated(eri_buffer)) then
+   WRITE_MASTER(*,'(/,a)')     ' Deallocate ERI buffer'
+   WRITE_MASTER(*,'(a,f16.3)') ' Freed memory [Gb]:',REAL(nsize*prec_eri/1024.0_dp**3,dp)
+   deallocate(eri_buffer)
+ endif
+ if(allocated(eri_buffer_lr)) then
+   WRITE_MASTER(*,'(/,a)')     ' Deallocate LR ERI buffer'
+   WRITE_MASTER(*,'(a,f16.3)') ' Freed memory [Gb]:',REAL(nsize*prec_eri/1024.0_dp**3,dp)
+   deallocate(eri_buffer_lr)
+ endif
+ WRITE_MASTER(*,*)
+
+end subroutine deallocate_eri_buffer
 
 
 !=========================================================================
@@ -472,7 +493,6 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  real(dp)                     :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
- real(dp),allocatable         :: integrals_libint(:)
 !=====
 ! variables used to call C++ 
  integer(C_INT),external      :: calculate_integral
@@ -543,7 +563,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
      x03(:) = shell(kshell)%x0(:)
      x04(:) = shell(lshell)%x0(:)
 
-     allocate( integrals_libint( n1*n2*n3*n4 ) )
+     allocate( int_shell( n1*n2*n3*n4 ) )
      allocate( integrals_cart(n1,n2,n3,n4) )
      allocate( integrals_tmp(n1,n2,n3,n4) )
      integrals_cart(:,:,:,:) = 0.0_dp
@@ -600,7 +620,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
                                        x02(1),x02(2),x02(3),&
                                        x03(1),x03(2),x03(3),&
                                        x04(1),x04(2),x04(3),&
-                                       integrals_libint(1))
+                                       int_shell(1))
 
                if(info/=0) then
                  WRITE_MASTER(*,*) am1,am2,am3,am4
@@ -614,7 +634,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
                      do lbf=1,n4
                        iibf=iibf+1
                        integrals_cart(ibf,jbf,kbf,lbf) = integrals_cart(ibf,jbf,kbf,lbf) &
-                                                        + integrals_libint(iibf) * shell(ishell)%coeff(ig1) * shell(jshell)%coeff(ig2) &
+                                                        + int_shell(iibf) * shell(ishell)%coeff(ig1) * shell(jshell)%coeff(ig2) &
                                                                                  * shell(kshell)%coeff(ig3) * shell(lshell)%coeff(ig4)
                      enddo
                    enddo
@@ -692,7 +712,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
 
      deallocate(integrals_cart)
      deallocate(integrals_tmp)
-     deallocate(integrals_libint)
+     deallocate(int_shell)
      deallocate(alpha1,alpha2,alpha3,alpha4)
 
    enddo
@@ -732,7 +752,6 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
  real(dp)                     :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
- real(dp),allocatable         :: integrals_libint(:)
 !=====
 ! variables used to call C++ 
  integer(C_INT),external      :: calculate_integral
@@ -795,7 +814,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
          x03(:) = shell_auxil(kshell)%x0(:)
          x04(:) = shell_auxil(kshell)%x0(:)
 
-         allocate( integrals_libint( n1*n2*n3*n4 ) )
+         allocate( int_shell( n1*n2*n3*n4 ) )
          allocate( integrals_cart(n1,n2,n3,n4) )
          allocate( integrals_tmp(n1,n2,n3,n4) )
          integrals_cart(:,:,:,:) = 0.0_dp
@@ -847,7 +866,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
                                            x02(1),x02(2),x02(3),&
                                            x03(1),x03(2),x03(3),&
                                            x04(1),x04(2),x04(3),&
-                                           integrals_libint(1))
+                                           int_shell(1))
 
                    if(info/=0) then
                      WRITE_MASTER(*,*) am1,am2,am3,am4
@@ -861,7 +880,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
                          do lbf=1,n4
                            iibf=iibf+1
                            integrals_cart(ibf,jbf,kbf,lbf) = integrals_cart(ibf,jbf,kbf,lbf) &
-                                                            + integrals_libint(iibf) * shell_auxil(ishell)%coeff(ig1)  &
+                                                            + int_shell(iibf) * shell_auxil(ishell)%coeff(ig1)  &
                                                                                      * shell_auxil(kshell)%coeff(ig3) 
                          enddo
                        enddo
@@ -934,7 +953,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
 
          deallocate(integrals_cart)
          deallocate(integrals_tmp)
-         deallocate(integrals_libint)
+         deallocate(int_shell)
          deallocate(alpha1,alpha2,alpha3,alpha4)
 
        enddo
@@ -1386,7 +1405,6 @@ subroutine identify_negligible_shellpair(basis,rcut)
  real(dp) :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
- real(dp),allocatable         :: integrals_libint(:)
 !====
 ! variables used to call C++ 
  integer(C_INT),external      :: calculate_integral
@@ -1394,6 +1412,7 @@ subroutine identify_negligible_shellpair(basis,rcut)
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:)
  real(C_DOUBLE)               :: x01(3),x02(3)
  real(C_DOUBLE)               :: omega_range
+ real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
 
  if( rcut > 1.0e-6_dp ) then
@@ -1428,7 +1447,7 @@ subroutine identify_negligible_shellpair(basis,rcut)
      x01(:) = shell(ishell)%x0(:)
      x02(:) = shell(jshell)%x0(:)
 
-     allocate( integrals_libint( n1*n2*n1*n2 ) )
+     allocate( int_shell( n1*n2*n1*n2 ) )
      allocate( integrals_cart(n1,n2,n1,n2) )
      allocate( integrals_tmp (n1,n2,n1,n2) )
 
@@ -1482,7 +1501,7 @@ subroutine identify_negligible_shellpair(basis,rcut)
                                        x02(1),x02(2),x02(3),&
                                        x01(1),x01(2),x01(3),&
                                        x02(1),x02(2),x02(3),&
-                                       integrals_libint(1))
+                                       int_shell(1))
                if(info/=0) then
                  WRITE_MASTER(*,*) am1,am2,am1,am2
                  WRITE_MASTER(*,*) ig1,ig2,ig3,ig4
@@ -1495,7 +1514,7 @@ subroutine identify_negligible_shellpair(basis,rcut)
                      do lbf=1,n2
                        iibf=iibf+1
                        integrals_cart(ibf,jbf,kbf,lbf) = integrals_cart(ibf,jbf,kbf,lbf) &
-                                                        + integrals_libint(iibf) * shell(ishell)%coeff(ig1) * shell(jshell)%coeff(ig2) &
+                                                        + int_shell(iibf) * shell(ishell)%coeff(ig1) * shell(jshell)%coeff(ig2) &
                                                                                  * shell(ishell)%coeff(ig3) * shell(jshell)%coeff(ig4)
                      enddo
                    enddo
@@ -1564,7 +1583,7 @@ subroutine identify_negligible_shellpair(basis,rcut)
 
      deallocate(integrals_cart)
      deallocate(integrals_tmp)
-     deallocate(integrals_libint)
+     deallocate(int_shell)
      deallocate(alpha1,alpha2)
 
    enddo
@@ -1909,28 +1928,6 @@ subroutine prepare_eri_3center_eigen(c_matrix)
  !TODO change the 2 last indexes for prod_basis save a factor 2!
  allocate(eri_3center_eigen(nsize1_auxil,nbf_eri,nbf_eri,nspin))
 
-#if 0
- !FBFB slow version N^5 scaling!
- eri_3center_eigen(:,:,:,:)=0.0_dp
- do klspin=1,nspin
-   do kbf=1,nbf_eri
-     do lbf=1,nbf_eri
-       if( negligible_basispair(kbf,lbf) ) cycle
-
-       do kstate=1,nbf_eri
-         do lstate=1,nbf_eri
-           eri_3center_eigen(:,kstate,lstate,klspin) = eri_3center_eigen(:,kstate,lstate,klspin) &
-                                      + c_matrix(kbf,kstate,klspin) * c_matrix(lbf,lstate,klspin) &
-                                           * eri_3center(:,index_prod(kbf,lbf))
-         enddo
-       enddo
-
-     enddo
-   enddo
- enddo
-
-#else
-
  allocate(eri_3center_tmp(nsize1_auxil,nbf_eri,nbf_eri)) 
  do klspin=1,nspin
    eri_3center_tmp(:,:,:)=0.0_dp
@@ -1959,8 +1956,6 @@ subroutine prepare_eri_3center_eigen(c_matrix)
  deallocate(eri_3center_tmp)
 
 
-#endif
-
  call stop_clock(timing_eri_3center_eigen)
 
 end subroutine prepare_eri_3center_eigen
@@ -1971,9 +1966,9 @@ subroutine destroy_eri_3center_eigen()
  implicit none
 !=====
 
- WRITE_MASTER(*,'(/,a,/)') 'destroy 3-center integrals on eigenstates'
+ WRITE_MASTER(*,'(/,a,/)') ' Destroy 3-center integrals on eigenstates'
 
- deallocate(eri_3center_eigen)
+ if(allocated(eri_3center_eigen)) deallocate(eri_3center_eigen)
 
 end subroutine destroy_eri_3center_eigen
 

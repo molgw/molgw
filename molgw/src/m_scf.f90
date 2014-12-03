@@ -7,8 +7,9 @@ module m_scf
 
  private
  
- public :: simple_mixing,pulay_mixing,mixing_scheme,&
-           init_scf,destroy_scf,store_residual,new_p_matrix,check_convergence
+ public               :: en
+ public               :: simple_mixing,pulay_mixing,mixing_scheme,&
+                         init_scf,destroy_scf,store_residual,new_p_matrix,check_converged
 
  integer,parameter    :: simple_mixing = 1
  integer,parameter    :: pulay_mixing  = 2
@@ -25,6 +26,19 @@ module m_scf
 
  integer              :: n_scf,n_scf_max
 
+ type energy_contributions
+   real(dp) :: nuc_nuc= 0.0_dp
+   real(dp) :: kin    = 0.0_dp
+   real(dp) :: nuc    = 0.0_dp
+   real(dp) :: hart   = 0.0_dp
+   real(dp) :: exx    = 0.0_dp
+   real(dp) :: xc     = 0.0_dp
+   real(dp) :: se     = 0.0_dp      ! single-excitation contribution
+   real(dp) :: mp2    = 0.0_dp
+   real(dp) :: rpa    = 0.0_dp
+   real(dp) :: tot    = 0.0_dp
+ end type
+ type(energy_contributions) :: en
 
 contains
 
@@ -178,11 +192,11 @@ subroutine do_pulay_mixing(p_matrix_in)
 end subroutine do_pulay_mixing
 
 !=========================================================================
-subroutine check_convergence(scf_loop_converged)
+function check_converged()
  use m_definitions
  use m_warning
  implicit none
- logical,intent(out)   :: scf_loop_converged
+ logical               :: check_converged
 !=====
  real(dp)              :: rms
 !=====
@@ -191,10 +205,10 @@ subroutine check_convergence(scf_loop_converged)
 
  WRITE_MASTER(*,*) 'convergence criterium on the density matrix',rms
  if( rms < 1.0e-8_dp ) then 
-   scf_loop_converged= .TRUE.
+   check_converged = .TRUE.
    WRITE_MASTER(*,*) ' ===> convergence has been reached'
  else
-   scf_loop_converged= .FALSE.
+   check_converged = .FALSE.
    WRITE_MASTER(*,*) ' ===> convergence not reached yet'
  endif
 
@@ -210,7 +224,7 @@ subroutine check_convergence(scf_loop_converged)
    endif
  endif
 
-end subroutine check_convergence
+end function check_converged
 
 !=========================================================================
 end module m_scf
