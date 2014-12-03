@@ -25,13 +25,13 @@ module m_spectral_function
 
  !
  ! frozen core approximation parameters
- integer :: ncore_G=0
- integer :: ncore_W=0
+ integer,protected :: ncore_G=0
+ integer,protected :: ncore_W=0
 
  !
  ! frozen virtual approximation parameters
- integer :: nvirtual_G=HUGE(1)
- integer :: nvirtual_W=HUGE(1)
+ integer,protected :: nvirtual_G=HUGE(1)
+ integer,protected :: nvirtual_W=HUGE(1)
 
  !
  ! the boring small complex number eta: (0.0_dp,0.0001_dp) is typically over converged
@@ -41,6 +41,7 @@ module m_spectral_function
  integer,parameter :: band1=1
  integer,parameter :: band2=2
 #endif
+
 contains
 
 !=========================================================================

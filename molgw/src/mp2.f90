@@ -309,6 +309,55 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
 
 end subroutine mp2_energy_fast
 
+
+!==================================================================
+subroutine single_excitations(nbf,energy,occupation,c_matrix,fock_matrix)
+ use m_definitions
+ use m_timing
+ use m_inputparam,only: nspin,print_matrix
+ use m_scf,only: en
+ implicit none
+
+ integer,intent(in)         :: nbf
+ real(dp),intent(in)        :: energy(nbf,nspin),occupation(nbf,nspin)
+ real(dp),intent(in)        :: c_matrix(nbf,nbf,nspin)
+ real(dp),intent(in)        :: fock_matrix(nbf,nbf,nspin)
+!=====
+ integer                    :: ispin
+ integer                    :: istate,astate
+ real(dp)                   :: spin_fact
+ character(len=100)         :: title
+!=====
+
+ call start_clock(timing_single_excitation)
+
+ !
+ ! Rotate the Fock matrix to the eigenstate basis
+ call matrix_basis_to_eigen(nspin,nbf,c_matrix,fock_matrix)
+
+ title='=== Fock matrix ==='
+ call dump_out_matrix(print_matrix,title,nbf,nspin,fock_matrix)
+
+
+ spin_fact = REAL(-nspin+3,dp)
+ en%se = 0.0_dp
+ do ispin=1,nspin
+   ! loop on occupied states
+   do istate=1,nbf
+     if( occupation(istate,ispin) < completely_empty ) cycle
+     ! loop on virtual states
+     do astate=1,nbf
+       if( occupation(astate,ispin) > spin_fact - completely_empty ) cycle
+       en%se = en%se + fock_matrix(istate,astate,ispin)**2 / ( energy(istate,ispin) - energy(astate,ispin) ) * spin_fact
+     enddo
+   enddo
+ enddo
+
+ call stop_clock(timing_single_excitation)
+
+end subroutine single_excitations
+
+
 !==================================================================
 subroutine full_ci_2electrons_spin(print_wfn,spinstate,basis,h_1e,c_matrix,nuc_nuc)
  use m_definitions

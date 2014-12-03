@@ -6,7 +6,12 @@ module m_timing
  use m_mpi
 
 
- integer,parameter :: timing_total             = 1
+ integer,parameter :: timing_total             = 90
+
+ integer,parameter :: timing_prescf            = 81
+ integer,parameter :: timing_scf               = 82
+ integer,parameter :: timing_postscf           = 83
+
  integer,parameter :: timing_dft               = 2
  integer,parameter :: timing_pola              = 3
  integer,parameter :: timing_self              = 4
@@ -25,17 +30,17 @@ module m_timing
  integer,parameter :: timing_eri_3center       = 17
  integer,parameter :: timing_eri_3center_eigen = 18
  
- integer,parameter :: timing_tmp1          = 41
- integer,parameter :: timing_tmp2          = 42
- integer,parameter :: timing_tmp3          = 43
- integer,parameter :: timing_tmp4          = 44
- integer,parameter :: timing_tmp5          = 45
- integer,parameter :: timing_tmp6          = 46
- integer,parameter :: timing_tmp7          = 47
- integer,parameter :: timing_tmp8          = 48
- integer,parameter :: timing_tmp9          = 49
+ integer,parameter :: timing_tmp1              = 91
+ integer,parameter :: timing_tmp2              = 92
+ integer,parameter :: timing_tmp3              = 93
+ integer,parameter :: timing_tmp4              = 94
+ integer,parameter :: timing_tmp5              = 95
+ integer,parameter :: timing_tmp6              = 96
+ integer,parameter :: timing_tmp7              = 97
+ integer,parameter :: timing_tmp8              = 98
+ integer,parameter :: timing_tmp9              = 99
 
- integer,parameter :: NTIMING=50
+ integer,parameter :: NTIMING=100
  integer           :: count_rate,count_max
  logical           :: time_running(NTIMING)
  real(dp)          :: time_start(NTIMING)
@@ -97,19 +102,29 @@ subroutine output_timing()
  implicit none
 !=====
 
- WRITE_MASTER(*,'(/,a)') '                 --- Timings in (s) and # of calls ---'
- WRITE_MASTER(*,'(a30,2x,f12.2)') 'Total time',timing(timing_total)
- WRITE_MASTER(*,*)
+ WRITE_MASTER(*,'(/,a,/)') '                 --- Timings in (s) and # of calls ---'
+
+ WRITE_MASTER(*,'(a30,2x,f12.2)')  'Total time',timing(timing_total)
+ WRITE_MASTER(*,'(/,a,/)') '                 ----------------------'
+
+ WRITE_MASTER(*,'(a30,2x,f12.2)')  'Total pre SCF',timing(timing_prescf)
+ WRITE_MASTER(*,'(a30,2x,f12.2)')      'Total SCF',timing(timing_scf)
+ WRITE_MASTER(*,'(a30,2x,f12.2)') 'Total post SCF',timing(timing_postscf)
+ WRITE_MASTER(*,'(/,a,/)') '                 ----------------------'
+
  WRITE_MASTER(*,'(a30,2x,f12.2)')    '4-center integrals' ,timing(timing_eri)
  if( calls(timing_eri_2center) > 0 ) then
    WRITE_MASTER(*,'(a30,2x,f12.2)')        '       2-center integrals' ,timing(timing_eri_2center)
    WRITE_MASTER(*,'(a30,2x,f12.2)')        '       3-center integrals' ,timing(timing_eri_3center)
    WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)')  'Rotation 3-center integrals' ,timing(timing_eri_3center_eigen),calls(timing_eri_3center_eigen)
  endif
+
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Hartree'         ,timing(timing_hartree),calls(timing_hartree)
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Exchange'        ,timing(timing_exchange),calls(timing_exchange)
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'DFT xc'          ,timing(timing_dft),calls(timing_dft)
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Single Excit.'   ,timing(timing_single_excitation),calls(timing_single_excitation)
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'ERI basis transform' ,timing(timing_basis_transform),calls(timing_basis_transform)
  WRITE_MASTER(*,*)
@@ -123,8 +138,6 @@ subroutine output_timing()
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'MP2 energy'      ,timing(timing_mp2_energy),calls(timing_mp2_energy)
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'MP2 self-energy' ,timing(timing_mp2_self),calls(timing_mp2_self)
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Single Excit.'   ,timing(timing_single_excitation),calls(timing_single_excitation)
  WRITE_MASTER(*,'(a)') '                 ----------------------'
 
  !

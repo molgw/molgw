@@ -14,7 +14,6 @@ subroutine setup_overlap(print_matrix,basis,s_matrix)
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  character(len=100)   :: title
  real(dp),allocatable :: matrix_cart(:,:)
- real(dp)             :: overlap_tmp
 !====
 
  WRITE_MASTER(*,*) 'Setup overlap matrix S'
@@ -76,7 +75,6 @@ subroutine setup_kinetic(print_matrix,basis,hamiltonian_kinetic)
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  character(len=100)   :: title
  real(dp),allocatable :: matrix_cart(:,:)
- real(dp)             :: kinetic_tmp
 !====
 
  WRITE_MASTER(*,*) 'Setup kinetic part of the Hamiltonian'
@@ -399,7 +397,7 @@ subroutine read_potential(print_matrix,nbf,nspin,p_matrix,pot_read,eread)
  real(dp),intent(out) :: pot_read(nbf,nbf,nspin)
  real(dp),intent(out) :: eread
 !=====
- integer              :: ibf,jbf,kbf,lbf,ispin
+ integer              :: ibf,jbf,ispin
  character(len=100)   :: title
  logical              :: file_exists
 !=====
@@ -462,7 +460,7 @@ subroutine test_density_matrix(nbf,nspin,p_matrix,s_matrix)
  integer,intent(in)   :: nbf,nspin
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin),s_matrix(nbf,nbf)
 !=====
- integer              :: ispin,ibf,jbf
+ integer              :: ispin
  real(dp)             :: matrix(nbf,nbf)
  character(len=100)   :: title
 !=====
@@ -683,7 +681,7 @@ subroutine setup_initial_c_matrix(print_matrix,nbf,nspin,hamiltonian_nucleus,s_m
  real(dp),intent(in)        :: occupation(nbf,nspin)
  real(dp),intent(out)       :: c_matrix(nbf,nbf,nspin)
 !=====
- integer                    :: ibf,jbf,kbf,lbf
+ integer                    :: ibf,jbf,kbf
  real(dp)                   :: hamiltonian(nbf,nbf),matrix(nbf,nbf),energy(nbf)
  real(dp)                   :: coeff_max,bonding
  real(dp)                   :: line(nbf)

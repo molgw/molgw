@@ -411,18 +411,18 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
  implicit none
  
  type(spectral_function),intent(inout) :: wpol
- integer,intent(in)  :: nbf
- type(basis_set)     :: basis,prod_basis
- real(dp),intent(in) :: occupation(nbf,nspin)
- real(dp),intent(in) :: c_matrix(nbf,nbf,nspin)
- real(dp),intent(in) :: eigenvector    (wpol%npole,wpol%npole)
- real(dp),intent(in) :: eigenvector_inv(wpol%npole,wpol%npole)
- real(dp),intent(in) :: eigenvalue     (wpol%npole)
+ integer,intent(in)         :: nbf
+ type(basis_set),intent(in) :: prod_basis
+ real(dp),intent(in)        :: occupation(nbf,nspin)
+ real(dp),intent(in)        :: c_matrix(nbf,nbf,nspin)
+ real(dp),intent(in)        :: eigenvector    (wpol%npole,wpol%npole)
+ real(dp),intent(in)        :: eigenvector_inv(wpol%npole,wpol%npole)
+ real(dp),intent(in)        :: eigenvalue     (wpol%npole)
 !=====
- integer              :: t_kl,klspin,ijspin
- integer              :: ibf,jbf,kbf,lbf,ijbf,ijbf_current
- real(dp)             :: eri_eigen_klij
- real(dp),allocatable :: eri_eigenstate_k(:,:,:,:)
+ integer                    :: t_kl,klspin,ijspin
+ integer                    :: ibf,jbf,kbf,lbf,ijbf,ijbf_current
+ real(dp)                   :: eri_eigen_klij
+ real(dp),allocatable       :: eri_eigenstate_k(:,:,:,:)
 !=====
 
  if( .NOT. is_auxil_basis ) allocate(eri_eigenstate_k(nbf,nbf,nbf,nspin))

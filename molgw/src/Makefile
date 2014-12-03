@@ -26,10 +26,10 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 
 ../molgw: macros.h m_definitions.o m_mpi.o m_timing.o m_warning.o m_atoms.o m_calculation_type.o m_tools.o m_scf.o \
          m_gaussian.o m_basis_set.o m_inputparam.o m_eri.o m_spectral_function.o m_dft_grid.o gw.o gw_auxiliary.o timedependent.o dft_xc.o \
-         wrapper_libint.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o molgw.o
+         wrapper_libint.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o scf_loop.o molgw.o
 	$(FC) $(FCOPTS) m_definitions.o m_mpi.o m_timing.o m_warning.o m_calculation_type.o m_inputparam.o m_tools.o m_scf.o m_atoms.o \
                         m_gaussian.o m_basis_set.o m_eri.o m_dft_grid.o m_spectral_function.o \
-                        wrapper_libint.o lebedev_quadrature.o mp2_selfenergy.o mp2.o gw.o gw_auxiliary.o timedependent.o dft_xc.o io.o hamiltonian.o molgw.o -o ../molgw \
+                        wrapper_libint.o lebedev_quadrature.o mp2_selfenergy.o mp2.o gw.o gw_auxiliary.o timedependent.o dft_xc.o io.o hamiltonian.o scf_loop.o molgw.o -o ../molgw \
                         $(LAPACK) $(SCALAPACK) \
                         $(LIBXC) $(LIBXC _INCS) \
                         $(LIBINT) $(LIBINT_INCS) \
@@ -38,6 +38,10 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 molgw.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_calculation_type.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
   m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 molgw.f90
 	$(FC) $(FCOPTS) -c molgw.f90 $(LIBXC_INCS)
+
+scf_loop.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_calculation_type.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
+  m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 scf_loop.f90
+	$(FC) $(FCOPTS) -c scf_loop.f90 $(LIBXC_INCS)
 
 hamiltonian.o: macros.h m_definitions.f90 m_timing.f90 m_eri.f90 hamiltonian.f90
 	$(FC) $(FCOPTS) -c hamiltonian.f90 $(LIBXC_INCS)
