@@ -6,13 +6,13 @@ module m_eri
  use m_mpi
  use m_basis_set
 
- private
- public :: eri,allocate_eri,allocate_eri_eigen,deallocate_eri,calculate_eri,transform_eri_basis_lowmem, &
-           eri_lr,negligible_eri,&
-           allocate_eri_auxil,calculate_eri_2center,calculate_eri_3center,eri_ri,&
-           BUFFER1,BUFFER2
- public :: index_prod
- public :: negligible_basispair,refine_negligible_basispair
+!FBFB private
+!FBFB public :: eri,allocate_eri,allocate_eri_eigen,deallocate_eri,calculate_eri,transform_eri_basis, &
+!FBFB           eri_lr,negligible_eri,&
+!FBFB           allocate_eri_auxil,calculate_eri_2center,calculate_eri_3center,eri_ri,&
+!FBFB           BUFFER1,BUFFER2
+!FBFB public :: index_prod
+!FBFB public :: negligible_basispair,refine_negligible_basispair
 
  integer,parameter :: BUFFER1 = 1
  integer,parameter :: BUFFER2 = 2
@@ -26,6 +26,7 @@ module m_eri
  real(prec_eri),allocatable :: eri_buffer_lr(:)
  real(prec_eri),allocatable :: eri_2center_m1(:,:)
  real(prec_eri),allocatable :: eri_3center(:,:)
+ real(prec_eri),allocatable :: eri_3center_eigen(:,:,:,:)
 
  logical,allocatable        :: negligible_shellpair(:,:)
  logical,allocatable        :: negligible_basispair(:,:)
@@ -158,10 +159,13 @@ subroutine allocate_eri_auxil(auxil_basis)
  WRITE_MASTER(*,*) 'max index size',HUGE(nsize_auxil)
  if(nsize_auxil<1) stop'too many integrals to be stored'
 
+ !
+ ! 2-CENTER INTEGRALS 
+ !
  if(REAL(nsize_auxil,dp)*prec_eri > 1024**3 ) then
-   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize_auxil,dp)*prec_eri/1024**3,' [Gb] / proc'
+   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating 2-center ERI array: ',REAL(nsize_auxil,dp)*prec_eri/1024**3,' [Gb] / proc'
  else
-   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize_auxil,dp)*prec_eri/1024**2,' [Mb] / proc'
+   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating 2-center ERI array: ',REAL(nsize_auxil,dp)*prec_eri/1024**2,' [Mb] / proc'
  endif
 
  allocate(eri_2center_m1(nsize1_auxil,nsize1_auxil),stat=info)
@@ -172,6 +176,16 @@ subroutine allocate_eri_auxil(auxil_basis)
  else
    WRITE_MASTER(*,*) 'failure'
    stop'Not enough memory. Buy a bigger computer'
+ endif
+
+
+ !
+ ! 3-CENTER INTEGRALS 
+ !
+ if(REAL(nsize1_auxil*nsize1,dp)*prec_eri > 1024**3 ) then
+   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating 3-center ERI array: ',REAL(nsize1_auxil*nsize1,dp)*prec_eri/1024**3,' [Gb] / proc'
+ else
+   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating 3-center ERI array: ',REAL(nsize1_auxil*nsize1,dp)*prec_eri/1024**2,' [Mb] / proc'
  endif
 
  allocate(eri_3center(nsize1_auxil,nsize1),stat=info)
@@ -303,6 +317,22 @@ function eri_ri(ibf,jbf,kbf,lbf)
  endif
 
 end function eri_ri
+
+
+!=========================================================================
+function eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
+ implicit none
+ integer,intent(in) :: ijspin,klspin
+ integer,intent(in) :: istate,jstate,kstate,lstate
+ real(dp)           :: eri_eigen_ri
+!=====
+ integer            :: index_ij,index_kl
+!=====
+
+ eri_eigen_ri = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,ijspin) , &
+                 MATMUL( eri_2center_m1(:,:) , eri_3center_eigen(:,kstate,lstate,klspin) ) )
+
+end function eri_eigen_ri
 
 
 !=========================================================================
@@ -713,6 +743,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
  real(C_DOUBLE)               :: omega_range
 !=====
 
+ call start_clock(timing_eri_2center)
 
  WRITE_MASTER(*,'(/,a)') ' Calculate, invert and store the 2-center Electron Repulsion Integrals'
 
@@ -810,7 +841,6 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
                do ig2=1,ng2
                  do ig1=1,ng1
 
-! call start_clock(timing_tmp2)
                    info=calculate_integral(omega_range,&
                                            am1,am2,am3,am4,alpha1(ig1),alpha2(ig2),alpha3(ig3),alpha4(ig4),&
                                            x01(1),x01(2),x01(3),&
@@ -823,8 +853,6 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
                      WRITE_MASTER(*,*) am1,am2,am3,am4
                      stop 'ERI calculated by libint failed'
                    endif
-! call stop_clock(timing_tmp2)
-! call start_clock(timing_tmp1)
 
                    iibf=0
                    do ibf=1,n1
@@ -839,14 +867,12 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
                        enddo
                      enddo
                    enddo
-! call stop_clock(timing_tmp1)
 
                  enddo
                enddo
              enddo
            enddo
 
-! call start_clock(timing_tmp3)
 
            do lbf=1,n4
              do kbf=1,n3
@@ -888,13 +914,9 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
              enddo
            enddo
 
-! call stop_clock(timing_tmp3)
-
-
 
          endif
          
-! call start_clock(timing_tmp4)
 
          do lbf=1,nl
            do kbf=1,nk
@@ -909,7 +931,6 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
              enddo
            enddo
          enddo
-! call stop_clock(timing_tmp4)
 
          deallocate(integrals_cart)
          deallocate(integrals_tmp)
@@ -927,6 +948,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
 
  WRITE_MASTER(*,'(a,/)') ' All 2-center integrals have been calculated, inverted and stored'
 
+ call stop_clock(timing_eri_2center)
 
 end subroutine calculate_eri_2center
 
@@ -971,6 +993,7 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
  real(C_DOUBLE)               :: omega_range
 !=====
 
+ call start_clock(timing_eri_3center)
 
  WRITE_MASTER(*,'(/,a)') ' Calculate and store all the 3-center Electron Repulsion Integrals'
 
@@ -1246,6 +1269,7 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
 
  WRITE_MASTER(*,'(a,/)') ' All 3-center integrals have been calculated and stored'
 
+ call stop_clock(timing_eri_3center)
 
 end subroutine calculate_eri_3center
 
@@ -1777,7 +1801,7 @@ end subroutine test_eri
 
 
 !=================================================================
-subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
+subroutine transform_eri_basis(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
  use m_timing
  implicit none
 
@@ -1792,7 +1816,7 @@ subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,ijspin,eri_eigenstat
  real(dp)             :: wtime
 !=====
 
-! call start_clock(timing_basis_transform)
+ call start_clock(timing_basis_transform)
 
  eri_eigenstate_i(:,:,:,:)=0.0_dp
  eri_tmp3(:,:,:)=0.0_dp
@@ -1860,9 +1884,98 @@ subroutine transform_eri_basis_lowmem(nspin,c_matrix,istate,ijspin,eri_eigenstat
 
  enddo !klspin
 
-! call stop_clock(timing_basis_transform)
+ call stop_clock(timing_basis_transform)
 
-end subroutine transform_eri_basis_lowmem
+end subroutine transform_eri_basis
+
+
+!=================================================================
+subroutine prepare_eri_3center_eigen(c_matrix)
+ use m_inputparam,only: nspin
+ implicit none
+ real(dp),intent(in)  :: c_matrix(nbf_eri,nbf_eri,nspin)
+!=====
+ integer              :: kbf,lbf
+ integer              :: kstate,lstate
+ integer              :: klspin
+ real(dp),allocatable :: eri_3center_tmp(:,:,:)
+!=====
+
+ WRITE_MASTER(*,'(/,a,/)') ' Prepare_eri_3center'
+
+ call start_clock(timing_eri_3center_eigen)
+
+
+ !TODO change the 2 last indexes for prod_basis save a factor 2!
+ allocate(eri_3center_eigen(nsize1_auxil,nbf_eri,nbf_eri,nspin))
+
+#if 0
+ !FBFB slow version N^5 scaling!
+ eri_3center_eigen(:,:,:,:)=0.0_dp
+ do klspin=1,nspin
+   do kbf=1,nbf_eri
+     do lbf=1,nbf_eri
+       if( negligible_basispair(kbf,lbf) ) cycle
+
+       do kstate=1,nbf_eri
+         do lstate=1,nbf_eri
+           eri_3center_eigen(:,kstate,lstate,klspin) = eri_3center_eigen(:,kstate,lstate,klspin) &
+                                      + c_matrix(kbf,kstate,klspin) * c_matrix(lbf,lstate,klspin) &
+                                           * eri_3center(:,index_prod(kbf,lbf))
+         enddo
+       enddo
+
+     enddo
+   enddo
+ enddo
+
+#else
+
+ allocate(eri_3center_tmp(nsize1_auxil,nbf_eri,nbf_eri)) 
+ do klspin=1,nspin
+   eri_3center_tmp(:,:,:)=0.0_dp
+   do kbf=1,nbf_eri
+     do lbf=1,nbf_eri
+       if( negligible_basispair(kbf,lbf) ) cycle
+
+         do lstate=1,nbf_eri
+           eri_3center_tmp(:,kbf,lstate) = eri_3center_tmp(:,kbf,lstate) &
+                                      + c_matrix(lbf,lstate,klspin) * eri_3center(:,index_prod(kbf,lbf))
+         enddo
+
+     enddo
+   enddo
+   do kbf=1,nbf_eri
+     do lstate=1,nbf_eri
+
+         do kstate=1,nbf_eri
+           eri_3center_eigen(:,kstate,lstate,klspin) = eri_3center_eigen(:,kstate,lstate,klspin) &
+                                      + c_matrix(kbf,kstate,klspin) * eri_3center_tmp(:,kbf,lstate)
+         enddo
+     enddo
+   enddo
+
+ enddo ! klspin
+ deallocate(eri_3center_tmp)
+
+
+#endif
+
+ call stop_clock(timing_eri_3center_eigen)
+
+end subroutine prepare_eri_3center_eigen
+
+
+!=================================================================
+subroutine destroy_eri_3center_eigen()
+ implicit none
+!=====
+
+ WRITE_MASTER(*,'(/,a,/)') 'destroy 3-center integrals on eigenstates'
+
+ deallocate(eri_3center_eigen)
+
+end subroutine destroy_eri_3center_eigen
 
 
 !=========================================================================

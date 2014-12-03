@@ -398,7 +398,7 @@ subroutine full_ci_2electrons_spin(print_wfn,spinstate,basis,h_1e,c_matrix,nuc_n
 
  iconf=0
  do istate1=1,basis%nbf
-   call transform_eri_basis_lowmem(1,c_matrix,istate1,1,eri_hf_i)
+   call transform_eri_basis(1,c_matrix,istate1,1,eri_hf_i)
 
    do ispin1=1,2
 

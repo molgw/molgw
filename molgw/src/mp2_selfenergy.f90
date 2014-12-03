@@ -112,7 +112,7 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
 !$OMP DO SCHEDULE(STATIC) REDUCTION(+:emp2_ring,emp2_sox,selfenergy_ring,selfenergy_sox)
    do iorbital=1,basis%nbf !LOOP of the first Green's function
 
-     call transform_eri_basis_lowmem(nspin,c_matrix,iorbital,abispin,eri_eigenstate_i)
+     call transform_eri_basis(nspin,c_matrix,iorbital,abispin,eri_eigenstate_i)
 
      do aorbital=1,basis%nbf ! external loop ( bra )
 

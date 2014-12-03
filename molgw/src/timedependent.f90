@@ -231,7 +231,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  do ijspin=1,nspin
    do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
 
-     call transform_eri_basis_lowmem(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
+     call transform_eri_basis(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
 
      do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
        if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle

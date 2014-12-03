@@ -21,7 +21,9 @@ module m_timing
  integer,parameter :: timing_mp2_self          = 13
  integer,parameter :: timing_basis_transform   = 14
  integer,parameter :: timing_single_excitation = 15
- integer,parameter :: timing_eri_auxil         = 16
+ integer,parameter :: timing_eri_2center       = 16
+ integer,parameter :: timing_eri_3center       = 17
+ integer,parameter :: timing_eri_3center_eigen = 18
  
  integer,parameter :: timing_tmp1          = 41
  integer,parameter :: timing_tmp2          = 42
@@ -99,8 +101,10 @@ subroutine output_timing()
  WRITE_MASTER(*,'(a30,2x,f12.2)') 'Total time',timing(timing_total)
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,'(a30,2x,f12.2)')    '4-center integrals' ,timing(timing_eri)
- if( calls(timing_eri_auxil) > 0 ) then
-   WRITE_MASTER(*,'(a30,2x,f12.2)')    '2- and 3-center integrals' ,timing(timing_eri_auxil)
+ if( calls(timing_eri_2center) > 0 ) then
+   WRITE_MASTER(*,'(a30,2x,f12.2)')        '       2-center integrals' ,timing(timing_eri_2center)
+   WRITE_MASTER(*,'(a30,2x,f12.2)')        '       3-center integrals' ,timing(timing_eri_3center)
+   WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)')  'Rotation 3-center integrals' ,timing(timing_eri_3center_eigen),calls(timing_eri_3center_eigen)
  endif
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Hartree'         ,timing(timing_hartree),calls(timing_hartree)
