@@ -157,14 +157,12 @@ program molgw
  !
  ! If an auxiliary basis is set up, 
  ! calculate the required ERI: 2- and 3-center integrals
- if( auxil_basis%nbf > 0 ) then
+ if( is_auxil_basis ) then
    call allocate_eri_auxil(auxil_basis)
-   call start_clock(timing_eri_auxil)
    ! 2-center integrals
    call calculate_eri_2center(print_eri,auxil_basis)
    ! 3-center integrals
    call calculate_eri_3center(print_eri,basis,auxil_basis)
-   call stop_clock(timing_eri_auxil)
  endif
 
  !
@@ -299,7 +297,7 @@ program molgw
 
      call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
      call start_clock(timing_pola)
-     call polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
+     call polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
      call stop_clock(timing_pola)
      if( en%rpa > 1.e-6_DP) then
        en%tot = en%tot + en%rpa
@@ -561,7 +559,7 @@ program molgw
 #ifdef CASIDA
    call polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #else
-   call polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
+   call polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #endif
    call stop_clock(timing_pola)
    en%tot = en%tot + en%rpa

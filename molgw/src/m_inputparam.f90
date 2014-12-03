@@ -19,13 +19,14 @@ module m_inputparam
  real(dp),protected                  :: magnetization
  type(calculation_type),protected    :: calc_type
  character(len=100),protected        :: quadrature_name
+ logical,protected                   :: is_auxil_basis
 
- logical,protected            :: print_matrix
- logical,protected            :: print_basis
- logical,protected            :: print_eri
- logical,protected            :: print_densitymatrix
- logical,protected            :: print_wfn
- logical,protected            :: print_specfunc
+ logical,protected                   :: print_matrix
+ logical,protected                   :: print_basis
+ logical,protected                   :: print_eri
+ logical,protected                   :: print_densitymatrix
+ logical,protected                   :: print_wfn
+ logical,protected                   :: print_specfunc
 
 
 contains
@@ -95,6 +96,13 @@ subroutine read_inputparameter_molecule()
    auxil_basis_name = 'none'
  else
    auxil_basis_name = line_wocomment(:kpos-1)
+ endif
+
+ if( auxil_basis_name=='none' .OR. auxil_basis_name=='NONE' ) then
+   auxil_basis_name='none'
+   is_auxil_basis = .FALSE.
+ else
+   is_auxil_basis = .TRUE.
  endif
  
 

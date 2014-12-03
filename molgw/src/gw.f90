@@ -4,7 +4,7 @@
 
 
 !=========================================================================
-subroutine polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,rpa_correlation,wpol)
+subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,rpa_correlation,wpol)
  use m_definitions
  use m_mpi
  use m_calculation_type
@@ -14,10 +14,10 @@ subroutine polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,rpa_co
  use m_basis_set
  use m_eri
  use m_spectral_function
- use m_inputparam,only: nspin,print_specfunc
+ use m_inputparam
  implicit none
 
- type(basis_set)                       :: basis,prod_basis
+ type(basis_set)                       :: basis,prod_basis,auxil_basis
  real(dp),intent(in)                   :: occupation(basis%nbf,nspin)
  real(dp),intent(in)                   :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)                  :: rpa_correlation
@@ -30,6 +30,8 @@ subroutine polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,rpa_co
  integer :: reading_status
 
  real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
+ real(dp) :: eri_eigen_ijkl
+ real(dp) :: eri_eigen_ikjl
  real(dp) :: spin_fact 
  real(dp) :: h_2p(wpol%npole,wpol%npole)
  real(dp) :: eigenvalue(wpol%npole),eigenvector(wpol%npole,wpol%npole),eigenvector_inv(wpol%npole,wpol%npole)
@@ -65,14 +67,19 @@ subroutine polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,rpa_co
  endif
 
 
- allocate(eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin))
+ if(is_auxil_basis) then
+   call prepare_eri_3center_eigen(c_matrix)
+ else
+   allocate(eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin))
+ endif
 
-! call start_clock(timing_tmp1)
+
  t_ij=0
  do ijspin=1,nspin
    do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
 
-       call transform_eri_basis_lowmem(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
+      if( .NOT. is_auxil_basis ) call transform_eri_basis(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
+
 
 #ifdef CRPA
        ! attempt of coding CRPA
@@ -101,6 +108,12 @@ subroutine polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,rpa_co
              if( skip_transition(nspin,lorbital,korbital,occupation(lorbital,klspin),occupation(korbital,klspin)) ) cycle
              t_kl=t_kl+1
 
+             if(is_auxil_basis) then
+               eri_eigen_ijkl = eri_eigen_ri(iorbital,jorbital,ijspin,korbital,lorbital,klspin)
+             else
+               eri_eigen_ijkl = eri_eigenstate_i(jorbital,korbital,lorbital,klspin)
+             endif
+             
 #ifndef CHI0
 
 !!FBFB
@@ -108,8 +121,7 @@ subroutine polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,rpa_co
 !                   ( iorbital >= 30 .OR. jorbital >= 30 .OR. korbital >= 30 .OR. lorbital >= 30 ) ) then
 !               h_2p(t_ij,t_kl) = 0.0_dp
 !             else
-             h_2p(t_ij,t_kl) = eri_eigenstate_i(jorbital,korbital,lorbital,klspin) &
-                        * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
+             h_2p(t_ij,t_kl) = eri_eigen_ijkl * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
 !             endif
 
 
@@ -120,7 +132,12 @@ subroutine polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,rpa_co
 
            if(TDHF) then
              if(ijspin==klspin) then
-               h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigenstate_i(korbital,jorbital,lorbital,klspin)  &
+               if(is_auxil_basis) then
+                 eri_eigen_ikjl = eri_eigen_ri(iorbital,korbital,ijspin,jorbital,lorbital,klspin)
+               else
+                 eri_eigen_ikjl = eri_eigenstate_i(korbital,jorbital,lorbital,klspin)
+               endif
+               h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigen_ikjl       &
                         * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) / spin_fact * alpha1
              endif
            endif
@@ -133,11 +150,11 @@ subroutine polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,rpa_co
 
        rpa_correlation = rpa_correlation - 0.25_dp * ABS( h_2p(t_ij,t_ij) )
 
-!       WRITE_MASTER(*,'(4(i4,2x),2(2x,f12.6))') t_ij,iorbital,jorbital,ijspin,( energy(jorbital,ijspin) - energy(iorbital,ijspin) ),h_2p(t_ij,t_ij)
      enddo !jorbital
    enddo !iorbital
  enddo ! ijspin
-! call stop_clock(timing_tmp1)
+
+ if(allocated(eri_eigenstate_i)) deallocate(eri_eigenstate_i)
 
  WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
  WRITE_MASTER(*,*) 'matrix',wpol%npole,'x',wpol%npole
@@ -162,12 +179,13 @@ subroutine polarizability_rpa(basis,prod_basis,occupation,energy,c_matrix,rpa_co
  call invert(wpol%npole,eigenvector,eigenvector_inv)
  call stop_clock(timing_inversion_s2p)
 
- deallocate(eri_eigenstate_i)
 
  !
  ! Finally calculate v * \chi * v and store it in object wpol
  !
- call chi_to_vchiv(nspin,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+ call chi_to_vchiv(basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+
+ if(is_auxil_basis) call destroy_eri_3center_eigen()
 
  ! If requested write the spectral function on file
  if( print_specfunc ) call write_spectral_function(wpol)
@@ -199,7 +217,7 @@ end subroutine polarizability_rpa
 
 
 !=========================================================================
-subroutine polarizability_rpa_paral(basis,prod_basis,occupation,energy,c_matrix,rpa_correlation,wpol)
+subroutine polarizability_rpa_slow(basis,prod_basis,occupation,energy,c_matrix,rpa_correlation,wpol)
  use m_definitions
  use m_mpi
  use m_calculation_type
@@ -374,25 +392,26 @@ subroutine polarizability_rpa_paral(basis,prod_basis,occupation,energy,c_matrix,
  !
  ! Finally calculate v * \chi * v and store it in object wpol
  !
- call chi_to_vchiv(nspin,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+ call chi_to_vchiv(basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
 
  ! If requested write the spectral function on file
  if( print_specfunc ) call write_spectral_function(wpol)
 
 
-end subroutine polarizability_rpa_paral
+end subroutine polarizability_rpa_slow
 
 
 !=========================================================================
-subroutine chi_to_vchiv(nspin,nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
  use m_definitions
+ use m_inputparam,only: nspin,is_auxil_basis
  use m_basis_set
  use m_eri
  use m_spectral_function
  implicit none
  
  type(spectral_function),intent(inout) :: wpol
- integer,intent(in)  :: nspin,nbf
+ integer,intent(in)  :: nbf
  type(basis_set)     :: basis,prod_basis
  real(dp),intent(in) :: occupation(nbf,nspin)
  real(dp),intent(in) :: c_matrix(nbf,nbf,nspin)
@@ -402,10 +421,11 @@ subroutine chi_to_vchiv(nspin,nbf,prod_basis,occupation,c_matrix,eigenvector,eig
 !=====
  integer              :: t_kl,klspin,ijspin
  integer              :: ibf,jbf,kbf,lbf,ijbf,ijbf_current
+ real(dp)             :: eri_eigen_klij
  real(dp),allocatable :: eri_eigenstate_k(:,:,:,:)
 !=====
 
- allocate(eri_eigenstate_k(nbf,nbf,nbf,nspin))
+ if( .NOT. is_auxil_basis ) allocate(eri_eigenstate_k(nbf,nbf,nbf,nspin))
 
  wpol%pole = eigenvalue
 
@@ -415,7 +435,7 @@ subroutine chi_to_vchiv(nspin,nbf,prod_basis,occupation,c_matrix,eigenvector,eig
  do klspin=1,nspin
    do kbf=1,nbf 
 
-     call transform_eri_basis_lowmem(nspin,c_matrix,kbf,klspin,eri_eigenstate_k)
+     if( .NOT. is_auxil_basis ) call transform_eri_basis(nspin,c_matrix,kbf,klspin,eri_eigenstate_k)
 
      do lbf=1,nbf
        if( skip_transition(nspin,lbf,kbf,occupation(lbf,klspin),occupation(kbf,klspin)) ) cycle
@@ -431,10 +451,16 @@ subroutine chi_to_vchiv(nspin,nbf,prod_basis,occupation,c_matrix,eigenvector,eig
 
            ijbf_current = ijbf+prod_basis%nbf*(ijspin-1)
 
+           if(is_auxil_basis) then
+             eri_eigen_klij = eri_eigen_ri(kbf,lbf,klspin,ibf,jbf,ijspin)
+           else
+             eri_eigen_klij = eri_eigenstate_k(lbf,ibf,jbf,ijspin)
+           endif
+
            wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
-                        + eri_eigenstate_k(lbf,ibf,jbf,ijspin) *  eigenvector(t_kl,:)
+                        + eri_eigen_klij *  eigenvector(t_kl,:)
            wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
-                        + eri_eigenstate_k(lbf,ibf,jbf,ijspin) * eigenvector_inv(:,t_kl) &
+                        + eri_eigen_klij * eigenvector_inv(:,t_kl) &
                                          * ( occupation(kbf,klspin)-occupation(lbf,klspin) )
          enddo
 !$OMP END DO
@@ -444,7 +470,7 @@ subroutine chi_to_vchiv(nspin,nbf,prod_basis,occupation,c_matrix,eigenvector,eig
    enddo
  enddo
 
- deallocate(eri_eigenstate_k)
+ if(allocated(eri_eigenstate_k)) deallocate(eri_eigenstate_k)
 
 end subroutine chi_to_vchiv
 
@@ -592,7 +618,7 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
      !
      if( task(iorbital,ijspin) == 0 ) cycle
 
-     call transform_eri_basis_lowmem(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
+     call transform_eri_basis(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
 
 
      do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
