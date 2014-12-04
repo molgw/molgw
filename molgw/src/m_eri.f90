@@ -325,7 +325,7 @@ function eri_ri(ibf,jbf,kbf,lbf)
    index_ij = index_prod(ibf,jbf)
    index_kl = index_prod(kbf,lbf)
 
-!FBFB     eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , MATMUL( eri_2center_m1(:,:) , eri_3center(:,index_kl) ) ) 
+!     eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , MATMUL( eri_2center_m1(:,:) , eri_3center(:,index_kl) ) ) 
      eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , eri_3center(:,index_kl) )
 
  endif
@@ -747,7 +747,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
  real(dp)                     :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
- real(dp),allocatable         :: eigval(:) !FBFB
+ real(dp),allocatable         :: eigval(:)
 !=====
 ! variables used to call C++ 
  integer(C_INT),external      :: calculate_integral

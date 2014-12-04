@@ -468,15 +468,15 @@ subroutine write_energy_qp(nspin,nbf,energy_qp)
  real(dp),intent(in) :: energy_qp(nbf,nspin)
 !=====
  integer,parameter :: unit_energy_qp=51
- integer           :: iorbital
+ integer           :: istate
 !=====
 
  WRITE_MASTER(*,'(/,a)') ' Writing energy_qp file'
  open(unit_energy_qp,file='energy_qp',form='formatted')
  WRITE_MASTER(unit_energy_qp,*) nspin
  WRITE_MASTER(unit_energy_qp,*) nbf
- do iorbital=1,nbf
-   WRITE_MASTER(unit_energy_qp,*) iorbital,energy_qp(iorbital,:)
+ do istate=1,nbf
+   WRITE_MASTER(unit_energy_qp,*) istate,energy_qp(istate,:)
  enddo
 
  close(unit_energy_qp)
@@ -496,7 +496,7 @@ subroutine read_energy_qp(nspin,nbf,energy_qp,reading_status)
  real(dp),intent(out) :: energy_qp(nbf,nspin)
 !=====
  integer,parameter :: unit_energy_qp=51
- integer           :: iorbital,jorbital
+ integer           :: istate,jstate
  integer           :: nspin_read,nbf_read
  logical           :: file_exists
 !=====
@@ -512,10 +512,10 @@ subroutine read_energy_qp(nspin,nbf,energy_qp,reading_status)
      call issue_warning(msg)
      reading_status=2
    else
-     do iorbital=1,nbf
-       read(unit_energy_qp,*) jorbital,energy_qp(iorbital,:)
+     do istate=1,nbf
+       read(unit_energy_qp,*) jstate,energy_qp(istate,:)
        ! Scissor operator
-       if( jorbital == -1 ) then
+       if( jstate == -1 ) then
          reading_status=-1
          close(unit_energy_qp)
          return

@@ -30,7 +30,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  type(spectral_function),intent(in)    :: wpol
 !=====
  integer :: pbf,qbf,ibf,jbf,kbf,lbf,ijbf,klbf,ijbf_current,ijspin,klspin,ispin
- integer :: iorbital,jorbital,korbital,lorbital
+ integer :: istate,jstate,kstate,lstate
  integer :: ipole
  integer :: t_ij,t_kl
  integer :: idft_xc,igrid
@@ -204,17 +204,17 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
      scissor_energy(:) = energy_qp(1,:)
      WRITE_MASTER(*,'(a,2(x,f12.6))') ' Scissor operator with value [eV]:',scissor_energy(:)*Ha_eV
      do ispin=1,nspin
-       do iorbital=1,basis%nbf
-         if( occupation(iorbital,ispin) > completely_empty/spin_fact ) then
-           energy_qp(iorbital,ispin) = energy(iorbital,ispin)
+       do istate=1,basis%nbf
+         if( occupation(istate,ispin) > completely_empty/spin_fact ) then
+           energy_qp(istate,ispin) = energy(istate,ispin)
          else
-           energy_qp(iorbital,ispin) = energy(iorbital,ispin) + scissor_energy(ispin)
+           energy_qp(istate,ispin) = energy(istate,ispin) + scissor_energy(ispin)
          endif
        enddo
      enddo
      WRITE_MASTER(*,'(/,a)') ' Scissor updated energies'
-     do iorbital=1,basis%nbf
-       WRITE_MASTER(*,'(i5,4(2x,f16.6))') iorbital,energy(iorbital,:)*Ha_eV,energy_qp(iorbital,:)*Ha_eV
+     do istate=1,basis%nbf
+       WRITE_MASTER(*,'(i5,4(2x,f16.6))') istate,energy(istate,:)*Ha_eV,energy_qp(istate,:)*Ha_eV
      enddo
      WRITE_MASTER(*,*)
    case(0)
@@ -236,44 +236,44 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  h_2p(:,:)=0.0_dp
  t_ij=0
  do ijspin=1,nspin
-   do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
+   do istate=1,basis%nbf ! istate stands for occupied or partially occupied
 
-     if( .NOT. is_auxil_basis) call transform_eri_basis(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
+     if( .NOT. is_auxil_basis) call transform_eri_basis(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
 
-     do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
-       if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
+     do jstate=1,basis%nbf ! jstate stands for empty or partially empty
+       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
        t_ij=t_ij+1
 
 
        t_kl=0
        do klspin=1,nspin
-         do korbital=1,basis%nbf 
+         do kstate=1,basis%nbf 
 
-           do lorbital=1,basis%nbf 
-             if( skip_transition(nspin,lorbital,korbital,occupation(lorbital,klspin),occupation(korbital,klspin)) ) cycle
+           do lstate=1,basis%nbf 
+             if( skip_transition(nspin,lstate,kstate,occupation(lstate,klspin),occupation(kstate,klspin)) ) cycle
              t_kl=t_kl+1
 
-             if( TDA .AND. ( iorbital > jorbital ) .AND. ( korbital < lorbital )) cycle
-             if( TDA .AND. ( iorbital < jorbital ) .AND. ( lorbital > korbital )) cycle
+             if( TDA .AND. ( istate > jstate ) .AND. ( kstate < lstate )) cycle
+             if( TDA .AND. ( istate < jstate ) .AND. ( lstate > kstate )) cycle
 
              if(is_auxil_basis) then
-               eri_eigen_ijkl = eri_eigen_ri(iorbital,jorbital,ijspin,korbital,lorbital,klspin)
+               eri_eigen_ijkl = eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
              else
-               eri_eigen_ijkl = eri_eigenstate_i(jorbital,korbital,lorbital,klspin)
+               eri_eigen_ijkl = eri_eigenstate_i(jstate,kstate,lstate,klspin)
              endif
 
              !
              ! Hartree part
-             h_2p(t_ij,t_kl) = eri_eigen_ijkl * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
+             h_2p(t_ij,t_kl) = eri_eigen_ijkl * ( occupation(istate,ijspin)-occupation(jstate,ijspin) )
 
              !
              ! Add the kernel for TDDFT
              if(is_tddft) then
                h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
-                          + SUM(  wf_r(:,iorbital,ijspin) * wf_r(:,jorbital,ijspin) &
-                                * wf_r(:,korbital,klspin) * wf_r(:,lorbital,klspin) &
+                          + SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
+                                * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
                                 * fxc(:,ijspin) )                                   & ! FIXME spin is not correct
-                          * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
+                          * ( occupation(istate,ijspin)-occupation(jstate,ijspin) )
              endif
 
              !
@@ -282,13 +282,13 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
                if(ijspin==klspin) then
 
                  if(is_auxil_basis) then
-                   eri_eigen_ikjl = eri_eigen_ri(iorbital,korbital,ijspin,jorbital,lorbital,klspin)
+                   eri_eigen_ikjl = eri_eigen_ri(istate,kstate,ijspin,jstate,lstate,klspin)
                  else
-                   eri_eigen_ikjl = eri_eigenstate_i(korbital,jorbital,lorbital,klspin)
+                   eri_eigen_ikjl = eri_eigenstate_i(kstate,jstate,lstate,klspin)
                  endif
 
                  h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigen_ikjl  &
-                          * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) / spin_fact * alpha_local
+                          * ( occupation(istate,ijspin)-occupation(jstate,ijspin) ) / spin_fact * alpha_local
                endif
              endif
 
@@ -296,12 +296,12 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
              ! Screened exchange part
              if(calc_type%is_bse) then
                if(ijspin==klspin) then
-                 kbf = prod_basis%index_prodbasis(iorbital,korbital)
+                 kbf = prod_basis%index_prodbasis(istate,kstate)
                  bra(:) = wpol%residu_left (:,kbf+prod_basis%nbf*(ijspin-1))
-                 kbf = prod_basis%index_prodbasis(jorbital,lorbital)
+                 kbf = prod_basis%index_prodbasis(jstate,lstate)
                  ket(:) = wpol%residu_right(:,kbf+prod_basis%nbf*(klspin-1))
                  h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  SUM( bra(:)*ket(:)/(-wpol%pole(:)) ) &
-                          * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) / spin_fact   
+                          * ( occupation(istate,ijspin)-occupation(jstate,ijspin) ) / spin_fact   
                endif
              endif
 
@@ -310,11 +310,11 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
        enddo !klspin
 
 
-       h_2p(t_ij,t_ij) =  h_2p(t_ij,t_ij) + ( energy_qp(jorbital,ijspin) - energy_qp(iorbital,ijspin) )
+       h_2p(t_ij,t_ij) =  h_2p(t_ij,t_ij) + ( energy_qp(jstate,ijspin) - energy_qp(istate,ijspin) )
 
 
-     enddo !jorbital
-   enddo !iorbital
+     enddo !jstate
+   enddo !istate
  enddo ! ijspin
 
  if( .NOT. is_auxil_basis) deallocate(eri_eigenstate_i)
@@ -406,16 +406,16 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  enddo
 
  !
- ! Get the dipole oscillator strength with orbitals
+ ! Get the dipole oscillator strength with states
  allocate(dipole_state(3,basis%nbf,basis%nbf,nspin))
  dipole_state(:,:,:,:) = 0.0_dp
  do ijspin=1,nspin
    do jbf=1,basis%nbf
      do ibf=1,basis%nbf
-       do jorbital=1,basis%nbf
-         do iorbital=1,basis%nbf
-           dipole_state(:,iorbital,jorbital,ijspin) = dipole_state(:,iorbital,jorbital,ijspin) &
-                                         + c_matrix(ibf,iorbital,ijspin) * dipole_basis(:,ibf,jbf) * c_matrix(jbf,jorbital,ijspin)
+       do jstate=1,basis%nbf
+         do istate=1,basis%nbf
+           dipole_state(:,istate,jstate,ijspin) = dipole_state(:,istate,jstate,ijspin) &
+                                         + c_matrix(ibf,istate,ijspin) * dipole_basis(:,ibf,jbf) * c_matrix(jbf,jstate,ijspin)
          enddo
        enddo
      enddo
@@ -438,18 +438,18 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  residu_right(:,:) = 0.0_dp
  t_ij=0
  do ijspin=1,nspin
-   do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
+   do istate=1,basis%nbf ! istate stands for occupied or partially occupied
 
-     do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
-       if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin))) cycle
+     do jstate=1,basis%nbf ! jstate stands for empty or partially empty
+       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin))) cycle
        t_ij=t_ij+1
 
        do t_kl=1,wpol%npole
          residu_left (:,t_kl)  = residu_left (:,t_kl) &
-                      + dipole_state(:,iorbital,jorbital,ijspin) * eigenvector(t_ij,t_kl)
+                      + dipole_state(:,istate,jstate,ijspin) * eigenvector(t_ij,t_kl)
          residu_right(:,t_kl)  = residu_right(:,t_kl) &
-                      + dipole_state(:,iorbital,Jorbital,ijspin) * eigenvector_inv(t_kl,t_ij) &
-                                       * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
+                      + dipole_state(:,istate,Jstate,ijspin) * eigenvector_inv(t_kl,t_ij) &
+                                       * ( occupation(istate,ijspin)-occupation(jstate,ijspin) )
        enddo
 
      enddo
@@ -461,10 +461,10 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  absorp(:,:,:) = 0.0_dp
  static_polarizability(:,:) = 0.0_dp
  do ijspin=1,nspin
-   do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
+   do istate=1,basis%nbf ! istate stands for occupied or partially occupied
 
-     do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
-       if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin))) cycle
+     do jstate=1,basis%nbf ! jstate stands for empty or partially empty
+       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin))) cycle
        t_ij = t_ij + 1
 
        do idir=1,3
