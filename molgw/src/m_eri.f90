@@ -6,7 +6,6 @@ module m_eri
  use m_mpi
  use m_basis_set
 
-
  integer,parameter :: BUFFER1 = 1
  integer,parameter :: BUFFER2 = 2
  !
@@ -149,9 +148,7 @@ subroutine allocate_eri_auxil(auxil_basis)
  nsize1_auxil = nbf_eri_auxil 
  nsize_auxil  = nsize1_auxil**2
 
- WRITE_MASTER(*,*) 'number of integrals to be stored:',nsize_auxil
- WRITE_MASTER(*,*) 'max index size',HUGE(nsize_auxil)
- if(nsize_auxil<1) stop'too many integrals to be stored'
+ if(nsize_auxil<1) stop'too many or too few integrals to be stored'
 
  !
  ! 2-CENTER INTEGRALS 
@@ -327,7 +324,10 @@ function eri_ri(ibf,jbf,kbf,lbf)
  else
    index_ij = index_prod(ibf,jbf)
    index_kl = index_prod(kbf,lbf)
-   eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , MATMUL( eri_2center_m1(:,:) , eri_3center(:,index_kl) ) ) 
+
+!FBFB     eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , MATMUL( eri_2center_m1(:,:) , eri_3center(:,index_kl) ) ) 
+     eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , eri_3center(:,index_kl) )
+
  endif
 
 end function eri_ri
@@ -343,8 +343,7 @@ function eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
  integer            :: index_ij,index_kl
 !=====
 
- eri_eigen_ri = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,ijspin) , &
-                 MATMUL( eri_2center_m1(:,:) , eri_3center_eigen(:,kstate,lstate,klspin) ) )
+   eri_eigen_ri = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,ijspin) , eri_3center_eigen(:,kstate,lstate,klspin) )
 
 end function eri_eigen_ri
 
@@ -748,7 +747,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
  real(dp)                     :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
- real(dp),allocatable         :: eigval(:),matrix_tmp(:,:) !FBFB
+ real(dp),allocatable         :: eigval(:) !FBFB
 !=====
 ! variables used to call C++ 
  integer(C_INT),external      :: calculate_integral
@@ -958,30 +957,30 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
    enddo
  enddo
 
-#if 0
- !
- ! Perform in-place inversion here
- call invert(nsize1_auxil,eri_2center_m1)
+ if( .FALSE. ) then
+   !
+   ! Perform in-place inversion here
+   call invert(nsize1_auxil,eri_2center_m1)
 
- WRITE_MASTER(*,'(a)') ' All 2-center integrals have been calculated, inverted and stored'
-#else
- !FBFB
- msg='FBFB is working here'
- call issue_warning(msg)
- allocate(eigval(nsize1_auxil),matrix_tmp(nsize1_auxil,nsize1_auxil))
- matrix_tmp = eri_2center_m1
- call diagonalize(nsize1_auxil,matrix_tmp,eigval)
- eri_2center_m1 = 0.0_dp
- do kbf=1,nbf_eri_auxil
+   WRITE_MASTER(*,'(a)') ' All 2-center integrals have been calculated, inverted and stored'
+
+ else
+
+   allocate(eigval(nsize1_auxil))
+   !
+   ! Perform in-place diagonalization here
+   call diagonalize(nsize1_auxil,eri_2center_m1,eigval)
    do jbf=1,nbf_eri_auxil
-     do ibf=1,nbf_eri_auxil
-       eri_2center_m1(ibf,kbf) = eri_2center_m1(ibf,kbf) +  matrix_tmp(ibf,jbf) / eigval(jbf) * matrix_tmp(kbf,jbf)
-     enddo
+     eri_2center_m1(:,jbf) = eri_2center_m1(:,jbf) / SQRT( eigval(jbf) )
    enddo
- enddo
- deallocate(eigval,matrix_tmp)
- WRITE_MASTER(*,'(a)') ' All 2-center integrals have been calculated, diagonalized and stored'
-#endif
+   deallocate(eigval)
+
+!   ! transform it back to the inverse
+!   eri_2center_m1 = MATMUL( eri_2center_m1 , TRANSPOSE(eri_2center_m1) )
+
+   WRITE_MASTER(*,'(a)') ' All 2-center integrals have been calculated, diagonalized and stored'
+
+ endif
 
  call stop_clock(timing_eri_2center)
 
@@ -1303,6 +1302,15 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
  enddo
 
  WRITE_MASTER(*,'(a)') ' All 3-center integrals have been calculated and stored'
+
+ !
+ ! Combine the 2-center integral into the 3-center and then get rid of them
+ ! definitively
+ eri_3center(:,:) = MATMUL( TRANSPOSE(eri_2center_m1) , eri_3center(:,:) )
+
+ WRITE_MASTER(*,*) 'Now deallocate the 2-center integrals: not needed anymore'
+ if(allocated(eri_2center_m1)) deallocate(eri_2center_m1)
+ 
 
  call stop_clock(timing_eri_3center)
 
