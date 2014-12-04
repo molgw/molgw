@@ -15,6 +15,7 @@ program molgw
  use m_eri
  use m_dft_grid
  use m_spectral_function
+ use m_gw
 #ifdef _OPENMP
  use omp_lib
 #endif
@@ -126,7 +127,7 @@ program molgw
 
  !
  ! Build the occupation array
- call set_occupation(electrons,magnetization,basis%nbf,nspin,occupation)
+ call set_occupation(electrons,magnetization,basis%nbf,occupation)
  title='=== Occupations ==='
  call dump_out_occupation(title,basis%nbf,nspin,occupation)
 
@@ -229,7 +230,6 @@ program molgw
  ! Time Dependent calculations
  ! works for DFT, HF, and hybrid
  if(calc_type%is_td .OR. calc_type%is_bse) then
-   call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
 
    ! For BSE calculation, obtain the wpol object from a previous calculation
    if(calc_type%is_bse) then
@@ -279,7 +279,6 @@ program molgw
    if( calc_type%is_lr_mbpt ) call testing_tobe_removed()
 
 
-   call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
 #ifdef CASIDA
    call polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #else
@@ -290,7 +289,7 @@ program molgw
    WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
 
 #ifndef CASIDA
-   call gw_selfenergy(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp)
+   call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp)
 #endif
 
    title='=== Self-energy === (in the eigenstate basis)'
@@ -303,10 +302,10 @@ program molgw
  ! final evaluation for MP2
  if( calc_type%is_mp2 .AND. calc_type%gwmethod == perturbative ) then
 
-   call setup_exchange(print_matrix,basis%nbf,nspin,p_matrix,matrix_tmp,en%exx)
+   call setup_exchange(print_matrix,basis%nbf,p_matrix,matrix_tmp,en%exx)
    WRITE_MASTER(*,*) 'EXX     [Ha]:',en%exx
 #ifdef CASIDA
-   call mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,en%mp2)
+   call mp2_energy_fast(basis,occupation,c_matrix,energy,en%mp2)
 #else
    call mp2_selfenergy(calc_type%gwmethod,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
 #endif
@@ -362,7 +361,7 @@ subroutine testing_tobe_removed()
 !=====
  allocate(ehomo(nspin))
    write(*,*) '========== FABIEN ============'
-   call setup_exchange(print_matrix,basis%nbf,nspin,p_matrix,matrix_tmp,en%exx)
+   call setup_exchange(print_matrix,basis%nbf,p_matrix,matrix_tmp,en%exx)
    WRITE_MASTER(*,*) 'EXX [Ha]:',en%exx
    exchange_m_vxc_diag(:,:) = 0.0_dp
    do ispin=1,nspin
@@ -388,7 +387,7 @@ subroutine testing_tobe_removed()
    call calculate_eri(print_matrix,basis,rcut,BUFFER1)
 
    write(*,*) '========== FABIEN ============'
-   call setup_exchange(print_matrix,basis%nbf,nspin,p_matrix,matrix_tmp,en%exx)
+   call setup_exchange(print_matrix,basis%nbf,p_matrix,matrix_tmp,en%exx)
    WRITE_MASTER(*,*) 'EXX [Ha]:',en%exx
    exchange_m_vxc_diag(:,:) = 0.0_dp
    do ispin=1,nspin
@@ -465,7 +464,7 @@ subroutine testing_tobe_removed()
    WRITE_MASTER(*,*) '<vxc RPA LR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
    WRITE_MASTER(*,*) 'test'
 
-   call setup_exchange(print_matrix,basis%nbf,nspin,p_matrix,matrix_tmp,en%exx)  
+   call setup_exchange(print_matrix,basis%nbf,p_matrix,matrix_tmp,en%exx)  
    WRITE_MASTER(*,*) 'LR EXX [Ha]:',en%exx
    exchange_m_vxc_diag(:,:) = 0.0_dp
    do ispin=1,nspin

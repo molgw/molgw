@@ -270,19 +270,30 @@ subroutine diagonalize_general_dp(n,matrix,eigval,eigvec_right)
  real(dp),intent(out) :: eigval(n)
  real(dp),intent(out) :: eigvec_right(n,n)
 
- real(dp) :: a(n,n),work(4*n)
- real(dp) :: eigenval_r(n),eigenval_i(n)
- real(dp) :: eigenvect_r(n,n),eigenvect_l(n,n)
- integer :: info,i
+ real(dp)              :: a(n,n),work(4*n)
+ real(dp)              :: eigenval_r(n),eigenval_i(n)
+ real(dp), allocatable :: eigenvect_r(:,:),eigenvect_l(:,:)
+ integer               :: info,i,ldvl,ldvr
  
  a(:,:) = matrix(:,:)
 
- !TODO calculate only right eigenvectors
- call DGEEV('V','V',n,a,n,eigenval_r,eigenval_i,eigenvect_l,n,eigenvect_r,n,work,4*n,info)
+ ldvl=1
+ ldvr=n
+ allocate(eigenvect_l(ldvl,n))
+ allocate(eigenvect_r(ldvr,n))
+
+! call DGEEV('V','V',n,a,n,eigenval_r,eigenval_i,eigenvect_l,n,eigenvect_r,n,work,4*n,info)
+
+ !
+ ! Calculate only right eigenvectors
+ call DGEEV('N','V',n,a,n,eigenval_r,eigenval_i,eigenvect_l,ldvl,eigenvect_r,ldvr,work,4*n,info)
+
  if(info/=0) stop'FAILURE in DGEEV'
 
  eigvec_right = eigenvect_r
  eigval = eigenval_r
+
+ deallocate(eigenvect_l,eigenvect_r)
 
 end subroutine diagonalize_general_dp
 

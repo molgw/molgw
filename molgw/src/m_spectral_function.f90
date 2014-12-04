@@ -7,6 +7,7 @@ module m_spectral_function
  use m_calculation_type
  use m_timing 
  use m_warning,only: issue_warning
+ use m_inputparam,only: nspin,spin_fact
 
  !
  ! General form of any spectral function
@@ -14,11 +15,11 @@ module m_spectral_function
  ! i, j running on the basis set
  ! sf_ij(z) = \sum_n L_n(i) R_n(j) / ( z - w_n )
  !
+ real(dp),parameter     :: TOL_DEG_POLE=1.0e-5_dp
  type spectral_function 
-   integer :: npole
-   integer :: npole_ind
-   integer :: nprodbasis
-   integer,allocatable  :: transition_index(:,:,:)
+   integer              :: npole
+   integer              :: npole_ind
+   integer              :: nprodbasis
    real(dp),allocatable :: pole(:)
    real(dp),allocatable :: residu_left(:,:)       ! first index runs on n, second index on i
    real(dp),allocatable :: residu_right(:,:)      ! first index runs on n, second index on j
@@ -46,11 +47,11 @@ module m_spectral_function
 contains
 
 !=========================================================================
-subroutine init_spectral_function(nbf,prod_nbf,nspin,occupation,sf)
+subroutine init_spectral_function(nbf,occupation,ntransition)
  implicit none
- integer,intent(in)                    :: nbf,prod_nbf,nspin
+ integer,intent(in)                    :: nbf
  real(dp),intent(in)                   :: occupation(nbf,nspin)
- type(spectral_function),intent(inout) :: sf
+ integer,intent(out)                   :: ntransition
 !=====
  integer                               :: ispin,ibf,jbf
  logical                               :: file_exists
@@ -86,38 +87,41 @@ subroutine init_spectral_function(nbf,prod_nbf,nspin,occupation,sf)
  endif
 
 
- allocate(sf%transition_index(nbf,nbf,nspin))
-
- sf%transition_index(:,:,:) = 0
- sf%npole=0
+ ntransition=0
  do ispin=1,nspin
    do ibf=1,nbf
      do jbf=1,nbf
        if( skip_transition(nspin,ibf,jbf,occupation(ibf,ispin),occupation(jbf,ispin)) ) cycle
-       sf%npole = sf%npole+1
-       sf%transition_index(ibf,jbf,ispin) = sf%npole
+       ntransition = ntransition + 1
      enddo
    enddo
  enddo
 
- WRITE_MASTER(*,*) 
- WRITE_MASTER(*,*) 'spectral function initialized with',sf%npole,'poles'
-
- allocate(sf%pole(sf%npole))
-
- sf%nprodbasis = prod_nbf * nspin
-
-#ifndef CASIDA
- allocate(sf%residu_left (sf%npole,sf%nprodbasis))
- allocate(sf%residu_right(sf%npole,sf%nprodbasis))
- WRITE_MASTER(*,*) '           second index size',sf%nprodbasis
-
- WRITE_MASTER(*,'(a,f14.0)') ' Memory [Mb] ',REAL(SIZE(sf%residu_left(:,:)),dp)*2.0_dp/1024.0_dp**2*dp
- WRITE_MASTER(*,*)
-#endif
-
 
 end subroutine init_spectral_function
+
+
+!=========================================================================
+subroutine allocate_spectral_function(npole,nprodbasis,sf)
+ implicit none
+ integer,intent(in)                    :: npole,nprodbasis
+ type(spectral_function),intent(inout) :: sf
+!=====
+
+ sf%npole      = npole
+ sf%nprodbasis = nprodbasis * nspin
+
+ WRITE_MASTER(*,'(/,a,i8)') ' Spectral function initialized with npoles              : ',sf%npole
+ WRITE_MASTER(*,'(a,i8)')   ' Spectral function initialized with prod basis functions: ',sf%nprodbasis
+
+ allocate(sf%pole(sf%npole))
+ allocate(sf%residu_left (sf%npole,sf%nprodbasis))
+ allocate(sf%residu_right(sf%npole,sf%nprodbasis))
+
+ WRITE_MASTER(*,'(a,f14.3,/)') ' Memory [Gb] ',REAL(sf%npole*sf%nprodbasis,dp)*2/1024.0_dp**3*dp
+
+
+end subroutine allocate_spectral_function
 
 
 !=========================================================================
@@ -127,9 +131,6 @@ function skip_transition(nspin,ib1,ib2,occ1,occ2)
  integer,intent(in)  :: nspin,ib1,ib2
  real(dp),intent(in) :: occ1,occ2
 !=====
- real(dp)            :: spin_fact
-!=====
- spin_fact = REAL(-nspin+3,dp)
 
  skip_transition = .FALSE.
 
@@ -158,21 +159,18 @@ function skip_transition(nspin,ib1,ib2,occ1,occ2)
 
 end function skip_transition
 
+
 !=========================================================================
 subroutine destroy_spectral_function(sf)
  implicit none
  type(spectral_function),intent(inout) :: sf
 !=====
 
- deallocate(sf%pole)
- deallocate(sf%transition_index)
-#ifndef CASIDA
- deallocate(sf%residu_left)
- deallocate(sf%residu_right)
-#endif
+ if(allocated(sf%pole))         deallocate(sf%pole)
+ if(allocated(sf%residu_left))  deallocate(sf%residu_left)
+ if(allocated(sf%residu_right)) deallocate(sf%residu_right)
 
- WRITE_MASTER(*,*) 
- WRITE_MASTER(*,*) 'spectral function destroyed'
+ WRITE_MASTER(*,'(/,a)') ' Spectral function destroyed'
 
 end subroutine destroy_spectral_function
 

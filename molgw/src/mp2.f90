@@ -1,14 +1,14 @@
 !=========================================================================
 #include "macros.h"
 !=========================================================================
-subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
+subroutine mp2_energy(basis,occupation,c_matrix,energy,emp2)
  use m_definitions
  use m_mpi
  use m_basis_set
  use m_eri
+ use m_inputparam,only: nspin,spin_fact
  implicit none
 
- integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin),energy(basis%nbf,nspin)
  real(dp),intent(out)       :: emp2
@@ -20,15 +20,13 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
  real(dp)                   :: tmp_iaxb(basis%nbf),tmp_xaib(basis%nbf)
  real(dp)                   :: tmp_iajb,tmp_jaib
  real(dp)                   :: contrib1,contrib2
- real(dp)                   :: fact,spin_fact
+ real(dp)                   :: fact
  real(dp),allocatable       :: tmp_xaxx(:,:,:)
 !=====
 
  emp2 = 0.0_dp
  contrib1 = 0.0_dp
  contrib2 = 0.0_dp
-
- spin_fact = REAL(-nspin+3,dp)
 
 
  allocate(tmp_xaxx(basis%nbf,basis%nbf,basis%nbf))
@@ -137,14 +135,14 @@ end subroutine mp2_energy
 
 
 !==================================================================
-subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
+subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
  use m_definitions
  use m_mpi
  use m_basis_set
  use m_eri
+ use m_inputparam,only: nspin,spin_fact
  implicit none
 
- integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin),energy(basis%nbf,nspin)
  real(dp),intent(out)       :: emp2
@@ -156,7 +154,7 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
  real(dp)                   :: tmp_iajx(basis%nbf),tmp_ixja(basis%nbf)
  real(dp)                   :: tmp_iajb,tmp_ibja
  real(dp)                   :: contrib1,contrib2
- real(dp)                   :: fact,spin_fact
+ real(dp)                   :: fact
  real(dp),allocatable       :: tmp_ixxx(:,:,:)
  integer                    :: nocc,ncore
  logical                    :: file_exists
@@ -185,8 +183,6 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
  emp2 = 0.0_dp
  contrib1 = 0.0_dp
  contrib2 = 0.0_dp
-
- spin_fact = REAL(-nspin+3,dp)
 
 
  allocate(tmp_ixxx(basis%nbf,basis%nbf,basis%nbf))
@@ -317,7 +313,7 @@ end subroutine mp2_energy_fast
 subroutine single_excitations(nbf,energy,occupation,c_matrix,fock_matrix)
  use m_definitions
  use m_timing
- use m_inputparam,only: nspin,print_matrix
+ use m_inputparam,only: nspin,spin_fact,print_matrix
  use m_scf,only: en
  implicit none
 
@@ -328,7 +324,6 @@ subroutine single_excitations(nbf,energy,occupation,c_matrix,fock_matrix)
 !=====
  integer                    :: ispin
  integer                    :: istate,astate
- real(dp)                   :: spin_fact
  character(len=100)         :: title
 !=====
 
@@ -342,7 +337,6 @@ subroutine single_excitations(nbf,energy,occupation,c_matrix,fock_matrix)
  call dump_out_matrix(print_matrix,title,nbf,nspin,fock_matrix)
 
 
- spin_fact = REAL(-nspin+3,dp)
  en%se = 0.0_dp
  do ispin=1,nspin
    ! loop on occupied states

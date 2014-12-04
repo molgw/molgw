@@ -1,7 +1,9 @@
 !=========================================================================
 #include "macros.h"
 !=========================================================================
+module m_gw
 
+contains
 
 !=========================================================================
 subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,rpa_correlation,wpol)
@@ -25,36 +27,40 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
 !=====
  integer :: ibf,jbf,ijbf,klbf,ijspin,klspin
  integer :: istate,jstate,kstate,lstate
- integer :: ipole,jpole
+ integer :: ipole
+ integer :: ntrans
  integer :: t_ij,t_kl
  integer :: reading_status
 
  real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
- real(dp) :: eri_eigen_ijkl
- real(dp) :: eri_eigen_ikjl
- real(dp) :: spin_fact 
- real(dp) :: h_2p(wpol%npole,wpol%npole)
- real(dp) :: eigenvalue(wpol%npole),eigenvector(wpol%npole,wpol%npole),eigenvector_inv(wpol%npole,wpol%npole)
- real(dp) :: matrix(wpol%npole,wpol%npole)
- real(dp) :: rtmp
- real(dp) :: alpha1,alpha2
+ real(dp)             :: eri_eigen_ijkl
+ real(dp)             :: eri_eigen_ikjl
+ real(dp),allocatable :: h_2p(:,:),eigenvector(:,:),eigenvector_inv(:,:)
+ real(dp),allocatable :: eigenvalue(:)
+ real(dp)             :: rtmp
+ real(dp)             :: alpha1,alpha2
 
- logical :: new_pole
  logical :: TDHF=.FALSE.
 !=====
 
  call start_clock(timing_pola)
 
- spin_fact = REAL(-nspin+3,dp)
  rpa_correlation = 0.0_dp
 
  WRITE_MASTER(*,'(/,a)') ' calculating CHI alla rpa'
+
+ ! Obtain the number of transition = the size of the matrix
+ call init_spectral_function(basis%nbf,occupation,ntrans)
 
  call read_spectral_function(wpol,reading_status)
  if( reading_status == 0 ) then
    WRITE_MASTER(*,'(a,/)') ' no need to calculate W: already done'
    return
  endif
+
+ allocate(h_2p(ntrans,ntrans))
+ allocate(eigenvector(ntrans,ntrans))
+ allocate(eigenvalue(ntrans))
 
  inquire(file='manual_tdhf',exist=TDHF)
  if(TDHF) then
@@ -163,12 +169,16 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
 
 
  WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
- WRITE_MASTER(*,*) 'matrix',wpol%npole,'x',wpol%npole
+ WRITE_MASTER(*,*) 'matrix',ntrans,'x',ntrans
 
  call start_clock(timing_diago_h2p)
- call diagonalize_general(wpol%npole,h_2p,eigenvalue,eigenvector)
+ call diagonalize_general(ntrans,h_2p,eigenvalue,eigenvector)
  call stop_clock(timing_diago_h2p)
  WRITE_MASTER(*,*) 'diago finished'
+
+ deallocate(h_2p)
+ allocate(eigenvector_inv(ntrans,ntrans))
+
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,*) 'calculate the RPA energy using the Tamm-Dancoff decomposition'
  WRITE_MASTER(*,*) 'formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)'
@@ -177,40 +187,20 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
 
  WRITE_MASTER(*,'(/,a,f14.8)') ' Lowest neutral excitation energy [eV]',MINVAL(ABS(eigenvalue(:)))*Ha_eV
 
-! do t_ij=1,wpol%npole
+! do t_ij=1,ntrans
 !   WRITE_MASTER(*,'(1(i4,2x),20(2x,f12.6))') t_ij,eigenvalue(t_ij)
 ! enddo
    
  call start_clock(timing_inversion_s2p)
- call invert(wpol%npole,eigenvector,eigenvector_inv)
+ call invert(ntrans,eigenvector,eigenvector_inv)
  call stop_clock(timing_inversion_s2p)
 
-#if 0
- ! FBFB
- msg='FBFB classify poles'
- 
- wpol%npole_ind=0
- do ipole=1,wpol%npole
-   new_pole = .TRUE.
-   do jpole=1,wpol%npole_ind
-     if( ABS( wpol%pole(jpole) - eigenvalue(ipole) ) < 1.0e-5_dp ) then
-       new_pole = .FALSE.
-       exit
-     endif
-   enddo
-   if(new_pole) then
-     wpol%npole_ind=wpol%npole_ind+1
-     wpol%pole(wpol%npole_ind) = eigenvalue(ipole)
-    endif
- enddo
- WRITE_MASTER(*,*) wpol%npole_ind,wpol%npole
- STOP'ENOUGH'
-#endif
 
  !
  ! Finally calculate v * \chi * v and store it in object wpol
  !
- call chi_to_vchiv(basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+ ! Note: deallocation of the eigenvector and eigenvector_inv in the subroutine
+ call chi_to_vchiv_red(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
 
  if(is_auxil_basis) call destroy_eri_3center_eigen()
 
@@ -247,6 +237,7 @@ end subroutine polarizability_rpa
 !=========================================================================
 subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
  use m_definitions
+ use m_warning
  use m_inputparam,only: nspin,is_auxil_basis
  use m_basis_set
  use m_eri
@@ -264,6 +255,7 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
 !=====
  integer                    :: t_kl,klspin,ijspin
  integer                    :: istate,jstate,kstate,lstate,ijstate,ijstate_spin
+ integer                    :: ipole
  real(dp)                   :: docc_kl
  real(dp)                   :: eri_eigen_klij
  real(dp),allocatable       :: eri_eigenstate_k(:,:,:,:)
@@ -325,7 +317,138 @@ end subroutine chi_to_vchiv
 
 
 !=========================================================================
-subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matrix,rpa_correlation,wpol)
+subroutine chi_to_vchiv_red(ntrans,nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+ use m_definitions
+ use m_warning
+ use m_inputparam,only: nspin,is_auxil_basis
+ use m_basis_set
+ use m_eri
+ use m_spectral_function
+ implicit none
+ 
+ type(spectral_function),intent(inout) :: wpol
+ integer,intent(in)                    :: ntrans,nbf
+ type(basis_set),intent(in)            :: prod_basis
+ real(dp),intent(in)                   :: occupation(nbf,nspin)
+ real(dp),intent(in)                   :: c_matrix(nbf,nbf,nspin)
+ real(dp),intent(inout),allocatable    :: eigenvector    (:,:) ! eigenvector    (ntrans,ntrans)
+ real(dp),intent(inout),allocatable    :: eigenvector_inv(:,:) ! eigenvector_inv(ntrans,ntrans)
+ real(dp),intent(inout),allocatable    :: eigenvalue(:)
+!=====
+ integer                               :: t_kl,klspin,ijspin
+ integer                               :: istate,jstate,kstate,lstate,ijstate,ijstate_spin
+ integer                               :: itrans,jpole,ipole
+ integer                               :: npole
+ real(dp)                              :: docc_kl
+ real(dp)                              :: eri_eigen_klij
+ real(dp),allocatable                  :: eri_eigenstate_k(:,:,:,:)
+ logical                               :: new_pole
+ real(dp),allocatable                  :: eigvec_ind(:,:),eigvec_inv_ind(:,:)
+ real(dp),allocatable                  :: pole_tmp(:)
+!=====
+
+ call start_clock(timing_buildw)
+
+ if( .NOT. is_auxil_basis ) allocate(eri_eigenstate_k(nbf,nbf,nbf,nspin))
+
+ 
+ allocate(pole_tmp(ntrans))
+ npole = 0
+ do itrans=1,ntrans
+   new_pole = .TRUE.
+   do jpole=1,npole
+     if( ABS( pole_tmp(jpole) - eigenvalue(itrans) ) < TOL_DEG_POLE ) then
+       new_pole = .FALSE.
+       exit
+     endif
+   enddo
+   if(new_pole) then
+     npole = npole + 1
+     pole_tmp(npole) = eigenvalue(itrans)
+    endif
+ enddo
+
+ allocate(eigvec_ind    (npole,ntrans))
+ allocate(eigvec_inv_ind(npole,ntrans))
+ eigvec_ind    (:,:) = 0.0_dp
+ eigvec_inv_ind(:,:) = 0.0_dp
+ ipole = 0
+ do itrans=1,ntrans
+   new_pole = .TRUE.
+   do jpole=1,ipole
+     if( ABS( pole_tmp(jpole) - eigenvalue(itrans) ) < TOL_DEG_POLE ) then
+       ! be careful I interexchange the indexes for eigevec_ind
+       eigvec_ind    (jpole,:) = eigvec_ind    (jpole,:) + eigenvector    (:,itrans)
+       eigvec_inv_ind(jpole,:) = eigvec_inv_ind(jpole,:) + eigenvector_inv(itrans,:)
+       new_pole = .FALSE.
+       exit
+     endif
+   enddo
+   if(new_pole) then
+     ipole = ipole + 1
+     pole_tmp     (ipole)    = eigenvalue     (itrans)
+     ! be careful I interexchange the indexes for eigevec_ind
+     eigvec_ind    (ipole,:) = eigenvector    (:,itrans)
+     eigvec_inv_ind(ipole,:) = eigenvector_inv(itrans,:)
+   endif
+ enddo
+
+ deallocate(eigenvector,eigenvector_inv,eigenvalue)
+
+ call allocate_spectral_function(npole,prod_basis%nbf,wpol)
+ wpol%pole(:) = pole_tmp(1:npole)
+ deallocate(pole_tmp)
+
+
+ wpol%residu_left (:,:) = 0.0_dp
+ wpol%residu_right(:,:) = 0.0_dp
+ t_kl=0
+ do klspin=1,nspin
+   do kstate=1,nbf 
+
+     if( .NOT. is_auxil_basis ) call transform_eri_basis(nspin,c_matrix,kstate,klspin,eri_eigenstate_k)
+
+     do lstate=1,nbf
+       if( skip_transition(nspin,lstate,kstate,occupation(lstate,klspin),occupation(kstate,klspin)) ) cycle
+       t_kl=t_kl+1
+
+       docc_kl = occupation(kstate,klspin)-occupation(lstate,klspin)
+
+       do ijspin=1,nspin
+         do ijstate=1,prod_basis%nbf
+           istate = prod_basis%index_ij(1,ijstate)
+           jstate = prod_basis%index_ij(2,ijstate)
+
+           ijstate_spin = ijstate+prod_basis%nbf*(ijspin-1)
+
+           if(is_auxil_basis) then
+             eri_eigen_klij = eri_eigen_ri(kstate,lstate,klspin,istate,jstate,ijspin)
+           else
+             eri_eigen_klij = eri_eigenstate_k(lstate,istate,jstate,ijspin)
+           endif
+
+           wpol%residu_left (:,ijstate_spin)  = wpol%residu_left (:,ijstate_spin) &
+                        + eri_eigen_klij *  eigvec_ind(:,t_kl)
+           wpol%residu_right(:,ijstate_spin)  = wpol%residu_right(:,ijstate_spin) &
+                        + eri_eigen_klij * eigvec_inv_ind(:,t_kl) * docc_kl
+
+         enddo
+       enddo
+
+     enddo
+   enddo
+ enddo
+
+ deallocate(eigvec_ind,eigvec_inv_ind)
+ if(allocated(eri_eigenstate_k)) deallocate(eri_eigenstate_k)
+
+ call stop_clock(timing_buildw)
+
+end subroutine chi_to_vchiv_red
+
+
+!=========================================================================
+subroutine polarizability_casida(basis,prod_basis,occupation,energy,c_matrix,rpa_correlation,wpol)
  use m_definitions
  use m_mpi
  use m_calculation_type
@@ -335,9 +458,9 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
  use m_basis_set
  use m_eri
  use m_spectral_function
+ use m_inputparam,only: nspin,spin_fact
  implicit none
 
- integer,intent(in)  :: nspin
  type(basis_set)     :: basis,prod_basis
  real(dp),intent(in) :: occupation(basis%nbf,nspin)
  real(dp),intent(in) :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
@@ -354,7 +477,6 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
  real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
  real(dp),allocatable :: eri_eigenstate_ij(:,:,:)
 
- real(dp) :: spin_fact 
 ! real(dp) :: apb(wpol%npole,wpol%npole)
 ! real(dp) :: amb_diag(wpol%npole)
  real(dp),allocatable :: apb(:,:)
@@ -376,7 +498,6 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
 
  call start_clock(timing_pola)
 
- spin_fact = REAL(-nspin+3,dp)
  rpa_correlation = 0.0_dp
 
 #ifdef HAVE_SCALAPACK
@@ -566,19 +687,6 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
 
  call stop_clock(timing_diago_h2p)
 
-!!TEST sort eigenvalues
-! WRITE_MASTER(*,*) 'eigenvalue'
-! WRITE_MASTER(*,*) eigenvalue(:)
-! t_kl=wpol%npole
-! do t_ij=1,wpol%npole-1
-!   if( ABS( eigenvalue(t_ij) - eigenvalue(t_ij+1) ) < 1.0e-5_dp ) then
-!      write(*,*) 'remove',t_ij,t_ij+1
-!      t_kl=t_kl-1
-!   endif
-! enddo
-! write(*,*) 't_kl / npole',t_kl ,wpol%npole
-!!END
-
 
  WRITE_MASTER(*,*) 'diago finished'
  WRITE_MASTER(*,*)
@@ -599,7 +707,7 @@ end subroutine polarizability_casida
 
 
 !=========================================================================
-subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy)
+subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy)
  use m_definitions
  use m_mpi
  use m_calculation_type
@@ -607,9 +715,10 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
  use m_warning,only: issue_warning
  use m_basis_set
  use m_spectral_function
+ use m_inputparam,only: nspin,spin_fact
  implicit none
 
- integer,intent(in)  :: gwmethod,nspin
+ integer,intent(in)  :: gwmethod
  type(basis_set)     :: basis,prod_basis
  real(dp),intent(in) :: occupation(basis%nbf,nspin),energy(basis%nbf,nspin),exchange_m_vxc_diag(basis%nbf,nspin)
  real(dp),intent(in) :: c_matrix(basis%nbf,basis%nbf,nspin)
@@ -627,7 +736,7 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
  integer     :: bbf,ibf,kbf
  integer     :: astate,bstate
  integer     :: istate,ispin,ipole
- real(dp)    :: spin_fact,overlap_tmp
+ real(dp)    :: overlap_tmp
  real(dp)    :: bra(wpol%npole,basis%nbf),ket(wpol%npole,basis%nbf)
  real(dp)    :: fact_full,fact_empty
  real(dp)    :: zz(nspin)
@@ -638,7 +747,6 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
 
  call start_clock(timing_self)
 
- spin_fact = REAL(-nspin+3,dp)
 
  WRITE_ME(msg,'(es9.2)') AIMAG(ieta)
  msg='small complex number is '//msg
@@ -881,4 +989,5 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
 end subroutine gw_selfenergy
 
 
+end module m_gw
 !=========================================================================
