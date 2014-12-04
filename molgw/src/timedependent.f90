@@ -87,6 +87,8 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
 #endif
 !=====
 
+ call start_clock(timing_pola)
+
  if( .NOT. calc_type%is_td .AND. .NOT. calc_type%is_bse) then
    stop'BUG: this should not happend in timedependent'
  endif
@@ -502,7 +504,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  deallocate(residu_left,residu_right)
  deallocate(dipole_state)
 
-
+ call stop_clock(timing_pola)
 
 end subroutine polarizability_td
 

@@ -319,6 +319,10 @@ contains
  WRITE_MASTER(*,'(a50,i8)') 'Maximum angular momentum in the basis set:',basis%ammax
  WRITE_MASTER(*,'(a50,a8)') '                                          ',orbital_momentum_name(basis%ammax)
 
+ if(basis%ammax > lmax_transform ) then      
+   stop'angular momentum too high. Not implemented in cart to pure transform'
+ endif
+
  !
  ! finally output the basis set upon request
  if( print_basis ) then
@@ -869,10 +873,10 @@ subroutine basis_function_dipole_sq(bf1,bf2,dipole)
 end subroutine basis_function_dipole_sq
 
 !=========================================================================
-subroutine setup_cart_to_pure_transforms(ammax,gaussian_type)
+subroutine setup_cart_to_pure_transforms(gaussian_type)
  implicit none
-! type(basis_set),intent(in) :: basis
- integer,intent(in) :: ammax,gaussian_type
+
+ integer,intent(in) :: gaussian_type
 !====
  integer  :: il,ni,ii,jj,kk
  integer  :: ibf,jbf
@@ -880,11 +884,6 @@ subroutine setup_cart_to_pure_transforms(ammax,gaussian_type)
 !====
 
  WRITE_MASTER(*,*) 'Setting up the cartesian to pure transforms'
- if(ammax > lmax_transform ) then      
-   stop'angular momentum too high. Not implemented in cart to pure transform'
- endif
-
-
 
  if(gaussian_type == CARTESIAN) then
 
