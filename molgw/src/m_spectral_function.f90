@@ -16,6 +16,7 @@ module m_spectral_function
  !
  type spectral_function 
    integer :: npole
+   integer :: npole_ind
    integer :: nprodbasis
    integer,allocatable  :: transition_index(:,:,:)
    real(dp),allocatable :: pole(:)

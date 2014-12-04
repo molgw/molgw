@@ -326,7 +326,7 @@ function eri_ri(ibf,jbf,kbf,lbf)
    index_kl = index_prod(kbf,lbf)
 
 !     eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , MATMUL( eri_2center_m1(:,:) , eri_3center(:,index_kl) ) ) 
-     eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , eri_3center(:,index_kl) )
+   eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , eri_3center(:,index_kl) )
 
  endif
 
@@ -340,10 +340,8 @@ function eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
  integer,intent(in) :: istate,jstate,kstate,lstate
  real(dp)           :: eri_eigen_ri
 !=====
- integer            :: index_ij,index_kl
-!=====
 
-   eri_eigen_ri = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,ijspin) , eri_3center_eigen(:,kstate,lstate,klspin) )
+ eri_eigen_ri = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,ijspin) , eri_3center_eigen(:,kstate,lstate,klspin) )
 
 end function eri_eigen_ri
 

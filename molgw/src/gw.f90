@@ -25,7 +25,7 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
 !=====
  integer :: ibf,jbf,ijbf,klbf,ijspin,klspin
  integer :: istate,jstate,kstate,lstate
- integer :: ipole
+ integer :: ipole,jpole
  integer :: t_ij,t_kl
  integer :: reading_status
 
@@ -39,6 +39,7 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  real(dp) :: rtmp
  real(dp) :: alpha1,alpha2
 
+ logical :: new_pole
  logical :: TDHF=.FALSE.
 !=====
 
@@ -156,10 +157,10 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
      enddo !jstate
    enddo !istate
  enddo ! ijspin
+ if(allocated(eri_eigenstate_i)) deallocate(eri_eigenstate_i)
 
  call stop_clock(timing_build_h2p)
 
- if(allocated(eri_eigenstate_i)) deallocate(eri_eigenstate_i)
 
  WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
  WRITE_MASTER(*,*) 'matrix',wpol%npole,'x',wpol%npole
@@ -184,6 +185,27 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  call invert(wpol%npole,eigenvector,eigenvector_inv)
  call stop_clock(timing_inversion_s2p)
 
+#if 0
+ ! FBFB
+ msg='FBFB classify poles'
+ 
+ wpol%npole_ind=0
+ do ipole=1,wpol%npole
+   new_pole = .TRUE.
+   do jpole=1,wpol%npole_ind
+     if( ABS( wpol%pole(jpole) - eigenvalue(ipole) ) < 1.0e-5_dp ) then
+       new_pole = .FALSE.
+       exit
+     endif
+   enddo
+   if(new_pole) then
+     wpol%npole_ind=wpol%npole_ind+1
+     wpol%pole(wpol%npole_ind) = eigenvalue(ipole)
+    endif
+ enddo
+ WRITE_MASTER(*,*) wpol%npole_ind,wpol%npole
+ STOP'ENOUGH'
+#endif
 
  !
  ! Finally calculate v * \chi * v and store it in object wpol
@@ -242,6 +264,7 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
 !=====
  integer                    :: t_kl,klspin,ijspin
  integer                    :: istate,jstate,kstate,lstate,ijstate,ijstate_spin
+ real(dp)                   :: docc_kl
  real(dp)                   :: eri_eigen_klij
  real(dp),allocatable       :: eri_eigenstate_k(:,:,:,:)
 !=====
@@ -250,7 +273,7 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
 
  if( .NOT. is_auxil_basis ) allocate(eri_eigenstate_k(nbf,nbf,nbf,nspin))
 
- wpol%pole = eigenvalue
+ wpol%pole(:) = eigenvalue(:)
 
  wpol%residu_left (:,:) = 0.0_dp
  wpol%residu_right(:,:) = 0.0_dp
@@ -264,6 +287,7 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
        if( skip_transition(nspin,lstate,kstate,occupation(lstate,klspin),occupation(kstate,klspin)) ) cycle
        t_kl=t_kl+1
 
+       docc_kl = occupation(kstate,klspin)-occupation(lstate,klspin)
 
        do ijspin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
@@ -283,8 +307,8 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
            wpol%residu_left (:,ijstate_spin)  = wpol%residu_left (:,ijstate_spin) &
                         + eri_eigen_klij *  eigenvector(t_kl,:)
            wpol%residu_right(:,ijstate_spin)  = wpol%residu_right(:,ijstate_spin) &
-                        + eri_eigen_klij * eigenvector_inv(:,t_kl) &
-                                         * ( occupation(kstate,klspin)-occupation(lstate,klspin) )
+                        + eri_eigen_klij * eigenvector_inv(:,t_kl) * docc_kl
+
          enddo
 !$OMP END DO
 !$OMP END PARALLEL
@@ -818,7 +842,8 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
          WRITE_MASTER(200+astate,'(20(f12.6,2x))') ( DBLE(omegai(iomegai))+energy(astate,:) )*Ha_eV,&
                                                      ( DBLE(selfenergy_tmp(iomegai,astate,astate,:)) )*Ha_eV,&
                                                      ( DBLE(omegai(iomegai))-exchange_m_vxc_diag(astate,:) )*Ha_eV,&
-                                                     ( 1.0_dp/pi/ABS( DBLE(omegai(iomegai))-exchange_m_vxc_diag(astate,:) - DBLE(selfenergy_tmp(iomegai,astate,astate,:)) ) ) / Ha_eV
+                                                     ( 1.0_dp/pi/ABS( DBLE(omegai(iomegai))-exchange_m_vxc_diag(astate,:) &
+                                                                   - DBLE(selfenergy_tmp(iomegai,astate,astate,:)) ) ) / Ha_eV
        enddo
        WRITE_MASTER(200+astate,*)
      enddo

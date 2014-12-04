@@ -18,8 +18,11 @@ _ QPscGW
 _ HF+MP2
 _ DFT+MP2
 _ Hybrid+MP2
-_ QSscMP2
+_ QPscMP2
 _ CI for 2 electrons 
+_ TD-HF
+_ TD-DFT
+_ BSE
 
 
 Installation:
@@ -27,6 +30,9 @@ Installation:
 MOLGW needs Fortran 2003, c and c++ compilers.
 The machine dependent variables should be set in file ~molgw/src/my_machine.arch
 Examples for this file are given in the folder ~molgw/config/.
+Then
+cd ~molgw/src
+make
 
 * BLAS and LAPACK linear algebra libraries are required.
 * libint is required:
@@ -49,12 +55,11 @@ Example input files can be found in ./tests/
 
 
 To be done:
-* filter the vanishing gaussian integrals so to save memory
 * pseudopotentials (e.g. ECP or Goedecker flavor)
 * implement Casida equations to halve the matrix
+* parallelization!
 
-
-Issues:
+Known issues:
 * QPscGW scf loop is quite unstable for large basis sets, use a low alpha (<= 0.50)
 
 
