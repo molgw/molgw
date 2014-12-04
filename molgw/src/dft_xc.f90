@@ -90,6 +90,9 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
  vxc_ij(:,:,:) = 0.0_dp
  if( ndft_xc == 0 ) return
 
+ call start_clock(timing_dft)
+
+
 #ifdef HAVE_LIBXC
 
  WRITE_MASTER(*,*) 'Calculate DFT XC potential'
@@ -426,6 +429,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
  WRITE_MASTER(*,'(/,a,2(2x,f12.6))') ' number of electrons:',normalization(:)
  WRITE_MASTER(*,'(a,2x,f12.6,/)')    '  DFT xc energy [Ha]:',exc_xc
 
+ call stop_clock(timing_dft)
 
 end subroutine dft_exc_vxc
 

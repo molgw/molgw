@@ -51,6 +51,8 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
  character(len=3)      :: ctmp
 !=====
 
+ call start_clock(timing_mp2_self)
+
  spin_fact = REAL(-nspin+3,dp)
  emp2_ring = 0.0_dp
  emp2_sox  = 0.0_dp
@@ -266,6 +268,7 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
  deallocate(selfenergy_ring)
  deallocate(selfenergy_sox)
 
+ call stop_clock(timing_mp2_self)
 
 end subroutine mp2_selfenergy
 !=========================================================================

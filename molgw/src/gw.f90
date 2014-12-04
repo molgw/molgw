@@ -42,6 +42,8 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  logical :: TDHF=.FALSE.
 !=====
 
+ call start_clock(timing_pola)
+
  spin_fact = REAL(-nspin+3,dp)
  rpa_correlation = 0.0_dp
 
@@ -74,6 +76,7 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  endif
 
 
+ call start_clock(timing_build_h2p)
  t_ij=0
  do ijspin=1,nspin
    do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
@@ -154,6 +157,8 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
    enddo !iorbital
  enddo ! ijspin
 
+ call stop_clock(timing_build_h2p)
+
  if(allocated(eri_eigenstate_i)) deallocate(eri_eigenstate_i)
 
  WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
@@ -212,6 +217,7 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  enddo
 #endif
  
+ call stop_clock(timing_pola)
 
 end subroutine polarizability_rpa
 
@@ -255,6 +261,8 @@ subroutine polarizability_rpa_slow(basis,prod_basis,occupation,energy,c_matrix,r
  logical :: TDHF=.FALSE.
 !=====
 
+ call start_clock(timing_pola)
+
  spin_fact = REAL(-nspin+3,dp)
 
  WRITE_MASTER(*,'(/,a)') ' calculating CHI alla rpa PARAL'
@@ -278,7 +286,7 @@ subroutine polarizability_rpa_slow(basis,prod_basis,occupation,energy,c_matrix,r
    alpha2=0.0_dp
  endif
 
- call start_clock(timing_tmp1)
+ call start_clock(timing_build_h2p)
  h_2p(:,:)=0.0_dp
  rpa_correlation = 0.0_dp
  !
@@ -363,7 +371,7 @@ subroutine polarizability_rpa_slow(basis,prod_basis,occupation,energy,c_matrix,r
    enddo
  enddo
 
- call stop_clock(timing_tmp1)
+ call stop_clock(timing_build_h2p)
 
  WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
  WRITE_MASTER(*,*) 'matrix',wpol%npole,'x',wpol%npole
@@ -398,6 +406,7 @@ subroutine polarizability_rpa_slow(basis,prod_basis,occupation,energy,c_matrix,r
  if( print_specfunc ) call write_spectral_function(wpol)
 
 
+ call stop_clock(timing_pola)
 end subroutine polarizability_rpa_slow
 
 
@@ -424,6 +433,8 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
  real(dp)                   :: eri_eigen_klij
  real(dp),allocatable       :: eri_eigenstate_k(:,:,:,:)
 !=====
+
+ call start_clock(timing_buildw)
 
  if( .NOT. is_auxil_basis ) allocate(eri_eigenstate_k(nbf,nbf,nbf,nspin))
 
@@ -471,6 +482,8 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
  enddo
 
  if(allocated(eri_eigenstate_k)) deallocate(eri_eigenstate_k)
+
+ call stop_clock(timing_buildw)
 
 end subroutine chi_to_vchiv
 
@@ -525,6 +538,8 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
  integer :: itask
 !=====
 
+ call start_clock(timing_pola)
+
  spin_fact = REAL(-nspin+3,dp)
  rpa_correlation = 0.0_dp
 
@@ -547,6 +562,7 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
 
  allocate(eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin))
 
+ call start_clock(timing_build_h2p)
  !
  ! First set up the diagonal for the full matrix
  ! and transition indexing
@@ -694,6 +710,8 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
 
  enddo
 
+ call stop_clock(timing_build_h2p)
+
  WRITE_MASTER(*,*) 'Diago Casida matrix'
  WRITE_MASTER(*,*) 'Matrix size:',wpol%npole,'x',wpol%npole
 
@@ -739,6 +757,8 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
  deallocate(eri_eigenstate_i)
  deallocate(apb,amb_diag)
 
+ call stop_clock(timing_pola)
+
 end subroutine polarizability_casida
 
 
@@ -779,6 +799,9 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
  real(dp)    :: energy_qp(basis%nbf,nspin)
  character(len=3) :: ctmp
 !=====
+
+ call start_clock(timing_self)
+
  spin_fact = REAL(-nspin+3,dp)
 
  WRITE_ME(msg,'(es9.2)') AIMAG(ieta)
@@ -1016,6 +1039,7 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
  deallocate(omegai)
  deallocate(selfenergy_tmp)
 
+ call stop_clock(timing_self)
 
 end subroutine gw_selfenergy
 

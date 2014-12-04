@@ -6,13 +6,6 @@ module m_eri
  use m_mpi
  use m_basis_set
 
-!FBFB private
-!FBFB public :: eri,allocate_eri,allocate_eri_eigen,deallocate_eri,calculate_eri,transform_eri_basis, &
-!FBFB           eri_lr,negligible_eri,&
-!FBFB           allocate_eri_auxil,calculate_eri_2center,calculate_eri_3center,eri_ri,&
-!FBFB           BUFFER1,BUFFER2
-!FBFB public :: index_prod
-!FBFB public :: negligible_basispair,refine_negligible_basispair
 
  integer,parameter :: BUFFER1 = 1
  integer,parameter :: BUFFER2 = 2
@@ -20,7 +13,7 @@ module m_eri
  ! max length of a record in the ERI file
  integer,parameter :: line_length=1000
 
- real(dp)                   :: TOL_INT=1.0e-10_dp
+ real(dp),protected                 :: TOL_INT=1.0e-10_dp
 
  real(prec_eri),private,allocatable :: eri_buffer(:)
  real(prec_eri),private,allocatable :: eri_buffer_lr(:)
@@ -42,10 +35,10 @@ module m_eri
    real(dp)             :: x0(3)
    integer              :: istart,iend
  end type shell_type
- integer,private              :: nshell
- integer,private              :: nshell_auxil
- type(shell_type),allocatable :: shell(:)
- type(shell_type),allocatable :: shell_auxil(:)
+ integer,private                      :: nshell
+ integer,private                      :: nshell_auxil
+ type(shell_type),private,allocatable :: shell(:)
+ type(shell_type),private,allocatable :: shell_auxil(:)
 
 
  integer,private              :: nbf_eri                ! local copy of nbf
@@ -365,6 +358,7 @@ subroutine calculate_eri(print_eri,basis,rcut,which_buffer)
  integer,intent(in)           :: which_buffer
 !=====
 
+ call start_clock(timing_eri)
 
  if( .NOT. read_eri(rcut) ) call do_calculate_eri(basis,rcut,which_buffer)
 
@@ -372,6 +366,8 @@ subroutine calculate_eri(print_eri,basis,rcut,which_buffer)
  if( print_eri ) then
    call dump_out_eri(rcut)
  endif
+
+ call stop_clock(timing_eri)
 
 end subroutine calculate_eri
 
@@ -752,6 +748,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
  real(dp)                     :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
+ real(dp),allocatable         :: eigval(:),matrix_tmp(:,:) !FBFB
 !=====
 ! variables used to call C++ 
  integer(C_INT),external      :: calculate_integral
@@ -961,11 +958,30 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
    enddo
  enddo
 
+#if 0
  !
  ! Perform in-place inversion here
  call invert(nsize1_auxil,eri_2center_m1)
 
- WRITE_MASTER(*,'(a,/)') ' All 2-center integrals have been calculated, inverted and stored'
+ WRITE_MASTER(*,'(a)') ' All 2-center integrals have been calculated, inverted and stored'
+#else
+ !FBFB
+ msg='FBFB is working here'
+ call issue_warning(msg)
+ allocate(eigval(nsize1_auxil),matrix_tmp(nsize1_auxil,nsize1_auxil))
+ matrix_tmp = eri_2center_m1
+ call diagonalize(nsize1_auxil,matrix_tmp,eigval)
+ eri_2center_m1 = 0.0_dp
+ do kbf=1,nbf_eri_auxil
+   do jbf=1,nbf_eri_auxil
+     do ibf=1,nbf_eri_auxil
+       eri_2center_m1(ibf,kbf) = eri_2center_m1(ibf,kbf) +  matrix_tmp(ibf,jbf) / eigval(jbf) * matrix_tmp(kbf,jbf)
+     enddo
+   enddo
+ enddo
+ deallocate(eigval,matrix_tmp)
+ WRITE_MASTER(*,'(a)') ' All 2-center integrals have been calculated, diagonalized and stored'
+#endif
 
  call stop_clock(timing_eri_2center)
 
@@ -1286,7 +1302,7 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
 ! enddo
  enddo
 
- WRITE_MASTER(*,'(a,/)') ' All 3-center integrals have been calculated and stored'
+ WRITE_MASTER(*,'(a)') ' All 3-center integrals have been calculated and stored'
 
  call stop_clock(timing_eri_3center)
 
@@ -1920,9 +1936,9 @@ subroutine prepare_eri_3center_eigen(c_matrix)
  real(dp),allocatable :: eri_3center_tmp(:,:,:)
 !=====
 
- WRITE_MASTER(*,'(/,a,/)') ' Prepare_eri_3center'
-
  call start_clock(timing_eri_3center_eigen)
+
+ WRITE_MASTER(*,'(/,a)') ' Calculate 3-center integrals on eigenstates'
 
 
  !TODO merge the 2 last indexes for prod_basis save a factor 2! (i<->j symmetry)
@@ -1955,6 +1971,8 @@ subroutine prepare_eri_3center_eigen(c_matrix)
  enddo ! klspin
  deallocate(eri_3center_tmp)
 
+
+ WRITE_MASTER(*,'(a,/)') ' Done'
 
  call stop_clock(timing_eri_3center_eigen)
 

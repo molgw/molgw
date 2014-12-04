@@ -119,9 +119,8 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
    !
    ! DFT XC potential is added here
    if( calc_type%is_dft ) then
-     call start_clock(timing_dft)
+
      call dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehomo,hamiltonian_vxc,en%xc)
-     call stop_clock(timing_dft)
 
      title='=== DFT XC contribution ==='
      call dump_out_matrix(print_matrix,title,basis%nbf,nspin,hamiltonian_vxc)
@@ -135,18 +134,14 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
        .AND. iscf > 5 ) then
 
      call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
-     call start_clock(timing_pola)
      call polarizability_rpa(basis,prod_basis,auxil_basis_dummy,occupation,energy,c_matrix,en%rpa,wpol)
-     call stop_clock(timing_pola)
      if( en%rpa > 1.e-6_DP) then
        en%tot = en%tot + en%rpa
        WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
      endif
 
-     call start_clock(timing_self)
      exchange_m_vxc_diag(:,:)=0.0_dp
      call gw_selfenergy(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp)
-     call stop_clock(timing_self)
 
      matrix_tmp(:,:,:) = alpha_mixing * matrix_tmp(:,:,:) + (1.0_dp-alpha_mixing) * self_energy_old(:,:,:)
      self_energy_old(:,:,:) = matrix_tmp(:,:,:)
@@ -162,14 +157,10 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
    ! QPscMP2
    if( calc_type%is_mp2 .AND. calc_type%gwmethod == QS .AND. iscf > 5 ) then
 
-!     call start_clock(timing_mp2_energy)
-!     call mp2_energy(nspin,basis,occupation,c_matrix,energy,en%mp2)
-!     call stop_clock(timing_mp2_energy)
-
      exchange_m_vxc_diag(:,:)=0.0_dp
-     call start_clock(timing_mp2_self)
+
      call mp2_selfenergy(calc_type%gwmethod,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
-     call stop_clock(timing_mp2_self)
+
      WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Energy       [Ha]:',en%mp2
      WRITE_MASTER(*,*) 
      en%tot = en%tot + en%mp2
@@ -270,7 +261,7 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
  WRITE_MASTER(*,*) '=================================================='
  WRITE_MASTER(*,*) 'The SCF loop ends here'
  WRITE_MASTER(*,*) '=================================================='
- WRITE_MASTER(*,'(/,/,a25,x,f16.10,/,/)') 'SCF Total Energy [Ha]:',en%tot
+ WRITE_MASTER(*,'(/,/,a25,x,f16.10,/)') 'SCF Total Energy [Ha]:',en%tot
 
 
  !

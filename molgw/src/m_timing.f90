@@ -29,6 +29,8 @@ module m_timing
  integer,parameter :: timing_eri_2center       = 16
  integer,parameter :: timing_eri_3center       = 17
  integer,parameter :: timing_eri_3center_eigen = 18
+ integer,parameter :: timing_buildw            = 19
+ integer,parameter :: timing_build_h2p         = 20
  
  integer,parameter :: timing_tmp1              = 91
  integer,parameter :: timing_tmp2              = 92
@@ -130,8 +132,10 @@ subroutine output_timing()
  WRITE_MASTER(*,*)
 
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Total chi polarization' ,timing(timing_pola),calls(timing_pola)
- WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Diago 2 particle H' ,timing(timing_diago_h2p),calls(timing_diago_h2p)
- WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Invert 2 particle S' ,timing(timing_inversion_s2p),calls(timing_inversion_s2p)
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') '    Build 2 particle H' ,timing(timing_build_h2p),calls(timing_build_h2p)
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') '    Diago 2 particle H' ,timing(timing_diago_h2p),calls(timing_diago_h2p)
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') '   Invert 2 particle S' ,timing(timing_inversion_s2p),calls(timing_inversion_s2p)
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') '               Build W' ,timing(timing_buildw),calls(timing_buildw)
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'GW self-energy'  ,timing(timing_self),calls(timing_self)
  WRITE_MASTER(*,*)
