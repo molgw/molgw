@@ -71,11 +71,10 @@ program molgw
  call nucleus_nucleus_energy(en%nuc_nuc)
 
  !
- ! Build up the basis set and the auxiliary basis set if needed
+ ! Build up the basis set 
  !
  call init_basis_set(print_basis,basis_name      ,gaussian_type,basis)
- call init_basis_set(print_basis,auxil_basis_name,gaussian_type,auxil_basis)
- call setup_cart_to_pure_transforms(MAX(basis%ammax,auxil_basis%ammax),gaussian_type)
+ call setup_cart_to_pure_transforms(gaussian_type)
 
  !
  ! First attempt to distribute the work load among procs
@@ -195,7 +194,7 @@ program molgw
  !
  ! Big SCF loop is in there
  !
- call scf_loop(basis,auxil_basis,prod_basis,s_matrix,c_matrix,p_matrix,                &
+ call scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,                            &
                hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_exx,hamiltonian_xc, &
                occupation,energy)
  
@@ -208,10 +207,12 @@ program molgw
 
 
  !
- ! If an auxiliary basis is set up, 
- ! calculate the required ERI: 2- and 3-center integrals
+ ! If an auxiliary basis is given,
+ ! then set it up and calculate the required ERI: 2- and 3-center integrals
+ !
  if( is_auxil_basis ) then
    call deallocate_eri_buffer()
+   call init_basis_set(print_basis,auxil_basis_name,gaussian_type,auxil_basis)
    call allocate_eri_auxil(auxil_basis)
    ! 2-center integrals
    call calculate_eri_2center(print_eri,auxil_basis)

@@ -129,8 +129,7 @@ subroutine output_timing()
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'ERI basis transform' ,timing(timing_basis_transform),calls(timing_basis_transform)
  WRITE_MASTER(*,*)
 
- WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Total RPA polarization' ,timing(timing_pola),calls(timing_pola)
-
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Total chi polarization' ,timing(timing_pola),calls(timing_pola)
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Diago 2 particle H' ,timing(timing_diago_h2p),calls(timing_diago_h2p)
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Invert 2 particle S' ,timing(timing_inversion_s2p),calls(timing_inversion_s2p)
  WRITE_MASTER(*,*)

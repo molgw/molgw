@@ -1,4 +1,4 @@
-!FIXME: introduce the initialization and destruction method here!
+!FIXME: introduce the initialization, reading and destruction method here!
 !=========================================================================
 module m_atoms
  use m_definitions

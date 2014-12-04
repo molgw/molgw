@@ -1,6 +1,6 @@
 #include "macros.h"
 !=========================================================================
-subroutine scf_loop(basis,auxil_basis,prod_basis,s_matrix,c_matrix,p_matrix,&
+subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
                     hamiltonian_exx,hamiltonian_xc,&
                     occupation,energy)
@@ -25,7 +25,6 @@ subroutine scf_loop(basis,auxil_basis,prod_basis,s_matrix,c_matrix,p_matrix,&
 
 !=====
  type(basis_set),intent(in)         :: basis
- type(basis_set),intent(in)         :: auxil_basis
  type(basis_set),intent(in)         :: prod_basis
  real(dp),intent(in)                :: s_matrix(basis%nbf,basis%nbf)
  real(dp),intent(inout)             :: c_matrix(basis%nbf,basis%nbf,nspin)
@@ -37,6 +36,7 @@ subroutine scf_loop(basis,auxil_basis,prod_basis,s_matrix,c_matrix,p_matrix,&
  real(dp),intent(inout)             :: occupation(basis%nbf,nspin)
  real(dp),intent(inout)             :: energy(basis%nbf,nspin)
 !=====
+ type(basis_set)         :: auxil_basis_dummy
  type(spectral_function) :: wpol
  integer                 :: ispin,iscf
  character(len=100)      :: title
@@ -136,7 +136,7 @@ subroutine scf_loop(basis,auxil_basis,prod_basis,s_matrix,c_matrix,p_matrix,&
 
      call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
      call start_clock(timing_pola)
-     call polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
+     call polarizability_rpa(basis,prod_basis,auxil_basis_dummy,occupation,energy,c_matrix,en%rpa,wpol)
      call stop_clock(timing_pola)
      if( en%rpa > 1.e-6_DP) then
        en%tot = en%tot + en%rpa

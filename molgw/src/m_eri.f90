@@ -22,17 +22,17 @@ module m_eri
 
  real(dp)                   :: TOL_INT=1.0e-10_dp
 
- real(prec_eri),allocatable :: eri_buffer(:)
- real(prec_eri),allocatable :: eri_buffer_lr(:)
- real(prec_eri),allocatable :: eri_2center_m1(:,:)
- real(prec_eri),allocatable :: eri_3center(:,:)
- real(prec_eri),allocatable :: eri_3center_eigen(:,:,:,:)
+ real(prec_eri),private,allocatable :: eri_buffer(:)
+ real(prec_eri),private,allocatable :: eri_buffer_lr(:)
+ real(prec_eri),private,allocatable :: eri_2center_m1(:,:)
+ real(prec_eri),private,allocatable :: eri_3center(:,:)
+ real(prec_eri),private,allocatable :: eri_3center_eigen(:,:,:,:)
 
- logical,allocatable        :: negligible_shellpair(:,:)
- logical,allocatable        :: negligible_basispair(:,:)
- integer,allocatable        :: index_pair(:,:)
- integer,allocatable        :: index_shellpair(:,:)
- integer                    :: nshellpair
+ logical,protected,allocatable      :: negligible_basispair(:,:)
+ logical,private,allocatable        :: negligible_shellpair(:,:)
+ integer,private,allocatable        :: index_pair(:,:)
+ integer,private,allocatable        :: index_shellpair(:,:)
+ integer,private                    :: nshellpair
 
  type shell_type
    integer              :: am
@@ -42,19 +42,19 @@ module m_eri
    real(dp)             :: x0(3)
    integer              :: istart,iend
  end type shell_type
- integer                      :: nshell
- integer                      :: nshell_auxil
+ integer,private              :: nshell
+ integer,private              :: nshell_auxil
  type(shell_type),allocatable :: shell(:)
  type(shell_type),allocatable :: shell_auxil(:)
 
 
- integer                    :: nbf_eri                ! local copy of nbf
- integer                    :: nsize                  ! size of the eri_buffer array
- integer                    :: nsize1                 ! number of independent pairs (i,j) with i<=j
+ integer,private              :: nbf_eri                ! local copy of nbf
+ integer,private              :: nsize                  ! size of the eri_buffer array
+ integer,private              :: nsize1                 ! number of independent pairs (i,j) with i<=j
 
- integer                    :: nbf_eri_auxil          ! local copy of nbf for auxiliary basis
- integer                    :: nsize_auxil            ! size of the eri_buffer array
- integer                    :: nsize1_auxil           ! number of independent pairs (i,j) with i<=j
+ integer,private              :: nbf_eri_auxil          ! local copy of nbf for auxiliary basis
+ integer,private              :: nsize_auxil            ! size of the eri_buffer array
+ integer,private              :: nsize1_auxil           ! number of independent pairs (i,j) with i<=j
 
 contains
 
@@ -1925,7 +1925,7 @@ subroutine prepare_eri_3center_eigen(c_matrix)
  call start_clock(timing_eri_3center_eigen)
 
 
- !TODO change the 2 last indexes for prod_basis save a factor 2!
+ !TODO merge the 2 last indexes for prod_basis save a factor 2! (i<->j symmetry)
  allocate(eri_3center_eigen(nsize1_auxil,nbf_eri,nbf_eri,nspin))
 
  allocate(eri_3center_tmp(nsize1_auxil,nbf_eri,nbf_eri)) 
