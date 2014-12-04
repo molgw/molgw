@@ -118,7 +118,6 @@ subroutine output_timing()
  if( calls(timing_eri_2center) > 0 ) then
    WRITE_MASTER(*,'(a30,2x,f12.2)')        '       2-center integrals' ,timing(timing_eri_2center)
    WRITE_MASTER(*,'(a30,2x,f12.2)')        '       3-center integrals' ,timing(timing_eri_3center)
-   WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)')  'Rotation 3-center integrals' ,timing(timing_eri_3center_eigen),calls(timing_eri_3center_eigen)
  endif
 
  WRITE_MASTER(*,*)
@@ -128,10 +127,14 @@ subroutine output_timing()
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Single Excit.'   ,timing(timing_single_excitation),calls(timing_single_excitation)
  WRITE_MASTER(*,*)
- WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'ERI basis transform' ,timing(timing_basis_transform),calls(timing_basis_transform)
- WRITE_MASTER(*,*)
 
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Total chi polarization' ,timing(timing_pola),calls(timing_pola)
+ if( calls(timing_eri_3center_eigen) > 0 ) then
+   WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)')'Rotation 3-center integrals' ,timing(timing_eri_3center_eigen),calls(timing_eri_3center_eigen)
+ endif
+ if( calls(timing_basis_transform) > 0 ) then
+   WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'ERI basis transform' ,timing(timing_basis_transform),calls(timing_basis_transform)
+ endif
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') '    Build 2 particle H' ,timing(timing_build_h2p),calls(timing_build_h2p)
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') '    Diago 2 particle H' ,timing(timing_diago_h2p),calls(timing_diago_h2p)
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') '   Invert 2 particle S' ,timing(timing_inversion_s2p),calls(timing_inversion_s2p)
