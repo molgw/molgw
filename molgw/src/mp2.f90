@@ -13,7 +13,7 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
  real(dp),intent(in)        :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin),energy(basis%nbf,nspin)
  real(dp),intent(out)       :: emp2
 !=====
- integer                    :: aorbital,borbital,iorbital,jorbital
+ integer                    :: astate,bstate,istate,jstate
  integer                    :: ibf,jbf,abf,bbf,ispin,jspin
  real(dp)                   :: energy_denom
  real(dp)                   :: tmp_xaxb(basis%nbf,basis%nbf)
@@ -35,10 +35,10 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
 
  do ispin=1,nspin
 
-   do aorbital=1,basis%nbf
-     if(occupation(aorbital,ispin)>spin_fact-completely_empty) cycle
+   do astate=1,basis%nbf
+     if(occupation(astate,ispin)>spin_fact-completely_empty) cycle
 
-     WRITE_MASTER(*,'(i4,2x,i4,a,i4)') ispin,aorbital,' / ',basis%nbf
+     WRITE_MASTER(*,'(i4,2x,i4,a,i4)') ispin,astate,' / ',basis%nbf
 
      tmp_xaxx(:,:,:) = 0.0_dp
 !$OMP PARALLEL DEFAULT(SHARED)
@@ -50,7 +50,7 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
            do ibf=1,basis%nbf
 !FIXME             if( negligible_basispair(ibf,abf) ) cycle
              tmp_xaxx(ibf,jbf,bbf) = tmp_xaxx(ibf,jbf,bbf) &
-&               + c_matrix(abf,aorbital,ispin) * eri(ibf,abf,jbf,bbf)
+&               + c_matrix(abf,astate,ispin) * eri(ibf,abf,jbf,bbf)
            enddo
          enddo
        enddo
@@ -59,8 +59,8 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
 !$OMP END PARALLEL
 
      do jspin=1,nspin
-       do borbital=1,basis%nbf
-         if(occupation(borbital,jspin)>spin_fact-completely_empty) cycle
+       do bstate=1,basis%nbf
+         if(occupation(bstate,jspin)>spin_fact-completely_empty) cycle
        
          tmp_xaxb(:,:) = 0.0_dp
 !$OMP PARALLEL DEFAULT(SHARED)
@@ -68,37 +68,37 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
          do bbf=1,basis%nbf
            do jbf=1,basis%nbf
              do ibf=1,basis%nbf
-               tmp_xaxb(ibf,jbf) = tmp_xaxb(ibf,jbf) + c_matrix(bbf,borbital,jspin) * tmp_xaxx(ibf,jbf,bbf)
+               tmp_xaxb(ibf,jbf) = tmp_xaxb(ibf,jbf) + c_matrix(bbf,bstate,jspin) * tmp_xaxx(ibf,jbf,bbf)
              enddo
            enddo
          enddo
 !$OMP END DO
 !$OMP END PARALLEL
 
-         do iorbital=1,basis%nbf
-           if(occupation(iorbital,ispin)<completely_empty) cycle
+         do istate=1,basis%nbf
+           if(occupation(istate,ispin)<completely_empty) cycle
 
            tmp_iaxb(:) = 0.0_dp
            tmp_xaib(:) = 0.0_dp
            do jbf=1,basis%nbf
              do ibf=1,basis%nbf
-               tmp_iaxb(jbf) = tmp_iaxb(jbf) + c_matrix(ibf,iorbital,ispin) * tmp_xaxb(ibf,jbf)
+               tmp_iaxb(jbf) = tmp_iaxb(jbf) + c_matrix(ibf,istate,ispin) * tmp_xaxb(ibf,jbf)
              enddo
            enddo
            do jbf=1,basis%nbf
              do ibf=1,basis%nbf
-               tmp_xaib(jbf) = tmp_xaib(jbf) + c_matrix(ibf,iorbital,ispin) * tmp_xaxb(jbf,ibf)
+               tmp_xaib(jbf) = tmp_xaib(jbf) + c_matrix(ibf,istate,ispin) * tmp_xaxb(jbf,ibf)
              enddo
            enddo
 
-           do jorbital=1,basis%nbf
-             if(occupation(jorbital,jspin)<completely_empty) cycle
+           do jstate=1,basis%nbf
+             if(occupation(jstate,jspin)<completely_empty) cycle
 
-             fact =  occupation(iorbital,ispin) * ( 1.0_dp - occupation(aorbital,ispin) ) &
-&                   *occupation(jorbital,jspin) * ( 1.0_dp - occupation(borbital,jspin) )
+             fact =  occupation(istate,ispin) * ( 1.0_dp - occupation(astate,ispin) ) &
+&                   *occupation(jstate,jspin) * ( 1.0_dp - occupation(bstate,jspin) )
 
-             energy_denom = energy(iorbital,ispin) + energy(jorbital,jspin) &
-&                                    - energy(aorbital,ispin) - energy(borbital,jspin)
+             energy_denom = energy(istate,ispin) + energy(jstate,jspin) &
+&                                    - energy(astate,ispin) - energy(bstate,jspin)
              ! Avoid the zero denominators
              if( ABS(energy_denom) < 1.d-18) then
                WRITE_MASTER(*,*) 'you skipped something'
@@ -106,8 +106,8 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
              endif
              energy_denom =  fact / energy_denom 
 
-             tmp_iajb = SUM( tmp_iaxb(:) * c_matrix(:,jorbital,jspin) )
-             tmp_jaib = SUM( tmp_xaib(:) * c_matrix(:,jorbital,jspin) )
+             tmp_iajb = SUM( tmp_iaxb(:) * c_matrix(:,jstate,jspin) )
+             tmp_jaib = SUM( tmp_xaib(:) * c_matrix(:,jstate,jspin) )
 
              contrib1 = contrib1 + 0.5_dp * energy_denom * tmp_iajb**2 
 
@@ -119,7 +119,7 @@ subroutine mp2_energy(nspin,basis,occupation,c_matrix,energy,emp2)
        enddo
      enddo !jspin
 
-   enddo ! aorbital
+   enddo ! astate
 
  enddo !ispin
 
@@ -149,7 +149,7 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
  real(dp),intent(in)        :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin),energy(basis%nbf,nspin)
  real(dp),intent(out)       :: emp2
 !=====
- integer                    :: aorbital,borbital,iorbital,jorbital
+ integer                    :: astate,bstate,istate,jstate
  integer                    :: ibf,jbf,abf,bbf,iaspin,jbspin
  real(dp)                   :: energy_denom
  real(dp)                   :: tmp_ixjx(basis%nbf,basis%nbf)
@@ -195,17 +195,17 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
    !
    ! First, set up the list of occupied states
    nocc = 0
-   do iorbital=ncore+1,basis%nbf
-     if( occupation(iorbital,iaspin) < completely_empty ) cycle
+   do istate=ncore+1,basis%nbf
+     if( occupation(istate,iaspin) < completely_empty ) cycle
      nocc = nocc + 1
    enddo
    call init_fast_distribution(nocc)
 
-   do iorbital=ncore+1,basis%nbf
-     if( occupation(iorbital,iaspin) < completely_empty ) cycle
-     if( .NOT. is_my_fast_task(iorbital-ncore) ) cycle
+   do istate=ncore+1,basis%nbf
+     if( occupation(istate,iaspin) < completely_empty ) cycle
+     if( .NOT. is_my_fast_task(istate-ncore) ) cycle
 
-     WRITE_MASTER(*,'(i4,2x,i4,a,i4)') iaspin,iorbital-ncore,' / ',nocc
+     WRITE_MASTER(*,'(i4,2x,i4,a,i4)') iaspin,istate-ncore,' / ',nocc
 
      tmp_ixxx(:,:,:) = 0.0_dp
 !$OMP PARALLEL DEFAULT(SHARED)
@@ -217,7 +217,7 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
            do ibf=1,basis%nbf
              if( negligible_basispair(ibf,abf) ) cycle
              tmp_ixxx(abf,jbf,bbf) = tmp_ixxx(abf,jbf,bbf) &
-&               + c_matrix(ibf,iorbital,iaspin) * eri(ibf,abf,jbf,bbf)
+&               + c_matrix(ibf,istate,iaspin) * eri(ibf,abf,jbf,bbf)
            enddo
          enddo
        enddo
@@ -226,8 +226,8 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
 !$OMP END PARALLEL
 
      do jbspin=1,nspin
-       do jorbital=ncore+1,basis%nbf
-         if( occupation(jorbital,jbspin) < completely_empty ) cycle
+       do jstate=ncore+1,basis%nbf
+         if( occupation(jstate,jbspin) < completely_empty ) cycle
        
          tmp_ixjx(:,:) = 0.0_dp
 !$OMP PARALLEL DEFAULT(SHARED)
@@ -235,20 +235,20 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
          do bbf=1,basis%nbf
            do jbf=1,basis%nbf
              do abf=1,basis%nbf
-               tmp_ixjx(abf,bbf) = tmp_ixjx(abf,bbf) + c_matrix(jbf,jorbital,jbspin) * tmp_ixxx(abf,jbf,bbf)
+               tmp_ixjx(abf,bbf) = tmp_ixjx(abf,bbf) + c_matrix(jbf,jstate,jbspin) * tmp_ixxx(abf,jbf,bbf)
              enddo
            enddo
          enddo
 !$OMP END DO
 !$OMP END PARALLEL
 
-         do aorbital=1,basis%nbf
-           if( occupation(aorbital,iaspin) > spin_fact - completely_empty ) cycle
+         do astate=1,basis%nbf
+           if( occupation(astate,iaspin) > spin_fact - completely_empty ) cycle
 
            tmp_iajx(:) = 0.0_dp
            do bbf=1,basis%nbf
              do abf=1,basis%nbf
-               tmp_iajx(bbf) = tmp_iajx(bbf) + c_matrix(abf,aorbital,iaspin) * tmp_ixjx(abf,bbf)
+               tmp_iajx(bbf) = tmp_iajx(bbf) + c_matrix(abf,astate,iaspin) * tmp_ixjx(abf,bbf)
              enddo
            enddo
 
@@ -256,19 +256,19 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
              tmp_ixja(:) = 0.0_dp
              do abf=1,basis%nbf
                do bbf=1,basis%nbf
-                 tmp_ixja(bbf) = tmp_ixja(bbf) + c_matrix(abf,aorbital,iaspin) * tmp_ixjx(bbf,abf)
+                 tmp_ixja(bbf) = tmp_ixja(bbf) + c_matrix(abf,astate,iaspin) * tmp_ixjx(bbf,abf)
                enddo
              enddo
            endif
 
-           do borbital=1,basis%nbf
-             if( occupation(borbital,jbspin) > spin_fact - completely_empty ) cycle
+           do bstate=1,basis%nbf
+             if( occupation(bstate,jbspin) > spin_fact - completely_empty ) cycle
 
-             fact =  occupation(iorbital,iaspin) * ( 1.0_dp - occupation(aorbital,iaspin) ) &
-&                   *occupation(jorbital,jbspin) * ( 1.0_dp - occupation(borbital,jbspin) )
+             fact =  occupation(istate,iaspin) * ( 1.0_dp - occupation(astate,iaspin) ) &
+&                   *occupation(jstate,jbspin) * ( 1.0_dp - occupation(bstate,jbspin) )
 
-             energy_denom = energy(iorbital,iaspin) + energy(jorbital,jbspin) &
-&                                    - energy(aorbital,iaspin) - energy(borbital,jbspin)
+             energy_denom = energy(istate,iaspin) + energy(jstate,jbspin) &
+&                                    - energy(astate,iaspin) - energy(bstate,jbspin)
              ! Avoid the zero denominators
              if( ABS(energy_denom) < 1.d-18) then
                WRITE_MASTER(*,*) 'you skipped something'
@@ -277,12 +277,12 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
 
              energy_denom =  fact / energy_denom 
 
-             tmp_iajb = SUM( tmp_iajx(:) * c_matrix(:,borbital,jbspin) )
+             tmp_iajb = SUM( tmp_iajx(:) * c_matrix(:,bstate,jbspin) )
 
              contrib1 = contrib1 + 0.5_dp * energy_denom * tmp_iajb**2 
 
              if(iaspin==jbspin) then
-               tmp_ibja = SUM( tmp_ixja(:) * c_matrix(:,borbital,jbspin) )
+               tmp_ibja = SUM( tmp_ixja(:) * c_matrix(:,bstate,jbspin) )
                contrib2 = contrib2 - 0.5_dp * energy_denom * tmp_iajb*tmp_ibja / spin_fact
              endif
 
@@ -291,7 +291,7 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
        enddo
      enddo !jbspin
 
-   enddo ! iorbital
+   enddo ! istate
 
    call destroy_fast_distribution()
  enddo !iaspin

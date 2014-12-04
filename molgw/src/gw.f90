@@ -23,8 +23,8 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  real(dp),intent(out)                  :: rpa_correlation
  type(spectral_function),intent(inout) :: wpol
 !=====
- integer :: pbf,qbf,ibf,jbf,kbf,lbf,ijbf,klbf,ijbf_current,ijspin,klspin
- integer :: iorbital,jorbital,korbital,lorbital
+ integer :: ibf,jbf,ijbf,klbf,ijspin,klspin
+ integer :: istate,jstate,kstate,lstate
  integer :: ipole
  integer :: t_ij,t_kl
  integer :: reading_status
@@ -79,52 +79,52 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  call start_clock(timing_build_h2p)
  t_ij=0
  do ijspin=1,nspin
-   do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
+   do istate=1,basis%nbf ! istate stands for occupied or partially occupied
 
-      if( .NOT. is_auxil_basis ) call transform_eri_basis(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
+      if( .NOT. is_auxil_basis ) call transform_eri_basis(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
 
 
 #ifdef CRPA
        ! attempt of coding CRPA
-       if( iorbital==band1 .OR. iorbital==band2) then
-         do jorbital=band1,band2
-           do korbital=band1,band2
-             do lorbital=band1,band2
-               write(1000,'(4(i6,x),2x,f16.8)') iorbital,jorbital,korbital,lorbital,eri_eigenstate_i(jorbital,korbital,lorbital,1)
+       if( istate==band1 .OR. istate==band2) then
+         do jstate=band1,band2
+           do kstate=band1,band2
+             do lstate=band1,band2
+               write(1000,'(4(i6,x),2x,f16.8)') istate,jstate,kstate,lstate,eri_eigenstate_i(jstate,kstate,lstate,1)
              enddo
            enddo
          enddo
        endif
 #endif
 
-     do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
-       if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
+     do jstate=1,basis%nbf ! jstate stands for empty or partially empty
+       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
        t_ij=t_ij+1
 
 
 
        t_kl=0
        do klspin=1,nspin
-         do korbital=1,basis%nbf 
+         do kstate=1,basis%nbf 
 
-           do lorbital=1,basis%nbf 
-             if( skip_transition(nspin,lorbital,korbital,occupation(lorbital,klspin),occupation(korbital,klspin)) ) cycle
+           do lstate=1,basis%nbf 
+             if( skip_transition(nspin,lstate,kstate,occupation(lstate,klspin),occupation(kstate,klspin)) ) cycle
              t_kl=t_kl+1
 
              if(is_auxil_basis) then
-               eri_eigen_ijkl = eri_eigen_ri(iorbital,jorbital,ijspin,korbital,lorbital,klspin)
+               eri_eigen_ijkl = eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
              else
-               eri_eigen_ijkl = eri_eigenstate_i(jorbital,korbital,lorbital,klspin)
+               eri_eigen_ijkl = eri_eigenstate_i(jstate,kstate,lstate,klspin)
              endif
              
 #ifndef CHI0
 
 !!FBFB
 !             if( t_kl /= t_ij .AND. & 
-!                   ( iorbital >= 30 .OR. jorbital >= 30 .OR. korbital >= 30 .OR. lorbital >= 30 ) ) then
+!                   ( istate >= 30 .OR. jstate >= 30 .OR. kstate >= 30 .OR. lstate >= 30 ) ) then
 !               h_2p(t_ij,t_kl) = 0.0_dp
 !             else
-             h_2p(t_ij,t_kl) = eri_eigen_ijkl * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
+             h_2p(t_ij,t_kl) = eri_eigen_ijkl * ( occupation(istate,ijspin)-occupation(jstate,ijspin) )
 !             endif
 
 
@@ -136,12 +136,12 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
            if(TDHF) then
              if(ijspin==klspin) then
                if(is_auxil_basis) then
-                 eri_eigen_ikjl = eri_eigen_ri(iorbital,korbital,ijspin,jorbital,lorbital,klspin)
+                 eri_eigen_ikjl = eri_eigen_ri(istate,kstate,ijspin,jstate,lstate,klspin)
                else
-                 eri_eigen_ikjl = eri_eigenstate_i(korbital,jorbital,lorbital,klspin)
+                 eri_eigen_ikjl = eri_eigenstate_i(kstate,jstate,lstate,klspin)
                endif
                h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigen_ikjl       &
-                        * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) / spin_fact * alpha1
+                        * ( occupation(istate,ijspin)-occupation(jstate,ijspin) ) / spin_fact * alpha1
              endif
            endif
 
@@ -149,12 +149,12 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
          enddo
        enddo !klspin
 
-       h_2p(t_ij,t_ij) =  h_2p(t_ij,t_ij) + ( energy(jorbital,ijspin) - energy(iorbital,ijspin) )
+       h_2p(t_ij,t_ij) =  h_2p(t_ij,t_ij) + ( energy(jstate,ijspin) - energy(istate,ijspin) )
 
        rpa_correlation = rpa_correlation - 0.25_dp * ABS( h_2p(t_ij,t_ij) )
 
-     enddo !jorbital
-   enddo !iorbital
+     enddo !jstate
+   enddo !istate
  enddo ! ijspin
 
  call stop_clock(timing_build_h2p)
@@ -199,20 +199,20 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
 #ifdef CRPA
  ! Constrained RPA attempt
  do ijbf=1,prod_basis%nbf
-   iorbital = prod_basis%index_ij(1,ijbf)
-   jorbital = prod_basis%index_ij(2,ijbf)
-   if(iorbital /=band1 .AND. iorbital /=band2) cycle
-   if(jorbital /=band1 .AND. jorbital /=band2) cycle
+   istate = prod_basis%index_ij(1,ijbf)
+   jstate = prod_basis%index_ij(2,ijbf)
+   if(istate /=band1 .AND. istate /=band2) cycle
+   if(jstate /=band1 .AND. jstate /=band2) cycle
    do klbf=1,prod_basis%nbf
-     korbital = prod_basis%index_ij(1,klbf)
-     lorbital = prod_basis%index_ij(2,klbf)
-     if(korbital /=band1 .AND. korbital /=band2) cycle
-     if(lorbital /=band1 .AND. lorbital /=band2) cycle
+     kstate = prod_basis%index_ij(1,klbf)
+     lstate = prod_basis%index_ij(2,klbf)
+     if(kstate /=band1 .AND. kstate /=band2) cycle
+     if(lstate /=band1 .AND. lstate /=band2) cycle
      rtmp=0.0_dp
      do ipole=1,wpol%npole
        rtmp = rtmp + wpol%residu_left(ipole,ijbf) * wpol%residu_right(ipole,klbf) / ( -wpol%pole(ipole) )
      enddo
-     write(1001,'(4(i6,x),2x,f16.8)') iorbital,jorbital,korbital,lorbital,rtmp
+     write(1001,'(4(i6,x),2x,f16.8)') istate,jstate,kstate,lstate,rtmp
    enddo
  enddo
 #endif
@@ -220,194 +220,6 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  call stop_clock(timing_pola)
 
 end subroutine polarizability_rpa
-
-
-!=========================================================================
-subroutine polarizability_rpa_slow(basis,prod_basis,occupation,energy,c_matrix,rpa_correlation,wpol)
- use m_definitions
- use m_mpi
- use m_calculation_type
- use m_timing 
- use m_warning,only: issue_warning
- use m_tools
- use m_basis_set
- use m_eri
- use m_spectral_function
- use m_inputparam,only: nspin,print_specfunc
- implicit none
-
- type(basis_set)                       :: basis,prod_basis
- real(dp),intent(in)                   :: occupation(basis%nbf,nspin)
- real(dp),intent(in)                   :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
- real(dp),intent(out)                  :: rpa_correlation
- type(spectral_function),intent(inout) :: wpol
-!=====
- integer :: pbf,qbf,ibf,jbf,kbf,lbf,ijbf,klbf,ijbf_current,ijspin,klspin
- integer :: abf,bbf,cbf,dbf
- integer :: iorbital,jorbital,korbital,lorbital
- integer :: ipole
- integer :: t_ij,t_kl
- integer :: reading_status
- real(dp),parameter :: tol_h2p=1.0e-3_DP  ! 1.0e-6_DP
-
- real(dp) :: spin_fact 
- real(dp) :: eri_abcd,docc_ij
- real(dp) :: h_2p(wpol%npole,wpol%npole)
- real(dp) :: eigenvalue(wpol%npole),eigenvector(wpol%npole,wpol%npole),eigenvector_inv(wpol%npole,wpol%npole)
- real(dp) :: matrix(wpol%npole,wpol%npole)
- real(dp) :: rtmp
- real(dp) :: alpha1,alpha2
-
- logical :: TDHF=.FALSE.
-!=====
-
- call start_clock(timing_pola)
-
- spin_fact = REAL(-nspin+3,dp)
-
- WRITE_MASTER(*,'(/,a)') ' calculating CHI alla rpa PARAL'
-
- call read_spectral_function(wpol,reading_status)
- if( reading_status == 0 ) then
-   WRITE_MASTER(*,'(a,/)') ' no need to calculate W: already done'
-   return
- endif
-
- inquire(file='manual_tdhf',exist=TDHF)
- if(TDHF) then
-   open(unit=18,file='manual_tdhf',status='old')
-   read(18,*) alpha1
-   read(18,*) alpha2
-   close(18)
-   WRITE_ME(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alphas  ',alpha1,alpha2
-   call issue_warning(msg)
- else
-   alpha1=0.0_dp
-   alpha2=0.0_dp
- endif
-
- call start_clock(timing_build_h2p)
- h_2p(:,:)=0.0_dp
- rpa_correlation = 0.0_dp
- !
- ! 
- ! LOOP OVER COULOMB INTEGRALS
- do abf=1,basis%nbf
-   do bbf=1,basis%nbf
-     do cbf=1,basis%nbf
-       do dbf=1,basis%nbf
-
-         ! access the integral
-         eri_abcd = eri(abf,bbf,cbf,dbf)
-         if( ABS(eri_abcd) < tol_h2p ) cycle
-
-         t_ij=0
-         do ijspin=1,nspin
-           do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
- 
-             if( ABS(c_matrix(abf,iorbital,ijspin)) < tol_h2p ) cycle
-
-             do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
-               if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
-
-!               t_ij=t_ij+1
-               t_ij=wpol%transition_index(iorbital,jorbital,ijspin)
- 
-
-               if( ABS(c_matrix(bbf,jorbital,ijspin)) < tol_h2p ) cycle
-
-               docc_ij = occupation(iorbital,ijspin)-occupation(jorbital,ijspin)
-
-
-               t_kl=0
-               do klspin=1,nspin
-                 do korbital=1,basis%nbf 
-
-                   if( ABS(c_matrix(cbf,korbital,klspin)) < tol_h2p ) cycle
-
-                   do lorbital=1,basis%nbf 
-                     if( skip_transition(nspin,lorbital,korbital,occupation(lorbital,klspin),occupation(korbital,klspin)) ) cycle
-
-!                     t_kl=t_kl+1
-                      t_kl=wpol%transition_index(korbital,lorbital,klspin)
-
-                     if( ABS(c_matrix(dbf,lorbital,klspin)) < tol_h2p ) cycle
-
-                     h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl) &
-                                + c_matrix(abf,iorbital,ijspin) * c_matrix(bbf,jorbital,ijspin)  &
-                                 * c_matrix(cbf,korbital,klspin) * c_matrix(dbf,lorbital,klspin) &
-                                  * eri_abcd                                                     &
-                                   * docc_ij
-
-                   enddo
-                 enddo
-               enddo !klspin
-
-             enddo !jorbital
-           enddo !iorbital
-         enddo ! ijspin
-
-       enddo
-     enddo
-   enddo
- enddo
-
- !
- ! Then add the diagonal
- !
- t_ij=0
- do ijspin=1,nspin
-   do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
-
-     do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
-       if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin))) cycle
-       t_ij=t_ij+1
-
-       h_2p(t_ij,t_ij) =  h_2p(t_ij,t_ij) + ( energy(jorbital,ijspin) - energy(iorbital,ijspin) )
-
-       rpa_correlation = rpa_correlation - 0.25_dp * ABS( h_2p(t_ij,t_ij) )
-
-     enddo
-   enddo
- enddo
-
- call stop_clock(timing_build_h2p)
-
- WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
- WRITE_MASTER(*,*) 'matrix',wpol%npole,'x',wpol%npole
-
- call start_clock(timing_diago_h2p)
- call diagonalize_general(wpol%npole,h_2p,eigenvalue,eigenvector)
- call stop_clock(timing_diago_h2p)
- WRITE_MASTER(*,*) 'diago finished'
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,*) 'calculate the RPA energy using the Tamm-Dancoff decomposition'
- WRITE_MASTER(*,*) 'formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)'
- rpa_correlation = rpa_correlation + 0.25_dp * SUM( ABS(eigenvalue(:)) )
- WRITE_MASTER(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',rpa_correlation
-
- WRITE_MASTER(*,'(/,a,f14.8)') ' Lowest neutral excitation energy [eV]',MINVAL(ABS(eigenvalue(:)))*Ha_eV
-
-! do t_ij=1,wpol%npole
-!   WRITE_MASTER(*,'(1(i4,2x),20(2x,f12.6))') t_ij,eigenvalue(t_ij)
-! enddo
-   
- call start_clock(timing_inversion_s2p)
- call invert(wpol%npole,eigenvector,eigenvector_inv)
- call stop_clock(timing_inversion_s2p)
-
-
- !
- ! Finally calculate v * \chi * v and store it in object wpol
- !
- call chi_to_vchiv(basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
-
- ! If requested write the spectral function on file
- if( print_specfunc ) call write_spectral_function(wpol)
-
-
- call stop_clock(timing_pola)
-end subroutine polarizability_rpa_slow
 
 
 !=========================================================================
@@ -429,7 +241,7 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
  real(dp),intent(in)        :: eigenvalue     (wpol%npole)
 !=====
  integer                    :: t_kl,klspin,ijspin
- integer                    :: ibf,jbf,kbf,lbf,ijbf,ijbf_current
+ integer                    :: istate,jstate,kstate,lstate,ijstate,ijstate_spin
  real(dp)                   :: eri_eigen_klij
  real(dp),allocatable       :: eri_eigenstate_k(:,:,:,:)
 !=====
@@ -444,35 +256,35 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
  wpol%residu_right(:,:) = 0.0_dp
  t_kl=0
  do klspin=1,nspin
-   do kbf=1,nbf 
+   do kstate=1,nbf 
 
-     if( .NOT. is_auxil_basis ) call transform_eri_basis(nspin,c_matrix,kbf,klspin,eri_eigenstate_k)
+     if( .NOT. is_auxil_basis ) call transform_eri_basis(nspin,c_matrix,kstate,klspin,eri_eigenstate_k)
 
-     do lbf=1,nbf
-       if( skip_transition(nspin,lbf,kbf,occupation(lbf,klspin),occupation(kbf,klspin)) ) cycle
+     do lstate=1,nbf
+       if( skip_transition(nspin,lstate,kstate,occupation(lstate,klspin),occupation(kstate,klspin)) ) cycle
        t_kl=t_kl+1
 
 
        do ijspin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO PRIVATE(ibf,jbf,ijbf_current)
-         do ijbf=1,prod_basis%nbf
-           ibf = prod_basis%index_ij(1,ijbf)
-           jbf = prod_basis%index_ij(2,ijbf)
+!$OMP DO PRIVATE(istate,jstate,ijstate_spin)
+         do ijstate=1,prod_basis%nbf
+           istate = prod_basis%index_ij(1,ijstate)
+           jstate = prod_basis%index_ij(2,ijstate)
 
-           ijbf_current = ijbf+prod_basis%nbf*(ijspin-1)
+           ijstate_spin = ijstate+prod_basis%nbf*(ijspin-1)
 
            if(is_auxil_basis) then
-             eri_eigen_klij = eri_eigen_ri(kbf,lbf,klspin,ibf,jbf,ijspin)
+             eri_eigen_klij = eri_eigen_ri(kstate,lstate,klspin,istate,jstate,ijspin)
            else
-             eri_eigen_klij = eri_eigenstate_k(lbf,ibf,jbf,ijspin)
+             eri_eigen_klij = eri_eigenstate_k(lstate,istate,jstate,ijspin)
            endif
 
-           wpol%residu_left (:,ijbf_current)  = wpol%residu_left (:,ijbf_current) &
+           wpol%residu_left (:,ijstate_spin)  = wpol%residu_left (:,ijstate_spin) &
                         + eri_eigen_klij *  eigenvector(t_kl,:)
-           wpol%residu_right(:,ijbf_current)  = wpol%residu_right(:,ijbf_current) &
+           wpol%residu_right(:,ijstate_spin)  = wpol%residu_right(:,ijstate_spin) &
                         + eri_eigen_klij * eigenvector_inv(:,t_kl) &
-                                         * ( occupation(kbf,klspin)-occupation(lbf,klspin) )
+                                         * ( occupation(kstate,klspin)-occupation(lstate,klspin) )
          enddo
 !$OMP END DO
 !$OMP END PARALLEL
@@ -508,8 +320,8 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
  real(dp),intent(out) :: rpa_correlation
  type(spectral_function),intent(inout) :: wpol
 !=====
- integer :: pbf,qbf,ibf,jbf,kbf,lbf,ijbf,klbf,ijbf_current,ijspin,klspin
- integer :: iorbital,jorbital,korbital,lorbital
+ integer :: pbf,qbf,kbf,lbf,klbf,ijspin,klspin
+ integer :: istate,jstate,kstate,lstate
  integer :: ipole
  integer :: t_ij,t_kl
  integer :: t_ij_local,t_kl_local
@@ -572,13 +384,13 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
  transition_index(:,:,:)=0
  t_ij=0
  do ijspin=1,nspin
-   do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
-     do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
-       if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
+   do istate=1,basis%nbf ! istate stands for occupied or partially occupied
+     do jstate=1,basis%nbf ! jstate stands for empty or partially empty
+       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
        t_ij=t_ij+1
-       transition_index(iorbital,jorbital,ijspin) = t_ij
+       transition_index(istate,jstate,ijspin) = t_ij
 
-       amb_diag(t_ij) = energy(jorbital,ijspin) - energy(iorbital,ijspin)
+       amb_diag(t_ij) = energy(jstate,ijspin) - energy(istate,ijspin)
 
      enddo
    enddo
@@ -596,18 +408,18 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
  !
  task(:,:) = 0
  do ijspin=1,nspin
-   do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
-     if( occupation(iorbital,ijspin) < completely_empty .OR. iorbital <= ncore_W ) cycle
-     do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
+   do istate=1,basis%nbf ! istate stands for occupied or partially occupied
+     if( occupation(istate,ijspin) < completely_empty .OR. istate <= ncore_W ) cycle
+     do jstate=1,basis%nbf ! jstate stands for empty or partially empty
 
-       if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
+       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
 
-       t_ij=transition_index(iorbital,jorbital,ijspin)
+       t_ij=transition_index(istate,jstate,ijspin)
 
        t_ij_local = rowindex_global_to_local(t_ij)
        if(t_ij_local==0) cycle
 
-       task(iorbital,ijspin) = task(iorbital,ijspin) + 1
+       task(istate,ijspin) = task(istate,ijspin) + 1
 
      enddo
    enddo
@@ -616,8 +428,8 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
 #if 0
  WRITE_ME(111+rank,*) 'rank',rank,nproc
  do ijspin=1,nspin
-   do iorbital=1,basis%nbf
-     WRITE_ME(111+rank,*) task(iorbital,ijspin)
+   do istate=1,basis%nbf
+     WRITE_ME(111+rank,*) task(istate,ijspin)
    enddo
  enddo
 #endif
@@ -626,22 +438,22 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
  ! transitions ROWS
  !
  do ijspin=1,nspin
-   do iorbital=1,basis%nbf ! iorbital stands for occupied or partially occupied
+   do istate=1,basis%nbf ! istate stands for occupied or partially occupied
 
-     if( occupation(iorbital,ijspin) < completely_empty .OR. iorbital <= ncore_W ) cycle
+     if( occupation(istate,ijspin) < completely_empty .OR. istate <= ncore_W ) cycle
      !
      ! SCALAPACK parallelization
      !
-     if( task(iorbital,ijspin) == 0 ) cycle
+     if( task(istate,ijspin) == 0 ) cycle
 
-     call transform_eri_basis(nspin,c_matrix,iorbital,ijspin,eri_eigenstate_i)
+     call transform_eri_basis(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
 
 
-     do jorbital=1,basis%nbf ! jorbital stands for empty or partially empty
+     do jstate=1,basis%nbf ! jstate stands for empty or partially empty
 
-       if( skip_transition(nspin,jorbital,iorbital,occupation(jorbital,ijspin),occupation(iorbital,ijspin)) ) cycle
+       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
 
-       t_ij=transition_index(iorbital,jorbital,ijspin)
+       t_ij=transition_index(istate,jstate,ijspin)
 
        t_ij_local = rowindex_global_to_local(t_ij)
        if(t_ij_local==0) cycle
@@ -650,35 +462,35 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
        ! transitions COLS
        !
        do klspin=1,nspin
-         do korbital=1,basis%nbf 
+         do kstate=1,basis%nbf 
 
-           do lorbital=1,basis%nbf 
-             if( skip_transition(nspin,lorbital,korbital,occupation(lorbital,klspin),occupation(korbital,klspin)) ) cycle
+           do lstate=1,basis%nbf 
+             if( skip_transition(nspin,lstate,kstate,occupation(lstate,klspin),occupation(kstate,klspin)) ) cycle
 
-             t_kl=transition_index(korbital,lorbital,klspin)
+             t_kl=transition_index(kstate,lstate,klspin)
 
              t_kl_local = colindex_global_to_local(t_kl)
              if(t_kl_local==0) cycle
 
-             apb(t_ij_local,t_kl_local) =  2.0_dp * eri_eigenstate_i(jorbital,korbital,lorbital,klspin) &
-                                                      * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) )
+             apb(t_ij_local,t_kl_local) =  2.0_dp * eri_eigenstate_i(jstate,kstate,lstate,klspin) &
+                                                      * ( occupation(istate,ijspin)-occupation(jstate,ijspin) )
 
 
 !TODO check TDHF implementation
 !           if(TDHF) then
 !             if(ijspin==klspin) then
-!               h_2p(t_ij_local,t_kl_local) =  h_2p(t_ij_local,t_kl_local) -  eri_eigenstate_i(korbital,jorbital,lorbital,klspin)  &
-!                        * ( occupation(iorbital,ijspin)-occupation(jorbital,ijspin) ) / spin_fact 
+!               h_2p(t_ij_local,t_kl_local) =  h_2p(t_ij_local,t_kl_local) -  eri_eigenstate_i(kstate,jstate,lstate,klspin)  &
+!                        * ( occupation(istate,ijspin)-occupation(jstate,ijspin) ) / spin_fact 
 !             endif
 !           endif
 
              if(t_ij==t_kl) then
-               if( task(iorbital,ijspin) == 0 ) then
-                 WRITE_ME(*,'(a,10(2x,i5))') ' === should have skipped',rank,iorbital,ijspin,t_ij,t_ij_local
+               if( task(istate,ijspin) == 0 ) then
+                 WRITE_ME(*,'(a,10(2x,i5))') ' === should have skipped',rank,istate,ijspin,t_ij,t_ij_local
                endif
                apb(t_ij_local,t_kl_local) = apb(t_ij_local,t_kl_local) + amb_diag(t_ij)
                rpa_correlation = rpa_correlation - 0.25_dp * ( amb_diag(t_ij) + apb(t_ij_local,t_kl_local) )
-!               WRITE_ME(*,'(a,5(2x,i5),2(2x,e16.6))') ' === should have skipped',rank,iorbital,t_ij,wpol%npole,t_ij_local,amb_diag(t_ij),apb(t_ij_local,t_kl_local)
+!               WRITE_ME(*,'(a,5(2x,i5),2(2x,e16.6))') ' === should have skipped',rank,istate,t_ij,wpol%npole,t_ij_local,amb_diag(t_ij),apb(t_ij_local,t_kl_local)
              endif
 
            enddo
@@ -687,8 +499,8 @@ subroutine polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matr
 
 
 
-     enddo !jorbital
-   enddo !iorbital
+     enddo !jstate
+   enddo !istate
  enddo ! ijspin
 
 
@@ -788,9 +600,9 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
  real(dp),allocatable  :: omegai(:)
  real(dp),allocatable  :: selfenergy_tmp(:,:,:,:)
 
- integer     :: bbf,ibf,kbf,lbf
- integer     :: aorbital,borbital
- integer     :: iorbital,ispin,ipole
+ integer     :: bbf,ibf,kbf
+ integer     :: astate,bstate
+ integer     :: istate,ispin,ipole
  real(dp)    :: spin_fact,overlap_tmp
  real(dp)    :: bra(wpol%npole,basis%nbf),ket(wpol%npole,basis%nbf)
  real(dp)    :: fact_full,fact_empty
@@ -854,58 +666,58 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
  selfenergy_tmp(:,:,:,:) = 0.0_dp
 
  do ispin=1,nspin
-   do iorbital=1,basis%nbf !INNER LOOP of G
+   do istate=1,basis%nbf !INNER LOOP of G
 
      !
      ! Apply the frozen core and frozen virtual approximation to G
-     if(iorbital <= ncore_G)    cycle
-     if(iorbital >= nvirtual_G) cycle
+     if(istate <= ncore_G)    cycle
+     if(istate >= nvirtual_G) cycle
 
      !
-     ! Prepare the bra and ket with the knowledge of index iorbital and aorbital
-     do aorbital=1,basis%nbf
-       kbf = prod_basis%index_prodbasis(iorbital,aorbital)
-       bra(:,aorbital) = wpol%residu_left (:,kbf+prod_basis%nbf*(ispin-1))
-       ket(:,aorbital) = wpol%residu_right(:,kbf+prod_basis%nbf*(ispin-1))
+     ! Prepare the bra and ket with the knowledge of index istate and astate
+     do astate=1,basis%nbf
+       kbf = prod_basis%index_prodbasis(istate,astate)
+       bra(:,astate) = wpol%residu_left (:,kbf+prod_basis%nbf*(ispin-1))
+       ket(:,astate) = wpol%residu_right(:,kbf+prod_basis%nbf*(ispin-1))
      enddo
 
      do ipole=1,wpol%npole
 
        if( wpol%pole(ipole) < 0.0_dp ) then
-         fact_empty = (spin_fact - occupation(iorbital,ispin)) / spin_fact
+         fact_empty = (spin_fact - occupation(istate,ispin)) / spin_fact
          fact_full = 0.0_dp
        else
          fact_empty = 0.0_dp
-         fact_full = occupation(iorbital,ispin) / spin_fact
+         fact_full = occupation(istate,ispin) / spin_fact
        endif
        if( ABS(fact_empty - fact_full) < 0.0001 ) cycle
 
        select case(gwmethod)
        case(QS)
 
-         do borbital=1,basis%nbf
-           do aorbital=1,basis%nbf
+         do bstate=1,basis%nbf
+           do astate=1,basis%nbf
 
-             selfenergy_tmp(1,aorbital,borbital,ispin) = selfenergy_tmp(1,aorbital,borbital,ispin) &
-                        - bra(ipole,aorbital) * ket(ipole,borbital) &
-                          * REAL(   fact_empty / ( energy(borbital,ispin) + ieta  - energy(iorbital,ispin) + wpol%pole(ipole) ) &
-                                   -fact_full  / ( energy(borbital,ispin) - ieta  - energy(iorbital,ispin) + wpol%pole(ipole) ) , dp )
+             selfenergy_tmp(1,astate,bstate,ispin) = selfenergy_tmp(1,astate,bstate,ispin) &
+                        - bra(ipole,astate) * ket(ipole,bstate) &
+                          * REAL(   fact_empty / ( energy(bstate,ispin) + ieta  - energy(istate,ispin) + wpol%pole(ipole) ) &
+                                   -fact_full  / ( energy(bstate,ispin) - ieta  - energy(istate,ispin) + wpol%pole(ipole) ) , dp )
 
            enddo
          enddo
 
        case(perturbative)
 
-         do aorbital=1,basis%nbf
+         do astate=1,basis%nbf
            !
            ! calculate only the diagonal !
-           borbital=aorbital
-!           do borbital=1,basis%nbf
+           bstate=astate
+!           do bstate=1,basis%nbf
              do iomegai=1,nomegai
-               selfenergy_tmp(iomegai,aorbital,borbital,ispin) = selfenergy_tmp(iomegai,aorbital,borbital,ispin) &
-                        - bra(ipole,aorbital) * ket(ipole,borbital) &
-                          * REAL(  fact_empty / ( energy(borbital,ispin) + ieta + omegai(iomegai) - energy(iorbital,ispin) + wpol%pole(ipole)     ) &
-                                  -fact_full  / ( energy(borbital,ispin) - ieta + omegai(iomegai) - energy(iorbital,ispin) + wpol%pole(ipole)     )  , dp )
+               selfenergy_tmp(iomegai,astate,bstate,ispin) = selfenergy_tmp(iomegai,astate,bstate,ispin) &
+                        - bra(ipole,astate) * ket(ipole,bstate) &
+                          * REAL(  fact_empty / ( energy(bstate,ispin) + ieta + omegai(iomegai) - energy(istate,ispin) + wpol%pole(ipole)     ) &
+                                  -fact_full  / ( energy(bstate,ispin) - ieta + omegai(iomegai) - energy(istate,ispin) + wpol%pole(ipole)     )  , dp )
              enddo
 !           enddo
          enddo
@@ -915,20 +727,20 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
          !
          ! SEX
          !
-         do borbital=1,basis%nbf
-           do aorbital=1,basis%nbf
-             selfenergy_tmp(1,aorbital,borbital,ispin) = selfenergy_tmp(1,aorbital,borbital,ispin) &
-                        - bra(ipole,aorbital) * ket(ipole,borbital) &
+         do bstate=1,basis%nbf
+           do astate=1,basis%nbf
+             selfenergy_tmp(1,astate,bstate,ispin) = selfenergy_tmp(1,astate,bstate,ispin) &
+                        - bra(ipole,astate) * ket(ipole,bstate) &
                           * fact_full  / (-wpol%pole(ipole))    
            enddo
          enddo
          !
          ! COH
          !
-         do borbital=1,basis%nbf
-           do aorbital=1,basis%nbf
-             selfenergy_tmp(1,aorbital,borbital,ispin) = selfenergy_tmp(1,aorbital,borbital,ispin) &
-                        + bra(ipole,aorbital) * ket(ipole,borbital) &
+         do bstate=1,basis%nbf
+           do astate=1,basis%nbf
+             selfenergy_tmp(1,astate,bstate,ispin) = selfenergy_tmp(1,astate,bstate,ispin) &
+                        + bra(ipole,astate) * ket(ipole,bstate) &
                           * fact_empty  / (-wpol%pole(ipole))
            enddo
          enddo
@@ -939,7 +751,7 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
 
      enddo !ipole
 
-   enddo !iorbital
+   enddo !istate
  enddo !ispin
 
  !
@@ -985,12 +797,12 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
    else
      WRITE_MASTER(*,'(a)') '  #                E0                      Sigx-Vxc                    Sigc                       Z                       G0W0'
    endif
-   do aorbital=1,basis%nbf
+   do astate=1,basis%nbf
      zz(:) = 1.0_dp 
-     energy_qp(aorbital,:) = energy(aorbital,:)+zz(:)*REAL(selfenergy_tmp(1,aorbital,aorbital,:) + exchange_m_vxc_diag(aorbital,:))
+     energy_qp(astate,:) = energy(astate,:)+zz(:)*REAL(selfenergy_tmp(1,astate,astate,:) + exchange_m_vxc_diag(astate,:))
 
-     WRITE_MASTER(*,'(i4,x,20(x,f12.6))') aorbital,energy(aorbital,:)*Ha_eV,exchange_m_vxc_diag(aorbital,:)*Ha_eV,REAL(selfenergy_tmp(1,aorbital,aorbital,:),dp)*Ha_eV,&
-           zz(:),energy_qp(aorbital,:)*Ha_eV
+     WRITE_MASTER(*,'(i4,x,20(x,f12.6))') astate,energy(astate,:)*Ha_eV,exchange_m_vxc_diag(astate,:)*Ha_eV,REAL(selfenergy_tmp(1,astate,astate,:),dp)*Ha_eV,&
+           zz(:),energy_qp(astate,:)*Ha_eV
    enddo
 
    call write_energy_qp(nspin,basis%nbf,energy_qp)
@@ -999,18 +811,18 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
 
    if(write_sigma_omega) then
 
-     do aorbital=1,basis%nbf ! MIN(2,basis%nbf)
-       WRITE_ME(ctmp,'(i3.3)') aorbital
-       open(200+aorbital,file='selfenergy_omega_state'//TRIM(ctmp))
+     do astate=1,basis%nbf ! MIN(2,basis%nbf)
+       WRITE_ME(ctmp,'(i3.3)') astate
+       open(200+astate,file='selfenergy_omega_state'//TRIM(ctmp))
        do iomegai=1,nomegai
-         WRITE_MASTER(200+aorbital,'(20(f12.6,2x))') ( DBLE(omegai(iomegai))+energy(aorbital,:) )*Ha_eV,&
-                                                     ( DBLE(selfenergy_tmp(iomegai,aorbital,aorbital,:)) )*Ha_eV,&
-                                                     ( DBLE(omegai(iomegai))-exchange_m_vxc_diag(aorbital,:) )*Ha_eV,&
-                                                     ( 1.0_dp/pi/ABS( DBLE(omegai(iomegai))-exchange_m_vxc_diag(aorbital,:) - DBLE(selfenergy_tmp(iomegai,aorbital,aorbital,:)) ) ) / Ha_eV
+         WRITE_MASTER(200+astate,'(20(f12.6,2x))') ( DBLE(omegai(iomegai))+energy(astate,:) )*Ha_eV,&
+                                                     ( DBLE(selfenergy_tmp(iomegai,astate,astate,:)) )*Ha_eV,&
+                                                     ( DBLE(omegai(iomegai))-exchange_m_vxc_diag(astate,:) )*Ha_eV,&
+                                                     ( 1.0_dp/pi/ABS( DBLE(omegai(iomegai))-exchange_m_vxc_diag(astate,:) - DBLE(selfenergy_tmp(iomegai,astate,astate,:)) ) ) / Ha_eV
        enddo
-       WRITE_MASTER(200+aorbital,*)
+       WRITE_MASTER(200+astate,*)
      enddo
-     close(200+aorbital)
+     close(200+astate)
 
    else
 
@@ -1022,13 +834,13 @@ subroutine gw_selfenergy(gwmethod,nspin,basis,prod_basis,occupation,energy,excha
      else
        WRITE_MASTER(*,'(a)') '  #                E0                      Sigx-Vxc                    Sigc                       Z                       G0W0'
      endif
-     do aorbital=1,basis%nbf
-       zz(:) = REAL( selfenergy_tmp(3,aorbital,aorbital,:) - selfenergy_tmp(1,aorbital,aorbital,:) ) / REAL( omegai(3)-omegai(1) )
+     do astate=1,basis%nbf
+       zz(:) = REAL( selfenergy_tmp(3,astate,astate,:) - selfenergy_tmp(1,astate,astate,:) ) / REAL( omegai(3)-omegai(1) )
        zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
-       energy_qp(aorbital,:) = energy(aorbital,:)+zz(:)*REAL(selfenergy_tmp(2,aorbital,aorbital,:) + exchange_m_vxc_diag(aorbital,:))
+       energy_qp(astate,:) = energy(astate,:)+zz(:)*REAL(selfenergy_tmp(2,astate,astate,:) + exchange_m_vxc_diag(astate,:))
 
-       WRITE_MASTER(*,'(i4,x,20(x,f12.6))') aorbital,energy(aorbital,:)*Ha_eV,exchange_m_vxc_diag(aorbital,:)*Ha_eV,REAL(selfenergy_tmp(2,aorbital,aorbital,:),dp)*Ha_eV,&
-             zz(:),energy_qp(aorbital,:)*Ha_eV
+       WRITE_MASTER(*,'(i4,x,20(x,f12.6))') astate,energy(astate,:)*Ha_eV,exchange_m_vxc_diag(astate,:)*Ha_eV,REAL(selfenergy_tmp(2,astate,astate,:),dp)*Ha_eV,&
+             zz(:),energy_qp(astate,:)*Ha_eV
      enddo
 
      call write_energy_qp(nspin,basis%nbf,energy_qp)

@@ -293,7 +293,7 @@ program molgw
    call gw_selfenergy(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp)
 #endif
 
-   title='=== Self-energy === (in the orbital basis)'
+   title='=== Self-energy === (in the eigenstate basis)'
    call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix_tmp)
    call destroy_spectral_function(wpol)
 
@@ -317,7 +317,7 @@ program molgw
    WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Total Energy [Ha]:',en%tot
    WRITE_MASTER(*,'(a,2x,f16.10)') ' SE+MP2  Total En [Ha]:',en%tot+en%se
 
-   title='=== Self-energy === (in the orbital basis)'
+   title='=== Self-energy === (in the eigenstate basis)'
    call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix_tmp)
 
  endif

@@ -19,7 +19,7 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
 !=====
 
  integer     :: bbf,ibf,kbf,lbf
- integer     :: aorbital,borbital
+ integer     :: astate,bstate
  real(dp)    :: homo,lumo,fact_full,fact_empty
 
 #ifdef CHI0
@@ -37,7 +37,7 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
  real(dp),allocatable :: omegai(:)
 
  complex(dp),parameter :: ieta=(0.0_dp,0.01_dp)  ! (0.0_dp,0.0001_dp)
- integer               :: iorbital,jorbital,korbital
+ integer               :: istate,jstate,kstate
  integer               :: abispin,jkspin
  real(dp)              :: spin_fact
  real(dp)              :: fact_occ1,fact_occ2
@@ -112,30 +112,30 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
 !$OMP PARALLEL DEFAULT(SHARED) &
 !$OMP PRIVATE(omega,fi,ei,fj,ej,fk,ek,fact_occ1,fact_occ2,fact_real,fact_nega,eri_eigenstate_i) 
 !$OMP DO SCHEDULE(STATIC) REDUCTION(+:emp2_ring,emp2_sox,selfenergy_ring,selfenergy_sox)
-   do iorbital=1,basis%nbf !LOOP of the first Green's function
+   do istate=1,basis%nbf !LOOP of the first Green's function
 
-     call transform_eri_basis(nspin,c_matrix,iorbital,abispin,eri_eigenstate_i)
+     call transform_eri_basis(nspin,c_matrix,istate,abispin,eri_eigenstate_i)
 
-     do aorbital=1,basis%nbf ! external loop ( bra )
+     do astate=1,basis%nbf ! external loop ( bra )
 
 
-       do borbital=1,basis%nbf ! external loop ( ket )
+       do bstate=1,basis%nbf ! external loop ( ket )
 
          do iomegai=1,nomegai
-           omega = energy(borbital,abispin) + omegai(iomegai)
+           omega = energy(bstate,abispin) + omegai(iomegai)
     
     
-           fi=occupation(iorbital,abispin)
-           ei=energy(iorbital,abispin)
+           fi=occupation(istate,abispin)
+           ei=energy(istate,abispin)
     
            do jkspin=1,nspin
-             do jorbital=1,basis%nbf !LOOP of the second Green's function
-               fj=occupation(jorbital,jkspin)
-               ej=energy(jorbital,jkspin)
+             do jstate=1,basis%nbf !LOOP of the second Green's function
+               fj=occupation(jstate,jkspin)
+               ej=energy(jstate,jkspin)
     
-               do korbital=1,basis%nbf !LOOP of the third Green's function
-                 fk=occupation(korbital,jkspin)
-                 ek=energy(korbital,jkspin)
+               do kstate=1,basis%nbf !LOOP of the third Green's function
+                 fk=occupation(kstate,jkspin)
+                 ek=energy(kstate,jkspin)
     
                  fact_occ1 = (spin_fact-fi) *            fj  * (spin_fact-fk) / spin_fact**2
                  fact_occ2 =            fi  * (spin_fact-fj) *            fk  / spin_fact**2
@@ -143,27 +143,27 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
                  if( fact_occ1 < completely_empty .AND. fact_occ2 < completely_empty ) cycle
     
                  fact_real = REAL( fact_occ1 / (omega-ei+ej-ek+ieta) + fact_occ2 / (omega-ei+ej-ek-ieta) , dp)
-                 fact_nega = REAL( fact_occ1 / (energy(aorbital,abispin)-ei+ej-ek+ieta) , dp )
+                 fact_nega = REAL( fact_occ1 / (energy(astate,abispin)-ei+ej-ek+ieta) , dp )
     
-                 selfenergy_ring(iomegai,aorbital,borbital,abispin) = selfenergy_ring(iomegai,aorbital,borbital,abispin) &
-                          + fact_real * eri_eigenstate_i(aorbital,korbital,jorbital,jkspin) &
-                                         * eri_eigenstate_i(borbital,jorbital,korbital,jkspin)
+                 selfenergy_ring(iomegai,astate,bstate,abispin) = selfenergy_ring(iomegai,astate,bstate,abispin) &
+                          + fact_real * eri_eigenstate_i(astate,kstate,jstate,jkspin) &
+                                         * eri_eigenstate_i(bstate,jstate,kstate,jkspin)
 
-                 if(iomegai==1 .AND. aorbital==borbital .AND. occupation(aorbital,abispin)>completely_empty) then
-                   emp2_ring = emp2_ring + occupation(aorbital,abispin) &
-                                         * fact_nega * eri_eigenstate_i(aorbital,korbital,jorbital,jkspin) &
-                                                     * eri_eigenstate_i(borbital,jorbital,korbital,jkspin)
+                 if(iomegai==1 .AND. astate==bstate .AND. occupation(astate,abispin)>completely_empty) then
+                   emp2_ring = emp2_ring + occupation(astate,abispin) &
+                                         * fact_nega * eri_eigenstate_i(astate,kstate,jstate,jkspin) &
+                                                     * eri_eigenstate_i(bstate,jstate,kstate,jkspin)
                  endif
     
                  if( abispin == jkspin ) then
-                   selfenergy_sox(iomegai,aorbital,borbital,abispin) = selfenergy_sox(iomegai,aorbital,borbital,abispin) &
-                            - fact_real * eri_eigenstate_i(aorbital,jorbital,korbital,abispin) &
-                                           * eri_eigenstate_i(jorbital,korbital,borbital,abispin) / spin_fact
+                   selfenergy_sox(iomegai,astate,bstate,abispin) = selfenergy_sox(iomegai,astate,bstate,abispin) &
+                            - fact_real * eri_eigenstate_i(astate,jstate,kstate,abispin) &
+                                           * eri_eigenstate_i(jstate,kstate,bstate,abispin) / spin_fact
 
-                   if(iomegai==1 .AND. aorbital==borbital .AND. occupation(aorbital,abispin)>completely_empty) then
-                     emp2_sox = emp2_sox - occupation(aorbital,abispin) &
-                               * fact_nega * eri_eigenstate_i(aorbital,jorbital,korbital,jkspin) &
-                                           * eri_eigenstate_i(jorbital,korbital,borbital,abispin) / spin_fact
+                   if(iomegai==1 .AND. astate==bstate .AND. occupation(astate,abispin)>completely_empty) then
+                     emp2_sox = emp2_sox - occupation(astate,abispin) &
+                               * fact_nega * eri_eigenstate_i(astate,jstate,kstate,jkspin) &
+                                           * eri_eigenstate_i(jstate,kstate,bstate,abispin) / spin_fact
                    endif
                  endif
     
@@ -191,20 +191,20 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
  if(method==perturbative) then
 
    if(file_exists) then
-     do aorbital=1,MIN(2,basis%nbf)
-       write(ctmp,'(i3.3)') aorbital
-       open(20+aorbital,file='selfenergy_omega_state'//TRIM(ctmp))
+     do astate=1,MIN(2,basis%nbf)
+       write(ctmp,'(i3.3)') astate
+       open(20+astate,file='selfenergy_omega_state'//TRIM(ctmp))
        do iomegai=1,nomegai
-         WRITE_MASTER(20+aorbital,'(20(f12.6,2x))') DBLE(omegai(iomegai))+energy(aorbital,:),&
-&                         DBLE(selfenergy_ring(iomegai,aorbital,aorbital,:)),&
-&                         DBLE(selfenergy_sox(iomegai,aorbital,aorbital,:)),&
-&                         DBLE(selfenergy_ring(iomegai,aorbital,aorbital,:))+&
-&                         DBLE(selfenergy_sox(iomegai,aorbital,aorbital,:)),&
-&                         DBLE(omegai(iomegai))-exchange_m_vxc_diag(aorbital,:)
+         WRITE_MASTER(20+astate,'(20(f12.6,2x))') DBLE(omegai(iomegai))+energy(astate,:),&
+&                         DBLE(selfenergy_ring(iomegai,astate,astate,:)),&
+&                         DBLE(selfenergy_sox(iomegai,astate,astate,:)),&
+&                         DBLE(selfenergy_ring(iomegai,astate,astate,:))+&
+&                         DBLE(selfenergy_sox(iomegai,astate,astate,:)),&
+&                         DBLE(omegai(iomegai))-exchange_m_vxc_diag(astate,:)
        enddo
-       WRITE_MASTER(20+aorbital,*)
+       WRITE_MASTER(20+astate,*)
      enddo
-     close(20+aorbital)
+     close(20+astate)
      stop'output the self energy in a file'
    endif
 
@@ -212,28 +212,28 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
    WRITE_MASTER(*,*) '=============================='
    WRITE_MASTER(*,*) ' selfenergy RING + SOX'
    WRITE_MASTER(*,'(a)') ' #         Energies           Sigx-Vxc       one-ring              SOX             MP2              Z            QP-eigenvalues'
-   do borbital=1,basis%nbf 
-     zz(:) = REAL( selfenergy_ring(3,borbital,borbital,:)+selfenergy_sox(3,borbital,borbital,:) &
-                 - selfenergy_ring(1,borbital,borbital,:)-selfenergy_sox(1,borbital,borbital,:) ) / REAL( omegai(3)-omegai(1) )
+   do bstate=1,basis%nbf 
+     zz(:) = REAL( selfenergy_ring(3,bstate,bstate,:)+selfenergy_sox(3,bstate,bstate,:) &
+                 - selfenergy_ring(1,bstate,bstate,:)-selfenergy_sox(1,bstate,bstate,:) ) / REAL( omegai(3)-omegai(1) )
      zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
-     WRITE_MASTER(*,'(i4,18(3x,f14.5))') borbital,energy(borbital,:)*Ha_eV,&
-           exchange_m_vxc_diag(borbital,:)*Ha_eV,&
-           selfenergy_ring(2,borbital,borbital,:) * Ha_eV,&
-           selfenergy_sox (2,borbital,borbital,:) * Ha_eV,&
-         ( selfenergy_ring(2,borbital,borbital,:)+selfenergy_sox(2,borbital,borbital,:) ) * Ha_eV,&
+     WRITE_MASTER(*,'(i4,18(3x,f14.5))') bstate,energy(bstate,:)*Ha_eV,&
+           exchange_m_vxc_diag(bstate,:)*Ha_eV,&
+           selfenergy_ring(2,bstate,bstate,:) * Ha_eV,&
+           selfenergy_sox (2,bstate,bstate,:) * Ha_eV,&
+         ( selfenergy_ring(2,bstate,bstate,:)+selfenergy_sox(2,bstate,bstate,:) ) * Ha_eV,&
          zz(:),&
-         ( energy(borbital,:) + exchange_m_vxc_diag(borbital,:) + selfenergy_ring(2,borbital,borbital,:) + selfenergy_sox(2,borbital,borbital,:) ) * Ha_eV
+         ( energy(bstate,:) + exchange_m_vxc_diag(bstate,:) + selfenergy_ring(2,bstate,bstate,:) + selfenergy_sox(2,bstate,bstate,:) ) * Ha_eV
    enddo
    WRITE_MASTER(*,*) '=============================='
 
    selfenergy(:,:,:) = 0.0_dp
    if(.NOT.ring_only) then
-     do borbital=1,basis%nbf
-       selfenergy(borbital,borbital,:) = selfenergy_ring(2,borbital,borbital,:) + selfenergy_sox(2,borbital,borbital,:)
+     do bstate=1,basis%nbf
+       selfenergy(bstate,bstate,:) = selfenergy_ring(2,bstate,bstate,:) + selfenergy_sox(2,bstate,bstate,:)
      enddo
    else
-     do borbital=1,basis%nbf
-       selfenergy(borbital,borbital,:) = selfenergy_ring(2,borbital,borbital,:)
+     do bstate=1,basis%nbf
+       selfenergy(bstate,bstate,:) = selfenergy_ring(2,bstate,bstate,:)
      enddo
    endif
 
