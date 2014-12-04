@@ -107,10 +107,8 @@ program molgw
  ! Set up the electron repulsion integrals
  !
  ! ERI are stored "privately" in the module m_eri
- call start_clock(timing_eri)
  call allocate_eri(basis,0.0_dp,BUFFER1)
  call calculate_eri(print_eri,basis,0.0_dp,BUFFER1)
- call stop_clock(timing_eri)
 
  call refine_negligible_basispair()
 
@@ -118,9 +116,7 @@ program molgw
  ! for HSE functionals, calculate the long-range ERI
  if(calc_type%is_screened_hybrid) then
    call allocate_eri(basis,rcut,BUFFER2)
-   call start_clock(timing_eri)
    call calculate_eri(print_eri,basis,rcut,BUFFER2)
-   call stop_clock(timing_eri)
  endif
 ! call negligible_eri(1.0e-10_dp)
 
@@ -284,22 +280,18 @@ program molgw
 
 
    call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
-   call start_clock(timing_pola)
 #ifdef CASIDA
    call polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #else
    call polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #endif
-   call stop_clock(timing_pola)
    en%tot = en%tot + en%rpa
    if( calc_type%is_dft ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
    WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
 
-   call start_clock(timing_self)
 #ifndef CASIDA
    call gw_selfenergy(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp)
 #endif
-   call stop_clock(timing_self)
 
    title='=== Self-energy === (in the orbital basis)'
    call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix_tmp)
@@ -314,14 +306,9 @@ program molgw
    call setup_exchange(print_matrix,basis%nbf,nspin,p_matrix,matrix_tmp,en%exx)
    WRITE_MASTER(*,*) 'EXX     [Ha]:',en%exx
 #ifdef CASIDA
-   call start_clock(timing_mp2_energy)
-!   call mp2_energy(nspin,basis,occupation,c_matrix,energy,en%mp2)
    call mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,en%mp2)
-   call stop_clock(timing_mp2_energy)
 #else
-   call start_clock(timing_mp2_self)
    call mp2_selfenergy(calc_type%gwmethod,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
-   call stop_clock(timing_mp2_self)
 #endif
    WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Energy       [Ha]:',en%mp2
    WRITE_MASTER(*,*) 

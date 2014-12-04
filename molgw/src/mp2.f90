@@ -162,6 +162,8 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
  logical                    :: file_exists
 !=====
 
+ call start_clock(timing_mp2_energy)
+
  WRITE_MASTER(*,*) 'starting the MP2 calculation'
  !
  ! Deal with frozen core initialization
@@ -306,6 +308,7 @@ subroutine mp2_energy_fast(nspin,basis,occupation,c_matrix,energy,emp2)
  WRITE_MASTER(*,'(a,f14.8)')   ' SOX diagram     :',contrib2
  WRITE_MASTER(*,'(a,f14.8,/)') ' MP2 correlation :',emp2
 
+ call stop_clock(timing_mp2_energy)
 
 end subroutine mp2_energy_fast
 

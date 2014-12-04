@@ -232,6 +232,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
    energy_qp(:,:) = energy(:,:)
  endif
 
+ call start_clock(timing_build_h2p)
  h_2p(:,:)=0.0_dp
  t_ij=0
  do ijspin=1,nspin
@@ -319,6 +320,8 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  if( .NOT. is_auxil_basis) deallocate(eri_eigenstate_i)
  if(is_tddft)    deallocate(fxc,wf_r)
  if(calc_type%is_bse) deallocate(bra,ket)
+
+ call stop_clock(timing_build_h2p)
 
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
