@@ -32,23 +32,26 @@ module m_tools
 
 contains
 
- subroutine init_seed(iseed)
-  implicit none
-  integer,intent(in),optional :: iseed
+!=========================================================================
+subroutine init_seed(iseed)
+ implicit none
+ integer,intent(in),optional :: iseed
 
-  integer :: i,j
+ integer :: i,j
 
-  if(PRESENT(iseed)) then
-   idum=iseed
-  else
-   call system_clock(idum,i,j)
-  endif
+ if(PRESENT(iseed)) then
+  idum=iseed
+ else
+  call system_clock(idum,i,j)
+ endif
 
-  WRITE_MASTER(*,'(a,x,i12)') 'Random seed set to',idum
+ WRITE_MASTER(*,'(a,x,i12)') 'Random seed set to',idum
 
 
- end subroutine
+end subroutine
 
+
+!=========================================================================
 function ran1()
  implicit none
  integer IA,IM,IQ,IR,NTAB,NDIV
@@ -77,6 +80,8 @@ function ran1()
  ran1=min(AM*iy,RNMX)
 end function ran1
 
+
+!=========================================================================
 function random()
  implicit none
  real(dp) :: random
@@ -86,6 +91,7 @@ function random()
 end function random
 
 
+!=========================================================================
 subroutine invert_dp(n,matrix,matrix_inv)
  implicit none
  integer,intent(in) :: n
@@ -108,6 +114,7 @@ subroutine invert_dp(n,matrix,matrix_inv)
 end subroutine invert_dp
 
 
+!=========================================================================
 subroutine invert_inplace_dp(n,matrix)
  implicit none
  integer,intent(in)     :: n
@@ -125,6 +132,7 @@ subroutine invert_inplace_dp(n,matrix)
 end subroutine invert_inplace_dp
 
 
+!=========================================================================
 subroutine invert_cdp(n,matrix,matrix_inv)
  implicit none
  integer,intent(in) :: n
@@ -146,6 +154,8 @@ subroutine invert_cdp(n,matrix,matrix_inv)
 
 end subroutine invert_cdp
 
+
+!=========================================================================
 subroutine diagonalize_wo_vectors_dp(n,matrix,eigval)
  implicit none
  integer,intent(in) :: n
@@ -166,6 +176,8 @@ subroutine diagonalize_wo_vectors_dp(n,matrix,eigval)
 
 end subroutine diagonalize_wo_vectors_dp
 
+
+!=========================================================================
 subroutine diagonalize_cdp(n,matrix,eigval,eigvec)
  implicit none
  integer,intent(in) :: n
@@ -183,6 +195,8 @@ subroutine diagonalize_cdp(n,matrix,eigval,eigvec)
 
 end subroutine diagonalize_cdp
 
+
+!=========================================================================
 subroutine diagonalize_dp(n,matrix,eigval,eigvec)
  implicit none
  integer,intent(in) :: n
@@ -199,6 +213,8 @@ subroutine diagonalize_dp(n,matrix,eigval,eigvec)
 
 end subroutine diagonalize_dp
 
+
+!=========================================================================
 subroutine diagonalize_sp(n,matrix,eigval,eigvec)
  implicit none
  integer,intent(in) :: n
@@ -215,6 +231,8 @@ subroutine diagonalize_sp(n,matrix,eigval,eigvec)
 
 end subroutine diagonalize_sp
 
+
+!=========================================================================
 subroutine diagonalize_inplace_dp(n,matrix,eigval)
  implicit none
  integer,intent(in) :: n
@@ -228,6 +246,8 @@ subroutine diagonalize_inplace_dp(n,matrix,eigval)
 
 end subroutine diagonalize_inplace_dp
 
+
+!=========================================================================
 subroutine diagonalize_inplace_sp(n,matrix,eigval)
  implicit none
  integer,intent(in) :: n
@@ -241,6 +261,8 @@ subroutine diagonalize_inplace_sp(n,matrix,eigval)
 
 end subroutine diagonalize_inplace_sp
 
+
+!=========================================================================
 subroutine diagonalize_general_dp(n,matrix,eigval,eigvec_right)
  implicit none
  integer,intent(in) :: n
@@ -264,6 +286,8 @@ subroutine diagonalize_general_dp(n,matrix,eigval,eigvec_right)
 
 end subroutine diagonalize_general_dp
 
+
+!=========================================================================
 subroutine diagonalize_general_cdp(n,matrix,eigval,eigvec_right)
  implicit none
  integer,intent(in) :: n
@@ -289,6 +313,8 @@ subroutine diagonalize_general_cdp(n,matrix,eigval,eigvec_right)
 
 end subroutine diagonalize_general_cdp
 
+
+!=========================================================================
 !
 ! Generalized eigenvalue problem
 !
@@ -318,6 +344,7 @@ subroutine diagonalize_generalized_sym(n,matrix,overlap,eigval,eigvec)
 end subroutine diagonalize_generalized_sym
 
 
+!=========================================================================
 subroutine coeffs_gausslegint(xmin,xmax,x,weights,n)
 !
 ! Compute the coefficients (supports and weights)
@@ -381,6 +408,8 @@ subroutine coeffs_gausslegint(xmin,xmax,x,weights,n)
 
 end subroutine
 
+
+!=========================================================================
 subroutine gequad(p,w)
  implicit none
 
@@ -572,6 +601,7 @@ subroutine gequad(p,w)
 end subroutine gequad
 
 
+!=========================================================================
 subroutine boys_function(fnt,n,t)
  implicit none
  integer,intent(in)   :: n
@@ -635,6 +665,8 @@ subroutine boys_function(fnt,n,t)
 
 end subroutine boys_function
 
+
+!=========================================================================
 subroutine check_unitarity(n,cmat)
  implicit none
  integer,intent(in) :: n
@@ -677,6 +709,7 @@ subroutine check_unitarity(n,cmat)
     enddo
   enddo
 end subroutine check_unitarity
+
 
 !=========================================================================
 function element_name(zatom)
@@ -733,13 +766,8 @@ function element_name(zatom)
    element_name='X'
  end select
 
-
-! if( ABS( zatom -NINT(zatom) ) > 1.0d-6 ) then
-!   WRITE_MASTER(*,*) 'basis set is hard coded to be helium-like for fractional charge nucleus'
-!   element_name='He'
-! endif
-
 end function element_name
+
 
 !==========================================
  function gamma_function(rin)
@@ -778,6 +806,7 @@ end function element_name
  gamma_function = gamma_function * SQRT(pi)
 
  end function gamma_function
+
 
 !==========================================
  function double_factorial(intin)
@@ -854,6 +883,7 @@ end function element_name
  end select
 
  end function double_factorial
+
 
 !=========================================================================
 end module m_tools
