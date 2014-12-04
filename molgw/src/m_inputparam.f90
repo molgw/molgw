@@ -10,6 +10,7 @@ module m_inputparam
  use m_scf
 
  integer,protected                   :: nspin
+ real(dp),protected                  :: spin_fact
  integer,protected                   :: nscf
  real(dp),protected                  :: alpha_mixing
  character(len=100),protected        :: basis_name
@@ -60,6 +61,8 @@ subroutine read_inputparameter_molecule()
  if(nspin/=1 .AND. nspin/=2) stop'nspin in incorrect'
  if(magnetization<-1.d-5)    stop'magnetization is negative'
  if(magnetization>1.d-5 .AND. nspin==1) stop'magnetization is non-zero and nspin is 1'
+
+ spin_fact = REAL(-nspin+3,dp)
 
  !
  ! Reading line 3

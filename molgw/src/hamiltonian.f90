@@ -252,27 +252,26 @@ subroutine setup_hartree(print_matrix,nbf,nspin,p_matrix,pot_hartree,ehartree)
 end subroutine setup_hartree
 
 !=========================================================================
-subroutine setup_exchange(print_matrix,nbf,nspin,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange(print_matrix,nbf,p_matrix,pot_exchange,eexchange)
  use m_definitions
  use m_mpi
  use m_timing
  use m_eri
+ use m_inputparam,only: nspin,spin_fact
  implicit none
  logical,intent(in)   :: print_matrix
- integer,intent(in)   :: nbf,nspin
+ integer,intent(in)   :: nbf
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin
- real(dp)             :: spin_fact
  character(len=100)   :: title
 !=====
 
  WRITE_MASTER(*,*) 'Calculate Exchange term'
  call start_clock(timing_exchange)
 
- spin_fact = REAL(-nspin+3,dp)
 
  pot_exchange(:,:,:)=0.0_dp
 
@@ -332,27 +331,26 @@ subroutine setup_exchange(print_matrix,nbf,nspin,p_matrix,pot_exchange,eexchange
 end subroutine setup_exchange
 
 !=========================================================================
-subroutine setup_exchange_longrange(print_matrix,nbf,nspin,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange_longrange(print_matrix,nbf,p_matrix,pot_exchange,eexchange)
  use m_definitions
  use m_mpi
  use m_timing
  use m_eri
+ use m_inputparam,only: nspin,spin_fact
  implicit none
  logical,intent(in)   :: print_matrix
- integer,intent(in)   :: nbf,nspin
+ integer,intent(in)   :: nbf
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin
- real(dp)             :: spin_fact
  character(len=100)   :: title
 !=====
 
  WRITE_MASTER(*,*) 'Calculate Long-Range Exchange term'
  call start_clock(timing_exchange)
 
- spin_fact = REAL(-nspin+3,dp)
 
  pot_exchange(:,:,:)=0.0_dp
 
@@ -547,23 +545,23 @@ end subroutine write_density_matrix
 
 
 !=========================================================================
-subroutine set_occupation(electrons,magnetization,nbf,nspin,occupation)
+subroutine set_occupation(electrons,magnetization,nbf,occupation)
  use m_definitions
  use m_mpi
  use m_warning
+ use m_inputparam,only: nspin,spin_fact
  implicit none
  real(dp),intent(in)  :: electrons,magnetization
- integer,intent(in)   :: nbf,nspin
+ integer,intent(in)   :: nbf
  real(dp),intent(out) :: occupation(nbf,nspin)
 !=====
- real(dp)             :: remaining_electrons(nspin),spin_fact
+ real(dp)             :: remaining_electrons(nspin)
  integer              :: ibf,nlines,ilines
  logical              :: file_exists
 !=====
 
 
   occupation(:,:)=0.0_dp
-  spin_fact = REAL(-nspin+3,dp)
 
   inquire(file='manual_occupations',exist=file_exists)
 

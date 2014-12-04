@@ -16,6 +16,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  use m_dft_grid
  use m_spectral_function
  use m_inputparam
+ use m_gw
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
  use xc_f90_lib_m
@@ -27,7 +28,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  type(basis_set)                       :: basis,prod_basis
  real(dp),intent(in)                   :: occupation(basis%nbf,nspin)
  real(dp),intent(in)                   :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
- type(spectral_function),intent(in)    :: wpol
+ type(spectral_function),intent(inout) :: wpol
 !=====
  integer :: pbf,qbf,ibf,jbf,kbf,lbf,ijbf,klbf,ijbf_current,ijspin,klspin,ispin
  integer :: istate,jstate,kstate,lstate
@@ -39,7 +40,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
  real(dp),allocatable :: eri_eigenstate_k(:,:,:,:)
  real(dp)             :: eri_eigen_ijkl,eri_eigen_ikjl
- real(dp)             :: spin_fact,alpha_local
+ real(dp)             :: alpha_local
  real(dp)             :: scissor_energy(nspin)
  real(dp)             :: h_2p(wpol%npole,wpol%npole)
  real(dp)             :: eigenvalue(wpol%npole),eigenvector(wpol%npole,wpol%npole),eigenvector_inv(wpol%npole,wpol%npole)
@@ -93,7 +94,6 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
    stop'BUG: this should not happend in timedependent'
  endif
 
- spin_fact = REAL(-nspin+3,dp)
  is_tddft = calc_type%is_td .AND. calc_type%is_dft
 
  WRITE_MASTER(*,'(/,a)') ' calculating the polarizability for neutral excitation energies'
@@ -350,7 +350,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  ! and then write it down on file
  !
  if( print_specfunc ) then
-  call chi_to_vchiv(nspin,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+  call chi_to_vchiv(basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
   call write_spectral_function(wpol)
  endif
 

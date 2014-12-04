@@ -18,6 +18,7 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
  use m_eri
  use m_dft_grid
  use m_spectral_function
+ use m_gw
 #ifdef _OPENMP
  use omp_lib
 #endif
@@ -102,13 +103,13 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
    ! Exchange contribution to the Hamiltonian
    if( calc_type%need_exchange ) then
 
-     call setup_exchange(print_matrix,basis%nbf,nspin,p_matrix,hamiltonian_exx,en%exx)
+     call setup_exchange(print_matrix,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
      ! Rescale with alpha_hybrid for hybrid functionals
      en%exx = alpha_hybrid * en%exx
      hamiltonian_xc(:,:,:) = hamiltonian_exx(:,:,:) * alpha_hybrid
 
      if(calc_type%is_screened_hybrid) then
-       call setup_exchange_longrange(print_matrix,basis%nbf,nspin,p_matrix,matrix_tmp,energy_tmp)
+       call setup_exchange_longrange(print_matrix,basis%nbf,p_matrix,matrix_tmp,energy_tmp)
        ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
        en%exx = en%exx + alpha_hybrid_lr * energy_tmp
        hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix_tmp(:,:,:) * alpha_hybrid_lr
@@ -133,7 +134,6 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
    if( calc_type%is_gw .AND. ( calc_type%gwmethod == QS .OR. calc_type%gwmethod == QSCOHSEX) &
        .AND. iscf > 5 ) then
 
-     call init_spectral_function(basis%nbf,prod_basis%nbf,nspin,occupation,wpol)
      call polarizability_rpa(basis,prod_basis,auxil_basis_dummy,occupation,energy,c_matrix,en%rpa,wpol)
      if( en%rpa > 1.e-6_DP) then
        en%tot = en%tot + en%rpa
@@ -141,7 +141,7 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
      endif
 
      exchange_m_vxc_diag(:,:)=0.0_dp
-     call gw_selfenergy(calc_type%gwmethod,nspin,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp)
+     call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp)
 
      matrix_tmp(:,:,:) = alpha_mixing * matrix_tmp(:,:,:) + (1.0_dp-alpha_mixing) * self_energy_old(:,:,:)
      self_energy_old(:,:,:) = matrix_tmp(:,:,:)
@@ -270,7 +270,7 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
 
  !
  ! Get the exchange operator if not already calculated
- if( ABS(en%exx) < 1.0E-6_DP ) call setup_exchange(print_matrix,basis%nbf,nspin,p_matrix,hamiltonian_exx,en%exx)
+ if( ABS(en%exx) < 1.0E-6_DP ) call setup_exchange(print_matrix,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
 
  WRITE_MASTER(*,'(/,a25,x,f16.10)') '      EXX Energy [Ha]:',en%exx
  WRITE_MASTER(*,'(a25,x,f16.10)')   'Total EXX Energy [Ha]:',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx

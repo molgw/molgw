@@ -8,6 +8,7 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
  use m_warning
  use m_basis_set
  use m_eri
+ use m_inputparam,only: spin_fact
  implicit none
 
  integer,intent(in)  :: method,nspin
@@ -39,7 +40,6 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
  complex(dp),parameter :: ieta=(0.0_dp,0.01_dp)  ! (0.0_dp,0.0001_dp)
  integer               :: istate,jstate,kstate
  integer               :: abispin,jkspin
- real(dp)              :: spin_fact
  real(dp)              :: fact_occ1,fact_occ2
  real(dp)              :: fi,fj,fk,ei,ej,ek
  real(dp)              :: eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin)
@@ -53,7 +53,6 @@ subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_di
 
  call start_clock(timing_mp2_self)
 
- spin_fact = REAL(-nspin+3,dp)
  emp2_ring = 0.0_dp
  emp2_sox  = 0.0_dp
 
