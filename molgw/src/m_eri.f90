@@ -94,7 +94,7 @@ subroutine allocate_eri(basis,rcut,which_buffer)
  if(nsize<1) stop'too many integrals to be stored'
 
  WRITE_MASTER(*,*) 'Allocate 4-center integrals'
- call memory_statement(REAL(nsize,dp)*REAL(prec_eri/dp,dp))
+ call memory_statement(REAL(nsize,dp)*REAL(prec_eri,dp)/REAL(dp,dp))
 
  select case(which_buffer)
  case(BUFFER1)
@@ -190,12 +190,12 @@ subroutine deallocate_eri_buffer()
 
  if(allocated(eri_buffer)) then
    WRITE_MASTER(*,'(/,a)')     ' Deallocate ERI buffer'
-   WRITE_MASTER(*,'(a,f16.3)') ' Freed memory [Gb]:',REAL(nsize*prec_eri/1024.0_dp**3,dp)
+   call memory_statement(-REAL(nsize,dp)*REAL(prec_eri,dp)/REAL(dp,dp))
    deallocate(eri_buffer)
  endif
  if(allocated(eri_buffer_lr)) then
    WRITE_MASTER(*,'(/,a)')     ' Deallocate LR ERI buffer'
-   WRITE_MASTER(*,'(a,f16.3)') ' Freed memory [Gb]:',REAL(nsize*prec_eri/1024.0_dp**3,dp)
+   call memory_statement(-REAL(nsize,dp)*REAL(prec_eri,dp)/REAL(dp,dp))
    deallocate(eri_buffer_lr)
  endif
  WRITE_MASTER(*,*)
