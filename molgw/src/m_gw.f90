@@ -199,8 +199,9 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  !
  ! Finally calculate v * \chi * v and store it in object wpol
  !
- ! Note: deallocation of the eigenvector and eigenvector_inv in the subroutine
- call chi_to_vchiv_red(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+
+ call chi_to_vchiv(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+ deallocate(eigenvector,eigenvector_inv,eigenvalue)
 
  if(is_auxil_basis) call destroy_eri_3center_eigen()
 
@@ -235,7 +236,7 @@ end subroutine polarizability_rpa
 
 
 !=========================================================================
-subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+subroutine chi_to_vchiv(ntrans,nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
  use m_definitions
  use m_warning
  use m_inputparam,only: nspin,is_auxil_basis
@@ -244,14 +245,14 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
  use m_spectral_function
  implicit none
  
- type(spectral_function),intent(inout) :: wpol
- integer,intent(in)         :: nbf
+ integer,intent(in)         :: nbf,ntrans
  type(basis_set),intent(in) :: prod_basis
  real(dp),intent(in)        :: occupation(nbf,nspin)
  real(dp),intent(in)        :: c_matrix(nbf,nbf,nspin)
- real(dp),intent(in)        :: eigenvector    (wpol%npole,wpol%npole)
- real(dp),intent(in)        :: eigenvector_inv(wpol%npole,wpol%npole)
- real(dp),intent(in)        :: eigenvalue     (wpol%npole)
+ real(dp),intent(in)        :: eigenvector    (ntrans,ntrans)
+ real(dp),intent(in)        :: eigenvector_inv(ntrans,ntrans)
+ real(dp),intent(in)        :: eigenvalue     (ntrans)
+ type(spectral_function),intent(inout) :: wpol
 !=====
  integer                    :: t_kl,klspin,ijspin
  integer                    :: istate,jstate,kstate,lstate,ijstate,ijstate_spin
@@ -264,6 +265,8 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
  call start_clock(timing_buildw)
 
  if( .NOT. is_auxil_basis ) allocate(eri_eigenstate_k(nbf,nbf,nbf,nspin))
+
+ call allocate_spectral_function(ntrans,prod_basis%nbf,wpol)
 
  wpol%pole(:) = eigenvalue(:)
 
@@ -314,137 +317,6 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
  call stop_clock(timing_buildw)
 
 end subroutine chi_to_vchiv
-
-
-!=========================================================================
-subroutine chi_to_vchiv_red(ntrans,nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
- use m_definitions
- use m_warning
- use m_inputparam,only: nspin,is_auxil_basis
- use m_basis_set
- use m_eri
- use m_spectral_function
- implicit none
- 
- type(spectral_function),intent(inout) :: wpol
- integer,intent(in)                    :: ntrans,nbf
- type(basis_set),intent(in)            :: prod_basis
- real(dp),intent(in)                   :: occupation(nbf,nspin)
- real(dp),intent(in)                   :: c_matrix(nbf,nbf,nspin)
- real(dp),intent(inout),allocatable    :: eigenvector    (:,:) ! eigenvector    (ntrans,ntrans)
- real(dp),intent(inout),allocatable    :: eigenvector_inv(:,:) ! eigenvector_inv(ntrans,ntrans)
- real(dp),intent(inout),allocatable    :: eigenvalue(:)
-!=====
- integer                               :: t_kl,klspin,ijspin
- integer                               :: istate,jstate,kstate,lstate,ijstate,ijstate_spin
- integer                               :: itrans,jpole,ipole
- integer                               :: npole
- real(dp)                              :: docc_kl
- real(dp)                              :: eri_eigen_klij
- real(dp),allocatable                  :: eri_eigenstate_k(:,:,:,:)
- logical                               :: new_pole
- real(dp),allocatable                  :: eigvec_ind(:,:),eigvec_inv_ind(:,:)
- real(dp),allocatable                  :: pole_tmp(:)
-!=====
-
- call start_clock(timing_buildw)
-
- if( .NOT. is_auxil_basis ) allocate(eri_eigenstate_k(nbf,nbf,nbf,nspin))
-
- 
- allocate(pole_tmp(ntrans))
- npole = 0
- do itrans=1,ntrans
-   new_pole = .TRUE.
-   do jpole=1,npole
-     if( ABS( pole_tmp(jpole) - eigenvalue(itrans) ) < TOL_DEG_POLE ) then
-       new_pole = .FALSE.
-       exit
-     endif
-   enddo
-   if(new_pole) then
-     npole = npole + 1
-     pole_tmp(npole) = eigenvalue(itrans)
-    endif
- enddo
-
- allocate(eigvec_ind    (npole,ntrans))
- allocate(eigvec_inv_ind(npole,ntrans))
- eigvec_ind    (:,:) = 0.0_dp
- eigvec_inv_ind(:,:) = 0.0_dp
- ipole = 0
- do itrans=1,ntrans
-   new_pole = .TRUE.
-   do jpole=1,ipole
-     if( ABS( pole_tmp(jpole) - eigenvalue(itrans) ) < TOL_DEG_POLE ) then
-       ! be careful I interexchange the indexes for eigevec_ind
-       eigvec_ind    (jpole,:) = eigvec_ind    (jpole,:) + eigenvector    (:,itrans)
-       eigvec_inv_ind(jpole,:) = eigvec_inv_ind(jpole,:) + eigenvector_inv(itrans,:)
-       new_pole = .FALSE.
-       exit
-     endif
-   enddo
-   if(new_pole) then
-     ipole = ipole + 1
-     pole_tmp     (ipole)    = eigenvalue     (itrans)
-     ! be careful I interexchange the indexes for eigevec_ind
-     eigvec_ind    (ipole,:) = eigenvector    (:,itrans)
-     eigvec_inv_ind(ipole,:) = eigenvector_inv(itrans,:)
-   endif
- enddo
-
- deallocate(eigenvector,eigenvector_inv,eigenvalue)
-
- call allocate_spectral_function(npole,prod_basis%nbf,wpol)
- wpol%pole(:) = pole_tmp(1:npole)
- deallocate(pole_tmp)
-
-
- wpol%residu_left (:,:) = 0.0_dp
- wpol%residu_right(:,:) = 0.0_dp
- t_kl=0
- do klspin=1,nspin
-   do kstate=1,nbf 
-
-     if( .NOT. is_auxil_basis ) call transform_eri_basis(nspin,c_matrix,kstate,klspin,eri_eigenstate_k)
-
-     do lstate=1,nbf
-       if( skip_transition(nspin,lstate,kstate,occupation(lstate,klspin),occupation(kstate,klspin)) ) cycle
-       t_kl=t_kl+1
-
-       docc_kl = occupation(kstate,klspin)-occupation(lstate,klspin)
-
-       do ijspin=1,nspin
-         do ijstate=1,prod_basis%nbf
-           istate = prod_basis%index_ij(1,ijstate)
-           jstate = prod_basis%index_ij(2,ijstate)
-
-           ijstate_spin = ijstate+prod_basis%nbf*(ijspin-1)
-
-           if(is_auxil_basis) then
-             eri_eigen_klij = eri_eigen_ri(kstate,lstate,klspin,istate,jstate,ijspin)
-           else
-             eri_eigen_klij = eri_eigenstate_k(lstate,istate,jstate,ijspin)
-           endif
-
-           wpol%residu_left (:,ijstate_spin)  = wpol%residu_left (:,ijstate_spin) &
-                        + eri_eigen_klij *  eigvec_ind(:,t_kl)
-           wpol%residu_right(:,ijstate_spin)  = wpol%residu_right(:,ijstate_spin) &
-                        + eri_eigen_klij * eigvec_inv_ind(:,t_kl) * docc_kl
-
-         enddo
-       enddo
-
-     enddo
-   enddo
- enddo
-
- deallocate(eigvec_ind,eigvec_inv_ind)
- if(allocated(eri_eigenstate_k)) deallocate(eri_eigenstate_k)
-
- call stop_clock(timing_buildw)
-
-end subroutine chi_to_vchiv_red
 
 
 !=========================================================================
