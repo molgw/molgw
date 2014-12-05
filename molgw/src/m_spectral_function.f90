@@ -230,8 +230,7 @@ subroutine read_spectral_function(sf,reading_status)
    read(spectralfile) npole_read
    read(spectralfile) nprodbasis_read
 
-   sf%npole      = npole_read
-   sf%nprodbasis = nprodbasis_read
+   call allocate_spectral_function(npole_read,nprodbasis_read,sf)
 
 !   if( npole_read /= sf%npole .OR. nprodbasis_read /= sf%nprodbasis ) then
 !     WRITE_MASTER(*,'(a,/)')     ' File does not have the correct size'
