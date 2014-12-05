@@ -203,7 +203,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  ! Prepare the BSE calculation
  if( calc_type%is_bse ) then
 
-   allocate(bra(ntrans),ket(ntrans))
+   allocate(bra(wpol%npole),ket(wpol%npole))
    call read_energy_qp(nspin,basis%nbf,energy_qp,reading_status)
    select case(reading_status)
    case(-1)
@@ -323,6 +323,8 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
    enddo !istate
  enddo ! ijspin
 
+ call destroy_spectral_function(wpol)
+
  if( .NOT. is_auxil_basis) deallocate(eri_eigenstate_i)
  if(is_tddft)    deallocate(fxc,wf_r)
  if(calc_type%is_bse) deallocate(bra,ket)
@@ -351,16 +353,6 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  call start_clock(timing_inversion_s2p)
  call invert(ntrans,eigenvector,eigenvector_inv)
  call stop_clock(timing_inversion_s2p)
-
-
- !
- ! Calculate Wp= v * chi * v 
- ! and then write it down on file
- !
- if( print_specfunc ) then
-  call chi_to_vchiv_red(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
-  call write_spectral_function(wpol)
- endif
 
  !
  ! Calculate the spectrum now
@@ -514,6 +506,17 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
 
  deallocate(residu_left,residu_right)
  deallocate(dipole_state)
+
+
+ !
+ ! Calculate Wp= v * chi * v 
+ ! and then write it down on file
+ !
+ if( print_specfunc ) then
+  call chi_to_vchiv_red(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+  call write_spectral_function(wpol)
+ endif
+
 
  call stop_clock(timing_pola)
 
