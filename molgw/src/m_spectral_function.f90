@@ -117,7 +117,8 @@ subroutine allocate_spectral_function(npole,nprodbasis,sf)
  allocate(sf%residu_left (sf%npole,sf%nprodbasis))
  allocate(sf%residu_right(sf%npole,sf%nprodbasis))
 
- WRITE_MASTER(*,'(a,f14.3,/)') ' Memory [Gb] ',REAL(sf%npole*sf%nprodbasis,dp)*2/1024.0_dp**3*dp
+ call memory_statement(REAL(2*sf%npole,dp)*REAL(sf%nprodbasis,dp))
+ WRITE_MASTER(*,*)
 
 
 end subroutine allocate_spectral_function

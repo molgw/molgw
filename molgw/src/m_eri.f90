@@ -93,11 +93,8 @@ subroutine allocate_eri(basis,rcut,which_buffer)
  WRITE_MASTER(*,*) 'Max index size',HUGE(nsize)
  if(nsize<1) stop'too many integrals to be stored'
 
- if(REAL(nsize,dp)*prec_eri > 1024**3 ) then
-   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**3,' [Gb] / proc'
- else
-   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating the ERI array: ',REAL(nsize,dp)*prec_eri/1024**2,' [Mb] / proc'
- endif
+ WRITE_MASTER(*,*) 'Allocate 4-center integrals'
+ call memory_statement(REAL(nsize,dp)*REAL(prec_eri/dp,dp))
 
  select case(which_buffer)
  case(BUFFER1)
@@ -153,14 +150,10 @@ subroutine allocate_eri_auxil(auxil_basis)
  !
  ! 2-CENTER INTEGRALS 
  !
- if(REAL(nsize_auxil,dp)*prec_eri > 1024**3 ) then
-   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating 2-center ERI array: ',REAL(nsize_auxil,dp)*prec_eri/1024**3,' [Gb] / proc'
- else
-   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating 2-center ERI array: ',REAL(nsize_auxil,dp)*prec_eri/1024**2,' [Mb] / proc'
- endif
+ WRITE_MASTER(*,*) 'Allocate 2-center integrals'
+ call memory_statement(REAL(nsize_auxil,dp)*REAL(prec_eri/dp,dp))
 
  allocate(eri_2center_m1(nsize1_auxil,nsize1_auxil),stat=info)
- eri_2center_m1(:,:) = 0.0_dp
 
  if(info==0) then
    WRITE_MASTER(*,*) 'success'
@@ -173,11 +166,8 @@ subroutine allocate_eri_auxil(auxil_basis)
  !
  ! 3-CENTER INTEGRALS 
  !
- if(REAL(nsize1_auxil*nsize1,dp)*prec_eri > 1024**3 ) then
-   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating 3-center ERI array: ',REAL(nsize1_auxil*nsize1,dp)*prec_eri/1024**3,' [Gb] / proc'
- else
-   WRITE_MASTER(*,'(a,f10.3,a)') ' Allocating 3-center ERI array: ',REAL(nsize1_auxil*nsize1,dp)*prec_eri/1024**2,' [Mb] / proc'
- endif
+ WRITE_MASTER(*,*) 'Allocate 3-center integrals'
+ call memory_statement(REAL(nsize1_auxil,dp)*REAL(nsize1)*REAL(prec_eri/dp,dp))
 
  allocate(eri_3center(nsize1_auxil,nsize1),stat=info)
  eri_3center(:,:) = 0.0_dp
