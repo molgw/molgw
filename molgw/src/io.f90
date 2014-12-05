@@ -533,5 +533,27 @@ subroutine read_energy_qp(nspin,nbf,energy_qp,reading_status)
 
 end subroutine read_energy_qp
 
+!=========================================================================
+subroutine memory_statement(rn)
+ use m_definitions
+ use m_mpi
+ implicit none
+
+ real(dp),intent(in) :: rn
+!=====
+ real(dp)            :: mem_mb
+!=====
+ 
+
+ mem_mb = dp * rn / 1024._dp**2
+
+ if( mem_mb < 100._dp ) then
+   WRITE_MASTER(*,'(a,f9.3)') ' Memory [Mb]: ',mem_mb
+ else
+   WRITE_MASTER(*,'(a,f9.3)') ' Memory [Gb]: ',mem_mb / 1024._dp
+ endif
+
+end subroutine memory_statement
+
 
 !=========================================================================
