@@ -15,10 +15,11 @@ module m_spectral_function
  ! i, j running on the basis set
  ! sf_ij(z) = \sum_n L_n(i) R_n(j) / ( z - w_n )
  !
+
  real(dp),parameter     :: TOL_DEG_POLE=1.0e-5_dp
+
  type spectral_function 
    integer              :: npole
-   integer              :: npole_ind
    integer              :: nprodbasis
    real(dp),allocatable :: pole(:)
    real(dp),allocatable :: residu_left(:,:)       ! first index runs on n, second index on i
@@ -229,12 +230,15 @@ subroutine read_spectral_function(sf,reading_status)
    read(spectralfile) npole_read
    read(spectralfile) nprodbasis_read
 
-   if( npole_read /= sf%npole .OR. nprodbasis_read /= sf%nprodbasis ) then
-     WRITE_MASTER(*,'(a,/)')     ' File does not have the correct size'
-     WRITE_MASTER(*,'(i5,a,i5)') npole_read,' vs ',sf%npole
-     WRITE_MASTER(*,'(i5,a,i5)') nprodbasis_read,' vs ',sf%nprodbasis
-     reading_status=2
-   else
+   sf%npole      = npole_read
+   sf%nprodbasis = nprodbasis_read
+
+!   if( npole_read /= sf%npole .OR. nprodbasis_read /= sf%nprodbasis ) then
+!     WRITE_MASTER(*,'(a,/)')     ' File does not have the correct size'
+!     WRITE_MASTER(*,'(i5,a,i5)') npole_read,' vs ',sf%npole
+!     WRITE_MASTER(*,'(i5,a,i5)') nprodbasis_read,' vs ',sf%nprodbasis
+!     reading_status=2
+!   else
 
      read(spectralfile) sf%pole(:)
      do iprodbasis=1,sf%nprodbasis
@@ -248,7 +252,7 @@ subroutine read_spectral_function(sf,reading_status)
      msg='reading spectral function from spectral_file'
      call issue_warning(msg)
 
-   endif
+!   endif
    close(spectralfile)
 
  endif
