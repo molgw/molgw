@@ -16,8 +16,6 @@ module m_spectral_function
  ! sf_ij(z) = \sum_n L_n(i) R_n(j) / ( z - w_n )
  !
 
- real(dp),parameter     :: TOL_DEG_POLE=1.0e-5_dp
-
  type spectral_function 
    integer              :: npole
    integer              :: nprodbasis

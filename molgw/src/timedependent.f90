@@ -513,7 +513,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  ! and then write it down on file
  !
  if( print_specfunc ) then
-  call chi_to_vchiv_red(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+  call chi_to_vchiv(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
   call write_spectral_function(wpol)
  endif
 
