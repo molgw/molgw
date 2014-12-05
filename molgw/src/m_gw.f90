@@ -198,10 +198,12 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
 
  !
  ! Finally calculate v * \chi * v and store it in object wpol
- !
-
- call chi_to_vchiv(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
- deallocate(eigenvector,eigenvector_inv,eigenvalue)
+ ! Deallocation is made inside chi_to_vchiv
+ if(is_auxil_basis) then
+   call chi_to_vchiv_auxil(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+ else
+   call chi_to_vchiv(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+ endif
 
  if(is_auxil_basis) call destroy_eri_3center_eigen()
 
@@ -245,13 +247,13 @@ subroutine chi_to_vchiv(ntrans,nbf,prod_basis,occupation,c_matrix,eigenvector,ei
  use m_spectral_function
  implicit none
  
- integer,intent(in)         :: nbf,ntrans
- type(basis_set),intent(in) :: prod_basis
- real(dp),intent(in)        :: occupation(nbf,nspin)
- real(dp),intent(in)        :: c_matrix(nbf,nbf,nspin)
- real(dp),intent(in)        :: eigenvector    (ntrans,ntrans)
- real(dp),intent(in)        :: eigenvector_inv(ntrans,ntrans)
- real(dp),intent(in)        :: eigenvalue     (ntrans)
+ integer,intent(in)                    :: nbf,ntrans
+ type(basis_set),intent(in)            :: prod_basis
+ real(dp),intent(in)                   :: occupation(nbf,nspin)
+ real(dp),intent(in)                   :: c_matrix(nbf,nbf,nspin)
+ real(dp),allocatable,intent(inout)    :: eigenvector    (:,:)
+ real(dp),allocatable,intent(inout)    :: eigenvector_inv(:,:)
+ real(dp),allocatable,intent(inout)    :: eigenvalue     (:)
  type(spectral_function),intent(inout) :: wpol
 !=====
  integer                    :: t_kl,klspin,ijspin
@@ -312,11 +314,127 @@ subroutine chi_to_vchiv(ntrans,nbf,prod_basis,occupation,c_matrix,eigenvector,ei
    enddo
  enddo
 
+ deallocate(eigenvector)
+ deallocate(eigenvector_inv)
+ deallocate(eigenvalue)
  if(allocated(eri_eigenstate_k)) deallocate(eri_eigenstate_k)
 
  call stop_clock(timing_buildw)
 
 end subroutine chi_to_vchiv
+
+
+!=========================================================================
+subroutine chi_to_vchiv_auxil(ntrans,nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+ use m_definitions
+ use m_warning
+ use m_inputparam,only: nspin,is_auxil_basis
+ use m_basis_set
+ use m_eri
+ use m_spectral_function
+ implicit none
+ 
+ integer,intent(in)         :: nbf,ntrans
+ type(basis_set),intent(in) :: prod_basis
+ real(dp),intent(in)        :: occupation(nbf,nspin)
+ real(dp),intent(in)        :: c_matrix(nbf,nbf,nspin)
+ real(dp),allocatable,intent(inout)    :: eigenvector    (:,:)
+ real(dp),allocatable,intent(inout)    :: eigenvector_inv(:,:)
+ real(dp),allocatable,intent(inout)    :: eigenvalue     (:)
+ type(spectral_function),intent(inout) :: wpol
+!=====
+ integer                    :: t_ij,t_kl,klspin,ijspin
+ integer                    :: istate,jstate,kstate,lstate,ijstate,ijstate_spin
+ real(dp)                   :: docc_kl
+ real(dp),allocatable       :: res_left(:,:),res_right(:,:)
+!=====
+
+ call start_clock(timing_buildw)
+
+ allocate(res_left(nbf_eri_auxil,ntrans))
+ allocate(res_right(nbf_eri_auxil,ntrans))
+
+ res_left (:,:) = 0.0_dp
+ res_right(:,:) = 0.0_dp
+ t_kl=0
+ do klspin=1,nspin
+   do kstate=1,nbf 
+
+     do lstate=1,nbf
+       if( skip_transition(nspin,lstate,kstate,occupation(lstate,klspin),occupation(kstate,klspin)) ) cycle
+       t_kl=t_kl+1
+
+       docc_kl = occupation(kstate,klspin)-occupation(lstate,klspin)
+
+       t_ij=0
+       do ijspin=1,nspin
+         do istate=1,nbf
+      
+           do jstate=1,nbf
+             if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin))) cycle
+             t_ij=t_ij+1
+
+
+             res_left (:,t_ij) = res_left (:,t_ij) + eri_3center_eigen(:,kstate,lstate,klspin) * eigenvector(t_kl,t_ij)
+             res_right(:,t_ij) = res_right(:,t_ij) + eri_3center_eigen(:,kstate,lstate,klspin) * eigenvector_inv(t_ij,t_kl) *docc_kl
+
+
+!           eri_eigen_klij = eri_eigen_ri(kstate,lstate,klspin,istate,jstate,ijspin)
+!           wpol%residu_left (:,ijstate_spin)  = wpol%residu_left (:,ijstate_spin) &
+!                        + eri_eigen_klij *  eigenvector(t_kl,:)
+!           wpol%residu_right(:,ijstate_spin)  = wpol%residu_right(:,ijstate_spin) &
+!                        + eri_eigen_klij * eigenvector_inv(:,t_kl) * docc_kl
+
+         enddo
+         enddo
+       enddo
+
+     enddo
+   enddo
+ enddo
+
+ deallocate(eigenvector)
+ deallocate(eigenvector_inv)
+
+ call allocate_spectral_function(ntrans,prod_basis%nbf,wpol)
+
+ wpol%pole(:) = eigenvalue(:)
+ deallocate(eigenvalue)
+
+ wpol%residu_left (:,:) = 0.0_dp
+ wpol%residu_right(:,:) = 0.0_dp
+
+ do ijspin=1,nspin
+   do ijstate=1,prod_basis%nbf
+     istate = prod_basis%index_ij(1,ijstate)
+     jstate = prod_basis%index_ij(2,ijstate)
+     ijstate_spin = ijstate+prod_basis%nbf*(ijspin-1)
+
+     t_kl=0
+     do klspin=1,nspin
+       do kstate=1,nbf
+    
+         do lstate=1,nbf
+           if( skip_transition(nspin,lstate,kstate,occupation(lstate,klspin),occupation(kstate,klspin))) cycle
+           t_kl=t_kl+1
+
+           wpol%residu_left (t_kl,ijstate_spin) = DOT_PRODUCT( res_left (:,t_kl) , eri_3center_eigen(:,istate,jstate,ijspin) )
+           wpol%residu_right(t_kl,ijstate_spin) = DOT_PRODUCT( res_right(:,t_kl) , eri_3center_eigen(:,istate,jstate,ijspin) )
+
+         enddo
+       enddo
+
+     enddo
+
+   enddo
+ enddo
+
+ deallocate(res_left)
+ deallocate(res_right)
+
+ call stop_clock(timing_buildw)
+
+end subroutine chi_to_vchiv_auxil
 
 
 !=========================================================================

@@ -36,6 +36,8 @@ void prep_libint2_lr(LibintEval* erieval, unsigned int am1, double alpha1,
 
 
 extern "C"{
+ int libint_init();
+ int libint_init_();
  int calculate_integral(double *,                                // omega_range
                         int*, int*, int*,int*,                   // am's
                         double*, double*, double*, double*,      // alpha's
@@ -52,6 +54,15 @@ extern "C"{
                          double*, double*, double*,               // x3
                          double*, double*, double*,               // x4
                          double*);
+}
+
+int libint_init_() {
+  return libint_init();
+}
+int libint_init() {
+  // this initializes internal Libint data structures -- must happen once in the program
+  LIBINT2_PREFIXED_NAME(libint2_static_init)();
+  return 0;
 }
 
 int calculate_integral_(double* omega_range,
@@ -83,7 +94,7 @@ int calculate_integral(double* omega_range,
   typedef unsigned int uint;
 
   // this initializes internal Libint data structures -- must happen once in the program
-  LIBINT2_PREFIXED_NAME(libint2_static_init)();
+//  LIBINT2_PREFIXED_NAME(libint2_static_init)(); Eliminated here, save 10% CPU
 
   // This example assumes that your library does not support for vectorization
   const uint veclen = 1;
@@ -156,6 +167,7 @@ int calculate_integral(double* omega_range,
   // this compute the shell set (quartet) of integrals
   LIBINT2_PREFIXED_NAME
       ( libint2_build_eri)[am0][am1][am2][am3](&inteval);
+
 
   bool success = true;
   int ijkl = 0;

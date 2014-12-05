@@ -18,7 +18,8 @@ module m_eri
  real(prec_eri),private,allocatable :: eri_buffer_lr(:)
  real(prec_eri),private,allocatable :: eri_2center_m1(:,:)
  real(prec_eri),private,allocatable :: eri_3center(:,:)
- real(prec_eri),private,allocatable :: eri_3center_eigen(:,:,:,:)
+!FBFB
+ real(prec_eri),protected,allocatable :: eri_3center_eigen(:,:,:,:)
 
  logical,protected,allocatable      :: negligible_basispair(:,:)
  logical,private,allocatable        :: negligible_shellpair(:,:)
@@ -44,7 +45,8 @@ module m_eri
  integer,private              :: nsize                  ! size of the eri_buffer array
  integer,private              :: nsize1                 ! number of independent pairs (i,j) with i<=j
 
- integer,private              :: nbf_eri_auxil          ! local copy of nbf for auxiliary basis
+!FBFB
+ integer,protected            :: nbf_eri_auxil          ! local copy of nbf for auxiliary basis
  integer,private              :: nsize_auxil            ! size of the eri_buffer array
  integer,private              :: nsize1_auxil           ! number of independent pairs (i,j) with i<=j
 
@@ -478,7 +480,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
 !=====
 ! variables used to call C++ 
- integer(C_INT),external      :: calculate_integral
+ integer(C_INT),external      :: libint_init,calculate_integral
  integer(C_INT)               :: am1,am2,am3,am4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
@@ -487,6 +489,9 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
 !=====
 
  WRITE_MASTER(*,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
+ if(libint_init()==0) then
+   WRITE_MASTER(*,*) 'Libint library initialized'
+ endif
 
  if( rcut > 1.0e-6_dp ) then
    omega_range = 1.0_dp / rcut
@@ -738,7 +743,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
  real(dp),allocatable         :: eigval(:)
 !=====
 ! variables used to call C++ 
- integer(C_INT),external      :: calculate_integral
+ integer(C_INT),external      :: libint_init,calculate_integral
  integer(C_INT)               :: am1,am2,am3,am4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
@@ -749,6 +754,9 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
  call start_clock(timing_eri_2center)
 
  WRITE_MASTER(*,'(/,a)') ' Calculate, invert and store the 2-center Electron Repulsion Integrals'
+ if(libint_init()==0) then
+   WRITE_MASTER(*,*) 'Libint library initialized'
+ endif
 
  omega_range = 2.0e6_dp
 
@@ -1007,7 +1015,7 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
  real(dp),allocatable         :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
 !=====
 ! variables used to call C++ 
- integer(C_INT),external      :: calculate_integral
+ integer(C_INT),external      :: libint_init,calculate_integral
  integer(C_INT)               :: am1,am2,am3,am4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
@@ -1018,6 +1026,9 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
  call start_clock(timing_eri_3center)
 
  WRITE_MASTER(*,'(/,a)') ' Calculate and store all the 3-center Electron Repulsion Integrals'
+ if(libint_init()==0) then
+   WRITE_MASTER(*,*) 'Libint library initialized'
+ endif
 
  omega_range = 2.0e6_dp
 
@@ -1419,13 +1430,18 @@ subroutine identify_negligible_shellpair(basis,rcut)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
 !====
 ! variables used to call C++ 
- integer(C_INT),external      :: calculate_integral
+ integer(C_INT),external      :: libint_init,calculate_integral
  integer(C_INT)               :: am1,am2
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:)
  real(C_DOUBLE)               :: x01(3),x02(3)
  real(C_DOUBLE)               :: omega_range
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
+
+ WRITE_MASTER(*,'(/,a)') ' Cauchy-Schwartz screening of the 4-center integrals'
+ if(libint_init()==0) then
+   WRITE_MASTER(*,*) 'Libint library initialized'
+ endif
 
  if( rcut > 1.0e-6_dp ) then
    omega_range = 1.0_dp / rcut
@@ -1941,8 +1957,9 @@ subroutine prepare_eri_3center_eigen(c_matrix)
  allocate(eri_3center_eigen(nsize1_auxil,nbf_eri,nbf_eri,nspin))
 
  allocate(eri_3center_tmp(nsize1_auxil,nbf_eri,nbf_eri)) 
+ eri_3center_eigen(:,:,:,:) = 0.0_dp
  do klspin=1,nspin
-   eri_3center_tmp(:,:,:)=0.0_dp
+   eri_3center_tmp(:,:,:) = 0.0_dp
    do kbf=1,nbf_eri
      do lbf=1,nbf_eri
        if( negligible_basispair(kbf,lbf) ) cycle
