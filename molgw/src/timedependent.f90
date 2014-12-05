@@ -33,18 +33,17 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  integer :: pbf,qbf,ibf,jbf,kbf,lbf,ijbf,klbf,ijbf_current,ijspin,klspin,ispin
  integer :: istate,jstate,kstate,lstate
  integer :: ipole
+ integer :: ntrans
  integer :: t_ij,t_kl
  integer :: idft_xc,igrid
  integer :: reading_status
 
  real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
- real(dp),allocatable :: eri_eigenstate_k(:,:,:,:)
  real(dp)             :: eri_eigen_ijkl,eri_eigen_ikjl
  real(dp)             :: alpha_local
  real(dp)             :: scissor_energy(nspin)
- real(dp)             :: h_2p(wpol%npole,wpol%npole)
- real(dp)             :: eigenvalue(wpol%npole),eigenvector(wpol%npole,wpol%npole),eigenvector_inv(wpol%npole,wpol%npole)
- real(dp)             :: matrix(wpol%npole,wpol%npole)
+ real(dp),allocatable :: h_2p(:,:)
+ real(dp),allocatable :: eigenvalue(:),eigenvector(:,:),eigenvector_inv(:,:)
  real(dp)             :: p_matrix(basis%nbf,basis%nbf,nspin)
  real(dp)             :: oscillator_strength,trk_sumrule
  real(dp)             :: energy_qp(basis%nbf,nspin)
@@ -97,6 +96,13 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  is_tddft = calc_type%is_td .AND. calc_type%is_dft
 
  WRITE_MASTER(*,'(/,a)') ' calculating the polarizability for neutral excitation energies'
+
+ ! Obtain the number of transition = the size of the matrix
+ call init_spectral_function(basis%nbf,occupation,ntrans)
+
+ allocate(h_2p(ntrans,ntrans))
+ allocate(eigenvector(ntrans,ntrans))
+ allocate(eigenvalue(ntrans))
 
  if(TDA) then
    msg='Tamm-Dancoff approximation is switched on'
@@ -197,7 +203,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  ! Prepare the BSE calculation
  if( calc_type%is_bse ) then
 
-   allocate(bra(wpol%npole),ket(wpol%npole))
+   allocate(bra(ntrans),ket(ntrans))
    call read_energy_qp(nspin,basis%nbf,energy_qp,reading_status)
    select case(reading_status)
    case(-1)
@@ -325,23 +331,25 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
 
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
- WRITE_MASTER(*,*) 'matrix',wpol%npole,'x',wpol%npole
+ WRITE_MASTER(*,*) 'matrix',ntrans,'x',ntrans
 
  call start_clock(timing_diago_h2p)
- call diagonalize_general(wpol%npole,h_2p,eigenvalue,eigenvector)
+ call diagonalize_general(ntrans,h_2p,eigenvalue,eigenvector)
  call stop_clock(timing_diago_h2p)
  WRITE_MASTER(*,*) 'diago finished'
  WRITE_MASTER(*,*)
+ deallocate(h_2p)
+ allocate(eigenvector_inv(ntrans,ntrans))
 
 ! WRITE_MASTER(*,*) 'Neutral excitation energies [eV]'
-! do t_ij=1,wpol%npole
+! do t_ij=1,ntrans
 !   WRITE_MASTER(*,'(1(i4,2x),20(2x,f12.6))') t_ij,eigenvalue(t_ij)*Ha_eV
 ! enddo
 
  WRITE_MASTER(*,'(/,a,f14.8)') ' Lowest neutral excitation energy [eV]',MINVAL(ABS(eigenvalue(:)))*Ha_eV
    
  call start_clock(timing_inversion_s2p)
- call invert(wpol%npole,eigenvector,eigenvector_inv)
+ call invert(ntrans,eigenvector,eigenvector_inv)
  call stop_clock(timing_inversion_s2p)
 
 
@@ -350,7 +358,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  ! and then write it down on file
  !
  if( print_specfunc ) then
-  call chi_to_vchiv(basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+  call chi_to_vchiv_red(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
   call write_spectral_function(wpol)
  endif
 
@@ -432,8 +440,8 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  ! add the broadening
  omega(:) = omega(:) + im * 0.10/Ha_eV
 
- allocate(residu_left (3,wpol%npole))
- allocate(residu_right(3,wpol%npole))
+ allocate(residu_left (3,ntrans))
+ allocate(residu_right(3,ntrans))
  residu_left (:,:) = 0.0_dp
  residu_right(:,:) = 0.0_dp
  t_ij=0
@@ -444,7 +452,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
        if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin))) cycle
        t_ij=t_ij+1
 
-       do t_kl=1,wpol%npole
+       do t_kl=1,ntrans
          residu_left (:,t_kl)  = residu_left (:,t_kl) &
                       + dipole_state(:,istate,jstate,ijspin) * eigenvector(t_ij,t_kl)
          residu_right(:,t_kl)  = residu_right(:,t_kl) &
@@ -482,7 +490,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
 
  WRITE_MASTER(*,'(/,a)') ' Neutral excitation energies [eV] and strengths'
  trk_sumrule=0.0_dp
- do t_ij=1,wpol%npole
+ do t_ij=1,ntrans
    if(eigenvalue(t_ij) > 0.0_dp) then
      oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_ij),residu_right(:,t_ij)) * eigenvalue(t_ij)
      trk_sumrule = trk_sumrule + oscillator_strength
