@@ -15,8 +15,6 @@ module m_mpi
  public  :: parallel_grid,parallel_integral
  public  :: init_fast_distribution,destroy_fast_distribution
  public  :: is_my_fast_task
- !FIXME remove this line
- public  :: rank,nproc
  !
  ! SCALAPACK declarations
  public  :: init_scalapack,init_desc,finish_scalapack,diagonalize_sca
@@ -34,9 +32,9 @@ module m_mpi
 #endif
 
 
- integer :: nproc  = 1
- integer :: rank   = 0
- integer :: ioproc = 0
+ integer,protected :: nproc  = 1
+ integer,protected :: rank   = 0
+ integer,protected :: ioproc = 0
 
  integer :: mpi_comm
 
@@ -66,11 +64,11 @@ module m_mpi
  !
  ! SCALAPACK variables
  !
- integer :: nproc_sca = 1
- integer :: iproc_sca = 0
+ integer,protected :: nproc_sca = 1
+ integer,protected :: iproc_sca = 0
  ! SCALAPACK grid
- integer :: nprow,npcol
- integer :: iprow,ipcol
+ integer,protected :: nprow,npcol
+ integer,protected :: iprow,ipcol
 #ifdef HAVE_SCALAPACK
  integer,parameter :: ndel=9
  integer :: context_sca
