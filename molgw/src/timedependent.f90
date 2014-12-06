@@ -4,7 +4,7 @@
 
 
 !=========================================================================
-subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
+subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,wpol)
  use m_definitions
  use m_mpi
  use m_calculation_type
@@ -25,7 +25,7 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  use iso_c_binding,only: C_INT
  implicit none
 
- type(basis_set)                       :: basis,prod_basis
+ type(basis_set)                       :: basis,prod_basis,auxil_basis
  real(dp),intent(in)                   :: occupation(basis%nbf,nspin)
  real(dp),intent(in)                   :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
  type(spectral_function),intent(inout) :: wpol
@@ -513,10 +513,17 @@ subroutine polarizability_td(basis,prod_basis,occupation,energy,c_matrix,wpol)
  ! and then write it down on file
  !
  if( print_specfunc ) then
-  call chi_to_vchiv(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+  if( is_auxil_basis) then
+    call chi_to_vchiv_auxil(ntrans,basis%nbf,auxil_basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+  else
+    call chi_to_vchiv(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+  endif
   call write_spectral_function(wpol)
  endif
 
+ if(allocated(eigenvector))     deallocate(eigenvector)
+ if(allocated(eigenvector_inv)) deallocate(eigenvector_inv)
+ if(allocated(eigenvalue))      deallocate(eigenvalue)
 
  call stop_clock(timing_pola)
 

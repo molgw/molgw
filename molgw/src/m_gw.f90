@@ -200,7 +200,7 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  ! Finally calculate v * \chi * v and store it in object wpol
  ! Deallocation is made inside chi_to_vchiv
  if(is_auxil_basis) then
-   call chi_to_vchiv_auxil(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+   call chi_to_vchiv_auxil(ntrans,basis%nbf,auxil_basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
  else
    call chi_to_vchiv(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
  endif
@@ -325,7 +325,7 @@ end subroutine chi_to_vchiv
 
 
 !=========================================================================
-subroutine chi_to_vchiv_auxil(ntrans,nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+subroutine chi_to_vchiv_auxil(ntrans,nbf,nbf_auxil,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
  use m_definitions
  use m_warning
  use m_inputparam,only: nspin,is_auxil_basis
@@ -334,7 +334,7 @@ subroutine chi_to_vchiv_auxil(ntrans,nbf,prod_basis,occupation,c_matrix,eigenvec
  use m_spectral_function
  implicit none
  
- integer,intent(in)         :: nbf,ntrans
+ integer,intent(in)         :: nbf,nbf_auxil,ntrans
  type(basis_set),intent(in) :: prod_basis
  real(dp),intent(in)        :: occupation(nbf,nspin)
  real(dp),intent(in)        :: c_matrix(nbf,nbf,nspin)
@@ -351,8 +351,8 @@ subroutine chi_to_vchiv_auxil(ntrans,nbf,prod_basis,occupation,c_matrix,eigenvec
 
  call start_clock(timing_buildw)
 
- allocate(res_left(nbf_eri_auxil,ntrans))
- allocate(res_right(nbf_eri_auxil,ntrans))
+ allocate(res_left(nbf_auxil,ntrans))
+ allocate(res_right(nbf_auxil,ntrans))
 
  res_left (:,:) = 0.0_dp
  res_right(:,:) = 0.0_dp
@@ -379,13 +379,7 @@ subroutine chi_to_vchiv_auxil(ntrans,nbf,prod_basis,occupation,c_matrix,eigenvec
              res_right(:,t_ij) = res_right(:,t_ij) + eri_3center_eigen(:,kstate,lstate,klspin) * eigenvector_inv(t_ij,t_kl) *docc_kl
 
 
-!           eri_eigen_klij = eri_eigen_ri(kstate,lstate,klspin,istate,jstate,ijspin)
-!           wpol%residu_left (:,ijstate_spin)  = wpol%residu_left (:,ijstate_spin) &
-!                        + eri_eigen_klij *  eigenvector(t_kl,:)
-!           wpol%residu_right(:,ijstate_spin)  = wpol%residu_right(:,ijstate_spin) &
-!                        + eri_eigen_klij * eigenvector_inv(:,t_kl) * docc_kl
-
-         enddo
+           enddo
          enddo
        enddo
 

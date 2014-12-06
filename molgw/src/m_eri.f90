@@ -18,7 +18,7 @@ module m_eri
  real(prec_eri),private,allocatable :: eri_buffer_lr(:)
  real(prec_eri),private,allocatable :: eri_2center_m1(:,:)
  real(prec_eri),private,allocatable :: eri_3center(:,:)
-!FBFB
+ ! eri_3center_eigen is only "protected" since you may need it outside for computational tricks
  real(prec_eri),protected,allocatable :: eri_3center_eigen(:,:,:,:)
 
  logical,protected,allocatable      :: negligible_basispair(:,:)
@@ -45,8 +45,7 @@ module m_eri
  integer,private              :: nsize                  ! size of the eri_buffer array
  integer,private              :: nsize1                 ! number of independent pairs (i,j) with i<=j
 
-!FBFB
- integer,protected            :: nbf_eri_auxil          ! local copy of nbf for auxiliary basis
+ integer,private              :: nbf_eri_auxil          ! local copy of nbf for auxiliary basis
  integer,private              :: nsize_auxil            ! size of the eri_buffer array
  integer,private              :: nsize1_auxil           ! number of independent pairs (i,j) with i<=j
 
