@@ -212,7 +212,7 @@ subroutine prepare_basis_functions_r(basis)
 
  ngrid_stored = MIN(ngrid,ngrid_max_stored)
  WRITE_MASTER(*,*) 'Precalculate the functions on N grid points',ngrid_stored
- WRITE_MASTER(*,'(a,2x,f14.2)') ' corresponding to [Mb]:',REAL(basis%nbf,dp)*REAL(ngrid_stored,dp)*REAL(dp,dp)/REAL(1024,dp)**2
+ call memory_statement(REAL(basis%nbf,dp)*REAL(ngrid_stored,dp))
 
  allocate(bfr(basis%nbf,ngrid_stored))
 
@@ -244,7 +244,7 @@ subroutine prepare_basis_functions_gradr(basis)
 !=====
 
  WRITE_MASTER(*,*) 'Precalculate the gradients on N grid points',ngrid_stored
- WRITE_MASTER(*,'(a,2x,f14.2)') ' corresponding to [Mb]:',REAL(15,dp)*REAL(basis%nbf,dp)*REAL(ngrid_stored,dp)*REAL(dp,dp)/REAL(1024,dp)**2
+ call memory_statement(15.0_dp*REAL(basis%nbf,dp)*REAL(ngrid_stored,dp))
 
  allocate(bfr_x (basis%nbf,ngrid_stored))
  allocate(bfr_y (basis%nbf,ngrid_stored))
@@ -285,7 +285,7 @@ subroutine prepare_basis_functions_laplr(basis)
 !=====
 
  WRITE_MASTER(*,*) 'Precalculate the laplacians on N grid points',ngrid_stored
- WRITE_MASTER(*,'(a,2x,f14.2)') ' corresponding to [Mb]:',REAL(6,dp)*REAL(basis%nbf,dp)*REAL(ngrid_stored,dp)*REAL(dp,dp)/REAL(1024,dp)**2
+ call memory_statement(6.0_dp*REAL(basis%nbf,dp)*REAL(ngrid_stored,dp))
 
  allocate(bfgr(3,basis%nbf,ngrid_stored))
  allocate(bflr(3,basis%nbf,ngrid_stored))
