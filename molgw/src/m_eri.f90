@@ -488,9 +488,8 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
 !=====
 
  WRITE_MASTER(*,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
- if(libint_init()==0) then
-   WRITE_MASTER(*,*) 'Libint library initialized'
- endif
+ WRITE_MASTER(*,'(a)')      ' Libint library initialized'
+ WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
  if( rcut > 1.0e-6_dp ) then
    omega_range = 1.0_dp / rcut
@@ -752,10 +751,9 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
 
  call start_clock(timing_eri_2center)
 
- WRITE_MASTER(*,'(/,a)') ' Calculate, invert and store the 2-center Electron Repulsion Integrals'
- if(libint_init()==0) then
-   WRITE_MASTER(*,*) 'Libint library initialized'
- endif
+ WRITE_MASTER(*,'(/,a)')    ' Calculate, invert and store the 2-center Electron Repulsion Integrals'
+ WRITE_MASTER(*,'(a)')      ' Libint library initialized'
+ WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
  omega_range = 2.0e6_dp
 
@@ -1025,9 +1023,8 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
  call start_clock(timing_eri_3center)
 
  WRITE_MASTER(*,'(/,a)') ' Calculate and store all the 3-center Electron Repulsion Integrals'
- if(libint_init()==0) then
-   WRITE_MASTER(*,*) 'Libint library initialized'
- endif
+ WRITE_MASTER(*,'(a)')      ' Libint library initialized'
+ WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
  omega_range = 2.0e6_dp
 
@@ -1438,9 +1435,8 @@ subroutine identify_negligible_shellpair(basis,rcut)
 !=====
 
  WRITE_MASTER(*,'(/,a)') ' Cauchy-Schwartz screening of the 4-center integrals'
- if(libint_init()==0) then
-   WRITE_MASTER(*,*) 'Libint library initialized'
- endif
+ WRITE_MASTER(*,'(a)')      ' Libint library initialized'
+ WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
  if( rcut > 1.0e-6_dp ) then
    omega_range = 1.0_dp / rcut

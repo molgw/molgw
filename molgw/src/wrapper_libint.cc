@@ -15,11 +15,14 @@
 #define MIN(a,b) ((a)>(b) ? (b) : (a))
 
 /// this function computes all data required by Libint to evaluate the integrals efficiently
-template<typename LibintEval>
-void prep_libint2(LibintEval* erieval, unsigned int am1, double alpha1,
+// template<typename LibintEval>
+// void prep_libint2(LibintEval* erieval, unsigned int am1, double alpha1,
+extern "C" {
+void prep_libint2(Libint_t* erieval, unsigned int am1, double alpha1,
                   double A[3], unsigned int am2, double alpha2, double B[3],
                   unsigned int am3, double alpha3, double C[3],
                   unsigned int am4, double alpha4, double D[3], int norm_flag);
+}
 
 template<typename LibintEval>
 void prep_libint2_lr(LibintEval* erieval, unsigned int am1, double alpha1,
@@ -36,8 +39,8 @@ void prep_libint2_lr(LibintEval* erieval, unsigned int am1, double alpha1,
 
 
 extern "C"{
- int libint_init();
- int libint_init_();
+// int libint_init();
+// int libint_init_();
  int calculate_integral(double *,                                // omega_range
                         int*, int*, int*,int*,                   // am's
                         double*, double*, double*, double*,      // alpha's
@@ -63,6 +66,7 @@ extern "C"{
             int norm_flag);
 }
 
+/*
 int libint_init_() {
   return libint_init();
 }
@@ -71,6 +75,8 @@ int libint_init() {
   LIBINT2_PREFIXED_NAME(libint2_static_init)();
   return 0;
 }
+*/
+
 inline int max ( int a, int b ) { return a > b ? a : b; }
 
 int calculate_integral_(double* omega_range,
@@ -350,8 +356,9 @@ void free_array(double* array) {
   delete[] array;
 }
 
-template<typename LibintEval>
-void prep_libint2(LibintEval* erieval, unsigned int am1, double alpha1,
+//template<typename LibintEval>
+//void prep_libint2(LibintEval* erieval, unsigned int am1, double alpha1,
+void prep_libint2(Libint_t* erieval, unsigned int am1, double alpha1,
                   double A[3], unsigned int am2, double alpha2, double B[3],
                   unsigned int am3, double alpha3, double C[3],
                   unsigned int am4, double alpha4, double D[3], int norm_flag) {
