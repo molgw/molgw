@@ -554,14 +554,6 @@ subroutine polarizability_casida(basis,prod_basis,occupation,energy,c_matrix,rpa
    enddo
  enddo
 
-#if 0
- WRITE_ME(111+rank,*) 'rank',rank,nproc
- do ijspin=1,nspin
-   do istate=1,basis%nbf
-     WRITE_ME(111+rank,*) task(istate,ijspin)
-   enddo
- enddo
-#endif
 
  !
  ! transitions ROWS
@@ -615,7 +607,7 @@ subroutine polarizability_casida(basis,prod_basis,occupation,energy,c_matrix,rpa
 
              if(t_ij==t_kl) then
                if( task(istate,ijspin) == 0 ) then
-                 WRITE_ME(*,'(a,10(2x,i5))') ' === should have skipped',rank,istate,ijspin,t_ij,t_ij_local
+!                 WRITE_ME(*,'(a,10(2x,i5))') ' === should have skipped',rank,istate,ijspin,t_ij,t_ij_local
                endif
                apb(t_ij_local,t_kl_local) = apb(t_ij_local,t_kl_local) + amb_diag(t_ij)
                rpa_correlation = rpa_correlation - 0.25_dp * ( amb_diag(t_ij) + apb(t_ij_local,t_kl_local) )
