@@ -49,6 +49,22 @@ module m_eri
  integer,private              :: nsize_auxil            ! size of the eri_buffer array
  integer,private              :: nsize1_auxil           ! number of independent pairs (i,j) with i<=j
 
+
+! interface
+!   integet(C_INT) function eval_contr_integral() bind(C)
+!       info=eval_contr_integral(                &
+!                               am1,am2,am3,am4, &
+!                               ng1,ng2,ng3,ng4, &
+!                               coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
+!                               alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
+!                               x01(1),x02(1),x03(1),x04(1),&
+!                               int_shell(1)
+!     use ISO_C_BINDING
+!     character(kind=c_char) :: string(*)
+!   end subroutine print_c
+! end interface
+
+
 contains
 
 !=========================================================================
@@ -464,7 +480,6 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  integer                      :: ishell,jshell,kshell,lshell
  integer                      :: ijshellpair,klshellpair
  integer                      :: n1,n2,n3,n4
- integer                      :: ng1,ng2,ng3,ng4
  integer                      :: ig1,ig2,ig3,ig4
  integer                      :: ni,nj,nk,nl
  integer                      :: ami,amj,amk,aml
@@ -480,9 +495,12 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
 !=====
 ! variables used to call C++ 
  integer(C_INT),external      :: libint_init,calculate_integral
+ integer(C_INT),external      :: eval_contr_integral,toto
+ integer(C_INT)               :: ng1,ng2,ng3,ng4
  integer(C_INT)               :: am1,am2,am3,am4
- real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
+ real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
+ real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
  real(C_DOUBLE)               :: omega_range
 !=====
@@ -548,6 +566,14 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
      x02(:) = shell(jshell)%x0(:)
      x03(:) = shell(kshell)%x0(:)
      x04(:) = shell(lshell)%x0(:)
+     allocate(coeff1(shell(ishell)%ng))
+     allocate(coeff2(shell(jshell)%ng))
+     allocate(coeff3(shell(kshell)%ng))
+     allocate(coeff4(shell(lshell)%ng))
+     coeff1(:)=shell(ishell)%coeff(:)
+     coeff2(:)=shell(jshell)%coeff(:)
+     coeff3(:)=shell(kshell)%coeff(:)
+     coeff4(:)=shell(lshell)%coeff(:)
 
      allocate( int_shell( n1*n2*n3*n4 ) )
      allocate( integrals_cart(n1,n2,n3,n4) )
@@ -583,10 +609,10 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
                      / zeta_12 * EXP( -alpha1(ig1)*alpha2(ig2)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
                      / zeta_34 * EXP( -alpha3(ig3)*alpha4(ig4)/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
                      * SQRT( rho / rho1 ) &
-                     * shell(ishell)%coeff(ig1) &
-                     * shell(jshell)%coeff(ig2) &
-                     * shell(kshell)%coeff(ig3) &
-                     * shell(lshell)%coeff(ig4) * cart_to_pure_norm(0)%matrix(1,1)**4
+                     * coeff1(ig1) &
+                     * coeff2(ig2) &
+                     * coeff3(ig3) &
+                     * coeff4(ig4) * cart_to_pure_norm(0)%matrix(1,1)**4
 
              enddo
            enddo
@@ -595,6 +621,8 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
 
      else
 
+#if 0
+ ! FBFB to be removed in the next future
        do ig4=1,ng4
          do ig3=1,ng3
            do ig2=1,ng2
@@ -620,8 +648,8 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
                      do lbf=1,n4
                        iibf=iibf+1
                        integrals_cart(ibf,jbf,kbf,lbf) = integrals_cart(ibf,jbf,kbf,lbf) &
-                                                        + int_shell(iibf) * shell(ishell)%coeff(ig1) * shell(jshell)%coeff(ig2) &
-                                                                                 * shell(kshell)%coeff(ig3) * shell(lshell)%coeff(ig4)
+                                                        + int_shell(iibf) * coeff1(ig1) * coeff2(ig2) &
+                                                                          * coeff3(ig3) * coeff4(ig4)
                      enddo
                    enddo
                  enddo
@@ -631,6 +659,35 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
            enddo
          enddo
        enddo
+#else
+
+       info=eval_contr_integral(                &
+                               am1,am2,am3,am4, &
+                               ng1,ng2,ng3,ng4, &
+                               coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
+                               alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
+                               x01(1),x02(1),x03(1),x04(1),&
+                               int_shell(1))
+
+
+       if(info/=0) then
+         WRITE_MASTER(*,*) am1,am2,am3,am4
+         stop 'ERI calculated by libint failed'
+       endif
+
+       iibf=0
+       do ibf=1,n1
+         do jbf=1,n2
+           do kbf=1,n3
+             do lbf=1,n4
+               iibf=iibf+1
+               integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
+             enddo
+           enddo
+         enddo
+       enddo
+
+#endif
 
 
        do lbf=1,n4
@@ -700,6 +757,11 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
      deallocate(integrals_tmp)
      deallocate(int_shell)
      deallocate(alpha1,alpha2,alpha3,alpha4)
+     deallocate(coeff1)
+     deallocate(coeff2)
+     deallocate(coeff3)
+     deallocate(coeff4)
+
 
    enddo
  enddo

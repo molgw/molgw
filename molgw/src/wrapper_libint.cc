@@ -236,7 +236,6 @@ int calculate_integral(double* omega_range,
   } // end of loop over basis functions in the shell quartet
 
 
-
   // this releases all memory that was allocated for this object
   LIBINT2_PREFIXED_NAME( libint2_cleanup_eri)(&inteval);
 
