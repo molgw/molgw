@@ -13,8 +13,8 @@
 
 /* First, the interfaces */
 int nint(int am);
-
 int max4(int am0, int am1, int am2, int am3);
+void calc_boys(double*, int, double);
 
 int libint_init_();
 
@@ -143,8 +143,6 @@ int max4(int am0, int am1, int am2, int am3) {
  return ammax;
 }
 
-void calc_boys(double*, int, double);
-void calc_f(double*, int, double);
 
 
 void prep_libint2_contr(Libint_t* erieval,
