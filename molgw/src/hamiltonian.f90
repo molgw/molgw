@@ -60,6 +60,7 @@ subroutine setup_overlap(print_matrix,basis,s_matrix)
 
 end subroutine setup_overlap
 
+
 !=========================================================================
 subroutine setup_kinetic(print_matrix,basis,hamiltonian_kinetic)
  use m_definitions
@@ -120,6 +121,7 @@ subroutine setup_kinetic(print_matrix,basis,hamiltonian_kinetic)
 
 
 end subroutine setup_kinetic
+
 
 !=========================================================================
 subroutine setup_nucleus(print_matrix,basis,hamiltonian_nucleus)
@@ -190,6 +192,7 @@ subroutine setup_nucleus(print_matrix,basis,hamiltonian_nucleus)
 
 end subroutine setup_nucleus
 
+
 !=========================================================================
 subroutine setup_hartree(print_matrix,nbf,nspin,p_matrix,pot_hartree,ehartree)
  use m_definitions
@@ -250,6 +253,7 @@ subroutine setup_hartree(print_matrix,nbf,nspin,p_matrix,pot_hartree,ehartree)
  call stop_clock(timing_hartree)
 
 end subroutine setup_hartree
+
 
 !=========================================================================
 subroutine setup_exchange(print_matrix,nbf,p_matrix,pot_exchange,eexchange)
@@ -330,6 +334,7 @@ subroutine setup_exchange(print_matrix,nbf,p_matrix,pot_exchange,eexchange)
 
 end subroutine setup_exchange
 
+
 !=========================================================================
 subroutine setup_exchange_longrange(print_matrix,nbf,p_matrix,pot_exchange,eexchange)
  use m_definitions
@@ -382,6 +387,7 @@ subroutine setup_exchange_longrange(print_matrix,nbf,p_matrix,pot_exchange,eexch
 
 end subroutine setup_exchange_longrange
 
+
 !=========================================================================
 subroutine read_potential(print_matrix,nbf,nspin,p_matrix,pot_read,eread)
  use m_definitions
@@ -426,6 +432,7 @@ subroutine read_potential(print_matrix,nbf,nspin,p_matrix,pot_read,eread)
 
 end subroutine read_potential
 
+
 !=========================================================================
 subroutine setup_density_matrix(nbf,nspin,c_matrix,occupation,p_matrix)
  use m_definitions
@@ -449,6 +456,7 @@ subroutine setup_density_matrix(nbf,nspin,c_matrix,occupation,p_matrix)
 
 
 end subroutine setup_density_matrix
+
 
 !=========================================================================
 subroutine test_density_matrix(nbf,nspin,p_matrix,s_matrix)
@@ -482,6 +490,8 @@ subroutine test_density_matrix(nbf,nspin,p_matrix,s_matrix)
 
 end subroutine test_density_matrix
 
+
+#if 0
 !=========================================================================
 subroutine read_density_matrix(nbf,nspin,p_matrix)
  use m_definitions
@@ -515,6 +525,7 @@ subroutine read_density_matrix(nbf,nspin,p_matrix)
 
 end subroutine read_density_matrix
 
+
 !=========================================================================
 subroutine write_density_matrix(nspin,nbf,p_matrix)
  use m_definitions
@@ -542,7 +553,7 @@ subroutine write_density_matrix(nspin,nbf,p_matrix)
 
 
 end subroutine write_density_matrix
-
+#endif
 
 !=========================================================================
 subroutine set_occupation(electrons,magnetization,nbf,occupation)
@@ -603,6 +614,7 @@ subroutine set_occupation(electrons,magnetization,nbf,occupation)
 
 end subroutine set_occupation
 
+
 !=========================================================================
 subroutine guess_starting_c_matrix(nbf,nspin,c_matrix)
  use m_definitions
@@ -623,6 +635,7 @@ subroutine guess_starting_c_matrix(nbf,nspin,c_matrix)
  enddo
 
 end subroutine guess_starting_c_matrix
+
 
 !=========================================================================
 subroutine guess_starting_c_matrix_new(basis,nspin,c_matrix)
@@ -667,6 +680,7 @@ subroutine guess_starting_c_matrix_new(basis,nspin,c_matrix)
  enddo
 
 end subroutine guess_starting_c_matrix_new
+
 
 !=========================================================================
 subroutine setup_initial_c_matrix(print_matrix,nbf,nspin,hamiltonian_nucleus,s_matrix,occupation,c_matrix)

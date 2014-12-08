@@ -45,7 +45,7 @@ subroutine header()
  call issue_warning(msg)
 #endif
 #ifdef _OPENMP
- write(msg,'(i6)') OMP_get_max_threads()
+ WRITE_ME(msg,'(i6)') OMP_get_max_threads()
  msg='OPENMP option is activated with threads number'//msg
  call issue_warning(msg)
 #endif
@@ -554,6 +554,186 @@ subroutine memory_statement(rn)
  endif
 
 end subroutine memory_statement
+
+
+!=========================================================================
+subroutine write_small_restart(nbf,occupation,c_matrix)
+ use m_definitions
+ use m_mpi
+ use m_inputparam
+ implicit none
+
+ integer,intent(in)  :: nbf
+ real(dp),intent(in) :: occupation(nbf,nspin)
+ real(dp),intent(in) :: c_matrix(nbf,nbf,nspin)
+!=====
+ integer,parameter   :: unit_restart=52
+ integer             :: ispin,istate
+ integer             :: nstate(2)
+!=====
+
+ call start_clock(timing_restart_file)
+ WRITE_MASTER(*,'(/,a)') ' Writing a small RESTART file'
+ !
+ ! Only write down the "occupied states" to save I-O
+ do ispin=1,nspin
+   do istate=1,nbf
+     if( occupation(istate,ispin) > completely_empty ) nstate(ispin) = istate
+   enddo
+ enddo
+ open(unit=unit_restart,file='RESTART',form='unformatted')
+ WRITE_MASTER(unit_restart) nspin
+ WRITE_MASTER(unit_restart) nbf
+ WRITE_MASTER(unit_restart) nstate(1),nstate(nspin)
+ do ispin=1,nspin
+   do istate=1,nstate(ispin)
+     WRITE_MASTER(unit_restart) c_matrix(:,istate,ispin)
+   enddo
+ enddo
+
+ close(unit_restart)
+ call stop_clock(timing_restart_file)
+
+end subroutine write_small_restart
+!=========================================================================
+
+
+subroutine write_big_restart(nbf,occupation,c_matrix,energy,hamiltonian_exx,hamiltonian_xc)
+ use m_definitions
+ use m_mpi
+ use m_inputparam
+ implicit none
+
+ integer,intent(in)  :: nbf
+ real(dp),intent(in) :: occupation(nbf,nspin)
+ real(dp),intent(in) :: c_matrix(nbf,nbf,nspin),energy(nbf,nspin)
+ real(dp),intent(in) :: hamiltonian_exx(nbf,nbf,nspin)
+ real(dp),intent(in) :: hamiltonian_xc (nbf,nbf,nspin)
+!=====
+ integer,parameter   :: unit_restart=52
+ integer             :: ispin,istate
+!=====
+
+ call start_clock(timing_restart_file)
+ WRITE_MASTER(*,'(/,a)') ' Writing a big RESTART file'
+ open(unit=unit_restart,file='RESTART',form='unformatted')
+ WRITE_MASTER(unit_restart) nspin
+ WRITE_MASTER(unit_restart) nbf
+ WRITE_MASTER(unit_restart) nbf,nbf
+ do ispin=1,nspin
+   do istate=1,nbf
+     WRITE_MASTER(unit_restart) c_matrix(:,istate,ispin)
+   enddo
+ enddo
+ do ispin=1,nspin
+   do istate=1,nbf
+     WRITE_MASTER(unit_restart) energy(istate,ispin)
+   enddo
+ enddo
+ do ispin=1,nspin
+   do istate=1,nbf
+     WRITE_MASTER(unit_restart) hamiltonian_exx(:,istate,ispin)
+   enddo
+ enddo
+ do ispin=1,nspin
+   do istate=1,nbf
+     WRITE_MASTER(unit_restart) hamiltonian_xc(:,istate,ispin)
+   enddo
+ enddo
+
+ close(unit_restart)
+ call stop_clock(timing_restart_file)
+
+end subroutine write_big_restart
+
+
+!=========================================================================
+subroutine read_any_restart(nbf,occupation,c_matrix,energy,hamiltonian_exx,hamiltonian_xc,is_restart,is_big_restart)
+ use m_definitions
+ use m_mpi
+ use m_warning
+ use m_inputparam
+ implicit none
+
+ integer,intent(in)   :: nbf
+ real(dp),intent(in)  :: occupation(nbf,nspin)
+ real(dp),intent(out) :: c_matrix(nbf,nbf,nspin)
+ real(dp),intent(out) :: energy(nbf,nspin)
+ real(dp),intent(out) :: hamiltonian_exx(nbf,nbf,nspin)
+ real(dp),intent(out) :: hamiltonian_xc (nbf,nbf,nspin)
+ logical,intent(out)  :: is_restart,is_big_restart
+!=====
+ integer,parameter   :: unit_restart=52
+ integer             :: ispin,istate
+ logical             :: file_exists
+ integer             :: nspin_read,nbf_read,nstate_read(2)
+!=====
+
+ is_restart     = .TRUE.
+ is_big_restart = .FALSE.
+
+ inquire(file='RESTART',exist=file_exists)
+ if(.NOT. file_exists) then
+   WRITE_MASTER(*,'(/,a)') ' No RESTART file found'
+   is_restart = .FALSE.
+   return
+ endif
+
+ open(unit=unit_restart,file='RESTART',form='unformatted',status='old')
+
+ read(unit_restart) nspin_read
+ read(unit_restart) nbf_read
+
+ if( nspin_read /= nspin .OR. nbf_read /= nbf ) then
+   WRITE_MASTER(*,'(/,a)') ' Cannot read the RESTART file: wrong dimensions'
+   is_restart = .FALSE.
+   close(unit_restart)
+   return
+ endif
+
+ read(unit_restart) nstate_read(1),nstate_read(2)
+
+ if( nstate_read(1) == nbf .AND. nstate_read(2) == nbf ) then
+   msg='Restart from a big RESTART file' 
+   call issue_warning(msg)
+!   WRITE_MASTER(*,'(/,a)') ' Reading a big RESTART file'
+   is_big_restart = .TRUE.
+ else
+!   WRITE_MASTER(*,'(/,a)') ' Reading a small RESTART file'
+   msg='Restart from a small RESTART file' 
+   call issue_warning(msg)
+   is_big_restart = .FALSE.
+ endif
+ do ispin=1,nspin
+   do istate=1,nstate_read(ispin)
+     read(unit_restart) c_matrix(:,istate,ispin)
+   enddo
+ enddo
+
+ if( .NOT. is_big_restart ) then
+   close(unit_restart)
+   return
+ endif
+
+ do ispin=1,nspin
+   do istate=1,nstate_read(ispin)
+     read(unit_restart) energy(istate,ispin)
+   enddo
+ enddo
+ do ispin=1,nspin
+   do istate=1,nbf
+     read(unit_restart) hamiltonian_exx(:,istate,ispin)
+   enddo
+ enddo
+ do ispin=1,nspin
+   do istate=1,nbf
+     read(unit_restart) hamiltonian_xc(:,istate,ispin)
+   enddo
+ enddo
+
+ close(unit_restart)
+
+end subroutine read_any_restart
 
 
 !=========================================================================

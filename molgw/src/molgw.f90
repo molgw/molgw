@@ -29,7 +29,7 @@ program molgw
  integer                 :: reading_status
  integer                 :: ibf,jbf
  integer                 :: ispin,istate,ncore
- logical                 :: file_exists
+ logical                 :: file_exists,is_restart,is_big_restart
  character(len=100)      :: title
  real(dp)                :: energy_tmp
  real(dp),allocatable    :: hamiltonian_tmp(:,:)
@@ -143,24 +143,29 @@ program molgw
  call setup_nucleus(print_matrix,basis,hamiltonian_nucleus)
 
  !
- ! Setup the initial c_matrix by diagonalizing the bare hamiltonian
- allocate(hamiltonian_tmp(basis%nbf,basis%nbf))
- hamiltonian_tmp(:,:) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
- WRITE_MASTER(*,*) 'Diagonalization of the bare hamiltonian'
- call diagonalize_generalized_sym(basis%nbf,hamiltonian_tmp,s_matrix,&
-                                  energy(:,1),c_matrix(:,:,1))
- deallocate(hamiltonian_tmp)
- ! The hamiltonian is still spin-independent:
- c_matrix(:,:,nspin) = c_matrix(:,:,1)
+ ! Try to read a RESTART file if it exists
+ call read_any_restart(basis%nbf,occupation,c_matrix,energy,hamiltonian_exx,hamiltonian_xc,is_restart,is_big_restart)
 
-! call guess_starting_c_matrix(basis%nbf,nspin,c_matrix)
-! call guess_starting_c_matrix_new(basis,nspin,c_matrix)
- if( print_matrix ) then
-   do ispin=1,nspin
-     matrix_tmp(:,:,ispin) = transpose( c_matrix(:,:,ispin) )
-   enddo
-   title='=== Initial C matrix ==='
-   call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix_tmp)
+ if( .NOT. is_restart) then
+   !
+   ! Setup the initial c_matrix by diagonalizing the bare hamiltonian
+   allocate(hamiltonian_tmp(basis%nbf,basis%nbf))
+   hamiltonian_tmp(:,:) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+   WRITE_MASTER(*,*) 'Diagonalization of the bare hamiltonian'
+   call diagonalize_generalized_sym(basis%nbf,hamiltonian_tmp,s_matrix,&
+                                    energy(:,1),c_matrix(:,:,1))
+   deallocate(hamiltonian_tmp)
+   ! The hamiltonian is still spin-independent:
+   c_matrix(:,:,nspin) = c_matrix(:,:,1)
+  
+   if( print_matrix ) then
+     do ispin=1,nspin
+       matrix_tmp(:,:,ispin) = transpose( c_matrix(:,:,ispin) )
+     enddo
+     title='=== Initial C matrix ==='
+     call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix_tmp)
+   endif
+
  endif
 
 
@@ -169,7 +174,7 @@ program molgw
  call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
  !
  ! Read the density matrix if asked and override the previously guessed matrix
- call read_density_matrix(basis%nbf,nspin,p_matrix)
+!FBFB call read_density_matrix(basis%nbf,nspin,p_matrix)
 !!
 !! Test PSP = P
 ! call test_density_matrix(basis%nbf,nspin,p_matrix,s_matrix)
@@ -188,17 +193,21 @@ program molgw
  endif
 
  call stop_clock(timing_prescf)
+
  !
  ! Big SCF loop is in there
+ ! Only do it if the calculation is NOT a big restart
  !
- call scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,                            &
-               hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_exx,hamiltonian_xc, &
-               occupation,energy)
+ if( .NOT. is_big_restart) then
+   call scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,                            &
+                 hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_exx,hamiltonian_xc, &
+                 occupation,energy)
+ endif
  
  call start_clock(timing_postscf)
 
 
- if( print_densitymatrix )   call write_density_matrix(nspin,basis%nbf,p_matrix)
+!FBFB if( print_densitymatrix )   call write_density_matrix(nspin,basis%nbf,p_matrix)
  if( print_wfn ) call plot_wfn(nspin,basis,c_matrix)
 ! if( print_wfn ) call plot_cube_wfn(nspin,basis,c_matrix)
 

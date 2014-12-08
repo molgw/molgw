@@ -13,7 +13,7 @@ module m_definitions
  real(dp),parameter    :: bohr_A=0.529177249_dp
  real(dp),parameter    :: pi    =3.14159265358979323_dp
  real(dp),parameter    :: pi2   =pi**2
- complex(dp),parameter :: im=(0.0_dp,1.0_dp)
+ complex(dp),parameter :: im    =(0.0_dp,1.0_dp)
 
  real(dp),parameter :: completely_empty=1.0e-5_dp
 

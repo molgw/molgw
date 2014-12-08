@@ -31,6 +31,7 @@ module m_timing
  integer,parameter :: timing_eri_3center_eigen = 18
  integer,parameter :: timing_buildw            = 19
  integer,parameter :: timing_build_h2p         = 20
+ integer,parameter :: timing_restart_file      = 21
  
  integer,parameter :: timing_tmp1              = 91
  integer,parameter :: timing_tmp2              = 92
@@ -120,6 +121,8 @@ subroutine output_timing()
    WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)')        '       3-center integrals' ,timing(timing_eri_3center),calls(timing_eri_3center)
  endif
 
+ WRITE_MASTER(*,*)
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'RESTART file writing',timing(timing_restart_file),calls(timing_restart_file)
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Hartree'         ,timing(timing_hartree),calls(timing_hartree)
  WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)') 'Exchange'        ,timing(timing_exchange),calls(timing_exchange)
