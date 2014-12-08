@@ -6,6 +6,9 @@
 #include<stdio.h>
 #include<libint2.h>
 #include<math.h>
+  
+#define MAXFAC_BOYS  100
+#define EPS_BOYS 1.0E-17     /* Absolute precision in computing Fm(t) */
 
 
 /* First, the interfaces */
@@ -15,33 +18,25 @@ int max4(int am0, int am1, int am2, int am3);
 
 int libint_init_();
 
-/* FBFB add the screened interaction in the future */
 int eval_contr_integral_(
-   /*                      double* omega_range,    */
                          int *am0_in, int *am1_in, int *am2_in, int *am3_in,
                          int *ncontr0, int *ncontr1, int *ncontr2, int *ncontr3,
                          double *contr0, double *contr1, double *contr2, double *contr3,
                          double *alpha0, double *alpha1, double *alpha2, double *alpha3,
                          double *x0, double *x1, double *x2, double *x3,
+                         double* rcut,          /* rcut is omega^{-1} */
                          double *integrals
                         );
 
-
-void prep_libint2(Libint_t *erieval,
-                  unsigned int am1, double alpha1, double A[3],
-                  unsigned int am2, double alpha2, double B[3],
-                  unsigned int am3, double alpha3, double C[3],
-                  unsigned int am4, double alpha4, double D[3], 
-                  int norm_flag
-                     );
-
 void prep_libint2_contr(Libint_t *erieval,
-                  unsigned int am1, double alpha1, double A[3],
-                  unsigned int am2, double alpha2, double B[3],
-                  unsigned int am3, double alpha3, double C[3],
-                  unsigned int am4, double alpha4, double D[3], 
-                  int norm_flag,
-                  double norm_prefactor);
+                        unsigned int am1, double alpha1, double A[3],
+                        unsigned int am2, double alpha2, double B[3],
+                        unsigned int am3, double alpha3, double C[3],
+                        unsigned int am4, double alpha4, double D[3], 
+                        double  rcut,          /* rcut is omega^{-1} */
+                        int norm_flag,
+                        double norm_prefactor
+                       );
 
 
 /* Then the real coding */
@@ -58,6 +53,7 @@ int eval_contr_integral_(
                          double *contr0, double *contr1, double *contr2, double *contr3,
                          double *alpha0, double *alpha1, double *alpha2, double *alpha3,
                          double *x0, double *x1, double *x2, double *x3,
+                         double* rcut,          /* rcut is omega^{-1} */
                          double *integrals
                         ) {
 
@@ -94,11 +90,12 @@ int eval_contr_integral_(
        for(p3=0; p3<*ncontr3; ++p3) {
          contrcoef0123 = contr0[p0] * contr1[p1] * contr2[p2] * contr3[p3];
 
-         prep_libint2_contr(&inteval[p0123], // <- data for each primitive combination goes into its own evaluator object
+         prep_libint2_contr(&inteval[p0123], /* data for each primitive combination goes into its own evaluator object */
                       am0, alpha0[p0], x0,
                       am1, alpha1[p1], x1,
                       am2, alpha2[p2], x2,
                       am3, alpha3[p3], x3,
+                      *rcut,                /* rcut is omega^{-1} */
                       0, contrcoef0123);
          p0123++;
        }
@@ -146,18 +143,21 @@ int max4(int am0, int am1, int am2, int am3) {
  return ammax;
 }
 
+void calc_boys(double*, int, double);
 void calc_f(double*, int, double);
 
 
 void prep_libint2_contr(Libint_t* erieval,
-                  unsigned int am1, double alpha1, double A[3],
-                  unsigned int am2, double alpha2, double B[3],
-                  unsigned int am3, double alpha3, double C[3],
-                  unsigned int am4, double alpha4, double D[3],
-                  int norm_flag, double norm_prefactor) {
+                        unsigned int am1, double alpha1, double A[3],
+                        unsigned int am2, double alpha2, double B[3],
+                        unsigned int am3, double alpha3, double C[3],
+                        unsigned int am4, double alpha4, double D[3],
+                        double rcut,
+                        int norm_flag, double norm_prefactor) {
 
   const unsigned int am = am1 + am2 + am3 + am4;
   double  F[am + 1];
+  int i;
 
   const double gammap = alpha1 + alpha2;
   const double Px = (alpha1 * A[0] + alpha2 * B[0]) / gammap;
@@ -173,6 +173,8 @@ void prep_libint2_contr(Libint_t* erieval,
   const double AB_y = A[1] - B[1];
   const double AB_z = A[2] - B[2];
   const double AB2 = AB_x * AB_x + AB_y * AB_y + AB_z * AB_z;
+
+  for(i=0;i<am+1;++i) F[i] = 0. ;
 
 #if LIBINT2_DEFINED(eri,PA_x)
   erieval->PA_x[0] = PAx;
@@ -221,6 +223,13 @@ void prep_libint2_contr(Libint_t* erieval,
   const double CD_y = C[1] - D[1];
   const double CD_z = C[2] - D[2];
   const double CD2 = CD_x * CD_x + CD_y * CD_y + CD_z * CD_z;
+/*
+  Treat the LR integrals by simply modifying gammapq into gammapq_rc2
+  And introducing gammapq_ratio = gammapq_rc2 / gammapq
+ */
+  const double gammapq_rc2 = gammap * gammaq / (gammap + gammaq + gammap * gammaq * pow(rcut,2) );
+  const double gammapq_ratio = ( gammap + gammaq ) / ( gammap + gammaq + gammap * gammaq * pow(rcut,2) );
+
 
 #if LIBINT2_DEFINED(eri,QC_x)
   erieval->QC_x[0] = QCx;
@@ -328,73 +337,141 @@ void prep_libint2_contr(Libint_t* erieval,
      pfac *= norm_const(l4,m4,n4,alpha4,D);*/
   }
 
-  calc_f(F, am, PQ2 * gammapq);
+  calc_boys(F, am, PQ2 * gammapq_rc2);
+//  calc_f(F, am, PQ2 * gammapq_rc2);
 
   // using dangerous macros from libint2.h
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(0))
-  erieval->LIBINT_T_SS_EREP_SS(0)[0] = pfac*F[0];
+  erieval->LIBINT_T_SS_EREP_SS(0)[0] = pfac*F[0] * pow(gammapq_ratio,0.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(1))
-  erieval->LIBINT_T_SS_EREP_SS(1)[0] = pfac*F[1];
+  erieval->LIBINT_T_SS_EREP_SS(1)[0] = pfac*F[1] * pow(gammapq_ratio,1.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(2))
-  erieval->LIBINT_T_SS_EREP_SS(2)[0] = pfac*F[2];
+  erieval->LIBINT_T_SS_EREP_SS(2)[0] = pfac*F[2] * pow(gammapq_ratio,2.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(3))
-  erieval->LIBINT_T_SS_EREP_SS(3)[0] = pfac*F[3];
+  erieval->LIBINT_T_SS_EREP_SS(3)[0] = pfac*F[3] * pow(gammapq_ratio,3.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(4))
-  erieval->LIBINT_T_SS_EREP_SS(4)[0] = pfac*F[4];
+  erieval->LIBINT_T_SS_EREP_SS(4)[0] = pfac*F[4] * pow(gammapq_ratio,4.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(5))
-  erieval->LIBINT_T_SS_EREP_SS(5)[0] = pfac*F[5];
+  erieval->LIBINT_T_SS_EREP_SS(5)[0] = pfac*F[5] * pow(gammapq_ratio,5.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(6))
-  erieval->LIBINT_T_SS_EREP_SS(6)[0] = pfac*F[6];
+  erieval->LIBINT_T_SS_EREP_SS(6)[0] = pfac*F[6] * pow(gammapq_ratio,6.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(7))
-  erieval->LIBINT_T_SS_EREP_SS(7)[0] = pfac*F[7];
+  erieval->LIBINT_T_SS_EREP_SS(7)[0] = pfac*F[7] * pow(gammapq_ratio,7.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(8))
-  erieval->LIBINT_T_SS_EREP_SS(8)[0] = pfac*F[8];
+  erieval->LIBINT_T_SS_EREP_SS(8)[0] = pfac*F[8] * pow(gammapq_ratio,8.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(9))
-  erieval->LIBINT_T_SS_EREP_SS(9)[0] = pfac*F[9];
+  erieval->LIBINT_T_SS_EREP_SS(9)[0] = pfac*F[9] * pow(gammapq_ratio,9.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(10))
-  erieval->LIBINT_T_SS_EREP_SS(10)[0] = pfac*F[10];
+  erieval->LIBINT_T_SS_EREP_SS(10)[0] = pfac*F[10] * pow(gammapq_ratio,10.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(11))
-  erieval->LIBINT_T_SS_EREP_SS(11)[0] = pfac*F[11];
+  erieval->LIBINT_T_SS_EREP_SS(11)[0] = pfac*F[11] * pow(gammapq_ratio,11.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(12))
-  erieval->LIBINT_T_SS_EREP_SS(12)[0] = pfac*F[12];
+  erieval->LIBINT_T_SS_EREP_SS(12)[0] = pfac*F[12] * pow(gammapq_ratio,12.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(13))
-  erieval->LIBINT_T_SS_EREP_SS(13)[0] = pfac*F[13];
+  erieval->LIBINT_T_SS_EREP_SS(13)[0] = pfac*F[13] * pow(gammapq_ratio,13.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(14))
-  erieval->LIBINT_T_SS_EREP_SS(14)[0] = pfac*F[14];
+  erieval->LIBINT_T_SS_EREP_SS(14)[0] = pfac*F[14] * pow(gammapq_ratio,14.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(15))
-  erieval->LIBINT_T_SS_EREP_SS(15)[0] = pfac*F[15];
+  erieval->LIBINT_T_SS_EREP_SS(15)[0] = pfac*F[15] * pow(gammapq_ratio,15.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(16))
-  erieval->LIBINT_T_SS_EREP_SS(16)[0] = pfac*F[16];
+  erieval->LIBINT_T_SS_EREP_SS(16)[0] = pfac*F[16] * pow(gammapq_ratio,16.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(17))
-  erieval->LIBINT_T_SS_EREP_SS(17)[0] = pfac*F[17];
+  erieval->LIBINT_T_SS_EREP_SS(17)[0] = pfac*F[17] * pow(gammapq_ratio,17.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(18))
-  erieval->LIBINT_T_SS_EREP_SS(18)[0] = pfac*F[18];
+  erieval->LIBINT_T_SS_EREP_SS(18)[0] = pfac*F[18] * pow(gammapq_ratio,18.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(19))
-  erieval->LIBINT_T_SS_EREP_SS(19)[0] = pfac*F[19];
+  erieval->LIBINT_T_SS_EREP_SS(19)[0] = pfac*F[19] * pow(gammapq_ratio,19.5);
 #endif
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(20))
-  erieval->LIBINT_T_SS_EREP_SS(20)[0] = pfac*F[20];
+  erieval->LIBINT_T_SS_EREP_SS(20)[0] = pfac*F[20] * pow(gammapq_ratio,20.5);
 #endif
 
+}
+
+void calc_boys(double *F, int n, double t) {
+  int i, m, k;
+  int m2;
+  double t2;
+  double num;
+  double sum;
+  double term1, term2;
+  static double K = 1.0 / M_2_SQRTPI;
+  double et;
+  double doublefac[2*MAXFAC_BOYS];
+
+
+  for(i=0; i<2*MAXFAC_BOYS; ++i) doublefac[i] = 0.0;
+/* Recalculate the constant array all the time: This is a small waste */
+
+  doublefac[0] = 1.0;
+  doublefac[1] = 1.0;
+  doublefac[2] = 1.0;
+  for (i = 3; i < 2*MAXFAC_BOYS; i++) {
+      doublefac[i] = (i - 1) * doublefac[i - 2];
+  }
+
+/*
+  if (df == NULL) {
+    df = init_array(2 * MAXFAC_BOYS);
+    df[0] = 1.0;
+    df[1] = 1.0;
+    df[2] = 1.0;
+    for (i = 3; i < MAXFAC_BOYS * 2; i++) {
+      df[i] = (i - 1) * df[i - 2];
+    }
+  }
+*/
+
+  if (t > 20.0) { /* For big t's do upward recursion */
+    t2 = 2 * t;
+    et = exp(-t);
+    t = sqrt(t);
+    F[0] = K * erf(t) / t;
+    for (m = 0; m <= n - 1; m++) {
+      F[m + 1] = ((2 * m + 1) * F[m] - et) / (t2);
+    }
+  } else { /* For smaller t's compute F with highest n using
+   asymptotic series (see I. Shavitt in
+   Methods in Computational Physics, ed. B. Alder eta l,
+   vol 2, 1963, page 8) */
+
+    et = exp(-t);
+    t2 = 2 * t;
+    m2 = 2 * n;
+    num = doublefac[m2];
+    i = 0;
+    sum = 1.0 / (m2 + 1);
+    do {
+      i++;
+      num = num * t2;
+      term1 = num / doublefac[m2 + 2 * i + 2];
+      sum += term1;
+    } while (fabs(term1) > EPS_BOYS && i < MAXFAC_BOYS);
+    F[n] = sum * et;
+    for (m = n - 1; m >= 0; m--) { /* And then do downward recursion */
+      F[m] = (t2 * F[m + 1] + et) / (2 * m + 1);
+    }
+  }
+/* std::cout << "F[n] " <<  F[n] << std::endl; */
 }
 
 

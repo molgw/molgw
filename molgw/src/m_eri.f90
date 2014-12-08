@@ -5,6 +5,7 @@ module m_eri
  use m_definitions
  use m_mpi
  use m_basis_set
+ use m_timing
 
  integer,parameter :: BUFFER1 = 1
  integer,parameter :: BUFFER2 = 2
@@ -58,6 +59,7 @@ module m_eri
 !                               coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
 !                               alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
 !                               x01(1),x02(1),x03(1),x04(1),&
+!                               rcut,
 !                               int_shell(1)
 !     use ISO_C_BINDING
 !     character(kind=c_char) :: string(*)
@@ -362,7 +364,7 @@ subroutine calculate_eri(print_eri,basis,rcut,which_buffer)
  integer,intent(in)           :: which_buffer
 !=====
 
- call start_clock(timing_eri)
+ call start_clock(timing_eri_4center)
 
  if( .NOT. read_eri(rcut) ) call do_calculate_eri(basis,rcut,which_buffer)
 
@@ -371,7 +373,7 @@ subroutine calculate_eri(print_eri,basis,rcut,which_buffer)
    call dump_out_eri(rcut)
  endif
 
- call stop_clock(timing_eri)
+ call stop_clock(timing_eri_4center)
 
 end subroutine calculate_eri
 
@@ -468,7 +470,6 @@ end subroutine setup_shell_list_auxil
 subroutine do_calculate_eri(basis,rcut,which_buffer)
  use ISO_C_BINDING
  use m_tools,only: boys_function
- use m_timing
 #ifdef _OPENMP
  use omp_lib
 #endif
@@ -495,20 +496,21 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
 !=====
 ! variables used to call C++ 
  integer(C_INT),external      :: libint_init,calculate_integral
- integer(C_INT),external      :: eval_contr_integral,toto
+ integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: ng1,ng2,ng3,ng4
  integer(C_INT)               :: am1,am2,am3,am4
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
- real(C_DOUBLE)               :: omega_range
+ real(C_DOUBLE)               :: omega_range,rcut_libint
 !=====
 
  WRITE_MASTER(*,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
  WRITE_MASTER(*,'(a)')      ' Libint library initialized'
  WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
+ ! FBFB to be removed in the next future
  if( rcut > 1.0e-6_dp ) then
    omega_range = 1.0_dp / rcut
    WRITE_MASTER(*,'(a40,x,f9.4)') ' Long-Range only integrals with rcut=',rcut
@@ -516,6 +518,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  else 
    omega_range = 2.0e6_dp
  endif
+ rcut_libint = rcut
 
 
  do klshellpair=1,nshellpair
@@ -593,14 +596,9 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
                p(:) = ( alpha1(ig1) * x01(:) + alpha2(ig2) * x02(:) ) / zeta_12 
                q(:) = ( alpha3(ig3) * x03(:) + alpha4(ig4) * x04(:) ) / zeta_34 
                !
-               ! Full range or long-range only integrals
-               if( rcut < 2.0e-6_dp ) then
-                 rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
-                 rho1 = rho
-               else
-                 rho  = zeta_12 * zeta_34 * omega_range**2 / ( zeta_12*omega_range**2 + zeta_34*omega_range**2 + zeta_12*zeta_34 )
-                 rho1 = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
-               endif
+               ! Treat carefully the LR only integrals
+               rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 + zeta_12*zeta_34*rcut**2 )
+               rho1 = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
                tt = rho * SUM( (p(:)-q(:))**2 )
                call boys_function(f0t(0),0,tt)
 
@@ -667,6 +665,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
                                coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
                                alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
                                x01(1),x02(1),x03(1),x04(1),&
+                               rcut_libint, &
                                int_shell(1))
 
 
@@ -777,7 +776,6 @@ end subroutine do_calculate_eri
 subroutine calculate_eri_2center(print_eri,auxil_basis)
  use ISO_C_BINDING
  use m_tools,only: boys_function, invert
- use m_timing
 #ifdef _OPENMP
  use omp_lib
 #endif
@@ -804,11 +802,13 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
 !=====
 ! variables used to call C++ 
  integer(C_INT),external      :: libint_init,calculate_integral
+ integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2,am3,am4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
+ real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
- real(C_DOUBLE)               :: omega_range
+ real(C_DOUBLE)               :: omega_range,rcut_libint
 !=====
 
  call start_clock(timing_eri_2center)
@@ -817,6 +817,8 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
  WRITE_MASTER(*,'(a)')      ' Libint library initialized'
  WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
+ rcut_libint = 0.0_dp
+ ! FBFB to be removed in the next future
  omega_range = 2.0e6_dp
 
  do lshell=1,1  ! FAKE loop
@@ -864,6 +866,14 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
          x02(:) = shell_auxil(ishell)%x0(:)
          x03(:) = shell_auxil(kshell)%x0(:)
          x04(:) = shell_auxil(kshell)%x0(:)
+         allocate(coeff1(shell_auxil(ishell)%ng))
+         allocate(coeff2(1))
+         allocate(coeff3(shell_auxil(kshell)%ng))
+         allocate(coeff4(1))
+         coeff1(:)=shell_auxil(ishell)%coeff(:)
+         coeff2(:)=1.0_dp
+         coeff3(:)=shell_auxil(kshell)%coeff(:)
+         coeff4(:)=1.0_dp
 
          allocate( int_shell( n1*n2*n3*n4 ) )
          allocate( integrals_cart(n1,n2,n3,n4) )
@@ -895,8 +905,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
                          / zeta_12 * EXP( -alpha1(ig1)*alpha2(ig2)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
                          / zeta_34 * EXP( -alpha3(ig3)*alpha4(ig4)/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
                          * SQRT( rho / rho1 ) &
-                         * shell_auxil(ishell)%coeff(ig1) &
-                         * shell_auxil(kshell)%coeff(ig3) &
+                         * coeff1(ig1)* coeff3(ig3) &
                          * cart_to_pure_norm(0)%matrix(1,1)**4
 
                  enddo
@@ -906,6 +915,8 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
 
          else
 
+#if 0
+ ! FBFB to be removed in the next future
            do ig4=1,ng4
              do ig3=1,ng3
                do ig2=1,ng2
@@ -931,8 +942,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
                          do lbf=1,n4
                            iibf=iibf+1
                            integrals_cart(ibf,jbf,kbf,lbf) = integrals_cart(ibf,jbf,kbf,lbf) &
-                                                            + int_shell(iibf) * shell_auxil(ishell)%coeff(ig1)  &
-                                                                                     * shell_auxil(kshell)%coeff(ig3) 
+                                                            + int_shell(iibf) * coeff1(ig1) * coeff3(ig3) 
                          enddo
                        enddo
                      enddo
@@ -942,6 +952,36 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
                enddo
              enddo
            enddo
+
+#else
+       info=eval_contr_integral(                &
+                               am1,am2,am3,am4, &
+                               ng1,ng2,ng3,ng4, &
+                               coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
+                               alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
+                               x01(1),x02(1),x03(1),x04(1),&
+                               rcut_libint, &
+                               int_shell(1))
+
+
+       if(info/=0) then
+         WRITE_MASTER(*,*) am1,am2,am3,am4
+         stop 'ERI calculated by libint failed'
+       endif
+
+       iibf=0
+       do ibf=1,n1
+         do jbf=1,n2
+           do kbf=1,n3
+             do lbf=1,n4
+               iibf=iibf+1
+               integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
+             enddo
+           enddo
+         enddo
+       enddo
+#endif
+
 
 
            do lbf=1,n4
@@ -1006,6 +1046,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
          deallocate(integrals_tmp)
          deallocate(int_shell)
          deallocate(alpha1,alpha2,alpha3,alpha4)
+         deallocate(coeff1,coeff2,coeff3,coeff4)
 
        enddo
      enddo
@@ -1046,7 +1087,6 @@ end subroutine calculate_eri_2center
 subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
  use ISO_C_BINDING
  use m_tools,only: boys_function
- use m_timing
 #ifdef _OPENMP
  use omp_lib
 #endif
@@ -1071,15 +1111,16 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
  real(dp)                     :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
- real(dp),allocatable         :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
 !=====
 ! variables used to call C++ 
  integer(C_INT),external      :: libint_init,calculate_integral
+ integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2,am3,am4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
+ real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
- real(C_DOUBLE)               :: omega_range
+ real(C_DOUBLE)               :: omega_range,rcut_libint
 !=====
 
  call start_clock(timing_eri_3center)
@@ -1088,6 +1129,8 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
  WRITE_MASTER(*,'(a)')      ' Libint library initialized'
  WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
+ rcut_libint = 0.0_dp
+ ! FBFB to be removed in the next future
  omega_range = 2.0e6_dp
 
 
@@ -1227,6 +1270,8 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
 
          else
 
+#if 0
+ ! FBFB to be removed in the next future
            do ig4=1,ng4
              do ig3=1,ng3
                do ig2=1,ng2
@@ -1240,17 +1285,7 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
                                            int_shell(1))
 
                    if(info/=0) then
-                     WRITE_MASTER(*,*) 'Attempt to calculate omega_range:'
-                     WRITE_MASTER(*,*) omega_range
-                     WRITE_MASTER(*,*) 'Attempt to calculate angular momenta:'
                      WRITE_MASTER(*,*) am1,am2,am3,am4
-                     WRITE_MASTER(*,*) 'Attempt to calculate alpha:'
-                     WRITE_MASTER(*,*) alpha1(ig1),alpha2(ig2),alpha3(ig3),alpha4(ig4)
-                     WRITE_MASTER(*,*) 'Attempt to calculate positions:'
-                     WRITE_MASTER(*,*) x01(1),x01(2),x01(3)
-                     WRITE_MASTER(*,*) x02(1),x02(2),x02(3)
-                     WRITE_MASTER(*,*) x03(1),x03(2),x03(3)
-                     WRITE_MASTER(*,*) x04(1),x04(2),x04(3)
                      stop 'ERI calculated by libint failed'
                    endif
 
@@ -1273,6 +1308,36 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
                enddo
              enddo
            enddo
+#else
+
+       info=eval_contr_integral(                &
+                               am1,am2,am3,am4, &
+                               ng1,ng2,ng3,ng4, &
+                               coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
+                               alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
+                               x01(1),x02(1),x03(1),x04(1),&
+                               rcut_libint, &
+                               int_shell(1))
+
+
+       if(info/=0) then
+         WRITE_MASTER(*,*) am1,am2,am3,am4
+         stop 'ERI calculated by libint failed'
+       endif
+
+       iibf=0
+       do ibf=1,n1c
+         do jbf=1,n2c
+           do kbf=1,n3c
+             do lbf=1,n4c
+               iibf=iibf+1
+               integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
+             enddo
+           enddo
+         enddo
+       enddo
+
+#endif
 
            do lbf=1,n4c
              do kbf=1,n3c
@@ -1466,7 +1531,6 @@ subroutine identify_negligible_shellpair(basis,rcut)
 !
  use ISO_C_BINDING
  use m_tools,only: boys_function
- use m_timing
  implicit none
 
  type(basis_set),intent(in)   :: basis
@@ -1489,10 +1553,12 @@ subroutine identify_negligible_shellpair(basis,rcut)
 !====
 ! variables used to call C++ 
  integer(C_INT),external      :: libint_init,calculate_integral
+ integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:)
  real(C_DOUBLE)               :: x01(3),x02(3)
- real(C_DOUBLE)               :: omega_range
+ real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:)
+ real(C_DOUBLE)               :: omega_range,rcut_libint
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
 
@@ -1500,6 +1566,8 @@ subroutine identify_negligible_shellpair(basis,rcut)
  WRITE_MASTER(*,'(a)')      ' Libint library initialized'
  WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
+ rcut_libint = rcut
+ ! FBFB to be removed in the next future
  if( rcut > 1.0e-6_dp ) then
    omega_range = 1.0_dp / rcut
  else 
@@ -1527,10 +1595,13 @@ subroutine identify_negligible_shellpair(basis,rcut)
      ng2 = shell(jshell)%ng
 
      allocate(alpha1(ng1),alpha2(ng2))
+     allocate(coeff1(ng1),coeff2(ng2))
      alpha1(:) = shell(ishell)%alpha(:)
      alpha2(:) = shell(jshell)%alpha(:)
      x01(:) = shell(ishell)%x0(:)
      x02(:) = shell(jshell)%x0(:)
+     coeff1(:) = shell(ishell)%coeff(:)
+     coeff2(:) = shell(jshell)%coeff(:)
 
      allocate( int_shell( n1*n2*n1*n2 ) )
      allocate( integrals_cart(n1,n2,n1,n2) )
@@ -1549,14 +1620,9 @@ subroutine identify_negligible_shellpair(basis,rcut)
                p(:) = ( alpha1(ig1) * x01(:) + alpha2(ig2) * x02(:) ) / zeta_12 
                q(:) = ( alpha1(ig3) * x01(:) + alpha2(ig4) * x02(:) ) / zeta_12 
                !
-               ! Full range or long-range only integrals
-               if( rcut < 1.0e-6_dp ) then
-                 rho  = zeta_12 * zeta_12 / ( zeta_12 + zeta_12 )
-                 rho1 = rho
-               else
-                 rho  = zeta_12 * zeta_12 * omega_range**2 / ( zeta_12*omega_range**2 + zeta_12*omega_range**2 + zeta_12*zeta_12 )
-                 rho1 = zeta_12 * zeta_12 / ( zeta_12 + zeta_12 )
-               endif
+               ! Treat carefully the LR only integrals
+               rho  = zeta_12 * zeta_12 / ( zeta_12 + zeta_12 + zeta_12*zeta_12*rcut**2 )
+               rho1 = zeta_12 * zeta_12 / ( zeta_12 + zeta_12 )
                tt = rho * SUM( (p(:)-q(:))**2 )
                call boys_function(f0t(0),0,tt)
 
@@ -1565,10 +1631,10 @@ subroutine identify_negligible_shellpair(basis,rcut)
                      / zeta_12 * EXP( -alpha1(ig1)*alpha2(ig2)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
                      / zeta_12 * EXP( -alpha1(ig3)*alpha2(ig4)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) &
                      * SQRT( rho / rho1 ) &
-                     * shell(ishell)%coeff(ig1) &
-                     * shell(jshell)%coeff(ig2) &
-                     * shell(ishell)%coeff(ig3) &
-                     * shell(jshell)%coeff(ig4) * cart_to_pure_norm(0)%matrix(1,1)**4
+                     * coeff1(ig1) &
+                     * coeff2(ig2) &
+                     * coeff1(ig3) &
+                     * coeff2(ig4) * cart_to_pure_norm(0)%matrix(1,1)**4
 
              enddo
            enddo
@@ -1576,6 +1642,8 @@ subroutine identify_negligible_shellpair(basis,rcut)
        enddo
 
      else
+#if 0
+ ! FBFB to be removed in the next future
        do ig4=1,ng2
          do ig3=1,ng1
            do ig2=1,ng2
@@ -1589,7 +1657,6 @@ subroutine identify_negligible_shellpair(basis,rcut)
                                        int_shell(1))
                if(info/=0) then
                  WRITE_MASTER(*,*) am1,am2,am1,am2
-                 WRITE_MASTER(*,*) ig1,ig2,ig3,ig4
                  stop 'ERI calculated by libint failed'
                endif
                iibf=0
@@ -1610,6 +1677,36 @@ subroutine identify_negligible_shellpair(basis,rcut)
            enddo
          enddo
        enddo
+#else
+
+       info=eval_contr_integral(                &
+                               am1,am2,am1,am2, &
+                               ng1,ng2,ng1,ng2, &
+                               coeff1(1),coeff2(1),coeff1(1),coeff2(1),&
+                               alpha1(1),alpha2(1),alpha1(1),alpha2(1),&
+                               x01(1),x02(1),x01(1),x02(1),&
+                               rcut_libint, &
+                               int_shell(1))
+
+
+       if(info/=0) then
+         WRITE_MASTER(*,*) am1,am2,am1,am2
+         stop 'ERI calculated by libint failed'
+       endif
+
+       iibf=0
+       do ibf=1,n1
+         do jbf=1,n2
+           do kbf=1,n1
+             do lbf=1,n2
+               iibf=iibf+1
+               integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
+             enddo
+           enddo
+         enddo
+       enddo
+
+#endif
 
        do lbf=1,n2
          do kbf=1,n1
@@ -1670,6 +1767,7 @@ subroutine identify_negligible_shellpair(basis,rcut)
      deallocate(integrals_tmp)
      deallocate(int_shell)
      deallocate(alpha1,alpha2)
+     deallocate(coeff1,coeff2)
 
    enddo
  enddo
@@ -1906,7 +2004,6 @@ end subroutine test_eri
 
 !=================================================================
 subroutine transform_eri_basis(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
- use m_timing
  implicit none
 
  integer,intent(in)   :: nspin,istate,ijspin

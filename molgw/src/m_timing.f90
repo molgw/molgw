@@ -16,7 +16,7 @@ module m_timing
  integer,parameter :: timing_pola              = 3
  integer,parameter :: timing_self              = 4
  integer,parameter :: timing_prodbasis         = 5
- integer,parameter :: timing_eri               = 6
+ integer,parameter :: timing_eri_4center       = 6
  integer,parameter :: timing_exchange          = 7
  integer,parameter :: timing_hartree           = 8
  integer,parameter :: timing_overlap3          = 9
@@ -114,10 +114,10 @@ subroutine output_timing()
  WRITE_MASTER(*,'(a30,2x,f12.2)') 'Total post SCF',timing(timing_postscf)
  WRITE_MASTER(*,'(/,a,/)') '                 ----------------------'
 
- WRITE_MASTER(*,'(a30,2x,f12.2)')    '4-center integrals' ,timing(timing_eri)
+ WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)')          '4-center integrals' ,timing(timing_eri_4center),calls(timing_eri_4center)
  if( calls(timing_eri_2center) > 0 ) then
-   WRITE_MASTER(*,'(a30,2x,f12.2)')        '       2-center integrals' ,timing(timing_eri_2center)
-   WRITE_MASTER(*,'(a30,2x,f12.2)')        '       3-center integrals' ,timing(timing_eri_3center)
+   WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)')        '       2-center integrals' ,timing(timing_eri_2center),calls(timing_eri_2center)
+   WRITE_MASTER(*,'(a30,2x,f12.2,2x,i8)')        '       3-center integrals' ,timing(timing_eri_3center),calls(timing_eri_3center)
  endif
 
  WRITE_MASTER(*,*)

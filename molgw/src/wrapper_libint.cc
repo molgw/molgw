@@ -3,6 +3,7 @@
 // (c) 2011 Edward F. Valeev
 //////////////////////////////////////////////////////////////////////////////////
 
+
 #include <iostream>
 #include <cmath>
 #include <libint2.h>
@@ -1131,6 +1132,5 @@ double eri(unsigned int l1, unsigned int m1, unsigned int n1, double alpha1,
 
   return result * pfac;
 }
-
 
 
