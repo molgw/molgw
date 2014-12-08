@@ -49,6 +49,7 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
  real(dp),allocatable    :: p_matrix_old(:,:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  real(dp),allocatable    :: self_energy_old(:,:,:)
+ logical                 :: is_converged
 !=============================
 
  !
@@ -249,20 +250,26 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
    ! Produce the next density matrix
    call new_p_matrix(p_matrix)
 
-   if( check_converged() ) exit
+   is_converged = check_converged()
+   if( is_converged ) exit
+
+   !
+   ! Write down a "small" RESTART file at each step
+   ! TODO: I should check if it is resource consuming
+   call write_small_restart(basis%nbf,occupation,c_matrix)
    
  !
  ! end of the big SCF loop
  enddo
 
- call destroy_scf()
 
-
+ WRITE_MASTER(*,*)
  WRITE_MASTER(*,*) '=================================================='
  WRITE_MASTER(*,*) 'The SCF loop ends here'
  WRITE_MASTER(*,*) '=================================================='
  WRITE_MASTER(*,'(/,/,a25,x,f16.10,/)') 'SCF Total Energy [Ha]:',en%tot
 
+ call destroy_scf()
 
  !
  ! Single excitation term
@@ -271,6 +278,7 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
  !
  ! Get the exchange operator if not already calculated
  if( ABS(en%exx) < 1.0E-6_DP ) call setup_exchange(print_matrix,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+
 
  WRITE_MASTER(*,'(/,a25,x,f16.10)') '      EXX Energy [Ha]:',en%exx
  WRITE_MASTER(*,'(a25,x,f16.10)')   'Total EXX Energy [Ha]:',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
@@ -282,6 +290,11 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
 
  WRITE_MASTER(*,'(a25,x,f16.10)') 'Single Excitations [Ha]:',en%se
  WRITE_MASTER(*,'(a25,x,f16.10)')     'Est. HF Energy [Ha]:',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
+
+ !
+ ! Big RESTART file written if converged
+ !
+ if( is_converged ) call write_big_restart(basis%nbf,occupation,c_matrix,energy,hamiltonian_exx,hamiltonian_xc)
 
  !
  ! Cleanly deallocate the arrays

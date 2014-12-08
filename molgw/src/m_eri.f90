@@ -1512,9 +1512,9 @@ subroutine refine_negligible_basispair()
    enddo
  enddo
 
- WRITE_MASTER(*,*) 'Refining the negligible pairs'
- WRITE_MASTER(*,*) 'Non negligible pairs stored in memory   ',npair
- WRITE_MASTER(*,*) 'Non negligible pairs used in calculation',npair_refined
+ WRITE_MASTER(*,'(/,a)') ' Refining the negligible basis function pairs'
+ WRITE_MASTER(*,'(a,x,i6)')   ' Non negligible basis function pairs stored in memory   ',npair
+ WRITE_MASTER(*,'(a,x,i6)')   ' Non negligible basis function pairs used in calculation',npair_refined
 
 
 end subroutine refine_negligible_basispair
