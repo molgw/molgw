@@ -99,7 +99,7 @@ subroutine allocate_eri(basis,rcut,which_buffer)
    allocate(negligible_shellpair(nshell,nshell))
    allocate(negligible_basispair(nbf_eri,nbf_eri))
    allocate(index_pair(nbf_eri,nbf_eri))
-   call identify_negligible_shellpair(basis,rcut)
+   call identify_negligible_shellpair(basis)
    call setup_shellpair()
    call setup_negligible_basispair()
  endif
@@ -480,7 +480,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
 !=====
  integer                      :: ishell,jshell,kshell,lshell
  integer                      :: ijshellpair,klshellpair
- integer                      :: n1,n2,n3,n4
+ integer                      :: n1c,n2c,n3c,n4c
  integer                      :: ig1,ig2,ig3,ig4
  integer                      :: ni,nj,nk,nl
  integer                      :: ami,amj,amk,aml
@@ -494,7 +494,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
 !=====
-! variables used to call C++ 
+! variables used to call C
  integer(C_INT),external      :: libint_init,calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: ng1,ng2,ng3,ng4
@@ -552,10 +552,10 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
      am2 = shell(jshell)%am
      am3 = shell(kshell)%am
      am4 = shell(lshell)%am
-     n1 = number_basis_function_am( CARTESIAN , ami )
-     n2 = number_basis_function_am( CARTESIAN , amj )
-     n3 = number_basis_function_am( CARTESIAN , amk )
-     n4 = number_basis_function_am( CARTESIAN , aml )
+     n1c = number_basis_function_am( CARTESIAN , ami )
+     n2c = number_basis_function_am( CARTESIAN , amj )
+     n3c = number_basis_function_am( CARTESIAN , amk )
+     n4c = number_basis_function_am( CARTESIAN , aml )
      ng1 = shell(ishell)%ng
      ng2 = shell(jshell)%ng
      ng3 = shell(kshell)%ng
@@ -578,9 +578,9 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
      coeff3(:)=shell(kshell)%coeff(:)
      coeff4(:)=shell(lshell)%coeff(:)
 
-     allocate( int_shell( n1*n2*n3*n4 ) )
-     allocate( integrals_cart(n1,n2,n3,n4) )
-     allocate( integrals_tmp(n1,n2,n3,n4) )
+     allocate( int_shell( n1c*n2c*n3c*n4c ) )
+     allocate( integrals_cart(n1c,n2c,n3c,n4c) )
+     allocate( integrals_tmp(n1c,n2c,n3c,n4c) )
      integrals_cart(:,:,:,:) = 0.0_dp
 
 
@@ -640,10 +640,10 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
                endif
 
                iibf=0
-               do ibf=1,n1
-                 do jbf=1,n2
-                   do kbf=1,n3
-                     do lbf=1,n4
+               do ibf=1,n1c
+                 do jbf=1,n2c
+                   do kbf=1,n3c
+                     do lbf=1,n4c
                        iibf=iibf+1
                        integrals_cart(ibf,jbf,kbf,lbf) = integrals_cart(ibf,jbf,kbf,lbf) &
                                                         + int_shell(iibf) * coeff1(ig1) * coeff2(ig2) &
@@ -675,10 +675,10 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
        endif
 
        iibf=0
-       do ibf=1,n1
-         do jbf=1,n2
-           do kbf=1,n3
-             do lbf=1,n4
+       do ibf=1,n1c
+         do jbf=1,n2c
+           do kbf=1,n3c
+             do lbf=1,n4c
                iibf=iibf+1
                integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
              enddo
@@ -689,31 +689,31 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
 #endif
 
 
-       do lbf=1,n4
-         do kbf=1,n3
-           do jbf=1,n2
+       do lbf=1,n4c
+         do kbf=1,n3c
+           do jbf=1,n2c
              do ibf=1,ni
-               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1,jbf,kbf,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1,ibf) )
+               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1c,jbf,kbf,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1c,ibf) )
              enddo
            enddo
          enddo
        enddo
 
-       do lbf=1,n4
-         do kbf=1,n3
+       do lbf=1,n4c
+         do kbf=1,n3c
            do jbf=1,nj
              do ibf=1,ni
-               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2,kbf,lbf) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2,jbf) )
+               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2c,kbf,lbf) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2c,jbf) )
              enddo
            enddo
          enddo
        enddo
 
-       do lbf=1,n4
+       do lbf=1,n4c
          do kbf=1,nk
            do jbf=1,nj
              do ibf=1,ni
-               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n3,lbf) * cart_to_pure_norm(shell(kshell)%am)%matrix(1:n3,kbf) )
+               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n3c,lbf) * cart_to_pure_norm(shell(kshell)%am)%matrix(1:n3c,kbf) )
              enddo
            enddo
          enddo
@@ -723,7 +723,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
          do kbf=1,nk
            do jbf=1,nj
              do ibf=1,ni
-               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n4) * cart_to_pure_norm(shell(lshell)%am)%matrix(1:n4,lbf) )
+               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n4c) * cart_to_pure_norm(shell(lshell)%am)%matrix(1:n4c,lbf) )
              enddo
            enddo
          enddo
@@ -784,7 +784,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
  type(basis_set),intent(in)   :: auxil_basis
 !=====
  integer                      :: ishell,jshell,kshell,lshell
- integer                      :: n1,n2,n3,n4
+ integer                      :: n1c,n2c,n3c,n4c
  integer                      :: ng1,ng2,ng3,ng4
  integer                      :: ig1,ig2,ig3,ig4
  integer                      :: ni,nj,nk,nl
@@ -800,7 +800,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
  real(dp),allocatable         :: eigval(:)
 !=====
-! variables used to call C++ 
+! variables used to call C
  integer(C_INT),external      :: libint_init,calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2,am3,am4
@@ -849,10 +849,10 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
          am2 = 0
          am3 = shell_auxil(kshell)%am
          am4 = 0
-         n1 = number_basis_function_am( CARTESIAN , ami )
-         n2 = 1
-         n3 = number_basis_function_am( CARTESIAN , amk )
-         n4 = 1
+         n1c = number_basis_function_am( CARTESIAN , ami )
+         n2c = 1
+         n3c = number_basis_function_am( CARTESIAN , amk )
+         n4c = 1
          ng1 = shell_auxil(ishell)%ng
          ng2 = 1
          ng3 = shell_auxil(kshell)%ng
@@ -875,9 +875,9 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
          coeff3(:)=shell_auxil(kshell)%coeff(:)
          coeff4(:)=1.0_dp
 
-         allocate( int_shell( n1*n2*n3*n4 ) )
-         allocate( integrals_cart(n1,n2,n3,n4) )
-         allocate( integrals_tmp(n1,n2,n3,n4) )
+         allocate( int_shell( n1c*n2c*n3c*n4c ) )
+         allocate( integrals_cart(n1c,n2c,n3c,n4c) )
+         allocate( integrals_tmp(n1c,n2c,n3c,n4c) )
          integrals_cart(:,:,:,:) = 0.0_dp
 
 
@@ -936,10 +936,10 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
                    endif
 
                    iibf=0
-                   do ibf=1,n1
-                     do jbf=1,n2
-                       do kbf=1,n3
-                         do lbf=1,n4
+                   do ibf=1,n1c
+                     do jbf=1,n2c
+                       do kbf=1,n3c
+                         do lbf=1,n4c
                            iibf=iibf+1
                            integrals_cart(ibf,jbf,kbf,lbf) = integrals_cart(ibf,jbf,kbf,lbf) &
                                                             + int_shell(iibf) * coeff1(ig1) * coeff3(ig3) 
@@ -970,10 +970,10 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
        endif
 
        iibf=0
-       do ibf=1,n1
-         do jbf=1,n2
-           do kbf=1,n3
-             do lbf=1,n4
+       do ibf=1,n1c
+         do jbf=1,n2c
+           do kbf=1,n3c
+             do lbf=1,n4c
                iibf=iibf+1
                integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
              enddo
@@ -984,31 +984,31 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
 
 
 
-           do lbf=1,n4
-             do kbf=1,n3
-               do jbf=1,n2
+           do lbf=1,n4c
+             do kbf=1,n3c
+               do jbf=1,n2c
                  do ibf=1,ni
-                   integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1,jbf,kbf,lbf) * cart_to_pure_norm(shell_auxil(ishell)%am)%matrix(1:n1,ibf) )
+                   integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1c,jbf,kbf,lbf) * cart_to_pure_norm(shell_auxil(ishell)%am)%matrix(1:n1c,ibf) )
                  enddo
                enddo
              enddo
            enddo
 
-           do lbf=1,n4
-             do kbf=1,n3
+           do lbf=1,n4c
+             do kbf=1,n3c
                do jbf=1,nj
                  do ibf=1,ni
-                   integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2,kbf,lbf) * cart_to_pure_norm(shell_auxil(jshell)%am)%matrix(1:n2,jbf) )
+                   integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2c,kbf,lbf) * cart_to_pure_norm(shell_auxil(jshell)%am)%matrix(1:n2c,jbf) )
                  enddo
                enddo
              enddo
            enddo
 
-           do lbf=1,n4
+           do lbf=1,n4c
              do kbf=1,nk
                do jbf=1,nj
                  do ibf=1,ni
-                   integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n3,lbf) * cart_to_pure_norm(shell_auxil(kshell)%am)%matrix(1:n3,kbf) )
+                   integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n3c,lbf) * cart_to_pure_norm(shell_auxil(kshell)%am)%matrix(1:n3c,kbf) )
                  enddo
                enddo
              enddo
@@ -1018,7 +1018,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
              do kbf=1,nk
                do jbf=1,nj
                  do ibf=1,ni
-                   integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n4) * cart_to_pure_norm(shell_auxil(lshell)%am)%matrix(1:n4,lbf) )
+                   integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n4c) * cart_to_pure_norm(shell_auxil(lshell)%am)%matrix(1:n4c,lbf) )
                  enddo
                enddo
              enddo
@@ -1097,7 +1097,8 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
 !=====
  integer                      :: ishell,jshell,kshell,lshell
  integer                      :: klshellpair
- integer                      :: n1,n2,n3,n4,n1c,n2c,n3c,n4c
+ integer                      :: n1,n2,n3,n4
+ integer                      :: n1c,n2c,n3c,n4c
  integer                      :: ng1,ng2,ng3,ng4
  integer                      :: ig1,ig2,ig3,ig4
  integer                      :: ni,nj,nk,nl
@@ -1112,7 +1113,7 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
 !=====
-! variables used to call C++ 
+! variables used to call C
  integer(C_INT),external      :: libint_init,calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2,am3,am4
@@ -1131,11 +1132,9 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
 
  rcut_libint = 0.0_dp
  ! FBFB to be removed in the next future
- omega_range = 2.0e6_dp
+ omega_range = 1.0e6_dp
 
 
-! do lshell=1,nshell
-!   do kshell=1,nshell
  do klshellpair=1,nshellpair
      kshell = index_shellpair(1,klshellpair)
      lshell = index_shellpair(2,klshellpair)
@@ -1522,7 +1521,7 @@ end subroutine refine_negligible_basispair
 
 
 !=========================================================================
-subroutine identify_negligible_shellpair(basis,rcut)
+subroutine identify_negligible_shellpair(basis)
 !
 ! A first screening implementation
 ! Find negligible shell pair with
@@ -1534,61 +1533,55 @@ subroutine identify_negligible_shellpair(basis,rcut)
  implicit none
 
  type(basis_set),intent(in)   :: basis
- real(dp),intent(in)          :: rcut
 !====
- integer :: info
- integer :: iibf
- integer :: ibf,jbf,kbf,lbf
- integer :: n1,n2
- integer :: ni,nj
- integer :: ng1,ng2
- integer :: ami,amj
- integer :: ishell,jshell
- integer :: ig1,ig2,ig3,ig4
- integer :: neval,nneglect
+ integer  :: info
+ integer  :: iibf
+ integer  :: ibf,jbf,kbf,lbf
+! integer  :: n1,n2
+ integer  :: n1c,n2c
+ integer  :: ni,nj
+ integer  :: ng1,ng2
+ integer  :: ami,amj
+ integer  :: ishell,jshell
+ integer  :: ig1,ig2,ig3,ig4
+ integer  :: nneglect
  real(dp) :: zeta_12,rho,rho1,f0t(0:0),tt
  real(dp) :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
 !====
-! variables used to call C++ 
+! variables used to call C
  integer(C_INT),external      :: libint_init,calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:)
  real(C_DOUBLE)               :: x01(3),x02(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:)
- real(C_DOUBLE)               :: omega_range,rcut_libint
+ real(C_DOUBLE)               :: rcut_libint
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
 
- WRITE_MASTER(*,'(/,a)') ' Cauchy-Schwartz screening of the 4-center integrals'
+ WRITE_MASTER(*,'(/,a)')    ' Cauchy-Schwartz screening of the 4-center integrals'
  WRITE_MASTER(*,'(a)')      ' Libint library initialized'
  WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
- rcut_libint = rcut
- ! FBFB to be removed in the next future
- if( rcut > 1.0e-6_dp ) then
-   omega_range = 1.0_dp / rcut
- else 
-   omega_range = 1.0e6_dp
- endif
+ rcut_libint = 0.0_dp
 
- neval    = 0
  nneglect = 0
-
 
  do jshell=1,nshell
    do ishell=1,nshell
      ami = shell(ishell)%am
      amj = shell(jshell)%am
+     !TODO: Here time could be saved by only checking ishell<= jshell
+     ! But then an interexchange of indexes would have to be implemented in
+     ! order to satisfy ami >= amj (required condition in libint)
      if( ami < amj ) cycle
-     neval = neval + 1
 
      ni = number_basis_function_am( basis%gaussian_type , ami )
      nj = number_basis_function_am( basis%gaussian_type , amj )
-     n1 = number_basis_function_am( CARTESIAN , ami )
-     n2 = number_basis_function_am( CARTESIAN , amj )
+     n1c = number_basis_function_am( CARTESIAN , ami )
+     n2c = number_basis_function_am( CARTESIAN , amj )
      am1 = shell(ishell)%am
      am2 = shell(jshell)%am
      ng1 = shell(ishell)%ng
@@ -1603,9 +1596,9 @@ subroutine identify_negligible_shellpair(basis,rcut)
      coeff1(:) = shell(ishell)%coeff(:)
      coeff2(:) = shell(jshell)%coeff(:)
 
-     allocate( int_shell( n1*n2*n1*n2 ) )
-     allocate( integrals_cart(n1,n2,n1,n2) )
-     allocate( integrals_tmp (n1,n2,n1,n2) )
+     allocate( int_shell( n1c*n2c*n1c*n2c ) )
+     allocate( integrals_cart(n1c,n2c,n1c,n2c) )
+     allocate( integrals_tmp (n1c,n2c,n1c,n2c) )
 
      integrals_cart(:,:,:,:) = 0.0_dp
 
@@ -1621,7 +1614,7 @@ subroutine identify_negligible_shellpair(basis,rcut)
                q(:) = ( alpha1(ig3) * x01(:) + alpha2(ig4) * x02(:) ) / zeta_12 
                !
                ! Treat carefully the LR only integrals
-               rho  = zeta_12 * zeta_12 / ( zeta_12 + zeta_12 + zeta_12*zeta_12*rcut**2 )
+               rho  = zeta_12 * zeta_12 / ( zeta_12 + zeta_12 + zeta_12*zeta_12*rcut_libint**2 )
                rho1 = zeta_12 * zeta_12 / ( zeta_12 + zeta_12 )
                tt = rho * SUM( (p(:)-q(:))**2 )
                call boys_function(f0t(0),0,tt)
@@ -1642,42 +1635,6 @@ subroutine identify_negligible_shellpair(basis,rcut)
        enddo
 
      else
-#if 0
- ! FBFB to be removed in the next future
-       do ig4=1,ng2
-         do ig3=1,ng1
-           do ig2=1,ng2
-             do ig1=1,ng1
-               info=calculate_integral(omega_range,&
-                                       am1,am2,am1,am2,alpha1(ig1),alpha2(ig2),alpha1(ig3),alpha2(ig4),&
-                                       x01(1),x01(2),x01(3),&
-                                       x02(1),x02(2),x02(3),&
-                                       x01(1),x01(2),x01(3),&
-                                       x02(1),x02(2),x02(3),&
-                                       int_shell(1))
-               if(info/=0) then
-                 WRITE_MASTER(*,*) am1,am2,am1,am2
-                 stop 'ERI calculated by libint failed'
-               endif
-               iibf=0
-               do ibf=1,n1
-                 do jbf=1,n2
-                   do kbf=1,n1
-                     do lbf=1,n2
-                       iibf=iibf+1
-                       integrals_cart(ibf,jbf,kbf,lbf) = integrals_cart(ibf,jbf,kbf,lbf) &
-                                                        + int_shell(iibf) * shell(ishell)%coeff(ig1) * shell(jshell)%coeff(ig2) &
-                                                                                 * shell(ishell)%coeff(ig3) * shell(jshell)%coeff(ig4)
-                     enddo
-                   enddo
-                 enddo
-               enddo
-
-             enddo
-           enddo
-         enddo
-       enddo
-#else
 
        info=eval_contr_integral(                &
                                am1,am2,am1,am2, &
@@ -1695,10 +1652,10 @@ subroutine identify_negligible_shellpair(basis,rcut)
        endif
 
        iibf=0
-       do ibf=1,n1
-         do jbf=1,n2
-           do kbf=1,n1
-             do lbf=1,n2
+       do ibf=1,n1c
+         do jbf=1,n2c
+           do kbf=1,n1c
+             do lbf=1,n2c
                iibf=iibf+1
                integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
              enddo
@@ -1706,33 +1663,32 @@ subroutine identify_negligible_shellpair(basis,rcut)
          enddo
        enddo
 
-#endif
 
-       do lbf=1,n2
-         do kbf=1,n1
-           do jbf=1,n2
+       do lbf=1,n2c
+         do kbf=1,n1c
+           do jbf=1,n2c
              do ibf=1,ni
-               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1,jbf,kbf,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1,ibf) )
+               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1c,jbf,kbf,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1c,ibf) )
              enddo
            enddo
          enddo
        enddo
 
-       do lbf=1,n2
-         do kbf=1,n1
+       do lbf=1,n2c
+         do kbf=1,n1c
            do jbf=1,nj
              do ibf=1,ni
-               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2,kbf,lbf) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2,jbf) )
+               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2c,kbf,lbf) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2c,jbf) )
              enddo
            enddo
          enddo
        enddo
 
-       do lbf=1,n2
+       do lbf=1,n2c
          do kbf=1,ni
            do jbf=1,nj
              do ibf=1,ni
-               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n1,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1,kbf) )
+               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n1c,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1c,kbf) )
              enddo
            enddo
          enddo
@@ -1742,7 +1698,7 @@ subroutine identify_negligible_shellpair(basis,rcut)
          do kbf=1,ni
            do jbf=1,nj
              do ibf=1,ni
-               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n2) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2,lbf) )
+               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n2c) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2c,lbf) )
              enddo
            enddo
          enddo
@@ -1772,8 +1728,6 @@ subroutine identify_negligible_shellpair(basis,rcut)
    enddo
  enddo
 
- WRITE_MASTER(*,*) 'Neglible shell pairs',nneglect,'/',neval
-
 end subroutine identify_negligible_shellpair
 
 
@@ -1783,12 +1737,14 @@ subroutine setup_shellpair()
 
  integer :: ishell,jshell
  integer :: ami,amj
- integer :: ishellpair
+ integer :: ishellpair,jshellpair
 !=====
 
  ishellpair = 0
+ jshellpair = 0
  do jshell=1,nshell
    do ishell=1,jshell ! nshell
+     jshellpair = jshellpair + 1
      ! skip the identified negligible shell pairs
      if( negligible_shellpair(ishell,jshell) ) cycle
      ami = shell(ishell)%am
@@ -1798,7 +1754,7 @@ subroutine setup_shellpair()
    enddo
  enddo
  nshellpair = ishellpair
- WRITE_MASTER(*,'(/,a,i12,/)') ' Non negligible shellpairs to be computed',nshellpair
+ WRITE_MASTER(*,'(/,a,i8,a,i8)') ' Non negligible shellpairs to be computed',nshellpair,'  over a total of',jshellpair
  allocate(index_shellpair(2,nshellpair))
 
  ishellpair = 0
