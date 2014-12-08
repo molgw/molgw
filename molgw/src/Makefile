@@ -26,10 +26,10 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 
 ../molgw: macros.h m_definitions.o m_mpi.o m_timing.o m_warning.o m_atoms.o m_calculation_type.o m_tools.o m_scf.o \
          m_gaussian.o m_basis_set.o m_inputparam.o m_eri.o m_spectral_function.o m_dft_grid.o m_gw.o gw_auxiliary.o timedependent.o dft_xc.o \
-         wrapper_libint.o libint_wrapper.o  lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o scf_loop.o molgw.o
+         libint_wrapper.o  lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o scf_loop.o molgw.o
 	$(FC) $(FCOPTS) m_definitions.o m_mpi.o m_timing.o m_warning.o m_calculation_type.o m_inputparam.o m_tools.o m_scf.o m_atoms.o \
                         m_gaussian.o m_basis_set.o m_eri.o m_dft_grid.o m_spectral_function.o \
-                        wrapper_libint.o libint_wrapper.o lebedev_quadrature.o mp2_selfenergy.o \
+                        libint_wrapper.o lebedev_quadrature.o mp2_selfenergy.o \
                         mp2.o m_gw.o gw_auxiliary.o timedependent.o dft_xc.o io.o hamiltonian.o scf_loop.o \
                         molgw.o \
                         -o ../molgw \
@@ -77,8 +77,8 @@ lebedev_quadrature.o: macros.h lebedev_quadrature.f
 libint_wrapper.o: libint_wrapper.c
 	$(CC) $(CCOPTS) -c libint_wrapper.c $(LIBINT_INCS)
 
-wrapper_libint.o:  wrapper_libint.cc
-	$(CC) $(CCOPTS) -c wrapper_libint.cc $(LIBINT_INCS)
+#wrapper_libint.o:  wrapper_libint.cc
+#	$(CC) $(CCOPTS) -c wrapper_libint.cc $(LIBINT_INCS)
 
 m_dft_grid.o: macros.h m_definitions.f90 m_inputparam.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90
 	$(FC) $(FCOPTS) -c m_dft_grid.f90 $(LIBXC_INCS)
