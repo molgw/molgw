@@ -197,9 +197,9 @@ subroutine output_homolumo(nbf,nspin,occupation,energy,homo,lumo)
 
 
  WRITE_MASTER(*,*)
- WRITE_MASTER(*,'(a,2(3x,f12.6))') ' HOMO energy    [Ha]:',homo(:)
- WRITE_MASTER(*,'(a,2(3x,f12.6))') ' LUMO energy    [Ha]:',lumo(:)
- WRITE_MASTER(*,'(a,2(3x,f12.6))') ' HOMO-LUMO gap  [Ha]:',lumo(:)-homo(:)
+ WRITE_MASTER(*,'(a,2(3x,f12.6))') ' HOMO energy    [eV]:',homo(:) * Ha_eV
+ WRITE_MASTER(*,'(a,2(3x,f12.6))') ' LUMO energy    [eV]:',lumo(:) * Ha_eV
+ WRITE_MASTER(*,'(a,2(3x,f12.6))') ' HOMO-LUMO gap  [eV]:',( lumo(:)-homo(:) ) * Ha_eV
  WRITE_MASTER(*,*)
 
 
@@ -693,13 +693,11 @@ subroutine read_any_restart(nbf,occupation,c_matrix,energy,hamiltonian_exx,hamil
 
  read(unit_restart) nstate_read(1),nstate_read(2)
 
- if( nstate_read(1) == nbf .AND. nstate_read(2) == nbf ) then
+ if( nstate_read(1) == nbf .AND. nstate_read(2) == nbf .AND. .NOT. ignore_big_restart ) then
    msg='Restart from a big RESTART file' 
    call issue_warning(msg)
-!   WRITE_MASTER(*,'(/,a)') ' Reading a big RESTART file'
    is_big_restart = .TRUE.
  else
-!   WRITE_MASTER(*,'(/,a)') ' Reading a small RESTART file'
    msg='Restart from a small RESTART file' 
    call issue_warning(msg)
    is_big_restart = .FALSE.

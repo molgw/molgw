@@ -1430,6 +1430,7 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
  eri_3center(:,:) = MATMUL( TRANSPOSE(eri_2center_m1) , eri_3center(:,:) )
 
  WRITE_MASTER(*,*) 'Now deallocate the 2-center integrals: not needed anymore'
+ call memory_statement(-REAL(nsize_auxil,dp)*REAL(prec_eri/dp,dp))
  if(allocated(eri_2center_m1)) deallocate(eri_2center_m1)
  
 
@@ -2065,6 +2066,8 @@ subroutine prepare_eri_3center_eigen(c_matrix)
 
  !TODO merge the 2 last indexes for prod_basis save a factor 2! (i<->j symmetry)
  allocate(eri_3center_eigen(nsize1_auxil,nbf_eri,nbf_eri,nspin))
+ WRITE_MASTER(*,*) 'Allocate 3-center integrals on states'
+ call memory_statement(REAL(nsize1_auxil,dp)*REAL(nbf_eri,dp)**2*REAL(prec_eri,dp)/REAL(dp,dp))
 
  allocate(eri_3center_tmp(nsize1_auxil,nbf_eri,nbf_eri)) 
  eri_3center_eigen(:,:,:,:) = 0.0_dp
@@ -2094,6 +2097,9 @@ subroutine prepare_eri_3center_eigen(c_matrix)
  enddo ! klspin
  deallocate(eri_3center_tmp)
 
+ WRITE_MASTER(*,*) 'Now deallocate the 3-center integrals: not needed anymore'
+ call memory_statement(-REAL(nsize1_auxil,dp)*REAL(nsize1)*REAL(prec_eri/dp,dp))
+ if(allocated(eri_3center)) deallocate(eri_3center)
 
  WRITE_MASTER(*,'(a,/)') ' Done'
 

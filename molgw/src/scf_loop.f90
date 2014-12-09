@@ -72,8 +72,6 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
    WRITE_MASTER(*,'(/,a)') '-------------------------------------------'
    WRITE_MASTER(*,'(a,x,i4,/)') ' *** SCF cycle No:',iscf
 
-   call output_homolumo(basis%nbf,nspin,occupation,energy,ehomo,elumo)
-
    en%kin  = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
    en%nuc  = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
 
@@ -198,6 +196,9 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
   
    title='=== Energies ==='
    call dump_out_eigenenergy(title,basis%nbf,nspin,occupation,energy)
+
+   call output_homolumo(basis%nbf,nspin,occupation,energy,ehomo,elumo)
+
   
    if(print_matrix) then
      !

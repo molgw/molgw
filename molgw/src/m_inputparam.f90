@@ -25,7 +25,7 @@ module m_inputparam
  logical,protected                   :: print_matrix
  logical,protected                   :: print_basis
  logical,protected                   :: print_eri
- logical,protected                   :: print_densitymatrix
+ logical,protected                   :: ignore_big_restart
  logical,protected                   :: print_wfn
  logical,protected                   :: print_specfunc
 
@@ -146,7 +146,7 @@ subroutine read_inputparameter_molecule()
  print_matrix        = MODULO(print_volume       ,2)==1
  print_basis         = MODULO(print_volume/10    ,2)==1
  print_eri           = MODULO(print_volume/100   ,2)==1
- print_densitymatrix = MODULO(print_volume/1000  ,2)==1
+ ignore_big_restart  = MODULO(print_volume/1000  ,2)==1
  print_wfn           = MODULO(print_volume/10000 ,2)==1
  print_specfunc      = MODULO(print_volume/100000,2)==1
 
@@ -212,11 +212,11 @@ subroutine read_inputparameter_molecule()
  WRITE_MASTER(*,'(a25,f8.4)') ' Mixing: ',alpha_mixing
  WRITE_MASTER(*,'(a25,2x,a)') ' Quadrature accuracy: ',quadrature_name
  WRITE_MASTER(*,*)
- WRITE_MASTER(*,'(a19)')      ' Print volume:'
+ WRITE_MASTER(*,'(a19)')      ' IO options:'
  WRITE_MASTER(*,'(a30,l3)')   ' - matrices details:   ',print_matrix        
  WRITE_MASTER(*,'(a30,l3)')   ' - basis set details:  ',print_basis
  WRITE_MASTER(*,'(a30,l3)')   ' - ERI file:           ',print_eri           
- WRITE_MASTER(*,'(a30,l3)')   ' - density matrix file:',print_densitymatrix 
+ WRITE_MASTER(*,'(a30,l3)')   ' - ignore big RESTART: ',ignore_big_restart
  WRITE_MASTER(*,'(a30,l3)')   ' - plot some wfns:     ',print_wfn           
  WRITE_MASTER(*,'(a30,l3)')   ' - dump spectral functs',print_specfunc      
 
