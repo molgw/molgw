@@ -168,13 +168,9 @@ program molgw
 
  endif
 
-
  !
  ! Setup the density matrix: p_matrix
  call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
- !
- ! Read the density matrix if asked and override the previously guessed matrix
-!FBFB call read_density_matrix(basis%nbf,nspin,p_matrix)
 !!
 !! Test PSP = P
 ! call test_density_matrix(basis%nbf,nspin,p_matrix,s_matrix)
@@ -207,7 +203,6 @@ program molgw
  call start_clock(timing_postscf)
 
 
-!FBFB if( print_densitymatrix )   call write_density_matrix(nspin,basis%nbf,p_matrix)
  if( print_wfn ) call plot_wfn(nspin,basis,c_matrix)
 ! if( print_wfn ) call plot_cube_wfn(nspin,basis,c_matrix)
 

@@ -61,7 +61,7 @@ To be done:
 
 Known issues:
 * QPscGW scf loop is quite unstable for large basis sets, use a low alpha (<= 0.50)
-
+* Use of linearization of the GW self-energy can affect the QP energies (50 meV difference is observed)
 
 Author:
 Fabien Bruneval
