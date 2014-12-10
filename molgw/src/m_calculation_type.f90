@@ -29,7 +29,6 @@ module m_calculation_type
    character(len=100) :: name
    logical :: is_dft
    logical :: need_exchange
-   logical :: need_final_exchange
    logical :: need_rpa
    logical :: is_lr_mbpt
    logical :: is_screened_hybrid
@@ -61,7 +60,6 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%name                =  TRIM(input_key)
  calc_type%is_dft              = .FALSE.
  calc_type%need_exchange       = .FALSE.
- calc_type%need_final_exchange = .FALSE.
  calc_type%need_rpa            = .FALSE.
  calc_type%is_lr_mbpt          = .FALSE.
  calc_type%is_screened_hybrid  = .FALSE.
@@ -152,7 +150,6 @@ subroutine init_dft_type(key,calc_type)
 !=====
 
 ! alpha_hybrid = 1.0_dp
- if(calc_type%is_gw .OR. calc_type%is_mp2) calc_type%need_final_exchange=.TRUE.
 
  select case(TRIM(key))
  case('LDAx','PBEx','PBEhx','Bx','PW91x','BJx','RPPx',&
@@ -316,7 +313,6 @@ subroutine output_calculation_type(calc_type)
 !=====
 
   WRITE_MASTER(*,*) 'need_exchange               ',calc_type%need_exchange
-  WRITE_MASTER(*,*) 'need_final_exchange         ',calc_type%need_final_exchange
   WRITE_MASTER(*,*) 'need_rpa                    ',calc_type%need_rpa
   WRITE_MASTER(*,*) 'is_gw                       ',calc_type%is_gw
   WRITE_MASTER(*,*) 'is_mp2                      ',calc_type%is_mp2

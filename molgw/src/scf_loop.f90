@@ -133,7 +133,7 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
    if( calc_type%is_gw .AND. ( calc_type%gwmethod == QS .OR. calc_type%gwmethod == QSCOHSEX) &
        .AND. iscf > 5 ) then
 
-     call polarizability_rpa(basis,prod_basis,auxil_basis_dummy,occupation,energy,c_matrix,en%rpa,wpol)
+     if(is_auxil_basis) call prepare_eri_3center_eigen(c_matrix)
      if( en%rpa > 1.e-6_DP) then
        en%tot = en%tot + en%rpa
        WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
@@ -141,6 +141,7 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
 
      exchange_m_vxc_diag(:,:)=0.0_dp
      call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp)
+     if(is_auxil_basis) call destroy_eri_3center_eigen()
 
      matrix_tmp(:,:,:) = alpha_mixing * matrix_tmp(:,:,:) + (1.0_dp-alpha_mixing) * self_energy_old(:,:,:)
      self_energy_old(:,:,:) = matrix_tmp(:,:,:)

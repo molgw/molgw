@@ -336,7 +336,6 @@ void prep_libint2_contr(Libint_t* erieval,
   }
 
   calc_boys(F, am, PQ2 * gammapq_rc2);
-//  calc_f(F, am, PQ2 * gammapq_rc2);
 
   // using dangerous macros from libint2.h
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(0))
