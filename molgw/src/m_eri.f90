@@ -503,23 +503,14 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
- real(C_DOUBLE)               :: omega_range,rcut_libint
+ real(C_DOUBLE)               :: rcut_libint
 !=====
 
  WRITE_MASTER(*,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
  WRITE_MASTER(*,'(a)')      ' Libint library initialized'
  WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
- ! FBFB to be removed in the next future
- if( rcut > 1.0e-6_dp ) then
-   omega_range = 1.0_dp / rcut
-   WRITE_MASTER(*,'(a40,x,f9.4)') ' Long-Range only integrals with rcut=',rcut
-   WRITE_MASTER(*,'(a40,x,f9.4)') ' or omega=',omega_range
- else 
-   omega_range = 2.0e6_dp
- endif
  rcut_libint = rcut
-
 
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
@@ -619,46 +610,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
 
      else
 
-#if 0
- ! FBFB to be removed in the next future
-       do ig4=1,ng4
-         do ig3=1,ng3
-           do ig2=1,ng2
-             do ig1=1,ng1
-
-               info=calculate_integral(omega_range,&
-                                       am1,am2,am3,am4,alpha1(ig1),alpha2(ig2),alpha3(ig3),alpha4(ig4),&
-                                       x01(1),x01(2),x01(3),&
-                                       x02(1),x02(2),x02(3),&
-                                       x03(1),x03(2),x03(3),&
-                                       x04(1),x04(2),x04(3),&
-                                       int_shell(1))
-
-               if(info/=0) then
-                 WRITE_MASTER(*,*) am1,am2,am3,am4
-                 stop 'ERI calculated by libint failed'
-               endif
-
-               iibf=0
-               do ibf=1,n1c
-                 do jbf=1,n2c
-                   do kbf=1,n3c
-                     do lbf=1,n4c
-                       iibf=iibf+1
-                       integrals_cart(ibf,jbf,kbf,lbf) = integrals_cart(ibf,jbf,kbf,lbf) &
-                                                        + int_shell(iibf) * coeff1(ig1) * coeff2(ig2) &
-                                                                          * coeff3(ig3) * coeff4(ig4)
-                     enddo
-                   enddo
-                 enddo
-               enddo
-
-             enddo
-           enddo
-         enddo
-       enddo
-#else
-
+        
        info=eval_contr_integral(                &
                                am1,am2,am3,am4, &
                                ng1,ng2,ng3,ng4, &
@@ -685,8 +637,6 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
            enddo
          enddo
        enddo
-
-#endif
 
 
        do lbf=1,n4c
@@ -808,7 +758,7 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
- real(C_DOUBLE)               :: omega_range,rcut_libint
+ real(C_DOUBLE)               :: rcut_libint
 !=====
 
  call start_clock(timing_eri_2center)
@@ -818,8 +768,6 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
  WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
  rcut_libint = 0.0_dp
- ! FBFB to be removed in the next future
- omega_range = 2.0e6_dp
 
  do lshell=1,1  ! FAKE loop
    do kshell=1,nshell_auxil
@@ -915,73 +863,33 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
 
          else
 
-#if 0
- ! FBFB to be removed in the next future
-           do ig4=1,ng4
-             do ig3=1,ng3
-               do ig2=1,ng2
-                 do ig1=1,ng1
 
-                   info=calculate_integral(omega_range,&
-                                           am1,am2,am3,am4,alpha1(ig1),alpha2(ig2),alpha3(ig3),alpha4(ig4),&
-                                           x01(1),x01(2),x01(3),&
-                                           x02(1),x02(2),x02(3),&
-                                           x03(1),x03(2),x03(3),&
-                                           x04(1),x04(2),x04(3),&
-                                           int_shell(1))
+           info=eval_contr_integral(                &
+                                   am1,am2,am3,am4, &
+                                   ng1,ng2,ng3,ng4, &
+                                   coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
+                                   alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
+                                   x01(1),x02(1),x03(1),x04(1),&
+                                   rcut_libint, &
+                                   int_shell(1))
 
-                   if(info/=0) then
-                     WRITE_MASTER(*,*) am1,am2,am3,am4
-                     stop 'ERI calculated by libint failed'
-                   endif
 
-                   iibf=0
-                   do ibf=1,n1c
-                     do jbf=1,n2c
-                       do kbf=1,n3c
-                         do lbf=1,n4c
-                           iibf=iibf+1
-                           integrals_cart(ibf,jbf,kbf,lbf) = integrals_cart(ibf,jbf,kbf,lbf) &
-                                                            + int_shell(iibf) * coeff1(ig1) * coeff3(ig3) 
-                         enddo
-                       enddo
-                     enddo
-                   enddo
+           if(info/=0) then
+             WRITE_MASTER(*,*) am1,am2,am3,am4
+             stop 'ERI calculated by libint failed'
+           endif
 
+           iibf=0
+           do ibf=1,n1c
+             do jbf=1,n2c
+               do kbf=1,n3c
+                 do lbf=1,n4c
+                   iibf=iibf+1
+                   integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
                  enddo
                enddo
              enddo
            enddo
-
-#else
-       info=eval_contr_integral(                &
-                               am1,am2,am3,am4, &
-                               ng1,ng2,ng3,ng4, &
-                               coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
-                               alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
-                               x01(1),x02(1),x03(1),x04(1),&
-                               rcut_libint, &
-                               int_shell(1))
-
-
-       if(info/=0) then
-         WRITE_MASTER(*,*) am1,am2,am3,am4
-         stop 'ERI calculated by libint failed'
-       endif
-
-       iibf=0
-       do ibf=1,n1c
-         do jbf=1,n2c
-           do kbf=1,n3c
-             do lbf=1,n4c
-               iibf=iibf+1
-               integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
-             enddo
-           enddo
-         enddo
-       enddo
-#endif
-
 
 
            do lbf=1,n4c
@@ -1121,7 +1029,7 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
- real(C_DOUBLE)               :: omega_range,rcut_libint
+ real(C_DOUBLE)               :: rcut_libint
 !=====
 
  call start_clock(timing_eri_3center)
@@ -1131,9 +1039,6 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
  WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
  rcut_libint = 0.0_dp
- ! FBFB to be removed in the next future
- omega_range = 1.0e6_dp
-
 
  do klshellpair=1,nshellpair
      kshell = index_shellpair(1,klshellpair)
@@ -1269,74 +1174,33 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
 
          else
 
-#if 0
- ! FBFB to be removed in the next future
-           do ig4=1,ng4
-             do ig3=1,ng3
-               do ig2=1,ng2
-                 do ig1=1,ng1
-                   info=calculate_integral(omega_range,&
-                                           am1,am2,am3,am4,alpha1(ig1),alpha2(ig2),alpha3(ig3),alpha4(ig4),&
-                                           x01(1),x01(2),x01(3),&
-                                           x02(1),x02(2),x02(3),&
-                                           x03(1),x03(2),x03(3),&
-                                           x04(1),x04(2),x04(3),&
-                                           int_shell(1))
-
-                   if(info/=0) then
-                     WRITE_MASTER(*,*) am1,am2,am3,am4
-                     stop 'ERI calculated by libint failed'
-                   endif
-
-                   iibf=0
-                   do ibf=1,n1c
-                     do jbf=1,n2c
-                       do kbf=1,n3c
-                         do lbf=1,n4c
-                           iibf=iibf+1
-                           integrals_cart(ibf,jbf,kbf,lbf) = integrals_cart(ibf,jbf,kbf,lbf) &
-                                                            + int_shell(iibf)         &
-                                                              * coeff1(ig1) * coeff2(ig2)    &
-                                                              * coeff3(ig3) * coeff4(ig4)
-                         enddo
-                       enddo
-                     enddo
-                   enddo
-
+           info=eval_contr_integral(                &
+                                   am1,am2,am3,am4, &
+                                   ng1,ng2,ng3,ng4, &
+                                   coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
+                                   alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
+                                   x01(1),x02(1),x03(1),x04(1),&
+                                   rcut_libint, &
+                                   int_shell(1))
+    
+    
+           if(info/=0) then
+             WRITE_MASTER(*,*) am1,am2,am3,am4
+             stop 'ERI calculated by libint failed'
+           endif
+    
+           iibf=0
+           do ibf=1,n1c
+             do jbf=1,n2c
+               do kbf=1,n3c
+                 do lbf=1,n4c
+                   iibf=iibf+1
+                   integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
                  enddo
                enddo
              enddo
            enddo
-#else
 
-       info=eval_contr_integral(                &
-                               am1,am2,am3,am4, &
-                               ng1,ng2,ng3,ng4, &
-                               coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
-                               alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
-                               x01(1),x02(1),x03(1),x04(1),&
-                               rcut_libint, &
-                               int_shell(1))
-
-
-       if(info/=0) then
-         WRITE_MASTER(*,*) am1,am2,am3,am4
-         stop 'ERI calculated by libint failed'
-       endif
-
-       iibf=0
-       do ibf=1,n1c
-         do jbf=1,n2c
-           do kbf=1,n3c
-             do lbf=1,n4c
-               iibf=iibf+1
-               integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
-             enddo
-           enddo
-         enddo
-       enddo
-
-#endif
 
            do lbf=1,n4c
              do kbf=1,n3c

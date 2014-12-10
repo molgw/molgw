@@ -242,7 +242,9 @@ program molgw
        stop'BSE requires a previous GW calculation stored in a spectral_file'
      endif
    endif
+   if(is_auxil_basis) call prepare_eri_3center_eigen(c_matrix)
    call polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,wpol)
+   if(is_auxil_basis) call destroy_eri_3center_eigen()
    call destroy_spectral_function(wpol)
  endif
   
@@ -284,17 +286,18 @@ program molgw
 
 
 #ifdef CASIDA
+   stop'NOT WORKING ANYMORE'
    call polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #else
+   if(is_auxil_basis) call prepare_eri_3center_eigen(c_matrix)
    call polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
 #endif
    en%tot = en%tot + en%rpa
    if( calc_type%is_dft ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
    WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
 
-#ifndef CASIDA
    call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp)
-#endif
+   if(is_auxil_basis) call destroy_eri_3center_eigen()
 
    title='=== Self-energy === (in the eigenstate basis)'
    call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix_tmp)

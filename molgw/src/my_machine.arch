@@ -8,7 +8,7 @@ OPENMP= #-openmp
 FC=gfortran -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC   # -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
 
 CC=gcc
-FCOPTS=       -O0 -g  -fcheck=all -fbacktrace #-Wall # -g -check all -traceback  #-O2 #-g -check all -check noarg_temp_created -traceback
+FCOPTS=       -O0 -g  -fcheck=all -fbacktrace #-DTODAY #-Wall # -g -check all -traceback  #-O2 #-g -check all -check noarg_temp_created -traceback
 CCOPTS=  -O2 # -O0 -g -fbounds-check
 #FCOPTS= -xHost -O3 #-ipo
 
@@ -21,7 +21,7 @@ LAPACK=-L${HOME}/src/lapack-3.5.0/ -llapack -lblas
 
 #SCALAPACK=-L{MKLROOT}/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -lpthread -lm
 
-LIBXC_ROOT=${HOME}/src/libxc-2.2.0_gfortran/
+LIBXC_ROOT=${HOME}/src/libxc-2.2.1_gfortran/
 
 #LIBINT_ROOT=/home/bruneval/src/libint-2.0.0_install
 LIBINT_ROOT=${HOME}/src/libint-2.0.3-stable_gcc/

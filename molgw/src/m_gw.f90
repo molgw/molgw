@@ -75,10 +75,7 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
    alpha2=0.0_dp
  endif
 
-
- if(is_auxil_basis) then
-   call prepare_eri_3center_eigen(c_matrix)
- else
+ if( .NOT. is_auxil_basis) then
    allocate(eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin))
  endif
 
@@ -127,6 +124,8 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
 #ifndef CHI0
 
 !!FBFB
+! Good approximation:
+! Remove off diagonal elements for high energy states 
 !             if( t_kl /= t_ij .AND. & 
 !                   ( istate >= 30 .OR. jstate >= 30 .OR. kstate >= 30 .OR. lstate >= 30 ) ) then
 !               h_2p(t_ij,t_kl) = 0.0_dp
@@ -200,12 +199,11 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  ! Finally calculate v * \chi * v and store it in object wpol
  ! Deallocation is made inside chi_to_vchiv
  if(is_auxil_basis) then
-   call chi_to_vchiv_auxil(ntrans,basis%nbf,auxil_basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+   call chi_to_sqrtvchisqrtv_auxil(ntrans,basis%nbf,auxil_basis%nbf,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
  else
    call chi_to_vchiv(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
  endif
 
- if(is_auxil_basis) call destroy_eri_3center_eigen()
 
  ! If requested write the spectral function on file
  if( print_specfunc ) call write_spectral_function(wpol)
@@ -268,7 +266,7 @@ subroutine chi_to_vchiv(ntrans,nbf,prod_basis,occupation,c_matrix,eigenvector,ei
 
  if( .NOT. is_auxil_basis ) allocate(eri_eigenstate_k(nbf,nbf,nbf,nspin))
 
- call allocate_spectral_function(ntrans,prod_basis%nbf,wpol)
+ call allocate_spectral_function(ntrans,prod_basis%nbf*nspin,wpol)
 
  wpol%pole(:) = eigenvalue(:)
 
@@ -325,6 +323,7 @@ end subroutine chi_to_vchiv
 
 
 !=========================================================================
+!FBFB to be removed in the next future
 subroutine chi_to_vchiv_auxil(ntrans,nbf,nbf_auxil,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
  use m_definitions
  use m_warning
@@ -390,7 +389,7 @@ subroutine chi_to_vchiv_auxil(ntrans,nbf,nbf_auxil,prod_basis,occupation,c_matri
  deallocate(eigenvector)
  deallocate(eigenvector_inv)
 
- call allocate_spectral_function(ntrans,prod_basis%nbf,wpol)
+ call allocate_spectral_function(ntrans,prod_basis%nbf*nspin,wpol)
 
  wpol%pole(:) = eigenvalue(:)
  deallocate(eigenvalue)
@@ -429,6 +428,77 @@ subroutine chi_to_vchiv_auxil(ntrans,nbf,nbf_auxil,prod_basis,occupation,c_matri
  call stop_clock(timing_buildw)
 
 end subroutine chi_to_vchiv_auxil
+
+
+!=========================================================================
+subroutine chi_to_sqrtvchisqrtv_auxil(ntrans,nbf,nbf_auxil,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+ use m_definitions
+ use m_warning
+ use m_inputparam,only: nspin,is_auxil_basis
+ use m_basis_set
+ use m_eri
+ use m_spectral_function
+ implicit none
+ 
+ integer,intent(in)                    :: nbf,nbf_auxil,ntrans
+ real(dp),intent(in)                   :: occupation(nbf,nspin)
+ real(dp),intent(in)                   :: c_matrix(nbf,nbf,nspin)
+ real(dp),allocatable,intent(inout)    :: eigenvector    (:,:)
+ real(dp),allocatable,intent(inout)    :: eigenvector_inv(:,:)
+ real(dp),allocatable,intent(inout)    :: eigenvalue     (:)
+ type(spectral_function),intent(inout) :: wpol
+!=====
+ integer                    :: t_ij,t_kl,klspin,ijspin
+ integer                    :: istate,jstate,kstate,lstate,ijstate,ijstate_spin
+ real(dp)                   :: docc_kl
+!=====
+
+ call start_clock(timing_buildw)
+
+
+ call allocate_spectral_function(ntrans,nbf_auxil,wpol)
+ wpol%pole(:) = eigenvalue(:)
+ deallocate(eigenvalue)
+
+ wpol%residu_left (:,:) = 0.0_dp
+ wpol%residu_right(:,:) = 0.0_dp
+ t_kl=0
+ do klspin=1,nspin
+   do kstate=1,nbf 
+
+     do lstate=1,nbf
+       if( skip_transition(nspin,lstate,kstate,occupation(lstate,klspin),occupation(kstate,klspin)) ) cycle
+       t_kl=t_kl+1
+
+       docc_kl = occupation(kstate,klspin)-occupation(lstate,klspin)
+
+       t_ij=0
+       do ijspin=1,nspin
+         do istate=1,nbf
+      
+           do jstate=1,nbf
+             if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin))) cycle
+             t_ij=t_ij+1
+
+
+             wpol%residu_left (t_ij,:) = wpol%residu_left (t_ij,:) + eri_3center_eigen(:,kstate,lstate,klspin) * eigenvector(t_kl,t_ij)
+             wpol%residu_right(t_ij,:) = wpol%residu_right(t_ij,:) + eri_3center_eigen(:,kstate,lstate,klspin) * eigenvector_inv(t_ij,t_kl) *docc_kl
+
+
+           enddo
+         enddo
+       enddo
+
+     enddo
+   enddo
+ enddo
+
+ deallocate(eigenvector)
+ deallocate(eigenvector_inv)
+
+ call stop_clock(timing_buildw)
+
+end subroutine chi_to_sqrtvchisqrtv_auxil
 
 
 !=========================================================================
@@ -691,34 +761,34 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  use m_warning,only: issue_warning
  use m_basis_set
  use m_spectral_function
- use m_inputparam,only: nspin,spin_fact
+ use m_inputparam,only: nspin,spin_fact,is_auxil_basis
+ use m_eri,only: eri_3center_eigen
  implicit none
 
- integer,intent(in)  :: gwmethod
- type(basis_set)     :: basis,prod_basis
- real(dp),intent(in) :: occupation(basis%nbf,nspin),energy(basis%nbf,nspin),exchange_m_vxc_diag(basis%nbf,nspin)
- real(dp),intent(in) :: c_matrix(basis%nbf,basis%nbf,nspin)
- real(dp),intent(in) :: s_matrix(basis%nbf,basis%nbf)
+ integer,intent(in)                 :: gwmethod
+ type(basis_set)                    :: basis,prod_basis
+ real(dp),intent(in)                :: occupation(basis%nbf,nspin),energy(basis%nbf,nspin),exchange_m_vxc_diag(basis%nbf,nspin)
+ real(dp),intent(in)                :: c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)                :: s_matrix(basis%nbf,basis%nbf)
  type(spectral_function),intent(in) :: wpol
- real(dp),intent(out) :: selfenergy(basis%nbf,basis%nbf,nspin)
-
+ real(dp),intent(out)               :: selfenergy(basis%nbf,basis%nbf,nspin)
+!=====
  logical               :: file_exists=.FALSE.
  logical               :: write_sigma_omega=.FALSE.
  integer               :: nomegai
  integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
  real(dp),allocatable  :: selfenergy_tmp(:,:,:,:)
-
- integer     :: bbf,ibf,kbf
- integer     :: astate,bstate
- integer     :: istate,ispin,ipole
- real(dp)    :: overlap_tmp
- real(dp)    :: bra(wpol%npole,basis%nbf),ket(wpol%npole,basis%nbf)
- real(dp)    :: fact_full,fact_empty
- real(dp)    :: zz(nspin)
- real(dp)    :: energy_re
- real(dp)    :: energy_qp(basis%nbf,nspin)
- character(len=3) :: ctmp
+ integer               :: bbf,ibf,kbf
+ integer               :: astate,bstate
+ integer               :: istate,ispin,ipole
+ real(dp)              :: overlap_tmp
+ real(dp)              :: bra(wpol%npole,basis%nbf),ket(wpol%npole,basis%nbf)
+ real(dp)              :: fact_full,fact_empty
+ real(dp)              :: zz(nspin)
+ real(dp)              :: energy_re
+ real(dp)              :: energy_qp(basis%nbf,nspin)
+ character(len=3)      :: ctmp
 !=====
 
  call start_clock(timing_self)
@@ -783,11 +853,23 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
      !
      ! Prepare the bra and ket with the knowledge of index istate and astate
-     do astate=1,basis%nbf
-       kbf = prod_basis%index_prodbasis(istate,astate)
-       bra(:,astate) = wpol%residu_left (:,kbf+prod_basis%nbf*(ispin-1))
-       ket(:,astate) = wpol%residu_right(:,kbf+prod_basis%nbf*(ispin-1))
-     enddo
+     if( .NOT. is_auxil_basis) then
+       ! Here just grab the precalculated value
+       do astate=1,basis%nbf
+         kbf = prod_basis%index_prodbasis(istate,astate) + prod_basis%nbf*(ispin-1)
+         bra(:,astate) = wpol%residu_left (:,kbf)
+         ket(:,astate) = wpol%residu_right(:,kbf)
+       enddo
+     else
+       ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
+       do astate=1,basis%nbf
+         kbf = prod_basis%index_prodbasis(istate,astate)
+         do ipole=1,wpol%npole
+           bra(ipole,astate) = DOT_PRODUCT( wpol%residu_left (ipole,:) , eri_3center_eigen(:,istate,astate,ispin) )
+           ket(ipole,astate) = DOT_PRODUCT( wpol%residu_right(ipole,:) , eri_3center_eigen(:,istate,astate,ispin) )
+         enddo
+       enddo
+     endif
 
      do ipole=1,wpol%npole
 
@@ -919,7 +1001,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
    if(write_sigma_omega) then
 
-     do astate=1,basis%nbf ! MIN(2,basis%nbf)
+     do astate=1,basis%nbf
        WRITE_ME(ctmp,'(i3.3)') astate
        open(200+astate,file='selfenergy_omega_state'//TRIM(ctmp))
        do iomegai=1,nomegai
@@ -946,6 +1028,10 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
      do astate=1,basis%nbf
        zz(:) = REAL( selfenergy_tmp(3,astate,astate,:) - selfenergy_tmp(1,astate,astate,:) ) / REAL( omegai(3)-omegai(1) )
        zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
+       ! Contrain Z to be in [0:1] to avoid crazy values
+       do ispin=1,nspin
+         zz(ispin) = MIN( MAX(zz(ispin),0.0_dp) , 1.0_dp )
+       enddo
        energy_qp(astate,:) = energy(astate,:)+zz(:)*REAL(selfenergy_tmp(2,astate,astate,:) + exchange_m_vxc_diag(astate,:))
 
        WRITE_MASTER(*,'(i4,x,20(x,f12.6))') astate,energy(astate,:)*Ha_eV,exchange_m_vxc_diag(astate,:)*Ha_eV,REAL(selfenergy_tmp(2,astate,astate,:),dp)*Ha_eV,&

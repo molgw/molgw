@@ -108,10 +108,10 @@ subroutine allocate_spectral_function(npole,nprodbasis,sf)
 !=====
 
  sf%npole      = npole
- sf%nprodbasis = nprodbasis * nspin
+ sf%nprodbasis = nprodbasis
 
- WRITE_MASTER(*,'(/,a,i8)') ' Spectral function initialized with npoles              : ',sf%npole
- WRITE_MASTER(*,'(a,i8)')   ' Spectral function initialized with prod basis functions: ',sf%nprodbasis
+ WRITE_MASTER(*,'(/,a,i8)') ' Spectral function initialized with npoles                 : ',sf%npole
+ WRITE_MASTER(*,'(a,i8)')   ' Spectral function initialized with Coulomb basis functions: ',sf%nprodbasis
 
  allocate(sf%pole(sf%npole))
  allocate(sf%residu_left (sf%npole,sf%nprodbasis))

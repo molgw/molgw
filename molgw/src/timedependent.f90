@@ -30,13 +30,13 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  real(dp),intent(in)                   :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
  type(spectral_function),intent(inout) :: wpol
 !=====
- integer :: pbf,qbf,ibf,jbf,kbf,lbf,ijbf,klbf,ijbf_current,ijspin,klspin,ispin
- integer :: istate,jstate,kstate,lstate
- integer :: ipole
- integer :: ntrans
- integer :: t_ij,t_kl
- integer :: idft_xc,igrid
- integer :: reading_status
+ integer              :: pbf,qbf,ibf,jbf,kbf,lbf,ijbf,klbf,ijbf_current,ijspin,klspin,ispin
+ integer              :: istate,jstate,kstate,lstate
+ integer              :: ipole
+ integer              :: ntrans
+ integer              :: t_ij,t_kl
+ integer              :: idft_xc,igrid
+ integer              :: reading_status
 
  real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
  real(dp)             :: eri_eigen_ijkl,eri_eigen_ikjl
@@ -193,9 +193,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
 
 
 
- if(is_auxil_basis) then
-   call prepare_eri_3center_eigen(c_matrix)
- else
+ if(.NOT. is_auxil_basis) then
    allocate(eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin))
  endif
 
@@ -239,6 +237,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  endif
 
  call start_clock(timing_build_h2p)
+
  h_2p(:,:)=0.0_dp
  t_ij=0
  do ijspin=1,nspin
@@ -270,7 +269,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
 
              !
              ! Hartree part
-             h_2p(t_ij,t_kl) = eri_eigen_ijkl * ( occupation(istate,ijspin)-occupation(jstate,ijspin) )
+             h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl) + eri_eigen_ijkl * ( occupation(istate,ijspin)-occupation(jstate,ijspin) )
 
              !
              ! Add the kernel for TDDFT
@@ -302,10 +301,21 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
              ! Screened exchange part
              if(calc_type%is_bse) then
                if(ijspin==klspin) then
-                 kbf = prod_basis%index_prodbasis(istate,kstate)
-                 bra(:) = wpol%residu_left (:,kbf+prod_basis%nbf*(ijspin-1))
-                 kbf = prod_basis%index_prodbasis(jstate,lstate)
-                 ket(:) = wpol%residu_right(:,kbf+prod_basis%nbf*(klspin-1))
+
+                 if(.NOT. is_auxil_basis) then
+                   ! Here just grab the precalculated value
+                   kbf = prod_basis%index_prodbasis(istate,kstate)+prod_basis%nbf*(ijspin-1)
+                   bra(:) = wpol%residu_left (:,kbf)
+                   kbf = prod_basis%index_prodbasis(jstate,lstate)+prod_basis%nbf*(klspin-1)
+                   ket(:) = wpol%residu_right(:,kbf)
+                 else
+                   ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
+                   do ipole=1,wpol%npole
+                     bra(ipole) = DOT_PRODUCT( wpol%residu_left (ipole,:) , eri_3center_eigen(:,istate,kstate,ijspin) )
+                     ket(ipole) = DOT_PRODUCT( wpol%residu_right(ipole,:) , eri_3center_eigen(:,jstate,lstate,klspin) )
+                   enddo
+                 endif
+
                  h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  SUM( bra(:)*ket(:)/(-wpol%pole(:)) ) &
                           * ( occupation(istate,ijspin)-occupation(jstate,ijspin) ) / spin_fact   
                endif
