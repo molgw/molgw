@@ -190,8 +190,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO REDUCTION(+:rhor_r_shiftx,rhor_r_shifty,rhor_r_shiftz,grad_rhor,grad_rhor_shiftx,grad_rhor_shifty,grad_rhor_shiftz) 
        do jbf=1,basis%nbf
-         ! implementing i <-> j symmetry does not save much time with ifort
-         ! compiler
+         ! implementing i <-> j symmetry does not save much time with ifort compiler
          do ibf=1,basis%nbf
 
            rhor_r_shiftx(ispin) = rhor_r_shiftx(ispin) + p_matrix(ibf,jbf,ispin)&
@@ -455,8 +454,7 @@ subroutine calc_density_r(nspin,nbf,p_matrix,basis_function_r,rhor_r)
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO REDUCTION(+:rhor_r) 
    do jbf=1,nbf
-     ! implementing i <-> j symmetry does not save much time with ifort
-     ! compiler
+     ! implementing i <-> j symmetry does not save much time with ifort compiler
      do ibf=1,nbf
        rhor_r(ispin)=rhor_r(ispin)+p_matrix(ibf,jbf,ispin)&
                          * basis_function_r(ibf) &

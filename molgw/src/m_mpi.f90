@@ -38,9 +38,9 @@ module m_mpi
 
  integer :: mpi_comm
 
- integer :: nbf_mpi
- integer :: ngrid_mpi
- integer :: nocc_mp
+ integer,private :: nbf_mpi
+ integer,private :: ngrid_mpi
+ integer,private :: nocc_mp
 
  integer,allocatable :: task_proc(:)
  integer,allocatable :: ntask_proc(:)
