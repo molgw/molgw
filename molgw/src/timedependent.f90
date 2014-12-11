@@ -65,6 +65,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  real(dp),allocatable :: fxc(:,:)
  real(dp),allocatable :: wf_r(:,:,:)
  real(dp),allocatable :: bra(:),ket(:)
+ real(dp),allocatable :: bra_auxil(:,:,:,:),ket_auxil(:,:,:,:)
  real(dp),allocatable :: dipole_basis(:,:,:),dipole_state(:,:,:,:)
  real(dp),allocatable :: dipole_cart(:,:,:)
  real(dp),allocatable :: residu_left(:,:),residu_right(:,:)
@@ -95,7 +96,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
 
  is_tddft = calc_type%is_td .AND. calc_type%is_dft
 
- WRITE_MASTER(*,'(/,a)') ' calculating the polarizability for neutral excitation energies'
+ WRITE_MASTER(*,'(/,a)') ' Calculating the polarizability for neutral excitation energies'
 
  ! Obtain the number of transition = the size of the matrix
  call init_spectral_function(basis%nbf,occupation,ntrans)
@@ -237,6 +238,24 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  endif
 
  call start_clock(timing_build_h2p)
+ ! Prepare the bra and ket for BSE
+ if(is_auxil_basis .AND. calc_type%is_bse) then
+   allocate(bra_auxil(wpol%npole,basis%nbf,basis%nbf,nspin))
+   allocate(ket_auxil(wpol%npole,basis%nbf,basis%nbf,nspin))
+   do ijspin=1,nspin
+     do istate=1,basis%nbf ! istate stands for occupied or partially occupied
+       do jstate=1,basis%nbf ! jstate stands for empty or partially empty
+
+         ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
+         do ipole=1,wpol%npole
+           bra_auxil(ipole,istate,jstate,ijspin) = DOT_PRODUCT( wpol%residu_left (ipole,:) , eri_3center_eigen(:,istate,jstate,ijspin) )
+           ket_auxil(ipole,istate,jstate,ijspin) = DOT_PRODUCT( wpol%residu_right(ipole,:) , eri_3center_eigen(:,istate,jstate,ijspin) )
+         enddo
+
+       enddo
+     enddo
+   enddo
+ endif
 
  h_2p(:,:)=0.0_dp
  t_ij=0
@@ -277,7 +296,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
                h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
                           + SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
                                 * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
-                                * fxc(:,ijspin) )                                   & ! FIXME spin is not correct
+                                * fxc(:,ijspin) )                               & ! FIXME spin is not correct
                           * ( occupation(istate,ijspin)-occupation(jstate,ijspin) )
              endif
 
@@ -310,10 +329,8 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
                    ket(:) = wpol%residu_right(:,kbf)
                  else
                    ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-                   do ipole=1,wpol%npole
-                     bra(ipole) = DOT_PRODUCT( wpol%residu_left (ipole,:) , eri_3center_eigen(:,istate,kstate,ijspin) )
-                     ket(ipole) = DOT_PRODUCT( wpol%residu_right(ipole,:) , eri_3center_eigen(:,jstate,lstate,klspin) )
-                   enddo
+                   bra(:) = bra_auxil(:,istate,kstate,ijspin) 
+                   ket(:) = ket_auxil(:,jstate,lstate,klspin)
                  endif
 
                  h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  SUM( bra(:)*ket(:)/(-wpol%pole(:)) ) &
@@ -338,6 +355,8 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  if( .NOT. is_auxil_basis) deallocate(eri_eigenstate_i)
  if(is_tddft)    deallocate(fxc,wf_r)
  if(calc_type%is_bse) deallocate(bra,ket)
+ if(allocated(bra_auxil)) deallocate(bra_auxil)
+ if(allocated(ket_auxil)) deallocate(ket_auxil)
 
  call stop_clock(timing_build_h2p)
 
@@ -353,10 +372,6 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  deallocate(h_2p)
  allocate(eigenvector_inv(ntrans,ntrans))
 
-! WRITE_MASTER(*,*) 'Neutral excitation energies [eV]'
-! do t_ij=1,ntrans
-!   WRITE_MASTER(*,'(1(i4,2x),20(2x,f12.6))') t_ij,eigenvalue(t_ij)*Ha_eV
-! enddo
 
  WRITE_MASTER(*,'(/,a,f14.8)') ' Lowest neutral excitation energy [eV]',MINVAL(ABS(eigenvalue(:)))*Ha_eV
    
@@ -476,6 +491,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
      do jstate=1,basis%nbf ! jstate stands for empty or partially empty
        if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin))) cycle
        t_ij = t_ij + 1
+!FBFB       if( ABS(eigenvalue(t_ij))> 40./Ha_eV ) cycle
 
        do idir=1,3
          do jdir=1,3
@@ -492,11 +508,13 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
 
  WRITE_MASTER(*,'(/,a)') ' Neutral excitation energies [eV] and strengths'
  trk_sumrule=0.0_dp
+ t_kl=0
  do t_ij=1,ntrans
    if(eigenvalue(t_ij) > 0.0_dp) then
+     t_kl = t_kl + 1
      oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_ij),residu_right(:,t_ij)) * eigenvalue(t_ij)
      trk_sumrule = trk_sumrule + oscillator_strength
-     WRITE_MASTER(*,'(i4,10(f18.8,2x))') t_ij,eigenvalue(t_ij)*Ha_eV,oscillator_strength
+     WRITE_MASTER(*,'(i4,10(f18.8,2x))') t_kl,eigenvalue(t_ij)*Ha_eV,oscillator_strength
    endif
  enddo
  WRITE_MASTER(*,*)
@@ -524,7 +542,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  !
  if( print_specfunc ) then
   if( is_auxil_basis) then
-    call chi_to_vchiv_auxil(ntrans,basis%nbf,auxil_basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+    call chi_to_sqrtvchisqrtv_auxil(ntrans,basis%nbf,auxil_basis%nbf,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
   else
     call chi_to_vchiv(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
   endif
