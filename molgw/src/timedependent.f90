@@ -240,11 +240,11 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  call start_clock(timing_build_h2p)
  ! Prepare the bra and ket for BSE
  if(is_auxil_basis .AND. calc_type%is_bse) then
-   allocate(bra_auxil(wpol%npole,basis%nbf,basis%nbf,nspin))
-   allocate(ket_auxil(wpol%npole,basis%nbf,basis%nbf,nspin))
+   allocate(bra_auxil(wpol%npole,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
+   allocate(ket_auxil(wpol%npole,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
    do ijspin=1,nspin
-     do istate=1,basis%nbf ! istate stands for occupied or partially occupied
-       do jstate=1,basis%nbf ! jstate stands for empty or partially empty
+     do istate=ncore_W+1,nvirtual_W-1 
+       do jstate=ncore_W+1,nvirtual_W-1
 
          ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
          do ipole=1,wpol%npole
