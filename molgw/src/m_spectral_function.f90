@@ -26,13 +26,13 @@ module m_spectral_function
 
  !
  ! frozen core approximation parameters
- integer,protected :: ncore_G=0
- integer,protected :: ncore_W=0
+ integer,protected :: ncore_G
+ integer,protected :: ncore_W
 
  !
  ! frozen virtual approximation parameters
- integer,protected :: nvirtual_G=HUGE(1)
- integer,protected :: nvirtual_W=HUGE(1)
+ integer,protected :: nvirtual_G
+ integer,protected :: nvirtual_W
 
  !
  ! the boring small complex number eta: (0.0_dp,0.0001_dp) is typically over converged
@@ -55,6 +55,11 @@ subroutine init_spectral_function(nbf,occupation,ntransition)
  integer                               :: ispin,ibf,jbf
  logical                               :: file_exists
 !====
+
+ ncore_G    = 0
+ ncore_W    = 0
+ nvirtual_G = nbf+1
+ nvirtual_W = nbf+1
 
  !
  ! Deal with frozen core initialization
@@ -81,6 +86,8 @@ subroutine init_spectral_function(nbf,occupation,ntransition)
    read(13,*) nvirtual_G
    read(13,*) nvirtual_W
    close(13)
+   nvirtual_G = MIN(nvirtual_G,nbf+1)
+   nvirtual_W = MIN(nvirtual_W,nbf+1)
    WRITE_MASTER(msg,'(a,i4,2x,i4)') 'frozen virtual approximation switched on starting with state (G,W) = ',nvirtual_G,nvirtual_W
    call issue_warning(msg)
  endif
