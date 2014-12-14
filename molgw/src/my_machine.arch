@@ -10,7 +10,7 @@ FC=gfortran -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC # -DHAVE_SCALAPA
 
 
 CC=gcc
-FCOPTS=       -O0 -g  -fcheck=all -fbacktrace #-DTODAY #-Wall # -g -check all -traceback  #-O2 #-g -check all -check noarg_temp_created -traceback
+FCOPTS=  -O3 -DSCALAPACK #     -O0 -g  -fcheck=all -fbacktrace #-DTODAY #-Wall # -g -check all -traceback  #-O2 #-g -check all -check noarg_temp_created -traceback
 CCOPTS=  -O2 # -O0 -g -fbounds-check
 #FCOPTS= -xHost -O3 #-ipo
 
@@ -18,10 +18,12 @@ CCOPTS=  -O2 # -O0 -g -fbounds-check
 #LAPACK=  -Wl,--start-group  $(MKLROOT)/lib/em64t/libmkl_intel_lp64.a $(MKLROOT)/lib/em64t/libmkl_intel_thread.a $(MKLROOT)/lib/em64t/libmkl_core.a -Wl,--end-group -openmp -lpthread
 #LAPACK=  -Wl,--start-group  -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -Wl,--end-group -openmp -lpthread
 #LAPACK= -lmkl_intel_lp64 -lmkl_sequential -lmkl_lapack95_lp64 -lmkl_core
-#
+
+
 LAPACK=-L${HOME}/src/lapack-3.5.0/ -llapack -lblas
 
-#SCALAPACK= -L${HOME}/src/scalapack-2.0.2/ -lscalapack #-L{MKLROOT}/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -lpthread -lm
+SCALAPACK= -L${HOME}/src/scalapack-2.0.2/ -lscalapack
+#SCALAPACK= #-L{MKLROOT}/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -lpthread -lm
 
 LIBXC_ROOT=${HOME}/src/libxc-2.2.1_gfortran/
 

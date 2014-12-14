@@ -40,7 +40,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
 
  real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
  real(dp)             :: eri_eigen_ijkl,eri_eigen_ikjl
- real(dp)             :: alpha_local
+ real(dp)             :: alpha_local,docc_ij,docc_kl
  real(dp)             :: scissor_energy(nspin)
  real(dp),allocatable :: h_2p(:,:)
  real(dp),allocatable :: eigenvalue(:),eigenvector(:,:),eigenvector_inv(:,:)
@@ -75,7 +75,6 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  logical              :: require_gradient
  logical              :: is_tddft
  character(len=256)   :: string
- logical,parameter    :: TDA=.FALSE.
  integer              :: iomega,idir,jdir
  integer,parameter    :: nomega=600
  complex(dp)          :: omega(nomega)
@@ -105,7 +104,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  allocate(eigenvector(ntrans,ntrans))
  allocate(eigenvalue(ntrans))
 
- if(TDA) then
+ if(calc_type%is_tda) then
    msg='Tamm-Dancoff approximation is switched on'
    call issue_warning(msg)
  endif
@@ -267,6 +266,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
      do jstate=1,basis%nbf ! jstate stands for empty or partially empty
        if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
        t_ij=t_ij+1
+       docc_ij = occupation(istate,ijspin)-occupation(jstate,ijspin)
 
 
        t_kl=0
@@ -277,8 +277,12 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
              if( skip_transition(nspin,lstate,kstate,occupation(lstate,klspin),occupation(kstate,klspin)) ) cycle
              t_kl=t_kl+1
 
-             if( TDA .AND. ( istate > jstate ) .AND. ( kstate < lstate )) cycle
-             if( TDA .AND. ( istate < jstate ) .AND. ( lstate > kstate )) cycle
+             docc_kl = occupation(kstate,klspin)-occupation(lstate,klspin)
+
+!             if( calc_type%is_tda .AND. ( istate > jstate ) .AND. ( kstate < lstate )) cycle
+!             if( calc_type%is_tda .AND. ( istate < jstate ) .AND. ( lstate > kstate )) cycle
+
+             if( calc_type%is_tda .AND. docc_ij * docc_kl < 0.0_dp ) cycle
 
              if(is_auxil_basis) then
                eri_eigen_ijkl = eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
@@ -288,7 +292,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
 
              !
              ! Hartree part
-             h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl) + eri_eigen_ijkl * ( occupation(istate,ijspin)-occupation(jstate,ijspin) )
+             h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl) + eri_eigen_ijkl * docc_ij
 
              !
              ! Add the kernel for TDDFT
@@ -297,7 +301,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
                           + SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
                                 * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
                                 * fxc(:,ijspin) )                               & ! FIXME spin is not correct
-                          * ( occupation(istate,ijspin)-occupation(jstate,ijspin) )
+                                * docc_ij
              endif
 
              !
@@ -311,8 +315,8 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
                    eri_eigen_ikjl = eri_eigenstate_i(kstate,jstate,lstate,klspin)
                  endif
 
-                 h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigen_ikjl  &
-                          * ( occupation(istate,ijspin)-occupation(jstate,ijspin) ) / spin_fact * alpha_local
+                 h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl) -  eri_eigen_ikjl  &
+                                   * docc_ij / spin_fact * alpha_local
                endif
              endif
 
@@ -334,7 +338,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
                  endif
 
                  h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  SUM( bra(:)*ket(:)/(-wpol%pole(:)) ) &
-                          * ( occupation(istate,ijspin)-occupation(jstate,ijspin) ) / spin_fact   
+                                   * docc_ij / spin_fact   
                endif
              endif
 
@@ -468,13 +472,14 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
      do jstate=1,basis%nbf ! jstate stands for empty or partially empty
        if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin))) cycle
        t_ij=t_ij+1
+       docc_ij = occupation(istate,ijspin)-occupation(jstate,ijspin)
 
        do t_kl=1,ntrans
          residu_left (:,t_kl)  = residu_left (:,t_kl) &
                       + dipole_state(:,istate,jstate,ijspin) * eigenvector(t_ij,t_kl)
          residu_right(:,t_kl)  = residu_right(:,t_kl) &
                       + dipole_state(:,istate,Jstate,ijspin) * eigenvector_inv(t_kl,t_ij) &
-                                       * ( occupation(istate,ijspin)-occupation(jstate,ijspin) )
+                                       * docc_ij
        enddo
 
      enddo
@@ -491,7 +496,6 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
      do jstate=1,basis%nbf ! jstate stands for empty or partially empty
        if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin))) cycle
        t_ij = t_ij + 1
-!FBFB       if( ABS(eigenvalue(t_ij))> 40./Ha_eV ) cycle
 
        do idir=1,3
          do jdir=1,3
