@@ -36,7 +36,7 @@ module m_calculation_type
    logical :: is_mp2
    logical :: is_ci
    logical :: read_potential
-   logical :: is_bse,is_td
+   logical :: is_bse,is_td,is_tda
    integer :: gwmethod                    ! perturbative or quasiparticle self-consistent
  end type calculation_type
 
@@ -68,6 +68,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%is_ci               = .FALSE.
  calc_type%is_bse              = .FALSE.
  calc_type%is_td               = .FALSE.
+ calc_type%is_tda              = .FALSE.
  calc_type%gwmethod            = 0
  calc_type%read_potential      = .FALSE.
 
@@ -99,8 +100,14 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%is_ci =.TRUE.
    case('BSE')
      calc_type%is_bse =.TRUE.
+   case('BSE-TDA')
+     calc_type%is_bse =.TRUE.
+     calc_type%is_tda =.TRUE.
    case('TD')
      calc_type%is_td =.TRUE.
+   case('TDA')
+     calc_type%is_td  =.TRUE.
+     calc_type%is_tda =.TRUE.
    case default
      stop'error reading calculation type part 2'
    end select
@@ -318,6 +325,7 @@ subroutine output_calculation_type(calc_type)
   WRITE_MASTER(*,*) 'is_mp2                      ',calc_type%is_mp2
   WRITE_MASTER(*,*) 'is_ci                       ',calc_type%is_ci
   WRITE_MASTER(*,*) 'is_td                       ',calc_type%is_td
+  WRITE_MASTER(*,*) 'is_tda                      ',calc_type%is_tda
   WRITE_MASTER(*,*) 'is_bse                      ',calc_type%is_bse
   WRITE_MASTER(*,*) 'method                      ',calc_type%gwmethod  
 

@@ -1,0 +1,33 @@
+Comparison QChem vs molgw
+
+SiH4 molecule within TD-HF in aug-cc-pVDZ basis set
+
+RPA (= No Tamm-Dancoff approximation)
+Singlet excitations from Qchem:
+ Excited state  13: excitation energy (eV) =    9.8147
+    Multiplicity: Singlet
+    Strength   :  0.2168
+ Excited state  14: excitation energy (eV) =    9.8147
+    Multiplicity: Singlet
+    Strength   :  0.2168
+ Excited state  15: excitation energy (eV) =    9.8147
+    Multiplicity: Singlet
+    Strength   :  0.2168
+ Excited state  16: excitation energy (eV) =    9.9112
+    Multiplicity: Singlet
+    Strength   :  0.0000
+
+CIS (=Tamm-Dancoff approximation)
+ Excited state  13: excitation energy (eV) =    9.8249
+    Multiplicity: Singlet
+    Strength   :  0.2265
+ Excited state  14: excitation energy (eV) =    9.8249
+    Multiplicity: Singlet
+    Strength   :  0.2265
+ Excited state  15: excitation energy (eV) =    9.8249
+    Multiplicity: Singlet
+    Strength   :  0.2265
+ Excited state  16: excitation energy (eV) =    9.9194
+    Multiplicity: Singlet
+    Strength   :  0.0000
+

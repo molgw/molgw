@@ -35,8 +35,9 @@ module m_spectral_function
  integer,protected :: nvirtual_W
 
  !
- ! the boring small complex number eta: (0.0_dp,0.0001_dp) is typically over converged
- complex(dp),parameter :: ieta=(0.0_dp,0.001_dp) ! (0.0_dp,0.0001_dp)
+ ! the boring small complex number eta: (0.0_dp,0.001_dp) is typically over converged
+ ! Having a larger ieta value smoothen the oscillation far from the HOMO-LUMO gap
+ complex(dp),parameter :: ieta=(0.0_dp,0.01_dp) ! (0.0_dp,0.0001_dp)
 
 #ifdef CRPA
  integer,parameter :: band1=1
