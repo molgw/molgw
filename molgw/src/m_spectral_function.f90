@@ -4,9 +4,8 @@
 module m_spectral_function
  use m_definitions
  use m_mpi
- use m_calculation_type
  use m_timing 
- use m_warning,only: issue_warning
+ use m_warning,only: issue_warning,msg
  use m_inputparam,only: nspin,spin_fact
 
  !

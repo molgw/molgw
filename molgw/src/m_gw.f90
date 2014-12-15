@@ -9,7 +9,6 @@ contains
 subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,rpa_correlation,wpol)
  use m_definitions
  use m_mpi
- use m_calculation_type
  use m_timing 
  use m_warning,only: issue_warning
  use m_tools
@@ -505,7 +504,6 @@ end subroutine chi_to_sqrtvchisqrtv_auxil
 subroutine polarizability_casida(basis,prod_basis,occupation,energy,c_matrix,rpa_correlation,wpol)
  use m_definitions
  use m_mpi
- use m_calculation_type
  use m_timing 
  use m_warning,only: issue_warning
  use m_tools
@@ -756,12 +754,11 @@ end subroutine polarizability_casida
 subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy)
  use m_definitions
  use m_mpi
- use m_calculation_type
  use m_timing 
- use m_warning,only: issue_warning
+ use m_warning,only: issue_warning,msg
  use m_basis_set
  use m_spectral_function
- use m_inputparam,only: nspin,spin_fact,is_auxil_basis
+ use m_inputparam
  use m_eri,only: eri_3center_eigen
  implicit none
 
