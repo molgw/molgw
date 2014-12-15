@@ -234,19 +234,13 @@ program molgw
  ! works for DFT, HF, and hybrid
  if(calc_type%is_td .OR. calc_type%is_bse) then
 
-   ! For BSE calculation, obtain the wpol object from a previous calculation
-   if(calc_type%is_bse) then
-     call read_spectral_function(wpol,reading_status)
-     if(reading_status/=0) then 
-       stop'BSE requires a previous GW calculation stored in a spectral_file'
-     endif
-   endif
    if(is_auxil_basis) call prepare_eri_3center_eigen(c_matrix)
-   call polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,wpol)
+   call polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_matrix)
    if(is_auxil_basis) call destroy_eri_3center_eigen()
-   call destroy_spectral_function(wpol)
+
  endif
   
+
 !%!   inquire(file='manual_coresplitting',exist=file_exists)
 !%!   if(file_exists) then
 !%!     WRITE_MASTER(*,*) 'TESTING CORE-VALENCE SPLITTING'
@@ -261,6 +255,7 @@ program molgw
 !%!     call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
 !%!     call dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehomo,hamiltonian_xc,en%xc)
 !%!   endif
+
 
  exchange_m_vxc_diag(:,:) = 0.0_dp
  do ispin=1,nspin

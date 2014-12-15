@@ -4,7 +4,7 @@
 
 
 !=========================================================================
-subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,wpol)
+subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_matrix)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -27,15 +27,15 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  type(basis_set)                       :: basis,prod_basis,auxil_basis
  real(dp),intent(in)                   :: occupation(basis%nbf,nspin)
  real(dp),intent(in)                   :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
- type(spectral_function),intent(inout) :: wpol
 !=====
- integer              :: pbf,qbf,ibf,jbf,kbf,lbf,ijbf,klbf,ijbf_current,ijspin,klspin,ispin
- integer              :: istate,jstate,kstate,lstate
- integer              :: ipole
- integer              :: ntrans
- integer              :: t_ij,t_kl
- integer              :: idft_xc,igrid
- integer              :: reading_status
+ type(spectral_function) :: wpol_new,wpol_static
+ integer                 :: pbf,qbf,ibf,jbf,kbf,lbf,ijbf,klbf,ijbf_current,ijspin,klspin,ispin
+ integer                 :: istate,jstate,kstate,lstate
+ integer                 :: ipole
+ integer                 :: ntrans
+ integer                 :: t_ij,t_kl
+ integer                 :: idft_xc,igrid
+ integer                 :: reading_status
 
  real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
  real(dp)             :: eri_eigen_ijkl,eri_eigen_ikjl
@@ -95,6 +95,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  is_tddft = calc_type%is_td .AND. calc_type%is_dft
 
  WRITE_MASTER(*,'(/,a)') ' Calculating the polarizability for neutral excitation energies'
+
 
  ! Obtain the number of transition = the size of the matrix
  call init_spectral_function(basis%nbf,occupation,ntrans)
@@ -200,7 +201,13 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  ! Prepare the BSE calculation
  if( calc_type%is_bse ) then
 
-   allocate(bra(wpol%npole),ket(wpol%npole))
+   ! For BSE calculation, obtain the wpol_static object from a previous calculation
+   call read_spectral_function(wpol_static,reading_status)
+   if(reading_status/=0) then
+     stop'BSE requires a previous GW calculation stored in a spectral_file'
+   endif
+
+   allocate(bra(wpol_static%npole),ket(wpol_static%npole))
    call read_energy_qp(nspin,basis%nbf,energy_qp,reading_status)
    select case(reading_status)
    case(-1)
@@ -241,16 +248,16 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  !
  ! Prepare the bra and ket for BSE
  if(is_auxil_basis .AND. calc_type%is_bse) then
-   allocate(bra_auxil(wpol%npole,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
-   allocate(ket_auxil(wpol%npole,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
+   allocate(bra_auxil(wpol_static%npole,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
+   allocate(ket_auxil(wpol_static%npole,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
    do ijspin=1,nspin
      do istate=ncore_W+1,nvirtual_W-1 
        do jstate=ncore_W+1,nvirtual_W-1
 
          ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-         do ipole=1,wpol%npole
-           bra_auxil(ipole,istate,jstate,ijspin) = DOT_PRODUCT( wpol%residu_left (ipole,:) , eri_3center_eigen(:,istate,jstate,ijspin) )
-           ket_auxil(ipole,istate,jstate,ijspin) = DOT_PRODUCT( wpol%residu_right(ipole,:) , eri_3center_eigen(:,istate,jstate,ijspin) )
+         do ipole=1,wpol_static%npole
+           bra_auxil(ipole,istate,jstate,ijspin) = DOT_PRODUCT( wpol_static%residu_left (ipole,:) , eri_3center_eigen(:,istate,jstate,ijspin) )
+           ket_auxil(ipole,istate,jstate,ijspin) = DOT_PRODUCT( wpol_static%residu_right(ipole,:) , eri_3center_eigen(:,istate,jstate,ijspin) )
          enddo
 
        enddo
@@ -330,16 +337,16 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
                  if(.NOT. is_auxil_basis) then
                    ! Here just grab the precalculated value
                    kbf = prod_basis%index_prodbasis(istate,kstate)+prod_basis%nbf*(ijspin-1)
-                   bra(:) = wpol%residu_left (:,kbf)
+                   bra(:) = wpol_static%residu_left (:,kbf)
                    kbf = prod_basis%index_prodbasis(jstate,lstate)+prod_basis%nbf*(klspin-1)
-                   ket(:) = wpol%residu_right(:,kbf)
+                   ket(:) = wpol_static%residu_right(:,kbf)
                  else
                    ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
                    bra(:) = bra_auxil(:,istate,kstate,ijspin) 
                    ket(:) = ket_auxil(:,jstate,lstate,klspin)
                  endif
 
-                 h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  SUM( bra(:)*ket(:)/(-wpol%pole(:)) ) &
+                 h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  SUM( bra(:)*ket(:)/(-wpol_static%pole(:)) ) &
                                    * docc_ij / spin_fact   
                endif
              endif
@@ -356,7 +363,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
    enddo !istate
  enddo ! ijspin
 
- call destroy_spectral_function(wpol)
+ call destroy_spectral_function(wpol_static)
 
  if( .NOT. is_auxil_basis) deallocate(eri_eigenstate_i)
  if(is_tddft)    deallocate(fxc,wf_r)
@@ -548,11 +555,12 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  !
  if( print_specfunc ) then
   if( is_auxil_basis) then
-    call chi_to_sqrtvchisqrtv_auxil(ntrans,basis%nbf,auxil_basis%nbf,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+    call chi_to_sqrtvchisqrtv_auxil(ntrans,basis%nbf,auxil_basis%nbf,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol_new)
   else
-    call chi_to_vchiv(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+    call chi_to_vchiv(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol_new)
   endif
-  call write_spectral_function(wpol)
+  call write_spectral_function(wpol_new)
+  call destroy_spectral_function(wpol_new)
  endif
 
  if(allocated(eigenvector))     deallocate(eigenvector)
