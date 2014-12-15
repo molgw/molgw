@@ -8,7 +8,6 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
  use m_mpi
  use m_timing
  use m_warning
- use m_calculation_type
  use m_inputparam
  use m_tools
  use m_scf
@@ -159,7 +158,7 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
 
      exchange_m_vxc_diag(:,:)=0.0_dp
 
-     call mp2_selfenergy(calc_type%gwmethod,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
+     call mp2_selfenergy(calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
 
      WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Energy       [Ha]:',en%mp2
      WRITE_MASTER(*,*) 

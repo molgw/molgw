@@ -1,17 +1,16 @@
 !=========================================================================
 #include "macros.h"
 !=========================================================================
-subroutine mp2_selfenergy(method,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,selfenergy,emp2)
+subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,selfenergy,emp2)
  use m_definitions
  use m_mpi
- use m_calculation_type
  use m_warning
  use m_basis_set
  use m_eri
- use m_inputparam,only: spin_fact
+ use m_inputparam
  implicit none
 
- integer,intent(in)  :: method,nspin
+ integer,intent(in)  :: method
  type(basis_set)     :: basis
  real(dp),intent(in) :: occupation(basis%nbf,nspin),energy(basis%nbf,nspin),exchange_m_vxc_diag(basis%nbf,nspin)
  real(dp),intent(in) :: c_matrix(basis%nbf,basis%nbf,nspin)

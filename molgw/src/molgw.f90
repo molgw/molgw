@@ -5,7 +5,6 @@ program molgw
  use m_mpi
  use m_timing
  use m_warning
- use m_calculation_type
  use m_inputparam
  use m_tools
  use m_scf
@@ -314,7 +313,7 @@ program molgw
 #ifdef CASIDA
    call mp2_energy_fast(basis,occupation,c_matrix,energy,en%mp2)
 #else
-   call mp2_selfenergy(calc_type%gwmethod,nspin,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
+   call mp2_selfenergy(calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
 #endif
    WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Energy       [Ha]:',en%mp2
    WRITE_MASTER(*,*) 

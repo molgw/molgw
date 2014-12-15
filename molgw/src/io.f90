@@ -582,6 +582,7 @@ subroutine write_small_restart(nbf,occupation,c_matrix)
    enddo
  enddo
  open(unit=unit_restart,file='RESTART',form='unformatted')
+ WRITE_MASTER(unit_restart) calc_type%scf_name
  WRITE_MASTER(unit_restart) nspin
  WRITE_MASTER(unit_restart) nbf
  WRITE_MASTER(unit_restart) nstate(1),nstate(nspin)
@@ -617,6 +618,7 @@ subroutine write_big_restart(nbf,occupation,c_matrix,energy,hamiltonian_exx,hami
  call start_clock(timing_restart_file)
  WRITE_MASTER(*,'(/,a)') ' Writing a big RESTART file'
  open(unit=unit_restart,file='RESTART',form='unformatted')
+ WRITE_MASTER(unit_restart) calc_type%scf_name
  WRITE_MASTER(unit_restart) nspin
  WRITE_MASTER(unit_restart) nbf
  WRITE_MASTER(unit_restart) nbf,nbf
@@ -665,7 +667,8 @@ subroutine read_any_restart(nbf,occupation,c_matrix,energy,hamiltonian_exx,hamil
 !=====
  integer,parameter   :: unit_restart=52
  integer             :: ispin,istate
- logical             :: file_exists
+ logical             :: file_exists,same_scf_name
+ character(len=100)  :: scf_name_read
  integer             :: nspin_read,nbf_read,nstate_read(2)
 !=====
 
@@ -681,6 +684,7 @@ subroutine read_any_restart(nbf,occupation,c_matrix,energy,hamiltonian_exx,hamil
 
  open(unit=unit_restart,file='RESTART',form='unformatted',status='old')
 
+ read(unit_restart) scf_name_read
  read(unit_restart) nspin_read
  read(unit_restart) nbf_read
 
@@ -691,14 +695,18 @@ subroutine read_any_restart(nbf,occupation,c_matrix,energy,hamiltonian_exx,hamil
    return
  endif
 
+ same_scf_name = ( TRIM(scf_name_read) == TRIM(calc_type%scf_name) )
+
  read(unit_restart) nstate_read(1),nstate_read(2)
 
- if( nstate_read(1) == nbf .AND. nstate_read(2) == nbf .AND. .NOT. ignore_big_restart ) then
-   msg='Restart from a big RESTART file' 
+ if( nstate_read(1) == nbf .AND. nstate_read(2) == nbf     &
+    .AND. same_scf_name                                    &
+    .AND. .NOT. ignore_big_restart ) then
+   msg='Restart from a big RESTART file obtained within '//TRIM(scf_name_read)
    call issue_warning(msg)
    is_big_restart = .TRUE.
  else
-   msg='Restart from a small RESTART file' 
+   msg='Restart from a small RESTART file obtained within '//TRIM(scf_name_read) 
    call issue_warning(msg)
    is_big_restart = .FALSE.
  endif

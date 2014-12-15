@@ -7,7 +7,6 @@
 subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,wpol)
  use m_definitions
  use m_mpi
- use m_calculation_type
  use m_timing 
  use m_warning,only: issue_warning
  use m_tools
@@ -237,6 +236,9 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  endif
 
  call start_clock(timing_build_h2p)
+
+ WRITE_MASTER(*,*) 'Build the transition space matrix'
+ !
  ! Prepare the bra and ket for BSE
  if(is_auxil_basis .AND. calc_type%is_bse) then
    allocate(bra_auxil(wpol%npole,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
