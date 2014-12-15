@@ -5,8 +5,8 @@ module m_spectral_function
  use m_definitions
  use m_mpi
  use m_timing 
- use m_warning,only: issue_warning,msg
- use m_inputparam,only: nspin,spin_fact
+ use m_warning
+ use m_inputparam
 
  !
  ! General form of any spectral function
@@ -187,25 +187,62 @@ subroutine write_spectral_function(sf)
  implicit none
  type(spectral_function),intent(in) :: sf
 !=====
- integer,parameter :: spectralfile=50
- integer :: iprodbasis
+ integer,parameter   :: spectralfile=50
+ integer             :: iprodbasis,ipole
+ integer             :: npole_write,ipole_write
+ logical             :: file_exists
+ real(dp)            :: ecut_pole
+ integer,allocatable :: index_pole(:)
 !=====
 
- WRITE_MASTER(*,'(/,a,/)') ' dumping spectral function on file' 
+ WRITE_MASTER(*,'(/,a,/)') ' Writing the spectral function on file' 
+
+ inquire(file='manual_poles',exist=file_exists)
+ if(file_exists) then
+   open(spectralfile,file='manual_poles',status='old')
+   read(spectralfile,*) ecut_pole
+   if( ecut_pole<0.0_dp ) stop'error when reading manual_poles'
+   close(spectralfile)
+   WRITE_ME(msg,'(a,f10.4)') 'Ouput of the spectral function with an energy cutoff [eV] ',ecut_pole*Ha_eV
+   call issue_warning(msg)
+ else
+  ecut_pole = HUGE(1.0_dp)
+ endif
+
+ npole_write = 0
+ do ipole=1,sf%npole
+   if( ABS(sf%pole(ipole)) < ecut_pole ) npole_write = npole_write + 1
+ enddo
+ WRITE_MASTER(*,*) 'Writing',npole_write,'poles over a total of',sf%npole
+ allocate(index_pole(npole_write))
+ ipole_write = 0
+ do ipole=1,sf%npole
+   if( ABS(sf%pole(ipole)) < ecut_pole ) then
+     ipole_write = ipole_write + 1
+     index_pole(ipole_write) = ipole
+   endif
+ enddo
 
  open(spectralfile,file='spectral_file',form='unformatted')
 
- WRITE_MASTER(spectralfile) sf%npole
+ if(.NOT. file_exists) then
+   WRITE_MASTER(spectralfile) calc_type%postscf_name
+ else
+   WRITE_ME(msg,'(a,a,f10.4)') TRIM(calc_type%postscf_name),' with cutoff above energy [eV] ',ecut_pole*Ha_eV
+   WRITE_MASTER(spectralfile) msg
+ endif
+ WRITE_MASTER(spectralfile) npole_write
  WRITE_MASTER(spectralfile) sf%nprodbasis
- WRITE_MASTER(spectralfile) sf%pole(:)
+ WRITE_MASTER(spectralfile) sf%pole(index_pole(:))
  do iprodbasis=1,sf%nprodbasis
-   WRITE_MASTER(spectralfile) sf%residu_left(:,iprodbasis)
+   WRITE_MASTER(spectralfile) sf%residu_left(index_pole(:),iprodbasis)
  enddo
  do iprodbasis=1,sf%nprodbasis
-   WRITE_MASTER(spectralfile) sf%residu_right(:,iprodbasis)
+   WRITE_MASTER(spectralfile) sf%residu_right(index_pole(:),iprodbasis)
  enddo
 
  close(spectralfile)
+ deallocate(index_pole)
 
 end subroutine write_spectral_function
 
@@ -216,10 +253,11 @@ subroutine read_spectral_function(sf,reading_status)
  type(spectral_function),intent(inout) :: sf
  integer,intent(out)                   :: reading_status
 !=====
- integer,parameter :: spectralfile=50
- integer           :: iprodbasis
- logical           :: file_exists
- integer           :: npole_read,nprodbasis_read
+ integer,parameter  :: spectralfile=50
+ character(len=100) :: postscf_name_read
+ integer            :: iprodbasis
+ logical            :: file_exists
+ integer            :: npole_read,nprodbasis_read
 !=====
 
  WRITE_MASTER(*,'(/,a)') ' Try to read spectral function from file spectral_file' 
@@ -228,39 +266,39 @@ subroutine read_spectral_function(sf,reading_status)
  if( .NOT. file_exists ) then
    WRITE_MASTER(*,'(a,/)') ' File does not exist'
    reading_status=1
-
- else
-
-   open(spectralfile,file='spectral_file',status='old',form='unformatted')
-
-   read(spectralfile) npole_read
-   read(spectralfile) nprodbasis_read
-
-   call allocate_spectral_function(npole_read,nprodbasis_read,sf)
-
-!   if( npole_read /= sf%npole .OR. nprodbasis_read /= sf%nprodbasis ) then
-!     WRITE_MASTER(*,'(a,/)')     ' File does not have the correct size'
-!     WRITE_MASTER(*,'(i5,a,i5)') npole_read,' vs ',sf%npole
-!     WRITE_MASTER(*,'(i5,a,i5)') nprodbasis_read,' vs ',sf%nprodbasis
-!     reading_status=2
-!   else
-
-     read(spectralfile) sf%pole(:)
-     do iprodbasis=1,sf%nprodbasis
-       read(spectralfile) sf%residu_left(:,iprodbasis)
-     enddo
-     do iprodbasis=1,sf%nprodbasis
-       read(spectralfile) sf%residu_right(:,iprodbasis)   
-     enddo
-
-     reading_status=0
-     msg='reading spectral function from spectral_file'
-     call issue_warning(msg)
-
-!   endif
-   close(spectralfile)
-
+   return
  endif
+
+ open(spectralfile,file='spectral_file',status='old',form='unformatted')
+
+ read(spectralfile) postscf_name_read
+ read(spectralfile) npole_read
+ read(spectralfile) nprodbasis_read
+
+ call allocate_spectral_function(npole_read,nprodbasis_read,sf)
+
+! if( npole_read /= sf%npole .OR. nprodbasis_read /= sf%nprodbasis ) then
+!   WRITE_MASTER(*,'(a,/)')     ' File does not have the correct size'
+!   WRITE_MASTER(*,'(i5,a,i5)') npole_read,' vs ',sf%npole
+!   WRITE_MASTER(*,'(i5,a,i5)') nprodbasis_read,' vs ',sf%nprodbasis
+!   reading_status=2
+! else
+
+   read(spectralfile) sf%pole(:)
+   do iprodbasis=1,sf%nprodbasis
+     read(spectralfile) sf%residu_left(:,iprodbasis)
+   enddo
+   do iprodbasis=1,sf%nprodbasis
+     read(spectralfile) sf%residu_right(:,iprodbasis)   
+   enddo
+
+   reading_status=0
+   msg='reading spectral function from spectral_file obtained from '//TRIM(postscf_name_read)
+   call issue_warning(msg)
+
+! endif
+ close(spectralfile)
+
 
 end subroutine read_spectral_function
 
