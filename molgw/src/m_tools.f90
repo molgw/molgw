@@ -92,6 +92,29 @@ end function random
 
 
 !=========================================================================
+function matrix_is_symmetric(n,matrix)
+ implicit none
+ logical             :: matrix_is_symmetric
+ integer,intent(in)  :: n
+ real(dp),intent(in) :: matrix(n,n)
+!===== 
+ integer :: ii,jj
+!===== 
+
+ matrix_is_symmetric = .TRUE.
+ do ii=1,n
+   do jj=1,ii-1
+     if( ABS( matrix(ii,jj) - matrix(jj,ii) ) > 1.0e-5_dp ) then
+       matrix_is_symmetric=.FALSE.
+       return
+     endif
+   enddo
+ enddo
+
+end function matrix_is_symmetric
+
+
+!=========================================================================
 subroutine invert_dp(n,matrix,matrix_inv)
  implicit none
  integer,intent(in) :: n

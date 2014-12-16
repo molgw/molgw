@@ -2,20 +2,19 @@
 #include "macros.h"
 !=========================================================================
 module m_gw
+ use m_definitions
+ use m_mpi
+ use m_timing 
+ use m_inputparam
 
 contains
 
 !=========================================================================
 subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,rpa_correlation,wpol)
- use m_definitions
- use m_mpi
- use m_timing 
  use m_warning,only: issue_warning
  use m_tools
  use m_basis_set
- use m_eri
  use m_spectral_function
- use m_inputparam
  implicit none
 
  type(basis_set)                       :: basis,prod_basis,auxil_basis
@@ -28,23 +27,15 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  integer :: istate,jstate,kstate,lstate
  integer :: ipole
  integer :: ntrans
- integer :: t_ij,t_kl
+ integer :: t_ij
  integer :: reading_status
 
- real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
- real(dp)             :: eri_eigen_ijkl
- real(dp)             :: eri_eigen_ikjl
  real(dp),allocatable :: h_2p(:,:),eigenvector(:,:),eigenvector_inv(:,:)
  real(dp),allocatable :: eigenvalue(:)
  real(dp)             :: rtmp
- real(dp)             :: alpha1,alpha2
-
- logical :: TDHF=.FALSE.
 !=====
 
  call start_clock(timing_pola)
-
- rpa_correlation = 0.0_dp
 
  WRITE_MASTER(*,'(/,a)') ' calculating CHI alla rpa'
 
@@ -58,116 +49,23 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  endif
 
  allocate(h_2p(ntrans,ntrans))
- allocate(eigenvector(ntrans,ntrans))
- allocate(eigenvalue(ntrans))
-
- inquire(file='manual_tdhf',exist=TDHF)
- if(TDHF) then
-   open(unit=18,file='manual_tdhf',status='old')
-   read(18,*) alpha1
-   read(18,*) alpha2
-   close(18)
-   WRITE_ME(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alphas  ',alpha1,alpha2
-   call issue_warning(msg)
- else
-   alpha1=0.0_dp
-   alpha2=0.0_dp
- endif
-
- if( .NOT. is_auxil_basis) then
-   allocate(eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin))
- endif
+ !
+ ! Build the 2-particle hamiltonian in transition space
+ !
+!FBFB call build_h2p_sym(basis%nbf,c_matrix,occupation,energy,ntrans,h_2p)
+ call build_h2p(basis%nbf,c_matrix,occupation,energy,ntrans,h_2p)
 
 
- call start_clock(timing_build_h2p)
- t_ij=0
- do ijspin=1,nspin
-   do istate=1,basis%nbf ! istate stands for occupied or partially occupied
-
-      if( .NOT. is_auxil_basis ) call transform_eri_basis(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
-
-
-#ifdef CRPA
-       ! attempt of coding CRPA
-       if( istate==band1 .OR. istate==band2) then
-         do jstate=band1,band2
-           do kstate=band1,band2
-             do lstate=band1,band2
-               write(1000,'(4(i6,x),2x,f16.8)') istate,jstate,kstate,lstate,eri_eigenstate_i(jstate,kstate,lstate,1)
-             enddo
-           enddo
-         enddo
-       endif
-#endif
-
-     do jstate=1,basis%nbf ! jstate stands for empty or partially empty
-       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
-       t_ij=t_ij+1
-
-
-
-       t_kl=0
-       do klspin=1,nspin
-         do kstate=1,basis%nbf 
-
-           do lstate=1,basis%nbf 
-             if( skip_transition(nspin,lstate,kstate,occupation(lstate,klspin),occupation(kstate,klspin)) ) cycle
-             t_kl=t_kl+1
-
-             if(is_auxil_basis) then
-               eri_eigen_ijkl = eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
-             else
-               eri_eigen_ijkl = eri_eigenstate_i(jstate,kstate,lstate,klspin)
-             endif
-             
-#ifndef CHI0
-
-!!FBFB
-! Good approximation:
-! Remove off diagonal elements for high energy states 
-!             if( t_kl /= t_ij .AND. & 
-!                   ( istate >= 30 .OR. jstate >= 30 .OR. kstate >= 30 .OR. lstate >= 30 ) ) then
-!               h_2p(t_ij,t_kl) = 0.0_dp
-!             else
-             h_2p(t_ij,t_kl) = eri_eigen_ijkl * ( occupation(istate,ijspin)-occupation(jstate,ijspin) )
-!             endif
-
-
-#else
-             h_2p(t_ij,t_kl) = 0.0_dp
-#endif
-
-
-           if(TDHF) then
-             if(ijspin==klspin) then
-               if(is_auxil_basis) then
-                 eri_eigen_ikjl = eri_eigen_ri(istate,kstate,ijspin,jstate,lstate,klspin)
-               else
-                 eri_eigen_ikjl = eri_eigenstate_i(kstate,jstate,lstate,klspin)
-               endif
-               h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigen_ikjl       &
-                        * ( occupation(istate,ijspin)-occupation(jstate,ijspin) ) / spin_fact * alpha1
-             endif
-           endif
-
-           enddo
-         enddo
-       enddo !klspin
-
-       h_2p(t_ij,t_ij) =  h_2p(t_ij,t_ij) + ( energy(jstate,ijspin) - energy(istate,ijspin) )
-
-       rpa_correlation = rpa_correlation - 0.25_dp * ABS( h_2p(t_ij,t_ij) )
-
-     enddo !jstate
-   enddo !istate
- enddo ! ijspin
- if(allocated(eri_eigenstate_i)) deallocate(eri_eigenstate_i)
-
- call stop_clock(timing_build_h2p)
-
+ rpa_correlation = 0.0_dp
+ do t_ij=1,ntrans
+   rpa_correlation = rpa_correlation - 0.25_dp * ABS( h_2p(t_ij,t_ij) )
+ enddo
 
  WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
  WRITE_MASTER(*,*) 'matrix',ntrans,'x',ntrans
+
+ allocate(eigenvector(ntrans,ntrans))
+ allocate(eigenvalue(ntrans))
 
  call start_clock(timing_diago_h2p)
  call diagonalize_general(ntrans,h_2p,eigenvalue,eigenvector)
@@ -186,7 +84,7 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  WRITE_MASTER(*,'(/,a,f14.8)') ' Lowest neutral excitation energy [eV]',MINVAL(ABS(eigenvalue(:)))*Ha_eV
 
 ! do t_ij=1,ntrans
-!   WRITE_MASTER(*,'(1(i4,2x),20(2x,f12.6))') t_ij,eigenvalue(t_ij)
+!   WRITE_MASTER(124,'(1(i4,2x),20(2x,f12.6))') t_ij,eigenvalue(t_ij)*Ha_eV
 ! enddo
    
  call start_clock(timing_inversion_s2p)
@@ -238,7 +136,6 @@ end subroutine polarizability_rpa
 subroutine chi_to_vchiv(ntrans,nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
  use m_definitions
  use m_warning
- use m_inputparam,only: nspin,is_auxil_basis
  use m_basis_set
  use m_eri
  use m_spectral_function
@@ -322,118 +219,9 @@ end subroutine chi_to_vchiv
 
 
 !=========================================================================
-!FBFB to be removed in the next future
-subroutine chi_to_vchiv_auxil(ntrans,nbf,nbf_auxil,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
- use m_definitions
- use m_warning
- use m_inputparam,only: nspin,is_auxil_basis
- use m_basis_set
- use m_eri
- use m_spectral_function
- implicit none
- 
- integer,intent(in)         :: nbf,nbf_auxil,ntrans
- type(basis_set),intent(in) :: prod_basis
- real(dp),intent(in)        :: occupation(nbf,nspin)
- real(dp),intent(in)        :: c_matrix(nbf,nbf,nspin)
- real(dp),allocatable,intent(inout)    :: eigenvector    (:,:)
- real(dp),allocatable,intent(inout)    :: eigenvector_inv(:,:)
- real(dp),allocatable,intent(inout)    :: eigenvalue     (:)
- type(spectral_function),intent(inout) :: wpol
-!=====
- integer                    :: t_ij,t_kl,klspin,ijspin
- integer                    :: istate,jstate,kstate,lstate,ijstate,ijstate_spin
- real(dp)                   :: docc_kl
- real(dp),allocatable       :: res_left(:,:),res_right(:,:)
-!=====
-
- call start_clock(timing_buildw)
-
- allocate(res_left(nbf_auxil,ntrans))
- allocate(res_right(nbf_auxil,ntrans))
-
- res_left (:,:) = 0.0_dp
- res_right(:,:) = 0.0_dp
- t_kl=0
- do klspin=1,nspin
-   do kstate=1,nbf 
-
-     do lstate=1,nbf
-       if( skip_transition(nspin,lstate,kstate,occupation(lstate,klspin),occupation(kstate,klspin)) ) cycle
-       t_kl=t_kl+1
-
-       docc_kl = occupation(kstate,klspin)-occupation(lstate,klspin)
-
-       t_ij=0
-       do ijspin=1,nspin
-         do istate=1,nbf
-      
-           do jstate=1,nbf
-             if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin))) cycle
-             t_ij=t_ij+1
-
-
-             res_left (:,t_ij) = res_left (:,t_ij) + eri_3center_eigen(:,kstate,lstate,klspin) * eigenvector(t_kl,t_ij)
-             res_right(:,t_ij) = res_right(:,t_ij) + eri_3center_eigen(:,kstate,lstate,klspin) * eigenvector_inv(t_ij,t_kl) *docc_kl
-
-
-           enddo
-         enddo
-       enddo
-
-     enddo
-   enddo
- enddo
-
- deallocate(eigenvector)
- deallocate(eigenvector_inv)
-
- call allocate_spectral_function(ntrans,prod_basis%nbf*nspin,wpol)
-
- wpol%pole(:) = eigenvalue(:)
- deallocate(eigenvalue)
-
- wpol%residu_left (:,:) = 0.0_dp
- wpol%residu_right(:,:) = 0.0_dp
-
- do ijspin=1,nspin
-   do ijstate=1,prod_basis%nbf
-     istate = prod_basis%index_ij(1,ijstate)
-     jstate = prod_basis%index_ij(2,ijstate)
-     ijstate_spin = ijstate+prod_basis%nbf*(ijspin-1)
-
-     t_kl=0
-     do klspin=1,nspin
-       do kstate=1,nbf
-    
-         do lstate=1,nbf
-           if( skip_transition(nspin,lstate,kstate,occupation(lstate,klspin),occupation(kstate,klspin))) cycle
-           t_kl=t_kl+1
-
-           wpol%residu_left (t_kl,ijstate_spin) = DOT_PRODUCT( res_left (:,t_kl) , eri_3center_eigen(:,istate,jstate,ijspin) )
-           wpol%residu_right(t_kl,ijstate_spin) = DOT_PRODUCT( res_right(:,t_kl) , eri_3center_eigen(:,istate,jstate,ijspin) )
-
-         enddo
-       enddo
-
-     enddo
-
-   enddo
- enddo
-
- deallocate(res_left)
- deallocate(res_right)
-
- call stop_clock(timing_buildw)
-
-end subroutine chi_to_vchiv_auxil
-
-
-!=========================================================================
 subroutine chi_to_sqrtvchisqrtv_auxil(ntrans,nbf,nbf_auxil,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
  use m_definitions
  use m_warning
- use m_inputparam,only: nspin,is_auxil_basis
  use m_basis_set
  use m_eri
  use m_spectral_function
@@ -510,7 +298,6 @@ subroutine polarizability_casida(basis,prod_basis,occupation,energy,c_matrix,rpa
  use m_basis_set
  use m_eri
  use m_spectral_function
- use m_inputparam,only: nspin,spin_fact
  implicit none
 
  type(basis_set)     :: basis,prod_basis
@@ -758,7 +545,6 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  use m_warning,only: issue_warning,msg
  use m_basis_set
  use m_spectral_function
- use m_inputparam
  use m_eri,only: eri_3center_eigen
  implicit none
 
@@ -1048,5 +834,253 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 end subroutine gw_selfenergy
 
 
+!=========================================================================
+subroutine build_h2p(nbf,c_matrix,occupation,energy,ntrans,h_2p)
+ use m_spectral_function
+ use m_eri
+ implicit none
+
+ integer,intent(in)   :: ntrans,nbf
+ real(dp),intent(in)  :: occupation(nbf,nspin),energy(nbf,nspin)
+ real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin)
+ real(dp),intent(out) :: h_2p(ntrans,ntrans)
+!=====
+ integer              :: t_ij,t_kl
+ integer              :: istate,jstate,kstate,lstate
+ integer              :: ijspin,klspin
+ real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
+ real(dp)             :: eri_eigen_ijkl
+ real(dp)             :: eri_eigen_ikjl
+ real(dp)             :: alpha
+
+ logical              :: TDHF=.FALSE.
+!=====
+
+ call start_clock(timing_build_h2p)
+
+ inquire(file='manual_tdhf',exist=TDHF)
+ if(TDHF) then
+   open(unit=18,file='manual_tdhf',status='old')
+   read(18,*) alpha
+   close(18)
+   WRITE_ME(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alphas  ',alpha
+   call issue_warning(msg)
+ else
+   alpha=0.0_dp
+ endif
+
+
+ if( .NOT. is_auxil_basis) then
+   allocate(eri_eigenstate_i(nbf,nbf,nbf,nspin))
+ endif
+
+ t_ij=0
+ do ijspin=1,nspin
+   do istate=1,nbf ! istate stands for occupied or partially occupied
+
+     if( .NOT. is_auxil_basis ) call transform_eri_basis(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
+
+     do jstate=1,nbf ! jstate stands for empty or partially empty
+       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
+       t_ij=t_ij+1
+
+
+       t_kl=0
+       do klspin=1,nspin
+         do kstate=1,nbf 
+
+           do lstate=1,nbf 
+             if( skip_transition(nspin,lstate,kstate,occupation(lstate,klspin),occupation(kstate,klspin)) ) cycle
+             t_kl=t_kl+1
+
+             if(is_auxil_basis) then
+               eri_eigen_ijkl = eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
+             else
+               eri_eigen_ijkl = eri_eigenstate_i(jstate,kstate,lstate,klspin)
+             endif
+
+!!FBFB
+! Good approximation:
+! Remove off diagonal elements for high energy states 
+!             if( t_kl /= t_ij .AND. & 
+!                   ( istate >= 30 .OR. jstate >= 30 .OR. kstate >= 30 .OR. lstate >= 30 ) ) then
+!               h_2p(t_ij,t_kl) = 0.0_dp
+             
+
+             h_2p(t_ij,t_kl) = eri_eigen_ijkl * ( occupation(istate,ijspin)-occupation(jstate,ijspin) )
+
+             if(TDHF) then
+               if(ijspin==klspin) then
+                 if(is_auxil_basis) then
+                   eri_eigen_ikjl = eri_eigen_ri(istate,kstate,ijspin,jstate,lstate,klspin)
+                 else
+                   eri_eigen_ikjl = eri_eigenstate_i(kstate,jstate,lstate,klspin)
+                 endif
+                 h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  eri_eigen_ikjl       &
+                          * ( occupation(istate,ijspin)-occupation(jstate,ijspin) ) / spin_fact * alpha
+               endif
+             endif
+
+           enddo
+         enddo
+       enddo !klspin
+
+       h_2p(t_ij,t_ij) =  h_2p(t_ij,t_ij) + ( energy(jstate,ijspin) - energy(istate,ijspin) )
+
+
+     enddo !jstate
+   enddo !istate
+ enddo ! ijspin
+
+ if(allocated(eri_eigenstate_i)) deallocate(eri_eigenstate_i)
+
+ call stop_clock(timing_build_h2p)
+
+end subroutine build_h2p
+
+
+!=========================================================================
+subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,ntrans,h_2p)
+ use m_spectral_function
+ use m_eri
+ use m_tools  !FBFB
+ implicit none
+
+ integer,intent(in)   :: ntrans,nbf
+ real(dp),intent(in)  :: occupation(nbf,nspin),energy(nbf,nspin)
+ real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin)
+ real(dp),intent(out) :: h_2p(ntrans,ntrans)
+!=====
+ integer              :: t_ij,t_kl
+ integer              :: istate,jstate,kstate,lstate
+ integer              :: ijspin,klspin
+ real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
+ real(dp)             :: eri_eigen_ijkl
+ real(dp)             :: eri_eigen_ikjl,eri_eigen_iljk
+ real(dp)             :: alpha
+ real(dp),allocatable :: apb_matrix(:,:),amb_matrix(:,:),amb_eigval(:)
+ real(dp),allocatable :: cc_matrix(:,:)
+ integer              :: nmat
+
+ logical              :: TDHF=.FALSE.
+!=====
+
+ call start_clock(timing_build_h2p)
+
+ inquire(file='manual_tdhf',exist=TDHF)
+ if(TDHF) then
+   open(unit=18,file='manual_tdhf',status='old')
+   read(18,*) alpha
+   close(18)
+   WRITE_ME(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alphas  ',alpha
+   call issue_warning(msg)
+ else
+   alpha=0.0_dp
+ endif
+
+ nmat=ntrans/2
+ allocate(apb_matrix(nmat,nmat))
+ allocate(amb_matrix(nmat,nmat))
+
+ if( .NOT. is_auxil_basis) then
+   allocate(eri_eigenstate_i(nbf,nbf,nbf,nspin))
+ endif
+
+ t_ij=0
+ do ijspin=1,nspin
+   do istate=1,nbf ! istate stands for occupied or partially occupied
+
+      if( .NOT. is_auxil_basis ) call transform_eri_basis(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
+
+
+     do jstate=1,nbf ! jstate stands for empty or partially empty
+       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
+       ! only resonant transitions
+       if( occupation(jstate,ijspin)-occupation(istate,ijspin) > 0.0_dp ) cycle
+       t_ij=t_ij+1
+
+
+       t_kl=0
+       do klspin=1,nspin
+         do kstate=1,nbf 
+
+           do lstate=1,nbf 
+             if( skip_transition(nspin,lstate,kstate,occupation(lstate,klspin),occupation(kstate,klspin)) ) cycle
+             ! only resonant transitions
+             if( occupation(lstate,klspin)-occupation(kstate,klspin) > 0.0_dp ) cycle
+             t_kl=t_kl+1
+
+             if(is_auxil_basis) then
+               eri_eigen_ijkl = eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
+             else
+               eri_eigen_ijkl = eri_eigenstate_i(jstate,kstate,lstate,klspin)
+             endif
+
+             apb_matrix(t_ij,t_kl) = 2.0_dp*eri_eigen_ijkl * spin_fact
+             amb_matrix(t_ij,t_kl) = 0.0_dp
+
+             if(TDHF) then
+               if(ijspin==klspin) then
+                 if(is_auxil_basis) then
+                   eri_eigen_ikjl = eri_eigen_ri(istate,kstate,ijspin,jstate,lstate,klspin)
+                   eri_eigen_iljk = eri_eigen_ri(istate,lstate,ijspin,jstate,lstate,klspin)
+                 else
+                   eri_eigen_ikjl = eri_eigenstate_i(kstate,jstate,lstate,klspin)
+                   eri_eigen_iljk = eri_eigenstate_i(lstate,jstate,kstate,klspin)
+                 endif
+                 apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) -  eri_eigen_ikjl * alpha
+                 amb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) +  eri_eigen_ikjl * alpha
+               endif
+             endif
+
+           enddo
+         enddo
+       enddo !klspin
+
+       apb_matrix(t_ij,t_ij) =  apb_matrix(t_ij,t_ij) + ( energy(jstate,ijspin) - energy(istate,ijspin) )
+       amb_matrix(t_ij,t_ij) =  amb_matrix(t_ij,t_ij) + ( energy(jstate,ijspin) - energy(istate,ijspin) )
+
+     enddo !jstate
+   enddo !istate
+ enddo ! ijspin
+
+ if(allocated(eri_eigenstate_i)) deallocate(eri_eigenstate_i)
+
+
+ h_2p(1:nmat       ,1:nmat       ) = 0.5_dp * ( apb_matrix(:,:) + amb_matrix(:,:) )
+ h_2p(nmat+1:2*nmat,nmat+1:2*nmat) =-0.5_dp * ( apb_matrix(:,:) + amb_matrix(:,:) )
+ h_2p(1:nmat       ,nmat+1:2*nmat) = 0.5_dp * ( apb_matrix(:,:) - amb_matrix(:,:) )
+ h_2p(nmat+1:2*nmat,1:nmat       ) =-0.5_dp * ( apb_matrix(:,:) - amb_matrix(:,:) )
+
+ allocate(cc_matrix(nmat,nmat))
+ allocate(amb_eigval(nmat))
+ write(*,*) 'A-B',matrix_is_symmetric(nmat,amb_matrix)
+ write(*,*) 'A+B',matrix_is_symmetric(nmat,apb_matrix)
+
+ call diagonalize(nmat,amb_matrix,amb_eigval)
+ do t_kl=1,nmat
+   amb_matrix(:,t_kl) = amb_matrix(:,t_kl)*SQRT(amb_eigval(t_kl))
+ enddo
+ 
+ cc_matrix(:,:) = MATMUL( TRANSPOSE(amb_matrix) , MATMUL( apb_matrix , amb_matrix)  )
+
+ write(*,*) 'CC ',matrix_is_symmetric(nmat,cc_matrix)
+
+ deallocate(apb_matrix,amb_matrix)
+
+ call diagonalize(nmat,cc_matrix,amb_eigval)
+ do t_kl=1,nmat
+   WRITE_MASTER(123,*) t_kl,SQRT(amb_eigval(t_kl))*Ha_eV
+ enddo 
+ deallocate(amb_eigval)
+ deallocate(cc_matrix)
+
+ call stop_clock(timing_build_h2p)
+
+
+end subroutine build_h2p_sym
+
+
+!=========================================================================
 end module m_gw
 !=========================================================================

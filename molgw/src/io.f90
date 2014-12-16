@@ -40,10 +40,6 @@ subroutine header()
  msg='LIBXC version '//TRIM(chartmp)
  call issue_warning(msg)
 #endif
-#ifdef CHI0
- msg='CHI0 option has been swichted on at compilation time'
- call issue_warning(msg)
-#endif
 #ifdef _OPENMP
  WRITE_ME(msg,'(i6)') OMP_get_max_threads()
  msg='OPENMP option is activated with threads number'//msg
