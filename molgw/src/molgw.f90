@@ -278,14 +278,9 @@ program molgw
    ! A section under development for the range-separated RPA
    if( calc_type%is_lr_mbpt ) call testing_tobe_removed()
 
-
-#ifdef CASIDA
-   stop'NOT WORKING ANYMORE'
-   call polarizability_casida(nspin,basis,prod_basis,occupation,energy,c_matrix,en%rpa,wpol)
-#else
    if(is_auxil_basis) call prepare_eri_3center_eigen(c_matrix)
    call polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
-#endif
+
    en%tot = en%tot + en%rpa
    if( calc_type%is_dft ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
    WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
