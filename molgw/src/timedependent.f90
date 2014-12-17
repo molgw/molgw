@@ -24,27 +24,26 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  use iso_c_binding,only: C_INT
  implicit none
 
- type(basis_set)                       :: basis,prod_basis,auxil_basis
+ type(basis_set),intent(in)            :: basis,prod_basis,auxil_basis
  real(dp),intent(in)                   :: occupation(basis%nbf,nspin)
  real(dp),intent(in)                   :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
 !=====
  type(spectral_function) :: wpol_new,wpol_static
- integer                 :: pbf,qbf,ibf,jbf,kbf,lbf,ijbf,klbf,ijbf_current,ijspin,klspin,ispin
+ integer                 :: kbf,ijspin,klspin,ispin
  integer                 :: istate,jstate,kstate,lstate
+ integer                 :: ijstate_min,ijstate_min_stored
  integer                 :: ipole
- integer                 :: ntrans
  integer                 :: t_ij,t_kl
  integer                 :: idft_xc,igrid
  integer                 :: reading_status
 
- real(dp),allocatable :: eri_eigenstate_i(:,:,:,:)
+ real(dp),allocatable :: eri_eigenstate_ijmin(:,:,:,:)
  real(dp)             :: eri_eigen_ijkl,eri_eigen_ikjl
  real(dp)             :: alpha_local,docc_ij,docc_kl
  real(dp)             :: scissor_energy(nspin)
  real(dp),allocatable :: h_2p(:,:)
  real(dp),allocatable :: eigenvalue(:),eigenvector(:,:),eigenvector_inv(:,:)
  real(dp)             :: p_matrix(basis%nbf,basis%nbf,nspin)
- real(dp)             :: oscillator_strength,trk_sumrule
  real(dp)             :: energy_qp(basis%nbf,nspin)
  real(dp)             :: rr(3)
  real(dp)             :: basis_function_r       (basis%nbf)
@@ -65,20 +64,11 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  real(dp),allocatable :: wf_r(:,:,:)
  real(dp),allocatable :: bra(:),ket(:)
  real(dp),allocatable :: bra_auxil(:,:,:,:),ket_auxil(:,:,:,:)
- real(dp),allocatable :: dipole_basis(:,:,:),dipole_state(:,:,:,:)
- real(dp),allocatable :: dipole_cart(:,:,:)
- real(dp),allocatable :: residu_left(:,:),residu_right(:,:)
 
-
- integer              :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
  logical              :: require_gradient
  logical              :: is_tddft
+ logical              :: is_ij
  character(len=256)   :: string
- integer              :: iomega,idir,jdir
- integer,parameter    :: nomega=600
- complex(dp)          :: omega(nomega)
- real(dp)             :: absorp(nomega,3,3)
- real(dp)             :: static_polarizability(3,3)
 
 #ifdef HAVE_LIBXC
  type(xc_f90_pointer_t) :: xc_func(ndft_xc),xc_functest
@@ -100,9 +90,9 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  ! Obtain the number of transition = the size of the matrix
  call init_spectral_function(basis%nbf,occupation,wpol_new)
 
- allocate(h_2p(ntrans,ntrans))
- allocate(eigenvector(ntrans,ntrans))
- allocate(eigenvalue(ntrans))
+ allocate(h_2p(wpol_new%npole,wpol_new%npole))
+ allocate(eigenvector(wpol_new%npole,wpol_new%npole))
+ allocate(eigenvalue(wpol_new%npole))
 
  if(calc_type%is_tda) then
    msg='Tamm-Dancoff approximation is switched on'
@@ -194,7 +184,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
 
 
  if(.NOT. is_auxil_basis) then
-   allocate(eri_eigenstate_i(basis%nbf,basis%nbf,basis%nbf,nspin))
+   allocate(eri_eigenstate_ijmin(basis%nbf,basis%nbf,basis%nbf,nspin))
  endif
 
  !
@@ -266,106 +256,111 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  endif
 
  h_2p(:,:)=0.0_dp
- t_ij=0
- do ijspin=1,nspin
-   do istate=1,basis%nbf ! istate stands for occupied or partially occupied
 
-     if( .NOT. is_auxil_basis) call transform_eri_basis(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
+ ! Set this to zero and then enforce the calculation of the first array of
+ ! Coulomb integrals
+ ijstate_min_stored=0
 
-     do jstate=1,basis%nbf ! jstate stands for empty or partially empty
-       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
-       t_ij=t_ij+1
-       docc_ij = occupation(istate,ijspin)-occupation(jstate,ijspin)
+ do t_ij=1,wpol_new%npole
+   istate = wpol_new%transition_table(1,t_ij)
+   jstate = wpol_new%transition_table(2,t_ij)
+   ijspin = wpol_new%transition_table(3,t_ij)
+   docc_ij= occupation(istate,ijspin)-occupation(jstate,ijspin)
 
-
-       t_kl=0
-       do klspin=1,nspin
-         do kstate=1,basis%nbf 
-
-           do lstate=1,basis%nbf 
-             if( skip_transition(nspin,lstate,kstate,occupation(lstate,klspin),occupation(kstate,klspin)) ) cycle
-             t_kl=t_kl+1
-
-             docc_kl = occupation(kstate,klspin)-occupation(lstate,klspin)
-
-!             if( calc_type%is_tda .AND. ( istate > jstate ) .AND. ( kstate < lstate )) cycle
-!             if( calc_type%is_tda .AND. ( istate < jstate ) .AND. ( lstate > kstate )) cycle
-
-             if( calc_type%is_tda .AND. docc_ij * docc_kl < 0.0_dp ) cycle
-
-             if(is_auxil_basis) then
-               eri_eigen_ijkl = eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
-             else
-               eri_eigen_ijkl = eri_eigenstate_i(jstate,kstate,lstate,klspin)
-             endif
-
-             !
-             ! Hartree part
-             h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl) + eri_eigen_ijkl * docc_ij
-
-             !
-             ! Add the kernel for TDDFT
-             if(is_tddft) then
-               h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
-                          + SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
-                                * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
-                                * fxc(:,ijspin) )                               & ! FIXME spin is not correct
-                                * docc_ij
-             endif
-
-             !
-             ! Exchange part
-             if(calc_type%need_exchange .OR. calc_type%is_bse) then
-               if(ijspin==klspin) then
-
-                 if(is_auxil_basis) then
-                   eri_eigen_ikjl = eri_eigen_ri(istate,kstate,ijspin,jstate,lstate,klspin)
-                 else
-                   eri_eigen_ikjl = eri_eigenstate_i(kstate,jstate,lstate,klspin)
-                 endif
-
-                 h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl) -  eri_eigen_ikjl  &
-                                   * docc_ij / spin_fact * alpha_local
-               endif
-             endif
-
-             !
-             ! Screened exchange part
-             if(calc_type%is_bse) then
-               if(ijspin==klspin) then
-
-                 if(.NOT. is_auxil_basis) then
-                   ! Here just grab the precalculated value
-                   kbf = prod_basis%index_prodbasis(istate,kstate)+prod_basis%nbf*(ijspin-1)
-                   bra(:) = wpol_static%residu_left (:,kbf)
-                   kbf = prod_basis%index_prodbasis(jstate,lstate)+prod_basis%nbf*(klspin-1)
-                   ket(:) = wpol_static%residu_right(:,kbf)
-                 else
-                   ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-                   bra(:) = bra_auxil(:,istate,kstate,ijspin) 
-                   ket(:) = ket_auxil(:,jstate,lstate,klspin)
-                 endif
-
-                 h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  SUM( bra(:)*ket(:)/(-wpol_static%pole(:)) ) &
-                                   * docc_ij / spin_fact   
-               endif
-             endif
-
-           enddo
-         enddo
-       enddo !klspin
+   if( .NOT. is_auxil_basis ) then
+     ijstate_min = MIN(istate,jstate)
+     is_ij = (ijstate_min == istate)
+     ! Calculate only if necessary
+     if( ijstate_min /= ijstate_min_stored ) call transform_eri_basis(nspin,c_matrix,ijstate_min,ijspin,eri_eigenstate_ijmin)
+     ijstate_min_stored = ijstate_min
+   endif
 
 
-       h_2p(t_ij,t_ij) =  h_2p(t_ij,t_ij) + ( energy_qp(jstate,ijspin) - energy_qp(istate,ijspin) )
+   do t_kl=1,wpol_new%npole
+     kstate = wpol_new%transition_table(1,t_kl)
+     lstate = wpol_new%transition_table(2,t_kl)
+     klspin = wpol_new%transition_table(3,t_kl)
+     docc_kl = occupation(kstate,klspin)-occupation(lstate,klspin)
+
+     ! Tamm-Dancoff approximation: skip the coupling block 
+     if( calc_type%is_tda .AND. docc_ij * docc_kl < 0.0_dp ) cycle
+
+     if(is_auxil_basis) then
+       eri_eigen_ijkl = eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
+     else 
+       if(is_ij) then ! treating (i,j)
+         eri_eigen_ijkl = eri_eigenstate_ijmin(jstate,kstate,lstate,klspin)
+       else           ! treating (j,i)
+         eri_eigen_ijkl = eri_eigenstate_ijmin(istate,kstate,lstate,klspin)
+       endif
+     endif
 
 
-     enddo !jstate
-   enddo !istate
- enddo ! ijspin
+     !
+     ! Hartree part
+     h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl) + eri_eigen_ijkl * docc_ij
+
+     !
+     ! Add the kernel for TDDFT
+     if(is_tddft) then
+       h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
+                  + SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
+                        * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
+                        * fxc(:,ijspin) )                               & ! FIXME spin is not correct
+                        * docc_ij
+     endif
+
+     !
+     ! Exchange part
+     if(calc_type%need_exchange .OR. calc_type%is_bse) then
+       if(ijspin==klspin) then
+         if(is_auxil_basis) then
+           eri_eigen_ikjl = eri_eigen_ri(istate,kstate,ijspin,jstate,lstate,klspin)
+         else
+           if(is_ij) then
+             eri_eigen_ikjl = eri_eigenstate_ijmin(kstate,jstate,lstate,klspin)
+           else
+             eri_eigen_ikjl = eri_eigenstate_ijmin(lstate,istate,kstate,klspin)
+           endif
+         endif
+
+         h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl) -  eri_eigen_ikjl  &
+                           * docc_ij / spin_fact * alpha_local
+       endif
+     endif
+
+     !
+     ! Screened exchange part
+     if(calc_type%is_bse) then
+       if(ijspin==klspin) then
+
+         if(.NOT. is_auxil_basis) then
+           kbf = prod_basis%index_prodbasis(istate,kstate)+prod_basis%nbf*(ijspin-1)
+           bra(:) = wpol_static%residu_left (:,kbf)
+           kbf = prod_basis%index_prodbasis(jstate,lstate)+prod_basis%nbf*(klspin-1)
+           ket(:) = wpol_static%residu_right(:,kbf)
+         else
+           bra(:) = bra_auxil(:,istate,kstate,ijspin) 
+           ket(:) = ket_auxil(:,jstate,lstate,klspin)
+         endif
+
+         h_2p(t_ij,t_kl) =  h_2p(t_ij,t_kl) -  SUM( bra(:)*ket(:)/(-wpol_static%pole(:)) ) &
+                                                        * docc_ij / spin_fact   
+       endif
+     endif
+
+
+   enddo ! t_kl
+
+
+   h_2p(t_ij,t_ij) =  h_2p(t_ij,t_ij) + ( energy_qp(jstate,ijspin) - energy_qp(istate,ijspin) )
+
+
+ enddo ! t_ij
 
  call destroy_spectral_function(wpol_static)
 
- if( .NOT. is_auxil_basis) deallocate(eri_eigenstate_i)
+ if( .NOT. is_auxil_basis) deallocate(eri_eigenstate_ijmin)
  if(is_tddft)    deallocate(fxc,wf_r)
  if(calc_type%is_bse) deallocate(bra,ket)
  if(allocated(bra_auxil)) deallocate(bra_auxil)
@@ -375,23 +370,89 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
 
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,*) 'diago 2-particle hamiltonian'
- WRITE_MASTER(*,*) 'matrix',ntrans,'x',ntrans
+ WRITE_MASTER(*,*) 'matrix',wpol_new%npole,'x',wpol_new%npole
 
  call start_clock(timing_diago_h2p)
- call diagonalize_general(ntrans,h_2p,eigenvalue,eigenvector)
+ call diagonalize_general(wpol_new%npole,h_2p,eigenvalue,eigenvector)
  call stop_clock(timing_diago_h2p)
  WRITE_MASTER(*,*) 'diago finished'
  WRITE_MASTER(*,*)
  deallocate(h_2p)
- allocate(eigenvector_inv(ntrans,ntrans))
+ allocate(eigenvector_inv(wpol_new%npole,wpol_new%npole))
 
 
  WRITE_MASTER(*,'(/,a,f14.8)') ' Lowest neutral excitation energy [eV]',MINVAL(ABS(eigenvalue(:)))*Ha_eV
    
  call start_clock(timing_inversion_s2p)
- call invert(ntrans,eigenvector,eigenvector_inv)
+ call invert(wpol_new%npole,eigenvector,eigenvector_inv)
  call stop_clock(timing_inversion_s2p)
 
+ !
+ ! Calculate the optical sprectrum
+ ! and the dynamic dipole tensor
+ !
+ call optical_spectrum(basis,prod_basis,occupation,c_matrix,wpol_new,eigenvector,eigenvector_inv,eigenvalue)
+
+ !
+ ! Calculate Wp= v * chi * v 
+ ! and then write it down on file
+ !
+ if( print_specfunc ) then
+  if( is_auxil_basis) then
+    call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol_new)
+  else
+    call chi_to_vchiv(basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol_new)
+  endif
+  call write_spectral_function(wpol_new)
+  call destroy_spectral_function(wpol_new)
+ endif
+
+ if(allocated(eigenvector))     deallocate(eigenvector)
+ if(allocated(eigenvector_inv)) deallocate(eigenvector_inv)
+ if(allocated(eigenvalue))      deallocate(eigenvalue)
+
+ call stop_clock(timing_pola)
+
+
+end subroutine polarizability_td
+
+
+!=========================================================================
+subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector,eigenvector_inv,eigenvalue)
+ use m_definitions
+ use m_mpi
+ use m_timing
+ use m_warning,only: issue_warning
+ use m_tools
+ use m_basis_set
+ use m_eri
+ use m_dft_grid
+ use m_spectral_function
+ use m_inputparam
+ implicit none
+
+ type(basis_set),intent(in)         :: basis,prod_basis
+ real(dp),intent(in)                :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
+ type(spectral_function),intent(in) :: chi
+ real(dp),intent(in)                :: eigenvector(chi%npole,chi%npole),eigenvector_inv(chi%npole,chi%npole)
+ real(dp),intent(in)                :: eigenvalue(chi%npole)
+!=====
+ integer                            :: t_ij,t_kl
+ integer                            :: istate,jstate,ijspin
+ integer                            :: ibf,jbf
+ integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
+ integer                            :: iomega,idir,jdir
+ integer,parameter                  :: nomega=600
+ complex(dp)                        :: omega(nomega)
+ real(dp)                           :: docc_ij
+ real(dp)                           :: absorp(nomega,3,3)
+ real(dp)                           :: static_polarizability(3,3)
+ real(dp)                           :: oscillator_strength,trk_sumrule
+
+ real(dp),allocatable               :: dipole_basis(:,:,:),dipole_state(:,:,:,:)
+ real(dp),allocatable               :: dipole_cart(:,:,:)
+ real(dp),allocatable               :: residu_left(:,:),residu_right(:,:)
+!=====
  !
  ! Calculate the spectrum now
  !
@@ -399,7 +460,6 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  WRITE_MASTER(*,'(/,a)') ' Calculate the optical spectrum'
 
  if (nspin/=1) stop'no nspin/=1 allowed'
-
 
  !
  ! First precalculate all the needed dipole in the basis set
@@ -461,60 +521,46 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  enddo
 
  !
- ! set the frequency mesh
+ ! Set the frequency mesh
  omega(1)     =MAX( 0.0_dp      ,MINVAL(ABS(eigenvalue(:)))-3.00/Ha_eV)
  omega(nomega)=MIN(20.0_dp/Ha_eV,MAXVAL(ABS(eigenvalue(:)))+3.00/Ha_eV)
  do iomega=2,nomega-1
    omega(iomega) = omega(1) + ( omega(nomega)-omega(1) ) /REAL(nomega-1,dp) * (iomega-1) 
  enddo
- ! add the broadening
+ ! Add the broadening
  omega(:) = omega(:) + im * 0.10/Ha_eV
 
- allocate(residu_left (3,ntrans))
- allocate(residu_right(3,ntrans))
+ allocate(residu_left (3,chi%npole))
+ allocate(residu_right(3,chi%npole))
+
  residu_left (:,:) = 0.0_dp
  residu_right(:,:) = 0.0_dp
- t_ij=0
- do ijspin=1,nspin
-   do istate=1,basis%nbf ! istate stands for occupied or partially occupied
+ do t_ij=1,chi%npole
+   istate = chi%transition_table(1,t_ij)
+   jstate = chi%transition_table(2,t_ij)
+   ijspin = chi%transition_table(3,t_ij)
+   docc_ij = occupation(istate,ijspin)-occupation(jstate,ijspin)
 
-     do jstate=1,basis%nbf ! jstate stands for empty or partially empty
-       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin))) cycle
-       t_ij=t_ij+1
-       docc_ij = occupation(istate,ijspin)-occupation(jstate,ijspin)
-
-       do t_kl=1,ntrans
-         residu_left (:,t_kl)  = residu_left (:,t_kl) &
-                      + dipole_state(:,istate,jstate,ijspin) * eigenvector(t_ij,t_kl)
-         residu_right(:,t_kl)  = residu_right(:,t_kl) &
-                      + dipole_state(:,istate,Jstate,ijspin) * eigenvector_inv(t_kl,t_ij) &
-                                       * docc_ij
-       enddo
-
-     enddo
+   do t_kl=1,chi%npole
+     residu_left (:,t_kl)  = residu_left (:,t_kl) &
+                  + dipole_state(:,istate,jstate,ijspin) * eigenvector(t_ij,t_kl)
+     residu_right(:,t_kl)  = residu_right(:,t_kl) &
+                  + dipole_state(:,istate,Jstate,ijspin) * eigenvector_inv(t_kl,t_ij) &
+                                   * docc_ij
    enddo
+
  enddo
 
 
- t_ij = 0
  absorp(:,:,:) = 0.0_dp
  static_polarizability(:,:) = 0.0_dp
- do ijspin=1,nspin
-   do istate=1,basis%nbf ! istate stands for occupied or partially occupied
-
-     do jstate=1,basis%nbf ! jstate stands for empty or partially empty
-       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin))) cycle
-       t_ij = t_ij + 1
-
-       do idir=1,3
-         do jdir=1,3
-           absorp(:,idir,jdir) = absorp(:,idir,jdir) &
-                                       + residu_left(idir,t_ij) * residu_right(jdir,t_ij) &
-                                         *AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ij) ) )
-           static_polarizability(idir,jdir) = static_polarizability(idir,jdir) + residu_left(idir,t_ij) * residu_right(jdir,t_ij) / eigenvalue(t_ij)
-         enddo
-       enddo
-
+ do t_ij=1,chi%npole
+   do idir=1,3
+     do jdir=1,3
+       absorp(:,idir,jdir) = absorp(:,idir,jdir) &
+                                   + residu_left(idir,t_ij) * residu_right(jdir,t_ij) &
+                                     *AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ij) ) )
+       static_polarizability(idir,jdir) = static_polarizability(idir,jdir) + residu_left(idir,t_ij) * residu_right(jdir,t_ij) / eigenvalue(t_ij)
      enddo
    enddo
  enddo
@@ -522,7 +568,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  WRITE_MASTER(*,'(/,a)') ' Neutral excitation energies [eV] and strengths'
  trk_sumrule=0.0_dp
  t_kl=0
- do t_ij=1,ntrans
+ do t_ij=1,chi%npole
    if(eigenvalue(t_ij) > 0.0_dp) then
      t_kl = t_kl + 1
      oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_ij),residu_right(:,t_ij)) * eigenvalue(t_ij)
@@ -549,25 +595,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  deallocate(dipole_state)
 
 
- !
- ! Calculate Wp= v * chi * v 
- ! and then write it down on file
- !
- if( print_specfunc ) then
-  if( is_auxil_basis) then
-    call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol_new)
-  else
-    call chi_to_vchiv(basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol_new)
-  endif
-  call write_spectral_function(wpol_new)
-  call destroy_spectral_function(wpol_new)
- endif
+end subroutine optical_spectrum
 
- if(allocated(eigenvector))     deallocate(eigenvector)
- if(allocated(eigenvector_inv)) deallocate(eigenvector_inv)
- if(allocated(eigenvalue))      deallocate(eigenvalue)
 
- call stop_clock(timing_pola)
-
-end subroutine polarizability_td
-
+!=========================================================================
