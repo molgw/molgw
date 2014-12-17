@@ -98,7 +98,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
 
 
  ! Obtain the number of transition = the size of the matrix
- call init_spectral_function(basis%nbf,occupation,ntrans)
+ call init_spectral_function(basis%nbf,occupation,wpol_new)
 
  allocate(h_2p(ntrans,ntrans))
  allocate(eigenvector(ntrans,ntrans))
@@ -555,9 +555,9 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  !
  if( print_specfunc ) then
   if( is_auxil_basis) then
-    call chi_to_sqrtvchisqrtv_auxil(ntrans,basis%nbf,auxil_basis%nbf,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol_new)
+    call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol_new)
   else
-    call chi_to_vchiv(ntrans,basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol_new)
+    call chi_to_vchiv(basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol_new)
   endif
   call write_spectral_function(wpol_new)
   call destroy_spectral_function(wpol_new)

@@ -8,6 +8,9 @@ module m_spectral_function
  use m_warning
  use m_inputparam
 
+ integer,parameter :: CASIDA=1
+ integer,parameter :: SAVE_CPU=2
+ integer,parameter :: transition_ordering=SAVE_CPU !CASIDA
  !
  ! General form of any spectral function
  ! z complex number
@@ -18,6 +21,8 @@ module m_spectral_function
  type spectral_function 
    integer              :: npole
    integer              :: nprodbasis
+   real(dp),allocatable :: transition_table(:,:)  ! correspondance table from
+                                                  ! transition index to state pair indexes
    real(dp),allocatable :: pole(:)
    real(dp),allocatable :: residu_left(:,:)       ! first index runs on n, second index on i
    real(dp),allocatable :: residu_right(:,:)      ! first index runs on n, second index on j
@@ -46,13 +51,13 @@ module m_spectral_function
 contains
 
 !=========================================================================
-subroutine init_spectral_function(nbf,occupation,ntransition)
+subroutine init_spectral_function(nbf,occupation,sf)
  implicit none
  integer,intent(in)                    :: nbf
  real(dp),intent(in)                   :: occupation(nbf,nspin)
- integer,intent(out)                   :: ntransition
+ type(spectral_function),intent(out)   :: sf
 !=====
- integer                               :: ispin,ibf,jbf
+ integer                               :: ijspin,ibf,jbf,itrans
  logical                               :: file_exists
 !====
 
@@ -92,29 +97,78 @@ subroutine init_spectral_function(nbf,occupation,ntransition)
    call issue_warning(msg)
  endif
 
-
- ntransition=0
- do ispin=1,nspin
+ !
+ ! First count the number of resonant transitions
+ itrans=0
+ do ijspin=1,nspin
    do ibf=1,nbf
      do jbf=1,nbf
-       if( skip_transition(nspin,ibf,jbf,occupation(ibf,ispin),occupation(jbf,ispin)) ) cycle
-       ntransition = ntransition + 1
+       if( skip_transition(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) cycle
+       if( occupation(jbf,ijspin) - occupation(ibf,ijspin) > 0.0_dp ) cycle
+       itrans = itrans + 1
      enddo
    enddo
  enddo
+ ! Set the number of poles as twice the number of resonant transtions
+ ! And allocate the transition_table
+ sf%npole = 2*itrans
+ allocate(sf%transition_table(3,sf%npole))
+ ! Set the transition_table 
+ select case(transition_ordering)
+ case(SAVE_CPU)
+   itrans=0
+   do ijspin=1,nspin
+     do ibf=1,nbf
+       do jbf=1,nbf
+         if( skip_transition(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) cycle
+         if( occupation(jbf,ijspin) - occupation(ibf,ijspin) > 0.0_dp ) cycle
+         ! Set the resonant transition table
+         itrans = itrans + 1
+         sf%transition_table(1,itrans) = ibf
+         sf%transition_table(2,itrans) = jbf
+         sf%transition_table(3,itrans) = ijspin
+         ! Set the anti-resonant transition table too
+         itrans = itrans + 1
+         sf%transition_table(1,itrans) = jbf
+         sf%transition_table(2,itrans) = ibf
+         sf%transition_table(3,itrans) = ijspin
+       enddo
+     enddo
+   enddo
+ case(CASIDA)
+   itrans=0
+   do ijspin=1,nspin
+     do ibf=1,nbf
+       do jbf=1,nbf
+         if( skip_transition(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) cycle
+         if( occupation(jbf,ijspin) - occupation(ibf,ijspin) > 0.0_dp ) cycle
+         itrans = itrans + 1
+         ! Set the resonant transition table
+         sf%transition_table(1,itrans) = ibf
+         sf%transition_table(2,itrans) = jbf
+         sf%transition_table(3,itrans) = ijspin
+         ! Set the anti-resonant transition table too
+         sf%transition_table(1,itrans+sf%npole/2) = jbf
+         sf%transition_table(2,itrans+sf%npole/2) = ibf
+         sf%transition_table(3,itrans+sf%npole/2) = ijspin
+       enddo
+     enddo
+   enddo
+ case default
+   stop'bug in m_spectral_function.f90'
+ end select
 
 
 end subroutine init_spectral_function
 
 
 !=========================================================================
-subroutine allocate_spectral_function(npole,nprodbasis,sf)
+subroutine allocate_spectral_function(nprodbasis,sf)
  implicit none
- integer,intent(in)                    :: npole,nprodbasis
+ integer,intent(in)                    :: nprodbasis
  type(spectral_function),intent(inout) :: sf
 !=====
 
- sf%npole      = npole
  sf%nprodbasis = nprodbasis
 
  WRITE_MASTER(*,'(/,a,i8)') ' Spectral function initialized with npoles                 : ',sf%npole
@@ -126,7 +180,7 @@ subroutine allocate_spectral_function(npole,nprodbasis,sf)
 
  call memory_statement(REAL(2*sf%npole,dp)*REAL(sf%nprodbasis,dp))
  WRITE_MASTER(*,*)
-
+ 
 
 end subroutine allocate_spectral_function
 
@@ -173,9 +227,10 @@ subroutine destroy_spectral_function(sf)
  type(spectral_function),intent(inout) :: sf
 !=====
 
- if(allocated(sf%pole))         deallocate(sf%pole)
- if(allocated(sf%residu_left))  deallocate(sf%residu_left)
- if(allocated(sf%residu_right)) deallocate(sf%residu_right)
+ if(allocated(sf%pole))             deallocate(sf%pole)
+ if(allocated(sf%residu_left))      deallocate(sf%residu_left)
+ if(allocated(sf%residu_right))     deallocate(sf%residu_right)
+ if(allocated(sf%transition_table)) deallocate(sf%transition_table)
 
  WRITE_MASTER(*,'(/,a)') ' Spectral function destroyed'
 
@@ -275,7 +330,7 @@ subroutine read_spectral_function(sf,reading_status)
  read(spectralfile) npole_read
  read(spectralfile) nprodbasis_read
 
- call allocate_spectral_function(npole_read,nprodbasis_read,sf)
+ call allocate_spectral_function(nprodbasis_read,sf)
 
 ! if( npole_read /= sf%npole .OR. nprodbasis_read /= sf%nprodbasis ) then
 !   WRITE_MASTER(*,'(a,/)')     ' File does not have the correct size'
