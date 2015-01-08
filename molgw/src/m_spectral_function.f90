@@ -10,7 +10,8 @@ module m_spectral_function
 
  integer,parameter :: CASIDA=1
  integer,parameter :: SAVE_CPU=2
- integer,parameter :: transition_ordering=SAVE_CPU !CASIDA
+! integer,parameter :: transition_ordering=SAVE_CPU 
+ integer,parameter :: transition_ordering=CASIDA
  !
  ! General form of any spectral function
  ! z complex number
@@ -109,13 +110,13 @@ subroutine init_spectral_function(nbf,occupation,sf)
      enddo
    enddo
  enddo
- ! Set the number of poles as twice the number of resonant transtions
- ! And allocate the transition_table
- sf%npole = 2*itrans
- allocate(sf%transition_table(3,sf%npole))
- ! Set the transition_table 
+
  select case(transition_ordering)
  case(SAVE_CPU)
+   ! Set the number of poles as twice the number of resonant transtions
+   sf%npole = 2*itrans
+   allocate(sf%transition_table(3,sf%npole))
+   ! Set the transition_table 
    itrans=0
    do ijspin=1,nspin
      do ibf=1,nbf
@@ -136,6 +137,10 @@ subroutine init_spectral_function(nbf,occupation,sf)
      enddo
    enddo
  case(CASIDA)
+   ! Set the number of poles as the number of resonant transtions
+   sf%npole = 2*itrans  
+   allocate(sf%transition_table(3,sf%npole))
+   ! Set the transition_table 
    itrans=0
    do ijspin=1,nspin
      do ibf=1,nbf

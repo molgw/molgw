@@ -129,6 +129,7 @@ archive:
 doc:
 	pdflatex ../doc/notes.tex	
 	pdflatex ../doc/notes.tex	
+	rm -f notes.aux notes.log notesNotes.bib
 	mv notes.pdf ../doc/notes.pdf
 clean:
 	rm -f *.o *.mod *.log *.bib *.aux
