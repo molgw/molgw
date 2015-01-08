@@ -31,7 +31,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  type(spectral_function) :: wpol_new,wpol_static
  integer                 :: kbf,ijspin,klspin,ispin
  integer                 :: istate,jstate,kstate,lstate
- integer                 :: ijstate_min,ijstate_min_stored
+ integer                 :: ijstate_min
  integer                 :: ipole
  integer                 :: t_ij,t_kl
  integer                 :: idft_xc,igrid
@@ -185,6 +185,8 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
 
  if(.NOT. is_auxil_basis) then
    allocate(eri_eigenstate_ijmin(basis%nbf,basis%nbf,basis%nbf,nspin))
+   ! Set this to zero and then enforce the calculation of the first array of Coulomb integrals
+   eri_eigenstate_ijmin(:,:,:,:) = 0.0_dp
  endif
 
  !
@@ -257,10 +259,6 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
 
  h_2p(:,:)=0.0_dp
 
- ! Set this to zero and then enforce the calculation of the first array of
- ! Coulomb integrals
- ijstate_min_stored=0
-
  do t_ij=1,wpol_new%npole
    istate = wpol_new%transition_table(1,t_ij)
    jstate = wpol_new%transition_table(2,t_ij)
@@ -270,9 +268,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
    if( .NOT. is_auxil_basis ) then
      ijstate_min = MIN(istate,jstate)
      is_ij = (ijstate_min == istate)
-     ! Calculate only if necessary
-     if( ijstate_min /= ijstate_min_stored ) call transform_eri_basis(nspin,c_matrix,ijstate_min,ijspin,eri_eigenstate_ijmin)
-     ijstate_min_stored = ijstate_min
+     call transform_eri_basis(nspin,c_matrix,ijstate_min,ijspin,eri_eigenstate_ijmin)
    endif
 
 

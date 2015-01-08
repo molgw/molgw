@@ -1827,16 +1827,27 @@ end subroutine test_eri
 subroutine transform_eri_basis(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
  implicit none
 
- integer,intent(in)   :: nspin,istate,ijspin
- real(dp),intent(in)  :: c_matrix(nbf_eri,nbf_eri,nspin)
- real(dp),intent(out) :: eri_eigenstate_i(nbf_eri,nbf_eri,nbf_eri,nspin)
+ integer,intent(in)     :: nspin,istate,ijspin
+ real(dp),intent(in)    :: c_matrix(nbf_eri,nbf_eri,nspin)
+ real(dp),intent(inout) :: eri_eigenstate_i(nbf_eri,nbf_eri,nbf_eri,nspin)
 !=====
+ integer,save         :: istate_previous=0
+ integer,save         :: ijspin_previous=0
  integer              :: klspin
  integer              :: ibf,jbf,kbf,lbf
  integer              :: jstate,kstate,lstate
  real(dp)             :: eri_tmp3(nbf_eri,nbf_eri,nbf_eri)
  real(dp)             :: wtime
 !=====
+
+ ! Check if the calculation can be skipped
+ if( istate_previous == istate .AND. ijspin_previous == ijspin .AND. ANY(ABS(eri_eigenstate_i(:,:,:,:))>1.0e-6_dp) ) then
+   return
+ else
+   istate_previous = istate
+   ijspin_previous = ijspin
+ endif
+
 
  call start_clock(timing_basis_transform)
 

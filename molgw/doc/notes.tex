@@ -1,0 +1,177 @@
+\documentclass[aps,prb,reprint,showpacs]{revtex4-1}
+\usepackage{graphicx}
+\usepackage{latexsym}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{mathrsfs}
+\usepackage{color}
+\usepackage{verbatim}
+
+%definitions
+\def\br{\mathbf{r}}
+\def\bR{\mathbf{R}}
+\def\bq{\mathbf{q}}
+\def\bk{\mathbf{k}}
+\def\bG{\mathbf{G}}
+\def\half{\frac{1}{2}}
+\def\Rho{\mathrm{P}}
+\def\h2o{\mathrm{H}_2\mathrm{O}}
+
+\newcommand\refeq[1]{Eq.~(\ref{#1})}
+\newcommand\refeqs[1]{Eqs.~(\ref{#1})}
+\newcommand\wf[2]{\phi_{#1}^{#2}}
+
+
+\begin{document}
+
+
+\title{Implementation notes for \textsc{MOLGW}}
+\author{Fabien Bruneval}
+\affiliation{CEA, DEN, Service de Recherches de M\'etallurgie Physique, F-91191 Gif-sur-Yvette, France}
+
+\maketitle
+
+
+
+
+
+
+\section{Basic ingredients}
+
+The wavefunctions are written as a linear combination of contracted Gaussian functions:
+\begin{equation}
+ \varphi_{i\sigma} (\br) = \sum_{\alpha} C_{\alpha i \sigma} \phi_\alpha(\br) .
+\end{equation}
+
+The Coulomb integrals are written as
+\begin{equation}
+ ( i j \sigma | k l \tau ) = \iint d\br d\br' \varphi_{i\sigma} (\br)  \varphi_{j\sigma} (\br) \frac{1}{|\br-\br'|}  \varphi_{k\tau}(\br') \varphi_{l\tau}(\br')
+\end{equation}
+The wavefunctions are real, so the conguate symbols are not required.
+
+
+
+\section{BSE in transition space}
+
+\begin{equation}
+  [\chi_0^{-1}]_{ij \sigma}^{kl \tau}(\omega) =  
+     \frac{ \omega - (\epsilon_{j\sigma} - \epsilon_{i\sigma} ) }
+          {   f_{i\sigma}  - f_{j\sigma} } \delta_{ij} \delta_{kl} \delta_{\sigma\tau} 
+\end{equation}
+
+\begin{multline}
+  [\chi^{-1}]_{ij \sigma}^{kl \tau}(\omega) =  
+     \frac{ \omega - (\epsilon_{j\sigma} - \epsilon_{i\sigma} ) }
+          {   f_{i\sigma}  - f_{j\sigma} } \delta_{ij} \delta_{kl} \delta_{\sigma\tau}  \\
+    - ( ij \sigma | kl \tau )
+    + \delta_{\sigma\tau} ( ik \sigma | jl \sigma) 
+\end{multline}
+
+
+\begin{multline}
+( f_{i\sigma}  - f_{j\sigma} )  [\chi^{-1}]_{ij \sigma}^{kl \tau}(\omega) =
+    [ \omega - ( \epsilon_{j\sigma} - \epsilon_{i\sigma} ) ] \delta_{ij} \delta_{kl} \delta_{\sigma\tau}  \\
+    - ( f_{i\sigma}  - f_{j\sigma} ) [ ( ij \sigma | kl \tau ) + \delta_{\sigma\tau} ( ik \sigma | jl \sigma) ] 
+\end{multline}
+
+
+\begin{multline}
+ [ H_\mathrm{BSE} ]_{ij \sigma}^{kl \tau} = 
+      ( \epsilon_{j\sigma} - \epsilon_{i\sigma} ) \delta_{ij} \delta_{kl} \delta_{\sigma\tau}  \\
+    + ( f_{i\sigma}  - f_{j\sigma} ) [ ( ij \sigma | kl \tau ) - \delta_{\sigma\tau} ( ik \sigma | jl \sigma) ] 
+\end{multline}
+
+
+
+
+\section{Symmetrization of the Bethe-Salpeter equation}
+
+
+Let us write the TDHF equation.
+The generalization to screened TDHF (=BSE) will come later.
+\begin{subequations}
+\begin{eqnarray}
+ \label{eq:xy1}
+ A X   & + B Y    &=    \Omega X \\
+ \label{eq:xy2}
+ -B Y  & -A X     &= \Omega Y
+\end{eqnarray}
+\end{subequations}
+where
+\begin{subequations}
+\begin{eqnarray}
+ A_{ij\sigma \, kl \tau} & = & \delta_{ik} \delta_{jl} \delta_{\sigma\tau} (\epsilon_{j\sigma} - \epsilon_{i\sigma}) \nonumber \\
+                         &   & + ( i j \sigma | k l \tau ) - \delta_{\sigma\tau} ( i k | j l ) \\
+ B_{ij\sigma \, kl \tau} & = & ( i j \sigma | k l \tau )  - \delta_{\sigma\tau} ( i k | j l ) 
+\end{eqnarray}
+\end{subequations}
+
+By adding or subtracting Eqs.~(\ref{eq:xy1}),(\ref{eq:xy2}), one gets
+\begin{subequations}
+\begin{eqnarray}
+ ( A + B ) ( X + Y ) & = &  \Omega ( X - Y ) \\
+ ( A - B ) ( X - Y ) & = &  \Omega ( X + Y ) 
+\end{eqnarray}
+\end{subequations}
+Combining the latter two equations yields an equation for $(X+Y)$
+\begin{equation}
+ ( A + B ) ( X+Y ) = \Omega^2 (A-B)^{-1} (X+Y) ,
+\end{equation}
+which can be further symmetrized by introducing
+\begin{equation}
+ Z = (A-B)^{-1/2} (X+Y) .
+\end{equation}
+Finally,
+\begin{equation}
+ (A-B)^{1/2}(A+B)(A-B)^{1/2} Z = \Omega^2 Z .
+\end{equation}
+The matrix we have to diagonalize is now symmetric and half smaller than the BSE matrix.
+
+How to get $X$ and $Y$ from $Z$? 
+\begin{subequations}
+\begin{eqnarray}
+  X + Y &=& (A-B)^{1/2} Z \\
+  X - Y &=& \Omega (A-B)^{-1/2} Z .
+\end{eqnarray}
+\end{subequations}
+Then adding or subtracting the latter two equations,
+\begin{subequations}
+\begin{eqnarray}
+  X  &=&  \half \left[ (A-B)^{1/2} + \Omega (A-B)^{-1/2}  \right] Z  \\
+  Y  &=&  \half \left[ (A-B)^{1/2} - \Omega (A-B)^{-1/2}  \right] Z .
+\end{eqnarray}
+\end{subequations}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\end{document}
+
+
+
+
+
+
+
+

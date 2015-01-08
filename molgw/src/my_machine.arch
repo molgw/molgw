@@ -10,7 +10,7 @@ FC=gfortran -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC # -DHAVE_SCALAPA
 
 
 CC=gcc
-FCOPTS=  -Ofast #-g  -fcheck=all -fbacktrace #-DSCALAPACK #     -O0 -g  -fcheck=all -fbacktrace #-DTODAY #-Wall # -g -check all -traceback  #-O2 #-g -check all -check noarg_temp_created -traceback
+FCOPTS= -Ofast # -g  -fcheck=all -fbacktrace  #-Ofast #-g  -fcheck=all -fbacktrace #-DTODAY #-Wall # -g -check all -traceback  #-O2 #-g -check all -check noarg_temp_created -traceback
 CCOPTS=  -O2 # -O0 -g -fbounds-check
 #FCOPTS= -xHost -O3 #-ipo
 
