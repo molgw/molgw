@@ -187,6 +187,19 @@ program molgw
    call setup_dft_grid()
  endif
 
+ !
+ ! If an auxiliary basis is given and QSGW are requested
+ ! then set it up now and calculate the required ERI: 2- and 3-center integrals
+ !
+ if( is_auxil_basis .AND. (calc_type%gwmethod == QS .OR. calc_type%gwmethod == QSCOHSEX) ) then
+   call init_basis_set(print_basis,auxil_basis_name,gaussian_type,auxil_basis)
+   call allocate_eri_auxil(auxil_basis)
+   ! 2-center integrals
+   call calculate_eri_2center(print_eri,auxil_basis)
+   ! 3-center integrals
+   call calculate_eri_3center(print_eri,basis,auxil_basis)
+ endif
+
  call stop_clock(timing_prescf)
 
  !
@@ -194,7 +207,8 @@ program molgw
  ! Only do it if the calculation is NOT a big restart
  !
  if( .NOT. is_big_restart) then
-   call scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,                            &
+   call scf_loop(basis,prod_basis,auxil_basis,                                           &
+                 s_matrix,c_matrix,p_matrix,                                             &
                  hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_exx,hamiltonian_xc, &
                  occupation,energy)
  endif

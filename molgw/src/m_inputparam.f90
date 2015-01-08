@@ -37,33 +37,33 @@ module m_inputparam
    integer            :: gwmethod                    ! perturbative or quasiparticle self-consistent
  end type calculation_type
 
- integer,protected                   :: nspin
- real(dp),protected                  :: spin_fact
- integer,protected                   :: nscf
- real(dp),protected                  :: alpha_mixing
- character(len=100),protected        :: basis_name
- character(len=100),protected        :: auxil_basis_name
- integer,protected                   :: gaussian_type
- real(dp),protected                  :: electrons
- real(dp),protected                  :: magnetization
- type(calculation_type),protected    :: calc_type
- character(len=100),protected        :: quadrature_name
- logical,protected                   :: is_auxil_basis
+ integer,protected                :: nspin
+ real(dp),protected               :: spin_fact
+ integer,protected                :: nscf
+ real(dp),protected               :: alpha_mixing
+ character(len=100),protected     :: basis_name
+ character(len=100),protected     :: auxil_basis_name
+ integer,protected                :: gaussian_type
+ real(dp),protected               :: electrons
+ real(dp),protected               :: magnetization
+ type(calculation_type),protected :: calc_type
+ character(len=100),protected     :: quadrature_name
+ logical,protected                :: is_auxil_basis
 
- logical,protected                   :: print_matrix
- logical,protected                   :: print_basis
- logical,protected                   :: print_eri
- logical,protected                   :: ignore_big_restart
- logical,protected                   :: print_wfn
- logical,protected                   :: print_specfunc
+ logical,protected                :: print_matrix
+ logical,protected                :: print_basis
+ logical,protected                :: print_eri
+ logical,protected                :: ignore_big_restart
+ logical,protected                :: print_wfn
+ logical,protected                :: print_specfunc
 
- real(dp)                            :: alpha_hybrid    = 1.0_dp
- real(dp)                            :: alpha_hybrid_lr = 0.0_dp
- real(dp)                            :: rcut            = 0.0_dp
+ real(dp)                         :: alpha_hybrid    = 1.0_dp
+ real(dp)                         :: alpha_hybrid_lr = 0.0_dp
+ real(dp)                         :: rcut            = 0.0_dp
 
- integer,protected                   :: ndft_xc      = 0
- integer,protected,allocatable       :: dft_xc_type(:)
- real(dp),protected,allocatable      :: dft_xc_coef(:)
+ integer,protected                :: ndft_xc      = 0
+ integer,protected,allocatable    :: dft_xc_type(:)
+ real(dp),protected,allocatable   :: dft_xc_coef(:)
 
 
 contains

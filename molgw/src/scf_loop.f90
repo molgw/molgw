@@ -1,6 +1,7 @@
 #include "macros.h"
 !=========================================================================
-subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
+subroutine scf_loop(basis,prod_basis,auxil_basis,&
+                    s_matrix,c_matrix,p_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
                     hamiltonian_exx,hamiltonian_xc,&
                     occupation,energy)
@@ -26,6 +27,7 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
 !=====
  type(basis_set),intent(in)         :: basis
  type(basis_set),intent(in)         :: prod_basis
+ type(basis_set),intent(in)         :: auxil_basis
  real(dp),intent(in)                :: s_matrix(basis%nbf,basis%nbf)
  real(dp),intent(inout)             :: c_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(inout)             :: p_matrix(basis%nbf,basis%nbf,nspin)
@@ -36,7 +38,6 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
  real(dp),intent(inout)             :: occupation(basis%nbf,nspin)
  real(dp),intent(inout)             :: energy(basis%nbf,nspin)
 !=====
- type(basis_set)         :: auxil_basis_dummy
  type(spectral_function) :: wpol
  integer                 :: ispin,iscf
  character(len=100)      :: title
@@ -133,6 +134,8 @@ subroutine scf_loop(basis,prod_basis,s_matrix,c_matrix,p_matrix,&
        .AND. iscf > 5 ) then
 
      if(is_auxil_basis) call prepare_eri_3center_eigen(c_matrix)
+     call polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
+
      if( en%rpa > 1.e-6_DP) then
        en%tot = en%tot + en%rpa
        WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
