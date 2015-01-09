@@ -59,6 +59,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  allocate(p_matrix_old(basis%nbf,basis%nbf,nspin))
  allocate(exchange_m_vxc_diag(basis%nbf,nspin))
  allocate(self_energy_old(basis%nbf,basis%nbf,nspin))
+ self_energy_old(:,:,:) = 0.0_dp
  if(calc_type%is_dft) allocate(hamiltonian_vxc(basis%nbf,basis%nbf,nspin))
  allocate(ehomo(nspin))
  allocate(elumo(nspin))
@@ -136,7 +137,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      if(is_auxil_basis) call prepare_eri_3center_eigen(c_matrix)
      call polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
 
-     if( en%rpa > 1.e-6_DP) then
+     if( ABS(en%rpa) > 1.e-6_dp) then
        en%tot = en%tot + en%rpa
        WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
      endif

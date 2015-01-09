@@ -71,9 +71,9 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
 
  WRITE_MASTER(*,'(/,a,f14.8)') ' Lowest neutral excitation energy [eV]',MINVAL(ABS(eigenvalue(:)))*Ha_eV
 
- do t_ij=1,wpol%npole
-   WRITE_MASTER(124,'(1(i4,2x),20(2x,f12.6))') t_ij,eigenvalue(t_ij)*Ha_eV
- enddo
+! do t_ij=1,wpol%npole
+!   WRITE_MASTER(124,'(1(i4,2x),20(2x,f12.6))') t_ij,eigenvalue(t_ij)*Ha_eV
+! enddo
    
  call start_clock(timing_inversion_s2p)
  call invert(wpol%npole,eigenvector,eigenvector_inv)
@@ -582,13 +582,8 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
        enddo
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-       do astate=1,basis%nbf
-         kbf = prod_basis%index_prodbasis(istate,astate)
-         do ipole=1,wpol%npole
-           bra(ipole,astate) = DOT_PRODUCT( wpol%residu_left (ipole,:) , eri_3center_eigen(:,istate,astate,ispin) )
-           ket(ipole,astate) = DOT_PRODUCT( wpol%residu_right(ipole,:) , eri_3center_eigen(:,istate,astate,ispin) )
-         enddo
-       enddo
+       bra(:,:) = MATMUL( wpol%residu_left (:,:) , eri_3center_eigen(:,:,istate,ispin) )
+       ket(:,:) = MATMUL( wpol%residu_right(:,:) , eri_3center_eigen(:,:,istate,ispin) )
      endif
 
      do ipole=1,wpol%npole
@@ -1053,7 +1048,7 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
  rpa_correlation = rpa_correlation + 0.50_dp * SUM( bigomega(:) )
 
  do t_kl=1,nmat
-   WRITE_MASTER(123,*) t_kl,bigomega(t_kl)*Ha_eV
+!   WRITE_MASTER(123,*) t_kl,bigomega(t_kl)*Ha_eV
  
    bigx(:) = 0.5_dp * MATMUL( amb_matrix_sqrt(:,:) , cc_matrix(:,t_kl) )  &
             + 0.5_dp * bigomega(t_kl) * MATMUL( amb_matrix_sqrtm1(:,:) , cc_matrix(:,t_kl) )
