@@ -98,6 +98,8 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%is_tda              = .FALSE.
  calc_type%gwmethod            = 0
  calc_type%read_potential      = .FALSE.
+ calc_type%postscf_name        = 'None'
+ 
 
  ipos=index(input_key,'+',.TRUE.)
 

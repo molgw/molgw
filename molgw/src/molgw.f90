@@ -188,10 +188,10 @@ program molgw
  endif
 
  !
- ! If an auxiliary basis is given and QSGW are requested
+ ! If an auxiliary basis is given,
  ! then set it up now and calculate the required ERI: 2- and 3-center integrals
  !
- if( is_auxil_basis .AND. (calc_type%gwmethod == QS .OR. calc_type%gwmethod == QSCOHSEX) ) then
+ if( is_auxil_basis ) then
    call init_basis_set(print_basis,auxil_basis_name,gaussian_type,auxil_basis)
    call allocate_eri_auxil(auxil_basis)
    ! 2-center integrals
@@ -221,18 +221,9 @@ program molgw
 
 
  !
- ! If an auxiliary basis is given,
- ! then set it up and calculate the required ERI: 2- and 3-center integrals
+ ! If an auxiliary basis is given, the 4-center integrals are not needed anymore
  !
- if( is_auxil_basis ) then
-   call deallocate_eri_buffer()
-   call init_basis_set(print_basis,auxil_basis_name,gaussian_type,auxil_basis)
-   call allocate_eri_auxil(auxil_basis)
-   ! 2-center integrals
-   call calculate_eri_2center(print_eri,auxil_basis)
-   ! 3-center integrals
-   call calculate_eri_3center(print_eri,basis,auxil_basis)
- endif
+ if( is_auxil_basis ) call deallocate_eri_buffer()
 
  !
  ! CI calculation is done here
@@ -248,7 +239,10 @@ program molgw
  ! works for DFT, HF, and hybrid
  if(calc_type%is_td .OR. calc_type%is_bse) then
 
-   if(is_auxil_basis) call prepare_eri_3center_eigen(c_matrix)
+   if(is_auxil_basis) then
+     call prepare_eri_3center_eigen(c_matrix)
+     call destroy_eri_3center()
+   endif
    call polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_matrix)
    if(is_auxil_basis) call destroy_eri_3center_eigen()
 
@@ -292,7 +286,10 @@ program molgw
    ! A section under development for the range-separated RPA
    if( calc_type%is_lr_mbpt ) call testing_tobe_removed()
 
-   if(is_auxil_basis) call prepare_eri_3center_eigen(c_matrix)
+   if(is_auxil_basis) then
+     call prepare_eri_3center_eigen(c_matrix)
+     call destroy_eri_3center()
+   endif
    call polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
 
    en%tot = en%tot + en%rpa
