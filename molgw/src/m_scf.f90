@@ -204,7 +204,7 @@ function check_converged()
  rms = SQRT( SUM( residual_hist(:,:,:,1)**2 ) )
 
  WRITE_MASTER(*,*) 'convergence criterium on the density matrix',rms
- if( rms < 1.0e-8_dp ) then 
+ if( rms < 1.0e-7_dp ) then 
    check_converged = .TRUE.
    WRITE_MASTER(*,*) ' ===> convergence has been reached'
  else

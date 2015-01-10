@@ -1021,6 +1021,13 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
  WRITE_MASTER(*,*) 'Diago 2-particle hamiltonian with blocks'
  WRITE_MASTER(*,*) 'matrix',nmat,'x',nmat
 
+ !
+ ! Calculate (A-B)^{1/2}
+ ! First diagonalize (A-B):
+ ! (A-B) R = R D
+ ! (A-B) is real symmetric, hence R is orthogonal R^{-1} = tR
+ ! (A-B)       = R D tR 
+ ! (A-B)^{1/2} = R D^{1/2} tR 
  call start_clock(timing_diago_h2p)
  call diagonalize(nmat,amb_matrix,amb_eigval)
  call stop_clock(timing_diago_h2p)
@@ -1031,8 +1038,10 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
    amb_matrix_sqrtm1(:,t_kl) = amb_matrix(:,t_kl)/SQRT(amb_eigval(t_kl))
  enddo
  deallocate(amb_eigval)
+ amb_matrix_sqrt  (:,:) = MATMUL( amb_matrix_sqrt(:,:)   , TRANSPOSE(amb_matrix(:,:)) )
+ amb_matrix_sqrtm1(:,:) = MATMUL( amb_matrix_sqrtm1(:,:) , TRANSPOSE(amb_matrix(:,:)) )
  
- cc_matrix(:,:) = MATMUL( TRANSPOSE(amb_matrix_sqrt) , MATMUL( apb_matrix , amb_matrix_sqrt)  )
+ cc_matrix(:,:) = MATMUL( amb_matrix_sqrt , MATMUL( apb_matrix , amb_matrix_sqrt)  )
 
 ! write(*,*) 'CC ',matrix_is_symmetric(nmat,cc_matrix)
 
