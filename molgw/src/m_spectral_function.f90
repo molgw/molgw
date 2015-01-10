@@ -335,6 +335,7 @@ subroutine read_spectral_function(sf,reading_status)
  read(spectralfile) npole_read
  read(spectralfile) nprodbasis_read
 
+ sf%npole = npole_read
  call allocate_spectral_function(nprodbasis_read,sf)
 
 ! if( npole_read /= sf%npole .OR. nprodbasis_read /= sf%nprodbasis ) then

@@ -16,12 +16,6 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  use m_spectral_function
  use m_inputparam
  use m_gw
-#ifdef HAVE_LIBXC
- use libxc_funcs_m
- use xc_f90_lib_m
- use xc_f90_types_m
-#endif
- use iso_c_binding,only: C_INT
  implicit none
 
  type(basis_set),intent(in)            :: basis,prod_basis,auxil_basis
@@ -34,46 +28,22 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  integer                 :: ijstate_min
  integer                 :: ipole
  integer                 :: t_ij,t_kl
- integer                 :: idft_xc,igrid
- integer                 :: reading_status
 
- real(dp),allocatable :: eri_eigenstate_ijmin(:,:,:,:)
- real(dp)             :: eri_eigen_ijkl,eri_eigen_ikjl
- real(dp)             :: alpha_local,docc_ij,docc_kl
- real(dp)             :: scissor_energy(nspin)
- real(dp),allocatable :: h_2p(:,:)
- real(dp),allocatable :: eigenvalue(:),eigenvector(:,:),eigenvector_inv(:,:)
- real(dp)             :: p_matrix(basis%nbf,basis%nbf,nspin)
- real(dp)             :: energy_qp(basis%nbf,nspin)
- real(dp)             :: rr(3)
- real(dp)             :: basis_function_r       (basis%nbf)
-! real(dp)             :: basis_function_r_shiftx(basis%nbf)
-! real(dp)             :: basis_function_r_shifty(basis%nbf)
-! real(dp)             :: basis_function_r_shiftz(basis%nbf)
- real(dp)             :: basis_function_gradr       (3,basis%nbf)
-! real(dp)             :: basis_function_gradr_shiftx(3,basis%nbf)
-! real(dp)             :: basis_function_gradr_shifty(3,basis%nbf)
-! real(dp)             :: basis_function_gradr_shiftz(3,basis%nbf)
- real(dp)             :: rhor_r       (nspin)
-! real(dp)             :: rhor_r_shiftx(nspin)
-! real(dp)             :: rhor_r_shifty(nspin)
-! real(dp)             :: rhor_r_shiftz(nspin)
+ real(dp),allocatable    :: eri_eigenstate_ijmin(:,:,:,:)
+ real(dp)                :: eri_eigen_ijkl,eri_eigen_ikjl
+ real(dp)                :: alpha_local,docc_ij,docc_kl
+ real(dp),allocatable    :: h_2p(:,:)
+ real(dp),allocatable    :: eigenvalue(:),eigenvector(:,:),eigenvector_inv(:,:)
+ real(dp)                :: energy_qp(basis%nbf,nspin)
 
- real(dp)             :: fxc_libxc(nspin)
- real(dp),allocatable :: fxc(:,:)
- real(dp),allocatable :: wf_r(:,:,:)
- real(dp),allocatable :: bra(:),ket(:)
- real(dp),allocatable :: bra_auxil(:,:,:,:),ket_auxil(:,:,:,:)
+ real(dp),allocatable    :: fxc(:,:)
+ real(dp),allocatable    :: wf_r(:,:,:)
+ real(dp),allocatable    :: bra(:),ket(:)
+ real(dp),allocatable    :: bra_auxil(:,:,:,:),ket_auxil(:,:,:,:)
 
- logical              :: require_gradient
- logical              :: is_tddft
- logical              :: is_ij
- character(len=256)   :: string
+ logical                 :: is_tddft
+ logical                 :: is_ij
 
-#ifdef HAVE_LIBXC
- type(xc_f90_pointer_t) :: xc_func(ndft_xc),xc_functest
- type(xc_f90_pointer_t) :: xc_info(ndft_xc),xc_infotest
-#endif
 !=====
 
  call start_clock(timing_pola)
@@ -105,131 +75,19 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
    alpha_local = 1.0_dp
  endif
 
+ !
+ ! Prepare TDDFT calculations
  if(is_tddft) then
-   !
-   ! Prepare DFT kernel calculation with Libxc
-   !
-   do idft_xc=1,ndft_xc
-     if(nspin==1) then
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), INT(dft_xc_type(idft_xc),C_INT), XC_UNPOLARIZED)
-     else
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), INT(dft_xc_type(idft_xc),C_INT), XC_POLARIZED)
-     endif
-     if( MODULO(xc_f90_info_flags( xc_info(idft_xc)),XC_FLAGS_HAVE_FXC*2) < XC_FLAGS_HAVE_FXC ) then
-       stop'This functional does not have the kernel implemented in Libxc'
-     endif
-     call xc_f90_info_name(xc_info(idft_xc),string)
-     WRITE_MASTER(*,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),&
-           TRIM(string)
-     if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
-     if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) require_gradient  =.TRUE.
-   enddo
-
-   !
-   ! calculate rho, grad rho and the kernel
-   ! 
-   ! Get the density matrix P from C
-   call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
-
    allocate(fxc(ngrid,nspin),wf_r(ngrid,basis%nbf,nspin))
-
-   fxc(:,:) = 0.0_dp
-
-   do igrid=1,ngrid
-
-     rr(:) = rr_grid(:,igrid)
-  
-     !
-     ! Get all the functions and gradients at point rr
-     call get_basis_functions_r(basis,igrid,basis_function_r)
-     !
-     ! store the wavefunction in r
-     do ispin=1,nspin
-       wf_r(igrid,:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
-     enddo
-
-!     if( require_gradient ) then
-!       call get_basis_functions_gradr(basis,igrid,&
-!                                      basis_function_gradr,basis_function_r_shiftx,basis_function_r_shifty,basis_function_r_shiftz,&
-!                                      basis_function_gradr_shiftx,basis_function_gradr_shifty,basis_function_gradr_shiftz)
-!     endif
-
-     if( .NOT. allocated(bfr) ) stop'bfr not allocated -> weird'
-
-     call calc_density_r(nspin,basis%nbf,p_matrix,basis_function_r,rhor_r)
-
-     !
-     ! Calculate the kernel
-     ! 
-     do idft_xc=1,ndft_xc
-       select case(xc_f90_info_family(xc_info(idft_xc)))
-
-       case(XC_FAMILY_LDA)
-         call xc_f90_lda_fxc(xc_func(idft_xc),1_C_INT,rhor_r(1),fxc_libxc(1))
-       case default
-         stop'GGA kernel not yet implemented'
-       end select
-
-       ! Store the result with the weight
-       ! Remove too large values for stability
-       fxc(igrid,:) = fxc(igrid,:) + MIN(fxc_libxc(:),1.0E8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
-
-     enddo
-
-
-
-   enddo
- endif
-
-
-
- if(.NOT. is_auxil_basis) then
-   allocate(eri_eigenstate_ijmin(basis%nbf,basis%nbf,basis%nbf,nspin))
-   ! Set this to zero and then enforce the calculation of the first array of Coulomb integrals
-   eri_eigenstate_ijmin(:,:,:,:) = 0.0_dp
+   call prepare_tddft(basis,c_matrix,occupation,fxc,wf_r)
  endif
 
  !
- ! Prepare the BSE calculation
+ ! Prepare BSE calculations
  if( calc_type%is_bse ) then
-
-   ! For BSE calculation, obtain the wpol_static object from a previous calculation
-   call read_spectral_function(wpol_static,reading_status)
-   if(reading_status/=0) then
-     stop'BSE requires a previous GW calculation stored in a spectral_file'
-   endif
-
-   allocate(bra(wpol_static%npole),ket(wpol_static%npole))
-   call read_energy_qp(nspin,basis%nbf,energy_qp,reading_status)
-   select case(reading_status)
-   case(-1)
-     scissor_energy(:) = energy_qp(1,:)
-     WRITE_MASTER(*,'(a,2(x,f12.6))') ' Scissor operator with value [eV]:',scissor_energy(:)*Ha_eV
-     do ispin=1,nspin
-       do istate=1,basis%nbf
-         if( occupation(istate,ispin) > completely_empty/spin_fact ) then
-           energy_qp(istate,ispin) = energy(istate,ispin)
-         else
-           energy_qp(istate,ispin) = energy(istate,ispin) + scissor_energy(ispin)
-         endif
-       enddo
-     enddo
-     WRITE_MASTER(*,'(/,a)') ' Scissor updated energies'
-     do istate=1,basis%nbf
-       WRITE_MASTER(*,'(i5,4(2x,f16.6))') istate,energy(istate,:)*Ha_eV,energy_qp(istate,:)*Ha_eV
-     enddo
-     WRITE_MASTER(*,*)
-   case(0)
-     WRITE_MASTER(*,'(a)') ' Reading OK'
-   case(1,2)
-     WRITE_MASTER(*,'(a,/,a)') ' Something happened during the reading of energy_qp file',' Fill up the QP energies with KS energies'
-     energy_qp(:,:) = energy(:,:)
-   case default
-     stop'reading_status BUG'
-   end select
-
+   ! Set up energy_qp and wpol_static
+   call prepare_bse(basis%nbf,energy,occupation,energy_qp,wpol_static)
  else
-   !
    ! For any other type of calculation, just fill energy_qp array with energy
    energy_qp(:,:) = energy(:,:)
  endif
@@ -239,23 +97,35 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  WRITE_MASTER(*,*) 'Build the transition space matrix'
  !
  ! Prepare the bra and ket for BSE
- if(is_auxil_basis .AND. calc_type%is_bse) then
-   allocate(bra_auxil(wpol_static%npole,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
-   allocate(ket_auxil(wpol_static%npole,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
-   do ijspin=1,nspin
-     do istate=ncore_W+1,nvirtual_W-1 
-       do jstate=ncore_W+1,nvirtual_W-1
+ if(calc_type%is_bse) then
 
-         ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-         do ipole=1,wpol_static%npole
-           bra_auxil(ipole,istate,jstate,ijspin) = DOT_PRODUCT( wpol_static%residu_left (ipole,:) , eri_3center_eigen(:,istate,jstate,ijspin) )
-           ket_auxil(ipole,istate,jstate,ijspin) = DOT_PRODUCT( wpol_static%residu_right(ipole,:) , eri_3center_eigen(:,istate,jstate,ijspin) )
+   allocate(bra(wpol_static%npole),ket(wpol_static%npole))
+
+   if(is_auxil_basis) then
+     allocate(bra_auxil(wpol_static%npole,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
+     allocate(ket_auxil(wpol_static%npole,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
+     do ijspin=1,nspin
+       do istate=ncore_W+1,nvirtual_W-1 
+         do jstate=ncore_W+1,nvirtual_W-1
+
+           ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
+           bra_auxil(:,istate,jstate,ijspin) = MATMUL( wpol_static%residu_left (:,:) , eri_3center_eigen(:,istate,jstate,ijspin) )
+           ket_auxil(:,istate,jstate,ijspin) = MATMUL( wpol_static%residu_right(:,:) , eri_3center_eigen(:,istate,jstate,ijspin) )
+
          enddo
-
        enddo
      enddo
-   enddo
+   endif
  endif
+
+
+ if(.NOT. is_auxil_basis) then
+   allocate(eri_eigenstate_ijmin(basis%nbf,basis%nbf,basis%nbf,nspin))
+   ! Set this to zero and then enforce the calculation of the first array of Coulomb integrals
+   eri_eigenstate_ijmin(:,:,:,:) = 0.0_dp
+ endif
+
+
 
  h_2p(:,:)=0.0_dp
 
@@ -357,10 +227,10 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  call destroy_spectral_function(wpol_static)
 
  if( .NOT. is_auxil_basis) deallocate(eri_eigenstate_ijmin)
- if(is_tddft)    deallocate(fxc,wf_r)
- if(calc_type%is_bse) deallocate(bra,ket)
- if(allocated(bra_auxil)) deallocate(bra_auxil)
- if(allocated(ket_auxil)) deallocate(ket_auxil)
+ if(is_tddft)              deallocate(fxc,wf_r)
+ if(calc_type%is_bse)      deallocate(bra,ket)
+ if(allocated(bra_auxil))  deallocate(bra_auxil)
+ if(allocated(ket_auxil))  deallocate(ket_auxil)
 
  call stop_clock(timing_build_h2p)
 
@@ -594,4 +464,167 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
 end subroutine optical_spectrum
 
 
+!=========================================================================
+subroutine prepare_tddft(basis,c_matrix,occupation,fxc,wf_r)
+ use m_definitions
+ use m_dft_grid
+ use m_inputparam
+ use m_basis_set
+#ifdef HAVE_LIBXC
+ use libxc_funcs_m
+ use xc_f90_lib_m
+ use xc_f90_types_m
+#endif
+ use iso_c_binding,only: C_INT
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)        :: occupation(basis%nbf,nspin)
+ real(dp),intent(out)       :: fxc(ngrid,nspin)
+ real(dp),intent(out)       :: wf_r(ngrid,basis%nbf,nspin)
+!=====
+ real(dp) :: fxc_libxc(nspin)
+ integer  :: idft_xc,igrid
+ integer  :: ispin
+ real(dp) :: rr(3)
+ real(dp) :: basis_function_r(basis%nbf)
+ real(dp) :: basis_function_gradr(3,basis%nbf)
+ real(dp) :: rhor_r(nspin)
+ real(dp) :: p_matrix(basis%nbf,basis%nbf,nspin)
+ logical  :: require_gradient
+ character(len=256) :: string
+#ifdef HAVE_LIBXC
+ type(xc_f90_pointer_t) :: xc_func(ndft_xc),xc_functest
+ type(xc_f90_pointer_t) :: xc_info(ndft_xc),xc_infotest
+#endif
+!=====
+
+ !
+ ! Prepare DFT kernel calculation with Libxc
+ !
+ do idft_xc=1,ndft_xc
+   if(nspin==1) then
+     call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), INT(dft_xc_type(idft_xc),C_INT), XC_UNPOLARIZED)
+   else
+     call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), INT(dft_xc_type(idft_xc),C_INT), XC_POLARIZED)
+   endif
+   if( MODULO(xc_f90_info_flags( xc_info(idft_xc)),XC_FLAGS_HAVE_FXC*2) < XC_FLAGS_HAVE_FXC ) then
+     stop'This functional does not have the kernel implemented in Libxc'
+   endif
+   call xc_f90_info_name(xc_info(idft_xc),string)
+   WRITE_MASTER(*,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),&
+         TRIM(string)
+   if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
+   if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) require_gradient  =.TRUE.
+ enddo
+
+ !
+ ! calculate rho, grad rho and the kernel
+ ! 
+ ! Get the density matrix P from C
+ call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
+
+
+ fxc(:,:) = 0.0_dp
+
+ do igrid=1,ngrid
+
+   rr(:) = rr_grid(:,igrid)
+
+   !
+   ! Get all the functions and gradients at point rr
+   call get_basis_functions_r(basis,igrid,basis_function_r)
+   !
+   ! store the wavefunction in r
+   do ispin=1,nspin
+     wf_r(igrid,:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
+   enddo
+
+!    if( require_gradient ) then
+!      call get_basis_functions_gradr(basis,igrid,&
+!                                     basis_function_gradr,basis_function_r_shiftx,basis_function_r_shifty,basis_function_r_shiftz,&
+!                                     basis_function_gradr_shiftx,basis_function_gradr_shifty,basis_function_gradr_shiftz)
+!    endif
+
+   if( .NOT. allocated(bfr) ) stop'bfr not allocated -> weird'
+
+   call calc_density_r(nspin,basis%nbf,p_matrix,basis_function_r,rhor_r)
+
+   !
+   ! Calculate the kernel
+   ! 
+   do idft_xc=1,ndft_xc
+     select case(xc_f90_info_family(xc_info(idft_xc)))
+
+     case(XC_FAMILY_LDA)
+       call xc_f90_lda_fxc(xc_func(idft_xc),1_C_INT,rhor_r(1),fxc_libxc(1))
+     case default
+       stop'GGA kernel not yet implemented'
+     end select
+
+     ! Store the result with the weight
+     ! Remove too large values for stability
+     fxc(igrid,:) = fxc(igrid,:) + MIN(fxc_libxc(:),1.0E8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
+
+   enddo
+ enddo
+
+end subroutine prepare_tddft
+
+
+!=========================================================================
+subroutine prepare_bse(nbf,energy,occupation,energy_qp,wpol_static)
+ use m_definitions
+ use m_dft_grid
+ use m_inputparam
+ use m_spectral_function
+ implicit none
+
+ integer,intent(in)                  :: nbf
+ real(dp),intent(in)                 :: energy(nbf,nspin)
+ real(dp),intent(in)                 :: occupation(nbf,nspin)
+ real(dp),intent(out)                :: energy_qp(nbf,nspin)
+ type(spectral_function),intent(out) :: wpol_static
+!=====
+ integer  :: reading_status
+ real(dp) :: scissor_energy(nspin)
+ integer  :: ispin,istate
+!=====
+
+ ! For BSE calculation, obtain the wpol_static object from a previous calculation
+ call read_spectral_function(wpol_static,reading_status)
+ if(reading_status/=0) then
+   stop'BSE requires a previous GW calculation stored in a spectral_file'
+ endif
+
+ call read_energy_qp(nspin,nbf,energy_qp,reading_status)
+ select case(reading_status)
+ case(-1)
+   scissor_energy(:) = energy_qp(1,:)
+   WRITE_MASTER(*,'(a,2(x,f12.6))') ' Scissor operator with value [eV]:',scissor_energy(:)*Ha_eV
+   do ispin=1,nspin
+     do istate=1,nbf
+       if( occupation(istate,ispin) > completely_empty/spin_fact ) then
+         energy_qp(istate,ispin) = energy(istate,ispin)
+       else
+         energy_qp(istate,ispin) = energy(istate,ispin) + scissor_energy(ispin)
+       endif
+     enddo
+   enddo
+   WRITE_MASTER(*,'(/,a)') ' Scissor updated energies'
+   do istate=1,nbf
+     WRITE_MASTER(*,'(i5,4(2x,f16.6))') istate,energy(istate,:)*Ha_eV,energy_qp(istate,:)*Ha_eV
+   enddo
+   WRITE_MASTER(*,*)
+ case(0)
+   WRITE_MASTER(*,'(a)') ' Reading OK'
+ case(1,2)
+   WRITE_MASTER(*,'(a,/,a)') ' Something happened during the reading of energy_qp file',' Fill up the QP energies with KS energies'
+   energy_qp(:,:) = energy(:,:)
+ case default
+   stop'reading_status BUG'
+ end select
+
+end subroutine prepare_bse
 !=========================================================================
