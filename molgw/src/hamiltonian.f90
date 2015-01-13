@@ -394,7 +394,7 @@ subroutine setup_exchange_ri(print_matrix,nbf,c_matrix,occupation,p_matrix,pot_e
  integer              :: index_ij
  integer              :: nbf_auxil,nocc
  real(dp)             :: occ_sqrt_istate
- real(dp),allocatable :: tmp(:,:,:)
+ real(dp),allocatable :: tmp(:,:)
  character(len=100)   :: title
 !=====
 
@@ -405,35 +405,30 @@ subroutine setup_exchange_ri(print_matrix,nbf,c_matrix,occupation,p_matrix,pot_e
 
  pot_exchange(:,:,:)=0.0_dp
 
+ allocate(tmp(nbf_auxil,nbf))
+
  do ispin=1,nspin
    do istate=1,nbf
      if( occupation(istate,ispin) > completely_empty ) nocc = istate
    enddo
-   write(*,*) 'nocc',nocc
 
-   allocate(tmp(nbf_auxil,nocc,nbf))
-
-   tmp(:,:,:) = 0.0_dp
    do istate=1,nocc
      occ_sqrt_istate = SQRT( occupation(istate,ispin) )
+     tmp(:,:) = 0.0_dp
      do jbf=1,nbf
        do ibf=1,nbf
          index_ij = index_prod(ibf,jbf)
-         tmp(:,istate,jbf) = tmp(:,istate,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,index_ij) * occ_sqrt_istate
+         tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,index_ij) * occ_sqrt_istate
        enddo
      enddo
+
+     pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin) &
+                        - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
    enddo
 
-   do ibf=1,nbf
-     do jbf=1,nbf
-            pot_exchange(ibf,jbf,ispin) = pot_exchange(ibf,jbf,ispin) &
-                          - SUM( tmp(:,:,ibf) * tmp(:,:,jbf) ) / spin_fact
-     enddo
-   enddo
-
-   deallocate(tmp)
  enddo
 
+ deallocate(tmp)
 
 
 
