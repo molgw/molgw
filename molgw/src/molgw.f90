@@ -107,16 +107,20 @@ program molgw
  ! Set up the electron repulsion integrals
  !
  ! ERI are stored "privately" in the module m_eri
- call allocate_eri(basis,0.0_dp,BUFFER1)
+ call prepare_eri(basis,0.0_dp,BUFFER1)
+#ifndef FULL_AUXIL
  call calculate_eri(print_eri,basis,0.0_dp,BUFFER1)
+#endif
 
- call refine_negligible_basispair()
+! call refine_negligible_basispair()
 
  !
  ! for HSE functionals, calculate the long-range ERI
  if(calc_type%is_screened_hybrid) then
-   call allocate_eri(basis,rcut,BUFFER2)
+   call prepare_eri(basis,rcut,BUFFER2)
+#ifndef FULL_AUXIL
    call calculate_eri(print_eri,basis,rcut,BUFFER2)
+#endif
  endif
 ! call negligible_eri(1.0e-10_dp)
 
@@ -390,7 +394,7 @@ subroutine testing_tobe_removed()
    write(msg,'(a,f10.4)') 'hard coded cutoff radius  ',rcut
    call issue_warning(msg)
    call deallocate_eri()
-   call allocate_eri(basis,rcut,BUFFER1)
+   call prepare_eri(basis,rcut,BUFFER1)
    call calculate_eri(print_matrix,basis,rcut,BUFFER1)
 
    write(*,*) '========== FABIEN ============'

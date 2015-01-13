@@ -180,7 +180,7 @@ subroutine init_distribution(nbf)
    WRITE_MASTER(*,'(/,a)') ' Initializing distribution: 2-index distribution'
  endif
 
- ntask = index_prod(nbf,nbf)
+ ntask = index_prod_mpi(nbf,nbf)
  call distribute_workload(ntask)
 
 end subroutine init_distribution
@@ -278,7 +278,7 @@ function is_my_task(ibf,jbf)
  ! The distribution is then performed on index I
  !
 
- task_number = index_prod(ibf,jbf)
+ task_number = index_prod_mpi(ibf,jbf)
 
  is_my_task = ( rank == task_proc(task_number) )
  
@@ -462,7 +462,7 @@ function get_task_number(ibf,jbf)
  integer            :: get_task_number
 !=====
 
- itask = index_prod(ibf,jbf)
+ itask = index_prod_mpi(ibf,jbf)
  get_task_number = task_number(itask)
  
  !
@@ -544,19 +544,19 @@ end subroutine xsum_ra3d
 
 
 !=========================================================================
-function index_prod(ibf,jbf)
+function index_prod_mpi(ibf,jbf)
  implicit none
  integer,intent(in) :: ibf,jbf
- integer            :: index_prod
+ integer            :: index_prod_mpi
 !=====
  integer            :: jmin,imax
 !=====
 
  imax=MAX(ibf,jbf)
  jmin=MIN(ibf,jbf)
- index_prod = (jmin-1)*nbf_mpi - (jmin-1)*(jmin-2)/2 + imax-jmin+1
+ index_prod_mpi = (jmin-1)*nbf_mpi - (jmin-1)*(jmin-2)/2 + imax-jmin+1
 
-end function index_prod
+end function index_prod_mpi
 
 
 !=========================================================================
