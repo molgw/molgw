@@ -256,6 +256,71 @@ end subroutine setup_hartree
 
 
 !=========================================================================
+subroutine setup_hartree_ri(print_matrix,nbf,nspin,p_matrix,pot_hartree,ehartree)
+ use m_definitions
+ use m_mpi
+ use m_timing
+ use m_eri
+ implicit none
+ logical,intent(in)   :: print_matrix
+ integer,intent(in)   :: nbf,nspin
+ real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
+ real(dp),intent(out) :: pot_hartree(nbf,nbf,nspin)
+ real(dp),intent(out) :: ehartree
+!=====
+ integer              :: ibf,jbf,kbf,lbf,ispin
+ integer              :: nbf_auxil,ibf_auxil
+ integer              :: index_ij,index_kl
+ real(dp),allocatable :: partial_sum(:)
+ character(len=100)   :: title
+!=====
+
+ WRITE_MASTER(*,*) 'Calculate Hartree term with Resolution-of-Identity'
+ call start_clock(timing_hartree)
+
+
+ nbf_auxil = SIZE( eri_3center(:,:), DIM=1 )
+
+ allocate(partial_sum(nbf_auxil))
+ partial_sum(:) = 0.0_dp
+ do lbf=1,nbf
+   do kbf=1,nbf
+     if( negligible_basispair(kbf,lbf) ) cycle
+     index_kl = index_prod(kbf,lbf)
+     partial_sum(:) = partial_sum(:) + eri_3center(:,index_kl) * SUM( p_matrix(kbf,lbf,:) )
+   enddo
+ enddo
+
+ ! Hartree potential is not sensitive to spin
+ pot_hartree(:,:,:)=0.0_dp
+ do jbf=1,nbf
+   do ibf=1,nbf
+     if( negligible_basispair(ibf,jbf) ) cycle
+     if( .NOT. is_my_task(ibf,jbf) ) cycle
+     index_ij = index_prod(ibf,jbf)
+     pot_hartree(ibf,jbf,1) = DOT_PRODUCT( eri_3center(:,index_ij) , partial_sum(:) )
+   enddo
+ enddo
+ if( nspin==2) pot_hartree(:,:,nspin) = pot_hartree(:,:,1)
+
+ deallocate(partial_sum)
+
+ !
+ ! Sum up the different contribution from different procs only if needed
+ if( parallel_integral) call xsum(pot_hartree)
+
+
+ title='=== Hartree contribution ==='
+ call dump_out_matrix(print_matrix,title,nbf,nspin,pot_hartree)
+
+ ehartree = 0.5_dp*SUM(pot_hartree(:,:,:)*p_matrix(:,:,:))
+
+ call stop_clock(timing_hartree)
+
+end subroutine setup_hartree_ri
+
+
+!=========================================================================
 subroutine setup_exchange(print_matrix,nbf,p_matrix,pot_exchange,eexchange)
  use m_definitions
  use m_mpi
@@ -279,30 +344,6 @@ subroutine setup_exchange(print_matrix,nbf,p_matrix,pot_exchange,eexchange)
 
  pot_exchange(:,:,:)=0.0_dp
 
-#if 0
- do ispin=1,nspin
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO 
-   do jbf=1,nbf
-     do ibf=1,nbf
-       do lbf=1,nbf
-         !
-         ! symmetry k <-> l
-         do kbf=1,lbf-1 ! nbf
-           !
-           ! symmetry (ik|lj) = (ki|lj) has been used to loop in the fast order
-           pot_exchange(ibf,jbf,ispin) = pot_exchange(ibf,jbf,ispin) &
-                      - ( eri(kbf,ibf,lbf,jbf) + eri(lbf,ibf,kbf,jbf) ) * p_matrix(kbf,lbf,ispin) / spin_fact 
-         enddo
-         pot_exchange(ibf,jbf,ispin) = pot_exchange(ibf,jbf,ispin) &
-                    - eri(lbf,ibf,lbf,jbf) * p_matrix(lbf,lbf,ispin) / spin_fact
-       enddo
-     enddo
-   enddo
-!$OMP END DO
-!$OMP END PARALLEL
- enddo
-#else
  do ispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO 
@@ -323,7 +364,6 @@ subroutine setup_exchange(print_matrix,nbf,p_matrix,pot_exchange,eexchange)
 !$OMP END DO
 !$OMP END PARALLEL
  enddo
-#endif
 
  title='=== Exchange contribution ==='
  call dump_out_matrix(print_matrix,title,nbf,nspin,pot_exchange)
@@ -333,6 +373,78 @@ subroutine setup_exchange(print_matrix,nbf,p_matrix,pot_exchange,eexchange)
  call stop_clock(timing_exchange)
 
 end subroutine setup_exchange
+
+
+!=========================================================================
+subroutine setup_exchange_ri(print_matrix,nbf,c_matrix,occupation,p_matrix,pot_exchange,eexchange)
+ use m_definitions
+ use m_mpi
+ use m_timing
+ use m_eri
+ use m_inputparam,only: nspin,spin_fact
+ implicit none
+ logical,intent(in)   :: print_matrix
+ integer,intent(in)   :: nbf
+ real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin),occupation(nbf,nspin)
+ real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
+ real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
+ real(dp),intent(out) :: eexchange
+!=====
+ integer              :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
+ integer              :: index_ij
+ integer              :: nbf_auxil,nocc
+ real(dp)             :: occ_sqrt_istate
+ real(dp),allocatable :: tmp(:,:,:)
+ character(len=100)   :: title
+!=====
+
+ WRITE_MASTER(*,*) 'Calculate Exchange term with Resolution-of-Identity'
+ call start_clock(timing_exchange)
+
+ nbf_auxil = SIZE( eri_3center(:,:), DIM=1 )
+
+ pot_exchange(:,:,:)=0.0_dp
+
+ do ispin=1,nspin
+   do istate=1,nbf
+     if( occupation(istate,ispin) > completely_empty ) nocc = istate
+   enddo
+   write(*,*) 'nocc',nocc
+
+   allocate(tmp(nbf_auxil,nocc,nbf))
+
+   tmp(:,:,:) = 0.0_dp
+   do istate=1,nocc
+     occ_sqrt_istate = SQRT( occupation(istate,ispin) )
+     do jbf=1,nbf
+       do ibf=1,nbf
+         index_ij = index_prod(ibf,jbf)
+         tmp(:,istate,jbf) = tmp(:,istate,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,index_ij) * occ_sqrt_istate
+       enddo
+     enddo
+   enddo
+
+   do ibf=1,nbf
+     do jbf=1,nbf
+            pot_exchange(ibf,jbf,ispin) = pot_exchange(ibf,jbf,ispin) &
+                          - SUM( tmp(:,:,ibf) * tmp(:,:,jbf) ) / spin_fact
+     enddo
+   enddo
+
+   deallocate(tmp)
+ enddo
+
+
+
+
+ title='=== Exchange contribution ==='
+ call dump_out_matrix(print_matrix,title,nbf,nspin,pot_exchange)
+
+ eexchange = 0.5_dp*SUM(pot_exchange(:,:,:)*p_matrix(:,:,:))
+
+ call stop_clock(timing_exchange)
+
+end subroutine setup_exchange_ri
 
 
 !=========================================================================

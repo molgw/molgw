@@ -90,7 +90,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      !
      ! Hartree contribution to the Hamiltonian
      !
+#ifndef FULL_AUXIL
      call setup_hartree(print_matrix,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
+#else
+     call setup_hartree_ri(print_matrix,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
+#endif
    endif
 
    hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
@@ -103,7 +107,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    ! Exchange contribution to the Hamiltonian
    if( calc_type%need_exchange ) then
 
+#ifndef FULL_AUXIL
      call setup_exchange(print_matrix,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+#else
+     call setup_exchange_ri(print_matrix,basis%nbf,c_matrix,occupation,p_matrix,hamiltonian_exx,en%exx)
+#endif
      ! Rescale with alpha_hybrid for hybrid functionals
      en%exx = alpha_hybrid * en%exx
      hamiltonian_xc(:,:,:) = hamiltonian_exx(:,:,:) * alpha_hybrid

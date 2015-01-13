@@ -18,8 +18,8 @@ module m_eri
  real(prec_eri),private,allocatable :: eri_buffer(:)
  real(prec_eri),private,allocatable :: eri_buffer_lr(:)
  real(prec_eri),private,allocatable :: eri_2center_m1(:,:)
- real(prec_eri),private,allocatable :: eri_3center(:,:)
- ! eri_3center_eigen is only "protected" since you may need it outside for computational tricks
+ ! eri_3center_****  are only "protected" since you may need it outside for computational tricks
+ real(prec_eri),protected,allocatable :: eri_3center(:,:)
  real(prec_eri),protected,allocatable :: eri_3center_eigen(:,:,:,:)
 
  logical,protected,allocatable      :: negligible_basispair(:,:)
@@ -70,7 +70,7 @@ module m_eri
 contains
 
 !=========================================================================
-subroutine allocate_eri(basis,rcut,which_buffer)
+subroutine prepare_eri(basis,rcut,which_buffer)
  implicit none
 !===== 
  type(basis_set),intent(in) :: basis
@@ -107,33 +107,8 @@ subroutine allocate_eri(basis,rcut,which_buffer)
 
  nsize = (nsize1*(nsize1+1))/2
 
- WRITE_MASTER(*,*) 
- WRITE_MASTER(*,*) 'Number of integrals to be stored:',nsize
- WRITE_MASTER(*,*) 'Max index size',HUGE(nsize)
- if(nsize<1) stop'too many integrals to be stored'
 
- WRITE_MASTER(*,*) 'Allocate 4-center integrals'
- call memory_statement(REAL(nsize,dp)*REAL(prec_eri,dp)/REAL(dp,dp))
-
- select case(which_buffer)
- case(BUFFER1)
-   allocate(eri_buffer(nsize),stat=info)
-   eri_buffer(:) = 0.0_dp
- case(BUFFER2)
-   allocate(eri_buffer_lr(nsize),stat=info)
-   eri_buffer_lr(:) = 0.0_dp
- end select
-
- if(info==0) then
-   WRITE_MASTER(*,*) 'success'
- else
-   WRITE_MASTER(*,*) 'failure'
-   stop'Not enough memory. Buy a bigger computer'
- endif
-
-
-
-end subroutine allocate_eri
+end subroutine prepare_eri
 
 
 !=========================================================================
@@ -509,6 +484,32 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  WRITE_MASTER(*,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
  WRITE_MASTER(*,'(a)')      ' Libint library initialized'
  WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
+
+ WRITE_MASTER(*,*) 
+ WRITE_MASTER(*,*) 'Number of integrals to be stored:',nsize
+ WRITE_MASTER(*,*) 'Max index size',HUGE(nsize)
+ if(nsize<1) stop'too many integrals to be stored'
+
+ WRITE_MASTER(*,*) 'Allocate 4-center integrals'
+ call memory_statement(REAL(nsize,dp)*REAL(prec_eri,dp)/REAL(dp,dp))
+
+ select case(which_buffer)
+ case(BUFFER1)
+   allocate(eri_buffer(nsize),stat=info)
+   eri_buffer(:) = 0.0_dp
+ case(BUFFER2)
+   allocate(eri_buffer_lr(nsize),stat=info)
+   eri_buffer_lr(:) = 0.0_dp
+ end select
+
+ if(info==0) then
+   WRITE_MASTER(*,*) 'success'
+ else
+   WRITE_MASTER(*,*) 'failure'
+   stop'Not enough memory. Buy a bigger computer'
+ endif
+
+
 
  rcut_libint = rcut
 
@@ -1947,6 +1948,7 @@ subroutine prepare_eri_3center_eigen(c_matrix)
  allocate(eri_3center_tmp(nsize1_auxil,nbf_eri,nbf_eri)) 
  eri_3center_eigen(:,:,:,:) = 0.0_dp
  do klspin=1,nspin
+   ! Transformation of the first index
    eri_3center_tmp(:,:,:) = 0.0_dp
    do kbf=1,nbf_eri
      do lbf=1,nbf_eri
@@ -1959,14 +1961,9 @@ subroutine prepare_eri_3center_eigen(c_matrix)
 
      enddo
    enddo
-   do kbf=1,nbf_eri
-     do lstate=1,nbf_eri
-
-         do kstate=1,nbf_eri
-           eri_3center_eigen(:,kstate,lstate,klspin) = eri_3center_eigen(:,kstate,lstate,klspin) &
-                                      + c_matrix(kbf,kstate,klspin) * eri_3center_tmp(:,kbf,lstate)
-         enddo
-     enddo
+   ! Transformation of the second index
+   do lstate=1,nbf_eri
+     eri_3center_eigen(:,:,lstate,klspin) = MATMUL( eri_3center_tmp(:,:,lstate) , c_matrix(:,:,klspin) )
    enddo
 
  enddo ! klspin
