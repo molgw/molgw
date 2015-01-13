@@ -417,6 +417,7 @@ subroutine setup_exchange_ri(print_matrix,nbf,c_matrix,occupation,p_matrix,pot_e
      tmp(:,:) = 0.0_dp
      do jbf=1,nbf
        do ibf=1,nbf
+         if( negligible_basispair(ibf,jbf) ) cycle
          index_ij = index_prod(ibf,jbf)
          tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,index_ij) * occ_sqrt_istate
        enddo
