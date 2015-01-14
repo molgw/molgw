@@ -127,6 +127,8 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
 
  call start_clock(timing_buildw)
 
+ WRITE_MASTER(*,'(/,a)') ' Build W = v * chi * v'
+
  if( .NOT. is_auxil_basis ) then
    allocate(eri_eigenstate_klmin(nbf,nbf,nbf,nspin))
    ! Set this to zero and then enforce the calculation of the first array of Coulomb integrals
@@ -207,30 +209,37 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,occupation,c_matrix,eigenvec
  integer                               :: t_ij,t_kl,klspin,ijspin
  integer                               :: kstate,lstate
  real(dp)                              :: docc_kl
+ real(dp),allocatable                  :: eri_3center_2index(:,:)
 !=====
 
  call start_clock(timing_buildw)
 
+ WRITE_MASTER(*,'(/,a)') ' Build v^{1/2} * chi * v^{1/2}'
 
  call allocate_spectral_function(nbf_auxil,wpol)
  wpol%pole(:) = eigenvalue(:)
  deallocate(eigenvalue)
 
- wpol%residu_left (:,:) = 0.0_dp
- wpol%residu_right(:,:) = 0.0_dp
+ allocate(eri_3center_2index(nbf_auxil,wpol%npole))
+ do t_kl=1,wpol%npole
+   kstate = wpol%transition_table(1,t_kl)
+   lstate = wpol%transition_table(2,t_kl)
+   klspin = wpol%transition_table(3,t_kl)
+   eri_3center_2index(:,t_kl) = eri_3center_eigen(:,kstate,lstate,klspin)
+ enddo
+ wpol%residu_left(:,:)  = TRANSPOSE( MATMUL( eri_3center_2index , eigenvector ) )
+
  do t_kl=1,wpol%npole
    kstate = wpol%transition_table(1,t_kl)
    lstate = wpol%transition_table(2,t_kl)
    klspin = wpol%transition_table(3,t_kl)
    docc_kl = occupation(kstate,klspin)-occupation(lstate,klspin)
-
-   do t_ij=1,wpol%npole
-
-     wpol%residu_left (t_ij,:) = wpol%residu_left (t_ij,:) + eri_3center_eigen(:,kstate,lstate,klspin) * eigenvector(t_kl,t_ij)
-     wpol%residu_right(t_ij,:) = wpol%residu_right(t_ij,:) + eri_3center_eigen(:,kstate,lstate,klspin) * eigenvector_inv(t_ij,t_kl) *docc_kl
-
-   enddo
+   eri_3center_2index(:,t_kl) = eri_3center_2index(:,t_kl) * docc_kl
  enddo
+ wpol%residu_right(:,:) = MATMUL( eigenvector_inv , TRANSPOSE( eri_3center_2index ) )
+
+ deallocate(eri_3center_2index)
+
 
  deallocate(eigenvector)
  deallocate(eigenvector_inv)
@@ -921,7 +930,8 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
  real(dp),allocatable :: cc_matrix(:,:)
  integer              :: nmat
  logical              :: is_ij
- real(dp),allocatable :: bigx(:),bigy(:)
+! real(dp),allocatable :: bigx(:),bigy(:)
+ real(dp),allocatable :: bigx(:,:),bigy(:,:),cc_matrix_bigomega(:,:)
 
  logical              :: TDHF=.FALSE.
 !=====
@@ -1007,6 +1017,7 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
  enddo 
 
  if(allocated(eri_eigenstate_ijmin)) deallocate(eri_eigenstate_ijmin)
+ call stop_clock(timing_build_h2p)
 
 
  do t_ij=1,nmat
@@ -1015,11 +1026,8 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
 
  allocate(cc_matrix(nmat,nmat))
  allocate(amb_eigval(nmat))
-! write(*,*) 'A-B',matrix_is_symmetric(nmat,amb_matrix)
-! write(*,*) 'A+B',matrix_is_symmetric(nmat,apb_matrix)
 
- WRITE_MASTER(*,*) 'Diago 2-particle hamiltonian with blocks'
- WRITE_MASTER(*,*) 'matrix',nmat,'x',nmat
+ WRITE_MASTER(*,*) 'Diago 2-particle hamiltonian a la Casida'
 
  !
  ! Calculate (A-B)^{1/2}
@@ -1029,6 +1037,7 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
  ! (A-B)       = R D tR 
  ! (A-B)^{1/2} = R D^{1/2} tR 
  call start_clock(timing_diago_h2p)
+ WRITE_MASTER(*,'(a,i8,a,i8)') ' Diago to get (A - B)^{1/2}',nmat,' x ',nmat
  call diagonalize(nmat,amb_matrix,amb_eigval)
  call stop_clock(timing_diago_h2p)
 
@@ -1038,17 +1047,20 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
    amb_matrix_sqrtm1(:,t_kl) = amb_matrix(:,t_kl)/SQRT(amb_eigval(t_kl))
  enddo
  deallocate(amb_eigval)
- amb_matrix_sqrt  (:,:) = MATMUL( amb_matrix_sqrt(:,:)   , TRANSPOSE(amb_matrix(:,:)) )
- amb_matrix_sqrtm1(:,:) = MATMUL( amb_matrix_sqrtm1(:,:) , TRANSPOSE(amb_matrix(:,:)) )
+
+ amb_matrix = TRANSPOSE( amb_matrix )
+ amb_matrix_sqrt  (:,:) = MATMUL( amb_matrix_sqrt(:,:)   , amb_matrix(:,:) )
+ amb_matrix_sqrtm1(:,:) = MATMUL( amb_matrix_sqrtm1(:,:) , amb_matrix(:,:) )
  
  cc_matrix(:,:) = MATMUL( amb_matrix_sqrt , MATMUL( apb_matrix , amb_matrix_sqrt)  )
 
-! write(*,*) 'CC ',matrix_is_symmetric(nmat,cc_matrix)
+! WRITE_MASTER(*,*) 'CC ',matrix_is_symmetric(nmat,cc_matrix)
 
  deallocate(apb_matrix,amb_matrix)
 
- allocate(bigomega(nmat),bigx(nmat),bigy(nmat))
+ allocate(bigomega(nmat))
  call start_clock(timing_diago_h2p)
+ WRITE_MASTER(*,'(a,i8,a,i8)') ' Diago (A - B)^{1/2} * (A + B) * (A - B)^{1/2}',nmat,' x ',nmat
  call diagonalize(nmat,cc_matrix,bigomega)
  call stop_clock(timing_diago_h2p)
 
@@ -1056,35 +1068,33 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
 
  rpa_correlation = rpa_correlation + 0.50_dp * SUM( bigomega(:) )
 
- do t_kl=1,nmat
-!   WRITE_MASTER(123,*) t_kl,bigomega(t_kl)*Ha_eV
- 
-   bigx(:) = 0.5_dp * MATMUL( amb_matrix_sqrt(:,:) , cc_matrix(:,t_kl) )  &
-            + 0.5_dp * bigomega(t_kl) * MATMUL( amb_matrix_sqrtm1(:,:) , cc_matrix(:,t_kl) )
-   bigy(:) = 0.5_dp * MATMUL( amb_matrix_sqrt(:,:) , cc_matrix(:,t_kl) )  &
-            - 0.5_dp * bigomega(t_kl) * MATMUL( amb_matrix_sqrtm1(:,:) , cc_matrix(:,t_kl) )
+ allocate(bigx(nmat,nmat),bigy(nmat,nmat))
+ allocate(cc_matrix_bigomega(nmat,nmat))
 
+ do t_kl=1,nmat
+   cc_matrix_bigomega(:,t_kl) = cc_matrix(:,t_kl) * bigomega(t_kl)
    ! Resonant
    eigenvalue(t_kl)      =  bigomega(t_kl)
    ! AntiResonant
    eigenvalue(t_kl+nmat) = -bigomega(t_kl)
+ enddo
+ bigx(:,:) = 0.5_dp * MATMUL( amb_matrix_sqrt(:,:)   , cc_matrix(:,:) )
+ bigy(:,:) = 0.5_dp * MATMUL( amb_matrix_sqrtm1(:,:) , cc_matrix_bigomega(:,:) )
 
-   ! Resonant
-   eigenvector(1:nmat       ,t_kl)       = bigx(:)
-   eigenvector(nmat+1:2*nmat,t_kl)      = bigy(:)
-   ! AntiResonant
-   eigenvector(1:nmat       ,t_kl+nmat) = bigy(:)
-   eigenvector(nmat+1:2*nmat,t_kl+nmat) = bigx(:)
+ ! Resonant
+ eigenvector(1:nmat       ,:)             = bigx(:,:)+bigy(:,:)
+ eigenvector(nmat+1:2*nmat,:)             = bigx(:,:)-bigy(:,:)
+ ! AntiResonant
+ eigenvector(1:nmat       ,nmat+1:2*nmat) = bigx(:,:)-bigy(:,:)
+ eigenvector(nmat+1:2*nmat,nmat+1:2*nmat) = bigx(:,:)+bigy(:,:)
 
- enddo 
-
+ deallocate(cc_matrix_bigomega)
 
 
  deallocate(amb_matrix_sqrt,amb_matrix_sqrtm1,bigomega)
  deallocate(bigx,bigy)
  deallocate(cc_matrix)
 
- call stop_clock(timing_build_h2p)
 
 
 end subroutine build_h2p_sym
