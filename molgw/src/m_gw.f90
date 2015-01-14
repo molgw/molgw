@@ -1037,7 +1037,7 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
  ! (A-B)       = R D tR 
  ! (A-B)^{1/2} = R D^{1/2} tR 
  call start_clock(timing_diago_h2p)
- WRITE_MASTER(*,'(a,i8,a,i8)') ' Diago to get (A - B)^{1/2}',nmat,' x ',nmat
+ WRITE_MASTER(*,'(a,i8,a,i8)') ' Diago to get (A - B)^{1/2}                   ',nmat,' x ',nmat
  call diagonalize(nmat,amb_matrix,amb_eigval)
  call stop_clock(timing_diago_h2p)
 
@@ -1082,8 +1082,8 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
  bigy(:,:) = 0.5_dp * MATMUL( amb_matrix_sqrtm1(:,:) , cc_matrix_bigomega(:,:) )
 
  ! Resonant
- eigenvector(1:nmat       ,:)             = bigx(:,:)+bigy(:,:)
- eigenvector(nmat+1:2*nmat,:)             = bigx(:,:)-bigy(:,:)
+ eigenvector(1:nmat       ,1:nmat)        = bigx(:,:)+bigy(:,:)
+ eigenvector(nmat+1:2*nmat,1:nmat)        = bigx(:,:)-bigy(:,:)
  ! AntiResonant
  eigenvector(1:nmat       ,nmat+1:2*nmat) = bigx(:,:)-bigy(:,:)
  eigenvector(nmat+1:2*nmat,nmat+1:2*nmat) = bigx(:,:)+bigy(:,:)

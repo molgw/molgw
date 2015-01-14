@@ -962,30 +962,17 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
    enddo
  enddo
 
- if( .FALSE. ) then
-   !
-   ! Perform in-place inversion here
-   call invert(nsize1_auxil,eri_2center_m1)
+ allocate(eigval(nsize1_auxil))
+ !
+ ! Perform in-place diagonalization here
+ call diagonalize(nsize1_auxil,eri_2center_m1,eigval)
+ do jbf=1,nbf_eri_auxil
+   eri_2center_m1(:,jbf) = eri_2center_m1(:,jbf) / SQRT( eigval(jbf) )
+ enddo
+ deallocate(eigval)
 
-   WRITE_MASTER(*,'(a)') ' All 2-center integrals have been calculated, inverted and stored'
+ WRITE_MASTER(*,'(a)') ' All 2-center integrals have been calculated, diagonalized and stored'
 
- else
-
-   allocate(eigval(nsize1_auxil))
-   !
-   ! Perform in-place diagonalization here
-   call diagonalize(nsize1_auxil,eri_2center_m1,eigval)
-   do jbf=1,nbf_eri_auxil
-     eri_2center_m1(:,jbf) = eri_2center_m1(:,jbf) / SQRT( eigval(jbf) )
-   enddo
-   deallocate(eigval)
-
-!   ! transform it back to the inverse
-!   eri_2center_m1 = MATMUL( eri_2center_m1 , TRANSPOSE(eri_2center_m1) )
-
-   WRITE_MASTER(*,'(a)') ' All 2-center integrals have been calculated, diagonalized and stored'
-
- endif
 
  call stop_clock(timing_eri_2center)
 
@@ -1292,7 +1279,8 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
  !
  ! Combine the 2-center integral into the 3-center and then get rid of them
  ! definitively
- eri_3center(:,:) = MATMUL( TRANSPOSE(eri_2center_m1) , eri_3center(:,:) )
+ eri_2center_m1(:,:) = TRANSPOSE( eri_2center_m1(:,:) )
+ eri_3center(:,:) = MATMUL( eri_2center_m1(:,:) , eri_3center(:,:) )
 
  WRITE_MASTER(*,*) 'Now deallocate the 2-center integrals: not needed anymore'
  call memory_statement(-REAL(nsize_auxil,dp)*REAL(prec_eri/dp,dp))
