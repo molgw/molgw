@@ -5,11 +5,11 @@ OPENMP= #-openmp
 
 #FC=mpif90 -fpp $(OPENMP) -mkl=parallel -DHAVE_LIBXC  #-DHAVE_MPI -DCASIDA  -DHAVE_SCALAPACK # -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
 
-FC=ifort -i8 -fpp $(OPENMP) -mkl=sequential -DHAVE_LIBXC  # -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
+FC=ifort -fpp $(OPENMP) -mkl=sequential -DHAVE_LIBXC  # -DCASIDA # -DCRPA     #-DCASIDA # -DCHI0  # -DAUXIL_BASIS
 
-CC=icpc
-FCOPTS= -O2 #   -g -check all -traceback  #-O2 #-g -check all -check noarg_temp_created -traceback
-CCOPTS= -O2 # -O0 -g -fbounds-check
+CC=icc
+FCOPTS= -O3 -xhost -parallel -opt-matmul #   -g -check all -traceback  #-O2 #-g -check all -check noarg_temp_created -traceback
+CCOPTS= -O3 -xhost  # -O0 -g -fbounds-check
 #FCOPTS= -xHost -O3 #-ipo
 
 #LAPACK= -L/home/bruneval/src/lapack-3.3.1/ -llapack_LINUX -lblas_LINUX 
