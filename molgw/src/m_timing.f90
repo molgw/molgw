@@ -92,7 +92,11 @@ subroutine stop_clock(itiming)
  integer            :: count_tmp
 !===== 
   
- if(.NOT.time_running(itiming)) stop'error in start clock'
+ if(.NOT.time_running(itiming)) then
+   WRITE_MASTER(*,*) 'clock # has not been started:',itiming
+   stop'error in start clock'
+ endif
+
 
  time_running(itiming)=.FALSE. 
 

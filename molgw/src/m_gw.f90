@@ -26,7 +26,7 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  integer :: ibf,jbf,ijbf,klbf,ijspin,klspin
  integer :: istate,jstate,kstate,lstate
  integer :: ipole
- integer :: t_ij
+ integer :: t_ij,t_kl
  integer :: reading_status
 
  real(dp),allocatable :: eigenvector(:,:),eigenvector_inv(:,:)
@@ -50,14 +50,15 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  !
  ! Build the 2-particle hamiltonian in transition space
  !
- allocate(eigenvector(wpol%npole,wpol%npole))
  allocate(eigenvalue(wpol%npole))
+ allocate(eigenvector(wpol%npole,wpol%npole))
+ allocate(eigenvector_inv(wpol%npole,wpol%npole))
 
  select case(transition_ordering)
  case(SAVE_CPU)
-   call build_h2p    (basis%nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvector,rpa_correlation)
+   call build_h2p    (basis%nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvector,eigenvector_inv,rpa_correlation)
  case(CASIDA)
-   call build_h2p_sym(basis%nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvector,rpa_correlation)
+   call build_h2p_sym(basis%nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvector,eigenvector_inv,rpa_correlation)
  end select
 
  WRITE_MASTER(*,*)
@@ -65,20 +66,12 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  WRITE_MASTER(*,*) 'with Eq. (23) of F. Furche J. Chem. Phys. 129, 114105 (2008)'
  WRITE_MASTER(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',rpa_correlation
 
-
- allocate(eigenvector_inv(wpol%npole,wpol%npole))
-
-
  WRITE_MASTER(*,'(/,a,f14.8)') ' Lowest neutral excitation energy [eV]',MINVAL(ABS(eigenvalue(:)))*Ha_eV
 
 ! do t_ij=1,wpol%npole
 !   WRITE_MASTER(124,'(1(i4,2x),20(2x,f12.6))') t_ij,eigenvalue(t_ij)*Ha_eV
 ! enddo
    
- call start_clock(timing_inversion_s2p)
- call invert(wpol%npole,eigenvector,eigenvector_inv)
- call stop_clock(timing_inversion_s2p)
-
 
  !
  ! Finally calculate v * \chi * v and store it in object wpol
@@ -776,7 +769,7 @@ end subroutine gw_selfenergy
 
 
 !=========================================================================
-subroutine build_h2p(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvector,rpa_correlation)
+subroutine build_h2p(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvector,eigenvector_inv,rpa_correlation)
  use m_tools
  use m_spectral_function
  use m_eri
@@ -786,7 +779,9 @@ subroutine build_h2p(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvector,
  real(dp),intent(in)                :: occupation(nbf,nspin),energy(nbf,nspin)
  real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
  type(spectral_function),intent(in) :: wpol
- real(dp),intent(out)               :: eigenvalue(wpol%npole),eigenvector(wpol%npole,wpol%npole)
+ real(dp),intent(out)               :: eigenvalue(wpol%npole)
+ real(dp),intent(out)               :: eigenvector(wpol%npole,wpol%npole)
+ real(dp),intent(out)               :: eigenvector_inv(wpol%npole,wpol%npole)
  real(dp),intent(out)               :: rpa_correlation
 !=====
  integer              :: t_ij,t_kl
@@ -898,12 +893,15 @@ subroutine build_h2p(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvector,
 
  rpa_correlation = rpa_correlation + 0.25_dp * SUM( ABS(eigenvalue(:)) )
 
+ call start_clock(timing_inversion_s2p)
+ call invert(wpol%npole,eigenvector,eigenvector_inv)
+ call stop_clock(timing_inversion_s2p)
 
 end subroutine build_h2p
 
 
 !=========================================================================
-subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvector,rpa_correlation)
+subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvector,eigenvector_inv,rpa_correlation)
  use m_spectral_function
  use m_eri
  use m_tools 
@@ -915,6 +913,7 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
  type(spectral_function),intent(in) :: wpol
  real(dp),intent(out)               :: eigenvalue(wpol%npole)
  real(dp),intent(out)               :: eigenvector(wpol%npole,wpol%npole)
+ real(dp),intent(out)               :: eigenvector_inv(wpol%npole,wpol%npole)
  real(dp),intent(out)               :: rpa_correlation
 !=====
  integer              :: t_ij,t_kl
@@ -1036,8 +1035,8 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
  ! (A-B) is real symmetric, hence R is orthogonal R^{-1} = tR
  ! (A-B)       = R D tR 
  ! (A-B)^{1/2} = R D^{1/2} tR 
- call start_clock(timing_diago_h2p)
  WRITE_MASTER(*,'(a,i8,a,i8)') ' Diago to get (A - B)^{1/2}                   ',nmat,' x ',nmat
+ call start_clock(timing_diago_h2p)
  call diagonalize(nmat,amb_matrix,amb_eigval)
  call stop_clock(timing_diago_h2p)
 
@@ -1058,9 +1057,9 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
 
  deallocate(apb_matrix,amb_matrix)
 
+ WRITE_MASTER(*,'(a,i8,a,i8)') ' Diago (A - B)^{1/2} * (A + B) * (A - B)^{1/2}',nmat,' x ',nmat
  allocate(bigomega(nmat))
  call start_clock(timing_diago_h2p)
- WRITE_MASTER(*,'(a,i8,a,i8)') ' Diago (A - B)^{1/2} * (A + B) * (A - B)^{1/2}',nmat,' x ',nmat
  call diagonalize(nmat,cc_matrix,bigomega)
  call stop_clock(timing_diago_h2p)
 
@@ -1078,6 +1077,7 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
    ! AntiResonant
    eigenvalue(t_kl+nmat) = -bigomega(t_kl)
  enddo
+
  bigx(:,:) = 0.5_dp * MATMUL( amb_matrix_sqrt(:,:)   , cc_matrix(:,:) )
  bigy(:,:) = 0.5_dp * MATMUL( amb_matrix_sqrtm1(:,:) , cc_matrix_bigomega(:,:) )
 
@@ -1087,6 +1087,28 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
  ! AntiResonant
  eigenvector(1:nmat       ,nmat+1:2*nmat) = bigx(:,:)-bigy(:,:)
  eigenvector(nmat+1:2*nmat,nmat+1:2*nmat) = bigx(:,:)+bigy(:,:)
+ !
+ ! Avoid inversion 
+ eigenvector_inv(1:nmat       ,1:nmat)        = TRANSPOSE( bigx(:,:)+bigy(:,:) )
+ eigenvector_inv(nmat+1:2*nmat,1:nmat)        = TRANSPOSE(-bigx(:,:)+bigy(:,:) )
+ eigenvector_inv(1:nmat       ,nmat+1:2*nmat) = TRANSPOSE(-bigx(:,:)+bigy(:,:) )
+ eigenvector_inv(nmat+1:2*nmat,nmat+1:2*nmat) = TRANSPOSE( bigx(:,:)+bigy(:,:) )
+
+ ! Avoid inversion
+! call start_clock(timing_inversion_s2p)
+! call invert(wpol%npole,eigenvector_inv,eigenvector)
+! call stop_clock(timing_inversion_s2p)
+
+ !
+ ! WARNING: I do not understand why I have to divide here to obtain the right
+ !          normalization of the eigenvectors
+ !          but it's working!
+ ! TODO: do the analytic derivation
+ do t_kl=1,2*nmat
+   eigenvector(:,t_kl)     = eigenvector(:,t_kl)     / SQRT(ABS(eigenvalue(t_kl)))
+   eigenvector_inv(t_kl,:) = eigenvector_inv(t_kl,:) / SQRT(ABS(eigenvalue(t_kl)))
+ enddo
+
 
  deallocate(cc_matrix_bigomega)
 
