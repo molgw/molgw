@@ -57,6 +57,7 @@ Example input files can be found in ./tests/
 To be done:
 * pseudopotentials (e.g. ECP or Goedecker flavor)
 * parallelization!
+* TD-DFT using GGA
 
 Known issues:
 * QPscGW scf loop is quite unstable for large basis sets, use a low alpha (<= 0.50)
