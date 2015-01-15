@@ -467,6 +467,8 @@ subroutine read_inputparameter_molecule()
    quadrature_name = 'high'
  case('VERYHIGH','veryhigh','VH','vh')
    quadrature_name = 'very high'
+ case('INSANE','insane','I','i')
+   quadrature_name = 'insane'
  case default
    stop'integration quality not recognized'
  end select
