@@ -129,7 +129,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    ! DFT XC potential is added here
    if( calc_type%is_dft ) then
 
-     call dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehomo,hamiltonian_vxc,en%xc)
+     call dft_exc_vxc(basis,p_matrix,ehomo,hamiltonian_vxc,en%xc)
 
      title='=== DFT XC contribution ==='
      call dump_out_matrix(print_matrix,title,basis%nbf,nspin,hamiltonian_vxc)
@@ -201,9 +201,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    ! save the old eigenvalues
    do ispin=1,nspin
      WRITE_MASTER(*,*) 'Diagonalization for spin polarization',ispin
+     call start_clock(timing_diago_hamiltonian)
      call diagonalize_generalized_sym(basis%nbf,&
                                       hamiltonian(:,:,ispin),s_matrix(:,:),&
                                       energy(:,ispin),c_matrix(:,:,ispin))
+     call stop_clock(timing_diago_hamiltonian)
    enddo
   
    title='=== Energies ==='
@@ -311,6 +313,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  ! Big RESTART file written if converged
  !
  if( is_converged ) call write_big_restart(basis%nbf,occupation,c_matrix,energy,hamiltonian_exx,hamiltonian_xc)
+ if( calc_type%is_dft ) then
+!   ! Output the self-consistent density on the real-space grid
+!   call write_density_grid(basis,p_matrix)
+   call destroy_dft_grid()
+ endif
 
  !
  ! Cleanly deallocate the arrays

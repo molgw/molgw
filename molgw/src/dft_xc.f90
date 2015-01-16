@@ -4,10 +4,11 @@
  
 
 !=========================================================================
-subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehomo,vxc_ij,exc_xc)
+subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
  use m_definitions
  use m_mpi
  use m_timing
+ use m_inputparam
  use m_basis_set
  use m_dft_grid
 #ifdef HAVE_LIBXC
@@ -21,11 +22,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
  use iso_c_binding,only: C_INT
  implicit none
 
- integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
- integer,intent(in)         :: ndft_xc
- integer,intent(in)         :: dft_xc_type(ndft_xc)
- real(dp),intent(in)        :: dft_xc_coef(ndft_xc)
  real(dp),intent(in)        :: p_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)        :: ehomo(nspin)
  real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
@@ -152,25 +149,8 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
    normalization(:) = normalization(:) + rhor_r(:) * weight
 
 
-
    if( require_gradient ) then 
-
-     grad_rhor       (:,:)=0.0_dp
-     do ispin=1,nspin
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO REDUCTION(+:grad_rhor) 
-       do jbf=1,basis%nbf
-         ! implementing i <-> j symmetry does not save much time with ifort compiler
-         do ibf=1,basis%nbf
-
-           grad_rhor(:,ispin) = grad_rhor(:,ispin) + p_matrix(ibf,jbf,ispin) &
-                *( basis_function_gradr(:,ibf) * basis_function_r(jbf) &
-                 + basis_function_gradr(:,jbf) * basis_function_r(ibf) )
-         enddo
-       enddo
-!$OMP END DO
-!$OMP END PARALLEL
-     enddo
+     call calc_density_gradr(nspin,basis%nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
 
      sigma2(1) = SUM( grad_rhor(:,1)**2 )
      if(nspin==2) then
@@ -179,6 +159,7 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
      endif
 
    endif
+
 
    if( require_laplacian ) then
 
@@ -189,16 +170,16 @@ subroutine dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehom
        do jbf=1,basis%nbf
          do ibf=1,basis%nbf
 
-           grad_rhor(:,ispin) = grad_rhor(:,ispin)        + p_matrix(ibf,jbf,ispin) &
-                *( basis_function_gradr       (:,ibf) * basis_function_r(jbf) &
-                 + basis_function_gradr       (:,jbf) * basis_function_r(ibf) ) 
+           grad_rhor(:,ispin) = grad_rhor(:,ispin) + p_matrix(ibf,jbf,ispin) &
+                *( basis_function_gradr(:,ibf) * basis_function_r(jbf) &
+                 + basis_function_gradr(:,jbf) * basis_function_r(ibf) ) 
 
            tau(ispin)        = tau(ispin)        + p_matrix(ibf,jbf,ispin) &
                 * DOT_PRODUCT( basis_function_gradr(:,ibf) , basis_function_gradr(:,jbf) )
 
            lapl_rhor(ispin)  = lapl_rhor(ispin)  + p_matrix(ibf,jbf,ispin) &
                               * (  SUM( basis_function_laplr(:,ibf) ) * basis_function_r(jbf)               &
-                                 + basis_function_r(ibf)              * SUM( basis_function_laplr(:,jbf) )  &
+                                 + basis_function_r(ibf) * SUM( basis_function_laplr(:,jbf) )               &
                                  + 2.0_dp * DOT_PRODUCT( basis_function_gradr(:,ibf) , basis_function_gradr(:,jbf) ) )
 
          enddo
@@ -362,7 +343,6 @@ subroutine calc_density_r(nspin,nbf,p_matrix,basis_function_r,rhor_r)
  use m_definitions
  use m_mpi
  use m_timing
- use m_basis_set
  implicit none
  integer,intent(in)   :: nspin,nbf
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
@@ -389,6 +369,42 @@ subroutine calc_density_r(nspin,nbf,p_matrix,basis_function_r,rhor_r)
 !$OMP END PARALLEL
  enddo
 end subroutine calc_density_r
+
+
+!=========================================================================
+subroutine calc_density_gradr(nspin,nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
+ use m_definitions
+ use m_mpi
+ use m_timing
+ implicit none
+ integer,intent(in)   :: nspin,nbf
+ real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
+ real(dp),intent(in)  :: basis_function_r(nbf)
+ real(dp),intent(in)  :: basis_function_gradr(3,nbf)
+ real(dp),intent(out) :: grad_rhor(3,nspin)
+!=====
+ integer :: ispin,ibf,jbf
+!=====
+
+ grad_rhor(:,:)=0.0_dp
+ do ispin=1,nspin
+!$OMP PARALLEL DEFAULT(SHARED)
+!$OMP DO REDUCTION(+:grad_rhor) 
+   do jbf=1,nbf
+     ! implementing i <-> j symmetry does not save much time with ifort
+     ! compiler
+     do ibf=1,nbf
+       grad_rhor(:,ispin) = grad_rhor(:,ispin) + p_matrix(ibf,jbf,ispin) &
+            *( basis_function_gradr(:,ibf) * basis_function_r(jbf) &
+             + basis_function_gradr(:,jbf) * basis_function_r(ibf) )
+     enddo
+   enddo
+!$OMP END DO
+!$OMP END PARALLEL
+ enddo
+
+end subroutine calc_density_gradr
+
 
 !=========================================================================
 subroutine my_lda_exc_vxc(nspin,ixc,rhor,exc,vxc)
@@ -637,6 +653,7 @@ subroutine my_lda_exc_vxc(nspin,ixc,rhor,exc,vxc)
 
 end subroutine my_lda_exc_vxc
 
+
 !=========================================================================
 subroutine my_lda_exc_vxc_mu(mu,rhor,exc,vxc)
  use m_definitions
@@ -743,7 +760,6 @@ subroutine my_lda_exc_vxc_mu(mu,rhor,exc,vxc)
 
 
 end subroutine my_lda_exc_vxc_mu
-
 
 
 !=========================================================================
@@ -857,6 +873,8 @@ subroutine my_gga_exc_vxc_hjs(omega,nn,sigma,exc,vxc,vsigma)
 
 
 end subroutine my_gga_exc_vxc_hjs
+
+
 !=========================================================================
 subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
 
