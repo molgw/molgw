@@ -739,3 +739,50 @@ end subroutine read_any_restart
 
 
 !=========================================================================
+subroutine write_density_grid(basis,p_matrix)
+ use m_definitions
+ use m_mpi
+ use m_timing
+ use m_inputparam
+ use m_basis_set
+ use m_dft_grid
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: p_matrix(basis%nbf,basis%nbf,nspin)
+!=====
+ integer,parameter :: unit_density=53
+ integer  :: ispin,igrid
+ real(dp) :: basis_function_r(basis%nbf)
+ real(dp) :: rr(3),weight
+ real(dp) :: rhor_r(nspin)
+ real(dp) :: rhor(ngrid,nspin)
+!=====
+
+
+ do igrid=1,ngrid
+
+   rr(:) = rr_grid(:,igrid)
+   weight = w_grid(igrid)
+
+   !
+   ! Get all the functions at point rr
+   call get_basis_functions_r(basis,igrid,basis_function_r)
+   call calc_density_r(nspin,basis%nbf,p_matrix,basis_function_r,rhor_r)
+   rhor(igrid,:) = rhor_r(:)
+
+ enddo
+
+ open(unit_density,file='DENSITY',form='unformatted')
+ WRITE_MASTER(unit_density) nspin
+ WRITE_MASTER(unit_density) ngrid
+ do ispin=1,nspin
+   do igrid=1,ngrid,1024
+     WRITE_MASTER(unit_density) rhor(igrid:MIN(igrid+1023,ngrid),ispin)
+   enddo
+ enddo
+
+end subroutine write_density_grid
+
+
+!=========================================================================

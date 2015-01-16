@@ -795,6 +795,7 @@ subroutine setup_initial_c_matrix(print_matrix,nbf,nspin,hamiltonian_nucleus,s_m
  use m_definitions
  use m_mpi
  use m_tools
+ use m_timing
  implicit none
  integer,intent(in)         :: print_matrix,nspin,nbf
  real(dp),intent(in)        :: hamiltonian_nucleus(nbf,nbf),s_matrix(nbf,nbf)
@@ -819,7 +820,9 @@ subroutine setup_initial_c_matrix(print_matrix,nbf,nspin,hamiltonian_nucleus,s_m
  call dump_out_matrix(print_matrix,title,nbf,1,hamiltonian)
 
  WRITE_MASTER(*,*) 'Diagonalization of an initial hamiltonian'
+ call start_clock(timing_diago_hamiltonian)
  call diagonalize_generalized_sym(nbf,hamiltonian,s_matrix,energy,matrix)
+ call stop_clock(timing_diago_hamiltonian)
 
  title='=== Energies ==='
  call dump_out_eigenenergy(title,nbf,1,occupation,energy)

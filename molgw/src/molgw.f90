@@ -265,7 +265,7 @@ program molgw
 !%!       occupation(istate,:) = 0.0_dp
 !%!     enddo
 !%!     call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
-!%!     call dft_exc_vxc(nspin,basis,ndft_xc,dft_xc_type,dft_xc_coef,p_matrix,ehomo,hamiltonian_xc,en%xc)
+!%!     call dft_exc_vxc(basis,p_matrix,ehomo,hamiltonian_xc,en%xc)
 !%!   endif
 
 
@@ -288,7 +288,7 @@ program molgw
 
    !
    ! A section under development for the range-separated RPA
-   if( calc_type%is_lr_mbpt ) call testing_tobe_removed()
+   if( calc_type%is_lr_mbpt ) stop'lr_mbpt code removed'
 
    if(is_auxil_basis) then
      call prepare_eri_3center_eigen(c_matrix)
@@ -343,7 +343,6 @@ program molgw
  deallocate(exchange_m_vxc_diag)
 
  call deallocate_eri()
- if( calc_type%is_dft ) call destroy_dft_grid()
 
  call destroy_basis_set(basis)
  if(is_auxil_basis) call destroy_basis_set(auxil_basis)
@@ -360,165 +359,8 @@ program molgw
 
  call finish_mpi()
 
-contains
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!BEGIN OF SECTION TO BE REMOVED
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine testing_tobe_removed()
- real(dp),allocatable    :: ehomo(:)
-!=====
- allocate(ehomo(nspin))
-   write(*,*) '========== FABIEN ============'
-   call setup_exchange(print_matrix,basis%nbf,p_matrix,matrix_tmp,en%exx)
-   WRITE_MASTER(*,*) 'EXX [Ha]:',en%exx
-   exchange_m_vxc_diag(:,:) = 0.0_dp
-   do ispin=1,nspin
-     do istate=1,basis%nbf
-       do ibf=1,basis%nbf
-         do jbf=1,basis%nbf
-           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                   + c_matrix(ibf,istate,ispin) * matrix_tmp(ibf,jbf,ispin) &
-                    * c_matrix(jbf,istate,ispin)
-         enddo
-       enddo
-       write(*,*) istate,ispin,exchange_m_vxc_diag(istate,ispin)*Ha_eV
-     enddo
-   enddo
-   write(*,*) '========== END FABIEN ========'
-   !
-   ! Hard-coded cutoff radius
-   rcut= 9.0909_dp ! 0.5000_dp
-   write(msg,'(a,f10.4)') 'hard coded cutoff radius  ',rcut
-   call issue_warning(msg)
-   call deallocate_eri()
-   call prepare_eri(basis,rcut,BUFFER1)
-   call calculate_eri(print_matrix,basis,rcut,BUFFER1)
-
-   write(*,*) '========== FABIEN ============'
-   call setup_exchange(print_matrix,basis%nbf,p_matrix,matrix_tmp,en%exx)
-   WRITE_MASTER(*,*) 'EXX [Ha]:',en%exx
-   exchange_m_vxc_diag(:,:) = 0.0_dp
-   do ispin=1,nspin
-     do istate=1,basis%nbf
-       do ibf=1,basis%nbf
-         do jbf=1,basis%nbf
-           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                   + c_matrix(ibf,istate,ispin) * matrix_tmp(ibf,jbf,ispin) &
-                    * c_matrix(jbf,istate,ispin)
-         enddo
-       enddo
-       write(*,*) istate,ispin,exchange_m_vxc_diag(istate,ispin)*Ha_eV
-     enddo
-   enddo
-   write(*,*) '========== END FABIEN ========'
-   write(*,*) '========== FABIEN ============'
-   if( .NOT. ALLOCATED( hamiltonian_xc ) ) allocate( hamiltonian_xc(basis%nbf,basis%nbf,nspin) )
-   if( ndft_xc == 0 ) call setup_dft_grid()
-    call dft_exc_vxc(nspin,basis,1,(/XC_GGA_X_PBE/),(/1.0_dp/),p_matrix,ehomo,hamiltonian_xc,energy_tmp)
-#ifdef HAVE_LIBXC
-   call dft_exc_vxc(nspin,basis,1,(/XC_HYB_GGA_XC_HSE06/),(/1.0_dp/),p_matrix,ehomo,hamiltonian_xc,energy_tmp)
-#endif
-   WRITE_MASTER(*,'(/,a,f16.10)') '    PBEx energy [Ha]: ',energy_tmp
-   exchange_m_vxc_diag(:,:) = 0.0_dp
-   do ispin=1,nspin
-     do istate=1,basis%nbf
-       do ibf=1,basis%nbf
-         do jbf=1,basis%nbf
-           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                   + c_matrix(ibf,istate,ispin) * ( hamiltonian_xc(ibf,jbf,ispin) )&
-                    * c_matrix(jbf,istate,ispin)
-         enddo
-       enddo
-       write(*,*) istate,ispin,exchange_m_vxc_diag(istate,ispin)*Ha_eV
-     enddo
-   enddo
-   write(*,*) '========== END FABIEN ========'
-
-   if( .NOT. ALLOCATED( hamiltonian_xc ) ) allocate( hamiltonian_xc(basis%nbf,basis%nbf,nspin) )
-   call dft_exc_vxc(nspin,basis,1,(/1000/),(/1.0_dp/),p_matrix,ehomo,hamiltonian_xc,energy_tmp)
-   WRITE_MASTER(*,'(/,a,f16.10)') '    RPA LDA energy [Ha]: ',energy_tmp
-   exchange_m_vxc_diag(:,:) = 0.0_dp
-   do ispin=1,nspin
-     do istate=1,basis%nbf
-       do ibf=1,basis%nbf
-         do jbf=1,basis%nbf
-           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                   + c_matrix(ibf,istate,ispin) * ( hamiltonian_xc(ibf,jbf,ispin) )&
-                    * c_matrix(jbf,istate,ispin)
-         enddo
-       enddo
-     enddo
-   enddo
-   WRITE_MASTER(*,*) 'test'
-   WRITE_MASTER(*,*) '<vxc RPA FR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
-   WRITE_MASTER(*,*) 'test'
-
-   hamiltonian_xc(:,:,:) = 0.0_dp
-   call dft_exc_vxc(nspin,basis,1,(/1005/),(/1.0_dp/),p_matrix,ehomo,hamiltonian_xc,energy_tmp)
-   WRITE_MASTER(*,'(/,a,f16.10)') ' LR-RPA LDA energy [Ha]: ',energy_tmp
-   exchange_m_vxc_diag(:,:) = 0.0_dp
-   do ispin=1,nspin
-     do istate=1,basis%nbf
-       do ibf=1,basis%nbf
-         do jbf=1,basis%nbf
-           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                   + c_matrix(ibf,istate,ispin) * ( hamiltonian_xc(ibf,jbf,ispin) )&
-                    * c_matrix(jbf,istate,ispin)
-         enddo
-       enddo
-     enddo
-   enddo
-   WRITE_MASTER(*,*) 'test'
-   WRITE_MASTER(*,*) '<vxc RPA LR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
-   WRITE_MASTER(*,*) 'test'
-
-   call setup_exchange(print_matrix,basis%nbf,p_matrix,matrix_tmp,en%exx)  
-   WRITE_MASTER(*,*) 'LR EXX [Ha]:',en%exx
-   exchange_m_vxc_diag(:,:) = 0.0_dp
-   do ispin=1,nspin
-     do istate=1,basis%nbf
-       do ibf=1,basis%nbf
-         do jbf=1,basis%nbf
-           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                   + c_matrix(ibf,istate,ispin) * matrix_tmp(ibf,jbf,ispin)&
-                    * c_matrix(jbf,istate,ispin)
-         enddo
-       enddo
-     enddo
-   enddo
-   WRITE_MASTER(*,*) 'test'
-   WRITE_MASTER(*,*) '<sigx LR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
-   WRITE_MASTER(*,*) 'test'
-
-   hamiltonian_xc(:,:,:) = 0.0_dp
-   call dft_exc_vxc(nspin,basis,1,(/2001/),(/1.0_dp/),p_matrix,ehomo,hamiltonian_xc,energy_tmp)
-   WRITE_MASTER(*,'(/,a,f16.10)') ' SR-EXX GGA energy [Ha]: ',energy_tmp
-   exchange_m_vxc_diag(:,:) = 0.0_dp
-   do ispin=1,nspin
-     do istate=1,basis%nbf
-       do ibf=1,basis%nbf
-         do jbf=1,basis%nbf
-           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                   + c_matrix(ibf,istate,ispin) * ( hamiltonian_xc(ibf,jbf,ispin))&
-                    * c_matrix(jbf,istate,ispin)
-         enddo
-       enddo
-     enddo
-   enddo
-   WRITE_MASTER(*,*) 'test'
-   WRITE_MASTER(*,*) '<vxc EXX SR>', exchange_m_vxc_diag(1:MIN(basis%nbf,15),:)*27.211
-   WRITE_MASTER(*,*) 'test'
-
-
-
-   exchange_m_vxc_diag(:,:) = 0.0_dp
-
- deallocate(ehomo)
-end subroutine testing_tobe_removed
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!END OF SECTION TO BE REMOVED
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 end program molgw
 !=========================================================================
+
+
