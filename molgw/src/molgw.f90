@@ -187,7 +187,7 @@ program molgw
 
  !
  ! Setup the grids for the quadrature of DFT potential/energy
- if( calc_type%is_dft ) then
+ if( calc_type%is_dft .AND. .NOT. is_big_restart) then
    call setup_dft_grid()
  endif
 
@@ -243,11 +243,13 @@ program molgw
  ! works for DFT, HF, and hybrid
  if(calc_type%is_td .OR. calc_type%is_bse) then
 
+   if(calc_type%is_td .AND. calc_type%is_dft) call setup_dft_grid()
    if(is_auxil_basis) then
      call prepare_eri_3center_eigen(c_matrix)
      call destroy_eri_3center()
    endif
    call polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_matrix)
+   if(calc_type%is_td .AND. calc_type%is_dft) call destroy_dft_grid()
    if(is_auxil_basis) call destroy_eri_3center_eigen()
 
  endif

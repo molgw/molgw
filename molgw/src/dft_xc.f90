@@ -251,7 +251,7 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
         .OR. xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) then
        if(nspin==1) then
 
-         dedgd_r(:,1) = 2.0_dp * vsigma(1) * grad_rhor       (:,1) 
+         dedgd_r(:,1) = 2.0_dp * vsigma(1) * grad_rhor(:,1) 
 
        else
 

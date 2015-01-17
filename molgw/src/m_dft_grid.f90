@@ -174,6 +174,7 @@ subroutine destroy_dft_grid()
  if( allocated(bfr   ) ) deallocate(bfr)
  if( allocated(bfgr  ) ) deallocate(bfgr)
  if( allocated(bflr  ) ) deallocate(bflr)
+ call destroy_grid_distribution()
 
 end subroutine destroy_dft_grid
 
@@ -225,18 +226,18 @@ subroutine prepare_basis_functions_gradr(basis)
 !=====
  integer                    :: igrid
  real(dp)                   :: rr(3)
- real(dp)                   :: basis_function_gradr       (3,basis%nbf)
+ real(dp)                   :: basis_function_gradr(3,basis%nbf)
 !=====
 
  WRITE_MASTER(*,*) 'Precalculate the gradients on N grid points',ngrid_stored
- call memory_statement(15.0_dp*REAL(basis%nbf,dp)*REAL(ngrid_stored,dp))
+ call memory_statement(3.0_dp*REAL(basis%nbf,dp)*REAL(ngrid_stored,dp))
 
- allocate(bfgr  (3,basis%nbf,ngrid_stored))
+ allocate(bfgr(3,basis%nbf,ngrid_stored))
 
  do igrid=1,ngrid_stored
    rr(:) = rr_grid(:,igrid)
    call calculate_basis_functions_gradr(basis,rr,basis_function_gradr)
-   bfgr  (:,:,igrid) = basis_function_gradr       (:,:)
+   bfgr(:,:,igrid) = basis_function_gradr(:,:)
  enddo
 
 end subroutine prepare_basis_functions_gradr
@@ -300,13 +301,13 @@ subroutine get_basis_functions_gradr(basis,igrid,basis_function_gradr)
 
  type(basis_set),intent(in) :: basis
  integer,intent(in)         :: igrid
- real(dp),intent(out)       :: basis_function_gradr       (3,basis%nbf)
+ real(dp),intent(out)       :: basis_function_gradr(3,basis%nbf)
 !=====
  real(dp)                   :: rr(3)
 !=====
 
  if( igrid <= ngrid_stored ) then
-   basis_function_gradr       (:,:) = bfgr  (:,:,igrid) 
+   basis_function_gradr(:,:) = bfgr(:,:,igrid) 
  else
    rr(:) = rr_grid(:,igrid)
    call calculate_basis_functions_gradr(basis,rr,basis_function_gradr)
@@ -441,8 +442,8 @@ subroutine calculate_basis_functions_laplr(basis,rr,basis_function_gradr,basis_f
    ni_cart = number_basis_function_am(CARTESIAN,li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
-   allocate(basis_function_gradr_cart       (3,ni_cart))
-   allocate(basis_function_laplr_cart       (3,ni_cart))
+   allocate(basis_function_gradr_cart(3,ni_cart))
+   allocate(basis_function_laplr_cart(3,ni_cart))
 
    do i_cart=1,ni_cart
 
@@ -451,8 +452,8 @@ subroutine calculate_basis_functions_laplr(basis,rr,basis_function_gradr,basis_f
 
    enddo
 
-   basis_function_gradr       (:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_cart       (:,:) , cart_to_pure(li)%matrix(:,:) )
-   basis_function_laplr       (:,ibf:ibf+ni-1) = MATMUL(  basis_function_laplr_cart       (:,:) , cart_to_pure(li)%matrix(:,:) )
+   basis_function_gradr(:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_cart(:,:) , cart_to_pure(li)%matrix(:,:) )
+   basis_function_laplr(:,ibf:ibf+ni-1) = MATMUL(  basis_function_laplr_cart(:,:) , cart_to_pure(li)%matrix(:,:) )
    deallocate(basis_function_gradr_cart,basis_function_laplr_cart)
 
    ibf      = ibf      + ni
