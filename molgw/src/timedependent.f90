@@ -43,19 +43,25 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
 
  logical                 :: is_tddft
  logical                 :: is_ij
+ logical                 :: is_rpa
 
 !=====
 
- call start_clock(timing_pola)
 
  if( .NOT. calc_type%is_td .AND. .NOT. calc_type%is_bse) then
    stop'BUG: this should not happend in timedependent'
  endif
-
- is_tddft = calc_type%is_td .AND. calc_type%is_dft
-
  WRITE_MASTER(*,'(/,a)') ' Calculating the polarizability for neutral excitation energies'
 
+ call start_clock(timing_pola)
+ 
+ inquire(file='manual_rpa',exist=is_rpa)
+ if(is_rpa) then
+   msg='RPA calculation is enforced'
+   call issue_warning(msg)
+ endif
+
+ is_tddft = calc_type%is_td .AND. calc_type%is_dft .AND. .NOT. is_rpa
 
  ! Obtain the number of transition = the size of the matrix
  call init_spectral_function(basis%nbf,occupation,wpol_new)
@@ -84,7 +90,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
 
  !
  ! Prepare BSE calculations
- if( calc_type%is_bse ) then
+ if( calc_type%is_bse .AND. .NOT.is_rpa ) then
    ! Set up energy_qp and wpol_static
    call prepare_bse(basis%nbf,energy,occupation,energy_qp,wpol_static)
  else
@@ -97,7 +103,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  WRITE_MASTER(*,*) 'Build the transition space matrix'
  !
  ! Prepare the bra and ket for BSE
- if(calc_type%is_bse) then
+ if(calc_type%is_bse .AND. .NOT.is_rpa) then
 
    allocate(bra(wpol_static%npole),ket(wpol_static%npole))
 
@@ -178,7 +184,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
 
      !
      ! Exchange part
-     if(calc_type%need_exchange .OR. calc_type%is_bse) then
+     if( (calc_type%need_exchange .OR. calc_type%is_bse) .AND. .NOT.is_rpa ) then
        if(ijspin==klspin) then
          if(is_auxil_basis) then
            eri_eigen_ikjl = eri_eigen_ri(istate,kstate,ijspin,jstate,lstate,klspin)
@@ -197,7 +203,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
 
      !
      ! Screened exchange part
-     if(calc_type%is_bse) then
+     if(calc_type%is_bse .AND. .NOT.is_rpa) then
        if(ijspin==klspin) then
 
          if(.NOT. is_auxil_basis) then
@@ -215,7 +221,6 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
        endif
      endif
 
-
    enddo ! t_kl
 
 
@@ -226,11 +231,11 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
 
  call destroy_spectral_function(wpol_static)
 
- if( .NOT. is_auxil_basis) deallocate(eri_eigenstate_ijmin)
- if(is_tddft)              deallocate(fxc,wf_r)
- if(calc_type%is_bse)      deallocate(bra,ket)
- if(allocated(bra_auxil))  deallocate(bra_auxil)
- if(allocated(ket_auxil))  deallocate(ket_auxil)
+ if( .NOT. is_auxil_basis)               deallocate(eri_eigenstate_ijmin)
+ if(is_tddft)                            deallocate(fxc,wf_r)
+ if(calc_type%is_bse .AND. .NOT. is_rpa) deallocate(bra,ket)
+ if(allocated(bra_auxil))                deallocate(bra_auxil)
+ if(allocated(ket_auxil))                deallocate(ket_auxil)
 
  call stop_clock(timing_build_h2p)
 
@@ -318,6 +323,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  real(dp),allocatable               :: dipole_basis(:,:,:),dipole_state(:,:,:,:)
  real(dp),allocatable               :: dipole_cart(:,:,:)
  real(dp),allocatable               :: residu_left(:,:),residu_right(:,:)
+ integer,parameter                  :: unit_spectrum=101
 !=====
  !
  ! Calculate the spectrum now
@@ -452,9 +458,14 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
    WRITE_MASTER(*,'(3(4x,f12.6))') static_polarizability(idir,:)
  enddo
 
+ open(unit_spectrum,file='optical_spectrum.dat',form='formatted')
+ WRITE_MASTER(unit_spectrum,'(a)') '#  omega (eV)   Average     xx    yx    zx    xy    yy    zy    xz    yz    zz'
  do iomega=1,nomega
-   WRITE_MASTER(101,'(10(e18.8,2x))') REAL(omega(iomega),dp)*Ha_eV,absorp(iomega,:,:)
+   WRITE_MASTER(unit_spectrum,'(11(e18.8,2x))') REAL(omega(iomega),dp)*Ha_eV,   &
+                                                SUM(absorp(iomega,:,:))/9.0_dp, &
+                                                absorp(iomega,:,:)
  enddo 
+ close(unit_spectrum)
 
 
  deallocate(residu_left,residu_right)
@@ -547,7 +558,7 @@ subroutine prepare_tddft(basis,c_matrix,occupation,fxc,wf_r)
 !                                     basis_function_gradr_shiftx,basis_function_gradr_shifty,basis_function_gradr_shiftz)
 !    endif
 
-   if( .NOT. allocated(bfr) ) stop'bfr not allocated -> weird'
+   if( .NOT. allocated(bfr) ) call prepare_basis_functions_r(basis)
 
    call calc_density_r(nspin,basis%nbf,p_matrix,basis_function_r,rhor_r)
 

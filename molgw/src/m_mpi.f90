@@ -9,6 +9,7 @@ module m_mpi
 
  private
  public  :: init_mpi,finish_mpi,init_distribution,init_grid_distribution,get_ntask,get_task_number,is_iomaster
+ public  :: destroy_grid_distribution
  public  :: xsum
  public  :: is_my_task
  public  :: is_my_grid_task
@@ -204,6 +205,17 @@ subroutine init_grid_distribution(ngrid)
 
 end subroutine init_grid_distribution
 
+
+!=========================================================================
+subroutine destroy_grid_distribution()
+ implicit none
+!=====
+
+ if( allocated(task_grid_proc) )   deallocate(task_grid_proc)
+ if( allocated(ntask_grid_proc) )  deallocate(ntask_grid_proc)
+ if( allocated(task_grid_number) ) deallocate(task_grid_number)
+
+end subroutine destroy_grid_distribution
 
 !=========================================================================
 subroutine init_fast_distribution(ntask)
