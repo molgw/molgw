@@ -452,7 +452,10 @@ subroutine read_inputparameter_molecule()
    mixing_scheme = simple_mixing
  case('PULAY')
    mixing_scheme = pulay_mixing
+ case('FBFB')
+   mixing_scheme = FBFB_mixing
  case default
+   WRITE_MASTER(*,*) TRIM(mixing_name)
    stop'mixing scheme not recognized'
  end select
 

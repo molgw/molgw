@@ -8,15 +8,16 @@ module m_scf
  private
  
  public               :: en
- public               :: simple_mixing,pulay_mixing,mixing_scheme,&
-                         init_scf,destroy_scf,store_residual,new_p_matrix,check_converged
+ public               :: simple_mixing,pulay_mixing,mixing_scheme,FBFB_mixing
+ public               :: init_scf,destroy_scf,store_residual,new_p_matrix,check_converged
 
  integer,parameter    :: simple_mixing = 1
  integer,parameter    :: pulay_mixing  = 2
+ integer,parameter    :: FBFB_mixing   = 3
 
  integer              :: mixing_scheme
 
- integer              :: nhist
+ integer              :: nhistmax
  integer              :: nhist_current
  integer              :: nbf_scf,nspin_scf                 ! internally saved data
  real(dp)             :: alpha_scf
@@ -40,7 +41,9 @@ module m_scf
  end type
  type(energy_contributions) :: en
 
+
 contains
+
 
 !=========================================================================
 subroutine init_scf(nscf,nbf,nspin,alpha_mixing)
@@ -54,20 +57,24 @@ subroutine init_scf(nscf,nbf,nspin,alpha_mixing)
  nspin_scf     = nspin
  alpha_scf     = alpha_mixing
  n_scf         = 1                 ! initialize with 1, since the new_p_matrix is not called for the first scf cycle
+ nhist_current = 0
 
  select case(mixing_scheme)
  case(simple_mixing)
-   nhist=1
+   nhistmax=1
  case(pulay_mixing)
-   nhist=12
+   nhistmax=12
+ case(FBFB_mixing)
+   nhistmax=8
  case default
    stop'mixing scheme not implemented'
  end select
 
- allocate(p_matrix_in_hist(nbf_scf,nbf_scf,nspin_scf,nhist))
- allocate(residual_hist(nbf_scf,nbf_scf,nspin_scf,nhist))
+ allocate(p_matrix_in_hist(nbf_scf,nbf_scf,nspin_scf,nhistmax))
+ allocate(residual_hist(nbf_scf,nbf_scf,nspin_scf,nhistmax))
  
 end subroutine init_scf
+
 
 !=========================================================================
 subroutine destroy_scf()
@@ -78,6 +85,7 @@ subroutine destroy_scf()
  if(allocated(residual_hist)) deallocate(residual_hist)
 
 end subroutine destroy_scf
+
 
 !=========================================================================
 subroutine store_residual(p_matrix_in,p_matrix_out)
@@ -91,8 +99,8 @@ subroutine store_residual(p_matrix_in,p_matrix_out)
  !
  ! shift the old matrices and then store the new ones
  ! the newest is 1
- ! the oldest is nhist
- do ihist=nhist-1,1,-1
+ ! the oldest is nhistmax
+ do ihist=nhistmax-1,1,-1
    residual_hist   (:,:,:,ihist+1) = residual_hist   (:,:,:,ihist)
    p_matrix_in_hist(:,:,:,ihist+1) = p_matrix_in_hist(:,:,:,ihist)
  enddo
@@ -100,15 +108,18 @@ subroutine store_residual(p_matrix_in,p_matrix_out)
  p_matrix_in_hist(:,:,:,1) = p_matrix_in(:,:,:)
 
 end subroutine store_residual
+
  
 !=========================================================================
 subroutine new_p_matrix(p_matrix_in)
  implicit none
  real(dp),intent(out) :: p_matrix_in (nbf_scf,nbf_scf,nspin_scf)
 !=====
+ real(dp),allocatable :: alpha_diis(:)
+!=====
 
  n_scf          = n_scf + 1
- nhist_current  = MIN(nhist,n_scf-1)
+ nhist_current  = MIN(nhist_current+1,nhistmax) !FBFBMIN(nhistmax,n_scf-1)
 
  select case(mixing_scheme)
  case(simple_mixing)
@@ -117,13 +128,31 @@ subroutine new_p_matrix(p_matrix_in)
    if(n_scf<=3) then ! for safety, just do simple mixing at the begining
      call do_simple_mixing(p_matrix_in)
    else
-     call do_pulay_mixing(p_matrix_in)
+     allocate(alpha_diis(nhist_current))
+     call do_pulay_mixing(p_matrix_in,alpha_diis)
+     deallocate(alpha_diis)
+   endif
+ case(FBFB_mixing)
+   if(n_scf<=3) then ! for safety, just do simple mixing at the begining
+     call do_simple_mixing(p_matrix_in)
+   else
+     allocate(alpha_diis(nhist_current))
+     call do_pulay_mixing(p_matrix_in,alpha_diis)
+     do while( ANY( ABS(alpha_diis(:)) > 4.0_dp ) .AND. nhist_current>3 )
+       nhist_current = nhist_current - 1
+       deallocate(alpha_diis)
+       allocate(alpha_diis(nhist_current))
+       call do_pulay_mixing(p_matrix_in,alpha_diis)
+     enddo
+     deallocate(alpha_diis)
    endif
  case default
+   WRITE_MASTER(*,*) mixing_scheme
    stop'mixing scheme not implemented'
  end select
 
 end subroutine new_p_matrix
+
 
 !=========================================================================
 subroutine do_simple_mixing(p_matrix_in)
@@ -137,15 +166,16 @@ subroutine do_simple_mixing(p_matrix_in)
 
 end subroutine do_simple_mixing
 
+
 !=========================================================================
-subroutine do_pulay_mixing(p_matrix_in)
+subroutine do_pulay_mixing(p_matrix_in,alpha_diis)
  use m_tools,only:       invert
  implicit none
  real(dp),intent(out) :: p_matrix_in (nbf_scf,nbf_scf,nspin_scf)
+ real(dp),intent(out) :: alpha_diis(nhist_current)
 !=====
  integer              :: ihist,jhist
  real(dp),allocatable :: amat(:,:),amat_inv(:,:)
- real(dp),allocatable :: alpha_diis(:)
  real(dp)             :: residual_pred(nbf_scf,nbf_scf,nspin_scf)
 !=====
 
@@ -153,7 +183,6 @@ subroutine do_pulay_mixing(p_matrix_in)
 
  allocate(amat    (nhist_current+1,nhist_current+1))
  allocate(amat_inv(nhist_current+1,nhist_current+1))
- allocate(alpha_diis(nhist_current))
 
  !
  ! amat contains the scalar product of residuals
@@ -187,9 +216,9 @@ subroutine do_pulay_mixing(p_matrix_in)
         * ( p_matrix_in_hist(:,:,:,ihist) + alpha_scf * residual_hist(:,:,:,ihist) )
  enddo
  
- deallocate(alpha_diis)
 
 end subroutine do_pulay_mixing
+
 
 !=========================================================================
 function check_converged()
@@ -225,6 +254,7 @@ function check_converged()
  endif
 
 end function check_converged
+
 
 !=========================================================================
 end module m_scf
