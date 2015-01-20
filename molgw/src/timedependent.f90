@@ -1,20 +1,24 @@
 !=========================================================================
 #include "macros.h"
 !=========================================================================
+module m_timedependent
+ use m_definitions
+ use m_timing
+ use m_inputparam
+
+
+contains
 
 
 !=========================================================================
 subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_matrix)
- use m_definitions
  use m_mpi
- use m_timing 
  use m_warning,only: issue_warning
  use m_tools
  use m_basis_set
  use m_eri
  use m_dft_grid
  use m_spectral_function
- use m_inputparam
  use m_gw
  implicit none
 
@@ -36,10 +40,17 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  real(dp),allocatable    :: eigenvalue(:),eigenvector(:,:),eigenvector_inv(:,:)
  real(dp)                :: energy_qp(basis%nbf,nspin)
 
- real(dp),allocatable    :: fxc(:,:)
+ real(dp),allocatable    :: v2rho2(:,:)
+ real(dp),allocatable    :: vsigma(:,:)
+ real(dp),allocatable    :: v2rhosigma(:,:)
+ real(dp),allocatable    :: v2sigma2(:,:)
  real(dp),allocatable    :: wf_r(:,:,:)
+ real(dp),allocatable    :: wf_gradr(:,:,:,:)
+ real(dp),allocatable    :: rho_gradr(:,:,:)
  real(dp),allocatable    :: bra(:),ket(:)
  real(dp),allocatable    :: bra_auxil(:,:,:,:),ket_auxil(:,:,:,:)
+ real(dp),allocatable    :: grad_ij(:,:,:),grad_kl(:,:,:)
+ real(dp),allocatable    :: dot_ij_kl(:,:),dot_rho_ij(:,:),dot_rho_kl(:,:)
 
  logical                 :: is_tddft
  logical                 :: is_ij
@@ -84,8 +95,14 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  !
  ! Prepare TDDFT calculations
  if(is_tddft) then
-   allocate(fxc(ngrid,nspin),wf_r(ngrid,basis%nbf,nspin))
-   call prepare_tddft(basis,c_matrix,occupation,fxc,wf_r)
+   call prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2sigma2,wf_r,wf_gradr,rho_gradr)
+   if(allocated(v2sigma2)) then ! GGA case
+     allocate(grad_ij(3,ngrid,nspin))
+     allocate(grad_kl(3,ngrid,nspin))
+     allocate(dot_ij_kl(ngrid,nspin))
+     allocate(dot_rho_ij(ngrid,nspin))
+     allocate(dot_rho_kl(ngrid,nspin))
+   endif
  endif
 
  !
@@ -175,11 +192,47 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
      !
      ! Add the kernel for TDDFT
      if(is_tddft) then
-       h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
-                  + SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
-                        * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
-                        * fxc(:,ijspin) )                               & ! FIXME spin is not correct
-                        * docc_ij
+       if(nspin==1) then
+         h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
+                    + SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
+                          * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
+                          * v2rho2(:,ijspin) )                            & 
+                          * docc_ij   
+         if(allocated(v2sigma2)) then
+           grad_ij(1,:,ijspin) = wf_gradr(1,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(1,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+           grad_ij(2,:,ijspin) = wf_gradr(2,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(2,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+           grad_ij(3,:,ijspin) = wf_gradr(3,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(3,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+           grad_kl(1,:,klspin) = wf_gradr(1,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(1,:,lstate,klspin) * wf_r(:,kstate,klspin)
+           grad_kl(2,:,klspin) = wf_gradr(2,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(2,:,lstate,klspin) * wf_r(:,kstate,klspin)
+           grad_kl(3,:,klspin) = wf_gradr(3,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(3,:,lstate,klspin) * wf_r(:,kstate,klspin)
+           dot_ij_kl(:,ijspin) = grad_ij(1,:,ijspin) * grad_kl(1,:,klspin) + grad_ij(2,:,ijspin) * grad_kl(2,:,klspin) &
+                                + grad_ij(3,:,ijspin) * grad_kl(3,:,klspin)
+           dot_rho_ij(:,ijspin) = rho_gradr(1,:,1) * grad_ij(1,:,ijspin) + rho_gradr(2,:,1) * grad_ij(2,:,ijspin)  &
+                                 + rho_gradr(3,:,1) * grad_ij(3,:,ijspin)
+           dot_rho_kl(:,klspin) = rho_gradr(1,:,1) * grad_kl(1,:,klspin) + rho_gradr(2,:,1) * grad_kl(2,:,klspin)  &
+                                 + rho_gradr(3,:,1) * grad_kl(3,:,klspin)
+
+           h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
+                    + SUM( dot_ij_kl(:,1) * 2.0_dp * vsigma(:,1) ) * docc_ij
+           h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
+                    + SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * 1.0_dp * v2sigma2(:,1) ) * docc_ij
+           h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
+                    + SUM( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1) * 1.0_dp * v2rhosigma(:,1) ) * docc_ij
+           h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
+                    + SUM( wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) * 1.0_dp * v2rhosigma(:,1) ) * docc_ij
+         endif
+       else
+         h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
+                    + SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
+                          * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
+                          * v2rho2(:,ijspin) )                            & 
+                          * docc_ij  
+
+         if(allocated(v2sigma2)) then
+           stop'spin in TD-GGA not implemented yet'
+         endif
+
+       endif
      endif
 
      !
@@ -232,10 +285,11 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  call destroy_spectral_function(wpol_static)
 
  if( .NOT. is_auxil_basis)               deallocate(eri_eigenstate_ijmin)
- if(is_tddft)                            deallocate(fxc,wf_r)
+ if(is_tddft)                            deallocate(v2rho2,wf_r)
  if(calc_type%is_bse .AND. .NOT. is_rpa) deallocate(bra,ket)
  if(allocated(bra_auxil))                deallocate(bra_auxil)
  if(allocated(ket_auxil))                deallocate(ket_auxil)
+ if(allocated(wf_gradr))                 deallocate(wf_gradr)
 
  call stop_clock(timing_build_h2p)
 
@@ -290,16 +344,13 @@ end subroutine polarizability_td
 
 !=========================================================================
 subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector,eigenvector_inv,eigenvalue)
- use m_definitions
  use m_mpi
- use m_timing
  use m_warning,only: issue_warning
  use m_tools
  use m_basis_set
  use m_eri
  use m_dft_grid
  use m_spectral_function
- use m_inputparam
  implicit none
 
  type(basis_set),intent(in)         :: basis,prod_basis
@@ -476,32 +527,35 @@ end subroutine optical_spectrum
 
 
 !=========================================================================
-subroutine prepare_tddft(basis,c_matrix,occupation,fxc,wf_r)
- use m_definitions
+subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2sigma2,wf_r,wf_gradr,rho_gradr)
  use m_dft_grid
- use m_inputparam
  use m_basis_set
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
  use xc_f90_lib_m
  use xc_f90_types_m
 #endif
- use iso_c_binding,only: C_INT
+ use iso_c_binding,only: C_INT,C_DOUBLE
  implicit none
 
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
- real(dp),intent(in)        :: occupation(basis%nbf,nspin)
- real(dp),intent(out)       :: fxc(ngrid,nspin)
- real(dp),intent(out)       :: wf_r(ngrid,basis%nbf,nspin)
+ type(basis_set),intent(in)       :: basis
+ real(dp),intent(in)              :: c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)              :: occupation(basis%nbf,nspin)
+ real(dp),allocatable,intent(out) :: v2rho2(:,:)
+ real(dp),allocatable,intent(out) :: vsigma(:,:)
+ real(dp),allocatable,intent(out) :: v2rhosigma(:,:)
+ real(dp),allocatable,intent(out) :: v2sigma2(:,:)
+ real(dp),allocatable,intent(out) :: wf_r(:,:,:)
+ real(dp),allocatable,intent(out) :: wf_gradr(:,:,:,:)
+ real(dp),allocatable,intent(out) :: rho_gradr(:,:,:)
 !=====
- real(dp) :: fxc_libxc(nspin)
  integer  :: idft_xc,igrid
  integer  :: ispin
  real(dp) :: rr(3)
  real(dp) :: basis_function_r(basis%nbf)
  real(dp) :: basis_function_gradr(3,basis%nbf)
  real(dp) :: rhor_r(nspin)
+ real(dp) :: grad_rhor(3,nspin)
  real(dp) :: p_matrix(basis%nbf,basis%nbf,nspin)
  logical  :: require_gradient
  character(len=256) :: string
@@ -509,16 +563,24 @@ subroutine prepare_tddft(basis,c_matrix,occupation,fxc,wf_r)
  type(xc_f90_pointer_t) :: xc_func(ndft_xc),xc_functest
  type(xc_f90_pointer_t) :: xc_info(ndft_xc),xc_infotest
 #endif
+ real(C_DOUBLE) :: rho_c(nspin)
+ real(C_DOUBLE) :: v2rho2_c(2*nspin-1)
+ real(C_DOUBLE) :: sigma_c(2*nspin-1)
+ real(C_DOUBLE) :: vrho_c(nspin)
+ real(C_DOUBLE) :: vsigma_c(2*nspin-1)
+ real(C_DOUBLE) :: v2rhosigma_c(5*nspin-4)
+ real(C_DOUBLE) :: v2sigma2_c(5*nspin-4)
 !=====
 
  !
  ! Prepare DFT kernel calculation with Libxc
  !
+ require_gradient  =.FALSE.
  do idft_xc=1,ndft_xc
    if(nspin==1) then
-     call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), INT(dft_xc_type(idft_xc),C_INT), XC_UNPOLARIZED)
+     call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_UNPOLARIZED)
    else
-     call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), INT(dft_xc_type(idft_xc),C_INT), XC_POLARIZED)
+     call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_POLARIZED)
    endif
    if( MODULO(xc_f90_info_flags( xc_info(idft_xc)),XC_FLAGS_HAVE_FXC*2) < XC_FLAGS_HAVE_FXC ) then
      stop'This functional does not have the kernel implemented in Libxc'
@@ -536,13 +598,23 @@ subroutine prepare_tddft(basis,c_matrix,occupation,fxc,wf_r)
  ! Get the density matrix P from C
  call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
 
+ allocate(v2rho2(ngrid,nspin),wf_r(ngrid,basis%nbf,nspin))
+ if(require_gradient) then
+   allocate(vsigma(ngrid,2*nspin-1))
+   allocate(v2rhosigma(ngrid,5*nspin-4))
+   allocate(v2sigma2(ngrid,5*nspin-4))
+   allocate(wf_gradr(3,ngrid,basis%nbf,nspin))
+   allocate(rho_gradr(3,ngrid,nspin))
+ endif
 
- fxc(:,:) = 0.0_dp
+ v2rho2(:,:) = 0.0_dp
 
  do igrid=1,ngrid
 
    rr(:) = rr_grid(:,igrid)
 
+   if( .NOT. allocated(bfr) ) call prepare_basis_functions_r(basis)
+   if( require_gradient .AND. .NOT. allocated(bfgr) ) call prepare_basis_functions_gradr(basis)
    !
    ! Get all the functions and gradients at point rr
    call get_basis_functions_r(basis,igrid,basis_function_r)
@@ -552,31 +624,55 @@ subroutine prepare_tddft(basis,c_matrix,occupation,fxc,wf_r)
      wf_r(igrid,:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
    enddo
 
-!    if( require_gradient ) then
-!      call get_basis_functions_gradr(basis,igrid,&
-!                                     basis_function_gradr,basis_function_r_shiftx,basis_function_r_shifty,basis_function_r_shiftz,&
-!                                     basis_function_gradr_shiftx,basis_function_gradr_shifty,basis_function_gradr_shiftz)
-!    endif
+   if( require_gradient ) then
+     call get_basis_functions_gradr(basis,igrid,basis_function_gradr)
+     !
+     ! store the wavefunction in r
+     do ispin=1,nspin
+       wf_gradr(:,igrid,:,ispin) = MATMUL( basis_function_gradr(:,:) , c_matrix(:,:,ispin) )
+     enddo
+   endif
 
-   if( .NOT. allocated(bfr) ) call prepare_basis_functions_r(basis)
 
    call calc_density_r(nspin,basis%nbf,p_matrix,basis_function_r,rhor_r)
+   if( require_gradient ) then
+     call calc_density_gradr(nspin,basis%nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
+
+     rho_gradr(:,igrid,:) = grad_rhor(:,:)
+
+     sigma_c(1) = SUM( grad_rhor(:,1)**2 )
+     if(nspin==2) then
+       sigma_c(2) = SUM( grad_rhor(:,1) * grad_rhor(:,2) )
+       sigma_c(3) = SUM( grad_rhor(:,2)**2 )
+     endif
+
+   endif
+
+
+   rho_c(:) = rhor_r(:)
 
    !
    ! Calculate the kernel
    ! 
    do idft_xc=1,ndft_xc
      select case(xc_f90_info_family(xc_info(idft_xc)))
-
      case(XC_FAMILY_LDA)
-       call xc_f90_lda_fxc(xc_func(idft_xc),1_C_INT,rhor_r(1),fxc_libxc(1))
+       call xc_f90_lda_fxc(xc_func(idft_xc),1_C_INT,rho_c(1),v2rho2_c(1))
+     case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
+       call xc_f90_gga_vxc(xc_func(idft_xc),1_C_INT,rho_c(1),sigma_c(1),vrho_c(1),vsigma_c(1))
+       call xc_f90_gga_fxc(xc_func(idft_xc),1_C_INT,rho_c(1),sigma_c(1),v2rho2_c(1),v2rhosigma_c(1),v2sigma2_c(1))
      case default
-       stop'GGA kernel not yet implemented'
+       stop'Other kernels not yet implemented'
      end select
 
      ! Store the result with the weight
      ! Remove too large values for stability
-     fxc(igrid,:) = fxc(igrid,:) + MIN(fxc_libxc(:),1.0E8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
+     v2rho2(igrid,:)     = v2rho2(igrid,:) + MIN(v2rho2_c(:),1.0e8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
+     if(require_gradient) then
+       vsigma(igrid,:)     = MIN(vsigma_c(:)    ,1.0e8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
+       v2rhosigma(igrid,:) = MIN(v2rhosigma_c(:),1.0e8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
+       v2sigma2(igrid,:)   = MIN(v2sigma2_c(:)  ,1.0e8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
+     endif
 
    enddo
  enddo
@@ -586,9 +682,7 @@ end subroutine prepare_tddft
 
 !=========================================================================
 subroutine prepare_bse(nbf,energy,occupation,energy_qp,wpol_static)
- use m_definitions
  use m_dft_grid
- use m_inputparam
  use m_spectral_function
  implicit none
 
@@ -638,4 +732,7 @@ subroutine prepare_bse(nbf,energy,occupation,energy_qp,wpol_static)
  end select
 
 end subroutine prepare_bse
+!=========================================================================
+
+end module m_timedependent
 !=========================================================================

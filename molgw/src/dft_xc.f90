@@ -47,7 +47,7 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
 
  real(dp)             :: rhor_r(nspin)
  real(dp)             :: grad_rhor(3,nspin)
- real(dp)             :: sigma2(2*nspin-1)
+ real(dp)             :: sigma(2*nspin-1)
  real(dp)             :: tau(nspin),lapl_rhor(nspin)
  real(dp)             :: vxc(nspin),vxc_libxc(nspin)
  real(dp)             :: vxc_dummy(nspin)
@@ -78,9 +78,9 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
 
    if( dft_xc_type(idft_xc) < 1000 ) then
      if(nspin==1) then
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), INT(dft_xc_type(idft_xc),C_INT), XC_UNPOLARIZED)
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_UNPOLARIZED)
      else
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), INT(dft_xc_type(idft_xc),C_INT), XC_POLARIZED)
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_POLARIZED)
      endif
    else if(dft_xc_type(idft_xc) < 2000) then
      WRITE_MASTER(*,*) 'Home-made functional LDA functional'
@@ -152,10 +152,10 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
    if( require_gradient ) then 
      call calc_density_gradr(nspin,basis%nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
 
-     sigma2(1) = SUM( grad_rhor(:,1)**2 )
+     sigma(1) = SUM( grad_rhor(:,1)**2 )
      if(nspin==2) then
-       sigma2(2) = SUM( grad_rhor(:,1) * grad_rhor(:,2) )
-       sigma2(3) = SUM( grad_rhor(:,2)**2 )
+       sigma(2) = SUM( grad_rhor(:,1) * grad_rhor(:,2) )
+       sigma(3) = SUM( grad_rhor(:,2)**2 )
      endif
 
    endif
@@ -185,10 +185,10 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
          enddo
        enddo
      enddo
-     sigma2(1) = SUM( grad_rhor(:,1)**2 )
+     sigma(1) = SUM( grad_rhor(:,1)**2 )
      if(nspin==2) then
-       sigma2(2) = SUM( grad_rhor(:,1) * grad_rhor(:,2) )
-       sigma2(3) = SUM( grad_rhor(:,2)**2 )
+       sigma(2) = SUM( grad_rhor(:,1) * grad_rhor(:,2) )
+       sigma(3) = SUM( grad_rhor(:,2)**2 )
      endif
 
    endif
@@ -217,7 +217,7 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
          ! Remove too small densities to stabilize the computation
          ! especially useful for Becke88
          if( ANY( rhor_r(:) > 1.0e-9_dp ) ) then
-           call xc_f90_gga_exc_vxc(xc_func(idft_xc),1_C_INT,rhor_r(1)       ,sigma2(1)       ,exc_libxc(1),vxc_libxc(1),vsigma(1)       )
+           call xc_f90_gga_exc_vxc(xc_func(idft_xc),1_C_INT,rhor_r(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1)       )
          else
            exc_libxc(:)     = 0.0_dp
            vxc_libxc(:)     = 0.0_dp
@@ -227,11 +227,11 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
          !FIXME  Hard coding !
 !             omega=0.00_dp
          omega=0.11_dp
-         call my_gga_exc_vxc_hjs(omega,rhor_r(1)       ,sigma2(1)       ,exc_libxc(1),vxc_libxc(1),vsigma(1)       )
+         call my_gga_exc_vxc_hjs(omega,rhor_r(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1)       )
        endif
 
      case(XC_FAMILY_MGGA)
-       call xc_f90_mgga_vxc(xc_func(idft_xc),1_C_INT,rhor_r(1),sigma2(1),lapl_rhor(1),tau(1),vxc_libxc(1),vsigma(1),vlapl_rho(1),vtau(1))
+       call xc_f90_mgga_vxc(xc_func(idft_xc),1_C_INT,rhor_r(1),sigma(1),lapl_rhor(1),tau(1),vxc_libxc(1),vsigma(1),vlapl_rho(1),vtau(1))
        ! no expression for the energy
        exc_libxc(1) = 0.0_dp
 
@@ -295,7 +295,7 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
          do jbf=1,basis%nbf
            do ibf=1,basis%nbf 
              vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight &
-                 *  dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf)  &
+                 * dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf)  &
                  * dft_xc_coef(idft_xc)
 
              vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight * dft_xc_coef(idft_xc) &

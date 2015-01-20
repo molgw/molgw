@@ -12,6 +12,7 @@ module m_inputparam
  use xc_f90_lib_m
  use xc_f90_types_m
 #endif
+ use iso_c_binding,only: C_INT,C_DOUBLE
 
  !
  ! Method definitions
@@ -61,9 +62,9 @@ module m_inputparam
  real(dp)                         :: alpha_hybrid_lr = 0.0_dp
  real(dp)                         :: rcut            = 0.0_dp
 
- integer,protected                :: ndft_xc      = 0
- integer,protected,allocatable    :: dft_xc_type(:)
- real(dp),protected,allocatable   :: dft_xc_coef(:)
+ integer,protected                    :: ndft_xc      = 0
+ integer(C_INT),protected,allocatable :: dft_xc_type(:)
+ real(C_DOUBLE),protected,allocatable :: dft_xc_coef(:)
 
 
 contains
