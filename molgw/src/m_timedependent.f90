@@ -197,7 +197,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
                     + SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
                           * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
                           * v2rho2(:,ijspin) )                            & 
-                          * docc_ij   
+                          * docc_ij * 2.0_dp / spin_fact
          if(allocated(v2sigma2)) then
            grad_ij(1,:,ijspin) = wf_gradr(1,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(1,:,jstate,ijspin) * wf_r(:,istate,ijspin)
            grad_ij(2,:,ijspin) = wf_gradr(2,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(2,:,jstate,ijspin) * wf_r(:,istate,ijspin)
@@ -213,13 +213,13 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
                                  + rho_gradr(3,:,1) * grad_kl(3,:,klspin)
 
            h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
-                    + SUM( dot_ij_kl(:,1) * 2.0_dp * vsigma(:,1) ) * docc_ij
+                    + SUM( dot_ij_kl(:,1) * 3.0_dp * vsigma(:,1) ) * docc_ij / spin_fact
            h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
-                    + SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * 1.0_dp * v2sigma2(:,1) ) * docc_ij
+                    + SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * 4.5_dp * v2sigma2(:,1) ) * docc_ij / spin_fact
            h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
-                    + SUM( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1) * 1.0_dp * v2rhosigma(:,1) ) * docc_ij
+                    + SUM( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1) * 3.0_dp * v2rhosigma(:,1) ) * docc_ij / spin_fact
            h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
-                    + SUM( wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) * 1.0_dp * v2rhosigma(:,1) ) * docc_ij
+                    + SUM( wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) * 3.0_dp * v2rhosigma(:,1) ) * docc_ij / spin_fact
          endif
        else
          h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
@@ -256,7 +256,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
 
      !
      ! Screened exchange part
-     if(calc_type%is_bse .AND. .NOT.is_rpa) then
+     if(calc_type%is_bse .AND. .NOT.is_rpa ) then
        if(ijspin==klspin) then
 
          if(.NOT. is_auxil_basis) then
@@ -367,14 +367,15 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  integer,parameter                  :: nomega=600
  complex(dp)                        :: omega(nomega)
  real(dp)                           :: docc_ij
- real(dp)                           :: absorp(nomega,3,3)
+ real(dp)                           :: dynamical_pol(nomega,3,3),photoabsorp_cross(nomega,3,3)
  real(dp)                           :: static_polarizability(3,3)
  real(dp)                           :: oscillator_strength,trk_sumrule
 
  real(dp),allocatable               :: dipole_basis(:,:,:),dipole_state(:,:,:,:)
  real(dp),allocatable               :: dipole_cart(:,:,:)
  real(dp),allocatable               :: residu_left(:,:),residu_right(:,:)
- integer,parameter                  :: unit_spectrum=101
+ integer,parameter                  :: unit_dynpol=101
+ integer,parameter                  :: unit_photocross=102
 !=====
  !
  ! Calculate the spectrum now
@@ -475,17 +476,25 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  enddo
 
 
- absorp(:,:,:) = 0.0_dp
+ !
+ ! Calculate the dynamical dipole polarizability
+ ! and the static dipole polarizability
+ dynamical_pol(:,:,:) = 0.0_dp
  static_polarizability(:,:) = 0.0_dp
  do t_ij=1,chi%npole
    do idir=1,3
      do jdir=1,3
-       absorp(:,idir,jdir) = absorp(:,idir,jdir) &
-                                   + residu_left(idir,t_ij) * residu_right(jdir,t_ij) &
-                                     *AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ij) ) )
+       dynamical_pol(:,idir,jdir) = dynamical_pol(:,idir,jdir) &
+                            + residu_left(idir,t_ij) * residu_right(jdir,t_ij) &
+                              *AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ij) ) )
        static_polarizability(idir,jdir) = static_polarizability(idir,jdir) + residu_left(idir,t_ij) * residu_right(jdir,t_ij) / eigenvalue(t_ij)
      enddo
    enddo
+ enddo
+ !
+ ! Get the photoabsorption cross section
+ do iomega=1,nomega
+   photoabsorp_cross(iomega,:,:) = 4.0_dp * pi * REAL(omega(iomega),dp) / c_speedlight * dynamical_pol(iomega,:,:)
  enddo
 
  WRITE_MASTER(*,'(/,a)') ' Neutral excitation energies [eV] and strengths'
@@ -509,14 +518,22 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
    WRITE_MASTER(*,'(3(4x,f12.6))') static_polarizability(idir,:)
  enddo
 
- open(unit_spectrum,file='optical_spectrum.dat',form='formatted')
- WRITE_MASTER(unit_spectrum,'(a)') '#  omega (eV)   Average     xx    yx    zx    xy    yy    zy    xz    yz    zz'
+ open(unit_dynpol,file='dynamical_dipole_polarizability.dat',form='formatted')
+ open(unit_photocross,file='photoabsorption_cross_section.dat',form='formatted')
+ WRITE_MASTER(unit_dynpol,'(a)') '#  Imaginary part of dynamical dipole polarizability'
+ WRITE_MASTER(unit_dynpol,'(a)') '#  omega (eV)   Average     xx    yx    zx    xy    yy    zy    xz    yz    zz'
+ WRITE_MASTER(unit_photocross,'(a)') '#  Imaginary part of dynamical dipole polarizability'
+ WRITE_MASTER(unit_photocross,'(a)') '#  omega (eV)   Average     xx    yx    zx    xy    yy    zy    xz    yz    zz'
  do iomega=1,nomega
-   WRITE_MASTER(unit_spectrum,'(11(e18.8,2x))') REAL(omega(iomega),dp)*Ha_eV,   &
-                                                SUM(absorp(iomega,:,:))/9.0_dp, &
-                                                absorp(iomega,:,:)
+   WRITE_MASTER(unit_dynpol,'(11(e18.8,2x))') REAL(omega(iomega),dp)*Ha_eV,                                      &
+                                              (dynamical_pol(iomega,1,1)+dynamical_pol(iomega,2,2)+dynamical_pol(iomega,3,3))/3.0_dp, &
+                                              dynamical_pol(iomega,:,:)
+   WRITE_MASTER(unit_photocross,'(11(e18.8,2x))') REAL(omega(iomega),dp)*Ha_eV,                                      &
+                                                  (photoabsorp_cross(iomega,1,1)+photoabsorp_cross(iomega,2,2)+photoabsorp_cross(iomega,3,3))/3.0_dp, &
+                                                  photoabsorp_cross(iomega,:,:)
  enddo 
- close(unit_spectrum)
+ close(unit_dynpol)
+ close(unit_photocross)
 
 
  deallocate(residu_left,residu_right)
@@ -599,15 +616,19 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
  call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
 
  allocate(v2rho2(ngrid,nspin),wf_r(ngrid,basis%nbf,nspin))
+ v2rho2(:,:) = 0.0_dp
+
  if(require_gradient) then
    allocate(vsigma(ngrid,2*nspin-1))
    allocate(v2rhosigma(ngrid,5*nspin-4))
    allocate(v2sigma2(ngrid,5*nspin-4))
    allocate(wf_gradr(3,ngrid,basis%nbf,nspin))
    allocate(rho_gradr(3,ngrid,nspin))
+   vsigma(:,:)     = 0.0_dp
+   v2rhosigma(:,:) = 0.0_dp
+   v2sigma2(:,:)   = 0.0_dp
  endif
 
- v2rho2(:,:) = 0.0_dp
 
  do igrid=1,ngrid
 
@@ -669,9 +690,9 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
      ! Remove too large values for stability
      v2rho2(igrid,:)     = v2rho2(igrid,:) + MIN(v2rho2_c(:),1.0e8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
      if(require_gradient) then
-       vsigma(igrid,:)     = MIN(vsigma_c(:)    ,1.0e8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
-       v2rhosigma(igrid,:) = MIN(v2rhosigma_c(:),1.0e8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
-       v2sigma2(igrid,:)   = MIN(v2sigma2_c(:)  ,1.0e8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
+       vsigma(igrid,:)     = vsigma(igrid,:)     + MIN(vsigma_c(:)    ,1.0e8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
+       v2rhosigma(igrid,:) = v2rhosigma(igrid,:) + MIN(v2rhosigma_c(:),1.0e8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
+       v2sigma2(igrid,:)   = v2sigma2(igrid,:)   + MIN(v2sigma2_c(:)  ,1.0e8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
      endif
 
    enddo
