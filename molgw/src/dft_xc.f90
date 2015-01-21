@@ -299,7 +299,7 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
                  * dft_xc_coef(idft_xc)
 
              vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight * dft_xc_coef(idft_xc) &
-                      * DOT_PRODUCT( dedgd_r(:,ispin) ,                                  &
+                      * DOT_PRODUCT( dedgd_r(:,ispin) ,                                     &
                                         basis_function_gradr(:,ibf) * basis_function_r(jbf) &
                                       + basis_function_gradr(:,jbf) * basis_function_r(ibf) )
            enddo
