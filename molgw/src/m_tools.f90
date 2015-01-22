@@ -790,8 +790,42 @@ function element_name(zatom)
    element_name='Cl'
  case(18)
    element_name='Ar'
+ case(19)
+   element_name='K'
+ case(20)
+   element_name='Ca'
+ case(21)
+   element_name='Sc'
+ case(22)
+   element_name='Ti'
+ case(23)
+   element_name='V'
+ case(24)
+   element_name='Cr'
+ case(25)
+   element_name='Mn'
+ case(26)
+   element_name='Fe'
+ case(27)
+   element_name='Co'
+ case(28)
+   element_name='Ni'
+ case(29)
+   element_name='Cu'
  case(30)
    element_name='Zn'
+ case(31)
+   element_name='Ga'
+ case(32)
+   element_name='Ge'
+ case(33)
+   element_name='As'
+ case(34)
+   element_name='Se'
+ case(35)
+   element_name='Br'
+ case(36)
+   element_name='Kr'
  case(47)
    element_name='Ag'
  case default

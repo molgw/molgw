@@ -65,6 +65,9 @@ subroutine setup_dft_grid()
  case('insane')
    nradial  = 120
    nangular = 230
+ case('moreinsane')
+   nradial  = 200
+   nangular = 434
  case default
    stop'integration quality not recognized'
  end select
@@ -111,6 +114,8 @@ subroutine setup_dft_grid()
    call ld0086(x1,y1,z1,w1,n1)
  case(230)
    call ld0230(x1,y1,z1,w1,n1)
+ case(434)
+   call ld0434(x1,y1,z1,w1,n1)
  case default
    WRITE_MASTER(*,*) 'grid points: ',nangular
    stop'Lebedev grid is not available'
