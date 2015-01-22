@@ -81,7 +81,7 @@ The wavefunctions are real, so the conguate symbols are not required.
       ( \epsilon_{j\sigma} - \epsilon_{i\sigma} ) \delta_{ij} \delta_{kl} \delta_{\sigma\tau}  \\
     + ( f_{i\sigma}  - f_{j\sigma} ) [ ( ij \sigma | kl \tau ) - \delta_{\sigma\tau} ( ik \sigma | jl \sigma) ] 
 \end{multline}
-
+ 
 
 
 
@@ -90,6 +90,28 @@ The wavefunctions are real, so the conguate symbols are not required.
 
 Let us write the TDHF equation.
 The generalization to screened TDHF (=BSE) will come later.
+\begin{equation}
+ \left( 
+   \begin{array}{cc}
+      \phantom{-}A  &  \phantom{-}B \\
+      -B  & -A 
+   \end{array}
+ \right) 
+   \left(
+   \begin{array}{c}
+       X \\
+       Y 
+   \end{array}
+   \right)
+  = \Omega
+   \left(
+   \begin{array}{c}
+       X \\
+       Y 
+   \end{array}
+   \right)
+\end{equation}
+or alternatively
 \begin{subequations}
 \begin{eqnarray}
  \label{eq:xy1}
@@ -143,7 +165,28 @@ Then adding or subtracting the latter two equations,
 \end{eqnarray}
 \end{subequations}
 
-
+Let us show that the left eigenvectors are obtained as $( ^tX , - ^t Y)$.
+As $A$ and $B$ are symmetric, then $^tX A = A X$.
+Hence,
+\begin{equation}
+ ( ^tX , - ^t Y)
+ \left( 
+   \begin{array}{cc}
+      \phantom{-}A  &  \phantom{-}B \\
+      -B  & -A 
+   \end{array}
+ \right) 
+ ( ^tX , - ^t Y)
+  \Omega
+\end{equation}
+which yield the same equation set:
+\begin{subequations}
+\begin{eqnarray}
+  AX + BY & = & \Omega X  \\
+  BX + AY & = &-\Omega Y 
+\end{eqnarray}
+\end{subequations}
+This is the same of equations as for the right eigenvectors.
 
 
 

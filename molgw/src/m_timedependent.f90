@@ -4,6 +4,7 @@
 module m_timedependent
  use m_definitions
  use m_timing
+ use m_warning
  use m_inputparam
 
 
@@ -13,7 +14,6 @@ contains
 !=========================================================================
 subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_matrix)
  use m_mpi
- use m_warning,only: issue_warning
  use m_tools
  use m_basis_set
  use m_eri
@@ -345,7 +345,6 @@ end subroutine polarizability_td
 !=========================================================================
 subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector,eigenvector_inv,eigenvalue)
  use m_mpi
- use m_warning,only: issue_warning
  use m_tools
  use m_basis_set
  use m_eri
@@ -566,6 +565,7 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
  real(dp),allocatable,intent(out) :: wf_gradr(:,:,:,:)
  real(dp),allocatable,intent(out) :: rho_gradr(:,:,:)
 !=====
+ real(dp),parameter :: kernel_capping=1.0e14_dp
  integer  :: idft_xc,igrid
  integer  :: ispin
  real(dp) :: rr(3)
@@ -685,14 +685,22 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
      case default
        stop'Other kernels not yet implemented'
      end select
+     !
+     ! Remove the too large values for stability
+     v2rho2_c(:) = MIN( v2rho2_c(:), kernel_capping )
+     if(require_gradient) then
+       vsigma_c(:)     = MIN( vsigma_c(:), kernel_capping )
+       v2rhosigma_c(:) = MIN( v2rhosigma_c(:), kernel_capping )
+       v2sigma2_c(:)   = MIN( v2sigma2_c(:), kernel_capping )
+     endif
 
      ! Store the result with the weight
      ! Remove too large values for stability
-     v2rho2(igrid,:)     = v2rho2(igrid,:) + MIN(v2rho2_c(:),1.0e8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
+     v2rho2(igrid,:)     = v2rho2(igrid,:) + v2rho2_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
      if(require_gradient) then
-       vsigma(igrid,:)     = vsigma(igrid,:)     + MIN(vsigma_c(:)    ,1.0e8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
-       v2rhosigma(igrid,:) = v2rhosigma(igrid,:) + MIN(v2rhosigma_c(:),1.0e8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
-       v2sigma2(igrid,:)   = v2sigma2(igrid,:)   + MIN(v2sigma2_c(:)  ,1.0e8_dp) * w_grid(igrid) * dft_xc_coef(idft_xc)
+       vsigma(igrid,:)     = vsigma(igrid,:)     + vsigma_c(:)     * w_grid(igrid) * dft_xc_coef(idft_xc)
+       v2rhosigma(igrid,:) = v2rhosigma(igrid,:) + v2rhosigma_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
+       v2sigma2(igrid,:)   = v2sigma2(igrid,:)   + v2sigma2_c(:)   * w_grid(igrid) * dft_xc_coef(idft_xc)
      endif
 
    enddo
