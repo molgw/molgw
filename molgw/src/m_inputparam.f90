@@ -371,16 +371,18 @@ subroutine read_inputparameter_molecule()
 ! use m_tools
  implicit none
 
- character(len=100)                 :: read_char
- character(len=200)                 :: read_line
- character(len=100)                 :: line_wocomment
- character(len=100)                 :: mixing_name
- character(len=100)                 :: quadrature_accuracy
- character(len=100)                 :: field1,field2,field3
- integer                            :: print_volume
- integer                            :: ipos,jpos,kpos
- integer                            :: istat,iatom,jatom
- real(dp)                           :: charge,length_factor
+ character(len=100)   :: read_char
+ character(len=200)   :: read_line
+ character(len=100)   :: line_wocomment
+ character(len=100)   :: mixing_name
+ character(len=100)   :: quadrature_accuracy
+ character(len=100)   :: field1,field2,field3
+ integer              :: print_volume
+ integer              :: ipos,jpos,kpos
+ integer              :: istat,iatom,jatom
+ integer              :: natom_read
+ real(dp),allocatable :: zatom_read(:),x_read(:,:)
+ real(dp)             :: charge,length_factor
 !=====
 
  !
@@ -441,6 +443,14 @@ subroutine read_inputparameter_molecule()
    is_auxil_basis = .TRUE.
  endif
  
+#ifdef FULL_AUXIL
+ if( .NOT. is_auxil_basis) then
+   WRITE_MASTER(*,*) 'Code has been compiled for auxiliairy basis only calculations'
+   WRITE_MASTER(*,*) 'Compilation option -DFULL_AUXIL'
+   WRITE_MASTER(*,*) 'However no auxiliary basis has been provided in the input file'
+   stop'STOP HERE'
+ endif
+#endif
 
 
  !
@@ -493,8 +503,8 @@ case('PULAY')
  
  !
  ! Reading line 6 and following
- read(*,*) natom,read_char
- if(natom<1) stop'natom<1'
+ read(*,*) natom_read,read_char
+ if(natom_read<1) stop'natom<1'
 
  !
  ! lengths are stored internally in bohr
@@ -508,26 +518,13 @@ case('PULAY')
    stop'units for lengths in input file not understood'
  end select
 
- allocate(zatom(natom),x(3,natom),basis_element(natom))
- do iatom=1,natom
-   read(*,*) zatom(iatom),x(:,iatom)
+ allocate(x_read(3,natom_read),zatom_read(natom_read))
+ do iatom=1,natom_read
+   read(*,*) zatom_read(iatom),x_read(:,iatom)
  enddo
- x(:,:) = x(:,:) * length_factor
-
- !
- ! check for atoms too close
- do iatom=1,natom
-   do jatom=iatom+1,natom
-     if( SQRT( SUM( (x(:,iatom)-x(:,jatom))**2 ) ) < 0.2 ) then
-       WRITE_MASTER(*,*) 'atoms',iatom,jatom
-       WRITE_MASTER(*,*) 'are closer than 0.2 bohr'
-       stop'stop here'
-     endif
-   enddo
- enddo
-
-
- basis_element(:)=NINT(zatom(:))
+ x_read(:,:) = x_read(:,:) * length_factor
+ call init_atoms(natom_read,zatom_read,x_read)
+ deallocate(x_read,zatom_read)
 
  electrons = SUM(zatom(:)) - charge
 
@@ -571,8 +568,8 @@ case('PULAY')
    WRITE_MASTER(*,'(2x,a2,3(x,f12.6),6x,3(x,f12.6))') element_name(zatom(iatom)),x(:,iatom),x(:,iatom)*bohr_A
  enddo
 
-
  WRITE_MASTER(*,*) '================================'
+ WRITE_MASTER(*,'(a,i5)') ' Number of bonds ',nbond
  WRITE_MASTER(*,*)
 
 end subroutine read_inputparameter_molecule

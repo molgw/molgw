@@ -346,6 +346,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  use m_inputparam
  use m_basis_set
  use m_dft_grid
+ use m_eri
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
  use xc_f90_lib_m
@@ -373,7 +374,9 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  real(dp)             :: vxc
  real(dp)             :: vsigma(2*nspin-1)
  real(dp)             :: vhartree
- character(len=256)   :: string
+ real(dp)             :: vhgau(basis%nbf,basis%nbf)
+ integer              :: iatom,igau,ngau
+ real(dp),allocatable :: alpha(:),coeff(:)
 !=====
 
  vhxc_ij(:,:) = 0.0_dp
@@ -381,13 +384,46 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
 ! call start_clock(timing_dft)
 
  WRITE_MASTER(*,'(/,a)') ' Calculate approximate HXC potential on a grid'
+
+ do iatom=1,natom
+   if( zatom(iatom) <= 2.0_dp ) then
+     ngau = 1
+     allocate(alpha(ngau),coeff(ngau))
+     alpha(1) = 0.5_dp
+     coeff(1) = zatom(iatom)
+   else if( zatom(iatom) <= 10.0_dp ) then
+     ngau = 2
+     allocate(alpha(ngau),coeff(ngau))
+     alpha(1) = 0.3_dp
+     coeff(1) = 2.0_dp
+     alpha(2) = 2.6_dp
+     coeff(2) = zatom(iatom) - coeff(1)
+   else
+     ngau = 3
+     allocate(alpha(ngau),coeff(ngau))
+     alpha(1) = 0.2_dp
+     coeff(1) = 2.0_dp
+     alpha(2) = 1.4_dp
+     coeff(2) = 8.0_dp
+     alpha(3) = 3.2_dp
+     coeff(3) = zatom(iatom) - coeff(1) - coeff(2)
+   endif
+
+   do igau=1,ngau
+     call calculate_eri_approximate_hartree(.FALSE.,basis,x(:,iatom),alpha(igau),vhgau)
+     vhxc_ij(:,:) = vhxc_ij(:,:) + vhgau(:,:) * coeff(igau) / 2.0_dp**1.25_dp / pi**0.75_dp * alpha(igau)**1.5_dp
+   enddo
+
+   deallocate(alpha,coeff)
+ enddo
+
+ WRITE_MASTER(*,'(/,a)') ' Calculate approximate HXC potential on a grid'
  WRITE_MASTER(*,*) 'Home-made functional LDA functional'
-
-
  !
  ! For the first time, set up the stored arrays
  !
  if( .NOT. allocated(bfr) ) call prepare_basis_functions_r(basis)
+
 
  do igrid=1,ngrid
 
@@ -407,16 +443,20 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
    normalization = normalization + rhor * weight
 
    call teter_lda_vxc(rhor,vxc)
-!   vxc=0.0
-
    !
    ! HXC
    do jbf=1,basis%nbf
      do ibf=1,basis%nbf 
        vhxc_ij(ibf,jbf) =  vhxc_ij(ibf,jbf) + weight &
-           *  (vhartree+vxc) * basis_function_r(ibf) * basis_function_r(jbf) 
+           *  vxc * basis_function_r(ibf) * basis_function_r(jbf)
      enddo
    enddo
+!   do jbf=1,basis%nbf
+!     do ibf=1,basis%nbf 
+!       vhxc_ij(ibf,jbf) =  vhxc_ij(ibf,jbf) + weight &
+!           *  (vhartree+vxc) * basis_function_r(ibf) * basis_function_r(jbf) 
+!     enddo
+!   enddo
 
  enddo ! loop on the grid point
  !
@@ -425,7 +465,6 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
    call xsum(normalization)
    call xsum(vhxc_ij)
  endif
-
 
  WRITE_MASTER(*,'(/,a,2(2x,f12.6))') ' number of electrons:',normalization
 ! call stop_clock(timing_dft)
@@ -438,15 +477,17 @@ subroutine setup_atomic_density(rr,rhor,vhartree)
  use m_definitions
  use m_atoms
  use m_gaussian
+ use m_inputparam
  implicit none
 
  real(dp),intent(in)  :: rr(3)
  real(dp),intent(out) :: rhor,vhartree
 !=====
- integer  :: iatom,igau,ngau
- real(dp) :: dr
+ real(dp),parameter   :: bondcharge=1.000_dp
+ integer              :: iatom,igau,ngau,ibond
+ real(dp)             :: dr
  real(dp),allocatable :: alpha(:),coeff(:)
- type(gaussian) :: ga
+ real(dp)             :: xbond(3)
 !=====
 
  rhor = 0.0_dp
@@ -457,18 +498,18 @@ subroutine setup_atomic_density(rr,rhor,vhartree)
      ngau = 1
      allocate(alpha(ngau),coeff(ngau))
      alpha(1) = 0.5_dp
-     coeff(1) = zatom(iatom)
+     coeff(1) = zatom(iatom) 
    else if( zatom(iatom) <= 10.0_dp ) then
      ngau = 2
      allocate(alpha(ngau),coeff(ngau))
-     alpha(1) = 0.7_dp
+     alpha(1) = 0.3_dp
      coeff(1) = 2.0_dp
-     alpha(2) = 2.5_dp
-     coeff(2) = zatom(iatom) - coeff(1)
+     alpha(2) = 2.6_dp
+     coeff(2) = zatom(iatom) - coeff(1) 
    else 
      ngau = 3
      allocate(alpha(ngau),coeff(ngau))
-     alpha(1) = 0.5_dp
+     alpha(1) = 0.2_dp
      coeff(1) = 2.0_dp
      alpha(2) = 1.4_dp
      coeff(2) = 8.0_dp
@@ -486,6 +527,16 @@ subroutine setup_atomic_density(rr,rhor,vhartree)
    deallocate(alpha,coeff)
  enddo
 
+! ngau = 1
+! allocate(alpha(1),coeff(1))
+! coeff(1) = ( electrons - bondcharge * SUM(zatom(:)) ) / REAL(nbond,dp)
+! alpha(1) = 3.0_dp
+! do ibond=1,nbond
+!   call get_bondcenter(ibond,xbond)
+!   rhor     = rhor     + SQRT(alpha(1)/pi)**3 * EXP( -alpha(1)*dr**2) * coeff(1)
+!   vhartree = vhartree + ERF(SQRT(alpha(1))*dr)/dr * coeff(1)
+! enddo
+! deallocate(alpha,coeff)
 
 
 end subroutine setup_atomic_density
