@@ -74,7 +74,7 @@ program molgw
  !
  ! Build up the basis set 
  !
- call init_basis_set(print_basis,basis_name      ,gaussian_type,basis)
+ call init_basis_set(print_basis,basis_name,gaussian_type,basis)
  call setup_cart_to_pure_transforms(gaussian_type)
 
  !
@@ -136,26 +136,38 @@ program molgw
  call dump_out_occupation(title,basis%nbf,nspin,occupation)
 
  !
- ! Calculate the parts of the hamiltonian that does not change along
- ! with the SCF cycles
- !
- ! Kinetic energy contribution
- call setup_kinetic(print_matrix,basis,hamiltonian_kinetic)
-
- !
- ! Nucleus-electron interaction
- call setup_nucleus(print_matrix,basis,hamiltonian_nucleus)
-
- !
  ! Try to read a RESTART file if it exists
  call read_any_restart(basis%nbf,occupation,c_matrix,energy,hamiltonian_exx,hamiltonian_xc,is_restart,is_big_restart)
+
+ !
+ ! Setup the grids for the quadrature of DFT potential/energy
+ if( calc_type%is_dft .AND. .NOT. is_big_restart) then
+   call setup_dft_grid()
+ endif
+
+ !
+ ! Calculate the parts of the hamiltonian that does not change along
+ ! with the SCF cycles
+ if( .NOT. is_big_restart .AND. .NOT. calc_type%is_ci) then
+   !
+   ! Kinetic energy contribution
+   call setup_kinetic(print_matrix,basis,hamiltonian_kinetic)
+  
+   !
+   ! Nucleus-electron interaction
+   call setup_nucleus(print_matrix,basis,hamiltonian_nucleus)
+ endif
 
  if( .NOT. is_restart) then
    !
    ! Setup the initial c_matrix by diagonalizing the bare hamiltonian
    allocate(hamiltonian_tmp(basis%nbf,basis%nbf))
-   hamiltonian_tmp(:,:) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
-   WRITE_MASTER(*,*) 'Diagonalization of the bare hamiltonian'
+   !
+   ! Calculate a very approximate vhxc based on simple gaussians placed on atoms
+   call dft_approximate_vhxc(basis,hamiltonian_tmp)
+   hamiltonian_tmp(:,:) = hamiltonian_tmp(:,:) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+
+   WRITE_MASTER(*,*) 'Diagonalization of an approximate hamiltonian'
    call diagonalize_generalized_sym(basis%nbf,hamiltonian_tmp,s_matrix,&
                                     energy(:,1),c_matrix(:,:,1))
    deallocate(hamiltonian_tmp)
@@ -164,7 +176,7 @@ program molgw
   
    if( print_matrix ) then
      do ispin=1,nspin
-       matrix_tmp(:,:,ispin) = transpose( c_matrix(:,:,ispin) )
+       matrix_tmp(:,:,ispin) = TRANSPOSE( c_matrix(:,:,ispin) )
      enddo
      title='=== Initial C matrix ==='
      call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix_tmp)
@@ -185,12 +197,6 @@ program molgw
  !
  ! Initialize the SCF mixing procedure
  call init_scf(nscf,basis%nbf,nspin,alpha_mixing)
-
- !
- ! Setup the grids for the quadrature of DFT potential/energy
- if( calc_type%is_dft .AND. .NOT. is_big_restart) then
-   call setup_dft_grid()
- endif
 
  !
  ! If an auxiliary basis is given,

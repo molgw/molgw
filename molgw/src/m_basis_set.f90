@@ -34,14 +34,15 @@ module m_basis_set
    integer                      :: ngaussian
    type(gaussian),allocatable   :: g(:) 
    real(dp),allocatable         :: coeff(:)
+   integer                      :: iatom
  end type
 
  !
  ! A basis set is a list of basis functions
- ! filtering of some elements can be done by rotation 
  type basis_set
    !
    ! The list
+   integer                                 :: ammax
    integer                                 :: nbf
    integer                                 :: nbf_cart
    integer                                 :: nshell
@@ -49,15 +50,13 @@ module m_basis_set
    type(basis_function),allocatable        :: bf(:)                      ! Cartesian basis function
    !
    ! then additional data needed for product basis
-   integer                                 :: nbf_filtered
    integer,allocatable                     :: index_ij(:,:)
    integer,allocatable                     :: index_prodbasis(:,:)
-   real(dp),allocatable                    :: rotation(:,:)
-   integer                                 :: ammax
  end type basis_set
 
 
 contains
+
 
 !=========================================================================
  subroutine init_basis_set(print_basis,basis_name,gaussian_type,basis)
@@ -68,11 +67,11 @@ contains
  type(basis_set),intent(out)   :: basis
 !====
  character(len=100)            :: basis_filename
- integer                       :: ibf,jbf,kbf,ng,ig,shell_index
+ integer                       :: ibf,jbf,kbf,ng,ig,shell_index,ibf_file
  real(dp),allocatable          :: alpha(:),coeff(:),coeff2(:)
  logical                       :: file_exists
  integer,parameter             :: basis_file=11
- integer                       :: am_tmp,mm,nbf
+ integer                       :: am_tmp,mm,nbf_file
  logical,parameter             :: normalized=.TRUE.
  integer                       :: iatom
  real(dp)                      :: x0(3)
@@ -107,9 +106,9 @@ contains
    !
    ! read first to get all the dimensions
    open(unit=basis_file,file=TRIM(basis_filename),status='old')
-   read(basis_file,*) nbf
-   if(nbf<1) stop'ERROR in basis set file'
-   do ibf=1,nbf
+   read(basis_file,*) nbf_file
+   if(nbf_file<1) stop'ERROR in basis set file'
+   do ibf_file=1,nbf_file
      read(basis_file,*) ng,am_tmp
      if(ng<1) stop'ERROR in basis set file'
      basis%nbf_cart = basis%nbf_cart + number_basis_function_am(CARTESIAN          ,am_tmp)
@@ -121,6 +120,7 @@ contains
    close(basis_file)
   
  enddo
+
 
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,'(a50,i8)') 'Total number of basis functions:',basis%nbf
@@ -135,8 +135,8 @@ contains
 
    basis_filename=TRIM(element_name(REAL(basis_element(iatom),dp)))//'_'//TRIM(basis_name)
    open(unit=basis_file,file=TRIM(basis_filename),status='old')
-   read(basis_file,*) nbf
-   do ibf=1,nbf
+   read(basis_file,*) nbf_file
+   do ibf_file=1,nbf_file
      read(basis_file,*) ng,am_tmp
      allocate(alpha(ng),coeff(ng),coeff2(ng))
   
@@ -160,10 +160,15 @@ contains
      x0(:) = x(:,iatom)
 
      shell_index = shell_index + 1
-  
+
+     !
+     ! Set up the atom index
+     basis%bf(jbf+1:jbf+number_basis_function_am(CARTESIAN,am_tmp))%iatom = iatom
+
      select case(am_tmp)
      case( 0)
        jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,0,x0,alpha,coeff,shell_index,basis%bf(jbf))
+       basis%bf(jbf)%iatom = iatom 
      case( 1)
        jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,0,x0,alpha,coeff,shell_index,basis%bf(jbf))
        jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,0,x0,alpha,coeff,shell_index,basis%bf(jbf))
@@ -344,9 +349,7 @@ contains
  type(basis_set),intent(out)    :: prod_basis
 !====
  integer                        :: ibf,jbf,iprodbf,jprodbf
- real(dp)                       :: overlap_tmp,norm_tmp
  real(dp),allocatable           :: s_matrix(:,:),eigval(:),eigvec(:,:)
- real(dp),allocatable           :: rotation_tmp(:,:),tmp(:)
  character(len=100)             :: title
 !====
 
@@ -381,7 +384,6 @@ contains
  deallocate(basis%bf)
  if(allocated(basis%index_ij))        deallocate(basis%index_ij)
  if(allocated(basis%index_prodbasis)) deallocate(basis%index_prodbasis)
- if(allocated(basis%rotation))        deallocate(basis%rotation)
 
  end subroutine destroy_basis_set
 
@@ -431,6 +433,7 @@ contains
 
  end subroutine init_basis_function
 
+
 !=========================================================================
  subroutine destroy_basis_function(bf)
  implicit none
@@ -440,6 +443,7 @@ contains
  deallocate(bf%g,bf%coeff)
 
  end subroutine destroy_basis_function
+
 
 !=========================================================================
  function number_basis_function_am(gaussian_type,am)
@@ -482,6 +486,7 @@ contains
 
  end function number_basis_function_am
 
+
 !=========================================================================
  subroutine print_basis_function(bf)
  implicit none
@@ -506,6 +511,7 @@ contains
  WRITE_MASTER(*,*)
 
  end subroutine print_basis_function
+
 
 !=========================================================================
  function eval_basis_function(bf,x)
@@ -541,6 +547,7 @@ contains
 
  end function eval_basis_function_grad
 
+
 !=========================================================================
  function eval_basis_function_lapl(bf,x)
  implicit none
@@ -558,6 +565,7 @@ contains
 
  end function eval_basis_function_lapl
 
+
 !=========================================================================
  subroutine overlap_basis_function(bf1,bf2,overlap)
  implicit none
@@ -571,17 +579,14 @@ contains
  overlap=0.0_dp
  do ig=1,bf1%ngaussian
    do jg=1,bf2%ngaussian
-#ifdef ATOM
-     call overlap_normalized(bf1%g(ig),bf2%g(jg),overlap_one_gaussian)
-#else
      call overlap_recurrence(bf1%g(ig),bf2%g(jg),overlap_one_gaussian)
-#endif
      overlap = overlap + overlap_one_gaussian * bf1%coeff(ig) * bf2%coeff(jg)
    enddo
  enddo
 
 
  end subroutine overlap_basis_function
+
 
 !=========================================================================
  subroutine overlap_three_basis_function(bf1,bf2,bf3,overlap)
@@ -635,17 +640,14 @@ contains
  kinetic=0.0_dp
  do ig=1,bf1%ngaussian
    do jg=1,bf2%ngaussian
-#ifdef ATOM
-     call kinetic_gaussian(bf1%g(ig),bf2%g(jg),kinetic_one_gaussian)
-#else
      call kinetic_recurrence(bf1%g(ig),bf2%g(jg),kinetic_one_gaussian)
-#endif
      kinetic = kinetic + kinetic_one_gaussian * bf1%coeff(ig) * bf2%coeff(jg)
    enddo
  enddo
 
 
  end subroutine kinetic_basis_function
+
 
 !=========================================================================
  subroutine nucleus_basis_function(bf1,bf2,zatom,x,nucleus_pot)
@@ -661,17 +663,14 @@ contains
  nucleus_pot=0.0_dp
  do ig=1,bf1%ngaussian
    do jg=1,bf2%ngaussian
-#ifdef ATOM
-     call nucleus_pot_gaussian(bf1%g(ig),bf2%g(jg),zatom,nucleus_pot_one_gaussian)
-#else
      call nucleus_recurrence(zatom,x,bf1%g(ig),bf2%g(jg),nucleus_pot_one_gaussian)
-#endif
      nucleus_pot = nucleus_pot + nucleus_pot_one_gaussian * bf1%coeff(ig) * bf2%coeff(jg)
    enddo
  enddo
 
 
  end subroutine nucleus_basis_function
+
 
 !=========================================================================
  subroutine basis_function_prod(bf1,bf2,bfprod)
@@ -710,6 +709,7 @@ contains
  deallocate(coeff,alpha)
 
  end subroutine basis_function_prod
+
 
 !=========================================================================
 subroutine basis_function_dipole(bf1,bf2,dipole)
@@ -871,6 +871,7 @@ subroutine basis_function_dipole_sq(bf1,bf2,dipole)
  dipole(3) = dipole(3) + dipole_tmp * bf2%x0(3)**2
 
 end subroutine basis_function_dipole_sq
+
 
 !=========================================================================
 subroutine setup_cart_to_pure_transforms(gaussian_type)
@@ -1100,6 +1101,7 @@ subroutine setup_cart_to_pure_transforms(gaussian_type)
  WRITE_MASTER(*,*) 
 
 end subroutine setup_cart_to_pure_transforms
+
 
 !=========================================================================
 end module m_basis_set

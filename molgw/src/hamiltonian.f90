@@ -78,7 +78,7 @@ subroutine setup_kinetic(print_matrix,basis,hamiltonian_kinetic)
  real(dp),allocatable :: matrix_cart(:,:)
 !====
 
- WRITE_MASTER(*,*) 'Setup kinetic part of the Hamiltonian'
+ WRITE_MASTER(*,'(/,a)') ' Setup kinetic part of the Hamiltonian'
 
  ibf_cart = 1
  jbf_cart = 1
@@ -143,7 +143,7 @@ subroutine setup_nucleus(print_matrix,basis,hamiltonian_nucleus)
  real(dp)             :: vnucleus_ij
 !====
 
- WRITE_MASTER(*,*) 'Setup nucleus-electron part of the Hamiltonian'
+ WRITE_MASTER(*,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian'
 
  ibf_cart = 1
  jbf_cart = 1
@@ -599,70 +599,6 @@ subroutine test_density_matrix(nbf,nspin,p_matrix,s_matrix)
 end subroutine test_density_matrix
 
 
-#if 0
-!=========================================================================
-subroutine read_density_matrix(nbf,nspin,p_matrix)
- use m_definitions
- use m_warning
- implicit none
- integer,intent(in)   :: nbf,nspin
- real(dp),intent(out) :: p_matrix(nbf,nbf,nspin)
-!=====
- logical              :: file_exists
- integer              :: ispin,ibf,jbf
-!=====
-
- inquire(file='manual_densitymatrix',exist=file_exists)
-
- if(file_exists) then
-   msg='reading input density matrix'
-   call issue_warning(msg)
-
-   open(11,file='manual_densitymatrix',status='old')
-   do ispin=1,nspin
-     do jbf=1,nbf
-       do ibf=1,nbf
-         read(11,*) p_matrix(ibf,jbf,ispin) 
-       enddo
-     enddo
-   enddo
-   close(11)
-
- endif
-
-
-end subroutine read_density_matrix
-
-
-!=========================================================================
-subroutine write_density_matrix(nspin,nbf,p_matrix)
- use m_definitions
- use m_warning
- use m_mpi
- implicit none
- integer,intent(in)   :: nbf,nspin
- real(dp),intent(in) :: p_matrix(nbf,nbf,nspin)
-!=====
- integer              :: ispin,ibf,jbf
-!=====
-
-
- WRITE_MASTER(*,*) 'output final density matrix on file'
- WRITE_MASTER(*,'(a,i5,a,i5,a,i2,/)') ' dimensions',nbf,' x ',nbf,' x ',nspin
- open(11,file='output_densitymatrix')
- do ispin=1,nspin
-   do jbf=1,nbf
-     do ibf=1,nbf
-       WRITE_MASTER(11,*) p_matrix(ibf,jbf,ispin) 
-     enddo
-   enddo
- enddo
- close(11)
-
-
-end subroutine write_density_matrix
-#endif
-
 !=========================================================================
 subroutine set_occupation(electrons,magnetization,nbf,occupation)
  use m_definitions
@@ -746,14 +682,61 @@ end subroutine guess_starting_c_matrix
 
 
 !=========================================================================
-subroutine guess_starting_c_matrix_new(basis,nspin,c_matrix)
+subroutine guess_starting_c_matrix2(nbf,basis,c_matrix)
+ use m_definitions
+ use m_basis_set
+ use m_atoms
+ use m_inputparam,only: nspin,spin_fact
+ implicit none
+ integer,intent(in)         :: nbf
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(out)       :: c_matrix(nbf,nbf,nspin)
+!====
+ integer              :: ibf
+ integer              :: ibf_cart
+ integer              :: i_cart
+ integer              :: ni,ni_cart,li
+ character(len=100)   :: title
+ real(dp),allocatable :: matrix_cart(:,:)
+ integer              :: iatom,iatom_prev
+ integer              :: nelect_remaining
+!====
+
+ WRITE_MASTER(*,*) 'Setup overlap matrix S'
+
+ iatom_prev = -1
+ ibf_cart = 1
+ ibf      = 1
+ do while(ibf_cart<=basis%nbf_cart)
+   li      = basis%bf(ibf_cart)%am
+   ni_cart = number_basis_function_am(CARTESIAN,li)
+   ni      = number_basis_function_am(basis%gaussian_type,li)
+
+   iatom = basis%bf(ibf_cart)%iatom
+   if( iatom /= iatom_prev ) then
+     nelect_remaining = NINT(zatom(iatom))
+   else
+   endif
+
+
+   ibf      = ibf      + ni
+   ibf_cart = ibf_cart + ni_cart
+ end do
+
+
+
+end subroutine guess_starting_c_matrix2
+
+
+!=========================================================================
+subroutine guess_starting_c_matrix_new(basis,c_matrix)
  use m_definitions
  use m_mpi
  use m_gaussian
  use m_basis_set
+ use m_inputparam,only: nspin
  implicit none
  type(basis_set),intent(in) :: basis
- integer,intent(in)         :: nspin
  real(dp),intent(out)       :: c_matrix(basis%nbf,basis%nbf,nspin)
 !=====
  integer  :: ibf,jbf,kbf,ig

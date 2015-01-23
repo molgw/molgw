@@ -4,6 +4,7 @@ module m_atoms
  use m_definitions
 
  integer                      :: natom
+ integer                      :: natom_type
 
  real(dp),allocatable         :: zatom(:)
  integer,allocatable          :: basis_element(:)
@@ -11,6 +12,7 @@ module m_atoms
  real(dp),allocatable         :: x(:,:)
 
 contains
+
 
 !=========================================================================
 subroutine nucleus_nucleus_energy(energy)
@@ -29,4 +31,6 @@ subroutine nucleus_nucleus_energy(energy)
 
 end subroutine nucleus_nucleus_energy
 
+
 end module m_atoms
+!=========================================================================

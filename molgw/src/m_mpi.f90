@@ -58,6 +58,7 @@ module m_mpi
  interface xsum
    module procedure xsum_r
    module procedure xsum_ra1d
+   module procedure xsum_ra2d
    module procedure xsum_ra3d
  end interface
 
@@ -530,6 +531,28 @@ subroutine xsum_ra1d(array)
  endif
 
 end subroutine xsum_ra1d
+
+
+!=========================================================================
+subroutine xsum_ra2d(array)
+ implicit none
+ real(dp),intent(inout) :: array(:,:)
+!=====
+ integer :: n1,n2
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_comm, ier)
+#endif
+ if(ier/=0) then
+   WRITE_ME(*,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xsum_ra2d
 
 
 !=========================================================================
