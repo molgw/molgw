@@ -19,30 +19,6 @@ module m_gaussian
 
 contains
 
-!=========================================================================
-subroutine init_gaussian(nx,ny,nz,alpha,ga)
- use m_tools
- implicit none
- integer,intent(in) :: nx,ny,nz
- real(dp),intent(in) :: alpha
- type(gaussian),intent(inout) :: ga
-!=====
-
- ga%nx = nx
- ga%ny = ny
- ga%nz = nz
- ga%am = nx + ny + nz
- ga%amc = orbital_momentum_name(ga%am)
-
- ga%alpha = alpha
-
- ga%norm_factor = ( 2.0_dp / pi )**0.75_dp &
-                 * 2.0_dp**ga%am * ga%alpha**( 0.25_dp * ( 2.0_dp*ga%am + 3.0_dp ) ) &
-                 / SQRT( REAL( double_factorial(2*nx-1) * double_factorial(2*ny-1) * double_factorial(2*nz-1) , dp ) )
-
- ga%x0(:) = 0.0_dp
-
-end subroutine init_gaussian
 
 !=========================================================================
 subroutine init_gaussian_general(nx,ny,nz,alpha,x0,ga)
@@ -50,7 +26,7 @@ subroutine init_gaussian_general(nx,ny,nz,alpha,x0,ga)
  implicit none
  integer,intent(in) :: nx,ny,nz
  real(dp),intent(in) :: alpha,x0(3)
- type(gaussian),intent(inout) :: ga
+ type(gaussian),intent(out) :: ga
 !=====
 
  ga%nx = nx
@@ -68,6 +44,7 @@ subroutine init_gaussian_general(nx,ny,nz,alpha,x0,ga)
  ga%x0(:) = x0(:)
 
 end subroutine init_gaussian_general
+
 
 !=========================================================================
 function eval_gaussian(ga,x)
@@ -92,6 +69,7 @@ function eval_gaussian(ga,x)
  eval_gaussian = eval_gaussian * ga%norm_factor
 
 end function eval_gaussian
+
 
 !=========================================================================
 function eval_gaussian_grad(ga,x)
@@ -129,6 +107,7 @@ function eval_gaussian_grad(ga,x)
 
 
 end function eval_gaussian_grad
+
 
 !=========================================================================
 function eval_gaussian_lapl(ga,x)
@@ -248,126 +227,9 @@ contains
    endif
   
   end function integral_1d
+
 end subroutine overlap
 
-!=========================================================================
-subroutine kinetic_gaussian(ga,gb,kin_me)
- implicit none
- type(gaussian),intent(in) :: ga,gb
- real(dp),intent(out) :: kin_me
-!=====
- type(gaussian) :: gbtmp
- integer :: nx_t,ny_t,nz_t
- real(dp) :: beta,rtmp,rtmpx,rtmpy,rtmpz
-!=====
-
- beta = gb%alpha
-
- !
- ! the kinetic energy matrix element is a sum of 9 terms
- call overlap(ga,gb,rtmp)
- rtmpx = -2.0_dp * beta * ( 2.0 * gb%nx + 1 ) * rtmp
- rtmpy = -2.0_dp * beta * ( 2.0 * gb%ny + 1 ) * rtmp
- rtmpz = -2.0_dp * beta * ( 2.0 * gb%nz + 1 ) * rtmp
-
- gbtmp=gb
- gbtmp%nx=gbtmp%nx+2
- call overlap(ga,gbtmp,rtmp)
- rtmpx = rtmpx + 4.0_dp * beta**2 * rtmp
-
- gbtmp=gb
- gbtmp%ny=gbtmp%ny+2
- call overlap(ga,gbtmp,rtmp)
- rtmpy = rtmpy + 4.0_dp * beta**2 * rtmp
-
- gbtmp=gb
- gbtmp%nz=gbtmp%nz+2
- call overlap(ga,gbtmp,rtmp)
- rtmpz = rtmpz + 4.0_dp * beta**2 * rtmp
-
- if(gb%nx>=2) then
-   gbtmp=gb
-   gbtmp%nx=gbtmp%nx-2
-   call overlap(ga,gbtmp,rtmp)
-   rtmpx = rtmpx + gb%nx * ( gb%nx - 1 ) * rtmp
- endif
-
- if(gb%ny>=2) then
-   gbtmp=gb
-   gbtmp%ny=gbtmp%ny-2
-   call overlap(ga,gbtmp,rtmp)
-   rtmpy = rtmpy + gb%ny * ( gb%ny - 1 ) * rtmp
- endif
-
- if(gb%nz>=2) then
-   gbtmp=gb
-   gbtmp%nz=gbtmp%nz-2
-   call overlap(ga,gbtmp,rtmp)
-   rtmpz = rtmpz + gb%nz * ( gb%nz - 1 ) * rtmp
- endif
-
- !
- ! sum up the nine terms
- kin_me = -0.5_dp * ( rtmpx + rtmpy + rtmpz )
- !
- ! normalize everything
- kin_me = kin_me * ga%norm_factor * gb%norm_factor
-
-end subroutine kinetic_gaussian
-
-!=========================================================================
-subroutine nucleus_pot_gaussian(ga,gb,zatom,pot_me)
- use m_tools, only: coeffs_gausslegint
- implicit none
- type(gaussian),intent(in) :: ga,gb
- real(dp),intent(in) :: zatom
- real(dp),intent(out) :: pot_me
-!====
- integer,parameter :: NSAMP=100
- type(gaussian) :: gprod,gu
- integer :: isamp
- real(dp) :: u(NSAMP),wu(NSAMP)
- real(dp) :: u2,integral,rtmp
-!=====
-
- !
- ! poor man version of the nucleus - electron integral
- ! only works when the gaussian and the atoms are located in the same place
- !
- ! based on the identity (found in Obara and Saika):
- ! 1 / |r_1 - r_2| = 2 / sqrt(pi) \int_0^{+\infty} du exp( - u^2 (r_1-r_2)^2 )
- !
-
- !
- ! set up the gauss-legendre integration scheme from 0 to infinity
- !
- ! first get the coefficient from 0 to 1
- call coeffs_gausslegint(0.0_dp,1.0_dp,u,wu,NSAMP)
- ! second apply variable changei
- !  u' =  u / (1-u)
- ! wu' = wu / (1-u)^2
- wu(:) = wu(:) / ( 1 - u(:) )**2
- u(:)  =  u(:) / ( 1 - u(:) )
-
- call product_gaussian(ga,gb,gprod)
-
- integral = 0.0_dp
- do isamp=1,NSAMP
-
-   u2 = u(isamp)**2
-
-   call init_gaussian(0,0,0,u2,gu)
-   call overlap(gprod,gu,rtmp)
-   integral = integral + wu(isamp) * rtmp
-
- enddo
- integral = integral * 2.0_dp / SQRT(pi)
-
- pot_me = - zatom * integral
-
- pot_me = pot_me * ga%norm_factor * gb%norm_factor
-
-end subroutine nucleus_pot_gaussian
 
 !=========================================================================
 function orbital_momentum_name(am)

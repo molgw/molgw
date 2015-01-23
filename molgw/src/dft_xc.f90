@@ -339,6 +339,158 @@ end subroutine dft_exc_vxc
 
 
 !=========================================================================
+subroutine dft_approximate_vhxc(basis,vhxc_ij)
+ use m_definitions
+ use m_mpi
+ use m_timing
+ use m_inputparam
+ use m_basis_set
+ use m_dft_grid
+#ifdef HAVE_LIBXC
+ use libxc_funcs_m
+ use xc_f90_lib_m
+ use xc_f90_types_m
+#endif
+#ifdef _OPENMP
+ use omp_lib
+#endif
+ use iso_c_binding,only: C_INT
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(out)       :: vhxc_ij(basis%nbf,basis%nbf)
+!=====
+
+ integer  :: idft_xc
+ integer  :: igrid,ibf,jbf,ispin
+ real(dp) :: rr(3)
+ real(dp) :: normalization
+ real(dp) :: weight
+
+ real(dp)             :: basis_function_r(basis%nbf)
+
+ real(dp)             :: rhor
+ real(dp)             :: vxc
+ real(dp)             :: vsigma(2*nspin-1)
+ real(dp)             :: vhartree
+ character(len=256)   :: string
+!=====
+
+ vhxc_ij(:,:) = 0.0_dp
+
+! call start_clock(timing_dft)
+
+ WRITE_MASTER(*,'(/,a)') ' Calculate approximate HXC potential on a grid'
+ WRITE_MASTER(*,*) 'Home-made functional LDA functional'
+
+
+ !
+ ! For the first time, set up the stored arrays
+ !
+ if( .NOT. allocated(bfr) ) call prepare_basis_functions_r(basis)
+
+ do igrid=1,ngrid
+
+   rr(:) = rr_grid(:,igrid)
+   weight = w_grid(igrid)
+
+   !
+   ! Get all the functions and gradients at point rr
+   call get_basis_functions_r(basis,igrid,basis_function_r)
+
+   !
+   ! calculate the density at point r for spin up and spin down
+   call setup_atomic_density(rr,rhor,vhartree)
+
+   !
+   ! Normalization
+   normalization = normalization + rhor * weight
+
+   call teter_lda_vxc(rhor,vxc)
+!   vxc=0.0
+
+   !
+   ! HXC
+   do jbf=1,basis%nbf
+     do ibf=1,basis%nbf 
+       vhxc_ij(ibf,jbf) =  vhxc_ij(ibf,jbf) + weight &
+           *  (vhartree+vxc) * basis_function_r(ibf) * basis_function_r(jbf) 
+     enddo
+   enddo
+
+ enddo ! loop on the grid point
+ !
+ ! Sum up the contributions from all procs only if needed
+ if( parallel_grid ) then
+   call xsum(normalization)
+   call xsum(vhxc_ij)
+ endif
+
+
+ WRITE_MASTER(*,'(/,a,2(2x,f12.6))') ' number of electrons:',normalization
+! call stop_clock(timing_dft)
+
+end subroutine dft_approximate_vhxc
+
+
+!=========================================================================
+subroutine setup_atomic_density(rr,rhor,vhartree)
+ use m_definitions
+ use m_atoms
+ use m_gaussian
+ implicit none
+
+ real(dp),intent(in)  :: rr(3)
+ real(dp),intent(out) :: rhor,vhartree
+!=====
+ integer  :: iatom,igau,ngau
+ real(dp) :: dr
+ real(dp),allocatable :: alpha(:),coeff(:)
+ type(gaussian) :: ga
+!=====
+
+ rhor = 0.0_dp
+ vhartree = 0.0_dp
+ do iatom=1,natom
+
+   if( zatom(iatom) <= 2.0_dp ) then
+     ngau = 1
+     allocate(alpha(ngau),coeff(ngau))
+     alpha(1) = 0.5_dp
+     coeff(1) = zatom(iatom)
+   else if( zatom(iatom) <= 10.0_dp ) then
+     ngau = 2
+     allocate(alpha(ngau),coeff(ngau))
+     alpha(1) = 0.7_dp
+     coeff(1) = 2.0_dp
+     alpha(2) = 2.5_dp
+     coeff(2) = zatom(iatom) - coeff(1)
+   else 
+     ngau = 3
+     allocate(alpha(ngau),coeff(ngau))
+     alpha(1) = 0.5_dp
+     coeff(1) = 2.0_dp
+     alpha(2) = 1.4_dp
+     coeff(2) = 8.0_dp
+     alpha(3) = 3.2_dp
+     coeff(3) = zatom(iatom) - coeff(1) - coeff(2)
+   endif
+
+   dr=NORM2( rr(:) - x(:,iatom) )
+
+   do igau=1,ngau
+     rhor     = rhor     + SQRT(alpha(igau)/pi)**3 * EXP( -alpha(igau)*dr**2) * coeff(igau)
+     vhartree = vhartree + ERF(SQRT(alpha(igau))*dr)/dr * coeff(igau)
+   enddo
+
+   deallocate(alpha,coeff)
+ enddo
+
+
+
+end subroutine setup_atomic_density
+
+!=========================================================================
 subroutine calc_density_r(nspin,nbf,p_matrix,basis_function_r,rhor_r)
  use m_definitions
  use m_mpi
@@ -404,6 +556,61 @@ subroutine calc_density_gradr(nspin,nbf,p_matrix,basis_function_r,basis_function
  enddo
 
 end subroutine calc_density_gradr
+
+
+!=========================================================================
+subroutine teter_lda_vxc(rhor,vxc)
+ use m_definitions
+ implicit none
+
+!Arguments ------------------------------------
+!scalars
+ real(dp),intent(in) :: rhor
+!arrays
+ real(dp),intent(out) :: vxc
+
+ !
+ ! The usual full LDA parameters of Teter
+ real(dp),parameter :: a0p=.4581652932831429_dp
+ real(dp),parameter :: a1p=2.217058676663745_dp
+ real(dp),parameter :: a2p=0.7405551735357053_dp
+ real(dp),parameter :: a3p=0.01968227878617998_dp
+ real(dp),parameter :: b1p=1.0_dp
+ real(dp),parameter :: b2p=4.504130959426697_dp
+ real(dp),parameter :: b3p=1.110667363742916_dp
+ real(dp),parameter :: b4p=0.02359291751427506_dp
+
+ real(dp) :: d1m1,d2d1drs2,d2d1drsdf,d2excdf2
+ real(dp) :: d2excdrs2,d2excdrsdf,d2excdz2,d2fxcdz2,d2n1drs2,d2n1drsdf,dd1df
+ real(dp) :: dd1drs,dexcdf,dexcdrs,dexcdz,dfxcdz,dn1df,dn1drs
+ real(dp) :: n1,d1
+ real(dp) :: rs
+ real(dp) :: exc
+!no_abirules
+!Set a minimum rho below which terms are 0
+ real(dp),parameter :: rhotol=1.d-28
+
+! *************************************************************************
+
+
+ rs = ( 3.0_dp / (4.0_dp*pi*rhor) )**(1.0_dp/3.0_dp) 
+ n1 = a0p+rs*(a1p+rs*(a2p+rs*a3p))
+ d1 = rs*(b1p+rs*(b2p+rs*(b3p+rs*b4p)))
+ d1m1 = 1.0_dp / d1
+
+!Exchange-correlation energy
+ exc=-n1*d1m1
+
+!Exchange-correlation potential
+ dn1drs=a1p+rs*(2._dp*a2p+rs*(3._dp*a3p))
+ dd1drs=b1p+rs*(2._dp*b2p+rs*(3._dp*b3p+rs*(4._dp*b4p)))
+
+!dexcdrs is d(exc)/d(rs)
+ dexcdrs=-(dn1drs+exc*dd1drs)*d1m1
+ vxc = exc - rs * dexcdrs / 3.0_dp
+
+
+end subroutine teter_lda_vxc
 
 
 !=========================================================================
@@ -646,10 +853,6 @@ subroutine my_lda_exc_vxc(nspin,ixc,rhor,exc,vxc)
        vxc(2)=vxcp - (zet+1.0_dp)*dexcdz
 
  end if
-
-
-
-
 
 end subroutine my_lda_exc_vxc
 

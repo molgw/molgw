@@ -451,10 +451,10 @@ subroutine read_inputparameter_molecule()
  select case(TRIM(mixing_name))
  case('SIMPLE')
    mixing_scheme = simple_mixing
- case('PULAY')
+ case('PULAYOLD')
+   mixing_scheme = pulayold_mixing
+case('PULAY')
    mixing_scheme = pulay_mixing
- case('FBFB')
-   mixing_scheme = FBFB_mixing
  case default
    WRITE_MASTER(*,*) TRIM(mixing_name)
    stop'mixing scheme not recognized'

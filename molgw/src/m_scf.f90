@@ -8,12 +8,12 @@ module m_scf
  private
  
  public               :: en
- public               :: simple_mixing,pulay_mixing,mixing_scheme,FBFB_mixing
+ public               :: simple_mixing,pulay_mixing,mixing_scheme,pulayold_mixing
  public               :: init_scf,destroy_scf,store_residual,new_p_matrix,check_converged
 
  integer,parameter    :: simple_mixing = 1
- integer,parameter    :: pulay_mixing  = 2
- integer,parameter    :: FBFB_mixing   = 3
+ integer,parameter    :: pulayold_mixing  = 2
+ integer,parameter    :: pulay_mixing   = 3
 
  integer              :: mixing_scheme
 
@@ -62,9 +62,9 @@ subroutine init_scf(nscf,nbf,nspin,alpha_mixing)
  select case(mixing_scheme)
  case(simple_mixing)
    nhistmax=1
- case(pulay_mixing)
+ case(pulayold_mixing)
    nhistmax=12
- case(FBFB_mixing)
+ case(pulay_mixing)
    nhistmax=8
  case default
    stop'mixing scheme not implemented'
@@ -119,12 +119,12 @@ subroutine new_p_matrix(p_matrix_in)
 !=====
 
  n_scf          = n_scf + 1
- nhist_current  = MIN(nhist_current+1,nhistmax) !FBFBMIN(nhistmax,n_scf-1)
+ nhist_current  = MIN(nhist_current+1,nhistmax) 
 
  select case(mixing_scheme)
  case(simple_mixing)
    call do_simple_mixing(p_matrix_in)
- case(pulay_mixing)
+ case(pulayold_mixing)
    if(n_scf<=3) then ! for safety, just do simple mixing at the begining
      call do_simple_mixing(p_matrix_in)
    else
@@ -132,7 +132,7 @@ subroutine new_p_matrix(p_matrix_in)
      call do_pulay_mixing(p_matrix_in,alpha_diis)
      deallocate(alpha_diis)
    endif
- case(FBFB_mixing)
+ case(pulay_mixing)
    if(n_scf<=3) then ! for safety, just do simple mixing at the begining
      call do_simple_mixing(p_matrix_in)
    else
