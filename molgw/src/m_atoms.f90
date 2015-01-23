@@ -1,17 +1,106 @@
-!FIXME: introduce the initialization, reading and destruction method here!
+!=========================================================================
+#include "macros.h"
 !=========================================================================
 module m_atoms
  use m_definitions
+ use m_mpi
 
- integer                      :: natom
- integer                      :: natom_type
+ integer,protected              :: natom
+ integer,protected              :: natom_type
+ integer,protected              :: nbond
 
- real(dp),allocatable         :: zatom(:)
- integer,allocatable          :: basis_element(:)
+ real(dp),allocatable,protected :: zatom(:)
+ integer,allocatable,protected  :: basis_element(:)
 
- real(dp),allocatable         :: x(:,:)
+ real(dp),allocatable,protected :: x(:,:)
+
 
 contains
+
+
+!=========================================================================
+subroutine init_atoms(natom_read,zatom_read,x_read)
+ implicit none
+ integer,intent(in)  :: natom_read
+ real(dp),intent(in) :: zatom_read(natom_read),x_read(3,natom_read)
+!=====
+ integer :: iatom,jatom
+!=====
+
+ natom = natom_read
+ allocate(zatom(natom))
+ allocate(basis_element(natom))
+ allocate(x(3,natom))
+
+ zatom(:) = zatom_read(:)
+ basis_element(:)=NINT(zatom(:))
+
+ x(:,:) = x_read(:,:)
+
+ !
+ ! Check for atoms too close
+ do iatom=1,natom
+   do jatom=iatom+1,natom
+     if( NORM2( x(:,iatom)-x(:,jatom) ) < 0.2 ) then
+       WRITE_MASTER(*,*) 'Atoms',iatom,jatom
+       WRITE_MASTER(*,*) 'are closer than 0.2 bohr'
+       stop'stop here'
+     endif
+   enddo
+ enddo
+
+ !
+ ! Find the covalent bond is a simple distance criterium
+ nbond = 0
+ do iatom=1,natom
+   do jatom=iatom+1,natom
+     if( NORM2( x(:,iatom)-x(:,jatom) ) < 4.0 ) then
+       nbond = nbond + 1
+     endif
+   enddo
+ enddo
+
+
+end subroutine init_atoms
+
+
+!=========================================================================
+subroutine get_bondcenter(ibond,xbond)
+ implicit none
+ integer,intent(in)   :: ibond
+ real(dp),intent(out) :: xbond(3)
+!=====
+ integer :: iatom,jatom,jbond
+!=====
+
+ jbond = 0
+ do iatom=1,natom
+   do jatom=iatom+1,natom
+     if( NORM2( x(:,iatom)-x(:,jatom) ) < 4.0 ) then
+       jbond = jbond + 1
+       if(jbond==ibond) then
+         xbond(:) = 0.5_dp * ( x(:,iatom) - x(:,jatom) )
+         return
+       endif
+     endif
+   enddo
+ enddo
+
+
+
+end subroutine get_bondcenter
+
+
+!=========================================================================
+subroutine destroy_atoms()
+ implicit none
+!=====
+
+ if(allocated(zatom)) deallocate(zatom)
+ if(allocated(basis_element)) deallocate(basis_element)
+ if(allocated(x)) deallocate(x)
+
+end subroutine destroy_atoms
 
 
 !=========================================================================

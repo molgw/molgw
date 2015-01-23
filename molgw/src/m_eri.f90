@@ -1293,6 +1293,247 @@ end subroutine calculate_eri_3center
 
 
 !=========================================================================
+subroutine calculate_eri_approximate_hartree(print_eri,basis,x0_rho,alpha_rho,vhrho)
+ use ISO_C_BINDING
+ use m_tools,only: boys_function
+#ifdef _OPENMP
+ use omp_lib
+#endif
+ implicit none
+ logical,intent(in)           :: print_eri
+ type(basis_set),intent(in)   :: basis
+ real(dp),intent(in)          :: x0_rho(3)
+ real(dp),intent(in)          :: alpha_rho
+ real(dp),intent(out)         :: vhrho(basis%nbf,basis%nbf)
+!=====
+ integer                      :: ishell,jshell,kshell,lshell
+ integer                      :: klshellpair
+ integer                      :: n1,n2,n3,n4
+ integer                      :: n1c,n2c,n3c,n4c
+ integer                      :: ng1,ng2,ng3,ng4
+ integer                      :: ig1,ig2,ig3,ig4
+ integer                      :: ni,nj,nk,nl
+ integer                      :: ami,amj,amk,aml
+ integer                      :: ii,i,j,k,l
+ integer                      :: ibf,jbf,kbf,lbf
+ integer                      :: iibf,jjbf,kkbf,llbf
+ integer                      :: info
+ integer                      :: ordering
+ real(dp)                     :: zeta_12,zeta_34,rho,rho1,f0t(0:0),tt
+ real(dp)                     :: p(3),q(3)
+ real(dp),allocatable         :: integrals_tmp(:,:,:,:)
+ real(dp),allocatable         :: integrals_cart(:,:,:,:)
+!=====
+! variables used to call C
+ integer(C_INT),external      :: libint_init,calculate_integral
+ integer(C_INT),external      :: eval_contr_integral
+ integer(C_INT)               :: am1,am2,am3,am4
+ real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
+ real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
+ real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
+ real(C_DOUBLE),allocatable   :: int_shell(:)
+ real(C_DOUBLE)               :: rcut_libint
+!=====
+
+
+ vhrho(:,:) = 0.0_dp
+ rcut_libint = 0.0_dp
+
+ do klshellpair=1,nshellpair
+   kshell = index_shellpair(1,klshellpair)
+   lshell = index_shellpair(2,klshellpair)
+   !
+   ! Order the angular momenta so that libint is pleased
+   ! 1) am3+am4 >= am1+am2
+   ! 2) am3>=am4
+   ! 3) am1>=am2
+   amk = shell(kshell)%am
+   aml = shell(lshell)%am
+
+   do jshell=1,1  ! FAKE LOOP
+     do ishell=1,1 ! FAKE LOOP
+       ami = 0
+       amj = 0
+
+       ni = 1
+       nj = 1
+       nk = number_basis_function_am( basis%gaussian_type , amk )
+       nl = number_basis_function_am( basis%gaussian_type , aml )
+
+
+       am1 = 0
+       am2 = 0
+       am3 = shell(kshell)%am
+       am4 = shell(lshell)%am
+       n1c = 1
+       n2c = 1
+       n3c = number_basis_function_am( CARTESIAN , amk )
+       n4c = number_basis_function_am( CARTESIAN , aml )
+       n1 = ni
+       n2 = nj
+       n3 = nk
+       n4 = nl
+       ng1 = 1
+       ng2 = 1
+       ng3 = shell(kshell)%ng
+       ng4 = shell(lshell)%ng
+       allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
+       allocate(coeff1(ng1),coeff2(ng2),coeff3(ng3),coeff4(ng4))
+       alpha1(:) = alpha_rho
+       alpha2(:) = 0.0_dp
+       alpha3(:) = shell(kshell)%alpha(:)
+       alpha4(:) = shell(lshell)%alpha(:)
+       coeff1(:) = 1.0_dp
+       coeff2(:) = 1.0_dp
+       coeff3(:) = shell(kshell)%coeff(:)
+       coeff4(:) = shell(lshell)%coeff(:)
+       x01(:) = x0_rho(:)
+       x02(:) = x0_rho(:)
+       x03(:) = shell(kshell)%x0(:)
+       x04(:) = shell(lshell)%x0(:)
+
+       allocate( int_shell(n1c*n2c*n3c*n4c) )
+       allocate( integrals_cart(n1c,n2c,n3c,n4c) )
+       allocate( integrals_tmp (n1c,n2c,n3c,n4c) )
+       integrals_cart(:,:,:,:) = 0.0_dp
+
+
+       if(am1+am2+am3+am4==0) then
+
+         do ig4=1,ng4
+           do ig3=1,ng3
+             do ig2=1,ng2
+               do ig1=1,ng1
+
+                 zeta_12 = alpha1(ig1) + alpha2(ig2)
+                 zeta_34 = alpha3(ig3) + alpha4(ig4)
+                 p(:) = ( alpha1(ig1) * x01(:) + alpha2(ig2) * x02(:) ) / zeta_12 
+                 q(:) = ( alpha3(ig3) * x03(:) + alpha4(ig4) * x04(:) ) / zeta_34 
+                 !
+                 ! Full range or long-range only integrals
+                 rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
+                 rho1 = rho
+                 
+                 tt = rho * SUM( (p(:)-q(:))**2 )
+                 call boys_function(f0t(0),0,tt)
+
+                 integrals_cart(1,1,1,1) = integrals_cart(1,1,1,1) + &
+                       2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
+                       / zeta_12 * EXP( -alpha1(ig1)*alpha2(ig2)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
+                       / zeta_34 * EXP( -alpha3(ig3)*alpha4(ig4)/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
+                       * SQRT( rho / rho1 ) &
+                       * coeff1(ig1) * coeff2(ig2) &
+                       * coeff3(ig3) * coeff4(ig4) &
+                       * cart_to_pure_norm(0)%matrix(1,1)**4
+
+               enddo
+             enddo
+           enddo
+         enddo
+
+       else
+
+         info=eval_contr_integral(                &
+                                 am1,am2,am3,am4, &
+                                 ng1,ng2,ng3,ng4, &
+                                 coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
+                                 alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
+                                 x01(1),x02(1),x03(1),x04(1),&
+                                 rcut_libint, &
+                                 int_shell(1))
+   
+   
+         if(info/=0) then
+           WRITE_MASTER(*,*) am1,am2,am3,am4
+           stop 'ERI calculated by libint failed'
+         endif
+   
+         iibf=0
+         do ibf=1,n1c
+           do jbf=1,n2c
+             do kbf=1,n3c
+               do lbf=1,n4c
+                 iibf=iibf+1
+                 integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
+               enddo
+             enddo
+           enddo
+         enddo
+
+
+         do lbf=1,n4c
+           do kbf=1,n3c
+             do jbf=1,n2c
+               do ibf=1,n1
+                 integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1c,jbf,kbf,lbf) * cart_to_pure_norm(am1)%matrix(1:n1c,ibf) )
+               enddo
+             enddo
+           enddo
+         enddo
+
+         do lbf=1,n4c
+           do kbf=1,n3c
+             do jbf=1,n2
+               do ibf=1,n1
+                 integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2c,kbf,lbf) * cart_to_pure_norm(am2)%matrix(1:n2c,jbf) )
+               enddo
+             enddo
+           enddo
+         enddo
+
+         do lbf=1,n4c
+           do kbf=1,n3
+             do jbf=1,n2
+               do ibf=1,n1
+                 integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n3c,lbf) * cart_to_pure_norm(am3)%matrix(1:n3c,kbf) )
+               enddo
+             enddo
+           enddo
+         enddo
+
+         do lbf=1,n4
+           do kbf=1,n3
+             do jbf=1,n2
+               do ibf=1,n1
+                 integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n4c) * cart_to_pure_norm(am4)%matrix(1:n4c,lbf) )
+               enddo
+             enddo
+           enddo
+         enddo
+
+
+       endif ! is (ss|ss)
+       
+         
+       do lbf=1,nl
+         do kbf=1,nk
+           do jbf=1,nj
+             do ibf=1,ni
+               vhrho( shell(kshell)%istart+kbf-1 , shell(lshell)%istart+lbf-1 ) = integrals_cart(ibf,jbf,kbf,lbf)
+               ! And the symmetric too
+               vhrho( shell(lshell)%istart+lbf-1 , shell(kshell)%istart+kbf-1 ) = integrals_cart(ibf,jbf,kbf,lbf)
+             enddo
+           enddo
+         enddo
+       enddo
+
+
+
+       deallocate(integrals_cart)
+       deallocate(integrals_tmp)
+       deallocate(int_shell)
+       deallocate(alpha1,alpha2,alpha3,alpha4)
+       deallocate(coeff1,coeff2,coeff3,coeff4)
+
+     enddo
+   enddo
+ enddo
+
+
+end subroutine calculate_eri_approximate_hartree
+
+
+!=========================================================================
 subroutine setup_negligible_basispair()
  implicit none
 !====

@@ -53,6 +53,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  real(dp),allocatable    :: dot_ij_kl(:,:),dot_rho_ij(:,:),dot_rho_kl(:,:)
 
  logical                 :: is_tddft
+ logical                 :: require_gradient
  logical                 :: is_ij
  logical                 :: is_rpa
 
@@ -96,7 +97,9 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  ! Prepare TDDFT calculations
  if(is_tddft) then
    call prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2sigma2,wf_r,wf_gradr,rho_gradr)
+   require_gradient = .FALSE.
    if(allocated(v2sigma2)) then ! GGA case
+     require_gradient = .TRUE.
      allocate(grad_ij(3,ngrid,nspin))
      allocate(grad_kl(3,ngrid,nspin))
      allocate(dot_ij_kl(ngrid,nspin))
@@ -193,12 +196,14 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
      ! Add the kernel for TDDFT
      if(is_tddft) then
        if(nspin==1) then
+
          h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
                     + SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
                           * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
                           * v2rho2(:,ijspin) )                            & 
                           * docc_ij * 2.0_dp / spin_fact
-         if(allocated(v2sigma2)) then
+
+         if(require_gradient) then
            grad_ij(1,:,ijspin) = wf_gradr(1,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(1,:,jstate,ijspin) * wf_r(:,istate,ijspin)
            grad_ij(2,:,ijspin) = wf_gradr(2,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(2,:,jstate,ijspin) * wf_r(:,istate,ijspin)
            grad_ij(3,:,ijspin) = wf_gradr(3,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(3,:,jstate,ijspin) * wf_r(:,istate,ijspin)
@@ -221,14 +226,16 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
            h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
                     + SUM( wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) * 3.0_dp * v2rhosigma(:,1) ) * docc_ij / spin_fact
          endif
+
        else
+
          h_2p(t_ij,t_kl) = h_2p(t_ij,t_kl)   &
                     + SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
                           * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
                           * v2rho2(:,ijspin) )                            & 
                           * docc_ij  
 
-         if(allocated(v2sigma2)) then
+         if(require_gradient) then
            stop'spin in TD-GGA not implemented yet'
          endif
 
@@ -565,7 +572,7 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
  real(dp),allocatable,intent(out) :: wf_gradr(:,:,:,:)
  real(dp),allocatable,intent(out) :: rho_gradr(:,:,:)
 !=====
- real(dp),parameter :: kernel_capping=1.0e14_dp
+ real(dp),parameter :: kernel_capping=1.0e24_dp
  integer  :: idft_xc,igrid
  integer  :: ispin
  real(dp) :: rr(3)
@@ -685,6 +692,22 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
      case default
        stop'Other kernels not yet implemented'
      end select
+!     if(v2rho2_c(1) > 1e12 ) then
+!       write(*,*) 'v2rho2',v2rho2_c(1)
+!       write(*,*) rho_c(1),sigma_c(1)
+!       write(*,*)
+!     endif
+!     if(v2rhosigma_c(1) > 1e12 ) then
+!       write(*,*) 'v2rhosigma',v2rhosigma_c(1)
+!       write(*,*) rho_c(1),sigma_c(1)
+!       write(*,*)
+!     endif
+!     if(v2sigma2_c(1) > 1e12 ) then
+!       write(*,*) 'v2sigma2',v2sigma2_c(1)
+!       write(*,*) 'v2rho2',v2rho2_c(1)
+!       write(*,*) rho_c(1),sigma_c(1)
+!       write(*,*)
+!     endif
      !
      ! Remove the too large values for stability
      v2rho2_c(:) = MIN( v2rho2_c(:), kernel_capping )

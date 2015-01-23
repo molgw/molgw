@@ -356,6 +356,7 @@ program molgw
  call destroy_basis_set(basis)
  if(is_auxil_basis) call destroy_basis_set(auxil_basis)
  if(calc_type%is_gw .OR. calc_type%is_td .OR. calc_type%is_bse ) call destroy_basis_set(prod_basis)
+ call destroy_atoms()
 
  call stop_clock(timing_postscf)
  call stop_clock(timing_total)
