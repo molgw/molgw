@@ -62,7 +62,7 @@ int eval_contr_integral(
  unsigned int am1 = *am1_in;
  unsigned int am2 = *am2_in;
  unsigned int am3 = *am3_in;
- int ncontr0123=*ncontr0 * *ncontr1 * *ncontr2 * *ncontr3;
+ unsigned int ncontr0123=*ncontr0 * *ncontr1 * *ncontr2 * *ncontr3;
  Libint_t inteval[ncontr0123];
  int p0, p1, p2, p3, p0123;
  double contrcoef0123;
