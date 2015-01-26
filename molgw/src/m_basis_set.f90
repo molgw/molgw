@@ -35,6 +35,7 @@ module m_basis_set
    type(gaussian),allocatable   :: g(:) 
    real(dp),allocatable         :: coeff(:)
    integer                      :: iatom
+   logical                      :: is_diffuse
  end type
 
  !
@@ -75,6 +76,7 @@ contains
  logical,parameter             :: normalized=.TRUE.
  integer                       :: iatom
  real(dp)                      :: x0(3)
+ integer                       :: ndiffuse
 !====
 
  basis%nbf           = 0
@@ -129,6 +131,7 @@ contains
  endif
  allocate(basis%bf(basis%nbf_cart))
 
+ ndiffuse=0
  jbf         = 0
  shell_index = 0
  do iatom=1,natom
@@ -164,6 +167,15 @@ contains
      !
      ! Set up the atom index
      basis%bf(jbf+1:jbf+number_basis_function_am(CARTESIAN,am_tmp))%iatom = iatom
+     !
+     ! Set up the diffuse flag
+     ! The limit is quite arbitrary though
+     if( MAXVAL(alpha(:)) < 0.05_dp) then
+       basis%bf(jbf+1:jbf+number_basis_function_am(CARTESIAN,am_tmp))%is_diffuse = .TRUE.
+       ndiffuse = ndiffuse + number_basis_function_am(basis%gaussian_type,am_tmp)
+     else
+       basis%bf(jbf+1:jbf+number_basis_function_am(CARTESIAN,am_tmp))%is_diffuse = .FALSE.
+     endif
 
      select case(am_tmp)
      case( 0)
@@ -313,6 +325,8 @@ contains
  ! END OF THE LOOP OVER ATOMS
  enddo
  
+ WRITE_MASTER(*,'(a50,i8)') 'Total number of diffuse functions:',ndiffuse
+
  basis%nshell = shell_index
  WRITE_MASTER(*,'(a50,i8)') 'Number of shells:',basis%nshell
 
