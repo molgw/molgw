@@ -368,7 +368,7 @@ end subroutine output_calculation_type
 
 !=========================================================================
 subroutine read_inputparameter_molecule()
-! use m_tools
+ use m_elements
  implicit none
 
  character(len=100)   :: read_char
