@@ -194,11 +194,66 @@ This is the same of equations as for the right eigenvectors.
 
 
 
+\section{How to translate the different optical constants}
 
+The dynamical dipole polarizability tensor $\alpha_{xy}(\omega)$ is defined as
+\begin{equation}
+ \alpha_{xy}(\omega) = \sum_s R_s^x R_s^y
+         \left[ \frac{1}{\omega-\Omega_s + i\eta}
+               -\frac{1}{\omega+\Omega_s + i\eta} \right]
+\end{equation}
+The optical measurements in gas phase are isotropic
+\begin{equation}
+  \bar \alpha(\omega) = \frac{1}{3} \sum_\mu \alpha_{\mu\mu}(\omega) 
+\end{equation}
+The imaginary part reads
+\begin{equation}
+  \mathrm{Im} \bar \alpha(\omega) =  \frac{1}{3} \sum_s \sum_\mu |R_s^\mu|^2 \pi
+   \left[ \delta(\omega - \Omega_s) - \delta(\omega + \Omega_s) \right]
+\end{equation}
+The oscillator strengths $f_n$ are defined as
+\begin{equation}
+  f_s = \frac{2}{3} \Omega_s \sum_\mu |R_s^\mu|^2 .
+\end{equation}
+They are handy since they satisfy the Thomas-Reiche-Kuhn sumrule:
+\begin{equation}
+  \sum_s f_s = N ,
+\end{equation}
+where $N$ is the number of electrons.
+Then, the imaginary part of the dynamical dipole polarizability reads
+\begin{equation}
+  \mathrm{Im} \bar \alpha(\omega) =  \sum_s \frac{\pi}{2} \frac{f_s}{\Omega_s} 
+   \left[ \delta(\omega - \Omega_s) - \delta(\omega + \Omega_s) \right]
+\end{equation}
+The photoabsorption cross section $\sigma(\omega)$ is defined as
+\begin{equation}
+  \sigma(\omega) = \frac{4\pi}{c} \omega \mathrm{Im}\bar\alpha(\omega) ,
+\end{equation}
+where $c$ is the speed of light,
+and hence
+\begin{equation}
+  \sigma(\omega) = \frac{2\pi^2}{c} \sum_s f_s
+      \left[ \delta(\omega - \Omega_s) - \delta(\omega + \Omega_s) \right].
+\end{equation}
+The Thomas-Reiche-Kuhne sumrule translates into
+\begin{equation}
+ \int_0^{+\infty} \sigma(\omega) = \frac{2\pi^2}{c} N .
+\end{equation}
 
-
-
-
+Let us demonstrate the link with the solid-state quantity $\mathrm{Im} \epsilon(\omega)$
+through the $f$-sumrule which is analogous to Thomas-Reiche-Kuhne sumrule.
+\begin{equation}
+ \int_0^{+\infty} \omega \mathrm{Im}\epsilon(\omega) = \frac{2\pi^2}{V} N ,
+\end{equation}
+where $V$ is the volume that contains the $N$ electrons.
+By identification, 
+\begin{equation}
+ \sigma(\omega) = \frac{V}{c} \omega \mathrm{Im}\epsilon(\omega)
+\end{equation}
+and
+\begin{equation}
+ \mathrm{Im} \bar\alpha(\omega) = \frac{V}{4\pi} \mathrm{Im}\epsilon(\omega)
+\end{equation}
 
 
 

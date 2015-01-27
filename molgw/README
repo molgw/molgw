@@ -57,11 +57,11 @@ Example input files can be found in ./tests/
 To be done:
 * pseudopotentials (e.g. ECP or Goedecker flavor)
 * parallelization!
-* TD-DFT using GGA
 
 Known issues:
 * QPscGW scf loop is quite unstable for large basis sets, use a low alpha (<= 0.50)
 * Use of linearization of the GW self-energy can affect the QP energies (50 meV difference is observed)
+* TD-DFT GGA kernel can induce very large numerical value which limits the numerical stability and breaks some comparison with other codes.
 
 Author:
 Fabien Bruneval
