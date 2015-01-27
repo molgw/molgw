@@ -3,10 +3,11 @@
 !=========================================================================
 module m_basis_set
  use m_definitions
+ use m_elements
  use m_mpi
  use m_timing
  use m_warning
- use m_tools, only: element_name,diagonalize,invert,double_factorial
+ use m_tools, only: diagonalize,invert,double_factorial
  use m_gaussian
  use m_atoms
 
@@ -18,7 +19,8 @@ module m_basis_set
  type transform
    real(dp),allocatable         :: matrix(:,:)
  end type
- integer,parameter              :: lmax_transform=5
+ integer,parameter              :: lmax_transform     =6
+ integer,parameter              :: lmax_transform_pure=5
  type(transform)                :: cart_to_pure(0:lmax_transform)
  type(transform)                :: cart_to_pure_norm(0:lmax_transform)
 
@@ -339,6 +341,9 @@ contains
  WRITE_MASTER(*,'(a50,a8)') '                                          ',orbital_momentum_name(basis%ammax)
 
  if(basis%ammax > lmax_transform ) then      
+   stop'angular momentum too high. Not implemented in cart to pure transform'
+ endif
+ if(basis%ammax > lmax_transform_pure .AND. basis%gaussian_type == PURE ) then      
    stop'angular momentum too high. Not implemented in cart to pure transform'
  endif
 

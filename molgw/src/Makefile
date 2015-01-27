@@ -24,11 +24,11 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 
 
 
-../molgw: macros.h m_definitions.o m_mpi.o m_timing.o m_warning.o m_atoms.o m_tools.o m_scf.o \
+../molgw: macros.h m_definitions.o m_mpi.o m_elements.o m_timing.o m_warning.o m_atoms.o m_tools.o m_scf.o \
          m_gaussian.o m_basis_set.o m_inputparam.o m_eri.o m_spectral_function.o m_dft_grid.o m_gw.o m_timedependent.o dft_xc.o \
          libint_wrapper.o libint_wrapper_nounderscore.o  lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o scf_loop.o molgw.o
 	$(FC) $(FCOPTS) \
-                        m_definitions.o m_mpi.o m_timing.o m_warning.o m_inputparam.o m_tools.o m_scf.o m_atoms.o \
+                        m_definitions.o m_elements.o m_mpi.o m_timing.o m_warning.o m_inputparam.o m_tools.o m_scf.o m_atoms.o \
                         m_gaussian.o m_basis_set.o m_eri.o m_dft_grid.o m_spectral_function.o \
                         libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o mp2_selfenergy.o \
                         mp2.o m_gw.o m_timedependent.o dft_xc.o io.o hamiltonian.o scf_loop.o \
@@ -90,7 +90,7 @@ m_spectral_function.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_b
 m_eri.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90
 	$(FC) $(FCOPTS) -c m_eri.f90 $(LIBXC_INCS)
 
-m_basis_set.o: macros.h m_definitions.f90 m_gaussian.f90 m_basis_set.f90
+m_basis_set.o: macros.h m_definitions.f90 m_elements.f90 m_gaussian.f90 m_basis_set.f90
 	$(FC) $(FCOPTS) -c m_basis_set.f90 $(LIBXC_INCS)
 
 m_gaussian.o: macros.h m_definitions.f90 m_tools.f90 m_gaussian.f90
@@ -102,7 +102,10 @@ m_scf.o: macros.h m_definitions.f90 m_scf.f90
 m_tools.o: macros.h m_definitions.f90 m_tools.f90
 	$(FC) $(FCOPTS) -c m_tools.f90 $(LIBXC_INCS)
 
-m_inputparam.o: macros.h m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 m_inputparam.f90
+m_elements.o: macros.h m_definitions.f90 m_mpi.f90 m_elements.f90
+	$(FC) $(FCOPTS) -c m_elements.f90 $(LIBXC_INCS)
+
+m_inputparam.o: macros.h m_definitions.f90 m_elements.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 m_inputparam.f90
 	$(FC) $(FCOPTS) -c m_inputparam.f90 $(LIBXC_INCS)
 
 m_warning.o: macros.h m_definitions.f90 m_warning.f90
