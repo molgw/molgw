@@ -96,7 +96,7 @@ function element_covalent_radius(zatom)
    element_covalent_radius = 120
  case(35)
    element_covalent_radius = 120
- case(36)
+ case(36) ! Kr
    element_covalent_radius = 116
  case default
    stop'radius not available'
