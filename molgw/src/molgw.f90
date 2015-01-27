@@ -366,6 +366,7 @@ program molgw
  call output_all_warnings()
 
  WRITE_MASTER(*,'(/,a,/)') ' This is the end'
+ WRITE_MASTER(*,'(/,a,/)') ' This is'//achar(27)//'[1;31m the end '//achar(27)//'[0m.'
 
  call finish_mpi()
 
