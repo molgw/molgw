@@ -341,10 +341,12 @@ contains
  WRITE_MASTER(*,'(a50,a8)') '                                          ',orbital_momentum_name(basis%ammax)
 
  if(basis%ammax > lmax_transform ) then      
-   stop'angular momentum too high. Not implemented in cart to pure transform'
+   WRITE_MASTER(*,*) 'Maximum angular momentum',basis%ammax
+   stop'angular momentum too high'
  endif
  if(basis%ammax > lmax_transform_pure .AND. basis%gaussian_type == PURE ) then      
-   stop'angular momentum too high. Not implemented in cart to pure transform'
+   msg='Maximum angular momentum greater than the cart to pure transforms implemented'
+   call issue_warning(msg)
  endif
 
  !
