@@ -1090,6 +1090,18 @@ subroutine setup_cart_to_pure_transforms(gaussian_type)
    cart_to_pure(5)%matrix( 2, 1) = -5.0*SQRT(14.0)/16.0
    cart_to_pure(5)%matrix( 7, 1) =  5.0*SQRT(6.0)/8.0
 
+   !
+   ! Complement with diagonal if necessary
+   do il=lmax_transform_pure+1,lmax_transform
+     ni = number_basis_function_am(CARTESIAN,il)
+     allocate(cart_to_pure     (il)%matrix(ni,ni))
+     allocate(cart_to_pure_norm(il)%matrix(ni,ni))
+     cart_to_pure(il)%matrix(:,:) = 0.0_dp
+     do ii=1,ni
+       cart_to_pure(il)%matrix(ii,ii) = 1.0_dp
+     enddo
+   enddo
+
  endif
 
 
