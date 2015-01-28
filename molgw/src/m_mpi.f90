@@ -104,11 +104,11 @@ subroutine init_mpi()
 
 #ifdef HAVE_MPI
   WRITE_MASTER(*,'(/,a)')      ' ==== MPI info'
-  WRITE_MASTER(*,'(a50,x,i8)') 'Number of proc:',nproc
-  WRITE_MASTER(*,'(a50,x,i8)') 'Master proc is:',ioproc
-  WRITE_MASTER(*,'(a50,x,l1)') 'Parallelize Coulomb integrals:',parallel_integral
-  WRITE_MASTER(*,'(a50,x,l1)') 'Parallelize XC grid points   :',parallel_grid
-  WRITE_MASTER(*,'(a50,x,l1)') 'Use SCALAPACK                :',parallel_scalapack
+  WRITE_MASTER(*,'(a50,x,i6)') 'Number of proc:',nproc
+  WRITE_MASTER(*,'(a50,x,i6)') 'Master proc is:',ioproc
+  WRITE_MASTER(*,'(a50,6x,l1)') 'Parallelize Coulomb integrals:',parallel_integral
+  WRITE_MASTER(*,'(a50,6x,l1)') 'Parallelize XC grid points   :',parallel_grid
+  WRITE_MASTER(*,'(a50,6x,l1)') 'Use SCALAPACK                :',parallel_scalapack
   WRITE_MASTER(*,'(/)')
 #endif
 
@@ -137,7 +137,7 @@ end subroutine finish_mpi
 
 
 !=========================================================================
-subroutine get_size
+subroutine get_size()
  implicit none
  integer :: ier=0
 !=====
@@ -153,7 +153,7 @@ end subroutine get_size
 
 
 !=========================================================================
-subroutine get_rank
+subroutine get_rank()
  implicit none
  integer :: ier=0
 !=====
@@ -217,6 +217,7 @@ subroutine destroy_grid_distribution()
  if( allocated(task_grid_number) ) deallocate(task_grid_number)
 
 end subroutine destroy_grid_distribution
+
 
 !=========================================================================
 subroutine init_fast_distribution(ntask)
@@ -656,11 +657,11 @@ subroutine init_desc(nglobal,desc,mlocal,nlocal)
  nlocal = NUMROC(nglobal,block_col,ipcol,first_col,npcol)
 
  ! here is the problem with nlocal
- call descinit(desc,nglobal,nglobal,block_row,block_col,first_row,first_col,context_sca,mlocal,info)
+ call DESCINIT(desc,nglobal,nglobal,block_row,block_col,first_row,first_col,context_sca,mlocal,info)
 
  WRITE_ME(*,'(/,a,i6,a,i6,4x,i6)') ' SCALAPACK info: size of the local matrix for proc #', mlocal,' x ',nlocal,iproc_sca
 
- call blacs_barrier(context_sca,'All')
+ call BLACS_BARRIER(context_sca,'All')
 
 #endif
 
@@ -712,7 +713,7 @@ subroutine diagonalize_sca(desc,nglobal,mlocal,nlocal,matrix,eigval)
 !=====
 
 #ifdef HAVE_SCALAPACK
- ! fake descriptor
+ ! fake descriptor ! Why do I need this?
  desc_tmp(:) = desc(:)
 
  !
@@ -789,6 +790,7 @@ function colindex_global_to_local(iglobal)
 
 end function colindex_global_to_local
 
+
 !=========================================================================
 function rowindex_local_to_global(ilocal)
  implicit none
@@ -840,6 +842,7 @@ subroutine finish_scalapack()
 #endif
 
 end subroutine finish_scalapack
+
 
 !=========================================================================
 end module m_mpi

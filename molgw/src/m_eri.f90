@@ -102,7 +102,7 @@ subroutine prepare_eri(basis,rcut,which_buffer)
  case default
    stop'integration quality not recognized'
  end select
- WRITE_MASTER(*,'(/,a,es8.2)') ' Tolerance on integrals set to ',TOL_INT
+ WRITE_MASTER(*,'(/,a,es9.2)') ' Tolerance on integrals set to ',TOL_INT
 
 
  if(.NOT.allocated(negligible_shellpair)) then

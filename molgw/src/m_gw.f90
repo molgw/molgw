@@ -573,6 +573,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
      if(istate <= ncore_G)    cycle
      if(istate >= nvirtual_G) cycle
 
+     call start_clock(timing_tmp2)
      !
      ! Prepare the bra and ket with the knowledge of index istate and astate
      if( .NOT. is_auxil_basis) then
@@ -587,6 +588,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
        bra(:,:) = MATMUL( wpol%residu_left (:,:) , eri_3center_eigen(:,:,istate,ispin) )
        ket(:,:) = MATMUL( wpol%residu_right(:,:) , eri_3center_eigen(:,:,istate,ispin) )
      endif
+     call stop_clock(timing_tmp2)
 
      do ipole=1,wpol%npole
 
@@ -933,6 +935,14 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
  real(dp),allocatable :: bigx(:,:),bigy(:,:),cc_matrix_bigomega(:,:)
 
  logical              :: TDHF=.FALSE.
+#ifdef TODAY
+ integer  :: descm(ndel),desck(ndel)
+ integer  :: descx(ndel),descy(ndel)
+ integer  :: nlocal,mlocal
+ integer  :: info
+ integer  :: lwork
+ real(dp),allocatable :: work(:)
+#endif
 !=====
 
  call start_clock(timing_build_h2p)
@@ -1023,6 +1033,10 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
    rpa_correlation = rpa_correlation - 0.25_dp * ( apb_matrix(t_ij,t_ij) + amb_matrix(t_ij,t_ij) )
  enddo
 
+
+
+ call start_clock(timing_tmp1)
+#ifndef TODAY
  allocate(cc_matrix(nmat,nmat))
  allocate(amb_eigval(nmat))
 
@@ -1117,7 +1131,35 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
  deallocate(bigx,bigy)
  deallocate(cc_matrix)
 
+#else
+ call init_desc(nmat,descm,mlocal,nlocal)
+ desck(:) = descm(:)
+ call init_desc(2*nmat,descx,mlocal,nlocal)
+ descy(:) = descx(:)
 
+ allocate(work(1))
+ lwork=-1
+ call pdbssolver1_svd(nmat,apb_matrix, 1,  1, descm, amb_matrix ,  1,  1, desck,          &
+                      eigenvalue, eigenvector,  1,  1, descx, eigenvector_inv,  1,  1,    &
+                      descy, work, lwork, info )
+ if(info/=0) stop'SCALAPACK failed'
+ lwork=NINT(work(1))
+ WRITE_MASTER(*,*) 'lwork=',lwork
+ deallocate(work)
+ allocate(work(lwork))
+ call pdbssolver1_svd(nmat,apb_matrix, 1,  1, descm, amb_matrix ,  1,  1, desck,          &
+                      eigenvalue, eigenvector,  1,  1, descx, eigenvector_inv,  1,  1,    &
+                      descy, work, lwork, info )
+ if(info/=0) stop'SCALAPACK failed'
+ deallocate(work)
+
+ !
+ ! Need to transpose to be consistent with molgw
+ eigenvector_inv = transpose(eigenvector_inv)
+
+ deallocate(apb_matrix,amb_matrix)
+#endif
+ call stop_clock(timing_tmp1)
 
 end subroutine build_h2p_sym
 
