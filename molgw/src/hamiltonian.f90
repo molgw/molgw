@@ -682,53 +682,6 @@ end subroutine guess_starting_c_matrix
 
 
 !=========================================================================
-subroutine guess_starting_c_matrix2(nbf,basis,c_matrix)
- use m_definitions
- use m_basis_set
- use m_atoms
- use m_inputparam,only: nspin,spin_fact
- implicit none
- integer,intent(in)         :: nbf
- type(basis_set),intent(in) :: basis
- real(dp),intent(out)       :: c_matrix(nbf,nbf,nspin)
-!====
- integer              :: ibf
- integer              :: ibf_cart
- integer              :: i_cart
- integer              :: ni,ni_cart,li
- character(len=100)   :: title
- real(dp),allocatable :: matrix_cart(:,:)
- integer              :: iatom,iatom_prev
- integer              :: nelect_remaining
-!====
-
- WRITE_MASTER(*,*) 'Setup overlap matrix S'
-
- iatom_prev = -1
- ibf_cart = 1
- ibf      = 1
- do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
-   ni_cart = number_basis_function_am(CARTESIAN,li)
-   ni      = number_basis_function_am(basis%gaussian_type,li)
-
-   iatom = basis%bf(ibf_cart)%iatom
-   if( iatom /= iatom_prev ) then
-     nelect_remaining = NINT(zatom(iatom))
-   else
-   endif
-
-
-   ibf      = ibf      + ni
-   ibf_cart = ibf_cart + ni_cart
- end do
-
-
-
-end subroutine guess_starting_c_matrix2
-
-
-!=========================================================================
 subroutine guess_starting_c_matrix_new(basis,c_matrix)
  use m_definitions
  use m_mpi
