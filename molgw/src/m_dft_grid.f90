@@ -10,10 +10,13 @@ module m_dft_grid
  ! Grid definition
  integer,protected    :: ngrid
  integer,protected    :: nradial
- integer,protected    :: nangular
+ integer,protected    :: nangular_fine
+ integer,protected    :: nangular_coarse
 
- real(dp),allocatable :: rr_grid(:,:)
- real(dp),allocatable :: w_grid(:)
+ real(dp),protected,allocatable :: rr_grid(:,:)
+ real(dp),protected,allocatable :: w_grid(:)
+
+ real(dp),parameter,private :: pruning_limit = 0.75_dp    ! in terms of covalent radius
 
  !
  ! Function evaluation storage
@@ -29,17 +32,18 @@ contains
 
 !=========================================================================
 subroutine setup_dft_grid()
+ use m_elements
  use m_atoms
  use m_tools,only: coeffs_gausslegint
  implicit none
 
  integer              :: iradial,iatom,iangular,ir,igrid
- integer              :: n1
- real(dp)             :: weight
- real(dp),allocatable :: x1(:)
- real(dp),allocatable :: y1(:)
- real(dp),allocatable :: z1(:)
- real(dp),allocatable :: w1(:)
+ integer              :: n1,n2,nangular
+ real(dp)             :: weight,radius
+ real(dp),allocatable :: x1(:),x2(:)
+ real(dp),allocatable :: y1(:),y2(:)
+ real(dp),allocatable :: z1(:),z2(:)
+ real(dp),allocatable :: w1(:),w2(:)
  real(dp),allocatable :: xa(:),wxa(:)
  real(dp)             :: p_becke(natom),s_becke(natom,natom),fact_becke 
  real(dp)             :: mu
@@ -47,42 +51,33 @@ subroutine setup_dft_grid()
 !=====
 
  select case(TRIM(quadrature_name))
- case('very low')
-   nradial  =  6
-   nangular =  6
- case('low')
-   nradial  = 10
-   nangular = 14
- case('medium')
-   nradial  = 20
-   nangular = 26
- case('high')
-   nradial  = 40
-   nangular = 50
- case('very high')
-   nradial  = 80
-   nangular = 86
- case('insane')
-   nradial  = 120
-   nangular = 230
- case('moreinsane')
-   nradial  = 200
-   nangular = 434
+ case('low')       ! accuracy not guaranted, just for quick test runs
+   nradial         =  25
+   nangular_fine   =  26
+   nangular_coarse =   6
+ case('medium')    ! 10 meV accuracy on potentials
+   nradial         =  40
+   nangular_fine   =  50
+   nangular_coarse =  14
+ case('high')      !  1 meV accuracy on potentials
+   nradial         =  60
+   nangular_fine   = 110
+   nangular_coarse =  38
+ case('very high') ! almost perfect potentials
+   nradial         =  70
+   nangular_fine   = 230
+   nangular_coarse =  50
+ case('insane')    ! overdoing a lot
+   nradial         = 200
+   nangular_fine   = 434
+   nangular_coarse = 434
  case default
    stop'integration quality not recognized'
  end select
 
- ! Total number of grid points
- ngrid = natom * nradial * nangular
-
- call init_grid_distribution(ngrid)
-
- WRITE_MASTER(*,'(/,a)')       ' Setup the DFT quadrature'
- WRITE_MASTER(*,'(a,i4,x,i4)') ' discretization grid per atom [radial points , angular points] ',nradial,nangular
- WRITE_MASTER(*,'(a,i8)')      ' total number of real-space points for this processor',ngrid
-
  allocate(xa(nradial),wxa(nradial))
- allocate(x1(nangular),y1(nangular),z1(nangular),w1(nangular))
+ allocate(x1(nangular_fine),y1(nangular_fine),z1(nangular_fine),w1(nangular_fine))
+ allocate(x2(nangular_coarse),y2(nangular_coarse),z2(nangular_coarse),w2(nangular_coarse))
 
  !
  ! spherical integration
@@ -94,10 +89,10 @@ subroutine setup_dft_grid()
  wxa(:) = wxa(:) * ( 1.0_dp / log(2.0_dp) / ( 1.0_dp - xa(:) ) )
  xa(:)  = log( 2.0_dp / (1.0_dp - xa(:) ) ) / log(2.0_dp)
 
- n1 = nangular
+ n1 = nangular_fine
  ! angular part with Lebedev - Laikov
  ! (x1,y1,z1) on the unit sphere
- select case(nangular)
+ select case(nangular_fine)
  case(6)
    call ld0006(x1,y1,z1,w1,n1)
  case(14)
@@ -112,31 +107,107 @@ subroutine setup_dft_grid()
    call ld0074(x1,y1,z1,w1,n1)
  case(86)
    call ld0086(x1,y1,z1,w1,n1)
+ case(110)
+   call ld0110(x1,y1,z1,w1,n1)
+ case(146)
+   call ld0146(x1,y1,z1,w1,n1)
+ case(170)
+   call ld0170(x1,y1,z1,w1,n1)
  case(230)
    call ld0230(x1,y1,z1,w1,n1)
  case(434)
    call ld0434(x1,y1,z1,w1,n1)
  case default
-   WRITE_MASTER(*,*) 'grid points: ',nangular
+   WRITE_MASTER(*,*) 'grid points: ',nangular_fine
    stop'Lebedev grid is not available'
  end select
+
+ n2 = nangular_coarse
+ ! angular part with Lebedev - Laikov
+ ! (x2,y2,z2) on the unit sphere
+ select case(nangular_coarse)
+ case(6)
+   call ld0006(x2,y2,z2,w2,n2)
+ case(14)
+   call ld0014(x2,y2,z2,w2,n2)
+ case(26)
+   call ld0026(x2,y2,z2,w2,n2)
+ case(38)
+   call ld0038(x2,y2,z2,w2,n2)
+ case(50)
+   call ld0050(x2,y2,z2,w2,n2)
+ case(74)
+   call ld0074(x2,y2,z2,w2,n2)
+ case(86)
+   call ld0086(x2,y2,z2,w2,n2)
+ case(110)
+   call ld0110(x2,y2,z2,w2,n2)
+ case(146)
+   call ld0146(x2,y2,z2,w2,n2)
+ case(170)
+   call ld0170(x2,y2,z2,w2,n2)
+ case(230)
+   call ld0230(x2,y2,z2,w2,n2)
+ case(434)
+   call ld0434(x2,y2,z2,w2,n2)
+ case default
+   WRITE_MASTER(*,*) 'grid points: ',nangular_coarse
+   stop'Lebedev grid is not available'
+ end select
+
+ ! Calculate the total number of grid points
+ ngrid = 0
+ do iatom=1,natom
+   radius = element_covalent_radius(zatom(iatom))
+   do iradial=1,nradial
+     if( xa(iradial) < pruning_limit * radius ) then
+       ngrid = ngrid + nangular_coarse
+     else
+       ngrid = ngrid + nangular_fine
+     endif
+   enddo
+ enddo
+
+ call init_grid_distribution(ngrid)
+
+ WRITE_MASTER(*,'(/,a)')            ' Setup the DFT quadrature'
+ WRITE_MASTER(*,'(a,i4,x,i4,x,i4)') ' discretization grid per atom [radial , angular max - angular min] ',nradial,nangular_fine,nangular_coarse
+ WRITE_MASTER(*,'(a,i8)')           ' total number of real-space points for this processor',ngrid
+
+
+
  
  allocate(rr_grid(3,ngrid),w_grid(ngrid))
 
  igrid = 0
  ir    = 0
  do iatom=1,natom
+   radius = element_covalent_radius(zatom(iatom))
+
    do iradial=1,nradial
+     if( xa(iradial) < pruning_limit * radius ) then
+       nangular = nangular_coarse
+     else
+       nangular = nangular_fine
+     endif
+
      do iangular=1,nangular
        igrid = igrid + 1
        if( .NOT. is_my_grid_task(igrid) ) cycle
        ir = ir + 1
 
-       rr_grid(1,ir) = xa(iradial) * x1(iangular) + x(1,iatom)
-       rr_grid(2,ir) = xa(iradial) * y1(iangular) + x(2,iatom)
-       rr_grid(3,ir) = xa(iradial) * z1(iangular) + x(3,iatom)
+       if( xa(iradial) < pruning_limit * radius ) then
+         rr_grid(1,ir) = xa(iradial) * x2(iangular) + x(1,iatom)
+         rr_grid(2,ir) = xa(iradial) * y2(iangular) + x(2,iatom)
+         rr_grid(3,ir) = xa(iradial) * z2(iangular) + x(3,iatom)
+         weight   = wxa(iradial) * w2(iangular) * xa(iradial)**2 * 4.0_dp * pi
+       else
+         rr_grid(1,ir) = xa(iradial) * x1(iangular) + x(1,iatom)
+         rr_grid(2,ir) = xa(iradial) * y1(iangular) + x(2,iatom)
+         rr_grid(3,ir) = xa(iradial) * z1(iangular) + x(3,iatom)
+         weight   = wxa(iradial) * w1(iangular) * xa(iradial)**2 * 4.0_dp * pi
+       endif
 
-       weight   = wxa(iradial) * w1(iangular) * xa(iradial)**2 * 4.0_dp * pi
 
        !
        ! Partitionning scheme of Axel Becke, J. Chem. Phys. 88, 2547 (1988).
@@ -165,6 +236,8 @@ subroutine setup_dft_grid()
    enddo
  enddo
 
+ deallocate(x1,y1,z1,w1)
+ deallocate(x2,y2,z2,w2)
 
 end subroutine setup_dft_grid
 
