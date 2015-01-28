@@ -417,7 +417,6 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
    deallocate(alpha,coeff)
  enddo
 
- WRITE_MASTER(*,'(/,a)') ' Calculate approximate HXC potential on a grid'
  WRITE_MASTER(*,*) 'Home-made functional LDA functional'
  !
  ! For the first time, set up the stored arrays

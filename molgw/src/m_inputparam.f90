@@ -471,8 +471,6 @@ case('PULAY')
  end select
 
  select case(TRIM(quadrature_accuracy))
- case('VERYLOW','verylow','VL','vl')
-   quadrature_name = 'very low'
  case('LOW','low','L','l')
    quadrature_name = 'low'
  case('MEDIUM','medium','M','m')
@@ -483,8 +481,6 @@ case('PULAY')
    quadrature_name = 'very high'
  case('INSANE','insane','I','i')
    quadrature_name = 'insane'
- case('MOREINSANE','moreinsane','MI','mi')
-   quadrature_name = 'moreinsane'
  case default
    stop'integration quality not recognized'
  end select

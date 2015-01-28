@@ -11,9 +11,9 @@ module m_eri
  integer,parameter :: BUFFER2 = 2
  !
  ! max length of a record in the ERI file
- integer,parameter :: line_length=1000
+ integer,parameter,private :: line_length=1000
 
- real(dp),protected                 :: TOL_INT=1.0e-10_dp
+ real(dp),private          :: TOL_INT=1.0e-10_dp
 
  real(prec_eri),private,allocatable :: eri_buffer(:)
  real(prec_eri),private,allocatable :: eri_buffer_lr(:)
@@ -36,6 +36,8 @@ module m_eri
    real(dp)             :: x0(3)
    integer              :: istart,iend
  end type shell_type
+ private :: shell_type
+
  integer,private                      :: nshell
  integer,private                      :: nshell_auxil
  type(shell_type),private,allocatable :: shell(:)
@@ -51,6 +53,7 @@ module m_eri
  integer,private              :: nsize1_auxil           ! number of independent pairs (i,j) with i<=j
 
 
+! TODO write a proper interface for the call to C
 ! interface
 !   integet(C_INT) function eval_contr_integral() bind(C)
 !       info=eval_contr_integral(                &
@@ -69,8 +72,10 @@ module m_eri
 
 contains
 
+
 !=========================================================================
 subroutine prepare_eri(basis,rcut,which_buffer)
+ use m_inputparam,only: quadrature_name
  implicit none
 !===== 
  type(basis_set),intent(in) :: basis
@@ -82,17 +87,23 @@ subroutine prepare_eri(basis,rcut,which_buffer)
 !===== 
 
  nbf_eri = basis%nbf
- inquire(file='manual_tol_int',exist=file_exists)
- if( file_exists ) then
-   open(unit=22,file='manual_tol_int',status='old')
-   read(22,*) TOL_INT
-   close(22)
-   TOL_INT = MAX(TOL_INT,0.0_dp)
-   WRITE_MASTER(msg,'(a,x,es14.4)') 'TOL_INT manually set to',TOL_INT
-   call issue_warning(msg)
- else
-   TOL_INT = 1.0e-10_dp
- endif
+
+ select case(TRIM(quadrature_name))
+ case('low')       ! accuracy not guaranted, just for quick test runs
+   TOL_INT = 1e-6
+ case('medium')    ! 10 meV accuracy on potentials
+   TOL_INT = 1e-8
+ case('high')      !  1 meV accuracy on potentials
+   TOL_INT = 1e-10
+ case('very high') ! almost perfect potentials
+   TOL_INT = 1e-12
+ case('insane')    ! overdoing a lot
+   TOL_INT = 1e-30
+ case default
+   stop'integration quality not recognized'
+ end select
+ WRITE_MASTER(*,'(/,a,es8.2)') ' Tolerance on integrals set to ',TOL_INT
+
 
  if(.NOT.allocated(negligible_shellpair)) then
    call setup_shell_list(basis)
