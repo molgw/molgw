@@ -12,6 +12,678 @@ contains
 
 
 !=========================================================================
+subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,rpa_correlation,wpol_out)
+ use m_mpi
+ use m_tools
+ use m_basis_set
+ use m_spectral_function
+ use m_gw
+ implicit none
+
+ type(basis_set),intent(in)            :: basis,prod_basis,auxil_basis
+ real(dp),intent(in)                   :: occupation(basis%nbf,nspin)
+ real(dp),intent(in)                   :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(out)                  :: rpa_correlation
+ type(spectral_function),intent(inout) :: wpol_out          !FBFB change to intent(out) ???
+!=====
+ integer                 :: t_ij
+ type(spectral_function) :: wpol_static
+ integer                 :: nmat
+ real(dp)                :: alpha_local
+ real(dp),allocatable    :: amb_matrix(:,:),apb_matrix(:,:)
+ real(dp),allocatable    :: eigenvalue(:),eigenvector(:,:),eigenvector_inv(:,:)
+ real(dp)                :: energy_qp(basis%nbf,nspin)
+ logical                 :: is_tddft
+ logical                 :: is_ij
+ logical                 :: is_rpa
+ logical                 :: is_tdhf
+!=====
+
+ call start_clock(timing_pola)
+
+ WRITE_MASTER(*,'(/,a)') ' Calculating the polarizability'
+ 
+ ! Set up all the switches to be able to treat
+ ! GW, BSE, TDHF, TDDFT (semilocal or hybrid)
+
+ !
+ ! Set up flag is_rpa
+ inquire(file='manual_rpa',exist=is_rpa)
+ if(is_rpa) then
+   msg='RPA calculation is enforced'
+   call issue_warning(msg)
+ endif
+ is_rpa   = calc_type%is_gw .OR. is_rpa
+
+ ! 
+ ! Set up flag is_tddft
+ is_tddft = calc_type%is_td .AND. calc_type%is_dft .AND. .NOT. is_rpa
+
+ ! 
+ ! Set up exchange content alpha_local
+ ! manual_tdhf can override anything
+ inquire(file='manual_tdhf',exist=is_tdhf)
+ if(is_tdhf) then
+   open(unit=18,file='manual_tdhf',status='old')
+   read(18,*) alpha_local
+   close(18)
+   WRITE_ME(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alphas  ',alpha_local
+   call issue_warning(msg)
+ else
+   if(is_rpa) then
+     alpha_local = 0.0_dp
+   else if(is_tddft) then
+     alpha_local = alpha_hybrid
+   else ! TDHF or BSE case
+     alpha_local = 1.0_dp
+   endif
+ endif
+ !
+ ! Warning if Tamm-Dancoff flag is on
+ if(calc_type%is_tda) then
+   msg='Tamm-Dancoff approximation is switched on'
+   call issue_warning(msg)
+ endif
+
+
+ ! Obtain the number of transition = the size of the matrix
+ call init_spectral_function(basis%nbf,occupation,wpol_out)
+
+ !
+ ! Prepare BSE calculations
+ ! static screening + GW quasiparticle energies
+ !
+ if( calc_type%is_bse .AND. .NOT.is_rpa ) then
+   ! Set up energy_qp and wpol_static
+   call prepare_bse(basis%nbf,energy,occupation,energy_qp,wpol_static)
+ else
+   ! For any other type of calculation, just fill energy_qp array with energy
+   energy_qp(:,:) = energy(:,:)
+ endif
+
+
+ nmat = wpol_out%npole/2
+ allocate(apb_matrix(nmat,nmat))
+ allocate(amb_matrix(nmat,nmat))
+
+ !
+ ! Build the (A+B) and (A-B) matrices in 3 steps
+ ! to span all the possible approximations
+ !
+ call build_amb_apb_common(basis%nbf,c_matrix,energy_qp,wpol_out,alpha_local,nmat,amb_matrix,apb_matrix)
+ if(is_tddft) &
+   call build_apb_tddft(basis,c_matrix,occupation,wpol_out,nmat,apb_matrix)
+ if(calc_type%is_bse .AND. .NOT. is_rpa) then
+   call build_amb_apb_bse(basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,nmat,amb_matrix,apb_matrix)
+   call destroy_spectral_function(wpol_static)
+ endif
+
+ !
+ ! First part of the RPA correlation energy: sum over diagonal terms
+ rpa_correlation = 0.0_dp
+ do t_ij=1,nmat
+   rpa_correlation = rpa_correlation - 0.25_dp * ( apb_matrix(t_ij,t_ij) + amb_matrix(t_ij,t_ij) )
+ enddo
+
+
+ allocate(eigenvector(wpol_out%npole,wpol_out%npole))
+ allocate(eigenvector_inv(wpol_out%npole,wpol_out%npole))
+ allocate(eigenvalue(wpol_out%npole))
+
+
+ ! DIAGO using the 4 block structure and the symmetry of each block
+ call start_clock(timing_tmp1)
+ if(.TRUE.) then
+   call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_inv)
+ else
+   call diago_4blocks_chol(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_inv)
+ endif
+ call stop_clock(timing_tmp1)
+
+ !
+ ! Second part of the RPA correlation energy: sum over positive eigenvalues
+ rpa_correlation = rpa_correlation + 0.50_dp * SUM( eigenvalue(1:nmat) )
+
+
+ deallocate(apb_matrix,amb_matrix)
+
+ !
+ ! Calculate the optical sprectrum
+ ! and the dynamic dipole tensor
+ !
+ call optical_spectrum(basis,prod_basis,occupation,c_matrix,wpol_out,eigenvector,eigenvector_inv,eigenvalue)
+
+ !
+ ! Calculate Wp= v * chi * v 
+ ! and then write it down on file
+ !
+ if( print_specfunc .OR. calc_type%is_gw ) then
+   if( is_auxil_basis) then
+     call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol_out)
+   else
+     call chi_to_vchiv(basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol_out)
+   endif
+ 
+   ! If requested write the spectral function on file
+   if( print_specfunc ) call write_spectral_function(wpol_out)
+
+ endif
+
+ if( .NOT. calc_type%is_gw ) call destroy_spectral_function(wpol_out)
+
+ if(allocated(eigenvector))     deallocate(eigenvector)
+ if(allocated(eigenvector_inv)) deallocate(eigenvector_inv)
+ if(allocated(eigenvalue))      deallocate(eigenvalue)
+
+ call stop_clock(timing_pola)
+
+
+end subroutine polarizability
+
+
+!=========================================================================
+subroutine build_amb_apb_common(nbf,c_matrix,energy,wpol,alpha_local,nmat,amb_matrix,apb_matrix)
+ use m_spectral_function
+ use m_eri
+ use m_tools 
+ implicit none
+
+ integer,intent(in)                 :: nbf
+ real(dp),intent(in)                :: energy(nbf,nspin)
+ real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
+ type(spectral_function),intent(in) :: wpol
+ real(dp),intent(in)                :: alpha_local
+ integer,intent(in)                 :: nmat
+ real(dp),intent(out)               :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
+!=====
+ integer              :: t_ij,t_kl
+ integer              :: istate,jstate,kstate,lstate
+ integer              :: ijspin,klspin
+ integer              :: ijstate_min
+ real(dp),allocatable :: eri_eigenstate_ijmin(:,:,:,:)
+ real(dp)             :: eri_eigen_ijkl
+ real(dp)             :: eri_eigen_ikjl,eri_eigen_iljk
+ logical              :: is_ij
+!=====
+
+ call start_clock(timing_build_h2p)
+
+ WRITE_MASTER(*,'(a)') ' Build Coulomb part'
+
+ if( .NOT. is_auxil_basis) then
+   allocate(eri_eigenstate_ijmin(nbf,nbf,nbf,nspin))
+   ! Set this to zero and then enforce the calculation of the first series of
+   ! Coulomb integrals
+   eri_eigenstate_ijmin(:,:,:,:) = 0.0_dp
+ endif
+
+ !
+ ! Set up energy+hartree+exchange contributions to matrices (A+B) and (A-B) 
+ !
+ do t_ij=1,nmat ! only resonant transition
+   istate = wpol%transition_table(1,t_ij)
+   jstate = wpol%transition_table(2,t_ij)
+   ijspin = wpol%transition_table(3,t_ij)
+
+   if( .NOT. is_auxil_basis ) then
+     ijstate_min = MIN(istate,jstate)
+     is_ij = (ijstate_min == istate)
+     call transform_eri_basis(nspin,c_matrix,ijstate_min,ijspin,eri_eigenstate_ijmin)
+   endif
+
+   do t_kl=1,nmat ! only resonant transition
+     kstate = wpol%transition_table(1,t_kl)
+     lstate = wpol%transition_table(2,t_kl)
+     klspin = wpol%transition_table(3,t_kl)
+
+
+     if(is_auxil_basis) then
+       eri_eigen_ijkl = eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
+     else
+       if(is_ij) then ! treating (i,j)
+         eri_eigen_ijkl = eri_eigenstate_ijmin(jstate,kstate,lstate,klspin)
+       else           ! treating (j,i)
+         eri_eigen_ijkl = eri_eigenstate_ijmin(istate,kstate,lstate,klspin)
+       endif
+     endif
+
+     apb_matrix(t_ij,t_kl) = 2.0_dp * eri_eigen_ijkl * spin_fact
+     amb_matrix(t_ij,t_kl) = 0.0_dp
+
+     if( alpha_local > 1.0e-6_dp ) then
+       if(ijspin==klspin) then
+         if(is_auxil_basis) then
+           eri_eigen_ikjl = eri_eigen_ri(istate,kstate,ijspin,jstate,lstate,klspin)
+           eri_eigen_iljk = eri_eigen_ri(istate,lstate,ijspin,jstate,lstate,klspin)
+         else
+           if(is_ij) then
+             eri_eigen_ikjl = eri_eigenstate_ijmin(kstate,jstate,lstate,klspin)
+             eri_eigen_iljk = eri_eigenstate_ijmin(lstate,jstate,kstate,klspin)
+           else
+             eri_eigen_ikjl = eri_eigenstate_ijmin(lstate,istate,kstate,klspin)
+             eri_eigen_iljk = eri_eigenstate_ijmin(kstate,istate,lstate,klspin)
+           endif
+         endif
+         apb_matrix(t_ij,t_kl) = apb_matrix(t_ij,t_kl) - eri_eigen_ikjl * alpha_local - eri_eigen_iljk * alpha_local
+         amb_matrix(t_ij,t_kl) = amb_matrix(t_ij,t_kl) - eri_eigen_ikjl * alpha_local + eri_eigen_iljk * alpha_local
+       endif
+     endif
+
+   enddo 
+
+   apb_matrix(t_ij,t_ij) =  apb_matrix(t_ij,t_ij) + ( energy(jstate,ijspin) - energy(istate,ijspin) )
+   amb_matrix(t_ij,t_ij) =  amb_matrix(t_ij,t_ij) + ( energy(jstate,ijspin) - energy(istate,ijspin) )
+
+ enddo 
+
+ if(allocated(eri_eigenstate_ijmin)) deallocate(eri_eigenstate_ijmin)
+
+
+ call stop_clock(timing_build_h2p)
+
+
+end subroutine build_amb_apb_common
+
+
+!=========================================================================
+subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,nmat,apb_matrix)
+ use m_spectral_function
+ use m_basis_set
+ use m_dft_grid
+ implicit none
+
+ type(basis_set),intent(in)         :: basis
+ real(dp),intent(in)                :: c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)                :: occupation(basis%nbf,nspin)
+ type(spectral_function),intent(in) :: wpol
+ integer,intent(in)                 :: nmat
+ real(dp),intent(inout)             :: apb_matrix(nmat,nmat)
+!=====
+ integer              :: t_ij,t_kl
+ integer              :: istate,jstate,kstate,lstate
+ integer              :: ijspin,klspin
+ logical              :: require_gradient
+ real(dp),allocatable :: grad_ij(:,:,:),grad_kl(:,:,:)
+ real(dp),allocatable :: dot_ij_kl(:,:),dot_rho_ij(:,:),dot_rho_kl(:,:)
+ real(dp),allocatable :: v2rho2(:,:)
+ real(dp),allocatable :: vsigma(:,:)
+ real(dp),allocatable :: v2rhosigma(:,:)
+ real(dp),allocatable :: v2sigma2(:,:)
+ real(dp),allocatable :: wf_r(:,:,:)
+ real(dp),allocatable :: wf_gradr(:,:,:,:)
+ real(dp),allocatable :: rho_gradr(:,:,:)
+!=====
+
+ call start_clock(timing_build_h2p)
+
+ WRITE_MASTER(*,'(a)') ' Build fxc part'
+
+ !
+ ! Prepare TDDFT calculations
+ call prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2sigma2,wf_r,wf_gradr,rho_gradr)
+ require_gradient = .FALSE.
+ if(allocated(v2sigma2)) then ! GGA case
+   require_gradient = .TRUE.
+   allocate(grad_ij(3,ngrid,nspin))
+   allocate(grad_kl(3,ngrid,nspin))
+   allocate(dot_ij_kl(ngrid,nspin))
+   allocate(dot_rho_ij(ngrid,nspin))
+   allocate(dot_rho_kl(ngrid,nspin))
+ endif
+
+ if(require_gradient .AND. nspin>1) then
+   stop'spin in TD-GGA not implemented yet'
+ endif
+
+
+ !
+ ! Set up fxc contributions to matrices (A+B)
+ !
+ do t_ij=1,nmat ! only resonant transition
+   istate = wpol%transition_table(1,t_ij)
+   jstate = wpol%transition_table(2,t_ij)
+   ijspin = wpol%transition_table(3,t_ij)
+
+   do t_kl=1,nmat ! only resonant transition
+     kstate = wpol%transition_table(1,t_kl)
+     lstate = wpol%transition_table(2,t_kl)
+     klspin = wpol%transition_table(3,t_kl)
+
+
+     apb_matrix(t_ij,t_kl) = apb_matrix(t_ij,t_kl)   &
+                  + SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
+                        * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
+                        * v2rho2(:,ijspin) )                            & 
+                        * 4.0_dp
+
+
+     if(require_gradient) then
+
+       grad_ij(1,:,ijspin) = wf_gradr(1,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(1,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+       grad_ij(2,:,ijspin) = wf_gradr(2,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(2,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+       grad_ij(3,:,ijspin) = wf_gradr(3,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(3,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+       grad_kl(1,:,klspin) = wf_gradr(1,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(1,:,lstate,klspin) * wf_r(:,kstate,klspin)
+       grad_kl(2,:,klspin) = wf_gradr(2,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(2,:,lstate,klspin) * wf_r(:,kstate,klspin)
+       grad_kl(3,:,klspin) = wf_gradr(3,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(3,:,lstate,klspin) * wf_r(:,kstate,klspin)
+       dot_ij_kl(:,ijspin) = grad_ij(1,:,ijspin) * grad_kl(1,:,klspin) + grad_ij(2,:,ijspin) * grad_kl(2,:,klspin) &
+                            + grad_ij(3,:,ijspin) * grad_kl(3,:,klspin)
+       dot_rho_ij(:,ijspin) = rho_gradr(1,:,1) * grad_ij(1,:,ijspin) + rho_gradr(2,:,1) * grad_ij(2,:,ijspin)  &
+                             + rho_gradr(3,:,1) * grad_ij(3,:,ijspin)
+       dot_rho_kl(:,klspin) = rho_gradr(1,:,1) * grad_kl(1,:,klspin) + rho_gradr(2,:,1) * grad_kl(2,:,klspin)  &
+                             + rho_gradr(3,:,1) * grad_kl(3,:,klspin)
+
+       apb_matrix(t_ij,t_kl) = apb_matrix(t_ij,t_kl)   &
+                + SUM( dot_ij_kl(:,1) * 6.0_dp * vsigma(:,1) )
+       apb_matrix(t_ij,t_kl) = apb_matrix(t_ij,t_kl)   &
+                + SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * 9.0_dp * v2sigma2(:,1) )
+       apb_matrix(t_ij,t_kl) = apb_matrix(t_ij,t_kl)   &
+                + SUM( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1) * 6.0_dp * v2rhosigma(:,1) )
+       apb_matrix(t_ij,t_kl) = apb_matrix(t_ij,t_kl)   &
+                + SUM( wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) * 6.0_dp * v2rhosigma(:,1) )
+
+     endif
+
+
+   enddo
+ enddo
+
+
+ deallocate(wf_r)
+
+ if(require_gradient) then
+   deallocate(grad_ij,grad_kl)
+   deallocate(dot_ij_kl,dot_rho_ij,dot_rho_kl)
+   deallocate(v2rho2)
+   deallocate(vsigma)
+   deallocate(v2rhosigma)
+   deallocate(v2sigma2)
+   deallocate(wf_gradr)
+   deallocate(rho_gradr)
+ endif
+
+
+ call stop_clock(timing_build_h2p)
+
+end subroutine build_apb_tddft
+
+
+!=========================================================================
+subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_matrix,apb_matrix)
+ use m_spectral_function
+ use m_basis_set
+ use m_eri
+ use m_tools 
+ implicit none
+
+ integer,intent(in)                 :: nbf
+ type(basis_set),intent(in)         :: prod_basis
+ real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
+ type(spectral_function),intent(in) :: wpol,wpol_static
+ integer,intent(in)                 :: nmat
+ real(dp),intent(out)               :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
+!=====
+ integer              :: t_ij,t_kl
+ integer              :: istate,jstate,kstate,lstate
+ integer              :: ijspin,klspin
+ integer              :: kbf
+ real(dp),allocatable :: bra(:),ket(:)
+ real(dp),allocatable :: bra_auxil(:,:,:,:),ket_auxil(:,:,:,:)
+ real(dp)             :: wtmp
+!=====
+
+ call start_clock(timing_build_h2p)
+
+ WRITE_MASTER(*,'(a)') ' Build W part'
+ !
+ ! Prepare the bra and ket for BSE
+ allocate(bra(wpol_static%npole),ket(wpol_static%npole))
+
+ if(is_auxil_basis) then
+   allocate(bra_auxil(wpol_static%npole,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
+   allocate(ket_auxil(wpol_static%npole,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
+   do ijspin=1,nspin
+     do istate=ncore_W+1,nvirtual_W-1 
+       do jstate=ncore_W+1,nvirtual_W-1
+
+         ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
+         bra_auxil(:,istate,jstate,ijspin) = MATMUL( wpol_static%residu_left (:,:) , eri_3center_eigen(:,istate,jstate,ijspin) )
+         ket_auxil(:,istate,jstate,ijspin) = MATMUL( wpol_static%residu_right(:,:) , eri_3center_eigen(:,istate,jstate,ijspin) )
+
+       enddo
+     enddo
+   enddo
+ endif
+
+ !
+ ! Set up fxc contributions to matrices (A+B)
+ !
+ do t_ij=1,nmat ! only resonant transition
+   istate = wpol%transition_table(1,t_ij)
+   jstate = wpol%transition_table(2,t_ij)
+   ijspin = wpol%transition_table(3,t_ij)
+
+   do t_kl=1,nmat ! only resonant transition
+     kstate = wpol%transition_table(1,t_kl)
+     lstate = wpol%transition_table(2,t_kl)
+     klspin = wpol%transition_table(3,t_kl)
+
+     if(ijspin/=klspin) cycle
+
+     if(.NOT. is_auxil_basis) then
+       kbf = prod_basis%index_prodbasis(istate,kstate)+prod_basis%nbf*(ijspin-1)
+       bra(:) = wpol_static%residu_left (:,kbf)
+       kbf = prod_basis%index_prodbasis(jstate,lstate)+prod_basis%nbf*(klspin-1)
+       ket(:) = wpol_static%residu_right(:,kbf)
+     else
+       bra(:) = bra_auxil(:,istate,kstate,ijspin) 
+       ket(:) = ket_auxil(:,jstate,lstate,klspin)
+     endif
+
+     wtmp =  SUM( bra(:)*ket(:)/(-wpol_static%pole(:)) )
+     apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
+     amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) - wtmp
+
+     if(.NOT. is_auxil_basis) then
+       kbf = prod_basis%index_prodbasis(istate,lstate)+prod_basis%nbf*(ijspin-1)
+       bra(:) = wpol_static%residu_left (:,kbf)
+       kbf = prod_basis%index_prodbasis(jstate,kstate)+prod_basis%nbf*(klspin-1)
+       ket(:) = wpol_static%residu_right(:,kbf)
+     else
+       bra(:) = bra_auxil(:,istate,lstate,ijspin) 
+       ket(:) = ket_auxil(:,jstate,kstate,klspin)
+     endif
+
+     wtmp =  SUM( bra(:)*ket(:)/(-wpol_static%pole(:)) )
+     apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
+     amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) + wtmp
+
+
+   enddo
+ enddo
+
+ deallocate(bra,ket)
+ if(allocated(bra_auxil))                deallocate(bra_auxil)
+ if(allocated(ket_auxil))                deallocate(ket_auxil)
+
+
+ call stop_clock(timing_build_h2p)
+
+
+end subroutine build_amb_apb_bse
+
+
+!=========================================================================
+subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenvector,eigenvector_inv)
+ use m_spectral_function
+ use m_eri
+ use m_tools 
+ implicit none
+
+ integer,intent(in)                 :: nmat,npole
+ real(dp),intent(inout)             :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
+ real(dp),intent(out)               :: eigenvalue(npole)
+ real(dp),intent(out)               :: eigenvector(npole,npole)
+ real(dp),intent(out)               :: eigenvector_inv(npole,npole)
+!=====
+ integer              :: t_kl
+ real(dp),allocatable :: amb_eigval(:),bigomega(:)
+ real(dp),allocatable :: amb_matrix_sqrt(:,:),amb_matrix_sqrtm1(:,:)
+ real(dp),allocatable :: cc_matrix(:,:)
+ real(dp),allocatable :: bigx(:,:),bigy(:,:),cc_matrix_bigomega(:,:)
+!=====
+
+ WRITE_MASTER(*,*) 'Performing the block diago with square root of matrices'
+ allocate(cc_matrix(nmat,nmat))
+ allocate(amb_eigval(nmat))
+
+ WRITE_MASTER(*,*) 'Diago 2-particle hamiltonian a la Casida'
+
+ !
+ ! Calculate (A-B)^{1/2}
+ ! First diagonalize (A-B):
+ ! (A-B) R = R D
+ ! (A-B) is real symmetric, hence R is orthogonal R^{-1} = tR
+ ! (A-B)       = R D tR 
+ ! (A-B)^{1/2} = R D^{1/2} tR 
+ WRITE_MASTER(*,'(a,i8,a,i8)') ' Diago to get (A - B)^{1/2}                   ',nmat,' x ',nmat
+ call start_clock(timing_diago_h2p)
+ call diagonalize(nmat,amb_matrix,amb_eigval)
+ call stop_clock(timing_diago_h2p)
+
+ allocate(amb_matrix_sqrt(nmat,nmat),amb_matrix_sqrtm1(nmat,nmat))
+ do t_kl=1,nmat
+   amb_matrix_sqrt  (:,t_kl) = amb_matrix(:,t_kl)*SQRT(amb_eigval(t_kl))
+   amb_matrix_sqrtm1(:,t_kl) = amb_matrix(:,t_kl)/SQRT(amb_eigval(t_kl))
+ enddo
+ deallocate(amb_eigval)
+
+ amb_matrix = TRANSPOSE( amb_matrix )
+ amb_matrix_sqrt  (:,:) = MATMUL( amb_matrix_sqrt(:,:)   , amb_matrix(:,:) )
+ amb_matrix_sqrtm1(:,:) = MATMUL( amb_matrix_sqrtm1(:,:) , amb_matrix(:,:) )
+ 
+ cc_matrix(:,:) = MATMUL( amb_matrix_sqrt , MATMUL( apb_matrix , amb_matrix_sqrt)  )
+
+! WRITE_MASTER(*,*) 'CC ',matrix_is_symmetric(nmat,cc_matrix)
+
+
+ WRITE_MASTER(*,'(a,i8,a,i8)') ' Diago (A - B)^{1/2} * (A + B) * (A - B)^{1/2}',nmat,' x ',nmat
+ allocate(bigomega(nmat))
+ call start_clock(timing_diago_h2p)
+ call diagonalize(nmat,cc_matrix,bigomega)
+ call stop_clock(timing_diago_h2p)
+
+ bigomega(:) = SQRT(bigomega(:))
+
+
+ allocate(bigx(nmat,nmat),bigy(nmat,nmat))
+ allocate(cc_matrix_bigomega(nmat,nmat))
+
+ do t_kl=1,nmat
+   cc_matrix_bigomega(:,t_kl) = cc_matrix(:,t_kl) * bigomega(t_kl)
+   ! Resonant
+   eigenvalue(t_kl)      =  bigomega(t_kl)
+   ! AntiResonant
+   eigenvalue(t_kl+nmat) = -bigomega(t_kl)
+ enddo
+
+ bigx(:,:) = 0.5_dp * MATMUL( amb_matrix_sqrt(:,:)   , cc_matrix(:,:) )
+ bigy(:,:) = 0.5_dp * MATMUL( amb_matrix_sqrtm1(:,:) , cc_matrix_bigomega(:,:) )
+
+ ! Resonant
+ eigenvector(1:nmat       ,1:nmat)        = bigx(:,:)+bigy(:,:)
+ eigenvector(nmat+1:2*nmat,1:nmat)        = bigx(:,:)-bigy(:,:)
+ ! AntiResonant
+ eigenvector(1:nmat       ,nmat+1:2*nmat) = bigx(:,:)-bigy(:,:)
+ eigenvector(nmat+1:2*nmat,nmat+1:2*nmat) = bigx(:,:)+bigy(:,:)
+ !
+ ! Avoid inversion 
+ eigenvector_inv(1:nmat       ,1:nmat)        = TRANSPOSE( bigx(:,:)+bigy(:,:) )
+ eigenvector_inv(nmat+1:2*nmat,1:nmat)        = TRANSPOSE(-bigx(:,:)+bigy(:,:) )
+ eigenvector_inv(1:nmat       ,nmat+1:2*nmat) = TRANSPOSE(-bigx(:,:)+bigy(:,:) )
+ eigenvector_inv(nmat+1:2*nmat,nmat+1:2*nmat) = TRANSPOSE( bigx(:,:)+bigy(:,:) )
+
+ ! Avoid inversion
+! call start_clock(timing_inversion_s2p)
+! call invert(npole,eigenvector_inv,eigenvector)
+! call stop_clock(timing_inversion_s2p)
+
+ !
+ ! WARNING: I do not understand why I have to divide here to obtain the right
+ !          normalization of the eigenvectors
+ !          but it's working!
+ ! TODO: do the analytic derivation
+ do t_kl=1,2*nmat
+   eigenvector(:,t_kl)     = eigenvector(:,t_kl)     / SQRT(ABS(eigenvalue(t_kl)))
+   eigenvector_inv(t_kl,:) = eigenvector_inv(t_kl,:) / SQRT(ABS(eigenvalue(t_kl)))
+ enddo
+
+
+ deallocate(cc_matrix_bigomega)
+
+
+ deallocate(amb_matrix_sqrt,amb_matrix_sqrtm1,bigomega)
+ deallocate(bigx,bigy)
+ deallocate(cc_matrix)
+
+end subroutine diago_4blocks_sqrt
+
+
+!=========================================================================
+subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenvector,eigenvector_inv)
+ use m_spectral_function
+ use m_eri
+ use m_tools 
+ implicit none
+
+ integer,intent(in)                 :: nmat,npole
+ real(dp),intent(inout)             :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
+ real(dp),intent(out)               :: eigenvalue(npole)
+ real(dp),intent(out)               :: eigenvector(npole,npole)
+ real(dp),intent(out)               :: eigenvector_inv(npole,npole)
+!=====
+ integer  :: descm(ndel),desck(ndel)
+ integer  :: descx(ndel),descy(ndel)
+ integer  :: nlocal,mlocal
+ integer  :: info
+ integer  :: lwork
+ real(dp),allocatable :: work(:)
+!=====
+
+#ifdef HAVE_SCALAPACK
+ WRITE_MASTER(*,*) 'Performing the block diago with Cholesky'
+ call init_desc(nmat,descm,mlocal,nlocal)
+ desck(:) = descm(:)
+ call init_desc(2*nmat,descx,mlocal,nlocal)
+ descy(:) = descx(:)
+
+ allocate(work(1))
+ lwork=-1
+ call pdbssolver1_svd(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
+                      eigenvalue,eigenvector,1,1,descx,eigenvector_inv,1,1,descy,&
+                      work,lwork,info)
+ if(info/=0) stop'SCALAPACK failed'
+ lwork=NINT(work(1))
+
+ deallocate(work)
+ allocate(work(lwork))
+ call pdbssolver1_svd(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
+                      eigenvalue,eigenvector,1,1,descx,eigenvector_inv,1,1,descy,&
+                      work,lwork,info)
+ if(info/=0) stop'SCALAPACK failed'
+ deallocate(work)
+
+ !
+ ! Need to transpose to be consistent with molgw
+ eigenvector_inv = TRANSPOSE(eigenvector_inv)
+
+#else
+ stop'Cholesky diago cannot run without SCALAPACK'
+#endif
+
+end subroutine diago_4blocks_chol
+
+
+!=========================================================================
 subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_matrix)
  use m_mpi
  use m_tools
@@ -27,7 +699,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  real(dp),intent(in)                   :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
 !=====
  type(spectral_function) :: wpol_new,wpol_static
- integer                 :: kbf,ijspin,klspin,ispin
+ integer                 :: kbf,ijspin,klspin
  integer                 :: istate,jstate,kstate,lstate
  integer                 :: ijstate_min
  integer                 :: ipole
@@ -572,7 +1244,7 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
  real(dp),allocatable,intent(out) :: wf_gradr(:,:,:,:)
  real(dp),allocatable,intent(out) :: rho_gradr(:,:,:)
 !=====
- real(dp),parameter :: kernel_capping=1.0e24_dp
+ real(dp),parameter :: kernel_capping=1.0e14_dp
  integer  :: idft_xc,igrid
  integer  :: ispin
  real(dp) :: rr(3)
@@ -692,22 +1364,6 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
      case default
        stop'Other kernels not yet implemented'
      end select
-!     if(v2rho2_c(1) > 1e12 ) then
-!       write(*,*) 'v2rho2',v2rho2_c(1)
-!       write(*,*) rho_c(1),sigma_c(1)
-!       write(*,*)
-!     endif
-!     if(v2rhosigma_c(1) > 1e12 ) then
-!       write(*,*) 'v2rhosigma',v2rhosigma_c(1)
-!       write(*,*) rho_c(1),sigma_c(1)
-!       write(*,*)
-!     endif
-!     if(v2sigma2_c(1) > 1e12 ) then
-!       write(*,*) 'v2sigma2',v2sigma2_c(1)
-!       write(*,*) 'v2rho2',v2rho2_c(1)
-!       write(*,*) rho_c(1),sigma_c(1)
-!       write(*,*)
-!     endif
      !
      ! Remove the too large values for stability
      v2rho2_c(:) = MIN( v2rho2_c(:), kernel_capping )
@@ -728,6 +1384,7 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
 
    enddo
  enddo
+
 
 end subroutine prepare_tddft
 
