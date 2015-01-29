@@ -609,7 +609,7 @@ subroutine init_scalapack()
  call BLACS_GET( -1, 0, context_sca )
 
  ! Set nprow, npcol
-#if 0
+#if 1
  ! squared division of tasks
  nprow=0
  do while((nprow+1)**2<=nproc_sca)

@@ -94,16 +94,16 @@ contains
  !
  do iatom=1,natom
 
-   WRITE_MASTER(*,*)
-   WRITE_MASTER(*,*) 'Element used for Z value:    ',TRIM(element_name(zatom(iatom)))
-   WRITE_MASTER(*,*) 'Element used for the basis:  ',TRIM(element_name(REAL(basis_element(iatom),dp)))
-   WRITE_MASTER(*,*) 'Basis type: ',TRIM(basis_name)
+!   WRITE_MASTER(*,*)
+!   WRITE_MASTER(*,*) 'Element used for Z value:    ',TRIM(element_name(zatom(iatom)))
+!   WRITE_MASTER(*,*) 'Element used for the basis:  ',TRIM(element_name(REAL(basis_element(iatom),dp)))
+!   WRITE_MASTER(*,*) 'Basis type: ',TRIM(basis_name)
    basis_filename=TRIM(element_name(REAL(basis_element(iatom),dp)))//'_'//TRIM(basis_name)
-   msg='basis file used: '//basis_filename
-   call issue_warning(msg)
+!   msg='basis file used: '//basis_filename
+!   call issue_warning(msg)
   
-   WRITE_MASTER(*,*)
-   WRITE_MASTER(*,*) 'open the basis set file ',TRIM(basis_filename)
+!   WRITE_MASTER(*,*)
+!   WRITE_MASTER(*,*) 'open the basis set file ',TRIM(basis_filename)
    inquire(file=TRIM(basis_filename),exist=file_exists)
    if(.NOT.file_exists) stop'basis set file not found'
   

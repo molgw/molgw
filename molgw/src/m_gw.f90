@@ -26,7 +26,7 @@ subroutine polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_m
  integer :: ibf,jbf,ijbf,klbf,ijspin,klspin
  integer :: istate,jstate,kstate,lstate
  integer :: ipole
- integer :: t_ij,t_kl
+ integer :: t_ij
  integer :: reading_status
 
  real(dp),allocatable :: eigenvector(:,:),eigenvector_inv(:,:)
@@ -1132,6 +1132,7 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
  deallocate(cc_matrix)
 
 #else
+
  call init_desc(nmat,descm,mlocal,nlocal)
  desck(:) = descm(:)
  call init_desc(2*nmat,descx,mlocal,nlocal)
@@ -1139,17 +1140,17 @@ subroutine build_h2p_sym(nbf,c_matrix,occupation,energy,wpol,eigenvalue,eigenvec
 
  allocate(work(1))
  lwork=-1
- call pdbssolver1_svd(nmat,apb_matrix, 1,  1, descm, amb_matrix ,  1,  1, desck,          &
-                      eigenvalue, eigenvector,  1,  1, descx, eigenvector_inv,  1,  1,    &
-                      descy, work, lwork, info )
+ call pdbssolver1_svd(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
+                      eigenvalue,eigenvector,1,1,descx,eigenvector_inv,1,1,descy,&
+                      work,lwork,info)
  if(info/=0) stop'SCALAPACK failed'
  lwork=NINT(work(1))
  WRITE_MASTER(*,*) 'lwork=',lwork
  deallocate(work)
  allocate(work(lwork))
- call pdbssolver1_svd(nmat,apb_matrix, 1,  1, descm, amb_matrix ,  1,  1, desck,          &
-                      eigenvalue, eigenvector,  1,  1, descx, eigenvector_inv,  1,  1,    &
-                      descy, work, lwork, info )
+ call pdbssolver1_svd(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
+                      eigenvalue,eigenvector,1,1,descx,eigenvector_inv,1,1,descy,&
+                      work,lwork,info)
  if(info/=0) stop'SCALAPACK failed'
  deallocate(work)
 

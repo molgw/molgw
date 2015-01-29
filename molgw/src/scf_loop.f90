@@ -181,7 +181,6 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      self_energy_old(:,:,:) = matrix_tmp(:,:,:)
      title='=== Self-energy ==='
      call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix_tmp)
-     call destroy_spectral_function(wpol)
   
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
 
