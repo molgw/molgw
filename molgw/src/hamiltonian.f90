@@ -64,6 +64,7 @@ end subroutine setup_overlap
 !=========================================================================
 subroutine setup_kinetic(print_matrix,basis,hamiltonian_kinetic)
  use m_definitions
+ use m_timing
  use m_basis_set
  implicit none
  logical,intent(in)         :: print_matrix
@@ -78,6 +79,7 @@ subroutine setup_kinetic(print_matrix,basis,hamiltonian_kinetic)
  real(dp),allocatable :: matrix_cart(:,:)
 !====
 
+ call start_clock(timing_hamiltonian_kin)
  WRITE_MASTER(*,'(/,a)') ' Setup kinetic part of the Hamiltonian'
 
  ibf_cart = 1
@@ -119,6 +121,7 @@ subroutine setup_kinetic(print_matrix,basis,hamiltonian_kinetic)
  title='===  Kinetic energy contribution ==='
  call dump_out_matrix(print_matrix,title,basis%nbf,1,hamiltonian_kinetic)
 
+ call stop_clock(timing_hamiltonian_kin)
 
 end subroutine setup_kinetic
 
@@ -126,6 +129,7 @@ end subroutine setup_kinetic
 !=========================================================================
 subroutine setup_nucleus(print_matrix,basis,hamiltonian_nucleus)
  use m_definitions
+ use m_timing
  use m_basis_set
  use m_atoms
  implicit none
@@ -143,6 +147,7 @@ subroutine setup_nucleus(print_matrix,basis,hamiltonian_nucleus)
  real(dp)             :: vnucleus_ij
 !====
 
+ call start_clock(timing_hamiltonian_nuc)
  WRITE_MASTER(*,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian'
 
  ibf_cart = 1
@@ -189,6 +194,7 @@ subroutine setup_nucleus(print_matrix,basis,hamiltonian_nucleus)
  title='===  Nucleus potential contribution ==='
  call dump_out_matrix(print_matrix,title,basis%nbf,1,hamiltonian_nucleus)
 
+ call stop_clock(timing_hamiltonian_nuc)
 
 end subroutine setup_nucleus
 

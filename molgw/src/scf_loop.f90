@@ -19,6 +19,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  use m_dft_grid
  use m_spectral_function
  use m_gw
+ use m_timedependent
 #ifdef _OPENMP
  use omp_lib
 #endif
@@ -78,7 +79,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
    !
    ! Setup kinetic and nucleus contributions (that are independent of the
-   ! density matrix and therefore of spin polarization)
+   ! density matrix and therefore of spin channel)
    !
    hamiltonian(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) 
    if(nspin==2) hamiltonian(:,:,nspin)    = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) 
@@ -143,7 +144,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
        .AND. iscf > 5 ) then
 
      if(is_auxil_basis) call prepare_eri_3center_eigen(c_matrix)
-     call polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
+     call polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
 
      if( ABS(en%rpa) > 1.e-6_dp) then
        en%tot = en%tot + en%rpa
@@ -199,7 +200,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    ! H \phi = E S \phi
    ! save the old eigenvalues
    do ispin=1,nspin
-     WRITE_MASTER(*,*) 'Diagonalization for spin polarization',ispin
+     WRITE_MASTER(*,*) 'Diagonalization for spin channel',ispin
      call start_clock(timing_diago_hamiltonian)
      call diagonalize_generalized_sym(basis%nbf,&
                                       hamiltonian(:,:,ispin),s_matrix(:,:),&
