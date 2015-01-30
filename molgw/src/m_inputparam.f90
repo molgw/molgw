@@ -58,7 +58,7 @@ module m_inputparam
  logical,protected                :: print_wfn
  logical,protected                :: print_specfunc
 
- real(dp)                         :: alpha_hybrid    = 1.0_dp
+ real(dp)                         :: alpha_hybrid    = 0.0_dp
  real(dp)                         :: alpha_hybrid_lr = 0.0_dp
  real(dp)                         :: rcut            = 0.0_dp
 
@@ -154,22 +154,27 @@ subroutine init_calculation_type(calc_type,input_key)
  ! Then read the first part of the calculation specifier
  select case(TRIM(key1))
  case('CI')
-   calc_type%is_ci =.TRUE.
+   calc_type%is_ci         = .TRUE.
    calc_type%need_exchange = .TRUE.
+   alpha_hybrid            = 1.00_dp
  case('HF')
    calc_type%need_exchange = .TRUE.  
+   alpha_hybrid            = 1.00_dp
  case('MP2')
    calc_type%need_exchange = .TRUE.  
    calc_type%is_mp2        = .TRUE.
    calc_type%gwmethod      = QS
+   alpha_hybrid            = 1.00_dp
  case('GW')
    calc_type%need_exchange = .TRUE.  
    calc_type%is_gw         = .TRUE.
    calc_type%gwmethod      = QS
+   alpha_hybrid            = 1.00_dp
  case('COHSEX')
    calc_type%need_exchange = .TRUE.  
    calc_type%is_gw         = .TRUE.
    calc_type%gwmethod      = QSCOHSEX
+   alpha_hybrid            = 1.00_dp
  case('VIN')
    calc_type%read_potential= .TRUE.  
  case default

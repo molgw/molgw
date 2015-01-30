@@ -255,7 +255,9 @@ program molgw
      call prepare_eri_3center_eigen(c_matrix)
      call destroy_eri_3center()
    endif
-   call polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_matrix)
+   call polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
+   call destroy_spectral_function(wpol)
+
    if(calc_type%is_td .AND. calc_type%is_dft) call destroy_dft_grid()
    if(is_auxil_basis) call destroy_eri_3center_eigen()
 
@@ -303,7 +305,7 @@ program molgw
      call prepare_eri_3center_eigen(c_matrix)
      call destroy_eri_3center()
    endif
-   call polarizability_rpa(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
+   call polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
 
    en%tot = en%tot + en%rpa
    if( calc_type%is_dft ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )

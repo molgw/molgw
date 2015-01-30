@@ -2221,8 +2221,7 @@ subroutine destroy_eri_3center_eigen()
  implicit none
 !=====
 
- WRITE_MASTER(*,'(/,a,/)') ' Destroy 3-center integrals on eigenstates'
-
+ WRITE_MASTER(*,'(/,a)') ' Destroy 3-center integrals on eigenstates'
  if(allocated(eri_3center_eigen)) deallocate(eri_3center_eigen)
 
 end subroutine destroy_eri_3center_eigen
@@ -2233,7 +2232,7 @@ subroutine destroy_eri_3center()
  implicit none
 !=====
 
- WRITE_MASTER(*,'(/,a,/)') ' Destroy 3-center integrals'
+ WRITE_MASTER(*,'(/,a)') ' Destroy 3-center integrals'
  call memory_statement(-REAL(nsize1_auxil,dp)*REAL(nsize1)*REAL(prec_eri/dp,dp))
  if(allocated(eri_3center)) deallocate(eri_3center)
 

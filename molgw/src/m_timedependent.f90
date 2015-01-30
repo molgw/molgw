@@ -24,7 +24,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  real(dp),intent(in)                   :: occupation(basis%nbf,nspin)
  real(dp),intent(in)                   :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)                  :: rpa_correlation
- type(spectral_function),intent(inout) :: wpol_out          !FBFB change to intent(out) ???
+ type(spectral_function),intent(out)   :: wpol_out
 !=====
  integer                 :: t_ij
  type(spectral_function) :: wpol_static
@@ -36,7 +36,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  logical                 :: is_tddft
  logical                 :: is_ij
  logical                 :: is_rpa
- logical                 :: is_tdhf
+ logical                 :: has_manual_tdhf
 !=====
 
  call start_clock(timing_pola)
@@ -62,12 +62,12 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! 
  ! Set up exchange content alpha_local
  ! manual_tdhf can override anything
- inquire(file='manual_tdhf',exist=is_tdhf)
- if(is_tdhf) then
+ inquire(file='manual_tdhf',exist=has_manual_tdhf)
+ if(has_manual_tdhf) then
    open(unit=18,file='manual_tdhf',status='old')
    read(18,*) alpha_local
    close(18)
-   WRITE_ME(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alphas  ',alpha_local
+   WRITE_ME(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alpha ',alpha_local
    call issue_warning(msg)
  else
    if(is_rpa) then
@@ -78,13 +78,9 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
      alpha_local = 1.0_dp
    endif
  endif
- !
- ! Warning if Tamm-Dancoff flag is on
- if(calc_type%is_tda) then
-   msg='Tamm-Dancoff approximation is switched on'
-   call issue_warning(msg)
- endif
 
+
+ call start_clock(timing_build_h2p)
 
  ! Obtain the number of transition = the size of the matrix
  call init_spectral_function(basis%nbf,occupation,wpol_out)
@@ -93,7 +89,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! Prepare BSE calculations
  ! static screening + GW quasiparticle energies
  !
- if( calc_type%is_bse .AND. .NOT.is_rpa ) then
+ if( calc_type%is_bse .AND. .NOT. is_rpa ) then
    ! Set up energy_qp and wpol_static
    call prepare_bse(basis%nbf,energy,occupation,energy_qp,wpol_static)
  else
@@ -110,6 +106,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! Build the (A+B) and (A-B) matrices in 3 steps
  ! to span all the possible approximations
  !
+ WRITE_MASTER(*,'(/,a)') ' Build the electron-hole hamiltonian'
  call build_amb_apb_common(basis%nbf,c_matrix,energy_qp,wpol_out,alpha_local,nmat,amb_matrix,apb_matrix)
  if(is_tddft) &
    call build_apb_tddft(basis,c_matrix,occupation,wpol_out,nmat,apb_matrix)
@@ -125,24 +122,44 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
    rpa_correlation = rpa_correlation - 0.25_dp * ( apb_matrix(t_ij,t_ij) + amb_matrix(t_ij,t_ij) )
  enddo
 
+ !
+ ! Warning if Tamm-Dancoff flag is on
+ if(calc_type%is_tda) then
+   msg='Tamm-Dancoff approximation is switched on'
+   call issue_warning(msg)
+   ! Tamm-Dancoff approximation consists in setting B matrix to zero
+   ! Then A+B = A-B
+   apb_matrix(:,:) = 0.5_dp * ( apb_matrix(:,:) + amb_matrix(:,:) )
+   apb_matrix(:,:) = amb_matrix(:,:) 
+ endif
+
+ call stop_clock(timing_build_h2p)
+
 
  allocate(eigenvector(wpol_out%npole,wpol_out%npole))
  allocate(eigenvector_inv(wpol_out%npole,wpol_out%npole))
  allocate(eigenvalue(wpol_out%npole))
 
-
- ! DIAGO using the 4 block structure and the symmetry of each block
- call start_clock(timing_tmp1)
+ !
+ ! Diago using the 4 block structure and the symmetry of each block
+ call start_clock(timing_diago_h2p)
  if(.TRUE.) then
    call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_inv)
  else
    call diago_4blocks_chol(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_inv)
  endif
- call stop_clock(timing_tmp1)
+ call stop_clock(timing_diago_h2p)
 
  !
  ! Second part of the RPA correlation energy: sum over positive eigenvalues
  rpa_correlation = rpa_correlation + 0.50_dp * SUM( eigenvalue(1:nmat) )
+ if(is_rpa) then
+  WRITE_MASTER(*,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
+  WRITE_MASTER(*,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
+  WRITE_MASTER(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',rpa_correlation
+ endif
+
+ WRITE_MASTER(*,'(/,a,f14.8)') ' Lowest neutral excitation energy [eV]',MINVAL(ABS(eigenvalue(:)))*Ha_eV
 
 
  deallocate(apb_matrix,amb_matrix)
@@ -151,7 +168,8 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! Calculate the optical sprectrum
  ! and the dynamic dipole tensor
  !
- call optical_spectrum(basis,prod_basis,occupation,c_matrix,wpol_out,eigenvector,eigenvector_inv,eigenvalue)
+ if( calc_type%is_td .OR. calc_type%is_bse ) &
+   call optical_spectrum(basis,prod_basis,occupation,c_matrix,wpol_out,eigenvector,eigenvector_inv,eigenvalue)
 
  !
  ! Calculate Wp= v * chi * v 
@@ -206,9 +224,9 @@ subroutine build_amb_apb_common(nbf,c_matrix,energy,wpol,alpha_local,nmat,amb_ma
  logical              :: is_ij
 !=====
 
- call start_clock(timing_build_h2p)
+ call start_clock(timing_build_common)
 
- WRITE_MASTER(*,'(a)') ' Build Coulomb part'
+ WRITE_MASTER(*,'(a)') ' Build Common part: Energies + Hartree + possibly Exchange'
 
  if( .NOT. is_auxil_basis) then
    allocate(eri_eigenstate_ijmin(nbf,nbf,nbf,nspin))
@@ -254,7 +272,7 @@ subroutine build_amb_apb_common(nbf,c_matrix,energy,wpol,alpha_local,nmat,amb_ma
        if(ijspin==klspin) then
          if(is_auxil_basis) then
            eri_eigen_ikjl = eri_eigen_ri(istate,kstate,ijspin,jstate,lstate,klspin)
-           eri_eigen_iljk = eri_eigen_ri(istate,lstate,ijspin,jstate,lstate,klspin)
+           eri_eigen_iljk = eri_eigen_ri(istate,lstate,ijspin,jstate,kstate,klspin)
          else
            if(is_ij) then
              eri_eigen_ikjl = eri_eigenstate_ijmin(kstate,jstate,lstate,klspin)
@@ -279,8 +297,7 @@ subroutine build_amb_apb_common(nbf,c_matrix,energy,wpol,alpha_local,nmat,amb_ma
  if(allocated(eri_eigenstate_ijmin)) deallocate(eri_eigenstate_ijmin)
 
 
- call stop_clock(timing_build_h2p)
-
+ call stop_clock(timing_build_common)
 
 end subroutine build_amb_apb_common
 
@@ -314,7 +331,7 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,nmat,apb_matrix)
  real(dp),allocatable :: rho_gradr(:,:,:)
 !=====
 
- call start_clock(timing_build_h2p)
+ call start_clock(timing_build_tddft)
 
  WRITE_MASTER(*,'(a)') ' Build fxc part'
 
@@ -402,7 +419,7 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,nmat,apb_matrix)
  endif
 
 
- call stop_clock(timing_build_h2p)
+ call stop_clock(timing_build_tddft)
 
 end subroutine build_apb_tddft
 
@@ -431,7 +448,7 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
  real(dp)             :: wtmp
 !=====
 
- call start_clock(timing_build_h2p)
+ call start_clock(timing_build_bse)
 
  WRITE_MASTER(*,'(a)') ' Build W part'
  !
@@ -506,7 +523,7 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
  if(allocated(ket_auxil))                deallocate(ket_auxil)
 
 
- call stop_clock(timing_build_h2p)
+ call stop_clock(timing_build_bse)
 
 
 end subroutine build_amb_apb_bse
@@ -519,11 +536,11 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
  use m_tools 
  implicit none
 
- integer,intent(in)                 :: nmat,npole
- real(dp),intent(inout)             :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
- real(dp),intent(out)               :: eigenvalue(npole)
- real(dp),intent(out)               :: eigenvector(npole,npole)
- real(dp),intent(out)               :: eigenvector_inv(npole,npole)
+ integer,intent(in)     :: nmat,npole
+ real(dp),intent(inout) :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
+ real(dp),intent(out)   :: eigenvalue(npole)
+ real(dp),intent(out)   :: eigenvector(npole,npole)
+ real(dp),intent(out)   :: eigenvector_inv(npole,npole)
 !=====
  integer              :: t_kl
  real(dp),allocatable :: amb_eigval(:),bigomega(:)
@@ -532,11 +549,10 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
  real(dp),allocatable :: bigx(:,:),bigy(:,:),cc_matrix_bigomega(:,:)
 !=====
 
- WRITE_MASTER(*,*) 'Performing the block diago with square root of matrices'
+ WRITE_MASTER(*,'(/,a)') ' Performing the block diago with square root of matrices'
  allocate(cc_matrix(nmat,nmat))
  allocate(amb_eigval(nmat))
 
- WRITE_MASTER(*,*) 'Diago 2-particle hamiltonian a la Casida'
 
  !
  ! Calculate (A-B)^{1/2}
@@ -546,9 +562,7 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
  ! (A-B)       = R D tR 
  ! (A-B)^{1/2} = R D^{1/2} tR 
  WRITE_MASTER(*,'(a,i8,a,i8)') ' Diago to get (A - B)^{1/2}                   ',nmat,' x ',nmat
- call start_clock(timing_diago_h2p)
  call diagonalize(nmat,amb_matrix,amb_eigval)
- call stop_clock(timing_diago_h2p)
 
  allocate(amb_matrix_sqrt(nmat,nmat),amb_matrix_sqrtm1(nmat,nmat))
  do t_kl=1,nmat
@@ -568,9 +582,7 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
 
  WRITE_MASTER(*,'(a,i8,a,i8)') ' Diago (A - B)^{1/2} * (A + B) * (A - B)^{1/2}',nmat,' x ',nmat
  allocate(bigomega(nmat))
- call start_clock(timing_diago_h2p)
  call diagonalize(nmat,cc_matrix,bigomega)
- call stop_clock(timing_diago_h2p)
 
  bigomega(:) = SQRT(bigomega(:))
 
@@ -650,7 +662,7 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
 !=====
 
 #ifdef HAVE_SCALAPACK
- WRITE_MASTER(*,*) 'Performing the block diago with Cholesky'
+ WRITE_MASTER(*,'(/,a)') ' Performing the block diago with Cholesky'
  call init_desc(nmat,descm,mlocal,nlocal)
  desck(:) = descm(:)
  call init_desc(2*nmat,descx,mlocal,nlocal)
@@ -1055,6 +1067,8 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  integer,parameter                  :: unit_dynpol=101
  integer,parameter                  :: unit_photocross=102
 !=====
+
+ call start_clock(timing_spectrum)
  !
  ! Calculate the spectrum now
  !
@@ -1183,7 +1197,9 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
      t_kl = t_kl + 1
      oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_ij),residu_right(:,t_ij)) * eigenvalue(t_ij)
      trk_sumrule = trk_sumrule + oscillator_strength
-     WRITE_MASTER(*,'(i4,10(f18.8,2x))') t_kl,eigenvalue(t_ij)*Ha_eV,oscillator_strength
+     if(t_ij<30) then
+       WRITE_MASTER(*,'(i4,10(f18.8,2x))') t_kl,eigenvalue(t_ij)*Ha_eV,oscillator_strength
+     endif
    endif
  enddo
  WRITE_MASTER(*,*)
@@ -1217,6 +1233,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  deallocate(residu_left,residu_right)
  deallocate(dipole_state)
 
+ call stop_clock(timing_spectrum)
 
 end subroutine optical_spectrum
 
