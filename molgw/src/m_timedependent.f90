@@ -128,9 +128,9 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
    msg='Tamm-Dancoff approximation is switched on'
    call issue_warning(msg)
    ! Tamm-Dancoff approximation consists in setting B matrix to zero
-   ! Then A+B = A-B
+   ! Then A+B = A-B = A
    apb_matrix(:,:) = 0.5_dp * ( apb_matrix(:,:) + amb_matrix(:,:) )
-   apb_matrix(:,:) = amb_matrix(:,:) 
+   amb_matrix(:,:) = apb_matrix(:,:) 
  endif
 
  call stop_clock(timing_build_h2p)
@@ -143,7 +143,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  !
  ! Diago using the 4 block structure and the symmetry of each block
  call start_clock(timing_diago_h2p)
- if(.TRUE.) then
+ if(.FALSE.) then
    call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_inv)
  else
    call diago_4blocks_chol(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_inv)
@@ -172,7 +172,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
    call optical_spectrum(basis,prod_basis,occupation,c_matrix,wpol_out,eigenvector,eigenvector_inv,eigenvalue)
 
  !
- ! Calculate Wp= v * chi * v 
+ ! Calculate Wp= v * chi * v    if necessary
  ! and then write it down on file
  !
  if( print_specfunc .OR. calc_type%is_gw ) then
