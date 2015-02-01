@@ -98,14 +98,17 @@ contains
 !   WRITE_MASTER(*,*) 'Element used for Z value:    ',TRIM(element_name(zatom(iatom)))
 !   WRITE_MASTER(*,*) 'Element used for the basis:  ',TRIM(element_name(REAL(basis_element(iatom),dp)))
 !   WRITE_MASTER(*,*) 'Basis type: ',TRIM(basis_name)
-   basis_filename=TRIM(element_name(REAL(basis_element(iatom),dp)))//'_'//TRIM(basis_name)
+   basis_filename=ADJUSTL(element_name(REAL(basis_element(iatom),dp))//'_'//TRIM(basis_name))
 !   msg='basis file used: '//basis_filename
 !   call issue_warning(msg)
   
 !   WRITE_MASTER(*,*)
 !   WRITE_MASTER(*,*) 'open the basis set file ',TRIM(basis_filename)
    inquire(file=TRIM(basis_filename),exist=file_exists)
-   if(.NOT.file_exists) stop'basis set file not found'
+   if(.NOT.file_exists) then
+     WRITE_MASTER(*,'(a,a)') ' Looking for file ',TRIM(basis_filename)
+     stop'basis set file not found'
+   endif
   
    !
    ! read first to get all the dimensions
@@ -138,7 +141,7 @@ contains
  shell_index = 0
  do iatom=1,natom
 
-   basis_filename=TRIM(element_name(REAL(basis_element(iatom),dp)))//'_'//TRIM(basis_name)
+   basis_filename=ADJUSTL(element_name(REAL(basis_element(iatom),dp))//'_'//TRIM(basis_name))
    open(unit=basis_file,file=TRIM(basis_filename),status='old')
    read(basis_file,*) nbf_file
    do ibf_file=1,nbf_file

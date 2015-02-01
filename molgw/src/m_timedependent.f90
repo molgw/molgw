@@ -143,7 +143,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  !
  ! Diago using the 4 block structure and the symmetry of each block
  call start_clock(timing_diago_h2p)
- if(.FALSE.) then
+ if(.TRUE.) then
    call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_inv)
  else
    call diago_4blocks_chol(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_inv)
@@ -227,6 +227,7 @@ subroutine build_amb_apb_common(nbf,c_matrix,energy,wpol,alpha_local,nmat,amb_ma
  call start_clock(timing_build_common)
 
  WRITE_MASTER(*,'(a)') ' Build Common part: Energies + Hartree + possibly Exchange'
+ WRITE_MASTER(*,'(a,f8.3)') ' Content of Exchange: ',alpha_local
 
  if( .NOT. is_auxil_basis) then
    allocate(eri_eigenstate_ijmin(nbf,nbf,nbf,nspin))
@@ -329,6 +330,7 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,nmat,apb_matrix)
  real(dp),allocatable :: wf_r(:,:,:)
  real(dp),allocatable :: wf_gradr(:,:,:,:)
  real(dp),allocatable :: rho_gradr(:,:,:)
+ real(dp)             :: xctmp
 !=====
 
  call start_clock(timing_build_tddft)
@@ -361,16 +363,15 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,nmat,apb_matrix)
    jstate = wpol%transition_table(2,t_ij)
    ijspin = wpol%transition_table(3,t_ij)
 
-   do t_kl=1,nmat ! only resonant transition
+   do t_kl=t_ij,nmat  ! use the symmetry of (A+B)
      kstate = wpol%transition_table(1,t_kl)
      lstate = wpol%transition_table(2,t_kl)
      klspin = wpol%transition_table(3,t_kl)
 
 
-     apb_matrix(t_ij,t_kl) = apb_matrix(t_ij,t_kl)   &
-                  + SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
+     xctmp = SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
                         * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
-                        * v2rho2(:,ijspin) )                            & 
+                        * v2rho2(:,ijspin) )                            &
                         * 4.0_dp
 
 
@@ -389,17 +390,19 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,nmat,apb_matrix)
        dot_rho_kl(:,klspin) = rho_gradr(1,:,1) * grad_kl(1,:,klspin) + rho_gradr(2,:,1) * grad_kl(2,:,klspin)  &
                              + rho_gradr(3,:,1) * grad_kl(3,:,klspin)
 
-       apb_matrix(t_ij,t_kl) = apb_matrix(t_ij,t_kl)   &
-                + SUM( dot_ij_kl(:,1) * 6.0_dp * vsigma(:,1) )
-       apb_matrix(t_ij,t_kl) = apb_matrix(t_ij,t_kl)   &
-                + SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * 9.0_dp * v2sigma2(:,1) )
-       apb_matrix(t_ij,t_kl) = apb_matrix(t_ij,t_kl)   &
-                + SUM( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1) * 6.0_dp * v2rhosigma(:,1) )
-       apb_matrix(t_ij,t_kl) = apb_matrix(t_ij,t_kl)   &
-                + SUM( wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) * 6.0_dp * v2rhosigma(:,1) )
+       xctmp = xctmp   &
+             + SUM( dot_ij_kl(:,1) * 6.0_dp * vsigma(:,1) ) &
+             + SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * 9.0_dp * v2sigma2(:,1) ) &
+             + SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * 9.0_dp * v2sigma2(:,1) ) &
+             + SUM( ( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1)   &
+                    + wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) ) &
+                       * 6.0_dp * v2rhosigma(:,1) )
 
      endif
 
+     apb_matrix(t_ij,t_kl) = apb_matrix(t_ij,t_kl) + xctmp
+     ! use the symmetry of (A+B)
+     if( t_ij /= t_kl ) apb_matrix(t_kl,t_ij) = apb_matrix(t_kl,t_ij) + xctmp
 
    enddo
  enddo
@@ -479,7 +482,7 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
    jstate = wpol%transition_table(2,t_ij)
    ijspin = wpol%transition_table(3,t_ij)
 
-   do t_kl=1,nmat ! only resonant transition
+   do t_kl=t_ij,nmat ! only resonant transition
      kstate = wpol%transition_table(1,t_kl)
      lstate = wpol%transition_table(2,t_kl)
      klspin = wpol%transition_table(3,t_kl)
@@ -499,6 +502,10 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
      wtmp =  SUM( bra(:)*ket(:)/(-wpol_static%pole(:)) )
      apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
      amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) - wtmp
+     if( t_ij/=t_kl) then
+       apb_matrix(t_kl,t_ij) =  apb_matrix(t_kl,t_ij) - wtmp
+       amb_matrix(t_kl,t_ij) =  amb_matrix(t_kl,t_ij) - wtmp
+     endif
 
      if(.NOT. is_auxil_basis) then
        kbf = prod_basis%index_prodbasis(istate,lstate)+prod_basis%nbf*(ijspin-1)
@@ -513,6 +520,10 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
      wtmp =  SUM( bra(:)*ket(:)/(-wpol_static%pole(:)) )
      apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
      amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) + wtmp
+     if( t_ij/=t_kl) then
+       apb_matrix(t_kl,t_ij) =  apb_matrix(t_kl,t_ij) - wtmp
+       amb_matrix(t_kl,t_ij) =  amb_matrix(t_kl,t_ij) + wtmp
+     endif
 
 
    enddo

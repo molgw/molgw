@@ -388,6 +388,8 @@ subroutine read_inputparameter_molecule()
  integer              :: natom_read
  real(dp),allocatable :: zatom_read(:),x_read(:,:)
  real(dp)             :: charge,length_factor
+ character(len=2)     :: atom_symbol
+ integer              :: atom_number,info
 !=====
 
  !
@@ -520,8 +522,17 @@ case('PULAY')
  end select
 
  allocate(x_read(3,natom_read),zatom_read(natom_read))
+ 
  do iatom=1,natom_read
-   read(*,*) zatom_read(iatom),x_read(:,iatom)
+   read(*,*) atom_symbol,x_read(:,iatom)
+   !
+   ! First, try to interpret atom_symbol as an integer
+   read(atom_symbol,'(i2)',iostat=info) atom_number
+   ! If it fails, then assumes it is a character
+   if( info /=0 ) then
+     atom_number = element_number(atom_symbol)
+   endif
+   zatom_read(iatom) = atom_number
  enddo
  x_read(:,:) = x_read(:,:) * length_factor
  call init_atoms(natom_read,zatom_read,x_read)
