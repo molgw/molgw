@@ -7,6 +7,7 @@ module m_spectral_function
  use m_timing 
  use m_warning
  use m_inputparam
+ use m_atoms
 
  integer,parameter :: CASIDA=1
  integer,parameter :: SAVE_CPU=2
@@ -77,8 +78,16 @@ subroutine init_spectral_function(nbf,occupation,sf)
    read(13,*) ncore_G
    read(13,*) ncore_W
    close(13)
-   ncore_G = MAX(ncore_G,0)
-   ncore_W = MAX(ncore_W,0)
+   if( ncore_G == -1) then
+     ncore_G = atoms_core_states()
+   else
+     ncore_G = MAX(ncore_G,0)
+   endif
+   if( ncore_W == -1) then
+     ncore_W = atoms_core_states()
+   else
+     ncore_W = MAX(ncore_W,0)
+   endif
    WRITE_MASTER(msg,'(a,i4,2x,i4)') 'frozen core approximation switched on up to state (G,W) = ',ncore_G,ncore_W
    call issue_warning(msg)
  endif

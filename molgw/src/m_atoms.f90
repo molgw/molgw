@@ -4,6 +4,7 @@
 module m_atoms
  use m_definitions
  use m_mpi
+ use m_elements
 
  integer,protected              :: natom
  integer,protected              :: natom_type
@@ -62,6 +63,20 @@ subroutine init_atoms(natom_read,zatom_read,x_read)
 
 
 end subroutine init_atoms
+!=========================================================================
+function atoms_core_states()
+ implicit none
+ integer :: atoms_core_states
+!=====
+ integer :: iatom
+!=====
+
+ atoms_core_states=0
+ do iatom=1,natom
+   atoms_core_states = atoms_core_states + element_core(zatom(iatom))
+ enddo
+ 
+end function atoms_core_states
 
 
 !=========================================================================
@@ -85,7 +100,6 @@ subroutine get_bondcenter(ibond,xbond)
      endif
    enddo
  enddo
-
 
 
 end subroutine get_bondcenter

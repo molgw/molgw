@@ -19,6 +19,30 @@ module m_elements
 
 contains
 
+
+!=========================================================================
+function element_core(zatom)
+ implicit none
+ real(dp),intent(in) :: zatom
+ real(dp)            :: element_core
+!=====
+
+ if( zatom <= 4.00001 ) then  ! up to Be
+  element_core = 0
+ else if( zatom <= 12.00001 ) then  ! up to Mg
+  element_core = 1
+ else if( zatom <= 20.00001 ) then  ! up to Ca
+  element_core = 5
+ else if( zatom <= 38.00001 ) then  ! up to Sr
+  element_core = 9
+ else
+   stop'not imlemented in element_core'
+ endif
+
+
+end function element_core
+
+
 !=========================================================================
 function element_covalent_radius(zatom)
  implicit none
