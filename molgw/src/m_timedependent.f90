@@ -1294,6 +1294,7 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
  real(C_DOUBLE) :: vsigma_c(2*nspin-1)
  real(C_DOUBLE) :: v2rhosigma_c(5*nspin-4)
  real(C_DOUBLE) :: v2sigma2_c(5*nspin-4)
+ real(dp)       :: max_v2sigma2
 !=====
 
  !
@@ -1337,6 +1338,7 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
  endif
 
 
+ max_v2sigma2 = -1.0_dp
  do igrid=1,ngrid
 
    rr(:) = rr_grid(:,igrid)
@@ -1396,6 +1398,7 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
      ! Remove the too large values for stability
      v2rho2_c(:) = MIN( v2rho2_c(:), kernel_capping )
      if(require_gradient) then
+       max_v2sigma2 = MAX(ABS(v2sigma2_c(1)),max_v2sigma2)
        vsigma_c(:)     = MIN( vsigma_c(:), kernel_capping )
        v2rhosigma_c(:) = MIN( v2rhosigma_c(:), kernel_capping )
        v2sigma2_c(:)   = MIN( v2sigma2_c(:), kernel_capping )
@@ -1412,6 +1415,9 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
 
    enddo
  enddo
+ if(require_gradient) then
+   WRITE_MASTER(*,'(a,e18.6)') ' Maximum numerical value for fxc: ',max_v2sigma2
+ endif
 
 
 end subroutine prepare_tddft
