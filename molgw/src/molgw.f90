@@ -226,7 +226,6 @@ program molgw
  
  call start_clock(timing_postscf)
 
-
  if( print_wfn ) call plot_wfn(nspin,basis,c_matrix)
 ! if( print_wfn ) call plot_cube_wfn(nspin,basis,c_matrix)
 

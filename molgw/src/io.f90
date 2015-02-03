@@ -61,6 +61,7 @@ subroutine header()
 
 end subroutine header
 
+
 !=========================================================================
 subroutine dump_out_occupation(title,n,nspin,occupation)
  use m_definitions
@@ -72,7 +73,7 @@ subroutine dump_out_occupation(title,n,nspin,occupation)
 !=====
  integer,parameter :: MAXSIZE=1000
 !=====
- integer :: i,ispin
+ integer :: istate,ispin
 !=====
 
  WRITE_MASTER(*,'(/,x,a)') TRIM(title)
@@ -80,13 +81,14 @@ subroutine dump_out_occupation(title,n,nspin,occupation)
  if(nspin==2) then
    WRITE_MASTER(*,'(a)') '           spin 1       spin 2 '
  endif
- do i=1,MIN(n,MAXSIZE)
-   WRITE_MASTER(*,'(x,i3,2(2(x,f12.5)),2x)') i,occupation(i,:)
+ do istate=1,MIN(n,MAXSIZE)
+   WRITE_MASTER(*,'(x,i3,2(2(x,f12.5)),2x)') istate,occupation(istate,:)
  enddo
 
  WRITE_MASTER(*,*)
 
 end subroutine dump_out_occupation
+
 
 !=========================================================================
 subroutine dump_out_eigenenergy(title,n,nspin,occupation,energy)
@@ -99,7 +101,7 @@ subroutine dump_out_eigenenergy(title,n,nspin,occupation,energy)
 !=====
  integer,parameter :: MAXSIZE=300
 !=====
- integer  :: i,ispin
+ integer  :: istate,ispin
  real(dp) :: spin_fact
 !=====
 
@@ -113,10 +115,10 @@ subroutine dump_out_eigenenergy(title,n,nspin,occupation,energy)
    WRITE_MASTER(*,'(a)') '   #              [Ha]                      [eV]      '
    WRITE_MASTER(*,'(a)') '           spin 1       spin 2       spin 1       spin 2'
  endif
- do i=1,MIN(n,MAXSIZE)
-   WRITE_MASTER(*,'(x,i3,2(2(x,f12.5)),2x)') i,energy(i,:),energy(i,:)*Ha_eV
-   if(i<n) then
-     if( ANY( occupation(i+1,:) < spin_fact/2.0_dp .AND. occupation(i,:) > spin_fact/2.0 ) ) then 
+ do istate=1,MIN(n,MAXSIZE)
+   WRITE_MASTER(*,'(x,i3,2(2(x,f12.5)),2x)') istate,energy(istate,:),energy(istate,:)*Ha_eV
+   if(istate<n) then
+     if( ANY( occupation(istate+1,:) < spin_fact/2.0_dp .AND. occupation(istate,:) > spin_fact/2.0 ) ) then 
         if(nspin==1) then
           WRITE_MASTER(*,'(a)') '  -----------------------------'
         else
@@ -307,6 +309,7 @@ subroutine plot_wfn(nspin,basis,c_matrix)
  deallocate(phase,phi)
 
 end subroutine plot_wfn
+
 
 !=========================================================================
 subroutine plot_cube_wfn(nspin,basis,c_matrix)
@@ -529,6 +532,7 @@ subroutine read_energy_qp(nspin,nbf,energy_qp,reading_status)
 
 end subroutine read_energy_qp
 
+
 !=========================================================================
 subroutine memory_statement(rn)
  use m_definitions
@@ -592,9 +596,9 @@ subroutine write_small_restart(nbf,occupation,c_matrix)
  call stop_clock(timing_restart_file)
 
 end subroutine write_small_restart
+
+
 !=========================================================================
-
-
 subroutine write_big_restart(nbf,occupation,c_matrix,energy,hamiltonian_exx,hamiltonian_xc)
  use m_definitions
  use m_mpi
@@ -783,6 +787,94 @@ subroutine write_density_grid(basis,p_matrix)
  enddo
 
 end subroutine write_density_grid
+
+
+!=========================================================================
+function evaluate_wfn_r(nspin,basis,c_matrix,istate,ispin,rr)
+ use m_definitions
+ use m_mpi
+ use m_atoms
+ use m_basis_set
+ implicit none
+ integer,intent(in)         :: nspin
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
+ integer,intent(in)         :: istate,ispin
+ real(dp),intent(in)        :: rr(3)
+ real(dp)                   :: evaluate_wfn_r
+!=====
+ integer                    :: ibf_cart,ni_cart,ni,li,i_cart,ibf
+ real(dp),allocatable       :: basis_function_r_cart(:)
+ real(dp)                   :: basis_function_r(basis%nbf)
+!=====
+
+
+
+ !
+ ! First precalculate all the needed basis function evaluations at point rr
+ !
+ ibf_cart = 1
+ ibf      = 1
+ do while(ibf_cart<=basis%nbf_cart)
+   li      = basis%bf(ibf_cart)%am
+   ni_cart = number_basis_function_am(CARTESIAN,li)
+   ni      = number_basis_function_am(basis%gaussian_type,li)
+
+   allocate(basis_function_r_cart(ni_cart))
+
+   do i_cart=1,ni_cart
+     basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
+   enddo
+   basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li)%matrix(:,:) )
+   deallocate(basis_function_r_cart)
+
+   ibf      = ibf      + ni
+   ibf_cart = ibf_cart + ni_cart
+ enddo
+ !
+ ! Precalculation done!
+ !
+
+ evaluate_wfn_r = DOT_PRODUCT( basis_function_r(:) , c_matrix(:,istate,ispin) )
+
+
+end function evaluate_wfn_r
+
+
+!=========================================================================
+function wfn_parity(basis,c_matrix,istate,ispin)
+ use m_definitions
+ use m_mpi
+ use m_atoms
+ use m_basis_set
+ use m_inputparam
+ implicit none
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
+ integer,intent(in)         :: istate,ispin
+ integer                    :: wfn_parity
+!=====
+ real(dp) :: phi_tmp1,phi_tmp2,xtmp(3)
+ real(dp),external :: evaluate_wfn_r
+!=====
+
+ xtmp(1) = xinversion(1) +  2.0_dp
+ xtmp(2) = xinversion(1) +  1.0_dp
+ xtmp(3) = xinversion(1) +  3.0_dp
+ phi_tmp1 = evaluate_wfn_r(nspin,basis,c_matrix,istate,1,xtmp)
+ xtmp(1) = xinversion(1) -  2.0_dp
+ xtmp(2) = xinversion(1) -  1.0_dp
+ xtmp(3) = xinversion(1) -  3.0_dp
+ phi_tmp2 = evaluate_wfn_r(nspin,basis,c_matrix,istate,1,xtmp)
+
+ if( ABS(phi_tmp1 - phi_tmp2)/ABS(phi_tmp1) < 1.0e-6_dp ) then
+   wfn_parity = 1
+ else
+   wfn_parity = -1
+ endif
+ 
+
+end function wfn_parity
 
 
 !=========================================================================
