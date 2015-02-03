@@ -15,6 +15,9 @@ module m_atoms
 
  real(dp),allocatable,protected :: x(:,:)
 
+ logical,protected              :: inversion=.TRUE.
+ real(dp),protected             :: xinversion(3)
+
 
 contains
 
@@ -25,7 +28,9 @@ subroutine init_atoms(natom_read,zatom_read,x_read)
  integer,intent(in)  :: natom_read
  real(dp),intent(in) :: zatom_read(natom_read),x_read(3,natom_read)
 !=====
- integer :: iatom,jatom
+ integer  :: iatom,jatom
+ real(dp) :: xtmp(3)
+ logical  :: found
 !=====
 
  natom = natom_read
@@ -61,8 +66,35 @@ subroutine init_atoms(natom_read,zatom_read,x_read)
    enddo
  enddo
 
+ !
+ ! Does the molecule have inversion symmetry?
+ xinversion(:) = 0.0_dp
+ do iatom=1,natom
+   xinversion(:) = xinversion(:) + x(:,iatom) / REAL(natom,dp)
+ enddo
+
+ do iatom=1,natom
+   xtmp(:) = 2.0_dp * xinversion(:) - x(:,iatom)
+   found = .FALSE.
+   do jatom=1,natom
+     if( NORM2( xtmp(:) - x(:,jatom) ) < 1.0e-5_dp ) then
+       if( ABS(zatom(iatom)-zatom(jatom)) < 1.0e-5_dp ) found = .TRUE.
+       exit
+     endif
+   enddo
+   inversion = inversion .AND. found
+ enddo
+
+ if(inversion) then
+   WRITE_MASTER(*,*) 'Molecule has inversion symmetry'
+ else
+   WRITE_MASTER(*,*) 'Molecule does not have inversion symmetry'
+ endif
+
 
 end subroutine init_atoms
+
+
 !=========================================================================
 function atoms_core_states()
  implicit none

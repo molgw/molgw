@@ -582,6 +582,11 @@ case('PULAY')
 
  WRITE_MASTER(*,*) '================================'
  WRITE_MASTER(*,'(a,i5)') ' Number of bonds ',nbond
+ if(inversion) then
+   WRITE_MASTER(*,*) 'Molecule has inversion symmetry'
+ else
+   WRITE_MASTER(*,*) 'Molecule does not have inversion symmetry'
+ endif
  WRITE_MASTER(*,*)
 
 end subroutine read_inputparameter_molecule

@@ -1052,6 +1052,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  use m_eri
  use m_dft_grid
  use m_spectral_function
+ use m_atoms
  implicit none
 
  type(basis_set),intent(in)         :: basis,prod_basis
@@ -1060,7 +1061,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  real(dp),intent(in)                :: eigenvector(chi%npole,chi%npole),eigenvector_inv(chi%npole,chi%npole)
  real(dp),intent(in)                :: eigenvalue(chi%npole)
 !=====
- integer                            :: t_ij,t_kl
+ integer                            :: t_ij,t_kl,t_current
  integer                            :: istate,jstate,ijspin
  integer                            :: ibf,jbf
  integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
@@ -1071,12 +1072,13 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  real(dp)                           :: dynamical_pol(nomega,3,3),photoabsorp_cross(nomega,3,3)
  real(dp)                           :: static_polarizability(3,3)
  real(dp)                           :: oscillator_strength,trk_sumrule
-
- real(dp),allocatable               :: dipole_basis(:,:,:),dipole_state(:,:,:,:)
+ real(dp),allocatable               :: dipole_basis(:,:,:),dipole_tmp(:,:,:),dipole_state(:,:,:,:)
  real(dp),allocatable               :: dipole_cart(:,:,:)
  real(dp),allocatable               :: residu_left(:,:),residu_right(:,:)
  integer,parameter                  :: unit_dynpol=101
  integer,parameter                  :: unit_photocross=102
+ integer                            :: parityi,parityj
+ integer,external                   :: wfn_parity
 !=====
 
  call start_clock(timing_spectrum)
@@ -1131,21 +1133,25 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  enddo
 
  !
- ! Get the dipole oscillator strength with states
+ ! Get the dipole oscillator strength on states
  allocate(dipole_state(3,basis%nbf,basis%nbf,nspin))
- dipole_state(:,:,:,:) = 0.0_dp
+ allocate(dipole_tmp(3,basis%nbf,basis%nbf))
+
  do ijspin=1,nspin
    do jbf=1,basis%nbf
-     do ibf=1,basis%nbf
-       do jstate=1,basis%nbf
-         do istate=1,basis%nbf
-           dipole_state(:,istate,jstate,ijspin) = dipole_state(:,istate,jstate,ijspin) &
-                                         + c_matrix(ibf,istate,ijspin) * dipole_basis(:,ibf,jbf) * c_matrix(jbf,jstate,ijspin)
-         enddo
-       enddo
+     do istate=1,basis%nbf
+       dipole_tmp(:,istate,jbf) = MATMUL( dipole_basis(:,:,jbf) , c_matrix(:,istate,ijspin) )
      enddo
    enddo
+
+   do jstate=1,basis%nbf
+     do istate=1,basis%nbf
+       dipole_state(:,istate,jstate,ijspin) = MATMUL( dipole_tmp(:,istate,:) , c_matrix(:,jstate,ijspin) )
+     enddo
+   enddo
+
  enddo
+ deallocate(dipole_basis,dipole_tmp)
 
  !
  ! Set the frequency mesh
@@ -1172,11 +1178,13 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
      residu_left (:,t_kl)  = residu_left (:,t_kl) &
                   + dipole_state(:,istate,jstate,ijspin) * eigenvector(t_ij,t_kl)
      residu_right(:,t_kl)  = residu_right(:,t_kl) &
-                  + dipole_state(:,istate,Jstate,ijspin) * eigenvector_inv(t_kl,t_ij) &
+                  + dipole_state(:,istate,jstate,ijspin) * eigenvector_inv(t_kl,t_ij) &
                                    * docc_ij
    enddo
 
  enddo
+
+ deallocate(dipole_state)
 
 
  !
@@ -1200,16 +1208,38 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
    photoabsorp_cross(iomega,:,:) = 4.0_dp * pi * REAL(omega(iomega),dp) / c_speedlight * dynamical_pol(iomega,:,:)
  enddo
 
- WRITE_MASTER(*,'(/,a)') ' Neutral excitation energies [eV] and strengths'
+ WRITE_MASTER(*,'(/,a)') ' Excitation energies [eV]     Oscil. strengths   [Parity] '  
  trk_sumrule=0.0_dp
- t_kl=0
- do t_ij=1,chi%npole
-   if(eigenvalue(t_ij) > 0.0_dp) then
-     t_kl = t_kl + 1
-     oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_ij),residu_right(:,t_ij)) * eigenvalue(t_ij)
+ t_current=0
+ do t_kl=1,chi%npole
+   if(eigenvalue(t_kl) > 0.0_dp) then
+     t_current = t_current + 1
+     oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_kl),residu_right(:,t_kl)) * eigenvalue(t_kl)
      trk_sumrule = trk_sumrule + oscillator_strength
-     if(t_ij<30) then
-       WRITE_MASTER(*,'(i4,10(f18.8,2x))') t_kl,eigenvalue(t_ij)*Ha_eV,oscillator_strength
+
+     if(t_current<30) then
+       ! Test the parity in case of molecule with inversion symmetry
+       if(inversion) then
+         t_ij=1
+         do while( ABS(eigenvector(t_ij,t_kl)) < 1.0e-3_dp )
+           t_ij = t_ij + 1
+           if( t_ij > chi%npole ) stop'problem'
+         enddo
+         istate = chi%transition_table(1,t_ij)
+         jstate = chi%transition_table(2,t_ij)
+         ijspin = chi%transition_table(3,t_ij)
+         parityi = wfn_parity(basis,c_matrix,istate,ijspin)
+         parityj = wfn_parity(basis,c_matrix,jstate,ijspin)
+         select case(parityi*parityj)
+         case( 1)
+           WRITE_MASTER(*,'(i4,2(f18.8,2x),a)') t_current,eigenvalue(t_kl)*Ha_eV,oscillator_strength,'     G'
+         case(-1)
+           WRITE_MASTER(*,'(i4,2(f18.8,2x),a)') t_current,eigenvalue(t_kl)*Ha_eV,oscillator_strength,'     U'
+         end select
+          
+       else
+         WRITE_MASTER(*,'(i4,10(f18.8,2x))') t_current,eigenvalue(t_kl)*Ha_eV,oscillator_strength
+       endif
      endif
    endif
  enddo
@@ -1242,7 +1272,6 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
 
 
  deallocate(residu_left,residu_right)
- deallocate(dipole_state)
 
  call stop_clock(timing_spectrum)
 
