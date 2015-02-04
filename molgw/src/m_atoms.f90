@@ -6,6 +6,8 @@ module m_atoms
  use m_mpi
  use m_elements
 
+ real(dp),parameter,private     :: tol_geom=1.0e-5_dp
+
  integer,protected              :: natom
  integer,protected              :: natom_type
  integer,protected              :: nbond
@@ -16,7 +18,10 @@ module m_atoms
  real(dp),allocatable,protected :: x(:,:)
 
  logical,protected              :: inversion=.TRUE.
+ logical,protected              :: linear=.TRUE.
+ logical,protected              :: planar=.TRUE.
  real(dp),protected             :: xinversion(3)
+ real(dp),protected             :: xnormal(3)
 
 
 contains
@@ -24,12 +29,13 @@ contains
 
 !=========================================================================
 subroutine init_atoms(natom_read,zatom_read,x_read)
+ use m_tools,only: cross_product
  implicit none
  integer,intent(in)  :: natom_read
  real(dp),intent(in) :: zatom_read(natom_read),x_read(3,natom_read)
 !=====
  integer  :: iatom,jatom
- real(dp) :: xtmp(3)
+ real(dp) :: xtmp(3),x21(3),x31(3),xnormal(3)
  logical  :: found
 !=====
 
@@ -77,19 +83,43 @@ subroutine init_atoms(natom_read,zatom_read,x_read)
    xtmp(:) = 2.0_dp * xinversion(:) - x(:,iatom)
    found = .FALSE.
    do jatom=1,natom
-     if( NORM2( xtmp(:) - x(:,jatom) ) < 1.0e-5_dp ) then
-       if( ABS(zatom(iatom)-zatom(jatom)) < 1.0e-5_dp ) found = .TRUE.
+     if( NORM2( xtmp(:) - x(:,jatom) ) < tol_geom ) then
+       if( ABS(zatom(iatom)-zatom(jatom)) < tol_geom ) found = .TRUE.
        exit
      endif
    enddo
    inversion = inversion .AND. found
  enddo
 
- if(inversion) then
-   WRITE_MASTER(*,*) 'Molecule has inversion symmetry'
+ !
+ ! Is the molecule linear, planar?
+ if( natom > 2 ) then
+   x21(:) = x(:,2) - x(:,1)
+   do iatom=1,natom
+     x31(:) = x(:,iatom) - x(:,1)
+     call cross_product(x21,x31,xnormal)
+     if( NORM2(xnormal(:)) > tol_geom ) then
+       xnormal(:) = xnormal(:) / NORM2(xnormal(:))
+       linear=.FALSE.
+       exit
+     endif
+   enddo
+   if( .NOT. linear) then
+     do iatom=1,natom
+       if( ABS(DOT_PRODUCT( x(:,iatom) , xnormal(:) )) > tol_geom ) planar=.FALSE.
+     enddo
+   else
+     planar=.FALSE.
+   endif
  else
-   WRITE_MASTER(*,*) 'Molecule does not have inversion symmetry'
+  ! Molecule is linear
+  ! Set planar to FALSE for safety
+  linear=.TRUE.
+  planar=.FALSE.
  endif
+
+
+
 
 
 end subroutine init_atoms

@@ -587,6 +587,16 @@ case('PULAY')
  else
    WRITE_MASTER(*,*) 'Molecule does not have inversion symmetry'
  endif
+ if(linear) then
+   WRITE_MASTER(*,*) 'Molecule is linear'
+ else
+   WRITE_MASTER(*,*) 'Molecule is not linear'
+   if(planar) then
+     WRITE_MASTER(*,*) 'Molecule is planar'
+   else
+     WRITE_MASTER(*,*) 'Molecule is not planar'
+   endif
+ endif
  WRITE_MASTER(*,*)
 
 end subroutine read_inputparameter_molecule
