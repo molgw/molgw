@@ -894,24 +894,22 @@ function wfn_reflection(basis,c_matrix,istate,ispin)
  real(dp) :: proj
  real(dp),external :: evaluate_wfn_r
 !=====
- write(*,*) 'FFBB here'
+
  xtmp1(1) = x(1,1) +  2.0_dp
  xtmp1(2) = x(2,1) +  1.0_dp
  xtmp1(3) = x(3,1) +  3.0_dp
- write(*,*) phi_tmp1
- stop'ENOUGH'
  phi_tmp1 = evaluate_wfn_r(nspin,basis,c_matrix,istate,ispin,xtmp1)
- write(*,*) phi_tmp1
 
  proj = DOT_PRODUCT( xtmp1 , xnormal )
  xtmp2(:) = xtmp1(:) -  2.0_dp * proj * xnormal(:)
  phi_tmp2 = evaluate_wfn_r(nspin,basis,c_matrix,istate,ispin,xtmp2)
 
- WRITE_MASTER(*,*) 'reflec',istate,phi_tmp1,phi_tmp2
  if( ABS(phi_tmp1 - phi_tmp2)/ABS(phi_tmp1) < 1.0e-6_dp ) then
    wfn_reflection = 1
- else
+ else if( ABS(phi_tmp1 + phi_tmp2)/ABS(phi_tmp1) < 1.0e-6_dp ) then
    wfn_reflection = -1
+ else 
+   wfn_reflection = 0
  endif
 
 

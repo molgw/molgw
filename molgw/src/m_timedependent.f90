@@ -1077,11 +1077,12 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  real(dp),allocatable               :: residu_left(:,:),residu_right(:,:)
  integer,parameter                  :: unit_dynpol=101
  integer,parameter                  :: unit_photocross=102
- integer                            :: parityi,parityj
+ integer                            :: parityi,parityj,reflectioni,reflectionj
  integer,external                   :: wfn_parity
  integer,external                   :: wfn_reflection
- real(dp),external :: evaluate_wfn_r !FBFB
+ character(len=24)                  :: symsymbol
 !=====
+
 
  call start_clock(timing_spectrum)
  !
@@ -1210,21 +1211,8 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
    photoabsorp_cross(iomega,:,:) = 4.0_dp * pi * REAL(omega(iomega),dp) / c_speedlight * dynamical_pol(iomega,:,:)
  enddo
 
- if(planar) then
-   write(*,*) 'FBFB'
-   do istate=1,basis%nbf
-     write(*,*) 'FBFBi',istate,1
- write(*,*) evaluate_wfn_r(nspin,basis,c_matrix,istate,1,x(:,1))
 
-     WRITE_MASTER(*,*) istate,wfn_parity(basis,c_matrix,istate,1)
-     WRITE_MASTER(*,*) istate,wfn_parity(basis,c_matrix,istate,1)
-     WRITE_MASTER(*,*) istate,wfn_reflection(basis,c_matrix,istate,1)
-     WRITE_MASTER(*,*) istate,wfn_parity(basis,c_matrix,istate,1)
-     write(*,*) 'FBFBa'
-   enddo
- endif
-
- WRITE_MASTER(*,'(/,a)') ' Excitation energies [eV]     Oscil. strengths   [Parity] '  
+ WRITE_MASTER(*,'(/,a)') ' Excitation energies [eV]     Oscil. strengths   [Symmetry] '  
  trk_sumrule=0.0_dp
  t_current=0
  do t_kl=1,chi%npole
@@ -1234,28 +1222,39 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
      trk_sumrule = trk_sumrule + oscillator_strength
 
      if(t_current<30) then
+       symsymbol=''
        ! Test the parity in case of molecule with inversion symmetry
+
+       t_ij=1
+       do while( ABS(eigenvector(t_ij,t_kl)) < 1.0e-3_dp )
+         t_ij = t_ij + 1
+         if( t_ij > chi%npole ) stop'problem'
+       enddo
+       istate = chi%transition_table(1,t_ij)
+       jstate = chi%transition_table(2,t_ij)
+       ijspin = chi%transition_table(3,t_ij)
+       if(planar) then
+         reflectioni = wfn_reflection(basis,c_matrix,istate,ijspin)
+         reflectionj = wfn_reflection(basis,c_matrix,jstate,ijspin)
+         select case(reflectioni*reflectionj)
+         case( 1)
+           symsymbol='(A1 or B2 or Ap )'
+         case(-1)
+           symsymbol='(A2 or B1 or App)'
+         end select
+       endif
        if(inversion) then
-         t_ij=1
-         do while( ABS(eigenvector(t_ij,t_kl)) < 1.0e-3_dp )
-           t_ij = t_ij + 1
-           if( t_ij > chi%npole ) stop'problem'
-         enddo
-         istate = chi%transition_table(1,t_ij)
-         jstate = chi%transition_table(2,t_ij)
-         ijspin = chi%transition_table(3,t_ij)
          parityi = wfn_parity(basis,c_matrix,istate,ijspin)
          parityj = wfn_parity(basis,c_matrix,jstate,ijspin)
          select case(parityi*parityj)
          case( 1)
-           WRITE_MASTER(*,'(i4,2(f18.8,2x),a)') t_current,eigenvalue(t_kl)*Ha_eV,oscillator_strength,'     G'
+           symsymbol=symsymbol//'g'
          case(-1)
-           WRITE_MASTER(*,'(i4,2(f18.8,2x),a)') t_current,eigenvalue(t_kl)*Ha_eV,oscillator_strength,'     U'
+           symsymbol=symsymbol//'u'
          end select
-          
-       else
-         WRITE_MASTER(*,'(i4,10(f18.8,2x))') t_current,eigenvalue(t_kl)*Ha_eV,oscillator_strength
        endif
+          
+       WRITE_MASTER(*,'(i4,2(f18.8,2x),5x,a)') t_current,eigenvalue(t_kl)*Ha_eV,oscillator_strength,symsymbol
      endif
    endif
  enddo

@@ -35,7 +35,7 @@ subroutine init_atoms(natom_read,zatom_read,x_read)
  real(dp),intent(in) :: zatom_read(natom_read),x_read(3,natom_read)
 !=====
  integer  :: iatom,jatom
- real(dp) :: xtmp(3),x21(3),x31(3),xnormal(3)
+ real(dp) :: xtmp(3),x21(3),x31(3)
  logical  :: found
 !=====
 
@@ -95,7 +95,7 @@ subroutine init_atoms(natom_read,zatom_read,x_read)
  ! Is the molecule linear, planar?
  if( natom > 2 ) then
    x21(:) = x(:,2) - x(:,1)
-   do iatom=1,natom
+   do iatom=3,natom
      x31(:) = x(:,iatom) - x(:,1)
      call cross_product(x21,x31,xnormal)
      if( NORM2(xnormal(:)) > tol_geom ) then
