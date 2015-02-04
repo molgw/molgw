@@ -781,11 +781,11 @@ function gamma_function(rin)
 
  gamma_function = gamma_function * SQRT(pi)
 
- end function gamma_function
+end function gamma_function
 
 
 !==========================================
- function double_factorial(intin)
+function double_factorial(intin)
  implicit none
  integer,intent(in) :: intin
  real(dp) :: double_factorial
@@ -858,7 +858,21 @@ function gamma_function(rin)
    double_factorial = 1
  end select
 
- end function double_factorial
+end function double_factorial
+
+
+!=========================================================================
+subroutine cross_product(u1,u2,u3)
+ implicit none
+ real(dp),intent(in)  :: u1(3),u2(3)
+ real(dp),intent(out) :: u3(3)
+!=====
+
+ u3(1) = u1(2) * u2(3) - u1(3) * u2(2)
+ u3(2) = u1(3) * u2(1) - u1(1) * u2(3)
+ u3(3) = u1(1) * u2(2) - u1(2) * u2(1)
+
+end subroutine cross_product
 
 
 !=========================================================================

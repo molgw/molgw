@@ -859,13 +859,13 @@ function wfn_parity(basis,c_matrix,istate,ispin)
 !=====
 
  xtmp(1) = xinversion(1) +  2.0_dp
- xtmp(2) = xinversion(1) +  1.0_dp
- xtmp(3) = xinversion(1) +  3.0_dp
- phi_tmp1 = evaluate_wfn_r(nspin,basis,c_matrix,istate,1,xtmp)
+ xtmp(2) = xinversion(2) +  1.0_dp
+ xtmp(3) = xinversion(3) +  3.0_dp
+ phi_tmp1 = evaluate_wfn_r(nspin,basis,c_matrix,istate,ispin,xtmp)
  xtmp(1) = xinversion(1) -  2.0_dp
- xtmp(2) = xinversion(1) -  1.0_dp
- xtmp(3) = xinversion(1) -  3.0_dp
- phi_tmp2 = evaluate_wfn_r(nspin,basis,c_matrix,istate,1,xtmp)
+ xtmp(2) = xinversion(2) -  1.0_dp
+ xtmp(3) = xinversion(3) -  3.0_dp
+ phi_tmp2 = evaluate_wfn_r(nspin,basis,c_matrix,istate,ispin,xtmp)
 
  if( ABS(phi_tmp1 - phi_tmp2)/ABS(phi_tmp1) < 1.0e-6_dp ) then
    wfn_parity = 1
@@ -875,6 +875,47 @@ function wfn_parity(basis,c_matrix,istate,ispin)
  
 
 end function wfn_parity
+
+
+!=========================================================================
+function wfn_reflection(basis,c_matrix,istate,ispin)
+ use m_definitions
+ use m_mpi
+ use m_atoms
+ use m_basis_set
+ use m_inputparam
+ implicit none
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
+ integer,intent(in)         :: istate,ispin
+ integer                    :: wfn_reflection
+!=====
+ real(dp) :: phi_tmp1,phi_tmp2,xtmp1(3),xtmp2(3)
+ real(dp) :: proj
+ real(dp),external :: evaluate_wfn_r
+!=====
+ write(*,*) 'FFBB here'
+ xtmp1(1) = x(1,1) +  2.0_dp
+ xtmp1(2) = x(2,1) +  1.0_dp
+ xtmp1(3) = x(3,1) +  3.0_dp
+ write(*,*) phi_tmp1
+ stop'ENOUGH'
+ phi_tmp1 = evaluate_wfn_r(nspin,basis,c_matrix,istate,ispin,xtmp1)
+ write(*,*) phi_tmp1
+
+ proj = DOT_PRODUCT( xtmp1 , xnormal )
+ xtmp2(:) = xtmp1(:) -  2.0_dp * proj * xnormal(:)
+ phi_tmp2 = evaluate_wfn_r(nspin,basis,c_matrix,istate,ispin,xtmp2)
+
+ WRITE_MASTER(*,*) 'reflec',istate,phi_tmp1,phi_tmp2
+ if( ABS(phi_tmp1 - phi_tmp2)/ABS(phi_tmp1) < 1.0e-6_dp ) then
+   wfn_reflection = 1
+ else
+   wfn_reflection = -1
+ endif
+
+
+end function wfn_reflection
 
 
 !=========================================================================

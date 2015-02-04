@@ -1079,6 +1079,8 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  integer,parameter                  :: unit_photocross=102
  integer                            :: parityi,parityj
  integer,external                   :: wfn_parity
+ integer,external                   :: wfn_reflection
+ real(dp),external :: evaluate_wfn_r !FBFB
 !=====
 
  call start_clock(timing_spectrum)
@@ -1207,6 +1209,20 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  do iomega=1,nomega
    photoabsorp_cross(iomega,:,:) = 4.0_dp * pi * REAL(omega(iomega),dp) / c_speedlight * dynamical_pol(iomega,:,:)
  enddo
+
+ if(planar) then
+   write(*,*) 'FBFB'
+   do istate=1,basis%nbf
+     write(*,*) 'FBFBi',istate,1
+ write(*,*) evaluate_wfn_r(nspin,basis,c_matrix,istate,1,x(:,1))
+
+     WRITE_MASTER(*,*) istate,wfn_parity(basis,c_matrix,istate,1)
+     WRITE_MASTER(*,*) istate,wfn_parity(basis,c_matrix,istate,1)
+     WRITE_MASTER(*,*) istate,wfn_reflection(basis,c_matrix,istate,1)
+     WRITE_MASTER(*,*) istate,wfn_parity(basis,c_matrix,istate,1)
+     write(*,*) 'FBFBa'
+   enddo
+ endif
 
  WRITE_MASTER(*,'(/,a)') ' Excitation energies [eV]     Oscil. strengths   [Parity] '  
  trk_sumrule=0.0_dp
