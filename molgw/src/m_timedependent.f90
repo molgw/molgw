@@ -1080,7 +1080,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  integer                            :: parityi,parityj,reflectioni,reflectionj
  integer,external                   :: wfn_parity
  integer,external                   :: wfn_reflection
- character(len=24)                  :: symsymbol
+ character(len=32)                  :: symsymbol
 !=====
 
 
@@ -1238,9 +1238,9 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
          reflectionj = wfn_reflection(basis,c_matrix,jstate,ijspin)
          select case(reflectioni*reflectionj)
          case( 1)
-           symsymbol='(A1 or B2 or Ap )'
+           symsymbol='(A1, B2 or Ap )'
          case(-1)
-           symsymbol='(A2 or B1 or App)'
+           symsymbol='(A2, B1 or App)'
          end select
        endif
        if(inversion) then
@@ -1248,13 +1248,12 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
          parityj = wfn_parity(basis,c_matrix,jstate,ijspin)
          select case(parityi*parityj)
          case( 1)
-           symsymbol=symsymbol//'g'
+           symsymbol=TRIM(symsymbol)//'g'
          case(-1)
-           symsymbol=symsymbol//'u'
+           symsymbol=TRIM(symsymbol)//'u'
          end select
        endif
-          
-       WRITE_MASTER(*,'(i4,2(f18.8,2x),5x,a)') t_current,eigenvalue(t_kl)*Ha_eV,oscillator_strength,symsymbol
+       WRITE_MASTER(*,'(i4,2(f18.8,2x),5x,a32)') t_current,eigenvalue(t_kl)*Ha_eV,oscillator_strength,symsymbol
      endif
    endif
  enddo
