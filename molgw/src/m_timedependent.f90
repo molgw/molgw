@@ -1156,15 +1156,6 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  enddo
  deallocate(dipole_basis,dipole_tmp)
 
- !
- ! Set the frequency mesh
- omega(1)     =MAX( 0.0_dp      ,MINVAL(ABS(eigenvalue(:)))-3.00/Ha_eV)
- omega(nomega)=MIN(20.0_dp/Ha_eV,MAXVAL(ABS(eigenvalue(:)))+3.00/Ha_eV)
- do iomega=2,nomega-1
-   omega(iomega) = omega(1) + ( omega(nomega)-omega(1) ) /REAL(nomega-1,dp) * (iomega-1) 
- enddo
- ! Add the broadening
- omega(:) = omega(:) + im * 0.10/Ha_eV
 
  allocate(residu_left (3,chi%npole))
  allocate(residu_right(3,chi%npole))
@@ -1193,6 +1184,16 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  !
  ! Calculate the dynamical dipole polarizability
  ! and the static dipole polarizability
+ !
+ ! Set the frequency mesh
+ omega(1)     =MAX( 0.0_dp      ,MINVAL(ABS(eigenvalue(:)))-3.00/Ha_eV)
+ omega(nomega)=MIN(20.0_dp/Ha_eV,MAXVAL(ABS(eigenvalue(:)))+3.00/Ha_eV)
+ do iomega=2,nomega-1
+   omega(iomega) = omega(1) + ( omega(nomega)-omega(1) ) /REAL(nomega-1,dp) * (iomega-1) 
+ enddo
+ ! Add the broadening
+ omega(:) = omega(:) + im * 0.10/Ha_eV
+
  dynamical_pol(:,:,:) = 0.0_dp
  static_polarizability(:,:) = 0.0_dp
  do t_ij=1,chi%npole
@@ -1221,12 +1222,12 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
      oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_kl),residu_right(:,t_kl)) * eigenvalue(t_kl)
      trk_sumrule = trk_sumrule + oscillator_strength
 
-     if(t_current<30) then
+     if(t_current<=30) then
        symsymbol=''
        ! Test the parity in case of molecule with inversion symmetry
 
        t_ij=1
-       do while( ABS(eigenvector(t_ij,t_kl)) < 1.0e-3_dp )
+       do while( ABS(eigenvector(t_ij,t_kl)) < 1.0e-2_dp )
          t_ij = t_ij + 1
          if( t_ij > chi%npole ) stop'problem'
        enddo
@@ -1254,6 +1255,14 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
          end select
        endif
        WRITE_MASTER(*,'(i4,2(f18.8,2x),5x,a32)') t_current,eigenvalue(t_kl)*Ha_eV,oscillator_strength,symsymbol
+       do t_ij=1,chi%npole
+         if( ABS(eigenvector_inv(t_kl,t_ij)*eigenvector(t_ij,t_kl)) > 1.0e-1_dp ) then
+           istate = chi%transition_table(1,t_ij)
+           jstate = chi%transition_table(2,t_ij)
+           WRITE_MASTER(*,'(8x,i4,a,i4,x,f12.4)') istate,' -> ',jstate,eigenvector_inv(t_kl,t_ij)*eigenvector(t_ij,t_kl)
+         endif
+       enddo
+       WRITE_MASTER(*,*)
      endif
    endif
  enddo
