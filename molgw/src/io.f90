@@ -858,13 +858,13 @@ function wfn_parity(basis,c_matrix,istate,ispin)
  real(dp),external :: evaluate_wfn_r
 !=====
 
- xtmp(1) = xinversion(1) +  2.0_dp
- xtmp(2) = xinversion(2) +  1.0_dp
- xtmp(3) = xinversion(3) +  3.0_dp
+ xtmp(1) = xcenter(1) +  2.0_dp
+ xtmp(2) = xcenter(2) +  1.0_dp
+ xtmp(3) = xcenter(3) +  3.0_dp
  phi_tmp1 = evaluate_wfn_r(nspin,basis,c_matrix,istate,ispin,xtmp)
- xtmp(1) = xinversion(1) -  2.0_dp
- xtmp(2) = xinversion(2) -  1.0_dp
- xtmp(3) = xinversion(3) -  3.0_dp
+ xtmp(1) = xcenter(1) -  2.0_dp
+ xtmp(2) = xcenter(2) -  1.0_dp
+ xtmp(3) = xcenter(3) -  3.0_dp
  phi_tmp2 = evaluate_wfn_r(nspin,basis,c_matrix,istate,ispin,xtmp)
 
  if( ABS(phi_tmp1 - phi_tmp2)/ABS(phi_tmp1) < 1.0e-6_dp ) then

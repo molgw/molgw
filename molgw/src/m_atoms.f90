@@ -20,7 +20,7 @@ module m_atoms
  logical,protected              :: inversion=.TRUE.
  logical,protected              :: linear=.TRUE.
  logical,protected              :: planar=.TRUE.
- real(dp),protected             :: xinversion(3)
+ real(dp),protected             :: xcenter(3)
  real(dp),protected             :: xnormal(3)
 
 
@@ -74,22 +74,7 @@ subroutine init_atoms(natom_read,zatom_read,x_read)
 
  !
  ! Does the molecule have inversion symmetry?
- xinversion(:) = 0.0_dp
- do iatom=1,natom
-   xinversion(:) = xinversion(:) + x(:,iatom) / REAL(natom,dp)
- enddo
-
- do iatom=1,natom
-   xtmp(:) = 2.0_dp * xinversion(:) - x(:,iatom)
-   found = .FALSE.
-   do jatom=1,natom
-     if( NORM2( xtmp(:) - x(:,jatom) ) < tol_geom ) then
-       if( ABS(zatom(iatom)-zatom(jatom)) < tol_geom ) found = .TRUE.
-       exit
-     endif
-   enddo
-   inversion = inversion .AND. found
- enddo
+ call find_inversion()
 
  !
  ! Is the molecule linear, planar?
@@ -195,6 +180,51 @@ subroutine nucleus_nucleus_energy(energy)
  enddo
 
 end subroutine nucleus_nucleus_energy
+
+
+!=========================================================================
+subroutine find_inversion()
+ implicit none
+!=====
+ integer  :: iatom,jatom
+ logical  :: found
+ real(dp) :: xtmp(3)
+!=====
+
+ xcenter(:) = 0.0_dp
+ do iatom=1,natom
+   xcenter(:) = xcenter(:) + x(:,iatom) / REAL(natom,dp)
+ enddo
+
+ do iatom=1,natom
+   xtmp(:) = 2.0_dp * xcenter(:) - x(:,iatom)
+   found = .FALSE.
+   do jatom=1,natom
+     if( NORM2( xtmp(:) - x(:,jatom) ) < tol_geom ) then
+       if( ABS(zatom(iatom)-zatom(jatom)) < tol_geom ) found = .TRUE.
+       exit
+     endif
+   enddo
+   inversion = inversion .AND. found
+ enddo
+
+end subroutine find_inversion
+
+
+!=========================================================================
+subroutine find_rotations()
+ implicit none
+!=====
+ integer  :: iatom,jatom
+ logical  :: found
+ real(dp) :: xtmp(3)
+!=====
+
+
+
+
+
+end subroutine find_rotations
 
 
 end module m_atoms

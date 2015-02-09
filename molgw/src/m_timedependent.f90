@@ -24,7 +24,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  real(dp),intent(in)                   :: occupation(basis%nbf,nspin)
  real(dp),intent(in)                   :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)                  :: rpa_correlation
- type(spectral_function),intent(out)   :: wpol_out
+ type(spectral_function),intent(inout) :: wpol_out
 !=====
  integer                 :: t_ij
  type(spectral_function) :: wpol_static
@@ -81,9 +81,6 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
 
 
  call start_clock(timing_build_h2p)
-
- ! Obtain the number of transition = the size of the matrix
- call init_spectral_function(basis%nbf,occupation,wpol_out)
 
  !
  ! Prepare BSE calculations
@@ -143,7 +140,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  !
  ! Diago using the 4 block structure and the symmetry of each block
  call start_clock(timing_diago_h2p)
- if(.TRUE.) then
+ if(.FALSE.) then
    call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_inv)
  else
    call diago_4blocks_chol(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_inv)
@@ -681,17 +678,23 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
 
  allocate(work(1))
  lwork=-1
- call pdbssolver1_svd(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
+ call pdbssolver1(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
                       eigenvalue,eigenvector,1,1,descx,eigenvector_inv,1,1,descy,&
                       work,lwork,info)
+! call pdbssolver1_svd(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
+!                      eigenvalue,eigenvector,1,1,descx,eigenvector_inv,1,1,descy,&
+!                      work,lwork,info)
  if(info/=0) stop'SCALAPACK failed'
  lwork=NINT(work(1))
 
  deallocate(work)
  allocate(work(lwork))
- call pdbssolver1_svd(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
+ call pdbssolver1(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
                       eigenvalue,eigenvector,1,1,descx,eigenvector_inv,1,1,descy,&
                       work,lwork,info)
+! call pdbssolver1_svd(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
+!                      eigenvalue,eigenvector,1,1,descx,eigenvector_inv,1,1,descy,&
+!                      work,lwork,info)
  if(info/=0) stop'SCALAPACK failed'
  deallocate(work)
 

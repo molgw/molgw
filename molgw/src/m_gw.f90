@@ -573,7 +573,6 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
      if(istate <= ncore_G)    cycle
      if(istate >= nvirtual_G) cycle
 
-     call start_clock(timing_tmp2)
      !
      ! Prepare the bra and ket with the knowledge of index istate and astate
      if( .NOT. is_auxil_basis) then
@@ -588,7 +587,6 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
        bra(:,:) = MATMUL( wpol%residu_left (:,:) , eri_3center_eigen(:,:,istate,ispin) )
        ket(:,:) = MATMUL( wpol%residu_right(:,:) , eri_3center_eigen(:,:,istate,ispin) )
      endif
-     call stop_clock(timing_tmp2)
 
      do ipole=1,wpol%npole
 

@@ -254,6 +254,7 @@ program molgw
      call prepare_eri_3center_eigen(c_matrix)
      call destroy_eri_3center()
    endif
+   call init_spectral_function(basis%nbf,occupation,wpol)
    call polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
    call destroy_spectral_function(wpol)
 
@@ -304,7 +305,14 @@ program molgw
      call prepare_eri_3center_eigen(c_matrix)
      call destroy_eri_3center()
    endif
-   call polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
+
+   call init_spectral_function(basis%nbf,occupation,wpol)
+   ! Try to read a spectral function file in order to skip the calculation
+   call read_spectral_function(wpol,reading_status)
+   ! If reading has failed, then do the calculation
+   if( reading_status /= 0 ) then
+     call polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
+   endif
 
    en%tot = en%tot + en%rpa
    if( calc_type%is_dft ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )

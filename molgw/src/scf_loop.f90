@@ -144,6 +144,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
        .AND. iscf > 5 ) then
 
      if(is_auxil_basis) call prepare_eri_3center_eigen(c_matrix)
+     call init_spectral_function(basis%nbf,occupation,wpol)
      call polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
 
      if( ABS(en%rpa) > 1.e-6_dp) then
