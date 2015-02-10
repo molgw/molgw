@@ -69,8 +69,8 @@ mp2.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_e
 mp2_selfenergy.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 mp2_selfenergy.f90
 	$(FC) $(FCOPTS) -c mp2_selfenergy.f90 $(LIBXC_INCS)
 
-pdbssolver1.o: macros.h pdbssolver1.f90
-	$(FC) $(FCOPTS) -c pdbssolver1.f90 $(LIBXC_INCS)
+pdbssolver1.o: macros.h pdbssolver1.f
+	$(FC) $(FCOPTS) -c pdbssolver1.f $(LIBXC_INCS)
 
 pdbssolver1_svd.o: macros.h pdbssolver1_svd.f
 	$(FC) $(FCOPTS) -c pdbssolver1_svd.f $(LIBXC_INCS)
