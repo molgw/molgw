@@ -145,11 +145,11 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  !
  ! Diago using the 4 block structure and the symmetry of each block
  call start_clock(timing_diago_h2p)
- if(.TRUE.) then
+#ifndef HAVE_SCALAPACK
    call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_inv)
- else
+#else
    call diago_4blocks_chol(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_inv)
- endif
+#endif
  call stop_clock(timing_diago_h2p)
 
  !
@@ -326,6 +326,7 @@ subroutine build_apb_tddft(is_triplet,basis,c_matrix,occupation,wpol,nmat,apb_ma
  integer,intent(in)                 :: nmat
  real(dp),intent(inout)             :: apb_matrix(nmat,nmat)
 !=====
+ integer              :: nspin_tddft
  integer              :: t_ij,t_kl
  integer              :: istate,jstate,kstate,lstate
  integer              :: ijspin,klspin
@@ -346,9 +347,14 @@ subroutine build_apb_tddft(is_triplet,basis,c_matrix,occupation,wpol,nmat,apb_ma
 
  WRITE_MASTER(*,'(a)') ' Build fxc part'
 
+ if( is_triplet ) then
+   nspin_tddft = 2
+ else
+   nspin_tddft = nspin
+ endif
  !
  ! Prepare TDDFT calculations
- call prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2sigma2,wf_r,wf_gradr,rho_gradr)
+ call prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2sigma2,wf_r,wf_gradr,rho_gradr)
  require_gradient = .FALSE.
  if(allocated(v2sigma2)) then ! GGA case
    require_gradient = .TRUE.
@@ -357,11 +363,6 @@ subroutine build_apb_tddft(is_triplet,basis,c_matrix,occupation,wpol,nmat,apb_ma
    allocate(dot_ij_kl(ngrid,nspin))
    allocate(dot_rho_ij(ngrid,nspin))
    allocate(dot_rho_kl(ngrid,nspin))
- endif
-
-
- if(require_gradient .AND. nspin>1) then
-   stop'spin in TD-GGA not implemented yet'
  endif
 
 
@@ -380,12 +381,11 @@ subroutine build_apb_tddft(is_triplet,basis,c_matrix,occupation,wpol,nmat,apb_ma
      klspin = wpol%transition_table(3,t_kl)
 
 
-     if( .NOT. is_triplet ) then
+     if( nspin_tddft == 1 ) then
 
        xctmp = SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
                           * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
-                          * v2rho2(:,ijspin) )                            &
-                          * 2.0_dp
+                          * v2rho2(:,ijspin) * 2.0_dp )
 
 
        if(require_gradient) then
@@ -407,18 +407,16 @@ subroutine build_apb_tddft(is_triplet,basis,c_matrix,occupation,wpol,nmat,apb_ma
                +  SUM( dot_ij_kl(:,1) * 4.0_dp * vsigma(:,1) ) &
                +  SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * 8.0_dp * v2sigma2(:,1) ) &
                +  SUM( ( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1)   &
-                      + wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) ) &
+                       + wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) ) &
                          * 4.0_dp * v2rhosigma(:,1) )
 
        endif
 
-     else
+     else if( .NOT. is_triplet ) then
 
-!       xctmp = 0.0_dp
        xctmp = SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
                           * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
-                          * v2rho2(:,ijspin) )                            &
-                          * 1.50_dp
+                          * ( v2rho2(:,1) + v2rho2(:,2) ) )
 
 
        if(require_gradient) then
@@ -437,8 +435,45 @@ subroutine build_apb_tddft(is_triplet,basis,c_matrix,occupation,wpol,nmat,apb_ma
                                + rho_gradr(3,:,1) * grad_kl(3,:,klspin)
 
          xctmp = xctmp   &
-               + SUM( dot_ij_kl(:,1) * 2.0_dp * vsigma(:,1) ) 
+               +  SUM( dot_ij_kl(:,1) * ( 2.0_dp * vsigma(:,1) + vsigma(:,2) ) ) &
+               +  SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * ( v2sigma2(:,1) + 0.5_dp * v2sigma2(:,2) +  2.0_dp * v2sigma2(:,3) + v2sigma2(:,4) ) ) &
+               +  SUM( ( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1)   &
+                      + wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) ) &
+                         * ( v2rhosigma(:,1) + v2rhosigma(:,2) + v2rhosigma(:,3) )  )
        endif
+
+
+       
+     else ! triplet case
+
+       xctmp = SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
+                          * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
+                          * ( v2rho2(:,1) - v2rho2(:,2) ) )
+
+       if(require_gradient) then
+
+         grad_ij(1,:,ijspin) = wf_gradr(1,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(1,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+         grad_ij(2,:,ijspin) = wf_gradr(2,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(2,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+         grad_ij(3,:,ijspin) = wf_gradr(3,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(3,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+         grad_kl(1,:,klspin) = wf_gradr(1,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(1,:,lstate,klspin) * wf_r(:,kstate,klspin)
+         grad_kl(2,:,klspin) = wf_gradr(2,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(2,:,lstate,klspin) * wf_r(:,kstate,klspin)
+         grad_kl(3,:,klspin) = wf_gradr(3,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(3,:,lstate,klspin) * wf_r(:,kstate,klspin)
+         dot_ij_kl(:,ijspin) = grad_ij(1,:,ijspin) * grad_kl(1,:,klspin) + grad_ij(2,:,ijspin) * grad_kl(2,:,klspin) &
+                              + grad_ij(3,:,ijspin) * grad_kl(3,:,klspin)
+         dot_rho_ij(:,ijspin) = rho_gradr(1,:,1) * grad_ij(1,:,ijspin) + rho_gradr(2,:,1) * grad_ij(2,:,ijspin)  &
+                               + rho_gradr(3,:,1) * grad_ij(3,:,ijspin)
+         dot_rho_kl(:,klspin) = rho_gradr(1,:,1) * grad_kl(1,:,klspin) + rho_gradr(2,:,1) * grad_kl(2,:,klspin)  &
+                               + rho_gradr(3,:,1) * grad_kl(3,:,klspin)
+
+         xctmp = xctmp   &
+               +  SUM( dot_ij_kl(:,1) * ( 2.0_dp * vsigma(:,1) - vsigma(:,2) ) ) &
+               +  SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * ( v2sigma2(:,1) - v2sigma2(:,3) ) ) &   !FBFB 3 or 5
+               +  SUM( ( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1)   &
+                      + wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) ) &
+                         * ( v2rhosigma(:,1) - v2rhosigma(:,4) )  )   !FBFB 3 or 4
+       endif
+
+
 
      endif
 
@@ -803,7 +838,11 @@ subroutine optical_spectrum(is_triplet,basis,prod_basis,occupation,c_matrix,chi,
 
  WRITE_MASTER(*,'(/,a)') ' Calculate the optical spectrum'
 
- if (nspin/=1) stop'no nspin/=1 allowed'
+ if (nspin/=1) then
+   msg='no nspin/=1 allowed'
+   call issue_warning(msg)
+   return
+ endif
 
  !
  ! First precalculate all the needed dipole in the basis set
@@ -1022,7 +1061,7 @@ end subroutine optical_spectrum
 
 
 !=========================================================================
-subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2sigma2,wf_r,wf_gradr,rho_gradr)
+subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2sigma2,wf_r,wf_gradr,rho_gradr)
  use m_dft_grid
  use m_basis_set
 #ifdef HAVE_LIBXC
@@ -1033,6 +1072,7 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
  use iso_c_binding,only: C_INT,C_DOUBLE
  implicit none
 
+ integer,intent(in)               :: nspin_tddft
  type(basis_set),intent(in)       :: basis
  real(dp),intent(in)              :: c_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)              :: occupation(basis%nbf,nspin)
@@ -1053,20 +1093,20 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
  real(dp) :: rhor_r(nspin)
  real(dp) :: grad_rhor(3,nspin)
  real(dp) :: p_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp)       :: max_v2sigma2
  logical  :: require_gradient
  character(len=256) :: string
 #ifdef HAVE_LIBXC
  type(xc_f90_pointer_t) :: xc_func(ndft_xc),xc_functest
  type(xc_f90_pointer_t) :: xc_info(ndft_xc),xc_infotest
 #endif
- real(C_DOUBLE) :: rho_c(nspin)
- real(C_DOUBLE) :: v2rho2_c(2*nspin-1)
- real(C_DOUBLE) :: sigma_c(2*nspin-1)
- real(C_DOUBLE) :: vrho_c(nspin)
- real(C_DOUBLE) :: vsigma_c(2*nspin-1)
- real(C_DOUBLE) :: v2rhosigma_c(5*nspin-4)
- real(C_DOUBLE) :: v2sigma2_c(5*nspin-4)
- real(dp)       :: max_v2sigma2
+ real(C_DOUBLE) :: rho_c(nspin_tddft)
+ real(C_DOUBLE) :: v2rho2_c(2*nspin_tddft-1)
+ real(C_DOUBLE) :: sigma_c(2*nspin_tddft-1)
+ real(C_DOUBLE) :: vrho_c(nspin_tddft)
+ real(C_DOUBLE) :: vsigma_c(2*nspin_tddft-1)
+ real(C_DOUBLE) :: v2rhosigma_c(5*nspin_tddft-4)
+ real(C_DOUBLE) :: v2sigma2_c(5*nspin_tddft-4)
 !=====
 
  !
@@ -1074,7 +1114,7 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
  !
  require_gradient  =.FALSE.
  do idft_xc=1,ndft_xc
-   if(nspin==1) then
+   if(nspin_tddft==1) then
      call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_UNPOLARIZED)
    else
      call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_POLARIZED)
@@ -1095,13 +1135,13 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
  ! Get the density matrix P from C
  call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
 
- allocate(v2rho2(ngrid,2*nspin-1),wf_r(ngrid,basis%nbf,nspin))
+ allocate(v2rho2(ngrid,2*nspin_tddft-1),wf_r(ngrid,basis%nbf,nspin))
  v2rho2(:,:) = 0.0_dp
 
  if(require_gradient) then
-   allocate(vsigma(ngrid,2*nspin-1))
-   allocate(v2rhosigma(ngrid,5*nspin-4))
-   allocate(v2sigma2(ngrid,5*nspin-4))
+   allocate(vsigma(ngrid,2*nspin_tddft-1))
+   allocate(v2rhosigma(ngrid,5*nspin_tddft-4))
+   allocate(v2sigma2(ngrid,5*nspin_tddft-4))
    allocate(wf_gradr(3,ngrid,basis%nbf,nspin))
    allocate(rho_gradr(3,ngrid,nspin))
    vsigma(:,:)     = 0.0_dp
@@ -1142,16 +1182,25 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
 
      rho_gradr(:,igrid,:) = grad_rhor(:,:)
 
-     sigma_c(1) = SUM( grad_rhor(:,1)**2 )
-     if(nspin==2) then
+     if( nspin_tddft==1 ) then
+       sigma_c(1) = SUM( grad_rhor(:,1)**2 )
+     else if( nspin==2 ) then
        sigma_c(2) = SUM( grad_rhor(:,1) * grad_rhor(:,2) )
        sigma_c(3) = SUM( grad_rhor(:,2)**2 )
+     else ! triplet excitations from singlet ground-state
+       sigma_c(:) = SUM( grad_rhor(:,1)**2 ) * 0.25_dp
      endif
 
    endif
 
 
-   rho_c(:) = rhor_r(:)
+   if( nspin_tddft==1 ) then
+     rho_c(1) = rhor_r(1)
+   else if( nspin==2 ) then
+     rho_c(:) = rhor_r(:)
+   else ! triplet excitations from singlet ground-state
+     rho_c(:) = rhor_r(1) * 0.5_dp
+   endif
 
    !
    ! Calculate the kernel
@@ -1184,15 +1233,16 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
        v2rhosigma(igrid,:) = v2rhosigma(igrid,:) + v2rhosigma_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
        v2sigma2(igrid,:)   = v2sigma2(igrid,:)   + v2sigma2_c(:)   * w_grid(igrid) * dft_xc_coef(idft_xc)
      endif
-!FBFB     if( igrid==1000) then
-!FBFB        write(*,'(i4,x,10(es18.6,2x))') idft_xc
-!FBFB        write(*,'(i4,x,10(es18.6,2x))') igrid,rho_c(:),v2rho2_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
-!FBFB       if(require_gradient) then
-!FBFB         write(*,'(i4,x,10(es18.6,2x))') igrid,rho_gradr(1,igrid,:),vsigma_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
-!FBFB         write(*,'(i4,x,10(es18.6,2x))') igrid,v2rhosigma_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
-!FBFB         write(*,'(i4,x,10(es18.6,2x))') igrid,v2sigma2_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
-!FBFB       endif
-!FBFB     endif
+     if( igrid==1000) then
+        write(*,'(a)') 'FBFB'
+        write(*,'(i4,x,10(es18.6,2x))') idft_xc
+        write(*,'(i4,x,10(es18.6,2x))') igrid,rho_c(:),v2rho2_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
+       if(require_gradient) then
+         write(*,'(i4,x,10(es18.6,2x))') igrid,rho_gradr(1,igrid,:),vsigma_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
+         write(*,'(i4,x,10(es18.6,2x))') igrid,v2rhosigma_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
+         write(*,'(i4,x,10(es18.6,2x))') igrid,v2sigma2_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
+       endif
+     endif
 
    enddo
  enddo
@@ -1257,6 +1307,7 @@ subroutine prepare_bse(nbf,energy,occupation,energy_qp,wpol_static)
 
 end subroutine prepare_bse
 !=========================================================================
+
 
 end module m_timedependent
 !=========================================================================
