@@ -84,9 +84,6 @@ libint_wrapper.o: libint_wrapper.c
 libint_wrapper_nounderscore.o: libint_wrapper_nounderscore.c
 	$(CC) $(CCOPTS) -c libint_wrapper_nounderscore.c $(LIBINT_INCS)
 
-#wrapper_libint.o:  wrapper_libint.cc
-#	$(CC) $(CCOPTS) -c wrapper_libint.cc $(LIBINT_INCS)
-
 m_dft_grid.o: macros.h m_definitions.f90 m_inputparam.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90
 	$(FC) $(FCOPTS) -c m_dft_grid.f90 $(LIBXC_INCS)
 
