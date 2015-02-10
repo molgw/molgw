@@ -1,7 +1,7 @@
 #ifdef HAVE_SCALAPACK
-      SUBROUTINE PDBSSOLVER1_SVD( N, M, IM, JM, DESCM, K, IK, JK, DESCK,
-     $                            LAMBDA, X, IX, JX, DESCX, Y, IY, JY,
-     $                            DESCY, WORK, LWORK, INFO )
+      SUBROUTINE PDBSSOLVER1( N, M, IM, JM, DESCM, K, IK, JK, DESCK,
+     $                        LAMBDA, X, IX, JX, DESCX, Y, IY, JY,
+     $                        DESCY, WORK, LWORK, INFO )
 *
       IMPLICIT NONE
 *
@@ -224,18 +224,19 @@
 *     .. Local Scalars ..
       LOGICAL            LQUERY
       INTEGER            ICTXT, NPROCS, NPROW, NPCOL, MYROW, MYCOL, NB,
-     $                   TWON, I, J, LWKOPT, LLWORK, LOCALMAT, WROWS,
-     $                   WCOLS, LLD, INDS, INDU, INDVT, INDW, INDWORK,
+     $                   TWON, I, J, LWKOPT, LLWORK, LOCALMAT, MROWS,
+     $                   MCOLS, LLDM, INDPHI, INDPSI, INDV, INDWORK,
      $                   ITMP
       DOUBLE PRECISION   DTMP
-      DOUBLE PRECISION   T_CHOL, T_FORMW, T_DIAG, T_VEC, T_SYM, T_PREP,
-     $                   T
+      DOUBLE PRECISION   T_CHOL, T_FORMW, T_DIAG, T_SYM, T_VEC1, T_VEC2,
+     $                   T_PREP
 *     ..
 *     .. Local Arrays ..
-      INTEGER            DESCU( DLEN_ ), DESCVT( DLEN_ ), DESCW( DLEN_ )
+      INTEGER            DESCPHI( DLEN_ ), DESCPSI( DLEN_ ),
+     $                   DESCV( DLEN_ )
 *     ..
 *     .. Intrinsic Functions ..
-      INTRINSIC          DBLE, DSQRT
+      INTRINSIC          DBLE, SQRT
 *     ..
 *     .. External Functions ..
       EXTERNAL           NUMROC, MPI_WTIME
@@ -243,10 +244,9 @@
       DOUBLE PRECISION   MPI_WTIME
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           PDAXPY, PDCOPY, PDSWAP, PDTRMM, PDTRSM, PDSCAL,
-     $                   PDLACPY, PDLASET, PDGEADD, PDPOTRF, PDGESVD,
-     $                   PXERBLA, BLACS_GRIDINFO, DESCSET, CHK1MAT,
-     $                   PCHK2MAT
+      EXTERNAL           PDAXPY, PDCOPY, PDSCAL, PDLACPY, PDPOTRF,
+     $                   PDSYEV, PDSYGST, PXERBLA, BLACS_GRIDINFO,
+     $                   CHK1MAT, PCHK2MAT
 *     ..
 *     .. Executable Statements ..
 *
@@ -296,24 +296,23 @@
 *
          LQUERY = LWORK .EQ. -1
          NB = DESCM( NB_ )
-         WROWS = NUMROC( N, NB, MYROW, 0, NPROW )
-         WCOLS = NUMROC( N, NB, MYCOL, 0, NPCOL )
-         LLD = MAX( WROWS, 1 )
-         LOCALMAT = MAX( NB, LLD )*WCOLS
-         CALL DESCSET( DESCU, N, N, NB, NB, 0, 0, ICTXT, LLD )
-         CALL DESCSET( DESCVT, N, N, NB, NB, 0, 0, ICTXT, LLD )
-         CALL DESCSET( DESCW, N, N, NB, NB, 0, 0, ICTXT, LLD )
-         INDW = 1
-         INDU = INDW + LOCALMAT
-         INDVT = INDU + LOCALMAT
-         INDS = INDVT + LOCALMAT
-         INDWORK = INDS + N
+         LLDM = DESCM( LLD_ )
+         MROWS = NUMROC( TWON, NB, MYROW, 0, NPROW )
+         MCOLS = NUMROC( TWON, NB, MYCOL, 0, NPCOL )
+         LOCALMAT = MAX( NB, LLDM )*MCOLS
+         DESCPHI( 1:DLEN_ ) = DESCM( 1:DLEN_ )
+         DESCPSI( 1:DLEN_ ) = DESCM( 1:DLEN_ )
+         DESCV( 1:DLEN_ ) = DESCM( 1:DLEN_ )
+         INDPHI = 1
+         INDPSI = INDPHI + LOCALMAT
+         INDWORK = INDPSI + LOCALMAT
+         INDV = INDPHI
          LLWORK = LWORK - INDWORK + 1
 *
 *        Estimate the workspace required by external subroutines.
 *
-         CALL PDGESVD( 'V', 'V', N, N, DTMP, 1, 1, DESCW, DTMP, DTMP, 1,
-     $        1, DESCU, DTMP, 1, 1, DESCVT, WORK, -1, ITMP )
+         CALL PDSYEV( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, 1,
+     $        1, DESCV, WORK, -1, ITMP )
          LWKOPT = INT( WORK( 1 ) )
 *
          LWKOPT = INDWORK - 1 + MAX( LWKOPT, LOCALMAT )
@@ -337,135 +336,122 @@
       IF ( MYROW+MYCOL .EQ. 0 )
      $   WRITE( *, * ) 't_prep = ', T_PREP, ';'
 *
-*     Compute the Cholesky factorizations
-*        M = L1 * L1**T, K = L2 * L2**T
+*     Compute the Cholesky factorization M = L * L**T.
 *     In case of failure, a general solver is needed.
 *
-      T = MPI_WTIME()
+      T_CHOL = MPI_WTIME()
       CALL PDPOTRF( 'L', N, M, IM, JM, DESCM, ITMP )
-      T_CHOL = MPI_WTIME() - T
-      IF ( ITMP .NE. 0 ) THEN
-         INFO = -2
-         IF ( MYROW+MYCOL .EQ. 0 )
-     $      WRITE( *, * ) 't_chol = ', T_CHOL, ';'
-         RETURN
-      END IF
-      T = MPI_WTIME()
-      CALL PDPOTRF( 'L', N, K, IK, JK, DESCK, ITMP )
-      T_CHOL = T_CHOL + MPI_WTIME() - T
+      T_CHOL = MPI_WTIME() - T_CHOL
       IF ( MYROW+MYCOL .EQ. 0 )
      $   WRITE( *, * ) 't_chol = ', T_CHOL, ';'
-      IF ( ITMP .NE. 0 ) THEN
-         INFO = -6
-      END IF
-!      CALL PDLAPRNT( N, N, M, IM, JM, DESCM, 0, 0, 'L1', 6,
-!     $     WORK( INDWORK ) )
-!      CALL PDLAPRNT( N, N, K, IK, JK, DESCK, 0, 0, 'L2', 6,
+!      CALL PDLAPRNT( N, N, M, IM, JM, DESCM, 0, 0, 'L', 6,
 !     $     WORK( INDWORK ) )
 !      IF ( MYROW+MYCOL .EQ. 0 )
-!     $   WRITE( *, * ) "L1=tril(L1); L2=tril(L2);"
+!     $   WRITE( *, * ) "L=tril(L);"
+      IF ( ITMP .NE. 0 ) THEN
+         INFO = -2
+         RETURN
+      END IF
 *
-*     Explicitly formulate W = L2**T * L1.
+*     Explicitly formulate W = L**T * K * L.
+*     Only the lower triangular part of W is filled by the correct
+*     values.
 *
       T_FORMW = MPI_WTIME()
-      CALL PDLASET( 'U', N, N, ZERO, ZERO, WORK( INDW ), 1, 1, DESCW )
-      CALL PDLACPY( 'L', N, N, M, IM, JM, DESCM, WORK( INDW ), 1, 1,
-     $     DESCW )
-      CALL PDTRMM( 'L', 'L', 'T', 'N', N, N, ONE, K, IK, JK, DESCK,
-     $     WORK( INDW ), 1, 1, DESCW )
+      CALL PDSYGST( 3, 'L', N, K, IK, JK, DESCK, M, IM, JM, DESCM, DTMP,
+     $     ITMP )
       T_FORMW = MPI_WTIME() - T_FORMW
       IF ( MYROW+MYCOL .EQ. 0 )
      $   WRITE( *, * ) 't_formw = ', T_FORMW, ';'
-!      CALL PDLAPRNT( N, N, WORK( INDW ), 1, 1, DESCW, 0, 0, 'W',
+!      CALL PDLAPRNT( N, N, K, IK, JK, DESCK, 0, 0, 'W',
 !     $     6, WORK( INDWORK ) )
 *
-*     Compute the SVD: W = U * S * V**T.
+*     Diagonalization: V**T * (L**T * K * L) * V = diag(lambda).
+*     Only the positive half of the eigenpairs are computed.
 *
       T_DIAG = MPI_WTIME()
-      CALL PDGESVD( 'V', 'V', N, N, WORK( INDW ), 1, 1, DESCW,
-     $     WORK( INDS ), WORK( INDU ), 1, 1, DESCU, WORK( INDVT ), 1, 1,
-     $     DESCVT, WORK( INDWORK ), LLWORK, ITMP )
+      CALL PDSYEV( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, WORK( INDV ),
+     $     1, 1, DESCV, WORK( INDWORK ), LLWORK , ITMP )
       T_DIAG = MPI_WTIME() - T_DIAG
-      IF ( ITMP .NE. 0 ) THEN
-!        It has been observed that ITMP may be equal to N+1, indicating
-!        inconsistency among processors.
-         IF ( MYROW+MYCOL .EQ. 0 )
-     $      WRITE( *, * ) 't_diag = ', T_DIAG, ';'
-         INFO = ITMP
-         WRITE( *, * ), '% PDGESVD fails with INFO =', INFO
-         RETURN
-      END IF
-!      CALL PDLAPRNT( N, N, WORK( INDU ), 1, 1, DESCU, 0, 0, 'U',
-!     $     6, WORK( INDWORK ) )
-!      DO I = 1, N
-!         WRITE( *, * ) 'S(', I, ')= ', WORK( INDS+I-1 ), ';'
-!      END DO
-!      CALL PDLAPRNT( N, N, WORK( INDVT ), 1, 1, DESCVT, 0, 0, 'VT',
-!     $     6, WORK( INDWORK ) )
-*
-*     Copy S to lambda in ascending order.
-*     Adjust the order in U and V accordingly.
-*
-      T = MPI_WTIME()
-      DO I = 1, N
-         LAMBDA( N+1-I ) = WORK( INDS+I-1 )
-      END DO
-      DO I = 1, N/2
-         CALL PDSWAP( N, WORK( INDU ), 1, I, DESCU, 1,
-     $        WORK( INDU ), 1, N+1-I, DESCU, 1 )
-         CALL PDSWAP( N, WORK( INDVT ), I, 1, DESCVT, N,
-     $        WORK( INDVT ), N+1-I, 1, DESCVT, N )
-      END DO
-      T_DIAG = T_DIAG + MPI_WTIME() - T
       IF ( MYROW+MYCOL .EQ. 0 )
      $   WRITE( *, * ) 't_diag = ', T_DIAG, ';'
+      IF ( ITMP .NE. 0 ) THEN
+         INFO = ITMP
+         WRITE( *, * ), '% PDSYEV fails with INFO =', INFO
+         RETURN
+      END IF
+      DO I = 1, N
+         LAMBDA( I ) = DSQRT( LAMBDA( I ) )
+      END DO
+!      IF ( MYROW+MYCOL .EQ. 0 ) THEN
+!         DO I = 1, N
+!            WRITE( *, * ) 'lambda0(', I, ', 1) =', LAMBDA( I ), ';'
+!         END DO
+!      END IF
+!      CALL PDLAPRNT( N, N, WORK( INDV ), 1, 1, DESCV, 0, 0, 'V',
+!     $     6, WORK( INDWORK ) )
 *
 *     Recover the eigenvectors X and Y:
 *
-*        X = [ ( L1**(-T) * V + L2**(-T) * U ) * Lambda**{1/2} / 2
-*              ( L1**(-T) * V - L2**(-T) * U ) * Lambda**{1/2} / 2 ],
+*        X = [ ( Psi * Lambda**{1/2} + Phi * Lambda**{-1/2} ) / 2
+*              ( Psi * Lambda**{1/2} - Phi * Lambda**{-1/2} ) / 2 ]
 *
-*        Y = [ ( L1 * V + L2 * U ) * Lambda**{1/2} / 2
-*              ( L1 * V - L2 * U ) * Lambda**{1/2} / 2 ].
+*        Y = [ ( Psi * Lambda**{1/2} + Phi * Lambda**{-1/2} ) / 2
+*             -( Psi * Lambda**{1/2} - Phi * Lambda**{-1/2} ) / 2 ]
 *
-*     Once X is calculated, Y is constructed from X through
+*     where
 *
-*        X = [ X1; X2 ], Y = [ X1; -X2 ].
+*        Phi = L * V, Psi = L**{-T} * V.
 *
-      T = MPI_WTIME()
-      CALL PDLACPY( 'A', N, N, WORK( INDVT ), 1, 1, DESCVT,
-     $     WORK( INDW ), 1, 1, DESCW )
-      CALL PDTRSM( 'R', 'L', 'N', 'N', N, N, HALF, M, IM, JM, DESCM,
-     $     WORK( INDW ), 1, 1, DESCW )
-      CALL PDGEADD( 'T', N, N, ONE, WORK( INDW ), 1, 1, DESCW, ZERO, X,
-     $     IX, JX, DESCX )
-      CALL PDGEADD( 'T', N, N, ONE, WORK( INDW ), 1, 1, DESCW, ZERO, X,
-     $     IX+N, JX, DESCX )
-      CALL PDLACPY( 'A', N, N, WORK( INDU ), 1, 1, DESCU,
-     $     WORK( INDW ), 1, 1, DESCW )
-      CALL PDTRSM( 'L', 'L', 'T', 'N', N, N, HALF, K, IK, JK, DESCK,
-     $     WORK( INDW ), 1, 1, DESCW )
-      CALL PDGEADD( 'N', N, N, ONE, WORK( INDW ), 1, 1, DESCW, ONE, X,
-     $     IX, JX, DESCX )
-      CALL PDGEADD( 'N', N, N, -ONE, WORK( INDW ), 1, 1, DESCW, ONE, X,
-     $     IX+N, JX, DESCX )
+      T_VEC1 = MPI_WTIME()
+      CALL PDLACPY( 'A', N, N, WORK( INDV ), 1, 1, DESCV,
+     $     WORK( INDPSI ), 1, 1, DESCPSI )
+      CALL PDTRMM( 'L', 'L', 'N', 'N', N, N, ONE, M, IM, JM, DESCM,
+     $     WORK( INDPHI ), 1, 1, DESCPHI )
+      CALL PDTRSM( 'L', 'L', 'T', 'N', N, N, ONE, M, IM, JM, DESCM,
+     $     WORK( INDPSI ), 1, 1, DESCPSI )
 *
-*     Scale X by Lambda**{1/2}.
+*     Scale Psi and Phi.
 *
       DO I = 1, N
-         CALL PDSCAL( TWON, DSQRT( LAMBDA( I ) ),
-     $        X, IX, JX+I-1, DESCX, 1 )
+         CALL PDSCAL( N, HALF*DSQRT( LAMBDA( I ) ),
+     $        WORK( INDPSI ), 1, I, DESCPSI, 1 )
       END DO
+      DO I = 1, N
+         CALL PDSCAL( N, HALF/DSQRT( LAMBDA( I ) ),
+     $        WORK( INDPHI ), 1, I, DESCPHI, 1 )
+      END DO
+      T_VEC1 = MPI_WTIME() - T_VEC1
+      IF ( MYROW+MYCOL .EQ. 0 )
+     $   WRITE( *, * ) 't_vec1 = ', T_VEC1, ';'
+!      CALL PDLAPRNT( N, N, WORK( INDPHI ), 1, 1, DESCPHI, 0, 0, 'Phi',
+!     $     6, WORK( INDWORK ) )
+!      CALL PDLAPRNT( N, N, WORK( INDPSI ), 1, 1, DESCPSI, 0, 0, 'Psi',
+!     $     6, WORK( INDWORK ) )
 *
-*     Construct Y from X.
+*     Construct X and Y.
+*
+      T_VEC2 = MPI_WTIME()
+      CALL PDGEADD( 'N', N, N, ONE, WORK( INDPSI ), 1, 1, DESCPSI,
+     $     ZERO, X, IX, JX, DESCX )
+      CALL PDGEADD( 'N', N, N, ONE, WORK( INDPSI ), 1, 1, DESCPSI,
+     $     ZERO, X, IX+N, JX, DESCX )
+      CALL PDGEADD( 'N', N, N, ONE, WORK( INDPHI ), 1, 1, DESCPHI,
+     $     ONE, X, IX, JX, DESCX )
+      CALL PDGEADD( 'N', N, N, -ONE, WORK( INDPHI ), 1, 1, DESCPHI,
+     $     ONE, X, IX+N, JX, DESCX )
 *
       CALL PDGEADD( 'N', N, N, ONE, X, IX, JX, DESCX, ZERO,
      $     Y, IY, JY, DESCY )
       CALL PDGEADD( 'N', N, N, -ONE, X, IX+N, JX, DESCX, ZERO,
      $     Y, IY+N, JY, DESCY )
-      T_VEC = T_VEC + MPI_WTIME() - T
+      T_VEC2 = MPI_WTIME() - T_VEC2
       IF ( MYROW+MYCOL .EQ. 0 )
-     $   WRITE( *, * ) 't_vec = ', T_VEC, ';'
+     $   WRITE( *, * ) 't_vec2 = ', T_VEC2, ';'
+!      CALL PDLAPRNT( TWON, TWON, X, IX, JX, DESCX, 0, 0, 'X', 6,
+!     $     WORK( INDWORK ) )
+!      CALL PDLAPRNT( TWON, TWON, Y, IY, JY, DESCY, 0, 0, 'Y', 6,
+!     $     WORK( INDWORK ) )
 *
 *     Recover negative eigenvalues and the eigenvectors.
 *
@@ -489,7 +475,7 @@
 *
       RETURN
 *
-*     End of PDBSSOLVER1_SVD().
+*     End of PDBSSOLVER1().
 *
       END
 #endif

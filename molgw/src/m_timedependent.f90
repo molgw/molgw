@@ -1025,6 +1025,9 @@ subroutine optical_spectrum(is_triplet,basis,prod_basis,occupation,c_matrix,chi,
      endif
    endif
  enddo
+
+ if( is_triplet ) return
+
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,*) 'TRK SUM RULE: the two following numbers should compare well'
  WRITE_MASTER(*,*) 'Sum over oscillator strengths',trk_sumrule
