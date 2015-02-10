@@ -34,7 +34,7 @@ module m_inputparam
    logical            :: is_mp2
    logical            :: is_ci
    logical            :: read_potential
-   logical            :: is_bse,is_td,is_tda
+   logical            :: is_bse,is_td,is_tda,is_triplet
    integer            :: gwmethod                    ! perturbative or quasiparticle self-consistent
  end type calculation_type
 
@@ -97,6 +97,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%is_bse              = .FALSE.
  calc_type%is_td               = .FALSE.
  calc_type%is_tda              = .FALSE.
+ calc_type%is_triplet          = .FALSE.
  calc_type%gwmethod            = 0
  calc_type%read_potential      = .FALSE.
  calc_type%postscf_name        = 'None'
@@ -133,11 +134,17 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%is_ci =.TRUE.
    case('BSE')
      calc_type%is_bse =.TRUE.
+   case('BSE-TRIPLET')
+     calc_type%is_bse    =.TRUE.
+     calc_type%is_triplet =.TRUE.
    case('BSE-TDA')
      calc_type%is_bse =.TRUE.
      calc_type%is_tda =.TRUE.
    case('TD')
      calc_type%is_td =.TRUE.
+   case('TD-TRIPLET')
+     calc_type%is_td =.TRUE.
+     calc_type%is_triplet =.TRUE.
    case('TDA')
      calc_type%is_td  =.TRUE.
      calc_type%is_tda =.TRUE.

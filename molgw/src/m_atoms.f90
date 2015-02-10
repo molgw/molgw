@@ -215,16 +215,109 @@ end subroutine find_inversion
 subroutine find_rotations()
  implicit none
 !=====
- integer  :: iatom,jatom
+ integer  :: iatom,jatom,katom
  logical  :: found
- real(dp) :: xtmp(3)
+ real(dp) :: xtmpi(3),xtmpj(3),xtmpk(3),rot_axis(3)
+ real(dp) :: angle
+ integer  :: order
 !=====
 
+ ! testing axis from center to 1 atom
+ do iatom=1,natom
+   rot_axis(:) = x(:,iatom) - xcenter(:)
+   if( NORM2(rot_axis) < 1.0e-5_dp ) cycle
+   rot_axis(:) = rot_axis(:) / NORM2(rot_axis)
+
+   do jatom=1,natom
+     do katom=1,natom
+       if( .NOT. same_element(jatom,katom) ) cycle
+       xtmpj(:) = x(:,jatom) - xcenter(:)
+       xtmpk(:) = x(:,katom) - xcenter(:)
+       xtmpj(:) = xtmpj(:) / NORM2(xtmpj)
+       xtmpk(:) = xtmpk(:) / NORM2(xtmpk)
+       angle = ACOS( DOT_PRODUCT( xtmpj , xtmpk ) )
+       order = get_order(angle)
+!!!       write(*,*) valid_rotation(order,rot_axis)
+     enddo
+   enddo
+
+ enddo
 
 
 
+
+contains
+
+function get_order(angle)
+ implicit none
+ real(dp),intent(in) :: angle
+ integer :: get_order
+!=====
+ integer :: itested
+!=====
+
+ get_order = 0
+ do itested=2,12
+   if( ABS( angle * itested - 2.0_dp * pi ) < 1.0e-5_dp ) then 
+     get_order = itested
+     return
+   endif
+ enddo
+
+end function get_order
 
 end subroutine find_rotations
+
+
+!=========================================================================
+function valid_rotation(order,rot_axis)
+ implicit none
+ integer,intent(in)  :: order
+ real(dp),intent(in) :: rot_axis(3)
+ logical             :: valid_rotation
+!=====
+ real(dp) :: xin(3),xout(3)
+ real(dp) :: costheta,sintheta,dr
+ integer  :: iatom
+!=====
+
+ if( order == 0 ) then
+   valid_rotation = .FALSE.
+   return
+ endif
+
+ do iatom=1,natom
+   xin(:) = x(:,iatom) - xcenter(:)
+   dr = NORM2(xin)
+   if( dr < 1.0e-5_dp ) then 
+     valid_rotation=.TRUE.
+     return
+   endif
+   xin(:) = xin(:) / dr
+   costheta = DOT_PRODUCT( rot_axis , xin)
+   if( ABS(ABS(costheta)-1.0) < 1.0e-5_dp ) then
+     valid_rotation=.TRUE.
+     return
+   endif
+   sintheta = SQRT( 1.0 - costheta**2)
+
+ enddo
+
+
+end function valid_rotation
+
+
+!=========================================================================
+function same_element(iatom,jatom)
+ implicit none
+ integer,intent(in) :: iatom,jatom
+ logical :: same_element
+!=====
+
+ same_element = ( ABS( zatom(iatom) - zatom(jatom) ) < 1.0e-5 )
+
+end function same_element
+
 
 
 end module m_atoms
