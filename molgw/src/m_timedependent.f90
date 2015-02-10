@@ -145,7 +145,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  !
  ! Diago using the 4 block structure and the symmetry of each block
  call start_clock(timing_diago_h2p)
- if(.FALSE.) then
+ if(.TRUE.) then
    call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_inv)
  else
    call diago_4blocks_chol(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_inv)
@@ -171,7 +171,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! and the dynamic dipole tensor
  !
  if( calc_type%is_td .OR. calc_type%is_bse ) &
-   call optical_spectrum(basis,prod_basis,occupation,c_matrix,wpol_out,eigenvector,eigenvector_inv,eigenvalue)
+   call optical_spectrum(calc_type%is_triplet,basis,prod_basis,occupation,c_matrix,wpol_out,eigenvector,eigenvector_inv,eigenvalue)
 
  !
  ! Calculate Wp= v * chi * v    if necessary
@@ -231,7 +231,6 @@ subroutine build_amb_apb_common(is_triplet,nbf,c_matrix,energy,wpol,alpha_local,
 
  WRITE_MASTER(*,'(a)') ' Build Common part: Energies + Hartree + possibly Exchange'
  WRITE_MASTER(*,'(a,f8.3)') ' Content of Exchange: ',alpha_local
- if(alpha_local > 0.001 .AND. is_triplet) stop 'not yet implemented triplet for hybrid'
 
  if( .NOT. is_auxil_basis) then
    allocate(eri_eigenstate_ijmin(nbf,nbf,nbf,nspin))
@@ -360,9 +359,11 @@ subroutine build_apb_tddft(is_triplet,basis,c_matrix,occupation,wpol,nmat,apb_ma
    allocate(dot_rho_kl(ngrid,nspin))
  endif
 
+
  if(require_gradient .AND. nspin>1) then
    stop'spin in TD-GGA not implemented yet'
  endif
+
 
 
  !
@@ -384,7 +385,7 @@ subroutine build_apb_tddft(is_triplet,basis,c_matrix,occupation,wpol,nmat,apb_ma
        xctmp = SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
                           * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
                           * v2rho2(:,ijspin) )                            &
-                          * 4.0_dp
+                          * 2.0_dp
 
 
        if(require_gradient) then
@@ -403,11 +404,11 @@ subroutine build_apb_tddft(is_triplet,basis,c_matrix,occupation,wpol,nmat,apb_ma
                                + rho_gradr(3,:,1) * grad_kl(3,:,klspin)
 
          xctmp = xctmp   &
-               + SUM( dot_ij_kl(:,1) * 6.0_dp * vsigma(:,1) ) &
-               + SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * 9.0_dp * v2sigma2(:,1) ) &
-               + SUM( ( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1)   &
+               +  SUM( dot_ij_kl(:,1) * 4.0_dp * vsigma(:,1) ) &
+               +  SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * 8.0_dp * v2sigma2(:,1) ) &
+               +  SUM( ( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1)   &
                       + wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) ) &
-                         * 6.0_dp * v2rhosigma(:,1) )
+                         * 4.0_dp * v2rhosigma(:,1) )
 
        endif
 
@@ -417,7 +418,7 @@ subroutine build_apb_tddft(is_triplet,basis,c_matrix,occupation,wpol,nmat,apb_ma
        xctmp = SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
                           * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
                           * v2rho2(:,ijspin) )                            &
-                          * 3.0_dp
+                          * 1.50_dp
 
 
        if(require_gradient) then
@@ -441,10 +442,10 @@ subroutine build_apb_tddft(is_triplet,basis,c_matrix,occupation,wpol,nmat,apb_ma
 
      endif
 
-
-     apb_matrix(t_ij,t_kl) = apb_matrix(t_ij,t_kl) + xctmp
+     ! The factor two accounts for (A+B), and not A or B.
+     apb_matrix(t_ij,t_kl) = apb_matrix(t_ij,t_kl) + 2.0_dp * xctmp
      ! use the symmetry of (A+B)
-     if( t_ij /= t_kl ) apb_matrix(t_kl,t_ij) = apb_matrix(t_kl,t_ij) + xctmp
+     if( t_ij /= t_kl ) apb_matrix(t_kl,t_ij) = apb_matrix(t_kl,t_ij) + 2.0_dp * xctmp
 
    enddo
  enddo
@@ -1066,7 +1067,7 @@ subroutine polarizability_td(basis,prod_basis,auxil_basis,occupation,energy,c_ma
  ! Calculate the optical sprectrum
  ! and the dynamic dipole tensor
  !
- call optical_spectrum(basis,prod_basis,occupation,c_matrix,wpol_new,eigenvector,eigenvector_inv,eigenvalue)
+ call optical_spectrum(calc_type%is_triplet,basis,prod_basis,occupation,c_matrix,wpol_new,eigenvector,eigenvector_inv,eigenvalue)
 
  !
  ! Calculate Wp= v * chi * v 
@@ -1093,7 +1094,7 @@ end subroutine polarizability_td
 
 
 !=========================================================================
-subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector,eigenvector_inv,eigenvalue)
+subroutine optical_spectrum(is_triplet,basis,prod_basis,occupation,c_matrix,chi,eigenvector,eigenvector_inv,eigenvalue)
  use m_mpi
  use m_tools
  use m_basis_set
@@ -1103,6 +1104,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  use m_atoms
  implicit none
 
+ logical,intent(in)                 :: is_triplet
  type(basis_set),intent(in)         :: basis,prod_basis
  real(dp),intent(in)                :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
  type(spectral_function),intent(in) :: chi
@@ -1267,11 +1269,19 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  do t_kl=1,chi%npole
    if(eigenvalue(t_kl) > 0.0_dp) then
      t_current = t_current + 1
-     oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_kl),residu_right(:,t_kl)) * eigenvalue(t_kl)
+     if( is_triplet ) then 
+       oscillator_strength = 0.0_dp
+     else
+       oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_kl),residu_right(:,t_kl)) * eigenvalue(t_kl)
+     endif
      trk_sumrule = trk_sumrule + oscillator_strength
 
      if(t_current<=30) then
-       symsymbol=''
+       if( is_triplet) then
+         symsymbol='3'
+       else
+         symsymbol='1'
+       endif
        ! Test the parity in case of molecule with inversion symmetry
 
        t_ij=1
@@ -1287,9 +1297,9 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
          reflectionj = wfn_reflection(basis,c_matrix,jstate,ijspin)
          select case(reflectioni*reflectionj)
          case( 1)
-           symsymbol='(A1, B2 or Ap )'
+           symsymbol=TRIM(symsymbol)//'(A1, B2 or Ap )'
          case(-1)
-           symsymbol='(A2, B1 or App)'
+           symsymbol=TRIM(symsymbol)//'(A2, B1 or App)'
          end select
        endif
        if(inversion) then
@@ -1423,7 +1433,7 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
  ! Get the density matrix P from C
  call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
 
- allocate(v2rho2(ngrid,nspin),wf_r(ngrid,basis%nbf,nspin))
+ allocate(v2rho2(ngrid,2*nspin-1),wf_r(ngrid,basis%nbf,nspin))
  v2rho2(:,:) = 0.0_dp
 
  if(require_gradient) then
@@ -1512,6 +1522,15 @@ subroutine prepare_tddft(basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2si
        v2rhosigma(igrid,:) = v2rhosigma(igrid,:) + v2rhosigma_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
        v2sigma2(igrid,:)   = v2sigma2(igrid,:)   + v2sigma2_c(:)   * w_grid(igrid) * dft_xc_coef(idft_xc)
      endif
+!FBFB     if( igrid==1000) then
+!FBFB        write(*,'(i4,x,10(es18.6,2x))') idft_xc
+!FBFB        write(*,'(i4,x,10(es18.6,2x))') igrid,rho_c(:),v2rho2_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
+!FBFB       if(require_gradient) then
+!FBFB         write(*,'(i4,x,10(es18.6,2x))') igrid,rho_gradr(1,igrid,:),vsigma_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
+!FBFB         write(*,'(i4,x,10(es18.6,2x))') igrid,v2rhosigma_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
+!FBFB         write(*,'(i4,x,10(es18.6,2x))') igrid,v2sigma2_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
+!FBFB       endif
+!FBFB     endif
 
    enddo
  enddo
