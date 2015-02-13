@@ -755,7 +755,6 @@ subroutine setup_initial_c_matrix(print_matrix,nbf,nspin,hamiltonian_nucleus,s_m
  !
  ! Diagonalize a spin independant hamiltonian
  ! to obtain a starting point for matrix C
-! hamiltonian(:,:) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
  hamiltonian(:,:) = hamiltonian_nucleus(:,:)
 
  title='=== bare hamiltonian ==='

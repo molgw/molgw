@@ -20,6 +20,8 @@ module m_inputparam
  integer,parameter :: QS           = 102
  integer,parameter :: COHSEX       = 103
  integer,parameter :: QSCOHSEX     = 104
+ integer,parameter :: GnW0         = 105
+ integer,parameter :: GnWn         = 106
 
  type calculation_type
    character(len=100) :: calc_name
@@ -117,7 +119,13 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%postscf_name =  TRIM(key2)
 
    select case(TRIM(key2))
-   case('GW')
+   case('GnW0')
+     calc_type%is_gw    =.TRUE.
+     calc_type%gwmethod = GnW0
+   case('GnWn')
+     calc_type%is_gw    =.TRUE.
+     calc_type%gwmethod = GnWn
+   case('GW','G0W0')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = perturbative
    case('COHSEX')
@@ -132,22 +140,37 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%gwmethod = perturbative
    case('CI')
      calc_type%is_ci =.TRUE.
+
+   !
+   ! 4 flavors of BSE
    case('BSE')
-     calc_type%is_bse =.TRUE.
+     calc_type%is_bse     =.TRUE.
    case('BSE-TRIPLET')
-     calc_type%is_bse    =.TRUE.
+     calc_type%is_bse     =.TRUE.
      calc_type%is_triplet =.TRUE.
    case('BSE-TDA')
-     calc_type%is_bse =.TRUE.
-     calc_type%is_tda =.TRUE.
+     calc_type%is_bse     =.TRUE.
+     calc_type%is_tda     =.TRUE.
+   case('BSE-TDA-TRIPLET')
+     calc_type%is_bse     =.TRUE.
+     calc_type%is_tda     =.TRUE.
+     calc_type%is_triplet =.TRUE.
+
+   !
+   ! 4 flavors of TDDFT
    case('TD')
-     calc_type%is_td =.TRUE.
+     calc_type%is_td      =.TRUE.
    case('TD-TRIPLET')
-     calc_type%is_td =.TRUE.
+     calc_type%is_td      =.TRUE.
      calc_type%is_triplet =.TRUE.
    case('TDA')
-     calc_type%is_td  =.TRUE.
-     calc_type%is_tda =.TRUE.
+     calc_type%is_td      =.TRUE.
+     calc_type%is_tda     =.TRUE.
+   case('TDA-TRIPLET')
+     calc_type%is_td      =.TRUE.
+     calc_type%is_tda     =.TRUE.
+     calc_type%is_triplet =.TRUE.
+
    case default
      stop'error reading calculation type part 2'
    end select
