@@ -467,10 +467,10 @@ subroutine build_apb_tddft(is_triplet,basis,c_matrix,occupation,wpol,nmat,apb_ma
 
          xctmp = xctmp   &
                +  SUM( dot_ij_kl(:,1) * ( 2.0_dp * vsigma(:,1) - vsigma(:,2) ) ) &
-               +  SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * ( v2sigma2(:,1) - v2sigma2(:,3) ) ) &   !FBFB 3 or 5
+               +  SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * ( v2sigma2(:,1) - v2sigma2(:,3) ) ) &   !FIXME 3 or 5 are working, but only one is correct in principle
                +  SUM( ( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1)   &
                       + wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) ) &
-                         * ( v2rhosigma(:,1) - v2rhosigma(:,4) )  )   !FBFB 3 or 4
+                         * ( v2rhosigma(:,1) - v2rhosigma(:,4) )  )   !FIXME 3 and 4 are working, but only one is correct in principle
        endif
 
 
@@ -1235,16 +1235,6 @@ subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2r
        vsigma(igrid,:)     = vsigma(igrid,:)     + vsigma_c(:)     * w_grid(igrid) * dft_xc_coef(idft_xc)
        v2rhosigma(igrid,:) = v2rhosigma(igrid,:) + v2rhosigma_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
        v2sigma2(igrid,:)   = v2sigma2(igrid,:)   + v2sigma2_c(:)   * w_grid(igrid) * dft_xc_coef(idft_xc)
-     endif
-     if( igrid==1000) then
-        write(*,'(a)') 'FBFB'
-        write(*,'(i4,x,10(es18.6,2x))') idft_xc
-        write(*,'(i4,x,10(es18.6,2x))') igrid,rho_c(:),v2rho2_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
-       if(require_gradient) then
-         write(*,'(i4,x,10(es18.6,2x))') igrid,rho_gradr(1,igrid,:),vsigma_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
-         write(*,'(i4,x,10(es18.6,2x))') igrid,v2rhosigma_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
-         write(*,'(i4,x,10(es18.6,2x))') igrid,v2sigma2_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
-       endif
      endif
 
    enddo

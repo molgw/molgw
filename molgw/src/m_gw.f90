@@ -195,9 +195,10 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  real(dp)              :: bra(wpol%npole,basis%nbf),ket(wpol%npole,basis%nbf)
  real(dp)              :: fact_full,fact_empty
  real(dp)              :: zz(nspin)
- real(dp)              :: energy_re
  real(dp)              :: energy_qp(basis%nbf,nspin)
+ real(dp)              :: energy_qp_new(basis%nbf,nspin)
  character(len=3)      :: ctmp
+ integer               :: reading_status
 !=====
 
  call start_clock(timing_self)
@@ -217,9 +218,13 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    WRITE_MASTER(*,*) 'perform a COHSEX calculation'
  case(QSCOHSEX)
    WRITE_MASTER(*,*) 'perform a self-consistent COHSEX calculation'
+ case(GnW0)
+   WRITE_MASTER(*,*) 'perform an eigenvalue self-consistent GnW0 calculation'
+ case(GnWn)
+   WRITE_MASTER(*,*) 'perform an eigenvalue self-consistent GnWn calculation'
  end select
 
- if(gwmethod==QS .OR. gwmethod==COHSEX .OR. gwmethod==QSCOHSEX) then
+ if(gwmethod==QS .OR. gwmethod==COHSEX .OR. gwmethod==QSCOHSEX .OR.  gwmethod==GnW0 .OR. gwmethod==GnWn) then
    nomegai=1
    allocate(omegai(nomegai))
  else
@@ -247,9 +252,18 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    endif
  endif
 
- allocate(selfenergy_tmp(nomegai,basis%nbf,basis%nbf,nspin))
- 
+ if( gwmethod==GnW0 .OR. gwmethod==GnWn ) then
+   call read_energy_qp(nspin,basis%nbf,energy_qp,reading_status)
+   if(reading_status/=0) then
+     msg='File energy_qp not found: assuming 1st iteration'
+     call issue_warning(msg)
+     energy_qp(:,:) = energy(:,:)
+   endif
+ else
+   energy_qp(:,:) = energy(:,:)
+ endif
 
+ allocate(selfenergy_tmp(nomegai,basis%nbf,basis%nbf,nspin))
  selfenergy_tmp(:,:,:,:) = 0.0_dp
 
  do ispin=1,nspin
@@ -294,13 +308,13 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
              selfenergy_tmp(1,astate,bstate,ispin) = selfenergy_tmp(1,astate,bstate,ispin) &
                         - bra(ipole,astate) * ket(ipole,bstate) &
-                          * REAL(   fact_empty / ( energy(bstate,ispin) + ieta  - energy(istate,ispin) + wpol%pole(ipole) ) &
-                                   -fact_full  / ( energy(bstate,ispin) - ieta  - energy(istate,ispin) + wpol%pole(ipole) ) , dp )
+                          * REAL(   fact_empty / ( energy_qp(bstate,ispin) + ieta  - energy_qp(istate,ispin) + wpol%pole(ipole) ) &
+                                   -fact_full  / ( energy_qp(bstate,ispin) - ieta  - energy_qp(istate,ispin) + wpol%pole(ipole) ) , dp )
 
            enddo
          enddo
 
-       case(perturbative)
+       case(perturbative,GnW0,GnWn)
 
          do astate=1,basis%nbf
            !
@@ -310,8 +324,8 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
              do iomegai=1,nomegai
                selfenergy_tmp(iomegai,astate,bstate,ispin) = selfenergy_tmp(iomegai,astate,bstate,ispin) &
                         - bra(ipole,astate) * ket(ipole,bstate) &
-                          * REAL(  fact_empty / ( energy(bstate,ispin) + ieta + omegai(iomegai) - energy(istate,ispin) + wpol%pole(ipole)     ) &
-                                  -fact_full  / ( energy(bstate,ispin) - ieta + omegai(iomegai) - energy(istate,ispin) + wpol%pole(ipole)     )  , dp )
+                          * REAL(  fact_empty / ( energy_qp(bstate,ispin) + ieta + omegai(iomegai) - energy_qp(istate,ispin) + wpol%pole(ipole)     ) &
+                                  -fact_full  / ( energy_qp(bstate,ispin) - ieta + omegai(iomegai) - energy_qp(istate,ispin) + wpol%pole(ipole)     )  , dp )
              enddo
 !           enddo
          enddo
@@ -393,13 +407,13 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    endif
    do astate=1,basis%nbf
      zz(:) = 1.0_dp 
-     energy_qp(astate,:) = energy(astate,:)+zz(:)*REAL(selfenergy_tmp(1,astate,astate,:) + exchange_m_vxc_diag(astate,:))
+     energy_qp_new(astate,:) = energy_qp(astate,:)+zz(:)*REAL(selfenergy_tmp(1,astate,astate,:) + exchange_m_vxc_diag(astate,:))
 
-     WRITE_MASTER(*,'(i4,x,20(x,f12.6))') astate,energy(astate,:)*Ha_eV,exchange_m_vxc_diag(astate,:)*Ha_eV,REAL(selfenergy_tmp(1,astate,astate,:),dp)*Ha_eV,&
-           zz(:),energy_qp(astate,:)*Ha_eV
+     WRITE_MASTER(*,'(i4,x,20(x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,exchange_m_vxc_diag(astate,:)*Ha_eV,REAL(selfenergy_tmp(1,astate,astate,:),dp)*Ha_eV,&
+           zz(:),energy_qp_new(astate,:)*Ha_eV
    enddo
 
-   call write_energy_qp(nspin,basis%nbf,energy_qp)
+   call write_energy_qp(nspin,basis%nbf,energy_qp_new)
 
  case(perturbative) !==========================================================
 
@@ -409,7 +423,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
        WRITE_ME(ctmp,'(i3.3)') astate
        open(200+astate,file='selfenergy_omega_state'//TRIM(ctmp))
        do iomegai=1,nomegai
-         WRITE_MASTER(200+astate,'(20(f12.6,2x))') ( DBLE(omegai(iomegai))+energy(astate,:) )*Ha_eV,&
+         WRITE_MASTER(200+astate,'(20(f12.6,2x))') ( DBLE(omegai(iomegai))+energy_qp(astate,:) )*Ha_eV,&
                                                      ( DBLE(selfenergy_tmp(iomegai,astate,astate,:)) )*Ha_eV,&
                                                      ( DBLE(omegai(iomegai))-exchange_m_vxc_diag(astate,:) )*Ha_eV,&
                                                      ( 1.0_dp/pi/ABS( DBLE(omegai(iomegai))-exchange_m_vxc_diag(astate,:) &
@@ -420,7 +434,6 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
      close(200+astate)
 
    else
-
      selfenergy(:,:,:) = REAL( selfenergy_tmp(2,:,:,:) )
      WRITE_MASTER(*,*)
      WRITE_MASTER(*,*) 'G0W0 Eigenvalues [eV]'
@@ -436,14 +449,35 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
        do ispin=1,nspin
          zz(ispin) = MIN( MAX(zz(ispin),0.0_dp) , 1.0_dp )
        enddo
-       energy_qp(astate,:) = energy(astate,:)+zz(:)*REAL(selfenergy_tmp(2,astate,astate,:) + exchange_m_vxc_diag(astate,:))
+       energy_qp_new(astate,:) = energy_qp(astate,:)+zz(:)*REAL(selfenergy_tmp(2,astate,astate,:) + exchange_m_vxc_diag(astate,:))
 
-       WRITE_MASTER(*,'(i4,x,20(x,f12.6))') astate,energy(astate,:)*Ha_eV,exchange_m_vxc_diag(astate,:)*Ha_eV,REAL(selfenergy_tmp(2,astate,astate,:),dp)*Ha_eV,&
-             zz(:),energy_qp(astate,:)*Ha_eV
+       WRITE_MASTER(*,'(i4,x,20(x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,exchange_m_vxc_diag(astate,:)*Ha_eV,REAL(selfenergy_tmp(2,astate,astate,:),dp)*Ha_eV,&
+             zz(:),energy_qp_new(astate,:)*Ha_eV
      enddo
 
-     call write_energy_qp(nspin,basis%nbf,energy_qp)
+     call write_energy_qp(nspin,basis%nbf,energy_qp_new)
    endif
+
+ case(GnW0,GnWn) !==========================================================
+
+     selfenergy(:,:,:) = REAL( selfenergy_tmp(1,:,:,:) )
+     WRITE_MASTER(*,*)
+     WRITE_MASTER(*,*) 'G0W0 Eigenvalues [eV]'
+     if(nspin==1) then
+       WRITE_MASTER(*,'(a)') '  #          E0        Sigx-Vxc      Sigc          Z          GW(n-1)       GW(n)'
+     else
+       WRITE_MASTER(*,'(a)') '  #                E0                      Sigx-Vxc                    Sigc                       Z                       G0W0'
+     endif
+     do astate=1,basis%nbf
+       zz(:) = 1.0_dp 
+
+       energy_qp_new(astate,:) = energy(astate,:)+zz(:)*REAL(selfenergy_tmp(1,astate,astate,:) + exchange_m_vxc_diag(astate,:))
+
+       WRITE_MASTER(*,'(i4,x,20(x,f12.6))') astate,energy(astate,:)*Ha_eV,exchange_m_vxc_diag(astate,:)*Ha_eV,REAL(selfenergy_tmp(2,astate,astate,:),dp)*Ha_eV,&
+             zz(:),energy_qp(astate,:)*Ha_eV,energy_qp_new(astate,:)*Ha_eV
+     enddo
+
+     call write_energy_qp(nspin,basis%nbf,energy_qp_new)
 
  end select
 
