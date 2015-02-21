@@ -356,13 +356,14 @@ subroutine setup_exchange(print_matrix,nbf,p_matrix,pot_exchange,eexchange)
    do jbf=1,nbf
      do lbf=1,nbf
        if( negligible_basispair(lbf,jbf) ) cycle
-       do ibf=1,nbf
-         do kbf=1,nbf
-           if( negligible_basispair(kbf,ibf) ) cycle
+       do kbf=1,nbf
+         if( ABS(p_matrix(kbf,lbf,ispin)) <  1.0e-12_dp ) cycle  ! FBFB
+         do ibf=1,nbf
+           if( negligible_basispair(ibf,kbf) ) cycle
            !
            ! symmetry (ik|lj) = (ki|lj) has been used to loop in the fast order
            pot_exchange(ibf,jbf,ispin) = pot_exchange(ibf,jbf,ispin) &
-                      - eri(kbf,ibf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact 
+                      - eri(ibf,kbf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact 
          enddo
        enddo
      enddo
