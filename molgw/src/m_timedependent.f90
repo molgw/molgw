@@ -154,7 +154,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
 
  !
  ! Second part of the RPA correlation energy: sum over positive eigenvalues
- rpa_correlation = rpa_correlation + 0.50_dp * SUM( eigenvalue(1:nmat) )
+ rpa_correlation = rpa_correlation + 0.25_dp * SUM( ABS(eigenvalue(:)) )
  if(is_rpa) then
   WRITE_MASTER(*,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
   WRITE_MASTER(*,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
