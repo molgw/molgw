@@ -4,4 +4,4 @@ GW                    # calculation type HF, G0W0
 30  0.70 PULAY HIGH   # nscf, alpha_mixing
 01                    # print_volume
 1 bohr
-3.0     0.0 0.0 0.0
+3       0.0 0.0 0.0

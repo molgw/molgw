@@ -4,4 +4,4 @@ cc-pVDZ CART   # 6-31G                #6-31G # cc-pVTZ                  #       
 50  0.70  SIMPLE  HIGH  #  PULAY   # PULAY     # nscf, alpha_mixing
 001                     #   print_volume
 1   bohr
-2.  0.000000  0.00000   0.000000
+He  0.000000  0.00000   0.000000

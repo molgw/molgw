@@ -4,5 +4,5 @@ aug-cc-pVTZ CART     #6-31G # cc-pVTZ                  #          6-311ppGss    
 15   0.80 PULAY LOW   # nscf, alpha_mixing
 01                   # print_volume
 2  bohr
-1.   -0.700 0.0  0.0
-1.    0.700 0.0  0.0
+1    -0.700 0.0  0.0
+1     0.700 0.0  0.0

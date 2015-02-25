@@ -294,9 +294,9 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  !
  ! Get the exchange operator if not already calculated
 #ifndef FULL_AUXIL
- if( ABS(en%exx) < 1.0E-6_DP ) call setup_exchange(print_matrix,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+ if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(print_matrix,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
 #else
- if( ABS(en%exx) < 1.0E-6_DP ) call setup_exchange_ri(print_matrix,basis%nbf,c_matrix,occupation,p_matrix,hamiltonian_exx,en%exx)
+ if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange_ri(print_matrix,basis%nbf,c_matrix,occupation,p_matrix,hamiltonian_exx,en%exx)
 #endif
 
  WRITE_MASTER(*,'(/,a25,x,f16.10)') '      EXX Energy [Ha]:',en%exx
