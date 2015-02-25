@@ -4,5 +4,5 @@ LDA+CI                # calculation type HF, LDA+GW, PBE+GW
 50   0.70  PULAY HIGH # nscf, alpha_mixing
 01                    # print_volume
 2  bohr
-1.   -0.700 0.0  0.0
-1.    0.700 0.0  0.0
+1    -0.700 0.0  0.0
+1     0.700 0.0  0.0

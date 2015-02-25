@@ -4,5 +4,5 @@ STO-3G  CART
 50   0.70  PULAY LOW # nscf, alpha_mixing
 01                   # print_volume
 2  bohr
-1.   -0.700 0.0  0.0
-1.    0.700 0.0  0.0
+1    -0.700 0.0  0.0
+1     0.700 0.0  0.0

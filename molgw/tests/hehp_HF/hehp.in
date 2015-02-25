@@ -4,5 +4,5 @@ STO-3G   CART        #6-31G # cc-pVTZ                  #          6-311ppGss    
 15   0.80 PULAY LOW  # nscf, alpha_mixing
 11                   # print_volume
 2    bohr
-2.    0.0000 0.0  0.0
-1.    1.4632 0.0  0.0
+2     0.0000 0.0  0.0
+1     1.4632 0.0  0.0

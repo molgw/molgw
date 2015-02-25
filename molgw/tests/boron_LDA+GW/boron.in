@@ -4,4 +4,4 @@ cc-pVTZ  CART            # basis set
 20  0.70 PULAY  HIGH     # nscf, alpha_mixing
 01                       # print_volume
 1  bohr
-5.0   0.0 0.0 0.0
+B     0.0 0.0 0.0

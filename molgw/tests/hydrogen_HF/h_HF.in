@@ -4,4 +4,4 @@ HF                    # calculation type HF, LDA+GW, PBE+GW
 20  0.80  PULAY LOW   # nscf, alpha_mixing
 01                    # print_volume
 1  bohr               # natom
-1.    0.0  0.0  0.0   # Z , x, y, z 
+H     0.0  0.0  0.0   # Z , x, y, z 
