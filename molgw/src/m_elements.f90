@@ -31,9 +31,9 @@ function element_core(zatom)
   element_core = 0
  else if( zatom <= 12.00001 ) then  ! up to Mg
   element_core = 1
- else if( zatom <= 20.00001 ) then  ! up to Ca
+ else if( zatom <= 30.00001 ) then  ! up to Ca
   element_core = 5
- else if( zatom <= 38.00001 ) then  ! up to Sr
+ else if( zatom <= 48.00001 ) then  ! up to Sr
   element_core = 9
  else
    stop'not imlemented in element_core'
@@ -183,8 +183,47 @@ function element_name(zatom)
 end function element_name
 
 
+!=========================================================================
+subroutine element_atomicdensity(zatom,coeff,alpha)
+ implicit none
+ real(dp),intent(in)  :: zatom
+ real(dp),intent(out) :: coeff(4)
+ real(dp),intent(out) :: alpha(4)
+!=====
 
-end module m_elements
+ select case(NINT(zatom))
+ case( 1)
+   alpha(1) = 35.7662 
+   alpha(2) = 5.66045 
+   alpha(3) = 1.34388 
+   alpha(4) = 0.340268
+   coeff(2) = 0.038544
+   coeff(3) = 0.317984
+   coeff(4) = 0.641901 
+   coeff(1) = 1.0_dp - SUM(coeff(2:4))
+ case( 6)
+   alpha(1) = 167.342
+   alpha(2) =  28.2192
+   alpha(3) =   0.96127
+   alpha(4) = 1832.38 
+   coeff(2) =  1.3663 
+   coeff(3) =  4.49642
+   coeff(4) =  0.00210702
+   coeff(1) = 6.0_dp - SUM(coeff(2:4))
+ case default
+   alpha(1) = 0.3_dp
+   coeff(1) = 2.0_dp
+   alpha(2) = 2.6_dp
+   coeff(2) = zatom - coeff(1) 
+   coeff(3) = 0.0_dp
+   coeff(4) = 0.0_dp
+   alpha(3) = 1.0_dp
+   alpha(4) = 1.0_dp
+ end select
+
+
+end subroutine element_atomicdensity
 
 
 !=========================================================================
+end module m_elements

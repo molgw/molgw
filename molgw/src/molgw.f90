@@ -50,7 +50,7 @@ program molgw
 
  call init_scalapack()
  !
- ! initialize the warning counter
+ ! initialize the warning counters
  call init_warning()
 
  !
@@ -227,6 +227,7 @@ program molgw
  call start_clock(timing_postscf)
 
  if( print_wfn ) call plot_wfn(nspin,basis,c_matrix)
+ if( print_wfn ) call plot_rho(nspin,basis,occupation,c_matrix)
 ! if( print_wfn ) call plot_cube_wfn(nspin,basis,c_matrix)
 
 
