@@ -17,7 +17,7 @@ subroutine header()
 
  call date_and_time(VALUES=values)
 
- WRITE_MASTER(*,'(a,i2.2,a,i2.2,a,i4.4)') ' Today is ',values(3),'/',values(2),'/',values(1)
+ WRITE_MASTER(*,'(a,i2.2,a,i2.2,a,i4.4)') ' Today is ',values(2),'/',values(3),'/',values(1)
  WRITE_MASTER(*,'(a,i2.2,a,i2.2)')        ' It is now ',values(5),':',values(6)
  select case(values(5))
  case(03,04,05,06,07)
@@ -216,7 +216,7 @@ subroutine plot_wfn(nspin,basis,c_matrix)
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
 !=====
- integer,parameter          :: nr=20000
+ integer,parameter          :: nr=2000
  real(dp),parameter         :: length=10.0_dp
  integer                    :: ir,ibf
  integer                    :: istate1,istate2,istate,ispin
@@ -309,6 +309,96 @@ subroutine plot_wfn(nspin,basis,c_matrix)
  deallocate(phase,phi)
 
 end subroutine plot_wfn
+
+
+!=========================================================================
+subroutine plot_rho(nspin,basis,occupation,c_matrix)
+ use m_definitions
+ use m_mpi
+ use m_atoms
+ use m_basis_set
+ implicit none
+ integer,intent(in)         :: nspin
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(basis%nbf,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
+!=====
+ integer,parameter          :: nr=2000
+ real(dp),parameter         :: length=2.0_dp
+ integer                    :: ir,ibf
+ integer                    :: istate1,istate2,istate,ispin
+ real(dp)                   :: rr(3)
+ real(dp),allocatable       :: phi(:,:)
+ real(dp)                   :: u(3),a(3)
+ logical                    :: file_exists
+ real(dp)                   :: xmin,xmax
+ real(dp)                   :: basis_function_r(basis%nbf)
+ integer                    :: ibf_cart,ni_cart,ni,li,i_cart
+ real(dp),allocatable       :: basis_function_r_cart(:)
+!=====
+
+ WRITE_MASTER(*,*) 'Plotting the density'
+ inquire(file='manual_plotrho',exist=file_exists)
+ if(file_exists) then
+   open(100,file='manual_plotrho',status='old')
+   read(100,*) u(:)
+   read(100,*) a(:)
+   close(100)
+ else
+   u(:)=0.0_dp
+   u(1)=1.0_dp
+   a(:)=0.0_dp
+ endif
+ u(:) = u(:) / SQRT(SUM(u(:)**2))
+ allocate(phi(basis%nbf,nspin))
+ WRITE_MASTER(*,'(a,3(2x,f8.3))') ' direction:',u(:)
+ WRITE_MASTER(*,'(a,3(2x,f8.3))') ' origin:   ',a(:)
+
+ xmin = MINVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) - length
+ xmax = MAXVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) + length
+
+
+ do ir=1,nr
+   rr(:) = ( xmin + (ir-1)*(xmax-xmin)/REAL(nr-1,dp) ) * u(:) + a(:)
+
+   phi(:,:) = 0.0_dp
+   
+   !
+   ! First precalculate all the needed basis function evaluations at point rr
+   !
+   ibf_cart = 1
+   ibf      = 1
+   do while(ibf_cart<=basis%nbf_cart)
+     li      = basis%bf(ibf_cart)%am
+     ni_cart = number_basis_function_am(CARTESIAN,li)
+     ni      = number_basis_function_am(basis%gaussian_type,li)
+
+     allocate(basis_function_r_cart(ni_cart))
+
+     do i_cart=1,ni_cart
+       basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
+     enddo
+     basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li)%matrix(:,:) )
+     deallocate(basis_function_r_cart)
+
+     ibf      = ibf      + ni
+     ibf_cart = ibf_cart + ni_cart
+   enddo
+   !
+   ! Precalculation done!
+   !
+
+   do ispin=1,nspin
+     phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
+   enddo
+
+   WRITE_MASTER(103,'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( phi(:,:)**2 * occupation(:,:) )
+
+ enddo
+
+ deallocate(phi)
+
+end subroutine plot_rho
 
 
 !=========================================================================

@@ -493,7 +493,7 @@ subroutine read_inputparameter_molecule()
  !
  ! Reading line 4
  read(*,*) nscf,alpha_mixing,mixing_name,quadrature_accuracy
- if(nscf<1) stop'nscf too small'
+ if(nscf<0) stop'nscf too small'
  if(alpha_mixing<0.0 .OR. alpha_mixing > 1.0 ) stop'alpha_mixing should be inside [0,1]'
  select case(TRIM(mixing_name))
  case('SIMPLE')

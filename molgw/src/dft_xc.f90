@@ -383,31 +383,14 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
 
 ! call start_clock(timing_dft)
 
- WRITE_MASTER(*,'(/,a)') ' Calculate approximate HXC potential on a grid'
+ WRITE_MASTER(*,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities'
 
  do iatom=1,natom
-   if( zatom(iatom) <= 2.0_dp ) then
-     ngau = 1
-     allocate(alpha(ngau),coeff(ngau))
-     alpha(1) = 0.5_dp
-     coeff(1) = zatom(iatom)
-   else if( zatom(iatom) <= 10.0_dp ) then
-     ngau = 2
-     allocate(alpha(ngau),coeff(ngau))
-     alpha(1) = 0.3_dp
-     coeff(1) = 2.0_dp
-     alpha(2) = 2.6_dp
-     coeff(2) = zatom(iatom) - coeff(1)
-   else
-     ngau = 3
-     allocate(alpha(ngau),coeff(ngau))
-     alpha(1) = 0.2_dp
-     coeff(1) = 2.0_dp
-     alpha(2) = 1.4_dp
-     coeff(2) = 8.0_dp
-     alpha(3) = 3.2_dp
-     coeff(3) = zatom(iatom) - coeff(1) - coeff(2)
-   endif
+
+   ngau = 4
+   allocate(alpha(ngau),coeff(ngau))
+   call element_atomicdensity(zatom(iatom),coeff,alpha)
+
 
    do igau=1,ngau
      call calculate_eri_approximate_hartree(.FALSE.,basis,x(:,iatom),alpha(igau),vhgau)
@@ -436,7 +419,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
    !
    ! calculate the density at point r for spin up and spin down
    call setup_atomic_density(rr,rhor,vhartree)
-
+   write(206,*) norm2(rr),rhor
    !
    ! Normalization
    normalization = normalization + rhor * weight
@@ -493,28 +476,9 @@ subroutine setup_atomic_density(rr,rhor,vhartree)
  vhartree = 0.0_dp
  do iatom=1,natom
 
-   if( zatom(iatom) <= 2.0_dp ) then
-     ngau = 1
-     allocate(alpha(ngau),coeff(ngau))
-     alpha(1) = 0.5_dp
-     coeff(1) = zatom(iatom) 
-   else if( zatom(iatom) <= 10.0_dp ) then
-     ngau = 2
-     allocate(alpha(ngau),coeff(ngau))
-     alpha(1) = 0.3_dp
-     coeff(1) = 2.0_dp
-     alpha(2) = 2.6_dp
-     coeff(2) = zatom(iatom) - coeff(1) 
-   else 
-     ngau = 3
-     allocate(alpha(ngau),coeff(ngau))
-     alpha(1) = 0.2_dp
-     coeff(1) = 2.0_dp
-     alpha(2) = 1.4_dp
-     coeff(2) = 8.0_dp
-     alpha(3) = 3.2_dp
-     coeff(3) = zatom(iatom) - coeff(1) - coeff(2)
-   endif
+   ngau = 4
+   allocate(alpha(ngau),coeff(ngau))
+   call element_atomicdensity(zatom(iatom),coeff,alpha)
 
    dr=NORM2( rr(:) - x(:,iatom) )
 
@@ -526,19 +490,10 @@ subroutine setup_atomic_density(rr,rhor,vhartree)
    deallocate(alpha,coeff)
  enddo
 
-! ngau = 1
-! allocate(alpha(1),coeff(1))
-! coeff(1) = ( electrons - bondcharge * SUM(zatom(:)) ) / REAL(nbond,dp)
-! alpha(1) = 3.0_dp
-! do ibond=1,nbond
-!   call get_bondcenter(ibond,xbond)
-!   rhor     = rhor     + SQRT(alpha(1)/pi)**3 * EXP( -alpha(1)*dr**2) * coeff(1)
-!   vhartree = vhartree + ERF(SQRT(alpha(1))*dr)/dr * coeff(1)
-! enddo
-! deallocate(alpha,coeff)
 
 
 end subroutine setup_atomic_density
+
 
 !=========================================================================
 subroutine calc_density_r(nspin,nbf,p_matrix,basis_function_r,rhor_r)
@@ -570,6 +525,8 @@ subroutine calc_density_r(nspin,nbf,p_matrix,basis_function_r,rhor_r)
 !$OMP END DO
 !$OMP END PARALLEL
  enddo
+
+
 end subroutine calc_density_r
 
 
