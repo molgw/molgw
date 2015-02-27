@@ -43,7 +43,7 @@ module m_spectral_function
  !
  ! the boring small complex number eta: (0.0_dp,0.001_dp) is typically over converged
  ! Having a larger ieta value smoothen the oscillation far from the HOMO-LUMO gap
- complex(dp),parameter :: ieta=(0.0_dp,0.001_dp) ! (0.0_dp,0.001_dp)
+ complex(dp),protected :: ieta
 
 #ifdef CRPA
  integer,parameter :: band1=1
@@ -63,10 +63,19 @@ subroutine init_spectral_function(nbf,occupation,sf)
  logical                               :: file_exists
 !====
 
- ncore_G    = 0
- ncore_W    = 0
+ ieta = (0.0_dp,1.0_dp) * pole_eta 
+
+ ncore_G    = ncoreg
+ ncore_W    = ncorew
  nvirtual_G = nbf+1
  nvirtual_W = nbf+1
+
+ if(is_frozencore) then
+   if( ncore_G == 0) ncore_G = atoms_core_states()
+   if( ncore_W == 0) ncore_W = atoms_core_states()
+   WRITE_MASTER(msg,'(a,i4,2x,i4)') 'frozen core approximation switched on up to state (G,W) = ',ncore_G,ncore_W
+   call issue_warning(msg)
+ endif
 
  !
  ! Deal with frozen core initialization

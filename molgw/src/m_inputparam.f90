@@ -36,10 +36,14 @@ module m_inputparam
    logical            :: is_mp2
    logical            :: is_ci
    logical            :: read_potential
-   logical            :: is_bse,is_td,is_tda,is_triplet
+   logical            :: is_bse,is_td
    integer            :: gwmethod                    ! perturbative or quasiparticle self-consistent
  end type calculation_type
 
+ integer,protected                :: ncoreg 
+ integer,protected                :: ncorew 
+ logical,protected                :: is_frozencore
+ logical,protected                :: is_tda,is_triplet
  integer,protected                :: nspin
  real(dp),protected               :: spin_fact
  integer,protected                :: nscf
@@ -55,6 +59,7 @@ module m_inputparam
  character(len=100),protected     :: integral_quality
  logical,protected                :: has_auxil_basis
  logical,protected                :: is_full_auxil
+ real(dp),protected               :: pole_eta
 
  logical,protected                :: no_restart   
  logical,protected                :: ignore_big_restart
@@ -102,8 +107,6 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%is_ci               = .FALSE.
  calc_type%is_bse              = .FALSE.
  calc_type%is_td               = .FALSE.
- calc_type%is_tda              = .FALSE.
- calc_type%is_triplet          = .FALSE.
  calc_type%gwmethod            = 0
  calc_type%read_potential      = .FALSE.
  calc_type%postscf_name        = 'None'
@@ -145,35 +148,11 @@ subroutine init_calculation_type(calc_type,input_key)
    case('CI')
      calc_type%is_ci =.TRUE.
 
-   !
-   ! 4 flavors of BSE
    case('BSE')
      calc_type%is_bse     =.TRUE.
-   case('BSE-TRIPLET')
-     calc_type%is_bse     =.TRUE.
-     calc_type%is_triplet =.TRUE.
-   case('BSE-TDA')
-     calc_type%is_bse     =.TRUE.
-     calc_type%is_tda     =.TRUE.
-   case('BSE-TDA-TRIPLET')
-     calc_type%is_bse     =.TRUE.
-     calc_type%is_tda     =.TRUE.
-     calc_type%is_triplet =.TRUE.
 
-   !
-   ! 4 flavors of TDDFT
    case('TD')
      calc_type%is_td      =.TRUE.
-   case('TD-TRIPLET')
-     calc_type%is_td      =.TRUE.
-     calc_type%is_triplet =.TRUE.
-   case('TDA')
-     calc_type%is_td      =.TRUE.
-     calc_type%is_tda     =.TRUE.
-   case('TDA-TRIPLET')
-     calc_type%is_td      =.TRUE.
-     calc_type%is_tda     =.TRUE.
-     calc_type%is_triplet =.TRUE.
 
    case default
      stop'error reading calculation type part 2'
@@ -398,7 +377,6 @@ subroutine output_calculation_type(calc_type)
   WRITE_MASTER(*,*) 'is_mp2                      ',calc_type%is_mp2
   WRITE_MASTER(*,*) 'is_ci                       ',calc_type%is_ci
   WRITE_MASTER(*,*) 'is_td                       ',calc_type%is_td
-  WRITE_MASTER(*,*) 'is_tda                      ',calc_type%is_tda
   WRITE_MASTER(*,*) 'is_bse                      ',calc_type%is_bse
   WRITE_MASTER(*,*) 'method                      ',calc_type%gwmethod  
 
@@ -660,7 +638,8 @@ subroutine read_inputfile_namelist()
  character(len=12)    :: length_unit
  character(len=3)     :: ignore_restart,ignore_bigrestart,no_4center
  character(len=3)     :: printmatrix,printeri,printwfn,printw
- real(dp)             :: length_factor
+ character(len=3)     :: tda,triplet,frozencore
+ real(dp)             :: length_factor,eta
  integer              :: atom_number,info,iatom
  character(len=2)     :: atom_symbol
  real(dp),allocatable :: zatom_read(:),x_read(:,:)
@@ -670,6 +649,7 @@ subroutine read_inputfile_namelist()
                   nspin,charge,magnetization,                             &
                   grid_quality,integral_quality,                          &
                   nscf,alpha_mixing,mixing_method,                        &
+                  tda,triplet,eta,frozencore,ncoreg,ncorew,               &
                   ignore_restart,printmatrix,printeri,printwfn,printw,    &
                   length_unit,natom
 !=====
@@ -694,6 +674,13 @@ subroutine read_inputfile_namelist()
  alpha_mixing     = 0.70_dp
  mixing_method    = 'PULAY'
 
+ tda               = 'NO'
+ eta               = 1.0e-3_dp
+ triplet           = 'NO'
+ frozencore        = 'NO'
+ ncoreg            = 0
+ ncorew            = 0
+
  ignore_restart    = 'NO'
  ignore_bigrestart = 'NO'
  printmatrix       = 'NO'
@@ -704,13 +691,15 @@ subroutine read_inputfile_namelist()
  natom             = 0
  length_unit       = 'ANGSTROM'
 
+
  ! Read all the input file in one statement!
  read(*,molgw)
 
  basis_name = basis
  auxil_basis_name = auxilbasis
  has_auxil_basis = TRIM(auxilbasis) /= ''
-
+ pole_eta = eta
+ 
 
  scf                = capitalize(scf)
  postscf            = capitalize(postscf)
@@ -723,6 +712,9 @@ subroutine read_inputfile_namelist()
  no_restart         = yesno(ignore_restart)
  ignore_big_restart = yesno(ignore_bigrestart)
  is_full_auxil      = yesno(no_4center)
+ is_tda             = yesno(tda)
+ is_triplet         = yesno(triplet)
+ is_frozencore      = yesno(frozencore)
 
  print_matrix       = yesno(printmatrix)
  print_basis        = .FALSE.
@@ -752,6 +744,8 @@ subroutine read_inputfile_namelist()
 
  ! A few consistency checks
  if(natom<1) stop'natom<1'
+ if(ncoreg<0) stop'negative ncoreg is meaningless'
+ if(ncorew<0) stop'negative ncorew is meaningless'
  if(nspin/=1 .AND. nspin/=2) stop'nspin in incorrect'
  if(magnetization<-1.d-5)    stop'magnetization is negative'
  if(magnetization>1.d-5 .AND. nspin==1) stop'magnetization is non-zero and nspin is 1'
@@ -784,7 +778,11 @@ subroutine read_inputfile_namelist()
 
  !
  ! Interpret the scf and postscf input parameters
- input_key=TRIM(scf)//'+'//TRIM(postscf)
+ if( TRIM(postscf) =='' ) then
+   input_key=TRIM(scf)
+ else
+   input_key=TRIM(scf)//'+'//TRIM(postscf)
+ endif
  call init_calculation_type(calc_type,input_key)
 
 

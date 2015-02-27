@@ -1,7 +1,8 @@
-HF+GW                 # calculation type HF, G0W0
-1   0.0   0.0         # spin pol   charge   magnetization
-cc-pVDZ CART          # basis set
-20  0.80 PULAY  HIGH  # nscf, alpha_mixing
-01                    # print_volume
-1    bohr
-Be    0.0 0.0 0.0
+&molgw
+ scf='hf'
+ basis='cc-pVDZ'
+ postscf='gw'
+ mixing_method='simple'
+ natom=1
+/
+Be 0. 0. 0.
