@@ -765,6 +765,11 @@ subroutine read_any_restart(nbf,occupation,c_matrix,energy,hamiltonian_exx,hamil
  is_restart     = .TRUE.
  is_big_restart = .FALSE.
 
+ if( no_restart ) then
+   is_restart = .FALSE.
+   return
+ endif
+
  inquire(file='RESTART',exist=file_exists)
  if(.NOT. file_exists) then
    WRITE_MASTER(*,'(/,a)') ' No RESTART file found'

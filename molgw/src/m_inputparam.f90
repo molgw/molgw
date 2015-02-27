@@ -707,7 +707,7 @@ subroutine read_inputfile_namelist()
  ! Read all the input file in one statement!
  read(*,molgw)
 
- basis_name=basis
+ basis_name = basis
  auxil_basis_name = auxilbasis
  has_auxil_basis = TRIM(auxilbasis) /= ''
 
