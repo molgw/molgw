@@ -1,55 +1,92 @@
- 
- Welcome to the fascinating world of ATOM
- 
- 
+ ======================================================================
 
- WARNING: OPENMP option is activated with threads number     1
+
+             Welcome to the fascinating world of MOLGW
+
+
+ ======================================================================
+
+ Today is 02/27/2015
+ It is now 12:16
+ Go and get some good food
+ Compilation options
+
+ WARNING: LIBXC version  2. 2
 
  WARNING: calculation name: HF+GW
 
  Summary of the input parameters 
 
-  calculation type:   HF+GW
-             Natom:   1
-         Electrons:   4.0000
-            Charge:   0.0000
-     Magnetization:   0.0000
-         Basis set:   cc-pVDZ                                                                                             
- Spin polarization:   1
-         SCF steps:  20
-            Mixing:   0.8000
- 
+       Calculation type:   HF+GW                                                                                               
+               SCF type:   HF                                                                                                  
+          Post SCF type:   GW                                                                                                  
+                  Natom:   1
+              Electrons:   4.0000
+                 Charge:   0.0000
+          Magnetization:   0.0000
+              Basis set:   cc-pVDZ                                                                                             
+    Auxiliary basis set:                                                                                                       
+          Gaussian type:   PURE
+      Spin polarization:   1
+              SCF steps:  30
+                 Mixing:   0.7000
+           Grid quality:   HIGH                                                                                                
+       Integral quality:   HIGH                                                                                                
+
+        IO options:
+        - matrices details:     F
+        - basis set details:    F
+        - ERI file:             F
+        - ignore big RESTART:   F
+        - plot some wfns:       F
+        - dump spectral functs  F
+
  ================================
        atom list
                         bohr                                        angstrom
   Be     0.000000     0.000000     0.000000           0.000000     0.000000     0.000000
  ================================
- 
- 
- Element used for Z value:    Be
- Element used for the basis:  Be
- Basis type: cc-pVDZ
+ Number of bonds     0
+ Molecule has inversion symmetry
+ Molecule is linear
 
- WARNING: basis file used: Be_cc-pVDZ
- 
- open the basis set file Be_cc-pVDZ
- 
- Total number of basis functions          15
- 
+
+                  Total number of basis functions:      14
+                  Total number of cart. functions:      15
+                Total number of diffuse functions:       0
+                                 Number of shells:       6
+        Maximum angular momentum in the basis set:       2
+                                                         d
  Basis set is ready and fit
 
- Allocating the ERI array:    0.000 [Gb]
- success
+ Setting up the cartesian to pure transforms
+ Transformations set up completed
+
+ Setup overlap matrix S
+
+ Tolerance on integrals set to  1.00E-10
+
+ Cauchy-Schwartz screening of the 4-center integrals
+ Libint library initialized
+ Max angular momentum handled by your Libint compilation:     7
+
+
+ Non negligible shellpairs to be computed      21  over a total of      21
 
  Calculate and store all the Electron Repulsion Integrals (ERI)
- number of shells          14
- Done!
- 
+ Libint library initialized
+ Max angular momentum handled by your Libint compilation:     7
 
- Allocating the ERI array:    0.386 [Mb]
+
+ Number of integrals to be stored:        5565
+ Max index size  2147483647
+ Allocate 4-center integrals
+ Memory [Mb]:     0.042
  success
+ All ERI have been calculated
 
- === occupations ===
+
+ === Occupations ===
    1      2.00000
    2      2.00000
    3      0.00000
@@ -64,392 +101,113 @@
   12      0.00000
   13      0.00000
   14      0.00000
-  15      0.00000
- 
 
--------------------------------------------
- *** SCF cycle No:    1
 
- Diagonalization for spin polarization           1
+ WARNING: Restart from a big RESTART file obtained within HF
 
- === Energies ===
-   #       [Ha]         [eV]      
-   1     -4.73233   -128.77343
-   2     -0.30904     -8.40939
-   3      0.05826      1.58532
-   4      0.05826      1.58532
-   5      0.05826      1.58532
-   6      0.27752      7.55160
-   7      0.35018      9.52891
-   8      0.35018      9.52891
-   9      0.35018      9.52891
-  10      0.65077     17.70847
-  11      0.65077     17.70847
-  12      0.65077     17.70847
-  13      0.65077     17.70847
-  14      0.65077     17.70847
-  15      1.18889     32.35134
- 
- 
-    Nucleus-Nucleus [Ha]:     0.0000000000
-    Kinetic Energy  [Ha]:    14.5723671665
-    Nucleus Energy  [Ha]:   -33.6343239744
-    Hartree Energy  [Ha]:     7.1568536687
-    Exchange Energy [Ha]:    -2.6672402674
- 
-    Total Energy    [Ha]:   -14.5723434066
- 
- convergence criterium on the density matrix  2.345191810522728E-002
-  ===> convergence not yet reached
- 
+ Try to read spectral function from file spectral_file
+ File does not exist
 
--------------------------------------------
- *** SCF cycle No:    2
 
- A simple mixing of the density matrix is used
- Diagonalization for spin polarization           1
+ Calculating the polarizability
+ Singlet state
 
- === Energies ===
-   #       [Ha]         [eV]      
-   1     -4.73267   -128.78253
-   2     -0.30905     -8.40971
-   3      0.05824      1.58477
-   4      0.05824      1.58477
-   5      0.05824      1.58477
-   6      0.27749      7.55102
-   7      0.35015      9.52819
-   8      0.35015      9.52819
-   9      0.35015      9.52819
-  10      0.65076     17.70810
-  11      0.65076     17.70810
-  12      0.65076     17.70810
-  13      0.65076     17.70810
-  14      0.65076     17.70810
-  15      1.18883     32.34968
- 
- 
-    Nucleus-Nucleus [Ha]:     0.0000000000
-    Kinetic Energy  [Ha]:    14.5629893004
-    Nucleus Energy  [Ha]:   -33.6242711255
-    Hartree Energy  [Ha]:     7.1549736035
-    Exchange Energy [Ha]:    -2.6660503792
- 
-    Total Energy    [Ha]:   -14.5723586008
- 
- convergence criterium on the density matrix  6.991317851203920E-003
-  ===> convergence not yet reached
- 
+ Build the electron-hole hamiltonian
+ Build Common part: Energies + Hartree + possibly Exchange
+ Content of Exchange:    0.000
 
--------------------------------------------
- *** SCF cycle No:    3
+ Performing the block diago with square root of matrices
+ Diago to get (A - B)^{1/2}                         24 x       24
+ Diago (A - B)^{1/2} * (A + B) * (A - B)^{1/2}      24 x       24
 
- A simple mixing of the density matrix is used
- Diagonalization for spin polarization           1
+ Calculate the RPA energy using the Tamm-Dancoff decomposition
+ Eq. (9) from J. Chem. Phys. 132, 234114 (2010)
 
- === Energies ===
-   #       [Ha]         [eV]      
-   1     -4.73274   -128.78450
-   2     -0.30906     -8.40987
-   3      0.05823      1.58451
-   4      0.05823      1.58451
-   5      0.05823      1.58451
-   6      0.27749      7.55079
-   7      0.35015      9.52794
-   8      0.35015      9.52794
-   9      0.35015      9.52794
-  10      0.65075     17.70784
-  11      0.65075     17.70784
-  12      0.65075     17.70784
-  13      0.65075     17.70784
-  14      0.65075     17.70784
-  15      1.18881     32.34908
- 
- 
-    Nucleus-Nucleus [Ha]:     0.0000000000
-    Kinetic Energy  [Ha]:    14.5606554715
-    Nucleus Energy  [Ha]:   -33.6217837061
-    Hartree Energy  [Ha]:     7.1545056878
-    Exchange Energy [Ha]:    -2.6657395575
- 
-    Total Energy    [Ha]:   -14.5723621044
- 
- convergence criterium on the density matrix  2.116795980993976E-003
-  ===> convergence not yet reached
- 
+ RPA energy [Ha]:    -0.04136298
 
--------------------------------------------
- *** SCF cycle No:    4
+ Lowest neutral excitation energy [eV]   12.23552412
 
- A Pulay mixing of the density matrix is used
+ Build W = v * chi * v
 
- alpha DIIS:      1.974824     -1.138745      0.163921
- DIIS predicted residual  1.231953582063419E-004
- 
- Diagonalization for spin polarization           1
+ Spectral function initialized with npoles                 :       48
+ Spectral function initialized with Coulomb basis functions:      105
+ Memory [Mb]:     0.077
 
- === Energies ===
-   #       [Ha]         [eV]      
-   1     -4.73276   -128.78505
-   2     -0.30906     -8.41001
-   3      0.05822      1.58430
-   4      0.05822      1.58430
-   5      0.05822      1.58430
-   6      0.27748      7.55064
-   7      0.35014      9.52776
-   8      0.35014      9.52776
-   9      0.35014      9.52776
-  10      0.65074     17.70759
-  11      0.65074     17.70759
-  12      0.65074     17.70759
-  13      0.65074     17.70759
-  14      0.65074     17.70759
-  15      1.18879     32.34869
- 
- 
-    Nucleus-Nucleus [Ha]:     0.0000000000
-    Kinetic Energy  [Ha]:    14.5598969506
-    Nucleus Energy  [Ha]:   -33.6209754489
-    Hartree Energy  [Ha]:     7.1543425974
-    Exchange Energy [Ha]:    -2.6656270792
- 
-    Total Energy    [Ha]:   -14.5723629802
- 
- convergence criterium on the density matrix  5.088371327856479E-005
-  ===> convergence not yet reached
- 
 
--------------------------------------------
- *** SCF cycle No:    5
+ RPA Total energy [Ha]:    -0.0413629803
 
- A Pulay mixing of the density matrix is used
+ WARNING: small complex number is  1.00E-03
 
- alpha DIIS:      1.680834     -1.346931      0.777827     -0.111730
- DIIS predicted residual  8.863565052542331E-006
- 
- Diagonalization for spin polarization           1
-
- === Energies ===
-   #       [Ha]         [eV]      
-   1     -4.73276   -128.78513
-   2     -0.30906     -8.41003
-   3      0.05822      1.58427
-   4      0.05822      1.58427
-   5      0.05822      1.58427
-   6      0.27748      7.55062
-   7      0.35014      9.52773
-   8      0.35014      9.52773
-   9      0.35014      9.52773
-  10      0.65074     17.70755
-  11      0.65074     17.70755
-  12      0.65074     17.70755
-  13      0.65074     17.70755
-  14      0.65074     17.70755
-  15      1.18879     32.34864
- 
- 
-    Nucleus-Nucleus [Ha]:     0.0000000000
-    Kinetic Energy  [Ha]:    14.5598879870
-    Nucleus Energy  [Ha]:   -33.6209592699
-    Hartree Energy  [Ha]:     7.1543329905
-    Exchange Energy [Ha]:    -2.6656247645
- 
-    Total Energy    [Ha]:   -14.5723630570
- 
- convergence criterium on the density matrix  2.273558418919833E-006
-  ===> convergence not yet reached
- 
-
--------------------------------------------
- *** SCF cycle No:    6
-
- A Pulay mixing of the density matrix is used
-
- alpha DIIS:      1.341177     -0.568444      0.449480     -0.259470      0.037257
- DIIS predicted residual  6.197175595090352E-008
- 
- Diagonalization for spin polarization           1
-
- === Energies ===
-   #       [Ha]         [eV]      
-   1     -4.73276   -128.78513
-   2     -0.30906     -8.41003
-   3      0.05822      1.58427
-   4      0.05822      1.58427
-   5      0.05822      1.58427
-   6      0.27748      7.55062
-   7      0.35014      9.52773
-   8      0.35014      9.52773
-   9      0.35014      9.52773
-  10      0.65074     17.70755
-  11      0.65074     17.70755
-  12      0.65074     17.70755
-  13      0.65074     17.70755
-  14      0.65074     17.70755
-  15      1.18879     32.34864
- 
- 
-    Nucleus-Nucleus [Ha]:     0.0000000000
-    Kinetic Energy  [Ha]:    14.5598881031
-    Nucleus Energy  [Ha]:   -33.6209592283
-    Hartree Energy  [Ha]:     7.1543328175
-    Exchange Energy [Ha]:    -2.6656247295
- 
-    Total Energy    [Ha]:   -14.5723630372
- 
- convergence criterium on the density matrix  4.326625007334418E-008
-  ===> convergence not yet reached
- 
-
--------------------------------------------
- *** SCF cycle No:    7
-
- A Pulay mixing of the density matrix is used
-
- alpha DIIS:      0.957804      0.058012     -0.026380      0.020843     -0.011998      0.001719
- DIIS predicted residual  6.436640997895942E-010
- 
- Diagonalization for spin polarization           1
-
- === Energies ===
-   #       [Ha]         [eV]      
-   1     -4.73276   -128.78513
-   2     -0.30906     -8.41003
-   3      0.05822      1.58427
-   4      0.05822      1.58427
-   5      0.05822      1.58427
-   6      0.27748      7.55062
-   7      0.35014      9.52773
-   8      0.35014      9.52773
-   9      0.35014      9.52773
-  10      0.65074     17.70755
-  11      0.65074     17.70755
-  12      0.65074     17.70755
-  13      0.65074     17.70755
-  14      0.65074     17.70755
-  15      1.18879     32.34864
- 
- 
-    Nucleus-Nucleus [Ha]:     0.0000000000
-    Kinetic Energy  [Ha]:    14.5598880970
-    Nucleus Energy  [Ha]:   -33.6209592217
-    Hartree Energy  [Ha]:     7.1543328161
-    Exchange Energy [Ha]:    -2.6656247295
- 
-    Total Energy    [Ha]:   -14.5723630380
- 
- convergence criterium on the density matrix  1.591895608024928E-009
-  ===> convergence has been reached
- 
- ==================================================
- The SCF loop ends here
- ==================================================
- 
- 
- spectral function initialized with          52 poles
-            second index size         120
- Memory [Mb]             0.
- 
-
- calculating CHI alla casida
- obtain the ERI in the eigenvector basis
- subroutine is order N^5
- The basis transform is using OPENMP
- == ijspin            1
- time (s)  7.850170135498047E-003
- ERI in the eigenvector basis obtained
- 
- diago 2-particle hamiltonian
- matrix          52 x          52
- diago finished
- 
- calculate the RPA energy using the Tamm-Dancoff decomposition
- formula (23) from F. Furche J. Chem. Phys. 129, 114105 (2008)
-
- RPA energy [Ha]:    -0.04371924
-
- RPA Total energy [Ha]:   -14.61608228
-
- WARNING: small complex number is 1.00E-03
- 
  perform a one-shot G0W0 calculation
- 
-HOMO energy    [Ha]:    -0.309063
-LUMO energy    [Ha]:     0.058221
-HOMO-LUMO gap  [Ha]:     0.367284
- 
- 
- G0W0 Eigenvalues [Ha]
-   #          E0         Sigc          Z         G0W0
-   1     -4.732765     0.136015     0.892478    -4.611374
-   2     -0.309063    -0.022967     0.949175    -0.330863
-   3      0.058221    -0.014375     0.972135     0.044246
-   4      0.058221    -0.014375     0.972135     0.044246
-   5      0.058221    -0.014375     0.972135     0.044246
-   6      0.277480    -0.025125     0.951422     0.253576
-   7      0.350137    -0.041027     0.929251     0.312013
-   8      0.350137    -0.041027     0.929251     0.312013
-   9      0.350137    -0.041027     0.929251     0.312013
-  10      0.650740    -0.025611     0.697328     0.632881
-  11      0.650740    -0.025611     0.697328     0.632881
-  12      0.650740    -0.025611     0.697328     0.632881
-  13      0.650740    -0.025611     0.697328     0.632881
-  14      0.650740    -0.025611     0.697328     0.632881
-  15      1.188790     0.010003     0.744047     1.196233
- 
+
  G0W0 Eigenvalues [eV]
-   #          E0         Sigc          Z         G0W0
-   1   -128.785132     3.701152     0.892478  -125.481936
-   2     -8.410033    -0.624964     0.949175    -9.003233
-   3      1.584270    -0.391163     0.972135     1.204007
-   4      1.584270    -0.391163     0.972135     1.204007
-   5      1.584270    -0.391163     0.972135     1.204007
-   6      7.550624    -0.683689     0.951422     6.900147
-   7      9.527727    -1.116414     0.929251     8.490297
-   8      9.527727    -1.116414     0.929251     8.490297
-   9      9.527727    -1.116414     0.929251     8.490297
-  10     17.707554    -0.696898     0.697328    17.221588
-  11     17.707554    -0.696898     0.697328    17.221588
-  12     17.707554    -0.696898     0.697328    17.221588
-  13     17.707554    -0.696898     0.697328    17.221588
-  14     17.707554    -0.696898     0.697328    17.221588
-  15     32.348641     0.272206     0.744047    32.551175
- 
- spectral function destroyed
+   #          E0        Sigx-Vxc      Sigc          Z         G0W0
+   1   -128.773149     0.000000     2.573291     0.888132  -126.487726
+   2     -8.409367     0.000000    -0.610833     0.949590    -8.989408
+   3      1.585302     0.000000    -0.384931     0.972418     1.210988
+   4      1.585302     0.000000    -0.384931     0.972418     1.210988
+   5      1.585302     0.000000    -0.384931     0.972418     1.210988
+   6      8.131379     0.000000    -0.784878     0.940536     7.393173
+   7      9.528879     0.000000    -1.097483     0.929857     8.508377
+   8      9.528879     0.000000    -1.097483     0.929857     8.508377
+   9      9.528879     0.000000    -1.097483     0.929857     8.508377
+  10     17.708444     0.000000    -0.679972     0.697947    17.233859
+  11     17.708444     0.000000    -0.679972     0.697947    17.233859
+  12     17.708444     0.000000    -0.679972     0.697947    17.233859
+  13     17.708444     0.000000    -0.679972     0.697947    17.233859
+  14     17.708444     0.000000    -0.679972     0.697947    17.233859
+
+ Writing energy_qp file
+
+ Spectral function destroyed
 
                  --- Timings in (s) and # of calls ---
-                    Total time          0.25
- 
-         4 gaussians integrals          0.21
- 
-                       Hartree          0.01         7
-                      Exchange          0.01         7
-                        DFT xc          0.00         0
- 
-           ERI basis transform          0.01         1
- 
-        Total RPA polarization          0.01         1
-            Diago 2 particle H          0.00         1
-           Invert 2 particle S          0.00         1
- 
-                GW self-energy          0.00         1
- 
-                    MP2 energy          0.00         0
-               MP2 self-energy          0.00         0
+
+                    Total time              0.17
+
                  ----------------------
- 
-                timing tmp1             0.00         0
-                timing tmp2             0.21         1
-                timing tmp3             0.10     38416
-                timing tmp4             0.11     38416
-                timing tmp5             0.00         0
- 
 
- SUMMARY of all the WARNINGS issued along the run:
+                 Total pre SCF              0.16
+                     Total SCF              0.00
+                Total post SCF              0.00
 
- 1.     OPENMP option is activated with threads number     1                                                
+                 ----------------------
+
+            4-center integrals              0.14         1
+           Kinetic Hamiltonian              0.00         0
+   Electron-nuclei Hamiltonian              0.00         0
+
+                       Hartree              0.00         0
+                      Exchange              0.00         0
+                        DFT xc              0.00         0
+             Hamiltonian diago              0.00         0
+          RESTART file writing              0.00         0
+
+                 Single Excit.              0.00         0
+
+        Total chi polarization              0.00         1
+             ERI basis transform            0.00         6
+              Build 2 particle H            0.00         1
+                       Common part          0.00         1
+                        TDDFT part          0.00         0
+                          BSE part          0.00         0
+              Diago 2 particle H            0.00         1
+             Invert 2 particle S            0.00         0
+                         Build W            0.00         1
+                Optical spectrum            0.00         0
+
+                GW self-energy              0.00         1
+
+                    MP2 energy              0.00         0
+               MP2 self-energy              0.00         0
+                 ----------------------
+
+ SUMMARY of all the WARNINGS issued during the run:
+
+ 1.     LIBXC version  2. 2                                                                                 
  2.     calculation name: HF+GW                                                                             
- 3.     basis file used: Be_cc-pVDZ                                                                         
- 4.     small complex number is 1.00E-03                                                                    
+ 3.     Restart from a big RESTART file obtained within HF                                                  
+ 4.     small complex number is  1.00E-03                                                                   
 
 
 
