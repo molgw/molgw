@@ -5,7 +5,6 @@
  magnetization=1.0
  basis='cc-pVTZ'
  basispath='../../basis/'
- mixing_method='simple'
  natom=1
 /
 B    0. 0. 0.

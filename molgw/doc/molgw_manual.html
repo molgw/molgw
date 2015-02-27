@@ -62,7 +62,7 @@ The input file made of two sections:
 <p>The shortest input possible:</p>
 <div class="codebox">
  <pre>&amp;molgw
-   basis='6-31G'
+   basis='cc-pVDZ'
    scf='lda'
    natom=1
  /
@@ -75,6 +75,7 @@ The input file made of two sections:
  <pre>&amp;molgw
    ! Formaldehyde
    basis='6-31Gs'           ! This is the Pople basis 6-31G*
+   gaussian_type='CART'     ! Pople basis set uses cartesian gaussian functions
    auxilbasis='cc-pVDZ-RI'  ! Use an auxiliary basis for the resolution of identity
                             ! in the GW post-processing
    basispath='./basis/'     ! Path to the folder containing the basis files
