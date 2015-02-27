@@ -8,7 +8,7 @@ module m_atoms
 
  real(dp),parameter,private     :: tol_geom=1.0e-5_dp
 
- integer,protected              :: natom
+ integer,public                 :: natom
  integer,protected              :: natom_type
  integer,protected              :: nbond
 

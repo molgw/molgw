@@ -13,9 +13,6 @@ module m_basis_set
 
  real(dp),parameter             :: FILTERED_EIGENVALUE=1.0d-8 
 
- integer,parameter              :: CARTESIAN=1
- integer,parameter              :: PURE     =2
-
  type transform
    real(dp),allocatable         :: matrix(:,:)
  end type
@@ -26,7 +23,7 @@ module m_basis_set
 
  type basis_function
    character(len=100)           :: basis_name
-   integer                      :: gaussian_type              ! CARTESIAN or PURE
+   character(len=4)             :: gaussian_type              ! CART or PURE
    integer                      :: shell_index
    integer                      :: am
    character(len=1)             :: amc
@@ -49,7 +46,7 @@ module m_basis_set
    integer                                 :: nbf
    integer                                 :: nbf_cart
    integer                                 :: nshell
-   integer                                 :: gaussian_type              ! CARTESIAN or PURE
+   character(len=4)                        :: gaussian_type              ! CART or PURE
    type(basis_function),allocatable        :: bf(:)                      ! Cartesian basis function
    !
    ! then additional data needed for product basis
@@ -62,10 +59,11 @@ contains
 
 
 !=========================================================================
- subroutine init_basis_set(print_basis,basis_name,gaussian_type,basis)
+subroutine init_basis_set(print_basis,basispath,basis_name,gaussian_type,basis)
  implicit none
  logical,intent(in)            :: print_basis
- integer,intent(in)            :: gaussian_type
+ character(len=4),intent(in)   :: gaussian_type
+ character(len=100),intent(in) :: basispath
  character(len=100),intent(in) :: basis_name
  type(basis_set),intent(out)   :: basis
 !====
@@ -98,7 +96,7 @@ contains
 !   WRITE_MASTER(*,*) 'Element used for Z value:    ',TRIM(element_name(zatom(iatom)))
 !   WRITE_MASTER(*,*) 'Element used for the basis:  ',TRIM(element_name(REAL(basis_element(iatom),dp)))
 !   WRITE_MASTER(*,*) 'Basis type: ',TRIM(basis_name)
-   basis_filename=ADJUSTL(element_name(REAL(basis_element(iatom),dp))//'_'//TRIM(basis_name))
+   basis_filename=ADJUSTL(TRIM(basispath)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
 !   msg='basis file used: '//basis_filename
 !   call issue_warning(msg)
   
@@ -118,7 +116,7 @@ contains
    do ibf_file=1,nbf_file
      read(basis_file,*) ng,am_tmp
      if(ng<1) stop'ERROR in basis set file'
-     basis%nbf_cart = basis%nbf_cart + number_basis_function_am(CARTESIAN          ,am_tmp)
+     basis%nbf_cart = basis%nbf_cart + number_basis_function_am('CART'             ,am_tmp)
      basis%nbf      = basis%nbf      + number_basis_function_am(basis%gaussian_type,am_tmp)
      do ig=1,ng
        read(basis_file,*) 
@@ -131,7 +129,7 @@ contains
 
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,'(a50,i8)') 'Total number of basis functions:',basis%nbf
- if(basis%gaussian_type==PURE) then
+ if(basis%gaussian_type=='PURE') then
    WRITE_MASTER(*,'(a50,i8)') 'Total number of cart. functions:',basis%nbf_cart
  endif
  allocate(basis%bf(basis%nbf_cart))
@@ -141,7 +139,7 @@ contains
  shell_index = 0
  do iatom=1,natom
 
-   basis_filename=ADJUSTL(element_name(REAL(basis_element(iatom),dp))//'_'//TRIM(basis_name))
+   basis_filename=ADJUSTL(TRIM(basispath)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
    open(unit=basis_file,file=TRIM(basis_filename),status='old')
    read(basis_file,*) nbf_file
    do ibf_file=1,nbf_file
@@ -171,15 +169,15 @@ contains
 
      !
      ! Set up the atom index
-     basis%bf(jbf+1:jbf+number_basis_function_am(CARTESIAN,am_tmp))%iatom = iatom
+     basis%bf(jbf+1:jbf+number_basis_function_am('CART',am_tmp))%iatom = iatom
      !
      ! Set up the diffuse flag
      ! The limit is quite arbitrary though
      if( MAXVAL(alpha(:)) < 0.05_dp) then
-       basis%bf(jbf+1:jbf+number_basis_function_am(CARTESIAN,am_tmp))%is_diffuse = .TRUE.
+       basis%bf(jbf+1:jbf+number_basis_function_am('CART',am_tmp))%is_diffuse = .TRUE.
        ndiffuse = ndiffuse + number_basis_function_am(basis%gaussian_type,am_tmp)
      else
-       basis%bf(jbf+1:jbf+number_basis_function_am(CARTESIAN,am_tmp))%is_diffuse = .FALSE.
+       basis%bf(jbf+1:jbf+number_basis_function_am('CART',am_tmp))%is_diffuse = .FALSE.
      endif
 
      select case(am_tmp)
@@ -347,7 +345,7 @@ contains
    WRITE_MASTER(*,*) 'Maximum angular momentum',basis%ammax
    stop'angular momentum too high'
  endif
- if(basis%ammax > lmax_transform_pure .AND. basis%gaussian_type == PURE ) then      
+ if(basis%ammax > lmax_transform_pure .AND. basis%gaussian_type == 'PURE' ) then      
    msg='Maximum angular momentum greater than the cart to pure transforms implemented'
    call issue_warning(msg)
  endif
@@ -363,11 +361,11 @@ contains
 
  WRITE_MASTER(*,'(a,/)') ' Basis set is ready and fit'
 
- end subroutine init_basis_set
+end subroutine init_basis_set
 
 
 !=========================================================================
- subroutine init_product_basis_set(basis,prod_basis)
+subroutine init_product_basis_set(basis,prod_basis)
  implicit none
  type(basis_set),intent(in)     :: basis
  type(basis_set),intent(out)    :: prod_basis
@@ -396,11 +394,11 @@ contains
     enddo
   enddo
 
- end subroutine init_product_basis_set
+end subroutine init_product_basis_set
 
 
 !=========================================================================
- subroutine destroy_basis_set(basis)
+subroutine destroy_basis_set(basis)
  implicit none
  type(basis_set),intent(inout) :: basis
 !====
@@ -409,11 +407,11 @@ contains
  if(allocated(basis%index_ij))        deallocate(basis%index_ij)
  if(allocated(basis%index_prodbasis)) deallocate(basis%index_prodbasis)
 
- end subroutine destroy_basis_set
+end subroutine destroy_basis_set
 
 
 !=========================================================================
- subroutine init_basis_function(normalized,ng,nx,ny,nz,x0,alpha,coeff,shell_index,bf)
+subroutine init_basis_function(normalized,ng,nx,ny,nz,x0,alpha,coeff,shell_index,bf)
  implicit none
  logical,intent(in)               :: normalized
  integer,intent(in)               :: ng,nx,ny,nz,shell_index
@@ -455,28 +453,30 @@ contains
  endif
  
 
- end subroutine init_basis_function
+end subroutine init_basis_function
 
 
 !=========================================================================
- subroutine destroy_basis_function(bf)
+subroutine destroy_basis_function(bf)
  implicit none
  type(basis_function),intent(inout) :: bf
 !====
  
  deallocate(bf%g,bf%coeff)
 
- end subroutine destroy_basis_function
+end subroutine destroy_basis_function
 
 
 !=========================================================================
- function number_basis_function_am(gaussian_type,am)
- integer,intent(in) :: gaussian_type,am
- integer            :: number_basis_function_am
+function number_basis_function_am(gaussian_type,am)
+ implicit none
+ character(len=4),intent(in) :: gaussian_type
+ integer,intent(in)          :: am
+ integer                     :: number_basis_function_am
 !=====
 
  select case(gaussian_type)
- case(CARTESIAN)
+ case('CART')
    select case(am)
    case(0)
      number_basis_function_am = 1
@@ -500,7 +500,7 @@ contains
      WRITE_ME(*,*) 'am=',am
      stop'number_basis_function_am: not implemented'
    end select
- case(PURE)
+ case('PURE')
    if(am/=10) then
      number_basis_function_am = 2 * am + 1
    else ! stands for SP orbitals
@@ -508,11 +508,11 @@ contains
    endif
  end select
 
- end function number_basis_function_am
+end function number_basis_function_am
 
 
 !=========================================================================
- subroutine print_basis_function(bf)
+subroutine print_basis_function(bf)
  implicit none
  type(basis_function),intent(in) :: bf
 !====
@@ -534,11 +534,11 @@ contains
  WRITE_MASTER(*,*) '====== end of basis function ======'
  WRITE_MASTER(*,*)
 
- end subroutine print_basis_function
+end subroutine print_basis_function
 
 
 !=========================================================================
- function eval_basis_function(bf,x)
+function eval_basis_function(bf,x)
  implicit none
  type(basis_function),intent(in) :: bf
  real(dp),intent(in)             :: x(3)
@@ -552,10 +552,11 @@ contains
    eval_basis_function = eval_basis_function + eval_gaussian(bf%g(ig),x) * bf%coeff(ig)
  enddo
 
- end function eval_basis_function
+end function eval_basis_function
+
 
 !=========================================================================
- function eval_basis_function_grad(bf,x)
+function eval_basis_function_grad(bf,x)
  implicit none
  type(basis_function),intent(in) :: bf
  real(dp),intent(in)             :: x(3)
@@ -569,11 +570,11 @@ contains
    eval_basis_function_grad(:) = eval_basis_function_grad(:) + eval_gaussian_grad(bf%g(ig),x) * bf%coeff(ig)
  enddo
 
- end function eval_basis_function_grad
+end function eval_basis_function_grad
 
 
 !=========================================================================
- function eval_basis_function_lapl(bf,x)
+function eval_basis_function_lapl(bf,x)
  implicit none
  type(basis_function),intent(in) :: bf
  real(dp),intent(in)             :: x(3)
@@ -587,11 +588,11 @@ contains
    eval_basis_function_lapl(:) = eval_basis_function_lapl(:) + eval_gaussian_lapl(bf%g(ig),x) * bf%coeff(ig)
  enddo
 
- end function eval_basis_function_lapl
+end function eval_basis_function_lapl
 
 
 !=========================================================================
- subroutine overlap_basis_function(bf1,bf2,overlap)
+subroutine overlap_basis_function(bf1,bf2,overlap)
  implicit none
  type(basis_function),intent(in) :: bf1,bf2
  real(dp),intent(out)            :: overlap
@@ -609,11 +610,11 @@ contains
  enddo
 
 
- end subroutine overlap_basis_function
+end subroutine overlap_basis_function
 
 
 !=========================================================================
- subroutine overlap_three_basis_function(bf1,bf2,bf3,overlap)
+subroutine overlap_three_basis_function(bf1,bf2,bf3,overlap)
  implicit none
  type(basis_function),intent(in) :: bf1,bf2,bf3
  real(dp),intent(out)            :: overlap
@@ -648,11 +649,11 @@ contains
  call destroy_basis_function(bf12)
 
 
- end subroutine overlap_three_basis_function
+end subroutine overlap_three_basis_function
 
 
 !=========================================================================
- subroutine kinetic_basis_function(bf1,bf2,kinetic)
+subroutine kinetic_basis_function(bf1,bf2,kinetic)
  implicit none
  type(basis_function),intent(in) :: bf1,bf2
  real(dp),intent(out)            :: kinetic
@@ -670,11 +671,11 @@ contains
  enddo
 
 
- end subroutine kinetic_basis_function
+end subroutine kinetic_basis_function
 
 
 !=========================================================================
- subroutine nucleus_basis_function(bf1,bf2,zatom,x,nucleus_pot)
+subroutine nucleus_basis_function(bf1,bf2,zatom,x,nucleus_pot)
  implicit none
  type(basis_function),intent(in) :: bf1,bf2
  real(dp),intent(in)             :: zatom,x(3)
@@ -693,11 +694,11 @@ contains
  enddo
 
 
- end subroutine nucleus_basis_function
+end subroutine nucleus_basis_function
 
 
 !=========================================================================
- subroutine basis_function_prod(bf1,bf2,bfprod)
+subroutine basis_function_prod(bf1,bf2,bfprod)
  implicit none
  type(basis_function),intent(in)  :: bf1,bf2
  type(basis_function),intent(out) :: bfprod
@@ -732,7 +733,7 @@ contains
 
  deallocate(coeff,alpha)
 
- end subroutine basis_function_prod
+end subroutine basis_function_prod
 
 
 !=========================================================================
@@ -901,7 +902,7 @@ end subroutine basis_function_dipole_sq
 subroutine setup_cart_to_pure_transforms(gaussian_type)
  implicit none
 
- integer,intent(in) :: gaussian_type
+ character(len=4),intent(in) :: gaussian_type
 !====
  integer  :: il,ni,ii,jj,kk
  integer  :: ibf,jbf
@@ -910,10 +911,10 @@ subroutine setup_cart_to_pure_transforms(gaussian_type)
 
  WRITE_MASTER(*,*) 'Setting up the cartesian to pure transforms'
 
- if(gaussian_type == CARTESIAN) then
+ if(gaussian_type == 'CART') then
 
    do il=0,lmax_transform
-     ni = number_basis_function_am(CARTESIAN,il)
+     ni = number_basis_function_am('CART',il)
      allocate(cart_to_pure     (il)%matrix(ni,ni))
      allocate(cart_to_pure_norm(il)%matrix(ni,ni))
      cart_to_pure(il)%matrix(:,:) = 0.0_dp
@@ -1098,7 +1099,7 @@ subroutine setup_cart_to_pure_transforms(gaussian_type)
    !
    ! Complement with diagonal if necessary
    do il=lmax_transform_pure+1,lmax_transform
-     ni = number_basis_function_am(CARTESIAN,il)
+     ni = number_basis_function_am('CART',il)
      allocate(cart_to_pure     (il)%matrix(ni,ni))
      allocate(cart_to_pure_norm(il)%matrix(ni,ni))
      cart_to_pure(il)%matrix(:,:) = 0.0_dp

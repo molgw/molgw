@@ -91,11 +91,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      !
      ! Hartree contribution to the Hamiltonian
      !
-#ifndef FULL_AUXIL
-     call setup_hartree(print_matrix,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
-#else
-     call setup_hartree_ri(print_matrix,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
-#endif
+     if( .NOT. is_full_auxil) then
+       call setup_hartree(print_matrix,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
+     else
+       call setup_hartree_ri(print_matrix,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
+     endif
    endif
 
    hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
@@ -108,11 +108,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    ! Exchange contribution to the Hamiltonian
    if( calc_type%need_exchange ) then
 
-#ifndef FULL_AUXIL
-     call setup_exchange(print_matrix,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
-#else
-     call setup_exchange_ri(print_matrix,basis%nbf,c_matrix,occupation,p_matrix,hamiltonian_exx,en%exx)
-#endif
+     if( .NOT. is_full_auxil) then
+       call setup_exchange(print_matrix,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+     else
+       call setup_exchange_ri(print_matrix,basis%nbf,c_matrix,occupation,p_matrix,hamiltonian_exx,en%exx)
+     endif
      ! Rescale with alpha_hybrid for hybrid functionals
      en%exx = alpha_hybrid * en%exx
      hamiltonian_xc(:,:,:) = hamiltonian_exx(:,:,:) * alpha_hybrid
@@ -143,7 +143,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    if( calc_type%is_gw .AND. ( calc_type%gwmethod == QS .OR. calc_type%gwmethod == QSCOHSEX) &
        .AND. iscf > 5 ) then
 
-     if(is_auxil_basis) call prepare_eri_3center_eigen(c_matrix)
+     if(has_auxil_basis) call prepare_eri_3center_eigen(c_matrix)
      call init_spectral_function(basis%nbf,occupation,wpol)
      call polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
 
@@ -154,7 +154,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
      exchange_m_vxc_diag(:,:)=0.0_dp
      call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp)
-     if(is_auxil_basis) call destroy_eri_3center_eigen()
+     if(has_auxil_basis) call destroy_eri_3center_eigen()
 
      matrix_tmp(:,:,:) = alpha_mixing * matrix_tmp(:,:,:) + (1.0_dp-alpha_mixing) * self_energy_old(:,:,:)
      self_energy_old(:,:,:) = matrix_tmp(:,:,:)
@@ -293,11 +293,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
  !
  ! Get the exchange operator if not already calculated
-#ifndef FULL_AUXIL
- if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(print_matrix,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
-#else
- if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange_ri(print_matrix,basis%nbf,c_matrix,occupation,p_matrix,hamiltonian_exx,en%exx)
-#endif
+ if( .NOT. is_full_auxil) then
+   if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(print_matrix,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+ else
+   if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange_ri(print_matrix,basis%nbf,c_matrix,occupation,p_matrix,hamiltonian_exx,en%exx)
+ endif
 
  WRITE_MASTER(*,'(/,a25,x,f16.10)') '      EXX Energy [Ha]:',en%exx
  WRITE_MASTER(*,'(a25,x,f16.10)')   'Total EXX Energy [Ha]:',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx

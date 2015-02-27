@@ -43,7 +43,7 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
 
  WRITE_MASTER(*,'(/,a)') ' Build W = v * chi * v'
 
- if( .NOT. is_auxil_basis ) then
+ if( .NOT. has_auxil_basis ) then
    allocate(eri_eigenstate_klmin(nbf,nbf,nbf,nspin))
    ! Set this to zero and then enforce the calculation of the first array of Coulomb integrals
    eri_eigenstate_klmin(:,:,:,:) = 0.0_dp
@@ -61,7 +61,7 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
    klspin = wpol%transition_table(3,t_kl)
    docc_kl= occupation(kstate,klspin)-occupation(lstate,klspin)
 
-   if( .NOT. is_auxil_basis ) then
+   if( .NOT. has_auxil_basis ) then
      klstate_min = MIN(kstate,lstate)
      klstate_max = MAX(kstate,lstate)
      call transform_eri_basis(nspin,c_matrix,klstate_min,klspin,eri_eigenstate_klmin)
@@ -76,7 +76,7 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
 
        ijstate_spin = ijstate+prod_basis%nbf*(ijspin-1)
 
-       if(is_auxil_basis) then
+       if(has_auxil_basis) then
          eri_eigen_klij = eri_eigen_ri(kstate,lstate,klspin,istate,jstate,ijspin)
        else
          eri_eigen_klij = eri_eigenstate_klmin(klstate_max,istate,jstate,ijspin)
@@ -276,7 +276,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
      !
      ! Prepare the bra and ket with the knowledge of index istate and astate
-     if( .NOT. is_auxil_basis) then
+     if( .NOT. has_auxil_basis) then
        ! Here just grab the precalculated value
        do astate=1,basis%nbf
          kbf = prod_basis%index_prodbasis(istate,astate) + prod_basis%nbf*(ispin-1)

@@ -178,7 +178,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! and then write it down on file
  !
  if( print_specfunc .OR. calc_type%is_gw ) then
-   if( is_auxil_basis) then
+   if( has_auxil_basis) then
      call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol_out)
    else
      call chi_to_vchiv(basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol_out)
@@ -232,7 +232,7 @@ subroutine build_amb_apb_common(is_triplet,nbf,c_matrix,energy,wpol,alpha_local,
  WRITE_MASTER(*,'(a)') ' Build Common part: Energies + Hartree + possibly Exchange'
  WRITE_MASTER(*,'(a,f8.3)') ' Content of Exchange: ',alpha_local
 
- if( .NOT. is_auxil_basis) then
+ if( .NOT. has_auxil_basis) then
    allocate(eri_eigenstate_ijmin(nbf,nbf,nbf,nspin))
    ! Set this to zero and then enforce the calculation of the first series of
    ! Coulomb integrals
@@ -247,7 +247,7 @@ subroutine build_amb_apb_common(is_triplet,nbf,c_matrix,energy,wpol,alpha_local,
    jstate = wpol%transition_table(2,t_ij)
    ijspin = wpol%transition_table(3,t_ij)
 
-   if( .NOT. is_auxil_basis ) then
+   if( .NOT. has_auxil_basis ) then
      ijstate_min = MIN(istate,jstate)
      is_ij = (ijstate_min == istate)
      call transform_eri_basis(nspin,c_matrix,ijstate_min,ijspin,eri_eigenstate_ijmin)
@@ -259,7 +259,7 @@ subroutine build_amb_apb_common(is_triplet,nbf,c_matrix,energy,wpol,alpha_local,
      klspin = wpol%transition_table(3,t_kl)
 
 
-     if(is_auxil_basis) then
+     if(has_auxil_basis) then
        eri_eigen_ijkl = eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
      else
        if(is_ij) then ! treating (i,j)
@@ -279,7 +279,7 @@ subroutine build_amb_apb_common(is_triplet,nbf,c_matrix,energy,wpol,alpha_local,
 
      if( alpha_local > 1.0e-6_dp ) then
        if(ijspin==klspin) then
-         if(is_auxil_basis) then
+         if(has_auxil_basis) then
            eri_eigen_ikjl = eri_eigen_ri(istate,kstate,ijspin,jstate,lstate,klspin)
            eri_eigen_iljk = eri_eigen_ri(istate,lstate,ijspin,jstate,kstate,klspin)
          else
@@ -536,7 +536,7 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
  ! Prepare the bra and ket for BSE
  allocate(bra(wpol_static%npole),ket(wpol_static%npole))
 
- if(is_auxil_basis) then
+ if(has_auxil_basis) then
    allocate(bra_auxil(wpol_static%npole,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
    allocate(ket_auxil(wpol_static%npole,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
    do ijspin=1,nspin
@@ -567,7 +567,7 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
 
      if(ijspin/=klspin) cycle
 
-     if(.NOT. is_auxil_basis) then
+     if(.NOT. has_auxil_basis) then
        kbf = prod_basis%index_prodbasis(istate,kstate)+prod_basis%nbf*(ijspin-1)
        bra(:) = wpol_static%residu_left (:,kbf)
        kbf = prod_basis%index_prodbasis(jstate,lstate)+prod_basis%nbf*(klspin-1)
@@ -585,7 +585,7 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
        amb_matrix(t_kl,t_ij) =  amb_matrix(t_kl,t_ij) - wtmp
      endif
 
-     if(.NOT. is_auxil_basis) then
+     if(.NOT. has_auxil_basis) then
        kbf = prod_basis%index_prodbasis(istate,lstate)+prod_basis%nbf*(ijspin-1)
        bra(:) = wpol_static%residu_left (:,kbf)
        kbf = prod_basis%index_prodbasis(jstate,kstate)+prod_basis%nbf*(klspin-1)
@@ -852,14 +852,14 @@ subroutine optical_spectrum(is_triplet,basis,prod_basis,occupation,c_matrix,chi,
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
    li      = basis%bf(ibf_cart)%am
-   ni_cart = number_basis_function_am(CARTESIAN,li)
+   ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    jbf_cart = 1
    jbf      = 1
    do while(jbf_cart<=basis%nbf_cart)
      lj      = basis%bf(jbf_cart)%am
-     nj_cart = number_basis_function_am(CARTESIAN,lj)
+     nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
      allocate(dipole_cart(3,ni_cart,nj_cart))
