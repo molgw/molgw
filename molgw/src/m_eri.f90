@@ -75,7 +75,7 @@ contains
 
 !=========================================================================
 subroutine prepare_eri(basis,rcut,which_buffer)
- use m_inputparam,only: quadrature_name
+ use m_inputparam,only: integral_quality
  implicit none
 !===== 
  type(basis_set),intent(in) :: basis
@@ -88,17 +88,17 @@ subroutine prepare_eri(basis,rcut,which_buffer)
 
  nbf_eri = basis%nbf
 
- select case(TRIM(quadrature_name))
- case('low')       ! accuracy not guaranted, just for quick test runs
-   TOL_INT = 1e-6
- case('medium')    ! 10 meV accuracy on potentials
-   TOL_INT = 1e-8
- case('high')      !  1 meV accuracy on potentials
-   TOL_INT = 1e-10
- case('very high') ! almost perfect potentials
-   TOL_INT = 1e-12
- case('insane')    ! overdoing a lot
-   TOL_INT = 1e-30
+ select case(TRIM(integral_quality))
+ case('LOW')       ! accuracy not guaranted, just for quick test runs
+   TOL_INT = 1.0e-6_dp
+ case('MEDIUM')    ! 10 meV accuracy on potentials
+   TOL_INT = 1.0e-8_dp
+ case('HIGH')      !  1 meV accuracy on potentials
+   TOL_INT = 1.0e-10_dp
+ case('VERY HIGH') ! almost perfect potentials
+   TOL_INT = 1.0e-12_dp
+ case('INSANE')    ! No screening of any integral
+   TOL_INT = -1.0_dp
  case default
    stop'integration quality not recognized'
  end select
@@ -555,10 +555,10 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
      am2 = shell(jshell)%am
      am3 = shell(kshell)%am
      am4 = shell(lshell)%am
-     n1c = number_basis_function_am( CARTESIAN , ami )
-     n2c = number_basis_function_am( CARTESIAN , amj )
-     n3c = number_basis_function_am( CARTESIAN , amk )
-     n4c = number_basis_function_am( CARTESIAN , aml )
+     n1c = number_basis_function_am( 'CART' , ami )
+     n2c = number_basis_function_am( 'CART' , amj )
+     n3c = number_basis_function_am( 'CART' , amk )
+     n4c = number_basis_function_am( 'CART' , aml )
      ng1 = shell(ishell)%ng
      ng2 = shell(jshell)%ng
      ng3 = shell(kshell)%ng
@@ -809,9 +809,9 @@ subroutine calculate_eri_2center(print_eri,auxil_basis)
          am2 = 0
          am3 = shell_auxil(kshell)%am
          am4 = 0
-         n1c = number_basis_function_am( CARTESIAN , ami )
+         n1c = number_basis_function_am( 'CART' , ami )
          n2c = 1
-         n3c = number_basis_function_am( CARTESIAN , amk )
+         n3c = number_basis_function_am( 'CART' , amk )
          n4c = 1
          ng1 = shell_auxil(ishell)%ng
          ng2 = 1
@@ -1070,10 +1070,10 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
            am2 = 0
            am3 = shell(kshell)%am
            am4 = shell(lshell)%am
-           n1c = number_basis_function_am( CARTESIAN , ami )
+           n1c = number_basis_function_am( 'CART' , ami )
            n2c = 1
-           n3c = number_basis_function_am( CARTESIAN , amk )
-           n4c = number_basis_function_am( CARTESIAN , aml )
+           n3c = number_basis_function_am( 'CART' , amk )
+           n4c = number_basis_function_am( 'CART' , aml )
            n1 = ni
            n2 = nj
            n3 = nk
@@ -1103,10 +1103,10 @@ subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
            am4 = 0
            am1 = shell(kshell)%am
            am2 = shell(lshell)%am
-           n3c = number_basis_function_am( CARTESIAN , ami )
+           n3c = number_basis_function_am( 'CART' , ami )
            n4c = 1
-           n1c = number_basis_function_am( CARTESIAN , amk )
-           n2c = number_basis_function_am( CARTESIAN , aml )
+           n1c = number_basis_function_am( 'CART' , amk )
+           n2c = number_basis_function_am( 'CART' , aml )
            n3 = ni
            n4 = nj
            n1 = nk
@@ -1378,8 +1378,8 @@ subroutine calculate_eri_approximate_hartree(print_eri,basis,x0_rho,alpha_rho,vh
        am4 = shell(lshell)%am
        n1c = 1
        n2c = 1
-       n3c = number_basis_function_am( CARTESIAN , amk )
-       n4c = number_basis_function_am( CARTESIAN , aml )
+       n3c = number_basis_function_am( 'CART' , amk )
+       n4c = number_basis_function_am( 'CART' , aml )
        n1 = ni
        n2 = nj
        n3 = nk
@@ -1686,8 +1686,8 @@ subroutine identify_negligible_shellpair(basis)
 
      ni = number_basis_function_am( basis%gaussian_type , ami )
      nj = number_basis_function_am( basis%gaussian_type , amj )
-     n1c = number_basis_function_am( CARTESIAN , ami )
-     n2c = number_basis_function_am( CARTESIAN , amj )
+     n1c = number_basis_function_am( 'CART' , ami )
+     n2c = number_basis_function_am( 'CART' , amj )
      am1 = shell(ishell)%am
      am2 = shell(jshell)%am
      ng1 = shell(ishell)%ng

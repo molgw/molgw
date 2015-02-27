@@ -44,19 +44,23 @@ module m_inputparam
  real(dp),protected               :: spin_fact
  integer,protected                :: nscf
  real(dp),protected               :: alpha_mixing
+ character(len=100),protected     :: basispath
  character(len=100),protected     :: basis_name
  character(len=100),protected     :: auxil_basis_name
- integer,protected                :: gaussian_type
- real(dp),protected               :: electrons
+ character(len=4),protected       :: gaussian_type
+ real(dp),protected               :: electrons,charge
  real(dp),protected               :: magnetization
  type(calculation_type),protected :: calc_type
- character(len=100),protected     :: quadrature_name
- logical,protected                :: is_auxil_basis
+ character(len=100),protected     :: grid_quality
+ character(len=100),protected     :: integral_quality
+ logical,protected                :: has_auxil_basis
+ logical,protected                :: is_full_auxil
 
+ logical,protected                :: no_restart   
+ logical,protected                :: ignore_big_restart
  logical,protected                :: print_matrix
  logical,protected                :: print_basis
  logical,protected                :: print_eri
- logical,protected                :: ignore_big_restart
  logical,protected                :: print_wfn
  logical,protected                :: print_specfunc
 
@@ -417,7 +421,7 @@ subroutine read_inputparameter_molecule()
  integer              :: istat,iatom,jatom
  integer              :: natom_read
  real(dp),allocatable :: zatom_read(:),x_read(:,:)
- real(dp)             :: charge,length_factor
+ real(dp)             :: length_factor
  character(len=2)     :: atom_symbol
  integer              :: atom_number,info
 !=====
@@ -455,9 +459,9 @@ subroutine read_inputparameter_molecule()
  field2=line_wocomment(1:kpos-1)
  select case(TRIM(field2))
  case('PURE','pure')
-   gaussian_type=PURE
+   gaussian_type='PURE'
  case('CART','cart')
-   gaussian_type=CARTESIAN
+   gaussian_type='CART'
  case default
    stop'Error in input line 3: second keyword should either PURE or CART'
  end select
@@ -475,19 +479,17 @@ subroutine read_inputparameter_molecule()
 
  if( auxil_basis_name=='none' .OR. auxil_basis_name=='NONE' ) then
    auxil_basis_name='none'
-   is_auxil_basis = .FALSE.
+   has_auxil_basis = .FALSE.
  else
-   is_auxil_basis = .TRUE.
+   has_auxil_basis = .TRUE.
  endif
  
-#ifdef FULL_AUXIL
- if( .NOT. is_auxil_basis) then
-   WRITE_MASTER(*,*) 'Code has been compiled for auxiliairy basis only calculations'
-   WRITE_MASTER(*,*) 'Compilation option -DFULL_AUXIL'
-   WRITE_MASTER(*,*) 'However no auxiliary basis has been provided in the input file'
-   stop'STOP HERE'
- endif
-#endif
+
+! if( .NOT. has_auxil_basis) then
+!   WRITE_MASTER(*,*) 'Code has been compiled for auxiliairy basis only calculations'
+!   WRITE_MASTER(*,*) 'However no auxiliary basis has been provided in the input file'
+!   stop'STOP HERE'
+! endif
 
 
  !
@@ -509,15 +511,15 @@ case('PULAY')
 
  select case(TRIM(quadrature_accuracy))
  case('LOW','low','L','l')
-   quadrature_name = 'low'
+   grid_quality = 'low'
  case('MEDIUM','medium','M','m')
-   quadrature_name = 'medium'
+   grid_quality = 'medium'
  case('HIGH','high','H','h')
-   quadrature_name = 'high'
+   grid_quality = 'high'
  case('VERYHIGH','veryhigh','VH','vh')
-   quadrature_name = 'very high'
+   grid_quality = 'very high'
  case('INSANE','insane','I','i')
-   quadrature_name = 'insane'
+   grid_quality = 'insane'
  case default
    stop'integration quality not recognized'
  end select
@@ -570,6 +572,18 @@ case('PULAY')
 
  electrons = SUM(zatom(:)) - charge
 
+ call summary_input()
+
+end subroutine read_inputparameter_molecule
+
+
+!=========================================================================
+subroutine summary_input()
+ implicit none
+
+!=====
+ integer :: iatom
+!=====
 
  !
  ! Summarize input parameters
@@ -583,15 +597,12 @@ case('PULAY')
  WRITE_MASTER(*,'(a25,f8.4)') ' Magnetization: ',magnetization
  WRITE_MASTER(*,'(a25,2x,a)') ' Basis set: ',basis_name
  WRITE_MASTER(*,'(a25,2x,a)') ' Auxiliary basis set: ',auxil_basis_name
- if(gaussian_type==PURE) then
-   WRITE_MASTER(*,'(a25,2x,a)') ' Gaussian type: ','pure'
- else
-   WRITE_MASTER(*,'(a25,2x,a)') ' Gaussian type: ','cartesian'
- endif
+ WRITE_MASTER(*,'(a25,2x,a)') ' Gaussian type: ',gaussian_type
  WRITE_MASTER(*,'(a25,i3)')   ' Spin polarization: ',nspin
  WRITE_MASTER(*,'(a25,i3)')   ' SCF steps: ',nscf
  WRITE_MASTER(*,'(a25,f8.4)') ' Mixing: ',alpha_mixing
- WRITE_MASTER(*,'(a25,2x,a)') ' Quadrature accuracy: ',quadrature_name
+ WRITE_MASTER(*,'(a25,2x,a)') ' Grid quality: ',grid_quality
+ WRITE_MASTER(*,'(a25,2x,a)') ' Integral quality: ',integral_quality
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,'(a19)')      ' IO options:'
  WRITE_MASTER(*,'(a30,l3)')   ' - matrices details:   ',print_matrix        
@@ -629,7 +640,185 @@ case('PULAY')
  endif
  WRITE_MASTER(*,*)
 
-end subroutine read_inputparameter_molecule
 
+end subroutine summary_input
+
+
+!=========================================================================
+subroutine read_inputfile_namelist()
+ use m_elements
+ use m_tools,only: capitalize
+ implicit none
+
+!=====
+ character(len=100)   :: input_key
+ character(len=12)    :: scf
+ character(len=12)    :: postscf
+ character(len=100)   :: basis
+ character(len=100)   :: auxilbasis
+ character(len=12)    :: mixing_method
+ character(len=12)    :: length_unit
+ character(len=3)     :: ignore_restart,ignore_bigrestart,no_4center
+ character(len=3)     :: printmatrix,printeri,printwfn,printw
+ real(dp)             :: length_factor
+ integer              :: atom_number,info,iatom
+ character(len=2)     :: atom_symbol
+ real(dp),allocatable :: zatom_read(:),x_read(:,:)
+
+ namelist /molgw/ scf,postscf,    &
+                  basis,auxilbasis,basispath,gaussian_type,no_4center,    &
+                  nspin,charge,magnetization,                             &
+                  grid_quality,integral_quality,                          &
+                  nscf,alpha_mixing,mixing_method,                        &
+                  ignore_restart,printmatrix,printeri,printwfn,printw,    &
+                  length_unit,natom
+!=====
+
+
+ scf              = ''
+ postscf          = ''
+
+ basis            = ''
+ auxilbasis       = ''
+ basispath        = '.'
+ gaussian_type    = 'PURE'
+ no_4center       = 'NO'
+
+ charge           = 0.0_dp
+ nspin            = 1
+
+ grid_quality     = 'HIGH'
+ integral_quality = 'HIGH'
+
+ nscf             = 30
+ alpha_mixing     = 0.70_dp
+ mixing_method    = 'PULAY'
+
+ ignore_restart    = 'NO'
+ ignore_bigrestart = 'NO'
+ printmatrix       = 'NO'
+ printeri          = 'NO'
+ printwfn          = 'NO'
+ printw            = 'NO'
+
+ natom             = 0
+ length_unit       = 'ANGSTROM'
+
+ ! Read all the input file in one statement!
+ read(*,molgw)
+
+ basis_name=basis
+ auxil_basis_name = auxilbasis
+ has_auxil_basis = TRIM(auxilbasis) /= ''
+
+
+ scf                = capitalize(scf)
+ postscf            = capitalize(postscf)
+ gaussian_type      = capitalize(gaussian_type)
+ grid_quality       = capitalize(grid_quality)
+ integral_quality   = capitalize(integral_quality)
+ mixing_method      = capitalize(mixing_method)
+ length_unit        = capitalize(length_unit)
+
+ no_restart         = yesno(ignore_restart)
+ ignore_big_restart = yesno(ignore_bigrestart)
+ is_full_auxil      = yesno(no_4center)
+
+ print_matrix       = yesno(printmatrix)
+ print_basis        = .FALSE.
+ print_eri          = yesno(printeri)
+ print_wfn          = yesno(printwfn)
+ print_specfunc     = yesno(printw)
+
+ select case(TRIM(mixing_method))
+ case('SIMPLE')
+   mixing_scheme = simple_mixing
+ case('PULAY','DIIS')
+   mixing_scheme = pulay_mixing
+ case default
+   WRITE_MASTER(*,*) TRIM(mixing_method)
+   stop'mixing scheme not recognized'
+ end select
+
+ select case(TRIM(length_unit))
+ case('A','ANGSTROM')
+   length_factor=1.0_dp/bohr_A
+ case('BOHR','AU','A.U','A.U.')
+   length_factor=1.0_dp
+ case default
+   stop'units for lengths in input file not understood'
+ end select
+
+
+ ! A few consistency checks
+ if(natom<1) stop'natom<1'
+ if(nspin/=1 .AND. nspin/=2) stop'nspin in incorrect'
+ if(magnetization<-1.d-5)    stop'magnetization is negative'
+ if(magnetization>1.d-5 .AND. nspin==1) stop'magnetization is non-zero and nspin is 1'
+
+ if( is_full_auxil .AND. .NOT. has_auxil_basis) then
+   WRITE_MASTER(*,*) 'A calculation is no 4 center integrals has been requested'
+   WRITE_MASTER(*,*) 'However no auxiliary basis has been provided in the input file'
+   stop'STOP HERE'
+ endif
+
+
+ !
+ ! Read the atom positions
+ allocate(x_read(3,natom),zatom_read(natom))
+ do iatom=1,natom
+   read(*,*) atom_symbol,x_read(:,iatom)
+   !
+   ! First, try to interpret atom_symbol as an integer
+   read(atom_symbol,'(i2)',iostat=info) atom_number
+   ! If it fails, then assumes it is a character
+   if( info /=0 ) then
+     atom_number = element_number(atom_symbol)
+   endif
+   zatom_read(iatom) = atom_number
+ enddo
+ x_read(:,:) = x_read(:,:) * length_factor
+ call init_atoms(natom,zatom_read,x_read)
+ deallocate(x_read,zatom_read)
+
+
+ !
+ ! Interpret the scf and postscf input parameters
+ input_key=TRIM(scf)//'+'//TRIM(postscf)
+ call init_calculation_type(calc_type,input_key)
+
+
+ spin_fact = REAL(-nspin+3,dp)
+ electrons = SUM(zatom(:)) - charge
+
+
+ ! Echo the interpreted input variables
+ call summary_input()
+
+
+contains
+
+function yesno(char3)
+ implicit none
+ character(len=3),intent(inout) :: char3
+ logical                        :: yesno
+!=====
+ 
+ char3 = capitalize(char3)
+
+ select case(TRIM(char3))
+ case('YES','Y')
+   yesno=.TRUE.
+ case('NO','N')
+   yesno=.FALSE.
+ case default
+  stop'Yes or No, I cannot interpret this input'
+ end select
+ 
+end function yesno
+
+end subroutine read_inputfile_namelist
+
+
+!=========================================================================
 end module m_inputparam
-

@@ -24,12 +24,12 @@ subroutine setup_overlap(print_matrix,basis,s_matrix)
  jbf      = 1
  do while(ibf_cart<=basis%nbf_cart)
    li      = basis%bf(ibf_cart)%am
-   ni_cart = number_basis_function_am(CARTESIAN,li)
+   ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    do while(jbf_cart<=basis%nbf_cart)
      lj      = basis%bf(jbf_cart)%am
-     nj_cart = number_basis_function_am(CARTESIAN,lj)
+     nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
      allocate(matrix_cart(ni_cart,nj_cart))
@@ -88,12 +88,12 @@ subroutine setup_kinetic(print_matrix,basis,hamiltonian_kinetic)
  jbf      = 1
  do while(ibf_cart<=basis%nbf_cart)
    li      = basis%bf(ibf_cart)%am
-   ni_cart = number_basis_function_am(CARTESIAN,li)
+   ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    do while(jbf_cart<=basis%nbf_cart)
      lj      = basis%bf(jbf_cart)%am
-     nj_cart = number_basis_function_am(CARTESIAN,lj)
+     nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
      allocate(matrix_cart(ni_cart,nj_cart))
@@ -156,12 +156,12 @@ subroutine setup_nucleus(print_matrix,basis,hamiltonian_nucleus)
  jbf      = 1
  do while(ibf_cart<=basis%nbf_cart)
    li      = basis%bf(ibf_cart)%am
-   ni_cart = number_basis_function_am(CARTESIAN,li)
+   ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    do while(jbf_cart<=basis%nbf_cart)
      lj      = basis%bf(jbf_cart)%am
-     nj_cart = number_basis_function_am(CARTESIAN,lj)
+     nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
      allocate(matrix_cart(ni_cart,nj_cart))

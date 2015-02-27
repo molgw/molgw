@@ -876,4 +876,24 @@ end subroutine cross_product
 
 
 !=========================================================================
+function capitalize(str)
+ implicit none
+ character(*), intent(in) :: str
+ character(LEN(str))      :: capitalize
+!=====
+ character(26), parameter :: cap = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+ character(26), parameter :: low = 'abcdefghijklmnopqrstuvwxyz'
+ integer :: ic, ii
+!=====
+
+ capitalize = str
+ do ii=1,LEN_TRIM(str)
+   ic = INDEX(low,str(ii:ii))
+   if (ic > 0) capitalize(ii:ii) = cap(ic:ic)
+ end do
+
+end function capitalize
+
+
+!=========================================================================
 end module m_tools

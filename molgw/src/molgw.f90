@@ -65,7 +65,8 @@ program molgw
 
  !
  ! Reading input file: the input parameters are stored in the module m_inputparam
- call read_inputparameter_molecule()
+ call read_inputfile_namelist()
+!OLD FBFB call read_inputparameter_molecule()
 
  !
  ! Nucleus-nucleus repulsion contribution to the energy
@@ -74,7 +75,7 @@ program molgw
  !
  ! Build up the basis set 
  !
- call init_basis_set(print_basis,basis_name,gaussian_type,basis)
+ call init_basis_set(print_basis,basispath,basis_name,gaussian_type,basis)
  call setup_cart_to_pure_transforms(gaussian_type)
 
  !
@@ -97,7 +98,7 @@ program molgw
 
  !
  ! Some required initializations
- energy(:,:)            = 0.0_dp
+ energy(:,:) = 0.0_dp
 
  !
  ! Build up the overlap matrix S
@@ -109,9 +110,9 @@ program molgw
  !
  ! ERI are stored "privately" in the module m_eri
  call prepare_eri(basis,0.0_dp,BUFFER1)
-#ifndef FULL_AUXIL
- call calculate_eri(print_eri,basis,0.0_dp,BUFFER1)
-#endif
+ if( .NOT. is_full_auxil) then
+   call calculate_eri(print_eri,basis,0.0_dp,BUFFER1)
+ endif
 
 ! call refine_negligible_basispair()
 
@@ -119,9 +120,9 @@ program molgw
  ! for HSE functionals, calculate the long-range ERI
  if(calc_type%is_screened_hybrid) then
    call prepare_eri(basis,rcut,BUFFER2)
-#ifndef FULL_AUXIL
-   call calculate_eri(print_eri,basis,rcut,BUFFER2)
-#endif
+   if( .NOT. is_full_auxil) then
+     call calculate_eri(print_eri,basis,rcut,BUFFER2)
+   endif
  endif
 ! call negligible_eri(1.0e-10_dp)
 
@@ -202,8 +203,8 @@ program molgw
  ! If an auxiliary basis is given,
  ! then set it up now and calculate the required ERI: 2- and 3-center integrals
  !
- if( is_auxil_basis ) then
-   call init_basis_set(print_basis,auxil_basis_name,gaussian_type,auxil_basis)
+ if( has_auxil_basis ) then
+   call init_basis_set(print_basis,basispath,auxil_basis_name,gaussian_type,auxil_basis)
    call allocate_eri_auxil(auxil_basis)
    ! 2-center integrals
    call calculate_eri_2center(print_eri,auxil_basis)
@@ -234,7 +235,7 @@ program molgw
  !
  ! If an auxiliary basis is given, the 4-center integrals are not needed anymore
  !
- if( is_auxil_basis ) call deallocate_eri_buffer()
+ if( has_auxil_basis ) call deallocate_eri_buffer()
 
  !
  ! CI calculation is done here
@@ -251,7 +252,7 @@ program molgw
  if(calc_type%is_td .OR. calc_type%is_bse) then
 
    if(calc_type%is_td .AND. calc_type%is_dft) call setup_dft_grid()
-   if(is_auxil_basis) then
+   if(has_auxil_basis) then
      call prepare_eri_3center_eigen(c_matrix)
      call destroy_eri_3center()
    endif
@@ -260,7 +261,7 @@ program molgw
    call destroy_spectral_function(wpol)
 
    if(calc_type%is_td .AND. calc_type%is_dft) call destroy_dft_grid()
-   if(is_auxil_basis) call destroy_eri_3center_eigen()
+   if(has_auxil_basis) call destroy_eri_3center_eigen()
 
  endif
   
@@ -304,7 +305,7 @@ program molgw
    ! A section under development for the range-separated RPA
    if( calc_type%is_lr_mbpt ) stop'lr_mbpt code removed'
 
-   if(is_auxil_basis) then
+   if(has_auxil_basis) then
      call prepare_eri_3center_eigen(c_matrix)
      call destroy_eri_3center()
    endif
@@ -322,7 +323,7 @@ program molgw
    WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
 
    call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp)
-   if(is_auxil_basis) call destroy_eri_3center_eigen()
+   if(has_auxil_basis) call destroy_eri_3center_eigen()
 
    title='=== Self-energy === (in the eigenstate basis)'
    call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix_tmp)
@@ -366,7 +367,7 @@ program molgw
  call deallocate_eri()
 
  call destroy_basis_set(basis)
- if(is_auxil_basis) call destroy_basis_set(auxil_basis)
+ if(has_auxil_basis) call destroy_basis_set(auxil_basis)
  if(calc_type%is_gw .OR. calc_type%is_td .OR. calc_type%is_bse ) call destroy_basis_set(prod_basis)
  call destroy_atoms()
 

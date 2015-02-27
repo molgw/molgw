@@ -4,7 +4,7 @@
 module m_dft_grid
  use m_definitions
  use m_mpi
- use m_inputparam,only: quadrature_name
+ use m_inputparam,only: grid_quality
  
  !
  ! Grid definition
@@ -50,24 +50,24 @@ subroutine setup_dft_grid()
  integer              :: jatom,katom
 !=====
 
- select case(TRIM(quadrature_name))
- case('low')       ! accuracy not guaranted, just for quick test runs
+ select case(TRIM(grid_quality))
+ case('LOW')       ! accuracy not guaranted, just for quick test runs
    nradial         =  25
    nangular_fine   =  26
    nangular_coarse =   6
- case('medium')    ! 10 meV accuracy on potentials
+ case('MEDIUM')    ! 10 meV accuracy on potentials
    nradial         =  40
    nangular_fine   =  50
    nangular_coarse =  14
- case('high')      !  1 meV accuracy on potentials
+ case('HIGH')      !  1 meV accuracy on potentials
    nradial         =  60
    nangular_fine   = 110
    nangular_coarse =  38
- case('very high') ! almost perfect potentials
+ case('VERY HIGH') ! almost perfect potentials
    nradial         =  70
    nangular_fine   = 230
    nangular_coarse =  50
- case('insane')    ! overdoing a lot
+ case('INSANE')    ! overdoing a lot
    nradial         = 200
    nangular_fine   = 434
    nangular_coarse = 434
@@ -437,7 +437,7 @@ subroutine calculate_basis_functions_r(basis,rr,basis_function_r)
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
    li      = basis%bf(ibf_cart)%am
-   ni_cart = number_basis_function_am(CARTESIAN,li)
+   ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    allocate(basis_function_r_cart(ni_cart))
@@ -475,7 +475,7 @@ subroutine calculate_basis_functions_gradr(basis,rr,basis_function_gradr)
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
    li      = basis%bf(ibf_cart)%am
-   ni_cart = number_basis_function_am(CARTESIAN,li)
+   ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    allocate(basis_function_gradr_cart(3,ni_cart))
@@ -517,7 +517,7 @@ subroutine calculate_basis_functions_laplr(basis,rr,basis_function_gradr,basis_f
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
    li      = basis%bf(ibf_cart)%am
-   ni_cart = number_basis_function_am(CARTESIAN,li)
+   ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    allocate(basis_function_gradr_cart(3,ni_cart))

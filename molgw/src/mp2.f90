@@ -699,7 +699,7 @@ subroutine full_ci_2electrons_spin(print_wfn,spinstate,basis,h_1e,c_matrix,nuc_n
      ibf      = 1
      do while(ibf_cart<=basis%nbf_cart)
        li      = basis%bf(ibf_cart)%am
-       ni_cart = number_basis_function_am(CARTESIAN,li)
+       ni_cart = number_basis_function_am('CART',li)
        ni      = number_basis_function_am(basis%gaussian_type,li)
   
        allocate(basis_function_r_cart(ni_cart))

@@ -269,7 +269,7 @@ subroutine plot_wfn(nspin,basis,c_matrix)
    ibf      = 1
    do while(ibf_cart<=basis%nbf_cart)
      li      = basis%bf(ibf_cart)%am
-     ni_cart = number_basis_function_am(CARTESIAN,li)
+     ni_cart = number_basis_function_am('CART',li)
      ni      = number_basis_function_am(basis%gaussian_type,li)
 
      allocate(basis_function_r_cart(ni_cart))
@@ -370,7 +370,7 @@ subroutine plot_rho(nspin,basis,occupation,c_matrix)
    ibf      = 1
    do while(ibf_cart<=basis%nbf_cart)
      li      = basis%bf(ibf_cart)%am
-     ni_cart = number_basis_function_am(CARTESIAN,li)
+     ni_cart = number_basis_function_am('CART',li)
      ni      = number_basis_function_am(basis%gaussian_type,li)
 
      allocate(basis_function_r_cart(ni_cart))
@@ -492,7 +492,7 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
        ibf      = 1
        do while(ibf_cart<=basis%nbf_cart)
          li      = basis%bf(ibf_cart)%am
-         ni_cart = number_basis_function_am(CARTESIAN,li)
+         ni_cart = number_basis_function_am('CART',li)
          ni      = number_basis_function_am(basis%gaussian_type,li)
     
          allocate(basis_function_r_cart(ni_cart))
@@ -907,7 +907,7 @@ function evaluate_wfn_r(nspin,basis,c_matrix,istate,ispin,rr)
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
    li      = basis%bf(ibf_cart)%am
-   ni_cart = number_basis_function_am(CARTESIAN,li)
+   ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    allocate(basis_function_r_cart(ni_cart))

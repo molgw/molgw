@@ -419,7 +419,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
    !
    ! calculate the density at point r for spin up and spin down
    call setup_atomic_density(rr,rhor,vhartree)
-   write(206,*) norm2(rr),rhor
+
    !
    ! Normalization
    normalization = normalization + rhor * weight
