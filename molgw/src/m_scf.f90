@@ -4,28 +4,17 @@
 module m_scf
  use m_definitions
  use m_mpi
+ use m_inputparam
 
- private
- 
- public               :: en
- public               :: simple_mixing,pulay_mixing,mixing_scheme,pulayold_mixing
- public               :: init_scf,destroy_scf,store_residual,new_p_matrix,check_converged
 
- integer,parameter    :: simple_mixing = 1
- integer,parameter    :: pulayold_mixing  = 2
- integer,parameter    :: pulay_mixing   = 3
+ integer,private              :: nhistmax
+ integer,private              :: nhist_current
+ integer,private              :: nbf_scf
 
- integer              :: mixing_scheme
+ real(dp),allocatable,private :: p_matrix_in_hist(:,:,:,:)
+ real(dp),allocatable,private :: residual_hist(:,:,:,:)
 
- integer              :: nhistmax
- integer              :: nhist_current
- integer              :: nbf_scf,nspin_scf                 ! internally saved data
- real(dp)             :: alpha_scf
-
- real(dp),allocatable :: p_matrix_in_hist(:,:,:,:)
- real(dp),allocatable :: residual_hist(:,:,:,:)
-
- integer              :: n_scf,n_scf_max
+ integer,private              :: iscf
 
  type energy_contributions
    real(dp) :: nuc_nuc= 0.0_dp
@@ -46,32 +35,26 @@ contains
 
 
 !=========================================================================
-subroutine init_scf(nscf,nbf,nspin,alpha_mixing)
+subroutine init_scf(nbf)
  implicit none
- integer,intent(in)  :: nscf,nbf,nspin
- real(dp),intent(in) :: alpha_mixing
+ integer,intent(in)  :: nbf
 !=====
 
- n_scf_max     = nscf
  nbf_scf       = nbf
- nspin_scf     = nspin
- alpha_scf     = alpha_mixing
- n_scf         = 1                 ! initialize with 1, since the new_p_matrix is not called for the first scf cycle
+ iscf          = 1                 ! initialize with 1, since the new_p_matrix is not called for the first scf cycle
  nhist_current = 0
 
  select case(mixing_scheme)
- case(simple_mixing)
+ case('SIMPLE')
    nhistmax=1
- case(pulayold_mixing)
-   nhistmax=12
- case(pulay_mixing)
+ case('PULAY')
    nhistmax=8
  case default
    stop'mixing scheme not implemented'
  end select
 
- allocate(p_matrix_in_hist(nbf_scf,nbf_scf,nspin_scf,nhistmax))
- allocate(residual_hist(nbf_scf,nbf_scf,nspin_scf,nhistmax))
+ allocate(p_matrix_in_hist(nbf_scf,nbf_scf,nspin,nhistmax))
+ allocate(residual_hist(nbf_scf,nbf_scf,nspin,nhistmax))
  
 end subroutine init_scf
 
@@ -90,8 +73,8 @@ end subroutine destroy_scf
 !=========================================================================
 subroutine store_residual(p_matrix_in,p_matrix_out)
  implicit none
- real(dp),intent(in)  :: p_matrix_in(nbf_scf,nbf_scf,nspin_scf)
- real(dp),intent(in)  :: p_matrix_out(nbf_scf,nbf_scf,nspin_scf)
+ real(dp),intent(in)  :: p_matrix_in(nbf_scf,nbf_scf,nspin)
+ real(dp),intent(in)  :: p_matrix_out(nbf_scf,nbf_scf,nspin)
 !=====
  integer              :: ihist
 !=====
@@ -113,27 +96,19 @@ end subroutine store_residual
 !=========================================================================
 subroutine new_p_matrix(p_matrix_in)
  implicit none
- real(dp),intent(out) :: p_matrix_in (nbf_scf,nbf_scf,nspin_scf)
+ real(dp),intent(out) :: p_matrix_in (nbf_scf,nbf_scf,nspin)
 !=====
  real(dp),allocatable :: alpha_diis(:)
 !=====
 
- n_scf          = n_scf + 1
+ iscf = iscf + 1
  nhist_current  = MIN(nhist_current+1,nhistmax) 
 
  select case(mixing_scheme)
- case(simple_mixing)
+ case('SIMPLE')
    call do_simple_mixing(p_matrix_in)
- case(pulayold_mixing)
-   if(n_scf<=3) then ! for safety, just do simple mixing at the begining
-     call do_simple_mixing(p_matrix_in)
-   else
-     allocate(alpha_diis(nhist_current))
-     call do_pulay_mixing(p_matrix_in,alpha_diis)
-     deallocate(alpha_diis)
-   endif
- case(pulay_mixing)
-   if(n_scf<=3) then ! for safety, just do simple mixing at the begining
+ case('PULAY')
+   if( iscf <= 3 ) then ! for safety, just do simple mixing at the begining
      call do_simple_mixing(p_matrix_in)
    else
      allocate(alpha_diis(nhist_current))
@@ -157,12 +132,12 @@ end subroutine new_p_matrix
 !=========================================================================
 subroutine do_simple_mixing(p_matrix_in)
  implicit none
- real(dp),intent(out) :: p_matrix_in (nbf_scf,nbf_scf,nspin_scf)
+ real(dp),intent(out) :: p_matrix_in (nbf_scf,nbf_scf,nspin)
 !=====
 
  WRITE_MASTER(*,*) 'A simple mixing of the density matrix is used'
 
- p_matrix_in(:,:,:) = alpha_scf * residual_hist(:,:,:,1) + p_matrix_in_hist(:,:,:,1)
+ p_matrix_in(:,:,:) = alpha_mixing * residual_hist(:,:,:,1) + p_matrix_in_hist(:,:,:,1)
 
 end subroutine do_simple_mixing
 
@@ -171,12 +146,12 @@ end subroutine do_simple_mixing
 subroutine do_pulay_mixing(p_matrix_in,alpha_diis)
  use m_tools,only:       invert
  implicit none
- real(dp),intent(out) :: p_matrix_in (nbf_scf,nbf_scf,nspin_scf)
+ real(dp),intent(out) :: p_matrix_in (nbf_scf,nbf_scf,nspin)
  real(dp),intent(out) :: alpha_diis(nhist_current)
 !=====
  integer              :: ihist,jhist
  real(dp),allocatable :: amat(:,:),amat_inv(:,:)
- real(dp)             :: residual_pred(nbf_scf,nbf_scf,nspin_scf)
+ real(dp)             :: residual_pred(nbf_scf,nbf_scf,nspin)
 !=====
 
  WRITE_MASTER(*,*) 'A Pulay mixing of the density matrix is used'
@@ -213,7 +188,7 @@ subroutine do_pulay_mixing(p_matrix_in,alpha_diis)
  p_matrix_in(:,:,:) = 0.0_dp
  do ihist=1,nhist_current
    p_matrix_in(:,:,:) = p_matrix_in(:,:,:) + alpha_diis(ihist) &
-        * ( p_matrix_in_hist(:,:,:,ihist) + alpha_scf * residual_hist(:,:,:,ihist) )
+        * ( p_matrix_in_hist(:,:,:,ihist) + alpha_mixing * residual_hist(:,:,:,ihist) )
  enddo
  
 
@@ -233,7 +208,7 @@ function check_converged()
  rms = SQRT( SUM( residual_hist(:,:,:,1)**2 ) )
 
  WRITE_MASTER(*,*) 'convergence criterium on the density matrix',rms
- if( rms < 1.0e-7_dp ) then 
+ if( rms < tolscf ) then 
    check_converged = .TRUE.
    WRITE_MASTER(*,*) ' ===> convergence has been reached'
  else
@@ -243,7 +218,7 @@ function check_converged()
 
  WRITE_MASTER(*,*)
 
- if(n_scf == n_scf_max) then
+ if(iscf == nscf) then
    if(rms>1.d-4) then
      msg='SCF convergence is very poor'
      call issue_warning(msg)

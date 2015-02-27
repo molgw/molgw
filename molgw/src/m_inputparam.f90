@@ -6,7 +6,6 @@ module m_inputparam
  use m_mpi
  use m_atoms
  use m_basis_set
- use m_scf
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
  use xc_f90_lib_m
@@ -52,6 +51,8 @@ module m_inputparam
  character(len=100),protected     :: basis_name
  character(len=100),protected     :: auxil_basis_name
  character(len=4),protected       :: gaussian_type
+ character(len=12),protected      :: mixing_scheme
+ real(dp),protected               :: tolscf
  real(dp),protected               :: electrons,charge
  real(dp),protected               :: magnetization
  type(calculation_type),protected :: calc_type
@@ -475,17 +476,6 @@ subroutine read_inputparameter_molecule()
  read(*,*) nscf,alpha_mixing,mixing_name,quadrature_accuracy
  if(nscf<0) stop'nscf too small'
  if(alpha_mixing<0.0 .OR. alpha_mixing > 1.0 ) stop'alpha_mixing should be inside [0,1]'
- select case(TRIM(mixing_name))
- case('SIMPLE')
-   mixing_scheme = simple_mixing
- case('PULAYOLD')
-   mixing_scheme = pulayold_mixing
-case('PULAY')
-   mixing_scheme = pulay_mixing
- case default
-   WRITE_MASTER(*,*) TRIM(mixing_name)
-   stop'mixing scheme not recognized'
- end select
 
  select case(TRIM(quadrature_accuracy))
  case('LOW','low','L','l')
@@ -634,7 +624,6 @@ subroutine read_inputfile_namelist()
  character(len=12)    :: postscf
  character(len=100)   :: basis
  character(len=100)   :: auxilbasis
- character(len=12)    :: mixing_method
  character(len=12)    :: length_unit
  character(len=3)     :: ignore_restart,ignore_bigrestart,no_4center
  character(len=3)     :: printmatrix,printeri,printwfn,printw
@@ -648,7 +637,7 @@ subroutine read_inputfile_namelist()
                   basis,auxilbasis,basispath,gaussian_type,no_4center,    &
                   nspin,charge,magnetization,                             &
                   grid_quality,integral_quality,                          &
-                  nscf,alpha_mixing,mixing_method,                        &
+                  nscf,alpha_mixing,mixing_scheme,tolscf,                 &
                   tda,triplet,eta,frozencore,ncoreg,ncorew,               &
                   ignore_restart,printmatrix,printeri,printwfn,printw,    &
                   length_unit,natom
@@ -672,7 +661,8 @@ subroutine read_inputfile_namelist()
 
  nscf             = 30
  alpha_mixing     = 0.70_dp
- mixing_method    = 'PULAY'
+ mixing_scheme    = 'PULAY'
+ tolscf           = 1.0e-7_dp
 
  tda               = 'NO'
  eta               = 1.0e-3_dp
@@ -706,7 +696,7 @@ subroutine read_inputfile_namelist()
  gaussian_type      = capitalize(gaussian_type)
  grid_quality       = capitalize(grid_quality)
  integral_quality   = capitalize(integral_quality)
- mixing_method      = capitalize(mixing_method)
+ mixing_scheme      = capitalize(mixing_scheme)
  length_unit        = capitalize(length_unit)
 
  no_restart         = yesno(ignore_restart)
@@ -722,13 +712,10 @@ subroutine read_inputfile_namelist()
  print_wfn          = yesno(printwfn)
  print_specfunc     = yesno(printw)
 
- select case(TRIM(mixing_method))
- case('SIMPLE')
-   mixing_scheme = simple_mixing
- case('PULAY','DIIS')
-   mixing_scheme = pulay_mixing
+ select case(TRIM(mixing_scheme))
+ case('SIMPLE','PULAY')
  case default
-   WRITE_MASTER(*,*) TRIM(mixing_method)
+   WRITE_MASTER(*,*) TRIM(mixing_scheme)
    stop'mixing scheme not recognized'
  end select
 
@@ -744,6 +731,7 @@ subroutine read_inputfile_namelist()
 
  ! A few consistency checks
  if(natom<1) stop'natom<1'
+ if(alpha_mixing<0.0 .OR. alpha_mixing > 1.0 ) stop'alpha_mixing should be inside [0,1]'
  if(ncoreg<0) stop'negative ncoreg is meaningless'
  if(ncorew<0) stop'negative ncorew is meaningless'
  if(nspin/=1 .AND. nspin/=2) stop'nspin in incorrect'

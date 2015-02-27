@@ -11,6 +11,9 @@ h1 {
 h2 {
   font-family: "Arial";
 }
+pre {
+  font-family: "Courier";
+}
 .code {
   font-family: "Courier";
 }
@@ -72,7 +75,7 @@ The input file made of two sections:
 
 <p>A longer example:</p>
 <div class="codebox">
- <pre>&amp;molgw
+ <pre>&amp;molgw                                                                           
    ! Formaldehyde
    basis='6-31Gs'           ! This is the Pople basis 6-31G*
    gaussian_type='CART'     ! Pople basis set uses cartesian gaussian functions
@@ -90,7 +93,7 @@ The input file made of two sections:
  C       -0.133221    0.000000    0.000000
  H       -0.734800    0.945057    0.000000
  H       -0.734800   -0.945057    0.000000
- O        1.070770    0.000000    0.000000
+ O        1.070770    0.000000    0.000000</pre>
 </div>
 
 <p>Other examples can be found in folder <span style="font-family: Courier">~/molgw/tests/</span>.
@@ -98,14 +101,17 @@ The input file made of two sections:
 
 <h3>List of all the input variables</h3>
 
-<ul>
-  <li>scf
-  <li>postscf
-  <li>basis
-  <li>basispath
-  <li>auxilbasis
-  <li>tda
-</ul>
+<pre>
+ namelist /molgw/ scf,postscf,    &
+                  basis,auxilbasis,basispath,gaussian_type,no_4center,    &
+                  nspin,charge,magnetization,                             &
+                  grid_quality,integral_quality,                          &
+                  nscf,alpha_mixing,mixing_scheme,tolscf,                 &
+                  tda,triplet,eta,frozencore,ncoreg,ncorew,               &
+                  ignore_restart,printmatrix,printeri,printwfn,printw,    &
+                  length_unit,natom
+
+</pre>
 
 
 

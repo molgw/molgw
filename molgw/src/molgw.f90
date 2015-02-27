@@ -197,7 +197,7 @@ program molgw
 
  !
  ! Initialize the SCF mixing procedure
- call init_scf(nscf,basis%nbf,nspin,alpha_mixing)
+ call init_scf(basis%nbf)
 
  !
  ! If an auxiliary basis is given,
