@@ -42,7 +42,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  call start_clock(timing_pola)
 
  WRITE_MASTER(*,'(/,a)') ' Calculating the polarizability'
- if( calc_type%is_triplet) then
+ if(is_triplet) then
    WRITE_MASTER(*,'(a)') ' Triplet state'
  else
    WRITE_MASTER(*,'(a)') ' Singlet state'
@@ -109,9 +109,9 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! to span all the possible approximations
  !
  WRITE_MASTER(*,'(/,a)') ' Build the electron-hole hamiltonian'
- call build_amb_apb_common(calc_type%is_triplet,basis%nbf,c_matrix,energy_qp,wpol_out,alpha_local,nmat,amb_matrix,apb_matrix)
+ call build_amb_apb_common(basis%nbf,c_matrix,energy_qp,wpol_out,alpha_local,nmat,amb_matrix,apb_matrix)
  if(is_tddft) &
-   call build_apb_tddft(calc_type%is_triplet,basis,c_matrix,occupation,wpol_out,nmat,apb_matrix)
+   call build_apb_tddft(basis,c_matrix,occupation,wpol_out,nmat,apb_matrix)
  if(calc_type%is_bse .AND. .NOT. is_rpa) then
    call build_amb_apb_bse(basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,nmat,amb_matrix,apb_matrix)
    call destroy_spectral_function(wpol_static)
@@ -126,7 +126,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
 
  !
  ! Warning if Tamm-Dancoff flag is on
- if(calc_type%is_tda) then
+ if(is_tda) then
    msg='Tamm-Dancoff approximation is switched on'
    call issue_warning(msg)
    ! Tamm-Dancoff approximation consists in setting B matrix to zero
@@ -171,7 +171,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! and the dynamic dipole tensor
  !
  if( calc_type%is_td .OR. calc_type%is_bse ) &
-   call optical_spectrum(calc_type%is_triplet,basis,prod_basis,occupation,c_matrix,wpol_out,eigenvector,eigenvector_inv,eigenvalue)
+   call optical_spectrum(basis,prod_basis,occupation,c_matrix,wpol_out,eigenvector,eigenvector_inv,eigenvalue)
 
  !
  ! Calculate Wp= v * chi * v    if necessary
@@ -202,13 +202,12 @@ end subroutine polarizability
 
 
 !=========================================================================
-subroutine build_amb_apb_common(is_triplet,nbf,c_matrix,energy,wpol,alpha_local,nmat,amb_matrix,apb_matrix)
+subroutine build_amb_apb_common(nbf,c_matrix,energy,wpol,alpha_local,nmat,amb_matrix,apb_matrix)
  use m_spectral_function
  use m_eri
  use m_tools 
  implicit none
 
- logical,intent(in)                 :: is_triplet
  integer,intent(in)                 :: nbf
  real(dp),intent(in)                :: energy(nbf,nspin)
  real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
@@ -312,13 +311,12 @@ end subroutine build_amb_apb_common
 
 
 !=========================================================================
-subroutine build_apb_tddft(is_triplet,basis,c_matrix,occupation,wpol,nmat,apb_matrix)
+subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,nmat,apb_matrix)
  use m_spectral_function
  use m_basis_set
  use m_dft_grid
  implicit none
 
- logical,intent(in)                 :: is_triplet
  type(basis_set),intent(in)         :: basis
  real(dp),intent(in)                :: c_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)                :: occupation(basis%nbf,nspin)
@@ -791,7 +789,7 @@ end subroutine diago_4blocks_chol
 
 
 !=========================================================================
-subroutine optical_spectrum(is_triplet,basis,prod_basis,occupation,c_matrix,chi,eigenvector,eigenvector_inv,eigenvalue)
+subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector,eigenvector_inv,eigenvalue)
  use m_mpi
  use m_tools
  use m_basis_set
@@ -801,7 +799,6 @@ subroutine optical_spectrum(is_triplet,basis,prod_basis,occupation,c_matrix,chi,
  use m_atoms
  implicit none
 
- logical,intent(in)                 :: is_triplet
  type(basis_set),intent(in)         :: basis,prod_basis
  real(dp),intent(in)                :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
  type(spectral_function),intent(in) :: chi
@@ -978,7 +975,7 @@ subroutine optical_spectrum(is_triplet,basis,prod_basis,occupation,c_matrix,chi,
      trk_sumrule = trk_sumrule + oscillator_strength
 
      if(t_current<=30) then
-       if( is_triplet) then
+       if( is_triplet ) then
          symsymbol='3'
        else
          symsymbol='1'

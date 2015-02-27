@@ -1,7 +1,11 @@
-LDA+GW                   # calculation type HF, G0W0
-2   0.0   1.0            # spin pol  charge   magnetization
-cc-pVTZ  CART            # basis set
-20  0.70 PULAY  HIGH     # nscf, alpha_mixing
-01                       # print_volume
-1  bohr
-B     0.0 0.0 0.0
+&molgw
+ scf='lda'
+ postscf='gw'
+ nspin=2
+ magnetization=1.0
+ basis='cc-pVTZ'
+ basispath='../../basis/'
+ mixing_method='simple'
+ natom=1
+/
+B    0. 0. 0.

@@ -1,0 +1,122 @@
+<html>
+<head>
+<style>
+body {
+  font-family: "Arial";
+}
+h1 {
+  text-align: center;
+  font-family: "Arial";
+}
+h2 {
+  font-family: "Arial";
+}
+.code {
+  font-family: "Courier";
+}
+.codebox {
+  font-family: "Courier";
+  padding: 10px;
+  border: 1px solid;
+  background-color:  rgb(245,245,245);
+}
+</style>
+</head>
+
+
+
+
+<body>
+<h1><span style="font-variant: small-caps">molgw</span> short manual</h1>
+
+<hr>
+
+
+
+<h2>Compilation</h2>
+
+<p><span style="font-variant: small-caps">molgw</span> requires working Fortran and C compilers.</p>
+
+<p><span style="font-variant: small-caps">molgw</span> requires three external libraries:
+<ul>
+ <li><b>BLAS/LAPACK</b> for linear algegra from <a href='http://www.netlib.org/lapack/'>netlib.org</a> or better from the vendor of your specific machine.
+ <li><b>Libint</b> for the Coulomb integrals evaluation. <a href='http://sourceforge.net/projects/libint/files/libint-for-mpqc/'>Download Page</a>
+ <li><b>Libxc</b> for the exchange-correlation approximation of DFT. <a href='http://www.tddft.org/programs/octopus/wiki/index.php/Libxc:download'>Download Page</a>
+</ul>
+</p>
+
+<p>The machine-specific compilation options are set up in file <span style="font-family: Courier">~/molgw/src/my_machine.arch</span>.<br>
+Examples for this file are provided in folder <span style="font-family: Courier">~/molgw/config/</span>.
+</p>
+
+
+<h2>Input file</h2>
+
+The input file made of two sections:
+<ul>
+  <li>A fortran namelist named molgw. It starts with <code>&amp;molgw</code> and ends with /.
+  <li>A list of atom species and atom positions
+</ul>
+
+
+<p>The shortest input possible:</p>
+<div class="codebox">
+ <pre>&amp;molgw
+   basis='6-31G'
+   scf='lda'
+   natom=1
+ /
+ 2    0.0 0.0 0.0  </pre>
+</div>
+
+
+<p>A longer example:</p>
+<div class="codebox">
+ <pre>&amp;molgw
+   ! Formaldehyde
+   basis='6-31Gs'           ! This is the Pople basis 6-31G*
+   auxilbasis='cc-pVDZ-RI'  ! Use an auxiliary basis for the resolution of identity
+                            ! in the GW post-processing
+   basispath='./basis/'     ! Path to the folder containing the basis files
+
+   scf='pbe'                ! This is not case-sensitive
+   postscf='gw'             ! This is not case-sensitive
+
+   ignore_restart='yes'
+   printw='yes'
+   natom=4
+ /
+ C       -0.133221    0.000000    0.000000
+ H       -0.734800    0.945057    0.000000
+ H       -0.734800   -0.945057    0.000000
+ O        1.070770    0.000000    0.000000
+</div>
+
+<p>Other examples can be found in folder <span style="font-family: Courier">~/molgw/tests/</span>.
+
+
+<h3>List of all the input variables</h3>
+
+<ul>
+  <li>scf
+  <li>postscf
+  <li>basis
+  <li>basispath
+  <li>auxilbasis
+  <li>tda
+</ul>
+
+
+
+
+<h2>Run the executable</h2>
+
+<p>If the name of the input file is <font face="c">molgw.in</font>, then</p>
+<div class="codebox">
+ &#36; ./molgw < molgw.in > molgw.out 
+</div>
+
+
+
+</body>
+</html>
