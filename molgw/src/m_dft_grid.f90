@@ -4,7 +4,7 @@
 module m_dft_grid
  use m_definitions
  use m_mpi
- use m_inputparam,only: grid_quality
+ use m_inputparam,only: grid_level
  
  !
  ! Grid definition
@@ -50,24 +50,24 @@ subroutine setup_dft_grid()
  integer              :: jatom,katom
 !=====
 
- select case(TRIM(grid_quality))
- case('LOW')       ! accuracy not guaranted, just for quick test runs
+ select case(grid_level)
+ case(10)       ! accuracy not guaranted, just for quick test runs
    nradial         =  25
    nangular_fine   =  26
    nangular_coarse =   6
- case('MEDIUM')    ! 10 meV accuracy on potentials
+ case(20)    ! 10 meV accuracy on potentials
    nradial         =  40
    nangular_fine   =  50
    nangular_coarse =  14
- case('HIGH')      !  1 meV accuracy on potentials
+ case(30)      !  1 meV accuracy on potentials
    nradial         =  60
    nangular_fine   = 110
    nangular_coarse =  38
- case('VERY HIGH') ! almost perfect potentials
+ case(40) ! almost perfect potentials
    nradial         =  70
    nangular_fine   = 230
    nangular_coarse =  50
- case('INSANE')    ! overdoing a lot
+ case(50)    ! overdoing a lot
    nradial         = 200
    nangular_fine   = 434
    nangular_coarse = 434

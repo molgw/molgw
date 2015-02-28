@@ -59,11 +59,10 @@ contains
 
 
 !=========================================================================
-subroutine init_basis_set(print_basis,basispath,basis_name,gaussian_type,basis)
+subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  implicit none
- logical,intent(in)            :: print_basis
  character(len=4),intent(in)   :: gaussian_type
- character(len=100),intent(in) :: basispath
+ character(len=100),intent(in) :: basis_path
  character(len=100),intent(in) :: basis_name
  type(basis_set),intent(out)   :: basis
 !====
@@ -96,7 +95,7 @@ subroutine init_basis_set(print_basis,basispath,basis_name,gaussian_type,basis)
 !   WRITE_MASTER(*,*) 'Element used for Z value:    ',TRIM(element_name(zatom(iatom)))
 !   WRITE_MASTER(*,*) 'Element used for the basis:  ',TRIM(element_name(REAL(basis_element(iatom),dp)))
 !   WRITE_MASTER(*,*) 'Basis type: ',TRIM(basis_name)
-   basis_filename=ADJUSTL(TRIM(basispath)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
+   basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
 !   msg='basis file used: '//basis_filename
 !   call issue_warning(msg)
   
@@ -139,7 +138,7 @@ subroutine init_basis_set(print_basis,basispath,basis_name,gaussian_type,basis)
  shell_index = 0
  do iatom=1,natom
 
-   basis_filename=ADJUSTL(TRIM(basispath)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
+   basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
    open(unit=basis_file,file=TRIM(basis_filename),status='old')
    read(basis_file,*) nbf_file
    do ibf_file=1,nbf_file
@@ -351,8 +350,8 @@ subroutine init_basis_set(print_basis,basispath,basis_name,gaussian_type,basis)
  endif
 
  !
- ! finally output the basis set upon request
- if( print_basis ) then
+ ! finally output the basis set for debugging
+ if( .FALSE. ) then
    do ibf=1,basis%nbf
      WRITE_MASTER(*,*) ' Cartesian function number',ibf
      call print_basis_function(basis%bf(ibf))
