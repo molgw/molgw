@@ -75,7 +75,7 @@ contains
 
 !=========================================================================
 subroutine prepare_eri(basis,rcut,which_buffer)
- use m_inputparam,only: integral_quality
+ use m_inputparam,only: integral_level
  implicit none
 !===== 
  type(basis_set),intent(in) :: basis
@@ -88,16 +88,16 @@ subroutine prepare_eri(basis,rcut,which_buffer)
 
  nbf_eri = basis%nbf
 
- select case(TRIM(integral_quality))
- case('LOW')       ! accuracy not guaranted, just for quick test runs
+ select case(integral_level)
+ case(10)       ! accuracy not guaranted, just for quick test runs
    TOL_INT = 1.0e-6_dp
- case('MEDIUM')    ! 10 meV accuracy on potentials
+ case(20)    ! 10 meV accuracy on potentials
    TOL_INT = 1.0e-8_dp
- case('HIGH')      !  1 meV accuracy on potentials
+ case(30)      !  1 meV accuracy on potentials
    TOL_INT = 1.0e-10_dp
- case('VERY HIGH') ! almost perfect potentials
+ case(40) ! almost perfect potentials
    TOL_INT = 1.0e-12_dp
- case('INSANE')    ! No screening of any integral
+ case(50)    ! No screening of any integral
    TOL_INT = -1.0_dp
  case default
    stop'integration quality not recognized'
@@ -342,9 +342,9 @@ end function eri_eigen_ri
 
 
 !=========================================================================
-subroutine calculate_eri(print_eri,basis,rcut,which_buffer)
+subroutine calculate_eri(print_eri_,basis,rcut,which_buffer)
  implicit none
- logical,intent(in)           :: print_eri
+ logical,intent(in)           :: print_eri_
  type(basis_set),intent(in)   :: basis
  real(dp),intent(in)          :: rcut
  integer,intent(in)           :: which_buffer
@@ -355,7 +355,7 @@ subroutine calculate_eri(print_eri,basis,rcut,which_buffer)
  if( .NOT. read_eri(rcut) ) call do_calculate_eri(basis,rcut,which_buffer)
 
 
- if( print_eri ) then
+ if( print_eri_ ) then
    call dump_out_eri(rcut)
  endif
 
@@ -735,14 +735,14 @@ end subroutine do_calculate_eri
 
 
 !=========================================================================
-subroutine calculate_eri_2center(print_eri,auxil_basis)
+subroutine calculate_eri_2center(print_eri_,auxil_basis)
  use ISO_C_BINDING
  use m_tools,only: boys_function, invert
 #ifdef _OPENMP
  use omp_lib
 #endif
  implicit none
- logical,intent(in)           :: print_eri
+ logical,intent(in)           :: print_eri_
  type(basis_set),intent(in)   :: auxil_basis
 !=====
  integer                      :: ishell,jshell,kshell,lshell
@@ -991,14 +991,14 @@ end subroutine calculate_eri_2center
 
 
 !=========================================================================
-subroutine calculate_eri_3center(print_eri,basis,auxil_basis)
+subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  use ISO_C_BINDING
  use m_tools,only: boys_function
 #ifdef _OPENMP
  use omp_lib
 #endif
  implicit none
- logical,intent(in)           :: print_eri
+ logical,intent(in)           :: print_eri_
  type(basis_set),intent(in)   :: basis
  type(basis_set),intent(in)   :: auxil_basis
 !=====
@@ -1304,14 +1304,14 @@ end subroutine calculate_eri_3center
 
 
 !=========================================================================
-subroutine calculate_eri_approximate_hartree(print_eri,basis,x0_rho,alpha_rho,vhrho)
+subroutine calculate_eri_approximate_hartree(print_eri_,basis,x0_rho,alpha_rho,vhrho)
  use ISO_C_BINDING
  use m_tools,only: boys_function
 #ifdef _OPENMP
  use omp_lib
 #endif
  implicit none
- logical,intent(in)           :: print_eri
+ logical,intent(in)           :: print_eri_
  type(basis_set),intent(in)   :: basis
  real(dp),intent(in)          :: x0_rho(3)
  real(dp),intent(in)          :: alpha_rho

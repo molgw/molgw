@@ -86,15 +86,15 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
 
    if( calc_type%read_potential ) then
-     call read_potential(print_matrix,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
+     call read_potential(print_matrix_,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
    else
      !
      ! Hartree contribution to the Hamiltonian
      !
      if( .NOT. is_full_auxil) then
-       call setup_hartree(print_matrix,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
+       call setup_hartree(print_matrix_,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
      else
-       call setup_hartree_ri(print_matrix,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
+       call setup_hartree_ri(print_matrix_,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
      endif
    endif
 
@@ -109,16 +109,16 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    if( calc_type%need_exchange ) then
 
      if( .NOT. is_full_auxil) then
-       call setup_exchange(print_matrix,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+       call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
      else
-       call setup_exchange_ri(print_matrix,basis%nbf,c_matrix,occupation,p_matrix,hamiltonian_exx,en%exx)
+       call setup_exchange_ri(print_matrix_,basis%nbf,c_matrix,occupation,p_matrix,hamiltonian_exx,en%exx)
      endif
      ! Rescale with alpha_hybrid for hybrid functionals
      en%exx = alpha_hybrid * en%exx
      hamiltonian_xc(:,:,:) = hamiltonian_exx(:,:,:) * alpha_hybrid
 
      if(calc_type%is_screened_hybrid) then
-       call setup_exchange_longrange(print_matrix,basis%nbf,p_matrix,matrix_tmp,energy_tmp)
+       call setup_exchange_longrange(print_matrix_,basis%nbf,p_matrix,matrix_tmp,energy_tmp)
        ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
        en%exx = en%exx + alpha_hybrid_lr * energy_tmp
        hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix_tmp(:,:,:) * alpha_hybrid_lr
@@ -133,7 +133,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      call dft_exc_vxc(basis,p_matrix,ehomo,hamiltonian_vxc,en%xc)
 
      title='=== DFT XC contribution ==='
-     call dump_out_matrix(print_matrix,title,basis%nbf,nspin,hamiltonian_vxc)
+     call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,hamiltonian_vxc)
 
      hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + hamiltonian_vxc(:,:,:)
    endif
@@ -159,7 +159,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      matrix_tmp(:,:,:) = alpha_mixing * matrix_tmp(:,:,:) + (1.0_dp-alpha_mixing) * self_energy_old(:,:,:)
      self_energy_old(:,:,:) = matrix_tmp(:,:,:)
      title='=== Self-energy ==='
-     call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix_tmp)
+     call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
      call destroy_spectral_function(wpol)
 
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
@@ -182,7 +182,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      matrix_tmp(:,:,:) = alpha_mixing * matrix_tmp(:,:,:) + (1.0_dp-alpha_mixing) * self_energy_old(:,:,:)
      self_energy_old(:,:,:) = matrix_tmp(:,:,:)
      title='=== Self-energy ==='
-     call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix_tmp)
+     call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
   
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
 
@@ -193,7 +193,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    hamiltonian(:,:,:) = hamiltonian(:,:,:) + hamiltonian_xc(:,:,:)
    
    title='=== Total Hamiltonian ==='
-   call dump_out_matrix(print_matrix,title,basis%nbf,nspin,hamiltonian)
+   call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,hamiltonian)
   
    !
    ! Diagonalize the Hamiltonian H
@@ -215,7 +215,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    call output_homolumo(basis%nbf,nspin,occupation,energy,ehomo,elumo)
 
   
-   if(print_matrix) then
+   if(print_matrix_) then
      !
      ! REMEMBER:
      ! \phi_i = \sum_alpha C_{alpha i} \varphi_alpha 
@@ -225,13 +225,13 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
        matrix_tmp(:,:,ispin) = transpose( c_matrix(:,:,ispin) )
      enddo
      title='=== C coefficients ==='
-     call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix_tmp)
+     call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
      matrix_tmp(:,:,1) = matmul( c_matrix(:,:,1), matmul( s_matrix(:,:), transpose(c_matrix(:,:,1)) ) )
      title='=== C S C^T = identity ? ==='
-     call dump_out_matrix(print_matrix,title,basis%nbf,1,matrix_tmp)
+     call dump_out_matrix(print_matrix_,title,basis%nbf,1,matrix_tmp)
      matrix_tmp(:,:,1) = matmul( transpose(c_matrix(:,:,1)), matmul( s_matrix(:,:), c_matrix(:,:,1) ) )
      title='=== C^T S C = identity ? ==='
-     call dump_out_matrix(print_matrix,title,basis%nbf,1,matrix_tmp)
+     call dump_out_matrix(print_matrix_,title,basis%nbf,1,matrix_tmp)
    endif
 
   
@@ -241,7 +241,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    p_matrix_old(:,:,:) = p_matrix(:,:,:)
    call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
    title='=== density matrix P ==='
-   call dump_out_matrix(print_matrix,title,basis%nbf,nspin,p_matrix)
+   call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,p_matrix)
   
    !
    ! Output the total energy and its components
@@ -294,9 +294,9 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  !
  ! Get the exchange operator if not already calculated
  if( .NOT. is_full_auxil) then
-   if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(print_matrix,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+   if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
  else
-   if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange_ri(print_matrix,basis%nbf,c_matrix,occupation,p_matrix,hamiltonian_exx,en%exx)
+   if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange_ri(print_matrix_,basis%nbf,c_matrix,occupation,p_matrix,hamiltonian_exx,en%exx)
  endif
 
  WRITE_MASTER(*,'(/,a25,x,f16.10)') '      EXX Energy [Ha]:',en%exx

@@ -3,7 +3,7 @@
  basis='cc-pVDZ'
  basispath='../../basis'
  postscf='gw'
- mixing_method='simple'
+ mixing_scheme='simple'
  natom=1
 /
 Be 0. 0. 0.

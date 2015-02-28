@@ -47,7 +47,7 @@ module m_inputparam
  real(dp),protected               :: spin_fact
  integer,protected                :: nscf
  real(dp),protected               :: alpha_mixing
- character(len=100),protected     :: basispath
+ character(len=100),protected     :: basis_path
  character(len=100),protected     :: basis_name
  character(len=100),protected     :: auxil_basis_name
  character(len=4),protected       :: gaussian_type
@@ -56,18 +56,17 @@ module m_inputparam
  real(dp),protected               :: electrons,charge
  real(dp),protected               :: magnetization
  type(calculation_type),protected :: calc_type
- character(len=100),protected     :: grid_quality
- character(len=100),protected     :: integral_quality
+ integer,protected                :: grid_level
+ integer,protected                :: integral_level
  logical,protected                :: has_auxil_basis
  logical,protected                :: is_full_auxil
  real(dp),protected               :: pole_eta
 
  logical,protected                :: no_restart   
  logical,protected                :: ignore_big_restart
- logical,protected                :: print_matrix
- logical,protected                :: print_basis
- logical,protected                :: print_eri
- logical,protected                :: print_wfn
+ logical,protected                :: print_matrix_
+ logical,protected                :: print_eri_
+ logical,protected                :: print_wfn_
  logical,protected                :: print_specfunc
 
  real(dp)                         :: alpha_hybrid    = 0.0_dp
@@ -385,170 +384,11 @@ end subroutine output_calculation_type
 
 
 !=========================================================================
-subroutine read_inputparameter_molecule()
- use m_elements
+subroutine summary_input(grid_quality,integral_quality)
  implicit none
 
- character(len=100)   :: read_char
- character(len=200)   :: read_line
- character(len=100)   :: line_wocomment
- character(len=100)   :: mixing_name
- character(len=100)   :: quadrature_accuracy
- character(len=100)   :: field1,field2,field3
- integer              :: print_volume
- integer              :: ipos,jpos,kpos
- integer              :: istat,iatom,jatom
- integer              :: natom_read
- real(dp),allocatable :: zatom_read(:),x_read(:,:)
- real(dp)             :: length_factor
- character(len=2)     :: atom_symbol
- integer              :: atom_number,info
-!=====
-
- !
- ! Reading line 1
- read(*,*) read_char
- call init_calculation_type(calc_type,read_char)
-
- !
- ! Reading line 2
- read(*,*) nspin,charge,magnetization
- if(nspin/=1 .AND. nspin/=2) stop'nspin in incorrect'
- if(magnetization<-1.d-5)    stop'magnetization is negative'
- if(magnetization>1.d-5 .AND. nspin==1) stop'magnetization is non-zero and nspin is 1'
-
- spin_fact = REAL(-nspin+3,dp)
-
- !
- ! Reading line 3
- ! 2 mandatory fields + 1 optional field
- read(*,fmt='(a200)') read_line 
- ipos=index(read_line,'#',back=.false.)
- if(ipos==0) ipos=201
- line_wocomment(:ipos-1)=read_line(:ipos-1)
- line_wocomment=ADJUSTL(line_wocomment)
- jpos=index(line_wocomment,' ',back=.false.)
- basis_name = line_wocomment(:jpos-1)
-
- line_wocomment(1:ipos-jpos-1)=line_wocomment(jpos+1:ipos-1)
- line_wocomment(ipos-jpos:)=' '
- line_wocomment=ADJUSTL(line_wocomment)
-
- kpos=index(line_wocomment,' ',back=.false.)
- field2=line_wocomment(1:kpos-1)
- select case(TRIM(field2))
- case('PURE','pure')
-   gaussian_type='PURE'
- case('CART','cart')
-   gaussian_type='CART'
- case default
-   stop'Error in input line 3: second keyword should either PURE or CART'
- end select
-
- ! Optional field: auxiliary basis
- line_wocomment(1:ipos-kpos-1)=line_wocomment(kpos+1:ipos-1)
- line_wocomment(ipos-kpos:)=' '
- line_wocomment=ADJUSTL(line_wocomment)
- kpos=index(line_wocomment,' ',back=.false.)
- if(kpos==0 .OR. kpos==1) then
-   auxil_basis_name = 'none'
- else
-   auxil_basis_name = line_wocomment(:kpos-1)
- endif
-
- if( auxil_basis_name=='none' .OR. auxil_basis_name=='NONE' ) then
-   auxil_basis_name='none'
-   has_auxil_basis = .FALSE.
- else
-   has_auxil_basis = .TRUE.
- endif
- 
-
-! if( .NOT. has_auxil_basis) then
-!   WRITE_MASTER(*,*) 'Code has been compiled for auxiliairy basis only calculations'
-!   WRITE_MASTER(*,*) 'However no auxiliary basis has been provided in the input file'
-!   stop'STOP HERE'
-! endif
-
-
- !
- ! Reading line 4
- read(*,*) nscf,alpha_mixing,mixing_name,quadrature_accuracy
- if(nscf<0) stop'nscf too small'
- if(alpha_mixing<0.0 .OR. alpha_mixing > 1.0 ) stop'alpha_mixing should be inside [0,1]'
-
- select case(TRIM(quadrature_accuracy))
- case('LOW','low','L','l')
-   grid_quality = 'low'
- case('MEDIUM','medium','M','m')
-   grid_quality = 'medium'
- case('HIGH','high','H','h')
-   grid_quality = 'high'
- case('VERYHIGH','veryhigh','VH','vh')
-   grid_quality = 'very high'
- case('INSANE','insane','I','i')
-   grid_quality = 'insane'
- case default
-   stop'integration quality not recognized'
- end select
-
- !
- ! Reading line 5
- read(*,*) print_volume
-
- print_matrix        = MODULO(print_volume       ,2)==1
- print_basis         = MODULO(print_volume/10    ,2)==1
- print_eri           = MODULO(print_volume/100   ,2)==1
- ignore_big_restart  = MODULO(print_volume/1000  ,2)==1
- print_wfn           = MODULO(print_volume/10000 ,2)==1
- print_specfunc      = MODULO(print_volume/100000,2)==1
-
- 
- !
- ! Reading line 6 and following
- read(*,*) natom_read,read_char
- if(natom_read<1) stop'natom<1'
-
- !
- ! lengths are stored internally in bohr
- !
- select case(TRIM(read_char))
- case('A','a','Angstrom','ANGSTROM','angstrom')
-   length_factor=1.0_dp/bohr_A
- case('bohr','BOHR','Bohr','AU','au','a.u.','a.u','A.U','A.U.')
-   length_factor=1.0_dp
- case default
-   stop'units for lengths in input file not understood'
- end select
-
- allocate(x_read(3,natom_read),zatom_read(natom_read))
- 
- do iatom=1,natom_read
-   read(*,*) atom_symbol,x_read(:,iatom)
-   !
-   ! First, try to interpret atom_symbol as an integer
-   read(atom_symbol,'(i2)',iostat=info) atom_number
-   ! If it fails, then assumes it is a character
-   if( info /=0 ) then
-     atom_number = element_number(atom_symbol)
-   endif
-   zatom_read(iatom) = atom_number
- enddo
- x_read(:,:) = x_read(:,:) * length_factor
- call init_atoms(natom_read,zatom_read,x_read)
- deallocate(x_read,zatom_read)
-
- electrons = SUM(zatom(:)) - charge
-
- call summary_input()
-
-end subroutine read_inputparameter_molecule
-
-
-!=========================================================================
-subroutine summary_input()
- implicit none
-
+ character(len=12),intent(in) :: grid_quality
+ character(len=12),intent(in) :: integral_quality
 !=====
  integer :: iatom
 !=====
@@ -573,12 +413,11 @@ subroutine summary_input()
  WRITE_MASTER(*,'(a25,2x,a)') ' Integral quality: ',integral_quality
  WRITE_MASTER(*,*)
  WRITE_MASTER(*,'(a19)')      ' IO options:'
- WRITE_MASTER(*,'(a30,l3)')   ' - matrices details:   ',print_matrix        
- WRITE_MASTER(*,'(a30,l3)')   ' - basis set details:  ',print_basis
- WRITE_MASTER(*,'(a30,l3)')   ' - ERI file:           ',print_eri           
+ WRITE_MASTER(*,'(a30,l3)')   ' - matrices details:   ',print_matrix_       
+ WRITE_MASTER(*,'(a30,l3)')   ' - ERI file:           ',print_eri_          
  WRITE_MASTER(*,'(a30,l3)')   ' - ignore big RESTART: ',ignore_big_restart
- WRITE_MASTER(*,'(a30,l3)')   ' - plot some wfns:     ',print_wfn           
- WRITE_MASTER(*,'(a30,l3)')   ' - dump spectral functs',print_specfunc      
+ WRITE_MASTER(*,'(a30,l3)')   ' - plot some wfns:     ',print_wfn_          
+ WRITE_MASTER(*,'(a30,l3)')   ' - dump spectral functs',print_specfunc
 
 
  WRITE_MASTER(*,*)
@@ -623,23 +462,25 @@ subroutine read_inputfile_namelist()
  character(len=12)    :: scf
  character(len=12)    :: postscf
  character(len=100)   :: basis
- character(len=100)   :: auxilbasis
+ character(len=100)   :: auxil_basis
  character(len=12)    :: length_unit
  character(len=3)     :: ignore_restart,ignore_bigrestart,no_4center
- character(len=3)     :: printmatrix,printeri,printwfn,printw
+ character(len=3)     :: print_matrix,print_eri,print_wfn,print_w
  character(len=3)     :: tda,triplet,frozencore
  real(dp)             :: length_factor,eta
  integer              :: atom_number,info,iatom
  character(len=2)     :: atom_symbol
  real(dp),allocatable :: zatom_read(:),x_read(:,:)
+ character(len=12)    :: grid_quality
+ character(len=12)    :: integral_quality
 
- namelist /molgw/ scf,postscf,    &
-                  basis,auxilbasis,basispath,gaussian_type,no_4center,    &
-                  nspin,charge,magnetization,                             &
-                  grid_quality,integral_quality,                          &
-                  nscf,alpha_mixing,mixing_scheme,tolscf,                 &
-                  tda,triplet,eta,frozencore,ncoreg,ncorew,               &
-                  ignore_restart,printmatrix,printeri,printwfn,printw,    &
+ namelist /molgw/ scf,postscf,                                             &
+                  basis,auxil_basis,basis_path,gaussian_type,no_4center,   &
+                  nspin,charge,magnetization,                              &
+                  grid_quality,integral_quality,                           &
+                  nscf,alpha_mixing,mixing_scheme,tolscf,                  &
+                  tda,triplet,eta,frozencore,ncoreg,ncorew,                &
+                  ignore_restart,print_matrix,print_eri,print_wfn,print_w, &
                   length_unit,natom
 !=====
 
@@ -648,8 +489,8 @@ subroutine read_inputfile_namelist()
  postscf          = ''
 
  basis            = ''
- auxilbasis       = ''
- basispath        = '.'
+ auxil_basis      = ''
+ basis_path       = '.'
  gaussian_type    = 'PURE'
  no_4center       = 'NO'
 
@@ -673,10 +514,10 @@ subroutine read_inputfile_namelist()
 
  ignore_restart    = 'NO'
  ignore_bigrestart = 'NO'
- printmatrix       = 'NO'
- printeri          = 'NO'
- printwfn          = 'NO'
- printw            = 'NO'
+ print_matrix      = 'NO'
+ print_eri         = 'NO'
+ print_wfn         = 'NO'
+ print_w           = 'NO'
 
  natom             = 0
  length_unit       = 'ANGSTROM'
@@ -686,8 +527,8 @@ subroutine read_inputfile_namelist()
  read(*,molgw)
 
  basis_name = basis
- auxil_basis_name = auxilbasis
- has_auxil_basis = TRIM(auxilbasis) /= ''
+ auxil_basis_name = auxil_basis
+ has_auxil_basis = TRIM(auxil_basis) /= ''
  pole_eta = eta
  
 
@@ -706,11 +547,13 @@ subroutine read_inputfile_namelist()
  is_triplet         = yesno(triplet)
  is_frozencore      = yesno(frozencore)
 
- print_matrix       = yesno(printmatrix)
- print_basis        = .FALSE.
- print_eri          = yesno(printeri)
- print_wfn          = yesno(printwfn)
- print_specfunc     = yesno(printw)
+ print_matrix_      = yesno(print_matrix)
+ print_eri_         = yesno(print_eri)
+ print_wfn_         = yesno(print_wfn)
+ print_specfunc     = yesno(print_w)
+
+ grid_level     = interpret_quality(grid_quality)
+ integral_level = interpret_quality(integral_quality)
 
  select case(TRIM(mixing_scheme))
  case('SIMPLE','PULAY')
@@ -779,10 +622,34 @@ subroutine read_inputfile_namelist()
 
 
  ! Echo the interpreted input variables
- call summary_input()
+ call summary_input(grid_quality,integral_quality)
 
 
 contains
+
+
+function interpret_quality(quality) result(quality_level)
+ implicit none
+ character(len=12),intent(inout) :: quality
+ integer                         :: quality_level
+!===== 
+
+ select case(TRIM(quality))
+ case('LOW','L')
+   quality_level = 10
+ case('MEDIUM','MED','M')
+   quality_level = 20
+ case('HIGH','HI','H')
+   quality_level = 30
+ case('VERY HIGH','VERYHIGH','VH')
+   quality_level = 40
+ case('INSANE','I')
+   quality_level = 50
+ end select
+
+
+end function interpret_quality
+
 
 function yesno(char3)
  implicit none

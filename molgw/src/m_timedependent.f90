@@ -28,6 +28,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
 !=====
  integer                 :: t_ij
  type(spectral_function) :: wpol_static
+ integer                 :: info
  integer                 :: nmat
  real(dp)                :: alpha_local
  real(dp),allocatable    :: amb_matrix(:,:),apb_matrix(:,:)
@@ -138,8 +139,27 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  call stop_clock(timing_build_h2p)
 
 
- allocate(eigenvector(wpol_out%npole,wpol_out%npole))
- allocate(eigenvector_inv(wpol_out%npole,wpol_out%npole))
+ WRITE_MASTER(*,*) 'Allocate right eigenvectors'
+ allocate(eigenvector(wpol_out%npole,wpol_out%npole),stat=info)
+ call memory_statement(REAL(wpol_out%npole,dp)**2)
+ if(info==0) then
+   WRITE_MASTER(*,*) 'success'
+ else
+   WRITE_MASTER(*,*) 'failure'
+   stop'Not enough memory. Buy a bigger computer'
+ endif
+
+ WRITE_MASTER(*,*) 'Allocate left eigenvectors'
+ allocate(eigenvector_inv(wpol_out%npole,wpol_out%npole),stat=info)
+ call memory_statement(REAL(wpol_out%npole,dp)**2)
+ if(info==0) then
+   WRITE_MASTER(*,*) 'success'
+ else
+   WRITE_MASTER(*,*) 'failure'
+   stop'Not enough memory. Buy a bigger computer'
+ endif
+
+
  allocate(eigenvalue(wpol_out%npole))
 
  !
@@ -191,8 +211,11 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
 
  if( .NOT. calc_type%is_gw ) call destroy_spectral_function(wpol_out)
 
+ WRITE_MASTER(*,*) 'Deallocate left and right eigenvectors'
  if(allocated(eigenvector))     deallocate(eigenvector)
+ call memory_statement(-REAL(wpol_out%npole,dp)**2)
  if(allocated(eigenvector_inv)) deallocate(eigenvector_inv)
+ call memory_statement(-REAL(wpol_out%npole,dp)**2)
  if(allocated(eigenvalue))      deallocate(eigenvalue)
 
  call stop_clock(timing_pola)

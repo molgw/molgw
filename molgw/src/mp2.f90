@@ -313,7 +313,7 @@ end subroutine mp2_energy_fast
 subroutine single_excitations(nbf,energy,occupation,c_matrix,fock_matrix)
  use m_definitions
  use m_timing
- use m_inputparam,only: nspin,spin_fact,print_matrix
+ use m_inputparam,only: nspin,spin_fact,print_matrix_
  use m_scf,only: en
  implicit none
 
@@ -334,7 +334,7 @@ subroutine single_excitations(nbf,energy,occupation,c_matrix,fock_matrix)
  call matrix_basis_to_eigen(nspin,nbf,c_matrix,fock_matrix)
 
  title='=== Fock matrix ==='
- call dump_out_matrix(print_matrix,title,nbf,nspin,fock_matrix)
+ call dump_out_matrix(print_matrix_,title,nbf,nspin,fock_matrix)
 
 
  en%se = 0.0_dp
@@ -356,7 +356,7 @@ end subroutine single_excitations
 
 
 !==================================================================
-subroutine full_ci_2electrons_spin(print_wfn,spinstate,basis,h_1e,c_matrix,nuc_nuc)
+subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_nuc)
  use m_definitions
  use m_mpi
  use m_tools
@@ -369,7 +369,7 @@ subroutine full_ci_2electrons_spin(print_wfn,spinstate,basis,h_1e,c_matrix,nuc_n
  integer,parameter :: cip=dp
  integer,parameter :: nx=4000
 !
- logical,intent(in)         :: print_wfn
+ logical,intent(in)         :: print_wfn_
  integer,intent(in)         :: spinstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,basis%nbf)
@@ -679,7 +679,7 @@ subroutine full_ci_2electrons_spin(print_wfn,spinstate,basis,h_1e,c_matrix,nuc_n
  !
  ! Plot the ground state density if requested
  !
- if( print_wfn ) then
+ if( print_wfn_ ) then
    WRITE_MASTER(*,*)
    WRITE_MASTER(*,*) 'calculate the density'
   

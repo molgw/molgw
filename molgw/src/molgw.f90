@@ -75,7 +75,7 @@ program molgw
  !
  ! Build up the basis set 
  !
- call init_basis_set(print_basis,basispath,basis_name,gaussian_type,basis)
+ call init_basis_set(basis_path,basis_name,gaussian_type,basis)
  call setup_cart_to_pure_transforms(gaussian_type)
 
  !
@@ -103,7 +103,7 @@ program molgw
  !
  ! Build up the overlap matrix S
  ! S only depends onto the basis set
- call setup_overlap(print_matrix,basis,s_matrix)
+ call setup_overlap(print_matrix_,basis,s_matrix)
 
  !
  ! Set up the electron repulsion integrals
@@ -111,7 +111,7 @@ program molgw
  ! ERI are stored "privately" in the module m_eri
  call prepare_eri(basis,0.0_dp,BUFFER1)
  if( .NOT. is_full_auxil) then
-   call calculate_eri(print_eri,basis,0.0_dp,BUFFER1)
+   call calculate_eri(print_eri_,basis,0.0_dp,BUFFER1)
  endif
 
 ! call refine_negligible_basispair()
@@ -121,7 +121,7 @@ program molgw
  if(calc_type%is_screened_hybrid) then
    call prepare_eri(basis,rcut,BUFFER2)
    if( .NOT. is_full_auxil) then
-     call calculate_eri(print_eri,basis,rcut,BUFFER2)
+     call calculate_eri(print_eri_,basis,rcut,BUFFER2)
    endif
  endif
 ! call negligible_eri(1.0e-10_dp)
@@ -133,8 +133,6 @@ program molgw
  !
  ! Build the occupation array
  call set_occupation(electrons,magnetization,basis%nbf,occupation)
- title='=== Occupations ==='
- call dump_out_occupation(title,basis%nbf,nspin,occupation)
 
  !
  ! Try to read a RESTART file if it exists
@@ -152,11 +150,11 @@ program molgw
  if( .NOT. is_big_restart .AND. .NOT. calc_type%is_ci) then
    !
    ! Kinetic energy contribution
-   call setup_kinetic(print_matrix,basis,hamiltonian_kinetic)
+   call setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
   
    !
    ! Nucleus-electron interaction
-   call setup_nucleus(print_matrix,basis,hamiltonian_nucleus)
+   call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
  endif
 
  if( .NOT. is_restart) then
@@ -175,12 +173,12 @@ program molgw
    ! The hamiltonian is still spin-independent:
    c_matrix(:,:,nspin) = c_matrix(:,:,1)
   
-   if( print_matrix ) then
+   if( print_matrix_ ) then
      do ispin=1,nspin
        matrix_tmp(:,:,ispin) = TRANSPOSE( c_matrix(:,:,ispin) )
      enddo
      title='=== Initial C matrix ==='
-     call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix_tmp)
+     call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
    endif
 
  endif
@@ -193,7 +191,7 @@ program molgw
 ! call test_density_matrix(basis%nbf,nspin,p_matrix,s_matrix)
 
  title='=== 1st density matrix P ==='
- call dump_out_matrix(print_matrix,title,basis%nbf,nspin,p_matrix)
+ call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,p_matrix)
 
  !
  ! Initialize the SCF mixing procedure
@@ -204,12 +202,12 @@ program molgw
  ! then set it up now and calculate the required ERI: 2- and 3-center integrals
  !
  if( has_auxil_basis ) then
-   call init_basis_set(print_basis,basispath,auxil_basis_name,gaussian_type,auxil_basis)
+   call init_basis_set(basis_path,auxil_basis_name,gaussian_type,auxil_basis)
    call allocate_eri_auxil(auxil_basis)
    ! 2-center integrals
-   call calculate_eri_2center(print_eri,auxil_basis)
+   call calculate_eri_2center(print_eri_,auxil_basis)
    ! 3-center integrals
-   call calculate_eri_3center(print_eri,basis,auxil_basis)
+   call calculate_eri_3center(print_eri_,basis,auxil_basis)
  endif
 
  call stop_clock(timing_prescf)
@@ -227,9 +225,9 @@ program molgw
  
  call start_clock(timing_postscf)
 
- if( print_wfn ) call plot_wfn(nspin,basis,c_matrix)
- if( print_wfn ) call plot_rho(nspin,basis,occupation,c_matrix)
-! if( print_wfn ) call plot_cube_wfn(nspin,basis,c_matrix)
+ if( print_wfn_ ) call plot_wfn(nspin,basis,c_matrix)
+ if( print_wfn_ ) call plot_rho(nspin,basis,occupation,c_matrix)
+! if( print_wfn_ ) call plot_cube_wfn(nspin,basis,c_matrix)
 
 
  !
@@ -243,7 +241,7 @@ program molgw
  if(calc_type%is_ci) then
    if(nspin/=1) stop'for CI, nspin should be 1'
    if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) stop'CI is implemented for 2 electrons only'
-   call full_ci_2electrons_spin(print_wfn,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
+   call full_ci_2electrons_spin(print_wfn_,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
  endif
 
  !
@@ -326,7 +324,7 @@ program molgw
    if(has_auxil_basis) call destroy_eri_3center_eigen()
 
    title='=== Self-energy === (in the eigenstate basis)'
-   call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix_tmp)
+   call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
    call destroy_spectral_function(wpol)
 
  endif ! G0W0
@@ -348,7 +346,7 @@ program molgw
    WRITE_MASTER(*,'(a,2x,f16.10)') ' SE+MP2  Total En [Ha]:',en%tot+en%se
 
    title='=== Self-energy === (in the eigenstate basis)'
-   call dump_out_matrix(print_matrix,title,basis%nbf,nspin,matrix_tmp)
+   call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
 
  endif
 

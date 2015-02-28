@@ -69,7 +69,7 @@ The input file made of two sections:
    scf='lda'
    natom=1
  /
- 2    0.0 0.0 0.0  </pre>
+ 4    0.0 0.0 0.0  </pre>
 </div>
 
 
@@ -79,15 +79,12 @@ The input file made of two sections:
    ! Formaldehyde
    basis='6-31Gs'           ! This is the Pople basis 6-31G*
    gaussian_type='CART'     ! Pople basis set uses cartesian gaussian functions
-   auxilbasis='cc-pVDZ-RI'  ! Use an auxiliary basis for the resolution of identity
-                            ! in the GW post-processing
-   basispath='./basis/'     ! Path to the folder containing the basis files
+   basis_path='./basis/'    ! Path to the folder containing the basis files
 
    scf='pbe'                ! This is not case-sensitive
    postscf='gw'             ! This is not case-sensitive
 
-   ignore_restart='yes'
-   printw='yes'
+   print_w='yes'
    natom=4
  /
  C       -0.133221    0.000000    0.000000
@@ -102,15 +99,14 @@ The input file made of two sections:
 <h3>List of all the input variables</h3>
 
 <pre>
- namelist /molgw/ scf,postscf,    &
-                  basis,auxilbasis,basispath,gaussian_type,no_4center,    &
-                  nspin,charge,magnetization,                             &
-                  grid_quality,integral_quality,                          &
-                  nscf,alpha_mixing,mixing_scheme,tolscf,                 &
-                  tda,triplet,eta,frozencore,ncoreg,ncorew,               &
-                  ignore_restart,printmatrix,printeri,printwfn,printw,    &
+ namelist /molgw/ scf,postscf,                                             &
+                  basis,auxil_basis,basis_path,gaussian_type,no_4center,   &
+                  nspin,charge,magnetization,                              &
+                  grid_quality,integral_quality,                           &
+                  nscf,alpha_mixing,mixing_scheme,tolscf,                  &
+                  tda,triplet,eta,frozencore,ncoreg,ncorew,                &
+                  ignore_restart,print_matrix,print_eri,print_wfn,print_w, &
                   length_unit,natom
-
 </pre>
 
 
