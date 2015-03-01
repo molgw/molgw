@@ -41,6 +41,8 @@ module m_inputparam
 
  integer,protected                :: ncoreg 
  integer,protected                :: ncorew 
+ integer,protected                :: nvirtualg 
+ integer,protected                :: nvirtualw 
  logical,protected                :: is_frozencore
  logical,protected                :: is_tda,is_triplet
  integer,protected                :: nspin
@@ -479,7 +481,7 @@ subroutine read_inputfile_namelist()
                   nspin,charge,magnetization,                              &
                   grid_quality,integral_quality,                           &
                   nscf,alpha_mixing,mixing_scheme,tolscf,                  &
-                  tda,triplet,eta,frozencore,ncoreg,ncorew,                &
+                  tda,triplet,eta,frozencore,ncoreg,ncorew,nvirtualg,nvirtualw, &
                   ignore_restart,print_matrix,print_eri,print_wfn,print_w, &
                   length_unit,natom
 !=====
@@ -511,6 +513,8 @@ subroutine read_inputfile_namelist()
  frozencore        = 'NO'
  ncoreg            = 0
  ncorew            = 0
+ nvirtualg         = HUGE(1)
+ nvirtualw         = HUGE(1)
 
  ignore_restart    = 'NO'
  ignore_bigrestart = 'NO'
@@ -577,6 +581,10 @@ subroutine read_inputfile_namelist()
  if(alpha_mixing<0.0 .OR. alpha_mixing > 1.0 ) stop'alpha_mixing should be inside [0,1]'
  if(ncoreg<0) stop'negative ncoreg is meaningless'
  if(ncorew<0) stop'negative ncorew is meaningless'
+ if(nvirtualg<0) stop'negative nvirtualg is meaningless'
+ if(nvirtualw<0) stop'negative nvirtualw is meaningless'
+ if(nvirtualg<ncoreg) stop'too small nvirtualg is meaningless'
+ if(nvirtualw<ncorew) stop'too small nvirtualw is meaningless'
  if(nspin/=1 .AND. nspin/=2) stop'nspin in incorrect'
  if(magnetization<-1.d-5)    stop'magnetization is negative'
  if(magnetization>1.d-5 .AND. nspin==1) stop'magnetization is non-zero and nspin is 1'

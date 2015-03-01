@@ -45,10 +45,6 @@ subroutine header()
  msg='OPENMP option is activated with threads number'//msg
  call issue_warning(msg)
 #endif
-#ifdef CASIDA
- msg='CASIDA option has been swichted on at compilation time'
- call issue_warning(msg)
-#endif
 #ifdef HAVE_MPI
  msg='Running with MPI'
  call issue_warning(msg)

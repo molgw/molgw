@@ -333,11 +333,10 @@ program molgw
  ! final evaluation for MP2
  if( calc_type%is_mp2 .AND. calc_type%gwmethod == perturbative ) then
 
-#ifdef CASIDA
-   call mp2_energy_fast(basis,occupation,c_matrix,energy,en%mp2)
-#else
+! This routine is faster but only gives the correlation energy
+!   call mp2_energy_fast(basis,occupation,c_matrix,energy,en%mp2)
+! This routine is slower but gives both the correlation energy and the self-energy
    call mp2_selfenergy(calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,hamiltonian_exx,en%mp2)
-#endif
    WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Energy       [Ha]:',en%mp2
    WRITE_MASTER(*,*) 
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%mp2
