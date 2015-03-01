@@ -9,10 +9,6 @@ module m_spectral_function
  use m_inputparam
  use m_atoms
 
- integer,parameter :: CASIDA=1
- integer,parameter :: SAVE_CPU=2
-! integer,parameter :: transition_ordering=SAVE_CPU 
- integer,parameter :: transition_ordering=CASIDA
  !
  ! General form of any spectral function
  ! z complex number
@@ -67,57 +63,25 @@ subroutine init_spectral_function(nbf,occupation,sf)
 
  ncore_G    = ncoreg
  ncore_W    = ncorew
- nvirtual_G = nbf+1
- nvirtual_W = nbf+1
+ nvirtual_G = nvirtualg
+ nvirtual_W = nvirtualw
 
  if(is_frozencore) then
    if( ncore_G == 0) ncore_G = atoms_core_states()
    if( ncore_W == 0) ncore_W = atoms_core_states()
+ endif
+ if( ncore_G > 0 .OR. ncore_W > 0 ) then
    WRITE_MASTER(msg,'(a,i4,2x,i4)') 'frozen core approximation switched on up to state (G,W) = ',ncore_G,ncore_W
    call issue_warning(msg)
  endif
 
- !
- ! Deal with frozen core initialization
- inquire(file='manual_frozencore',exist=file_exists)
- if(file_exists) then
-   !
-   ! ncore_G and ncore_W contain the highest core state to be discarded
-   open(13,file='manual_frozencore')
-   read(13,*) ncore_G
-   read(13,*) ncore_W
-   close(13)
-   if( ncore_G == -1) then
-     ncore_G = atoms_core_states()
-   else
-     ncore_G = MAX(ncore_G,0)
-   endif
-   if( ncore_W == -1) then
-     ncore_W = atoms_core_states()
-   else
-     ncore_W = MAX(ncore_W,0)
-   endif
-   WRITE_MASTER(msg,'(a,i4,2x,i4)') 'frozen core approximation switched on up to state (G,W) = ',ncore_G,ncore_W
-   call issue_warning(msg)
- endif
- !
- ! Deal with frozen virtual initialization
- inquire(file='manual_frozenvirtual',exist=file_exists)
- if(file_exists) then
-   !
-   ! nvirtual_G and nvirtual_W contain the first virtual state to be discarded
-   open(13,file='manual_frozenvirtual')
-   read(13,*) nvirtual_G
-   read(13,*) nvirtual_W
-   close(13)
-   nvirtual_G = MIN(nvirtual_G,nbf+1)
-   nvirtual_W = MIN(nvirtual_W,nbf+1)
+ if( nvirtual_G <= nbf .OR. nvirtual_W <= nbf ) then
    WRITE_MASTER(msg,'(a,i4,2x,i4)') 'frozen virtual approximation switched on starting with state (G,W) = ',nvirtual_G,nvirtual_W
    call issue_warning(msg)
  endif
 
  !
- ! First count the number of resonant transitions
+ ! First, count the number of resonant transitions
  itrans=0
  do ijspin=1,nspin
    do ibf=1,nbf
@@ -129,57 +93,28 @@ subroutine init_spectral_function(nbf,occupation,sf)
    enddo
  enddo
 
- select case(transition_ordering)
- case(SAVE_CPU)
-   ! Set the number of poles as twice the number of resonant transtions
-   sf%npole = 2*itrans
-   allocate(sf%transition_table(3,sf%npole))
-   ! Set the transition_table 
-   itrans=0
-   do ijspin=1,nspin
-     do ibf=1,nbf
-       do jbf=1,nbf
-         if( skip_transition(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) cycle
-         if( occupation(jbf,ijspin) - occupation(ibf,ijspin) > 0.0_dp ) cycle
-         ! Set the resonant transition table
-         itrans = itrans + 1
-         sf%transition_table(1,itrans) = ibf
-         sf%transition_table(2,itrans) = jbf
-         sf%transition_table(3,itrans) = ijspin
-         ! Set the anti-resonant transition table too
-         itrans = itrans + 1
-         sf%transition_table(1,itrans) = jbf
-         sf%transition_table(2,itrans) = ibf
-         sf%transition_table(3,itrans) = ijspin
-       enddo
+ ! Set the number of poles as twice the number of resonant transtions
+ sf%npole = 2*itrans  
+ allocate(sf%transition_table(3,sf%npole))
+ ! Set the transition_table 
+ itrans=0
+ do ijspin=1,nspin
+   do ibf=1,nbf
+     do jbf=1,nbf
+       if( skip_transition(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) cycle
+       if( occupation(jbf,ijspin) - occupation(ibf,ijspin) > 0.0_dp ) cycle
+       itrans = itrans + 1
+       ! Set the resonant transition table
+       sf%transition_table(1,itrans) = ibf
+       sf%transition_table(2,itrans) = jbf
+       sf%transition_table(3,itrans) = ijspin
+       ! Set the anti-resonant transition table too
+       sf%transition_table(1,itrans+sf%npole/2) = jbf
+       sf%transition_table(2,itrans+sf%npole/2) = ibf
+       sf%transition_table(3,itrans+sf%npole/2) = ijspin
      enddo
    enddo
- case(CASIDA)
-   ! Set the number of poles as the number of resonant transtions
-   sf%npole = 2*itrans  
-   allocate(sf%transition_table(3,sf%npole))
-   ! Set the transition_table 
-   itrans=0
-   do ijspin=1,nspin
-     do ibf=1,nbf
-       do jbf=1,nbf
-         if( skip_transition(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) cycle
-         if( occupation(jbf,ijspin) - occupation(ibf,ijspin) > 0.0_dp ) cycle
-         itrans = itrans + 1
-         ! Set the resonant transition table
-         sf%transition_table(1,itrans) = ibf
-         sf%transition_table(2,itrans) = jbf
-         sf%transition_table(3,itrans) = ijspin
-         ! Set the anti-resonant transition table too
-         sf%transition_table(1,itrans+sf%npole/2) = jbf
-         sf%transition_table(2,itrans+sf%npole/2) = ibf
-         sf%transition_table(3,itrans+sf%npole/2) = ijspin
-       enddo
-     enddo
-   enddo
- case default
-   stop'bug in m_spectral_function.f90'
- end select
+ enddo
 
 
 end subroutine init_spectral_function
@@ -225,14 +160,8 @@ function skip_transition(nspin,ib1,ib2,occ1,occ2)
  ! skip the virtual states if asked for a frozen-virtual calculation
  if( ib1 >= nvirtual_W .OR. ib2 >= nvirtual_W ) skip_transition=.TRUE.
 
-#ifndef CASIDA
  if( occ1 < completely_empty             .AND. occ2 < completely_empty )             skip_transition=.TRUE.
  if( occ1 > spin_fact - completely_empty .AND. occ2 > spin_fact - completely_empty ) skip_transition=.TRUE.
-#else
- ! Casida case only positive transition are retained
- ! state 1 should be empty AND state 2 should be occupied
- if( occ1 > spin_fact - completely_empty .OR.  occ2 < completely_empty )             skip_transition=.TRUE.
-#endif
 
 #ifdef CRPA
  if( ib1==band1 .AND. ib2==band1 )  skip_transition=.TRUE.

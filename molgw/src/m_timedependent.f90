@@ -102,8 +102,12 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
 
 
  nmat = wpol_out%npole/2
+ WRITE_MASTER(*,'(a,i6,a,i6)') ' Allocate (A+B) matrix',nmat,' x ',nmat
  allocate(apb_matrix(nmat,nmat))
+ call memory_statement(REAL(nmat,dp)**2)
+ WRITE_MASTER(*,'(a,i6,a,i6)') ' Allocate (A-B) matrix',nmat,' x ',nmat
  allocate(amb_matrix(nmat,nmat))
+ call memory_statement(REAL(nmat,dp)**2)
 
  !
  ! Build the (A+B) and (A-B) matrices in 3 steps
@@ -184,7 +188,9 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  WRITE_MASTER(*,'(/,a,f14.8)') ' Lowest neutral excitation energy [eV]',MINVAL(ABS(eigenvalue(:)))*Ha_eV
 
 
+ WRITE_MASTER(*,*) 'Deallocate (A+B) and (A-B) matrices'
  deallocate(apb_matrix,amb_matrix)
+ call memory_statement(2*REAL(nmat,dp)**2)
 
  !
  ! Calculate the optical sprectrum
