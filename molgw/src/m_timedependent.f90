@@ -653,14 +653,15 @@ end subroutine build_amb_apb_bse
 
 !=========================================================================
 !subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenvector,eigenvector_transpinv)
-subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenvector)
+subroutine diago_4blocks_sqrt(nmat,amb_matrix,cc_matrix,npole,eigenvalue,eigenvector)
  use m_spectral_function
  use m_eri
  use m_tools 
  implicit none
 
  integer,intent(in)     :: nmat,npole
- real(dp),intent(inout) :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
+ real(dp),intent(inout) :: amb_matrix(nmat,nmat)
+ real(dp),intent(inout) :: cc_matrix(nmat,nmat)  ! cc_matrix constains (A+B) in the input, however it used a matrix buffer after
  real(dp),intent(out)   :: eigenvalue(npole)
  real(dp),intent(out)   :: eigenvector(npole,npole)
 ! real(dp),intent(out)   :: eigenvector_transpinv(npole,npole)
@@ -668,14 +669,9 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
  integer              :: t_kl
  real(dp),allocatable :: amb_eigval(:),bigomega(:)
  real(dp),allocatable :: amb_matrix_sqrt(:,:),amb_matrix_sqrtm1(:,:)
- real(dp),allocatable :: cc_matrix(:,:)
- real(dp),allocatable :: bigx(:,:),bigy(:,:)
 !=====
 
  WRITE_MASTER(*,'(/,a)') ' Performing the block diago with square root of matrices'
- allocate(cc_matrix(nmat,nmat))
- allocate(amb_eigval(nmat))
-
 
  !
  ! Calculate (A-B)^{1/2}
@@ -685,20 +681,24 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
  ! (A-B)       = R D tR 
  ! (A-B)^{1/2} = R D^{1/2} tR 
  WRITE_MASTER(*,'(a,i8,a,i8)') ' Diago to get (A - B)^{1/2}                   ',nmat,' x ',nmat
+ allocate(amb_eigval(nmat))
  call diagonalize(nmat,amb_matrix,amb_eigval)
 
+ WRITE_MASTER(*,*) 'Allocate two temporary matrices'
  allocate(amb_matrix_sqrt(nmat,nmat),amb_matrix_sqrtm1(nmat,nmat))
- do t_kl=1,nmat
+ call memory_statement(2*REAL(nmat,dp)**2)
+
+ forall(t_kl=1:nmat)
    amb_matrix_sqrt  (:,t_kl) = amb_matrix(:,t_kl)*SQRT(amb_eigval(t_kl))
    amb_matrix_sqrtm1(:,t_kl) = amb_matrix(:,t_kl)/SQRT(amb_eigval(t_kl))
- enddo
+ end forall
  deallocate(amb_eigval)
 
  amb_matrix = TRANSPOSE( amb_matrix )
  amb_matrix_sqrt  (:,:) = MATMUL( amb_matrix_sqrt(:,:)   , amb_matrix(:,:) )
  amb_matrix_sqrtm1(:,:) = MATMUL( amb_matrix_sqrtm1(:,:) , amb_matrix(:,:) )
  
- cc_matrix(:,:) = MATMUL( amb_matrix_sqrt , MATMUL( apb_matrix , amb_matrix_sqrt)  )
+ cc_matrix(:,:) = MATMUL( amb_matrix_sqrt , MATMUL( cc_matrix , amb_matrix_sqrt)  )
 
 ! WRITE_MASTER(*,*) 'CC ',matrix_is_symmetric(nmat,cc_matrix)
 
@@ -727,8 +727,8 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
  end forall
  deallocate(bigomega)
 
- ! Finalize Resonant (positive excitations indexed from 1 to nmat)
- eigenvector(1:nmat,1:nmat)        = eigenvector(1:nmat,1:nmat)        + cc_matrix(:,:)
+ ! Finalize Resonant (positive excitations second index from 1 to nmat)
+ eigenvector(1:nmat       ,1:nmat) = eigenvector(1:nmat,1:nmat)        + cc_matrix(:,:)
  eigenvector(nmat+1:2*nmat,1:nmat) = eigenvector(nmat+1:2*nmat,1:nmat) - cc_matrix(:,:)
 
  ! Then deduce all the rest
@@ -744,9 +744,9 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
 ! eigenvector_transpinv(nmat+1:2*nmat,nmat+1:2*nmat) = eigenvector(1:nmat       ,1:nmat)
 
 
-
+ WRITE_MASTER(*,*) 'Deallocate the two temporary matrices'
  deallocate(amb_matrix_sqrt,amb_matrix_sqrtm1)
- deallocate(cc_matrix)
+ call memory_statement(-2*REAL(nmat,dp)**2)
 
 end subroutine diago_4blocks_sqrt
 
