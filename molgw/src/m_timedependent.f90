@@ -17,7 +17,6 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  use m_tools
  use m_basis_set
  use m_spectral_function
- use m_gw
  implicit none
 
  type(basis_set),intent(in)            :: basis,prod_basis,auxil_basis

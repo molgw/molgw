@@ -1,21 +1,11 @@
 !=========================================================================
 #include "macros.h"
 !=========================================================================
-module m_gw
- use m_definitions
- use m_mpi
- use m_timing 
- use m_inputparam
-
-
-contains
-
-
-!=========================================================================
 subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy)
  use m_definitions
  use m_mpi
  use m_timing 
+ use m_inputparam
  use m_warning,only: issue_warning,msg
  use m_basis_set
  use m_spectral_function
@@ -337,6 +327,4 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 end subroutine gw_selfenergy
 
 
-!=========================================================================
-end module m_gw
 !=========================================================================
