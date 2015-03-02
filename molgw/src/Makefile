@@ -25,13 +25,13 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 
 
 ../molgw: macros.h m_definitions.o m_mpi.o m_elements.o m_timing.o m_warning.o m_tools.o m_atoms.o \
-         m_gaussian.o m_basis_set.o m_inputparam.o m_scf.o m_eri.o m_spectral_function.o m_dft_grid.o m_gw.o m_timedependent.o dft_xc.o \
+         m_gaussian.o m_basis_set.o m_inputparam.o m_scf.o m_eri.o m_spectral_function.o m_dft_grid.o gw.o m_timedependent.o dft_xc.o \
          libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o scf_loop.o pdbssolver1.o pdbssolver1_svd.o molgw.o
 	$(FC) $(FCOPTS) \
                         m_definitions.o m_elements.o m_mpi.o m_timing.o m_warning.o m_inputparam.o m_tools.o m_scf.o m_atoms.o \
                         m_gaussian.o m_basis_set.o m_eri.o m_dft_grid.o m_spectral_function.o \
                         libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o mp2_selfenergy.o \
-                        mp2.o m_gw.o m_timedependent.o dft_xc.o io.o hamiltonian.o scf_loop.o pdbssolver1.o pdbssolver1_svd.o \
+                        mp2.o gw.o m_timedependent.o dft_xc.o io.o hamiltonian.o scf_loop.o pdbssolver1.o pdbssolver1_svd.o \
                         molgw.o \
                         -o ../molgw \
                         $(SCALAPACK) $(LAPACK)   \
@@ -40,20 +40,20 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
                         $(LINKS)
 
 molgw.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
-  m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_gw.f90 m_timedependent.f90 molgw.f90
+  m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_timedependent.f90 molgw.f90
 	$(FC) $(FCOPTS) -c molgw.f90 $(LIBXC_INCS)
 
 scf_loop.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
-  m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_gw.f90 scf_loop.f90
+  m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 scf_loop.f90
 	$(FC) $(FCOPTS) -c scf_loop.f90 $(LIBXC_INCS)
 
 hamiltonian.o: macros.h m_definitions.f90 m_timing.f90 m_eri.f90 hamiltonian.f90
 	$(FC) $(FCOPTS) -c hamiltonian.f90 $(LIBXC_INCS)
 
-m_gw.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 m_inputparam.f90 m_gw.f90
-	$(FC) $(FCOPTS) -c m_gw.f90 $(LIBXC_INCS)
+gw.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 m_inputparam.f90 gw.f90
+	$(FC) $(FCOPTS) -c gw.f90 $(LIBXC_INCS)
 
-m_timedependent.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 m_gw.f90 \
+m_timedependent.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 \
         m_timedependent.f90
 	$(FC) $(FCOPTS) -c m_timedependent.f90 $(LIBXC_INCS)
 
