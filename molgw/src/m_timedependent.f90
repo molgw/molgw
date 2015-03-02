@@ -32,7 +32,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  integer                 :: nmat
  real(dp)                :: alpha_local
  real(dp),allocatable    :: amb_matrix(:,:),apb_matrix(:,:)
- real(dp),allocatable    :: eigenvalue(:),eigenvector(:,:),eigenvector_inv(:,:)
+ real(dp),allocatable    :: eigenvalue(:),eigenvector(:,:),eigenvector_transpinv(:,:)
  real(dp)                :: energy_qp(basis%nbf,nspin)
  logical                 :: is_tddft
  logical                 :: is_ij
@@ -154,7 +154,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  endif
 
  WRITE_MASTER(*,*) 'Allocate left eigenvectors'
- allocate(eigenvector_inv(wpol_out%npole,wpol_out%npole),stat=info)
+ allocate(eigenvector_transpinv(wpol_out%npole,wpol_out%npole),stat=info)
  call memory_statement(REAL(wpol_out%npole,dp)**2)
  if(info==0) then
    WRITE_MASTER(*,*) 'success'
@@ -170,9 +170,9 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! Diago using the 4 block structure and the symmetry of each block
  call start_clock(timing_diago_h2p)
 #ifndef HAVE_SCALAPACK
-   call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_inv)
+   call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_transpinv)
 #else
-   call diago_4blocks_chol(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_inv)
+   call diago_4blocks_chol(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector,eigenvector_transpinv)
 #endif
  call stop_clock(timing_diago_h2p)
 
@@ -198,7 +198,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! and the dynamic dipole tensor
  !
  if( calc_type%is_td .OR. calc_type%is_bse ) &
-   call optical_spectrum(basis,prod_basis,occupation,c_matrix,wpol_out,eigenvector,eigenvector_inv,eigenvalue)
+   call optical_spectrum(basis,prod_basis,occupation,c_matrix,wpol_out,eigenvector,eigenvector_transpinv,eigenvalue)
 
  !
  ! Calculate Wp= v * chi * v    if necessary
@@ -206,9 +206,9 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  !
  if( print_specfunc .OR. calc_type%is_gw ) then
    if( has_auxil_basis) then
-     call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol_out)
+     call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf,occupation,c_matrix,eigenvector,eigenvector_transpinv,eigenvalue,wpol_out)
    else
-     call chi_to_vchiv(basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol_out)
+     call chi_to_vchiv(basis%nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_transpinv,eigenvalue,wpol_out)
    endif
  
    ! If requested write the spectral function on file
@@ -221,7 +221,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  WRITE_MASTER(*,*) 'Deallocate left and right eigenvectors'
  if(allocated(eigenvector))     deallocate(eigenvector)
  call memory_statement(-REAL(wpol_out%npole,dp)**2)
- if(allocated(eigenvector_inv)) deallocate(eigenvector_inv)
+ if(allocated(eigenvector_transpinv)) deallocate(eigenvector_transpinv)
  call memory_statement(-REAL(wpol_out%npole,dp)**2)
  if(allocated(eigenvalue))      deallocate(eigenvalue)
 
@@ -647,7 +647,7 @@ end subroutine build_amb_apb_bse
 
 
 !=========================================================================
-subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenvector,eigenvector_inv)
+subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenvector,eigenvector_transpinv)
  use m_spectral_function
  use m_eri
  use m_tools 
@@ -657,13 +657,13 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
  real(dp),intent(inout) :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
  real(dp),intent(out)   :: eigenvalue(npole)
  real(dp),intent(out)   :: eigenvector(npole,npole)
- real(dp),intent(out)   :: eigenvector_inv(npole,npole)
+ real(dp),intent(out)   :: eigenvector_transpinv(npole,npole)
 !=====
  integer              :: t_kl
  real(dp),allocatable :: amb_eigval(:),bigomega(:)
  real(dp),allocatable :: amb_matrix_sqrt(:,:),amb_matrix_sqrtm1(:,:)
  real(dp),allocatable :: cc_matrix(:,:)
- real(dp),allocatable :: bigx(:,:),bigy(:,:),cc_matrix_bigomega(:,:)
+ real(dp),allocatable :: bigx(:,:),bigy(:,:)
 !=====
 
  WRITE_MASTER(*,'(/,a)') ' Performing the block diago with square root of matrices'
@@ -703,62 +703,49 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
 
  bigomega(:) = SQRT(bigomega(:))
 
-
- allocate(bigx(nmat,nmat),bigy(nmat,nmat))
- allocate(cc_matrix_bigomega(nmat,nmat))
-
- do t_kl=1,nmat
-   cc_matrix_bigomega(:,t_kl) = cc_matrix(:,t_kl) * bigomega(t_kl)
+ forall(t_kl=1:nmat)
+   cc_matrix(:,t_kl) = cc_matrix(:,t_kl) / SQRT(bigomega(t_kl))
    ! Resonant
    eigenvalue(t_kl)      =  bigomega(t_kl)
    ! AntiResonant
    eigenvalue(t_kl+nmat) = -bigomega(t_kl)
- enddo
+ end forall
 
- bigx(:,:) = 0.5_dp * MATMUL( amb_matrix_sqrt(:,:)   , cc_matrix(:,:) )
- bigy(:,:) = 0.5_dp * MATMUL( amb_matrix_sqrtm1(:,:) , cc_matrix_bigomega(:,:) )
 
- ! Resonant
- eigenvector(1:nmat       ,1:nmat)        = bigx(:,:)+bigy(:,:)
- eigenvector(nmat+1:2*nmat,1:nmat)        = bigx(:,:)-bigy(:,:)
+ eigenvector(1:nmat,1:nmat)        = 0.5_dp * MATMUL( amb_matrix_sqrt(:,:)   , cc_matrix(:,:) )
+ eigenvector(nmat+1:2*nmat,1:nmat) = eigenvector(1:nmat,1:nmat)
+
+ cc_matrix(:,:) = 0.5_dp * MATMUL( amb_matrix_sqrtm1(:,:) , cc_matrix(:,:) )
+ forall(t_kl=1:nmat)
+   cc_matrix(:,t_kl) = cc_matrix(:,t_kl) * bigomega(t_kl)
+ end forall
+ deallocate(bigomega)
+
+ ! Finalize Resonant (positive excitations indexed from 1 to nmat)
+ eigenvector(1:nmat,1:nmat)        = eigenvector(1:nmat,1:nmat)        + cc_matrix(:,:)
+ eigenvector(nmat+1:2*nmat,1:nmat) = eigenvector(nmat+1:2*nmat,1:nmat) - cc_matrix(:,:)
+
+ ! Then deduce all the rest
  ! AntiResonant
- eigenvector(1:nmat       ,nmat+1:2*nmat) = bigx(:,:)-bigy(:,:)
- eigenvector(nmat+1:2*nmat,nmat+1:2*nmat) = bigx(:,:)+bigy(:,:)
+ eigenvector(1:nmat       ,nmat+1:2*nmat) = eigenvector(nmat+1:2*nmat,1:nmat)
+ eigenvector(nmat+1:2*nmat,nmat+1:2*nmat) = eigenvector(1:nmat       ,1:nmat)
  !
  ! Avoid inversion 
- eigenvector_inv(1:nmat       ,1:nmat)        = TRANSPOSE( bigx(:,:)+bigy(:,:) )
- eigenvector_inv(nmat+1:2*nmat,1:nmat)        = TRANSPOSE(-bigx(:,:)+bigy(:,:) )
- eigenvector_inv(1:nmat       ,nmat+1:2*nmat) = TRANSPOSE(-bigx(:,:)+bigy(:,:) )
- eigenvector_inv(nmat+1:2*nmat,nmat+1:2*nmat) = TRANSPOSE( bigx(:,:)+bigy(:,:) )
-
- ! Avoid inversion
-! call start_clock(timing_inversion_s2p)
-! call invert(npole,eigenvector_inv,eigenvector)
-! call stop_clock(timing_inversion_s2p)
-
- !
- ! WARNING: I do not understand why I have to divide here to obtain the right
- !          normalization of the eigenvectors
- !          but it's working!
- ! TODO: do the analytic derivation
- do t_kl=1,2*nmat
-   eigenvector(:,t_kl)     = eigenvector(:,t_kl)     / SQRT(ABS(eigenvalue(t_kl)))
-   eigenvector_inv(t_kl,:) = eigenvector_inv(t_kl,:) / SQRT(ABS(eigenvalue(t_kl)))
- enddo
+ eigenvector_transpinv(1:nmat       ,1:nmat)        = eigenvector(1:nmat       ,1:nmat)
+ eigenvector_transpinv(nmat+1:2*nmat,1:nmat)        =-eigenvector(nmat+1:2*nmat,1:nmat)
+ eigenvector_transpinv(1:nmat       ,nmat+1:2*nmat) =-eigenvector(nmat+1:2*nmat,1:nmat)
+ eigenvector_transpinv(nmat+1:2*nmat,nmat+1:2*nmat) = eigenvector(1:nmat       ,1:nmat)
 
 
- deallocate(cc_matrix_bigomega)
 
-
- deallocate(amb_matrix_sqrt,amb_matrix_sqrtm1,bigomega)
- deallocate(bigx,bigy)
+ deallocate(amb_matrix_sqrt,amb_matrix_sqrtm1)
  deallocate(cc_matrix)
 
 end subroutine diago_4blocks_sqrt
 
 
 !=========================================================================
-subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenvector,eigenvector_inv)
+subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenvector,eigenvector_transpinv)
  use m_spectral_function
  use m_eri
  use m_tools 
@@ -768,7 +755,7 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
  real(dp),intent(inout)             :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
  real(dp),intent(out)               :: eigenvalue(npole)
  real(dp),intent(out)               :: eigenvector(npole,npole)
- real(dp),intent(out)               :: eigenvector_inv(npole,npole)
+ real(dp),intent(out)               :: eigenvector_transpinv(npole,npole)
 !=====
  integer  :: descm(ndel),desck(ndel)
  integer  :: descx(ndel),descy(ndel)
@@ -788,10 +775,10 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
  allocate(work(1))
  lwork=-1
  call pdbssolver1(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
-                      eigenvalue,eigenvector,1,1,descx,eigenvector_inv,1,1,descy,&
+                      eigenvalue,eigenvector,1,1,descx,eigenvector_transpinv,1,1,descy,&
                       work,lwork,info)
 ! call pdbssolver1_svd(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
-!                      eigenvalue,eigenvector,1,1,descx,eigenvector_inv,1,1,descy,&
+!                      eigenvalue,eigenvector,1,1,descx,eigenvector_transpinv,1,1,descy,&
 !                      work,lwork,info)
  if(info/=0) stop'SCALAPACK failed'
  lwork=NINT(work(1))
@@ -799,17 +786,14 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
  deallocate(work)
  allocate(work(lwork))
  call pdbssolver1(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
-                      eigenvalue,eigenvector,1,1,descx,eigenvector_inv,1,1,descy,&
+                      eigenvalue,eigenvector,1,1,descx,eigenvector_transpinv,1,1,descy,&
                       work,lwork,info)
 ! call pdbssolver1_svd(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
-!                      eigenvalue,eigenvector,1,1,descx,eigenvector_inv,1,1,descy,&
+!                      eigenvalue,eigenvector,1,1,descx,eigenvector_transpinv,1,1,descy,&
 !                      work,lwork,info)
  if(info/=0) stop'SCALAPACK failed'
  deallocate(work)
 
- !
- ! Need to transpose to be consistent with molgw
- eigenvector_inv = TRANSPOSE(eigenvector_inv)
 
 #else
  stop'Cholesky diago cannot run without SCALAPACK'
@@ -819,7 +803,7 @@ end subroutine diago_4blocks_chol
 
 
 !=========================================================================
-subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector,eigenvector_inv,eigenvalue)
+subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector,eigenvector_transpinv,eigenvalue)
  use m_mpi
  use m_tools
  use m_basis_set
@@ -832,7 +816,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
  type(basis_set),intent(in)         :: basis,prod_basis
  real(dp),intent(in)                :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
  type(spectral_function),intent(in) :: chi
- real(dp),intent(in)                :: eigenvector(chi%npole,chi%npole),eigenvector_inv(chi%npole,chi%npole)
+ real(dp),intent(in)                :: eigenvector(chi%npole,chi%npole),eigenvector_transpinv(chi%npole,chi%npole)
  real(dp),intent(in)                :: eigenvalue(chi%npole)
 !=====
  integer                            :: t_ij,t_kl,t_current
@@ -949,12 +933,17 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
    do t_kl=1,chi%npole
      residu_left (:,t_kl)  = residu_left (:,t_kl) &
                   + dipole_state(:,istate,jstate,ijspin) * eigenvector(t_ij,t_kl)
-     residu_right(:,t_kl)  = residu_right(:,t_kl) &
-                  + dipole_state(:,istate,jstate,ijspin) * eigenvector_inv(t_kl,t_ij) &
-                                   * docc_ij
+!FBFB
+!     residu_right(:,t_kl)  = residu_right(:,t_kl) &
+!                  + dipole_state(:,istate,jstate,ijspin) * eigenvector_transpinv(t_ij,t_kl) &
+!                                   * docc_ij
    enddo
 
  enddo
+ ! FBFB
+ residu_left(:,:) = residu_left(:,:) * SQRT(spin_fact)
+ residu_right(:,1:chi%npole/2)           =  residu_left(:,1:chi%npole/2)
+ residu_right(:,chi%npole/2+1:chi%npole) = -residu_left(:,chi%npole/2+1:chi%npole)
 
  deallocate(dipole_state)
 
@@ -1042,10 +1031,10 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,eigenvector
        endif
        WRITE_MASTER(*,'(i4,2(f18.8,2x),5x,a32)') t_current,eigenvalue(t_kl)*Ha_eV,oscillator_strength,symsymbol
        do t_ij=1,chi%npole
-         if( ABS(eigenvector_inv(t_kl,t_ij)*eigenvector(t_ij,t_kl)) > 1.0e-1_dp ) then
+         if( ABS(eigenvector_transpinv(t_ij,t_kl)*eigenvector(t_ij,t_kl)) > 1.0e-1_dp ) then
            istate = chi%transition_table(1,t_ij)
            jstate = chi%transition_table(2,t_ij)
-           WRITE_MASTER(*,'(8x,i4,a,i4,x,f12.4)') istate,' -> ',jstate,eigenvector_inv(t_kl,t_ij)*eigenvector(t_ij,t_kl)
+           WRITE_MASTER(*,'(8x,i4,a,i4,x,f12.4)') istate,' -> ',jstate,eigenvector_transpinv(t_ij,t_kl)*eigenvector(t_ij,t_kl)
          endif
        enddo
        WRITE_MASTER(*,*)
@@ -1329,7 +1318,7 @@ end subroutine prepare_bse
 
 
 !=========================================================================
-subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvector_transpinv,eigenvalue,wpol)
  use m_definitions
  use m_warning
  use m_basis_set
@@ -1343,7 +1332,7 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
  real(dp),intent(in)                   :: c_matrix(nbf,nbf,nspin)
  type(spectral_function),intent(inout) :: wpol
  real(dp),intent(in)                   :: eigenvector    (wpol%npole,wpol%npole)
- real(dp),intent(in)                   :: eigenvector_inv(wpol%npole,wpol%npole)
+ real(dp),intent(in)                   :: eigenvector_transpinv(wpol%npole,wpol%npole)
  real(dp),intent(in)                   :: eigenvalue     (wpol%npole)
 !=====
  integer                               :: t_kl,klspin,ijspin
@@ -1402,7 +1391,7 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,eigenvector,eigenvect
        wpol%residu_left (:,ijstate_spin)  = wpol%residu_left (:,ijstate_spin) &
                     + eri_eigen_klij * eigenvector(t_kl,:)
        wpol%residu_right(:,ijstate_spin)  = wpol%residu_right(:,ijstate_spin) &
-                    + eri_eigen_klij * eigenvector_inv(:,t_kl) * docc_kl
+                    + eri_eigen_klij * eigenvector_transpinv(t_kl,:) * docc_kl
 
      enddo
 !$OMP END DO
@@ -1418,7 +1407,7 @@ end subroutine chi_to_vchiv
 
 
 !=========================================================================
-subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,occupation,c_matrix,eigenvector,eigenvector_inv,eigenvalue,wpol)
+subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,occupation,c_matrix,eigenvector,eigenvector_transpinv,eigenvalue,wpol)
  use m_definitions
  use m_warning
  use m_basis_set
@@ -1430,8 +1419,8 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,occupation,c_matrix,eigenvec
  real(dp),intent(in)                   :: occupation(nbf,nspin)
  real(dp),intent(in)                   :: c_matrix(nbf,nbf,nspin)
  type(spectral_function),intent(inout) :: wpol
- real(dp),intent(in)                   :: eigenvector    (wpol%npole,wpol%npole)
- real(dp),intent(in)                   :: eigenvector_inv(wpol%npole,wpol%npole)
+ real(dp),intent(in)                   :: eigenvector(wpol%npole,wpol%npole)
+ real(dp),intent(in)                   :: eigenvector_transpinv(wpol%npole,wpol%npole)
  real(dp),intent(in)                   :: eigenvalue     (wpol%npole)
 !=====
  integer                               :: t_ij,t_kl,klspin,ijspin
@@ -1463,7 +1452,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,occupation,c_matrix,eigenvec
    docc_kl = occupation(kstate,klspin)-occupation(lstate,klspin)
    eri_3center_2index(:,t_kl) = eri_3center_2index(:,t_kl) * docc_kl
  enddo
- wpol%residu_right(:,:) = MATMUL( eigenvector_inv , TRANSPOSE( eri_3center_2index ) )
+ wpol%residu_right(:,:) = TRANSPOSE( MATMUL( eri_3center_2index , eigenvector_transpinv ) )
 
  deallocate(eri_3center_2index)
 
