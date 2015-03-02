@@ -697,7 +697,9 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,cc_matrix,npole,eigenvalue,eigenve
  amb_matrix_sqrt  (:,:) = MATMUL( amb_matrix_sqrt(:,:)   , amb_matrix(:,:) )
  amb_matrix_sqrtm1(:,:) = MATMUL( amb_matrix_sqrtm1(:,:) , amb_matrix(:,:) )
  
- cc_matrix(:,:) = MATMUL( amb_matrix_sqrt , MATMUL( cc_matrix , amb_matrix_sqrt)  )
+ ! use amb_matrix as a temporary matrix here:
+ amb_matrix(:,:) = MATMUL( cc_matrix , amb_matrix_sqrt )
+ cc_matrix(:,:) = MATMUL( amb_matrix_sqrt , amb_matrix )
 
 ! WRITE_MASTER(*,*) 'CC ',matrix_is_symmetric(nmat,cc_matrix)
 
