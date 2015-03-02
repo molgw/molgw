@@ -1,9 +1,11 @@
-HF+TDA                # LDA+BSE             # calculation type HF, LDA+GW, PBE+GW
-1   0.0   0.0         # spin pol    charge magnetization
-aug-cc-pVDZ PURE  # maug-cc-pVDZ-RI  #CART          #6-31G # cc-pVTZ                  #          6-311ppGss               # basis set
-30   0.50 PULAY  HIGH # nscf, alpha_mixing
-000000                # print_volume
-5  angstrom
+&molgw
+ basis_path='../../basis/'
+ scf='hf'
+ postscf='td'
+ tda='yes'
+ basis='aug-cc-pVDZ'
+ natom=5
+/
 14           .000000     .000000     .000000
 1            .856135     .856135     .856135
 1           -.856135    -.856135     .856135

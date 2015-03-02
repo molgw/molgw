@@ -18,6 +18,7 @@ module m_spectral_function
 
  type spectral_function 
    integer              :: npole
+   integer              :: npole_reso
    integer              :: nprodbasis
    real(dp),allocatable :: transition_table(:,:)  ! correspondance table from
                                                   ! transition index to state pair indexes

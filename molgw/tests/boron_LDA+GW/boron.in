@@ -4,7 +4,7 @@
  nspin=2
  magnetization=1.0
  basis='cc-pVTZ'
- basispath='../../basis/'
+ basis_path='../../basis/'
  natom=1
 /
 B    0. 0. 0.
