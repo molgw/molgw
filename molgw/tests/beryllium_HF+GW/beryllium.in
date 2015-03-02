@@ -1,7 +1,7 @@
 &molgw
  scf='hf'
  basis='cc-pVDZ'
- basispath='../../basis'
+ basis_path='../../basis'
  postscf='gw'
  mixing_scheme='simple'
  natom=1

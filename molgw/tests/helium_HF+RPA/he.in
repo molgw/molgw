@@ -2,7 +2,7 @@
  scf='hf'
  postscf='GW'
  basis='cc-pV5Z'
- basispath='../../basis'
+ basis_path='../../basis'
  mixing_scheme='simple'
  natom=1
 /

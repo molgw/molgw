@@ -2,9 +2,10 @@
  basis_path='../../basis/'
  scf='hf'
  postscf='td'
- tda='no'
+ tda='yes'
  basis='aug-cc-pVDZ'
  natom=5
+ frozencore='yes'
 /
 14           .000000     .000000     .000000
 1            .856135     .856135     .856135
