@@ -1,8 +1,8 @@
 OPENMP= #-openmp
 
 
-FC=gfortran -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC 
-#FC=mpif90 -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC -DHAVE_SCALAPACK  -DHAVE_MPI #-DTODAY
+#FC=gfortran -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC 
+FC=mpif90 -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC -DHAVE_SCALAPACK  -DHAVE_MPI 
 
 
 CC=gcc
@@ -18,7 +18,7 @@ CCOPTS=  -O2 # -O0 -g -fbounds-check
 
 LAPACK=-L${HOME}/src/lapack-3.5.0/ -llapack -lblas
 
-SCALAPACK= #-L${HOME}/src/scalapack-2.0.2/ -lscalapack 
+SCALAPACK= -L${HOME}/src/scalapack-2.0.2/ -lscalapack 
 #SCALAPACK= #-L{MKLROOT}/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -lpthread -lm
 
 LIBXC_ROOT=${HOME}/src/libxc-2.2.1_gfortran/
