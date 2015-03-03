@@ -620,29 +620,6 @@ end subroutine read_energy_qp
 
 
 !=========================================================================
-subroutine memory_statement(rn)
- use m_definitions
- use m_mpi
- implicit none
-
- real(dp),intent(in) :: rn
-!=====
- real(dp)            :: mem_mb
-!=====
- 
-
- mem_mb = dp * rn / 1024._dp**2
-
- if( ABS(mem_mb) < 500._dp ) then
-   WRITE_MASTER(*,'(a,f9.3)') ' Memory [Mb]: ',mem_mb
- else
-   WRITE_MASTER(*,'(a,f9.3)') ' Memory [Gb]: ',mem_mb / 1024._dp
- endif
-
-end subroutine memory_statement
-
-
-!=========================================================================
 subroutine write_small_restart(nbf,occupation,c_matrix)
  use m_definitions
  use m_mpi

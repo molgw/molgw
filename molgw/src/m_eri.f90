@@ -4,6 +4,7 @@
 module m_eri
  use m_definitions
  use m_mpi
+ use m_memory
  use m_basis_set
  use m_timing
 
@@ -82,7 +83,6 @@ subroutine prepare_eri(basis,rcut,which_buffer)
  real(dp),intent(in)        :: rcut
  integer,intent(in)         :: which_buffer
 !===== 
- integer            :: info
  logical            :: file_exists
 !===== 
 
@@ -156,33 +156,16 @@ subroutine allocate_eri_auxil(auxil_basis)
  ! 2-CENTER INTEGRALS 
  !
  WRITE_MASTER(*,*) 'Allocate 2-center integrals'
- call memory_statement(REAL(nsize_auxil,dp)*REAL(prec_eri/dp,dp))
-
- allocate(eri_2center_m1(nsize1_auxil,nsize1_auxil),stat=info)
-
- if(info==0) then
-   WRITE_MASTER(*,*) 'success'
- else
-   WRITE_MASTER(*,*) 'failure'
-   stop'Not enough memory. Buy a bigger computer'
- endif
+ call clean_allocate('2-center integrals',eri_2center_m1,nsize1_auxil,nsize1_auxil)
 
 
  !
  ! 3-CENTER INTEGRALS 
  !
  WRITE_MASTER(*,*) 'Allocate 3-center integrals'
- call memory_statement(REAL(nsize1_auxil,dp)*REAL(nsize1)*REAL(prec_eri/dp,dp))
+ call clean_allocate('3-center integrals',eri_3center,nsize1_auxil,nsize1)
 
- allocate(eri_3center(nsize1_auxil,nsize1),stat=info)
  eri_3center(:,:) = 0.0_dp
-
- if(info==0) then
-   WRITE_MASTER(*,*) 'success'
- else
-   WRITE_MASTER(*,*) 'failure'
-   stop'Not enough memory. Buy a bigger computer'
- endif
 
 
 end subroutine allocate_eri_auxil
@@ -195,13 +178,11 @@ subroutine deallocate_eri_buffer()
 
  if(allocated(eri_buffer)) then
    WRITE_MASTER(*,'(/,a)')     ' Deallocate ERI buffer'
-   call memory_statement(-REAL(nsize,dp)*REAL(prec_eri,dp)/REAL(dp,dp))
-   deallocate(eri_buffer)
+   call clean_deallocate('4-center integrals',eri_buffer)
  endif
  if(allocated(eri_buffer_lr)) then
    WRITE_MASTER(*,'(/,a)')     ' Deallocate LR ERI buffer'
-   call memory_statement(-REAL(nsize,dp)*REAL(prec_eri,dp)/REAL(dp,dp))
-   deallocate(eri_buffer_lr)
+   call clean_deallocate('4-center LR integrals',eri_buffer_lr)
  endif
  WRITE_MASTER(*,*)
 
@@ -215,10 +196,14 @@ subroutine deallocate_eri()
  integer :: ishell
 !=====
 
- if(allocated(eri_buffer))            deallocate(eri_buffer)
- if(allocated(eri_buffer_lr))         deallocate(eri_buffer_lr)
- if(allocated(eri_2center_m1))        deallocate(eri_2center_m1)
- if(allocated(eri_3center))           deallocate(eri_3center)
+ if(allocated(eri_buffer)) then
+   WRITE_MASTER(*,'(/,a)')     ' Deallocate ERI buffer'
+   call clean_deallocate('4-center integrals',eri_buffer)
+ endif
+ if(allocated(eri_buffer_lr)) then
+   WRITE_MASTER(*,'(/,a)')     ' Deallocate LR ERI buffer'
+   call clean_deallocate('4-center LR integrals',eri_buffer_lr)
+ endif
  if(allocated(negligible_basispair))  deallocate(negligible_basispair)
  if(allocated(negligible_shellpair))  deallocate(negligible_shellpair)
  if(allocated(index_pair))            deallocate(index_pair)
@@ -501,25 +486,14 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  WRITE_MASTER(*,*) 'Max index size',HUGE(nsize)
  if(nsize<1) stop'too many integrals to be stored'
 
- WRITE_MASTER(*,*) 'Allocate 4-center integrals'
- call memory_statement(REAL(nsize,dp)*REAL(prec_eri,dp)/REAL(dp,dp))
-
  select case(which_buffer)
  case(BUFFER1)
-   allocate(eri_buffer(nsize),stat=info)
+   call clean_allocate('4-center integrals',eri_buffer,nsize)
    eri_buffer(:) = 0.0_dp
  case(BUFFER2)
-   allocate(eri_buffer_lr(nsize),stat=info)
+   call clean_allocate('4-center LR integrals',eri_buffer_lr,nsize)
    eri_buffer_lr(:) = 0.0_dp
  end select
-
- if(info==0) then
-   WRITE_MASTER(*,*) 'success'
- else
-   WRITE_MASTER(*,*) 'failure'
-   stop'Not enough memory. Buy a bigger computer'
- endif
-
 
 
  rcut_libint = rcut
@@ -1294,8 +1268,7 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  eri_3center(:,:) = MATMUL( eri_2center_m1(:,:) , eri_3center(:,:) )
 
  WRITE_MASTER(*,*) 'Now deallocate the 2-center integrals: not needed anymore'
- call memory_statement(-REAL(nsize_auxil,dp)*REAL(prec_eri/dp,dp))
- if(allocated(eri_2center_m1)) deallocate(eri_2center_m1)
+ call clean_deallocate('2-center integrals',eri_2center_m1)
  
 
  call stop_clock(timing_eri_3center)
@@ -2181,9 +2154,8 @@ subroutine prepare_eri_3center_eigen(c_matrix)
 
 
  !TODO merge the 2 last indexes for prod_basis save a factor 2! (i<->j symmetry)
- allocate(eri_3center_eigen(nsize1_auxil,nbf_eri,nbf_eri,nspin))
  WRITE_MASTER(*,*) 'Allocate 3-center integrals on states'
- call memory_statement(REAL(nsize1_auxil,dp)*REAL(nbf_eri,dp)**2*REAL(prec_eri,dp)/REAL(dp,dp))
+ call clean_allocate('3-center MO integrals',eri_3center_eigen,nsize1_auxil,nbf_eri,nbf_eri,nspin)
 
  allocate(eri_3center_tmp(nsize1_auxil,nbf_eri,nbf_eri)) 
  eri_3center_eigen(:,:,:,:) = 0.0_dp
@@ -2222,7 +2194,7 @@ subroutine destroy_eri_3center_eigen()
 !=====
 
  WRITE_MASTER(*,'(/,a)') ' Destroy 3-center integrals on eigenstates'
- if(allocated(eri_3center_eigen)) deallocate(eri_3center_eigen)
+ call clean_deallocate('3-center MO integrals',eri_3center_eigen)
 
 end subroutine destroy_eri_3center_eigen
 
@@ -2233,8 +2205,7 @@ subroutine destroy_eri_3center()
 !=====
 
  WRITE_MASTER(*,'(/,a)') ' Destroy 3-center integrals'
- call memory_statement(-REAL(nsize1_auxil,dp)*REAL(nsize1)*REAL(prec_eri/dp,dp))
- if(allocated(eri_3center)) deallocate(eri_3center)
+ call clean_deallocate('3-center integrals',eri_3center)
 
 end subroutine destroy_eri_3center
 
