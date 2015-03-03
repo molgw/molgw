@@ -808,7 +808,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
  real(dp)                           :: oscillator_strength,trk_sumrule
  real(dp),allocatable               :: dipole_basis(:,:,:),dipole_tmp(:,:,:),dipole_state(:,:,:,:)
  real(dp),allocatable               :: dipole_cart(:,:,:)
- real(dp),allocatable               :: residu_left(:,:),residu_right(:,:)
+ real(dp),allocatable               :: residu_left(:,:)
  integer,parameter                  :: unit_dynpol=101
  integer,parameter                  :: unit_photocross=102
  integer                            :: parityi,parityj,reflectioni,reflectionj
@@ -896,7 +896,6 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
 
 
  allocate(residu_left (3,chi%npole))
- allocate(residu_right(3,chi%npole))
 
  nmat=chi%npole/2
  residu_left (:,:) = 0.0_dp
@@ -916,8 +915,8 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
 
  residu_left(:,:) = residu_left(:,:) * SQRT(spin_fact)
 
- residu_right(:,1:nmat)           =  residu_left(:,1:nmat)
- residu_right(:,nmat+1:chi%npole) = -residu_left(:,nmat+1:chi%npole)
+! residu_right(:,1:nmat)        =  residu_left(:,1:nmat)
+! residu_right(:,nmat+1:2*nmat) = -residu_left(:,nmat+1:2*nmat)
 
  deallocate(dipole_state)
 
@@ -937,13 +936,14 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
 
  dynamical_pol(:,:,:) = 0.0_dp
  static_polarizability(:,:) = 0.0_dp
- do t_ij=1,chi%npole
+ do t_ij=1,nmat
    do idir=1,3
      do jdir=1,3
        dynamical_pol(:,idir,jdir) = dynamical_pol(:,idir,jdir) &
-                            + residu_left(idir,t_ij) * residu_right(jdir,t_ij) &
-                              *AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ij) ) )
-       static_polarizability(idir,jdir) = static_polarizability(idir,jdir) + residu_left(idir,t_ij) * residu_right(jdir,t_ij) / eigenvalue(t_ij)
+                            + residu_left(idir,t_ij) * residu_left(jdir,t_ij) &
+                              * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ij) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ij) ) ) )
+       static_polarizability(idir,jdir) = static_polarizability(idir,jdir) &
+                      + 2.0_dp * residu_left(idir,t_ij) * residu_left(jdir,t_ij) / eigenvalue(t_ij)
      enddo
    enddo
  enddo
@@ -960,7 +960,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
    if( is_triplet ) then 
      oscillator_strength = 0.0_dp
    else
-     oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_kl),residu_right(:,t_kl)) * eigenvalue(t_kl)
+     oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_kl),residu_left(:,t_kl)) * eigenvalue(t_kl)
    endif
    trk_sumrule = trk_sumrule + oscillator_strength
 
@@ -1005,7 +1005,11 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
        if( ABS(bigx(t_ij,t_kl)**2) > 1.0e-1_dp ) then
          istate = chi%transition_table(1,t_ij)
          jstate = chi%transition_table(2,t_ij)
+         ijspin = chi%transition_table(3,t_ij)
          WRITE_MASTER(*,'(8x,i4,a,i4,x,f12.4)') istate,' -> ',jstate,bigx(t_ij,t_kl)**2
+         WRITE_MASTER(*,'(8x,i4,a,i4,x,f12.4)') istate,' -> ',jstate,bigx(t_ij,t_kl)+bigy(t_ij,t_kl)
+         WRITE_MASTER(*,'(8x,i4,a,i4,x,f12.4)') istate,' -> ',jstate,bigx(t_ij,t_kl)
+         WRITE_MASTER(*,'(8x,i4,a,i4,x,f12.4)') istate,' -> ',jstate,bigy(t_ij,t_kl)
        endif
      enddo
      do t_ij=1,nmat
@@ -1049,7 +1053,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
  close(unit_photocross)
 
 
- deallocate(residu_left,residu_right)
+ deallocate(residu_left)
 
  call stop_clock(timing_spectrum)
 
@@ -1376,8 +1380,8 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,bigx,bigy,eigenvalue,
 
  ! Make use of the block structure of eigenvector_transpinv | X  -Y |
  !                                                          | Y  -X |
- wpol%residu_right(1:nmat,:)            =  wpol%residu_left(1:nmat,:) 
- wpol%residu_right(nmat+1:wpol%npole,:) = -wpol%residu_left(nmat+1:wpol%npole,:) 
+ wpol%residu_right(1:nmat,:)        =  wpol%residu_left(1:nmat,:) 
+ wpol%residu_right(nmat+1:2*nmat,:) = -wpol%residu_left(nmat+1:2*nmat,:) 
 
  if(allocated(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
 
@@ -1436,8 +1440,8 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,occupation,c_matrix,bigx,big
 
  ! Make use of the block structure of eigenvector_transpinv | X  -Y |
  !                                                          | Y  -X |
- wpol%residu_right(1:nmat,:)            =  wpol%residu_left(1:nmat,:) 
- wpol%residu_right(nmat+1:wpol%npole,:) = -wpol%residu_left(nmat+1:wpol%npole,:) 
+ wpol%residu_right(1:nmat,:)        =  wpol%residu_left(1:nmat,:) 
+ wpol%residu_right(nmat+1:2*nmat,:) = -wpol%residu_left(nmat+1:2*nmat,:) 
 
  deallocate(eri_3center_2index)
 
