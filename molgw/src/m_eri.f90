@@ -155,14 +155,12 @@ subroutine allocate_eri_auxil(auxil_basis)
  !
  ! 2-CENTER INTEGRALS 
  !
- WRITE_MASTER(*,*) 'Allocate 2-center integrals'
  call clean_allocate('2-center integrals',eri_2center_m1,nsize1_auxil,nsize1_auxil)
 
 
  !
  ! 3-CENTER INTEGRALS 
  !
- WRITE_MASTER(*,*) 'Allocate 3-center integrals'
  call clean_allocate('3-center integrals',eri_3center,nsize1_auxil,nsize1)
 
  eri_3center(:,:) = 0.0_dp
@@ -2154,7 +2152,6 @@ subroutine prepare_eri_3center_eigen(c_matrix)
 
 
  !TODO merge the 2 last indexes for prod_basis save a factor 2! (i<->j symmetry)
- WRITE_MASTER(*,*) 'Allocate 3-center integrals on states'
  call clean_allocate('3-center MO integrals',eri_3center_eigen,nsize1_auxil,nbf_eri,nbf_eri,nspin)
 
  allocate(eri_3center_tmp(nsize1_auxil,nbf_eri,nbf_eri)) 

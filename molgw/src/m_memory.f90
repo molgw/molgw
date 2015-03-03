@@ -5,8 +5,10 @@ module m_memory
  use m_definitions
  use m_mpi
 
- real(dp),private :: total_memory=0.0_dp      ! Total memory occupied 
-                                              ! by the big arrays in Mb
+ real(dp),private :: total_memory=0.0_dp     ! Total memory occupied 
+                                             ! by the big arrays in Mb
+ real(dp),private :: peak_memory=0.0_dp      ! Max memory occupied 
+                                             ! by the big arrays in Mb
 
  interface clean_allocate
   module procedure clean_allocate_1d
@@ -31,10 +33,18 @@ subroutine total_memory_statement()
  implicit none
 !=====
 
+ WRITE(*,'(/,a)') ' Total memory that was not deallocated properly'
  if( total_memory < 500._dp ) then
    WRITE_MASTER(*,'(a30,f9.3)') ' Total memory [Mb]: ',total_memory
  else
    WRITE_MASTER(*,'(a30,f9.3)') ' Total memory [Gb]: ',total_memory / 1024._dp
+ endif
+
+ WRITE(*,'(/,a)') ' Maximum memory used during the run'
+ if( peak_memory < 500._dp ) then
+   WRITE_MASTER(*,'(a30,f9.3)') '  Peak memory [Mb]: ',peak_memory
+ else
+   WRITE_MASTER(*,'(a30,f9.3)') '  Peak memory [Gb]: ',peak_memory / 1024._dp
  endif
 
  WRITE_MASTER(*,*)
@@ -72,6 +82,7 @@ subroutine clean_allocate_1d(array_name,array,n1)
 
 
  total_memory = total_memory + mem_mb
+ peak_memory = MAX(peak_memory,total_memory)
  if( total_memory < 500._dp ) then
    WRITE_MASTER(*,'(a30,f9.3)') ' Total memory [Mb]: ',total_memory
  else
@@ -113,6 +124,7 @@ subroutine clean_allocate_2d(array_name,array,n1,n2)
 
 
  total_memory = total_memory + mem_mb
+ peak_memory = MAX(peak_memory,total_memory)
  if( total_memory < 500._dp ) then
    WRITE_MASTER(*,'(a30,f9.3)') ' Total memory [Mb]: ',total_memory
  else
@@ -154,6 +166,7 @@ subroutine clean_allocate_3d(array_name,array,n1,n2,n3)
 
 
  total_memory = total_memory + mem_mb
+ peak_memory = MAX(peak_memory,total_memory)
  if( total_memory < 500._dp ) then
    WRITE_MASTER(*,'(a30,f9.3)') ' Total memory [Mb]: ',total_memory
  else
@@ -195,6 +208,7 @@ subroutine clean_allocate_4d(array_name,array,n1,n2,n3,n4)
 
 
  total_memory = total_memory + mem_mb
+ peak_memory = MAX(peak_memory,total_memory)
  if( total_memory < 500._dp ) then
    WRITE_MASTER(*,'(a30,f9.3)') ' Total memory [Mb]: ',total_memory
  else
