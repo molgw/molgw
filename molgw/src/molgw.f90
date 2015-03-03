@@ -66,7 +66,6 @@ program molgw
  !
  ! Reading input file: the input parameters are stored in the module m_inputparam
  call read_inputfile_namelist()
-!OLD FBFB call read_inputparameter_molecule()
 
  !
  ! Nucleus-nucleus repulsion contribution to the energy

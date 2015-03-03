@@ -25,7 +25,6 @@ module m_spectral_function
                                                   ! transition index to state pair indexes
    real(dp),allocatable :: pole(:)
    real(dp),allocatable :: residu_left(:,:)       ! first index runs on n, second index on i
-!FBFB   real(dp),allocatable :: residu_right(:,:)      ! first index runs on n, second index on j
  end type spectral_function
 
  !
@@ -137,7 +136,6 @@ subroutine allocate_spectral_function(nprodbasis,sf)
 
  allocate(sf%pole(sf%npole_reso))
  call clean_allocate(' left residu',sf%residu_left,sf%nprodbasis,sf%npole_reso)
-! call clean_allocate('right residu',sf%residu_right,sf%npole,sf%nprodbasis)
  
 
 end subroutine allocate_spectral_function
@@ -183,7 +181,6 @@ subroutine destroy_spectral_function(sf)
  if(allocated(sf%pole))             deallocate(sf%pole)
  if(allocated(sf%residu_left)) then
    call clean_deallocate(' left residu',sf%residu_left)
-!   call clean_deallocate('right residu',sf%residu_right)
  endif
 
  WRITE_MASTER(*,'(/,a)') ' Spectral function destroyed'
@@ -246,9 +243,6 @@ subroutine write_spectral_function(sf)
  do ipole_write=1,npole_write
    WRITE_MASTER(spectralfile) sf%residu_left(:,index_pole(ipole_write))
  enddo
-! do iprodbasis=1,sf%nprodbasis
-!   WRITE_MASTER(spectralfile) sf%residu_right(index_pole(:),iprodbasis)
-! enddo
 
  close(spectralfile)
  deallocate(index_pole)
@@ -299,9 +293,6 @@ subroutine read_spectral_function(sf,reading_status)
    do ipole_read=1,npole_read
      read(spectralfile) sf%residu_left(:,ipole_read)
    enddo
-!   do iprodbasis=1,sf%nprodbasis
-!     read(spectralfile) sf%residu_right(:,iprodbasis)   
-!   enddo
 
    reading_status=0
    msg='reading spectral function from spectral_file obtained from '//TRIM(postscf_name_read)
