@@ -357,7 +357,7 @@ subroutine setup_exchange(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
      do lbf=1,nbf
        if( negligible_basispair(lbf,jbf) ) cycle
        do kbf=1,nbf
-         if( ABS(p_matrix(kbf,lbf,ispin)) <  1.0e-12_dp ) cycle  ! FBFB
+!         if( ABS(p_matrix(kbf,lbf,ispin)) <  1.0e-12_dp ) cycle 
          do ibf=1,nbf
            if( negligible_basispair(ibf,kbf) ) cycle
            !

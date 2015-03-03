@@ -147,7 +147,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  call clean_allocate('Y',bigy,nmat,nmat)
 
 
- allocate(eigenvalue(wpol_out%npole))
+ allocate(eigenvalue(wpol_out%npole_reso))
 
  !
  ! Diago using the 4 block structure and the symmetry of each block
@@ -165,7 +165,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
 
  !
  ! Second part of the RPA correlation energy: sum over positive eigenvalues
- rpa_correlation = rpa_correlation + 0.25_dp * SUM( ABS(eigenvalue(:)) )
+ rpa_correlation = rpa_correlation + 0.50_dp * SUM( ABS(eigenvalue(:)) )
  if(is_rpa) then
   WRITE_MASTER(*,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
   WRITE_MASTER(*,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
@@ -534,7 +534,7 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
  integer              :: ijspin,klspin
  integer              :: kbf
  real(dp),allocatable :: bra(:),ket(:)
- real(dp),allocatable :: bra_auxil(:,:,:,:),ket_auxil(:,:,:,:)
+ real(dp),allocatable :: bra_auxil(:,:,:,:) ! ,ket_auxil(:,:,:,:)
  real(dp)             :: wtmp
 !=====
 
@@ -543,18 +543,19 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
  WRITE_MASTER(*,'(a)') ' Build W part'
  !
  ! Prepare the bra and ket for BSE
- allocate(bra(wpol_static%npole),ket(wpol_static%npole))
+ allocate(bra(wpol_static%npole_reso))
+ allocate(ket(wpol_static%npole_reso))
 
  if(has_auxil_basis) then
-   allocate(bra_auxil(wpol_static%npole,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
-   allocate(ket_auxil(wpol_static%npole,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
+   allocate(bra_auxil(wpol_static%npole_reso,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
+!   allocate(ket_auxil(wpol_static%npole_reso,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
    do ijspin=1,nspin
      do istate=ncore_W+1,nvirtual_W-1 
        do jstate=ncore_W+1,nvirtual_W-1
 
          ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-         bra_auxil(:,istate,jstate,ijspin) = MATMUL( wpol_static%residu_left (:,:) , eri_3center_eigen(:,istate,jstate,ijspin) )
-         ket_auxil(:,istate,jstate,ijspin) = MATMUL( wpol_static%residu_right(:,:) , eri_3center_eigen(:,istate,jstate,ijspin) )
+         bra_auxil(:,istate,jstate,ijspin) = MATMUL( TRANSPOSE(wpol_static%residu_left(:,:)) , eri_3center_eigen(:,istate,jstate,ijspin) )
+!         ket_auxil(:,istate,jstate,ijspin) = MATMUL( wpol_static%residu_right(:,:) , eri_3center_eigen(:,istate,jstate,ijspin) )
 
        enddo
      enddo
@@ -578,15 +579,15 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
 
      if(.NOT. has_auxil_basis) then
        kbf = prod_basis%index_prodbasis(istate,kstate)+prod_basis%nbf*(ijspin-1)
-       bra(:) = wpol_static%residu_left (:,kbf)
+       bra(:) = wpol_static%residu_left(kbf,:)
        kbf = prod_basis%index_prodbasis(jstate,lstate)+prod_basis%nbf*(klspin-1)
-       ket(:) = wpol_static%residu_right(:,kbf)
+       ket(:) = wpol_static%residu_left(kbf,:)    ! wpol_static%residu_right(kbf,:)
      else
        bra(:) = bra_auxil(:,istate,kstate,ijspin) 
-       ket(:) = ket_auxil(:,jstate,lstate,klspin)
+       ket(:) = bra_auxil(:,jstate,lstate,klspin)  !  ket_auxil(:,jstate,lstate,klspin)
      endif
 
-     wtmp =  SUM( bra(:)*ket(:)/(-wpol_static%pole(:)) )
+     wtmp =  SUM( 2.0_dp * bra(:)*ket(:)/(-wpol_static%pole(:)) )   ! Factor two comes from Resonant and Anti-resonant transitions
      apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
      amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) - wtmp
      if( t_ij/=t_kl) then
@@ -596,15 +597,15 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
 
      if(.NOT. has_auxil_basis) then
        kbf = prod_basis%index_prodbasis(istate,lstate)+prod_basis%nbf*(ijspin-1)
-       bra(:) = wpol_static%residu_left (:,kbf)
+       bra(:) = wpol_static%residu_left(kbf,:)
        kbf = prod_basis%index_prodbasis(jstate,kstate)+prod_basis%nbf*(klspin-1)
-       ket(:) = wpol_static%residu_right(:,kbf)
+       ket(:) = wpol_static%residu_left(kbf,:)   !  wpol_static%residu_right(:,kbf)
      else
        bra(:) = bra_auxil(:,istate,lstate,ijspin) 
-       ket(:) = ket_auxil(:,jstate,kstate,klspin)
+       ket(:) = bra_auxil(:,jstate,kstate,klspin)   !  ket_auxil(:,jstate,kstate,klspin)
      endif
 
-     wtmp =  SUM( bra(:)*ket(:)/(-wpol_static%pole(:)) )
+     wtmp =  SUM( 2.0_dp * bra(:)*ket(:)/(-wpol_static%pole(:)) )   ! Factor two comes from Resonant and Anti-resonant transitions
      apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
      amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) + wtmp
      if( t_ij/=t_kl) then
@@ -618,7 +619,7 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
 
  deallocate(bra,ket)
  if(allocated(bra_auxil))                deallocate(bra_auxil)
- if(allocated(ket_auxil))                deallocate(ket_auxil)
+! if(allocated(ket_auxil))                deallocate(ket_auxil)
 
 
  call stop_clock(timing_build_bse)
@@ -637,7 +638,7 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,cc_matrix,npole,eigenvalue,bigx,bi
  integer,intent(in)     :: nmat,npole
  real(dp),intent(inout) :: amb_matrix(nmat,nmat)
  real(dp),intent(inout) :: cc_matrix(nmat,nmat)  ! cc_matrix constains (A+B) in the input, however it used a matrix buffer after
- real(dp),intent(out)   :: eigenvalue(npole)
+ real(dp),intent(out)   :: eigenvalue(nmat)
  real(dp),intent(out)   :: bigx(nmat,nmat),bigy(nmat,nmat)
 !=====
  integer              :: t_kl
@@ -689,10 +690,8 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,cc_matrix,npole,eigenvalue,bigx,bi
 
  forall(t_kl=1:nmat)
    cc_matrix(:,t_kl) = cc_matrix(:,t_kl) / SQRT(bigomega(t_kl))
-   ! Resonant
+   ! Only Resonant
    eigenvalue(t_kl)      =  bigomega(t_kl)
-   ! AntiResonant
-   eigenvalue(t_kl+nmat) = -bigomega(t_kl)
  end forall
 
  ! Save (A-B)**-1/2 in amb_matrix 
@@ -728,7 +727,7 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
 
  integer,intent(in)                 :: nmat,npole
  real(dp),intent(inout)             :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
- real(dp),intent(out)               :: eigenvalue(npole)
+ real(dp),intent(out)               :: eigenvalue(nmat)
  real(dp),intent(out)               :: eigenvector(npole,npole)   !FBFB eigenvector(npole,nmat) fix the second dimension
 !=====
  integer  :: descm(ndel),desck(ndel)
@@ -791,9 +790,9 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
  type(basis_set),intent(in)         :: basis,prod_basis
  real(dp),intent(in)                :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
  type(spectral_function),intent(in) :: chi
- real(dp),intent(in)                :: bigx(chi%npole/2,chi%npole/2) 
- real(dp),intent(in)                :: bigy(chi%npole/2,chi%npole/2) 
- real(dp),intent(in)                :: eigenvalue(chi%npole)
+ real(dp),intent(in)                :: bigx(chi%npole_reso,chi%npole_reso) 
+ real(dp),intent(in)                :: bigy(chi%npole_reso,chi%npole_reso) 
+ real(dp),intent(in)                :: eigenvalue(chi%npole_reso)
 !=====
  integer                            :: t_ij,t_kl
  integer                            :: nmat
@@ -895,10 +894,10 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
  deallocate(dipole_basis,dipole_tmp)
 
 
- allocate(residu_left (3,chi%npole))
+ allocate(residu_left(3,chi%npole))
 
  nmat=chi%npole/2
- residu_left (:,:) = 0.0_dp
+ residu_left(:,:) = 0.0_dp
  do t_ij=1,nmat
    istate = chi%transition_table(1,t_ij)
    jstate = chi%transition_table(2,t_ij)
@@ -906,12 +905,12 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
 
    ! Let use (i <-> j) symmetry to halve the loop
    do t_kl=1,nmat
-     residu_left (:,t_kl)  = residu_left (:,t_kl) &
+     residu_left(:,t_kl) = residu_left(:,t_kl) &
                   + dipole_state(:,istate,jstate,ijspin) * ( bigx(t_ij,t_kl) + bigy(t_ij,t_kl) )
    enddo
 
  enddo
- residu_left (:,nmat+1:2*nmat) = residu_left (:,1:nmat) 
+ residu_left(:,nmat+1:2*nmat) = residu_left(:,1:nmat) 
 
  residu_left(:,:) = residu_left(:,:) * SQRT(spin_fact)
 
@@ -1312,9 +1311,9 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,bigx,bigy,eigenvalue,
  real(dp),intent(in)                   :: occupation(nbf,nspin)
  real(dp),intent(in)                   :: c_matrix(nbf,nbf,nspin)
  type(spectral_function),intent(inout) :: wpol
- real(dp),intent(in)                   :: bigx(wpol%npole/2,wpol%npole/2)
- real(dp),intent(in)                   :: bigy(wpol%npole/2,wpol%npole/2)
- real(dp),intent(in)                   :: eigenvalue(wpol%npole)
+ real(dp),intent(in)                   :: bigx(wpol%npole_reso,wpol%npole_reso)
+ real(dp),intent(in)                   :: bigy(wpol%npole_reso,wpol%npole_reso)
+ real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso)
 !=====
  integer                               :: t_kl,klspin,ijspin
  integer                               :: istate,jstate,kstate,lstate,ijstate,ijstate_spin
@@ -1339,9 +1338,9 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,bigx,bigy,eigenvalue,
 
  wpol%pole(:) = eigenvalue(:)
 
- nmat=wpol%npole/2
+ nmat=wpol%npole_reso
  wpol%residu_left(:,:) = 0.0_dp
- do t_kl=1,nmat ! wpol%npole
+ do t_kl=1,nmat 
    kstate = wpol%transition_table(1,t_kl)
    lstate = wpol%transition_table(2,t_kl)
    klspin = wpol%transition_table(3,t_kl)
@@ -1368,20 +1367,20 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,bigx,bigy,eigenvalue,
        ! Use the symmetry ( k l | i j ) to regroup (kl) and (lk) contributions
        ! and the block structure of eigenvector | X  Y |
        !                                        | Y  X |
-       wpol%residu_left (1:nmat,ijstate_spin)  = wpol%residu_left (1:nmat,ijstate_spin) &
-                    + eri_eigen_klij * ( bigx(t_kl,:) + bigy(t_kl,:) )
+       wpol%residu_left(ijstate_spin,:) = wpol%residu_left(ijstate_spin,:) &
+                              + eri_eigen_klij * ( bigx(t_kl,:) + bigy(t_kl,:) )
 
      enddo
    enddo
  enddo
- wpol%residu_left(nmat+1:2*nmat,:)  = wpol%residu_left(1:nmat,:) 
+! wpol%residu_left(:,nmat+1:2*nmat) = wpol%residu_left(:,1:nmat) 
 
  wpol%residu_left(:,:) = wpol%residu_left(:,:) * SQRT(spin_fact)
 
  ! Make use of the block structure of eigenvector_transpinv | X  -Y |
  !                                                          | Y  -X |
- wpol%residu_right(1:nmat,:)        =  wpol%residu_left(1:nmat,:) 
- wpol%residu_right(nmat+1:2*nmat,:) = -wpol%residu_left(nmat+1:2*nmat,:) 
+! wpol%residu_right(1:nmat,:)        =  wpol%residu_left(1:nmat,:) 
+! wpol%residu_right(nmat+1:2*nmat,:) = -wpol%residu_left(nmat+1:2*nmat,:) 
 
  if(allocated(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
 
@@ -1403,9 +1402,9 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,occupation,c_matrix,bigx,big
  real(dp),intent(in)                   :: occupation(nbf,nspin)
  real(dp),intent(in)                   :: c_matrix(nbf,nbf,nspin)
  type(spectral_function),intent(inout) :: wpol
- real(dp),intent(in)                   :: bigx(wpol%npole/2,wpol%npole/2)
- real(dp),intent(in)                   :: bigy(wpol%npole/2,wpol%npole/2)
- real(dp),intent(in)                   :: eigenvalue(wpol%npole)
+ real(dp),intent(in)                   :: bigx(wpol%npole_reso,wpol%npole_reso)
+ real(dp),intent(in)                   :: bigy(wpol%npole_reso,wpol%npole_reso)
+ real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso)
 !=====
  integer                               :: t_ij,t_kl,klspin,ijspin
  integer                               :: nmat
@@ -1420,7 +1419,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,occupation,c_matrix,bigx,big
  call allocate_spectral_function(nbf_auxil,wpol)
  wpol%pole(:) = eigenvalue(:)
 
- nmat = wpol%npole/2
+ nmat = wpol%npole_reso
 
  allocate(eri_3center_2index(nbf_auxil,nmat))
  do t_kl=1,nmat
@@ -1433,15 +1432,16 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,occupation,c_matrix,bigx,big
  ! Use the symmetry ( I | k l ) to regroup (kl) and (lk) contributions
  ! and the block structure of eigenvector | X  Y |
  !                                        | Y  X |
- wpol%residu_left(1:nmat,:) = TRANSPOSE( MATMUL( eri_3center_2index , bigx(:,:) + bigy(:,:) ) )
- wpol%residu_left(nmat+1:2*nmat,:)  = wpol%residu_left(1:nmat,:)
+ wpol%residu_left(:,:) = MATMUL( eri_3center_2index , bigx(:,:) + bigy(:,:) ) 
+
+! wpol%residu_left(:,nmat+1:2*nmat)  = wpol%residu_left(:,1:nmat)
 
  wpol%residu_left(:,:) = wpol%residu_left(:,:) * SQRT(spin_fact)
 
  ! Make use of the block structure of eigenvector_transpinv | X  -Y |
  !                                                          | Y  -X |
- wpol%residu_right(1:nmat,:)        =  wpol%residu_left(1:nmat,:) 
- wpol%residu_right(nmat+1:2*nmat,:) = -wpol%residu_left(nmat+1:2*nmat,:) 
+! wpol%residu_right(:,1:nmat)        =  wpol%residu_left(:,1:nmat) 
+! wpol%residu_right(:,nmat+1:2*nmat) = -wpol%residu_left(:,nmat+1:2*nmat) 
 
  deallocate(eri_3center_2index)
 

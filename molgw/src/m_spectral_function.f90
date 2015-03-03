@@ -25,7 +25,7 @@ module m_spectral_function
                                                   ! transition index to state pair indexes
    real(dp),allocatable :: pole(:)
    real(dp),allocatable :: residu_left(:,:)       ! first index runs on n, second index on i
-   real(dp),allocatable :: residu_right(:,:)      ! first index runs on n, second index on j
+!FBFB   real(dp),allocatable :: residu_right(:,:)      ! first index runs on n, second index on j
  end type spectral_function
 
  !
@@ -96,7 +96,8 @@ subroutine init_spectral_function(nbf,occupation,sf)
  enddo
 
  ! Set the number of poles as twice the number of resonant transtions
- sf%npole = 2*itrans  
+ sf%npole_reso = itrans  
+ sf%npole      = 2*itrans  
  allocate(sf%transition_table(3,sf%npole))
  ! Set the transition_table 
  itrans=0
@@ -131,12 +132,12 @@ subroutine allocate_spectral_function(nprodbasis,sf)
 
  sf%nprodbasis = nprodbasis
 
- WRITE_MASTER(*,'(/,a,i8)') ' Spectral function initialized with npoles                 : ',sf%npole
- WRITE_MASTER(*,'(a,i8)')   ' Spectral function initialized with Coulomb basis functions: ',sf%nprodbasis
+ WRITE_MASTER(*,'(/,a,i8)') ' Spectral function initialized with Coulomb basis functions: ',sf%nprodbasis
+ WRITE_MASTER(*,'(a,i8)')   ' Spectral function initialized with resonant poles         : ',sf%npole_reso
 
- allocate(sf%pole(sf%npole))
- call clean_allocate(' left residu',sf%residu_left,sf%npole,sf%nprodbasis)
- call clean_allocate('right residu',sf%residu_right,sf%npole,sf%nprodbasis)
+ allocate(sf%pole(sf%npole_reso))
+ call clean_allocate(' left residu',sf%residu_left,sf%nprodbasis,sf%npole_reso)
+! call clean_allocate('right residu',sf%residu_right,sf%npole,sf%nprodbasis)
  
 
 end subroutine allocate_spectral_function
@@ -182,7 +183,7 @@ subroutine destroy_spectral_function(sf)
  if(allocated(sf%pole))             deallocate(sf%pole)
  if(allocated(sf%residu_left)) then
    call clean_deallocate(' left residu',sf%residu_left)
-   call clean_deallocate('right residu',sf%residu_right)
+!   call clean_deallocate('right residu',sf%residu_right)
  endif
 
  WRITE_MASTER(*,'(/,a)') ' Spectral function destroyed'
@@ -218,13 +219,13 @@ subroutine write_spectral_function(sf)
  endif
 
  npole_write = 0
- do ipole=1,sf%npole
+ do ipole=1,sf%npole_reso
    if( ABS(sf%pole(ipole)) < ecut_pole ) npole_write = npole_write + 1
  enddo
- WRITE_MASTER(*,*) 'Writing',npole_write,'poles over a total of',sf%npole
+ WRITE_MASTER(*,*) 'Writing',npole_write,'poles over a total of',sf%npole_reso
  allocate(index_pole(npole_write))
  ipole_write = 0
- do ipole=1,sf%npole
+ do ipole=1,sf%npole_reso
    if( ABS(sf%pole(ipole)) < ecut_pole ) then
      ipole_write = ipole_write + 1
      index_pole(ipole_write) = ipole
@@ -239,15 +240,15 @@ subroutine write_spectral_function(sf)
    WRITE_ME(msg,'(a,a,f10.4)') TRIM(calc_type%postscf_name),' with cutoff above energy [eV] ',ecut_pole*Ha_eV
    WRITE_MASTER(spectralfile) msg
  endif
- WRITE_MASTER(spectralfile) npole_write
  WRITE_MASTER(spectralfile) sf%nprodbasis
+ WRITE_MASTER(spectralfile) npole_write
  WRITE_MASTER(spectralfile) sf%pole(index_pole(:))
- do iprodbasis=1,sf%nprodbasis
-   WRITE_MASTER(spectralfile) sf%residu_left(index_pole(:),iprodbasis)
+ do ipole_write=1,npole_write
+   WRITE_MASTER(spectralfile) sf%residu_left(:,index_pole(ipole_write))
  enddo
- do iprodbasis=1,sf%nprodbasis
-   WRITE_MASTER(spectralfile) sf%residu_right(index_pole(:),iprodbasis)
- enddo
+! do iprodbasis=1,sf%nprodbasis
+!   WRITE_MASTER(spectralfile) sf%residu_right(index_pole(:),iprodbasis)
+! enddo
 
  close(spectralfile)
  deallocate(index_pole)
@@ -263,7 +264,7 @@ subroutine read_spectral_function(sf,reading_status)
 !=====
  integer,parameter  :: spectralfile=50
  character(len=100) :: postscf_name_read
- integer            :: iprodbasis
+ integer            :: ipole_read
  logical            :: file_exists
  integer            :: npole_read,nprodbasis_read
 !=====
@@ -280,10 +281,11 @@ subroutine read_spectral_function(sf,reading_status)
  open(spectralfile,file='spectral_file',status='old',form='unformatted')
 
  read(spectralfile) postscf_name_read
- read(spectralfile) npole_read
  read(spectralfile) nprodbasis_read
+ read(spectralfile) npole_read
 
- sf%npole = npole_read
+ sf%npole_reso = npole_read
+ sf%npole      = npole_read * 2
  call allocate_spectral_function(nprodbasis_read,sf)
 
 ! if( npole_read /= sf%npole .OR. nprodbasis_read /= sf%nprodbasis ) then
@@ -294,12 +296,12 @@ subroutine read_spectral_function(sf,reading_status)
 ! else
 
    read(spectralfile) sf%pole(:)
-   do iprodbasis=1,sf%nprodbasis
-     read(spectralfile) sf%residu_left(:,iprodbasis)
+   do ipole_read=1,npole_read
+     read(spectralfile) sf%residu_left(:,ipole_read)
    enddo
-   do iprodbasis=1,sf%nprodbasis
-     read(spectralfile) sf%residu_right(:,iprodbasis)   
-   enddo
+!   do iprodbasis=1,sf%nprodbasis
+!     read(spectralfile) sf%residu_right(:,iprodbasis)   
+!   enddo
 
    reading_status=0
    msg='reading spectral function from spectral_file obtained from '//TRIM(postscf_name_read)
@@ -312,11 +314,5 @@ subroutine read_spectral_function(sf,reading_status)
 end subroutine read_spectral_function
 
 
-
 end module m_spectral_function
 !=========================================================================
-
-
-
-
-
