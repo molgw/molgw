@@ -30,8 +30,9 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  integer               :: astate,bstate
  integer               :: istate,ispin,ipole
  real(dp)              :: overlap_tmp
- real(dp)              :: bra(wpol%npole_reso,basis%nbf) ! ,ket(wpol%npole,basis%nbf)
- real(dp)              :: fact_full,fact_empty
+ real(dp)              :: bra(wpol%npole_reso,basis%nbf)
+ real(dp)              :: fact_full_r
+ real(dp)              :: fact_empty_ar
  real(dp)              :: zz(nspin)
  real(dp)              :: energy_qp(basis%nbf,nspin)
  real(dp)              :: energy_qp_new(basis%nbf,nspin)
@@ -119,24 +120,22 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
        do astate=1,basis%nbf
          kbf = prod_basis%index_prodbasis(istate,astate) + prod_basis%nbf*(ispin-1)
          bra(:,astate) = wpol%residu_left(kbf,:)
-!         ket(:,astate) = wpol%residu_right(kbf,:)
        enddo
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
        bra(:,:) = MATMUL( TRANSPOSE(wpol%residu_left(:,:)) , eri_3center_eigen(:,:,istate,ispin) )
-!       ket(:,:) = MATMUL( wpol%residu_right(:,:) , eri_3center_eigen(:,:,istate,ispin) )
      endif
 
-     do ipole=1,wpol%npole_reso
 
-       if( wpol%pole(ipole) < 0.0_dp ) then
-         fact_empty = (spin_fact - occupation(istate,ispin)) / spin_fact
-         fact_full = 0.0_dp
-       else
-         fact_empty = 0.0_dp
-         fact_full = occupation(istate,ispin) / spin_fact
-       endif
-       if( ABS(fact_empty - fact_full) < 0.0001 ) cycle
+     ! The application of residu theorem only retains the pole in certain
+     ! quadrants.
+     ! The positive poles of W go with the poles of occupied states in G
+     ! The negative poles of W go with the poles of empty states in G
+     fact_full_r   = occupation(istate,ispin) / spin_fact
+     fact_empty_ar = (spin_fact - occupation(istate,ispin)) / spin_fact
+
+
+     do ipole=1,wpol%npole_reso
 
        select case(gwmethod)
        case(QS)
@@ -145,11 +144,9 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
            do astate=1,basis%nbf
 
              selfenergy_tmp(1,astate,bstate,ispin) = selfenergy_tmp(1,astate,bstate,ispin) &
-                        - bra(ipole,astate) * bra(ipole,bstate)                                      &    ! * ket(ipole,bstate) &
-                          * ( REAL( fact_empty / ( energy_qp(bstate,ispin) + ieta  - energy_qp(istate,ispin) + wpol%pole(ipole) )        &
-                                   -fact_full  / ( energy_qp(bstate,ispin) - ieta  - energy_qp(istate,ispin) + wpol%pole(ipole) ) , dp ) &
-                             -REAL( fact_empty / ( energy_qp(bstate,ispin) + ieta  - energy_qp(istate,ispin) - wpol%pole(ipole) )        &
-                                   -fact_full  / ( energy_qp(bstate,ispin) - ieta  - energy_qp(istate,ispin) - wpol%pole(ipole) ) , dp ) )
+                        - bra(ipole,astate) * bra(ipole,bstate)                            &  
+                          * ( REAL( -fact_full_r   / ( energy_qp(bstate,ispin) - ieta  - energy_qp(istate,ispin) + wpol%pole(ipole) ) , dp ) &
+                             -REAL(  fact_empty_ar / ( energy_qp(bstate,ispin) + ieta  - energy_qp(istate,ispin) - wpol%pole(ipole) ) , dp ) )
 
            enddo
          enddo
@@ -163,11 +160,9 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 !           do bstate=1,basis%nbf
              do iomegai=1,nomegai
                selfenergy_tmp(iomegai,astate,bstate,ispin) = selfenergy_tmp(iomegai,astate,bstate,ispin) &
-                        - bra(ipole,astate) * bra(ipole,bstate) & ! * ket(ipole,bstate) &
-                          * ( REAL(  fact_empty / ( energy_qp(bstate,ispin) + ieta + omegai(iomegai) - energy_qp(istate,ispin) + wpol%pole(ipole)     )          &
-                                    -fact_full  / ( energy_qp(bstate,ispin) - ieta + omegai(iomegai) - energy_qp(istate,ispin) + wpol%pole(ipole)     )  , dp )  &
-                             -REAL(  fact_empty / ( energy_qp(bstate,ispin) + ieta + omegai(iomegai) - energy_qp(istate,ispin) - wpol%pole(ipole)     )          &
-                                    -fact_full  / ( energy_qp(bstate,ispin) - ieta + omegai(iomegai) - energy_qp(istate,ispin) - wpol%pole(ipole)     )  , dp ) )
+                        - bra(ipole,astate) * bra(ipole,bstate)                                          & 
+                          * ( REAL( -fact_full_r   / ( energy_qp(bstate,ispin) - ieta + omegai(iomegai) - energy_qp(istate,ispin) + wpol%pole(ipole) )  , dp )  &
+                             -REAL(  fact_empty_ar / ( energy_qp(bstate,ispin) + ieta + omegai(iomegai) - energy_qp(istate,ispin) - wpol%pole(ipole) )  , dp ) )
              enddo
 !           enddo
          enddo
@@ -180,8 +175,8 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
          do bstate=1,basis%nbf
            do astate=1,basis%nbf
              selfenergy_tmp(1,astate,bstate,ispin) = selfenergy_tmp(1,astate,bstate,ispin) &
-                        - bra(ipole,astate) * bra(ipole,bstate) &   ! * ket(ipole,bstate) &
-                          * fact_full  / (-wpol%pole(ipole)) * 2.0_dp
+                        - bra(ipole,astate) * bra(ipole,bstate)                            & 
+                              * fact_full_r / (-wpol%pole(ipole))
            enddo
          enddo
          !
@@ -190,8 +185,8 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
          do bstate=1,basis%nbf
            do astate=1,basis%nbf
              selfenergy_tmp(1,astate,bstate,ispin) = selfenergy_tmp(1,astate,bstate,ispin) &
-                        + bra(ipole,astate) * bra(ipole,bstate) &   !  * ket(ipole,bstate) &
-                          * fact_empty  / (-wpol%pole(ipole)) * 2.0_dp
+                        - bra(ipole,astate) * bra(ipole,bstate) & 
+                              * fact_empty_ar / wpol%pole(ipole)
            enddo
          enddo
 
