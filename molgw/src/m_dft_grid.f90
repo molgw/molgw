@@ -4,6 +4,7 @@
 module m_dft_grid
  use m_definitions
  use m_mpi
+ use m_memory
  use m_inputparam,only: grid_level
  
  !
@@ -249,9 +250,15 @@ subroutine destroy_dft_grid()
  deallocate(rr_grid)
  deallocate(w_grid)
 
- if( allocated(bfr   ) ) deallocate(bfr)
- if( allocated(bfgr  ) ) deallocate(bfgr)
- if( allocated(bflr  ) ) deallocate(bflr)
+ if( allocated(bfr) ) then
+   call clean_deallocate('basis ftns on grid',bfr)
+ endif
+ if( allocated(bfgr) ) then
+   call clean_deallocate('basis grad ftns on grid',bfgr)
+ endif
+ if( allocated(bflr) ) then
+   call clean_deallocate('basis lapl ftns on grid',bflr)
+ endif
  call destroy_grid_distribution()
 
 end subroutine destroy_dft_grid
@@ -281,10 +288,10 @@ subroutine prepare_basis_functions_r(basis)
 !=====
 
  ngrid_stored = MIN(ngrid,ngrid_max_stored)
- WRITE_MASTER(*,*) 'Precalculate the functions on N grid points',ngrid_stored
- call memory_statement(REAL(basis%nbf,dp)*REAL(ngrid_stored,dp))
 
- allocate(bfr(basis%nbf,ngrid_stored))
+ WRITE_MASTER(*,*) 'Precalculate the functions on N grid points',ngrid_stored
+ call clean_allocate('basis ftns on grid',bfr,basis%nbf,ngrid_stored)
+
 
  do igrid=1,ngrid_stored
    rr(:) = rr_grid(:,igrid)
@@ -308,9 +315,8 @@ subroutine prepare_basis_functions_gradr(basis)
 !=====
 
  WRITE_MASTER(*,*) 'Precalculate the gradients on N grid points',ngrid_stored
- call memory_statement(3.0_dp*REAL(basis%nbf,dp)*REAL(ngrid_stored,dp))
+ call clean_allocate('basis grad ftns on grid',bfgr,3,basis%nbf,ngrid_stored)
 
- allocate(bfgr(3,basis%nbf,ngrid_stored))
 
  do igrid=1,ngrid_stored
    rr(:) = rr_grid(:,igrid)
@@ -335,10 +341,9 @@ subroutine prepare_basis_functions_laplr(basis)
 !=====
 
  WRITE_MASTER(*,*) 'Precalculate the laplacians on N grid points',ngrid_stored
- call memory_statement(6.0_dp*REAL(basis%nbf,dp)*REAL(ngrid_stored,dp))
+ call clean_allocate('basis grad ftns on grid',bfgr,3,basis%nbf,ngrid_stored)
+ call clean_allocate('basis lapl ftns on grid',bflr,3,basis%nbf,ngrid_stored)
 
- allocate(bfgr(3,basis%nbf,ngrid_stored))
- allocate(bflr(3,basis%nbf,ngrid_stored))
 
  do igrid=1,ngrid_stored
    rr(:) = rr_grid(:,igrid)

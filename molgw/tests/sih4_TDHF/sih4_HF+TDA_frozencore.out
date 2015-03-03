@@ -7,7 +7,7 @@
  ======================================================================
 
  Today is 03/02/2015
- It is now 09:00
+ It is now 14:20
  And it is perfect time to work
  Compilation options
 
@@ -1411,7 +1411,7 @@
 
  WARNING: Tamm-Dancoff approximation is switched on
  Allocate eigenvectors
- Memory [Mb]:     1.424
+ Memory [Mb]:     0.712
  success
 
  Performing the block diago with square root of matrices
@@ -1572,7 +1572,7 @@
 
 
  TRK SUM RULE: the two following numbers should compare well
- Sum over oscillator strengths   9.8432848317686084     
+ Sum over oscillator strengths   9.8432848317686101     
  Number of valence electrons     8.0000000000000000     
 
  Static dipole polarizability
@@ -1581,45 +1581,45 @@
        -0.000000       -0.000000       35.029888
 
  Spectral function destroyed
- Deallocate left and right eigenvectors
- Memory [Mb]:    -1.424
+ Deallocate eigenvectors
+ Memory [Mb]:    -0.712
 
  Spectral function destroyed
 
                  --- Timings in (s) and # of calls ---
 
-                    Total time             20.89
+                    Total time             33.62
 
                  ----------------------
 
-                 Total pre SCF             14.80
-                     Total SCF              4.98
-                Total post SCF              1.11
+                 Total pre SCF             15.58
+                     Total SCF             14.29
+                Total post SCF              3.74
 
                  ----------------------
 
-            4-center integrals             14.40         1
+            4-center integrals             15.08         1
            Kinetic Hamiltonian              0.01         1
-   Electron-nuclei Hamiltonian              0.07         1
+   Electron-nuclei Hamiltonian              0.11         1
 
-                       Hartree              2.12        13
-                      Exchange              2.83        13
+                       Hartree              5.89        13
+                      Exchange              8.36        13
                         DFT xc              0.00         0
              Hamiltonian diago              0.01        13
           RESTART file writing              0.00        13
 
                  Single Excit.              0.00         1
 
-        Total chi polarization              1.10         1
-             ERI basis transform            0.98         4
-              Build 2 particle H            0.98         1
-                       Common part          0.98         1
+        Total chi polarization              3.73         1
+             ERI basis transform            3.59         4
+              Build 2 particle H            3.60         1
+                       Common part          3.60         1
                         TDDFT part          0.00         0
                           BSE part          0.00         0
               Diago 2 particle H            0.05         1
              Invert 2 particle S            0.00         0
                          Build W            0.00         0
-                Optical spectrum            0.07         1
+                Optical spectrum            0.09         1
 
                 GW self-energy              0.00         0
 

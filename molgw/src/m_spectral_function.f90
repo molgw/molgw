@@ -6,6 +6,7 @@ module m_spectral_function
  use m_mpi
  use m_timing 
  use m_warning
+ use m_memory
  use m_inputparam
  use m_atoms
 
@@ -134,11 +135,8 @@ subroutine allocate_spectral_function(nprodbasis,sf)
  WRITE_MASTER(*,'(a,i8)')   ' Spectral function initialized with Coulomb basis functions: ',sf%nprodbasis
 
  allocate(sf%pole(sf%npole))
- allocate(sf%residu_left (sf%npole,sf%nprodbasis))
- allocate(sf%residu_right(sf%npole,sf%nprodbasis))
-
- call memory_statement(REAL(2*sf%npole,dp)*REAL(sf%nprodbasis,dp))
- WRITE_MASTER(*,*)
+ call clean_allocate(' left residu',sf%residu_left,sf%npole,sf%nprodbasis)
+ call clean_allocate('right residu',sf%residu_right,sf%npole,sf%nprodbasis)
  
 
 end subroutine allocate_spectral_function
@@ -180,10 +178,12 @@ subroutine destroy_spectral_function(sf)
  type(spectral_function),intent(inout) :: sf
 !=====
 
- if(allocated(sf%pole))             deallocate(sf%pole)
- if(allocated(sf%residu_left))      deallocate(sf%residu_left)
- if(allocated(sf%residu_right))     deallocate(sf%residu_right)
  if(allocated(sf%transition_table)) deallocate(sf%transition_table)
+ if(allocated(sf%pole))             deallocate(sf%pole)
+ if(allocated(sf%residu_left)) then
+   call clean_deallocate(' left residu',sf%residu_left)
+   call clean_deallocate('right residu',sf%residu_right)
+ endif
 
  WRITE_MASTER(*,'(/,a)') ' Spectral function destroyed'
 
