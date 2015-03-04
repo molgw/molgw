@@ -710,7 +710,7 @@ subroutine check_unitarity(n,cmat)
  integer :: i,j
  complex(dp) :: cmat_tmp(n,n)
 !
-  cmat_tmp = matmul( cmat , transpose(conjg(cmat)) )
+  cmat_tmp = MATMUL( cmat , TRANSPOSE(CONJG(cmat)) )
   do i=1,n
     do j=1,n
       if(i==j) then
@@ -726,7 +726,7 @@ subroutine check_unitarity(n,cmat)
       endif
     enddo
   enddo
-  cmat_tmp = matmul( transpose(conjg(cmat)) , cmat )
+  cmat_tmp = MATMUL( TRANSPOSE(CONJG(cmat)) , cmat )
   do i=1,n
     do j=1,n
       if(i==j) then

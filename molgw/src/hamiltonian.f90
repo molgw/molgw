@@ -807,7 +807,7 @@ subroutine setup_initial_c_matrix(print_matrix_,nbf,nspin,hamiltonian_nucleus,s_
  c_matrix(:,:,1)     = matrix(:,:)
  c_matrix(:,:,nspin) = matrix(:,:)
 
- matrix(:,:) = transpose( matrix(:,:) )
+ matrix(:,:) = TRANSPOSE( matrix(:,:) )
  title='=== C matrix ==='
  call dump_out_matrix(print_matrix_,title,nbf,1,matrix)
 

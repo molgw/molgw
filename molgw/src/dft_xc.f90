@@ -885,7 +885,6 @@ subroutine my_lda_exc_vxc_mu(mu,rhor,exc,vxc)
  real(dp) :: efac,rs,rsm1,vfac
  character(len=500) :: message
 
- real(dp)           :: rcut
  real(dp)           :: biga,kf,fact_mu
  real(dp)           :: rs_step=1.0e-6_dp
  real(dp)           :: rsp,rsm1p
@@ -895,9 +894,6 @@ subroutine my_lda_exc_vxc_mu(mu,rhor,exc,vxc)
  real(dp)           :: exp4aa2,rhodaadrho,dfdaa
 
 ! *************************************************************************
-
- rcut = 1.0_dp / mu
-! WRITE_MASTER(*,*) 'rcut [bohr]=',rcut
 
 #if 0
 !Compute vfac=(3/(2*Pi))^(2/3)

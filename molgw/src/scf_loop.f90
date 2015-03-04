@@ -221,14 +221,14 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      ! 
      ! hence transpose the c_matrix for a correct output by dump_out_matrix
      do ispin=1,nspin
-       matrix_tmp(:,:,ispin) = transpose( c_matrix(:,:,ispin) )
+       matrix_tmp(:,:,ispin) = TRANSPOSE( c_matrix(:,:,ispin) )
      enddo
      title='=== C coefficients ==='
      call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
-     matrix_tmp(:,:,1) = matmul( c_matrix(:,:,1), matmul( s_matrix(:,:), transpose(c_matrix(:,:,1)) ) )
+     matrix_tmp(:,:,1) = MATMUL( c_matrix(:,:,1), MATMUL( s_matrix(:,:), TRANSPOSE(c_matrix(:,:,1)) ) )
      title='=== C S C^T = identity ? ==='
      call dump_out_matrix(print_matrix_,title,basis%nbf,1,matrix_tmp)
-     matrix_tmp(:,:,1) = matmul( transpose(c_matrix(:,:,1)), matmul( s_matrix(:,:), c_matrix(:,:,1) ) )
+     matrix_tmp(:,:,1) = MATMUL( TRANSPOSE(c_matrix(:,:,1)), MATMUL( s_matrix(:,:), c_matrix(:,:,1) ) )
      title='=== C^T S C = identity ? ==='
      call dump_out_matrix(print_matrix_,title,basis%nbf,1,matrix_tmp)
    endif

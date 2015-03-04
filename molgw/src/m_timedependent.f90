@@ -185,7 +185,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! Calculate Wp= v * chi * v    if necessary
  ! and then write it down on file
  !
- if( print_specfunc .OR. calc_type%is_gw ) then
+ if( print_w_ .OR. calc_type%is_gw ) then
    if( has_auxil_basis) then
      call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf,occupation,c_matrix,bigx,bigy,eigenvalue,wpol_out)
    else
@@ -193,7 +193,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
    endif
  
    ! If requested write the spectral function on file
-   if( print_specfunc ) call write_spectral_function(wpol_out)
+   if( print_w_ ) call write_spectral_function(wpol_out)
 
  endif
 
@@ -640,7 +640,6 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,cc_matrix,npole,eigenvalue,bigx,bi
 !=====
  integer              :: t_kl
  real(dp),allocatable :: amb_eigval(:),bigomega(:)
-! real(dp),allocatable :: amb_matrix_sqrt(:,:),amb_matrix_sqrtm1(:,:)
 !=====
 
  WRITE_MASTER(*,'(/,a)') ' Performing the block diago with square root of matrices'
@@ -685,7 +684,7 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,cc_matrix,npole,eigenvalue,bigx,bi
  forall(t_kl=1:nmat)
    cc_matrix(:,t_kl) = cc_matrix(:,t_kl) / SQRT(bigomega(t_kl))
    ! Only Resonant
-   eigenvalue(t_kl)      =  bigomega(t_kl)
+   eigenvalue(t_kl) = bigomega(t_kl)
  end forall
 
  ! Save (A-B)**-1/2 in amb_matrix 
@@ -703,7 +702,6 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,cc_matrix,npole,eigenvalue,bigx,bi
  ! Finalize Resonant (positive excitations second index from 1 to nmat)
  bigx(:,:) = bigx(:,:) + cc_matrix(:,:)
  bigy(:,:) = bigy(:,:) - cc_matrix(:,:)
-
 
 
 end subroutine diago_4blocks_sqrt
