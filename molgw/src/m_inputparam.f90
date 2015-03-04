@@ -519,8 +519,8 @@ subroutine read_inputfile_namelist()
  ncorew            = 0
  nvirtualg         = HUGE(1)
  nvirtualw         = HUGE(1)
- nomega_sigma      = 9
- step_sigma        = 0.1_dp
+ nomega_sigma      = 51
+ step_sigma        = 0.01_dp
 
  ignore_restart    = 'NO'
  ignore_bigrestart = 'NO'

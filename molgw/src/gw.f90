@@ -285,8 +285,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
      allocate(sigma_xc_m_vxc_diag(-nomegai:nomegai))
      do ispin=1,nspin
        sigma_xc_m_vxc_diag(:) = selfenergy_omega(:,astate,astate,ispin) + exchange_m_vxc_diag(astate,ispin)
-       energy_qp_omega(ispin) = find_fixed_point(nomegai,omegai,sigma_xc_m_vxc_diag) & 
-                                 + energy_qp(astate,ispin) + exchange_m_vxc_diag(astate,ispin)
+       energy_qp_omega(ispin) = find_fixed_point(nomegai,omegai,sigma_xc_m_vxc_diag) + energy_qp(astate,ispin) 
      enddo
      deallocate(sigma_xc_m_vxc_diag)
 
@@ -365,19 +364,8 @@ function find_fixed_point(nx,xx,fx) result(fixed_point)
      rmin = ABS(gx(ix))
      imin = ix
    endif
- enddo
+ enddo 
 
-!FBFB write(*,*) imin
-!FBFB write(*,*) rmin
-!FBFB write(*,*) -nx,nx
-!FBFB write(*,*) gx(-nx)*Ha_eV,gx(nx)*Ha_eV
-!FBFB write(*,*) fx(-nx)*Ha_eV,fx(nx)*Ha_eV
-!FBFB write(*,*) xx(-nx)*Ha_eV,xx(nx)*Ha_eV
-!FBFB write(*,*) 
-!FBFB write(*,*) imin-1,xx(imin-1)*Ha_eV,fx(imin-1)*Ha_eV,ABS(gx(imin-1))*Ha_eV
-!FBFB write(*,*) imin  ,xx(imin)*Ha_eV  ,fx(imin)*Ha_eV  ,ABS(gx(imin))*Ha_eV
-!FBFB write(*,*) imin+1,xx(imin+1)*Ha_eV,fx(imin+1)*Ha_eV,ABS(gx(imin+1))*Ha_eV
-!FBFB write(*,*) 
 
  if( imin == -nx .OR. imin == nx) then
    fixed_point = xx(imin)
@@ -387,13 +375,12 @@ function find_fixed_point(nx,xx,fx) result(fixed_point)
      fixed_point = xx(imin) - gx(imin) / gpx 
    else if( gx(imin)*gx(imin-1) < 0.0_dp )  then
      gpx = ( gx(imin) - gx(imin-1) ) / ( xx(imin) - xx(imin-1) )
-     fixed_point = xx(imin) - gx(imin) / gpx 
+     fixed_point = xx(imin-1) - gx(imin-1) / gpx 
    else
      fixed_point = xx(imin)
    endif
  endif
 
-!FBFB write(*,*) fixed_point*Ha_eV
 
 
 end function find_fixed_point
