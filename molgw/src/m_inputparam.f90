@@ -63,17 +63,20 @@ module m_inputparam
  logical,protected                :: has_auxil_basis
  logical,protected                :: is_full_auxil
  real(dp),protected               :: pole_eta
+ integer,protected                :: nomega_sigma
+ real(dp),protected               :: step_sigma
 
  logical,protected                :: no_restart   
  logical,protected                :: ignore_big_restart
  logical,protected                :: print_matrix_
  logical,protected                :: print_eri_
  logical,protected                :: print_wfn_
- logical,protected                :: print_specfunc
+ logical,protected                :: print_w_
+ logical,protected                :: print_sigma_
 
- real(dp)                         :: alpha_hybrid    = 0.0_dp
- real(dp)                         :: alpha_hybrid_lr = 0.0_dp
- real(dp)                         :: rcut            = 0.0_dp
+ real(dp),protected               :: alpha_hybrid    = 0.0_dp
+ real(dp),protected               :: alpha_hybrid_lr = 0.0_dp
+ real(dp),protected               :: rcut            = 0.0_dp
 
  integer,protected                    :: ndft_xc      = 0
  integer(C_INT),protected,allocatable :: dft_xc_type(:)
@@ -419,7 +422,8 @@ subroutine summary_input(grid_quality,integral_quality)
  WRITE_MASTER(*,'(a30,l3)')   ' - ERI file:           ',print_eri_          
  WRITE_MASTER(*,'(a30,l3)')   ' - ignore big RESTART: ',ignore_big_restart
  WRITE_MASTER(*,'(a30,l3)')   ' - plot some wfns:     ',print_wfn_          
- WRITE_MASTER(*,'(a30,l3)')   ' - dump spectral functs',print_specfunc
+ WRITE_MASTER(*,'(a30,l3)')   ' - dump spectral functs',print_w_
+ WRITE_MASTER(*,'(a30,l3)')   ' - dump self-energy    ',print_sigma_
 
 
  WRITE_MASTER(*,*)
@@ -467,7 +471,7 @@ subroutine read_inputfile_namelist()
  character(len=100)   :: auxil_basis
  character(len=12)    :: length_unit
  character(len=3)     :: ignore_restart,ignore_bigrestart,no_4center
- character(len=3)     :: print_matrix,print_eri,print_wfn,print_w
+ character(len=3)     :: print_matrix,print_eri,print_wfn,print_w,print_sigma
  character(len=3)     :: tda,triplet,frozencore
  real(dp)             :: length_factor,eta
  integer              :: atom_number,info,iatom
@@ -476,13 +480,13 @@ subroutine read_inputfile_namelist()
  character(len=12)    :: grid_quality
  character(len=12)    :: integral_quality
 
- namelist /molgw/ scf,postscf,                                             &
-                  basis,auxil_basis,basis_path,gaussian_type,no_4center,   &
-                  nspin,charge,magnetization,                              &
-                  grid_quality,integral_quality,                           &
-                  nscf,alpha_mixing,mixing_scheme,tolscf,                  &
-                  tda,triplet,eta,frozencore,ncoreg,ncorew,nvirtualg,nvirtualw, &
-                  ignore_restart,print_matrix,print_eri,print_wfn,print_w, &
+ namelist /molgw/ scf,postscf,                                                                          &
+                  basis,auxil_basis,basis_path,gaussian_type,no_4center,                                &
+                  nspin,charge,magnetization,                                                           &
+                  grid_quality,integral_quality,                                                        &
+                  nscf,alpha_mixing,mixing_scheme,tolscf,                                               &
+                  tda,triplet,eta,frozencore,ncoreg,ncorew,nvirtualg,nvirtualw,nomega_sigma,step_sigma, &
+                  ignore_restart,print_matrix,print_eri,print_wfn,print_w,print_sigma,                  &
                   length_unit,natom
 !=====
 
@@ -515,6 +519,8 @@ subroutine read_inputfile_namelist()
  ncorew            = 0
  nvirtualg         = HUGE(1)
  nvirtualw         = HUGE(1)
+ nomega_sigma      = 9
+ step_sigma        = 0.1_dp
 
  ignore_restart    = 'NO'
  ignore_bigrestart = 'NO'
@@ -522,6 +528,7 @@ subroutine read_inputfile_namelist()
  print_eri         = 'NO'
  print_wfn         = 'NO'
  print_w           = 'NO'
+ print_sigma       = 'NO'
 
  natom             = 0
  length_unit       = 'ANGSTROM'
@@ -554,7 +561,8 @@ subroutine read_inputfile_namelist()
  print_matrix_      = yesno(print_matrix)
  print_eri_         = yesno(print_eri)
  print_wfn_         = yesno(print_wfn)
- print_specfunc     = yesno(print_w)
+ print_w_           = yesno(print_w)
+ print_sigma_       = yesno(print_sigma)
 
  grid_level     = interpret_quality(grid_quality)
  integral_level = interpret_quality(integral_quality)
@@ -586,8 +594,10 @@ subroutine read_inputfile_namelist()
  if(nvirtualg<ncoreg) stop'too small nvirtualg is meaningless'
  if(nvirtualw<ncorew) stop'too small nvirtualw is meaningless'
  if(nspin/=1 .AND. nspin/=2) stop'nspin in incorrect'
- if(magnetization<-1.d-5)    stop'magnetization is negative'
- if(magnetization>1.d-5 .AND. nspin==1) stop'magnetization is non-zero and nspin is 1'
+ if(magnetization<-1.e-5)    stop'magnetization is negative'
+ if(magnetization>1.e-5 .AND. nspin==1) stop'magnetization is non-zero and nspin is 1'
+ if(nomega_sigma<0)    stop'nomega_sigma < 0'
+ if(step_sigma<0.0_dp) stop'step_sigma < 0.0'
 
  if( is_full_auxil .AND. .NOT. has_auxil_basis) then
    WRITE_MASTER(*,*) 'A calculation is no 4 center integrals has been requested'

@@ -537,27 +537,27 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
   
    do iline=1,500
   
-     hphi = matmul(eigenvector,test1)
-     eigen = dot_product(test1,hphi)
+     hphi = MATMUL(eigenvector,test1)
+     eigen = DOT_PRODUCT(test1,hphi)
      gr1(:) = 2. * ( hphi(:) - eigen * test1(:) )
-     norm_gr1 = SQRT(dot_product(gr1,gr1))
+     norm_gr1 = SQRT(DOT_PRODUCT(gr1,gr1))
 !     WRITE_MASTER(*,*) 'x1',norm_gr1
   
 !     WRITE_MASTER(*,*) 'guessed delta',delta
      test2(:) = test1(:) - delta * gr1(:) / norm_gr1
      test2(:) = test2(:) / SQRT( SUM( test2(:)**2 ) )
   
-     hphi = matmul(eigenvector,test2)
-     eigen = dot_product(test2,hphi)
+     hphi = MATMUL(eigenvector,test2)
+     eigen = DOT_PRODUCT(test2,hphi)
      gr2(:) = 2. * ( hphi(:) - eigen * test2(:) )
-!     WRITE_MASTER(*,*) 'x2',dot_product(gr2,gr1)/norm_gr1
-     hessian = dot_product(gr1,gr2-gr1) / ( delta * norm_gr1 )
+!     WRITE_MASTER(*,*) 'x2',DOT_PRODUCT(gr2,gr1)/norm_gr1
+     hessian = DOT_PRODUCT(gr1,gr2-gr1) / ( delta * norm_gr1 )
      delta = -norm_gr1 / hessian
 !     WRITE_MASTER(*,*) 'optimal delta',delta
      test2(:) = test1(:) - delta * gr1(:) / norm_gr1
      test2(:) = test2(:) / SQRT( SUM( test2(:)**2 ) )
   
-     if(modulo(iline,20)==0) then
+     if(MODULO(iline,20)==0) then
        WRITE_MASTER(*,*) 'diff',iline,eigen,SUM(ABS(test2(:)-test1(:)))/DBLE(nconf)
      endif
 !     WRITE_MASTER(*,*) '==================='

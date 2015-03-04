@@ -243,11 +243,11 @@ subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_m
    do abispin=1,nspin
      if(.NOT.ring_only) then
        selfenergy_final(:,:,abispin) = 0.5_dp * ( selfenergy_ring(1,:,:,abispin) + selfenergy_sox(1,:,:,abispin) &
-                                               +  transpose( selfenergy_ring(1,:,:,abispin) + selfenergy_sox(1,:,:,abispin) ) )
+                                               +  TRANSPOSE( selfenergy_ring(1,:,:,abispin) + selfenergy_sox(1,:,:,abispin) ) )
      else
        WRITE_MASTER(*,*) 'ring_only'
        selfenergy_final(:,:,abispin) = 0.5_dp * ( selfenergy_ring(1,:,:,abispin)  &
-                                               +  transpose( selfenergy_ring(1,:,:,abispin) ) )
+                                               +  TRANSPOSE( selfenergy_ring(1,:,:,abispin) ) )
      endif
    enddo
 

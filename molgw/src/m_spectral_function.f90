@@ -193,7 +193,8 @@ subroutine write_spectral_function(sf)
  implicit none
  type(spectral_function),intent(in) :: sf
 !=====
- integer,parameter   :: spectralfile=50
+ integer,parameter   :: wfile=50
+ integer,parameter   :: tmpfile=51
  integer             :: iprodbasis,ipole
  integer             :: npole_write,ipole_write
  logical             :: file_exists
@@ -205,10 +206,10 @@ subroutine write_spectral_function(sf)
 
  inquire(file='manual_poles',exist=file_exists)
  if(file_exists) then
-   open(spectralfile,file='manual_poles',status='old')
-   read(spectralfile,*) ecut_pole
+   open(tmpfile,file='manual_poles',status='old')
+   read(tmpfile,*) ecut_pole
    if( ecut_pole<0.0_dp ) stop'error when reading manual_poles'
-   close(spectralfile)
+   close(tmpfile)
    WRITE_ME(msg,'(a,f10.4)') 'Ouput of the spectral function with an energy cutoff [eV] ',ecut_pole*Ha_eV
    call issue_warning(msg)
  else
@@ -229,22 +230,22 @@ subroutine write_spectral_function(sf)
    endif
  enddo
 
- open(spectralfile,file='spectral_file',form='unformatted')
+ open(wfile,file='SCREENED_COULOMB',form='unformatted')
 
  if(.NOT. file_exists) then
-   WRITE_MASTER(spectralfile) calc_type%postscf_name
+   WRITE_MASTER(wfile) calc_type%postscf_name
  else
    WRITE_ME(msg,'(a,a,f10.4)') TRIM(calc_type%postscf_name),' with cutoff above energy [eV] ',ecut_pole*Ha_eV
-   WRITE_MASTER(spectralfile) msg
+   WRITE_MASTER(wfile) msg
  endif
- WRITE_MASTER(spectralfile) sf%nprodbasis
- WRITE_MASTER(spectralfile) npole_write
- WRITE_MASTER(spectralfile) sf%pole(index_pole(:))
+ WRITE_MASTER(wfile) sf%nprodbasis
+ WRITE_MASTER(wfile) npole_write
+ WRITE_MASTER(wfile) sf%pole(index_pole(:))
  do ipole_write=1,npole_write
-   WRITE_MASTER(spectralfile) sf%residu_left(:,index_pole(ipole_write))
+   WRITE_MASTER(wfile) sf%residu_left(:,index_pole(ipole_write))
  enddo
 
- close(spectralfile)
+ close(wfile)
  deallocate(index_pole)
 
 end subroutine write_spectral_function
@@ -256,27 +257,27 @@ subroutine read_spectral_function(sf,reading_status)
  type(spectral_function),intent(inout) :: sf
  integer,intent(out)                   :: reading_status
 !=====
- integer,parameter  :: spectralfile=50
+ integer,parameter  :: wfile=50
  character(len=100) :: postscf_name_read
  integer            :: ipole_read
  logical            :: file_exists
  integer            :: npole_read,nprodbasis_read
 !=====
 
- WRITE_MASTER(*,'(/,a)') ' Try to read spectral function from file spectral_file' 
+ WRITE_MASTER(*,'(/,a)') ' Try to read spectral function from file SCREENED_COULOMB' 
 
- inquire(file='spectral_file',exist=file_exists)
+ inquire(file='SCREENED_COULOMB',exist=file_exists)
  if( .NOT. file_exists ) then
    WRITE_MASTER(*,'(a,/)') ' File does not exist'
    reading_status=1
    return
  endif
 
- open(spectralfile,file='spectral_file',status='old',form='unformatted')
+ open(wfile,file='SCREENED_COULOMB',status='old',form='unformatted')
 
- read(spectralfile) postscf_name_read
- read(spectralfile) nprodbasis_read
- read(spectralfile) npole_read
+ read(wfile) postscf_name_read
+ read(wfile) nprodbasis_read
+ read(wfile) npole_read
 
  sf%npole_reso = npole_read
  sf%npole      = npole_read * 2
@@ -289,17 +290,17 @@ subroutine read_spectral_function(sf,reading_status)
 !   reading_status=2
 ! else
 
-   read(spectralfile) sf%pole(:)
+   read(wfile) sf%pole(:)
    do ipole_read=1,npole_read
-     read(spectralfile) sf%residu_left(:,ipole_read)
+     read(wfile) sf%residu_left(:,ipole_read)
    enddo
 
    reading_status=0
-   msg='reading spectral function from spectral_file obtained from '//TRIM(postscf_name_read)
+   msg='reading spectral function from SCREENED_COULOMB obtained from '//TRIM(postscf_name_read)
    call issue_warning(msg)
 
 ! endif
- close(spectralfile)
+ close(wfile)
 
 
 end subroutine read_spectral_function
