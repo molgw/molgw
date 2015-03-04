@@ -295,7 +295,7 @@ program molgw
  !
  ! final evaluation for G0W0
  if( calc_type%is_gw .AND. &
-       ( calc_type%gwmethod == perturbative .OR. calc_type%gwmethod == COHSEX &
+       ( calc_type%gwmethod == G0W0 .OR. calc_type%gwmethod == COHSEX &
     .OR. calc_type%gwmethod == GnW0 .OR. calc_type%gwmethod == GnWn ) ) then
 
    !

@@ -1,4 +1,4 @@
-OPENMP= #-openmp
+OPENMP= 
 
 
 FC=gfortran -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC  

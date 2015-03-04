@@ -21,6 +21,7 @@ module m_inputparam
  integer,parameter :: QSCOHSEX     = 104
  integer,parameter :: GnW0         = 105
  integer,parameter :: GnWn         = 106
+ integer,parameter :: G0W0         = 107
 
  type calculation_type
    character(len=100) :: calc_name
@@ -139,13 +140,13 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%gwmethod = GnWn
    case('GW','G0W0')
      calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = perturbative
+     calc_type%gwmethod = G0W0
    case('COHSEX')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = COHSEX
    case('LRGW')
      calc_type%is_gw      =.TRUE.
-     calc_type%gwmethod   = perturbative
+     calc_type%gwmethod   = G0W0
      calc_type%is_lr_mbpt = .TRUE.
    case('MP2')
      calc_type%is_mp2   =.TRUE.
