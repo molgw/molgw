@@ -64,8 +64,8 @@ subroutine init_spectral_function(nbf,occupation,sf)
 
  ncore_G    = ncoreg
  ncore_W    = ncorew
- nvirtual_G = nvirtualg
- nvirtual_W = nvirtualw
+ nvirtual_G = MIN(nvirtualg,nbf+1)
+ nvirtual_W = MIN(nvirtualw,nbf+1)
 
  if(is_frozencore) then
    if( ncore_G == 0) ncore_G = atoms_core_states()

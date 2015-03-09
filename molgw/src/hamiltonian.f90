@@ -663,9 +663,7 @@ subroutine set_occupation(electrons,magnetization,nbf,occupation)
     stop'FAILURE in set_occupation'
   endif 
 
- if(print_matrix_) then
-   call dump_out_occupation('=== Occupations ===',nbf,nspin,occupation)
- endif
+ call dump_out_occupation('=== Occupations ===',nbf,nspin,occupation)
 
 end subroutine set_occupation
 
