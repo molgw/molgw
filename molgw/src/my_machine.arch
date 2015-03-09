@@ -6,7 +6,7 @@ FC=gfortran -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC
 
 
 CC=gcc
-FCOPTS=  -O2 # -O0 -g -fcheck=all -fbacktrace # -Ofast -DFULL_AUXIL 
+FCOPTS=  -O2  -O0 -g -fcheck=all -fbacktrace # -Ofast -DFULL_AUXIL 
 CCOPTS=  -O2 # -O0 -g -fbounds-check
 #FCOPTS= -xHost -O3 #-ipo
 

@@ -541,6 +541,7 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
  call start_clock(timing_build_bse)
 
  WRITE_MASTER(*,'(a)') ' Build W part'
+
  !
  ! Prepare the bra and ket for BSE
  allocate(bra(wpol_static%npole_reso))

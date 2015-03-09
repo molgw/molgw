@@ -59,16 +59,15 @@ end subroutine header
 
 
 !=========================================================================
-subroutine dump_out_occupation(title,n,nspin,occupation)
+subroutine dump_out_occupation(title,nbf,nspin,occupation)
  use m_definitions
  use m_mpi
  implicit none
- character(len=100),intent(in) :: title
- integer,intent(in)            :: n,nspin
- real(dp),intent(in)           :: occupation(n,nspin)
+ character(len=*),intent(in) :: title
+ integer,intent(in)          :: nbf,nspin
+ real(dp),intent(in)         :: occupation(nbf,nspin)
 !=====
- integer,parameter :: MAXSIZE=1000
-!=====
+ integer :: maxsize
  integer :: istate,ispin
 !=====
 
@@ -77,10 +76,14 @@ subroutine dump_out_occupation(title,n,nspin,occupation)
  if(nspin==2) then
    WRITE_MASTER(*,'(a)') '           spin 1       spin 2 '
  endif
- do istate=1,MIN(n,MAXSIZE)
+ do istate=1,nbf
+   if( ANY(occupation(istate,:) > 0.001_dp) ) maxsize = istate 
+ enddo
+ maxsize = maxsize + 5
+
+ do istate=1,MIN(nbf,maxsize)
    WRITE_MASTER(*,'(x,i3,2(2(x,f12.5)),2x)') istate,occupation(istate,:)
  enddo
-
  WRITE_MASTER(*,*)
 
 end subroutine dump_out_occupation
