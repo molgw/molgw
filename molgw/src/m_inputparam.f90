@@ -78,6 +78,7 @@ module m_inputparam
  real(dp),protected               :: alpha_hybrid    = 0.0_dp
  real(dp),protected               :: alpha_hybrid_lr = 0.0_dp
  real(dp),protected               :: rcut            = 0.0_dp
+ real(dp),protected               :: gamma_hybrid  
 
  integer,protected                    :: ndft_xc      = 0
  integer(C_INT),protected,allocatable :: dft_xc_type(:)
@@ -217,14 +218,16 @@ subroutine init_dft_type(key,calc_type)
 
  select case(TRIM(key))
  case('LDAx','PBEx','PBEhx','Bx','PW91x','BJx','RPPx',&
-      'BHANDH','BHANDHLYP','B3LYP','PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TD-CAM-B3LYP')
+      'BHANDH','BHANDHLYP','B3LYP','PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TUNED-CAM-B3LYP')
    ndft_xc=1
  case('LDA','SPL','VWN','VWN_RPA','PBE','PBEh','BLYP','PW91')
    ndft_xc=2
- case('TESTHSE')
-   ndft_xc=1
+ case('RSH')
+   ndft_xc=3
  case('TESTPBE0','TESTLDA0')
    ndft_xc=2
+ case('TESTHSE')
+   ndft_xc=3
  case default
    WRITE_MASTER(*,*) 'error reading calculation type'
    WRITE_MASTER(*,*) TRIM(key)
@@ -333,21 +336,37 @@ subroutine init_dft_type(key,calc_type)
    alpha_hybrid    =  0.19_dp 
    alpha_hybrid_lr =  0.46_dp 
    rcut            =  1.0_dp / 0.33_dp  
- case('TD-CAM-B3LYP')
+ case('TUNED-CAM-B3LYP')
    calc_type%is_screened_hybrid  = .TRUE.
    calc_type%need_exchange       = .TRUE.
    dft_xc_type(1)  = XC_HYB_GGA_XC_TUNED_CAM_B3LYP
    alpha_hybrid    =  0.0799_dp 
    alpha_hybrid_lr =  0.9201_dp
    rcut            =  1.0_dp / 0.150_dp  
+ case('RSH')
+   calc_type%is_screened_hybrid  = .TRUE.
+   calc_type%need_exchange       = .TRUE.  
+   dft_xc_type(1) = XC_GGA_X_PBE
+   dft_xc_type(2) = XC_GGA_X_HJS_PBE 
+   dft_xc_type(3) = XC_GGA_C_PBE
+   dft_xc_coef(1) =  1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
+   dft_xc_coef(2) =  -alpha_hybrid
+   dft_xc_coef(3) =  1.00_dp
+   rcut           = 1.0_dp / gamma_hybrid
  ! Testing
  case('TESTHSE')
    calc_type%is_screened_hybrid  = .TRUE.
    calc_type%need_exchange       = .TRUE.  
-   dft_xc_type(1) = XC_GGA_X_wPBEh
+   dft_xc_type(1) = XC_GGA_X_PBE
+   dft_xc_type(2) = XC_GGA_X_HJS_PBE 
+   dft_xc_type(3) = XC_GGA_C_PBE
+   alpha_hybrid   =  0.25_dp
+   dft_xc_coef(1) =  1.00_dp 
    dft_xc_coef(2) = -0.25_dp
-   alpha_hybrid   = 0.25_dp
-   rcut           = 1.0_dp / 0.11_dp
+   dft_xc_coef(3) =  1.00_dp
+   alpha_hybrid_lr = -alpha_hybrid
+   gamma_hybrid    = 0.11_dp
+   rcut           = 1.0_dp / gamma_hybrid
  case('TESTLDA0')
    calc_type%need_exchange       = .TRUE.
    alpha_hybrid   = 0.25_dp
@@ -478,10 +497,12 @@ subroutine read_inputfile_namelist()
  integer              :: atom_number,info,iatom
  character(len=2)     :: atom_symbol
  real(dp),allocatable :: zatom_read(:),x_read(:,:)
+ real(dp)             :: beta_hybrid
  character(len=12)    :: grid_quality
  character(len=12)    :: integral_quality
 
  namelist /molgw/ scf,postscf,                                                                          &
+                  alpha_hybrid,beta_hybrid,gamma_hybrid,                                                &
                   basis,auxil_basis,basis_path,gaussian_type,no_4center,                                &
                   nspin,charge,magnetization,                                                           &
                   grid_quality,integral_quality,                                                        &
@@ -494,6 +515,10 @@ subroutine read_inputfile_namelist()
 
  scf              = ''
  postscf          = ''
+
+ alpha_hybrid     = 0.0_dp
+ beta_hybrid      = 0.0_dp
+ gamma_hybrid     = HUGE(1.0_dp)
 
  basis            = ''
  auxil_basis      = ''
@@ -542,6 +567,7 @@ subroutine read_inputfile_namelist()
  auxil_basis_name = auxil_basis
  has_auxil_basis = TRIM(auxil_basis) /= ''
  pole_eta = eta
+ alpha_hybrid_lr = beta_hybrid
  
 
  scf                = capitalize(scf)

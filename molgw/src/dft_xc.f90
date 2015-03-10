@@ -19,7 +19,7 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
 #ifdef _OPENMP
  use omp_lib
 #endif
- use iso_c_binding,only: C_INT
+ use iso_c_binding,only: C_INT,C_DOUBLE
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -111,6 +111,10 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
    if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
    if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) require_gradient  =.TRUE.
    if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_MGGA    ) require_laplacian =.TRUE.
+
+   if( dft_xc_type(idft_xc) == XC_GGA_X_HJS_PBE ) then
+     call xc_f90_gga_x_hjs_set_par(xc_func(idft_xc), REAL(gamma_hybrid,C_DOUBLE) )
+   endif
 
  enddo
 
