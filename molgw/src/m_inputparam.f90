@@ -350,7 +350,7 @@ subroutine init_dft_type(key,calc_type)
    dft_xc_type(2) = XC_GGA_X_HJS_PBE 
    dft_xc_type(3) = XC_GGA_C_PBE
    dft_xc_coef(1) =  1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
-   dft_xc_coef(2) =  -alpha_hybrid
+   dft_xc_coef(2) =  alpha_hybrid_lr
    dft_xc_coef(3) =  1.00_dp
    rcut           = 1.0_dp / gamma_hybrid
  ! Testing
@@ -508,7 +508,7 @@ subroutine read_inputfile_namelist()
                   grid_quality,integral_quality,                                                        &
                   nscf,alpha_mixing,mixing_scheme,tolscf,                                               &
                   tda,triplet,eta,frozencore,ncoreg,ncorew,nvirtualg,nvirtualw,nomega_sigma,step_sigma, &
-                  ignore_restart,print_matrix,print_eri,print_wfn,print_w,print_sigma,                  &
+                  ignore_restart,ignore_bigrestart,print_matrix,print_eri,print_wfn,print_w,print_sigma,&
                   length_unit,natom
 !=====
 
