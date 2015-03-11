@@ -531,10 +531,11 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
 !=====
  integer              :: t_ij,t_kl
  integer              :: istate,jstate,kstate,lstate
+ integer              :: istate_prev,jstate_prev
  integer              :: ijspin,klspin
  integer              :: kbf
  real(dp),allocatable :: bra(:),ket(:)
- real(dp),allocatable :: bra_auxil(:,:,:,:)
+ real(dp),allocatable :: bra_auxil_i(:,:),bra_auxil_j(:,:)
  real(dp)             :: wtmp
 !=====
 
@@ -547,27 +548,52 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
  allocate(bra(wpol_static%npole_reso))
  allocate(ket(wpol_static%npole_reso))
 
+! if(has_auxil_basis) then
+!   allocate(bra_auxil(wpol_static%npole_reso,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
+!   do ijspin=1,nspin
+!     do istate=ncore_W+1,nvirtual_W-1 
+!       do jstate=ncore_W+1,nvirtual_W-1
+!
+!         ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
+!         bra_auxil(:,istate,jstate,ijspin) = MATMUL( TRANSPOSE(wpol_static%residu_left(:,:)) , eri_3center_eigen(:,istate,jstate,ijspin) )
+!
+!       enddo
+!     enddo
+!   enddo
+! endif
+
  if(has_auxil_basis) then
-   allocate(bra_auxil(wpol_static%npole_reso,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
-   do ijspin=1,nspin
-     do istate=ncore_W+1,nvirtual_W-1 
-       do jstate=ncore_W+1,nvirtual_W-1
-
-         ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-         bra_auxil(:,istate,jstate,ijspin) = MATMUL( TRANSPOSE(wpol_static%residu_left(:,:)) , eri_3center_eigen(:,istate,jstate,ijspin) )
-
-       enddo
-     enddo
-   enddo
+   allocate(bra_auxil_i(wpol_static%npole_reso,ncore_W+1:nvirtual_W-1))
+   allocate(bra_auxil_j(wpol_static%npole_reso,ncore_W+1:nvirtual_W-1))
  endif
 
+ istate = 0
+ jstate = 0
  !
  ! Set up -W contributions to matrices (A+B) and (A-B)
  !
  do t_ij=1,nmat ! only resonant transition
+
+   istate_prev = istate
+   jstate_prev = jstate
    istate = wpol%transition_table(1,t_ij)
    jstate = wpol%transition_table(2,t_ij)
    ijspin = wpol%transition_table(3,t_ij)
+
+   ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
+   if(has_auxil_basis) then
+     if( istate_prev /= istate ) then
+       forall(kstate=ncore_W+1:nvirtual_W-1)
+         bra_auxil_i(:,kstate) = MATMUL( TRANSPOSE(wpol_static%residu_left(:,:)) , eri_3center_eigen(:,istate,kstate,ijspin) )
+       end forall
+     endif
+     if( jstate_prev /= jstate ) then
+       forall(kstate=ncore_W+1:nvirtual_W-1)
+         bra_auxil_j(:,kstate) = MATMUL( TRANSPOSE(wpol_static%residu_left(:,:)) , eri_3center_eigen(:,jstate,kstate,ijspin) )
+       end forall
+     endif
+   endif
+
 
    do t_kl=t_ij,nmat ! only resonant transition
      kstate = wpol%transition_table(1,t_kl)
@@ -582,8 +608,10 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
        kbf = prod_basis%index_prodbasis(jstate,lstate)+prod_basis%nbf*(klspin-1)
        ket(:) = wpol_static%residu_left(kbf,:)
      else
-       bra(:) = bra_auxil(:,istate,kstate,ijspin) 
-       ket(:) = bra_auxil(:,jstate,lstate,klspin) 
+!       bra(:) = bra_auxil(:,istate,kstate,ijspin) 
+!       ket(:) = bra_auxil(:,jstate,lstate,klspin) 
+       bra(:) = bra_auxil_i(:,kstate) 
+       ket(:) = bra_auxil_j(:,lstate) 
      endif
 
      wtmp =  SUM( 2.0_dp * bra(:)*ket(:)/(-wpol_static%pole(:)) )   ! Factor two comes from Resonant and Anti-resonant transitions
@@ -600,8 +628,10 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
        kbf = prod_basis%index_prodbasis(jstate,kstate)+prod_basis%nbf*(klspin-1)
        ket(:) = wpol_static%residu_left(kbf,:)  
      else
-       bra(:) = bra_auxil(:,istate,lstate,ijspin) 
-       ket(:) = bra_auxil(:,jstate,kstate,klspin)
+!       bra(:) = bra_auxil(:,istate,lstate,ijspin) 
+!       ket(:) = bra_auxil(:,jstate,kstate,klspin)
+       bra(:) = bra_auxil_i(:,lstate) 
+       ket(:) = bra_auxil_j(:,kstate) 
      endif
 
      wtmp =  SUM( 2.0_dp * bra(:)*ket(:)/(-wpol_static%pole(:)) )   ! Factor two comes from Resonant and Anti-resonant transitions
@@ -614,10 +644,12 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
 
 
    enddo
+
  enddo
 
  deallocate(bra,ket)
- if(allocated(bra_auxil))                deallocate(bra_auxil)
+ if(allocated(bra_auxil_i)) deallocate(bra_auxil_i)
+ if(allocated(bra_auxil_j)) deallocate(bra_auxil_j)
 
 
  call stop_clock(timing_build_bse)
