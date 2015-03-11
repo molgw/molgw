@@ -485,8 +485,8 @@ subroutine read_inputfile_namelist()
 
 !=====
  character(len=100)   :: input_key
- character(len=12)    :: scf
- character(len=12)    :: postscf
+ character(len=24)    :: scf
+ character(len=24)    :: postscf
  character(len=100)   :: basis
  character(len=100)   :: auxil_basis
  character(len=12)    :: length_unit
