@@ -1017,21 +1017,17 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
      endif
      WRITE_MASTER(*,'(i4,2(f18.8,2x),5x,a32)') t_kl,eigenvalue(t_kl)*Ha_eV,oscillator_strength,symsymbol
      do t_ij=1,nmat
-       if( ABS(bigx(t_ij,t_kl)**2) > 1.0e-1_dp ) then
+       if( ABS(bigx(t_ij,t_kl))/SQRT(2.0_dp) > 1.0e-1_dp ) then
          istate = chi%transition_table(1,t_ij)
          jstate = chi%transition_table(2,t_ij)
-         ijspin = chi%transition_table(3,t_ij)
-         WRITE_MASTER(*,'(8x,i4,a,i4,x,f12.4)') istate,' -> ',jstate,bigx(t_ij,t_kl)**2
-         WRITE_MASTER(*,'(8x,i4,a,i4,x,f12.4)') istate,' -> ',jstate,bigx(t_ij,t_kl)+bigy(t_ij,t_kl)
-         WRITE_MASTER(*,'(8x,i4,a,i4,x,f12.4)') istate,' -> ',jstate,bigx(t_ij,t_kl)
-         WRITE_MASTER(*,'(8x,i4,a,i4,x,f12.4)') istate,' -> ',jstate,bigy(t_ij,t_kl)
+         WRITE_MASTER(*,'(8x,i4,a,i4,x,f12.5)') istate,' -> ',jstate,bigx(t_ij,t_kl)/SQRT(2.0_dp)
        endif
      enddo
      do t_ij=1,nmat
-       if( ABS(bigy(t_ij,t_kl)**2) > 1.0e-1_dp ) then
+       if( ABS(bigy(t_ij,t_kl))/SQRT(2.0_dp) > 1.0e-1_dp ) then
          istate = chi%transition_table(1,t_ij)
          jstate = chi%transition_table(2,t_ij)
-         WRITE_MASTER(*,'(8x,i4,a,i4,x,f12.4)') jstate,' -> ',istate,bigy(t_ij,t_kl)**2
+         WRITE_MASTER(*,'(8x,i4,a,i4,x,f12.5)') jstate,' -> ',istate,bigy(t_ij,t_kl)/SQRT(2.0_dp)
        endif
      enddo
      WRITE_MASTER(*,*)
