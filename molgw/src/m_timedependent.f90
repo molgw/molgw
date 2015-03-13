@@ -113,13 +113,22 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! to span all the possible approximations
  !
  WRITE_MASTER(*,'(/,a)') ' Build the electron-hole hamiltonian'
+ ! Step 1
  call build_amb_apb_common(basis%nbf,c_matrix,energy_qp,wpol_out,alpha_local,nmat,amb_matrix,apb_matrix)
- if(is_tddft) &
-   call build_apb_tddft(basis,c_matrix,occupation,wpol_out,nmat,apb_matrix)
+
+ ! Step 2
+ if(is_tddft) call build_apb_tddft(basis,c_matrix,occupation,wpol_out,nmat,apb_matrix)
+
+ ! Step 3
  if(calc_type%is_bse .AND. .NOT. is_rpa) then
-   call build_amb_apb_bse(basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,nmat,amb_matrix,apb_matrix)
+   if(.NOT. has_auxil_basis ) then
+     call build_amb_apb_bse(basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,nmat,amb_matrix,apb_matrix)
+   else
+     call build_amb_apb_bse_auxil(basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,nmat,amb_matrix,apb_matrix)
+   endif
    call destroy_spectral_function(wpol_static)
  endif
+ ! Construction done!
 
  !
  ! First part of the RPA correlation energy: sum over diagonal terms
@@ -531,13 +540,13 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
 !=====
  integer              :: t_ij,t_kl
  integer              :: istate,jstate,kstate,lstate
- integer              :: istate_prev,jstate_prev
  integer              :: ijspin,klspin
  integer              :: kbf
  real(dp),allocatable :: bra(:),ket(:)
- real(dp),allocatable :: bra_auxil_i(:,:),bra_auxil_j(:,:)
  real(dp)             :: wtmp
 !=====
+
+ if( has_auxil_basis ) stop'Have an auxil basis. This should not happen here'
 
  call start_clock(timing_build_bse)
 
@@ -548,51 +557,13 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
  allocate(bra(wpol_static%npole_reso))
  allocate(ket(wpol_static%npole_reso))
 
-! if(has_auxil_basis) then
-!   allocate(bra_auxil(wpol_static%npole_reso,ncore_W+1:nvirtual_W-1,ncore_W+1:nvirtual_W-1,nspin))
-!   do ijspin=1,nspin
-!     do istate=ncore_W+1,nvirtual_W-1 
-!       do jstate=ncore_W+1,nvirtual_W-1
-!
-!         ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-!         bra_auxil(:,istate,jstate,ijspin) = MATMUL( TRANSPOSE(wpol_static%residu_left(:,:)) , eri_3center_eigen(:,istate,jstate,ijspin) )
-!
-!       enddo
-!     enddo
-!   enddo
-! endif
-
- if(has_auxil_basis) then
-   allocate(bra_auxil_i(wpol_static%npole_reso,ncore_W+1:nvirtual_W-1))
-   allocate(bra_auxil_j(wpol_static%npole_reso,ncore_W+1:nvirtual_W-1))
- endif
-
- istate = 0
- jstate = 0
  !
  ! Set up -W contributions to matrices (A+B) and (A-B)
  !
  do t_ij=1,nmat ! only resonant transition
-
-   istate_prev = istate
-   jstate_prev = jstate
    istate = wpol%transition_table(1,t_ij)
    jstate = wpol%transition_table(2,t_ij)
    ijspin = wpol%transition_table(3,t_ij)
-
-   ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-   if(has_auxil_basis) then
-     if( istate_prev /= istate ) then
-       forall(kstate=ncore_W+1:nvirtual_W-1)
-         bra_auxil_i(:,kstate) = MATMUL( TRANSPOSE(wpol_static%residu_left(:,:)) , eri_3center_eigen(:,istate,kstate,ijspin) )
-       end forall
-     endif
-     if( jstate_prev /= jstate ) then
-       forall(kstate=ncore_W+1:nvirtual_W-1)
-         bra_auxil_j(:,kstate) = MATMUL( TRANSPOSE(wpol_static%residu_left(:,:)) , eri_3center_eigen(:,jstate,kstate,ijspin) )
-       end forall
-     endif
-   endif
 
 
    do t_kl=t_ij,nmat ! only resonant transition
@@ -602,17 +573,10 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
 
      if(ijspin/=klspin) cycle
 
-     if(.NOT. has_auxil_basis) then
-       kbf = prod_basis%index_prodbasis(istate,kstate)+prod_basis%nbf*(ijspin-1)
-       bra(:) = wpol_static%residu_left(kbf,:)
-       kbf = prod_basis%index_prodbasis(jstate,lstate)+prod_basis%nbf*(klspin-1)
-       ket(:) = wpol_static%residu_left(kbf,:)
-     else
-!       bra(:) = bra_auxil(:,istate,kstate,ijspin) 
-!       ket(:) = bra_auxil(:,jstate,lstate,klspin) 
-       bra(:) = bra_auxil_i(:,kstate) 
-       ket(:) = bra_auxil_j(:,lstate) 
-     endif
+     kbf = prod_basis%index_prodbasis(istate,kstate)+prod_basis%nbf*(ijspin-1)
+     bra(:) = wpol_static%residu_left(kbf,:)
+     kbf = prod_basis%index_prodbasis(jstate,lstate)+prod_basis%nbf*(klspin-1)
+     ket(:) = wpol_static%residu_left(kbf,:)
 
      wtmp =  SUM( 2.0_dp * bra(:)*ket(:)/(-wpol_static%pole(:)) )   ! Factor two comes from Resonant and Anti-resonant transitions
      apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
@@ -622,17 +586,10 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
        amb_matrix(t_kl,t_ij) =  amb_matrix(t_kl,t_ij) - wtmp
      endif
 
-     if(.NOT. has_auxil_basis) then
-       kbf = prod_basis%index_prodbasis(istate,lstate)+prod_basis%nbf*(ijspin-1)
-       bra(:) = wpol_static%residu_left(kbf,:)
-       kbf = prod_basis%index_prodbasis(jstate,kstate)+prod_basis%nbf*(klspin-1)
-       ket(:) = wpol_static%residu_left(kbf,:)  
-     else
-!       bra(:) = bra_auxil(:,istate,lstate,ijspin) 
-!       ket(:) = bra_auxil(:,jstate,kstate,klspin)
-       bra(:) = bra_auxil_i(:,lstate) 
-       ket(:) = bra_auxil_j(:,kstate) 
-     endif
+     kbf = prod_basis%index_prodbasis(istate,lstate)+prod_basis%nbf*(ijspin-1)
+     bra(:) = wpol_static%residu_left(kbf,:)
+     kbf = prod_basis%index_prodbasis(jstate,kstate)+prod_basis%nbf*(klspin-1)
+     ket(:) = wpol_static%residu_left(kbf,:)  
 
      wtmp =  SUM( 2.0_dp * bra(:)*ket(:)/(-wpol_static%pole(:)) )   ! Factor two comes from Resonant and Anti-resonant transitions
      apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
@@ -648,14 +605,136 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
  enddo
 
  deallocate(bra,ket)
- if(allocated(bra_auxil_i)) deallocate(bra_auxil_i)
- if(allocated(bra_auxil_j)) deallocate(bra_auxil_j)
 
 
  call stop_clock(timing_build_bse)
 
 
 end subroutine build_amb_apb_bse
+
+
+!=========================================================================
+subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_matrix,apb_matrix)
+ use m_spectral_function
+ use m_basis_set
+ use m_eri
+ use m_tools 
+ implicit none
+
+ integer,intent(in)                 :: nbf
+ type(basis_set),intent(in)         :: prod_basis
+ real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
+ type(spectral_function),intent(in) :: wpol,wpol_static
+ integer,intent(in)                 :: nmat
+ real(dp),intent(out)               :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
+!=====
+ integer              :: t_ij,t_kl
+ integer              :: istate,jstate,kstate,lstate
+ integer              :: istate_prev,jstate_prev
+ integer              :: ijspin,klspin
+ integer              :: kbf
+ real(dp),allocatable :: bra(:),ket(:)
+ real(dp),allocatable :: bra_auxil(:,:,:,:)
+ real(dp),allocatable :: bra_auxil_i(:,:),bra_auxil_j(:,:)
+ real(dp)             :: wtmp
+ integer              :: ipole,nbf_auxil,ibf_auxil,jbf_auxil
+ real(dp),allocatable :: vsqrt_chi_vsqrt(:,:),matrix_sqrt(:,:)
+ real(dp),allocatable :: residu_tmp(:,:)
+ real(dp),allocatable :: wp0_sqrt_i(:,:),wp0_sqrt_j(:,:)
+ real(dp),allocatable :: eigval(:)
+!=====
+
+ call start_clock(timing_build_bse)
+ if( .NOT. has_auxil_basis ) stop'Does not have auxil basis. This should not happen'
+
+ WRITE_MASTER(*,'(a)') ' Build W part Auxil' 
+
+
+ nbf_auxil = wpol_static%nprodbasis
+ allocate(vsqrt_chi_vsqrt(nbf_auxil,nbf_auxil))
+ allocate(matrix_sqrt(nbf_auxil,nbf_auxil))
+ allocate(residu_tmp(nbf_auxil,wpol_static%npole_reso))
+ 
+ forall(ipole=1:wpol_static%npole_reso)
+   residu_tmp(:,ipole) = wpol_static%residu_left(:,ipole) * SQRT( 2.0_dp / wpol_static%pole(ipole) )
+ end forall
+
+ vsqrt_chi_vsqrt(:,:) = MATMUL( residu_tmp(:,:) , TRANSPOSE( residu_tmp(:,:) ) )
+
+ deallocate(residu_tmp)
+
+ allocate(eigval(nbf_auxil))
+ call diagonalize(nbf_auxil,vsqrt_chi_vsqrt,eigval)
+
+ forall(ibf_auxil=1:nbf_auxil)
+   matrix_sqrt(:,ibf_auxil) = vsqrt_chi_vsqrt(:,ibf_auxil)*SQRT(eigval(ibf_auxil))
+ end forall
+ deallocate(eigval)
+
+ vsqrt_chi_vsqrt = TRANSPOSE( vsqrt_chi_vsqrt )
+ matrix_sqrt(:,:) = MATMUL( matrix_sqrt(:,:) , vsqrt_chi_vsqrt(:,:) )
+
+ deallocate(vsqrt_chi_vsqrt)
+ 
+ allocate(wp0_sqrt_i(nbf_auxil,ncore_W+1:nvirtual_W-1))
+ allocate(wp0_sqrt_j(nbf_auxil,ncore_W+1:nvirtual_W-1))
+
+
+
+ istate = 0
+ ! Set up -W contributions to matrices (A+B) and (A-B)
+ !
+ do t_ij=1,nmat ! only resonant transition
+   istate_prev = istate
+   istate = wpol%transition_table(1,t_ij)
+   jstate = wpol%transition_table(2,t_ij)
+   ijspin = wpol%transition_table(3,t_ij)
+
+   if( istate /= istate_prev ) then 
+     wp0_sqrt_i(:,:) = MATMUL( matrix_sqrt(:,:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,istate,ijspin) )
+   endif
+   wp0_sqrt_j(:,:) = MATMUL( matrix_sqrt(:,:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,ijspin) )
+
+
+   do t_kl=t_ij,nmat ! only resonant transition
+     kstate = wpol%transition_table(1,t_kl)
+     lstate = wpol%transition_table(2,t_kl)
+     klspin = wpol%transition_table(3,t_kl)
+
+     if(ijspin/=klspin) cycle
+
+     wtmp = -DOT_PRODUCT( wp0_sqrt_i(:,kstate) , wp0_sqrt_j(:,lstate) )
+
+     apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
+     amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) - wtmp
+     if( t_ij/=t_kl) then
+       apb_matrix(t_kl,t_ij) =  apb_matrix(t_kl,t_ij) - wtmp
+       amb_matrix(t_kl,t_ij) =  amb_matrix(t_kl,t_ij) - wtmp
+     endif
+
+     wtmp = -DOT_PRODUCT( wp0_sqrt_i(:,lstate) , wp0_sqrt_j(:,kstate) )
+
+     apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
+     amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) + wtmp
+     if( t_ij/=t_kl) then
+       apb_matrix(t_kl,t_ij) =  apb_matrix(t_kl,t_ij) - wtmp
+       amb_matrix(t_kl,t_ij) =  amb_matrix(t_kl,t_ij) + wtmp
+     endif
+
+
+   enddo
+
+ enddo
+
+ deallocate(matrix_sqrt)
+ deallocate(wp0_sqrt_i)
+ deallocate(wp0_sqrt_j)
+
+
+ call stop_clock(timing_build_bse)
+
+
+end subroutine build_amb_apb_bse_auxil
 
 
 !=========================================================================

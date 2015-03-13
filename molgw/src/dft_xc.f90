@@ -100,7 +100,6 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
     endif
    endif
 
-   WRITE_MASTER(*,'(/,a)') ' LIBXC info'
    if( dft_xc_type(idft_xc) < 1000 ) then
      call xc_f90_info_name(xc_info(idft_xc),string)
      WRITE_MASTER(*,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),TRIM(string)
