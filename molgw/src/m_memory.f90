@@ -381,7 +381,6 @@ subroutine clean_deallocate_4d(array_name,array)
 
 end subroutine clean_deallocate_4d
 
-!FBFBFBFBFBBF
 
 !=========================================================================
 subroutine clean_allocate_s1d(array_name,array,n1)
@@ -396,7 +395,7 @@ subroutine clean_allocate_s1d(array_name,array,n1)
 !=====
 
  WRITE_MASTER(*,'(a,x,a)') ' Allocate',TRIM(array_name)
- mem_mb = REAL(dp,dp) * REAL(n1,dp) / 1024._dp**2
+ mem_mb = REAL(sp,dp) * REAL(n1,dp) / 1024._dp**2
  if( mem_mb < 500._dp ) then
    WRITE_MASTER(*,'(a30,f9.3)') ' Memory [Mb]: ',mem_mb
  else
@@ -438,7 +437,7 @@ subroutine clean_allocate_s2d(array_name,array,n1,n2)
 !=====
 
  WRITE_MASTER(*,'(a,x,a)') ' Allocate',TRIM(array_name)
- mem_mb = REAL(dp,dp) * REAL(n1,dp) * REAL(n2,dp) / 1024._dp**2
+ mem_mb = REAL(sp,dp) * REAL(n1,dp) * REAL(n2,dp) / 1024._dp**2
  if( mem_mb < 500._dp ) then
    WRITE_MASTER(*,'(a30,f9.3)') ' Memory [Mb]: ',mem_mb
  else
@@ -480,7 +479,7 @@ subroutine clean_allocate_s3d(array_name,array,n1,n2,n3)
 !=====
 
  WRITE_MASTER(*,'(a,x,a)') ' Allocate',TRIM(array_name)
- mem_mb = REAL(dp,dp) * REAL(n1,dp) * REAL(n2,dp) * REAL(n3,dp) / 1024._dp**2
+ mem_mb = REAL(sp,dp) * REAL(n1,dp) * REAL(n2,dp) * REAL(n3,dp) / 1024._dp**2
  if( mem_mb < 500._dp ) then
    WRITE_MASTER(*,'(a30,f9.3)') ' Memory [Mb]: ',mem_mb
  else
@@ -522,7 +521,7 @@ subroutine clean_allocate_s4d(array_name,array,n1,n2,n3,n4)
 !=====
 
  WRITE_MASTER(*,'(a,x,a)') ' Allocate',TRIM(array_name)
- mem_mb = REAL(dp,dp) * REAL(n1,dp) * REAL(n2,dp) * REAL(n3,dp) * REAL(n4,dp) / 1024._dp**2
+ mem_mb = REAL(sp,dp) * REAL(n1,dp) * REAL(n2,dp) * REAL(n3,dp) * REAL(n4,dp) / 1024._dp**2
  if( mem_mb < 500._dp ) then
    WRITE_MASTER(*,'(a30,f9.3)') ' Memory [Mb]: ',mem_mb
  else
@@ -566,7 +565,7 @@ subroutine clean_deallocate_s1d(array_name,array)
  n1 = SIZE(array(:))
 
  WRITE_MASTER(*,'(a,x,a)') ' Deallocate',TRIM(array_name)
- mem_mb = REAL(dp,dp) * REAL(n1,dp) / 1024._dp**2
+ mem_mb = REAL(sp,dp) * REAL(n1,dp) / 1024._dp**2
  if( mem_mb < 500._dp ) then
    WRITE_MASTER(*,'(a30,f9.3)') ' Free [Mb]: ',mem_mb
  else
@@ -604,7 +603,7 @@ subroutine clean_deallocate_s2d(array_name,array)
  n2 = SIZE(array(:,:),DIM=2)
 
  WRITE_MASTER(*,'(a,x,a)') ' Deallocate',TRIM(array_name)
- mem_mb = REAL(dp,dp) * REAL(n1,dp) * REAL(n2,dp) / 1024._dp**2
+ mem_mb = REAL(sp,dp) * REAL(n1,dp) * REAL(n2,dp) / 1024._dp**2
  if( mem_mb < 500._dp ) then
    WRITE_MASTER(*,'(a30,f9.3)') ' Free [Mb]: ',mem_mb
  else
@@ -643,7 +642,7 @@ subroutine clean_deallocate_s3d(array_name,array)
  n3 = SIZE(array(:,:,:),DIM=3)
 
  WRITE_MASTER(*,'(a,x,a)') ' Deallocate',TRIM(array_name)
- mem_mb = REAL(dp,dp) * REAL(n1,dp) *REAL(n2,dp) * REAL(n3,dp) / 1024._dp**2
+ mem_mb = REAL(sp,dp) * REAL(n1,dp) *REAL(n2,dp) * REAL(n3,dp) / 1024._dp**2
  if( mem_mb < 500._dp ) then
    WRITE_MASTER(*,'(a30,f9.3)') ' Free [Mb]: ',mem_mb
  else
@@ -683,7 +682,7 @@ subroutine clean_deallocate_s4d(array_name,array)
  n4 = SIZE(array(:,:,:,:),DIM=4)
 
  WRITE_MASTER(*,'(a,x,a)') ' Deallocate',TRIM(array_name)
- mem_mb = REAL(dp,dp) * REAL(n1,dp) *REAL(n2,dp) * REAL(n3,dp) * REAL(n4,dp)/ 1024._dp**2
+ mem_mb = REAL(sp,dp) * REAL(n1,dp) *REAL(n2,dp) * REAL(n3,dp) * REAL(n4,dp)/ 1024._dp**2
  if( mem_mb < 500._dp ) then
    WRITE_MASTER(*,'(a30,f9.3)') ' Free [Mb]: ',mem_mb
  else
