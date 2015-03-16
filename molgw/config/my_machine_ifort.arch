@@ -1,7 +1,7 @@
 OPENMP= #-openmp
 
 
-FC=ifort -fpp $(OPENMP) -mkl=sequential -DHAVE_LIBXC 
+FC=ifort -fpp $(OPENMP) -mkl=sequential -DHAVE_LIBXC   # -DTD_SP
 
 CC=icc
 FCOPTS= -O3 -xhost -parallel -opt-matmul #   -g -check all -traceback  

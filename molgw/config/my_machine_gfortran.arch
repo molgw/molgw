@@ -1,7 +1,7 @@
 OPENMP= 
 
 
-FC=gfortran -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC  
+FC=gfortran -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC   # -DTD_SP
 
 CC=gcc
 FCOPTS= -O2 # -O0 -g -check all -traceback 
