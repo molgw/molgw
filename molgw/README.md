@@ -28,11 +28,11 @@ Many-body perturbation theory and (TD)-DFT calculations for atoms and small mole
 ##Installation
 
 MOLGW needs Fortran 2003, c and c++ compilers.
-The machine dependent variables should be set in file ~molgw/src/my_machine.arch
-Examples for this file are given in the folder ~molgw/config/.
+The machine dependent variables should be set in file `~molgw/src/my_machine.arch`
+Examples for this file are given in the folder `~molgw/config/`.
 Then
-cd ~molgw/src
-make
+`cd ~molgw/src`
+`make`
 
 - BLAS and LAPACK linear algebra libraries are required.
 - libint is required:
@@ -44,14 +44,15 @@ http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.0.1.tar.gz
 ##Basis sets
 Basis sets can be obtained from https://bse.pnl.gov/bse/portal
 The file can be generated from a NWChem file using the script
-./util/basis_nwchem2molgw.py B_aug-cc-pVDZ.nwchem
+`~molgw/util/basis_nwchem2molgw.py B_aug-cc-pVDZ.nwchem`
 
 
 ##Usage
 The basis file needs to be located in the working directory.
-./molgw < helium.in > helium.out
 
-Example input files can be found in ./tests/
+`./molgw < helium.in > helium.out`
+
+Example input files can be found in `~molgw/tests/`
 
 
 ##To be done
@@ -65,6 +66,8 @@ Example input files can be found in ./tests/
 Especially when compiling with gfortran/gcc. ifort/icc behaves much better.
 
 ##Author
+
 Fabien Bruneval
+
 Service de Recherches de Métallurgie Physique
 CEA Saclay, F-91191 Gif-sur-Yvette, France
