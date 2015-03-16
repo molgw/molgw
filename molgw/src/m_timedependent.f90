@@ -30,9 +30,9 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  type(spectral_function) :: wpol_static
  integer                 :: nmat
  real(dp)                :: alpha_local
- real(dp),allocatable    :: amb_matrix(:,:),apb_matrix(:,:)
+ real(prec_td),allocatable    :: amb_matrix(:,:),apb_matrix(:,:)
+ real(prec_td),allocatable    :: bigx(:,:),bigy(:,:)
  real(dp),allocatable    :: eigenvalue(:)
- real(dp),allocatable    :: bigx(:,:),bigy(:,:)
  real(dp)                :: energy_qp(basis%nbf,nspin)
  logical                 :: is_tddft
  logical                 :: is_ij
@@ -164,7 +164,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
 #ifndef HAVE_SCALAPACK
    call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,bigx,bigy)
 #else
-!FBFB   call diago_4blocks_chol(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,eigenvector)
+!   call diago_4blocks_chol(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,bigx,bigy)
 #endif
  call stop_clock(timing_diago_h2p)
 
@@ -234,7 +234,7 @@ subroutine build_amb_apb_common(nbf,c_matrix,energy,wpol,alpha_local,nmat,amb_ma
  type(spectral_function),intent(in) :: wpol
  real(dp),intent(in)                :: alpha_local
  integer,intent(in)                 :: nmat
- real(dp),intent(out)               :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
+ real(prec_td),intent(out)          :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
 !=====
  integer              :: t_ij,t_kl
  integer              :: istate,jstate,kstate,lstate
@@ -342,7 +342,7 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,nmat,apb_matrix)
  real(dp),intent(in)                :: occupation(basis%nbf,nspin)
  type(spectral_function),intent(in) :: wpol
  integer,intent(in)                 :: nmat
- real(dp),intent(inout)             :: apb_matrix(nmat,nmat)
+ real(prec_td),intent(inout)        :: apb_matrix(nmat,nmat)
 !=====
  integer              :: nspin_tddft
  integer              :: t_ij,t_kl
@@ -536,7 +536,7 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
  real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
  type(spectral_function),intent(in) :: wpol,wpol_static
  integer,intent(in)                 :: nmat
- real(dp),intent(out)               :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
+ real(prec_td),intent(out)          :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
 !=====
  integer              :: t_ij,t_kl
  integer              :: istate,jstate,kstate,lstate
@@ -626,7 +626,7 @@ subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat
  real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
  type(spectral_function),intent(in) :: wpol,wpol_static
  integer,intent(in)                 :: nmat
- real(dp),intent(out)               :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
+ real(prec_td),intent(out)          :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
 !=====
  integer              :: t_ij,t_kl
  integer              :: istate,jstate,kstate,lstate
@@ -744,14 +744,14 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,cc_matrix,npole,eigenvalue,bigx,bi
  use m_tools 
  implicit none
 
- integer,intent(in)     :: nmat,npole
- real(dp),intent(inout) :: amb_matrix(nmat,nmat)
- real(dp),intent(inout) :: cc_matrix(nmat,nmat)  ! cc_matrix constains (A+B) in the input, however it used a matrix buffer after
- real(dp),intent(out)   :: eigenvalue(nmat)
- real(dp),intent(out)   :: bigx(nmat,nmat),bigy(nmat,nmat)
+ integer,intent(in)          :: nmat,npole
+ real(prec_td),intent(inout) :: amb_matrix(nmat,nmat)
+ real(prec_td),intent(inout) :: cc_matrix(nmat,nmat)  ! cc_matrix constains (A+B) in the input, however it used a matrix buffer after
+ real(dp),intent(out)        :: eigenvalue(nmat)
+ real(prec_td),intent(out)   :: bigx(nmat,nmat),bigy(nmat,nmat)
 !=====
  integer              :: t_kl
- real(dp),allocatable :: amb_eigval(:),bigomega(:)
+ real(prec_td),allocatable :: amb_eigval(:),bigomega(:)
 !=====
 
  WRITE_MASTER(*,'(/,a)') ' Performing the block diago with square root of matrices'
@@ -795,7 +795,6 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,cc_matrix,npole,eigenvalue,bigx,bi
 
  forall(t_kl=1:nmat)
    cc_matrix(:,t_kl) = cc_matrix(:,t_kl) / SQRT(bigomega(t_kl))
-   ! Only Resonant
    eigenvalue(t_kl) = bigomega(t_kl)
  end forall
 
@@ -820,7 +819,7 @@ end subroutine diago_4blocks_sqrt
 
 
 !=========================================================================
-subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenvector)
+subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,npole,eigenvalue,bigx,bigy)
  use m_spectral_function
  use m_eri
  use m_tools 
@@ -829,7 +828,8 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
  integer,intent(in)                 :: nmat,npole
  real(dp),intent(inout)             :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
  real(dp),intent(out)               :: eigenvalue(nmat)
- real(dp),intent(out)               :: eigenvector(npole,nmat)   !FBFB eigenvector(npole,nmat) fix the second dimension
+ real(dp),intent(out)               :: bigx(nmat,nmat)
+ real(dp),intent(out)               :: bigy(nmat,nmat)
 !=====
  integer  :: descm(ndel),desck(ndel)
  integer  :: descx(ndel),descy(ndel)
@@ -837,14 +837,13 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
  integer  :: info
  integer  :: lwork
  real(dp),allocatable :: work(:)
- real(dp) :: eigenvector_transpinv(npole,npole)  !FBFB to be removed in the future.
 !=====
 
 #ifdef HAVE_SCALAPACK
  WRITE_MASTER(*,'(/,a)') ' Performing the block diago with Cholesky'
  call init_desc(nmat,descm,mlocal,nlocal)
  desck(:) = descm(:)
- call init_desc(2*nmat,descx,mlocal,nlocal)
+ call init_desc(nmat,descx,mlocal,nlocal)
  descy(:) = descx(:)
 
  allocate(work(1))
@@ -852,9 +851,6 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
  call pdbssolver1(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
                       eigenvalue,eigenvector,1,1,descx,eigenvector_transpinv,1,1,descy,&
                       work,lwork,info)
-! call pdbssolver1_svd(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
-!                      eigenvalue,eigenvector,1,1,descx,eigenvector_transpinv,1,1,descy,&
-!                      work,lwork,info)
  if(info/=0) stop'SCALAPACK failed'
  lwork=NINT(work(1))
 
@@ -863,9 +859,6 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,npole,eigenvalue,eigenv
  call pdbssolver1(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
                       eigenvalue,eigenvector,1,1,descx,eigenvector_transpinv,1,1,descy,&
                       work,lwork,info)
-! call pdbssolver1_svd(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
-!                      eigenvalue,eigenvector,1,1,descx,eigenvector_transpinv,1,1,descy,&
-!                      work,lwork,info)
  if(info/=0) stop'SCALAPACK failed'
  deallocate(work)
 
@@ -891,8 +884,8 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
  type(basis_set),intent(in)         :: basis,prod_basis
  real(dp),intent(in)                :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
  type(spectral_function),intent(in) :: chi
- real(dp),intent(in)                :: bigx(chi%npole_reso,chi%npole_reso) 
- real(dp),intent(in)                :: bigy(chi%npole_reso,chi%npole_reso) 
+ real(prec_td),intent(in)           :: bigx(chi%npole_reso,chi%npole_reso) 
+ real(prec_td),intent(in)           :: bigy(chi%npole_reso,chi%npole_reso) 
  real(dp),intent(in)                :: eigenvalue(chi%npole_reso)
 !=====
  integer                            :: t_ij,t_kl
@@ -1402,8 +1395,8 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,bigx,bigy,eigenvalue,
  real(dp),intent(in)                   :: occupation(nbf,nspin)
  real(dp),intent(in)                   :: c_matrix(nbf,nbf,nspin)
  type(spectral_function),intent(inout) :: wpol
- real(dp),intent(in)                   :: bigx(wpol%npole_reso,wpol%npole_reso)
- real(dp),intent(in)                   :: bigy(wpol%npole_reso,wpol%npole_reso)
+ real(prec_td),intent(in)              :: bigx(wpol%npole_reso,wpol%npole_reso)
+ real(prec_td),intent(in)              :: bigy(wpol%npole_reso,wpol%npole_reso)
  real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso)
 !=====
  integer                               :: t_kl,klspin,ijspin
@@ -1488,8 +1481,8 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,occupation,c_matrix,bigx,big
  real(dp),intent(in)                   :: occupation(nbf,nspin)
  real(dp),intent(in)                   :: c_matrix(nbf,nbf,nspin)
  type(spectral_function),intent(inout) :: wpol
- real(dp),intent(in)                   :: bigx(wpol%npole_reso,wpol%npole_reso)
- real(dp),intent(in)                   :: bigy(wpol%npole_reso,wpol%npole_reso)
+ real(prec_td),intent(in)              :: bigx(wpol%npole_reso,wpol%npole_reso)
+ real(prec_td),intent(in)              :: bigy(wpol%npole_reso,wpol%npole_reso)
  real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso)
 !=====
  integer                               :: t_ij,t_kl,klspin,ijspin

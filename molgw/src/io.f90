@@ -34,11 +34,13 @@ subroutine header()
 
 
  WRITE_MASTER(*,*) 'Compilation options'
+#ifdef TD_SP
+ call issue_warning('TD-DFT and BSE are using single precision to save memory')
+#endif
 #ifdef HAVE_LIBXC
  call xc_f90_version(values(1),values(2))
  WRITE_ME(chartmp,'(i2,a,i2)') values(1),'.',values(2)
- msg='LIBXC version '//TRIM(chartmp)
- call issue_warning(msg)
+ call issue_warning('LIBXC version '//TRIM(chartmp))
 #endif
 #ifdef _OPENMP
  WRITE_ME(msg,'(i6)') OMP_get_max_threads()
@@ -46,12 +48,10 @@ subroutine header()
  call issue_warning(msg)
 #endif
 #ifdef HAVE_MPI
- msg='Running with MPI'
- call issue_warning(msg)
+ call issue_warning('Running with MPI')
 #endif
 #ifdef HAVE_SCALAPACK
- msg='Running with SCALAPACK'
- call issue_warning(msg)
+ call issue_warning('Running with SCALAPACK')
 #endif
 
 
@@ -576,7 +576,7 @@ end subroutine write_energy_qp
 subroutine read_energy_qp(nspin,nbf,energy_qp,reading_status)
  use m_definitions
  use m_mpi
- use m_warning,only: issue_warning,msg
+ use m_warning,only: issue_warning
  implicit none
 
  integer,intent(in)   :: nspin,nbf
@@ -596,8 +596,7 @@ subroutine read_energy_qp(nspin,nbf,energy_qp,reading_status)
    read(unit_energy_qp,*) nspin_read
    read(unit_energy_qp,*) nbf_read
    if( nbf_read /= nbf .OR. nspin_read /= nspin ) then
-     msg='energy_qp file does not have the correct dimensions'
-     call issue_warning(msg)
+     call issue_warning('energy_qp file does not have the correct dimensions')
      reading_status=2
    else
      do istate=1,nbf
@@ -614,8 +613,7 @@ subroutine read_energy_qp(nspin,nbf,energy_qp,reading_status)
    close(unit_energy_qp)
  else
    reading_status=1
-   msg='file energy_qp does not exist'
-   call issue_warning(msg)
+   call issue_warning('file energy_qp does not exist')
  endif
 
 
@@ -773,12 +771,10 @@ subroutine read_any_restart(nbf,occupation,c_matrix,energy,hamiltonian_exx,hamil
  if( nstate_read(1) == nbf .AND. nstate_read(2) == nbf     &
     .AND. same_scf_name                                    &
     .AND. .NOT. ignore_big_restart ) then
-   msg='Restart from a big RESTART file obtained within '//TRIM(scf_name_read)
-   call issue_warning(msg)
+   call issue_warning('Restart from a big RESTART file obtained within '//TRIM(scf_name_read))
    is_big_restart = .TRUE.
  else
-   msg='Restart from a small RESTART file obtained within '//TRIM(scf_name_read) 
-   call issue_warning(msg)
+   call issue_warning('Restart from a small RESTART file obtained within '//TRIM(scf_name_read))
    is_big_restart = .FALSE.
  endif
  do ispin=1,nspin

@@ -220,11 +220,9 @@ function check_converged()
 
  if(iscf == nscf) then
    if(rms>1.d-4) then
-     msg='SCF convergence is very poor'
-     call issue_warning(msg)
+     call issue_warning('SCF convergence is very poor')
    else if(rms>1.d-6) then
-     msg='SCF convergence is poor'
-     call issue_warning(msg)
+     call issue_warning('SCF convergence is poor')
    endif
  endif
 

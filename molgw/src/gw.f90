@@ -79,8 +79,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  if( gwmethod==GnW0 .OR. gwmethod==GnWn ) then
    call read_energy_qp(nspin,basis%nbf,energy_qp,reading_status)
    if(reading_status/=0) then
-     msg='File energy_qp not found: assuming 1st iteration'
-     call issue_warning(msg)
+     call issue_warning('File energy_qp not found: assuming 1st iteration')
      energy_qp(:,:) = energy(:,:)
    endif
  else

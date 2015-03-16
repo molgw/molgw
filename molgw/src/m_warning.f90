@@ -29,7 +29,7 @@ end subroutine init_warning
 !=========================================================================
 subroutine issue_warning(msgw)
  implicit none
- character(len=100),intent(in) :: msgw
+ character(len=*),intent(in) :: msgw
 !===== 
   
  WRITE_MASTER(*,'(/,a,a)') ' WARNING: ',TRIM(msgw)

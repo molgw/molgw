@@ -455,21 +455,21 @@
 *
 *     Recover negative eigenvalues and the eigenvectors.
 *
-      T_SYM = MPI_WTIME()
-      DO I = 1, N
-         LAMBDA( N+I ) = -LAMBDA( I )
-      END DO
-      CALL PDGEADD( 'N', N, N, ONE, X, IX, JX, DESCX, ZERO,
-     $     X, IX+N, JX+N, DESCX )
-      CALL PDGEADD( 'N', N, N, ONE, X, IX+N, JX, DESCX, ZERO,
-     $     X, IX, JX+N, DESCX )
-      CALL PDGEADD( 'N', N, N, ONE, Y, IY, JY, DESCY, ZERO,
-     $     Y, IY+N, JY+N, DESCY )
-      CALL PDGEADD( 'N', N, N, ONE, Y, IY+N, JY, DESCY, ZERO,
-     $     Y, IY, JY+N, DESCY )
-      T_SYM = MPI_WTIME() - T_SYM
-      IF ( MYROW+MYCOL .EQ. 0 )
-     $   WRITE( *, * ) 't_sym = ', T_SYM, ';'
+!      T_SYM = MPI_WTIME()
+!      DO I = 1, N
+!         LAMBDA( N+I ) = -LAMBDA( I )
+!      END DO
+!      CALL PDGEADD( 'N', N, N, ONE, X, IX, JX, DESCX, ZERO,
+!     $     X, IX+N, JX+N, DESCX )
+!      CALL PDGEADD( 'N', N, N, ONE, X, IX+N, JX, DESCX, ZERO,
+!     $     X, IX, JX+N, DESCX )
+!      CALL PDGEADD( 'N', N, N, ONE, Y, IY, JY, DESCY, ZERO,
+!     $     Y, IY+N, JY+N, DESCY )
+!      CALL PDGEADD( 'N', N, N, ONE, Y, IY+N, JY, DESCY, ZERO,
+!     $     Y, IY, JY+N, DESCY )
+!      T_SYM = MPI_WTIME() - T_SYM
+!      IF ( MYROW+MYCOL .EQ. 0 )
+!     $   WRITE( *, * ) 't_sym = ', T_SYM, ';'
 *
       WORK( 1 ) = DBLE( LWKOPT )
 *
