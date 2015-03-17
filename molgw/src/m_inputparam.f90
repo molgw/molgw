@@ -518,7 +518,7 @@ subroutine read_inputfile_namelist()
 
  alpha_hybrid     = 0.0_dp
  beta_hybrid      = 0.0_dp
- gamma_hybrid     = HUGE(1.0_dp)
+ gamma_hybrid     = 1000000._dp
 
  basis            = ''
  auxil_basis      = ''
