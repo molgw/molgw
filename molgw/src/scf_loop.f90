@@ -116,8 +116,12 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      en%exx = alpha_hybrid * en%exx
      hamiltonian_xc(:,:,:) = hamiltonian_exx(:,:,:) * alpha_hybrid
 
-     if(calc_type%is_screened_hybrid) then
-       call setup_exchange_longrange(print_matrix_,basis%nbf,p_matrix,matrix_tmp,energy_tmp)
+     if(calc_type%need_exchange_lr) then
+       if( .NOT. is_full_auxil) then
+         call setup_exchange_longrange(print_matrix_,basis%nbf,p_matrix,matrix_tmp,energy_tmp)
+       else
+         call setup_exchange_longrange_ri(print_matrix_,basis%nbf,c_matrix,occupation,p_matrix,matrix_tmp,energy_tmp)
+       endif
        ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
        en%exx = en%exx + alpha_hybrid_lr * energy_tmp
        hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix_tmp(:,:,:) * alpha_hybrid_lr

@@ -116,8 +116,8 @@ program molgw
 ! call refine_negligible_basispair()
 
  !
- ! for HSE functionals, calculate the long-range ERI
- if(calc_type%is_screened_hybrid) then
+ ! for Range-separated hybrids, calculate the long-range ERI
+ if(calc_type%need_exchange_lr) then
    call prepare_eri(basis,rcut,BUFFER2)
    if( .NOT. is_full_auxil) then
      call calculate_eri(print_eri_,basis,rcut,BUFFER2)
@@ -207,9 +207,28 @@ program molgw
    call calculate_eri_2center(print_eri_,auxil_basis)
    ! 3-center integrals
    call calculate_eri_3center(print_eri_,basis,auxil_basis)
+
+   ! If Range-Separated Hybrid are requested
+   if(calc_type%need_exchange_lr) then
+     call allocate_eri_auxil_lr(auxil_basis)
+     ! 2-center integrals
+     call calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
+     ! 3-center integrals
+     call calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
+   endif
  endif
 
  call stop_clock(timing_prescf)
+!!FBFB
+! write(*,*) eri_ri(1,1,1,1)
+! write(*,*) eri   (1,1,1,1)
+! write(*,*) eri_ri(1,2,1,2)
+! write(*,*) eri   (1,2,1,2)
+! write(*,*) eri_ri_lr(1,1,1,1)
+! write(*,*) eri_lr   (1,1,1,1)
+! write(*,*) eri_ri_lr(1,2,1,2)
+! write(*,*) eri_lr   (1,2,1,2)
+! stop'enough'
 
  !
  ! Big SCF loop is in there
@@ -230,9 +249,14 @@ program molgw
 
 
  !
- ! If an auxiliary basis is given, the 4-center integrals are not needed anymore
+ ! Some deallocations here
  !
+ ! If an auxiliary basis is given, the 4-center integrals are not needed anymore
  if( has_auxil_basis ) call deallocate_eri_buffer()
+ ! If RSH calculations were performed, then deallocate the LR integrals which
+ ! are not needed anymore
+ if( calc_type%need_exchange_lr ) call deallocate_eri_buffer_lr()
+ if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
 
  !
  ! CI calculation is done here
@@ -361,6 +385,7 @@ program molgw
  deallocate(exchange_m_vxc_diag)
 
  call deallocate_eri()
+ if(has_auxil_basis) call destroy_eri_3center()
 
  call destroy_basis_set(basis)
  if(has_auxil_basis) call destroy_basis_set(auxil_basis)

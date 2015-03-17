@@ -94,7 +94,7 @@ subroutine dump_out_eigenenergy(title,n,nspin,occupation,energy)
  use m_definitions
  use m_mpi
  implicit none
- character(len=100),intent(in) :: title
+ character(len=*),intent(in) :: title
  integer,intent(in)            :: n,nspin
  real(dp),intent(in)           :: occupation(n,nspin),energy(n,nspin)
 !=====
@@ -137,7 +137,7 @@ subroutine dump_out_matrix(print_matrix,title,n,nspin,matrix)
  use m_mpi
  implicit none
  logical,intent(in)            :: print_matrix       
- character(len=100),intent(in) :: title
+ character(len=*),intent(in) :: title
  integer,intent(in)            :: n,nspin
  real(dp),intent(in)           :: matrix(n,n,nspin)
 !=====

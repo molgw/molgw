@@ -402,7 +402,6 @@ subroutine setup_exchange_ri(print_matrix_,nbf,c_matrix,occupation,p_matrix,pot_
  integer              :: nbf_auxil,nocc
  real(dp)             :: occ_sqrt_istate
  real(dp),allocatable :: tmp(:,:)
- character(len=100)   :: title
 !=====
 
  WRITE_MASTER(*,*) 'Calculate Exchange term with Resolution-of-Identity'
@@ -440,14 +439,79 @@ subroutine setup_exchange_ri(print_matrix_,nbf,c_matrix,occupation,p_matrix,pot_
 
 
 
- title='=== Exchange contribution ==='
- call dump_out_matrix(print_matrix_,title,nbf,nspin,pot_exchange)
+ call dump_out_matrix(print_matrix_,'=== Exchange contribution ===',nbf,nspin,pot_exchange)
 
  eexchange = 0.5_dp*SUM(pot_exchange(:,:,:)*p_matrix(:,:,:))
 
  call stop_clock(timing_exchange)
 
 end subroutine setup_exchange_ri
+
+
+!=========================================================================
+subroutine setup_exchange_longrange_ri(print_matrix_,nbf,c_matrix,occupation,p_matrix,pot_exchange,eexchange)
+ use m_definitions
+ use m_mpi
+ use m_timing
+ use m_eri
+ use m_inputparam,only: nspin,spin_fact
+ implicit none
+ logical,intent(in)   :: print_matrix_
+ integer,intent(in)   :: nbf
+ real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin),occupation(nbf,nspin)
+ real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
+ real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
+ real(dp),intent(out) :: eexchange
+!=====
+ integer              :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
+ integer              :: index_ij
+ integer              :: nbf_auxil,nocc
+ real(dp)             :: occ_sqrt_istate
+ real(dp),allocatable :: tmp(:,:)
+!=====
+
+ WRITE_MASTER(*,*) 'Calculate LR Exchange term with Resolution-of-Identity'
+ call start_clock(timing_exchange)
+
+ nbf_auxil = SIZE( eri_3center_lr(:,:), DIM=1 )
+
+ pot_exchange(:,:,:)=0.0_dp
+
+ allocate(tmp(nbf_auxil,nbf))
+
+ do ispin=1,nspin
+   do istate=1,nbf
+     if( occupation(istate,ispin) > completely_empty ) nocc = istate
+   enddo
+
+   do istate=1,nocc
+     occ_sqrt_istate = SQRT( occupation(istate,ispin) )
+     tmp(:,:) = 0.0_dp
+     do jbf=1,nbf
+       do ibf=1,nbf
+         if( negligible_basispair(ibf,jbf) ) cycle
+         index_ij = index_prod(ibf,jbf)
+         tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center_lr(:,index_ij) * occ_sqrt_istate
+       enddo
+     enddo
+
+     pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin) &
+                        - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+   enddo
+
+ enddo
+
+ deallocate(tmp)
+
+
+
+ call dump_out_matrix(print_matrix_,'=== LR Exchange contribution ===',nbf,nspin,pot_exchange)
+
+ eexchange = 0.5_dp*SUM(pot_exchange(:,:,:)*p_matrix(:,:,:))
+
+ call stop_clock(timing_exchange)
+
+end subroutine setup_exchange_longrange_ri
 
 
 !=========================================================================

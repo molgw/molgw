@@ -61,7 +61,6 @@ Example input files can be found in `~molgw/tests/`
 
 ##Known issues
 - QPscGW scf loop is quite unstable for large basis sets, use a low alpha (<= 0.50), use a large eta
-- Use of linearization of the GW self-energy can affect the QP energies (50 meV difference is observed, sometimes more)
 - TD-DFT GGA kernel can induce very large numerical values which limits the numerical stability and breaks some comparison with other codes.
 Especially when compiling with gfortran/gcc. ifort/icc behaves much better.
 

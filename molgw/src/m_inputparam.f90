@@ -29,9 +29,9 @@ module m_inputparam
    character(len=100) :: postscf_name
    logical            :: is_dft
    logical            :: need_exchange
+   logical            :: need_exchange_lr
    logical            :: need_rpa
    logical            :: is_lr_mbpt
-   logical            :: is_screened_hybrid
    logical            :: is_gw
    logical            :: is_mp2
    logical            :: is_ci
@@ -105,10 +105,8 @@ subroutine init_calculation_type(calc_type,input_key)
  ! default values
  calc_type%calc_name           =  TRIM(input_key)
  calc_type%is_dft              = .FALSE.
- calc_type%need_exchange       = .FALSE.
  calc_type%need_rpa            = .FALSE.
  calc_type%is_lr_mbpt          = .FALSE.
- calc_type%is_screened_hybrid  = .FALSE.
  calc_type%is_gw               = .FALSE.
  calc_type%is_mp2              = .FALSE.
  calc_type%is_ci               = .FALSE.
@@ -175,23 +173,18 @@ subroutine init_calculation_type(calc_type,input_key)
  select case(TRIM(key1))
  case('CI')
    calc_type%is_ci         = .TRUE.
-   calc_type%need_exchange = .TRUE.
    alpha_hybrid            = 1.00_dp
  case('HF')
-   calc_type%need_exchange = .TRUE.  
    alpha_hybrid            = 1.00_dp
  case('MP2')
-   calc_type%need_exchange = .TRUE.  
    calc_type%is_mp2        = .TRUE.
    calc_type%gwmethod      = QS
    alpha_hybrid            = 1.00_dp
  case('GW')
-   calc_type%need_exchange = .TRUE.  
    calc_type%is_gw         = .TRUE.
    calc_type%gwmethod      = QS
    alpha_hybrid            = 1.00_dp
  case('COHSEX')
-   calc_type%need_exchange = .TRUE.  
    calc_type%is_gw         = .TRUE.
    calc_type%gwmethod      = QSCOHSEX
    alpha_hybrid            = 1.00_dp
@@ -203,6 +196,14 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%is_dft=.TRUE.
    call init_dft_type(key1,calc_type)
  end select
+
+ !
+ ! Do we need Coulomb integrals?
+ ! Do we need LR Coulomb integrals?
+ !
+ calc_type%need_exchange    = ( alpha_hybrid > 1.0e-6 )
+ calc_type%need_exchange_lr = ( rcut > 1.0e-6 )
+
 
 end subroutine init_calculation_type
 
@@ -293,59 +294,43 @@ subroutine init_dft_type(key,calc_type)
  !
  ! Hybrid functionals
  case('BHANDH')
-   calc_type%need_exchange = .TRUE.  
    dft_xc_type(1) = XC_HYB_GGA_XC_BHANDH
-   alpha_hybrid = 0.50_dp
+   alpha_hybrid   = 0.50_dp
  case('BHANDHLYP')
-   calc_type%need_exchange = .TRUE.  
    dft_xc_type(1) = XC_HYB_GGA_XC_BHANDHLYP
-   alpha_hybrid = 0.50_dp
+   alpha_hybrid   = 0.50_dp
  case('B3LYP')
-   calc_type%need_exchange = .TRUE.  
    dft_xc_type(1) = XC_HYB_GGA_XC_B3LYP
-   alpha_hybrid = 0.20_dp
+   alpha_hybrid   = 0.20_dp
  case('PBE0')
-   calc_type%need_exchange = .TRUE.  
    dft_xc_type(1) = XC_HYB_GGA_XC_PBEH
-   alpha_hybrid = 0.25_dp
+   alpha_hybrid   = 0.25_dp
  case('HSE03')
-   calc_type%is_screened_hybrid  = .TRUE.
-   calc_type%need_exchange       = .TRUE.  
-   dft_xc_type(1) = XC_HYB_GGA_XC_HSE03
+   dft_xc_type(1)  = XC_HYB_GGA_XC_HSE03
    alpha_hybrid    = 0.25_dp
    alpha_hybrid_lr = -alpha_hybrid
-   rcut         = 1.0_dp / ( 0.15_dp / SQRT(2.0_dp) )
+   rcut            = 1.0_dp / ( 0.15_dp / SQRT(2.0_dp) )
  case('HSE06')
-   calc_type%is_screened_hybrid  = .TRUE.
-   calc_type%need_exchange       = .TRUE.  
-   dft_xc_type(1) = XC_HYB_GGA_XC_HSE06
+   dft_xc_type(1)  = XC_HYB_GGA_XC_HSE06
    alpha_hybrid    = 0.25_dp
    alpha_hybrid_lr = -alpha_hybrid
-   rcut         = 1.0_dp / 0.11_dp
+   rcut            = 1.0_dp / 0.11_dp
  case('HSE08')
-   calc_type%is_screened_hybrid  = .TRUE.
-   calc_type%need_exchange       = .TRUE.
-   dft_xc_type(1) = XC_HYB_GGA_XC_HJS_PBE
+   dft_xc_type(1)  = XC_HYB_GGA_XC_HJS_PBE
    alpha_hybrid    = 0.25_dp
    alpha_hybrid_lr = -alpha_hybrid
-   rcut           = 1.0_dp / 0.11_dp
+   rcut            = 1.0_dp / 0.11_dp
  case('CAM-B3LYP')
-   calc_type%is_screened_hybrid  = .TRUE.
-   calc_type%need_exchange       = .TRUE.
    dft_xc_type(1)  = XC_HYB_GGA_XC_CAM_B3LYP
    alpha_hybrid    =  0.19_dp 
    alpha_hybrid_lr =  0.46_dp 
    rcut            =  1.0_dp / 0.33_dp  
  case('TUNED-CAM-B3LYP')
-   calc_type%is_screened_hybrid  = .TRUE.
-   calc_type%need_exchange       = .TRUE.
    dft_xc_type(1)  = XC_HYB_GGA_XC_TUNED_CAM_B3LYP
    alpha_hybrid    =  0.0799_dp 
    alpha_hybrid_lr =  0.9201_dp
    rcut            =  1.0_dp / 0.150_dp  
  case('RSH')
-   calc_type%is_screened_hybrid  = .TRUE.
-   calc_type%need_exchange       = .TRUE.  
    dft_xc_type(1) = XC_GGA_X_PBE
    dft_xc_type(2) = XC_GGA_X_HJS_PBE 
    dft_xc_type(3) = XC_GGA_C_PBE
@@ -355,8 +340,6 @@ subroutine init_dft_type(key,calc_type)
    rcut           = 1.0_dp / gamma_hybrid
  ! Testing
  case('TESTHSE')
-   calc_type%is_screened_hybrid  = .TRUE.
-   calc_type%need_exchange       = .TRUE.  
    dft_xc_type(1) = XC_GGA_X_PBE
    dft_xc_type(2) = XC_GGA_X_HJS_PBE 
    dft_xc_type(3) = XC_GGA_C_PBE
@@ -368,14 +351,12 @@ subroutine init_dft_type(key,calc_type)
    gamma_hybrid    = 0.11_dp
    rcut           = 1.0_dp / gamma_hybrid
  case('TESTLDA0')
-   calc_type%need_exchange       = .TRUE.
    alpha_hybrid   = 0.25_dp
    dft_xc_type(1) = XC_LDA_X
    dft_xc_type(2) = XC_LDA_C_PW
    dft_xc_coef(1) =  1.00_dp - alpha_hybrid
    dft_xc_coef(2) =  1.00_dp
  case('TESTPBE0')
-   calc_type%need_exchange       = .TRUE.
    alpha_hybrid   = 0.25_dp
    dft_xc_type(1) = XC_GGA_X_PBE
    dft_xc_type(2) = XC_GGA_C_PBE
