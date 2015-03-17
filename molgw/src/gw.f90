@@ -225,9 +225,9 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    
    WRITE_MASTER(*,'(/,a)') ' COHSEX Eigenvalues [eV]'
    if(nspin==1) then
-     WRITE_MASTER(*,*) '  #          E0        SigX-Vxc      SigC          Z         G0W0'
+     WRITE_MASTER(*,*) '  #          E0        SigX-Vxc      SigC          Z         COHSEX'
    else
-     WRITE_MASTER(*,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       G0W0'
+     WRITE_MASTER(*,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       COHSEX'
    endif
    do astate=1,basis%nbf
      zz(:) = 1.0_dp 
@@ -272,10 +272,10 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
    WRITE_MASTER(*,'(/,a)') ' G0W0 Eigenvalues [eV]'
    if(nspin==1) then
-     WRITE_MASTER(*,*) '  #          E0        SigX-Vxc      SigC          Z         G0W0_Z         G0W0_qp'
+     WRITE_MASTER(*,'(a)') '   #          E0        SigX-Vxc      SigC          Z         G0W0_Z         G0W0_qp'
    else
      WRITE_MASTER(*,'(a)') &
-       '  #                E0                      SigX-Vxc                    SigC                       Z                       G0W0_Z                      G0W0_qp'
+       '   #                E0                      SigX-Vxc                    SigC                       Z                       G0W0_Z                      G0W0_qp'
    endif
    do astate=1,basis%nbf
      zz(:) = ( selfenergy_omega(1,astate,1,:) - selfenergy_omega(-1,astate,1,:) ) / ( omegai(1) - omegai(-1) )
@@ -323,7 +323,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    if(nspin==1) then
      WRITE_MASTER(*,'(a)') '  #          E0        SigX-Vxc      SigC          Z          GW(n-1)       GW(n)'
    else
-     WRITE_MASTER(*,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       G0W0'
+     WRITE_MASTER(*,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       GW'
    endif
    do astate=1,basis%nbf
      zz(:) = 1.0_dp 

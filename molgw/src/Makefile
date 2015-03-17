@@ -108,7 +108,7 @@ m_tools.o: macros.h m_definitions.f90 m_tools.f90
 m_elements.o: macros.h m_definitions.f90 m_mpi.f90 m_elements.f90
 	$(FC) $(FCOPTS) -c m_elements.f90 $(LIBXC_INCS)
 
-m_inputparam.o: macros.h m_definitions.f90 m_elements.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_basis_set.f90 m_inputparam.f90
+m_inputparam.o: macros.h m_definitions.f90 m_elements.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_basis_set.f90 input_variables.f90 m_inputparam.f90
 	$(FC) $(FCOPTS) -c m_inputparam.f90 $(LIBXC_INCS)
 
 m_memory.o: macros.h m_definitions.f90 m_mpi.f90 m_memory.f90
@@ -134,6 +134,9 @@ archive:
                           ../../molgw/src/macros.h \
                           ../../molgw/basis/* ../../molgw/util/* ../../molgw/tests/ ../../molgw/src/my_machine.arch
 	scp molgw.tgz 132.166.68.166:
+
+input:
+	python ../util/input_variables.py
 
 doc:
 	pdflatex ../doc/notes.tex	
