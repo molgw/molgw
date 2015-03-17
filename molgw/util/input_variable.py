@@ -53,17 +53,17 @@ vl[i].keyword  ='postscf'
 vl[i].family   ='post'
 vl[i].datatype ='characters'
 vl[i].comment  ='Contains the post-processing scheme name. \n\
-TD stands for TD-DFT\n\
-BSE stands for Bethe-Salpeter\n\
-GW stands for perturbative G0W0\n\
-GnW0 stands for GW with eigenvalue self-consistentcy on G\n\
-GnWn stands for GW with eigenvalue self-consistentcy on both G and W\n\
+TD stands for TD-DFT.\n\
+BSE stands for Bethe-Salpeter.\n\
+GW stands for perturbative G0W0.\n\
+GnW0 stands for GW with eigenvalue self-consistentcy on G.\n\
+GnWn stands for GW with eigenvalue self-consistentcy on both G and W.\n\
 MP2 stands for guess what.'
 
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='alpha_mixing'
+vl[i].keyword  ='alpha_hybrid'
 vl[i].family   ='scf'
 vl[i].default  =0.25
 vl[i].datatype ='real'
@@ -73,7 +73,7 @@ Sets the amount of range-independent exact-exchange'
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='beta_mixing'
+vl[i].keyword  ='beta_hybrid'
 vl[i].family   ='scf'
 vl[i].default  =0.
 vl[i].datatype ='real'
@@ -83,7 +83,7 @@ Sets the amount of long-range exact-exchange'
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='gamma_mixing'
+vl[i].keyword  ='gamma_hybrid'
 vl[i].family   ='scf'
 vl[i].default  =1000000.
 vl[i].datatype ='real'
@@ -418,6 +418,8 @@ vl[i].comment  ='Sets the number of atoms in the molecule. This is the number of
 
 
 #================================
+# HTML output
+#================================
 fhtml = open('../doc/input_variables.html','w')
 
 fhtml.write('<html>\n')
@@ -425,9 +427,9 @@ fhtml.write('<head>\n')
 fhtml.write('<link rel="stylesheet" type="text/css" href="molgw.css">\n')
 fhtml.write('</head>\n')
 
-fhtml.write('<a name=top>')
+fhtml.write('<a name=top>\n')
 fhtml.write('<h1>Input variable list</h1>')
-fhtml.write('<br><br>')
+fhtml.write('<hr><br>')
 
 # Mandatory
 fhtml.write('<h3>Mandatory input variables</h3>')
@@ -467,9 +469,10 @@ for i in range(0,len(vl)):
 	if vl[i].family =='io':
 		fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
+fhtml.write('<br><br><br><hr>')
 
 # Start the complete list
-fhtml.write('<br><br><br><br>')
+fhtml.write('<br><br><br>')
 fhtml.write('<h2>Complete list of input variables</h2>')
 fhtml.write('<br><br><ul>')
 for i in range(0,len(vl)):
