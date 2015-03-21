@@ -140,7 +140,7 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
  use m_mpi
  use m_basis_set
  use m_eri
- use m_inputparam,only: nspin,spin_fact
+ use m_inputparam,only: nspin,spin_fact,ncoreg
  implicit none
 
  type(basis_set),intent(in) :: basis

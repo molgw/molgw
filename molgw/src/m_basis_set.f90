@@ -96,8 +96,6 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
 !   WRITE_MASTER(*,*) 'Element used for the basis:  ',TRIM(element_name(REAL(basis_element(iatom),dp)))
 !   WRITE_MASTER(*,*) 'Basis type: ',TRIM(basis_name)
    basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
-!   msg='basis file used: '//basis_filename
-!   call issue_warning(msg)
   
 !   WRITE_MASTER(*,*)
 !   WRITE_MASTER(*,*) 'open the basis set file ',TRIM(basis_filename)
@@ -345,8 +343,7 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
    stop'angular momentum too high'
  endif
  if(basis%ammax > lmax_transform_pure .AND. basis%gaussian_type == 'PURE' ) then      
-   msg='Maximum angular momentum greater than the cart to pure transforms implemented'
-   call issue_warning(msg)
+   call issue_warning('Maximum angular momentum greater than the cart to pure transforms implemented')
  endif
 
  !

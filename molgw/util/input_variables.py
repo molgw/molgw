@@ -6,26 +6,25 @@ today=time.strftime("%d")+' '+time.strftime("%B")+' '+time.strftime("%Y")
 
 
 class variable:
-        keyword  =''
-	family   =''
-        datatype =''
-	mandatory='no'
-        default  =''
-        comment  =''
-	def printhtml(self,f):
-		f.write('<hr>')
-		f.write('<a name='+self.keyword+'>')
-		f.write('<li><b>'+self.keyword+'</b><br><br>')
-		if self.mandatory == 'yes':
-			f.write('<i>Mandatory</i><br>')
-        	else:
-			f.write('<i>Optional</i><br>')
-		if self.default == '':
-			f.write('Default: None<br><br>')
-	 	else:
-			f.write('Default: '+str(self.default)+'<br><br>')
-		f.write(self.comment+'</li><br>')
-		
+  keyword  =''
+  family   =''
+  datatype =''
+  mandatory='no'
+  default  =''
+  comment  =''
+  def printhtml(self,f):
+    f.write('<hr>')
+    f.write('<a name='+self.keyword+'>')
+    f.write('<li><b>'+self.keyword+'</b><br><br>')
+    if self.mandatory == 'yes':
+      f.write('<i>Mandatory</i><br>')
+    else:
+      f.write('<i>Optional</i><br>')
+    if self.default == '':
+      f.write('Default: None<br><br>')
+    else:
+      f.write('Default: '+str(self.default)+'<br><br>')
+    f.write(self.comment+'</li><br>')
 
 
 vl = []
@@ -420,6 +419,7 @@ for stability. eta=0.01 is already much more stable. Note that for QSGW increasi
 #            Fortran output
 #============================================================================
 
+print("Set up file: ../src/input_variables.f90")
 ffor = open('../src/input_variables.f90','w')
 
 ffor.write('!======================================================================\n')
@@ -431,7 +431,7 @@ ffor.write('!===================================================================
 
 ffor.write(' namelist /molgw/   &\n')
 for i in range(0,len(vl)-1):
-	ffor.write('    '+vl[i].keyword+',       &\n')
+  ffor.write('    '+vl[i].keyword+',       &\n')
 i = len(vl)-1
 ffor.write('    '+vl[i].keyword+'\n\n')
 
@@ -439,10 +439,10 @@ ffor.write('!=====\n\n')
 
 
 for i in range(0,len(vl)):
-	if vl[i].datatype =='integer' or vl[i].datatype =='real':
-		ffor.write(' '+vl[i].keyword+'='+str(vl[i].default)+'\n')
-	elif vl[i].datatype =='yes/no' or vl[i].datatype =='characters':
-		ffor.write(' '+vl[i].keyword+'=\''+str(vl[i].default)+'\'\n')
+  if vl[i].datatype =='integer' or vl[i].datatype =='real':
+    ffor.write(' '+vl[i].keyword+'='+str(vl[i].default)+'\n')
+  elif vl[i].datatype =='yes/no' or vl[i].datatype =='characters':
+    ffor.write(' '+vl[i].keyword+'=\''+str(vl[i].default)+'\'\n')
 
 
 
@@ -457,6 +457,7 @@ ffor.close()
 #============================================================================
 #            HTML output
 #============================================================================
+print("Set up file: ../doc/input_variables.html")
 fhtml = open('../doc/input_variables.html','w')
 
 fhtml.write('<html>\n')
@@ -464,6 +465,7 @@ fhtml.write('<head>\n')
 fhtml.write('<link rel="stylesheet" type="text/css" href="molgw.css">\n')
 fhtml.write('</head>\n')
 
+fhtml.write('<body>\n')
 fhtml.write('<a name=top>\n')
 fhtml.write('<h1>Input variable list</h1>')
 fhtml.write('<hr><br>')
@@ -471,59 +473,61 @@ fhtml.write('<hr><br>')
 # Mandatory
 fhtml.write('<h3>Mandatory input variables</h3>')
 for i in range(0,len(vl)):
-	if vl[i].mandatory =='yes':
-		fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
+  if vl[i].mandatory =='yes':
+    fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
 # System
 fhtml.write('<h3>Set up of the physical system input variables</h3>')
 for i in range(0,len(vl)):
-	if vl[i].family =='system':
-		fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
+  if vl[i].family =='system':
+    fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
 # General
 fhtml.write('<h3>General input variables</h3>')
 for i in range(0,len(vl)):
-	if vl[i].family =='general':
-		fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
+  if vl[i].family =='general':
+    fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
 # SCF
 fhtml.write('<h3>Self-consistency input variables</h3>')
 for i in range(0,len(vl)):
-	if vl[i].family =='scf':
-		fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
+  if vl[i].family =='scf':
+    fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
 # Post 
 fhtml.write('<h3>Correlation and excited states post-treatment input variables</h3>')
 for i in range(0,len(vl)):
-	if vl[i].family =='post':
-		fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
+  if vl[i].family =='post':
+    fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
 
 
 # IO family
 fhtml.write('<h3>IO input variables</h3>')
 for i in range(0,len(vl)):
-	if vl[i].family =='io':
-		fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
+  if vl[i].family =='io':
+    fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
-fhtml.write('<br><br><br><hr>')
+fhtml.write('<br><br><br><hr>\n')
 
 # Start the complete list
 fhtml.write('<br><br><br>')
 fhtml.write('<h2>Complete list of input variables</h2>')
-fhtml.write('<br><br><ul>')
+fhtml.write('<br><br>\n<ul>')
 for i in range(0,len(vl)):
-	vl[i].printhtml(fhtml)
-fhtml.write('</ul>')
-fhtml.write('<br><br><br><br><br><br><br><br>')
+  vl[i].printhtml(fhtml)
+fhtml.write('</ul>\n')
+fhtml.write('<br><br><br><br><br><br><br><br>\n')
 fhtml.write('<a href=#top>Back to the top of the page</a> ')
 fhtml.write('<div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div>')
 fhtml.write('<br><br>')
 fhtml.write('<i>Generated by input_parameter.py on '+today+'</i>')
 fhtml.write('<br><br>')
+fhtml.write('</body>\n')
 fhtml.write('</html>\n')
 
 fhtml.close()
 
+print("Done!")
 
 
