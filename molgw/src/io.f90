@@ -8,6 +8,9 @@ subroutine header()
  implicit none
  integer           :: values(8) 
  character(len=12) :: chartmp
+#ifdef _OPENMP
+ integer,external :: OMP_get_max_threads
+#endif
 !=====
 
  WRITE_MASTER(*,'(x,70("="))') 

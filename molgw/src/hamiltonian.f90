@@ -895,4 +895,49 @@ subroutine matrix_basis_to_eigen(nspin,nbf,c_matrix,matrix_inout)
 
 
 end subroutine matrix_basis_to_eigen
+
+
+!=========================================================================
+subroutine evaluate_s2_operator(nspin,nbf,occupation,c_matrix,s_matrix)
+ use m_definitions
+ use m_mpi
+ implicit none
+ integer,intent(in)      :: nspin,nbf
+ real(dp),intent(in)     :: occupation(nbf,nspin)
+ real(dp),intent(in)     :: c_matrix(nbf,nbf,nspin)
+ real(dp),intent(in)     :: s_matrix(nbf,nbf)
+!====
+ integer                 :: ispin,istate,jstate
+ real(dp)                :: s2,s2_exact
+ real(dp)                :: n1,n2,nmax,nmin
+!====
+
+ if(nspin /= 2) return
+
+ n1 = SUM( occupation(:,1) )
+ n2 = SUM( occupation(:,2) )
+ nmax = MAX(n1,n2)
+ nmin = MIN(n1,n2)
+
+ s2_exact = (nmax-nmin)/2.0_dp * ( (nmax-nmin)/2.0_dp + 1.0_dp )
+ s2       = s2_exact + nmin
+ do istate=1,nbf
+   if( occupation(istate,1) < completely_empty ) cycle
+   do jstate=1,nbf
+     if( occupation(jstate,2) < completely_empty ) cycle
+
+     s2 = s2 - ABS( DOT_PRODUCT( c_matrix(:,istate,1) , MATMUL( s_matrix(:,:) , c_matrix(:,jstate,2) ) )  &
+                      * occupation(istate,1) * occupation(jstate,2) )**2
+
+   enddo
+ enddo
+
+
+ WRITE_MASTER(*,'(/,a,f8.4)') ' Total Spin S**2 = ',s2
+ WRITE_MASTER(*,'(a,f8.4)')   ' Instead of        ',s2_exact
+
+
+end subroutine evaluate_s2_operator
+
+
 !=========================================================================

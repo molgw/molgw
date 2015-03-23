@@ -286,25 +286,29 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  WRITE_MASTER(*,*) '=================================================='
  WRITE_MASTER(*,*) 'The SCF loop ends here'
  WRITE_MASTER(*,*) '=================================================='
- WRITE_MASTER(*,'(/,/,a25,x,f16.10,/)') 'SCF Total Energy [Ha]:',en%tot
 
  call destroy_scf()
 
  !
- ! Single excitation term
- !
+ ! Spin contamination?
+ call evaluate_s2_operator(nspin,basis%nbf,occupation,c_matrix,s_matrix)
 
  !
  ! Get the exchange operator if not already calculated
+ !
  if( .NOT. is_full_auxil) then
    if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
  else
    if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange_ri(print_matrix_,basis%nbf,c_matrix,occupation,p_matrix,hamiltonian_exx,en%exx)
  endif
 
- WRITE_MASTER(*,'(/,a25,x,f16.10)') '      EXX Energy [Ha]:',en%exx
- WRITE_MASTER(*,'(a25,x,f16.10)')   'Total EXX Energy [Ha]:',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
+ WRITE_MASTER(*,'(/,/,a25,x,f16.10,/)') 'SCF Total Energy [Ha]:',en%tot
+ WRITE_MASTER(*,'(a25,x,f16.10)')       '      EXX Energy [Ha]:',en%exx
+ WRITE_MASTER(*,'(a25,x,f16.10)')       'Total EXX Energy [Ha]:',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
 
+ !
+ ! Single excitation term
+ !
  ! Obtain the Fock matrix
  matrix_tmp(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
  ! And pass it to single_excitations
