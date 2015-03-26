@@ -131,10 +131,10 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%postscf_name =  TRIM(key2)
 
    select case(TRIM(key2))
-   case('GnW0')
+   case('GNW0')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = GnW0
-   case('GnWn')
+   case('GNWN')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = GnWn
    case('GW','G0W0')
