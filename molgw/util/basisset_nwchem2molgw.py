@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import os, sys
+import os, sys, numpy
 
 list_am       = 'S P D F G H I       SP'
 list_elements = [ 'H',                                                                                                 'He', \
@@ -9,6 +9,9 @@ list_elements = [ 'H',                                                          
                   'K', 'Ca', 'Sc', 'Ti',  'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', \
                  'Rb', 'Sr',  'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn', 'Sb', 'Te',  'I', 'Xe'  ] 
 
+
+def fortran_float( string ):
+  return float(string.replace('D','E').replace('d','e'))
 
 
 ###################################################################
@@ -106,20 +109,20 @@ for line in nwfile:
         coeff[index_basis].append([])
         angmom[index_basis].append(angmom_tmp)
 
-      alpha_tmp = float(parsing[0])
+      alpha_tmp = fortran_float(parsing[0])
       for i in range(functions,functions+new_functions):
         j = i - functions + 1
-        coeff_tmp = float(parsing[j])
+        coeff_tmp = fortran_float(parsing[j])
         if abs(coeff_tmp) > 1.e-8 :
           alpha[index_basis][i].append(alpha_tmp)
           coeff[index_basis][i].append(coeff_tmp)
 
     else:
 
-      alpha_tmp = float(parsing[0])
+      alpha_tmp = fortran_float(parsing[0])
       for i in range(functions,functions+new_functions):
         j = i - functions + 1
-        coeff_tmp = float(parsing[j])
+        coeff_tmp = fortran_float(parsing[j])
         if abs(coeff_tmp) > 1.e-8 :
           alpha[index_basis][i].append(alpha_tmp)
           coeff[index_basis][i].append(coeff_tmp)
