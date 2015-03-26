@@ -26,18 +26,19 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  real(dp),intent(out)                  :: rpa_correlation
  type(spectral_function),intent(inout) :: wpol_out
 !=====
- integer                 :: t_ij
- type(spectral_function) :: wpol_static
- integer                 :: nmat
- real(dp)                :: alpha_local
- real(prec_td),allocatable    :: amb_matrix(:,:),apb_matrix(:,:)
- real(prec_td),allocatable    :: bigx(:,:),bigy(:,:)
- real(dp),allocatable    :: eigenvalue(:)
- real(dp)                :: energy_qp(basis%nbf,nspin)
- logical                 :: is_tddft
- logical                 :: is_ij
- logical                 :: is_rpa
- logical                 :: has_manual_tdhf
+ integer                   :: t_ij
+ type(spectral_function)   :: wpol_static
+ integer                   :: nmat
+ real(dp)                  :: alpha_local
+ real(prec_td),allocatable :: amb_matrix(:,:),apb_matrix(:,:)
+ real(prec_td),allocatable :: bigx(:,:),bigy(:,:)
+ real(dp),allocatable      :: eigenvalue(:)
+ real(dp)                  :: energy_qp(basis%nbf,nspin)
+ logical                   :: is_tddft
+ logical                   :: is_ij
+ logical                   :: is_rpa
+ logical                   :: has_manual_tdhf
+ integer                   :: reading_status
 !=====
 
  call start_clock(timing_pola)
@@ -89,20 +90,31 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  call start_clock(timing_build_h2p)
 
  !
- ! Prepare BSE calculations
- ! static screening + GW quasiparticle energies
+ ! Prepare the QP energies
  !
- if( calc_type%is_bse .AND. .NOT. is_rpa ) then
-   ! Set up energy_qp and wpol_static
-   call prepare_bse(basis%nbf,energy,occupation,energy_qp,wpol_static)
+ if( calc_type%is_bse .OR. calc_type%gwmethod==GnWn ) then
+   ! Get energy_qp 
+   call get_energy_qp(basis%nbf,energy,occupation,energy_qp)
  else
    ! For any other type of calculation, just fill energy_qp array with energy
    energy_qp(:,:) = energy(:,:)
  endif
 
+ ! 
+ ! BSE needs the static screening from a previous calculation
+ ! It is stored in object wpol_static
+ !
+ if( calc_type%is_bse ) then
+   call read_spectral_function(wpol_static,reading_status)
+   if(reading_status/=0) &
+     stop'BSE requires a previous GW calculation stored in a spectral_file'
+ endif
 
+
+ !
+ ! Prepare the big matrices (A+B) and (A-B)
+ ! 
  nmat = wpol_out%npole/2
-
  call clean_allocate('A+B',apb_matrix,nmat,nmat)
  call clean_allocate('A-B',amb_matrix,nmat,nmat)
  
@@ -1328,29 +1340,22 @@ end subroutine prepare_tddft
 
 
 !=========================================================================
-subroutine prepare_bse(nbf,energy,occupation,energy_qp,wpol_static)
- use m_dft_grid
- use m_spectral_function
+subroutine get_energy_qp(nbf,energy,occupation,energy_qp)
  implicit none
 
  integer,intent(in)                  :: nbf
  real(dp),intent(in)                 :: energy(nbf,nspin)
  real(dp),intent(in)                 :: occupation(nbf,nspin)
  real(dp),intent(out)                :: energy_qp(nbf,nspin)
- type(spectral_function),intent(out) :: wpol_static
 !=====
  integer  :: reading_status
  real(dp) :: scissor_energy(nspin)
  integer  :: ispin,istate
 !=====
 
- ! For BSE calculation, obtain the wpol_static object from a previous calculation
- call read_spectral_function(wpol_static,reading_status)
- if(reading_status/=0) then
-   stop'BSE requires a previous GW calculation stored in a spectral_file'
- endif
 
  call read_energy_qp(nspin,nbf,energy_qp,reading_status)
+
  select case(reading_status)
  case(-1)
    scissor_energy(:) = energy_qp(1,:)
@@ -1378,7 +1383,7 @@ subroutine prepare_bse(nbf,energy,occupation,energy_qp,wpol_static)
    stop'reading_status BUG'
  end select
 
-end subroutine prepare_bse
+end subroutine get_energy_qp
 
 
 !=========================================================================

@@ -319,7 +319,11 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    end forall
 
 
-   WRITE_MASTER(*,'(/,a)') ' GnW0 Eigenvalues [eV]'
+   if( gwmethod==GnW0) then
+     WRITE_MASTER(*,'(/,a)') ' GnW0 Eigenvalues [eV]'
+   else
+     WRITE_MASTER(*,'(/,a)') ' GnWn Eigenvalues [eV]'
+   endif
    if(nspin==1) then
      WRITE_MASTER(*,'(a)') '  #          E0        SigX-Vxc      SigC          Z          GW(n-1)       GW(n)'
    else
