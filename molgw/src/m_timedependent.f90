@@ -1,6 +1,4 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
 module m_timedependent
  use m_definitions
  use m_timing
@@ -43,11 +41,11 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
 
  call start_clock(timing_pola)
 
- WRITE_MASTER(*,'(/,a)') ' Calculating the polarizability'
+ write(stdout,'(/,a)') ' Calculating the polarizability'
  if(is_triplet) then
-   WRITE_MASTER(*,'(a)') ' Triplet state'
+   write(stdout,'(a)') ' Triplet state'
  else
-   WRITE_MASTER(*,'(a)') ' Singlet state'
+   write(stdout,'(a)') ' Singlet state'
  endif
  
  ! Set up all the switches to be able to treat
@@ -74,7 +72,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
    open(unit=18,file='manual_tdhf',status='old')
    read(18,*) alpha_local
    close(18)
-   WRITE_ME(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alpha ',alpha_local
+   write(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alpha ',alpha_local
    call issue_warning(msg)
  else
    if(is_rpa) then
@@ -124,7 +122,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! Build the (A+B) and (A-B) matrices in 3 steps
  ! to span all the possible approximations
  !
- WRITE_MASTER(*,'(/,a)') ' Build the electron-hole hamiltonian'
+ write(stdout,'(/,a)') ' Build the electron-hole hamiltonian'
  ! Step 1
  call build_amb_apb_common(basis%nbf,c_matrix,energy_qp,wpol_out,alpha_local,nmat,amb_matrix,apb_matrix)
 
@@ -163,7 +161,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  call stop_clock(timing_build_h2p)
 
 
- WRITE_MASTER(*,*) 'Allocate eigenvector arrays'
+ write(stdout,*) 'Allocate eigenvector arrays'
  call clean_allocate('X',bigx,nmat,nmat)
  call clean_allocate('Y',bigy,nmat,nmat)
 
@@ -180,7 +178,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
 #endif
  call stop_clock(timing_diago_h2p)
 
- WRITE_MASTER(*,*) 'Deallocate (A+B) and (A-B) matrices'
+ write(stdout,*) 'Deallocate (A+B) and (A-B) matrices'
  call clean_deallocate('A+B',apb_matrix)
  call clean_deallocate('A-B',amb_matrix)
 
@@ -188,12 +186,12 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! Second part of the RPA correlation energy: sum over positive eigenvalues
  rpa_correlation = rpa_correlation + 0.50_dp * SUM( ABS(eigenvalue(:)) )
  if(is_rpa) then
-  WRITE_MASTER(*,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
-  WRITE_MASTER(*,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
-  WRITE_MASTER(*,'(/,a,f14.8)') ' RPA energy [Ha]: ',rpa_correlation
+  write(stdout,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
+  write(stdout,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
+  write(stdout,'(/,a,f14.8)') ' RPA energy [Ha]: ',rpa_correlation
  endif
 
- WRITE_MASTER(*,'(/,a,f14.8)') ' Lowest neutral excitation energy [eV]',MINVAL(ABS(eigenvalue(:)))*Ha_eV
+ write(stdout,'(/,a,f14.8)') ' Lowest neutral excitation energy [eV]',MINVAL(ABS(eigenvalue(:)))*Ha_eV
 
  !
  ! Calculate the optical sprectrum
@@ -220,7 +218,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
 
  if( .NOT. calc_type%is_gw ) call destroy_spectral_function(wpol_out)
 
- WRITE_MASTER(*,*) 'Deallocate eigenvector arrays'
+ write(stdout,*) 'Deallocate eigenvector arrays'
  call clean_deallocate('X',bigx)
  call clean_deallocate('Y',bigy)
 
@@ -260,8 +258,8 @@ subroutine build_amb_apb_common(nbf,c_matrix,energy,wpol,alpha_local,nmat,amb_ma
 
  call start_clock(timing_build_common)
 
- WRITE_MASTER(*,'(a)') ' Build Common part: Energies + Hartree + possibly Exchange'
- WRITE_MASTER(*,'(a,f8.3)') ' Content of Exchange: ',alpha_local
+ write(stdout,'(a)') ' Build Common part: Energies + Hartree + possibly Exchange'
+ write(stdout,'(a,f8.3)') ' Content of Exchange: ',alpha_local
 
  if( .NOT. has_auxil_basis) then
    allocate(eri_eigenstate_ijmin(nbf,nbf,nbf,nspin))
@@ -375,7 +373,7 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,nmat,apb_matrix)
 
  call start_clock(timing_build_tddft)
 
- WRITE_MASTER(*,'(a)') ' Build fxc part'
+ write(stdout,'(a)') ' Build fxc part'
 
  if( is_triplet ) then
    nspin_tddft = 2
@@ -562,7 +560,7 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
 
  call start_clock(timing_build_bse)
 
- WRITE_MASTER(*,'(a)') ' Build W part'
+ write(stdout,'(a)') ' Build W part'
 
  !
  ! Prepare the bra and ket for BSE
@@ -659,7 +657,7 @@ subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat
  call start_clock(timing_build_bse)
  if( .NOT. has_auxil_basis ) stop'Does not have auxil basis. This should not happen'
 
- WRITE_MASTER(*,'(a)') ' Build W part Auxil' 
+ write(stdout,'(a)') ' Build W part Auxil' 
 
 
  nbf_auxil = wpol_static%nprodbasis
@@ -766,7 +764,7 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,cc_matrix,npole,eigenvalue,bigx,bi
  real(prec_td),allocatable :: amb_eigval(:),bigomega(:)
 !=====
 
- WRITE_MASTER(*,'(/,a)') ' Performing the block diago with square root of matrices'
+ write(stdout,'(/,a)') ' Performing the block diago with square root of matrices'
 
  !
  ! Calculate (A-B)^{1/2}
@@ -775,7 +773,7 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,cc_matrix,npole,eigenvalue,bigx,bi
  ! (A-B) is real symmetric, hence R is orthogonal R^{-1} = tR
  ! (A-B)       = R D tR 
  ! (A-B)^{1/2} = R D^{1/2} tR 
- WRITE_MASTER(*,'(a,i8,a,i8)') ' Diago to get (A - B)^{1/2}                   ',nmat,' x ',nmat
+ write(stdout,'(a,i8,a,i8)') ' Diago to get (A - B)^{1/2}                   ',nmat,' x ',nmat
  allocate(amb_eigval(nmat))
  call diagonalize(nmat,amb_matrix,amb_eigval)
 
@@ -796,10 +794,10 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,cc_matrix,npole,eigenvalue,bigx,bi
  amb_matrix(:,:) = MATMUL( cc_matrix , bigx )
  cc_matrix(:,:)  = MATMUL( bigx, amb_matrix )
 
-! WRITE_MASTER(*,*) 'CC ',matrix_is_symmetric(nmat,cc_matrix)
+! write(stdout,*) 'CC ',matrix_is_symmetric(nmat,cc_matrix)
 
 
- WRITE_MASTER(*,'(a,i8,a,i8)') ' Diago (A - B)^{1/2} * (A + B) * (A - B)^{1/2}',nmat,' x ',nmat
+ write(stdout,'(a,i8,a,i8)') ' Diago (A - B)^{1/2} * (A + B) * (A - B)^{1/2}',nmat,' x ',nmat
  allocate(bigomega(nmat))
  call diagonalize(nmat,cc_matrix,bigomega)
 
@@ -852,7 +850,7 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,npole,eigenvalue,bigx,b
 !=====
 
 #ifdef HAVE_SCALAPACK
- WRITE_MASTER(*,'(/,a)') ' Performing the block diago with Cholesky'
+ write(stdout,'(/,a)') ' Performing the block diago with Cholesky'
  call init_desc(nmat,descm,mlocal,nlocal)
  desck(:) = descm(:)
  call init_desc(nmat,descx,mlocal,nlocal)
@@ -928,7 +926,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
  ! Calculate the spectrum now
  !
 
- WRITE_MASTER(*,'(/,a)') ' Calculate the optical spectrum'
+ write(stdout,'(/,a)') ' Calculate the optical spectrum'
 
  if (nspin/=1) then
    msg='no nspin/=1 allowed'
@@ -1053,7 +1051,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
  enddo
 
 
- WRITE_MASTER(*,'(/,a)') ' Excitation energies [eV]     Oscil. strengths   [Symmetry] '  
+ write(stdout,'(/,a)') ' Excitation energies [eV]     Oscil. strengths   [Symmetry] '  
  trk_sumrule=0.0_dp
  do t_kl=1,nmat
    if( is_triplet ) then 
@@ -1099,53 +1097,58 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
          symsymbol=TRIM(symsymbol)//'u'
        end select
      endif
-     WRITE_MASTER(*,'(i4,2(f18.8,2x),5x,a32)') t_kl,eigenvalue(t_kl)*Ha_eV,oscillator_strength,symsymbol
+     write(stdout,'(i4,2(f18.8,2x),5x,a32)') t_kl,eigenvalue(t_kl)*Ha_eV,oscillator_strength,symsymbol
      do t_ij=1,nmat
        if( ABS(bigx(t_ij,t_kl))/SQRT(2.0_dp) > 1.0e-1_dp ) then
          istate = chi%transition_table(1,t_ij)
          jstate = chi%transition_table(2,t_ij)
-         WRITE_MASTER(*,'(8x,i4,a,i4,x,f12.5)') istate,' -> ',jstate,bigx(t_ij,t_kl)/SQRT(2.0_dp)
+         write(stdout,'(8x,i4,a,i4,x,f12.5)') istate,' -> ',jstate,bigx(t_ij,t_kl)/SQRT(2.0_dp)
        endif
      enddo
      do t_ij=1,nmat
        if( ABS(bigy(t_ij,t_kl))/SQRT(2.0_dp) > 1.0e-1_dp ) then
          istate = chi%transition_table(1,t_ij)
          jstate = chi%transition_table(2,t_ij)
-         WRITE_MASTER(*,'(8x,i4,a,i4,x,f12.5)') jstate,' -> ',istate,bigy(t_ij,t_kl)/SQRT(2.0_dp)
+         write(stdout,'(8x,i4,a,i4,x,f12.5)') jstate,' -> ',istate,bigy(t_ij,t_kl)/SQRT(2.0_dp)
        endif
      enddo
-     WRITE_MASTER(*,*)
+     write(stdout,*)
    endif
  enddo
 
  if( is_triplet ) return
 
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,*) 'TRK SUM RULE: the two following numbers should compare well'
- WRITE_MASTER(*,*) 'Sum over oscillator strengths',trk_sumrule
- WRITE_MASTER(*,*) 'Number of valence electrons  ',SUM( occupation(ncore_W+1:,:) )
+ write(stdout,*)
+ write(stdout,*) 'TRK SUM RULE: the two following numbers should compare well'
+ write(stdout,*) 'Sum over oscillator strengths',trk_sumrule
+ write(stdout,*) 'Number of valence electrons  ',SUM( occupation(ncore_W+1:,:) )
 
- WRITE_MASTER(*,'(/,a)') ' Static dipole polarizability'
+ write(stdout,'(/,a)') ' Static dipole polarizability'
  do idir=1,3
-   WRITE_MASTER(*,'(3(4x,f12.6))') static_polarizability(idir,:)
+   write(stdout,'(3(4x,f12.6))') static_polarizability(idir,:)
  enddo
 
- open(unit_dynpol,file='dynamical_dipole_polarizability.dat',form='formatted')
- open(unit_photocross,file='photoabsorption_cross_section.dat',form='formatted')
- WRITE_MASTER(unit_dynpol,'(a)') '#  Imaginary part of dynamical dipole polarizability'
- WRITE_MASTER(unit_dynpol,'(a)') '#  omega (eV)   Average     xx    yx    zx    xy    yy    zy    xz    yz    zz'
- WRITE_MASTER(unit_photocross,'(a)') '#  Imaginary part of dynamical dipole polarizability'
- WRITE_MASTER(unit_photocross,'(a)') '#  omega (eV)   Average     xx    yx    zx    xy    yy    zy    xz    yz    zz'
- do iomega=1,nomega
-   WRITE_MASTER(unit_dynpol,'(11(e18.8,2x))') REAL(omega(iomega),dp)*Ha_eV,                                      &
-                                              (dynamical_pol(iomega,1,1)+dynamical_pol(iomega,2,2)+dynamical_pol(iomega,3,3))/3.0_dp, &
-                                              dynamical_pol(iomega,:,:)
-   WRITE_MASTER(unit_photocross,'(11(e18.8,2x))') REAL(omega(iomega),dp)*Ha_eV,                                      &
-                                                  (photoabsorp_cross(iomega,1,1)+photoabsorp_cross(iomega,2,2)+photoabsorp_cross(iomega,3,3))/3.0_dp, &
-                                                  photoabsorp_cross(iomega,:,:)
- enddo 
- close(unit_dynpol)
- close(unit_photocross)
+ if( is_iomaster() ) then
+
+   open(unit_dynpol,file='dynamical_dipole_polarizability.dat',form='formatted')
+   open(unit_photocross,file='photoabsorption_cross_section.dat',form='formatted')
+   write(unit_dynpol,'(a)') '#  Imaginary part of dynamical dipole polarizability'
+   write(unit_dynpol,'(a)') '#  omega (eV)   Average     xx    yx    zx    xy    yy    zy    xz    yz    zz'
+   write(unit_photocross,'(a)') '#  Imaginary part of dynamical dipole polarizability'
+   write(unit_photocross,'(a)') '#  omega (eV)   Average     xx    yx    zx    xy    yy    zy    xz    yz    zz'
+   do iomega=1,nomega
+     write(unit_dynpol,'(11(e18.8,2x))') REAL(omega(iomega),dp)*Ha_eV,                                      &
+                                          (dynamical_pol(iomega,1,1)+dynamical_pol(iomega,2,2)+dynamical_pol(iomega,3,3))/3.0_dp, &
+                                          dynamical_pol(iomega,:,:)
+     write(unit_photocross,'(11(e18.8,2x))') REAL(omega(iomega),dp)*Ha_eV,                                      &
+                                              (photoabsorp_cross(iomega,1,1)+photoabsorp_cross(iomega,2,2)+photoabsorp_cross(iomega,3,3))/3.0_dp, &
+                                              photoabsorp_cross(iomega,:,:)
+   enddo 
+
+   close(unit_dynpol)
+   close(unit_photocross)
+
+ endif
 
 
  deallocate(residu_left)
@@ -1164,7 +1167,7 @@ subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2r
  use xc_f90_lib_m
  use xc_f90_types_m
 #endif
- use iso_c_binding,only: C_INT,C_DOUBLE
+ use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
  implicit none
 
  integer,intent(in)               :: nspin_tddft
@@ -1215,7 +1218,7 @@ subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2r
      call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_POLARIZED)
    endif
    call xc_f90_info_name(xc_info(idft_xc),string)
-   WRITE_MASTER(*,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),&
+   write(stdout,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),&
          TRIM(string)
    if( MODULO(xc_f90_info_flags( xc_info(idft_xc)),XC_FLAGS_HAVE_FXC*2) < XC_FLAGS_HAVE_FXC ) then
      stop'This functional does not have the kernel implemented in Libxc'
@@ -1332,7 +1335,7 @@ subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2r
    enddo
  enddo
  if(require_gradient) then
-   WRITE_MASTER(*,'(a,e18.6)') ' Maximum numerical value for fxc: ',max_v2sigma2
+   write(stdout,'(a,e18.6)') ' Maximum numerical value for fxc: ',max_v2sigma2
  endif
 
 
@@ -1359,7 +1362,7 @@ subroutine get_energy_qp(nbf,energy,occupation,energy_qp)
  select case(reading_status)
  case(-1)
    scissor_energy(:) = energy_qp(1,:)
-   WRITE_MASTER(*,'(a,2(x,f12.6))') ' Scissor operator with value [eV]:',scissor_energy(:)*Ha_eV
+   write(stdout,'(a,2(x,f12.6))') ' Scissor operator with value [eV]:',scissor_energy(:)*Ha_eV
    do ispin=1,nspin
      do istate=1,nbf
        if( occupation(istate,ispin) > completely_empty/spin_fact ) then
@@ -1369,15 +1372,15 @@ subroutine get_energy_qp(nbf,energy,occupation,energy_qp)
        endif
      enddo
    enddo
-   WRITE_MASTER(*,'(/,a)') ' Scissor updated energies'
+   write(stdout,'(/,a)') ' Scissor updated energies'
    do istate=1,nbf
-     WRITE_MASTER(*,'(i5,4(2x,f16.6))') istate,energy(istate,:)*Ha_eV,energy_qp(istate,:)*Ha_eV
+     write(stdout,'(i5,4(2x,f16.6))') istate,energy(istate,:)*Ha_eV,energy_qp(istate,:)*Ha_eV
    enddo
-   WRITE_MASTER(*,*)
+   write(stdout,*)
  case(0)
-   WRITE_MASTER(*,'(a)') ' Reading OK'
+   write(stdout,'(a)') ' Reading OK'
  case(1,2)
-   WRITE_MASTER(*,'(a,/,a)') ' Something happened during the reading of energy_qp file',' Fill up the QP energies with KS energies'
+   write(stdout,'(a,/,a)') ' Something happened during the reading of energy_qp file',' Fill up the QP energies with KS energies'
    energy_qp(:,:) = energy(:,:)
  case default
    stop'reading_status BUG'
@@ -1415,7 +1418,7 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,bigx,bigy,eigenvalue,
 
  call start_clock(timing_buildw)
 
- WRITE_MASTER(*,'(/,a)') ' Build W = v * chi * v'
+ write(stdout,'(/,a)') ' Build W = v * chi * v'
 
  if( .NOT. has_auxil_basis ) then
    allocate(eri_eigenstate_klmin(nbf,nbf,nbf,nspin))
@@ -1498,7 +1501,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,occupation,c_matrix,bigx,big
 
  call start_clock(timing_buildw)
 
- WRITE_MASTER(*,'(/,a)') ' Build v^{1/2} * chi * v^{1/2}'
+ write(stdout,'(/,a)') ' Build v^{1/2} * chi * v^{1/2}'
 
  call allocate_spectral_function(nbf_auxil,wpol)
  wpol%pole(:) = eigenvalue(:)

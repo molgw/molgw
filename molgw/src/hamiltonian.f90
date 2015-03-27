@@ -1,4 +1,3 @@
-#include "macros.h"
 !=========================================================================
 subroutine setup_overlap(print_matrix_,basis,s_matrix)
  use m_definitions
@@ -16,7 +15,7 @@ subroutine setup_overlap(print_matrix_,basis,s_matrix)
  real(dp),allocatable :: matrix_cart(:,:)
 !====
 
- WRITE_MASTER(*,*) 'Setup overlap matrix S'
+ write(stdout,*) 'Setup overlap matrix S'
 
  ibf_cart = 1
  jbf_cart = 1
@@ -80,7 +79,7 @@ subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
 !====
 
  call start_clock(timing_hamiltonian_kin)
- WRITE_MASTER(*,'(/,a)') ' Setup kinetic part of the Hamiltonian'
+ write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian'
 
  ibf_cart = 1
  jbf_cart = 1
@@ -148,7 +147,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
 !====
 
  call start_clock(timing_hamiltonian_nuc)
- WRITE_MASTER(*,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian'
+ write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian'
 
  ibf_cart = 1
  jbf_cart = 1
@@ -216,7 +215,7 @@ subroutine setup_hartree(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartree)
  character(len=100)   :: title
 !=====
 
- WRITE_MASTER(*,*) 'Calculate Hartree term'
+ write(stdout,*) 'Calculate Hartree term'
  call start_clock(timing_hartree)
 
  pot_hartree(:,:,:)=0.0_dp
@@ -281,7 +280,7 @@ subroutine setup_hartree_ri(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartre
  character(len=100)   :: title
 !=====
 
- WRITE_MASTER(*,*) 'Calculate Hartree term with Resolution-of-Identity'
+ write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
  call start_clock(timing_hartree)
 
 
@@ -344,7 +343,7 @@ subroutine setup_exchange(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
  character(len=100)   :: title
 !=====
 
- WRITE_MASTER(*,*) 'Calculate Exchange term'
+ write(stdout,*) 'Calculate Exchange term'
  call start_clock(timing_exchange)
 
 
@@ -404,7 +403,7 @@ subroutine setup_exchange_ri(print_matrix_,nbf,c_matrix,occupation,p_matrix,pot_
  real(dp),allocatable :: tmp(:,:)
 !=====
 
- WRITE_MASTER(*,*) 'Calculate Exchange term with Resolution-of-Identity'
+ write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
  call start_clock(timing_exchange)
 
  nbf_auxil = SIZE( eri_3center(:,:), DIM=1 )
@@ -470,7 +469,7 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,c_matrix,occupation,p_m
  real(dp),allocatable :: tmp(:,:)
 !=====
 
- WRITE_MASTER(*,*) 'Calculate LR Exchange term with Resolution-of-Identity'
+ write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity'
  call start_clock(timing_exchange)
 
  nbf_auxil = SIZE( eri_3center_lr(:,:), DIM=1 )
@@ -532,7 +531,7 @@ subroutine setup_exchange_longrange(print_matrix_,nbf,p_matrix,pot_exchange,eexc
  character(len=100)   :: title
 !=====
 
- WRITE_MASTER(*,*) 'Calculate Long-Range Exchange term'
+ write(stdout,*) 'Calculate Long-Range Exchange term'
  call start_clock(timing_exchange)
 
 
@@ -650,8 +649,8 @@ subroutine test_density_matrix(nbf,nspin,p_matrix,s_matrix)
  character(len=100)   :: title
 !=====
 
- WRITE_MASTER(*,*) 'Check equality PSP = P'
- WRITE_MASTER(*,*) ' valid only for integer occupation numbers'
+ write(stdout,*) 'Check equality PSP = P'
+ write(stdout,*) ' valid only for integer occupation numbers'
  do ispin=1,nspin
 
    !
@@ -700,8 +699,8 @@ subroutine set_occupation(electrons,magnetization,nbf,occupation)
       remaining_electrons(:)  = remaining_electrons(:) - occupation(ibf,:)
     end do
   else
-    WRITE_MASTER(*,*)
-    WRITE_MASTER(*,*) 'occupations are read from file: manual_occupations'
+    write(stdout,*)
+    write(stdout,*) 'occupations are read from file: manual_occupations'
     msg='reading manual occupations from file'
     call issue_warning(msg)
     open(unit=12,file='manual_occupations',status='old')
@@ -712,17 +711,17 @@ subroutine set_occupation(electrons,magnetization,nbf,occupation)
       read(12,*) occupation(ilines,:)
     enddo
     close(12)
-    WRITE_MASTER(*,*) 'occupations set, closing file'
+    write(stdout,*) 'occupations set, closing file'
   endif
  
   !
   ! final check
   if( ABS( SUM(occupation(:,:)) - electrons ) > 1.0d-7 ) then
-    WRITE_MASTER(*,*) 'occupation set up failed to give the right number of electrons'
-    WRITE_MASTER(*,*) 'sum of occupations',SUM(occupation(:,:))
-    WRITE_MASTER(*,*) 'electrons',electrons
+    write(stdout,*) 'occupation set up failed to give the right number of electrons'
+    write(stdout,*) 'sum of occupations',SUM(occupation(:,:))
+    write(stdout,*) 'electrons',electrons
     do ibf=1,nbf
-      WRITE_MASTER(*,*) ibf,occupation(ibf,:)
+      write(stdout,*) ibf,occupation(ibf,:)
     enddo
     stop'FAILURE in set_occupation'
   endif 
@@ -776,7 +775,7 @@ subroutine guess_starting_c_matrix_new(basis,c_matrix)
    do ig=1,basis%bf(ibf)%ngaussian
      alpha_max_bf(ibf)=MAX(basis%bf(ibf)%g(ig)%alpha,alpha_max_bf(ibf))
    enddo
-!   WRITE_MASTER(*,*) ibf,alpha_max_bf(ibf)
+!   write(stdout,*) ibf,alpha_max_bf(ibf)
  enddo
 
  !
@@ -791,7 +790,7 @@ subroutine guess_starting_c_matrix_new(basis,c_matrix)
      endif
    enddo
    c_matrix(kbf,ibf,:) = 1.0_dp
-!   WRITE_MASTER(*,*) 'chosen',ibf,kbf,alpha_max_bf(kbf)
+!   write(stdout,*) 'chosen',ibf,kbf,alpha_max_bf(kbf)
    alpha_max_bf(kbf)   = -1.0_dp
    
  enddo
@@ -827,7 +826,7 @@ subroutine setup_initial_c_matrix(print_matrix_,nbf,nspin,hamiltonian_nucleus,s_
  title='=== bare hamiltonian ==='
  call dump_out_matrix(print_matrix_,title,nbf,1,hamiltonian)
 
- WRITE_MASTER(*,*) 'Diagonalization of an initial hamiltonian'
+ write(stdout,*) 'Diagonalization of an initial hamiltonian'
  call start_clock(timing_diago_hamiltonian)
  call diagonalize_generalized_sym(nbf,hamiltonian,s_matrix,energy,matrix)
  call stop_clock(timing_diago_hamiltonian)
@@ -933,8 +932,8 @@ subroutine evaluate_s2_operator(nspin,nbf,occupation,c_matrix,s_matrix)
  enddo
 
 
- WRITE_MASTER(*,'(/,a,f8.4)') ' Total Spin S**2 = ',s2
- WRITE_MASTER(*,'(a,f8.4)')   ' Instead of        ',s2_exact
+ write(stdout,'(/,a,f8.4)') ' Total Spin S**2 = ',s2
+ write(stdout,'(a,f8.4)')   ' Instead of        ',s2_exact
 
 
 end subroutine evaluate_s2_operator

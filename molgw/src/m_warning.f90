@@ -1,6 +1,4 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
 module m_warning
  use m_definitions
  use m_mpi
@@ -32,7 +30,7 @@ subroutine issue_warning(msgw)
  character(len=*),intent(in) :: msgw
 !===== 
   
- WRITE_MASTER(*,'(/,a,a)') ' WARNING: ',TRIM(msgw)
+ write(stdout,'(/,a,a)') ' WARNING: ',TRIM(msgw)
 
  !
  ! Eliminate the storage of identical warnings
@@ -52,11 +50,11 @@ subroutine output_all_warnings()
 !=====
 
  if(nwarning>0) then
-   WRITE_MASTER(*,'(/,a,/)') ' SUMMARY of all the WARNINGS issued during the run:'
+   write(stdout,'(/,a,/)') ' SUMMARY of all the WARNINGS issued during the run:'
    do iwarning=1,nwarning
-     WRITE_MASTER(*,'(i2,a,5x,a)') iwarning,'.',warning_list(iwarning)
+     write(stdout,'(i2,a,5x,a)') iwarning,'.',warning_list(iwarning)
    enddo
-   WRITE_MASTER(*,'(/)')
+   write(stdout,'(/)')
  endif
 
 end subroutine output_all_warnings

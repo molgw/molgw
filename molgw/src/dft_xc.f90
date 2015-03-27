@@ -1,9 +1,4 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
- 
-
-!=========================================================================
 subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
  use m_definitions
  use m_mpi
@@ -17,9 +12,9 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
  use xc_f90_types_m
 #endif
 #ifdef _OPENMP
- use omp_lib
+ use,intrinsic :: omp_lib
 #endif
- use iso_c_binding,only: C_INT,C_DOUBLE
+ use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -70,7 +65,7 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
 
 #ifdef HAVE_LIBXC
 
- WRITE_MASTER(*,*) 'Calculate DFT XC potential'
+ write(stdout,*) 'Calculate DFT XC potential'
  
  require_gradient =.FALSE.
  require_laplacian=.FALSE.
@@ -83,7 +78,7 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
        call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_POLARIZED)
      endif
    else if(dft_xc_type(idft_xc) < 2000) then
-     WRITE_MASTER(*,*) 'Home-made functional LDA functional'
+     write(stdout,*) 'Home-made functional LDA functional'
      ! Fake LIBXC descriptor 
      if(nspin==1) then
        call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_LDA_X, XC_UNPOLARIZED)
@@ -91,7 +86,7 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
        call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_LDA_X, XC_POLARIZED)
      endif
    else
-     WRITE_MASTER(*,*) 'Home-made functional GGA functional'
+     write(stdout,*) 'Home-made functional GGA functional'
      ! Fake LIBXC descriptor 
      if(nspin==1) then
        call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_GGA_X_PBE, XC_UNPOLARIZED)
@@ -102,9 +97,9 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
 
    if( dft_xc_type(idft_xc) < 1000 ) then
      call xc_f90_info_name(xc_info(idft_xc),string)
-     WRITE_MASTER(*,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),TRIM(string)
+     write(stdout,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),TRIM(string)
    else
-     WRITE_MASTER(*,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),'FAKE LIBXC DESCRIPTOR'
+     write(stdout,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),'FAKE LIBXC DESCRIPTOR'
    endif
 
    if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
@@ -329,12 +324,12 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
  enddo
 
 #else
- WRITE_MASTER(*,*) 'XC energy and potential set to zero'
- WRITE_MASTER(*,*) 'LIBXC is not present'
+ write(stdout,*) 'XC energy and potential set to zero'
+ write(stdout,*) 'LIBXC is not present'
 #endif
 
- WRITE_MASTER(*,'(/,a,2(2x,f12.6))') ' number of electrons:',normalization(:)
- WRITE_MASTER(*,'(a,2x,f12.6,/)')    '  DFT xc energy [Ha]:',exc_xc
+ write(stdout,'(/,a,2(2x,f12.6))') ' number of electrons:',normalization(:)
+ write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy [Ha]:',exc_xc
 
  call stop_clock(timing_dft)
 
@@ -358,7 +353,6 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
 #ifdef _OPENMP
  use omp_lib
 #endif
- use iso_c_binding,only: C_INT
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -386,7 +380,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
 
 ! call start_clock(timing_dft)
 
- WRITE_MASTER(*,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities'
+ write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities'
 
  do iatom=1,natom
 
@@ -403,7 +397,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
    deallocate(alpha,coeff)
  enddo
 
- WRITE_MASTER(*,*) 'Home-made functional LDA functional'
+ write(stdout,*) 'Home-made functional LDA functional'
  !
  ! For the first time, set up the stored arrays
  !
@@ -451,7 +445,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
    call xsum(vhxc_ij)
  endif
 
- WRITE_MASTER(*,'(/,a,2(2x,f12.6))') ' number of electrons:',normalization
+ write(stdout,'(/,a,2(2x,f12.6))') ' number of electrons:',normalization
 ! call stop_clock(timing_dft)
 
 end subroutine dft_approximate_vhxc
@@ -1059,7 +1053,7 @@ subroutine my_gga_exc_vxc_hjs(omega,nn,sigma,exc,vxc,vsigma)
 !HOME MADE   
 !HOME MADE    exc = -efac/rs * factor_w
 !HOME MADE
-!HOME MADE WRITE_MASTER(*,*) 'exc1=',exc
+!HOME MADE write(stdout,*) 'exc1=',exc
 
  !
  ! call to the nwchem subroutine

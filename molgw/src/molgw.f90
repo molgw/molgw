@@ -1,4 +1,10 @@
-#include "macros.h"
+!=========================================================================
+!
+! MOLGW
+! is a free software
+! 
+! All legal information can be found elsewhere
+!
 !=========================================================================
 program molgw
  use m_definitions
@@ -165,7 +171,7 @@ program molgw
    call dft_approximate_vhxc(basis,hamiltonian_tmp)
    hamiltonian_tmp(:,:) = hamiltonian_tmp(:,:) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
 
-   WRITE_MASTER(*,*) 'Diagonalization of an approximate hamiltonian'
+   write(stdout,*) 'Diagonalization of an approximate hamiltonian'
    call diagonalize_generalized_sym(basis%nbf,hamiltonian_tmp,s_matrix,&
                                     energy(:,1),c_matrix(:,:,1))
    deallocate(hamiltonian_tmp)
@@ -219,16 +225,6 @@ program molgw
  endif
 
  call stop_clock(timing_prescf)
-!!FBFB
-! write(*,*) eri_ri(1,1,1,1)
-! write(*,*) eri   (1,1,1,1)
-! write(*,*) eri_ri(1,2,1,2)
-! write(*,*) eri   (1,2,1,2)
-! write(*,*) eri_ri_lr(1,1,1,1)
-! write(*,*) eri_lr   (1,1,1,1)
-! write(*,*) eri_ri_lr(1,2,1,2)
-! write(*,*) eri_lr   (1,2,1,2)
-! stop'enough'
 
  !
  ! Big SCF loop is in there
@@ -289,11 +285,11 @@ program molgw
 
 !%!   inquire(file='manual_coresplitting',exist=file_exists)
 !%!   if(file_exists) then
-!%!     WRITE_MASTER(*,*) 'TESTING CORE-VALENCE SPLITTING'
+!%!     write(stdout,*) 'TESTING CORE-VALENCE SPLITTING'
 !%!     open(13,file='manual_coresplitting')
 !%!     read(13,*) ncore
 !%!     close(13)
-!%!     WRITE_MASTER(msg,'(a,i4,2x,i4)') 'core-valence splitting switched on up to state = ',ncore
+!%!     write(msg,'(a,i4,2x,i4)') 'core-valence splitting switched on up to state = ',ncore
 !%!     call issue_warning(msg)
 !%!     do istate=1,ncore
 !%!       occupation(istate,:) = 0.0_dp
@@ -341,7 +337,7 @@ program molgw
 
    en%tot = en%tot + en%rpa
    if( calc_type%is_dft ) en%tot = en%tot - en%xc + en%exx * ( 1.0_dp - alpha_hybrid )
-   WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
+   write(stdout,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
 
    call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp)
    if(has_auxil_basis) call destroy_eri_3center_eigen()
@@ -360,12 +356,12 @@ program molgw
 !   call mp2_energy_fast(basis,occupation,c_matrix,energy,en%mp2)
 ! This routine is slower but gives both the correlation energy and the self-energy
    call mp2_selfenergy(calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,hamiltonian_exx,en%mp2)
-   WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Energy       [Ha]:',en%mp2
-   WRITE_MASTER(*,*) 
+   write(stdout,'(a,2x,f16.10)') ' MP2 Energy       [Ha]:',en%mp2
+   write(stdout,*) 
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%mp2
 
-   WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Total Energy [Ha]:',en%tot
-   WRITE_MASTER(*,'(a,2x,f16.10)') ' SE+MP2  Total En [Ha]:',en%tot+en%se
+   write(stdout,'(a,2x,f16.10)') ' MP2 Total Energy [Ha]:',en%tot
+   write(stdout,'(a,2x,f16.10)') ' SE+MP2  Total En [Ha]:',en%tot+en%se
 
    title='=== Self-energy === (in the eigenstate basis)'
    call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
@@ -401,7 +397,7 @@ program molgw
 
  call output_all_warnings()
 
- WRITE_MASTER(*,'(/,a,/)') ' This is the end'
+ write(stdout,'(/,a,/)') ' This is the end'
 
  call finish_mpi()
 

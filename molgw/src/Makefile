@@ -24,7 +24,7 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 
 
 
-../molgw: macros.h m_definitions.o m_mpi.o m_elements.o m_timing.o m_warning.o m_memory.o m_tools.o m_atoms.o \
+../molgw: m_definitions.o m_mpi.o m_elements.o m_timing.o m_warning.o m_memory.o m_tools.o m_atoms.o \
          m_gaussian.o m_basis_set.o m_inputparam.o m_scf.o m_eri.o m_spectral_function.o m_dft_grid.o gw.o m_timedependent.o dft_xc.o \
          libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o scf_loop.o pdbssolver1.o pdbssolver1_svd.o molgw.o
 	$(FC) $(FCOPTS) \
@@ -39,43 +39,43 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
                         $(LIBINT) $(LIBINT_INCS) \
                         $(LINKS)
 
-molgw.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
+molgw.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
   m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_timedependent.f90 molgw.f90
 	$(FC) $(FCOPTS) -c molgw.f90 $(LIBXC_INCS)
 
-scf_loop.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
+scf_loop.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
   m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 scf_loop.f90
 	$(FC) $(FCOPTS) -c scf_loop.f90 $(LIBXC_INCS)
 
-hamiltonian.o: macros.h m_definitions.f90 m_timing.f90 m_eri.f90 hamiltonian.f90
+hamiltonian.o: m_definitions.f90 m_timing.f90 m_eri.f90 hamiltonian.f90
 	$(FC) $(FCOPTS) -c hamiltonian.f90 $(LIBXC_INCS)
 
-gw.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 m_inputparam.f90 gw.f90
+gw.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 m_inputparam.f90 gw.f90
 	$(FC) $(FCOPTS) -c gw.f90 $(LIBXC_INCS)
 
-m_timedependent.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 \
+m_timedependent.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 \
         m_timedependent.f90
 	$(FC) $(FCOPTS) -c m_timedependent.f90 $(LIBXC_INCS)
 
-dft_xc.o: macros.h m_definitions.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90 dft_xc.f90
+dft_xc.o: m_definitions.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90 dft_xc.f90
 	$(FC) $(FCOPTS) -c dft_xc.f90 $(LIBXC_INCS)
 
-io.o: macros.h m_definitions.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 io.f90
+io.o: m_definitions.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 io.f90
 	$(FC) $(FCOPTS) -c io.f90 $(LIBXC_INCS)
 
-mp2.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 mp2.f90 
+mp2.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 mp2.f90 
 	$(FC) $(FCOPTS) -c mp2.f90 $(LIBXC_INCS)
 
-mp2_selfenergy.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 mp2_selfenergy.f90
+mp2_selfenergy.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 mp2_selfenergy.f90
 	$(FC) $(FCOPTS) -c mp2_selfenergy.f90 $(LIBXC_INCS)
 
-pdbssolver1.o: macros.h pdbssolver1.f
+pdbssolver1.o: pdbssolver1.f
 	$(FC) $(FCOPTS) -c pdbssolver1.f $(LIBXC_INCS)
 
-pdbssolver1_svd.o: macros.h pdbssolver1_svd.f
+pdbssolver1_svd.o: pdbssolver1_svd.f
 	$(FC) $(FCOPTS) -c pdbssolver1_svd.f $(LIBXC_INCS)
 
-lebedev_quadrature.o: macros.h lebedev_quadrature.f
+lebedev_quadrature.o: lebedev_quadrature.f
 	$(FC) $(FCOPTS) -c lebedev_quadrature.f $(LIBXC_INCS)
 
 libint_wrapper.o: libint_wrapper.c
@@ -84,54 +84,53 @@ libint_wrapper.o: libint_wrapper.c
 libint_wrapper_nounderscore.o: libint_wrapper_nounderscore.c
 	$(CC) $(CCOPTS) -c libint_wrapper_nounderscore.c $(LIBINT_INCS)
 
-m_dft_grid.o: macros.h m_definitions.f90 m_memory.f90 m_inputparam.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90
+m_dft_grid.o: m_definitions.f90 m_memory.f90 m_inputparam.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90
 	$(FC) $(FCOPTS) -c m_dft_grid.f90 $(LIBXC_INCS)
 
-m_spectral_function.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90
+m_spectral_function.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90
 	$(FC) $(FCOPTS) -c m_spectral_function.f90 $(LIBXC_INCS)
 
-m_eri.o: macros.h m_definitions.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 m_eri.f90 
+m_eri.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 m_eri.f90 
 	$(FC) $(FCOPTS) -c m_eri.f90 $(LIBXC_INCS)
 
-m_basis_set.o: macros.h m_definitions.f90 m_elements.f90 m_gaussian.f90 m_basis_set.f90
+m_basis_set.o: m_definitions.f90 m_elements.f90 m_gaussian.f90 m_basis_set.f90
 	$(FC) $(FCOPTS) -c m_basis_set.f90 $(LIBXC_INCS)
 
-m_gaussian.o: macros.h m_definitions.f90 m_tools.f90 m_gaussian.f90
+m_gaussian.o: m_definitions.f90 m_tools.f90 m_gaussian.f90
 	$(FC) $(FCOPTS) -c m_gaussian.f90 $(LIBXC_INCS)
 
-m_scf.o: macros.h m_definitions.f90 m_scf.f90 m_inputparam.f90
+m_scf.o: m_definitions.f90 m_scf.f90 m_inputparam.f90
 	$(FC) $(FCOPTS) -c m_scf.f90 $(LIBXC_INCS)
 
-m_tools.o: macros.h m_definitions.f90 m_tools.f90
+m_tools.o: m_definitions.f90 m_tools.f90
 	$(FC) $(FCOPTS) -c m_tools.f90 $(LIBXC_INCS)
 
-m_elements.o: macros.h m_definitions.f90 m_mpi.f90 m_elements.f90
+m_elements.o: m_definitions.f90 m_mpi.f90 m_elements.f90
 	$(FC) $(FCOPTS) -c m_elements.f90 $(LIBXC_INCS)
 
-m_inputparam.o: macros.h m_definitions.f90 m_elements.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_basis_set.f90 input_variables.f90 m_inputparam.f90
+m_inputparam.o: m_definitions.f90 m_elements.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_basis_set.f90 input_variables.f90 m_inputparam.f90
 	$(FC) $(FCOPTS) -c m_inputparam.f90 $(LIBXC_INCS)
 
-m_memory.o: macros.h m_definitions.f90 m_mpi.f90 m_memory.f90
+m_memory.o: m_definitions.f90 m_mpi.f90 m_memory.f90
 	$(FC) $(FCOPTS) -c m_memory.f90 $(LIBXC_INCS)
 
-m_warning.o: macros.h m_definitions.f90 m_mpi.f90 m_warning.f90
+m_warning.o: m_definitions.f90 m_mpi.f90 m_warning.f90
 	$(FC) $(FCOPTS) -c m_warning.f90 $(LIBXC_INCS)
 
-m_timing.o: macros.h m_definitions.f90 m_timing.f90
+m_timing.o: m_definitions.f90 m_timing.f90
 	$(FC) $(FCOPTS) -c m_timing.f90 $(LIBXC_INCS)
 
-m_mpi.o: macros.h m_definitions.f90 m_mpi.f90
+m_mpi.o: m_definitions.f90 m_mpi.f90
 	$(FC) $(FCOPTS) -c m_mpi.f90 $(LIBXC_INCS)
 
-m_atoms.o: macros.h m_definitions.f90 m_atoms.f90
+m_atoms.o: m_definitions.f90 m_atoms.f90
 	$(FC) $(FCOPTS) -c m_atoms.f90 $(LIBXC_INCS)
 
-m_definitions.o: macros.h m_definitions.f90
+m_definitions.o: m_definitions.f90
 	$(FC) $(FCOPTS) -c m_definitions.f90 $(LIBXC_INCS)
 
 archive:
-	tar czf molgw.tgz ../../molgw/README ../../molgw/src/Makefile ../../molgw/src/*.f90 ../../molgw/src/*.f ../../molgw/src/*.cc \
-                          ../../molgw/src/macros.h \
+	tar czf molgw.tgz ../../molgw/README ../../molgw/src/Makefile ../../molgw/src/*.f90 ../../molgw/src/*.f ../../molgw/src/*.c \
                           ../../molgw/basis/* ../../molgw/util/* ../../molgw/tests/ ../../molgw/src/my_machine.arch
 	scp molgw.tgz 132.166.68.166:
 

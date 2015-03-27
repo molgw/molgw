@@ -1,6 +1,4 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
 module m_inputparam
  use m_definitions
  use m_mpi
@@ -11,7 +9,7 @@ module m_inputparam
  use xc_f90_lib_m
  use xc_f90_types_m
 #endif
- use iso_c_binding,only: C_INT,C_DOUBLE
+ use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
 
  !
  ! Method definitions
@@ -230,8 +228,8 @@ subroutine init_dft_type(key,calc_type)
  case('TESTHSE')
    ndft_xc=3
  case default
-   WRITE_MASTER(*,*) 'error reading calculation type'
-   WRITE_MASTER(*,*) TRIM(key)
+   write(stdout,*) 'error reading calculation type'
+   write(stdout,*) TRIM(key)
    stop' is unknown'
  end select
 
@@ -377,14 +375,14 @@ subroutine output_calculation_type(calc_type)
  type(calculation_type),intent(in)   :: calc_type
 !=====
 
-  WRITE_MASTER(*,*) 'need_exchange               ',calc_type%need_exchange
-  WRITE_MASTER(*,*) 'need_rpa                    ',calc_type%need_rpa
-  WRITE_MASTER(*,*) 'is_gw                       ',calc_type%is_gw
-  WRITE_MASTER(*,*) 'is_mp2                      ',calc_type%is_mp2
-  WRITE_MASTER(*,*) 'is_ci                       ',calc_type%is_ci
-  WRITE_MASTER(*,*) 'is_td                       ',calc_type%is_td
-  WRITE_MASTER(*,*) 'is_bse                      ',calc_type%is_bse
-  WRITE_MASTER(*,*) 'method                      ',calc_type%gwmethod  
+  write(stdout,*) 'need_exchange               ',calc_type%need_exchange
+  write(stdout,*) 'need_rpa                    ',calc_type%need_rpa
+  write(stdout,*) 'is_gw                       ',calc_type%is_gw
+  write(stdout,*) 'is_mp2                      ',calc_type%is_mp2
+  write(stdout,*) 'is_ci                       ',calc_type%is_ci
+  write(stdout,*) 'is_td                       ',calc_type%is_td
+  write(stdout,*) 'is_bse                      ',calc_type%is_bse
+  write(stdout,*) 'method                      ',calc_type%gwmethod  
 
 end subroutine output_calculation_type
 
@@ -401,58 +399,58 @@ subroutine summary_input(grid_quality,integral_quality)
 
  !
  ! Summarize input parameters
- WRITE_MASTER(*,'(/,a,/)')    ' Summary of the input parameters '
- WRITE_MASTER(*,'(a25,2x,a)') ' Calculation type: ',calc_type%calc_name
- WRITE_MASTER(*,'(a25,2x,a)') '         SCF type: ',calc_type%scf_name
- WRITE_MASTER(*,'(a25,2x,a)') '    Post SCF type: ',calc_type%postscf_name
- WRITE_MASTER(*,'(a25,i3)')   ' Natom: ',natom
- WRITE_MASTER(*,'(a25,f8.4)') ' Electrons: ',electrons
- WRITE_MASTER(*,'(a25,f8.4)') ' Charge: ',charge
- WRITE_MASTER(*,'(a25,f8.4)') ' Magnetization: ',magnetization
- WRITE_MASTER(*,'(a25,2x,a)') ' Basis set: ',basis_name
- WRITE_MASTER(*,'(a25,2x,a)') ' Auxiliary basis set: ',auxil_basis_name
- WRITE_MASTER(*,'(a25,2x,a)') ' Gaussian type: ',gaussian_type
- WRITE_MASTER(*,'(a25,i3)')   ' Spin polarization: ',nspin
- WRITE_MASTER(*,'(a25,i3)')   ' SCF steps: ',nscf
- WRITE_MASTER(*,'(a25,f8.4)') ' Mixing: ',alpha_mixing
- WRITE_MASTER(*,'(a25,2x,a)') ' Grid quality: ',grid_quality
- WRITE_MASTER(*,'(a25,2x,a)') ' Integral quality: ',integral_quality
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,'(a19)')      ' IO options:'
- WRITE_MASTER(*,'(a30,l3)')   ' - matrices details:   ',print_matrix_       
- WRITE_MASTER(*,'(a30,l3)')   ' - ERI file:           ',print_eri_          
- WRITE_MASTER(*,'(a30,l3)')   ' - ignore big RESTART: ',ignore_big_restart
- WRITE_MASTER(*,'(a30,l3)')   ' - plot some wfns:     ',print_wfn_          
- WRITE_MASTER(*,'(a30,l3)')   ' - dump spectral functs',print_w_
- WRITE_MASTER(*,'(a30,l3)')   ' - dump self-energy    ',print_sigma_
+ write(stdout,'(/,a,/)')    ' Summary of the input parameters '
+ write(stdout,'(a25,2x,a)') ' Calculation type: ',calc_type%calc_name
+ write(stdout,'(a25,2x,a)') '         SCF type: ',calc_type%scf_name
+ write(stdout,'(a25,2x,a)') '    Post SCF type: ',calc_type%postscf_name
+ write(stdout,'(a25,i3)')   ' Natom: ',natom
+ write(stdout,'(a25,f8.4)') ' Electrons: ',electrons
+ write(stdout,'(a25,f8.4)') ' Charge: ',charge
+ write(stdout,'(a25,f8.4)') ' Magnetization: ',magnetization
+ write(stdout,'(a25,2x,a)') ' Basis set: ',basis_name
+ write(stdout,'(a25,2x,a)') ' Auxiliary basis set: ',auxil_basis_name
+ write(stdout,'(a25,2x,a)') ' Gaussian type: ',gaussian_type
+ write(stdout,'(a25,i3)')   ' Spin polarization: ',nspin
+ write(stdout,'(a25,i3)')   ' SCF steps: ',nscf
+ write(stdout,'(a25,f8.4)') ' Mixing: ',alpha_mixing
+ write(stdout,'(a25,2x,a)') ' Grid quality: ',grid_quality
+ write(stdout,'(a25,2x,a)') ' Integral quality: ',integral_quality
+ write(stdout,*)
+ write(stdout,'(a19)')      ' IO options:'
+ write(stdout,'(a30,l3)')   ' - matrices details:   ',print_matrix_       
+ write(stdout,'(a30,l3)')   ' - ERI file:           ',print_eri_          
+ write(stdout,'(a30,l3)')   ' - ignore big RESTART: ',ignore_big_restart
+ write(stdout,'(a30,l3)')   ' - plot some wfns:     ',print_wfn_          
+ write(stdout,'(a30,l3)')   ' - dump spectral functs',print_w_
+ write(stdout,'(a30,l3)')   ' - dump self-energy    ',print_sigma_
 
 
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,*) '================================'
- WRITE_MASTER(*,*) '      atom list'
- WRITE_MASTER(*,*) '                       bohr                                        angstrom'
+ write(stdout,*)
+ write(stdout,*) '================================'
+ write(stdout,*) '      atom list'
+ write(stdout,*) '                       bohr                                        angstrom'
  do iatom=1,natom
-   WRITE_MASTER(*,'(2x,a2,3(x,f12.6),6x,3(x,f12.6))') element_name(zatom(iatom)),x(:,iatom),x(:,iatom)*bohr_A
+   write(stdout,'(2x,a2,3(x,f12.6),6x,3(x,f12.6))') element_name(zatom(iatom)),x(:,iatom),x(:,iatom)*bohr_A
  enddo
 
- WRITE_MASTER(*,*) '================================'
- WRITE_MASTER(*,'(a,i5)') ' Number of bonds ',nbond
+ write(stdout,*) '================================'
+ write(stdout,'(a,i5)') ' Number of bonds ',nbond
  if(inversion) then
-   WRITE_MASTER(*,*) 'Molecule has inversion symmetry'
+   write(stdout,*) 'Molecule has inversion symmetry'
  else
-   WRITE_MASTER(*,*) 'Molecule does not have inversion symmetry'
+   write(stdout,*) 'Molecule does not have inversion symmetry'
  endif
  if(linear) then
-   WRITE_MASTER(*,*) 'Molecule is linear'
+   write(stdout,*) 'Molecule is linear'
  else
-   WRITE_MASTER(*,*) 'Molecule is not linear'
+   write(stdout,*) 'Molecule is not linear'
    if(planar) then
-     WRITE_MASTER(*,*) 'Molecule is planar'
+     write(stdout,*) 'Molecule is planar'
    else
-     WRITE_MASTER(*,*) 'Molecule is not planar'
+     write(stdout,*) 'Molecule is not planar'
    endif
  endif
- WRITE_MASTER(*,*)
+ write(stdout,*)
 
 
 end subroutine summary_input
@@ -527,7 +525,7 @@ subroutine read_inputfile_namelist()
  select case(TRIM(mixing_scheme))
  case('SIMPLE','PULAY')
  case default
-   WRITE_MASTER(*,*) TRIM(mixing_scheme)
+   write(stdout,*) TRIM(mixing_scheme)
    stop'mixing scheme not recognized'
  end select
 
@@ -557,8 +555,8 @@ subroutine read_inputfile_namelist()
  if(step_sigma<0.0_dp) stop'step_sigma < 0.0'
 
  if( is_full_auxil .AND. .NOT. has_auxil_basis) then
-   WRITE_MASTER(*,*) 'A calculation is no 4 center integrals has been requested'
-   WRITE_MASTER(*,*) 'However no auxiliary basis has been provided in the input file'
+   write(stdout,*) 'A calculation is no 4 center integrals has been requested'
+   write(stdout,*) 'However no auxiliary basis has been provided in the input file'
    stop'STOP HERE'
  endif
 

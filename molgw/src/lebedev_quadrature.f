@@ -66,7 +66,7 @@ cvw    code=5:   (a,b,0) etc, b=sqrt(1-a^2), a input        ( 24 points)
 cvw    code=6:   (a,b,c) etc, c=sqrt(1-a^2-b^2), a/b input  ( 48 points)
 cvw
        goto (1,2,3,4,5,6) code
-       write (6,*) 'Gen_Oh: Invalid Code'
+       write(6,*) 'Gen_Oh: Invalid Code'
        stop 
     1  continue
        a=1.0d0

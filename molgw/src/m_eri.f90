@@ -1,12 +1,11 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
 module m_eri
  use m_definitions
  use m_mpi
  use m_memory
  use m_basis_set
  use m_timing
+ use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
 
  integer,parameter :: BUFFER1 = 1
  integer,parameter :: BUFFER2 = 2
@@ -67,7 +66,6 @@ module m_eri
 !                               x01(1),x02(1),x03(1),x04(1),&
 !                               rcut,
 !                               int_shell(1)
-!     use ISO_C_BINDING
 !     character(kind=c_char) :: string(*)
 !   end subroutine print_c
 ! end interface
@@ -104,7 +102,7 @@ subroutine prepare_eri(basis,rcut,which_buffer)
  case default
    stop'integration quality not recognized'
  end select
- WRITE_MASTER(*,'(/,a,es9.2)') ' Tolerance on integrals set to ',TOL_INT
+ write(stdout,'(/,a,es9.2)') ' Tolerance on integrals set to ',TOL_INT
 
 
  if(.NOT.allocated(negligible_shellpair)) then
@@ -196,7 +194,7 @@ subroutine deallocate_eri_buffer()
 !=====
 
  if(allocated(eri_buffer)) then
-   WRITE_MASTER(*,'(/,a)')     ' Deallocate ERI buffer'
+   write(stdout,'(/,a)')     ' Deallocate ERI buffer'
    call clean_deallocate('4-center integrals',eri_buffer)
  endif
 
@@ -209,7 +207,7 @@ subroutine deallocate_eri_buffer_lr()
 !=====
 
  if(allocated(eri_buffer_lr)) then
-   WRITE_MASTER(*,'(/,a)')     ' Deallocate LR ERI buffer'
+   write(stdout,'(/,a)')     ' Deallocate LR ERI buffer'
    call clean_deallocate('4-center LR integrals',eri_buffer_lr)
  endif
 
@@ -225,11 +223,11 @@ subroutine deallocate_eri()
 !=====
 
  if(allocated(eri_buffer)) then
-   WRITE_MASTER(*,'(/,a)')     ' Deallocate ERI buffer'
+   write(stdout,'(/,a)')     ' Deallocate ERI buffer'
    call clean_deallocate('4-center integrals',eri_buffer)
  endif
  if(allocated(eri_buffer_lr)) then
-   WRITE_MASTER(*,'(/,a)')     ' Deallocate LR ERI buffer'
+   write(stdout,'(/,a)')     ' Deallocate LR ERI buffer'
    call clean_deallocate('4-center LR integrals',eri_buffer_lr)
  endif
  if(allocated(negligible_basispair))  deallocate(negligible_basispair)
@@ -488,7 +486,6 @@ end subroutine setup_shell_list_auxil
 
 !=========================================================================
 subroutine do_calculate_eri(basis,rcut,which_buffer)
- use ISO_C_BINDING
  use m_tools,only: boys_function
 #ifdef _OPENMP
  use omp_lib
@@ -526,13 +523,13 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  real(C_DOUBLE)               :: rcut_libint
 !=====
 
- WRITE_MASTER(*,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
- WRITE_MASTER(*,'(a)')      ' Libint library initialized'
- WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
+ write(stdout,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
+ write(stdout,'(a)')      ' Libint library initialized'
+ write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
- WRITE_MASTER(*,*) 
- WRITE_MASTER(*,*) 'Number of integrals to be stored:',nsize
- WRITE_MASTER(*,*) 'Max index size',HUGE(nsize)
+ write(stdout,*) 
+ write(stdout,*) 'Number of integrals to be stored:',nsize
+ write(stdout,*) 'Max index size',HUGE(nsize)
  if(nsize<1) stop'too many integrals to be stored'
 
  select case(which_buffer)
@@ -657,7 +654,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
 
 
        if(info/=0) then
-         WRITE_MASTER(*,*) am1,am2,am3,am4
+         write(stdout,*) am1,am2,am3,am4
          stop 'ERI calculated by libint failed'
        endif
 
@@ -751,7 +748,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  enddo
 
 
- WRITE_MASTER(*,'(a,/)') ' All ERI have been calculated'
+ write(stdout,'(a,/)') ' All ERI have been calculated'
 
 
 end subroutine do_calculate_eri
@@ -759,7 +756,6 @@ end subroutine do_calculate_eri
 
 !=========================================================================
 subroutine calculate_eri_2center(print_eri_,auxil_basis)
- use ISO_C_BINDING
  use m_tools,only: boys_function, invert
 #ifdef _OPENMP
  use omp_lib
@@ -798,9 +794,9 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
 
  call start_clock(timing_eri_2center)
 
- WRITE_MASTER(*,'(/,a)')    ' Calculate, invert and store the 2-center Electron Repulsion Integrals'
- WRITE_MASTER(*,'(a)')      ' Libint library initialized'
- WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
+ write(stdout,'(/,a)')    ' Calculate, invert and store the 2-center Electron Repulsion Integrals'
+ write(stdout,'(a)')      ' Libint library initialized'
+ write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
  rcut_libint = 0.0_dp
 
@@ -910,7 +906,7 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
 
 
            if(info/=0) then
-             WRITE_MASTER(*,*) am1,am2,am3,am4
+             write(stdout,*) am1,am2,am3,am4
              stop 'ERI calculated by libint failed'
            endif
 
@@ -1005,7 +1001,7 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
  enddo
  deallocate(eigval)
 
- WRITE_MASTER(*,'(a)') ' All 2-center integrals have been calculated, diagonalized and stored'
+ write(stdout,'(a)') ' All 2-center integrals have been calculated, diagonalized and stored'
 
 
  call stop_clock(timing_eri_2center)
@@ -1015,7 +1011,6 @@ end subroutine calculate_eri_2center
 
 !=========================================================================
 subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
- use ISO_C_BINDING
  use m_tools,only: boys_function, invert
 #ifdef _OPENMP
  use omp_lib
@@ -1055,9 +1050,9 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
 
  call start_clock(timing_eri_2center)
 
- WRITE_MASTER(*,'(/,a)')    ' Calculate, invert and store the 2-center LR Electron Repulsion Integrals'
- WRITE_MASTER(*,'(a)')      ' Libint library initialized'
- WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
+ write(stdout,'(/,a)')    ' Calculate, invert and store the 2-center LR Electron Repulsion Integrals'
+ write(stdout,'(a)')      ' Libint library initialized'
+ write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
  rcut_libint = rcut
 
@@ -1167,7 +1162,7 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
 
 
            if(info/=0) then
-             WRITE_MASTER(*,*) am1,am2,am3,am4
+             write(stdout,*) am1,am2,am3,am4
              stop 'ERI calculated by libint failed'
            endif
 
@@ -1262,7 +1257,7 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
  enddo
  deallocate(eigval)
 
- WRITE_MASTER(*,'(a)') ' All 2-center integrals have been calculated, diagonalized and stored'
+ write(stdout,'(a)') ' All 2-center integrals have been calculated, diagonalized and stored'
 
 
  call stop_clock(timing_eri_2center)
@@ -1272,7 +1267,6 @@ end subroutine calculate_eri_2center_lr
 
 !=========================================================================
 subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
- use ISO_C_BINDING
  use m_tools,only: boys_function
 #ifdef _OPENMP
  use omp_lib
@@ -1313,9 +1307,9 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
 
  call start_clock(timing_eri_3center)
 
- WRITE_MASTER(*,'(/,a)') ' Calculate and store all the 3-center Electron Repulsion Integrals'
- WRITE_MASTER(*,'(a)')      ' Libint library initialized'
- WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
+ write(stdout,'(/,a)') ' Calculate and store all the 3-center Electron Repulsion Integrals'
+ write(stdout,'(a)')      ' Libint library initialized'
+ write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
  rcut_libint = 0.0_dp
 
@@ -1464,7 +1458,7 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
     
     
            if(info/=0) then
-             WRITE_MASTER(*,*) am1,am2,am3,am4
+             write(stdout,*) am1,am2,am3,am4
              stop 'ERI calculated by libint failed'
            endif
     
@@ -1565,7 +1559,7 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
 ! enddo
  enddo
 
- WRITE_MASTER(*,'(a)') ' All 3-center integrals have been calculated and stored'
+ write(stdout,'(a)') ' All 3-center integrals have been calculated and stored'
 
  !
  ! Combine the 2-center integral into the 3-center and then get rid of them
@@ -1573,7 +1567,7 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  eri_2center_m1(:,:) = TRANSPOSE( eri_2center_m1(:,:) )
  eri_3center(:,:) = MATMUL( eri_2center_m1(:,:) , eri_3center(:,:) )
 
- WRITE_MASTER(*,*) 'Now deallocate the 2-center integrals: not needed anymore'
+ write(stdout,*) 'Now deallocate the 2-center integrals: not needed anymore'
  call clean_deallocate('2-center integrals',eri_2center_m1)
  
 
@@ -1584,7 +1578,6 @@ end subroutine calculate_eri_3center
 
 !=========================================================================
 subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
- use ISO_C_BINDING
  use m_tools,only: boys_function
 #ifdef _OPENMP
  use omp_lib
@@ -1626,9 +1619,9 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
 
  call start_clock(timing_eri_3center)
 
- WRITE_MASTER(*,'(/,a)')    ' Calculate and store all the 3-center LR Electron Repulsion Integrals'
- WRITE_MASTER(*,'(a)')      ' Libint library initialized'
- WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
+ write(stdout,'(/,a)')    ' Calculate and store all the 3-center LR Electron Repulsion Integrals'
+ write(stdout,'(a)')      ' Libint library initialized'
+ write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
  rcut_libint = rcut
 
@@ -1777,7 +1770,7 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
     
     
            if(info/=0) then
-             WRITE_MASTER(*,*) am1,am2,am3,am4
+             write(stdout,*) am1,am2,am3,am4
              stop 'ERI calculated by libint failed'
            endif
     
@@ -1878,7 +1871,7 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
 ! enddo
  enddo
 
- WRITE_MASTER(*,'(a)') ' All 3-center integrals have been calculated and stored'
+ write(stdout,'(a)') ' All 3-center integrals have been calculated and stored'
 
  !
  ! Combine the 2-center integral into the 3-center and then get rid of them
@@ -1886,7 +1879,7 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
  eri_2center_m1_lr(:,:) = TRANSPOSE( eri_2center_m1_lr(:,:) )
  eri_3center_lr(:,:) = MATMUL( eri_2center_m1_lr(:,:) , eri_3center_lr(:,:) )
 
- WRITE_MASTER(*,*) 'Now deallocate the 2-center integrals: not needed anymore'
+ write(stdout,*) 'Now deallocate the 2-center integrals: not needed anymore'
  call clean_deallocate('2-center LR integrals',eri_2center_m1_lr)
  
 
@@ -1897,7 +1890,6 @@ end subroutine calculate_eri_3center_lr
 
 !=========================================================================
 subroutine calculate_eri_approximate_hartree(print_eri_,basis,x0_rho,alpha_rho,vhrho)
- use ISO_C_BINDING
  use m_tools,only: boys_function
 #ifdef _OPENMP
  use omp_lib
@@ -2047,7 +2039,7 @@ subroutine calculate_eri_approximate_hartree(print_eri_,basis,x0_rho,alpha_rho,v
    
    
          if(info/=0) then
-           WRITE_MASTER(*,*) am1,am2,am3,am4
+           write(stdout,*) am1,am2,am3,am4
            stop 'ERI calculated by libint failed'
          endif
    
@@ -2199,10 +2191,10 @@ subroutine refine_negligible_basispair()
        enddo
      enddo
      if( max_ij < TOL_INT ) then
-!       WRITE_MASTER(*,*) '    negl',max_ij,max_ij < TOL_INT
+!       write(stdout,*) '    negl',max_ij,max_ij < TOL_INT
        negligible_basispair(ibf,jbf) = .TRUE.
      else
-!       WRITE_MASTER(*,*) 'non negl',max_ij,max_ij < TOL_INT
+!       write(stdout,*) 'non negl',max_ij,max_ij < TOL_INT
        npair_refined = npair_refined + 1
      endif
 
@@ -2210,9 +2202,9 @@ subroutine refine_negligible_basispair()
    enddo
  enddo
 
- WRITE_MASTER(*,'(/,a)') ' Refining the negligible basis function pairs'
- WRITE_MASTER(*,'(a,x,i6)')   ' Non negligible basis function pairs stored in memory   ',npair
- WRITE_MASTER(*,'(a,x,i6)')   ' Non negligible basis function pairs used in calculation',npair_refined
+ write(stdout,'(/,a)') ' Refining the negligible basis function pairs'
+ write(stdout,'(a,x,i6)')   ' Non negligible basis function pairs stored in memory   ',npair
+ write(stdout,'(a,x,i6)')   ' Non negligible basis function pairs used in calculation',npair_refined
 
 
 end subroutine refine_negligible_basispair
@@ -2226,7 +2218,6 @@ subroutine identify_negligible_shellpair(basis)
 ! Cauchy-Schwarz inequality
 ! (ij|1/r|kl)**2 <= (ij|1/r|ij) (kl|1/r|(kl) 
 !
- use ISO_C_BINDING
  use m_tools,only: boys_function
  implicit none
 
@@ -2259,9 +2250,9 @@ subroutine identify_negligible_shellpair(basis)
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
 
- WRITE_MASTER(*,'(/,a)')    ' Cauchy-Schwartz screening of the 4-center integrals'
- WRITE_MASTER(*,'(a)')      ' Libint library initialized'
- WRITE_MASTER(*,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
+ write(stdout,'(/,a)')    ' Cauchy-Schwartz screening of the 4-center integrals'
+ write(stdout,'(a)')      ' Libint library initialized'
+ write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
  rcut_libint = 0.0_dp
 
@@ -2345,7 +2336,7 @@ subroutine identify_negligible_shellpair(basis)
 
 
        if(info/=0) then
-         WRITE_MASTER(*,*) am1,am2,am1,am2
+         write(stdout,*) am1,am2,am1,am2
          stop 'ERI calculated by libint failed'
        endif
 
@@ -2452,7 +2443,7 @@ subroutine setup_shellpair()
    enddo
  enddo
  nshellpair = ishellpair
- WRITE_MASTER(*,'(/,a,i8,a,i8)') ' Non negligible shellpairs to be computed',nshellpair,'  over a total of',jshellpair
+ write(stdout,'(/,a,i8,a,i8)') ' Non negligible shellpairs to be computed',nshellpair,'  over a total of',jshellpair
  allocate(index_shellpair(2,nshellpair))
 
  ishellpair = 0
@@ -2638,12 +2629,12 @@ subroutine test_eri(basis)
      do lbf=1,nbf_eri
        do kbf=1,nbf_eri
          if( ABS(eri(ibf,jbf,kbf,lbf) - eri(kbf,lbf,ibf,jbf)) > 1.d-6 ) then
-           WRITE_MASTER(*,*) ibf,jbf,kbf,lbf,eri(ibf,jbf,kbf,lbf)
-           WRITE_MASTER(*,*) kbf,lbf,ibf,jbf,eri(kbf,lbf,ibf,jbf)
-           WRITE_MASTER(*,*) ibf,basis%bf(ibf)%amc
-           WRITE_MASTER(*,*) jbf,basis%bf(jbf)%amc
-           WRITE_MASTER(*,*) kbf,basis%bf(kbf)%amc
-           WRITE_MASTER(*,*) lbf,basis%bf(lbf)%amc
+           write(stdout,*) ibf,jbf,kbf,lbf,eri(ibf,jbf,kbf,lbf)
+           write(stdout,*) kbf,lbf,ibf,jbf,eri(kbf,lbf,ibf,jbf)
+           write(stdout,*) ibf,basis%bf(ibf)%amc
+           write(stdout,*) jbf,basis%bf(jbf)%amc
+           write(stdout,*) kbf,basis%bf(kbf)%amc
+           write(stdout,*) lbf,basis%bf(lbf)%amc
            stop'ERI array not symmetric'
          endif
        enddo
@@ -2769,7 +2760,7 @@ subroutine prepare_eri_3center_eigen(c_matrix)
 
  call start_clock(timing_eri_3center_eigen)
 
- WRITE_MASTER(*,'(/,a)') ' Calculate 3-center integrals on eigenstates'
+ write(stdout,'(/,a)') ' Calculate 3-center integrals on eigenstates'
 
 
  !TODO merge the 2 last indexes for prod_basis save a factor 2! (i<->j symmetry)
@@ -2799,7 +2790,7 @@ subroutine prepare_eri_3center_eigen(c_matrix)
  enddo ! klspin
  deallocate(eri_3center_tmp)
 
- WRITE_MASTER(*,'(a,/)') ' Done'
+ write(stdout,'(a,/)') ' Done'
 
  call stop_clock(timing_eri_3center_eigen)
 
@@ -2811,7 +2802,7 @@ subroutine destroy_eri_3center_eigen()
  implicit none
 !=====
 
- WRITE_MASTER(*,'(/,a)') ' Destroy 3-center integrals on eigenstates'
+ write(stdout,'(/,a)') ' Destroy 3-center integrals on eigenstates'
  call clean_deallocate('3-center MO integrals',eri_3center_eigen)
 
 end subroutine destroy_eri_3center_eigen
@@ -2856,8 +2847,8 @@ subroutine negligible_eri(tol)
    if( ABS( eri_buffer(ibuffer) ) < tol ) icount=icount+1
  enddo
 
- WRITE_MASTER(*,*) ' number of negligible integrals <',tol
- WRITE_MASTER(*,*) icount, ' / ',nsize,REAL(icount,dp)/REAL(nsize,dp)*100.0_dp,' [%]'
+ write(stdout,*) ' number of negligible integrals <',tol
+ write(stdout,*) icount, ' / ',nsize,REAL(icount,dp)/REAL(nsize,dp)*100.0_dp,' [%]'
 
 
  do ibf=1,nbf_eri
@@ -2866,7 +2857,7 @@ subroutine negligible_eri(tol)
    enddo
  enddo
 
- WRITE_MASTER(*,*) 'testing Cauchy-Schwarz condition'
+ write(stdout,*) 'testing Cauchy-Schwarz condition'
  icount=0
  jcount=0
  do ibf=1,nbf_eri
@@ -2879,9 +2870,9 @@ subroutine negligible_eri(tol)
      enddo
    enddo
  enddo
- WRITE_MASTER(*,*) ' number of negligible integrals <',tol
- WRITE_MASTER(*,*) icount, ' / ',nbf_eri**4,REAL(icount,dp)/REAL(nbf_eri,dp)**4*100.0_dp,' [%]'
- WRITE_MASTER(*,*) jcount, ' / ',nbf_eri**4,REAL(jcount,dp)/REAL(nbf_eri,dp)**4*100.0_dp,' [%]'
+ write(stdout,*) ' number of negligible integrals <',tol
+ write(stdout,*) icount, ' / ',nbf_eri**4,REAL(icount,dp)/REAL(nbf_eri,dp)**4*100.0_dp,' [%]'
+ write(stdout,*) jcount, ' / ',nbf_eri**4,REAL(jcount,dp)/REAL(nbf_eri,dp)**4*100.0_dp,' [%]'
 
 
 end subroutine negligible_eri
@@ -2894,6 +2885,7 @@ subroutine dump_out_eri(rcut)
 !====
  character(len=50) :: filename
  integer           :: nline,iline,icurrent
+ integer           :: erifile
 !====
 
  if(rcut < 1.0e-6_dp) then
@@ -2901,23 +2893,25 @@ subroutine dump_out_eri(rcut)
  else
    filename='molgw_eri_lr.data'
  endif
- WRITE_MASTER(*,*) 'Dump out the ERI into file'
- WRITE_MASTER(*,*) 'Size of file [bytes]',REAL(nsize,dp)*prec_eri
+ write(stdout,*) 'Dump out the ERI into file'
+ write(stdout,*) 'Size of file [bytes]',REAL(nsize,dp)*prec_eri
 
- open(unit=111,file=TRIM(filename),form='unformatted')
- WRITE_MASTER(111) nsize
- WRITE_MASTER(111) rcut
+ if( is_iomaster() ) then
+   open(newunit=erifile,file=TRIM(filename),form='unformatted')
+   write(erifile) nsize
+   write(erifile) rcut
 
- nline = nsize / line_length + 1
- icurrent=0
- do iline=1,nline
-   WRITE_MASTER(111) eri_buffer(icurrent+1:MIN(nsize,icurrent+line_length+1))
-   icurrent = icurrent + line_length + 1
- enddo
+   nline = nsize / line_length + 1
+   icurrent=0
+   do iline=1,nline
+     write(erifile) eri_buffer(icurrent+1:MIN(nsize,icurrent+line_length+1))
+     icurrent = icurrent + line_length + 1
+   enddo
 
- close(111)
+   close(erifile)
+ endif
 
- WRITE_MASTER(*,'(a,/)') ' file written'
+ write(stdout,'(a,/)') ' file written'
 
 end subroutine dump_out_eri
 
@@ -2931,6 +2925,7 @@ logical function read_eri(rcut)
  integer           :: nline,iline,icurrent
  integer           :: integer_read
  real(dp)          :: real_read
+ integer           :: erifile
 !====
 
  if(rcut < 1.0e-6_dp) then
@@ -2943,11 +2938,11 @@ logical function read_eri(rcut)
 
  if(read_eri) then
 
-   WRITE_MASTER(*,*) 'Try to read ERI file'
-   open(unit=111,file=TRIM(filename),form='unformatted',status='old')
-   read(111) integer_read
+   write(stdout,*) 'Try to read ERI file'
+   open(newunit=erifile,file=TRIM(filename),form='unformatted',status='old')
+   read(erifile) integer_read
    if(integer_read /= nsize) read_eri=.FALSE.
-   read(111) real_read
+   read(erifile) real_read
    if(ABS(real_read-rcut) > 1.0d-6) read_eri=.FALSE.
 
    if(read_eri) then
@@ -2955,16 +2950,16 @@ logical function read_eri(rcut)
      nline = nsize / line_length + 1
      icurrent=0
      do iline=1,nline
-       read(111) eri_buffer(icurrent+1:MIN(nsize,icurrent+line_length+1))
+       read(erifile) eri_buffer(icurrent+1:MIN(nsize,icurrent+line_length+1))
        icurrent = icurrent + line_length + 1
      enddo
-     WRITE_MASTER(*,'(a,/)') ' ERI file read'
+     write(stdout,'(a,/)') ' ERI file read'
 
    else
-     WRITE_MASTER(*,'(a,/)') ' reading aborted'
+     write(stdout,'(a,/)') ' reading aborted'
    endif
 
-   close(111)
+   close(erifile)
 
  endif
 

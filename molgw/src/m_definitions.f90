@@ -1,11 +1,10 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
 module m_definitions
-
+ use,intrinsic :: iso_fortran_env, only: OUTPUT_UNIT
 
  integer,parameter  :: dp=kind(0.d0)
- integer,parameter  :: sp=kind(0.)
+ integer,parameter  :: sp=kind(0.0)
+
  integer,parameter  :: prec_eri=dp
 #ifndef TD_SP
  integer,parameter  :: prec_td=dp
@@ -13,6 +12,7 @@ module m_definitions
  integer,parameter  :: prec_td=sp
 #endif
 
+ integer,parameter  :: stdout = OUTPUT_UNIT
 
  !
  ! Physical constants

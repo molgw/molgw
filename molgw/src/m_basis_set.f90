@@ -1,6 +1,4 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
 module m_basis_set
  use m_definitions
  use m_elements
@@ -91,17 +89,17 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  !
  do iatom=1,natom
 
-!   WRITE_MASTER(*,*)
-!   WRITE_MASTER(*,*) 'Element used for Z value:    ',TRIM(element_name(zatom(iatom)))
-!   WRITE_MASTER(*,*) 'Element used for the basis:  ',TRIM(element_name(REAL(basis_element(iatom),dp)))
-!   WRITE_MASTER(*,*) 'Basis type: ',TRIM(basis_name)
+!   write(stdout,*)
+!   write(stdout,*) 'Element used for Z value:    ',TRIM(element_name(zatom(iatom)))
+!   write(stdout,*) 'Element used for the basis:  ',TRIM(element_name(REAL(basis_element(iatom),dp)))
+!   write(stdout,*) 'Basis type: ',TRIM(basis_name)
    basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
   
-!   WRITE_MASTER(*,*)
-!   WRITE_MASTER(*,*) 'open the basis set file ',TRIM(basis_filename)
+!   write(stdout,*)
+!   write(stdout,*) 'open the basis set file ',TRIM(basis_filename)
    inquire(file=TRIM(basis_filename),exist=file_exists)
    if(.NOT.file_exists) then
-     WRITE_MASTER(*,'(a,a)') ' Looking for file ',TRIM(basis_filename)
+     write(stdout,'(a,a)') ' Looking for file ',TRIM(basis_filename)
      stop'basis set file not found'
    endif
   
@@ -124,10 +122,10 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  enddo
 
 
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,'(a50,i8)') 'Total number of basis functions:',basis%nbf
+ write(stdout,*)
+ write(stdout,'(a50,i8)') 'Total number of basis functions:',basis%nbf
  if(basis%gaussian_type=='PURE') then
-   WRITE_MASTER(*,'(a50,i8)') 'Total number of cart. functions:',basis%nbf_cart
+   write(stdout,'(a50,i8)') 'Total number of cart. functions:',basis%nbf_cart
  endif
  allocate(basis%bf(basis%nbf_cart))
 
@@ -156,8 +154,8 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
      ! rescale the gaussian decay rate whenever zatom /= basis_element
      if( abs( zatom(iatom) - REAL(basis_element(iatom),dp) ) > 1.d-6 ) then
        alpha(:) = alpha(:) * ( zatom(iatom) / REAL(basis_element(iatom),dp) )**2
-       WRITE_MASTER(*,*) 'rescaling momentum',am_tmp
-       WRITE_MASTER(*,*) 'smallest rescaled alpha:',MINVAL(alpha(:))
+       write(stdout,*) 'rescaling momentum',am_tmp
+       write(stdout,*) 'smallest rescaled alpha:',MINVAL(alpha(:))
      endif
   
      x0(:) = x(:,iatom)
@@ -325,21 +323,21 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  ! END OF THE LOOP OVER ATOMS
  enddo
  
- WRITE_MASTER(*,'(a50,i8)') 'Total number of diffuse functions:',ndiffuse
+ write(stdout,'(a50,i8)') 'Total number of diffuse functions:',ndiffuse
 
  basis%nshell = shell_index
- WRITE_MASTER(*,'(a50,i8)') 'Number of shells:',basis%nshell
+ write(stdout,'(a50,i8)') 'Number of shells:',basis%nshell
 
  ! Find the maximum angular momentum employed in the basis set
  basis%ammax=-1
  do ibf=1,basis%nbf
    basis%ammax = MAX(basis%ammax,basis%bf(ibf)%am)
  enddo
- WRITE_MASTER(*,'(a50,i8)') 'Maximum angular momentum in the basis set:',basis%ammax
- WRITE_MASTER(*,'(a50,a8)') '                                          ',orbital_momentum_name(basis%ammax)
+ write(stdout,'(a50,i8)') 'Maximum angular momentum in the basis set:',basis%ammax
+ write(stdout,'(a50,a8)') '                                          ',orbital_momentum_name(basis%ammax)
 
  if(basis%ammax > lmax_transform ) then      
-   WRITE_MASTER(*,*) 'Maximum angular momentum',basis%ammax
+   write(stdout,*) 'Maximum angular momentum',basis%ammax
    stop'angular momentum too high'
  endif
  if(basis%ammax > lmax_transform_pure .AND. basis%gaussian_type == 'PURE' ) then      
@@ -350,12 +348,12 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  ! finally output the basis set for debugging
  if( .FALSE. ) then
    do ibf=1,basis%nbf
-     WRITE_MASTER(*,*) ' Cartesian function number',ibf
+     write(stdout,*) ' Cartesian function number',ibf
      call print_basis_function(basis%bf(ibf))
    enddo
  endif
 
- WRITE_MASTER(*,'(a,/)') ' Basis set is ready and fit'
+ write(stdout,'(a,/)') ' Basis set is ready and fit'
 
 end subroutine init_basis_set
 
@@ -441,9 +439,9 @@ subroutine init_basis_function(normalized,ng,nx,ny,nz,x0,alpha,coeff,shell_index
  if( normalized ) then
    call overlap_basis_function(bf,bf,overlap)
    if( ABS(overlap-1.0_dp) > 2.0d-5 ) then
-     WRITE_MASTER(*,*) 'normalization is different from 1.0',overlap
-     WRITE_MASTER(*,*) bf%nx,bf%ny,bf%nz
-     WRITE_MASTER(*,*) 'assuming this is a generalized contraction and rescaling coefficients'
+     write(stdout,*) 'normalization is different from 1.0',overlap
+     write(stdout,*) bf%nx,bf%ny,bf%nz
+     write(stdout,*) 'assuming this is a generalized contraction and rescaling coefficients'
      bf%coeff(:) = coeff(:) / SQRT( overlap )
    endif
  endif
@@ -493,7 +491,7 @@ function number_basis_function_am(gaussian_type,am)
    case(10) ! stands for SP orbitals
      number_basis_function_am = 4 
    case default
-     WRITE_ME(*,*) 'am=',am
+     write(stdout,*) 'am=',am
      stop'number_basis_function_am: not implemented'
    end select
  case('PURE')
@@ -515,20 +513,20 @@ subroutine print_basis_function(bf)
  integer :: ig
 !====
 
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,*) '======  print out a basis function ======'
- WRITE_MASTER(*,'(a30,2x,1(x,i3))')           'contraction of N gaussians',bf%ngaussian
- WRITE_MASTER(*,'(a30,5x,a1)')                'orbital momentum',bf%amc
- WRITE_MASTER(*,'(a30,x,3(f12.6,2x))')        'centered in',bf%x0(:)
+ write(stdout,*)
+ write(stdout,*) '======  print out a basis function ======'
+ write(stdout,'(a30,2x,1(x,i3))')           'contraction of N gaussians',bf%ngaussian
+ write(stdout,'(a30,5x,a1)')                'orbital momentum',bf%amc
+ write(stdout,'(a30,x,3(f12.6,2x))')        'centered in',bf%x0(:)
  do ig=1,bf%ngaussian
-   WRITE_MASTER(*,'(a30,2x,x,i3,2x,f12.6)')   'coefficient',ig,bf%coeff(ig)
+   write(stdout,'(a30,2x,x,i3,2x,f12.6)')   'coefficient',ig,bf%coeff(ig)
  enddo
- WRITE_MASTER(*,*)
+ write(stdout,*)
  do ig=1,bf%ngaussian
    call print_gaussian(bf%g(ig))
  enddo
- WRITE_MASTER(*,*) '====== end of basis function ======'
- WRITE_MASTER(*,*)
+ write(stdout,*) '====== end of basis function ======'
+ write(stdout,*)
 
 end subroutine print_basis_function
 
@@ -905,7 +903,7 @@ subroutine setup_cart_to_pure_transforms(gaussian_type)
  integer  :: nx,ny,nz
 !====
 
- WRITE_MASTER(*,*) 'Setting up the cartesian to pure transforms'
+ write(stdout,*) 'Setting up the cartesian to pure transforms'
 
  if(gaussian_type == 'CART') then
 
@@ -1130,8 +1128,8 @@ subroutine setup_cart_to_pure_transforms(gaussian_type)
  enddo
 
 
- WRITE_MASTER(*,*) 'Transformations set up completed'
- WRITE_MASTER(*,*) 
+ write(stdout,*) 'Transformations set up completed'
+ write(stdout,*) 
 
 end subroutine setup_cart_to_pure_transforms
 

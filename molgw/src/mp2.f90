@@ -1,6 +1,4 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
 subroutine mp2_energy(basis,occupation,c_matrix,energy,emp2)
  use m_definitions
  use m_mpi
@@ -36,7 +34,7 @@ subroutine mp2_energy(basis,occupation,c_matrix,energy,emp2)
    do astate=1,basis%nbf
      if(occupation(astate,ispin)>spin_fact-completely_empty) cycle
 
-     WRITE_MASTER(*,'(i4,2x,i4,a,i4)') ispin,astate,' / ',basis%nbf
+     write(stdout,'(i4,2x,i4,a,i4)') ispin,astate,' / ',basis%nbf
 
      tmp_xaxx(:,:,:) = 0.0_dp
 !$OMP PARALLEL DEFAULT(SHARED)
@@ -99,7 +97,7 @@ subroutine mp2_energy(basis,occupation,c_matrix,energy,emp2)
 &                                    - energy(astate,ispin) - energy(bstate,jspin)
              ! Avoid the zero denominators
              if( ABS(energy_denom) < 1.d-18) then
-               WRITE_MASTER(*,*) 'you skipped something'
+               write(stdout,*) 'you skipped something'
                cycle
              endif
              energy_denom =  fact / energy_denom 
@@ -125,10 +123,10 @@ subroutine mp2_energy(basis,occupation,c_matrix,energy,emp2)
 
 
  emp2 = contrib1 + contrib2
- WRITE_MASTER(*,'(/,a)')       ' MP2 contributions'
- WRITE_MASTER(*,'(a,f14.8)')   ' 2-ring diagram  :',contrib1
- WRITE_MASTER(*,'(a,f14.8)')   ' SOX diagram     :',contrib2
- WRITE_MASTER(*,'(a,f14.8,/)') ' MP2 correlation :',emp2
+ write(stdout,'(/,a)')       ' MP2 contributions'
+ write(stdout,'(a,f14.8)')   ' 2-ring diagram  :',contrib1
+ write(stdout,'(a,f14.8)')   ' SOX diagram     :',contrib2
+ write(stdout,'(a,f14.8,/)') ' MP2 correlation :',emp2
 
 
 end subroutine mp2_energy
@@ -162,7 +160,7 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
 
  call start_clock(timing_mp2_energy)
 
- WRITE_MASTER(*,*) 'starting the MP2 calculation'
+ write(stdout,*) 'starting the MP2 calculation'
  !
  ! Deal with frozen core initialization
  inquire(file='manual_frozencore',exist=file_exists)
@@ -173,7 +171,7 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
    read(13,*) ncore
    close(13)
    ncore = MAX(ncore,0)
-   WRITE_MASTER(msg,'(a,i4,2x,i4)') 'frozen core approximation for MP2 switched on up to state = ',ncore
+   write(msg,'(a,i4,2x,i4)') 'frozen core approximation for MP2 switched on up to state = ',ncore
    call issue_warning(msg)
  else
    ncore = 0
@@ -201,7 +199,7 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
      if( occupation(istate,iaspin) < completely_empty ) cycle
      if( .NOT. is_my_fast_task(istate-ncore) ) cycle
 
-     WRITE_MASTER(*,'(i4,2x,i4,a,i4)') iaspin,istate-ncore,' / ',nocc
+     write(stdout,'(i4,2x,i4,a,i4)') iaspin,istate-ncore,' / ',nocc
 
      tmp_ixxx(:,:,:) = 0.0_dp
 !$OMP PARALLEL DEFAULT(SHARED)
@@ -267,7 +265,7 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
 &                                    - energy(astate,iaspin) - energy(bstate,jbspin)
              ! Avoid the zero denominators
              if( ABS(energy_denom) < 1.d-18) then
-               WRITE_MASTER(*,*) 'you skipped something'
+               write(stdout,*) 'you skipped something'
                cycle
              endif
 
@@ -299,10 +297,10 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
 
 
  emp2 = contrib1 + contrib2
- WRITE_MASTER(*,'(/,a)')       ' MP2 contributions'
- WRITE_MASTER(*,'(a,f14.8)')   ' 2-ring diagram  :',contrib1
- WRITE_MASTER(*,'(a,f14.8)')   ' SOX diagram     :',contrib2
- WRITE_MASTER(*,'(a,f14.8,/)') ' MP2 correlation :',emp2
+ write(stdout,'(/,a)')       ' MP2 contributions'
+ write(stdout,'(a,f14.8)')   ' 2-ring diagram  :',contrib1
+ write(stdout,'(a,f14.8)')   ' SOX diagram     :',contrib2
+ write(stdout,'(a,f14.8,/)') ' MP2 correlation :',emp2
 
  call stop_clock(timing_mp2_energy)
 
@@ -408,11 +406,11 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
  real(dp) :: basis_function_r(basis%nbf)
 
 !=====
- WRITE_MASTER(*,*) 
- WRITE_MASTER(*,*) 'Enter full CI subroutine'
- WRITE_MASTER(*,*) 
+ write(stdout,*) 
+ write(stdout,*) 'Enter full CI subroutine'
+ write(stdout,*) 
 
- WRITE_MASTER(*,*) 'obtain the one-electron Hamiltonian in the HF basis'
+ write(stdout,*) 'obtain the one-electron Hamiltonian in the HF basis'
  h_1e_hf(:,:) = 0.0_dp
  do jstate=1,basis%nbf
    do istate=1,basis%nbf
@@ -426,16 +424,16 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
 
  select case(spinstate)
  case(0)
-   WRITE_MASTER(*,*) 'calculate spin singlet state'
+   write(stdout,*) 'calculate spin singlet state'
  case(1)
-   WRITE_MASTER(*,*) 'calculate spin triplet state'
+   write(stdout,*) 'calculate spin triplet state'
  case default
    stop'BUG: spin state not possible'
  end select
 
  nconf = ( 2*basis%nbf * (2*basis%nbf -1) ) / 2
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,*) 'CI matrix lower than',nconf,' x ',nconf
+ write(stdout,*)
+ write(stdout,*) 'CI matrix lower than',nconf,' x ',nconf
  allocate(hamiltonian(nconf,nconf))
  hamiltonian(:,:) = 0.0_dp
  do iconf=1,nconf
@@ -475,7 +473,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
 !TODO                 if(.NOT.symmetry(jstate1,jstate2)) cycle
                  jconf=jconf+1
 
-!         WRITE_MASTER(*,'(10(i4,x))') jconf,jstate1,jspin1,jstate2,jspin2
+!         write(stdout,'(10(i4,x))') jconf,jstate1,jspin1,jstate2,jspin2
 
                  if( istate2==jstate2 .AND. ispin2==jspin2 .AND. ispin1==jspin1 ) hamiltonian(iconf,jconf) = hamiltonian(iconf,jconf) + h_1e_hf(istate1,jstate1)
                  if( istate1==jstate1 .AND. ispin1==jspin1 .AND. ispin2==jspin2 ) hamiltonian(iconf,jconf) = hamiltonian(iconf,jconf) + h_1e_hf(istate2,jstate2)
@@ -502,17 +500,17 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
 
  ! Adjust the real size of the CI hamiltonian
  nconf=iconf
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,*) 'CI matrix finally is',nconf,' x ',nconf
+ write(stdout,*)
+ write(stdout,*) 'CI matrix finally is',nconf,' x ',nconf
 
- WRITE_MASTER(*,*) 'Single determinant ground state energy [Ha]',hamiltonian(1,1)
-! WRITE_MASTER(*,*) '=========== H_1e ============== '
+ write(stdout,*) 'Single determinant ground state energy [Ha]',hamiltonian(1,1)
+! write(stdout,*) '=========== H_1e ============== '
 ! do istate=1,basis%nbf
-!   WRITE_MASTER(*,'(i4,2x,20(x,f12.6))') iconf,h_1e_hf(istate,1:basis%nbf)
+!   write(stdout,'(i4,2x,20(x,f12.6))') iconf,h_1e_hf(istate,1:basis%nbf)
 ! enddo
-! WRITE_MASTER(*,*) '=========== full H ============== '
+! write(stdout,*) '=========== full H ============== '
 ! do iconf=1,nconf
-!   WRITE_MASTER(*,'(i4,2x,20(x,f12.6))') iconf,hamiltonian(iconf,1:nconf)
+!   write(stdout,'(i4,2x,20(x,f12.6))') iconf,hamiltonian(iconf,1:nconf)
 ! enddo
 
  allocate(energy(nconf),eigenvector(nconf,nconf))
@@ -525,10 +523,10 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
 
  if(.FALSE.) then 
    ! home made steepest descent algo
-   WRITE_MASTER(*,*)
-   WRITE_MASTER(*,*) 'hamiltonian too big to be diagonalized'
-   WRITE_MASTER(*,*) 'Slow steepest descent algorithm'
-   WRITE_MASTER(*,*) 'home cooked'
+   write(stdout,*)
+   write(stdout,*) 'hamiltonian too big to be diagonalized'
+   write(stdout,*) 'Slow steepest descent algorithm'
+   write(stdout,*) 'home cooked'
    allocate(test1(nconf),test2(nconf),hphi(nconf),gr1(nconf),gr2(nconf))
    test1(:) = 0.001
    test1(1) = 1. 
@@ -541,26 +539,26 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
      eigen = DOT_PRODUCT(test1,hphi)
      gr1(:) = 2. * ( hphi(:) - eigen * test1(:) )
      norm_gr1 = SQRT(DOT_PRODUCT(gr1,gr1))
-!     WRITE_MASTER(*,*) 'x1',norm_gr1
+!     write(stdout,*) 'x1',norm_gr1
   
-!     WRITE_MASTER(*,*) 'guessed delta',delta
+!     write(stdout,*) 'guessed delta',delta
      test2(:) = test1(:) - delta * gr1(:) / norm_gr1
      test2(:) = test2(:) / SQRT( SUM( test2(:)**2 ) )
   
      hphi = MATMUL(eigenvector,test2)
      eigen = DOT_PRODUCT(test2,hphi)
      gr2(:) = 2. * ( hphi(:) - eigen * test2(:) )
-!     WRITE_MASTER(*,*) 'x2',DOT_PRODUCT(gr2,gr1)/norm_gr1
+!     write(stdout,*) 'x2',DOT_PRODUCT(gr2,gr1)/norm_gr1
      hessian = DOT_PRODUCT(gr1,gr2-gr1) / ( delta * norm_gr1 )
      delta = -norm_gr1 / hessian
-!     WRITE_MASTER(*,*) 'optimal delta',delta
+!     write(stdout,*) 'optimal delta',delta
      test2(:) = test1(:) - delta * gr1(:) / norm_gr1
      test2(:) = test2(:) / SQRT( SUM( test2(:)**2 ) )
   
      if(MODULO(iline,20)==0) then
-       WRITE_MASTER(*,*) 'diff',iline,eigen,SUM(ABS(test2(:)-test1(:)))/DBLE(nconf)
+       write(stdout,*) 'diff',iline,eigen,SUM(ABS(test2(:)-test1(:)))/DBLE(nconf)
      endif
-!     WRITE_MASTER(*,*) '==================='
+!     write(stdout,*) '==================='
      if( SUM(ABS(test2(:)-test1(:)))/DBLE(nconf) < 1.e-12_dp ) exit
      test1(:) = test2(:)
   
@@ -574,9 +572,9 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
  endif ! OLD stepest descent
 
  if( nconf>500 ) then
-   WRITE_MASTER(*,*) 
-   WRITE_MASTER(*,*) 'Davidson diago'
-   WRITE_MASTER(*,*) 'trial vectors'
+   write(stdout,*) 
+   write(stdout,*) 'Davidson diago'
+   write(stdout,*) 'trial vectors'
 
    allocate(bb_s(nconf,neig+ncycle*nblock))
    allocate(qq(nconf,nblock))
@@ -615,7 +613,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
          qq(:,iblock) = MATMUL( ab ,  alphavec(:,jeig+iblock-1) ) &
                  - lambda(jeig+iblock-1) * MATMUL ( bb , alphavec(:,jeig+iblock-1) )
 
-         WRITE_MASTER(*,'(a,i4,x,i4,x,e12.4)') ' Residual norm for eigenvalue,cycle',&
+         write(stdout,'(a,i4,x,i4,x,e12.4)') ' Residual norm for eigenvalue,cycle',&
                        icycle,jeig+iblock-1,NORM2(qq(:,iblock))
 
          do iconf=1,nconf
@@ -647,31 +645,31 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
        deallocate(ab,atilde,lambda,alphavec,bb)
 
      enddo ! icycle
-     WRITE_MASTER(*,*) 
+     write(stdout,*) 
    enddo ! jeig
 
-   WRITE_MASTER(*,*) 'diago DONE'
-   WRITE_MASTER(*,*) energy(1:min(neig,nconf))
+   write(stdout,*) 'diago DONE'
+   write(stdout,*) energy(1:min(neig,nconf))
    eigenvector(:,1:neig) = bb_s(:,1:neig)
 
    deallocate(bb_s,qq)
 
   else
    ! full LAPACK diago
-   WRITE_MASTER(*,*) 'starting the diago'
+   write(stdout,*) 'starting the diago'
    call diagonalize(nconf,hamiltonian,energy,eigenvector)
-   WRITE_MASTER(*,*) 'diago DONE'
-   WRITE_MASTER(*,*) energy(1:min(neig,nconf))
+   write(stdout,*) 'diago DONE'
+   write(stdout,*) energy(1:min(neig,nconf))
 
  endif
 
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,*) 'normalization',SUM(eigenvector(:,1)**2)
- WRITE_MASTER(*,'(i4,2x,20(x,f7.4))') 1,eigenvector(1:min(20,nconf),1)
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,'(a30,2x,f14.8)') 'CI ground-state energy [Ha]:',energy(1)
- WRITE_MASTER(*,'(a30,2x,f14.8)') 'correlation energy [Ha]:',energy(1)-hamiltonian(1,1)
- WRITE_MASTER(*,*)
+ write(stdout,*)
+ write(stdout,*) 'normalization',SUM(eigenvector(:,1)**2)
+ write(stdout,'(i4,2x,20(x,f7.4))') 1,eigenvector(1:min(20,nconf),1)
+ write(stdout,*)
+ write(stdout,'(a30,2x,f14.8)') 'CI ground-state energy [Ha]:',energy(1)
+ write(stdout,'(a30,2x,f14.8)') 'correlation energy [Ha]:',energy(1)-hamiltonian(1,1)
+ write(stdout,*)
   
  deallocate(hamiltonian)
 
@@ -680,8 +678,8 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
  ! Plot the ground state density if requested
  !
  if( print_wfn_ ) then
-   WRITE_MASTER(*,*)
-   WRITE_MASTER(*,*) 'calculate the density'
+   write(stdout,*)
+   write(stdout,*) 'calculate the density'
   
   
    rhor(:)=0.0_dp
@@ -818,8 +816,8 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
    rhor(:)    = rhor   (:) * 0.5_dp  ! divide by two to compare with phi^star * phi which is normalized to unity
    rhor_hf(:) = rhor_hf(:) * 0.5_dp  ! divide by two to compare with phi^star * phi which is normalized to unity
   
-  ! WRITE_MASTER(*,*) 'NORM',norm / DBLE(nx*ny*nz)
-  ! WRITE_MASTER(*,*) 'norm',SUM(rhor(:)*wx(:))
+  ! write(stdout,*) 'NORM',norm / DBLE(nx*ny*nz)
+  ! write(stdout,*) 'norm',SUM(rhor(:)*wx(:))
   
   ! rhor_t(:)=0.0_dp
   ! do ix=1,nx
@@ -832,10 +830,10 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
   ! enddo !iz
   ! enddo !iy
   ! enddo !ix
-  ! WRITE_MASTER(*,*) 'norm',SUM(rhor_t(:)*wx(:))
+  ! write(stdout,*) 'norm',SUM(rhor_t(:)*wx(:))
   ! do ix=1,nx
   !   rr(1)= x(ix)
-  !   WRITE_MASTER(11,'(5(e12.6,2x))') rr(1),rhor_t(ix)
+  !   write(11,'(5(e12.6,2x))') rr(1),rhor_t(ix)
   ! enddo
   
    do ix=1,nx
@@ -843,7 +841,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
      rr(1)= (DBLE(ix-1)/DBLE(nx-1)-0.5)*10.00
      rr(2)= 0.0
      rr(3)= 0.0
-     WRITE_MASTER(10,'(5(e14.6,2x))') rr(1),rhor(ix),rhor_hf(ix)
+     write(10,'(5(e14.6,2x))') rr(1),rhor(ix),rhor_hf(ix)
    enddo
 
  endif

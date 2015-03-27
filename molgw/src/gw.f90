@@ -1,6 +1,4 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
 subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy)
  use m_definitions
  use m_mpi
@@ -44,24 +42,24 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  call start_clock(timing_self)
 
 
- WRITE_ME(msg,'(es9.2)') AIMAG(ieta)
+ write(msg,'(es9.2)') AIMAG(ieta)
  msg='small complex number is '//msg
  call issue_warning(msg)
 
- WRITE_MASTER(*,*)
+ write(stdout,*)
  select case(gwmethod)
  case(QS)
-   WRITE_MASTER(*,*) 'perform a QP self-consistent GW calculation'
+   write(stdout,*) 'perform a QP self-consistent GW calculation'
  case(G0W0)
-   WRITE_MASTER(*,*) 'perform a one-shot G0W0 calculation'
+   write(stdout,*) 'perform a one-shot G0W0 calculation'
  case(COHSEX)
-   WRITE_MASTER(*,*) 'perform a COHSEX calculation'
+   write(stdout,*) 'perform a COHSEX calculation'
  case(QSCOHSEX)
-   WRITE_MASTER(*,*) 'perform a self-consistent COHSEX calculation'
+   write(stdout,*) 'perform a self-consistent COHSEX calculation'
  case(GnW0)
-   WRITE_MASTER(*,*) 'perform an eigenvalue self-consistent GnW0 calculation'
+   write(stdout,*) 'perform an eigenvalue self-consistent GnW0 calculation'
  case(GnWn)
-   WRITE_MASTER(*,*) 'perform an eigenvalue self-consistent GnWn calculation'
+   write(stdout,*) 'perform an eigenvalue self-consistent GnWn calculation'
  end select
 
  if(gwmethod==QS .OR. gwmethod==COHSEX .OR. gwmethod==QSCOHSEX .OR.  gwmethod==GnW0 .OR. gwmethod==GnWn) then
@@ -223,17 +221,17 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
    selfenergy(:,:,:) = selfenergy_omega(0,:,:,:)
    
-   WRITE_MASTER(*,'(/,a)') ' COHSEX Eigenvalues [eV]'
+   write(stdout,'(/,a)') ' COHSEX Eigenvalues [eV]'
    if(nspin==1) then
-     WRITE_MASTER(*,*) '  #          E0        SigX-Vxc      SigC          Z         COHSEX'
+     write(stdout,*) '  #          E0        SigX-Vxc      SigC          Z         COHSEX'
    else
-     WRITE_MASTER(*,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       COHSEX'
+     write(stdout,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       COHSEX'
    endif
    do astate=1,basis%nbf
      zz(:) = 1.0_dp 
      energy_qp_new(astate,:) = energy_qp(astate,:) + selfenergy_omega(0,astate,astate,:) + exchange_m_vxc_diag(astate,:)
 
-     WRITE_MASTER(*,'(i4,x,20(x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,               &
+     write(stdout,'(i4,x,20(x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,               &
                                                  exchange_m_vxc_diag(astate,:)*Ha_eV,     &
                                                  selfenergy_omega(0,astate,astate,:)*Ha_eV, &
                                            zz(:),energy_qp_new(astate,:)*Ha_eV
@@ -244,20 +242,20 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
  case(G0W0) !==========================================================
 
-   if(print_sigma_) then
+   if(print_sigma_ .AND. is_iomaster() ) then
 
      do astate=1,basis%nbf
-       WRITE_ME(ctmp,'(i3.3)') astate
+       write(ctmp,'(i3.3)') astate
        open(200+astate,file='selfenergy_omega_state'//TRIM(ctmp))
-       WRITE_MASTER(200+astate,'(a)') '# omega + e_KS (eV)     SigmaC (eV)    omega + e_KS - Vxc + SigmaX (eV)     A (eV^-1) '
+       write(200+astate,'(a)') '# omega + e_KS (eV)     SigmaC (eV)    omega + e_KS - Vxc + SigmaX (eV)     A (eV^-1) '
        do iomegai=-nomegai,nomegai
-         WRITE_MASTER(200+astate,'(20(f12.6,2x))') ( omegai(iomegai) + energy_qp(astate,:) )*Ha_eV,               &
-                                                   selfenergy_omega(iomegai,astate,1,:)*Ha_eV,                 &
-                                                   ( omegai(iomegai) - exchange_m_vxc_diag(astate,:) )*Ha_eV,     &
-                                                   1.0_dp/pi/ABS( omegai(iomegai) - exchange_m_vxc_diag(astate,:) &
-                                                           - selfenergy_omega(iomegai,astate,1,:) ) / Ha_eV
+         write(200+astate,'(20(f12.6,2x))') ( omegai(iomegai) + energy_qp(astate,:) )*Ha_eV,               &
+                                            selfenergy_omega(iomegai,astate,1,:)*Ha_eV,                    &
+                                            ( omegai(iomegai) - exchange_m_vxc_diag(astate,:) )*Ha_eV,     &
+                                            1.0_dp/pi/ABS( omegai(iomegai) - exchange_m_vxc_diag(astate,:) &
+                                                    - selfenergy_omega(iomegai,astate,1,:) ) / Ha_eV
        enddo
-       WRITE_MASTER(200+astate,*)
+       write(200+astate,*)
      enddo
      close(200+astate)
 
@@ -270,11 +268,11 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
      selfenergy(astate,astate,:) = selfenergy_omega(0,astate,1,:)
    end forall
 
-   WRITE_MASTER(*,'(/,a)') ' G0W0 Eigenvalues [eV]'
+   write(stdout,'(/,a)') ' G0W0 Eigenvalues [eV]'
    if(nspin==1) then
-     WRITE_MASTER(*,'(a)') '   #          E0        SigX-Vxc      SigC          Z         G0W0_Z         G0W0_qp'
+     write(stdout,'(a)') '   #          E0        SigX-Vxc      SigC          Z         G0W0_Z         G0W0_qp'
    else
-     WRITE_MASTER(*,'(a)') &
+     write(stdout,'(a)') &
        '   #                E0                      SigX-Vxc                    SigC                       Z                       G0W0_Z                      G0W0_qp'
    endif
    do astate=1,basis%nbf
@@ -296,7 +294,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
 
 
-     WRITE_MASTER(*,'(i4,x,20(x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,                 & 
+     write(stdout,'(i4,x,20(x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,                 & 
                                                  exchange_m_vxc_diag(astate,:)*Ha_eV,       &
                                                  selfenergy_omega(0,astate,1,:)*Ha_eV,      &
                                                  zz(:),                                     & 
@@ -320,21 +318,21 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
 
    if( gwmethod==GnW0) then
-     WRITE_MASTER(*,'(/,a)') ' GnW0 Eigenvalues [eV]'
+     write(stdout,'(/,a)') ' GnW0 Eigenvalues [eV]'
    else
-     WRITE_MASTER(*,'(/,a)') ' GnWn Eigenvalues [eV]'
+     write(stdout,'(/,a)') ' GnWn Eigenvalues [eV]'
    endif
    if(nspin==1) then
-     WRITE_MASTER(*,'(a)') '  #          E0        SigX-Vxc      SigC          Z          GW(n-1)       GW(n)'
+     write(stdout,'(a)') '  #          E0        SigX-Vxc      SigC          Z          GW(n-1)       GW(n)'
    else
-     WRITE_MASTER(*,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       GW'
+     write(stdout,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       GW'
    endif
    do astate=1,basis%nbf
      zz(:) = 1.0_dp 
 
      energy_qp_new(astate,:) = energy(astate,:) + selfenergy_omega(0,astate,1,:) + exchange_m_vxc_diag(astate,:)
 
-     WRITE_MASTER(*,'(i4,x,20(x,f12.6))') astate,energy(astate,:)*Ha_eV,                    &
+     write(stdout,'(i4,x,20(x,f12.6))') astate,energy(astate,:)*Ha_eV,                    &
                                                  exchange_m_vxc_diag(astate,:)*Ha_eV,       &
                                                  selfenergy_omega(0,astate,1,:)*Ha_eV,      &
                                                  zz(:),                                     &

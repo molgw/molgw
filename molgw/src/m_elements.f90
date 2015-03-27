@@ -1,6 +1,4 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
 module m_elements
  use m_definitions
  use m_mpi
@@ -149,8 +147,8 @@ function element_number(element_name)
  ielement=1
  do while( ADJUSTL(element_name) /= ADJUSTL(element_list(ielement)) )
    if( ielement == nelement_max ) then
-     WRITE_MASTER(*,'(a,a)')    ' Input symbol ',element_name
-     WRITE_MASTER(*,'(a,i3,a)') ' Element symbol is not one of first ',nelement_max,' elements'
+     write(stdout,'(a,a)')    ' Input symbol ',element_name
+     write(stdout,'(a,i3,a)') ' Element symbol is not one of first ',nelement_max,' elements'
      stop'element symbol not understood'
    endif
    ielement = ielement + 1
@@ -173,7 +171,7 @@ function element_name(zatom)
    return
  endif
  if( NINT(zatom) > nelement_max ) then
-   WRITE_MASTER(*,'(a,i3,a)') 'Element symbol is not one of first ',nelement_max,' elements'
+   write(stdout,'(a,i3,a)') 'Element symbol is not one of first ',nelement_max,' elements'
    stop'element symbol not understood'
  endif
 

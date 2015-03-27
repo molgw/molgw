@@ -1,6 +1,4 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
 module m_spectral_function
  use m_definitions
  use m_mpi
@@ -72,12 +70,12 @@ subroutine init_spectral_function(nbf,occupation,sf)
    if( ncore_W == 0) ncore_W = atoms_core_states()
  endif
  if( ncore_G > 0 .OR. ncore_W > 0 ) then
-   WRITE_MASTER(msg,'(a,i4,2x,i4)') 'frozen core approximation switched on up to state (G,W) = ',ncore_G,ncore_W
+   write(msg,'(a,i4,2x,i4)') 'frozen core approximation switched on up to state (G,W) = ',ncore_G,ncore_W
    call issue_warning(msg)
  endif
 
  if( nvirtual_G <= nbf .OR. nvirtual_W <= nbf ) then
-   WRITE_MASTER(msg,'(a,i4,2x,i4)') 'frozen virtual approximation switched on starting with state (G,W) = ',nvirtual_G,nvirtual_W
+   write(msg,'(a,i4,2x,i4)') 'frozen virtual approximation switched on starting with state (G,W) = ',nvirtual_G,nvirtual_W
    call issue_warning(msg)
  endif
 
@@ -131,8 +129,8 @@ subroutine allocate_spectral_function(nprodbasis,sf)
 
  sf%nprodbasis = nprodbasis
 
- WRITE_MASTER(*,'(/,a,i8)') ' Spectral function initialized with Coulomb basis functions: ',sf%nprodbasis
- WRITE_MASTER(*,'(a,i8)')   ' Spectral function initialized with resonant poles         : ',sf%npole_reso
+ write(stdout,'(/,a,i8)') ' Spectral function initialized with Coulomb basis functions: ',sf%nprodbasis
+ write(stdout,'(a,i8)')   ' Spectral function initialized with resonant poles         : ',sf%npole_reso
 
  allocate(sf%pole(sf%npole_reso))
  call clean_allocate(' left residu',sf%residu_left,sf%nprodbasis,sf%npole_reso)
@@ -183,7 +181,7 @@ subroutine destroy_spectral_function(sf)
    call clean_deallocate(' left residu',sf%residu_left)
  endif
 
- WRITE_MASTER(*,'(/,a)') ' Spectral function destroyed'
+ write(stdout,'(/,a)') ' Spectral function destroyed'
 
 end subroutine destroy_spectral_function
 
@@ -193,7 +191,7 @@ subroutine write_spectral_function(sf)
  implicit none
  type(spectral_function),intent(in) :: sf
 !=====
- integer,parameter   :: wfile=50
+ integer             :: wfile
  integer,parameter   :: tmpfile=51
  integer             :: iprodbasis,ipole
  integer             :: npole_write,ipole_write
@@ -202,7 +200,7 @@ subroutine write_spectral_function(sf)
  integer,allocatable :: index_pole(:)
 !=====
 
- WRITE_MASTER(*,'(/,a,/)') ' Writing the spectral function on file' 
+ write(stdout,'(/,a,/)') ' Writing the spectral function on file' 
 
  inquire(file='manual_poles',exist=file_exists)
  if(file_exists) then
@@ -210,7 +208,7 @@ subroutine write_spectral_function(sf)
    read(tmpfile,*) ecut_pole
    if( ecut_pole<0.0_dp ) stop'error when reading manual_poles'
    close(tmpfile)
-   WRITE_ME(msg,'(a,f10.4)') 'Ouput of the spectral function with an energy cutoff [eV] ',ecut_pole*Ha_eV
+   write(msg,'(a,f10.4)') 'Ouput of the spectral function with an energy cutoff [eV] ',ecut_pole*Ha_eV
    call issue_warning(msg)
  else
   ecut_pole = HUGE(1.0_dp)
@@ -220,7 +218,7 @@ subroutine write_spectral_function(sf)
  do ipole=1,sf%npole_reso
    if( ABS(sf%pole(ipole)) < ecut_pole ) npole_write = npole_write + 1
  enddo
- WRITE_MASTER(*,*) 'Writing',npole_write,'poles over a total of',sf%npole_reso
+ write(stdout,*) 'Writing',npole_write,'poles over a total of',sf%npole_reso
  allocate(index_pole(npole_write))
  ipole_write = 0
  do ipole=1,sf%npole_reso
@@ -230,22 +228,25 @@ subroutine write_spectral_function(sf)
    endif
  enddo
 
- open(wfile,file='SCREENED_COULOMB',form='unformatted')
+ if( is_iomaster() ) then
+   open(newunit=wfile,file='SCREENED_COULOMB',form='unformatted')
 
- if(.NOT. file_exists) then
-   WRITE_MASTER(wfile) calc_type%postscf_name
- else
-   WRITE_ME(msg,'(a,a,f10.4)') TRIM(calc_type%postscf_name),' with cutoff above energy [eV] ',ecut_pole*Ha_eV
-   WRITE_MASTER(wfile) msg
+   if(.NOT. file_exists) then
+     write(wfile) calc_type%postscf_name
+   else
+     write(msg,'(a,a,f10.4)') TRIM(calc_type%postscf_name),' with cutoff above energy [eV] ',ecut_pole*Ha_eV
+     write(wfile) msg
+   endif
+   write(wfile) sf%nprodbasis
+   write(wfile) npole_write
+   write(wfile) sf%pole(index_pole(:))
+   do ipole_write=1,npole_write
+     write(wfile) sf%residu_left(:,index_pole(ipole_write))
+   enddo
+
+   close(wfile)
  endif
- WRITE_MASTER(wfile) sf%nprodbasis
- WRITE_MASTER(wfile) npole_write
- WRITE_MASTER(wfile) sf%pole(index_pole(:))
- do ipole_write=1,npole_write
-   WRITE_MASTER(wfile) sf%residu_left(:,index_pole(ipole_write))
- enddo
 
- close(wfile)
  deallocate(index_pole)
 
 end subroutine write_spectral_function
@@ -264,11 +265,11 @@ subroutine read_spectral_function(sf,reading_status)
  integer            :: npole_read,nprodbasis_read
 !=====
 
- WRITE_MASTER(*,'(/,a)') ' Try to read spectral function from file SCREENED_COULOMB' 
+ write(stdout,'(/,a)') ' Try to read spectral function from file SCREENED_COULOMB' 
 
  inquire(file='SCREENED_COULOMB',exist=file_exists)
  if( .NOT. file_exists ) then
-   WRITE_MASTER(*,'(a,/)') ' File does not exist'
+   write(stdout,'(a,/)') ' File does not exist'
    reading_status=1
    return
  endif
@@ -284,9 +285,9 @@ subroutine read_spectral_function(sf,reading_status)
  call allocate_spectral_function(nprodbasis_read,sf)
 
 ! if( npole_read /= sf%npole .OR. nprodbasis_read /= sf%nprodbasis ) then
-!   WRITE_MASTER(*,'(a,/)')     ' File does not have the correct size'
-!   WRITE_MASTER(*,'(i5,a,i5)') npole_read,' vs ',sf%npole
-!   WRITE_MASTER(*,'(i5,a,i5)') nprodbasis_read,' vs ',sf%nprodbasis
+!   write(stdout,'(a,/)')     ' File does not have the correct size'
+!   write(stdout,'(i5,a,i5)') npole_read,' vs ',sf%npole
+!   write(stdout,'(i5,a,i5)') nprodbasis_read,' vs ',sf%nprodbasis
 !   reading_status=2
 ! else
 

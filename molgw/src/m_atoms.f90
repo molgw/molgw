@@ -1,6 +1,4 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
 module m_atoms
  use m_definitions
  use m_mpi
@@ -54,8 +52,8 @@ subroutine init_atoms(natom_read,zatom_read,x_read)
  do iatom=1,natom
    do jatom=iatom+1,natom
      if( NORM2( x(:,iatom)-x(:,jatom) ) < 0.2 ) then
-       WRITE_MASTER(*,*) 'Atoms',iatom,jatom
-       WRITE_MASTER(*,*) 'are closer than 0.2 bohr'
+       write(stdout,*) 'Atoms',iatom,jatom
+       write(stdout,*) 'are closer than 0.2 bohr'
        stop'stop here'
      endif
    enddo
@@ -237,7 +235,6 @@ subroutine find_rotations()
        xtmpk(:) = xtmpk(:) / NORM2(xtmpk)
        angle = ACOS( DOT_PRODUCT( xtmpj , xtmpk ) )
        order = get_order(angle)
-!!!       write(*,*) valid_rotation(order,rot_axis)
      enddo
    enddo
 

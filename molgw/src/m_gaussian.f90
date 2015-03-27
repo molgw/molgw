@@ -1,6 +1,4 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
 module m_gaussian
  use m_definitions
  use m_mpi
@@ -157,13 +155,13 @@ subroutine print_gaussian(ga)
  type(gaussian),intent(in) :: ga
 !=====
 
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,*) '*** output information of a cartesian gaussian function ***'
- WRITE_MASTER(*,'(a30,5x,a1)')      'orbital momentum',ga%amc
- WRITE_MASTER(*,'(a30,2x,3(x,i3))') 'momentum composition',ga%nx,ga%ny,ga%nz
- WRITE_MASTER(*,'(a30,(x,f12.6))')  'alpha coeff',ga%alpha
- WRITE_MASTER(*,'(a30,3(x,f12.6))') 'center of the function',ga%x0(:)
- WRITE_MASTER(*,*)
+ write(stdout,*)
+ write(stdout,*) '*** output information of a cartesian gaussian function ***'
+ write(stdout,'(a30,5x,a1)')      'orbital momentum',ga%amc
+ write(stdout,'(a30,2x,3(x,i3))') 'momentum composition',ga%nx,ga%ny,ga%nz
+ write(stdout,'(a30,(x,f12.6))')  'alpha coeff',ga%alpha
+ write(stdout,'(a30,3(x,f12.6))') 'center of the function',ga%x0(:)
+ write(stdout,*)
 
 end subroutine print_gaussian
 
@@ -563,7 +561,6 @@ end subroutine kinetic_recurrence
 
 !=========================================================================
 subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
- use ISO_C_BINDING
  use m_tools, only: boys_function
  implicit none
  real(dp),intent(in)       :: zatom,c(3)
@@ -586,13 +583,8 @@ subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
  integer              :: ixam,iyam,izam
  integer              :: ixbm,iybm,izbm
  integer              :: mm
-!=====
-! variables used to call C++ 
- integer(C_INT)               :: mm_c_int
- real(C_DOUBLE)               :: fmu_c
- real(C_DOUBLE)               :: bigu_c
- real(dp),allocatable         :: fmu(:)
- real(dp)                     :: bigu
+ real(dp),allocatable :: fmu(:)
+ real(dp)             :: bigu
 !=====
 
  ! Follow the notation of Obara and Saika, JCP  87 3963 (1986)
@@ -753,7 +745,7 @@ subroutine numerical_overlap(ga,gb,s_ab)
    enddo
  enddo
 
-! WRITE_MASTER(*,*) 'check S_ab',rtmp
+! write(stdout,*) 'check S_ab',rtmp
  s_ab = rtmp
 
 end subroutine numerical_overlap
@@ -796,7 +788,7 @@ subroutine numerical_kinetic(ga,gb)
    enddo
  enddo
 
- WRITE_MASTER(*,*) 'check K_ab',rtmp
+ write(stdout,*) 'check K_ab',rtmp
 
 end subroutine numerical_kinetic
 
@@ -818,7 +810,7 @@ subroutine numerical_nucleus(ga,gb)
 
  dx = rmax/REAL(nx,dp)
 
- WRITE_MASTER(*,*) 'hydrogen atom in zero'
+ write(stdout,*) 'hydrogen atom in zero'
 
  !
  ! spherical integration
@@ -848,7 +840,7 @@ subroutine numerical_nucleus(ga,gb)
  enddo
 
 
- WRITE_MASTER(*,*) 'check V_ab',rtmp
+ write(stdout,*) 'check V_ab',rtmp
 
 end subroutine numerical_nucleus
 

@@ -1,6 +1,4 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
 module m_scf
  use m_definitions
  use m_mpi
@@ -122,7 +120,7 @@ subroutine new_p_matrix(p_matrix_in)
      deallocate(alpha_diis)
    endif
  case default
-   WRITE_MASTER(*,*) mixing_scheme
+   write(stdout,*) mixing_scheme
    stop'mixing scheme not implemented'
  end select
 
@@ -135,7 +133,7 @@ subroutine do_simple_mixing(p_matrix_in)
  real(dp),intent(out) :: p_matrix_in (nbf_scf,nbf_scf,nspin)
 !=====
 
- WRITE_MASTER(*,*) 'A simple mixing of the density matrix is used'
+ write(stdout,*) 'A simple mixing of the density matrix is used'
 
  p_matrix_in(:,:,:) = alpha_mixing * residual_hist(:,:,:,1) + p_matrix_in_hist(:,:,:,1)
 
@@ -154,7 +152,7 @@ subroutine do_pulay_mixing(p_matrix_in,alpha_diis)
  real(dp)             :: residual_pred(nbf_scf,nbf_scf,nspin)
 !=====
 
- WRITE_MASTER(*,*) 'A Pulay mixing of the density matrix is used'
+ write(stdout,*) 'A Pulay mixing of the density matrix is used'
 
  allocate(amat    (nhist_current+1,nhist_current+1))
  allocate(amat_inv(nhist_current+1,nhist_current+1))
@@ -176,14 +174,14 @@ subroutine do_pulay_mixing(p_matrix_in,alpha_diis)
 
  deallocate(amat,amat_inv)
 
- WRITE_MASTER(*,'(/,a,30(2x,f12.6))') ' alpha DIIS:',alpha_diis(1:nhist_current)
+ write(stdout,'(/,a,30(2x,f12.6))') ' alpha DIIS:',alpha_diis(1:nhist_current)
  
  residual_pred(:,:,:) = 0.0_dp
  do ihist=1,nhist_current
    residual_pred(:,:,:) = residual_pred(:,:,:) + alpha_diis(ihist) * residual_hist(:,:,:,ihist)
  enddo
- WRITE_MASTER(*,*) 'DIIS predicted residual',SQRT( SUM( residual_pred(:,:,:)**2 ) )
- WRITE_MASTER(*,*)
+ write(stdout,*) 'DIIS predicted residual',SQRT( SUM( residual_pred(:,:,:)**2 ) )
+ write(stdout,*)
 
  p_matrix_in(:,:,:) = 0.0_dp
  do ihist=1,nhist_current
@@ -207,16 +205,16 @@ function check_converged()
 
  rms = SQRT( SUM( residual_hist(:,:,:,1)**2 ) )
 
- WRITE_MASTER(*,*) 'convergence criterium on the density matrix',rms
+ write(stdout,*) 'convergence criterium on the density matrix',rms
  if( rms < tolscf ) then 
    check_converged = .TRUE.
-   WRITE_MASTER(*,*) ' ===> convergence has been reached'
+   write(stdout,*) ' ===> convergence has been reached'
  else
    check_converged = .FALSE.
-   WRITE_MASTER(*,*) ' ===> convergence not reached yet'
+   write(stdout,*) ' ===> convergence not reached yet'
  endif
 
- WRITE_MASTER(*,*)
+ write(stdout,*)
 
  if(iscf == nscf) then
    if(rms>1.d-4) then

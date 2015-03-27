@@ -1,4 +1,3 @@
-#include "macros.h"
 !=========================================================================
 subroutine scf_loop(basis,prod_basis,auxil_basis,&
                     s_matrix,c_matrix,p_matrix,&
@@ -70,8 +69,8 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  ! start the big scf loop
  !
  do iscf=1,nscf
-   WRITE_MASTER(*,'(/,a)') '-------------------------------------------'
-   WRITE_MASTER(*,'(a,x,i4,/)') ' *** SCF cycle No:',iscf
+   write(stdout,'(/,a)') '-------------------------------------------'
+   write(stdout,'(a,x,i4,/)') ' *** SCF cycle No:',iscf
 
    en%kin  = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
    en%nuc  = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
@@ -152,7 +151,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
      if( ABS(en%rpa) > 1.e-6_dp) then
        en%tot = en%tot + en%rpa
-       WRITE_MASTER(*,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
+       write(stdout,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
      endif
 
      exchange_m_vxc_diag(:,:)=0.0_dp
@@ -177,10 +176,10 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
      call mp2_selfenergy(calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
 
-     WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Energy       [Ha]:',en%mp2
-     WRITE_MASTER(*,*) 
+     write(stdout,'(a,2x,f16.10)') ' MP2 Energy       [Ha]:',en%mp2
+     write(stdout,*) 
      en%tot = en%tot + en%mp2
-     WRITE_MASTER(*,'(a,2x,f16.10)') ' MP2 Total Energy [Ha]:',en%tot
+     write(stdout,'(a,2x,f16.10)') ' MP2 Total Energy [Ha]:',en%tot
 
      matrix_tmp(:,:,:) = alpha_mixing * matrix_tmp(:,:,:) + (1.0_dp-alpha_mixing) * self_energy_old(:,:,:)
      self_energy_old(:,:,:) = matrix_tmp(:,:,:)
@@ -204,7 +203,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    ! H \phi = E S \phi
    ! save the old eigenvalues
    do ispin=1,nspin
-     WRITE_MASTER(*,*) 'Diagonalization for spin channel',ispin
+     write(stdout,*) 'Diagonalization for spin channel',ispin
      call start_clock(timing_diago_hamiltonian)
      call diagonalize_generalized_sym(basis%nbf,&
                                       hamiltonian(:,:,ispin),s_matrix(:,:),&
@@ -248,19 +247,19 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
   
    !
    ! Output the total energy and its components
-   WRITE_MASTER(*,*)
-   WRITE_MASTER(*,'(a25,x,f16.10)') 'Nucleus-Nucleus [Ha]:',en%nuc_nuc
-   WRITE_MASTER(*,'(a25,x,f16.10)') 'Kinetic Energy  [Ha]:',en%kin
-   WRITE_MASTER(*,'(a25,x,f16.10)') 'Nucleus Energy  [Ha]:',en%nuc
-   WRITE_MASTER(*,'(a25,x,f16.10)') 'Hartree Energy  [Ha]:',en%hart
+   write(stdout,*)
+   write(stdout,'(a25,x,f16.10)') 'Nucleus-Nucleus [Ha]:',en%nuc_nuc
+   write(stdout,'(a25,x,f16.10)') 'Kinetic Energy  [Ha]:',en%kin
+   write(stdout,'(a25,x,f16.10)') 'Nucleus Energy  [Ha]:',en%nuc
+   write(stdout,'(a25,x,f16.10)') 'Hartree Energy  [Ha]:',en%hart
    if(calc_type%need_exchange) then
-     WRITE_MASTER(*,'(a25,x,f16.10)') 'Exchange Energy [Ha]:',en%exx
+     write(stdout,'(a25,x,f16.10)') 'Exchange Energy [Ha]:',en%exx
    endif
    if( calc_type%is_dft ) then
-     WRITE_MASTER(*,'(a25,x,f16.10)') 'XC Energy       [Ha]:',en%xc
+     write(stdout,'(a25,x,f16.10)') 'XC Energy       [Ha]:',en%xc
    endif
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%xc
-   WRITE_MASTER(*,'(/,a25,x,f16.10,/)') 'Total Energy    [Ha]:',en%tot
+   write(stdout,'(/,a25,x,f16.10,/)') 'Total Energy    [Ha]:',en%tot
 
    !
    ! Store the history of residuals
@@ -282,10 +281,10 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  enddo
 
 
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,*) '=================================================='
- WRITE_MASTER(*,*) 'The SCF loop ends here'
- WRITE_MASTER(*,*) '=================================================='
+ write(stdout,*)
+ write(stdout,*) '=================================================='
+ write(stdout,*) 'The SCF loop ends here'
+ write(stdout,*) '=================================================='
 
  call destroy_scf()
 
@@ -302,9 +301,9 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange_ri(print_matrix_,basis%nbf,c_matrix,occupation,p_matrix,hamiltonian_exx,en%exx)
  endif
 
- WRITE_MASTER(*,'(/,/,a25,x,f16.10,/)') 'SCF Total Energy [Ha]:',en%tot
- WRITE_MASTER(*,'(a25,x,f16.10)')       '      EXX Energy [Ha]:',en%exx
- WRITE_MASTER(*,'(a25,x,f16.10)')       'Total EXX Energy [Ha]:',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
+ write(stdout,'(/,/,a25,x,f16.10,/)') 'SCF Total Energy [Ha]:',en%tot
+ write(stdout,'(a25,x,f16.10)')       '      EXX Energy [Ha]:',en%exx
+ write(stdout,'(a25,x,f16.10)')       'Total EXX Energy [Ha]:',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
 
  !
  ! Single excitation term
@@ -314,8 +313,8 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  ! And pass it to single_excitations
  call single_excitations(basis%nbf,energy,occupation,c_matrix,matrix_tmp)
 
- WRITE_MASTER(*,'(a25,x,f16.10)') 'Single Excitations [Ha]:',en%se
- WRITE_MASTER(*,'(a25,x,f16.10)')     'Est. HF Energy [Ha]:',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
+ write(stdout,'(a25,x,f16.10)') 'Single Excitations [Ha]:',en%se
+ write(stdout,'(a25,x,f16.10)')     'Est. HF Energy [Ha]:',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
 
  !
  ! Big RESTART file written if converged

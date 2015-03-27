@@ -1,6 +1,4 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
 module m_tools
  use m_definitions
  use m_mpi
@@ -45,7 +43,7 @@ subroutine init_seed(iseed)
   call system_clock(idum,i,j)
  endif
 
- WRITE_MASTER(*,'(a,x,i12)') 'Random seed set to',idum
+ write(stdout,'(a,x,i12)') 'Random seed set to',idum
 
 
 end subroutine
@@ -364,17 +362,17 @@ subroutine diagonalize_generalized_sym(n,matrix,overlap,eigval,eigvec)
  integer :: info
 !=====
 
- ! WRITE_MASTER(*,*) 'diagonalize_generalized_sym: Enter'
+ ! write(stdout,*) 'diagonalize_generalized_sym: Enter'
  eigvec(:,:) = matrix(:,:)
  tmp(:,:) = overlap(:,:)
 
  ! A*x = lambda * B * x
  call DSYGV(1,'V','U',n,eigvec,n,tmp,n,eigval,work,3*n-1,info)
  if(info/=0) stop'ERROR in the symmetric generalized eigenvalue problem'
-! WRITE_MASTER(*,*) 'optimal lwork',REAL(work(1))
+! write(stdout,*) 'optimal lwork',REAL(work(1))
 
 
- ! WRITE_MASTER(*,*) 'diagonalize_generalized_sym: Exit'
+ ! write(stdout,*) 'diagonalize_generalized_sym: Exit'
 end subroutine diagonalize_generalized_sym
 
 
@@ -654,7 +652,7 @@ subroutine boys_function(fnt,n,t)
  if(n>maxfac) stop' boys function Fm(t) for a too high m value'
 
  if( ABS(df(1))<1.d-10 ) then
-!   WRITE_MASTER(*,*) 'initialize df'
+!   write(stdout,*) 'initialize df'
    df(1:3) = 1.0_dp
    do i=4,2*maxfac
      df(i) = (i-2) * df(i-2)
@@ -715,12 +713,12 @@ subroutine check_unitarity(n,cmat)
     do j=1,n
       if(i==j) then
        if(ABS(cmat_tmp(i,j)-1.0_dp)>tol) then
-         WRITE_MASTER(*,*) i,j,cmat_tmp(i,j)
+         write(stdout,*) i,j,cmat_tmp(i,j)
          stop'MATRIX IS NOT UNITARY/ORTHOGONAL'
        endif
       else
        if(ABS(cmat_tmp(i,j))>tol) then
-         WRITE_MASTER(*,*) i,j,cmat_tmp(i,j)
+         write(stdout,*) i,j,cmat_tmp(i,j)
          stop'MATRIX IS NOT UNITARY/ORTHOGONAL'
        endif
       endif
@@ -731,12 +729,12 @@ subroutine check_unitarity(n,cmat)
     do j=1,n
       if(i==j) then
        if(ABS(cmat_tmp(i,j)-1.0_dp)>tol) then
-         WRITE_MASTER(*,*) i,j,cmat_tmp(i,j)
+         write(stdout,*) i,j,cmat_tmp(i,j)
          stop'MATRIX IS NOT UNITARY/ORTHOGONAL'
        endif
       else
        if(ABS(cmat_tmp(i,j))>tol) then
-         WRITE_MASTER(*,*) i,j,cmat_tmp(i,j)
+         write(stdout,*) i,j,cmat_tmp(i,j)
          stop'MATRIX IS NOT UNITARY/ORTHOGONAL'
        endif
       endif
@@ -852,9 +850,9 @@ function double_factorial(intin)
  case(31) 
    double_factorial = 191898783962510625.0_dp
  case default
-   WRITE_MASTER(*,*) 'integer =',intin
+   write(stdout,*) 'integer =',intin
    !stop'double factorial not coded for this integer value'
-   WRITE_MASTER(*,*) 'double factorial not coded for this integer value'
+   write(stdout,*) 'double factorial not coded for this integer value'
    double_factorial = 1
  end select
 

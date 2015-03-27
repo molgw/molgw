@@ -1,6 +1,4 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
 subroutine header()
  use m_definitions
  use m_mpi
@@ -13,40 +11,40 @@ subroutine header()
 #endif
 !=====
 
- WRITE_MASTER(*,'(x,70("="))') 
- WRITE_MASTER(*,'(/,/,12x,a,/,/)') ' Welcome to the fascinating world of MOLGW'
- WRITE_MASTER(*,'(x,70("="))') 
- WRITE_MASTER(*,*)
+ write(stdout,'(x,70("="))') 
+ write(stdout,'(/,/,12x,a,/,/)') ' Welcome to the fascinating world of MOLGW'
+ write(stdout,'(x,70("="))') 
+ write(stdout,*)
 
  call date_and_time(VALUES=values)
 
- WRITE_MASTER(*,'(a,i2.2,a,i2.2,a,i4.4)') ' Today is ',values(2),'/',values(3),'/',values(1)
- WRITE_MASTER(*,'(a,i2.2,a,i2.2)')        ' It is now ',values(5),':',values(6)
+ write(stdout,'(a,i2.2,a,i2.2,a,i4.4)') ' Today is ',values(2),'/',values(3),'/',values(1)
+ write(stdout,'(a,i2.2,a,i2.2)')        ' It is now ',values(5),':',values(6)
  select case(values(5))
  case(03,04,05,06,07)
-   WRITE_MASTER(*,*) 'And it is too early to work. Go back to sleep'
+   write(stdout,*) 'And it is too early to work. Go back to sleep'
  case(22,23,00,01,02)
-   WRITE_MASTER(*,*) 'And it is too late to work. Go to bed and have a sleep'
+   write(stdout,*) 'And it is too late to work. Go to bed and have a sleep'
  case(12,13)
-   WRITE_MASTER(*,*) 'Go and get some good food'
+   write(stdout,*) 'Go and get some good food'
  case(17)
-   WRITE_MASTER(*,*) 'Dont forget to go and get the kids'
+   write(stdout,*) 'Dont forget to go and get the kids'
  case default
-   WRITE_MASTER(*,*) 'And it is perfect time to work'
+   write(stdout,*) 'And it is perfect time to work'
  end select
 
 
- WRITE_MASTER(*,*) 'Compilation options'
+ write(stdout,*) 'Compilation options'
 #ifdef TD_SP
  call issue_warning('TD-DFT and BSE are using single precision to save memory')
 #endif
 #ifdef HAVE_LIBXC
  call xc_f90_version(values(1),values(2))
- WRITE_ME(chartmp,'(i2,a,i2)') values(1),'.',values(2)
- WRITE_MASTER(*,*) 'LIBXC version '//TRIM(chartmp)
+ write(chartmp,'(i2,a,i2)') values(1),'.',values(2)
+ write(stdout,*) 'LIBXC version '//TRIM(chartmp)
 #endif
 #ifdef _OPENMP
- WRITE_ME(msg,'(i6)') OMP_get_max_threads()
+ write(msg,'(i6)') OMP_get_max_threads()
  msg='OPENMP option is activated with threads number'//msg
  call issue_warning(msg)
 #endif
@@ -74,10 +72,10 @@ subroutine dump_out_occupation(title,nbf,nspin,occupation)
  integer :: istate,ispin
 !=====
 
- WRITE_MASTER(*,'(/,x,a)') TRIM(title)
+ write(stdout,'(/,x,a)') TRIM(title)
 
  if(nspin==2) then
-   WRITE_MASTER(*,'(a)') '           spin 1       spin 2 '
+   write(stdout,'(a)') '           spin 1       spin 2 '
  endif
  do istate=1,nbf
    if( ANY(occupation(istate,:) > 0.001_dp) ) maxsize = istate 
@@ -85,9 +83,9 @@ subroutine dump_out_occupation(title,nbf,nspin,occupation)
  maxsize = maxsize + 5
 
  do istate=1,MIN(nbf,maxsize)
-   WRITE_MASTER(*,'(x,i3,2(2(x,f12.5)),2x)') istate,occupation(istate,:)
+   write(stdout,'(x,i3,2(2(x,f12.5)),2x)') istate,occupation(istate,:)
  enddo
- WRITE_MASTER(*,*)
+ write(stdout,*)
 
 end subroutine dump_out_occupation
 
@@ -109,28 +107,28 @@ subroutine dump_out_eigenenergy(title,n,nspin,occupation,energy)
 
  spin_fact = REAL(-nspin+3,dp)
 
- WRITE_MASTER(*,'(/,x,a)') TRIM(title)
+ write(stdout,'(/,x,a)') TRIM(title)
 
  if(nspin==1) then
-   WRITE_MASTER(*,'(a)') '   #       [Ha]         [eV]      '
+   write(stdout,'(a)') '   #       [Ha]         [eV]      '
  else
-   WRITE_MASTER(*,'(a)') '   #              [Ha]                      [eV]      '
-   WRITE_MASTER(*,'(a)') '           spin 1       spin 2       spin 1       spin 2'
+   write(stdout,'(a)') '   #              [Ha]                      [eV]      '
+   write(stdout,'(a)') '           spin 1       spin 2       spin 1       spin 2'
  endif
  do istate=1,MIN(n,MAXSIZE)
-   WRITE_MASTER(*,'(x,i3,2(2(x,f12.5)),2x)') istate,energy(istate,:),energy(istate,:)*Ha_eV
+   write(stdout,'(x,i3,2(2(x,f12.5)),2x)') istate,energy(istate,:),energy(istate,:)*Ha_eV
    if(istate<n) then
      if( ANY( occupation(istate+1,:) < spin_fact/2.0_dp .AND. occupation(istate,:) > spin_fact/2.0 ) ) then 
         if(nspin==1) then
-          WRITE_MASTER(*,'(a)') '  -----------------------------'
+          write(stdout,'(a)') '  -----------------------------'
         else
-          WRITE_MASTER(*,'(a)') '  -------------------------------------------------------'
+          write(stdout,'(a)') '  -------------------------------------------------------'
         endif
      endif
    endif
  enddo
 
- WRITE_MASTER(*,*)
+ write(stdout,*)
 
 end subroutine dump_out_eigenenergy
 
@@ -151,18 +149,18 @@ subroutine dump_out_matrix(print_matrix,title,n,nspin,matrix)
 
  if( .NOT. print_matrix ) return
 
- WRITE_MASTER(*,'(/,x,a)') TRIM(title)
+ write(stdout,'(/,x,a)') TRIM(title)
 
  do ispin=1,nspin
    if(nspin==2) then
-     WRITE_MASTER(*,'(a,i1)') ' spin polarization # ',ispin
+     write(stdout,'(a,i1)') ' spin polarization # ',ispin
    endif
    do i=1,MIN(n,MAXSIZE)
-     WRITE_MASTER(*,'(x,i3,100(x,f12.5))') i,matrix(i,1:MIN(n,MAXSIZE),ispin)
+     write(stdout,'(x,i3,100(x,f12.5))') i,matrix(i,1:MIN(n,MAXSIZE),ispin)
    enddo
-   WRITE_MASTER(*,*)
+   write(stdout,*)
  enddo
- WRITE_MASTER(*,*)
+ write(stdout,*)
 
 end subroutine dump_out_matrix
 
@@ -196,11 +194,11 @@ subroutine output_homolumo(nbf,nspin,occupation,energy,homo,lumo)
  enddo
 
 
- WRITE_MASTER(*,*)
- WRITE_MASTER(*,'(a,2(3x,f12.6))') ' HOMO energy    [eV]:',homo(:) * Ha_eV
- WRITE_MASTER(*,'(a,2(3x,f12.6))') ' LUMO energy    [eV]:',lumo(:) * Ha_eV
- WRITE_MASTER(*,'(a,2(3x,f12.6))') ' HOMO-LUMO gap  [eV]:',( lumo(:)-homo(:) ) * Ha_eV
- WRITE_MASTER(*,*)
+ write(stdout,*)
+ write(stdout,'(a,2(3x,f12.6))') ' HOMO energy    [eV]:',homo(:) * Ha_eV
+ write(stdout,'(a,2(3x,f12.6))') ' LUMO energy    [eV]:',lumo(:) * Ha_eV
+ write(stdout,'(a,2(3x,f12.6))') ' HOMO-LUMO gap  [eV]:',( lumo(:)-homo(:) ) * Ha_eV
+ write(stdout,*)
 
 
 end subroutine output_homolumo
@@ -230,17 +228,18 @@ subroutine plot_wfn(nspin,basis,c_matrix)
  real(dp)                   :: basis_function_r(basis%nbf)
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
  real(dp),allocatable       :: basis_function_r_cart(:)
+ integer                    :: wfrfile
 !=====
 
- WRITE_MASTER(*,*) 
- WRITE_MASTER(*,*) 'Plotting some selected wavefunctions'
+ write(stdout,*) 
+ write(stdout,*) 'Plotting some selected wavefunctions'
  inquire(file='manual_plotwfn',exist=file_exists)
  if(file_exists) then
-   open(100,file='manual_plotwfn',status='old')
-   read(100,*) istate1,istate2
-   read(100,*) u(:)
-   read(100,*) a(:)
-   close(100)
+   open(newunit=wfrfile,file='manual_plotwfn',status='old')
+   read(wfrfile,*) istate1,istate2
+   read(wfrfile,*) u(:)
+   read(wfrfile,*) a(:)
+   close(wfrfile)
  else
    istate1=1
    istate2=2
@@ -250,9 +249,9 @@ subroutine plot_wfn(nspin,basis,c_matrix)
  endif
  u(:) = u(:) / SQRT(SUM(u(:)**2))
  allocate(phase(istate1:istate2,nspin),phi(istate1:istate2,nspin))
- WRITE_MASTER(*,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
- WRITE_MASTER(*,'(a,3(2x,f8.3))') ' direction:',u(:)
- WRITE_MASTER(*,'(a,3(2x,f8.3))') ' origin:   ',a(:)
+ write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
+ write(stdout,'(a,3(2x,f8.3))') ' direction:',u(:)
+ write(stdout,'(a,3(2x,f8.3))') ' origin:   ',a(:)
 
  xmin = MINVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) - length
  xmax = MAXVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) + length
@@ -303,8 +302,8 @@ subroutine plot_wfn(nspin,basis,c_matrix)
      enddo
    endif
 
-   WRITE_MASTER(101,'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),phi(:,:)*phase(:,:)
-   WRITE_MASTER(102,'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),phi(:,:)**2
+   write(101,'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),phi(:,:)*phase(:,:)
+   write(102,'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),phi(:,:)**2
 
  enddo
 
@@ -337,15 +336,16 @@ subroutine plot_rho(nspin,basis,occupation,c_matrix)
  real(dp)                   :: basis_function_r(basis%nbf)
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
  real(dp),allocatable       :: basis_function_r_cart(:)
+ integer                    :: rhorfile
 !=====
 
- WRITE_MASTER(*,*) 'Plotting the density'
+ write(stdout,*) 'Plotting the density'
  inquire(file='manual_plotrho',exist=file_exists)
  if(file_exists) then
-   open(100,file='manual_plotrho',status='old')
-   read(100,*) u(:)
-   read(100,*) a(:)
-   close(100)
+   open(newunit=rhorfile,file='manual_plotrho',status='old')
+   read(rhorfile,*) u(:)
+   read(rhorfile,*) a(:)
+   close(rhorfile)
  else
    u(:)=0.0_dp
    u(1)=1.0_dp
@@ -353,8 +353,8 @@ subroutine plot_rho(nspin,basis,occupation,c_matrix)
  endif
  u(:) = u(:) / SQRT(SUM(u(:)**2))
  allocate(phi(basis%nbf,nspin))
- WRITE_MASTER(*,'(a,3(2x,f8.3))') ' direction:',u(:)
- WRITE_MASTER(*,'(a,3(2x,f8.3))') ' origin:   ',a(:)
+ write(stdout,'(a,3(2x,f8.3))') ' direction:',u(:)
+ write(stdout,'(a,3(2x,f8.3))') ' origin:   ',a(:)
 
  xmin = MINVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) - length
  xmax = MAXVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) + length
@@ -394,7 +394,7 @@ subroutine plot_rho(nspin,basis,occupation,c_matrix)
      phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
    enddo
 
-   WRITE_MASTER(103,'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( phi(:,:)**2 * occupation(:,:) )
+   write(103,'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( phi(:,:)**2 * occupation(:,:) )
 
  enddo
 
@@ -431,16 +431,19 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
  real(dp),allocatable       :: basis_function_r_cart(:)
  integer                    :: file_unit
  character(len=200)         :: file_name
+ integer                    :: cubefile
 !=====
 
- WRITE_MASTER(*,*) 
- WRITE_MASTER(*,*) 'Plotting some selected wavefunctions in a cube file'
+ if( .NOT. is_iomaster() ) return
+
+ write(stdout,*) 
+ write(stdout,*) 'Plotting some selected wavefunctions in a cube file'
  inquire(file='manual_cubewfn',exist=file_exists)
  if(file_exists) then
-   open(100,file='manual_cubewfn',status='old')
-   read(100,*) istate1,istate2
-   read(100,*) nx,ny,nz
-   close(100)
+   open(newunit=cubefile,file='manual_cubewfn',status='old')
+   read(cubefile,*) istate1,istate2
+   read(cubefile,*) nx,ny,nz
+   close(cubefile)
  else
    istate1=1
    istate2=2
@@ -449,7 +452,7 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
    nz=40
  endif
  allocate(phase(istate1:istate2,nspin),phi(istate1:istate2,nspin))
- WRITE_MASTER(*,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
+ write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
 
  xmin = MINVAL( x(1,:) ) - length
  xmax = MAXVAL( x(1,:) ) + length
@@ -461,16 +464,16 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
  do istate=istate1,istate2
    do ispin=1,nspin
      file_unit=1000+istate-istate1+(ispin-1)*(istate2-istate1+1)
-     WRITE_ME(file_name,'(a,i3.3,a,i1,a)') 'wfn_',istate,'_',ispin,'.cube'
+     write(file_name,'(a,i3.3,a,i1,a)') 'wfn_',istate,'_',ispin,'.cube'
      open(unit=file_unit,file=file_name)
-     WRITE_MASTER(file_unit,'(a)') 'cube file generated from MOLGW'
-     WRITE_MASTER(file_unit,'(a,i4)') 'wavefunction ',istate1
-     WRITE_MASTER(file_unit,'(i6,3(f12.6,2x))') natom,xmin,ymin,zmin
-     WRITE_MASTER(file_unit,'(i6,3(f12.6,2x))') nx,(xmax-xmin)/REAL(nx,dp),0.,0.
-     WRITE_MASTER(file_unit,'(i6,3(f12.6,2x))') ny,0.,(ymax-ymin)/REAL(ny,dp),0.
-     WRITE_MASTER(file_unit,'(i6,3(f12.6,2x))') nz,0.,0.,(zmax-zmin)/REAL(nz,dp)
+     write(file_unit,'(a)') 'cube file generated from MOLGW'
+     write(file_unit,'(a,i4)') 'wavefunction ',istate1
+     write(file_unit,'(i6,3(f12.6,2x))') natom,xmin,ymin,zmin
+     write(file_unit,'(i6,3(f12.6,2x))') nx,(xmax-xmin)/REAL(nx,dp),0.,0.
+     write(file_unit,'(i6,3(f12.6,2x))') ny,0.,(ymax-ymin)/REAL(ny,dp),0.
+     write(file_unit,'(i6,3(f12.6,2x))') nz,0.,0.,(zmax-zmin)/REAL(nz,dp)
      do iatom=1,natom
-       WRITE_MASTER(file_unit,'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,x(:,iatom)
+       write(file_unit,'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,x(:,iatom)
      enddo
    enddo
  enddo
@@ -529,7 +532,7 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
        do istate=istate1,istate2
          do ispin=1,nspin
            file_unit=1000+istate-istate1+(ispin-1)*(istate2-istate1+1)
-           WRITE_MASTER(file_unit,'(50(e16.8,2x))') phi(istate,ispin)*phase(istate,ispin)
+           write(file_unit,'(50(e16.8,2x))') phi(istate,ispin)*phase(istate,ispin)
          enddo
        enddo
 
@@ -558,19 +561,19 @@ subroutine write_energy_qp(nspin,nbf,energy_qp)
  integer,intent(in)  :: nspin,nbf
  real(dp),intent(in) :: energy_qp(nbf,nspin)
 !=====
- integer,parameter :: unit_energy_qp=51
+ integer           :: energy_qpfile
  integer           :: istate
 !=====
 
- WRITE_MASTER(*,'(/,a)') ' Writing energy_qp file'
- open(unit_energy_qp,file='energy_qp',form='formatted')
- WRITE_MASTER(unit_energy_qp,*) nspin
- WRITE_MASTER(unit_energy_qp,*) nbf
+ write(stdout,'(/,a)') ' Writing energy_qp file'
+ open(newunit=energy_qpfile,file='energy_qp',form='formatted')
+ write(energy_qpfile,*) nspin
+ write(energy_qpfile,*) nbf
  do istate=1,nbf
-   WRITE_MASTER(unit_energy_qp,*) istate,energy_qp(istate,:)
+   write(energy_qpfile,*) istate,energy_qp(istate,:)
  enddo
 
- close(unit_energy_qp)
+ close(energy_qpfile)
 
 end subroutine write_energy_qp
 
@@ -592,7 +595,7 @@ subroutine read_energy_qp(nspin,nbf,energy_qp,reading_status)
  logical           :: file_exists
 !=====
 
- WRITE_MASTER(*,'(/,a)') ' Reading energy_qp file'
+ write(stdout,'(/,a)') ' Reading energy_qp file'
  inquire(file='energy_qp',exist=file_exists)
  if(file_exists) then
    open(unit_energy_qp,file='energy_qp',form='formatted',status='old')
@@ -634,13 +637,13 @@ subroutine write_small_restart(nbf,occupation,c_matrix)
  real(dp),intent(in) :: occupation(nbf,nspin)
  real(dp),intent(in) :: c_matrix(nbf,nbf,nspin)
 !=====
- integer,parameter   :: unit_restart=52
+ integer             :: restartfile
  integer             :: ispin,istate
  integer             :: nstate(2)
 !=====
 
  call start_clock(timing_restart_file)
- WRITE_MASTER(*,'(/,a)') ' Writing a small RESTART file'
+ write(stdout,'(/,a)') ' Writing a small RESTART file'
  !
  ! Only write down the "occupied states" to save I-O
  do ispin=1,nspin
@@ -648,18 +651,18 @@ subroutine write_small_restart(nbf,occupation,c_matrix)
      if( occupation(istate,ispin) > completely_empty ) nstate(ispin) = istate
    enddo
  enddo
- open(unit=unit_restart,file='RESTART',form='unformatted')
- WRITE_MASTER(unit_restart) calc_type%scf_name
- WRITE_MASTER(unit_restart) nspin
- WRITE_MASTER(unit_restart) nbf
- WRITE_MASTER(unit_restart) nstate(1),nstate(nspin)
+ open(newunit=restartfile,file='RESTART',form='unformatted')
+ write(restartfile) calc_type%scf_name
+ write(restartfile) nspin
+ write(restartfile) nbf
+ write(restartfile) nstate(1),nstate(nspin)
  do ispin=1,nspin
    do istate=1,nstate(ispin)
-     WRITE_MASTER(unit_restart) c_matrix(:,istate,ispin)
+     write(restartfile) c_matrix(:,istate,ispin)
    enddo
  enddo
 
- close(unit_restart)
+ close(restartfile)
  call stop_clock(timing_restart_file)
 
 end subroutine write_small_restart
@@ -678,39 +681,39 @@ subroutine write_big_restart(nbf,occupation,c_matrix,energy,hamiltonian_exx,hami
  real(dp),intent(in) :: hamiltonian_exx(nbf,nbf,nspin)
  real(dp),intent(in) :: hamiltonian_xc (nbf,nbf,nspin)
 !=====
- integer,parameter   :: unit_restart=52
+ integer             :: restartfile
  integer             :: ispin,istate
 !=====
 
  call start_clock(timing_restart_file)
- WRITE_MASTER(*,'(/,a)') ' Writing a big RESTART file'
- open(unit=unit_restart,file='RESTART',form='unformatted')
- WRITE_MASTER(unit_restart) calc_type%scf_name
- WRITE_MASTER(unit_restart) nspin
- WRITE_MASTER(unit_restart) nbf
- WRITE_MASTER(unit_restart) nbf,nbf
+ write(stdout,'(/,a)') ' Writing a big RESTART file'
+ open(newunit=restartfile,file='RESTART',form='unformatted')
+ write(restartfile) calc_type%scf_name
+ write(restartfile) nspin
+ write(restartfile) nbf
+ write(restartfile) nbf,nbf
  do ispin=1,nspin
    do istate=1,nbf
-     WRITE_MASTER(unit_restart) c_matrix(:,istate,ispin)
+     write(restartfile) c_matrix(:,istate,ispin)
    enddo
  enddo
  do ispin=1,nspin
    do istate=1,nbf
-     WRITE_MASTER(unit_restart) energy(istate,ispin)
+     write(restartfile) energy(istate,ispin)
    enddo
  enddo
  do ispin=1,nspin
    do istate=1,nbf
-     WRITE_MASTER(unit_restart) hamiltonian_exx(:,istate,ispin)
+     write(restartfile) hamiltonian_exx(:,istate,ispin)
    enddo
  enddo
  do ispin=1,nspin
    do istate=1,nbf
-     WRITE_MASTER(unit_restart) hamiltonian_xc(:,istate,ispin)
+     write(restartfile) hamiltonian_xc(:,istate,ispin)
    enddo
  enddo
 
- close(unit_restart)
+ close(restartfile)
  call stop_clock(timing_restart_file)
 
 end subroutine write_big_restart
@@ -732,7 +735,7 @@ subroutine read_any_restart(nbf,occupation,c_matrix,energy,hamiltonian_exx,hamil
  real(dp),intent(out) :: hamiltonian_xc (nbf,nbf,nspin)
  logical,intent(out)  :: is_restart,is_big_restart
 !=====
- integer,parameter   :: unit_restart=52
+ integer             :: restartfile
  integer             :: ispin,istate
  logical             :: file_exists,same_scf_name
  character(len=100)  :: scf_name_read
@@ -749,27 +752,27 @@ subroutine read_any_restart(nbf,occupation,c_matrix,energy,hamiltonian_exx,hamil
 
  inquire(file='RESTART',exist=file_exists)
  if(.NOT. file_exists) then
-   WRITE_MASTER(*,'(/,a)') ' No RESTART file found'
+   write(stdout,'(/,a)') ' No RESTART file found'
    is_restart = .FALSE.
    return
  endif
 
- open(unit=unit_restart,file='RESTART',form='unformatted',status='old')
+ open(newunit=restartfile,file='RESTART',form='unformatted',status='old')
 
- read(unit_restart) scf_name_read
- read(unit_restart) nspin_read
- read(unit_restart) nbf_read
+ read(restartfile) scf_name_read
+ read(restartfile) nspin_read
+ read(restartfile) nbf_read
 
  if( nspin_read /= nspin .OR. nbf_read /= nbf ) then
-   WRITE_MASTER(*,'(/,a)') ' Cannot read the RESTART file: wrong dimensions'
+   write(stdout,'(/,a)') ' Cannot read the RESTART file: wrong dimensions'
    is_restart = .FALSE.
-   close(unit_restart)
+   close(restartfile)
    return
  endif
 
  same_scf_name = ( TRIM(scf_name_read) == TRIM(calc_type%scf_name) )
 
- read(unit_restart) nstate_read(1),nstate_read(2)
+ read(restartfile) nstate_read(1),nstate_read(2)
 
  if( nstate_read(1) == nbf .AND. nstate_read(2) == nbf     &
     .AND. same_scf_name                                    &
@@ -782,32 +785,32 @@ subroutine read_any_restart(nbf,occupation,c_matrix,energy,hamiltonian_exx,hamil
  endif
  do ispin=1,nspin
    do istate=1,nstate_read(ispin)
-     read(unit_restart) c_matrix(:,istate,ispin)
+     read(restartfile) c_matrix(:,istate,ispin)
    enddo
  enddo
 
  if( .NOT. is_big_restart ) then
-   close(unit_restart)
+   close(restartfile)
    return
  endif
 
  do ispin=1,nspin
    do istate=1,nstate_read(ispin)
-     read(unit_restart) energy(istate,ispin)
+     read(restartfile) energy(istate,ispin)
    enddo
  enddo
  do ispin=1,nspin
    do istate=1,nbf
-     read(unit_restart) hamiltonian_exx(:,istate,ispin)
+     read(restartfile) hamiltonian_exx(:,istate,ispin)
    enddo
  enddo
  do ispin=1,nspin
    do istate=1,nbf
-     read(unit_restart) hamiltonian_xc(:,istate,ispin)
+     read(restartfile) hamiltonian_xc(:,istate,ispin)
    enddo
  enddo
 
- close(unit_restart)
+ close(restartfile)
 
 end subroutine read_any_restart
 
@@ -825,7 +828,7 @@ subroutine write_density_grid(basis,p_matrix)
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
- integer,parameter :: unit_density=53
+ integer  :: densityfile
  integer  :: ispin,igrid
  real(dp) :: basis_function_r(basis%nbf)
  real(dp) :: rr(3),weight
@@ -847,12 +850,12 @@ subroutine write_density_grid(basis,p_matrix)
 
  enddo
 
- open(unit_density,file='DENSITY',form='unformatted')
- WRITE_MASTER(unit_density) nspin
- WRITE_MASTER(unit_density) ngrid
+ open(densityfile,file='DENSITY',form='unformatted')
+ write(densityfile) nspin
+ write(densityfile) ngrid
  do ispin=1,nspin
    do igrid=1,ngrid,1024
-     WRITE_MASTER(unit_density) rhor(igrid:MIN(igrid+1023,ngrid),ispin)
+     write(densityfile) rhor(igrid:MIN(igrid+1023,ngrid),ispin)
    enddo
  enddo
 

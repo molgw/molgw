@@ -1,6 +1,4 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
 module m_dft_grid
  use m_definitions
  use m_mpi
@@ -119,7 +117,7 @@ subroutine setup_dft_grid()
  case(434)
    call ld0434(x1,y1,z1,w1,n1)
  case default
-   WRITE_MASTER(*,*) 'grid points: ',nangular_fine
+   write(stdout,*) 'grid points: ',nangular_fine
    stop'Lebedev grid is not available'
  end select
 
@@ -152,7 +150,7 @@ subroutine setup_dft_grid()
  case(434)
    call ld0434(x2,y2,z2,w2,n2)
  case default
-   WRITE_MASTER(*,*) 'grid points: ',nangular_coarse
+   write(stdout,*) 'grid points: ',nangular_coarse
    stop'Lebedev grid is not available'
  end select
 
@@ -171,9 +169,9 @@ subroutine setup_dft_grid()
 
  call init_grid_distribution(ngrid)
 
- WRITE_MASTER(*,'(/,a)')            ' Setup the DFT quadrature'
- WRITE_MASTER(*,'(a,i4,x,i4,x,i4)') ' discretization grid per atom [radial , angular max - angular min] ',nradial,nangular_fine,nangular_coarse
- WRITE_MASTER(*,'(a,i8)')           ' total number of real-space points for this processor',ngrid
+ write(stdout,'(/,a)')            ' Setup the DFT quadrature'
+ write(stdout,'(a,i4,x,i4,x,i4)') ' discretization grid per atom [radial , angular max - angular min] ',nradial,nangular_fine,nangular_coarse
+ write(stdout,'(a,i8)')           ' total number of real-space points for this processor',ngrid
 
 
 
@@ -289,7 +287,7 @@ subroutine prepare_basis_functions_r(basis)
 
  ngrid_stored = MIN(ngrid,ngrid_max_stored)
 
- WRITE_MASTER(*,*) 'Precalculate the functions on N grid points',ngrid_stored
+ write(stdout,*) 'Precalculate the functions on N grid points',ngrid_stored
  call clean_allocate('basis ftns on grid',bfr,basis%nbf,ngrid_stored)
 
 
@@ -314,7 +312,7 @@ subroutine prepare_basis_functions_gradr(basis)
  real(dp)                   :: basis_function_gradr(3,basis%nbf)
 !=====
 
- WRITE_MASTER(*,*) 'Precalculate the gradients on N grid points',ngrid_stored
+ write(stdout,*) 'Precalculate the gradients on N grid points',ngrid_stored
  call clean_allocate('basis grad ftns on grid',bfgr,3,basis%nbf,ngrid_stored)
 
 
@@ -340,7 +338,7 @@ subroutine prepare_basis_functions_laplr(basis)
  real(dp)                   :: basis_function_laplr(3,basis%nbf)
 !=====
 
- WRITE_MASTER(*,*) 'Precalculate the laplacians on N grid points',ngrid_stored
+ write(stdout,*) 'Precalculate the laplacians on N grid points',ngrid_stored
  call clean_allocate('basis grad ftns on grid',bfgr,3,basis%nbf,ngrid_stored)
  call clean_allocate('basis lapl ftns on grid',bflr,3,basis%nbf,ngrid_stored)
 

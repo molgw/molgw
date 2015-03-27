@@ -1,28 +1,10 @@
 !=========================================================================
-#include "macros.h"
-!=========================================================================
 module m_mpi
  use m_definitions
 #ifdef HAVE_MPI
  use mpi
 #endif
 
- private
- public  :: init_mpi,finish_mpi,init_distribution,init_grid_distribution,get_ntask,get_task_number,is_iomaster
- public  :: destroy_grid_distribution
- public  :: xsum
- public  :: is_my_task
- public  :: is_my_grid_task
- public  :: parallel_grid,parallel_integral
- public  :: init_fast_distribution,destroy_fast_distribution
- public  :: is_my_fast_task
- !
- ! SCALAPACK declarations
- public  :: init_scalapack,init_desc,finish_scalapack,diagonalize_sca
- public  :: rowindex_global_to_local,colindex_global_to_local
- public  :: rowindex_local_to_global,colindex_local_to_global
- public  :: sum_sca,max_matrix_sca
- public  :: ndel
 
  logical,parameter :: parallel_grid      = .TRUE.
  logical,parameter :: parallel_integral  = .FALSE.
@@ -37,21 +19,21 @@ module m_mpi
  integer,protected :: rank   = 0
  integer,protected :: ioproc = 0
 
- integer :: mpi_comm
+ integer,private :: mpi_comm
 
  integer,private :: nbf_mpi
  integer,private :: ngrid_mpi
  integer,private :: nocc_mp
 
- integer,allocatable :: task_proc(:)
- integer,allocatable :: ntask_proc(:)
- integer,allocatable :: task_number(:)
+ integer,allocatable,private :: task_proc(:)
+ integer,allocatable,private :: ntask_proc(:)
+ integer,allocatable,private :: task_number(:)
 
- integer,allocatable :: task_grid_proc(:)    ! index of the processor working for this grid point
- integer,allocatable :: ntask_grid_proc(:)   ! number of grid points for each procressor
- integer,allocatable :: task_grid_number(:)  ! local index of the grid point
+ integer,allocatable,private :: task_grid_proc(:)    ! index of the processor working for this grid point
+ integer,allocatable,private :: ntask_grid_proc(:)   ! number of grid points for each procressor
+ integer,allocatable,private :: task_grid_number(:)  ! local index of the grid point
 
- integer,allocatable :: task_fast_proc(:)    ! index of the processor working for this grid point
+ integer,allocatable,private :: task_fast_proc(:)    ! index of the processor working for this grid point
 ! integer,allocatable :: ntask_fast_proc(:)   ! number of grid points for each procressor
 ! integer,allocatable :: task_fast_number(:)  ! local index of the grid point
 
@@ -102,14 +84,18 @@ subroutine init_mpi()
  call get_size()
  call get_rank()
 
+ if( rank /= ioproc ) then
+   close(stdout)
+ endif
+
 #ifdef HAVE_MPI
-  WRITE_MASTER(*,'(/,a)')      ' ==== MPI info'
-  WRITE_MASTER(*,'(a50,x,i6)') 'Number of proc:',nproc
-  WRITE_MASTER(*,'(a50,x,i6)') 'Master proc is:',ioproc
-  WRITE_MASTER(*,'(a50,6x,l1)') 'Parallelize Coulomb integrals:',parallel_integral
-  WRITE_MASTER(*,'(a50,6x,l1)') 'Parallelize XC grid points   :',parallel_grid
-  WRITE_MASTER(*,'(a50,6x,l1)') 'Use SCALAPACK                :',parallel_scalapack
-  WRITE_MASTER(*,'(/)')
+  write(stdout,'(/,a)')      ' ==== MPI info'
+  write(stdout,'(a50,x,i6)') 'Number of proc:',nproc
+  write(stdout,'(a50,x,i6)') 'Master proc is:',ioproc
+  write(stdout,'(a50,6x,l1)') 'Parallelize Coulomb integrals:',parallel_integral
+  write(stdout,'(a50,6x,l1)') 'Parallelize XC grid points   :',parallel_grid
+  write(stdout,'(a50,6x,l1)') 'Use SCALAPACK                :',parallel_scalapack
+  write(stdout,'(/)')
 #endif
 
 end subroutine init_mpi
@@ -146,7 +132,7 @@ subroutine get_size()
  call MPI_COMM_SIZE(mpi_comm,nproc,ier)
 #endif
  if(ier/=0) then
-   WRITE_ME(*,*) 'error in get_size'
+   write(stdout,*) 'error in get_size'
  endif
 
 end subroutine get_size
@@ -162,7 +148,7 @@ subroutine get_rank()
  call MPI_COMM_RANK(mpi_comm,rank,ier)
 #endif
  if(ier/=0) then
-   WRITE_ME(*,*) 'error in get_rank'
+   write(stdout,*) 'error in get_rank'
  endif
 
 end subroutine get_rank
@@ -179,7 +165,7 @@ subroutine init_distribution(nbf)
  nbf_mpi = nbf
 
  if( nproc>1 .AND. parallel_integral ) then
-   WRITE_MASTER(*,'(/,a)') ' Initializing distribution: 2-index distribution'
+   write(stdout,'(/,a)') ' Initializing distribution: 2-index distribution'
  endif
 
  ntask = index_prod_mpi(nbf,nbf)
@@ -197,7 +183,7 @@ subroutine init_grid_distribution(ngrid)
  ngrid_mpi = ngrid
 
  if( nproc>1 .AND. parallel_grid ) then
-   WRITE_MASTER(*,'(/,a)') ' Initializing the distribution of the quadrature grid points'
+   write(stdout,'(/,a)') ' Initializing the distribution of the quadrature grid points'
  endif
 
  call distribute_grid_workload()
@@ -228,7 +214,7 @@ subroutine init_fast_distribution(ntask)
 !=====
 
 
- WRITE_MASTER(*,'(/,a)') ' Initializing the distribution of the lowest level of MPI parallelization'
+ write(stdout,'(/,a)') ' Initializing the distribution of the lowest level of MPI parallelization'
 
  allocate(task_fast_proc(ntask))
  do itask=1,ntask
@@ -244,7 +230,7 @@ subroutine destroy_fast_distribution()
  implicit none
 !=====
 
- WRITE_MASTER(*,'(/,a)') ' End of the lowest level of MPI parallelization'
+ write(stdout,'(/,a)') ' End of the lowest level of MPI parallelization'
 
  deallocate(task_fast_proc)
 
@@ -326,12 +312,11 @@ subroutine distribute_grid_workload()
 
  if( parallel_grid) then
 
-   WRITE_MASTER(*,*) 
-   WRITE_MASTER(*,*) 'Distributing the grid among procs'
+   write(stdout,'(/,a)') ' Distributing the grid among procs'
    
    ntask_grid_proc(:)=0
    max_grid_per_proc = CEILING( DBLE(ngrid_mpi)/DBLE(nproc) )
-   WRITE_MASTER(*,*) 'Maximum number of grid points for a single proc',max_grid_per_proc
+   write(stdout,*) 'Maximum number of grid points for a single proc',max_grid_per_proc
 
    iproc=0
    do igrid=1,ngrid_mpi
@@ -341,7 +326,7 @@ subroutine distribute_grid_workload()
      !
      ! A simple check to avoid unexpected surprises
      if(iproc < 0 .OR. iproc >= nproc) then
-       WRITE_MASTER(*,*) 'error in the distribution'
+       write(stdout,*) 'error in the distribution'
        stop'STOP'
      endif
 
@@ -360,10 +345,10 @@ subroutine distribute_grid_workload()
    enddo
 
    if(nproc>1) then
-     WRITE_MASTER(*,'(/,a)') ' Distribute work load among procs'
-     WRITE_MASTER(*,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ngrid_mpi,dp)/REAL(nproc,dp)
+     write(stdout,'(/,a)') ' Distribute work load among procs'
+     write(stdout,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ngrid_mpi,dp)/REAL(nproc,dp)
      do iproc=0,nproc-1
-       WRITE_MASTER(*,'(a,i6,a,i10)') ' proc # , grid points',iproc,' , ',ntask_grid_proc(iproc)
+       write(stdout,'(a,i6,a,i10)') ' proc # , grid points',iproc,' , ',ntask_grid_proc(iproc)
      enddo
    endif
 
@@ -397,12 +382,12 @@ subroutine distribute_workload(ntask)
  allocate(task_number(ntask))
 
  if( parallel_integral) then
-   WRITE_MASTER(*,*) 
-   WRITE_MASTER(*,*) 'Distributing the work load among procs'
+
+   write(stdout,'(/,a)') ' Distributing the work load among procs'
    
    ntask_proc(:)=0
    max_task_per_proc = CEILING( DBLE(ntask)/DBLE(nproc) )
-   WRITE_MASTER(*,*) 'Maximum number of tasks for a single proc',max_task_per_proc
+   write(stdout,*) 'Maximum number of tasks for a single proc',max_task_per_proc
    iproc=0
    do itask=1,ntask
 
@@ -412,7 +397,7 @@ subroutine distribute_workload(ntask)
      !
      ! A simple check to avoid unexpected surprises
      if(iproc < 0 .OR. iproc >= nproc) then
-       WRITE_MASTER(*,*) 'error in the distribution'
+       write(stdout,*) 'error in the distribution'
        stop'STOP'
      endif
 
@@ -434,10 +419,10 @@ subroutine distribute_workload(ntask)
    enddo
 
    if(nproc>1) then
-     WRITE_MASTER(*,'(/,a)') ' Distribute work load among procs'
-     WRITE_MASTER(*,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ntask,dp)/REAL(nproc,dp)
+     write(stdout,'(/,a)') ' Distribute work load among procs'
+     write(stdout,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ntask,dp)/REAL(nproc,dp)
      do iproc=0,nproc-1
-       WRITE_MASTER(*,'(a,i6,a,i10)') ' proc # , tasks',iproc,' , ',ntask_proc(iproc)
+       write(stdout,'(a,i6,a,i10)') ' proc # , tasks',iproc,' , ',ntask_proc(iproc)
      enddo
    endif
 
@@ -483,9 +468,9 @@ function get_task_number(ibf,jbf)
  ! Check
  !
  if(get_task_number == 0) then
-   WRITE_ME(*,*) '=======',rank
-   WRITE_ME(*,*) ibf,jbf,itask
-   WRITE_ME(*,*) task_proc(itask)
+   write(stdout,*) '=======',rank
+   write(stdout,*) ibf,jbf,itask
+   write(stdout,*) task_proc(itask)
    stop' *** That should not happen ***'
  endif
 
@@ -507,7 +492,7 @@ subroutine xsum_r(real_number)
  call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_comm, ier)
 #endif
  if(ier/=0) then
-   WRITE_ME(*,*) 'error in mpi_allreduce'
+   write(stdout,*) 'error in mpi_allreduce'
  endif
 
 end subroutine xsum_r
@@ -528,7 +513,7 @@ subroutine xsum_ra1d(array)
  call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_comm, ier)
 #endif
  if(ier/=0) then
-   WRITE_ME(*,*) 'error in mpi_allreduce'
+   write(stdout,*) 'error in mpi_allreduce'
  endif
 
 end subroutine xsum_ra1d
@@ -550,7 +535,7 @@ subroutine xsum_ra2d(array)
  call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_comm, ier)
 #endif
  if(ier/=0) then
-   WRITE_ME(*,*) 'error in mpi_allreduce'
+   write(stdout,*) 'error in mpi_allreduce'
  endif
 
 end subroutine xsum_ra2d
@@ -573,7 +558,7 @@ subroutine xsum_ra3d(array)
  call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_comm, ier)
 #endif
  if(ier/=0) then
-   WRITE_ME(*,*) 'error in mpi_allreduce'
+   write(stdout,*) 'error in mpi_allreduce'
  endif
 
 end subroutine xsum_ra3d
@@ -626,10 +611,10 @@ subroutine init_scalapack()
  ! Get iprow, ipcol
  call BLACS_GRIDINFO( context_sca, nprow, npcol, iprow, ipcol )
 
- WRITE_MASTER(*,'(/,a)')           ' ==== SCALAPACK info'
- WRITE_MASTER(*,'(a50,x,i8)')      'Number of proc:',nprow*npcol
- WRITE_MASTER(*,'(a50,x,i8,x,i8)') 'Grid of procs:',nprow,npcol
- WRITE_MASTER(*,'(/)')
+ write(stdout,'(/,a)')           ' ==== SCALAPACK info'
+ write(stdout,'(a50,x,i8)')      'Number of proc:',nprow*npcol
+ write(stdout,'(a50,x,i8,x,i8)') 'Grid of procs:',nprow,npcol
+ write(stdout,'(/)')
  
 #endif
 
@@ -659,7 +644,7 @@ subroutine init_desc(nglobal,desc,mlocal,nlocal)
  ! here is the problem with nlocal
  call DESCINIT(desc,nglobal,nglobal,block_row,block_col,first_row,first_col,context_sca,mlocal,info)
 
- WRITE_ME(*,'(/,a,i6,a,i6,4x,i6)') ' SCALAPACK info: size of the local matrix for proc #', mlocal,' x ',nlocal,iproc_sca
+ write(stdout,'(/,a,i6,a,i6,4x,i6)') ' SCALAPACK info: size of the local matrix for proc #', mlocal,' x ',nlocal,iproc_sca
 
  call BLACS_BARRIER(context_sca,'All')
 
