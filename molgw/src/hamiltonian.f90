@@ -582,21 +582,22 @@ subroutine read_potential(print_matrix_,nbf,nspin,p_matrix,pot_read,eread)
  integer              :: ibf,jbf,ispin
  character(len=100)   :: title
  logical              :: file_exists
+ integer              :: potfile
 !=====
 
  pot_read(:,:,:)=0.0_dp
 
  inquire(file='manual_potential',exist=file_exists)
  if(file_exists) then
-   open(unit=12,file='manual_potential',status='old')
+   open(newunit=potfile,file='manual_potential',status='old')
    do ispin=1,nspin
      do jbf=1,nbf
        do ibf=1,nbf
-         read(12,*) pot_read(ibf,jbf,ispin)
+         read(potfile,*) pot_read(ibf,jbf,ispin)
        enddo
      enddo
    enddo
-   close(12)
+   close(potfile)
 
  else
    stop'file not found: manual_potential'
@@ -683,6 +684,7 @@ subroutine set_occupation(electrons,magnetization,nbf,occupation)
  real(dp)             :: remaining_electrons(nspin)
  integer              :: ibf,nlines,ilines
  logical              :: file_exists
+ integer              :: occfile
 !=====
 
 
@@ -703,14 +705,14 @@ subroutine set_occupation(electrons,magnetization,nbf,occupation)
     write(stdout,*) 'occupations are read from file: manual_occupations'
     msg='reading manual occupations from file'
     call issue_warning(msg)
-    open(unit=12,file='manual_occupations',status='old')
+    open(newunit=occfile,file='manual_occupations',status='old')
     !
     ! read nlines, all other occupations are set to zero
-    read(12,*) nlines
+    read(occfile,*) nlines
     do ilines=1,nlines
-      read(12,*) occupation(ilines,:)
+      read(occfile,*) occupation(ilines,:)
     enddo
-    close(12)
+    close(occfile)
     write(stdout,*) 'occupations set, closing file'
   endif
  

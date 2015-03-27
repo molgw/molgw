@@ -68,7 +68,7 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  integer                       :: ibf,jbf,kbf,ng,ig,shell_index,ibf_file
  real(dp),allocatable          :: alpha(:),coeff(:),coeff2(:)
  logical                       :: file_exists
- integer,parameter             :: basis_file=11
+ integer                       :: basisfile
  integer                       :: am_tmp,mm,nbf_file
  logical,parameter             :: normalized=.TRUE.
  integer                       :: iatom
@@ -105,19 +105,19 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
   
    !
    ! read first to get all the dimensions
-   open(unit=basis_file,file=TRIM(basis_filename),status='old')
-   read(basis_file,*) nbf_file
+   open(newunit=basisfile,file=TRIM(basis_filename),status='old')
+   read(basisfile,*) nbf_file
    if(nbf_file<1) stop'ERROR in basis set file'
    do ibf_file=1,nbf_file
-     read(basis_file,*) ng,am_tmp
+     read(basisfile,*) ng,am_tmp
      if(ng<1) stop'ERROR in basis set file'
      basis%nbf_cart = basis%nbf_cart + number_basis_function_am('CART'             ,am_tmp)
      basis%nbf      = basis%nbf      + number_basis_function_am(basis%gaussian_type,am_tmp)
      do ig=1,ng
-       read(basis_file,*) 
+       read(basisfile,*) 
      enddo
    enddo
-   close(basis_file)
+   close(basisfile)
   
  enddo
 
@@ -135,19 +135,19 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  do iatom=1,natom
 
    basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
-   open(unit=basis_file,file=TRIM(basis_filename),status='old')
-   read(basis_file,*) nbf_file
+   open(newunit=basisfile,file=TRIM(basis_filename),status='old')
+   read(basisfile,*) nbf_file
    do ibf_file=1,nbf_file
-     read(basis_file,*) ng,am_tmp
+     read(basisfile,*) ng,am_tmp
      allocate(alpha(ng),coeff(ng),coeff2(ng))
   
      if(am_tmp<10) then
        do ig=1,ng
-         read(basis_file,*) alpha(ig),coeff(ig)
+         read(basisfile,*) alpha(ig),coeff(ig)
        enddo
      else
        do ig=1,ng
-         read(basis_file,*) alpha(ig),coeff(ig),coeff2(ig)
+         read(basisfile,*) alpha(ig),coeff(ig),coeff2(ig)
        enddo
      endif
   
@@ -317,7 +317,7 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
   
      deallocate(alpha,coeff,coeff2)
    enddo
-   close(basis_file)
+   close(basisfile)
 
  !
  ! END OF THE LOOP OVER ATOMS

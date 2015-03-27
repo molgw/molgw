@@ -156,6 +156,7 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
  real(dp),allocatable       :: tmp_ixxx(:,:,:)
  integer                    :: nocc,ncore
  logical                    :: file_exists
+ integer                    :: ifcfile
 !=====
 
  call start_clock(timing_mp2_energy)
@@ -167,9 +168,9 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
  if(file_exists) then
    !
    ! ncore_G and ncore_W contain the highest core state to be discarded
-   open(13,file='manual_frozencore')
-   read(13,*) ncore
-   close(13)
+   open(newunit=ifcfile,file='manual_frozencore')
+   read(ifcfile,*) ncore
+   close(ifcfile)
    ncore = MAX(ncore,0)
    write(msg,'(a,i4,2x,i4)') 'frozen core approximation for MP2 switched on up to state = ',ncore
    call issue_warning(msg)

@@ -37,6 +37,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  logical                   :: is_rpa
  logical                   :: has_manual_tdhf
  integer                   :: reading_status
+ integer                   :: tdhffile
 !=====
 
  call start_clock(timing_pola)
@@ -69,9 +70,9 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! manual_tdhf can override anything
  inquire(file='manual_tdhf',exist=has_manual_tdhf)
  if(has_manual_tdhf) then
-   open(unit=18,file='manual_tdhf',status='old')
-   read(18,*) alpha_local
-   close(18)
+   open(newunit=tdhffile,file='manual_tdhf',status='old')
+   read(tdhffile,*) alpha_local
+   close(tdhffile)
    write(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alpha ',alpha_local
    call issue_warning(msg)
  else
@@ -912,8 +913,8 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
  real(dp),allocatable               :: dipole_basis(:,:,:),dipole_tmp(:,:,:),dipole_state(:,:,:,:)
  real(dp),allocatable               :: dipole_cart(:,:,:)
  real(dp),allocatable               :: residu_left(:,:)
- integer,parameter                  :: unit_dynpol=101
- integer,parameter                  :: unit_photocross=102
+ integer                            :: dynpolfile
+ integer                            :: photocrossfile
  integer                            :: parityi,parityj,reflectioni,reflectionj
  integer,external                   :: wfn_parity
  integer,external                   :: wfn_reflection
@@ -1130,23 +1131,23 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
 
  if( is_iomaster() ) then
 
-   open(unit_dynpol,file='dynamical_dipole_polarizability.dat',form='formatted')
-   open(unit_photocross,file='photoabsorption_cross_section.dat',form='formatted')
-   write(unit_dynpol,'(a)') '#  Imaginary part of dynamical dipole polarizability'
-   write(unit_dynpol,'(a)') '#  omega (eV)   Average     xx    yx    zx    xy    yy    zy    xz    yz    zz'
-   write(unit_photocross,'(a)') '#  Imaginary part of dynamical dipole polarizability'
-   write(unit_photocross,'(a)') '#  omega (eV)   Average     xx    yx    zx    xy    yy    zy    xz    yz    zz'
+   open(newunit=dynpolfile,file='dynamical_dipole_polarizability.dat',form='formatted')
+   open(newunit=photocrossfile,file='photoabsorption_cross_section.dat',form='formatted')
+   write(dynpolfile,'(a)') '#  Imaginary part of dynamical dipole polarizability'
+   write(dynpolfile,'(a)') '#  omega (eV)   Average     xx    yx    zx    xy    yy    zy    xz    yz    zz'
+   write(photocrossfile,'(a)') '#  Imaginary part of dynamical dipole polarizability'
+   write(photocrossfile,'(a)') '#  omega (eV)   Average     xx    yx    zx    xy    yy    zy    xz    yz    zz'
    do iomega=1,nomega
-     write(unit_dynpol,'(11(e18.8,2x))') REAL(omega(iomega),dp)*Ha_eV,                                      &
+     write(dynpolfile,'(11(e18.8,2x))') REAL(omega(iomega),dp)*Ha_eV,                                      &
                                           (dynamical_pol(iomega,1,1)+dynamical_pol(iomega,2,2)+dynamical_pol(iomega,3,3))/3.0_dp, &
                                           dynamical_pol(iomega,:,:)
-     write(unit_photocross,'(11(e18.8,2x))') REAL(omega(iomega),dp)*Ha_eV,                                      &
+     write(photocrossfile,'(11(e18.8,2x))') REAL(omega(iomega),dp)*Ha_eV,                                      &
                                               (photoabsorp_cross(iomega,1,1)+photoabsorp_cross(iomega,2,2)+photoabsorp_cross(iomega,3,3))/3.0_dp, &
                                               photoabsorp_cross(iomega,:,:)
    enddo 
 
-   close(unit_dynpol)
-   close(unit_photocross)
+   close(dynpolfile)
+   close(photocrossfile)
 
  endif
 

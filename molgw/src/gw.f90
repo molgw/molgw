@@ -37,6 +37,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  real(dp)              :: energy_qp_z(nspin),energy_qp_omega(nspin)
  character(len=3)      :: ctmp
  integer               :: reading_status
+ integer               :: selfenergyfile
 !=====
 
  call start_clock(timing_self)
@@ -246,18 +247,18 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
      do astate=1,basis%nbf
        write(ctmp,'(i3.3)') astate
-       open(200+astate,file='selfenergy_omega_state'//TRIM(ctmp))
-       write(200+astate,'(a)') '# omega + e_KS (eV)     SigmaC (eV)    omega + e_KS - Vxc + SigmaX (eV)     A (eV^-1) '
+       open(newunit=selfenergyfile,file='selfenergy_omega_state'//TRIM(ctmp))
+       write(selfenergyfile,'(a)') '# omega + e_KS (eV)     SigmaC (eV)    omega + e_KS - Vxc + SigmaX (eV)     A (eV^-1) '
        do iomegai=-nomegai,nomegai
-         write(200+astate,'(20(f12.6,2x))') ( omegai(iomegai) + energy_qp(astate,:) )*Ha_eV,               &
+         write(selfenergyfile,'(20(f12.6,2x))') ( omegai(iomegai) + energy_qp(astate,:) )*Ha_eV,               &
                                             selfenergy_omega(iomegai,astate,1,:)*Ha_eV,                    &
                                             ( omegai(iomegai) - exchange_m_vxc_diag(astate,:) )*Ha_eV,     &
                                             1.0_dp/pi/ABS( omegai(iomegai) - exchange_m_vxc_diag(astate,:) &
                                                     - selfenergy_omega(iomegai,astate,1,:) ) / Ha_eV
        enddo
-       write(200+astate,*)
+       write(selfenergyfile,*)
+       close(selfenergyfile)
      enddo
-     close(200+astate)
 
    endif
 

@@ -286,9 +286,9 @@ program molgw
 !%!   inquire(file='manual_coresplitting',exist=file_exists)
 !%!   if(file_exists) then
 !%!     write(stdout,*) 'TESTING CORE-VALENCE SPLITTING'
-!%!     open(13,file='manual_coresplitting')
-!%!     read(13,*) ncore
-!%!     close(13)
+!%!     open(newfile=info,file='manual_coresplitting')
+!%!     read(info,*) ncore
+!%!     close(info)
 !%!     write(msg,'(a,i4,2x,i4)') 'core-valence splitting switched on up to state = ',ncore
 !%!     call issue_warning(msg)
 !%!     do istate=1,ncore

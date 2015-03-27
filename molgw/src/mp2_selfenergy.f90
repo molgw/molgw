@@ -46,7 +46,7 @@ subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_m
  real(dp)              :: emp2_sox,emp2_ring
  logical               :: file_exists
  character(len=3)      :: ctmp
- integer               :: selfenergyfile
+ integer               :: selfenergyfile,iomegafile
 !=====
 
  call start_clock(timing_mp2_self)
@@ -78,12 +78,12 @@ subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_m
    if(file_exists) then
      msg='reading frequency file for self-energy evaluation'
      call issue_warning(msg)
-     open(12,file='manual_omega',status='old')
-     read(12,*) nomegai
+     open(newunit=iomegafile,file='manual_omega',status='old')
+     read(iomegafile,*) nomegai
      allocate(omegai(nomegai))
-     read(12,*) omegai(1)
-     read(12,*) omegai(nomegai)
-     close(12)
+     read(iomegafile,*) omegai(1)
+     read(iomegafile,*) omegai(nomegai)
+     close(iomegafile)
      do iomegai=2,nomegai-1
        omegai(iomegai) = omegai(1) + (omegai(nomegai)-omegai(1)) * (iomegai-1) / DBLE(nomegai-1)
      enddo

@@ -192,7 +192,7 @@ subroutine write_spectral_function(sf)
  type(spectral_function),intent(in) :: sf
 !=====
  integer             :: wfile
- integer,parameter   :: tmpfile=51
+ integer             :: tmpfile
  integer             :: iprodbasis,ipole
  integer             :: npole_write,ipole_write
  logical             :: file_exists
@@ -204,7 +204,7 @@ subroutine write_spectral_function(sf)
 
  inquire(file='manual_poles',exist=file_exists)
  if(file_exists) then
-   open(tmpfile,file='manual_poles',status='old')
+   open(newunit=tmpfile,file='manual_poles',status='old')
    read(tmpfile,*) ecut_pole
    if( ecut_pole<0.0_dp ) stop'error when reading manual_poles'
    close(tmpfile)
@@ -258,7 +258,7 @@ subroutine read_spectral_function(sf,reading_status)
  type(spectral_function),intent(inout) :: sf
  integer,intent(out)                   :: reading_status
 !=====
- integer,parameter  :: wfile=50
+ integer            :: wfile
  character(len=100) :: postscf_name_read
  integer            :: ipole_read
  logical            :: file_exists
@@ -274,7 +274,7 @@ subroutine read_spectral_function(sf,reading_status)
    return
  endif
 
- open(wfile,file='SCREENED_COULOMB',status='old',form='unformatted')
+ open(newunit=wfile,file='SCREENED_COULOMB',status='old',form='unformatted')
 
  read(wfile) postscf_name_read
  read(wfile) nprodbasis_read

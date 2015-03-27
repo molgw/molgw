@@ -429,9 +429,9 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
  integer                    :: ix,iy,iz,iatom
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
  real(dp),allocatable       :: basis_function_r_cart(:)
- integer                    :: file_unit
+ integer,allocatable        :: ocubefile(:,:)
  character(len=200)         :: file_name
- integer                    :: cubefile
+ integer                    :: icubefile
 !=====
 
  if( .NOT. is_iomaster() ) return
@@ -440,10 +440,10 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
  write(stdout,*) 'Plotting some selected wavefunctions in a cube file'
  inquire(file='manual_cubewfn',exist=file_exists)
  if(file_exists) then
-   open(newunit=cubefile,file='manual_cubewfn',status='old')
-   read(cubefile,*) istate1,istate2
-   read(cubefile,*) nx,ny,nz
-   close(cubefile)
+   open(newunit=icubefile,file='manual_cubewfn',status='old')
+   read(icubefile,*) istate1,istate2
+   read(icubefile,*) nx,ny,nz
+   close(icubefile)
  else
    istate1=1
    istate2=2
@@ -461,19 +461,20 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
  zmin = MINVAL( x(3,:) ) - length
  zmax = MAXVAL( x(3,:) ) + length
 
+ allocate(ocubefile(istate1:istate2,nspin))
+
  do istate=istate1,istate2
    do ispin=1,nspin
-     file_unit=1000+istate-istate1+(ispin-1)*(istate2-istate1+1)
      write(file_name,'(a,i3.3,a,i1,a)') 'wfn_',istate,'_',ispin,'.cube'
-     open(unit=file_unit,file=file_name)
-     write(file_unit,'(a)') 'cube file generated from MOLGW'
-     write(file_unit,'(a,i4)') 'wavefunction ',istate1
-     write(file_unit,'(i6,3(f12.6,2x))') natom,xmin,ymin,zmin
-     write(file_unit,'(i6,3(f12.6,2x))') nx,(xmax-xmin)/REAL(nx,dp),0.,0.
-     write(file_unit,'(i6,3(f12.6,2x))') ny,0.,(ymax-ymin)/REAL(ny,dp),0.
-     write(file_unit,'(i6,3(f12.6,2x))') nz,0.,0.,(zmax-zmin)/REAL(nz,dp)
+     open(newunit=ocubefile(istate,ispin),file=file_name)
+     write(ocubefile(istate,ispin),'(a)') 'cube file generated from MOLGW'
+     write(ocubefile(istate,ispin),'(a,i4)') 'wavefunction ',istate1
+     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin,zmin
+     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') nx,(xmax-xmin)/REAL(nx,dp),0.,0.
+     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') ny,0.,(ymax-ymin)/REAL(ny,dp),0.
+     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') nz,0.,0.,(zmax-zmin)/REAL(nz,dp)
      do iatom=1,natom
-       write(file_unit,'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,x(:,iatom)
+       write(ocubefile(istate,ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,x(:,iatom)
      enddo
    enddo
  enddo
@@ -531,8 +532,7 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
 
        do istate=istate1,istate2
          do ispin=1,nspin
-           file_unit=1000+istate-istate1+(ispin-1)*(istate2-istate1+1)
-           write(file_unit,'(50(e16.8,2x))') phi(istate,ispin)*phase(istate,ispin)
+           write(ocubefile(istate,ispin),'(50(e16.8,2x))') phi(istate,ispin)*phase(istate,ispin)
          enddo
        enddo
 
@@ -544,8 +544,7 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
 
  do istate=istate1,istate2
    do ispin=1,nspin
-     file_unit=1000+istate-istate1+(ispin-1)*(istate2-istate1+1)
-     close(file_unit)
+     close(ocubefile(istate,ispin))
    enddo
  enddo
 
@@ -589,7 +588,7 @@ subroutine read_energy_qp(nspin,nbf,energy_qp,reading_status)
  integer,intent(out)  :: reading_status
  real(dp),intent(out) :: energy_qp(nbf,nspin)
 !=====
- integer,parameter :: unit_energy_qp=51
+ integer           :: energy_qpfile
  integer           :: istate,jstate
  integer           :: nspin_read,nbf_read
  logical           :: file_exists
@@ -598,25 +597,25 @@ subroutine read_energy_qp(nspin,nbf,energy_qp,reading_status)
  write(stdout,'(/,a)') ' Reading energy_qp file'
  inquire(file='energy_qp',exist=file_exists)
  if(file_exists) then
-   open(unit_energy_qp,file='energy_qp',form='formatted',status='old')
-   read(unit_energy_qp,*) nspin_read
-   read(unit_energy_qp,*) nbf_read
+   open(newunit=energy_qpfile,file='energy_qp',form='formatted',status='old')
+   read(energy_qpfile,*) nspin_read
+   read(energy_qpfile,*) nbf_read
    if( nbf_read /= nbf .OR. nspin_read /= nspin ) then
      call issue_warning('energy_qp file does not have the correct dimensions')
      reading_status=2
    else
      do istate=1,nbf
-       read(unit_energy_qp,*) jstate,energy_qp(istate,:)
+       read(energy_qpfile,*) jstate,energy_qp(istate,:)
        ! Scissor operator
        if( jstate == -1 ) then
          reading_status=-1
-         close(unit_energy_qp)
+         close(energy_qpfile)
          return
        endif
      enddo
      reading_status=0
    endif
-   close(unit_energy_qp)
+   close(energy_qpfile)
  else
    reading_status=1
    call issue_warning('file energy_qp does not exist')
@@ -850,7 +849,7 @@ subroutine write_density_grid(basis,p_matrix)
 
  enddo
 
- open(densityfile,file='DENSITY',form='unformatted')
+ open(newunit=densityfile,file='DENSITY',form='unformatted')
  write(densityfile) nspin
  write(densityfile) ngrid
  do ispin=1,nspin
