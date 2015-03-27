@@ -43,7 +43,7 @@ subroutine header()
 #ifdef HAVE_LIBXC
  call xc_f90_version(values(1),values(2))
  WRITE_ME(chartmp,'(i2,a,i2)') values(1),'.',values(2)
- call issue_warning('LIBXC version '//TRIM(chartmp))
+ WRITE_MASTER(*,*) 'LIBXC version '//TRIM(chartmp)
 #endif
 #ifdef _OPENMP
  WRITE_ME(msg,'(i6)') OMP_get_max_threads()

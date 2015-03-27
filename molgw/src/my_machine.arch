@@ -1,8 +1,8 @@
-OPENMP= -fopenmp
+OPENMP= #-fopenmp
 
 
-FC=gfortran -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC 
-#FC=mpif90 -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC -DHAVE_MPI  #-DHAVE_SCALAPACK 
+#FC=gfortran -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC 
+FC=mpif90 -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC -DHAVE_MPI  #-DHAVE_SCALAPACK 
 
 
 CC=gcc
