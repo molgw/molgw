@@ -7,7 +7,9 @@ list_elements = [ 'H',                                                          
                  'Li', 'Be',                                                              'B',  'C',  'N',  'O',  'F', 'Ne', \
                  'Na', 'Mg',                                                             'Al', 'Si',  'P',  'S', 'Cl', 'Ar', \
                   'K', 'Ca', 'Sc', 'Ti',  'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', \
-                 'Rb', 'Sr',  'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn', 'Sb', 'Te',  'I', 'Xe'  ] 
+                 'Rb', 'Sr',  'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn', 'Sb', 'Te',  'I', 'Xe', \
+                 'Cs', 'Ba', 'La', 'Hf', 'Ta',  'W', 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg', 'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn']
+                 
 
 
 def fortran_float( string ):
@@ -145,13 +147,13 @@ print()
 newfiles = 0 
 for index_basis,basis in enumerate(basis_set):
 
-  outfilename = '../basis/' + basis + '_' + filename.partition('.')[0]
+  outfilename = '../basis/' + basis + '_' + filename.partition('.')[0].partition('/')[2]
   # If file already exists, then skip writing
   if os.path.exists(outfilename):
-    print("{:24s}".format(outfilename) + ' skipped since it already exits')
+    print("{:36s}".format(outfilename) + ' skipped since it already exits')
     continue
 
-  print("{:24s}".format(outfilename) + ' generated')
+  print("{:36s}".format(outfilename) + ' generated')
   newfiles = newfiles + 1
   outfile=open(outfilename,'w')
   outfile.write("{:d}".format(len(alpha[index_basis])) + '\n' )
