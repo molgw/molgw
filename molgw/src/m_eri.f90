@@ -384,6 +384,18 @@ subroutine calculate_eri(print_eri_,basis,rcut,which_buffer)
 
  call start_clock(timing_eri_4center)
 
+ write(stdout,'(/,a,i12)') ' Number of integrals to be stored: ',nsize
+
+ select case(which_buffer)
+ case(BUFFER1)
+   call clean_allocate('4-center integrals',eri_buffer,nsize)
+   eri_buffer(:) = 0.0_dp
+ case(BUFFER2)
+   call clean_allocate('4-center LR integrals',eri_buffer_lr,nsize)
+   eri_buffer_lr(:) = 0.0_dp
+ end select
+
+
  if( .NOT. read_eri(rcut) ) call do_calculate_eri(basis,rcut,which_buffer)
 
 
@@ -526,20 +538,6 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  write(stdout,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
  write(stdout,'(a)')      ' Libint library initialized'
  write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
-
- write(stdout,*) 
- write(stdout,*) 'Number of integrals to be stored:',nsize
- write(stdout,*) 'Max index size',HUGE(nsize)
- if(nsize<1) stop'too many integrals to be stored'
-
- select case(which_buffer)
- case(BUFFER1)
-   call clean_allocate('4-center integrals',eri_buffer,nsize)
-   eri_buffer(:) = 0.0_dp
- case(BUFFER2)
-   call clean_allocate('4-center LR integrals',eri_buffer_lr,nsize)
-   eri_buffer_lr(:) = 0.0_dp
- end select
 
 
  rcut_libint = rcut

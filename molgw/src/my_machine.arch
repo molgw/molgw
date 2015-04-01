@@ -6,7 +6,7 @@ FC=mpif90 -cpp -ffree-line-length-none $(OPENMP) -DHAVE_LIBXC -DHAVE_MPI  #-DHAV
 
 
 CC=gcc
-FCOPTS=  -O0 # -O0 -g -fcheck=all -fbacktrace # -Ofast 
+FCOPTS=  -O2 # -O0 -g -fcheck=all -fbacktrace # -Ofast 
 CCOPTS=  -O2 # -O0 -g -fbounds-check
 #FCOPTS= -xHost -O3 #-ipo
 
