@@ -29,7 +29,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  integer                   :: nmat
  real(dp)                  :: alpha_local
  real(prec_td),allocatable :: amb_matrix(:,:),apb_matrix(:,:)
- real(prec_td),allocatable :: bigx(:,:),bigy(:,:)
+ real(prec_td),allocatable :: bigx(:,:),bigy(:,:),eigenvector(:,:)
  real(dp),allocatable      :: eigenvalue(:)
  real(dp)                  :: energy_qp(basis%nbf,nspin)
  logical                   :: is_tddft
@@ -113,7 +113,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  !
  ! Prepare the big matrices (A+B) and (A-B)
  ! 
- nmat = wpol_out%npole/2
+ nmat = wpol_out%npole_reso
  call clean_allocate('A+B',apb_matrix,nmat,nmat)
  call clean_allocate('A-B',amb_matrix,nmat,nmat)
  
@@ -148,7 +148,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
    rpa_correlation = rpa_correlation - 0.25_dp * ( apb_matrix(t_ij,t_ij) + amb_matrix(t_ij,t_ij) )
  enddo
 
- !
+ 
  ! Warning if Tamm-Dancoff flag is on
  if(is_tda) then
    msg='Tamm-Dancoff approximation is switched on'
@@ -162,26 +162,55 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  call stop_clock(timing_build_h2p)
 
 
+
+
+ allocate(eigenvalue(nmat))
+
+ !
+ ! Diago using the 4 block structure and the symmetry of each block
+ ! With or Without SCALAPACK
+ !
+#ifndef HAVE_SCALAPACK
+ ! Firstly allocate
  write(stdout,*) 'Allocate eigenvector arrays'
  call clean_allocate('X',bigx,nmat,nmat)
  call clean_allocate('Y',bigy,nmat,nmat)
 
+ ! Secondly diagonalize
+ call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
 
- allocate(eigenvalue(wpol_out%npole_reso))
-
- !
- ! Diago using the 4 block structure and the symmetry of each block
- call start_clock(timing_diago_h2p)
-#ifndef HAVE_SCALAPACK
-   call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,bigx,bigy)
-#else
-!   call diago_4blocks_chol(nmat,amb_matrix,apb_matrix,wpol_out%npole,eigenvalue,bigx,bigy)
-#endif
- call stop_clock(timing_diago_h2p)
-
+ ! Thirdly deallocate the non-necessary matrices
  write(stdout,*) 'Deallocate (A+B) and (A-B) matrices'
  call clean_deallocate('A+B',apb_matrix)
  call clean_deallocate('A-B',amb_matrix)
+
+#else
+
+ ! Firstly allocate
+ write(stdout,*) 'Allocate eigenvector array'
+ call clean_allocate('eigenvector',eigenvector,2*nmat,nmat)
+
+ ! Secondly diagonalize
+ call diago_4blocks_chol(nmat,amb_matrix,apb_matrix,eigenvalue,eigenvector)
+
+ ! Thirdly deallocate the non-necessary matrices
+ write(stdout,*) 'Deallocate (A+B) and (A-B) matrices'
+ call clean_deallocate('A+B',apb_matrix)
+ call clean_deallocate('A-B',amb_matrix)
+
+ ! Fourthly transform eigenvector into (X,Y)
+ write(stdout,*) 'Allocate eigenvector arrays'
+ call clean_allocate('X',bigx,nmat,nmat)
+ call clean_allocate('Y',bigy,nmat,nmat)
+
+ bigx(:,:) = eigenvector(:nmat  ,:)
+ bigy(:,:) = eigenvector(nmat+1:,:)
+
+ call clean_deallocate('eigenvector',eigenvector)
+
+
+#endif
+
 
  !
  ! Second part of the RPA correlation energy: sum over positive eigenvalues
@@ -749,13 +778,13 @@ end subroutine build_amb_apb_bse_auxil
 
 
 !=========================================================================
-subroutine diago_4blocks_sqrt(nmat,amb_matrix,cc_matrix,npole,eigenvalue,bigx,bigy)
+subroutine diago_4blocks_sqrt(nmat,amb_matrix,cc_matrix,eigenvalue,bigx,bigy)
  use m_spectral_function
  use m_eri
  use m_tools 
  implicit none
 
- integer,intent(in)          :: nmat,npole
+ integer,intent(in)          :: nmat
  real(prec_td),intent(inout) :: amb_matrix(nmat,nmat)
  real(prec_td),intent(inout) :: cc_matrix(nmat,nmat)  ! cc_matrix constains (A+B) in the input, however it used a matrix buffer after
  real(dp),intent(out)        :: eigenvalue(nmat)
@@ -764,6 +793,8 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,cc_matrix,npole,eigenvalue,bigx,bi
  integer              :: t_kl
  real(prec_td),allocatable :: amb_eigval(:),bigomega(:)
 !=====
+
+ call start_clock(timing_diago_h2p)
 
  write(stdout,'(/,a)') ' Performing the block diago with square root of matrices'
 
@@ -825,58 +856,71 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,cc_matrix,npole,eigenvalue,bigx,bi
  bigx(:,:) = bigx(:,:) + cc_matrix(:,:)
  bigy(:,:) = bigy(:,:) - cc_matrix(:,:)
 
+ call stop_clock(timing_diago_h2p)
 
 end subroutine diago_4blocks_sqrt
 
 
 !=========================================================================
-subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,npole,eigenvalue,bigx,bigy)
+subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,eigenvalue,eigenvector)
  use m_spectral_function
  use m_eri
  use m_tools 
  implicit none
 
- integer,intent(in)                 :: nmat,npole
+ integer,intent(in)                 :: nmat
  real(dp),intent(inout)             :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
  real(dp),intent(out)               :: eigenvalue(nmat)
- real(dp),intent(out)               :: bigx(nmat,nmat)
- real(dp),intent(out)               :: bigy(nmat,nmat)
+ real(dp),intent(out)               :: eigenvector(2*nmat,nmat)
 !=====
  integer  :: descm(ndel),desck(ndel)
- integer  :: descx(ndel),descy(ndel)
+ integer  :: descx(ndel)
  integer  :: nlocal,mlocal
  integer  :: info
- integer  :: lwork
+ integer  :: lwork,liwork
  real(dp),allocatable :: work(:)
+ integer,allocatable :: iwork(:)
 !=====
+
+ call start_clock(timing_diago_h2p)
 
 #ifdef HAVE_SCALAPACK
  write(stdout,'(/,a)') ' Performing the block diago with Cholesky'
- call init_desc(nmat,descm,mlocal,nlocal)
+ call init_desc(nmat,nmat,descm,mlocal,nlocal)
  desck(:) = descm(:)
- call init_desc(nmat,descx,mlocal,nlocal)
- descy(:) = descx(:)
+ call init_desc(2*nmat,nmat,descx,mlocal,nlocal)
 
  allocate(work(1))
+ allocate(iwork(1))
  lwork=-1
- call pdbssolver1(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
-                      eigenvalue,eigenvector,1,1,descx,eigenvector_transpinv,1,1,descy,&
-                      work,lwork,info)
+ liwork=-1
+ call pdbssolver1(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,    &
+                  eigenvalue,eigenvector,1,1,descx,                  &
+                  work,lwork,iwork,liwork,info)
  if(info/=0) stop'SCALAPACK failed'
- lwork=NINT(work(1))
 
+ lwork  = NINT(work(1))
  deallocate(work)
  allocate(work(lwork))
- call pdbssolver1(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,            &
-                      eigenvalue,eigenvector,1,1,descx,eigenvector_transpinv,1,1,descy,&
-                      work,lwork,info)
+
+ liwork = iwork(1)
+ deallocate(iwork)
+ allocate(iwork(liwork))
+
+ call pdbssolver1(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,    &
+                  eigenvalue,eigenvector,1,1,descx,                  &
+                  work,lwork,iwork,liwork,info )
  if(info/=0) stop'SCALAPACK failed'
+
  deallocate(work)
+ deallocate(iwork)
 
 
 #else
  stop'Cholesky diago cannot run without SCALAPACK'
 #endif
+
+ call stop_clock(timing_diago_h2p)
 
 end subroutine diago_4blocks_chol
 

@@ -1,17 +1,15 @@
-#ifdef HAVE_SCALAPACK
       SUBROUTINE PDBSSOLVER1( N, M, IM, JM, DESCM, K, IK, JK, DESCK,
-     $                        LAMBDA, X, IX, JX, DESCX, Y, IY, JY,
-     $                        DESCY, WORK, LWORK, INFO )
+     $                        LAMBDA, X, IX, JX, DESCX, WORK, LWORK,
+     $                        IWORK, LIWORK, INFO )
 *
       IMPLICIT NONE
 *
 *     .. Scalar Arguments ..
-      INTEGER            N, IM, JM, IK, JK, IX, JX, IY, JY, LWORK, INFO
+      INTEGER            N, IM, JM, IK, JK, IX, JX, LWORK, LIWORK, INFO
 *     ..
 *     .. Array Arguments ..
-      INTEGER            DESCM( * ), DESCK( * ), DESCX( * ), DESCY( * )
-      DOUBLE PRECISION   M( * ), K( * ), LAMBDA( * ), X( * ), Y( * ),
-     $                   WORK( * )
+      INTEGER            DESCM( * ), DESCK( * ), DESCX( * ), IWORK( * )
+      DOUBLE PRECISION   M( * ), K( * ), LAMBDA( * ), X( * ), WORK( * )
 *     ..
 *
 *  Purpose
@@ -30,11 +28,28 @@
 *
 *  The matrices M and K are required to be positive definite.
 *
-*  On exit, the outputs X, Y, and lambda satisfy that
+*  The structure of H leads to the following properties.
 *
-*     Y**T * X = I,
-*     H * X = X * diag(lambda),
-*     Y**T * H = diag(lambda) * Y**T.
+*     1) H is diagonalizable with n pairs of real eigenvalues
+*        (lambda_i, -lambda_i).
+*
+*     2) The eigenvectors of H has the block structure
+*
+*           X = [ X_1, X_2;     Y = [ X_1, -X_2;
+*                 X_2, X_1 ],        -X_2,  X_1 ],
+*
+*        and satisfy that
+*
+*           X_1**T * X_2 = X_2**T * X_1,
+*           X_1**T * X_1 - X_2**T * X_2 = I,
+*           Y**T * X = I,
+*           H * X = X * diag(lambda, -lambda),
+*           Y**T * H = diag(lambda, -lambda) * Y**T.
+*
+*  On exit, only the positive eigenvalues and the corresponding right
+*  eigenvectors are returned.  The eigenvalues are sorted in ascending
+*  order.  The eigenvectors are normalized (i.e., X = [ X_1; X_2 ] with
+*  X_1**T * X_1 - X_2**T * X_2 = I).
 *
 *  M and K are destroyed on exit.
 *
@@ -139,11 +154,13 @@
 *  DESCK   (global and local input) INTEGER array of dimension DLEN_.
 *          The array descriptor for the distributed matrix K.
 *
-*  LAMBDA  (global output) DOUBLE PRECISION array, dimension (2*N)
+*  LAMBDA  (global output) DOUBLE PRECISION array, dimension (N)
+*          On normal exit LAMBDA contains the positive eigenvalues of H
+*          in ascending order.
 *
 *  X       (local output) DOUBLE PRECISION array,
-*          global dimension (2N, 2N),
-*          local dimension ( LLD_X, LOCc(JX+2*N-1) )
+*          global dimension (2N, N),
+*          local dimension ( LLD_X, LOCc(JX+N-1) )
 *          On normal exit X contains the right eigenvectors of H.
 *
 *  IX      (global input) INTEGER
@@ -160,25 +177,6 @@
 *          The array descriptor for the distributed matrix X.
 *          DESCX( CTXT_ ) must equal DESCA( CTXT_ )
 *
-*  Y       (local output) DOUBLE PRECISION array,
-*          global dimension (2N, 2N),
-*          local dimension ( LLD_Y, LOCc(JY+2*N-1) )
-*          On normal exit Y contains the left eigenvectors of H.
-*
-*  IY      (global input) INTEGER
-*          Y's global row index, which points to the beginning of the
-*          submatrix which is to be operated on.
-*          In this version, only IY = JY = 1 is supported.
-*
-*  JY      (global input) INTEGER
-*          Y's global column index, which points to the beginning of
-*          the submatrix which is to be operated on.
-*          In this version, only IY = JY = 1 is supported.
-*
-*  DESCY   (global and local input) INTEGER array of dimension DLEN_.
-*          The array descriptor for the distributed matrix Y.
-*          DESCY( CTXT_ ) must equal DESCA( CTXT_ )
-*
 *  WORK    (local workspace/output) DOUBLE PRECISION array,
 *          dimension (LWORK)
 *          On output, WORK( 1 ) returns the minimal amount of workspace
@@ -190,9 +188,24 @@
 *          The length of the workspace array WORK.
 *          If LWORK = -1, the LWORK is global input and a workspace
 *          query is assumed; the routine only calculates the minimum
-*          size for the WORK array. The required workspace is returned
-*          as the first element of WORK and no error message is issued
-*          by PXERBLA.
+*          size for the WORK/IWORK array. The required workspace is
+*          returned as the first element of WORK/IWORK and no error
+*          message is issued by PXERBLA.
+*
+*  IWORK   (local workspace/output) INTEGER array,
+*          dimension (LIWORK)
+*          On output, IWORK( 1 ) returns the minimal amount of workspace
+*          needed to guarantee completion.
+*          If the input parameters are incorrect, IWORK( 1 ) may also be
+*          incorrect.
+*
+*  LIWORK   (local input) INTEGER
+*          The length of the workspace array IWORK.
+*          If LIWORK = -1, the LIWORK is global input and a workspace
+*          query is assumed; the routine only calculates the minimum
+*          size for the WORK/IWORK array. The required workspace is
+*          returned as the first element of WORK/IWORK and no error
+*          message is issued by PXERBLA.
 *
 *  INFO    (global output) INTEGER
 *          = 0:  successful exit
@@ -205,10 +218,9 @@
 *  Alignment requirements
 *  ======================
 *
-*  This subroutine requires (M,K) and (X,Y), respectively, to be
-*  distributed identically in the sense that DESCM( : ) = DESCK( : ),
-*  DESCX( : )= DESCY( : ), and DESCM( MB_ ) = DESCX( MB_ ).
-*  In addition, square blocks ( i.e., MB_M = NB_M ) are required.
+*  This subroutine requires M and K to be distributed identically in the
+*  sense that DESCM( : ) = DESCK( : ).
+*  In addition, square blocks ( i.e., MB = NB ) are required.
 *
 *  =====================================================================
 *
@@ -226,10 +238,9 @@
       INTEGER            ICTXT, NPROCS, NPROW, NPCOL, MYROW, MYCOL, NB,
      $                   TWON, I, J, LWKOPT, LLWORK, LOCALMAT, MROWS,
      $                   MCOLS, LLDM, INDPHI, INDPSI, INDV, INDWORK,
-     $                   ITMP
+     $                   ITMP, DIMV, NZ, LIWKOPT
       DOUBLE PRECISION   DTMP
-      DOUBLE PRECISION   T_CHOL, T_FORMW, T_DIAG, T_SYM, T_VEC1, T_VEC2,
-     $                   T_PREP
+      DOUBLE PRECISION   T_CHOL, T_FORMW, T_DIAG, T_VEC1, T_VEC2, T_PREP
 *     ..
 *     .. Local Arrays ..
       INTEGER            DESCPHI( DLEN_ ), DESCPSI( DLEN_ ),
@@ -245,7 +256,7 @@
 *     ..
 *     .. External Subroutines ..
       EXTERNAL           PDAXPY, PDCOPY, PDSCAL, PDLACPY, PDPOTRF,
-     $                   PDSYEV, PDSYGST, PXERBLA, BLACS_GRIDINFO,
+     $                   PDSYEVR, PDSYGST, PXERBLA, BLACS_GRIDINFO,
      $                   CHK1MAT, PCHK2MAT
 *     ..
 *     .. Executable Statements ..
@@ -277,16 +288,9 @@
      $   CALL PCHK2MAT( N, 3, N, 3, IM, JM, DESCM, 5, N, 3, N, 3,
      $        IK, JK, DESCK, 9, 0, ITMP, ITMP, INFO )
       IF ( INFO .EQ. 0 )
-     $   CALL CHK1MAT( TWON, 3, TWON, 3, IX, JX, DESCX, 14, INFO )
+     $   CALL CHK1MAT( TWON, 3, N, 3, IX, JX, DESCX, 14, INFO )
       IF ( INFO .EQ. 0 .AND. DESCX( MB_ ) .NE. DESCX( NB_ ) )
      $   INFO = -( 1000+MB_ )
-      IF ( INFO .EQ. 0 )
-     $   CALL CHK1MAT( TWON, 3, TWON, 3, IY, JY, DESCY, 18, INFO )
-      IF ( INFO .EQ. 0 .AND. DESCY( MB_ ) .NE. DESCY( NB_ ) )
-     $   INFO = -( 1400+MB_ )
-      IF ( INFO .EQ. 0 )
-     $   CALL PCHK2MAT( TWON, 3, TWON, 3, IX, JX, DESCX, 14, TWON, 3,
-     $        TWON, 3, IY, JY, DESCY, 18, 0, ITMP, ITMP, INFO )
 *
 *     Compute required workspace.
 *
@@ -311,13 +315,19 @@
 *
 *        Estimate the workspace required by external subroutines.
 *
-         CALL PDSYEV( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, 1,
-     $        1, DESCV, WORK, -1, ITMP )
+!         CALL PDSYEV( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, 1,
+!     $        1, DESCV, WORK, -1, ITMP )
+         CALL PDSYEVR( 'V', 'A', 'L', N, DTMP, IK, JK, DESCK, ZERO,
+     $        ZERO, 1, N, DIMV, NZ, DTMP, DTMP, 1, 1, DESCV, WORK, -1,
+     $        IWORK, -1, ITMP )
          LWKOPT = INT( WORK( 1 ) )
+         LIWKOPT = IWORK( 1 )
 *
          LWKOPT = INDWORK - 1 + MAX( LWKOPT, LOCALMAT )
          IF ( .NOT. LQUERY .AND. LWORK .LT. LWKOPT )
-     $      INFO = -20
+     $      INFO = -16
+         IF ( INFO .EQ. 0 .AND. .NOT. LQUERY .AND. LIWORK .LT. LIWKOPT )
+     $      INFO = -18
       END IF
 *
       IF ( INFO .NE. 0 ) THEN
@@ -367,17 +377,19 @@
 !     $     6, WORK( INDWORK ) )
 *
 *     Diagonalization: V**T * (L**T * K * L) * V = diag(lambda).
-*     Only the positive half of the eigenpairs are computed.
 *
       T_DIAG = MPI_WTIME()
-      CALL PDSYEV( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, WORK( INDV ),
-     $     1, 1, DESCV, WORK( INDWORK ), LLWORK , ITMP )
+!      CALL PDSYEV( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, WORK( INDV ),
+!     $     1, 1, DESCV, WORK( INDWORK ), LLWORK, ITMP )
+      CALL PDSYEVR( 'V', 'A', 'L', N, K, IK, JK, DESCK, ZERO, ZERO,
+     $     1, N, DIMV, NZ, LAMBDA, WORK( INDV ), 1, 1, DESCV,
+     $     WORK( INDWORK ), LLWORK, IWORK, LIWORK, ITMP )
       T_DIAG = MPI_WTIME() - T_DIAG
       IF ( MYROW+MYCOL .EQ. 0 )
      $   WRITE( *, * ) 't_diag = ', T_DIAG, ';'
       IF ( ITMP .NE. 0 ) THEN
          INFO = ITMP
-         WRITE( *, * ), '% PDSYEV fails with INFO =', INFO
+         WRITE( *, * ), '% PDSYEVR fails with INFO =', INFO
          RETURN
       END IF
       DO I = 1, N
@@ -391,13 +403,10 @@
 !      CALL PDLAPRNT( N, N, WORK( INDV ), 1, 1, DESCV, 0, 0, 'V',
 !     $     6, WORK( INDWORK ) )
 *
-*     Recover the eigenvectors X and Y:
+*     Recover the eigenvectors:
 *
 *        X = [ ( Psi * Lambda**{1/2} + Phi * Lambda**{-1/2} ) / 2
 *              ( Psi * Lambda**{1/2} - Phi * Lambda**{-1/2} ) / 2 ]
-*
-*        Y = [ ( Psi * Lambda**{1/2} + Phi * Lambda**{-1/2} ) / 2
-*             -( Psi * Lambda**{1/2} - Phi * Lambda**{-1/2} ) / 2 ]
 *
 *     where
 *
@@ -429,7 +438,7 @@
 !      CALL PDLAPRNT( N, N, WORK( INDPSI ), 1, 1, DESCPSI, 0, 0, 'Psi',
 !     $     6, WORK( INDWORK ) )
 *
-*     Construct X and Y.
+*     Construct X.
 *
       T_VEC2 = MPI_WTIME()
       CALL PDGEADD( 'N', N, N, ONE, WORK( INDPSI ), 1, 1, DESCPSI,
@@ -440,36 +449,11 @@
      $     ONE, X, IX, JX, DESCX )
       CALL PDGEADD( 'N', N, N, -ONE, WORK( INDPHI ), 1, 1, DESCPHI,
      $     ONE, X, IX+N, JX, DESCX )
-*
-      CALL PDGEADD( 'N', N, N, ONE, X, IX, JX, DESCX, ZERO,
-     $     Y, IY, JY, DESCY )
-      CALL PDGEADD( 'N', N, N, -ONE, X, IX+N, JX, DESCX, ZERO,
-     $     Y, IY+N, JY, DESCY )
       T_VEC2 = MPI_WTIME() - T_VEC2
       IF ( MYROW+MYCOL .EQ. 0 )
      $   WRITE( *, * ) 't_vec2 = ', T_VEC2, ';'
-!      CALL PDLAPRNT( TWON, TWON, X, IX, JX, DESCX, 0, 0, 'X', 6,
+!      CALL PDLAPRNT( TWON, N, X, IX, JX, DESCX, 0, 0, 'X', 6,
 !     $     WORK( INDWORK ) )
-!      CALL PDLAPRNT( TWON, TWON, Y, IY, JY, DESCY, 0, 0, 'Y', 6,
-!     $     WORK( INDWORK ) )
-*
-*     Recover negative eigenvalues and the eigenvectors.
-*
-!      T_SYM = MPI_WTIME()
-!      DO I = 1, N
-!         LAMBDA( N+I ) = -LAMBDA( I )
-!      END DO
-!      CALL PDGEADD( 'N', N, N, ONE, X, IX, JX, DESCX, ZERO,
-!     $     X, IX+N, JX+N, DESCX )
-!      CALL PDGEADD( 'N', N, N, ONE, X, IX+N, JX, DESCX, ZERO,
-!     $     X, IX, JX+N, DESCX )
-!      CALL PDGEADD( 'N', N, N, ONE, Y, IY, JY, DESCY, ZERO,
-!     $     Y, IY+N, JY+N, DESCY )
-!      CALL PDGEADD( 'N', N, N, ONE, Y, IY+N, JY, DESCY, ZERO,
-!     $     Y, IY, JY+N, DESCY )
-!      T_SYM = MPI_WTIME() - T_SYM
-!      IF ( MYROW+MYCOL .EQ. 0 )
-!     $   WRITE( *, * ) 't_sym = ', T_SYM, ';'
 *
       WORK( 1 ) = DBLE( LWKOPT )
 *
@@ -478,4 +462,3 @@
 *     End of PDBSSOLVER1().
 *
       END
-#endif

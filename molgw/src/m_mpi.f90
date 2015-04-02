@@ -622,9 +622,9 @@ end subroutine init_scalapack
 
 
 !=========================================================================
-subroutine init_desc(nglobal,desc,mlocal,nlocal)
+subroutine init_desc(mglobal,nglobal,desc,mlocal,nlocal)
  implicit none
- integer,intent(in)  :: nglobal
+ integer,intent(in)  :: mglobal,nglobal
  integer,intent(out) :: desc(ndel),mlocal,nlocal
 !=====
  integer :: info
@@ -633,16 +633,15 @@ subroutine init_desc(nglobal,desc,mlocal,nlocal)
 #endif
 !=====
 
- desc(:)   = 0
- mlocal = nglobal
+ desc(:)= 0
+ mlocal = mglobal
  nlocal = nglobal
 #ifdef HAVE_SCALAPACK
- ! fix of nlocal bug
- mlocal = NUMROC(nglobal,block_row,iprow,first_row,nprow)
+
+ mlocal = NUMROC(mglobal,block_row,iprow,first_row,nprow)
  nlocal = NUMROC(nglobal,block_col,ipcol,first_col,npcol)
 
- ! here is the problem with nlocal
- call DESCINIT(desc,nglobal,nglobal,block_row,block_col,first_row,first_col,context_sca,mlocal,info)
+ call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,context_sca,mlocal,info)
 
  write(stdout,'(/,a,i6,a,i6,4x,i6)') ' SCALAPACK info: size of the local matrix for proc #', mlocal,' x ',nlocal,iproc_sca
 

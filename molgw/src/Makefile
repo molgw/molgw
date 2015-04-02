@@ -16,6 +16,7 @@ LIBINT_ROOT=
 include ./my_machine.arch
 
 FC_W_OPTS= $(FC) $(FCOPTS) $(OPENMP)
+CC_W_OPTS= $(CC) $(CCOPTS)
 
 LINKS= -lstdc++ -lm
 LIBXC_INCS=-I$(LIBXC_ROOT)/include
@@ -28,12 +29,12 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 
 ../molgw: m_definitions.o m_mpi.o m_elements.o m_timing.o m_warning.o m_memory.o m_tools.o m_atoms.o \
          m_gaussian.o m_basis_set.o m_inputparam.o m_scf.o m_eri.o m_spectral_function.o m_dft_grid.o m_timedependent.o gw.o dft_xc.o \
-         libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o scf_loop.o pdbssolver1.o pdbssolver1_svd.o molgw.o
+         libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o scf_loop.o pdbssolver1.o molgw.o
 	$(FC_W_OPTS) \
                         m_definitions.o m_elements.o m_mpi.o m_timing.o m_warning.o m_memory.o m_inputparam.o m_tools.o m_scf.o m_atoms.o \
                         m_gaussian.o m_basis_set.o m_eri.o m_dft_grid.o m_spectral_function.o \
                         libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o mp2_selfenergy.o \
-                        mp2.o gw.o m_timedependent.o dft_xc.o io.o hamiltonian.o scf_loop.o pdbssolver1.o pdbssolver1_svd.o \
+                        mp2.o gw.o m_timedependent.o dft_xc.o io.o hamiltonian.o scf_loop.o pdbssolver1.o  \
                         molgw.o \
                         -o ../molgw \
                         $(SCALAPACK) $(LAPACK)   \
@@ -74,17 +75,14 @@ mp2_selfenergy.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m
 pdbssolver1.o: pdbssolver1.f
 	$(FC_W_OPTS) -c pdbssolver1.f $(LIBXC_INCS)
 
-pdbssolver1_svd.o: pdbssolver1_svd.f
-	$(FC_W_OPTS) -c pdbssolver1_svd.f $(LIBXC_INCS)
-
 lebedev_quadrature.o: lebedev_quadrature.f
 	$(FC_W_OPTS) -c lebedev_quadrature.f $(LIBXC_INCS)
 
 libint_wrapper.o: libint_wrapper.c
-	$(CC) $(CCOPTS) -c libint_wrapper.c $(LIBINT_INCS)
+	$(CC_W_OPTS) -c libint_wrapper.c $(LIBINT_INCS)
 
 libint_wrapper_nounderscore.o: libint_wrapper_nounderscore.c
-	$(CC) $(CCOPTS) -c libint_wrapper_nounderscore.c $(LIBINT_INCS)
+	$(CC_W_OPTS) -c libint_wrapper_nounderscore.c $(LIBINT_INCS)
 
 m_dft_grid.o: m_definitions.f90 m_memory.f90 m_inputparam.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90
 	$(FC_W_OPTS) -c m_dft_grid.f90 $(LIBXC_INCS)
