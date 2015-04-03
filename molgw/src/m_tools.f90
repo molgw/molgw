@@ -1,7 +1,6 @@
 !=========================================================================
 module m_tools
  use m_definitions
- use m_mpi
 
  integer,save :: idum
 

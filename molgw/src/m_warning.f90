@@ -1,7 +1,6 @@
 !=========================================================================
 module m_warning
  use m_definitions
- use m_mpi
 
 
  integer,parameter          :: NWARNINGMAX=100

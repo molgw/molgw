@@ -1,7 +1,6 @@
 !=========================================================================
 module m_elements
  use m_definitions
- use m_mpi
 
 
  integer,parameter,private :: nelement_max = 54

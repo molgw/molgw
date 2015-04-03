@@ -8,7 +8,6 @@
 !=========================================================================
 program molgw
  use m_definitions
- use m_mpi
  use m_timing
  use m_warning
  use m_memory

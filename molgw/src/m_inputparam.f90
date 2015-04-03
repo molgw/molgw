@@ -1,7 +1,6 @@
 !=========================================================================
 module m_inputparam
  use m_definitions
- use m_mpi
  use m_atoms
  use m_basis_set
 #ifdef HAVE_LIBXC

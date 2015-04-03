@@ -1,7 +1,6 @@
 !=========================================================================
 subroutine mp2_energy(basis,occupation,c_matrix,energy,emp2)
  use m_definitions
- use m_mpi
  use m_basis_set
  use m_eri
  use m_inputparam,only: nspin,spin_fact

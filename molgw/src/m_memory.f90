@@ -1,7 +1,6 @@
 !=========================================================================
 module m_memory
  use m_definitions
- use m_mpi
 
  real(dp),private :: total_memory=0.0_dp     ! Total memory occupied 
                                              ! by the big arrays in Mb

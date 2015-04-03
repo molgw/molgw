@@ -137,14 +137,14 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  call build_amb_apb_common(basis%nbf,c_matrix,energy_qp,wpol_out,alpha_local,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
 
  ! Step 2
- if(is_tddft) call build_apb_tddft(basis,c_matrix,occupation,wpol_out,nmat,apb_matrix)
+ if(is_tddft) call build_apb_tddft(basis,c_matrix,occupation,wpol_out,m_apb,n_apb,apb_matrix)
 
  ! Step 3
  if(calc_type%is_bse .AND. .NOT. is_rpa) then
    if(.NOT. has_auxil_basis ) then
-     call build_amb_apb_bse(basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,nmat,amb_matrix,apb_matrix)
+     call build_amb_apb_bse(basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
    else
-     call build_amb_apb_bse_auxil(basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,nmat,amb_matrix,apb_matrix)
+     call build_amb_apb_bse_auxil(basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
    endif
    call destroy_spectral_function(wpol_static)
  endif
@@ -348,7 +348,7 @@ end subroutine build_amb_apb_common
 
 
 !=========================================================================
-subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,nmat,apb_matrix)
+subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,m_apb,n_apb,apb_matrix)
  use m_spectral_function
  use m_basis_set
  use m_dft_grid
@@ -358,11 +358,11 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,nmat,apb_matrix)
  real(dp),intent(in)                :: c_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)                :: occupation(basis%nbf,nspin)
  type(spectral_function),intent(in) :: wpol
- integer,intent(in)                 :: nmat
- real(prec_td),intent(inout)        :: apb_matrix(nmat,nmat)
+ integer,intent(in)                 :: m_apb,n_apb
+ real(prec_td),intent(inout)        :: apb_matrix(m_apb,n_apb)
 !=====
  integer              :: nspin_tddft
- integer              :: t_ij,t_kl
+ integer              :: t_ij,t_kl,t_ij_global,t_kl_global
  integer              :: istate,jstate,kstate,lstate
  integer              :: ijspin,klspin
  logical              :: require_gradient
@@ -405,15 +405,18 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,nmat,apb_matrix)
  !
  ! Set up fxc contributions to matrices (A+B)
  !
- do t_ij=1,nmat ! only resonant transition
-   istate = wpol%transition_table(1,t_ij)
-   jstate = wpol%transition_table(2,t_ij)
-   ijspin = wpol%transition_table(3,t_ij)
+ do t_kl=1,n_apb  
+   t_kl_global = colindex_local_to_global(t_kl)
+   kstate = wpol%transition_table(1,t_kl_global)
+   lstate = wpol%transition_table(2,t_kl_global)
+   klspin = wpol%transition_table(3,t_kl_global)
 
-   do t_kl=t_ij,nmat  ! use the symmetry of (A+B)
-     kstate = wpol%transition_table(1,t_kl)
-     lstate = wpol%transition_table(2,t_kl)
-     klspin = wpol%transition_table(3,t_kl)
+   do t_ij=1,m_apb 
+     t_ij_global = rowindex_local_to_global(t_ij)
+     istate = wpol%transition_table(1,t_ij_global)
+     jstate = wpol%transition_table(2,t_ij_global)
+     ijspin = wpol%transition_table(3,t_ij_global)
+
 
 
      if( nspin_tddft == 1 ) then
@@ -479,8 +482,9 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,nmat,apb_matrix)
 
 
        
-     else ! triplet case
+     else ! not triplet case
 
+       stop'NOT WORKING YET'
        xctmp = SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
                           * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
                           * ( v2rho2(:,1) - v2rho2(:,2) ) )
@@ -514,8 +518,6 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,nmat,apb_matrix)
 
      ! The factor two accounts for (A+B), and not A or B.
      apb_matrix(t_ij,t_kl) = apb_matrix(t_ij,t_kl) + 2.0_dp * xctmp
-     ! use the symmetry of (A+B)
-     if( t_ij /= t_kl ) apb_matrix(t_kl,t_ij) = apb_matrix(t_kl,t_ij) + 2.0_dp * xctmp
 
    enddo
  enddo
@@ -541,7 +543,7 @@ end subroutine build_apb_tddft
 
 
 !=========================================================================
-subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_matrix,apb_matrix)
+subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
  use m_spectral_function
  use m_basis_set
  use m_eri
@@ -552,10 +554,10 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
  type(basis_set),intent(in)         :: prod_basis
  real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
  type(spectral_function),intent(in) :: wpol,wpol_static
- integer,intent(in)                 :: nmat
- real(prec_td),intent(out)          :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
+ integer,intent(in)                 :: m_apb,n_apb
+ real(prec_td),intent(out)          :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
 !=====
- integer              :: t_ij,t_kl
+ integer              :: t_ij,t_kl,t_ij_global,t_kl_global
  integer              :: istate,jstate,kstate,lstate
  integer              :: ijspin,klspin
  integer              :: kbf
@@ -577,16 +579,19 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
  !
  ! Set up -W contributions to matrices (A+B) and (A-B)
  !
- do t_ij=1,nmat ! only resonant transition
-   istate = wpol%transition_table(1,t_ij)
-   jstate = wpol%transition_table(2,t_ij)
-   ijspin = wpol%transition_table(3,t_ij)
+ do t_kl=1,n_apb
+   t_kl_global = colindex_local_to_global(t_kl)
+   kstate = wpol%transition_table(1,t_kl_global)
+   lstate = wpol%transition_table(2,t_kl_global)
+   klspin = wpol%transition_table(3,t_kl_global)
+
+   do t_ij=1,m_apb
+     t_ij_global = rowindex_local_to_global(t_ij)
+     istate = wpol%transition_table(1,t_ij_global)
+     jstate = wpol%transition_table(2,t_ij_global)
+     ijspin = wpol%transition_table(3,t_ij_global)
 
 
-   do t_kl=t_ij,nmat ! only resonant transition
-     kstate = wpol%transition_table(1,t_kl)
-     lstate = wpol%transition_table(2,t_kl)
-     klspin = wpol%transition_table(3,t_kl)
 
      if(ijspin/=klspin) cycle
 
@@ -598,10 +603,6 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
      wtmp =  SUM( 2.0_dp * bra(:)*ket(:)/(-wpol_static%pole(:)) )   ! Factor two comes from Resonant and Anti-resonant transitions
      apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
      amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) - wtmp
-     if( t_ij/=t_kl) then
-       apb_matrix(t_kl,t_ij) =  apb_matrix(t_kl,t_ij) - wtmp
-       amb_matrix(t_kl,t_ij) =  amb_matrix(t_kl,t_ij) - wtmp
-     endif
 
      kbf = prod_basis%index_prodbasis(istate,lstate)+prod_basis%nbf*(ijspin-1)
      bra(:) = wpol_static%residu_left(kbf,:)
@@ -611,10 +612,6 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_m
      wtmp =  SUM( 2.0_dp * bra(:)*ket(:)/(-wpol_static%pole(:)) )   ! Factor two comes from Resonant and Anti-resonant transitions
      apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
      amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) + wtmp
-     if( t_ij/=t_kl) then
-       apb_matrix(t_kl,t_ij) =  apb_matrix(t_kl,t_ij) - wtmp
-       amb_matrix(t_kl,t_ij) =  amb_matrix(t_kl,t_ij) + wtmp
-     endif
 
 
    enddo
@@ -631,7 +628,7 @@ end subroutine build_amb_apb_bse
 
 
 !=========================================================================
-subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat,amb_matrix,apb_matrix)
+subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
  use m_spectral_function
  use m_basis_set
  use m_eri
@@ -642,12 +639,12 @@ subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat
  type(basis_set),intent(in)         :: prod_basis
  real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
  type(spectral_function),intent(in) :: wpol,wpol_static
- integer,intent(in)                 :: nmat
- real(prec_td),intent(out)          :: amb_matrix(nmat,nmat),apb_matrix(nmat,nmat)
+ integer,intent(in)                 :: m_apb,n_apb
+ real(prec_td),intent(out)          :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
 !=====
- integer              :: t_ij,t_kl
+ integer              :: t_ij,t_kl,t_ij_global,t_kl_global
  integer              :: istate,jstate,kstate,lstate
- integer              :: istate_prev,jstate_prev
+ integer              :: kstate_prev
  integer              :: ijspin,klspin
  integer              :: kbf
  real(dp),allocatable :: bra(:),ket(:)
@@ -657,7 +654,7 @@ subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat
  integer              :: ipole,nbf_auxil,ibf_auxil,jbf_auxil
  real(dp),allocatable :: vsqrt_chi_vsqrt(:,:),matrix_sqrt(:,:)
  real(dp),allocatable :: residu_tmp(:,:)
- real(dp),allocatable :: wp0_sqrt_i(:,:),wp0_sqrt_j(:,:)
+ real(dp),allocatable :: wp0_sqrt_k(:,:),wp0_sqrt_l(:,:)
  real(dp),allocatable :: eigval(:)
 !=====
 
@@ -693,34 +690,36 @@ subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat
 
  deallocate(vsqrt_chi_vsqrt)
  
- allocate(wp0_sqrt_i(nbf_auxil,ncore_W+1:nvirtual_W-1))
- allocate(wp0_sqrt_j(nbf_auxil,ncore_W+1:nvirtual_W-1))
+ allocate(wp0_sqrt_k(nbf_auxil,ncore_W+1:nvirtual_W-1))
+ allocate(wp0_sqrt_l(nbf_auxil,ncore_W+1:nvirtual_W-1))
 
 
 
- istate = 0
+ kstate = 0
  ! Set up -W contributions to matrices (A+B) and (A-B)
  !
- do t_ij=1,nmat ! only resonant transition
-   istate_prev = istate
-   istate = wpol%transition_table(1,t_ij)
-   jstate = wpol%transition_table(2,t_ij)
-   ijspin = wpol%transition_table(3,t_ij)
+ do t_kl=1,n_apb
+   t_kl_global = colindex_local_to_global(t_kl)
+   kstate = wpol%transition_table(1,t_kl_global)
+   lstate = wpol%transition_table(2,t_kl_global)
+   klspin = wpol%transition_table(3,t_kl_global)
 
-   if( istate /= istate_prev ) then 
-     wp0_sqrt_i(:,:) = MATMUL( matrix_sqrt(:,:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,istate,ijspin) )
+   if( kstate /= kstate_prev ) then 
+     wp0_sqrt_k(:,:) = MATMUL( matrix_sqrt(:,:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,kstate,klspin) )
    endif
-   wp0_sqrt_j(:,:) = MATMUL( matrix_sqrt(:,:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,ijspin) )
+   wp0_sqrt_l(:,:) = MATMUL( matrix_sqrt(:,:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,lstate,klspin) )
 
 
-   do t_kl=t_ij,nmat ! only resonant transition
-     kstate = wpol%transition_table(1,t_kl)
-     lstate = wpol%transition_table(2,t_kl)
-     klspin = wpol%transition_table(3,t_kl)
+   do t_ij=1,m_apb
+     t_ij_global = rowindex_local_to_global(t_ij)
+     istate = wpol%transition_table(1,t_ij_global)
+     jstate = wpol%transition_table(2,t_ij_global)
+     ijspin = wpol%transition_table(3,t_ij_global)
+
 
      if(ijspin/=klspin) cycle
 
-     wtmp = -DOT_PRODUCT( wp0_sqrt_i(:,kstate) , wp0_sqrt_j(:,lstate) )
+     wtmp = -DOT_PRODUCT( wp0_sqrt_k(:,istate) , wp0_sqrt_l(:,jstate) )
 
      apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
      amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) - wtmp
@@ -729,7 +728,7 @@ subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat
        amb_matrix(t_kl,t_ij) =  amb_matrix(t_kl,t_ij) - wtmp
      endif
 
-     wtmp = -DOT_PRODUCT( wp0_sqrt_i(:,lstate) , wp0_sqrt_j(:,kstate) )
+     wtmp = -DOT_PRODUCT( wp0_sqrt_l(:,istate) , wp0_sqrt_k(:,jstate) )
 
      apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
      amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) + wtmp
@@ -744,8 +743,8 @@ subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,nmat
  enddo
 
  deallocate(matrix_sqrt)
- deallocate(wp0_sqrt_i)
- deallocate(wp0_sqrt_j)
+ deallocate(wp0_sqrt_k)
+ deallocate(wp0_sqrt_l)
 
 
  call stop_clock(timing_build_bse)
@@ -916,6 +915,7 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
  call clean_deallocate('A-B',amb_matrix)
 
  ! Transform eigenvector into (X,Y)
+ ! TODO bigX and bigY have not been SCALAPACK-distributed
  write(stdout,*) 'Allocate eigenvector arrays'
  call clean_allocate('X',bigx,nmat,nmat)
  call clean_allocate('Y',bigy,nmat,nmat)

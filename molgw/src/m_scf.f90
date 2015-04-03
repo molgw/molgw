@@ -1,7 +1,6 @@
 !=========================================================================
 module m_scf
  use m_definitions
- use m_mpi
  use m_inputparam
 
 

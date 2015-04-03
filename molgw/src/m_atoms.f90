@@ -1,7 +1,6 @@
 !=========================================================================
 module m_atoms
  use m_definitions
- use m_mpi
  use m_elements
 
  real(dp),parameter,private     :: tol_geom=1.0e-5_dp

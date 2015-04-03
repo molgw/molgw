@@ -1,7 +1,6 @@
 !=========================================================================
 module m_timing
  use m_definitions
- use m_mpi
 
 
  integer,parameter :: timing_total             = 90

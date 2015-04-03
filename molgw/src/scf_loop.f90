@@ -5,7 +5,6 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
                     hamiltonian_exx,hamiltonian_xc,&
                     occupation,energy)
  use m_definitions
- use m_mpi
  use m_timing
  use m_warning
  use m_inputparam
