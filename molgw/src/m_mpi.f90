@@ -86,6 +86,7 @@ subroutine init_mpi()
 
  if( rank /= ioproc ) then
    close(stdout)
+   open(unit=stdout,file='/dev/null')
  endif
 
 #ifdef HAVE_MPI
