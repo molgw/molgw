@@ -228,7 +228,7 @@ subroutine write_spectral_function(sf)
    endif
  enddo
 
- if( is_iomaster() ) then
+ if( is_iomaster ) then
    open(newunit=wfile,file='SCREENED_COULOMB',form='unformatted')
 
    if(.NOT. file_exists) then

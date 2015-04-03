@@ -243,7 +243,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
  case(G0W0) !==========================================================
 
-   if(print_sigma_ .AND. is_iomaster() ) then
+   if(print_sigma_ .AND. is_iomaster ) then
 
      do astate=1,basis%nbf
        write(ctmp,'(i3.3)') astate

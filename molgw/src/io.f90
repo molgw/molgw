@@ -434,7 +434,7 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
  integer                    :: icubefile
 !=====
 
- if( .NOT. is_iomaster() ) return
+ if( .NOT. is_iomaster ) return
 
  write(stdout,*) 
  write(stdout,*) 'Plotting some selected wavefunctions in a cube file'

@@ -187,7 +187,7 @@ subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_m
 
  if(method==perturbative) then
 
-   if(file_exists .AND. is_iomaster() ) then
+   if(file_exists .AND. is_iomaster ) then
      do astate=1,MIN(2,basis%nbf)
        write(ctmp,'(i3.3)') astate
        open(newunit=selfenergyfile,file='selfenergy_omega_state'//TRIM(ctmp))

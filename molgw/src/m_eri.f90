@@ -2894,7 +2894,7 @@ subroutine dump_out_eri(rcut)
  write(stdout,*) 'Dump out the ERI into file'
  write(stdout,*) 'Size of file [bytes]',REAL(nsize,dp)*prec_eri
 
- if( is_iomaster() ) then
+ if( is_iomaster ) then
    open(newunit=erifile,file=TRIM(filename),form='unformatted')
    write(erifile) nsize
    write(erifile) rcut

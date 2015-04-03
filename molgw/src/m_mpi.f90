@@ -17,7 +17,8 @@ module m_mpi
 
  integer,protected :: nproc  = 1
  integer,protected :: rank   = 0
- integer,protected :: ioproc = 0
+ integer,private   :: iomaster = 0
+ logical,protected :: is_iomaster = .TRUE.
 
  integer,private :: mpi_comm
 
@@ -84,7 +85,8 @@ subroutine init_mpi()
  call get_size()
  call get_rank()
 
- if( rank /= ioproc ) then
+ if( rank /= iomaster ) then
+   is_iomaster = .FALSE.
    close(stdout)
    open(unit=stdout,file='/dev/null')
  endif
@@ -92,7 +94,7 @@ subroutine init_mpi()
 #ifdef HAVE_MPI
   write(stdout,'(/,a)')      ' ==== MPI info'
   write(stdout,'(a50,x,i6)') 'Number of proc:',nproc
-  write(stdout,'(a50,x,i6)') 'Master proc is:',ioproc
+  write(stdout,'(a50,x,i6)') 'Master proc is:',iomaster
   write(stdout,'(a50,6x,l1)') 'Parallelize Coulomb integrals:',parallel_integral
   write(stdout,'(a50,6x,l1)') 'Parallelize XC grid points   :',parallel_grid
   write(stdout,'(a50,6x,l1)') 'Use SCALAPACK                :',parallel_scalapack
@@ -248,17 +250,6 @@ function is_my_fast_task(itask)
  is_my_fast_task = ( rank == task_fast_proc(itask) )
  
 end function is_my_fast_task
-
-
-!=========================================================================
-function is_iomaster()
- implicit none
- logical            :: is_iomaster
-!=====
- 
- is_iomaster = ( rank == ioproc )
- 
-end function is_iomaster
 
 
 !=========================================================================

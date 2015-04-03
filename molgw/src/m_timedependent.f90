@@ -1197,7 +1197,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
    write(stdout,'(3(4x,f12.6))') static_polarizability(idir,:)
  enddo
 
- if( is_iomaster() ) then
+ if( is_iomaster ) then
 
    open(newunit=dynpolfile,file='dynamical_dipole_polarizability.dat',form='formatted')
    open(newunit=photocrossfile,file='photoabsorption_cross_section.dat',form='formatted')
