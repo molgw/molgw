@@ -594,7 +594,7 @@ subroutine init_scalapack()
  call BLACS_GET( -1, 0, context_sca )
 
  ! Set nprow, npcol
-#if 1
+#if 0
  ! squared division of tasks
  nprow=0
  do while((nprow+1)**2<=nproc_sca)
@@ -603,8 +603,9 @@ subroutine init_scalapack()
  npcol = nprow
 #else
  ! row-only division of tasks
- nprow = nproc_sca
- npcol = 1
+ nprow = 1
+ npcol = nproc_sca
+! npcol = 1
 #endif
  call BLACS_GRIDINIT( context_sca, 'R', nprow, npcol )
 
@@ -645,7 +646,7 @@ subroutine init_desc(mglobal,nglobal,desc,mlocal,nlocal)
 
  write(stdout,'(/,a,i6,a,i6,4x,i6)') ' SCALAPACK info: size of the local matrix for proc #', mlocal,' x ',nlocal,iproc_sca
 
- call BLACS_BARRIER(context_sca,'All')
+! call BLACS_BARRIER(context_sca,'All')
 
 #endif
 
