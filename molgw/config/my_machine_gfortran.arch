@@ -1,6 +1,11 @@
 OPENMP= 
 
+# Sequential compilation
 FC=gfortran -cpp -ffree-line-length-none -DHAVE_LIBXC   # -DTD_SP
+
+# Parallel MPI SCALAPACK compilation
+#FC=mpif90 -cpp -ffree-line-length-none -DHAVE_LIBXC -DHAVE_MPI  -DHAVE_SCALAPACK # -DTD_SP
+
 
 CC=gcc
 FCOPTS= -O2 # -O0 -g -check all -traceback 

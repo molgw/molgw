@@ -1,6 +1,10 @@
 OPENMP= #-openmp
 
+# Sequential compilation
 FC=ifort -fpp -DHAVE_LIBXC   # -DTD_SP
+
+# Parallel MPI SCALAPACK compilation
+#FC=mpif90 -fpp -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK   # -DTD_SP
 
 CC=icc
 FCOPTS= -O3 -xhost -parallel -opt-matmul -mkl=parallel  #   -g -check all -traceback
@@ -8,7 +12,7 @@ CCOPTS= -O3 -xhost
 
 LAPACK=
 
-#SCALAPACK=-L{MKLROOT}/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -lpthread -lm
+SCALAPACK= # -L{MKLROOT}/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -lpthread -lm
 
 LIBXC_ROOT=${HOME}/src/libxc-2.2.0_ifort/
 
