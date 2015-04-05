@@ -1,3 +1,4 @@
+#ifdef HAVE_SCALAPACK
       SUBROUTINE PDBSSOLVER1( N, M, IM, JM, DESCM, K, IK, JK, DESCK,
      $                        LAMBDA, X, IX, JX, DESCX, WORK, LWORK,
      $                        IWORK, LIWORK, INFO )
@@ -462,3 +463,4 @@
 *     End of PDBSSOLVER1().
 *
       END
+#endif

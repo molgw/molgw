@@ -40,7 +40,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  integer                   :: tdhffile
  integer                   :: m_apb,n_apb
 ! Scalapack variables
- integer  :: desc_apb(ndel),desc_amb(ndel)
+ integer                   :: desc_apb(ndel)
 !=====
 
  call start_clock(timing_pola)
@@ -119,7 +119,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  nmat = wpol_out%npole_reso
 #ifdef HAVE_SCALAPACK
  ! The distribution of the two matrices have to be the same for A-B and A+B
- call init_desc(nmat,nmat,desc_apb,m_apb,n_apb)
+ call init_desc('C',nmat,nmat,desc_apb,m_apb,n_apb)
 #else
  m_apb = nmat
  n_apb = nmat
@@ -274,7 +274,7 @@ subroutine build_amb_apb_common(nbf,c_matrix,energy,wpol,alpha_local,m_apb,n_apb
  ! Set up energy+hartree+exchange contributions to matrices (A+B) and (A-B) 
  !
  do t_kl=1,n_apb
-   t_kl_global = colindex_local_to_global(t_kl)
+   t_kl_global = colindex_local_to_global('C',t_kl)
    kstate = wpol%transition_table(1,t_kl_global)
    lstate = wpol%transition_table(2,t_kl_global)
    klspin = wpol%transition_table(3,t_kl_global)
@@ -286,7 +286,7 @@ subroutine build_amb_apb_common(nbf,c_matrix,energy,wpol,alpha_local,m_apb,n_apb
    endif
 
    do t_ij=1,m_apb
-     t_ij_global = rowindex_local_to_global(t_ij)
+     t_ij_global = rowindex_local_to_global('C',t_ij)
      istate = wpol%transition_table(1,t_ij_global)
      jstate = wpol%transition_table(2,t_ij_global)
      ijspin = wpol%transition_table(3,t_ij_global)
@@ -406,13 +406,13 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,m_apb,n_apb,apb_matrix
  ! Set up fxc contributions to matrices (A+B)
  !
  do t_kl=1,n_apb  
-   t_kl_global = colindex_local_to_global(t_kl)
+   t_kl_global = colindex_local_to_global('C',t_kl)
    kstate = wpol%transition_table(1,t_kl_global)
    lstate = wpol%transition_table(2,t_kl_global)
    klspin = wpol%transition_table(3,t_kl_global)
 
    do t_ij=1,m_apb 
-     t_ij_global = rowindex_local_to_global(t_ij)
+     t_ij_global = rowindex_local_to_global('C',t_ij)
      istate = wpol%transition_table(1,t_ij_global)
      jstate = wpol%transition_table(2,t_ij_global)
      ijspin = wpol%transition_table(3,t_ij_global)
@@ -482,9 +482,8 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,m_apb,n_apb,apb_matrix
 
 
        
-     else ! not triplet case
+     else ! triplet case
 
-       stop'NOT WORKING YET'
        xctmp = SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
                           * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
                           * ( v2rho2(:,1) - v2rho2(:,2) ) )
@@ -580,13 +579,13 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,m_apb,n_ap
  ! Set up -W contributions to matrices (A+B) and (A-B)
  !
  do t_kl=1,n_apb
-   t_kl_global = colindex_local_to_global(t_kl)
+   t_kl_global = colindex_local_to_global('C',t_kl)
    kstate = wpol%transition_table(1,t_kl_global)
    lstate = wpol%transition_table(2,t_kl_global)
    klspin = wpol%transition_table(3,t_kl_global)
 
    do t_ij=1,m_apb
-     t_ij_global = rowindex_local_to_global(t_ij)
+     t_ij_global = rowindex_local_to_global('C',t_ij)
      istate = wpol%transition_table(1,t_ij_global)
      jstate = wpol%transition_table(2,t_ij_global)
      ijspin = wpol%transition_table(3,t_ij_global)
@@ -699,7 +698,7 @@ subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,m_ap
  ! Set up -W contributions to matrices (A+B) and (A-B)
  !
  do t_kl=1,n_apb
-   t_kl_global = colindex_local_to_global(t_kl)
+   t_kl_global = colindex_local_to_global('C',t_kl)
    kstate = wpol%transition_table(1,t_kl_global)
    lstate = wpol%transition_table(2,t_kl_global)
    klspin = wpol%transition_table(3,t_kl_global)
@@ -711,7 +710,7 @@ subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,m_ap
 
 
    do t_ij=1,m_apb
-     t_ij_global = rowindex_local_to_global(t_ij)
+     t_ij_global = rowindex_local_to_global('C',t_ij)
      istate = wpol%transition_table(1,t_ij_global)
      jstate = wpol%transition_table(2,t_ij_global)
      ijspin = wpol%transition_table(3,t_ij_global)
@@ -858,8 +857,8 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
  real(dp),allocatable,intent(out)   :: bigx(:,:)
  real(dp),allocatable,intent(out)   :: bigy(:,:)
 !=====
- integer  :: descm(ndel),desck(ndel)
- integer  :: descx(ndel)
+ integer  :: desc_apb(ndel),desc_amb(ndel)
+ integer  :: desc_ev(ndel)
  integer  :: m_apb,n_apb,m_ev,n_ev
  integer  :: t_ij,t_kl,t_ij_global,t_kl_global
  integer  :: info
@@ -873,9 +872,9 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
  call start_clock(timing_diago_h2p)
 
  ! First allocate eigenvector
- call init_desc(nmat,nmat,descm,m_apb,n_apb)
- desck(:) = descm(:)
- call init_desc(2*nmat,nmat,descx,m_ev,n_ev)
+ call init_desc('C',nmat,nmat,desc_apb,m_apb,n_apb)
+ desc_amb(:) = desc_apb(:)
+ call init_desc('C',2*nmat,nmat,desc_ev,m_ev,n_ev)
 
  write(stdout,*) 'Allocate eigenvector array'
  call clean_allocate('eigenvector',eigenvector,m_ev,n_ev)
@@ -887,8 +886,8 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
  allocate(iwork(1))
  lwork=-1
  liwork=-1
- call pdbssolver1(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,    &
-                  eigenvalue,eigenvector,1,1,descx,                  &
+ call pdbssolver1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_amb,    &
+                  eigenvalue,eigenvector,1,1,desc_ev,                      &
                   work,lwork,iwork,liwork,info)
  if(info/=0) stop'SCALAPACK failed'
 
@@ -900,9 +899,9 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
  deallocate(iwork)
  allocate(iwork(liwork))
 
- call pdbssolver1(nmat,apb_matrix,1,1,descm,amb_matrix,1,1,desck,    &
-                  eigenvalue,eigenvector,1,1,descx,                  &
-                  work,lwork,iwork,liwork,info )
+ call pdbssolver1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_amb,    &
+                  eigenvalue,eigenvector,1,1,desc_ev,                      &
+                  work,lwork,iwork,liwork,info)
  if(info/=0) stop'SCALAPACK failed'
 
  deallocate(work)
@@ -926,9 +925,9 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
  bigx(:,:) = 0.0_dp
  bigy(:,:) = 0.0_dp
  do t_kl=1,n_ev
-   t_kl_global = colindex_local_to_global(t_kl)
+   t_kl_global = colindex_local_to_global('C',t_kl)
    do t_ij=1,m_ev
-     t_ij_global = rowindex_local_to_global(t_ij)
+     t_ij_global = rowindex_local_to_global('C',t_ij)
      if( t_ij_global <= nmat) then
        bigx(t_ij_global,t_kl_global) = eigenvector(t_ij,t_kl)
      else
@@ -1260,7 +1259,7 @@ subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2r
  real(dp) :: rhor_r(nspin)
  real(dp) :: grad_rhor(3,nspin)
  real(dp) :: p_matrix(basis%nbf,basis%nbf,nspin)
- real(dp)       :: max_v2sigma2
+ real(dp) :: max_v2sigma2
  logical  :: require_gradient
  character(len=256) :: string
 #ifdef HAVE_LIBXC

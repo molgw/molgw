@@ -50,23 +50,23 @@ subroutine setup_dft_grid()
 !=====
 
  select case(grid_level)
- case(10)       ! accuracy not guaranted, just for quick test runs
+ case(low)       ! accuracy not guaranted, just for quick test runs
    nradial         =  25
    nangular_fine   =  26
    nangular_coarse =   6
- case(20)    ! 10 meV accuracy on potentials
+ case(medium)    ! 10 meV accuracy on potentials
    nradial         =  40
    nangular_fine   =  50
    nangular_coarse =  14
- case(30)      !  1 meV accuracy on potentials
+ case(high)      !  1 meV accuracy on potentials
    nradial         =  60
    nangular_fine   = 110
    nangular_coarse =  38
- case(40) ! almost perfect potentials
+ case(very_high) ! almost perfect potentials
    nradial         =  70
    nangular_fine   = 230
    nangular_coarse =  50
- case(50)    ! overdoing a lot
+ case(insane)    ! overdoing a lot
    nradial         = 200
    nangular_fine   = 434
    nangular_coarse = 434

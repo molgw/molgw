@@ -14,6 +14,7 @@ module m_definitions
 
  integer,parameter  :: stdout = OUTPUT_UNIT
 
+
  !
  ! Physical constants
  ! Values from NIST CODATA 2010
@@ -29,8 +30,18 @@ module m_definitions
  complex(dp),parameter :: im    =(0.0_dp,1.0_dp)
 
 
+ ! 
+ ! Thresholds
  real(dp),parameter :: completely_empty=1.0e-5_dp
 
+
+ !
+ ! Quality levels used of grids and Coulomb integrals
+ integer,parameter :: low       = 10
+ integer,parameter :: medium    = 20
+ integer,parameter :: high      = 30
+ integer,parameter :: very_high = 40
+ integer,parameter :: insane    = 50
 
 end module m_definitions
 !=========================================================================

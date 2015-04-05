@@ -608,15 +608,15 @@ function interpret_quality(quality) result(quality_level)
 
  select case(TRIM(quality))
  case('LOW','L')
-   quality_level = 10
+   quality_level = low
  case('MEDIUM','MED','M')
-   quality_level = 20
+   quality_level = medium
  case('HIGH','HI','H')
-   quality_level = 30
+   quality_level = high
  case('VERY HIGH','VERYHIGH','VH')
-   quality_level = 40
+   quality_level = very_high
  case('INSANE','I')
-   quality_level = 50
+   quality_level = insane
  end select
 
 

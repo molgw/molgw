@@ -6,7 +6,7 @@ module m_mpi
 #endif
 
 
- logical,parameter :: parallel_grid      = .TRUE.
+ logical,parameter :: parallel_grid      = .FALSE.
  logical,parameter :: parallel_integral  = .FALSE.
 #ifdef HAVE_SCALAPACK
  logical,parameter :: parallel_scalapack = .TRUE.
@@ -49,24 +49,42 @@ module m_mpi
  !
  ! SCALAPACK variables
  !
+ integer,parameter :: ndel=9
+ integer,parameter :: block_col = 64
+ integer,parameter :: block_row = 64
+ integer,parameter :: first_row = 0
+ integer,parameter :: first_col = 0
+
  integer,protected :: nproc_sca = 1
  integer,protected :: iproc_sca = 0
- ! SCALAPACK grid
- integer,protected :: nprow,npcol
- integer,protected :: iprow,ipcol
-#ifdef HAVE_SCALAPACK
- integer,parameter :: ndel=9
- integer :: context_sca
- integer :: block_col = 64
- integer :: block_row = 64
- integer :: first_row = 0
- integer :: first_col = 0
-#else
- integer,parameter :: ndel=1
-#endif
 
+ ! SCALAPACK grid: square distribution
+ integer,protected :: cntxt_sd
+ integer,protected :: nprow_sd
+ integer,protected :: npcol_sd
+ integer,protected :: iprow_sd
+ integer,protected :: ipcol_sd
 
+ ! SCALAPACK grid: row distribution
+ integer,protected :: cntxt_rd
+ integer,protected :: nprow_rd
+ integer,protected :: npcol_rd
+ integer,protected :: iprow_rd
+ integer,protected :: ipcol_rd
 
+ ! SCALAPACK grid: column distribution
+ integer,protected :: cntxt_cd
+ integer,protected :: nprow_cd
+ integer,protected :: npcol_cd
+ integer,protected :: iprow_cd
+ integer,protected :: ipcol_cd
+
+ ! SCALAPACK grid: no distribution
+ integer,protected :: cntxt_nd
+ integer,protected :: nprow_nd
+ integer,protected :: npcol_nd
+ integer,protected :: iprow_nd
+ integer,protected :: ipcol_nd
 
 contains
 
@@ -582,31 +600,50 @@ subroutine init_scalapack()
  ! Get iproc_sca and nproc_sca
  call BLACS_PINFO( iproc_sca, nproc_sca )
  
- ! Get context_sca
- call BLACS_GET( -1, 0, context_sca )
-
  ! Set nprow, npcol
-#if 0
- ! squared division of tasks
- nprow=0
- do while((nprow+1)**2<=nproc_sca)
-   nprow=nprow+1
- end do
- npcol = nprow
-#else
- ! row-only division of tasks
- nprow = 1
- npcol = nproc_sca
-! npcol = 1
-#endif
- call BLACS_GRIDINIT( context_sca, 'R', nprow, npcol )
 
- ! Get iprow, ipcol
- call BLACS_GRIDINFO( context_sca, nprow, npcol, iprow, ipcol )
+ ! Squared division of tasks
+ nprow_sd=0
+ do while((nprow_sd+1)**2<=nproc_sca)
+   nprow_sd=nprow_sd+1
+ end do
+ npcol_sd = nprow_sd
+ call BLACS_GET( -1, 0, cntxt_sd )
+ call BLACS_GRIDINIT( cntxt_sd, 'R', nprow_sd, npcol_sd )
+ call BLACS_GRIDINFO( cntxt_sd, nprow_sd, npcol_sd, iprow_sd, ipcol_sd )
+
+ ! Row-only division of tasks
+ nprow_rd = nproc_sca
+ npcol_rd = 1
+ call BLACS_GET( -1, 0, cntxt_rd )
+ call BLACS_GRIDINIT( cntxt_rd, 'R', nprow_rd, npcol_rd )
+ call BLACS_GRIDINFO( cntxt_rd, nprow_rd, npcol_rd, iprow_rd, ipcol_rd )
+
+ ! Column-only division of tasks
+ nprow_cd = 1
+ npcol_cd = nproc_sca 
+ call BLACS_GET( -1, 0, cntxt_cd )
+ call BLACS_GRIDINIT( cntxt_cd, 'R', nprow_cd, npcol_cd )
+ call BLACS_GRIDINFO( cntxt_cd, nprow_cd, npcol_cd, iprow_cd, ipcol_cd )
+
+ ! No division of tasks
+ nprow_nd = 1
+ npcol_nd = 1
+ call BLACS_GET( -1, 0, cntxt_nd )
+ call BLACS_GRIDINIT( cntxt_nd, 'R', nprow_nd, npcol_nd )
+ call BLACS_GRIDINFO( cntxt_nd, nprow_nd, npcol_nd, iprow_nd, ipcol_nd )
+
 
  write(stdout,'(/,a)')           ' ==== SCALAPACK info'
- write(stdout,'(a50,x,i8)')      'Number of proc:',nprow*npcol
- write(stdout,'(a50,x,i8,x,i8)') 'Grid of procs:',nprow,npcol
+ write(stdout,'(a)')             '   Squared distribution'
+ write(stdout,'(a50,x,i8)')      'Number of proc:',nprow_sd*npcol_sd
+ write(stdout,'(a50,x,i8,x,i8)') 'Grid of procs:',nprow_sd,npcol_sd
+ write(stdout,'(a)')             '       Row distribution'
+ write(stdout,'(a50,x,i8)')      'Number of proc:',nprow_rd*npcol_rd
+ write(stdout,'(a50,x,i8,x,i8)') 'Grid of procs:',nprow_rd,npcol_rd
+ write(stdout,'(a)')             '    Column distribution'
+ write(stdout,'(a50,x,i8)')      'Number of proc:',nprow_cd*npcol_cd
+ write(stdout,'(a50,x,i8,x,i8)') 'Grid of procs:',nprow_cd,npcol_cd
  write(stdout,'(/)')
  
 #endif
@@ -615,10 +652,11 @@ end subroutine init_scalapack
 
 
 !=========================================================================
-subroutine init_desc(mglobal,nglobal,desc,mlocal,nlocal)
+subroutine init_desc(distribution,mglobal,nglobal,desc,mlocal,nlocal)
  implicit none
- integer,intent(in)  :: mglobal,nglobal
- integer,intent(out) :: desc(ndel),mlocal,nlocal
+ character(len=1),intent(in) :: distribution
+ integer,intent(in)          :: mglobal,nglobal
+ integer,intent(out)         :: desc(ndel),mlocal,nlocal
 !=====
  integer :: info
 #ifdef HAVE_SCALAPACK
@@ -626,20 +664,35 @@ subroutine init_desc(mglobal,nglobal,desc,mlocal,nlocal)
 #endif
 !=====
 
- desc(:)= 0
- mlocal = mglobal
- nlocal = nglobal
 #ifdef HAVE_SCALAPACK
-
- mlocal = NUMROC(mglobal,block_row,iprow,first_row,nprow)
- nlocal = NUMROC(nglobal,block_col,ipcol,first_col,npcol)
-
- call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,context_sca,mlocal,info)
+ select case(distribution)
+ case('S')
+   mlocal = NUMROC(mglobal,block_row,iprow_sd,first_row,nprow_sd)
+   nlocal = NUMROC(nglobal,block_col,ipcol_sd,first_col,npcol_sd)
+   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_sd,mlocal,info)
+ case('R')
+   mlocal = NUMROC(mglobal,block_row,iprow_rd,first_row,nprow_rd)
+   nlocal = NUMROC(nglobal,block_col,ipcol_rd,first_col,npcol_rd)
+   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_rd,mlocal,info)
+ case('C')
+   mlocal = NUMROC(mglobal,block_row,iprow_cd,first_row,nprow_cd)
+   nlocal = NUMROC(nglobal,block_col,ipcol_cd,first_col,npcol_cd)
+   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_cd,mlocal,info)
+ case('N')
+   mlocal = NUMROC(mglobal,block_row,iprow_nd,first_row,nprow_nd)
+   nlocal = NUMROC(nglobal,block_col,ipcol_nd,first_col,npcol_nd)
+ case default
+   write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
+   stop'BUG'
+ end select
 
  write(stdout,'(/,a,i6,a,i6,4x,i6)') ' SCALAPACK info: size of the local matrix for proc #', mlocal,' x ',nlocal,iproc_sca
 
-! call BLACS_BARRIER(context_sca,'All')
 
+#else
+ desc(:)= 0
+ mlocal = mglobal
+ nlocal = nglobal
 #endif
 
 end subroutine init_desc
@@ -647,20 +700,20 @@ end subroutine init_desc
 
 
 !=========================================================================
-subroutine sum_sca(real_number)
+subroutine sum_sca_sd(real_number)
  implicit none
  real(dp),intent(inout) :: real_number
 !=====
 
 #ifdef HAVE_SCALAPACK
- call dgsum2d(context_sca,'All',' ',1,1,real_number,1,-1,-1)
+ call dgsum2d(cntxt_sd,'All',' ',1,1,real_number,1,-1,-1)
 #endif
 
-end subroutine sum_sca
+end subroutine sum_sca_sd
 
 
 !=========================================================================
-subroutine max_matrix_sca(m,n,real_matrix)
+subroutine max_matrix_sca_sd(m,n,real_matrix)
  implicit none
  integer, intent(in)    :: m,n
  real(dp),intent(inout) :: real_matrix(m,n)
@@ -669,11 +722,11 @@ subroutine max_matrix_sca(m,n,real_matrix)
 !=====
 
 #ifdef HAVE_SCALAPACK
- call dgamx2d(context_sca,'All',' ',m,n,real_matrix,m,-1,idum1,idum2,-1,-1)
+ call dgamx2d(cntxt_sd,'All',' ',m,n,real_matrix,m,-1,idum1,idum2,-1,-1)
 #endif
 
 
-end subroutine max_matrix_sca
+end subroutine max_matrix_sca_sd
 
 
 !=========================================================================
@@ -715,10 +768,11 @@ end subroutine diagonalize_sca
 
 
 !=========================================================================
-function rowindex_global_to_local(iglobal)
+function rowindex_global_to_local(distribution,iglobal)
  implicit none
- integer,intent(in)     :: iglobal
- integer                :: rowindex_global_to_local
+ character(len=1),intent(in) :: distribution
+ integer,intent(in)          :: iglobal
+ integer                     :: rowindex_global_to_local
 !=====
 #ifdef HAVE_SCALAPACK
  integer,external :: INDXG2P,INDXG2L
@@ -729,11 +783,29 @@ function rowindex_global_to_local(iglobal)
  ! else returns 0 
 
 #ifdef HAVE_SCALAPACK
- if( iprow == INDXG2P(iglobal,block_row,0,first_row,nprow) ) then
-   rowindex_global_to_local = INDXG2L(iglobal,block_row,0,first_row,nprow)
- else
-   rowindex_global_to_local = 0
- endif
+ select case(distribution)
+ case('S')
+   if( iprow_sd == INDXG2P(iglobal,block_row,0,first_row,nprow_sd) ) then
+     rowindex_global_to_local = INDXG2L(iglobal,block_row,0,first_row,nprow_sd)
+   else
+     rowindex_global_to_local = 0
+   endif
+ case('R')
+   if( iprow_rd == INDXG2P(iglobal,block_row,0,first_row,nprow_rd) ) then
+     rowindex_global_to_local = INDXG2L(iglobal,block_row,0,first_row,nprow_rd)
+   else
+     rowindex_global_to_local = 0
+   endif
+ case('C')
+   if( iprow_cd == INDXG2P(iglobal,block_row,0,first_row,nprow_cd) ) then
+     rowindex_global_to_local = INDXG2L(iglobal,block_row,0,first_row,nprow_cd)
+   else
+     rowindex_global_to_local = 0
+   endif
+ case default
+   write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
+   stop'BUG'
+ end select
 #else
  rowindex_global_to_local = iglobal
 #endif
@@ -742,10 +814,11 @@ end function rowindex_global_to_local
 
 
 !=========================================================================
-function colindex_global_to_local(iglobal)
+function colindex_global_to_local(distribution,iglobal)
  implicit none
- integer,intent(in)     :: iglobal
- integer                :: colindex_global_to_local
+ character(len=1),intent(in) :: distribution
+ integer,intent(in)          :: iglobal
+ integer                     :: colindex_global_to_local
 !=====
 #ifdef HAVE_SCALAPACK
  integer,external :: INDXG2P,INDXG2L
@@ -756,11 +829,29 @@ function colindex_global_to_local(iglobal)
  ! else returns 0 
 
 #ifdef HAVE_SCALAPACK
- if( ipcol == INDXG2P(iglobal,block_col,0,first_col,npcol) ) then
-   colindex_global_to_local = INDXG2L(iglobal,block_col,0,first_col,npcol)
- else
-   colindex_global_to_local = 0
- endif
+ select case(distribution)
+ case('S')
+   if( ipcol_sd == INDXG2P(iglobal,block_col,0,first_col,npcol_sd) ) then
+     colindex_global_to_local = INDXG2L(iglobal,block_col,0,first_col,npcol_sd)
+   else
+     colindex_global_to_local = 0
+   endif
+ case('R')
+   if( ipcol_rd == INDXG2P(iglobal,block_col,0,first_col,npcol_rd) ) then
+     colindex_global_to_local = INDXG2L(iglobal,block_col,0,first_col,npcol_rd)
+   else
+     colindex_global_to_local = 0
+   endif
+ case('C')
+   if( ipcol_cd == INDXG2P(iglobal,block_col,0,first_col,npcol_cd) ) then
+     colindex_global_to_local = INDXG2L(iglobal,block_col,0,first_col,npcol_cd)
+   else
+     colindex_global_to_local = 0
+   endif
+ case default
+   write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
+   stop'BUG'
+ end select
 #else
  colindex_global_to_local = iglobal
 #endif
@@ -769,10 +860,11 @@ end function colindex_global_to_local
 
 
 !=========================================================================
-function rowindex_local_to_global(ilocal)
+function rowindex_local_to_global(distribution,ilocal)
  implicit none
- integer,intent(in)     :: ilocal
- integer                :: rowindex_local_to_global
+ character(len=1),intent(in) :: distribution
+ integer,intent(in)          :: ilocal
+ integer                     :: rowindex_local_to_global
 !=====
 #ifdef HAVE_SCALAPACK
  integer,external :: INDXL2G
@@ -780,7 +872,17 @@ function rowindex_local_to_global(ilocal)
 !=====
 
 #ifdef HAVE_SCALAPACK
- rowindex_local_to_global = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
+ select case(distribution)
+ case('S')
+   rowindex_local_to_global = INDXL2G(ilocal,block_row,iprow_sd,first_row,nprow_sd)
+ case('R')
+   rowindex_local_to_global = INDXL2G(ilocal,block_row,iprow_rd,first_row,nprow_rd)
+ case('C')
+   rowindex_local_to_global = INDXL2G(ilocal,block_row,iprow_cd,first_row,nprow_cd)
+ case default
+   write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
+   stop'BUG'
+ end select
 #else
  rowindex_local_to_global = ilocal
 #endif
@@ -789,10 +891,11 @@ end function rowindex_local_to_global
 
 
 !=========================================================================
-function colindex_local_to_global(ilocal)
+function colindex_local_to_global(distribution,ilocal)
  implicit none
- integer,intent(in)     :: ilocal
- integer                :: colindex_local_to_global
+ character(len=1),intent(in) :: distribution
+ integer,intent(in)          :: ilocal
+ integer                     :: colindex_local_to_global
 !=====
 #ifdef HAVE_SCALAPACK
  integer,external :: INDXL2G
@@ -800,7 +903,17 @@ function colindex_local_to_global(ilocal)
 !=====
 
 #ifdef HAVE_SCALAPACK
- colindex_local_to_global = INDXL2G(ilocal,block_col,ipcol,first_col,npcol)
+ select case(distribution)
+ case('S')
+   colindex_local_to_global = INDXL2G(ilocal,block_col,ipcol_sd,first_col,npcol_sd)
+ case('R')
+   colindex_local_to_global = INDXL2G(ilocal,block_col,ipcol_rd,first_col,npcol_rd)
+ case('C')
+   colindex_local_to_global = INDXL2G(ilocal,block_col,ipcol_cd,first_col,npcol_cd)
+ case default
+   write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
+   stop'BUG'
+ end select
 #else
  colindex_local_to_global = ilocal
 #endif
@@ -814,7 +927,9 @@ subroutine finish_scalapack()
 !=====
 
 #ifdef HAVE_SCALAPACK
- call BLACS_GRIDEXIT( context_sca )
+ call BLACS_GRIDEXIT( cntxt_sd )
+ call BLACS_GRIDEXIT( cntxt_cd )
+ call BLACS_GRIDEXIT( cntxt_rd )
  call BLACS_EXIT( 0 )
 #endif
 

@@ -59,7 +59,7 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='alpha_hybrid'
 vl[i].family   ='scf'
-vl[i].default  =0.25
+vl[i].default  =0.
 vl[i].datatype ='real'
 vl[i].comment  ='Only works for Range-Separated hybrid functionals scf=\'rsh\' \
 Sets the amount of range-independent exact-exchange'

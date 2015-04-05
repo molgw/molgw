@@ -3,7 +3,7 @@ OPENMP= #-openmp
 FC=ifort -fpp -DHAVE_LIBXC   # -DTD_SP
 
 CC=icc
-FCOPTS= -O3 -xhost -parallel -opt-matmul -mkl=sequential  #   -g -check all -traceback
+FCOPTS= -O3 -xhost -parallel -opt-matmul -mkl=parallel  #   -g -check all -traceback
 CCOPTS= -O3 -xhost  
 
 LAPACK=
