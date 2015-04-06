@@ -1,6 +1,6 @@
 !=========================================================================
 module m_definitions
- use,intrinsic :: iso_fortran_env, only: OUTPUT_UNIT
+ use,intrinsic :: iso_fortran_env, only: OUTPUT_UNIT,ERROR_UNIT
 
  integer,parameter  :: dp=kind(0.d0)
  integer,parameter  :: sp=kind(0.0)
@@ -13,6 +13,7 @@ module m_definitions
 #endif
 
  integer,parameter  :: stdout = OUTPUT_UNIT
+ integer,parameter  :: stderr = ERROR_UNIT
 
 
  !

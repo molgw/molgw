@@ -669,15 +669,15 @@ subroutine init_desc(distribution,mglobal,nglobal,desc,mlocal,nlocal)
  case('S')
    mlocal = NUMROC(mglobal,block_row,iprow_sd,first_row,nprow_sd)
    nlocal = NUMROC(nglobal,block_col,ipcol_sd,first_col,npcol_sd)
-   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_sd,mlocal,info)
+   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
  case('R')
    mlocal = NUMROC(mglobal,block_row,iprow_rd,first_row,nprow_rd)
    nlocal = NUMROC(nglobal,block_col,ipcol_rd,first_col,npcol_rd)
-   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_rd,mlocal,info)
+   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_rd,MAX(1,mlocal),info)
  case('C')
    mlocal = NUMROC(mglobal,block_row,iprow_cd,first_row,nprow_cd)
    nlocal = NUMROC(nglobal,block_col,ipcol_cd,first_col,npcol_cd)
-   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_cd,mlocal,info)
+   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_cd,MAX(1,mlocal),info)
  case('N')
    mlocal = NUMROC(mglobal,block_row,iprow_nd,first_row,nprow_nd)
    nlocal = NUMROC(nglobal,block_col,ipcol_nd,first_col,npcol_nd)
@@ -688,9 +688,11 @@ subroutine init_desc(distribution,mglobal,nglobal,desc,mlocal,nlocal)
 
  write(stdout,'(/,a,i6,a,i6,4x,i6)') ' SCALAPACK info: size of the local matrix for proc #', mlocal,' x ',nlocal,iproc_sca
 
-
 #else
  desc(:)= 0
+ desc(3)= mglobal
+ desc(4)= nglobal
+ desc(9)= mglobal
  mlocal = mglobal
  nlocal = nglobal
 #endif
@@ -919,6 +921,46 @@ function colindex_local_to_global(distribution,ilocal)
 #endif
 
 end function colindex_local_to_global
+
+!=========================================================================
+subroutine symmetrize_matrix(desc,m_mat,n_mat,mat)
+ implicit none
+ integer,intent(in)          :: desc(ndel)
+ integer,intent(in)          :: m_mat,n_mat
+ real(dp),intent(inout)      :: mat(m_mat,n_mat)
+!=====
+ integer                     :: imat,jmat,nmat
+ real(dp)                    :: alpha
+!=====
+ 
+ ! On input, mat is upper triangular
+ ! On output, mat is real symmetric
+
+#ifdef HAVE_SCALAPACK
+ if( desc(3)/=desc(4) ) stop'matrix has to be square'
+ nmat = desc(3)
+ do jmat=1,nmat
+   do imat=jmat+1,nmat
+     call PDELGET('All',' ',alpha,mat,imat,jmat,desc)
+     call PDELSET(mat,jmat,imat,desc,alpha)
+   enddo
+ enddo
+#else
+ nmat=m_mat
+ if (m_mat/=n_mat) stop'matrix should be squared if SCALAPACK is not used'
+ if (m_mat/=desc(3)) then
+  write(stderr,*) desc(3),m_mat
+  stop'descriptor inconsistent row'
+ endif
+ if (n_mat/=desc(4)) stop'descriptor inconsistent col'
+ do jmat=1,nmat
+   do imat=jmat+1,nmat
+     mat(jmat,imat) = mat(imat,jmat)
+   enddo
+ enddo
+#endif
+
+end subroutine symmetrize_matrix
 
 
 !=========================================================================

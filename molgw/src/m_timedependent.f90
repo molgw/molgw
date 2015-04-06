@@ -117,21 +117,21 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! Prepare the big matrices (A+B) and (A-B)
  ! 
  nmat = wpol_out%npole_reso
-#ifdef HAVE_SCALAPACK
+ !
  ! The distribution of the two matrices have to be the same for A-B and A+B
+ ! This is valid also when SCALAPACK is not used!
  call init_desc('C',nmat,nmat,desc_apb,m_apb,n_apb)
-#else
- m_apb = nmat
- n_apb = nmat
-#endif
  call clean_allocate('A+B',apb_matrix,m_apb,n_apb)
  call clean_allocate('A-B',amb_matrix,m_apb,n_apb)
- 
 
  !
  ! Build the (A+B) and (A-B) matrices in 3 steps
  ! to span all the possible approximations
+ ! Only the upper triangle is calculated
+ ! the lower part will be filled later by symmetry
  !
+ apb_matrix(:,:) = 0.0_dp
+ amb_matrix(:,:) = 0.0_dp
  write(stdout,'(/,a)') ' Build the electron-hole hamiltonian'
  ! Step 1
  call build_amb_apb_common(basis%nbf,c_matrix,energy_qp,wpol_out,alpha_local,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
@@ -148,6 +148,9 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
    endif
    call destroy_spectral_function(wpol_static)
  endif
+ ! Finally symmetrize to obtain the lower triangle
+ call symmetrize_matrix(desc_apb,m_apb,n_apb,apb_matrix)
+ call symmetrize_matrix(desc_apb,m_apb,n_apb,amb_matrix)
  ! Construction done!
 
  
@@ -291,6 +294,7 @@ subroutine build_amb_apb_common(nbf,c_matrix,energy,wpol,alpha_local,m_apb,n_apb
      jstate = wpol%transition_table(2,t_ij_global)
      ijspin = wpol%transition_table(3,t_ij_global)
 
+     if( t_ij_global < t_kl_global ) cycle
 
      if(has_auxil_basis) then
        eri_eigen_ijkl = eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
@@ -417,6 +421,7 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,m_apb,n_apb,apb_matrix
      jstate = wpol%transition_table(2,t_ij_global)
      ijspin = wpol%transition_table(3,t_ij_global)
 
+     if( t_ij_global < t_kl_global ) cycle
 
 
      if( nspin_tddft == 1 ) then
@@ -590,6 +595,7 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,m_apb,n_ap
      jstate = wpol%transition_table(2,t_ij_global)
      ijspin = wpol%transition_table(3,t_ij_global)
 
+     if( t_ij_global < t_kl_global ) cycle
 
 
      if(ijspin/=klspin) cycle
