@@ -149,13 +149,11 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%gwmethod = perturbative
    case('CI')
      calc_type%is_ci =.TRUE.
-
+     alpha_hybrid = 1.00_dp
    case('BSE')
      calc_type%is_bse     =.TRUE.
-
    case('TD')
      calc_type%is_td      =.TRUE.
-
    case default
      stop'error reading calculation type part 2'
    end select

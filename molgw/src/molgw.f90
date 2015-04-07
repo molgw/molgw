@@ -151,7 +151,7 @@ program molgw
  !
  ! Calculate the parts of the hamiltonian that does not change along
  ! with the SCF cycles
- if( .NOT. is_big_restart .AND. .NOT. calc_type%is_ci) then
+ if( .NOT. is_big_restart ) then
    !
    ! Kinetic energy contribution
    call setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)

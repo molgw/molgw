@@ -127,8 +127,8 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  !
  ! Build the (A+B) and (A-B) matrices in 3 steps
  ! to span all the possible approximations
- ! Only the upper triangle is calculated
- ! the lower part will be filled later by symmetry
+ ! Only the lower triangle is calculated
+ ! the upper part will be filled later by symmetry
  !
  apb_matrix(:,:) = 0.0_dp
  amb_matrix(:,:) = 0.0_dp
@@ -148,9 +148,6 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
    endif
    call destroy_spectral_function(wpol_static)
  endif
- ! Finally symmetrize to obtain the lower triangle
- call symmetrize_matrix(desc_apb,m_apb,n_apb,apb_matrix)
- call symmetrize_matrix(desc_apb,m_apb,n_apb,amb_matrix)
  ! Construction done!
 
  
@@ -771,11 +768,20 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
  real(dp),intent(out)                    :: eigenvalue(nmat)
  real(prec_td),allocatable,intent(out)   :: bigx(:,:),bigy(:,:)
 !=====
- integer                   :: t_kl
+ integer                   :: t_ij,t_kl
  real(prec_td),allocatable :: amb_eigval(:),bigomega(:)
 !=====
 
  call start_clock(timing_diago_h2p)
+
+ ! First symmetrize the matrices since only the lower triangle was calculated
+ do t_kl=1,nmat
+   do t_ij=t_kl+1,nmat
+     amb_matrix(t_kl,t_ij) = amb_matrix(t_ij,t_kl)
+     apb_matrix(t_kl,t_ij) = apb_matrix(t_ij,t_kl)
+   enddo
+ enddo
+
 
  write(stdout,*) 'Allocate eigenvector arrays'
  call clean_allocate('X',bigx,nmat,nmat)
