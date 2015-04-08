@@ -57,6 +57,7 @@ module m_eri
 
 !
 ! Scalapack distribution
+ integer :: desc_1(ndel)
  integer :: desc_2center(ndel)
  integer :: desc_3center(ndel)
 
@@ -136,7 +137,7 @@ subroutine allocate_eri_auxil(auxil_basis)
 !===== 
  integer            :: info
  logical            :: file_exists
- integer            :: ntmp
+ integer            :: mtmp,ntmp
 !===== 
 
  nbf_auxil_eri = auxil_basis%nbf
@@ -149,15 +150,20 @@ subroutine allocate_eri_auxil(auxil_basis)
  !
  call clean_allocate('2-center integrals',eri_2center_m1,nauxil_2center,nauxil_2center)
 
-#ifdef HAVE_SCALAPACK_TODAY
- call init_desc('R',nbf_auxil_eri,nsize1,desc_3center,nauxil_3center,ntmp)
-#else
- nauxil_3center = nauxil_2center
-#endif
  !
  ! 3-CENTER INTEGRALS 
  !
+#ifdef HAVE_SCALAPACK_TODAY
+ call init_desc('R',nauxil_2center,nsize1,desc_3center,nauxil_3center,ntmp)
+#else
+ nauxil_3center = nauxil_2center
+#endif
  call clean_allocate('3-center integrals',eri_3center,nauxil_3center,nsize1)
+
+ !
+ ! Fake descriptor 1x1 matrix
+ ! May be useful later
+ call init_desc('R',1,1,desc_1,mtmp,ntmp)
 
 
 end subroutine allocate_eri_auxil
@@ -326,6 +332,7 @@ function eri_ri(ibf,jbf,kbf,lbf)
  real(dp)           :: eri_ri
 !=====
  integer            :: index_ij,index_kl
+ real(dp)           :: eri_1(1,1)
 !=====
 
  if( negligible_basispair(ibf,jbf) .OR. negligible_basispair(kbf,lbf) ) then
@@ -333,8 +340,18 @@ function eri_ri(ibf,jbf,kbf,lbf)
  else
    index_ij = index_prod(ibf,jbf)
    index_kl = index_prod(kbf,lbf)
-
+  
+#ifndef HAVE_SCALAPACK_TODAY
    eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , eri_3center(:,index_kl) )
+#else
+ write(*,*) 'FBFBF toto'
+ call PDGEMM('T','N',1,1,nsize1,1.d0,eri_3center,index_ij,1,desc_3center,   &
+                                     eri_3center,1,index_kl,desc_3center,   &
+                                0.d0,eri_1,1,1,desc_1)
+ write(*,*) 'FBFBF toto'
+ call PDELGET('All',' ',eri_ri,eri_1,1,1,desc_1)
+ write(*,*) 'FBFBF toto'
+#endif
 
  endif
 
@@ -1296,8 +1313,9 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  real(dp)                     :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
- real(dp),allocatable         :: eri_2tmp
- integer                      :: desc_3center(ndel),desc_2center(ndel)
+ real(dp),allocatable         :: eri_2tmp(:,:),eri_3tmp(:,:)
+ integer                      :: desc_3tmp(ndel),desc_2tmp(ndel)
+ integer                      :: m_3center,n_3center
 !=====
 ! variables used to call C
  integer(C_INT),external      :: libint_init,calculate_integral
@@ -1582,20 +1600,26 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  call init_desc('R',nauxil_2center,nauxil_2center,desc_2tmp,m_2center,n_2center)
  allocate(eri_2tmp(m_2center,n_2center))
 
+ write(*,*) 'FBFB00',rank
  ! distribution AND transposition of the 2 center ERI
  do ibf_auxil=1,nauxil_2center
    do jbf_auxil=1,nauxil_2center
-     call PDELSET(eri_2tmp,ibf_auxil,jbf_auxil,eri_2center_m1(ibf_auxil,jbf_auxil))
+     call PDELSET(eri_2tmp,ibf_auxil,jbf_auxil,desc_2tmp,eri_2center_m1(ibf_auxil,jbf_auxil))
    enddo
  enddo
 
+ write(*,*) 'FBFB01',rank
  call init_desc('R',nauxil_2center,nsize1,desc_3tmp,m_3center,n_3center)
  allocate(eri_3tmp(m_3center,n_3center))
+ write(*,*) 'FBFB02',rank
  call PDLACPY(' ',nauxil_2center,nsize1,eri_3center,1,1,desc_2tmp,eri_3tmp,1,1,desc_3tmp)
 
- call PDGEMM('T','N', nauxil_2center,nsize1,nauxil_2center,1.d0,  & 
-                 eri_2tmp,1,1,desc_2tmp,eri_3tmp,1,1,desc_3tmp,   &
-                 0.d0,eri_3center,1,1,desc_3center)
+ write(*,*) 'FBFB03',rank
+! call PDGEMM('T','N', nauxil_2center,nsize1,nauxil_2center,1.d0,  & 
+!                 eri_2tmp,1,1,desc_2tmp,   &
+!                 eri_3tmp,1,1,desc_3tmp,   &
+!            0.d0,eri_3center,1,1,desc_3center)
+ write(*,*) 'FBFB04',rank
  deallocate(eri_2tmp)
  deallocate(eri_3tmp)
 
