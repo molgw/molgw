@@ -38,9 +38,9 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  logical                   :: has_manual_tdhf
  integer                   :: reading_status
  integer                   :: tdhffile
- integer                   :: m_apb,n_apb
+ integer                   :: m_apb,n_apb,m_x,n_x
 ! Scalapack variables
- integer                   :: desc_apb(ndel)
+ integer                   :: desc_apb(ndel),desc_x(ndel)
 !=====
 
  call start_clock(timing_pola)
@@ -165,6 +165,11 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
 
 
  allocate(eigenvalue(nmat))
+ ! bigX, bigY
+ call init_desc('C',nmat,nmat,desc_x,m_x,n_x)
+ write(stdout,*) 'Allocate eigenvector array'
+ call clean_allocate('X',bigx,m_x,n_x)
+ call clean_allocate('Y',bigy,m_x,n_x)
 
  !
  ! Diago using the 4 block structure and the symmetry of each block
@@ -173,13 +178,14 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
 #ifndef HAVE_SCALAPACK
  call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
 #else
- call diago_4blocks_chol(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
+ call diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,eigenvalue,&
+                              desc_x,m_x,n_x,bigx,bigy)
 #endif
 
-#ifdef HAVE_SCALAPACK
-! call finish_mpi()
-! stop'enough'
-#endif
+ ! Deallocate the non-necessary matrices
+ write(stdout,*) 'Deallocate (A+B) and (A-B) matrices'
+ call clean_deallocate('A+B',apb_matrix)
+ call clean_deallocate('A-B',amb_matrix)
 
 
  !
@@ -206,9 +212,9 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  !
  if( print_w_ .OR. calc_type%is_gw ) then
    if( has_auxil_basis) then
-     call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf,occupation,c_matrix,bigx,bigy,eigenvalue,wpol_out)
+     call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf,desc_x,m_x,n_x,bigx,bigy,eigenvalue,wpol_out)
    else
-     call chi_to_vchiv(basis%nbf,prod_basis,occupation,c_matrix,bigx,bigy,eigenvalue,wpol_out)
+     call chi_to_vchiv(basis%nbf,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol_out)
    endif
  
    ! If requested write the spectral function on file
@@ -339,6 +345,7 @@ subroutine build_amb_apb_common(nbf,c_matrix,energy,wpol,alpha_local,m_apb,n_apb
    enddo 
 
  enddo 
+ call xsum(rpa_correlation)
 
  if(allocated(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
 
@@ -762,11 +769,11 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
  use m_tools 
  implicit none
 
- integer,intent(in)                      :: nmat
- real(prec_td),allocatable,intent(inout) :: amb_matrix(:,:)
- real(prec_td),allocatable,intent(inout) :: apb_matrix(:,:)  ! apb_matrix constains (A+B) in the input, however it used a matrix buffer after
- real(dp),intent(out)                    :: eigenvalue(nmat)
- real(prec_td),allocatable,intent(out)   :: bigx(:,:),bigy(:,:)
+ integer,intent(in)           :: nmat
+ real(prec_td),intent(inout)  :: amb_matrix(nmat,nmat)
+ real(prec_td),intent(inout)  :: apb_matrix(nmat,nmat)  ! apb_matrix constains (A+B) in the input, however it used a matrix buffer after
+ real(dp),intent(out)         :: eigenvalue(nmat)
+ real(prec_td),intent(out)    :: bigx(nmat,nmat),bigy(nmat,nmat)
 !=====
  integer                   :: t_ij,t_kl
  real(prec_td),allocatable :: amb_eigval(:),bigomega(:)
@@ -783,9 +790,6 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
  enddo
 
 
- write(stdout,*) 'Allocate eigenvector arrays'
- call clean_allocate('X',bigx,nmat,nmat)
- call clean_allocate('Y',bigy,nmat,nmat)
 
  write(stdout,'(/,a)') ' Performing the block diago with square root of matrices'
 
@@ -847,35 +851,29 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
  bigx(:,:) = bigx(:,:) + apb_matrix(:,:)
  bigy(:,:) = bigy(:,:) - apb_matrix(:,:)
 
- write(stdout,*) 'Deallocate (A+B) and (A-B) matrices'
- call clean_deallocate('A+B',apb_matrix)
- call clean_deallocate('A-B',amb_matrix)
-
  call stop_clock(timing_diago_h2p)
 
 end subroutine diago_4blocks_sqrt
 
 
 !=========================================================================
-subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
+subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
+                              eigenvalue,desc_x,m_x,n_x,bigx,bigy)
  use m_spectral_function
  use m_eri
  use m_tools 
  implicit none
 
- integer,intent(in)                 :: nmat
- real(dp),allocatable,intent(inout) :: amb_matrix(:,:),apb_matrix(:,:)
- real(dp),intent(out)               :: eigenvalue(nmat)
- real(dp),allocatable,intent(out)   :: bigx(:,:)
- real(dp),allocatable,intent(out)   :: bigy(:,:)
+ integer,intent(in)     :: nmat,m_apb,n_apb,m_x,n_x
+ integer,intent(in)     :: desc_apb(ndel),desc_x(ndel)
+ real(dp),intent(inout) :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
+ real(dp),intent(out)   :: eigenvalue(nmat)
+ real(dp),intent(out)   :: bigx(m_x,n_x)
+ real(dp),intent(out)   :: bigy(m_x,n_x)
 !=====
- integer  :: desc_apb(ndel),desc_amb(ndel)
- integer  :: desc_ev(ndel)
- integer  :: m_apb,n_apb,m_ev,n_ev
  integer  :: t_ij,t_kl,t_ij_global,t_kl_global
  integer  :: info
  integer  :: lwork,liwork
- real(dp),allocatable :: eigenvector(:,:)
  real(dp),allocatable :: work(:)
  integer,allocatable :: iwork(:)
 !=====
@@ -884,22 +882,14 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
  call start_clock(timing_diago_h2p)
 
  ! First allocate eigenvector
- call init_desc('C',nmat,nmat,desc_apb,m_apb,n_apb)
- desc_amb(:) = desc_apb(:)
- call init_desc('C',2*nmat,nmat,desc_ev,m_ev,n_ev)
-
- write(stdout,*) 'Allocate eigenvector array'
- call clean_allocate('eigenvector',eigenvector,m_ev,n_ev)
-
-
  write(stdout,'(/,a)') ' Performing the block diago with Cholesky'
 
  allocate(work(1))
  allocate(iwork(1))
  lwork=-1
  liwork=-1
- call pdbssolver1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_amb,    &
-                  eigenvalue,eigenvector,1,1,desc_ev,                      &
+ call pdbssolver1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
+                  eigenvalue,bigx,1,1,desc_x,bigy,                         &
                   work,lwork,iwork,liwork,info)
  if(info/=0) stop'SCALAPACK failed'
 
@@ -911,8 +901,8 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
  deallocate(iwork)
  allocate(iwork(liwork))
 
- call pdbssolver1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_amb,    &
-                  eigenvalue,eigenvector,1,1,desc_ev,                      &
+ call pdbssolver1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
+                  eigenvalue,bigx,1,1,desc_x,bigy,                         &
                   work,lwork,iwork,liwork,info)
  if(info/=0) stop'SCALAPACK failed'
 
@@ -920,37 +910,33 @@ subroutine diago_4blocks_chol(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
  deallocate(iwork)
 
 
- ! Deallocate the non-necessary matrices
- write(stdout,*) 'Deallocate (A+B) and (A-B) matrices'
- call clean_deallocate('A+B',apb_matrix)
- call clean_deallocate('A-B',amb_matrix)
 
- ! Transform eigenvector into (X,Y)
- ! TODO bigX and bigY have not been SCALAPACK-distributed
- write(stdout,*) 'Allocate eigenvector arrays'
- call clean_allocate('X',bigx,nmat,nmat)
- call clean_allocate('Y',bigy,nmat,nmat)
-
-! bigx(:,:) = eigenvector(:nmat  ,:)
-! bigy(:,:) = eigenvector(nmat+1:,:)
-
- bigx(:,:) = 0.0_dp
- bigy(:,:) = 0.0_dp
- do t_kl=1,n_ev
-   t_kl_global = colindex_local_to_global('C',t_kl)
-   do t_ij=1,m_ev
-     t_ij_global = rowindex_local_to_global('C',t_ij)
-     if( t_ij_global <= nmat) then
-       bigx(t_ij_global,t_kl_global) = eigenvector(t_ij,t_kl)
-     else
-       bigy(t_ij_global-nmat,t_kl_global) = eigenvector(t_ij,t_kl)
-     endif
-   enddo
- enddo
- call xsum(bigx)
- call xsum(bigy)
-
- call clean_deallocate('eigenvector',eigenvector)
+! ! Transform eigenvector into (X,Y)
+! ! TODO bigX and bigY have not been SCALAPACK-distributed
+! write(stdout,*) 'Allocate eigenvector arrays'
+! call clean_allocate('X',bigx,nmat,nmat)
+! call clean_allocate('Y',bigy,nmat,nmat)
+!
+!! bigx(:,:) = eigenvector(:nmat  ,:)
+!! bigy(:,:) = eigenvector(nmat+1:,:)
+!
+! bigx(:,:) = 0.0_dp
+! bigy(:,:) = 0.0_dp
+! do t_kl=1,n_ev
+!   t_kl_global = colindex_local_to_global('C',t_kl)
+!   do t_ij=1,m_ev
+!     t_ij_global = rowindex_local_to_global('C',t_ij)
+!     if( t_ij_global <= nmat) then
+!       bigx(t_ij_global,t_kl_global) = eigenvector(t_ij,t_kl)
+!     else
+!       bigy(t_ij_global-nmat,t_kl_global) = eigenvector(t_ij,t_kl)
+!     endif
+!   enddo
+! enddo
+! call xsum(bigx)
+! call xsum(bigy)
+!
+! call clean_deallocate('eigenvector',eigenvector)
 
  call stop_clock(timing_diago_h2p)
 
@@ -1470,7 +1456,7 @@ end subroutine get_energy_qp
 
 
 !=========================================================================
-subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,bigx,bigy,eigenvalue,wpol)
+subroutine chi_to_vchiv(nbf,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol)
  use m_definitions
  use m_warning
  use m_basis_set
@@ -1480,7 +1466,6 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,bigx,bigy,eigenvalue,
  
  integer,intent(in)                    :: nbf
  type(basis_set),intent(in)            :: prod_basis
- real(dp),intent(in)                   :: occupation(nbf,nspin)
  real(dp),intent(in)                   :: c_matrix(nbf,nbf,nspin)
  type(spectral_function),intent(inout) :: wpol
  real(prec_td),intent(in)              :: bigx(wpol%npole_reso,wpol%npole_reso)
@@ -1491,37 +1476,41 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,bigx,bigy,eigenvalue,
  integer                               :: istate,jstate,kstate,lstate,ijstate,ijstate_spin
  integer                               :: klstate_min
  integer                               :: klstate_max
- integer                               :: nmat
+ integer                               :: nmat,nprodspin
  real(dp)                              :: eri_eigen_klij
  real(dp),allocatable                  :: eri_eigenstate_klmin(:,:,:,:)
+ real(dp)                              :: rtmp
 !=====
 
  call start_clock(timing_buildw)
 
  write(stdout,'(/,a)') ' Build W = v * chi * v'
-
- if( .NOT. has_auxil_basis ) then
-   allocate(eri_eigenstate_klmin(nbf,nbf,nbf,nspin))
-   ! Set this to zero and then enforce the calculation of the first array of Coulomb integrals
-   eri_eigenstate_klmin(:,:,:,:) = 0.0_dp
+ if(has_auxil_basis) then
+   stop'you should not be here'
  endif
+#ifdef HAVE_SCALAPACK
+ stop'not compatible with SCALAPACK'
+#endif
+
+ allocate(eri_eigenstate_klmin(nbf,nbf,nbf,nspin))
+ ! Set this to zero and then enforce the calculation of the first array of Coulomb integrals
+ eri_eigenstate_klmin(:,:,:,:) = 0.0_dp
 
  call allocate_spectral_function(prod_basis%nbf*nspin,wpol)
 
  wpol%pole(:) = eigenvalue(:)
 
  nmat=wpol%npole_reso
+
  wpol%residu_left(:,:) = 0.0_dp
  do t_kl=1,nmat 
    kstate = wpol%transition_table(1,t_kl)
    lstate = wpol%transition_table(2,t_kl)
    klspin = wpol%transition_table(3,t_kl)
 
-   if( .NOT. has_auxil_basis ) then
-     klstate_min = MIN(kstate,lstate)
-     klstate_max = MAX(kstate,lstate)
-     call transform_eri_basis(nspin,c_matrix,klstate_min,klspin,eri_eigenstate_klmin)
-   endif
+   klstate_min = MIN(kstate,lstate)
+   klstate_max = MAX(kstate,lstate)
+   call transform_eri_basis(nspin,c_matrix,klstate_min,klspin,eri_eigenstate_klmin)
 
    do ijspin=1,nspin
      do ijstate=1,prod_basis%nbf
@@ -1530,11 +1519,7 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,bigx,bigy,eigenvalue,
 
        ijstate_spin = ijstate+prod_basis%nbf*(ijspin-1)
 
-       if(has_auxil_basis) then
-         eri_eigen_klij = eri_eigen_ri(kstate,lstate,klspin,istate,jstate,ijspin)
-       else
-         eri_eigen_klij = eri_eigenstate_klmin(klstate_max,istate,jstate,ijspin)
-       endif
+       eri_eigen_klij = eri_eigenstate_klmin(klstate_max,istate,jstate,ijspin)
 
        ! Use the symmetry ( k l | i j ) to regroup (kl) and (lk) contributions
        ! and the block structure of eigenvector | X  Y |
@@ -1549,6 +1534,7 @@ subroutine chi_to_vchiv(nbf,prod_basis,occupation,c_matrix,bigx,bigy,eigenvalue,
  wpol%residu_left(:,:) = wpol%residu_left(:,:) * SQRT(spin_fact)
 
 
+
  if(allocated(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
 
  call stop_clock(timing_buildw)
@@ -1557,7 +1543,7 @@ end subroutine chi_to_vchiv
 
 
 !=========================================================================
-subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,occupation,c_matrix,bigx,bigy,eigenvalue,wpol)
+subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eigenvalue,wpol)
  use m_definitions
  use m_warning
  use m_basis_set
@@ -1565,18 +1551,22 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,occupation,c_matrix,bigx,big
  use m_spectral_function
  implicit none
  
- integer,intent(in)                    :: nbf,nbf_auxil
- real(dp),intent(in)                   :: occupation(nbf,nspin)
- real(dp),intent(in)                   :: c_matrix(nbf,nbf,nspin)
+ integer,intent(in)                    :: nbf,nbf_auxil,m_x,n_x
+ integer,intent(in)                    :: desc_x(ndel)
+ real(prec_td),intent(in)              :: bigx(m_x,n_x)
+ real(prec_td),intent(in)              :: bigy(m_x,n_x)
  type(spectral_function),intent(inout) :: wpol
- real(prec_td),intent(in)              :: bigx(wpol%npole_reso,wpol%npole_reso)
- real(prec_td),intent(in)              :: bigy(wpol%npole_reso,wpol%npole_reso)
  real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso)
 !=====
- integer                               :: t_ij,t_kl,klspin,ijspin
+ integer                               :: t_kl,t_kl_global,klspin,ijspin
+ integer                               :: ibf_auxil,ibf_auxil_global
  integer                               :: nmat
  integer                               :: kstate,lstate
- real(dp),allocatable                  :: eri_3center_2index(:,:)
+ real(dp),allocatable                  :: eri_3center_mat(:,:),residu_local(:,:)
+ integer                               :: desc_3center_eigen(ndel)
+ integer                               :: desc_residu(ndel)
+ integer                               :: m_3center,n_3center
+ real(dp)                              :: rtmp
 !=====
 
  call start_clock(timing_buildw)
@@ -1588,21 +1578,57 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,occupation,c_matrix,bigx,big
 
  nmat = wpol%npole_reso
 
- allocate(eri_3center_2index(nbf_auxil,nmat))
+#ifndef HAVE_SCALAPACK
+
+ allocate(eri_3center_mat(nbf_auxil,nmat))
  do t_kl=1,nmat
    kstate = wpol%transition_table(1,t_kl)
    lstate = wpol%transition_table(2,t_kl)
    klspin = wpol%transition_table(3,t_kl)
-   eri_3center_2index(:,t_kl) = eri_3center_eigen(:,kstate,lstate,klspin)
+   eri_3center_mat(:,t_kl) = eri_3center_eigen(:,kstate,lstate,klspin)
  end do
 
  ! Use the symmetry ( I | k l ) to regroup (kl) and (lk) contributions
  ! and the block structure of eigenvector | X  Y |
  !                                        | Y  X |
- wpol%residu_left(:,:) = MATMUL( eri_3center_2index , bigx(:,:) + bigy(:,:) ) * SQRT(spin_fact)
+ wpol%residu_left(:,:) = MATMUL( eri_3center_mat , bigx(:,:) + bigy(:,:) ) * SQRT(spin_fact)
+
+#else 
+
+ call init_desc('C',nbf_auxil,nmat,desc_3center_eigen,m_3center,n_3center)
+ allocate(eri_3center_mat(m_3center,n_3center))
+ desc_residu = desc_3center_eigen
+ allocate(residu_local(m_3center,n_3center))
+ do t_kl=1,n_3center
+   t_kl_global = colindex_local_to_global('C',t_kl)
+   kstate = wpol%transition_table(1,t_kl_global)
+   lstate = wpol%transition_table(2,t_kl_global)
+   klspin = wpol%transition_table(3,t_kl_global)
+   do ibf_auxil=1,m_3center
+     ibf_auxil_global = rowindex_local_to_global('C',ibf_auxil)
+     eri_3center_mat(ibf_auxil,t_kl) = eri_3center_eigen(ibf_auxil_global,kstate,lstate,klspin)
+   enddo
+ end do
+
+ ! bigx + bigy 
+ call PDGEADD('N',nmat,nmat,1.d0,bigy,1,1,desc_x,1.d0,bigx,1,1,desc_x)
+
+ ! residu = eri_3center * bigx * sqrt(spin_fact)
+ call PDGEMM('N','N',nbf_auxil,nmat,nmat,DSQRT(spin_fact),eri_3center_mat,1,1,desc_3center_eigen,&
+             bigx,1,1,desc_x,0.d0,residu_local,1,1,desc_residu)
+
+ do t_kl_global=1,nmat
+   do ibf_auxil_global=1,nbf_auxil
+     call PDELGET('All',' ',rtmp,residu_local,ibf_auxil_global,t_kl_global,desc_residu)
+     wpol%residu_left(ibf_auxil_global,t_kl_global) = rtmp
+   enddo
+ enddo
+ deallocate(residu_local)
 
 
- deallocate(eri_3center_2index)
+#endif
+
+ deallocate(eri_3center_mat)
 
 
  call stop_clock(timing_buildw)

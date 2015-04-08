@@ -1297,6 +1297,7 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
  real(dp),allocatable         :: eri_2tmp
+ integer                      :: desc_3center(ndel),desc_2center(ndel)
 !=====
 ! variables used to call C
  integer(C_INT),external      :: libint_init,calculate_integral
@@ -1577,20 +1578,32 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  ! Combine the 2-center integral into the 3-center and then get rid of them
  ! definitively
 #ifdef HAVE_SCALAPACK_TODAY
- call init_desc('S',nauxil_2center,nauxil_2center,desc_2center,m_2center,n_2center)
+
+ call init_desc('R',nauxil_2center,nauxil_2center,desc_2tmp,m_2center,n_2center)
  allocate(eri_2tmp(m_2center,n_2center))
+
  ! distribution AND transposition of the 2 center ERI
  do ibf_auxil=1,nauxil_2center
    do jbf_auxil=1,nauxil_2center
-     call pdelset(eri_2tmp,ibf_auxil,jbf_auxil,eri_2center_m1(jbf_auxil,ibf_auxil))
+     call PDELSET(eri_2tmp,ibf_auxil,jbf_auxil,eri_2center_m1(ibf_auxil,jbf_auxil))
    enddo
  enddo
-!FBFB CALL PDGEMM('N','N', M, N, K, ONE,
-!FBFB     $             MEM( IPA ), 1, 1, DESCA, MEM( IPB ), 1, 1, DESCB,
-!FBFB     $             ONE, MEM( IPC ), 1, 1, DESCC )
+
+ call init_desc('R',nauxil_2center,nsize1,desc_3tmp,m_3center,n_3center)
+ allocate(eri_3tmp(m_3center,n_3center))
+ call PDLACPY(' ',nauxil_2center,nsize1,eri_3center,1,1,desc_2tmp,eri_3tmp,1,1,desc_3tmp)
+
+ call PDGEMM('T','N', nauxil_2center,nsize1,nauxil_2center,1.d0,  & 
+                 eri_2tmp,1,1,desc_2tmp,eri_3tmp,1,1,desc_3tmp,   &
+                 0.d0,eri_3center,1,1,desc_3center)
+ deallocate(eri_2tmp)
+ deallocate(eri_3tmp)
+
 #else
+
  eri_2center_m1(:,:) = TRANSPOSE( eri_2center_m1(:,:) )
  eri_3center(:,:) = MATMUL( eri_2center_m1(:,:) , eri_3center(:,:) )
+
 #endif
 
  write(stdout,*) 'Now deallocate the 2-center integrals: not needed anymore'

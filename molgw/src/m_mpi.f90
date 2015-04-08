@@ -933,7 +933,7 @@ subroutine symmetrize_matrix(desc,m_mat,n_mat,mat)
  real(dp)                    :: alpha
 !=====
  
- ! On input, mat is upper triangular
+ ! On input, mat is lower triangular
  ! On output, mat is real symmetric
 
 #ifdef HAVE_SCALAPACK

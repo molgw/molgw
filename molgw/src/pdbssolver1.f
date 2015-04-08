@@ -1,7 +1,7 @@
 #ifdef HAVE_SCALAPACK
       SUBROUTINE PDBSSOLVER1( N, M, IM, JM, DESCM, K, IK, JK, DESCK,
-     $                        LAMBDA, X, IX, JX, DESCX, WORK, LWORK,
-     $                        IWORK, LIWORK, INFO )
+     $                       LAMBDA, X1, IX, JX, DESCX, X2, WORK, LWORK,
+     $                       IWORK, LIWORK, INFO )
 *
       IMPLICIT NONE
 *
@@ -9,8 +9,9 @@
       INTEGER            N, IM, JM, IK, JK, IX, JX, LWORK, LIWORK, INFO
 *     ..
 *     .. Array Arguments ..
-      INTEGER            DESCM( * ), DESCK( * ), DESCX( * ), IWORK( * )
-      DOUBLE PRECISION   M( * ), K( * ), LAMBDA( * ), X( * ), WORK( * )
+      INTEGER           DESCM( * ), DESCK( * ), DESCX( * ), IWORK( * )
+      DOUBLE PRECISION  M( * ), K( * ), LAMBDA( * ), X1( * ), WORK( *),
+     $                  X2( * )
 *     ..
 *
 *  Purpose
@@ -231,8 +232,9 @@
       PARAMETER          ( BLOCK_CYCLIC_2D = 1, DLEN_ = 9, DTYPE_ = 1,
      $                     CTXT_ = 2, M_ = 3, N_ = 4, MB_ = 5, NB_ = 6,
      $                     RSRC_ = 7, CSRC_ = 8, LLD_ = 9 )
-      DOUBLE PRECISION   ZERO, ONE, HALF
-      PARAMETER          ( ZERO = 0.0D+0, ONE = 1.0D+0, HALF = 0.5D+0 )
+      DOUBLE PRECISION   ZERO, ONE, HALF, TWO
+      PARAMETER          ( ZERO = 0.0D+0, ONE = 1.0D+0, HALF = 0.5D+0,
+     $                     TWO = 2.0D+0 )
 *     ..
 *     .. Local Scalars ..
       LOGICAL            LQUERY
@@ -289,7 +291,7 @@
      $   CALL PCHK2MAT( N, 3, N, 3, IM, JM, DESCM, 5, N, 3, N, 3,
      $        IK, JK, DESCK, 9, 0, ITMP, ITMP, INFO )
       IF ( INFO .EQ. 0 )
-     $   CALL CHK1MAT( TWON, 3, N, 3, IX, JX, DESCX, 14, INFO )
+     $   CALL CHK1MAT( N, 3, N, 3, IX, JX, DESCX, 14, INFO )
       IF ( INFO .EQ. 0 .AND. DESCX( MB_ ) .NE. DESCX( NB_ ) )
      $   INFO = -( 1000+MB_ )
 *
@@ -443,13 +445,13 @@
 *
       T_VEC2 = MPI_WTIME()
       CALL PDGEADD( 'N', N, N, ONE, WORK( INDPSI ), 1, 1, DESCPSI,
-     $     ZERO, X, IX, JX, DESCX )
+     $     ZERO, X1, IX, JX, DESCX )
       CALL PDGEADD( 'N', N, N, ONE, WORK( INDPSI ), 1, 1, DESCPSI,
-     $     ZERO, X, IX+N, JX, DESCX )
+     $     ZERO, X2, IX, JX, DESCX )
       CALL PDGEADD( 'N', N, N, ONE, WORK( INDPHI ), 1, 1, DESCPHI,
-     $     ONE, X, IX, JX, DESCX )
+     $     ONE, X1, IX, JX, DESCX )
       CALL PDGEADD( 'N', N, N, -ONE, WORK( INDPHI ), 1, 1, DESCPHI,
-     $     ONE, X, IX+N, JX, DESCX )
+     $     ONE, X2, IX, JX, DESCX )
       T_VEC2 = MPI_WTIME() - T_VEC2
       IF ( MYROW+MYCOL .EQ. 0 )
      $   WRITE( *, * ) 't_vec2 = ', T_VEC2, ';'
