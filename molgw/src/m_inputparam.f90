@@ -19,6 +19,7 @@ module m_inputparam
  integer,parameter :: GnW0         = 105
  integer,parameter :: GnWn         = 106
  integer,parameter :: G0W0         = 107
+ integer,parameter :: GV           = 108   ! perturbative HF
 
  type calculation_type
    character(len=100) :: calc_name
@@ -128,6 +129,9 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%postscf_name =  TRIM(key2)
 
    select case(TRIM(key2))
+   case('GV')
+     calc_type%is_gw    =.TRUE.
+     calc_type%gwmethod = GV
    case('GNW0')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = GnW0

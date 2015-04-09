@@ -49,6 +49,8 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
  write(stdout,*)
  select case(gwmethod)
+ case(GV)
+   write(stdout,*) 'perform a perturbative HF calculation'
  case(QS)
    write(stdout,*) 'perform a QP self-consistent GW calculation'
  case(G0W0)
@@ -63,7 +65,8 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    write(stdout,*) 'perform an eigenvalue self-consistent GnWn calculation'
  end select
 
- if(gwmethod==QS .OR. gwmethod==COHSEX .OR. gwmethod==QSCOHSEX .OR.  gwmethod==GnW0 .OR. gwmethod==GnWn) then
+ if(gwmethod==GV .OR. gwmethod==QS .OR. gwmethod==COHSEX  &
+   .OR. gwmethod==QSCOHSEX .OR.  gwmethod==GnW0 .OR. gwmethod==GnWn) then
    nomegai = 0
    allocate(omegai(-nomegai:nomegai))
    omegai(0) = 0.0_dp
@@ -132,9 +135,9 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
            do astate=1,basis%nbf
 
              selfenergy_omega(0,astate,bstate,ispin) = selfenergy_omega(0,astate,bstate,ispin) &
-                        - bra(ipole,astate) * bra(ipole,bstate)                            &  
-                          * ( REAL( -fact_full_r   / ( energy_qp(bstate,ispin) - ieta  - energy_qp(istate,ispin) + wpol%pole(ipole) ) , dp ) &
-                             -REAL(  fact_empty_ar / ( energy_qp(bstate,ispin) + ieta  - energy_qp(istate,ispin) - wpol%pole(ipole) ) , dp ) )
+                        + bra(ipole,astate) * bra(ipole,bstate)                            &  
+                          * ( REAL(  fact_full_r   / ( energy_qp(bstate,ispin) - ieta  - energy_qp(istate,ispin) + wpol%pole(ipole) ) , dp ) &
+                            + REAL(  fact_empty_ar / ( energy_qp(bstate,ispin) + ieta  - energy_qp(istate,ispin) - wpol%pole(ipole) ) , dp ) )
 
            enddo
          enddo
@@ -146,9 +149,9 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
            ! calculate only the diagonal !
            do iomegai=-nomegai,nomegai
              selfenergy_omega(iomegai,astate,1,ispin) = selfenergy_omega(iomegai,astate,1,ispin) &
-                      - bra(ipole,astate) * bra(ipole,astate)                                          & 
-                        * ( REAL( -fact_full_r   / ( energy_qp(astate,ispin) - ieta + omegai(iomegai) - energy_qp(istate,ispin) + wpol%pole(ipole) )  , dp )  &
-                           -REAL(  fact_empty_ar / ( energy_qp(astate,ispin) + ieta + omegai(iomegai) - energy_qp(istate,ispin) - wpol%pole(ipole) )  , dp ) )
+                      + bra(ipole,astate) * bra(ipole,astate)                                          & 
+                        * ( REAL(  fact_full_r   / ( energy_qp(astate,ispin) + omegai(iomegai) - energy_qp(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
+                          + REAL(  fact_empty_ar / ( energy_qp(astate,ispin) + omegai(iomegai) - energy_qp(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
            enddo
          enddo
 
@@ -175,6 +178,10 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
            enddo
          enddo
 
+       case(GV)
+         !
+         ! Do nothing: no correlation in this case
+         !
        case default 
          stop'BUG'
        end select
@@ -218,7 +225,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    enddo
 
 
- case(COHSEX) !==========================================================
+ case(GV,COHSEX) !==========================================================
 
    selfenergy(:,:,:) = selfenergy_omega(0,:,:,:)
    
