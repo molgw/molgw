@@ -344,13 +344,10 @@ function eri_ri(ibf,jbf,kbf,lbf)
 #ifndef HAVE_SCALAPACK_TODAY
    eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , eri_3center(:,index_kl) )
 #else
- write(*,*) 'FBFBF toto'
- call PDGEMM('T','N',1,1,nsize1,1.d0,eri_3center,index_ij,1,desc_3center,   &
+ call PDGEMM('T','N',1,1,nauxil_3center,1.d0,eri_3center,1,index_ij,desc_3center,   &
                                      eri_3center,1,index_kl,desc_3center,   &
                                 0.d0,eri_1,1,1,desc_1)
- write(*,*) 'FBFBF toto'
  call PDELGET('All',' ',eri_ri,eri_1,1,1,desc_1)
- write(*,*) 'FBFBF toto'
 #endif
 
  endif
@@ -1600,7 +1597,6 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  call init_desc('R',nauxil_2center,nauxil_2center,desc_2tmp,m_2center,n_2center)
  allocate(eri_2tmp(m_2center,n_2center))
 
- write(*,*) 'FBFB00',rank
  ! distribution AND transposition of the 2 center ERI
  do ibf_auxil=1,nauxil_2center
    do jbf_auxil=1,nauxil_2center
@@ -1608,18 +1604,14 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
    enddo
  enddo
 
- write(*,*) 'FBFB01',rank
  call init_desc('R',nauxil_2center,nsize1,desc_3tmp,m_3center,n_3center)
  allocate(eri_3tmp(m_3center,n_3center))
- write(*,*) 'FBFB02',rank
  call PDLACPY(' ',nauxil_2center,nsize1,eri_3center,1,1,desc_2tmp,eri_3tmp,1,1,desc_3tmp)
 
- write(*,*) 'FBFB03',rank
-! call PDGEMM('T','N', nauxil_2center,nsize1,nauxil_2center,1.d0,  & 
-!                 eri_2tmp,1,1,desc_2tmp,   &
-!                 eri_3tmp,1,1,desc_3tmp,   &
-!            0.d0,eri_3center,1,1,desc_3center)
- write(*,*) 'FBFB04',rank
+ call PDGEMM('T','N', nauxil_2center,nsize1,nauxil_2center,1.d0,  & 
+                 eri_2tmp,1,1,desc_2tmp,   &
+                 eri_3tmp,1,1,desc_3tmp,   &
+            0.d0,eri_3center,1,1,desc_3center)
  deallocate(eri_2tmp)
  deallocate(eri_3tmp)
 

@@ -222,18 +222,9 @@ program molgw
      call calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
    endif
  endif
-#ifdef HAVE_SCALAPACK_TODAY
- write(*,*) 'FB    1  1  1  1',eri(1,1,1,1)
- write(*,*) 'FBRI  1  1  1  1',eri_ri(1,1,1,1)
- write(*,*) 'FB    1  2  2  1',eri(1,2,2,1)
- write(*,*) 'FBRI  1  2  2  1',eri_ri(1,2,2,1)
- write(*,*) 'FB    1  2  3  1',eri(1,2,3,1)
- write(*,*) 'FBRI  1  2  3  1',eri_ri(1,2,3,1)
- write(*,*) 'FB    1  2  3  4',eri(1,2,3,4)
- write(*,*) 'FBRI  1  2  3  4',eri_ri(1,2,3,4)
- stop'ENOUGH'
-#endif
+
  call stop_clock(timing_prescf)
+
  !
  ! Big SCF loop is in there
  ! Only do it if the calculation is NOT a big restart

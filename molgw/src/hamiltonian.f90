@@ -312,7 +312,7 @@ subroutine setup_hartree_ri(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartre
 
  !
  ! Sum up the different contribution from different procs only if needed
- if( parallel_integral) call xsum(pot_hartree)
+ call xsum(pot_hartree)
 
 
  title='=== Hartree contribution ==='
@@ -433,10 +433,9 @@ subroutine setup_exchange_ri(print_matrix_,nbf,c_matrix,occupation,p_matrix,pot_
    enddo
 
  enddo
-
  deallocate(tmp)
 
-
+ call xsum(pot_exchange)
 
  call dump_out_matrix(print_matrix_,'=== Exchange contribution ===',nbf,nspin,pot_exchange)
 
