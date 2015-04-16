@@ -20,6 +20,9 @@ module m_inputparam
  integer,parameter :: GnWn         = 106
  integer,parameter :: G0W0         = 107
  integer,parameter :: GV           = 108   ! perturbative HF
+ integer,parameter :: GSIGMA       = 109   ! Total energy calc
+ integer,parameter :: GSIGMA2      = 111   ! Total energy calc
+ integer,parameter :: LW           = 110   ! Luttinger-Ward log term
 
  type calculation_type
    character(len=100) :: calc_name
@@ -129,6 +132,15 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%postscf_name =  TRIM(key2)
 
    select case(TRIM(key2))
+   case('LW')
+     calc_type%is_gw    =.TRUE.
+     calc_type%gwmethod = LW
+   case('GSIGMA2')
+     calc_type%is_gw    =.TRUE.
+     calc_type%gwmethod = GSIGMA2
+   case('GSIGMA')
+     calc_type%is_gw    =.TRUE.
+     calc_type%gwmethod = GSIGMA
    case('GV')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = GV
