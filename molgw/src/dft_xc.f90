@@ -109,6 +109,9 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
    if( dft_xc_type(idft_xc) == XC_GGA_X_HJS_PBE ) then
      call xc_f90_gga_x_hjs_set_par(xc_func(idft_xc), REAL(gamma_hybrid,C_DOUBLE) )
    endif
+   if( dft_xc_type(idft_xc) == XC_GGA_X_WPBEH ) then
+     call xc_f90_gga_x_wpbeh_set_par(xc_func(idft_xc), REAL(gamma_hybrid,C_DOUBLE) )
+   endif
 
  enddo
 

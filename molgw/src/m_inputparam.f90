@@ -258,64 +258,102 @@ subroutine init_dft_type(key,calc_type)
  ! LDA functionals
  case('LDAx')
    dft_xc_type(1) = XC_LDA_X
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  case('SPL')
    dft_xc_type(1) = XC_LDA_X
    dft_xc_type(2) = XC_LDA_C_PZ
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  case('LDA')
    dft_xc_type(1) = XC_LDA_X
    dft_xc_type(2) = XC_LDA_C_PW
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  case('VWN')
    dft_xc_type(1) = XC_LDA_X
    dft_xc_type(2) = XC_LDA_C_VWN
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  case('VWN_RPA')
    dft_xc_type(1) = XC_LDA_X
    dft_xc_type(2) = XC_LDA_C_VWN_RPA
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  !
  ! GGA functionals
  case('PBEx')
    dft_xc_type(1) = XC_GGA_X_PBE
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  case('PBE')
    dft_xc_type(1) = XC_GGA_X_PBE
    dft_xc_type(2) = XC_GGA_C_PBE
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  case('PBEhx')
    dft_xc_type(1) = XC_GGA_X_WPBEH
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  case('PBEh')
    dft_xc_type(1) = XC_GGA_X_WPBEH
    dft_xc_type(2) = XC_GGA_C_PBE
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  case('Bx')
    dft_xc_type(1) = XC_GGA_X_B88
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  case('BLYP')
    dft_xc_type(1) = XC_GGA_X_B88
    dft_xc_type(2) = XC_GGA_C_LYP
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  case('PW91x')
    dft_xc_type(1) = XC_GGA_X_PW91
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  case('PW91')
    dft_xc_type(1) = XC_GGA_X_PW91
    dft_xc_type(2) = XC_GGA_C_PW91
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  case('HCTH')
    dft_xc_type(1) = XC_GGA_XC_HCTH_407
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  case('TH')
    dft_xc_type(1) = XC_GGA_XC_TH1
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  !
  ! Meta-GGA functionals
  case('BJx')
    dft_xc_type(1) = XC_MGGA_X_BJ06
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  case('RPPx')
    dft_xc_type(1) = XC_MGGA_X_RPP09
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  !
  ! Hybrid functionals
  case('BHANDH')
    dft_xc_type(1) = XC_HYB_GGA_XC_BHANDH
    alpha_hybrid   = 0.50_dp
+   alpha_hybrid_lr= 0.00_dp
  case('BHANDHLYP')
    dft_xc_type(1) = XC_HYB_GGA_XC_BHANDHLYP
    alpha_hybrid   = 0.50_dp
+   alpha_hybrid_lr= 0.00_dp
  case('B3LYP')
    dft_xc_type(1) = XC_HYB_GGA_XC_B3LYP
    alpha_hybrid   = 0.20_dp
+   alpha_hybrid_lr= 0.00_dp
  case('PBE0')
    dft_xc_type(1) = XC_HYB_GGA_XC_PBEH
    alpha_hybrid   = 0.25_dp
+   alpha_hybrid_lr= 0.00_dp
  case('HSE03')
    dft_xc_type(1)  = XC_HYB_GGA_XC_HSE03
    alpha_hybrid    = 0.25_dp
@@ -325,11 +363,13 @@ subroutine init_dft_type(key,calc_type)
    dft_xc_type(1)  = XC_HYB_GGA_XC_HSE06
    alpha_hybrid    = 0.25_dp
    alpha_hybrid_lr = -alpha_hybrid
+   gamma_hybrid    = 0.11_dp
    rcut            = 1.0_dp / 0.11_dp
  case('HSE08')
    dft_xc_type(1)  = XC_HYB_GGA_XC_HJS_PBE
    alpha_hybrid    = 0.25_dp
    alpha_hybrid_lr = -alpha_hybrid
+   gamma_hybrid    = 0.11_dp
    rcut            = 1.0_dp / 0.11_dp
  case('CAM-B3LYP')
    dft_xc_type(1)  = XC_HYB_GGA_XC_CAM_B3LYP
@@ -343,7 +383,9 @@ subroutine init_dft_type(key,calc_type)
    rcut            =  1.0_dp / 0.150_dp  
  case('RSH')
    dft_xc_type(1) = XC_GGA_X_PBE
-   dft_xc_type(2) = XC_GGA_X_HJS_PBE 
+!   dft_xc_type(2) = XC_GGA_X_HJS_PBE  ! Not working and I don't know why. I
+!   suspect Libxc is not correct
+   dft_xc_type(2) = XC_GGA_X_WPBEH
    dft_xc_type(3) = XC_GGA_C_PBE
    dft_xc_coef(1) =  1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
    dft_xc_coef(2) =  alpha_hybrid_lr
@@ -352,7 +394,7 @@ subroutine init_dft_type(key,calc_type)
  ! Testing
  case('TESTHSE')
    dft_xc_type(1) = XC_GGA_X_PBE
-   dft_xc_type(2) = XC_GGA_X_HJS_PBE 
+   dft_xc_type(2) = XC_GGA_X_WPBEH  ! XC_GGA_X_HJS_PBE ! XC_GGA_X_WPBEH  ! XC_GGA_X_HJS_PBE 
    dft_xc_type(3) = XC_GGA_C_PBE
    alpha_hybrid   =  0.25_dp
    dft_xc_coef(1) =  1.00_dp 
@@ -363,12 +405,14 @@ subroutine init_dft_type(key,calc_type)
    rcut           = 1.0_dp / gamma_hybrid
  case('TESTLDA0')
    alpha_hybrid   = 0.25_dp
+   alpha_hybrid_lr= 0.00_dp
    dft_xc_type(1) = XC_LDA_X
    dft_xc_type(2) = XC_LDA_C_PW
    dft_xc_coef(1) =  1.00_dp - alpha_hybrid
    dft_xc_coef(2) =  1.00_dp
  case('TESTPBE0')
    alpha_hybrid   = 0.25_dp
+   alpha_hybrid_lr= 0.00_dp
    dft_xc_type(1) = XC_GGA_X_PBE
    dft_xc_type(2) = XC_GGA_C_PBE
    dft_xc_coef(1) =  1.00_dp - alpha_hybrid
