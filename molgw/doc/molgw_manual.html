@@ -35,7 +35,8 @@ Examples for this file are provided in folder <span style="font-family: Courier"
 The input file made of two sections:
 <ul>
   <li>A fortran namelist named molgw. It starts with <code>&amp;molgw</code> and ends with /.
-  <li>A list of atom species and atom positions (Atom specie is an integer of the symbol)
+  <li>A list of elements and the cartesian coordinates. The element is either an integer or a symbol (e.g. 4 or Be).<br>
+   The coordinates are in 'angstrom' by default, but can be input in 'bohr' if the statement length_unit='bohr' is in the previous &amp;molgw namelist.
 </ul>
 
 
