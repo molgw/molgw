@@ -383,9 +383,8 @@ subroutine init_dft_type(key,calc_type)
    rcut            =  1.0_dp / 0.150_dp  
  case('RSH')
    dft_xc_type(1) = XC_GGA_X_PBE
-!   dft_xc_type(2) = XC_GGA_X_HJS_PBE  ! Not working and I don't know why. I
-!   suspect Libxc is not correct
-   dft_xc_type(2) = XC_GGA_X_WPBEH
+!   dft_xc_type(2) = XC_GGA_X_HJS_PBE  ! HJS is not correct in Libxc <= 2.2.2
+   dft_xc_type(2) = 2001 ! XC_GGA_X_WPBEH
    dft_xc_type(3) = XC_GGA_C_PBE
    dft_xc_coef(1) =  1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
    dft_xc_coef(2) =  alpha_hybrid_lr
@@ -394,7 +393,7 @@ subroutine init_dft_type(key,calc_type)
  ! Testing
  case('TESTHSE')
    dft_xc_type(1) = XC_GGA_X_PBE
-   dft_xc_type(2) = XC_GGA_X_WPBEH  ! XC_GGA_X_HJS_PBE ! XC_GGA_X_WPBEH  ! XC_GGA_X_HJS_PBE 
+   dft_xc_type(2) = XC_GGA_X_HJS_PBE ! XC_GGA_X_WPBEH ! 2001  
    dft_xc_type(3) = XC_GGA_C_PBE
    alpha_hybrid   =  0.25_dp
    dft_xc_coef(1) =  1.00_dp 

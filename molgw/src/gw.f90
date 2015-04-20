@@ -137,7 +137,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
  do ispin=1,nspin
    do istate=1,basis%nbf !INNER LOOP of G
-     write(*,*) 'FBFB',istate
+     if(gwmethod==LW) write(stdout,*) 'FBFB',istate
      !
      ! Apply the frozen core and frozen virtual approximation to G
      if(istate <= ncore_G)    cycle

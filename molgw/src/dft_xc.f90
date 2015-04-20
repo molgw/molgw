@@ -218,17 +218,14 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
          ! Remove too small densities to stabilize the computation
          ! especially useful for Becke88
          if( ANY( rhor_r(:) > 1.0e-9_dp ) ) then
-           call xc_f90_gga_exc_vxc(xc_func(idft_xc),1_C_INT,rhor_r(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1)       )
+           call xc_f90_gga_exc_vxc(xc_func(idft_xc),1_C_INT,rhor_r(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
          else
            exc_libxc(:)     = 0.0_dp
            vxc_libxc(:)     = 0.0_dp
            vsigma(:)        = 0.0_dp
          endif
        else
-         !FIXME  Hard coding !
-!             omega=0.00_dp
-         omega=0.11_dp
-         call my_gga_exc_vxc_hjs(omega,rhor_r(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1)       )
+         call my_gga_exc_vxc_hjs(gamma_hybrid,rhor_r(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
        endif
 
      case(XC_FAMILY_MGGA)
