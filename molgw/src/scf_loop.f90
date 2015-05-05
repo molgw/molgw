@@ -111,7 +111,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
        call setup_exchange_ri(print_matrix_,basis%nbf,c_matrix,occupation,p_matrix,hamiltonian_exx,en%exx)
      endif
      ! Rescale with alpha_hybrid for hybrid functionals
-     en%exx = alpha_hybrid * en%exx
+     en%exx_hyb = alpha_hybrid * en%exx
      hamiltonian_xc(:,:,:) = hamiltonian_exx(:,:,:) * alpha_hybrid
 
      if(calc_type%need_exchange_lr) then
@@ -121,7 +121,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
          call setup_exchange_longrange_ri(print_matrix_,basis%nbf,c_matrix,occupation,p_matrix,matrix_tmp,energy_tmp)
        endif
        ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
-       en%exx = en%exx + alpha_hybrid_lr * energy_tmp
+       en%exx_hyb = en%exx_hyb + alpha_hybrid_lr * energy_tmp
        hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix_tmp(:,:,:) * alpha_hybrid_lr
      endif
 
@@ -252,12 +252,12 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    write(stdout,'(a25,x,f16.10)') 'Nucleus Energy  [Ha]:',en%nuc
    write(stdout,'(a25,x,f16.10)') 'Hartree Energy  [Ha]:',en%hart
    if(calc_type%need_exchange) then
-     write(stdout,'(a25,x,f16.10)') 'Exchange Energy [Ha]:',en%exx
+     write(stdout,'(a25,x,f16.10)') 'Exchange Energy [Ha]:',en%exx_hyb
    endif
    if( calc_type%is_dft ) then
      write(stdout,'(a25,x,f16.10)') 'XC Energy       [Ha]:',en%xc
    endif
-   en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%xc
+   en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx_hyb + en%xc
    write(stdout,'(/,a25,x,f16.10,/)') 'Total Energy    [Ha]:',en%tot
 
    !

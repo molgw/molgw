@@ -14,16 +14,17 @@ module m_scf
  integer,private              :: iscf
 
  type energy_contributions
-   real(dp) :: nuc_nuc= 0.0_dp
-   real(dp) :: kin    = 0.0_dp
-   real(dp) :: nuc    = 0.0_dp
-   real(dp) :: hart   = 0.0_dp
-   real(dp) :: exx    = 0.0_dp
-   real(dp) :: xc     = 0.0_dp
-   real(dp) :: se     = 0.0_dp      ! single-excitation contribution
-   real(dp) :: mp2    = 0.0_dp
-   real(dp) :: rpa    = 0.0_dp
-   real(dp) :: tot    = 0.0_dp
+   real(dp) :: nuc_nuc = 0.0_dp
+   real(dp) :: kin     = 0.0_dp
+   real(dp) :: nuc     = 0.0_dp
+   real(dp) :: hart    = 0.0_dp
+   real(dp) :: exx_hyb = 0.0_dp
+   real(dp) :: exx     = 0.0_dp
+   real(dp) :: xc      = 0.0_dp
+   real(dp) :: se      = 0.0_dp      ! single-excitation contribution
+   real(dp) :: mp2     = 0.0_dp
+   real(dp) :: rpa     = 0.0_dp
+   real(dp) :: tot     = 0.0_dp
  end type
  type(energy_contributions) :: en
 

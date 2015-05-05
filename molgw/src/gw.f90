@@ -84,14 +84,14 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    allocate(omegai(-nomegai:nomegai))
    omegai(0) = 0.0_dp
  else if(gwmethod==LW .OR. gwmethod==GSIGMA2) then
-   nomegai =  16  !16000
+   nomegai =  32  !16000
 
    allocate(omegac(1:nomegai))
    
    allocate(x1(nomegai),weights(nomegai))  !FBFB deallocate weights
    call coeffs_gausslegint(0.0_dp,1.0_dp,x1,weights,nomegai)
 
-   mu = 0.00_dp
+   mu =-0.10_dp
    write(stdout,*) 'mu is set manually here to',mu
    do iomegai=1,nomegai
      omegac(iomegai) = x1(iomegai) / ( 1.0_dp - x1(iomegai) ) * im + mu
@@ -187,8 +187,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
          do bstate=1,basis%nbf
            do astate=1,basis%nbf
 
-!             do iomegai=-nomegai,nomegai
-             do iomegai=       1,nomegai
+             do iomegai=1,nomegai
                selfenergy_omegac(iomegai,astate,bstate,ispin) = selfenergy_omegac(iomegai,astate,bstate,ispin) &
                         + bra(ipole,astate) * bra(ipole,bstate) &
                           * (  fact_full_i  / ( omegac(iomegai) - energy(istate,ispin) + wpol%pole(ipole)  )    &
@@ -203,8 +202,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
          do astate=1,basis%nbf
 
-!           do iomegai=-nomegai,nomegai
-           do iomegai=       1,nomegai
+           do iomegai=1,nomegai
              selfenergy_omegac(iomegai,astate,1,ispin) = selfenergy_omegac(iomegai,astate,1,ispin) &
                       + bra(ipole,astate) * bra(ipole,astate) &
                         * (  fact_full_i  / ( omegac(iomegai) - energy(istate,ispin) + wpol%pole(ipole)  )    &
@@ -224,7 +222,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
            !
            ! calculate only the diagonal !
            selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
-                    + bra(ipole,astate) * bra(ipole,astate) &
+                    - bra(ipole,astate) * bra(ipole,astate) &
                       * ( REAL(  fact_full_i * fact_empty_a   / ( energy_qp(astate,ispin)  - energy(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
                         - REAL(  fact_empty_i * fact_full_a  / ( energy_qp(astate,ispin)  - energy(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
          enddo
@@ -470,16 +468,14 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    write(stdout,*) 'Tr[SigmaG]: numerical eval'
 
  rdiag = 0.0_dp
-! do iomegai=-nomegai,nomegai
- do iomegai=       1,nomegai
+ do iomegai=1,nomegai
    rdiag = rdiag + SUM(selfenergy_omegac(iomegai,:,1,:)) * spin_fact / (2.0 * pi) * weights(iomegai)
-   write(124,'(3(f18.8,2x))') AIMAG(omegac(iomegai)),SUM(selfenergy_omegac(iomegai,:,1,:)) * spin_fact / (2.0 * pi)  * 2.0_dp
+!   write(124,'(3(f18.8,2x))') AIMAG(omegac(iomegai)),SUM(selfenergy_omegac(iomegai,:,1,:)) * spin_fact / (2.0 * pi)  * 2.0_dp
  enddo
  write(stdout,*) 'Result:', rdiag   * 2.0_dp
 
  case(LW)
 
-   write(stdout,*) 'FBFB LW'
    allocate(matrix(basis%nbf,basis%nbf))
    allocate(eigvec(basis%nbf,basis%nbf))
    allocate(eigval(basis%nbf))
@@ -487,43 +483,28 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    tr_log_gsigma = 0.0_dp
    tr_gsigma     = 0.0_dp
 
-!   do iomegai=-nomegai,nomegai
-!     matrix(:,:) = 0.5_dp *(  selfenergy_omegac(iomegai,:,:,1) + CONJG(TRANSPOSE( selfenergy_omegac(iomegai,:,:,1) ))  )
-   do iomegai=       1,nomegai
-     matrix(:,:) =  selfenergy_omegac(iomegai,:,:,1) + CONJG(TRANSPOSE( selfenergy_omegac(iomegai,:,:,1) ))
-
-     call diagonalize(basis%nbf,matrix,eigval,eigvec)
-     write(125,'(3(f18.8,2x))') AIMAG(omegac(iomegai)),SUM(eigval(:)) * spin_fact / (2.0 * pi)
-   enddo
-
-!   do iomegai=-nomegai,nomegai
-   do iomegai=       1,nomegai
+   do iomegai=1,nomegai
 
      rdiag=0.d0
      do istate=1,basis%nbf
        rdiag = rdiag + REAL(selfenergy_omegac(iomegai,istate,istate,1),dp) * spin_fact / (2.0 * pi)   * 2.0_dp
      enddo
 
-!     matrix(:,:) = 0.5_dp *(  selfenergy_omegac(iomegai,:,:,1) + CONJG(TRANSPOSE( selfenergy_omegac(iomegai,:,:,1) )) &
-!                  - MATMUL( selfenergy_omegac(iomegai,:,:,1) , CONJG(TRANSPOSE( selfenergy_omegac(iomegai,:,:,1) )) )  )
-  
      matrix(:,:) = selfenergy_omegac(iomegai,:,:,1) + CONJG(TRANSPOSE( selfenergy_omegac(iomegai,:,:,1) )) &
                   - MATMUL( selfenergy_omegac(iomegai,:,:,1) , CONJG(TRANSPOSE( selfenergy_omegac(iomegai,:,:,1) )) )
 
      call diagonalize(basis%nbf,matrix,eigval,eigvec)
 
 
-     write(126,'(3(f18.8,2x))') AIMAG(omegac(iomegai)),-SUM(LOG( 1.0_dp - eigval(:))) * spin_fact / (2.0 * pi)
-     write(127,'(3(f18.8,2x))') AIMAG(omegac(iomegai)),rdiag+SUM(LOG( 1.0_dp - eigval(:))) * spin_fact / (2.0 * pi) 
      tr_gsigma = tr_gsigma + rdiag * weights(iomegai)
-     tr_log_gsigma = tr_log_gsigma - SUM(LOG( 1.0_dp - eigval(:))) * spin_fact / (2.0 * pi) * weights(iomegai)
+     tr_log_gsigma = tr_log_gsigma + SUM(LOG( 1.0_dp - eigval(:))) * spin_fact / (2.0 * pi) * weights(iomegai)
 
    enddo
 
 
-   write(stdout,*) 'Log     ',tr_log_gsigma 
-   write(stdout,*) 'GSigma  ',tr_gsigma 
-   write(stdout,*) 'Diff    ',(tr_log_gsigma-tr_gsigma) 
+   write(stdout,*) 'Tr[Log(1-GSigma)] ',tr_log_gsigma 
+   write(stdout,*) 'Tr[GSigma]        ',tr_gsigma 
+   write(stdout,*) 'Sum               ',(tr_log_gsigma+tr_gsigma) 
    deallocate(matrix,eigvec,eigval)
 
  end select
