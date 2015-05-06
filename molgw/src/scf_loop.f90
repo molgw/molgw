@@ -154,7 +154,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      endif
 
      exchange_m_vxc_diag(:,:)=0.0_dp
-     call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp)
+     call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
      if(has_auxil_basis) call destroy_eri_3center_eigen()
 
      matrix_tmp(:,:,:) = alpha_mixing * matrix_tmp(:,:,:) + (1.0_dp-alpha_mixing) * self_energy_old(:,:,:)

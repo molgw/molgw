@@ -340,8 +340,12 @@ program molgw
    if( calc_type%is_dft ) en%tot = en%tot - en%xc - en%exx_hyb + en%exx 
    write(stdout,'(/,a,f16.10)') ' RPA Total energy [Ha]: ',en%tot
 
-   call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp)
+   call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
    if(has_auxil_basis) call destroy_eri_3center_eigen()
+
+   if( ABS(en%gw) > 1.0e-5_dp ) then
+     write(stdout,'(/,a,f16.10)') ' Galitskii-Migdal Total energy [Ha]: ',en%tot - en%rpa + en%gw
+   endif
 
    title='=== Self-energy === (in the eigenstate basis)'
    call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)

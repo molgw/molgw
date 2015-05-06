@@ -1,5 +1,5 @@
 !=========================================================================
-subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy)
+subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy,energy_gw)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -18,6 +18,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  real(dp),intent(in)                :: s_matrix(basis%nbf,basis%nbf)
  type(spectral_function),intent(in) :: wpol
  real(dp),intent(out)               :: selfenergy(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(out)               :: energy_gw
 !=====
  logical               :: file_exists=.FALSE.
  integer               :: nomegai
@@ -49,6 +50,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
  call start_clock(timing_self)
 
+ energy_gw = 0.0_dp
 
  write(msg,'(es9.2)') AIMAG(ieta)
  msg='small complex number is '//msg
@@ -461,18 +463,19 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
  case(GSIGMA) !==========================================================
 
-   write(stdout,*) 'Tr[SigmaG]:',SUM(selfenergy_omega(0,:,1,:)) * spin_fact
+   energy_gw = 0.5_dp * SUM(selfenergy_omega(0,:,1,:)) * spin_fact
+   write(stdout,*) 'Tr[SigmaG]:',2.0_dp*energy_gw
 
  case(GSIGMA2) !==========================================================
 
    write(stdout,*) 'Tr[SigmaG]: numerical eval'
 
- rdiag = 0.0_dp
- do iomegai=1,nomegai
-   rdiag = rdiag + SUM(selfenergy_omegac(iomegai,:,1,:)) * spin_fact / (2.0 * pi) * weights(iomegai)
-!   write(124,'(3(f18.8,2x))') AIMAG(omegac(iomegai)),SUM(selfenergy_omegac(iomegai,:,1,:)) * spin_fact / (2.0 * pi)  * 2.0_dp
- enddo
- write(stdout,*) 'Result:', rdiag   * 2.0_dp
+   rdiag = 0.0_dp
+   do iomegai=1,nomegai
+     rdiag = rdiag + SUM(selfenergy_omegac(iomegai,:,1,:)) * spin_fact / (2.0 * pi) * weights(iomegai)
+!     write(124,'(3(f18.8,2x))') AIMAG(omegac(iomegai)),SUM(selfenergy_omegac(iomegai,:,1,:)) * spin_fact / (2.0 * pi)  * 2.0_dp
+   enddo
+   write(stdout,*) 'Result:', rdiag   * 2.0_dp
 
  case(LW)
 

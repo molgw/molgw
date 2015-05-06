@@ -24,6 +24,7 @@ module m_scf
    real(dp) :: se      = 0.0_dp      ! single-excitation contribution
    real(dp) :: mp2     = 0.0_dp
    real(dp) :: rpa     = 0.0_dp
+   real(dp) :: gw      = 0.0_dp
    real(dp) :: tot     = 0.0_dp
  end type
  type(energy_contributions) :: en

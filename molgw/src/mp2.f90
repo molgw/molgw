@@ -373,7 +373,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
  real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,basis%nbf)
  real(dp),intent(in)        :: nuc_nuc
 !=====
- integer,parameter    :: neig=12
+ integer,parameter    :: neig=2
  integer,parameter    :: nblock=2
  integer,parameter    :: ncycle=12
  integer              :: ieig,jeig,keig,neigc,icycle,iblock,jblock
