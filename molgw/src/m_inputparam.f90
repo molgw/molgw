@@ -21,8 +21,9 @@ module m_inputparam
  integer,parameter :: G0W0         = 107
  integer,parameter :: GV           = 108   ! perturbative HF
  integer,parameter :: GSIGMA       = 109   ! Total energy calc
- integer,parameter :: GSIGMA2      = 111   ! Total energy calc
  integer,parameter :: LW           = 110   ! Luttinger-Ward log term
+ integer,parameter :: GSIGMA2      = 111   ! Total energy calc
+ integer,parameter :: GSIGMA3      = 112   ! Total energy calc
 
  type calculation_type
    character(len=100) :: calc_name
@@ -135,6 +136,9 @@ subroutine init_calculation_type(calc_type,input_key)
    case('LW')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = LW
+   case('GSIGMA3')
+     calc_type%is_gw    =.TRUE.
+     calc_type%gwmethod = GSIGMA3
    case('GSIGMA2')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = GSIGMA2

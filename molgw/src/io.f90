@@ -645,6 +645,7 @@ subroutine write_small_restart(nbf,occupation,c_matrix)
  write(stdout,'(/,a)') ' Writing a small RESTART file'
  !
  ! Only write down the "occupied states" to save I-O
+ nstate(:)=0
  do ispin=1,nspin
    do istate=1,nbf
      if( occupation(istate,ispin) > completely_empty ) nstate(ispin) = istate

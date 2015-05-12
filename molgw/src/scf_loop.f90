@@ -37,7 +37,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  real(dp),intent(inout)             :: energy(basis%nbf,nspin)
 !=====
  type(spectral_function) :: wpol
- integer                 :: ispin,iscf
+ integer                 :: ispin,iscf,istate
  character(len=100)      :: title
  real(dp)                :: energy_tmp
  real(dp),allocatable    :: ehomo(:),elumo(:)
@@ -48,6 +48,8 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  real(dp),allocatable    :: self_energy_old(:,:,:)
  logical                 :: is_converged
+ real(dp),allocatable    :: energy_exx(:,:)
+ real(dp),allocatable    :: c_matrix_exx(:,:,:)
 !=============================
 
  !
@@ -195,6 +197,8 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    
    title='=== Total Hamiltonian ==='
    call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,hamiltonian)
+
+  
   
    !
    ! Diagonalize the Hamiltonian H
@@ -215,7 +219,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
    call output_homolumo(basis%nbf,nspin,occupation,energy,ehomo,elumo)
 
-  
+
    if(print_matrix_) then
      !
      ! REMEMBER:
@@ -309,6 +313,33 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  !
  ! Obtain the Fock matrix
  matrix_tmp(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
+
+ if(calc_type%gwmethod==LW .OR. calc_type%gwmethod==GSIGMA) then
+   allocate(energy_exx(basis%nbf,nspin))
+   allocate(c_matrix_exx(basis%nbf,basis%nbf,nspin))
+   call issue_warning('ugly coding here')
+   do ispin=1,nspin
+     write(stdout,*) 'Diagonalization H_exx for spin channel',ispin
+     call diagonalize_generalized_sym(basis%nbf,&
+                                      matrix_tmp(:,:,ispin),s_matrix(:,:),&
+                                      energy_exx(:,ispin),c_matrix_exx(:,:,ispin))
+   enddo
+   write(stdout,*) 'FBFB sum(      epsilon) + Eii -<vxc> - EH + Ex',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
+   write(stdout,*) 'FBFB sum(tilde epsilon) + Eii - EH - Ex       ',SUM( occupation(:,:)*energy_exx(:,:) ) + en%nuc_nuc - en%hart - en%exx
+   open(1000,form='unformatted')
+   do ispin=1,nspin
+     do istate=1,basis%nbf
+       write(1000) c_matrix_exx(:,istate,ispin)
+     enddo
+   enddo
+   close(1000)
+   open(1001,form='unformatted')
+   write(1001) energy_exx(:,:)
+   close(1001)
+   deallocate(energy_exx,c_matrix_exx)
+ endif
+
+
  ! And pass it to single_excitations
  call single_excitations(basis%nbf,energy,occupation,c_matrix,matrix_tmp)
 

@@ -44,8 +44,9 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  integer               :: selfenergyfile
 ! LW devel
  complex(dp),allocatable :: matrix(:,:),eigvec(:,:)
- real(dp),allocatable :: eigval(:),x1(:),weights(:)
- real(dp) :: tr_log_gsigma,tr_gsigma,rdiag,mu
+ real(dp),allocatable    :: eigval(:),x1(:),weights(:)
+ real(dp)                :: tr_log_gsigma,tr_gsigma,rdiag,mu
+ real(dp),allocatable    :: c_matrix_exx(:,:,:)
 !=====
 
  call start_clock(timing_self)
@@ -64,6 +65,8 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    write(stdout,*) 'perform the calculation of Tr[ SigmaG ]'
  case(GSIGMA2)
    write(stdout,*) 'perform the calculation of Tr[ SigmaG ] numerical for test only'
+ case(GSIGMA3)
+   write(stdout,*) 'perform the calculation of Tr[ SigmaG ] numerical for test only'
  case(GV)
    write(stdout,*) 'perform a perturbative HF calculation'
  case(QS)
@@ -80,17 +83,24 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    write(stdout,*) 'perform an eigenvalue self-consistent GnWn calculation'
  end select
 
- if(gwmethod==GV .OR. gwmethod==GSIGMA .OR. gwmethod==QS .OR. gwmethod==COHSEX  &
+ if(gwmethod==GV .OR. gwmethod==QS .OR. gwmethod==COHSEX  &
+   .OR. gwmethod==GSIGMA3 &
    .OR. gwmethod==QSCOHSEX .OR.  gwmethod==GnW0 .OR. gwmethod==GnWn) then
    nomegai = 0
    allocate(omegai(-nomegai:nomegai))
    omegai(0) = 0.0_dp
+
+ else if(gwmethod==GSIGMA) then
+   nomegai = 1
+   allocate(omegai(-nomegai:nomegai))
+   omegai(:) = 0.0_dp
+
  else if(gwmethod==LW .OR. gwmethod==GSIGMA2) then
    nomegai =  32  !16000
 
    allocate(omegac(1:nomegai))
    
-   allocate(x1(nomegai),weights(nomegai))  !FBFB deallocate weights
+   allocate(x1(nomegai),weights(nomegai))  
    call coeffs_gausslegint(0.0_dp,1.0_dp,x1,weights,nomegai)
 
    mu =-0.10_dp
@@ -111,7 +121,8 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    enddo
  endif
 
- if( gwmethod==GnW0 .OR. gwmethod==GnWn .OR. gwmethod==GSIGMA .OR. gwmethod==GSIGMA2 .OR. gwmethod==LW ) then
+ if( gwmethod==GnW0 .OR. gwmethod==GnWn .OR. gwmethod==GSIGMA3 &
+    .OR. gwmethod==GSIGMA2 .OR. gwmethod==LW ) then
    call read_energy_qp(nspin,basis%nbf,energy_qp,reading_status)
    if(reading_status/=0) then
      call issue_warning('File energy_qp not found: assuming 1st iteration')
@@ -119,6 +130,12 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    endif
  else
    energy_qp(:,:) = energy(:,:)
+ endif
+ if( gwmethod==LW .OR. gwmethod==GSIGMA) then
+   call issue_warning('reading G\tilde FBFB')
+   open(1001,form='unformatted')
+   read(1001) energy_qp(:,:)
+   close(1001,status='delete')
  endif
 
  if( gwmethod==GV .OR. gwmethod==GSIGMA .OR. gwmethod==G0W0 .OR.  gwmethod==GSIGMA2 &
@@ -132,7 +149,6 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    allocate(selfenergy_omega(-nomegai:nomegai,basis%nbf,ndim2,nspin))
    selfenergy_omega(:,:,:,:) = 0.0_dp
  else
-!   allocate(selfenergy_omegac(-nomegai:nomegai,basis%nbf,ndim2,nspin))
    allocate(selfenergy_omegac(1:nomegai,basis%nbf,ndim2,nspin))
    selfenergy_omegac(:,:,:,:) = 0.0_dp
  endif
@@ -178,7 +194,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
              selfenergy_omega(0,astate,bstate,ispin) = selfenergy_omega(0,astate,bstate,ispin) &
                         + bra(ipole,astate) * bra(ipole,bstate)                            &  
-                          * ( REAL(  fact_full_i   / ( energy_qp(bstate,ispin) - ieta  - energy_qp(istate,ispin) + wpol%pole(ipole) ) , dp ) &
+                          * ( REAL(  fact_full_i  / ( energy_qp(bstate,ispin) - ieta  - energy_qp(istate,ispin) + wpol%pole(ipole) ) , dp ) &
                             + REAL(  fact_empty_i / ( energy_qp(bstate,ispin) + ieta  - energy_qp(istate,ispin) - wpol%pole(ipole) ) , dp ) )
 
            enddo
@@ -214,6 +230,20 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
          enddo
 
+       case(GSIGMA3)
+
+         do bstate=1,basis%nbf
+           do astate=1,basis%nbf
+
+             fact_full_a   = occupation(astate,ispin) / spin_fact
+             fact_empty_a  = (spin_fact - occupation(astate,ispin)) / spin_fact
+             selfenergy_omega(0,astate,bstate,ispin) = selfenergy_omega(0,astate,bstate,ispin) &
+                      - bra(ipole,astate) * bra(ipole,bstate) &
+                        * ( REAL(  fact_full_i  * fact_empty_a / ( energy_qp(astate,ispin)  - energy(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
+                          - REAL(  fact_empty_i * fact_full_a  / ( energy_qp(astate,ispin)  - energy(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
+
+           enddo
+         enddo
 
 
        case(GSIGMA)
@@ -225,7 +255,11 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
            ! calculate only the diagonal !
            selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
                     - bra(ipole,astate) * bra(ipole,astate) &
-                      * ( REAL(  fact_full_i * fact_empty_a   / ( energy_qp(astate,ispin)  - energy(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
+                      * ( REAL(  fact_full_i  * fact_empty_a / ( energy(astate,ispin)  - energy(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
+                        - REAL(  fact_empty_i * fact_full_a  / ( energy(astate,ispin)  - energy(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
+           selfenergy_omega(1,astate,1,ispin) = selfenergy_omega(1,astate,1,ispin) &
+                    - bra(ipole,astate) * bra(ipole,astate) &
+                      * ( REAL(  fact_full_i  * fact_empty_a / ( energy_qp(astate,ispin)  - energy(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
                         - REAL(  fact_empty_i * fact_full_a  / ( energy_qp(astate,ispin)  - energy(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
          enddo
 
@@ -463,7 +497,52 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
  case(GSIGMA) !==========================================================
 
+   energy_gw = 0.5_dp * SUM(selfenergy_omega(1,:,1,:)) * spin_fact
+   write(stdout,*) 'Tr[Sigma tilde G]:',2.0_dp*energy_gw
+
    energy_gw = 0.5_dp * SUM(selfenergy_omega(0,:,1,:)) * spin_fact
+   write(stdout,*) '       Tr[SigmaG]:',2.0_dp*energy_gw
+
+ case(GSIGMA3) !==========================================================
+
+   energy_gw = 0.0_dp
+   do astate=1,basis%nbf
+     energy_gw = energy_gw + 0.5_dp * SUM(selfenergy_omega(0,astate,astate,:)) * spin_fact
+   enddo
+   write(stdout,*) 'Tr[SigmaG]:',2.0_dp*energy_gw
+
+   ! Transform the matrix elements back to the AO basis
+   ! do not forget the overlap matrix S
+   ! C^T S C = I
+   ! the inverse of C is C^T S
+   ! the inverse of C^T is S C
+   do ispin=1,nspin
+     selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,:,ispin)) , MATMUL( selfenergy_omega(0,:,:,ispin), &
+                             MATMUL( TRANSPOSE(c_matrix(:,:,ispin)), s_matrix(:,:) ) ) )
+   enddo
+
+   allocate(c_matrix_exx(basis%nbf,basis%nbf,nspin))
+   open(1000,form='unformatted')
+   do ispin=1,nspin
+     do astate=1,basis%nbf
+       read(1000) c_matrix_exx(:,astate,ispin)
+     enddo
+   enddo
+   close(1000)
+   write(*,*) c_matrix_exx(1:5,1,1)
+   write(*,*) c_matrix(1:5,1,1)
+   write(*,*) 'DOT_PRODUCT',DOT_PRODUCT( c_matrix(:,1,1), MATMUL( s_matrix(:,:) , c_matrix(:,1,1) ) )
+   write(*,*) 'DOT_PRODUCT',DOT_PRODUCT( c_matrix_exx(:,1,1), MATMUL( s_matrix(:,:) , c_matrix(:,1,1) ) )
+   do ispin=1,nspin
+     selfenergy(:,:,ispin) = MATMUL( TRANSPOSE(c_matrix_exx(:,:,ispin)) , MATMUL( selfenergy(:,:,ispin), c_matrix_exx(:,:,ispin) ) )
+!     selfenergy(:,:,ispin) = MATMUL( TRANSPOSE(c_matrix(:,:,ispin)) , MATMUL( selfenergy(:,:,ispin), c_matrix(:,:,ispin) ) )
+   enddo
+   deallocate(c_matrix_exx)
+
+   energy_gw = 0.0_dp
+   do astate=1,basis%nbf
+     energy_gw = energy_gw + 0.5_dp * SUM(selfenergy(astate,astate,:)) * spin_fact
+   enddo
    write(stdout,*) 'Tr[SigmaG]:',2.0_dp*energy_gw
 
  case(GSIGMA2) !==========================================================
@@ -515,6 +594,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
  if(ALLOCATED(omegai)) deallocate(omegai)
  if(ALLOCATED(omegac)) deallocate(omegac)
+ if(ALLOCATED(weights)) deallocate(weights)
  if(ALLOCATED(selfenergy_omega)) deallocate(selfenergy_omega)
  if(ALLOCATED(selfenergy_omegac)) deallocate(selfenergy_omegac)
 
