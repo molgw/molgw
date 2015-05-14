@@ -454,7 +454,7 @@ subroutine summary_input(grid_quality,integral_quality)
  character(len=12),intent(in) :: grid_quality
  character(len=12),intent(in) :: integral_quality
 !=====
- integer :: iatom
+ integer :: iatom,ighost
 !=====
 
  !
@@ -464,6 +464,7 @@ subroutine summary_input(grid_quality,integral_quality)
  write(stdout,'(a25,2x,a)') '         SCF type: ',calc_type%scf_name
  write(stdout,'(a25,2x,a)') '    Post SCF type: ',calc_type%postscf_name
  write(stdout,'(a25,i3)')   ' Natom: ',natom
+ write(stdout,'(a25,i3)')   ' Nghost:',nghost
  write(stdout,'(a25,f8.4)') ' Electrons: ',electrons
  write(stdout,'(a25,f8.4)') ' Charge: ',charge
  write(stdout,'(a25,f8.4)') ' Magnetization: ',magnetization
@@ -491,6 +492,10 @@ subroutine summary_input(grid_quality,integral_quality)
  write(stdout,*) '                       bohr                                        angstrom'
  do iatom=1,natom
    write(stdout,'(2x,a2,3(x,f12.6),6x,3(x,f12.6))') element_name(zatom(iatom)),x(:,iatom),x(:,iatom)*bohr_A
+ enddo
+ if( nghost>0) write(stdout,'(a)') ' == ghost list'
+ do ighost=1,nghost
+   write(stdout,'(2x,a2,3(x,f12.6),6x,3(x,f12.6))') element_name(REAL(basis_element(natom+ighost),dp)),x(:,natom+ighost),x(:,natom+ighost)*bohr_A
  enddo
 
  write(stdout,*) '================================'
@@ -623,8 +628,8 @@ subroutine read_inputfile_namelist()
 
  !
  ! Read the atom positions
- allocate(x_read(3,natom),zatom_read(natom))
- do iatom=1,natom
+ allocate(x_read(3,natom+nghost),zatom_read(natom+nghost))
+ do iatom=1,natom+nghost
    read(*,*) atom_symbol,x_read(:,iatom)
    !
    ! First, try to interpret atom_symbol as an integer
@@ -636,7 +641,7 @@ subroutine read_inputfile_namelist()
    zatom_read(iatom) = atom_number
  enddo
  x_read(:,:) = x_read(:,:) * length_factor
- call init_atoms(natom,zatom_read,x_read)
+ call init_atoms(natom,nghost,zatom_read,x_read)
  deallocate(x_read,zatom_read)
 
 

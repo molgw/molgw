@@ -5,7 +5,9 @@ module m_atoms
 
  real(dp),parameter,private     :: tol_geom=1.0e-5_dp
 
+ integer,public                 :: natom_basis
  integer,public                 :: natom
+ integer,public                 :: nghost
  integer,protected              :: natom_type
  integer,protected              :: nbond
 
@@ -25,24 +27,30 @@ contains
 
 
 !=========================================================================
-subroutine init_atoms(natom_read,zatom_read,x_read)
+subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read)
  use m_tools,only: cross_product
  implicit none
- integer,intent(in)  :: natom_read
- real(dp),intent(in) :: zatom_read(natom_read),x_read(3,natom_read)
+ integer,intent(in)  :: natom_read,nghost_read
+ real(dp),intent(in) :: zatom_read(natom_read+nghost_read),x_read(3,natom_read+nghost_read)
 !=====
  integer  :: iatom,jatom
  real(dp) :: xtmp(3),x21(3),x31(3)
  logical  :: found
 !=====
 
- natom = natom_read
- allocate(zatom(natom))
- allocate(basis_element(natom))
- allocate(x(3,natom))
+ natom  = natom_read
+ nghost = nghost_read
+ natom_basis = natom + nghost
 
- zatom(:) = zatom_read(:)
- basis_element(:)=NINT(zatom(:))
+ allocate(zatom(natom_basis))
+ allocate(basis_element(natom_basis))
+ allocate(x(3,natom_basis))
+
+ zatom(1:natom)              = zatom_read(1:natom)
+ ! Ghost atoms do not have a positive nucleus
+ zatom(natom+1:natom+nghost) = 0.0_dp
+ ! But ghost atoms have basis functions centered on them.
+ basis_element(:)=NINT(zatom_read(:))
 
  x(:,:) = x_read(:,:)
 

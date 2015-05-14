@@ -317,7 +317,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  if(calc_type%gwmethod==LW .OR. calc_type%gwmethod==GSIGMA) then
    allocate(energy_exx(basis%nbf,nspin))
    allocate(c_matrix_exx(basis%nbf,basis%nbf,nspin))
-   call issue_warning('ugly coding here')
+   call issue_warning('ugly coding here write temp file fort.1000 and fort.1001')
    do ispin=1,nspin
      write(stdout,*) 'Diagonalization H_exx for spin channel',ispin
      call diagonalize_generalized_sym(basis%nbf,&
@@ -336,7 +336,10 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    open(1001,form='unformatted')
    write(1001) energy_exx(:,:)
    close(1001)
-   deallocate(energy_exx,c_matrix_exx)
+!   call issue_warning('hacking the coefficients c_matrix_exx')
+!   c_matrix=c_matrix_exx
+!   energy=energy_exx
+!   deallocate(energy_exx,c_matrix_exx)
  endif
 
 

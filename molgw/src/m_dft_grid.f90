@@ -44,7 +44,7 @@ subroutine setup_dft_grid()
  real(dp),allocatable :: z1(:),z2(:)
  real(dp),allocatable :: w1(:),w2(:)
  real(dp),allocatable :: xa(:),wxa(:)
- real(dp)             :: p_becke(natom),s_becke(natom,natom),fact_becke 
+ real(dp)             :: p_becke(natom_basis),s_becke(natom_basis,natom_basis),fact_becke 
  real(dp)             :: mu
  integer              :: jatom,katom
 !=====
@@ -156,8 +156,8 @@ subroutine setup_dft_grid()
 
  ! Calculate the total number of grid points
  ngrid = 0
- do iatom=1,natom
-   radius = element_covalent_radius(zatom(iatom))
+ do iatom=1,natom_basis
+   radius = element_covalent_radius(REAL(basis_element(iatom),dp))
    do iradial=1,nradial
      if( xa(iradial) < pruning_limit * radius ) then
        ngrid = ngrid + nangular_coarse
@@ -180,8 +180,8 @@ subroutine setup_dft_grid()
 
  igrid = 0
  ir    = 0
- do iatom=1,natom
-   radius = element_covalent_radius(zatom(iatom))
+ do iatom=1,natom_basis
+   radius = element_covalent_radius(REAL(basis_element(iatom),dp))
 
    do iradial=1,nradial
      if( xa(iradial) < pruning_limit * radius ) then
@@ -212,8 +212,8 @@ subroutine setup_dft_grid()
        ! Partitionning scheme of Axel Becke, J. Chem. Phys. 88, 2547 (1988).
        !
        s_becke(:,:) = 0.0_dp
-       do katom=1,natom
-         do jatom=1,natom
+       do katom=1,natom_basis
+         do jatom=1,natom_basis
            if(katom==jatom) cycle
            mu = ( SQRT( SUM( (rr_grid(:,ir)-x(:,katom) )**2 ) ) - SQRT( SUM( (rr_grid(:,ir)-x(:,jatom) )**2 ) ) ) &
                      / SQRT( SUM( (x(:,katom)-x(:,jatom))**2 ) )
@@ -221,8 +221,8 @@ subroutine setup_dft_grid()
          enddo
        enddo
        p_becke(:) = 1.0_dp
-       do katom=1,natom
-         do jatom=1,natom
+       do katom=1,natom_basis
+         do jatom=1,natom_basis
            if(katom==jatom) cycle
            p_becke(katom) = p_becke(katom) * s_becke(katom,jatom)
          enddo

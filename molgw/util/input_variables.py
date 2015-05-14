@@ -398,6 +398,16 @@ vl[i].comment  ='Sets the number of atoms in the molecule. This is the number of
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='nghost'
+vl[i].family   ='system'
+vl[i].mandatory='no'
+vl[i].default  =0
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the number of ghost atoms in the molecule. Used to place basis function where there is no atom. Useful for Basis Set Superposition Error'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='eta'
 vl[i].family   ='post'
 vl[i].default  ='0.001'

@@ -87,7 +87,7 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  ! LOOP OVER ATOMS
  ! TODO could be reduced to the type of atoms in the future
  !
- do iatom=1,natom
+ do iatom=1,natom_basis
 
 !   write(stdout,*)
 !   write(stdout,*) 'Element used for Z value:    ',TRIM(element_name(zatom(iatom)))
@@ -132,7 +132,7 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  ndiffuse=0
  jbf         = 0
  shell_index = 0
- do iatom=1,natom
+ do iatom=1,natom_basis
 
    basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
    open(newunit=basisfile,file=TRIM(basis_filename),status='old')
@@ -151,12 +151,12 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
        enddo
      endif
   
-     ! rescale the gaussian decay rate whenever zatom /= basis_element
-     if( abs( zatom(iatom) - REAL(basis_element(iatom),dp) ) > 1.d-6 ) then
-       alpha(:) = alpha(:) * ( zatom(iatom) / REAL(basis_element(iatom),dp) )**2
-       write(stdout,*) 'rescaling momentum',am_tmp
-       write(stdout,*) 'smallest rescaled alpha:',MINVAL(alpha(:))
-     endif
+!     ! rescale the gaussian decay rate whenever zatom /= basis_element
+!     if( abs( zatom(iatom) - REAL(basis_element(iatom),dp) ) > 1.d-6 ) then
+!       alpha(:) = alpha(:) * ( zatom(iatom) / REAL(basis_element(iatom),dp) )**2
+!       write(stdout,*) 'rescaling momentum',am_tmp
+!       write(stdout,*) 'smallest rescaled alpha:',MINVAL(alpha(:))
+!     endif
   
      x0(:) = x(:,iatom)
 
