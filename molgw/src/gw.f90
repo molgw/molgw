@@ -7,7 +7,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  use m_warning,only: issue_warning,msg
  use m_basis_set
  use m_spectral_function
- use m_eri,only: eri_3center_eigen
+ use m_eri,only: eri_3center_eigen,eri_3center_eigen_mixed !FBFB
  use m_tools,only: coeffs_gausslegint
  implicit none
 
@@ -33,6 +33,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  integer               :: astate,bstate
  integer               :: istate,ispin,ipole
  real(dp)              :: bra(wpol%npole_reso,basis%nbf)
+ real(dp)              :: bra_exx(wpol%npole_reso,basis%nbf)  !FBFB
  real(dp)              :: fact_full_i,fact_empty_i
  real(dp)              :: fact_full_a,fact_empty_a
  real(dp)              :: zz(nspin)
@@ -131,6 +132,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  else
    energy_qp(:,:) = energy(:,:)
  endif
+ ! FBFB
  if( gwmethod==LW .OR. gwmethod==GSIGMA) then
    call issue_warning('reading G\tilde FBFB')
    open(1001,form='unformatted')
@@ -153,6 +155,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    selfenergy_omegac(:,:,:,:) = 0.0_dp
  endif
 
+
  do ispin=1,nspin
    do istate=1,basis%nbf !INNER LOOP of G
      if(gwmethod==LW) write(stdout,*) 'FBFB',istate
@@ -171,7 +174,10 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
        enddo
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-       bra(:,:) = MATMUL( TRANSPOSE(wpol%residu_left(:,:)) , eri_3center_eigen(:,:,istate,ispin) )
+       bra(:,:)     = MATMUL( TRANSPOSE(wpol%residu_left(:,:)) , eri_3center_eigen(:,:,istate,ispin) )
+       if( gwmethod==LW .OR. gwmethod==GSIGMA) then
+         bra_exx(:,:) = MATMUL( TRANSPOSE(wpol%residu_left(:,:)) , eri_3center_eigen_mixed(:,istate,:,ispin) )
+       endif
      endif
 
 
@@ -207,7 +213,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
              do iomegai=1,nomegai
                selfenergy_omegac(iomegai,astate,bstate,ispin) = selfenergy_omegac(iomegai,astate,bstate,ispin) &
-                        + bra(ipole,astate) * bra(ipole,bstate) &
+                        + bra_exx(ipole,astate) * bra_exx(ipole,bstate) &
                           * (  fact_full_i  / ( omegac(iomegai) - energy(istate,ispin) + wpol%pole(ipole)  )    &
                              + fact_empty_i / ( omegac(iomegai) - energy(istate,ispin) - wpol%pole(ipole) ) )   &
                           / ( omegac(iomegai) - energy_qp(astate,ispin) )
@@ -258,7 +264,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
                       * ( REAL(  fact_full_i  * fact_empty_a / ( energy(astate,ispin)  - energy(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
                         - REAL(  fact_empty_i * fact_full_a  / ( energy(astate,ispin)  - energy(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
            selfenergy_omega(1,astate,1,ispin) = selfenergy_omega(1,astate,1,ispin) &
-                    - bra(ipole,astate) * bra(ipole,astate) &
+                    - bra_exx(ipole,astate) * bra_exx(ipole,astate) &
                       * ( REAL(  fact_full_i  * fact_empty_a / ( energy_qp(astate,ispin)  - energy(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
                         - REAL(  fact_empty_i * fact_full_a  / ( energy_qp(astate,ispin)  - energy(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
          enddo

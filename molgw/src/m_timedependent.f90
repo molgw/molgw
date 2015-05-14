@@ -27,6 +27,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  integer                   :: t_ij
  type(spectral_function)   :: wpol_static
  integer                   :: nmat
+ real(dp)                  :: energy_gm
  real(dp)                  :: alpha_local
  real(prec_td),allocatable :: amb_matrix(:,:),apb_matrix(:,:)
  real(prec_td),allocatable :: bigx(:,:),bigy(:,:)
@@ -212,10 +213,14 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  !
  if( print_w_ .OR. calc_type%is_gw ) then
    if( has_auxil_basis) then
-     call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf,desc_x,m_x,n_x,bigx,bigy,eigenvalue,wpol_out)
+     call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf,desc_x,m_x,n_x,bigx,bigy,eigenvalue,wpol_out,energy_gm)
+     ! This following coding of the Galitskii-Migdal correlation energy is only working with
+     ! an auxiliary basis
+     if(is_rpa) write(stdout,'(a,f14.8,/)') ' Correlation energy in the Galitskii-Migdal formula',energy_gm
    else
      call chi_to_vchiv(basis%nbf,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol_out)
    endif
+  
  
    ! If requested write the spectral function on file
    if( print_w_ ) call write_spectral_function(wpol_out)
@@ -1543,7 +1548,7 @@ end subroutine chi_to_vchiv
 
 
 !=========================================================================
-subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eigenvalue,wpol)
+subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eigenvalue,wpol,energy_gm)
  use m_definitions
  use m_warning
  use m_basis_set
@@ -1557,6 +1562,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eig
  real(prec_td),intent(in)              :: bigy(m_x,n_x)
  type(spectral_function),intent(inout) :: wpol
  real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso)
+ real(dp),intent(out)                  :: energy_gm
 !=====
  integer                               :: t_kl,t_kl_global,klspin,ijspin
  integer                               :: ibf_auxil,ibf_auxil_global
@@ -1592,6 +1598,8 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eig
  ! and the block structure of eigenvector | X  Y |
  !                                        | Y  X |
  wpol%residu_left(:,:) = MATMUL( eri_3center_mat , bigx(:,:) + bigy(:,:) ) * SQRT(spin_fact)
+
+ energy_gm = 0.5_dp * ( SUM( wpol%residu_left(:,:)**2 ) - spin_fact * SUM( eri_3center_mat(:,:)**2 ) )
 
 #else 
 

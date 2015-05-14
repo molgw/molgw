@@ -326,6 +326,8 @@ program molgw
 
    if(has_auxil_basis) then
      call prepare_eri_3center_eigen(c_matrix)
+     if( calc_type%gwmethod == LW .OR. calc_type%gwmethod == GSIGMA ) &
+         call prepare_eri_3center_eigen_mixed(c_matrix) !FBFB
      call destroy_eri_3center()
    endif
 

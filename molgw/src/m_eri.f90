@@ -23,6 +23,8 @@ module m_eri
  real(prec_eri),protected,allocatable :: eri_3center(:,:)
  real(prec_eri),protected,allocatable :: eri_3center_lr(:,:)
  real(prec_eri),protected,allocatable :: eri_3center_eigen(:,:,:,:)
+!FBFB
+ real(prec_eri),protected,allocatable :: eri_3center_eigen_mixed(:,:,:,:)
 
  logical,protected,allocatable      :: negligible_basispair(:,:)
  logical,private,allocatable        :: negligible_shellpair(:,:)
@@ -2850,6 +2852,72 @@ subroutine prepare_eri_3center_eigen(c_matrix)
  call stop_clock(timing_eri_3center_eigen)
 
 end subroutine prepare_eri_3center_eigen
+
+
+!=================================================================
+subroutine prepare_eri_3center_eigen_mixed(c_matrix)
+ use m_inputparam,only: nspin
+ implicit none
+ real(dp),intent(in)  :: c_matrix(nbf_eri,nbf_eri,nspin)
+!=====
+ integer              :: kbf,lbf
+ integer              :: kstate,lstate
+ integer              :: klspin
+ real(dp),allocatable :: eri_3center_tmp(:,:,:)
+ real(dp),allocatable :: c_matrix_exx(:,:,:)
+ logical              :: file_exists
+!=====
+
+ call start_clock(timing_eri_3center_eigen)
+
+ inquire(file='fort.1000',exist=file_exists)
+ if( .NOT. file_exists ) stop'fort.1000 not found'
+
+ allocate(c_matrix_exx(nbf_eri,nbf_eri,nspin))
+ open(1000,form='unformatted')
+ do klspin=1,nspin
+   do lstate=1,nbf_eri
+     read(1000) c_matrix_exx(:,lstate,klspin)
+   enddo
+ enddo
+ close(1000,status='delete')
+
+
+ write(stdout,'(/,a)') ' Calculate 3-center integrals on MIXED eigenstates'
+
+
+ !TODO merge the 2 last indexes for prod_basis save a factor 2! (i<->j symmetry)
+ call clean_allocate('3-center MO integrals',eri_3center_eigen_mixed,nauxil_3center,nbf_eri,nbf_eri,nspin)
+
+ allocate(eri_3center_tmp(nauxil_3center,nbf_eri,nbf_eri)) 
+ eri_3center_eigen_mixed(:,:,:,:) = 0.0_dp
+ do klspin=1,nspin
+   ! Transformation of the first index
+   eri_3center_tmp(:,:,:) = 0.0_dp
+   do kbf=1,nbf_eri
+     do lbf=1,nbf_eri
+       if( negligible_basispair(kbf,lbf) ) cycle
+
+         do lstate=1,nbf_eri
+           eri_3center_tmp(:,kbf,lstate) = eri_3center_tmp(:,kbf,lstate) &
+                                      + c_matrix_exx(lbf,lstate,klspin) * eri_3center(:,index_prod(kbf,lbf))
+         enddo
+
+     enddo
+   enddo
+   ! Transformation of the second index
+   do lstate=1,nbf_eri
+     eri_3center_eigen_mixed(:,:,lstate,klspin) = MATMUL( eri_3center_tmp(:,:,lstate) , c_matrix(:,:,klspin) )
+   enddo
+
+ enddo ! klspin
+ deallocate(eri_3center_tmp)
+
+ write(stdout,'(a,/)') ' Done'
+
+ call stop_clock(timing_eri_3center_eigen)
+
+end subroutine prepare_eri_3center_eigen_mixed
 
 
 !=================================================================
