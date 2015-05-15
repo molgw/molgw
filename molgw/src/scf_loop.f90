@@ -314,7 +314,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  ! Obtain the Fock matrix
  matrix_tmp(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
 
- if(calc_type%gwmethod==LW .OR. calc_type%gwmethod==GSIGMA) then
+ if(calc_type%gwmethod==LW .OR. calc_type%gwmethod==LW2 .OR. calc_type%gwmethod==GSIGMA) then
    allocate(energy_exx(basis%nbf,nspin))
    allocate(c_matrix_exx(basis%nbf,basis%nbf,nspin))
    call issue_warning('ugly coding here write temp file fort.1000 and fort.1001')

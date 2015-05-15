@@ -60,13 +60,11 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
  write(stdout,*)
  select case(gwmethod)
- case(LW)
+ case(LW,LW2)
    write(stdout,*) 'perform the calculation of Tr[ ln ( 1 - GSigma ) ]'
  case(GSIGMA)
    write(stdout,*) 'perform the calculation of Tr[ SigmaG ]'
- case(GSIGMA2)
-   write(stdout,*) 'perform the calculation of Tr[ SigmaG ] numerical for test only'
- case(GSIGMA3)
+ case(GSIGMA2,GSIGMA3)
    write(stdout,*) 'perform the calculation of Tr[ SigmaG ] numerical for test only'
  case(GV)
    write(stdout,*) 'perform a perturbative HF calculation'
@@ -84,20 +82,19 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    write(stdout,*) 'perform an eigenvalue self-consistent GnWn calculation'
  end select
 
- if(gwmethod==GV .OR. gwmethod==QS .OR. gwmethod==COHSEX  &
-   .OR. gwmethod==GSIGMA3 &
-   .OR. gwmethod==QSCOHSEX .OR.  gwmethod==GnW0 .OR. gwmethod==GnWn) then
+ select case(gwmethod)
+ case(GV,QS,COHSEX,GSIGMA3,QSCOHSEX,GnW0,GnWn)
    nomegai = 0
    allocate(omegai(-nomegai:nomegai))
    omegai(0) = 0.0_dp
 
- else if(gwmethod==GSIGMA) then
+ case(GSIGMA)
    nomegai = 1
    allocate(omegai(-nomegai:nomegai))
    omegai(:) = 0.0_dp
 
- else if(gwmethod==LW .OR. gwmethod==GSIGMA2) then
-   nomegai =  32  !16000
+ case(LW,LW2,GSIGMA2)
+   nomegai =  32
 
    allocate(omegac(1:nomegai))
    
@@ -113,52 +110,65 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    enddo
    deallocate(x1)
 
-
- else
+ case default
    nomegai = nomega_sigma/2
    allocate(omegai(-nomegai:nomegai))
    do iomegai=-nomegai,nomegai
      omegai(iomegai) = step_sigma * iomegai
    enddo
- endif
 
- if( gwmethod==GnW0 .OR. gwmethod==GnWn .OR. gwmethod==GSIGMA3 &
-    .OR. gwmethod==GSIGMA2 .OR. gwmethod==LW ) then
+ end select
+
+ !
+ ! Which calculation type needs to update energy_qp
+ !
+ select case(gwmethod)
+ case(GnW0,GnWn,GSIGMA3,GSIGMA2)
    call read_energy_qp(nspin,basis%nbf,energy_qp,reading_status)
    if(reading_status/=0) then
      call issue_warning('File energy_qp not found: assuming 1st iteration')
      energy_qp(:,:) = energy(:,:)
    endif
- else
-   energy_qp(:,:) = energy(:,:)
- endif
- ! FBFB
- if( gwmethod==LW .OR. gwmethod==GSIGMA) then
+
+ case(LW,LW2,GSIGMA)
    call issue_warning('reading G\tilde FBFB')
    open(1001,form='unformatted')
    read(1001) energy_qp(:,:)
    close(1001,status='delete')
- endif
 
- if( gwmethod==GV .OR. gwmethod==GSIGMA .OR. gwmethod==G0W0 .OR.  gwmethod==GSIGMA2 &
-    .OR. gwmethod==GnW0 .OR. gwmethod==GnWn ) then
+ case default
+   energy_qp(:,:) = energy(:,:)
+
+ end select
+
+ !
+ ! Which calculation type needs the diagonal only
+ !
+ select case(gwmethod)
+ case(GV,GSIGMA,G0W0,GSIGMA2,GnW0,GnWn)
    ndim2=1
- else
+ case default
    ndim2=basis%nbf
- endif
+ end select
 
- if( gwmethod /= LW .AND. gwmethod /=GSIGMA2 ) then
-   allocate(selfenergy_omega(-nomegai:nomegai,basis%nbf,ndim2,nspin))
-   selfenergy_omega(:,:,:,:) = 0.0_dp
- else
+ !
+ ! Which calculation type needs a complex sigma
+ !
+ select case(gwmethod)
+ case(LW,LW2,GSIGMA2)
    allocate(selfenergy_omegac(1:nomegai,basis%nbf,ndim2,nspin))
    selfenergy_omegac(:,:,:,:) = 0.0_dp
- endif
+
+ case default
+   allocate(selfenergy_omega(-nomegai:nomegai,basis%nbf,ndim2,nspin))
+   selfenergy_omega(:,:,:,:) = 0.0_dp
+
+ end select
 
 
  do ispin=1,nspin
    do istate=1,basis%nbf !INNER LOOP of G
-     if(gwmethod==LW) write(stdout,*) 'FBFB',istate
+     if(gwmethod==LW .or. gwmethod==LW2) write(stdout,*) 'FBFB',istate
      !
      ! Apply the frozen core and frozen virtual approximation to G
      if(istate <= ncore_G)    cycle
@@ -175,7 +185,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
        bra(:,:)     = MATMUL( TRANSPOSE(wpol%residu_left(:,:)) , eri_3center_eigen(:,:,istate,ispin) )
-       if( gwmethod==LW .OR. gwmethod==GSIGMA) then
+       if( gwmethod==LW .OR. gwmethod==LW2 .OR. gwmethod==GSIGMA) then
          bra_exx(:,:) = MATMUL( TRANSPOSE(wpol%residu_left(:,:)) , eri_3center_eigen_mixed(:,istate,:,ispin) )
        endif
      endif
@@ -206,7 +216,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
            enddo
          enddo
 
-       case(LW)
+       case(LW,LW2)
 
          do bstate=1,basis%nbf
            do astate=1,basis%nbf
@@ -578,6 +588,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
        rdiag = rdiag + REAL(selfenergy_omegac(iomegai,istate,istate,1),dp) * spin_fact / (2.0 * pi)   * 2.0_dp
      enddo
 
+     !FBFB FIXME introduce spin here !!!!
      matrix(:,:) = selfenergy_omegac(iomegai,:,:,1) + CONJG(TRANSPOSE( selfenergy_omegac(iomegai,:,:,1) )) &
                   - MATMUL( selfenergy_omegac(iomegai,:,:,1) , CONJG(TRANSPOSE( selfenergy_omegac(iomegai,:,:,1) )) )
 
@@ -593,6 +604,34 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    write(stdout,*) 'Tr[Log(1-GSigma)] ',tr_log_gsigma 
    write(stdout,*) 'Tr[GSigma]        ',tr_gsigma 
    write(stdout,*) 'Sum               ',(tr_log_gsigma+tr_gsigma) 
+   deallocate(matrix,eigvec,eigval)
+
+ case(LW2)
+
+   allocate(matrix(basis%nbf,basis%nbf))
+   allocate(eigvec(basis%nbf,basis%nbf))
+   allocate(eigval(basis%nbf))
+
+   tr_log_gsigma = 0.0_dp
+   tr_gsigma     = 0.0_dp
+
+   do iomegai=1,nomegai
+
+     matrix(:,:) = MATMUL( selfenergy_omegac(iomegai,:,:,1) , selfenergy_omegac(iomegai,:,:,1) )   &
+                + MATMUL( TRANSPOSE(CONJG(selfenergy_omegac(iomegai,:,:,1))) , TRANSPOSE(CONJG(selfenergy_omegac(iomegai,:,:,1))) )
+
+     rdiag=0.d0
+     do istate=1,basis%nbf
+       rdiag = rdiag - REAL(matrix(istate,istate),dp) * spin_fact / (2.0 * pi)   * 0.5_dp  ! -1/2 comes from the log expansion
+     enddo
+
+
+     tr_gsigma = tr_gsigma + rdiag * weights(iomegai)
+
+   enddo
+
+
+   write(stdout,*) 'Tr[tGSigma*tGSigma]        ',tr_gsigma 
    deallocate(matrix,eigvec,eigval)
 
  end select

@@ -315,6 +315,7 @@ program molgw
  ! final evaluation for G0W0
  if( calc_type%is_gw .AND. &
        ( calc_type%gwmethod == GV .OR. calc_type%gwmethod == GSIGMA .OR.  calc_type%gwmethod == LW &
+    .OR. calc_type%gwmethod == LW2 &
     .OR. calc_type%gwmethod == GSIGMA2 & ! FBFB testing purposes to be removed
     .OR. calc_type%gwmethod == GSIGMA3 & ! FBFB testing purposes to be removed
     .OR. calc_type%gwmethod == G0W0 .OR. calc_type%gwmethod == COHSEX   &
@@ -326,7 +327,7 @@ program molgw
 
    if(has_auxil_basis) then
      call prepare_eri_3center_eigen(c_matrix)
-     if( calc_type%gwmethod == LW .OR. calc_type%gwmethod == GSIGMA ) &
+     if( calc_type%gwmethod == LW .OR. calc_type%gwmethod == LW2 .OR. calc_type%gwmethod == GSIGMA ) &
          call prepare_eri_3center_eigen_mixed(c_matrix) !FBFB
      call destroy_eri_3center()
    endif
