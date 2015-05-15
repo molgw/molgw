@@ -26,6 +26,13 @@ module m_mpi
  integer,private :: ngrid_mpi
  integer,private :: nocc_mp
 
+! Parallelization on the auxiliary basis
+ integer,allocatable,public :: iproc_ishell_auxil(:)
+ integer,allocatable,public :: iproc_ibf_auxil(:)
+ integer,allocatable,public :: ibf_auxil_g(:)
+ integer,allocatable,public :: nbf_local_iproc(:)
+
+
  integer,allocatable,private :: task_proc(:)
  integer,allocatable,private :: ntask_proc(:)
  integer,allocatable,private :: task_number(:)
@@ -141,6 +148,19 @@ subroutine finish_mpi()
 #endif
 
 end subroutine finish_mpi
+
+
+!=========================================================================
+subroutine barrier()
+ implicit none
+ integer :: ier
+!=====
+
+#ifdef HAVE_MPI
+ call MPI_BARRIER(mpi_comm,ier)
+#endif
+
+end subroutine barrier
 
 
 !=========================================================================

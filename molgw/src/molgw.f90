@@ -207,6 +207,8 @@ program molgw
  !
  if( has_auxil_basis ) then
    call init_basis_set(basis_path,auxil_basis_name,gaussian_type,auxil_basis)
+   call distribute_auxil_basis(auxil_basis)
+
    call allocate_eri_auxil(auxil_basis)
    ! 2-center integrals
    call calculate_eri_2center(print_eri_,auxil_basis)
@@ -222,6 +224,7 @@ program molgw
      call calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
    endif
  endif
+
 
  call stop_clock(timing_prescf)
 

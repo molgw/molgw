@@ -9,7 +9,6 @@ module m_basis_set
  use m_gaussian
  use m_atoms
 
- real(dp),parameter             :: FILTERED_EIGENVALUE=1.0d-8 
 
  type transform
    real(dp),allocatable         :: matrix(:,:)
@@ -20,18 +19,18 @@ module m_basis_set
  type(transform)                :: cart_to_pure_norm(0:lmax_transform)
 
  type basis_function
-   character(len=100)           :: basis_name
+   character(len=100)           :: basis_name                 ! Just a name
    character(len=4)             :: gaussian_type              ! CART or PURE
-   integer                      :: shell_index
-   integer                      :: am
-   character(len=1)             :: amc
-   integer                      :: nx,ny,nz
-   integer                      :: mm
-   real(dp)                     :: x0(3)
-   integer                      :: ngaussian
-   type(gaussian),allocatable   :: g(:) 
-   real(dp),allocatable         :: coeff(:)
-   integer                      :: iatom
+   integer                      :: shell_index                ! This basis function belongs to a shell of basis functions
+                                                              ! with the same  exponenents and  angular  momentum
+   integer                      :: am                         ! Angular momentum number: l=0, 1, 2, 3 ...
+   character(len=1)             :: amc                        ! Angular momentum letter: s, p, d, f ...
+   integer                      :: nx,ny,nz                   ! Angular momentum for cartesian gaussians
+   integer                      :: iatom                      ! Centered on which atom
+   real(dp)                     :: x0(3)                      ! Coordinates of the gaussian center
+   integer                      :: ngaussian                  ! Number of primitive gausssians
+   type(gaussian),allocatable   :: g(:)                       ! The primitive gaussian functions
+   real(dp),allocatable         :: coeff(:)                   ! Their mixing coefficients
    logical                      :: is_diffuse
  end type
 
@@ -40,16 +39,22 @@ module m_basis_set
  type basis_set
    !
    ! The list
-   integer                                 :: ammax
-   integer                                 :: nbf
-   integer                                 :: nbf_cart
-   integer                                 :: nshell
-   character(len=4)                        :: gaussian_type              ! CART or PURE
-   type(basis_function),allocatable        :: bf(:)                      ! Cartesian basis function
+   integer                          :: ammax           ! Maximum angular momentum contained in the basis set
+   integer                          :: nbf             ! Number of basis functions in the basis set
+   integer                          :: nbf_cart        ! Number of underlying Cartesian functions in the basis set
+   integer                          :: nbf_local       ! Number of basis functions owned by the processor
+   integer                          :: nshell          ! Number of shells in the basis sets
+                                                       ! A shell is a group of basis functions sharing: 
+                                                       ! the same center, 
+                                                       ! the same exponents, 
+                                                       ! the same mixing coefficients 
+                                                       ! and the same angular momentum
+   character(len=4)                 :: gaussian_type   ! CART or PURE
+   type(basis_function),allocatable :: bf(:)           ! Cartesian basis function
    !
    ! then additional data needed for product basis
-   integer,allocatable                     :: index_ij(:,:)
-   integer,allocatable                     :: index_prodbasis(:,:)
+   integer,allocatable              :: index_ij(:,:)
+   integer,allocatable              :: index_prodbasis(:,:)
  end type basis_set
 
 
@@ -69,7 +74,7 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  real(dp),allocatable          :: alpha(:),coeff(:),coeff2(:)
  logical                       :: file_exists
  integer                       :: basisfile
- integer                       :: am_tmp,mm,nbf_file
+ integer                       :: am_tmp,nbf_file
  logical,parameter             :: normalized=.TRUE.
  integer                       :: iatom
  real(dp)                      :: x0(3)
@@ -323,6 +328,11 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  ! END OF THE LOOP OVER ATOMS
  enddo
  
+ ! So far no parallelization is performed
+ ! Set nbf_local to nbf for safety, this value will be modified later if
+ ! necessary
+ basis%nbf_local = basis%nbf
+
  write(stdout,'(a50,i8)') 'Total number of diffuse functions:',ndiffuse
 
  basis%nshell = shell_index
@@ -1132,6 +1142,66 @@ subroutine setup_cart_to_pure_transforms(gaussian_type)
  write(stdout,*) 
 
 end subroutine setup_cart_to_pure_transforms
+
+
+!=========================================================================
+subroutine distribute_auxil_basis(auxil_basis)
+ implicit none
+
+ type(basis_set),intent(inout) :: auxil_basis
+!====
+ integer :: nbf_local_target,nbf_shell
+ integer :: ibf_cart,ibf,ishell_current,ishell_previous
+ integer :: ibf_local
+ integer :: iproc
+!====
+
+ nbf_local_target = NINT( auxil_basis%nbf / REAL(nproc,dp) + 0.0001_dp )
+ allocate(iproc_ishell_auxil(auxil_basis%nshell))
+ allocate(iproc_ibf_auxil(auxil_basis%nbf))
+ allocate(nbf_local_iproc(0:nproc-1))
+
+ iproc = 0
+ ishell_previous = 0
+ nbf_local_iproc(:) = 0
+ ibf = 1
+ do ibf_cart=1,auxil_basis%nbf_cart
+   ishell_current = auxil_basis%bf(ibf_cart)%shell_index
+
+   if( ishell_current /= ishell_previous ) then
+     ! Get the number of basis functions in the shell
+     nbf_shell = number_basis_function_am(auxil_basis%gaussian_type,auxil_basis%bf(ibf_cart)%am)
+
+     nbf_local_iproc(iproc) = nbf_local_iproc(iproc) + nbf_shell
+     iproc_ishell_auxil(ishell_current) = iproc
+     iproc_ibf_auxil(ibf:ibf+nbf_shell-1) = iproc
+     ibf = ibf + nbf_shell
+     if( nbf_local_iproc(iproc) >= nbf_local_target ) then
+       iproc = iproc + 1
+       if( SUM(nbf_local_iproc(:)) < auxil_basis%nbf .AND. iproc > nproc ) stop'BUG in the distribution of the auxil_basis'
+     endif
+   endif
+   ishell_previous = ishell_current
+ enddo
+
+ auxil_basis%nbf_local = nbf_local_iproc(rank)
+
+ allocate(ibf_auxil_g(auxil_basis%nbf_local))
+ ibf_local = 0
+ do ibf=1,auxil_basis%nbf
+   if( rank == iproc_ibf_auxil(ibf) ) then
+     ibf_local = ibf_local + 1
+     ibf_auxil_g(ibf_local) = ibf
+   endif
+ enddo
+
+ write(stdout,'(/,a)') ' Distribute auxiliary basis among processors'
+ do iproc=0,nproc-1
+   write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc(iproc),' basis functions'
+ enddo
+
+
+end subroutine distribute_auxil_basis
 
 
 !=========================================================================
