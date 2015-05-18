@@ -31,6 +31,7 @@ module m_mpi
  integer,allocatable,public :: iproc_ishell_auxil(:)
  integer,allocatable,public :: iproc_ibf_auxil(:)
  integer,allocatable,public :: ibf_auxil_g(:)
+ integer,allocatable,public :: ibf_auxil_l(:)
  integer,allocatable,public :: nbf_local_iproc(:)
 
 

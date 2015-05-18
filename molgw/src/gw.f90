@@ -185,8 +185,10 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
        bra(:,:)     = MATMUL( TRANSPOSE(wpol%residu_left(:,:)) , eri_3center_eigen(:,:,istate,ispin) )
+       call xsum(bra)
        if( gwmethod==LW .OR. gwmethod==LW2 .OR. gwmethod==GSIGMA) then
          bra_exx(:,:) = MATMUL( TRANSPOSE(wpol%residu_left(:,:)) , eri_3center_eigen_mixed(:,istate,:,ispin) )
+       call xsum(bra_exx)
        endif
      endif
 

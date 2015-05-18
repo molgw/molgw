@@ -23,7 +23,7 @@ module m_eri
  real(prec_eri),protected,allocatable :: eri_3center(:,:)
  real(prec_eri),protected,allocatable :: eri_3center_lr(:,:)
  real(prec_eri),protected,allocatable :: eri_3center_eigen(:,:,:,:)
-!FBFB
+!FBFB LW
  real(prec_eri),protected,allocatable :: eri_3center_eigen_mixed(:,:,:,:)
 
  logical,protected,allocatable      :: negligible_basispair(:,:)
@@ -1254,6 +1254,10 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
  ! Perform in-place diagonalization here
  call diagonalize(nauxil_2center,eri_2center_m1_lr,eigval)
  do jbf=1,nauxil_2center
+   !
+   ! Need to be careful here: since the matrix can be not exactly positive definite.
+   ! Avoid too small (or even worse negative!) eigenvalues
+   if( eigval(jbf) < 1.0e-8_dp ) eigval(jbf) = 1.0e-8_dp  ! -eigval(jbf)
    eri_2center_m1_lr(:,jbf) = eri_2center_m1_lr(:,jbf) / SQRT( eigval(jbf) )
  enddo
  deallocate(eigval)

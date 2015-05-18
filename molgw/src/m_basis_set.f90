@@ -1187,11 +1187,13 @@ subroutine distribute_auxil_basis(auxil_basis)
  auxil_basis%nbf_local = nbf_local_iproc(rank)
 
  allocate(ibf_auxil_g(auxil_basis%nbf_local))
+ allocate(ibf_auxil_l(auxil_basis%nbf))
  ibf_local = 0
  do ibf=1,auxil_basis%nbf
    if( rank == iproc_ibf_auxil(ibf) ) then
      ibf_local = ibf_local + 1
      ibf_auxil_g(ibf_local) = ibf
+     ibf_auxil_l(ibf)       = ibf_local
    endif
  enddo
 
