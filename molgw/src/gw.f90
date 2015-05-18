@@ -7,7 +7,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  use m_warning,only: issue_warning,msg
  use m_basis_set
  use m_spectral_function
- use m_eri,only: eri_3center_eigen,eri_3center_eigen_mixed !FBFB
+ use m_eri,only: eri_3center_eigen,eri_3center_eigen_mixed !FBFB LW
  use m_tools,only: coeffs_gausslegint
  implicit none
 
@@ -33,7 +33,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  integer               :: astate,bstate
  integer               :: istate,ispin,ipole
  real(dp)              :: bra(wpol%npole_reso,basis%nbf)
- real(dp)              :: bra_exx(wpol%npole_reso,basis%nbf)  !FBFB
+ real(dp)              :: bra_exx(wpol%npole_reso,basis%nbf)  !FBFB LW
  real(dp)              :: fact_full_i,fact_empty_i
  real(dp)              :: fact_full_a,fact_empty_a
  real(dp)              :: zz(nspin)
@@ -131,7 +131,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    endif
 
  case(LW,LW2,GSIGMA)
-   call issue_warning('reading G\tilde FBFB')
+   call issue_warning('reading G\tilde')
    open(1001,form='unformatted')
    read(1001) energy_qp(:,:)
    close(1001,status='delete')
@@ -168,7 +168,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
  do ispin=1,nspin
    do istate=1,basis%nbf !INNER LOOP of G
-     if(gwmethod==LW .or. gwmethod==LW2) write(stdout,*) 'FBFB',istate
+     if(gwmethod==LW .or. gwmethod==LW2) write(stdout,*) 'FBFB LW',istate
      !
      ! Apply the frozen core and frozen virtual approximation to G
      if(istate <= ncore_G)    cycle

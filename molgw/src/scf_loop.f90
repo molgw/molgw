@@ -324,8 +324,8 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
                                       matrix_tmp(:,:,ispin),s_matrix(:,:),&
                                       energy_exx(:,ispin),c_matrix_exx(:,:,ispin))
    enddo
-   write(stdout,*) 'FBFB sum(      epsilon) + Eii -<vxc> - EH + Ex',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
-   write(stdout,*) 'FBFB sum(tilde epsilon) + Eii - EH - Ex       ',SUM( occupation(:,:)*energy_exx(:,:) ) + en%nuc_nuc - en%hart - en%exx
+   write(stdout,*) 'FBFB LW sum(      epsilon) + Eii -<vxc> - EH + Ex',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
+   write(stdout,*) 'FBFB LW sum(tilde epsilon) + Eii - EH - Ex       ',SUM( occupation(:,:)*energy_exx(:,:) ) + en%nuc_nuc - en%hart - en%exx
    open(1000,form='unformatted')
    do ispin=1,nspin
      do istate=1,basis%nbf

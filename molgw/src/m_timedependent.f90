@@ -350,7 +350,9 @@ subroutine build_amb_apb_common(nbf,c_matrix,energy,wpol,alpha_local,m_apb,n_apb
    enddo 
 
  enddo 
+#ifdef SCALAPACK
  call xsum(rpa_correlation)
+#endif
 
  if(allocated(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
 
@@ -1600,6 +1602,9 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eig
  wpol%residu_left(:,:) = MATMUL( eri_3center_mat , bigx(:,:) + bigy(:,:) ) * SQRT(spin_fact)
 
  energy_gm = 0.5_dp * ( SUM( wpol%residu_left(:,:)**2 ) - spin_fact * SUM( eri_3center_mat(:,:)**2 ) )
+ !
+ ! Since wpol%residu_left and eri_3center_mat are distributed, we have to sum up
+ call xsum(energy_gm)
 
 #else 
 
