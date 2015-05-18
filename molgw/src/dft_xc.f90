@@ -309,8 +309,6 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
 
  enddo ! loop on the grid point
 
- write(160+rank,*) normalization(:)
-
  !
  ! Sum up the contributions from all procs only if needed
  if( parallel_grid ) then
