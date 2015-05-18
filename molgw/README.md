@@ -63,6 +63,8 @@ Example input files can be found in `~molgw/tests/`
 - QPscGW scf loop is quite unstable for large basis sets, use a low alpha (<= 0.50), use a large eta
 - TD-DFT GGA kernel can induce very large numerical values which limits the numerical stability and breaks some comparison with other codes.
 Especially when compiling with gfortran/gcc. ifort/icc behaves much better.
+- Resolution-of-Identity for range-separated hybrid can fail if gamma is too small. I think that the LR-Coulomb integrals are not positive definite then.
+The diagonalization of the 2-center integral is producing negative eigenvalues...
 
 ##Author
 

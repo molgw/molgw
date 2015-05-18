@@ -6,8 +6,9 @@ module m_mpi
 #endif
 
 
- logical,parameter :: parallel_grid      = .FALSE.
- logical,parameter :: parallel_integral  = .FALSE.
+ logical,parameter :: parallel_grid      = .TRUE.
+ logical,parameter :: parallel_auxil     = .TRUE.
+ logical,parameter :: parallel_integral  = .FALSE.   !FIXME remove this parameter
 #ifdef HAVE_SCALAPACK
  logical,parameter :: parallel_scalapack = .TRUE.
 #else
@@ -117,12 +118,12 @@ subroutine init_mpi()
  endif
 
 #ifdef HAVE_MPI
-  write(stdout,'(/,a)')      ' ==== MPI info'
-  write(stdout,'(a50,x,i6)') 'Number of proc:',nproc
-  write(stdout,'(a50,x,i6)') 'Master proc is:',iomaster
-  write(stdout,'(a50,6x,l1)') 'Parallelize Coulomb integrals:',parallel_integral
-  write(stdout,'(a50,6x,l1)') 'Parallelize XC grid points   :',parallel_grid
-  write(stdout,'(a50,6x,l1)') 'Use SCALAPACK                :',parallel_scalapack
+  write(stdout,'(/,a)')       ' ==== MPI info'
+  write(stdout,'(a50,x,i6)')  'Number of proc:',nproc
+  write(stdout,'(a50,x,i6)')  'Master proc is:',iomaster
+  write(stdout,'(a50,6x,l1)') 'Parallelize auxiliary basis:',parallel_auxil
+  write(stdout,'(a50,6x,l1)')  'Parallelize XC grid points:',parallel_grid
+  write(stdout,'(a50,6x,l1)')               'Use SCALAPACK:',parallel_scalapack
   write(stdout,'(/)')
 #endif
 

@@ -328,6 +328,8 @@ function eri_ri(ibf,jbf,kbf,lbf)
   
    eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , eri_3center(:,index_kl) )
 
+   call xsum(eri_ri)
+
  endif
 
 end function eri_ri
@@ -350,6 +352,8 @@ function eri_ri_lr(ibf,jbf,kbf,lbf)
 
    eri_ri_lr = DOT_PRODUCT( eri_3center_lr(:,index_ij) , eri_3center_lr(:,index_kl) )
 
+   call xsum(eri_ri_lr)
+
  endif
 
 end function eri_ri_lr
@@ -364,6 +368,8 @@ function eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
 !=====
 
  eri_eigen_ri = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,ijspin) , eri_3center_eigen(:,kstate,lstate,klspin) )
+
+ call xsum(eri_eigen_ri)
 
 end function eri_eigen_ri
 

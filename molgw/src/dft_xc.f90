@@ -117,12 +117,11 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
 
 
  !
- ! For the first time, set up the stored arrays
+ ! If it is the first time, then set up the stored arrays
  !
  if( .NOT. allocated(bfr) )                          call prepare_basis_functions_r(basis)
  if( require_gradient  .AND. .NOT. allocated(bfgr) ) call prepare_basis_functions_gradr(basis)
  if( require_laplacian .AND. .NOT. allocated(bfgr) ) call prepare_basis_functions_laplr(basis)
-
 
  normalization(:)=0.0_dp
 
@@ -309,6 +308,9 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
   
 
  enddo ! loop on the grid point
+
+ write(160+rank,*) normalization(:)
+
  !
  ! Sum up the contributions from all procs only if needed
  if( parallel_grid ) then
@@ -324,6 +326,8 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
  enddo
 
 #else
+!TODO write a call to teter to have MOLGW working without LIBXC
+!   call teter_lda_vxc_exc(rhor,vxc,exc)
  write(stdout,*) 'XC energy and potential set to zero'
  write(stdout,*) 'LIBXC is not present'
 #endif
@@ -358,17 +362,14 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: vhxc_ij(basis%nbf,basis%nbf)
 !=====
-
- integer  :: idft_xc
- integer  :: igrid,ibf,jbf,ispin
- real(dp) :: rr(3)
- real(dp) :: normalization
- real(dp) :: weight
-
+ integer              :: idft_xc
+ integer              :: igrid,ibf,jbf,ispin
+ real(dp)             :: rr(3)
+ real(dp)             :: normalization
+ real(dp)             :: weight
  real(dp)             :: basis_function_r(basis%nbf)
-
  real(dp)             :: rhor
- real(dp)             :: vxc
+ real(dp)             :: vxc,exc
  real(dp)             :: vsigma(2*nspin-1)
  real(dp)             :: vhartree
  real(dp)             :: vhgau(basis%nbf,basis%nbf)
@@ -421,7 +422,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
    ! Normalization
    normalization = normalization + rhor * weight
 
-   call teter_lda_vxc(rhor,vxc)
+   call teter_lda_vxc_exc(rhor,vxc,exc)
    !
    ! HXC
    do jbf=1,basis%nbf
@@ -563,16 +564,13 @@ end subroutine calc_density_gradr
 
 
 !=========================================================================
-subroutine teter_lda_vxc(rhor,vxc)
+subroutine teter_lda_vxc_exc(rhor,vxc,exc)
  use m_definitions
  implicit none
 
-!Arguments ------------------------------------
-!scalars
  real(dp),intent(in) :: rhor
-!arrays
- real(dp),intent(out) :: vxc
-
+ real(dp),intent(out) :: vxc,exc
+!=====
  !
  ! The usual full LDA parameters of Teter
  real(dp),parameter :: a0p=.4581652932831429_dp
@@ -583,38 +581,30 @@ subroutine teter_lda_vxc(rhor,vxc)
  real(dp),parameter :: b2p=4.504130959426697_dp
  real(dp),parameter :: b3p=1.110667363742916_dp
  real(dp),parameter :: b4p=0.02359291751427506_dp
-
- real(dp) :: d1m1,d2d1drs2,d2d1drsdf,d2excdf2
- real(dp) :: d2excdrs2,d2excdrsdf,d2excdz2,d2fxcdz2,d2n1drs2,d2n1drsdf,dd1df
- real(dp) :: dd1drs,dexcdf,dexcdrs,dexcdz,dfxcdz,dn1df,dn1drs
- real(dp) :: n1,d1
- real(dp) :: rs
- real(dp) :: exc
-!no_abirules
-!Set a minimum rho below which terms are 0
- real(dp),parameter :: rhotol=1.d-28
-
-! *************************************************************************
-
+ real(dp)           :: d1m1
+ real(dp)           :: dd1drs,dn1drs,dexcdrs
+ real(dp)           :: n1,d1
+ real(dp)           :: rs
+!=====
 
  rs = ( 3.0_dp / (4.0_dp*pi*rhor) )**(1.0_dp/3.0_dp) 
- n1 = a0p+rs*(a1p+rs*(a2p+rs*a3p))
- d1 = rs*(b1p+rs*(b2p+rs*(b3p+rs*b4p)))
+ n1 = a0p + rs * (a1p + rs * ( a2p + rs * a3p ) )
+ d1 = rs * ( b1p + rs * ( b2p + rs * ( b3p + rs * b4p ) ) )
  d1m1 = 1.0_dp / d1
 
-!Exchange-correlation energy
- exc=-n1*d1m1
+ ! Firstly, exchange-correlation energy
+ exc = -n1 * d1m1
 
-!Exchange-correlation potential
- dn1drs=a1p+rs*(2._dp*a2p+rs*(3._dp*a3p))
- dd1drs=b1p+rs*(2._dp*b2p+rs*(3._dp*b3p+rs*(4._dp*b4p)))
+ ! Secondly, exchange-correlation potential
+ dn1drs = a1p + rs * ( 2.0_dp * a2p + rs * ( 3.0_dp * a3p ) )
+ dd1drs = b1p + rs * ( 2.0_dp * b2p + rs * ( 3.0_dp * b3p + rs * ( 4.0_dp * b4p ) ) )
 
-!dexcdrs is d(exc)/d(rs)
- dexcdrs=-(dn1drs+exc*dd1drs)*d1m1
+ ! dexcdrs is d(exc)/d(rs)
+ dexcdrs = -( dn1drs + exc * dd1drs ) * d1m1
  vxc = exc - rs * dexcdrs / 3.0_dp
 
 
-end subroutine teter_lda_vxc
+end subroutine teter_lda_vxc_exc
 
 
 !=========================================================================
@@ -655,10 +645,6 @@ subroutine my_lda_exc_vxc(nspin,ixc,rhor,exc,vxc)
  real(dp) :: dvxcpdrho,dvxcpdz,fact,fxc,n1
  real(dp) :: rhom1,rs,vxcp,zet,zetm,zetm_third
  real(dp) :: zetp,zetp_third
-!no_abirules
-!Set a minimum rho below which terms are 0
- real(dp),parameter :: rhotol=1.d-28
-!real(dp) :: delta,rho,rho_dn,rho_dnm,rho_dnp,rho_up,rho_upm,rho_upp,zeta_mean
 
 ! *************************************************************************
 
