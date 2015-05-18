@@ -384,6 +384,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities'
 
  do iatom=1,natom
+   if( rank /= MODULO(iatom,nproc) ) cycle
 
    ngau = 4
    allocate(alpha(ngau),coeff(ngau))
@@ -400,7 +401,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
 
  write(stdout,*) 'Home-made functional LDA functional'
  !
- ! For the first time, set up the stored arrays
+ ! If it is the first time, set up the stored arrays
  !
  if( .NOT. allocated(bfr) ) call prepare_basis_functions_r(basis)
 
@@ -431,12 +432,6 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
            *  vxc * basis_function_r(ibf) * basis_function_r(jbf)
      enddo
    enddo
-!   do jbf=1,basis%nbf
-!     do ibf=1,basis%nbf 
-!       vhxc_ij(ibf,jbf) =  vhxc_ij(ibf,jbf) + weight &
-!           *  (vhartree+vxc) * basis_function_r(ibf) * basis_function_r(jbf) 
-!     enddo
-!   enddo
 
  enddo ! loop on the grid point
  !

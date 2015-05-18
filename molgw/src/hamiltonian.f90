@@ -136,6 +136,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: hamiltonian_nucleus(basis%nbf,basis%nbf)
 !====
+ integer              :: natom_local
  integer              :: ibf,jbf
  integer              :: ibf_cart,jbf_cart
  integer              :: i_cart,j_cart
@@ -148,6 +149,15 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
 
  call start_clock(timing_hamiltonian_nuc)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian'
+ if( nproc > 1 ) then
+   natom_local=0
+   do iatom=1,natom
+     if( rank /= MODULO(iatom,nproc) ) cycle
+     natom_local = natom_local + 1
+   enddo
+   write(stdout,'(a)')         '   Parallelizing over atoms'
+   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
+ endif
 
  ibf_cart = 1
  jbf_cart = 1
@@ -165,9 +175,10 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
 
      allocate(matrix_cart(ni_cart,nj_cart))
      matrix_cart(:,:) = 0.0_dp
-     do i_cart=1,ni_cart
-       do j_cart=1,nj_cart
-         do iatom=1,natom
+     do iatom=1,natom
+       if( rank /= MODULO(iatom,nproc) ) cycle
+       do i_cart=1,ni_cart
+         do j_cart=1,nj_cart
            call nucleus_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
            matrix_cart(i_cart,j_cart) = matrix_cart(i_cart,j_cart) + vnucleus_ij
          enddo
@@ -189,6 +200,9 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
 
  enddo
 
+ !
+ ! Reduce operation
+ call xsum(hamiltonian_nucleus)
 
  title='===  Nucleus potential contribution ==='
  call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_nucleus)
