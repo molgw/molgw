@@ -532,6 +532,11 @@ subroutine read_inputfile_namelist()
  implicit none
 
 !=====
+ integer              :: ninput_argument
+ character(len=100)   :: input_file_name
+ integer              :: inputfile
+ logical              :: file_exists
+
  character(len=100)   :: input_key
  character(len=24)    :: scf
  character(len=24)    :: postscf
@@ -555,9 +560,29 @@ subroutine read_inputfile_namelist()
 
 !=====
 
+ ! Get the number of inline arguments with the new Fortran 2003 statement
+ ninput_argument = COMMAND_ARGUMENT_COUNT()
+ 
+ select case(ninput_argument)
+ case(1)
+   call GET_COMMAND_ARGUMENT(1,VALUE=input_file_name)
+   write(stdout,'(a,a)') ' Opening input file: ',TRIM(input_file_name)
+   inquire(file=TRIM(input_file_name),exist=file_exists)
+   if( .NOT. file_exists) then
+     write(stdout,*) 'Tried to open file:',TRIM(input_file_name)
+     stop'input file not found'
+   endif
+   open(newunit=inputfile,file=TRIM(input_file_name),status='old')
+ case(0)
+   inputfile = 5
+   call issue_warning('Deprecated reading from stdin. Please use instead the newer syntax ./molgw inputfile > outfile')
+ case default
+   stop'input file name not understood'
+ end select
+
 
  ! Read all the input file in one statement!
- read(*,molgw)
+ read(inputfile,molgw)
 
 
  basis_name = basis
@@ -634,7 +659,7 @@ subroutine read_inputfile_namelist()
  ! Read the atom positions
  allocate(x_read(3,natom+nghost),zatom_read(natom+nghost))
  do iatom=1,natom+nghost
-   read(*,*) atom_symbol,x_read(:,iatom)
+   read(inputfile,*) atom_symbol,x_read(:,iatom)
    !
    ! First, try to interpret atom_symbol as an integer
    read(atom_symbol,'(i2)',iostat=info) atom_number

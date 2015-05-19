@@ -50,7 +50,7 @@ The file can be generated from a NWChem file using the script
 ##Usage
 The basis file needs to be located in the working directory.
 
-`./molgw < helium.in > helium.out`
+`./molgw helium.in > helium.out`
 
 Example input files can be found in `~molgw/tests/`
 

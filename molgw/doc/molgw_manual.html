@@ -82,9 +82,13 @@ The input file made of two sections:
 
 <h2>Run the executable</h2>
 
-<p>If the name of the input file is <font face="c">molgw.in</font>, then</p>
+<p>If the name of the input file is <span style="font-family: Courier">molgw.in</span>, then</p>
 <div class="codebox">
- &#36; ./molgw < molgw.in > molgw.out 
+ &#36; ./molgw molgw.in > molgw.out 
+</div>
+<p>or in parallel</p>
+<div class="codebox">
+ &#36; mpirun -np 4 ./molgw molgw.in > molgw.out 
 </div>
 
 

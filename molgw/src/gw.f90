@@ -583,23 +583,23 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    tr_log_gsigma = 0.0_dp
    tr_gsigma     = 0.0_dp
 
-   do iomegai=1,nomegai
+   do ispin=1,nspin
+     do iomegai=1,nomegai
 
-     rdiag=0.d0
-     do istate=1,basis%nbf
-       rdiag = rdiag + REAL(selfenergy_omegac(iomegai,istate,istate,1),dp) * spin_fact / (2.0 * pi)   * 2.0_dp
+       rdiag=0.d0
+       do istate=1,basis%nbf
+         rdiag = rdiag + REAL(selfenergy_omegac(iomegai,istate,istate,ispin),dp) * 2.0_dp
+       enddo
+
+       matrix(:,:) = selfenergy_omegac(iomegai,:,:,ispin) + CONJG(TRANSPOSE( selfenergy_omegac(iomegai,:,:,ispin) )) &
+                    - MATMUL( selfenergy_omegac(iomegai,:,:,ispin) , CONJG(TRANSPOSE( selfenergy_omegac(iomegai,:,:,ispin) )) )
+
+       call diagonalize(basis%nbf,matrix,eigval,eigvec)
+
+       tr_gsigma     = tr_gsigma     + rdiag                         * spin_fact / (2.0 * pi) * weights(iomegai)
+       tr_log_gsigma = tr_log_gsigma + SUM(LOG( 1.0_dp - eigval(:))) * spin_fact / (2.0 * pi) * weights(iomegai)
+
      enddo
-
-     !FBFB FIXME introduce spin here !!!!
-     matrix(:,:) = selfenergy_omegac(iomegai,:,:,1) + CONJG(TRANSPOSE( selfenergy_omegac(iomegai,:,:,1) )) &
-                  - MATMUL( selfenergy_omegac(iomegai,:,:,1) , CONJG(TRANSPOSE( selfenergy_omegac(iomegai,:,:,1) )) )
-
-     call diagonalize(basis%nbf,matrix,eigval,eigvec)
-
-
-     tr_gsigma = tr_gsigma + rdiag * weights(iomegai)
-     tr_log_gsigma = tr_log_gsigma + SUM(LOG( 1.0_dp - eigval(:))) * spin_fact / (2.0 * pi) * weights(iomegai)
-
    enddo
 
 
