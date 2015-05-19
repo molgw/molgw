@@ -52,6 +52,8 @@ module m_mpi
    module procedure xsum_ra1d
    module procedure xsum_ra2d
    module procedure xsum_ra3d
+   module procedure xsum_ra4d
+   module procedure xsum_ca4d
  end interface
 
 
@@ -594,6 +596,55 @@ subroutine xsum_ra3d(array)
  endif
 
 end subroutine xsum_ra3d
+
+
+!=========================================================================
+subroutine xsum_ra4d(array)
+ implicit none
+ real(dp),intent(inout) :: array(:,:,:,:)
+!=====
+ integer :: n1,n2,n3,n4
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+ n3 = SIZE( array, DIM=3 )
+ n4 = SIZE( array, DIM=4 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3*n4, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_comm, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xsum_ra4d
+
+
+!=========================================================================
+subroutine xsum_ca4d(array)
+ implicit none
+ complex(dp),intent(inout) :: array(:,:,:,:)
+!=====
+ integer :: n1,n2,n3,n4
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+ n3 = SIZE( array, DIM=3 )
+ n4 = SIZE( array, DIM=4 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3*n4, MPI_DOUBLE_COMPLEX, MPI_SUM, mpi_comm, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xsum_ca4d
+
 
 
 !=========================================================================

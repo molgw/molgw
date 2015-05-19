@@ -195,9 +195,14 @@ subroutine write_spectral_function(sf)
  integer             :: tmpfile
  integer             :: iprodbasis,ipole
  integer             :: npole_write,ipole_write
+ integer             :: ierr,bufsize,iproc
  logical             :: file_exists
  real(dp)            :: ecut_pole
  integer,allocatable :: index_pole(:)
+ real(dp),allocatable :: buffer(:,:)
+#ifdef HAVE_MPI
+ integer(kind=MPI_OFFSET_KIND) :: disp
+#endif
 !=====
 
  write(stdout,'(/,a,/)') ' Writing the spectral function on file' 
@@ -228,6 +233,7 @@ subroutine write_spectral_function(sf)
    endif
  enddo
 
+#ifndef HAVE_MPI
  if( is_iomaster ) then
    open(newunit=wfile,file='SCREENED_COULOMB',form='unformatted')
 
@@ -246,6 +252,37 @@ subroutine write_spectral_function(sf)
 
    close(wfile)
  endif
+#else
+   call MPI_FILE_OPEN(MPI_COMM_WORLD,'SCREENED_COULOMB', & 
+                      MPI_MODE_WRONLY + MPI_MODE_CREATE, & 
+                      MPI_INFO_NULL,wfile,ierr) 
+
+   ! Only one proc has to write the poles
+   disp  = 0
+   if(is_iomaster) then
+     call MPI_FILE_WRITE_AT(wfile,disp,sf%pole,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
+   endif
+   disp = disp + sf%npole_reso * SIZEOF(sf%pole(1))
+
+   iproc = 0
+   do while( iproc < rank )
+     disp = disp + nbf_local_iproc(iproc) * sf%npole_reso * SIZEOF(sf%residu_left(1,1))
+     iproc = iproc + 1
+   enddo
+   bufsize = nbf_local_iproc(rank) * sf%npole_reso
+
+   call MPI_FILE_SET_VIEW(wfile,disp,MPI_DOUBLE_PRECISION, & 
+                          MPI_DOUBLE_PRECISION,'native',   & 
+                          MPI_INFO_NULL,ierr) 
+   allocate(buffer(sf%npole_reso,sf%nprodbasis))
+   buffer(:,:) = TRANSPOSE( sf%residu_left(:,:) )
+   call MPI_FILE_WRITE(wfile,buffer,bufsize,MPI_REAL8, & 
+                       MPI_STATUS_IGNORE,ierr) 
+   deallocate(buffer)
+
+   call MPI_FILE_CLOSE(wfile, ierr)
+
+#endif
 
  deallocate(index_pole)
 
