@@ -253,34 +253,41 @@ subroutine write_spectral_function(sf)
    close(wfile)
  endif
 #else
-   call MPI_FILE_OPEN(MPI_COMM_WORLD,'SCREENED_COULOMB', & 
-                      MPI_MODE_WRONLY + MPI_MODE_CREATE, & 
-                      MPI_INFO_NULL,wfile,ierr) 
+ call MPI_FILE_OPEN(MPI_COMM_WORLD,'SCREENED_COULOMB', & 
+                    MPI_MODE_WRONLY + MPI_MODE_CREATE, & 
+                    MPI_INFO_NULL,wfile,ierr) 
 
-   ! Only one proc has to write the poles
-   disp  = 0
-   if(is_iomaster) then
-     call MPI_FILE_WRITE_AT(wfile,disp,sf%pole,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
-   endif
-   disp = disp + sf%npole_reso * SIZEOF(sf%pole(1))
+ ! Only one proc has to write the poles
+ disp  = 0
+ if(is_iomaster) &
+   call MPI_FILE_WRITE_AT(wfile,disp,calc_type%postscf_name,LEN(calc_type%postscf_name),MPI_CHARACTER,MPI_STATUS_IGNORE,ierr)
+ disp = disp + SIZEOF(calc_type%postscf_name)
 
-   iproc = 0
-   do while( iproc < rank )
-     disp = disp + nbf_local_iproc(iproc) * sf%npole_reso * SIZEOF(sf%residu_left(1,1))
-     iproc = iproc + 1
-   enddo
-   bufsize = nbf_local_iproc(rank) * sf%npole_reso
+ if(is_iomaster) &
+   call MPI_FILE_WRITE_AT(wfile,disp,sf%npole_reso,1,MPI_INTEGER,MPI_STATUS_IGNORE,ierr)
+ disp = disp + SIZEOF(sf%npole_reso)
 
-   call MPI_FILE_SET_VIEW(wfile,disp,MPI_DOUBLE_PRECISION, & 
-                          MPI_DOUBLE_PRECISION,'native',   & 
-                          MPI_INFO_NULL,ierr) 
-   allocate(buffer(sf%npole_reso,sf%nprodbasis))
-   buffer(:,:) = TRANSPOSE( sf%residu_left(:,:) )
-   call MPI_FILE_WRITE(wfile,buffer,bufsize,MPI_REAL8, & 
-                       MPI_STATUS_IGNORE,ierr) 
-   deallocate(buffer)
+ if(is_iomaster) &
+   call MPI_FILE_WRITE_AT(wfile,disp,sf%pole,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
+ disp = disp + sf%npole_reso * SIZEOF(sf%pole(1))
 
-   call MPI_FILE_CLOSE(wfile, ierr)
+ iproc = 0
+ do while( iproc < rank )
+   disp = disp + nbf_local_iproc(iproc) * sf%npole_reso * SIZEOF(sf%residu_left(1,1))
+   iproc = iproc + 1
+ enddo
+ bufsize = nbf_local_iproc(rank) * sf%npole_reso
+
+ call MPI_FILE_SET_VIEW(wfile,disp,MPI_DOUBLE_PRECISION, & 
+                        MPI_DOUBLE_PRECISION,'native',   & 
+                        MPI_INFO_NULL,ierr) 
+ allocate(buffer(sf%npole_reso,sf%nprodbasis))
+ buffer(:,:) = TRANSPOSE( sf%residu_left(:,:) )
+ call MPI_FILE_WRITE(wfile,buffer,bufsize,MPI_REAL8, & 
+                     MPI_STATUS_IGNORE,ierr) 
+ deallocate(buffer)
+
+ call MPI_FILE_CLOSE(wfile, ierr)
 
 #endif
 
@@ -300,6 +307,11 @@ subroutine read_spectral_function(sf,reading_status)
  integer            :: ipole_read
  logical            :: file_exists
  integer            :: npole_read,nprodbasis_read
+ integer            :: ierr,bufsize,iproc
+ real(dp),allocatable :: buffer(:,:)
+#ifdef HAVE_MPI
+ integer(kind=MPI_OFFSET_KIND) :: disp
+#endif
 !=====
 
  write(stdout,'(/,a)') ' Try to read spectral function from file SCREENED_COULOMB' 
@@ -311,6 +323,7 @@ subroutine read_spectral_function(sf,reading_status)
    return
  endif
 
+#ifndef HAVE_MPI
  open(newunit=wfile,file='SCREENED_COULOMB',status='old',form='unformatted')
 
  read(wfile) postscf_name_read
@@ -321,24 +334,59 @@ subroutine read_spectral_function(sf,reading_status)
  sf%npole      = npole_read * 2
  call allocate_spectral_function(nprodbasis_read,sf)
 
-! if( npole_read /= sf%npole .OR. nprodbasis_read /= sf%nprodbasis ) then
-!   write(stdout,'(a,/)')     ' File does not have the correct size'
-!   write(stdout,'(i5,a,i5)') npole_read,' vs ',sf%npole
-!   write(stdout,'(i5,a,i5)') nprodbasis_read,' vs ',sf%nprodbasis
-!   reading_status=2
-! else
 
-   read(wfile) sf%pole(:)
-   do ipole_read=1,npole_read
-     read(wfile) sf%residu_left(:,ipole_read)
-   enddo
+ read(wfile) sf%pole(:)
+ do ipole_read=1,npole_read
+   read(wfile) sf%residu_left(:,ipole_read)
+ enddo
 
-   reading_status=0
-   msg='reading spectral function from SCREENED_COULOMB obtained from '//TRIM(postscf_name_read)
-   call issue_warning(msg)
+ reading_status=0
+ msg='reading spectral function from SCREENED_COULOMB obtained from '//TRIM(postscf_name_read)
+ call issue_warning(msg)
 
-! endif
  close(wfile)
+#else
+ write(stdout,*) 'Reading file'
+ call MPI_FILE_OPEN(MPI_COMM_WORLD,'SCREENED_COULOMB', & 
+                    MPI_MODE_RDONLY, & 
+                    MPI_INFO_NULL,wfile,ierr) 
+ disp = 0
+ call MPI_FILE_READ_AT(wfile,disp,postscf_name_read,LEN(postscf_name_read),MPI_CHARACTER,MPI_STATUS_IGNORE,ierr)
+ disp = disp + SIZEOF(postscf_name_read)
+
+ call MPI_FILE_READ_AT(wfile,disp,npole_read,1,MPI_INTEGER,MPI_STATUS_IGNORE,ierr)
+ disp = disp + SIZEOF(npole_read)
+
+ sf%npole_reso = npole_read
+ sf%npole      = npole_read * 2
+ call allocate_spectral_function(nbf_local_iproc(rank),sf)
+
+ call MPI_FILE_READ_AT(wfile,disp,sf%pole,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
+ disp = disp + sf%npole_reso * SIZEOF(sf%pole(1))
+
+ iproc = 0
+ do while( iproc < rank )
+   disp = disp + nbf_local_iproc(iproc) * sf%npole_reso * SIZEOF(sf%residu_left(1,1))
+   iproc = iproc + 1
+ enddo
+ bufsize = nbf_local_iproc(rank) * sf%npole_reso
+
+ call MPI_FILE_SET_VIEW(wfile,disp,MPI_DOUBLE_PRECISION, &
+                        MPI_DOUBLE_PRECISION,'native',   &
+                        MPI_INFO_NULL,ierr)
+ allocate(buffer(sf%npole_reso,sf%nprodbasis))
+ call MPI_FILE_READ(wfile,buffer,bufsize,MPI_REAL8, &
+                    MPI_STATUS_IGNORE,ierr)
+ sf%residu_left(:,:) = TRANSPOSE( buffer(:,:) )
+ deallocate(buffer)
+
+ call MPI_FILE_CLOSE(wfile, ierr)
+
+ msg='reading spectral function from SCREENED_COULOMB obtained from '//TRIM(postscf_name_read)
+ call issue_warning(msg)
+ reading_status=0
+
+#endif
 
 
 end subroutine read_spectral_function
