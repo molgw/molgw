@@ -121,7 +121,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  !
  ! The distribution of the two matrices have to be the same for A-B and A+B
  ! This is valid also when SCALAPACK is not used!
- call init_desc('C',nmat,nmat,desc_apb,m_apb,n_apb)
+ call init_desc('S',nmat,nmat,desc_apb,m_apb,n_apb)
  call clean_allocate('A+B',apb_matrix,m_apb,n_apb)
  call clean_allocate('A-B',amb_matrix,m_apb,n_apb)
 
@@ -135,7 +135,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  amb_matrix(:,:) = 0.0_dp
  write(stdout,'(/,a)') ' Build the electron-hole hamiltonian'
  ! Step 1
- call build_amb_apb_common(basis%nbf,c_matrix,energy_qp,wpol_out,alpha_local,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
+ call build_amb_apb_common(nmat,basis%nbf,c_matrix,energy_qp,wpol_out,alpha_local,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
 
  ! Step 2
  if(is_tddft) call build_apb_tddft(basis,c_matrix,occupation,wpol_out,m_apb,n_apb,apb_matrix)
@@ -149,9 +149,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
    endif
    call destroy_spectral_function(wpol_static)
  endif
- ! Construction done!
 
- 
  ! Warning if Tamm-Dancoff flag is on
  if(is_tda) then
    msg='Tamm-Dancoff approximation is switched on'
@@ -161,13 +159,14 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
    apb_matrix(:,:) = 0.5_dp * ( apb_matrix(:,:) + amb_matrix(:,:) )
    amb_matrix(:,:) = apb_matrix(:,:) 
  endif
+ ! Construction done!
 
  call stop_clock(timing_build_h2p)
 
 
  allocate(eigenvalue(nmat))
  ! bigX, bigY
- call init_desc('C',nmat,nmat,desc_x,m_x,n_x)
+ call init_desc('S',nmat,nmat,desc_x,m_x,n_x)
  write(stdout,*) 'Allocate eigenvector array'
  call clean_allocate('X',bigx,m_x,n_x)
  call clean_allocate('Y',bigy,m_x,n_x)
@@ -243,13 +242,13 @@ end subroutine polarizability
 
 
 !=========================================================================
-subroutine build_amb_apb_common(nbf,c_matrix,energy,wpol,alpha_local,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
+subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
  use m_spectral_function
  use m_eri
  use m_tools 
  implicit none
 
- integer,intent(in)                 :: nbf
+ integer,intent(in)                 :: nmat,nbf
  real(dp),intent(in)                :: energy(nbf,nspin)
  real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
  type(spectral_function),intent(in) :: wpol
@@ -266,6 +265,10 @@ subroutine build_amb_apb_common(nbf,c_matrix,energy,wpol,alpha_local,m_apb,n_apb
  real(dp)             :: eri_eigen_ijkl
  real(dp)             :: eri_eigen_ikjl,eri_eigen_iljk
  logical              :: k_is_klmin
+ integer              :: iprow,ipcol
+ integer              :: m_apb_block,n_apb_block
+ real(dp),allocatable :: amb_block(:,:)
+ real(dp),allocatable :: apb_block(:,:)
 !=====
 
  call start_clock(timing_build_common)
@@ -280,77 +283,116 @@ subroutine build_amb_apb_common(nbf,c_matrix,energy,wpol,alpha_local,m_apb,n_apb
    eri_eigenstate_klmin(:,:,:,:) = 0.0_dp
  endif
 
+ write(stdout,'(a,i4,a,i4)') ' SCALAPACK grid    :',nprow_sd,' x ',npcol_sd
+
  rpa_correlation = 0.0_dp
  !
  ! Set up energy+hartree+exchange contributions to matrices (A+B) and (A-B) 
  !
- do t_kl=1,n_apb
-   t_kl_global = colindex_local_to_global('C',t_kl)
-   kstate = wpol%transition_table(1,t_kl_global)
-   lstate = wpol%transition_table(2,t_kl_global)
-   klspin = wpol%transition_table(3,t_kl_global)
+ 
+ ! First loop over the SCALAPACK grid
+ do ipcol=0,npcol_sd-1
+   do iprow=0,nprow_sd-1
+     m_apb_block = row_block_size(nmat,iprow,nprow_sd)
+     n_apb_block = col_block_size(nmat,ipcol,npcol_sd)
 
-   if( .NOT. has_auxil_basis ) then
-     klmin = MIN(kstate,lstate)
-     k_is_klmin = (klmin == kstate)
-     call transform_eri_basis(nspin,c_matrix,klmin,klspin,eri_eigenstate_klmin)
-   endif
+     allocate(amb_block(m_apb_block,n_apb_block))
+     allocate(apb_block(m_apb_block,n_apb_block))
 
-   do t_ij=1,m_apb
-     t_ij_global = rowindex_local_to_global('C',t_ij)
-     istate = wpol%transition_table(1,t_ij_global)
-     jstate = wpol%transition_table(2,t_ij_global)
-     ijspin = wpol%transition_table(3,t_ij_global)
-
-     if( t_ij_global < t_kl_global ) cycle
-
-     if(has_auxil_basis) then
-       eri_eigen_ijkl = eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
-     else
-       if(k_is_klmin) then ! treating (k,l)
-         eri_eigen_ijkl = eri_eigenstate_klmin(lstate,istate,jstate,ijspin)
-       else                ! treating (l,k)
-         eri_eigen_ijkl = eri_eigenstate_klmin(kstate,istate,jstate,ijspin)
+     ! Then loop inside each of the SCALAPACK blocks
+     do t_kl=1,n_apb_block
+!FBFB       t_kl_global = colindex_local_to_global('C',t_kl)
+       t_kl_global = colindex_local_to_global(ipcol,npcol_sd,t_kl)
+       kstate = wpol%transition_table(1,t_kl_global)
+       lstate = wpol%transition_table(2,t_kl_global)
+       klspin = wpol%transition_table(3,t_kl_global)
+    
+       if( .NOT. has_auxil_basis ) then
+         klmin = MIN(kstate,lstate)
+         k_is_klmin = (klmin == kstate)
+         call transform_eri_basis(nspin,c_matrix,klmin,klspin,eri_eigenstate_klmin)
        endif
-     endif
+    
+       do t_ij=1,m_apb_block
+!FBFB         t_ij_global = rowindex_local_to_global('C',t_ij)
+         t_ij_global = rowindex_local_to_global(iprow,nprow_sd,t_ij)
 
-     if( .NOT. is_triplet) then
-       apb_matrix(t_ij,t_kl) = 2.0_dp * eri_eigen_ijkl * spin_fact
-     else
-       apb_matrix(t_ij,t_kl) = 0.0_dp
-     endif
-     amb_matrix(t_ij,t_kl) = 0.0_dp
-
-     if( alpha_local > 1.0e-6_dp ) then
-       if(ijspin==klspin) then
+         istate = wpol%transition_table(1,t_ij_global)
+         jstate = wpol%transition_table(2,t_ij_global)
+         ijspin = wpol%transition_table(3,t_ij_global)
+    
+         !
+         ! Only calculate the lower triangle
+         ! Symmetrization will be performed later (in the diago subroutines)
+         if( t_ij_global < t_kl_global ) cycle
+    
          if(has_auxil_basis) then
-           eri_eigen_ikjl = eri_eigen_ri(istate,kstate,ijspin,jstate,lstate,klspin)
-           eri_eigen_iljk = eri_eigen_ri(istate,lstate,ijspin,jstate,kstate,klspin)
+!FBFB           eri_eigen_ijkl = eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
+           eri_eigen_ijkl = eri_eigen_ri_paral(istate,jstate,ijspin,kstate,lstate,klspin)
          else
-           if(k_is_klmin) then
-             eri_eigen_ikjl = eri_eigenstate_klmin(istate,jstate,lstate,klspin)
-             eri_eigen_iljk = eri_eigenstate_klmin(jstate,istate,lstate,klspin)
-           else
-             eri_eigen_ikjl = eri_eigenstate_klmin(jstate,istate,kstate,klspin)
-             eri_eigen_iljk = eri_eigenstate_klmin(istate,jstate,kstate,klspin)
+           if(k_is_klmin) then ! treating (k,l)
+             eri_eigen_ijkl = eri_eigenstate_klmin(lstate,istate,jstate,ijspin)
+           else                ! treating (l,k)
+             eri_eigen_ijkl = eri_eigenstate_klmin(kstate,istate,jstate,ijspin)
            endif
          endif
-         apb_matrix(t_ij,t_kl) = apb_matrix(t_ij,t_kl) - eri_eigen_ikjl * alpha_local - eri_eigen_iljk * alpha_local
-         amb_matrix(t_ij,t_kl) = amb_matrix(t_ij,t_kl) - eri_eigen_ikjl * alpha_local + eri_eigen_iljk * alpha_local
-       endif
-     endif
+    
+         if( .NOT. is_triplet) then
+           apb_block(t_ij,t_kl) = 2.0_dp * eri_eigen_ijkl * spin_fact
+         else
+           apb_block(t_ij,t_kl) = 0.0_dp
+         endif
+         amb_block(t_ij,t_kl) = 0.0_dp
+    
+         if( alpha_local > 1.0e-6_dp ) then
+           if(ijspin==klspin) then
+             if(has_auxil_basis) then
+!FBFB           eri_eigen_ikjl = eri_eigen_ri(istate,kstate,ijspin,jstate,lstate,klspin)
+!FBFB           eri_eigen_iljk = eri_eigen_ri(istate,lstate,ijspin,jstate,kstate,klspin)
+               eri_eigen_ikjl = eri_eigen_ri_paral(istate,kstate,ijspin,jstate,lstate,klspin)
+               eri_eigen_iljk = eri_eigen_ri_paral(istate,lstate,ijspin,jstate,kstate,klspin)
+             else
+               if(k_is_klmin) then
+                 eri_eigen_ikjl = eri_eigenstate_klmin(istate,jstate,lstate,klspin)
+                 eri_eigen_iljk = eri_eigenstate_klmin(jstate,istate,lstate,klspin)
+               else
+                 eri_eigen_ikjl = eri_eigenstate_klmin(jstate,istate,kstate,klspin)
+                 eri_eigen_iljk = eri_eigenstate_klmin(istate,jstate,kstate,klspin)
+               endif
+             endif
+             apb_block(t_ij,t_kl) = apb_block(t_ij,t_kl) - eri_eigen_ikjl * alpha_local - eri_eigen_iljk * alpha_local
+             amb_block(t_ij,t_kl) = amb_block(t_ij,t_kl) - eri_eigen_ikjl * alpha_local + eri_eigen_iljk * alpha_local
+           endif
+         endif
+    
+         if( t_ij_global == t_kl_global ) then
+           !
+           ! Only one proc should add the diagonal
+           if( rank == 0 ) then
+             apb_block(t_ij,t_kl) =  apb_block(t_ij,t_kl) + ( energy(lstate,klspin) - energy(kstate,klspin) )
+             amb_block(t_ij,t_kl) =  amb_block(t_ij,t_kl) + ( energy(lstate,klspin) - energy(kstate,klspin) )
+           endif
+           ! First part of the RPA correlation energy: sum over diagonal terms
+           rpa_correlation = rpa_correlation - 0.25_dp * ( apb_block(t_ij,t_kl) + amb_block(t_ij,t_kl) )
+         endif
+    
+       enddo 
+    
+     enddo 
 
-     if( t_ij_global == t_kl_global ) then
-       apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) + ( energy(lstate,klspin) - energy(kstate,klspin) )
-       amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) + ( energy(lstate,klspin) - energy(kstate,klspin) )
-       ! First part of the RPA correlation energy: sum over diagonal terms
-       rpa_correlation = rpa_correlation - 0.25_dp * ( apb_matrix(t_ij,t_kl) + amb_matrix(t_ij,t_kl) )
-     endif
+     call xsum(amb_block)
+     call xsum(apb_block)
 
+     if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
+       amb_matrix(:,:) = amb_block(:,:)
+       apb_matrix(:,:) = apb_block(:,:)
+     endif
+     deallocate(amb_block)
+     deallocate(apb_block)
    enddo 
-
  enddo 
-#ifdef SCALAPACK
+
+#ifdef HAVE_SCALAPACK
  call xsum(rpa_correlation)
 #endif
 
@@ -1560,21 +1602,26 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eig
  
  integer,intent(in)                    :: nbf,nbf_auxil,m_x,n_x
  integer,intent(in)                    :: desc_x(ndel)
- real(prec_td),intent(in)              :: bigx(m_x,n_x)
+ real(prec_td),intent(inout)           :: bigx(m_x,n_x)
  real(prec_td),intent(in)              :: bigy(m_x,n_x)
  type(spectral_function),intent(inout) :: wpol
  real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso)
  real(dp),intent(out)                  :: energy_gm
 !=====
- integer                               :: t_kl,t_kl_global,klspin,ijspin
+ integer                               :: t_kl,t_kl_global,klspin
+ integer                               :: t_ij,t_ij_global,ijspin
  integer                               :: ibf_auxil,ibf_auxil_global
  integer                               :: nmat
  integer                               :: kstate,lstate
+ integer                               :: istate,jstate
  real(dp),allocatable                  :: eri_3center_mat(:,:),residu_local(:,:)
  integer                               :: desc_3center_eigen(ndel)
  integer                               :: desc_residu(ndel)
  integer                               :: m_3center,n_3center
  real(dp)                              :: rtmp
+ integer                               :: iprow,ipcol
+ integer                               :: m_bigx_block,n_bigx_block
+ real(dp),allocatable                  :: bigx_block(:,:)
 !=====
 
  call start_clock(timing_buildw)
@@ -1606,42 +1653,57 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eig
  ! Since wpol%residu_left and eri_3center_mat are distributed, we have to sum up
  call xsum(energy_gm)
 
+ deallocate(eri_3center_mat)
+
 #else 
 
- call init_desc('C',nbf_auxil,nmat,desc_3center_eigen,m_3center,n_3center)
- allocate(eri_3center_mat(m_3center,n_3center))
- desc_residu = desc_3center_eigen
- allocate(residu_local(m_3center,n_3center))
- do t_kl=1,n_3center
-   t_kl_global = colindex_local_to_global('C',t_kl)
-   kstate = wpol%transition_table(1,t_kl_global)
-   lstate = wpol%transition_table(2,t_kl_global)
-   klspin = wpol%transition_table(3,t_kl_global)
-   do ibf_auxil=1,m_3center
-     ibf_auxil_global = rowindex_local_to_global('C',ibf_auxil)
-     eri_3center_mat(ibf_auxil,t_kl) = eri_3center_eigen(ibf_auxil_global,kstate,lstate,klspin)
-   enddo
- end do
 
- ! bigx + bigy 
+ ! bigx = bigx + bigy 
  call PDGEADD('N',nmat,nmat,1.d0,bigy,1,1,desc_x,1.d0,bigx,1,1,desc_x)
 
- ! residu = eri_3center * bigx * sqrt(spin_fact)
- call PDGEMM('N','N',nbf_auxil,nmat,nmat,DSQRT(spin_fact),eri_3center_mat,1,1,desc_3center_eigen,&
-             bigx,1,1,desc_x,0.d0,residu_local,1,1,desc_residu)
+ bigx(:,:) = bigx(:,:) * SQRT(spin_fact)
 
- do t_kl_global=1,nmat
-   do ibf_auxil_global=1,nbf_auxil
-     call PDELGET('All',' ',rtmp,residu_local,ibf_auxil_global,t_kl_global,desc_residu)
-     wpol%residu_left(ibf_auxil_global,t_kl_global) = rtmp
+ wpol%residu_left(:,:) = 0.0_dp
+ ! First loop over the SCALAPACK grid
+ do ipcol=0,npcol_sd-1
+   do iprow=0,nprow_sd-1
+     m_bigx_block = row_block_size(nmat,iprow,nprow_sd)
+     n_bigx_block = col_block_size(nmat,ipcol,npcol_sd)
+
+     allocate(bigx_block(m_bigx_block,n_bigx_block))
+     if( ipcol == ipcol_sd .AND. iprow == iprow_sd ) then
+       bigx_block(:,:) = bigx(:,:)
+     else
+       bigx_block(:,:) = 0.0_dp
+     endif
+     call xsum(bigx_block)
+
+     do t_kl=1,n_bigx_block
+       t_kl_global = colindex_local_to_global(ipcol,npcol_sd,t_kl)
+!       kstate = wpol%transition_table(1,t_kl_global)
+!       lstate = wpol%transition_table(2,t_kl_global)
+!       klspin = wpol%transition_table(3,t_kl_global)
+
+       do t_ij=1,m_bigx_block
+         t_ij_global = rowindex_local_to_global(iprow,nprow_sd,t_ij)
+         istate = wpol%transition_table(1,t_ij_global)
+         jstate = wpol%transition_table(2,t_ij_global)
+         ijspin = wpol%transition_table(3,t_ij_global)
+
+         wpol%residu_left(:,t_kl_global) = wpol%residu_left(:,t_kl_global) &
+                  + eri_3center_eigen(:,istate,jstate,ijspin) * bigx_block(t_ij,t_kl)
+
+       enddo
+     enddo
+
+
+     deallocate(bigx_block)
    enddo
  enddo
- deallocate(residu_local)
 
 
 #endif
 
- deallocate(eri_3center_mat)
 
 
  call stop_clock(timing_buildw)
