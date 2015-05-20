@@ -77,6 +77,7 @@ module m_inputparam
  logical,protected                :: print_wfn_
  logical,protected                :: print_w_
  logical,protected                :: print_sigma_
+ logical,protected                :: print_restart_
 
  real(dp),protected               :: alpha_hybrid    = 0.0_dp
  real(dp),protected               :: alpha_hybrid_lr = 0.0_dp
@@ -488,6 +489,7 @@ subroutine summary_input(grid_quality,integral_quality)
  write(stdout,'(a30,l3)')   ' - plot some wfns:     ',print_wfn_          
  write(stdout,'(a30,l3)')   ' - dump spectral functs',print_w_
  write(stdout,'(a30,l3)')   ' - dump self-energy    ',print_sigma_
+ write(stdout,'(a30,l3)')   ' - RESTART files       ',print_restart_
 
 
  write(stdout,*)
@@ -544,7 +546,7 @@ subroutine read_inputfile_namelist()
  character(len=100)   :: auxil_basis
  character(len=12)    :: length_unit
  character(len=3)     :: ignore_restart,ignore_bigrestart,no_4center
- character(len=3)     :: print_matrix,print_eri,print_wfn,print_w,print_sigma
+ character(len=3)     :: print_matrix,print_eri,print_wfn,print_w,print_sigma,print_restart
  character(len=3)     :: tda,triplet,frozencore
  real(dp)             :: length_factor,eta
  integer              :: atom_number,info,iatom
@@ -612,6 +614,7 @@ subroutine read_inputfile_namelist()
  print_wfn_         = yesno(print_wfn)
  print_w_           = yesno(print_w)
  print_sigma_       = yesno(print_sigma)
+ print_restart_     = yesno(print_restart)
 
  grid_level     = interpret_quality(grid_quality)
  integral_level = interpret_quality(integral_quality)

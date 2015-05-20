@@ -369,6 +369,19 @@ vl[i].comment  ='Dumps the spectral function of the screened Coulomb W. This is 
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='print_restart'
+vl[i].family   ='io'
+vl[i].default  ='yes'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints the file RESTART at each SCF cycle. \
+This is a very small file and the writing should not hit too much on performance. \
+There are two kinds of RESTART files: the small RESTART and the big RESTART. \
+The big RESTART is written when self-consistency is reached. \
+It contains all the states and the Hamiltonian and allows one to completely skip the scf loop.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='print_sigma'
 vl[i].family   ='io'
 vl[i].default  ='no'

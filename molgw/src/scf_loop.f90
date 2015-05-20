@@ -276,8 +276,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
    !
    ! Write down a "small" RESTART file at each step
-   ! TODO: I should check if it is resource consuming
-   call write_small_restart(basis%nbf,occupation,c_matrix)
+   if( print_restart_ ) call write_small_restart(basis%nbf,occupation,c_matrix)
    
  !
  ! end of the big SCF loop
@@ -352,12 +351,12 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  !
  ! Big RESTART file written if converged
  !
- if( is_converged ) call write_big_restart(basis%nbf,occupation,c_matrix,energy,hamiltonian_exx,hamiltonian_xc)
- if( calc_type%is_dft ) then
-!   ! Output the self-consistent density on the real-space grid
-!   call write_density_grid(basis,p_matrix)
-   call destroy_dft_grid()
- endif
+ if( is_converged .AND. print_restart_) &
+     call write_big_restart(basis%nbf,occupation,c_matrix,energy,hamiltonian_exx,hamiltonian_xc)
+
+ !
+ ! Cleanly deallocate the integral grid information
+ if( calc_type%is_dft ) call destroy_dft_grid()
 
  !
  ! Cleanly deallocate the arrays
