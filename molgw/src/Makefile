@@ -47,7 +47,7 @@ molgw.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_inputparam.
 	$(FC_W_OPTS) -c molgw.f90 $(LIBXC_INCS)
 
 scf_loop.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
-  m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 scf_loop.f90
+  m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_timedependent.f90 scf_loop.f90
 	$(FC_W_OPTS) -c scf_loop.f90 $(LIBXC_INCS)
 
 hamiltonian.o: m_definitions.f90 m_timing.f90 m_eri.f90 hamiltonian.f90

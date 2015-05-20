@@ -301,7 +301,6 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
 
      ! Then loop inside each of the SCALAPACK blocks
      do t_kl=1,n_apb_block
-!FBFB       t_kl_global = colindex_local_to_global('C',t_kl)
        t_kl_global = colindex_local_to_global(ipcol,npcol_sd,t_kl)
        kstate = wpol%transition_table(1,t_kl_global)
        lstate = wpol%transition_table(2,t_kl_global)
@@ -314,7 +313,6 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
        endif
     
        do t_ij=1,m_apb_block
-!FBFB         t_ij_global = rowindex_local_to_global('C',t_ij)
          t_ij_global = rowindex_local_to_global(iprow,nprow_sd,t_ij)
 
          istate = wpol%transition_table(1,t_ij_global)
@@ -327,7 +325,6 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
          if( t_ij_global < t_kl_global ) cycle
     
          if(has_auxil_basis) then
-!FBFB           eri_eigen_ijkl = eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
            eri_eigen_ijkl = eri_eigen_ri_paral(istate,jstate,ijspin,kstate,lstate,klspin)
          else
            if(k_is_klmin) then ! treating (k,l)
@@ -347,8 +344,6 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
          if( alpha_local > 1.0e-6_dp ) then
            if(ijspin==klspin) then
              if(has_auxil_basis) then
-!FBFB           eri_eigen_ikjl = eri_eigen_ri(istate,kstate,ijspin,jstate,lstate,klspin)
-!FBFB           eri_eigen_iljk = eri_eigen_ri(istate,lstate,ijspin,jstate,kstate,klspin)
                eri_eigen_ikjl = eri_eigen_ri_paral(istate,kstate,ijspin,jstate,lstate,klspin)
                eri_eigen_iljk = eri_eigen_ri_paral(istate,lstate,ijspin,jstate,kstate,klspin)
              else
@@ -1680,9 +1675,6 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eig
 
      do t_kl=1,n_bigx_block
        t_kl_global = colindex_local_to_global(ipcol,npcol_sd,t_kl)
-!       kstate = wpol%transition_table(1,t_kl_global)
-!       lstate = wpol%transition_table(2,t_kl_global)
-!       klspin = wpol%transition_table(3,t_kl_global)
 
        do t_ij=1,m_bigx_block
          t_ij_global = rowindex_local_to_global(iprow,nprow_sd,t_ij)
@@ -1700,6 +1692,17 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eig
      deallocate(bigx_block)
    enddo
  enddo
+
+ energy_gm = 0.0_dp
+ do t_ij_global=1,nmat
+   istate = wpol%transition_table(1,t_ij_global)
+   jstate = wpol%transition_table(2,t_ij_global)
+   ijspin = wpol%transition_table(3,t_ij_global)
+   energy_gm = energy_gm - SUM( eri_3center_eigen(:,istate,jstate,ijspin)**2 ) * spin_fact * 0.5_dp
+ enddo
+
+ energy_gm = energy_gm + 0.5_dp * ( SUM( wpol%residu_left(:,:)**2 ) )
+ call xsum(energy_gm)
 
 
 #endif

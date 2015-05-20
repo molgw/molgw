@@ -1011,6 +1011,7 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
  !
  ! Perform in-place diagonalization here
  call diagonalize(nauxil_2center,eri_2center_m1,eigval)
+ write(stdout,'(a,e16.6)') ' Minimal eigenvalue (should not be too small):',MINVAL(eigval(:))
  do jbf=1,nauxil_2center
    eri_2center_m1(:,jbf) = eri_2center_m1(:,jbf) / SQRT( eigval(jbf) )
  enddo
@@ -1275,6 +1276,7 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
    if( eigval(jbf) < 1.0e-8_dp ) eigval(jbf) = 1.0e-8_dp  ! -eigval(jbf)
    eri_2center_m1_lr(:,jbf) = eri_2center_m1_lr(:,jbf) / SQRT( eigval(jbf) )
  enddo
+ write(stdout,'(a,e16.6)') ' Minimal eigenvalue (should not be too small):',MINVAL(eigval(:))
  deallocate(eigval)
 
  write(stdout,'(a)') ' All 2-center integrals have been calculated, diagonalized and stored'
