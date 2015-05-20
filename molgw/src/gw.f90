@@ -203,6 +203,8 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
      do ipole=1,wpol%npole_reso
 
+       if( rank /= MODULO(ipole,nproc) ) cycle
+
        select case(gwmethod)
 
        case(QS)
@@ -330,6 +332,14 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
    enddo !istate
  enddo !ispin
+
+ ! Sum up the contribution from different poles (= different procs)
+ if( ALLOCATED(selfenergy_omega) ) then
+   call xsum(selfenergy_omega)
+ endif
+ if( ALLOCATED(selfenergy_omegac) ) then
+   call xsum(selfenergy_omegac)
+ endif
 
  !
  ! Kotani's Hermitianization trick

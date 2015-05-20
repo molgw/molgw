@@ -688,6 +688,12 @@ subroutine init_scalapack()
  ! Squared division of tasks
  nprow_sd = INT(SQRT(REAL(nproc_sca,dp)))
  npcol_sd = nproc_sca / nprow_sd
+ if( nprow_sd * npcol_sd /= nproc_sca ) then
+   write(stdout,'(a)') ' Some procs will be idling in the SCALAPACK distribution'
+   write(stdout,'(a)') ' This is a waste and it is not yet coded anyway!'
+   write(stdout,'(a)') ' => select a number of procs that is not a prime number'
+   stop'not permitted'
+ endif
 
  call BLACS_GET( -1, 0, cntxt_sd )
  call BLACS_GRIDINIT( cntxt_sd, 'R', nprow_sd, npcol_sd )
