@@ -1156,7 +1156,7 @@ subroutine distribute_auxil_basis(auxil_basis)
  integer :: iproc
 !====
 
- nbf_local_target = NINT( auxil_basis%nbf / REAL(nproc,dp) + 0.0001_dp )
+ nbf_local_target = CEILING( auxil_basis%nbf / REAL(nproc,dp) + 0.0001_dp )
  allocate(iproc_ishell_auxil(auxil_basis%nshell))
  allocate(iproc_ibf_auxil(auxil_basis%nbf))
  allocate(nbf_local_iproc(0:nproc-1))
@@ -1176,10 +1176,16 @@ subroutine distribute_auxil_basis(auxil_basis)
      iproc_ishell_auxil(ishell_current) = iproc
      iproc_ibf_auxil(ibf:ibf+nbf_shell-1) = iproc
      ibf = ibf + nbf_shell
-     if( nbf_local_iproc(iproc) >= nbf_local_target ) then
-       iproc = iproc + 1
-       if( SUM(nbf_local_iproc(:)) < auxil_basis%nbf .AND. iproc > nproc ) stop'BUG in the distribution of the auxil_basis'
-     endif
+
+     iproc = MODULO(iproc+1,nproc)
+     do while ( nbf_local_iproc(iproc) >= nbf_local_target ) 
+       iproc = MODULO(iproc+1,nproc)
+     enddo
+
+!     if( nbf_local_iproc(iproc) >= nbf_local_target ) then
+!       iproc = iproc + 1
+!       if( SUM(nbf_local_iproc(:)) < auxil_basis%nbf .AND. iproc > nproc ) stop'BUG in the distribution of the auxil_basis'
+!     endif
    endif
    ishell_previous = ishell_current
  enddo

@@ -346,8 +346,8 @@
       IF ( N .EQ. 0 )
      $   RETURN
       T_PREP = MPI_WTIME() - T_PREP
-      IF ( MYROW+MYCOL .EQ. 0 )
-     $   WRITE( *, * ) 't_prep = ', T_PREP, ';'
+*      IF ( MYROW+MYCOL .EQ. 0 )
+*     $   WRITE( *, * ) 't_prep = ', T_PREP, ';'
 *
 *     Compute the Cholesky factorization M = L * L**T.
 *     In case of failure, a general solver is needed.
@@ -355,8 +355,8 @@
       T_CHOL = MPI_WTIME()
       CALL PDPOTRF( 'L', N, M, IM, JM, DESCM, ITMP )
       T_CHOL = MPI_WTIME() - T_CHOL
-      IF ( MYROW+MYCOL .EQ. 0 )
-     $   WRITE( *, * ) 't_chol = ', T_CHOL, ';'
+*      IF ( MYROW+MYCOL .EQ. 0 )
+*     $   WRITE( *, * ) 't_chol = ', T_CHOL, ';'
 !      CALL PDLAPRNT( N, N, M, IM, JM, DESCM, 0, 0, 'L', 6,
 !     $     WORK( INDWORK ) )
 !      IF ( MYROW+MYCOL .EQ. 0 )
@@ -374,8 +374,8 @@
       CALL PDSYGST( 3, 'L', N, K, IK, JK, DESCK, M, IM, JM, DESCM, DTMP,
      $     ITMP )
       T_FORMW = MPI_WTIME() - T_FORMW
-      IF ( MYROW+MYCOL .EQ. 0 )
-     $   WRITE( *, * ) 't_formw = ', T_FORMW, ';'
+*      IF ( MYROW+MYCOL .EQ. 0 )
+*     $   WRITE( *, * ) 't_formw = ', T_FORMW, ';'
 !      CALL PDLAPRNT( N, N, K, IK, JK, DESCK, 0, 0, 'W',
 !     $     6, WORK( INDWORK ) )
 *
@@ -388,8 +388,8 @@
      $     1, N, DIMV, NZ, LAMBDA, WORK( INDV ), 1, 1, DESCV,
      $     WORK( INDWORK ), LLWORK, IWORK, LIWORK, ITMP )
       T_DIAG = MPI_WTIME() - T_DIAG
-      IF ( MYROW+MYCOL .EQ. 0 )
-     $   WRITE( *, * ) 't_diag = ', T_DIAG, ';'
+*      IF ( MYROW+MYCOL .EQ. 0 )
+*     $   WRITE( *, * ) 't_diag = ', T_DIAG, ';'
       IF ( ITMP .NE. 0 ) THEN
          INFO = ITMP
          WRITE( *, * ), '% PDSYEVR fails with INFO =', INFO
@@ -434,8 +434,8 @@
      $        WORK( INDPHI ), 1, I, DESCPHI, 1 )
       END DO
       T_VEC1 = MPI_WTIME() - T_VEC1
-      IF ( MYROW+MYCOL .EQ. 0 )
-     $   WRITE( *, * ) 't_vec1 = ', T_VEC1, ';'
+*      IF ( MYROW+MYCOL .EQ. 0 )
+*     $   WRITE( *, * ) 't_vec1 = ', T_VEC1, ';'
 !      CALL PDLAPRNT( N, N, WORK( INDPHI ), 1, 1, DESCPHI, 0, 0, 'Phi',
 !     $     6, WORK( INDWORK ) )
 !      CALL PDLAPRNT( N, N, WORK( INDPSI ), 1, 1, DESCPSI, 0, 0, 'Psi',
@@ -453,8 +453,8 @@
       CALL PDGEADD( 'N', N, N, -ONE, WORK( INDPHI ), 1, 1, DESCPHI,
      $     ONE, X2, IX, JX, DESCX )
       T_VEC2 = MPI_WTIME() - T_VEC2
-      IF ( MYROW+MYCOL .EQ. 0 )
-     $   WRITE( *, * ) 't_vec2 = ', T_VEC2, ';'
+*      IF ( MYROW+MYCOL .EQ. 0 )
+*     $   WRITE( *, * ) 't_vec2 = ', T_VEC2, ';'
 !      CALL PDLAPRNT( TWON, N, X, IX, JX, DESCX, 0, 0, 'X', 6,
 !     $     WORK( INDWORK ) )
 *
