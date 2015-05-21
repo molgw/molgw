@@ -25,15 +25,15 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
  complex(dp),allocatable  :: omegac(:)
- real(dp),allocatable  :: selfenergy_omega(:,:,:,:)
+ real(dp),allocatable     :: selfenergy_omega(:,:,:,:)
  complex(dp),allocatable  :: selfenergy_omegac(:,:,:,:)
  real(dp),allocatable  :: sigma_xc_m_vxc_diag(:)
  integer               :: ndim2
  integer               :: bbf,ibf,kbf
  integer               :: astate,bstate
  integer               :: istate,ispin,ipole
- real(dp)              :: bra(wpol%npole_reso,basis%nbf)
- real(dp)              :: bra_exx(wpol%npole_reso,basis%nbf)  !FBFB LW
+ real(dp),allocatable  :: bra(:,:)
+ real(dp),allocatable  :: bra_exx(:,:)
  real(dp)              :: fact_full_i,fact_empty_i
  real(dp)              :: fact_full_a,fact_empty_a
  real(dp)              :: zz(nspin)
@@ -43,6 +43,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  character(len=3)      :: ctmp
  integer               :: reading_status
  integer               :: selfenergyfile
+ integer               :: nsemin,nsemax
 ! LW devel
  complex(dp),allocatable :: matrix(:,:),eigvec(:,:)
  real(dp),allocatable    :: eigval(:),x1(:),weights(:)
@@ -52,35 +53,48 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
  call start_clock(timing_self)
 
+ write(stdout,*)
+ select case(gwmethod)
+ case(LW,LW2)
+   write(stdout,*) 'Perform the calculation of Tr[ ln ( 1 - GSigma ) ]'
+ case(GSIGMA)
+   write(stdout,*) 'Perform the calculation of Tr[ SigmaG ]'
+ case(GSIGMA3)
+   write(stdout,*) 'Perform the calculation of Tr[ SigmaG ] numerical for test only'
+ case(GV)
+   write(stdout,*) 'Perform a perturbative HF calculation'
+ case(QS)
+   write(stdout,*) 'Perform a QP self-consistent GW calculation'
+ case(G0W0)
+   write(stdout,*) 'Perform a one-shot G0W0 calculation'
+ case(COHSEX)
+   write(stdout,*) 'Perform a COHSEX calculation'
+ case(QSCOHSEX)
+   write(stdout,*) 'Perform a self-consistent COHSEX calculation'
+ case(GnW0)
+   write(stdout,*) 'Perform an eigenvalue self-consistent GnW0 calculation'
+ case(GnWn)
+   write(stdout,*) 'Perform an eigenvalue self-consistent GnWn calculation'
+ end select
+
+
+ !
+ ! Set the range of states on which to evaluate the self-energy
+ nsemin = MAX(ncore_G+1   ,selfenergy_state_min)
+ nsemax = MIN(nvirtual_G-1,selfenergy_state_max)
+
+ call clean_allocate('Temporary array',bra,1,wpol%npole_reso,nsemin,nsemax)
+
+ if(gwmethod==LW .OR. gwmethod==LW2 .OR. gwmethod==GSIGMA) then
+   call clean_allocate('Temporary array for LW',bra_exx,1,wpol%npole_reso,nsemin,nsemax)
+ endif
+
  energy_gw = 0.0_dp
 
  write(msg,'(es9.2)') AIMAG(ieta)
  msg='small complex number is '//msg
  call issue_warning(msg)
 
- write(stdout,*)
- select case(gwmethod)
- case(LW,LW2)
-   write(stdout,*) 'perform the calculation of Tr[ ln ( 1 - GSigma ) ]'
- case(GSIGMA)
-   write(stdout,*) 'perform the calculation of Tr[ SigmaG ]'
- case(GSIGMA2,GSIGMA3)
-   write(stdout,*) 'perform the calculation of Tr[ SigmaG ] numerical for test only'
- case(GV)
-   write(stdout,*) 'perform a perturbative HF calculation'
- case(QS)
-   write(stdout,*) 'perform a QP self-consistent GW calculation'
- case(G0W0)
-   write(stdout,*) 'perform a one-shot G0W0 calculation'
- case(COHSEX)
-   write(stdout,*) 'perform a COHSEX calculation'
- case(QSCOHSEX)
-   write(stdout,*) 'perform a self-consistent COHSEX calculation'
- case(GnW0)
-   write(stdout,*) 'perform an eigenvalue self-consistent GnW0 calculation'
- case(GnWn)
-   write(stdout,*) 'perform an eigenvalue self-consistent GnWn calculation'
- end select
 
  select case(gwmethod)
  case(GV,QS,COHSEX,GSIGMA3,QSCOHSEX,GnW0,GnWn)
@@ -93,7 +107,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    allocate(omegai(-nomegai:nomegai))
    omegai(:) = 0.0_dp
 
- case(LW,LW2,GSIGMA2)
+ case(LW,LW2)
    nomegai =  32
 
    allocate(omegac(1:nomegai))
@@ -123,7 +137,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  ! Which calculation type needs to update energy_qp
  !
  select case(gwmethod)
- case(GnW0,GnWn,GSIGMA3,GSIGMA2)
+ case(GnW0,GnWn,GSIGMA3)
    call read_energy_qp(nspin,basis%nbf,energy_qp,reading_status)
    if(reading_status/=0) then
      call issue_warning('File energy_qp not found: assuming 1st iteration')
@@ -142,28 +156,25 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  end select
 
  !
- ! Which calculation type needs the diagonal only
+ ! Which calculation type needs the diagonal only?
+ ! Which calculation type needs a complex sigma?
  !
  select case(gwmethod)
- case(GV,GSIGMA,G0W0,GSIGMA2,GnW0,GnWn)
-   ndim2=1
- case default
-   ndim2=basis%nbf
- end select
+ case(GV,GSIGMA,G0W0,GnW0,GnWn)   ! diagonal real
+   allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,1,nspin))
 
- !
- ! Which calculation type needs a complex sigma
- !
- select case(gwmethod)
- case(LW,LW2,GSIGMA2)
-   allocate(selfenergy_omegac(1:nomegai,basis%nbf,ndim2,nspin))
-   selfenergy_omegac(:,:,:,:) = 0.0_dp
+ case(COHSEX,QS,QSCOHSEX,GSIGMA3) ! matrix real
+   allocate(selfenergy_omegac(-nomegai:nomegai,nsemin:nsemax,nsemin:nsemax,nspin))
+
+ case(LW,LW2)                     ! matrix complex
+   allocate(selfenergy_omegac(1:nomegai,nsemin:nsemax,nsemin:nsemax,nspin))
 
  case default
-   allocate(selfenergy_omega(-nomegai:nomegai,basis%nbf,ndim2,nspin))
-   selfenergy_omega(:,:,:,:) = 0.0_dp
-
+   stop'GW case not treated. Should not happen'
  end select
+ if( ALLOCATED(selfenergy_omega) )  selfenergy_omega(:,:,:,:)  = 0.0_dp
+ if( ALLOCATED(selfenergy_omegac) ) selfenergy_omegac(:,:,:,:) = 0.0_dp
+
 
 
  do ispin=1,nspin
@@ -184,10 +195,10 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
        enddo
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-       bra(:,:)     = MATMUL( TRANSPOSE(wpol%residu_left(:,:)) , eri_3center_eigen(:,:,istate,ispin) )
+       bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residu_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
        call xsum(bra)
        if( gwmethod==LW .OR. gwmethod==LW2 .OR. gwmethod==GSIGMA) then
-         bra_exx(:,:) = MATMUL( TRANSPOSE(wpol%residu_left(:,:)) , eri_3center_eigen_mixed(:,istate,:,ispin) )
+         bra_exx(:,nsemin:nsemax) = MATMUL( TRANSPOSE(wpol%residu_left(:,:)) , eri_3center_eigen_mixed(:,istate,nsemin:nsemax,ispin) )
          call xsum(bra_exx)
        endif
      endif
@@ -209,8 +220,8 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
        case(QS)
 
-         do bstate=1,basis%nbf
-           do astate=1,basis%nbf
+         do bstate=nsemin,nsemax
+           do astate=nsemin,nsemax
 
              selfenergy_omega(0,astate,bstate,ispin) = selfenergy_omega(0,astate,bstate,ispin) &
                         + bra(ipole,astate) * bra(ipole,bstate)                            &  
@@ -222,8 +233,8 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
        case(LW,LW2)
 
-         do bstate=1,basis%nbf
-           do astate=1,basis%nbf
+         do bstate=nsemin,nsemax
+           do astate=nsemin,nsemax
 
              do iomegai=1,nomegai
                selfenergy_omegac(iomegai,astate,bstate,ispin) = selfenergy_omegac(iomegai,astate,bstate,ispin) &
@@ -236,24 +247,10 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
            enddo
          enddo
 
-       case(GSIGMA2)
-
-         do astate=1,basis%nbf
-
-           do iomegai=1,nomegai
-             selfenergy_omegac(iomegai,astate,1,ispin) = selfenergy_omegac(iomegai,astate,1,ispin) &
-                      + bra(ipole,astate) * bra(ipole,astate) &
-                        * (  fact_full_i  / ( omegac(iomegai) - energy(istate,ispin) + wpol%pole(ipole)  )    &
-                           + fact_empty_i / ( omegac(iomegai) - energy(istate,ispin) - wpol%pole(ipole) ) )   &
-                        / ( omegac(iomegai) - energy_qp(astate,ispin) )
-           enddo
-
-         enddo
-
        case(GSIGMA3)
 
-         do bstate=1,basis%nbf
-           do astate=1,basis%nbf
+         do bstate=nsemin,nsemax
+           do astate=nsemin,nsemax
 
              fact_full_a   = occupation(astate,ispin) / spin_fact
              fact_empty_a  = (spin_fact - occupation(astate,ispin)) / spin_fact
@@ -268,7 +265,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
        case(GSIGMA)
 
-         do astate=1,basis%nbf
+         do astate=nsemin,nsemax
            fact_full_a   = occupation(astate,ispin) / spin_fact
            fact_empty_a  = (spin_fact - occupation(astate,ispin)) / spin_fact
            !
@@ -286,7 +283,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
        case(G0W0,GnW0,GnWn)
 
-         do astate=1,basis%nbf
+         do astate=nsemin,nsemax
            !
            ! calculate only the diagonal !
            do iomegai=-nomegai,nomegai
@@ -299,21 +296,18 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
        case(COHSEX,QSCOHSEX) 
 
-         !
-         ! SEX
-         !
-         do bstate=1,basis%nbf
-           do astate=1,basis%nbf
+         do bstate=nsemin,nsemax
+           do astate=nsemin,nsemax
+             !
+             ! SEX
+             !
              selfenergy_omega(0,astate,bstate,ispin) = selfenergy_omega(0,astate,bstate,ispin) &
                         - bra(ipole,astate) * bra(ipole,bstate)                            & 
                               * fact_full_i / (-wpol%pole(ipole))
-           enddo
-         enddo
-         !
-         ! COH
-         !
-         do bstate=1,basis%nbf
-           do astate=1,basis%nbf
+
+             !
+             ! COH
+             !
              selfenergy_omega(0,astate,bstate,ispin) = selfenergy_omega(0,astate,bstate,ispin) &
                         - bra(ipole,astate) * bra(ipole,bstate) & 
                               * fact_empty_i / wpol%pole(ipole)
@@ -358,8 +352,8 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    ! the inverse of C is C^T S
    ! the inverse of C^T is S C
    do ispin=1,nspin
-     selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,:,ispin) ) , MATMUL( selfenergy_omega(0,:,:,ispin), &
-                             MATMUL( TRANSPOSE(c_matrix(:,:,ispin)), s_matrix(:,:) ) ) )
+     selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ispin) ) , MATMUL( selfenergy_omega(0,:,:,ispin), &
+                             MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ispin)), s_matrix(:,:) ) ) )
    enddo
 
 
@@ -370,8 +364,8 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    ! the inverse of C is C^T S
    ! the inverse of C^T is S C
    do ispin=1,nspin
-     selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,:,ispin)) , MATMUL( selfenergy_omega(0,:,:,ispin), &
-                             MATMUL( TRANSPOSE(c_matrix(:,:,ispin)), s_matrix(:,:) ) ) )
+     selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ispin) ) , MATMUL( selfenergy_omega(0,:,:,ispin), &
+                             MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ispin)), s_matrix(:,:) ) ) )
    enddo
 
 
@@ -385,7 +379,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    else
      write(stdout,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       COHSEX'
    endif
-   do astate=1,basis%nbf
+   do astate=nsemin,nsemax
      zz(:) = 1.0_dp 
      energy_qp_new(astate,:) = energy_qp(astate,:) + selfenergy_omega(0,astate,1,:) + exchange_m_vxc_diag(astate,:)
 
@@ -408,7 +402,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    else
      write(stdout,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       COHSEX'
    endif
-   do astate=1,basis%nbf
+   do astate=nsemin,nsemax
      zz(:) = 1.0_dp 
      energy_qp_new(astate,:) = energy_qp(astate,:) + selfenergy_omega(0,astate,astate,:) + exchange_m_vxc_diag(astate,:)
 
@@ -425,7 +419,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
    if(print_sigma_ .AND. is_iomaster ) then
 
-     do astate=1,basis%nbf
+     do astate=nsemin,nsemax
        write(ctmp,'(i3.3)') astate
        open(newunit=selfenergyfile,file='selfenergy_omega_state'//TRIM(ctmp))
        write(selfenergyfile,'(a)') '# omega + e_KS (eV)     SigmaC (eV)    omega + e_KS - Vxc + SigmaX (eV)     A (eV^-1) '
@@ -445,7 +439,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
    ! Only had the diagonal calculated...
    selfenergy(:,:,:) = 0.0_dp
-   forall(astate=1:basis%nbf)
+   forall(astate=nsemin:nsemax)
      selfenergy(astate,astate,:) = selfenergy_omega(0,astate,1,:)
    end forall
 
@@ -456,7 +450,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
      write(stdout,'(a)') &
        '   #                E0                      SigX-Vxc                    SigC                       Z                       G0W0_Z                      G0W0_qp'
    endif
-   do astate=1,basis%nbf
+   do astate=nsemin,nsemax
      zz(:) = ( selfenergy_omega(1,astate,1,:) - selfenergy_omega(-1,astate,1,:) ) / ( omegai(1) - omegai(-1) )
      zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
      ! Contrain Z to be in [0:1] to avoid crazy values
@@ -493,7 +487,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
    ! Only had the diagonal calculated...
    selfenergy(:,:,:) = 0.0_dp
-   forall(astate=1:basis%nbf)
+   forall(astate=nsemin:nsemax)
      selfenergy(astate,astate,:) = selfenergy_omega(0,astate,1,:)
    end forall
 
@@ -508,7 +502,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    else
      write(stdout,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       GW'
    endif
-   do astate=1,basis%nbf
+   do astate=nsemin,nsemax
      zz(:) = 1.0_dp 
 
      energy_qp_new(astate,:) = energy(astate,:) + selfenergy_omega(0,astate,1,:) + exchange_m_vxc_diag(astate,:)
@@ -534,33 +528,20 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  case(GSIGMA3) !==========================================================
 
    energy_gw = 0.0_dp
-   do astate=1,basis%nbf
+   do astate=nsemin,nsemax
      energy_gw = energy_gw + 0.5_dp * SUM(selfenergy_omega(0,astate,astate,:)) * spin_fact
    enddo
    write(stdout,*) 'Tr[SigmaG]:',2.0_dp*energy_gw
 
-   ! Transform the matrix elements back to the AO basis
-   ! do not forget the overlap matrix S
-   ! C^T S C = I
-   ! the inverse of C is C^T S
-   ! the inverse of C^T is S C
-   do ispin=1,nspin
-     selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,:,ispin)) , MATMUL( selfenergy_omega(0,:,:,ispin), &
-                             MATMUL( TRANSPOSE(c_matrix(:,:,ispin)), s_matrix(:,:) ) ) )
-   enddo
 
    allocate(c_matrix_exx(basis%nbf,basis%nbf,nspin))
    open(1000,form='unformatted')
    do ispin=1,nspin
-     do astate=1,basis%nbf
+     do astate=nsemin,nsemax
        read(1000) c_matrix_exx(:,astate,ispin)
      enddo
    enddo
    close(1000)
-   write(*,*) c_matrix_exx(1:5,1,1)
-   write(*,*) c_matrix(1:5,1,1)
-   write(*,*) 'DOT_PRODUCT',DOT_PRODUCT( c_matrix(:,1,1), MATMUL( s_matrix(:,:) , c_matrix(:,1,1) ) )
-   write(*,*) 'DOT_PRODUCT',DOT_PRODUCT( c_matrix_exx(:,1,1), MATMUL( s_matrix(:,:) , c_matrix(:,1,1) ) )
    do ispin=1,nspin
      selfenergy(:,:,ispin) = MATMUL( TRANSPOSE(c_matrix_exx(:,:,ispin)) , MATMUL( selfenergy(:,:,ispin), c_matrix_exx(:,:,ispin) ) )
 !     selfenergy(:,:,ispin) = MATMUL( TRANSPOSE(c_matrix(:,:,ispin)) , MATMUL( selfenergy(:,:,ispin), c_matrix(:,:,ispin) ) )
@@ -568,21 +549,11 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    deallocate(c_matrix_exx)
 
    energy_gw = 0.0_dp
-   do astate=1,basis%nbf
+   do astate=nsemin,nsemax
      energy_gw = energy_gw + 0.5_dp * SUM(selfenergy(astate,astate,:)) * spin_fact
    enddo
    write(stdout,*) 'Tr[SigmaG]:',2.0_dp*energy_gw
 
- case(GSIGMA2) !==========================================================
-
-   write(stdout,*) 'Tr[SigmaG]: numerical eval'
-
-   rdiag = 0.0_dp
-   do iomegai=1,nomegai
-     rdiag = rdiag + SUM(selfenergy_omegac(iomegai,:,1,:)) * spin_fact / (2.0 * pi) * weights(iomegai)
-!     write(124,'(3(f18.8,2x))') AIMAG(omegac(iomegai)),SUM(selfenergy_omegac(iomegai,:,1,:)) * spin_fact / (2.0 * pi)  * 2.0_dp
-   enddo
-   write(stdout,*) 'Result:', rdiag   * 2.0_dp
 
  case(LW)
 
@@ -648,6 +619,8 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
  end select
 
+ call clean_deallocate('Temporary array',bra)
+ if(ALLOCATED(bra_exx)) call clean_deallocate('Temporary array for LW',bra_exx)
 
  if(ALLOCATED(omegai)) deallocate(omegai)
  if(ALLOCATED(omegac)) deallocate(omegac)

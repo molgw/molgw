@@ -1019,7 +1019,7 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
  if( MINVAL(eigval(:)) < TOO_LOW_EIGENVAL ) then
    write(stdout,'(a)')       ' 2-center integral matrix is badly conditioned'
    write(stdout,'(a,e16.6)') ' Eigenvalues are as low as:',MINVAL(eigval(:)) 
-   write(stdout,'(a)')       ' Disregard values lower than:',TOO_LOW_EIGENVAL
+   write(stdout,'(a,e16.6)') ' Disregard values lower than:',TOO_LOW_EIGENVAL
    call issue_warning('2-center integral is badly conditioned')
  endif
  do jbf=1,nauxil_2center
@@ -1287,7 +1287,7 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
  if( MINVAL(eigval(:)) < TOO_LOW_EIGENVAL ) then
    write(stdout,'(a)')       ' 2-center integral matrix is badly conditioned'
    write(stdout,'(a,e16.6)') ' Eigenvalues are as low as:',MINVAL(eigval(:)) 
-   write(stdout,'(a)')       ' Disregard values lower than:',TOO_LOW_EIGENVAL
+   write(stdout,'(a,e16.6)') ' Disregard values lower than:',TOO_LOW_EIGENVAL
    call issue_warning('2-center integral is badly conditioned')
  endif
  do jbf=1,nauxil_2center

@@ -14,6 +14,7 @@ module m_memory
   module procedure clean_allocate_s4d
   module procedure clean_allocate_1d
   module procedure clean_allocate_2d
+  module procedure clean_allocate_2d_range
   module procedure clean_allocate_3d
   module procedure clean_allocate_4d
  end interface
@@ -139,6 +140,48 @@ subroutine clean_allocate_2d(array_name,array,n1,n2)
  write(stdout,*)
 
 end subroutine clean_allocate_2d
+
+
+!=========================================================================
+subroutine clean_allocate_2d_range(array_name,array,n1s,n1f,n2s,n2f)
+ implicit none
+
+ character(len=*),intent(in)       :: array_name
+ real(dp),allocatable,intent(inout) :: array(:,:)
+ integer,intent(in)                 :: n1s,n1f,n2s,n2f
+!=====
+ integer             :: info
+ real(dp)            :: mem_mb
+!=====
+
+ write(stdout,'(a,x,a)') ' Allocate',TRIM(array_name)
+ mem_mb = REAL(dp,dp) * REAL(n1f-n1s+1,dp) * REAL(n2f-n2s+1,dp) / 1024._dp**2
+ if( mem_mb < 500._dp ) then
+   write(stdout,'(a30,f9.3)') ' Memory [Mb]: ',mem_mb
+ else
+   write(stdout,'(a30,f9.3)') ' Memory [Gb]: ',mem_mb / 1024._dp
+ endif
+
+ ! The allocation itself
+ allocate(array(n1s:n1f,n2s:n2f),stat=info)
+
+ if(info/=0) then
+   write(stdout,*) 'failure'
+   stop'Not enough memory. Buy a bigger computer'
+ endif
+
+
+ total_memory = total_memory + mem_mb
+ peak_memory = MAX(peak_memory,total_memory)
+ if( total_memory < 500._dp ) then
+   write(stdout,'(a30,f9.3)') ' Total memory [Mb]: ',total_memory
+ else
+   write(stdout,'(a30,f9.3)') ' Total memory [Gb]: ',total_memory / 1024._dp
+ endif
+
+ write(stdout,*)
+
+end subroutine clean_allocate_2d_range
 
 
 !=========================================================================

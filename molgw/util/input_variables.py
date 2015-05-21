@@ -297,6 +297,24 @@ vl[i].comment  ='Sets the state beyond which they are excluded from the sum in t
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='selfenergy_state_min'
+vl[i].family   ='post'
+vl[i].default  =1
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the starting states for the range of the self-energy evaluation'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='selfenergy_state_max'
+vl[i].family   ='post'
+vl[i].default  =100000
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the final states for the range of the self-energy evaluation'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='nomega_sigma'
 vl[i].family   ='post'
 vl[i].default  =51
