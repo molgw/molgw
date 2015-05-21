@@ -13,7 +13,8 @@ module m_eri
  ! max length of a record in the ERI file
  integer,parameter,private :: line_length=1000
 
- real(dp),private          :: TOL_INT
+ real(dp),private           :: TOL_INT
+ real(dp),parameter,private :: TOO_LOW_EIGENVAL=1.0e-6_dp
 
  real(prec_eri),private,allocatable :: eri_buffer(:)
  real(prec_eri),private,allocatable :: eri_buffer_lr(:)
@@ -1011,8 +1012,18 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
  !
  ! Perform in-place diagonalization here
  call diagonalize(nauxil_2center,eri_2center_m1,eigval)
- write(stdout,'(a,e16.6)') ' Minimal eigenvalue (should not be too small):',MINVAL(eigval(:))
+
+ !
+ ! Need to be careful here: since the matrix can be not enough positive definite.
+ ! Avoid too small (or even worse negative!) eigenvalues
+ if( MINVAL(eigval(:)) < TOO_LOW_EIGENVAL ) then
+   write(stdout,'(a)')       ' 2-center integral matrix is badly conditioned'
+   write(stdout,'(a,e16.6)') ' Eigenvalues are as low as:',MINVAL(eigval(:)) 
+   write(stdout,'(a)')       ' Disregard values lower than:',TOO_LOW_EIGENVAL
+   call issue_warning('2-center integral is badly conditioned')
+ endif
  do jbf=1,nauxil_2center
+   if( eigval(jbf) < TOO_LOW_EIGENVAL ) eigval(jbf) = TOO_LOW_EIGENVAL
    eri_2center_m1(:,jbf) = eri_2center_m1(:,jbf) / SQRT( eigval(jbf) )
  enddo
  deallocate(eigval)
@@ -1269,14 +1280,20 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
  !
  ! Perform in-place diagonalization here
  call diagonalize(nauxil_2center,eri_2center_m1_lr,eigval)
+
+ !
+ ! Need to be careful here: since the matrix can be not enough positive definite.
+ ! Avoid too small (or even worse negative!) eigenvalues
+ if( MINVAL(eigval(:)) < TOO_LOW_EIGENVAL ) then
+   write(stdout,'(a)')       ' 2-center integral matrix is badly conditioned'
+   write(stdout,'(a,e16.6)') ' Eigenvalues are as low as:',MINVAL(eigval(:)) 
+   write(stdout,'(a)')       ' Disregard values lower than:',TOO_LOW_EIGENVAL
+   call issue_warning('2-center integral is badly conditioned')
+ endif
  do jbf=1,nauxil_2center
-   !
-   ! Need to be careful here: since the matrix can be not exactly positive definite.
-   ! Avoid too small (or even worse negative!) eigenvalues
-   if( eigval(jbf) < 1.0e-8_dp ) eigval(jbf) = 1.0e-8_dp  ! -eigval(jbf)
+   if( eigval(jbf) < TOO_LOW_EIGENVAL ) eigval(jbf) = TOO_LOW_EIGENVAL
    eri_2center_m1_lr(:,jbf) = eri_2center_m1_lr(:,jbf) / SQRT( eigval(jbf) )
  enddo
- write(stdout,'(a,e16.6)') ' Minimal eigenvalue (should not be too small):',MINVAL(eigval(:))
  deallocate(eigval)
 
  write(stdout,'(a)') ' All 2-center integrals have been calculated, diagonalized and stored'
