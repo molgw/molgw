@@ -24,7 +24,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  real(dp),intent(out)                  :: rpa_correlation
  type(spectral_function),intent(inout) :: wpol_out
 !=====
- integer                   :: t_ij
+ integer                   :: t_ij,t_kl
  type(spectral_function)   :: wpol_static
  integer                   :: nmat
  real(dp)                  :: energy_gm
@@ -283,7 +283,8 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
    eri_eigenstate_klmin(:,:,:,:) = 0.0_dp
  endif
 
- write(stdout,'(a,i4,a,i4)') ' SCALAPACK grid    :',nprow_sd,' x ',npcol_sd
+ if( nprow_sd * npcol_sd > 1 ) &
+    write(stdout,'(a,i4,a,i4)') ' SCALAPACK grid    :',nprow_sd,' x ',npcol_sd
 
  rpa_correlation = 0.0_dp
  !
@@ -469,6 +470,9 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,m_apb,n_apb,apb_matrix
      jstate = wpol%transition_table(2,t_ij_global)
      ijspin = wpol%transition_table(3,t_ij_global)
 
+     !
+     ! Only calculate the lower triangle
+     ! Symmetrization will be performed later (in the diago subroutines)
      if( t_ij_global < t_kl_global ) cycle
 
 
@@ -643,8 +647,10 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,m_apb,n_ap
      jstate = wpol%transition_table(2,t_ij_global)
      ijspin = wpol%transition_table(3,t_ij_global)
 
+     !
+     ! Only calculate the lower triangle
+     ! Symmetrization will be performed later (in the diago subroutines)
      if( t_ij_global < t_kl_global ) cycle
-
 
      if(ijspin/=klspin) cycle
 
@@ -733,6 +739,13 @@ subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,m_ap
  allocate(eigval(nbf_auxil))
  call diagonalize(nbf_auxil,vsqrt_chi_vsqrt,eigval)
 
+ if( ANY(eigval(:)<0.0_dp) ) then
+   write(stdout,*) 'matrix is not positive definite',MINVAL(eigval(:))
+   do ibf_auxil=1,nbf_auxil
+     eigval(ibf_auxil) = MAX( 1.0e-10_dp , eigval(ibf_auxil) )
+   enddo
+ endif
+
  forall(ibf_auxil=1:nbf_auxil)
    matrix_sqrt(:,ibf_auxil) = vsqrt_chi_vsqrt(:,ibf_auxil)*SQRT(eigval(ibf_auxil))
  end forall
@@ -769,6 +782,10 @@ subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,m_ap
      jstate = wpol%transition_table(2,t_ij_global)
      ijspin = wpol%transition_table(3,t_ij_global)
 
+     !
+     ! Only calculate the lower triangle
+     ! Symmetrization will be performed later (in the diago subroutines)
+     if( t_ij_global < t_kl_global ) cycle
 
      if(ijspin/=klspin) cycle
 
@@ -776,19 +793,12 @@ subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,m_ap
 
      apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
      amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) - wtmp
-     if( t_ij/=t_kl) then
-       apb_matrix(t_kl,t_ij) =  apb_matrix(t_kl,t_ij) - wtmp
-       amb_matrix(t_kl,t_ij) =  amb_matrix(t_kl,t_ij) - wtmp
-     endif
+
 
      wtmp = -DOT_PRODUCT( wp0_sqrt_l(:,istate) , wp0_sqrt_k(:,jstate) )
 
      apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
      amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) + wtmp
-     if( t_ij/=t_kl) then
-       apb_matrix(t_kl,t_ij) =  apb_matrix(t_kl,t_ij) - wtmp
-       amb_matrix(t_kl,t_ij) =  amb_matrix(t_kl,t_ij) + wtmp
-     endif
 
 
    enddo

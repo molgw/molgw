@@ -83,11 +83,13 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  nsemin = MAX(ncore_G+1   ,selfenergy_state_min)
  nsemax = MIN(nvirtual_G-1,selfenergy_state_max)
 
+ write(stdout,'(a,i4,a,i4)') ' Calculate state range from ',nsemin,' to ',nsemax
  call clean_allocate('Temporary array',bra,1,wpol%npole_reso,nsemin,nsemax)
 
  if(gwmethod==LW .OR. gwmethod==LW2 .OR. gwmethod==GSIGMA) then
    call clean_allocate('Temporary array for LW',bra_exx,1,wpol%npole_reso,nsemin,nsemax)
  endif
+
 
  energy_gw = 0.0_dp
 
@@ -189,10 +191,10 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
      ! Prepare the bra and ket with the knowledge of index istate and astate
      if( .NOT. has_auxil_basis) then
        ! Here just grab the precalculated value
-       do astate=1,basis%nbf
+       do astate=nsemin,nsemax
          kbf = prod_basis%index_prodbasis(istate,astate) + prod_basis%nbf*(ispin-1)
          bra(:,astate) = wpol%residu_left(kbf,:)
-       enddo
+       end do
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
        bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residu_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
@@ -450,6 +452,10 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
      write(stdout,'(a)') &
        '   #                E0                      SigX-Vxc                    SigC                       Z                       G0W0_Z                      G0W0_qp'
    endif
+
+   ! First give energy_qp_new a meaningful default value
+   energy_qp_new(:,:) = energy(:,:)
+   ! Then overwrite the interesting energy with the calculated GW one
    do astate=nsemin,nsemax
      zz(:) = ( selfenergy_omega(1,astate,1,:) - selfenergy_omega(-1,astate,1,:) ) / ( omegai(1) - omegai(-1) )
      zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
@@ -502,6 +508,10 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    else
      write(stdout,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       GW'
    endif
+
+   ! First give energy_qp_new a meaningful default value
+   energy_qp_new(:,:) = energy(:,:)
+   ! Then overwrite the interesting energy with the calculated GW one
    do astate=nsemin,nsemax
      zz(:) = 1.0_dp 
 
