@@ -28,7 +28,6 @@ module m_mpi
  integer,private :: nocc_mp
 
 ! Parallelization on the auxiliary basis
- integer,allocatable,public :: iproc_ishell_auxil(:)
  integer,allocatable,public :: iproc_ibf_auxil(:)
  integer,allocatable,public :: ibf_auxil_g(:)
  integer,allocatable,public :: ibf_auxil_l(:)
@@ -46,6 +45,14 @@ module m_mpi
  integer,allocatable,private :: task_fast_proc(:)    ! index of the processor working for this grid point
 ! integer,allocatable :: ntask_fast_proc(:)   ! number of grid points for each procressor
 ! integer,allocatable :: task_fast_number(:)  ! local index of the grid point
+
+ interface xmin
+   module procedure xmin_i
+ end interface
+
+ interface xmax
+   module procedure xmax_i
+ end interface
 
  interface xsum
    module procedure xsum_r
@@ -519,6 +526,48 @@ function get_task_number(ibf,jbf)
  endif
 
 end function get_task_number
+
+
+!=========================================================================
+subroutine xmin_i(integer_number)
+ implicit none
+ integer,intent(inout) :: integer_number
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = 1
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER, MPI_MIN, mpi_comm, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xmin_i
+
+
+!=========================================================================
+subroutine xmax_i(integer_number)
+ implicit none
+ integer,intent(inout) :: integer_number
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = 1
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER, MPI_MAX, mpi_comm, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xmax_i
 
 
 !=========================================================================

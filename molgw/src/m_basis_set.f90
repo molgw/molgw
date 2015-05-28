@@ -1151,43 +1151,24 @@ subroutine distribute_auxil_basis(auxil_basis)
  type(basis_set),intent(inout) :: auxil_basis
 !====
  integer :: nbf_local_target,nbf_shell
- integer :: ibf_cart,ibf,ishell_current,ishell_previous
+ integer :: ibf_cart,ibf
  integer :: ibf_local
  integer :: iproc
 !====
 
  nbf_local_target = CEILING( auxil_basis%nbf / REAL(nproc,dp) + 0.0001_dp )
- allocate(iproc_ishell_auxil(auxil_basis%nshell))
  allocate(iproc_ibf_auxil(auxil_basis%nbf))
  allocate(nbf_local_iproc(0:nproc-1))
 
  iproc = 0
- ishell_previous = 0
- nbf_local_iproc(:) = 0
- ibf = 1
- do ibf_cart=1,auxil_basis%nbf_cart
-   ishell_current = auxil_basis%bf(ibf_cart)%shell_index
+ do ibf=1,auxil_basis%nbf
 
-   if( ishell_current /= ishell_previous ) then
-     ! Get the number of basis functions in the shell
-     nbf_shell = number_basis_function_am(auxil_basis%gaussian_type,auxil_basis%bf(ibf_cart)%am)
+   iproc = MODULO(iproc+1,nproc)
 
-     nbf_local_iproc(iproc) = nbf_local_iproc(iproc) + nbf_shell
-     iproc_ishell_auxil(ishell_current) = iproc
-     iproc_ibf_auxil(ibf:ibf+nbf_shell-1) = iproc
-     ibf = ibf + nbf_shell
+   iproc_ibf_auxil(ibf) = iproc
 
-     iproc = MODULO(iproc+1,nproc)
-     do while ( nbf_local_iproc(iproc) >= nbf_local_target ) 
-       iproc = MODULO(iproc+1,nproc)
-     enddo
+   nbf_local_iproc(iproc) = nbf_local_iproc(iproc) + 1
 
-!     if( nbf_local_iproc(iproc) >= nbf_local_target ) then
-!       iproc = iproc + 1
-!       if( SUM(nbf_local_iproc(:)) < auxil_basis%nbf .AND. iproc > nproc ) stop'BUG in the distribution of the auxil_basis'
-!     endif
-   endif
-   ishell_previous = ishell_current
  enddo
 
  auxil_basis%nbf_local = nbf_local_iproc(rank)

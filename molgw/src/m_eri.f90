@@ -1376,7 +1376,7 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
 
        ! Use the distribution to avoid calculating all the integrals
        ! A summation is performed to propagate eri_3tmp to all processors
-       if( rank /= iproc_ishell_auxil(ishell) ) cycle
+       if( rank /= MODULO(ishell,nproc) ) cycle
 
        ami = shell_auxil(ishell)%am
        amj = 0
@@ -1709,7 +1709,7 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
 
        ! Use the distribution to avoid calculating all the integrals
        ! A summation is performed to propagate eri_3tmp to all processors
-       if( rank /= iproc_ishell_auxil(ishell) ) cycle
+       if( rank /= MODULO(ishell,nproc) ) cycle
 
        ami = shell_auxil(ishell)%am
        amj = 0

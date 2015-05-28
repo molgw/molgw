@@ -227,7 +227,7 @@ subroutine plot_wfn(nspin,basis,c_matrix)
  real(dp),allocatable       :: phi(:,:),phase(:,:)
  real(dp)                   :: u(3),a(3)
  logical                    :: file_exists
- real(dp)                   :: xmin,xmax
+ real(dp)                   :: xxmin,xxmax
  real(dp)                   :: basis_function_r(basis%nbf)
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
  real(dp),allocatable       :: basis_function_r_cart(:)
@@ -256,13 +256,13 @@ subroutine plot_wfn(nspin,basis,c_matrix)
  write(stdout,'(a,3(2x,f8.3))') ' direction:',u(:)
  write(stdout,'(a,3(2x,f8.3))') ' origin:   ',a(:)
 
- xmin = MINVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) - length
- xmax = MAXVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) + length
+ xxmin = MINVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) - length
+ xxmax = MAXVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) + length
 
  phase(:,:)=1.0_dp
 
  do ir=1,nr
-   rr(:) = ( xmin + (ir-1)*(xmax-xmin)/REAL(nr-1,dp) ) * u(:) + a(:)
+   rr(:) = ( xxmin + (ir-1)*(xxmax-xxmin)/REAL(nr-1,dp) ) * u(:) + a(:)
 
    phi(:,:) = 0.0_dp
    
@@ -335,7 +335,7 @@ subroutine plot_rho(nspin,basis,occupation,c_matrix)
  real(dp),allocatable       :: phi(:,:)
  real(dp)                   :: u(3),a(3)
  logical                    :: file_exists
- real(dp)                   :: xmin,xmax
+ real(dp)                   :: xxmin,xxmax
  real(dp)                   :: basis_function_r(basis%nbf)
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
  real(dp),allocatable       :: basis_function_r_cart(:)
@@ -359,12 +359,12 @@ subroutine plot_rho(nspin,basis,occupation,c_matrix)
  write(stdout,'(a,3(2x,f8.3))') ' direction:',u(:)
  write(stdout,'(a,3(2x,f8.3))') ' origin:   ',a(:)
 
- xmin = MINVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) - length
- xmax = MAXVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) + length
+ xxmin = MINVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) - length
+ xxmax = MAXVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) + length
 
 
  do ir=1,nr
-   rr(:) = ( xmin + (ir-1)*(xmax-xmin)/REAL(nr-1,dp) ) * u(:) + a(:)
+   rr(:) = ( xxmin + (ir-1)*(xxmax-xxmin)/REAL(nr-1,dp) ) * u(:) + a(:)
 
    phi(:,:) = 0.0_dp
    
@@ -427,7 +427,7 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
  real(dp),allocatable       :: phi(:,:),phase(:,:)
  real(dp)                   :: u(3),a(3)
  logical                    :: file_exists
- real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
+ real(dp)                   :: xxmin,xxmax,ymin,ymax,zmin,zmax
  real(dp)                   :: basis_function_r(basis%nbf)
  integer                    :: ix,iy,iz,iatom
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
@@ -457,8 +457,8 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
  allocate(phase(istate1:istate2,nspin),phi(istate1:istate2,nspin))
  write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
 
- xmin = MINVAL( x(1,:) ) - length
- xmax = MAXVAL( x(1,:) ) + length
+ xxmin = MINVAL( x(1,:) ) - length
+ xxmax = MAXVAL( x(1,:) ) + length
  ymin = MINVAL( x(2,:) ) - length
  ymax = MAXVAL( x(2,:) ) + length
  zmin = MINVAL( x(3,:) ) - length
@@ -472,8 +472,8 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
      open(newunit=ocubefile(istate,ispin),file=file_name)
      write(ocubefile(istate,ispin),'(a)') 'cube file generated from MOLGW'
      write(ocubefile(istate,ispin),'(a,i4)') 'wavefunction ',istate1
-     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin,zmin
-     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') nx,(xmax-xmin)/REAL(nx,dp),0.,0.
+     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') natom,xxmin,ymin,zmin
+     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') nx,(xxmax-xxmin)/REAL(nx,dp),0.,0.
      write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') ny,0.,(ymax-ymin)/REAL(ny,dp),0.
      write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') nz,0.,0.,(zmax-zmin)/REAL(nz,dp)
      do iatom=1,natom
@@ -485,7 +485,7 @@ subroutine plot_cube_wfn(nspin,basis,c_matrix)
  phase(:,:)=1.0_dp
 
  do ix=1,nx
-   rr(1) = ( xmin + (ix-1)*(xmax-xmin)/REAL(nx,dp) ) 
+   rr(1) = ( xxmin + (ix-1)*(xxmax-xxmin)/REAL(nx,dp) ) 
    do iy=1,ny
      rr(2) = ( ymin + (iy-1)*(ymax-ymin)/REAL(ny,dp) ) 
      do iz=1,nz

@@ -145,8 +145,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
    if(.NOT. has_auxil_basis ) then
      call build_amb_apb_bse(basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
    else
-!     call build_amb_apb_bse_auxil(basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
-     call build_amb_apb_bse_auxil_devel2(nmat,basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+     call build_amb_apb_bse_auxil(nmat,basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
    endif
    call destroy_spectral_function(wpol_static)
  endif
@@ -205,7 +204,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! and the dynamic dipole tensor
  !
  if( calc_type%is_td .OR. calc_type%is_bse ) &
-   call optical_spectrum(basis,prod_basis,occupation,c_matrix,wpol_out,bigx,bigy,eigenvalue)
+   call optical_spectrum(basis,prod_basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
 
  !
  ! Calculate Wp= v * chi * v    if necessary
@@ -688,138 +687,7 @@ end subroutine build_amb_apb_bse
 
 
 !=========================================================================
-subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
- use m_spectral_function
- use m_basis_set
- use m_eri
- use m_tools 
- implicit none
-
- integer,intent(in)                 :: nbf
- type(basis_set),intent(in)         :: prod_basis
- real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
- type(spectral_function),intent(in) :: wpol,wpol_static
- integer,intent(in)                 :: m_apb,n_apb
- real(prec_td),intent(out)          :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
-!=====
- integer              :: t_ij,t_kl,t_ij_global,t_kl_global
- integer              :: istate,jstate,kstate,lstate
- integer              :: kstate_prev
- integer              :: ijspin,klspin
- integer              :: kbf
- real(dp),allocatable :: bra(:),ket(:)
- real(dp),allocatable :: bra_auxil(:,:,:,:)
- real(dp),allocatable :: bra_auxil_i(:,:),bra_auxil_j(:,:)
- real(dp)             :: wtmp
- integer              :: ipole,nbf_auxil,ibf_auxil,jbf_auxil
- real(dp),allocatable :: vsqrt_chi_vsqrt(:,:),matrix_sqrt(:,:)
- real(dp),allocatable :: residu_tmp(:,:)
- real(dp),allocatable :: wp0_sqrt_k(:,:),wp0_sqrt_l(:,:)
- real(dp),allocatable :: eigval(:)
-!=====
-
- call start_clock(timing_build_bse)
- if( .NOT. has_auxil_basis ) stop'Does not have auxil basis. This should not happen'
-
- write(stdout,'(a)') ' Build W part Auxil' 
-
-
- nbf_auxil = wpol_static%nprodbasis
- allocate(vsqrt_chi_vsqrt(nbf_auxil,nbf_auxil))
- allocate(matrix_sqrt(nbf_auxil,nbf_auxil))
- allocate(residu_tmp(nbf_auxil,wpol_static%npole_reso))
- 
- forall(ipole=1:wpol_static%npole_reso)
-   residu_tmp(:,ipole) = wpol_static%residu_left(:,ipole) * SQRT( 2.0_dp / wpol_static%pole(ipole) )
- end forall
-
- vsqrt_chi_vsqrt(:,:) = MATMUL( residu_tmp(:,:) , TRANSPOSE( residu_tmp(:,:) ) )
-
- deallocate(residu_tmp)
-
- allocate(eigval(nbf_auxil))
- call diagonalize(nbf_auxil,vsqrt_chi_vsqrt,eigval)
-
- if( ANY(eigval(:)<0.0_dp) ) then
-   write(stdout,*) 'matrix is not positive definite',MINVAL(eigval(:))
-   do ibf_auxil=1,nbf_auxil
-     eigval(ibf_auxil) = MAX( 1.0e-10_dp , eigval(ibf_auxil) )
-   enddo
- endif
-
- forall(ibf_auxil=1:nbf_auxil)
-   matrix_sqrt(:,ibf_auxil) = vsqrt_chi_vsqrt(:,ibf_auxil)*SQRT(eigval(ibf_auxil))
- end forall
- deallocate(eigval)
-
- vsqrt_chi_vsqrt = TRANSPOSE( vsqrt_chi_vsqrt )
- matrix_sqrt(:,:) = MATMUL( matrix_sqrt(:,:) , vsqrt_chi_vsqrt(:,:) )
-
- deallocate(vsqrt_chi_vsqrt)
- 
- allocate(wp0_sqrt_k(nbf_auxil,ncore_W+1:nvirtual_W-1))
- allocate(wp0_sqrt_l(nbf_auxil,ncore_W+1:nvirtual_W-1))
-
-
-
- kstate_prev = 0
- ! Set up -W contributions to matrices (A+B) and (A-B)
- !
- do t_kl=1,n_apb
-   t_kl_global = colindex_local_to_global('C',t_kl)
-   kstate = wpol%transition_table(1,t_kl_global)
-   lstate = wpol%transition_table(2,t_kl_global)
-   klspin = wpol%transition_table(3,t_kl_global)
-
-   if( kstate /= kstate_prev ) then 
-     kstate_prev = kstate
-     wp0_sqrt_k(:,:) = MATMUL( matrix_sqrt(:,:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,kstate,klspin) )
-   endif
-   wp0_sqrt_l(:,:) = MATMUL( matrix_sqrt(:,:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,lstate,klspin) )
-
-
-   do t_ij=1,m_apb
-     t_ij_global = rowindex_local_to_global('C',t_ij)
-     istate = wpol%transition_table(1,t_ij_global)
-     jstate = wpol%transition_table(2,t_ij_global)
-     ijspin = wpol%transition_table(3,t_ij_global)
-
-     !
-     ! Only calculate the lower triangle
-     ! Symmetrization will be performed later (in the diago subroutines)
-     if( t_ij_global < t_kl_global ) cycle
-
-     if(ijspin/=klspin) cycle
-
-     wtmp = -DOT_PRODUCT( wp0_sqrt_k(:,istate) , wp0_sqrt_l(:,jstate) )
-
-     apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
-     amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) - wtmp
-
-
-     wtmp = -DOT_PRODUCT( wp0_sqrt_l(:,istate) , wp0_sqrt_k(:,jstate) )
-
-     apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
-     amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) + wtmp
-
-
-   enddo
-
- enddo
-
- deallocate(matrix_sqrt)
- deallocate(wp0_sqrt_k)
- deallocate(wp0_sqrt_l)
-
-
- call stop_clock(timing_build_bse)
-
-
-end subroutine build_amb_apb_bse_auxil
-
-
-!=========================================================================
-subroutine build_amb_apb_bse_auxil_devel2(nmat,nbf,prod_basis,c_matrix,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+subroutine build_amb_apb_bse_auxil(nmat,nbf,prod_basis,c_matrix,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
  use m_spectral_function
  use m_basis_set
  use m_eri
@@ -838,9 +706,6 @@ subroutine build_amb_apb_bse_auxil_devel2(nmat,nbf,prod_basis,c_matrix,wpol,wpol
  integer              :: kstate_prev
  integer              :: ijspin,klspin
  integer              :: kbf
- real(dp),allocatable :: bra(:),ket(:)
- real(dp),allocatable :: bra_auxil(:,:,:,:)
- real(dp),allocatable :: bra_auxil_i(:,:),bra_auxil_j(:,:)
  real(dp)             :: wtmp
  integer              :: kstate_max
  integer              :: ipole,nbf_auxil,ibf_auxil,jbf_auxil
@@ -865,7 +730,7 @@ subroutine build_amb_apb_bse_auxil_devel2(nmat,nbf,prod_basis,c_matrix,wpol,wpol
  call clean_allocate('Temporary array for W',wp0,1,nauxil_3center,ncore_W+1,nvirtual_W-1,ncore_W+1,kstate_max)
 
 
-#if 0
+#ifndef HAVE_SCALAPACK
  allocate(vsqrt_chi_vsqrt(nbf_auxil,nbf_auxil))
 
  vsqrt_chi_vsqrt(:,:) = 0.0_dp
@@ -894,21 +759,12 @@ subroutine build_amb_apb_bse_auxil_devel2(nmat,nbf,prod_basis,c_matrix,wpol,wpol
 
  do ibf_auxil=1,nauxil_2center
 
-   if( ibf_auxil==1 .AND. iproc_ibf_auxil(ibf_auxil) == rank  ) &
-       write(80+rank,*) ibf_auxil,iproc_ibf_auxil(ibf_auxil),wpol_static%residu_left(ibf_auxil_l(ibf_auxil),1)&
-         ,wpol_static%residu_left(ibf_auxil_l(ibf_auxil),wpol_static%npole_reso)
-   if( ibf_auxil==128 .AND. iproc_ibf_auxil(ibf_auxil) == rank ) &
-       write(80+rank,*) ibf_auxil,iproc_ibf_auxil(ibf_auxil),wpol_static%residu_left(ibf_auxil_l(ibf_auxil),1)&
-         ,wpol_static%residu_left(ibf_auxil_l(ibf_auxil),wpol_static%npole_reso)
-
    if( iproc_ibf_auxil(ibf_auxil) == rank ) then
      residu_i(:) = wpol_static%residu_left(ibf_auxil_l(ibf_auxil),:)
    else
      residu_i(:) = 0.0_dp
    endif
    call xsum(residu_i)
-   if( ibf_auxil==1  ) write(90+rank,*) ibf_auxil,iproc_ibf_auxil(ibf_auxil),residu_i(1),residu_i(wpol_static%npole_reso)
-   if( ibf_auxil==128) write(90+rank,*) ibf_auxil,iproc_ibf_auxil(ibf_auxil),residu_i(1),residu_i(wpol_static%npole_reso)
 
    vsqrt_chi_vsqrt_i(:) = 0.0_dp
    do ipole=1,wpol_static%npole_reso
@@ -925,8 +781,6 @@ subroutine build_amb_apb_bse_auxil_devel2(nmat,nbf,prod_basis,c_matrix,wpol,wpol
 
    if( iproc_ibf_auxil(ibf_auxil) == rank ) then
      wp0(ibf_auxil_l(ibf_auxil),:,:) = wp0_i(:,:)
-     if( ibf_auxil == 1   ) write(100+rank,*) ibf_auxil,wp0(ibf_auxil_l(ibf_auxil),ncore_W+1,ncore_W+1)
-     if( ibf_auxil == 128 ) write(100+rank,*) ibf_auxil,wp0(ibf_auxil_l(ibf_auxil),ncore_W+1,ncore_W+1)
    endif
 
  enddo
@@ -1005,7 +859,7 @@ subroutine build_amb_apb_bse_auxil_devel2(nmat,nbf,prod_basis,c_matrix,wpol,wpol
  call stop_clock(timing_build_bse)
 
 
-end subroutine build_amb_apb_bse_auxil_devel2
+end subroutine build_amb_apb_bse_auxil
 
 
 !=========================================================================
@@ -1117,7 +971,6 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  real(dp),intent(out)   :: bigx(m_x,n_x)
  real(dp),intent(out)   :: bigy(m_x,n_x)
 !=====
- integer  :: t_ij,t_kl,t_ij_global,t_kl_global
  integer  :: info
  integer  :: lwork,liwork
  real(dp),allocatable :: work(:)
@@ -1157,33 +1010,6 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
 
 
 
-! ! Transform eigenvector into (X,Y)
-! ! TODO bigX and bigY have not been SCALAPACK-distributed
-! write(stdout,*) 'Allocate eigenvector arrays'
-! call clean_allocate('X',bigx,nmat,nmat)
-! call clean_allocate('Y',bigy,nmat,nmat)
-!
-!! bigx(:,:) = eigenvector(:nmat  ,:)
-!! bigy(:,:) = eigenvector(nmat+1:,:)
-!
-! bigx(:,:) = 0.0_dp
-! bigy(:,:) = 0.0_dp
-! do t_kl=1,n_ev
-!   t_kl_global = colindex_local_to_global('C',t_kl)
-!   do t_ij=1,m_ev
-!     t_ij_global = rowindex_local_to_global('C',t_ij)
-!     if( t_ij_global <= nmat) then
-!       bigx(t_ij_global,t_kl_global) = eigenvector(t_ij,t_kl)
-!     else
-!       bigy(t_ij_global-nmat,t_kl_global) = eigenvector(t_ij,t_kl)
-!     endif
-!   enddo
-! enddo
-! call xsum(bigx)
-! call xsum(bigy)
-!
-! call clean_deallocate('eigenvector',eigenvector)
-
  call stop_clock(timing_diago_h2p)
 
 #else
@@ -1194,7 +1020,7 @@ end subroutine diago_4blocks_chol
 
 
 !=========================================================================
-subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,eigenvalue)
+subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenvalue)
  use m_tools
  use m_basis_set
  use m_eri
@@ -1203,14 +1029,16 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
  use m_atoms
  implicit none
 
+ integer,intent(in)                 :: m_x,n_x
  type(basis_set),intent(in)         :: basis,prod_basis
  real(dp),intent(in)                :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
  type(spectral_function),intent(in) :: chi
- real(prec_td),intent(in)           :: bigx(chi%npole_reso,chi%npole_reso) 
- real(prec_td),intent(in)           :: bigy(chi%npole_reso,chi%npole_reso) 
+ real(prec_td),intent(in)           :: bigx(m_x,n_x)
+ real(prec_td),intent(in)           :: bigy(m_x,n_x)
  real(dp),intent(in)                :: eigenvalue(chi%npole_reso)
 !=====
  integer                            :: t_ij,t_kl
+ integer                            :: t_ij_global,t_kl_global
  integer                            :: nmat
  integer                            :: istate,jstate,ijspin
  integer                            :: ibf,jbf
@@ -1218,6 +1046,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
  integer                            :: iomega,idir,jdir
  integer,parameter                  :: nomega=600
  complex(dp)                        :: omega(nomega)
+ real(dp)                           :: coeff
  real(dp)                           :: dynamical_pol(nomega,3,3),photoabsorp_cross(nomega,3,3)
  real(dp)                           :: static_polarizability(3,3)
  real(dp)                           :: oscillator_strength,trk_sumrule
@@ -1314,18 +1143,22 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
 
  nmat=chi%npole/2
  residu_left(:,:) = 0.0_dp
- do t_ij=1,nmat
-   istate = chi%transition_table(1,t_ij)
-   jstate = chi%transition_table(2,t_ij)
-   ijspin = chi%transition_table(3,t_ij)
+ do t_ij=1,m_x
+   t_ij_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ij)
+   istate = chi%transition_table(1,t_ij_global)
+   jstate = chi%transition_table(2,t_ij_global)
+   ijspin = chi%transition_table(3,t_ij_global)
 
    ! Let use (i <-> j) symmetry to halve the loop
-   do t_kl=1,nmat
-     residu_left(:,t_kl) = residu_left(:,t_kl) &
+   do t_kl=1,n_x
+     t_kl_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_kl)
+
+     residu_left(:,t_kl_global) = residu_left(:,t_kl_global) &
                   + dipole_state(:,istate,jstate,ijspin) * ( bigx(t_ij,t_kl) + bigy(t_ij,t_kl) ) * SQRT(spin_fact)
    enddo
 
  enddo
+ call xsum(residu_left)
 
  deallocate(dipole_state)
 
@@ -1365,30 +1198,41 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
 
  write(stdout,'(/,a)') ' Excitation energies [eV]     Oscil. strengths   [Symmetry] '  
  trk_sumrule=0.0_dp
- do t_kl=1,nmat
+ do t_kl_global=1,nmat
+   t_kl = colindex_global_to_local('S',t_kl_global)
+
    if( is_triplet ) then 
      oscillator_strength = 0.0_dp
    else
-     oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_kl),residu_left(:,t_kl)) * eigenvalue(t_kl)
+     oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_kl_global),residu_left(:,t_kl_global)) * eigenvalue(t_kl_global)
    endif
    trk_sumrule = trk_sumrule + oscillator_strength
 
-   if(t_kl<=30) then
+   if(t_kl_global<=30) then
      if( is_triplet ) then
        symsymbol='3'
      else
        symsymbol='1'
      endif
-     ! Test the parity in case of molecule with inversion symmetry
 
-     t_ij=1
-     do while( ABS(bigx(t_ij,t_kl)) < 1.0e-1_dp )
-       t_ij = t_ij + 1
-       if( t_ij > nmat ) stop'problem'
+     !
+     ! Test the parity in case of molecule with inversion symmetry
+    
+     t_ij_global = 0
+     do t_ij=1,m_x
+       ! t_kl is zero if the proc is not in charge of this process
+       if( t_kl /=0 ) then 
+         if( ABS(bigx(t_ij,t_kl)) < 1.0e-1_dp ) then
+           t_ij_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ij)
+           exit
+         endif
+       endif
      enddo
-     istate = chi%transition_table(1,t_ij)
-     jstate = chi%transition_table(2,t_ij)
-     ijspin = chi%transition_table(3,t_ij)
+     call xmax(t_ij_global)
+
+     istate = chi%transition_table(1,t_ij_global)
+     jstate = chi%transition_table(2,t_ij_global)
+     ijspin = chi%transition_table(3,t_ij_global)
      if(planar) then
        reflectioni = wfn_reflection(basis,c_matrix,istate,ijspin)
        reflectionj = wfn_reflection(basis,c_matrix,jstate,ijspin)
@@ -1409,21 +1253,38 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,bigx,bigy,e
          symsymbol=TRIM(symsymbol)//'u'
        end select
      endif
-     write(stdout,'(i4,2(f18.8,2x),5x,a32)') t_kl,eigenvalue(t_kl)*Ha_eV,oscillator_strength,symsymbol
-     do t_ij=1,nmat
-       if( ABS(bigx(t_ij,t_kl))/SQRT(2.0_dp) > 1.0e-1_dp ) then
-         istate = chi%transition_table(1,t_ij)
-         jstate = chi%transition_table(2,t_ij)
-         write(stdout,'(8x,i4,a,i4,x,f12.5)') istate,' -> ',jstate,bigx(t_ij,t_kl)/SQRT(2.0_dp)
+
+     write(stdout,'(i4,2(f18.8,2x),5x,a32)') t_kl_global,eigenvalue(t_kl_global)*Ha_eV,oscillator_strength,symsymbol
+
+     !
+     ! Output the transition coefficients
+     do t_ij_global=1,nmat
+       t_ij = rowindex_global_to_local('S',t_ij_global)
+       istate = chi%transition_table(1,t_ij_global)
+       jstate = chi%transition_table(2,t_ij_global)
+     
+       coeff = 0.0_dp
+       if( t_ij /= 0 .AND. t_kl /=0 ) then 
+         if( ABS(bigx(t_ij,t_kl)) / SQRT(2.0_dp) > 1.0e-1_dp ) then
+           coeff = bigx(t_ij,t_kl) / SQRT(2.0_dp)
+         endif
        endif
-     enddo
-     do t_ij=1,nmat
-       if( ABS(bigy(t_ij,t_kl))/SQRT(2.0_dp) > 1.0e-1_dp ) then
-         istate = chi%transition_table(1,t_ij)
-         jstate = chi%transition_table(2,t_ij)
-         write(stdout,'(8x,i4,a,i4,x,f12.5)') jstate,' -> ',istate,bigy(t_ij,t_kl)/SQRT(2.0_dp)
+       call xsum(coeff)
+       if( coeff > 0.1_dp ) write(stdout,'(8x,i4,a,i4,x,f12.5)') istate,' -> ',jstate,coeff
+
+       coeff = 0.0_dp
+       if( t_ij /= 0 .AND. t_kl /=0 ) then
+         if( ABS(bigy(t_ij,t_kl)) / SQRT(2.0_dp) > 1.0e-1_dp ) then
+           coeff = bigy(t_ij,t_kl) / SQRT(2.0_dp)
+         endif
        endif
+       call xsum(coeff)
+       if( coeff > 0.1_dp ) write(stdout,'(8x,i4,a,i4,x,f12.5)') istate,' -> ',jstate,coeff
      enddo
+
+
+
+
      write(stdout,*)
    endif
  enddo
