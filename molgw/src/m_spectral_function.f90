@@ -7,6 +7,7 @@ module m_spectral_function
  use m_memory
  use m_inputparam
  use m_atoms
+ use m_eri,only: nauxil_2center
 
  !
  ! General form of any spectral function
@@ -193,13 +194,13 @@ subroutine write_spectral_function(sf)
 !=====
  integer             :: wfile
  integer             :: tmpfile
- integer             :: iprodbasis,ipole
+ integer             :: ipole,ibf_auxil
  integer             :: npole_write,ipole_write
  integer             :: ierr,bufsize,iproc
  logical             :: file_exists
  real(dp)            :: ecut_pole
  integer,allocatable :: index_pole(:)
- real(dp),allocatable :: buffer(:,:)
+ real(dp),allocatable :: buffer(:)
 #ifdef HAVE_MPI
  integer(kind=MPI_OFFSET_KIND) :: disp
 #endif
@@ -271,20 +272,19 @@ subroutine write_spectral_function(sf)
    call MPI_FILE_WRITE_AT(wfile,disp,sf%pole,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
  disp = disp + sf%npole_reso * SIZEOF(sf%pole(1))
 
- iproc = 0
- do while( iproc < rank )
-   disp = disp + nbf_local_iproc(iproc) * sf%npole_reso * SIZEOF(sf%residu_left(1,1))
-   iproc = iproc + 1
- enddo
- bufsize = nbf_local_iproc(rank) * sf%npole_reso
+ !
+ ! Write the residu in "the" universal ordering that does not depend on the
+ ! data distribution
+ allocate(buffer(sf%npole_reso))
+ do ibf_auxil=1,nauxil_2center
+   if( rank == iproc_ibf_auxil(ibf_auxil) ) then
+     buffer(:) = sf%residu_left(ibf_auxil_l(ibf_auxil),:)
+     call MPI_FILE_WRITE_AT(wfile,disp,buffer,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
 
- call MPI_FILE_SET_VIEW(wfile,disp,MPI_DOUBLE_PRECISION, & 
-                        MPI_DOUBLE_PRECISION,'native',   & 
-                        MPI_INFO_NULL,ierr) 
- allocate(buffer(sf%npole_reso,sf%nprodbasis))
- buffer(:,:) = TRANSPOSE( sf%residu_left(:,:) )
- call MPI_FILE_WRITE(wfile,buffer,bufsize,MPI_REAL8, & 
-                     MPI_STATUS_IGNORE,ierr) 
+
+   endif
+   disp = disp + sf%npole_reso * SIZEOF(sf%residu_left(1,1))
+ enddo
  deallocate(buffer)
 
  call MPI_FILE_CLOSE(wfile, ierr)
@@ -304,11 +304,11 @@ subroutine read_spectral_function(sf,reading_status)
 !=====
  integer            :: wfile
  character(len=100) :: postscf_name_read
- integer            :: ipole_read
+ integer            :: ipole_read,ibf_auxil
  logical            :: file_exists
  integer            :: npole_read,nprodbasis_read
  integer            :: ierr,bufsize,iproc
- real(dp),allocatable :: buffer(:,:)
+ real(dp),allocatable :: buffer(:)
 #ifdef HAVE_MPI
  integer(kind=MPI_OFFSET_KIND) :: disp
 #endif
@@ -364,22 +364,19 @@ subroutine read_spectral_function(sf,reading_status)
  call MPI_FILE_READ_AT(wfile,disp,sf%pole,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
  disp = disp + sf%npole_reso * SIZEOF(sf%pole(1))
 
- iproc = 0
- do while( iproc < rank )
-   disp = disp + nbf_local_iproc(iproc) * sf%npole_reso * SIZEOF(sf%residu_left(1,1))
-   iproc = iproc + 1
+ !
+ ! Read the residu from "the" universal ordering that does not depend on the
+ ! data distribution
+ allocate(buffer(sf%npole_reso))
+ do ibf_auxil=1,nauxil_2center
+   if( rank == iproc_ibf_auxil(ibf_auxil) ) then
+     call MPI_FILE_READ_AT(wfile,disp,buffer,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
+     sf%residu_left(ibf_auxil_l(ibf_auxil),:) = buffer(:)
+   endif
+   disp = disp + sf%npole_reso * SIZEOF(sf%residu_left(1,1))
  enddo
- bufsize = nbf_local_iproc(rank) * sf%npole_reso
- write(200+rank,*) 'FBFB',disp,bufsize,bufsize*SIZEOF(sf%residu_left(1,1))
-
- call MPI_FILE_SET_VIEW(wfile,disp,MPI_DOUBLE_PRECISION, &
-                        MPI_DOUBLE_PRECISION,'native',   &
-                        MPI_INFO_NULL,ierr)
- allocate(buffer(sf%npole_reso,sf%nprodbasis))
- call MPI_FILE_READ(wfile,buffer,bufsize,MPI_DOUBLE_PRECISION, &
-                    MPI_STATUS_IGNORE,ierr)
- sf%residu_left(:,:) = TRANSPOSE( buffer(:,:) )
  deallocate(buffer)
+
 
  call MPI_FILE_CLOSE(wfile, ierr)
 

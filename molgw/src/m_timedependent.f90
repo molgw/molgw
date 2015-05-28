@@ -887,7 +887,6 @@ subroutine build_amb_apb_bse_auxil_devel2(nmat,nbf,prod_basis,c_matrix,wpol,wpol
  deallocate(vsqrt_chi_vsqrt)
 
 #else
- write(stdout,*) 'FBFB pass here'
 
  allocate(vsqrt_chi_vsqrt_i(nauxil_3center))
  allocate(residu_i(wpol_static%npole_reso))
