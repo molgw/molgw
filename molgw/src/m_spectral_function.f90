@@ -19,7 +19,7 @@ module m_spectral_function
    integer              :: npole
    integer              :: npole_reso
    integer              :: nprodbasis
-   real(dp),allocatable :: transition_table(:,:)  ! correspondance table from
+   integer,allocatable  :: transition_table(:,:)  ! correspondance table from
                                                   ! transition index to state pair indexes
    real(dp),allocatable :: pole(:)
    real(dp),allocatable :: residu_left(:,:)       ! first index runs on n, second index on i
@@ -370,12 +370,13 @@ subroutine read_spectral_function(sf,reading_status)
    iproc = iproc + 1
  enddo
  bufsize = nbf_local_iproc(rank) * sf%npole_reso
+ write(200+rank,*) 'FBFB',disp,bufsize,bufsize*SIZEOF(sf%residu_left(1,1))
 
  call MPI_FILE_SET_VIEW(wfile,disp,MPI_DOUBLE_PRECISION, &
                         MPI_DOUBLE_PRECISION,'native',   &
                         MPI_INFO_NULL,ierr)
  allocate(buffer(sf%npole_reso,sf%nprodbasis))
- call MPI_FILE_READ(wfile,buffer,bufsize,MPI_REAL8, &
+ call MPI_FILE_READ(wfile,buffer,bufsize,MPI_DOUBLE_PRECISION, &
                     MPI_STATUS_IGNORE,ierr)
  sf%residu_left(:,:) = TRANSPOSE( buffer(:,:) )
  deallocate(buffer)

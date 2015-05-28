@@ -53,11 +53,11 @@ module m_eri
  integer,private :: nsize           ! size of the eri_buffer array
  integer,private :: npair           ! number of independent pairs (i,j) with i<=j
 
- integer,private :: nauxil_2center  ! size of the 2-center matrix
-                                    ! 2-center integrals are NOT distributed
- integer,private :: nauxil_3center  ! size of the 3-center matrix
-                                    ! may differ from the previous one due to
-                                    ! data distribution
+ integer,protected :: nauxil_2center  ! size of the 2-center matrix
+                                      ! 2-center integrals are NOT distributed
+ integer,protected :: nauxil_3center  ! size of the 3-center matrix
+                                      ! may differ from the previous one due to
+                                      ! data distribution
 
 
 ! TODO write a proper interface for the call to C

@@ -145,7 +145,8 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
    if(.NOT. has_auxil_basis ) then
      call build_amb_apb_bse(basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
    else
-     call build_amb_apb_bse_auxil(basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+!     call build_amb_apb_bse_auxil(basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+     call build_amb_apb_bse_auxil_devel2(nmat,basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
    endif
    call destroy_spectral_function(wpol_static)
  endif
@@ -291,7 +292,7 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
  ! Set up energy+hartree+exchange contributions to matrices (A+B) and (A-B) 
  !
  
- ! First loop over the SCALAPACK grid
+ ! First loops over the SCALAPACK grid
  do ipcol=0,npcol_sd-1
    do iprow=0,nprow_sd-1
      m_apb_block = row_block_size(nmat,iprow,nprow_sd)
@@ -761,7 +762,7 @@ subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,m_ap
 
 
 
- kstate = 0
+ kstate_prev = 0
  ! Set up -W contributions to matrices (A+B) and (A-B)
  !
  do t_kl=1,n_apb
@@ -771,6 +772,7 @@ subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,m_ap
    klspin = wpol%transition_table(3,t_kl_global)
 
    if( kstate /= kstate_prev ) then 
+     kstate_prev = kstate
      wp0_sqrt_k(:,:) = MATMUL( matrix_sqrt(:,:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,kstate,klspin) )
    endif
    wp0_sqrt_l(:,:) = MATMUL( matrix_sqrt(:,:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,lstate,klspin) )
@@ -814,6 +816,197 @@ subroutine build_amb_apb_bse_auxil(nbf,prod_basis,c_matrix,wpol,wpol_static,m_ap
 
 
 end subroutine build_amb_apb_bse_auxil
+
+
+!=========================================================================
+subroutine build_amb_apb_bse_auxil_devel2(nmat,nbf,prod_basis,c_matrix,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+ use m_spectral_function
+ use m_basis_set
+ use m_eri
+ use m_tools 
+ implicit none
+
+ integer,intent(in)                 :: nmat,nbf
+ type(basis_set),intent(in)         :: prod_basis
+ real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
+ type(spectral_function),intent(in) :: wpol,wpol_static
+ integer,intent(in)                 :: m_apb,n_apb
+ real(prec_td),intent(out)          :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
+!=====
+ integer              :: t_ij,t_kl,t_ij_global,t_kl_global
+ integer              :: istate,jstate,kstate,lstate
+ integer              :: kstate_prev
+ integer              :: ijspin,klspin
+ integer              :: kbf
+ real(dp),allocatable :: bra(:),ket(:)
+ real(dp),allocatable :: bra_auxil(:,:,:,:)
+ real(dp),allocatable :: bra_auxil_i(:,:),bra_auxil_j(:,:)
+ real(dp)             :: wtmp
+ integer              :: kstate_max
+ integer              :: ipole,nbf_auxil,ibf_auxil,jbf_auxil
+ real(dp),allocatable :: vsqrt_chi_vsqrt(:,:)
+ real(dp),allocatable :: vsqrt_chi_vsqrt_i(:),residu_i(:),wp0_i(:,:)
+ real(dp),allocatable :: wp0(:,:,:)
+ integer              :: iprow,ipcol
+ integer              :: m_apb_block,n_apb_block
+ real(dp),allocatable :: amb_block(:,:)
+ real(dp),allocatable :: apb_block(:,:)
+!=====
+
+ call start_clock(timing_build_bse)
+ if( .NOT. has_auxil_basis ) stop'Does not have auxil basis. This should not happen'
+
+ write(stdout,'(a)') ' Build W part Auxil' 
+
+ if( wpol_static%nprodbasis /= nauxil_3center ) stop'inconsistency problem'
+ if(nspin/=1) stop'spin not implemented here'
+
+ kstate_max = MAXVAL( wpol%transition_table(1,1:wpol%npole_reso) )
+ call clean_allocate('Temporary array for W',wp0,1,nauxil_3center,ncore_W+1,nvirtual_W-1,ncore_W+1,kstate_max)
+
+
+#if 0
+ allocate(vsqrt_chi_vsqrt(nbf_auxil,nbf_auxil))
+
+ vsqrt_chi_vsqrt(:,:) = 0.0_dp
+ do ipole=1,wpol_static%npole_reso
+   do jbf_auxil=1,nbf_auxil
+     vsqrt_chi_vsqrt(:,jbf_auxil) = vsqrt_chi_vsqrt(:,jbf_auxil) &
+              - wpol_static%residu_left(:,ipole)                 &
+                * wpol_static%residu_left(jbf_auxil,ipole) * 2.0_dp / wpol_static%pole(ipole)
+   enddo
+ enddo
+
+ !
+ ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
+ ! Be careful in the following not to forget it
+ do kstate=ncore_W+1,kstate_max
+   wp0(:,ncore_W+1:nvirtual_W-1,kstate) = MATMUL( vsqrt_chi_vsqrt(:,:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,kstate,1) )
+ enddo
+
+ deallocate(vsqrt_chi_vsqrt)
+
+#else
+ write(stdout,*) 'FBFB pass here'
+
+ allocate(vsqrt_chi_vsqrt_i(nauxil_3center))
+ allocate(residu_i(wpol_static%npole_reso))
+ allocate(wp0_i(ncore_W+1:nvirtual_W-1,ncore_W+1:kstate_max))
+
+ do ibf_auxil=1,nauxil_2center
+
+   if( ibf_auxil==1 .AND. iproc_ibf_auxil(ibf_auxil) == rank  ) &
+       write(80+rank,*) ibf_auxil,iproc_ibf_auxil(ibf_auxil),wpol_static%residu_left(ibf_auxil_l(ibf_auxil),1)&
+         ,wpol_static%residu_left(ibf_auxil_l(ibf_auxil),wpol_static%npole_reso)
+   if( ibf_auxil==128 .AND. iproc_ibf_auxil(ibf_auxil) == rank ) &
+       write(80+rank,*) ibf_auxil,iproc_ibf_auxil(ibf_auxil),wpol_static%residu_left(ibf_auxil_l(ibf_auxil),1)&
+         ,wpol_static%residu_left(ibf_auxil_l(ibf_auxil),wpol_static%npole_reso)
+
+   if( iproc_ibf_auxil(ibf_auxil) == rank ) then
+     residu_i(:) = wpol_static%residu_left(ibf_auxil_l(ibf_auxil),:)
+   else
+     residu_i(:) = 0.0_dp
+   endif
+   call xsum(residu_i)
+   if( ibf_auxil==1  ) write(90+rank,*) ibf_auxil,iproc_ibf_auxil(ibf_auxil),residu_i(1),residu_i(wpol_static%npole_reso)
+   if( ibf_auxil==128) write(90+rank,*) ibf_auxil,iproc_ibf_auxil(ibf_auxil),residu_i(1),residu_i(wpol_static%npole_reso)
+
+   vsqrt_chi_vsqrt_i(:) = 0.0_dp
+   do ipole=1,wpol_static%npole_reso
+     vsqrt_chi_vsqrt_i(:) = vsqrt_chi_vsqrt_i(:) &
+              - residu_i(ipole) * wpol_static%residu_left(:,ipole) * 2.0_dp / wpol_static%pole(ipole)
+   enddo
+   !
+   ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
+   ! Be careful in the following not to forget it
+   do kstate=ncore_W+1,kstate_max
+     wp0_i(ncore_W+1:nvirtual_W-1,kstate) = MATMUL( vsqrt_chi_vsqrt_i(:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,kstate,1) )
+   enddo
+   call xsum(wp0_i)
+
+   if( iproc_ibf_auxil(ibf_auxil) == rank ) then
+     wp0(ibf_auxil_l(ibf_auxil),:,:) = wp0_i(:,:)
+     if( ibf_auxil == 1   ) write(100+rank,*) ibf_auxil,wp0(ibf_auxil_l(ibf_auxil),ncore_W+1,ncore_W+1)
+     if( ibf_auxil == 128 ) write(100+rank,*) ibf_auxil,wp0(ibf_auxil_l(ibf_auxil),ncore_W+1,ncore_W+1)
+   endif
+
+ enddo
+
+ deallocate(vsqrt_chi_vsqrt_i,residu_i,wp0_i)
+
+#endif
+ 
+
+ if( nprow_sd * npcol_sd > 1 ) &
+    write(stdout,'(a,i4,a,i4)') ' SCALAPACK grid    :',nprow_sd,' x ',npcol_sd
+ 
+ ! First loops over the SCALAPACK grid
+ do ipcol=0,npcol_sd-1
+   do iprow=0,nprow_sd-1
+     m_apb_block = row_block_size(nmat,iprow,nprow_sd)
+     n_apb_block = col_block_size(nmat,ipcol,npcol_sd)
+
+     allocate(amb_block(m_apb_block,n_apb_block))
+     allocate(apb_block(m_apb_block,n_apb_block))
+
+
+     ! Set up -W contributions to matrices (A+B) and (A-B)
+     !
+     do t_kl=1,n_apb_block
+       t_kl_global = colindex_local_to_global(ipcol,npcol_sd,t_kl)
+       kstate = wpol%transition_table(1,t_kl_global)
+       lstate = wpol%transition_table(2,t_kl_global)
+       klspin = wpol%transition_table(3,t_kl_global)
+
+       do t_ij=1,m_apb_block
+         t_ij_global = rowindex_local_to_global(iprow,nprow_sd,t_ij)
+         istate = wpol%transition_table(1,t_ij_global)
+         jstate = wpol%transition_table(2,t_ij_global)
+         ijspin = wpol%transition_table(3,t_ij_global)
+
+         !
+         ! Only calculate the lower triangle
+         ! Symmetrization will be performed later (in the diago subroutines)
+         if( t_ij_global < t_kl_global ) cycle
+
+         if(ijspin/=klspin) cycle
+
+         wtmp = DOT_PRODUCT( eri_3center_eigen(:,jstate,lstate,ijspin) , wp0(:,istate,kstate) )
+
+         apb_block(t_ij,t_kl) = -wtmp
+         amb_block(t_ij,t_kl) = -wtmp
+
+
+         wtmp = DOT_PRODUCT( eri_3center_eigen(:,istate,lstate,ijspin) , wp0(:,jstate,kstate) )
+
+         apb_block(t_ij,t_kl) =  apb_block(t_ij,t_kl) - wtmp
+         amb_block(t_ij,t_kl) =  amb_block(t_ij,t_kl) + wtmp
+
+
+       enddo
+
+     enddo
+
+     call xsum(amb_block)
+     call xsum(apb_block)
+     if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
+       amb_matrix(:,:) = amb_matrix(:,:) + amb_block(:,:)
+       apb_matrix(:,:) = apb_matrix(:,:) + apb_block(:,:)
+     endif
+     deallocate(amb_block)
+     deallocate(apb_block)
+
+
+   enddo
+ enddo
+
+ call clean_deallocate('Temporary array for W',wp0)
+
+
+ call stop_clock(timing_build_bse)
+
+
+end subroutine build_amb_apb_bse_auxil_devel2
 
 
 !=========================================================================
