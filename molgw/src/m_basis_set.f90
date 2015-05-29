@@ -1161,6 +1161,7 @@ subroutine distribute_auxil_basis(auxil_basis)
  allocate(nbf_local_iproc(0:nproc-1))
 
  iproc = 0
+ nbf_local_iproc(:) = 0
  do ibf=1,auxil_basis%nbf
 
    iproc = MODULO(iproc+1,nproc)
