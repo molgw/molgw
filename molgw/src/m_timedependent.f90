@@ -708,10 +708,10 @@ subroutine build_amb_apb_bse_auxil(nmat,nbf,prod_basis,c_matrix,wpol,wpol_static
  integer              :: kbf
  real(dp)             :: wtmp
  integer              :: kstate_max
- integer              :: ipole,nbf_auxil,ibf_auxil,jbf_auxil
+ integer              :: ipole,ibf_auxil,jbf_auxil
  real(dp),allocatable :: vsqrt_chi_vsqrt(:,:)
  real(dp),allocatable :: vsqrt_chi_vsqrt_i(:),residu_i(:),wp0_i(:,:)
- real(dp),allocatable :: wp0(:,:,:)
+ real(dp),allocatable :: wp0(:,:,:,:)
  integer              :: iprow,ipcol
  integer              :: m_apb_block,n_apb_block
  real(dp),allocatable :: amb_block(:,:)
@@ -724,70 +724,72 @@ subroutine build_amb_apb_bse_auxil(nmat,nbf,prod_basis,c_matrix,wpol,wpol_static
  write(stdout,'(a)') ' Build W part Auxil' 
 
  if( wpol_static%nprodbasis /= nauxil_3center ) stop'inconsistency problem'
- if(nspin/=1) stop'spin not implemented here'
 
  kstate_max = MAXVAL( wpol%transition_table(1,1:wpol%npole_reso) )
- call clean_allocate('Temporary array for W',wp0,1,nauxil_3center,ncore_W+1,nvirtual_W-1,ncore_W+1,kstate_max)
+ call clean_allocate('Temporary array for W',wp0,1,nauxil_3center,ncore_W+1,nvirtual_W-1,ncore_W+1,kstate_max,1,nspin)
 
 
+ do ijspin=1,nspin
 #ifndef HAVE_SCALAPACK
- allocate(vsqrt_chi_vsqrt(nbf_auxil,nbf_auxil))
 
- vsqrt_chi_vsqrt(:,:) = 0.0_dp
- do ipole=1,wpol_static%npole_reso
-   do jbf_auxil=1,nbf_auxil
-     vsqrt_chi_vsqrt(:,jbf_auxil) = vsqrt_chi_vsqrt(:,jbf_auxil) &
-              - wpol_static%residu_left(:,ipole)                 &
-                * wpol_static%residu_left(jbf_auxil,ipole) * 2.0_dp / wpol_static%pole(ipole)
-   enddo
- enddo
-
- !
- ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
- ! Be careful in the following not to forget it
- do kstate=ncore_W+1,kstate_max
-   wp0(:,ncore_W+1:nvirtual_W-1,kstate) = MATMUL( vsqrt_chi_vsqrt(:,:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,kstate,1) )
- enddo
-
- deallocate(vsqrt_chi_vsqrt)
-
-#else
-
- allocate(vsqrt_chi_vsqrt_i(nauxil_3center))
- allocate(residu_i(wpol_static%npole_reso))
- allocate(wp0_i(ncore_W+1:nvirtual_W-1,ncore_W+1:kstate_max))
-
- do ibf_auxil=1,nauxil_2center
-
-   if( iproc_ibf_auxil(ibf_auxil) == rank ) then
-     residu_i(:) = wpol_static%residu_left(ibf_auxil_l(ibf_auxil),:)
-   else
-     residu_i(:) = 0.0_dp
-   endif
-   call xsum(residu_i)
-
-   vsqrt_chi_vsqrt_i(:) = 0.0_dp
+   allocate(vsqrt_chi_vsqrt(nauxil_3center,nauxil_3center))
+  
+   vsqrt_chi_vsqrt(:,:) = 0.0_dp
    do ipole=1,wpol_static%npole_reso
-     vsqrt_chi_vsqrt_i(:) = vsqrt_chi_vsqrt_i(:) &
-              - residu_i(ipole) * wpol_static%residu_left(:,ipole) * 2.0_dp / wpol_static%pole(ipole)
+     do jbf_auxil=1,nauxil_3center
+       vsqrt_chi_vsqrt(:,jbf_auxil) = vsqrt_chi_vsqrt(:,jbf_auxil) &
+                - wpol_static%residu_left(:,ipole)                 &
+                  * wpol_static%residu_left(jbf_auxil,ipole) * 2.0_dp / wpol_static%pole(ipole)
+     enddo
    enddo
+  
    !
    ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
    ! Be careful in the following not to forget it
    do kstate=ncore_W+1,kstate_max
-     wp0_i(ncore_W+1:nvirtual_W-1,kstate) = MATMUL( vsqrt_chi_vsqrt_i(:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,kstate,1) )
+     wp0(:,ncore_W+1:nvirtual_W-1,kstate,ijspin) = MATMUL( vsqrt_chi_vsqrt(:,:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,kstate,ijspin) )
    enddo
-   call xsum(wp0_i)
+  
+   deallocate(vsqrt_chi_vsqrt)
 
-   if( iproc_ibf_auxil(ibf_auxil) == rank ) then
-     wp0(ibf_auxil_l(ibf_auxil),:,:) = wp0_i(:,:)
-   endif
+#else
 
- enddo
-
- deallocate(vsqrt_chi_vsqrt_i,residu_i,wp0_i)
+   allocate(vsqrt_chi_vsqrt_i(nauxil_3center))
+   allocate(residu_i(wpol_static%npole_reso))
+   allocate(wp0_i(ncore_W+1:nvirtual_W-1,ncore_W+1:kstate_max))
+  
+   do ibf_auxil=1,nauxil_2center
+  
+     if( iproc_ibf_auxil(ibf_auxil) == rank ) then
+       residu_i(:) = wpol_static%residu_left(ibf_auxil_l(ibf_auxil),:)
+     else
+       residu_i(:) = 0.0_dp
+     endif
+     call xsum(residu_i)
+  
+     vsqrt_chi_vsqrt_i(:) = 0.0_dp
+     do ipole=1,wpol_static%npole_reso
+       vsqrt_chi_vsqrt_i(:) = vsqrt_chi_vsqrt_i(:) &
+                - residu_i(ipole) * wpol_static%residu_left(:,ipole) * 2.0_dp / wpol_static%pole(ipole)
+     enddo
+     !
+     ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
+     ! Be careful in the following not to forget it
+     do kstate=ncore_W+1,kstate_max
+       wp0_i(ncore_W+1:nvirtual_W-1,kstate) = MATMUL( vsqrt_chi_vsqrt_i(:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,kstate,ijspin) )
+     enddo
+     call xsum(wp0_i)
+  
+     if( iproc_ibf_auxil(ibf_auxil) == rank ) then
+       wp0(ibf_auxil_l(ibf_auxil),:,:,ijspin) = wp0_i(:,:)
+     endif
+  
+   enddo
+  
+   deallocate(vsqrt_chi_vsqrt_i,residu_i,wp0_i)
 
 #endif
+ enddo
  
 
  if( nprow_sd * npcol_sd > 1 ) &
@@ -824,13 +826,13 @@ subroutine build_amb_apb_bse_auxil(nmat,nbf,prod_basis,c_matrix,wpol,wpol_static
 
          if(ijspin/=klspin) cycle
 
-         wtmp = DOT_PRODUCT( eri_3center_eigen(:,jstate,lstate,ijspin) , wp0(:,istate,kstate) )
+         wtmp = DOT_PRODUCT( eri_3center_eigen(:,jstate,lstate,ijspin) , wp0(:,istate,kstate,ijspin) )
 
          apb_block(t_ij,t_kl) = -wtmp
          amb_block(t_ij,t_kl) = -wtmp
 
 
-         wtmp = DOT_PRODUCT( eri_3center_eigen(:,istate,lstate,ijspin) , wp0(:,jstate,kstate) )
+         wtmp = DOT_PRODUCT( eri_3center_eigen(:,istate,lstate,ijspin) , wp0(:,jstate,kstate,ijspin) )
 
          apb_block(t_ij,t_kl) =  apb_block(t_ij,t_kl) - wtmp
          amb_block(t_ij,t_kl) =  amb_block(t_ij,t_kl) + wtmp
@@ -1141,7 +1143,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,m_x,n_x,big
 
  allocate(residu_left(3,chi%npole_reso))
 
- nmat=chi%npole/2
+ nmat=chi%npole_reso
  residu_left(:,:) = 0.0_dp
  do t_ij=1,m_x
    t_ij_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ij)
@@ -1209,6 +1211,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,m_x,n_x,big
    trk_sumrule = trk_sumrule + oscillator_strength
 
    if(t_kl_global<=30) then
+
      if( is_triplet ) then
        symsymbol='3'
      else
@@ -1222,7 +1225,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,m_x,n_x,big
      do t_ij=1,m_x
        ! t_kl is zero if the proc is not in charge of this process
        if( t_kl /=0 ) then 
-         if( ABS(bigx(t_ij,t_kl)) < 1.0e-1_dp ) then
+         if( ABS(bigx(t_ij,t_kl)) > 0.1_dp ) then
            t_ij_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ij)
            exit
          endif
@@ -1265,12 +1268,12 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,m_x,n_x,big
      
        coeff = 0.0_dp
        if( t_ij /= 0 .AND. t_kl /=0 ) then 
-         if( ABS(bigx(t_ij,t_kl)) / SQRT(2.0_dp) > 1.0e-1_dp ) then
+         if( ABS(bigx(t_ij,t_kl)) / SQRT(2.0_dp) > 0.1_dp ) then
            coeff = bigx(t_ij,t_kl) / SQRT(2.0_dp)
          endif
        endif
        call xsum(coeff)
-       if( coeff > 0.1_dp ) write(stdout,'(8x,i4,a,i4,x,f12.5)') istate,' -> ',jstate,coeff
+       if( ABS(coeff) > 0.1_dp ) write(stdout,'(8x,i4,a,i4,x,f12.5)') istate,' -> ',jstate,coeff
 
        coeff = 0.0_dp
        if( t_ij /= 0 .AND. t_kl /=0 ) then
@@ -1279,7 +1282,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,m_x,n_x,big
          endif
        endif
        call xsum(coeff)
-       if( coeff > 0.1_dp ) write(stdout,'(8x,i4,a,i4,x,f12.5)') istate,' -> ',jstate,coeff
+       if( ABS(coeff) > 0.1_dp ) write(stdout,'(8x,i4,a,i4,x,f12.5)') istate,' -> ',jstate,coeff
      enddo
 
 
