@@ -33,8 +33,16 @@ module m_spectral_function
    integer,allocatable  :: transition_table_apb(:,:)  ! correspondance table from
                                                       ! transition index to state pair indexes
 
+   !
+   ! Information for poles that are not actually calculated
+   !
+   integer              :: npole_reso_spa
+   integer,allocatable  :: transition_table_spa(:,:)  ! correspondance table from
+                                                      ! transition index to state pair indexes
+
    real(dp),allocatable :: pole(:)
    real(dp),allocatable :: residu_left(:,:)       ! first index runs on n, second index on i
+
  end type spectral_function
 
  !
@@ -47,7 +55,7 @@ module m_spectral_function
  integer,protected :: nvirtual_G
  integer,protected :: nvirtual_W
 
- integer,parameter :: nvirtual_SPA=60
+ integer,parameter :: nvirtual_SPA=10000 ! 50 ! 10000 !80
 
  !
  ! the boring small complex number eta: (0.0_dp,0.001_dp) is typically over converged
@@ -65,7 +73,7 @@ subroutine init_spectral_function(nbf,occupation,sf)
  real(dp),intent(in)                   :: occupation(nbf,nspin)
  type(spectral_function),intent(out)   :: sf
 !=====
- integer                               :: ijspin,ibf,jbf,itrans
+ integer                               :: ijspin,ibf,jbf,itrans,jtrans
  logical                               :: file_exists
 !====
 
@@ -103,7 +111,6 @@ subroutine init_spectral_function(nbf,occupation,sf)
    enddo
  enddo
 
- ! Set the number of poles as twice the number of resonant transtions
  sf%npole_reso = itrans  
  allocate(sf%transition_table(3,sf%npole_reso))
  ! Set the transition_table 
@@ -133,6 +140,7 @@ subroutine init_spectral_function(nbf,occupation,sf)
  do ijspin=1,nspin
    do ibf=1,nbf
      do jbf=1,nbf
+       if( skip_transition(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) cycle
        if( skip_transition_apb(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) cycle
        if( occupation(jbf,ijspin) - occupation(ibf,ijspin) > 0.0_dp ) cycle
        itrans = itrans + 1
@@ -140,25 +148,41 @@ subroutine init_spectral_function(nbf,occupation,sf)
    enddo
  enddo
 
- ! Set the number of poles as twice the number of resonant transtions
  sf%npole_reso_apb = itrans
+ sf%npole_reso_spa = sf%npole_reso - sf%npole_reso_apb
  allocate(sf%transition_table_apb(3,sf%npole_reso_apb))
+ allocate(sf%transition_table_spa(3,sf%npole_reso_spa))
  ! Set the transition_table 
  itrans=0
+ jtrans=0
  do ijspin=1,nspin
    do ibf=1,nbf
      do jbf=1,nbf
-       if( skip_transition_apb(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) cycle
+       if( skip_transition(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) cycle
        if( occupation(jbf,ijspin) - occupation(ibf,ijspin) > 0.0_dp ) cycle
-       itrans = itrans + 1
-       ! Set the resonant transition table
-       sf%transition_table_apb(1,itrans) = ibf
-       sf%transition_table_apb(2,itrans) = jbf
-       sf%transition_table_apb(3,itrans) = ijspin
+
+       if( .NOT. skip_transition_apb(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) then
+         itrans = itrans + 1
+         ! Set the resonant transition table
+         sf%transition_table_apb(1,itrans) = ibf
+         sf%transition_table_apb(2,itrans) = jbf
+         sf%transition_table_apb(3,itrans) = ijspin
+       else
+         jtrans = jtrans + 1
+         ! Set the resonant transition table
+         sf%transition_table_spa(1,jtrans) = ibf
+         sf%transition_table_spa(2,jtrans) = jbf
+         sf%transition_table_spa(3,jtrans) = ijspin
+       endif
+
      enddo
    enddo
  enddo
 
+ if( sf%npole_reso_apb /= sf%npole_reso ) then
+   write(msg,'(a,i4,2x,i4)') 'using single pole approximation with # poles instead of # ',sf%npole_reso_apb,sf%npole_reso
+   call issue_warning(msg)
+ endif
 
 
 end subroutine init_spectral_function

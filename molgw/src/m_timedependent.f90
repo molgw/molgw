@@ -127,7 +127,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  call clean_allocate('A-B',amb_matrix,m_apb,n_apb)
 
  ! A diagonal is owned by all procs (= no distribution)
- allocate(a_diag(wpol_out%npole_reso))
+ allocate(a_diag(wpol_out%npole_reso_spa))
 
  !
  ! Build the (A+B) and (A-B) matrices in 3 steps
@@ -224,6 +224,12 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
      ! This following coding of the Galitskii-Migdal correlation energy is only working with
      ! an auxiliary basis
      if(is_rpa) write(stdout,'(a,f14.8,/)') ' Correlation energy in the Galitskii-Migdal formula',energy_gm
+     
+     ! Add the single pole approximation for the poles that have been neglected
+     ! in the diagonalization
+     if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) & 
+        call chi_to_sqrtvchisqrtv_auxil_spa(basis%nbf,auxil_basis%nbf_local,a_diag,wpol_out)
+
    else
      call chi_to_vchiv(basis%nbf,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol_out)
    endif
@@ -242,6 +248,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
 
 
  if(allocated(eigenvalue)) deallocate(eigenvalue)
+ if(allocated(a_diag))     deallocate(a_diag)
 
  call stop_clock(timing_pola)
 
@@ -378,7 +385,7 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
            ! First part of the RPA correlation energy: sum over diagonal terms
            rpa_correlation = rpa_correlation - 0.25_dp * ( apb_block(t_ij,t_kl) + amb_block(t_ij,t_kl) )
 #if 0
-         else if( lstate >= nvirtual_SPA .OR. jstate >= nvirtual_SPA ) then
+         else if( lstate >= 50 .OR. jstate >= 50 ) then
           apb_block(t_ij,t_kl) = 0.0_dp
           amb_block(t_ij,t_kl) = 0.0_dp
 #endif
@@ -423,7 +430,7 @@ subroutine build_a_diag_common(nmat,nbf,c_matrix,energy,wpol,a_diag)
  real(dp),intent(in)                :: energy(nbf,nspin)
  real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
  type(spectral_function),intent(in) :: wpol
- real(prec_td),intent(out)          :: a_diag(wpol%npole_reso)
+ real(prec_td),intent(out)          :: a_diag(wpol%npole_reso_spa)
 !=====
  integer              :: t_kl,t_kl_global
  integer              :: kstate,lstate
@@ -451,10 +458,10 @@ subroutine build_a_diag_common(nmat,nbf,c_matrix,energy,wpol,a_diag)
 
 
  ! Then loop inside each of the SCALAPACK blocks
- do t_kl=1,wpol%npole_reso
-   kstate = wpol%transition_table(1,t_kl)
-   lstate = wpol%transition_table(2,t_kl)
-   klspin = wpol%transition_table(3,t_kl)
+ do t_kl=1,wpol%npole_reso_spa
+   kstate = wpol%transition_table_spa(1,t_kl)
+   lstate = wpol%transition_table_spa(2,t_kl)
+   klspin = wpol%transition_table_spa(3,t_kl)
 
    if( .NOT. has_auxil_basis ) then
      klmin = MIN(kstate,lstate)
@@ -473,8 +480,11 @@ subroutine build_a_diag_common(nmat,nbf,c_matrix,energy,wpol,a_diag)
    endif
 
    a_diag(t_kl) = eri_eigen_klkl * spin_fact + energy(lstate,klspin) - energy(kstate,klspin)
+!   a_diag(t_kl) =  ( energy(lstate,klspin) - energy(kstate,klspin) ) * 2.0
+!   a_diag(t_kl) =  ( energy(lstate,klspin) - energy(kstate,klspin) ) * 4.0
 
  enddo 
+ call issue_warning('doing a trick here')
 
  if(allocated(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
 
@@ -1693,7 +1703,7 @@ subroutine chi_to_vchiv(nbf,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol)
 
  call allocate_spectral_function(prod_basis%nbf*nspin,wpol)
 
- wpol%pole(:) = eigenvalue(:)
+ wpol%pole(1:wpol%npole_reso_apb) = eigenvalue(:)
 
  nmat = wpol%npole_reso_apb
 
@@ -1775,7 +1785,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eig
  write(stdout,'(/,a)') ' Build v^{1/2} * chi * v^{1/2}'
 
  call allocate_spectral_function(nbf_auxil,wpol)
- wpol%pole(:) = eigenvalue(:)
+ wpol%pole(1:wpol%npole_reso_apb) = eigenvalue(:)
 
  nmat = wpol%npole_reso_apb
 
@@ -1863,6 +1873,45 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eig
  call stop_clock(timing_buildw)
 
 end subroutine chi_to_sqrtvchisqrtv_auxil
+
+
+!=========================================================================
+subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,nbf_auxil,a_diag,wpol)
+ use m_definitions
+ use m_warning
+ use m_basis_set
+ use m_eri
+ use m_spectral_function
+ implicit none
+ 
+ integer,intent(in)                    :: nbf,nbf_auxil
+ type(spectral_function),intent(inout) :: wpol
+ real(dp),intent(in)                   :: a_diag(wpol%npole_reso_spa)
+!=====
+ integer                               :: t_kl,klspin
+ integer                               :: kstate,lstate
+!=====
+
+ call start_clock(timing_buildw)
+
+ write(stdout,'(/,a)') ' Build v^{1/2} * chi * v^{1/2} part from single pole approximation'
+
+ wpol%pole(wpol%npole_reso_apb+1:wpol%npole_reso) = a_diag(:)
+
+ do t_kl=1,wpol%npole_reso_spa
+   kstate = wpol%transition_table_spa(1,t_kl)
+   lstate = wpol%transition_table_spa(2,t_kl)
+   klspin = wpol%transition_table_spa(3,t_kl)
+
+
+   wpol%residu_left(:,wpol%npole_reso_apb+t_kl) = eri_3center_eigen(:,kstate,lstate,klspin) * SQRT(spin_fact)
+
+ end do
+
+
+ call stop_clock(timing_buildw)
+
+end subroutine chi_to_sqrtvchisqrtv_auxil_spa
 
 
 end module m_timedependent
