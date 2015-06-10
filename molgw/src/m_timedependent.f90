@@ -30,6 +30,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  real(dp)                  :: energy_gm
  real(dp)                  :: alpha_local
  real(prec_td),allocatable :: amb_matrix(:,:),apb_matrix(:,:)
+ real(prec_td),allocatable :: a_diag(:)
  real(prec_td),allocatable :: bigx(:,:),bigy(:,:)
  real(dp),allocatable      :: eigenvalue(:)
  real(dp)                  :: energy_qp(basis%nbf,nspin)
@@ -117,13 +118,16 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  !
  ! Prepare the big matrices (A+B) and (A-B)
  ! 
- nmat = wpol_out%npole_reso
+ nmat = wpol_out%npole_reso_apb
  !
  ! The distribution of the two matrices have to be the same for A-B and A+B
  ! This is valid also when SCALAPACK is not used!
  call init_desc('S',nmat,nmat,desc_apb,m_apb,n_apb)
  call clean_allocate('A+B',apb_matrix,m_apb,n_apb)
  call clean_allocate('A-B',amb_matrix,m_apb,n_apb)
+
+ ! A diagonal is owned by all procs (= no distribution)
+ allocate(a_diag(wpol_out%npole_reso))
 
  !
  ! Build the (A+B) and (A-B) matrices in 3 steps
@@ -136,6 +140,10 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  write(stdout,'(/,a)') ' Build the electron-hole hamiltonian'
  ! Step 1
  call build_amb_apb_common(nmat,basis%nbf,c_matrix,energy_qp,wpol_out,alpha_local,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
+
+ ! Calculate the diagonal separately: it's needed for the single pole approximation
+ if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) & 
+     call build_a_diag_common(nmat,basis%nbf,c_matrix,energy_qp,wpol_out,a_diag)
 
  ! Step 2
  if(is_tddft) call build_apb_tddft(basis,c_matrix,occupation,wpol_out,m_apb,n_apb,apb_matrix)
@@ -303,9 +311,9 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
      ! Then loop inside each of the SCALAPACK blocks
      do t_kl=1,n_apb_block
        t_kl_global = colindex_local_to_global(ipcol,npcol_sd,t_kl)
-       kstate = wpol%transition_table(1,t_kl_global)
-       lstate = wpol%transition_table(2,t_kl_global)
-       klspin = wpol%transition_table(3,t_kl_global)
+       kstate = wpol%transition_table_apb(1,t_kl_global)
+       lstate = wpol%transition_table_apb(2,t_kl_global)
+       klspin = wpol%transition_table_apb(3,t_kl_global)
     
        if( .NOT. has_auxil_basis ) then
          klmin = MIN(kstate,lstate)
@@ -315,10 +323,9 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
     
        do t_ij=1,m_apb_block
          t_ij_global = rowindex_local_to_global(iprow,nprow_sd,t_ij)
-
-         istate = wpol%transition_table(1,t_ij_global)
-         jstate = wpol%transition_table(2,t_ij_global)
-         ijspin = wpol%transition_table(3,t_ij_global)
+         istate = wpol%transition_table_apb(1,t_ij_global)
+         jstate = wpol%transition_table_apb(2,t_ij_global)
+         ijspin = wpol%transition_table_apb(3,t_ij_global)
     
          !
          ! Only calculate the lower triangle
@@ -370,6 +377,11 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
            endif
            ! First part of the RPA correlation energy: sum over diagonal terms
            rpa_correlation = rpa_correlation - 0.25_dp * ( apb_block(t_ij,t_kl) + amb_block(t_ij,t_kl) )
+#if 0
+         else if( lstate >= nvirtual_SPA .OR. jstate >= nvirtual_SPA ) then
+          apb_block(t_ij,t_kl) = 0.0_dp
+          amb_block(t_ij,t_kl) = 0.0_dp
+#endif
          endif
     
        enddo 
@@ -398,6 +410,78 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
  call stop_clock(timing_build_common)
 
 end subroutine build_amb_apb_common
+
+
+!=========================================================================
+subroutine build_a_diag_common(nmat,nbf,c_matrix,energy,wpol,a_diag)
+ use m_spectral_function
+ use m_eri
+ use m_tools 
+ implicit none
+
+ integer,intent(in)                 :: nmat,nbf
+ real(dp),intent(in)                :: energy(nbf,nspin)
+ real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
+ type(spectral_function),intent(in) :: wpol
+ real(prec_td),intent(out)          :: a_diag(wpol%npole_reso)
+!=====
+ integer              :: t_kl,t_kl_global
+ integer              :: kstate,lstate
+ integer              :: klspin
+ integer              :: klmin
+ real(dp),allocatable :: eri_eigenstate_klmin(:,:,:,:)
+ real(dp)             :: eri_eigen_klkl
+ logical              :: k_is_klmin
+!=====
+
+ call start_clock(timing_build_common)
+
+ write(stdout,'(a)') ' Build diagonal of the RPA part: Energies + Hartree'
+
+ if( .NOT. has_auxil_basis) then
+   allocate(eri_eigenstate_klmin(nbf,nbf,nbf,nspin))
+   ! Set this to zero and then enforce the calculation of the first series of
+   ! Coulomb integrals
+   eri_eigenstate_klmin(:,:,:,:) = 0.0_dp
+ endif
+
+ !
+ ! Set up energy+hartree+exchange contributions to matrices (A+B) and (A-B) 
+ !
+
+
+ ! Then loop inside each of the SCALAPACK blocks
+ do t_kl=1,wpol%npole_reso
+   kstate = wpol%transition_table(1,t_kl)
+   lstate = wpol%transition_table(2,t_kl)
+   klspin = wpol%transition_table(3,t_kl)
+
+   if( .NOT. has_auxil_basis ) then
+     klmin = MIN(kstate,lstate)
+     k_is_klmin = (klmin == kstate)
+     call transform_eri_basis(nspin,c_matrix,klmin,klspin,eri_eigenstate_klmin)
+   endif
+
+   if(has_auxil_basis) then
+     eri_eigen_klkl = eri_eigen_ri_paral(kstate,lstate,klspin,kstate,lstate,klspin)
+   else
+     if(k_is_klmin) then ! treating (k,l)
+       eri_eigen_klkl = eri_eigenstate_klmin(lstate,kstate,lstate,klspin)
+     else                ! treating (l,k)
+       eri_eigen_klkl = eri_eigenstate_klmin(kstate,kstate,lstate,klspin)
+     endif
+   endif
+
+   a_diag(t_kl) = eri_eigen_klkl * spin_fact + energy(lstate,klspin) - energy(kstate,klspin)
+
+ enddo 
+
+ if(allocated(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
+
+
+ call stop_clock(timing_build_common)
+
+end subroutine build_a_diag_common
 
 
 !=========================================================================
@@ -460,15 +544,15 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,m_apb,n_apb,apb_matrix
  !
  do t_kl=1,n_apb  
    t_kl_global = colindex_local_to_global('C',t_kl)
-   kstate = wpol%transition_table(1,t_kl_global)
-   lstate = wpol%transition_table(2,t_kl_global)
-   klspin = wpol%transition_table(3,t_kl_global)
+   kstate = wpol%transition_table_apb(1,t_kl_global)
+   lstate = wpol%transition_table_apb(2,t_kl_global)
+   klspin = wpol%transition_table_apb(3,t_kl_global)
 
    do t_ij=1,m_apb 
      t_ij_global = rowindex_local_to_global('C',t_ij)
-     istate = wpol%transition_table(1,t_ij_global)
-     jstate = wpol%transition_table(2,t_ij_global)
-     ijspin = wpol%transition_table(3,t_ij_global)
+     istate = wpol%transition_table_apb(1,t_ij_global)
+     jstate = wpol%transition_table_apb(2,t_ij_global)
+     ijspin = wpol%transition_table_apb(3,t_ij_global)
 
      !
      ! Only calculate the lower triangle
@@ -637,15 +721,15 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,m_apb,n_ap
  !
  do t_kl=1,n_apb
    t_kl_global = colindex_local_to_global('C',t_kl)
-   kstate = wpol%transition_table(1,t_kl_global)
-   lstate = wpol%transition_table(2,t_kl_global)
-   klspin = wpol%transition_table(3,t_kl_global)
+   kstate = wpol%transition_table_apb(1,t_kl_global)
+   lstate = wpol%transition_table_apb(2,t_kl_global)
+   klspin = wpol%transition_table_apb(3,t_kl_global)
 
    do t_ij=1,m_apb
      t_ij_global = rowindex_local_to_global('C',t_ij)
-     istate = wpol%transition_table(1,t_ij_global)
-     jstate = wpol%transition_table(2,t_ij_global)
-     ijspin = wpol%transition_table(3,t_ij_global)
+     istate = wpol%transition_table_apb(1,t_ij_global)
+     jstate = wpol%transition_table_apb(2,t_ij_global)
+     ijspin = wpol%transition_table_apb(3,t_ij_global)
 
      !
      ! Only calculate the lower triangle
@@ -725,7 +809,8 @@ subroutine build_amb_apb_bse_auxil(nmat,nbf,prod_basis,c_matrix,wpol,wpol_static
 
  if( wpol_static%nprodbasis /= nauxil_3center ) stop'inconsistency problem'
 
- kstate_max = MAXVAL( wpol%transition_table(1,1:wpol%npole_reso) )
+ kstate_max = MAXVAL( wpol%transition_table_apb(1,1:wpol_static%npole_reso_apb) )
+
  call clean_allocate('Temporary array for W',wp0,1,nauxil_3center,ncore_W+1,nvirtual_W-1,ncore_W+1,kstate_max,1,nspin)
 
 
@@ -809,15 +894,15 @@ subroutine build_amb_apb_bse_auxil(nmat,nbf,prod_basis,c_matrix,wpol,wpol_static
      !
      do t_kl=1,n_apb_block
        t_kl_global = colindex_local_to_global(ipcol,npcol_sd,t_kl)
-       kstate = wpol%transition_table(1,t_kl_global)
-       lstate = wpol%transition_table(2,t_kl_global)
-       klspin = wpol%transition_table(3,t_kl_global)
+       kstate = wpol%transition_table_apb(1,t_kl_global)
+       lstate = wpol%transition_table_apb(2,t_kl_global)
+       klspin = wpol%transition_table_apb(3,t_kl_global)
 
        do t_ij=1,m_apb_block
          t_ij_global = rowindex_local_to_global(iprow,nprow_sd,t_ij)
-         istate = wpol%transition_table(1,t_ij_global)
-         jstate = wpol%transition_table(2,t_ij_global)
-         ijspin = wpol%transition_table(3,t_ij_global)
+         istate = wpol%transition_table_apb(1,t_ij_global)
+         jstate = wpol%transition_table_apb(2,t_ij_global)
+         ijspin = wpol%transition_table_apb(3,t_ij_global)
 
          !
          ! Only calculate the lower triangle
@@ -1037,7 +1122,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,m_x,n_x,big
  type(spectral_function),intent(in) :: chi
  real(prec_td),intent(in)           :: bigx(m_x,n_x)
  real(prec_td),intent(in)           :: bigy(m_x,n_x)
- real(dp),intent(in)                :: eigenvalue(chi%npole_reso)
+ real(dp),intent(in)                :: eigenvalue(chi%npole_reso_apb)
 !=====
  integer                            :: t_ij,t_kl
  integer                            :: t_ij_global,t_kl_global
@@ -1141,15 +1226,15 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,m_x,n_x,big
  deallocate(dipole_basis,dipole_tmp)
 
 
- allocate(residu_left(3,chi%npole_reso))
+ allocate(residu_left(3,chi%npole_reso_apb))
 
- nmat=chi%npole_reso
+ nmat=chi%npole_reso_apb
  residu_left(:,:) = 0.0_dp
  do t_ij=1,m_x
    t_ij_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ij)
-   istate = chi%transition_table(1,t_ij_global)
-   jstate = chi%transition_table(2,t_ij_global)
-   ijspin = chi%transition_table(3,t_ij_global)
+   istate = chi%transition_table_apb(1,t_ij_global)
+   jstate = chi%transition_table_apb(2,t_ij_global)
+   ijspin = chi%transition_table_apb(3,t_ij_global)
 
    ! Let use (i <-> j) symmetry to halve the loop
    do t_kl=1,n_x
@@ -1233,9 +1318,9 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,m_x,n_x,big
      enddo
      call xmax(t_ij_global)
 
-     istate = chi%transition_table(1,t_ij_global)
-     jstate = chi%transition_table(2,t_ij_global)
-     ijspin = chi%transition_table(3,t_ij_global)
+     istate = chi%transition_table_apb(1,t_ij_global)
+     jstate = chi%transition_table_apb(2,t_ij_global)
+     ijspin = chi%transition_table_apb(3,t_ij_global)
      if(planar) then
        reflectioni = wfn_reflection(basis,c_matrix,istate,ijspin)
        reflectionj = wfn_reflection(basis,c_matrix,jstate,ijspin)
@@ -1263,8 +1348,8 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,m_x,n_x,big
      ! Output the transition coefficients
      do t_ij_global=1,nmat
        t_ij = rowindex_global_to_local('S',t_ij_global)
-       istate = chi%transition_table(1,t_ij_global)
-       jstate = chi%transition_table(2,t_ij_global)
+       istate = chi%transition_table_apb(1,t_ij_global)
+       jstate = chi%transition_table_apb(2,t_ij_global)
      
        coeff = 0.0_dp
        if( t_ij /= 0 .AND. t_kl /=0 ) then 
@@ -1578,9 +1663,9 @@ subroutine chi_to_vchiv(nbf,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol)
  type(basis_set),intent(in)            :: prod_basis
  real(dp),intent(in)                   :: c_matrix(nbf,nbf,nspin)
  type(spectral_function),intent(inout) :: wpol
- real(prec_td),intent(in)              :: bigx(wpol%npole_reso,wpol%npole_reso)
- real(prec_td),intent(in)              :: bigy(wpol%npole_reso,wpol%npole_reso)
- real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso)
+ real(prec_td),intent(in)              :: bigx(wpol%npole_reso_apb,wpol%npole_reso_apb)
+ real(prec_td),intent(in)              :: bigy(wpol%npole_reso_apb,wpol%npole_reso_apb)
+ real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso_apb)
 !=====
  integer                               :: t_kl,klspin,ijspin
  integer                               :: istate,jstate,kstate,lstate,ijstate,ijstate_spin
@@ -1610,13 +1695,13 @@ subroutine chi_to_vchiv(nbf,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol)
 
  wpol%pole(:) = eigenvalue(:)
 
- nmat=wpol%npole_reso
+ nmat = wpol%npole_reso_apb
 
  wpol%residu_left(:,:) = 0.0_dp
  do t_kl=1,nmat 
-   kstate = wpol%transition_table(1,t_kl)
-   lstate = wpol%transition_table(2,t_kl)
-   klspin = wpol%transition_table(3,t_kl)
+   kstate = wpol%transition_table_apb(1,t_kl)
+   lstate = wpol%transition_table_apb(2,t_kl)
+   klspin = wpol%transition_table_apb(3,t_kl)
 
    klstate_min = MIN(kstate,lstate)
    klstate_max = MAX(kstate,lstate)
@@ -1666,7 +1751,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eig
  real(prec_td),intent(inout)           :: bigx(m_x,n_x)
  real(prec_td),intent(in)              :: bigy(m_x,n_x)
  type(spectral_function),intent(inout) :: wpol
- real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso)
+ real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso_apb)
  real(dp),intent(out)                  :: energy_gm
 !=====
  integer                               :: t_kl,t_kl_global,klspin
@@ -1692,15 +1777,15 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eig
  call allocate_spectral_function(nbf_auxil,wpol)
  wpol%pole(:) = eigenvalue(:)
 
- nmat = wpol%npole_reso
+ nmat = wpol%npole_reso_apb
 
 #ifndef HAVE_SCALAPACK
 
  allocate(eri_3center_mat(nbf_auxil,nmat))
  do t_kl=1,nmat
-   kstate = wpol%transition_table(1,t_kl)
-   lstate = wpol%transition_table(2,t_kl)
-   klspin = wpol%transition_table(3,t_kl)
+   kstate = wpol%transition_table_apb(1,t_kl)
+   lstate = wpol%transition_table_apb(2,t_kl)
+   klspin = wpol%transition_table_apb(3,t_kl)
    eri_3center_mat(:,t_kl) = eri_3center_eigen(:,kstate,lstate,klspin)
  end do
 
@@ -1744,9 +1829,9 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eig
 
        do t_ij=1,m_bigx_block
          t_ij_global = rowindex_local_to_global(iprow,nprow_sd,t_ij)
-         istate = wpol%transition_table(1,t_ij_global)
-         jstate = wpol%transition_table(2,t_ij_global)
-         ijspin = wpol%transition_table(3,t_ij_global)
+         istate = wpol%transition_table_apb(1,t_ij_global)
+         jstate = wpol%transition_table_apb(2,t_ij_global)
+         ijspin = wpol%transition_table_apb(3,t_ij_global)
 
          wpol%residu_left(:,t_kl_global) = wpol%residu_left(:,t_kl_global) &
                   + eri_3center_eigen(:,istate,jstate,ijspin) * bigx_block(t_ij,t_kl)
@@ -1761,9 +1846,9 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eig
 
  energy_gm = 0.0_dp
  do t_ij_global=1,nmat
-   istate = wpol%transition_table(1,t_ij_global)
-   jstate = wpol%transition_table(2,t_ij_global)
-   ijspin = wpol%transition_table(3,t_ij_global)
+   istate = wpol%transition_table_apb(1,t_ij_global)
+   jstate = wpol%transition_table_apb(2,t_ij_global)
+   ijspin = wpol%transition_table_apb(3,t_ij_global)
    energy_gm = energy_gm - SUM( eri_3center_eigen(:,istate,jstate,ijspin)**2 ) * spin_fact * 0.5_dp
  enddo
 

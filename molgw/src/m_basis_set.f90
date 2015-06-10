@@ -1160,7 +1160,7 @@ subroutine distribute_auxil_basis(auxil_basis)
  allocate(iproc_ibf_auxil(auxil_basis%nbf))
  allocate(nbf_local_iproc(0:nproc-1))
 
- iproc = 0
+ iproc = nproc
  nbf_local_iproc(:) = 0
  do ibf=1,auxil_basis%nbf
 

@@ -17,11 +17,22 @@ module m_spectral_function
  !
 
  type spectral_function 
-   integer              :: npole
-   integer              :: npole_reso
    integer              :: nprodbasis
+
+   !
+   ! Information about all the poles (the calculated ones + the approximated ones)
+   !
+   integer              :: npole_reso
    integer,allocatable  :: transition_table(:,:)  ! correspondance table from
                                                   ! transition index to state pair indexes
+
+   !
+   ! Information for poles actually calculated
+   !
+   integer              :: npole_reso_apb
+   integer,allocatable  :: transition_table_apb(:,:)  ! correspondance table from
+                                                      ! transition index to state pair indexes
+
    real(dp),allocatable :: pole(:)
    real(dp),allocatable :: residu_left(:,:)       ! first index runs on n, second index on i
  end type spectral_function
@@ -36,17 +47,16 @@ module m_spectral_function
  integer,protected :: nvirtual_G
  integer,protected :: nvirtual_W
 
+ integer,parameter :: nvirtual_SPA=60
+
  !
  ! the boring small complex number eta: (0.0_dp,0.001_dp) is typically over converged
  ! Having a larger ieta value smoothen the oscillation far from the HOMO-LUMO gap
  complex(dp),protected :: ieta
 
-#ifdef CRPA
- integer,parameter :: band1=1
- integer,parameter :: band2=2
-#endif
 
 contains
+
 
 !=========================================================================
 subroutine init_spectral_function(nbf,occupation,sf)
@@ -95,8 +105,7 @@ subroutine init_spectral_function(nbf,occupation,sf)
 
  ! Set the number of poles as twice the number of resonant transtions
  sf%npole_reso = itrans  
- sf%npole      = 2*itrans  
- allocate(sf%transition_table(3,sf%npole))
+ allocate(sf%transition_table(3,sf%npole_reso))
  ! Set the transition_table 
  itrans=0
  do ijspin=1,nspin
@@ -109,13 +118,47 @@ subroutine init_spectral_function(nbf,occupation,sf)
        sf%transition_table(1,itrans) = ibf
        sf%transition_table(2,itrans) = jbf
        sf%transition_table(3,itrans) = ijspin
-       ! Set the anti-resonant transition table too
-       sf%transition_table(1,itrans+sf%npole/2) = jbf
-       sf%transition_table(2,itrans+sf%npole/2) = ibf
-       sf%transition_table(3,itrans+sf%npole/2) = ijspin
      enddo
    enddo
  enddo
+
+ !
+ ! The same but only for the poles that will be actually calculated by
+ ! diagonalization 
+ ! 
+
+ !
+ ! First, count the number of resonant transitions
+ itrans=0
+ do ijspin=1,nspin
+   do ibf=1,nbf
+     do jbf=1,nbf
+       if( skip_transition_apb(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) cycle
+       if( occupation(jbf,ijspin) - occupation(ibf,ijspin) > 0.0_dp ) cycle
+       itrans = itrans + 1
+     enddo
+   enddo
+ enddo
+
+ ! Set the number of poles as twice the number of resonant transtions
+ sf%npole_reso_apb = itrans
+ allocate(sf%transition_table_apb(3,sf%npole_reso_apb))
+ ! Set the transition_table 
+ itrans=0
+ do ijspin=1,nspin
+   do ibf=1,nbf
+     do jbf=1,nbf
+       if( skip_transition_apb(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) cycle
+       if( occupation(jbf,ijspin) - occupation(ibf,ijspin) > 0.0_dp ) cycle
+       itrans = itrans + 1
+       ! Set the resonant transition table
+       sf%transition_table_apb(1,itrans) = ibf
+       sf%transition_table_apb(2,itrans) = jbf
+       sf%transition_table_apb(3,itrans) = ijspin
+     enddo
+   enddo
+ enddo
+
 
 
 end subroutine init_spectral_function
@@ -152,22 +195,40 @@ function skip_transition(nspin,ib1,ib2,occ1,occ2)
 
  !
  ! skip the core states if asked for a frozen-core calculation
- if( ib1 <= ncore_W .OR. ib2 <= ncore_W ) skip_transition=.TRUE.
+ if( ib1 <= ncore_W .OR. ib2 <= ncore_W ) skip_transition = .TRUE.
  !
  ! skip the virtual states if asked for a frozen-virtual calculation
- if( ib1 >= nvirtual_W .OR. ib2 >= nvirtual_W ) skip_transition=.TRUE.
+ if( ib1 >= nvirtual_W .OR. ib2 >= nvirtual_W ) skip_transition = .TRUE.
 
- if( occ1 < completely_empty             .AND. occ2 < completely_empty )             skip_transition=.TRUE.
- if( occ1 > spin_fact - completely_empty .AND. occ2 > spin_fact - completely_empty ) skip_transition=.TRUE.
+ if( occ1 < completely_empty             .AND. occ2 < completely_empty )             skip_transition = .TRUE.
+ if( occ1 > spin_fact - completely_empty .AND. occ2 > spin_fact - completely_empty ) skip_transition = .TRUE.
 
-#ifdef CRPA
- if( ib1==band1 .AND. ib2==band1 )  skip_transition=.TRUE.
- if( ib1==band1 .AND. ib2==band2 )  skip_transition=.TRUE.
- if( ib1==band2 .AND. ib2==band1 )  skip_transition=.TRUE.
- if( ib1==band2 .AND. ib2==band2 )  skip_transition=.TRUE.
-#endif
 
 end function skip_transition
+
+
+!=========================================================================
+function skip_transition_apb(nspin,ib1,ib2,occ1,occ2)
+ implicit none
+ logical             :: skip_transition_apb
+ integer,intent(in)  :: nspin,ib1,ib2
+ real(dp),intent(in) :: occ1,occ2
+!=====
+
+ skip_transition_apb = .FALSE.
+
+ !
+ ! skip the core states if asked for a frozen-core calculation
+ if( ib1 <= ncore_W .OR. ib2 <= ncore_W ) skip_transition_apb = .TRUE.
+ !
+ ! skip the virtual states if asked for a frozen-virtual calculation
+ if( ib1 >= nvirtual_SPA .OR. ib2 >= nvirtual_SPA ) skip_transition_apb = .TRUE.
+
+ if( occ1 < completely_empty             .AND. occ2 < completely_empty )             skip_transition_apb = .TRUE.
+ if( occ1 > spin_fact - completely_empty .AND. occ2 > spin_fact - completely_empty ) skip_transition_apb = .TRUE.
+
+
+end function skip_transition_apb
 
 
 !=========================================================================
@@ -331,7 +392,6 @@ subroutine read_spectral_function(sf,reading_status)
  read(wfile) npole_read
 
  sf%npole_reso = npole_read
- sf%npole      = npole_read * 2
  call allocate_spectral_function(nprodbasis_read,sf)
 
 
@@ -358,7 +418,6 @@ subroutine read_spectral_function(sf,reading_status)
  disp = disp + SIZEOF(npole_read)
 
  sf%npole_reso = npole_read
- sf%npole      = npole_read * 2
  call allocate_spectral_function(nbf_local_iproc(rank),sf)
 
  call MPI_FILE_READ_AT(wfile,disp,sf%pole,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
