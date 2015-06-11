@@ -48,6 +48,7 @@ module m_inputparam
  integer,protected                :: ncorew 
  integer,protected                :: nvirtualg 
  integer,protected                :: nvirtualw 
+ integer,protected                :: nvirtualspa
  logical,protected                :: is_frozencore
  logical,protected                :: is_tda,is_triplet
  integer,protected                :: nspin
@@ -641,8 +642,10 @@ subroutine read_inputfile_namelist()
  if(ncorew<0) stop'negative ncorew is meaningless'
  if(nvirtualg<0) stop'negative nvirtualg is meaningless'
  if(nvirtualw<0) stop'negative nvirtualw is meaningless'
+ if(nvirtualspa<0) stop'negative nvirtualspa is meaningless'
  if(nvirtualg<ncoreg) stop'too small nvirtualg is meaningless'
  if(nvirtualw<ncorew) stop'too small nvirtualw is meaningless'
+ if(nvirtualspa<ncorew) stop'too small nvirtualspa is meaningless'
  if(nspin/=1 .AND. nspin/=2) stop'nspin in incorrect'
  if(magnetization<-1.e-5)    stop'magnetization is negative'
  if(magnetization>1.e-5 .AND. nspin==1) stop'magnetization is non-zero and nspin is 1'

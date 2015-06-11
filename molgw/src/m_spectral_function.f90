@@ -55,7 +55,7 @@ module m_spectral_function
  integer,protected :: nvirtual_G
  integer,protected :: nvirtual_W
 
- integer,parameter :: nvirtual_SPA=10000 ! 50 ! 10000 !80
+ integer,protected :: nvirtual_SPA
 
  !
  ! the boring small complex number eta: (0.0_dp,0.001_dp) is typically over converged
@@ -79,10 +79,11 @@ subroutine init_spectral_function(nbf,occupation,sf)
 
  ieta = (0.0_dp,1.0_dp) * pole_eta 
 
- ncore_G    = ncoreg
- ncore_W    = ncorew
- nvirtual_G = MIN(nvirtualg,nbf+1)
- nvirtual_W = MIN(nvirtualw,nbf+1)
+ ncore_G      = ncoreg
+ ncore_W      = ncorew
+ nvirtual_G   = MIN(nvirtualg,nbf+1)
+ nvirtual_W   = MIN(nvirtualw,nbf+1)
+ nvirtual_SPA = MIN(nvirtualspa,nbf+1)
 
  if(is_frozencore) then
    if( ncore_G == 0) ncore_G = atoms_core_states()

@@ -283,7 +283,7 @@ vl[i].keyword  ='nvirtualg'
 vl[i].family   ='post'
 vl[i].default  =100000
 vl[i].datatype ='integer'
-vl[i].comment  ='Sets the state beyond which they are excluded from the sum in the Green\'s function G.'
+vl[i].comment  ='Sets the starting state beyond which states are excluded from the sum in the Green\'s function G.'
 
 #================================
 vl.append(variable())
@@ -292,7 +292,16 @@ vl[i].keyword  ='nvirtualw'
 vl[i].family   ='post'
 vl[i].default  =100000
 vl[i].datatype ='integer'
-vl[i].comment  ='Sets the state beyond which they are excluded from the sum in the screened Coulomb interaction W, in TD-DFT, and in BSE.'
+vl[i].comment  ='Sets the starting state beyond which states are excluded from the sum in the screened Coulomb interaction W, in TD-DFT, and in BSE.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='nvirtualspa'
+vl[i].family   ='post'
+vl[i].default  =100000
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the starting state beyond which states are accounted for with a Single Pole Approximation for the screened Coulomb interaction W for GW.'
 
 #================================
 vl.append(variable())

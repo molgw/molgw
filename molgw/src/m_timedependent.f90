@@ -376,6 +376,12 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
          endif
     
          if( t_ij_global == t_kl_global ) then
+#ifdef TODAY
+           if( lstate >=41 .OR. jstate >=41 ) then !FBFB
+             apb_block(t_ij,t_kl) = apb_block(t_ij,t_kl) - 1.0_dp * eri_eigen_ijkl * spin_fact
+             amb_block(t_ij,t_kl) = amb_block(t_ij,t_kl) + 1.0_dp * eri_eigen_ijkl * spin_fact
+           endif
+#endif
            !
            ! Only one proc should add the diagonal
            if( rank == 0 ) then
@@ -384,8 +390,8 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
            endif
            ! First part of the RPA correlation energy: sum over diagonal terms
            rpa_correlation = rpa_correlation - 0.25_dp * ( apb_block(t_ij,t_kl) + amb_block(t_ij,t_kl) )
-#if 0
-         else if( lstate >= 50 .OR. jstate >= 50 ) then
+#ifdef TODAY
+         else if( lstate >=41 .OR. jstate >=41 ) then
           apb_block(t_ij,t_kl) = 0.0_dp
           amb_block(t_ij,t_kl) = 0.0_dp
 #endif
@@ -470,7 +476,7 @@ subroutine build_a_diag_common(nmat,nbf,c_matrix,energy,wpol,a_diag)
    endif
 
    if(has_auxil_basis) then
-     eri_eigen_klkl = eri_eigen_ri_paral(kstate,lstate,klspin,kstate,lstate,klspin)
+     eri_eigen_klkl = eri_eigen_ri(kstate,lstate,klspin,kstate,lstate,klspin)
    else
      if(k_is_klmin) then ! treating (k,l)
        eri_eigen_klkl = eri_eigenstate_klmin(lstate,kstate,lstate,klspin)
@@ -480,11 +486,12 @@ subroutine build_a_diag_common(nmat,nbf,c_matrix,energy,wpol,a_diag)
    endif
 
    a_diag(t_kl) = eri_eigen_klkl * spin_fact + energy(lstate,klspin) - energy(kstate,klspin)
-!   a_diag(t_kl) =  ( energy(lstate,klspin) - energy(kstate,klspin) ) * 2.0
+!   a_diag(t_kl) = 1000000.
+!   a_diag(t_kl) = ( eri_eigen_klkl * spin_fact + ( energy(lstate,klspin) - energy(kstate,klspin) ) ) * 2.0
 !   a_diag(t_kl) =  ( energy(lstate,klspin) - energy(kstate,klspin) ) * 4.0
 
  enddo 
- call issue_warning('doing a trick here')
+ call issue_warning('FBFB doing a trick here')
 
  if(allocated(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
 
@@ -1904,7 +1911,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,nbf_auxil,a_diag,wpol)
    klspin = wpol%transition_table_spa(3,t_kl)
 
 
-   wpol%residu_left(:,wpol%npole_reso_apb+t_kl) = eri_3center_eigen(:,kstate,lstate,klspin) * SQRT(spin_fact)
+   wpol%residu_left(:,wpol%npole_reso_apb+t_kl) = eri_3center_eigen(:,kstate,lstate,klspin) * SQRT(spin_fact) 
 
  end do
 
