@@ -127,6 +127,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  call clean_allocate('A-B',amb_matrix,m_apb,n_apb)
 
  ! A diagonal is owned by all procs (= no distribution)
+ ! wpol_out%npole_reso_spa are the pole not explictely counted in wpol_out%npole_reso_apb
  allocate(a_diag(wpol_out%npole_reso_spa))
 
  !
@@ -153,7 +154,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
    if(.NOT. has_auxil_basis ) then
      call build_amb_apb_bse(basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
    else
-     call build_amb_apb_bse_auxil(nmat,basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+     call build_amb_apb_bse_auxil(nmat,basis%nbf,c_matrix,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
    endif
    call destroy_spectral_function(wpol_static)
  endif
@@ -212,7 +213,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! and the dynamic dipole tensor
  !
  if( calc_type%is_td .OR. calc_type%is_bse ) &
-   call optical_spectrum(basis,prod_basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
+   call optical_spectrum(basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
 
  !
  ! Calculate Wp= v * chi * v    if necessary
@@ -376,12 +377,6 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
          endif
     
          if( t_ij_global == t_kl_global ) then
-#ifdef TODAY
-           if( lstate >=41 .OR. jstate >=41 ) then !FBFB
-             apb_block(t_ij,t_kl) = apb_block(t_ij,t_kl) - 1.0_dp * eri_eigen_ijkl * spin_fact
-             amb_block(t_ij,t_kl) = amb_block(t_ij,t_kl) + 1.0_dp * eri_eigen_ijkl * spin_fact
-           endif
-#endif
            !
            ! Only one proc should add the diagonal
            if( rank == 0 ) then
@@ -390,11 +385,6 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
            endif
            ! First part of the RPA correlation energy: sum over diagonal terms
            rpa_correlation = rpa_correlation - 0.25_dp * ( apb_block(t_ij,t_kl) + amb_block(t_ij,t_kl) )
-#ifdef TODAY
-         else if( lstate >=41 .OR. jstate >=41 ) then
-          apb_block(t_ij,t_kl) = 0.0_dp
-          amb_block(t_ij,t_kl) = 0.0_dp
-#endif
          endif
     
        enddo 
@@ -486,12 +476,8 @@ subroutine build_a_diag_common(nmat,nbf,c_matrix,energy,wpol,a_diag)
    endif
 
    a_diag(t_kl) = eri_eigen_klkl * spin_fact + energy(lstate,klspin) - energy(kstate,klspin)
-!   a_diag(t_kl) = 1000000.
-!   a_diag(t_kl) = ( eri_eigen_klkl * spin_fact + ( energy(lstate,klspin) - energy(kstate,klspin) ) ) * 2.0
-!   a_diag(t_kl) =  ( energy(lstate,klspin) - energy(kstate,klspin) ) * 4.0
 
  enddo 
- call issue_warning('FBFB doing a trick here')
 
  if(allocated(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
 
@@ -788,7 +774,7 @@ end subroutine build_amb_apb_bse
 
 
 !=========================================================================
-subroutine build_amb_apb_bse_auxil(nmat,nbf,prod_basis,c_matrix,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+subroutine build_amb_apb_bse_auxil(nmat,nbf,c_matrix,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
  use m_spectral_function
  use m_basis_set
  use m_eri
@@ -796,7 +782,6 @@ subroutine build_amb_apb_bse_auxil(nmat,nbf,prod_basis,c_matrix,wpol,wpol_static
  implicit none
 
  integer,intent(in)                 :: nmat,nbf
- type(basis_set),intent(in)         :: prod_basis
  real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
  type(spectral_function),intent(in) :: wpol,wpol_static
  integer,intent(in)                 :: m_apb,n_apb
@@ -826,7 +811,7 @@ subroutine build_amb_apb_bse_auxil(nmat,nbf,prod_basis,c_matrix,wpol,wpol_static
 
  if( wpol_static%nprodbasis /= nauxil_3center ) stop'inconsistency problem'
 
- kstate_max = MAXVAL( wpol%transition_table_apb(1,1:wpol_static%npole_reso_apb) )
+ kstate_max = MAXVAL( wpol%transition_table_apb(1,1:wpol%npole_reso_apb) )
 
  call clean_allocate('Temporary array for W',wp0,1,nauxil_3center,ncore_W+1,nvirtual_W-1,ncore_W+1,kstate_max,1,nspin)
 
@@ -1124,7 +1109,7 @@ end subroutine diago_4blocks_chol
 
 
 !=========================================================================
-subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenvalue)
+subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenvalue)
  use m_tools
  use m_basis_set
  use m_eri
@@ -1134,7 +1119,7 @@ subroutine optical_spectrum(basis,prod_basis,occupation,c_matrix,chi,m_x,n_x,big
  implicit none
 
  integer,intent(in)                 :: m_x,n_x
- type(basis_set),intent(in)         :: basis,prod_basis
+ type(basis_set),intent(in)         :: basis
  real(dp),intent(in)                :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
  type(spectral_function),intent(in) :: chi
  real(prec_td),intent(in)           :: bigx(m_x,n_x)

@@ -2871,8 +2871,6 @@ subroutine prepare_eri_3center_eigen(c_matrix)
  enddo ! klspin
  deallocate(eri_3center_tmp)
 
- write(stdout,'(a,/)') ' Done'
-
  call stop_clock(timing_eri_3center_eigen)
 
 end subroutine prepare_eri_3center_eigen
@@ -2936,8 +2934,6 @@ subroutine prepare_eri_3center_eigen_mixed(c_matrix)
 
  enddo ! klspin
  deallocate(eri_3center_tmp)
-
- write(stdout,'(a,/)') ' Done'
 
  call stop_clock(timing_eri_3center_eigen)
 
