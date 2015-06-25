@@ -1369,7 +1369,7 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eige
          endif
        endif
        call xsum(coeff)
-       if( ABS(coeff) > 0.1_dp ) write(stdout,'(8x,i4,a,i4,x,f12.5)') istate,' -> ',jstate,coeff
+       if( ABS(coeff) > 0.1_dp ) write(stdout,'(8x,i4,a,i4,x,f12.5)') istate,' <- ',jstate,coeff
      enddo
 
 

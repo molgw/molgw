@@ -181,7 +181,7 @@ subroutine init_spectral_function(nbf,occupation,sf)
  enddo
 
  if( sf%npole_reso_apb /= sf%npole_reso ) then
-   write(msg,'(a,i4,2x,i4)') 'using single pole approximation with # poles instead of # ',sf%npole_reso_apb,sf%npole_reso
+   write(msg,'(a,i6,2x,i6)') 'using single pole approximation with # poles instead of # ',sf%npole_reso_apb,sf%npole_reso
    call issue_warning(msg)
  endif
 

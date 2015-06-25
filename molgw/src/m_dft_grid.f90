@@ -43,9 +43,9 @@ subroutine setup_dft_grid()
  real(dp),allocatable :: y1(:),y2(:)
  real(dp),allocatable :: z1(:),z2(:)
  real(dp),allocatable :: w1(:),w2(:)
- real(dp),allocatable :: xa(:),wxa(:)
+ real(dp),allocatable :: xa(:,:),wxa(:,:)
  real(dp)             :: p_becke(natom_basis),s_becke(natom_basis,natom_basis),fact_becke 
- real(dp)             :: mu
+ real(dp)             :: mu,alpha,xtmp
  integer              :: jatom,katom
 !=====
 
@@ -74,19 +74,50 @@ subroutine setup_dft_grid()
    stop'integration quality not recognized'
  end select
 
- allocate(xa(nradial),wxa(nradial))
+ allocate(xa(nradial,natom_basis),wxa(nradial,natom_basis))
  allocate(x1(nangular_fine),y1(nangular_fine),z1(nangular_fine),w1(nangular_fine))
  allocate(x2(nangular_coarse),y2(nangular_coarse),z2(nangular_coarse),w2(nangular_coarse))
 
  !
  ! spherical integration
- ! radial part with Gauss-Legendre
- call coeffs_gausslegint(-1.0_dp,1.0_dp,xa,wxa,nradial)
  !
- ! Transformation from [-1;1] to [0;+\infty[
- ! taken from M. Krack JCP 1998
- wxa(:) = wxa(:) * ( 1.0_dp / log(2.0_dp) / ( 1.0_dp - xa(:) ) )
- xa(:)  = log( 2.0_dp / (1.0_dp - xa(:) ) ) / log(2.0_dp)
+
+! !
+! ! radial part with Gauss-Legendre
+! call coeffs_gausslegint(-1.0_dp,1.0_dp,xa(:,1),wxa(:,1),nradial)
+! !
+! ! Transformation from [-1;1] to [0;+\infty[
+! ! taken from M. Krack JCP 1998
+! wxa(:,1) = wxa(:,1) * ( 1.0_dp / log(2.0_dp) / ( 1.0_dp - xa(:,1) ) )
+! xa(:,1)  = log( 2.0_dp / (1.0_dp - xa(:,1) ) ) / log(2.0_dp)
+!
+! ! All atoms have the same grid
+! do iatom=2,natom_basis
+!   xa(:,iatom)  =  xa(:,1)
+!   wxa(:,iatom) = wxa(:,1)
+! enddo
+
+
+ !
+ ! LOG3 radial grid
+ do iatom=1,natom_basis
+
+   select case(NINT(zatom(iatom)))
+   case(3,4,11,12,19,20)
+     alpha = 7.0_dp
+   case default
+     alpha = 5.0_dp
+   end select
+
+   do iradial=1,nradial
+     xtmp = ( iradial - 0.5_dp ) / REAL(nradial,dp)
+     xa(iradial,iatom)   = -alpha * log( 1.0_dp - xtmp**3)
+     wxa(iradial,iatom)  = 3.0_dp * alpha * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial,dp)
+   enddo
+
+ enddo
+
+
 
  n1 = nangular_fine
  ! angular part with Lebedev - Laikov
@@ -159,7 +190,7 @@ subroutine setup_dft_grid()
  do iatom=1,natom_basis
    radius = element_covalent_radius(REAL(basis_element(iatom),dp))
    do iradial=1,nradial
-     if( xa(iradial) < pruning_limit * radius ) then
+     if( xa(iradial,iatom) < pruning_limit * radius ) then
        ngrid = ngrid + nangular_coarse
      else
        ngrid = ngrid + nangular_fine
@@ -184,7 +215,7 @@ subroutine setup_dft_grid()
    radius = element_covalent_radius(REAL(basis_element(iatom),dp))
 
    do iradial=1,nradial
-     if( xa(iradial) < pruning_limit * radius ) then
+     if( xa(iradial,iatom) < pruning_limit * radius ) then
        nangular = nangular_coarse
      else
        nangular = nangular_fine
@@ -195,16 +226,16 @@ subroutine setup_dft_grid()
        if( .NOT. is_my_grid_task(igrid) ) cycle
        ir = ir + 1
 
-       if( xa(iradial) < pruning_limit * radius ) then
-         rr_grid(1,ir) = xa(iradial) * x2(iangular) + x(1,iatom)
-         rr_grid(2,ir) = xa(iradial) * y2(iangular) + x(2,iatom)
-         rr_grid(3,ir) = xa(iradial) * z2(iangular) + x(3,iatom)
-         weight   = wxa(iradial) * w2(iangular) * xa(iradial)**2 * 4.0_dp * pi
+       if( xa(iradial,iatom) < pruning_limit * radius ) then
+         rr_grid(1,ir) = xa(iradial,iatom) * x2(iangular) + x(1,iatom)
+         rr_grid(2,ir) = xa(iradial,iatom) * y2(iangular) + x(2,iatom)
+         rr_grid(3,ir) = xa(iradial,iatom) * z2(iangular) + x(3,iatom)
+         weight   = wxa(iradial,iatom) * w2(iangular) * xa(iradial,iatom)**2 * 4.0_dp * pi
        else
-         rr_grid(1,ir) = xa(iradial) * x1(iangular) + x(1,iatom)
-         rr_grid(2,ir) = xa(iradial) * y1(iangular) + x(2,iatom)
-         rr_grid(3,ir) = xa(iradial) * z1(iangular) + x(3,iatom)
-         weight   = wxa(iradial) * w1(iangular) * xa(iradial)**2 * 4.0_dp * pi
+         rr_grid(1,ir) = xa(iradial,iatom) * x1(iangular) + x(1,iatom)
+         rr_grid(2,ir) = xa(iradial,iatom) * y1(iangular) + x(2,iatom)
+         rr_grid(3,ir) = xa(iradial,iatom) * z1(iangular) + x(3,iatom)
+         weight   = wxa(iradial,iatom) * w1(iangular) * xa(iradial,iatom)**2 * 4.0_dp * pi
        endif
 
 
