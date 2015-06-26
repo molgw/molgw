@@ -136,7 +136,8 @@ program molgw
 
  !
  ! Build the occupation array
- call set_occupation(electrons,magnetization,basis%nbf,occupation)
+ ! with zero temperature since we do not have the energy yet
+ call set_occupation(basis%nbf,0.0_dp,electrons,magnetization,energy,occupation)
 
  !
  ! Try to read a RESTART file if it exists

@@ -681,14 +681,15 @@ end subroutine test_density_matrix
 
 
 !=========================================================================
-subroutine set_occupation(electrons,magnetization,nbf,occupation)
+subroutine set_occupation(nbf,temperature,electrons,magnetization,energy,occupation)
  use m_definitions
  use m_mpi
  use m_warning
  use m_inputparam,only: nspin,spin_fact,print_matrix_
  implicit none
- real(dp),intent(in)  :: electrons,magnetization
  integer,intent(in)   :: nbf
+ real(dp),intent(in)  :: electrons,magnetization,temperature
+ real(dp),intent(in)  :: energy(nbf,nspin)
  real(dp),intent(out) :: occupation(nbf,nspin)
 !=====
  real(dp)             :: remaining_electrons(nspin)
@@ -697,46 +698,54 @@ subroutine set_occupation(electrons,magnetization,nbf,occupation)
  integer              :: occfile
 !=====
 
+ if( temperature < 1.0e-8_dp ) then
 
-  occupation(:,:)=0.0_dp
+   occupation(:,:)=0.0_dp
+  
+   inquire(file='manual_occupations',exist=file_exists)
+  
+   if(.NOT. file_exists) then
+     remaining_electrons(1) = (electrons+magnetization) / REAL(nspin,dp)
+     if(nspin==2) remaining_electrons(2) = (electrons-magnetization) / REAL(nspin,dp)
+  
+     do ibf=1,nbf
+       occupation(ibf,:) = MIN(remaining_electrons(:), spin_fact)
+       remaining_electrons(:)  = remaining_electrons(:) - occupation(ibf,:)
+     end do
+   else
+     write(stdout,*)
+     write(stdout,*) 'occupations are read from file: manual_occupations'
+     msg='reading manual occupations from file'
+     call issue_warning(msg)
+     open(newunit=occfile,file='manual_occupations',status='old')
+     !
+     ! read nlines, all other occupations are set to zero
+     read(occfile,*) nlines
+     do ilines=1,nlines
+       read(occfile,*) occupation(ilines,:)
+     enddo
+     close(occfile)
+     write(stdout,*) 'occupations set, closing file'
+   endif
 
-  inquire(file='manual_occupations',exist=file_exists)
+ else
+   !
+   ! Finite temperature case
+   !
 
-  if(.NOT. file_exists) then
-    remaining_electrons(1) = (electrons+magnetization) / REAL(nspin,dp)
-    if(nspin==2) remaining_electrons(2) = (electrons-magnetization) / REAL(nspin,dp)
+ endif
 
-    do ibf=1,nbf
-      occupation(ibf,:) = MIN(remaining_electrons(:), spin_fact)
-      remaining_electrons(:)  = remaining_electrons(:) - occupation(ibf,:)
-    end do
-  else
-    write(stdout,*)
-    write(stdout,*) 'occupations are read from file: manual_occupations'
-    msg='reading manual occupations from file'
-    call issue_warning(msg)
-    open(newunit=occfile,file='manual_occupations',status='old')
-    !
-    ! read nlines, all other occupations are set to zero
-    read(occfile,*) nlines
-    do ilines=1,nlines
-      read(occfile,*) occupation(ilines,:)
-    enddo
-    close(occfile)
-    write(stdout,*) 'occupations set, closing file'
-  endif
- 
-  !
-  ! final check
-  if( ABS( SUM(occupation(:,:)) - electrons ) > 1.0d-7 ) then
-    write(stdout,*) 'occupation set up failed to give the right number of electrons'
-    write(stdout,*) 'sum of occupations',SUM(occupation(:,:))
-    write(stdout,*) 'electrons',electrons
-    do ibf=1,nbf
-      write(stdout,*) ibf,occupation(ibf,:)
-    enddo
-    stop'FAILURE in set_occupation'
-  endif 
+ !
+ ! final check
+ if( ABS( SUM(occupation(:,:)) - electrons ) > 1.0e-7_dp ) then
+   write(stdout,*) 'occupation set up failed to give the right number of electrons'
+   write(stdout,*) 'sum of occupations',SUM(occupation(:,:))
+   write(stdout,*) 'electrons',electrons
+   do ibf=1,nbf
+     write(stdout,*) ibf,occupation(ibf,:)
+   enddo
+   stop'FAILURE in set_occupation'
+ endif 
 
  call dump_out_occupation('=== Occupations ===',nbf,nspin,occupation)
 

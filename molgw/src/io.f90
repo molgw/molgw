@@ -94,13 +94,13 @@ end subroutine dump_out_occupation
 
 
 !=========================================================================
-subroutine dump_out_eigenenergy(title,n,nspin,occupation,energy)
+subroutine dump_out_eigenenergy(title,nbf,nspin,occupation,energy)
  use m_definitions
  use m_mpi
  implicit none
  character(len=*),intent(in) :: title
- integer,intent(in)            :: n,nspin
- real(dp),intent(in)           :: occupation(n,nspin),energy(n,nspin)
+ integer,intent(in)          :: nbf,nspin
+ real(dp),intent(in)         :: occupation(nbf,nspin),energy(nbf,nspin)
 !=====
  integer,parameter :: MAXSIZE=300
 !=====
@@ -118,9 +118,14 @@ subroutine dump_out_eigenenergy(title,n,nspin,occupation,energy)
    write(stdout,'(a)') '   #              [Ha]                      [eV]      '
    write(stdout,'(a)') '           spin 1       spin 2       spin 1       spin 2'
  endif
- do istate=1,MIN(n,MAXSIZE)
-   write(stdout,'(x,i3,2(2(x,f12.5)),2x)') istate,energy(istate,:),energy(istate,:)*Ha_eV
-   if(istate<n) then
+ do istate=1,MIN(nbf,MAXSIZE)
+   select case(nspin)
+   case(1)
+     write(stdout,'(x,i3,2(x,f12.5),4x,f8.4)') istate,energy(istate,:),energy(istate,:)*Ha_eV,occupation(istate,:)
+   case(2)
+     write(stdout,'(x,i3,2(2(x,f12.5)),4x,2(f8.4,2x))') istate,energy(istate,:),energy(istate,:)*Ha_eV,occupation(istate,:)
+   end select
+   if(istate < nbf) then
      if( ANY( occupation(istate+1,:) < spin_fact/2.0_dp .AND. occupation(istate,:) > spin_fact/2.0 ) ) then 
         if(nspin==1) then
           write(stdout,'(a)') '  -----------------------------'
@@ -135,15 +140,16 @@ subroutine dump_out_eigenenergy(title,n,nspin,occupation,energy)
 
 end subroutine dump_out_eigenenergy
 
+
 !=========================================================================
 subroutine dump_out_matrix(print_matrix,title,n,nspin,matrix)
  use m_definitions
  use m_mpi
  implicit none
- logical,intent(in)            :: print_matrix       
+ logical,intent(in)          :: print_matrix       
  character(len=*),intent(in) :: title
- integer,intent(in)            :: n,nspin
- real(dp),intent(in)           :: matrix(n,n,nspin)
+ integer,intent(in)          :: n,nspin
+ real(dp),intent(in)         :: matrix(n,n,nspin)
 !=====
  integer,parameter :: MAXSIZE=25
 !=====
@@ -166,6 +172,7 @@ subroutine dump_out_matrix(print_matrix,title,n,nspin,matrix)
  write(stdout,*)
 
 end subroutine dump_out_matrix
+
 
 !=========================================================================
 subroutine output_homolumo(nbf,nspin,occupation,energy,homo,lumo)
@@ -205,7 +212,6 @@ subroutine output_homolumo(nbf,nspin,occupation,energy,homo,lumo)
 
 
 end subroutine output_homolumo
-
 
 
 !=========================================================================

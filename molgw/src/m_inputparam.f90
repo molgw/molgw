@@ -62,6 +62,7 @@ module m_inputparam
  character(len=12),protected      :: mixing_scheme
  real(dp),protected               :: tolscf
  real(dp),protected               :: electrons,charge
+ real(dp),protected               :: temperature
  real(dp),protected               :: magnetization
  type(calculation_type),protected :: calc_type
  integer,protected                :: grid_level

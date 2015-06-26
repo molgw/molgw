@@ -170,6 +170,16 @@ Only meaningful when nspin=2.'
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='temperature'
+vl[i].family   ='system'
+vl[i].default  ='0.0'
+vl[i].datatype ='real'
+vl[i].comment  ='Sets the electronic temperature in the Fermi-Dirac functions. Helps the convergence for some systems. \
+The value is input in Hartree atomic units.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='grid_quality'
 vl[i].family   ='scf'
 vl[i].default  ='high'
