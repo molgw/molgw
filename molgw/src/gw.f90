@@ -567,9 +567,9 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
  case(LW)
 
-   allocate(matrix(basis%nbf,basis%nbf))
-   allocate(eigvec(basis%nbf,basis%nbf))
-   allocate(eigval(basis%nbf))
+   allocate(matrix(nsemin:nsemax,nsemin:nsemax))
+   allocate(eigvec(nsemin:nsemax,nsemin:nsemax))
+   allocate(eigval(nsemax-nsemin+1))
 
    tr_log_gsigma = 0.0_dp
    tr_gsigma     = 0.0_dp
@@ -577,15 +577,15 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    do ispin=1,nspin
      do iomegai=1,nomegai
 
-       rdiag=0.d0
-       do istate=1,basis%nbf
+       rdiag = 0.d0
+       do istate=nsemin,nsemax
          rdiag = rdiag + REAL(selfenergy_omegac(iomegai,istate,istate,ispin),dp) * 2.0_dp
        enddo
 
        matrix(:,:) = selfenergy_omegac(iomegai,:,:,ispin) + CONJG(TRANSPOSE( selfenergy_omegac(iomegai,:,:,ispin) )) &
                     - MATMUL( selfenergy_omegac(iomegai,:,:,ispin) , CONJG(TRANSPOSE( selfenergy_omegac(iomegai,:,:,ispin) )) )
 
-       call diagonalize(basis%nbf,matrix,eigval,eigvec)
+       call diagonalize(nsemax-nsemin+1,matrix,eigval,eigvec)
 
        tr_gsigma     = tr_gsigma     + rdiag                         * spin_fact / (2.0 * pi) * weights(iomegai)
        tr_log_gsigma = tr_log_gsigma + SUM(LOG( 1.0_dp - eigval(:))) * spin_fact / (2.0 * pi) * weights(iomegai)
