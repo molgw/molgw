@@ -1374,9 +1374,9 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
    do jshell=1,1  ! FAKE LOOP
      do ishell=1,nshell_auxil
 
-       ! Use the distribution to avoid calculating all the integrals
-       ! A summation is performed to propagate eri_3tmp to all processors
-       if( rank /= MODULO(ishell,nproc) ) cycle
+!FBFB       ! Use the distribution to avoid calculating all the integrals
+!FBFB       ! A summation is performed to propagate eri_3tmp to all processors
+!FBFB       if( rank /= MODULO(ishell,nproc) ) cycle
 
        ami = shell_auxil(ishell)%am
        amj = 0
@@ -1602,8 +1602,8 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
      enddo
    enddo
 
-   ! Parallelization over the auxiliary shell
-   call xsum(eri_3tmp)
+!FBFB   ! Parallelization over the auxiliary shell
+!FBFB   call xsum(eri_3tmp)
 
    !
    ! Combine the 2-center integral with the 3-center here
@@ -1707,9 +1707,9 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
    do jshell=1,1  ! FAKE LOOP
      do ishell=1,nshell_auxil
 
-       ! Use the distribution to avoid calculating all the integrals
-       ! A summation is performed to propagate eri_3tmp to all processors
-       if( rank /= MODULO(ishell,nproc) ) cycle
+!FBFB       ! Use the distribution to avoid calculating all the integrals
+!FBFB       ! A summation is performed to propagate eri_3tmp to all processors
+!FBFB       if( rank /= MODULO(ishell,nproc) ) cycle
 
        ami = shell_auxil(ishell)%am
        amj = 0
@@ -1935,8 +1935,8 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
      enddo
    enddo
 
-   ! Parallelization over the auxiliary shell
-   call xsum(eri_3tmp)
+!FBFB   ! Parallelization over the auxiliary shell
+!FBFB   call xsum(eri_3tmp)
 
    !
    ! Combine the 2-center integral with the 3-center here
