@@ -52,6 +52,7 @@ module m_mpi
 
  interface xmax
    module procedure xmax_i
+   module procedure xmax_r
  end interface
 
  interface xsum
@@ -78,8 +79,8 @@ module m_mpi
  ! SCALAPACK variables
  !
  integer,parameter :: ndel=9
- integer,parameter :: block_col = 64
- integer,parameter :: block_row = 64
+ integer,parameter :: block_col = 32
+ integer,parameter :: block_row = 32
  integer,parameter :: first_row = 0
  integer,parameter :: first_col = 0
 
@@ -568,6 +569,27 @@ subroutine xmax_i(integer_number)
  endif
 
 end subroutine xmax_i
+
+
+!=========================================================================
+subroutine xmax_r(real_number)
+ implicit none
+ real(dp),intent(inout) :: real_number
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = 1
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE, MPI_MAX, mpi_comm, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xmax_r
 
 
 !=========================================================================

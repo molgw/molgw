@@ -147,7 +147,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
      call build_a_diag_common(nmat,basis%nbf,c_matrix,energy_qp,wpol_out,a_diag)
 
  ! Step 2
- if(is_tddft) call build_apb_tddft(basis,c_matrix,occupation,wpol_out,m_apb,n_apb,apb_matrix)
+ if(is_tddft) call build_apb_tddft(nmat,basis,c_matrix,occupation,wpol_out,m_apb,n_apb,apb_matrix)
 
  ! Step 3
  if(calc_type%is_bse .AND. .NOT. is_rpa) then
@@ -488,12 +488,13 @@ end subroutine build_a_diag_common
 
 
 !=========================================================================
-subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,m_apb,n_apb,apb_matrix)
+subroutine build_apb_tddft(nmat,basis,c_matrix,occupation,wpol,m_apb,n_apb,apb_matrix)
  use m_spectral_function
  use m_basis_set
  use m_dft_grid
  implicit none
 
+ integer,intent(in)                 :: nmat
  type(basis_set),intent(in)         :: basis
  real(dp),intent(in)                :: c_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)                :: occupation(basis%nbf,nspin)
@@ -516,6 +517,9 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,m_apb,n_apb,apb_matrix
  real(dp),allocatable :: wf_gradr(:,:,:,:)
  real(dp),allocatable :: rho_gradr(:,:,:)
  real(dp)             :: xctmp
+ integer              :: ipcol,iprow
+ integer              :: m_apb_block,n_apb_block
+ real(dp),allocatable :: apb_block(:,:)
 !=====
 
  call start_clock(timing_build_tddft)
@@ -541,126 +545,149 @@ subroutine build_apb_tddft(basis,c_matrix,occupation,wpol,m_apb,n_apb,apb_matrix
  endif
 
 
+ if( nprow_sd * npcol_sd > 1 ) &
+    write(stdout,'(a,i4,a,i4)') ' SCALAPACK grid    :',nprow_sd,' x ',npcol_sd
 
- !
- ! Set up fxc contributions to matrices (A+B)
- !
- do t_kl=1,n_apb  
-   t_kl_global = colindex_local_to_global('C',t_kl)
-   kstate = wpol%transition_table_apb(1,t_kl_global)
-   lstate = wpol%transition_table_apb(2,t_kl_global)
-   klspin = wpol%transition_table_apb(3,t_kl_global)
 
-   do t_ij=1,m_apb 
-     t_ij_global = rowindex_local_to_global('C',t_ij)
-     istate = wpol%transition_table_apb(1,t_ij_global)
-     jstate = wpol%transition_table_apb(2,t_ij_global)
-     ijspin = wpol%transition_table_apb(3,t_ij_global)
+ ! First loops over the SCALAPACK grid
+ do ipcol=0,npcol_sd-1
+   do iprow=0,nprow_sd-1
+     m_apb_block = row_block_size(nmat,iprow,nprow_sd)
+     n_apb_block = col_block_size(nmat,ipcol,npcol_sd)
+
+     allocate(apb_block(m_apb_block,n_apb_block))
+     apb_block(:,:) = 0.0_dp
+
 
      !
-     ! Only calculate the lower triangle
-     ! Symmetrization will be performed later (in the diago subroutines)
-     if( t_ij_global < t_kl_global ) cycle
+     ! Set up fxc contributions to matrices (A+B)
+     !
+     do t_kl=1,n_apb_block
+       t_kl_global = colindex_local_to_global(ipcol,npcol_sd,t_kl)
+       kstate = wpol%transition_table_apb(1,t_kl_global)
+       lstate = wpol%transition_table_apb(2,t_kl_global)
+       klspin = wpol%transition_table_apb(3,t_kl_global)
+    
+       do t_ij=1,m_apb_block
+         t_ij_global = rowindex_local_to_global(iprow,nprow_sd,t_ij)
+         istate = wpol%transition_table_apb(1,t_ij_global)
+         jstate = wpol%transition_table_apb(2,t_ij_global)
+         ijspin = wpol%transition_table_apb(3,t_ij_global)
+    
+         !
+         ! Only calculate the lower triangle
+         ! Symmetrization will be performed later (in the diago subroutines)
+         if( t_ij_global < t_kl_global ) cycle
+    
+    
+         if( nspin_tddft == 1 ) then
+    
+           xctmp = SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
+                              * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
+                              * v2rho2(:,ijspin) * 2.0_dp )
+    
+    
+           if(require_gradient) then
+    
+             grad_ij(1,:,ijspin) = wf_gradr(1,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(1,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+             grad_ij(2,:,ijspin) = wf_gradr(2,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(2,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+             grad_ij(3,:,ijspin) = wf_gradr(3,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(3,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+             grad_kl(1,:,klspin) = wf_gradr(1,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(1,:,lstate,klspin) * wf_r(:,kstate,klspin)
+             grad_kl(2,:,klspin) = wf_gradr(2,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(2,:,lstate,klspin) * wf_r(:,kstate,klspin)
+             grad_kl(3,:,klspin) = wf_gradr(3,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(3,:,lstate,klspin) * wf_r(:,kstate,klspin)
+             dot_ij_kl(:,ijspin) = grad_ij(1,:,ijspin) * grad_kl(1,:,klspin) + grad_ij(2,:,ijspin) * grad_kl(2,:,klspin) &
+                                  + grad_ij(3,:,ijspin) * grad_kl(3,:,klspin)
+             dot_rho_ij(:,ijspin) = rho_gradr(1,:,1) * grad_ij(1,:,ijspin) + rho_gradr(2,:,1) * grad_ij(2,:,ijspin)  &
+                                   + rho_gradr(3,:,1) * grad_ij(3,:,ijspin)
+             dot_rho_kl(:,klspin) = rho_gradr(1,:,1) * grad_kl(1,:,klspin) + rho_gradr(2,:,1) * grad_kl(2,:,klspin)  &
+                                   + rho_gradr(3,:,1) * grad_kl(3,:,klspin)
+    
+             xctmp = xctmp   &
+                   +  SUM( dot_ij_kl(:,1) * 4.0_dp * vsigma(:,1) ) &
+                   +  SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * 8.0_dp * v2sigma2(:,1) ) &
+                   +  SUM( ( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1)   &
+                           + wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) ) &
+                             * 4.0_dp * v2rhosigma(:,1) )
+    
+           endif
+    
+         else if( .NOT. is_triplet ) then
+    
+           xctmp = SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
+                              * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
+                              * ( v2rho2(:,1) + v2rho2(:,2) ) )
+    
+    
+           if(require_gradient) then
+    
+             grad_ij(1,:,ijspin) = wf_gradr(1,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(1,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+             grad_ij(2,:,ijspin) = wf_gradr(2,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(2,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+             grad_ij(3,:,ijspin) = wf_gradr(3,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(3,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+             grad_kl(1,:,klspin) = wf_gradr(1,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(1,:,lstate,klspin) * wf_r(:,kstate,klspin)
+             grad_kl(2,:,klspin) = wf_gradr(2,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(2,:,lstate,klspin) * wf_r(:,kstate,klspin)
+             grad_kl(3,:,klspin) = wf_gradr(3,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(3,:,lstate,klspin) * wf_r(:,kstate,klspin)
+             dot_ij_kl(:,ijspin) = grad_ij(1,:,ijspin) * grad_kl(1,:,klspin) + grad_ij(2,:,ijspin) * grad_kl(2,:,klspin) &
+                                  + grad_ij(3,:,ijspin) * grad_kl(3,:,klspin)
+             dot_rho_ij(:,ijspin) = rho_gradr(1,:,1) * grad_ij(1,:,ijspin) + rho_gradr(2,:,1) * grad_ij(2,:,ijspin)  &
+                                   + rho_gradr(3,:,1) * grad_ij(3,:,ijspin)
+             dot_rho_kl(:,klspin) = rho_gradr(1,:,1) * grad_kl(1,:,klspin) + rho_gradr(2,:,1) * grad_kl(2,:,klspin)  &
+                                   + rho_gradr(3,:,1) * grad_kl(3,:,klspin)
+    
+             xctmp = xctmp   &
+                   +  SUM( dot_ij_kl(:,1) * ( 2.0_dp * vsigma(:,1) + vsigma(:,2) ) ) &
+                   +  SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * ( v2sigma2(:,1) + 0.5_dp * v2sigma2(:,2) +  2.0_dp * v2sigma2(:,3) + v2sigma2(:,4) ) ) &
+                   +  SUM( ( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1)   &
+                          + wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) ) &
+                             * ( v2rhosigma(:,1) + v2rhosigma(:,2) + v2rhosigma(:,3) )  )
+           endif
+    
+    
+           
+         else ! triplet case
+    
+           xctmp = SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
+                              * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
+                              * ( v2rho2(:,1) - v2rho2(:,2) ) )
+    
+           if(require_gradient) then
+    
+             grad_ij(1,:,ijspin) = wf_gradr(1,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(1,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+             grad_ij(2,:,ijspin) = wf_gradr(2,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(2,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+             grad_ij(3,:,ijspin) = wf_gradr(3,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(3,:,jstate,ijspin) * wf_r(:,istate,ijspin)
+             grad_kl(1,:,klspin) = wf_gradr(1,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(1,:,lstate,klspin) * wf_r(:,kstate,klspin)
+             grad_kl(2,:,klspin) = wf_gradr(2,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(2,:,lstate,klspin) * wf_r(:,kstate,klspin)
+             grad_kl(3,:,klspin) = wf_gradr(3,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(3,:,lstate,klspin) * wf_r(:,kstate,klspin)
+             dot_ij_kl(:,ijspin) = grad_ij(1,:,ijspin) * grad_kl(1,:,klspin) + grad_ij(2,:,ijspin) * grad_kl(2,:,klspin) &
+                                  + grad_ij(3,:,ijspin) * grad_kl(3,:,klspin)
+             dot_rho_ij(:,ijspin) = rho_gradr(1,:,1) * grad_ij(1,:,ijspin) + rho_gradr(2,:,1) * grad_ij(2,:,ijspin)  &
+                                   + rho_gradr(3,:,1) * grad_ij(3,:,ijspin)
+             dot_rho_kl(:,klspin) = rho_gradr(1,:,1) * grad_kl(1,:,klspin) + rho_gradr(2,:,1) * grad_kl(2,:,klspin)  &
+                                   + rho_gradr(3,:,1) * grad_kl(3,:,klspin)
+    
+             xctmp = xctmp   &
+                   +  SUM( dot_ij_kl(:,1) * ( 2.0_dp * vsigma(:,1) - vsigma(:,2) ) ) &
+                   +  SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * ( v2sigma2(:,1) - v2sigma2(:,3) ) ) &   !FIXME 3 or 5 are working, but only one is correct in principle
+                   +  SUM( ( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1)   &
+                          + wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) ) &
+                             * ( v2rhosigma(:,1) - v2rhosigma(:,4) )  )   !FIXME 3 and 4 are working, but only one is correct in principle
+           endif
+    
+    
+    
+         endif
+    
+         ! The factor two accounts for (A+B), and not A or B.
+         apb_block(t_ij,t_kl) = apb_block(t_ij,t_kl) + 2.0_dp * xctmp
+    
+       enddo
+     enddo
 
+     call xsum(apb_block)
 
-     if( nspin_tddft == 1 ) then
-
-       xctmp = SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
-                          * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
-                          * v2rho2(:,ijspin) * 2.0_dp )
-
-
-       if(require_gradient) then
-
-         grad_ij(1,:,ijspin) = wf_gradr(1,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(1,:,jstate,ijspin) * wf_r(:,istate,ijspin)
-         grad_ij(2,:,ijspin) = wf_gradr(2,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(2,:,jstate,ijspin) * wf_r(:,istate,ijspin)
-         grad_ij(3,:,ijspin) = wf_gradr(3,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(3,:,jstate,ijspin) * wf_r(:,istate,ijspin)
-         grad_kl(1,:,klspin) = wf_gradr(1,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(1,:,lstate,klspin) * wf_r(:,kstate,klspin)
-         grad_kl(2,:,klspin) = wf_gradr(2,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(2,:,lstate,klspin) * wf_r(:,kstate,klspin)
-         grad_kl(3,:,klspin) = wf_gradr(3,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(3,:,lstate,klspin) * wf_r(:,kstate,klspin)
-         dot_ij_kl(:,ijspin) = grad_ij(1,:,ijspin) * grad_kl(1,:,klspin) + grad_ij(2,:,ijspin) * grad_kl(2,:,klspin) &
-                              + grad_ij(3,:,ijspin) * grad_kl(3,:,klspin)
-         dot_rho_ij(:,ijspin) = rho_gradr(1,:,1) * grad_ij(1,:,ijspin) + rho_gradr(2,:,1) * grad_ij(2,:,ijspin)  &
-                               + rho_gradr(3,:,1) * grad_ij(3,:,ijspin)
-         dot_rho_kl(:,klspin) = rho_gradr(1,:,1) * grad_kl(1,:,klspin) + rho_gradr(2,:,1) * grad_kl(2,:,klspin)  &
-                               + rho_gradr(3,:,1) * grad_kl(3,:,klspin)
-
-         xctmp = xctmp   &
-               +  SUM( dot_ij_kl(:,1) * 4.0_dp * vsigma(:,1) ) &
-               +  SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * 8.0_dp * v2sigma2(:,1) ) &
-               +  SUM( ( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1)   &
-                       + wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) ) &
-                         * 4.0_dp * v2rhosigma(:,1) )
-
-       endif
-
-     else if( .NOT. is_triplet ) then
-
-       xctmp = SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
-                          * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
-                          * ( v2rho2(:,1) + v2rho2(:,2) ) )
-
-
-       if(require_gradient) then
-
-         grad_ij(1,:,ijspin) = wf_gradr(1,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(1,:,jstate,ijspin) * wf_r(:,istate,ijspin)
-         grad_ij(2,:,ijspin) = wf_gradr(2,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(2,:,jstate,ijspin) * wf_r(:,istate,ijspin)
-         grad_ij(3,:,ijspin) = wf_gradr(3,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(3,:,jstate,ijspin) * wf_r(:,istate,ijspin)
-         grad_kl(1,:,klspin) = wf_gradr(1,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(1,:,lstate,klspin) * wf_r(:,kstate,klspin)
-         grad_kl(2,:,klspin) = wf_gradr(2,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(2,:,lstate,klspin) * wf_r(:,kstate,klspin)
-         grad_kl(3,:,klspin) = wf_gradr(3,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(3,:,lstate,klspin) * wf_r(:,kstate,klspin)
-         dot_ij_kl(:,ijspin) = grad_ij(1,:,ijspin) * grad_kl(1,:,klspin) + grad_ij(2,:,ijspin) * grad_kl(2,:,klspin) &
-                              + grad_ij(3,:,ijspin) * grad_kl(3,:,klspin)
-         dot_rho_ij(:,ijspin) = rho_gradr(1,:,1) * grad_ij(1,:,ijspin) + rho_gradr(2,:,1) * grad_ij(2,:,ijspin)  &
-                               + rho_gradr(3,:,1) * grad_ij(3,:,ijspin)
-         dot_rho_kl(:,klspin) = rho_gradr(1,:,1) * grad_kl(1,:,klspin) + rho_gradr(2,:,1) * grad_kl(2,:,klspin)  &
-                               + rho_gradr(3,:,1) * grad_kl(3,:,klspin)
-
-         xctmp = xctmp   &
-               +  SUM( dot_ij_kl(:,1) * ( 2.0_dp * vsigma(:,1) + vsigma(:,2) ) ) &
-               +  SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * ( v2sigma2(:,1) + 0.5_dp * v2sigma2(:,2) +  2.0_dp * v2sigma2(:,3) + v2sigma2(:,4) ) ) &
-               +  SUM( ( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1)   &
-                      + wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) ) &
-                         * ( v2rhosigma(:,1) + v2rhosigma(:,2) + v2rhosigma(:,3) )  )
-       endif
-
-
-       
-     else ! triplet case
-
-       xctmp = SUM(  wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) &
-                          * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
-                          * ( v2rho2(:,1) - v2rho2(:,2) ) )
-
-       if(require_gradient) then
-
-         grad_ij(1,:,ijspin) = wf_gradr(1,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(1,:,jstate,ijspin) * wf_r(:,istate,ijspin)
-         grad_ij(2,:,ijspin) = wf_gradr(2,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(2,:,jstate,ijspin) * wf_r(:,istate,ijspin)
-         grad_ij(3,:,ijspin) = wf_gradr(3,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(3,:,jstate,ijspin) * wf_r(:,istate,ijspin)
-         grad_kl(1,:,klspin) = wf_gradr(1,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(1,:,lstate,klspin) * wf_r(:,kstate,klspin)
-         grad_kl(2,:,klspin) = wf_gradr(2,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(2,:,lstate,klspin) * wf_r(:,kstate,klspin)
-         grad_kl(3,:,klspin) = wf_gradr(3,:,kstate,klspin) * wf_r(:,lstate,klspin) + wf_gradr(3,:,lstate,klspin) * wf_r(:,kstate,klspin)
-         dot_ij_kl(:,ijspin) = grad_ij(1,:,ijspin) * grad_kl(1,:,klspin) + grad_ij(2,:,ijspin) * grad_kl(2,:,klspin) &
-                              + grad_ij(3,:,ijspin) * grad_kl(3,:,klspin)
-         dot_rho_ij(:,ijspin) = rho_gradr(1,:,1) * grad_ij(1,:,ijspin) + rho_gradr(2,:,1) * grad_ij(2,:,ijspin)  &
-                               + rho_gradr(3,:,1) * grad_ij(3,:,ijspin)
-         dot_rho_kl(:,klspin) = rho_gradr(1,:,1) * grad_kl(1,:,klspin) + rho_gradr(2,:,1) * grad_kl(2,:,klspin)  &
-                               + rho_gradr(3,:,1) * grad_kl(3,:,klspin)
-
-         xctmp = xctmp   &
-               +  SUM( dot_ij_kl(:,1) * ( 2.0_dp * vsigma(:,1) - vsigma(:,2) ) ) &
-               +  SUM( dot_rho_ij(:,1) * dot_rho_kl(:,1) * ( v2sigma2(:,1) - v2sigma2(:,3) ) ) &   !FIXME 3 or 5 are working, but only one is correct in principle
-               +  SUM( ( wf_r(:,istate,ijspin) * wf_r(:,jstate,ijspin) * dot_rho_kl(:,1)   &
-                      + wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) * dot_rho_ij(:,1) ) &
-                         * ( v2rhosigma(:,1) - v2rhosigma(:,4) )  )   !FIXME 3 and 4 are working, but only one is correct in principle
-       endif
-
-
-
+     if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
+       apb_matrix(:,:) = apb_matrix(:,:) + apb_block(:,:)
      endif
-
-     ! The factor two accounts for (A+B), and not A or B.
-     apb_matrix(t_ij,t_kl) = apb_matrix(t_ij,t_kl) + 2.0_dp * xctmp
+     deallocate(apb_block)
 
    enddo
  enddo
@@ -1598,6 +1625,7 @@ subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2r
    enddo
  enddo
  if(require_gradient) then
+   call xmax(max_v2sigma2)
    write(stdout,'(a,e18.6)') ' Maximum numerical value for fxc: ',max_v2sigma2
  endif
 
