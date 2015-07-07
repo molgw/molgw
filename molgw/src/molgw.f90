@@ -217,7 +217,8 @@ program molgw
    call calculate_eri_3center(print_eri_,basis,auxil_basis)
 
    ! If Range-Separated Hybrid are requested
-   if(calc_type%need_exchange_lr) then
+   ! If is_big_restart, these integrals are NOT needed
+   if(calc_type%need_exchange_lr .AND. .NOT. is_big_restart) then
      call allocate_eri_auxil_lr(auxil_basis)
      ! 2-center integrals
      call calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
@@ -254,7 +255,7 @@ program molgw
  if( has_auxil_basis ) call deallocate_eri_buffer()
  ! If RSH calculations were performed, then deallocate the LR integrals which
  ! are not needed anymore
- if( calc_type%need_exchange_lr ) call deallocate_eri_buffer_lr()
+ if( calc_type%need_exchange_lr .AND. .NOT. is_big_restart ) call deallocate_eri_buffer_lr()
  if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
 
  !
