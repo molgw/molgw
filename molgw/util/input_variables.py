@@ -428,6 +428,15 @@ vl[i].comment  ='Prints the value of the GW self-energy on the sampling frequenc
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='print_pdos'
+vl[i].family   ='io'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints the Mulliken weight of each eigenvector on a given atom or a given series of atoms.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='length_unit'
 vl[i].family   ='system'
 vl[i].default  ='angstrom'

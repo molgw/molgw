@@ -215,13 +215,87 @@ end subroutine output_homolumo
 
 
 !=========================================================================
-subroutine plot_wfn(nspin,basis,c_matrix)
+subroutine mulliken_pdos(basis,s_matrix,c_matrix,energy)
  use m_definitions
  use m_mpi
+ use m_inputparam, only: nspin
  use m_atoms
  use m_basis_set
  implicit none
- integer,intent(in)         :: nspin
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: s_matrix(basis%nbf,basis%nbf)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)        :: energy(basis%nbf,nspin)
+!=====
+ integer                    :: ibf,ibf_cart,li,ni,ni_cart
+ integer                    :: natom1,natom2,istate,ispin
+ logical                    :: file_exists
+ integer                    :: pdosfile
+ real(dp)                   :: proj_state_i
+ real(dp)                   :: cs_vector_i(basis%nbf)
+ integer                    :: iatom_ibf(basis%nbf)
+!=====
+
+ write(stdout,*)
+ write(stdout,*) 'Projecting wavefunctions on selected atoms'
+ inquire(file='manual_pdos',exist=file_exists)
+ if(file_exists) then
+   write(stdout,*) 'Opening file:','manual_pdos'
+   open(newunit=pdosfile,file='manual_pdos',status='old')
+   read(pdosfile,*) natom1,natom2
+   close(pdosfile)
+ else
+   natom1=1
+   natom2=1
+ endif
+ write(stdout,'(a,i5,2x,i5)') ' Range of atoms considered: ',natom1,natom2
+
+ ibf_cart = 1
+ ibf      = 1
+ do while(ibf_cart<=basis%nbf_cart)
+   li      = basis%bf(ibf_cart)%am
+   ni_cart = number_basis_function_am('CART',li)
+   ni      = number_basis_function_am(basis%gaussian_type,li)
+
+   iatom_ibf(ibf:ibf+ni-1) = basis%bf(ibf_cart)%iatom
+
+   ibf      = ibf      + ni
+   ibf_cart = ibf_cart + ni_cart
+ enddo
+ 
+
+ write(stdout,*) '==========================================='
+ write(stdout,*) ' spin state  energy(eV)  Mulliken proj.'
+ do ispin=1,nspin
+   do istate=1,basis%nbf
+     proj_state_i = 0.0_dp
+
+     cs_vector_i(:) = MATMUL( c_matrix(:,istate,ispin) , s_matrix(:,:) )
+
+     do ibf=1,basis%nbf
+       if( iatom_ibf(ibf) >= natom1 .AND. iatom_ibf(ibf) <= natom2 ) then
+         proj_state_i = proj_state_i + c_matrix(ibf,istate,ispin) * cs_vector_i(ibf)
+       endif
+     enddo
+
+     write(stdout,'(i3,x,i5,x,f16.6,4x,f16.8)') ispin,istate,energy(istate,ispin)*Ha_eV,proj_state_i
+   enddo
+ enddo
+ write(stdout,*) '==========================================='
+
+
+
+end subroutine mulliken_pdos
+
+
+!=========================================================================
+subroutine plot_wfn(basis,c_matrix)
+ use m_definitions
+ use m_mpi
+ use m_inputparam, only: nspin
+ use m_atoms
+ use m_basis_set
+ implicit none
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
 !=====
@@ -322,13 +396,13 @@ end subroutine plot_wfn
 
 
 !=========================================================================
-subroutine plot_rho(nspin,basis,occupation,c_matrix)
+subroutine plot_rho(basis,occupation,c_matrix)
  use m_definitions
  use m_mpi
  use m_atoms
+ use m_inputparam, only: nspin
  use m_basis_set
  implicit none
- integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(basis%nbf,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
@@ -413,13 +487,13 @@ end subroutine plot_rho
 
 
 !=========================================================================
-subroutine plot_cube_wfn(nspin,basis,c_matrix)
+subroutine plot_cube_wfn(basis,c_matrix)
  use m_definitions
  use m_mpi
+ use m_inputparam, only: nspin
  use m_atoms
  use m_basis_set
  implicit none
- integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
 !=====
