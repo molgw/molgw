@@ -47,7 +47,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  real(dp),allocatable    :: p_matrix_old(:,:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  real(dp),allocatable    :: self_energy_old(:,:,:)
- logical                 :: is_converged
+ logical                 :: is_converged,stopfile_found
  real(dp),allocatable    :: energy_exx(:,:)
  real(dp),allocatable    :: c_matrix_exx(:,:,:)
 !=============================
@@ -272,7 +272,9 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    call new_p_matrix(p_matrix)
 
    is_converged = check_converged()
-   if( is_converged ) exit
+   inquire(file='STOP',exist=stopfile_found)
+
+   if( is_converged .OR. stopfile_found ) exit
 
    !
    ! Write down a "small" RESTART file at each step
