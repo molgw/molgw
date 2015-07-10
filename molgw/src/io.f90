@@ -284,7 +284,6 @@ subroutine mulliken_pdos(basis,s_matrix,c_matrix,energy)
  write(stdout,*) '==========================================='
 
 
-
 end subroutine mulliken_pdos
 
 
