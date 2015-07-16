@@ -215,7 +215,7 @@ end subroutine output_homolumo
 
 
 !=========================================================================
-subroutine mulliken_pdos(basis,s_matrix,c_matrix,energy)
+subroutine mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
  use m_definitions
  use m_mpi
  use m_inputparam, only: nspin
@@ -225,13 +225,13 @@ subroutine mulliken_pdos(basis,s_matrix,c_matrix,energy)
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: s_matrix(basis%nbf,basis%nbf)
  real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
- real(dp),intent(in)        :: energy(basis%nbf,nspin)
+ real(dp),intent(in)        :: occupation(basis%nbf,nspin),energy(basis%nbf,nspin)
 !=====
  integer                    :: ibf,ibf_cart,li,ni,ni_cart
  integer                    :: natom1,natom2,istate,ispin
  logical                    :: file_exists
  integer                    :: pdosfile
- real(dp)                   :: proj_state_i
+ real(dp)                   :: proj_state_i,proj_charge
  real(dp)                   :: cs_vector_i(basis%nbf)
  integer                    :: iatom_ibf(basis%nbf)
 !=====
@@ -266,6 +266,7 @@ subroutine mulliken_pdos(basis,s_matrix,c_matrix,energy)
 
  write(stdout,*) '==========================================='
  write(stdout,*) ' spin state  energy(eV)  Mulliken proj.'
+ proj_charge = 0.0_dp
  do ispin=1,nspin
    do istate=1,basis%nbf
      proj_state_i = 0.0_dp
@@ -277,11 +278,13 @@ subroutine mulliken_pdos(basis,s_matrix,c_matrix,energy)
          proj_state_i = proj_state_i + c_matrix(ibf,istate,ispin) * cs_vector_i(ibf)
        endif
      enddo
+     proj_charge = proj_charge + occupation(istate,ispin) * proj_state_i
 
      write(stdout,'(i3,x,i5,x,f16.6,4x,f16.8)') ispin,istate,energy(istate,ispin)*Ha_eV,proj_state_i
    enddo
  enddo
  write(stdout,*) '==========================================='
+ write(stdout,'(a,f12.6)') ' Total Mulliken charge: ',proj_charge
 
 
 end subroutine mulliken_pdos

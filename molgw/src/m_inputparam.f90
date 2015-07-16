@@ -82,6 +82,7 @@ module m_inputparam
  logical,protected                :: print_sigma_
  logical,protected                :: print_restart_
  logical,protected                :: print_pdos_
+ logical,protected                :: print_cube_
 
  real(dp),protected               :: alpha_hybrid    = 0.0_dp
  real(dp),protected               :: alpha_hybrid_lr = 0.0_dp
@@ -548,7 +549,7 @@ subroutine read_inputfile_namelist()
  character(len=12)    :: length_unit
  character(len=3)     :: ignore_restart,ignore_bigrestart,no_4center
  character(len=3)     :: print_matrix,print_eri,print_wfn,print_w,print_sigma,print_restart
- character(len=3)     :: print_pdos
+ character(len=3)     :: print_pdos,print_cube
  character(len=3)     :: tda,triplet,frozencore
  real(dp)             :: length_factor,eta
  integer              :: atom_number,info,iatom
@@ -618,6 +619,7 @@ subroutine read_inputfile_namelist()
  print_sigma_       = yesno(print_sigma)
  print_restart_     = yesno(print_restart)
  print_pdos_        = yesno(print_pdos)
+ print_cube_        = yesno(print_cube)
 
  grid_level     = interpret_quality(grid_quality)
  integral_level = interpret_quality(integral_quality)
