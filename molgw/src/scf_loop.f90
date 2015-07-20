@@ -38,6 +38,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 !=====
  type(spectral_function) :: wpol
  integer                 :: ispin,iscf,istate
+ integer                 :: fileunit,ncore
  character(len=100)      :: title
  real(dp)                :: energy_tmp
  real(dp),allocatable    :: ehomo(:),elumo(:)
@@ -47,7 +48,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  real(dp),allocatable    :: p_matrix_old(:,:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  real(dp),allocatable    :: self_energy_old(:,:,:)
- logical                 :: is_converged,stopfile_found
+ logical                 :: is_converged,stopfile_found,file_exists
  real(dp),allocatable    :: energy_exx(:,:)
  real(dp),allocatable    :: c_matrix_exx(:,:,:)
 !=============================
@@ -314,7 +315,12 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  !
  ! Obtain the Fock matrix
  matrix_tmp(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
+ ! And pass it to single_excitations
+ call single_excitations(basis%nbf,energy,occupation,c_matrix,matrix_tmp)
+ write(stdout,'(a25,x,f19.10)') 'Single Excitations [Ha]:',en%se
+ write(stdout,'(a25,x,f19.10)')     'Est. HF Energy [Ha]:',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
 
+ ! A dirty section for the Luttinger-Ward functional
 #if 1
  if(calc_type%gwmethod==LW .OR. calc_type%gwmethod==LW2 .OR. calc_type%gwmethod==GSIGMA) then
    allocate(energy_exx(basis%nbf,nspin))
@@ -357,11 +363,35 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 #endif
 
 
- ! And pass it to single_excitations
- call single_excitations(basis%nbf,energy,occupation,c_matrix,matrix_tmp)
+ !
+ ! Testing the core/valence splitting
+ !
+ inquire(file='manual_coresplitting',exist=file_exists)
+ if(file_exists) then
+   if( alpha_hybrid_lr > 0.001 ) stop'RSH not implemented yet'
+   write(stdout,'(/,a)') ' TESTING CORE-VALENCE SPLITTING'
+   open(newunit=fileunit,file='manual_coresplitting',status='old')
+   read(fileunit,*) ncore
+   close(fileunit)
+   write(msg,'(a,i4,2x,i4)') 'core-valence splitting switched on up to state = ',ncore
+   call issue_warning(msg)
+   ! Override the occupation of the core electrons
+   do istate=1,ncore
+     occupation(istate,:) = 0.0_dp
+   enddo
+   call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
+   call dft_exc_vxc(basis,p_matrix,ehomo,hamiltonian_xc,en%xc)
 
- write(stdout,'(a25,x,f19.10)') 'Single Excitations [Ha]:',en%se
- write(stdout,'(a25,x,f19.10)')     'Est. HF Energy [Ha]:',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
+   if( .NOT. is_full_auxil ) then
+     call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+   else
+     call setup_exchange_ri(print_matrix_,basis%nbf,c_matrix,occupation,p_matrix,hamiltonian_exx,en%exx)
+   endif
+
+   hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + alpha_hybrid * hamiltonian_exx(:,:,:)
+ endif
+
+
 
  !
  ! Big RESTART file written if converged

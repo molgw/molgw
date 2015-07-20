@@ -1186,7 +1186,7 @@ subroutine distribute_auxil_basis(auxil_basis)
 
  write(stdout,'(/,a)') ' Distribute auxiliary basis among processors'
  do iproc=0,nproc-1
-   write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc(iproc),' basis functions'
+   write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc(iproc),' auxiliary basis functions'
  enddo
 
 

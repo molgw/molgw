@@ -295,9 +295,7 @@ subroutine setup_hartree_ri(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartre
  call start_clock(timing_hartree)
 
 
- nbf_auxil = SIZE( eri_3center(:,:), DIM=1 )
-
- allocate(partial_sum(nbf_auxil))
+ allocate(partial_sum(nauxil_3center))
  partial_sum(:) = 0.0_dp
  do lbf=1,nbf
    do kbf=1,nbf
@@ -308,7 +306,7 @@ subroutine setup_hartree_ri(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartre
  enddo
 
  ! Hartree potential is not sensitive to spin
- pot_hartree(:,:,:)=0.0_dp
+ pot_hartree(:,:,:) = 0.0_dp
  do jbf=1,nbf
    do ibf=1,nbf
      if( negligible_basispair(ibf,jbf) ) cycle
@@ -317,7 +315,7 @@ subroutine setup_hartree_ri(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartre
      pot_hartree(ibf,jbf,1) = DOT_PRODUCT( eri_3center(:,index_ij) , partial_sum(:) )
    enddo
  enddo
- if( nspin==2) pot_hartree(:,:,nspin) = pot_hartree(:,:,1)
+ if(nspin==2) pot_hartree(:,:,nspin) = pot_hartree(:,:,1)
 
  deallocate(partial_sum)
 

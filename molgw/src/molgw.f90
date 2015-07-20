@@ -33,8 +33,8 @@ program molgw
  type(spectral_function) :: wpol
  integer                 :: reading_status
  integer                 :: ibf,jbf
- integer                 :: ispin,istate,ncore
- logical                 :: file_exists,is_restart,is_big_restart
+ integer                 :: ispin,istate
+ logical                 :: is_restart,is_big_restart
  character(len=100)      :: title
  real(dp)                :: energy_tmp
  real(dp),allocatable    :: hamiltonian_tmp(:,:)
@@ -288,20 +288,6 @@ program molgw
  endif
   
 
-!%!   inquire(file='manual_coresplitting',exist=file_exists)
-!%!   if(file_exists) then
-!%!     write(stdout,*) 'TESTING CORE-VALENCE SPLITTING'
-!%!     open(newfile=info,file='manual_coresplitting')
-!%!     read(info,*) ncore
-!%!     close(info)
-!%!     write(msg,'(a,i4,2x,i4)') 'core-valence splitting switched on up to state = ',ncore
-!%!     call issue_warning(msg)
-!%!     do istate=1,ncore
-!%!       occupation(istate,:) = 0.0_dp
-!%!     enddo
-!%!     call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
-!%!     call dft_exc_vxc(basis,p_matrix,ehomo,hamiltonian_xc,en%xc)
-!%!   endif
 
 
  exchange_m_vxc_diag(:,:) = 0.0_dp

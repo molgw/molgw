@@ -397,6 +397,15 @@ vl[i].comment  ='Prints some wavefunctions along some selected lines.'
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='print_cube'
+vl[i].family   ='io'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints some wavefunctions in a 3D volumetric file with cube format'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='print_w'
 vl[i].family   ='io'
 vl[i].default  ='no'
