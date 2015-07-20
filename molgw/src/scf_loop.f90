@@ -51,6 +51,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  logical                 :: is_converged,stopfile_found,file_exists
  real(dp),allocatable    :: energy_exx(:,:)
  real(dp),allocatable    :: c_matrix_exx(:,:,:)
+ real(dp),allocatable    :: occupation_tmp(:,:),p_matrix_tmp(:,:,:)
 !=============================
 
  !
@@ -375,18 +376,24 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    close(fileunit)
    write(msg,'(a,i4,2x,i4)') 'core-valence splitting switched on up to state = ',ncore
    call issue_warning(msg)
+
+   allocate(occupation_tmp(basis%nbf,nspin))
+   allocate(p_matrix_tmp(basis%nbf,basis%nbf,nspin))
    ! Override the occupation of the core electrons
+   occupation_tmp(:,:) = occupation(:,:)
    do istate=1,ncore
-     occupation(istate,:) = 0.0_dp
+     occupation_tmp(istate,:) = 0.0_dp
    enddo
-   call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
-   call dft_exc_vxc(basis,p_matrix,ehomo,hamiltonian_xc,en%xc)
+   call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation_tmp,p_matrix_tmp)
+   call dft_exc_vxc(basis,p_matrix_tmp,ehomo,hamiltonian_xc,en%xc)
 
    if( .NOT. is_full_auxil ) then
-     call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+     call setup_exchange(print_matrix_,basis%nbf,p_matrix_tmp,hamiltonian_exx,en%exx)
    else
-     call setup_exchange_ri(print_matrix_,basis%nbf,c_matrix,occupation,p_matrix,hamiltonian_exx,en%exx)
+     call setup_exchange_ri(print_matrix_,basis%nbf,c_matrix,occupation_tmp,p_matrix_tmp,hamiltonian_exx,en%exx)
    endif
+
+   deallocate(occupation_tmp,p_matrix_tmp)
 
    hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + alpha_hybrid * hamiltonian_exx(:,:,:)
  endif

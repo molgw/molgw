@@ -403,7 +403,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  !
  if( .NOT. allocated(bfr) ) call prepare_basis_functions_r(basis)
 
-
+ normalization = 0.0_dp
  do igrid=1,ngrid
 
    rr(:) = rr_grid(:,igrid)

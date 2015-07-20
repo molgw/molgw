@@ -422,6 +422,8 @@ subroutine setup_exchange_ri(print_matrix_,nbf,c_matrix,occupation,p_matrix,pot_
  allocate(tmp(nbf_auxil,nbf))
 
  do ispin=1,nspin
+   ! Find the highest occupation state for this spin
+   nocc=0
    do istate=1,nbf
      if( occupation(istate,ispin) > completely_empty ) nocc = istate
    enddo
@@ -487,6 +489,8 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,c_matrix,occupation,p_m
  allocate(tmp(nbf_auxil,nbf))
 
  do ispin=1,nspin
+   ! Find the highest occupation state for this spin
+   nocc=0
    do istate=1,nbf
      if( occupation(istate,ispin) > completely_empty ) nocc = istate
    enddo
