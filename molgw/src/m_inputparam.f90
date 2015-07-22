@@ -72,6 +72,7 @@ module m_inputparam
  real(dp),protected               :: pole_eta
  integer,protected                :: nomega_sigma
  real(dp),protected               :: step_sigma
+ real(dp),protected               :: level_shifting_energy
 
  logical,protected                :: no_restart   
  logical,protected                :: ignore_big_restart

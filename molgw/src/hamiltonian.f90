@@ -285,7 +285,7 @@ subroutine setup_hartree_ri(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartre
  real(dp),intent(out) :: ehartree
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin
- integer              :: nbf_auxil,ibf_auxil
+ integer              :: ibf_auxil
  integer              :: index_ij,index_kl
  real(dp),allocatable :: partial_sum(:)
  character(len=100)   :: title
@@ -407,7 +407,7 @@ subroutine setup_exchange_ri(print_matrix_,nbf,c_matrix,occupation,p_matrix,pot_
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
  integer              :: index_ij
- integer              :: nbf_auxil,nocc
+ integer              :: nocc
  real(dp)             :: occ_sqrt_istate
  real(dp),allocatable :: tmp(:,:)
 !=====
@@ -415,11 +415,12 @@ subroutine setup_exchange_ri(print_matrix_,nbf,c_matrix,occupation,p_matrix,pot_
  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
  call start_clock(timing_exchange)
 
- nbf_auxil = SIZE( eri_3center(:,:), DIM=1 )
+
+!!!!Cholesky SUBROUTINE DPOTRF( UPLO, N, A, LDA, INFO )
 
  pot_exchange(:,:,:)=0.0_dp
 
- allocate(tmp(nbf_auxil,nbf))
+ allocate(tmp(nauxil_3center,nbf))
 
  do ispin=1,nspin
    ! Find the highest occupation state for this spin
@@ -474,7 +475,7 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,c_matrix,occupation,p_m
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
  integer              :: index_ij
- integer              :: nbf_auxil,nocc
+ integer              :: nocc
  real(dp)             :: occ_sqrt_istate
  real(dp),allocatable :: tmp(:,:)
 !=====
@@ -482,11 +483,10 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,c_matrix,occupation,p_m
  write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity'
  call start_clock(timing_exchange)
 
- nbf_auxil = SIZE( eri_3center_lr(:,:), DIM=1 )
 
  pot_exchange(:,:,:)=0.0_dp
 
- allocate(tmp(nbf_auxil,nbf))
+ allocate(tmp(nauxil_3center,nbf))
 
  do ispin=1,nspin
    ! Find the highest occupation state for this spin
@@ -960,6 +960,60 @@ subroutine evaluate_s2_operator(nspin,nbf,occupation,c_matrix,s_matrix)
 
 
 end subroutine evaluate_s2_operator
+
+
+!=========================================================================
+subroutine level_shifting(nbf,s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
+ use m_definitions
+ use m_mpi
+ use m_inputparam,only: nspin
+ implicit none
+ integer,intent(in)     :: nbf
+ real(dp),intent(in)    :: s_matrix(nbf,nbf)
+ real(dp),intent(in)    :: c_matrix(nbf,nbf,nspin)
+ real(dp),intent(in)    :: occupation(nbf,nspin)
+ real(dp),intent(in)    :: level_shifting_energy
+ real(dp),intent(inout) :: hamiltonian(nbf,nbf,nspin)
+!====
+ integer  :: ispin
+ integer  :: ibf
+ real(dp) :: sqrt_level_shifting(nbf)
+ real(dp) :: matrix_tmp(nbf,nbf)
+!====
+
+ write(stdout,'(/,a)')     ' Level shifting switched on'
+ write(stdout,'(a,f12.6)') '   energy shift (eV):',level_shifting_energy * Ha_eV
+
+ if( level_shifting_energy < 0.0_dp ) stop'level_shifting_energy has to be positive!'
+
+
+ do ispin=1,nspin
+   !
+   ! Shift up empty states only
+   do ibf=1,nbf
+     if( occupation(ibf,ispin) < completely_empty ) then
+       sqrt_level_shifting(ibf) = SQRT( level_shifting_energy )
+     else
+       sqrt_level_shifting(ibf) = 0.0_dp
+     endif
+   enddo
+   forall(ibf=1:nbf)
+     matrix_tmp(:,ibf) =  c_matrix(:,ibf,ispin) * sqrt_level_shifting(ibf)
+   end forall
+
+   ! 
+   ! M = C * E * tC
+   matrix_tmp(:,:) = MATMUL( matrix_tmp , TRANSPOSE(matrix_tmp) )
+   ! M = S * M * S
+   matrix_tmp(:,:) = MATMUL( s_matrix , MATMUL( matrix_tmp , s_matrix ) )
+
+   ! Finally update the total hamiltonian
+   hamiltonian(:,:,ispin) = hamiltonian(:,:,ispin) + matrix_tmp(:,:)
+
+ enddo
+ 
+
+end subroutine level_shifting
 
 
 !=========================================================================

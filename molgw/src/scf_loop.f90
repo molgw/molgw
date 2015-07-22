@@ -68,6 +68,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
 
  call start_clock(timing_scf)
+
  !
  ! start the big scf loop
  !
@@ -84,7 +85,6 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    !
    hamiltonian(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) 
    if(nspin==2) hamiltonian(:,:,nspin)    = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) 
-
 
    if( calc_type%read_potential ) then
      call read_potential(print_matrix_,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
@@ -200,6 +200,12 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    title='=== Total Hamiltonian ==='
    call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,hamiltonian)
 
+   !
+   ! If requested, the level shifting procedure is triggered: 
+   ! All the unoccupied states are penalized with an energy =  level_shifting_energy
+   if( level_shifting_energy > 1.0e-6_dp ) then
+     call level_shifting(basis%nbf,s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
+   endif
   
   
    !

@@ -233,6 +233,15 @@ Possible choices are \'pulay\' for Pulay DIIS method or \'simple\' for a simple 
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='level_shifting_energy'
+vl[i].family   ='scf'
+vl[i].default  =0.
+vl[i].datatype ='real'
+vl[i].comment  ='Sets the energy shift up of the unoccupied states. Should help the convergence in the case of small HOMO-LUMO gaps.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='tolscf'
 vl[i].family   ='scf'
 vl[i].default  =1.0E-7

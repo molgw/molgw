@@ -106,24 +106,21 @@ subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_m
  write(stdout,*) 'OPENMP is used for the MP2 self-energy'
 #endif
  do abispin=1,nspin
-!$OMP PARALLEL DEFAULT(SHARED) &
-!$OMP PRIVATE(omega,fi,ei,fj,ej,fk,ek,fact_occ1,fact_occ2,fact_real,fact_nega,eri_eigenstate_i) 
-!$OMP DO SCHEDULE(STATIC) REDUCTION(+:emp2_ring,emp2_sox,selfenergy_ring,selfenergy_sox)
    do istate=1,basis%nbf !LOOP of the first Green's function
 
      call transform_eri_basis(nspin,c_matrix,istate,abispin,eri_eigenstate_i)
 
+     fi = occupation(istate,abispin)
+     ei = energy(istate,abispin)
+
      do astate=1,basis%nbf ! external loop ( bra )
-
-
        do bstate=1,basis%nbf ! external loop ( ket )
+
 
          do iomegai=1,nomegai
            omega = energy(bstate,abispin) + omegai(iomegai)
     
     
-           fi=occupation(istate,abispin)
-           ei=energy(istate,abispin)
     
            do jkspin=1,nspin
              do jstate=1,basis%nbf !LOOP of the second Green's function
@@ -173,8 +170,6 @@ subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_m
        enddo 
      enddo
    enddo 
-!$OMP END DO
-!$OMP END PARALLEL
  enddo ! abispin
 
  emp2_ring = 0.5_dp * emp2_ring
