@@ -221,6 +221,20 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
                                       energy(:,ispin),c_matrix(:,:,ispin))
      call stop_clock(timing_diago_hamiltonian)
    enddo
+
+   !
+   ! When level_shifting is used, the unoccupied state energies have to be brought
+   ! back to their original value,
+   ! So that the "physical" energies are written down
+   if( level_shifting_energy > 1.0e-6_dp ) then
+     do ispin=1,nspin
+       do istate=1,basis%nbf
+         if( occupation(istate,ispin) < completely_empty ) then
+           energy(istate,ispin) = energy(istate,ispin) - level_shifting_energy
+         endif
+       enddo
+     enddo
+   endif
   
    title='=== Energies ==='
    call dump_out_eigenenergy(title,basis%nbf,nspin,occupation,energy)
