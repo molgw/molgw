@@ -2307,14 +2307,12 @@ subroutine identify_negligible_shellpair(basis)
  integer  :: info
  integer  :: iibf
  integer  :: ibf,jbf,kbf,lbf
-! integer  :: n1,n2
  integer  :: n1c,n2c
  integer  :: ni,nj
  integer  :: ng1,ng2
  integer  :: ami,amj
  integer  :: ishell,jshell
  integer  :: ig1,ig2,ig3,ig4
- integer  :: nneglect
  real(dp) :: zeta_12,rho,rho1,f0t(0:0),tt
  real(dp) :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
@@ -2331,15 +2329,19 @@ subroutine identify_negligible_shellpair(basis)
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
 
- write(stdout,'(/,a)')    ' Cauchy-Schwartz screening of the 4-center integrals'
+ call start_clock(timing_eri_screening)
+ write(stdout,'(/,a)')    ' Cauchy-Schwartz screening of the 3- or 4-center integrals'
  write(stdout,'(a)')      ' Libint library initialized'
  write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
  rcut_libint = 0.0_dp
 
- nneglect = 0
+ negligible_shellpair(:,:) = .TRUE.
 
  do jshell=1,nshell
+   ! Workload is distributed here
+   if( MODULO(jshell,nproc) /= rank ) cycle
+
    do ishell=1,nshell
      ami = shell(ishell)%am
      amj = shell(jshell)%am
@@ -2476,18 +2478,15 @@ subroutine identify_negligible_shellpair(basis)
             
      endif
 
-     negligible_shellpair(ishell,jshell)=.TRUE.
      do ibf=1,ni
        do jbf=1,nj
-         if( ABS( integrals_cart(ibf,jbf,ibf,jbf) ) > TOL_INT ) negligible_shellpair(ishell,jshell)=.FALSE.
+         if( ABS( integrals_cart(ibf,jbf,ibf,jbf) ) > TOL_INT ) negligible_shellpair(ishell,jshell) = .FALSE.
        enddo
      enddo
 
      !
      ! Symmetrize
-     negligible_shellpair(jshell,ishell)=negligible_shellpair(ishell,jshell)
-
-     if( negligible_shellpair(ishell,jshell) ) nneglect = nneglect + 1
+     negligible_shellpair(jshell,ishell) = negligible_shellpair(ishell,jshell)
 
      deallocate(integrals_cart)
      deallocate(integrals_tmp)
@@ -2497,6 +2496,10 @@ subroutine identify_negligible_shellpair(basis)
 
    enddo
  enddo
+
+ call xand(negligible_shellpair)
+
+ call stop_clock(timing_eri_screening)
 
 end subroutine identify_negligible_shellpair
 

@@ -46,6 +46,12 @@ module m_mpi
 ! integer,allocatable :: ntask_fast_proc(:)   ! number of grid points for each procressor
 ! integer,allocatable :: task_fast_number(:)  ! local index of the grid point
 
+ interface xand
+   module procedure xand_l
+   module procedure xand_la1d
+   module procedure xand_la2d
+ end interface
+
  interface xmin
    module procedure xmin_i
  end interface
@@ -527,6 +533,70 @@ function get_task_number(ibf,jbf)
  endif
 
 end function get_task_number
+
+
+!=========================================================================
+subroutine xand_l(logical_variable)
+ implicit none
+ logical,intent(inout) :: logical_variable
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = 1
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, logical_variable, n1, MPI_LOGICAL, MPI_LAND, mpi_comm, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xand_l
+
+
+!=========================================================================
+subroutine xand_la1d(logical_array)
+ implicit none
+ logical,intent(inout) :: logical_array(:)
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = SIZE(logical_array,DIM=1)
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, logical_array, n1, MPI_LOGICAL, MPI_LAND, mpi_comm, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xand_la1d
+
+
+!=========================================================================
+subroutine xand_la2d(logical_array)
+ implicit none
+ logical,intent(inout) :: logical_array(:,:)
+!=====
+ integer :: n1,n2
+ integer :: ier=0
+!=====
+
+ n1 = SIZE(logical_array,DIM=1)
+ n2 = SIZE(logical_array,DIM=2)
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, logical_array, n1*n2, MPI_LOGICAL, MPI_LAND, mpi_comm, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xand_la2d
 
 
 !=========================================================================

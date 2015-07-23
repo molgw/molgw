@@ -36,6 +36,7 @@ module m_timing
  integer,parameter :: timing_build_tddft       = 26
  integer,parameter :: timing_build_bse         = 27
  integer,parameter :: timing_spectrum          = 28
+ integer,parameter :: timing_eri_screening     = 29
  
  integer,parameter :: timing_tmp1              = 91
  integer,parameter :: timing_tmp2              = 92
@@ -123,6 +124,7 @@ subroutine output_timing()
  write(stdout,'(a30,6x,f12.2)') 'Total post SCF',timing(timing_postscf)
  write(stdout,'(/,a,/)') '                 ----------------------'
 
+ write(stdout,'(a30,6x,f12.2,2x,i8)')          'integral screening' ,timing(timing_eri_screening),calls(timing_eri_screening)
  write(stdout,'(a30,6x,f12.2,2x,i8)')          '4-center integrals' ,timing(timing_eri_4center),calls(timing_eri_4center)
  if( calls(timing_eri_2center) > 0 ) then
    write(stdout,'(a30,6x,f12.2,2x,i8)')        '       2-center integrals' ,timing(timing_eri_2center),calls(timing_eri_2center)
