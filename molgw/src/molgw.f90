@@ -171,7 +171,7 @@ program molgw
    call dft_approximate_vhxc(basis,hamiltonian_tmp)
    hamiltonian_tmp(:,:) = hamiltonian_tmp(:,:) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
 
-   write(stdout,*) 'Diagonalization of an approximate hamiltonian'
+   write(stdout,'(/,a)') ' Diagonalization of an approximate hamiltonian'
    call diagonalize_generalized_sym(basis%nbf,hamiltonian_tmp,s_matrix,&
                                     energy(:,1),c_matrix(:,:,1))
    deallocate(hamiltonian_tmp)

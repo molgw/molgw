@@ -391,7 +391,7 @@ end subroutine setup_exchange
 
 
 !=========================================================================
-subroutine setup_exchange_ri(print_matrix_,nbf,c_matrix,occupation,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
  use m_definitions
  use m_mpi
  use m_timing
@@ -400,7 +400,6 @@ subroutine setup_exchange_ri(print_matrix_,nbf,c_matrix,occupation,p_matrix,pot_
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
- real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin),occupation(nbf,nspin)
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
@@ -408,41 +407,59 @@ subroutine setup_exchange_ri(print_matrix_,nbf,c_matrix,occupation,p_matrix,pot_
  integer              :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
  integer              :: index_ij
  integer              :: nocc
- real(dp)             :: occ_sqrt_istate
  real(dp),allocatable :: tmp(:,:)
+ real(dp)             :: p_matrix_sqrt(nbf,nbf)
+ real(dp),allocatable :: p_matrix_sqrt_occ(:,:)
+ real(dp)             :: eigval(nbf)
 !=====
 
  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
  call start_clock(timing_exchange)
 
 
-!!!!Cholesky SUBROUTINE DPOTRF( UPLO, N, A, LDA, INFO )
-
  pot_exchange(:,:,:)=0.0_dp
 
  allocate(tmp(nauxil_3center,nbf))
 
  do ispin=1,nspin
-   ! Find the highest occupation state for this spin
-   nocc=0
-   do istate=1,nbf
-     if( occupation(istate,ispin) > completely_empty ) nocc = istate
+
+   !
+   ! Calculate the square-root of the density matrix
+   ! This is obtained with a diagonalization
+   !
+   ! Maybe a Cholesky decomposition could work too in the future
+   ! but right now the p_matrix has some noise and it is not exactly positive
+   ! semi-definite...
+   p_matrix_sqrt(:,:) = p_matrix(:,:,ispin)
+   call diagonalize(nbf,p_matrix_sqrt,eigval)
+
+   ! Denombrate the strictly positive eigenvalues
+   nocc = COUNT( eigval(:) > completely_empty )
+
+   allocate(p_matrix_sqrt_occ(nbf,nocc))
+   ibf = 0
+   do jbf=1,nbf
+     if( eigval(jbf) > completely_empty ) then
+       ibf = ibf + 1
+       p_matrix_sqrt_occ(:,ibf) = p_matrix_sqrt(:,jbf) * SQRT( eigval(jbf) )
+     endif
    enddo
 
    do istate=1,nocc
-     occ_sqrt_istate = SQRT( occupation(istate,ispin) )
      tmp(:,:) = 0.0_dp
      do jbf=1,nbf
        do ibf=1,nbf
          if( negligible_basispair(ibf,jbf) ) cycle
          index_ij = index_prod(ibf,jbf)
-         tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,index_ij) * occ_sqrt_istate
+         tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt_occ(ibf,istate) * eri_3center(:,index_ij)
        enddo
      enddo
 
      pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin) &
                         - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
    enddo
+
+   deallocate(p_matrix_sqrt_occ)
 
  enddo
  deallocate(tmp)
@@ -459,7 +476,7 @@ end subroutine setup_exchange_ri
 
 
 !=========================================================================
-subroutine setup_exchange_longrange_ri(print_matrix_,nbf,c_matrix,occupation,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
  use m_definitions
  use m_mpi
  use m_timing
@@ -468,7 +485,6 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,c_matrix,occupation,p_m
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
- real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin),occupation(nbf,nspin)
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
@@ -476,8 +492,10 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,c_matrix,occupation,p_m
  integer              :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
  integer              :: index_ij
  integer              :: nocc
- real(dp)             :: occ_sqrt_istate
  real(dp),allocatable :: tmp(:,:)
+ real(dp)             :: p_matrix_sqrt(nbf,nbf)
+ real(dp),allocatable :: p_matrix_sqrt_occ(:,:)
+ real(dp)             :: eigval(nbf)
 !=====
 
  write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity'
@@ -489,26 +507,44 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,c_matrix,occupation,p_m
  allocate(tmp(nauxil_3center,nbf))
 
  do ispin=1,nspin
-   ! Find the highest occupation state for this spin
-   nocc=0
-   do istate=1,nbf
-     if( occupation(istate,ispin) > completely_empty ) nocc = istate
+
+   !
+   ! Calculate the square-root of the density matrix
+   ! This is obtained with a diagonalization
+   !
+   ! Maybe a Cholesky decomposition could work too in the future
+   ! but right now the p_matrix has some noise and it is not exactly positive
+   ! semi-definite...
+   p_matrix_sqrt(:,:) = p_matrix(:,:,ispin)
+   call diagonalize(nbf,p_matrix_sqrt,eigval)
+
+   ! Denombrate the strictly positive eigenvalues
+   nocc = COUNT( eigval(:) > completely_empty )
+
+   allocate(p_matrix_sqrt_occ(nbf,nocc))
+   ibf = 0
+   do jbf=1,nbf
+     if( eigval(jbf) > completely_empty ) then
+       ibf = ibf + 1
+       p_matrix_sqrt_occ(:,ibf) = p_matrix_sqrt(:,jbf) * SQRT( eigval(jbf) )
+     endif
    enddo
 
    do istate=1,nocc
-     occ_sqrt_istate = SQRT( occupation(istate,ispin) )
      tmp(:,:) = 0.0_dp
      do jbf=1,nbf
        do ibf=1,nbf
          if( negligible_basispair(ibf,jbf) ) cycle
          index_ij = index_prod(ibf,jbf)
-         tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center_lr(:,index_ij) * occ_sqrt_istate
+         tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt_occ(ibf,istate) * eri_3center_lr(:,index_ij)
        enddo
      enddo
 
      pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin) &
                         - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
    enddo
+
+   deallocate(p_matrix_sqrt_occ)
 
  enddo
 
