@@ -79,6 +79,7 @@ program molgw
  !
  ! Build up the basis set 
  !
+ write(stdout,*) 'Setting up the basis set for wavefunctions'
  call init_basis_set(basis_path,basis_name,gaussian_type,basis)
  call setup_cart_to_pure_transforms(gaussian_type)
 
@@ -207,6 +208,7 @@ program molgw
  ! then set it up now and calculate the required ERI: 2- and 3-center integrals
  !
  if( has_auxil_basis ) then
+   write(stdout,*) 'Setting up the auxiliary basis set for Coulomb integrals'
    call init_basis_set(basis_path,auxil_basis_name,gaussian_type,auxil_basis)
    call distribute_auxil_basis(auxil_basis)
 
@@ -353,9 +355,16 @@ program molgw
  if( calc_type%is_mp2 .AND. calc_type%gwmethod == perturbative ) then
 
 ! This routine is faster but only gives the correlation energy
-!   call mp2_energy_fast(basis,occupation,c_matrix,energy,en%mp2)
+   if(has_auxil_basis) then
+     call prepare_eri_3center_eigen(c_matrix)
+     call mp2_energy_ri(basis,occupation,energy,en%mp2)
+     call destroy_eri_3center_eigen()
+   else
+     call mp2_energy_fast(basis,occupation,c_matrix,energy,en%mp2)
+   endif
+
 ! This routine is slower but gives both the correlation energy and the self-energy
-   call mp2_selfenergy(calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,hamiltonian_exx,en%mp2)
+!   call mp2_selfenergy(calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,hamiltonian_exx,en%mp2)
    write(stdout,'(a,2x,f19.10)') ' MP2 Energy       [Ha]:',en%mp2
    write(stdout,*) 
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%mp2

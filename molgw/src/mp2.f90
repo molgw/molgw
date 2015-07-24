@@ -1,124 +1,110 @@
-!=========================================================================
-subroutine mp2_energy(basis,occupation,c_matrix,energy,emp2)
+!==================================================================
+subroutine mp2_energy_ri(basis,occupation,energy,emp2)
  use m_definitions
+ use m_mpi
  use m_basis_set
  use m_eri
- use m_inputparam,only: nspin,spin_fact
+ use m_inputparam,only: nspin,spin_fact,ncoreg,is_frozencore
  implicit none
 
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin),energy(basis%nbf,nspin)
+ real(dp),intent(in)        :: occupation(basis%nbf,nspin),energy(basis%nbf,nspin)
  real(dp),intent(out)       :: emp2
 !=====
  integer                    :: astate,bstate,istate,jstate
- integer                    :: ibf,jbf,abf,bbf,ispin,jspin
+ integer                    :: ibf,jbf,abf,bbf,iaspin,jbspin
  real(dp)                   :: energy_denom
- real(dp)                   :: tmp_xaxb(basis%nbf,basis%nbf)
- real(dp)                   :: tmp_iaxb(basis%nbf),tmp_xaib(basis%nbf)
- real(dp)                   :: tmp_iajb,tmp_jaib
+ real(dp)                   :: tmp_ixjx(basis%nbf,basis%nbf)
+ real(dp)                   :: tmp_iajx(basis%nbf),tmp_ixja(basis%nbf)
+ real(dp)                   :: tmp_iajb,tmp_ibja
  real(dp)                   :: contrib1,contrib2
  real(dp)                   :: fact
- real(dp),allocatable       :: tmp_xaxx(:,:,:)
+ real(dp),allocatable       :: tmp_ixxx(:,:,:)
+ integer                    :: nocc(nspin)
+ integer                    :: ncore
 !=====
+
+ call start_clock(timing_mp2_energy)
+
+ write(stdout,'(/,a)') ' RI-MP2 correlation calculation'
+
+ ncore = ncoreg
+ if(is_frozencore) then
+   if( ncore == 0) ncore = atoms_core_states()
+ endif
+
+
 
  emp2 = 0.0_dp
  contrib1 = 0.0_dp
  contrib2 = 0.0_dp
 
 
- allocate(tmp_xaxx(basis%nbf,basis%nbf,basis%nbf))
+ allocate(tmp_ixxx(basis%nbf,basis%nbf,basis%nbf))
 
- do ispin=1,nspin
+ do iaspin=1,nspin
+   !
+   ! First, set up the list of occupied states
+   nocc(iaspin) = ncore
+   do istate=ncore+1,basis%nbf
+     if( occupation(istate,iaspin) < completely_empty ) cycle
+     nocc(iaspin) = istate
+   enddo
+ enddo
 
-   do astate=1,basis%nbf
-     if(occupation(astate,ispin)>spin_fact-completely_empty) cycle
 
-     write(stdout,'(i4,2x,i4,a,i4)') ispin,astate,' / ',basis%nbf
+ do iaspin=1,nspin
 
-     tmp_xaxx(:,:,:) = 0.0_dp
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO REDUCTION(+:tmp_xaxx)
-     do bbf=1,basis%nbf
-       do jbf=1,basis%nbf
-!FIXME         if( negligible_basispair(jbf,bbf) ) cycle
-         do abf=1,basis%nbf
-           do ibf=1,basis%nbf
-!FIXME             if( negligible_basispair(ibf,abf) ) cycle
-             tmp_xaxx(ibf,jbf,bbf) = tmp_xaxx(ibf,jbf,bbf) &
-&               + c_matrix(abf,astate,ispin) * eri(ibf,abf,jbf,bbf)
-           enddo
-         enddo
-       enddo
-     enddo
-!$OMP END DO
-!$OMP END PARALLEL
+   do istate=ncore+1,nocc(iaspin)
 
-     do jspin=1,nspin
-       do bstate=1,basis%nbf
-         if(occupation(bstate,jspin)>spin_fact-completely_empty) cycle
+
+     write(stdout,'(i4,2x,i4,a,i4)') iaspin,istate-ncore,' / ',nocc-ncore
+
+     do jbspin=1,nspin
+
+       do jstate=ncore+1,nocc(jbspin)
        
-         tmp_xaxb(:,:) = 0.0_dp
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO REDUCTION(+:tmp_xaxb)
-         do bbf=1,basis%nbf
-           do jbf=1,basis%nbf
-             do ibf=1,basis%nbf
-               tmp_xaxb(ibf,jbf) = tmp_xaxb(ibf,jbf) + c_matrix(bbf,bstate,jspin) * tmp_xaxx(ibf,jbf,bbf)
-             enddo
-           enddo
-         enddo
-!$OMP END DO
-!$OMP END PARALLEL
+         do astate=ncore+1,basis%nbf
+           if( occupation(astate,iaspin) > spin_fact - completely_empty ) cycle
 
-         do istate=1,basis%nbf
-           if(occupation(istate,ispin)<completely_empty) cycle
+           do bstate=ncore+1,basis%nbf
+             if( occupation(bstate,jbspin) > spin_fact - completely_empty ) cycle
 
-           tmp_iaxb(:) = 0.0_dp
-           tmp_xaib(:) = 0.0_dp
-           do jbf=1,basis%nbf
-             do ibf=1,basis%nbf
-               tmp_iaxb(jbf) = tmp_iaxb(jbf) + c_matrix(ibf,istate,ispin) * tmp_xaxb(ibf,jbf)
-             enddo
-           enddo
-           do jbf=1,basis%nbf
-             do ibf=1,basis%nbf
-               tmp_xaib(jbf) = tmp_xaib(jbf) + c_matrix(ibf,istate,ispin) * tmp_xaxb(jbf,ibf)
-             enddo
-           enddo
+             fact =  occupation(istate,iaspin) * ( spin_fact - occupation(astate,iaspin) ) &
+&                   *occupation(jstate,jbspin) * ( spin_fact - occupation(bstate,jbspin) ) / spin_fact**2
 
-           do jstate=1,basis%nbf
-             if(occupation(jstate,jspin)<completely_empty) cycle
-
-             fact =  occupation(istate,ispin) * ( 1.0_dp - occupation(astate,ispin) ) &
-&                   *occupation(jstate,jspin) * ( 1.0_dp - occupation(bstate,jspin) )
-
-             energy_denom = energy(istate,ispin) + energy(jstate,jspin) &
-&                                    - energy(astate,ispin) - energy(bstate,jspin)
+             energy_denom = energy(istate,iaspin) + energy(jstate,jbspin) &
+&                                    - energy(astate,iaspin) - energy(bstate,jbspin)
              ! Avoid the zero denominators
              if( ABS(energy_denom) < 1.d-18) then
                write(stdout,*) 'you skipped something'
                cycle
              endif
+
              energy_denom =  fact / energy_denom 
 
-             tmp_iajb = SUM( tmp_iaxb(:) * c_matrix(:,jstate,jspin) )
-             tmp_jaib = SUM( tmp_xaib(:) * c_matrix(:,jstate,jspin) )
+             tmp_iajb = eri_eigen_ri(istate,astate,iaspin,jstate,bstate,jbspin)
 
-             contrib1 = contrib1 + 0.5_dp * energy_denom * tmp_iajb**2 
+             contrib1 = contrib1 + 0.5_dp * energy_denom * tmp_iajb**2
 
-             if(ispin==jspin) contrib2 = contrib2 - 0.5_dp * energy_denom * tmp_iajb*tmp_jaib / spin_fact
-
+             if(iaspin==jbspin) then
+               tmp_ibja = eri_eigen_ri(istate,bstate,iaspin,jstate,astate,jbspin)
+               contrib2 = contrib2 - 0.5_dp * energy_denom * tmp_iajb*tmp_ibja / spin_fact
+             endif
 
            enddo
          enddo
        enddo
-     enddo !jspin
+     enddo !jbspin
 
-   enddo ! astate
+   enddo ! istate
 
- enddo !ispin
+ enddo !iaspin
 
- deallocate(tmp_xaxx)
+! call xsum(contrib1)
+! call xsum(contrib2)
+
+ deallocate(tmp_ixxx)
 
 
  emp2 = contrib1 + contrib2
@@ -127,8 +113,9 @@ subroutine mp2_energy(basis,occupation,c_matrix,energy,emp2)
  write(stdout,'(a,f14.8)')   ' SOX diagram     :',contrib2
  write(stdout,'(a,f14.8,/)') ' MP2 correlation :',emp2
 
+ call stop_clock(timing_mp2_energy)
 
-end subroutine mp2_energy
+end subroutine mp2_energy_ri
 
 
 !==================================================================
@@ -153,29 +140,12 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
  real(dp)                   :: contrib1,contrib2
  real(dp)                   :: fact
  real(dp),allocatable       :: tmp_ixxx(:,:,:)
- integer                    :: nocc,ncore
- logical                    :: file_exists
- integer                    :: ifcfile
+ integer                    :: nocc
 !=====
 
  call start_clock(timing_mp2_energy)
 
  write(stdout,*) 'starting the MP2 calculation'
- !
- ! Deal with frozen core initialization
- inquire(file='manual_frozencore',exist=file_exists)
- if(file_exists) then
-   !
-   ! ncore_G and ncore_W contain the highest core state to be discarded
-   open(newunit=ifcfile,file='manual_frozencore')
-   read(ifcfile,*) ncore
-   close(ifcfile)
-   ncore = MAX(ncore,0)
-   write(msg,'(a,i4,2x,i4)') 'frozen core approximation for MP2 switched on up to state = ',ncore
-   call issue_warning(msg)
- else
-   ncore = 0
- endif
 
 
  emp2 = 0.0_dp
@@ -188,22 +158,19 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
  do iaspin=1,nspin
    !
    ! First, set up the list of occupied states
-   nocc = 0
-   do istate=ncore+1,basis%nbf
+   nocc = ncoreg
+   do istate=ncoreg+1,basis%nbf
      if( occupation(istate,iaspin) < completely_empty ) cycle
-     nocc = nocc + 1
+     nocc = istate
    enddo
-   call init_fast_distribution(nocc)
 
-   do istate=ncore+1,basis%nbf
-     if( occupation(istate,iaspin) < completely_empty ) cycle
-     if( .NOT. is_my_fast_task(istate-ncore) ) cycle
 
-     write(stdout,'(i4,2x,i4,a,i4)') iaspin,istate-ncore,' / ',nocc
+   do istate=ncoreg+1,nocc
+
+
+     write(stdout,'(i4,2x,i4,a,i4)') iaspin,istate-ncoreg,' / ',nocc
 
      tmp_ixxx(:,:,:) = 0.0_dp
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO REDUCTION(+:tmp_ixxx)
      do bbf=1,basis%nbf
        do jbf=1,basis%nbf
          if( negligible_basispair(jbf,bbf) ) cycle
@@ -216,16 +183,12 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
          enddo
        enddo
      enddo
-!$OMP END DO
-!$OMP END PARALLEL
 
      do jbspin=1,nspin
-       do jstate=ncore+1,basis%nbf
+       do jstate=ncoreg+1,basis%nbf
          if( occupation(jstate,jbspin) < completely_empty ) cycle
        
          tmp_ixjx(:,:) = 0.0_dp
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO REDUCTION(+:tmp_ixjx)
          do bbf=1,basis%nbf
            do jbf=1,basis%nbf
              do abf=1,basis%nbf
@@ -233,8 +196,6 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
              enddo
            enddo
          enddo
-!$OMP END DO
-!$OMP END PARALLEL
 
          do astate=1,basis%nbf
            if( occupation(astate,iaspin) > spin_fact - completely_empty ) cycle
@@ -258,8 +219,8 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
            do bstate=1,basis%nbf
              if( occupation(bstate,jbspin) > spin_fact - completely_empty ) cycle
 
-             fact =  occupation(istate,iaspin) * ( 1.0_dp - occupation(astate,iaspin) ) &
-&                   *occupation(jstate,jbspin) * ( 1.0_dp - occupation(bstate,jbspin) )
+             fact =  occupation(istate,iaspin) * ( spin_fact - occupation(astate,iaspin) ) &
+&                   *occupation(jstate,jbspin) * ( spin_fact - occupation(bstate,jbspin) ) / spin_fact**2
 
              energy_denom = energy(istate,iaspin) + energy(jstate,jbspin) &
 &                                    - energy(astate,iaspin) - energy(bstate,jbspin)
@@ -287,7 +248,6 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
 
    enddo ! istate
 
-   call destroy_fast_distribution()
  enddo !iaspin
 
  call xsum(contrib1)

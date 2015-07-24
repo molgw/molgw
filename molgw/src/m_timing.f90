@@ -124,11 +124,13 @@ subroutine output_timing()
  write(stdout,'(a30,6x,f12.2)') 'Total post SCF',timing(timing_postscf)
  write(stdout,'(/,a,/)') '                 ----------------------'
 
- write(stdout,'(a30,6x,f12.2,2x,i8)')          'integral screening' ,timing(timing_eri_screening),calls(timing_eri_screening)
- write(stdout,'(a30,6x,f12.2,2x,i8)')          '4-center integrals' ,timing(timing_eri_4center),calls(timing_eri_4center)
+ write(stdout,'(a30,6x,f12.2,2x,i8)')          'Integral screening',timing(timing_eri_screening),calls(timing_eri_screening)
+ if( calls(timing_eri_4center) > 0 ) then
+   write(stdout,'(a30,6x,f12.2,2x,i8)')        '4-center integrals',timing(timing_eri_4center),calls(timing_eri_4center)
+ endif
  if( calls(timing_eri_2center) > 0 ) then
-   write(stdout,'(a30,6x,f12.2,2x,i8)')        '       2-center integrals' ,timing(timing_eri_2center),calls(timing_eri_2center)
-   write(stdout,'(a30,6x,f12.2,2x,i8)')        '       3-center integrals' ,timing(timing_eri_3center),calls(timing_eri_3center)
+   write(stdout,'(a30,6x,f12.2,2x,i8)')        '2-center integrals',timing(timing_eri_2center),calls(timing_eri_2center)
+   write(stdout,'(a30,6x,f12.2,2x,i8)')        '3-center integrals',timing(timing_eri_3center),calls(timing_eri_3center)
  endif
  write(stdout,'(a30,6x,f12.2,2x,i8)')          'Kinetic Hamiltonian',timing(timing_hamiltonian_kin),calls(timing_hamiltonian_kin)
  write(stdout,'(a30,6x,f12.2,2x,i8)')  'Electron-nuclei Hamiltonian',timing(timing_hamiltonian_nuc),calls(timing_hamiltonian_nuc)
