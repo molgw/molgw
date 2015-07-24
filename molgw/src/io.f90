@@ -231,9 +231,10 @@ subroutine mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
  integer                    :: natom1,natom2,istate,ispin
  logical                    :: file_exists
  integer                    :: pdosfile
- real(dp)                   :: proj_state_i,proj_charge
+ real(dp)                   :: proj_state_i(0:basis%ammax),proj_charge
  real(dp)                   :: cs_vector_i(basis%nbf)
  integer                    :: iatom_ibf(basis%nbf)
+ integer                    :: li_ibf(basis%nbf)
 !=====
 
  write(stdout,*)
@@ -258,6 +259,7 @@ subroutine mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    iatom_ibf(ibf:ibf+ni-1) = basis%bf(ibf_cart)%iatom
+   li_ibf(ibf:ibf+ni-1) = li
 
    ibf      = ibf      + ni
    ibf_cart = ibf_cart + ni_cart
@@ -269,18 +271,20 @@ subroutine mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
  proj_charge = 0.0_dp
  do ispin=1,nspin
    do istate=1,basis%nbf
-     proj_state_i = 0.0_dp
+     proj_state_i(:) = 0.0_dp
 
      cs_vector_i(:) = MATMUL( c_matrix(:,istate,ispin) , s_matrix(:,:) )
 
      do ibf=1,basis%nbf
        if( iatom_ibf(ibf) >= natom1 .AND. iatom_ibf(ibf) <= natom2 ) then
-         proj_state_i = proj_state_i + c_matrix(ibf,istate,ispin) * cs_vector_i(ibf)
+         li = li_ibf(ibf)
+         proj_state_i(li) = proj_state_i(li) + c_matrix(ibf,istate,ispin) * cs_vector_i(ibf)
        endif
      enddo
-     proj_charge = proj_charge + occupation(istate,ispin) * proj_state_i
+     proj_charge = proj_charge + occupation(istate,ispin) * SUM(proj_state_i(:))
 
-     write(stdout,'(i3,x,i5,x,f16.6,4x,f16.8)') ispin,istate,energy(istate,ispin)*Ha_eV,proj_state_i
+     write(stdout,'(i3,x,i5,x,20(f16.6,4x))') ispin,istate,energy(istate,ispin)*Ha_eV,&
+          SUM(proj_state_i(:)),proj_state_i(:)
    enddo
  enddo
  write(stdout,*) '==========================================='
