@@ -180,6 +180,9 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
        do i_cart=1,ni_cart
          do j_cart=1,nj_cart
            call nucleus_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
+#ifdef TODAY
+           call nucleus_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),2.0_dp,x(:,iatom),vnucleus_ij)
+#endif
            matrix_cart(i_cart,j_cart) = matrix_cart(i_cart,j_cart) + vnucleus_ij
          enddo
        enddo
@@ -210,6 +213,219 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
  call stop_clock(timing_hamiltonian_nuc)
 
 end subroutine setup_nucleus
+
+
+!=========================================================================
+subroutine setup_effective_core(print_matrix_,basis,hamiltonian_nucleus)
+ use m_definitions
+ use m_timing
+ use m_basis_set
+ use m_atoms
+ implicit none
+ logical,intent(in)         :: print_matrix_
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(inout)     :: hamiltonian_nucleus(basis%nbf,basis%nbf)
+!====
+ integer              :: natom_local
+ integer              :: iproj,jbf
+ integer              :: iproj_cart,jbf_cart
+ integer              :: i_cart,j_cart
+ integer              :: ni,nj,ni_cart,nj_cart,li,lj
+ integer              :: iatom
+ character(len=100)   :: title
+ real(dp),allocatable :: matrix_cart(:,:)
+ real(dp)             :: vecp_proji_j
+!FBFB
+ logical,parameter    :: normalized=.FALSE.
+ type(basis_set)      :: proj
+ real(dp)             :: x0(3)
+ real(dp)             :: alpha(1)
+ real(dp)             :: coeff(1)
+ integer              :: shell_index
+ real(dp),allocatable :: projector_l(:,:)
+ real(dp),allocatable :: projector_r(:,:)
+ real(dp),allocatable :: proj_coef(:)
+!====
+
+ call start_clock(timing_hamiltonian_ecp)
+ write(stdout,'(/,a)') ' Setup effective core potential part of the Hamiltonian'
+
+ proj%nbf      =   1 ! + 3 + 6
+ proj%nbf_cart =   1 ! + 3 + 6
+ proj%gaussian_type = 'PURE'
+ proj%ammax    = 1
+ allocate(proj%bf(proj%nbf_cart))
+
+ allocate(projector_l(basis%nbf,proj%nbf)) ! FBFB deallocate
+ allocate(projector_r(proj%nbf,basis%nbf)) ! FBFB deallocate
+ allocate(proj_coef(proj%nbf))             ! FBFB deallocate
+ 
+ !
+ ! Creating a temporary basis that contains the projectors
+ shell_index = 0
+ iproj = 0
+ do iatom=1,natom
+   x0(:) = 0.0_dp
+
+#if 0
+   shell_index = shell_index + 1
+   alpha(1) = 2.653000000 * 0.50_dp
+   coeff(1) = 1.0_dp 
+   iproj = iproj + 1
+   proj_coef(iproj) = 13.325000000 
+   call init_basis_function(normalized,1,0,0,0,iatom,x0,alpha,coeff,shell_index,proj%bf(iproj))
+   proj%bf(iproj)%g(1)%norm_factor = 1.0_dp / SQRT( 4.0_dp * pi )
+   write(*,*) proj%bf(iproj)%g(1)%norm_factor
+
+   shell_index = shell_index + 1
+   alpha(1) = 3.120000000 * 0.50_dp
+   coeff(1) = 1.0_dp 
+   iproj = iproj + 1
+   proj_coef(iproj) = -1.574000000
+   call init_basis_function(normalized,1,1,0,0,iatom,x0,alpha,coeff,shell_index,proj%bf(iproj))
+   proj%bf(iproj)%g(1)%norm_factor = SQRT(3.0_dp) / SQRT( 4.0_dp * pi )
+   write(*,*) proj%bf(iproj)%g(1)%norm_factor
+
+   iproj = iproj + 1
+   proj_coef(iproj) =  -1.574000000
+   call init_basis_function(normalized,1,0,1,0,iatom,x0,alpha,coeff,shell_index,proj%bf(iproj))
+   proj%bf(iproj)%g(1)%norm_factor = SQRT(3.0_dp) / SQRT( 4.0_dp * pi )
+   write(*,*) proj%bf(iproj)%g(1)%norm_factor
+
+   iproj = iproj + 1
+   proj_coef(iproj) = -1.574000000
+   call init_basis_function(normalized,1,0,0,1,iatom,x0,alpha,coeff,shell_index,proj%bf(iproj))
+   proj%bf(iproj)%g(1)%norm_factor = SQRT(3.0_dp) / SQRT( 4.0_dp * pi )
+   write(*,*) proj%bf(iproj)%g(1)%norm_factor
+#else
+! s proj
+   shell_index = shell_index + 1
+   alpha(1) = 0.73277 ! 1.732000000 * 0.50_dp
+   coeff(1) = 1.0_dp 
+   iproj = iproj + 1
+   proj_coef(iproj) = 1.0 ! 14.676000000 
+   call init_basis_function(normalized,1,0,0,0,iatom,x0,alpha,coeff,shell_index,proj%bf(iproj))
+   proj%bf(iproj)%g(1)%norm_factor = 1.0_dp / SQRT( 4.0_dp * pi )
+   write(*,*) proj%bf(iproj)%g(1)%norm_factor
+
+! ! p proj
+!    shell_index = shell_index + 1
+!    alpha(1) = 1.115000000 * 0.50_dp
+!    coeff(1) = 1.0_dp 
+!    iproj = iproj + 1
+!    proj_coef(iproj) = 5.175700000
+!    call init_basis_function(normalized,1,1,0,0,iatom,x0,alpha,coeff,shell_index,proj%bf(iproj))
+!    proj%bf(iproj)%g(1)%norm_factor = SQRT(3.0_dp) / SQRT( 4.0_dp * pi )
+!    write(*,*) proj%bf(iproj)%g(1)%norm_factor
+! 
+!    iproj = iproj + 1
+!    proj_coef(iproj) = 5.175700000
+!    call init_basis_function(normalized,1,0,1,0,iatom,x0,alpha,coeff,shell_index,proj%bf(iproj))
+!    proj%bf(iproj)%g(1)%norm_factor = SQRT(3.0_dp) / SQRT( 4.0_dp * pi )
+!    write(*,*) proj%bf(iproj)%g(1)%norm_factor
+! 
+!    iproj = iproj + 1
+!    proj_coef(iproj) = 5.175700000
+!    call init_basis_function(normalized,1,0,0,1,iatom,x0,alpha,coeff,shell_index,proj%bf(iproj))
+!    proj%bf(iproj)%g(1)%norm_factor = SQRT(3.0_dp) / SQRT( 4.0_dp * pi )
+!    write(*,*) proj%bf(iproj)%g(1)%norm_factor
+! 
+! ! d proj
+!    shell_index = shell_index + 1
+!    alpha(1) = 1.203000000 * 0.50_dp
+!    coeff(1) = 1.0_dp 
+!    iproj = iproj + 1
+!    proj_coef(iproj) = -1.816000000
+!    call init_basis_function(normalized,1,2,0,0,iatom,x0,alpha,coeff,shell_index,proj%bf(iproj))
+!    proj%bf(iproj)%g(1)%norm_factor = SQRT(15.0_dp) / SQRT( 4.0_dp * pi )
+!    write(*,*) proj%bf(iproj)%g(1)%norm_factor
+!    iproj = iproj + 1
+!    proj_coef(iproj) = -1.816000000
+!    call init_basis_function(normalized,1,1,1,0,iatom,x0,alpha,coeff,shell_index,proj%bf(iproj))
+!    proj%bf(iproj)%g(1)%norm_factor = SQRT(15.0_dp) / SQRT( 4.0_dp * pi )
+!    write(*,*) proj%bf(iproj)%g(1)%norm_factor
+!    iproj = iproj + 1
+!    proj_coef(iproj) = -1.816000000
+!    call init_basis_function(normalized,1,1,0,1,iatom,x0,alpha,coeff,shell_index,proj%bf(iproj))
+!    proj%bf(iproj)%g(1)%norm_factor = SQRT(15.0_dp) / SQRT( 4.0_dp * pi )
+!    write(*,*) proj%bf(iproj)%g(1)%norm_factor
+!    iproj = iproj + 1
+!    proj_coef(iproj) = -1.816000000
+!    call init_basis_function(normalized,1,0,2,0,iatom,x0,alpha,coeff,shell_index,proj%bf(iproj))
+!    proj%bf(iproj)%g(1)%norm_factor = SQRT(15.0_dp) / SQRT( 4.0_dp * pi )
+!    write(*,*) proj%bf(iproj)%g(1)%norm_factor
+!    iproj = iproj + 1
+!    proj_coef(iproj) = -1.816000000
+!    call init_basis_function(normalized,1,0,1,1,iatom,x0,alpha,coeff,shell_index,proj%bf(iproj))
+!    proj%bf(iproj)%g(1)%norm_factor = SQRT(15.0_dp) / SQRT( 4.0_dp * pi )
+!    write(*,*) proj%bf(iproj)%g(1)%norm_factor
+!    iproj = iproj + 1
+!    proj_coef(iproj) = -1.816000000
+!    call init_basis_function(normalized,1,0,0,2,iatom,x0,alpha,coeff,shell_index,proj%bf(iproj))
+!    proj%bf(iproj)%g(1)%norm_factor = SQRT(15.0_dp) / SQRT( 4.0_dp * pi )
+!    write(*,*) proj%bf(iproj)%g(1)%norm_factor
+
+
+#endif
+
+ enddo
+
+
+ !
+ ! Index iproj is running over the projectors in the ECP
+ ! It is always a 'PURE' Gaussian
+ iproj_cart = 1
+ jbf_cart = 1
+ iproj    = 1
+ jbf      = 1
+ do while(iproj_cart<=proj%nbf_cart)
+   li      = proj%bf(iproj_cart)%am
+   ni_cart = number_basis_function_am('CART',li)
+   ni      = number_basis_function_am('PURE',li)
+   write(*,*) 'li',li
+   write(*,'(3(f12.6,2x))') cart_to_pure(li)%matrix(:,:)
+
+   do while(jbf_cart<=basis%nbf_cart)
+     lj      = basis%bf(jbf_cart)%am
+     nj_cart = number_basis_function_am('CART',lj)
+     nj      = number_basis_function_am(basis%gaussian_type,lj)
+
+     allocate(matrix_cart(ni_cart,nj_cart))
+     matrix_cart(:,:) = 0.0_dp
+     do i_cart=1,ni_cart
+       do j_cart=1,nj_cart
+         call overlap_basis_function(proj%bf(iproj_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
+       enddo
+     enddo
+
+     projector_r(iproj:iproj+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
+                                                         MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) ) 
+
+
+     deallocate(matrix_cart)
+     jbf      = jbf      + nj
+     jbf_cart = jbf_cart + nj_cart
+   enddo
+   jbf      = 1
+   jbf_cart = 1
+
+   iproj      = iproj      + ni
+   iproj_cart = iproj_cart + ni_cart
+
+ enddo
+
+ forall(iproj=1:proj%nbf)
+   projector_l(:,iproj) = proj_coef(iproj) * projector_r(iproj,:)
+ end forall
+ 
+ hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) + MATMUL(  projector_l(:,:) , projector_r(:,:) ) 
+
+ title='===  Effective core potential contribution ==='
+ call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_nucleus)
+
+ call stop_clock(timing_hamiltonian_ecp)
+
+end subroutine setup_effective_core
 
 
 !=========================================================================
@@ -504,7 +720,7 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix,pot_exchange,e
 
  pot_exchange(:,:,:)=0.0_dp
 
- allocate(tmp(nauxil_3center,nbf))
+ allocate(tmp(nauxil_3center_lr,nbf))
 
  do ispin=1,nspin
 

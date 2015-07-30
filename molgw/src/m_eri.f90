@@ -53,11 +53,17 @@ module m_eri
  integer,private :: nsize           ! size of the eri_buffer array
  integer,private :: npair           ! number of independent pairs (i,j) with i<=j
 
- integer,protected :: nauxil_2center  ! size of the 2-center matrix
-                                      ! 2-center integrals are NOT distributed
- integer,protected :: nauxil_3center  ! size of the 3-center matrix
-                                      ! may differ from the previous one due to
-                                      ! data distribution
+ integer,protected :: nauxil_2center     ! size of the 2-center matrix
+                                         ! 2-center integrals are NOT distributed
+ integer,protected :: nauxil_3center     ! size of the 3-center matrix
+                                         ! may differ from the previous one due to
+                                         ! data distribution
+
+ integer,protected :: nauxil_2center_lr  ! size of the 2-center matrix
+                                         ! 2-center integrals are NOT distributed
+ integer,protected :: nauxil_3center_lr  ! size of the 3-center matrix
+                                         ! may differ from the previous one due to
+                                         ! data distribution
 
 
 ! TODO write a proper interface for the call to C
@@ -125,64 +131,6 @@ subroutine prepare_eri(basis,rcut,which_buffer)
 
 
 end subroutine prepare_eri
-
-
-!=========================================================================
-subroutine allocate_eri_auxil(auxil_basis)
- implicit none
-!===== 
- type(basis_set),intent(in) :: auxil_basis
-!===== 
- integer            :: info
- logical            :: file_exists
- integer            :: mtmp,ntmp
-!===== 
-
-
- call setup_shell_list_auxil(auxil_basis)
-
- ! The 2-center integrals are not distributed because they are small anyway
- nauxil_2center = auxil_basis%nbf
- !
- ! 2-CENTER INTEGRALS 
- !
- call clean_allocate('2-center integrals',eri_2center_m1,nauxil_2center,nauxil_2center)
-
- !
- ! 3-CENTER INTEGRALS 
- !
- nauxil_3center = auxil_basis%nbf_local
- call clean_allocate('3-center integrals',eri_3center,nauxil_3center,npair)
-
-
-end subroutine allocate_eri_auxil
-
-
-!=========================================================================
-subroutine allocate_eri_auxil_lr(auxil_basis)
- implicit none
-!===== 
- type(basis_set),intent(in) :: auxil_basis
-!===== 
- integer            :: info
- logical            :: file_exists
-!===== 
-
-
- if( .NOT. ALLOCATED(shell_auxil) ) call setup_shell_list_auxil(auxil_basis)
-
- !
- ! 2-CENTER INTEGRALS 
- !
- call clean_allocate('2-center LR integrals',eri_2center_m1_lr,nauxil_2center,nauxil_2center)
-
- !
- ! 3-CENTER INTEGRALS 
- !
- call clean_allocate('3-center LR integrals',eri_3center_lr,nauxil_3center,npair)
-
-
-end subroutine allocate_eri_auxil_lr
 
 
 !=========================================================================
@@ -809,6 +757,21 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
 
  call start_clock(timing_eri_2center)
 
+
+ call setup_shell_list_auxil(auxil_basis)
+
+ ! First allocate the 2-center integral array
+ !
+ ! The 2-center integrals are not distributed because they are small anyway
+ ! The size of the 2-center integrals might be reduced later on
+ ! by removing the zero eigenvalues
+ nauxil_2center = auxil_basis%nbf
+ !
+ ! 2-CENTER INTEGRALS 
+ !
+ call clean_allocate('2-center integrals',eri_2center_m1,auxil_basis%nbf,auxil_basis%nbf)
+
+
  write(stdout,'(/,a)')    ' Calculate, invert and store the 2-center Electron Repulsion Integrals'
  write(stdout,'(a)')      ' Libint library initialized'
  write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
@@ -1014,22 +977,23 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
  call diagonalize(nauxil_2center,eri_2center_m1,eigval)
 
  !
- ! Need to be careful here: since the matrix can be not enough positive definite.
- ! Avoid too small (or even worse negative!) eigenvalues
- if( MINVAL(eigval(:)) < TOO_LOW_EIGENVAL ) then
-   write(stdout,'(a)')       ' 2-center integral matrix is badly conditioned'
-   write(stdout,'(a,e16.6)') ' Eigenvalues are as low as:',MINVAL(eigval(:)) 
-   write(stdout,'(a,e16.6)') ' Disregard values lower than:',TOO_LOW_EIGENVAL
-   call issue_warning('2-center integral is badly conditioned')
- endif
+ ! Skip the too small eigenvalues
+ ibf = 0
  do jbf=1,nauxil_2center
-   if( eigval(jbf) < TOO_LOW_EIGENVAL ) eigval(jbf) = TOO_LOW_EIGENVAL
-   eri_2center_m1(:,jbf) = eri_2center_m1(:,jbf) / SQRT( eigval(jbf) )
+   if( eigval(jbf) < TOO_LOW_EIGENVAL ) cycle
+   ibf = ibf + 1
+   eri_2center_m1(:,ibf) = eri_2center_m1(:,jbf) / SQRT( eigval(jbf) )
  enddo
  deallocate(eigval)
 
- write(stdout,'(a)') ' All 2-center integrals have been calculated, diagonalized and stored'
+ !
+ ! Resize the 2-center integral matrix
+ ! Now the array is eri_2center_m1(auxil_basis%nbf,nauxil_2center)
+ nauxil_2center = ibf
 
+ write(stdout,'(a)')        ' All 2-center integrals have been calculated, diagonalized and stored'
+ write(stdout,'(a,i6)')     ' Some have been eliminated ',auxil_basis%nbf-nauxil_2center
+ write(stdout,'(a,es16.6)') ' because they were lower than:',TOO_LOW_EIGENVAL
 
 
  call stop_clock(timing_eri_2center)
@@ -1077,6 +1041,21 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
 !=====
 
  call start_clock(timing_eri_2center)
+
+ ! the following line is never needed
+ ! if( .NOT. ALLOCATED(shell_auxil) ) call setup_shell_list_auxil(auxil_basis)
+
+ ! First allocate the 2-center integral array
+ !
+ ! The 2-center integrals are not distributed because they are small anyway
+ ! The size of the 2-center integrals might be reduced later on
+ ! by removing the zero eigenvalues
+ nauxil_2center_lr = auxil_basis%nbf
+ !
+ ! 2-CENTER INTEGRALS 
+ !
+ call clean_allocate('2-center integrals',eri_2center_m1_lr,auxil_basis%nbf,auxil_basis%nbf)
+
 
  write(stdout,'(/,a)')    ' Calculate, invert and store the 2-center LR Electron Repulsion Integrals'
  write(stdout,'(a)')      ' Libint library initialized'
@@ -1276,27 +1255,31 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
    enddo
  enddo
 
- allocate(eigval(nauxil_2center))
+ allocate(eigval(nauxil_2center_lr))
  !
  ! Perform in-place diagonalization here
- call diagonalize(nauxil_2center,eri_2center_m1_lr,eigval)
+ call diagonalize(nauxil_2center_lr,eri_2center_m1_lr,eigval)
+
 
  !
- ! Need to be careful here: since the matrix can be not enough positive definite.
- ! Avoid too small (or even worse negative!) eigenvalues
- if( MINVAL(eigval(:)) < TOO_LOW_EIGENVAL ) then
-   write(stdout,'(a)')       ' 2-center integral matrix is badly conditioned'
-   write(stdout,'(a,e16.6)') ' Eigenvalues are as low as:',MINVAL(eigval(:)) 
-   write(stdout,'(a,e16.6)') ' Disregard values lower than:',TOO_LOW_EIGENVAL
-   call issue_warning('2-center integral is badly conditioned')
- endif
- do jbf=1,nauxil_2center
-   if( eigval(jbf) < TOO_LOW_EIGENVAL ) eigval(jbf) = TOO_LOW_EIGENVAL
-   eri_2center_m1_lr(:,jbf) = eri_2center_m1_lr(:,jbf) / SQRT( eigval(jbf) )
+ ! Skip the too small eigenvalues
+ ibf = 0
+ do jbf=1,nauxil_2center_lr
+   if( eigval(jbf) < TOO_LOW_EIGENVAL ) cycle
+   ibf = ibf + 1
+   eri_2center_m1_lr(:,ibf) = eri_2center_m1_lr(:,jbf) / SQRT( eigval(jbf) )
  enddo
  deallocate(eigval)
 
- write(stdout,'(a)') ' All 2-center integrals have been calculated, diagonalized and stored'
+ !
+ ! Resize the 2-center integral matrix
+ ! Now the array is eri_2center_m1_lr(auxil_basis%nbf,nauxil_2center_lr)
+ nauxil_2center_lr = ibf
+
+ write(stdout,'(a)')        ' All LR 2-center integrals have been calculated, diagonalized and stored'
+ write(stdout,'(a,i6)')     ' Some have been eliminated ',auxil_basis%nbf-nauxil_2center_lr
+ write(stdout,'(a,es16.6)') ' because they were lower than:',TOO_LOW_EIGENVAL
+
 
 
  call stop_clock(timing_eri_2center)
@@ -1348,6 +1331,14 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
 
  call start_clock(timing_eri_3center)
 
+
+ ! First allocate the 3-center integral array
+ !
+ ! 3-CENTER INTEGRALS 
+ !
+ call clean_allocate('3-center integrals',eri_3center,nauxil_3center,npair)
+
+
  write(stdout,'(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals'
  write(stdout,'(a)')      ' Libint library initialized'
  write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
@@ -1368,7 +1359,7 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
    nk = number_basis_function_am( basis%gaussian_type , amk )
    nl = number_basis_function_am( basis%gaussian_type , aml )
 
-   allocate(eri_3tmp(nauxil_2center,nk,nl))
+   allocate(eri_3tmp(auxil_basis%nbf,nk,nl))
    eri_3tmp(:,:,:) = 0.0_dp
 
    do jshell=1,1  ! FAKE LOOP
@@ -1681,6 +1672,14 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
 
  call start_clock(timing_eri_3center)
 
+
+ ! First allocate the LR 3-center integral array
+ !
+ ! LR 3-CENTER INTEGRALS 
+ !
+ call clean_allocate('3-center integrals',eri_3center_lr,nauxil_3center_lr,npair)
+
+
  write(stdout,'(/,a)')    ' Calculate and store all the 3-center LR Electron Repulsion Integrals'
  write(stdout,'(a)')      ' Libint library initialized'
  write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
@@ -1701,7 +1700,7 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
    nk = number_basis_function_am( basis%gaussian_type , amk )
    nl = number_basis_function_am( basis%gaussian_type , aml )
 
-   allocate(eri_3tmp(nauxil_2center,nk,nl))
+   allocate(eri_3tmp(auxil_basis%nbf,nk,nl))
    eri_3tmp(:,:,:) = 0.0_dp
 
    do jshell=1,1  ! FAKE LOOP
@@ -1941,8 +1940,8 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
    !
    ! Combine the 2-center integral with the 3-center here
    !
-   do ibf_auxil=1,nauxil_3center
-     jbf_auxil = ibf_auxil_g(ibf_auxil)
+   do ibf_auxil=1,nauxil_3center_lr
+     jbf_auxil = ibf_auxil_g_lr(ibf_auxil)
 
      do lbf=1,nl
        do kbf=1,nk
@@ -3111,6 +3110,104 @@ logical function read_eri(rcut)
 
 
 end function read_eri
+
+
+!=========================================================================
+subroutine distribute_auxil_basis(auxil_basis)
+ implicit none
+
+ type(basis_set),intent(inout) :: auxil_basis
+!====
+ integer :: ibf
+ integer :: ibf_local
+ integer :: iproc
+!====
+
+ allocate(iproc_ibf_auxil(nauxil_2center))
+ allocate(nbf_local_iproc(0:nproc-1))
+
+ iproc = nproc-1
+ nbf_local_iproc(:) = 0
+ do ibf=1,nauxil_2center
+
+   iproc = MODULO(iproc+1,nproc)
+
+   iproc_ibf_auxil(ibf) = iproc
+
+   nbf_local_iproc(iproc) = nbf_local_iproc(iproc) + 1
+
+ enddo
+
+ auxil_basis%nbf_local = nbf_local_iproc(rank)
+ nauxil_3center        = auxil_basis%nbf_local
+
+ allocate(ibf_auxil_g(nauxil_3center))
+ allocate(ibf_auxil_l(nauxil_2center))
+ ibf_local = 0
+ do ibf=1,nauxil_2center
+   if( rank == iproc_ibf_auxil(ibf) ) then
+     ibf_local = ibf_local + 1
+     ibf_auxil_g(ibf_local) = ibf
+     ibf_auxil_l(ibf)       = ibf_local
+   endif
+ enddo
+
+ write(stdout,'(/,a)') ' Distribute auxiliary basis functions among processors'
+ do iproc=0,0
+   write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc(iproc),' auxiliary basis functions'
+ enddo
+
+
+end subroutine distribute_auxil_basis
+
+
+!=========================================================================
+subroutine distribute_auxil_basis_lr(auxil_basis)
+ implicit none
+
+ type(basis_set),intent(inout) :: auxil_basis
+!====
+ integer :: ibf
+ integer :: ibf_local
+ integer :: iproc
+!====
+
+ allocate(iproc_ibf_auxil_lr(nauxil_2center_lr))
+ allocate(nbf_local_iproc_lr(0:nproc-1))
+
+ iproc = nproc-1
+ nbf_local_iproc_lr(:) = 0
+ do ibf=1,nauxil_2center_lr
+
+   iproc = MODULO(iproc+1,nproc)
+
+   iproc_ibf_auxil_lr(ibf) = iproc
+
+   nbf_local_iproc_lr(iproc) = nbf_local_iproc_lr(iproc) + 1
+
+ enddo
+
+ auxil_basis%nbf_local_lr = nbf_local_iproc_lr(rank)
+ nauxil_3center_lr        = auxil_basis%nbf_local_lr
+
+ allocate(ibf_auxil_g_lr(nauxil_3center_lr))
+ allocate(ibf_auxil_l_lr(nauxil_2center_lr))
+ ibf_local = 0
+ do ibf=1,nauxil_2center_lr
+   if( rank == iproc_ibf_auxil_lr(ibf) ) then
+     ibf_local = ibf_local + 1
+     ibf_auxil_g_lr(ibf_local) = ibf
+     ibf_auxil_l_lr(ibf)       = ibf_local
+   endif
+ enddo
+
+ write(stdout,'(/,a)') ' Distribute LR auxiliary basis functions among processors'
+ do iproc=0,0
+   write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc_lr(iproc),' auxiliary basis functions'
+ enddo
+
+
+end subroutine distribute_auxil_basis_lr
 
 
 !=========================================================================

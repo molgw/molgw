@@ -2,6 +2,7 @@
 module m_timing
  use m_definitions
 
+ integer,parameter :: NTIMING=100
 
  integer,parameter :: timing_total             = 90
 
@@ -9,14 +10,14 @@ module m_timing
  integer,parameter :: timing_scf               = 82
  integer,parameter :: timing_postscf           = 83
 
- integer,parameter :: timing_dft               = 2
- integer,parameter :: timing_pola              = 3
- integer,parameter :: timing_self              = 4
- integer,parameter :: timing_prodbasis         = 5
- integer,parameter :: timing_eri_4center       = 6
- integer,parameter :: timing_exchange          = 7
- integer,parameter :: timing_hartree           = 8
- integer,parameter :: timing_overlap3          = 9
+ integer,parameter :: timing_dft               =  2
+ integer,parameter :: timing_pola              =  3
+ integer,parameter :: timing_self              =  4
+ integer,parameter :: timing_prodbasis         =  5
+ integer,parameter :: timing_eri_4center       =  6
+ integer,parameter :: timing_exchange          =  7
+ integer,parameter :: timing_hartree           =  8
+ integer,parameter :: timing_overlap3          =  9
  integer,parameter :: timing_diago_h2p         = 10
  integer,parameter :: timing_inversion_s2p     = 11
  integer,parameter :: timing_mp2_energy        = 12
@@ -37,6 +38,7 @@ module m_timing
  integer,parameter :: timing_build_bse         = 27
  integer,parameter :: timing_spectrum          = 28
  integer,parameter :: timing_eri_screening     = 29
+ integer,parameter :: timing_hamiltonian_ecp   = 30
  
  integer,parameter :: timing_tmp1              = 91
  integer,parameter :: timing_tmp2              = 92
@@ -48,7 +50,6 @@ module m_timing
  integer,parameter :: timing_tmp8              = 98
  integer,parameter :: timing_tmp9              = 99
 
- integer,parameter :: NTIMING=100
  integer           :: count_rate,count_max
  logical           :: time_running(NTIMING)
  real(dp)          :: time_start(NTIMING)

@@ -42,7 +42,8 @@ module m_basis_set
    integer                          :: ammax           ! Maximum angular momentum contained in the basis set
    integer                          :: nbf             ! Number of basis functions in the basis set
    integer                          :: nbf_cart        ! Number of underlying Cartesian functions in the basis set
-   integer                          :: nbf_local       ! Number of basis functions owned by the processor
+   integer                          :: nbf_local       ! Number of basis functions owned by this processor
+   integer                          :: nbf_local_lr    ! Number of basis functions owned by this processor, this number can differ from previous one
    integer                          :: nshell          ! Number of shells in the basis sets
                                                        ! A shell is a group of basis functions sharing: 
                                                        ! the same center, 
@@ -1141,56 +1142,6 @@ subroutine setup_cart_to_pure_transforms(gaussian_type)
  write(stdout,*) 
 
 end subroutine setup_cart_to_pure_transforms
-
-
-!=========================================================================
-subroutine distribute_auxil_basis(auxil_basis)
- implicit none
-
- type(basis_set),intent(inout) :: auxil_basis
-!====
- integer :: nbf_local_target,nbf_shell
- integer :: ibf_cart,ibf
- integer :: ibf_local
- integer :: iproc
-!====
-
- nbf_local_target = CEILING( auxil_basis%nbf / REAL(nproc,dp) + 0.0001_dp )
- allocate(iproc_ibf_auxil(auxil_basis%nbf))
- allocate(nbf_local_iproc(0:nproc-1))
-
- iproc = nproc-1
- nbf_local_iproc(:) = 0
- do ibf=1,auxil_basis%nbf
-
-   iproc = MODULO(iproc+1,nproc)
-
-   iproc_ibf_auxil(ibf) = iproc
-
-   nbf_local_iproc(iproc) = nbf_local_iproc(iproc) + 1
-
- enddo
-
- auxil_basis%nbf_local = nbf_local_iproc(rank)
-
- allocate(ibf_auxil_g(auxil_basis%nbf_local))
- allocate(ibf_auxil_l(auxil_basis%nbf))
- ibf_local = 0
- do ibf=1,auxil_basis%nbf
-   if( rank == iproc_ibf_auxil(ibf) ) then
-     ibf_local = ibf_local + 1
-     ibf_auxil_g(ibf_local) = ibf
-     ibf_auxil_l(ibf)       = ibf_local
-   endif
- enddo
-
- write(stdout,'(/,a)') ' Distribute auxiliary basis among processors'
- do iproc=0,nproc-1
-   write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc(iproc),' auxiliary basis functions'
- enddo
-
-
-end subroutine distribute_auxil_basis
 
 
 !=========================================================================

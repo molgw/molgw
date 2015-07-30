@@ -33,6 +33,12 @@ module m_mpi
  integer,allocatable,public :: ibf_auxil_l(:)
  integer,allocatable,public :: nbf_local_iproc(:)
 
+! Parallelization on the auxiliary basis (LR part)
+ integer,allocatable,public :: iproc_ibf_auxil_lr(:)
+ integer,allocatable,public :: ibf_auxil_g_lr(:)
+ integer,allocatable,public :: ibf_auxil_l_lr(:)
+ integer,allocatable,public :: nbf_local_iproc_lr(:)
+
 
  integer,allocatable,private :: task_proc(:)
  integer,allocatable,private :: ntask_proc(:)
