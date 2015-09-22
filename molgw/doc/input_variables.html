@@ -4,16 +4,269 @@
 </head>
 <body>
 <a name=top>
-<h1>Input variable list</h1><hr><br><h3>Mandatory input variables</h3><a href=#scf>scf</a> <a href=#basis>basis</a> <a href=#natom>natom</a> <h3>Set up of the physical system input variables</h3><a href=#nspin>nspin</a> <a href=#charge>charge</a> <a href=#magnetization>magnetization</a> <a href=#temperature>temperature</a> <a href=#length_unit>length_unit</a> <a href=#natom>natom</a> <a href=#nghost>nghost</a> <h3>General input variables</h3><a href=#scf>scf</a> <a href=#basis>basis</a> <a href=#auxil_basis>auxil_basis</a> <a href=#gaussian_type>gaussian_type</a> <h3>Self-consistency input variables</h3><a href=#alpha_hybrid>alpha_hybrid</a> <a href=#beta_hybrid>beta_hybrid</a> <a href=#gamma_hybrid>gamma_hybrid</a> <a href=#no_4center>no_4center</a> <a href=#grid_quality>grid_quality</a> <a href=#integral_quality>integral_quality</a> <a href=#nscf>nscf</a> <a href=#alpha_mixing>alpha_mixing</a> <a href=#mixing_scheme>mixing_scheme</a> <a href=#level_shifting_energy>level_shifting_energy</a> <a href=#tolscf>tolscf</a> <h3>Correlation and excited states post-treatment input variables</h3><a href=#postscf>postscf</a> <a href=#tda>tda</a> <a href=#triplet>triplet</a> <a href=#frozencore>frozencore</a> <a href=#ncoreg>ncoreg</a> <a href=#ncorew>ncorew</a> <a href=#nvirtualg>nvirtualg</a> <a href=#nvirtualw>nvirtualw</a> <a href=#nvirtualspa>nvirtualspa</a> <a href=#selfenergy_state_min>selfenergy_state_min</a> <a href=#selfenergy_state_max>selfenergy_state_max</a> <a href=#nomega_sigma>nomega_sigma</a> <a href=#step_sigma>step_sigma</a> <a href=#eta>eta</a> <h3>IO input variables</h3><a href=#basis_path>basis_path</a> <a href=#ignore_restart>ignore_restart</a> <a href=#ignore_bigrestart>ignore_bigrestart</a> <a href=#print_matrix>print_matrix</a> <a href=#print_eri>print_eri</a> <a href=#print_wfn>print_wfn</a> <a href=#print_cube>print_cube</a> <a href=#print_w>print_w</a> <a href=#print_restart>print_restart</a> <a href=#print_sigma>print_sigma</a> <a href=#print_pdos>print_pdos</a> <br><br><br><hr>
-<br><br><br><h2>Complete list of input variables</h2><br><br>
-<ul><hr><a name=scf><li><b>scf</b><br><br><i>Mandatory</i><br>Default: None<br><br>Contains the self-consistent scheme name. 
-Try LDA, PBE, HSE06, or HF for instance</li><br><hr><a name=postscf><li><b>postscf</b><br><br><i>Optional</i><br>Default: None<br><br>Contains the post-processing scheme name. 
+<h1>Input variable list</h1>
+<hr>
+<br>
+<h3>Mandatory input variables</h3>
+<p>
+<a href=#scf>scf</a> <a href=#basis>basis</a> <a href=#natom>natom</a> <h3>Set up of the physical system input variables</h3>
+<p>
+<a href=#nspin>nspin</a> <a href=#charge>charge</a> <a href=#magnetization>magnetization</a> <a href=#temperature>temperature</a> <a href=#length_unit>length_unit</a> <a href=#natom>natom</a> <a href=#nghost>nghost</a> <h3>General input variables</h3>
+<p>
+<a href=#scf>scf</a> <a href=#basis>basis</a> <a href=#auxil_basis>auxil_basis</a> <a href=#gaussian_type>gaussian_type</a> <h3>Self-consistency input variables</h3>
+<p>
+<a href=#alpha_hybrid>alpha_hybrid</a> <a href=#beta_hybrid>beta_hybrid</a> <a href=#gamma_hybrid>gamma_hybrid</a> <a href=#no_4center>no_4center</a> <a href=#grid_quality>grid_quality</a> <a href=#integral_quality>integral_quality</a> <a href=#nscf>nscf</a> <a href=#alpha_mixing>alpha_mixing</a> <a href=#mixing_scheme>mixing_scheme</a> <a href=#level_shifting_energy>level_shifting_energy</a> <a href=#tolscf>tolscf</a> <h3>Correlation and excited states post-treatment input variables</h3>
+<p>
+<a href=#postscf>postscf</a> <a href=#tda>tda</a> <a href=#triplet>triplet</a> <a href=#frozencore>frozencore</a> <a href=#ncoreg>ncoreg</a> <a href=#ncorew>ncorew</a> <a href=#nvirtualg>nvirtualg</a> <a href=#nvirtualw>nvirtualw</a> <a href=#nvirtualspa>nvirtualspa</a> <a href=#selfenergy_state_min>selfenergy_state_min</a> <a href=#selfenergy_state_max>selfenergy_state_max</a> <a href=#nomega_sigma>nomega_sigma</a> <a href=#step_sigma>step_sigma</a> <a href=#eta>eta</a> <h3>IO input variables</h3>
+<p>
+<a href=#basis_path>basis_path</a> <a href=#ignore_restart>ignore_restart</a> <a href=#ignore_bigrestart>ignore_bigrestart</a> <a href=#print_matrix>print_matrix</a> <a href=#print_eri>print_eri</a> <a href=#print_wfn>print_wfn</a> <a href=#print_cube>print_cube</a> <a href=#print_w>print_w</a> <a href=#print_restart>print_restart</a> <a href=#print_sigma>print_sigma</a> <a href=#print_pdos>print_pdos</a> <br><br><br><hr>
+<br><br><br>
+<h2>Complete list of input variables</h2>
+<br><br>
+<ul>
+<hr>
+<a name=scf><li><b>scf</b><br><br>
+<i>Mandatory</i><br>
+Default: None<br><br>
+Contains the self-consistent scheme name. 
+Try LDA, PBE, HSE06, or HF for instance</li><br>
+<hr>
+<a name=postscf><li><b>postscf</b><br><br>
+<i>Optional</i><br>
+Default: None<br><br>
+Contains the post-processing scheme name. 
 TD stands for TD-DFT.
 BSE stands for Bethe-Salpeter.
 GW stands for perturbative G0W0.
 GnW0 stands for GW with eigenvalue self-consistentcy on G.
 GnWn stands for GW with eigenvalue self-consistentcy on both G and W.
-MP2 stands for guess what.</li><br><hr><a name=alpha_hybrid><li><b>alpha_hybrid</b><br><br><i>Optional</i><br>Default: 0.0<br><br>Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount of range-independent exact-exchange</li><br><hr><a name=beta_hybrid><li><b>beta_hybrid</b><br><br><i>Optional</i><br>Default: 0.0<br><br>Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount of long-range exact-exchange</li><br><hr><a name=gamma_hybrid><li><b>gamma_hybrid</b><br><br><i>Optional</i><br>Default: 1000000.0<br><br>Only works for Range-Separated hybrid functionals scf='rsh' Sets the separation between long-range and short-range. It is input in bohr^-1.</li><br><hr><a name=basis><li><b>basis</b><br><br><i>Mandatory</i><br>Default: None<br><br>Sets the basis set For Pople sets, use 6-31G for instance or 6-31pGs, where p stands for + and s for *. For Dunning sets, use aug-cc-pVTZ for instance. Note that Pople sets are to be used with gaussian_type='cart' One may use ones own basis sets provided that the files are labeled X_mybasisset where X is the element.</li><br><hr><a name=auxil_basis><li><b>auxil_basis</b><br><br><i>Optional</i><br>Default: None<br><br>Sets the auxiliary basis set. For instance, cc-pVDZ-RI for a Weigend basis set. If present, the auxiliary basis will be used for postscf calculations (TD-DFT, BSE, or GW) If specifically requested with no_4center, the auxiliary basis can be used for scf cycles too.</li><br><hr><a name=basis_path><li><b>basis_path</b><br><br><i>Optional</i><br>Default: ./<br><br>Sets the path pointing to the basis functions files.</li><br><hr><a name=gaussian_type><li><b>gaussian_type</b><br><br><i>Optional</i><br>Default: pure<br><br>Asks for pure or spherical Gaussian type orbitals with 'pure' or for Cartesian Gaussian orbital with 'cart'.</li><br><hr><a name=no_4center><li><b>no_4center</b><br><br><i>Optional</i><br>Default: no<br><br>If switched on, the auxiliary basis set is used in both SCF cycles and in post-scf methods.This avoids the calculation and the storage of the 4-center Coulomb integrals.</li><br><hr><a name=nspin><li><b>nspin</b><br><br><i>Optional</i><br>Default: 1<br><br>Sets the number of spin channels. 1 enforces spin-restricted calculations. 2 means spin-unrestricted.</li><br><hr><a name=charge><li><b>charge</b><br><br><i>Optional</i><br>Default: 0.0<br><br>Sets the total charge of the system. 0 is a neutral system. -2 is a doubly charged anion etc.</li><br><hr><a name=magnetization><li><b>magnetization</b><br><br><i>Optional</i><br>Default: 0.0<br><br>Sets the number of unpaired electrons. In other words, this is the difference between the spin up and spin down occupation. For instance, a spin-doublet calculation is obtained with magnetization=1.0. Only meaningful when nspin=2.</li><br><hr><a name=temperature><li><b>temperature</b><br><br><i>Optional</i><br>Default: 0.0<br><br>Sets the electronic temperature in the Fermi-Dirac functions. Helps the convergence for some systems. The value is input in Hartree atomic units.</li><br><hr><a name=grid_quality><li><b>grid_quality</b><br><br><i>Optional</i><br>Default: high<br><br>Sets the number of grid points use to evaluate the exchange-correlation integrals in real space. Possible values are 'low', 'medium', 'high', 'very high', 'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only meant for debugging since it is overdoing a lot.</li><br><hr><a name=integral_quality><li><b>integral_quality</b><br><br><i>Optional</i><br>Default: high<br><br>Sets the tolerance value for the screening of the negligible integrals. Possible values are 'low', 'medium', 'high', 'very high', 'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only meant for debugging since it is overdoing a lot.</li><br><hr><a name=nscf><li><b>nscf</b><br><br><i>Optional</i><br>Default: 30<br><br>Sets the maximum number of SCF cycles</li><br><hr><a name=alpha_mixing><li><b>alpha_mixing</b><br><br><i>Optional</i><br>Default: 0.7<br><br>Sets the amount of output density-matrix for the next iteration. When the SCF cycles have difficulties to converge, one may try to lower this value.</li><br><hr><a name=mixing_scheme><li><b>mixing_scheme</b><br><br><i>Optional</i><br>Default: pulay<br><br>Sets the density-matrix update method for SCF cycles. Possible choices are 'pulay' for Pulay DIIS method or 'simple' for a simple linear mixing between input and output density-matrices.</li><br><hr><a name=level_shifting_energy><li><b>level_shifting_energy</b><br><br><i>Optional</i><br>Default: 0.0<br><br>Sets the energy shift up of the unoccupied states. Should help the convergence in the case of small HOMO-LUMO gaps.</li><br><hr><a name=tolscf><li><b>tolscf</b><br><br><i>Optional</i><br>Default: 1e-07<br><br>Sets the residual norm target for the SCF cycles.</li><br><hr><a name=tda><li><b>tda</b><br><br><i>Optional</i><br>Default: no<br><br>Triggers the use of Tamm-Dancoff approximation in TD-DFT or BSE.</li><br><hr><a name=triplet><li><b>triplet</b><br><br><i>Optional</i><br>Default: no<br><br>Triggers the calculation of the triplet final state in TD-DFT or BSE.</li><br><hr><a name=frozencore><li><b>frozencore</b><br><br><i>Optional</i><br>Default: no<br><br>Triggers the neglect of core states in GW. H, He, Li, Be have no core states. B-Na have the 1s. Al-Ca have the 1s2s2p. Manual tuning could be achieved with ncoreg, ncorew.</li><br><hr><a name=ncoreg><li><b>ncoreg</b><br><br><i>Optional</i><br>Default: 0<br><br>Sets the number of frozen core states in the Green's function G.</li><br><hr><a name=ncorew><li><b>ncorew</b><br><br><i>Optional</i><br>Default: 0<br><br>Sets the number of frozen core states in the screened Coulomb interaction W, in TD-DFT, and in BSE.</li><br><hr><a name=nvirtualg><li><b>nvirtualg</b><br><br><i>Optional</i><br>Default: 100000<br><br>Sets the starting state beyond which states are excluded from the sum in the Green's function G.</li><br><hr><a name=nvirtualw><li><b>nvirtualw</b><br><br><i>Optional</i><br>Default: 100000<br><br>Sets the starting state beyond which states are excluded from the sum in the screened Coulomb interaction W, in TD-DFT, and in BSE.</li><br><hr><a name=nvirtualspa><li><b>nvirtualspa</b><br><br><i>Optional</i><br>Default: 100000<br><br>Sets the starting state beyond which states are accounted for with a Single Pole Approximation for the screened Coulomb interaction W for GW.</li><br><hr><a name=selfenergy_state_min><li><b>selfenergy_state_min</b><br><br><i>Optional</i><br>Default: 1<br><br>Sets the starting states for the range of the self-energy evaluation</li><br><hr><a name=selfenergy_state_max><li><b>selfenergy_state_max</b><br><br><i>Optional</i><br>Default: 100000<br><br>Sets the final states for the range of the self-energy evaluation</li><br><hr><a name=nomega_sigma><li><b>nomega_sigma</b><br><br><i>Optional</i><br>Default: 51<br><br>Sets the number of frequencies used to solve the quasiparticle equation in the GW self-energy.</li><br><hr><a name=step_sigma><li><b>step_sigma</b><br><br><i>Optional</i><br>Default: 0.01<br><br>Sets the spacing between frequencies in the GW self-energy evaluation.</li><br><hr><a name=ignore_restart><li><b>ignore_restart</b><br><br><i>Optional</i><br>Default: no<br><br>Ignore the RESTART file and restart from scratch.</li><br><hr><a name=ignore_bigrestart><li><b>ignore_bigrestart</b><br><br><i>Optional</i><br>Default: no<br><br>Considers a big RESTART as if it was a small RESTART.</li><br><hr><a name=print_matrix><li><b>print_matrix</b><br><br><i>Optional</i><br>Default: no<br><br>Prints some matrices for debugging purposes.</li><br><hr><a name=print_eri><li><b>print_eri</b><br><br><i>Optional</i><br>Default: no<br><br>Dumps the Electron Repulsion Integral on a file.</li><br><hr><a name=print_wfn><li><b>print_wfn</b><br><br><i>Optional</i><br>Default: no<br><br>Prints some wavefunctions along some selected lines.</li><br><hr><a name=print_cube><li><b>print_cube</b><br><br><i>Optional</i><br>Default: no<br><br>Prints some wavefunctions in a 3D volumetric file with cube format</li><br><hr><a name=print_w><li><b>print_w</b><br><br><i>Optional</i><br>Default: no<br><br>Dumps the spectral function of the screened Coulomb W. This is necessary for a subsequent BSE run.</li><br><hr><a name=print_restart><li><b>print_restart</b><br><br><i>Optional</i><br>Default: yes<br><br>Prints the file RESTART at each SCF cycle. This is a very small file and the writing should not hit too much on performance. There are two kinds of RESTART files: the small RESTART and the big RESTART. The big RESTART is written when self-consistency is reached. It contains all the states and the Hamiltonian and allows one to completely skip the scf loop.</li><br><hr><a name=print_sigma><li><b>print_sigma</b><br><br><i>Optional</i><br>Default: no<br><br>Prints the value of the GW self-energy on the sampling frequencies in files.</li><br><hr><a name=print_pdos><li><b>print_pdos</b><br><br><i>Optional</i><br>Default: no<br><br>Prints the Mulliken weight of each eigenvector on a given atom or a given series of atoms.</li><br><hr><a name=length_unit><li><b>length_unit</b><br><br><i>Optional</i><br>Default: angstrom<br><br>Chooses the units of the atomic coordinates. Can be 'angstrom' or 'bohr'. Could be abbreviated in 'A' or 'au'.</li><br><hr><a name=natom><li><b>natom</b><br><br><i>Mandatory</i><br>Default: 0<br><br>Sets the number of atoms in the molecule. This is the number of lines to be read in the following section of the input file.</li><br><hr><a name=nghost><li><b>nghost</b><br><br><i>Optional</i><br>Default: 0<br><br>Sets the number of ghost atoms in the molecule. Used to place basis function where there is no atom. Useful for Basis Set Superposition Error</li><br><hr><a name=eta><li><b>eta</b><br><br><i>Optional</i><br>Default: 0.001<br><br>Is a the tiny imaginary part used in the denominator of the Green's function to shift the pole off the axis, so to avoid divergences.This is an energy in Hartree. It should be set to the lowest value possible in theory. However, in practice, a too low value of eta would induce huge and unstable GW corrections. The default value is usually very accurate and there is no need to use a lower value. But for states apart from the band gap, a large value of eta may be beneficial for stability. eta=0.01 is already much more stable. Note that for QSGW increasing eta is most often unavoidable.</li><br></ul>
+MP2 stands for guess what.</li><br>
+<hr>
+<a name=alpha_hybrid><li><b>alpha_hybrid</b><br><br>
+<i>Optional</i><br>
+Default: 0.0<br><br>
+Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount of range-independent exact-exchange</li><br>
+<hr>
+<a name=beta_hybrid><li><b>beta_hybrid</b><br><br>
+<i>Optional</i><br>
+Default: 0.0<br><br>
+Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount of long-range exact-exchange</li><br>
+<hr>
+<a name=gamma_hybrid><li><b>gamma_hybrid</b><br><br>
+<i>Optional</i><br>
+Default: 1000000.0<br><br>
+Only works for Range-Separated hybrid functionals scf='rsh' Sets the separation between long-range and short-range. It is input in bohr^-1.</li><br>
+<hr>
+<a name=basis><li><b>basis</b><br><br>
+<i>Mandatory</i><br>
+Default: None<br><br>
+Sets the basis set For Pople sets, use 6-31G for instance or 6-31pGs, where p stands for + and s for *. For Dunning sets, use aug-cc-pVTZ for instance. Note that Pople sets are to be used with gaussian_type='cart' One may use ones own basis sets provided that the files are labeled X_mybasisset where X is the element.</li><br>
+<hr>
+<a name=auxil_basis><li><b>auxil_basis</b><br><br>
+<i>Optional</i><br>
+Default: None<br><br>
+Sets the auxiliary basis set. For instance, cc-pVDZ-RI for a Weigend basis set. If present, the auxiliary basis will be used for postscf calculations (TD-DFT, BSE, or GW) If specifically requested with no_4center, the auxiliary basis can be used for scf cycles too.</li><br>
+<hr>
+<a name=basis_path><li><b>basis_path</b><br><br>
+<i>Optional</i><br>
+Default: ./<br><br>
+Sets the path pointing to the basis functions files.</li><br>
+<hr>
+<a name=gaussian_type><li><b>gaussian_type</b><br><br>
+<i>Optional</i><br>
+Default: pure<br><br>
+Asks for pure or spherical Gaussian type orbitals with 'pure' or for Cartesian Gaussian orbital with 'cart'.</li><br>
+<hr>
+<a name=no_4center><li><b>no_4center</b><br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+If switched on, the auxiliary basis set is used in both SCF cycles and in post-scf methods.This avoids the calculation and the storage of the 4-center Coulomb integrals.</li><br>
+<hr>
+<a name=nspin><li><b>nspin</b><br><br>
+<i>Optional</i><br>
+Default: 1<br><br>
+Sets the number of spin channels. 1 enforces spin-restricted calculations. 2 means spin-unrestricted.</li><br>
+<hr>
+<a name=charge><li><b>charge</b><br><br>
+<i>Optional</i><br>
+Default: 0.0<br><br>
+Sets the total charge of the system. 0 is a neutral system. -2 is a doubly charged anion etc.</li><br>
+<hr>
+<a name=magnetization><li><b>magnetization</b><br><br>
+<i>Optional</i><br>
+Default: 0.0<br><br>
+Sets the number of unpaired electrons. In other words, this is the difference between the spin up and spin down occupation. For instance, a spin-doublet calculation is obtained with magnetization=1.0. Only meaningful when nspin=2.</li><br>
+<hr>
+<a name=temperature><li><b>temperature</b><br><br>
+<i>Optional</i><br>
+Default: 0.0<br><br>
+Sets the electronic temperature in the Fermi-Dirac functions. Helps the convergence for some systems. The value is input in Hartree atomic units.</li><br>
+<hr>
+<a name=grid_quality><li><b>grid_quality</b><br><br>
+<i>Optional</i><br>
+Default: high<br><br>
+Sets the number of grid points use to evaluate the exchange-correlation integrals in real space. Possible values are 'low', 'medium', 'high', 'very high', 'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only meant for debugging since it is overdoing a lot.</li><br>
+<hr>
+<a name=integral_quality><li><b>integral_quality</b><br><br>
+<i>Optional</i><br>
+Default: high<br><br>
+Sets the tolerance value for the screening of the negligible integrals. Possible values are 'low', 'medium', 'high', 'very high', 'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only meant for debugging since it is overdoing a lot.</li><br>
+<hr>
+<a name=nscf><li><b>nscf</b><br><br>
+<i>Optional</i><br>
+Default: 30<br><br>
+Sets the maximum number of SCF cycles</li><br>
+<hr>
+<a name=alpha_mixing><li><b>alpha_mixing</b><br><br>
+<i>Optional</i><br>
+Default: 0.7<br><br>
+Sets the amount of output density-matrix for the next iteration. When the SCF cycles have difficulties to converge, one may try to lower this value.</li><br>
+<hr>
+<a name=mixing_scheme><li><b>mixing_scheme</b><br><br>
+<i>Optional</i><br>
+Default: pulay<br><br>
+Sets the density-matrix update method for SCF cycles. Possible choices are 'pulay' for Pulay DIIS method or 'simple' for a simple linear mixing between input and output density-matrices.</li><br>
+<hr>
+<a name=level_shifting_energy><li><b>level_shifting_energy</b><br><br>
+<i>Optional</i><br>
+Default: 0.0<br><br>
+Sets the energy shift up of the unoccupied states. Should help the convergence in the case of small HOMO-LUMO gaps.</li><br>
+<hr>
+<a name=tolscf><li><b>tolscf</b><br><br>
+<i>Optional</i><br>
+Default: 1e-07<br><br>
+Sets the residual norm target for the SCF cycles.</li><br>
+<hr>
+<a name=tda><li><b>tda</b><br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Triggers the use of Tamm-Dancoff approximation in TD-DFT or BSE.</li><br>
+<hr>
+<a name=triplet><li><b>triplet</b><br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Triggers the calculation of the triplet final state in TD-DFT or BSE.</li><br>
+<hr>
+<a name=frozencore><li><b>frozencore</b><br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Triggers the neglect of core states in GW. H, He, Li, Be have no core states. B-Na have the 1s. Al-Ca have the 1s2s2p. Manual tuning could be achieved with ncoreg, ncorew.</li><br>
+<hr>
+<a name=ncoreg><li><b>ncoreg</b><br><br>
+<i>Optional</i><br>
+Default: 0<br><br>
+Sets the number of frozen core states in the Green's function G.</li><br>
+<hr>
+<a name=ncorew><li><b>ncorew</b><br><br>
+<i>Optional</i><br>
+Default: 0<br><br>
+Sets the number of frozen core states in the screened Coulomb interaction W, in TD-DFT, and in BSE.</li><br>
+<hr>
+<a name=nvirtualg><li><b>nvirtualg</b><br><br>
+<i>Optional</i><br>
+Default: 100000<br><br>
+Sets the starting state beyond which states are excluded from the sum in the Green's function G.</li><br>
+<hr>
+<a name=nvirtualw><li><b>nvirtualw</b><br><br>
+<i>Optional</i><br>
+Default: 100000<br><br>
+Sets the starting state beyond which states are excluded from the sum in the screened Coulomb interaction W, in TD-DFT, and in BSE.</li><br>
+<hr>
+<a name=nvirtualspa><li><b>nvirtualspa</b><br><br>
+<i>Optional</i><br>
+Default: 100000<br><br>
+Sets the starting state beyond which states are accounted for with a Single Pole Approximation for the screened Coulomb interaction W for GW.</li><br>
+<hr>
+<a name=selfenergy_state_min><li><b>selfenergy_state_min</b><br><br>
+<i>Optional</i><br>
+Default: 1<br><br>
+Sets the starting states for the range of the self-energy evaluation</li><br>
+<hr>
+<a name=selfenergy_state_max><li><b>selfenergy_state_max</b><br><br>
+<i>Optional</i><br>
+Default: 100000<br><br>
+Sets the final states for the range of the self-energy evaluation</li><br>
+<hr>
+<a name=nomega_sigma><li><b>nomega_sigma</b><br><br>
+<i>Optional</i><br>
+Default: 51<br><br>
+Sets the number of frequencies used to solve the quasiparticle equation in the GW self-energy.</li><br>
+<hr>
+<a name=step_sigma><li><b>step_sigma</b><br><br>
+<i>Optional</i><br>
+Default: 0.01<br><br>
+Sets the spacing between frequencies in the GW self-energy evaluation.</li><br>
+<hr>
+<a name=ignore_restart><li><b>ignore_restart</b><br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Ignore the RESTART file and restart from scratch.</li><br>
+<hr>
+<a name=ignore_bigrestart><li><b>ignore_bigrestart</b><br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Considers a big RESTART as if it was a small RESTART.</li><br>
+<hr>
+<a name=print_matrix><li><b>print_matrix</b><br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Prints some matrices for debugging purposes.</li><br>
+<hr>
+<a name=print_eri><li><b>print_eri</b><br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Dumps the Electron Repulsion Integral on a file.</li><br>
+<hr>
+<a name=print_wfn><li><b>print_wfn</b><br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Prints some wavefunctions along some selected lines.</li><br>
+<hr>
+<a name=print_cube><li><b>print_cube</b><br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Prints some wavefunctions in a 3D volumetric file with cube format</li><br>
+<hr>
+<a name=print_w><li><b>print_w</b><br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Dumps the spectral function of the screened Coulomb W. This is necessary for a subsequent BSE run.</li><br>
+<hr>
+<a name=print_restart><li><b>print_restart</b><br><br>
+<i>Optional</i><br>
+Default: yes<br><br>
+Prints the file RESTART at each SCF cycle. This is a very small file and the writing should not hit too much on performance. There are two kinds of RESTART files: the small RESTART and the big RESTART. The big RESTART is written when self-consistency is reached. It contains all the states and the Hamiltonian and allows one to completely skip the scf loop.</li><br>
+<hr>
+<a name=print_sigma><li><b>print_sigma</b><br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Prints the value of the GW self-energy on the sampling frequencies in files.</li><br>
+<hr>
+<a name=print_pdos><li><b>print_pdos</b><br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Prints the Mulliken weight of each eigenvector on a given atom or a given series of atoms.</li><br>
+<hr>
+<a name=length_unit><li><b>length_unit</b><br><br>
+<i>Optional</i><br>
+Default: angstrom<br><br>
+Chooses the units of the atomic coordinates. Can be 'angstrom' or 'bohr'. Could be abbreviated in 'A' or 'au'.</li><br>
+<hr>
+<a name=natom><li><b>natom</b><br><br>
+<i>Mandatory</i><br>
+Default: 0<br><br>
+Sets the number of atoms in the molecule. This is the number of lines to be read in the following section of the input file.</li><br>
+<hr>
+<a name=nghost><li><b>nghost</b><br><br>
+<i>Optional</i><br>
+Default: 0<br><br>
+Sets the number of ghost atoms in the molecule. Used to place basis function where there is no atom. Useful for Basis Set Superposition Error</li><br>
+<hr>
+<a name=eta><li><b>eta</b><br><br>
+<i>Optional</i><br>
+Default: 0.001<br><br>
+Is a the tiny imaginary part used in the denominator of the Green's function to shift the pole off the axis, so to avoid divergences.This is an energy in Hartree. It should be set to the lowest value possible in theory. However, in practice, a too low value of eta would induce huge and unstable GW corrections. The default value is usually very accurate and there is no need to use a lower value. But for states apart from the band gap, a large value of eta may be beneficial for stability. eta=0.01 is already much more stable. Note that for QSGW increasing eta is most often unavoidable.</li><br>
+</ul>
 <br><br><br><br><br><br><br><br>
-<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_parameter.py on 22 July 2015</i><br><br></body>
+<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_parameter.py on 22 September 2015</i><br><br></body>
 </html>

@@ -1,6 +1,15 @@
 <style>
 body {
-  font-family: "Arial";
+  font-family: Sans-serif;
+}
+p {
+  font-family: Sans-serif;
+}
+ul {
+  font-family: Sans-serif;
+}
+href {
+  font-family: Sans-serif;
 }
 h1 {
   text-align: center;

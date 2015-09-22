@@ -13,18 +13,18 @@ class variable:
   default  =''
   comment  =''
   def printhtml(self,f):
-    f.write('<hr>')
+    f.write('<hr>\n')
     f.write('<a name='+self.keyword+'>')
-    f.write('<li><b>'+self.keyword+'</b><br><br>')
+    f.write('<li><b>'+self.keyword+'</b><br><br>\n')
     if self.mandatory == 'yes':
-      f.write('<i>Mandatory</i><br>')
+      f.write('<i>Mandatory</i><br>\n')
     else:
-      f.write('<i>Optional</i><br>')
+      f.write('<i>Optional</i><br>\n')
     if self.default == '':
-      f.write('Default: None<br><br>')
+      f.write('Default: None<br><br>\n')
     else:
-      f.write('Default: '+str(self.default)+'<br><br>')
-    f.write(self.comment+'</li><br>')
+      f.write('Default: '+str(self.default)+'<br><br>\n')
+    f.write(self.comment+'</li><br>\n')
 
 
 vl = []
@@ -554,35 +554,35 @@ fhtml.write('</head>\n')
 
 fhtml.write('<body>\n')
 fhtml.write('<a name=top>\n')
-fhtml.write('<h1>Input variable list</h1>')
-fhtml.write('<hr><br>')
+fhtml.write('<h1>Input variable list</h1>\n')
+fhtml.write('<hr>\n<br>\n')
 
 # Mandatory
-fhtml.write('<h3>Mandatory input variables</h3>')
+fhtml.write('<h3>Mandatory input variables</h3>\n<p>\n')
 for i in range(0,len(vl)):
   if vl[i].mandatory =='yes':
     fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
 # System
-fhtml.write('<h3>Set up of the physical system input variables</h3>')
+fhtml.write('<h3>Set up of the physical system input variables</h3>\n<p>\n')
 for i in range(0,len(vl)):
   if vl[i].family =='system':
     fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
 # General
-fhtml.write('<h3>General input variables</h3>')
+fhtml.write('<h3>General input variables</h3>\n<p>\n')
 for i in range(0,len(vl)):
   if vl[i].family =='general':
     fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
 # SCF
-fhtml.write('<h3>Self-consistency input variables</h3>')
+fhtml.write('<h3>Self-consistency input variables</h3>\n<p>\n')
 for i in range(0,len(vl)):
   if vl[i].family =='scf':
     fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
 # Post 
-fhtml.write('<h3>Correlation and excited states post-treatment input variables</h3>')
+fhtml.write('<h3>Correlation and excited states post-treatment input variables</h3>\n<p>\n')
 for i in range(0,len(vl)):
   if vl[i].family =='post':
     fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
@@ -590,7 +590,7 @@ for i in range(0,len(vl)):
 
 
 # IO family
-fhtml.write('<h3>IO input variables</h3>')
+fhtml.write('<h3>IO input variables</h3>\n<p>\n')
 for i in range(0,len(vl)):
   if vl[i].family =='io':
     fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
@@ -598,9 +598,9 @@ for i in range(0,len(vl)):
 fhtml.write('<br><br><br><hr>\n')
 
 # Start the complete list
-fhtml.write('<br><br><br>')
-fhtml.write('<h2>Complete list of input variables</h2>')
-fhtml.write('<br><br>\n<ul>')
+fhtml.write('<br><br><br>\n')
+fhtml.write('<h2>Complete list of input variables</h2>\n')
+fhtml.write('<br><br>\n<ul>\n')
 for i in range(0,len(vl)):
   vl[i].printhtml(fhtml)
 fhtml.write('</ul>\n')

@@ -653,8 +653,8 @@ subroutine write_energy_qp(nspin,nbf,energy_qp)
  integer           :: istate
 !=====
 
- write(stdout,'(/,a)') ' Writing energy_qp file'
- open(newunit=energy_qpfile,file='energy_qp',form='formatted')
+ write(stdout,'(/,a)') ' Writing ENERGY_QP file'
+ open(newunit=energy_qpfile,file='ENERGY_QP',form='formatted')
  write(energy_qpfile,*) nspin
  write(energy_qpfile,*) nbf
  do istate=1,nbf
@@ -680,17 +680,25 @@ subroutine read_energy_qp(nspin,nbf,energy_qp,reading_status)
  integer           :: energy_qpfile
  integer           :: istate,jstate
  integer           :: nspin_read,nbf_read
- logical           :: file_exists
+ logical           :: file_exists_capitalized,file_exists
 !=====
 
- write(stdout,'(/,a)') ' Reading energy_qp file'
+ write(stdout,'(/,a)') ' Reading ENERGY_QP file'
+
+ inquire(file='ENERGY_QP',exist=file_exists_capitalized)
  inquire(file='energy_qp',exist=file_exists)
- if(file_exists) then
+
+ if(file_exists_capitalized) then
+   open(newunit=energy_qpfile,file='ENERGY_QP',form='formatted',status='old')
+ else if(file_exists) then
    open(newunit=energy_qpfile,file='energy_qp',form='formatted',status='old')
+ endif
+
+ if( file_exists_capitalized .OR. file_exists ) then
    read(energy_qpfile,*) nspin_read
    read(energy_qpfile,*) nbf_read
    if( nbf_read /= nbf .OR. nspin_read /= nspin ) then
-     call issue_warning('energy_qp file does not have the correct dimensions')
+     call issue_warning('ENERGY_QP file does not have the correct dimensions')
      reading_status=2
    else
      do istate=1,nbf
@@ -707,7 +715,7 @@ subroutine read_energy_qp(nspin,nbf,energy_qp,reading_status)
    close(energy_qpfile)
  else
    reading_status=1
-   call issue_warning('file energy_qp does not exist')
+   call issue_warning('files ENERGY_QP and energy_qp do not exist')
  endif
 
 

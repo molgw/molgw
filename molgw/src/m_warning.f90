@@ -65,7 +65,9 @@ subroutine die(msg)
  character(*),intent(in) :: msg
 !=====
 
+ write(stdout,'(/,a)') '=============================='
  write(stdout,'(a,a)') 'STOP: ',msg
+ write(stdout,'(a,/)') '=============================='
  write(stderr,'(a,a)') 'STOP: ',msg
  stop
 

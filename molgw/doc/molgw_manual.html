@@ -29,10 +29,11 @@
 Examples for this file are provided in folder <span style="font-family: Courier">~molgw/config/</span>.
 </p>
 
+<p><b>Note:</b> be careful about compiling Libxc (that contains Fortran modules) with the same Fortran compiler as <span style="font-variant: small-caps">molgw</span>.
 
 <h2>Input file</h2>
 
-The input file made of two sections:
+<p>The input file made of two sections:</p>
 <ul>
   <li>A fortran namelist named molgw. It starts with <code>&amp;molgw</code> and ends with /.
   <li>A list of elements and the cartesian coordinates. The element is either an integer or a symbol (e.g. 4 or Be).<br>
@@ -71,12 +72,12 @@ The input file made of two sections:
  O        1.070770    0.000000    0.000000</pre>
 </div>
 
-<p>Other examples can be found in folder <span style="font-family: Courier">~molgw/tests/</span>.
+<p>Other examples can be found in folder <span style="font-family: Courier">~molgw/tests/</span>.</p>
 
 
 <h3>List of all the input variables</h3>
 
-<a href='./input_variables.html'>Input variable list</a>
+<p><a href='./input_variables.html'>Input variable list</a></p>
 
 
 
@@ -90,6 +91,33 @@ The input file made of two sections:
 <div class="codebox">
  &#36; mpirun -np 4 ./molgw molgw.in > molgw.out 
 </div>
+
+
+<h2>Important files</h2>
+
+<ul>
+  <li> <code>RESTART</code> <br>
+    After each SCF step a <b>small RESTART</b> file is written down.
+    This file contains the necessary information to restart the SCF cycle from the last write.
+    However when SCF convergence has been reached a <b>big RESTART</b> file is written.
+    This file contains all the necessary information to skip the SCF cycles and go directly to the postscf step.
+
+  <li> <code>STOP</code><br>
+    If a STOP file is present in the current folder, then the SCF cycling will be smoothly stop after the completion
+    of the current cycle and the code will proceed to the post-SCF part.
+    This might be useful when the SCF procedure is almost converged but has difficulties to improve further.
+
+  <li> <code>ENERGY_QP</code><br>
+    The ENERGY_QP file is written down at the end of the <i>GW</i> run.
+    It contains the quasiparticle energies necessary for a subsequent BSE run or a eigenvalue-self-consistent <i>GW</i>.
+    Note that this file is human-readable.
+
+  <li> <code>SCREENED_COULOMB</code><br>
+    The SCREENED_COULOMB file contains the spectral decomposition of <i>W</i>.
+    It is necessary for a subsequent BSE run. It can be useful to skip the major part of a <i>GW</i> calculation.
+    The writing of SCREENED_COULOMB is only triggered when <b>print_w</b> is set to "yes".
+
+</ul>
 
 
 <br><br><br><br><br><br><br><br>
