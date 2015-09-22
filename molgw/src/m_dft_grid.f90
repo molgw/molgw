@@ -1,6 +1,7 @@
 !=========================================================================
 module m_dft_grid
  use m_definitions
+ use m_warning,only: die
  use m_mpi
  use m_memory
  use m_inputparam,only: grid_level
@@ -71,7 +72,7 @@ subroutine setup_dft_grid()
    nangular_fine   = 434
    nangular_coarse = 434
  case default
-   stop'integration quality not recognized'
+   call die('integration quality not recognized')
  end select
 
  allocate(xa(nradial,natom_basis),wxa(nradial,natom_basis))
@@ -149,7 +150,7 @@ subroutine setup_dft_grid()
    call ld0434(x1,y1,z1,w1,n1)
  case default
    write(stdout,*) 'grid points: ',nangular_fine
-   stop'Lebedev grid is not available'
+   call die('Lebedev grid is not available')
  end select
 
  n2 = nangular_coarse
@@ -182,7 +183,7 @@ subroutine setup_dft_grid()
    call ld0434(x2,y2,z2,w2,n2)
  case default
    write(stdout,*) 'grid points: ',nangular_coarse
-   stop'Lebedev grid is not available'
+   call die('Lebedev grid is not available')
  end select
 
  ! Calculate the total number of grid points

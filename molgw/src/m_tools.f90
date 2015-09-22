@@ -1,6 +1,7 @@
 !=========================================================================
 module m_tools
  use m_definitions
+ use m_warning,only: die
 
  integer,save :: idum
 
@@ -124,10 +125,10 @@ subroutine invert_dp(n,matrix,matrix_inv)
  a = matrix
 
  call DGETRF(n,n,a,n,ipvt,info)
- if(info/=0) stop'FAILURE in DGETRF'
+ if(info/=0) call die('FAILURE in DGETRF')
 
  call DGETRI(n,a,n,ipvt,work,n,info)
- if(info/=0) stop'FAILURE in DGETRI'
+ if(info/=0) call die('FAILURE in DGETRI')
 
  matrix_inv = a
 
@@ -143,10 +144,10 @@ subroutine invert_inplace_dp(n,matrix)
  integer :: ipvt(n),info
 
  call DGETRF(n,n,matrix,n,ipvt,info)
- if(info/=0) stop'FAILURE in DGETRF'
+ if(info/=0) call die('FAILURE in DGETRF')
 
  call DGETRI(n,matrix,n,ipvt,work,n,info)
- if(info/=0) stop'FAILURE in DGETRI'
+ if(info/=0) call die('FAILURE in DGETRI')
 
 
 end subroutine invert_inplace_dp
@@ -165,10 +166,10 @@ subroutine invert_cdp(n,matrix,matrix_inv)
  a = matrix
 
  call ZGETRF(n,n,a,n,ipvt,info)
- if(info/=0) stop'FAILURE in ZGETRF'
+ if(info/=0) call die('FAILURE in ZGETRF')
 
  call ZGETRI(n,a,n,ipvt,work,n,info)
- if(info/=0) stop'FAILURE in ZGETRI'
+ if(info/=0) call die('FAILURE in ZGETRI')
 
  matrix_inv = a
 
@@ -308,7 +309,7 @@ subroutine diagonalize_general_dp(n,matrix,eigval,eigvec_right)
  ! Calculate only right eigenvectors
  call DGEEV('N','V',n,a,n,eigenval_r,eigenval_i,eigenvect_l,ldvl,eigenvect_r,ldvr,work,4*n,info)
 
- if(info/=0) stop'FAILURE in DGEEV'
+ if(info/=0) call die('FAILURE in DGEEV')
 
  eigvec_right = eigenvect_r
  eigval = eigenval_r
@@ -338,7 +339,7 @@ subroutine diagonalize_general_cdp(n,matrix,eigval,eigvec_right)
 
  !TODO calculate only right eigenvectors
  call ZGEEV('N','V',n,a,n,eigval,eigenvect_l,n,eigenvect_r,n,work,2*n,rwork,info)
- if(info/=0) stop'FAILURE in ZGEEV'
+ if(info/=0) call die('FAILURE in ZGEEV')
 
  eigvec_right = eigenvect_r
 
@@ -367,7 +368,7 @@ subroutine diagonalize_generalized_sym(n,matrix,overlap,eigval,eigvec)
 
  ! A*x = lambda * B * x
  call DSYGV(1,'V','U',n,eigvec,n,tmp,n,eigval,work,3*n-1,info)
- if(info/=0) stop'ERROR in the symmetric generalized eigenvalue problem'
+ if(info/=0) call die('ERROR in the symmetric generalized eigenvalue problem')
 ! write(stdout,*) 'optimal lwork',REAL(work(1))
 
 
@@ -648,7 +649,7 @@ subroutine boys_function(fnt,n,t)
  real(dp),save :: df(2*maxfac)=0.0_dp
 !=====
 
- if(n>maxfac) stop' boys function Fm(t) for a too high m value'
+ if(n>maxfac) call die(' boys function Fm(t) for a too high m value')
 
  if( ABS(df(1))<1.d-10 ) then
 !   write(stdout,*) 'initialize df'
@@ -713,12 +714,12 @@ subroutine check_unitarity(n,cmat)
       if(i==j) then
        if(ABS(cmat_tmp(i,j)-1.0_dp)>tol) then
          write(stdout,*) i,j,cmat_tmp(i,j)
-         stop'MATRIX IS NOT UNITARY/ORTHOGONAL'
+         call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
        endif
       else
        if(ABS(cmat_tmp(i,j))>tol) then
          write(stdout,*) i,j,cmat_tmp(i,j)
-         stop'MATRIX IS NOT UNITARY/ORTHOGONAL'
+         call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
        endif
       endif
     enddo
@@ -729,12 +730,12 @@ subroutine check_unitarity(n,cmat)
       if(i==j) then
        if(ABS(cmat_tmp(i,j)-1.0_dp)>tol) then
          write(stdout,*) i,j,cmat_tmp(i,j)
-         stop'MATRIX IS NOT UNITARY/ORTHOGONAL'
+         call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
        endif
       else
        if(ABS(cmat_tmp(i,j))>tol) then
          write(stdout,*) i,j,cmat_tmp(i,j)
-         stop'MATRIX IS NOT UNITARY/ORTHOGONAL'
+         call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
        endif
       endif
     enddo
@@ -753,7 +754,7 @@ function gamma_function(rin)
 
  !
  ! just hard coded for some small half-integers
- if( ABS( rin - NINT(rin) ) - 0.5  > 1.d-6 ) stop'GAMMA FUNCTION NOT CODED'
+ if( ABS( rin - NINT(rin) ) - 0.5  > 1.d-6 ) call die('GAMMA FUNCTION NOT CODED')
 
  nlocal = FLOOR(rin-0.499999)
 
@@ -850,7 +851,6 @@ function double_factorial(intin)
    double_factorial = 191898783962510625.0_dp
  case default
    write(stdout,*) 'integer =',intin
-   !stop'double factorial not coded for this integer value'
    write(stdout,*) 'double factorial not coded for this integer value'
    double_factorial = 1
  end select

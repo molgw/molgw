@@ -111,7 +111,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  if( calc_type%is_bse ) then
    call read_spectral_function(wpol_static,reading_status)
    if(reading_status/=0) &
-     stop'BSE requires a previous GW calculation stored in a spectral_file'
+     call die('BSE requires a previous GW calculation stored in the SCREENED_COULOMB file')
  endif
 
 
@@ -735,7 +735,7 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,m_apb,n_ap
  real(dp)             :: wtmp
 !=====
 
- if( has_auxil_basis ) stop'Have an auxil basis. This should not happen here'
+ if( has_auxil_basis ) call die('Have an auxil basis. This should not happen here')
 
  call start_clock(timing_build_bse)
 
@@ -832,11 +832,11 @@ subroutine build_amb_apb_bse_auxil(nmat,nbf,c_matrix,wpol,wpol_static,m_apb,n_ap
 !=====
 
  call start_clock(timing_build_bse)
- if( .NOT. has_auxil_basis ) stop'Does not have auxil basis. This should not happen'
+ if( .NOT. has_auxil_basis ) call die('Does not have auxil basis. This should not happen')
 
  write(stdout,'(a)') ' Build W part Auxil' 
 
- if( wpol_static%nprodbasis /= nauxil_3center ) stop'inconsistency problem'
+ if( wpol_static%nprodbasis /= nauxil_3center ) call die('internal inconsistency problem')
 
  kstate_max = MAXVAL( wpol%transition_table_apb(1,1:wpol%npole_reso_apb) )
 
@@ -1106,7 +1106,7 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  call pdbssolver1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
                   eigenvalue,bigx,1,1,desc_x,bigy,                         &
                   work,lwork,iwork,liwork,info)
- if(info/=0) stop'SCALAPACK failed'
+ if(info/=0) call die('SCALAPACK failed')
 
  lwork  = NINT(work(1))
  deallocate(work)
@@ -1119,7 +1119,7 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  call pdbssolver1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
                   eigenvalue,bigx,1,1,desc_x,bigy,                         &
                   work,lwork,iwork,liwork,info)
- if(info/=0) stop'SCALAPACK failed'
+ if(info/=0) call die('SCALAPACK failed')
 
  deallocate(work)
  deallocate(iwork)
@@ -1129,7 +1129,7 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  call stop_clock(timing_diago_h2p)
 
 #else
- stop'Cholesky diago cannot run without SCALAPACK'
+ call die('Cholesky diago cannot run without SCALAPACK')
 #endif
 
 end subroutine diago_4blocks_chol
@@ -1511,7 +1511,7 @@ subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2r
    write(stdout,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),&
          TRIM(string)
    if( MODULO(xc_f90_info_flags( xc_info(idft_xc)),XC_FLAGS_HAVE_FXC*2) < XC_FLAGS_HAVE_FXC ) then
-     stop'This functional does not have the kernel implemented in Libxc'
+     call die('This functional does not have the kernel implemented in Libxc')
    endif
    if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
    if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) require_gradient  =.TRUE.
@@ -1601,7 +1601,7 @@ subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2r
        call xc_f90_gga_vxc(xc_func(idft_xc),1_C_INT,rho_c(1),sigma_c(1),vrho_c(1),vsigma_c(1))
        call xc_f90_gga_fxc(xc_func(idft_xc),1_C_INT,rho_c(1),sigma_c(1),v2rho2_c(1),v2rhosigma_c(1),v2sigma2_c(1))
      case default
-       stop'Other kernels not yet implemented'
+       call die('Other kernels not yet implemented')
      end select
      !
      ! Remove the too large values for stability
@@ -1674,7 +1674,7 @@ subroutine get_energy_qp(nbf,energy,occupation,energy_qp)
    write(stdout,'(a,/,a)') ' Something happened during the reading of energy_qp file',' Fill up the QP energies with KS energies'
    energy_qp(:,:) = energy(:,:)
  case default
-   stop'reading_status BUG'
+   call die('reading_status BUG')
  end select
 
 end subroutine get_energy_qp
@@ -1711,10 +1711,10 @@ subroutine chi_to_vchiv(nbf,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol)
 
  write(stdout,'(/,a)') ' Build W = v * chi * v'
  if(has_auxil_basis) then
-   stop'you should not be here'
+   call die('you should not be here')
  endif
 #ifdef HAVE_SCALAPACK
- stop'not compatible with SCALAPACK'
+ call die('not compatible with SCALAPACK')
 #endif
 
  allocate(eri_eigenstate_klmin(nbf,nbf,nbf,nspin))

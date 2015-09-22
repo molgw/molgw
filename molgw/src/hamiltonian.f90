@@ -864,7 +864,7 @@ subroutine read_potential(print_matrix_,nbf,nspin,p_matrix,pot_read,eread)
    close(potfile)
 
  else
-   stop'file not found: manual_potential'
+   call die('file not found: manual_potential')
  endif
 
 
@@ -998,7 +998,7 @@ subroutine set_occupation(nbf,temperature,electrons,magnetization,energy,occupat
    do ibf=1,nbf
      write(stdout,*) ibf,occupation(ibf,:)
    enddo
-   stop'FAILURE in set_occupation'
+   call die('FAILURE in set_occupation')
  endif 
 
  call dump_out_occupation('=== Occupations ===',nbf,nspin,occupation)
@@ -1217,6 +1217,7 @@ end subroutine evaluate_s2_operator
 !=========================================================================
 subroutine level_shifting(nbf,s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
  use m_definitions
+ use m_warning,only: die
  use m_mpi
  use m_inputparam,only: nspin
  implicit none
@@ -1236,7 +1237,9 @@ subroutine level_shifting(nbf,s_matrix,c_matrix,occupation,level_shifting_energy
  write(stdout,'(/,a)')     ' Level shifting switched on'
  write(stdout,'(a,f12.6)') '   energy shift (eV):',level_shifting_energy * Ha_eV
 
- if( level_shifting_energy < 0.0_dp ) stop'level_shifting_energy has to be positive!'
+ if( level_shifting_energy < 0.0_dp ) then
+   call die('level_shifting_energy has to be positive!')
+ endif
 
 
  do ispin=1,nspin

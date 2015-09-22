@@ -271,8 +271,8 @@ program molgw
  ! CI calculation is done here
  ! implemented for 2 electrons only!
  if(calc_type%is_ci) then
-   if(nspin/=1) stop'for CI, nspin should be 1'
-   if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) stop'CI is implemented for 2 electrons only'
+   if(nspin/=1) call die('for CI, nspin should be 1')
+   if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) call die('CI is implemented for 2 electrons only')
    call full_ci_2electrons_spin(print_wfn_,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
  endif
 
@@ -322,7 +322,7 @@ program molgw
 
    !
    ! A section under development for the range-separated RPA
-   if( calc_type%is_lr_mbpt ) stop'lr_mbpt code removed'
+   if( calc_type%is_lr_mbpt ) call die('lr_mbpt code removed. Does not exist anymore')
 
    if(has_auxil_basis) then
      call prepare_eri_3center_eigen(c_matrix)

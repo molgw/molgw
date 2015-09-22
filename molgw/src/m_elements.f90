@@ -1,6 +1,7 @@
 !=========================================================================
 module m_elements
  use m_definitions
+ use m_warning,only: die
 
 
  integer,parameter,private :: nelement_max = 54
@@ -33,7 +34,7 @@ function element_core(zatom)
  else if( zatom <= 48.00001 ) then  ! up to Sr
   element_core = 9
  else
-   stop'not imlemented in element_core'
+   call die('not imlemented in element_core')
  endif
 
 
@@ -125,7 +126,7 @@ function element_covalent_radius(zatom)
  case(36) ! Kr.
    element_covalent_radius = 116.
  case default
-   stop'radius not available'
+   call die('radius not available')
  end select
   
  !
@@ -148,7 +149,7 @@ function element_number(element_name)
    if( ielement == nelement_max ) then
      write(stdout,'(a,a)')    ' Input symbol ',element_name
      write(stdout,'(a,i3,a)') ' Element symbol is not one of first ',nelement_max,' elements'
-     stop'element symbol not understood'
+     call die('element symbol not understood')
    endif
    ielement = ielement + 1
  enddo
@@ -171,7 +172,7 @@ function element_name(zatom)
  endif
  if( NINT(zatom) > nelement_max ) then
    write(stdout,'(a,i3,a)') 'Element symbol is not one of first ',nelement_max,' elements'
-   stop'element symbol not understood'
+   call die('element symbol not understood')
  endif
 
  element_name = element_list(NINT(zatom))

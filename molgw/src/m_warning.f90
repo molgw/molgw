@@ -60,5 +60,18 @@ end subroutine output_all_warnings
 
 
 !=========================================================================
+subroutine die(msg)
+ implicit none
+ character(*),intent(in) :: msg
+!=====
+
+ write(stdout,'(a,a)') 'STOP: ',msg
+ write(stderr,'(a,a)') 'STOP: ',msg
+ stop
+
+end subroutine die
+
+
+!=========================================================================
 end module m_warning
 !=========================================================================

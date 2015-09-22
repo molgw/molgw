@@ -49,7 +49,7 @@ subroutine init_scf(nbf)
  case('PULAY')
    nhistmax=8
  case default
-   stop'mixing scheme not implemented'
+   call die('mixing scheme not implemented')
  end select
 
  allocate(p_matrix_in_hist(nbf_scf,nbf_scf,nspin,nhistmax))
@@ -121,8 +121,7 @@ subroutine new_p_matrix(p_matrix_in)
      deallocate(alpha_diis)
    endif
  case default
-   write(stdout,*) mixing_scheme
-   stop'mixing scheme not implemented'
+   call die(TRIM(mixing_scheme)//' mixing scheme not implemented')
  end select
 
 end subroutine new_p_matrix

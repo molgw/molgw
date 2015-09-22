@@ -1,6 +1,7 @@
 !=========================================================================
 module m_memory
  use m_definitions
+ use m_warning,only: die
 
  real(dp),private :: total_memory=0.0_dp     ! Total memory occupied 
                                              ! by the big arrays in Mb
@@ -85,7 +86,7 @@ subroutine clean_allocate_1d(array_name,array,n1)
 
  if(info/=0) then
    write(stdout,*) 'failure'
-   stop'Not enough memory. Buy a bigger computer'
+   call die('Not enough memory. Buy a bigger computer')
  endif
 
 
@@ -127,7 +128,7 @@ subroutine clean_allocate_2d(array_name,array,n1,n2)
 
  if(info/=0) then
    write(stdout,*) 'failure'
-   stop'Not enough memory. Buy a bigger computer'
+   call die('Not enough memory. Buy a bigger computer')
  endif
 
 
@@ -169,7 +170,7 @@ subroutine clean_allocate_2d_range(array_name,array,n1s,n1f,n2s,n2f)
 
  if(info/=0) then
    write(stdout,*) 'failure'
-   stop'Not enough memory. Buy a bigger computer'
+   call die('Not enough memory. Buy a bigger computer')
  endif
 
 
@@ -211,7 +212,7 @@ subroutine clean_allocate_3d(array_name,array,n1,n2,n3)
 
  if(info/=0) then
    write(stdout,*) 'failure'
-   stop'Not enough memory. Buy a bigger computer'
+   call die('Not enough memory. Buy a bigger computer')
  endif
 
 
@@ -253,7 +254,7 @@ subroutine clean_allocate_3d_range(array_name,array,n1s,n1f,n2s,n2f,n3s,n3f)
 
  if(info/=0) then
    write(stdout,*) 'failure'
-   stop'Not enough memory. Buy a bigger computer'
+   call die('Not enough memory. Buy a bigger computer')
  endif
 
 
@@ -295,7 +296,7 @@ subroutine clean_allocate_4d(array_name,array,n1,n2,n3,n4)
 
  if(info/=0) then
    write(stdout,*) 'failure'
-   stop'Not enough memory. Buy a bigger computer'
+   call die('Not enough memory. Buy a bigger computer')
  endif
 
 
@@ -337,7 +338,7 @@ subroutine clean_allocate_4d_range(array_name,array,n1s,n1f,n2s,n2f,n3s,n3f,n4s,
 
  if(info/=0) then
    write(stdout,*) 'failure'
-   stop'Not enough memory. Buy a bigger computer'
+   call die('Not enough memory. Buy a bigger computer')
  endif
 
 
@@ -533,7 +534,7 @@ subroutine clean_allocate_s1d(array_name,array,n1)
 
  if(info/=0) then
    write(stdout,*) 'failure'
-   stop'Not enough memory. Buy a bigger computer'
+   call die('Not enough memory. Buy a bigger computer')
  endif
 
 
@@ -575,7 +576,7 @@ subroutine clean_allocate_s2d(array_name,array,n1,n2)
 
  if(info/=0) then
    write(stdout,*) 'failure'
-   stop'Not enough memory. Buy a bigger computer'
+   call die('Not enough memory. Buy a bigger computer')
  endif
 
 
@@ -617,7 +618,7 @@ subroutine clean_allocate_s3d(array_name,array,n1,n2,n3)
 
  if(info/=0) then
    write(stdout,*) 'failure'
-   stop'Not enough memory. Buy a bigger computer'
+   call die('Not enough memory. Buy a bigger computer')
  endif
 
 
@@ -659,7 +660,7 @@ subroutine clean_allocate_s4d(array_name,array,n1,n2,n3,n4)
 
  if(info/=0) then
    write(stdout,*) 'failure'
-   stop'Not enough memory. Buy a bigger computer'
+   call die('Not enough memory. Buy a bigger computer')
  endif
 
 

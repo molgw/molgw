@@ -111,7 +111,7 @@ subroutine prepare_eri(basis,rcut,which_buffer)
  case(insane)    ! No screening of any integral
    TOL_INT = -1.0_dp
  case default
-   stop'integration quality not recognized'
+   call die('integration quality not recognized')
  end select
  write(stdout,'(/,a,es9.2)') ' Tolerance on integrals set to ',TOL_INT
 
@@ -618,7 +618,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
 
        if(info/=0) then
          write(stdout,*) am1,am2,am3,am4
-         stop 'ERI calculated by libint failed'
+         call die('ERI calculated by libint failed')
        endif
 
        iibf=0
@@ -885,7 +885,7 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
 
            if(info/=0) then
              write(stdout,*) am1,am2,am3,am4
-             stop 'ERI calculated by libint failed'
+             call die('ERI calculated by libint failed')
            endif
 
            iibf=0
@@ -1170,7 +1170,7 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
 
            if(info/=0) then
              write(stdout,*) am1,am2,am3,am4
-             stop 'ERI calculated by libint failed'
+             call die('ERI calculated by libint failed')
            endif
 
            iibf=0
@@ -1496,7 +1496,7 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
   
          if(info/=0) then
            write(stdout,*) am1,am2,am3,am4
-           stop 'ERI calculated by libint failed'
+           call die('ERI calculated by libint failed')
          endif
   
          iibf=0
@@ -1837,7 +1837,7 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
   
          if(info/=0) then
            write(stdout,*) am1,am2,am3,am4
-           stop 'ERI calculated by libint failed'
+           call die('ERI calculated by libint failed')
          endif
   
          iibf=0
@@ -2120,7 +2120,7 @@ subroutine calculate_eri_approximate_hartree(print_eri_,basis,x0_rho,alpha_rho,v
    
          if(info/=0) then
            write(stdout,*) am1,am2,am3,am4
-           stop 'ERI calculated by libint failed'
+           call die('ERI calculated by libint failed')
          endif
    
          iibf=0
@@ -2419,7 +2419,7 @@ subroutine identify_negligible_shellpair(basis)
 
        if(info/=0) then
          write(stdout,*) am1,am2,am1,am2
-         stop 'ERI calculated by libint failed'
+         call die('ERI calculated by libint failed')
        endif
 
        iibf=0
@@ -2692,7 +2692,7 @@ function libint_ordering(nx,ny,nz)
    if(nx==0.AND.ny==0.AND.nz==7) libint_ordering=36
 
  case default
-   stop'libint_ordering not coded for this orbital momentum'
+   call die('libint_ordering not coded for this orbital momentum')
  end select
 
 end function libint_ordering
@@ -2718,14 +2718,14 @@ subroutine test_eri(basis)
            write(stdout,*) jbf,basis%bf(jbf)%amc
            write(stdout,*) kbf,basis%bf(kbf)%amc
            write(stdout,*) lbf,basis%bf(lbf)%amc
-           stop'ERI array not symmetric'
+           call die('ERI array not symmetric')
          endif
        enddo
      enddo
    enddo
  enddo
 
- stop'TESTING OK'
+ call die('TESTING OK')
 
 end subroutine test_eri
 
@@ -2895,7 +2895,7 @@ subroutine prepare_eri_3center_eigen_mixed(c_matrix)
  call start_clock(timing_eri_3center_eigen)
 
  inquire(file='fort.1000',exist=file_exists)
- if( .NOT. file_exists ) stop'fort.1000 not found'
+ if( .NOT. file_exists ) call die('fort.1000 not found')
 
  allocate(c_matrix_exx(nbf_eri,nbf_eri,nspin))
  open(1000,form='unformatted')

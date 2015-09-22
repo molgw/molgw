@@ -388,7 +388,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
  case(1)
    write(stdout,*) 'calculate spin triplet state'
  case default
-   stop'BUG: spin state not possible'
+   call die('BUG: spin state not possible')
  end select
 
  nconf = ( 2*basis%nbf * (2*basis%nbf -1) ) / 2

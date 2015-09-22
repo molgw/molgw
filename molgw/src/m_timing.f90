@@ -1,6 +1,7 @@
 !=========================================================================
 module m_timing
  use m_definitions
+ use m_warning,only: die
 
  integer,parameter :: NTIMING=100
 
@@ -79,7 +80,7 @@ subroutine start_clock(itiming)
  
  if(time_running(itiming)) then
    write(stdout,*) 'clock # is already started:',itiming
-   stop'error in start clock'
+   call die('error in start clock')
  endif
 
  time_running(itiming)=.TRUE.
@@ -100,7 +101,7 @@ subroutine stop_clock(itiming)
   
  if(.NOT.time_running(itiming)) then
    write(stdout,*) 'clock # has not been started:',itiming
-   stop'error in start clock'
+   call die('error in start clock')
  endif
 
 

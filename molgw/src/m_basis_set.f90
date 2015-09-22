@@ -106,17 +106,17 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
    inquire(file=TRIM(basis_filename),exist=file_exists)
    if(.NOT.file_exists) then
      write(stdout,'(a,a)') ' Looking for file ',TRIM(basis_filename)
-     stop'basis set file not found'
+     call die('basis set file not found')
    endif
   
    !
    ! read first to get all the dimensions
    open(newunit=basisfile,file=TRIM(basis_filename),status='old')
    read(basisfile,*) nbf_file
-   if(nbf_file<1) stop'ERROR in basis set file'
+   if(nbf_file<1) call die('ERROR in basis set file')
    do ibf_file=1,nbf_file
      read(basisfile,*) ng,am_tmp
-     if(ng<1) stop'ERROR in basis set file'
+     if(ng<1) call die('ERROR in basis set file')
      basis%nbf_cart = basis%nbf_cart + number_basis_function_am('CART'             ,am_tmp)
      basis%nbf      = basis%nbf      + number_basis_function_am(basis%gaussian_type,am_tmp)
      do ig=1,ng
@@ -316,7 +316,7 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
        jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,0,iatom,x0,alpha,coeff2,shell_index,basis%bf(jbf))
        jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,1,iatom,x0,alpha,coeff2,shell_index,basis%bf(jbf))
      case default
-       stop'not implemented'
+       call die('not implemented')
      end select
   
      deallocate(alpha,coeff,coeff2)
@@ -347,7 +347,7 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
 
  if(basis%ammax > lmax_transform ) then      
    write(stdout,*) 'Maximum angular momentum',basis%ammax
-   stop'angular momentum too high'
+   call die('angular momentum too high')
  endif
  if(basis%ammax > lmax_transform_pure .AND. basis%gaussian_type == 'PURE' ) then      
    call issue_warning('Maximum angular momentum greater than the cart to pure transforms implemented')
@@ -502,7 +502,7 @@ function number_basis_function_am(gaussian_type,am)
      number_basis_function_am = 4 
    case default
      write(stdout,*) 'am=',am
-     stop'number_basis_function_am: not implemented'
+     call die('number_basis_function_am: not implemented')
    end select
  case('PURE')
    if(am/=10) then

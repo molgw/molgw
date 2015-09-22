@@ -172,7 +172,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    allocate(selfenergy_omegac(1:nomegai,nsemin:nsemax,nsemin:nsemax,nspin))
 
  case default
-   stop'GW case not treated. Should not happen'
+   call die('GW case does not exist. Should not happen')
  end select
  if( ALLOCATED(selfenergy_omega) )  selfenergy_omega(:,:,:,:)  = 0.0_dp
  if( ALLOCATED(selfenergy_omegac) ) selfenergy_omegac(:,:,:,:) = 0.0_dp
@@ -321,7 +321,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
          ! Do nothing: no correlation in this case
          !
        case default 
-         stop'BUG'
+         call die('BUG')
        end select
 
      enddo !ipole

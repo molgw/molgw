@@ -298,7 +298,9 @@ subroutine write_spectral_function(sf)
  if(file_exists) then
    open(newunit=tmpfile,file='manual_poles',status='old')
    read(tmpfile,*) ecut_pole
-   if( ecut_pole<0.0_dp ) stop'error when reading manual_poles'
+   if( ecut_pole < 0.0_dp ) then
+     call die('error when reading manual_poles')
+   endif
    close(tmpfile)
    write(msg,'(a,f10.4)') 'Ouput of the spectral function with an energy cutoff [eV] ',ecut_pole*Ha_eV
    call issue_warning(msg)

@@ -233,7 +233,7 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
        exc_libxc(1) = 0.0_dp
 
      case default
-       stop'functional is not LDA nor GGA nor hybrid nor meta-GGA'
+       call die('functional is not LDA nor GGA nor hybrid nor meta-GGA')
      end select
 
      exc_xc = exc_xc + weight * exc_libxc(1) * SUM( rhor_r(:) ) * dft_xc_coef(idft_xc)
@@ -377,7 +377,6 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
 
  vhxc_ij(:,:) = 0.0_dp
 
-! call start_clock(timing_dft)
 
  write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities'
 
@@ -440,7 +439,6 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  endif
 
  write(stdout,'(/,a,2(2x,f12.6))') ' number of electrons:',normalization
-! call stop_clock(timing_dft)
 
 end subroutine dft_approximate_vhxc
 
@@ -879,7 +877,7 @@ subroutine my_lda_exc_vxc_mu(mu,rhor,exc,vxc)
 
 !separate cases with respect to order
  if(order==2) then
-   stop 'not implemented'
+   call die('not implemented')
  else
 !  Loop over grid points
 ! 1/rhor = 4*pi/3*rs**3

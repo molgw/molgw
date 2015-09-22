@@ -172,7 +172,7 @@ subroutine product_gaussian(ga,gb,gprod)
  type(gaussian),intent(out) :: gprod
 !=====
 
- if( ANY( ABS(ga%x0(:) - gb%x0(:)) > 1.d-6 ) ) stop'different positions not implemented for product'
+ if( ANY( ABS(ga%x0(:) - gb%x0(:)) > 1.d-6 ) ) call die('different positions not implemented for product')
 
  call init_gaussian_general(ga%nx+gb%nx,ga%ny+gb%ny,ga%nz+gb%nz,ga%alpha+gb%alpha,ga%x0,gprod)
 
@@ -200,7 +200,7 @@ subroutine overlap(ga,gb,s_ab)
  type(gaussian) :: gprod
 !=====
 
- if( ANY( ABS(ga%x0(:) - gb%x0(:)) > 1.d-6 ) ) stop'different positions not implemented'
+ if( ANY( ABS(ga%x0(:) - gb%x0(:)) > 1.d-6 ) ) call die('different positions not implemented')
 
  call product_gaussian(ga,gb,gprod)
 
@@ -264,7 +264,6 @@ function orbital_momentum_name(am)
    orbital_momentum_name='q'
  case default
    orbital_momentum_name='tmp'
-!   stop'angular momentum not implemented'
  end select
 
 end function orbital_momentum_name

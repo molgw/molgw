@@ -197,7 +197,7 @@ subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_m
        write(selfenergyfile,*)
      enddo
      close(selfenergyfile)
-     stop'output the self energy in a file'
+     call die('output the self energy in a file')
    endif
 
 

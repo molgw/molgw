@@ -1,6 +1,7 @@
 !=========================================================================
 module m_mpi
  use m_definitions
+ use m_warning,only: die
 #ifdef HAVE_MPI
  use mpi
 #endif
@@ -390,8 +391,7 @@ subroutine distribute_grid_workload()
      !
      ! A simple check to avoid unexpected surprises
      if(iproc < 0 .OR. iproc >= nproc) then
-       write(stdout,*) 'error in the distribution'
-       stop'STOP'
+       call die('error in the distribution')
      endif
 
      task_grid_proc(igrid)  = iproc
@@ -461,8 +461,7 @@ subroutine distribute_workload(ntask)
      !
      ! A simple check to avoid unexpected surprises
      if(iproc < 0 .OR. iproc >= nproc) then
-       write(stdout,*) 'error in the distribution'
-       stop'STOP'
+       call die('error in the distribution')
      endif
 
      task_proc(itask)  = iproc
@@ -535,7 +534,7 @@ function get_task_number(ibf,jbf)
    write(stdout,*) '=======',rank
    write(stdout,*) ibf,jbf,itask
    write(stdout,*) task_proc(itask)
-   stop' *** That should not happen ***'
+   call die(' *** That should not happen ***')
  endif
 
 end function get_task_number
@@ -839,7 +838,7 @@ subroutine init_scalapack()
    write(stdout,'(a)') ' Some procs will be idling in the SCALAPACK distribution'
    write(stdout,'(a)') ' This is a waste and it is not yet coded anyway!'
    write(stdout,'(a)') ' => select a number of procs that is not a prime number'
-   stop'not permitted'
+   call die('proc distribution not permitted')
  endif
 
  call BLACS_GET( -1, 0, cntxt_sd )
@@ -961,7 +960,7 @@ subroutine init_desc(distribution,mglobal,nglobal,desc,mlocal,nlocal)
    nlocal = NUMROC(nglobal,block_col,ipcol_nd,first_col,npcol_nd)
  case default
    write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
-   stop'BUG'
+   call die('BUG')
  end select
 
  write(stdout,'(/,a,i6,a,i6,4x,i6)') ' SCALAPACK info: size of the local matrix for proc #', mlocal,' x ',nlocal,iproc_sca
@@ -1084,7 +1083,7 @@ function rowindex_global_to_local(distribution,iglobal)
    endif
  case default
    write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
-   stop'BUG'
+   call die('BUG')
  end select
 #else
  rowindex_global_to_local = iglobal
@@ -1130,7 +1129,7 @@ function colindex_global_to_local(distribution,iglobal)
    endif
  case default
    write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
-   stop'BUG'
+   call die('BUG')
  end select
 #else
  colindex_global_to_local = iglobal
@@ -1161,7 +1160,7 @@ function rowindex_local_to_global_distrib(distribution,ilocal)
    rowindex_local_to_global_distrib = INDXL2G(ilocal,block_row,iprow_cd,first_row,nprow_cd)
  case default
    write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
-   stop'BUG'
+   call die('BUG')
  end select
 #else
  rowindex_local_to_global_distrib = ilocal
@@ -1212,7 +1211,7 @@ function colindex_local_to_global_distrib(distribution,ilocal)
    colindex_local_to_global_distrib = INDXL2G(ilocal,block_col,ipcol_cd,first_col,npcol_cd)
  case default
    write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
-   stop'BUG'
+   call die('BUG')
  end select
 #else
  colindex_local_to_global_distrib = ilocal
@@ -1257,7 +1256,7 @@ subroutine symmetrize_matrix(desc,m_mat,n_mat,mat)
  ! On output, mat is real symmetric
 
 #ifdef HAVE_SCALAPACK
- if( desc(3)/=desc(4) ) stop'matrix has to be square'
+ if( desc(3)/=desc(4) ) call die('matrix has to be square')
  nmat = desc(3)
  do jmat=1,nmat
    do imat=jmat+1,nmat
@@ -1267,12 +1266,12 @@ subroutine symmetrize_matrix(desc,m_mat,n_mat,mat)
  enddo
 #else
  nmat=m_mat
- if (m_mat/=n_mat) stop'matrix should be squared if SCALAPACK is not used'
+ if (m_mat/=n_mat) call die('matrix should be squared if SCALAPACK is not used')
  if (m_mat/=desc(3)) then
   write(stderr,*) desc(3),m_mat
-  stop'descriptor inconsistent row'
+  call die('descriptor inconsistent row')
  endif
- if (n_mat/=desc(4)) stop'descriptor inconsistent col'
+ if (n_mat/=desc(4)) call die('descriptor inconsistent col')
  do jmat=1,nmat
    do imat=jmat+1,nmat
      mat(jmat,imat) = mat(imat,jmat)

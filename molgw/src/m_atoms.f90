@@ -1,6 +1,7 @@
 !=========================================================================
 module m_atoms
  use m_definitions
+ use m_warning,only: die
  use m_elements
 
  real(dp),parameter,private     :: tol_geom=1.0e-5_dp
@@ -61,7 +62,7 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read)
      if( NORM2( x(:,iatom)-x(:,jatom) ) < 0.2 ) then
        write(stdout,*) 'Atoms',iatom,jatom
        write(stdout,*) 'are closer than 0.2 bohr'
-       stop'stop here'
+       call die('atoms too close')
      endif
    enddo
  enddo

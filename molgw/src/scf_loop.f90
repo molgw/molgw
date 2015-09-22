@@ -389,7 +389,9 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  !
  inquire(file='manual_coresplitting',exist=file_exists)
  if(file_exists) then
-   if( alpha_hybrid_lr > 0.001 ) stop'RSH not implemented yet'
+   if( alpha_hybrid_lr > 0.001 ) then
+     call die('RSH not implemented yet')
+   endif
    write(stdout,'(/,a)') ' TESTING CORE-VALENCE SPLITTING'
    open(newunit=fileunit,file='manual_coresplitting',status='old')
    read(fileunit,*) ncore

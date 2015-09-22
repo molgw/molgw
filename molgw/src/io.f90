@@ -54,7 +54,7 @@ subroutine header()
 #ifdef HAVE_SCALAPACK
  call issue_warning('Running with SCALAPACK')
 #ifndef HAVE_MPI
- stop'Code compiled with SCALAPACK, but without MPI. This is not permitted'
+ call die('Code compiled with SCALAPACK, but without MPI. This is not permitted')
 #endif
 #endif
 

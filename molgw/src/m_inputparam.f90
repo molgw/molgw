@@ -183,7 +183,7 @@ subroutine init_calculation_type(calc_type,input_key)
    case('TD')
      calc_type%is_td      =.TRUE.
    case default
-     stop'error reading calculation type part 2'
+     call die('Error reading keyword: postscf')
    end select
  else
    key1 = input_key
@@ -255,7 +255,7 @@ subroutine init_dft_type(key,calc_type)
  case default
    write(stdout,*) 'error reading calculation type'
    write(stdout,*) TRIM(key)
-   stop' is unknown'
+   call die('DFT xc is unknown')
  end select
 
  allocate(dft_xc_type(ndft_xc))
@@ -430,7 +430,7 @@ subroutine init_dft_type(key,calc_type)
    dft_xc_coef(2) =  1.00_dp
 #endif
  case default
-   stop'error reading calculation type part 1'
+   call die('Error reading keyword scf')
  end select
 
 
@@ -576,14 +576,14 @@ subroutine read_inputfile_namelist()
    inquire(file=TRIM(input_file_name),exist=file_exists)
    if( .NOT. file_exists) then
      write(stdout,*) 'Tried to open file:',TRIM(input_file_name)
-     stop'input file not found'
+     call die('Input file not found')
    endif
    open(newunit=inputfile,file=TRIM(input_file_name),status='old')
  case(0)
    inputfile = 5
    call issue_warning('Deprecated reading from stdin. Please use instead the newer syntax ./molgw inputfile > outfile')
  case default
-   stop'input file name not understood'
+   call die('input file name not understood')
  end select
 
 
@@ -629,7 +629,7 @@ subroutine read_inputfile_namelist()
  case('SIMPLE','PULAY')
  case default
    write(stdout,*) TRIM(mixing_scheme)
-   stop'mixing scheme not recognized'
+   call die('mixing scheme not recognized')
  end select
 
  select case(TRIM(length_unit))
@@ -638,31 +638,31 @@ subroutine read_inputfile_namelist()
  case('BOHR','AU','A.U','A.U.')
    length_factor=1.0_dp
  case default
-   stop'units for lengths in input file not understood'
+   call die('units for lengths in input file not understood')
  end select
 
 
  ! A few consistency checks
- if(natom<1) stop'natom<1'
- if(alpha_mixing<0.0 .OR. alpha_mixing > 1.0 ) stop'alpha_mixing should be inside [0,1]'
- if(ncoreg<0) stop'negative ncoreg is meaningless'
- if(ncorew<0) stop'negative ncorew is meaningless'
- if(nvirtualg<0) stop'negative nvirtualg is meaningless'
- if(nvirtualw<0) stop'negative nvirtualw is meaningless'
- if(nvirtualspa<0) stop'negative nvirtualspa is meaningless'
- if(nvirtualg<ncoreg) stop'too small nvirtualg is meaningless'
- if(nvirtualw<ncorew) stop'too small nvirtualw is meaningless'
- if(nvirtualspa<ncorew) stop'too small nvirtualspa is meaningless'
- if(nspin/=1 .AND. nspin/=2) stop'nspin in incorrect'
- if(magnetization<-1.e-5)    stop'magnetization is negative'
- if(magnetization>1.e-5 .AND. nspin==1) stop'magnetization is non-zero and nspin is 1'
- if(nomega_sigma<0)    stop'nomega_sigma < 0'
- if(step_sigma<0.0_dp) stop'step_sigma < 0.0'
+ if(natom<1) call die('natom<1')
+ if(alpha_mixing<0.0 .OR. alpha_mixing > 1.0 ) call die('alpha_mixing should be inside [0,1]')
+ if(ncoreg<0) call die('negative ncoreg is meaningless')
+ if(ncorew<0) call die('negative ncorew is meaningless')
+ if(nvirtualg<0) call die('negative nvirtualg is meaningless')
+ if(nvirtualw<0) call die('negative nvirtualw is meaningless')
+ if(nvirtualspa<0) call die('negative nvirtualspa is meaningless')
+ if(nvirtualg<ncoreg) call die('too small nvirtualg is meaningless')
+ if(nvirtualw<ncorew) call die('too small nvirtualw is meaningless')
+ if(nvirtualspa<ncorew) call die('too small nvirtualspa is meaningless')
+ if(nspin/=1 .AND. nspin/=2) call die('nspin in incorrect')
+ if(magnetization<-1.e-5)    call die('magnetization is negative')
+ if(magnetization>1.e-5 .AND. nspin==1) call die('magnetization is non-zero and nspin is 1')
+ if(nomega_sigma<0)    call die('nomega_sigma < 0')
+ if(step_sigma<0.0_dp) call die('step_sigma < 0.0')
 
  if( is_full_auxil .AND. .NOT. has_auxil_basis) then
    write(stdout,*) 'A calculation is no 4 center integrals has been requested'
    write(stdout,*) 'However no auxiliary basis has been provided in the input file'
-   stop'STOP HERE'
+   call die('Please provide MOLGW with an auxiliary basis set')
  endif
 
 
@@ -743,7 +743,7 @@ function yesno(char3)
  case('NO','N')
    yesno=.FALSE.
  case default
-  stop'Yes or No, I cannot interpret this input'
+  call die('Yes or No, I cannot interpret this input')
  end select
  
 end function yesno
