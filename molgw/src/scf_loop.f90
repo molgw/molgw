@@ -11,7 +11,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  use m_tools
  use m_scf
  use m_atoms
- use m_gaussian
+! use m_gaussian
  use m_basis_set
  use m_eri
  use m_dft_grid

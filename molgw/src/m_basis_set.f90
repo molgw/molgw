@@ -903,6 +903,29 @@ end subroutine basis_function_dipole_sq
 
 
 !=========================================================================
+subroutine gos_basis_function(bf1,bf2,qvec,gos_bf1bf2)
+ implicit none
+ type(basis_function),intent(in)  :: bf1,bf2
+ real(dp),intent(in)              :: qvec(3)
+ complex(dpc),intent(out)         :: gos_bf1bf2
+!====
+ integer                          :: ig,jg
+ complex(dpc)                     :: gos_one_gaussian
+!====
+
+ gos_bf1bf2 = 0.0_dp
+ do ig=1,bf1%ngaussian
+   do jg=1,bf2%ngaussian
+     call evaluate_gos(bf1%g(ig),bf2%g(jg),qvec,gos_one_gaussian)
+     gos_bf1bf2 = gos_bf1bf2 + gos_one_gaussian * bf1%coeff(ig) * bf2%coeff(jg)
+   enddo
+ enddo
+
+
+end subroutine gos_basis_function
+
+
+!=========================================================================
 subroutine setup_cart_to_pure_transforms(gaussian_type)
  implicit none
 

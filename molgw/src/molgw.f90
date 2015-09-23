@@ -49,6 +49,10 @@ program molgw
  real(dp),allocatable    :: energy(:,:)
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
+!FBFB
+ real(dp) :: rtmp(3)
+ complex(dpc) :: ctmp(3)
+ real(dp) :: qvec(3)
 !=============================
 
  call init_mpi()

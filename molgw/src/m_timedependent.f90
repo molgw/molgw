@@ -212,8 +212,10 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  ! Calculate the optical sprectrum
  ! and the dynamic dipole tensor
  !
- if( calc_type%is_td .OR. calc_type%is_bse ) &
+ if( calc_type%is_td .OR. calc_type%is_bse ) then
    call optical_spectrum(basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
+   call stopping_power(basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
+ endif
 
  !
  ! Calculate Wp= v * chi * v    if necessary
@@ -1165,7 +1167,7 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eige
  real(dp)                           :: coeff
  real(dp)                           :: dynamical_pol(nomega,3,3),photoabsorp_cross(nomega,3,3)
  real(dp)                           :: static_polarizability(3,3)
- real(dp)                           :: oscillator_strength,trk_sumrule
+ real(dp)                           :: oscillator_strength,trk_sumrule,mean_excitation
  real(dp),allocatable               :: dipole_basis(:,:,:),dipole_tmp(:,:,:),dipole_state(:,:,:,:)
  real(dp),allocatable               :: dipole_cart(:,:,:)
  real(dp),allocatable               :: residu_left(:,:)
@@ -1314,6 +1316,7 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eige
 
  write(stdout,'(/,a)') ' Excitation energies [eV]     Oscil. strengths   [Symmetry] '  
  trk_sumrule=0.0_dp
+ mean_excitation=0.0_dp
  do t_kl_global=1,nmat
    t_kl = colindex_global_to_local('S',t_kl_global)
 
@@ -1323,6 +1326,7 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eige
      oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_kl_global),residu_left(:,t_kl_global)) * eigenvalue(t_kl_global)
    endif
    trk_sumrule = trk_sumrule + oscillator_strength
+   mean_excitation = mean_excitation + oscillator_strength * LOG( eigenvalue(t_kl_global) )
 
    if(t_kl_global<=30) then
 
@@ -1413,6 +1417,9 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eige
  write(stdout,*) 'Sum over oscillator strengths',trk_sumrule
  write(stdout,*) 'Number of valence electrons  ',SUM( occupation(ncore_W+1:,:) )
 
+ write(stdout,*)
+ write(stdout,*) 'Mean excitation energy [eV]:',EXP( mean_excitation / trk_sumrule ) * Ha_eV
+
  write(stdout,'(/,a)') ' Static dipole polarizability'
  do idir=1,3
    write(stdout,'(3(4x,f12.6))') static_polarizability(idir,:)
@@ -1446,6 +1453,171 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eige
  call stop_clock(timing_spectrum)
 
 end subroutine optical_spectrum
+
+
+!=========================================================================
+subroutine stopping_power(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenvalue)
+ use m_tools
+ use m_basis_set
+ use m_eri
+ use m_dft_grid
+ use m_spectral_function
+ use m_atoms
+ implicit none
+
+ integer,intent(in)                 :: m_x,n_x
+ type(basis_set),intent(in)         :: basis
+ real(dp),intent(in)                :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
+ type(spectral_function),intent(in) :: chi
+ real(prec_td),intent(in)           :: bigx(m_x,n_x)
+ real(prec_td),intent(in)           :: bigy(m_x,n_x)
+ real(dp),intent(in)                :: eigenvalue(chi%npole_reso_apb)
+!=====
+ integer                            :: t_ij,t_kl
+ integer                            :: t_ij_global,t_kl_global
+ integer                            :: nmat
+ integer                            :: istate,jstate,ijspin
+ integer                            :: ibf,jbf
+ integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
+ integer                            :: iomega,idir,jdir
+ integer,parameter                  :: nomega=600
+ complex(dp)                        :: omega(nomega)
+ real(dp)                           :: coeff
+ real(dp)                           :: dynamical_pol(nomega,3,3),photoabsorp_cross(nomega,3,3)
+ real(dp)                           :: static_polarizability(3,3)
+ complex(dpc)                       :: bethe_sumrule
+ complex(dpc),allocatable           :: gos_basis(:,:),gos_tmp(:,:),gos_state(:,:,:)
+ complex(dpc),allocatable           :: gos_cart(:,:)
+ complex(dpc),allocatable           :: residu_left(:)
+ real(dp)                           :: qvec(3)
+ integer,parameter                  :: nq=50
+ integer                            :: iq
+ real(dp)                           :: fnq(chi%npole_reso_apb,nq)
+!=====
+
+
+ call start_clock(timing_spectrum)
+ !
+ ! Calculate the spectrum now
+ !
+
+ write(stdout,'(/,a)') ' Calculate the stopping power'
+
+ if (nspin/=1) then
+   msg='no nspin/=1 allowed'
+   call issue_warning(msg)
+   return
+ endif
+
+ !
+ ! Prepare the precalculated table of coefficients
+ call setup_gos_llp()
+
+ 
+!TESTINGOK§ call basis_function_dipole(basis%bf(1),basis%bf(14),qvec)
+!TESTINGOK§ write(*,*) 'dipole',qvec(:)
+!TESTINGOK§ call overlap_basis_function(basis%bf(1),basis%bf(14),qvec(1))
+!TESTINGOK§ write(*,*) 'overlap',qvec(1)
+!TESTINGOK§ qvec(1)=0.00001
+!TESTINGOK§ qvec(2)=0.00000
+!TESTINGOK§ qvec(3)=0.00000
+!TESTINGOK§ call gos_basis_function(basis%bf(1),basis%bf(14),qvec,bethe_sumrule)
+!TESTINGOK§ write(*,*) 'bethe_sumrule',bethe_sumrule / qvec(1)/im
+!TESTINGOK§ call die('ENOUGH')
+
+ do iq=1,nq
+   qvec(1) = 0.0_dp
+   qvec(2) = 0.0_dp
+   qvec(3) = iq*0.1_dp
+
+   !
+   ! First precalculate all the needed GOS in the basis set
+   !
+   allocate(gos_basis(basis%nbf,basis%nbf))
+   ibf_cart = 1
+   ibf      = 1
+   do while(ibf_cart<=basis%nbf_cart)
+     li      = basis%bf(ibf_cart)%am
+     ni_cart = number_basis_function_am('CART',li)
+     ni      = number_basis_function_am(basis%gaussian_type,li)
+  
+     jbf_cart = 1
+     jbf      = 1
+     do while(jbf_cart<=basis%nbf_cart)
+       lj      = basis%bf(jbf_cart)%am
+       nj_cart = number_basis_function_am('CART',lj)
+       nj      = number_basis_function_am(basis%gaussian_type,lj)
+  
+       allocate(gos_cart(ni_cart,nj_cart))
+  
+  
+       do i_cart=1,ni_cart
+         do j_cart=1,nj_cart
+           call gos_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),qvec,gos_cart(i_cart,j_cart))
+         enddo
+       enddo
+  
+       gos_basis(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
+             MATMUL(  gos_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+  
+       deallocate(gos_cart)
+  
+       jbf      = jbf      + nj
+       jbf_cart = jbf_cart + nj_cart
+     enddo
+  
+     ibf      = ibf      + ni
+     ibf_cart = ibf_cart + ni_cart
+   enddo
+  
+   !
+   ! Get the gos oscillator strength on states
+   allocate(gos_state(basis%nbf,basis%nbf,nspin))
+   allocate(gos_tmp(basis%nbf,basis%nbf))
+  
+   do ijspin=1,nspin
+     gos_tmp(:,:) = MATMUL( TRANSPOSE( c_matrix(:,:,ijspin) ) , gos_basis(:,:) )
+  
+     gos_state(:,:,ijspin) = MATMUL( gos_tmp(:,:) , c_matrix(:,:,ijspin) )
+  
+   enddo
+   deallocate(gos_basis,gos_tmp)
+  
+  
+   nmat=chi%npole_reso_apb
+   allocate(residu_left(chi%npole_reso_apb))
+  
+   residu_left(:) = 0.0_dp
+   do t_ij=1,m_x
+     t_ij_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ij)
+     istate = chi%transition_table_apb(1,t_ij_global)
+     jstate = chi%transition_table_apb(2,t_ij_global)
+     ijspin = chi%transition_table_apb(3,t_ij_global)
+  
+     ! Let use (i <-> j) symmetry to halve the loop
+     do t_kl=1,n_x
+       t_kl_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_kl)
+  
+       residu_left(t_kl_global) = residu_left(t_kl_global) &
+                    + gos_state(istate,jstate,ijspin) * ( bigx(t_ij,t_kl) + bigy(t_ij,t_kl) ) * SQRT(spin_fact)
+     enddo
+  
+   enddo
+   call xsum(residu_left)
+  
+   deallocate(gos_state)
+
+   fnq(:,iq) = 2.0_dp * ABS( residu_left(:) )**2 * eigenvalue(:) / SUM( qvec(:)**2 )
+
+   write(stdout,*) 'bethe_sumrule',NORM2(qvec(:)),SUM(fnq(:,iq))
+
+   deallocate(residu_left)
+
+
+ enddo 
+
+
+end subroutine stopping_power
 
 
 !=========================================================================

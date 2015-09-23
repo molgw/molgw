@@ -2,8 +2,9 @@
 module m_definitions
  use,intrinsic :: iso_fortran_env, only: OUTPUT_UNIT,ERROR_UNIT
 
- integer,parameter  :: dp=kind(0.d0)
- integer,parameter  :: sp=kind(0.0)
+ integer,parameter  :: dp=KIND(0.d0)
+ integer,parameter  :: sp=KIND(0.0)
+ integer,parameter  :: dpc=KIND((0.d0,0.d0))
 
  integer,parameter  :: prec_eri=dp
 #ifndef TD_SP
@@ -26,9 +27,9 @@ module m_definitions
 
  !
  ! Mathematical constants
- real(dp),parameter    :: pi    =3.14159265358979323_dp
- real(dp),parameter    :: pi2   =pi**2
- complex(dp),parameter :: im    =(0.0_dp,1.0_dp)
+ real(dp),parameter     :: pi    =3.14159265358979323_dp
+ real(dp),parameter     :: pi2   =pi**2
+ complex(dpc),parameter :: im    =(0.0_dp,1.0_dp)
 
 
  ! 
