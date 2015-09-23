@@ -1,0 +1,18 @@
+OPENMP= 
+
+# Parallel MPI SCALAPACK compilation
+FC=mpif90 -cpp -ffree-line-length-none -DHAVE_LIBXC -DHAVE_MPI  -DHAVE_SCALAPACK 
+
+
+CC=gcc
+FCOPTS= -O2 # -O0 -g -check all -traceback 
+CCOPTS= -O2 # -O0 -g -fbounds-check
+
+LAPACK=-L${HOME}/src/lapack-3.5.0/ -llapack -lblas
+
+SCALAPACK=-L${HOME}/src/scalapack-2.0.2/ -lscalapack
+
+LIBXC_ROOT=${HOME}/src/libxc-2.2.0_gfortran/
+
+LIBINT_ROOT=${HOME}/src/libint-2.0.3-stable_gcc/
+

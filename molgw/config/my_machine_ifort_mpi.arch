@@ -1,0 +1,17 @@
+OPENMP= 
+
+# Parallel MPI SCALAPACK compilation
+FC=mpif90 -fpp -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK 
+
+CC=icc
+FCOPTS= -O3 -xhost -opt-matmul -mkl=sequential  
+CCOPTS= -O3 -xhost  
+
+LAPACK=
+
+SCALAPACK= -L{MKLROOT}/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -lpthread -lm
+
+LIBXC_ROOT=${HOME}/src/libxc-2.2.0_ifort/
+
+LIBINT_ROOT=${HOME}/src/libint-2.0.3-stable_ifort/
+
