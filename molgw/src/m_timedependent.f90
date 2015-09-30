@@ -1483,14 +1483,13 @@ subroutine stopping_power(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenv
  integer,parameter                  :: nomega=600
  complex(dp)                        :: omega(nomega)
  real(dp)                           :: coeff
- real(dp)                           :: dynamical_pol(nomega,3,3),photoabsorp_cross(nomega,3,3)
- real(dp)                           :: static_polarizability(3,3)
+ real(dp)                           :: dynamical_pol(nomega),structure_factor(nomega)
  complex(dpc)                       :: bethe_sumrule
  complex(dpc),allocatable           :: gos_basis(:,:),gos_tmp(:,:),gos_state(:,:,:)
  complex(dpc),allocatable           :: gos_cart(:,:)
  complex(dpc),allocatable           :: residu_left(:)
  real(dp)                           :: qvec(3)
- integer,parameter                  :: nq=50
+ integer,parameter                  :: nq=10 ! 100
  integer                            :: iq
  real(dp)                           :: fnq(chi%npole_reso_apb,nq)
 !=====
@@ -1512,6 +1511,21 @@ subroutine stopping_power(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenv
  !
  ! Prepare the precalculated table of coefficients
  call setup_gos_llp()
+
+
+ !
+ ! Calculate the dynamical dipole polarizability
+ ! and the static dipole polarizability
+ !
+ ! Set the frequency mesh
+ omega(1)     =0.1_dp ! MAX( 0.0_dp      ,MINVAL(ABS(eigenvalue(:)))-3.00/Ha_eV)
+ omega(nomega)=4.0_dp ! MIN(20.0_dp/Ha_eV,MAXVAL(ABS(eigenvalue(:)))+3.00/Ha_eV)
+ do iomega=2,nomega-1
+   omega(iomega) = omega(1) + ( omega(nomega)-omega(1) ) /REAL(nomega-1,dp) * (iomega-1)
+ enddo
+ ! Add the broadening
+ omega(:) = omega(:) + im * 0.10/Ha_eV
+  
 
  
 !TESTINGOK§ call basis_function_dipole(basis%bf(1),basis%bf(14),qvec)
@@ -1611,10 +1625,31 @@ subroutine stopping_power(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenv
 
    write(stdout,*) 'bethe_sumrule',NORM2(qvec(:)),SUM(fnq(:,iq))
 
+
+  
+   dynamical_pol(:) = 0.0_dp
+   do t_ij=1,nmat
+     dynamical_pol(:) = dynamical_pol(:) &
+                       + ABS(residu_left(t_ij))**2 &
+                        * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ij) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ij) ) ) )
+   enddo
+   !
+   ! Get the structure factor
+   write(999,*) '# qvec',qvec(:)
+   do iomega=1,nomega
+     structure_factor(iomega) = 4.0_dp * pi * REAL(omega(iomega),dp) / c_speedlight * dynamical_pol(iomega) * SUM( qvec(:)**2 )
+     write(999,*) REAL(omega(iomega),dp),structure_factor(iomega)
+   enddo
+   write(999,*)
+
+
    deallocate(residu_left)
 
 
  enddo 
+
+
+
 
 
 end subroutine stopping_power
