@@ -117,19 +117,19 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      ! Rescale with alpha_hybrid for hybrid functionals
      en%exx_hyb = alpha_hybrid * en%exx
      hamiltonian_xc(:,:,:) = hamiltonian_exx(:,:,:) * alpha_hybrid
-
-     if(calc_type%need_exchange_lr) then
-       if( .NOT. is_full_auxil) then
-         call setup_exchange_longrange(print_matrix_,basis%nbf,p_matrix,matrix_tmp,energy_tmp)
-       else
-         call setup_exchange_longrange_ri(print_matrix_,basis%nbf,p_matrix,matrix_tmp,energy_tmp)
-       endif
-       ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
-       en%exx_hyb = en%exx_hyb + alpha_hybrid_lr * energy_tmp
-       hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix_tmp(:,:,:) * alpha_hybrid_lr
-     endif
-
    endif
+
+   if(calc_type%need_exchange_lr) then
+     if( .NOT. is_full_auxil) then
+       call setup_exchange_longrange(print_matrix_,basis%nbf,p_matrix,matrix_tmp,energy_tmp)
+     else
+       call setup_exchange_longrange_ri(print_matrix_,basis%nbf,p_matrix,matrix_tmp,energy_tmp)
+     endif
+     ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
+     en%exx_hyb = en%exx_hyb + alpha_hybrid_lr * energy_tmp
+     hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix_tmp(:,:,:) * alpha_hybrid_lr
+   endif
+
 
    !
    ! DFT XC potential is added here

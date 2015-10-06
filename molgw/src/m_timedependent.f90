@@ -1489,9 +1489,13 @@ subroutine stopping_power(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenv
  complex(dpc),allocatable           :: gos_cart(:,:)
  complex(dpc),allocatable           :: residu_left(:)
  real(dp)                           :: qvec(3)
- integer,parameter                  :: nq=10 ! 100
+ integer,parameter                  :: nq=1000
  integer                            :: iq
- real(dp)                           :: fnq(chi%npole_reso_apb,nq)
+ real(dp)                           :: fnq(chi%npole_reso_apb)
+ integer,parameter                  :: nv=20
+ integer                            :: iv
+ real(dp)                           :: stopping(nv)
+ real(dp)                           :: vv
 !=====
 
 
@@ -1542,7 +1546,7 @@ subroutine stopping_power(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenv
  do iq=1,nq
    qvec(1) = 0.0_dp
    qvec(2) = 0.0_dp
-   qvec(3) = iq*0.1_dp
+   qvec(3) = iq*0.01_dp
 
    !
    ! First precalculate all the needed GOS in the basis set
@@ -1621,9 +1625,9 @@ subroutine stopping_power(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenv
   
    deallocate(gos_state)
 
-   fnq(:,iq) = 2.0_dp * ABS( residu_left(:) )**2 * eigenvalue(:) / SUM( qvec(:)**2 )
+   fnq(:) = 2.0_dp * ABS( residu_left(:) )**2 * eigenvalue(:) / SUM( qvec(:)**2 )
 
-   write(stdout,*) 'bethe_sumrule',NORM2(qvec(:)),SUM(fnq(:,iq))
+   write(stdout,*) 'bethe_sumrule',NORM2(qvec(:)),SUM(fnq(:))
 
 
   
@@ -1633,22 +1637,36 @@ subroutine stopping_power(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenv
                        + ABS(residu_left(t_ij))**2 &
                         * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ij) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ij) ) ) )
    enddo
-   !
-   ! Get the structure factor
-   write(999,*) '# qvec',qvec(:)
-   do iomega=1,nomega
-     structure_factor(iomega) = 4.0_dp * pi * REAL(omega(iomega),dp) / c_speedlight * dynamical_pol(iomega) * SUM( qvec(:)**2 )
-     write(999,*) REAL(omega(iomega),dp),structure_factor(iomega)
-   enddo
-   write(999,*)
+!   !
+!   ! Get the structure factor
+!   write(999,*) '# qvec',qvec(:)
+!   do iomega=1,nomega
+!     structure_factor(iomega) = 4.0_dp * pi * REAL(omega(iomega),dp) / c_speedlight * dynamical_pol(iomega) * SUM( qvec(:)**2 )
+!     write(999,*) REAL(omega(iomega),dp)*Ha_eV,structure_factor(iomega)
+!   enddo
+!   write(999,*)
 
 
    deallocate(residu_left)
 
+!   write(998,*) SUM( qvec(:)**2 ), fnq(6)
+
+!   do iv=1,nv
+!     vv = iv * 0.1_dp
+!     do t_ij=1,nmat
+!       if( NORM2(qvec) < eigenvalue(t_ij) / vv )   &
+!          stopping(iv) = stopping(iv) + 1.0_dp / ( pi * vv**2 )  * fnq(t_ij)  * NORM2(qvec)**2
+!     enddo
+!
+!   enddo
+
 
  enddo 
 
-
+! do iv=1,nv
+!   vv = iv * 0.1_dp
+!   write(997,*) vv,stopping(iv)
+! enddo
 
 
 

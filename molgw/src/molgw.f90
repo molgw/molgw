@@ -49,10 +49,6 @@ program molgw
  real(dp),allocatable    :: energy(:,:)
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
-!FBFB
- real(dp) :: rtmp(3)
- complex(dpc) :: ctmp(3)
- real(dp) :: qvec(3)
 !=============================
 
  call init_mpi()
@@ -114,6 +110,7 @@ program molgw
  ! Build up the overlap matrix S
  ! S only depends onto the basis set
  call setup_overlap(print_matrix_,basis,s_matrix)
+
 
  !
  ! Set up the electron repulsion integrals

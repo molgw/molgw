@@ -241,7 +241,7 @@ subroutine init_dft_type(key,calc_type)
 
 
  select case(TRIM(key))
- case('LDAx','PBEx','PBEhx','Bx','PW91x','BJx','RPPx',&
+ case('LDAx','HFPBE','PBEx','PBEhx','Bx','PW91x','BJx','RPPx',&
       'BHANDH','BHANDHLYP','B3LYP','PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TUNED-CAM-B3LYP')
    ndft_xc=1
  case('LDA','SPL','VWN','VWN_RPA','PBE','PBEh','BLYP','PW91')
@@ -350,6 +350,10 @@ subroutine init_dft_type(key,calc_type)
    alpha_hybrid_lr= 0.00_dp
  !
  ! Hybrid functionals
+ case('HFPBE')
+   dft_xc_type(1) = XC_GGA_C_PBE
+   alpha_hybrid   = 1.00_dp
+   alpha_hybrid_lr= 0.00_dp
  case('BHANDH')
    dft_xc_type(1) = XC_HYB_GGA_XC_BHANDH
    alpha_hybrid   = 0.50_dp
@@ -398,10 +402,11 @@ subroutine init_dft_type(key,calc_type)
    dft_xc_type(2) = XC_GGA_X_HJS_PBE  ! HJS is not correct in Libxc <= 2.2.2
 !   dft_xc_type(2) = 2001 ! XC_GGA_X_HJS_PBE
    dft_xc_type(3) = XC_GGA_C_PBE
-   dft_xc_coef(1) =  1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
-   dft_xc_coef(2) =  alpha_hybrid_lr
-   dft_xc_coef(3) =  1.00_dp
+   dft_xc_coef(1) = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
+   dft_xc_coef(2) = alpha_hybrid_lr
+   dft_xc_coef(3) = 1.00_dp
    rcut           = 1.0_dp / gamma_hybrid
+   write(*,*) 'RCUT',rcut
  ! Testing
  case('TESTHSE')
    dft_xc_type(1) = XC_GGA_X_PBE
