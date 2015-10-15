@@ -4,7 +4,7 @@ module m_dft_grid
  use m_warning,only: die
  use m_mpi
  use m_memory
- use m_inputparam,only: grid_level
+ use m_inputparam,only: grid_level,partition_scheme
  
  !
  ! Grid definition
@@ -17,6 +17,10 @@ module m_dft_grid
  real(dp),protected,allocatable :: w_grid(:)
 
  real(dp),parameter,private :: pruning_limit = 0.75_dp    ! in terms of covalent radius
+
+ real(dp),parameter,private :: aa=0.64 ! Scuseria value
+
+ real(dp),parameter,private :: TOL_WEIGHT=1.0e-14_DP
 
  !
  ! Function evaluation storage
@@ -37,8 +41,8 @@ subroutine setup_dft_grid()
  use m_tools,only: coeffs_gausslegint
  implicit none
 
- integer              :: iradial,iatom,iangular,ir,igrid
- integer              :: n1,n2,nangular
+ integer              :: iradial,iatom,iangular,ir,ir1,igrid
+ integer              :: n1,n2,nangular,ngridmax
  real(dp)             :: weight,radius
  real(dp),allocatable :: x1(:),x2(:)
  real(dp),allocatable :: y1(:),y2(:)
@@ -46,8 +50,10 @@ subroutine setup_dft_grid()
  real(dp),allocatable :: w1(:),w2(:)
  real(dp),allocatable :: xa(:,:),wxa(:,:)
  real(dp)             :: p_becke(natom_basis),s_becke(natom_basis,natom_basis),fact_becke 
- real(dp)             :: mu,alpha,xtmp
+ real(dp)             :: mu,alpha,xtmp,mu_aa
  integer              :: jatom,katom
+ real(dp),allocatable :: rr_grid_tmp(:,:)
+ real(dp),allocatable :: w_grid_tmp(:)
 !=====
 
  select case(grid_level)
@@ -186,31 +192,23 @@ subroutine setup_dft_grid()
    call die('Lebedev grid is not available')
  end select
 
- ! Calculate the total number of grid points
- ngrid = 0
+ ! Calculate the maximum number of grid points
+ ngridmax = 0
  do iatom=1,natom_basis
    radius = element_covalent_radius(REAL(basis_element(iatom),dp))
    do iradial=1,nradial
      if( xa(iradial,iatom) < pruning_limit * radius ) then
-       ngrid = ngrid + nangular_coarse
+       ngridmax = ngridmax + nangular_coarse
      else
-       ngrid = ngrid + nangular_fine
+       ngridmax = ngridmax + nangular_fine
      endif
    enddo
  enddo
 
- call init_grid_distribution(ngrid)
+ !
+ ! Temporary storage before the screening of the low weights
+ allocate(rr_grid_tmp(3,ngridmax),w_grid_tmp(ngridmax))
 
- write(stdout,'(/,a)')            ' Setup the DFT quadrature'
- write(stdout,'(a,i4,x,i4,x,i4)') ' discretization grid per atom [radial , angular max - angular min] ',nradial,nangular_fine,nangular_coarse
- write(stdout,'(a,i8)')           ' total number of real-space points for this processor',ngrid
-
-
-
- 
- allocate(rr_grid(3,ngrid),w_grid(ngrid))
-
- igrid = 0
  ir    = 0
  do iatom=1,natom_basis
    radius = element_covalent_radius(REAL(basis_element(iatom),dp))
@@ -223,35 +221,65 @@ subroutine setup_dft_grid()
      endif
 
      do iangular=1,nangular
-       igrid = igrid + 1
-       if( .NOT. is_my_grid_task(igrid) ) cycle
        ir = ir + 1
 
        if( xa(iradial,iatom) < pruning_limit * radius ) then
-         rr_grid(1,ir) = xa(iradial,iatom) * x2(iangular) + x(1,iatom)
-         rr_grid(2,ir) = xa(iradial,iatom) * y2(iangular) + x(2,iatom)
-         rr_grid(3,ir) = xa(iradial,iatom) * z2(iangular) + x(3,iatom)
+         rr_grid_tmp(1,ir) = xa(iradial,iatom) * x2(iangular) + x(1,iatom)
+         rr_grid_tmp(2,ir) = xa(iradial,iatom) * y2(iangular) + x(2,iatom)
+         rr_grid_tmp(3,ir) = xa(iradial,iatom) * z2(iangular) + x(3,iatom)
          weight   = wxa(iradial,iatom) * w2(iangular) * xa(iradial,iatom)**2 * 4.0_dp * pi
        else
-         rr_grid(1,ir) = xa(iradial,iatom) * x1(iangular) + x(1,iatom)
-         rr_grid(2,ir) = xa(iradial,iatom) * y1(iangular) + x(2,iatom)
-         rr_grid(3,ir) = xa(iradial,iatom) * z1(iangular) + x(3,iatom)
+         rr_grid_tmp(1,ir) = xa(iradial,iatom) * x1(iangular) + x(1,iatom)
+         rr_grid_tmp(2,ir) = xa(iradial,iatom) * y1(iangular) + x(2,iatom)
+         rr_grid_tmp(3,ir) = xa(iradial,iatom) * z1(iangular) + x(3,iatom)
          weight   = wxa(iradial,iatom) * w1(iangular) * xa(iradial,iatom)**2 * 4.0_dp * pi
        endif
 
 
-       !
-       ! Partitionning scheme of Axel Becke, J. Chem. Phys. 88, 2547 (1988).
-       !
-       s_becke(:,:) = 0.0_dp
-       do katom=1,natom_basis
-         do jatom=1,natom_basis
-           if(katom==jatom) cycle
-           mu = ( SQRT( SUM( (rr_grid(:,ir)-x(:,katom) )**2 ) ) - SQRT( SUM( (rr_grid(:,ir)-x(:,jatom) )**2 ) ) ) &
-                     / SQRT( SUM( (x(:,katom)-x(:,jatom))**2 ) )
-           s_becke(katom,jatom) = 0.5_dp * ( 1.0_dp - smooth_step(smooth_step(smooth_step(mu))) )
+       select case(partition_scheme)
+       case('becke')
+         !
+         ! Partitionning scheme of Axel Becke, J. Chem. Phys. 88, 2547 (1988).
+         !
+         s_becke(:,:) = 0.0_dp
+         do katom=1,natom_basis
+           do jatom=1,natom_basis
+             if(katom==jatom) cycle
+             mu = ( NORM2(rr_grid_tmp(:,ir)-x(:,katom)) - NORM2(rr_grid_tmp(:,ir)-x(:,jatom)) ) &
+                       / NORM2(x(:,katom)-x(:,jatom))
+             s_becke(katom,jatom) = 0.5_dp * ( 1.0_dp - smooth_step(smooth_step(smooth_step(mu))) )
+           enddo
          enddo
-       enddo
+
+       case('ssf')
+         !
+         ! Partitionning scheme of Stratmann, Scuseria, Frisch, Chem. Phys. Lett. 257, 213 (1996)
+         !
+         s_becke(:,:) = 0.0_dp
+         do katom=1,natom_basis
+           do jatom=1,natom_basis
+             if(katom==jatom) cycle
+             mu = ( NORM2(rr_grid_tmp(:,ir)-x(:,katom)) - NORM2(rr_grid_tmp(:,ir)-x(:,jatom)) ) &
+                       / NORM2(x(:,katom)-x(:,jatom))
+
+             if( mu < -aa ) then
+               s_becke(katom,jatom) = 1.0_dp
+             else if( mu > aa ) then
+               s_becke(katom,jatom) = 0.0_dp
+             else 
+               mu_aa = mu / aa
+               s_becke(katom,jatom) = ( 35.0_dp * mu_aa - 35.0_dp * mu_aa**3 + 21.0_dp * mu_aa**5 - 5.0_dp * mu_aa**7 ) / 16.0_dp
+
+               s_becke(katom,jatom) = 0.5_dp * ( 1.0_dp - s_becke(katom,jatom) )
+             endif
+
+           enddo
+         enddo
+
+       case default
+         call die('Invalid choice for the partition scheme. Change partion_scheme value in the input file')
+       end select
+
        p_becke(:) = 1.0_dp
        do katom=1,natom_basis
          do jatom=1,natom_basis
@@ -261,7 +289,7 @@ subroutine setup_dft_grid()
        enddo
        fact_becke = p_becke(iatom) / SUM( p_becke(:) )
 
-       w_grid(ir) = weight * fact_becke
+       w_grid_tmp(ir) = weight * fact_becke
 
      enddo
    enddo
@@ -269,6 +297,36 @@ subroutine setup_dft_grid()
 
  deallocate(x1,y1,z1,w1)
  deallocate(x2,y2,z2,w2)
+
+
+ ! Denombrate the number of non-negligible weight in the quadrature
+ ngrid = COUNT( w_grid_tmp(:) > TOL_WEIGHT )
+
+ ! Distribute the grid over processors
+ call init_grid_distribution(ngrid)
+
+ write(stdout,'(/,a)')            ' Setup the DFT quadrature'
+ write(stdout,'(a,i4,x,i4,x,i4)') ' discretization grid per atom [radial , angular max - angular min] ',nradial,nangular_fine,nangular_coarse
+ write(stdout,'(a,i8)')           ' total number of real-space points for this processor',ngrid
+
+ allocate(rr_grid(3,ngrid),w_grid(ngrid))
+
+ igrid = 0
+ ir = 0
+ do ir1=1,ngridmax
+   if( w_grid_tmp(ir1) > TOL_WEIGHT ) then
+     igrid = igrid + 1
+     if( is_my_grid_task(igrid) ) then
+       ir = ir + 1
+       w_grid(ir) = w_grid_tmp(ir1)
+       rr_grid(:,ir) = rr_grid_tmp(:,ir1)
+     endif
+
+   endif
+ end do
+
+ deallocate(rr_grid_tmp,w_grid_tmp)
+
 
 end subroutine setup_dft_grid
 
@@ -295,7 +353,7 @@ end subroutine destroy_dft_grid
 
 
 !=========================================================================
-function smooth_step(mu)
+pure function smooth_step(mu)
  real(dp) :: smooth_step
  real(dp),intent(in) :: mu
 !=====

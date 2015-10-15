@@ -60,6 +60,7 @@ module m_inputparam
  character(len=100),protected     :: auxil_basis_name
  character(len=4),protected       :: gaussian_type
  character(len=12),protected      :: mixing_scheme
+ character(len=12),protected      :: partition_scheme
  real(dp),protected               :: tolscf
  real(dp),protected               :: electrons,charge
  real(dp),protected               :: temperature

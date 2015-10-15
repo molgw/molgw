@@ -204,6 +204,17 @@ It could be abbreviated in \'l\', \'m\', \'h\', \'vh\', \'i\'. \
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='partition_scheme'
+vl[i].family   ='scf'
+vl[i].default  ='ssf'
+vl[i].datatype ='characters'
+vl[i].comment  ='Sets the partition scheme for the xc quadrature. \
+Possible choices are \'becke\' or \'ssf\' (Stratmann-Scuseria-Frisch).'
+
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='nscf'
 vl[i].family   ='scf'
 vl[i].default  =30
