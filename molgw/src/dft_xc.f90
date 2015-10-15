@@ -143,7 +143,9 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
 
    !
    ! calculate the density at point r for spin up and spin down
-   call calc_density_r(nspin,basis%nbf,p_matrix,basis_function_r,rhor_r)
+!   call start_clock(timing_tmp1)
+   call calc_density_r(nspin,basis,p_matrix,rr,basis_function_r,rhor_r)
+!   call stop_clock(timing_tmp1)
    !
    ! Normalization
    normalization(:) = normalization(:) + rhor_r(:) * weight
@@ -485,14 +487,17 @@ end subroutine setup_atomic_density
 
 
 !=========================================================================
-subroutine calc_density_r(nspin,nbf,p_matrix,basis_function_r,rhor_r)
+subroutine calc_density_r(nspin,basis,p_matrix,rr,basis_function_r,rhor_r)
  use m_definitions
  use m_mpi
  use m_timing
+ use m_basis_set
+ use m_dft_grid,only: bf_rad2
  implicit none
- integer,intent(in)   :: nspin,nbf
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(in)  :: basis_function_r(nbf)
+ integer,intent(in)         :: nspin
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)  :: p_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)  :: rr(3),basis_function_r(basis%nbf)
  real(dp),intent(out) :: rhor_r(nspin)
 !=====
  integer :: ispin,ibf,jbf
@@ -503,9 +508,10 @@ subroutine calc_density_r(nspin,nbf,p_matrix,basis_function_r,rhor_r)
  do ispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO REDUCTION(+:rhor_r) 
-   do jbf=1,nbf
+   do jbf=1,basis%nbf
+     if( SUM( (basis%bf(jbf)%x0(:) - rr(:))**2 ) > bf_rad2(jbf) ) cycle
      ! implementing i <-> j symmetry does not save much time with ifort compiler
-     do ibf=1,nbf
+     do ibf=1,basis%nbf
        rhor_r(ispin)=rhor_r(ispin)+p_matrix(ibf,jbf,ispin)&
                          * basis_function_r(ibf) &
                          * basis_function_r(jbf)

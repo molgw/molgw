@@ -1789,7 +1789,7 @@ subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2r
    endif
 
 
-   call calc_density_r(nspin,basis%nbf,p_matrix,basis_function_r,rhor_r)
+   call calc_density_r(nspin,basis,p_matrix,rr,basis_function_r,rhor_r)
    if( require_gradient ) then
      call calc_density_gradr(nspin,basis%nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
 

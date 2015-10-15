@@ -1,4 +1,8 @@
 !=========================================================================
+! This module contains
+! the basic operations related to the quadrature needed to evaluate the
+! exchange-correlation integrals
+!=========================================================================
 module m_dft_grid
  use m_definitions
  use m_warning,only: die
@@ -15,12 +19,14 @@ module m_dft_grid
 
  real(dp),protected,allocatable :: rr_grid(:,:)
  real(dp),protected,allocatable :: w_grid(:)
+ real(dp),protected,allocatable :: bf_rad2(:)
 
  real(dp),parameter,private :: pruning_limit = 0.75_dp    ! in terms of covalent radius
 
- real(dp),parameter,private :: aa=0.64 ! Scuseria value
+ real(dp),parameter,private :: aa = 0.64 ! Scuseria value
 
- real(dp),parameter,private :: TOL_WEIGHT=1.0e-14_DP
+ real(dp),parameter,private :: TOL_WEIGHT = 1.0e-14_DP
+ real(dp),parameter,private :: TOL_BF     = 1.0e-06_DP
 
  !
  ! Function evaluation storage
@@ -337,6 +343,9 @@ subroutine destroy_dft_grid()
 
  deallocate(rr_grid)
  deallocate(w_grid)
+ if( allocated(bf_rad2) ) then
+   deallocate(bf_rad2)
+ endif
 
  if( allocated(bfr) ) then
    call clean_deallocate('basis ftns on grid',bfr)
@@ -633,6 +642,34 @@ subroutine calculate_basis_functions_laplr(basis,rr,basis_function_gradr,basis_f
 
 
 end subroutine calculate_basis_functions_laplr
+
+
+!=========================================================================
+subroutine setup_bf_radius(basis)
+ use m_basis_set
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+!=====
+ integer  :: igrid,ibf
+ real(dp) :: basis_function_r(basis%nbf)
+ real(dp) :: dr
+!=====
+
+ allocate(bf_rad2(basis%nbf))
+ bf_rad2(:) = 0.0_dp
+ do igrid=1,ngrid
+   call get_basis_functions_r(basis,igrid,basis_function_r)
+   do ibf=1,basis%nbf
+     if( ABS(basis_function_r(ibf)) > TOL_BF ) then
+       bf_rad2(ibf) = MAX( bf_rad2(ibf) , SUM( (rr_grid(:,igrid) - basis%bf(ibf)%x0(:))**2 ) )
+     endif
+   enddo
+ enddo
+
+ call xmax(bf_rad2)
+
+end subroutine setup_bf_radius
 
 
 !=========================================================================

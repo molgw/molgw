@@ -66,6 +66,7 @@ module m_mpi
  interface xmax
    module procedure xmax_i
    module procedure xmax_r
+   module procedure xmax_ra1d
  end interface
 
  interface xsum
@@ -667,6 +668,27 @@ subroutine xmax_r(real_number)
  endif
 
 end subroutine xmax_r
+
+
+!=========================================================================
+subroutine xmax_ra1d(array)
+ implicit none
+ real(dp),intent(inout) :: array(:)
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE, MPI_MAX, mpi_comm, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xmax_ra1d
 
 
 !=========================================================================

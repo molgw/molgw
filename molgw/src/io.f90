@@ -947,7 +947,7 @@ subroutine write_density_grid(basis,p_matrix)
    !
    ! Get all the functions at point rr
    call get_basis_functions_r(basis,igrid,basis_function_r)
-   call calc_density_r(nspin,basis%nbf,p_matrix,basis_function_r,rhor_r)
+   call calc_density_r(nspin,basis,p_matrix,rr,basis_function_r,rhor_r)
    rhor(igrid,:) = rhor_r(:)
 
  enddo

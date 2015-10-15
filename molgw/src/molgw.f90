@@ -150,6 +150,7 @@ program molgw
  ! Setup the grids for the quadrature of DFT potential/energy
  if( calc_type%is_dft .AND. .NOT. is_big_restart) then
    call setup_dft_grid()
+   call setup_bf_radius(basis)
  endif
 
  !
