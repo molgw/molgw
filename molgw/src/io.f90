@@ -39,8 +39,13 @@ subroutine header()
  call issue_warning('TD-DFT and BSE are using single precision to save memory')
 #endif
 #ifdef HAVE_LIBXC
+#ifndef LIBXC_SVN
  call xc_f90_version(values(1),values(2))
  write(chartmp,'(i2,a,i2)') values(1),'.',values(2)
+#else
+ call xc_f90_version(values(1),values(2),values(3))
+ write(chartmp,'(i2,a,i2,a,i2)') values(1),'.',values(2),'.',values(3)
+#endif
  write(stdout,*) 'LIBXC version '//TRIM(chartmp)
 #endif
 #ifdef _OPENMP

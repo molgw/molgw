@@ -216,7 +216,7 @@ function check_converged()
 
  write(stdout,*)
 
- if(iscf == nscf) then
+ if(iscf > nscf) then
    if(rms>1.d-4) then
      call issue_warning('SCF convergence is very poor')
    else if(rms>1.d-6) then
