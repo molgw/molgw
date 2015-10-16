@@ -414,9 +414,7 @@ subroutine distribute_grid_workload()
    if(nproc>1) then
      write(stdout,'(/,a)') ' Distribute work load among procs'
      write(stdout,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ngrid_mpi,dp)/REAL(nproc,dp)
-     do iproc=0,nproc-1
-       write(stdout,'(a,i6,a,i10)') ' proc # , grid points',iproc,' , ',ntask_grid_proc(iproc)
-     enddo
+     write(stdout,'(a,i6,a,i10)') ' proc # , grid points',rank,' , ',ntask_grid_proc(rank)
    endif
 
  else
@@ -1347,6 +1345,88 @@ subroutine symmetrize_matrix(desc,m_mat,n_mat,mat)
 #endif
 
 end subroutine symmetrize_matrix
+
+
+!=========================================================================
+subroutine diagonalize_scalapack(nmat,matrix,eigval)
+ implicit none
+ integer,intent(in)     :: nmat
+ real(dp),intent(inout) :: matrix(nmat,nmat)
+ real(dp),intent(out)   :: eigval(nmat)
+!=====
+ integer :: cntxt
+ integer :: mlocal,nlocal
+ integer :: nprow,npcol,iprow,ipcol
+ integer :: info
+ integer :: imat,jmat,imat_local,jmat_local
+ integer :: descm(ndel),descz(ndel)
+ real(dp) :: alpha
+ real(dp),allocatable :: matrix_local(:,:),eigvec(:,:)
+ real(dp),allocatable :: work(:)
+ integer :: lwork
+ integer,external :: NUMROC,INDXG2L,INDXG2P
+!=====
+
+ nprow = nprow_sd ! MIN(nprow_sd,nmat/100)
+ npcol = npcol_sd ! MIN(npcol_sd,nmat/100)
+
+ call BLACS_GET( -1, 0, cntxt )
+ call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
+ call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+
+ mlocal = NUMROC(nmat,block_row,iprow,first_row,nprow)
+ nlocal = NUMROC(nmat,block_col,ipcol,first_col,npcol)
+
+ allocate(matrix_local(mlocal,nlocal))
+ allocate(eigvec(mlocal,nlocal))
+
+ call DESCINIT(descm,nmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mlocal),info)
+
+ ! set up the local version of the matrix
+ do jmat=1,nmat
+   do imat=1,nmat
+     call PDELSET(matrix_local,imat,jmat,descm,matrix(imat,jmat))
+   enddo
+ enddo
+
+ descz(:) = descm(:)
+
+ ! First query the workspace dimension
+ lwork = -1
+ allocate(work(1))
+ call PDSYEV('V','L',nmat,matrix_local,1,1,descm,eigval,eigvec,1,1,descz,work,lwork,info)
+
+ ! Then do the actual diagonalization
+ lwork = INT(work(1))
+ deallocate(work)
+ allocate(work(lwork))
+ call PDSYEV('V','L',nmat,matrix_local,1,1,descm,eigval,eigvec,1,1,descz,work,lwork,info)
+ deallocate(work)
+
+
+ matrix(:,:) = 0.0_dp
+ do jmat=1,nmat
+   do imat=1,nmat
+     if( INDXG2P(imat,block_row,0,first_row,nprow) /= iprow ) cycle
+     if( INDXG2P(jmat,block_col,0,first_col,npcol) /= ipcol ) cycle
+     imat_local = INDXG2L(imat,block_row,0,first_row,nprow)
+     jmat_local = INDXG2L(jmat,block_col,0,first_col,npcol)
+
+     matrix(imat,jmat) = eigvec(imat_local,jmat_local)
+
+!  Maybe using the following call may save many lines of coding...
+!     call PDELGET('All',' ',alpha,matrix,imat,jmat,descz)
+   enddo
+ enddo
+ call xsum(matrix)
+
+
+
+ deallocate(matrix_local,eigvec)
+ call BLACS_GRIDEXIT( cntxt )
+
+
+end subroutine diagonalize_scalapack
 
 
 !=========================================================================

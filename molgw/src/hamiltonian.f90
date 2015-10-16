@@ -647,7 +647,12 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
    ! but right now the p_matrix has some noise and it is not exactly positive
    ! semi-definite...
    p_matrix_sqrt(:,:) = p_matrix(:,:,ispin)
+
+#ifndef HAVE_SCALAPACK
    call diagonalize(nbf,p_matrix_sqrt,eigval)
+#else
+   call diagonalize_scalapack(nbf,p_matrix_sqrt,eigval)
+#endif
 
    ! Denombrate the strictly positive eigenvalues
    nocc = COUNT( eigval(:) > completely_empty )

@@ -20,7 +20,7 @@ module m_timing
  integer,parameter :: timing_hartree           =  8
  integer,parameter :: timing_overlap3          =  9
  integer,parameter :: timing_diago_h2p         = 10
- integer,parameter :: timing_inversion_s2p     = 11
+! integer,parameter :: timing_inversion_s2p     = 11
  integer,parameter :: timing_mp2_energy        = 12
  integer,parameter :: timing_mp2_self          = 13
  integer,parameter :: timing_basis_transform   = 14
@@ -159,7 +159,6 @@ subroutine output_timing()
  write(stdout,'(a34,2x,f12.2,2x,i8)') '            TDDFT part' ,timing(timing_build_tddft),calls(timing_build_tddft)
  write(stdout,'(a34,2x,f12.2,2x,i8)') '              BSE part' ,timing(timing_build_bse),calls(timing_build_bse)
  write(stdout,'(a32,4x,f12.2,2x,i8)') '    Diago 2 particle H' ,timing(timing_diago_h2p),calls(timing_diago_h2p)
- write(stdout,'(a32,4x,f12.2,2x,i8)') '   Invert 2 particle S' ,timing(timing_inversion_s2p),calls(timing_inversion_s2p)
  write(stdout,'(a32,4x,f12.2,2x,i8)') '               Build W' ,timing(timing_buildw),calls(timing_buildw)
  write(stdout,'(a32,4x,f12.2,2x,i8)') '      Optical spectrum' ,timing(timing_spectrum),calls(timing_spectrum)
  write(stdout,*)
