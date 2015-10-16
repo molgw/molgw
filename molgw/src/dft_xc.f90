@@ -287,7 +287,8 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
      ! LDA
      do ispin=1,nspin
        do jbf=1,basis%nbf
-         do ibf=1,basis%nbf 
+         ! Only the upper part is calculated
+         do ibf=1,jbf ! basis%nbf 
            vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight &
                *  dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf) 
          enddo
@@ -298,7 +299,8 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
      ! GGA
      do ispin=1,nspin
        do jbf=1,basis%nbf
-         do ibf=1,basis%nbf 
+         ! Only the upper part is calculated
+         do ibf=1,jbf ! basis%nbf 
            vxc_ij(ibf,jbf,ispin) = vxc_ij(ibf,jbf,ispin) + weight  &
                * dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf) 
 
@@ -510,7 +512,6 @@ subroutine dft_exc_vxc_alt(basis,p_matrix,c_matrix,occupation,ehomo,vxc_ij,exc_x
  enddo
 
  call start_clock(timing_tmp7)
-#if 0
  do ispin=1,nspin
    do igrid=1,ngrid
      do jbf=1,basis%nbf
@@ -521,21 +522,6 @@ subroutine dft_exc_vxc_alt(basis,p_matrix,c_matrix,occupation,ehomo,vxc_ij,exc_x
      enddo
    enddo
  enddo
-#else
- allocate(wfr(ngrid,basis%nbf))
- wfr(:,:) = TRANSPOSE(bfr(:,:))
- do ispin=1,nspin
-   forall(jbf=1:basis%nbf)
-     wfr(:,jbf) =  w_grid(:) * dedd_r(:,ispin) * wfr(:,jbf)
-   end forall
-
- call start_clock(timing_tmp8)
-   vxc_ij(:,:,ispin) =  MATMUL( bfr(:,:) ,  wfr(:,:) )  
- call stop_clock(timing_tmp8)
-
- enddo
- deallocate(wfr)
-#endif
  call stop_clock(timing_tmp7)
 
 
