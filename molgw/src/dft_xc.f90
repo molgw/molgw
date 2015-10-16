@@ -131,7 +131,6 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
    rr(:) = rr_grid(:,igrid)
    weight = w_grid(igrid)
 
-   call start_clock(timing_tmp2)
    !
    ! Get all the functions and gradients at point rr
    call get_basis_functions_r(basis,igrid,basis_function_r)
@@ -141,14 +140,11 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
    if( require_laplacian ) then
      call get_basis_functions_laplr(basis,igrid,basis_function_gradr,basis_function_laplr)
    endif
-   call stop_clock(timing_tmp2)
 
 
    !
    ! calculate the density at point r for spin up and spin down
-   call start_clock(timing_tmp1)
    call calc_density_r(nspin,basis,p_matrix,rr,basis_function_r,rhor_r)
-   call stop_clock(timing_tmp1)
    !
    ! Normalization
    normalization(:) = normalization(:) + rhor_r(:) * weight
@@ -210,14 +206,12 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
      select case(xc_f90_info_family(xc_info(idft_xc)))
 
      case(XC_FAMILY_LDA)
-       call start_clock(timing_tmp3)
        if( dft_xc_type(idft_xc) < 1000 ) then 
          call xc_f90_lda_exc_vxc(xc_func(idft_xc),1_C_INT,rhor_r(1),exc_libxc(1),vxc_libxc(1))
        else
          call my_lda_exc_vxc(nspin,dft_xc_type(idft_xc),rhor_r,exc_libxc(1),vxc_libxc)
 !         call my_lda_exc_vxc_mu(1.00_dp,rhor_r,exc_libxc,vxc_libxc)
        endif
-       call stop_clock(timing_tmp3)
 
      case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
        if( dft_xc_type(idft_xc) < 2000 ) then 
@@ -282,7 +276,6 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
    !
    ! Eventually set up the vxc term
    !
-   call start_clock(timing_tmp4)
    if( .NOT. require_gradient ) then 
      ! LDA
      do ispin=1,nspin
@@ -312,7 +305,6 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
        enddo
      enddo
    endif
-   call stop_clock(timing_tmp4)
 
  enddo ! loop on the grid point
 
@@ -467,7 +459,6 @@ subroutine dft_exc_vxc_alt(basis,p_matrix,c_matrix,occupation,ehomo,vxc_ij,exc_x
  enddo
 
 
- call start_clock(timing_tmp9)
 
  !
  ! If it is the first time, then set up the stored arrays
@@ -476,12 +467,10 @@ subroutine dft_exc_vxc_alt(basis,p_matrix,c_matrix,occupation,ehomo,vxc_ij,exc_x
  if( require_gradient  .AND. .NOT. allocated(bfgr) ) call prepare_basis_functions_gradr(basis)
  if( require_laplacian .AND. .NOT. allocated(bfgr) ) call prepare_basis_functions_laplr(basis)
 
- call stop_clock(timing_tmp9)
 
  normalization(:)=0.0_dp
 
  if ( ngrid_stored < ngrid ) call die('FBFB test invalid')
- call start_clock(timing_tmp5)
  do ispin=1,nspin
    maxocc=0
    do istate=1,basis%nbf
@@ -497,13 +486,10 @@ subroutine dft_exc_vxc_alt(basis,p_matrix,c_matrix,occupation,ehomo,vxc_ij,exc_x
    deallocate(wfr)
 
  enddo
- call stop_clock(timing_tmp5)
 
  dedd_r(:,:) = 0.0_dp
  do idft_xc=1,ndft_xc
-   call start_clock(timing_tmp6)
    call xc_f90_lda_exc_vxc(xc_func(idft_xc),INT(ngrid,C_INT),rhor(1,1),exc_libxc(1),vxc_libxc(1,1))
-   call stop_clock(timing_tmp6)
    dedd_r(:,:) = dedd_r(:,:) + vxc_libxc(:,:) * dft_xc_coef(idft_xc)
 
    do igrid=1,ngrid
@@ -511,7 +497,6 @@ subroutine dft_exc_vxc_alt(basis,p_matrix,c_matrix,occupation,ehomo,vxc_ij,exc_x
    enddo
  enddo
 
- call start_clock(timing_tmp7)
  do ispin=1,nspin
    do igrid=1,ngrid
      do jbf=1,basis%nbf
@@ -522,205 +507,10 @@ subroutine dft_exc_vxc_alt(basis,p_matrix,c_matrix,occupation,ehomo,vxc_ij,exc_x
      enddo
    enddo
  enddo
- call stop_clock(timing_tmp7)
 
 
  call xsum(vxc_ij)
  call xsum(exc_xc)
-
-
-
-
-
-#if 0
- do igrid=1,ngrid
-
-   rr(:) = rr_grid(:,igrid)
-   weight = w_grid(igrid)
-
-   call start_clock(timing_tmp2)
-   !
-   ! Get all the functions and gradients at point rr
-   call get_basis_functions_r(basis,igrid,basis_function_r)
-   if( require_gradient ) then
-     call get_basis_functions_gradr(basis,igrid,basis_function_gradr)
-   endif
-   if( require_laplacian ) then
-     call get_basis_functions_laplr(basis,igrid,basis_function_gradr,basis_function_laplr)
-   endif
-   call stop_clock(timing_tmp2)
-
-
-   !
-   ! calculate the density at point r for spin up and spin down
-   call start_clock(timing_tmp1)
-   call calc_density_r(nspin,basis,p_matrix,rr,basis_function_r,rhor_r)
-   call stop_clock(timing_tmp1)
-   !
-   ! Normalization
-   normalization(:) = normalization(:) + rhor_r(:) * weight
-
-
-   if( require_gradient ) then 
-     call calc_density_gradr(nspin,basis%nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
-
-     sigma(1) = SUM( grad_rhor(:,1)**2 )
-     if(nspin==2) then
-       sigma(2) = SUM( grad_rhor(:,1) * grad_rhor(:,2) )
-       sigma(3) = SUM( grad_rhor(:,2)**2 )
-     endif
-
-   endif
-
-
-   if( require_laplacian ) then
-
-     grad_rhor(:,:)=0.0_dp
-     tau(:)        =0.0_dp
-     lapl_rhor(:)  =0.0_dp
-     do ispin=1,nspin
-       do jbf=1,basis%nbf
-         do ibf=1,basis%nbf
-
-           grad_rhor(:,ispin) = grad_rhor(:,ispin) + p_matrix(ibf,jbf,ispin) &
-                *( basis_function_gradr(:,ibf) * basis_function_r(jbf) &
-                 + basis_function_gradr(:,jbf) * basis_function_r(ibf) ) 
-
-           tau(ispin)        = tau(ispin)        + p_matrix(ibf,jbf,ispin) &
-                * DOT_PRODUCT( basis_function_gradr(:,ibf) , basis_function_gradr(:,jbf) )
-
-           lapl_rhor(ispin)  = lapl_rhor(ispin)  + p_matrix(ibf,jbf,ispin) &
-                              * (  SUM( basis_function_laplr(:,ibf) ) * basis_function_r(jbf)               &
-                                 + basis_function_r(ibf) * SUM( basis_function_laplr(:,jbf) )               &
-                                 + 2.0_dp * DOT_PRODUCT( basis_function_gradr(:,ibf) , basis_function_gradr(:,jbf) ) )
-
-         enddo
-       enddo
-     enddo
-     sigma(1) = SUM( grad_rhor(:,1)**2 )
-     if(nspin==2) then
-       sigma(2) = SUM( grad_rhor(:,1) * grad_rhor(:,2) )
-       sigma(3) = SUM( grad_rhor(:,2)**2 )
-     endif
-
-   endif
-
-
-   !
-   ! LIBXC calls
-   !
-   vxc(:)    = 0.0_dp
-
-   do idft_xc=1,ndft_xc
-
-     select case(xc_f90_info_family(xc_info(idft_xc)))
-
-     case(XC_FAMILY_LDA)
-       if( dft_xc_type(idft_xc) < 1000 ) then 
-         call xc_f90_lda_exc_vxc(xc_func(idft_xc),1_C_INT,rhor_r(1),exc_libxc(1),vxc_libxc(1))
-       else
-         call my_lda_exc_vxc(nspin,dft_xc_type(idft_xc),rhor_r,exc_libxc(1),vxc_libxc)
-!         call my_lda_exc_vxc_mu(1.00_dp,rhor_r,exc_libxc,vxc_libxc)
-       endif
-
-     case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
-       if( dft_xc_type(idft_xc) < 2000 ) then 
-         !
-         ! Remove too small densities to stabilize the computation
-         ! especially useful for Becke88
-         if( ANY( rhor_r(:) > 1.0e-9_dp ) ) then
-           call xc_f90_gga_exc_vxc(xc_func(idft_xc),1_C_INT,rhor_r(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
-         else
-           exc_libxc(:)     = 0.0_dp
-           vxc_libxc(:)     = 0.0_dp
-           vsigma(:)        = 0.0_dp
-         endif
-       else
-         call my_gga_exc_vxc_hjs(gamma_hybrid,rhor_r(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
-       endif
-
-     case(XC_FAMILY_MGGA)
-       call xc_f90_mgga_vxc(xc_func(idft_xc),1_C_INT,rhor_r(1),sigma(1),lapl_rhor(1),tau(1),vxc_libxc(1),vsigma(1),vlapl_rho(1),vtau(1))
-       ! no expression for the energy
-       exc_libxc(1) = 0.0_dp
-
-     case default
-       call die('functional is not LDA nor GGA nor hybrid nor meta-GGA')
-     end select
-
-     exc_xc = exc_xc + weight * exc_libxc(1) * SUM( rhor_r(:) ) * dft_xc_coef(idft_xc)
-
-
-     dedd_r(:) = vxc_libxc(:) 
-
-     !
-     ! Set up divergence term if needed (GGA case)
-     !
-     if( xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_GGA &
-        .OR. xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) then
-       if(nspin==1) then
-
-         dedgd_r(:,1) = 2.0_dp * vsigma(1) * grad_rhor(:,1) 
-
-       else
-
-         dedgd_r(:,1) = 2.0_dp * vsigma(1) * grad_rhor(:,1) &
-                               + vsigma(2) * grad_rhor(:,2)
-
-         dedgd_r(:,2) = 2.0_dp * vsigma(3) * grad_rhor(:,2) &
-                               + vsigma(2) * grad_rhor(:,1)
-       endif
-
-     endif
-
-
-     !
-     ! In the case of the BJ06 meta-GGA functional, a spin-dependent shift is applied
-     ! since the potential does not vanish at infinity
-     !
-     if( dft_xc_type(idft_xc) == XC_MGGA_X_BJ06 ) then
-       dedd_r(:) = dedd_r(:) - SQRT( 5.0_dp * ABS(ehomo(:)) / 6.0_dp ) / pi
-     endif
-
-
-     !
-     ! Eventually set up the vxc term
-     !
-     if( .NOT. require_gradient ) then 
-       ! LDA
-       do ispin=1,nspin
-         do jbf=1,basis%nbf
-           do ibf=1,basis%nbf 
-             vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight &
-                 *  dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf)  &
-                 * dft_xc_coef(idft_xc)
-           enddo
-         enddo
-       enddo
-
-     else 
-       ! GGA
-       do ispin=1,nspin
-         do jbf=1,basis%nbf
-           do ibf=1,basis%nbf 
-             vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight &
-                 * dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf)  &
-                 * dft_xc_coef(idft_xc)
-
-             vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight * dft_xc_coef(idft_xc) &
-                      * DOT_PRODUCT( dedgd_r(:,ispin) ,                                     &
-                                        basis_function_gradr(:,ibf) * basis_function_r(jbf) &
-                                      + basis_function_gradr(:,jbf) * basis_function_r(ibf) )
-           enddo
-         enddo
-       enddo
-     endif
-
-   enddo ! loop on the XC functional
-  
-
- enddo ! loop on the grid point
-#endif
 
  !
  ! Sum up the contributions from all procs only if needed
