@@ -136,6 +136,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    if( calc_type%is_dft ) then
 
      call dft_exc_vxc(basis,p_matrix,ehomo,hamiltonian_vxc,en%xc)
+!FBFBtesting     call dft_exc_vxc_alt(basis,p_matrix,c_matrix,occupation,ehomo,hamiltonian_vxc,en%xc)
 
      title='=== DFT XC contribution ==='
      call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,hamiltonian_vxc)
