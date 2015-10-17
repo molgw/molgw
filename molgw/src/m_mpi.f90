@@ -15,6 +15,7 @@ module m_mpi
 #else
  logical,parameter :: parallel_scalapack = .FALSE.
 #endif
+ integer,parameter :: SCALAPACK_MIN = 200   ! TODO Better tune this parameter in the future
 
 
  integer,protected :: nproc  = 1
@@ -900,10 +901,30 @@ subroutine init_scalapack()
  nprow_sd = INT(SQRT(REAL(nproc_sca,dp)))
  npcol_sd = nproc_sca / nprow_sd
  if( nprow_sd * npcol_sd /= nproc_sca ) then
-   write(stdout,'(a)') ' Some procs will be idling in the SCALAPACK distribution'
-   write(stdout,'(a)') ' This is a waste and it is not yet coded anyway!'
-   write(stdout,'(a)') ' => select a number of procs that is not a prime number'
-   call die('proc distribution not permitted')
+
+   ! Since the attempted distribution does not fit the total number of CPUs
+   ! make a new attempt.
+   nprow_sd = MAX( nprow_sd - 1 , 1 )
+   npcol_sd = nproc_sca / nprow_sd
+   if( nprow_sd * npcol_sd /= nproc_sca ) then
+     ! Since the attempted distribution does not fit the total number of CPUs
+     ! make a new attempt.
+     nprow_sd = MAX( nprow_sd - 1 , 1 )
+     npcol_sd = nproc_sca / nprow_sd
+
+     if( nprow_sd * npcol_sd /= nproc_sca ) then
+       ! Since the attempted distribution does not fit the total number of CPUs
+       ! make a new attempt.
+       nprow_sd = MAX( nprow_sd - 1 , 1 )
+       npcol_sd = nproc_sca / nprow_sd
+       if( nprow_sd * npcol_sd /= nproc_sca ) then
+         write(stdout,'(a)') ' Some procs will be idling in the SCALAPACK distribution'
+         write(stdout,'(a)') ' This is a waste and it is not yet coded anyway!'
+         write(stdout,'(a)') ' => select a number of procs that is not a prime number'
+         call die('proc distribution not permitted')
+       endif
+     endif
+   endif
  endif
 
  call BLACS_GET( -1, 0, cntxt_sd )
@@ -1364,66 +1385,93 @@ subroutine diagonalize_scalapack(nmat,matrix,eigval)
  real(dp),allocatable :: matrix_local(:,:),eigvec(:,:)
  real(dp),allocatable :: work(:)
  integer :: lwork
+ integer :: rank_sca,nprocs_sca
  integer,external :: NUMROC,INDXG2L,INDXG2P
 !=====
 
- nprow = nprow_sd ! MIN(nprow_sd,nmat/100)
- npcol = npcol_sd ! MIN(npcol_sd,nmat/100)
+ nprow = MIN(nprow_sd,nmat/SCALAPACK_MIN)
+ npcol = MIN(npcol_sd,nmat/SCALAPACK_MIN)
+ nprow = MAX(nprow,1)
+ npcol = MAX(npcol,1)
+
+ call BLACS_PINFO( rank_sca, nprocs_sca )
 
  call BLACS_GET( -1, 0, cntxt )
  call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+ write(stdout,'(a,i4,a,i4)') '   using SCALAPACK with a grid',nprow,' x ',npcol
 
- mlocal = NUMROC(nmat,block_row,iprow,first_row,nprow)
- nlocal = NUMROC(nmat,block_col,ipcol,first_col,npcol)
 
- allocate(matrix_local(mlocal,nlocal))
- allocate(eigvec(mlocal,nlocal))
+ if( cntxt >= 0  ) then
+   mlocal = NUMROC(nmat,block_row,iprow,first_row,nprow)
+   nlocal = NUMROC(nmat,block_col,ipcol,first_col,npcol)
+ else
+   mlocal = 0
+   nlocal = 0
+ endif
 
- call DESCINIT(descm,nmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mlocal),info)
 
- ! set up the local version of the matrix
- do jmat=1,nmat
-   do imat=1,nmat
-     call PDELSET(matrix_local,imat,jmat,descm,matrix(imat,jmat))
+ if( cntxt >= 0  ) then
+  
+   allocate(matrix_local(mlocal,nlocal))
+   allocate(eigvec(mlocal,nlocal))
+    
+   call DESCINIT(descm,nmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mlocal),info)
+
+  
+   ! set up the local version of the matrix
+   do jmat=1,nmat
+     do imat=1,nmat
+       call PDELSET(matrix_local,imat,jmat,descm,matrix(imat,jmat))
+     enddo
    enddo
- enddo
-
- descz(:) = descm(:)
-
- ! First query the workspace dimension
- lwork = -1
- allocate(work(1))
- call PDSYEV('V','L',nmat,matrix_local,1,1,descm,eigval,eigvec,1,1,descz,work,lwork,info)
-
- ! Then do the actual diagonalization
- lwork = INT(work(1))
- deallocate(work)
- allocate(work(lwork))
- call PDSYEV('V','L',nmat,matrix_local,1,1,descm,eigval,eigvec,1,1,descz,work,lwork,info)
- deallocate(work)
-
-
- matrix(:,:) = 0.0_dp
- do jmat=1,nmat
-   do imat=1,nmat
-     if( INDXG2P(imat,block_row,0,first_row,nprow) /= iprow ) cycle
-     if( INDXG2P(jmat,block_col,0,first_col,npcol) /= ipcol ) cycle
-     imat_local = INDXG2L(imat,block_row,0,first_row,nprow)
-     jmat_local = INDXG2L(jmat,block_col,0,first_col,npcol)
-
-     matrix(imat,jmat) = eigvec(imat_local,jmat_local)
-
-!  Maybe using the following call may save many lines of coding...
-!     call PDELGET('All',' ',alpha,matrix,imat,jmat,descz)
+  
+   descz(:) = descm(:)
+  
+   ! First query the workspace dimension
+   lwork = -1
+   allocate(work(1))
+   call PDSYEV('V','L',nmat,matrix_local,1,1,descm,eigval,eigvec,1,1,descz,work,lwork,info)
+  
+   ! Then do the actual diagonalization
+   lwork = INT(work(1))
+   deallocate(work)
+   allocate(work(lwork))
+   call PDSYEV('V','L',nmat,matrix_local,1,1,descm,eigval,eigvec,1,1,descz,work,lwork,info)
+   deallocate(work)
+  
+   ! Nullify the eigval array for all CPUs but one, so that the all_reduce
+   ! operation in the end yields the correct value
+   ! Of course, using a broadcast instead would be a better solution, but I'm lazy
+   if(rank_sca /= 0 ) eigval(:) = 0.0_dp
+  
+   matrix(:,:) = 0.0_dp
+   do jmat=1,nmat
+     do imat=1,nmat
+       if( INDXG2P(imat,block_row,0,first_row,nprow) /= iprow ) cycle
+       if( INDXG2P(jmat,block_col,0,first_col,npcol) /= ipcol ) cycle
+       imat_local = INDXG2L(imat,block_row,0,first_row,nprow)
+       jmat_local = INDXG2L(jmat,block_col,0,first_col,npcol)
+  
+       matrix(imat,jmat) = eigvec(imat_local,jmat_local)
+  
+  !  Maybe using the following call may save many lines of coding...
+  !     call PDELGET('All',' ',alpha,matrix,imat,jmat,descz)
+     enddo
    enddo
- enddo
+
+   deallocate(matrix_local,eigvec)
+   call BLACS_GRIDEXIT( cntxt )
+
+ else
+   ! Those CPUs that are not used in the SCALAPACK process
+   matrix(:,:) = 0.0_dp
+   eigval(:) = 0.0_dp
+ endif
+
  call xsum(matrix)
+ call xsum(eigval)
 
-
-
- deallocate(matrix_local,eigvec)
- call BLACS_GRIDEXIT( cntxt )
 
 
 end subroutine diagonalize_scalapack
