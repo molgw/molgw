@@ -329,7 +329,7 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
  write(stdout,*) 'LIBXC is not present'
 #endif
 
- write(stdout,'(/,a,2(2x,f12.6))') ' number of electrons:',normalization(:)
+ write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
  write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy [Ha]:',exc_xc
 
  call stop_clock(timing_dft)

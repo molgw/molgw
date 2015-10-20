@@ -1401,17 +1401,13 @@ subroutine diagonalize_scalapack(nmat,matrix,eigval)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
  write(stdout,'(a,i4,a,i4)') '   using SCALAPACK with a grid',nprow,' x ',npcol
 
-
+ !
+ ! Participate to the diagonalization only if the CPU has been selected 
+ ! in the grid
  if( cntxt >= 0  ) then
+
    mlocal = NUMROC(nmat,block_row,iprow,first_row,nprow)
    nlocal = NUMROC(nmat,block_col,ipcol,first_col,npcol)
- else
-   mlocal = 0
-   nlocal = 0
- endif
-
-
- if( cntxt >= 0  ) then
   
    allocate(matrix_local(mlocal,nlocal))
    allocate(eigvec(mlocal,nlocal))

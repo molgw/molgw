@@ -30,6 +30,7 @@ module m_eri
  logical,protected,allocatable      :: negligible_basispair(:,:)
  logical,private,allocatable        :: negligible_shellpair(:,:)
  integer,private,allocatable        :: index_pair(:,:)
+ integer,protected,allocatable        :: index_basis(:,:)   !FBNEW
  integer,private,allocatable        :: index_shellpair(:,:)
  integer,private                    :: nshellpair
 
@@ -51,7 +52,7 @@ module m_eri
 
  integer,private :: nbf_eri         ! local copy of nbf
  integer,private :: nsize           ! size of the eri_buffer array
- integer,private :: npair           ! number of independent pairs (i,j) with i<=j
+ integer,protected :: npair         ! number of independent pairs (i,j) with i<=j !FBNEW
 
  integer,protected :: nauxil_2center     ! size of the 2-center matrix
                                          ! 2-center integrals are NOT distributed
@@ -178,6 +179,7 @@ subroutine deallocate_eri()
  if(allocated(negligible_basispair))  deallocate(negligible_basispair)
  if(allocated(negligible_shellpair))  deallocate(negligible_shellpair)
  if(allocated(index_pair))            deallocate(index_pair)
+ if(allocated(index_basis))           deallocate(index_basis)
  if(allocated(index_shellpair))       deallocate(index_shellpair)
  ! 
  ! Cleanly deallocate the shell objects
@@ -2230,6 +2232,18 @@ subroutine setup_negligible_basispair()
    enddo
  enddo
 
+!FBNEW
+ npair = 0
+ do jbf=1,nbf_eri
+   do ibf=1,jbf
+     if( .NOT. negligible_basispair(ibf,jbf) ) then
+       npair = npair + 1
+     endif
+   enddo
+ enddo
+ allocate(index_basis(2,npair))
+!FBNEW
+
  npair = 0
  do jbf=1,nbf_eri
    do ibf=1,jbf
@@ -2237,6 +2251,8 @@ subroutine setup_negligible_basispair()
        npair = npair + 1
        index_pair(ibf,jbf) = npair
        index_pair(jbf,ibf) = npair
+       index_basis(1,npair) = ibf    ! FBNEW
+       index_basis(2,npair) = jbf    ! FBNEW
      endif
    enddo
  enddo

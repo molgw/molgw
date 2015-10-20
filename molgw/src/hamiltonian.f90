@@ -627,6 +627,7 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
  real(dp)             :: p_matrix_sqrt(nbf,nbf)
  real(dp),allocatable :: p_matrix_sqrt_occ(:,:)
  real(dp)             :: eigval(nbf)
+ integer :: ipair !FBNEW
 !=====
 
  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
@@ -668,6 +669,16 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
 
    do istate=1,nocc
      tmp(:,:) = 0.0_dp
+!FBNEW
+#if 0
+     do ipair=1,npair
+       ibf=index_basis(1,ipair)
+       jbf=index_basis(2,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt_occ(jbf,istate) * eri_3center(:,ipair)
+       if( ibf /= jbf ) &
+            tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt_occ(ibf,istate) * eri_3center(:,ipair)
+     enddo
+#else
      do jbf=1,nbf
        do ibf=1,nbf
          if( negligible_basispair(ibf,jbf) ) cycle
@@ -675,6 +686,8 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
          tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt_occ(ibf,istate) * eri_3center(:,index_ij)
        enddo
      enddo
+#endif
+!FBNEW
 
      pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin) &
                         - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
