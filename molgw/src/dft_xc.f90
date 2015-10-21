@@ -636,10 +636,8 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  enddo ! loop on the grid point
  !
  ! Sum up the contributions from all procs only if needed
- if( parallel_grid ) then
-   call xsum(normalization)
-   call xsum(vhxc_ij)
- endif
+ call xsum(normalization)
+ call xsum(vhxc_ij)
 
  write(stdout,'(/,a,2(2x,f12.6))') ' number of electrons:',normalization
 

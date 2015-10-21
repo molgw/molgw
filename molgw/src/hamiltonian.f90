@@ -180,9 +180,6 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
        do i_cart=1,ni_cart
          do j_cart=1,nj_cart
            call nucleus_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
-#ifdef TODAY
-           call nucleus_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),2.0_dp,x(:,iatom),vnucleus_ij)
-#endif
            matrix_cart(i_cart,j_cart) = matrix_cart(i_cart,j_cart) + vnucleus_ij
          enddo
        enddo
@@ -456,7 +453,6 @@ subroutine setup_hartree(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartree)
    do jbf=1,nbf
      do ibf=1,nbf
        if( negligible_basispair(ibf,jbf) ) cycle
-       if( .NOT. is_my_task(ibf,jbf) ) cycle
        do lbf=1,nbf
          !
          ! symmetry k <-> l
@@ -501,9 +497,10 @@ subroutine setup_hartree_ri(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartre
  real(dp),intent(out) :: ehartree
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin
- integer              :: ibf_auxil
+ integer              :: ibf_auxil,ipair
  integer              :: index_ij,index_kl
  real(dp),allocatable :: partial_sum(:)
+ real(dp)             :: rtmp
  character(len=100)   :: title
 !=====
 
@@ -513,23 +510,24 @@ subroutine setup_hartree_ri(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartre
 
  allocate(partial_sum(nauxil_3center))
  partial_sum(:) = 0.0_dp
- do lbf=1,nbf
-   do kbf=1,nbf
-     if( negligible_basispair(kbf,lbf) ) cycle
-     index_kl = index_prod(kbf,lbf)
-     partial_sum(:) = partial_sum(:) + eri_3center(:,index_kl) * SUM( p_matrix(kbf,lbf,:) )
-   enddo
+ do ipair=1,npair
+   kbf = index_basis(1,ipair)
+   lbf = index_basis(2,ipair)
+   ! Factor 2 comes from the symmetry of p_matrix
+   partial_sum(:) = partial_sum(:) + eri_3center(:,ipair) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
+   ! Then diagonal terms have been counted twice and should be removed once.
+   if( kbf == lbf ) &
+     partial_sum(:) = partial_sum(:) - eri_3center(:,ipair) * SUM( p_matrix(kbf,kbf,:) )
  enddo
 
  ! Hartree potential is not sensitive to spin
  pot_hartree(:,:,:) = 0.0_dp
- do jbf=1,nbf
-   do ibf=1,nbf
-     if( negligible_basispair(ibf,jbf) ) cycle
-     if( .NOT. is_my_task(ibf,jbf) ) cycle
-     index_ij = index_prod(ibf,jbf)
-     pot_hartree(ibf,jbf,1) = DOT_PRODUCT( eri_3center(:,index_ij) , partial_sum(:) )
-   enddo
+ do ipair=1,npair
+   ibf = index_basis(1,ipair)
+   jbf = index_basis(2,ipair)
+   rtmp = DOT_PRODUCT( eri_3center(:,ipair) , partial_sum(:) )
+   pot_hartree(ibf,jbf,1) = rtmp
+   pot_hartree(jbf,ibf,1) = rtmp
  enddo
  if(nspin==2) pot_hartree(:,:,nspin) = pot_hartree(:,:,1)
 
@@ -627,7 +625,7 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
  real(dp)             :: p_matrix_sqrt(nbf,nbf)
  real(dp),allocatable :: p_matrix_sqrt_occ(:,:)
  real(dp)             :: eigval(nbf)
- integer :: ipair
+ integer              :: ipair
 !=====
 
  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
@@ -718,6 +716,7 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix,pot_exchange,e
  real(dp)             :: p_matrix_sqrt(nbf,nbf)
  real(dp),allocatable :: p_matrix_sqrt_occ(:,:)
  real(dp)             :: eigval(nbf)
+ integer              :: ipair
 !=====
 
  write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity'
@@ -754,12 +753,12 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix,pot_exchange,e
 
    do istate=1,nocc
      tmp(:,:) = 0.0_dp
-     do jbf=1,nbf
-       do ibf=1,nbf
-         if( negligible_basispair(ibf,jbf) ) cycle
-         index_ij = index_prod(ibf,jbf)
-         tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt_occ(ibf,istate) * eri_3center_lr(:,index_ij)
-       enddo
+     do ipair=1,npair
+       ibf=index_basis(1,ipair)
+       jbf=index_basis(2,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt_occ(jbf,istate) * eri_3center_lr(:,ipair)
+       if( ibf /= jbf ) &
+            tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt_occ(ibf,istate) * eri_3center_lr(:,ipair)
      enddo
 
      pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin) &

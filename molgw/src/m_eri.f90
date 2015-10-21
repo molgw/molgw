@@ -2184,13 +2184,9 @@ subroutine calculate_eri_approximate_hartree(print_eri_,basis,x0_rho,alpha_rho,v
          
        do lbf=1,nl
          do kbf=1,nk
-           do jbf=1,nj
-             do ibf=1,ni
-               vhrho( shell(kshell)%istart+kbf-1 , shell(lshell)%istart+lbf-1 ) = integrals_cart(ibf,jbf,kbf,lbf)
-               ! And the symmetric too
-               vhrho( shell(lshell)%istart+lbf-1 , shell(kshell)%istart+kbf-1 ) = integrals_cart(ibf,jbf,kbf,lbf)
-             enddo
-           enddo
+           vhrho( shell(kshell)%istart+kbf-1 , shell(lshell)%istart+lbf-1 ) = integrals_cart(1,1,kbf,lbf)
+           ! And the symmetric too
+           vhrho( shell(lshell)%istart+lbf-1 , shell(kshell)%istart+kbf-1 ) = integrals_cart(1,1,kbf,lbf)
          enddo
        enddo
 
@@ -2493,7 +2489,7 @@ subroutine identify_negligible_shellpair(basis)
 
      do ibf=1,ni
        do jbf=1,nj
-         if( ABS( integrals_cart(ibf,jbf,ibf,jbf) ) > TOL_INT ) negligible_shellpair(ishell,jshell) = .FALSE.
+         if( ABS( integrals_cart(ibf,jbf,ibf,jbf) ) > TOL_INT**2 ) negligible_shellpair(ishell,jshell) = .FALSE.
        enddo
      enddo
 
