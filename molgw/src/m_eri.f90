@@ -102,13 +102,13 @@ subroutine prepare_eri(basis,rcut,which_buffer)
 
  select case(integral_level)
  case(low)       ! accuracy not guaranted, just for quick test runs
-   TOL_INT = 1.0e-6_dp
+   TOL_INT = 1.0e-04_dp
  case(medium)    ! 10 meV accuracy on potentials
-   TOL_INT = 1.0e-8_dp
+   TOL_INT = 1.0e-06_dp
  case(high)      !  1 meV accuracy on potentials
-   TOL_INT = 1.0e-10_dp
+   TOL_INT = 1.0e-08_dp
  case(very_high) ! almost perfect potentials
-   TOL_INT = 1.0e-12_dp
+   TOL_INT = 1.0e-10_dp
  case(insane)    ! No screening of any integral
    TOL_INT = -1.0_dp
  case default
