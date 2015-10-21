@@ -27,7 +27,7 @@ program molgw
  implicit none
 
 !=====
- real(dp),parameter      :: TOL_OVERLAP=1.0e-5_dp
+ real(dp),parameter      :: TOL_OVERLAP=1.0e-6_dp
  type(basis_set)         :: basis
  type(basis_set)         :: auxil_basis
  type(basis_set)         :: prod_basis
@@ -121,6 +121,15 @@ program molgw
  s_matrix_sqrt_inv(:,:) = s_matrix(:,:)
  call diagonalize(basis%nbf,s_matrix_sqrt_inv,s_eigval)
 
+! ! check unitarity
+! matrix_tmp(:,:,1) = MATMUL( s_matrix_sqrt_inv , TRANSPOSE( s_matrix_sqrt_inv))
+! matrix_tmp(:,:,1) = MATMUL( TRANSPOSE( s_matrix_sqrt_inv) , s_matrix_sqrt_inv )
+! write(stdout,*) 'diag',COUNT( ABS( matrix_tmp(:,:,1) - 1.0 ) < 0.000001),basis%nbf
+! write(stdout,*) 'offdiag',COUNT( ABS( matrix_tmp(:,:,1) - 0.0 ) < 0.000001 ),basis%nbf*(basis%nbf-1)
+!
+! call invert(basis%nbf,s_matrix,matrix_tmp(:,:,1))
+
+ write(stdout,*) 'Min',MINVAL( s_eigval(:) )
  write(stdout,*) '10',COUNT( s_eigval(:) < 1.0e-10)
  write(stdout,*) '08',COUNT( s_eigval(:) < 1.0e-8 )
  write(stdout,*) '06',COUNT( s_eigval(:) < 1.0e-6 )
@@ -142,13 +151,19 @@ program molgw
  enddo
  deallocate(s_eigval)
 
+! write(stdout,*) ibf,nstate
 ! write(stdout,*) basis%nbf**2
-! write(stdout,*) '10',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:ibf),TRANSPOSE(s_matrix_sqrt_inv(:,1:ibf))) - s_matrix ) > 1.0e-10 )
-! write(stdout,*) '05',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:ibf),TRANSPOSE(s_matrix_sqrt_inv(:,1:ibf))) - s_matrix ) > 1.0e-05 )
-
-
-
- write(stdout,*) 'FBFB'
+!! write(stdout,*) '10',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:nstate),TRANSPOSE(s_matrix_sqrt_inv(:,1:nstate))) - s_matrix ) > 1.0e-10 )
+!! write(stdout,*) '05',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:nstate),TRANSPOSE(s_matrix_sqrt_inv(:,1:nstate))) - s_matrix ) > 1.0e-05 )
+! write(stdout,*) '10',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:nstate),TRANSPOSE(s_matrix_sqrt_inv(:,1:nstate))) - matrix_tmp(:,:,1) ) > 1.0e-10 )
+! write(stdout,*) '08',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:nstate),TRANSPOSE(s_matrix_sqrt_inv(:,1:nstate))) - matrix_tmp(:,:,1) ) > 1.0e-08 )
+! write(stdout,*) '07',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:nstate),TRANSPOSE(s_matrix_sqrt_inv(:,1:nstate))) - matrix_tmp(:,:,1) ) > 1.0e-07 )
+! write(stdout,*) '06',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:nstate),TRANSPOSE(s_matrix_sqrt_inv(:,1:nstate))) - matrix_tmp(:,:,1) ) > 1.0e-06 )
+! write(stdout,*) '05',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:nstate),TRANSPOSE(s_matrix_sqrt_inv(:,1:nstate))) - matrix_tmp(:,:,1) ) > 1.0e-05 )
+!
+!
+!
+! write(stdout,*) 'FBFB'
 ! call die('enough')
 
 
@@ -218,7 +233,7 @@ program molgw
    call dft_approximate_vhxc(basis,hamiltonian_tmp)
    hamiltonian_tmp(:,:) = hamiltonian_tmp(:,:) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
 
-#if 0
+#if 1
    write(stdout,'(/,a)') ' Diagonalization of an approximate hamiltonian'
    call diagonalize_generalized_sym(basis%nbf,hamiltonian_tmp,s_matrix,&
                                     energy(:,1),c_matrix(:,:,1))

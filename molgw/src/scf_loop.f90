@@ -217,7 +217,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    ! Generalized eigenvalue problem with overlap matrix S
    ! H \phi = E S \phi
    ! save the old eigenvalues
-#if 0
+#if 1
    do ispin=1,nspin
      write(stdout,*) 'Diagonalization for spin channel',ispin
      call start_clock(timing_diago_hamiltonian)

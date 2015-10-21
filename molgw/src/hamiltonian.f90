@@ -1147,7 +1147,6 @@ subroutine diagonalize_hamiltonian(nspin_local,nbf,nstate,hamiltonian,s_matrix_s
 !=====
  integer  :: ispin,ibf,jbf,istate
  real(dp) :: h_small(nstate,nstate)
- real(dp) :: c_small(nstate,nstate)
 !=====
 
  energy(:,:) = 1.0e+10_dp
