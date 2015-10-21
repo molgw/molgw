@@ -166,7 +166,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,1,nspin))
 
  case(COHSEX,QS,QSCOHSEX,GSIGMA3) ! matrix real
-   allocate(selfenergy_omegac(-nomegai:nomegai,nsemin:nsemax,nsemin:nsemax,nspin))
+   allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nsemin:nsemax,nspin))
 
  case(LW,LW2)                     ! matrix complex
    allocate(selfenergy_omegac(1:nomegai,nsemin:nsemax,nsemin:nsemax,nspin))

@@ -30,7 +30,7 @@ module m_eri
  logical,protected,allocatable      :: negligible_basispair(:,:)
  logical,private,allocatable        :: negligible_shellpair(:,:)
  integer,private,allocatable        :: index_pair(:,:)
- integer,protected,allocatable        :: index_basis(:,:)   !FBNEW
+ integer,protected,allocatable      :: index_basis(:,:)
  integer,private,allocatable        :: index_shellpair(:,:)
  integer,private                    :: nshellpair
 
@@ -50,9 +50,9 @@ module m_eri
  type(shell_type),private,allocatable :: shell_auxil(:)
 
 
- integer,private :: nbf_eri         ! local copy of nbf
- integer,private :: nsize           ! size of the eri_buffer array
- integer,protected :: npair         ! number of independent pairs (i,j) with i<=j !FBNEW
+ integer,private   :: nbf_eri         ! local copy of nbf
+ integer,private   :: nsize           ! size of the eri_buffer array
+ integer,protected :: npair         ! number of independent pairs (i,j) with i<=j 
 
  integer,protected :: nauxil_2center     ! size of the 2-center matrix
                                          ! 2-center integrals are NOT distributed
@@ -2232,7 +2232,6 @@ subroutine setup_negligible_basispair()
    enddo
  enddo
 
-!FBNEW
  npair = 0
  do jbf=1,nbf_eri
    do ibf=1,jbf
@@ -2242,7 +2241,6 @@ subroutine setup_negligible_basispair()
    enddo
  enddo
  allocate(index_basis(2,npair))
-!FBNEW
 
  npair = 0
  do jbf=1,nbf_eri
@@ -2251,8 +2249,8 @@ subroutine setup_negligible_basispair()
        npair = npair + 1
        index_pair(ibf,jbf) = npair
        index_pair(jbf,ibf) = npair
-       index_basis(1,npair) = ibf    ! FBNEW
-       index_basis(2,npair) = jbf    ! FBNEW
+       index_basis(1,npair) = ibf
+       index_basis(2,npair) = jbf
      endif
    enddo
  enddo
@@ -2855,6 +2853,7 @@ subroutine prepare_eri_3center_eigen(c_matrix)
  integer              :: kstate,lstate
  integer              :: klspin
  real(dp),allocatable :: eri_3center_tmp(:,:,:)
+ integer              :: ipair
 !=====
 
  call start_clock(timing_eri_3center_eigen)
@@ -2870,17 +2869,19 @@ subroutine prepare_eri_3center_eigen(c_matrix)
  do klspin=1,nspin
    ! Transformation of the first index
    eri_3center_tmp(:,:,:) = 0.0_dp
-   do kbf=1,nbf_eri
-     do lbf=1,nbf_eri
-       if( negligible_basispair(kbf,lbf) ) cycle
-
-         do lstate=1,nbf_eri
-           eri_3center_tmp(:,kbf,lstate) = eri_3center_tmp(:,kbf,lstate) &
-                                      + c_matrix(lbf,lstate,klspin) * eri_3center(:,index_prod(kbf,lbf))
-         enddo
+   do lstate=1,nbf_eri
+     do ipair=1,npair
+       kbf = index_basis(1,ipair)
+       lbf = index_basis(2,ipair)
+       eri_3center_tmp(:,kbf,lstate) = eri_3center_tmp(:,kbf,lstate) &
+                                       + c_matrix(lbf,lstate,klspin) * eri_3center(:,ipair)
+       if( kbf /= lbf )  &
+         eri_3center_tmp(:,lbf,lstate) = eri_3center_tmp(:,lbf,lstate) &
+                                         + c_matrix(kbf,lstate,klspin) * eri_3center(:,ipair)
 
      enddo
    enddo
+
    ! Transformation of the second index
    do lstate=1,nbf_eri
      eri_3center_eigen(:,:,lstate,klspin) = MATMUL( eri_3center_tmp(:,:,lstate) , c_matrix(:,:,klspin) )
