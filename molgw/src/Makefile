@@ -135,7 +135,6 @@ m_definitions.o: m_definitions.f90
 archive:
 	tar czf molgw.tgz ../../molgw/README ../../molgw/src/Makefile ../../molgw/src/*.f90 ../../molgw/src/*.f ../../molgw/src/*.c \
                           ../../molgw/basis/* ../../molgw/util/* ../../molgw/tests/ ../../molgw/src/my_machine.arch
-	scp molgw.tgz 132.166.68.166:
 
 input:
 	python ../util/input_variables.py

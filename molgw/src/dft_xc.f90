@@ -1074,51 +1074,6 @@ subroutine my_lda_exc_vxc_mu(mu,rhor,exc,vxc)
 
 ! *************************************************************************
 
-#if 0
-!Compute vfac=(3/(2*Pi))^(2/3)
- vfac=(1.5_dp/pi)**(2.0_dp/3.0_dp)
-!Compute efac=(3/4)*vfac
- efac=0.75_dp*vfac
-
-!separate cases with respect to order
- if(order==2) then
-   call die('not implemented')
- else
-!  Loop over grid points
-! 1/rhor = 4*pi/3*rs**3
-   do ipt=1,npt
-     rs= (3.0_dp/(4.0_dp*pi*rhor(1)))**(1.0_dp/3.0_dp)
-     rsp=rs+rs_step
-     rsm1 =1.0_dp/rs
-     rsm1p=1.0_dp/rsp
-     kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) *rsm1
-     kfp= (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) *rsm1p
-
-     biga  = 0.5_dp*mu / kf
-     bigap = 0.5_dp*mu / kfp
-
-     fact_mu = 8.0/3.0 * biga &
-          * ( SQRT(pi) * ERF(0.5_dp/biga) &
-             + (2.0_dp * biga - 4.0_dp * biga**3) * EXP(-0.25_dp/biga**2) &
-             - 3.0_dp * biga  &
-             + 4.0_dp * biga**3 )
-     fact_mup= 8.0/3.0 * bigap &
-          * ( SQRT(pi) * ERF(0.5_dp/bigap) &
-             + (2.0_dp * bigap - 4.0_dp * bigap**3) * EXP(-0.25_dp/bigap**2) &
-             - 3.0_dp * bigap  &
-             + 4.0_dp * bigap**3 )
-
-
-!    compute energy density (hartree)   SHORT RANGE ONLY
-     exc(ipt)=-efac*rsm1 * (1.0-fact_mu)
-!    compute potential (hartree)
-     vxc(ipt)=-vfac*rsm1 * (1.0-fact_mu)   -efac * (fact_mup-fact_mu)/rs_step  / 3.0_dp
-
-   end do
- end if
-!
-#endif
-
  efac=0.75_dp*(1.5_dp/pi)**(2.0_dp/3.0_dp)
  vfac=4.0/3.0 * efac
 

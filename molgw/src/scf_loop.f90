@@ -1,5 +1,6 @@
 !=========================================================================
 subroutine scf_loop(basis,prod_basis,auxil_basis,&
+                    nstate,s_matrix_sqrt_inv,&
                     s_matrix,c_matrix,p_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
                     hamiltonian_exx,hamiltonian_xc,&
@@ -26,7 +27,9 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  type(basis_set),intent(in)         :: basis
  type(basis_set),intent(in)         :: prod_basis
  type(basis_set),intent(in)         :: auxil_basis
+ integer,intent(in)                 :: nstate
  real(dp),intent(in)                :: s_matrix(basis%nbf,basis%nbf)
+ real(dp),intent(in)                :: s_matrix_sqrt_inv(basis%nbf,nstate)
  real(dp),intent(inout)             :: c_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(inout)             :: p_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)                :: hamiltonian_kinetic(basis%nbf,basis%nbf)
@@ -214,6 +217,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    ! Generalized eigenvalue problem with overlap matrix S
    ! H \phi = E S \phi
    ! save the old eigenvalues
+#if 0
    do ispin=1,nspin
      write(stdout,*) 'Diagonalization for spin channel',ispin
      call start_clock(timing_diago_hamiltonian)
@@ -222,6 +226,10 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
                                       energy(:,ispin),c_matrix(:,:,ispin))
      call stop_clock(timing_diago_hamiltonian)
    enddo
+#else 
+   write(stdout,*) 'Diagonalization'
+   call diagonalize_hamiltonian(nspin,basis%nbf,nstate,hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
+#endif
 
    !
    ! When level_shifting is used, the unoccupied state energies have to be brought
@@ -238,7 +246,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    endif
   
    title='=== Energies ==='
-   call dump_out_eigenenergy(title,basis%nbf,nspin,occupation,energy)
+   call dump_out_energy(title,nstate,nspin,occupation(1:nstate,:),energy(1:nstate,:))
 
    call output_homolumo(basis%nbf,nspin,occupation,energy,ehomo,elumo)
 

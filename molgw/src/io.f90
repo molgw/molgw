@@ -99,7 +99,7 @@ end subroutine dump_out_occupation
 
 
 !=========================================================================
-subroutine dump_out_eigenenergy(title,nbf,nspin,occupation,energy)
+subroutine dump_out_energy(title,nbf,nspin,occupation,energy)
  use m_definitions
  use m_mpi
  implicit none
@@ -143,7 +143,7 @@ subroutine dump_out_eigenenergy(title,nbf,nspin,occupation,energy)
 
  write(stdout,*)
 
-end subroutine dump_out_eigenenergy
+end subroutine dump_out_energy
 
 
 !=========================================================================

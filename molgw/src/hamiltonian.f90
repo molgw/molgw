@@ -152,7 +152,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
  if( nproc > 1 ) then
    natom_local=0
    do iatom=1,natom
-     if( rank /= MODULO(iatom,nproc) ) cycle
+     if( rank /= MODULO(iatom-1,nproc) ) cycle
      natom_local = natom_local + 1
    enddo
    write(stdout,'(a)')         '   Parallelizing over atoms'
@@ -176,7 +176,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
      allocate(matrix_cart(ni_cart,nj_cart))
      matrix_cart(:,:) = 0.0_dp
      do iatom=1,natom
-       if( rank /= MODULO(iatom,nproc) ) cycle
+       if( rank /= MODULO(iatom-1,nproc) ) cycle
        do i_cart=1,ni_cart
          do j_cart=1,nj_cart
            call nucleus_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
@@ -991,6 +991,7 @@ subroutine set_occupation(nbf,temperature,electrons,magnetization,energy,occupat
    !
    ! Finite temperature case
    !
+   call die('Finite temperature not implemented yet')
 
  endif
 
@@ -1009,151 +1010,6 @@ subroutine set_occupation(nbf,temperature,electrons,magnetization,energy,occupat
  call dump_out_occupation('=== Occupations ===',nbf,nspin,occupation)
 
 end subroutine set_occupation
-
-
-!=========================================================================
-subroutine guess_starting_c_matrix(nbf,nspin,c_matrix)
- use m_definitions
- use m_mpi
- implicit none
- integer,intent(in)   :: nbf,nspin
- real(dp),intent(out) :: c_matrix(nbf,nbf,nspin)
-!=====
- integer :: ibf
-!=====
-
- !
- ! fill the c_matrix with the identity
- c_matrix(:,:,:)=0.0_dp
- do ibf=1,nbf
-   c_matrix(ibf,ibf,:) = 1.0_dp
-!   c_matrix(ibf,modulo(ibf,nbf)+1,:) = 1.0_dp
- enddo
-
-end subroutine guess_starting_c_matrix
-
-
-!=========================================================================
-subroutine guess_starting_c_matrix_new(basis,c_matrix)
- use m_definitions
- use m_mpi
- use m_gaussian
- use m_basis_set
- use m_inputparam,only: nspin
- implicit none
- type(basis_set),intent(in) :: basis
- real(dp),intent(out)       :: c_matrix(basis%nbf,basis%nbf,nspin)
-!=====
- integer  :: ibf,jbf,kbf,ig
- real(dp) :: alpha_max_bf(basis%nbf),alpha_max_remaining
-!=====
-
- !
- ! find the sharpest gaussians
- alpha_max_bf(:)=0.0_dp
- do ibf=1,basis%nbf
-   do ig=1,basis%bf(ibf)%ngaussian
-     alpha_max_bf(ibf)=MAX(basis%bf(ibf)%g(ig)%alpha,alpha_max_bf(ibf))
-   enddo
-!   write(stdout,*) ibf,alpha_max_bf(ibf)
- enddo
-
- !
- ! fill the c_matrix 
- c_matrix(:,:,:)=0.0_dp
- do ibf=1,basis%nbf
-   alpha_max_remaining=0.0_dp
-   do jbf=1,basis%nbf
-     if( alpha_max_bf(jbf) > alpha_max_remaining ) then
-       alpha_max_remaining = alpha_max_bf(jbf)
-       kbf = jbf
-     endif
-   enddo
-   c_matrix(kbf,ibf,:) = 1.0_dp
-!   write(stdout,*) 'chosen',ibf,kbf,alpha_max_bf(kbf)
-   alpha_max_bf(kbf)   = -1.0_dp
-   
- enddo
-
-end subroutine guess_starting_c_matrix_new
-
-
-!=========================================================================
-subroutine setup_initial_c_matrix(print_matrix_,nbf,nspin,hamiltonian_nucleus,s_matrix,occupation,c_matrix)
- use m_definitions
- use m_mpi
- use m_tools
- use m_timing
- implicit none
- integer,intent(in)         :: print_matrix_,nspin,nbf
- real(dp),intent(in)        :: hamiltonian_nucleus(nbf,nbf),s_matrix(nbf,nbf)
- real(dp),intent(in)        :: occupation(nbf,nspin)
- real(dp),intent(out)       :: c_matrix(nbf,nbf,nspin)
-!=====
- integer                    :: ibf,jbf,kbf
- real(dp)                   :: hamiltonian(nbf,nbf),matrix(nbf,nbf),energy(nbf)
- real(dp)                   :: coeff_max,bonding
- real(dp)                   :: line(nbf)
- character(len=100)         :: title
-!=====
-
-
- !
- ! Diagonalize a spin independant hamiltonian
- ! to obtain a starting point for matrix C
- hamiltonian(:,:) = hamiltonian_nucleus(:,:)
-
- title='=== bare hamiltonian ==='
- call dump_out_matrix(print_matrix_,title,nbf,1,hamiltonian)
-
- write(stdout,*) 'Diagonalization of an initial hamiltonian'
- call start_clock(timing_diago_hamiltonian)
- call diagonalize_generalized_sym(nbf,hamiltonian,s_matrix,energy,matrix)
- call stop_clock(timing_diago_hamiltonian)
-
- title='=== Energies ==='
- call dump_out_eigenenergy(title,nbf,1,occupation,energy)
-
-
- ibf=1
- do while( ibf < nbf )
-!   if( ALL( occupation(ibf,:) < completely_empty ) cycle
-
-   jbf = ibf + 1
-   !
-   ! Find degenerate energies
-   if( ABS( energy(ibf) - energy(jbf) ) < 1.0e-3_dp ) then
-     !
-     ! Find the bonding and anti bonding states
-     coeff_max = MAXVAL( ABS( matrix(:,ibf) ) )
-     bonding = 1.0_dp
-     do kbf=1,nbf
-       if( ABS( matrix(kbf,ibf) ) > coeff_max - 1.0e-3_dp ) then
-         bonding = SIGN( 1.0_dp, matrix(kbf,ibf) ) * bonding
-       endif
-     enddo
-     if( bonding < 0.0_dp ) then
-       line(:)       = matrix(:,ibf)
-       matrix(:,ibf) = matrix(:,jbf)
-       matrix(:,jbf) = line(:)
-     endif
-
-     ibf = ibf + 2
-   else
-     ibf = ibf + 1
-   endif
-
- enddo
-
- c_matrix(:,:,1)     = matrix(:,:)
- c_matrix(:,:,nspin) = matrix(:,:)
-
- matrix(:,:) = TRANSPOSE( matrix(:,:) )
- title='=== C matrix ==='
- call dump_out_matrix(print_matrix_,title,nbf,1,matrix)
-
-
-end subroutine setup_initial_c_matrix
 
 
 !=========================================================================
@@ -1274,6 +1130,49 @@ subroutine level_shifting(nbf,s_matrix,c_matrix,occupation,level_shifting_energy
  
 
 end subroutine level_shifting
+
+
+!=========================================================================
+subroutine diagonalize_hamiltonian(nspin_local,nbf,nstate,hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
+ use m_definitions
+ use m_timing
+ use m_tools
+ implicit none
+
+ integer,intent(in)   :: nspin_local,nbf,nstate
+ real(dp),intent(in)  :: hamiltonian(nbf,nbf,nspin_local)
+ real(dp),intent(in)  :: s_matrix_sqrt_inv(nbf,nstate)
+ real(dp),intent(out) :: c_matrix(nbf,nbf,nspin_local)
+ real(dp),intent(out) :: energy(nbf,nspin_local)
+!=====
+ integer  :: ispin,ibf,jbf,istate
+ real(dp) :: h_small(nstate,nstate)
+ real(dp) :: c_small(nstate,nstate)
+!=====
+
+ energy(:,:) = 1.0e+10_dp
+ c_matrix(:,:,:) = 0.0_dp
+ do ibf=1,nbf
+   c_matrix(ibf,ibf,:) = 1.0_dp
+ enddo
+
+ do ispin=1,nspin_local
+   call start_clock(timing_diago_hamiltonian)
+
+   h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
+                            MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
+
+
+   call diagonalize(nstate,h_small,energy(1:nstate,ispin))
+
+   c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
+
+
+
+   call stop_clock(timing_diago_hamiltonian)
+ enddo
+
+end subroutine diagonalize_hamiltonian
 
 
 !=========================================================================

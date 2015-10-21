@@ -27,12 +27,14 @@ program molgw
  implicit none
 
 !=====
+ real(dp),parameter      :: TOL_OVERLAP=1.0e-5_dp
  type(basis_set)         :: basis
  type(basis_set)         :: auxil_basis
  type(basis_set)         :: prod_basis
  type(spectral_function) :: wpol
  integer                 :: reading_status
  integer                 :: ibf,jbf
+ integer                 :: nstate
  integer                 :: ispin,istate
  logical                 :: is_restart,is_big_restart
  character(len=100)      :: title
@@ -43,10 +45,11 @@ program molgw
  real(dp),allocatable    :: hamiltonian_exx(:,:,:)
  real(dp),allocatable    :: hamiltonian_xc(:,:,:)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
- real(dp),allocatable    :: s_matrix(:,:)
+ real(dp),allocatable    :: s_matrix(:,:),s_matrix_sqrt_inv(:,:)
  real(dp),allocatable    :: c_matrix(:,:,:)
  real(dp),allocatable    :: p_matrix(:,:,:)
  real(dp),allocatable    :: energy(:,:)
+ real(dp),allocatable    :: s_eigval(:)
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
 !=============================
@@ -110,6 +113,43 @@ program molgw
  ! Build up the overlap matrix S
  ! S only depends onto the basis set
  call setup_overlap(print_matrix_,basis,s_matrix)
+
+
+ write(stdout,*) 'FBFB'
+ allocate(s_matrix_sqrt_inv(basis%nbf,basis%nbf))
+ allocate(s_eigval(basis%nbf))
+ s_matrix_sqrt_inv(:,:) = s_matrix(:,:)
+ call diagonalize(basis%nbf,s_matrix_sqrt_inv,s_eigval)
+
+ write(stdout,*) '10',COUNT( s_eigval(:) < 1.0e-10)
+ write(stdout,*) '08',COUNT( s_eigval(:) < 1.0e-8 )
+ write(stdout,*) '06',COUNT( s_eigval(:) < 1.0e-6 )
+ write(stdout,*) '05',COUNT( s_eigval(:) < 1.0e-5 )
+ write(stdout,*) '04',COUNT( s_eigval(:) < 1.0e-4 )
+ write(stdout,*) '03',COUNT( s_eigval(:) < 1.0e-3 )
+
+ nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
+ write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
+ write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',TOL_OVERLAP
+ write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',basis%nbf
+
+ ibf=0
+ do jbf=1,basis%nbf
+   if( s_eigval(jbf) > TOL_OVERLAP ) then
+     ibf = ibf + 1
+     s_matrix_sqrt_inv(:,ibf) = s_matrix_sqrt_inv(:,jbf) / SQRT( s_eigval(jbf) )
+   endif
+ enddo
+ deallocate(s_eigval)
+
+! write(stdout,*) basis%nbf**2
+! write(stdout,*) '10',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:ibf),TRANSPOSE(s_matrix_sqrt_inv(:,1:ibf))) - s_matrix ) > 1.0e-10 )
+! write(stdout,*) '05',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:ibf),TRANSPOSE(s_matrix_sqrt_inv(:,1:ibf))) - s_matrix ) > 1.0e-05 )
+
+
+
+ write(stdout,*) 'FBFB'
+! call die('enough')
 
 
  !
@@ -178,9 +218,14 @@ program molgw
    call dft_approximate_vhxc(basis,hamiltonian_tmp)
    hamiltonian_tmp(:,:) = hamiltonian_tmp(:,:) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
 
+#if 0
    write(stdout,'(/,a)') ' Diagonalization of an approximate hamiltonian'
    call diagonalize_generalized_sym(basis%nbf,hamiltonian_tmp,s_matrix,&
                                     energy(:,1),c_matrix(:,:,1))
+#else
+   call diagonalize_hamiltonian(1,basis%nbf,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
+                                    energy(:,1),c_matrix(:,:,1))
+#endif
    deallocate(hamiltonian_tmp)
    ! The hamiltonian is still spin-independent:
    c_matrix(:,:,nspin) = c_matrix(:,:,1)
@@ -246,6 +291,7 @@ program molgw
  !
  if( .NOT. is_big_restart) then
    call scf_loop(basis,prod_basis,auxil_basis,                                           &
+                 nstate,s_matrix_sqrt_inv,                                               &
                  s_matrix,c_matrix,p_matrix,                                             &
                  hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_exx,hamiltonian_xc, &
                  occupation,energy)
@@ -390,6 +436,7 @@ program molgw
  ! Cleanly exiting the code
  !
  deallocate(s_matrix,c_matrix,p_matrix)
+ deallocate(s_matrix_sqrt_inv)
  deallocate(hamiltonian_kinetic,hamiltonian_nucleus)
  deallocate(hamiltonian_exx,hamiltonian_xc)
  deallocate(energy,occupation)
