@@ -1139,11 +1139,11 @@ subroutine diagonalize_hamiltonian(nspin_local,nbf,nstate,hamiltonian,s_matrix_s
  use m_tools
  implicit none
 
- integer,intent(in)   :: nspin_local,nbf,nstate
- real(dp),intent(in)  :: hamiltonian(nbf,nbf,nspin_local)
- real(dp),intent(in)  :: s_matrix_sqrt_inv(nbf,nstate)
- real(dp),intent(out) :: c_matrix(nbf,nbf,nspin_local)
- real(dp),intent(out) :: energy(nbf,nspin_local)
+ integer,intent(in)      :: nspin_local,nbf,nstate
+ real(dp),intent(inout)  :: hamiltonian(nbf,nbf,nspin_local)   ! hamiltonian is symmetrized on output
+ real(dp),intent(in)     :: s_matrix_sqrt_inv(nbf,nstate)
+ real(dp),intent(out)    :: c_matrix(nbf,nbf,nspin_local)
+ real(dp),intent(out)    :: energy(nbf,nspin_local)
 !=====
  integer  :: ispin,ibf,jbf,istate
  real(dp) :: h_small(nstate,nstate)
@@ -1156,7 +1156,17 @@ subroutine diagonalize_hamiltonian(nspin_local,nbf,nstate,hamiltonian,s_matrix_s
  enddo
 
  do ispin=1,nspin_local
+   write(stdout,'(a,i3)') ' Diagonalization for spin: ',ispin
    call start_clock(timing_diago_hamiltonian)
+
+   !
+   ! First symmetrize the hamiltonian from the lower triangle to the full matrix
+   do jbf=1,nbf
+     do ibf=1,jbf-1
+       hamiltonian(jbf,ibf,ispin) = hamiltonian(ibf,jbf,ispin)
+     enddo
+   enddo
+
 
    h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
                             MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
@@ -1165,7 +1175,6 @@ subroutine diagonalize_hamiltonian(nspin_local,nbf,nstate,hamiltonian,s_matrix_s
    call diagonalize(nstate,h_small,energy(1:nstate,ispin))
 
    c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
-
 
 
    call stop_clock(timing_diago_hamiltonian)

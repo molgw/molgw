@@ -115,30 +115,14 @@ program molgw
  call setup_overlap(print_matrix_,basis,s_matrix)
 
 
- write(stdout,*) 'FBFB TODO following lines to be removed'
  allocate(s_matrix_sqrt_inv(basis%nbf,basis%nbf))
  allocate(s_eigval(basis%nbf))
- s_matrix_sqrt_inv(:,:) = s_matrix(:,:)
- call diagonalize(basis%nbf,s_matrix_sqrt_inv,s_eigval)
+ call diagonalize(basis%nbf,s_matrix,s_eigval,s_matrix_sqrt_inv)
 
-! ! check unitarity
-! matrix_tmp(:,:,1) = MATMUL( s_matrix_sqrt_inv , TRANSPOSE( s_matrix_sqrt_inv))
-! matrix_tmp(:,:,1) = MATMUL( TRANSPOSE( s_matrix_sqrt_inv) , s_matrix_sqrt_inv )
-! write(stdout,*) 'diag',COUNT( ABS( matrix_tmp(:,:,1) - 1.0 ) < 0.000001),basis%nbf
-! write(stdout,*) 'offdiag',COUNT( ABS( matrix_tmp(:,:,1) - 0.0 ) < 0.000001 ),basis%nbf*(basis%nbf-1)
-!
-! call invert(basis%nbf,s_matrix,matrix_tmp(:,:,1))
-
- write(stdout,*) 'Min',MINVAL( s_eigval(:) )
- write(stdout,*) '10',COUNT( s_eigval(:) < 1.0e-10)
- write(stdout,*) '08',COUNT( s_eigval(:) < 1.0e-8 )
- write(stdout,*) '06',COUNT( s_eigval(:) < 1.0e-6 )
- write(stdout,*) '05',COUNT( s_eigval(:) < 1.0e-5 )
- write(stdout,*) '04',COUNT( s_eigval(:) < 1.0e-4 )
- write(stdout,*) '03',COUNT( s_eigval(:) < 1.0e-3 )
 
  nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
  write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
+ write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is',MINVAL( s_eigval(:) )
  write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',TOL_OVERLAP
  write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',basis%nbf
 
@@ -150,22 +134,6 @@ program molgw
    endif
  enddo
  deallocate(s_eigval)
-
-! write(stdout,*) ibf,nstate
-! write(stdout,*) basis%nbf**2
-!! write(stdout,*) '10',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:nstate),TRANSPOSE(s_matrix_sqrt_inv(:,1:nstate))) - s_matrix ) > 1.0e-10 )
-!! write(stdout,*) '05',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:nstate),TRANSPOSE(s_matrix_sqrt_inv(:,1:nstate))) - s_matrix ) > 1.0e-05 )
-! write(stdout,*) '10',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:nstate),TRANSPOSE(s_matrix_sqrt_inv(:,1:nstate))) - matrix_tmp(:,:,1) ) > 1.0e-10 )
-! write(stdout,*) '08',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:nstate),TRANSPOSE(s_matrix_sqrt_inv(:,1:nstate))) - matrix_tmp(:,:,1) ) > 1.0e-08 )
-! write(stdout,*) '07',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:nstate),TRANSPOSE(s_matrix_sqrt_inv(:,1:nstate))) - matrix_tmp(:,:,1) ) > 1.0e-07 )
-! write(stdout,*) '06',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:nstate),TRANSPOSE(s_matrix_sqrt_inv(:,1:nstate))) - matrix_tmp(:,:,1) ) > 1.0e-06 )
-! write(stdout,*) '05',COUNT( ABS(MATMUL(s_matrix_sqrt_inv(:,1:nstate),TRANSPOSE(s_matrix_sqrt_inv(:,1:nstate))) - matrix_tmp(:,:,1) ) > 1.0e-05 )
-!
-!
-!
-! write(stdout,*) 'FBFB'
-! call die('enough')
-
 
  !
  ! Set up the electron repulsion integrals
@@ -233,8 +201,10 @@ program molgw
    call dft_approximate_vhxc(basis,hamiltonian_tmp)
    hamiltonian_tmp(:,:) = hamiltonian_tmp(:,:) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
 
-#if 1
-   write(stdout,'(/,a)') ' Diagonalization of an approximate hamiltonian'
+   write(stdout,'(/,a)') ' Approximate hamiltonian'
+#if 0
+   ! Keep old coding for reference
+   ! TODO remove this when sure
    call diagonalize_generalized_sym(basis%nbf,hamiltonian_tmp,s_matrix,&
                                     energy(:,1),c_matrix(:,:,1))
 #else

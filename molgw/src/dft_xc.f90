@@ -280,7 +280,7 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
      ! LDA
      do ispin=1,nspin
        do jbf=1,basis%nbf
-         ! Only the upper part is calculated
+         ! Only the lower part is calculated
          do ibf=1,jbf ! basis%nbf 
            vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight &
                *  dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf) 
@@ -292,7 +292,7 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
      ! GGA
      do ispin=1,nspin
        do jbf=1,basis%nbf
-         ! Only the upper part is calculated
+         ! Only the lower part is calculated
          do ibf=1,jbf ! basis%nbf 
            vxc_ij(ibf,jbf,ispin) = vxc_ij(ibf,jbf,ispin) + weight  &
                * dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf) 
