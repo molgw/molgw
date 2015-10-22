@@ -115,7 +115,7 @@ program molgw
  call setup_overlap(print_matrix_,basis,s_matrix)
 
 
- write(stdout,*) 'FBFB'
+ write(stdout,*) 'FBFB TODO following lines to be removed'
  allocate(s_matrix_sqrt_inv(basis%nbf,basis%nbf))
  allocate(s_eigval(basis%nbf))
  s_matrix_sqrt_inv(:,:) = s_matrix(:,:)
