@@ -67,9 +67,9 @@ contains
 
 
 !=========================================================================
-subroutine init_spectral_function(nbf,occupation,sf)
+subroutine init_spectral_function(nbf,nstate,occupation,sf)
  implicit none
- integer,intent(in)                    :: nbf
+ integer,intent(in)                    :: nbf,nstate
  real(dp),intent(in)                   :: occupation(nbf,nspin)
  type(spectral_function),intent(out)   :: sf
 !=====
@@ -81,9 +81,9 @@ subroutine init_spectral_function(nbf,occupation,sf)
 
  ncore_G      = ncoreg
  ncore_W      = ncorew
- nvirtual_G   = MIN(nvirtualg,nbf+1)
- nvirtual_W   = MIN(nvirtualw,nbf+1)
- nvirtual_SPA = MIN(nvirtualspa,nbf+1)
+ nvirtual_G   = MIN(nvirtualg,nstate+1)
+ nvirtual_W   = MIN(nvirtualw,nstate+1)
+ nvirtual_SPA = MIN(nvirtualspa,nstate+1)
 
  if(is_frozencore) then
    if( ncore_G == 0) ncore_G = atoms_core_states()
@@ -94,7 +94,7 @@ subroutine init_spectral_function(nbf,occupation,sf)
    call issue_warning(msg)
  endif
 
- if( nvirtual_G <= nbf .OR. nvirtual_W <= nbf ) then
+ if( nvirtual_G <= nstate .OR. nvirtual_W <= nstate ) then
    write(msg,'(a,i4,2x,i4)') 'frozen virtual approximation switched on starting with state (G,W) = ',nvirtual_G,nvirtual_W
    call issue_warning(msg)
  endif

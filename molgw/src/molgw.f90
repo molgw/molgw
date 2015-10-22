@@ -27,7 +27,7 @@ program molgw
  implicit none
 
 !=====
- real(dp),parameter      :: TOL_OVERLAP=1.0e-6_dp
+ real(dp),parameter      :: TOL_OVERLAP=1.0e-4_dp
  type(basis_set)         :: basis
  type(basis_set)         :: auxil_basis
  type(basis_set)         :: prod_basis
@@ -122,7 +122,7 @@ program molgw
 
  nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
  write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
- write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is',MINVAL( s_eigval(:) )
+ write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is           ',MINVAL( s_eigval(:) )
  write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',TOL_OVERLAP
  write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',basis%nbf
 
@@ -319,7 +319,7 @@ program molgw
      call prepare_eri_3center_eigen(c_matrix)
      call destroy_eri_3center()
    endif
-   call init_spectral_function(basis%nbf,occupation,wpol)
+   call init_spectral_function(basis%nbf,nstate,occupation,wpol)
    call polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
    call destroy_spectral_function(wpol)
 
@@ -364,7 +364,7 @@ program molgw
      call destroy_eri_3center()
    endif
 
-   call init_spectral_function(basis%nbf,occupation,wpol)
+   call init_spectral_function(basis%nbf,nstate,occupation,wpol)
    ! Try to read a spectral function file in order to skip the calculation
    call read_spectral_function(wpol,reading_status)
    ! If reading has failed, then do the calculation
