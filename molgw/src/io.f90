@@ -771,7 +771,7 @@ end subroutine write_small_restart
 
 
 !=========================================================================
-subroutine write_big_restart(nbf,occupation,c_matrix,energy,hamiltonian_exx,hamiltonian_xc)
+subroutine write_big_restart(nbf,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
  use m_definitions
  use m_mpi
  use m_inputparam
@@ -780,11 +780,12 @@ subroutine write_big_restart(nbf,occupation,c_matrix,energy,hamiltonian_exx,hami
  integer,intent(in)  :: nbf
  real(dp),intent(in) :: occupation(nbf,nspin)
  real(dp),intent(in) :: c_matrix(nbf,nbf,nspin),energy(nbf,nspin)
+ real(dp),intent(in) :: hamiltonian_hartree(nbf,nbf)
  real(dp),intent(in) :: hamiltonian_exx(nbf,nbf,nspin)
  real(dp),intent(in) :: hamiltonian_xc (nbf,nbf,nspin)
 !=====
  integer             :: restartfile
- integer             :: ispin,istate
+ integer             :: ispin,istate,ibf
 !=====
 
  call start_clock(timing_restart_file)
@@ -805,14 +806,22 @@ subroutine write_big_restart(nbf,occupation,c_matrix,energy,hamiltonian_exx,hami
    enddo
  enddo
  do ispin=1,nspin
-   do istate=1,nbf
-     write(restartfile) hamiltonian_exx(:,istate,ispin)
+   do ibf=1,nbf
+     write(restartfile) hamiltonian_exx(:,ibf,ispin)
    enddo
  enddo
  do ispin=1,nspin
-   do istate=1,nbf
-     write(restartfile) hamiltonian_xc(:,istate,ispin)
+   do ibf=1,nbf
+     write(restartfile) hamiltonian_xc(:,ibf,ispin)
    enddo
+ enddo
+ do ispin=1,nspin
+   do ibf=1,nbf
+     write(restartfile) hamiltonian_xc(:,ibf,ispin)
+   enddo
+ enddo
+ do ibf=1,nbf
+   write(restartfile) hamiltonian_hartree(:,ibf)
  enddo
 
  close(restartfile)

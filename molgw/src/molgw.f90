@@ -328,9 +328,9 @@ program molgw
 
  endif
   
-
-
-
+ !
+ ! Prepare the diagonal of the matrix Sigma_x - Vxc
+ ! for the forthcoming GW corrections
  exchange_m_vxc_diag(:,:) = 0.0_dp
  do ispin=1,nspin
    do istate=1,basis%nbf

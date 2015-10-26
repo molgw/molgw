@@ -435,7 +435,7 @@ subroutine setup_hartree(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartree)
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf,nspin
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: pot_hartree(nbf,nbf,nspin)
+ real(dp),intent(out) :: pot_hartree(nbf,nbf)
  real(dp),intent(out) :: ehartree
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin
@@ -445,38 +445,39 @@ subroutine setup_hartree(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartree)
  write(stdout,*) 'Calculate Hartree term'
  call start_clock(timing_hartree)
 
- pot_hartree(:,:,:)=0.0_dp
+ pot_hartree(:,:)=0.0_dp
 
- do ispin=1,nspin
 !$OMP PARALLEL DEFAULT(SHARED)
 !$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
-   do jbf=1,nbf
-     do ibf=1,nbf
-       if( negligible_basispair(ibf,jbf) ) cycle
-       do lbf=1,nbf
+ do jbf=1,nbf
+   do ibf=1,nbf
+     if( negligible_basispair(ibf,jbf) ) cycle
+     do lbf=1,nbf
+       !
+       ! symmetry k <-> l
+       do kbf=1,lbf-1 ! nbf
+         if( negligible_basispair(kbf,lbf) ) cycle
          !
-         ! symmetry k <-> l
-         do kbf=1,lbf-1 ! nbf
-           if( negligible_basispair(kbf,lbf) ) cycle
-           !
-           ! symmetry (ij|kl) = (kl|ij) has been used to loop in the fast order
-           pot_hartree(ibf,jbf,ispin) = pot_hartree(ibf,jbf,ispin) &
-                      + eri(kbf,lbf,ibf,jbf) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
-         enddo
-         pot_hartree(ibf,jbf,ispin) = pot_hartree(ibf,jbf,ispin) &
-                    + eri(lbf,lbf,ibf,jbf) * SUM( p_matrix(lbf,lbf,:) )
+         ! symmetry (ij|kl) = (kl|ij) has been used to loop in the fast order
+         pot_hartree(ibf,jbf) = pot_hartree(ibf,jbf) &
+                    + eri(kbf,lbf,ibf,jbf) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
        enddo
+       pot_hartree(ibf,jbf) = pot_hartree(ibf,jbf) &
+                  + eri(lbf,lbf,ibf,jbf) * SUM( p_matrix(lbf,lbf,:) )
      enddo
    enddo
+ enddo
 !$OMP END DO
 !$OMP END PARALLEL
- enddo
 
 
  title='=== Hartree contribution ==='
- call dump_out_matrix(print_matrix_,title,nbf,nspin,pot_hartree)
+ call dump_out_matrix(print_matrix_,title,nbf,1,pot_hartree)
 
- ehartree = 0.5_dp*SUM(pot_hartree(:,:,:)*p_matrix(:,:,:))
+ ehartree = 0.5_dp*SUM(pot_hartree(:,:)*p_matrix(:,:,1))
+ if( nspin == 2 ) then
+   ehartree = ehartree + 0.5_dp*SUM(pot_hartree(:,:)*p_matrix(:,:,2))
+ endif
 
  call stop_clock(timing_hartree)
 
@@ -493,7 +494,7 @@ subroutine setup_hartree_ri(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartre
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf,nspin
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: pot_hartree(nbf,nbf,nspin)
+ real(dp),intent(out) :: pot_hartree(nbf,nbf)
  real(dp),intent(out) :: ehartree
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin
@@ -521,15 +522,14 @@ subroutine setup_hartree_ri(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartre
  enddo
 
  ! Hartree potential is not sensitive to spin
- pot_hartree(:,:,:) = 0.0_dp
+ pot_hartree(:,:) = 0.0_dp
  do ipair=1,npair
    ibf = index_basis(1,ipair)
    jbf = index_basis(2,ipair)
    rtmp = DOT_PRODUCT( eri_3center(:,ipair) , partial_sum(:) )
-   pot_hartree(ibf,jbf,1) = rtmp
-   pot_hartree(jbf,ibf,1) = rtmp
+   pot_hartree(ibf,jbf) = rtmp
+   pot_hartree(jbf,ibf) = rtmp
  enddo
- if(nspin==2) pot_hartree(:,:,nspin) = pot_hartree(:,:,1)
 
  deallocate(partial_sum)
 
@@ -539,9 +539,12 @@ subroutine setup_hartree_ri(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartre
 
 
  title='=== Hartree contribution ==='
- call dump_out_matrix(print_matrix_,title,nbf,nspin,pot_hartree)
+ call dump_out_matrix(print_matrix_,title,nbf,1,pot_hartree)
 
- ehartree = 0.5_dp*SUM(pot_hartree(:,:,:)*p_matrix(:,:,:))
+ ehartree = 0.5_dp*SUM(pot_hartree(:,:)*p_matrix(:,:,1))
+ if( nspin == 2 ) then
+   ehartree = ehartree + 0.5_dp*SUM(pot_hartree(:,:)*p_matrix(:,:,2))
+ endif
 
  call stop_clock(timing_hartree)
 
@@ -1139,11 +1142,11 @@ subroutine diagonalize_hamiltonian(nspin_local,nbf,nstate,hamiltonian,s_matrix_s
  use m_tools
  implicit none
 
- integer,intent(in)      :: nspin_local,nbf,nstate
- real(dp),intent(inout)  :: hamiltonian(nbf,nbf,nspin_local)   ! hamiltonian is symmetrized on output
- real(dp),intent(in)     :: s_matrix_sqrt_inv(nbf,nstate)
- real(dp),intent(out)    :: c_matrix(nbf,nbf,nspin_local)
- real(dp),intent(out)    :: energy(nbf,nspin_local)
+ integer,intent(in)   :: nspin_local,nbf,nstate
+ real(dp),intent(in)  :: hamiltonian(nbf,nbf,nspin_local)
+ real(dp),intent(in)  :: s_matrix_sqrt_inv(nbf,nstate)
+ real(dp),intent(out) :: c_matrix(nbf,nbf,nspin_local)
+ real(dp),intent(out) :: energy(nbf,nspin_local)
 !=====
  integer  :: ispin,ibf,jbf,istate
  real(dp) :: h_small(nstate,nstate)
@@ -1159,13 +1162,13 @@ subroutine diagonalize_hamiltonian(nspin_local,nbf,nstate,hamiltonian,s_matrix_s
    write(stdout,'(a,i3)') ' Diagonalization for spin: ',ispin
    call start_clock(timing_diago_hamiltonian)
 
-   !
-   ! First symmetrize the hamiltonian from the lower triangle to the full matrix
-   do jbf=1,nbf
-     do ibf=1,jbf-1
-       hamiltonian(jbf,ibf,ispin) = hamiltonian(ibf,jbf,ispin)
-     enddo
-   enddo
+!   !
+!   ! First symmetrize the hamiltonian from the lower triangle to the full matrix
+!   do jbf=1,nbf
+!     do ibf=1,jbf-1
+!       hamiltonian(jbf,ibf,ispin) = hamiltonian(ibf,jbf,ispin)
+!     enddo
+!   enddo
 
 
    h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &

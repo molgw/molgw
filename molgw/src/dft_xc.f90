@@ -308,6 +308,15 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
 
  enddo ! loop on the grid point
 
+ ! Symmetrize now
+ do ispin=1,nspin
+   do jbf=1,basis%nbf
+     do ibf=1,jbf-1 ! basis%nbf 
+       vxc_ij(jbf,ibf,ispin) = vxc_ij(ibf,jbf,ispin)
+     enddo
+   enddo
+ enddo
+
  !
  ! Sum up the contributions from all procs only if needed
  if( parallel_grid ) then
@@ -335,210 +344,6 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
  call stop_clock(timing_dft)
 
 end subroutine dft_exc_vxc
-
-
-!=========================================================================
-subroutine dft_exc_vxc_alt(basis,p_matrix,c_matrix,occupation,ehomo,vxc_ij,exc_xc)
- use m_definitions
- use m_mpi
- use m_timing
- use m_inputparam
- use m_basis_set
- use m_dft_grid
-#ifdef HAVE_LIBXC
- use libxc_funcs_m
- use xc_f90_lib_m
- use xc_f90_types_m
-#endif
-#ifdef _OPENMP
- use,intrinsic :: omp_lib
-#endif
- use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
- implicit none
-
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: p_matrix(basis%nbf,basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
- real(dp),intent(in)        :: occupation(basis%nbf,nspin)
- real(dp),intent(in)        :: ehomo(nspin)
- real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
- real(dp),intent(out)       :: exc_xc
-!=====
-
- integer  :: idft_xc
- logical  :: require_gradient,require_laplacian
- integer  :: igrid,ibf,jbf,ispin,istate,maxocc
- real(dp) :: rr(3)
- real(dp) :: normalization(nspin)
- real(dp) :: weight
-
-#ifdef HAVE_LIBXC
- type(xc_f90_pointer_t) :: xc_func(ndft_xc),xc_functest
- type(xc_f90_pointer_t) :: xc_info(ndft_xc),xc_infotest
-#endif
-
- real(dp)             :: basis_function_r(basis%nbf)
- real(dp)             :: basis_function_gradr(3,basis%nbf)
- real(dp)             :: basis_function_laplr(3,basis%nbf)
-
- real(dp)             :: rhor_r(nspin)
- real(dp)             :: grad_rhor(3,nspin)
- real(dp)             :: sigma(2*nspin-1)
- real(dp)             :: tau(nspin),lapl_rhor(nspin)
- real(dp)             :: vxc(nspin)
- real(dp)             :: vxc_dummy(nspin)
- real(dp)             :: vsigma(2*nspin-1)
- real(dp)             :: vlapl_rho(nspin),vtau(nspin)
- real(dp)             :: vxc_av(nspin)
- real(dp)             :: dedd_r(ngrid,nspin)
- real(dp)             :: dedgd_r(3,nspin)
- real(dp)             :: omega
- real(dp),allocatable :: wfr(:,:)
- character(len=256)   :: string
-
- real(C_DOUBLE)       :: rhor(ngrid,nspin)
- real(C_DOUBLE)       :: vxc_libxc(ngrid,nspin),exc_libxc(ngrid)
-!=====
-
- exc_xc = 0.0_dp
- vxc_ij(:,:,:) = 0.0_dp
- if( ndft_xc == 0 ) return
-
- call start_clock(timing_dft)
-
-
-#ifdef HAVE_LIBXC
-
- write(stdout,*) 'Calculate DFT XC potential'
- 
- require_gradient =.FALSE.
- require_laplacian=.FALSE.
- do idft_xc=1,ndft_xc
-
-   if( dft_xc_type(idft_xc) < 1000 ) then
-     if(nspin==1) then
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_UNPOLARIZED)
-     else
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_POLARIZED)
-     endif
-   else if(dft_xc_type(idft_xc) < 2000) then
-     write(stdout,*) 'Home-made functional LDA functional'
-     ! Fake LIBXC descriptor 
-     if(nspin==1) then
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_LDA_X, XC_UNPOLARIZED)
-     else
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_LDA_X, XC_POLARIZED)
-     endif
-   else
-     write(stdout,*) 'Home-made functional GGA functional'
-     ! Fake LIBXC descriptor 
-     if(nspin==1) then
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_GGA_X_PBE, XC_UNPOLARIZED)
-     else
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_GGA_X_PBE, XC_POLARIZED)
-    endif
-   endif
-
-   if( dft_xc_type(idft_xc) < 1000 ) then
-     call xc_f90_info_name(xc_info(idft_xc),string)
-     write(stdout,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),TRIM(string)
-   else
-     write(stdout,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),'FAKE LIBXC DESCRIPTOR'
-   endif
-
-   if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
-   if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) require_gradient  =.TRUE.
-   if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_MGGA    ) require_laplacian =.TRUE.
-
-   if( dft_xc_type(idft_xc) == XC_GGA_X_HJS_PBE ) then
-     call xc_f90_gga_x_hjs_set_par(xc_func(idft_xc), REAL(gamma_hybrid,C_DOUBLE) )
-   endif
-   if( dft_xc_type(idft_xc) == XC_GGA_X_WPBEH ) then
-     call xc_f90_gga_x_wpbeh_set_par(xc_func(idft_xc), REAL(gamma_hybrid,C_DOUBLE) )
-   endif
-
- enddo
-
-
-
- !
- ! If it is the first time, then set up the stored arrays
- !
- if( .NOT. allocated(bfr) )                          call prepare_basis_functions_r(basis)
- if( require_gradient  .AND. .NOT. allocated(bfgr) ) call prepare_basis_functions_gradr(basis)
- if( require_laplacian .AND. .NOT. allocated(bfgr) ) call prepare_basis_functions_laplr(basis)
-
-
- normalization(:)=0.0_dp
-
- if ( ngrid_stored < ngrid ) call die('FBFB test invalid')
- do ispin=1,nspin
-   maxocc=0
-   do istate=1,basis%nbf
-     if( occupation(istate,ispin) > completely_empty ) maxocc=istate
-   enddo
-   write(stdout,*) ispin,maxocc
-   allocate( wfr(maxocc,ngrid) )
-   wfr(:,:) = MATMUL( TRANSPOSE(c_matrix(:,1:maxocc,ispin)) , bfr(:,:) )
- 
-   forall(igrid=1:ngrid)
-     rhor(igrid,ispin) = DOT_PRODUCT( wfr(:,igrid) * occupation(:,ispin) , wfr(:,igrid) )
-   end forall
-   deallocate(wfr)
-
- enddo
-
- dedd_r(:,:) = 0.0_dp
- do idft_xc=1,ndft_xc
-   call xc_f90_lda_exc_vxc(xc_func(idft_xc),INT(ngrid,C_INT),rhor(1,1),exc_libxc(1),vxc_libxc(1,1))
-   dedd_r(:,:) = dedd_r(:,:) + vxc_libxc(:,:) * dft_xc_coef(idft_xc)
-
-   do igrid=1,ngrid
-     exc_xc = exc_xc + w_grid(igrid) * exc_libxc(igrid) * SUM( rhor(igrid,:) ) * dft_xc_coef(idft_xc)
-   enddo
- enddo
-
- do ispin=1,nspin
-   do igrid=1,ngrid
-     do jbf=1,basis%nbf
-       do ibf=1,jbf ! basis%nbf
-         vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + w_grid(igrid) &
-             * dedd_r(igrid,ispin) * bfr(ibf,igrid) * bfr(jbf,igrid)  
-       enddo
-     enddo
-   enddo
- enddo
-
-
- call xsum(vxc_ij)
- call xsum(exc_xc)
-
- !
- ! Sum up the contributions from all procs only if needed
- if( parallel_grid ) then
-   call xsum(normalization)
-   call xsum(vxc_ij)
-   call xsum(exc_xc)
- endif
-
- !
- ! Destroy operations
- do idft_xc=1,ndft_xc
-   call xc_f90_func_end(xc_func(idft_xc))
- enddo
-
-#else
-!TODO write a call to teter to have MOLGW working without LIBXC
-!   call teter_lda_vxc_exc(rhor,vxc,exc)
- write(stdout,*) 'XC energy and potential set to zero'
- write(stdout,*) 'LIBXC is not present'
-#endif
-
- write(stdout,'(/,a,2(2x,f12.6))') ' number of electrons:',normalization(:)
- write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy [Ha]:',exc_xc
-
- call stop_clock(timing_dft)
-
-end subroutine dft_exc_vxc_alt
 
 
 !=========================================================================

@@ -48,6 +48,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  real(dp),allocatable    :: hamiltonian(:,:,:)
  real(dp),allocatable    :: hamiltonian_vxc(:,:,:)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
+ real(dp),allocatable    :: hamiltonian_hartree(:,:)
  real(dp),allocatable    :: p_matrix_old(:,:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  real(dp),allocatable    :: self_energy_old(:,:,:)
@@ -60,6 +61,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  !
  ! Allocate the main arrays
  allocate(hamiltonian(basis%nbf,basis%nbf,nspin))
+ allocate(hamiltonian_hartree(basis%nbf,basis%nbf))
  allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
  allocate(p_matrix_old(basis%nbf,basis%nbf,nspin))
  allocate(exchange_m_vxc_diag(basis%nbf,nspin))
@@ -91,18 +93,23 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
    if( calc_type%read_potential ) then
      call read_potential(print_matrix_,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
+     hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
+
    else
+
      !
      ! Hartree contribution to the Hamiltonian
      !
      if( .NOT. is_full_auxil) then
-       call setup_hartree(print_matrix_,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
+       call setup_hartree(print_matrix_,basis%nbf,nspin,p_matrix,hamiltonian_hartree,en%hart)
      else
-       call setup_hartree_ri(print_matrix_,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
+       call setup_hartree_ri(print_matrix_,basis%nbf,nspin,p_matrix,hamiltonian_hartree,en%hart)
      endif
+     do ispin=1,nspin
+       hamiltonian(:,:,ispin) = hamiltonian(:,:,ispin) + hamiltonian_hartree(:,:)
+     enddo
    endif
 
-   hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
   
    !
    ! Reset XC part of the Hamiltonian
@@ -139,7 +146,6 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    if( calc_type%is_dft ) then
 
      call dft_exc_vxc(basis,p_matrix,ehomo,hamiltonian_vxc,en%xc)
-!FBFBtesting     call dft_exc_vxc_alt(basis,p_matrix,c_matrix,occupation,ehomo,hamiltonian_vxc,en%xc)
 
      title='=== DFT XC contribution ==='
      call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,hamiltonian_vxc)
@@ -431,12 +437,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  endif
 
 
-
  !
  ! Big RESTART file written if converged
  !
- if( is_converged .AND. print_restart_) &
-     call write_big_restart(basis%nbf,occupation,c_matrix,energy,hamiltonian_exx,hamiltonian_xc)
+ if( is_converged .AND. print_restart_ ) &
+     call write_big_restart(basis%nbf,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
 
  !
  ! Cleanly deallocate the integral grid information
@@ -446,6 +451,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  ! Cleanly deallocate the arrays
  !
  deallocate(hamiltonian)
+ deallocate(hamiltonian_hartree)
  deallocate(matrix_tmp,p_matrix_old)
  deallocate(exchange_m_vxc_diag)
  deallocate(self_energy_old)
