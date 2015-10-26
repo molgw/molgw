@@ -3,7 +3,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
                     nstate,s_matrix_sqrt_inv,&
                     s_matrix,c_matrix,p_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
-                    hamiltonian_exx,hamiltonian_xc,&
+                    hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc,&
                     occupation,energy)
  use m_definitions
  use m_timing
@@ -34,8 +34,9 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  real(dp),intent(inout)             :: p_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)                :: hamiltonian_kinetic(basis%nbf,basis%nbf)
  real(dp),intent(in)                :: hamiltonian_nucleus(basis%nbf,basis%nbf)
- real(dp),intent(out)               :: hamiltonian_exx(basis%nbf,basis%nbf,nspin)
- real(dp),intent(out)               :: hamiltonian_xc(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(inout)             :: hamiltonian_hartree(basis%nbf,basis%nbf)
+ real(dp),intent(inout)             :: hamiltonian_exx(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(inout)             :: hamiltonian_xc(basis%nbf,basis%nbf,nspin)
  real(dp),intent(inout)             :: occupation(basis%nbf,nspin)
  real(dp),intent(inout)             :: energy(basis%nbf,nspin)
 !=====
@@ -48,7 +49,6 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  real(dp),allocatable    :: hamiltonian(:,:,:)
  real(dp),allocatable    :: hamiltonian_vxc(:,:,:)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
- real(dp),allocatable    :: hamiltonian_hartree(:,:)
  real(dp),allocatable    :: p_matrix_old(:,:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  real(dp),allocatable    :: self_energy_old(:,:,:)
@@ -61,7 +61,6 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  !
  ! Allocate the main arrays
  allocate(hamiltonian(basis%nbf,basis%nbf,nspin))
- allocate(hamiltonian_hartree(basis%nbf,basis%nbf))
  allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
  allocate(p_matrix_old(basis%nbf,basis%nbf,nspin))
  allocate(exchange_m_vxc_diag(basis%nbf,nspin))
@@ -441,7 +440,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  ! Big RESTART file written if converged
  !
  if( is_converged .AND. print_restart_ ) &
-     call write_big_restart(basis%nbf,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+     call write_big_restart(basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
 
  !
  ! Cleanly deallocate the integral grid information
@@ -451,7 +450,6 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  ! Cleanly deallocate the arrays
  !
  deallocate(hamiltonian)
- deallocate(hamiltonian_hartree)
  deallocate(matrix_tmp,p_matrix_old)
  deallocate(exchange_m_vxc_diag)
  deallocate(self_energy_old)

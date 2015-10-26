@@ -6,14 +6,14 @@ subroutine setup_overlap(print_matrix_,basis,s_matrix)
  logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: s_matrix(basis%nbf,basis%nbf)
-!====
+!=====
  integer              :: ibf,jbf
  integer              :: ibf_cart,jbf_cart
  integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  character(len=100)   :: title
  real(dp),allocatable :: matrix_cart(:,:)
-!====
+!=====
 
  write(stdout,*) 'Setup overlap matrix S'
 
@@ -61,6 +61,63 @@ end subroutine setup_overlap
 
 
 !=========================================================================
+subroutine setup_overlap_mixedbasis(print_matrix_,basis1,basis2,s_matrix)
+ use m_definitions
+ use m_basis_set
+ implicit none
+ logical,intent(in)         :: print_matrix_
+ type(basis_set),intent(in) :: basis1,basis2
+ real(dp),intent(out)       :: s_matrix(basis1%nbf,basis2%nbf)
+!=====
+ integer              :: ibf,jbf
+ integer              :: ibf_cart,jbf_cart
+ integer              :: i_cart,j_cart
+ integer              :: ni,nj,ni_cart,nj_cart,li,lj
+ character(len=100)   :: title
+ real(dp),allocatable :: matrix_cart(:,:)
+!=====
+
+ ibf_cart = 1
+ jbf_cart = 1
+ ibf      = 1
+ jbf      = 1
+ do while(ibf_cart<=basis1%nbf_cart)
+   li      = basis1%bf(ibf_cart)%am
+   ni_cart = number_basis_function_am('CART',li)
+   ni      = number_basis_function_am(basis1%gaussian_type,li)
+
+   do while(jbf_cart<=basis2%nbf_cart)
+     lj      = basis2%bf(jbf_cart)%am
+     nj_cart = number_basis_function_am('CART',lj)
+     nj      = number_basis_function_am(basis2%gaussian_type,lj)
+
+     allocate(matrix_cart(ni_cart,nj_cart))
+     do i_cart=1,ni_cart
+       do j_cart=1,nj_cart
+         call overlap_basis_function(basis1%bf(ibf_cart+i_cart-1),basis2%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
+       enddo
+     enddo
+     s_matrix(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
+                                                   MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+
+
+     deallocate(matrix_cart)
+     jbf      = jbf      + nj
+     jbf_cart = jbf_cart + nj_cart
+   enddo
+   jbf      = 1
+   jbf_cart = 1
+
+   ibf      = ibf      + ni
+   ibf_cart = ibf_cart + ni_cart
+
+ enddo
+
+
+end subroutine setup_overlap_mixedbasis
+
+
+!=========================================================================
 subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
  use m_definitions
  use m_timing
@@ -69,14 +126,14 @@ subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
  logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: hamiltonian_kinetic(basis%nbf,basis%nbf)
-!====
+!=====
  integer              :: ibf,jbf
  integer              :: ibf_cart,jbf_cart
  integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  character(len=100)   :: title
  real(dp),allocatable :: matrix_cart(:,:)
-!====
+!=====
 
  call start_clock(timing_hamiltonian_kin)
  write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian'
@@ -135,7 +192,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
  logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: hamiltonian_nucleus(basis%nbf,basis%nbf)
-!====
+!=====
  integer              :: natom_local
  integer              :: ibf,jbf
  integer              :: ibf_cart,jbf_cart
@@ -145,7 +202,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
  character(len=100)   :: title
  real(dp),allocatable :: matrix_cart(:,:)
  real(dp)             :: vnucleus_ij
-!====
+!=====
 
  call start_clock(timing_hamiltonian_nuc)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian'
@@ -222,7 +279,7 @@ subroutine setup_effective_core(print_matrix_,basis,hamiltonian_nucleus)
  logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  real(dp),intent(inout)     :: hamiltonian_nucleus(basis%nbf,basis%nbf)
-!====
+!=====
  integer              :: natom_local
  integer              :: iproj,jbf
  integer              :: iproj_cart,jbf_cart
@@ -242,7 +299,7 @@ subroutine setup_effective_core(print_matrix_,basis,hamiltonian_nucleus)
  real(dp),allocatable :: projector_l(:,:)
  real(dp),allocatable :: projector_r(:,:)
  real(dp),allocatable :: proj_coef(:)
-!====
+!=====
 
  call start_clock(timing_hamiltonian_ecp)
  write(stdout,'(/,a)') ' Setup effective core potential part of the Hamiltonian'
@@ -1022,9 +1079,9 @@ subroutine matrix_basis_to_eigen(nspin,nbf,c_matrix,matrix_inout)
  integer,intent(in)      :: nspin,nbf
  real(dp),intent(in)     :: c_matrix(nbf,nbf,nspin)
  real(dp),intent(inout)  :: matrix_inout(nbf,nbf,nspin)
-!====
+!=====
  integer                 :: ispin
-!====
+!=====
 
 
  do ispin=1,nspin
@@ -1044,11 +1101,11 @@ subroutine evaluate_s2_operator(nspin,nbf,occupation,c_matrix,s_matrix)
  real(dp),intent(in)     :: occupation(nbf,nspin)
  real(dp),intent(in)     :: c_matrix(nbf,nbf,nspin)
  real(dp),intent(in)     :: s_matrix(nbf,nbf)
-!====
+!=====
  integer                 :: ispin,istate,jstate
  real(dp)                :: s2,s2_exact
  real(dp)                :: n1,n2,nmax,nmin
-!====
+!=====
 
  if(nspin /= 2) return
 
@@ -1091,12 +1148,12 @@ subroutine level_shifting(nbf,s_matrix,c_matrix,occupation,level_shifting_energy
  real(dp),intent(in)    :: occupation(nbf,nspin)
  real(dp),intent(in)    :: level_shifting_energy
  real(dp),intent(inout) :: hamiltonian(nbf,nbf,nspin)
-!====
+!=====
  integer  :: ispin
  integer  :: ibf
  real(dp) :: sqrt_level_shifting(nbf)
  real(dp) :: matrix_tmp(nbf,nbf)
-!====
+!=====
 
  write(stdout,'(/,a)')     ' Level shifting switched on'
  write(stdout,'(a,f12.6)') '   energy shift (eV):',level_shifting_energy * Ha_eV

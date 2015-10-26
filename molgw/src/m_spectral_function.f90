@@ -75,7 +75,7 @@ subroutine init_spectral_function(nbf,nstate,occupation,sf)
 !=====
  integer                               :: ijspin,ibf,jbf,itrans,jtrans
  logical                               :: file_exists
-!====
+!=====
 
  ieta = (0.0_dp,1.0_dp) * pole_eta 
 

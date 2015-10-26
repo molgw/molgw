@@ -69,7 +69,7 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  character(len=100),intent(in) :: basis_path
  character(len=100),intent(in) :: basis_name
  type(basis_set),intent(out)   :: basis
-!====
+!=====
  character(len=100)            :: basis_filename
  integer                       :: ibf,jbf,kbf,ng,ig,shell_index,ibf_file
  real(dp),allocatable          :: alpha(:),coeff(:),coeff2(:)
@@ -80,7 +80,7 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  integer                       :: iatom
  real(dp)                      :: x0(3)
  integer                       :: ndiffuse
-!====
+!=====
 
  basis%nbf           = 0
  basis%nbf_cart      = 0
@@ -372,11 +372,11 @@ subroutine init_product_basis_set(basis,prod_basis)
  implicit none
  type(basis_set),intent(in)     :: basis
  type(basis_set),intent(out)    :: prod_basis
-!====
+!=====
  integer                        :: ibf,jbf,iprodbf,jprodbf
  real(dp),allocatable           :: s_matrix(:,:),eigval(:),eigvec(:,:)
  character(len=100)             :: title
-!====
+!=====
 
  prod_basis%nbf = ( basis%nbf * ( basis%nbf + 1 ) ) / 2
  allocate(prod_basis%bf(prod_basis%nbf))
@@ -403,14 +403,124 @@ end subroutine init_product_basis_set
 !=========================================================================
 subroutine destroy_basis_set(basis)
  implicit none
- type(basis_set),intent(inout) :: basis
-!====
 
+ type(basis_set),intent(inout) :: basis
+!=====
+ integer :: ibf
+!=====
+
+! do ibf=1,basis%nbf
+!   call destroy_basis_function(basis%bf(ibf))
+! enddo
  deallocate(basis%bf)
  if(allocated(basis%index_ij))        deallocate(basis%index_ij)
  if(allocated(basis%index_prodbasis)) deallocate(basis%index_prodbasis)
 
 end subroutine destroy_basis_set
+
+
+!=========================================================================
+subroutine write_basis_set(unitfile,basis)
+ implicit none
+
+ integer,intent(in)         :: unitfile
+ type(basis_set),intent(in) :: basis
+!=====
+ integer :: ibf
+!=====
+
+ write(unitfile)  basis%ammax         
+ write(unitfile)  basis%nbf           
+ write(unitfile)  basis%nbf_cart      
+ write(unitfile)  basis%nshell        
+ write(unitfile)  basis%gaussian_type
+ do ibf=1,basis%nbf
+   call write_basis_function(unitfile,basis%bf(ibf))
+ enddo
+ 
+
+end subroutine write_basis_set
+
+
+!=========================================================================
+subroutine read_basis_set(unitfile,basis)
+ implicit none
+
+ integer,intent(in)          :: unitfile
+ type(basis_set),intent(out) :: basis
+!=====
+ integer :: ibf
+!=====
+
+ read(unitfile)  basis%ammax
+ read(unitfile)  basis%nbf
+ read(unitfile)  basis%nbf_cart
+ read(unitfile)  basis%nshell
+ read(unitfile)  basis%gaussian_type
+ allocate(basis%bf(basis%nbf))
+ do ibf=1,basis%nbf
+   call read_basis_function(unitfile,basis%bf(ibf))
+ enddo
+
+
+end subroutine read_basis_set
+
+
+!=========================================================================
+subroutine write_basis_function(unitfile,bf)
+ implicit none
+
+ integer,intent(in)              :: unitfile
+ type(basis_function),intent(in) :: bf
+!=====
+!=====
+
+ write(unitfile)  bf%basis_name   
+ write(unitfile)  bf%gaussian_type
+ write(unitfile)  bf%shell_index  
+ write(unitfile)  bf%am           
+ write(unitfile)  bf%amc          
+ write(unitfile)  bf%nx
+ write(unitfile)  bf%ny
+ write(unitfile)  bf%nz
+ write(unitfile)  bf%iatom        
+ write(unitfile)  bf%x0(:)        
+ write(unitfile)  bf%ngaussian    
+ write(unitfile)  bf%g(:)         
+ write(unitfile)  bf%coeff(:)     
+ write(unitfile)  bf%is_diffuse
+
+
+end subroutine write_basis_function
+
+
+!=========================================================================
+subroutine read_basis_function(unitfile,bf)
+ implicit none
+
+ integer,intent(in)               :: unitfile
+ type(basis_function),intent(out) :: bf
+!=====
+!=====
+
+ read(unitfile)  bf%basis_name
+ read(unitfile)  bf%gaussian_type
+ read(unitfile)  bf%shell_index
+ read(unitfile)  bf%am
+ read(unitfile)  bf%amc
+ read(unitfile)  bf%nx
+ read(unitfile)  bf%ny
+ read(unitfile)  bf%nz
+ read(unitfile)  bf%iatom
+ read(unitfile)  bf%x0(:)
+ read(unitfile)  bf%ngaussian
+ allocate(bf%g(bf%ngaussian))
+ read(unitfile)  bf%g(:)
+ allocate(bf%coeff(bf%ngaussian))
+ read(unitfile)  bf%coeff(:)
+ read(unitfile)  bf%is_diffuse
+
+end subroutine read_basis_function
 
 
 !=========================================================================
@@ -421,10 +531,10 @@ subroutine init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell
  real(dp),intent(in)              :: x0(3),alpha(ng)
  real(dp),intent(in)              :: coeff(ng)
  type(basis_function),intent(out) :: bf
-!====
+!=====
  integer                          :: ig
  real(dp)                         :: overlap
-!====
+!=====
 
  bf%ngaussian = ng
  allocate(bf%g(bf%ngaussian))
@@ -464,7 +574,7 @@ end subroutine init_basis_function
 subroutine destroy_basis_function(bf)
  implicit none
  type(basis_function),intent(inout) :: bf
-!====
+!=====
  
  deallocate(bf%g,bf%coeff)
 
@@ -519,9 +629,9 @@ end function number_basis_function_am
 subroutine print_basis_function(bf)
  implicit none
  type(basis_function),intent(in) :: bf
-!====
+!=====
  integer :: ig
-!====
+!=====
 
  write(stdout,*)
  write(stdout,*) '======  print out a basis function ======'
@@ -547,9 +657,9 @@ function eval_basis_function(bf,x)
  type(basis_function),intent(in) :: bf
  real(dp),intent(in)             :: x(3)
  real(dp)                        :: eval_basis_function
-!====
+!=====
  integer                         :: ig
-!====
+!=====
 
  eval_basis_function=0.0_dp
  do ig=1,bf%ngaussian
@@ -565,9 +675,9 @@ function eval_basis_function_grad(bf,x)
  type(basis_function),intent(in) :: bf
  real(dp),intent(in)             :: x(3)
  real(dp)                        :: eval_basis_function_grad(3)
-!====
+!=====
  integer                         :: ig
-!====
+!=====
 
  eval_basis_function_grad(:)=0.0_dp
  do ig=1,bf%ngaussian
@@ -583,9 +693,9 @@ function eval_basis_function_lapl(bf,x)
  type(basis_function),intent(in) :: bf
  real(dp),intent(in)             :: x(3)
  real(dp)                        :: eval_basis_function_lapl(3)
-!====
+!=====
  integer                         :: ig
-!====
+!=====
 
  eval_basis_function_lapl(:)=0.0_dp
  do ig=1,bf%ngaussian
@@ -600,10 +710,10 @@ subroutine overlap_basis_function(bf1,bf2,overlap)
  implicit none
  type(basis_function),intent(in) :: bf1,bf2
  real(dp),intent(out)            :: overlap
-!====
+!=====
  integer                         :: ig,jg
  real(dp)                        :: overlap_one_gaussian
-!====
+!=====
 
  overlap=0.0_dp
  do ig=1,bf1%ngaussian
@@ -622,11 +732,11 @@ subroutine overlap_three_basis_function(bf1,bf2,bf3,overlap)
  implicit none
  type(basis_function),intent(in) :: bf1,bf2,bf3
  real(dp),intent(out)            :: overlap
-!====
+!=====
  type(basis_function)            :: bf12
  integer                         :: ig,jg
  real(dp)                        :: overlap_one_gaussian
-!====
+!=====
 
  if(mod(bf1%nx+bf2%nx+bf3%nx,2)==1) then
    overlap=0.0_dp
@@ -661,10 +771,10 @@ subroutine kinetic_basis_function(bf1,bf2,kinetic)
  implicit none
  type(basis_function),intent(in) :: bf1,bf2
  real(dp),intent(out)            :: kinetic
-!====
+!=====
  integer                         :: ig,jg
  real(dp)                        :: kinetic_one_gaussian
-!====
+!=====
 
  kinetic=0.0_dp
  do ig=1,bf1%ngaussian
@@ -684,10 +794,10 @@ subroutine nucleus_basis_function(bf1,bf2,zatom,x,nucleus_pot)
  type(basis_function),intent(in) :: bf1,bf2
  real(dp),intent(in)             :: zatom,x(3)
  real(dp),intent(out)            :: nucleus_pot
-!====
+!=====
  integer                         :: ig,jg
  real(dp)                        :: nucleus_pot_one_gaussian
-!====
+!=====
 
  nucleus_pot=0.0_dp
  do ig=1,bf1%ngaussian
@@ -706,12 +816,12 @@ subroutine basis_function_prod(bf1,bf2,bfprod)
  implicit none
  type(basis_function),intent(in)  :: bf1,bf2
  type(basis_function),intent(out) :: bfprod
-!====
+!=====
  integer                         :: ig,jg,kg,ng
  real(dp),allocatable            :: coeff(:),alpha(:)
  logical,parameter               :: unnormalized=.FALSE.
  real(dp)                        :: x0_dummy(3)
-!====
+!=====
 
  !
  ! one could save some primitive gaussians in case of bf1 * bf1
@@ -745,12 +855,12 @@ subroutine basis_function_dipole(bf1,bf2,dipole)
  implicit none
  type(basis_function),intent(in)  :: bf1,bf2
  real(dp),intent(out)             :: dipole(3)
-!====
+!=====
  type(basis_function)             :: bftmp
  real(dp)                         :: dipole_tmp
  integer                          :: ig
  logical,parameter                :: normalized=.FALSE.
-!====
+!=====
 
  ! 
  ! Calculate < phi_1 | r | phi_2 >
@@ -811,12 +921,12 @@ subroutine basis_function_dipole_sq(bf1,bf2,dipole)
  implicit none
  type(basis_function),intent(in)  :: bf1,bf2
  real(dp),intent(out)             :: dipole(3)
-!====
+!=====
  type(basis_function)             :: bftmp
  real(dp)                         :: dipole_tmp
  integer                          :: ig
  logical,parameter                :: normalized=.FALSE.
-!====
+!=====
 
  ! 
  ! Calculate < phi_1 | r^2 | phi_2 >
@@ -908,10 +1018,10 @@ subroutine gos_basis_function(bf1,bf2,qvec,gos_bf1bf2)
  type(basis_function),intent(in)  :: bf1,bf2
  real(dp),intent(in)              :: qvec(3)
  complex(dpc),intent(out)         :: gos_bf1bf2
-!====
+!=====
  integer                          :: ig,jg
  complex(dpc)                     :: gos_one_gaussian
-!====
+!=====
 
  gos_bf1bf2 = 0.0_dp
  do ig=1,bf1%ngaussian
@@ -930,11 +1040,11 @@ subroutine setup_cart_to_pure_transforms(gaussian_type)
  implicit none
 
  character(len=4),intent(in) :: gaussian_type
-!====
+!=====
  integer  :: il,ni,ii,jj,kk
  integer  :: ibf,jbf
  integer  :: nx,ny,nz
-!====
+!=====
 
  write(stdout,*) 'Setting up the cartesian to pure transforms'
 

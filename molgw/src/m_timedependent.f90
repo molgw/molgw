@@ -1489,7 +1489,7 @@ subroutine stopping_power(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenv
  complex(dpc),allocatable           :: gos_cart(:,:)
  complex(dpc),allocatable           :: residu_left(:)
  real(dp)                           :: qvec(3)
- integer,parameter                  :: nq=1000
+ integer,parameter                  :: nq=0 ! 1000
  integer                            :: iq
  real(dp)                           :: fnq(chi%npole_reso_apb)
  integer,parameter                  :: nv=20

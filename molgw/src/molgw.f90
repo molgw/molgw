@@ -42,6 +42,7 @@ program molgw
  real(dp),allocatable    :: hamiltonian_tmp(:,:)
  real(dp),allocatable    :: hamiltonian_kinetic(:,:)
  real(dp),allocatable    :: hamiltonian_nucleus(:,:)
+ real(dp),allocatable    :: hamiltonian_hartree(:,:)
  real(dp),allocatable    :: hamiltonian_exx(:,:,:)
  real(dp),allocatable    :: hamiltonian_xc(:,:,:)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
@@ -101,6 +102,7 @@ program molgw
  allocate(hamiltonian_kinetic(basis%nbf,basis%nbf))
  allocate(hamiltonian_nucleus(basis%nbf,basis%nbf))
  allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
+ allocate(hamiltonian_hartree(basis%nbf,basis%nbf))
  allocate(hamiltonian_exx(basis%nbf,basis%nbf,nspin) )
  allocate(hamiltonian_xc(basis%nbf,basis%nbf,nspin) )
  allocate(exchange_m_vxc_diag(basis%nbf,nspin))
@@ -167,7 +169,7 @@ program molgw
 
  !
  ! Try to read a RESTART file if it exists
- call read_any_restart(basis%nbf,occupation,c_matrix,energy,hamiltonian_exx,hamiltonian_xc,is_restart,is_big_restart)
+ call read_any_restart(basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc,is_restart,is_big_restart)
 
  !
  ! Setup the grids for the quadrature of DFT potential/energy
@@ -244,7 +246,7 @@ program molgw
  ! then set it up now and calculate the required ERI: 2- and 3-center integrals
  !
  if( has_auxil_basis ) then
-   write(stdout,*) 'Setting up the auxiliary basis set for Coulomb integrals'
+   write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
    call init_basis_set(basis_path,auxil_basis_name,gaussian_type,auxil_basis)
 
    ! 2-center integrals
@@ -278,7 +280,8 @@ program molgw
    call scf_loop(basis,prod_basis,auxil_basis,                                           &
                  nstate,s_matrix_sqrt_inv,                                               &
                  s_matrix,c_matrix,p_matrix,                                             &
-                 hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_exx,hamiltonian_xc, &
+                 hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_hartree,            & 
+                 hamiltonian_exx,hamiltonian_xc,                                         &
                  occupation,energy)
  endif
  
@@ -423,7 +426,7 @@ program molgw
  deallocate(s_matrix,c_matrix,p_matrix)
  deallocate(s_matrix_sqrt_inv)
  deallocate(hamiltonian_kinetic,hamiltonian_nucleus)
- deallocate(hamiltonian_exx,hamiltonian_xc)
+ deallocate(hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
  deallocate(energy,occupation)
 
  deallocate(matrix_tmp)

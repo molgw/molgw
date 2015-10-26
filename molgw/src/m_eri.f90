@@ -2209,10 +2209,10 @@ end subroutine calculate_eri_approximate_hartree
 !=========================================================================
 subroutine setup_negligible_basispair()
  implicit none
-!====
+!=====
  integer :: ishell,jshell
  integer :: ibf,jbf
-!====
+!=====
 
  negligible_basispair(:,:) = .FALSE.
  do ishell=1,nshell
@@ -2312,7 +2312,7 @@ subroutine identify_negligible_shellpair(basis)
  implicit none
 
  type(basis_set),intent(in)   :: basis
-!====
+!=====
  integer  :: info
  integer  :: iibf
  integer  :: ibf,jbf,kbf,lbf
@@ -2326,7 +2326,7 @@ subroutine identify_negligible_shellpair(basis)
  real(dp) :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
-!====
+!=====
 ! variables used to call C
  integer(C_INT),external      :: libint_init,calculate_integral
  integer(C_INT),external      :: eval_contr_integral
@@ -3040,11 +3040,11 @@ end subroutine negligible_eri
 subroutine dump_out_eri(rcut)
  implicit none
  real(dp),intent(in) :: rcut
-!====
+!=====
  character(len=50) :: filename
  integer           :: nline,iline,icurrent
  integer           :: erifile
-!====
+!=====
 
  if(rcut < 1.0e-6_dp) then
    filename='molgw_eri.data'
@@ -3078,13 +3078,13 @@ end subroutine dump_out_eri
 logical function read_eri(rcut)
  implicit none
  real(dp),intent(in) :: rcut
-!====
+!=====
  character(len=50) :: filename
  integer           :: nline,iline,icurrent
  integer           :: integer_read
  real(dp)          :: real_read
  integer           :: erifile
-!====
+!=====
 
  if(rcut < 1.0e-6_dp) then
    filename='molgw_eri.data'
@@ -3130,11 +3130,11 @@ subroutine distribute_auxil_basis(auxil_basis)
  implicit none
 
  type(basis_set),intent(inout) :: auxil_basis
-!====
+!=====
  integer :: ibf
  integer :: ibf_local
  integer :: iproc
-!====
+!=====
 
  allocate(iproc_ibf_auxil(nauxil_2center))
  allocate(nbf_local_iproc(0:nproc-1))
@@ -3179,11 +3179,11 @@ subroutine distribute_auxil_basis_lr(auxil_basis)
  implicit none
 
  type(basis_set),intent(inout) :: auxil_basis
-!====
+!=====
  integer :: ibf
  integer :: ibf_local
  integer :: iproc
-!====
+!=====
 
  allocate(iproc_ibf_auxil_lr(nauxil_2center_lr))
  allocate(nbf_local_iproc_lr(0:nproc-1))
