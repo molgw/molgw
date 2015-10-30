@@ -828,8 +828,104 @@ end subroutine write_big_restart
 
 
 !=========================================================================
+subroutine write_restart(restart_type,basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+ use m_definitions
+ use m_mpi
+ use m_inputparam
+ use m_atoms
+ implicit none
+
+ integer,intent(in)         :: restart_type
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(basis%nbf,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin),energy(basis%nbf,nspin)
+ real(dp),intent(in)        :: hamiltonian_hartree(basis%nbf,basis%nbf)
+ real(dp),intent(in)        :: hamiltonian_exx(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)        :: hamiltonian_xc (basis%nbf,basis%nbf,nspin)
+!=====
+ integer,parameter          :: restart_version=201510
+ integer                    :: restartfile
+ integer                    :: ispin,istate,ibf,nstate
+!=====
+
+ call start_clock(timing_restart_file)
+ 
+ select case(restart_type)
+ case(SMALL_RESTART)
+   write(stdout,'(/,a)') ' Writing a small RESTART file'
+ case(BIG_RESTART)
+   write(stdout,'(/,a)') ' Writing a big RESTART file'
+ end select
+
+ open(newunit=restartfile,file='RESTART',form='unformatted')
+ ! An integer to ensure backward compatibility in the future
+ write(restartfile) restart_version
+ ! Atomic structure
+ write(restartfile) natom
+ write(restartfile) zatom(1:natom)
+ write(restartfile) x(3,1:natom)
+ ! Calculation type
+ write(restartfile) calc_type%scf_name
+ ! Basis set
+ call write_basis_set(restartfile,basis)
+ ! Spin channels
+ write(restartfile) nspin
+ ! Number of electrons
+ write(restartfile) SUM( occupation(:,:) )
+
+ if( restart_type == SMALL_RESTART ) then
+   ! Identify the highest occupied state in order to
+   ! save I-O in SMALL_RESTART
+   nstate = 0
+   do ispin=1,nspin
+     do istate=1,basis%nbf
+       if( ANY( occupation(istate,:) > completely_empty ) ) nstate = istate
+     enddo
+   enddo
+ else
+   ! Or write down all the states in BIG_RESTART
+   nstate = basis%nbf
+ endif
+
+ write(restartfile) nstate
+ do ispin=1,nspin
+   do istate=1,nstate
+     write(restartfile) c_matrix(:,istate,ispin)
+   enddo
+ enddo
+
+ if(restart_type == BIG_RESTART) then
+
+   do ispin=1,nspin
+     do istate=1,basis%nbf
+       write(restartfile) energy(istate,ispin)
+     enddo
+   enddo
+   do ibf=1,basis%nbf
+     write(restartfile) hamiltonian_hartree(:,ibf)
+   enddo
+   do ispin=1,nspin
+     do ibf=1,basis%nbf
+       write(restartfile) hamiltonian_exx(:,ibf,ispin)
+     enddo
+   enddo
+   do ispin=1,nspin
+     do ibf=1,basis%nbf
+       write(restartfile) hamiltonian_xc(:,ibf,ispin)
+     enddo
+   enddo
+
+ endif
+
+ close(restartfile)
+ call stop_clock(timing_restart_file)
+
+end subroutine write_restart
+
+
+!=========================================================================
 subroutine read_any_restart(basis,occupation,c_matrix,energy, &
-                            hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc,is_restart,is_big_restart)
+                            hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc,is_restart,is_big_restart,is_basis_restart)
  use m_definitions
  use m_mpi
  use m_warning
@@ -843,19 +939,22 @@ subroutine read_any_restart(basis,occupation,c_matrix,energy, &
  real(dp),intent(out)       :: hamiltonian_hartree(basis%nbf,basis%nbf)
  real(dp),intent(out)       :: hamiltonian_exx(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: hamiltonian_xc (basis%nbf,basis%nbf,nspin)
- logical,intent(out)        :: is_restart,is_big_restart
+ logical,intent(out)        :: is_restart,is_big_restart,is_basis_restart
 !=====
  type(basis_set)      :: basis_read
  integer              :: restartfile
- integer              :: ispin,istate,ibf
+ integer              :: ispin,istate,ibf,jbf
  logical              :: file_exists,same_scf_name
  character(len=100)   :: scf_name_read
  integer              :: nspin_read,nbf_read,nstate_read(2)
- real(dp),allocatable :: ham_tmp1(:,:),overlap_mixedbasis(:,:)
+ real(dp),allocatable :: ham_tmp1(:,:,:),ham_tmp2(:,:,:),ham_tmp3(:,:),overlap_mixedbasis(:,:)
+ real(dp),allocatable :: overlap_smallbasis(:,:)
+ real(dp),allocatable :: overlap_bigbasis_approx(:,:)
 !=====
 
- is_restart     = .TRUE.
- is_big_restart = .FALSE.
+ is_restart       = .TRUE.
+ is_basis_restart = .FALSE.
+ is_big_restart   = .FALSE.
 
  if( no_restart ) then
    is_restart = .FALSE.
@@ -875,11 +974,13 @@ subroutine read_any_restart(basis,occupation,c_matrix,energy, &
  read(restartfile) nspin_read
  read(restartfile) nbf_read
 
- if( nspin_read /= nspin .OR. nbf_read /= basis%nbf ) then
+ if( nspin_read /= nspin ) then
    write(stdout,'(/,a)') ' Cannot read the RESTART file: wrong dimensions'
    is_restart = .FALSE.
    close(restartfile)
    return
+ else if( nbf_read /= basis%nbf) then
+   call issue_warning('Trying to read the RESTART file from a different basis set')
  endif
 
  same_scf_name = ( TRIM(scf_name_read) == TRIM(calc_type%scf_name) )
@@ -897,7 +998,7 @@ subroutine read_any_restart(basis,occupation,c_matrix,energy, &
  endif
  do ispin=1,nspin
    do istate=1,nstate_read(ispin)
-     read(restartfile) c_matrix(:,istate,ispin)
+     read(restartfile) c_matrix(1:nstate_read(ispin),istate,ispin)
    enddo
  enddo
 
@@ -906,46 +1007,99 @@ subroutine read_any_restart(basis,occupation,c_matrix,energy, &
    return
  endif
 
+ is_big_restart = (nbf_read == basis%nbf)
+ is_basis_restart = .NOT. is_big_restart
+
  do ispin=1,nspin
    do istate=1,nstate_read(ispin)
      read(restartfile) energy(istate,ispin)
    enddo
  enddo
 
+ ! EXX part of the Hamiltonian
+ allocate(ham_tmp1(nbf_read,nbf_read,nspin))
  do ispin=1,nspin
    do ibf=1,nbf_read
-     read(restartfile) hamiltonian_exx(:,ibf,ispin)
+     read(restartfile) ham_tmp1(:,ibf,ispin)
    enddo
  enddo
 
+ ! XC part of the Hamiltonian
+ allocate(ham_tmp2(nbf_read,nbf_read,nspin))
  do ispin=1,nspin
    do ibf=1,nbf_read
-     read(restartfile) hamiltonian_xc(:,ibf,ispin)
+     read(restartfile) ham_tmp2(:,ibf,ispin)
    enddo
  enddo
 
  ! HARTREE part of the Hamiltonian
- allocate(ham_tmp1(nbf_read,nbf_read))
+ allocate(ham_tmp3(nbf_read,nbf_read))
  do ibf=1,nbf_read
-   read(restartfile) ham_tmp1(:,ibf)
+   read(restartfile) ham_tmp3(:,ibf)
  enddo
 
  call read_basis_set(restartfile,basis_read)
  
+ if( basis%gaussian_type /= basis_read%gaussian_type ) then
+   write(stdout,*) 'The basis type (cartesian or pure) cannot be changed when restarting from a previous calculation'
+   call die('Erase the RESTART file or change the keyword gaussian_type and start the calculation over')
+ endif
+
  if( nbf_read /= basis_read%nbf ) then
    write(stdout,*) 'consistency problem in the RESTART file'
    call die('Erase the RESTART file and start the calculation over')
  endif
 
- if( basis_read%nbf /= basis%nbf) then
-   write(stdout,*) 'FBFB calculating the overlap'
+ hamiltonian_hartree(:,:) = 0.0_dp
+ hamiltonian_exx(:,:,:)   = 0.0_dp
+ hamiltonian_xc(:,:,:)    = 0.0_dp
+
+ if( is_basis_restart) then
+   allocate(overlap_smallbasis(basis_read%nbf,basis_read%nbf))
+   allocate(overlap_bigbasis_approx(basis%nbf,basis%nbf))
    allocate(overlap_mixedbasis(basis_read%nbf,basis%nbf))
+   call setup_overlap_mixedbasis(.FALSE.,basis_read,basis_read,overlap_smallbasis)
+   call invert(basis_read%nbf,overlap_smallbasis)
+
    call setup_overlap_mixedbasis(.FALSE.,basis_read,basis,overlap_mixedbasis)
-   hamiltonian_hartree(:,:) = MATMUL( TRANSPOSE(overlap_mixedbasis) , MATMUL( ham_tmp1, overlap_mixedbasis ) )
+
+   !
+   ! Evaluate the estimated overlap matrix with the small basis set that is read
+   ! in the RESTART file
+   ! Since the diagonal of the overlap matrix should be 1 by definition, this
+   ! allows us to evaluate how wrong we are and disregard the terms in the
+   ! hamiltonian which are poorly evaluated in the small basis set.
+   overlap_bigbasis_approx = MATMUL( TRANSPOSE( overlap_mixedbasis), MATMUL( overlap_smallbasis , overlap_mixedbasis ) )
+
+
+   overlap_mixedbasis(:,:) = MATMUL( overlap_smallbasis(:,:)  , overlap_mixedbasis(:,:) )
+
+   do ispin=1,nspin
+     hamiltonian_exx(:,:,ispin) = MATMUL( TRANSPOSE(overlap_mixedbasis) , MATMUL( ham_tmp1(:,:,ispin), overlap_mixedbasis ) )
+   enddo
+   do ispin=1,nspin
+     hamiltonian_xc(:,:,ispin) = MATMUL( TRANSPOSE(overlap_mixedbasis) , MATMUL( ham_tmp2(:,:,ispin), overlap_mixedbasis ) )
+   enddo
+   hamiltonian_hartree(:,:) = MATMUL( TRANSPOSE(overlap_mixedbasis) , MATMUL( ham_tmp3, overlap_mixedbasis ) )
+
+   !
+   ! Disregard the term that are too wrong by giving a huge value to the Hartree
+   ! part of the Hamiltonian
+   do ibf=1,basis%nbf
+     if( ABS(overlap_bigbasis_approx(ibf,ibf) - 1.0_dp ) > 0.010_dp ) then
+!       write(*,*) 'Fixing term',ibf,overlap_bigbasis_approx(ibf,ibf) 
+       hamiltonian_hartree(ibf,ibf)   = 100.0_dp
+       hamiltonian_exx    (ibf,ibf,:) = 0.0_dp
+       hamiltonian_xc     (ibf,ibf,:) = 0.0_dp
+     endif
+  enddo
+   deallocate(overlap_smallbasis)
    deallocate(overlap_mixedbasis)
+   deallocate(overlap_bigbasis_approx)
+
  endif
 
- deallocate(ham_tmp1)
+ deallocate(ham_tmp1,ham_tmp2,ham_tmp3)
  close(restartfile)
 
 end subroutine read_any_restart

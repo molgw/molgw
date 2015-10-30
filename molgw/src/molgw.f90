@@ -36,7 +36,7 @@ program molgw
  integer                 :: ibf,jbf
  integer                 :: nstate
  integer                 :: ispin,istate
- logical                 :: is_restart,is_big_restart
+ logical                 :: is_restart,is_big_restart,is_basis_restart
  character(len=100)      :: title
  real(dp)                :: energy_tmp
  real(dp),allocatable    :: hamiltonian_tmp(:,:)
@@ -169,12 +169,13 @@ program molgw
 
  !
  ! Try to read a RESTART file if it exists
- call read_any_restart(basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc,is_restart,is_big_restart)
+ call read_any_restart(basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc,is_restart,is_big_restart,is_basis_restart)
 
  !
  ! Setup the grids for the quadrature of DFT potential/energy
  if( calc_type%is_dft .AND. .NOT. is_big_restart) then
    call setup_dft_grid()
+   ! The following is coded but not used... yet!
    call setup_bf_radius(basis)
  endif
 
@@ -189,14 +190,23 @@ program molgw
    !
    ! Nucleus-electron interaction
    call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
-#ifdef TODAY
-   call setup_effective_core(print_matrix_,basis,hamiltonian_nucleus)
-#endif
+ endif
+
+ if( is_basis_restart ) then
+   !
+   ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
+   allocate(hamiltonian_tmp(basis%nbf,basis%nbf))
+   hamiltonian_tmp(:,:) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) &
+                         + hamiltonian_hartree(:,:) + 0.5_dp * hamiltonian_xc(:,:,1)  &
+                                                    + 0.5_dp * hamiltonian_xc(:,:,nspin)
+   call diagonalize_hamiltonian(1,basis%nbf,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
+                                    energy(:,1),c_matrix(:,:,1))
+   c_matrix(:,:,nspin) = c_matrix(:,:,1)
  endif
 
  if( .NOT. is_restart) then
    !
-   ! Setup the initial c_matrix by diagonalizing the bare hamiltonian
+   ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
    allocate(hamiltonian_tmp(basis%nbf,basis%nbf))
    !
    ! Calculate a very approximate vhxc based on simple gaussians placed on atoms

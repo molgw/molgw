@@ -45,6 +45,13 @@ module m_definitions
  integer,parameter :: very_high = 40
  integer,parameter :: insane    = 50
 
+ !
+ ! Restart file types
+ integer,parameter :: SMALL_RESTART = 1
+ integer,parameter ::   BIG_RESTART = 2
+
 
 end module m_definitions
+
+
 !=========================================================================

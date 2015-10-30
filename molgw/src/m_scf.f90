@@ -209,19 +209,20 @@ function check_converged()
  if( rms < tolscf ) then 
    check_converged = .TRUE.
    write(stdout,*) ' ===> convergence has been reached'
+   write(stdout,*)
  else
    check_converged = .FALSE.
    write(stdout,*) ' ===> convergence not reached yet'
- endif
+   write(stdout,*)
 
- write(stdout,*)
-
- if(iscf > nscf) then
-   if(rms>1.d-4) then
-     call issue_warning('SCF convergence is very poor')
-   else if(rms>1.d-6) then
-     call issue_warning('SCF convergence is poor')
+   if(iscf > nscf) then
+     if(rms>1.d-3) then
+       call issue_warning('SCF convergence is very poor')
+     else if(rms>1.d-5) then
+       call issue_warning('SCF convergence is poor')
+     endif
    endif
+
  endif
 
 end function check_converged
