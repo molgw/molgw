@@ -75,8 +75,8 @@ module m_inputparam
  real(dp),protected               :: step_sigma
  real(dp),protected               :: level_shifting_energy
 
- logical,protected                :: no_restart   
- logical,protected                :: ignore_big_restart
+ logical,protected                :: ignore_restart_
+ logical,protected                :: ignore_bigrestart_
  logical,protected                :: print_matrix_
  logical,protected                :: print_eri_
  logical,protected                :: print_wfn_
@@ -494,7 +494,7 @@ subroutine summary_input(grid_quality,integral_quality)
  write(stdout,'(a19)')      ' IO options:'
  write(stdout,'(a30,l3)')   ' - matrices details:   ',print_matrix_       
  write(stdout,'(a30,l3)')   ' - ERI file:           ',print_eri_          
- write(stdout,'(a30,l3)')   ' - ignore big RESTART: ',ignore_big_restart
+ write(stdout,'(a30,l3)')   ' - ignore big RESTART: ',ignore_bigrestart_
  write(stdout,'(a30,l3)')   ' - plot some wfns:     ',print_wfn_          
  write(stdout,'(a30,l3)')   ' - dump spectral functs',print_w_
  write(stdout,'(a30,l3)')   ' - dump self-energy    ',print_sigma_
@@ -612,8 +612,8 @@ subroutine read_inputfile_namelist()
  mixing_scheme      = capitalize(mixing_scheme)
  length_unit        = capitalize(length_unit)
 
- no_restart         = yesno(ignore_restart)
- ignore_big_restart = yesno(ignore_bigrestart)
+ ignore_restart_    = yesno(ignore_restart)
+ ignore_bigrestart_ = yesno(ignore_bigrestart)
  is_full_auxil      = yesno(no_4center)
  is_tda             = yesno(tda)
  is_triplet         = yesno(triplet)

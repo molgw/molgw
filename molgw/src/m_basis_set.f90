@@ -31,7 +31,6 @@ module m_basis_set
    integer                      :: ngaussian                  ! Number of primitive gausssians
    type(gaussian),allocatable   :: g(:)                       ! The primitive gaussian functions
    real(dp),allocatable         :: coeff(:)                   ! Their mixing coefficients
-   logical                      :: is_diffuse
  end type
 
  !
@@ -167,18 +166,6 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
      x0(:) = x(:,iatom)
 
      shell_index = shell_index + 1
-
-     ! FIXME: this type of initialization should be implemented inside the
-     ! function "init_basis_function"
-     !
-     ! Set up the diffuse flag
-     ! The limit is quite arbitrary though
-     if( MAXVAL(alpha(:)) < 0.05_dp) then
-       basis%bf(jbf+1:jbf+number_basis_function_am('CART',am_tmp))%is_diffuse = .TRUE.
-       ndiffuse = ndiffuse + number_basis_function_am(basis%gaussian_type,am_tmp)
-     else
-       basis%bf(jbf+1:jbf+number_basis_function_am('CART',am_tmp))%is_diffuse = .FALSE.
-     endif
 
      select case(am_tmp)
      case( 0)
@@ -420,6 +407,72 @@ end subroutine destroy_basis_set
 
 
 !=========================================================================
+function compare_basis_set(basis1,basis2) result(same_basis_set)
+ implicit none
+
+ logical                    :: same_basis_set
+ type(basis_set),intent(in) :: basis1,basis2
+!=====
+ integer :: ibf
+!=====
+
+ same_basis_set = .TRUE.
+ 
+ if( basis1%ammax          == basis2%ammax        )  same_basis_set = .FALSE.
+ if( basis1%nbf            == basis2%nbf          )  same_basis_set = .FALSE.
+ if( basis1%nbf_cart       == basis2%nbf_cart     )  same_basis_set = .FALSE.
+ if( basis1%nshell         == basis2%nshell       )  same_basis_set = .FALSE.
+ if( basis1%gaussian_type == basis2%gaussian_type )  same_basis_set = .FALSE.
+
+ ! If the basis sets already differs, then exit immediately
+ if( .NOT. same_basis_set ) return
+
+ do ibf=1,basis1%nbf
+   same_basis_set = same_basis_set .AND. compare_basis_function(basis1%bf(ibf),basis2%bf(ibf))
+ enddo
+
+
+end function compare_basis_set
+
+
+!=========================================================================
+function compare_basis_function(bf1,bf2) result(same_basis_function)
+ implicit none
+
+ logical                         :: same_basis_function
+ type(basis_function),intent(in) :: bf1,bf2
+!=====
+ integer                         :: ig
+!=====
+
+ same_basis_function = .TRUE.
+
+! DO NOT compare the following commented fields. Not really necessary...
+! bf1%basis_name
+! bf1%shell_index
+! bf1%amc
+ if( bf1%gaussian_type == bf2%gaussian_type             ) same_basis_function = .FALSE.
+ if( bf1%am            == bf2%am                        ) same_basis_function = .FALSE.
+ if( bf1%nx            == bf2%nx                        ) same_basis_function = .FALSE.
+ if( bf1%ny            == bf2%ny                        ) same_basis_function = .FALSE.
+ if( bf1%nz            == bf2%nz                        ) same_basis_function = .FALSE.
+ if( bf1%iatom         == bf2%iatom                     ) same_basis_function = .FALSE.
+ if( ANY(ABS(bf1%x0(:) - bf2%x0(:)) > 1.0e-5_dp )       ) same_basis_function = .FALSE.
+ if( bf1%ngaussian     == bf2%ngaussian                 ) same_basis_function = .FALSE.
+
+ ! If the basis functions already differs, then exit immediately
+ if( .NOT. same_basis_function ) return
+
+ do ig=1,bf1%ngaussian
+   same_basis_function = same_basis_function .AND. compare_gaussian(bf1%g(ig),bf2%g(ig))
+ enddo
+ if( ANY(ABS(bf1%coeff(:) - bf2%coeff(:)) > 1.0e-5_dp ) ) same_basis_function = .FALSE.
+ 
+
+end function compare_basis_function
+
+
+!=========================================================================
 subroutine write_basis_set(unitfile,basis)
  implicit none
 
@@ -488,7 +541,6 @@ subroutine write_basis_function(unitfile,bf)
  write(unitfile)  bf%ngaussian    
  write(unitfile)  bf%g(:)         
  write(unitfile)  bf%coeff(:)     
- write(unitfile)  bf%is_diffuse
 
 
 end subroutine write_basis_function
@@ -518,7 +570,6 @@ subroutine read_basis_function(unitfile,bf)
  read(unitfile)  bf%g(:)
  allocate(bf%coeff(bf%ngaussian))
  read(unitfile)  bf%coeff(:)
- read(unitfile)  bf%is_diffuse
 
 end subroutine read_basis_function
 
