@@ -32,7 +32,7 @@ program molgw
  type(basis_set)         :: auxil_basis
  type(basis_set)         :: prod_basis
  type(spectral_function) :: wpol
- integer                 :: reading_status
+ integer                 :: reading_status,restart_type
  integer                 :: ibf,jbf
  integer                 :: nstate
  integer                 :: ispin,istate
@@ -169,7 +169,13 @@ program molgw
 
  !
  ! Try to read a RESTART file if it exists
- call read_any_restart(basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc,is_restart,is_big_restart,is_basis_restart)
+ call read_restart(restart_type,basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+ is_restart       = ( restart_type /= NO_RESTART )
+ is_big_restart   = ( restart_type == BIG_RESTART )
+ is_basis_restart = ( restart_type == BASIS_RESTART )
+ if( is_restart .AND. (.NOT.is_big_restart) .AND. (.NOT.is_basis_restart) ) write(stdout,*) 'Restarting from a RESTART file'
+ if( is_big_restart   ) write(stdout,*) 'Restarting from a finalized RESTART file'
+ if( is_basis_restart ) write(stdout,*) 'Restarting from a finalized RESTART but with a different basis set'
 
  !
  ! Setup the grids for the quadrature of DFT potential/energy

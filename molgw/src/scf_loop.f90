@@ -1,4 +1,7 @@
 !=========================================================================
+! This file contains
+! the main SCF loop for Hartree-Fock or Kohn-Sham
+!=========================================================================
 subroutine scf_loop(basis,prod_basis,auxil_basis,&
                     nstate,s_matrix_sqrt_inv,&
                     s_matrix,c_matrix,p_matrix,&
@@ -315,7 +318,9 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
    !
    ! Write down a "small" RESTART file at each step
-   if( print_restart_ ) call write_small_restart(basis%nbf,occupation,c_matrix)
+   if( print_restart_ ) then
+    call write_restart(SMALL_RESTART,basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+   endif
    
  !
  ! end of the big SCF loop
@@ -439,8 +444,9 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  !
  ! Big RESTART file written if converged
  !
- if( is_converged .AND. print_restart_ ) &
-     call write_big_restart(basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+ if( is_converged .AND. print_restart_ ) then
+   call write_restart(BIG_RESTART,basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+ endif
 
  !
  ! Cleanly deallocate the integral grid information

@@ -418,11 +418,11 @@ function compare_basis_set(basis1,basis2) result(same_basis_set)
 
  same_basis_set = .TRUE.
  
- if( basis1%ammax          == basis2%ammax        )  same_basis_set = .FALSE.
- if( basis1%nbf            == basis2%nbf          )  same_basis_set = .FALSE.
- if( basis1%nbf_cart       == basis2%nbf_cart     )  same_basis_set = .FALSE.
- if( basis1%nshell         == basis2%nshell       )  same_basis_set = .FALSE.
- if( basis1%gaussian_type == basis2%gaussian_type )  same_basis_set = .FALSE.
+ if( basis1%ammax         /= basis2%ammax         )  same_basis_set = .FALSE.
+ if( basis1%nbf           /= basis2%nbf           )  same_basis_set = .FALSE.
+ if( basis1%nbf_cart      /= basis2%nbf_cart      )  same_basis_set = .FALSE.
+ if( basis1%nshell        /= basis2%nshell        )  same_basis_set = .FALSE.
+ if( basis1%gaussian_type /= basis2%gaussian_type )  same_basis_set = .FALSE.
 
  ! If the basis sets already differs, then exit immediately
  if( .NOT. same_basis_set ) return
@@ -451,14 +451,14 @@ function compare_basis_function(bf1,bf2) result(same_basis_function)
 ! bf1%basis_name
 ! bf1%shell_index
 ! bf1%amc
- if( bf1%gaussian_type == bf2%gaussian_type             ) same_basis_function = .FALSE.
- if( bf1%am            == bf2%am                        ) same_basis_function = .FALSE.
- if( bf1%nx            == bf2%nx                        ) same_basis_function = .FALSE.
- if( bf1%ny            == bf2%ny                        ) same_basis_function = .FALSE.
- if( bf1%nz            == bf2%nz                        ) same_basis_function = .FALSE.
- if( bf1%iatom         == bf2%iatom                     ) same_basis_function = .FALSE.
+ if( bf1%gaussian_type /= bf2%gaussian_type             ) same_basis_function = .FALSE.
+ if( bf1%am            /= bf2%am                        ) same_basis_function = .FALSE.
+ if( bf1%nx            /= bf2%nx                        ) same_basis_function = .FALSE.
+ if( bf1%ny            /= bf2%ny                        ) same_basis_function = .FALSE.
+ if( bf1%nz            /= bf2%nz                        ) same_basis_function = .FALSE.
+ if( bf1%iatom         /= bf2%iatom                     ) same_basis_function = .FALSE.
  if( ANY(ABS(bf1%x0(:) - bf2%x0(:)) > 1.0e-5_dp )       ) same_basis_function = .FALSE.
- if( bf1%ngaussian     == bf2%ngaussian                 ) same_basis_function = .FALSE.
+ if( bf1%ngaussian     /= bf2%ngaussian                 ) same_basis_function = .FALSE.
 
  ! If the basis functions already differs, then exit immediately
  if( .NOT. same_basis_function ) return

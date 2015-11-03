@@ -860,7 +860,8 @@ subroutine write_restart(restart_type,basis,occupation,c_matrix,energy,hamiltoni
    write(stdout,'(/,a)') ' Writing a big RESTART file'
  end select
 
- open(newunit=restartfile,file='RESTART',form='unformatted')
+ open(newunit=restartfile,file='RESTART',form='unformatted',action='write')
+
  ! An integer to ensure backward compatibility in the future
  write(restartfile) restart_version
  ! RESTART file type SMALL_RESTART=1 or BIG_RESTART=2
@@ -868,7 +869,7 @@ subroutine write_restart(restart_type,basis,occupation,c_matrix,energy,hamiltoni
  ! Atomic structure
  write(restartfile) natom
  write(restartfile) zatom(1:natom)
- write(restartfile) x(3,1:natom)
+ write(restartfile) x(:,1:natom)
  ! Calculation type
  write(restartfile) calc_type%scf_name
  ! Basis set
@@ -946,7 +947,7 @@ subroutine read_restart(restart_type,basis,occupation,c_matrix,energy,hamiltonia
 !=====
  integer                    :: restartfile
  integer                    :: ispin,istate,ibf,nstate
- logical                    :: file_exists,same_scf_name,same_basis
+ logical                    :: file_exists,same_scf,same_basis,same_geometry
 
  integer                    :: restart_version_read
  integer                    :: restart_type_read
@@ -956,6 +957,7 @@ subroutine read_restart(restart_type,basis,occupation,c_matrix,energy,hamiltonia
  type(basis_set)            :: basis_read
  integer                    :: nspin_read
  real(dp),allocatable       :: occupation_read(:,:)
+ real(dp),allocatable       :: c_matrix_read(:,:,:)
  real(dp),allocatable       :: hh_read(:,:),hexx_read(:,:,:),hxc_read(:,:,:)
  real(dp),allocatable       :: overlap_mixedbasis(:,:)
  real(dp),allocatable       :: overlap_smallbasis(:,:)
@@ -982,38 +984,44 @@ subroutine read_restart(restart_type,basis,occupation,c_matrix,energy,hamiltonia
  read(restartfile) restart_version_read
 
  if( restart_version_read /= 201510 ) then
-   call issue_warning(' RESTART file version not readable. Skipping the reading')
+   call issue_warning('RESTART file: Version not readable. Skipping the reading')
    restart_type = NO_RESTART
+   close(restartfile)
    return
  endif
 
 
  ! RESTART file type SMALL_RESTART=1 or BIG_RESTART=2
- read(restartfile) restart_type
+ read(restartfile) restart_type_read
  if( restart_type_read /= SMALL_RESTART .AND. restart_type_read /= BIG_RESTART ) then
-   call issue_warning(' RESTART file type not readable. Skipping the reading')
+   call issue_warning('RESTART file: Type not readable. Skipping the reading')
    restart_type = NO_RESTART
+   close(restartfile)
    return
  endif
+ restart_type = restart_type_read
 
 
  ! Atomic structure
  read(restartfile) natom_read
  allocate(zatom_read(natom_read),x_read(3,natom_read))
- read(restartfile) zatom_read(1:natom)
- read(restartfile) x_read(3,1:natom)
+ read(restartfile) zatom_read(1:natom_read)
+ read(restartfile) x_read(:,1:natom_read)
  if( natom_read /= natom  &
-  .OR. ANY( ABS( zatom_read(:) - zatom(:) ) > 1.0e-5_dp ) &
-  .OR. ANY( ABS( x_read(:,:) - x(:,:)     ) > 1.0e-5_dp ) ) then
+  .OR. ANY( ABS( zatom_read(:) - zatom(1:natom_read) ) > 1.0e-5_dp ) &
+  .OR. ANY( ABS(   x_read(:,:) - x(:,1:natom_read)   ) > 1.0e-5_dp ) ) then
+   same_geometry = .FALSE.
    call issue_warning('RESTART file: Geometry has changed')
+ else
+   same_geometry = .TRUE.
  endif
  deallocate(zatom_read,x_read)
 
 
  ! Calculation type
  read(restartfile) scf_name_read
- same_scf_name = ( TRIM(scf_name_read) == TRIM(calc_type%scf_name) )
- if( .NOT. same_scf_name) then
+ same_scf = ( TRIM(scf_name_read) == TRIM(calc_type%scf_name) )
+ if( .NOT. same_scf) then
    call issue_warning('RESTART file: SCF type has changed')
  endif
 
@@ -1023,6 +1031,10 @@ subroutine read_restart(restart_type,basis,occupation,c_matrix,energy,hamiltonia
  same_basis = compare_basis_set(basis,basis_read)
  if( .NOT. same_basis) then
    call issue_warning('RESTART file: Basis set has changed')
+ endif
+ if( basis%gaussian_type /= basis_read%gaussian_type ) then
+   write(stdout,*) 'The basis type (cartesian or pure) cannot be changed when restarting from a previous calculation'
+   call die('Erase the RESTART file or change the keyword gaussian_type and start the calculation over')
  endif
 
 
@@ -1056,10 +1068,17 @@ subroutine read_restart(restart_type,basis,occupation,c_matrix,energy,hamiltonia
 
 
  ! Wavefunction coefficients C
- c_matrix(:,:,:) = 0.0_dp
+ allocate(c_matrix_read(basis_read%nbf,nstate,nspin_read))
  do ispin=1,nspin_read
    do istate=1,nstate
-     read(restartfile) c_matrix(1:basis_read%nbf,istate,ispin)
+     read(restartfile) c_matrix_read(:,istate,ispin)
+   enddo
+ enddo
+ c_matrix(:,:,:) = 0.0_dp
+ do ispin=1,nspin_read
+   do istate=1,MIN(nstate,basis%nbf)
+     c_matrix(1:MIN(basis_read%nbf,basis%nbf),istate,ispin) &
+          = c_matrix_read(1:MIN(basis_read%nbf,basis%nbf),istate,ispin)
    enddo
  enddo
  ! Fill the rest of the array with identity
@@ -1105,6 +1124,11 @@ subroutine read_restart(restart_type,basis,occupation,c_matrix,energy,hamiltonia
 
      deallocate(hh_read,hexx_read,hxc_read)
      
+     if( same_scf .AND. same_geometry ) then
+       restart_type = BIG_RESTART
+     else
+       restart_type = SMALL_RESTART
+     endif
      close(restartfile)
      return
 
