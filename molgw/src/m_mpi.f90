@@ -23,7 +23,7 @@ module m_mpi
  integer,private   :: iomaster = 0
  logical,protected :: is_iomaster = .TRUE.
 
- integer,private :: mpi_comm
+ integer,private :: my_comm
 
  integer,private :: nbf_mpi
  integer,private :: ngrid_mpi
@@ -143,7 +143,7 @@ subroutine init_mpi()
 
 #ifdef HAVE_MPI
  call MPI_INIT(ier)
- mpi_comm = MPI_COMM_WORLD
+ my_comm = MPI_COMM_WORLD
 #endif
 
  call get_size()
@@ -196,7 +196,7 @@ subroutine barrier()
 !=====
 
 #ifdef HAVE_MPI
- call MPI_BARRIER(mpi_comm,ier)
+ call MPI_BARRIER(my_comm,ier)
 #endif
 
 end subroutine barrier
@@ -209,7 +209,7 @@ subroutine get_size()
 !=====
 
 #ifdef HAVE_MPI
- call MPI_COMM_SIZE(mpi_comm,nproc,ier)
+ call MPI_COMM_SIZE(my_comm,nproc,ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in get_size'
@@ -225,7 +225,7 @@ subroutine get_rank()
 !=====
 
 #ifdef HAVE_MPI
- call MPI_COMM_RANK(mpi_comm,rank,ier)
+ call MPI_COMM_RANK(my_comm,rank,ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in get_rank'
@@ -554,7 +554,7 @@ subroutine xand_l(logical_variable)
  n1 = 1
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, logical_variable, n1, MPI_LOGICAL, MPI_LAND, mpi_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, logical_variable, n1, MPI_LOGICAL, MPI_LAND, my_comm, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -575,7 +575,7 @@ subroutine xand_la1d(logical_array)
  n1 = SIZE(logical_array,DIM=1)
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, logical_array, n1, MPI_LOGICAL, MPI_LAND, mpi_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, logical_array, n1, MPI_LOGICAL, MPI_LAND, my_comm, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -597,7 +597,7 @@ subroutine xand_la2d(logical_array)
  n2 = SIZE(logical_array,DIM=2)
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, logical_array, n1*n2, MPI_LOGICAL, MPI_LAND, mpi_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, logical_array, n1*n2, MPI_LOGICAL, MPI_LAND, my_comm, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -618,7 +618,7 @@ subroutine xmin_i(integer_number)
  n1 = 1
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER, MPI_MIN, mpi_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER, MPI_MIN, my_comm, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -639,7 +639,7 @@ subroutine xmax_i(integer_number)
  n1 = 1
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER, MPI_MAX, mpi_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER, MPI_MAX, my_comm, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -660,7 +660,7 @@ subroutine xmax_r(real_number)
  n1 = 1
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE, MPI_MAX, mpi_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE, MPI_MAX, my_comm, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -681,7 +681,7 @@ subroutine xmax_ra1d(array)
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE, MPI_MAX, mpi_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE, MPI_MAX, my_comm, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -702,7 +702,7 @@ subroutine xsum_r(real_number)
  n1 = 1
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE_PRECISION, MPI_SUM, my_comm, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -723,7 +723,7 @@ subroutine xsum_ra1d(array)
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_PRECISION, MPI_SUM, my_comm, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -745,7 +745,7 @@ subroutine xsum_ra2d(array)
  n2 = SIZE( array, DIM=2 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, my_comm, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -768,7 +768,7 @@ subroutine xsum_ra3d(array)
  n3 = SIZE( array, DIM=3 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3, MPI_DOUBLE_PRECISION, MPI_SUM, my_comm, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -792,7 +792,7 @@ subroutine xsum_ra4d(array)
  n4 = SIZE( array, DIM=4 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3*n4, MPI_DOUBLE_PRECISION, MPI_SUM, mpi_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3*n4, MPI_DOUBLE_PRECISION, MPI_SUM, my_comm, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -813,7 +813,7 @@ subroutine xsum_ca1d(array)
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_COMPLEX, MPI_SUM, mpi_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_COMPLEX, MPI_SUM, my_comm, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -835,7 +835,7 @@ subroutine xsum_ca2d(array)
  n2 = SIZE( array, DIM=2 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_COMPLEX, MPI_SUM, mpi_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_COMPLEX, MPI_SUM, my_comm, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -859,7 +859,7 @@ subroutine xsum_ca4d(array)
  n4 = SIZE( array, DIM=4 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3*n4, MPI_DOUBLE_COMPLEX, MPI_SUM, mpi_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3*n4, MPI_DOUBLE_COMPLEX, MPI_SUM, my_comm, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
