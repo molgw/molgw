@@ -162,10 +162,10 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  ! Which calculation type needs a complex sigma?
  !
  select case(gwmethod)
- case(GV,GSIGMA,G0W0,GnW0,GnWn)   ! diagonal real
+ case(COHSEX,GV,GSIGMA,G0W0,GnW0,GnWn)   ! diagonal real
    allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,1,nspin))
 
- case(COHSEX,QS,QSCOHSEX,GSIGMA3) ! matrix real
+ case(QS,QSCOHSEX,GSIGMA3) ! matrix real
    allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nsemin:nsemax,nspin))
 
  case(LW,LW2)                     ! matrix complex
@@ -296,7 +296,28 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
            enddo
          enddo
 
-       case(COHSEX,QSCOHSEX) 
+
+       case(COHSEX)
+
+         do astate=nsemin,nsemax
+             !
+             ! SEX
+             !
+             selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
+                        - bra(ipole,astate) * bra(ipole,astate) &
+                              * fact_full_i / (-wpol%pole(ipole)) * 2.0_dp
+
+             !
+             ! COH
+             !
+             selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
+                        - bra(ipole,astate) * bra(ipole,astate) &
+                              / wpol%pole(ipole)   ! FBFB * 0.80_dp
+
+         enddo
+
+
+       case(QSCOHSEX) 
 
          do bstate=nsemin,nsemax
            do astate=nsemin,nsemax
@@ -315,6 +336,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
                               * fact_empty_i / wpol%pole(ipole)
            enddo
          enddo
+
 
        case(GV)
          !
@@ -375,7 +397,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
    selfenergy(:,:,:) = selfenergy_omega(0,:,:,:)
    
-   write(stdout,'(/,a)') ' COHSEX Eigenvalues [eV]'
+   write(stdout,'(/,a)') ' Gv     Eigenvalues [eV]'
    if(nspin==1) then
      write(stdout,*) '  #          E0        SigX-Vxc      SigC          Z         COHSEX'
    else
@@ -396,7 +418,11 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
  case(COHSEX) !==========================================================
 
-   selfenergy(:,:,:) = selfenergy_omega(0,:,:,:)
+   ! Only had the diagonal calculated...
+   selfenergy(:,:,:) = 0.0_dp
+   forall(astate=nsemin:nsemax)
+     selfenergy(astate,astate,:) = selfenergy_omega(0,astate,1,:)
+   end forall
    
    write(stdout,'(/,a)') ' COHSEX Eigenvalues [eV]'
    if(nspin==1) then
@@ -406,11 +432,11 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    endif
    do astate=nsemin,nsemax
      zz(:) = 1.0_dp 
-     energy_qp_new(astate,:) = energy_qp(astate,:) + selfenergy_omega(0,astate,astate,:) + exchange_m_vxc_diag(astate,:)
+     energy_qp_new(astate,:) = energy_qp(astate,:) + selfenergy_omega(0,astate,1,:) + exchange_m_vxc_diag(astate,:)
 
      write(stdout,'(i4,x,20(x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,               &
                                                  exchange_m_vxc_diag(astate,:)*Ha_eV,     &
-                                                 selfenergy_omega(0,astate,astate,:)*Ha_eV, &
+                                                 selfenergy_omega(0,astate,1,:)*Ha_eV, &
                                            zz(:),energy_qp_new(astate,:)*Ha_eV
    enddo
 
