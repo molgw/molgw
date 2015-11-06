@@ -338,8 +338,9 @@ program molgw
      call prepare_eri_3center_eigen(c_matrix)
      call destroy_eri_3center()
    endif
+
    call init_spectral_function(basis%nbf,nstate,occupation,wpol)
-   call polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
+   call polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
    call destroy_spectral_function(wpol)
 
    if(calc_type%is_td .AND. calc_type%is_dft) call destroy_dft_grid()
@@ -364,7 +365,7 @@ program molgw
  enddo
 
  !
- ! final evaluation for G0W0
+ ! final evaluation for perturbative GW
  if( calc_type%is_gw .AND. &
        ( calc_type%gwmethod == GV .OR. calc_type%gwmethod == GSIGMA .OR.  calc_type%gwmethod == LW &
     .OR. calc_type%gwmethod == LW2 &
@@ -388,7 +389,7 @@ program molgw
    call read_spectral_function(wpol,reading_status)
    ! If reading has failed, then do the calculation
    if( reading_status /= 0 ) then
-     call polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,en%rpa,wpol)
+     call polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
    endif
 
    en%tot = en%tot + en%rpa

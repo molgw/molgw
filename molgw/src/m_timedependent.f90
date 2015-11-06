@@ -1,4 +1,8 @@
 !=========================================================================
+! This module contains
+! the routines to calculate the polarizability within RPA, TDDFT or BSE
+! and the corresponding optical spectra
+!=========================================================================
 module m_timedependent
  use m_definitions
  use m_timing
@@ -12,13 +16,14 @@ contains
 
 
 !=========================================================================
-subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matrix,rpa_correlation,wpol_out)
+subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
  use m_tools
  use m_basis_set
  use m_spectral_function
  implicit none
 
  type(basis_set),intent(in)            :: basis,prod_basis,auxil_basis
+ integer,intent(in)                    :: nstate
  real(dp),intent(in)                   :: occupation(basis%nbf,nspin)
  real(dp),intent(in)                   :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)                  :: rpa_correlation
@@ -110,8 +115,15 @@ subroutine polarizability(basis,prod_basis,auxil_basis,occupation,energy,c_matri
  !
  if( calc_type%is_bse ) then
    call read_spectral_function(wpol_static,reading_status)
-   if(reading_status/=0) &
-     call die('BSE requires a previous GW calculation stored in the SCREENED_COULOMB file')
+
+   ! If a SCREENED_COULOMB file cannot be found,
+   ! then recalculate it from scratch
+   if( reading_status /= 0 ) then
+     call init_spectral_function(basis%nbf,nstate,occupation,wpol_static)
+     wpol_static%nprodbasis = auxil_basis%nbf_local
+     call static_polarizability(basis,auxil_basis,occupation,energy,wpol_static)
+   endif
+
  endif
 
 
@@ -823,10 +835,10 @@ subroutine build_amb_apb_bse_auxil(nmat,nbf,c_matrix,wpol,wpol_static,m_apb,n_ap
  integer              :: kbf
  real(dp)             :: wtmp
  integer              :: kstate_max
- integer              :: ipole,ibf_auxil,jbf_auxil
+ integer              :: ipole,ibf_auxil,jbf_auxil,ibf_auxil_global,jbf_auxil_global
  real(dp),allocatable :: vsqrt_chi_vsqrt(:,:)
  real(dp),allocatable :: vsqrt_chi_vsqrt_i(:),residu_i(:),wp0_i(:,:)
- real(dp),allocatable :: wp0(:,:,:,:)
+ real(dp),allocatable :: wp0(:,:,:,:),w0_local(:)
  integer              :: iprow,ipcol
  integer              :: m_apb_block,n_apb_block
  real(dp),allocatable :: amb_block(:,:)
@@ -838,8 +850,6 @@ subroutine build_amb_apb_bse_auxil(nmat,nbf,c_matrix,wpol,wpol_static,m_apb,n_ap
 
  write(stdout,'(a)') ' Build W part Auxil' 
 
- if( wpol_static%nprodbasis /= nauxil_3center ) call die('internal inconsistency problem')
-
  kstate_max = MAXVAL( wpol%transition_table_apb(1,1:wpol%npole_reso_apb) )
 
  call clean_allocate('Temporary array for W',wp0,1,nauxil_3center,ncore_W+1,nvirtual_W-1,ncore_W+1,kstate_max,1,nspin)
@@ -848,17 +858,27 @@ subroutine build_amb_apb_bse_auxil(nmat,nbf,c_matrix,wpol,wpol_static,m_apb,n_ap
  do ijspin=1,nspin
 #ifndef HAVE_SCALAPACK
 
-   allocate(vsqrt_chi_vsqrt(nauxil_3center,nauxil_3center))
-  
-   vsqrt_chi_vsqrt(:,:) = 0.0_dp
-   do ipole=1,wpol_static%npole_reso
-     do jbf_auxil=1,nauxil_3center
-       vsqrt_chi_vsqrt(:,jbf_auxil) = vsqrt_chi_vsqrt(:,jbf_auxil) &
-                - wpol_static%residu_left(:,ipole)                 &
-                  * wpol_static%residu_left(jbf_auxil,ipole) * 2.0_dp / wpol_static%pole(ipole)
+   allocate(vsqrt_chi_vsqrt(nauxil_2center,nauxil_2center))
+
+   !
+   ! Test if w0 is already available or if we need to calculate it first
+   if( allocated(wpol_static%w0) ) then
+
+     vsqrt_chi_vsqrt(:,:) = wpol_static%w0(:,:)
+
+   else ! w0 is not available
+
+    
+     vsqrt_chi_vsqrt(:,:) = 0.0_dp
+     do ipole=1,wpol_static%npole_reso
+       do jbf_auxil=1,nauxil_2center
+         vsqrt_chi_vsqrt(:,jbf_auxil) = vsqrt_chi_vsqrt(:,jbf_auxil) &
+                  - wpol_static%residu_left(:,ipole)                 &
+                    * wpol_static%residu_left(jbf_auxil,ipole) * 2.0_dp / wpol_static%pole(ipole)
+       enddo
      enddo
-   enddo
-  
+   endif
+    
    !
    ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
    ! Be careful in the following not to forget it
@@ -868,41 +888,72 @@ subroutine build_amb_apb_bse_auxil(nmat,nbf,c_matrix,wpol,wpol_static,m_apb,n_ap
   
    deallocate(vsqrt_chi_vsqrt)
 
+
 #else
 
-   allocate(vsqrt_chi_vsqrt_i(nauxil_3center))
-   allocate(residu_i(wpol_static%npole_reso))
-   allocate(wp0_i(ncore_W+1:nvirtual_W-1,ncore_W+1:kstate_max))
-  
-   do ibf_auxil=1,nauxil_2center
-  
-     if( iproc_ibf_auxil(ibf_auxil) == rank ) then
-       residu_i(:) = wpol_static%residu_left(ibf_auxil_l(ibf_auxil),:)
-     else
-       residu_i(:) = 0.0_dp
-     endif
-     call xsum(residu_i)
-  
-     vsqrt_chi_vsqrt_i(:) = 0.0_dp
-     do ipole=1,wpol_static%npole_reso
-       vsqrt_chi_vsqrt_i(:) = vsqrt_chi_vsqrt_i(:) &
-                - residu_i(ipole) * wpol_static%residu_left(:,ipole) * 2.0_dp / wpol_static%pole(ipole)
+   !
+   ! Test if w0 is already available or if we need to calculate it first
+   if( allocated(wpol_static%w0) ) then
+
+     allocate(wp0_i(ncore_W+1:nvirtual_W-1,ncore_W+1:kstate_max))
+     allocate(w0_local(nauxil_3center))
+
+     do ibf_auxil_global=1,nauxil_2center
+
+       do jbf_auxil=1,nauxil_3center
+         jbf_auxil_global = ibf_auxil_g(jbf_auxil)
+         w0_local(jbf_auxil) = wpol_static%w0(ibf_auxil_global,jbf_auxil_global)
+       enddo
+
+       do kstate=ncore_W+1,kstate_max
+         wp0_i(ncore_W+1:nvirtual_W-1,kstate) = MATMUL( w0_local(:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,kstate,ijspin) )
+       enddo
+       call xsum(wp0_i)
+
+       if( iproc_ibf_auxil(ibf_auxil_global) == rank ) then
+         wp0(ibf_auxil_l(ibf_auxil_global),:,:,ijspin) = wp0_i(:,:)
+       endif
+
      enddo
-     !
-     ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
-     ! Be careful in the following not to forget it
-     do kstate=ncore_W+1,kstate_max
-       wp0_i(ncore_W+1:nvirtual_W-1,kstate) = MATMUL( vsqrt_chi_vsqrt_i(:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,kstate,ijspin) )
+     deallocate(w0_local)
+
+   else ! w0 is not available
+
+     allocate(vsqrt_chi_vsqrt_i(nauxil_3center))
+     allocate(residu_i(wpol_static%npole_reso))
+     allocate(wp0_i(ncore_W+1:nvirtual_W-1,ncore_W+1:kstate_max))
+    
+     do ibf_auxil=1,nauxil_2center
+    
+       if( iproc_ibf_auxil(ibf_auxil) == rank ) then
+         residu_i(:) = wpol_static%residu_left(ibf_auxil_l(ibf_auxil),:)
+       else
+         residu_i(:) = 0.0_dp
+       endif
+       call xsum(residu_i)
+    
+       vsqrt_chi_vsqrt_i(:) = 0.0_dp
+       do ipole=1,wpol_static%npole_reso
+         vsqrt_chi_vsqrt_i(:) = vsqrt_chi_vsqrt_i(:) &
+                  - residu_i(ipole) * wpol_static%residu_left(:,ipole) * 2.0_dp / wpol_static%pole(ipole)
+       enddo
+       !
+       ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
+       ! Be careful in the following not to forget it
+       do kstate=ncore_W+1,kstate_max
+         wp0_i(ncore_W+1:nvirtual_W-1,kstate) = MATMUL( vsqrt_chi_vsqrt_i(:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,kstate,ijspin) )
+       enddo
+       call xsum(wp0_i)
+    
+       if( iproc_ibf_auxil(ibf_auxil) == rank ) then
+         wp0(ibf_auxil_l(ibf_auxil),:,:,ijspin) = wp0_i(:,:)
+       endif
+    
      enddo
-     call xsum(wp0_i)
-  
-     if( iproc_ibf_auxil(ibf_auxil) == rank ) then
-       wp0(ibf_auxil_l(ibf_auxil),:,:,ijspin) = wp0_i(:,:)
-     endif
-  
-   enddo
-  
-   deallocate(vsqrt_chi_vsqrt_i,residu_i,wp0_i)
+    
+     deallocate(vsqrt_chi_vsqrt_i,residu_i,wp0_i)
+
+   endif
 
 #endif
  enddo
@@ -1872,19 +1923,19 @@ subroutine get_energy_qp(nbf,energy,occupation,energy_qp)
  integer  :: ispin,istate
 !=====
 
+ ! If the keyword scissor is used in the input file,
+ ! then use it and ignore the ENERGY_QP file
+ if( ABS(scissor) > 1.0e-5_dp ) then
 
- call read_energy_qp(nspin,nbf,energy_qp,reading_status)
+   call issue_warning('Using a manual scissor to open up the fundamental gap')
 
- select case(reading_status)
- case(-1)
-   scissor_energy(:) = energy_qp(1,:)
-   write(stdout,'(a,2(x,f12.6))') ' Scissor operator with value [eV]:',scissor_energy(:)*Ha_eV
+   write(stdout,'(a,2(x,f12.6))') ' Scissor operator with value [eV]:',scissor*Ha_eV
    do ispin=1,nspin
      do istate=1,nbf
        if( occupation(istate,ispin) > completely_empty/spin_fact ) then
          energy_qp(istate,ispin) = energy(istate,ispin)
        else
-         energy_qp(istate,ispin) = energy(istate,ispin) + scissor_energy(ispin)
+         energy_qp(istate,ispin) = energy(istate,ispin) + scissor
        endif
      enddo
    enddo
@@ -1893,14 +1944,22 @@ subroutine get_energy_qp(nbf,energy,occupation,energy_qp)
      write(stdout,'(i5,4(2x,f16.6))') istate,energy(istate,:)*Ha_eV,energy_qp(istate,:)*Ha_eV
    enddo
    write(stdout,*)
- case(0)
-   write(stdout,'(a)') ' Reading OK'
- case(1,2)
-   write(stdout,'(a,/,a)') ' Something happened during the reading of energy_qp file',' Fill up the QP energies with KS energies'
-   energy_qp(:,:) = energy(:,:)
- case default
-   call die('reading_status BUG')
- end select
+
+ else
+
+   call read_energy_qp(nspin,nbf,energy_qp,reading_status)
+
+   select case(reading_status)
+   case(0)
+     write(stdout,'(a)') ' Reading OK'
+   case(1,2)
+     write(stdout,'(a,/,a)') ' Something happened during the reading of energy_qp file',' Fill up the QP energies with KS energies'
+     energy_qp(:,:) = energy(:,:)
+   case default
+     call die('reading_status BUG')
+   end select
+
+ endif
 
 end subroutine get_energy_qp
 

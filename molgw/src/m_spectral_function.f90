@@ -43,7 +43,12 @@ module m_spectral_function
    real(dp),allocatable :: pole(:)
    real(dp),allocatable :: residu_left(:,:)       ! first index runs on n, second index on i
 
+   !
+   ! Static W might be stored directly in the auxiliary basis
+   real(dp),allocatable :: w0(:,:)
+
  end type spectral_function
+
 
  !
  ! frozen core approximation parameters
@@ -202,7 +207,7 @@ subroutine allocate_spectral_function(nprodbasis,sf)
  write(stdout,'(a,i8)')   ' Spectral function initialized with resonant poles         : ',sf%npole_reso
 
  allocate(sf%pole(sf%npole_reso))
- call clean_allocate(' left residu',sf%residu_left,sf%nprodbasis,sf%npole_reso)
+ call clean_allocate('left residu',sf%residu_left,sf%nprodbasis,sf%npole_reso)
  
 
 end subroutine allocate_spectral_function
@@ -265,7 +270,10 @@ subroutine destroy_spectral_function(sf)
  if(allocated(sf%transition_table)) deallocate(sf%transition_table)
  if(allocated(sf%pole))             deallocate(sf%pole)
  if(allocated(sf%residu_left)) then
-   call clean_deallocate(' left residu',sf%residu_left)
+   call clean_deallocate('left residu',sf%residu_left)
+ endif
+ if(allocated(sf%w0)) then
+   call clean_deallocate('static W',sf%w0)
  endif
 
  write(stdout,'(/,a)') ' Spectral function destroyed'

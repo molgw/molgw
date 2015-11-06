@@ -28,13 +28,14 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 
 
 ../molgw: m_definitions.o m_warning.o  m_mpi.o m_elements.o m_timing.o m_memory.o m_tools.o m_atoms.o \
-         m_gos.o m_gaussian.o m_basis_set.o m_inputparam.o m_scf.o m_eri.o m_spectral_function.o m_dft_grid.o m_timedependent.o gw.o dft_xc.o \
-         libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o scf_loop.o pdbssolver1.o molgw.o
+        m_gos.o m_gaussian.o m_basis_set.o m_inputparam.o m_scf.o m_eri.o m_spectral_function.o m_dft_grid.o m_timedependent.o \
+        static_polarizability.o gw.o dft_xc.o \
+        libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o scf_loop.o pdbssolver1.o molgw.o
 	$(FC_W_OPTS) \
                         m_definitions.o m_warning.o m_elements.o m_mpi.o m_timing.o m_memory.o m_inputparam.o m_tools.o m_scf.o m_atoms.o \
                         m_gos.o m_gaussian.o m_basis_set.o m_eri.o m_dft_grid.o m_spectral_function.o \
                         libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o mp2_selfenergy.o \
-                        mp2.o gw.o m_timedependent.o dft_xc.o io.o hamiltonian.o scf_loop.o pdbssolver1.o  \
+                        mp2.o gw.o m_timedependent.o static_polarizability.o dft_xc.o io.o hamiltonian.o scf_loop.o pdbssolver1.o  \
                         molgw.o \
                         -o ../molgw \
                         $(SCALAPACK) $(LAPACK)   \
@@ -55,6 +56,10 @@ hamiltonian.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_eri.f90 hamiltonia
 
 gw.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 m_inputparam.f90 gw.f90
 	$(FC_W_OPTS) -c gw.f90 $(LIBXC_INCS)
+
+static_polarizability.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_tools.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 m_inputparam.f90 \
+        static_polarizability.f90
+	$(FC_W_OPTS) -c static_polarizability.f90 $(LIBXC_INCS)
 
 m_timedependent.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 \
         m_timedependent.f90

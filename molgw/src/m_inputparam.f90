@@ -74,6 +74,7 @@ module m_inputparam
  integer,protected                :: nomega_sigma
  real(dp),protected               :: step_sigma
  real(dp),protected               :: level_shifting_energy
+ real(dp),protected               :: scissor
 
  logical,protected                :: ignore_restart_
  logical,protected                :: ignore_bigrestart_

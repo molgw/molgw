@@ -731,6 +731,7 @@ end subroutine read_energy_qp
 
 
 !=========================================================================
+!TODO remove the subroutine
 subroutine write_small_restart(nbf,occupation,c_matrix)
  use m_definitions
  use m_mpi
@@ -774,6 +775,7 @@ end subroutine write_small_restart
 
 
 !=========================================================================
+!TODO remove the subroutine
 subroutine write_big_restart(basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
  use m_definitions
  use m_mpi
@@ -1202,6 +1204,7 @@ end subroutine read_restart
 
 
 !=========================================================================
+!TODO remove the subroutine
 subroutine read_any_restart(basis,occupation,c_matrix,energy, &
                             hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc,is_restart,is_big_restart,is_basis_restart)
  use m_definitions

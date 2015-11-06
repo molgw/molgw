@@ -20,7 +20,7 @@ module m_timing
  integer,parameter :: timing_hartree           =  8
  integer,parameter :: timing_overlap3          =  9
  integer,parameter :: timing_diago_h2p         = 10
-! integer,parameter :: timing_inversion_s2p     = 11
+ integer,parameter :: timing_pola_static       = 11
  integer,parameter :: timing_mp2_energy        = 12
  integer,parameter :: timing_mp2_self          = 13
  integer,parameter :: timing_basis_transform   = 14
@@ -153,6 +153,9 @@ subroutine output_timing()
  endif
  if( calls(timing_basis_transform) > 0 ) then
    write(stdout,'(a32,4x,f12.2,2x,i8)') 'ERI basis transform' ,timing(timing_basis_transform),calls(timing_basis_transform)
+ endif
+ if( calls(timing_pola_static) > 0 ) then
+   write(stdout,'(a30,6x,f12.2,2x,i8)') 'Static polarization',timing(timing_pola_static),calls(timing_pola_static)
  endif
  write(stdout,'(a32,4x,f12.2,2x,i8)') '    Build 2 particle H' ,timing(timing_build_h2p),calls(timing_build_h2p)
  write(stdout,'(a34,2x,f12.2,2x,i8)') '           Common part' ,timing(timing_build_common),calls(timing_build_common)

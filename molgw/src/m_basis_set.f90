@@ -78,7 +78,6 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  logical,parameter             :: normalized=.TRUE.
  integer                       :: iatom
  real(dp)                      :: x0(3)
- integer                       :: ndiffuse
 !=====
 
  basis%nbf           = 0
@@ -134,7 +133,6 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  endif
  allocate(basis%bf(basis%nbf_cart))
 
- ndiffuse=0
  jbf         = 0
  shell_index = 0
  do iatom=1,natom_basis
@@ -318,8 +316,6 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  ! Set nbf_local to nbf for safety, this value will be modified later if
  ! necessary
  basis%nbf_local = basis%nbf
-
- write(stdout,'(a50,i8)') 'Total number of diffuse functions:',ndiffuse
 
  basis%nshell = shell_index
  write(stdout,'(a50,i8)') 'Number of shells:',basis%nshell
