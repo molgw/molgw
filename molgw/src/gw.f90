@@ -71,6 +71,8 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    write(stdout,*) 'Perform a COHSEX calculation'
  case(QSCOHSEX)
    write(stdout,*) 'Perform a self-consistent COHSEX calculation'
+ case(CUSTOMIZED)
+   write(stdout,*) 'Perform a devel COHSEX calculation'
  case(GnW0)
    write(stdout,*) 'Perform an eigenvalue self-consistent GnW0 calculation'
  case(GnWn)
@@ -99,7 +101,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
 
  select case(gwmethod)
- case(GV,QS,COHSEX,GSIGMA3,QSCOHSEX,GnW0,GnWn)
+ case(GV,QS,COHSEX,GSIGMA3,QSCOHSEX,GnW0,GnWn,CUSTOMIZED)
    nomegai = 0
    allocate(omegai(-nomegai:nomegai))
    omegai(0) = 0.0_dp
@@ -162,7 +164,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  ! Which calculation type needs a complex sigma?
  !
  select case(gwmethod)
- case(COHSEX,GV,GSIGMA,G0W0,GnW0,GnWn)   ! diagonal real
+ case(COHSEX,GV,GSIGMA,G0W0,GnW0,GnWn,CUSTOMIZED)   ! diagonal real
    allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,1,nspin))
 
  case(QS,QSCOHSEX,GSIGMA3) ! matrix real
@@ -300,20 +302,42 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
        case(COHSEX)
 
          do astate=nsemin,nsemax
-             !
-             ! SEX
-             !
-             selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
-                        - bra(ipole,astate) * bra(ipole,astate) &
-                              * fact_full_i / (-wpol%pole(ipole)) * 2.0_dp
+           !
+           ! SEX
+           !
+           selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
+                      - bra(ipole,astate) * bra(ipole,astate) &
+                            * fact_full_i / (-wpol%pole(ipole)) * 2.0_dp
 
-             !
-             ! COH
-             !
-             selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
-                        - bra(ipole,astate) * bra(ipole,astate) &
-                              / wpol%pole(ipole)   ! FBFB * 0.80_dp
+           !
+           ! COH
+           !
+           selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
+                      - bra(ipole,astate) * bra(ipole,astate) &
+                            / wpol%pole(ipole)
 
+         enddo
+
+       case(CUSTOMIZED)
+
+         do astate=nsemin,nsemax
+           fact_full_a   = occupation(astate,ispin) / spin_fact
+           fact_empty_a  = (spin_fact - occupation(astate,ispin)) / spin_fact
+           !
+           ! SEX
+           !
+           selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
+                      - bra(ipole,astate) * bra(ipole,astate) &
+                            * fact_full_i / (-wpol%pole(ipole)) * 2.0_dp &
+                          *  ( 0.75_dp + fact_full_a *0.50_dp)
+
+           !
+           ! COH
+           !
+           selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
+                      - bra(ipole,astate) * bra(ipole,astate) &
+                            / wpol%pole(ipole)  &
+                          *  ( 0.75_dp + fact_full_a *0.25_dp)
          enddo
 
 
@@ -326,14 +350,14 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
              !
              selfenergy_omega(0,astate,bstate,ispin) = selfenergy_omega(0,astate,bstate,ispin) &
                         - bra(ipole,astate) * bra(ipole,bstate)                            & 
-                              * fact_full_i / (-wpol%pole(ipole))
+                              * fact_full_i / (-wpol%pole(ipole)) * 2.0_dp
 
              !
              ! COH
              !
              selfenergy_omega(0,astate,bstate,ispin) = selfenergy_omega(0,astate,bstate,ispin) &
                         - bra(ipole,astate) * bra(ipole,bstate) & 
-                              * fact_empty_i / wpol%pole(ipole)
+                              / wpol%pole(ipole)
            enddo
          enddo
 
@@ -416,7 +440,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    call write_energy_qp(nspin,basis%nbf,energy_qp_new)
 
 
- case(COHSEX) !==========================================================
+ case(COHSEX,CUSTOMIZED) !==========================================================
 
    ! Only had the diagonal calculated...
    selfenergy(:,:,:) = 0.0_dp

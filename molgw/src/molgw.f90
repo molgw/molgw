@@ -368,7 +368,7 @@ program molgw
  ! final evaluation for perturbative GW
  if( calc_type%is_gw .AND. &
        ( calc_type%gwmethod == GV .OR. calc_type%gwmethod == GSIGMA .OR.  calc_type%gwmethod == LW &
-    .OR. calc_type%gwmethod == LW2 &
+    .OR. calc_type%gwmethod == CUSTOMIZED .OR. calc_type%gwmethod == LW2 &
     .OR. calc_type%gwmethod == GSIGMA3 & ! FBFB LW testing purposes to be removed
     .OR. calc_type%gwmethod == G0W0 .OR. calc_type%gwmethod == COHSEX   &
     .OR. calc_type%gwmethod == GnW0 .OR. calc_type%gwmethod == GnWn ) ) then

@@ -483,7 +483,7 @@ subroutine write_basis_set(unitfile,basis)
  write(unitfile)  basis%nbf_cart      
  write(unitfile)  basis%nshell        
  write(unitfile)  basis%gaussian_type
- do ibf=1,basis%nbf
+ do ibf=1,basis%nbf_cart
    call write_basis_function(unitfile,basis%bf(ibf))
  enddo
  
@@ -506,8 +506,8 @@ subroutine read_basis_set(unitfile,basis)
  read(unitfile)  basis%nbf_cart
  read(unitfile)  basis%nshell
  read(unitfile)  basis%gaussian_type
- allocate(basis%bf(basis%nbf))
- do ibf=1,basis%nbf
+ allocate(basis%bf(basis%nbf_cart))
+ do ibf=1,basis%nbf_cart
    call read_basis_function(unitfile,basis%bf(ibf))
  enddo
 

@@ -24,6 +24,7 @@ module m_inputparam
  integer,parameter :: LW           = 110   ! Luttinger-Ward log term
  integer,parameter :: GSIGMA3      = 112   ! Total energy calc
  integer,parameter :: LW2          = 113   ! Luttinger-Ward log term
+ integer,parameter :: CUSTOMIZED   = 114   ! Devel version
 
  type calculation_type
    character(len=100) :: calc_name
@@ -170,6 +171,9 @@ subroutine init_calculation_type(calc_type,input_key)
    case('COHSEX')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = COHSEX
+   case('CUSTOMIZED')
+     calc_type%is_gw    =.TRUE.
+     calc_type%gwmethod = CUSTOMIZED
    case('LRGW')
      calc_type%is_gw      =.TRUE.
      calc_type%gwmethod   = G0W0
