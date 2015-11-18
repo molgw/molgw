@@ -215,10 +215,10 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
  if(is_rpa) then
   write(stdout,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
   write(stdout,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
-  write(stdout,'(/,a,f14.8)') ' RPA energy [Ha]: ',rpa_correlation
+  write(stdout,'(/,a,f16.10)') ' RPA energy [Ha]: ',rpa_correlation
  endif
 
- write(stdout,'(/,a,f14.8)') ' Lowest neutral excitation energy [eV]',MINVAL(ABS(eigenvalue(:)))*Ha_eV
+ write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy [eV]:',MINVAL(ABS(eigenvalue(:)))*Ha_eV
 
  !
  ! Calculate the optical sprectrum
@@ -238,7 +238,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
      call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf_local,desc_x,m_x,n_x,bigx,bigy,eigenvalue,wpol_out,energy_gm)
      ! This following coding of the Galitskii-Migdal correlation energy is only working with
      ! an auxiliary basis
-     if(is_rpa) write(stdout,'(a,f14.8,/)') ' Correlation energy in the Galitskii-Migdal formula',energy_gm
+     if(is_rpa) write(stdout,'(a,f16.10,/)') ' Correlation energy in the Galitskii-Migdal formula (Ha): ',energy_gm
      
      ! Add the single pole approximation for the poles that have been neglected
      ! in the diagonalization
@@ -449,11 +449,17 @@ subroutine build_a_diag_common(nmat,nbf,c_matrix,energy,wpol,a_diag)
  real(dp),allocatable :: eri_eigenstate_klmin(:,:,:,:)
  real(dp)             :: eri_eigen_klkl
  logical              :: k_is_klmin
+ real(dp),parameter   :: empirical_fact=2.0_dp
+ character(len=100)   :: ctmp
 !=====
 
  call start_clock(timing_build_common)
 
  write(stdout,'(a)') ' Build diagonal of the RPA part: Energies + Hartree'
+ if( ABS( empirical_fact - 1.0_dp ) > 1.0e-6_dp ) then
+   write(ctmp,'(a,1x,f6.2)') 'Empirical parameter',empirical_fact
+   call issue_warning(ctmp)
+ endif
 
  if( .NOT. has_auxil_basis) then
    allocate(eri_eigenstate_klmin(nbf,nbf,nbf,nspin))
@@ -490,8 +496,12 @@ subroutine build_a_diag_common(nmat,nbf,c_matrix,energy,wpol,a_diag)
    endif
 
    a_diag(t_kl) = eri_eigen_klkl * spin_fact + energy(lstate,klspin) - energy(kstate,klspin)
+   a_diag(t_kl) = a_diag(t_kl) * empirical_fact
 
  enddo 
+
+!FBFB call issue_warning('cheating here')
+!FBFB a_diag(:) = a_diag(:) * ( a_diag(:) / MINVAL(a_diag(:)) )**0.50
 
  if(allocated(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
 

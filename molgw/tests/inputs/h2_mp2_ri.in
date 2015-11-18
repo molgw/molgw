@@ -1,0 +1,18 @@
+&molgw
+ scf='lda'
+ no_4center='yes'
+ nspin=2
+ magnetization=2.0
+
+ basis='aug-cc-pVDZ'
+ auxil_basis='aug-cc-pVDZ-RI'
+ basis_path='../../basis/'
+
+ natom=2
+ alpha_mixing=0.7
+ mixing_scheme='simple'
+
+ postscf='mp2'
+/
+H   3.0 0. 0.
+H  -3.0 0. 0. 

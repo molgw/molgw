@@ -141,7 +141,7 @@ print()
 
 
 ###################################################################
-# Thrid write MOLGW basis files
+# Third write MOLGW basis files
 #
 
 newfiles = 0 

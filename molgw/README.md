@@ -2,7 +2,7 @@
 #                 MOLGW
 =========================================
 
-Many-body perturbation theory and (TD)-DFT calculations for atoms and small molecules
+Many-body perturbation theory and (TD)-DFT calculations for small to medium molecules
 
 ##Features
 - Hartree-Fock

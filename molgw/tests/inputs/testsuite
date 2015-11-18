@@ -1,0 +1,46 @@
+he.in                     ,  HF helium atom cc-pVTZ
+SCF Total Energy          , -2.8611533447      , 1.0e-8
+HOMO energy               , -24.969849         , 1.0e-5
+LUMO energy               ,  17.323932         , 1.0e-5
+
+he_auxil.in               ,  HF helium atom cc-pVTZ with RI
+SCF Total Energy          , -2.8611875289      , 1.0e-8
+HOMO energy               , -24.970619         , 1.0e-5
+LUMO energy               ,  17.314207         , 1.0e-5
+
+ar_camb3lyp_gw.in         , Range-separated hybrid argon atom with Pople 6-31*G+ and G0W0
+SCF Total Energy          ,   -527.5394816975  , 1.0e-8
+HOMO-LUMO gap             ,     15.378169      , 1.0e-5
+Galitskii-Migdal formula  ,     -0.3335895161  , 1.0e-8
+Lowest neutral excitation ,     15.692205      , 1.0e-5
+RPA Total energy          ,   -526.9633301175  , 1.0e-8
+ GW HOMO                  ,    -13.481747      , 1.0e-5
+ GW LUMO                  ,      1.896423      , 1.0e-5
+
+h2_pbe_gw.in              , PBE H2 molecule cc-pVDZ and G0W0
+SCF Total Energy          ,     -1.0727602939  , 1.0e-8
+HOMO energy               ,     -8.191536      , 1.0e-5
+LUMO energy               ,     -2.674684      , 1.0e-5
+RPA energy                ,     -0.0837682569  , 1.0e-8
+Lowest neutral excitation ,      9.996186      , 1.0e-5
+Single Excitations        ,     -0.0029125289  , 1.0e-8
+Total EXX Energy          ,     -1.0186704037  , 1.0e-8
+GW HOMO                   ,     -8.191536      , 1.0e-5
+GW LUMO                   ,     -2.674684      , 1.0e-5
+
+h2_mp2.in                 , MP2 H2 molecule aug-cc-pVDZ (spin-unrestricted)
+SCF Total Energy          ,     -1.0224203713  , 1.0e-8
+Total Spin S**2           ,     -0.0000        , 1.0e-3
+MP2 Total Energy          ,     -1.0578154072  , 1.0e-8
+
+h2_mp2_ri.in              , MP2 H2 molecule with RI and ferromagnetic configuration
+SCF Total Energy          ,     -0.9561408560  , 1.0e-8 
+Total Spin S**2           ,      2.0000        , 1.0e-3
+2-ring diagram            ,     -0.03733331    , 1.0e-7
+SOX diagram               ,      0.03732932    , 1.0e-7
+
+h2_ci.in                  , Full CI for 2 electrons applied to H2
+SCF Total Energy          ,     -1.1636125481  , 1.0e-8
+Single determinant        ,     -1.1285529198  , 1.0e-8
+CI ground-state energy    ,     -1.1646077906  , 1.0e-8
+

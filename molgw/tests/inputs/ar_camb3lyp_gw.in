@@ -1,0 +1,20 @@
+&molgw
+ scf='cam-b3lyp'
+ no_4center='yes'
+ nspin=1
+
+ gaussian_type='cart'
+ basis='6-31pGs'
+ auxil_basis='cc-pVTZ-RI'
+ basis_path='../../basis/'
+
+ natom=1
+ alpha_mixing=0.5
+ mixing_scheme='simple'
+
+ postscf='gw'
+ eta=0.005
+ selfenergy_state_max=12
+ frozencore='yes'
+/
+18   0. 0. 0.

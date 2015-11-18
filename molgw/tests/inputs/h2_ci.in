@@ -1,0 +1,15 @@
+&molgw
+ scf='pbe0'
+
+ basis='aug-cc-pVDZ'
+ basis_path='../../basis/'
+
+ natom=2
+ alpha_mixing=0.7
+ mixing_scheme='simple'
+
+ postscf='ci'
+ length_unit='bohr'
+/
+1   0.7 0. 0.
+1  -0.7 0. 0. 

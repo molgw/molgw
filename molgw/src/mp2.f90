@@ -109,9 +109,9 @@ subroutine mp2_energy_ri(basis,occupation,energy,emp2)
 
  emp2 = contrib1 + contrib2
  write(stdout,'(/,a)')       ' MP2 contributions'
- write(stdout,'(a,f14.8)')   ' 2-ring diagram  :',contrib1
- write(stdout,'(a,f14.8)')   ' SOX diagram     :',contrib2
- write(stdout,'(a,f14.8,/)') ' MP2 correlation :',emp2
+ write(stdout,'(a,f16.10)')   ' 2-ring diagram  :',contrib1
+ write(stdout,'(a,f16.10)')   ' SOX diagram     :',contrib2
+ write(stdout,'(a,f16.10,/)') ' MP2 correlation :',emp2
 
  call stop_clock(timing_mp2_energy)
 
@@ -258,9 +258,9 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
 
  emp2 = contrib1 + contrib2
  write(stdout,'(/,a)')       ' MP2 contributions'
- write(stdout,'(a,f14.8)')   ' 2-ring diagram  :',contrib1
- write(stdout,'(a,f14.8)')   ' SOX diagram     :',contrib2
- write(stdout,'(a,f14.8,/)') ' MP2 correlation :',emp2
+ write(stdout,'(a,f16.10)')   ' 2-ring diagram  :',contrib1
+ write(stdout,'(a,f16.10)')   ' SOX diagram     :',contrib2
+ write(stdout,'(a,f16.10,/)') ' MP2 correlation :',emp2
 
  call stop_clock(timing_mp2_energy)
 
@@ -463,7 +463,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
  write(stdout,*)
  write(stdout,*) 'CI matrix finally is',nconf,' x ',nconf
 
- write(stdout,*) 'Single determinant ground state energy [Ha]',hamiltonian(1,1)
+ write(stdout,'(a,f16.10)') ' Single determinant ground state energy [Ha]: ',hamiltonian(1,1)
 ! write(stdout,*) '=========== H_1e ============== '
 ! do istate=1,basis%nbf
 !   write(stdout,'(i4,2x,20(x,f12.6))') iconf,h_1e_hf(istate,1:basis%nbf)
@@ -531,7 +531,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
 
  endif ! OLD stepest descent
 
- if( nconf>500 ) then
+ if( nconf>800 ) then
    write(stdout,*) 
    write(stdout,*) 'Davidson diago'
    write(stdout,*) 'trial vectors'
@@ -627,8 +627,8 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
  write(stdout,*) 'normalization',SUM(eigenvector(:,1)**2)
  write(stdout,'(i4,2x,20(x,f7.4))') 1,eigenvector(1:min(20,nconf),1)
  write(stdout,*)
- write(stdout,'(a30,2x,f14.8)') 'CI ground-state energy [Ha]:',energy(1)
- write(stdout,'(a30,2x,f14.8)') 'correlation energy [Ha]:',energy(1)-hamiltonian(1,1)
+ write(stdout,'(a30,2x,f16.10)') 'CI ground-state energy [Ha]:',energy(1)
+ write(stdout,'(a30,2x,f16.10)') 'correlation energy [Ha]:',energy(1)-hamiltonian(1,1)
  write(stdout,*)
   
  deallocate(hamiltonian)

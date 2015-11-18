@@ -1128,8 +1128,8 @@ subroutine evaluate_s2_operator(nspin,nbf,occupation,c_matrix,s_matrix)
  enddo
 
 
- write(stdout,'(/,a,f8.4)') ' Total Spin S**2 = ',s2
- write(stdout,'(a,f8.4)')   ' Instead of        ',s2_exact
+ write(stdout,'(/,a,f8.4)') ' Total Spin S**2: ',s2
+ write(stdout,'(a,f8.4)')   ' Instead of:      ',s2_exact
 
 
 end subroutine evaluate_s2_operator

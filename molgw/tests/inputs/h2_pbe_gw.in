@@ -1,0 +1,18 @@
+&molgw
+ scf='pbe'
+ nspin=1
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+ basis_path='../../basis/'
+
+ natom=2
+ alpha_mixing=0.7
+ mixing_scheme='simple'
+
+ postscf='gw'
+ eta=0.005
+ selfenergy_state_max=5
+/
+H   0.7 0. 0.
+H  -0.7 0. 0. 

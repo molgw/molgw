@@ -1,0 +1,14 @@
+&molgw
+ scf='hf'
+ no_4center='yes'
+ nspin=1
+
+ basis='cc-pVTZ'
+ auxil_basis='cc-pVTZ-RI'
+ basis_path='../../basis/'
+
+ natom=1
+ alpha_mixing=0.5
+ mixing_scheme='simple'
+/
+He 0. 0. 0.

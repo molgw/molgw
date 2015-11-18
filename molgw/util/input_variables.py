@@ -506,6 +506,16 @@ It should be set to the lowest value possible in theory. However, in practice, a
 The default value is usually very accurate and there is no need to use a lower value. But for states apart from the band gap, a large value of eta may be beneficial \
 for stability. eta=0.01 is already much more stable. Note that for QSGW increasing eta is most often unavoidable.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='scissor'
+vl[i].family   ='post'
+vl[i].default  =0.
+vl[i].datatype ='real'
+vl[i].comment  ='Sets a rigid energy shift of the unoccupied states, so to mimick a GW calculation without actually doing it.'
+
+
 
 
 
