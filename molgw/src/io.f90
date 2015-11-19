@@ -121,9 +121,9 @@ subroutine dump_out_energy(title,nbf,nspin,occupation,energy)
  write(stdout,'(/,x,a)') TRIM(title)
 
  if(nspin==1) then
-   write(stdout,'(a)') '   #       [Ha]         [eV]      '
+   write(stdout,'(a)') '   #       (Ha)         (eV)      '
  else
-   write(stdout,'(a)') '   #              [Ha]                      [eV]      '
+   write(stdout,'(a)') '   #              (Ha)                      (eV)      '
    write(stdout,'(a)') '           spin 1       spin 2       spin 1       spin 2'
  endif
  do istate=1,MIN(nbf,MAXSIZE)
@@ -213,9 +213,9 @@ subroutine output_homolumo(nbf,nspin,occupation,energy,homo,lumo)
 
 
  write(stdout,*)
- write(stdout,'(a,2(3x,f12.6))') ' HOMO energy    [eV]:',homo(:) * Ha_eV
- write(stdout,'(a,2(3x,f12.6))') ' LUMO energy    [eV]:',lumo(:) * Ha_eV
- write(stdout,'(a,2(3x,f12.6))') ' HOMO-LUMO gap  [eV]:',( lumo(:)-homo(:) ) * Ha_eV
+ write(stdout,'(a,2(3x,f12.6))') ' HOMO energy    (eV):',homo(:) * Ha_eV
+ write(stdout,'(a,2(3x,f12.6))') ' LUMO energy    (eV):',lumo(:) * Ha_eV
+ write(stdout,'(a,2(3x,f12.6))') ' HOMO-LUMO gap  (eV):',( lumo(:)-homo(:) ) * Ha_eV
  write(stdout,*)
 
 
@@ -291,7 +291,7 @@ subroutine mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
      enddo
      proj_charge = proj_charge + occupation(istate,ispin) * SUM(proj_state_i(:))
 
-     write(stdout,'(i3,x,i5,x,20(f16.6,4x))') ispin,istate,energy(istate,ispin)*Ha_eV,&
+     write(stdout,'(i3,x,i5,x,20(f16.6,4x))') ispin,istate,energy(istate,ispin) * Ha_eV,&
           SUM(proj_state_i(:)),proj_state_i(:)
    enddo
  enddo

@@ -394,13 +394,13 @@ program molgw
 
    en%tot = en%tot + en%rpa
    if( calc_type%is_dft ) en%tot = en%tot - en%xc - en%exx_hyb + en%exx 
-   write(stdout,'(/,a,f19.10)') ' RPA Total energy [Ha]: ',en%tot
+   write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
 
    call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
    if(has_auxil_basis) call destroy_eri_3center_eigen()
 
    if( ABS(en%gw) > 1.0e-5_dp ) then
-     write(stdout,'(/,a,f19.10)') ' Galitskii-Migdal Total energy [Ha]: ',en%tot - en%rpa + en%gw
+     write(stdout,'(/,a,f19.10)') ' Galitskii-Migdal Total energy (Ha): ',en%tot - en%rpa + en%gw
    endif
 
    title='=== Self-energy === (in the eigenstate basis)'
@@ -424,12 +424,12 @@ program molgw
 
 ! This routine is slower but gives both the correlation energy and the self-energy
 !   call mp2_selfenergy(calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,hamiltonian_exx,en%mp2)
-   write(stdout,'(a,2x,f19.10)') ' MP2 Energy       [Ha]:',en%mp2
+   write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
    write(stdout,*) 
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%mp2
 
-   write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy [Ha]:',en%tot
-   write(stdout,'(a,2x,f19.10)') ' SE+MP2  Total En [Ha]:',en%tot+en%se
+   write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en%tot
+   write(stdout,'(a,2x,f19.10)') ' SE+MP2  Total En (Ha):',en%tot+en%se
 
    title='=== Self-energy === (in the eigenstate basis)'
    call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)

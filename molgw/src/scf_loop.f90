@@ -166,7 +166,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
      if( ABS(en%rpa) > 1.e-6_dp) then
        en%tot = en%tot + en%rpa
-       write(stdout,'(/,a,f19.10)') ' RPA Total energy [Ha]: ',en%tot
+       write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
      endif
 
      exchange_m_vxc_diag(:,:)=0.0_dp
@@ -191,10 +191,10 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
      call mp2_selfenergy(calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
 
-     write(stdout,'(a,2x,f19.10)') ' MP2 Energy       [Ha]:',en%mp2
+     write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
      write(stdout,*) 
      en%tot = en%tot + en%mp2
-     write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy [Ha]:',en%tot
+     write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en%tot
 
      matrix_tmp(:,:,:) = alpha_mixing * matrix_tmp(:,:,:) + (1.0_dp-alpha_mixing) * self_energy_old(:,:,:)
      self_energy_old(:,:,:) = matrix_tmp(:,:,:)
@@ -291,18 +291,18 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    !
    ! Output the total energy and its components
    write(stdout,*)
-   write(stdout,'(a25,x,f19.10)') 'Nucleus-Nucleus [Ha]:',en%nuc_nuc
-   write(stdout,'(a25,x,f19.10)') 'Kinetic Energy  [Ha]:',en%kin
-   write(stdout,'(a25,x,f19.10)') 'Nucleus Energy  [Ha]:',en%nuc
-   write(stdout,'(a25,x,f19.10)') 'Hartree Energy  [Ha]:',en%hart
+   write(stdout,'(a25,x,f19.10)') 'Nucleus-Nucleus (Ha):',en%nuc_nuc
+   write(stdout,'(a25,x,f19.10)') 'Kinetic Energy  (Ha):',en%kin
+   write(stdout,'(a25,x,f19.10)') 'Nucleus Energy  (Ha):',en%nuc
+   write(stdout,'(a25,x,f19.10)') 'Hartree Energy  (Ha):',en%hart
    if(calc_type%need_exchange) then
-     write(stdout,'(a25,x,f19.10)') 'Exchange Energy [Ha]:',en%exx_hyb
+     write(stdout,'(a25,x,f19.10)') 'Exchange Energy (Ha):',en%exx_hyb
    endif
    if( calc_type%is_dft ) then
-     write(stdout,'(a25,x,f19.10)') 'XC Energy       [Ha]:',en%xc
+     write(stdout,'(a25,x,f19.10)') 'XC Energy       (Ha):',en%xc
    endif
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx_hyb + en%xc
-   write(stdout,'(/,a25,x,f19.10,/)') 'Total Energy    [Ha]:',en%tot
+   write(stdout,'(/,a25,x,f19.10,/)') 'Total Energy    (Ha):',en%tot
 
    !
    ! Store the history of residuals
@@ -347,9 +347,9 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
  endif
 
- write(stdout,'(/,/,a25,x,f19.10,/)') 'SCF Total Energy [Ha]:',en%tot
- write(stdout,'(a25,x,f19.10)')       '      EXX Energy [Ha]:',en%exx
- write(stdout,'(a25,x,f19.10)')       'Total EXX Energy [Ha]:',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
+ write(stdout,'(/,/,a25,x,f19.10,/)') 'SCF Total Energy (Ha):',en%tot
+ write(stdout,'(a25,x,f19.10)')       '      EXX Energy (Ha):',en%exx
+ write(stdout,'(a25,x,f19.10)')       'Total EXX Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
 
  !
  ! Single excitation term
@@ -358,8 +358,8 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  matrix_tmp(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
  ! And pass it to single_excitations
  call single_excitations(basis%nbf,energy,occupation,c_matrix,matrix_tmp)
- write(stdout,'(a25,x,f19.10)') 'Single Excitations [Ha]:',en%se
- write(stdout,'(a25,x,f19.10)')     'Est. HF Energy [Ha]:',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
+ write(stdout,'(a25,x,f19.10)') 'Single Excitations (Ha):',en%se
+ write(stdout,'(a25,x,f19.10)')     'Est. HF Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
 
  ! A dirty section for the Luttinger-Ward functional
 #if 1

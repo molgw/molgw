@@ -463,7 +463,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
  write(stdout,*)
  write(stdout,*) 'CI matrix finally is',nconf,' x ',nconf
 
- write(stdout,'(a,f16.10)') ' Single determinant ground state energy [Ha]: ',hamiltonian(1,1)
+ write(stdout,'(a,f16.10)') ' Single determinant ground state energy (Ha): ',hamiltonian(1,1)
 ! write(stdout,*) '=========== H_1e ============== '
 ! do istate=1,basis%nbf
 !   write(stdout,'(i4,2x,20(x,f12.6))') iconf,h_1e_hf(istate,1:basis%nbf)
@@ -627,8 +627,8 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
  write(stdout,*) 'normalization',SUM(eigenvector(:,1)**2)
  write(stdout,'(i4,2x,20(x,f7.4))') 1,eigenvector(1:min(20,nconf),1)
  write(stdout,*)
- write(stdout,'(a30,2x,f16.10)') 'CI ground-state energy [Ha]:',energy(1)
- write(stdout,'(a30,2x,f16.10)') 'correlation energy [Ha]:',energy(1)-hamiltonian(1,1)
+ write(stdout,'(a30,2x,f16.10)') 'CI ground-state energy (Ha):',energy(1)
+ write(stdout,'(a30,2x,f16.10)') 'correlation energy (Ha):',energy(1)-hamiltonian(1,1)
  write(stdout,*)
   
  deallocate(hamiltonian)

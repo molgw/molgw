@@ -422,7 +422,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
    selfenergy(:,:,:) = selfenergy_omega(0,:,:,:)
    
-   write(stdout,'(/,a)') ' Gv     Eigenvalues [eV]'
+   write(stdout,'(/,a)') ' Gv     Eigenvalues (eV)'
    if(nspin==1) then
      write(stdout,*) '  #          E0        SigX-Vxc      SigC          Z         COHSEX'
    else
@@ -449,7 +449,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
      selfenergy(astate,astate,:) = selfenergy_omega(0,astate,1,:)
    end forall
    
-   write(stdout,'(/,a)') ' COHSEX Eigenvalues [eV]'
+   write(stdout,'(/,a)') ' COHSEX Eigenvalues (eV)'
    if(nspin==1) then
      write(stdout,*) '  #          E0        SigX-Vxc      SigC          Z         COHSEX'
    else
@@ -496,7 +496,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
      selfenergy(astate,astate,:) = selfenergy_omega(0,astate,1,:)
    end forall
 
-   write(stdout,'(/,a)') ' G0W0 Eigenvalues [eV]'
+   write(stdout,'(/,a)') ' G0W0 Eigenvalues (eV)'
    if(nspin==1) then
      write(stdout,'(a)') '   #          E0        SigX-Vxc      SigC          Z         G0W0_Z         G0W0_qp'
    else
@@ -561,9 +561,9 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
 
    if( gwmethod==GnW0) then
-     write(stdout,'(/,a)') ' GnW0 Eigenvalues [eV]'
+     write(stdout,'(/,a)') ' GnW0 Eigenvalues (eV)'
    else
-     write(stdout,'(/,a)') ' GnWn Eigenvalues [eV]'
+     write(stdout,'(/,a)') ' GnWn Eigenvalues (eV)'
    endif
    if(nspin==1) then
      write(stdout,'(a)') '  #          E0        SigX-Vxc      SigC          Z          GW(n-1)       GW(n)'

@@ -310,7 +310,7 @@ subroutine write_spectral_function(sf)
      call die('error when reading manual_poles')
    endif
    close(tmpfile)
-   write(msg,'(a,f10.4)') 'Ouput of the spectral function with an energy cutoff [eV] ',ecut_pole*Ha_eV
+   write(msg,'(a,f10.4)') 'Ouput of the spectral function with an energy cutoff (eV) ',ecut_pole*Ha_eV
    call issue_warning(msg)
  else
   ecut_pole = HUGE(1.0_dp)
@@ -337,7 +337,7 @@ subroutine write_spectral_function(sf)
    if(.NOT. file_exists) then
      write(wfile) calc_type%postscf_name
    else
-     write(msg,'(a,a,f10.4)') TRIM(calc_type%postscf_name),' with cutoff above energy [eV] ',ecut_pole*Ha_eV
+     write(msg,'(a,a,f10.4)') TRIM(calc_type%postscf_name),' with cutoff above energy (eV) ',ecut_pole*Ha_eV
      write(wfile) msg
    endif
    write(wfile) sf%nprodbasis
