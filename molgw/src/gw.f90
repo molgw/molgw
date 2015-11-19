@@ -539,6 +539,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    do istate=1,basis%nbf
      if( ANY(occupation(istate,:) > completely_empty) ) homo = istate
    enddo
+   write(stdout,*)
    if( homo >= nsemin .AND. homo <= nsemax ) then
      write(stdout,'(a,2(2x,f12.6))') ' GW HOMO (eV):',energy_qp(homo,:)*Ha_eV
    endif

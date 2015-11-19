@@ -1,0 +1,23 @@
+&molgw
+
+ scf='b3lyp'
+ integral_quality='medium'
+ grid_quality='medium'
+
+ frozencore='yes'
+
+ postscf='gw'
+ print_w='yes'
+ eta=0.005
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+ no_4center='yes'
+ basis_path='../../basis/'
+
+ natom=4
+/
+H   0.000000   0.934473    -0.588078
+H   0.000000   -0.934473   -0.588078
+C   0.000000   0.000000    0.000000
+O   0.000000   0.000000    1.221104

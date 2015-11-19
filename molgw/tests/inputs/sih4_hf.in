@@ -1,0 +1,17 @@
+&molgw
+ basis_path='../../basis/'
+ scf='hf'
+
+ postscf='td'
+ basis='aug-cc-pVDZ'
+ auxil_basis='aug-cc-pVDZ-RI'
+ no_4center='yes'
+ frozencore='yes'
+
+ natom=5
+/
+14           .000000     .000000     .000000
+1            .856135     .856135     .856135
+1           -.856135    -.856135     .856135
+1           -.856135     .856135    -.856135
+1            .856135    -.856135    -.856135

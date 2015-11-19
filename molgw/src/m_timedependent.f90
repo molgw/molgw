@@ -215,10 +215,10 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
  if(is_rpa) then
   write(stdout,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
   write(stdout,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
-  write(stdout,'(/,a,f16.10)') ' RPA energy [Ha]: ',rpa_correlation
+  write(stdout,'(/,a,f16.10)') ' RPA energy (Ha): ',rpa_correlation
  endif
 
- write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy [eV]:',MINVAL(ABS(eigenvalue(:)))*Ha_eV
+ write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy (eV):',MINVAL(ABS(eigenvalue(:)))*Ha_eV
 
  !
  ! Calculate the optical sprectrum
@@ -1225,7 +1225,7 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eige
  integer                            :: iomega,idir,jdir
  integer,parameter                  :: nomega=600
  complex(dp)                        :: omega(nomega)
- real(dp)                           :: coeff
+ real(dp)                           :: coeff,trace
  real(dp)                           :: dynamical_pol(nomega,3,3),photoabsorp_cross(nomega,3,3)
  real(dp)                           :: static_polarizability(3,3)
  real(dp)                           :: oscillator_strength,trk_sumrule,mean_excitation
@@ -1375,7 +1375,7 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eige
  enddo
 
 
- write(stdout,'(/,a)') ' Excitation energies [eV]     Oscil. strengths   [Symmetry] '  
+ write(stdout,'(/,a)') ' Excitation energies (eV)     Oscil. strengths   [Symmetry] '  
  trk_sumrule=0.0_dp
  mean_excitation=0.0_dp
  do t_kl_global=1,nmat
@@ -1436,7 +1436,8 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eige
        end select
      endif
 
-     write(stdout,'(i4,2(f18.8,2x),5x,a32)') t_kl_global,eigenvalue(t_kl_global)*Ha_eV,oscillator_strength,symsymbol
+     write(stdout,'(1x,i4.4,a3,2(f18.8,2x),5x,a32)') t_kl_global,' : ', &
+                  eigenvalue(t_kl_global)*Ha_eV,oscillator_strength,symsymbol
 
      !
      ! Output the transition coefficients
@@ -1452,7 +1453,7 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eige
          endif
        endif
        call xsum(coeff)
-       if( ABS(coeff) > 0.1_dp ) write(stdout,'(8x,i4,a,i4,x,f12.5)') istate,' -> ',jstate,coeff
+       if( ABS(coeff) > 0.1_dp ) write(stdout,'(8x,i4,a,i4,1x,f12.5)') istate,' -> ',jstate,coeff
 
        coeff = 0.0_dp
        if( t_ij /= 0 .AND. t_kl /=0 ) then
@@ -1461,7 +1462,7 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eige
          endif
        endif
        call xsum(coeff)
-       if( ABS(coeff) > 0.1_dp ) write(stdout,'(8x,i4,a,i4,x,f12.5)') istate,' <- ',jstate,coeff
+       if( ABS(coeff) > 0.1_dp ) write(stdout,'(8x,i4,a,i4,1x,f12.5)') istate,' <- ',jstate,coeff
      enddo
 
 
@@ -1473,18 +1474,19 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eige
 
  if( is_triplet ) return
 
- write(stdout,*)
- write(stdout,*) 'TRK SUM RULE: the two following numbers should compare well'
- write(stdout,*) 'Sum over oscillator strengths',trk_sumrule
- write(stdout,*) 'Number of valence electrons  ',SUM( occupation(ncore_W+1:,:) )
+ write(stdout,'(/,a)')     ' TRK sum rule: the two following numbers should compare well'
+ write(stdout,'(a,f12.6)') ' Sum over oscillator strengths: ',trk_sumrule
+ write(stdout,'(a,f12.6)') '   Number of valence electrons: ',SUM( occupation(ncore_W+1:,:) )
 
- write(stdout,*)
- write(stdout,*) 'Mean excitation energy [eV]:',EXP( mean_excitation / trk_sumrule ) * Ha_eV
+ write(stdout,'(/,a,f12.6)') ' Mean excitation energy (eV): ',EXP( mean_excitation / trk_sumrule ) * Ha_eV
 
- write(stdout,'(/,a)') ' Static dipole polarizability'
+ write(stdout,'(/,a)') ' Static dipole polarizability:'
+ trace = 0.0_dp
  do idir=1,3
    write(stdout,'(3(4x,f12.6))') static_polarizability(idir,:)
+   trace = trace + static_polarizability(idir,idir) / 3.0_dp
  enddo
+ write(stdout,'(a,f12.6)') ' Static dipole polarizability trace: ',trace
 
  if( is_iomaster ) then
 
@@ -1939,7 +1941,7 @@ subroutine get_energy_qp(nbf,energy,occupation,energy_qp)
 
    call issue_warning('Using a manual scissor to open up the fundamental gap')
 
-   write(stdout,'(a,2(x,f12.6))') ' Scissor operator with value [eV]:',scissor*Ha_eV
+   write(stdout,'(a,2(1x,f12.6))') ' Scissor operator with value (eV):',scissor*Ha_eV
    do ispin=1,nspin
      do istate=1,nbf
        if( occupation(istate,ispin) > completely_empty/spin_fact ) then

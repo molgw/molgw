@@ -57,7 +57,6 @@ Example input files can be found in `~molgw/tests/`
 
 ##To be done
 - pseudopotentials (e.g. ECP or Goedecker flavor)
-- parallelization!
 
 ##Known issues
 - QPscGW scf loop is quite unstable for large basis sets, use a low alpha (<= 0.50), use a large eta

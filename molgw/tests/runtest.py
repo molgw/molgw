@@ -12,17 +12,27 @@ start_time = time.time()
 keeptmp = False
 
 ###################################
-def clean_run(inp,out):
+def clean_run(inp,out,restart):
   shutil.copy('inputs/'+inp,tmpfolder+'/'+inp)
   os.chdir(tmpfolder)
+  if not restart:
+    try:
+      os.remove('RESTART')
+    except FileNotFoundError:
+      pass
+    try:
+      os.remove('ENERGY_QP')
+    except FileNotFoundError:
+      pass
+    try:
+      os.remove('SCREENED_COULOMB')
+    except FileNotFoundError:
+      pass
   fout = open(out, 'w')
-  try:
-    os.remove('RESTART')
-  except FileNotFoundError:
-    pass
   subprocess.call(['../../molgw',inp],stdout=fout)
   fout.close()
   os.chdir('..')
+
 
 ###################################
 def check_output(out,testinfo):
@@ -31,13 +41,15 @@ def check_output(out,testinfo):
     tested += 1
     key = testinfo[itest][0].strip()
     ref = float(testinfo[itest][1])
-    tol = float(testinfo[itest][2])
+    pos = int(  testinfo[itest][2])
+    tol = float(testinfo[itest][3])
 
     for line in reversed(open(tmpfolder+'/'+out,'r').readlines()):
       if key in line:
-        parsing=line.split(':')
+        parsing  = line.split(':')
+        parsing2 = parsing[1].split()
 
-        if abs( float(parsing[1]) - ref ) < tol:
+        if abs( float(parsing2[pos]) - ref ) < tol:
           print(key.rjust(30)+'[ \033[92m\033[1mOK\033[0m ]'.rjust(30))
           success += 1
           break
@@ -67,20 +79,32 @@ print('Starting MOLGW test suite\n')
 ###################################
 ninput = 0
 input_files = []
-test_names = []
-testinfo = []
+restarting  = []
+test_names  = []
+testinfo    = []
 
 ftestsuite = open('inputs/testsuite','r')
 for line in ftestsuite:
-  parsing=line.split(',')
+  # Removing the comments
+  parsing0 = line.split('#')
+  # Find the number of comas
+  parsing  = parsing0[0].split(',')
 
   if len(parsing) == 2:
     ninput+=1
     input_files.append(parsing[0].strip())
     test_names.append(parsing[1].strip())
     testinfo.append([])
+    restarting.append(False)
 
-  elif len(parsing) == 3:
+  if len(parsing) == 3:
+    ninput+=1
+    input_files.append(parsing[0].strip())
+    test_names.append(parsing[1].strip())
+    testinfo.append([])
+    restarting.append(True)
+
+  elif len(parsing) == 4:
     testinfo[ninput-1].append(parsing)
 
 ftestsuite.close()
@@ -103,12 +127,14 @@ tested = 0
 
 for iinput in range(0,ninput):
 
-  inp = input_files[iinput]
-  out = input_files[iinput]+'_out'
+  inp     = input_files[iinput]
+  out     = input_files[iinput]+'_out'
+  restart = restarting[iinput]
+
   print('\nRunning test file: '+inp)
   print(test_names[iinput])
   
-  clean_run(inp,out)
+  clean_run(inp,out,restart)
 
   check_output(out,testinfo[iinput])
 

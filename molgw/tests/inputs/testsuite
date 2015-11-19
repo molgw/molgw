@@ -1,46 +1,115 @@
+#####################################################
+#
+# Database for the MOLGW test suite 
+#
+# There are two types of statements
+# 1. Input line comprises 2 or 3 commas: 
+#    a. Input file name
+#    b. Comment to be written in the output
+#    c. (Optional) Restart from a previous calculation
+#
+# 2. Test line comprises 4 commas: 
+#    a. Text key to search in the out file
+#    b. Reference value
+#    c. Position after the text key and a colon delimiter ':'
+#    d. Tolerance on the value
+#
+#
+#####################################################
+
 he.in                     ,  HF helium atom cc-pVTZ
-SCF Total Energy          , -2.8611533447      , 1.0e-8
-HOMO energy               , -24.969849         , 1.0e-5
-LUMO energy               ,  17.323932         , 1.0e-5
+SCF Total Energy          , -2.8611533447      , 0 , 1.0e-8
+HOMO energy               , -24.969849         , 0 , 1.0e-5
+LUMO energy               ,  17.323932         , 0 , 1.0e-5
 
 he_auxil.in               ,  HF helium atom cc-pVTZ with RI
-SCF Total Energy          , -2.8611875289      , 1.0e-8
-HOMO energy               , -24.970619         , 1.0e-5
-LUMO energy               ,  17.314207         , 1.0e-5
+SCF Total Energy          , -2.8611875289      , 0 , 1.0e-8
+HOMO energy               , -24.970619         , 0 , 1.0e-5
+LUMO energy               ,  17.314207         , 0 , 1.0e-5
 
 ar_camb3lyp_gw.in         , Range-separated hybrid argon atom with Pople 6-31*G+ and G0W0
-SCF Total Energy          ,   -527.5394816975  , 1.0e-8
-HOMO-LUMO gap             ,     15.378169      , 1.0e-5
-Galitskii-Migdal formula  ,     -0.3335895161  , 1.0e-8
-Lowest neutral excitation ,     15.692205      , 1.0e-5
-RPA Total energy          ,   -526.9633301175  , 1.0e-8
- GW HOMO                  ,    -13.481747      , 1.0e-5
- GW LUMO                  ,      1.896423      , 1.0e-5
+SCF Total Energy          ,   -527.5394816975  , 0 , 1.0e-8
+HOMO-LUMO gap             ,     15.378169      , 0 , 1.0e-5
+Galitskii-Migdal formula  ,     -0.3335895161  , 0 , 1.0e-8
+Lowest neutral excitation ,     15.692205      , 0 , 1.0e-5
+RPA Total energy          ,   -526.9633301175  , 0 , 1.0e-8
+ GW HOMO                  ,    -13.481747      , 0 , 1.0e-5
+ GW LUMO                  ,      1.896423      , 0 , 1.0e-5
 
 h2_pbe_gw.in              , PBE H2 molecule cc-pVDZ and G0W0
-SCF Total Energy          ,     -1.0727602939  , 1.0e-8
-HOMO energy               ,     -8.191536      , 1.0e-5
-LUMO energy               ,     -2.674684      , 1.0e-5
-RPA energy                ,     -0.0837682569  , 1.0e-8
-Lowest neutral excitation ,      9.996186      , 1.0e-5
-Single Excitations        ,     -0.0029125289  , 1.0e-8
-Total EXX Energy          ,     -1.0186704037  , 1.0e-8
-GW HOMO                   ,     -8.191536      , 1.0e-5
-GW LUMO                   ,     -2.674684      , 1.0e-5
+SCF Total Energy          ,     -1.0727602939  , 0 , 1.0e-8
+HOMO energy               ,     -8.191536      , 0 , 1.0e-5
+LUMO energy               ,     -2.674684      , 0 , 1.0e-5
+RPA energy                ,     -0.0837682569  , 0 , 1.0e-8
+Lowest neutral excitation ,      9.996186      , 0 , 1.0e-5
+Single Excitations        ,     -0.0029125289  , 0 , 1.0e-8
+Total EXX Energy          ,     -1.0186704037  , 0 , 1.0e-8
+GW HOMO                   ,     -8.191536      , 0 , 1.0e-5
+GW LUMO                   ,     -2.674684      , 0 , 1.0e-5
 
 h2_mp2.in                 , MP2 H2 molecule aug-cc-pVDZ (spin-unrestricted)
-SCF Total Energy          ,     -1.0224203713  , 1.0e-8
-Total Spin S**2           ,     -0.0000        , 1.0e-3
-MP2 Total Energy          ,     -1.0578154072  , 1.0e-8
+SCF Total Energy          ,     -1.0224203713  , 0 , 1.0e-8
+Total Spin S**2           ,     -0.0000        , 0 , 1.0e-3
+MP2 Total Energy          ,     -1.0578154072  , 0 , 1.0e-8
 
 h2_mp2_ri.in              , MP2 H2 molecule with RI and ferromagnetic configuration
-SCF Total Energy          ,     -0.9561408560  , 1.0e-8 
-Total Spin S**2           ,      2.0000        , 1.0e-3
-2-ring diagram            ,     -0.03733331    , 1.0e-7
-SOX diagram               ,      0.03732932    , 1.0e-7
+SCF Total Energy          ,     -0.9561408560  , 0 , 1.0e-8 
+Total Spin S**2           ,      2.0000        , 0 , 1.0e-3
+2-ring diagram            ,     -0.0373333132  , 0 , 1.0e-7
+SOX diagram               ,      0.0373293160  , 0 , 1.0e-7
 
 h2_ci.in                  , Full CI for 2 electrons applied to H2
-SCF Total Energy          ,     -1.1636125481  , 1.0e-8
-Single determinant        ,     -1.1285529198  , 1.0e-8
-CI ground-state energy    ,     -1.1646077906  , 1.0e-8
+SCF Total Energy          ,     -1.1636125481  , 0 , 1.0e-8
+Single determinant        ,     -1.1285529198  , 0 , 1.0e-8
+CI ground-state energy    ,     -1.1646077906  , 0 , 1.0e-8
+
+sih4_hf.in                , TDHF SiH4 aug-cc-pVDZ
+SCF Total Energy          ,   -291.2427972542   , 0 , 1.0e-8
+0001 :                    ,      9.81661606     , 0 , 1.0e-5
+0001 :                    ,      0.21703439     , 1 , 1.0e-5
+0010 :                    ,     11.17716219     , 0 , 1.0e-5
+0010 :                    ,      0.39234144     , 1 , 1.0e-5
+Sum over oscillator strengths ,  7.866846       , 0 , 1.0e-5
+polarizability trace      ,     30.035186       , 0 , 1.0e-5
+Mean excitation energy    ,     15.838753       , 0 , 1.0e-5
+
+sih4_hf_tda.in            , TDHF SiH4 aug-cc-pVDZ with TDA
+SCF Total Energy          ,   -291.2427972542   , 0 , 1.0e-8
+0001 :                    ,      9.82654263     , 0 , 1.0e-5
+0001 :                    ,      0.22685574     , 1 , 1.0e-5
+0010 :                    ,     11.2463169      , 0 , 1.0e-5
+0010 :                    ,      0.40996808     , 1 , 1.0e-5
+
+ch4_bse_scissor.in        , BSE CH4 aug-cc-pVDZ without GW (scissor)
+XC Energy                 ,     -3.5802787390   , 0 , 1.0e-8
+HOMO energy               ,    -12.451955       , 0 , 1.0e-5
+LUMO energy               ,      0.291176       , 0 , 1.0e-5
+Scissor operator          ,      1.360569       , 0 , 1.0e-5
+0001 :                    ,      9.05385541     , 0 , 1.0e-5
+0001 :                    ,      0.13287249     , 1 , 1.0e-5
+0007 :                    ,     10.69387325     , 0 , 1.0e-5
+0007 :                    ,      0.00000001     , 1 , 1.0e-5
+Sum over oscillator strengths ,  4.642395       , 0 , 1.0e-5
+polarizability trace      ,     17.627303       , 0 , 1.0e-5
+Mean excitation energy    ,     14.812805       , 0 , 1.0e-5
+
+ch2o_gw.in                , GW@B3LYP on formaldehyde to prepare BSE
+SCF Total Energy          ,   -114.5110479413   , 0 , 1.0e-8
+Est. HF Energy            ,   -113.8786939690   , 0 , 1.0e-8
+Galitskii-Migdal formula  ,     -0.7854236782   , 0 , 1.0e-8
+RPA Total energy          ,   -114.3237183663   , 0 , 1.0e-5
+GW HOMO                   ,     -7.276598       , 0 , 1.0e-5
+GW LUMO                   ,     -1.305370       , 0 , 1.0e-5
+
+ch2o_bse.in               , BSE on formaldehyde , Restart
+Lowest neutral excitation ,      3.388966       , 0 , 1.0e-5
+0002 :                    ,      7.92589187     , 0 , 1.0e-5   
+0002 :                    ,      0.11512207     , 1 , 1.0e-5
+Sum over oscillator strengths , 12.069343       , 0 , 1.0e-5
+polarizability trace      ,   13.248035         , 0 , 1.0e-5
+
+
+
+
+
 
