@@ -17,7 +17,7 @@
 #
 #####################################################
 
-he.in                     ,  HF helium atom cc-pVTZ
+he.in                     ,  HF helium atom cc-pVTZ without RI
 SCF Total Energy          , -2.8611533447      , 0 , 1.0e-8
 HOMO energy               , -24.969849         , 0 , 1.0e-5
 LUMO energy               ,  17.323932         , 0 , 1.0e-5
@@ -27,14 +27,23 @@ SCF Total Energy          , -2.8611875289      , 0 , 1.0e-8
 HOMO energy               , -24.970619         , 0 , 1.0e-5
 LUMO energy               ,  17.314207         , 0 , 1.0e-5
 
-ar_camb3lyp_gw.in         , Range-separated hybrid argon atom with Pople 6-31*G+ and G0W0
+co2.in                    , GW@LDA CO2 without RI with 6-31G
+Kinetic Energy            ,    186.4258077334  , 0 , 1.0e-8
+Nucleus Energy            ,   -548.2550190442  , 0 , 1.0e-8
+Hartree Energy            ,    142.7897019232  , 0 , 1.0e-8
+Lowest neutral excitation ,      2.531059      , 0 , 1.0e-5
+RPA Total energy          ,   -187.8892338918  , 0 , 1.0e-8
+GW HOMO                   ,    -11.039136      , 0 , 1.0e-5
+GW LUMO                   ,     -1.357914      , 0 , 1.0e-5
+
+ar_camb3lyp_gw.in         , Range-separated hybrid argon atom with 6-31*G+ and G0W0
 SCF Total Energy          ,   -527.5394816975  , 0 , 1.0e-8
 HOMO-LUMO gap             ,     15.378169      , 0 , 1.0e-5
 Galitskii-Migdal formula  ,     -0.3335895161  , 0 , 1.0e-8
 Lowest neutral excitation ,     15.692205      , 0 , 1.0e-5
 RPA Total energy          ,   -526.9633301175  , 0 , 1.0e-8
- GW HOMO                  ,    -13.481747      , 0 , 1.0e-5
- GW LUMO                  ,      1.896423      , 0 , 1.0e-5
+ GW HOMO                  ,    -15.012653      , 0 , 1.0e-5
+ GW LUMO                  ,      3.143477      , 0 , 1.0e-5
 
 h2_pbe_gw.in              , PBE H2 molecule cc-pVDZ and G0W0
 SCF Total Energy          ,     -1.0727602939  , 0 , 1.0e-8
@@ -44,8 +53,8 @@ RPA energy                ,     -0.0837682569  , 0 , 1.0e-8
 Lowest neutral excitation ,      9.996186      , 0 , 1.0e-5
 Single Excitations        ,     -0.0029125289  , 0 , 1.0e-8
 Total EXX Energy          ,     -1.0186704037  , 0 , 1.0e-8
-GW HOMO                   ,     -8.191536      , 0 , 1.0e-5
-GW LUMO                   ,     -2.674684      , 0 , 1.0e-5
+GW HOMO                   ,    -12.854961      , 0 , 1.0e-5
+GW LUMO                   ,      1.475164      , 0 , 1.0e-5
 
 h2_mp2.in                 , MP2 H2 molecule aug-cc-pVDZ (spin-unrestricted)
 SCF Total Energy          ,     -1.0224203713  , 0 , 1.0e-8
@@ -98,8 +107,8 @@ SCF Total Energy          ,   -114.5110479413   , 0 , 1.0e-8
 Est. HF Energy            ,   -113.8786939690   , 0 , 1.0e-8
 Galitskii-Migdal formula  ,     -0.7854236782   , 0 , 1.0e-8
 RPA Total energy          ,   -114.3237183663   , 0 , 1.0e-5
-GW HOMO                   ,     -7.276598       , 0 , 1.0e-5
-GW LUMO                   ,     -1.305370       , 0 , 1.0e-5
+GW HOMO                   ,     -9.921468       , 0 , 1.0e-5
+GW LUMO                   ,      2.494863       , 0 , 1.0e-5
 
 ch2o_bse.in               , BSE on formaldehyde , Restart
 Lowest neutral excitation ,      3.388966       , 0 , 1.0e-5

@@ -2009,9 +2009,6 @@ subroutine chi_to_vchiv(nbf,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol)
  if(has_auxil_basis) then
    call die('you should not be here')
  endif
-#ifdef HAVE_SCALAPACK
- call die('not compatible with SCALAPACK')
-#endif
 
  allocate(eri_eigenstate_klmin(nbf,nbf,nbf,nspin))
  ! Set this to zero and then enforce the calculation of the first array of Coulomb integrals

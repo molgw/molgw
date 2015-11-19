@@ -1,0 +1,15 @@
+&molgw
+ scf='lda'
+
+ postscf='gw'
+ frozencore='yes'
+
+ basis='6-31G'
+ gaussian_type='cart'
+ basis_path='/home/bruneval/devel/molgw/basis'
+
+ natom=3
+/
+O    0.0000   -0.6673    0.0000
+O    2.3010   -0.6673    0.0000
+C    1.1505    0.0000    0.0000

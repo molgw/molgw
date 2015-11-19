@@ -541,10 +541,10 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    enddo
    write(stdout,*)
    if( homo >= nsemin .AND. homo <= nsemax ) then
-     write(stdout,'(a,2(2x,f12.6))') ' GW HOMO (eV):',energy_qp(homo,:)*Ha_eV
+     write(stdout,'(a,2(2x,f12.6))') ' GW HOMO (eV):',energy_qp_new(homo,:)*Ha_eV
    endif
    if( homo+1 >= nsemin .AND. homo+1 <= nsemax ) then
-     write(stdout,'(a,2(2x,f12.6))') ' GW LUMO (eV):',energy_qp(homo+1,:)*Ha_eV
+     write(stdout,'(a,2(2x,f12.6))') ' GW LUMO (eV):',energy_qp_new(homo+1,:)*Ha_eV
    endif
 
    call write_energy_qp(nspin,basis%nbf,energy_qp_new)

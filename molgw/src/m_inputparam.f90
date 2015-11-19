@@ -676,6 +676,10 @@ subroutine read_inputfile_namelist()
    call die('Please provide MOLGW with an auxiliary basis set')
  endif
 
+ if( .NOT. has_auxil_basis .AND. nproc > 1 ) then
+   write(stdout,*) 'Parallelization is not available without an auxiliary basis'
+   call die('Please run with one CPU only or provide MOLGW with an auxiliary basis')
+ endif
 
  !
  ! Read the atom positions
