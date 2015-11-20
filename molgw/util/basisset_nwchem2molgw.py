@@ -138,6 +138,14 @@ print(str(len(basis_set)) + ' elements found')
 print()
 
 
+###################################################################
+# Clean the angmom list to transform '10', '10' into '0' and then '1'
+#
+for index_basis in range(len(angmom)):
+  for func in range(len(angmom[index_basis])):
+    if angmom[index_basis][func]==10:
+      angmom[index_basis][func  ] = 0
+      angmom[index_basis][func+1] = 1
 
 
 ###################################################################
