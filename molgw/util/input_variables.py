@@ -257,7 +257,16 @@ vl[i].keyword  ='tolscf'
 vl[i].family   ='scf'
 vl[i].default  =1.0E-7
 vl[i].datatype ='real'
-vl[i].comment  ='Sets the residual norm target for the SCF cycles.'
+vl[i].comment  ='Sets the residual norm target for the density matrix for the SCF cycles.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='npulay_hist'
+vl[i].family   ='scf'
+vl[i].default  =6
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the history record length for Pulay DIIS.'
 
 #================================
 vl.append(variable())

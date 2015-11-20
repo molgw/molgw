@@ -47,7 +47,7 @@ subroutine init_scf(nbf)
  case('SIMPLE')
    nhistmax=1
  case('PULAY')
-   nhistmax=8
+   nhistmax=npulay_hist
  case default
    call die('mixing scheme not implemented')
  end select

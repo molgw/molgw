@@ -853,6 +853,10 @@ subroutine write_restart(restart_type,basis,occupation,c_matrix,energy,hamiltoni
  integer                    :: ispin,istate,ibf,nstate
 !=====
 
+ !
+ ! Only the proc iomaster writes down the RESTART file
+ if( .NOT. is_iomaster) return
+
  call start_clock(timing_restart_file)
  
  select case(restart_type)

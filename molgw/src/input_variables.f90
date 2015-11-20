@@ -28,6 +28,7 @@
     mixing_scheme,       &
     level_shifting_energy,       &
     tolscf,       &
+    npulay_hist,       &
     tda,       &
     triplet,       &
     frozencore,       &
@@ -81,6 +82,7 @@
  mixing_scheme='pulay'
  level_shifting_energy=0.0
  tolscf=1e-07
+ npulay_hist=6
  tda='no'
  triplet='no'
  frozencore='no'

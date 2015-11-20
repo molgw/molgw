@@ -76,6 +76,7 @@ module m_inputparam
  real(dp),protected               :: step_sigma
  real(dp),protected               :: level_shifting_energy
  real(dp),protected               :: scissor
+ integer,protected                :: npulay_hist
 
  logical,protected                :: ignore_restart_
  logical,protected                :: ignore_bigrestart_
