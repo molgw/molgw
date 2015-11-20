@@ -439,11 +439,23 @@ vl[i].keyword  ='print_restart'
 vl[i].family   ='io'
 vl[i].default  ='yes'
 vl[i].datatype ='yes/no'
-vl[i].comment  ='Prints the file RESTART at each SCF cycle. \
-This is a very small file and the writing should not hit too much on performance. \
+vl[i].comment  ='Prints a small RESTART file at each SCF cycle. \
 There are two kinds of RESTART files: the small RESTART and the big RESTART. \
-The big RESTART is written when self-consistency is reached. \
-It contains all the states and the Hamiltonian and allows one to completely skip the scf loop.'
+The former contains only the information about the occupied wavefunctions. \
+This is a very small file and the writing should not hit too much on performance.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='print_bigrestart'
+vl[i].family   ='io'
+vl[i].default  ='yes'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints the big RESTART file at the end of the SCF loop. \
+There are two kinds of RESTART files: the small RESTART and the big RESTART. \
+The latter is written only when self-consistency has been reached. \
+It contains all the states and the Hamiltonian and allows one to completely skip the scf loop \
+or to start over with another basis set.'
 
 #================================
 vl.append(variable())

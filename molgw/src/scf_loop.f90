@@ -444,7 +444,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  !
  ! Big RESTART file written if converged
  !
- if( is_converged .AND. print_restart_ ) then
+ if( is_converged .AND. print_bigrestart_ ) then
    call write_restart(BIG_RESTART,basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
  endif
 

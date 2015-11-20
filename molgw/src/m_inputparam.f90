@@ -85,6 +85,7 @@ module m_inputparam
  logical,protected                :: print_w_
  logical,protected                :: print_sigma_
  logical,protected                :: print_restart_
+ logical,protected                :: print_bigrestart_
  logical,protected                :: print_pdos_
  logical,protected                :: print_cube_
 
@@ -504,6 +505,7 @@ subroutine summary_input(grid_quality,integral_quality)
  write(stdout,'(a30,l3)')   ' - dump spectral functs',print_w_
  write(stdout,'(a30,l3)')   ' - dump self-energy    ',print_sigma_
  write(stdout,'(a30,l3)')   ' - RESTART files       ',print_restart_
+ write(stdout,'(a30,l3)')   ' - big RESTART file    ',print_bigrestart_
 
 
  write(stdout,*)
@@ -560,7 +562,8 @@ subroutine read_inputfile_namelist()
  character(len=100)   :: auxil_basis
  character(len=12)    :: length_unit
  character(len=3)     :: ignore_restart,ignore_bigrestart,no_4center
- character(len=3)     :: print_matrix,print_eri,print_wfn,print_w,print_sigma,print_restart
+ character(len=3)     :: print_matrix,print_eri,print_wfn,print_w,print_sigma
+ character(len=3)     :: print_restart,print_bigrestart
  character(len=3)     :: print_pdos,print_cube
  character(len=3)     :: tda,triplet,frozencore
  real(dp)             :: length_factor,eta
@@ -630,6 +633,7 @@ subroutine read_inputfile_namelist()
  print_w_           = yesno(print_w)
  print_sigma_       = yesno(print_sigma)
  print_restart_     = yesno(print_restart)
+ print_bigrestart_  = yesno(print_bigrestart)
  print_pdos_        = yesno(print_pdos)
  print_cube_        = yesno(print_cube)
 
