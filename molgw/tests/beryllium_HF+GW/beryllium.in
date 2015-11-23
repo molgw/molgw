@@ -1,9 +1,0 @@
-&molgw
- scf='hf'
- basis='cc-pVDZ'
- basis_path='../../basis'
- postscf='gw'
- mixing_scheme='simple'
- natom=1
-/
-Be 0. 0. 0.

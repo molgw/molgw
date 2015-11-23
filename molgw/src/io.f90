@@ -46,7 +46,7 @@ subroutine header()
  end select
 
 
- write(stdout,*) 'Compilation options'
+ write(stdout,'(a)') ' Compilation options:'
 #ifdef TD_SP
  call issue_warning('TD-DFT and BSE are using single precision to save memory')
 #endif
@@ -67,15 +67,17 @@ subroutine header()
  call issue_warning(msg)
 #endif
 #ifdef HAVE_MPI
- call issue_warning('Running with MPI')
+! call issue_warning('Running with MPI')
+ write(stdout,*) 'Running with MPI'
 #endif
 #ifdef HAVE_SCALAPACK
- call issue_warning('Running with SCALAPACK')
+! call issue_warning('Running with SCALAPACK')
+ write(stdout,*) 'Running with SCALAPACK'
 #ifndef HAVE_MPI
  call die('Code compiled with SCALAPACK, but without MPI. This is not permitted')
 #endif
 #endif
-
+ write(stdout,*)
 
 end subroutine header
 
