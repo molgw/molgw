@@ -25,12 +25,15 @@ LIBINT=-L$(LIBINT_ROOT)/lib -lint2
 LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 
 
+.PHONY: all clean archive doc input prepare_sourcecode
 
+all: prepare_sourcecode ../molgw
 
 ../molgw: m_definitions.o m_warning.o  m_mpi.o m_elements.o m_timing.o m_memory.o m_tools.o m_atoms.o \
         m_gos.o m_gaussian.o m_basis_set.o m_inputparam.o m_scf.o m_eri.o m_spectral_function.o m_dft_grid.o m_timedependent.o \
         static_polarizability.o gw.o dft_xc.o \
-        libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o scf_loop.o pdbssolver1.o molgw.o
+        libint_wrapper.o libint_wrapper_nounderscore.o \
+        lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o hamiltonian.o scf_loop.o pdbssolver1.o molgw.o
 	$(FC_W_OPTS) \
                         m_definitions.o m_warning.o m_elements.o m_mpi.o m_timing.o m_memory.o m_inputparam.o m_tools.o m_scf.o m_atoms.o \
                         m_gos.o m_gaussian.o m_basis_set.o m_eri.o m_dft_grid.o m_spectral_function.o \
@@ -68,7 +71,7 @@ m_timedependent.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memo
 dft_xc.o: m_definitions.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90 dft_xc.f90
 	$(FC_W_OPTS) -c dft_xc.f90 $(LIBXC_INCS)
 
-io.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 io.f90
+io.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 io.f90 revision.f90
 	$(FC_W_OPTS) -c io.f90 $(LIBXC_INCS)
 
 mp2.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 mp2.f90 
@@ -116,7 +119,7 @@ m_tools.o: m_definitions.f90 m_tools.f90
 m_elements.o: m_definitions.f90 m_elements.f90
 	$(FC_W_OPTS) -c m_elements.f90 $(LIBXC_INCS)
 
-m_inputparam.o: m_definitions.f90 m_elements.f90 m_warning.f90 m_atoms.f90 m_basis_set.f90 input_variables.f90 m_inputparam.f90 input_variables.f90
+m_inputparam.o: m_definitions.f90 m_elements.f90 m_warning.f90 m_atoms.f90 m_basis_set.f90 m_inputparam.f90 input_variables.f90 basis_path.f90
 	$(FC_W_OPTS) -c m_inputparam.f90 $(LIBXC_INCS)
 
 m_memory.o: m_definitions.f90 m_memory.f90
@@ -138,8 +141,11 @@ m_definitions.o: m_definitions.f90
 	$(FC_W_OPTS) -c m_definitions.f90 $(LIBXC_INCS)
 
 archive:
-	tar czf molgw.tgz ../../molgw/README ../../molgw/src/Makefile ../../molgw/src/*.f90 ../../molgw/src/*.f ../../molgw/src/*.c \
+	tar czf molgw.tgz ../../molgw/README.md ../../molgw/src/Makefile ../../molgw/src/*.f90 ../../molgw/src/*.f ../../molgw/src/*.c \
                           ../../molgw/basis/* ../../molgw/util/* ../../molgw/tests/ ../../molgw/src/my_machine.arch
+
+prepare_sourcecode:
+	python prepare_sourcecode.py
 
 input:
 	python ../util/input_variables.py
@@ -149,5 +155,6 @@ doc:
 	pdflatex ../doc/notes.tex	
 	rm -f notes.aux notes.log notesNotes.bib
 	mv notes.pdf ../doc/notes.pdf
+
 clean:
 	rm -f *.o *.mod *.log *.bib *.aux

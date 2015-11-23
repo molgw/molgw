@@ -113,9 +113,10 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='basis_path'
 vl[i].family   ='io'
-vl[i].default  ='./'
+vl[i].default  =''
 vl[i].datatype ='characters'
-vl[i].comment  ='Sets the path pointing to the basis functions files.'
+vl[i].comment  ='Sets the path pointing to the basis functions files. \
+                 If not specified, then the basis set files will be searched in folder ~molgw/basis/.'
 
 #================================
 vl.append(variable())
@@ -509,7 +510,6 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='nghost'
 vl[i].family   ='system'
-vl[i].mandatory='no'
 vl[i].default  =0
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets the number of ghost atoms in the molecule. Used to place basis function where there is no atom. Useful for Basis Set Superposition Error'
