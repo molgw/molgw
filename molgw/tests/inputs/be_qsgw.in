@@ -1,0 +1,11 @@
+&molgw
+ scf='gw'
+
+ basis='cc-pVDZ'
+
+ natom=1
+ alpha_mixing=0.5
+ mixing_scheme='simple'
+ nscf=100
+/
+Be 0. 0. 0.

@@ -1,0 +1,14 @@
+&molgw
+ scf='cohsex'
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+ no_4center='yes'
+ basis_path='/home/bruneval/devel/molgw/basis'
+
+ natom=1
+ alpha_mixing=0.5
+ mixing_scheme='simple'
+ nscf=100
+/
+Be 0. 0. 0.

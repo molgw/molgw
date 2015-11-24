@@ -56,6 +56,20 @@ Total EXX Energy          ,     -1.0186704037  , 0 , 1.0e-8
 GW HOMO                   ,    -12.854961      , 0 , 1.0e-5
 GW LUMO                   ,      1.475164      , 0 , 1.0e-5
 
+be_qsgw.in                , QSGW Be atom cc-pVDZ without RI
+RPA Total energy          ,    -14.6144623635  , 0 , 1.0e-8
+HOMO energy               ,     -8.944298      , 0 , 1.0e-5
+LUMO energy               ,      1.283104      , 0 , 1.0e-5
+
+be_qsgw_ri.in             , QSGW Be atom cc-pVDZ with RI
+RPA Total energy          ,    -14.6146048917  , 0 , 1.0e-8
+HOMO energy               ,     -8.944487      , 0 , 1.0e-5
+LUMO energy               ,      1.282521      , 0 , 1.0e-5
+
+be_cohsex.in              , self-consistent COHSEX Be atom cc-pVDZ with RI
+HOMO energy               ,     -9.681476      , 0 , 1.0e-5
+LUMO energy               ,      1.133775      , 0 , 1.0e-5
+
 h2_mp2.in                 , MP2 H2 molecule aug-cc-pVDZ (spin-unrestricted)
 SCF Total Energy          ,     -1.0224203713  , 0 , 1.0e-8
 Total Spin S**2           ,     -0.0000        , 0 , 1.0e-3
