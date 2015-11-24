@@ -536,16 +536,6 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
      energy_qp_new(astate,:) = energy_qp_omega(:) 
    enddo
 
-   do istate=1,basis%nbf
-     if( ANY(occupation(istate,:) > completely_empty) ) homo = istate
-   enddo
-   write(stdout,*)
-   if( homo >= nsemin .AND. homo <= nsemax ) then
-     write(stdout,'(a,2(2x,f12.6))') ' GW HOMO (eV):',energy_qp_new(homo,:)*Ha_eV
-   endif
-   if( homo+1 >= nsemin .AND. homo+1 <= nsemax ) then
-     write(stdout,'(a,2(2x,f12.6))') ' GW LUMO (eV):',energy_qp_new(homo+1,:)*Ha_eV
-   endif
 
    call write_energy_qp(nspin,basis%nbf,energy_qp_new)
 
@@ -689,6 +679,24 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    write(stdout,*) 'Tr[tGSigma*tGSigma]        ',tr_gsigma 
    deallocate(matrix,eigvec,eigval)
 
+ end select
+
+
+ !
+ ! Output the new HOMO and LUMO energies
+ !
+ select case(gwmethod)
+ case(G0W0,GV,COHSEX,GnW0,GnWn)
+   do istate=1,basis%nbf
+     if( ANY(occupation(istate,:) > completely_empty) ) homo = istate
+   enddo
+   write(stdout,*)
+   if( homo >= nsemin .AND. homo <= nsemax ) then
+     write(stdout,'(a,2(2x,f12.6))') ' GW HOMO (eV):',energy_qp_new(homo,:)*Ha_eV
+   endif
+   if( homo+1 >= nsemin .AND. homo+1 <= nsemax ) then
+     write(stdout,'(a,2(2x,f12.6))') ' GW LUMO (eV):',energy_qp_new(homo+1,:)*Ha_eV
+   endif
  end select
 
  call clean_deallocate('Temporary array',bra)

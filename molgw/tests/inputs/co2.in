@@ -1,5 +1,6 @@
 &molgw
  scf='lda'
+ npulay_hist=8
 
  postscf='gw'
  frozencore='yes'

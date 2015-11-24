@@ -73,7 +73,7 @@ Single determinant        ,     -1.1285529198  , 0 , 1.0e-8
 CI ground-state energy    ,     -1.1646077906  , 0 , 1.0e-8
 
 sih4_hf.in                , TDHF SiH4 aug-cc-pVDZ
-SCF Total Energy          ,   -291.2427972542   , 0 , 1.0e-8
+SCF Total Energy          ,   -291.2427972251   , 0 , 1.0e-8
 0001 :                    ,      9.81661606     , 0 , 1.0e-5
 0001 :                    ,      0.21703439     , 1 , 1.0e-5
 0010 :                    ,     11.17716219     , 0 , 1.0e-5
@@ -82,8 +82,7 @@ Sum over oscillator strengths ,  7.866846       , 0 , 1.0e-5
 polarizability trace      ,     30.035186       , 0 , 1.0e-5
 Mean excitation energy    ,     15.838753       , 0 , 1.0e-5
 
-sih4_hf_tda.in            , TDHF SiH4 aug-cc-pVDZ with TDA
-SCF Total Energy          ,   -291.2427972542   , 0 , 1.0e-8
+sih4_hf_tda.in            , TDHF SiH4 aug-cc-pVDZ with TDA restarting from previous run, Restart
 0001 :                    ,      9.82654263     , 0 , 1.0e-5
 0001 :                    ,      0.22685574     , 1 , 1.0e-5
 0010 :                    ,     11.2463169      , 0 , 1.0e-5
@@ -115,10 +114,41 @@ Lowest neutral excitation ,      3.388966       , 0 , 1.0e-5
 0002 :                    ,      7.92589187     , 0 , 1.0e-5   
 0002 :                    ,      0.11512207     , 1 , 1.0e-5
 Sum over oscillator strengths , 12.069343       , 0 , 1.0e-5
-polarizability trace      ,   13.248035         , 0 , 1.0e-5
+polarizability trace      ,     13.248035       , 0 , 1.0e-5
 
+oh_m_1.in                 , GnWn (eigenvalue self-consistent) on OH- 1st iteration
+SCF Total Energy          ,    -75.7671834744   , 0 , 1.0e-8
+RPA energy                ,     -0.2924060319   , 0 , 1.0e-8
+Galitskii-Migdal formula  ,     -0.5031685197   , 0 , 1.0e-8
+GW HOMO                   ,     -1.100134       , 0 , 1.0e-5
+GW LUMO                   ,      5.328126       , 0 , 1.0e-5
 
+oh_m_2.in                 , GnWn (eigenvalue self-consistent) on OH- 2nd iteration , Restart
+Galitskii-Migdal formula  ,     -0.4816110883   , 0 , 1.0e-8
+RPA Total energy          ,     -0.2780353699   , 0 , 1.0e-8
+GW HOMO                   ,     -1.208872       , 0 , 1.0e-5
+GW LUMO                   ,      5.337011       , 0 , 1.0e-5
 
+oh_m_3.in                 , GnWn (eigenvalue self-consistent) on OH- 3rd iteration , Restart
+Galitskii-Migdal formula  ,     -0.4785674954   , 0 , 1.0e-8
+RPA Total energy          ,     -0.2760367412   , 0 , 1.0e-8
+GW HOMO                   ,     -1.209060       , 0 , 1.0e-5
+GW LUMO                   ,      5.336784       , 0 , 1.0e-5
+
+oh_0_1.in                 , GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 1st iteration
+Total Spin S**2           ,      0.7532         , 0 , 1.0e-3
+SCF Total Energy          ,    -75.7190321916   , 0 , 1.0e-8
+RPA Total energy          ,    -75.6295519734   , 0 , 1.0e-8
+GW HOMO                   ,    -13.404697       , 0 , 1.0e-5
+GW HOMO                   ,     -0.293419       , 1 , 1.0e-5
+GW LUMO                   ,      0.964614       , 0 , 1.0e-5
+GW LUMO                   ,      1.004875       , 1 , 1.0e-5
+
+oh_0_2.in                 , GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 2nd iteration , Restart
+GW HOMO                   ,    -13.340412       , 0 , 1.0e-5
+GW HOMO                   ,     -0.331333       , 1 , 1.0e-5
+GW LUMO                   ,      0.964805       , 0 , 1.0e-5
+GW LUMO                   ,      1.007568       , 1 , 1.0e-5
 
 
 
