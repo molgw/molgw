@@ -1,6 +1,7 @@
 &molgw
  basis_path='../../basis/'
  scf='bhandhlyp'
+ tolscf=1.0e-10
 
  postscf='bse'
  scissor=0.05

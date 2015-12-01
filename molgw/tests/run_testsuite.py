@@ -49,6 +49,8 @@ def check_output(out,testinfo):
         parsing  = line.split(':')
         parsing2 = parsing[1].split()
 
+        fdiff.write(str(tested).rjust(6) + parsing2[pos].rjust(30)+str(ref).rjust(30)+str(float(parsing2[pos]) - ref).rjust(30)+'\n')
+
         if abs( float(parsing2[pos]) - ref ) < tol:
           print(key.rjust(30)+'[ \033[92m\033[1mOK\033[0m ]'.rjust(30))
           success += 1
@@ -125,6 +127,8 @@ except OSError:
 success = 0
 tested = 0
 
+fdiff = open(tmpfolder+'/diff', 'w')
+
 for iinput in range(0,ninput):
 
   inp     = input_files[iinput]
@@ -137,6 +141,9 @@ for iinput in range(0,ninput):
   clean_run(inp,out,restart)
 
   check_output(out,testinfo[iinput])
+
+
+fdiff.close()
 
 print('\n\n===============================')
 print('      Test Summary \n')

@@ -1,6 +1,6 @@
 &molgw
  scf='bhandhlyp'
- tolscf=1.0e-9
+ tolscf=1.0e-10
  no_4center='yes'
  nscf=50
 

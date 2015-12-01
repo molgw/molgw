@@ -124,7 +124,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      if( .NOT. is_full_auxil) then
        call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
      else
-       call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+       call setup_exchange_ri(print_matrix_,basis%nbf,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
      endif
      ! Rescale with alpha_hybrid for hybrid functionals
      en%exx_hyb = alpha_hybrid * en%exx
@@ -135,7 +135,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      if( .NOT. is_full_auxil) then
        call setup_exchange_longrange(print_matrix_,basis%nbf,p_matrix,matrix_tmp,energy_tmp)
      else
-       call setup_exchange_longrange_ri(print_matrix_,basis%nbf,p_matrix,matrix_tmp,energy_tmp)
+       call setup_exchange_longrange_ri(print_matrix_,basis%nbf,occupation,c_matrix,p_matrix,matrix_tmp,energy_tmp)
      endif
      ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
      en%exx_hyb = en%exx_hyb + alpha_hybrid_lr * energy_tmp
@@ -344,7 +344,8 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  if( .NOT. is_full_auxil) then
    if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
  else
-   if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+   if( ABS(en%exx) < 1.0e-6_dp )   & 
+       call setup_exchange_ri(print_matrix_,basis%nbf,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
  endif
 
  write(stdout,'(/,/,a25,x,f19.10,/)') 'SCF Total Energy (Ha):',en%tot

@@ -444,7 +444,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  call xsum(normalization)
  call xsum(vhxc_ij)
 
- write(stdout,'(/,a,2(2x,f12.6))') ' number of electrons:',normalization
+ write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization
 
 end subroutine dft_approximate_vhxc
 

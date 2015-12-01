@@ -1,6 +1,7 @@
 &molgw
  basis_path='../../basis/'
  scf='hf'
+ tolscf=1.0e-10
 
  postscf='td'
  basis='aug-cc-pVDZ'

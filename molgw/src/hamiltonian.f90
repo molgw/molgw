@@ -665,7 +665,7 @@ end subroutine setup_exchange
 
 
 !=========================================================================
-subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange_ri(print_matrix_,nbf,occupation,c_matrix,p_matrix,pot_exchange,eexchange)
  use m_definitions
  use m_mpi
  use m_timing
@@ -674,6 +674,8 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
+ real(dp),intent(in)  :: occupation(nbf,nspin)
+ real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin)
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
@@ -682,8 +684,6 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
  integer              :: index_ij
  integer              :: nocc
  real(dp),allocatable :: tmp(:,:)
- real(dp)             :: p_matrix_sqrt(nbf,nbf)
- real(dp),allocatable :: p_matrix_sqrt_occ(:,:)
  real(dp)             :: eigval(nbf)
  integer              :: ipair
 !=====
@@ -698,48 +698,22 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
 
  do ispin=1,nspin
 
-   !
-   ! Calculate the square-root of the density matrix
-   ! This is obtained with a diagonalization
-   !
-   ! Maybe a Cholesky decomposition could work too in the future
-   ! but right now the p_matrix has some noise and it is not exactly positive
-   ! semi-definite...
-   p_matrix_sqrt(:,:) = p_matrix(:,:,ispin)
-
-#ifndef HAVE_SCALAPACK
-   call diagonalize(nbf,p_matrix_sqrt,eigval)
-#else
-   call diagonalize_scalapack(nbf,p_matrix_sqrt,eigval)
-#endif
-
    ! Denombrate the strictly positive eigenvalues
-   nocc = COUNT( eigval(:) > completely_empty )
-
-   allocate(p_matrix_sqrt_occ(nbf,nocc))
-   ibf = 0
-   do jbf=1,nbf
-     if( eigval(jbf) > completely_empty ) then
-       ibf = ibf + 1
-       p_matrix_sqrt_occ(:,ibf) = p_matrix_sqrt(:,jbf) * SQRT( eigval(jbf) )
-     endif
-   enddo
+   nocc = COUNT( occupation(:,ispin) > completely_empty )
 
    do istate=1,nocc
      tmp(:,:) = 0.0_dp
      do ipair=1,npair
        ibf=index_basis(1,ipair)
        jbf=index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt_occ(jbf,istate) * eri_3center(:,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair) * SQRT( occupation(istate,ispin) )
        if( ibf /= jbf ) &
-            tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt_occ(ibf,istate) * eri_3center(:,ipair)
+            tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair) * SQRT( occupation(istate,ispin) )
      enddo
 
      pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin) &
                         - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
    enddo
-
-   deallocate(p_matrix_sqrt_occ)
 
  enddo
  deallocate(tmp)
@@ -756,7 +730,7 @@ end subroutine setup_exchange_ri
 
 
 !=========================================================================
-subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange_longrange_ri(print_matrix_,nbf,occupation,c_matrix,p_matrix,pot_exchange,eexchange)
  use m_definitions
  use m_mpi
  use m_timing
@@ -765,6 +739,8 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix,pot_exchange,e
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
+ real(dp),intent(in)  :: occupation(nbf,nspin)
+ real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin)
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
@@ -773,13 +749,11 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix,pot_exchange,e
  integer              :: index_ij
  integer              :: nocc
  real(dp),allocatable :: tmp(:,:)
- real(dp)             :: p_matrix_sqrt(nbf,nbf)
- real(dp),allocatable :: p_matrix_sqrt_occ(:,:)
  real(dp)             :: eigval(nbf)
  integer              :: ipair
 !=====
 
- write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity'
+ write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
  call start_clock(timing_exchange)
 
 
@@ -789,46 +763,24 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix,pot_exchange,e
 
  do ispin=1,nspin
 
-   !
-   ! Calculate the square-root of the density matrix
-   ! This is obtained with a diagonalization
-   !
-   ! Maybe a Cholesky decomposition could work too in the future
-   ! but right now the p_matrix has some noise and it is not exactly positive
-   ! semi-definite...
-   p_matrix_sqrt(:,:) = p_matrix(:,:,ispin)
-   call diagonalize(nbf,p_matrix_sqrt,eigval)
-
    ! Denombrate the strictly positive eigenvalues
-   nocc = COUNT( eigval(:) > completely_empty )
-
-   allocate(p_matrix_sqrt_occ(nbf,nocc))
-   ibf = 0
-   do jbf=1,nbf
-     if( eigval(jbf) > completely_empty ) then
-       ibf = ibf + 1
-       p_matrix_sqrt_occ(:,ibf) = p_matrix_sqrt(:,jbf) * SQRT( eigval(jbf) )
-     endif
-   enddo
+   nocc = COUNT( occupation(:,ispin) > completely_empty )
 
    do istate=1,nocc
      tmp(:,:) = 0.0_dp
      do ipair=1,npair
        ibf=index_basis(1,ipair)
        jbf=index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt_occ(jbf,istate) * eri_3center_lr(:,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center_lr(:,ipair) * SQRT( occupation(istate,ispin) )
        if( ibf /= jbf ) &
-            tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt_occ(ibf,istate) * eri_3center_lr(:,ipair)
+            tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center_lr(:,ipair) * SQRT( occupation(istate,ispin) )
      enddo
 
      pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin) &
                         - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
    enddo
 
-   deallocate(p_matrix_sqrt_occ)
-
  enddo
-
  deallocate(tmp)
 
  call xsum(pot_exchange)
