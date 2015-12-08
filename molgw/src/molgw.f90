@@ -59,7 +59,8 @@ program molgw
  real(dp),allocatable    :: hamiltonian_exx(:,:,:)
  real(dp),allocatable    :: hamiltonian_xc(:,:,:)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
- real(dp),allocatable    :: s_matrix(:,:),s_matrix_sqrt_inv(:,:)
+ real(dp),allocatable    :: s_matrix(:,:)
+ real(dp),allocatable    :: s_matrix_sqrt_inv(:,:)
  real(dp),allocatable    :: c_matrix(:,:,:)
  real(dp),allocatable    :: p_matrix(:,:,:)
  real(dp),allocatable    :: energy(:,:)
@@ -103,7 +104,7 @@ program molgw
  !
  ! First attempt to distribute the work load among procs
  ! TODO: to be removed
- call init_distribution(basis%nbf)
+! call init_distribution(basis%nbf)
  
  !
  ! Allocate the main arrays

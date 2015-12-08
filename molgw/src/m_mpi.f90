@@ -9,14 +9,21 @@ module m_mpi
 
  logical,parameter :: parallel_grid      = .TRUE.
  logical,parameter :: parallel_auxil     = .TRUE.
- logical,parameter :: parallel_integral  = .FALSE.   !FIXME remove this parameter
+
+#ifdef HAVE_SCALAPACK
+ logical,parameter :: parallel_ham       = .TRUE.
+#else
+ logical,parameter :: parallel_ham       = .FALSE.
+#endif
+ integer,parameter :: HAMILTONIAN_SCA    = 1000
+
 #ifdef HAVE_SCALAPACK
  logical,parameter :: parallel_scalapack = .TRUE.
 #else
  logical,parameter :: parallel_scalapack = .FALSE.
 #endif
- integer,parameter :: SCALAPACK_MIN = 200   ! TODO Better tune this parameter in the future
 
+ integer,parameter :: SCALAPACK_MIN = 200   ! TODO Better tune this parameter in the future
 
  integer,protected :: nproc  = 1
  integer,protected :: rank   = 0
@@ -110,6 +117,13 @@ module m_mpi
  integer,protected :: npcol_sd
  integer,protected :: iprow_sd
  integer,protected :: ipcol_sd
+
+ ! SCALAPACK grid: hamiltonian
+ integer,protected :: cntxt_ham
+ integer,protected :: nprow_ham
+ integer,protected :: npcol_ham
+ integer,protected :: iprow_ham
+ integer,protected :: ipcol_ham
 
  ! SCALAPACK grid: row distribution
  integer,protected :: cntxt_rd
@@ -234,6 +248,7 @@ subroutine get_rank()
 end subroutine get_rank
 
 
+#ifdef REMOVE
 !=========================================================================
 subroutine init_distribution(nbf)
  implicit none
@@ -252,6 +267,7 @@ subroutine init_distribution(nbf)
  call distribute_workload(ntask)
 
 end subroutine init_distribution
+#endif
 
 
 !=========================================================================
@@ -285,50 +301,7 @@ subroutine destroy_grid_distribution()
 end subroutine destroy_grid_distribution
 
 
-!=========================================================================
-subroutine init_fast_distribution(ntask)
- implicit none
- integer,intent(in) :: ntask
-!=====
- integer            :: itask
-!=====
-
-
- write(stdout,'(/,a)') ' Initializing the distribution of the lowest level of MPI parallelization'
-
- allocate(task_fast_proc(ntask))
- do itask=1,ntask
-   task_fast_proc(itask) = MODULO(itask-1,nproc)
- enddo
-
-
-end subroutine init_fast_distribution
-
-
-!=========================================================================
-subroutine destroy_fast_distribution()
- implicit none
-!=====
-
- write(stdout,'(/,a)') ' End of the lowest level of MPI parallelization'
-
- deallocate(task_fast_proc)
-
-end subroutine destroy_fast_distribution
-
-
-!=========================================================================
-function is_my_fast_task(itask)
- implicit none
- integer,intent(in) :: itask
- logical            :: is_my_fast_task
-!=====
- 
- is_my_fast_task = ( rank == task_fast_proc(itask) )
- 
-end function is_my_fast_task
-
-
+#ifdef REMOVE
 !=========================================================================
 function is_my_task(ibf,jbf)
  implicit none
@@ -352,6 +325,7 @@ function is_my_task(ibf,jbf)
  is_my_task = ( rank == task_proc(task_number) )
  
 end function is_my_task
+#endif
 
 
 !=========================================================================
@@ -433,6 +407,7 @@ subroutine distribute_grid_workload()
 end subroutine distribute_grid_workload
 
 
+#ifdef REMOVE
 !=========================================================================
 subroutine distribute_workload(ntask)
  implicit none
@@ -504,6 +479,7 @@ subroutine distribute_workload(ntask)
  endif
 
 end subroutine distribute_workload
+#endif
 
 
 !=========================================================================
@@ -517,6 +493,7 @@ function get_ntask()
 end function get_ntask
 
 
+#ifdef REMOVE
 !=========================================================================
 function get_task_number(ibf,jbf)
  implicit none
@@ -540,6 +517,7 @@ function get_task_number(ibf,jbf)
  endif
 
 end function get_task_number
+#endif
 
 
 !=========================================================================
@@ -869,6 +847,7 @@ end subroutine xsum_ca4d
 
 
 
+#ifdef REMOVE
 !=========================================================================
 function index_prod_mpi(ibf,jbf)
  implicit none
@@ -883,6 +862,7 @@ function index_prod_mpi(ibf,jbf)
  index_prod_mpi = (jmin-1)*nbf_mpi - (jmin-1)*(jmin-2)/2 + imax-jmin+1
 
 end function index_prod_mpi
+#endif
 
 
 !=========================================================================
@@ -972,6 +952,50 @@ subroutine init_scalapack()
 #endif
 
 end subroutine init_scalapack
+
+
+!=========================================================================
+subroutine init_scalapack_ham(nbf,m_ham,n_ham)
+ implicit none
+
+ integer,intent(in)  :: nbf
+ integer,intent(out) :: m_ham,n_ham
+!=====
+#ifdef HAVE_SCALAPACK
+ integer,external :: NUMROC 
+#endif
+!=====
+
+
+ if( parallel_ham ) then
+
+   nprow_ham = MAX( MIN(nprow_sd,nbf/HAMILTONIAN_SCA) , 1 )
+   npcol_ham = MAX( MIN(npcol_sd,nbf/HAMILTONIAN_SCA) , 1 )
+
+   call BLACS_GET( -1, 0, cntxt_ham )
+   call BLACS_GRIDINIT( cntxt_ham, 'R', nprow_ham, npcol_ham )
+   call BLACS_GRIDINFO( cntxt_ham, nprow_ham, npcol_ham, iprow_ham, ipcol_ham )
+
+   m_ham = NUMROC(nbf,block_row,iprow_ham,first_row,nprow_ham)
+   n_ham = NUMROC(nbf,block_col,ipcol_ham,first_col,npcol_ham)
+
+   write(stdout,'(/,a)')           ' ==== SCALAPACK Hamiltonian'
+   write(stdout,'(a50,x,i8)')      'Number of dedicated processors:',nprow_ham*npcol_ham
+   write(stdout,'(a50,x,i8,x,i8)') 'Grid of dedicated processors:',nprow_ham,npcol_ham
+
+ else
+
+   nprow_ham = 1
+   npcol_ham = 1
+   iprow_ham = 0
+   ipcol_ham = 0
+   m_ham = nbf
+   n_ham = nbf
+
+ endif
+
+
+end subroutine init_scalapack_ham
 
 
 !=========================================================================

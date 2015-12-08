@@ -14,11 +14,11 @@ module m_timing
  integer,parameter :: timing_dft               =  2
  integer,parameter :: timing_pola              =  3
  integer,parameter :: timing_self              =  4
- integer,parameter :: timing_prodbasis         =  5
+ integer,parameter :: timing_overlap           =  5
  integer,parameter :: timing_eri_4center       =  6
  integer,parameter :: timing_exchange          =  7
  integer,parameter :: timing_hartree           =  8
- integer,parameter :: timing_overlap3          =  9
+ integer,parameter :: timing_overlap3          =  9            ! Not used
  integer,parameter :: timing_diago_h2p         = 10
  integer,parameter :: timing_pola_static       = 11
  integer,parameter :: timing_mp2_energy        = 12
@@ -134,6 +134,7 @@ subroutine output_timing()
    write(stdout,'(a30,6x,f12.2,2x,i8)')        '2-center integrals',timing(timing_eri_2center),calls(timing_eri_2center)
    write(stdout,'(a30,6x,f12.2,2x,i8)')        '3-center integrals',timing(timing_eri_3center),calls(timing_eri_3center)
  endif
+ write(stdout,'(a30,6x,f12.2,2x,i8)')                    'Overlap S',timing(timing_overlap),calls(timing_overlap)
  write(stdout,'(a30,6x,f12.2,2x,i8)')          'Kinetic Hamiltonian',timing(timing_hamiltonian_kin),calls(timing_hamiltonian_kin)
  write(stdout,'(a30,6x,f12.2,2x,i8)')  'Electron-nuclei Hamiltonian',timing(timing_hamiltonian_nuc),calls(timing_hamiltonian_nuc)
 

@@ -22,10 +22,11 @@ module m_basis_set
    character(len=100)           :: basis_name                 ! Just a name
    character(len=4)             :: gaussian_type              ! CART or PURE
    integer                      :: shell_index                ! This basis function belongs to a shell of basis functions
-                                                              ! with the same  exponenents and  angular  momentum
+                                                              ! with the same exponents and angular momentum
    integer                      :: am                         ! Angular momentum number: l=0, 1, 2, 3 ...
    character(len=1)             :: amc                        ! Angular momentum letter: s, p, d, f ...
    integer                      :: nx,ny,nz                   ! Angular momentum for cartesian gaussians
+   integer                      :: mm                         ! Angular momentum for pure gaussians
    integer                      :: iatom                      ! Centered on which atom
    real(dp)                     :: x0(3)                      ! Coordinates of the gaussian center
    integer                      :: ngaussian                  ! Number of primitive gausssians
@@ -51,6 +52,7 @@ module m_basis_set
                                                        ! and the same angular momentum
    character(len=4)                 :: gaussian_type   ! CART or PURE
    type(basis_function),allocatable :: bf(:)           ! Cartesian basis function
+   type(basis_function),allocatable :: bff(:)          ! Final basis function (can be Cartesian or Pure)
    !
    ! then additional data needed for product basis
    integer,allocatable              :: index_ij(:,:)
@@ -71,12 +73,14 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
 !=====
  character(len=100)            :: basis_filename
  integer                       :: ibf,jbf,kbf,ng,ig,shell_index,ibf_file
+ integer                       :: jbf_cart
  real(dp),allocatable          :: alpha(:),coeff(:),coeff2(:)
  logical                       :: file_exists
  integer                       :: basisfile
- integer                       :: am_tmp,nbf_file
+ integer                       :: am_read,nbf_file
  logical,parameter             :: normalized=.TRUE.
  integer                       :: iatom
+ integer                       :: nx,ny,nz,mm
  real(dp)                      :: x0(3)
 !=====
 
@@ -113,10 +117,10 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
    read(basisfile,*) nbf_file
    if(nbf_file<1) call die('ERROR in basis set file')
    do ibf_file=1,nbf_file
-     read(basisfile,*) ng,am_tmp
+     read(basisfile,*) ng,am_read
      if(ng<1) call die('ERROR in basis set file')
-     basis%nbf_cart = basis%nbf_cart + number_basis_function_am('CART'             ,am_tmp)
-     basis%nbf      = basis%nbf      + number_basis_function_am(basis%gaussian_type,am_tmp)
+     basis%nbf_cart = basis%nbf_cart + number_basis_function_am('CART'             ,am_read)
+     basis%nbf      = basis%nbf      + number_basis_function_am(basis%gaussian_type,am_read)
      do ig=1,ng
        read(basisfile,*) 
      enddo
@@ -132,8 +136,10 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
    write(stdout,'(a50,i8)') 'Total number of cart. functions:',basis%nbf_cart
  endif
  allocate(basis%bf(basis%nbf_cart))
+ allocate(basis%bff(basis%nbf))
 
  jbf         = 0
+ jbf_cart    = 0
  shell_index = 0
  do iatom=1,natom_basis
 
@@ -141,10 +147,10 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
    open(newunit=basisfile,file=TRIM(basis_filename),status='old')
    read(basisfile,*) nbf_file
    do ibf_file=1,nbf_file
-     read(basisfile,*) ng,am_tmp
+     read(basisfile,*) ng,am_read
      allocate(alpha(ng),coeff(ng),coeff2(ng))
   
-     if(am_tmp<10) then
+     if(am_read<10) then
        do ig=1,ng
          read(basisfile,*) alpha(ig),coeff(ig)
        enddo
@@ -157,7 +163,7 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
 !     ! rescale the gaussian decay rate whenever zatom /= basis_element
 !     if( abs( zatom(iatom) - REAL(basis_element(iatom),dp) ) > 1.d-6 ) then
 !       alpha(:) = alpha(:) * ( zatom(iatom) / REAL(basis_element(iatom),dp) )**2
-!       write(stdout,*) 'rescaling momentum',am_tmp
+!       write(stdout,*) 'rescaling momentum',am_read
 !       write(stdout,*) 'smallest rescaled alpha:',MINVAL(alpha(:))
 !     endif
   
@@ -165,143 +171,68 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
 
      shell_index = shell_index + 1
 
-     select case(am_tmp)
-     case( 0)
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-     case( 1)
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-     case( 2)
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-     case( 3)
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,0,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,1,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,2,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,3,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,3,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-     case( 4)
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,0,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,1,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,0,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,2,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,1,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,3,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,2,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,3,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,4,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,3,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,3,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,4,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-     case( 5)
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,5,0,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,1,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,0,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,2,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,1,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,0,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,3,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,2,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,1,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,3,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,4,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,3,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,2,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,3,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,4,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,5,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,4,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,3,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,3,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,4,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,5,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-     case( 6)
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,6,0,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,5,1,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,5,0,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,2,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,1,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,0,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,3,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,2,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,1,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,0,3,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,4,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,3,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,2,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,1,3,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,4,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,5,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,4,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,3,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,2,3,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,4,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,5,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,6,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,5,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,4,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,3,3,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,4,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,5,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,6,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-     case( 7)
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,7,0,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,6,1,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,6,0,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,5,2,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,5,1,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,5,0,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,3,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,2,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,1,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,4,0,3,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,4,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,3,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,2,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,1,3,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,3,0,4,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,5,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,4,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,3,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,2,3,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,1,4,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,2,0,5,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,6,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,5,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,4,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,3,3,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,2,4,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,1,5,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,6,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,7,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,6,1,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,5,2,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,4,3,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,3,4,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,2,5,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,6,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,7,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
-     case(10)
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf))
+     select case(am_read)
+     case(10) ! SP shared exponent
+       ! Cartesian basis functions
+       jbf_cart = jbf_cart + 1 ; call init_basis_function(normalized,ng,0,0,0,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf_cart))
        shell_index = shell_index + 1
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,1,0,0,iatom,x0,alpha,coeff2,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,1,0,iatom,x0,alpha,coeff2,shell_index,basis%bf(jbf))
-       jbf=jbf+1 ; call init_basis_function(normalized,ng,0,0,1,iatom,x0,alpha,coeff2,shell_index,basis%bf(jbf))
+       jbf_cart = jbf_cart + 1 ; call init_basis_function(normalized,ng,1,0,0,iatom,x0,alpha,coeff2,shell_index,basis%bf(jbf_cart))
+       jbf_cart = jbf_cart + 1 ; call init_basis_function(normalized,ng,0,1,0,iatom,x0,alpha,coeff2,shell_index,basis%bf(jbf_cart))
+       jbf_cart = jbf_cart + 1 ; call init_basis_function(normalized,ng,0,0,1,iatom,x0,alpha,coeff2,shell_index,basis%bf(jbf_cart))
+
+       ! Final basis function
+       if(basis%gaussian_type == 'CART') then
+         jbf     = jbf     + 1 ; call init_basis_function(normalized,ng,0,0,0,iatom,x0,alpha,coeff,shell_index,basis%bff(jbf))
+         shell_index = shell_index + 1
+         jbf     = jbf     + 1 ; call init_basis_function(normalized,ng,1,0,0,iatom,x0,alpha,coeff2,shell_index,basis%bff(jbf))
+         jbf     = jbf     + 1 ; call init_basis_function(normalized,ng,0,1,0,iatom,x0,alpha,coeff2,shell_index,basis%bff(jbf))
+         jbf     = jbf     + 1 ; call init_basis_function(normalized,ng,0,0,1,iatom,x0,alpha,coeff2,shell_index,basis%bff(jbf))
+       else
+         jbf     = jbf     + 1 ; call init_basis_function_pure(normalized,ng,0, 0,iatom,x0,alpha,coeff,shell_index,basis%bff(jbf))
+         shell_index = shell_index + 1
+         jbf     = jbf     + 1 ; call init_basis_function_pure(normalized,ng,1,-1,iatom,x0,alpha,coeff2,shell_index,basis%bff(jbf))
+         jbf     = jbf     + 1 ; call init_basis_function_pure(normalized,ng,1, 0,iatom,x0,alpha,coeff2,shell_index,basis%bff(jbf))
+         jbf     = jbf     + 1 ; call init_basis_function_pure(normalized,ng,1, 1,iatom,x0,alpha,coeff2,shell_index,basis%bff(jbf))
+       endif
+
      case default
-       call die('not implemented')
+
+       !
+       ! Ordering of Libint as explained in Kenny et al. J. Comput Chem. 29, 562 (2008).
+       !
+       nx = am_read
+       ny = 0
+       nz = 0
+       do 
+         ! Add the new basis function
+         jbf_cart = jbf_cart + 1 
+         call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell_index,basis%bf(jbf_cart))
+         if(basis%gaussian_type == 'CART') then
+           jbf = jbf + 1
+           call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell_index,basis%bff(jbf))
+         endif
+
+         ! Break the loop when nz is equal to l
+         if( nz == am_read ) exit
+
+         if( nz < am_read - nx ) then
+           ny = ny - 1
+           nz = nz + 1
+         else
+           nx = nx - 1
+           ny = am_read - nx
+           nz = 0
+         endif
+
+       enddo
+
+       if(basis%gaussian_type == 'PURE') then
+         do mm=-am_read,am_read
+           jbf = jbf + 1
+           call init_basis_function_pure(normalized,ng,am_read,mm,iatom,x0,alpha,coeff,shell_index,basis%bff(jbf))
+         enddo
+       endif
+
      end select
   
      deallocate(alpha,coeff,coeff2)
@@ -590,6 +521,7 @@ subroutine init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell
  bf%ny    = ny
  bf%nz    = nz
  bf%am    = nx + ny + nz
+ bf%mm    = -100          ! A fake value
  bf%amc   = orbital_momentum_name(bf%am)
  bf%iatom = iatom
  bf%x0(:) = x0(:)
@@ -615,6 +547,56 @@ subroutine init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell
  
 
 end subroutine init_basis_function
+
+
+!=========================================================================
+subroutine init_basis_function_pure(normalized,ng,am,mm,iatom,x0,alpha,coeff,shell_index,bf)
+ implicit none
+ logical,intent(in)               :: normalized
+ integer,intent(in)               :: ng,am,mm,shell_index,iatom
+ real(dp),intent(in)              :: x0(3),alpha(ng)
+ real(dp),intent(in)              :: coeff(ng)
+ type(basis_function),intent(out) :: bf
+!=====
+ integer                          :: ig
+ real(dp)                         :: overlap
+!=====
+
+ bf%ngaussian = ng
+ allocate(bf%g(bf%ngaussian))
+ allocate(bf%coeff(bf%ngaussian))
+ bf%nx    = -1
+ bf%ny    = -1
+ bf%nz    = -1
+ bf%am    = am
+ bf%mm    = mm
+ bf%amc   = orbital_momentum_name(bf%am)
+ bf%iatom = iatom
+ bf%x0(:) = x0(:)
+ bf%shell_index = shell_index
+
+! Do not need this
+
+!  ! All the gaussians of the contraction have the same orbital momentum
+!  do ig=1,bf%ngaussian
+!    call init_gaussian_general(nx,ny,nz,alpha(ig),x0,bf%g(ig))
+!    bf%coeff(ig) = coeff(ig)
+!  enddo
+! 
+!  !
+!  ! check the normalization if requested
+!  if( normalized ) then
+!    call overlap_basis_function(bf,bf,overlap)
+!    if( ABS(overlap-1.0_dp) > 2.0d-5 ) then
+! !     write(stdout,*) 'normalization is different from 1.0',overlap
+! !     write(stdout,*) bf%nx,bf%ny,bf%nz
+! !     write(stdout,*) 'assuming this is a generalized contraction and rescaling coefficients'
+!      bf%coeff(:) = coeff(:) / SQRT( overlap )
+!    endif
+!  endif
+ 
+
+end subroutine init_basis_function_pure
 
 
 !=========================================================================
