@@ -29,8 +29,11 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 
 all: prepare_sourcecode ../molgw
 
-../molgw: m_definitions.o m_warning.o  m_mpi.o m_elements.o m_timing.o m_memory.o m_tools.o m_atoms.o \
-        m_gos.o m_gaussian.o m_basis_set.o m_inputparam.o m_scf.o m_eri.o m_spectral_function.o m_dft_grid.o \
+../molgw: m_definitions.o \
+        m_warning.o m_gos.o \
+        m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o \
+        m_atoms.o \
+        m_gaussian.o m_basis_set.o m_inputparam.o m_scf.o m_eri.o m_spectral_function.o m_dft_grid.o \
         m_hamiltonian.o m_hamiltonian_sca.o  m_timedependent.o \
         static_polarizability.o gw.o dft_xc.o \
         libint_wrapper.o libint_wrapper_nounderscore.o \
@@ -110,38 +113,38 @@ m_eri.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_b
 m_basis_set.o: m_definitions.f90 m_elements.f90 m_gaussian.f90 m_basis_set.f90
 	$(FC_W_OPTS) -c m_basis_set.f90 $(LIBXC_INCS)
 
-m_gos.o: m_definitions.f90 m_tools.f90 m_gos.f90
-	$(FC_W_OPTS) -c m_gos.f90 $(LIBXC_INCS)
-
 m_gaussian.o: m_definitions.f90 m_tools.f90 m_gos.f90 m_gaussian.f90
 	$(FC_W_OPTS) -c m_gaussian.f90 $(LIBXC_INCS)
 
-m_scf.o: m_definitions.f90 m_scf.f90 m_inputparam.f90
+m_scf.o: m_definitions.f90 m_inputparam.f90 m_scf.f90
 	$(FC_W_OPTS) -c m_scf.f90 $(LIBXC_INCS)
-
-m_tools.o: m_definitions.f90 m_tools.f90
-	$(FC_W_OPTS) -c m_tools.f90 $(LIBXC_INCS)
-
-m_elements.o: m_definitions.f90 m_elements.f90
-	$(FC_W_OPTS) -c m_elements.f90 $(LIBXC_INCS)
 
 m_inputparam.o: m_definitions.f90 m_elements.f90 m_warning.f90 m_atoms.f90 m_basis_set.f90 m_inputparam.f90 input_variables.f90 basis_path.f90
 	$(FC_W_OPTS) -c m_inputparam.f90 $(LIBXC_INCS)
 
-m_memory.o: m_definitions.f90 m_memory.f90
+m_atoms.o: m_definitions.f90 m_warning.f90 m_elements.f90 m_atoms.f90
+	$(FC_W_OPTS) -c m_atoms.f90 $(LIBXC_INCS)
+
+m_mpi.o: m_definitions.f90 m_warning.f90 m_mpi.f90
+	$(FC_W_OPTS) -c m_mpi.f90 $(LIBXC_INCS)
+
+m_tools.o: m_definitions.f90 m_warning.f90 m_tools.f90
+	$(FC_W_OPTS) -c m_tools.f90 $(LIBXC_INCS)
+
+m_memory.o: m_definitions.f90 m_warning.f90 m_memory.f90
 	$(FC_W_OPTS) -c m_memory.f90 $(LIBXC_INCS)
+
+m_timing.o: m_definitions.f90 m_warning.f90 m_timing.f90
+	$(FC_W_OPTS) -c m_timing.f90 $(LIBXC_INCS)
+
+m_elements.o: m_definitions.f90 m_warning.f90 m_elements.f90
+	$(FC_W_OPTS) -c m_elements.f90 $(LIBXC_INCS)
+
+m_gos.o: m_definitions.f90 m_tools.f90 m_gos.f90
+	$(FC_W_OPTS) -c m_gos.f90 $(LIBXC_INCS)
 
 m_warning.o: m_definitions.f90 m_warning.f90
 	$(FC_W_OPTS) -c m_warning.f90 $(LIBXC_INCS)
-
-m_timing.o: m_definitions.f90 m_timing.f90
-	$(FC_W_OPTS) -c m_timing.f90 $(LIBXC_INCS)
-
-m_mpi.o: m_definitions.f90 m_mpi.f90
-	$(FC_W_OPTS) -c m_mpi.f90 $(LIBXC_INCS)
-
-m_atoms.o: m_definitions.f90 m_atoms.f90
-	$(FC_W_OPTS) -c m_atoms.f90 $(LIBXC_INCS)
 
 m_definitions.o: m_definitions.f90
 	$(FC_W_OPTS) -c m_definitions.f90 $(LIBXC_INCS)
