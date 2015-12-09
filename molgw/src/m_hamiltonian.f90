@@ -1,4 +1,10 @@
 !=========================================================================
+module m_hamiltonian
+
+contains
+
+
+!=========================================================================
 subroutine setup_overlap(print_matrix_,basis,s_matrix)
  use m_definitions
  use m_timing
@@ -17,7 +23,7 @@ subroutine setup_overlap(print_matrix_,basis,s_matrix)
 !=====
 
  call start_clock(timing_overlap)
- write(stdout,*) 'Setup overlap matrix S'
+ write(stdout,'(/,a)') ' Setup overlap matrix S'
 
  ibf_cart = 1
  jbf_cart = 1
@@ -184,74 +190,6 @@ subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
  call stop_clock(timing_hamiltonian_kin)
 
 end subroutine setup_kinetic
-
-
-!=========================================================================
-subroutine setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic)
- use m_definitions
- use m_timing
- use m_basis_set
- implicit none
- logical,intent(in)         :: print_matrix_
- type(basis_set),intent(in) :: basis
- integer,intent(in)         :: m_ham,n_ham
- real(dp),intent(out)       :: hamiltonian_kinetic(m_ham,n_ham)
-!=====
- integer              :: ibf,jbf
- integer              :: ibf_cart,jbf_cart
- integer              :: i_cart,j_cart
- integer              :: ni,nj,ni_cart,nj_cart,li,lj
- character(len=100)   :: title
- real(dp),allocatable :: matrix_cart(:,:)
- real(dp),allocatable :: matrix_final(:,:)
-!=====
-
- call start_clock(timing_hamiltonian_kin)
- write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian: SCALAPACK'
-
- ibf_cart = 1
- jbf_cart = 1
- ibf      = 1
- jbf      = 1
- do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
-   ni_cart = number_basis_function_am('CART',li)
-   ni      = number_basis_function_am(basis%gaussian_type,li)
-
-   do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
-     nj_cart = number_basis_function_am('CART',lj)
-     nj      = number_basis_function_am(basis%gaussian_type,lj)
-
-     allocate(matrix_cart(ni_cart,nj_cart))
-     allocate(matrix_final(ni,nj))
-     do i_cart=1,ni_cart
-       do j_cart=1,nj_cart
-         call kinetic_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
-       enddo
-     enddo
-     hamiltonian_kinetic(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
-                                                              MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
-
-
-     deallocate(matrix_cart,matrix_final)
-     jbf      = jbf      + nj
-     jbf_cart = jbf_cart + nj_cart
-   enddo
-   jbf      = 1
-   jbf_cart = 1
-
-   ibf      = ibf      + ni
-   ibf_cart = ibf_cart + ni_cart
-
- enddo
-
- title='===  Kinetic energy contribution ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_kinetic)
-
- call stop_clock(timing_hamiltonian_kin)
-
-end subroutine setup_kinetic_sca
 
 
 !=========================================================================
@@ -966,11 +904,12 @@ end subroutine read_potential
 
 
 !=========================================================================
-subroutine setup_density_matrix(nbf,nspin,c_matrix,occupation,p_matrix)
+subroutine setup_density_matrix(nbf,c_matrix,occupation,p_matrix)
  use m_definitions
  use m_mpi
+ use m_inputparam,only: nspin
  implicit none
- integer,intent(in)   :: nbf,nspin
+ integer,intent(in)   :: nbf
  real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin)
  real(dp),intent(in)  :: occupation(nbf,nspin)
  real(dp),intent(out) :: p_matrix(nbf,nbf,nspin)
@@ -1239,6 +1178,7 @@ subroutine diagonalize_hamiltonian(nspin_local,nbf,nstate,hamiltonian,s_matrix_s
    c_matrix(ibf,ibf,:) = 1.0_dp
  enddo
 
+
  do ispin=1,nspin_local
    write(stdout,'(a,i3)') ' Diagonalization for spin: ',ispin
    call start_clock(timing_diago_hamiltonian)
@@ -1267,4 +1207,48 @@ subroutine diagonalize_hamiltonian(nspin_local,nbf,nstate,hamiltonian,s_matrix_s
 end subroutine diagonalize_hamiltonian
 
 
+!=========================================================================
+subroutine setup_sqrt_overlap(TOL_OVERLAP,nbf,s_matrix,nstate,s_matrix_sqrt_inv)
+ use m_definitions
+ use m_timing
+ use m_tools
+ implicit none
+
+ real(dp),intent(in)                :: TOL_OVERLAP
+ integer,intent(in)                 :: nbf
+ real(dp),intent(in)                :: s_matrix(nbf,nbf)
+ integer,intent(out)                :: nstate
+ real(dp),allocatable,intent(inout) :: s_matrix_sqrt_inv(:,:)
+!=====
+ integer  :: ibf,jbf
+ real(dp) :: s_eigval(nbf)
+ real(dp) :: matrix_tmp(nbf,nbf)
+!=====
+
+ matrix_tmp(:,:) = s_matrix(:,:)
+ call diagonalize(nbf,matrix_tmp,s_eigval)
+
+ nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
+
+ allocate(s_matrix_sqrt_inv(nbf,nstate))
+
+ write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
+ write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is           ',MINVAL( s_eigval(:) )
+ write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',TOL_OVERLAP
+ write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',nbf
+
+ ibf=0
+ do jbf=1,nbf
+   if( s_eigval(jbf) > TOL_OVERLAP ) then
+     ibf = ibf + 1
+     s_matrix_sqrt_inv(:,ibf) = matrix_tmp(:,jbf) / SQRT( s_eigval(jbf) )
+   endif
+ enddo
+
+
+end subroutine setup_sqrt_overlap
+
+
+!=========================================================================
+end module m_hamiltonian
 !=========================================================================

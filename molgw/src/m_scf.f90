@@ -7,6 +7,7 @@ module m_scf
  integer,private              :: nhistmax
  integer,private              :: nhist_current
  integer,private              :: nbf_scf
+ integer,private              :: m_ham_scf,n_ham_scf
 
  real(dp),allocatable,private :: p_matrix_in_hist(:,:,:,:)
  real(dp),allocatable,private :: residual_hist(:,:,:,:)
@@ -45,9 +46,9 @@ subroutine init_scf(nbf)
 
  select case(mixing_scheme)
  case('SIMPLE')
-   nhistmax=1
+   nhistmax = 1
  case('PULAY')
-   nhistmax=npulay_hist
+   nhistmax = npulay_hist
  case default
    call die('mixing scheme not implemented')
  end select
@@ -63,8 +64,8 @@ subroutine destroy_scf()
  implicit none
 !=====
 
- deallocate(p_matrix_in_hist)
- if(allocated(residual_hist)) deallocate(residual_hist)
+ if(allocated(p_matrix_in_hist)) deallocate(p_matrix_in_hist)
+ if(allocated(residual_hist))    deallocate(residual_hist)
 
 end subroutine destroy_scf
 

@@ -500,9 +500,6 @@ subroutine build_a_diag_common(nmat,nbf,c_matrix,energy,wpol,a_diag)
 
  enddo 
 
-!FBFB call issue_warning('cheating here')
-!FBFB a_diag(:) = a_diag(:) * ( a_diag(:) / MINVAL(a_diag(:)) )**0.50
-
  if(allocated(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
 
 
@@ -1740,6 +1737,7 @@ end subroutine stopping_power
 subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2sigma2,wf_r,wf_gradr,rho_gradr)
  use m_dft_grid
  use m_basis_set
+ use m_hamiltonian
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
  use xc_f90_lib_m
@@ -1809,7 +1807,7 @@ subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2r
  ! calculate rho, grad rho and the kernel
  ! 
  ! Get the density matrix P from C
- call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
+ call setup_density_matrix(basis%nbf,c_matrix,occupation,p_matrix)
 
  allocate(v2rho2(ngrid,2*nspin_tddft-1),wf_r(ngrid,basis%nbf,nspin))
  v2rho2(:,:) = 0.0_dp

@@ -273,12 +273,13 @@ subroutine single_excitations(nbf,energy,occupation,c_matrix,fock_matrix)
  use m_timing
  use m_inputparam,only: nspin,spin_fact,print_matrix_
  use m_scf,only: en
+ use m_hamiltonian
  implicit none
 
  integer,intent(in)         :: nbf
  real(dp),intent(in)        :: energy(nbf,nspin),occupation(nbf,nspin)
  real(dp),intent(in)        :: c_matrix(nbf,nbf,nspin)
- real(dp),intent(in)        :: fock_matrix(nbf,nbf,nspin)
+ real(dp),intent(inout)     :: fock_matrix(nbf,nbf,nspin)
 !=====
  integer                    :: ispin
  integer                    :: istate,astate

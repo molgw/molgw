@@ -953,6 +953,7 @@ subroutine read_restart(restart_type,basis,occupation,c_matrix,energy,hamiltonia
  use m_mpi
  use m_inputparam
  use m_atoms
+ use m_hamiltonian
  implicit none
 
  integer,intent(out)        :: restart_type
@@ -1227,6 +1228,7 @@ subroutine read_any_restart(basis,occupation,c_matrix,energy, &
  use m_mpi
  use m_warning
  use m_inputparam
+ use m_hamiltonian
  implicit none
 
  type(basis_set),intent(in) :: basis

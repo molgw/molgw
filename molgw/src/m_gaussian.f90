@@ -202,6 +202,7 @@ subroutine product_gaussian(ga,gb,gprod)
 end subroutine product_gaussian
 
 
+#ifdef REMOVE
 !=========================================================================
 subroutine overlap_normalized(ga,gb,s_ab)
  implicit none
@@ -209,13 +210,13 @@ subroutine overlap_normalized(ga,gb,s_ab)
  real(dp),intent(out) :: s_ab
 !=====
 
- ! FBFB
  call die('deprecated piece code, to be removed')
 
  call overlap(ga,gb,s_ab)
  s_ab = s_ab * ga%norm_factor * gb%norm_factor
 
 end subroutine overlap_normalized
+#endif
 
 
 !=========================================================================

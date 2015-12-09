@@ -15,11 +15,12 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  use m_tools
  use m_scf
  use m_atoms
-! use m_gaussian
  use m_basis_set
  use m_eri
  use m_dft_grid
  use m_spectral_function
+ use m_hamiltonian
+ use m_hamiltonian_sca
  use m_timedependent
 #ifdef _OPENMP
  use omp_lib
@@ -284,7 +285,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    ! Setup the new density matrix: p_matrix
    ! Save the old one for the convergence criterium
    p_matrix_old(:,:,:) = p_matrix(:,:,:)
-   call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
+   call setup_density_matrix(basis%nbf,c_matrix,occupation,p_matrix)
    title='=== density matrix P ==='
    call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,p_matrix)
   
@@ -427,13 +428,13 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    do istate=1,ncore
      occupation_tmp(istate,:) = 0.0_dp
    enddo
-   call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation_tmp,p_matrix_tmp)
+   call setup_density_matrix(basis%nbf,c_matrix,occupation_tmp,p_matrix_tmp)
    call dft_exc_vxc(basis,p_matrix_tmp,ehomo,hamiltonian_xc,en%xc)
 
    if( .NOT. is_full_auxil ) then
      call setup_exchange(print_matrix_,basis%nbf,p_matrix_tmp,hamiltonian_exx,en%exx)
    else
-     call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_tmp,hamiltonian_exx,en%exx)
+     call setup_exchange_ri(print_matrix_,basis%nbf,occupation,c_matrix,p_matrix_tmp,hamiltonian_exx,en%exx)
    endif
 
    deallocate(occupation_tmp,p_matrix_tmp)

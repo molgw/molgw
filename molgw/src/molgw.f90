@@ -33,6 +33,8 @@ program molgw
  use m_eri
  use m_dft_grid
  use m_spectral_function
+ use m_hamiltonian
+ use m_hamiltonian_sca
  use m_timedependent
 #ifdef _OPENMP
  use omp_lib
@@ -67,6 +69,7 @@ program molgw
  real(dp),allocatable    :: s_eigval(:)
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
+ integer                 :: m_ham,n_ham
 !=============================
 
  call init_mpi()
@@ -102,24 +105,31 @@ program molgw
  call setup_cart_to_pure_transforms(gaussian_type)
 
  !
- ! First attempt to distribute the work load among procs
- ! TODO: to be removed
-! call init_distribution(basis%nbf)
+ ! Scalapack distribution of the hamiltonian
+ call init_scalapack_ham(basis%nbf,m_ham,n_ham)
+
  
  !
  ! Allocate the main arrays
- allocate(occupation(basis%nbf,nspin))
- allocate(energy(basis%nbf,nspin))
- allocate(c_matrix(basis%nbf,basis%nbf,nspin))
- allocate(s_matrix(basis%nbf,basis%nbf))
- allocate(p_matrix(basis%nbf,basis%nbf,nspin))
- allocate(hamiltonian_kinetic(basis%nbf,basis%nbf))
- allocate(hamiltonian_nucleus(basis%nbf,basis%nbf))
+ ! 1D arrays
+ allocate(occupation         (basis%nbf,nspin))
+ allocate(energy             (basis%nbf,nspin))
+ allocate(exchange_m_vxc_diag(basis%nbf,nspin))
+
+ ! 2D arrays
+ if( m_ham /= basis%nbf .OR. n_ham /= basis%nbf ) then
+   call issue_warning('SCALAPACK is used to distribute the SCF hamiltonian')
+ endif
+ allocate(s_matrix           (m_ham,n_ham))
+ allocate(hamiltonian_kinetic(m_ham,n_ham))
+ allocate(hamiltonian_nucleus(m_ham,n_ham))
+ allocate(c_matrix           (m_ham,n_ham,nspin))
+ allocate(p_matrix           (m_ham,n_ham,nspin))
+
  allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
  allocate(hamiltonian_hartree(basis%nbf,basis%nbf))
  allocate(hamiltonian_exx(basis%nbf,basis%nbf,nspin) )
  allocate(hamiltonian_xc(basis%nbf,basis%nbf,nspin) )
- allocate(exchange_m_vxc_diag(basis%nbf,nspin))
 
  !
  ! Some required initializations
@@ -128,28 +138,22 @@ program molgw
  !
  ! Build up the overlap matrix S
  ! S only depends onto the basis set
+#ifdef HAVE_SCALAPACK2
+ call setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
+#else
  call setup_overlap(print_matrix_,basis,s_matrix)
+#endif
 
 
- allocate(s_matrix_sqrt_inv(basis%nbf,basis%nbf))
- allocate(s_eigval(basis%nbf))
- call diagonalize(basis%nbf,s_matrix,s_eigval,s_matrix_sqrt_inv)
-
-
- nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
- write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
- write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is           ',MINVAL( s_eigval(:) )
- write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',TOL_OVERLAP
- write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',basis%nbf
-
- ibf=0
- do jbf=1,basis%nbf
-   if( s_eigval(jbf) > TOL_OVERLAP ) then
-     ibf = ibf + 1
-     s_matrix_sqrt_inv(:,ibf) = s_matrix_sqrt_inv(:,jbf) / SQRT( s_eigval(jbf) )
-   endif
- enddo
- deallocate(s_eigval)
+ !
+ ! Calculate the square root inverse of the overlap matrix S
+ ! Eliminate those eigenvalue that are too small in order to stabilize the
+ ! calculation
+#ifdef HAVE_SCALAPACK2
+ call setup_sqrt_overlap_sca(TOL_OVERLAP,basis%nbf,m_ham,n_ham,s_matrix,nstate,s_matrix_sqrt_inv)
+#else
+ call setup_sqrt_overlap(TOL_OVERLAP,basis%nbf,s_matrix,nstate,s_matrix_sqrt_inv)
+#endif
 
  !
  ! Set up the electron repulsion integrals
@@ -205,11 +209,19 @@ program molgw
  if( .NOT. is_big_restart ) then
    !
    ! Kinetic energy contribution
+#ifdef HAVE_SCALAPACK2
+   call setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic)
+#else
    call setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
+#endif
   
    !
    ! Nucleus-electron interaction
+#ifdef HAVE_SCALAPACK2
+   call setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
+#else
    call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
+#endif
  endif
 
  if( is_basis_restart ) then
@@ -227,23 +239,30 @@ program molgw
  if( .NOT. is_restart) then
    !
    ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
-   allocate(hamiltonian_tmp(basis%nbf,basis%nbf))
+   allocate(hamiltonian_tmp(m_ham,n_ham))
    !
    ! Calculate a very approximate vhxc based on simple gaussians placed on atoms
+#ifdef HAVE_SCALAPACK2
+   call issue_warning('skip initialization, because it is not implemented yet')
+   hamiltonian_tmp(:,:) = 0.0_dp
+#else
    call dft_approximate_vhxc(basis,hamiltonian_tmp)
+#endif
+
    hamiltonian_tmp(:,:) = hamiltonian_tmp(:,:) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
 
    write(stdout,'(/,a)') ' Approximate hamiltonian'
-#if 0
-   ! Keep old coding for reference
-   ! TODO remove this when sure
-   call diagonalize_generalized_sym(basis%nbf,hamiltonian_tmp,s_matrix,&
+
+#ifdef HAVE_SCALAPACK2
+   call diagonalize_hamiltonian_sca(1,basis%nbf,m_ham,n_ham,nstate,hamiltonian_tmp,s_matrix_sqrt_inv, &
                                     energy(:,1),c_matrix(:,:,1))
 #else
    call diagonalize_hamiltonian(1,basis%nbf,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
                                     energy(:,1),c_matrix(:,:,1))
 #endif
+
    deallocate(hamiltonian_tmp)
+
    ! The hamiltonian is still spin-independent:
    c_matrix(:,:,nspin) = c_matrix(:,:,1)
   
@@ -259,7 +278,11 @@ program molgw
 
  !
  ! Setup the density matrix: p_matrix
- call setup_density_matrix(basis%nbf,nspin,c_matrix,occupation,p_matrix)
+#ifdef HAVE_SCALAPACK2
+ call setup_density_matrix_sca(basis%nbf,m_ham,n_ham,c_matrix,occupation,p_matrix)
+#else
+ call setup_density_matrix(basis%nbf,c_matrix,occupation,p_matrix)
+#endif
 !!
 !! Test PSP = P
 ! call test_density_matrix(basis%nbf,nspin,p_matrix,s_matrix)

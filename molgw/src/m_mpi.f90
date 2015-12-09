@@ -10,12 +10,12 @@ module m_mpi
  logical,parameter :: parallel_grid      = .TRUE.
  logical,parameter :: parallel_auxil     = .TRUE.
 
-#ifdef HAVE_SCALAPACK
+#ifdef HAVE_SCALAPACK2
  logical,parameter :: parallel_ham       = .TRUE.
 #else
  logical,parameter :: parallel_ham       = .FALSE.
 #endif
- integer,parameter :: HAMILTONIAN_SCA    = 1000
+ integer,parameter :: HAMILTONIAN_SCA    = 50  !FBFBSCA too small just for testing
 
 #ifdef HAVE_SCALAPACK
  logical,parameter :: parallel_scalapack = .TRUE.
@@ -25,12 +25,15 @@ module m_mpi
 
  integer,parameter :: SCALAPACK_MIN = 200   ! TODO Better tune this parameter in the future
 
+ integer,private   :: comm_world
  integer,protected :: nproc  = 1
  integer,protected :: rank   = 0
  integer,private   :: iomaster = 0
  logical,protected :: is_iomaster = .TRUE.
 
- integer,private :: my_comm
+ integer,private   :: comm_local
+ integer,protected :: nproc_local  = 1
+ integer,protected :: rank_local   = 0
 
  integer,private :: nbf_mpi
  integer,private :: ngrid_mpi
@@ -75,6 +78,10 @@ module m_mpi
    module procedure xmax_i
    module procedure xmax_r
    module procedure xmax_ra1d
+ end interface
+
+ interface xlocal_max
+   module procedure xlocal_max_i
  end interface
 
  interface xsum
@@ -124,6 +131,7 @@ module m_mpi
  integer,protected :: npcol_ham
  integer,protected :: iprow_ham
  integer,protected :: ipcol_ham
+ integer,protected :: desc_ham(ndel)
 
  ! SCALAPACK grid: row distribution
  integer,protected :: cntxt_rd
@@ -157,7 +165,7 @@ subroutine init_mpi()
 
 #ifdef HAVE_MPI
  call MPI_INIT(ier)
- my_comm = MPI_COMM_WORLD
+ comm_world = MPI_COMM_WORLD
 #endif
 
  call get_size()
@@ -210,7 +218,7 @@ subroutine barrier()
 !=====
 
 #ifdef HAVE_MPI
- call MPI_BARRIER(my_comm,ier)
+ call MPI_BARRIER(comm_world,ier)
 #endif
 
 end subroutine barrier
@@ -223,7 +231,7 @@ subroutine get_size()
 !=====
 
 #ifdef HAVE_MPI
- call MPI_COMM_SIZE(my_comm,nproc,ier)
+ call MPI_COMM_SIZE(comm_world,nproc,ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in get_size'
@@ -239,7 +247,7 @@ subroutine get_rank()
 !=====
 
 #ifdef HAVE_MPI
- call MPI_COMM_RANK(my_comm,rank,ier)
+ call MPI_COMM_RANK(comm_world,rank,ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in get_rank'
@@ -532,7 +540,7 @@ subroutine xand_l(logical_variable)
  n1 = 1
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, logical_variable, n1, MPI_LOGICAL, MPI_LAND, my_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, logical_variable, n1, MPI_LOGICAL, MPI_LAND, comm_world, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -553,7 +561,7 @@ subroutine xand_la1d(logical_array)
  n1 = SIZE(logical_array,DIM=1)
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, logical_array, n1, MPI_LOGICAL, MPI_LAND, my_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, logical_array, n1, MPI_LOGICAL, MPI_LAND, comm_world, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -575,7 +583,7 @@ subroutine xand_la2d(logical_array)
  n2 = SIZE(logical_array,DIM=2)
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, logical_array, n1*n2, MPI_LOGICAL, MPI_LAND, my_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, logical_array, n1*n2, MPI_LOGICAL, MPI_LAND, comm_world, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -596,7 +604,7 @@ subroutine xmin_i(integer_number)
  n1 = 1
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER, MPI_MIN, my_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER, MPI_MIN, comm_world, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -617,7 +625,7 @@ subroutine xmax_i(integer_number)
  n1 = 1
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER, MPI_MAX, my_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER, MPI_MAX, comm_world, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -638,7 +646,7 @@ subroutine xmax_r(real_number)
  n1 = 1
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE, MPI_MAX, my_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE, MPI_MAX, comm_world, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -659,13 +667,34 @@ subroutine xmax_ra1d(array)
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE, MPI_MAX, my_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE, MPI_MAX, comm_world, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
  endif
 
 end subroutine xmax_ra1d
+
+
+!=========================================================================
+subroutine xlocal_max_i(integer_number)
+ implicit none
+ integer,intent(inout) :: integer_number
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = 1
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER, MPI_MAX, comm_local, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xlocal_max_i
 
 
 !=========================================================================
@@ -680,7 +709,7 @@ subroutine xsum_r(real_number)
  n1 = 1
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE_PRECISION, MPI_SUM, my_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE_PRECISION, MPI_SUM, comm_world, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -701,7 +730,7 @@ subroutine xsum_ra1d(array)
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_PRECISION, MPI_SUM, my_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_PRECISION, MPI_SUM, comm_world, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -723,7 +752,7 @@ subroutine xsum_ra2d(array)
  n2 = SIZE( array, DIM=2 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, my_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, comm_world, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -746,7 +775,7 @@ subroutine xsum_ra3d(array)
  n3 = SIZE( array, DIM=3 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3, MPI_DOUBLE_PRECISION, MPI_SUM, my_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3, MPI_DOUBLE_PRECISION, MPI_SUM, comm_world, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -770,7 +799,7 @@ subroutine xsum_ra4d(array)
  n4 = SIZE( array, DIM=4 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3*n4, MPI_DOUBLE_PRECISION, MPI_SUM, my_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3*n4, MPI_DOUBLE_PRECISION, MPI_SUM, comm_world, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -791,7 +820,7 @@ subroutine xsum_ca1d(array)
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_COMPLEX, MPI_SUM, my_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_COMPLEX, MPI_SUM, comm_world, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -813,7 +842,7 @@ subroutine xsum_ca2d(array)
  n2 = SIZE( array, DIM=2 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_COMPLEX, MPI_SUM, my_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_COMPLEX, MPI_SUM, comm_world, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -837,7 +866,7 @@ subroutine xsum_ca4d(array)
  n4 = SIZE( array, DIM=4 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3*n4, MPI_DOUBLE_COMPLEX, MPI_SUM, my_comm, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3*n4, MPI_DOUBLE_COMPLEX, MPI_SUM, comm_world, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -961,6 +990,8 @@ subroutine init_scalapack_ham(nbf,m_ham,n_ham)
  integer,intent(in)  :: nbf
  integer,intent(out) :: m_ham,n_ham
 !=====
+ integer :: ier=0
+ integer :: color
 #ifdef HAVE_SCALAPACK
  integer,external :: NUMROC 
 #endif
@@ -976,12 +1007,37 @@ subroutine init_scalapack_ham(nbf,m_ham,n_ham)
    call BLACS_GRIDINIT( cntxt_ham, 'R', nprow_ham, npcol_ham )
    call BLACS_GRIDINFO( cntxt_ham, nprow_ham, npcol_ham, iprow_ham, ipcol_ham )
 
-   m_ham = NUMROC(nbf,block_row,iprow_ham,first_row,nprow_ham)
-   n_ham = NUMROC(nbf,block_col,ipcol_ham,first_col,npcol_ham)
+   ! Propagate the scalapack grid to all processors
+   call xmax(nprow_ham)
+   call xmax(npcol_ham)
+
+
+   if( cntxt_ham > 0 ) then
+     call init_desc('H',nbf,nbf,desc_ham,m_ham,n_ham)
+   else
+     m_ham = 0
+     n_ham = 0
+   endif
 
    write(stdout,'(/,a)')           ' ==== SCALAPACK Hamiltonian'
    write(stdout,'(a50,x,i8)')      'Number of dedicated processors:',nprow_ham*npcol_ham
    write(stdout,'(a50,x,i8,x,i8)') 'Grid of dedicated processors:',nprow_ham,npcol_ham
+
+   ! Distribute the remaing procs
+   color = MODULO( rank , nprow_ham * npcol_ham )
+
+   call MPI_COMM_SPLIT(comm_world,color,rank,comm_local,ier);
+   call MPI_COMM_SIZE(comm_local,nproc_local,ier)
+   call MPI_COMM_RANK(comm_local,rank_local,ier)
+
+!FBFBSCA decide wheter or not I need this
+   call xlocal_max(m_ham)
+   call xlocal_max(n_ham)
+
+!FBFBSCA   write(1000+rank,'(a)') ' #  rank,nproc,color,iprow_ham,ipcol_ham,rank_local,nproc_local '
+!FBFBSCA   write(1000+rank,'(10(i4,2x))') rank,nproc,color,iprow_ham,ipcol_ham,rank_local,nproc_local
+!FBFBSCA   write(1000+rank,'(a)') ' #  rank,m_ham,n_ham'
+!FBFBSCA   write(1000+rank,'(10(i4,2x))') rank,m_ham,n_ham
 
  else
 
@@ -1057,6 +1113,10 @@ subroutine init_desc(distribution,mglobal,nglobal,desc,mlocal,nlocal)
    mlocal = NUMROC(mglobal,block_row,iprow_sd,first_row,nprow_sd)
    nlocal = NUMROC(nglobal,block_col,ipcol_sd,first_col,npcol_sd)
    call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+ case('H')
+   mlocal = NUMROC(mglobal,block_row,iprow_ham,first_row,nprow_ham)
+   nlocal = NUMROC(nglobal,block_col,ipcol_ham,first_col,npcol_ham)
+   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_ham,MAX(1,mlocal),info)
  case('R')
    mlocal = NUMROC(mglobal,block_row,iprow_rd,first_row,nprow_rd)
    nlocal = NUMROC(nglobal,block_col,ipcol_rd,first_col,npcol_rd)
@@ -1139,14 +1199,16 @@ subroutine diagonalize_sca(desc,nglobal,mlocal,nlocal,matrix,eigval)
  ! First call to get the dimension of the array work
  lwork = -1
  allocate(work(1))
- call PDSYEV('N','U',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_tmp,work,lwork,info)
+ call PDSYEV('V','U',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_tmp,work,lwork,info)
  lwork = NINT(work(1))
  deallocate(work)
  !
- ! Second call indeed perform the diago
+ ! Second call to actually perform the diago
  allocate(work(lwork))
- call PDSYEV('N','U',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_tmp,work,lwork,info)
+ call PDSYEV('V','U',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_tmp,work,lwork,info)
  deallocate(work)
+
+ matrix(:,:) = eigvec(:,:)
 
 #else
  eigval(:) = 0.0_dp
@@ -1176,6 +1238,12 @@ function rowindex_global_to_local(distribution,iglobal)
  case('S')
    if( iprow_sd == INDXG2P(iglobal,block_row,0,first_row,nprow_sd) ) then
      rowindex_global_to_local = INDXG2L(iglobal,block_row,0,first_row,nprow_sd)
+   else
+     rowindex_global_to_local = 0
+   endif
+ case('H')
+   if( iprow_ham == INDXG2P(iglobal,block_row,0,first_row,nprow_ham) ) then
+     rowindex_global_to_local = INDXG2L(iglobal,block_row,0,first_row,nprow_ham)
    else
      rowindex_global_to_local = 0
    endif
@@ -1225,6 +1293,12 @@ function colindex_global_to_local(distribution,iglobal)
    else
      colindex_global_to_local = 0
    endif
+ case('H')
+   if( ipcol_ham == INDXG2P(iglobal,block_col,0,first_col,npcol_ham) ) then
+     colindex_global_to_local = INDXG2L(iglobal,block_col,0,first_col,npcol_ham)
+   else
+     colindex_global_to_local = 0
+   endif
  case('R')
    if( ipcol_rd == INDXG2P(iglobal,block_col,0,first_col,npcol_rd) ) then
      colindex_global_to_local = INDXG2L(iglobal,block_col,0,first_col,npcol_rd)
@@ -1264,6 +1338,8 @@ function rowindex_local_to_global_distrib(distribution,ilocal)
  select case(distribution)
  case('S')
    rowindex_local_to_global_distrib = INDXL2G(ilocal,block_row,iprow_sd,first_row,nprow_sd)
+ case('H')
+   rowindex_local_to_global_distrib = INDXL2G(ilocal,block_row,iprow_ham,first_row,nprow_ham)
  case('R')
    rowindex_local_to_global_distrib = INDXL2G(ilocal,block_row,iprow_rd,first_row,nprow_rd)
  case('C')
@@ -1315,6 +1391,8 @@ function colindex_local_to_global_distrib(distribution,ilocal)
  select case(distribution)
  case('S')
    colindex_local_to_global_distrib = INDXL2G(ilocal,block_col,ipcol_sd,first_col,npcol_sd)
+ case('H')
+   colindex_local_to_global_distrib = INDXL2G(ilocal,block_col,ipcol_ham,first_col,npcol_ham)
  case('R')
    colindex_local_to_global_distrib = INDXL2G(ilocal,block_col,ipcol_rd,first_col,npcol_rd)
  case('C')
