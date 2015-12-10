@@ -205,6 +205,8 @@ subroutine init_calculation_type(calc_type,input_key)
  case('CI')
    calc_type%is_ci         = .TRUE.
    alpha_hybrid            = 1.00_dp
+ case('H','HARTREE')
+   alpha_hybrid            = 0.0_dp
  case('HF')
    alpha_hybrid            = 1.00_dp
  case('MP2')
@@ -448,24 +450,6 @@ subroutine init_dft_type(key,calc_type)
 
 
 end subroutine init_dft_type
-
-
-!=========================================================================
-subroutine output_calculation_type(calc_type)
- implicit none
- type(calculation_type),intent(in)   :: calc_type
-!=====
-
-  write(stdout,*) 'need_exchange               ',calc_type%need_exchange
-  write(stdout,*) 'need_rpa                    ',calc_type%need_rpa
-  write(stdout,*) 'is_gw                       ',calc_type%is_gw
-  write(stdout,*) 'is_mp2                      ',calc_type%is_mp2
-  write(stdout,*) 'is_ci                       ',calc_type%is_ci
-  write(stdout,*) 'is_td                       ',calc_type%is_td
-  write(stdout,*) 'is_bse                      ',calc_type%is_bse
-  write(stdout,*) 'method                      ',calc_type%gwmethod  
-
-end subroutine output_calculation_type
 
 
 !=========================================================================

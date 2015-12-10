@@ -327,8 +327,8 @@ subroutine destroy_basis_set(basis)
 !   call destroy_basis_function(basis%bf(ibf))
 ! enddo
  deallocate(basis%bf)
- if(allocated(basis%index_ij))        deallocate(basis%index_ij)
- if(allocated(basis%index_prodbasis)) deallocate(basis%index_prodbasis)
+ if(ALLOCATED(basis%index_ij))        deallocate(basis%index_ij)
+ if(ALLOCATED(basis%index_prodbasis)) deallocate(basis%index_prodbasis)
 
 end subroutine destroy_basis_set
 

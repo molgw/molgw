@@ -763,7 +763,7 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,occupation,c_matrix,p_m
  integer              :: ipair
 !=====
 
- write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
+ write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity'
  call start_clock(timing_exchange)
 
 

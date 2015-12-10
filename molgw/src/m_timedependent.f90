@@ -262,8 +262,8 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
  call clean_deallocate('Y',bigy)
 
 
- if(allocated(eigenvalue)) deallocate(eigenvalue)
- if(allocated(a_diag))     deallocate(a_diag)
+ if(ALLOCATED(eigenvalue)) deallocate(eigenvalue)
+ if(ALLOCATED(a_diag))     deallocate(a_diag)
 
  call stop_clock(timing_pola)
 
@@ -421,7 +421,7 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
  call xsum(rpa_correlation)
 #endif
 
- if(allocated(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
+ if(ALLOCATED(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
 
 
  call stop_clock(timing_build_common)
@@ -500,7 +500,7 @@ subroutine build_a_diag_common(nmat,nbf,c_matrix,energy,wpol,a_diag)
 
  enddo 
 
- if(allocated(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
+ if(ALLOCATED(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
 
 
  call stop_clock(timing_build_common)
@@ -556,7 +556,7 @@ subroutine build_apb_tddft(nmat,basis,c_matrix,occupation,wpol,m_apb,n_apb,apb_m
  ! Prepare TDDFT calculations
  call prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2sigma2,wf_r,wf_gradr,rho_gradr)
  require_gradient = .FALSE.
- if(allocated(v2sigma2)) then ! GGA case
+ if(ALLOCATED(v2sigma2)) then ! GGA case
    require_gradient = .TRUE.
    allocate(grad_ij(3,ngrid,nspin))
    allocate(grad_kl(3,ngrid,nspin))
@@ -869,7 +869,7 @@ subroutine build_amb_apb_bse_auxil(nmat,nbf,c_matrix,wpol,wpol_static,m_apb,n_ap
 
    !
    ! Test if w0 is already available or if we need to calculate it first
-   if( allocated(wpol_static%w0) ) then
+   if( ALLOCATED(wpol_static%w0) ) then
 
      vsqrt_chi_vsqrt(:,:) = wpol_static%w0(:,:)
 
@@ -900,7 +900,7 @@ subroutine build_amb_apb_bse_auxil(nmat,nbf,c_matrix,wpol,wpol_static,m_apb,n_ap
 
    !
    ! Test if w0 is already available or if we need to calculate it first
-   if( allocated(wpol_static%w0) ) then
+   if( ALLOCATED(wpol_static%w0) ) then
 
      allocate(wp0_i(ncore_W+1:nvirtual_W-1,ncore_W+1:kstate_max))
      allocate(w0_local(nauxil_3center))
@@ -1829,8 +1829,8 @@ subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2r
 
    rr(:) = rr_grid(:,igrid)
 
-   if( .NOT. allocated(bfr) ) call prepare_basis_functions_r(basis)
-   if( require_gradient .AND. .NOT. allocated(bfgr) ) call prepare_basis_functions_gradr(basis)
+   if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis)
+   if( require_gradient .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_gradr(basis)
    !
    ! Get all the functions and gradients at point rr
    call get_basis_functions_r(basis,igrid,basis_function_r)
@@ -2051,7 +2051,7 @@ subroutine chi_to_vchiv(nbf,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol)
 
 
 
- if(allocated(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
+ if(ALLOCATED(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
 
  call stop_clock(timing_buildw)
 

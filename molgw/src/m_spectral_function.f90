@@ -267,12 +267,12 @@ subroutine destroy_spectral_function(sf)
  type(spectral_function),intent(inout) :: sf
 !=====
 
- if(allocated(sf%transition_table)) deallocate(sf%transition_table)
- if(allocated(sf%pole))             deallocate(sf%pole)
- if(allocated(sf%residu_left)) then
+ if(ALLOCATED(sf%transition_table)) deallocate(sf%transition_table)
+ if(ALLOCATED(sf%pole))             deallocate(sf%pole)
+ if(ALLOCATED(sf%residu_left)) then
    call clean_deallocate('left residu',sf%residu_left)
  endif
- if(allocated(sf%w0)) then
+ if(ALLOCATED(sf%w0)) then
    call clean_deallocate('static W',sf%w0)
  endif
 

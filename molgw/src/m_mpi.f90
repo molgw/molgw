@@ -15,7 +15,7 @@ module m_mpi
 #else
  logical,parameter :: parallel_ham       = .FALSE.
 #endif
- integer,parameter :: HAMILTONIAN_SCA    = 50  !FBFBSCA too small just for testing
+ integer,parameter :: HAMILTONIAN_SCA    = 200  !FBFBSCA too small just for testing
 
 #ifdef HAVE_SCALAPACK
  logical,parameter :: parallel_scalapack = .TRUE.
@@ -35,15 +35,19 @@ module m_mpi
  integer,protected :: nproc_local  = 1
  integer,protected :: rank_local   = 0
 
+ integer,private   :: comm_trans
+ integer,protected :: nproc_trans  = 1
+ integer,protected :: rank_trans   = 0
+
  integer,private :: nbf_mpi
  integer,private :: ngrid_mpi
  integer,private :: nocc_mp
 
 ! Parallelization on the auxiliary basis
- integer,allocatable,public :: iproc_ibf_auxil(:)
- integer,allocatable,public :: ibf_auxil_g(:)
- integer,allocatable,public :: ibf_auxil_l(:)
- integer,allocatable,public :: nbf_local_iproc(:)
+ integer,allocatable,protected :: iproc_ibf_auxil(:)
+ integer,allocatable,protected :: ibf_auxil_g(:)
+ integer,allocatable,protected :: ibf_auxil_l(:)
+ integer,allocatable,protected :: nbf_local_iproc(:)
 
 ! Parallelization on the auxiliary basis (LR part)
  integer,allocatable,public :: iproc_ibf_auxil_lr(:)
@@ -93,6 +97,18 @@ module m_mpi
    module procedure xsum_ca1d
    module procedure xsum_ca2d
    module procedure xsum_ca4d
+ end interface
+
+ interface xlocal_sum
+   module procedure xlocal_sum_ra2d
+   module procedure xlocal_sum_ra3d
+ end interface
+
+ interface xtrans_sum
+   module procedure xtrans_sum_r
+   module procedure xtrans_sum_ra1d
+   module procedure xtrans_sum_ra2d
+   module procedure xtrans_sum_ra3d
  end interface
 
  interface colindex_local_to_global
@@ -196,13 +212,13 @@ subroutine finish_mpi()
  integer :: ier
 !=====
 
- if(allocated(task_proc))   deallocate(task_proc)
- if(allocated(ntask_proc))  deallocate(ntask_proc)
- if(allocated(task_number)) deallocate(task_number)
+ if(ALLOCATED(task_proc))   deallocate(task_proc)
+ if(ALLOCATED(ntask_proc))  deallocate(ntask_proc)
+ if(ALLOCATED(task_number)) deallocate(task_number)
 
- if(allocated(task_grid_proc))   deallocate(task_grid_proc)
- if(allocated(ntask_grid_proc))  deallocate(ntask_grid_proc)
- if(allocated(task_grid_number)) deallocate(task_grid_number)
+ if(ALLOCATED(task_grid_proc))   deallocate(task_grid_proc)
+ if(ALLOCATED(ntask_grid_proc))  deallocate(ntask_grid_proc)
+ if(ALLOCATED(task_grid_number)) deallocate(task_grid_number)
 
 #ifdef HAVE_MPI
  call MPI_FINALIZE(ier)
@@ -279,6 +295,55 @@ end subroutine init_distribution
 
 
 !=========================================================================
+subroutine distribute_auxil_basis(nbf_auxil_basis,nbf_auxil_basis_local)
+ implicit none
+
+ integer,intent(in)  :: nbf_auxil_basis
+ integer,intent(out) :: nbf_auxil_basis_local
+!=====
+ integer :: ibf
+ integer :: ibf_local
+ integer :: iproc
+!=====
+
+ allocate(iproc_ibf_auxil(nbf_auxil_basis))
+ allocate(nbf_local_iproc(0:nproc_local-1))
+
+ iproc              = nproc_local-1
+ nbf_local_iproc(:) = 0
+ do ibf=1,nbf_auxil_basis
+
+   iproc = MODULO(iproc+1,nproc_local)
+
+   iproc_ibf_auxil(ibf) = iproc
+
+   nbf_local_iproc(iproc) = nbf_local_iproc(iproc) + 1
+
+ enddo
+
+ nbf_auxil_basis_local = nbf_local_iproc(rank_local)
+
+ allocate(ibf_auxil_g(nbf_auxil_basis_local))
+ allocate(ibf_auxil_l(nbf_auxil_basis))
+ ibf_local = 0
+ do ibf=1,nbf_auxil_basis
+   if( rank_local == iproc_ibf_auxil(ibf) ) then
+     ibf_local = ibf_local + 1
+     ibf_auxil_g(ibf_local) = ibf
+     ibf_auxil_l(ibf)       = ibf_local
+   endif
+ enddo
+
+ write(stdout,'(/,a)') ' Distribute auxiliary basis functions among processors'
+ do iproc=0,0
+   write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc(iproc),' auxiliary basis functions'
+ enddo
+
+
+end subroutine distribute_auxil_basis
+
+
+!=========================================================================
 subroutine init_grid_distribution(ngrid)
  implicit none
  integer,intent(inout) :: ngrid
@@ -302,9 +367,9 @@ subroutine destroy_grid_distribution()
  implicit none
 !=====
 
- if( allocated(task_grid_proc) )   deallocate(task_grid_proc)
- if( allocated(ntask_grid_proc) )  deallocate(ntask_grid_proc)
- if( allocated(task_grid_number) ) deallocate(task_grid_number)
+ if( ALLOCATED(task_grid_proc) )   deallocate(task_grid_proc)
+ if( ALLOCATED(ntask_grid_proc) )  deallocate(ntask_grid_proc)
+ if( ALLOCATED(task_grid_number) ) deallocate(task_grid_number)
 
 end subroutine destroy_grid_distribution
 
@@ -875,6 +940,137 @@ subroutine xsum_ca4d(array)
 end subroutine xsum_ca4d
 
 
+!=========================================================================
+subroutine xlocal_sum_ra2d(array)
+ implicit none
+ real(dp),intent(inout) :: array(:,:)
+!=====
+ integer :: n1,n2
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, comm_local, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xlocal_sum_ra2d
+
+
+!=========================================================================
+subroutine xlocal_sum_ra3d(array)
+ implicit none
+ real(dp),intent(inout) :: array(:,:,:)
+!=====
+ integer :: n1,n2,n3
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+ n3 = SIZE( array, DIM=3 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3, MPI_DOUBLE_PRECISION, MPI_SUM, comm_local, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xlocal_sum_ra3d
+
+
+!=========================================================================
+subroutine xtrans_sum_r(real_number)
+ implicit none
+ real(dp),intent(inout) :: real_number
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = 1
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE_PRECISION, MPI_SUM, comm_trans, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xtrans_sum_r
+
+
+!=========================================================================
+subroutine xtrans_sum_ra1d(array)
+ implicit none
+ real(dp),intent(inout) :: array(:)
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_PRECISION, MPI_SUM, comm_trans, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xtrans_sum_ra1d
+
+
+!=========================================================================
+subroutine xtrans_sum_ra2d(array)
+ implicit none
+ real(dp),intent(inout) :: array(:,:)
+!=====
+ integer :: n1,n2
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, comm_trans, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xtrans_sum_ra2d
+
+
+!=========================================================================
+subroutine xtrans_sum_ra3d(array)
+ implicit none
+ real(dp),intent(inout) :: array(:,:,:)
+!=====
+ integer :: n1,n2,n3
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+ n3 = SIZE( array, DIM=3 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3, MPI_DOUBLE_PRECISION, MPI_SUM, comm_trans, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xtrans_sum_ra3d
+
 
 #ifdef REMOVE
 !=========================================================================
@@ -1020,10 +1216,10 @@ subroutine init_scalapack_ham(nbf,m_ham,n_ham)
    endif
 
    write(stdout,'(/,a)')           ' ==== SCALAPACK Hamiltonian'
-   write(stdout,'(a50,x,i8)')      'Number of dedicated processors:',nprow_ham*npcol_ham
-   write(stdout,'(a50,x,i8,x,i8)') 'Grid of dedicated processors:',nprow_ham,npcol_ham
+   write(stdout,'(a50,x,i8)')      'Number of dedicated processors:',nprow_ham * npcol_ham
+   write(stdout,'(a50,x,i8,x,i8)')   'Grid of dedicated processors:',nprow_ham,npcol_ham
 
-   ! Distribute the remaing procs
+   ! Distribute the remaing procs for auxiliary basis and grid points
    color = MODULO( rank , nprow_ham * npcol_ham )
 
    call MPI_COMM_SPLIT(comm_world,color,rank,comm_local,ier);
@@ -1031,8 +1227,19 @@ subroutine init_scalapack_ham(nbf,m_ham,n_ham)
    call MPI_COMM_RANK(comm_local,rank_local,ier)
 
 !FBFBSCA decide wheter or not I need this
+! So far, this is YES because all procs need p_matrix
    call xlocal_max(m_ham)
    call xlocal_max(n_ham)
+
+
+   ! Define the transversal communicator
+   color = rank / ( nprow_ham * npcol_ham )
+
+   call MPI_COMM_SPLIT(comm_world,color,rank,comm_trans,ier);
+   call MPI_COMM_SIZE(comm_trans,nproc_trans,ier)
+   call MPI_COMM_RANK(comm_trans,rank_trans,ier)
+
+
 
 !FBFBSCA   write(1000+rank,'(a)') ' #  rank,nproc,color,iprow_ham,ipcol_ham,rank_local,nproc_local '
 !FBFBSCA   write(1000+rank,'(10(i4,2x))') rank,nproc,color,iprow_ham,ipcol_ham,rank_local,nproc_local

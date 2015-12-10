@@ -53,7 +53,6 @@ program molgw
  integer                 :: ispin,istate
  logical                 :: is_restart,is_big_restart,is_basis_restart
  character(len=100)      :: title
- real(dp)                :: energy_tmp
  real(dp),allocatable    :: hamiltonian_tmp(:,:)
  real(dp),allocatable    :: hamiltonian_kinetic(:,:)
  real(dp),allocatable    :: hamiltonian_nucleus(:,:)
@@ -107,8 +106,10 @@ program molgw
  !
  ! Scalapack distribution of the hamiltonian
  call init_scalapack_ham(basis%nbf,m_ham,n_ham)
+ if( m_ham /= basis%nbf .OR. n_ham /= basis%nbf ) then
+   call issue_warning('SCALAPACK is used to distribute the SCF hamiltonian')
+ endif
 
- 
  !
  ! Allocate the main arrays
  ! 1D arrays
@@ -117,19 +118,14 @@ program molgw
  allocate(exchange_m_vxc_diag(basis%nbf,nspin))
 
  ! 2D arrays
- if( m_ham /= basis%nbf .OR. n_ham /= basis%nbf ) then
-   call issue_warning('SCALAPACK is used to distribute the SCF hamiltonian')
- endif
  allocate(s_matrix           (m_ham,n_ham))
  allocate(hamiltonian_kinetic(m_ham,n_ham))
  allocate(hamiltonian_nucleus(m_ham,n_ham))
  allocate(c_matrix           (m_ham,n_ham,nspin))
  allocate(p_matrix           (m_ham,n_ham,nspin))
-
- allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
- allocate(hamiltonian_hartree(basis%nbf,basis%nbf))
- allocate(hamiltonian_exx(basis%nbf,basis%nbf,nspin) )
- allocate(hamiltonian_xc(basis%nbf,basis%nbf,nspin) )
+ allocate(hamiltonian_hartree(m_ham,n_ham))
+ allocate(hamiltonian_exx    (m_ham,n_ham,nspin))
+ allocate(hamiltonian_xc     (m_ham,n_ham,nspin))
 
  !
  ! Some required initializations
@@ -267,11 +263,13 @@ program molgw
    c_matrix(:,:,nspin) = c_matrix(:,:,1)
   
    if( print_matrix_ ) then
+     allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
      do ispin=1,nspin
        matrix_tmp(:,:,ispin) = TRANSPOSE( c_matrix(:,:,ispin) )
      enddo
      title='=== Initial C matrix ==='
      call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
+     deallocate(matrix_tmp)
    endif
 
  endif
@@ -291,10 +289,6 @@ program molgw
  call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,p_matrix)
 
  !
- ! Initialize the SCF mixing procedure
- call init_scf(basis%nbf)
-
- !
  ! If an auxiliary basis is given,
  ! then set it up now and calculate the required ERI: 2- and 3-center integrals
  !
@@ -305,7 +299,7 @@ program molgw
    ! 2-center integrals
    call calculate_eri_2center(print_eri_,auxil_basis)
    ! Prepare the distribution of the 3-center integrals
-   call distribute_auxil_basis(auxil_basis)
+   call distribute_auxil_basis(auxil_basis%nbf,auxil_basis%nbf_local)
    ! 3-center integrals
    call calculate_eri_3center(print_eri_,basis,auxil_basis)
 
@@ -330,11 +324,12 @@ program molgw
  ! Only do it if the calculation is NOT a big restart
  !
  if( .NOT. is_big_restart) then
-   call scf_loop(basis,prod_basis,auxil_basis,                                           &
-                 nstate,s_matrix_sqrt_inv,                                               &
-                 s_matrix,c_matrix,p_matrix,                                             &
-                 hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_hartree,            & 
-                 hamiltonian_exx,hamiltonian_xc,                                         &
+   call scf_loop(basis,prod_basis,auxil_basis,                                  &
+                 nstate,m_ham,n_ham,                                            &
+                 s_matrix_sqrt_inv,                                             &
+                 s_matrix,c_matrix,p_matrix,                                    &
+                 hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_hartree,   & 
+                 hamiltonian_exx,hamiltonian_xc,                                &
                  occupation,energy)
  endif
  
@@ -433,6 +428,7 @@ program molgw
    if( calc_type%is_dft ) en%tot = en%tot - en%xc - en%exx_hyb + en%exx 
    write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
 
+   allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
    call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
    if(has_auxil_basis) call destroy_eri_3center_eigen()
 
@@ -443,6 +439,7 @@ program molgw
    title='=== Self-energy === (in the eigenstate basis)'
    call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
    call destroy_spectral_function(wpol)
+   deallocate(matrix_tmp)
 
  endif ! G0W0
 
@@ -468,9 +465,6 @@ program molgw
    write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en%tot
    write(stdout,'(a,2x,f19.10)') ' SE+MP2  Total En (Ha):',en%tot+en%se
 
-   title='=== Self-energy === (in the eigenstate basis)'
-   call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
-
  endif
 
 
@@ -480,10 +474,10 @@ program molgw
  deallocate(s_matrix,c_matrix,p_matrix)
  deallocate(s_matrix_sqrt_inv)
  deallocate(hamiltonian_kinetic,hamiltonian_nucleus)
- deallocate(hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
- deallocate(energy,occupation)
+ deallocate(hamiltonian_hartree)
+ deallocate(hamiltonian_exx,hamiltonian_xc)
 
- deallocate(matrix_tmp)
+ deallocate(energy,occupation)
  deallocate(exchange_m_vxc_diag)
 
  call deallocate_eri()
@@ -512,5 +506,3 @@ end program molgw
 
 
 !=========================================================================
-
-

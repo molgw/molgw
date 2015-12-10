@@ -3,7 +3,8 @@
 ! the main SCF loop for Hartree-Fock or Kohn-Sham
 !=========================================================================
 subroutine scf_loop(basis,prod_basis,auxil_basis,&
-                    nstate,s_matrix_sqrt_inv,&
+                    nstate,m_ham,n_ham,&
+                    s_matrix_sqrt_inv,&
                     s_matrix,c_matrix,p_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
                     hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc,&
@@ -31,51 +32,54 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  type(basis_set),intent(in)         :: basis
  type(basis_set),intent(in)         :: prod_basis
  type(basis_set),intent(in)         :: auxil_basis
- integer,intent(in)                 :: nstate
- real(dp),intent(in)                :: s_matrix(basis%nbf,basis%nbf)
- real(dp),intent(in)                :: s_matrix_sqrt_inv(basis%nbf,nstate)
- real(dp),intent(inout)             :: c_matrix(basis%nbf,basis%nbf,nspin)
- real(dp),intent(inout)             :: p_matrix(basis%nbf,basis%nbf,nspin)
- real(dp),intent(in)                :: hamiltonian_kinetic(basis%nbf,basis%nbf)
- real(dp),intent(in)                :: hamiltonian_nucleus(basis%nbf,basis%nbf)
- real(dp),intent(inout)             :: hamiltonian_hartree(basis%nbf,basis%nbf)
- real(dp),intent(inout)             :: hamiltonian_exx(basis%nbf,basis%nbf,nspin)
- real(dp),intent(inout)             :: hamiltonian_xc(basis%nbf,basis%nbf,nspin)
+ integer,intent(in)                 :: nstate,m_ham,n_ham
+ real(dp),intent(in)                :: s_matrix_sqrt_inv(m_ham,n_ham)
+ real(dp),intent(in)                :: s_matrix(m_ham,n_ham)
+ real(dp),intent(inout)             :: c_matrix(m_ham,n_ham,nspin)
+ real(dp),intent(inout)             :: p_matrix(m_ham,n_ham,nspin)
+ real(dp),intent(in)                :: hamiltonian_kinetic(m_ham,n_ham)
+ real(dp),intent(in)                :: hamiltonian_nucleus(m_ham,n_ham)
+ real(dp),intent(inout)             :: hamiltonian_hartree(m_ham,n_ham)
+ real(dp),intent(inout)             :: hamiltonian_exx(m_ham,n_ham,nspin)
+ real(dp),intent(inout)             :: hamiltonian_xc(m_ham,n_ham,nspin)
  real(dp),intent(inout)             :: occupation(basis%nbf,nspin)
  real(dp),intent(inout)             :: energy(basis%nbf,nspin)
 !=====
  type(spectral_function) :: wpol
+ logical                 :: is_converged,stopfile_found,file_exists
  integer                 :: ispin,iscf,istate
  integer                 :: fileunit,ncore
  character(len=100)      :: title
  real(dp)                :: energy_tmp
- real(dp),allocatable    :: ehomo(:),elumo(:)
+ real(dp)                :: ehomo(nspin),elumo(nspin)
  real(dp),allocatable    :: hamiltonian(:,:,:)
  real(dp),allocatable    :: hamiltonian_vxc(:,:,:)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
  real(dp),allocatable    :: p_matrix_old(:,:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  real(dp),allocatable    :: self_energy_old(:,:,:)
- logical                 :: is_converged,stopfile_found,file_exists
  real(dp),allocatable    :: energy_exx(:,:)
  real(dp),allocatable    :: c_matrix_exx(:,:,:)
  real(dp),allocatable    :: occupation_tmp(:,:),p_matrix_tmp(:,:,:)
 !=============================
 
- !
- ! Allocate the main arrays
- allocate(hamiltonian(basis%nbf,basis%nbf,nspin))
- allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
- allocate(p_matrix_old(basis%nbf,basis%nbf,nspin))
- allocate(exchange_m_vxc_diag(basis%nbf,nspin))
- allocate(self_energy_old(basis%nbf,basis%nbf,nspin))
- self_energy_old(:,:,:) = 0.0_dp
- if(calc_type%is_dft) allocate(hamiltonian_vxc(basis%nbf,basis%nbf,nspin))
- allocate(ehomo(nspin))
- allocate(elumo(nspin))
-
 
  call start_clock(timing_scf)
+
+
+ !
+ ! Initialize the SCF mixing procedure
+ call init_scf(m_ham,n_ham)
+
+ !
+ ! Allocate the main arrays
+ allocate(hamiltonian (m_ham,n_ham,nspin))
+ allocate(matrix_tmp  (m_ham,n_ham,nspin))
+ allocate(p_matrix_old(m_ham,n_ham,nspin))
+
+ if(calc_type%is_dft) allocate(hamiltonian_vxc(basis%nbf,basis%nbf,nspin))
+
+ allocate(exchange_m_vxc_diag(basis%nbf,nspin))
 
  !
  ! start the big scf loop
@@ -84,8 +88,15 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    write(stdout,'(/,a)') '-------------------------------------------'
    write(stdout,'(a,x,i4,/)') ' *** SCF cycle No:',iscf
 
-   en%kin  = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
-   en%nuc  = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+   if( cntxt_ham > 0 ) then
+     en%kin  = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+     en%nuc  = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+   else
+     en%kin  = 0.0_dp
+     en%nuc  = 0.0_dp
+   endif
+   call xsum(en%kin)
+   call xsum(en%nuc)
 
    !
    ! Setup kinetic and nucleus contributions (that are independent of the
@@ -106,7 +117,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      if( .NOT. is_full_auxil) then
        call setup_hartree(print_matrix_,basis%nbf,nspin,p_matrix,hamiltonian_hartree,en%hart)
      else
+#ifdef HAVE_SCALAPACK2
+       call setup_hartree_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,nspin,p_matrix,hamiltonian_hartree,en%hart)
+#else
        call setup_hartree_ri(print_matrix_,basis%nbf,nspin,p_matrix,hamiltonian_hartree,en%hart)
+#endif
      endif
      do ispin=1,nspin
        hamiltonian(:,:,ispin) = hamiltonian(:,:,ispin) + hamiltonian_hartree(:,:)
@@ -125,7 +140,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      if( .NOT. is_full_auxil) then
        call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
      else
+#ifdef HAVE_SCALAPACK2
+       call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+#else
        call setup_exchange_ri(print_matrix_,basis%nbf,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+#endif
      endif
      ! Rescale with alpha_hybrid for hybrid functionals
      en%exx_hyb = alpha_hybrid * en%exx
@@ -174,6 +193,10 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
      if(has_auxil_basis) call destroy_eri_3center_eigen()
 
+     if( .NOT. ALLOCATED(self_energy_old) ) then
+       allocate(self_energy_old(basis%nbf,basis%nbf,nspin))
+       self_energy_old(:,:,:) = 0.0_dp
+     endif
      matrix_tmp(:,:,:) = alpha_mixing * matrix_tmp(:,:,:) + (1.0_dp-alpha_mixing) * self_energy_old(:,:,:)
      self_energy_old(:,:,:) = matrix_tmp(:,:,:)
      title='=== Self-energy ==='
@@ -226,18 +249,10 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    ! Generalized eigenvalue problem with overlap matrix S
    ! H \phi = E S \phi
    ! save the old eigenvalues
-#if 0
-   ! Keep old coding for reference
-   ! TODO remove this when sure
-   do ispin=1,nspin
-     write(stdout,*) 'Diagonalization for spin channel',ispin
-     call start_clock(timing_diago_hamiltonian)
-     call diagonalize_generalized_sym(basis%nbf,&
-                                      hamiltonian(:,:,ispin),s_matrix(:,:),&
-                                      energy(:,ispin),c_matrix(:,:,ispin))
-     call stop_clock(timing_diago_hamiltonian)
-   enddo
-#else 
+#ifdef HAVE_SCALAPACK2
+   call diagonalize_hamiltonian_sca(nspin,basis%nbf,m_ham,n_ham,nstate,hamiltonian,s_matrix_sqrt_inv, &
+                                    energy,c_matrix)
+#else
    call diagonalize_hamiltonian(nspin,basis%nbf,nstate,hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
 #endif
 
@@ -285,7 +300,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    ! Setup the new density matrix: p_matrix
    ! Save the old one for the convergence criterium
    p_matrix_old(:,:,:) = p_matrix(:,:,:)
+#ifdef HAVE_SCALAPACK2
+   call setup_density_matrix_sca(basis%nbf,m_ham,n_ham,c_matrix,occupation,p_matrix)
+#else
    call setup_density_matrix(basis%nbf,c_matrix,occupation,p_matrix)
+#endif
    title='=== density matrix P ==='
    call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,p_matrix)
   
@@ -308,6 +327,17 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    !
    ! Store the history of residuals
    call store_residual(p_matrix_old,p_matrix)
+!FBFBSCA remove this
+#if 0
+! integer :: ilocal,jlocal,iglobal,jglobal !FBFBSCA
+   iglobal = 10
+   jglobal = 10
+   ilocal = rowindex_global_to_local('H',iglobal)
+   jlocal = colindex_global_to_local('H',jglobal)
+   if( ilocal*jlocal /=0 ) &
+     write(3000+rank,*) rank,iglobal,jglobal,p_matrix(ilocal,jlocal,1),p_matrix_old(ilocal,jlocal,1)
+#endif
+
    !
    ! Produce the next density matrix
    call new_p_matrix(p_matrix)
@@ -335,6 +365,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
  call destroy_scf()
 
+#ifdef HAVE_SCALAPACK2
+ call barrier()
+ call die('ENOUGH')
+#endif
+
  !
  ! Spin contamination?
  call evaluate_s2_operator(nspin,basis%nbf,occupation,c_matrix,s_matrix)
@@ -346,7 +381,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
  else
    if( ABS(en%exx) < 1.0e-6_dp )   & 
+#ifdef HAVE_SCALAPACK2
+       call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+#else
        call setup_exchange_ri(print_matrix_,basis%nbf,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+#endif
  endif
 
  write(stdout,'(/,/,a25,x,f19.10,/)') 'SCF Total Energy (Ha):',en%tot
@@ -434,7 +473,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    if( .NOT. is_full_auxil ) then
      call setup_exchange(print_matrix_,basis%nbf,p_matrix_tmp,hamiltonian_exx,en%exx)
    else
+#ifdef HAVE_SCALAPACK2
+     call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+#else
      call setup_exchange_ri(print_matrix_,basis%nbf,occupation,c_matrix,p_matrix_tmp,hamiltonian_exx,en%exx)
+#endif
    endif
 
    deallocate(occupation_tmp,p_matrix_tmp)
@@ -459,9 +502,9 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  !
  deallocate(hamiltonian)
  deallocate(matrix_tmp,p_matrix_old)
+ if( ALLOCATED(self_energy_old) ) deallocate(self_energy_old)
+ if( ALLOCATED(hamiltonian_vxc) ) deallocate(hamiltonian_vxc)
  deallocate(exchange_m_vxc_diag)
- deallocate(self_energy_old)
- if( calc_type%is_dft ) deallocate(hamiltonian_vxc)
 
  call stop_clock(timing_scf)
 

@@ -343,17 +343,17 @@ subroutine destroy_dft_grid()
 
  deallocate(rr_grid)
  deallocate(w_grid)
- if( allocated(bf_rad2) ) then
+ if( ALLOCATED(bf_rad2) ) then
    deallocate(bf_rad2)
  endif
 
- if( allocated(bfr) ) then
+ if( ALLOCATED(bfr) ) then
    call clean_deallocate('basis ftns on grid',bfr)
  endif
- if( allocated(bfgr) ) then
+ if( ALLOCATED(bfgr) ) then
    call clean_deallocate('basis grad ftns on grid',bfgr)
  endif
- if( allocated(bflr) ) then
+ if( ALLOCATED(bflr) ) then
    call clean_deallocate('basis lapl ftns on grid',bflr)
  endif
  call destroy_grid_distribution()

@@ -156,21 +156,7 @@ subroutine setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic
        enddo
      enddo
 
-!     matrix_final(:,:) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
-!                                 MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
-!
-!     do jglobal=jbf,jbf+nj-1
-!       jlocal = rowindex_global_to_local('H',jglobal)
-!       if( jlocal == 0 ) cycle
-!       do iglobal=ibf,ibf+ni-1
-!         ilocal = rowindex_global_to_local('H',iglobal)
-!         if( ilocal == 0 ) cycle
-!          hamiltonian_kinetic(ilocal,jlocal) = matrix_final(iglobal,jglobal)
-!       enddo
-!     enddo
-
      call matrix_cart_to_local(ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,hamiltonian_kinetic)
-
 
      deallocate(matrix_cart,matrix_final)
      jbf      = jbf      + nj
@@ -283,18 +269,20 @@ end subroutine setup_nucleus_sca
 
 
 !=========================================================================
-subroutine setup_hartree_ri_sca(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartree)
+subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,nspin,p_matrix,pot_hartree,ehartree)
  use m_definitions
  use m_mpi
  use m_timing
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
- integer,intent(in)   :: nbf,nspin
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: pot_hartree(nbf,nbf)
+ integer,intent(in)   :: nbf,m_ham,n_ham,nspin
+ real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
+ real(dp),intent(out) :: pot_hartree(m_ham,n_ham)
  real(dp),intent(out) :: ehartree
 !=====
+ integer              :: ilocal,jlocal
+ integer              :: iglobal,jglobal
  integer              :: ibf,jbf,kbf,lbf,ispin
  integer              :: ibf_auxil,ipair
  integer              :: index_ij,index_kl
@@ -303,54 +291,93 @@ subroutine setup_hartree_ri_sca(print_matrix_,nbf,nspin,p_matrix,pot_hartree,eha
  character(len=100)   :: title
 !=====
 
- write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
+ write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity: SCALAPACK'
  call start_clock(timing_hartree)
-
 
  allocate(partial_sum(nauxil_3center))
  partial_sum(:) = 0.0_dp
- do ipair=1,npair
-   kbf = index_basis(1,ipair)
-   lbf = index_basis(2,ipair)
-   ! Factor 2 comes from the symmetry of p_matrix
-   partial_sum(:) = partial_sum(:) + eri_3center(:,ipair) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
-   ! Then diagonal terms have been counted twice and should be removed once.
-   if( kbf == lbf ) &
-     partial_sum(:) = partial_sum(:) - eri_3center(:,ipair) * SUM( p_matrix(kbf,kbf,:) )
+
+ do jlocal=1,n_ham
+   jglobal = colindex_local_to_global('H',jlocal)
+
+   do ilocal=1,m_ham
+     iglobal = rowindex_local_to_global('H',ilocal)
+     if( negligible_basispair(iglobal,jglobal) ) cycle
+
+!     write(stdout,'(a,5(x,i6))') 'FBFBSCA',ilocal,jlocal,iglobal,jglobal,index_pair(iglobal,jglobal)
+     partial_sum(:) = partial_sum(:) + eri_3center(:,index_pair(iglobal,jglobal)) * SUM( p_matrix(ilocal,jlocal,:) )   !FBFBSCA distribute eri_3center
+
+   enddo
  enddo
+
+ call xtrans_sum(partial_sum)
+
+
+! do ipair=1,npair
+!   kbf = index_basis(1,ipair)
+!   lbf = index_basis(2,ipair)
+!   ! Factor 2 comes from the symmetry of p_matrix
+!   partial_sum(:) = partial_sum(:) + eri_3center(:,ipair) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
+!   ! Then diagonal terms have been counted twice and should be removed once.
+!   if( kbf == lbf ) &
+!     partial_sum(:) = partial_sum(:) - eri_3center(:,ipair) * SUM( p_matrix(kbf,kbf,:) )
+! enddo
 
  ! Hartree potential is not sensitive to spin
  pot_hartree(:,:) = 0.0_dp
- do ipair=1,npair
-   ibf = index_basis(1,ipair)
-   jbf = index_basis(2,ipair)
-   rtmp = DOT_PRODUCT( eri_3center(:,ipair) , partial_sum(:) )
-   pot_hartree(ibf,jbf) = rtmp
-   pot_hartree(jbf,ibf) = rtmp
+ do jlocal=1,n_ham
+   jglobal = colindex_local_to_global('H',jlocal)
+
+   do ilocal=1,m_ham
+     iglobal = rowindex_local_to_global('H',ilocal)
+     if( negligible_basispair(iglobal,jglobal) ) cycle
+
+     pot_hartree(ilocal,jlocal) = SUM( partial_sum(:) * eri_3center(:,index_pair(iglobal,jglobal)) )
+
+   enddo
  enddo
+
+ 
+
+! ! Hartree potential is not sensitive to spin
+! pot_hartree(:,:) = 0.0_dp
+! do ipair=1,npair
+!   ibf = index_basis(1,ipair)
+!   jbf = index_basis(2,ipair)
+!   rtmp = DOT_PRODUCT( eri_3center(:,ipair) , partial_sum(:) )
+!   pot_hartree(ibf,jbf) = rtmp
+!   pot_hartree(jbf,ibf) = rtmp
+! enddo
 
  deallocate(partial_sum)
 
  !
  ! Sum up the different contribution from different procs only if needed
- call xsum(pot_hartree)
+ call xlocal_sum(pot_hartree)
+! call xsum(pot_hartree)
 
 
  title='=== Hartree contribution ==='
  call dump_out_matrix(print_matrix_,title,nbf,1,pot_hartree)
 
- ehartree = 0.5_dp*SUM(pot_hartree(:,:)*p_matrix(:,:,1))
- if( nspin == 2 ) then
-   ehartree = ehartree + 0.5_dp*SUM(pot_hartree(:,:)*p_matrix(:,:,2))
+ !
+ ! Calculate the Hartree energy
+ if( cntxt_ham > 0 ) then
+   ehartree = 0.5_dp*SUM(pot_hartree(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+ else
+   ehartree = 0.0_dp
  endif
+ call xsum(ehartree)
+
 
  call stop_clock(timing_hartree)
+
 
 end subroutine setup_hartree_ri_sca
 
 
 !=========================================================================
-subroutine setup_exchange_ri_sca(print_matrix_,nbf,occupation,c_matrix,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,occupation,c_matrix,p_matrix,pot_exchange,eexchange)
  use m_definitions
  use m_mpi
  use m_timing
@@ -358,56 +385,122 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,occupation,c_matrix,p_matrix,
  use m_inputparam,only: nspin,spin_fact
  implicit none
  logical,intent(in)   :: print_matrix_
- integer,intent(in)   :: nbf
+ integer,intent(in)   :: nbf,m_ham,n_ham
  real(dp),intent(in)  :: occupation(nbf,nspin)
- real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin)
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
+ real(dp),intent(in)  :: c_matrix(m_ham,n_ham,nspin)
+ real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
+ real(dp),intent(out) :: pot_exchange(m_ham,n_ham,nspin)
  real(dp),intent(out) :: eexchange
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
  integer              :: index_ij
  integer              :: nocc
- real(dp),allocatable :: tmp(:,:)
+ real(dp),allocatable :: tmpa(:,:)
+ real(dp),allocatable :: tmpb(:,:)
  real(dp)             :: eigval(nbf)
  integer              :: ipair
+ real(dp)             :: c_matrix_i(nbf)
+ integer              :: iglobal,jglobal,ilocal,jlocal
+ integer              :: ii
 !=====
 
- write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
+ write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: SCALAPACK'
  call start_clock(timing_exchange)
 
 
- pot_exchange(:,:,:)=0.0_dp
+ pot_exchange(:,:,:) = 0.0_dp
 
- allocate(tmp(nauxil_3center,nbf))
+ allocate(tmpa(nauxil_3center,m_ham))
+ allocate(tmpb(nauxil_3center,n_ham))
+
 
  do ispin=1,nspin
+   do istate=1,nbf
 
-   ! Denombrate the strictly positive eigenvalues
-   nocc = COUNT( occupation(:,ispin) > completely_empty )
+     if( occupation(istate,ispin) < completely_empty ) cycle
 
-   do istate=1,nocc
-     tmp(:,:) = 0.0_dp
-     do ipair=1,npair
-       ibf=index_basis(1,ipair)
-       jbf=index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair) * SQRT( occupation(istate,ispin) )
-       if( ibf /= jbf ) &
-            tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair) * SQRT( occupation(istate,ispin) )
+     !
+     ! First all processors must have the c_matrix for (istate, ispin)
+     c_matrix_i(:) = 0.0_dp
+     if( cntxt_ham > 0 ) then
+       jlocal = colindex_global_to_local('H',istate)
+       if( jlocal /= 0 ) then
+         do ilocal=1,m_ham
+           iglobal = rowindex_local_to_global('H',ilocal)
+           c_matrix_i(iglobal) = c_matrix(ilocal,jlocal,ispin) * SQRT( occupation(istate,ispin) )
+         enddo
+       endif
+     endif
+     call xsum(c_matrix_i)
+
+     tmpa(:,:) = 0.0_dp
+     do ilocal=1,m_ham
+       iglobal = rowindex_local_to_global('H',ilocal)
+
+       do ii=1,nbf
+         if( negligible_basispair(ii,iglobal) ) cycle
+         tmpa(:,ilocal) = tmpa(:,ilocal) + eri_3center(:,index_pair(ii,iglobal)) * c_matrix_i(ii) 
+       enddo
      enddo
 
-     pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin) &
-                        - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+     tmpb(:,:) = 0.0_dp
+
+     do jlocal=1,n_ham
+       jglobal = colindex_local_to_global('H',jlocal)
+
+       do ii=1,nbf
+         if( negligible_basispair(ii,jglobal) ) cycle
+         tmpb(:,jlocal) = tmpb(:,jlocal) + eri_3center(:,index_pair(ii,jglobal)) * c_matrix_i(ii)
+       enddo
+     enddo
+
+     pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin)  &
+                        - MATMUL( TRANSPOSE(tmpa(:,:)) , tmpb(:,:) ) / spin_fact
+
+
    enddo
-
  enddo
- deallocate(tmp)
 
- call xsum(pot_exchange)
+ call xlocal_sum(pot_exchange)
 
- call dump_out_matrix(print_matrix_,'=== Exchange contribution ===',nbf,nspin,pot_exchange)
+ !
+ ! Calculate the Hartree energy
+ if( cntxt_ham > 0 ) then
+   eexchange = 0.5_dp * SUM( pot_exchange(:,:,:) * p_matrix(:,:,:) )
+ else
+   eexchange = 0.0_dp
+ endif
+ call xsum(eexchange)
 
- eexchange = 0.5_dp*SUM(pot_exchange(:,:,:)*p_matrix(:,:,:))
+
+
+! do ispin=1,nspin
+!
+!   ! Denombrate the strictly positive eigenvalues
+!   nocc = COUNT( occupation(:,ispin) > completely_empty )
+!
+!   do istate=1,nocc
+!     tmp(:,:) = 0.0_dp
+!     do ipair=1,npair
+!       ibf=index_basis(1,ipair)
+!       jbf=index_basis(2,ipair)
+!       tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair) * SQRT( occupation(istate,ispin) )
+!       if( ibf /= jbf ) &
+!            tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair) * SQRT( occupation(istate,ispin) )
+!     enddo
+!
+!     pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin) &
+!                        - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+!   enddo
+!
+! enddo
+! deallocate(tmpa,tmpb)
+!
+! call xsum(pot_exchange)
+!
+! call dump_out_matrix(print_matrix_,'=== Exchange contribution ===',nbf,nspin,pot_exchange)
+!
+! eexchange = 0.5_dp*SUM(pot_exchange(:,:,:)*p_matrix(:,:,:))
 
  call stop_clock(timing_exchange)
 
@@ -438,7 +531,7 @@ subroutine setup_exchange_longrange_ri_sca(print_matrix_,nbf,occupation,c_matrix
  integer              :: ipair
 !=====
 
- write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
+ write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity: SCALAPACK'
  call start_clock(timing_exchange)
 
 
@@ -497,7 +590,7 @@ subroutine setup_density_matrix_sca(nbf,m_ham,n_ham,c_matrix,occupation,p_matrix
  if( cntxt_ham > 0 ) then
    do ispin=1,nspin
      do jlocal=1,n_ham
-       jglobal = rowindex_local_to_global('H',jlocal)
+       jglobal = colindex_local_to_global('H',jlocal)
        matrix_tmp(:,jlocal) = c_matrix(:,jlocal,ispin) * SQRT( occupation(jglobal,ispin) )
      enddo
 
@@ -507,15 +600,12 @@ subroutine setup_density_matrix_sca(nbf,m_ham,n_ham,c_matrix,occupation,p_matrix
 
 
    enddo
+ else
+   p_matrix(:,:,:) = 0.0_dp
  endif
 
-! do ispin=1,nspin
-!   do jbf=1,nbf
-!     do ibf=1,nbf
-!       p_matrix(ibf,jbf,ispin) = SUM( occupation(:,ispin) * c_matrix(ibf,:,ispin) * c_matrix(jbf,:,ispin) )
-!     enddo
-!   enddo
-! enddo
+ ! Poor man distribution
+ call xlocal_sum(p_matrix)
 
 
 end subroutine setup_density_matrix_sca
@@ -548,10 +638,6 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate,hamilt
 
  ilocal = rowindex_global_to_local('H',101)
  jlocal = colindex_global_to_local('H',101)
- if( ilocal /= 0 .AND. jlocal /= 0 ) then
-   write(1000+rank,*) 'H',ilocal,jlocal,hamiltonian(ilocal,jlocal,1)
-   write(1000+rank,*) 'S',ilocal,jlocal,s_matrix_sqrt_inv(ilocal,jlocal)
- endif
 
 
  if(cntxt_ham > 0 ) then
@@ -589,7 +675,17 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate,hamilt
 
      call stop_clock(timing_diago_hamiltonian)
    enddo
+
+ else
+   energy(:,:) = 0.0_dp
+   c_matrix(:,:,:) = 0.0_dp
  endif
+
+ ! Poor man distribution
+ call xlocal_sum(energy)
+ call xlocal_sum(c_matrix)
+
+
 
 end subroutine diagonalize_hamiltonian_sca
 
@@ -652,7 +748,6 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,s_
 
   do jlocal=1,n_ham
     jglobal = colindex_local_to_global('H',jlocal)
-    write(*,*) jlocal,jglobal
     s_matrix_sqrt_inv(:,jlocal) = matrix_tmp(:,jlocal) / SQRT( s_eigval(jglobal) )
   enddo
 

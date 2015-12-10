@@ -1,12 +1,12 @@
 !=========================================================================
 module m_scf
  use m_definitions
+ use m_warning
  use m_inputparam
 
 
  integer,private              :: nhistmax
  integer,private              :: nhist_current
- integer,private              :: nbf_scf
  integer,private              :: m_ham_scf,n_ham_scf
 
  real(dp),allocatable,private :: p_matrix_in_hist(:,:,:,:)
@@ -35,12 +35,13 @@ contains
 
 
 !=========================================================================
-subroutine init_scf(nbf)
+subroutine init_scf(m_ham,n_ham)
  implicit none
- integer,intent(in)  :: nbf
+ integer,intent(in)  :: m_ham,n_ham
 !=====
 
- nbf_scf       = nbf
+ m_ham_scf     = m_ham
+ n_ham_scf     = n_ham
  iscf          = 1                 ! initialize with 1, since the new_p_matrix is not called for the first scf cycle
  nhist_current = 0
 
@@ -53,8 +54,8 @@ subroutine init_scf(nbf)
    call die('mixing scheme not implemented')
  end select
 
- allocate(p_matrix_in_hist(nbf_scf,nbf_scf,nspin,nhistmax))
- allocate(residual_hist(nbf_scf,nbf_scf,nspin,nhistmax))
+ allocate(p_matrix_in_hist(m_ham,n_ham,nspin,nhistmax))
+ allocate(residual_hist(m_ham,n_ham,nspin,nhistmax))
  
 end subroutine init_scf
 
@@ -64,8 +65,8 @@ subroutine destroy_scf()
  implicit none
 !=====
 
- if(allocated(p_matrix_in_hist)) deallocate(p_matrix_in_hist)
- if(allocated(residual_hist))    deallocate(residual_hist)
+ if(ALLOCATED(p_matrix_in_hist)) deallocate(p_matrix_in_hist)
+ if(ALLOCATED(residual_hist))    deallocate(residual_hist)
 
 end subroutine destroy_scf
 
@@ -73,14 +74,14 @@ end subroutine destroy_scf
 !=========================================================================
 subroutine store_residual(p_matrix_in,p_matrix_out)
  implicit none
- real(dp),intent(in)  :: p_matrix_in(nbf_scf,nbf_scf,nspin)
- real(dp),intent(in)  :: p_matrix_out(nbf_scf,nbf_scf,nspin)
+ real(dp),intent(in)  :: p_matrix_in(m_ham_scf,n_ham_scf,nspin)
+ real(dp),intent(in)  :: p_matrix_out(m_ham_scf,n_ham_scf,nspin)
 !=====
  integer              :: ihist
 !=====
 
  !
- ! shift the old matrices and then store the new ones
+ ! Shift the old matrices and then store the new ones
  ! the newest is 1
  ! the oldest is nhistmax
  do ihist=nhistmax-1,1,-1
@@ -96,7 +97,7 @@ end subroutine store_residual
 !=========================================================================
 subroutine new_p_matrix(p_matrix_in)
  implicit none
- real(dp),intent(out) :: p_matrix_in (nbf_scf,nbf_scf,nspin)
+ real(dp),intent(out) :: p_matrix_in (m_ham_scf,n_ham_scf,nspin)
 !=====
  real(dp),allocatable :: alpha_diis(:)
 !=====
@@ -131,7 +132,7 @@ end subroutine new_p_matrix
 !=========================================================================
 subroutine do_simple_mixing(p_matrix_in)
  implicit none
- real(dp),intent(out) :: p_matrix_in (nbf_scf,nbf_scf,nspin)
+ real(dp),intent(out) :: p_matrix_in(m_ham_scf,n_ham_scf,nspin)
 !=====
 
  write(stdout,*) 'A simple mixing of the density matrix is used'
@@ -145,18 +146,16 @@ end subroutine do_simple_mixing
 subroutine do_pulay_mixing(p_matrix_in,alpha_diis)
  use m_tools,only:       invert
  implicit none
- real(dp),intent(out) :: p_matrix_in (nbf_scf,nbf_scf,nspin)
+ real(dp),intent(out) :: p_matrix_in(m_ham_scf,n_ham_scf,nspin)
  real(dp),intent(out) :: alpha_diis(nhist_current)
 !=====
- integer              :: ihist,jhist
- real(dp),allocatable :: amat(:,:),amat_inv(:,:)
- real(dp)             :: residual_pred(nbf_scf,nbf_scf,nspin)
+ integer  :: ihist,jhist
+ real(dp) :: amat(nhist_current+1,nhist_current+1)
+ real(dp) :: amat_inv(nhist_current+1,nhist_current+1)
+ real(dp) :: residual_pred(m_ham_scf,n_ham_scf,nspin)
 !=====
 
  write(stdout,*) 'A Pulay mixing of the density matrix is used'
-
- allocate(amat    (nhist_current+1,nhist_current+1))
- allocate(amat_inv(nhist_current+1,nhist_current+1))
 
  !
  ! amat contains the scalar product of residuals
@@ -165,6 +164,8 @@ subroutine do_pulay_mixing(p_matrix_in,alpha_diis)
      amat(ihist,jhist) = SUM( residual_hist(:,:,:,ihist) * residual_hist(:,:,:,jhist) )
    enddo
  enddo
+ call xtrans_sum(amat)
+
  amat(1:nhist_current,nhist_current+1) = -1.0_dp
  amat(nhist_current+1,1:nhist_current) = -1.0_dp
  amat(nhist_current+1,nhist_current+1) =  0.0_dp
@@ -173,7 +174,6 @@ subroutine do_pulay_mixing(p_matrix_in,alpha_diis)
 
  alpha_diis(1:nhist_current) = -amat_inv(1:nhist_current,nhist_current+1)
 
- deallocate(amat,amat_inv)
 
  write(stdout,'(/,a,30(2x,f12.6))') ' alpha DIIS:',alpha_diis(1:nhist_current)
  
@@ -196,15 +196,15 @@ end subroutine do_pulay_mixing
 
 !=========================================================================
 function check_converged()
- use m_definitions
- use m_warning
  implicit none
  logical               :: check_converged
 !=====
  real(dp)              :: rms
 !=====
 
- rms = SQRT( SUM( residual_hist(:,:,:,1)**2 ) )
+ rms = SUM( residual_hist(:,:,:,1)**2 )
+ call xtrans_sum(rms)
+ rms = SQRT( rms )
 
  write(stdout,*) 'convergence criterium on the density matrix',rms
  if( rms < tolscf ) then 

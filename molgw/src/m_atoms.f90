@@ -163,9 +163,9 @@ subroutine destroy_atoms()
  implicit none
 !=====
 
- if(allocated(zatom)) deallocate(zatom)
- if(allocated(basis_element)) deallocate(basis_element)
- if(allocated(x)) deallocate(x)
+ if(ALLOCATED(zatom)) deallocate(zatom)
+ if(ALLOCATED(basis_element)) deallocate(basis_element)
+ if(ALLOCATED(x)) deallocate(x)
 
 end subroutine destroy_atoms
 

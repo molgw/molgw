@@ -119,9 +119,9 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
  !
  ! If it is the first time, then set up the stored arrays
  !
- if( .NOT. allocated(bfr) )                          call prepare_basis_functions_r(basis)
- if( require_gradient  .AND. .NOT. allocated(bfgr) ) call prepare_basis_functions_gradr(basis)
- if( require_laplacian .AND. .NOT. allocated(bfgr) ) call prepare_basis_functions_laplr(basis)
+ if( .NOT. ALLOCATED(bfr) )                          call prepare_basis_functions_r(basis)
+ if( require_gradient  .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_gradr(basis)
+ if( require_laplacian .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_laplr(basis)
 
  normalization(:)=0.0_dp
 
@@ -408,7 +408,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  !
  ! If it is the first time, set up the stored arrays
  !
- if( .NOT. allocated(bfr) ) call prepare_basis_functions_r(basis)
+ if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis)
 
  normalization = 0.0_dp
  do igrid=1,ngrid

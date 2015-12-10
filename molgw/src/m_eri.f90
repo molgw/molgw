@@ -29,7 +29,7 @@ module m_eri
 
  logical,protected,allocatable      :: negligible_basispair(:,:)
  logical,private,allocatable        :: negligible_shellpair(:,:)
- integer,private,allocatable        :: index_pair(:,:)
+ integer,protected,allocatable      :: index_pair(:,:)
  integer,protected,allocatable      :: index_basis(:,:)
  integer,private,allocatable        :: index_shellpair(:,:)
  integer,private                    :: nshellpair
@@ -117,7 +117,7 @@ subroutine prepare_eri(basis,rcut,which_buffer)
  write(stdout,'(/,a,es9.2)') ' Tolerance on integrals set to ',TOL_INT
 
 
- if(.NOT.allocated(negligible_shellpair)) then
+ if(.NOT.ALLOCATED(negligible_shellpair)) then
    call setup_shell_list(basis)
    allocate(negligible_shellpair(nshell,nshell))
    allocate(negligible_basispair(nbf_eri,nbf_eri))
@@ -139,7 +139,7 @@ subroutine deallocate_eri_buffer()
  implicit none
 !=====
 
- if(allocated(eri_buffer)) then
+ if(ALLOCATED(eri_buffer)) then
    write(stdout,'(/,a)')     ' Deallocate ERI buffer'
    call clean_deallocate('4-center integrals',eri_buffer)
  endif
@@ -152,7 +152,7 @@ subroutine deallocate_eri_buffer_lr()
  implicit none
 !=====
 
- if(allocated(eri_buffer_lr)) then
+ if(ALLOCATED(eri_buffer_lr)) then
    write(stdout,'(/,a)')     ' Deallocate LR ERI buffer'
    call clean_deallocate('4-center LR integrals',eri_buffer_lr)
  endif
@@ -168,26 +168,26 @@ subroutine deallocate_eri()
  integer :: ishell
 !=====
 
- if(allocated(eri_buffer)) then
+ if(ALLOCATED(eri_buffer)) then
    write(stdout,'(/,a)')     ' Deallocate ERI buffer'
    call clean_deallocate('4-center integrals',eri_buffer)
  endif
- if(allocated(eri_buffer_lr)) then
+ if(ALLOCATED(eri_buffer_lr)) then
    write(stdout,'(/,a)')     ' Deallocate LR ERI buffer'
    call clean_deallocate('4-center LR integrals',eri_buffer_lr)
  endif
- if(allocated(negligible_basispair))  deallocate(negligible_basispair)
- if(allocated(negligible_shellpair))  deallocate(negligible_shellpair)
- if(allocated(index_pair))            deallocate(index_pair)
- if(allocated(index_basis))           deallocate(index_basis)
- if(allocated(index_shellpair))       deallocate(index_shellpair)
+ if(ALLOCATED(negligible_basispair))  deallocate(negligible_basispair)
+ if(ALLOCATED(negligible_shellpair))  deallocate(negligible_shellpair)
+ if(ALLOCATED(index_pair))            deallocate(index_pair)
+ if(ALLOCATED(index_basis))           deallocate(index_basis)
+ if(ALLOCATED(index_shellpair))       deallocate(index_shellpair)
  ! 
  ! Cleanly deallocate the shell objects
  do ishell=1,nshell
-   if(allocated(shell(ishell)%alpha)) deallocate( shell(ishell)%alpha )
-   if(allocated(shell(ishell)%coeff)) deallocate( shell(ishell)%coeff )
+   if(ALLOCATED(shell(ishell)%alpha)) deallocate( shell(ishell)%alpha )
+   if(ALLOCATED(shell(ishell)%coeff)) deallocate( shell(ishell)%coeff )
  enddo
- if(allocated(shell))                 deallocate(shell)
+ if(ALLOCATED(shell))                 deallocate(shell)
 
 
 end subroutine deallocate_eri
@@ -1333,6 +1333,9 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
 
  call start_clock(timing_eri_3center)
 
+ !
+ ! Store internal number of auxil basis functions for this processor
+ nauxil_3center = auxil_basis%nbf_local
 
  ! First allocate the 3-center integral array
  !
@@ -2239,6 +2242,7 @@ subroutine setup_negligible_basispair()
  allocate(index_basis(2,npair))
 
  npair = 0
+ index_pair(:,:) = 0
  do jbf=1,nbf_eri
    do ibf=1,jbf
      if( .NOT. negligible_basispair(ibf,jbf) ) then
@@ -3125,53 +3129,6 @@ logical function read_eri(rcut)
 end function read_eri
 
 
-!=========================================================================
-subroutine distribute_auxil_basis(auxil_basis)
- implicit none
-
- type(basis_set),intent(inout) :: auxil_basis
-!=====
- integer :: ibf
- integer :: ibf_local
- integer :: iproc
-!=====
-
- allocate(iproc_ibf_auxil(nauxil_2center))
- allocate(nbf_local_iproc(0:nproc-1))
-
- iproc = nproc-1
- nbf_local_iproc(:) = 0
- do ibf=1,nauxil_2center
-
-   iproc = MODULO(iproc+1,nproc)
-
-   iproc_ibf_auxil(ibf) = iproc
-
-   nbf_local_iproc(iproc) = nbf_local_iproc(iproc) + 1
-
- enddo
-
- auxil_basis%nbf_local = nbf_local_iproc(rank)
- nauxil_3center        = auxil_basis%nbf_local
-
- allocate(ibf_auxil_g(nauxil_3center))
- allocate(ibf_auxil_l(nauxil_2center))
- ibf_local = 0
- do ibf=1,nauxil_2center
-   if( rank == iproc_ibf_auxil(ibf) ) then
-     ibf_local = ibf_local + 1
-     ibf_auxil_g(ibf_local) = ibf
-     ibf_auxil_l(ibf)       = ibf_local
-   endif
- enddo
-
- write(stdout,'(/,a)') ' Distribute auxiliary basis functions among processors'
- do iproc=0,0
-   write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc(iproc),' auxiliary basis functions'
- enddo
-
-
-end subroutine distribute_auxil_basis
 
 
 !=========================================================================
