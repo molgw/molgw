@@ -1191,13 +1191,23 @@ subroutine init_scalapack_ham(nbf,m_ham,n_ham)
 #ifdef HAVE_SCALAPACK
  integer,external :: NUMROC 
 #endif
+ integer :: unitfile
+ logical :: file_exists
 !=====
 
 
  if( parallel_ham ) then
 
-   nprow_ham = MAX( MIN(nprow_sd,nbf/HAMILTONIAN_SCA) , 1 )
-   npcol_ham = MAX( MIN(npcol_sd,nbf/HAMILTONIAN_SCA) , 1 )
+   nprow_ham = MAX( MIN(nprow_sd,CEILING(nbf/REAL(HAMILTONIAN_SCA,dp))), 1 )
+   npcol_ham = MAX( MIN(npcol_sd,CEILING(nbf/REAL(HAMILTONIAN_SCA,dp))), 1 )
+
+   inquire(file='SCALAPACK_GRID',exist=file_exists)
+   if( file_exists ) then
+     open(newunit=unitfile,file='SCALAPACK_GRID',status='old')
+     read(unitfile,*) nprow_ham,npcol_ham
+     if( nprow_ham * npcol_ham > nproc ) call die('SCALAPACK manual distribution asks for too many processors')
+     close(unitfile)
+   endif
 
    call BLACS_GET( -1, 0, cntxt_ham )
    call BLACS_GRIDINIT( cntxt_ham, 'R', nprow_ham, npcol_ham )
@@ -1230,6 +1240,8 @@ subroutine init_scalapack_ham(nbf,m_ham,n_ham)
 ! So far, this is YES because all procs need p_matrix
    call xlocal_max(m_ham)
    call xlocal_max(n_ham)
+   call xlocal_max(iprow_ham)
+   call xlocal_max(ipcol_ham)
 
 
    ! Define the transversal communicator

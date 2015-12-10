@@ -383,18 +383,20 @@ program molgw
  !
  ! Prepare the diagonal of the matrix Sigma_x - Vxc
  ! for the forthcoming GW corrections
- exchange_m_vxc_diag(:,:) = 0.0_dp
- do ispin=1,nspin
-   do istate=1,basis%nbf
-     do ibf=1,basis%nbf
-       do jbf=1,basis%nbf
-         exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                 + c_matrix(ibf,istate,ispin) * ( hamiltonian_exx(ibf,jbf,ispin) - hamiltonian_xc(ibf,jbf,ispin) )&
-                  * c_matrix(jbf,istate,ispin)
+ if( calc_type%is_mp2 .OR. calc_type%is_gw ) then
+   exchange_m_vxc_diag(:,:) = 0.0_dp
+   do ispin=1,nspin
+     do istate=1,basis%nbf
+       do ibf=1,basis%nbf
+         do jbf=1,basis%nbf
+           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
+                   + c_matrix(ibf,istate,ispin) * ( hamiltonian_exx(ibf,jbf,ispin) - hamiltonian_xc(ibf,jbf,ispin) )&
+                    * c_matrix(jbf,istate,ispin)
+         enddo
        enddo
      enddo
    enddo
- enddo
+ endif
 
  !
  ! final evaluation for perturbative GW

@@ -65,16 +65,16 @@ os.remove('basis_path.f90_tmp')
 #
 ###################################
 
+revision = []
 fout = open('tmp','w')
 try:
-  subprocess.call(['svn','info'],stdout=fout)
+  subprocess.call(['svn','info'],stdout=fout,stderr=fout)
   fout.close()
   fout = open('tmp','r')
   for line in fout:
     if 'Revision' in line:
       revision = line.split(':')
 except:
-  revision = []
   revision.append('-1')
   revision.append('-1')
   pass
@@ -82,6 +82,11 @@ except:
 fout.close()
 
 os.remove('tmp')
+
+# In case, something went wrong
+if len(revision) < 1:
+  revision.append('-1')
+  revision.append('-1')
 
 
 # Write first in a tmp file that will be moved later

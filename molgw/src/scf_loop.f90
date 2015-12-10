@@ -365,11 +365,6 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
  call destroy_scf()
 
-#ifdef HAVE_SCALAPACK2
- call barrier()
- call die('ENOUGH')
-#endif
-
  !
  ! Spin contamination?
  call evaluate_s2_operator(nspin,basis%nbf,occupation,c_matrix,s_matrix)
@@ -392,6 +387,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  write(stdout,'(a25,x,f19.10)')       '      EXX Energy (Ha):',en%exx
  write(stdout,'(a25,x,f19.10)')       'Total EXX Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
 
+#ifndef HAVE_SCALAPACK2
  !
  ! Single excitation term
  !
@@ -492,6 +488,8 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  if( is_converged .AND. print_bigrestart_ ) then
    call write_restart(BIG_RESTART,basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
  endif
+
+#endif
 
  !
  ! Cleanly deallocate the integral grid information
