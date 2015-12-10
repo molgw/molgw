@@ -35,7 +35,7 @@ module m_mpi
  integer,protected :: nproc_local  = 1
  integer,protected :: rank_local   = 0
 
- integer,private   :: comm_trans
+ integer,protected :: comm_trans
  integer,protected :: nproc_trans  = 1
  integer,protected :: rank_trans   = 0
 
@@ -55,6 +55,7 @@ module m_mpi
  integer,allocatable,public :: ibf_auxil_l_lr(:)
  integer,allocatable,public :: nbf_local_iproc_lr(:)
 
+ integer,allocatable,protected :: rank_sca_to_mpi(:,:)
 
  integer,allocatable,private :: task_proc(:)
  integer,allocatable,private :: ntask_proc(:)
@@ -86,6 +87,10 @@ module m_mpi
 
  interface xlocal_max
    module procedure xlocal_max_i
+ end interface
+
+ interface xtrans_max
+   module procedure xtrans_max_ia2d
  end interface
 
  interface xsum
@@ -763,6 +768,28 @@ end subroutine xlocal_max_i
 
 
 !=========================================================================
+subroutine xtrans_max_ia2d(array)
+ implicit none
+ integer,intent(inout) :: array(:,:)
+!=====
+ integer :: n1,n2
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_INTEGER, MPI_MAX, comm_trans, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xtrans_max_ia2d
+
+
+!=========================================================================
 subroutine xsum_r(real_number)
  implicit none
  real(dp),intent(inout) :: real_number
@@ -1251,6 +1278,10 @@ subroutine init_scalapack_ham(nbf,m_ham,n_ham)
    call MPI_COMM_SIZE(comm_trans,nproc_trans,ier)
    call MPI_COMM_RANK(comm_trans,rank_trans,ier)
 
+   allocate(rank_sca_to_mpi(0:nprow_ham-1,0:npcol_ham-1))
+   rank_sca_to_mpi(:,:) = -1
+   rank_sca_to_mpi(iprow_ham,ipcol_ham) = rank_trans
+   call xtrans_max(rank_sca_to_mpi)
 
 
 !FBFBSCA   write(1000+rank,'(a)') ' #  rank,nproc,color,iprow_ham,ipcol_ham,rank_local,nproc_local '
@@ -1260,6 +1291,7 @@ subroutine init_scalapack_ham(nbf,m_ham,n_ham)
 
  else
 
+   cntxt_ham = 1
    nprow_ham = 1
    npcol_ham = 1
    iprow_ham = 0

@@ -313,16 +313,6 @@ subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,nspin,p_matrix,pot
  call xtrans_sum(partial_sum)
 
 
-! do ipair=1,npair
-!   kbf = index_basis(1,ipair)
-!   lbf = index_basis(2,ipair)
-!   ! Factor 2 comes from the symmetry of p_matrix
-!   partial_sum(:) = partial_sum(:) + eri_3center(:,ipair) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
-!   ! Then diagonal terms have been counted twice and should be removed once.
-!   if( kbf == lbf ) &
-!     partial_sum(:) = partial_sum(:) - eri_3center(:,ipair) * SUM( p_matrix(kbf,kbf,:) )
-! enddo
-
  ! Hartree potential is not sensitive to spin
  pot_hartree(:,:) = 0.0_dp
  do jlocal=1,n_ham
@@ -338,23 +328,11 @@ subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,nspin,p_matrix,pot
  enddo
 
  
-
-! ! Hartree potential is not sensitive to spin
-! pot_hartree(:,:) = 0.0_dp
-! do ipair=1,npair
-!   ibf = index_basis(1,ipair)
-!   jbf = index_basis(2,ipair)
-!   rtmp = DOT_PRODUCT( eri_3center(:,ipair) , partial_sum(:) )
-!   pot_hartree(ibf,jbf) = rtmp
-!   pot_hartree(jbf,ibf) = rtmp
-! enddo
-
  deallocate(partial_sum)
 
  !
  ! Sum up the different contribution from different procs only if needed
  call xlocal_sum(pot_hartree)
-! call xsum(pot_hartree)
 
 
  title='=== Hartree contribution ==='
@@ -397,22 +375,37 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,occupation,c_matr
  integer              :: nocc
  real(dp),allocatable :: tmpa(:,:)
  real(dp),allocatable :: tmpb(:,:)
+ real(dp),allocatable :: tmpc(:,:)
  real(dp)             :: eigval(nbf)
  integer              :: ipair
  real(dp)             :: c_matrix_i(nbf)
+ integer              :: nbf_trans
  integer              :: iglobal,jglobal,ilocal,jlocal
  integer              :: ii
+ integer              :: ibf_global,ier,to,iprow_recv,ipcol_recv
+ integer,external     :: INDXG2P
 !=====
 
  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: SCALAPACK'
  call start_clock(timing_exchange)
 
+!FBFBSCA
+ nbf_trans = 0
+ do ibf=1,nbf
+   if( MODULO(ibf-1,nproc_trans) == rank_trans ) then
+     nbf_trans = nbf_trans + 1
+   endif
+ enddo
 
- pot_exchange(:,:,:) = 0.0_dp
+! write(1100+rank,*) rank,rank_local,rank_trans,nbf_trans
+
+
 
  allocate(tmpa(nauxil_3center,m_ham))
  allocate(tmpb(nauxil_3center,n_ham))
 
+
+ pot_exchange(:,:,:) = 0.0_dp
 
  do ispin=1,nspin
    do istate=1,nbf
@@ -433,6 +426,7 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,occupation,c_matr
      endif
      call xsum(c_matrix_i)
 
+#if 0
      tmpa(:,:) = 0.0_dp
      do ilocal=1,m_ham
        iglobal = rowindex_local_to_global('H',ilocal)
@@ -444,7 +438,6 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,occupation,c_matr
      enddo
 
      tmpb(:,:) = 0.0_dp
-
      do jlocal=1,n_ham
        jglobal = colindex_local_to_global('H',jlocal)
 
@@ -453,6 +446,58 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,occupation,c_matr
          tmpb(:,jlocal) = tmpb(:,jlocal) + eri_3center(:,index_pair(ii,jglobal)) * c_matrix_i(ii)
        enddo
      enddo
+
+#else
+
+     allocate(tmpc(nauxil_3center,nbf_trans))
+
+     tmpc(:,:) = 0.0_dp
+     do ibf=1,nbf_trans
+       ibf_global = rank_trans + (ibf-1) * nproc_trans + 1
+       do ii=1,nbf
+         if( negligible_basispair(ii,ibf_global) ) cycle
+         tmpc(:,ibf) = tmpc(:,ibf) + eri_3center(:,index_pair(ii,ibf_global)) * c_matrix_i(ii)
+       enddo
+     enddo
+
+
+     tmpa(:,:) = 0.0_dp
+     tmpb(:,:) = 0.0_dp
+     
+     do ibf=1,nbf_trans
+       ibf_global = rank_trans + (ibf-1) * nproc_trans + 1
+
+       iprow_recv = INDXG2P(ibf_global,block_row,0,first_row,nprow_ham)
+       do ipcol_recv=0,npcol_ham-1
+         to = rank_sca_to_mpi(iprow_recv,ipcol_recv)
+         call MPI_SEND(tmpc(:,ibf),nauxil_3center,MPI_DOUBLE_PRECISION,to,ibf_global,comm_trans,ier) 
+!         write(1000+rank,*) 'S',rank_trans,' to ',to,ibf_global
+       enddo
+
+       ipcol_recv = INDXG2P(ibf_global,block_col,0,first_col,npcol_ham)
+       do iprow_recv=0,nprow_ham-1
+         to = rank_sca_to_mpi(iprow_recv,ipcol_recv)
+         call MPI_SEND(tmpc(:,ibf),nauxil_3center,MPI_DOUBLE_PRECISION,to,nbf+ibf_global,comm_trans,ier) 
+!         write(1000+rank,*) 'S',rank_trans,' to ',to,-ibf_global
+       enddo
+
+     enddo
+
+     do ilocal=1,m_ham
+       iglobal = rowindex_local_to_global('H',ilocal)
+       call MPI_RECV(tmpa(:,ilocal),nauxil_3center,MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE,iglobal,comm_trans,MPI_STATUS_IGNORE,ier) 
+!       write(1000+rank,*) 'R',rank_trans,iglobal
+     enddo
+
+     do jlocal=1,n_ham
+       jglobal = colindex_local_to_global('H',jlocal)
+       call MPI_RECV(tmpb(:,jlocal),nauxil_3center,MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE,nbf+jglobal,comm_trans,MPI_STATUS_IGNORE,ier) 
+!       write(1000+rank,*) 'R',rank_trans,-jglobal
+     enddo
+
+
+     deallocate(tmpc)
+#endif
 
      pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin)  &
                         - MATMUL( TRANSPOSE(tmpa(:,:)) , tmpb(:,:) ) / spin_fact
