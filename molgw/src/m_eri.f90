@@ -1974,17 +1974,15 @@ end subroutine calculate_eri_3center_lr
 
 
 !=========================================================================
-subroutine calculate_eri_approximate_hartree(print_eri_,basis,x0_rho,alpha_rho,vhrho)
+subroutine calculate_eri_approximate_hartree(print_eri_,basis,m_ham,n_ham,x0_rho,alpha_rho,vhrho)
  use m_tools,only: boys_function
-#ifdef _OPENMP
- use omp_lib
-#endif
  implicit none
  logical,intent(in)           :: print_eri_
  type(basis_set),intent(in)   :: basis
+ integer,intent(in)           :: m_ham,n_ham
  real(dp),intent(in)          :: x0_rho(3)
  real(dp),intent(in)          :: alpha_rho
- real(dp),intent(out)         :: vhrho(basis%nbf,basis%nbf)
+ real(dp),intent(out)         :: vhrho(m_ham,n_ham)
 !=====
  integer                      :: ishell,jshell,kshell,lshell
  integer                      :: klshellpair
@@ -2003,6 +2001,7 @@ subroutine calculate_eri_approximate_hartree(print_eri_,basis,x0_rho,alpha_rho,v
  real(dp)                     :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
+ integer                      :: ilocal,jlocal,iglobal,jglobal
 !=====
 ! variables used to call C
  integer(C_INT),external      :: libint_init,calculate_integral
@@ -2187,9 +2186,23 @@ subroutine calculate_eri_approximate_hartree(print_eri_,basis,x0_rho,alpha_rho,v
          
        do lbf=1,nl
          do kbf=1,nk
-           vhrho( shell(kshell)%istart+kbf-1 , shell(lshell)%istart+lbf-1 ) = integrals_cart(1,1,kbf,lbf)
+!           vhrho( shell(kshell)%istart+kbf-1 , shell(lshell)%istart+lbf-1 ) = integrals_cart(1,1,kbf,lbf)
+           iglobal = shell(kshell)%istart+kbf-1
+           jglobal = shell(lshell)%istart+lbf-1
+           ilocal = rowindex_global_to_local('H',iglobal)
+           jlocal = colindex_global_to_local('H',jglobal)
+           if( ilocal*jlocal /= 0 ) then
+             vhrho(ilocal,jlocal) = integrals_cart(1,1,kbf,lbf)
+           endif
            ! And the symmetric too
-           vhrho( shell(lshell)%istart+lbf-1 , shell(kshell)%istart+kbf-1 ) = integrals_cart(1,1,kbf,lbf)
+!           vhrho( shell(lshell)%istart+lbf-1 , shell(kshell)%istart+kbf-1 ) = integrals_cart(1,1,kbf,lbf)
+           jglobal = shell(kshell)%istart+kbf-1
+           iglobal = shell(lshell)%istart+lbf-1
+           ilocal = rowindex_global_to_local('H',iglobal)
+           jlocal = colindex_global_to_local('H',jglobal)
+           if( ilocal*jlocal /= 0 ) then
+             vhrho(ilocal,jlocal) = integrals_cart(1,1,kbf,lbf)
+           endif
          enddo
        enddo
 
@@ -3127,8 +3140,6 @@ logical function read_eri(rcut)
 
 
 end function read_eri
-
-
 
 
 !=========================================================================

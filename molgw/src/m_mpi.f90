@@ -351,13 +351,13 @@ subroutine init_grid_distribution(ngrid)
 
  ngrid_mpi = ngrid
 
- if( nproc>1 .AND. parallel_grid ) then
+ if( nproc_local >1 .AND. parallel_grid ) then
    write(stdout,'(/,a)') ' Initializing the distribution of the quadrature grid points'
  endif
 
  call distribute_grid_workload()
 
- ngrid = ntask_grid_proc(rank)
+ ngrid = ntask_grid_proc(rank_local)
 
 end subroutine init_grid_distribution
 
@@ -408,7 +408,7 @@ function is_my_grid_task(igrid)
  logical            :: is_my_grid_task
 !=====
  
- is_my_grid_task = ( rank == task_grid_proc(igrid) )
+ is_my_grid_task = ( rank_local == task_grid_proc(igrid) )
  
 end function is_my_grid_task
 
@@ -417,52 +417,52 @@ end function is_my_grid_task
 subroutine distribute_grid_workload()
  implicit none
 !=====
- integer            :: igrid,iproc
+ integer            :: igrid,iproc_local
  integer            :: igrid_current
  integer            :: max_grid_per_proc
 !=====
 
  allocate(task_grid_proc(ngrid_mpi))
- allocate(ntask_grid_proc(0:nproc-1))
+ allocate(ntask_grid_proc(0:nproc_local-1))
  allocate(task_grid_number(ngrid_mpi))
 
  if( parallel_grid) then
 
    write(stdout,'(/,a)') ' Distributing the grid among procs'
    
-   ntask_grid_proc(:)=0
-   max_grid_per_proc = CEILING( DBLE(ngrid_mpi)/DBLE(nproc) )
+   ntask_grid_proc(:) = 0
+   max_grid_per_proc = CEILING( DBLE(ngrid_mpi)/DBLE(nproc_local) )
    write(stdout,*) 'Maximum number of grid points for a single proc',max_grid_per_proc
 
-   iproc=0
+   iproc_local=0
    do igrid=1,ngrid_mpi
 
-     iproc = MODULO(igrid-1,nproc)
+     iproc_local = MODULO(igrid-1,nproc_local)
 
      !
      ! A simple check to avoid unexpected surprises
-     if(iproc < 0 .OR. iproc >= nproc) then
+     if( iproc_local < 0 .OR. iproc_local >= nproc_local ) then
        call die('error in the distribution')
      endif
 
-     task_grid_proc(igrid)  = iproc
-     ntask_grid_proc(iproc) = ntask_grid_proc(iproc) + 1 
+     task_grid_proc(igrid)        = iproc_local
+     ntask_grid_proc(iproc_local) = ntask_grid_proc(iproc_local) + 1 
 
    enddo
 
    task_grid_number(:)=0
    igrid_current=0
    do igrid=1,ngrid_mpi
-     if( rank == task_grid_proc(igrid) ) then
+     if( rank_local == task_grid_proc(igrid) ) then
        igrid_current = igrid_current + 1 
        task_grid_number(igrid) = igrid_current
      endif
    enddo
 
-   if(nproc>1) then
+   if( nproc_local > 1 ) then
      write(stdout,'(/,a)') ' Distribute work load among procs'
-     write(stdout,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ngrid_mpi,dp)/REAL(nproc,dp)
-     write(stdout,'(a,i6,a,i10)') ' proc # , grid points',rank,' , ',ntask_grid_proc(rank)
+     write(stdout,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ngrid_mpi,dp) / REAL(nproc_local,dp)
+     write(stdout,'(a,i6,a,i10)') ' proc # , grid points',rank_local,' , ',ntask_grid_proc(rank_local)
    endif
 
  else
@@ -470,12 +470,13 @@ subroutine distribute_grid_workload()
    ! if parallel_grid is false,
    ! faking the code with trivial values
    ntask_grid_proc(:) = ngrid_mpi
-   task_grid_proc(:)  = rank
+   task_grid_proc(:)  = rank_local
    do igrid=1,ngrid_mpi
      task_grid_number(igrid) = igrid
    enddo
 
  endif
+
 
 end subroutine distribute_grid_workload
 

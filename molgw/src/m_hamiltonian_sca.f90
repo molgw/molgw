@@ -1,5 +1,10 @@
 !=========================================================================
 module m_hamiltonian_sca
+ use m_definitions
+ use m_mpi
+ use m_timing
+ use m_warning
+ use m_inputparam,only: nspin,spin_fact
 
 
 contains
@@ -7,8 +12,6 @@ contains
 
 !=========================================================================
 subroutine matrix_cart_to_local(ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,matrix_local)
- use m_definitions
- use m_mpi
  use m_basis_set
  implicit none
 
@@ -46,8 +49,6 @@ end subroutine matrix_cart_to_local
 
 !=========================================================================
 subroutine setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
- use m_definitions
- use m_timing
  use m_basis_set
  implicit none
  logical,intent(in)         :: print_matrix_
@@ -113,8 +114,6 @@ end subroutine setup_overlap_sca
 
 !=========================================================================
 subroutine setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic)
- use m_definitions
- use m_timing
  use m_basis_set
  implicit none
  logical,intent(in)         :: print_matrix_
@@ -180,8 +179,6 @@ end subroutine setup_kinetic_sca
 
 !=========================================================================
 subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
- use m_definitions
- use m_timing
  use m_basis_set
  use m_atoms
  implicit none
@@ -203,15 +200,15 @@ subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus
 
  call start_clock(timing_hamiltonian_nuc)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK'
-! if( nproc > 1 ) then
-!   natom_local=0
-!   do iatom=1,natom
-!     if( rank /= MODULO(iatom-1,nproc) ) cycle
-!     natom_local = natom_local + 1
-!   enddo
-!   write(stdout,'(a)')         '   Parallelizing over atoms'
-!   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
-! endif
+ if( nproc_local > 1 ) then
+   natom_local=0
+   do iatom=1,natom
+     if( rank_local /= MODULO(iatom-1,nproc_local) ) cycle
+     natom_local = natom_local + 1
+   enddo
+   write(stdout,'(a)')         '   Parallelizing over atoms'
+   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
+ endif
 
  ibf_cart = 1
  jbf_cart = 1
@@ -230,7 +227,7 @@ subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus
      allocate(matrix_cart(ni_cart,nj_cart))
      matrix_cart(:,:) = 0.0_dp
      do iatom=1,natom
-!FBFBSCA    if( rank /= MODULO(iatom-1,nproc) ) cycle
+       if( rank_local /= MODULO(iatom-1,nproc_local) ) cycle
        do i_cart=1,ni_cart
          do j_cart=1,nj_cart
            call nucleus_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
@@ -238,8 +235,6 @@ subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus
          enddo
        enddo
      enddo
-!     hamiltonian_nucleus(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
-!                                                              MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) ) 
 
      call matrix_cart_to_local(ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,hamiltonian_nucleus)
 
@@ -256,9 +251,9 @@ subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus
 
  enddo
 
-!FBFBSCA !
-!FBFBSCA ! Reduce operation
-!FBFBSCA call xsum(hamiltonian_nucleus)
+ !
+ ! Reduce operation
+ call xlocal_sum(hamiltonian_nucleus)
 
  title='===  Nucleus potential contribution ==='
  call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_nucleus)
@@ -269,14 +264,11 @@ end subroutine setup_nucleus_sca
 
 
 !=========================================================================
-subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,nspin,p_matrix,pot_hartree,ehartree)
- use m_definitions
- use m_mpi
- use m_timing
+subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,pot_hartree,ehartree)
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
- integer,intent(in)   :: nbf,m_ham,n_ham,nspin
+ integer,intent(in)   :: nbf,m_ham,n_ham
  real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
  real(dp),intent(out) :: pot_hartree(m_ham,n_ham)
  real(dp),intent(out) :: ehartree
@@ -304,8 +296,8 @@ subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,nspin,p_matrix,pot
      iglobal = rowindex_local_to_global('H',ilocal)
      if( negligible_basispair(iglobal,jglobal) ) cycle
 
-!     write(stdout,'(a,5(x,i6))') 'FBFBSCA',ilocal,jlocal,iglobal,jglobal,index_pair(iglobal,jglobal)
-     partial_sum(:) = partial_sum(:) + eri_3center(:,index_pair(iglobal,jglobal)) * SUM( p_matrix(ilocal,jlocal,:) )   !FBFBSCA distribute eri_3center
+     !FBFBSCA TODO distribute eri_3center
+     partial_sum(:) = partial_sum(:) + eri_3center(:,index_pair(iglobal,jglobal)) * SUM( p_matrix(ilocal,jlocal,:) )  
 
    enddo
  enddo
@@ -356,11 +348,7 @@ end subroutine setup_hartree_ri_sca
 
 !=========================================================================
 subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,occupation,c_matrix,p_matrix,pot_exchange,eexchange)
- use m_definitions
- use m_mpi
- use m_timing
  use m_eri
- use m_inputparam,only: nspin,spin_fact
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf,m_ham,n_ham
@@ -517,48 +505,15 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,occupation,c_matr
  endif
  call xsum(eexchange)
 
-
-
-! do ispin=1,nspin
-!
-!   ! Denombrate the strictly positive eigenvalues
-!   nocc = COUNT( occupation(:,ispin) > completely_empty )
-!
-!   do istate=1,nocc
-!     tmp(:,:) = 0.0_dp
-!     do ipair=1,npair
-!       ibf=index_basis(1,ipair)
-!       jbf=index_basis(2,ipair)
-!       tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair) * SQRT( occupation(istate,ispin) )
-!       if( ibf /= jbf ) &
-!            tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair) * SQRT( occupation(istate,ispin) )
-!     enddo
-!
-!     pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin) &
-!                        - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
-!   enddo
-!
-! enddo
-! deallocate(tmpa,tmpb)
-!
-! call xsum(pot_exchange)
-!
-! call dump_out_matrix(print_matrix_,'=== Exchange contribution ===',nbf,nspin,pot_exchange)
-!
-! eexchange = 0.5_dp*SUM(pot_exchange(:,:,:)*p_matrix(:,:,:))
-
  call stop_clock(timing_exchange)
+
 
 end subroutine setup_exchange_ri_sca
 
 
 !=========================================================================
 subroutine setup_exchange_longrange_ri_sca(print_matrix_,nbf,occupation,c_matrix,p_matrix,pot_exchange,eexchange)
- use m_definitions
- use m_mpi
- use m_timing
  use m_eri
- use m_inputparam,only: nspin,spin_fact
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
@@ -619,9 +574,6 @@ end subroutine setup_exchange_longrange_ri_sca
 
 !=========================================================================
 subroutine setup_density_matrix_sca(nbf,m_ham,n_ham,c_matrix,occupation,p_matrix)
- use m_definitions
- use m_mpi
- use m_inputparam,only: nspin
  implicit none
  integer,intent(in)   :: nbf,m_ham,n_ham
  real(dp),intent(in)  :: c_matrix(m_ham,n_ham,nspin)
@@ -658,9 +610,6 @@ end subroutine setup_density_matrix_sca
 
 !=========================================================================
 subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate,hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
- use m_definitions
- use m_timing
- use m_mpi
  implicit none
 
  integer,intent(in)   :: nspin_local,nbf,nstate,m_ham,n_ham
@@ -737,11 +686,7 @@ end subroutine diagonalize_hamiltonian_sca
 
 !=========================================================================
 subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,s_matrix_sqrt_inv)
- use m_definitions
- use m_timing
- use m_warning
  use m_tools
- use m_mpi
  implicit none
 
  real(dp),intent(in)                :: TOL_OVERLAP
@@ -806,6 +751,121 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,s_
 
 
 end subroutine setup_sqrt_overlap_sca
+
+
+!=========================================================================
+subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
+ use m_basis_set
+ use m_dft_grid
+ use m_eri
+#ifdef HAVE_LIBXC
+ use libxc_funcs_m
+ use xc_f90_lib_m
+ use xc_f90_types_m
+#endif
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+ integer,intent(in)         :: m_ham,n_ham
+ real(dp),intent(out)       :: vhxc_ij(m_ham,n_ham)
+!=====
+ integer              :: idft_xc
+ integer              :: igrid,ibf,jbf,ispin
+ real(dp)             :: rr(3)
+ real(dp)             :: normalization
+ real(dp)             :: weight
+ real(dp)             :: basis_function_r(basis%nbf)
+ real(dp)             :: rhor
+ real(dp)             :: vxc,exc
+ real(dp)             :: vsigma(2*nspin-1)
+ real(dp)             :: vhartree
+ real(dp)             :: vhgau(m_ham,n_ham)
+ integer              :: iatom,igau,ngau
+ real(dp),allocatable :: alpha(:),coeff(:)
+ integer              :: ilocal,jlocal,iglobal,jglobal
+!=====
+
+ vhxc_ij(:,:) = 0.0_dp
+
+
+ write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities'
+
+ do iatom=1,natom
+   if( rank_local /= MODULO(iatom,nproc_local) ) cycle
+
+   ngau = 4
+   allocate(alpha(ngau),coeff(ngau))
+   call element_atomicdensity(zatom(iatom),coeff,alpha)
+
+
+   do igau=1,ngau
+     call calculate_eri_approximate_hartree(.FALSE.,basis,m_ham,n_ham,x(:,iatom),alpha(igau),vhgau)
+     vhxc_ij(:,:) = vhxc_ij(:,:) + vhgau(:,:) * coeff(igau) / 2.0_dp**1.25_dp / pi**0.75_dp * alpha(igau)**1.5_dp
+   enddo
+
+   deallocate(alpha,coeff)
+ enddo
+
+ write(stdout,*) 'Simple LDA functional functional on a coarse grid'
+
+ !
+ ! Create a temporary grid with low quality
+ ! This grid is to be destroyed at the end of the present subroutine
+ call init_dft_grid(low)
+
+ !
+ ! If it is the first time, set up the stored arrays
+ !
+ if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis)
+
+ normalization = 0.0_dp
+ do igrid=1,ngrid
+
+   rr(:) = rr_grid(:,igrid)
+   weight = w_grid(igrid)
+
+   !
+   ! Get all the functions and gradients at point rr
+   call get_basis_functions_r(basis,igrid,basis_function_r)
+
+   !
+   ! calculate the density at point r for spin up and spin down
+   call setup_atomic_density(rr,rhor,vhartree)
+
+   !
+   ! Normalization
+   normalization = normalization + rhor * weight
+
+   call teter_lda_vxc_exc(rhor,vxc,exc)
+
+   !
+   ! HXC
+   do jlocal=1,n_ham
+     jglobal = colindex_local_to_global('H',jlocal)
+     do ilocal=1,m_ham
+       iglobal = rowindex_local_to_global('H',ilocal)
+
+       vhxc_ij(ilocal,jlocal) =  vhxc_ij(ilocal,jlocal) &
+            + weight * vxc * basis_function_r(iglobal)  &
+                           * basis_function_r(jglobal)
+
+     enddo
+   enddo
+
+ enddo ! loop on the grid point
+ !
+ ! Sum up the contributions from all procs only if needed
+ call xsum(normalization)   ! FIXME FBFBSCA CHECK this sum is it local or world
+ call xlocal_sum(vhxc_ij)
+
+ write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization
+
+ !
+ ! Temporary grid destroyed
+ call destroy_dft_grid()
+
+
+end subroutine dft_approximate_vhxc_sca
 
 
 !=========================================================================

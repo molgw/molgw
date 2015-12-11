@@ -77,7 +77,15 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  allocate(matrix_tmp  (m_ham,n_ham,nspin))
  allocate(p_matrix_old(m_ham,n_ham,nspin))
 
- if(calc_type%is_dft) allocate(hamiltonian_vxc(basis%nbf,basis%nbf,nspin))
+ if( calc_type%is_dft) then
+   allocate(hamiltonian_vxc(basis%nbf,basis%nbf,nspin))
+   !
+   ! Setup the grids for the quadrature of DFT potential/energy
+   call init_dft_grid(grid_level)
+   ! The following is coded but not used... yet!
+   call setup_bf_radius(basis)
+ endif
+
 
  allocate(exchange_m_vxc_diag(basis%nbf,nspin))
 
@@ -115,12 +123,12 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      ! Hartree contribution to the Hamiltonian
      !
      if( .NOT. is_full_auxil) then
-       call setup_hartree(print_matrix_,basis%nbf,nspin,p_matrix,hamiltonian_hartree,en%hart)
+       call setup_hartree(print_matrix_,basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
      else
        if( parallel_ham ) then
-         call setup_hartree_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,nspin,p_matrix,hamiltonian_hartree,en%hart)
+         call setup_hartree_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
        else
-         call setup_hartree_ri(print_matrix_,basis%nbf,nspin,p_matrix,hamiltonian_hartree,en%hart)
+         call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
        endif
      endif
      do ispin=1,nspin

@@ -1,13 +1,16 @@
 !=========================================================================
 module m_hamiltonian
+ use m_definitions
+ use m_timing
+ use m_mpi
+ use m_warning
+ use m_inputparam,only: nspin,spin_fact
 
 contains
 
 
 !=========================================================================
 subroutine setup_overlap(print_matrix_,basis,s_matrix)
- use m_definitions
- use m_timing
  use m_basis_set
  implicit none
  logical,intent(in)         :: print_matrix_
@@ -72,7 +75,6 @@ end subroutine setup_overlap
 
 !=========================================================================
 subroutine setup_overlap_mixedbasis(print_matrix_,basis1,basis2,s_matrix)
- use m_definitions
  use m_basis_set
  implicit none
  logical,intent(in)         :: print_matrix_
@@ -129,8 +131,6 @@ end subroutine setup_overlap_mixedbasis
 
 !=========================================================================
 subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
- use m_definitions
- use m_timing
  use m_basis_set
  implicit none
  logical,intent(in)         :: print_matrix_
@@ -194,8 +194,6 @@ end subroutine setup_kinetic
 
 !=========================================================================
 subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
- use m_definitions
- use m_timing
  use m_basis_set
  use m_atoms
  implicit none
@@ -281,8 +279,6 @@ end subroutine setup_nucleus
 
 !=========================================================================
 subroutine setup_effective_core(print_matrix_,basis,hamiltonian_nucleus)
- use m_definitions
- use m_timing
  use m_basis_set
  use m_atoms
  implicit none
@@ -493,14 +489,11 @@ end subroutine setup_effective_core
 
 
 !=========================================================================
-subroutine setup_hartree(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartree)
- use m_definitions
- use m_mpi
- use m_timing
+subroutine setup_hartree(print_matrix_,nbf,p_matrix,pot_hartree,ehartree)
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
- integer,intent(in)   :: nbf,nspin
+ integer,intent(in)   :: nbf
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: pot_hartree(nbf,nbf)
  real(dp),intent(out) :: ehartree
@@ -552,14 +545,11 @@ end subroutine setup_hartree
 
 
 !=========================================================================
-subroutine setup_hartree_ri(print_matrix_,nbf,nspin,p_matrix,pot_hartree,ehartree)
- use m_definitions
- use m_mpi
- use m_timing
+subroutine setup_hartree_ri(print_matrix_,nbf,p_matrix,pot_hartree,ehartree)
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
- integer,intent(in)   :: nbf,nspin
+ integer,intent(in)   :: nbf
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: pot_hartree(nbf,nbf)
  real(dp),intent(out) :: ehartree
@@ -620,11 +610,7 @@ end subroutine setup_hartree_ri
 
 !=========================================================================
 subroutine setup_exchange(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
- use m_definitions
- use m_mpi
- use m_timing
  use m_eri
- use m_inputparam,only: nspin,spin_fact
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
@@ -676,11 +662,7 @@ end subroutine setup_exchange
 
 !=========================================================================
 subroutine setup_exchange_ri(print_matrix_,nbf,occupation,c_matrix,p_matrix,pot_exchange,eexchange)
- use m_definitions
- use m_mpi
- use m_timing
  use m_eri
- use m_inputparam,only: nspin,spin_fact
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
@@ -741,11 +723,7 @@ end subroutine setup_exchange_ri
 
 !=========================================================================
 subroutine setup_exchange_longrange_ri(print_matrix_,nbf,occupation,c_matrix,p_matrix,pot_exchange,eexchange)
- use m_definitions
- use m_mpi
- use m_timing
  use m_eri
- use m_inputparam,only: nspin,spin_fact
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
@@ -806,11 +784,7 @@ end subroutine setup_exchange_longrange_ri
 
 !=========================================================================
 subroutine setup_exchange_longrange(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
- use m_definitions
- use m_mpi
- use m_timing
  use m_eri
- use m_inputparam,only: nspin,spin_fact
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
@@ -859,9 +833,6 @@ end subroutine setup_exchange_longrange
 
 !=========================================================================
 subroutine read_potential(print_matrix_,nbf,nspin,p_matrix,pot_read,eread)
- use m_definitions
- use m_mpi
- use m_timing
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
@@ -905,9 +876,6 @@ end subroutine read_potential
 
 !=========================================================================
 subroutine setup_density_matrix(nbf,c_matrix,occupation,p_matrix)
- use m_definitions
- use m_mpi
- use m_inputparam,only: nspin
  implicit none
  integer,intent(in)   :: nbf
  real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin)
@@ -931,8 +899,6 @@ end subroutine setup_density_matrix
 
 !=========================================================================
 subroutine test_density_matrix(nbf,nspin,p_matrix,s_matrix)
- use m_definitions
- use m_warning
  implicit none
  integer,intent(in)   :: nbf,nspin
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin),s_matrix(nbf,nbf)
@@ -964,10 +930,7 @@ end subroutine test_density_matrix
 
 !=========================================================================
 subroutine set_occupation(nbf,temperature,electrons,magnetization,energy,occupation)
- use m_definitions
- use m_mpi
- use m_warning
- use m_inputparam,only: nspin,spin_fact,print_matrix_
+ use m_inputparam,only: print_matrix_
  implicit none
  integer,intent(in)   :: nbf
  real(dp),intent(in)  :: electrons,magnetization,temperature
@@ -1037,7 +1000,6 @@ end subroutine set_occupation
 
 !=========================================================================
 subroutine matrix_basis_to_eigen(nspin,nbf,c_matrix,matrix_inout)
- use m_definitions
  implicit none
  integer,intent(in)      :: nspin,nbf
  real(dp),intent(in)     :: c_matrix(nbf,nbf,nspin)
@@ -1057,8 +1019,6 @@ end subroutine matrix_basis_to_eigen
 
 !=========================================================================
 subroutine evaluate_s2_operator(nspin,nbf,occupation,c_matrix,s_matrix)
- use m_definitions
- use m_mpi
  implicit none
  integer,intent(in)      :: nspin,nbf
  real(dp),intent(in)     :: occupation(nbf,nspin)
@@ -1100,10 +1060,6 @@ end subroutine evaluate_s2_operator
 
 !=========================================================================
 subroutine level_shifting(nbf,s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
- use m_definitions
- use m_warning,only: die
- use m_mpi
- use m_inputparam,only: nspin
  implicit none
  integer,intent(in)     :: nbf
  real(dp),intent(in)    :: s_matrix(nbf,nbf)
@@ -1157,8 +1113,6 @@ end subroutine level_shifting
 
 !=========================================================================
 subroutine diagonalize_hamiltonian(nspin_local,nbf,nstate,hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
- use m_definitions
- use m_timing
  use m_tools
  implicit none
 
@@ -1209,8 +1163,6 @@ end subroutine diagonalize_hamiltonian
 
 !=========================================================================
 subroutine setup_sqrt_overlap(TOL_OVERLAP,nbf,s_matrix,nstate,s_matrix_sqrt_inv)
- use m_definitions
- use m_timing
  use m_tools
  implicit none
 

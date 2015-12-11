@@ -8,7 +8,7 @@ module m_dft_grid
  use m_warning,only: die
  use m_mpi
  use m_memory
- use m_inputparam,only: grid_level,partition_scheme
+ use m_inputparam,only: partition_scheme
  
  !
  ! Grid definition
@@ -30,23 +30,25 @@ module m_dft_grid
 
  !
  ! Function evaluation storage
- integer,parameter    :: ngrid_max_stored=20000
- integer              :: ngrid_stored=0
- real(dp),allocatable :: bfr(:,:)
- real(dp),allocatable :: bfgr(:,:,:)
- real(dp),allocatable :: bflr(:,:,:)
+ integer,parameter,private :: ngrid_max_stored=20000
+ integer,private           :: ngrid_stored
+ real(dp),allocatable      :: bfr(:,:)
+ real(dp),allocatable      :: bfgr(:,:,:)
+ real(dp),allocatable      :: bflr(:,:,:)
 
 
 contains
 
 
 !=========================================================================
-subroutine setup_dft_grid()
+subroutine init_dft_grid(grid_level_in)
  use m_elements
  use m_atoms
  use m_tools,only: coeffs_gausslegint
  implicit none
 
+ integer,intent(in)   :: grid_level_in
+!=====
  integer              :: iradial,iatom,iangular,ir,ir1,igrid
  integer              :: n1,n2,nangular,ngridmax
  real(dp)             :: weight,radius
@@ -62,7 +64,8 @@ subroutine setup_dft_grid()
  real(dp),allocatable :: w_grid_tmp(:)
 !=====
 
- select case(grid_level)
+ ngrid_stored = 0
+ select case(grid_level_in)
  case(low)       ! accuracy not guaranted, just for quick test runs
    nradial         =  25
    nangular_fine   =  26
@@ -334,7 +337,7 @@ subroutine setup_dft_grid()
  deallocate(rr_grid_tmp,w_grid_tmp)
 
 
-end subroutine setup_dft_grid
+end subroutine init_dft_grid
 
 
 !=========================================================================
@@ -357,7 +360,7 @@ subroutine destroy_dft_grid()
    call clean_deallocate('basis lapl ftns on grid',bflr)
  endif
  call destroy_grid_distribution()
-
+ 
 end subroutine destroy_dft_grid
 
 

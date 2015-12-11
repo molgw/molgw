@@ -262,15 +262,16 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
 
      endif
 
-   enddo ! loop on the XC functional
 
-   !
-   ! In the case of the BJ06 meta-GGA functional, a spin-dependent shift is applied
-   ! since the potential does not vanish at infinity
-   !
-   if( dft_xc_type(idft_xc) == XC_MGGA_X_BJ06 ) then
-     dedd_r(:) = dedd_r(:) - SQRT( 5.0_dp * ABS(ehomo(:)) / 6.0_dp ) / pi
-   endif
+     !
+     ! In the case of the BJ06 meta-GGA functional, a spin-dependent shift is applied
+     ! since the potential does not vanish at infinity
+     !
+     if( dft_xc_type(idft_xc) == XC_MGGA_X_BJ06 ) then
+       dedd_r(:) = dedd_r(:) - SQRT( 5.0_dp * ABS(ehomo(:)) / 6.0_dp ) / pi
+     endif
+
+   enddo ! loop on the XC functional
 
 
    !
@@ -397,7 +398,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
 
 
    do igau=1,ngau
-     call calculate_eri_approximate_hartree(.FALSE.,basis,x(:,iatom),alpha(igau),vhgau)
+     call calculate_eri_approximate_hartree(.FALSE.,basis,basis%nbf,basis%nbf,x(:,iatom),alpha(igau),vhgau)
      vhxc_ij(:,:) = vhxc_ij(:,:) + vhgau(:,:) * coeff(igau) / 2.0_dp**1.25_dp / pi**0.75_dp * alpha(igau)**1.5_dp
    enddo
 

@@ -160,7 +160,6 @@ program molgw
    call calculate_eri(print_eri_,basis,0.0_dp,BUFFER1)
  endif
 
-! call refine_negligible_basispair()
 
  !
  ! for Range-separated hybrids, calculate the long-range ERI
@@ -170,7 +169,6 @@ program molgw
      call calculate_eri(print_eri_,basis,rcut,BUFFER2)
    endif
  endif
-! call negligible_eri(1.0e-10_dp)
 
  !
  ! In case of GW or BSE run, set up the product basis 
@@ -191,13 +189,6 @@ program molgw
  if( is_big_restart   ) write(stdout,*) 'Restarting from a finalized RESTART file'
  if( is_basis_restart ) write(stdout,*) 'Restarting from a finalized RESTART but with a different basis set'
 
- !
- ! Setup the grids for the quadrature of DFT potential/energy
- if( calc_type%is_dft .AND. .NOT. is_big_restart) then
-   call setup_dft_grid()
-   ! The following is coded but not used... yet!
-   call setup_bf_radius(basis)
- endif
 
  !
  ! Calculate the parts of the hamiltonian that does not change along
@@ -239,8 +230,7 @@ program molgw
    !
    ! Calculate a very approximate vhxc based on simple gaussians placed on atoms
    if( parallel_ham ) then
-     call issue_warning('skip initialization, because it is not implemented yet')
-     hamiltonian_tmp(:,:) = 0.0_dp
+     call dft_approximate_vhxc_sca(basis,m_ham,n_ham,hamiltonian_tmp)
    else
      call dft_approximate_vhxc(basis,hamiltonian_tmp)
    endif
@@ -316,7 +306,6 @@ program molgw
 
  endif
 
-
  call stop_clock(timing_prescf)
 
  !
@@ -365,7 +354,7 @@ program molgw
  ! works for DFT, HF, and hybrid
  if(calc_type%is_td .OR. calc_type%is_bse) then
 
-   if(calc_type%is_td .AND. calc_type%is_dft) call setup_dft_grid()
+   if(calc_type%is_td .AND. calc_type%is_dft) call init_dft_grid(grid_level)
    if(has_auxil_basis) then
      call prepare_eri_3center_eigen(c_matrix)
      call destroy_eri_3center()
