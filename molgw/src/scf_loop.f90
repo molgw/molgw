@@ -117,11 +117,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      if( .NOT. is_full_auxil) then
        call setup_hartree(print_matrix_,basis%nbf,nspin,p_matrix,hamiltonian_hartree,en%hart)
      else
-#ifdef HAVE_SCALAPACK2
-       call setup_hartree_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,nspin,p_matrix,hamiltonian_hartree,en%hart)
-#else
-       call setup_hartree_ri(print_matrix_,basis%nbf,nspin,p_matrix,hamiltonian_hartree,en%hart)
-#endif
+       if( parallel_ham ) then
+         call setup_hartree_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,nspin,p_matrix,hamiltonian_hartree,en%hart)
+       else
+         call setup_hartree_ri(print_matrix_,basis%nbf,nspin,p_matrix,hamiltonian_hartree,en%hart)
+       endif
      endif
      do ispin=1,nspin
        hamiltonian(:,:,ispin) = hamiltonian(:,:,ispin) + hamiltonian_hartree(:,:)
@@ -140,11 +140,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      if( .NOT. is_full_auxil) then
        call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
      else
-#ifdef HAVE_SCALAPACK2
-       call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
-#else
-       call setup_exchange_ri(print_matrix_,basis%nbf,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
-#endif
+       if( parallel_ham ) then
+         call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+       else
+         call setup_exchange_ri(print_matrix_,basis%nbf,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+       endif
      endif
      ! Rescale with alpha_hybrid for hybrid functionals
      en%exx_hyb = alpha_hybrid * en%exx
@@ -249,12 +249,12 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    ! Generalized eigenvalue problem with overlap matrix S
    ! H \phi = E S \phi
    ! save the old eigenvalues
-#ifdef HAVE_SCALAPACK2
-   call diagonalize_hamiltonian_sca(nspin,basis%nbf,m_ham,n_ham,nstate,hamiltonian,s_matrix_sqrt_inv, &
-                                    energy,c_matrix)
-#else
-   call diagonalize_hamiltonian(nspin,basis%nbf,nstate,hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
-#endif
+   if( parallel_ham ) then
+     call diagonalize_hamiltonian_sca(nspin,basis%nbf,m_ham,n_ham,nstate,hamiltonian,s_matrix_sqrt_inv, &
+                                      energy,c_matrix)
+   else
+     call diagonalize_hamiltonian(nspin,basis%nbf,nstate,hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
+   endif
 
    !
    ! When level_shifting is used, the unoccupied state energies have to be brought
@@ -300,11 +300,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    ! Setup the new density matrix: p_matrix
    ! Save the old one for the convergence criterium
    p_matrix_old(:,:,:) = p_matrix(:,:,:)
-#ifdef HAVE_SCALAPACK2
-   call setup_density_matrix_sca(basis%nbf,m_ham,n_ham,c_matrix,occupation,p_matrix)
-#else
-   call setup_density_matrix(basis%nbf,c_matrix,occupation,p_matrix)
-#endif
+   if( parallel_ham ) then
+     call setup_density_matrix_sca(basis%nbf,m_ham,n_ham,c_matrix,occupation,p_matrix)
+   else
+     call setup_density_matrix(basis%nbf,c_matrix,occupation,p_matrix)
+   endif
    title='=== density matrix P ==='
    call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,p_matrix)
   
@@ -375,19 +375,23 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  if( .NOT. is_full_auxil) then
    if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
  else
-   if( ABS(en%exx) < 1.0e-6_dp )   & 
-#ifdef HAVE_SCALAPACK2
+   if( ABS(en%exx) < 1.0e-6_dp ) then
+     if( parallel_ham ) then
        call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
-#else
+     else
        call setup_exchange_ri(print_matrix_,basis%nbf,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
-#endif
+     endif
+   endif
  endif
 
  write(stdout,'(/,/,a25,x,f19.10,/)') 'SCF Total Energy (Ha):',en%tot
  write(stdout,'(a25,x,f19.10)')       '      EXX Energy (Ha):',en%exx
  write(stdout,'(a25,x,f19.10)')       'Total EXX Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
 
-#ifndef HAVE_SCALAPACK2
+ !
+ ! Skip a bunch of things if parallel_ham is activated
+ ! TODO:FIXME
+ if( .NOT. parallel_ham ) then  
  !
  ! Single excitation term
  !
@@ -438,7 +442,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 !   energy=energy_exx
    deallocate(energy_exx,c_matrix_exx)
  endif
-#endif
+ endif ! Indentation is not correct, I know
 
 
  !
@@ -469,11 +473,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    if( .NOT. is_full_auxil ) then
      call setup_exchange(print_matrix_,basis%nbf,p_matrix_tmp,hamiltonian_exx,en%exx)
    else
-#ifdef HAVE_SCALAPACK2
-     call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
-#else
-     call setup_exchange_ri(print_matrix_,basis%nbf,occupation,c_matrix,p_matrix_tmp,hamiltonian_exx,en%exx)
-#endif
+     if( parallel_ham ) then
+       call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+     else
+       call setup_exchange_ri(print_matrix_,basis%nbf,occupation,c_matrix,p_matrix_tmp,hamiltonian_exx,en%exx)
+     endif
    endif
 
    deallocate(occupation_tmp,p_matrix_tmp)

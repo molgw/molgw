@@ -134,22 +134,22 @@ program molgw
  !
  ! Build up the overlap matrix S
  ! S only depends onto the basis set
-#ifdef HAVE_SCALAPACK2
- call setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
-#else
- call setup_overlap(print_matrix_,basis,s_matrix)
-#endif
+ if( parallel_ham ) then
+   call setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
+ else
+   call setup_overlap(print_matrix_,basis,s_matrix)
+ endif
 
 
  !
  ! Calculate the square root inverse of the overlap matrix S
  ! Eliminate those eigenvalue that are too small in order to stabilize the
  ! calculation
-#ifdef HAVE_SCALAPACK2
- call setup_sqrt_overlap_sca(TOL_OVERLAP,basis%nbf,m_ham,n_ham,s_matrix,nstate,s_matrix_sqrt_inv)
-#else
- call setup_sqrt_overlap(TOL_OVERLAP,basis%nbf,s_matrix,nstate,s_matrix_sqrt_inv)
-#endif
+ if( parallel_ham ) then
+   call setup_sqrt_overlap_sca(TOL_OVERLAP,basis%nbf,m_ham,n_ham,s_matrix,nstate,s_matrix_sqrt_inv)
+ else
+   call setup_sqrt_overlap(TOL_OVERLAP,basis%nbf,s_matrix,nstate,s_matrix_sqrt_inv)
+ endif
 
  !
  ! Set up the electron repulsion integrals
@@ -205,19 +205,19 @@ program molgw
  if( .NOT. is_big_restart ) then
    !
    ! Kinetic energy contribution
-#ifdef HAVE_SCALAPACK2
-   call setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic)
-#else
-   call setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
-#endif
+   if( parallel_ham ) then
+     call setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic)
+   else
+     call setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
+   endif
   
    !
    ! Nucleus-electron interaction
-#ifdef HAVE_SCALAPACK2
-   call setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
-#else
-   call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
-#endif
+   if( parallel_ham ) then
+     call setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
+   else
+     call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
+   endif
  endif
 
  if( is_basis_restart ) then
@@ -238,24 +238,24 @@ program molgw
    allocate(hamiltonian_tmp(m_ham,n_ham))
    !
    ! Calculate a very approximate vhxc based on simple gaussians placed on atoms
-#ifdef HAVE_SCALAPACK2
-   call issue_warning('skip initialization, because it is not implemented yet')
-   hamiltonian_tmp(:,:) = 0.0_dp
-#else
-   call dft_approximate_vhxc(basis,hamiltonian_tmp)
-#endif
+   if( parallel_ham ) then
+     call issue_warning('skip initialization, because it is not implemented yet')
+     hamiltonian_tmp(:,:) = 0.0_dp
+   else
+     call dft_approximate_vhxc(basis,hamiltonian_tmp)
+   endif
 
    hamiltonian_tmp(:,:) = hamiltonian_tmp(:,:) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
 
    write(stdout,'(/,a)') ' Approximate hamiltonian'
 
-#ifdef HAVE_SCALAPACK2
-   call diagonalize_hamiltonian_sca(1,basis%nbf,m_ham,n_ham,nstate,hamiltonian_tmp,s_matrix_sqrt_inv, &
+   if( parallel_ham ) then
+     call diagonalize_hamiltonian_sca(1,basis%nbf,m_ham,n_ham,nstate,hamiltonian_tmp,s_matrix_sqrt_inv, &
+                                      energy(:,1),c_matrix(:,:,1))
+   else
+     call diagonalize_hamiltonian(1,basis%nbf,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
                                     energy(:,1),c_matrix(:,:,1))
-#else
-   call diagonalize_hamiltonian(1,basis%nbf,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
-                                    energy(:,1),c_matrix(:,:,1))
-#endif
+   endif
 
    deallocate(hamiltonian_tmp)
 
@@ -276,11 +276,11 @@ program molgw
 
  !
  ! Setup the density matrix: p_matrix
-#ifdef HAVE_SCALAPACK2
- call setup_density_matrix_sca(basis%nbf,m_ham,n_ham,c_matrix,occupation,p_matrix)
-#else
- call setup_density_matrix(basis%nbf,c_matrix,occupation,p_matrix)
-#endif
+ if( parallel_ham ) then
+   call setup_density_matrix_sca(basis%nbf,m_ham,n_ham,c_matrix,occupation,p_matrix)
+ else
+   call setup_density_matrix(basis%nbf,c_matrix,occupation,p_matrix)
+ endif
 !!
 !! Test PSP = P
 ! call test_density_matrix(basis%nbf,nspin,p_matrix,s_matrix)

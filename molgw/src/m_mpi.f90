@@ -10,12 +10,7 @@ module m_mpi
  logical,parameter :: parallel_grid      = .TRUE.
  logical,parameter :: parallel_auxil     = .TRUE.
 
-#ifdef HAVE_SCALAPACK2
- logical,parameter :: parallel_ham       = .TRUE.
-#else
- logical,parameter :: parallel_ham       = .FALSE.
-#endif
- integer,parameter :: HAMILTONIAN_SCA    = 200  !FBFBSCA too small just for testing
+ logical,protected :: parallel_ham       = .FALSE.
 
 #ifdef HAVE_SCALAPACK
  logical,parameter :: parallel_scalapack = .TRUE.
@@ -1219,22 +1214,18 @@ subroutine init_scalapack_ham(nbf,m_ham,n_ham)
  integer,external :: NUMROC 
 #endif
  integer :: unitfile
- logical :: file_exists
 !=====
 
+#ifdef HAVE_SCALAPACK
+ inquire(file='SCALAPACK_GRID',exist=parallel_ham)
+#endif
 
  if( parallel_ham ) then
 
-   nprow_ham = MAX( MIN(nprow_sd,CEILING(nbf/REAL(HAMILTONIAN_SCA,dp))), 1 )
-   npcol_ham = MAX( MIN(npcol_sd,CEILING(nbf/REAL(HAMILTONIAN_SCA,dp))), 1 )
-
-   inquire(file='SCALAPACK_GRID',exist=file_exists)
-   if( file_exists ) then
-     open(newunit=unitfile,file='SCALAPACK_GRID',status='old')
-     read(unitfile,*) nprow_ham,npcol_ham
-     if( nprow_ham * npcol_ham > nproc ) call die('SCALAPACK manual distribution asks for too many processors')
-     close(unitfile)
-   endif
+   open(newunit=unitfile,file='SCALAPACK_GRID',status='old')
+   read(unitfile,*) nprow_ham,npcol_ham
+   if( nprow_ham * npcol_ham > nproc ) call die('SCALAPACK manual distribution asks for too many processors')
+   close(unitfile)
 
    call BLACS_GET( -1, 0, cntxt_ham )
    call BLACS_GRIDINIT( cntxt_ham, 'R', nprow_ham, npcol_ham )
@@ -1283,11 +1274,6 @@ subroutine init_scalapack_ham(nbf,m_ham,n_ham)
    rank_sca_to_mpi(iprow_ham,ipcol_ham) = rank_trans
    call xtrans_max(rank_sca_to_mpi)
 
-
-!FBFBSCA   write(1000+rank,'(a)') ' #  rank,nproc,color,iprow_ham,ipcol_ham,rank_local,nproc_local '
-!FBFBSCA   write(1000+rank,'(10(i4,2x))') rank,nproc,color,iprow_ham,ipcol_ham,rank_local,nproc_local
-!FBFBSCA   write(1000+rank,'(a)') ' #  rank,m_ham,n_ham'
-!FBFBSCA   write(1000+rank,'(10(i4,2x))') rank,m_ham,n_ham
 
  else
 

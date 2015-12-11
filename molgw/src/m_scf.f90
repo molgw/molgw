@@ -2,6 +2,7 @@
 module m_scf
  use m_definitions
  use m_warning
+ use m_memory
  use m_inputparam
 
 
@@ -54,8 +55,8 @@ subroutine init_scf(m_ham,n_ham)
    call die('mixing scheme not implemented')
  end select
 
- allocate(p_matrix_in_hist(m_ham,n_ham,nspin,nhistmax))
- allocate(residual_hist(m_ham,n_ham,nspin,nhistmax))
+ call clean_allocate('P matrix history',p_matrix_in_hist,m_ham,n_ham,nspin,nhistmax)
+ call clean_allocate('Residual history',residual_hist,m_ham,n_ham,nspin,nhistmax)
  
 end subroutine init_scf
 
@@ -65,8 +66,8 @@ subroutine destroy_scf()
  implicit none
 !=====
 
- if(ALLOCATED(p_matrix_in_hist)) deallocate(p_matrix_in_hist)
- if(ALLOCATED(residual_hist))    deallocate(residual_hist)
+ if(ALLOCATED(p_matrix_in_hist)) call clean_deallocate('P matrix history',p_matrix_in_hist)
+ if(ALLOCATED(residual_hist))    call clean_deallocate('Residual history',residual_hist)
 
 end subroutine destroy_scf
 
