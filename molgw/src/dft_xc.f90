@@ -405,7 +405,13 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
    deallocate(alpha,coeff)
  enddo
 
- write(stdout,*) 'Home-made functional LDA functional'
+ write(stdout,*) 'Simple LDA functional functional on a coarse grid'
+
+ !
+ ! Create a temporary grid with low quality
+ ! This grid is to be destroyed at the end of the present subroutine
+ call init_dft_grid(low)
+
  !
  ! If it is the first time, set up the stored arrays
  !
@@ -446,6 +452,11 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  call xsum(vhxc_ij)
 
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization
+
+ !
+ ! Temporary grid destroyed
+ call destroy_dft_grid()
+
 
 end subroutine dft_approximate_vhxc
 

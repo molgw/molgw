@@ -1278,13 +1278,25 @@ subroutine init_scalapack_ham(nbf,m_ham,n_ham)
 
  else
 
-   cntxt_ham = 1
+   if( rank == 0 ) then
+     cntxt_ham = 1
+   else
+     cntxt_ham = -1
+   endif
    nprow_ham = 1
    npcol_ham = 1
    iprow_ham = 0
    ipcol_ham = 0
    m_ham = nbf
    n_ham = nbf
+
+   comm_local  = comm_world
+   nproc_local = nproc
+   rank_local  = rank
+
+   comm_trans  = MPI_COMM_SELF
+   nproc_trans = 1
+   rank_trans  = 0
 
  endif
 
