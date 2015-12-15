@@ -661,13 +661,13 @@ end subroutine setup_exchange
 
 
 !=========================================================================
-subroutine setup_exchange_ri(print_matrix_,nbf,occupation,c_matrix,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,pot_exchange,eexchange)
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
- real(dp),intent(in)  :: occupation(nbf,nspin)
- real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin)
+ real(dp),intent(in)  :: p_matrix_occ(nbf,nspin)
+ real(dp),intent(in)  :: p_matrix_sqrt(nbf,nbf,nspin)
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
@@ -678,9 +678,6 @@ subroutine setup_exchange_ri(print_matrix_,nbf,occupation,c_matrix,p_matrix,pot_
  real(dp),allocatable :: tmp(:,:)
  real(dp)             :: eigval(nbf)
  integer              :: ipair
-#if 1
- real(dp)             :: p_matrix_sqrt(nbf,nbf),occ(nbf)
-#endif
 !=====
 
  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
@@ -693,19 +690,19 @@ subroutine setup_exchange_ri(print_matrix_,nbf,occupation,c_matrix,p_matrix,pot_
 
  do ispin=1,nspin
 
-   p_matrix_sqrt(:,:) = p_matrix(:,:,ispin)
-   call diagonalize(nbf,p_matrix_sqrt,occ)
+!   p_matrix_sqrt(:,:) = p_matrix(:,:,ispin)
+!   call diagonalize(nbf,p_matrix_sqrt,occ)
 
    do istate=1,nbf
-     if( occ(istate) < completely_empty)  cycle
+     if( p_matrix_occ(istate,ispin) < completely_empty)  cycle
 
      tmp(:,:) = 0.0_dp
      do ipair=1,npair
        ibf=index_basis(1,ipair)
        jbf=index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt(jbf,istate) * eri_3center(:,ipair) * SQRT(occ(istate))
+       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt(jbf,istate,ispin) * eri_3center(:,ipair) * SQRT(p_matrix_occ(istate,ispin))
        if( ibf /= jbf ) &
-            tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate) * eri_3center(:,ipair) * SQRT(occ(istate))
+            tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center(:,ipair) * SQRT(p_matrix_occ(istate,ispin))
      enddo
 
      pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin) &
@@ -1204,6 +1201,32 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,nbf,s_matrix,nstate,s_matrix_sqrt_inv)
 
 
 end subroutine setup_sqrt_overlap
+
+
+!=========================================================================
+subroutine setup_sqrt_density_matrix(nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
+ use m_tools
+ implicit none
+
+ integer,intent(in)   :: nbf
+ real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
+ real(dp),intent(out) :: p_matrix_sqrt(nbf,nbf,nspin)
+ real(dp),intent(out) :: p_matrix_occ(nbf,nspin)
+!=====
+ integer              :: ispin
+!=====
+
+ call start_clock(timing_sqrt_density_matrix)
+
+ do ispin=1,nspin
+   p_matrix_sqrt(:,:,ispin) = p_matrix(:,:,ispin)
+   call diagonalize(nbf,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
+ enddo
+
+ call stop_clock(timing_sqrt_density_matrix)
+
+end subroutine setup_sqrt_density_matrix
+
 
 
 !=========================================================================

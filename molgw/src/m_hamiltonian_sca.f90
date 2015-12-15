@@ -347,13 +347,13 @@ end subroutine setup_hartree_ri_sca
 
 
 !=========================================================================
-subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,occupation,c_matrix,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,pot_exchange,eexchange)
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf,m_ham,n_ham
- real(dp),intent(in)  :: occupation(nbf,nspin)
- real(dp),intent(in)  :: c_matrix(m_ham,n_ham,nspin)
+ real(dp),intent(in)  :: p_matrix_occ(nbf,nspin)
+ real(dp),intent(in)  :: p_matrix_sqrt(m_ham,n_ham,nspin)
  real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
  real(dp),intent(out) :: pot_exchange(m_ham,n_ham,nspin)
  real(dp),intent(out) :: eexchange
@@ -366,7 +366,7 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,occupation,c_matr
  real(dp),allocatable :: tmpc(:,:)
  real(dp)             :: eigval(nbf)
  integer              :: ipair
- real(dp)             :: c_matrix_i(nbf)
+ real(dp)             :: p_matrix_i(nbf)
  integer              :: nbf_trans
  integer              :: iglobal,jglobal,ilocal,jlocal
  integer              :: ii
@@ -385,9 +385,6 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,occupation,c_matr
    endif
  enddo
 
-! write(1100+rank,*) rank,rank_local,rank_trans,nbf_trans
-
-
 
  allocate(tmpa(nauxil_3center,m_ham))
  allocate(tmpb(nauxil_3center,n_ham))
@@ -398,44 +395,22 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,occupation,c_matr
  do ispin=1,nspin
    do istate=1,nbf
 
-     if( occupation(istate,ispin) < completely_empty ) cycle
+     if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
 
      !
-     ! First all processors must have the c_matrix for (istate, ispin)
-     c_matrix_i(:) = 0.0_dp
+     ! First all processors must have the p_matrix for (istate, ispin)
+     p_matrix_i(:) = 0.0_dp
      if( cntxt_ham > 0 ) then
        jlocal = colindex_global_to_local('H',istate)
        if( jlocal /= 0 ) then
          do ilocal=1,m_ham
            iglobal = rowindex_local_to_global('H',ilocal)
-           c_matrix_i(iglobal) = c_matrix(ilocal,jlocal,ispin) * SQRT( occupation(istate,ispin) )
+           p_matrix_i(iglobal) = p_matrix_sqrt(ilocal,jlocal,ispin) * SQRT( p_matrix_occ(istate,ispin) )
          enddo
        endif
      endif
-     call xsum(c_matrix_i)
+     call xsum(p_matrix_i)
 
-#if 0
-     tmpa(:,:) = 0.0_dp
-     do ilocal=1,m_ham
-       iglobal = rowindex_local_to_global('H',ilocal)
-
-       do ii=1,nbf
-         if( negligible_basispair(ii,iglobal) ) cycle
-         tmpa(:,ilocal) = tmpa(:,ilocal) + eri_3center(:,index_pair(ii,iglobal)) * c_matrix_i(ii) 
-       enddo
-     enddo
-
-     tmpb(:,:) = 0.0_dp
-     do jlocal=1,n_ham
-       jglobal = colindex_local_to_global('H',jlocal)
-
-       do ii=1,nbf
-         if( negligible_basispair(ii,jglobal) ) cycle
-         tmpb(:,jlocal) = tmpb(:,jlocal) + eri_3center(:,index_pair(ii,jglobal)) * c_matrix_i(ii)
-       enddo
-     enddo
-
-#else
 
      allocate(tmpc(nauxil_3center,nbf_trans))
 
@@ -444,7 +419,7 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,occupation,c_matr
        ibf_global = rank_trans + (ibf-1) * nproc_trans + 1
        do ii=1,nbf
          if( negligible_basispair(ii,ibf_global) ) cycle
-         tmpc(:,ibf) = tmpc(:,ibf) + eri_3center(:,index_pair(ii,ibf_global)) * c_matrix_i(ii)
+         tmpc(:,ibf) = tmpc(:,ibf) + eri_3center(:,index_pair(ii,ibf_global)) * p_matrix_i(ii)
        enddo
      enddo
 
@@ -459,14 +434,12 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,occupation,c_matr
        do ipcol_recv=0,npcol_ham-1
          to = rank_sca_to_mpi(iprow_recv,ipcol_recv)
          call MPI_SEND(tmpc(:,ibf),nauxil_3center,MPI_DOUBLE_PRECISION,to,ibf_global,comm_trans,ier) 
-!         write(1000+rank,*) 'S',rank_trans,' to ',to,ibf_global
        enddo
 
        ipcol_recv = INDXG2P(ibf_global,block_col,0,first_col,npcol_ham)
        do iprow_recv=0,nprow_ham-1
          to = rank_sca_to_mpi(iprow_recv,ipcol_recv)
          call MPI_SEND(tmpc(:,ibf),nauxil_3center,MPI_DOUBLE_PRECISION,to,nbf+ibf_global,comm_trans,ier) 
-!         write(1000+rank,*) 'S',rank_trans,' to ',to,-ibf_global
        enddo
 
      enddo
@@ -474,18 +447,16 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,occupation,c_matr
      do ilocal=1,m_ham
        iglobal = rowindex_local_to_global('H',ilocal)
        call MPI_RECV(tmpa(:,ilocal),nauxil_3center,MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE,iglobal,comm_trans,MPI_STATUS_IGNORE,ier) 
-!       write(1000+rank,*) 'R',rank_trans,iglobal
      enddo
 
      do jlocal=1,n_ham
        jglobal = colindex_local_to_global('H',jlocal)
        call MPI_RECV(tmpb(:,jlocal),nauxil_3center,MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE,nbf+jglobal,comm_trans,MPI_STATUS_IGNORE,ier) 
-!       write(1000+rank,*) 'R',rank_trans,-jglobal
      enddo
 
 
      deallocate(tmpc)
-#endif
+
 
      pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin)  &
                         - MATMUL( TRANSPOSE(tmpa(:,:)) , tmpb(:,:) ) / spin_fact
@@ -724,33 +695,52 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,s_
 
  if( cntxt_ham > 0 ) then
 
-!   ibf=0
-!   do jbf=1,nbf
-!     jlocal = colindex_global_to_local('H',jbf)
-!     if( jlocal == 0 ) cycle
-!     
-!     if( s_eigval(jbf) > TOL_OVERLAP_FAKE ) then
-!!FBFBSCA    ibf = ibf + 1
-!       ibf = jlocal
-!       s_matrix_sqrt_inv(:,ibf) = matrix_tmp(:,jlocal) / SQRT( s_eigval(jbf) )
-!     endif
-!   enddo
+   do jlocal=1,n_ham
+     jglobal = colindex_local_to_global('H',jlocal)
+     s_matrix_sqrt_inv(:,jlocal) = matrix_tmp(:,jlocal) / SQRT( s_eigval(jglobal) )
+   enddo
 
-  do jlocal=1,n_ham
-    jglobal = colindex_local_to_global('H',jlocal)
-    s_matrix_sqrt_inv(:,jlocal) = matrix_tmp(:,jlocal) / SQRT( s_eigval(jglobal) )
-  enddo
-
-!!TEST FBFBSCA
-!     call PDGEMM('N','T',nbf,nbf,nbf,1.0_dp,s_matrix_sqrt_inv,1,1,desc_ham,      &
-!                  s_matrix_sqrt_inv,1,1,desc_ham,0.0_dp,                         &
-!                  matrix_tmp,1,1,desc_ham)
-!   
-
+ else
+   s_matrix_sqrt_inv(:,:) = 0.0_dp
  endif
+ call xlocal_sum(s_matrix_sqrt_inv)
 
 
 end subroutine setup_sqrt_overlap_sca
+
+
+!=========================================================================
+subroutine setup_sqrt_density_matrix_sca(nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,p_matrix_occ)
+ use m_tools
+ implicit none
+
+ integer,intent(in)   :: nbf,m_ham,n_ham
+ real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
+ real(dp),intent(out) :: p_matrix_sqrt(m_ham,n_ham,nspin)
+ real(dp),intent(out) :: p_matrix_occ(nbf,nspin)
+!=====
+ integer              :: ispin
+!=====
+
+ call start_clock(timing_sqrt_density_matrix)
+
+ if( cntxt_ham > 0 ) then
+   do ispin=1,nspin
+     p_matrix_sqrt(:,:,ispin) = p_matrix(:,:,ispin)
+     call diagonalize(nbf,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
+   enddo
+ else
+   p_matrix_sqrt(:,:,:) = 0.0_dp
+   p_matrix_occ(:,:)    = 0.0_dp
+ endif
+
+ call xlocal_sum(p_matrix_sqrt)
+ call xlocal_sum(p_matrix_occ)
+
+ call stop_clock(timing_sqrt_density_matrix)
+
+
+end subroutine setup_sqrt_density_matrix_sca
 
 
 !=========================================================================

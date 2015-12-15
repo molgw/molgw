@@ -11,45 +11,45 @@ module m_timing
  integer,parameter :: timing_scf               = 82
  integer,parameter :: timing_postscf           = 83
 
- integer,parameter :: timing_dft               =  2
- integer,parameter :: timing_pola              =  3
- integer,parameter :: timing_self              =  4
- integer,parameter :: timing_overlap           =  5
- integer,parameter :: timing_eri_4center       =  6
- integer,parameter :: timing_exchange          =  7
- integer,parameter :: timing_hartree           =  8
- integer,parameter :: timing_overlap3          =  9            ! Not used
- integer,parameter :: timing_diago_h2p         = 10
- integer,parameter :: timing_pola_static       = 11
- integer,parameter :: timing_mp2_energy        = 12
- integer,parameter :: timing_mp2_self          = 13
- integer,parameter :: timing_basis_transform   = 14
- integer,parameter :: timing_single_excitation = 15
- integer,parameter :: timing_eri_2center       = 16
- integer,parameter :: timing_eri_3center       = 17
- integer,parameter :: timing_eri_3center_eigen = 18
- integer,parameter :: timing_buildw            = 19
- integer,parameter :: timing_build_h2p         = 20
- integer,parameter :: timing_restart_file      = 21
- integer,parameter :: timing_diago_hamiltonian = 22
- integer,parameter :: timing_hamiltonian_nuc   = 23
- integer,parameter :: timing_hamiltonian_kin   = 24
- integer,parameter :: timing_build_common      = 25
- integer,parameter :: timing_build_tddft       = 26
- integer,parameter :: timing_build_bse         = 27
- integer,parameter :: timing_spectrum          = 28
- integer,parameter :: timing_eri_screening     = 29
- integer,parameter :: timing_hamiltonian_ecp   = 30
+ integer,parameter :: timing_dft                 =  2
+ integer,parameter :: timing_pola                =  3
+ integer,parameter :: timing_self                =  4
+ integer,parameter :: timing_overlap             =  5
+ integer,parameter :: timing_eri_4center         =  6
+ integer,parameter :: timing_exchange            =  7
+ integer,parameter :: timing_hartree             =  8
+ integer,parameter :: timing_sqrt_density_matrix =  9
+ integer,parameter :: timing_diago_h2p           = 10
+ integer,parameter :: timing_pola_static         = 11
+ integer,parameter :: timing_mp2_energy          = 12
+ integer,parameter :: timing_mp2_self            = 13
+ integer,parameter :: timing_basis_transform     = 14
+ integer,parameter :: timing_single_excitation   = 15
+ integer,parameter :: timing_eri_2center         = 16
+ integer,parameter :: timing_eri_3center         = 17
+ integer,parameter :: timing_eri_3center_eigen   = 18
+ integer,parameter :: timing_buildw              = 19
+ integer,parameter :: timing_build_h2p           = 20
+ integer,parameter :: timing_restart_file        = 21
+ integer,parameter :: timing_diago_hamiltonian   = 22
+ integer,parameter :: timing_hamiltonian_nuc     = 23
+ integer,parameter :: timing_hamiltonian_kin     = 24
+ integer,parameter :: timing_build_common        = 25
+ integer,parameter :: timing_build_tddft         = 26
+ integer,parameter :: timing_build_bse           = 27
+ integer,parameter :: timing_spectrum            = 28
+ integer,parameter :: timing_eri_screening       = 29
+ integer,parameter :: timing_hamiltonian_ecp     = 30
  
- integer,parameter :: timing_tmp1              = 91
- integer,parameter :: timing_tmp2              = 92
- integer,parameter :: timing_tmp3              = 93
- integer,parameter :: timing_tmp4              = 94
- integer,parameter :: timing_tmp5              = 95
- integer,parameter :: timing_tmp6              = 96
- integer,parameter :: timing_tmp7              = 97
- integer,parameter :: timing_tmp8              = 98
- integer,parameter :: timing_tmp9              = 99
+ integer,parameter :: timing_tmp1                = 91
+ integer,parameter :: timing_tmp2                = 92
+ integer,parameter :: timing_tmp3                = 93
+ integer,parameter :: timing_tmp4                = 94
+ integer,parameter :: timing_tmp5                = 95
+ integer,parameter :: timing_tmp6                = 96
+ integer,parameter :: timing_tmp7                = 97
+ integer,parameter :: timing_tmp8                = 98
+ integer,parameter :: timing_tmp9                = 99
 
  integer           :: count_rate,count_max
  logical           :: time_running(NTIMING)
@@ -139,10 +139,11 @@ subroutine output_timing()
  write(stdout,'(a30,6x,f12.2,2x,i8)')  'Electron-nuclei Hamiltonian',timing(timing_hamiltonian_nuc),calls(timing_hamiltonian_nuc)
 
  write(stdout,*)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'Hartree'          ,timing(timing_hartree),calls(timing_hartree)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'Exchange'         ,timing(timing_exchange),calls(timing_exchange)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'DFT xc'           ,timing(timing_dft),calls(timing_dft)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'Hamiltonian diago',timing(timing_diago_hamiltonian),calls(timing_diago_hamiltonian)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'SQRT density matrix' ,timing(timing_sqrt_density_matrix),calls(timing_sqrt_density_matrix)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'Hartree'             ,timing(timing_hartree),calls(timing_hartree)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'Exchange'            ,timing(timing_exchange),calls(timing_exchange)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'DFT xc'              ,timing(timing_dft),calls(timing_dft)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'Hamiltonian diago'   ,timing(timing_diago_hamiltonian),calls(timing_diago_hamiltonian)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'RESTART file writing',timing(timing_restart_file),calls(timing_restart_file)
  write(stdout,*)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Single Excit.'   ,timing(timing_single_excitation),calls(timing_single_excitation)

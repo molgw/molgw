@@ -52,6 +52,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  character(len=100)      :: title
  real(dp)                :: energy_tmp
  real(dp)                :: ehomo(nspin),elumo(nspin)
+ real(dp),allocatable    :: p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
  real(dp),allocatable    :: hamiltonian(:,:,:)
  real(dp),allocatable    :: hamiltonian_vxc(:,:,:)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
@@ -76,8 +77,12 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  allocate(hamiltonian (m_ham,n_ham,nspin))
  allocate(matrix_tmp  (m_ham,n_ham,nspin))
  allocate(p_matrix_old(m_ham,n_ham,nspin))
+ if( calc_type%need_exchange .AND. is_full_auxil ) then
+   allocate(p_matrix_sqrt(m_ham,n_ham,nspin))
+   allocate(p_matrix_occ(basis%nbf,nspin))
+ endif
 
- if( calc_type%is_dft) then
+ if( calc_type%is_dft ) then
    allocate(hamiltonian_vxc(basis%nbf,basis%nbf,nspin))
    !
    ! Setup the grids for the quadrature of DFT potential/energy
@@ -149,9 +154,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
        call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
      else
        if( parallel_ham ) then
-         call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+         call setup_sqrt_density_matrix_sca(basis%nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,p_matrix_occ)
+         call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
        else
-         call setup_exchange_ri(print_matrix_,basis%nbf,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+         call setup_sqrt_density_matrix(basis%nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
+         call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
        endif
      endif
      ! Rescale with alpha_hybrid for hybrid functionals
@@ -385,9 +392,9 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  else
    if( ABS(en%exx) < 1.0e-6_dp ) then
      if( parallel_ham ) then
-       call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+       call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
      else
-       call setup_exchange_ri(print_matrix_,basis%nbf,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+       call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
      endif
    endif
  endif
@@ -482,9 +489,11 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      call setup_exchange(print_matrix_,basis%nbf,p_matrix_tmp,hamiltonian_exx,en%exx)
    else
      if( parallel_ham ) then
-       call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+       call die('coding not correct')
+       call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
      else
-       call setup_exchange_ri(print_matrix_,basis%nbf,occupation,c_matrix,p_matrix_tmp,hamiltonian_exx,en%exx)
+       call die('coding not correct')
+       call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,hamiltonian_exx,en%exx)
      endif
    endif
 
@@ -514,6 +523,9 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  deallocate(matrix_tmp,p_matrix_old)
  if( ALLOCATED(self_energy_old) ) deallocate(self_energy_old)
  if( ALLOCATED(hamiltonian_vxc) ) deallocate(hamiltonian_vxc)
+ if( ALLOCATED(p_matrix_sqrt) )   deallocate(p_matrix_sqrt)
+ if( ALLOCATED(p_matrix_occ) )    deallocate(p_matrix_occ)
+
  deallocate(exchange_m_vxc_diag)
 
  call stop_clock(timing_scf)

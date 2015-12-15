@@ -1255,8 +1255,8 @@ subroutine init_scalapack_ham(nbf,m_ham,n_ham)
    call MPI_COMM_SIZE(comm_local,nproc_local,ier)
    call MPI_COMM_RANK(comm_local,rank_local,ier)
 
-!FBFBSCA decide wheter or not I need this
-! So far, this is YES because all procs need p_matrix
+   write(stdout,'(a50,x,i8)')      'Number of local processors:',nproc_local
+
    call xlocal_max(m_ham)
    call xlocal_max(n_ham)
    call xlocal_max(iprow_ham)
