@@ -678,6 +678,9 @@ subroutine setup_exchange_ri(print_matrix_,nbf,occupation,c_matrix,p_matrix,pot_
  real(dp),allocatable :: tmp(:,:)
  real(dp)             :: eigval(nbf)
  integer              :: ipair
+#if 1
+ real(dp)             :: p_matrix_sqrt(nbf,nbf),occ(nbf)
+#endif
 !=====
 
  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
@@ -690,17 +693,19 @@ subroutine setup_exchange_ri(print_matrix_,nbf,occupation,c_matrix,p_matrix,pot_
 
  do ispin=1,nspin
 
-   ! Denombrate the strictly positive eigenvalues
-   nocc = COUNT( occupation(:,ispin) > completely_empty )
+   p_matrix_sqrt(:,:) = p_matrix(:,:,ispin)
+   call diagonalize(nbf,p_matrix_sqrt,occ)
 
-   do istate=1,nocc
+   do istate=1,nbf
+     if( occ(istate) < completely_empty)  cycle
+
      tmp(:,:) = 0.0_dp
      do ipair=1,npair
        ibf=index_basis(1,ipair)
        jbf=index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair) * SQRT( occupation(istate,ispin) )
+       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt(jbf,istate) * eri_3center(:,ipair) * SQRT(occ(istate))
        if( ibf /= jbf ) &
-            tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair) * SQRT( occupation(istate,ispin) )
+            tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate) * eri_3center(:,ipair) * SQRT(occ(istate))
      enddo
 
      pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin) &
