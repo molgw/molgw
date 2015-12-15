@@ -77,10 +77,8 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  allocate(hamiltonian (m_ham,n_ham,nspin))
  allocate(matrix_tmp  (m_ham,n_ham,nspin))
  allocate(p_matrix_old(m_ham,n_ham,nspin))
- if( calc_type%need_exchange .AND. is_full_auxil ) then
-   allocate(p_matrix_sqrt(m_ham,n_ham,nspin))
-   allocate(p_matrix_occ(basis%nbf,nspin))
- endif
+ allocate(p_matrix_sqrt(m_ham,n_ham,nspin))
+ allocate(p_matrix_occ(basis%nbf,nspin))
 
  if( calc_type%is_dft ) then
    allocate(hamiltonian_vxc(basis%nbf,basis%nbf,nspin))
@@ -100,6 +98,15 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  do iscf=1,nscf
    write(stdout,'(/,a)') '-------------------------------------------'
    write(stdout,'(a,x,i4,/)') ' *** SCF cycle No:',iscf
+  
+   !
+   ! Calculate the matrix square-root of the density matrix P
+   if( parallel_ham ) then
+     call setup_sqrt_density_matrix_sca(basis%nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,p_matrix_occ)
+   else
+     call setup_sqrt_density_matrix(basis%nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
+   endif
+
 
    if( cntxt_ham > 0 ) then
      en%kin  = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
@@ -141,7 +148,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      enddo
    endif
 
-  
+
    !
    ! Reset XC part of the Hamiltonian
    hamiltonian_xc(:,:,:) = 0.0_dp
@@ -154,10 +161,8 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
        call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
      else
        if( parallel_ham ) then
-         call setup_sqrt_density_matrix_sca(basis%nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,p_matrix_occ)
          call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
        else
-         call setup_sqrt_density_matrix(basis%nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
          call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
        endif
      endif
@@ -182,7 +187,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    ! DFT XC potential is added here
    if( calc_type%is_dft ) then
 
-     call dft_exc_vxc(basis,p_matrix,ehomo,hamiltonian_vxc,en%xc)
+     call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,hamiltonian_vxc,en%xc)
 
      title='=== DFT XC contribution ==='
      call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,hamiltonian_vxc)
@@ -483,7 +488,8 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      occupation_tmp(istate,:) = 0.0_dp
    enddo
    call setup_density_matrix(basis%nbf,c_matrix,occupation_tmp,p_matrix_tmp)
-   call dft_exc_vxc(basis,p_matrix_tmp,ehomo,hamiltonian_xc,en%xc)
+   call die('coding not correct')
+   call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,ehomo,hamiltonian_xc,en%xc)
 
    if( .NOT. is_full_auxil ) then
      call setup_exchange(print_matrix_,basis%nbf,p_matrix_tmp,hamiltonian_exx,en%exx)

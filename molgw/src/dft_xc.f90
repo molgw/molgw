@@ -1,5 +1,5 @@
 !=========================================================================
-subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
+subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,exc_xc)
  use m_definitions
  use m_mpi
  use m_timing
@@ -18,6 +18,8 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
  implicit none
 
  type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: p_matrix_occ(basis%nbf,nspin)
+ real(dp),intent(in)        :: p_matrix_sqrt(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)        :: p_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)        :: ehomo(nspin)
  real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
@@ -144,7 +146,7 @@ subroutine dft_exc_vxc(basis,p_matrix,ehomo,vxc_ij,exc_xc)
 
    !
    ! calculate the density at point r for spin up and spin down
-   call calc_density_r(nspin,basis,p_matrix,rr,basis_function_r,rhor_r)
+   call calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_function_r,rhor_r)
    !
    ! Normalization
    normalization(:) = normalization(:) + rhor_r(:) * weight
@@ -501,7 +503,7 @@ subroutine setup_atomic_density(rr,rhor,vhartree)
 
 end subroutine setup_atomic_density
 
-
+#if 0
 !=========================================================================
 subroutine calc_density_r(nspin,basis,p_matrix,rr,basis_function_r,rhor_r)
  use m_definitions
@@ -518,24 +520,74 @@ subroutine calc_density_r(nspin,basis,p_matrix,rr,basis_function_r,rhor_r)
 !=====
  integer :: ispin,ibf,jbf
 !=====
+
  !
  ! Calculate the density rho at point r
  rhor_r(:)=0.0_dp
  do ispin=1,nspin
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO REDUCTION(+:rhor_r) 
    do jbf=1,basis%nbf
      if( SUM( (basis%bf(jbf)%x0(:) - rr(:))**2 ) > bf_rad2(jbf) ) cycle
-     ! implementing i <-> j symmetry does not save much time with ifort compiler
      do ibf=1,basis%nbf
        rhor_r(ispin)=rhor_r(ispin)+p_matrix(ibf,jbf,ispin)&
                          * basis_function_r(ibf) &
                          * basis_function_r(jbf)
      enddo
    enddo
-!$OMP END DO
-!$OMP END PARALLEL
  enddo
+
+
+end subroutine calc_density_r
+#endif
+
+
+!=========================================================================
+subroutine calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_function_r,rhor_r)
+ use m_definitions
+ use m_mpi
+ use m_timing
+ use m_basis_set
+ use m_dft_grid,only: bf_rad2
+ implicit none
+ integer,intent(in)         :: nspin
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)  :: p_matrix_sqrt(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)  :: p_matrix_occ(basis%nbf,nspin)
+ real(dp),intent(in)  :: rr(3),basis_function_r(basis%nbf)
+ real(dp),intent(out) :: rhor_r(nspin)
+!=====
+ integer              :: ispin,ibf,istate,nocc
+ real(dp),allocatable :: phi_r(:)
+ real(dp)             :: phi_i_r
+!=====
+
+ do istate=1,basis%nbf
+   if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
+   nocc = istate
+ enddo
+ allocate(phi_r(nocc))
+
+ !
+ ! Calculate the density rho at point r
+ rhor_r(:)=0.0_dp
+
+ do ispin=1,nspin
+!   phi_r(:) = MATMUL( basis_function_r(:) , p_matrix_sqrt(:,1:nocc,ispin) )
+!   rhor_r(ispin) = SUM( p_matrix_occ(1:nocc,ispin) * phi_r(1:nocc)**2 )
+
+!   do istate=1,basis%nbf
+!     if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
+   do istate=1,nocc
+     phi_i_r = 0.0_dp
+     do ibf=1,basis%nbf
+!       if( SUM( (basis%bf(ibf)%x0(:) - rr(:))**2 ) > bf_rad2(ibf) ) cycle
+       phi_i_r = phi_i_r + p_matrix_sqrt(ibf,istate,ispin) * basis_function_r(ibf)
+     enddo
+     rhor_r(ispin) = rhor_r(ispin) + p_matrix_occ(istate,ispin) * phi_i_r**2
+   enddo
+
+ enddo
+
+ deallocate(phi_r)
 
 
 end subroutine calc_density_r
@@ -558,19 +610,13 @@ subroutine calc_density_gradr(nspin,nbf,p_matrix,basis_function_r,basis_function
 
  grad_rhor(:,:)=0.0_dp
  do ispin=1,nspin
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO REDUCTION(+:grad_rhor) 
    do jbf=1,nbf
-     ! implementing i <-> j symmetry does not save much time with ifort
-     ! compiler
      do ibf=1,nbf
        grad_rhor(:,ispin) = grad_rhor(:,ispin) + p_matrix(ibf,jbf,ispin) &
             *( basis_function_gradr(:,ibf) * basis_function_r(jbf) &
              + basis_function_gradr(:,jbf) * basis_function_r(ibf) )
      enddo
    enddo
-!$OMP END DO
-!$OMP END PARALLEL
  enddo
 
 end subroutine calc_density_gradr
