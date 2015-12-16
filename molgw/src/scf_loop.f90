@@ -370,7 +370,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    !
    ! Write down a "small" RESTART file at each step
    if( print_restart_ ) then
-    call write_restart(SMALL_RESTART,basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+     call write_restart(SMALL_RESTART,basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
    endif
    
  !
