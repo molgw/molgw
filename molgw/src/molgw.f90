@@ -36,9 +36,6 @@ program molgw
  use m_hamiltonian
  use m_hamiltonian_sca
  use m_timedependent
-#ifdef _OPENMP
- use omp_lib
-#endif
  implicit none
 
 !=====

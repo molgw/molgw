@@ -11,9 +11,6 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,ex
  use xc_f90_lib_m
  use xc_f90_types_m
 #endif
-#ifdef _OPENMP
- use,intrinsic :: omp_lib
-#endif
  use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
  implicit none
 
@@ -152,50 +149,23 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,ex
    normalization(:) = normalization(:) + rhor_r(:) * weight
 
 
+!   call start_clock(timing_tmp1)
    if( require_gradient ) then 
-     call calc_density_gradr(nspin,basis%nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
-
-     sigma(1) = SUM( grad_rhor(:,1)**2 )
-     if(nspin==2) then
-       sigma(2) = SUM( grad_rhor(:,1) * grad_rhor(:,2) )
-       sigma(3) = SUM( grad_rhor(:,2)**2 )
-     endif
-
+     call calc_density_gradr(nspin,basis%nbf,p_matrix_occ,p_matrix_sqrt,basis_function_r,basis_function_gradr,grad_rhor)
    endif
-
+!   call stop_clock(timing_tmp1)
 
    if( require_laplacian ) then
+     call calc_density_gradr_laplr(nspin,basis%nbf,p_matrix,basis_function_r,basis_function_gradr,basis_function_laplr,grad_rhor,tau,lapl_rhor)
+   endif
 
-     grad_rhor(:,:)=0.0_dp
-     tau(:)        =0.0_dp
-     lapl_rhor(:)  =0.0_dp
-     do ispin=1,nspin
-       do jbf=1,basis%nbf
-         do ibf=1,basis%nbf
-
-           grad_rhor(:,ispin) = grad_rhor(:,ispin) + p_matrix(ibf,jbf,ispin) &
-                *( basis_function_gradr(:,ibf) * basis_function_r(jbf) &
-                 + basis_function_gradr(:,jbf) * basis_function_r(ibf) ) 
-
-           tau(ispin)        = tau(ispin)        + p_matrix(ibf,jbf,ispin) &
-                * DOT_PRODUCT( basis_function_gradr(:,ibf) , basis_function_gradr(:,jbf) )
-
-           lapl_rhor(ispin)  = lapl_rhor(ispin)  + p_matrix(ibf,jbf,ispin) &
-                              * (  SUM( basis_function_laplr(:,ibf) ) * basis_function_r(jbf)               &
-                                 + basis_function_r(ibf) * SUM( basis_function_laplr(:,jbf) )               &
-                                 + 2.0_dp * DOT_PRODUCT( basis_function_gradr(:,ibf) , basis_function_gradr(:,jbf) ) )
-
-         enddo
-       enddo
-     enddo
+   if( require_gradient .OR. require_laplacian ) then
      sigma(1) = SUM( grad_rhor(:,1)**2 )
      if(nspin==2) then
        sigma(2) = SUM( grad_rhor(:,1) * grad_rhor(:,2) )
        sigma(3) = SUM( grad_rhor(:,2)**2 )
      endif
-
    endif
-
 
    !
    ! LIBXC calls
@@ -276,6 +246,7 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,ex
    enddo ! loop on the XC functional
 
 
+!   call start_clock(timing_tmp2)
    !
    ! Eventually set up the vxc term
    !
@@ -308,6 +279,7 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,ex
        enddo
      enddo
    endif
+!   call stop_clock(timing_tmp2)
 
  enddo ! loop on the grid point
 
@@ -362,9 +334,6 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  use libxc_funcs_m
  use xc_f90_lib_m
  use xc_f90_types_m
-#endif
-#ifdef _OPENMP
- use omp_lib
 #endif
  implicit none
 
@@ -550,33 +519,35 @@ subroutine calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_functi
  implicit none
  integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)  :: p_matrix_sqrt(basis%nbf,basis%nbf,nspin)
- real(dp),intent(in)  :: p_matrix_occ(basis%nbf,nspin)
- real(dp),intent(in)  :: rr(3),basis_function_r(basis%nbf)
- real(dp),intent(out) :: rhor_r(nspin)
+ real(dp),intent(in)        :: p_matrix_sqrt(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)        :: p_matrix_occ(basis%nbf,nspin)
+ real(dp),intent(in)        :: rr(3),basis_function_r(basis%nbf)
+ real(dp),intent(out)       :: rhor_r(nspin)
 !=====
  integer              :: ispin,ibf,istate,nocc
  real(dp),allocatable :: phi_r(:)
  real(dp)             :: phi_i_r
 !=====
 
- do istate=1,basis%nbf
-   if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
-   nocc = istate
- enddo
- allocate(phi_r(nocc))
-
  !
  ! Calculate the density rho at point r
  rhor_r(:)=0.0_dp
 
  do ispin=1,nspin
+
+!  do istate=1,basis%nbf
+!    if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
+!    nocc = istate
+!  enddo
+!  allocate(phi_r(nocc))
+
+
 !   phi_r(:) = MATMUL( basis_function_r(:) , p_matrix_sqrt(:,1:nocc,ispin) )
 !   rhor_r(ispin) = SUM( p_matrix_occ(1:nocc,ispin) * phi_r(1:nocc)**2 )
 
-!   do istate=1,basis%nbf
-!     if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
-   do istate=1,nocc
+   do istate=1,basis%nbf
+     if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
+!   do istate=1,nocc
      phi_i_r = 0.0_dp
      do ibf=1,basis%nbf
 !       if( SUM( (basis%bf(ibf)%x0(:) - rr(:))**2 ) > bf_rad2(ibf) ) cycle
@@ -585,14 +556,15 @@ subroutine calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_functi
      rhor_r(ispin) = rhor_r(ispin) + p_matrix_occ(istate,ispin) * phi_i_r**2
    enddo
 
+!   deallocate(phi_r)
  enddo
 
- deallocate(phi_r)
 
 
 end subroutine calc_density_r
 
 
+#if 0
 !=========================================================================
 subroutine calc_density_gradr(nspin,nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
  use m_definitions
@@ -620,6 +592,98 @@ subroutine calc_density_gradr(nspin,nbf,p_matrix,basis_function_r,basis_function
  enddo
 
 end subroutine calc_density_gradr
+#endif
+
+
+!=========================================================================
+subroutine calc_density_gradr(nspin,nbf,p_matrix_occ,p_matrix_sqrt,basis_function_r,basis_function_gradr,grad_rhor)
+ use m_definitions
+ use m_mpi
+ use m_timing
+ use m_basis_set
+ use m_dft_grid,only: bf_rad2
+ implicit none
+ integer,intent(in)         :: nspin,nbf
+ real(dp),intent(in)        :: p_matrix_sqrt(nbf,nbf,nspin)
+ real(dp),intent(in)        :: p_matrix_occ(nbf,nspin)
+ real(dp),intent(in)        :: basis_function_r(nbf)
+ real(dp),intent(in)        :: basis_function_gradr(3,nbf)
+ real(dp),intent(out)       :: grad_rhor(3,nspin)
+!=====
+ integer              :: ispin,ibf,istate,nocc
+ real(dp),allocatable :: phi_r(:)
+ real(dp)             :: phi_i_r
+ real(dp)             :: grad_phi_i_r(3)
+!=====
+
+ !
+ ! Calculate the density gradient \nabla rho at point r
+ grad_rhor(:,:) = 0.0_dp
+
+ do ispin=1,nspin
+   do istate=1,nbf
+     if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
+
+     phi_i_r         = 0.0_dp
+     grad_phi_i_r(:) = 0.0_dp
+
+     do ibf=1,nbf
+       phi_i_r         = phi_i_r         + p_matrix_sqrt(ibf,istate,ispin) * basis_function_r(ibf)
+       grad_phi_i_r(:) = grad_phi_i_r(:) + p_matrix_sqrt(ibf,istate,ispin) * basis_function_gradr(:,ibf)
+     enddo
+     grad_rhor(:,ispin) = grad_rhor(:,ispin) + p_matrix_occ(istate,ispin) * phi_i_r * grad_phi_i_r(:) * 2.0_dp
+   enddo
+
+ enddo
+
+
+end subroutine calc_density_gradr
+
+
+!=========================================================================
+subroutine calc_density_gradr_laplr(nspin,nbf,p_matrix,basis_function_r,basis_function_gradr,basis_function_laplr, &
+ grad_rhor,tau,lapl_rhor)
+ use m_definitions
+ use m_mpi
+ use m_timing
+ implicit none
+ integer,intent(in)   :: nspin,nbf
+ real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
+ real(dp),intent(in)  :: basis_function_r(nbf)
+ real(dp),intent(in)  :: basis_function_gradr(3,nbf)
+ real(dp),intent(in)  :: basis_function_laplr(3,nbf)
+ real(dp),intent(out) :: grad_rhor(3,nspin)
+ real(dp),intent(out) :: tau(nspin)
+ real(dp),intent(out) :: lapl_rhor(nspin)
+!=====
+ integer :: ispin,ibf,jbf
+!=====
+
+ grad_rhor(:,:)=0.0_dp
+ tau(:)        =0.0_dp
+ lapl_rhor(:)  =0.0_dp
+ do ispin=1,nspin
+   do jbf=1,nbf
+     do ibf=1,nbf
+
+       grad_rhor(:,ispin) = grad_rhor(:,ispin) + p_matrix(ibf,jbf,ispin) &
+            *( basis_function_gradr(:,ibf) * basis_function_r(jbf) &
+             + basis_function_gradr(:,jbf) * basis_function_r(ibf) ) 
+
+       tau(ispin)        = tau(ispin)        + p_matrix(ibf,jbf,ispin) &
+            * DOT_PRODUCT( basis_function_gradr(:,ibf) , basis_function_gradr(:,jbf) )
+
+       lapl_rhor(ispin)  = lapl_rhor(ispin)  + p_matrix(ibf,jbf,ispin) &
+                          * (  SUM( basis_function_laplr(:,ibf) ) * basis_function_r(jbf)               &
+                             + basis_function_r(ibf) * SUM( basis_function_laplr(:,jbf) )               &
+                             + 2.0_dp * DOT_PRODUCT( basis_function_gradr(:,ibf) , basis_function_gradr(:,jbf) ) )
+
+     enddo
+   enddo
+ enddo
+
+
+end subroutine calc_density_gradr_laplr
 
 
 !=========================================================================

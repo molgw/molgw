@@ -1,8 +1,8 @@
 !=========================================================================
 module m_atoms
  use m_definitions
- use m_elements
  use m_warning,only: die
+ use m_elements
 
  real(dp),parameter,private     :: tol_geom=1.0e-5_dp
 

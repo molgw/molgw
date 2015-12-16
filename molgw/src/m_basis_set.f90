@@ -1,13 +1,13 @@
 !=========================================================================
 module m_basis_set
  use m_definitions
- use m_elements
+ use m_warning
  use m_mpi
  use m_timing
- use m_warning
+ use m_elements
  use m_tools, only: diagonalize,invert,double_factorial
- use m_gaussian
  use m_atoms
+ use m_gaussian
 
 
  type transform

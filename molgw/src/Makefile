@@ -27,17 +27,70 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 
 .PHONY: all clean archive doc input prepare_sourcecode
 
-all: prepare_sourcecode ../molgw
+#all: #prepare_sourcecode ../molgw
 
-../molgw: m_definitions.o \
+####################################################
+# Parallel make execution requires a bit of ordering
+all: 
+	make prepare_sourcecode
+	make level000
+	make level005
+	make level010
+	make level015
+	make level020
+	make level025
+	make level030
+	make level035
+	make level040
+	make level045
+	make ../molgw
+
+level000:
+	make m_definitions.o libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o pdbssolver1.o
+
+level005:
+	make m_warning.o m_gos.o
+
+level010:
+	make m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o
+
+level015:
+	make m_atoms.o m_gaussian.o
+
+level020:
+	make m_basis_set.o
+
+level025:
+	make m_inputparam.o
+
+level030:
+	make m_eri.o m_scf.o m_dft_grid.o
+
+level035:
+	make m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o mp2_selfenergy.o
+
+level040:
+	make m_timedependent.o static_polarizability.o gw.o dft_xc.o io.o mp2.o
+
+level045:
+	make scf_loop.o molgw.o
+
+
+
+####################################################
+
+
+
+../molgw: m_definitions.o libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o pdbssolver1.o \
         m_warning.o m_gos.o \
         m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o \
-        m_atoms.o \
-        m_gaussian.o m_basis_set.o m_inputparam.o m_scf.o m_eri.o m_spectral_function.o m_dft_grid.o \
-        m_hamiltonian.o m_hamiltonian_sca.o  m_timedependent.o \
-        static_polarizability.o gw.o dft_xc.o \
-        libint_wrapper.o libint_wrapper_nounderscore.o \
-        lebedev_quadrature.o mp2_selfenergy.o mp2.o io.o scf_loop.o pdbssolver1.o molgw.o
+        m_atoms.o m_gaussian.o \
+        m_basis_set.o \
+        m_inputparam.o \
+        m_eri.o m_scf.o m_dft_grid.o \
+        m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o mp2_selfenergy.o \
+        m_timedependent.o static_polarizability.o gw.o dft_xc.o io.o mp2.o  \
+        scf_loop.o molgw.o
 	$(FC_W_OPTS) \
                         m_definitions.o m_warning.o m_elements.o m_mpi.o m_timing.o m_memory.o m_inputparam.o m_tools.o m_scf.o m_atoms.o \
                         m_gos.o m_gaussian.o m_basis_set.o m_eri.o m_dft_grid.o m_spectral_function.o \
