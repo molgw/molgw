@@ -1,5 +1,6 @@
 &molgw
  scf='lda'
+ tolscf=1.0e-9
  npulay_hist=8
 
  postscf='gw'
@@ -7,7 +8,7 @@
 
  basis='6-31G'
  gaussian_type='cart'
- basis_path='/home/bruneval/devel/molgw/basis'
+ basis_path='../../basis'
 
  natom=3
 /

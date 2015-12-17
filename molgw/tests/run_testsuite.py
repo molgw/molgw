@@ -49,14 +49,17 @@ def check_output(out,testinfo):
         parsing  = line.split(':')
         parsing2 = parsing[1].split()
 
-        fdiff.write(str(tested).rjust(6) + parsing2[pos].rjust(30)+str(ref).rjust(30)+str(float(parsing2[pos]) - ref).rjust(30)+'\n')
 
         if abs( float(parsing2[pos]) - ref ) < tol:
           print(key.rjust(30)+'[ \033[92m\033[1mOK\033[0m ]'.rjust(30))
           success += 1
+          fdiff.write(str(tested).rjust(6) + parsing2[pos].rjust(30) \
+                + str(ref).rjust(30)+str(float(parsing2[pos]) - ref).rjust(30)+'  OK  \n')
           break
         else:
           print(key.rjust(30)+'[\033[91m\033[1mFAIL\033[0m]'.rjust(30))
+          fdiff.write(str(tested).rjust(6) + parsing2[pos].rjust(30) \
+                + str(ref).rjust(30)+str(float(parsing2[pos]) - ref).rjust(30)+' FAIL \n')
           break
      
 ###################################

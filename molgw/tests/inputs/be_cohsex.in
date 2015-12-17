@@ -1,10 +1,11 @@
 &molgw
  scf='cohsex'
+ tolscf=1.0e-9
 
  basis='cc-pVDZ'
  auxil_basis='cc-pVDZ-RI'
  no_4center='yes'
- basis_path='/home/bruneval/devel/molgw/basis'
+ basis_path='../../basis'
 
  natom=1
  alpha_mixing=0.5
