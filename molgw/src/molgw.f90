@@ -39,7 +39,7 @@ program molgw
  implicit none
 
 !=====
- real(dp),parameter      :: TOL_OVERLAP=5.0e-6_dp
+ real(dp),parameter      :: TOL_OVERLAP=1.0e-6_dp
  type(basis_set)         :: basis
  type(basis_set)         :: auxil_basis
  type(basis_set)         :: prod_basis

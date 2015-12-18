@@ -149,6 +149,7 @@ module m_mpi
  integer,protected :: ipcol_ham
  integer,protected :: desc_ham(ndel)
  integer,public    :: desc_ov(ndel)
+ integer,public    :: desc_small(ndel)
 
  ! SCALAPACK grid: row distribution
  integer,protected :: cntxt_rd

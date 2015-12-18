@@ -587,25 +587,20 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate,m_ov,n
  integer,intent(in)   :: nspin_local,nbf,nstate,m_ham,n_ham
  integer,intent(in)   :: m_ov,n_ov
  real(dp),intent(in)  :: hamiltonian(m_ham,n_ham,nspin_local)
- real(dp),intent(in)  :: s_matrix_sqrt_inv(m_ham,n_ham)
+ real(dp),intent(in)  :: s_matrix_sqrt_inv(m_ov,n_ov)
  real(dp),intent(out) :: c_matrix(m_ham,n_ham,nspin_local)
  real(dp),intent(out) :: energy(nbf,nspin_local)
 !=====
  integer  :: ispin,ibf,jbf,istate
- real(dp) :: h_small(m_ham,n_ham) !(nstate,nstate)
- real(dp) :: matrix_tmp(m_ham,n_ham)
- integer  :: ilocal,jlocal
+ real(dp) :: matrix_tmp(m_ov,n_ov)
+ integer  :: ilocal,jlocal,jglobal
+ integer  :: m_small,n_small
+ real(dp),allocatable :: h_small(:,:)
 !=====
 
- energy(:,:) = 1.0e+10_dp
- c_matrix(:,:,:) = 0.0_dp
-! do ibf=1,nbf
-!   c_matrix(ibf,ibf,:) = 1.0_dp
-! enddo
 
- ilocal = rowindex_global_to_local('H',101)
- jlocal = colindex_global_to_local('H',101)
-
+ call init_desc('H',nstate,nstate,desc_small,m_small,n_small)
+ allocate(h_small(m_small,n_small))
 
  if(cntxt_ham > 0 ) then
    do ispin=1,nspin_local
@@ -616,28 +611,40 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate,m_ov,n
 !                              MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
 
      !
-     ! H = ^tS^{-1/2} H S^{-1/2}
-     call PDGEMM('N','N',nbf,nbf,nbf,1.0_dp,hamiltonian(:,:,ispin),1,1,desc_ham,      &
-                  s_matrix_sqrt_inv,1,1,desc_ham,0.0_dp,                              &
-                  matrix_tmp,1,1,desc_ham)
+     ! H_small = ^tS^{-1/2} H S^{-1/2}
+     call PDGEMM('N','N',nbf,nstate,nbf,                          &
+                  1.0_dp,hamiltonian(:,:,ispin),1,1,desc_ham,     &
+                  s_matrix_sqrt_inv,1,1,desc_ov,                  &
+                  0.0_dp,matrix_tmp,1,1,desc_ov)
 
-     call PDGEMM('T','N',nbf,nbf,nbf,1.0_dp,s_matrix_sqrt_inv,1,1,desc_ham,           &
-                  matrix_tmp,1,1,desc_ham,0.0_dp,                              &
-                  h_small,1,1,desc_ham)
+     call PDGEMM('T','N',nstate,nstate,nbf,                       &
+                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_ov,           &
+                  matrix_tmp,1,1,desc_ov,                         &
+                  0.0_dp,h_small,1,1,desc_small)
 
 
 
-     call diagonalize_sca(desc_ham,nbf,m_ham,n_ham,h_small,energy(:,ispin))
+     call diagonalize_sca(desc_small,nstate,m_small,n_small,h_small,energy(:,ispin))
+     energy(nstate+1:nbf,ispin) = 1.0e5_dp
 
 
 !     c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
 
      !
-     ! C = S^{-1/2} C 
-     call PDGEMM('N','N',nbf,nbf,nbf,1.0_dp,s_matrix_sqrt_inv,1,1,desc_ham,      &
-                  h_small,1,1,desc_ham,0.0_dp,                              &
-                  c_matrix(:,:,ispin),1,1,desc_ham)
+     ! C = S^{-1/2} C_small 
+     call PDGEMM('N','N',nbf,nstate,nstate,                   &
+                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_ov,       &
+                  h_small,1,1,desc_small,                     &
+                  0.0_dp,matrix_tmp(:,:),1,1,desc_ov)         ! TODO: replace matrix_tmp with c_matrix
 
+     do jlocal=1,n_ham
+       jglobal = colindex_local_to_global('H',jlocal)
+       if( jglobal > nstate ) then
+         c_matrix(:,jlocal,ispin) = 0.0_dp
+       else
+         c_matrix(:,jlocal,ispin) = matrix_tmp(:,jlocal)
+       endif
+     enddo
 
 
      call stop_clock(timing_diago_hamiltonian)
@@ -652,6 +659,7 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate,m_ov,n
  call xlocal_sum(energy)
  call xlocal_sum(c_matrix)
 
+ deallocate(h_small)
 
 
 end subroutine diagonalize_hamiltonian_sca
@@ -677,13 +685,13 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
  real(dp),allocatable :: diag(:,:)
 !=====
 
- call issue_warning('NO FILTERING IMPLEMENTED SO FAR: TOL_OVERLAP_FAKE TO BE REMOVED')
+! call issue_warning('NO FILTERING IMPLEMENTED SO FAR: TOL_OVERLAP_FAKE TO BE REMOVED')
 
  if( cntxt_ham > 0 ) then
    matrix_tmp(:,:) = s_matrix(:,:)
    call diagonalize_sca(desc_ham,nbf,m_ham,n_ham,matrix_tmp,s_eigval)
 
-   nstate = COUNT( s_eigval(:) > TOL_OVERLAP_FAKE )
+   nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
 
    ! 
    ! Initialize the descriptor of the rectangular matric S^{-1/2}
@@ -705,7 +713,7 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
 
  write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
  write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is           ',MINVAL( s_eigval(:) )
- write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',TOL_OVERLAP_FAKE
+ write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',TOL_OVERLAP
  write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',nbf
 
  !
@@ -734,7 +742,7 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
 
      jglobal = 0
      do iglobal=1,nbf
-       if( s_eigval(iglobal) > TOL_OVERLAP_FAKE ) then
+       if( s_eigval(iglobal) > TOL_OVERLAP ) then
          jglobal = jglobal + 1
          ilocal = rowindex_global_to_local('H',iglobal)
          jlocal = colindex_global_to_local('H',jglobal)
