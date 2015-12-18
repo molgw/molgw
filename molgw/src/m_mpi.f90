@@ -274,28 +274,6 @@ subroutine get_rank()
 end subroutine get_rank
 
 
-#ifdef REMOVE
-!=========================================================================
-subroutine init_distribution(nbf)
- implicit none
- integer,intent(in) :: nbf
-!=====
- integer            :: ntask
-!=====
-
- nbf_mpi = nbf
-
- if( nproc>1 .AND. parallel_integral ) then
-   write(stdout,'(/,a)') ' Initializing distribution: 2-index distribution'
- endif
-
- ntask = index_prod_mpi(nbf,nbf)
- call distribute_workload(ntask)
-
-end subroutine init_distribution
-#endif
-
-
 !=========================================================================
 subroutine distribute_auxil_basis(nbf_auxil_basis,nbf_auxil_basis_local)
  implicit none
@@ -374,33 +352,6 @@ subroutine destroy_grid_distribution()
  if( ALLOCATED(task_grid_number) ) deallocate(task_grid_number)
 
 end subroutine destroy_grid_distribution
-
-
-#ifdef REMOVE
-!=========================================================================
-function is_my_task(ibf,jbf)
- implicit none
- integer,intent(in) :: ibf,jbf
- logical            :: is_my_task
-!=====
- integer            :: task_number
-!=====
- 
- !
- ! Distribution among procs is performed on the third and fourth indexes of the ERIs
- !
- ! (kl|ij) = (K|I)       where I and K are composite index number that take into account
- !                       the symmetry I=(ij) = (ji)
- !
- ! The distribution is then performed on index I
- !
-
- task_number = index_prod_mpi(ibf,jbf)
-
- is_my_task = ( rank == task_proc(task_number) )
- 
-end function is_my_task
-#endif
 
 
 !=========================================================================
@@ -483,81 +434,6 @@ subroutine distribute_grid_workload()
 end subroutine distribute_grid_workload
 
 
-#ifdef REMOVE
-!=========================================================================
-subroutine distribute_workload(ntask)
- implicit none
- integer,intent(in) :: ntask
-!=====
- integer            :: itask,iproc
- integer            :: itask_current
- integer            :: max_task_per_proc
-!=====
-
- allocate(task_proc(ntask))
- allocate(ntask_proc(0:nproc-1))
- allocate(task_number(ntask))
-
- if( parallel_integral) then
-
-   write(stdout,'(/,a)') ' Distributing the work load among procs'
-   
-   ntask_proc(:)=0
-   max_task_per_proc = CEILING( DBLE(ntask)/DBLE(nproc) )
-   write(stdout,*) 'Maximum number of tasks for a single proc',max_task_per_proc
-   iproc=0
-   do itask=1,ntask
-
-!     iproc = MODULO(itask,nproc)
-!     iproc = FLOOR( itask / ( DBLE(ntask)/DBLE(nproc) ) )  ! This distribution should better preserve the shell structures
-
-     !
-     ! A simple check to avoid unexpected surprises
-     if(iproc < 0 .OR. iproc >= nproc) then
-       call die('error in the distribution')
-     endif
-
-     task_proc(itask)  = iproc
-     ntask_proc(iproc) = ntask_proc(iproc) + 1 
-     if( ntask_proc(iproc) == max_task_per_proc ) then
-       iproc = iproc + 1
-     endif
-
-   enddo
-
-   task_number(:)=0
-   itask_current=0
-   do itask=1,ntask
-     if( rank == task_proc(itask) ) then
-       itask_current = itask_current + 1 
-       task_number(itask) = itask_current
-     endif
-   enddo
-
-   if(nproc>1) then
-     write(stdout,'(/,a)') ' Distribute work load among procs'
-     write(stdout,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ntask,dp)/REAL(nproc,dp)
-     do iproc=0,nproc-1
-       write(stdout,'(a,i6,a,i10)') ' proc # , tasks',iproc,' , ',ntask_proc(iproc)
-     enddo
-   endif
-
- else
-   !
-   ! if parallel_integral is false,
-   ! faking the code with trivial values
-   ntask_proc(:) = ntask
-   task_proc(:)  = rank
-   do itask=1,ntask
-     task_number(itask) = itask
-   enddo
-
- endif
-
-end subroutine distribute_workload
-#endif
-
-
 !=========================================================================
 function get_ntask()
  implicit none
@@ -567,33 +443,6 @@ function get_ntask()
  get_ntask = ntask_proc(rank)
 
 end function get_ntask
-
-
-#ifdef REMOVE
-!=========================================================================
-function get_task_number(ibf,jbf)
- implicit none
- integer,intent(in) :: ibf,jbf
-!=====
- integer            :: itask
- integer            :: get_task_number
-!=====
-
- itask = index_prod_mpi(ibf,jbf)
- get_task_number = task_number(itask)
- 
- !
- ! Check
- !
- if(get_task_number == 0) then
-   write(stdout,*) '=======',rank
-   write(stdout,*) ibf,jbf,itask
-   write(stdout,*) task_proc(itask)
-   call die(' *** That should not happen ***')
- endif
-
-end function get_task_number
-#endif
 
 
 !=========================================================================
@@ -1095,24 +944,6 @@ subroutine xtrans_sum_ra3d(array)
  endif
 
 end subroutine xtrans_sum_ra3d
-
-
-#ifdef REMOVE
-!=========================================================================
-function index_prod_mpi(ibf,jbf)
- implicit none
- integer,intent(in) :: ibf,jbf
- integer            :: index_prod_mpi
-!=====
- integer            :: jmin,imax
-!=====
-
- imax=MAX(ibf,jbf)
- jmin=MIN(ibf,jbf)
- index_prod_mpi = (jmin-1)*nbf_mpi - (jmin-1)*(jmin-2)/2 + imax-jmin+1
-
-end function index_prod_mpi
-#endif
 
 
 !=========================================================================

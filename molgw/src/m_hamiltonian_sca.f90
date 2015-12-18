@@ -687,8 +687,6 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
  real(dp),allocatable :: diag(:,:)
 !=====
 
-! call issue_warning('NO FILTERING IMPLEMENTED SO FAR: TOL_OVERLAP_FAKE TO BE REMOVED')
-
  if( cntxt_ham > 0 ) then
    matrix_tmp(:,:) = s_matrix(:,:)
    call diagonalize_sca(desc_ham,nbf,m_ham,n_ham,matrix_tmp,s_eigval)
@@ -708,7 +706,6 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
  call xlocal_max(nstate)
  call xlocal_max(m_ov)
  call xlocal_max(n_ov)
-
 
 
  allocate(s_matrix_sqrt_inv(m_ov,n_ov))
@@ -760,9 +757,6 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
                   diag,1,1,desc_ov,                    &
                   0.0_dp,s_matrix_sqrt_inv,1,1,desc_ov)
 
-
-
-
      deallocate(diag)
 
    else
@@ -772,9 +766,6 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
 
  endif
  call xlocal_sum(s_matrix_sqrt_inv)
-
-
-
 
 
 end subroutine setup_sqrt_overlap_sca

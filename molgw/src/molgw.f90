@@ -110,24 +110,15 @@ program molgw
 
  !
  ! Allocate the main arrays
- ! 1D arrays
- allocate(occupation         (basis%nbf,nspin))
- allocate(energy             (basis%nbf,nspin))
- allocate(exchange_m_vxc_diag(basis%nbf,nspin))
-
  ! 2D arrays
  allocate(s_matrix           (m_ham,n_ham))
  allocate(hamiltonian_kinetic(m_ham,n_ham))
  allocate(hamiltonian_nucleus(m_ham,n_ham))
- allocate(c_matrix           (m_ham,n_ham,nspin))
  allocate(p_matrix           (m_ham,n_ham,nspin))
  allocate(hamiltonian_hartree(m_ham,n_ham))
  allocate(hamiltonian_exx    (m_ham,n_ham,nspin))
  allocate(hamiltonian_xc     (m_ham,n_ham,nspin))
 
- !
- ! Some required initializations
- energy(:,:) = 0.0_dp
 
  !
  ! Build up the overlap matrix S
@@ -138,7 +129,6 @@ program molgw
    call setup_overlap(print_matrix_,basis,s_matrix)
  endif
 
-
  !
  ! Calculate the square root inverse of the overlap matrix S
  ! Eliminate those eigenvalue that are too small in order to stabilize the
@@ -147,7 +137,24 @@ program molgw
    call setup_sqrt_overlap_sca(TOL_OVERLAP,basis%nbf,m_ham,n_ham,s_matrix,nstate,m_ov,n_ov,s_matrix_sqrt_inv)
  else
    call setup_sqrt_overlap(TOL_OVERLAP,basis%nbf,s_matrix,nstate,s_matrix_sqrt_inv)
+   m_ov = basis%nbf
+   n_ov = basis%nbf
  endif
+
+ if( n_ov /= nstate ) then
+   call issue_warning('SCALAPACK is used to distribute the wavefunction coefficients')
+ endif
+
+ ! TODO: resize the following arrays
+ !
+ ! Allocate the main arrays
+ ! 2D arrays
+ allocate(c_matrix(m_ham,n_ham,nspin))
+ ! 1D arrays
+ allocate(         occupation(basis%nbf,nspin))
+ allocate(             energy(basis%nbf,nspin))
+ allocate(exchange_m_vxc_diag(basis%nbf,nspin))
+
 
  !
  ! Set up the electron repulsion integrals

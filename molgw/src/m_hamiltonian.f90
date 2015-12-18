@@ -931,16 +931,16 @@ end subroutine test_density_matrix
 
 
 !=========================================================================
-subroutine set_occupation(nbf,temperature,electrons,magnetization,energy,occupation)
+subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occupation)
  use m_inputparam,only: print_matrix_
  implicit none
- integer,intent(in)   :: nbf
+ integer,intent(in)   :: nstate
  real(dp),intent(in)  :: electrons,magnetization,temperature
- real(dp),intent(in)  :: energy(nbf,nspin)
- real(dp),intent(out) :: occupation(nbf,nspin)
+ real(dp),intent(in)  :: energy(nstate,nspin)
+ real(dp),intent(out) :: occupation(nstate,nspin)
 !=====
  real(dp)             :: remaining_electrons(nspin)
- integer              :: ibf,nlines,ilines
+ integer              :: istate,nlines,ilines
  logical              :: file_exists
  integer              :: occfile
 !=====
@@ -955,9 +955,9 @@ subroutine set_occupation(nbf,temperature,electrons,magnetization,energy,occupat
      remaining_electrons(1) = (electrons+magnetization) / REAL(nspin,dp)
      if(nspin==2) remaining_electrons(2) = (electrons-magnetization) / REAL(nspin,dp)
   
-     do ibf=1,nbf
-       occupation(ibf,:) = MIN(remaining_electrons(:), spin_fact)
-       remaining_electrons(:)  = remaining_electrons(:) - occupation(ibf,:)
+     do istate=1,nstate
+       occupation(istate,:) = MIN(remaining_electrons(:), spin_fact)
+       remaining_electrons(:)  = remaining_electrons(:) - occupation(istate,:)
      end do
    else
      write(stdout,*)
@@ -989,13 +989,13 @@ subroutine set_occupation(nbf,temperature,electrons,magnetization,energy,occupat
    write(stdout,*) 'occupation set up failed to give the right number of electrons'
    write(stdout,*) 'sum of occupations',SUM(occupation(:,:))
    write(stdout,*) 'electrons',electrons
-   do ibf=1,nbf
-     write(stdout,*) ibf,occupation(ibf,:)
+   do istate=1,nstate
+     write(stdout,*) istate,occupation(istate,:)
    enddo
    call die('FAILURE in set_occupation')
  endif 
 
- call dump_out_occupation('=== Occupations ===',nbf,nspin,occupation)
+ call dump_out_occupation('=== Occupations ===',nstate,nspin,occupation)
 
 end subroutine set_occupation
 
