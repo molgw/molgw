@@ -1216,6 +1216,7 @@ subroutine setup_sqrt_density_matrix(nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
  integer              :: ispin
 !=====
 
+ write(stdout,*) 'Calculate the square root of the density matrix'
  call start_clock(timing_sqrt_density_matrix)
 
  do ispin=1,nspin

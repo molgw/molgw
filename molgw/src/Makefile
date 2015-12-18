@@ -32,48 +32,38 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 ####################################################
 # Parallel make execution requires a bit of ordering
 all: 
-	make prepare_sourcecode
-	make level000
-	make level005
-	make level010
-	make level015
-	make level020
-	make level025
-	make level030
-	make level035
-	make level040
-	make level045
-	make ../molgw
+	+make --no-print-directory prepare_sourcecode
+	+make --no-print-directory level000
+	+make --no-print-directory level005
+	+make --no-print-directory level010
+	+make --no-print-directory level015
+	+make --no-print-directory level020
+	+make --no-print-directory level025
+	+make --no-print-directory level030
+	+make --no-print-directory level035
+	+make --no-print-directory level040
+	+make --no-print-directory level045
+	+make --no-print-directory ../molgw
 
-level000:
-	make m_definitions.o libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o pdbssolver1.o
+level000: m_definitions.o libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o pdbssolver1.o
 
-level005:
-	make m_warning.o m_gos.o
+level005: m_warning.o m_gos.o
 
-level010:
-	make m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o
+level010: m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o
 
-level015:
-	make m_atoms.o m_gaussian.o
+level015: m_atoms.o m_gaussian.o
 
-level020:
-	make m_basis_set.o
+level020: m_basis_set.o
 
-level025:
-	make m_inputparam.o
+level025: m_inputparam.o
 
-level030:
-	make m_eri.o m_scf.o m_dft_grid.o
+level030: m_eri.o m_scf.o m_dft_grid.o
 
-level035:
-	make m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o mp2_selfenergy.o
+level035: m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o mp2_selfenergy.o
 
-level040:
-	make m_timedependent.o static_polarizability.o gw.o dft_xc.o io.o mp2.o
+level040: m_timedependent.o static_polarizability.o gw.o dft_xc.o io.o mp2.o
 
-level045:
-	make scf_loop.o molgw.o
+level045: scf_loop.o molgw.o
 
 
 

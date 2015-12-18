@@ -599,10 +599,11 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate,m_ov,n
 !=====
 
 
- call init_desc('H',nstate,nstate,desc_small,m_small,n_small)
- allocate(h_small(m_small,n_small))
 
  if(cntxt_ham > 0 ) then
+   call init_desc('H',nstate,nstate,desc_small,m_small,n_small)
+   allocate(h_small(m_small,n_small))
+
    do ispin=1,nspin_local
      write(stdout,'(a,i3)') ' Diagonalization for spin: ',ispin
      call start_clock(timing_diago_hamiltonian)
@@ -650,6 +651,8 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate,m_ov,n
      call stop_clock(timing_diago_hamiltonian)
    enddo
 
+   deallocate(h_small)
+
  else
    energy(:,:) = 0.0_dp
    c_matrix(:,:,:) = 0.0_dp
@@ -659,7 +662,6 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate,m_ov,n
  call xlocal_sum(energy)
  call xlocal_sum(c_matrix)
 
- deallocate(h_small)
 
 
 end subroutine diagonalize_hamiltonian_sca
@@ -791,6 +793,7 @@ subroutine setup_sqrt_density_matrix_sca(nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,
  integer              :: ispin
 !=====
 
+ write(stdout,*) 'Calculate the square root of the density matrix: SCALAPACK'
  call start_clock(timing_sqrt_density_matrix)
 
  if( cntxt_ham > 0 ) then
