@@ -3,7 +3,7 @@
 ! the main SCF loop for Hartree-Fock or Kohn-Sham
 !=========================================================================
 subroutine scf_loop(basis,prod_basis,auxil_basis,&
-                    nstate,m_ham,n_ham,&
+                    nstate,m_ov,n_ov,m_ham,n_ham,&
                     s_matrix_sqrt_inv,&
                     s_matrix,c_matrix,p_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
@@ -32,8 +32,8 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  type(basis_set),intent(in)         :: basis
  type(basis_set),intent(in)         :: prod_basis
  type(basis_set),intent(in)         :: auxil_basis
- integer,intent(in)                 :: nstate,m_ham,n_ham
- real(dp),intent(in)                :: s_matrix_sqrt_inv(m_ham,n_ham)
+ integer,intent(in)                 :: nstate,m_ov,n_ov,m_ham,n_ham
+ real(dp),intent(in)                :: s_matrix_sqrt_inv(m_ov,n_ov)
  real(dp),intent(in)                :: s_matrix(m_ham,n_ham)
  real(dp),intent(inout)             :: c_matrix(m_ham,n_ham,nspin)
  real(dp),intent(inout)             :: p_matrix(m_ham,n_ham,nspin)
@@ -270,7 +270,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    ! H \phi = E S \phi
    ! save the old eigenvalues
    if( parallel_ham ) then
-     call diagonalize_hamiltonian_sca(nspin,basis%nbf,m_ham,n_ham,nstate,hamiltonian,s_matrix_sqrt_inv, &
+     call diagonalize_hamiltonian_sca(nspin,basis%nbf,m_ham,n_ham,nstate,m_ov,n_ov,hamiltonian,s_matrix_sqrt_inv, &
                                       energy,c_matrix)
    else
      call diagonalize_hamiltonian(nspin,basis%nbf,nstate,hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)

@@ -39,7 +39,7 @@ program molgw
  implicit none
 
 !=====
- real(dp),parameter      :: TOL_OVERLAP=1.0e-6_dp
+ real(dp),parameter      :: TOL_OVERLAP=5.0e-6_dp
  type(basis_set)         :: basis
  type(basis_set)         :: auxil_basis
  type(basis_set)         :: prod_basis
@@ -66,6 +66,7 @@ program molgw
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  integer                 :: m_ham,n_ham
+ integer                 :: m_ov,n_ov
 !=============================
 
  call init_mpi()
@@ -143,7 +144,7 @@ program molgw
  ! Eliminate those eigenvalue that are too small in order to stabilize the
  ! calculation
  if( parallel_ham ) then
-   call setup_sqrt_overlap_sca(TOL_OVERLAP,basis%nbf,m_ham,n_ham,s_matrix,nstate,s_matrix_sqrt_inv)
+   call setup_sqrt_overlap_sca(TOL_OVERLAP,basis%nbf,m_ham,n_ham,s_matrix,nstate,m_ov,n_ov,s_matrix_sqrt_inv)
  else
    call setup_sqrt_overlap(TOL_OVERLAP,basis%nbf,s_matrix,nstate,s_matrix_sqrt_inv)
  endif
@@ -237,7 +238,7 @@ program molgw
    write(stdout,'(/,a)') ' Approximate hamiltonian'
 
    if( parallel_ham ) then
-     call diagonalize_hamiltonian_sca(1,basis%nbf,m_ham,n_ham,nstate,hamiltonian_tmp,s_matrix_sqrt_inv, &
+     call diagonalize_hamiltonian_sca(1,basis%nbf,m_ham,n_ham,nstate,m_ov,n_ov,hamiltonian_tmp,s_matrix_sqrt_inv, &
                                       energy(:,1),c_matrix(:,:,1))
    else
      call diagonalize_hamiltonian(1,basis%nbf,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
@@ -311,7 +312,7 @@ program molgw
  !
  if( .NOT. is_big_restart) then
    call scf_loop(basis,prod_basis,auxil_basis,                                  &
-                 nstate,m_ham,n_ham,                                            &
+                 nstate,m_ov,n_ov,m_ham,n_ham,                                  &
                  s_matrix_sqrt_inv,                                             &
                  s_matrix,c_matrix,p_matrix,                                    &
                  hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_hartree,   & 

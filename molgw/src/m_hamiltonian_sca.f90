@@ -580,10 +580,12 @@ end subroutine setup_density_matrix_sca
 
 
 !=========================================================================
-subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate,hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
+subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate,m_ov,n_ov, &
+                                       hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
  implicit none
 
  integer,intent(in)   :: nspin_local,nbf,nstate,m_ham,n_ham
+ integer,intent(in)   :: m_ov,n_ov
  real(dp),intent(in)  :: hamiltonian(m_ham,n_ham,nspin_local)
  real(dp),intent(in)  :: s_matrix_sqrt_inv(m_ham,n_ham)
  real(dp),intent(out) :: c_matrix(m_ham,n_ham,nspin_local)
@@ -656,22 +658,23 @@ end subroutine diagonalize_hamiltonian_sca
 
 
 !=========================================================================
-subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,s_matrix_sqrt_inv)
+subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_ov,n_ov,s_matrix_sqrt_inv)
  use m_tools
  implicit none
 
  real(dp),intent(in)                :: TOL_OVERLAP
  integer,intent(in)                 :: nbf,m_ham,n_ham
  real(dp),intent(in)                :: s_matrix(m_ham,n_ham)
- integer,intent(out)                :: nstate
+ integer,intent(out)                :: nstate,m_ov,n_ov
  real(dp),allocatable,intent(inout) :: s_matrix_sqrt_inv(:,:)
 !=====
  real(dp) :: TOL_OVERLAP_FAKE=-1.0_dp
  real(dp) :: matrix_tmp(m_ham,n_ham)
- integer  :: ibf,jbf,jlocal,jglobal
- integer  :: ilocal
+ integer  :: ibf,jbf
+ integer  :: ilocal,jlocal
+ integer  :: iglobal,jglobal
  real(dp) :: s_eigval(nbf)
- integer  :: desc1(ndel),desc2(ndel)
+ real(dp),allocatable :: diag(:,:)
 !=====
 
  call issue_warning('NO FILTERING IMPLEMENTED SO FAR: TOL_OVERLAP_FAKE TO BE REMOVED')
@@ -679,31 +682,89 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,s_
  if( cntxt_ham > 0 ) then
    matrix_tmp(:,:) = s_matrix(:,:)
    call diagonalize_sca(desc_ham,nbf,m_ham,n_ham,matrix_tmp,s_eigval)
+
    nstate = COUNT( s_eigval(:) > TOL_OVERLAP_FAKE )
+
+   ! 
+   ! Initialize the descriptor of the rectangular matric S^{-1/2}
+   call init_desc('H',nbf,nstate,desc_ov,m_ov,n_ov)
+   
  else
    nstate = 0
+   m_ov   = 0
+   n_ov   = 0
  endif
-
  ! Propagate nstate
  call xlocal_max(nstate)
- allocate(s_matrix_sqrt_inv(m_ham,n_ham)) ! FBFBSCA  deal with nstate /= nbf
+ call xlocal_max(m_ov)
+ call xlocal_max(n_ov)
+
+
+
+ allocate(s_matrix_sqrt_inv(m_ov,n_ov))
 
  write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
  write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is           ',MINVAL( s_eigval(:) )
  write(stdout,'(a,es9.2)')   '   Tolerance on overlap eigenvalues ',TOL_OVERLAP_FAKE
  write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',nbf
 
- if( cntxt_ham > 0 ) then
+ !
+ ! Whether a filtering is necessary
+ if( nstate == nbf ) then
 
-   do jlocal=1,n_ham
-     jglobal = colindex_local_to_global('H',jlocal)
-     s_matrix_sqrt_inv(:,jlocal) = matrix_tmp(:,jlocal) / SQRT( s_eigval(jglobal) )
-   enddo
+   if( cntxt_ham > 0 ) then
+
+     do jlocal=1,n_ham
+       jglobal = colindex_local_to_global('H',jlocal)
+       s_matrix_sqrt_inv(:,jlocal) = matrix_tmp(:,jlocal) / SQRT( s_eigval(jglobal) )
+     enddo
+
+   else
+     s_matrix_sqrt_inv(:,:) = 0.0_dp
+   endif
 
  else
-   s_matrix_sqrt_inv(:,:) = 0.0_dp
+
+   if( cntxt_ham > 0 ) then
+
+     ! Create the diagonal matrix than transforms a square matrix into a
+     ! rectangular one
+     allocate(diag(m_ov,n_ov))
+     diag(:,:) = 0.0_dp
+
+     jglobal = 0
+     do iglobal=1,nbf
+       if( s_eigval(iglobal) > TOL_OVERLAP_FAKE ) then
+         jglobal = jglobal + 1
+         ilocal = rowindex_global_to_local('H',iglobal)
+         jlocal = colindex_global_to_local('H',jglobal)
+         if( ilocal * jlocal /= 0 ) then
+           diag(ilocal,jlocal) = 1.0_dp / SQRT( s_eigval(iglobal) )
+         endif
+       endif
+     enddo
+
+
+     call PDGEMM('N','N',nbf,nstate,nbf,               &
+                  1.0_dp,matrix_tmp,1,1,desc_ham,      &
+                  diag,1,1,desc_ov,                    &
+                  0.0_dp,s_matrix_sqrt_inv,1,1,desc_ov)
+
+
+
+
+     deallocate(diag)
+
+   else
+     s_matrix_sqrt_inv(:,:) = 0.0_dp
+   endif
+
+
  endif
  call xlocal_sum(s_matrix_sqrt_inv)
+
+
+
 
 
 end subroutine setup_sqrt_overlap_sca
@@ -778,7 +839,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  vhxc_ij(:,:) = 0.0_dp
 
 
- write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities'
+ write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities: SCALAPACK'
 
  do iatom=1,natom
    if( rank_local /= MODULO(iatom,nproc_local) ) cycle
