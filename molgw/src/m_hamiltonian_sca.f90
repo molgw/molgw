@@ -788,7 +788,7 @@ subroutine setup_sqrt_density_matrix_sca(nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,
  if( cntxt_ham > 0 ) then
    do ispin=1,nspin
      p_matrix_sqrt(:,:,ispin) = p_matrix(:,:,ispin)
-     call diagonalize(nbf,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
+     call diagonalize_sca(desc_ham,nbf,m_ham,n_ham,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
    enddo
  else
    p_matrix_sqrt(:,:,:) = 0.0_dp
