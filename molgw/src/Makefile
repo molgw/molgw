@@ -32,18 +32,18 @@ LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 ####################################################
 # Parallel make execution requires a bit of ordering
 all: 
-	+make --no-print-directory prepare_sourcecode
-	+make --no-print-directory level000
-	+make --no-print-directory level005
-	+make --no-print-directory level010
-	+make --no-print-directory level015
-	+make --no-print-directory level020
-	+make --no-print-directory level025
-	+make --no-print-directory level030
-	+make --no-print-directory level035
-	+make --no-print-directory level040
-	+make --no-print-directory level045
-	+make --no-print-directory ../molgw
+	+make  prepare_sourcecode
+	+make  level000
+	+make  level005
+	+make  level010
+	+make  level015
+	+make  level020
+	+make  level025
+	+make  level030
+	+make  level035
+	+make  level040
+	+make  level045
+	+make  ../molgw
 
 level000: m_definitions.o libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o pdbssolver1.o
 
