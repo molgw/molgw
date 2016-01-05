@@ -141,7 +141,7 @@ program molgw
    n_ov = basis%nbf
  endif
 
- if( n_ov /= nstate ) then
+ if( n_ov /= basis%nbf ) then
    call issue_warning('SCALAPACK is used to distribute the wavefunction coefficients')
  endif
 

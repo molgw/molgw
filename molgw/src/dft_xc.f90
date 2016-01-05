@@ -39,7 +39,7 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,ex
  real(dp)             :: basis_function_gradr(3,basis%nbf)
  real(dp)             :: basis_function_laplr(3,basis%nbf)
 
- real(dp)             :: rhor_r(nspin)
+ real(dp)             :: rhor(nspin)
  real(dp)             :: grad_rhor(3,nspin)
  real(dp)             :: sigma(2*nspin-1)
  real(dp)             :: tau(nspin),lapl_rhor(nspin)
@@ -143,10 +143,10 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,ex
 
    !
    ! calculate the density at point r for spin up and spin down
-   call calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_function_r,rhor_r)
+   call calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_function_r,rhor)
    !
    ! Normalization
-   normalization(:) = normalization(:) + rhor_r(:) * weight
+   normalization(:) = normalization(:) + rhor(:) * weight
 
 
 !   call start_clock(timing_tmp1)
@@ -179,10 +179,10 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,ex
 
      case(XC_FAMILY_LDA)
        if( dft_xc_type(idft_xc) < 1000 ) then 
-         call xc_f90_lda_exc_vxc(xc_func(idft_xc),1_C_INT,rhor_r(1),exc_libxc(1),vxc_libxc(1))
+         call xc_f90_lda_exc_vxc(xc_func(idft_xc),1_C_INT,rhor(1),exc_libxc(1),vxc_libxc(1))
        else
-         call my_lda_exc_vxc(nspin,dft_xc_type(idft_xc),rhor_r,exc_libxc(1),vxc_libxc)
-!         call my_lda_exc_vxc_mu(1.00_dp,rhor_r,exc_libxc,vxc_libxc)
+         call my_lda_exc_vxc(nspin,dft_xc_type(idft_xc),rhor,exc_libxc(1),vxc_libxc)
+!         call my_lda_exc_vxc_mu(1.00_dp,rhor,exc_libxc,vxc_libxc)
        endif
 
      case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
@@ -190,19 +190,19 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,ex
          !
          ! Remove too small densities to stabilize the computation
          ! especially useful for Becke88
-         if( ANY( rhor_r(:) > 1.0e-9_dp ) ) then
-           call xc_f90_gga_exc_vxc(xc_func(idft_xc),1_C_INT,rhor_r(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
+         if( ANY( rhor(:) > 1.0e-9_dp ) ) then
+           call xc_f90_gga_exc_vxc(xc_func(idft_xc),1_C_INT,rhor(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
          else
            exc_libxc(:)     = 0.0_dp
            vxc_libxc(:)     = 0.0_dp
            vsigma(:)        = 0.0_dp
          endif
        else
-         call my_gga_exc_vxc_hjs(gamma_hybrid,rhor_r(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
+         call my_gga_exc_vxc_hjs(gamma_hybrid,rhor(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
        endif
 
      case(XC_FAMILY_MGGA)
-       call xc_f90_mgga_vxc(xc_func(idft_xc),1_C_INT,rhor_r(1),sigma(1),lapl_rhor(1),tau(1),vxc_libxc(1),vsigma(1),vlapl_rho(1),vtau(1))
+       call xc_f90_mgga_vxc(xc_func(idft_xc),1_C_INT,rhor(1),sigma(1),lapl_rhor(1),tau(1),vxc_libxc(1),vsigma(1),vlapl_rho(1),vtau(1))
        ! no expression for the energy
        exc_libxc(1) = 0.0_dp
 
@@ -210,7 +210,7 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,ex
        call die('functional is not LDA nor GGA nor hybrid nor meta-GGA')
      end select
 
-     exc_xc = exc_xc + weight * exc_libxc(1) * SUM( rhor_r(:) ) * dft_xc_coef(idft_xc)
+     exc_xc = exc_xc + weight * exc_libxc(1) * SUM( rhor(:) ) * dft_xc_coef(idft_xc)
 
      dedd_r(:) = dedd_r(:) + vxc_libxc(:) * dft_xc_coef(idft_xc)
 
@@ -472,9 +472,10 @@ subroutine setup_atomic_density(rr,rhor,vhartree)
 
 end subroutine setup_atomic_density
 
+
 #if 0
 !=========================================================================
-subroutine calc_density_r(nspin,basis,p_matrix,rr,basis_function_r,rhor_r)
+subroutine calc_density_r(nspin,basis,p_matrix,rr,basis_function_r,rhor)
  use m_definitions
  use m_mpi
  use m_timing
@@ -485,19 +486,19 @@ subroutine calc_density_r(nspin,basis,p_matrix,rr,basis_function_r,rhor_r)
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)  :: p_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)  :: rr(3),basis_function_r(basis%nbf)
- real(dp),intent(out) :: rhor_r(nspin)
+ real(dp),intent(out) :: rhor(nspin)
 !=====
  integer :: ispin,ibf,jbf
 !=====
 
  !
  ! Calculate the density rho at point r
- rhor_r(:)=0.0_dp
+ rhor(:)=0.0_dp
  do ispin=1,nspin
    do jbf=1,basis%nbf
      if( SUM( (basis%bf(jbf)%x0(:) - rr(:))**2 ) > bf_rad2(jbf) ) cycle
      do ibf=1,basis%nbf
-       rhor_r(ispin)=rhor_r(ispin)+p_matrix(ibf,jbf,ispin)&
+       rhor(ispin)=rhor(ispin)+p_matrix(ibf,jbf,ispin)&
                          * basis_function_r(ibf) &
                          * basis_function_r(jbf)
      enddo
@@ -510,7 +511,7 @@ end subroutine calc_density_r
 
 
 !=========================================================================
-subroutine calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_function_r,rhor_r)
+subroutine calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_function_r,rhor)
  use m_definitions
  use m_mpi
  use m_timing
@@ -522,41 +523,29 @@ subroutine calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_functi
  real(dp),intent(in)        :: p_matrix_sqrt(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)        :: p_matrix_occ(basis%nbf,nspin)
  real(dp),intent(in)        :: rr(3),basis_function_r(basis%nbf)
- real(dp),intent(out)       :: rhor_r(nspin)
+ real(dp),intent(out)       :: rhor(nspin)
 !=====
  integer              :: ispin,ibf,istate,nocc
- real(dp),allocatable :: phi_r(:)
- real(dp)             :: phi_i_r
+ real(dp)             :: phi_ir
 !=====
 
  !
  ! Calculate the density rho at point r
- rhor_r(:)=0.0_dp
+ rhor(:)=0.0_dp
 
  do ispin=1,nspin
-
-!  do istate=1,basis%nbf
-!    if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
-!    nocc = istate
-!  enddo
-!  allocate(phi_r(nocc))
-
-
-!   phi_r(:) = MATMUL( basis_function_r(:) , p_matrix_sqrt(:,1:nocc,ispin) )
-!   rhor_r(ispin) = SUM( p_matrix_occ(1:nocc,ispin) * phi_r(1:nocc)**2 )
 
    do istate=1,basis%nbf
      if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
 !   do istate=1,nocc
-     phi_i_r = 0.0_dp
+     phi_ir = 0.0_dp
      do ibf=1,basis%nbf
 !       if( SUM( (basis%bf(ibf)%x0(:) - rr(:))**2 ) > bf_rad2(ibf) ) cycle
-       phi_i_r = phi_i_r + p_matrix_sqrt(ibf,istate,ispin) * basis_function_r(ibf)
+       phi_ir = phi_ir + p_matrix_sqrt(ibf,istate,ispin) * basis_function_r(ibf)
      enddo
-     rhor_r(ispin) = rhor_r(ispin) + p_matrix_occ(istate,ispin) * phi_i_r**2
+     rhor(ispin) = rhor(ispin) + p_matrix_occ(istate,ispin) * phi_ir**2
    enddo
 
-!   deallocate(phi_r)
  enddo
 
 
@@ -611,9 +600,8 @@ subroutine calc_density_gradr(nspin,nbf,p_matrix_occ,p_matrix_sqrt,basis_functio
  real(dp),intent(out)       :: grad_rhor(3,nspin)
 !=====
  integer              :: ispin,ibf,istate,nocc
- real(dp),allocatable :: phi_r(:)
- real(dp)             :: phi_i_r
- real(dp)             :: grad_phi_i_r(3)
+ real(dp)             :: phi_ir
+ real(dp)             :: grad_phi_ir(3)
 !=====
 
  !
@@ -624,14 +612,14 @@ subroutine calc_density_gradr(nspin,nbf,p_matrix_occ,p_matrix_sqrt,basis_functio
    do istate=1,nbf
      if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
 
-     phi_i_r         = 0.0_dp
-     grad_phi_i_r(:) = 0.0_dp
+     phi_ir         = 0.0_dp
+     grad_phi_ir(:) = 0.0_dp
 
      do ibf=1,nbf
-       phi_i_r         = phi_i_r         + p_matrix_sqrt(ibf,istate,ispin) * basis_function_r(ibf)
-       grad_phi_i_r(:) = grad_phi_i_r(:) + p_matrix_sqrt(ibf,istate,ispin) * basis_function_gradr(:,ibf)
+       phi_ir         = phi_ir         + p_matrix_sqrt(ibf,istate,ispin) * basis_function_r(ibf)
+       grad_phi_ir(:) = grad_phi_ir(:) + p_matrix_sqrt(ibf,istate,ispin) * basis_function_gradr(:,ibf)
      enddo
-     grad_rhor(:,ispin) = grad_rhor(:,ispin) + p_matrix_occ(istate,ispin) * phi_i_r * grad_phi_i_r(:) * 2.0_dp
+     grad_rhor(:,ispin) = grad_rhor(:,ispin) + p_matrix_occ(istate,ispin) * phi_ir * grad_phi_ir(:) * 2.0_dp
    enddo
 
  enddo

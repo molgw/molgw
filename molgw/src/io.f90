@@ -673,8 +673,15 @@ subroutine write_energy_qp(nspin,nbf,energy_qp)
  integer           :: istate
 !=====
 
+ !
+ ! Only the proc iomaster writes down the ENERGY_QP file
+ if( .NOT. is_iomaster) return
+
  write(stdout,'(/,a)') ' Writing ENERGY_QP file'
+
+
  open(newunit=energy_qpfile,file='ENERGY_QP',form='formatted')
+
  write(energy_qpfile,*) nspin
  write(energy_qpfile,*) nbf
  do istate=1,nbf
@@ -682,6 +689,7 @@ subroutine write_energy_qp(nspin,nbf,energy_qp)
  enddo
 
  close(energy_qpfile)
+
 
 end subroutine write_energy_qp
 
