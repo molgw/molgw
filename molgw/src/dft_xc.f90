@@ -23,6 +23,7 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,ex
  real(dp),intent(out)       :: exc_xc
 !=====
 
+ real(dp),parameter :: TOL_RHO=1.0e-10_dp
  integer  :: idft_xc
  logical  :: require_gradient,require_laplacian
  integer  :: igrid,ibf,jbf,ispin
@@ -124,7 +125,6 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,ex
 
  normalization(:)=0.0_dp
 
-
  do igrid=1,ngrid
 
    rr(:) = rr_grid(:,igrid)
@@ -144,6 +144,10 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,ex
    !
    ! calculate the density at point r for spin up and spin down
    call calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_function_r,rhor)
+
+   ! Skip all the rest if the density is too small
+   if( ALL( rhor(:) < TOL_RHO )  ) cycle
+
    !
    ! Normalization
    normalization(:) = normalization(:) + rhor(:) * weight
@@ -282,6 +286,9 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,ex
 !   call stop_clock(timing_tmp2)
 
  enddo ! loop on the grid point
+
+
+
 
  ! Symmetrize now
  do ispin=1,nspin
@@ -473,9 +480,8 @@ subroutine setup_atomic_density(rr,rhor,vhartree)
 end subroutine setup_atomic_density
 
 
-#if 0
 !=========================================================================
-subroutine calc_density_r(nspin,basis,p_matrix,rr,basis_function_r,rhor)
+subroutine calc_density_pmatrix(nspin,basis,p_matrix,rr,basis_function_r,rhor)
  use m_definitions
  use m_mpi
  use m_timing
@@ -496,7 +502,7 @@ subroutine calc_density_r(nspin,basis,p_matrix,rr,basis_function_r,rhor)
  rhor(:)=0.0_dp
  do ispin=1,nspin
    do jbf=1,basis%nbf
-     if( SUM( (basis%bf(jbf)%x0(:) - rr(:))**2 ) > bf_rad2(jbf) ) cycle
+!     if( SUM( (basis%bf(jbf)%x0(:) - rr(:))**2 ) > bf_rad2(jbf) ) cycle
      do ibf=1,basis%nbf
        rhor(ispin)=rhor(ispin)+p_matrix(ibf,jbf,ispin)&
                          * basis_function_r(ibf) &
@@ -506,8 +512,7 @@ subroutine calc_density_r(nspin,basis,p_matrix,rr,basis_function_r,rhor)
  enddo
 
 
-end subroutine calc_density_r
-#endif
+end subroutine calc_density_pmatrix
 
 
 !=========================================================================
@@ -553,9 +558,8 @@ subroutine calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_functi
 end subroutine calc_density_r
 
 
-#if 0
 !=========================================================================
-subroutine calc_density_gradr(nspin,nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
+subroutine calc_density_gradr_pmatrix(nspin,nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
  use m_definitions
  use m_mpi
  use m_timing
@@ -580,8 +584,7 @@ subroutine calc_density_gradr(nspin,nbf,p_matrix,basis_function_r,basis_function
    enddo
  enddo
 
-end subroutine calc_density_gradr
-#endif
+end subroutine calc_density_gradr_pmatrix
 
 
 !=========================================================================

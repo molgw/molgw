@@ -30,7 +30,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  complex(dp),allocatable  :: selfenergy_omegac(:,:,:,:)
  real(dp),allocatable  :: sigma_xc_m_vxc_diag(:)
  integer               :: ndim2
- integer               :: bbf,ibf,kbf
+ integer               :: bbf,ibf,iastate
  integer               :: astate,bstate
  integer               :: istate,ispin,ipole
  real(dp),allocatable  :: bra(:,:)
@@ -195,8 +195,8 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
      if( .NOT. has_auxil_basis) then
        ! Here just grab the precalculated value
        do astate=nsemin,nsemax
-         kbf = prod_basis%index_prodbasis(istate,astate) + prod_basis%nbf*(ispin-1)
-         bra(:,astate) = wpol%residu_left(kbf,:)
+         iastate = prod_basis%index_prodbasis(istate,astate) + prod_basis%nbf*(ispin-1)
+         bra(:,astate) = wpol%residu_left(iastate,:)
        end do
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
@@ -475,7 +475,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
      do astate=nsemin,nsemax
        write(ctmp,'(i3.3)') astate
        open(newunit=selfenergyfile,file='selfenergy_omega_state'//TRIM(ctmp))
-       write(selfenergyfile,'(a)') '# omega + e_KS (eV)     SigmaC (eV)    omega + e_KS - Vxc + SigmaX (eV)     A (eV^-1) '
+       write(selfenergyfile,'(a)') '# omega (eV)             SigmaC (eV)    omega - e_KS - Vxc + SigmaX (eV)     A (eV^-1) '
        do iomegai=-nomegai,nomegai
          write(selfenergyfile,'(20(f12.6,2x))') ( omegai(iomegai) + energy_qp(astate,:) )*Ha_eV,               &
                                             selfenergy_omega(iomegai,astate,1,:)*Ha_eV,                    &

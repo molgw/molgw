@@ -1052,7 +1052,6 @@ subroutine init_scalapack_ham(nbf,m_ham,n_ham)
 
 #ifdef HAVE_SCALAPACK
  inquire(file='SCALAPACK_GRID',exist=parallel_ham)
-#endif
 
  if( parallel_ham ) then
 
@@ -1132,6 +1131,25 @@ subroutine init_scalapack_ham(nbf,m_ham,n_ham)
    rank_trans  = 0
 
  endif
+
+#else
+
+ ! Fake values
+ cntxt_ham = 1
+ nprow_ham = 1
+ npcol_ham = 1
+ iprow_ham = 0
+ ipcol_ham = 0
+ m_ham = nbf
+ n_ham = nbf
+
+ nproc_local = 1
+ rank_local  = 0
+
+ nproc_trans = 1
+ rank_trans  = 0
+
+#endif
 
 
 end subroutine init_scalapack_ham

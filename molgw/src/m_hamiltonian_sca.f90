@@ -27,6 +27,8 @@ subroutine matrix_cart_to_local(ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,
  real(dp) :: matrix_final(ibf:ibf+ni-1,jbf:jbf+nj-1)
 !=====
 
+#ifdef HAVE_MPI
+
  matrix_final(:,:) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
                              MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
 
@@ -43,6 +45,8 @@ subroutine matrix_cart_to_local(ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,
    enddo
  enddo
 
+
+#endif
 
 end subroutine matrix_cart_to_local
 
@@ -63,6 +67,8 @@ subroutine setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
  character(len=100)   :: title
  real(dp),allocatable :: matrix_cart(:,:)
 !=====
+
+#ifdef HAVE_MPI
 
  call start_clock(timing_overlap)
  write(stdout,'(/,a)') ' Setup overlap matrix S: SCALAPACK'
@@ -109,6 +115,8 @@ subroutine setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
  call stop_clock(timing_overlap)
 
 
+#endif
+
 end subroutine setup_overlap_sca
 
 
@@ -129,6 +137,8 @@ subroutine setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic
  real(dp),allocatable :: matrix_cart(:,:)
  real(dp),allocatable :: matrix_final(:,:)
 !=====
+
+#ifdef HAVE_MPI
 
  call start_clock(timing_hamiltonian_kin)
  write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian: SCALAPACK'
@@ -174,6 +184,8 @@ subroutine setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic
 
  call stop_clock(timing_hamiltonian_kin)
 
+#endif
+
 end subroutine setup_kinetic_sca
 
 
@@ -197,6 +209,8 @@ subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus
  real(dp),allocatable :: matrix_cart(:,:)
  real(dp)             :: vnucleus_ij
 !=====
+
+#ifdef HAVE_MPI
 
  call start_clock(timing_hamiltonian_nuc)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK'
@@ -260,6 +274,8 @@ subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus
 
  call stop_clock(timing_hamiltonian_nuc)
 
+#endif
+
 end subroutine setup_nucleus_sca
 
 
@@ -282,6 +298,8 @@ subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,pot_hartr
  real(dp)             :: rtmp
  character(len=100)   :: title
 !=====
+
+#ifdef HAVE_MPI
 
  write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity: SCALAPACK'
  call start_clock(timing_hartree)
@@ -343,6 +361,8 @@ subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,pot_hartr
  call stop_clock(timing_hartree)
 
 
+#endif
+
 end subroutine setup_hartree_ri_sca
 
 
@@ -373,6 +393,8 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_ma
  integer              :: ibf_global,ier,to,iprow_recv,ipcol_recv
  integer,external     :: INDXG2P
 !=====
+
+#ifdef HAVE_MPI
 
  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: SCALAPACK'
  call start_clock(timing_exchange)
@@ -479,6 +501,8 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_ma
  call stop_clock(timing_exchange)
 
 
+#endif
+
 end subroutine setup_exchange_ri_sca
 
 
@@ -501,6 +525,8 @@ subroutine setup_exchange_longrange_ri_sca(print_matrix_,nbf,occupation,c_matrix
  real(dp)             :: eigval(nbf)
  integer              :: ipair
 !=====
+
+#ifdef HAVE_MPI
 
  write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity: SCALAPACK'
  call start_clock(timing_exchange)
@@ -540,6 +566,8 @@ subroutine setup_exchange_longrange_ri_sca(print_matrix_,nbf,occupation,c_matrix
 
  call stop_clock(timing_exchange)
 
+#endif
+
 end subroutine setup_exchange_longrange_ri_sca
 
 
@@ -554,6 +582,8 @@ subroutine setup_density_matrix_sca(nbf,m_ham,n_ham,c_matrix,occupation,p_matrix
  integer  :: ispin,jlocal,jglobal
  real(dp) :: matrix_tmp(m_ham,n_ham)
 !=====
+
+#ifdef HAVE_MPI
 
  if( cntxt_ham > 0 ) then
    do ispin=1,nspin
@@ -576,6 +606,8 @@ subroutine setup_density_matrix_sca(nbf,m_ham,n_ham,c_matrix,occupation,p_matrix
  call xlocal_sum(p_matrix)
 
 
+#endif
+
 end subroutine setup_density_matrix_sca
 
 
@@ -597,6 +629,8 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate,m_ov,n
  integer  :: m_small,n_small
  real(dp),allocatable :: h_small(:,:)
 !=====
+
+#ifdef HAVE_MPI
 
 
 
@@ -664,6 +698,8 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate,m_ov,n
 
 
 
+#endif
+
 end subroutine diagonalize_hamiltonian_sca
 
 
@@ -686,6 +722,8 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
  real(dp) :: s_eigval(nbf)
  real(dp),allocatable :: diag(:,:)
 !=====
+
+#ifdef HAVE_MPI
 
  if( cntxt_ham > 0 ) then
    matrix_tmp(:,:) = s_matrix(:,:)
@@ -768,6 +806,8 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
  call xlocal_sum(s_matrix_sqrt_inv)
 
 
+#endif
+
 end subroutine setup_sqrt_overlap_sca
 
 
@@ -783,6 +823,8 @@ subroutine setup_sqrt_density_matrix_sca(nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,
 !=====
  integer              :: ispin
 !=====
+
+#ifdef HAVE_MPI
 
  write(stdout,*) 'Calculate the square root of the density matrix: SCALAPACK'
  call start_clock(timing_sqrt_density_matrix)
@@ -802,6 +844,8 @@ subroutine setup_sqrt_density_matrix_sca(nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,
 
  call stop_clock(timing_sqrt_density_matrix)
 
+
+#endif
 
 end subroutine setup_sqrt_density_matrix_sca
 
@@ -837,6 +881,8 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  real(dp),allocatable :: alpha(:),coeff(:)
  integer              :: ilocal,jlocal,iglobal,jglobal
 !=====
+
+#ifdef HAVE_MPI
 
  vhxc_ij(:,:) = 0.0_dp
 
@@ -917,6 +963,8 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  ! Temporary grid destroyed
  call destroy_dft_grid()
 
+
+#endif
 
 end subroutine dft_approximate_vhxc_sca
 

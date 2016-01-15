@@ -1343,8 +1343,8 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eige
  ! and the static dipole polarizability
  !
  ! Set the frequency mesh
- omega(1)     =MAX( 0.0_dp      ,MINVAL(ABS(eigenvalue(:)))-3.00/Ha_eV)
- omega(nomega)=MIN(20.0_dp/Ha_eV,MAXVAL(ABS(eigenvalue(:)))+3.00/Ha_eV)
+ omega(1)     =MAX( 0.0_dp      ,MINVAL(ABS(eigenvalue(:)))-10.00/Ha_eV)
+ omega(nomega)=MIN(50.0_dp/Ha_eV,MAXVAL(ABS(eigenvalue(:)))+10.00/Ha_eV)
  do iomega=2,nomega-1
    omega(iomega) = omega(1) + ( omega(nomega)-omega(1) ) /REAL(nomega-1,dp) * (iomega-1) 
  enddo
@@ -1849,9 +1849,9 @@ subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2r
    endif
 
 
-   call calc_density_r(nspin,basis,p_matrix,rr,basis_function_r,rhor_r)
+   call calc_density_pmatrix(nspin,basis,p_matrix,rr,basis_function_r,rhor_r)
    if( require_gradient ) then
-     call calc_density_gradr(nspin,basis%nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
+     call calc_density_gradr_pmatrix(nspin,basis%nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
 
      rho_gradr(:,igrid,:) = grad_rhor(:,:)
 

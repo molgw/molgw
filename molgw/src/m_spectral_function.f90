@@ -361,6 +361,10 @@ subroutine write_spectral_function(sf)
  disp = disp + SIZEOF(calc_type%postscf_name)
 
  if(is_iomaster) &
+   call MPI_FILE_WRITE_AT(wfile,disp,sf%nprodbasis,1,MPI_INTEGER,MPI_STATUS_IGNORE,ierr)
+ disp = disp + SIZEOF(sf%nprodbasis)
+
+ if(is_iomaster) &
    call MPI_FILE_WRITE_AT(wfile,disp,sf%npole_reso,1,MPI_INTEGER,MPI_STATUS_IGNORE,ierr)
  disp = disp + SIZEOF(sf%npole_reso)
 
@@ -449,10 +453,16 @@ subroutine read_spectral_function(sf,reading_status)
  call MPI_FILE_READ_AT(wfile,disp,postscf_name_read,LEN(postscf_name_read),MPI_CHARACTER,MPI_STATUS_IGNORE,ierr)
  disp = disp + SIZEOF(postscf_name_read)
 
+ call MPI_FILE_READ_AT(wfile,disp,nprodbasis_read,1,MPI_INTEGER,MPI_STATUS_IGNORE,ierr)
+ disp = disp + SIZEOF(nprodbasis_read)
+
+ sf%nprodbasis = nprodbasis_read
+
  call MPI_FILE_READ_AT(wfile,disp,npole_read,1,MPI_INTEGER,MPI_STATUS_IGNORE,ierr)
  disp = disp + SIZEOF(npole_read)
 
  sf%npole_reso = npole_read
+
  call allocate_spectral_function(nbf_local_iproc(rank),sf)
 
  call MPI_FILE_READ_AT(wfile,disp,sf%pole,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
