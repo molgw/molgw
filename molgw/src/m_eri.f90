@@ -773,6 +773,7 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
  !
  call clean_allocate('2-center integrals',eri_2center_m1,auxil_basis%nbf,auxil_basis%nbf)
 
+ eri_2center_m1(:,:) = 0.0_dp
 
  write(stdout,'(/,a)')    ' Calculate, invert and store the 2-center Electron Repulsion Integrals'
  write(stdout,'(a)')      ' Libint library initialized'
@@ -782,6 +783,10 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
 
  do lshell=1,1  ! FAKE loop
    do kshell=1,nshell_auxil
+
+     ! Parallelization over the shell index
+     if( MODULO(kshell-1,nproc) /= rank ) cycle
+
      !
      ! Order the angular momenta so that libint is pleased
      ! 1) am3+am4 >= am1+am2
@@ -953,9 +958,14 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
                do ibf=1,ni
                  eri_2center_m1( shell_auxil(ishell)%istart+ibf-1,    &
                                  shell_auxil(kshell)%istart+kbf-1 )    = integrals_cart(ibf,jbf,kbf,lbf)
-                 ! And the symmetric too
-                 eri_2center_m1( shell_auxil(kshell)%istart+kbf-1,    &
-                                 shell_auxil(ishell)%istart+ibf-1 )    = integrals_cart(ibf,jbf,kbf,lbf)
+                 !
+                 ! And the symmetric too only if it is not already one
+                 ! When amk+aml == ami+amj  , the symmetric part is already calculated. 
+                 ! We do not want double counting because of the parallelization
+                 if( amk+aml > ami+amj ) then
+                   eri_2center_m1( shell_auxil(kshell)%istart+kbf-1,    &
+                                   shell_auxil(ishell)%istart+ibf-1 )    = integrals_cart(ibf,jbf,kbf,lbf)
+                 endif
                enddo
              enddo
            enddo
@@ -971,6 +981,9 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
      enddo
    enddo
  enddo
+
+ ! Sum up the contribution from the different procs
+ call xsum(eri_2center_m1)
 
 
  allocate(eigval(nauxil_2center))
