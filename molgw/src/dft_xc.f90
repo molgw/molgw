@@ -383,7 +383,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
    deallocate(alpha,coeff)
  enddo
 
- write(stdout,*) 'Simple LDA functional functional on a coarse grid'
+ write(stdout,*) 'Simple LDA functional on a coarse grid'
 
  !
  ! Create a temporary grid with low quality
