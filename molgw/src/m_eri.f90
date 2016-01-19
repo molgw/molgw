@@ -466,9 +466,6 @@ end subroutine setup_shell_list_auxil
 !=========================================================================
 subroutine do_calculate_eri(basis,rcut,which_buffer)
  use m_tools,only: boys_function
-#ifdef _OPENMP
- use omp_lib
-#endif
  implicit none
  type(basis_set),intent(in)   :: basis
  real(dp),intent(in)          :: rcut
@@ -718,9 +715,6 @@ end subroutine do_calculate_eri
 !=========================================================================
 subroutine calculate_eri_2center(print_eri_,auxil_basis)
  use m_tools,only: boys_function, invert
-#ifdef _OPENMP
- use omp_lib
-#endif
  implicit none
  logical,intent(in)           :: print_eri_
  type(basis_set),intent(in)   :: auxil_basis
@@ -970,27 +964,24 @@ end subroutine calculate_eri_2center
 !=========================================================================
 subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
  use m_tools,only: boys_function, invert
-#ifdef _OPENMP
- use omp_lib
-#endif
  implicit none
  logical,intent(in)           :: print_eri_
  type(basis_set),intent(in)   :: auxil_basis
  real(dp),intent(in)          :: rcut
 !=====
- integer                      :: ishell,jshell,kshell,lshell
- integer                      :: n1c,n2c,n3c,n4c
+ integer                      :: ishell,kshell
+ integer                      :: n1c,n3c
  integer                      :: ng1,ng2,ng3,ng4
  integer                      :: ig1,ig2,ig3,ig4
- integer                      :: ni,nj,nk,nl
- integer                      :: ami,amj,amk,aml
+ integer                      :: ni,nj,nk
+ integer                      :: ami,amk
  integer                      :: ibf,jbf,kbf,lbf
  integer                      :: iibf
  integer                      :: info
  real(dp)                     :: zeta_12,zeta_34,rho,rho1,f0t(0:0),tt
  real(dp)                     :: p(3),q(3)
- real(dp),allocatable         :: integrals_tmp(:,:,:,:)
- real(dp),allocatable         :: integrals_cart(:,:,:,:)
+ real(dp),allocatable         :: integrals_tmp(:,:)
+ real(dp),allocatable         :: integrals_cart(:,:)
  real(dp),allocatable         :: eigval(:)
 !=====
 ! variables used to call C
@@ -1006,8 +997,6 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
 
  call start_clock(timing_eri_2center)
 
- ! the following line is never needed
- ! if( .NOT. ALLOCATED(shell_auxil) ) call setup_shell_list_auxil(auxil_basis)
 
  ! First allocate the 2-center integral array
  !
@@ -1016,212 +1005,187 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
  ! by removing the zero eigenvalues
  nauxil_2center_lr = auxil_basis%nbf
  !
- ! 2-CENTER INTEGRALS 
+ ! 2-CENTER LR INTEGRALS 
  !
- call clean_allocate('2-center integrals',eri_2center_m1_lr,auxil_basis%nbf,auxil_basis%nbf)
+ call clean_allocate('2-center LR integrals',eri_2center_m1_lr,auxil_basis%nbf,auxil_basis%nbf)
 
+ eri_2center_m1_lr(:,:) = 0.0_dp
 
  write(stdout,'(/,a)')    ' Calculate, invert and store the 2-center LR Electron Repulsion Integrals'
 
  rcut_libint = rcut
 
- do lshell=1,1  ! FAKE loop
-   do kshell=1,nshell_auxil
-     !
-     ! Order the angular momenta so that libint is pleased
-     ! 1) am3+am4 >= am1+am2
-     ! 2) am3>=am4
-     ! 3) am1>=am2
-     amk = shell_auxil(kshell)%am
-     aml = 0
-     if( amk < aml ) cycle
+ do kshell=1,nshell_auxil
 
-     do jshell=1,1  ! FAKE loop
-       do ishell=1,nshell_auxil
-         ami = shell_auxil(ishell)%am
-         amj = 0
-         if( ami < amj ) cycle
-         if( amk+aml < ami+amj ) cycle
+   ! Parallelization over the shell index
+   if( MODULO(kshell-1,nproc) /= rank ) cycle
 
-         ni = number_basis_function_am( auxil_basis%gaussian_type , ami )
-         nj = 1
-         nk = number_basis_function_am( auxil_basis%gaussian_type , amk )
-         nl = 1
+   !
+   ! Order the angular momenta so that libint is pleased
+   ! 1) am3+am4 >= am1+am2
+   ! 2) am3>=am4
+   ! 3) am1>=am2
+   amk = shell_auxil(kshell)%am
+   nk  = number_basis_function_am( auxil_basis%gaussian_type , amk )
 
+   do ishell=1,nshell_auxil
+     ami = shell_auxil(ishell)%am
+     if( amk < ami ) cycle
 
-         am1 = shell_auxil(ishell)%am
-         am2 = 0
-         am3 = shell_auxil(kshell)%am
-         am4 = 0
-         n1c = number_basis_function_am( 'CART' , ami )
-         n2c = 1
-         n3c = number_basis_function_am( 'CART' , amk )
-         n4c = 1
-         ng1 = shell_auxil(ishell)%ng
-         ng2 = 1
-         ng3 = shell_auxil(kshell)%ng
-         ng4 = 1
-         allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
-         alpha1(:) = shell_auxil(ishell)%alpha(:) 
-         alpha2(:) = 0.0_dp ! shell_auxil(jshell)%alpha(:)
-         alpha3(:) = shell_auxil(kshell)%alpha(:)
-         alpha4(:) = 0.0_dp ! shell_auxil(lshell)%alpha(:)
-         x01(:) = shell_auxil(ishell)%x0(:)
-         x02(:) = shell_auxil(ishell)%x0(:)
-         x03(:) = shell_auxil(kshell)%x0(:)
-         x04(:) = shell_auxil(kshell)%x0(:)
-         allocate(coeff1(shell_auxil(ishell)%ng))
-         allocate(coeff2(1))
-         allocate(coeff3(shell_auxil(kshell)%ng))
-         allocate(coeff4(1))
-         coeff1(:)=shell_auxil(ishell)%coeff(:)
-         coeff2(:)=1.0_dp
-         coeff3(:)=shell_auxil(kshell)%coeff(:)
-         coeff4(:)=1.0_dp
+     ni = number_basis_function_am( auxil_basis%gaussian_type , ami )
 
-         allocate( int_shell( n1c*n2c*n3c*n4c ) )
-         allocate( integrals_cart(n1c,n2c,n3c,n4c) )
-         allocate( integrals_tmp(n1c,n2c,n3c,n4c) )
-         integrals_cart(:,:,:,:) = 0.0_dp
+     am1 = shell_auxil(ishell)%am
+     am2 = 0
+     am3 = shell_auxil(kshell)%am
+     am4 = 0
+     n1c = number_basis_function_am( 'CART' , ami )
+     n3c = number_basis_function_am( 'CART' , amk )
+     ng1 = shell_auxil(ishell)%ng
+     ng2 = 1
+     ng3 = shell_auxil(kshell)%ng
+     ng4 = 1
+     allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
+     alpha1(:) = shell_auxil(ishell)%alpha(:) 
+     alpha2(:) = 0.0_dp
+     alpha3(:) = shell_auxil(kshell)%alpha(:)
+     alpha4(:) = 0.0_dp 
+     x01(:) = shell_auxil(ishell)%x0(:)
+     x02(:) = shell_auxil(ishell)%x0(:)
+     x03(:) = shell_auxil(kshell)%x0(:)
+     x04(:) = shell_auxil(kshell)%x0(:)
+     allocate(coeff1(shell_auxil(ishell)%ng))
+     allocate(coeff2(1))
+     allocate(coeff3(shell_auxil(kshell)%ng))
+     allocate(coeff4(1))
+     coeff1(:)=shell_auxil(ishell)%coeff(:)
+     coeff2(:)=1.0_dp
+     coeff3(:)=shell_auxil(kshell)%coeff(:)
+     coeff4(:)=1.0_dp
+
+     allocate( int_shell( n1c*n3c ) )
+     allocate( integrals_cart(n1c,n3c) )
+     allocate( integrals_tmp(n1c,n3c) )
+     integrals_cart(:,:) = 0.0_dp
 
 
-         if(am1+am2+am3+am4==0) then
+     if(am1+am3==0) then
 
-           do ig4=1,ng4
-             do ig3=1,ng3
-               do ig2=1,ng2
-                 do ig1=1,ng1
+       do ig3=1,ng3
+         do ig1=1,ng1
 
-                   zeta_12 = alpha1(ig1) + alpha2(ig2)
-                   zeta_34 = alpha3(ig3) + alpha4(ig4)
-                   p(:) = ( alpha1(ig1) * x01(:) + alpha2(ig2) * x02(:) ) / zeta_12 
-                   q(:) = ( alpha3(ig3) * x03(:) + alpha4(ig4) * x04(:) ) / zeta_34 
-                   !
-                   ! Full range or long-range only integrals
-                   rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 + zeta_12*zeta_34*rcut**2 )
-                   rho1 = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
-                   
-                   tt = rho * SUM( (p(:)-q(:))**2 )
-                   call boys_function(f0t(0),0,tt)
+           zeta_12 = alpha1(ig1) 
+           zeta_34 = alpha3(ig3) 
+           p(:) = x01(:)
+           q(:) = x03(:)
+           !
+           ! Full range or long-range only integrals
+           rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 + zeta_12*zeta_34*rcut**2 )
+           rho1 = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
+           
+           tt = rho * SUM( (p(:)-q(:))**2 )
+           call boys_function(f0t(0),0,tt)
 
-                   integrals_cart(1,1,1,1) = integrals_cart(1,1,1,1) + &
-                         2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
-                         / zeta_12 * EXP( -alpha1(ig1)*alpha2(ig2)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
-                         / zeta_34 * EXP( -alpha3(ig3)*alpha4(ig4)/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
-                         * SQRT( rho / rho1 ) &
-                         * coeff1(ig1)* coeff3(ig3) &
-                         * cart_to_pure_norm(0)%matrix(1,1)**4
+           integrals_cart(1,1) = integrals_cart(1,1) + &
+                 2.0_dp * pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
+                 / zeta_12 & 
+                 / zeta_34 &
+                 * SQRT( rho / rho1 ) &
+                 * coeff1(ig1)* coeff3(ig3) &
+                 * cart_to_pure_norm(0)%matrix(1,1)**4
 
-                 enddo
-               enddo
-             enddo
-           enddo
-
-         else
-
-
-           info=eval_contr_integral(                &
-                                   am1,am2,am3,am4, &
-                                   ng1,ng2,ng3,ng4, &
-                                   coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
-                                   alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
-                                   x01(1),x02(1),x03(1),x04(1),&
-                                   rcut_libint, &
-                                   int_shell(1))
-
-
-           if(info/=0) then
-             write(stdout,*) am1,am2,am3,am4
-             call die('ERI calculated by libint failed')
-           endif
-
-           iibf=0
-           do ibf=1,n1c
-             do jbf=1,n2c
-               do kbf=1,n3c
-                 do lbf=1,n4c
-                   iibf=iibf+1
-                   integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
-                 enddo
-               enddo
-             enddo
-           enddo
-
-
-           do lbf=1,n4c
-             do kbf=1,n3c
-               do jbf=1,n2c
-                 do ibf=1,ni
-                   integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1c,jbf,kbf,lbf) * cart_to_pure_norm(shell_auxil(ishell)%am)%matrix(1:n1c,ibf) )
-                 enddo
-               enddo
-             enddo
-           enddo
-
-           do lbf=1,n4c
-             do kbf=1,n3c
-               do jbf=1,nj
-                 do ibf=1,ni
-                   integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2c,kbf,lbf) * cart_to_pure_norm(shell_auxil(jshell)%am)%matrix(1:n2c,jbf) )
-                 enddo
-               enddo
-             enddo
-           enddo
-
-           do lbf=1,n4c
-             do kbf=1,nk
-               do jbf=1,nj
-                 do ibf=1,ni
-                   integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n3c,lbf) * cart_to_pure_norm(shell_auxil(kshell)%am)%matrix(1:n3c,kbf) )
-                 enddo
-               enddo
-             enddo
-           enddo
-
-           do lbf=1,nl
-             do kbf=1,nk
-               do jbf=1,nj
-                 do ibf=1,ni
-                   integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n4c) * cart_to_pure_norm(shell_auxil(lshell)%am)%matrix(1:n4c,lbf) )
-                 enddo
-               enddo
-             enddo
-           enddo
-
-
-         endif
-         
-
-         do lbf=1,nl
-           do kbf=1,nk
-             do jbf=1,nj
-               do ibf=1,ni
-                 eri_2center_m1_lr( shell_auxil(ishell)%istart+ibf-1,    &
-                                 shell_auxil(kshell)%istart+kbf-1 )    = integrals_cart(ibf,jbf,kbf,lbf)
-                 ! And the symmetric too
-                 eri_2center_m1_lr( shell_auxil(kshell)%istart+kbf-1,    &
-                                 shell_auxil(ishell)%istart+ibf-1 )    = integrals_cart(ibf,jbf,kbf,lbf)
-               enddo
-             enddo
-           enddo
          enddo
+       enddo
 
-         deallocate(integrals_cart)
-         deallocate(integrals_tmp)
-         deallocate(int_shell)
-         deallocate(alpha1,alpha2,alpha3,alpha4)
-         deallocate(coeff1,coeff2,coeff3,coeff4)
+     else
 
+
+       info=eval_contr_integral(                &
+                               am1,am2,am3,am4, &
+                               ng1,ng2,ng3,ng4, &
+                               coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
+                               alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
+                               x01(1),x02(1),x03(1),x04(1),&
+                               rcut_libint, &
+                               int_shell(1))
+
+
+       if(info/=0) then
+         write(stdout,*) am1,am2,am3,am4
+         call die('ERI calculated by libint failed')
+       endif
+
+       iibf=0
+       do ibf=1,n1c
+         do kbf=1,n3c
+           iibf=iibf+1
+           integrals_cart(ibf,kbf) = int_shell(iibf)
+         enddo
+       enddo
+
+
+       do kbf=1,n3c
+         do ibf=1,ni
+           integrals_tmp (ibf,kbf) = SUM( integrals_cart(1:n1c,kbf) * cart_to_pure_norm(am1)%matrix(1:n1c,ibf) )
+         enddo
+       enddo
+
+       do kbf=1,n3c
+         do ibf=1,ni
+           integrals_cart(ibf,kbf) = integrals_tmp (ibf,kbf) * cart_to_pure_norm(0)%matrix(1,1) 
+         enddo
+       enddo
+
+       do kbf=1,nk
+         do ibf=1,ni
+           integrals_tmp (ibf,kbf) = SUM( integrals_cart(ibf,1:n3c) * cart_to_pure_norm(am3)%matrix(1:n3c,kbf) )
+         enddo
+       enddo
+
+       do kbf=1,nk
+         do ibf=1,ni
+           integrals_cart(ibf,kbf) = integrals_tmp (ibf,kbf) * cart_to_pure_norm(0)%matrix(1,1) 
+         enddo
+       enddo
+
+     endif
+     
+
+     do kbf=1,nk
+       do ibf=1,ni
+         eri_2center_m1_lr( shell_auxil(ishell)%istart+ibf-1,    &
+                            shell_auxil(kshell)%istart+kbf-1 )    = integrals_cart(ibf,kbf)
+         !
+         ! And the symmetric too only if it is not already one
+         ! When amk == ami  , the symmetric part is already calculated. 
+         ! We do not want double counting because of the parallelization
+         if( amk > ami ) then
+           eri_2center_m1_lr( shell_auxil(kshell)%istart+kbf-1,    &
+                              shell_auxil(ishell)%istart+ibf-1 )    = integrals_cart(ibf,kbf)
+         endif
        enddo
      enddo
+
+     deallocate(integrals_cart)
+     deallocate(integrals_tmp)
+     deallocate(int_shell)
+     deallocate(alpha1,alpha2,alpha3,alpha4)
+     deallocate(coeff1,coeff2,coeff3,coeff4)
+
    enddo
  enddo
+
+ ! Sum up the contribution from the different procs
+ call xsum(eri_2center_m1_lr)
+
 
  allocate(eigval(nauxil_2center_lr))
  !
  ! Perform in-place diagonalization here
+#ifdef HAVE_SCALAPACK
+ call diagonalize_scalapack(nauxil_2center_lr,eri_2center_m1_lr,eigval)
+#else
  call diagonalize(nauxil_2center_lr,eri_2center_m1_lr,eigval)
-
+#endif
 
  !
  ! Skip the too small eigenvalues
@@ -1234,14 +1198,13 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
  deallocate(eigval)
 
  !
- ! Resize the 2-center integral matrix
+ ! Resize the 2-center LR integral matrix
  ! Now the array is eri_2center_m1_lr(auxil_basis%nbf,nauxil_2center_lr)
  nauxil_2center_lr = ibf
 
- write(stdout,'(a)')        ' All LR 2-center integrals have been calculated, diagonalized and stored'
+ write(stdout,'(a)')        ' All 2-center LR integrals have been calculated, diagonalized and stored'
  write(stdout,'(a,i6)')     ' Some have been eliminated ',auxil_basis%nbf-nauxil_2center_lr
  write(stdout,'(a,es16.6)') ' because they were lower than:',TOO_LOW_EIGENVAL
-
 
 
  call stop_clock(timing_eri_2center)
@@ -1252,9 +1215,6 @@ end subroutine calculate_eri_2center_lr
 !=========================================================================
 subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  use m_tools,only: boys_function
-#ifdef _OPENMP
- use omp_lib
-#endif
  implicit none
  logical,intent(in)           :: print_eri_
  type(basis_set),intent(in)   :: basis
@@ -1590,9 +1550,6 @@ end subroutine calculate_eri_3center
 !=========================================================================
 subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
  use m_tools,only: boys_function
-#ifdef _OPENMP
- use omp_lib
-#endif
  implicit none
  logical,intent(in)           :: print_eri_
  type(basis_set),intent(in)   :: basis
