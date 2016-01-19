@@ -491,7 +491,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
 !=====
 ! variables used to call C
- integer(C_INT),external      :: libint_init,calculate_integral
+ integer(C_INT),external      :: calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: ng1,ng2,ng3,ng4
  integer(C_INT)               :: am1,am2,am3,am4
@@ -503,8 +503,6 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
 !=====
 
  write(stdout,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
- write(stdout,'(a)')      ' Libint library initialized'
- write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
 
  rcut_libint = rcut
@@ -747,7 +745,7 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
  real(dp),allocatable         :: eigval(:)
 !=====
 ! variables used to call C
- integer(C_INT),external      :: libint_init,calculate_integral
+ integer(C_INT),external      :: calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2,am3,am4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
@@ -775,8 +773,6 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
  eri_2center_m1(:,:) = 0.0_dp
 
  write(stdout,'(/,a)')    ' Calculate, invert and store the 2-center Electron Repulsion Integrals'
- write(stdout,'(a)')      ' Libint library initialized'
- write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
  rcut_libint = 0.0_dp
 
@@ -1048,7 +1044,7 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
  real(dp),allocatable         :: eigval(:)
 !=====
 ! variables used to call C
- integer(C_INT),external      :: libint_init,calculate_integral
+ integer(C_INT),external      :: calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2,am3,am4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
@@ -1076,8 +1072,6 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
 
 
  write(stdout,'(/,a)')    ' Calculate, invert and store the 2-center LR Electron Repulsion Integrals'
- write(stdout,'(a)')      ' Libint library initialized'
- write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
  rcut_libint = rcut
 
@@ -1337,7 +1331,7 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  real(dp),allocatable         :: eri_3tmp(:,:,:)
 !=====
 ! variables used to call C
- integer(C_INT),external      :: libint_init,calculate_integral
+ integer(C_INT),external      :: calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2,am3,am4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
@@ -1361,8 +1355,6 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
 
 
  write(stdout,'(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals'
- write(stdout,'(a)')      ' Libint library initialized'
- write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
 
  rcut_libint = 0.0_dp
@@ -1688,7 +1680,7 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
  real(dp),allocatable         :: eri_3tmp(:,:,:)
 !=====
 ! variables used to call C
- integer(C_INT),external      :: libint_init,calculate_integral
+ integer(C_INT),external      :: calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2,am3,am4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
@@ -1709,8 +1701,6 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
 
 
  write(stdout,'(/,a)')    ' Calculate and store all the 3-center LR Electron Repulsion Integrals'
- write(stdout,'(a)')      ' Libint library initialized'
- write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
  rcut_libint = rcut
 
@@ -2027,7 +2017,7 @@ subroutine calculate_eri_approximate_hartree(print_eri_,basis,m_ham,n_ham,x0_rho
  integer                      :: ilocal,jlocal,iglobal,jglobal
 !=====
 ! variables used to call C
- integer(C_INT),external      :: libint_init,calculate_integral
+ integer(C_INT),external      :: calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2,am3,am4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
@@ -2368,7 +2358,7 @@ subroutine identify_negligible_shellpair(basis)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
 !=====
 ! variables used to call C
- integer(C_INT),external      :: libint_init,calculate_integral
+ integer(C_INT),external      :: calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:)
@@ -2380,8 +2370,6 @@ subroutine identify_negligible_shellpair(basis)
 
  call start_clock(timing_eri_screening)
  write(stdout,'(/,a)')    ' Cauchy-Schwartz screening of the 3- or 4-center integrals'
- write(stdout,'(a)')      ' Libint library initialized'
- write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
 
  rcut_libint = 0.0_dp
 
