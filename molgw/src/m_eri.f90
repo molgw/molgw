@@ -1368,6 +1368,7 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  rcut_libint = 0.0_dp
 
  do klshellpair=1,nshellpair
+   !call start_clock(timing_tmp1)
    kshell = index_shellpair(1,klshellpair)
    lshell = index_shellpair(2,klshellpair)
    !
@@ -1388,7 +1389,7 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
 
        ! Use the distribution to avoid calculating all the integrals
        ! A summation is performed to propagate eri_3tmp to all processors
-       if( rank /= MODULO(ishell,nproc) ) cycle
+       if( MODULO(ishell-1,nproc) /= rank ) cycle
 
        ami = shell_auxil(ishell)%am
        amj = 0
@@ -1614,9 +1615,14 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
      enddo
    enddo
 
+   !call stop_clock(timing_tmp1)
+
+   !call start_clock(timing_tmp2)
    ! Parallelization over the auxiliary shell
    call xsum(eri_3tmp)
+   !call stop_clock(timing_tmp2)
 
+   !call start_clock(timing_tmp3)
    !
    ! Combine the 2-center integral with the 3-center here
    !
@@ -1633,6 +1639,7 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
   enddo
 
   deallocate(eri_3tmp)
+  !call stop_clock(timing_tmp3)
 
  enddo
 

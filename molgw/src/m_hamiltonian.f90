@@ -1136,7 +1136,11 @@ subroutine diagonalize_hamiltonian(nspin_local,nbf,nstate,hamiltonian,s_matrix_s
                             MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
 
 
+#ifdef HAVE_SCALAPACK
+   call diagonalize_scalapack(nstate,h_small,energy(1:nstate,ispin))
+#else
    call diagonalize(nstate,h_small,energy(1:nstate,ispin))
+#endif
 
    c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
 
@@ -1164,7 +1168,11 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,nbf,s_matrix,nstate,s_matrix_sqrt_inv)
 !=====
 
  matrix_tmp(:,:) = s_matrix(:,:)
+#ifdef HAVE_SCALAPACK
+ call diagonalize_scalapack(nbf,matrix_tmp,s_eigval)
+#else
  call diagonalize(nbf,matrix_tmp,s_eigval)
+#endif
 
  nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
 
@@ -1205,7 +1213,11 @@ subroutine setup_sqrt_density_matrix(nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
 
  do ispin=1,nspin
    p_matrix_sqrt(:,:,ispin) = p_matrix(:,:,ispin)
+#ifdef HAVE_SCALAPACK
+   call diagonalize_scalapack(nbf,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
+#else
    call diagonalize(nbf,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
+#endif
  enddo
 
  call stop_clock(timing_sqrt_density_matrix)

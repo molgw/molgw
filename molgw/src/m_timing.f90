@@ -101,7 +101,7 @@ subroutine stop_clock(itiming)
   
  if(.NOT.time_running(itiming)) then
    write(stdout,*) 'clock # has not been started:',itiming
-   call die('error in start clock')
+   call die('error in stop clock')
  endif
 
 
