@@ -2379,7 +2379,7 @@ subroutine identify_negligible_shellpair(basis)
 
  do jshell=1,nshell
    ! Workload is distributed here
-   if( MODULO(jshell,nproc) /= rank ) cycle
+   if( MODULO(jshell-1,nproc) /= rank ) cycle
 
    do ishell=1,nshell
      ami = shell(ishell)%am
@@ -2539,6 +2539,7 @@ subroutine identify_negligible_shellpair(basis)
  call xand(negligible_shellpair)
 
  call stop_clock(timing_eri_screening)
+
 
 end subroutine identify_negligible_shellpair
 
@@ -2801,9 +2802,6 @@ subroutine transform_eri_basis(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
  eri_eigenstate_i(:,:,:,:)=0.0_dp
  eri_tmp3(:,:,:)=0.0_dp
 
-!$OMP PARALLEL DEFAULT(SHARED)
-
-!$OMP DO SCHEDULE(STATIC)
  do lbf=1,nbf_eri
    do kbf=1,nbf_eri
      do jbf=1,nbf_eri
@@ -2816,10 +2814,7 @@ subroutine transform_eri_basis(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
      enddo
    enddo
  enddo
-!$OMP END DO
 
-
-!$OMP DO SCHEDULE(STATIC)
  do lbf=1,nbf_eri
    do kbf=1,nbf_eri
 
@@ -2829,16 +2824,11 @@ subroutine transform_eri_basis(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
 
    enddo
  enddo
-!$OMP END DO
 
-!$OMP END PARALLEL
 
   
  do klspin=1,nspin
 
-!$OMP PARALLEL DEFAULT(SHARED)
-
-!$OMP DO SCHEDULE(STATIC)
    do lbf=1,nbf_eri
      do kstate=1,nbf_eri
        do jstate=1,nbf_eri
@@ -2846,9 +2836,7 @@ subroutine transform_eri_basis(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
        enddo
      enddo
    enddo
-!$OMP END DO
 
-!$OMP DO SCHEDULE(STATIC)
    do lstate=1,nbf_eri
      do kstate=1,nbf_eri
        do jstate=1,nbf_eri
@@ -2858,9 +2846,6 @@ subroutine transform_eri_basis(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
        enddo
      enddo
    enddo
-!$OMP END DO
-
-!$OMP END PARALLEL
 
  enddo !klspin
 

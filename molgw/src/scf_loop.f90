@@ -175,7 +175,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      if( .NOT. is_full_auxil) then
        call setup_exchange_longrange(print_matrix_,basis%nbf,p_matrix,matrix_tmp,energy_tmp)
      else
-       call setup_exchange_longrange_ri(print_matrix_,basis%nbf,occupation,c_matrix,p_matrix,matrix_tmp,energy_tmp)
+       call setup_exchange_longrange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,matrix_tmp,energy_tmp)
      endif
      ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
      en%exx_hyb = en%exx_hyb + alpha_hybrid_lr * energy_tmp

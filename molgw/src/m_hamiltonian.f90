@@ -507,8 +507,6 @@ subroutine setup_hartree(print_matrix_,nbf,p_matrix,pot_hartree,ehartree)
 
  pot_hartree(:,:)=0.0_dp
 
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
  do jbf=1,nbf
    do ibf=1,nbf
      if( negligible_basispair(ibf,jbf) ) cycle
@@ -527,8 +525,6 @@ subroutine setup_hartree(print_matrix_,nbf,p_matrix,pot_hartree,ehartree)
      enddo
    enddo
  enddo
-!$OMP END DO
-!$OMP END PARALLEL
 
 
  title='=== Hartree contribution ==='
@@ -629,8 +625,6 @@ subroutine setup_exchange(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
  pot_exchange(:,:,:)=0.0_dp
 
  do ispin=1,nspin
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO 
    do jbf=1,nbf
      do lbf=1,nbf
        if( negligible_basispair(lbf,jbf) ) cycle
@@ -646,8 +640,6 @@ subroutine setup_exchange(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
        enddo
      enddo
    enddo
-!$OMP END DO
-!$OMP END PARALLEL
  enddo
 
  title='=== Exchange contribution ==='
@@ -690,9 +682,6 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
 
  do ispin=1,nspin
 
-!   p_matrix_sqrt(:,:) = p_matrix(:,:,ispin)
-!   call diagonalize(nbf,p_matrix_sqrt,occ)
-
    do istate=1,nbf
      if( p_matrix_occ(istate,ispin) < completely_empty)  cycle
 
@@ -724,13 +713,13 @@ end subroutine setup_exchange_ri
 
 
 !=========================================================================
-subroutine setup_exchange_longrange_ri(print_matrix_,nbf,occupation,c_matrix,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,pot_exchange,eexchange)
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
- real(dp),intent(in)  :: occupation(nbf,nspin)
- real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin)
+ real(dp),intent(in)  :: p_matrix_occ(nbf,nspin)
+ real(dp),intent(in)  :: p_matrix_sqrt(nbf,nbf,nspin)
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
@@ -753,17 +742,16 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,occupation,c_matrix,p_m
 
  do ispin=1,nspin
 
-   ! Denombrate the strictly positive eigenvalues
-   nocc = COUNT( occupation(:,ispin) > completely_empty )
+   do istate=1,nbf
+     if( p_matrix_occ(istate,ispin) < completely_empty)  cycle
 
-   do istate=1,nocc
      tmp(:,:) = 0.0_dp
      do ipair=1,npair
        ibf=index_basis(1,ipair)
        jbf=index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center_lr(:,ipair) * SQRT( occupation(istate,ispin) )
+       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt(jbf,istate,ispin) * eri_3center_lr(:,ipair) * SQRT(p_matrix_occ(istate,ispin))
        if( ibf /= jbf ) &
-            tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center_lr(:,ipair) * SQRT( occupation(istate,ispin) )
+            tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center_lr(:,ipair) * SQRT(p_matrix_occ(istate,ispin))
      enddo
 
      pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin) &
@@ -805,8 +793,6 @@ subroutine setup_exchange_longrange(print_matrix_,nbf,p_matrix,pot_exchange,eexc
  pot_exchange(:,:,:)=0.0_dp
 
  do ispin=1,nspin
-!$OMP PARALLEL DEFAULT(SHARED)
-!$OMP DO SCHEDULE(STATIC) COLLAPSE(2)
    do jbf=1,nbf
      do ibf=1,nbf
        do lbf=1,nbf
@@ -819,8 +805,6 @@ subroutine setup_exchange_longrange(print_matrix_,nbf,p_matrix,pot_exchange,eexc
        enddo
      enddo
    enddo
-!$OMP END DO
-!$OMP END PARALLEL
  enddo
 
  title='=== Exchange contribution ==='
