@@ -18,7 +18,7 @@ module m_mpi
  logical,parameter :: parallel_scalapack = .FALSE.
 #endif
 
- integer,parameter :: SCALAPACK_MIN = 200   ! TODO Better tune this parameter in the future
+ integer,parameter :: SCALAPACK_MIN = 400   ! TODO Better tune this parameter in the future
 
  integer,private   :: comm_world
  integer,protected :: nproc  = 1
@@ -1571,6 +1571,7 @@ subroutine symmetrize_matrix(desc,m_mat,n_mat,mat)
 end subroutine symmetrize_matrix
 
 
+#ifdef HAVE_SCALAPACK
 !=========================================================================
 subroutine diagonalize_scalapack(nmat,matrix,eigval)
  implicit none
@@ -1602,7 +1603,7 @@ subroutine diagonalize_scalapack(nmat,matrix,eigval)
  call BLACS_GET( -1, 0, cntxt )
  call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
- write(stdout,'(a,i4,a,i4)') '   using SCALAPACK with a grid',nprow,' x ',npcol
+ write(stdout,'(a,i4,a,i4)') ' Diagonalization using SCALAPACK with a local grid',nprow,' x ',npcol
 
  !
  ! Participate to the diagonalization only if the CPU has been selected 
@@ -1672,8 +1673,8 @@ subroutine diagonalize_scalapack(nmat,matrix,eigval)
  call xsum(eigval)
 
 
-
 end subroutine diagonalize_scalapack
+#endif
 
 
 !=========================================================================

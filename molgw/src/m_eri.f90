@@ -759,7 +759,6 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
 
  call start_clock(timing_eri_2center)
 
-
  call setup_shell_list_auxil(auxil_basis)
 
  ! First allocate the 2-center integral array
@@ -989,7 +988,11 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
  allocate(eigval(nauxil_2center))
  !
  ! Perform in-place diagonalization here
+#ifdef HAVE_SCALAPACK
+ call diagonalize_scalapack(nauxil_2center,eri_2center_m1,eigval)
+#else
  call diagonalize(nauxil_2center,eri_2center_m1,eigval)
+#endif
 
  !
  ! Skip the too small eigenvalues
