@@ -69,7 +69,7 @@ module m_eri
 
 ! TODO write a proper interface for the call to C
 ! interface
-!   integet(C_INT) function eval_contr_integral() bind(C)
+!   integer(C_INT) function eval_contr_integral() bind(C)
 !       info=eval_contr_integral(                &
 !                               am1,am2,am3,am4, &
 !                               ng1,ng2,ng3,ng4, &
@@ -486,7 +486,6 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
 !=====
 ! variables used to call C
- integer(C_INT),external      :: calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: ng1,ng2,ng3,ng4
  integer(C_INT)               :: am1,am2,am3,am4
@@ -721,7 +720,6 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
 !=====
  integer                      :: ishell,kshell
  integer                      :: n1c,n3c
- integer                      :: ng1,ng2,ng3,ng4
  integer                      :: ig1,ig2,ig3,ig4
  integer                      :: ni,nj,nk
  integer                      :: ami,amk
@@ -735,9 +733,9 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
  real(dp),allocatable         :: eigval(:)
 !=====
 ! variables used to call C
- integer(C_INT),external      :: calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2,am3,am4
+ integer(C_INT)               :: ng1,ng2,ng3,ng4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
@@ -971,7 +969,6 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
 !=====
  integer                      :: ishell,kshell
  integer                      :: n1c,n3c
- integer                      :: ng1,ng2,ng3,ng4
  integer                      :: ig1,ig2,ig3,ig4
  integer                      :: ni,nj,nk
  integer                      :: ami,amk
@@ -985,9 +982,9 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
  real(dp),allocatable         :: eigval(:)
 !=====
 ! variables used to call C
- integer(C_INT),external      :: calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2,am3,am4
+ integer(C_INT)               :: ng1,ng2,ng3,ng4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
@@ -1224,7 +1221,6 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  integer                      :: klshellpair
  integer                      :: n1,n2,n3,n4
  integer                      :: n1c,n2c,n3c,n4c
- integer                      :: ng1,ng2,ng3,ng4
  integer                      :: ig1,ig2,ig3,ig4
  integer                      :: ni,nk,nl
  integer                      :: ami,amk,aml
@@ -1239,9 +1235,9 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  real(dp),allocatable         :: eri_3tmp(:,:,:)
 !=====
 ! variables used to call C
- integer(C_INT),external      :: calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2,am3,am4
+ integer(C_INT)               :: ng1,ng2,ng3,ng4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
@@ -1509,6 +1505,9 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
 
    !call stop_clock(timing_tmp1)
 
+   call barrier()
+   call barrier()
+
    !call start_clock(timing_tmp2)
    ! Parallelization over the auxiliary shell
    call xsum(eri_3tmp)
@@ -1560,7 +1559,6 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
  integer                      :: klshellpair
  integer                      :: n1,n2,n3,n4
  integer                      :: n1c,n2c,n3c,n4c
- integer                      :: ng1,ng2,ng3,ng4
  integer                      :: ig1,ig2,ig3,ig4
  integer                      :: ni,nj,nk,nl
  integer                      :: ami,amj,amk,aml
@@ -1575,9 +1573,9 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
  real(dp),allocatable         :: eri_3tmp(:,:,:)
 !=====
 ! variables used to call C
- integer(C_INT),external      :: calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2,am3,am4
+ integer(C_INT)               :: ng1,ng2,ng3,ng4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
@@ -1869,10 +1867,10 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
 
  enddo
 
- write(stdout,'(a)') ' All 3-center integrals have been calculated and stored'
+ write(stdout,'(a)') ' All 3-center LR integrals have been calculated and stored'
 
 
- write(stdout,*) 'Now deallocate the 2-center integrals: not needed anymore'
+ write(stdout,*) 'Now deallocate the 2-center LR integrals: not needed anymore'
  call clean_deallocate('2-center LR integrals',eri_2center_m1_lr)
  
 
@@ -1892,27 +1890,26 @@ subroutine calculate_eri_approximate_hartree(print_eri_,basis,m_ham,n_ham,x0_rho
  real(dp),intent(in)          :: alpha_rho
  real(dp),intent(out)         :: vhrho(m_ham,n_ham)
 !=====
- integer                      :: ishell,jshell,kshell,lshell
+ integer                      :: kshell,lshell
  integer                      :: klshellpair
- integer                      :: n1,n2,n3,n4
- integer                      :: n1c,n2c,n3c,n4c
- integer                      :: ng1,ng2,ng3,ng4
- integer                      :: ig1,ig2,ig3,ig4
- integer                      :: ni,nj,nk,nl
- integer                      :: ami,amj,amk,aml
- integer                      :: ibf,jbf,kbf,lbf
+ integer                      :: n3,n4
+ integer                      :: n3c,n4c
+ integer                      :: ig3,ig4
+ integer                      :: nk,nl
+ integer                      :: amk,aml
+ integer                      :: kbf,lbf
  integer                      :: iibf
  integer                      :: info
- real(dp)                     :: zeta_12,zeta_34,rho,rho1,f0t(0:0),tt
+ real(dp)                     :: zeta_12,zeta_34,rho,f0t(0:0),tt
  real(dp)                     :: p(3),q(3)
- real(dp),allocatable         :: integrals_tmp(:,:,:,:)
- real(dp),allocatable         :: integrals_cart(:,:,:,:)
+ real(dp),allocatable         :: integrals_tmp(:,:)
+ real(dp),allocatable         :: integrals_cart(:,:)
  integer                      :: ilocal,jlocal,iglobal,jglobal
 !=====
 ! variables used to call C
- integer(C_INT),external      :: calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2,am3,am4
+ integer(C_INT)               :: ng1,ng2,ng3,ng4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
@@ -1927,201 +1924,145 @@ subroutine calculate_eri_approximate_hartree(print_eri_,basis,m_ham,n_ham,x0_rho
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
    lshell = index_shellpair(2,klshellpair)
-   !
+
    ! Order the angular momenta so that libint is pleased
-   ! 1) am3+am4 >= am1+am2
-   ! 2) am3>=am4
-   ! 3) am1>=am2
+   ! No need for that here!
+
    amk = shell(kshell)%am
    aml = shell(lshell)%am
 
-   do jshell=1,1  ! FAKE LOOP
-     do ishell=1,1 ! FAKE LOOP
-       ami = 0
-       amj = 0
-
-       ni = 1
-       nj = 1
-       nk = number_basis_function_am( basis%gaussian_type , amk )
-       nl = number_basis_function_am( basis%gaussian_type , aml )
+   nk = number_basis_function_am( basis%gaussian_type , amk )
+   nl = number_basis_function_am( basis%gaussian_type , aml )
 
 
-       am1 = 0
-       am2 = 0
-       am3 = shell(kshell)%am
-       am4 = shell(lshell)%am
-       n1c = 1
-       n2c = 1
-       n3c = number_basis_function_am( 'CART' , amk )
-       n4c = number_basis_function_am( 'CART' , aml )
-       n1 = ni
-       n2 = nj
-       n3 = nk
-       n4 = nl
-       ng1 = 1
-       ng2 = 1
-       ng3 = shell(kshell)%ng
-       ng4 = shell(lshell)%ng
-       allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
-       allocate(coeff1(ng1),coeff2(ng2),coeff3(ng3),coeff4(ng4))
-       alpha1(:) = alpha_rho
-       alpha2(:) = 0.0_dp
-       alpha3(:) = shell(kshell)%alpha(:)
-       alpha4(:) = shell(lshell)%alpha(:)
-       coeff1(:) = 1.0_dp
-       coeff2(:) = 1.0_dp
-       coeff3(:) = shell(kshell)%coeff(:)
-       coeff4(:) = shell(lshell)%coeff(:)
-       x01(:) = x0_rho(:)
-       x02(:) = x0_rho(:)
-       x03(:) = shell(kshell)%x0(:)
-       x04(:) = shell(lshell)%x0(:)
+   am3 = shell(kshell)%am
+   am4 = shell(lshell)%am
+   n3c = number_basis_function_am( 'CART' , amk )
+   n4c = number_basis_function_am( 'CART' , aml )
+   n3 = nk
+   n4 = nl
+   ng1 = 1
+   ng2 = 1
+   ng3 = shell(kshell)%ng
+   ng4 = shell(lshell)%ng
+   allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
+   allocate(coeff1(ng1),coeff2(ng2),coeff3(ng3),coeff4(ng4))
+   alpha1(:) = alpha_rho
+   alpha2(:) = 0.0_dp
+   alpha3(:) = shell(kshell)%alpha(:)
+   alpha4(:) = shell(lshell)%alpha(:)
+   coeff1(:) = 1.0_dp
+   coeff2(:) = 1.0_dp
+   coeff3(:) = shell(kshell)%coeff(:)
+   coeff4(:) = shell(lshell)%coeff(:)
+   x01(:) = x0_rho(:)
+   x02(:) = x0_rho(:)
+   x03(:) = shell(kshell)%x0(:)
+   x04(:) = shell(lshell)%x0(:)
 
-       allocate( int_shell(n1c*n2c*n3c*n4c) )
-       allocate( integrals_cart(n1c,n2c,n3c,n4c) )
-       allocate( integrals_tmp (n1c,n2c,n3c,n4c) )
-       integrals_cart(:,:,:,:) = 0.0_dp
+   allocate( int_shell(n3c*n4c) )
+   allocate( integrals_cart(n3c,n4c) )
+   allocate( integrals_tmp (n3c,n4c) )
+   integrals_cart(:,:) = 0.0_dp
 
 
-       if(am1+am2+am3+am4==0) then
+   if(am3+am4==0) then
 
-         do ig4=1,ng4
-           do ig3=1,ng3
-             do ig2=1,ng2
-               do ig1=1,ng1
+     do ig4=1,ng4
+       do ig3=1,ng3
 
-                 zeta_12 = alpha1(ig1) + alpha2(ig2)
-                 zeta_34 = alpha3(ig3) + alpha4(ig4)
-                 p(:) = ( alpha1(ig1) * x01(:) + alpha2(ig2) * x02(:) ) / zeta_12 
-                 q(:) = ( alpha3(ig3) * x03(:) + alpha4(ig4) * x04(:) ) / zeta_34 
-                 !
-                 ! Full range or long-range only integrals
-                 rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
-                 rho1 = rho
-                 
-                 tt = rho * SUM( (p(:)-q(:))**2 )
-                 call boys_function(f0t(0),0,tt)
-
-                 integrals_cart(1,1,1,1) = integrals_cart(1,1,1,1) + &
-                       2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
-                       / zeta_12 * EXP( -alpha1(ig1)*alpha2(ig2)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
-                       / zeta_34 * EXP( -alpha3(ig3)*alpha4(ig4)/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
-                       * SQRT( rho / rho1 ) &
-                       * coeff1(ig1) * coeff2(ig2) &
-                       * coeff3(ig3) * coeff4(ig4) &
-                       * cart_to_pure_norm(0)%matrix(1,1)**4
-
-               enddo
-             enddo
-           enddo
-         enddo
-
-       else
-
-         info=eval_contr_integral(                &
-                                 am1,am2,am3,am4, &
-                                 ng1,ng2,ng3,ng4, &
-                                 coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
-                                 alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
-                                 x01(1),x02(1),x03(1),x04(1),&
-                                 rcut_libint, &
-                                 int_shell(1))
-   
-   
-         if(info/=0) then
-           write(stdout,*) am1,am2,am3,am4
-           call die('ERI calculated by libint failed')
-         endif
-   
-         iibf=0
-         do ibf=1,n1c
-           do jbf=1,n2c
-             do kbf=1,n3c
-               do lbf=1,n4c
-                 iibf=iibf+1
-                 integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
-               enddo
-             enddo
-           enddo
-         enddo
-
-
-         do lbf=1,n4c
-           do kbf=1,n3c
-             do jbf=1,n2c
-               do ibf=1,n1
-                 integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1c,jbf,kbf,lbf) * cart_to_pure_norm(am1)%matrix(1:n1c,ibf) )
-               enddo
-             enddo
-           enddo
-         enddo
-
-         do lbf=1,n4c
-           do kbf=1,n3c
-             do jbf=1,n2
-               do ibf=1,n1
-                 integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2c,kbf,lbf) * cart_to_pure_norm(am2)%matrix(1:n2c,jbf) )
-               enddo
-             enddo
-           enddo
-         enddo
-
-         do lbf=1,n4c
-           do kbf=1,n3
-             do jbf=1,n2
-               do ibf=1,n1
-                 integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n3c,lbf) * cart_to_pure_norm(am3)%matrix(1:n3c,kbf) )
-               enddo
-             enddo
-           enddo
-         enddo
-
-         do lbf=1,n4
-           do kbf=1,n3
-             do jbf=1,n2
-               do ibf=1,n1
-                 integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n4c) * cart_to_pure_norm(am4)%matrix(1:n4c,lbf) )
-               enddo
-             enddo
-           enddo
-         enddo
-
-
-       endif ! is (ss|ss)
-       
+         zeta_12 = alpha_rho
+         zeta_34 = alpha3(ig3) + alpha4(ig4)
+         p(:) = x01(:)
+         q(:) = ( alpha3(ig3) * x03(:) + alpha4(ig4) * x04(:) ) / zeta_34 
+         !
+         ! Full range or long-range only integrals
+         rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
          
-       do lbf=1,nl
-         do kbf=1,nk
-!           vhrho( shell(kshell)%istart+kbf-1 , shell(lshell)%istart+lbf-1 ) = integrals_cart(1,1,kbf,lbf)
-           iglobal = shell(kshell)%istart+kbf-1
-           jglobal = shell(lshell)%istart+lbf-1
-           ilocal = rowindex_global_to_local('H',iglobal)
-           jlocal = colindex_global_to_local('H',jglobal)
-           if( ilocal*jlocal /= 0 ) then
-             vhrho(ilocal,jlocal) = integrals_cart(1,1,kbf,lbf)
-           endif
-           ! And the symmetric too
-!           vhrho( shell(lshell)%istart+lbf-1 , shell(kshell)%istart+kbf-1 ) = integrals_cart(1,1,kbf,lbf)
-           jglobal = shell(kshell)%istart+kbf-1
-           iglobal = shell(lshell)%istart+lbf-1
-           ilocal = rowindex_global_to_local('H',iglobal)
-           jlocal = colindex_global_to_local('H',jglobal)
-           if( ilocal*jlocal /= 0 ) then
-             vhrho(ilocal,jlocal) = integrals_cart(1,1,kbf,lbf)
-           endif
-         enddo
+         tt = rho * SUM( (p(:)-q(:))**2 )
+         call boys_function(f0t(0),0,tt)
+
+         integrals_cart(1,1) = integrals_cart(1,1) + &
+               2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
+               / zeta_12 & 
+               / zeta_34 * EXP( -alpha3(ig3)*alpha4(ig4)/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
+               * coeff3(ig3) * coeff4(ig4) &
+               * cart_to_pure_norm(0)%matrix(1,1)**4
+
        enddo
+     enddo
+
+   else
+
+     info=eval_contr_integral(                &
+                             0_C_INT,0_C_INT,am3,am4, &
+                             ng1,ng2,ng3,ng4, &
+                             coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
+                             alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
+                             x01(1),x02(1),x03(1),x04(1),&
+                             rcut_libint, &
+                             int_shell(1))
 
 
+     if(info/=0) then
+       write(stdout,*) 0,0,am3,am4
+       call die('ERI calculated by libint failed')
+     endif
 
-       deallocate(integrals_cart)
-       deallocate(integrals_tmp)
-       deallocate(int_shell)
-       deallocate(alpha1,alpha2,alpha3,alpha4)
-       deallocate(coeff1,coeff2,coeff3,coeff4)
+     iibf=0
+     do kbf=1,n3c
+       do lbf=1,n4c
+         iibf=iibf+1
+         integrals_cart(kbf,lbf) = int_shell(iibf) * cart_to_pure_norm(0)%matrix(1,1)**2
+       enddo
+     enddo
 
+     do lbf=1,n4c
+       do kbf=1,n3
+         integrals_tmp (kbf,lbf) = SUM( integrals_cart(1:n3c,lbf) * cart_to_pure_norm(am3)%matrix(1:n3c,kbf) )
+       enddo
+     enddo
+
+     do lbf=1,n4
+       do kbf=1,n3
+         integrals_cart(kbf,lbf) = SUM( integrals_tmp (kbf,1:n4c) * cart_to_pure_norm(am4)%matrix(1:n4c,lbf) )
+       enddo
+     enddo
+
+
+   endif ! is (ss|ss)
+   
+     
+   do lbf=1,nl
+     do kbf=1,nk
+       vhrho( shell(kshell)%istart+kbf-1 , shell(lshell)%istart+lbf-1 ) = integrals_cart(kbf,lbf)
+       iglobal = shell(kshell)%istart+kbf-1
+       jglobal = shell(lshell)%istart+lbf-1
+       ilocal = rowindex_global_to_local('H',iglobal)
+       jlocal = colindex_global_to_local('H',jglobal)
+       if( ilocal*jlocal /= 0 ) then
+         vhrho(ilocal,jlocal) = integrals_cart(kbf,lbf)
+       endif
+       ! And the symmetric too
+        vhrho( shell(lshell)%istart+lbf-1 , shell(kshell)%istart+kbf-1 ) = integrals_cart(kbf,lbf)
+       jglobal = shell(kshell)%istart+kbf-1
+       iglobal = shell(lshell)%istart+lbf-1
+       ilocal = rowindex_global_to_local('H',iglobal)
+       jlocal = colindex_global_to_local('H',jglobal)
+       if( ilocal*jlocal /= 0 ) then
+         vhrho(ilocal,jlocal) = integrals_cart(kbf,lbf)
+       endif
      enddo
    enddo
+
+
+
+   deallocate(integrals_cart)
+   deallocate(integrals_tmp)
+   deallocate(int_shell)
+   deallocate(alpha1,alpha2,alpha3,alpha4)
+   deallocate(coeff1,coeff2,coeff3,coeff4)
+
  enddo
 
 
@@ -2241,7 +2182,6 @@ subroutine identify_negligible_shellpair(basis)
  integer  :: ibf,jbf,kbf,lbf
  integer  :: n1c,n2c
  integer  :: ni,nj
- integer  :: ng1,ng2
  integer  :: ami,amj
  integer  :: ishell,jshell
  integer  :: ig1,ig2,ig3,ig4
@@ -2251,9 +2191,9 @@ subroutine identify_negligible_shellpair(basis)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
 !=====
 ! variables used to call C
- integer(C_INT),external      :: calculate_integral
  integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2
+ integer(C_INT)               :: ng1,ng2
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:)
  real(C_DOUBLE)               :: x01(3),x02(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:)
@@ -2485,149 +2425,6 @@ subroutine setup_shellpair()
 
 end subroutine setup_shellpair
 
-
-!=========================================================================
-function libint_ordering(nx,ny,nz)
- implicit none
- integer,intent(in) :: nx,ny,nz
- integer            :: libint_ordering
-!=====
-
- select case(nx+ny+nz)
- case(0)
-                                 libint_ordering=1
- case(1)
-   if(nx==1)                     libint_ordering=1
-   if(ny==1)                     libint_ordering=2
-   if(nz==1)                     libint_ordering=3
- case(2)
-   if(nx==2          )           libint_ordering=1
-   if(nx==1.AND.ny==1)           libint_ordering=2
-   if(nx==1.AND.nz==1)           libint_ordering=3
-   if(ny==2          )           libint_ordering=4
-   if(ny==1.AND.nz==1)           libint_ordering=5
-   if(nz==2          )           libint_ordering=6
- case(3)
-   if(nx==3                    ) libint_ordering=1
-   if(nx==2.AND.ny==1          ) libint_ordering=2
-   if(nx==2.AND.nz==1          ) libint_ordering=3
-   if(nx==1.AND.ny==2          ) libint_ordering=4
-   if(nx==1.AND.ny==1.AND.nz==1) libint_ordering=5
-   if(nx==1.AND.nz==2          ) libint_ordering=6
-   if(ny==3                    ) libint_ordering=7
-   if(ny==2.AND.nz==1          ) libint_ordering=8
-   if(ny==1.AND.nz==2          ) libint_ordering=9
-   if(nz==3                    ) libint_ordering=10
- case(4)
-   if(nx==4                    ) libint_ordering=1
-   if(nx==3.AND.ny==1          ) libint_ordering=2
-   if(nx==3          .AND.nz==1) libint_ordering=3
-   if(nx==2.AND.ny==2          ) libint_ordering=4
-   if(nx==2.AND.ny==1.AND.nz==1) libint_ordering=5
-   if(nx==2          .AND.nz==2) libint_ordering=6
-   if(nx==1.AND.ny==3          ) libint_ordering=7
-   if(nx==1.AND.ny==2          ) libint_ordering=8
-   if(nx==1.AND.ny==1          ) libint_ordering=9
-   if(nx==1.AND.ny==0.AND.nz==3) libint_ordering=10
-   if(nx==0.AND.ny==4.AND.nz==0) libint_ordering=11
-   if(nx==0.AND.ny==3.AND.nz==1) libint_ordering=12
-   if(nx==0.AND.ny==2.AND.nz==2) libint_ordering=13
-   if(          ny==1.AND.nz==3) libint_ordering=14
-   if(                    nz==4) libint_ordering=15
- case(5)
-   if(nx==5.AND.ny==0.AND.nz==0) libint_ordering=1
-   if(nx==4.AND.ny==1.AND.nz==0) libint_ordering=2
-   if(nx==4.AND.ny==0.AND.nz==1) libint_ordering=3
-   if(nx==3.AND.ny==2.AND.nz==0) libint_ordering=4
-   if(nx==3.AND.ny==1.AND.nz==1) libint_ordering=5
-   if(nx==3.AND.ny==0.AND.nz==2) libint_ordering=6
-   if(nx==2.AND.ny==3.AND.nz==0) libint_ordering=7
-   if(nx==2.AND.ny==2.AND.nz==1) libint_ordering=8
-   if(nx==2.AND.ny==1.AND.nz==2) libint_ordering=9
-   if(nx==2.AND.ny==0.AND.nz==3) libint_ordering=10
-   if(nx==1.AND.ny==4.AND.nz==0) libint_ordering=11
-   if(nx==1.AND.ny==3.AND.nz==1) libint_ordering=12
-   if(nx==1.AND.ny==2.AND.nz==2) libint_ordering=13
-   if(nx==1.AND.ny==1.AND.nz==3) libint_ordering=14
-   if(nx==1.AND.ny==0.AND.nz==4) libint_ordering=15
-   if(nx==0.AND.ny==5.AND.nz==0) libint_ordering=16
-   if(nx==0.AND.ny==4.AND.nz==1) libint_ordering=17
-   if(nx==0.AND.ny==3.AND.nz==2) libint_ordering=18
-   if(nx==0.AND.ny==2.AND.nz==3) libint_ordering=19
-   if(nx==0.AND.ny==1.AND.nz==4) libint_ordering=20
-   if(nx==0.AND.ny==0.AND.nz==5) libint_ordering=21
- case(6)
-   if(nx==6.AND.ny==0.AND.nz==0) libint_ordering=1
-   if(nx==5.AND.ny==1.AND.nz==0) libint_ordering=2
-   if(nx==5.AND.ny==0.AND.nz==1) libint_ordering=3
-   if(nx==4.AND.ny==2.AND.nz==0) libint_ordering=4
-   if(nx==4.AND.ny==1.AND.nz==1) libint_ordering=5
-   if(nx==4.AND.ny==0.AND.nz==2) libint_ordering=6
-   if(nx==3.AND.ny==3.AND.nz==0) libint_ordering=7
-   if(nx==3.AND.ny==2.AND.nz==1) libint_ordering=8
-   if(nx==3.AND.ny==1.AND.nz==2) libint_ordering=9
-   if(nx==3.AND.ny==0.AND.nz==3) libint_ordering=10
-   if(nx==2.AND.ny==4.AND.nz==0) libint_ordering=11
-   if(nx==2.AND.ny==3.AND.nz==1) libint_ordering=12
-   if(nx==2.AND.ny==2.AND.nz==2) libint_ordering=13
-   if(nx==2.AND.ny==1.AND.nz==3) libint_ordering=14
-   if(nx==2.AND.ny==0.AND.nz==4) libint_ordering=15
-   if(nx==1.AND.ny==5.AND.nz==0) libint_ordering=16
-   if(nx==1.AND.ny==4.AND.nz==1) libint_ordering=17
-   if(nx==1.AND.ny==3.AND.nz==2) libint_ordering=18
-   if(nx==1.AND.ny==2.AND.nz==3) libint_ordering=19
-   if(nx==1.AND.ny==1.AND.nz==4) libint_ordering=20
-   if(nx==1.AND.ny==0.AND.nz==5) libint_ordering=21
-   if(nx==0.AND.ny==6.AND.nz==0) libint_ordering=22
-   if(nx==0.AND.ny==5.AND.nz==1) libint_ordering=23
-   if(nx==0.AND.ny==4.AND.nz==2) libint_ordering=24
-   if(nx==0.AND.ny==3.AND.nz==3) libint_ordering=25
-   if(nx==0.AND.ny==2.AND.nz==4) libint_ordering=26
-   if(nx==0.AND.ny==1.AND.nz==5) libint_ordering=27
-   if(nx==0.AND.ny==0.AND.nz==6) libint_ordering=28
- case(7)
-   if(nx==7.AND.ny==0.AND.nz==0) libint_ordering=1
-   if(nx==6.AND.ny==1.AND.nz==0) libint_ordering=2
-   if(nx==6.AND.ny==0.AND.nz==1) libint_ordering=3
-   if(nx==5.AND.ny==2.AND.nz==0) libint_ordering=4
-   if(nx==5.AND.ny==1.AND.nz==1) libint_ordering=5
-   if(nx==5.AND.ny==0.AND.nz==2) libint_ordering=6
-   if(nx==4.AND.ny==3.AND.nz==0) libint_ordering=7
-   if(nx==4.AND.ny==2.AND.nz==1) libint_ordering=8
-   if(nx==4.AND.ny==1.AND.nz==2) libint_ordering=9
-   if(nx==4.AND.ny==0.AND.nz==3) libint_ordering=10
-   if(nx==3.AND.ny==4.AND.nz==0) libint_ordering=11
-   if(nx==3.AND.ny==3.AND.nz==1) libint_ordering=12
-   if(nx==3.AND.ny==2.AND.nz==2) libint_ordering=13
-   if(nx==3.AND.ny==1.AND.nz==3) libint_ordering=14
-   if(nx==3.AND.ny==0.AND.nz==4) libint_ordering=15
-   if(nx==2.AND.ny==5.AND.nz==0) libint_ordering=16
-   if(nx==2.AND.ny==4.AND.nz==1) libint_ordering=17
-   if(nx==2.AND.ny==3.AND.nz==2) libint_ordering=18
-   if(nx==2.AND.ny==2.AND.nz==3) libint_ordering=19
-   if(nx==2.AND.ny==1.AND.nz==4) libint_ordering=20
-   if(nx==2.AND.ny==0.AND.nz==5) libint_ordering=21
-   if(nx==1.AND.ny==6.AND.nz==0) libint_ordering=22
-   if(nx==1.AND.ny==5.AND.nz==1) libint_ordering=23
-   if(nx==1.AND.ny==4.AND.nz==2) libint_ordering=24
-   if(nx==1.AND.ny==3.AND.nz==3) libint_ordering=25
-   if(nx==1.AND.ny==2.AND.nz==4) libint_ordering=26
-   if(nx==1.AND.ny==1.AND.nz==5) libint_ordering=27
-   if(nx==1.AND.ny==0.AND.nz==6) libint_ordering=28
-   if(nx==0.AND.ny==7.AND.nz==0) libint_ordering=29
-   if(nx==0.AND.ny==6.AND.nz==1) libint_ordering=30
-   if(nx==0.AND.ny==5.AND.nz==2) libint_ordering=31
-   if(nx==0.AND.ny==4.AND.nz==3) libint_ordering=32
-   if(nx==0.AND.ny==3.AND.nz==4) libint_ordering=33
-   if(nx==0.AND.ny==2.AND.nz==5) libint_ordering=34
-   if(nx==0.AND.ny==1.AND.nz==6) libint_ordering=35
-   if(nx==0.AND.ny==0.AND.nz==7) libint_ordering=36
-
- case default
-   call die('libint_ordering not coded for this orbital momentum')
- end select
-
-end function libint_ordering
 
 !=========================================================================
 subroutine test_eri(basis)
