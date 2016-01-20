@@ -25,8 +25,8 @@ module m_dft_grid
 
  real(dp),parameter,private :: aa = 0.64 ! Scuseria value
 
- real(dp),parameter,private :: TOL_WEIGHT = 1.0e-14_DP
- real(dp),parameter,private :: TOL_BF     = 1.0e-06_DP
+ real(dp),parameter,private :: TOL_WEIGHT = 1.0e-14_dp
+ real(dp),parameter,private :: TOL_BF     = 1.0e-06_dp
 
  !
  ! Function evaluation storage

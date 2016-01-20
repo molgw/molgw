@@ -18,6 +18,8 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  use m_atoms
  use m_basis_set
  use m_eri
+ use m_eri_calculate
+ use m_eri_lr_calculate
  use m_dft_grid
  use m_spectral_function
  use m_hamiltonian
@@ -86,7 +88,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    ! Setup the grids for the quadrature of DFT potential/energy
    call init_dft_grid(grid_level)
    ! The following is coded but not used... yet!
-   call setup_bf_radius(basis)
+!   call setup_bf_radius(basis)
  endif
 
 

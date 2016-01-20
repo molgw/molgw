@@ -31,6 +31,8 @@ program molgw
  use m_gaussian
  use m_basis_set
  use m_eri
+ use m_eri_calculate
+ use m_eri_lr_calculate
  use m_dft_grid
  use m_spectral_function
  use m_hamiltonian

@@ -854,7 +854,7 @@ end subroutine setup_sqrt_density_matrix_sca
 subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  use m_basis_set
  use m_dft_grid
- use m_eri
+ use m_eri_calculate
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
  use xc_f90_lib_m
