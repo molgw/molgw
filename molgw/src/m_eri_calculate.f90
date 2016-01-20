@@ -614,9 +614,9 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  rcut_libint = 0.0_dp
 
  do klshellpair=1,nshellpair
-   !call start_clock(timing_tmp1)
    kshell = index_shellpair(1,klshellpair)
    lshell = index_shellpair(2,klshellpair)
+
    !
    ! Order the angular momenta so that libint is pleased
    ! 1) am3+am4 >= am1+am2
@@ -757,13 +757,13 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
                                x01(1),x02(1),x03(1),x04(1),&
                                rcut_libint, &
                                int_shell(1))
-  
-  
+
+
        if(info/=0) then
          write(stdout,*) am1,am2,am3,am4
          call die('ERI calculated by libint failed')
        endif
-  
+
        iibf=0
        do ibf=1,n1c
          do jbf=1,n2c
@@ -853,17 +853,12 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
 
    enddo
 
-   !call stop_clock(timing_tmp1)
-
    call barrier()
    call barrier()
 
-   !call start_clock(timing_tmp2)
    ! Parallelization over the auxiliary shell
    call xsum(eri_3tmp)
-   !call stop_clock(timing_tmp2)
 
-   !call start_clock(timing_tmp3)
    !
    ! Combine the 2-center integral with the 3-center here
    !
@@ -873,14 +868,13 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
      do lbf=1,nl
        do kbf=1,nk
          ipair = index_prod(shell(kshell)%istart+kbf-1,shell(lshell)%istart+lbf-1)
-         
+    
          eri_3center(ibf_auxil,ipair) = DOT_PRODUCT( eri_2center_m1(:,jbf_auxil) , eri_3tmp(:,kbf,lbf) )
        enddo
      enddo
   enddo
 
   deallocate(eri_3tmp)
-  !call stop_clock(timing_tmp3)
 
  enddo
 
@@ -1086,217 +1080,6 @@ subroutine calculate_eri_approximate_hartree(print_eri_,basis,m_ham,n_ham,x0_rho
 end subroutine calculate_eri_approximate_hartree
 
 
-#if 0
-!=========================================================================
-subroutine identify_negligible_shellpair(basis)
-!
-! A first screening implementation
-! Find negligible shell pair with
-! Cauchy-Schwarz inequality
-! (ij|1/r|kl)**2 <= (ij|1/r|ij) (kl|1/r|(kl) 
-!
- use m_tools,only: boys_function
- implicit none
-
- type(basis_set),intent(in)   :: basis
-!=====
- integer  :: info
- integer  :: iibf
- integer  :: ibf,jbf,kbf,lbf
- integer  :: n1c,n2c
- integer  :: ni,nj
- integer  :: ami,amj
- integer  :: ishell,jshell
- integer  :: ig1,ig2,ig3,ig4
- real(dp) :: zeta_12,rho,rho1,f0t(0:0),tt
- real(dp) :: p(3),q(3)
- real(dp),allocatable         :: integrals_tmp(:,:,:,:)
- real(dp),allocatable         :: integrals_cart(:,:,:,:)
-!=====
-! variables used to call C
- integer(C_INT),external      :: eval_contr_integral
- integer(C_INT)               :: am1,am2
- integer(C_INT)               :: ng1,ng2
- real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:)
- real(C_DOUBLE)               :: x01(3),x02(3)
- real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:)
- real(C_DOUBLE)               :: rcut_libint
- real(C_DOUBLE),allocatable   :: int_shell(:)
-!=====
-
- call start_clock(timing_eri_screening)
- write(stdout,'(/,a)')    ' Cauchy-Schwartz screening of the 3- or 4-center integrals'
-
- rcut_libint = 0.0_dp
-
- negligible_shellpair(:,:) = .TRUE.
-
- do jshell=1,nshell
-   ! Workload is distributed here
-   if( MODULO(jshell-1,nproc) /= rank ) cycle
-
-   do ishell=1,nshell
-     ami = shell(ishell)%am
-     amj = shell(jshell)%am
-     !TODO: Here time could be saved by only checking ishell<= jshell
-     ! But then an interexchange of indexes would have to be implemented in
-     ! order to satisfy ami >= amj (required condition in libint)
-     if( ami < amj ) cycle
-
-     ni = number_basis_function_am( basis%gaussian_type , ami )
-     nj = number_basis_function_am( basis%gaussian_type , amj )
-     n1c = number_basis_function_am( 'CART' , ami )
-     n2c = number_basis_function_am( 'CART' , amj )
-     am1 = shell(ishell)%am
-     am2 = shell(jshell)%am
-     ng1 = shell(ishell)%ng
-     ng2 = shell(jshell)%ng
-
-     allocate(alpha1(ng1),alpha2(ng2))
-     allocate(coeff1(ng1),coeff2(ng2))
-     alpha1(:) = shell(ishell)%alpha(:)
-     alpha2(:) = shell(jshell)%alpha(:)
-     x01(:) = shell(ishell)%x0(:)
-     x02(:) = shell(jshell)%x0(:)
-     coeff1(:) = shell(ishell)%coeff(:)
-     coeff2(:) = shell(jshell)%coeff(:)
-
-     allocate( int_shell( n1c*n2c*n1c*n2c ) )
-     allocate( integrals_cart(n1c,n2c,n1c,n2c) )
-     allocate( integrals_tmp (n1c,n2c,n1c,n2c) )
-
-     integrals_cart(:,:,:,:) = 0.0_dp
-
-     if(ami+amj==0) then
-
-       do ig4=1,ng2
-         do ig3=1,ng1
-           do ig2=1,ng2
-             do ig1=1,ng1
-
-               zeta_12 = alpha1(ig1) + alpha2(ig2)
-               p(:) = ( alpha1(ig1) * x01(:) + alpha2(ig2) * x02(:) ) / zeta_12 
-               q(:) = ( alpha1(ig3) * x01(:) + alpha2(ig4) * x02(:) ) / zeta_12 
-               !
-               ! Treat carefully the LR only integrals
-               rho  = zeta_12 * zeta_12 / ( zeta_12 + zeta_12 + zeta_12*zeta_12*rcut_libint**2 )
-               rho1 = zeta_12 * zeta_12 / ( zeta_12 + zeta_12 )
-               tt = rho * SUM( (p(:)-q(:))**2 )
-               call boys_function(f0t(0),0,tt)
-
-               integrals_cart(1,1,1,1) = integrals_cart(1,1,1,1) + &
-                     2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_12 ) * f0t(0) &
-                     / zeta_12 * EXP( -alpha1(ig1)*alpha2(ig2)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
-                     / zeta_12 * EXP( -alpha1(ig3)*alpha2(ig4)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) &
-                     * SQRT( rho / rho1 ) &
-                     * coeff1(ig1) &
-                     * coeff2(ig2) &
-                     * coeff1(ig3) &
-                     * coeff2(ig4) * cart_to_pure_norm(0)%matrix(1,1)**4
-
-             enddo
-           enddo
-         enddo
-       enddo
-
-     else
-
-       info=eval_contr_integral(                &
-                               am1,am2,am1,am2, &
-                               ng1,ng2,ng1,ng2, &
-                               coeff1(1),coeff2(1),coeff1(1),coeff2(1),&
-                               alpha1(1),alpha2(1),alpha1(1),alpha2(1),&
-                               x01(1),x02(1),x01(1),x02(1),&
-                               rcut_libint, &
-                               int_shell(1))
-
-
-       if(info/=0) then
-         write(stdout,*) am1,am2,am1,am2
-         call die('ERI calculated by libint failed')
-       endif
-
-       iibf=0
-       do ibf=1,n1c
-         do jbf=1,n2c
-           do kbf=1,n1c
-             do lbf=1,n2c
-               iibf=iibf+1
-               integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
-             enddo
-           enddo
-         enddo
-       enddo
-
-
-       do lbf=1,n2c
-         do kbf=1,n1c
-           do jbf=1,n2c
-             do ibf=1,ni
-               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1c,jbf,kbf,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1c,ibf) )
-             enddo
-           enddo
-         enddo
-       enddo
-
-       do lbf=1,n2c
-         do kbf=1,n1c
-           do jbf=1,nj
-             do ibf=1,ni
-               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2c,kbf,lbf) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2c,jbf) )
-             enddo
-           enddo
-         enddo
-       enddo
-
-       do lbf=1,n2c
-         do kbf=1,ni
-           do jbf=1,nj
-             do ibf=1,ni
-               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n1c,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1c,kbf) )
-             enddo
-           enddo
-         enddo
-       enddo
-
-       do lbf=1,nj
-         do kbf=1,ni
-           do jbf=1,nj
-             do ibf=1,ni
-               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n2c) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2c,lbf) )
-             enddo
-           enddo
-         enddo
-       enddo
-            
-     endif
-
-     do ibf=1,ni
-       do jbf=1,nj
-         if( ABS( integrals_cart(ibf,jbf,ibf,jbf) ) > TOL_INT**2 ) negligible_shellpair(ishell,jshell) = .FALSE.
-       enddo
-     enddo
-
-     !
-     ! Symmetrize
-     negligible_shellpair(jshell,ishell) = negligible_shellpair(ishell,jshell)
-
-     deallocate(integrals_cart)
-     deallocate(integrals_tmp)
-     deallocate(int_shell)
-     deallocate(alpha1,alpha2)
-     deallocate(coeff1,coeff2)
-
-   enddo
- enddo
-
- call xand(negligible_shellpair)
-
- call stop_clock(timing_eri_screening)
-
-
-end subroutine identify_negligible_shellpair
-#endif
 
 
 !=========================================================================
