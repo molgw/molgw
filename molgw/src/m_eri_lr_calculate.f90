@@ -9,6 +9,9 @@ module m_eri_lr_calculate
  use m_eri
 
 
+ real(prec_eri),private,allocatable :: eri_2center_m1_lr(:,:)
+
+
 ! TODO write a proper interface for the call to C
 ! interface
 !   integer(C_INT) function eval_contr_integral() bind(C)

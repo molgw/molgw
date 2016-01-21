@@ -1169,7 +1169,7 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
 
  lwork  = NINT(work(1))
  deallocate(work)
- allocate(work(lwork))
+ call clean_allocate('Buffer array for SCALAPACK diago',work,lwork)
 
  liwork = iwork(1)
  deallocate(iwork)
@@ -1180,7 +1180,7 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
                   work,lwork,iwork,liwork,info)
  if(info/=0) call die('SCALAPACK failed')
 
- deallocate(work)
+ call clean_deallocate('Buffer array for SCALAPACK diago',work)
  deallocate(iwork)
 
 

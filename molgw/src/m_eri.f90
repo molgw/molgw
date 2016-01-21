@@ -20,8 +20,6 @@ module m_eri
 
  real(prec_eri),public,allocatable :: eri_buffer(:)
  real(prec_eri),public,allocatable :: eri_buffer_lr(:)
- real(prec_eri),public,allocatable :: eri_2center_m1(:,:)
- real(prec_eri),public,allocatable :: eri_2center_m1_lr(:,:)
  real(prec_eri),public,allocatable :: eri_3center(:,:)
  real(prec_eri),public,allocatable :: eri_3center_lr(:,:)
  real(prec_eri),public,allocatable :: eri_3center_eigen(:,:,:,:)

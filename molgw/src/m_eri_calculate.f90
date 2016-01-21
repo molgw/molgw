@@ -8,6 +8,8 @@ module m_eri_calculate
  use m_timing
  use m_eri
 
+ real(prec_eri),private,allocatable :: eri_2center_m1(:,:)
+
 
 ! TODO write a proper interface for the call to C
 ! interface
