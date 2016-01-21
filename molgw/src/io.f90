@@ -3,10 +3,10 @@
 ! the procedures for input and outputs
 !=========================================================================
 subroutine header()
+ use,intrinsic :: iso_c_binding, only: C_INT
  use m_definitions
  use m_mpi
  use m_warning,only: issue_warning,msg
- use,intrinsic :: iso_c_binding, only: C_INT
  implicit none
  integer           :: revision
  integer           :: values(8) 

@@ -7,7 +7,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  use m_warning,only: issue_warning,msg
  use m_basis_set
  use m_spectral_function
- use m_eri,only: eri_3center_eigen,eri_3center_eigen_mixed !FBFB LW
+ use m_eri_ao_mo
  use m_tools,only: coeffs_gausslegint
  implicit none
 

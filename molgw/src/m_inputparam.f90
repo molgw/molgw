@@ -1,5 +1,6 @@
 !=========================================================================
 module m_inputparam
+ use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
  use m_definitions
  use m_atoms
  use m_basis_set
@@ -8,7 +9,6 @@ module m_inputparam
  use xc_f90_lib_m
  use xc_f90_types_m
 #endif
- use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
 
  !
  ! Method definitions

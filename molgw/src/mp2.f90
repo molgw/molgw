@@ -3,7 +3,7 @@ subroutine mp2_energy_ri(basis,occupation,energy,emp2)
  use m_definitions
  use m_mpi
  use m_basis_set
- use m_eri
+ use m_eri_ao_mo
  use m_inputparam,only: nspin,spin_fact,ncoreg,is_frozencore
  implicit none
 
@@ -123,7 +123,7 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
  use m_definitions
  use m_mpi
  use m_basis_set
- use m_eri
+ use m_eri_ao_mo
  use m_inputparam,only: nspin,spin_fact,ncoreg
  implicit none
 
@@ -320,7 +320,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
  use m_mpi
  use m_tools
  use m_basis_set
- use m_eri
+ use m_eri_ao_mo
 ! use wavefunction_object
 ! use basis
  implicit none
@@ -403,7 +403,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
 
  iconf=0
  do istate1=1,basis%nbf
-   call transform_eri_basis(1,c_matrix,istate1,1,eri_hf_i)
+   call calculate_eri_4center_eigen(basis%nbf,basis%nbf,c_matrix,istate1,1,eri_hf_i)
 
    do ispin1=1,2
 

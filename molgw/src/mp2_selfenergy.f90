@@ -4,7 +4,7 @@ subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_m
  use m_mpi
  use m_warning
  use m_basis_set
- use m_eri
+ use m_eri_ao_mo
  use m_inputparam
  implicit none
 
@@ -108,7 +108,7 @@ subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_m
  do abispin=1,nspin
    do istate=1,basis%nbf !LOOP of the first Green's function
 
-     call transform_eri_basis(nspin,c_matrix,istate,abispin,eri_eigenstate_i)
+     call calculate_eri_4center_eigen(basis%nbf,basis%nbf,c_matrix,istate,abispin,eri_eigenstate_i)
 
      fi = occupation(istate,abispin)
      ei = energy(istate,abispin)

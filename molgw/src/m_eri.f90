@@ -1,11 +1,11 @@
 !=========================================================================
 module m_eri
+ use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
  use m_definitions
  use m_mpi
  use m_memory
  use m_basis_set
  use m_timing
- use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
 
 
  real(dp),parameter,public :: TOO_LOW_EIGENVAL=1.0e-6_dp
@@ -20,10 +20,6 @@ module m_eri
  real(prec_eri),public,allocatable :: eri_4center_lr(:)
  real(prec_eri),public,allocatable :: eri_3center(:,:)
  real(prec_eri),public,allocatable :: eri_3center_lr(:,:)
-
- real(prec_eri),protected,allocatable :: eri_3center_eigen(:,:,:,:)
-!FBFB LW
- real(prec_eri),protected,allocatable :: eri_3center_eigen_mixed(:,:,:,:)
 
  logical,protected,allocatable      :: negligible_basispair(:,:)
  logical,protected,allocatable      :: negligible_shellpair(:,:)
@@ -149,7 +145,6 @@ subroutine deallocate_eri_4center_lr()
  endif
 
 end subroutine deallocate_eri_4center_lr
-
 
 
 !=========================================================================
@@ -301,34 +296,6 @@ function eri_ri_lr(ibf,jbf,kbf,lbf)
  endif
 
 end function eri_ri_lr
-
-
-!=========================================================================
-function eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
- implicit none
- integer,intent(in) :: ijspin,klspin
- integer,intent(in) :: istate,jstate,kstate,lstate
- real(dp)           :: eri_eigen_ri
-!=====
-
- eri_eigen_ri = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,ijspin) , eri_3center_eigen(:,kstate,lstate,klspin) )
-
- call xsum(eri_eigen_ri)
-
-end function eri_eigen_ri
-
-
-!=========================================================================
-function eri_eigen_ri_paral(istate,jstate,ijspin,kstate,lstate,klspin)
- implicit none
- integer,intent(in) :: ijspin,klspin
- integer,intent(in) :: istate,jstate,kstate,lstate
- real(dp)           :: eri_eigen_ri_paral
-!=====
-
- eri_eigen_ri_paral = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,ijspin) , eri_3center_eigen(:,kstate,lstate,klspin) )
-
-end function eri_eigen_ri_paral
 
 
 !=========================================================================
@@ -805,216 +772,6 @@ subroutine test_eri(basis)
  call die('TESTING OK')
 
 end subroutine test_eri
-
-
-!=================================================================
-subroutine transform_eri_basis(nspin,c_matrix,istate,ijspin,eri_eigenstate_i)
- implicit none
-
- integer,intent(in)     :: nspin,istate,ijspin
- real(dp),intent(in)    :: c_matrix(nbf_eri,nbf_eri,nspin)
- real(dp),intent(inout) :: eri_eigenstate_i(nbf_eri,nbf_eri,nbf_eri,nspin)
-!=====
- integer,save         :: istate_previous=0
- integer,save         :: ijspin_previous=0
- integer              :: klspin
- integer              :: ibf,jbf,kbf,lbf
- integer              :: jstate,kstate,lstate
- real(dp)             :: eri_tmp3(nbf_eri,nbf_eri,nbf_eri)
- real(dp)             :: wtime
-!=====
-
- ! Check if the calculation can be skipped
- if( istate_previous == istate .AND. ijspin_previous == ijspin .AND. ANY(ABS(eri_eigenstate_i(:,:,:,:))>1.0e-6_dp) ) then
-   return
- else
-   istate_previous = istate
-   ijspin_previous = ijspin
- endif
-
-
- call start_clock(timing_basis_transform)
-
- eri_eigenstate_i(:,:,:,:)=0.0_dp
- eri_tmp3(:,:,:)=0.0_dp
-
- do lbf=1,nbf_eri
-   do kbf=1,nbf_eri
-     do jbf=1,nbf_eri
-
-       do ibf=1,nbf_eri
-         eri_tmp3(jbf,kbf,lbf) = eri_tmp3(jbf,kbf,lbf) + eri(ibf,jbf,kbf,lbf) * c_matrix(ibf,istate,ijspin) 
-       enddo
-
-
-     enddo
-   enddo
- enddo
-
- do lbf=1,nbf_eri
-   do kbf=1,nbf_eri
-
-     do jstate=1,nbf_eri
-       eri_eigenstate_i(jstate,kbf,lbf,nspin) = DOT_PRODUCT( eri_tmp3(:,kbf,lbf) , c_matrix(:,jstate,ijspin) )
-     enddo
-
-   enddo
- enddo
-
-
-  
- do klspin=1,nspin
-
-   do lbf=1,nbf_eri
-     do kstate=1,nbf_eri
-       do jstate=1,nbf_eri
-         eri_tmp3(jstate,kstate,lbf) = DOT_PRODUCT( eri_eigenstate_i(jstate,:,lbf,nspin) , c_matrix(:,kstate,klspin) )
-       enddo
-     enddo
-   enddo
-
-   do lstate=1,nbf_eri
-     do kstate=1,nbf_eri
-       do jstate=1,nbf_eri
-
-         eri_eigenstate_i(jstate,kstate,lstate,klspin) = DOT_PRODUCT( eri_tmp3(jstate,kstate,:) , c_matrix(:,lstate,klspin) )
-
-       enddo
-     enddo
-   enddo
-
- enddo !klspin
-
- call stop_clock(timing_basis_transform)
-
-end subroutine transform_eri_basis
-
-
-!=================================================================
-subroutine prepare_eri_3center_eigen(c_matrix)
- use m_inputparam,only: nspin
- implicit none
- real(dp),intent(in)  :: c_matrix(nbf_eri,nbf_eri,nspin)
-!=====
- integer              :: kbf,lbf
- integer              :: kstate,lstate
- integer              :: klspin
- real(dp),allocatable :: eri_3center_tmp(:,:,:)
- integer              :: ipair
-!=====
-
- call start_clock(timing_eri_3center_eigen)
-
- write(stdout,'(/,a)') ' Calculate 3-center integrals on eigenstates'
-
-
- !TODO merge the 2 last indexes for prod_basis save a factor 2! (i<->j symmetry)
- call clean_allocate('3-center MO integrals',eri_3center_eigen,nauxil_3center,nbf_eri,nbf_eri,nspin)
-
- allocate(eri_3center_tmp(nauxil_3center,nbf_eri,nbf_eri)) 
- eri_3center_eigen(:,:,:,:) = 0.0_dp
- do klspin=1,nspin
-   ! Transformation of the first index
-   eri_3center_tmp(:,:,:) = 0.0_dp
-   do lstate=1,nbf_eri
-     do ipair=1,npair
-       kbf = index_basis(1,ipair)
-       lbf = index_basis(2,ipair)
-       eri_3center_tmp(:,kbf,lstate) = eri_3center_tmp(:,kbf,lstate) &
-                                       + c_matrix(lbf,lstate,klspin) * eri_3center(:,ipair)
-       if( kbf /= lbf )  &
-         eri_3center_tmp(:,lbf,lstate) = eri_3center_tmp(:,lbf,lstate) &
-                                         + c_matrix(kbf,lstate,klspin) * eri_3center(:,ipair)
-
-     enddo
-   enddo
-
-   ! Transformation of the second index
-   do lstate=1,nbf_eri
-     eri_3center_eigen(:,:,lstate,klspin) = MATMUL( eri_3center_tmp(:,:,lstate) , c_matrix(:,:,klspin) )
-   enddo
-
- enddo ! klspin
- deallocate(eri_3center_tmp)
-
- call stop_clock(timing_eri_3center_eigen)
-
-end subroutine prepare_eri_3center_eigen
-
-
-!=================================================================
-subroutine prepare_eri_3center_eigen_mixed(c_matrix)
- use m_inputparam,only: nspin
- implicit none
- real(dp),intent(in)  :: c_matrix(nbf_eri,nbf_eri,nspin)
-!=====
- integer              :: kbf,lbf
- integer              :: kstate,lstate
- integer              :: klspin
- real(dp),allocatable :: eri_3center_tmp(:,:,:)
- real(dp),allocatable :: c_matrix_exx(:,:,:)
- logical              :: file_exists
-!=====
-
- call start_clock(timing_eri_3center_eigen)
-
- inquire(file='fort.1000',exist=file_exists)
- if( .NOT. file_exists ) call die('fort.1000 not found')
-
- allocate(c_matrix_exx(nbf_eri,nbf_eri,nspin))
- open(1000,form='unformatted')
- do klspin=1,nspin
-   do lstate=1,nbf_eri
-     read(1000) c_matrix_exx(:,lstate,klspin)
-   enddo
- enddo
- close(1000,status='delete')
-
-
- write(stdout,'(/,a)') ' Calculate 3-center integrals on MIXED eigenstates'
-
-
- !TODO merge the 2 last indexes for prod_basis save a factor 2! (i<->j symmetry)
- call clean_allocate('3-center MO integrals',eri_3center_eigen_mixed,nauxil_3center,nbf_eri,nbf_eri,nspin)
-
- allocate(eri_3center_tmp(nauxil_3center,nbf_eri,nbf_eri)) 
- eri_3center_eigen_mixed(:,:,:,:) = 0.0_dp
- do klspin=1,nspin
-   ! Transformation of the first index
-   eri_3center_tmp(:,:,:) = 0.0_dp
-   do kbf=1,nbf_eri
-     do lbf=1,nbf_eri
-       if( negligible_basispair(kbf,lbf) ) cycle
-
-         do lstate=1,nbf_eri
-           eri_3center_tmp(:,kbf,lstate) = eri_3center_tmp(:,kbf,lstate) &
-                                      + c_matrix_exx(lbf,lstate,klspin) * eri_3center(:,index_prod(kbf,lbf))
-         enddo
-
-     enddo
-   enddo
-   ! Transformation of the second index
-   do lstate=1,nbf_eri
-     eri_3center_eigen_mixed(:,:,lstate,klspin) = MATMUL( eri_3center_tmp(:,:,lstate) , c_matrix(:,:,klspin) )
-   enddo
-
- enddo ! klspin
- deallocate(eri_3center_tmp)
-
- call stop_clock(timing_eri_3center_eigen)
-
-end subroutine prepare_eri_3center_eigen_mixed
-
-
-!=================================================================
-subroutine destroy_eri_3center_eigen()
- implicit none
-!=====
-
- write(stdout,'(/,a)') ' Destroy 3-center integrals on eigenstates'
- call clean_deallocate('3-center MO integrals',eri_3center_eigen)
-
-end subroutine destroy_eri_3center_eigen
 
 
 !=================================================================

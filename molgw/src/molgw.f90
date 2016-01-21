@@ -33,6 +33,7 @@ program molgw
  use m_eri
  use m_eri_calculate
  use m_eri_lr_calculate
+ use m_eri_ao_mo
  use m_dft_grid
  use m_spectral_function
  use m_hamiltonian
@@ -67,6 +68,7 @@ program molgw
  real(dp),allocatable    :: s_eigval(:)
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
+ integer                 :: nstate0
  integer                 :: m_ham,n_ham
  integer                 :: m_ov,n_ov
 !=============================
@@ -101,6 +103,7 @@ program molgw
  !
  write(stdout,*) 'Setting up the basis set for wavefunctions'
  call init_basis_set(basis_path,basis_name,gaussian_type,basis)
+ nstate0 = basis%nbf
  call setup_cart_to_pure_transforms(gaussian_type)
 
  !
@@ -362,7 +365,7 @@ program molgw
 
    if(calc_type%is_td .AND. calc_type%is_dft) call init_dft_grid(grid_level)
    if(has_auxil_basis) then
-     call prepare_eri_3center_eigen(c_matrix)
+     call calculate_eri_3center_eigen(basis%nbf,nstate0,c_matrix)
      call destroy_eri_3center()
    endif
 
@@ -407,9 +410,9 @@ program molgw
    if( calc_type%is_lr_mbpt ) call die('lr_mbpt code removed. Does not exist anymore')
 
    if(has_auxil_basis) then
-     call prepare_eri_3center_eigen(c_matrix)
+     call calculate_eri_3center_eigen(basis%nbf,nstate0,c_matrix)
      if( calc_type%gwmethod == LW .OR. calc_type%gwmethod == LW2 .OR. calc_type%gwmethod == GSIGMA ) &
-         call prepare_eri_3center_eigen_mixed(c_matrix) ! FBFB LW
+         call calculate_eri_3center_eigen_mixed(basis%nbf,nstate0,c_matrix)
      call destroy_eri_3center()
    endif
 
@@ -444,9 +447,8 @@ program molgw
  ! final evaluation for MP2
  if( calc_type%is_mp2 .AND. calc_type%gwmethod == perturbative ) then
 
-! This routine is faster but only gives the correlation energy
    if(has_auxil_basis) then
-     call prepare_eri_3center_eigen(c_matrix)
+     call calculate_eri_3center_eigen(basis%nbf,nstate0,c_matrix)
      call mp2_energy_ri(basis,occupation,energy,en%mp2)
      call destroy_eri_3center_eigen()
    else

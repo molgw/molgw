@@ -28,6 +28,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
  real(dp),intent(out)                  :: rpa_correlation
  type(spectral_function),intent(inout) :: wpol_out
 !=====
+ integer                   :: nstate0
  integer                   :: t_ij,t_kl
  type(spectral_function)   :: wpol_static
  integer                   :: nmat
@@ -50,6 +51,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
 !=====
 
  call start_clock(timing_pola)
+ nstate0 = basis%nbf
 
  write(stdout,'(/,a)') ' Calculating the polarizability'
  if(is_triplet) then
@@ -151,11 +153,11 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
  amb_matrix(:,:) = 0.0_dp
  write(stdout,'(/,a)') ' Build the electron-hole hamiltonian'
  ! Step 1
- call build_amb_apb_common(nmat,basis%nbf,c_matrix,energy_qp,wpol_out,alpha_local,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
+ call build_amb_apb_common(nmat,basis%nbf,nstate0,c_matrix,energy_qp,wpol_out,alpha_local,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
 
  ! Calculate the diagonal separately: it's needed for the single pole approximation
  if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) & 
-     call build_a_diag_common(nmat,basis%nbf,c_matrix,energy_qp,wpol_out,a_diag)
+     call build_a_diag_common(nmat,basis%nbf,nstate0,c_matrix,energy_qp,wpol_out,a_diag)
 
  ! Step 2
  if(is_tddft) call build_apb_tddft(nmat,basis,c_matrix,occupation,wpol_out,m_apb,n_apb,apb_matrix)
@@ -245,7 +247,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
         call chi_to_sqrtvchisqrtv_auxil_spa(basis%nbf,auxil_basis%nbf_local,a_diag,wpol_out)
 
    else
-     call chi_to_vchiv(basis%nbf,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol_out)
+     call chi_to_vchiv(basis%nbf,nstate0,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol_out)
    endif
   
  
@@ -271,15 +273,15 @@ end subroutine polarizability
 
 
 !=========================================================================
-subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
- use m_spectral_function
- use m_eri
+subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
  use m_tools 
+ use m_spectral_function
+ use m_eri_ao_mo
  implicit none
 
- integer,intent(in)                 :: nmat,nbf
- real(dp),intent(in)                :: energy(nbf,nspin)
- real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
+ integer,intent(in)                 :: nmat,nbf,nstate
+ real(dp),intent(in)                :: energy(nstate,nspin)
+ real(dp),intent(in)                :: c_matrix(nbf,nstate,nspin)
  type(spectral_function),intent(in) :: wpol
  real(dp),intent(in)                :: alpha_local
  integer,intent(in)                 :: m_apb,n_apb
@@ -306,7 +308,7 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
  write(stdout,'(a,f8.3)') ' Content of Exchange: ',alpha_local
 
  if( .NOT. has_auxil_basis) then
-   allocate(eri_eigenstate_klmin(nbf,nbf,nbf,nspin))
+   allocate(eri_eigenstate_klmin(nstate,nstate,nstate,nspin))
    ! Set this to zero and then enforce the calculation of the first series of
    ! Coulomb integrals
    eri_eigenstate_klmin(:,:,:,:) = 0.0_dp
@@ -339,7 +341,7 @@ subroutine build_amb_apb_common(nmat,nbf,c_matrix,energy,wpol,alpha_local,m_apb,
        if( .NOT. has_auxil_basis ) then
          klmin = MIN(kstate,lstate)
          k_is_klmin = (klmin == kstate)
-         call transform_eri_basis(nspin,c_matrix,klmin,klspin,eri_eigenstate_klmin)
+         call calculate_eri_4center_eigen(nbf,nstate,c_matrix,klmin,klspin,eri_eigenstate_klmin)
        endif
     
        do t_ij=1,m_apb_block
@@ -429,15 +431,15 @@ end subroutine build_amb_apb_common
 
 
 !=========================================================================
-subroutine build_a_diag_common(nmat,nbf,c_matrix,energy,wpol,a_diag)
+subroutine build_a_diag_common(nmat,nbf,nstate,c_matrix,energy,wpol,a_diag)
  use m_spectral_function
- use m_eri
+ use m_eri_ao_mo
  use m_tools 
  implicit none
 
- integer,intent(in)                 :: nmat,nbf
- real(dp),intent(in)                :: energy(nbf,nspin)
- real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
+ integer,intent(in)                 :: nmat,nbf,nstate
+ real(dp),intent(in)                :: energy(nstate,nspin)
+ real(dp),intent(in)                :: c_matrix(nbf,nstate,nspin)
  type(spectral_function),intent(in) :: wpol
  real(prec_td),intent(out)          :: a_diag(wpol%npole_reso_spa)
 !=====
@@ -461,7 +463,7 @@ subroutine build_a_diag_common(nmat,nbf,c_matrix,energy,wpol,a_diag)
  endif
 
  if( .NOT. has_auxil_basis) then
-   allocate(eri_eigenstate_klmin(nbf,nbf,nbf,nspin))
+   allocate(eri_eigenstate_klmin(nstate,nstate,nstate,nspin))
    ! Set this to zero and then enforce the calculation of the first series of
    ! Coulomb integrals
    eri_eigenstate_klmin(:,:,:,:) = 0.0_dp
@@ -481,7 +483,7 @@ subroutine build_a_diag_common(nmat,nbf,c_matrix,energy,wpol,a_diag)
    if( .NOT. has_auxil_basis ) then
      klmin = MIN(kstate,lstate)
      k_is_klmin = (klmin == kstate)
-     call transform_eri_basis(nspin,c_matrix,klmin,klspin,eri_eigenstate_klmin)
+     call calculate_eri_4center_eigen(nbf,nstate,c_matrix,klmin,klspin,eri_eigenstate_klmin)
    endif
 
    if(has_auxil_basis) then
@@ -736,7 +738,7 @@ end subroutine build_apb_tddft
 subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
  use m_spectral_function
  use m_basis_set
- use m_eri
+ use m_eri_ao_mo
  use m_tools 
  implicit none
 
@@ -824,7 +826,7 @@ end subroutine build_amb_apb_bse
 subroutine build_amb_apb_bse_auxil(nmat,nbf,c_matrix,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
  use m_spectral_function
  use m_basis_set
- use m_eri
+ use m_eri_ao_mo
  use m_tools 
  implicit none
 
@@ -1040,7 +1042,7 @@ end subroutine build_amb_apb_bse_auxil
 !=========================================================================
 subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
  use m_spectral_function
- use m_eri
+! use m_eri
  use m_tools 
  implicit none
 
@@ -1135,7 +1137,7 @@ end subroutine diago_4blocks_sqrt
 subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
                               eigenvalue,desc_x,m_x,n_x,bigx,bigy)
  use m_spectral_function
- use m_eri
+! use m_eri
  use m_tools 
  implicit none
 
@@ -1734,6 +1736,7 @@ end subroutine stopping_power
 
 !=========================================================================
 subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2sigma2,wf_r,wf_gradr,rho_gradr)
+ use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
  use m_dft_grid
  use m_basis_set
  use m_hamiltonian
@@ -1742,7 +1745,6 @@ subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2r
  use xc_f90_lib_m
  use xc_f90_types_m
 #endif
- use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
  implicit none
 
  integer,intent(in)               :: nspin_tddft
@@ -1974,17 +1976,17 @@ end subroutine get_energy_qp
 
 
 !=========================================================================
-subroutine chi_to_vchiv(nbf,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol)
+subroutine chi_to_vchiv(nbf,nstate,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol)
  use m_definitions
  use m_warning
  use m_basis_set
- use m_eri
+ use m_eri_ao_mo
  use m_spectral_function
  implicit none
  
- integer,intent(in)                    :: nbf
+ integer,intent(in)                    :: nbf,nstate
  type(basis_set),intent(in)            :: prod_basis
- real(dp),intent(in)                   :: c_matrix(nbf,nbf,nspin)
+ real(dp),intent(in)                   :: c_matrix(nbf,nstate,nspin)
  type(spectral_function),intent(inout) :: wpol
  real(prec_td),intent(in)              :: bigx(wpol%npole_reso_apb,wpol%npole_reso_apb)
  real(prec_td),intent(in)              :: bigy(wpol%npole_reso_apb,wpol%npole_reso_apb)
@@ -2025,7 +2027,7 @@ subroutine chi_to_vchiv(nbf,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol)
 
    klstate_min = MIN(kstate,lstate)
    klstate_max = MAX(kstate,lstate)
-   call transform_eri_basis(nspin,c_matrix,klstate_min,klspin,eri_eigenstate_klmin)
+   call calculate_eri_4center_eigen(nbf,nstate,c_matrix,klstate_min,klspin,eri_eigenstate_klmin)
 
    do ijspin=1,nspin
      do ijstate=1,prod_basis%nbf
@@ -2062,7 +2064,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eig
  use m_definitions
  use m_warning
  use m_basis_set
- use m_eri
+ use m_eri_ao_mo
  use m_spectral_function
  implicit none
  
@@ -2190,7 +2192,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,nbf_auxil,a_diag,wpol)
  use m_definitions
  use m_warning
  use m_basis_set
- use m_eri
+ use m_eri_ao_mo
  use m_spectral_function
  implicit none
  

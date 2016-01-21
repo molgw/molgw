@@ -1,5 +1,6 @@
 !=========================================================================
 subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,exc_xc)
+ use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
  use m_definitions
  use m_mpi
  use m_timing
@@ -11,7 +12,6 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,ex
  use xc_f90_lib_m
  use xc_f90_types_m
 #endif
- use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
  implicit none
 
  type(basis_set),intent(in) :: basis

@@ -15,7 +15,7 @@ subroutine static_polarizability(basis,auxil_basis,occupation,energy,wpol_out)
  use m_tools
  use m_basis_set
  use m_spectral_function
- use m_eri
+ use m_eri_ao_mo
  implicit none
 
  type(basis_set),intent(in)            :: basis,auxil_basis

@@ -20,6 +20,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  use m_eri
  use m_eri_calculate
  use m_eri_lr_calculate
+ use m_eri_ao_mo
  use m_dft_grid
  use m_spectral_function
  use m_hamiltonian
@@ -44,6 +45,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
  real(dp),intent(inout)             :: occupation(basis%nbf,nspin)
  real(dp),intent(inout)             :: energy(basis%nbf,nspin)
 !=====
+ integer                 :: nstate0
  type(spectral_function) :: wpol
  logical                 :: is_converged,stopfile_found,file_exists
  integer                 :: ispin,iscf,istate
@@ -65,6 +67,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
 
  call start_clock(timing_scf)
+ nstate0 = basis%nbf
 
 
  !
@@ -199,7 +202,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    if( calc_type%is_gw .AND. ( calc_type%gwmethod == QS .OR. calc_type%gwmethod == QSCOHSEX) &
        .AND. iscf > 5 ) then
 
-     if(has_auxil_basis) call prepare_eri_3center_eigen(c_matrix)
+     if(has_auxil_basis) call calculate_eri_3center_eigen(basis%nbf,nstate0,c_matrix)
      call init_spectral_function(basis%nbf,nstate,occupation,wpol)
      call polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
 
