@@ -19,6 +19,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
  use m_tools
  use m_basis_set
  use m_spectral_function
+ use m_eri_ao_mo
  implicit none
 
  type(basis_set),intent(in)            :: basis,prod_basis,auxil_basis
@@ -59,6 +60,9 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
  else
    write(stdout,'(a)') ' Singlet state'
  endif
+
+ if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate0,c_matrix)
+
  
  ! Set up all the switches to be able to treat
  ! GW, BSE, TDHF, TDDFT (semilocal or hybrid)
@@ -182,6 +186,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
    amb_matrix(:,:) = apb_matrix(:,:) 
  endif
  ! Construction done!
+ if(has_auxil_basis) call destroy_eri_3center_eigen()
 
  call stop_clock(timing_build_h2p)
 
@@ -220,6 +225,8 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
  endif
 
  write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy (eV):',MINVAL(ABS(eigenvalue(:)))*Ha_eV
+
+ if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate0,c_matrix)
 
  !
  ! Calculate the optical sprectrum
@@ -262,6 +269,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
  call clean_deallocate('X',bigx)
  call clean_deallocate('Y',bigy)
 
+ if(has_auxil_basis) call destroy_eri_3center_eigen()
 
  if(ALLOCATED(eigenvalue)) deallocate(eigenvalue)
  if(ALLOCATED(a_diag))     deallocate(a_diag)

@@ -21,6 +21,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  real(dp),intent(out)               :: energy_gw
 !=====
  logical               :: file_exists=.FALSE.
+ integer               :: nstate0
  integer               :: homo
  integer               :: nomegai
  integer               :: iomegai
@@ -80,6 +81,12 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    write(stdout,*) 'Perform an eigenvalue self-consistent GnWn calculation'
  end select
 
+ nstate0 = basis%nbf
+ if(has_auxil_basis) then
+   call calculate_eri_3center_eigen(basis%nbf,nstate0,c_matrix)
+   if( calc_type%gwmethod == LW .OR. calc_type%gwmethod == LW2 .OR. calc_type%gwmethod == GSIGMA ) &
+       call calculate_eri_3center_eigen_mixed(basis%nbf,nstate0,c_matrix)
+ endif
 
  !
  ! Set the range of states on which to evaluate the self-energy
@@ -183,7 +190,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
 
  do ispin=1,nspin
-   do istate=1,basis%nbf !INNER LOOP of G
+   do istate=1,nstate0 !INNER LOOP of G
      if(gwmethod==LW .or. gwmethod==LW2) write(stdout,*) 'FBFB LW',istate
      !
      ! Apply the frozen core and frozen virtual approximation to G
@@ -701,6 +708,12 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
 
  call clean_deallocate('Temporary array',bra)
  if(ALLOCATED(bra_exx)) call clean_deallocate('Temporary array for LW',bra_exx)
+
+ if(has_auxil_basis) then
+   call destroy_eri_3center_eigen()
+   if( calc_type%gwmethod == LW .OR. calc_type%gwmethod == LW2 .OR. calc_type%gwmethod == GSIGMA ) &
+       call calculate_eri_3center_eigen_mixed(basis%nbf,nstate0,c_matrix)
+ endif
 
  if(ALLOCATED(omegai)) deallocate(omegai)
  if(ALLOCATED(omegac)) deallocate(omegac)

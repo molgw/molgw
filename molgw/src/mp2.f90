@@ -1,5 +1,7 @@
 !==================================================================
-subroutine mp2_energy_ri(basis,occupation,energy,emp2)
+
+!==================================================================
+subroutine mp2_energy_ri(basis,occupation,energy,c_matrix,emp2)
  use m_definitions
  use m_mpi
  use m_basis_set
@@ -9,8 +11,10 @@ subroutine mp2_energy_ri(basis,occupation,energy,emp2)
 
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(basis%nbf,nspin),energy(basis%nbf,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: emp2
 !=====
+ integer                    :: nstate0
  integer                    :: astate,bstate,istate,jstate
  integer                    :: ibf,jbf,abf,bbf,iaspin,jbspin
  real(dp)                   :: energy_denom
@@ -25,8 +29,11 @@ subroutine mp2_energy_ri(basis,occupation,energy,emp2)
 !=====
 
  call start_clock(timing_mp2_energy)
+ nstate0=basis%nbf
 
  write(stdout,'(/,a)') ' RI-MP2 correlation calculation'
+
+ call calculate_eri_3center_eigen(basis%nbf,nstate0,c_matrix)
 
  ncore = ncoreg
  if(is_frozencore) then
@@ -113,6 +120,7 @@ subroutine mp2_energy_ri(basis,occupation,energy,emp2)
  write(stdout,'(a,f16.10)')   ' SOX diagram     :',contrib2
  write(stdout,'(a,f16.10,/)') ' MP2 correlation :',emp2
 
+ call destroy_eri_3center_eigen()
  call stop_clock(timing_mp2_energy)
 
 end subroutine mp2_energy_ri

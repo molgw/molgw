@@ -202,7 +202,6 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    if( calc_type%is_gw .AND. ( calc_type%gwmethod == QS .OR. calc_type%gwmethod == QSCOHSEX) &
        .AND. iscf > 5 ) then
 
-     if(has_auxil_basis) call calculate_eri_3center_eigen(basis%nbf,nstate0,c_matrix)
      call init_spectral_function(basis%nbf,nstate,occupation,wpol)
      call polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
 
@@ -213,7 +212,6 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
      exchange_m_vxc_diag(:,:)=0.0_dp
      call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
-     if(has_auxil_basis) call destroy_eri_3center_eigen()
 
      if( .NOT. ALLOCATED(self_energy_old) ) then
        allocate(self_energy_old(basis%nbf,basis%nbf,nspin))

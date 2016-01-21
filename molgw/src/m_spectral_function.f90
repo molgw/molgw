@@ -72,13 +72,13 @@ contains
 
 
 !=========================================================================
-subroutine init_spectral_function(nbf,nstate,occupation,sf)
+subroutine init_spectral_function(nstate0,nstate,occupation,sf)
  implicit none
- integer,intent(in)                    :: nbf,nstate
- real(dp),intent(in)                   :: occupation(nbf,nspin)
+ integer,intent(in)                    :: nstate0,nstate
+ real(dp),intent(in)                   :: occupation(nstate0,nspin)
  type(spectral_function),intent(out)   :: sf
 !=====
- integer                               :: ijspin,ibf,jbf,itrans,jtrans
+ integer                               :: ijspin,istate,jstate,itrans,jtrans
  logical                               :: file_exists
 !=====
 
@@ -108,10 +108,10 @@ subroutine init_spectral_function(nbf,nstate,occupation,sf)
  ! First, count the number of resonant transitions
  itrans=0
  do ijspin=1,nspin
-   do ibf=1,nbf
-     do jbf=1,nbf
-       if( skip_transition(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) cycle
-       if( occupation(jbf,ijspin) - occupation(ibf,ijspin) > 0.0_dp ) cycle
+   do istate=1,nstate0
+     do jstate=1,nstate0
+       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
+       if( occupation(jstate,ijspin) - occupation(istate,ijspin) > 0.0_dp ) cycle
        itrans = itrans + 1
      enddo
    enddo
@@ -122,14 +122,14 @@ subroutine init_spectral_function(nbf,nstate,occupation,sf)
  ! Set the transition_table 
  itrans=0
  do ijspin=1,nspin
-   do ibf=1,nbf
-     do jbf=1,nbf
-       if( skip_transition(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) cycle
-       if( occupation(jbf,ijspin) - occupation(ibf,ijspin) > 0.0_dp ) cycle
+   do istate=1,nstate0
+     do jstate=1,nstate0
+       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
+       if( occupation(jstate,ijspin) - occupation(istate,ijspin) > 0.0_dp ) cycle
        itrans = itrans + 1
        ! Set the resonant transition table
-       sf%transition_table(1,itrans) = ibf
-       sf%transition_table(2,itrans) = jbf
+       sf%transition_table(1,itrans) = istate
+       sf%transition_table(2,itrans) = jstate
        sf%transition_table(3,itrans) = ijspin
      enddo
    enddo
@@ -144,11 +144,11 @@ subroutine init_spectral_function(nbf,nstate,occupation,sf)
  ! First, count the number of resonant transitions
  itrans=0
  do ijspin=1,nspin
-   do ibf=1,nbf
-     do jbf=1,nbf
-       if( skip_transition(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) cycle
-       if( skip_transition_apb(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) cycle
-       if( occupation(jbf,ijspin) - occupation(ibf,ijspin) > 0.0_dp ) cycle
+   do istate=1,nstate0
+     do jstate=1,nstate0
+       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
+       if( skip_transition_apb(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
+       if( occupation(jstate,ijspin) - occupation(istate,ijspin) > 0.0_dp ) cycle
        itrans = itrans + 1
      enddo
    enddo
@@ -162,22 +162,22 @@ subroutine init_spectral_function(nbf,nstate,occupation,sf)
  itrans=0
  jtrans=0
  do ijspin=1,nspin
-   do ibf=1,nbf
-     do jbf=1,nbf
-       if( skip_transition(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) cycle
-       if( occupation(jbf,ijspin) - occupation(ibf,ijspin) > 0.0_dp ) cycle
+   do istate=1,nstate0
+     do jstate=1,nstate0
+       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
+       if( occupation(jstate,ijspin) - occupation(istate,ijspin) > 0.0_dp ) cycle
 
-       if( .NOT. skip_transition_apb(nspin,jbf,ibf,occupation(jbf,ijspin),occupation(ibf,ijspin)) ) then
+       if( .NOT. skip_transition_apb(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) then
          itrans = itrans + 1
          ! Set the resonant transition table
-         sf%transition_table_apb(1,itrans) = ibf
-         sf%transition_table_apb(2,itrans) = jbf
+         sf%transition_table_apb(1,itrans) = istate
+         sf%transition_table_apb(2,itrans) = jstate
          sf%transition_table_apb(3,itrans) = ijspin
        else
          jtrans = jtrans + 1
          ! Set the resonant transition table
-         sf%transition_table_spa(1,jtrans) = ibf
-         sf%transition_table_spa(2,jtrans) = jbf
+         sf%transition_table_spa(1,jtrans) = istate
+         sf%transition_table_spa(2,jtrans) = jstate
          sf%transition_table_spa(3,jtrans) = ijspin
        endif
 

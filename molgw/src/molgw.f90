@@ -156,9 +156,9 @@ program molgw
  ! 2D arrays
  allocate(c_matrix(m_ham,n_ham,nspin))
  ! 1D arrays
- allocate(         occupation(basis%nbf,nspin))
- allocate(             energy(basis%nbf,nspin))
- allocate(exchange_m_vxc_diag(basis%nbf,nspin))
+ allocate(         occupation(nstate0,nspin))
+ allocate(             energy(nstate0,nspin))
+ allocate(exchange_m_vxc_diag(nstate0,nspin))
 
 
  !
@@ -186,7 +186,7 @@ program molgw
  !
  ! Build the occupation array
  ! with zero temperature since we do not have the energy yet
- call set_occupation(basis%nbf,0.0_dp,electrons,magnetization,energy,occupation)
+ call set_occupation(nstate0,0.0_dp,electrons,magnetization,energy,occupation)
 
  !
  ! Try to read a RESTART file if it exists
@@ -364,17 +364,12 @@ program molgw
  if(calc_type%is_td .OR. calc_type%is_bse) then
 
    if(calc_type%is_td .AND. calc_type%is_dft) call init_dft_grid(grid_level)
-   if(has_auxil_basis) then
-     call calculate_eri_3center_eigen(basis%nbf,nstate0,c_matrix)
-     call destroy_eri_3center()
-   endif
 
    call init_spectral_function(basis%nbf,nstate,occupation,wpol)
    call polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
    call destroy_spectral_function(wpol)
 
    if(calc_type%is_td .AND. calc_type%is_dft) call destroy_dft_grid()
-   if(has_auxil_basis) call destroy_eri_3center_eigen()
 
  endif
   
@@ -409,14 +404,8 @@ program molgw
    ! A section under development for the range-separated RPA
    if( calc_type%is_lr_mbpt ) call die('lr_mbpt code removed. Does not exist anymore')
 
-   if(has_auxil_basis) then
-     call calculate_eri_3center_eigen(basis%nbf,nstate0,c_matrix)
-     if( calc_type%gwmethod == LW .OR. calc_type%gwmethod == LW2 .OR. calc_type%gwmethod == GSIGMA ) &
-         call calculate_eri_3center_eigen_mixed(basis%nbf,nstate0,c_matrix)
-     call destroy_eri_3center()
-   endif
-
    call init_spectral_function(basis%nbf,nstate,occupation,wpol)
+
    ! Try to read a spectral function file in order to skip the calculation
    call read_spectral_function(wpol,reading_status)
    ! If reading has failed, then do the calculation
@@ -430,7 +419,6 @@ program molgw
 
    allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
    call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
-   if(has_auxil_basis) call destroy_eri_3center_eigen()
 
    if( ABS(en%gw) > 1.0e-5_dp ) then
      write(stdout,'(/,a,f19.10)') ' Galitskii-Migdal Total energy (Ha): ',en%tot - en%rpa + en%gw
@@ -448,9 +436,7 @@ program molgw
  if( calc_type%is_mp2 .AND. calc_type%gwmethod == perturbative ) then
 
    if(has_auxil_basis) then
-     call calculate_eri_3center_eigen(basis%nbf,nstate0,c_matrix)
-     call mp2_energy_ri(basis,occupation,energy,en%mp2)
-     call destroy_eri_3center_eigen()
+     call mp2_energy_ri(basis,occupation,energy,c_matrix,en%mp2)
    else
      call mp2_energy_fast(basis,occupation,c_matrix,energy,en%mp2)
    endif
