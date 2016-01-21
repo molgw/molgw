@@ -10,8 +10,6 @@ module m_eri
 
  real(dp),parameter,public :: TOO_LOW_EIGENVAL=1.0e-6_dp
 
- integer,parameter :: BUFFER1 = 1
- integer,parameter :: BUFFER2 = 2
  !
  ! max length of a record in the ERI file
  integer,parameter,private :: line_length=1000
@@ -82,13 +80,11 @@ contains
 
 
 !=========================================================================
-subroutine prepare_eri(basis,rcut,which_buffer)
+subroutine prepare_eri(basis)
  use m_inputparam,only: integral_level
  implicit none
 !===== 
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: rcut
- integer,intent(in)         :: which_buffer
 !===== 
  logical            :: file_exists
 !===== 

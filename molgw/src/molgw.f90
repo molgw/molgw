@@ -162,7 +162,7 @@ program molgw
  ! Set up the electron repulsion integrals
  !
  ! ERI are stored "privately" in the module m_eri
- call prepare_eri(basis,0.0_dp,BUFFER1)
+ call prepare_eri(basis)
  if( .NOT. is_full_auxil) then
    call calculate_eri(print_eri_,basis)
  endif
@@ -171,7 +171,6 @@ program molgw
  !
  ! for Range-separated hybrids, calculate the long-range ERI
  if(calc_type%need_exchange_lr) then
-   call prepare_eri(basis,rcut,BUFFER2)
    if( .NOT. is_full_auxil) then
      call calculate_eri_lr(print_eri_,basis,rcut)
    endif
