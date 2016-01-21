@@ -30,11 +30,11 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
  type(spectral_function),intent(inout) :: wpol_out
 !=====
  integer                   :: nstate0
- integer                   :: t_ij,t_kl
  type(spectral_function)   :: wpol_static
  integer                   :: nmat
  real(dp)                  :: energy_gm
  real(dp)                  :: alpha_local
+ real(dp),allocatable      :: amb_diag_rpa(:)
  real(prec_td),allocatable :: amb_matrix(:,:),apb_matrix(:,:)
  real(prec_td),allocatable :: a_diag(:)
  real(prec_td),allocatable :: bigx(:,:),bigy(:,:)
@@ -142,6 +142,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
  call init_desc('S',nmat,nmat,desc_apb,m_apb,n_apb)
  call clean_allocate('A+B',apb_matrix,m_apb,n_apb)
  call clean_allocate('A-B',amb_matrix,m_apb,n_apb)
+ allocate(amb_diag_rpa(nmat))
 
  ! A diagonal is owned by all procs (= no distribution)
  ! wpol_out%npole_reso_spa are the pole not explictely counted in wpol_out%npole_reso_apb
@@ -157,7 +158,8 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
  amb_matrix(:,:) = 0.0_dp
  write(stdout,'(/,a)') ' Build the electron-hole hamiltonian'
  ! Step 1
- call build_amb_apb_common(nmat,basis%nbf,nstate0,c_matrix,energy_qp,wpol_out,alpha_local,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
+ call build_amb_apb_common(nmat,basis%nbf,nstate0,c_matrix,energy_qp,wpol_out,alpha_local, &
+                           m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,rpa_correlation)
 
  ! Calculate the diagonal separately: it's needed for the single pole approximation
  if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) & 
@@ -190,13 +192,19 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
 
  call stop_clock(timing_build_h2p)
 
+#ifdef HAVE_SCALAPACK
+ if(is_rpa) then
+   call clean_deallocate('A-B',amb_matrix)
+ endif
+#endif
+ 
 
  allocate(eigenvalue(nmat))
  ! bigX, and bigY (if needed)
  call init_desc('S',nmat,nmat,desc_x,m_x,n_x)
  write(stdout,*) 'Allocate eigenvector array'
  call clean_allocate('X',bigx,m_x,n_x)
- if( .NOT. is_rpa)  &
+ if( .NOT. is_rpa) &
    call clean_allocate('Y',bigy,m_x,n_x)
 
  !
@@ -210,14 +218,18 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
    call diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,eigenvalue,&
                                 desc_x,m_x,n_x,bigx,bigy)
  else
-   call diago_4blocks_rpa (nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,eigenvalue,&
+   call diago_4blocks_rpa (nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matrix,eigenvalue,&
                            desc_x,m_x,n_x,bigx)
  endif
 #endif
 
  ! Deallocate the non-necessary matrices
- write(stdout,*) 'Deallocate (A+B) and (A-B) matrices'
+ deallocate(amb_diag_rpa)
+ write(stdout,*) 'Deallocate (A+B) and possibly (A-B)'
  call clean_deallocate('A+B',apb_matrix)
+ !
+ ! (A-B) may have been already deallocated earlier in the case of RPA 
+ ! Relax: this is indeed tolerated by clean_deallocate
  call clean_deallocate('A-B',amb_matrix)
 
 
@@ -295,7 +307,8 @@ end subroutine polarizability
 
 
 !=========================================================================
-subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
+subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local, &
+                                m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,rpa_correlation)
  use m_tools 
  use m_spectral_function
  use m_eri_ao_mo
@@ -308,6 +321,7 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
  real(dp),intent(in)                :: alpha_local
  integer,intent(in)                 :: m_apb,n_apb
  real(prec_td),intent(out)          :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
+ real(dp),intent(out)               :: amb_diag_rpa(nmat)
  real(dp),intent(out)               :: rpa_correlation
 !=====
  integer              :: t_ij,t_kl,t_ij_global,t_kl_global
@@ -443,6 +457,19 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
 #ifdef HAVE_SCALAPACK
  call xsum(rpa_correlation)
 #endif
+
+ !
+ ! Set up the diagonal of A-B in the RPA approximation
+ ! 
+ do t_ij_global=1,nmat
+   istate = wpol%transition_table_apb(1,t_ij_global)
+   jstate = wpol%transition_table_apb(2,t_ij_global)
+   ijspin = wpol%transition_table_apb(3,t_ij_global)
+
+   amb_diag_rpa(t_ij_global) = energy(jstate,ijspin) - energy(istate,ijspin)
+
+ enddo
+
 
  if(ALLOCATED(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
 
@@ -1217,7 +1244,7 @@ end subroutine diago_4blocks_chol
 
 
 !=========================================================================
-subroutine diago_4blocks_rpa(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
+subroutine diago_4blocks_rpa(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matrix,&
                              eigenvalue,desc_x,m_x,n_x,bigx)
  use m_spectral_function
  use m_tools 
@@ -1225,7 +1252,8 @@ subroutine diago_4blocks_rpa(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
 
  integer,intent(in)     :: nmat,m_apb,n_apb,m_x,n_x
  integer,intent(in)     :: desc_apb(ndel),desc_x(ndel)
- real(dp),intent(inout) :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
+ real(dp),intent(in)    :: amb_diag_rpa(nmat)
+ real(dp),intent(inout) :: apb_matrix(m_apb,n_apb)
  real(dp),intent(out)   :: eigenvalue(nmat)
  real(dp),intent(out)   :: bigx(m_x,n_x)
 !=====
@@ -1249,32 +1277,20 @@ subroutine diago_4blocks_rpa(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
 
  ! Calculate (A-B)^1/2 * (A+B) * (A-B)^1/2
 
- ! Calculate (A-B)^1/2
- amb_diag_sqrt(:) = 0.0_dp
-
- do jlocal=1,n_apb
-   jglobal = colindex_local_to_global('S',jlocal)
-   do ilocal=1,m_apb
-     iglobal = rowindex_local_to_global('S',ilocal)
-
-     if( iglobal == jglobal ) then
-       amb_diag_sqrt(iglobal) = SQRT( amb_matrix(ilocal,jlocal) )
-     endif
-
-   enddo
- enddo
- call xsum(amb_diag_sqrt)
+ ! Get (A-B)^1/2
+ amb_diag_sqrt(:) = SQRT( amb_diag_rpa(:) )
 
  ! Calculate (A+B) * (A-B)^1/2
+ ! Use bigx as a temporary matrix
  do jlocal=1,n_apb
    jglobal = colindex_local_to_global('S',jlocal)
-   amb_matrix(:,jlocal) = apb_matrix(:,jlocal) * amb_diag_sqrt(jglobal)
+   bigx(:,jlocal) = apb_matrix(:,jlocal) * amb_diag_sqrt(jglobal)
  enddo
 
  ! Calculate (A-B)^1/2 * [ (A+B) (A-B)^1/2 ]
  do ilocal=1,m_apb
    iglobal = rowindex_local_to_global('S',ilocal)
-   apb_matrix(ilocal,:) = amb_diag_sqrt(iglobal) * amb_matrix(ilocal,:)
+   apb_matrix(ilocal,:) = amb_diag_sqrt(iglobal) * bigx(ilocal,:)
  enddo
 
  ! Diagonalization

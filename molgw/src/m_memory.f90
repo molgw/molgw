@@ -367,6 +367,8 @@ subroutine clean_deallocate_1d(array_name,array)
  integer             :: n1
 !=====
 
+ if( .NOT. ALLOCATED(array) ) return
+
  n1 = SIZE(array(:))
 
  write(stdout,'(a,x,a)') ' Deallocate',TRIM(array_name)
@@ -403,6 +405,8 @@ subroutine clean_deallocate_2d(array_name,array)
  real(dp)            :: mem_mb
  integer             :: n1,n2
 !=====
+
+ if( .NOT. ALLOCATED(array) ) return
 
  n1 = SIZE(array(:,:),DIM=1)
  n2 = SIZE(array(:,:),DIM=2)
@@ -442,6 +446,8 @@ subroutine clean_deallocate_3d(array_name,array)
  integer             :: n1,n2,n3
 !=====
 
+ if( .NOT. ALLOCATED(array) ) return
+
  n1 = SIZE(array(:,:,:),DIM=1)
  n2 = SIZE(array(:,:,:),DIM=2)
  n3 = SIZE(array(:,:,:),DIM=3)
@@ -480,6 +486,8 @@ subroutine clean_deallocate_4d(array_name,array)
  real(dp)            :: mem_mb
  integer             :: n1,n2,n3,n4
 !=====
+
+ if( .NOT. ALLOCATED(array) ) return
 
  n1 = SIZE(array(:,:,:,:),DIM=1)
  n2 = SIZE(array(:,:,:,:),DIM=2)
@@ -689,6 +697,8 @@ subroutine clean_deallocate_s1d(array_name,array)
  integer             :: n1
 !=====
 
+ if( .NOT. ALLOCATED(array) ) return
+
  n1 = SIZE(array(:))
 
  write(stdout,'(a,x,a)') ' Deallocate',TRIM(array_name)
@@ -725,6 +735,8 @@ subroutine clean_deallocate_s2d(array_name,array)
  real(dp)            :: mem_mb
  integer             :: n1,n2
 !=====
+
+ if( .NOT. ALLOCATED(array) ) return
 
  n1 = SIZE(array(:,:),DIM=1)
  n2 = SIZE(array(:,:),DIM=2)
@@ -764,6 +776,8 @@ subroutine clean_deallocate_s3d(array_name,array)
  integer             :: n1,n2,n3
 !=====
 
+ if( .NOT. ALLOCATED(array) ) return
+
  n1 = SIZE(array(:,:,:),DIM=1)
  n2 = SIZE(array(:,:,:),DIM=2)
  n3 = SIZE(array(:,:,:),DIM=3)
@@ -802,6 +816,8 @@ subroutine clean_deallocate_s4d(array_name,array)
  real(dp)            :: mem_mb
  integer             :: n1,n2,n3,n4
 !=====
+
+ if( .NOT. ALLOCATED(array) ) return
 
  n1 = SIZE(array(:,:,:,:),DIM=1)
  n2 = SIZE(array(:,:,:,:),DIM=2)
