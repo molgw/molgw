@@ -1062,10 +1062,10 @@ subroutine init_scalapack()
  call BLACS_GRIDINIT( cntxt_nd, 'R', nprow_nd, npcol_nd )
  call BLACS_GRIDINFO( cntxt_nd, nprow_nd, npcol_nd, iprow_nd, ipcol_nd )
 
- write(stdout,'(/,a)')           ' ==== SCALAPACK info'
- write(stdout,'(a)')             '   Squared distribution'
- write(stdout,'(a50,x,i8)')      'Number of proc:',nprow_sd*npcol_sd
- write(stdout,'(a50,x,i8,x,i8)') 'Grid of procs:',nprow_sd,npcol_sd
+! write(stdout,'(/,a)')           ' ==== SCALAPACK info'
+! write(stdout,'(a)')             '   Squared distribution'
+! write(stdout,'(a50,x,i8)')      'Number of proc:',nprow_sd*npcol_sd
+! write(stdout,'(a50,x,i8,x,i8)') 'Grid of procs:',nprow_sd,npcol_sd
 ! write(stdout,'(a)')             '       Row distribution'
 ! write(stdout,'(a50,x,i8)')      'Number of proc:',nprow_rd*npcol_rd
 ! write(stdout,'(a50,x,i8,x,i8)') 'Grid of procs:',nprow_rd,npcol_rd
@@ -1366,6 +1366,43 @@ subroutine diagonalize_sca(desc,nglobal,mlocal,nlocal,matrix,eigval)
 
 
 end subroutine diagonalize_sca
+
+
+!=========================================================================
+subroutine diagonalize_sca_outofplace(desc,nglobal,mlocal,nlocal,matrix,eigval, &
+             desc_eigvec,m_eigvec,n_eigvec,eigvec)
+ implicit none
+ integer,intent(in)     :: desc(ndel),nglobal,mlocal,nlocal
+ real(dp),intent(inout) :: matrix(mlocal,nlocal)
+ real(dp),intent(out)   :: eigval(nglobal)
+ integer,intent(in)     :: desc_eigvec(ndel),m_eigvec,n_eigvec
+ real(dp),intent(out)   :: eigvec(m_eigvec,n_eigvec)
+!=====
+ integer              :: desc_tmp(ndel)
+ integer              :: lwork,info
+ real(dp),allocatable :: work(:)
+!=====
+
+#ifdef HAVE_SCALAPACK
+ !
+ ! First call to get the dimension of the array work
+ lwork = -1
+ allocate(work(1))
+ call PDSYEV('V','U',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+ lwork = NINT(work(1))
+ deallocate(work)
+ !
+ ! Second call to actually perform the diago
+ allocate(work(lwork))
+ call PDSYEV('V','U',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+ deallocate(work)
+
+#else
+ eigval(:) = 0.0_dp
+#endif
+
+
+end subroutine diagonalize_sca_outofplace
 
 
 !=========================================================================

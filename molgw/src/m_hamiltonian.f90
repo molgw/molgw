@@ -985,11 +985,11 @@ end subroutine set_occupation
 
 
 !=========================================================================
-subroutine matrix_basis_to_eigen(nspin,nbf,c_matrix,matrix_inout)
+subroutine matrix_basis_to_eigen(nbf,nstate,c_matrix,matrix_inout)
  implicit none
- integer,intent(in)      :: nspin,nbf
- real(dp),intent(in)     :: c_matrix(nbf,nbf,nspin)
- real(dp),intent(inout)  :: matrix_inout(nbf,nbf,nspin)
+ integer,intent(in)      :: nbf,nstate
+ real(dp),intent(in)     :: c_matrix(nbf,nstate,nspin)
+ real(dp),intent(inout)  :: matrix_inout(nstate,nstate,nspin)
 !=====
  integer                 :: ispin
 !=====

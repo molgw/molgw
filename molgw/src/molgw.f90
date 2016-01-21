@@ -49,7 +49,7 @@ program molgw
  type(spectral_function) :: wpol
  integer                 :: reading_status,restart_type
  integer                 :: ibf,jbf
- integer                 :: nstate
+ integer                 :: nstate,nstate0
  integer                 :: ispin,istate
  logical                 :: is_restart,is_big_restart,is_basis_restart
  character(len=100)      :: title
@@ -68,9 +68,8 @@ program molgw
  real(dp),allocatable    :: s_eigval(:)
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
- integer                 :: nstate0
- integer                 :: m_ham,n_ham
- integer                 :: m_ov,n_ov
+ integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
+ integer                 :: m_ov,n_ov                    ! distribute a  basis%nbf x nstate      matrix
 !=============================
 
  call init_mpi()
@@ -143,10 +142,10 @@ program molgw
  else
    call setup_sqrt_overlap(TOL_OVERLAP,basis%nbf,s_matrix,nstate,s_matrix_sqrt_inv)
    m_ov = basis%nbf
-   n_ov = basis%nbf
+   n_ov = nstate0
  endif
 
- if( n_ov /= basis%nbf ) then
+ if( m_ov /= basis%nbf .OR. n_ov /= nstate0 ) then
    call issue_warning('SCALAPACK is used to distribute the wavefunction coefficients')
  endif
 
@@ -365,7 +364,7 @@ program molgw
 
    if(calc_type%is_td .AND. calc_type%is_dft) call init_dft_grid(grid_level)
 
-   call init_spectral_function(basis%nbf,nstate,occupation,wpol)
+   call init_spectral_function(nstate0,nstate,occupation,wpol)
    call polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
    call destroy_spectral_function(wpol)
 
@@ -379,7 +378,7 @@ program molgw
  if( calc_type%is_mp2 .OR. calc_type%is_gw ) then
    exchange_m_vxc_diag(:,:) = 0.0_dp
    do ispin=1,nspin
-     do istate=1,basis%nbf
+     do istate=1,nstate0
        do ibf=1,basis%nbf
          do jbf=1,basis%nbf
            exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
@@ -404,7 +403,7 @@ program molgw
    ! A section under development for the range-separated RPA
    if( calc_type%is_lr_mbpt ) call die('lr_mbpt code removed. Does not exist anymore')
 
-   call init_spectral_function(basis%nbf,nstate,occupation,wpol)
+   call init_spectral_function(nstate0,nstate,occupation,wpol)
 
    ! Try to read a spectral function file in order to skip the calculation
    call read_spectral_function(wpol,reading_status)

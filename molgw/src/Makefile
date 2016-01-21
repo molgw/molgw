@@ -127,13 +127,13 @@ m_hamiltonian_sca.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_er
 m_hamiltonian.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_eri.f90 m_hamiltonian.f90
 	$(FC_W_OPTS) -c m_hamiltonian.f90 $(LIBXC_INCS)
 
-dft_xc.o: m_definitions.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90 dft_xc.f90
+dft_xc.o: m_definitions.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90 m_mpi.f90 dft_xc.f90
 	$(FC_W_OPTS) -c dft_xc.f90 $(LIBXC_INCS)
 
 io.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 io.f90 revision.f90 m_hamiltonian.f90
 	$(FC_W_OPTS) -c io.f90 $(LIBXC_INCS)
 
-mp2.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 mp2.f90 
+mp2.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_mpi.f90 m_basis_set.f90 m_eri.f90 mp2.f90 
 	$(FC_W_OPTS) -c mp2.f90 $(LIBXC_INCS)
 
 mp2_selfenergy.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 mp2_selfenergy.f90
@@ -151,7 +151,7 @@ libint_wrapper.o: libint_wrapper.c
 libint_wrapper_nounderscore.o: libint_wrapper_nounderscore.c
 	$(CC_W_OPTS) -c libint_wrapper_nounderscore.c $(LIBINT_INCS)
 
-m_dft_grid.o: m_definitions.f90 m_memory.f90 m_inputparam.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90
+m_dft_grid.o: m_definitions.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_atoms.f90 m_mpi.f90 m_dft_grid.f90
 	$(FC_W_OPTS) -c m_dft_grid.f90 $(LIBXC_INCS)
 
 m_spectral_function.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90
@@ -172,10 +172,10 @@ m_eri_calculate.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memo
 m_eri.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 m_eri.f90 
 	$(FC_W_OPTS) -c m_eri.f90 $(LIBXC_INCS)
 
-m_basis_set.o: m_definitions.f90 m_elements.f90 m_gaussian.f90 m_basis_set.f90
+m_basis_set.o: m_definitions.f90 m_elements.f90 m_gaussian.f90 m_mpi.f90 m_basis_set.f90 
 	$(FC_W_OPTS) -c m_basis_set.f90 $(LIBXC_INCS)
 
-m_gaussian.o: m_definitions.f90 m_tools.f90 m_gos.f90 m_gaussian.f90
+m_gaussian.o: m_definitions.f90 m_tools.f90 m_gos.f90 m_mpi.f90 m_gaussian.f90
 	$(FC_W_OPTS) -c m_gaussian.f90 $(LIBXC_INCS)
 
 m_scf.o: m_definitions.f90 m_inputparam.f90 m_scf.f90
@@ -202,7 +202,7 @@ m_timing.o: m_definitions.f90 m_warning.f90 m_timing.f90
 m_elements.o: m_definitions.f90 m_warning.f90 m_elements.f90
 	$(FC_W_OPTS) -c m_elements.f90 $(LIBXC_INCS)
 
-m_gos.o: m_definitions.f90 m_tools.f90 m_gos.f90
+m_gos.o: m_definitions.f90 m_gos.f90
 	$(FC_W_OPTS) -c m_gos.f90 $(LIBXC_INCS)
 
 m_warning.o: m_definitions.f90 m_warning.f90

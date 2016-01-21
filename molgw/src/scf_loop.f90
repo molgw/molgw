@@ -202,7 +202,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
    if( calc_type%is_gw .AND. ( calc_type%gwmethod == QS .OR. calc_type%gwmethod == QSCOHSEX) &
        .AND. iscf > 5 ) then
 
-     call init_spectral_function(basis%nbf,nstate,occupation,wpol)
+     call init_spectral_function(nstate0,nstate,occupation,wpol)
      call polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
 
      if( ABS(en%rpa) > 1.e-6_dp) then

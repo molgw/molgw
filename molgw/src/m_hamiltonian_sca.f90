@@ -723,7 +723,7 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
  real(dp),allocatable :: diag(:,:)
 !=====
 
-#ifdef HAVE_MPI
+#ifdef HAVE_SCALAPACK
 
  if( cntxt_ham > 0 ) then
    matrix_tmp(:,:) = s_matrix(:,:)

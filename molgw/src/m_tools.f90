@@ -1,4 +1,6 @@
 !=========================================================================
+
+!=========================================================================
 module m_tools
  use m_definitions
  use m_warning,only: die
@@ -23,12 +25,9 @@ module m_tools
    module procedure diagonalize_inplace_sp
  end interface
 
- interface diagonalize_general
-   module procedure diagonalize_general_dp
-   module procedure diagonalize_general_cdp
- end interface
 
 contains
+
 
 !=========================================================================
 subroutine init_seed(iseed)
@@ -59,6 +58,7 @@ function ran1()
  integer j,k,iv(NTAB),iy
  save iv,iy
  data iv /NTAB*0/, iy /0/
+
  if (idum.le.0.or.iy.eq.0) then
    idum=max(-idum,1)
    do j=NTAB+8,1,-1
@@ -76,6 +76,7 @@ function ran1()
  iy=iv(j)
  iv(j)=idum
  ran1=min(AM*iy,RNMX)
+
 end function ran1
 
 
@@ -259,11 +260,20 @@ subroutine diagonalize_inplace_dp(n,matrix,eigval)
  integer,intent(in) :: n
  real(dp),intent(inout) :: matrix(n,n)
  real(dp),intent(out) :: eigval(n)
+!=====
+ real(dp),allocatable :: work(:)
+ integer              :: lwork,info
+!=====
 
- real(dp) :: work(3*n-1)
- integer :: info
+ lwork = -1
+ allocate(work(1))
+ call DSYEV('V','U',n,matrix,n,eigval,work,lwork,info)
+ lwork = NINT(work(1))
+ deallocate(work)
 
- call DSYEV('V','U',n,matrix,n,eigval,work,3*n-1,info)
+ allocate(work(lwork))
+ call DSYEV('V','U',n,matrix,n,eigval,work,lwork,info)
+ deallocate(work)
 
 end subroutine diagonalize_inplace_dp
 
@@ -274,76 +284,22 @@ subroutine diagonalize_inplace_sp(n,matrix,eigval)
  integer,intent(in) :: n
  real(sp),intent(inout) :: matrix(n,n)
  real(sp),intent(out) :: eigval(n)
+!=====
+ real(dp),allocatable :: work(:)
+ integer              :: lwork,info
+!=====
 
- real(sp) :: work(3*n-1)
- integer :: info
+ lwork = -1
+ allocate(work(1))
+ call SSYEV('V','U',n,matrix,n,eigval,work,lwork,info)
+ lwork = NINT(work(1))
+ deallocate(work)
 
- call SSYEV('V','U',n,matrix,n,eigval,work,3*n-1,info)
+ allocate(work(lwork))
+ call SSYEV('V','U',n,matrix,n,eigval,work,lwork,info)
+ deallocate(work)
 
 end subroutine diagonalize_inplace_sp
-
-
-!=========================================================================
-subroutine diagonalize_general_dp(n,matrix,eigval,eigvec_right)
- implicit none
- integer,intent(in) :: n
- real(dp),intent(in) :: matrix(n,n)
- real(dp),intent(out) :: eigval(n)
- real(dp),intent(out) :: eigvec_right(n,n)
-
- real(dp)              :: a(n,n),work(4*n)
- real(dp)              :: eigenval_r(n),eigenval_i(n)
- real(dp), allocatable :: eigenvect_r(:,:),eigenvect_l(:,:)
- integer               :: info,i,ldvl,ldvr
- 
- a(:,:) = matrix(:,:)
-
- ldvl=1
- ldvr=n
- allocate(eigenvect_l(ldvl,n))
- allocate(eigenvect_r(ldvr,n))
-
-! call DGEEV('V','V',n,a,n,eigenval_r,eigenval_i,eigenvect_l,n,eigenvect_r,n,work,4*n,info)
-
- !
- ! Calculate only right eigenvectors
- call DGEEV('N','V',n,a,n,eigenval_r,eigenval_i,eigenvect_l,ldvl,eigenvect_r,ldvr,work,4*n,info)
-
- if(info/=0) call die('FAILURE in DGEEV')
-
- eigvec_right = eigenvect_r
- eigval = eigenval_r
-
- deallocate(eigenvect_l,eigenvect_r)
-
-end subroutine diagonalize_general_dp
-
-
-!=========================================================================
-subroutine diagonalize_general_cdp(n,matrix,eigval,eigvec_right)
- implicit none
- integer,intent(in) :: n
- complex(dp),intent(in) :: matrix(n,n)
- complex(dp),intent(out) :: eigval(n)
- complex(dp),intent(out) :: eigvec_right(n,n)
-
- complex(dp) :: a(n,n),work(2*n)
- real(dp) :: rwork(2*n)
- complex(dp) :: eigenvect_r(n,n),eigenvect_l(n,n)
- integer :: info
-! test
- integer :: i,j
-!
-
- a = matrix
-
- !TODO calculate only right eigenvectors
- call ZGEEV('N','V',n,a,n,eigval,eigenvect_l,n,eigenvect_r,n,work,2*n,rwork,info)
- if(info/=0) call die('FAILURE in ZGEEV')
-
- eigvec_right = eigenvect_r
-
-end subroutine diagonalize_general_cdp
 
 
 !=========================================================================

@@ -192,11 +192,12 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
 
 
  allocate(eigenvalue(nmat))
- ! bigX, bigY
+ ! bigX, and bigY (if needed)
  call init_desc('S',nmat,nmat,desc_x,m_x,n_x)
  write(stdout,*) 'Allocate eigenvector array'
  call clean_allocate('X',bigx,m_x,n_x)
- call clean_allocate('Y',bigy,m_x,n_x)
+ if( .NOT. is_rpa)  &
+   call clean_allocate('Y',bigy,m_x,n_x)
 
  !
  ! Diago using the 4 block structure and the symmetry of each block
@@ -205,8 +206,13 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
 #ifndef HAVE_SCALAPACK
  call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
 #else
- call diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,eigenvalue,&
-                              desc_x,m_x,n_x,bigx,bigy)
+ if( .NOT. is_rpa ) then
+   call diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,eigenvalue,&
+                                desc_x,m_x,n_x,bigx,bigy)
+ else
+   call diago_4blocks_rpa (nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,eigenvalue,&
+                           desc_x,m_x,n_x,bigx)
+ endif
 #endif
 
  ! Deallocate the non-necessary matrices
@@ -219,9 +225,9 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
  ! Second part of the RPA correlation energy: sum over positive eigenvalues
  rpa_correlation = rpa_correlation + 0.50_dp * SUM( ABS(eigenvalue(:)) )
  if(is_rpa) then
-  write(stdout,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
-  write(stdout,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
-  write(stdout,'(/,a,f16.10)') ' RPA energy (Ha): ',rpa_correlation
+   write(stdout,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
+   write(stdout,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
+   write(stdout,'(/,a,f16.10)') ' RPA energy (Ha): ',rpa_correlation
  endif
 
  write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy (eV):',MINVAL(ABS(eigenvalue(:)))*Ha_eV
@@ -238,12 +244,21 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
  endif
 
  !
+ ! Now only the sum ( bigx + bigy ) is needed in fact.
+ ! Let us set  bigx = bigx + bigy 
+ !    and free bigy 
+ if( .NOT. is_rpa) then
+   bigx(:,:) = bigx(:,:) + bigy(:,:)
+   call clean_deallocate('Y',bigy)
+ endif
+
+ !
  ! Calculate Wp= v * chi * v    if necessary
  ! and then write it down on file
  !
  if( print_w_ .OR. calc_type%is_gw ) then
    if( has_auxil_basis) then
-     call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf_local,desc_x,m_x,n_x,bigx,bigy,eigenvalue,wpol_out,energy_gm)
+     call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf_local,desc_x,m_x,n_x,bigx,eigenvalue,wpol_out,energy_gm)
      ! This following coding of the Galitskii-Migdal correlation energy is only working with
      ! an auxiliary basis
      if(is_rpa) write(stdout,'(a,f16.10,/)') ' Correlation energy in the Galitskii-Migdal formula (Ha): ',energy_gm
@@ -254,7 +269,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
         call chi_to_sqrtvchisqrtv_auxil_spa(basis%nbf,auxil_basis%nbf_local,a_diag,wpol_out)
 
    else
-     call chi_to_vchiv(basis%nbf,nstate0,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol_out)
+     call chi_to_vchiv(basis%nbf,nstate0,prod_basis,c_matrix,bigx,eigenvalue,wpol_out)
    endif
   
  
@@ -267,7 +282,6 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
 
  write(stdout,*) 'Deallocate eigenvector arrays'
  call clean_deallocate('X',bigx)
- call clean_deallocate('Y',bigy)
 
  if(has_auxil_basis) call destroy_eri_3center_eigen()
 
@@ -1145,7 +1159,6 @@ end subroutine diago_4blocks_sqrt
 subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
                               eigenvalue,desc_x,m_x,n_x,bigx,bigy)
  use m_spectral_function
-! use m_eri
  use m_tools 
  implicit none
 
@@ -1165,7 +1178,6 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
 #ifdef HAVE_SCALAPACK
  call start_clock(timing_diago_h2p)
 
- ! First allocate eigenvector
  write(stdout,'(/,a)') ' Performing the block diago with Cholesky'
 
  allocate(work(1))
@@ -1205,10 +1217,97 @@ end subroutine diago_4blocks_chol
 
 
 !=========================================================================
+subroutine diago_4blocks_rpa(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
+                             eigenvalue,desc_x,m_x,n_x,bigx)
+ use m_spectral_function
+ use m_tools 
+ implicit none
+
+ integer,intent(in)     :: nmat,m_apb,n_apb,m_x,n_x
+ integer,intent(in)     :: desc_apb(ndel),desc_x(ndel)
+ real(dp),intent(inout) :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
+ real(dp),intent(out)   :: eigenvalue(nmat)
+ real(dp),intent(out)   :: bigx(m_x,n_x)
+!=====
+ integer              :: info
+ integer              :: ilocal,jlocal,iglobal,jglobal
+ integer              :: lwork,liwork
+ real(dp),allocatable :: work(:)
+ integer,allocatable  :: iwork(:)
+ real(dp)             :: amb_diag_sqrt(nmat)
+!=====
+
+#ifdef HAVE_SCALAPACK
+ call start_clock(timing_diago_h2p)
+
+
+ write(stdout,'(/,a)') ' Performing the block diago when A-B is diagonal'
+
+ ! First symmetrize (A+B)
+ call symmetrize_matrix(desc_apb,m_apb,n_apb,apb_matrix)
+
+
+ ! Calculate (A-B)^1/2 * (A+B) * (A-B)^1/2
+
+ ! Calculate (A-B)^1/2
+ amb_diag_sqrt(:) = 0.0_dp
+
+ do jlocal=1,n_apb
+   jglobal = colindex_local_to_global('S',jlocal)
+   do ilocal=1,m_apb
+     iglobal = rowindex_local_to_global('S',ilocal)
+
+     if( iglobal == jglobal ) then
+       amb_diag_sqrt(iglobal) = SQRT( amb_matrix(ilocal,jlocal) )
+     endif
+
+   enddo
+ enddo
+ call xsum(amb_diag_sqrt)
+
+ ! Calculate (A+B) * (A-B)^1/2
+ do jlocal=1,n_apb
+   jglobal = colindex_local_to_global('S',jlocal)
+   amb_matrix(:,jlocal) = apb_matrix(:,jlocal) * amb_diag_sqrt(jglobal)
+ enddo
+
+ ! Calculate (A-B)^1/2 * [ (A+B) (A-B)^1/2 ]
+ do ilocal=1,m_apb
+   iglobal = rowindex_local_to_global('S',ilocal)
+   apb_matrix(ilocal,:) = amb_diag_sqrt(iglobal) * amb_matrix(ilocal,:)
+ enddo
+
+ ! Diagonalization
+ call diagonalize_sca_outofplace(desc_apb,nmat,m_apb,n_apb,apb_matrix,eigenvalue,desc_x,m_x,n_x,bigx)
+
+ eigenvalue(:) = SQRT( eigenvalue(:) )
+
+ ! Normalization
+ do jlocal=1,n_apb
+   jglobal = colindex_local_to_global('S',jlocal)
+   bigx(:,jlocal) = bigx(:,jlocal) / SQRT( eigenvalue(jglobal) )
+ enddo
+
+ ! Calculate X + Y = (A-B)^1/2 * Z
+ do ilocal=1,m_apb
+   iglobal = rowindex_local_to_global('S',ilocal)
+   bigx(ilocal,:) = amb_diag_sqrt(iglobal) * bigx(ilocal,:)
+ enddo
+
+
+ call stop_clock(timing_diago_h2p)
+
+#else
+ call die('RPA block diago cannot run without SCALAPACK')
+#endif
+
+end subroutine diago_4blocks_rpa
+
+
+!=========================================================================
 subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenvalue)
  use m_tools
  use m_basis_set
- use m_eri
  use m_dft_grid
  use m_spectral_function
  use m_atoms
@@ -1528,7 +1627,6 @@ end subroutine optical_spectrum
 subroutine stopping_power(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenvalue)
  use m_tools
  use m_basis_set
- use m_eri
  use m_dft_grid
  use m_spectral_function
  use m_atoms
@@ -1984,7 +2082,7 @@ end subroutine get_energy_qp
 
 
 !=========================================================================
-subroutine chi_to_vchiv(nbf,nstate,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol)
+subroutine chi_to_vchiv(nbf,nstate,prod_basis,c_matrix,bigx,eigenvalue,wpol)
  use m_definitions
  use m_warning
  use m_basis_set
@@ -1997,7 +2095,6 @@ subroutine chi_to_vchiv(nbf,nstate,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol
  real(dp),intent(in)                   :: c_matrix(nbf,nstate,nspin)
  type(spectral_function),intent(inout) :: wpol
  real(prec_td),intent(in)              :: bigx(wpol%npole_reso_apb,wpol%npole_reso_apb)
- real(prec_td),intent(in)              :: bigy(wpol%npole_reso_apb,wpol%npole_reso_apb)
  real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso_apb)
 !=====
  integer                               :: t_kl,klspin,ijspin
@@ -2050,7 +2147,7 @@ subroutine chi_to_vchiv(nbf,nstate,prod_basis,c_matrix,bigx,bigy,eigenvalue,wpol
        ! and the block structure of eigenvector | X  Y |
        !                                        | Y  X |
        wpol%residu_left(ijstate_spin,:) = wpol%residu_left(ijstate_spin,:) &
-                              + eri_eigen_klij * ( bigx(t_kl,:) + bigy(t_kl,:) )
+                              + eri_eigen_klij * bigx(t_kl,:)
 
      enddo
    enddo
@@ -2068,7 +2165,7 @@ end subroutine chi_to_vchiv
 
 
 !=========================================================================
-subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eigenvalue,wpol,energy_gm)
+subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,eigenvalue,wpol,energy_gm)
  use m_definitions
  use m_warning
  use m_basis_set
@@ -2079,7 +2176,6 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eig
  integer,intent(in)                    :: nbf,nbf_auxil,m_x,n_x
  integer,intent(in)                    :: desc_x(ndel)
  real(prec_td),intent(inout)           :: bigx(m_x,n_x)
- real(prec_td),intent(in)              :: bigy(m_x,n_x)
  type(spectral_function),intent(inout) :: wpol
  real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso_apb)
  real(dp),intent(out)                  :: energy_gm
@@ -2122,7 +2218,8 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eig
  ! Use the symmetry ( I | k l ) to regroup (kl) and (lk) contributions
  ! and the block structure of eigenvector | X  Y |
  !                                        | Y  X |
- wpol%residu_left(:,:) = MATMUL( eri_3center_mat , bigx(:,:) + bigy(:,:) ) * SQRT(spin_fact)
+ ! => only needs (X+Y)
+ wpol%residu_left(:,:) = MATMUL( eri_3center_mat , bigx(:,:) ) * SQRT(spin_fact)
 
  energy_gm = 0.5_dp * ( SUM( wpol%residu_left(:,:)**2 ) - spin_fact * SUM( eri_3center_mat(:,:)**2 ) )
  !
@@ -2134,8 +2231,9 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,bigy,eig
 #else 
 
 
- ! bigx = bigx + bigy 
- call PDGEADD('N',nmat,nmat,1.d0,bigy,1,1,desc_x,1.d0,bigx,1,1,desc_x)
+! ! bigx = bigx + bigy 
+! call PDGEADD('N',nmat,nmat,1.d0,bigy,1,1,desc_x,1.d0,bigx,1,1,desc_x)
+! Already done!
 
  bigx(:,:) = bigx(:,:) * SQRT(spin_fact)
 

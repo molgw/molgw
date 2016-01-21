@@ -290,6 +290,7 @@ subroutine single_excitations(nbf,energy,occupation,c_matrix,fock_matrix)
  real(dp),intent(inout)     :: fock_matrix(nbf,nbf,nspin)
 !=====
  integer                    :: ispin
+ integer                    :: nstate0
  integer                    :: istate,astate
  character(len=100)         :: title
 !=====
@@ -298,7 +299,8 @@ subroutine single_excitations(nbf,energy,occupation,c_matrix,fock_matrix)
 
  !
  ! Rotate the Fock matrix to the eigenstate basis
- call matrix_basis_to_eigen(nspin,nbf,c_matrix,fock_matrix)
+ nstate0=nbf
+ call matrix_basis_to_eigen(nbf,nstate0,c_matrix,fock_matrix)
 
  title='=== Fock matrix ==='
  call dump_out_matrix(print_matrix_,title,nbf,nspin,fock_matrix)

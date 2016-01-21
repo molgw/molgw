@@ -36,7 +36,6 @@ module m_eri
    real(dp)             :: x0(3)
    integer              :: istart,iend
  end type shell_type
- protected :: shell_type
 
  integer,protected                      :: nshell
  integer,protected                      :: nshell_auxil
