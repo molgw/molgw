@@ -324,6 +324,55 @@ end subroutine distribute_auxil_basis
 
 
 !=========================================================================
+subroutine distribute_auxil_basis_lr(nbf_auxil_basis,nbf_auxil_basis_local)
+ implicit none
+
+ integer,intent(in)  :: nbf_auxil_basis
+ integer,intent(out) :: nbf_auxil_basis_local
+!=====
+ integer :: ibf
+ integer :: ibf_local
+ integer :: iproc
+!=====
+
+ allocate(iproc_ibf_auxil_lr(nbf_auxil_basis))
+ allocate(nbf_local_iproc_lr(0:nproc-1))
+
+ iproc = nproc-1
+ nbf_local_iproc_lr(:) = 0
+ do ibf=1,nbf_auxil_basis
+
+   iproc = MODULO(iproc+1,nproc)
+
+   iproc_ibf_auxil_lr(ibf) = iproc
+
+   nbf_local_iproc_lr(iproc) = nbf_local_iproc_lr(iproc) + 1
+
+ enddo
+
+ nbf_auxil_basis_local = nbf_local_iproc_lr(rank)
+
+ allocate(ibf_auxil_g_lr(nbf_auxil_basis_local))
+ allocate(ibf_auxil_l_lr(nbf_auxil_basis))
+ ibf_local = 0
+ do ibf=1,nbf_auxil_basis
+   if( rank == iproc_ibf_auxil_lr(ibf) ) then
+     ibf_local = ibf_local + 1
+     ibf_auxil_g_lr(ibf_local) = ibf
+     ibf_auxil_l_lr(ibf)       = ibf_local
+   endif
+ enddo
+
+ write(stdout,'(/,a)') ' Distribute LR auxiliary basis functions among processors'
+ do iproc=0,0
+   write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc_lr(iproc),' auxiliary basis functions'
+ enddo
+
+
+end subroutine distribute_auxil_basis_lr
+
+
+!=========================================================================
 subroutine init_grid_distribution(ngrid)
  implicit none
  integer,intent(inout) :: ngrid

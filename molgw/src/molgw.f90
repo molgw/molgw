@@ -306,7 +306,7 @@ program molgw
      ! 2-center integrals
      call calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
      ! Prepare the distribution of the 3-center integrals
-     call distribute_auxil_basis_lr(auxil_basis)
+     call distribute_auxil_basis_lr(nauxil_2center_lr,auxil_basis%nbf_local_lr)
      ! 3-center integrals
      call calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
    endif

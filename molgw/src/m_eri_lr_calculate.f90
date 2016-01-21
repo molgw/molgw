@@ -9,6 +9,9 @@ module m_eri_lr_calculate
  use m_eri
 
 
+ integer,protected :: nauxil_2center_lr  ! size of the 2-center matrix
+                                         ! 2-center integrals are NOT distributed
+
  real(prec_eri),private,allocatable :: eri_2center_m1_lr(:,:)
 
 
@@ -320,6 +323,9 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
 
  call start_clock(timing_eri_3center)
 
+ !
+ ! Store internal number of auxil basis functions for this processor
+ nauxil_3center_lr = auxil_basis%nbf_local_lr
 
  ! First allocate the LR 3-center integral array
  !

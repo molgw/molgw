@@ -53,14 +53,9 @@ module m_eri
  integer,protected :: nsize           ! size of the eri_buffer array
  integer,protected :: npair         ! number of independent pairs (i,j) with i<=j 
 
- integer,public    :: nauxil_2center     ! size of the 2-center matrix
-                                         ! 2-center integrals are NOT distributed
  integer,public    :: nauxil_3center     ! size of the 3-center matrix
                                          ! may differ from the previous one due to
                                          ! data distribution
-
- integer,public    :: nauxil_2center_lr  ! size of the 2-center matrix
-                                         ! 2-center integrals are NOT distributed
  integer,public    :: nauxil_3center_lr  ! size of the 3-center matrix
                                          ! may differ from the previous one due to
                                          ! data distribution
@@ -1182,55 +1177,6 @@ logical function read_eri(rcut)
 
 
 end function read_eri
-
-
-!=========================================================================
-subroutine distribute_auxil_basis_lr(auxil_basis)
- implicit none
-
- type(basis_set),intent(inout) :: auxil_basis
-!=====
- integer :: ibf
- integer :: ibf_local
- integer :: iproc
-!=====
-
- allocate(iproc_ibf_auxil_lr(nauxil_2center_lr))
- allocate(nbf_local_iproc_lr(0:nproc-1))
-
- iproc = nproc-1
- nbf_local_iproc_lr(:) = 0
- do ibf=1,nauxil_2center_lr
-
-   iproc = MODULO(iproc+1,nproc)
-
-   iproc_ibf_auxil_lr(ibf) = iproc
-
-   nbf_local_iproc_lr(iproc) = nbf_local_iproc_lr(iproc) + 1
-
- enddo
-
- auxil_basis%nbf_local_lr = nbf_local_iproc_lr(rank)
- nauxil_3center_lr        = auxil_basis%nbf_local_lr
-
- allocate(ibf_auxil_g_lr(nauxil_3center_lr))
- allocate(ibf_auxil_l_lr(nauxil_2center_lr))
- ibf_local = 0
- do ibf=1,nauxil_2center_lr
-   if( rank == iproc_ibf_auxil_lr(ibf) ) then
-     ibf_local = ibf_local + 1
-     ibf_auxil_g_lr(ibf_local) = ibf
-     ibf_auxil_l_lr(ibf)       = ibf_local
-   endif
- enddo
-
- write(stdout,'(/,a)') ' Distribute LR auxiliary basis functions among processors'
- do iproc=0,0
-   write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc_lr(iproc),' auxiliary basis functions'
- enddo
-
-
-end subroutine distribute_auxil_basis_lr
 
 
 !=========================================================================

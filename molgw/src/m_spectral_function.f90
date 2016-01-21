@@ -7,7 +7,7 @@ module m_spectral_function
  use m_memory
  use m_inputparam
  use m_atoms
- use m_eri,only: nauxil_2center
+ use m_eri_calculate,only: nauxil_2center
 
  !
  ! General form of any spectral function

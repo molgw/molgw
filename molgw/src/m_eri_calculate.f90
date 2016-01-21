@@ -8,6 +8,10 @@ module m_eri_calculate
  use m_timing
  use m_eri
 
+
+ integer,protected :: nauxil_2center     ! size of the 2-center matrix
+                                         ! 2-center integrals are NOT distributed
+
  real(prec_eri),private,allocatable :: eri_2center_m1(:,:)
 
 
