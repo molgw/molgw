@@ -18,11 +18,12 @@ module m_eri
 
  real(dp),private           :: TOL_INT
 
- real(prec_eri),public,allocatable :: eri_buffer(:)
- real(prec_eri),public,allocatable :: eri_buffer_lr(:)
+ real(prec_eri),public,allocatable :: eri_4center(:)
+ real(prec_eri),public,allocatable :: eri_4center_lr(:)
  real(prec_eri),public,allocatable :: eri_3center(:,:)
  real(prec_eri),public,allocatable :: eri_3center_lr(:,:)
- real(prec_eri),public,allocatable :: eri_3center_eigen(:,:,:,:)
+
+ real(prec_eri),protected,allocatable :: eri_3center_eigen(:,:,:,:)
 !FBFB LW
  real(prec_eri),protected,allocatable :: eri_3center_eigen_mixed(:,:,:,:)
 
@@ -50,7 +51,7 @@ module m_eri
 
 
  integer,private   :: nbf_eri         ! local copy of nbf
- integer,protected :: nsize           ! size of the eri_buffer array
+ integer,protected :: nsize           ! size of the eri_4center array
  integer,protected :: npair         ! number of independent pairs (i,j) with i<=j 
 
  integer,public    :: nauxil_3center     ! size of the 3-center matrix
@@ -129,29 +130,29 @@ end subroutine prepare_eri
 
 
 !=========================================================================
-subroutine deallocate_eri_buffer()
+subroutine deallocate_eri_4center()
  implicit none
 !=====
 
- if(ALLOCATED(eri_buffer)) then
+ if(ALLOCATED(eri_4center)) then
    write(stdout,'(/,a)')     ' Deallocate ERI buffer'
-   call clean_deallocate('4-center integrals',eri_buffer)
+   call clean_deallocate('4-center integrals',eri_4center)
  endif
 
-end subroutine deallocate_eri_buffer
+end subroutine deallocate_eri_4center
 
 
 !=========================================================================
-subroutine deallocate_eri_buffer_lr()
+subroutine deallocate_eri_4center_lr()
  implicit none
 !=====
 
- if(ALLOCATED(eri_buffer_lr)) then
+ if(ALLOCATED(eri_4center_lr)) then
    write(stdout,'(/,a)')     ' Deallocate LR ERI buffer'
-   call clean_deallocate('4-center LR integrals',eri_buffer_lr)
+   call clean_deallocate('4-center LR integrals',eri_4center_lr)
  endif
 
-end subroutine deallocate_eri_buffer_lr
+end subroutine deallocate_eri_4center_lr
 
 
 
@@ -162,13 +163,13 @@ subroutine deallocate_eri()
  integer :: ishell
 !=====
 
- if(ALLOCATED(eri_buffer)) then
+ if(ALLOCATED(eri_4center)) then
    write(stdout,'(/,a)')     ' Deallocate ERI buffer'
-   call clean_deallocate('4-center integrals',eri_buffer)
+   call clean_deallocate('4-center integrals',eri_4center)
  endif
- if(ALLOCATED(eri_buffer_lr)) then
+ if(ALLOCATED(eri_4center_lr)) then
    write(stdout,'(/,a)')     ' Deallocate LR ERI buffer'
-   call clean_deallocate('4-center LR integrals',eri_buffer_lr)
+   call clean_deallocate('4-center LR integrals',eri_4center_lr)
  endif
  if(ALLOCATED(negligible_basispair))  deallocate(negligible_basispair)
  if(ALLOCATED(negligible_shellpair))  deallocate(negligible_shellpair)
@@ -235,7 +236,7 @@ function eri(ibf,jbf,kbf,lbf)
  if( negligible_basispair(ibf,jbf) .OR. negligible_basispair(kbf,lbf) ) then
    eri = 0.0_dp
  else
-   eri = eri_buffer(index_eri(ibf,jbf,kbf,lbf))
+   eri = eri_4center(index_eri(ibf,jbf,kbf,lbf))
  endif
 
 end function eri
@@ -251,7 +252,7 @@ function eri_lr(ibf,jbf,kbf,lbf)
  if( negligible_basispair(ibf,jbf) .OR. negligible_basispair(kbf,lbf) ) then
    eri_lr = 0.0_dp
  else
-   eri_lr = eri_buffer_lr(index_eri(ibf,jbf,kbf,lbf))
+   eri_lr = eri_4center_lr(index_eri(ibf,jbf,kbf,lbf))
  endif
 
 end function eri_lr
@@ -1056,7 +1057,7 @@ subroutine negligible_eri(tol)
 
  icount=0
  do ibuffer=1,nsize
-   if( ABS( eri_buffer(ibuffer) ) < tol ) icount=icount+1
+   if( ABS( eri_4center(ibuffer) ) < tol ) icount=icount+1
  enddo
 
  write(stdout,*) ' number of negligible integrals <',tol
@@ -1116,7 +1117,7 @@ subroutine dump_out_eri(rcut)
    nline = nsize / line_length + 1
    icurrent=0
    do iline=1,nline
-     write(erifile) eri_buffer(icurrent+1:MIN(nsize,icurrent+line_length+1))
+     write(erifile) eri_4center(icurrent+1:MIN(nsize,icurrent+line_length+1))
      icurrent = icurrent + line_length + 1
    enddo
 
@@ -1162,7 +1163,7 @@ logical function read_eri(rcut)
      nline = nsize / line_length + 1
      icurrent=0
      do iline=1,nline
-       read(erifile) eri_buffer(icurrent+1:MIN(nsize,icurrent+line_length+1))
+       read(erifile) eri_4center(icurrent+1:MIN(nsize,icurrent+line_length+1))
        icurrent = icurrent + line_length + 1
      enddo
      write(stdout,'(a,/)') ' ERI file read'

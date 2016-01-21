@@ -27,6 +27,13 @@ SCF Total Energy          , -2.8611875289      , 0 , 1.0e-7
 HOMO energy               , -24.970619         , 0 , 1.0e-4
 LUMO energy               ,  17.314207         , 0 , 1.0e-4
 
+n2o_hse06.in              , range-separated hybrid function for N2O without RI with cartesian gaussian
+SCF Total Energy          , -184.3896918122    , 0 , 1.0e-7
+Exchange Energy           ,   -4.9713001171    , 0 , 1.0e-7
+XC Energy                 ,  -17.1161140356    , 0 , 1.0e-7
+HOMO energy               ,   -9.249028        , 0 , 1.0e-4
+LUMO energy               ,   -1.009892        , 0 , 1.0e-4
+
 co2.in                    , GW@LDA CO2 without RI with 6-31G
 Kinetic Energy            ,    186.4258076613  , 0 , 1.0e-7
 Nucleus Energy            ,   -548.2550188543  , 0 , 1.0e-7

@@ -35,33 +35,24 @@ contains
 
 
 !=========================================================================
-subroutine calculate_eri(print_eri_,basis,rcut,which_buffer)
+subroutine calculate_eri(print_eri_,basis)
  implicit none
  logical,intent(in)           :: print_eri_
  type(basis_set),intent(in)   :: basis
- real(dp),intent(in)          :: rcut
- integer,intent(in)           :: which_buffer
 !=====
 
  call start_clock(timing_eri_4center)
 
  write(stdout,'(/,a,i12)') ' Number of integrals to be stored: ',nsize
 
- select case(which_buffer)
- case(BUFFER1)
-   call clean_allocate('4-center integrals',eri_buffer,nsize)
-   eri_buffer(:) = 0.0_dp
- case(BUFFER2)
-   call clean_allocate('4-center LR integrals',eri_buffer_lr,nsize)
-   eri_buffer_lr(:) = 0.0_dp
- end select
+ call clean_allocate('4-center integrals',eri_4center,nsize)
+ eri_4center(:) = 0.0_dp
 
-
- if( .NOT. read_eri(rcut) ) call do_calculate_eri(basis,rcut,which_buffer)
+ if( .NOT. read_eri(0.0_dp) ) call calculate_eri_4center(basis)
 
 
  if( print_eri_ ) then
-   call dump_out_eri(rcut)
+   call dump_out_eri(0.0_dp)
  endif
 
  call stop_clock(timing_eri_4center)
@@ -70,12 +61,10 @@ end subroutine calculate_eri
 
 
 !=========================================================================
-subroutine do_calculate_eri(basis,rcut,which_buffer)
+subroutine calculate_eri_4center(basis)
  use m_tools,only: boys_function
  implicit none
  type(basis_set),intent(in)   :: basis
- real(dp),intent(in)          :: rcut
- integer,intent(in)           :: which_buffer
 !=====
  integer                      :: ishell,jshell,kshell,lshell
  integer                      :: ijshellpair,klshellpair
@@ -105,7 +94,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  write(stdout,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
 
 
- rcut_libint = rcut
+ rcut_libint = 0.0_dp
 
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
@@ -183,8 +172,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
                q(:) = ( alpha3(ig3) * x03(:) + alpha4(ig4) * x04(:) ) / zeta_34 
                !
                ! Treat carefully the LR only integrals
-               rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 + zeta_12*zeta_34*rcut**2 )
-               rho1 = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
+               rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
                tt = rho * SUM( (p(:)-q(:))**2 )
                call boys_function(f0t(0),0,tt)
 
@@ -192,7 +180,6 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
                      2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
                      / zeta_12 * EXP( -alpha1(ig1)*alpha2(ig2)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
                      / zeta_34 * EXP( -alpha3(ig3)*alpha4(ig4)/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
-                     * SQRT( rho / rho1 ) &
                      * coeff1(ig1) &
                      * coeff2(ig2) &
                      * coeff3(ig3) &
@@ -280,17 +267,10 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
        do kbf=1,nk
          do jbf=1,nj
            do ibf=1,ni
-             if( which_buffer == BUFFER1 ) then
-               eri_buffer( index_eri(shell(ishell)%istart+ibf-1, &
-                                     shell(jshell)%istart+jbf-1, &
-                                     shell(kshell)%istart+kbf-1, &
-                                     shell(lshell)%istart+lbf-1) ) = integrals_cart(ibf,jbf,kbf,lbf)
-             else
-               eri_buffer_lr( index_eri(shell(ishell)%istart+ibf-1, &
-                                        shell(jshell)%istart+jbf-1, &
-                                        shell(kshell)%istart+kbf-1, &
-                                        shell(lshell)%istart+lbf-1) ) = integrals_cart(ibf,jbf,kbf,lbf)
-             endif
+             eri_4center( index_eri(shell(ishell)%istart+ibf-1, &
+                                    shell(jshell)%istart+jbf-1, &
+                                    shell(kshell)%istart+kbf-1, &
+                                    shell(lshell)%istart+lbf-1) ) = integrals_cart(ibf,jbf,kbf,lbf)
            enddo
          enddo
        enddo
@@ -314,7 +294,7 @@ subroutine do_calculate_eri(basis,rcut,which_buffer)
  write(stdout,'(a,/)') ' All ERI have been calculated'
 
 
-end subroutine do_calculate_eri
+end subroutine calculate_eri_4center
 
 
 !=========================================================================

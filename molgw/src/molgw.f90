@@ -164,7 +164,7 @@ program molgw
  ! ERI are stored "privately" in the module m_eri
  call prepare_eri(basis,0.0_dp,BUFFER1)
  if( .NOT. is_full_auxil) then
-   call calculate_eri(print_eri_,basis,0.0_dp,BUFFER1)
+   call calculate_eri(print_eri_,basis)
  endif
 
 
@@ -173,7 +173,7 @@ program molgw
  if(calc_type%need_exchange_lr) then
    call prepare_eri(basis,rcut,BUFFER2)
    if( .NOT. is_full_auxil) then
-     call calculate_eri(print_eri_,basis,rcut,BUFFER2)
+     call calculate_eri_lr(print_eri_,basis,rcut)
    endif
  endif
 
@@ -341,10 +341,10 @@ program molgw
  ! Some deallocations here
  !
  ! If an auxiliary basis is given, the 4-center integrals are not needed anymore
- if( has_auxil_basis ) call deallocate_eri_buffer()
+ if( has_auxil_basis ) call deallocate_eri_4center()
  ! If RSH calculations were performed, then deallocate the LR integrals which
  ! are not needed anymore
- if( calc_type%need_exchange_lr .AND. .NOT. is_big_restart ) call deallocate_eri_buffer_lr()
+ if( calc_type%need_exchange_lr .AND. .NOT. is_big_restart ) call deallocate_eri_4center_lr()
  if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
 
  !
