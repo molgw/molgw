@@ -1615,48 +1615,6 @@ function colindex_local_to_global_procindex(ipcol,npcol,ilocal)
 end function colindex_local_to_global_procindex
 
 
-
-!=========================================================================
-subroutine symmetrize_matrix(desc,m_mat,n_mat,mat)
- implicit none
- integer,intent(in)          :: desc(ndel)
- integer,intent(in)          :: m_mat,n_mat
- real(dp),intent(inout)      :: mat(m_mat,n_mat)
-!=====
- integer                     :: imat,jmat,nmat
- real(dp)                    :: alpha
-!=====
- 
- ! On input, mat is lower triangular
- ! On output, mat is real symmetric
-
-#ifdef HAVE_SCALAPACK
- if( desc(3)/=desc(4) ) call die('matrix has to be square')
- nmat = desc(3)
- do jmat=1,nmat
-   do imat=jmat+1,nmat
-     call PDELGET('All',' ',alpha,mat,imat,jmat,desc)
-     call PDELSET(mat,jmat,imat,desc,alpha)
-   enddo
- enddo
-#else
- nmat=m_mat
- if (m_mat/=n_mat) call die('matrix should be squared if SCALAPACK is not used')
- if (m_mat/=desc(3)) then
-  write(stderr,*) desc(3),m_mat
-  call die('descriptor inconsistent row')
- endif
- if (n_mat/=desc(4)) call die('descriptor inconsistent col')
- do jmat=1,nmat
-   do imat=jmat+1,nmat
-     mat(jmat,imat) = mat(imat,jmat)
-   enddo
- enddo
-#endif
-
-end subroutine symmetrize_matrix
-
-
 #ifdef HAVE_SCALAPACK
 !=========================================================================
 subroutine diagonalize_scalapack(nmat,matrix,eigval)

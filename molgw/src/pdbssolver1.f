@@ -304,16 +304,27 @@
          LQUERY = LWORK .EQ. -1
          NB = DESCM( NB_ )
          LLDM = DESCM( LLD_ )
-         MROWS = NUMROC( TWON, NB, MYROW, 0, NPROW )
-         MCOLS = NUMROC( TWON, NB, MYCOL, 0, NPCOL )
+!FBFB Fabien's lines
+         MROWS = NUMROC( N, NB, MYROW, 0, NPROW )
+         MCOLS = NUMROC( N, NB, MYCOL, 0, NPCOL )
+!Meiyue's lines
+!         MROWS = NUMROC( TWON, NB, MYROW, 0, NPROW )
+!         MCOLS = NUMROC( TWON, NB, MYCOL, 0, NPCOL )
          LOCALMAT = MAX( NB, LLDM )*MCOLS
          DESCPHI( 1:DLEN_ ) = DESCM( 1:DLEN_ )
          DESCPSI( 1:DLEN_ ) = DESCM( 1:DLEN_ )
          DESCV( 1:DLEN_ ) = DESCM( 1:DLEN_ )
+!FBFB Fabien's lines
          INDPHI = 1
          INDPSI = INDPHI + LOCALMAT
-         INDWORK = INDPSI + LOCALMAT
+         INDWORK = INDPSI
+!Meiyue's lines
+!         INDPHI = 1
+!         INDPSI = INDPHI + LOCALMAT
+!         INDWORK = INDPSI + LOCALMAT
+
          INDV = INDPHI
+
          LLWORK = LWORK - INDWORK + 1
 *
 *        Estimate the workspace required by external subroutines.
