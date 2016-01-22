@@ -511,8 +511,6 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    energy_qp_z(:,:) = 0.0_dp
    energy_qp_new(:,:) = 0.0_dp
 
-   ! First give energy_qp_new a meaningful default value
-   energy_qp_new(:,:) = energy(:,:)
    ! Then overwrite the interesting energy with the calculated GW one
    do astate=nsemin,nsemax
 
@@ -543,6 +541,8 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    call xsum(energy_qp_z)
    call xsum(energy_qp_new)
 
+   energy_qp_new(:nsemin-1,:) = energy(:nsemin-1,:)
+   energy_qp_new(nsemax+1:,:) = energy(nsemax+1:,:)
 
    write(stdout,'(/,a)') ' G0W0 Eigenvalues (eV)'
    if(nspin==1) then
