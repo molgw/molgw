@@ -51,7 +51,7 @@ level005: m_warning.o m_gos.o
 
 level010: m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o
 
-level015: m_atoms.o m_gaussian.o
+level015: m_atoms.o m_gaussian.o m_block_diago.o
 
 level020: m_basis_set.o
 
@@ -76,7 +76,7 @@ level045: scf_loop.o molgw.o
 ../molgw: m_definitions.o libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o pdbssolver1.o \
         m_warning.o m_gos.o \
         m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o \
-        m_atoms.o m_gaussian.o \
+        m_atoms.o m_gaussian.o m_block_diago.o \
         m_basis_set.o \
         m_inputparam.o \
         m_eri.o m_scf.o m_dft_grid.o \
@@ -86,7 +86,7 @@ level045: scf_loop.o molgw.o
         scf_loop.o molgw.o
 	$(FC_W_OPTS) \
                         m_definitions.o m_warning.o m_elements.o m_mpi.o m_timing.o m_memory.o m_inputparam.o m_tools.o m_scf.o m_atoms.o \
-                        m_gos.o m_gaussian.o m_basis_set.o m_eri.o m_dft_grid.o m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o \
+                        m_gos.o m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o \
                         m_spectral_function.o \
                         libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o mp2_selfenergy.o \
                         mp2.o gw.o m_timedependent.o static_polarizability.o dft_xc.o io.o \
@@ -117,7 +117,7 @@ static_polarizability.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 
         static_polarizability.f90
 	$(FC_W_OPTS) -c static_polarizability.f90 $(LIBXC_INCS)
 
-m_timedependent.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 \
+m_timedependent.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_block_diago.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 \
                    m_hamiltonian.f90 m_timedependent.f90
 	$(FC_W_OPTS) -c m_timedependent.f90 $(LIBXC_INCS)
 
@@ -183,6 +183,9 @@ m_scf.o: m_definitions.f90 m_inputparam.f90 m_scf.f90
 
 m_inputparam.o: m_definitions.f90 m_elements.f90 m_warning.f90 m_atoms.f90 m_basis_set.f90 m_inputparam.f90 input_variables.f90 basis_path.f90
 	$(FC_W_OPTS) -c m_inputparam.f90 $(LIBXC_INCS)
+
+m_block_diago.o: m_definitions.f90 m_warning.f90 m_memory.f90 m_mpi.f90 m_tools.f90 m_block_diago.f90
+	$(FC_W_OPTS) -c m_block_diago.f90 $(LIBXC_INCS)
 
 m_atoms.o: m_definitions.f90 m_warning.f90 m_elements.f90 m_atoms.f90
 	$(FC_W_OPTS) -c m_atoms.f90 $(LIBXC_INCS)
