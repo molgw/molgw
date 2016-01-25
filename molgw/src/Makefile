@@ -121,10 +121,10 @@ m_timedependent.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memo
                    m_hamiltonian.f90 m_timedependent.f90
 	$(FC_W_OPTS) -c m_timedependent.f90 $(LIBXC_INCS)
 
-m_hamiltonian_sca.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_eri.f90 m_hamiltonian_sca.f90
+m_hamiltonian_sca.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_eri.f90 m_basis_set.f90 m_hamiltonian_sca.f90
 	$(FC_W_OPTS) -c m_hamiltonian_sca.f90 $(LIBXC_INCS)
 
-m_hamiltonian.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_eri.f90 m_hamiltonian.f90
+m_hamiltonian.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_eri.f90 m_basis_set.f90 m_hamiltonian.f90
 	$(FC_W_OPTS) -c m_hamiltonian.f90 $(LIBXC_INCS)
 
 dft_xc.o: m_definitions.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90 m_mpi.f90 dft_xc.f90
@@ -151,7 +151,7 @@ libint_wrapper.o: libint_wrapper.c
 libint_wrapper_nounderscore.o: libint_wrapper_nounderscore.c
 	$(CC_W_OPTS) -c libint_wrapper_nounderscore.c $(LIBINT_INCS)
 
-m_dft_grid.o: m_definitions.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_atoms.f90 m_mpi.f90 m_dft_grid.f90
+m_dft_grid.o: m_definitions.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_atoms.f90 m_mpi.f90 m_basis_set.f90 m_dft_grid.f90
 	$(FC_W_OPTS) -c m_dft_grid.f90 $(LIBXC_INCS)
 
 m_spectral_function.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90

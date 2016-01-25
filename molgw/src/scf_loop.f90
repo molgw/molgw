@@ -2,7 +2,7 @@
 ! This file contains
 ! the main SCF loop for Hartree-Fock or Kohn-Sham
 !=========================================================================
-subroutine scf_loop(basis,prod_basis,auxil_basis,&
+subroutine scf_loop(basis,auxil_basis,&
                     nstate,m_ov,n_ov,m_ham,n_ham,&
                     s_matrix_sqrt_inv,&
                     s_matrix,c_matrix,p_matrix,&
@@ -30,7 +30,6 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
 
 !=====
  type(basis_set),intent(in)         :: basis
- type(basis_set),intent(in)         :: prod_basis
  type(basis_set),intent(in)         :: auxil_basis
  integer,intent(in)                 :: nstate,m_ov,n_ov,m_ham,n_ham
  real(dp),intent(in)                :: s_matrix_sqrt_inv(m_ov,n_ov)
@@ -203,7 +202,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
        .AND. iscf > 5 ) then
 
      call init_spectral_function(nstate0,nstate,occupation,wpol)
-     call polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+     call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
 
      if( ABS(en%rpa) > 1.e-6_dp) then
        en%tot = en%tot + en%rpa
@@ -211,7 +210,7 @@ subroutine scf_loop(basis,prod_basis,auxil_basis,&
      endif
 
      exchange_m_vxc_diag(:,:)=0.0_dp
-     call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
+     call gw_selfenergy(calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
 
      if( .NOT. ALLOCATED(self_energy_old) ) then
        allocate(self_energy_old(basis%nbf,basis%nbf,nspin))

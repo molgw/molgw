@@ -72,6 +72,32 @@ contains
 
 
 !=========================================================================
+function index_prodstate(istate,jstate)
+ implicit none
+ integer,intent(in)  :: istate,jstate
+ integer             :: index_prodstate
+!=====
+ integer             :: imin,imax
+!=====
+
+ ! Index (i,j) transformed into (I)
+ ! with this ordering:
+ !   (  1  2  4  7  ... )
+ !   (  2  3  5  8  ... )
+ !   (  4  5  6  9  ... )
+ !   (  7  8  9 10  ... )
+ !   ( ................ )
+
+ imin = MIN(istate,jstate)
+ imax = MAX(istate,jstate)
+
+ index_prodstate = ( imax * (imax - 1) ) / 2 + imin
+
+
+end function index_prodstate
+
+
+!=========================================================================
 subroutine init_spectral_function(nstate0,nstate,occupation,sf)
  implicit none
  integer,intent(in)                    :: nstate0,nstate

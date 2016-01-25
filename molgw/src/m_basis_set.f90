@@ -53,10 +53,7 @@ module m_basis_set
    character(len=4)                 :: gaussian_type   ! CART or PURE
    type(basis_function),allocatable :: bf(:)           ! Cartesian basis function
    type(basis_function),allocatable :: bff(:)          ! Final basis function (can be Cartesian or Pure)
-   !
-   ! then additional data needed for product basis
-   integer,allocatable              :: index_ij(:,:)
-   integer,allocatable              :: index_prodbasis(:,:)
+
  end type basis_set
 
 
@@ -282,39 +279,6 @@ end subroutine init_basis_set
 
 
 !=========================================================================
-subroutine init_product_basis_set(basis,prod_basis)
- implicit none
- type(basis_set),intent(in)     :: basis
- type(basis_set),intent(out)    :: prod_basis
-!=====
- integer                        :: ibf,jbf,iprodbf,jprodbf
- real(dp),allocatable           :: s_matrix(:,:),eigval(:),eigvec(:,:)
- character(len=100)             :: title
-!=====
-
- prod_basis%nbf = ( basis%nbf * ( basis%nbf + 1 ) ) / 2
- allocate(prod_basis%bf(prod_basis%nbf))
- allocate(prod_basis%index_ij(2,prod_basis%nbf))
- allocate(prod_basis%index_prodbasis(basis%nbf,basis%nbf))
-
-  !
-  ! Construct all products
-  iprodbf = 0
-  do jbf=1,basis%nbf
-    do ibf=1,jbf
-      iprodbf = iprodbf + 1
-      prod_basis%index_ij(1,iprodbf) = ibf
-      prod_basis%index_ij(2,iprodbf) = jbf
-      prod_basis%index_prodbasis(ibf,jbf) = iprodbf
-      prod_basis%index_prodbasis(jbf,ibf) = iprodbf
-!      call basis_function_prod(basis%bf(ibf),basis%bf(jbf),prod_basis%bf(iprodbf)) 
-    enddo
-  enddo
-
-end subroutine init_product_basis_set
-
-
-!=========================================================================
 subroutine destroy_basis_set(basis)
  implicit none
 
@@ -327,8 +291,6 @@ subroutine destroy_basis_set(basis)
 !   call destroy_basis_function(basis%bf(ibf))
 ! enddo
  deallocate(basis%bf)
- if(ALLOCATED(basis%index_ij))        deallocate(basis%index_ij)
- if(ALLOCATED(basis%index_prodbasis)) deallocate(basis%index_prodbasis)
 
 end subroutine destroy_basis_set
 

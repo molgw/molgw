@@ -1,5 +1,5 @@
 !=========================================================================
-subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy,energy_gw)
+subroutine gw_selfenergy(gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy,energy_gw)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -12,7 +12,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  implicit none
 
  integer,intent(in)                 :: gwmethod
- type(basis_set)                    :: basis,prod_basis
+ type(basis_set)                    :: basis
  real(dp),intent(in)                :: occupation(basis%nbf,nspin),energy(basis%nbf,nspin),exchange_m_vxc_diag(basis%nbf,nspin)
  real(dp),intent(in)                :: c_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)                :: s_matrix(basis%nbf,basis%nbf)
@@ -21,6 +21,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
  real(dp),intent(out)               :: energy_gw
 !=====
  logical               :: file_exists=.FALSE.
+ integer               :: nprodbasis
  integer               :: nstate0
  integer               :: homo
  integer               :: nomegai
@@ -82,7 +83,9 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
    write(stdout,*) 'Perform an eigenvalue self-consistent GnWn calculation'
  end select
 
- nstate0 = basis%nbf
+ nstate0    = basis%nbf
+ nprodbasis = index_prodstate(nstate0,nstate0)
+
  if(has_auxil_basis) then
    call calculate_eri_3center_eigen(basis%nbf,nstate0,c_matrix)
    if( calc_type%gwmethod == LW .OR. calc_type%gwmethod == LW2 .OR. calc_type%gwmethod == GSIGMA ) &
@@ -203,7 +206,7 @@ subroutine gw_selfenergy(gwmethod,basis,prod_basis,occupation,energy,exchange_m_
      if( .NOT. has_auxil_basis) then
        ! Here just grab the precalculated value
        do astate=nsemin,nsemax
-         iastate = prod_basis%index_prodbasis(istate,astate) + prod_basis%nbf*(ispin-1)
+         iastate = index_prodstate(istate,astate) + nprodbasis * (ispin-1)
          bra(:,astate) = wpol%residu_left(iastate,:)
        end do
      else

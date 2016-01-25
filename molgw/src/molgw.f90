@@ -45,7 +45,6 @@ program molgw
  real(dp),parameter      :: TOL_OVERLAP=1.0e-6_dp
  type(basis_set)         :: basis
  type(basis_set)         :: auxil_basis
- type(basis_set)         :: prod_basis
  type(spectral_function) :: wpol
  integer                 :: reading_status,restart_type
  integer                 :: ibf,jbf
@@ -177,10 +176,6 @@ program molgw
      call calculate_eri_lr(print_eri_,basis,rcut)
    endif
  endif
-
- !
- ! In case of GW or BSE run, set up the product basis 
- if( calc_type%is_gw .OR. calc_type%is_td .OR. calc_type%is_bse) call init_product_basis_set(basis,prod_basis)
 
  !
  ! Build the occupation array
@@ -321,7 +316,7 @@ program molgw
  ! Only do it if the calculation is NOT a big restart
  !
  if( .NOT. is_big_restart) then
-   call scf_loop(basis,prod_basis,auxil_basis,                                  &
+   call scf_loop(basis,auxil_basis,                                             &
                  nstate,m_ov,n_ov,m_ham,n_ham,                                  &
                  s_matrix_sqrt_inv,                                             &
                  s_matrix,c_matrix,p_matrix,                                    &
@@ -365,7 +360,7 @@ program molgw
    if(calc_type%is_td .AND. calc_type%is_dft) call init_dft_grid(grid_level)
 
    call init_spectral_function(nstate0,nstate,occupation,wpol)
-   call polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+   call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
    call destroy_spectral_function(wpol)
 
    if(calc_type%is_td .AND. calc_type%is_dft) call destroy_dft_grid()
@@ -409,7 +404,7 @@ program molgw
    call read_spectral_function(wpol,reading_status)
    ! If reading has failed, then do the calculation
    if( reading_status /= 0 ) then
-     call polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+     call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
    endif
 
    en%tot = en%tot + en%rpa
@@ -417,7 +412,7 @@ program molgw
    write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
 
    allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-   call gw_selfenergy(calc_type%gwmethod,basis,prod_basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
+   call gw_selfenergy(calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
 
    if( ABS(en%gw) > 1.0e-5_dp ) then
      write(stdout,'(/,a,f19.10)') ' Galitskii-Migdal Total energy (Ha): ',en%tot - en%rpa + en%gw
@@ -469,7 +464,6 @@ program molgw
 
  call destroy_basis_set(basis)
  if(has_auxil_basis) call destroy_basis_set(auxil_basis)
- if(calc_type%is_gw .OR. calc_type%is_td .OR. calc_type%is_bse ) call destroy_basis_set(prod_basis)
  call destroy_atoms()
 
  call total_memory_statement()

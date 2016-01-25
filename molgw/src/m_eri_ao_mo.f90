@@ -148,7 +148,7 @@ subroutine calculate_eri_3center_eigen(nbf,nstate,c_matrix)
  write(stdout,'(/,a)') ' Calculate 3-center integrals on eigenstates'
 
 
- !TODO merge the 2 last indexes for prod_basis save a factor 2! (i<->j symmetry)
+ !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
  call clean_allocate('3-center MO integrals',eri_3center_eigen,nauxil_3center,nstate,nstate,nspin)
  eri_3center_eigen(:,:,:,:) = 0.0_dp
 
@@ -218,7 +218,7 @@ subroutine calculate_eri_3center_eigen_mixed(nbf,nstate,c_matrix)
  write(stdout,'(/,a)') ' Calculate 3-center integrals on MIXED eigenstates'
 
 
- !TODO merge the 2 last indexes for prod_basis save a factor 2! (i<->j symmetry)
+ !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
  call clean_allocate('3-center mixed MO integrals',eri_3center_eigen_mixed,nauxil_3center,nstate,nstate,nspin)
  eri_3center_eigen_mixed(:,:,:,:) = 0.0_dp
 

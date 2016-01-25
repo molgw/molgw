@@ -15,7 +15,7 @@ contains
 
 
 !=========================================================================
-subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
+subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
  use m_tools
  use m_block_diago
  use m_basis_set
@@ -23,7 +23,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
  use m_eri_ao_mo
  implicit none
 
- type(basis_set),intent(in)            :: basis,prod_basis,auxil_basis
+ type(basis_set),intent(in)            :: basis,auxil_basis
  integer,intent(in)                    :: nstate
  real(dp),intent(in)                   :: occupation(basis%nbf,nspin)
  real(dp),intent(in)                   :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
@@ -172,9 +172,9 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
  ! Step 3
  if(calc_type%is_bse .AND. .NOT. is_rpa) then
    if(.NOT. has_auxil_basis ) then
-     call build_amb_apb_bse(basis%nbf,prod_basis,c_matrix,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+     call build_amb_apb_bse(basis%nbf,nstate0,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
    else
-     call build_amb_apb_bse_auxil(nmat,basis%nbf,c_matrix,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+     call build_amb_apb_bse_auxil(nmat,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
    endif
    call destroy_spectral_function(wpol_static)
  endif
@@ -282,7 +282,7 @@ subroutine polarizability(basis,prod_basis,auxil_basis,nstate,occupation,energy,
         call chi_to_sqrtvchisqrtv_auxil_spa(basis%nbf,auxil_basis%nbf_local,a_diag,wpol_out)
 
    else
-     call chi_to_vchiv(basis%nbf,nstate0,prod_basis,c_matrix,bigx,eigenvalue,wpol_out)
+     call chi_to_vchiv(basis%nbf,nstate0,c_matrix,bigx,eigenvalue,wpol_out)
    endif
   
  
@@ -787,16 +787,14 @@ end subroutine build_apb_tddft
 
 
 !=========================================================================
-subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+subroutine build_amb_apb_bse(nbf,nstate,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
  use m_spectral_function
  use m_basis_set
  use m_eri_ao_mo
  use m_tools 
  implicit none
 
- integer,intent(in)                 :: nbf
- type(basis_set),intent(in)         :: prod_basis
- real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
+ integer,intent(in)                 :: nbf,nstate
  type(spectral_function),intent(in) :: wpol,wpol_static
  integer,intent(in)                 :: m_apb,n_apb
  real(prec_td),intent(out)          :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
@@ -804,6 +802,7 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,m_apb,n_ap
  integer              :: t_ij,t_kl,t_ij_global,t_kl_global
  integer              :: istate,jstate,kstate,lstate
  integer              :: ijspin,klspin
+ integer              :: nprodbasis
  integer              :: kbf
  real(dp),allocatable :: bra(:),ket(:)
  real(dp)             :: wtmp
@@ -814,6 +813,8 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,m_apb,n_ap
  call start_clock(timing_build_bse)
 
  write(stdout,'(a)') ' Build W part'
+
+ nprodbasis = index_prodstate(nstate,nstate)
 
  !
  ! Prepare the bra and ket for BSE
@@ -842,18 +843,18 @@ subroutine build_amb_apb_bse(nbf,prod_basis,c_matrix,wpol,wpol_static,m_apb,n_ap
 
      if(ijspin/=klspin) cycle
 
-     kbf = prod_basis%index_prodbasis(istate,kstate)+prod_basis%nbf*(ijspin-1)
+     kbf = index_prodstate(istate,kstate) + nprodbasis * (ijspin-1)
      bra(:) = wpol_static%residu_left(kbf,:)
-     kbf = prod_basis%index_prodbasis(jstate,lstate)+prod_basis%nbf*(klspin-1)
+     kbf = index_prodstate(jstate,lstate) + nprodbasis * (klspin-1)
      ket(:) = wpol_static%residu_left(kbf,:)
 
      wtmp =  SUM( 2.0_dp * bra(:)*ket(:)/(-wpol_static%pole(:)) )   ! Factor two comes from Resonant and Anti-resonant transitions
      apb_matrix(t_ij,t_kl) =  apb_matrix(t_ij,t_kl) - wtmp
      amb_matrix(t_ij,t_kl) =  amb_matrix(t_ij,t_kl) - wtmp
 
-     kbf = prod_basis%index_prodbasis(istate,lstate)+prod_basis%nbf*(ijspin-1)
+     kbf = index_prodstate(istate,lstate) + nprodbasis * (ijspin-1)
      bra(:) = wpol_static%residu_left(kbf,:)
-     kbf = prod_basis%index_prodbasis(jstate,kstate)+prod_basis%nbf*(klspin-1)
+     kbf = index_prodstate(jstate,kstate) + nprodbasis * (klspin-1)
      ket(:) = wpol_static%residu_left(kbf,:)  
 
      wtmp =  SUM( 2.0_dp * bra(:)*ket(:)/(-wpol_static%pole(:)) )   ! Factor two comes from Resonant and Anti-resonant transitions
@@ -875,15 +876,14 @@ end subroutine build_amb_apb_bse
 
 
 !=========================================================================
-subroutine build_amb_apb_bse_auxil(nmat,nbf,c_matrix,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+subroutine build_amb_apb_bse_auxil(nmat,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
  use m_spectral_function
  use m_basis_set
  use m_eri_ao_mo
  use m_tools 
  implicit none
 
- integer,intent(in)                 :: nmat,nbf
- real(dp),intent(in)                :: c_matrix(nbf,nbf,nspin)
+ integer,intent(in)                 :: nmat
  type(spectral_function),intent(in) :: wpol,wpol_static
  integer,intent(in)                 :: m_apb,n_apb
  real(prec_td),intent(out)          :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
@@ -1869,7 +1869,7 @@ end subroutine get_energy_qp
 
 
 !=========================================================================
-subroutine chi_to_vchiv(nbf,nstate,prod_basis,c_matrix,bigx,eigenvalue,wpol)
+subroutine chi_to_vchiv(nbf,nstate,c_matrix,bigx,eigenvalue,wpol)
  use m_definitions
  use m_warning
  use m_basis_set
@@ -1878,7 +1878,6 @@ subroutine chi_to_vchiv(nbf,nstate,prod_basis,c_matrix,bigx,eigenvalue,wpol)
  implicit none
  
  integer,intent(in)                    :: nbf,nstate
- type(basis_set),intent(in)            :: prod_basis
  real(dp),intent(in)                   :: c_matrix(nbf,nstate,nspin)
  type(spectral_function),intent(inout) :: wpol
  real(prec_td),intent(in)              :: bigx(wpol%npole_reso_apb,wpol%npole_reso_apb)
@@ -1888,7 +1887,7 @@ subroutine chi_to_vchiv(nbf,nstate,prod_basis,c_matrix,bigx,eigenvalue,wpol)
  integer                               :: istate,jstate,kstate,lstate,ijstate,ijstate_spin
  integer                               :: klstate_min
  integer                               :: klstate_max
- integer                               :: nmat,nprodspin
+ integer                               :: nmat,nprodbasis
  real(dp)                              :: eri_eigen_klij
  real(dp),allocatable                  :: eri_eigenstate_klmin(:,:,:,:)
  real(dp)                              :: rtmp
@@ -1905,7 +1904,8 @@ subroutine chi_to_vchiv(nbf,nstate,prod_basis,c_matrix,bigx,eigenvalue,wpol)
  ! Set this to zero and then enforce the calculation of the first array of Coulomb integrals
  eri_eigenstate_klmin(:,:,:,:) = 0.0_dp
 
- call allocate_spectral_function(prod_basis%nbf*nspin,wpol)
+ nprodbasis = index_prodstate(nstate,nstate) * nspin
+ call allocate_spectral_function(nprodbasis,wpol)
 
  wpol%pole(1:wpol%npole_reso_apb) = eigenvalue(:)
 
@@ -1921,23 +1921,24 @@ subroutine chi_to_vchiv(nbf,nstate,prod_basis,c_matrix,bigx,eigenvalue,wpol)
    klstate_max = MAX(kstate,lstate)
    call calculate_eri_4center_eigen(nbf,nstate,c_matrix,klstate_min,klspin,eri_eigenstate_klmin)
 
+   ijstate_spin = 0
    do ijspin=1,nspin
-     do ijstate=1,prod_basis%nbf
-       istate = prod_basis%index_ij(1,ijstate)
-       jstate = prod_basis%index_ij(2,ijstate)
+     do jstate=1,nstate
+       do istate = 1,jstate
+         ijstate_spin = ijstate_spin + 1
 
-       ijstate_spin = ijstate+prod_basis%nbf*(ijspin-1)
+         eri_eigen_klij = eri_eigenstate_klmin(klstate_max,istate,jstate,ijspin)
 
-       eri_eigen_klij = eri_eigenstate_klmin(klstate_max,istate,jstate,ijspin)
-
-       ! Use the symmetry ( k l | i j ) to regroup (kl) and (lk) contributions
-       ! and the block structure of eigenvector | X  Y |
-       !                                        | Y  X |
-       wpol%residu_left(ijstate_spin,:) = wpol%residu_left(ijstate_spin,:) &
+         ! Use the symmetry ( k l | i j ) to regroup (kl) and (lk) contributions
+         ! and the block structure of eigenvector | X  Y |
+         !                                        | Y  X |
+         wpol%residu_left(ijstate_spin,:) = wpol%residu_left(ijstate_spin,:) &
                               + eri_eigen_klij * bigx(t_kl,:)
 
+       enddo
      enddo
    enddo
+
  enddo
 
  wpol%residu_left(:,:) = wpol%residu_left(:,:) * SQRT(spin_fact)
