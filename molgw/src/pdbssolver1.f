@@ -1,7 +1,7 @@
 #ifdef HAVE_SCALAPACK
       SUBROUTINE PDBSSOLVER1( N, M, IM, JM, DESCM, K, IK, JK, DESCK,
-     $                       LAMBDA, X1, IX, JX, DESCX, X2, WORK, LWORK,
-     $                       IWORK, LIWORK, INFO )
+     $                        LAMBDA, X1, IX, JX, DESCX, X2, WORK,
+     $                        LWORK, IWORK, LIWORK, INFO )
 *
       IMPLICIT NONE
 *
@@ -9,9 +9,9 @@
       INTEGER            N, IM, JM, IK, JK, IX, JX, LWORK, LIWORK, INFO
 *     ..
 *     .. Array Arguments ..
-      INTEGER           DESCM( * ), DESCK( * ), DESCX( * ), IWORK( * )
-      DOUBLE PRECISION  M( * ), K( * ), LAMBDA( * ), X1( * ), WORK( *),
-     $                  X2( * )
+      INTEGER            DESCM( * ), DESCK( * ), DESCX( * ), IWORK( * )
+      DOUBLE PRECISION   M( * ), K( * ), LAMBDA( * ), X1( * ), X2( * ),
+     $                   WORK( * )
 *     ..
 *
 *  Purpose
@@ -160,24 +160,30 @@
 *          On normal exit LAMBDA contains the positive eigenvalues of H
 *          in ascending order.
 *
-*  X       (local output) DOUBLE PRECISION array,
-*          global dimension (2N, N),
+*  X1      (local output) DOUBLE PRECISION array,
+*          global dimension (N, N),
 *          local dimension ( LLD_X, LOCc(JX+N-1) )
-*          On normal exit X contains the right eigenvectors of H.
+*          On normal exit X1 contains the top block of X.
 *
 *  IX      (global input) INTEGER
-*          X's global row index, which points to the beginning of the
+*          X1's global row index, which points to the beginning of the
 *          submatrix which is to be operated on.
 *          In this version, only IX = JX = 1 is supported.
 *
 *  JX      (global input) INTEGER
-*          X's global column index, which points to the beginning of
+*          X1's global column index, which points to the beginning of
 *          the submatrix which is to be operated on.
 *          In this version, only IX = JX = 1 is supported.
 *
 *  DESCX   (global and local input) INTEGER array of dimension DLEN_.
-*          The array descriptor for the distributed matrix X.
+*          The array descriptor for the distributed matrix X1.
 *          DESCX( CTXT_ ) must equal DESCA( CTXT_ )
+*
+*  X2      (local output) DOUBLE PRECISION array,
+*          global dimension (N, N),
+*          local dimension ( LLD_X, LOCc(JX+N-1) )
+*          On normal exit X2 contains the bottom block of X.
+*          X2 and X1 share the same set of IX, JX, and DESCX.
 *
 *  WORK    (local workspace/output) DOUBLE PRECISION array,
 *          dimension (LWORK)
@@ -239,15 +245,10 @@
 *     .. Local Scalars ..
       LOGICAL            LQUERY
       INTEGER            ICTXT, NPROCS, NPROW, NPCOL, MYROW, MYCOL, NB,
-     $                   TWON, I, J, LWKOPT, LLWORK, LOCALMAT, MROWS,
-     $                   MCOLS, LLDM, INDPHI, INDPSI, INDV, INDWORK,
-     $                   ITMP, DIMV, NZ, LIWKOPT
+     $                   I, J, LWKOPT, LLWORK, LOCALMAT, MROWS, MCOLS,
+     $                   LLDM, INDWORK, ITMP, DIMV, NZ, LIWKOPT
       DOUBLE PRECISION   DTMP
       DOUBLE PRECISION   T_CHOL, T_FORMW, T_DIAG, T_VEC1, T_VEC2, T_PREP
-*     ..
-*     .. Local Arrays ..
-      INTEGER            DESCPHI( DLEN_ ), DESCPSI( DLEN_ ),
-     $                   DESCV( DLEN_ )
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          DBLE, SQRT
@@ -258,15 +259,14 @@
       DOUBLE PRECISION   MPI_WTIME
 *     ..
 *     .. External Subroutines ..
-      EXTERNAL           PDAXPY, PDCOPY, PDSCAL, PDLACPY, PDPOTRF,
+      EXTERNAL           PDAXPY, PDCOPY, PDSCAL, PDGEADD, PDPOTRF,
      $                   PDSYEVR, PDSYGST, PXERBLA, BLACS_GRIDINFO,
-     $                   CHK1MAT, PCHK2MAT
+     $                   CHK1MAT, PCHK2MAT, PDTRMM, PDTRSM
 *     ..
 *     .. Executable Statements ..
 *
       T_PREP = MPI_WTIME()
       INFO = 0
-      TWON = 2*N
       ICTXT = DESCM( CTXT_ )
       CALL BLACS_GRIDINFO( ICTXT, NPROW, NPCOL, MYROW, MYCOL )
       NPROCS = NPROW*NPCOL
@@ -304,40 +304,23 @@
          LQUERY = LWORK .EQ. -1
          NB = DESCM( NB_ )
          LLDM = DESCM( LLD_ )
-!FBFB Fabien's lines
          MROWS = NUMROC( N, NB, MYROW, 0, NPROW )
          MCOLS = NUMROC( N, NB, MYCOL, 0, NPCOL )
-!Meiyue's lines
-!         MROWS = NUMROC( TWON, NB, MYROW, 0, NPROW )
-!         MCOLS = NUMROC( TWON, NB, MYCOL, 0, NPCOL )
          LOCALMAT = MAX( NB, LLDM )*MCOLS
-         DESCPHI( 1:DLEN_ ) = DESCM( 1:DLEN_ )
-         DESCPSI( 1:DLEN_ ) = DESCM( 1:DLEN_ )
-         DESCV( 1:DLEN_ ) = DESCM( 1:DLEN_ )
-!FBFB Fabien's lines
-         INDPHI = 1
-         INDPSI = INDPHI + LOCALMAT
-         INDWORK = INDPSI
-!Meiyue's lines
-!         INDPHI = 1
-!         INDPSI = INDPHI + LOCALMAT
-!         INDWORK = INDPSI + LOCALMAT
-
-         INDV = INDPHI
-
+         INDWORK = 1
          LLWORK = LWORK - INDWORK + 1
 *
 *        Estimate the workspace required by external subroutines.
 *
-!         CALL PDSYEV( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, 1,
-!     $        1, DESCV, WORK, -1, ITMP )
+!         CALL PDSYEV( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, IX,
+!     $        JX, DESCX, WORK, -1, ITMP )
          CALL PDSYEVR( 'V', 'A', 'L', N, DTMP, IK, JK, DESCK, ZERO,
-     $        ZERO, 1, N, DIMV, NZ, DTMP, DTMP, 1, 1, DESCV, WORK, -1,
+     $        ZERO, 1, N, DIMV, NZ, DTMP, DTMP, IX, JX, DESCX, WORK, -1,
      $        IWORK, -1, ITMP )
          LWKOPT = INT( WORK( 1 ) )
          LIWKOPT = IWORK( 1 )
 *
-         LWKOPT = INDWORK - 1 + MAX( LWKOPT, LOCALMAT )
+         LWKOPT = INDWORK - 1 + LWKOPT
          IF ( .NOT. LQUERY .AND. LWORK .LT. LWKOPT )
      $      INFO = -16
          IF ( INFO .EQ. 0 .AND. .NOT. LQUERY .AND. LIWORK .LT. LIWKOPT )
@@ -393,10 +376,10 @@
 *     Diagonalization: V**T * (L**T * K * L) * V = diag(lambda).
 *
       T_DIAG = MPI_WTIME()
-!      CALL PDSYEV( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, WORK( INDV ),
-!     $     1, 1, DESCV, WORK( INDWORK ), LLWORK, ITMP )
+!      CALL PDSYEV( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, X1,
+!     $     IX, JX, DESCX, WORK( INDWORK ), LLWORK, ITMP )
       CALL PDSYEVR( 'V', 'A', 'L', N, K, IK, JK, DESCK, ZERO, ZERO,
-     $     1, N, DIMV, NZ, LAMBDA, WORK( INDV ), 1, 1, DESCV,
+     $     1, N, DIMV, NZ, LAMBDA, X1, IX, JX, DESCX,
      $     WORK( INDWORK ), LLWORK, IWORK, LIWORK, ITMP )
       T_DIAG = MPI_WTIME() - T_DIAG
 *      IF ( MYROW+MYCOL .EQ. 0 )
@@ -414,7 +397,7 @@
 !            WRITE( *, * ) 'lambda0(', I, ', 1) =', LAMBDA( I ), ';'
 !         END DO
 !      END IF
-!      CALL PDLAPRNT( N, N, WORK( INDV ), 1, 1, DESCV, 0, 0, 'V',
+!      CALL PDLAPRNT( N, N, X1, IX, JX, DESCX, 0, 0, 'V',
 !     $     6, WORK( INDWORK ) )
 *
 *     Recover the eigenvectors:
@@ -426,47 +409,49 @@
 *
 *        Phi = L * V, Psi = L**{-T} * V.
 *
+*     To save memory, Psi and Phi are stored in X1 and K, respectively.
+*
       T_VEC1 = MPI_WTIME()
-      CALL PDLACPY( 'A', N, N, WORK( INDV ), 1, 1, DESCV,
-     $     WORK( INDPSI ), 1, 1, DESCPSI )
+      CALL PDGEADD( 'N', N, N, ONE, X1, IX, JX, DESCX,
+     $     ZERO, K, IK, JK, DESCK )
       CALL PDTRMM( 'L', 'L', 'N', 'N', N, N, ONE, M, IM, JM, DESCM,
-     $     WORK( INDPHI ), 1, 1, DESCPHI )
+     $     K, IK, JK, DESCK )
       CALL PDTRSM( 'L', 'L', 'T', 'N', N, N, ONE, M, IM, JM, DESCM,
-     $     WORK( INDPSI ), 1, 1, DESCPSI )
+     $     X1, IX, JX, DESCX )
 *
 *     Scale Psi and Phi.
 *
       DO I = 1, N
          CALL PDSCAL( N, HALF*DSQRT( LAMBDA( I ) ),
-     $        WORK( INDPSI ), 1, I, DESCPSI, 1 )
+     $        X1, IX, JX+I-1, DESCX, 1 )
       END DO
       DO I = 1, N
          CALL PDSCAL( N, HALF/DSQRT( LAMBDA( I ) ),
-     $        WORK( INDPHI ), 1, I, DESCPHI, 1 )
+     $        K, IK, JK+I-1, DESCK, 1 )
       END DO
       T_VEC1 = MPI_WTIME() - T_VEC1
 *      IF ( MYROW+MYCOL .EQ. 0 )
 *     $   WRITE( *, * ) 't_vec1 = ', T_VEC1, ';'
-!      CALL PDLAPRNT( N, N, WORK( INDPHI ), 1, 1, DESCPHI, 0, 0, 'Phi',
+!      CALL PDLAPRNT( N, N, X1, IX, JX, DESCX, 0, 0, 'Psi',
 !     $     6, WORK( INDWORK ) )
-!      CALL PDLAPRNT( N, N, WORK( INDPSI ), 1, 1, DESCPSI, 0, 0, 'Psi',
+!      CALL PDLAPRNT( N, N, K, IK, JK, DESCK, 0, 0, 'Phi',
 !     $     6, WORK( INDWORK ) )
 *
 *     Construct X.
 *
       T_VEC2 = MPI_WTIME()
-      CALL PDGEADD( 'N', N, N, ONE, WORK( INDPSI ), 1, 1, DESCPSI,
-     $     ZERO, X1, IX, JX, DESCX )
-      CALL PDGEADD( 'N', N, N, ONE, WORK( INDPSI ), 1, 1, DESCPSI,
+      CALL PDGEADD( 'N', N, N, ONE, X1, IX, JX, DESCX,
      $     ZERO, X2, IX, JX, DESCX )
-      CALL PDGEADD( 'N', N, N, ONE, WORK( INDPHI ), 1, 1, DESCPHI,
+      CALL PDGEADD( 'N', N, N, ONE, K, IK, JK, DESCK,
      $     ONE, X1, IX, JX, DESCX )
-      CALL PDGEADD( 'N', N, N, -ONE, WORK( INDPHI ), 1, 1, DESCPHI,
+      CALL PDGEADD( 'N', N, N, -ONE, K, IK, JK, DESCK,
      $     ONE, X2, IX, JX, DESCX )
       T_VEC2 = MPI_WTIME() - T_VEC2
 *      IF ( MYROW+MYCOL .EQ. 0 )
 *     $   WRITE( *, * ) 't_vec2 = ', T_VEC2, ';'
-!      CALL PDLAPRNT( TWON, N, X, IX, JX, DESCX, 0, 0, 'X', 6,
+!      CALL PDLAPRNT( N, N, X1, IX, JX, DESCX, 0, 0, 'X1', 6,
+!     $     WORK( INDWORK ) )
+!      CALL PDLAPRNT( N, N, X2, IX, JX, DESCX, 0, 0, 'X2', 6,
 !     $     WORK( INDWORK ) )
 *
       WORK( 1 ) = DBLE( LWKOPT )
