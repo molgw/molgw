@@ -179,20 +179,6 @@ end subroutine deallocate_eri
 
 
 !=========================================================================
-function index_prod(ibf,jbf)
- implicit none
- integer,intent(in) :: ibf,jbf
- integer            :: index_prod
-!=====
- integer            :: jmin,imax
-!=====
-
- index_prod = index_pair(ibf,jbf)
-
-end function index_prod
-
-
-!=========================================================================
 function index_eri(ibf,jbf,kbf,lbf)
  implicit none
  integer,intent(in) :: ibf,jbf,kbf,lbf
@@ -203,8 +189,8 @@ function index_eri(ibf,jbf,kbf,lbf)
  integer            :: index_ij,index_kl
 !===== 
 
- index_ij = index_prod(ibf,jbf)
- index_kl = index_prod(kbf,lbf)
+ index_ij = index_pair(ibf,jbf)
+ index_kl = index_pair(kbf,lbf)
 
  ijmax=MAX(index_ij,index_kl)
  klmin=MIN(index_ij,index_kl)
@@ -261,8 +247,8 @@ function eri_ri(ibf,jbf,kbf,lbf)
  if( negligible_basispair(ibf,jbf) .OR. negligible_basispair(kbf,lbf) ) then
    eri_ri = 0.0_dp
  else
-   index_ij = index_prod(ibf,jbf)
-   index_kl = index_prod(kbf,lbf)
+   index_ij = index_pair(ibf,jbf)
+   index_kl = index_pair(kbf,lbf)
   
    eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , eri_3center(:,index_kl) )
 
@@ -285,8 +271,8 @@ function eri_ri_lr(ibf,jbf,kbf,lbf)
  if( negligible_basispair(ibf,jbf) .OR. negligible_basispair(kbf,lbf) ) then
    eri_ri_lr = 0.0_dp
  else
-   index_ij = index_prod(ibf,jbf)
-   index_kl = index_prod(kbf,lbf)
+   index_ij = index_pair(ibf,jbf)
+   index_kl = index_pair(kbf,lbf)
 
    eri_ri_lr = DOT_PRODUCT( eri_3center_lr(:,index_ij) , eri_3center_lr(:,index_kl) )
 

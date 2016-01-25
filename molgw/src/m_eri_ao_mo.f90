@@ -234,7 +234,7 @@ subroutine calculate_eri_3center_eigen_mixed(nbf,nstate,c_matrix)
 
          do lstate=1,nstate
            eri_3center_tmp(:,kbf,lstate) = eri_3center_tmp(:,kbf,lstate) &
-                                      + c_matrix_exx(lbf,lstate,klspin) * eri_3center(:,index_prod(kbf,lbf))
+                                      + c_matrix_exx(lbf,lstate,klspin) * eri_3center(:,index_pair(kbf,lbf))
          enddo
 
      enddo
