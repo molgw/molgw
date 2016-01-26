@@ -65,6 +65,10 @@ module m_mpi
 ! integer,allocatable :: ntask_fast_proc(:)   ! number of grid points for each procressor
 ! integer,allocatable :: task_fast_number(:)  ! local index of the grid point
 
+ interface xbcast
+   module procedure xbcast_ra2d
+ end interface
+
  interface xand
    module procedure xand_l
    module procedure xand_la1d
@@ -289,6 +293,43 @@ subroutine distribute_auxil_basis(nbf_auxil_basis,nbf_auxil_basis_local)
  integer :: iproc
 !=====
 
+#ifdef TODAY
+
+ allocate(iproc_ibf_auxil(nbf_auxil_basis))
+ allocate(nbf_local_iproc(0:nproc-1))
+
+ iproc              = nproc - 1
+ nbf_local_iproc(:) = 0
+ do ibf=1,nbf_auxil_basis
+
+   iproc = MODULO(iproc+1,nproc)
+
+   iproc_ibf_auxil(ibf) = iproc
+
+   nbf_local_iproc(iproc) = nbf_local_iproc(iproc) + 1
+
+ enddo
+
+ nbf_auxil_basis_local = nbf_local_iproc(rank)
+
+ allocate(ibf_auxil_g(nbf_auxil_basis_local))
+ allocate(ibf_auxil_l(nbf_auxil_basis))
+ ibf_local = 0
+ do ibf=1,nbf_auxil_basis
+   if( rank == iproc_ibf_auxil(ibf) ) then
+     ibf_local = ibf_local + 1
+     ibf_auxil_g(ibf_local) = ibf
+     ibf_auxil_l(ibf)       = ibf_local
+   endif
+ enddo
+
+ write(stdout,'(/,a)') ' Distribute auxiliary basis functions among processors'
+ do iproc=0,0
+   write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc(iproc),' auxiliary basis functions'
+ enddo
+
+#else
+
  allocate(iproc_ibf_auxil(nbf_auxil_basis))
  allocate(nbf_local_iproc(0:nproc_local-1))
 
@@ -321,6 +362,8 @@ subroutine distribute_auxil_basis(nbf_auxil_basis,nbf_auxil_basis_local)
  do iproc=0,0
    write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc(iproc),' auxiliary basis functions'
  enddo
+
+#endif
 
 
 end subroutine distribute_auxil_basis
@@ -383,7 +426,7 @@ subroutine init_grid_distribution(ngrid)
 
  ngrid_mpi = ngrid
 
- if( nproc_local >1 .AND. parallel_grid ) then
+ if( nproc_local > 1 .AND. parallel_grid ) then
    write(stdout,'(/,a)') ' Initializing the distribution of the quadrature grid points'
  endif
 
@@ -495,6 +538,29 @@ function get_ntask()
  get_ntask = ntask_proc(rank)
 
 end function get_ntask
+
+
+!=========================================================================
+subroutine xbcast_ra2d(iproc,array)
+ implicit none
+ integer,intent(in)     :: iproc
+ real(dp),intent(inout) :: array(:,:)
+!=====
+ integer :: n1,n2
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+
+#ifdef HAVE_MPI
+ call MPI_BCAST(array,n1*n2,MPI_DOUBLE_PRECISION,iproc,comm_world,ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xbcast_ra2d
 
 
 !=========================================================================
@@ -902,7 +968,11 @@ subroutine xsum_procindex_ra2d(iproc,array)
  n2 = SIZE( array, DIM=2 )
 
 #ifdef HAVE_MPI
- call MPI_REDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, comm_world, iproc, ier)
+ if( rank == iproc ) then
+   call MPI_REDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, iproc, comm_world, ier)
+ else
+   call MPI_REDUCE( array, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, iproc, comm_world, ier)
+ endif
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'

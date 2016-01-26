@@ -725,6 +725,8 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
 
 #ifdef HAVE_SCALAPACK
 
+ write(stdout,'(/,a)') ' Calculate overlap matrix square-root S^{1/2}: SCALAPACK'
+
  if( cntxt_ham > 0 ) then
    matrix_tmp(:,:) = s_matrix(:,:)
    call diagonalize_sca(desc_ham,nbf,m_ham,n_ham,matrix_tmp,s_eigval)

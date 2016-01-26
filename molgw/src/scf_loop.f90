@@ -25,6 +25,7 @@ subroutine scf_loop(basis,auxil_basis,&
  use m_spectral_function
  use m_hamiltonian
  use m_hamiltonian_sca
+ use m_hamiltonian_dist
  use m_timedependent
  implicit none
 
@@ -139,7 +140,11 @@ subroutine scf_loop(basis,auxil_basis,&
        call setup_hartree(print_matrix_,basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
      else
        if( parallel_ham ) then
+#ifndef TODAY
          call setup_hartree_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
+#else
+         call setup_hartree_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
+#endif
        else
          call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
        endif
@@ -162,7 +167,11 @@ subroutine scf_loop(basis,auxil_basis,&
        call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
      else
        if( parallel_ham ) then
+#ifndef TODAY
          call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+#else
+         call setup_exchange_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+#endif
        else
          call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
        endif
@@ -396,7 +405,11 @@ subroutine scf_loop(basis,auxil_basis,&
  else
    if( ABS(en%exx) < 1.0e-6_dp ) then
      if( parallel_ham ) then
+#ifndef TODAY
        call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+#else
+       call setup_exchange_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+#endif
      else
        call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
      endif

@@ -499,7 +499,7 @@ subroutine init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell
  ! check the normalization if requested
  if( normalized ) then
    call overlap_basis_function(bf,bf,overlap)
-   if( ABS(overlap-1.0_dp) > 2.0d-5 ) then
+   if( ABS(overlap-1.0_dp) > 2.0e-5_dp ) then
 !     write(stdout,*) 'normalization is different from 1.0',overlap
 !     write(stdout,*) bf%nx,bf%ny,bf%nz
 !     write(stdout,*) 'assuming this is a generalized contraction and rescaling coefficients'
@@ -549,7 +549,7 @@ subroutine init_basis_function_pure(normalized,ng,am,mm,iatom,x0,alpha,coeff,she
 !  ! check the normalization if requested
 !  if( normalized ) then
 !    call overlap_basis_function(bf,bf,overlap)
-!    if( ABS(overlap-1.0_dp) > 2.0d-5 ) then
+!    if( ABS(overlap-1.0_dp) > 2.0e-5_dp ) then
 ! !     write(stdout,*) 'normalization is different from 1.0',overlap
 ! !     write(stdout,*) bf%nx,bf%ny,bf%nz
 ! !     write(stdout,*) 'assuming this is a generalized contraction and rescaling coefficients'

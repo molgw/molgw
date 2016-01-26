@@ -1632,7 +1632,7 @@ subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2r
  use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
  use m_dft_grid
  use m_basis_set
- use m_hamiltonian
+ use m_hamiltonian,only: setup_density_matrix
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
  use xc_f90_lib_m

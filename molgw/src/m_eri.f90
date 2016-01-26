@@ -894,7 +894,7 @@ logical function read_eri(rcut)
    read(erifile) integer_read
    if(integer_read /= nsize) read_eri=.FALSE.
    read(erifile) real_read
-   if(ABS(real_read-rcut) > 1.0d-6) read_eri=.FALSE.
+   if(ABS(real_read-rcut) > 1.0e-6_dp) read_eri=.FALSE.
 
    if(read_eri) then
 

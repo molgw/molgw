@@ -1167,6 +1167,8 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,nbf,s_matrix,nstate,s_matrix_sqrt_inv)
  real(dp) :: matrix_tmp(nbf,nbf)
 !=====
 
+ write(stdout,'(/,a)') ' Calculate overlap matrix square-root S^{1/2}'
+
  matrix_tmp(:,:) = s_matrix(:,:)
 #ifdef HAVE_SCALAPACK
  call diagonalize_scalapack(nbf,matrix_tmp,s_eigval)

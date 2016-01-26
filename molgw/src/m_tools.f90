@@ -354,32 +354,33 @@ subroutine coeffs_gausslegint(xmin,xmax,x,weights,n)
  integer,intent(in) :: n 
  real(dp),intent(in) :: xmin,xmax
  real(dp),intent(out) :: x(n),weights(n)
- real(dp) :: tol,pi,xl,xmean,z,p1,p2,p3,pp,z1
- integer :: i,j
+!=====
+ real(dp) :: tol,xl,xmean,z,p1,p2,p3,pp,z1
+ integer  :: i,j
+!=====
 
  tol=1.d-13
- pi=4.d0*atan(1.d0)
 
- xl=(xmax-xmin)*0.5d0
- xmean=(xmax+xmin)*0.5d0
+ xl=(xmax-xmin)*0.50_dp
+ xmean=(xmax+xmin)*0.50_dp
 
  do i=1,(n+1)/2
-  z=cos(pi*(i-0.25d0)/(n+0.5d0))
+  z = COS(pi*(i-0.250_dp)/(n+0.50_dp))
  
   do 
 
-    p1=1.d0
-    p2=0.d0
+    p1=1.0_dp
+    p2=0.0_dp
  
     do j=1,n
      
      p3=p2
      p2=p1
-     p1=((2.d0*j - 1.d0)*z*p2 - (j-1.d0)*p3)/j
+     p1=((2.0_dp*j - 1.0_dp)*z*p2 - (j-1.0_dp)*p3)/j
    
     enddo
   
-    pp=n*(p2-z*p1)/(1.0d0-z**2)
+    pp=n*(p2-z*p1)/(1.0_dp - z**2)
     z1=z
     z=z1-p1/pp
     
@@ -389,12 +390,12 @@ subroutine coeffs_gausslegint(xmin,xmax,x,weights,n)
 
   x(i)=xmean-xl*z
   x(n+1-i)=xmean+xl*z
-  weights(i)=2.d0*xl/((1.d0-z**2)*pp**2)
+  weights(i)=2.0_dp * xl/((1.0_dp-z**2)*pp**2)
   weights(n+1-i)=weights(i)
 
  enddo
 
-end subroutine
+end subroutine coeffs_gausslegint
 
 
 !=========================================================================
@@ -597,7 +598,7 @@ subroutine boys_function(fnt,n,t)
  real(dp),intent(out) :: fnt(0:n)
 !=====
  integer,parameter  :: maxfac=100
- real(dp),parameter :: eps=1.0d-17
+ real(dp),parameter :: eps=1.0e-17_dp
  integer :: i,m,k
  integer :: m2
  real(dp) :: t2,num,sum,term1,term2,et,tt
@@ -660,7 +661,7 @@ subroutine check_unitarity(n,cmat)
  integer,intent(in) :: n
  complex(dp),intent(in) :: cmat(n,n)
 !
- real(dp),parameter :: tol=1.0d-9
+ real(dp),parameter :: tol=1.0e-9_dp
  integer :: i,j
  complex(dp) :: cmat_tmp(n,n)
 !

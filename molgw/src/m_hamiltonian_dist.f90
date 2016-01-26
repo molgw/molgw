@@ -49,8 +49,8 @@ subroutine reduce_hamiltonian_sca(nbf,matrix_global,m_ham,n_ham,matrix_local)
      enddo
 
 
-
      call xsum(rank_dest,matrix_block)
+
      if( rank == rank_dest ) then
        matrix_local(:,:) = matrix_block(:,:)
      endif
@@ -67,6 +67,148 @@ subroutine reduce_hamiltonian_sca(nbf,matrix_global,m_ham,n_ham,matrix_local)
 #endif
 
 end subroutine reduce_hamiltonian_sca
+
+
+!=========================================================================
+subroutine broadcast_hamiltonian_sca(nbf,matrix_global,m_ham,n_ham,matrix_local)
+ implicit none
+
+ integer,intent(in)     :: nbf,m_ham,n_ham
+ real(dp),intent(inout) :: matrix_global(nbf,nbf)
+ real(dp),intent(in)    :: matrix_local(m_ham,n_ham)
+!=====
+ integer              :: ipcol,iprow,rank_orig
+ integer              :: ier
+ integer              :: ilocal,jlocal,iglobal,jglobal
+ integer              :: m_block,n_block
+ real(dp),allocatable :: matrix_block(:,:)
+!=====
+
+#ifdef HAVE_SCALAPACK
+ call start_clock(timing_sca_distr)
+
+ ! Loops over the SCALAPACK grid
+ do ipcol=0,npcol_ham-1
+   do iprow=0,nprow_ham-1
+
+     ! Identify the destination processor
+     rank_orig = rank_ham_sca_to_mpi(iprow,ipcol)
+
+     m_block = row_block_size(nbf,iprow,nprow_ham)
+     n_block = col_block_size(nbf,ipcol,npcol_ham)
+     allocate(matrix_block(m_block,n_block))
+
+     if( rank == rank_orig ) then
+       matrix_block(:,:) = matrix_local(:,:)
+     endif
+
+!     call MPI_BCAST(matrix_block,m_block * n_block,MPI_DOUBLE_PRECISION,rank_orig,comm_world,ier)
+
+     call xbcast(rank_orig,matrix_block)
+
+
+     do jlocal=1,n_block
+       jglobal = colindex_local_to_global(ipcol,npcol_ham,jlocal)
+       do ilocal=1,m_block
+         iglobal = rowindex_local_to_global(iprow,nprow_ham,ilocal)
+
+         matrix_global(iglobal,jglobal) = matrix_global(iglobal,jglobal) + matrix_block(ilocal,jlocal)
+
+       enddo
+     enddo
+
+     deallocate(matrix_block)
+
+   enddo
+ enddo
+
+
+ call stop_clock(timing_sca_distr)
+
+#else
+ call die('SCALAPACK is required for distribute_hamiltonian_sca')
+#endif
+
+end subroutine broadcast_hamiltonian_sca
+
+
+!=========================================================================
+subroutine setup_hartree_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,pot_hartree,ehartree)
+ use m_eri
+ implicit none
+ logical,intent(in)   :: print_matrix_
+ integer,intent(in)   :: nbf,m_ham,n_ham
+ real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
+ real(dp),intent(out) :: pot_hartree(m_ham,n_ham)
+ real(dp),intent(out) :: ehartree
+!=====
+ integer              :: ibf,jbf,kbf,lbf
+ integer              :: ipair
+ real(dp),allocatable :: partial_sum(:)
+ real(dp)             :: rtmp
+ real(dp),allocatable :: buffer(:,:)
+!=====
+
+
+#ifdef HAVE_SCALAPACK
+
+ write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity: SCALAPACK buffer'
+ call start_clock(timing_hartree)
+
+ allocate(buffer(nbf,nbf))
+ buffer(:,:) = 0.0_dp
+
+ call broadcast_hamiltonian_sca(nbf,buffer,m_ham,n_ham,p_matrix(:,:,1))
+ if( nspin == 2 ) then
+   call broadcast_hamiltonian_sca(nbf,buffer,m_ham,n_ham,p_matrix(:,:,2))
+ endif
+
+ allocate(partial_sum(nauxil_3center))
+
+ partial_sum(:) = 0.0_dp
+ do ipair=1,npair
+   kbf = index_basis(1,ipair)
+   lbf = index_basis(2,ipair)
+   ! Factor 2 comes from the symmetry of p_matrix
+   partial_sum(:) = partial_sum(:) + eri_3center(:,ipair) * buffer(kbf,lbf) * 2.0_dp
+   ! Then diagonal terms have been counted twice and should be removed once.
+   if( kbf == lbf ) &
+     partial_sum(:) = partial_sum(:) - eri_3center(:,ipair) * buffer(kbf,kbf)
+ enddo
+
+
+ ! Hartree potential is not sensitive to spin
+ buffer(:,:) = 0.0_dp
+ do ipair=1,npair
+   ibf = index_basis(1,ipair)
+   jbf = index_basis(2,ipair)
+   rtmp = DOT_PRODUCT( eri_3center(:,ipair) , partial_sum(:) )
+   buffer(ibf,jbf) = rtmp
+   buffer(jbf,ibf) = rtmp
+ enddo
+
+ deallocate(partial_sum)
+
+ ! Sum up the buffers and store the result in the sub matrix pot_exchange
+ call reduce_hamiltonian_sca(nbf,buffer,m_ham,n_ham,pot_hartree)
+ deallocate(buffer)
+
+ !
+ ! Calculate the Hartree energy
+ if( cntxt_ham > 0 ) then
+   ehartree = 0.5_dp*SUM(pot_hartree(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+ else
+   ehartree = 0.0_dp
+ endif
+ call xsum(ehartree)
+
+
+ call stop_clock(timing_hartree)
+
+#endif
+
+
+end subroutine setup_hartree_ri_buffer_sca
 
 
 !=========================================================================
@@ -91,7 +233,7 @@ subroutine setup_exchange_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_o
 !=====
 
 
- write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity with large buffer'
+ write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: SCALAPACK buffer'
  call start_clock(timing_exchange)
 
  allocate(buffer(nbf,nbf))
@@ -141,7 +283,7 @@ subroutine setup_exchange_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_o
 
  ! Sum up the buffers and store the result in the sub matrix pot_exchange
  call reduce_hamiltonian_sca(nbf,buffer,m_ham,n_ham,pot_exchange)
-
+ deallocate(buffer)
 
  !
  ! Calculate the exchange energy

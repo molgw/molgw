@@ -741,7 +741,7 @@ subroutine numerical_overlap(ga,gb,s_ab)
 
  dx = rmax/REAL(nx,dp)
 
- rtmp=0.0d0
+ rtmp=0.0_dp
  do ix=1,nx
    x(1) = ( REAL(ix,dp)/REAL(nx,dp) - 0.5 ) * rmax
    do iy=1,nx
@@ -781,7 +781,7 @@ subroutine numerical_kinetic(ga,gb)
  dhz(:) = 0.0_dp
  dhz(3) = dh
 
- rtmp=0.0d0
+ rtmp=0.0_dp
  do ix=1,nx
    x(1) = ( REAL(ix,dp)/REAL(nx,dp) - 0.5 ) * rmax
    do iy=1,nx

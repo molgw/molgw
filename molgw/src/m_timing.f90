@@ -173,10 +173,13 @@ subroutine output_timing()
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'MP2 energy'      ,timing(timing_mp2_energy),calls(timing_mp2_energy)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'MP2 self-energy' ,timing(timing_mp2_self),calls(timing_mp2_self)
  write(stdout,'(a)') '                 ----------------------'
+ if( calls(timing_sca_distr) > 0 ) then
+   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing SCA    ' ,timing(timing_sca_distr),calls(timing_sca_distr)
+ endif
 
  !
  ! developer's timings
- if( ANY(timing(timing_tmp1:timing_tmp9)>1.d-5) ) then
+ if( ANY( timing(timing_tmp1:timing_tmp9) > 1.0-5_dp ) ) then
    write(stdout,*)
    write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing tmp1   ' ,timing(timing_tmp1),calls(timing_tmp1)
    write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing tmp2   ' ,timing(timing_tmp2),calls(timing_tmp2)

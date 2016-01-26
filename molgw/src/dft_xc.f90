@@ -639,7 +639,7 @@ subroutine my_lda_exc_vxc(nspin,ixc,rhor,exc,vxc)
  real(dp) :: db3
  real(dp) :: db4
 
- real(dp),parameter :: alpha_zeta=1.0_dp-1.0d-6
+ real(dp),parameter :: alpha_zeta=1.0_dp - 1.0e-6_dp
  real(dp),parameter :: ft=4._dp/3._dp,rsfac=0.6203504908994000_dp
  real(dp),parameter :: rsfacm3=rsfac**(-3)
  real(dp) :: a0,a1,a2,a3,b1,b2,b3,b4,d1,d1m1,d2d1drs2,d2d1drsdf,d2excdf2
