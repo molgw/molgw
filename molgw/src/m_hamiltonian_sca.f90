@@ -27,7 +27,7 @@ subroutine matrix_cart_to_local(ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,
  real(dp) :: matrix_final(ibf:ibf+ni-1,jbf:jbf+nj-1)
 !=====
 
-#ifdef HAVE_MPI
+#ifdef HAVE_SCALAPACK
 
  matrix_final(:,:) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
                              MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
@@ -68,7 +68,7 @@ subroutine setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
  real(dp),allocatable :: matrix_cart(:,:)
 !=====
 
-#ifdef HAVE_MPI
+#ifdef HAVE_SCALAPACK
 
  call start_clock(timing_overlap)
  write(stdout,'(/,a)') ' Setup overlap matrix S: SCALAPACK'
@@ -138,7 +138,7 @@ subroutine setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic
  real(dp),allocatable :: matrix_final(:,:)
 !=====
 
-#ifdef HAVE_MPI
+#ifdef HAVE_SCALAPACK
 
  call start_clock(timing_hamiltonian_kin)
  write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian: SCALAPACK'
@@ -210,7 +210,7 @@ subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus
  real(dp)             :: vnucleus_ij
 !=====
 
-#ifdef HAVE_MPI
+#ifdef HAVE_SCALAPACK
 
  call start_clock(timing_hamiltonian_nuc)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK'
@@ -299,7 +299,7 @@ subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,pot_hartr
  character(len=100)   :: title
 !=====
 
-#ifdef HAVE_MPI
+#ifdef HAVE_SCALAPACK
 
  write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity: SCALAPACK'
  call start_clock(timing_hartree)
@@ -394,7 +394,7 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_ma
  integer,external     :: INDXG2P
 !=====
 
-#ifdef HAVE_MPI
+#ifdef HAVE_SCALAPACK
 
  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: SCALAPACK'
  call start_clock(timing_exchange)
@@ -526,7 +526,7 @@ subroutine setup_exchange_longrange_ri_sca(print_matrix_,nbf,occupation,c_matrix
  integer              :: ipair
 !=====
 
-#ifdef HAVE_MPI
+#ifdef HAVE_SCALAPACK
 
  write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity: SCALAPACK'
  call start_clock(timing_exchange)
@@ -583,7 +583,7 @@ subroutine setup_density_matrix_sca(nbf,m_ham,n_ham,c_matrix,occupation,p_matrix
  real(dp) :: matrix_tmp(m_ham,n_ham)
 !=====
 
-#ifdef HAVE_MPI
+#ifdef HAVE_SCALAPACK
 
  if( cntxt_ham > 0 ) then
    do ispin=1,nspin
@@ -828,7 +828,7 @@ subroutine setup_sqrt_density_matrix_sca(nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,
  integer              :: ispin
 !=====
 
-#ifdef HAVE_MPI
+#ifdef HAVE_SCALAPACK
 
  write(stdout,*) 'Calculate the square root of the density matrix: SCALAPACK'
  call start_clock(timing_sqrt_density_matrix)
@@ -886,7 +886,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  integer              :: ilocal,jlocal,iglobal,jglobal
 !=====
 
-#ifdef HAVE_MPI
+#ifdef HAVE_SCALAPACK
 
  vhxc_ij(:,:) = 0.0_dp
 

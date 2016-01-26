@@ -63,6 +63,7 @@ module m_inputparam
  character(len=12),protected      :: mixing_scheme
  character(len=12),protected      :: partition_scheme
  real(dp),protected               :: tolscf
+ real(dp),protected               :: min_overlap
  real(dp),protected               :: electrons,charge
  real(dp),protected               :: temperature
  real(dp),protected               :: magnetization

@@ -43,7 +43,6 @@ program molgw
  implicit none
 
 !=====
- real(dp),parameter      :: TOL_OVERLAP=1.0e-6_dp
  type(basis_set)         :: basis
  type(basis_set)         :: auxil_basis
  type(spectral_function) :: wpol
@@ -141,9 +140,9 @@ program molgw
  m_c     = m_ham     ! TODO: eliminate this
  n_c     = n_ham     ! TODO: eliminate this
  if( parallel_ham ) then
-   call setup_sqrt_overlap_sca(TOL_OVERLAP,basis%nbf,m_ham,n_ham,s_matrix,nstate,m_ov,n_ov,s_matrix_sqrt_inv)
+   call setup_sqrt_overlap_sca(min_overlap,basis%nbf,m_ham,n_ham,s_matrix,nstate,m_ov,n_ov,s_matrix_sqrt_inv)
  else
-   call setup_sqrt_overlap(TOL_OVERLAP,basis%nbf,s_matrix,nstate,s_matrix_sqrt_inv)
+   call setup_sqrt_overlap(min_overlap,basis%nbf,s_matrix,nstate,s_matrix_sqrt_inv)
    m_ov = basis%nbf
    n_ov = nstate0
  endif

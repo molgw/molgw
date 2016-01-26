@@ -263,6 +263,15 @@ vl[i].comment  ='Sets the residual norm target for the density matrix for the SC
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='min_overlap'
+vl[i].family   ='scf'
+vl[i].default  =1.0E-6
+vl[i].datatype ='real'
+vl[i].comment  ='Sets the minimal eigenvalue of the overlap matrix S. Small eigenvalues imply overcompleteness of the basis set.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='npulay_hist'
 vl[i].family   ='scf'
 vl[i].default  =6
