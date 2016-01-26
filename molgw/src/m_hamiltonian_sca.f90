@@ -612,16 +612,18 @@ end subroutine setup_density_matrix_sca
 
 
 !=========================================================================
-subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate,m_ov,n_ov, &
-                                       hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
+subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate0,nstate,m_ov,n_ov, &
+                                       hamiltonian,s_matrix_sqrt_inv,energy,m_c,n_c,c_matrix)
  implicit none
 
- integer,intent(in)   :: nspin_local,nbf,nstate,m_ham,n_ham
+ integer,intent(in)   :: nspin_local,nbf,nstate0,nstate
+ integer,intent(in)   :: m_ham,n_ham
  integer,intent(in)   :: m_ov,n_ov
+ integer,intent(in)   :: m_c,n_c
  real(dp),intent(in)  :: hamiltonian(m_ham,n_ham,nspin_local)
  real(dp),intent(in)  :: s_matrix_sqrt_inv(m_ov,n_ov)
- real(dp),intent(out) :: c_matrix(m_ham,n_ham,nspin_local)
- real(dp),intent(out) :: energy(nbf,nspin_local)
+ real(dp),intent(out) :: c_matrix(m_c,n_c,nspin_local)
+ real(dp),intent(out) :: energy(nstate0,nspin_local)
 !=====
  integer  :: ispin,ibf,jbf,istate
  real(dp) :: matrix_tmp(m_ov,n_ov)
@@ -630,7 +632,7 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate,m_ov,n
  real(dp),allocatable :: h_small(:,:)
 !=====
 
-#ifdef HAVE_MPI
+#ifdef HAVE_SCALAPACK
 
 
 
@@ -672,10 +674,10 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate,m_ov,n
                   h_small,1,1,desc_small,                     &
                   0.0_dp,matrix_tmp(:,:),1,1,desc_ov)         ! TODO: replace matrix_tmp with c_matrix
 
-     do jlocal=1,n_ham
+     do jlocal=1,n_c
        jglobal = colindex_local_to_global('H',jlocal)
        if( jglobal > nstate ) then
-         c_matrix(:,jlocal,ispin) = 0.0_dp
+         c_matrix(:,jlocal,ispin) = 0.0_dp                   ! TODO: Eliminate this
        else
          c_matrix(:,jlocal,ispin) = matrix_tmp(:,jlocal)
        endif

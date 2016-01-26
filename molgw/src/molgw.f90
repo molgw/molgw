@@ -70,6 +70,7 @@ program molgw
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
  integer                 :: m_ov,n_ov                    ! distribute a  basis%nbf x nstate      matrix
+ integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix  TODO Eliminate this
 !=============================
 
  call init_mpi()
@@ -102,7 +103,6 @@ program molgw
  !
  write(stdout,*) 'Setting up the basis set for wavefunctions'
  call init_basis_set(basis_path,basis_name,gaussian_type,basis)
- nstate0 = basis%nbf
  call setup_cart_to_pure_transforms(gaussian_type)
 
  !
@@ -137,6 +137,9 @@ program molgw
  ! Calculate the square root inverse of the overlap matrix S
  ! Eliminate those eigenvalue that are too small in order to stabilize the
  ! calculation
+ nstate0 = basis%nbf ! TODO: eliminate this
+ m_c     = m_ham     ! TODO: eliminate this
+ n_c     = n_ham     ! TODO: eliminate this
  if( parallel_ham ) then
    call setup_sqrt_overlap_sca(TOL_OVERLAP,basis%nbf,m_ham,n_ham,s_matrix,nstate,m_ov,n_ov,s_matrix_sqrt_inv)
  else
@@ -149,11 +152,9 @@ program molgw
    call issue_warning('SCALAPACK is used to distribute the wavefunction coefficients')
  endif
 
- ! TODO: resize the following arrays
- !
  ! Allocate the main arrays
  ! 2D arrays
- allocate(c_matrix(m_ham,n_ham,nspin))
+ allocate(c_matrix(m_c,n_c,nspin))
  ! 1D arrays
  allocate(         occupation(nstate0,nspin))
  allocate(             energy(nstate0,nspin))
@@ -185,7 +186,7 @@ program molgw
 
  !
  ! Try to read a RESTART file if it exists
- call read_restart(restart_type,basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+ call read_restart(restart_type,basis,nstate0,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
  is_restart       = ( restart_type /= NO_RESTART )
  is_big_restart   = ( restart_type == BIG_RESTART )
  is_basis_restart = ( restart_type == BASIS_RESTART )
@@ -226,9 +227,12 @@ program molgw
    hamiltonian_tmp(:,:) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) &
                          + hamiltonian_hartree(:,:) + 0.5_dp * hamiltonian_xc(:,:,1)  &
                                                     + 0.5_dp * hamiltonian_xc(:,:,nspin)
-   call diagonalize_hamiltonian(1,basis%nbf,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
+   call diagonalize_hamiltonian(1,basis%nbf,nstate0,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
                                     energy(:,1),c_matrix(:,:,1))
    c_matrix(:,:,nspin) = c_matrix(:,:,1)
+
+   deallocate(hamiltonian_tmp)
+
  endif
 
  if( .NOT. is_restart) then
@@ -248,10 +252,10 @@ program molgw
    write(stdout,'(/,a)') ' Approximate hamiltonian'
 
    if( parallel_ham ) then
-     call diagonalize_hamiltonian_sca(1,basis%nbf,m_ham,n_ham,nstate,m_ov,n_ov,hamiltonian_tmp,s_matrix_sqrt_inv, &
-                                      energy(:,1),c_matrix(:,:,1))
+     call diagonalize_hamiltonian_sca(1,basis%nbf,m_ham,n_ham,nstate0,nstate,m_ov,n_ov,hamiltonian_tmp,s_matrix_sqrt_inv, &
+                                      energy(:,1),m_c,n_c,c_matrix(:,:,1))
    else
-     call diagonalize_hamiltonian(1,basis%nbf,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
+     call diagonalize_hamiltonian(1,basis%nbf,nstate0,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
                                     energy(:,1),c_matrix(:,:,1))
    endif
 
@@ -322,7 +326,7 @@ program molgw
  !
  if( .NOT. is_big_restart) then
    call scf_loop(basis,auxil_basis,                                             &
-                 nstate0,nstate,m_ov,n_ov,m_ham,n_ham,                          &
+                 nstate0,nstate,m_ov,n_ov,m_ham,n_ham,m_c,n_c,                  &
                  s_matrix_sqrt_inv,                                             &
                  s_matrix,c_matrix,p_matrix,                                    &
                  hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_hartree,   & 
@@ -354,7 +358,7 @@ program molgw
  if(calc_type%is_ci) then
    if(nspin/=1) call die('for CI, nspin should be 1')
    if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) call die('CI is implemented for 2 electrons only')
-   call full_ci_2electrons_spin(print_wfn_,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
+   call full_ci_2electrons_spin(print_wfn_,nstate0,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
  endif
 
  !
@@ -435,13 +439,13 @@ program molgw
  if( calc_type%is_mp2 .AND. calc_type%gwmethod == perturbative ) then
 
    if(has_auxil_basis) then
-     call mp2_energy_ri(basis,occupation,energy,c_matrix,en%mp2)
+     call mp2_energy_ri(nstate0,basis,occupation,energy,c_matrix,en%mp2)
    else
-     call mp2_energy_fast(basis,occupation,c_matrix,energy,en%mp2)
+     call mp2_energy(nstate0,basis,occupation,c_matrix,energy,en%mp2)
    endif
 
 ! This routine is slower but gives both the correlation energy and the self-energy
-!   call mp2_selfenergy(calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,hamiltonian_exx,en%mp2)
+!   call mp2_selfenergy(calc_type%gwmethod,nstate0,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,hamiltonian_exx,en%mp2)
    write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
    write(stdout,*) 
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%mp2

@@ -1,5 +1,5 @@
 !=========================================================================
-subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,selfenergy,emp2)
+subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,selfenergy,emp2)
  use m_definitions
  use m_mpi
  use m_warning
@@ -8,10 +8,10 @@ subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_m
  use m_inputparam
  implicit none
 
- integer,intent(in)  :: method
+ integer,intent(in)  :: method,nstate
  type(basis_set)     :: basis
- real(dp),intent(in) :: occupation(basis%nbf,nspin),energy(basis%nbf,nspin),exchange_m_vxc_diag(basis%nbf,nspin)
- real(dp),intent(in) :: c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in) :: occupation(nstate,nspin),energy(nstate,nspin),exchange_m_vxc_diag(nstate,nspin)
+ real(dp),intent(in) :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(in) :: s_matrix(basis%nbf,basis%nbf)
  real(dp),intent(out) :: selfenergy(basis%nbf,basis%nbf,nspin),emp2
 !=====
@@ -96,8 +96,8 @@ subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_m
    endif
  endif
 
- allocate(selfenergy_ring(nomegai,basis%nbf,basis%nbf,nspin))
- allocate(selfenergy_sox(nomegai,basis%nbf,basis%nbf,nspin))
+ allocate(selfenergy_ring(nomegai,nstate,nstate,nspin))
+ allocate(selfenergy_sox(nomegai,nstate,nstate,nspin))
 
  selfenergy_ring(:,:,:,:) = 0.0_dp
  selfenergy_sox(:,:,:,:)  = 0.0_dp
@@ -106,15 +106,15 @@ subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_m
  write(stdout,*) 'OPENMP is used for the MP2 self-energy'
 #endif
  do abispin=1,nspin
-   do istate=1,basis%nbf !LOOP of the first Green's function
+   do istate=1,nstate !LOOP of the first Green's function
 
-     call calculate_eri_4center_eigen(basis%nbf,basis%nbf,c_matrix,istate,abispin,eri_eigenstate_i)
+     call calculate_eri_4center_eigen(basis%nbf,nstate,c_matrix,istate,abispin,eri_eigenstate_i)
 
      fi = occupation(istate,abispin)
      ei = energy(istate,abispin)
 
-     do astate=1,basis%nbf ! external loop ( bra )
-       do bstate=1,basis%nbf ! external loop ( ket )
+     do astate=1,nstate ! external loop ( bra )
+       do bstate=1,nstate ! external loop ( ket )
 
 
          do iomegai=1,nomegai
@@ -123,11 +123,11 @@ subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_m
     
     
            do jkspin=1,nspin
-             do jstate=1,basis%nbf !LOOP of the second Green's function
+             do jstate=1,nstate !LOOP of the second Green's function
                fj=occupation(jstate,jkspin)
                ej=energy(jstate,jkspin)
     
-               do kstate=1,basis%nbf !LOOP of the third Green's function
+               do kstate=1,nstate !LOOP of the third Green's function
                  fk=occupation(kstate,jkspin)
                  ek=energy(kstate,jkspin)
     
@@ -183,7 +183,7 @@ subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_m
  if(method==perturbative) then
 
    if(file_exists .AND. is_iomaster ) then
-     do astate=1,MIN(2,basis%nbf)
+     do astate=1,MIN(2,nstate)
        write(ctmp,'(i3.3)') astate
        open(newunit=selfenergyfile,file='selfenergy_omega_state'//TRIM(ctmp))
        do iomegai=1,nomegai
@@ -204,7 +204,7 @@ subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_m
    write(stdout,*) '=============================='
    write(stdout,*) ' selfenergy RING + SOX'
    write(stdout,'(a)') ' #         Energies           Sigx-Vxc       one-ring              SOX             MP2              Z            QP-eigenvalues'
-   do bstate=1,basis%nbf 
+   do bstate=1,nstate 
      zz(:) = REAL( selfenergy_ring(3,bstate,bstate,:)+selfenergy_sox(3,bstate,bstate,:) &
                  - selfenergy_ring(1,bstate,bstate,:)-selfenergy_sox(1,bstate,bstate,:) ) / REAL( omegai(3)-omegai(1) )
      zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
@@ -220,11 +220,11 @@ subroutine mp2_selfenergy(method,basis,occupation,energy,exchange_m_vxc_diag,c_m
 
    selfenergy(:,:,:) = 0.0_dp
    if(.NOT.ring_only) then
-     do bstate=1,basis%nbf
+     do bstate=1,nstate
        selfenergy(bstate,bstate,:) = selfenergy_ring(2,bstate,bstate,:) + selfenergy_sox(2,bstate,bstate,:)
      enddo
    else
-     do bstate=1,basis%nbf
+     do bstate=1,nstate
        selfenergy(bstate,bstate,:) = selfenergy_ring(2,bstate,bstate,:)
      enddo
    endif

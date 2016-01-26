@@ -3,7 +3,7 @@
 ! the main SCF loop for Hartree-Fock or Kohn-Sham
 !=========================================================================
 subroutine scf_loop(basis,auxil_basis,&
-                    nstate0,nstate,m_ov,n_ov,m_ham,n_ham,&
+                    nstate0,nstate,m_ov,n_ov,m_ham,n_ham,m_c,n_c,&
                     s_matrix_sqrt_inv,&
                     s_matrix,c_matrix,p_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
@@ -33,7 +33,7 @@ subroutine scf_loop(basis,auxil_basis,&
  type(basis_set),intent(in)         :: basis
  type(basis_set),intent(in)         :: auxil_basis
  integer,intent(in)                 :: nstate0
- integer,intent(in)                 :: nstate,m_ov,n_ov,m_ham,n_ham
+ integer,intent(in)                 :: nstate,m_ov,n_ov,m_ham,n_ham,m_c,n_c
  real(dp),intent(in)                :: s_matrix_sqrt_inv(m_ov,n_ov)
  real(dp),intent(in)                :: s_matrix(m_ham,n_ham)
  real(dp),intent(inout)             :: c_matrix(m_ham,n_ham,nspin)
@@ -196,7 +196,7 @@ subroutine scf_loop(basis,auxil_basis,&
    ! DFT XC potential is added here
    if( calc_type%is_dft ) then
 
-     call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,hamiltonian_vxc,en%xc)
+     call dft_exc_vxc(nstate0,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,hamiltonian_vxc,en%xc)
 
      title='=== DFT XC contribution ==='
      call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,hamiltonian_vxc)
@@ -240,7 +240,7 @@ subroutine scf_loop(basis,auxil_basis,&
 
      exchange_m_vxc_diag(:,:)=0.0_dp
 
-     call mp2_selfenergy(calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
+     call mp2_selfenergy(calc_type%gwmethod,nstate0,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
 
      write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
      write(stdout,*) 
@@ -277,10 +277,10 @@ subroutine scf_loop(basis,auxil_basis,&
    ! H \phi = E S \phi
    ! save the old eigenvalues
    if( parallel_ham ) then
-     call diagonalize_hamiltonian_sca(nspin,basis%nbf,m_ham,n_ham,nstate,m_ov,n_ov,hamiltonian,s_matrix_sqrt_inv, &
-                                      energy,c_matrix)
+     call diagonalize_hamiltonian_sca(nspin,basis%nbf,m_ham,n_ham,nstate0,nstate,m_ov,n_ov,hamiltonian,s_matrix_sqrt_inv, &
+                                      energy,m_c,n_c,c_matrix)
    else
-     call diagonalize_hamiltonian(nspin,basis%nbf,nstate,hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
+     call diagonalize_hamiltonian(nspin,basis%nbf,nstate0,nstate,hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
    endif
 
    !
@@ -354,16 +354,6 @@ subroutine scf_loop(basis,auxil_basis,&
    !
    ! Store the history of residuals
    call store_residual(p_matrix_old,p_matrix)
-!FBFBSCA remove this
-#if 0
-! integer :: ilocal,jlocal,iglobal,jglobal !FBFBSCA
-   iglobal = 10
-   jglobal = 10
-   ilocal = rowindex_global_to_local('H',iglobal)
-   jlocal = colindex_global_to_local('H',jglobal)
-   if( ilocal*jlocal /=0 ) &
-     write(3000+rank,*) rank,iglobal,jglobal,p_matrix(ilocal,jlocal,1),p_matrix_old(ilocal,jlocal,1)
-#endif
 
    !
    ! Produce the next density matrix
@@ -377,7 +367,7 @@ subroutine scf_loop(basis,auxil_basis,&
    !
    ! Write down a "small" RESTART file at each step
    if( print_restart_ ) then
-     call write_restart(SMALL_RESTART,basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+     call write_restart(SMALL_RESTART,basis,nstate0,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
    endif
    
  !
@@ -423,57 +413,47 @@ subroutine scf_loop(basis,auxil_basis,&
  ! Skip a bunch of things if parallel_ham is activated
  ! TODO:FIXME
  if( .NOT. parallel_ham ) then  
- !
- ! Single excitation term
- !
- ! Obtain the Fock matrix
- matrix_tmp(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
- ! And pass it to single_excitations
- call single_excitations(basis%nbf,energy,occupation,c_matrix,matrix_tmp)
- write(stdout,'(a25,x,f19.10)') 'Single Excitations (Ha):',en%se
- write(stdout,'(a25,x,f19.10)')     'Est. HF Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
 
- ! A dirty section for the Luttinger-Ward functional
-#if 1
- if(calc_type%gwmethod==LW .OR. calc_type%gwmethod==LW2 .OR. calc_type%gwmethod==GSIGMA) then
-   allocate(energy_exx(basis%nbf,nspin))
-   allocate(c_matrix_exx(basis%nbf,basis%nbf,nspin))
-   call issue_warning('ugly coding here write temp file fort.1000 and fort.1001')
-!   call issue_warning('ugly coding here write temp file fort.2000 and fort.2001')
-   do ispin=1,nspin
-     write(stdout,*) 'Diagonalization H_exx for spin channel',ispin
-     call diagonalize_generalized_sym(basis%nbf,&
-                                      matrix_tmp(:,:,ispin),s_matrix(:,:),&
-                                      energy_exx(:,ispin),c_matrix_exx(:,:,ispin))
-   enddo
-   write(stdout,*) 'FBFB LW sum(      epsilon) + Eii -<vxc> - EH + Ex',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
-   write(stdout,*) 'FBFB LW sum(tilde epsilon) + Eii - EH - Ex       ',SUM( occupation(:,:)*energy_exx(:,:) ) + en%nuc_nuc - en%hart - en%exx
-   open(1000,form='unformatted')
-   do ispin=1,nspin
-     do istate=1,nstate0
-       write(1000) c_matrix_exx(:,istate,ispin)
+   !
+   ! Single excitation term
+   !
+   ! Obtain the Fock matrix
+   matrix_tmp(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
+   ! And pass it to single_excitations
+   call single_excitations(nstate0,basis%nbf,energy,occupation,c_matrix,matrix_tmp)
+   write(stdout,'(a25,x,f19.10)') 'Single Excitations (Ha):',en%se
+   write(stdout,'(a25,x,f19.10)')     'Est. HF Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
+
+
+
+   ! A dirty section for the Luttinger-Ward functional
+   if(calc_type%gwmethod==LW .OR. calc_type%gwmethod==LW2 .OR. calc_type%gwmethod==GSIGMA) then
+     allocate(energy_exx(nstate0,nspin))
+     allocate(c_matrix_exx(basis%nbf,nstate0,nspin))
+     call issue_warning('ugly coding here write temp file fort.1000 and fort.1001')
+     do ispin=1,nspin
+       write(stdout,*) 'Diagonalization H_exx for spin channel',ispin
+       call diagonalize_generalized_sym(basis%nbf,&
+                                        matrix_tmp(:,:,ispin),s_matrix(:,:),&
+                                        energy_exx(:,ispin),c_matrix_exx(:,:,ispin))
      enddo
-   enddo
-   close(1000)
-!   open(2000,form='unformatted')
-!   do ispin=1,nspin
-!     do istate=1,nstate0
-!       write(2000) c_matrix(:,istate,ispin)
-!     enddo
-!   enddo
-!   close(2000)
-   open(1001,form='unformatted')
-   write(1001) energy_exx(:,:)
-   close(1001)
-!   open(2001,form='unformatted')
-!   write(2001) energy(:,:)
-!   close(2001)
-!   call issue_warning('hacking the coefficients c_matrix_exx')
-!   c_matrix=c_matrix_exx
-!   energy=energy_exx
-   deallocate(energy_exx,c_matrix_exx)
+     write(stdout,*) 'FBFB LW sum(      epsilon) + Eii -<vxc> - EH + Ex',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
+     write(stdout,*) 'FBFB LW sum(tilde epsilon) + Eii - EH - Ex       ',SUM( occupation(:,:)*energy_exx(:,:) ) + en%nuc_nuc - en%hart - en%exx
+     open(1000,form='unformatted')
+     do ispin=1,nspin
+       do istate=1,nstate0
+         write(1000) c_matrix_exx(:,istate,ispin)
+       enddo
+     enddo
+     close(1000)
+     open(1001,form='unformatted')
+     write(1001) energy_exx(:,:)
+     close(1001)
+     deallocate(energy_exx,c_matrix_exx)
+   endif
+
  endif
- endif ! Indentation is not correct, I know
+
 
 
  !
@@ -524,10 +504,9 @@ subroutine scf_loop(basis,auxil_basis,&
  ! Big RESTART file written if converged
  !
  if( is_converged .AND. print_bigrestart_ ) then
-   call write_restart(BIG_RESTART,basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+   call write_restart(BIG_RESTART,basis,nstate0,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
  endif
 
-#endif
 
  !
  ! Cleanly deallocate the integral grid information

@@ -1,7 +1,7 @@
 !==================================================================
 
 !==================================================================
-subroutine mp2_energy_ri(basis,occupation,energy,c_matrix,emp2)
+subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
  use m_definitions
  use m_mpi
  use m_basis_set
@@ -9,31 +9,28 @@ subroutine mp2_energy_ri(basis,occupation,energy,c_matrix,emp2)
  use m_inputparam,only: nspin,spin_fact,ncoreg,is_frozencore
  implicit none
 
+ integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(basis%nbf,nspin),energy(basis%nbf,nspin)
- real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(out)       :: emp2
-!=====
+!====
  integer                    :: nstate0
  integer                    :: astate,bstate,istate,jstate
- integer                    :: ibf,jbf,abf,bbf,iaspin,jbspin
+ integer                    :: iaspin,jbspin
  real(dp)                   :: energy_denom
- real(dp)                   :: tmp_ixjx(basis%nbf,basis%nbf)
- real(dp)                   :: tmp_iajx(basis%nbf),tmp_ixja(basis%nbf)
  real(dp)                   :: tmp_iajb,tmp_ibja
  real(dp)                   :: contrib1,contrib2
  real(dp)                   :: fact
- real(dp),allocatable       :: tmp_ixxx(:,:,:)
  integer                    :: nocc(nspin)
  integer                    :: ncore
 !=====
 
  call start_clock(timing_mp2_energy)
- nstate0=basis%nbf
 
  write(stdout,'(/,a)') ' RI-MP2 correlation calculation'
 
- call calculate_eri_3center_eigen(basis%nbf,nstate0,c_matrix)
+ call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix)
 
  ncore = ncoreg
  if(is_frozencore) then
@@ -47,13 +44,11 @@ subroutine mp2_energy_ri(basis,occupation,energy,c_matrix,emp2)
  contrib2 = 0.0_dp
 
 
- allocate(tmp_ixxx(basis%nbf,basis%nbf,basis%nbf))
-
  do iaspin=1,nspin
    !
    ! First, set up the list of occupied states
    nocc(iaspin) = ncore
-   do istate=ncore+1,basis%nbf
+   do istate=ncore+1,nstate
      if( occupation(istate,iaspin) < completely_empty ) cycle
      nocc(iaspin) = istate
    enddo
@@ -71,10 +66,10 @@ subroutine mp2_energy_ri(basis,occupation,energy,c_matrix,emp2)
 
        do jstate=ncore+1,nocc(jbspin)
        
-         do astate=ncore+1,basis%nbf
+         do astate=ncore+1,nstate
            if( occupation(astate,iaspin) > spin_fact - completely_empty ) cycle
 
-           do bstate=ncore+1,basis%nbf
+           do bstate=ncore+1,nstate
              if( occupation(bstate,jbspin) > spin_fact - completely_empty ) cycle
 
              fact =  occupation(istate,iaspin) * ( spin_fact - occupation(astate,iaspin) ) &
@@ -108,11 +103,6 @@ subroutine mp2_energy_ri(basis,occupation,energy,c_matrix,emp2)
 
  enddo !iaspin
 
-! call xsum(contrib1)
-! call xsum(contrib2)
-
- deallocate(tmp_ixxx)
-
 
  emp2 = contrib1 + contrib2
  write(stdout,'(/,a)')       ' MP2 contributions'
@@ -127,7 +117,7 @@ end subroutine mp2_energy_ri
 
 
 !==================================================================
-subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
+subroutine mp2_energy(nstate,basis,occupation,c_matrix,energy,emp2)
  use m_definitions
  use m_mpi
  use m_basis_set
@@ -135,8 +125,10 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
  use m_inputparam,only: nspin,spin_fact,ncoreg
  implicit none
 
+ integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin),energy(basis%nbf,nspin)
+ real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(out)       :: emp2
 !=====
  integer                    :: astate,bstate,istate,jstate
@@ -167,7 +159,7 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
    !
    ! First, set up the list of occupied states
    nocc = ncoreg
-   do istate=ncoreg+1,basis%nbf
+   do istate=ncoreg+1,nstate
      if( occupation(istate,iaspin) < completely_empty ) cycle
      nocc = istate
    enddo
@@ -193,7 +185,7 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
      enddo
 
      do jbspin=1,nspin
-       do jstate=ncoreg+1,basis%nbf
+       do jstate=ncoreg+1,nstate
          if( occupation(jstate,jbspin) < completely_empty ) cycle
        
          tmp_ixjx(:,:) = 0.0_dp
@@ -205,7 +197,7 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
            enddo
          enddo
 
-         do astate=1,basis%nbf
+         do astate=1,nstate
            if( occupation(astate,iaspin) > spin_fact - completely_empty ) cycle
 
            tmp_iajx(:) = 0.0_dp
@@ -224,7 +216,7 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
              enddo
            endif
 
-           do bstate=1,basis%nbf
+           do bstate=1,nstate
              if( occupation(bstate,jbspin) > spin_fact - completely_empty ) cycle
 
              fact =  occupation(istate,iaspin) * ( spin_fact - occupation(astate,iaspin) ) &
@@ -258,9 +250,6 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
 
  enddo !iaspin
 
- call xsum(contrib1)
- call xsum(contrib2)
-
  deallocate(tmp_ixxx)
 
 
@@ -272,11 +261,11 @@ subroutine mp2_energy_fast(basis,occupation,c_matrix,energy,emp2)
 
  call stop_clock(timing_mp2_energy)
 
-end subroutine mp2_energy_fast
+end subroutine mp2_energy
 
 
 !==================================================================
-subroutine single_excitations(nbf,energy,occupation,c_matrix,fock_matrix)
+subroutine single_excitations(nstate,nbf,energy,occupation,c_matrix,fock_matrix)
  use m_definitions
  use m_timing
  use m_inputparam,only: nspin,spin_fact,print_matrix_
@@ -284,35 +273,29 @@ subroutine single_excitations(nbf,energy,occupation,c_matrix,fock_matrix)
  use m_hamiltonian
  implicit none
 
- integer,intent(in)         :: nbf
- real(dp),intent(in)        :: energy(nbf,nspin),occupation(nbf,nspin)
- real(dp),intent(in)        :: c_matrix(nbf,nbf,nspin)
+ integer,intent(in)         :: nstate,nbf
+ real(dp),intent(in)        :: energy(nstate,nspin),occupation(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(nbf,nstate,nspin)
  real(dp),intent(inout)     :: fock_matrix(nbf,nbf,nspin)
 !=====
  integer                    :: ispin
- integer                    :: nstate0
  integer                    :: istate,astate
- character(len=100)         :: title
 !=====
 
  call start_clock(timing_single_excitation)
 
  !
  ! Rotate the Fock matrix to the eigenstate basis
- nstate0=nbf
- call matrix_basis_to_eigen(nbf,nstate0,c_matrix,fock_matrix)
-
- title='=== Fock matrix ==='
- call dump_out_matrix(print_matrix_,title,nbf,nspin,fock_matrix)
+ call matrix_basis_to_eigen(nbf,nstate,c_matrix,fock_matrix)
 
 
  en%se = 0.0_dp
  do ispin=1,nspin
    ! loop on occupied states
-   do istate=1,nbf
+   do istate=1,nstate
      if( occupation(istate,ispin) < completely_empty ) cycle
      ! loop on virtual states
-     do astate=1,nbf
+     do astate=1,nstate
        if( occupation(astate,ispin) > spin_fact - completely_empty ) cycle
        en%se = en%se + fock_matrix(istate,astate,ispin)**2 / ( energy(istate,ispin) - energy(astate,ispin) ) * spin_fact
      enddo
@@ -325,7 +308,7 @@ end subroutine single_excitations
 
 
 !==================================================================
-subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_nuc)
+subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix,nuc_nuc)
  use m_definitions
  use m_mpi
  use m_tools
@@ -339,9 +322,9 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
  integer,parameter :: nx=4000
 !
  logical,intent(in)         :: print_wfn_
- integer,intent(in)         :: spinstate
+ integer,intent(in)         :: spinstate,nstate
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,basis%nbf)
+ real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,nstate)
  real(dp),intent(in)        :: nuc_nuc
 !=====
  integer,parameter    :: neig=2
@@ -351,7 +334,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
  real(dp),allocatable :: bb(:,:),qq(:,:),atilde(:,:),ab(:,:)
  real(dp),allocatable :: bb_s(:,:),atilde_s(:,:),ab_s(:,:)
  real(dp),allocatable :: lambda(:),alphavec(:,:)
- real(dp) :: h_1e_hf(basis%nbf,basis%nbf)
+ real(dp) :: h_1e_hf(nstate,nstate)
  integer :: nconf,iconf,jconf,kconf
  integer :: ibf,jbf,kbf,lbf
  integer :: istate,jstate,kstate,lstate
@@ -370,7 +353,6 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
  real(dp) :: xxx(nx),y(ny),z(nz)
  real(dp) :: wx(nx),wy(ny),wz(nz)
  real(dp) :: norm
- character(len=100)      :: title
 
  integer :: ibf_cart,li,ni,ni_cart,i_cart
  real(dp),allocatable :: basis_function_r_cart(:)
@@ -383,8 +365,8 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
 
  write(stdout,*) 'obtain the one-electron Hamiltonian in the HF basis'
  h_1e_hf(:,:) = 0.0_dp
- do jstate=1,basis%nbf
-   do istate=1,basis%nbf
+ do jstate=1,nstate
+   do istate=1,nstate
      do jbf=1,basis%nbf
        do ibf=1,basis%nbf
          h_1e_hf(istate,jstate) = h_1e_hf(istate,jstate) + h_1e(ibf,jbf) * c_matrix(ibf,istate) * c_matrix(jbf,jstate)
@@ -402,7 +384,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
    call die('BUG: spin state not possible')
  end select
 
- nconf = ( 2*basis%nbf * (2*basis%nbf -1) ) / 2
+ nconf = ( 2 * nstate * (2 * nstate -1) ) / 2
  write(stdout,*)
  write(stdout,*) 'CI matrix lower than',nconf,' x ',nconf
  allocate(hamiltonian(nconf,nconf))
@@ -412,12 +394,12 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
  enddo
 
  iconf=0
- do istate1=1,basis%nbf
-   call calculate_eri_4center_eigen(basis%nbf,basis%nbf,c_matrix,istate1,1,eri_hf_i)
+ do istate1=1,nstate
+   call calculate_eri_4center_eigen(basis%nbf,nstate,c_matrix,istate1,1,eri_hf_i)
 
    do ispin1=1,2
 
-     do istate2=istate1,basis%nbf
+     do istate2=istate1,nstate
        do ispin2=1,2
          if(istate1==istate2 .AND. (ispin2==1 .OR. ispin1==2) ) cycle
          !
@@ -430,9 +412,9 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
          iconf=iconf+1
 
          jconf=0
-         do jstate1=1,basis%nbf
+         do jstate1=1,nstate
            do jspin1=1,2
-             do jstate2=jstate1,basis%nbf
+             do jstate2=jstate1,nstate
                do jspin2=1,2
                  if(jstate1==jstate2 .AND. (jspin2==1 .OR. jspin1==2) ) cycle
                  !
@@ -476,8 +458,8 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
 
  write(stdout,'(a,f16.10)') ' Single determinant ground state energy (Ha): ',hamiltonian(1,1)
 ! write(stdout,*) '=========== H_1e ============== '
-! do istate=1,basis%nbf
-!   write(stdout,'(i4,2x,20(x,f12.6))') iconf,h_1e_hf(istate,1:basis%nbf)
+! do istate=1,nstate
+!   write(stdout,'(i4,2x,20(x,f12.6))') iconf,h_1e_hf(istate,1:nstate)
 ! enddo
 ! write(stdout,*) '=========== full H ============== '
 ! do iconf=1,nconf
@@ -688,7 +670,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
 
   
      eval_wfn(:)=0.0_dp
-     do istate=1,basis%nbf
+     do istate=1,nstate
        do ibf=1,basis%nbf
          eval_wfn(istate) = eval_wfn(istate) + c_matrix(ibf,istate) * basis_function_r(ibf)
        enddo
@@ -697,9 +679,9 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
     do kconf=1,1
     
      iconf=0
-     do istate1=1,basis%nbf
+     do istate1=1,nstate
        do ispin1=1,2
-         do istate2=istate1,basis%nbf
+         do istate2=istate1,nstate
            do ispin2=1,2
              if(istate1==istate2 .AND. (ispin2==1 .OR. ispin1==2) ) cycle
   !           !
@@ -712,9 +694,9 @@ subroutine full_ci_2electrons_spin(print_wfn_,spinstate,basis,h_1e,c_matrix,nuc_
              iconf=iconf+1
     
              jconf=0
-             do jstate1=1,basis%nbf
+             do jstate1=1,nstate
                do jspin1=1,2
-                 do jstate2=jstate1,basis%nbf
+                 do jstate2=jstate1,nstate
                    do jspin2=1,2
                      if(jstate1==jstate2 .AND. (jspin2==1 .OR. jspin1==2) ) cycle
     !                 !

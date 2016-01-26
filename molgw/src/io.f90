@@ -759,7 +759,7 @@ end subroutine read_energy_qp
 
 
 !=========================================================================
-subroutine write_restart(restart_type,basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+subroutine write_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
  use m_definitions
  use m_mpi
  use m_inputparam
@@ -767,16 +767,17 @@ subroutine write_restart(restart_type,basis,occupation,c_matrix,energy,hamiltoni
  implicit none
 
  integer,intent(in)         :: restart_type
+ integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(basis%nbf,nspin)
- real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin),energy(basis%nbf,nspin)
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin),energy(nstate,nspin)
  real(dp),intent(in)        :: hamiltonian_hartree(basis%nbf,basis%nbf)
  real(dp),intent(in)        :: hamiltonian_exx(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)        :: hamiltonian_xc (basis%nbf,basis%nbf,nspin)
 !=====
  integer,parameter          :: restart_version=201510
  integer                    :: restartfile
- integer                    :: ispin,istate,ibf,nstate
+ integer                    :: ispin,istate,ibf,nstate_local
 !=====
 
  !
@@ -817,22 +818,22 @@ subroutine write_restart(restart_type,basis,occupation,c_matrix,energy,hamiltoni
  if( restart_type == SMALL_RESTART ) then
    ! Identify the highest occupied state in order to
    ! save I-O in SMALL_RESTART
-   nstate = 0
+   nstate_local = 0
    do ispin=1,nspin
-     do istate=1,basis%nbf
-       if( ANY( occupation(istate,:) > completely_empty ) ) nstate = istate
+     do istate=1,nstate
+       if( ANY( occupation(istate,:) > completely_empty ) ) nstate_local = istate
      enddo
    enddo
  else
    ! Or write down all the states in BIG_RESTART
-   nstate = basis%nbf
+   nstate_local = nstate
  endif
 
- write(restartfile) nstate
+ write(restartfile) nstate_local
 
  ! Wavefunction coefficients C
  do ispin=1,nspin
-   do istate=1,nstate
+   do istate=1,nstate_local
      write(restartfile) c_matrix(:,istate,ispin)
    enddo
  enddo
@@ -862,7 +863,7 @@ end subroutine write_restart
 
 
 !=========================================================================
-subroutine read_restart(restart_type,basis,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
  use m_definitions
  use m_mpi
  use m_inputparam
@@ -871,15 +872,16 @@ subroutine read_restart(restart_type,basis,occupation,c_matrix,energy,hamiltonia
  implicit none
 
  integer,intent(out)        :: restart_type
+ integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(basis%nbf,nspin)
- real(dp),intent(out)       :: c_matrix(basis%nbf,basis%nbf,nspin),energy(basis%nbf,nspin)
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(out)       :: c_matrix(basis%nbf,nstate,nspin),energy(nstate,nspin)
  real(dp),intent(out)       :: hamiltonian_hartree(basis%nbf,basis%nbf)
  real(dp),intent(out)       :: hamiltonian_exx(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: hamiltonian_xc (basis%nbf,basis%nbf,nspin)
 !=====
  integer                    :: restartfile
- integer                    :: ispin,istate,ibf,nstate
+ integer                    :: ispin,istate,ibf,nstate_local
  logical                    :: file_exists,same_scf,same_basis,same_geometry
 
  integer                    :: restart_version_read
@@ -997,27 +999,27 @@ subroutine read_restart(restart_type,basis,occupation,c_matrix,energy,hamiltonia
  
 
  ! Number of states written down in the RESTART file
- read(restartfile) nstate
+ read(restartfile) nstate_local
 
 
  ! Wavefunction coefficients C
- allocate(c_matrix_read(basis_read%nbf,nstate,nspin_read))
+ allocate(c_matrix_read(basis_read%nbf,nstate_local,nspin_read))
  do ispin=1,nspin_read
-   do istate=1,nstate
+   do istate=1,nstate_local
      read(restartfile) c_matrix_read(:,istate,ispin)
    enddo
  enddo
  c_matrix(:,:,:) = 0.0_dp
  do ispin=1,nspin_read
-   do istate=1,MIN(nstate,basis%nbf)
+   do istate=1,MIN(nstate_local,nstate)
      c_matrix(1:MIN(basis_read%nbf,basis%nbf),istate,ispin) &
           = c_matrix_read(1:MIN(basis_read%nbf,basis%nbf),istate,ispin)
    enddo
  enddo
  ! Fill the rest of the array with identity
- if( nstate < basis%nbf ) then
+ if( nstate_local < nstate ) then
    do ispin=1,nspin_read
-     do istate=nstate+1,basis%nbf
+     do istate=nstate_local+1,nstate
        c_matrix(istate,istate,ispin) = 1.0_dp
      enddo
    enddo
