@@ -5,7 +5,7 @@
 
 
 !=========================================================================
-subroutine static_polarizability(basis,auxil_basis,occupation,energy,wpol_out)
+subroutine static_polarizability(nstate,basis,auxil_basis,occupation,energy,wpol_out)
  use m_definitions
  use m_timing
  use m_warning
@@ -18,9 +18,10 @@ subroutine static_polarizability(basis,auxil_basis,occupation,energy,wpol_out)
  use m_eri_ao_mo
  implicit none
 
+ integer,intent(in)                    :: nstate
  type(basis_set),intent(in)            :: basis,auxil_basis
- real(dp),intent(in)                   :: occupation(basis%nbf,nspin)
- real(dp),intent(in)                   :: energy(basis%nbf,nspin)
+ real(dp),intent(in)                   :: occupation(nstate,nspin)
+ real(dp),intent(in)                   :: energy(nstate,nspin)
  type(spectral_function),intent(inout) :: wpol_out
 !=====
  integer                   :: t_ij,t_kl

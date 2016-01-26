@@ -1004,11 +1004,11 @@ end subroutine matrix_basis_to_eigen
 
 
 !=========================================================================
-subroutine evaluate_s2_operator(nspin,nbf,occupation,c_matrix,s_matrix)
+subroutine evaluate_s2_operator(nbf,nstate0,occupation,c_matrix,s_matrix)
  implicit none
- integer,intent(in)      :: nspin,nbf
- real(dp),intent(in)     :: occupation(nbf,nspin)
- real(dp),intent(in)     :: c_matrix(nbf,nbf,nspin)
+ integer,intent(in)      :: nbf,nstate0
+ real(dp),intent(in)     :: occupation(nstate0,nspin)
+ real(dp),intent(in)     :: c_matrix(nbf,nstate0,nspin)
  real(dp),intent(in)     :: s_matrix(nbf,nbf)
 !=====
  integer                 :: ispin,istate,jstate
@@ -1025,9 +1025,9 @@ subroutine evaluate_s2_operator(nspin,nbf,occupation,c_matrix,s_matrix)
 
  s2_exact = (nmax-nmin)/2.0_dp * ( (nmax-nmin)/2.0_dp + 1.0_dp )
  s2       = s2_exact + nmin
- do istate=1,nbf
+ do istate=1,nstate0
    if( occupation(istate,1) < completely_empty ) cycle
-   do jstate=1,nbf
+   do jstate=1,nstate0
      if( occupation(jstate,2) < completely_empty ) cycle
 
      s2 = s2 - ABS( DOT_PRODUCT( c_matrix(:,istate,1) , MATMUL( s_matrix(:,:) , c_matrix(:,jstate,2) ) )  &

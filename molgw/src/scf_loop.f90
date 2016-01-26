@@ -3,7 +3,7 @@
 ! the main SCF loop for Hartree-Fock or Kohn-Sham
 !=========================================================================
 subroutine scf_loop(basis,auxil_basis,&
-                    nstate,m_ov,n_ov,m_ham,n_ham,&
+                    nstate0,nstate,m_ov,n_ov,m_ham,n_ham,&
                     s_matrix_sqrt_inv,&
                     s_matrix,c_matrix,p_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
@@ -32,6 +32,7 @@ subroutine scf_loop(basis,auxil_basis,&
 !=====
  type(basis_set),intent(in)         :: basis
  type(basis_set),intent(in)         :: auxil_basis
+ integer,intent(in)                 :: nstate0
  integer,intent(in)                 :: nstate,m_ov,n_ov,m_ham,n_ham
  real(dp),intent(in)                :: s_matrix_sqrt_inv(m_ov,n_ov)
  real(dp),intent(in)                :: s_matrix(m_ham,n_ham)
@@ -42,10 +43,9 @@ subroutine scf_loop(basis,auxil_basis,&
  real(dp),intent(inout)             :: hamiltonian_hartree(m_ham,n_ham)
  real(dp),intent(inout)             :: hamiltonian_exx(m_ham,n_ham,nspin)
  real(dp),intent(inout)             :: hamiltonian_xc(m_ham,n_ham,nspin)
- real(dp),intent(inout)             :: occupation(basis%nbf,nspin)
- real(dp),intent(inout)             :: energy(basis%nbf,nspin)
+ real(dp),intent(inout)             :: occupation(nstate0,nspin)
+ real(dp),intent(inout)             :: energy(nstate0,nspin)
 !=====
- integer                 :: nstate0
  type(spectral_function) :: wpol
  logical                 :: is_converged,stopfile_found,file_exists
  integer                 :: ispin,iscf,istate
@@ -67,7 +67,6 @@ subroutine scf_loop(basis,auxil_basis,&
 
 
  call start_clock(timing_scf)
- nstate0 = basis%nbf
 
 
  !
@@ -219,7 +218,7 @@ subroutine scf_loop(basis,auxil_basis,&
      endif
 
      exchange_m_vxc_diag(:,:)=0.0_dp
-     call gw_selfenergy(calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
+     call gw_selfenergy(nstate0,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
 
      if( .NOT. ALLOCATED(self_energy_old) ) then
        allocate(self_energy_old(basis%nbf,basis%nbf,nspin))
@@ -290,7 +289,7 @@ subroutine scf_loop(basis,auxil_basis,&
    ! So that the "physical" energies are written down
    if( level_shifting_energy > 1.0e-6_dp ) then
      do ispin=1,nspin
-       do istate=1,basis%nbf
+       do istate=1,nstate0
          if( occupation(istate,ispin) < completely_empty ) then
            energy(istate,ispin) = energy(istate,ispin) - level_shifting_energy
          endif
@@ -395,7 +394,7 @@ subroutine scf_loop(basis,auxil_basis,&
 
  !
  ! Spin contamination?
- call evaluate_s2_operator(nspin,basis%nbf,occupation,c_matrix,s_matrix)
+ call evaluate_s2_operator(basis%nbf,nstate0,occupation,c_matrix,s_matrix)
 
  !
  ! Get the exchange operator if not already calculated
@@ -451,14 +450,14 @@ subroutine scf_loop(basis,auxil_basis,&
    write(stdout,*) 'FBFB LW sum(tilde epsilon) + Eii - EH - Ex       ',SUM( occupation(:,:)*energy_exx(:,:) ) + en%nuc_nuc - en%hart - en%exx
    open(1000,form='unformatted')
    do ispin=1,nspin
-     do istate=1,basis%nbf
+     do istate=1,nstate0
        write(1000) c_matrix_exx(:,istate,ispin)
      enddo
    enddo
    close(1000)
 !   open(2000,form='unformatted')
 !   do ispin=1,nspin
-!     do istate=1,basis%nbf
+!     do istate=1,nstate0
 !       write(2000) c_matrix(:,istate,ispin)
 !     enddo
 !   enddo
@@ -492,7 +491,7 @@ subroutine scf_loop(basis,auxil_basis,&
    write(msg,'(a,i4,2x,i4)') 'core-valence splitting switched on up to state = ',ncore
    call issue_warning(msg)
 
-   allocate(occupation_tmp(basis%nbf,nspin))
+   allocate(occupation_tmp(nstate0,nspin))
    allocate(p_matrix_tmp(basis%nbf,basis%nbf,nspin))
    ! Override the occupation of the core electrons
    occupation_tmp(:,:) = occupation(:,:)

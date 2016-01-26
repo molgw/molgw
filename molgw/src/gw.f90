@@ -1,5 +1,5 @@
 !=========================================================================
-subroutine gw_selfenergy(gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy,energy_gw)
+subroutine gw_selfenergy(nstate0,gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy,energy_gw)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -11,10 +11,10 @@ subroutine gw_selfenergy(gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_
  use m_tools,only: coeffs_gausslegint
  implicit none
 
- integer,intent(in)                 :: gwmethod
+ integer,intent(in)                 :: nstate0,gwmethod
  type(basis_set)                    :: basis
- real(dp),intent(in)                :: occupation(basis%nbf,nspin),energy(basis%nbf,nspin),exchange_m_vxc_diag(basis%nbf,nspin)
- real(dp),intent(in)                :: c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)                :: occupation(nstate0,nspin),energy(nstate0,nspin),exchange_m_vxc_diag(nstate0,nspin)
+ real(dp),intent(in)                :: c_matrix(basis%nbf,nstate0,nspin)
  real(dp),intent(in)                :: s_matrix(basis%nbf,basis%nbf)
  type(spectral_function),intent(in) :: wpol
  real(dp),intent(out)               :: selfenergy(basis%nbf,basis%nbf,nspin)
@@ -22,7 +22,6 @@ subroutine gw_selfenergy(gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_
 !=====
  logical               :: file_exists=.FALSE.
  integer               :: nprodbasis
- integer               :: nstate0
  integer               :: homo
  integer               :: nomegai
  integer               :: iomegai
@@ -40,9 +39,9 @@ subroutine gw_selfenergy(gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_
  real(dp)              :: fact_full_i,fact_empty_i
  real(dp)              :: fact_full_a,fact_empty_a
  real(dp)              :: zz_a(nspin)
- real(dp)              :: energy_qp(basis%nbf,nspin)
- real(dp)              :: zz(basis%nbf,nspin)
- real(dp)              :: energy_qp_new(basis%nbf,nspin),energy_qp_z(basis%nbf,nspin)
+ real(dp)              :: energy_qp(nstate0,nspin)
+ real(dp)              :: zz(nstate0,nspin)
+ real(dp)              :: energy_qp_new(nstate0,nspin),energy_qp_z(nstate0,nspin)
  real(dp)              :: energy_qp_z_a(nspin),energy_qp_omega(nspin)
  character(len=3)      :: ctmp
  integer               :: reading_status
@@ -83,7 +82,6 @@ subroutine gw_selfenergy(gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_
    write(stdout,*) 'Perform an eigenvalue self-consistent GnWn calculation'
  end select
 
- nstate0    = basis%nbf
  nprodbasis = index_prodstate(nstate0,nstate0)
 
  if(has_auxil_basis) then
@@ -94,8 +92,8 @@ subroutine gw_selfenergy(gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_
 
  !
  ! Set the range of states on which to evaluate the self-energy
- nsemin = MAX(ncore_G+1   ,selfenergy_state_min)
- nsemax = MIN(nvirtual_G-1,selfenergy_state_max)
+ nsemin = MAX(ncore_G+1   ,selfenergy_state_min,1)
+ nsemax = MIN(nvirtual_G-1,selfenergy_state_max,nstate0)
 
  write(stdout,'(a,i4,a,i4)') ' Calculate state range from ',nsemin,' to ',nsemax
  call clean_allocate('Temporary array',bra,1,wpol%npole_reso,nsemin,nsemax)
@@ -624,7 +622,7 @@ subroutine gw_selfenergy(gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_
    write(stdout,*) 'Tr[SigmaG]:',2.0_dp*energy_gw
 
 
-   allocate(c_matrix_exx(basis%nbf,basis%nbf,nspin))
+   allocate(c_matrix_exx(basis%nbf,nsemin:nsemax,nspin))
    open(1000,form='unformatted')
    do ispin=1,nspin
      do astate=nsemin,nsemax

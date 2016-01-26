@@ -38,6 +38,7 @@ program molgw
  use m_spectral_function
  use m_hamiltonian
  use m_hamiltonian_sca
+ use m_hamiltonian_dist
  use m_timedependent
  implicit none
 
@@ -208,7 +209,11 @@ program molgw
    !
    ! Nucleus-electron interaction
    if( parallel_ham ) then
+#ifndef TODAY
      call setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
+#else
+     call setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
+#endif
    else
      call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
    endif
@@ -317,7 +322,7 @@ program molgw
  !
  if( .NOT. is_big_restart) then
    call scf_loop(basis,auxil_basis,                                             &
-                 nstate,m_ov,n_ov,m_ham,n_ham,                                  &
+                 nstate0,nstate,m_ov,n_ov,m_ham,n_ham,                          &
                  s_matrix_sqrt_inv,                                             &
                  s_matrix,c_matrix,p_matrix,                                    &
                  hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_hartree,   & 
@@ -412,7 +417,7 @@ program molgw
    write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
 
    allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-   call gw_selfenergy(calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
+   call gw_selfenergy(nstate0,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
 
    if( ABS(en%gw) > 1.0e-5_dp ) then
      write(stdout,'(/,a,f19.10)') ' Galitskii-Migdal Total energy (Ha): ',en%tot - en%rpa + en%gw

@@ -127,7 +127,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
    if( reading_status /= 0 ) then
      call init_spectral_function(basis%nbf,nstate,occupation,wpol_static)
      wpol_static%nprodbasis = auxil_basis%nbf_local
-     call static_polarizability(basis,auxil_basis,occupation,energy,wpol_static)
+     call static_polarizability(nstate0,basis,auxil_basis,occupation,energy,wpol_static)
    endif
 
  endif
@@ -252,7 +252,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  ! and the dynamic dipole tensor
  !
  if( calc_type%is_td .OR. calc_type%is_bse ) then
-   call optical_spectrum(basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
+   call optical_spectrum(nstate0,basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
    call stopping_power(basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
  endif
 
@@ -1092,7 +1092,7 @@ end subroutine build_amb_apb_bse_auxil
 
 
 !=========================================================================
-subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenvalue)
+subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenvalue)
  use m_tools
  use m_basis_set
  use m_dft_grid
@@ -1100,9 +1100,9 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eige
  use m_atoms
  implicit none
 
- integer,intent(in)                 :: m_x,n_x
+ integer,intent(in)                 :: nstate,m_x,n_x
  type(basis_set),intent(in)         :: basis
- real(dp),intent(in)                :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)                :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in) :: chi
  real(prec_td),intent(in)           :: bigx(m_x,n_x)
  real(prec_td),intent(in)           :: bigy(m_x,n_x)
@@ -1190,19 +1190,19 @@ subroutine optical_spectrum(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eige
 
  !
  ! Get the dipole oscillator strength on states
- allocate(dipole_state(3,basis%nbf,basis%nbf,nspin))
- allocate(dipole_tmp(3,basis%nbf,basis%nbf))
+ allocate(dipole_state(3,nstate,nstate,nspin))
+ allocate(dipole_tmp(3,basis%nbf,nstate))
 
  do ijspin=1,nspin
-   do jbf=1,basis%nbf
-     do istate=1,basis%nbf
-       dipole_tmp(:,istate,jbf) = MATMUL( dipole_basis(:,:,jbf) , c_matrix(:,istate,ijspin) )
+   do istate=1,nstate
+     do jbf=1,basis%nbf
+       dipole_tmp(:,jbf,istate) = MATMUL( dipole_basis(:,:,jbf) , c_matrix(:,istate,ijspin) )
      enddo
    enddo
 
-   do jstate=1,basis%nbf
-     do istate=1,basis%nbf
-       dipole_state(:,istate,jstate,ijspin) = MATMUL( dipole_tmp(:,istate,:) , c_matrix(:,jstate,ijspin) )
+   do jstate=1,nstate
+     do istate=1,nstate
+       dipole_state(:,istate,jstate,ijspin) = MATMUL( dipole_tmp(:,:,istate) , c_matrix(:,jstate,ijspin) )
      enddo
    enddo
 

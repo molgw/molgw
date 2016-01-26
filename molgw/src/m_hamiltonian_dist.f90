@@ -133,6 +133,100 @@ end subroutine broadcast_hamiltonian_sca
 
 
 !=========================================================================
+subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
+ use m_basis_set
+ use m_atoms
+ implicit none
+ logical,intent(in)         :: print_matrix_
+ type(basis_set),intent(in) :: basis
+ integer,intent(in)         :: m_ham,n_ham
+ real(dp),intent(out)       :: hamiltonian_nucleus(m_ham,n_ham)
+!=====
+ integer              :: natom_local
+ integer              :: ibf,jbf
+ integer              :: ibf_cart,jbf_cart
+ integer              :: i_cart,j_cart
+ integer              :: ni,nj,ni_cart,nj_cart,li,lj
+ integer              :: iatom
+ real(dp),allocatable :: matrix_cart(:,:)
+ real(dp)             :: vnucleus_ij
+ real(dp),allocatable :: buffer(:,:)
+!=====
+
+#ifdef HAVE_SCALAPACK
+
+ call start_clock(timing_hamiltonian_nuc)
+ write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian'
+ if( nproc > 1 ) then
+   natom_local=0
+   do iatom=1,natom
+     if( rank /= MODULO(iatom-1,nproc) ) cycle
+     natom_local = natom_local + 1
+   enddo
+   write(stdout,'(a)')         '   Parallelizing over atoms'
+   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
+ endif
+
+ allocate(buffer(basis%nbf,basis%nbf))
+
+ ibf_cart = 1
+ jbf_cart = 1
+ ibf      = 1
+ jbf      = 1
+ do while(ibf_cart<=basis%nbf_cart)
+   li      = basis%bf(ibf_cart)%am
+   ni_cart = number_basis_function_am('CART',li)
+   ni      = number_basis_function_am(basis%gaussian_type,li)
+
+   do while(jbf_cart<=basis%nbf_cart)
+     lj      = basis%bf(jbf_cart)%am
+     nj_cart = number_basis_function_am('CART',lj)
+     nj      = number_basis_function_am(basis%gaussian_type,lj)
+
+     allocate(matrix_cart(ni_cart,nj_cart))
+     matrix_cart(:,:) = 0.0_dp
+     do iatom=1,natom
+       if( rank /= MODULO(iatom-1,nproc) ) cycle
+       do i_cart=1,ni_cart
+         do j_cart=1,nj_cart
+           call nucleus_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
+           matrix_cart(i_cart,j_cart) = matrix_cart(i_cart,j_cart) + vnucleus_ij
+         enddo
+       enddo
+     enddo
+     buffer(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
+                                                MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+
+
+     deallocate(matrix_cart)
+     jbf      = jbf      + nj
+     jbf_cart = jbf_cart + nj_cart
+   enddo
+   jbf      = 1
+   jbf_cart = 1
+
+   ibf      = ibf      + ni
+   ibf_cart = ibf_cart + ni_cart
+
+ enddo
+
+
+ ! Sum up the buffers and store the result in the sub matrix hamiltonian_nucleus
+ call reduce_hamiltonian_sca(basis%nbf,buffer,m_ham,n_ham,hamiltonian_nucleus)
+
+ deallocate(buffer)
+
+
+ call stop_clock(timing_hamiltonian_nuc)
+
+
+#endif
+
+
+end subroutine setup_nucleus_buffer_sca
+
+
+!=========================================================================
 subroutine setup_hartree_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,pot_hartree,ehartree)
  use m_eri
  implicit none
