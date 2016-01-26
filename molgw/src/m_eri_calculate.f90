@@ -1032,7 +1032,6 @@ subroutine calculate_eri_approximate_hartree(print_eri_,basis,m_ham,n_ham,x0_rho
      
    do lbf=1,nl
      do kbf=1,nk
-       vhrho( shell(kshell)%istart+kbf-1 , shell(lshell)%istart+lbf-1 ) = integrals_cart(kbf,lbf)
        iglobal = shell(kshell)%istart+kbf-1
        jglobal = shell(lshell)%istart+lbf-1
        ilocal = rowindex_global_to_local('H',iglobal)
@@ -1041,7 +1040,6 @@ subroutine calculate_eri_approximate_hartree(print_eri_,basis,m_ham,n_ham,x0_rho
          vhrho(ilocal,jlocal) = integrals_cart(kbf,lbf)
        endif
        ! And the symmetric too
-        vhrho( shell(lshell)%istart+lbf-1 , shell(kshell)%istart+kbf-1 ) = integrals_cart(kbf,lbf)
        jglobal = shell(kshell)%istart+kbf-1
        iglobal = shell(lshell)%istart+lbf-1
        ilocal = rowindex_global_to_local('H',iglobal)

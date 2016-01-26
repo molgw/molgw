@@ -859,7 +859,7 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
 
      do lbf=1,nl
        do kbf=1,nk
-         ipair = index_prod(shell(kshell)%istart+kbf-1,shell(lshell)%istart+lbf-1)
+         ipair = index_pair(shell(kshell)%istart+kbf-1,shell(lshell)%istart+lbf-1)
     
          eri_3center_lr(ibf_auxil,ipair) = DOT_PRODUCT( eri_2center_m1_lr(:,jbf_auxil) , eri_3tmp(:,kbf,lbf) ) 
        enddo

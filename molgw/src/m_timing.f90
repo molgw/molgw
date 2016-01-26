@@ -40,6 +40,7 @@ module m_timing
  integer,parameter :: timing_spectrum            = 28
  integer,parameter :: timing_eri_screening       = 29
  integer,parameter :: timing_hamiltonian_ecp     = 30
+ integer,parameter :: timing_sca_distr           = 31
  
  integer,parameter :: timing_tmp1                = 91
  integer,parameter :: timing_tmp2                = 92

@@ -51,6 +51,7 @@ module m_mpi
  integer,allocatable,public :: nbf_local_iproc_lr(:)
 
  integer,allocatable,protected :: rank_sca_to_mpi(:,:)
+ integer,allocatable,protected :: rank_ham_sca_to_mpi(:,:)
 
  integer,allocatable,private :: task_proc(:)
  integer,allocatable,private :: ntask_proc(:)
@@ -77,6 +78,7 @@ module m_mpi
  interface xmax
    module procedure xmax_i
    module procedure xmax_r
+   module procedure xmax_ia2d
    module procedure xmax_ra1d
  end interface
 
@@ -97,6 +99,7 @@ module m_mpi
    module procedure xsum_ca1d
    module procedure xsum_ca2d
    module procedure xsum_ca4d
+   module procedure xsum_procindex_ra2d
  end interface
 
  interface xlocal_sum
@@ -622,6 +625,28 @@ end subroutine xmax_r
 
 
 !=========================================================================
+subroutine xmax_ia2d(array)
+ implicit none
+ integer,intent(inout) :: array(:,:)
+!=====
+ integer :: n1,n2
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_INTEGER, MPI_MAX, comm_world, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xmax_ia2d
+
+
+!=========================================================================
 subroutine xmax_ra1d(array)
  implicit none
  real(dp),intent(inout) :: array(:)
@@ -861,6 +886,29 @@ subroutine xsum_ca4d(array)
  endif
 
 end subroutine xsum_ca4d
+
+
+!=========================================================================
+subroutine xsum_procindex_ra2d(iproc,array)
+ implicit none
+ integer,intent(in)     :: iproc
+ real(dp),intent(inout) :: array(:,:)
+!=====
+ integer :: n1,n2
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+
+#ifdef HAVE_MPI
+ call MPI_REDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, comm_world, iproc, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xsum_procindex_ra2d
 
 
 !=========================================================================
@@ -1125,6 +1173,12 @@ subroutine init_scalapack_ham(nbf,m_ham,n_ham)
      n_ham = 0
    endif
 
+   allocate(rank_ham_sca_to_mpi(0:nprow_ham-1,0:npcol_ham-1))
+   rank_ham_sca_to_mpi(:,:) = -1
+   if( iprow_ham >= 0 .AND. ipcol_ham >= 0 ) &
+     rank_ham_sca_to_mpi(iprow_ham,ipcol_ham) = rank
+   call xmax(rank_ham_sca_to_mpi)
+
    write(stdout,'(/,a)')           ' ==== SCALAPACK Hamiltonian'
    write(stdout,'(a50,x,i8)')      'Number of dedicated processors:',nprow_ham * npcol_ham
    write(stdout,'(a50,x,i8,x,i8)')   'Grid of dedicated processors:',nprow_ham,npcol_ham
@@ -1381,9 +1435,20 @@ subroutine diagonalize_sca_outofplace(desc,nglobal,mlocal,nlocal,matrix,eigval, 
  integer              :: desc_tmp(ndel)
  integer              :: lwork,info
  real(dp),allocatable :: work(:)
+ real(dp)             :: ABSTOL
+ integer              :: neigval,neigvec
+ integer,allocatable  :: iwork(:)
+ integer              :: liwork
+ integer              :: iclustr(2*nprow_sd*npcol_sd)
+ real(dp)             :: gap(nprow_sd*npcol_sd)
+ integer              :: ifail(nglobal)
+ real(dp),external    :: PDLAMCH
 !=====
 
 #ifdef HAVE_SCALAPACK
+
+#if 1
+
  !
  ! First call to get the dimension of the array work
  lwork = -1
@@ -1396,6 +1461,36 @@ subroutine diagonalize_sca_outofplace(desc,nglobal,mlocal,nlocal,matrix,eigval, 
  allocate(work(lwork))
  call PDSYEV('V','U',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
  deallocate(work)
+
+#else
+ ABSTOL = PDLAMCH(cntxt_sd, 'U')
+ lwork = -1
+ liwork = -1
+ allocate(work(1))
+ allocate(iwork(1))
+ call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
+              ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
+              eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,ifail,  &
+              iclustr,gap,info)
+
+ lwork = NINT(work(1))
+ liwork = iwork(1)
+
+ deallocate(work)
+ deallocate(iwork)
+ allocate(work(lwork))
+ allocate(iwork(liwork))
+ call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
+              ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
+              eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,ifail,  &
+              iclustr,gap,info)
+ deallocate(work)
+ deallocate(iwork)
+
+
+#endif
+
+
 
 #else
  eigval(:) = 0.0_dp

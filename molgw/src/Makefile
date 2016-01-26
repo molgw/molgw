@@ -61,7 +61,7 @@ level030: m_eri.o m_scf.o m_dft_grid.o
 
 level032: m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o
 
-level035: m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o mp2_selfenergy.o
+level035: m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_dist.o mp2_selfenergy.o
 
 level040: m_timedependent.o static_polarizability.o gw.o dft_xc.o io.o mp2.o
 
@@ -81,7 +81,7 @@ level045: scf_loop.o molgw.o
         m_inputparam.o \
         m_eri.o m_scf.o m_dft_grid.o \
         m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o \
-        m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o mp2_selfenergy.o \
+        m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_dist.o mp2_selfenergy.o \
         m_timedependent.o static_polarizability.o gw.o dft_xc.o io.o mp2.o  \
         scf_loop.o molgw.o
 	$(FC_W_OPTS) \
@@ -90,7 +90,7 @@ level045: scf_loop.o molgw.o
                         m_spectral_function.o \
                         libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o mp2_selfenergy.o \
                         mp2.o gw.o m_timedependent.o static_polarizability.o dft_xc.o io.o \
-                        m_hamiltonian.o m_hamiltonian_sca.o scf_loop.o pdbssolver1.o  \
+                        m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_dist.o scf_loop.o pdbssolver1.o  \
                         molgw.o \
                         -o ../molgw \
                         $(SCALAPACK) $(LAPACK)   \
@@ -100,13 +100,13 @@ level045: scf_loop.o molgw.o
 
 molgw.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
   m_gos.f90 m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_eri_calculate.f90 m_eri_lr_calculate.f90 m_eri_ao_mo.o \
-  m_hamiltonian.f90 m_hamiltonian_sca.f90 \
+  m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_dist.o \
   m_timedependent.f90 molgw.f90
 	$(FC_W_OPTS) -c molgw.f90 $(LIBXC_INCS)
 
 scf_loop.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
             m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_eri_calculate.f90 m_eri_lr_calculate.f90 m_eri_ao_mo.o \
-            m_hamiltonian.f90 m_hamiltonian_sca.f90 m_timedependent.f90 scf_loop.f90
+            m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_dist.o m_timedependent.f90 scf_loop.f90
 	$(FC_W_OPTS) -c scf_loop.f90 $(LIBXC_INCS)
 
 gw.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 m_eri_calculate.f90 m_eri_ao_mo.f90 \
@@ -120,6 +120,9 @@ static_polarizability.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 
 m_timedependent.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_block_diago.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 \
                    m_hamiltonian.f90 m_timedependent.f90
 	$(FC_W_OPTS) -c m_timedependent.f90 $(LIBXC_INCS)
+
+m_hamiltonian_dist.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_eri.f90 m_basis_set.f90 m_hamiltonian_dist.f90
+	$(FC_W_OPTS) -c m_hamiltonian_dist.f90 $(LIBXC_INCS)
 
 m_hamiltonian_sca.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_eri.f90 m_basis_set.f90 m_hamiltonian_sca.f90
 	$(FC_W_OPTS) -c m_hamiltonian_sca.f90 $(LIBXC_INCS)
