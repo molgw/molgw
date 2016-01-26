@@ -1,5 +1,5 @@
 !=========================================================================
-subroutine gw_selfenergy(nstate0,gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy,energy_gw)
+subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy,energy_gw)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -11,10 +11,10 @@ subroutine gw_selfenergy(nstate0,gwmethod,basis,occupation,energy,exchange_m_vxc
  use m_tools,only: coeffs_gausslegint
  implicit none
 
- integer,intent(in)                 :: nstate0,gwmethod
+ integer,intent(in)                 :: nstate,gwmethod
  type(basis_set)                    :: basis
- real(dp),intent(in)                :: occupation(nstate0,nspin),energy(nstate0,nspin),exchange_m_vxc_diag(nstate0,nspin)
- real(dp),intent(in)                :: c_matrix(basis%nbf,nstate0,nspin)
+ real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin),exchange_m_vxc_diag(nstate,nspin)
+ real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(in)                :: s_matrix(basis%nbf,basis%nbf)
  type(spectral_function),intent(in) :: wpol
  real(dp),intent(out)               :: selfenergy(basis%nbf,basis%nbf,nspin)
@@ -39,9 +39,9 @@ subroutine gw_selfenergy(nstate0,gwmethod,basis,occupation,energy,exchange_m_vxc
  real(dp)              :: fact_full_i,fact_empty_i
  real(dp)              :: fact_full_a,fact_empty_a
  real(dp)              :: zz_a(nspin)
- real(dp)              :: energy_qp(nstate0,nspin)
- real(dp)              :: zz(nstate0,nspin)
- real(dp)              :: energy_qp_new(nstate0,nspin),energy_qp_z(nstate0,nspin)
+ real(dp)              :: energy_qp(nstate,nspin)
+ real(dp)              :: zz(nstate,nspin)
+ real(dp)              :: energy_qp_new(nstate,nspin),energy_qp_z(nstate,nspin)
  real(dp)              :: energy_qp_z_a(nspin),energy_qp_omega(nspin)
  character(len=3)      :: ctmp
  integer               :: reading_status
@@ -82,18 +82,18 @@ subroutine gw_selfenergy(nstate0,gwmethod,basis,occupation,energy,exchange_m_vxc
    write(stdout,*) 'Perform an eigenvalue self-consistent GnWn calculation'
  end select
 
- nprodbasis = index_prodstate(nstate0,nstate0)
+ nprodbasis = index_prodstate(nstate,nstate)
 
  if(has_auxil_basis) then
-   call calculate_eri_3center_eigen(basis%nbf,nstate0,c_matrix)
+   call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix)
    if( calc_type%gwmethod == LW .OR. calc_type%gwmethod == LW2 .OR. calc_type%gwmethod == GSIGMA ) &
-       call calculate_eri_3center_eigen_mixed(basis%nbf,nstate0,c_matrix)
+       call calculate_eri_3center_eigen_mixed(basis%nbf,nstate,c_matrix)
  endif
 
  !
  ! Set the range of states on which to evaluate the self-energy
  nsemin = MAX(ncore_G+1   ,selfenergy_state_min,1)
- nsemax = MIN(nvirtual_G-1,selfenergy_state_max,nstate0)
+ nsemax = MIN(nvirtual_G-1,selfenergy_state_max,nstate)
 
  write(stdout,'(a,i4,a,i4)') ' Calculate state range from ',nsemin,' to ',nsemax
  call clean_allocate('Temporary array',bra,1,wpol%npole_reso,nsemin,nsemax)
@@ -152,7 +152,7 @@ subroutine gw_selfenergy(nstate0,gwmethod,basis,occupation,energy,exchange_m_vxc
  !
  select case(gwmethod)
  case(GnW0,GnWn,GSIGMA3)
-   call read_energy_qp(nspin,basis%nbf,energy_qp,reading_status)
+   call read_energy_qp(nstate,energy_qp,reading_status)
    if(reading_status/=0) then
      call issue_warning('File energy_qp not found: assuming 1st iteration')
      energy_qp(:,:) = energy(:,:)
@@ -192,7 +192,7 @@ subroutine gw_selfenergy(nstate0,gwmethod,basis,occupation,energy,exchange_m_vxc
 
 
  do ispin=1,nspin
-   do istate=1,nstate0 !INNER LOOP of G
+   do istate=1,nstate !INNER LOOP of G
      if(gwmethod==LW .or. gwmethod==LW2) write(stdout,*) 'FBFB LW',istate
      !
      ! Apply the frozen core and frozen virtual approximation to G
@@ -450,7 +450,7 @@ subroutine gw_selfenergy(nstate0,gwmethod,basis,occupation,energy,exchange_m_vxc
                                            zz_a(:),energy_qp_new(astate,:)*Ha_eV
    enddo
 
-   call write_energy_qp(nspin,basis%nbf,energy_qp_new)
+   call write_energy_qp(nstate,energy_qp_new)
 
 
  case(COHSEX,CUSTOMIZED) !==========================================================
@@ -477,7 +477,7 @@ subroutine gw_selfenergy(nstate0,gwmethod,basis,occupation,energy,exchange_m_vxc
                                            zz_a(:),energy_qp_new(astate,:)*Ha_eV
    enddo
 
-   call write_energy_qp(nspin,basis%nbf,energy_qp_new)
+   call write_energy_qp(nstate,energy_qp_new)
 
 
  case(G0W0) !==========================================================
@@ -563,7 +563,7 @@ subroutine gw_selfenergy(nstate0,gwmethod,basis,occupation,energy,exchange_m_vxc
    enddo
 
 
-   call write_energy_qp(nspin,basis%nbf,energy_qp_new)
+   call write_energy_qp(nstate,energy_qp_new)
 
 
 
@@ -603,7 +603,7 @@ subroutine gw_selfenergy(nstate0,gwmethod,basis,occupation,energy,exchange_m_vxc
                                                  energy_qp_new(astate,:)*Ha_eV
    enddo
 
-   call write_energy_qp(nspin,basis%nbf,energy_qp_new)
+   call write_energy_qp(nstate,energy_qp_new)
 
  case(GSIGMA) !==========================================================
 
@@ -713,7 +713,7 @@ subroutine gw_selfenergy(nstate0,gwmethod,basis,occupation,energy,exchange_m_vxc
  !
  select case(gwmethod)
  case(G0W0,GV,COHSEX,GnW0,GnWn)
-   do istate=1,basis%nbf
+   do istate=1,nstate
      if( ANY(occupation(istate,:) > completely_empty) ) homo = istate
    enddo
    write(stdout,*)
@@ -731,7 +731,7 @@ subroutine gw_selfenergy(nstate0,gwmethod,basis,occupation,energy,exchange_m_vxc
  if(has_auxil_basis) then
    call destroy_eri_3center_eigen()
    if( calc_type%gwmethod == LW .OR. calc_type%gwmethod == LW2 .OR. calc_type%gwmethod == GSIGMA ) &
-       call calculate_eri_3center_eigen_mixed(basis%nbf,nstate0,c_matrix)
+       call calculate_eri_3center_eigen_mixed(basis%nbf,nstate,c_matrix)
  endif
 
  if(ALLOCATED(omegai)) deallocate(omegai)

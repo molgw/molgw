@@ -59,7 +59,7 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
  integer              :: klspin
  integer              :: ibf,jbf,kbf,lbf
  integer              :: jstate,kstate,lstate
- real(dp)             :: eri_tmp3(nbf,nbf,nbf)
+ real(dp)             :: eri_tmp3(nbf,nbf,nbf),eri_tmp2(nbf,nbf,nbf)
  real(dp)             :: wtime
 !=====
 
@@ -75,6 +75,7 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
  call start_clock(timing_basis_transform)
 
  eri_eigenstate_i(:,:,:,:)=0.0_dp
+ eri_tmp2(:,:,:)=0.0_dp
  eri_tmp3(:,:,:)=0.0_dp
 
  do lbf=1,nbf
@@ -94,7 +95,7 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
    do kbf=1,nbf
 
      do jstate=1,nstate
-       eri_eigenstate_i(jstate,kbf,lbf,nspin) = DOT_PRODUCT( eri_tmp3(:,kbf,lbf) , c_matrix(:,jstate,ijspin) )
+       eri_tmp2(jstate,kbf,lbf) = DOT_PRODUCT( eri_tmp3(:,kbf,lbf) , c_matrix(:,jstate,ijspin) )
      enddo
 
    enddo
@@ -107,7 +108,7 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
    do lbf=1,nbf
      do kstate=1,nstate
        do jstate=1,nstate
-         eri_tmp3(jstate,kstate,lbf) = DOT_PRODUCT( eri_eigenstate_i(jstate,:,lbf,nspin) , c_matrix(:,kstate,klspin) )
+         eri_tmp3(jstate,kstate,lbf) = DOT_PRODUCT( eri_tmp2(jstate,:,lbf) , c_matrix(:,kstate,klspin) )
        enddo
      enddo
    enddo
@@ -123,6 +124,7 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
    enddo
 
  enddo !klspin
+
 
  call stop_clock(timing_basis_transform)
 

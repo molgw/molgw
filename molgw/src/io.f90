@@ -203,27 +203,29 @@ end subroutine dump_out_matrix
 
 
 !=========================================================================
-subroutine output_homolumo(nbf,nspin,occupation,energy,homo,lumo)
+subroutine output_homolumo(nstate,occupation,energy,homo,lumo)
  use m_definitions
  use m_mpi
+ use m_inputparam,only: nspin
  implicit none
- integer,intent(in)  :: nbf,nspin
- real(dp),intent(in) :: occupation(nbf,nspin),energy(nbf,nspin)
+ integer,intent(in)  :: nstate
+ real(dp),intent(in) :: occupation(nstate,nspin),energy(nstate,nspin)
  real(dp),intent(out) :: homo(nspin),lumo(nspin)
+!=====
  real(dp) :: homo_tmp,lumo_tmp
- integer :: ispin,ibf
-
+ integer :: ispin,istate
+!=====
 
  do ispin=1,nspin
    homo_tmp=-1.d+5
    lumo_tmp= 1.d+5
-   do ibf=1,nbf
-     if(occupation(ibf,ispin)>completely_empty) then
-       homo_tmp = MAX( homo_tmp , energy(ibf,ispin) )
+   do istate=1,nstate
+     if(occupation(istate,ispin)>completely_empty) then
+       homo_tmp = MAX( homo_tmp , energy(istate,ispin) )
      endif
 
-     if(occupation(ibf,ispin)<1.0_dp - completely_empty ) then
-       lumo_tmp = MIN( lumo_tmp , energy(ibf,ispin) )
+     if(occupation(istate,ispin)<1.0_dp - completely_empty ) then
+       lumo_tmp = MIN( lumo_tmp , energy(istate,ispin) )
      endif
 
    enddo
@@ -243,17 +245,18 @@ end subroutine output_homolumo
 
 
 !=========================================================================
-subroutine mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
+subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  use m_definitions
  use m_mpi
  use m_inputparam, only: nspin
  use m_atoms
  use m_basis_set
  implicit none
+ integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: s_matrix(basis%nbf,basis%nbf)
- real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
- real(dp),intent(in)        :: occupation(basis%nbf,nspin),energy(basis%nbf,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
 !=====
  integer                    :: ibf,ibf_cart,li,ni,ni_cart
  integer                    :: natom1,natom2,istate,ispin
@@ -298,7 +301,7 @@ subroutine mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
  write(stdout,*) ' spin state  energy(eV)  Mulliken proj.'
  proj_charge = 0.0_dp
  do ispin=1,nspin
-   do istate=1,basis%nbf
+   do istate=1,nstate
      proj_state_i(:) = 0.0_dp
 
      cs_vector_i(:) = MATMUL( c_matrix(:,istate,ispin) , s_matrix(:,:) )
@@ -669,13 +672,14 @@ end subroutine plot_cube_wfn
 
 
 !=========================================================================
-subroutine write_energy_qp(nspin,nbf,energy_qp)
+subroutine write_energy_qp(nstate,energy_qp)
  use m_definitions
  use m_mpi
+ use m_inputparam,only: nspin
  implicit none
 
- integer,intent(in)  :: nspin,nbf
- real(dp),intent(in) :: energy_qp(nbf,nspin)
+ integer,intent(in)  :: nstate
+ real(dp),intent(in) :: energy_qp(nstate,nspin)
 !=====
  integer           :: energy_qpfile
  integer           :: istate
@@ -691,8 +695,8 @@ subroutine write_energy_qp(nspin,nbf,energy_qp)
  open(newunit=energy_qpfile,file='ENERGY_QP',form='formatted')
 
  write(energy_qpfile,*) nspin
- write(energy_qpfile,*) nbf
- do istate=1,nbf
+ write(energy_qpfile,*) nstate
+ do istate=1,nstate
    write(energy_qpfile,*) istate,energy_qp(istate,:)
  enddo
 
@@ -703,19 +707,20 @@ end subroutine write_energy_qp
 
 
 !=========================================================================
-subroutine read_energy_qp(nspin,nbf,energy_qp,reading_status)
+subroutine read_energy_qp(nstate,energy_qp,reading_status)
  use m_definitions
  use m_mpi
  use m_warning,only: issue_warning
+ use m_inputparam,only: nspin
  implicit none
 
- integer,intent(in)   :: nspin,nbf
+ integer,intent(in)   :: nstate
  integer,intent(out)  :: reading_status
- real(dp),intent(out) :: energy_qp(nbf,nspin)
+ real(dp),intent(out) :: energy_qp(nstate,nspin)
 !=====
  integer           :: energy_qpfile
  integer           :: istate,jstate
- integer           :: nspin_read,nbf_read
+ integer           :: nspin_read,nstate_read
  logical           :: file_exists_capitalized,file_exists
 !=====
 
@@ -732,12 +737,12 @@ subroutine read_energy_qp(nspin,nbf,energy_qp,reading_status)
 
  if( file_exists_capitalized .OR. file_exists ) then
    read(energy_qpfile,*) nspin_read
-   read(energy_qpfile,*) nbf_read
-   if( nbf_read /= nbf .OR. nspin_read /= nspin ) then
+   read(energy_qpfile,*) nstate_read
+   if( nstate_read /= nstate .OR. nspin_read /= nspin ) then
      call issue_warning('ENERGY_QP file does not have the correct dimensions')
      reading_status=2
    else
-     do istate=1,nbf
+     do istate=1,nstate
        read(energy_qpfile,*) jstate,energy_qp(istate,:)
        ! Scissor operator
        if( jstate == -1 ) then
@@ -982,20 +987,21 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
 
 
  ! Occupations
- allocate(occupation_read(basis_read%nbf,nspin_read))
+ allocate(occupation_read(nstate,nspin_read))
  read(restartfile) occupation_read(:,:)
- if( ANY( ABS( occupation_read(1:MIN(basis_read%nbf,basis%nbf),:) &
-             - occupation(1:MIN(basis_read%nbf,basis%nbf),:) )  > 1.0e-5_dp ) ) then
+ if( ANY( ABS( occupation_read(1:nstate,:) &
+             - occupation(1:nstate,:) )  > 1.0e-5_dp ) ) then
    call issue_warning('RESTART file: Occupations have changed')
  endif
  deallocate(occupation_read)
 
 
  ! Eigen energies
- read(restartfile) energy(1:MIN(basis_read%nbf,basis%nbf),:)
- if( basis_read%nbf < basis%nbf ) then
-   energy(basis_read%nbf+1:basis%nbf,:) = 1000.0_dp
- endif
+ read(restartfile) energy(1:nstate,:)
+! FIXME nstate
+! if( basis_read%nbf < basis%nbf ) then
+!   energy(basis_read%nbf+1:basis%nbf,:) = 1000.0_dp
+! endif
  
 
  ! Number of states written down in the RESTART file

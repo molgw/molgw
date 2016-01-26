@@ -136,16 +136,21 @@ program molgw
  ! Calculate the square root inverse of the overlap matrix S
  ! Eliminate those eigenvalue that are too small in order to stabilize the
  ! calculation
- nstate0 = basis%nbf ! TODO: eliminate this
- m_c     = m_ham     ! TODO: eliminate this
- n_c     = n_ham     ! TODO: eliminate this
  if( parallel_ham ) then
    call setup_sqrt_overlap_sca(min_overlap,basis%nbf,m_ham,n_ham,s_matrix,nstate,m_ov,n_ov,s_matrix_sqrt_inv)
+   nstate0 = basis%nbf ! TODO: eliminate this
+!   nstate0 = nstate    ! TODO: eliminate this
+
  else
    call setup_sqrt_overlap(min_overlap,basis%nbf,s_matrix,nstate,s_matrix_sqrt_inv)
+   nstate0 = basis%nbf ! TODO: eliminate this
+!   nstate0 = nstate    ! TODO: eliminate this
    m_ov = basis%nbf
    n_ov = nstate0
+
  endif
+ m_c     = m_ham     ! TODO: eliminate this
+ n_c     = n_ham     ! TODO: eliminate this
 
  if( m_ov /= basis%nbf .OR. n_ov /= nstate0 ) then
    call issue_warning('SCALAPACK is used to distribute the wavefunction coefficients')
@@ -280,7 +285,7 @@ program molgw
  if( parallel_ham ) then
    call setup_density_matrix_sca(basis%nbf,m_ham,n_ham,c_matrix,occupation,p_matrix)
  else
-   call setup_density_matrix(basis%nbf,c_matrix,occupation,p_matrix)
+   call setup_density_matrix(basis%nbf,nstate0,c_matrix,occupation,p_matrix)
  endif
 !!
 !! Test PSP = P
@@ -338,7 +343,7 @@ program molgw
  if( print_wfn_ ) call plot_wfn(basis,c_matrix)
  if( print_wfn_ ) call plot_rho(basis,occupation,c_matrix)
  if( print_cube_ ) call plot_cube_wfn(basis,c_matrix)
- if( print_pdos_ ) call mulliken_pdos(basis,s_matrix,c_matrix,occupation,energy)
+ if( print_pdos_ ) call mulliken_pdos(nstate0,basis,s_matrix,c_matrix,occupation,energy)
 
 
  !
@@ -368,7 +373,7 @@ program molgw
    if(calc_type%is_td .AND. calc_type%is_dft) call init_dft_grid(grid_level)
 
    call init_spectral_function(nstate0,nstate,occupation,wpol)
-   call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+   call polarizability(basis,auxil_basis,nstate0,nstate,occupation,energy,c_matrix,en%rpa,wpol)
    call destroy_spectral_function(wpol)
 
    if(calc_type%is_td .AND. calc_type%is_dft) call destroy_dft_grid()
@@ -412,7 +417,7 @@ program molgw
    call read_spectral_function(wpol,reading_status)
    ! If reading has failed, then do the calculation
    if( reading_status /= 0 ) then
-     call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+     call polarizability(basis,auxil_basis,nstate0,nstate,occupation,energy,c_matrix,en%rpa,wpol)
    endif
 
    en%tot = en%tot + en%rpa

@@ -210,7 +210,7 @@ subroutine scf_loop(basis,auxil_basis,&
        .AND. iscf > 5 ) then
 
      call init_spectral_function(nstate0,nstate,occupation,wpol)
-     call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+     call polarizability(basis,auxil_basis,nstate0,nstate,occupation,energy,c_matrix,en%rpa,wpol)
 
      if( ABS(en%rpa) > 1.e-6_dp) then
        en%tot = en%tot + en%rpa
@@ -267,7 +267,7 @@ subroutine scf_loop(basis,auxil_basis,&
    ! If requested, the level shifting procedure is triggered: 
    ! All the unoccupied states are penalized with an energy =  level_shifting_energy
    if( level_shifting_energy > 1.0e-6_dp ) then
-     call level_shifting(basis%nbf,s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
+     call level_shifting(basis%nbf,nstate0,s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
    endif
   
   
@@ -298,9 +298,9 @@ subroutine scf_loop(basis,auxil_basis,&
    endif
   
    title='=== Energies ==='
-   call dump_out_energy(title,nstate,nspin,occupation(1:nstate,:),energy(1:nstate,:))
+   call dump_out_energy(title,nstate0,nspin,occupation,energy)
 
-   call output_homolumo(basis%nbf,nspin,occupation,energy,ehomo,elumo)
+   call output_homolumo(nstate0,occupation,energy,ehomo,elumo)
 
 
    if(print_matrix_) then
@@ -330,7 +330,7 @@ subroutine scf_loop(basis,auxil_basis,&
    if( parallel_ham ) then
      call setup_density_matrix_sca(basis%nbf,m_ham,n_ham,c_matrix,occupation,p_matrix)
    else
-     call setup_density_matrix(basis%nbf,c_matrix,occupation,p_matrix)
+     call setup_density_matrix(basis%nbf,nstate0,c_matrix,occupation,p_matrix)
    endif
    title='=== density matrix P ==='
    call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,p_matrix)
@@ -478,7 +478,7 @@ subroutine scf_loop(basis,auxil_basis,&
    do istate=1,ncore
      occupation_tmp(istate,:) = 0.0_dp
    enddo
-   call setup_density_matrix(basis%nbf,c_matrix,occupation_tmp,p_matrix_tmp)
+   call setup_density_matrix(basis%nbf,nstate0,c_matrix,occupation_tmp,p_matrix_tmp)
    call die('coding not correct')
    call dft_exc_vxc(nstate0,basis,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,ehomo,hamiltonian_xc,en%xc)
 

@@ -15,7 +15,7 @@ contains
 
 
 !=========================================================================
-subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
+subroutine polarizability(basis,auxil_basis,nstate0,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
  use m_tools
  use m_block_diago
  use m_basis_set
@@ -24,13 +24,12 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  implicit none
 
  type(basis_set),intent(in)            :: basis,auxil_basis
- integer,intent(in)                    :: nstate
- real(dp),intent(in)                   :: occupation(basis%nbf,nspin)
- real(dp),intent(in)                   :: energy(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
+ integer,intent(in)                    :: nstate0,nstate
+ real(dp),intent(in)                   :: occupation(nstate0,nspin)
+ real(dp),intent(in)                   :: energy(nstate0,nspin),c_matrix(basis%nbf,nstate0,nspin)
  real(dp),intent(out)                  :: rpa_correlation
  type(spectral_function),intent(inout) :: wpol_out
 !=====
- integer                   :: nstate0
  type(spectral_function)   :: wpol_static
  integer                   :: nmat
  real(dp)                  :: energy_gm
@@ -40,7 +39,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  real(prec_td),allocatable :: a_diag(:)
  real(prec_td),allocatable :: bigx(:,:),bigy(:,:)
  real(dp),allocatable      :: eigenvalue(:)
- real(dp)                  :: energy_qp(basis%nbf,nspin)
+ real(dp)                  :: energy_qp(nstate0,nspin)
  logical                   :: is_tddft
  logical                   :: is_ij
  logical                   :: is_rpa
@@ -53,7 +52,6 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
 !=====
 
  call start_clock(timing_pola)
- nstate0 = basis%nbf
 
  write(stdout,'(/,a)') ' Calculating the polarizability'
  if(is_triplet) then
@@ -109,7 +107,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  !
  if( calc_type%is_bse .OR. calc_type%gwmethod==GnWn ) then
    ! Get energy_qp 
-   call get_energy_qp(basis%nbf,energy,occupation,energy_qp)
+   call get_energy_qp(nstate0,energy,occupation,energy_qp)
  else
    ! For any other type of calculation, just fill energy_qp array with energy
    energy_qp(:,:) = energy(:,:)
@@ -167,7 +165,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
      call build_a_diag_common(nmat,basis%nbf,nstate0,c_matrix,energy_qp,wpol_out,a_diag)
 
  ! Step 2
- if(is_tddft) call build_apb_tddft(nmat,basis,c_matrix,occupation,wpol_out,m_apb,n_apb,apb_matrix)
+ if(is_tddft) call build_apb_tddft(nmat,nstate0,basis,c_matrix,occupation,wpol_out,m_apb,n_apb,apb_matrix)
 
  ! Step 3
  if(calc_type%is_bse .AND. .NOT. is_rpa) then
@@ -253,7 +251,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  !
  if( calc_type%is_td .OR. calc_type%is_bse ) then
    call optical_spectrum(nstate0,basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
-   call stopping_power(basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
+   call stopping_power(nstate0,basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
  endif
 
  !
@@ -562,16 +560,16 @@ end subroutine build_a_diag_common
 
 
 !=========================================================================
-subroutine build_apb_tddft(nmat,basis,c_matrix,occupation,wpol,m_apb,n_apb,apb_matrix)
+subroutine build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_apb,apb_matrix)
  use m_spectral_function
  use m_basis_set
  use m_dft_grid
  implicit none
 
- integer,intent(in)                 :: nmat
+ integer,intent(in)                 :: nmat,nstate
  type(basis_set),intent(in)         :: basis
- real(dp),intent(in)                :: c_matrix(basis%nbf,basis%nbf,nspin)
- real(dp),intent(in)                :: occupation(basis%nbf,nspin)
+ real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(in)                :: occupation(nstate,nspin)
  type(spectral_function),intent(in) :: wpol
  integer,intent(in)                 :: m_apb,n_apb
  real(prec_td),intent(inout)        :: apb_matrix(m_apb,n_apb)
@@ -607,7 +605,7 @@ subroutine build_apb_tddft(nmat,basis,c_matrix,occupation,wpol,m_apb,n_apb,apb_m
  endif
  !
  ! Prepare TDDFT calculations
- call prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2sigma2,wf_r,wf_gradr,rho_gradr)
+ call prepare_tddft(nspin_tddft,nstate,basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2sigma2,wf_r,wf_gradr,rho_gradr)
  require_gradient = .FALSE.
  if(ALLOCATED(v2sigma2)) then ! GGA case
    require_gradient = .TRUE.
@@ -1411,7 +1409,7 @@ end subroutine optical_spectrum
 
 
 !=========================================================================
-subroutine stopping_power(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenvalue)
+subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenvalue)
  use m_tools
  use m_basis_set
  use m_dft_grid
@@ -1419,9 +1417,9 @@ subroutine stopping_power(basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenv
  use m_atoms
  implicit none
 
- integer,intent(in)                 :: m_x,n_x
+ integer,intent(in)                 :: nstate,m_x,n_x
  type(basis_set),intent(in)         :: basis
- real(dp),intent(in)                :: occupation(basis%nbf,nspin),c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)                :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in) :: chi
  real(prec_td),intent(in)           :: bigx(m_x,n_x)
  real(prec_td),intent(in)           :: bigy(m_x,n_x)
@@ -1628,7 +1626,7 @@ end subroutine stopping_power
 
 
 !=========================================================================
-subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2sigma2,wf_r,wf_gradr,rho_gradr)
+subroutine prepare_tddft(nspin_tddft,nstate,basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2sigma2,wf_r,wf_gradr,rho_gradr)
  use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
  use m_dft_grid
  use m_basis_set
@@ -1640,10 +1638,10 @@ subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2r
 #endif
  implicit none
 
- integer,intent(in)               :: nspin_tddft
+ integer,intent(in)               :: nspin_tddft,nstate
  type(basis_set),intent(in)       :: basis
- real(dp),intent(in)              :: c_matrix(basis%nbf,basis%nbf,nspin)
- real(dp),intent(in)              :: occupation(basis%nbf,nspin)
+ real(dp),intent(in)              :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(in)              :: occupation(nstate,nspin)
  real(dp),allocatable,intent(out) :: v2rho2(:,:)
  real(dp),allocatable,intent(out) :: vsigma(:,:)
  real(dp),allocatable,intent(out) :: v2rhosigma(:,:)
@@ -1701,7 +1699,7 @@ subroutine prepare_tddft(nspin_tddft,basis,c_matrix,occupation,v2rho2,vsigma,v2r
  ! calculate rho, grad rho and the kernel
  ! 
  ! Get the density matrix P from C
- call setup_density_matrix(basis%nbf,c_matrix,occupation,p_matrix)
+ call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
 
  allocate(v2rho2(ngrid,2*nspin_tddft-1),wf_r(ngrid,basis%nbf,nspin))
  v2rho2(:,:) = 0.0_dp
@@ -1814,13 +1812,13 @@ end subroutine prepare_tddft
 
 
 !=========================================================================
-subroutine get_energy_qp(nbf,energy,occupation,energy_qp)
+subroutine get_energy_qp(nstate,energy,occupation,energy_qp)
  implicit none
 
- integer,intent(in)                  :: nbf
- real(dp),intent(in)                 :: energy(nbf,nspin)
- real(dp),intent(in)                 :: occupation(nbf,nspin)
- real(dp),intent(out)                :: energy_qp(nbf,nspin)
+ integer,intent(in)                  :: nstate
+ real(dp),intent(in)                 :: energy(nstate,nspin)
+ real(dp),intent(in)                 :: occupation(nstate,nspin)
+ real(dp),intent(out)                :: energy_qp(nstate,nspin)
 !=====
  integer  :: reading_status
  real(dp) :: scissor_energy(nspin)
@@ -1835,7 +1833,7 @@ subroutine get_energy_qp(nbf,energy,occupation,energy_qp)
 
    write(stdout,'(a,2(1x,f12.6))') ' Scissor operator with value (eV):',scissor*Ha_eV
    do ispin=1,nspin
-     do istate=1,nbf
+     do istate=1,nstate
        if( occupation(istate,ispin) > completely_empty/spin_fact ) then
          energy_qp(istate,ispin) = energy(istate,ispin)
        else
@@ -1844,14 +1842,14 @@ subroutine get_energy_qp(nbf,energy,occupation,energy_qp)
      enddo
    enddo
    write(stdout,'(/,a)') ' Scissor updated energies'
-   do istate=1,nbf
+   do istate=1,nstate
      write(stdout,'(i5,4(2x,f16.6))') istate,energy(istate,:)*Ha_eV,energy_qp(istate,:)*Ha_eV
    enddo
    write(stdout,*)
 
  else
 
-   call read_energy_qp(nspin,nbf,energy_qp,reading_status)
+   call read_energy_qp(nstate,energy_qp,reading_status)
 
    select case(reading_status)
    case(0)

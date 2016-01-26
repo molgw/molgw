@@ -650,11 +650,11 @@ end subroutine read_potential
 
 
 !=========================================================================
-subroutine setup_density_matrix(nbf,c_matrix,occupation,p_matrix)
+subroutine setup_density_matrix(nbf,nstate,c_matrix,occupation,p_matrix)
  implicit none
- integer,intent(in)   :: nbf
- real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin)
- real(dp),intent(in)  :: occupation(nbf,nspin)
+ integer,intent(in)   :: nbf,nstate
+ real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
+ real(dp),intent(in)  :: occupation(nstate,nspin)
  real(dp),intent(out) :: p_matrix(nbf,nbf,nspin)
 !=====
  integer :: ispin,ibf,jbf
@@ -834,18 +834,18 @@ end subroutine evaluate_s2_operator
 
 
 !=========================================================================
-subroutine level_shifting(nbf,s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
+subroutine level_shifting(nbf,nstate,s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
  implicit none
- integer,intent(in)     :: nbf
+ integer,intent(in)     :: nbf,nstate
  real(dp),intent(in)    :: s_matrix(nbf,nbf)
- real(dp),intent(in)    :: c_matrix(nbf,nbf,nspin)
- real(dp),intent(in)    :: occupation(nbf,nspin)
+ real(dp),intent(in)    :: c_matrix(nbf,nstate,nspin)
+ real(dp),intent(in)    :: occupation(nstate,nspin)
  real(dp),intent(in)    :: level_shifting_energy
  real(dp),intent(inout) :: hamiltonian(nbf,nbf,nspin)
 !=====
  integer  :: ispin
- integer  :: ibf
- real(dp) :: sqrt_level_shifting(nbf)
+ integer  :: ibf,istate
+ real(dp) :: sqrt_level_shifting(nstate)
  real(dp) :: matrix_tmp(nbf,nbf)
 !=====
 
@@ -860,20 +860,20 @@ subroutine level_shifting(nbf,s_matrix,c_matrix,occupation,level_shifting_energy
  do ispin=1,nspin
    !
    ! Shift up empty states only
-   do ibf=1,nbf
-     if( occupation(ibf,ispin) < completely_empty ) then
-       sqrt_level_shifting(ibf) = SQRT( level_shifting_energy )
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty ) then
+       sqrt_level_shifting(istate) = SQRT( level_shifting_energy )
      else
-       sqrt_level_shifting(ibf) = 0.0_dp
+       sqrt_level_shifting(istate) = 0.0_dp
      endif
    enddo
-   forall(ibf=1:nbf)
-     matrix_tmp(:,ibf) =  c_matrix(:,ibf,ispin) * sqrt_level_shifting(ibf)
+   forall(istate=1:nstate)
+     matrix_tmp(:,istate) =  c_matrix(:,istate,ispin) * sqrt_level_shifting(istate)
    end forall
 
    ! 
    ! M = C * E * tC
-   matrix_tmp(:,:) = MATMUL( matrix_tmp , TRANSPOSE(matrix_tmp) )
+   matrix_tmp(:,:) = MATMUL( matrix_tmp(:,1:nstate) , TRANSPOSE(matrix_tmp(:,1:nstate)) )
    ! M = S * M * S
    matrix_tmp(:,:) = MATMUL( s_matrix , MATMUL( matrix_tmp , s_matrix ) )
 
@@ -902,10 +902,10 @@ subroutine diagonalize_hamiltonian(nspin_local,nbf,nstate0,nstate,hamiltonian,s_
 !=====
 
  ! TODO Eliminate this
- energy(nstate0:nbf,:) = 1.0e+10_dp
- c_matrix(nstate0:nbf,:,:) = 0.0_dp
- c_matrix(:,nstate0:nbf,:) = 0.0_dp
- do ibf=nstate0,nbf
+ energy(nstate+1:nstate0,:) = 1.0e+10_dp
+ c_matrix(nstate+1:nstate0,:,:) = 0.0_dp
+ c_matrix(:,nstate+1:nstate0,:) = 0.0_dp
+ do ibf=nstate+1,nstate0
    c_matrix(ibf,ibf,:) = 1.0_dp
  enddo
 
