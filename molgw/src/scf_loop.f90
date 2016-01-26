@@ -500,7 +500,7 @@ subroutine scf_loop(basis,auxil_basis,&
    enddo
    call setup_density_matrix(basis%nbf,c_matrix,occupation_tmp,p_matrix_tmp)
    call die('coding not correct')
-   call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,ehomo,hamiltonian_xc,en%xc)
+   call dft_exc_vxc(nstate0,basis,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,ehomo,hamiltonian_xc,en%xc)
 
    if( .NOT. is_full_auxil ) then
      call setup_exchange(print_matrix_,basis%nbf,p_matrix_tmp,hamiltonian_exx,en%exx)

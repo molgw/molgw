@@ -1,5 +1,5 @@
 !=========================================================================
-subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,exc_xc)
+subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,exc_xc)
  use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
  use m_definitions
  use m_mpi
@@ -14,6 +14,7 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,ex
 #endif
  implicit none
 
+ integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: p_matrix_occ(basis%nbf,nspin)
  real(dp),intent(in)        :: p_matrix_sqrt(basis%nbf,basis%nbf,nspin)
@@ -431,7 +432,6 @@ subroutine calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_functi
 
    do istate=1,basis%nbf
      if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
-!   do istate=1,nocc
      phi_ir = 0.0_dp
      do ibf=1,basis%nbf
 !       if( SUM( (basis%bf(ibf)%x0(:) - rr(:))**2 ) > bf_rad2(ibf) ) cycle

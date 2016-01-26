@@ -134,8 +134,8 @@ subroutine init_spectral_function(nstate0,nstate,occupation,sf)
  ! First, count the number of resonant transitions
  itrans=0
  do ijspin=1,nspin
-   do istate=1,nstate0
-     do jstate=1,nstate0
+   do istate=1,nstate
+     do jstate=1,nstate
        if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
        if( occupation(jstate,ijspin) - occupation(istate,ijspin) > 0.0_dp ) cycle
        itrans = itrans + 1
@@ -148,8 +148,8 @@ subroutine init_spectral_function(nstate0,nstate,occupation,sf)
  ! Set the transition_table 
  itrans=0
  do ijspin=1,nspin
-   do istate=1,nstate0
-     do jstate=1,nstate0
+   do istate=1,nstate
+     do jstate=1,nstate
        if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
        if( occupation(jstate,ijspin) - occupation(istate,ijspin) > 0.0_dp ) cycle
        itrans = itrans + 1
@@ -170,8 +170,8 @@ subroutine init_spectral_function(nstate0,nstate,occupation,sf)
  ! First, count the number of resonant transitions
  itrans=0
  do ijspin=1,nspin
-   do istate=1,nstate0
-     do jstate=1,nstate0
+   do istate=1,nstate
+     do jstate=1,nstate
        if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
        if( skip_transition_apb(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
        if( occupation(jstate,ijspin) - occupation(istate,ijspin) > 0.0_dp ) cycle
@@ -188,8 +188,8 @@ subroutine init_spectral_function(nstate0,nstate,occupation,sf)
  itrans=0
  jtrans=0
  do ijspin=1,nspin
-   do istate=1,nstate0
-     do jstate=1,nstate0
+   do istate=1,nstate
+     do jstate=1,nstate
        if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
        if( occupation(jstate,ijspin) - occupation(istate,ijspin) > 0.0_dp ) cycle
 

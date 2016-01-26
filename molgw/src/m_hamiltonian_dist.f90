@@ -156,7 +156,7 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
 #ifdef HAVE_SCALAPACK
 
  call start_clock(timing_hamiltonian_nuc)
- write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian'
+ write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK buffer'
  if( nproc > 1 ) then
    natom_local=0
    do iatom=1,natom
