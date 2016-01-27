@@ -1,7 +1,0 @@
-HF+MP2           # calculation type HF, LDA+GW, PBE+GW
-1     0.0  0.0   # spin pol    Z   N
-cc-pVDZ          #6-31G # cc-pVTZ                  #          6-311ppGss               # basis set
-20  0.80         # nscf, alpha_mixing
-01               # print_volume
-1   bohr         # natom, unit for lengths
-2.0    0. 0. 0.

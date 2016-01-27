@@ -34,6 +34,23 @@ XC Energy                 ,  -17.1161140356    , 0 , 1.0e-7
 HOMO energy               ,   -9.249028        , 0 , 1.0e-4
 LUMO energy               ,   -1.009892        , 0 , 1.0e-4
 
+boron_gw_spinpolarized.in , GW@BLYP boron atom without RI with spin
+Hartree Energy            ,   11.6344175422   , 0 , 1.0e-7
+XC Energy                 ,   -3.8788239774   , 0 , 1.0e-7
+Number of electrons       ,    3.000000       , 0 , 1.0e-3
+Number of electrons       ,    2.000000       , 1 , 1.0e-3
+HOMO energy               ,   -4.011284       , 0 , 1.0e-4
+HOMO energy               ,   -8.519013       , 1 , 1.0e-4
+LUMO energy               ,   -3.405726       , 0 , 1.0e-4
+LUMO energy               ,   -3.172052       , 1 , 1.0e-4
+Total Spin S**2           ,    0.7528         , 0 , 1.0e-3
+RPA energy                ,   -0.1402933151   , 0 , 1.0e-7
+Lowest neutral excitation ,    0.987826       , 0 , 1.0e-4
+GW HOMO                   ,   -7.659691       , 0 , 1.0e-4
+GW HOMO                   ,    0.457163       , 1 , 1.0e-4
+GW LUMO                   ,    0.017788       , 0 , 1.0e-4
+GW LUMO                   ,    0.457163       , 1 , 1.0e-4
+
 co2.in                    , GW@LDA CO2 without RI with 6-31G
 Kinetic Energy            ,    186.4258076613  , 0 , 1.0e-7
 Nucleus Energy            ,   -548.2550188543  , 0 , 1.0e-7
