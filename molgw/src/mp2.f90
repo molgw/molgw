@@ -313,8 +313,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
  use m_tools
  use m_basis_set
  use m_eri_ao_mo
-! use wavefunction_object
-! use basis
+ use m_inputparam,only: nspin
  implicit none
 !
  integer,parameter :: cip=dp
@@ -323,7 +322,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
  logical,intent(in)         :: print_wfn_
  integer,intent(in)         :: spinstate,nstate
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,nstate)
+ real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(in)        :: nuc_nuc
 !=====
  integer,parameter    :: neig=2
@@ -335,7 +334,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
  real(dp),allocatable :: lambda(:),alphavec(:,:)
  real(dp) :: h_1e_hf(nstate,nstate)
  integer :: nconf,iconf,jconf,kconf
- integer :: ibf,jbf,kbf,lbf
+ integer :: ibf,jbf
  integer :: istate,jstate,kstate,lstate
  integer :: istate1,istate2,jstate1,jstate2,ispin1,ispin2,jspin1,jspin2
  real(cip),allocatable :: hamiltonian(:,:)
@@ -345,8 +344,8 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
  integer :: iline,ix
  real(dp) :: rhor(nx),rhor_hf(nx),rr(3)
  real(dp) :: rhor_t(nx)
- real(dp) :: eval_wfn(basis%nbf)
- real(dp) :: eri_hf_i(basis%nbf,basis%nbf,basis%nbf,1)
+ real(dp) :: eval_wfn(nstate)
+ real(dp) :: eri_hf_i(nstate,nstate,nstate,1)
  integer,parameter :: ny=nx,nz=nx
  integer :: iy,iz
  real(dp) :: xxx(nx),y(ny),z(nz)
@@ -362,17 +361,11 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
  write(stdout,*) 'Enter full CI subroutine'
  write(stdout,*) 
 
- write(stdout,*) 'obtain the one-electron Hamiltonian in the HF basis'
- h_1e_hf(:,:) = 0.0_dp
- do jstate=1,nstate
-   do istate=1,nstate
-     do jbf=1,basis%nbf
-       do ibf=1,basis%nbf
-         h_1e_hf(istate,jstate) = h_1e_hf(istate,jstate) + h_1e(ibf,jbf) * c_matrix(ibf,istate) * c_matrix(jbf,jstate)
-       enddo
-     enddo
-   enddo
- enddo
+ if( nspin /= 1) call die('CI is only implemented starting from spin-restricted SCF')
+
+ write(stdout,*) 'Obtain the one-electron Hamiltonian in the HF basis'
+
+ h_1e_hf(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:,1)) , MATMUL( h_1e(:,:) , c_matrix(:,:,1) ) )
 
  select case(spinstate)
  case(0)
@@ -383,7 +376,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
    call die('BUG: spin state not possible')
  end select
 
- nconf = ( 2 * nstate * (2 * nstate -1) ) / 2
+ nconf = ( 2 * nstate * (2 * nstate - 1) ) / 2
  write(stdout,*)
  write(stdout,*) 'CI matrix lower than',nconf,' x ',nconf
  allocate(hamiltonian(nconf,nconf))
@@ -671,7 +664,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
      eval_wfn(:)=0.0_dp
      do istate=1,nstate
        do ibf=1,basis%nbf
-         eval_wfn(istate) = eval_wfn(istate) + c_matrix(ibf,istate) * basis_function_r(ibf)
+         eval_wfn(istate) = eval_wfn(istate) + c_matrix(ibf,istate,1) * basis_function_r(ibf)
        enddo
      enddo
     

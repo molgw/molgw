@@ -63,6 +63,21 @@ Total EXX Energy          ,     -1.0186704037  , 0 , 1.0e-7
 GW HOMO                   ,    -12.854961      , 0 , 1.0e-4
 GW LUMO                   ,      1.475164      , 0 , 1.0e-4
 
+h2_hse06_overlap_gw.in    , HSE06 H2 molecule aug-cc-pVDZ and G0W0 with a filtered overlap
+Exchange Energy           ,     -0.1340583009  , 0 , 1.0e-7
+XC Energy                 ,     -0.5589344847  , 0 , 1.0e-7
+HOMO energy               ,    -11.541033      , 0 , 1.0e-4   
+LUMO energy               ,      0.507931      , 0 , 1.0e-4   
+GW HOMO                   ,    -15.804859      , 0 , 1.0e-4   
+GW LUMO                   ,      1.963418      , 0 , 1.0e-4
+
+h2_rsh_overlap_ci.in      , RSH recipe for HSE06 H2 molecule no RI and CI with a filtered overlap
+Exchange Energy           ,     -0.1340776991  , 0 , 1.0e-7
+XC Energy                 ,     -0.5585487906  , 0 , 1.0e-7
+HOMO energy               ,    -11.534702      , 0 , 1.0e-4   
+LUMO energy               ,      0.508373      , 0 , 1.0e-4   
+CI ground-state energy    ,     -1.1645948686  , 0 , 1.0e-7
+
 be_qsgw.in                , QSGW Be atom cc-pVDZ without RI
 RPA Total energy          ,    -14.6144623635  , 0 , 1.0e-7
 HOMO energy               ,     -8.944298      , 0 , 1.0e-4

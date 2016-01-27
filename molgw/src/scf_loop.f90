@@ -3,7 +3,7 @@
 ! the main SCF loop for Hartree-Fock or Kohn-Sham
 !=========================================================================
 subroutine scf_loop(basis,auxil_basis,&
-                    nstate,m_ov,n_ov,m_ham,n_ham,m_c,n_c,&
+                    nstate,m_ham,n_ham,m_c,n_c,&
                     s_matrix_sqrt_inv,&
                     s_matrix,c_matrix,p_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
@@ -32,8 +32,8 @@ subroutine scf_loop(basis,auxil_basis,&
 !=====
  type(basis_set),intent(in)         :: basis
  type(basis_set),intent(in)         :: auxil_basis
- integer,intent(in)                 :: nstate,m_ov,n_ov,m_ham,n_ham,m_c,n_c
- real(dp),intent(in)                :: s_matrix_sqrt_inv(m_ov,n_ov)
+ integer,intent(in)                 :: nstate,m_ham,n_ham,m_c,n_c
+ real(dp),intent(in)                :: s_matrix_sqrt_inv(m_c,n_c)
  real(dp),intent(in)                :: s_matrix(m_ham,n_ham)
  real(dp),intent(inout)             :: c_matrix(m_c,n_c,nspin)
  real(dp),intent(inout)             :: p_matrix(m_ham,n_ham,nspin)
@@ -89,8 +89,6 @@ subroutine scf_loop(basis,auxil_basis,&
 !   call setup_bf_radius(basis)
  endif
 
-
- allocate(exchange_m_vxc_diag(basis%nbf,nspin))
 
  !
  ! start the big scf loop
@@ -222,8 +220,11 @@ subroutine scf_loop(basis,auxil_basis,&
        write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
      endif
 
+     allocate(exchange_m_vxc_diag(nstate,nspin))
      exchange_m_vxc_diag(:,:)=0.0_dp
+
      call gw_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
+     deallocate(exchange_m_vxc_diag)
 
      if( .NOT. ALLOCATED(self_energy_old) ) then
        allocate(self_energy_old(basis%nbf,basis%nbf,nspin))
@@ -243,9 +244,11 @@ subroutine scf_loop(basis,auxil_basis,&
    ! QPscMP2
    if( calc_type%is_mp2 .AND. calc_type%gwmethod == QS .AND. iscf > 5 ) then
 
+     allocate(exchange_m_vxc_diag(nstate,nspin))
      exchange_m_vxc_diag(:,:)=0.0_dp
 
      call mp2_selfenergy(calc_type%gwmethod,nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
+     deallocate(exchange_m_vxc_diag)
 
      write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
      write(stdout,*) 
@@ -282,7 +285,7 @@ subroutine scf_loop(basis,auxil_basis,&
    ! H \phi = E S \phi
    ! save the old eigenvalues
    if( parallel_ham ) then
-     call diagonalize_hamiltonian_sca(nspin,basis%nbf,nstate,m_ham,n_ham,m_ov,n_ov,hamiltonian,s_matrix_sqrt_inv, &
+     call diagonalize_hamiltonian_sca(nspin,basis%nbf,nstate,m_ham,n_ham,hamiltonian,s_matrix_sqrt_inv, &
                                       energy,m_c,n_c,c_matrix)
    else
      call diagonalize_hamiltonian(nspin,basis%nbf,nstate,hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
@@ -527,7 +530,6 @@ subroutine scf_loop(basis,auxil_basis,&
  if( ALLOCATED(p_matrix_sqrt) )   deallocate(p_matrix_sqrt)
  if( ALLOCATED(p_matrix_occ) )    deallocate(p_matrix_occ)
 
- deallocate(exchange_m_vxc_diag)
 
  call stop_clock(timing_scf)
 

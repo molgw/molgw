@@ -1,0 +1,23 @@
+&molgw
+ scf='hse06'
+ nspin=1
+ min_overlap=5.0e-4
+
+ basis='aug-cc-pVDZ'
+ auxil_basis='aug-cc-pVDZ-RI'
+ no_4center='yes'
+
+ alpha_mixing=0.7
+ nscf=15
+ tolscf=1.0e-12
+ mixing_scheme='simple'
+
+ postscf='gw'
+ eta=0.005
+ selfenergy_state_max=5
+
+ natom=2
+ length_unit='bohr'
+/
+H   0.7 0. 0.
+H  -0.7 0. 0. 

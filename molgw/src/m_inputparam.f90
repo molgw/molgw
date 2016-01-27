@@ -186,7 +186,6 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%gwmethod = perturbative
    case('CI')
      calc_type%is_ci =.TRUE.
-     alpha_hybrid = 1.00_dp
    case('BSE')
      calc_type%is_bse     =.TRUE.
    case('TD')
@@ -417,7 +416,6 @@ subroutine init_dft_type(key,calc_type)
    dft_xc_coef(2) = alpha_hybrid_lr
    dft_xc_coef(3) = 1.00_dp
    rcut           = 1.0_dp / gamma_hybrid
-   write(*,*) 'RCUT',rcut
  ! Testing
  case('TESTHSE')
    dft_xc_type(1) = XC_GGA_X_PBE

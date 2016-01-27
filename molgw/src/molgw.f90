@@ -68,8 +68,7 @@ program molgw
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
- integer                 :: m_ov,n_ov                    ! distribute a  basis%nbf x nstate      matrix
- integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix  TODO Eliminate this
+ integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix 
 !=============================
 
  call init_mpi()
@@ -134,29 +133,24 @@ program molgw
 
  !
  ! Calculate the square root inverse of the overlap matrix S
- ! Eliminate those eigenvalue that are too small in order to stabilize the
+ ! Eliminate those eigenvalues that are too small in order to stabilize the
  ! calculation
+ !
+ ! Crucial parameters are defined here: nstate
+ !                                      m_c and n_c 
+ !
  if( parallel_ham ) then
-   call setup_sqrt_overlap_sca(min_overlap,basis%nbf,m_ham,n_ham,s_matrix,nstate,m_ov,n_ov,s_matrix_sqrt_inv)
-
-!   m_c     = m_ham     ! TODO: eliminate this
-!   n_c     = n_ham     ! TODO: eliminate this
-   m_c     = m_ov     ! TODO: eliminate this
-   n_c     = n_ov     ! TODO: eliminate this
+   call setup_sqrt_overlap_sca(min_overlap,basis%nbf,m_ham,n_ham,s_matrix,nstate,m_c,n_c,s_matrix_sqrt_inv)
 
  else
    call setup_sqrt_overlap(min_overlap,basis%nbf,s_matrix,nstate,s_matrix_sqrt_inv)
 
-   m_ov = basis%nbf
-   n_ov = nstate
-!   m_c     = m_ham     ! TODO: eliminate this
-!   n_c     = n_ham     ! TODO: eliminate this
-   m_c     = m_ov     ! TODO: eliminate this
-   n_c     = n_ov     ! TODO: eliminate this
+   m_c = basis%nbf
+   n_c = nstate
 
  endif
 
- if( m_ov /= basis%nbf .OR. n_ov /= nstate ) then
+ if( m_c /= basis%nbf .OR. n_c /= nstate ) then
    call issue_warning('SCALAPACK is used to distribute the wavefunction coefficients')
  endif
 
@@ -260,7 +254,7 @@ program molgw
    write(stdout,'(/,a)') ' Approximate hamiltonian'
 
    if( parallel_ham ) then
-     call diagonalize_hamiltonian_sca(1,basis%nbf,nstate,m_ham,n_ham,m_ov,n_ov,hamiltonian_tmp,s_matrix_sqrt_inv, &
+     call diagonalize_hamiltonian_sca(1,basis%nbf,nstate,m_ham,n_ham,hamiltonian_tmp,s_matrix_sqrt_inv, &
                                       energy(:,1),m_c,n_c,c_matrix(:,:,1))
    else
      call diagonalize_hamiltonian(1,basis%nbf,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
@@ -334,7 +328,7 @@ program molgw
  !
  if( .NOT. is_big_restart) then
    call scf_loop(basis,auxil_basis,                                             &
-                 nstate,m_ov,n_ov,m_ham,n_ham,m_c,n_c,                          &
+                 nstate,m_ham,n_ham,m_c,n_c,                                    &
                  s_matrix_sqrt_inv,                                             &
                  s_matrix,c_matrix,p_matrix,                                    &
                  hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_hartree,   & 

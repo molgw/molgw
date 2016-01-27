@@ -1,0 +1,28 @@
+&molgw
+
+ print_restart='no'
+ print_bigrestart='no'
+
+ ! Recipe for HSE06
+ scf='rsh'
+ alpha_hybrid = 0.25
+ beta_hybrid  =-0.25
+ gamma_hybrid = 0.11
+
+ nspin=1
+ min_overlap=5.0e-4
+
+ basis='aug-cc-pVDZ'
+
+ alpha_mixing=0.7
+ nscf=15
+ tolscf=1.0e-12
+ mixing_scheme='simple'
+
+ postscf='ci'
+
+ natom=2
+ length_unit='bohr'
+/
+H   0.7 0. 0.
+H  -0.7 0. 0. 
