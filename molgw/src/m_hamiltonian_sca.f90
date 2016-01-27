@@ -593,8 +593,8 @@ subroutine setup_density_matrix_sca(nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham
        matrix_tmp(:,jlocal) = c_matrix(:,jlocal,ispin) * SQRT( occupation(jglobal,ispin) )
      enddo
 
-     call PDGEMM('N','T',nbf,nbf,nstate,1.0_dp,matrix_tmp,1,1,desc_ov,       &
-                  matrix_tmp,1,1,desc_ov,0.0_dp,                             &
+     call PDGEMM('N','T',nbf,nbf,nstate,1.0_dp,matrix_tmp,1,1,desc_c,       &
+                  matrix_tmp,1,1,desc_c,0.0_dp,                             &
                   p_matrix,1,1,desc_ham)
 
 
@@ -613,18 +613,18 @@ end subroutine setup_density_matrix_sca
 
 
 !=========================================================================
-subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate0,nstate,m_ov,n_ov, &
+subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,nstate,m_ham,n_ham,m_ov,n_ov, &
                                        hamiltonian,s_matrix_sqrt_inv,energy,m_c,n_c,c_matrix)
  implicit none
 
- integer,intent(in)   :: nspin_local,nbf,nstate0,nstate
+ integer,intent(in)   :: nspin_local,nbf,nstate
  integer,intent(in)   :: m_ham,n_ham
  integer,intent(in)   :: m_ov,n_ov
  integer,intent(in)   :: m_c,n_c
  real(dp),intent(in)  :: hamiltonian(m_ham,n_ham,nspin_local)
  real(dp),intent(in)  :: s_matrix_sqrt_inv(m_ov,n_ov)
  real(dp),intent(out) :: c_matrix(m_c,n_c,nspin_local)
- real(dp),intent(out) :: energy(nstate0,nspin_local)
+ real(dp),intent(out) :: energy(nstate,nspin_local)
 !=====
  integer  :: ispin,ibf,jbf,istate
  real(dp) :: matrix_tmp(m_ov,n_ov)
@@ -652,18 +652,17 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate0,nstat
      ! H_small = ^tS^{-1/2} H S^{-1/2}
      call PDGEMM('N','N',nbf,nstate,nbf,                          &
                   1.0_dp,hamiltonian(:,:,ispin),1,1,desc_ham,     &
-                  s_matrix_sqrt_inv,1,1,desc_ov,                  &
-                  0.0_dp,matrix_tmp,1,1,desc_ov)
+                  s_matrix_sqrt_inv,1,1,desc_c,                  &
+                  0.0_dp,matrix_tmp,1,1,desc_c)
 
      call PDGEMM('T','N',nstate,nstate,nbf,                       &
-                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_ov,           &
-                  matrix_tmp,1,1,desc_ov,                         &
+                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_c,           &
+                  matrix_tmp,1,1,desc_c,                         &
                   0.0_dp,h_small,1,1,desc_small)
 
 
 
      call diagonalize_sca(desc_small,nstate,m_small,n_small,h_small,energy(:,ispin))
-     energy(nstate+1:nstate0,ispin) = 1.0e5_dp
 
 
 !     c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
@@ -671,9 +670,9 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate0,nstat
      !
      ! C = S^{-1/2} C_small 
      call PDGEMM('N','N',nbf,nstate,nstate,                   &
-                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_ov,       &
+                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_c,       &
                   h_small,1,1,desc_small,                     &
-                  0.0_dp,matrix_tmp(:,:),1,1,desc_ov)         ! TODO: replace matrix_tmp with c_matrix
+                  0.0_dp,matrix_tmp(:,:),1,1,desc_c)         ! TODO: replace matrix_tmp with c_matrix
 
      do jlocal=1,n_c
        jglobal = colindex_local_to_global('H',jlocal)
@@ -738,7 +737,7 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
 
    ! 
    ! Initialize the descriptor of the rectangular matric S^{-1/2}
-   call init_desc('H',nbf,nstate,desc_ov,m_ov,n_ov)
+   call init_desc('H',nbf,nstate,desc_c,m_ov,n_ov)
    
  else
    nstate = 0
@@ -797,8 +796,8 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
 
      call PDGEMM('N','N',nbf,nstate,nbf,               &
                   1.0_dp,matrix_tmp,1,1,desc_ham,      &
-                  diag,1,1,desc_ov,                    &
-                  0.0_dp,s_matrix_sqrt_inv,1,1,desc_ov)
+                  diag,1,1,desc_c,                    &
+                  0.0_dp,s_matrix_sqrt_inv,1,1,desc_c)
 
      deallocate(diag)
 

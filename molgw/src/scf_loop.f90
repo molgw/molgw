@@ -3,7 +3,7 @@
 ! the main SCF loop for Hartree-Fock or Kohn-Sham
 !=========================================================================
 subroutine scf_loop(basis,auxil_basis,&
-                    nstate0,nstate,m_ov,n_ov,m_ham,n_ham,m_c,n_c,&
+                    nstate,m_ov,n_ov,m_ham,n_ham,m_c,n_c,&
                     s_matrix_sqrt_inv,&
                     s_matrix,c_matrix,p_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
@@ -32,7 +32,6 @@ subroutine scf_loop(basis,auxil_basis,&
 !=====
  type(basis_set),intent(in)         :: basis
  type(basis_set),intent(in)         :: auxil_basis
- integer,intent(in)                 :: nstate0
  integer,intent(in)                 :: nstate,m_ov,n_ov,m_ham,n_ham,m_c,n_c
  real(dp),intent(in)                :: s_matrix_sqrt_inv(m_ov,n_ov)
  real(dp),intent(in)                :: s_matrix(m_ham,n_ham)
@@ -43,8 +42,8 @@ subroutine scf_loop(basis,auxil_basis,&
  real(dp),intent(inout)             :: hamiltonian_hartree(m_ham,n_ham)
  real(dp),intent(inout)             :: hamiltonian_exx(m_ham,n_ham,nspin)
  real(dp),intent(inout)             :: hamiltonian_xc(m_ham,n_ham,nspin)
- real(dp),intent(inout)             :: occupation(nstate0,nspin)
- real(dp),intent(inout)             :: energy(nstate0,nspin)
+ real(dp),intent(inout)             :: occupation(nstate,nspin)
+ real(dp),intent(inout)             :: energy(nstate,nspin)
 !=====
  type(spectral_function) :: wpol
  logical                 :: is_converged,stopfile_found,file_exists
@@ -82,7 +81,7 @@ subroutine scf_loop(basis,auxil_basis,&
  allocate(p_matrix_occ(basis%nbf,nspin))
 
  if( calc_type%is_dft ) then
-   allocate(hamiltonian_vxc(basis%nbf,basis%nbf,nspin))
+   allocate(hamiltonian_vxc(m_ham,n_ham,nspin))
    !
    ! Setup the grids for the quadrature of DFT potential/energy
    call init_dft_grid(grid_level)
@@ -196,7 +195,13 @@ subroutine scf_loop(basis,auxil_basis,&
    ! DFT XC potential is added here
    if( calc_type%is_dft ) then
 
-     call dft_exc_vxc(nstate0,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,hamiltonian_vxc,en%xc)
+     if( parallel_ham ) then
+       call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
+       hamiltonian_vxc(:,:,:) = 0.0_dp
+       en%xc = 0.0_dp
+     else
+       call dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,hamiltonian_vxc,en%xc)
+     endif
 
      title='=== DFT XC contribution ==='
      call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,hamiltonian_vxc)
@@ -209,8 +214,8 @@ subroutine scf_loop(basis,auxil_basis,&
    if( calc_type%is_gw .AND. ( calc_type%gwmethod == QS .OR. calc_type%gwmethod == QSCOHSEX) &
        .AND. iscf > 5 ) then
 
-     call init_spectral_function(nstate0,nstate,occupation,wpol)
-     call polarizability(basis,auxil_basis,nstate0,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+     call init_spectral_function(nstate,occupation,wpol)
+     call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
 
      if( ABS(en%rpa) > 1.e-6_dp) then
        en%tot = en%tot + en%rpa
@@ -218,7 +223,7 @@ subroutine scf_loop(basis,auxil_basis,&
      endif
 
      exchange_m_vxc_diag(:,:)=0.0_dp
-     call gw_selfenergy(nstate0,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
+     call gw_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
 
      if( .NOT. ALLOCATED(self_energy_old) ) then
        allocate(self_energy_old(basis%nbf,basis%nbf,nspin))
@@ -240,7 +245,7 @@ subroutine scf_loop(basis,auxil_basis,&
 
      exchange_m_vxc_diag(:,:)=0.0_dp
 
-     call mp2_selfenergy(calc_type%gwmethod,nstate0,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
+     call mp2_selfenergy(calc_type%gwmethod,nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
 
      write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
      write(stdout,*) 
@@ -267,7 +272,7 @@ subroutine scf_loop(basis,auxil_basis,&
    ! If requested, the level shifting procedure is triggered: 
    ! All the unoccupied states are penalized with an energy =  level_shifting_energy
    if( level_shifting_energy > 1.0e-6_dp ) then
-     call level_shifting(basis%nbf,nstate0,s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
+     call level_shifting(basis%nbf,nstate,s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
    endif
   
   
@@ -277,10 +282,10 @@ subroutine scf_loop(basis,auxil_basis,&
    ! H \phi = E S \phi
    ! save the old eigenvalues
    if( parallel_ham ) then
-     call diagonalize_hamiltonian_sca(nspin,basis%nbf,m_ham,n_ham,nstate0,nstate,m_ov,n_ov,hamiltonian,s_matrix_sqrt_inv, &
+     call diagonalize_hamiltonian_sca(nspin,basis%nbf,nstate,m_ham,n_ham,m_ov,n_ov,hamiltonian,s_matrix_sqrt_inv, &
                                       energy,m_c,n_c,c_matrix)
    else
-     call diagonalize_hamiltonian(nspin,basis%nbf,nstate0,nstate,hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
+     call diagonalize_hamiltonian(nspin,basis%nbf,nstate,hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
    endif
 
    !
@@ -289,7 +294,7 @@ subroutine scf_loop(basis,auxil_basis,&
    ! So that the "physical" energies are written down
    if( level_shifting_energy > 1.0e-6_dp ) then
      do ispin=1,nspin
-       do istate=1,nstate0
+       do istate=1,nstate
          if( occupation(istate,ispin) < completely_empty ) then
            energy(istate,ispin) = energy(istate,ispin) - level_shifting_energy
          endif
@@ -298,9 +303,9 @@ subroutine scf_loop(basis,auxil_basis,&
    endif
   
    title='=== Energies ==='
-   call dump_out_energy(title,nstate0,nspin,occupation,energy)
+   call dump_out_energy(title,nstate,nspin,occupation,energy)
 
-   call output_homolumo(nstate0,occupation,energy,ehomo,elumo)
+   call output_homolumo(nstate,occupation,energy,ehomo,elumo)
 
 
    if(print_matrix_) then
@@ -328,9 +333,9 @@ subroutine scf_loop(basis,auxil_basis,&
    ! Save the old one for the convergence criterium
    p_matrix_old(:,:,:) = p_matrix(:,:,:)
    if( parallel_ham ) then
-     call setup_density_matrix_sca(basis%nbf,nstate0,m_c,n_c,c_matrix,occupation,m_ham,n_ham,p_matrix)
+     call setup_density_matrix_sca(basis%nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham,n_ham,p_matrix)
    else
-     call setup_density_matrix(basis%nbf,nstate0,c_matrix,occupation,p_matrix)
+     call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
    endif
    title='=== density matrix P ==='
    call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,p_matrix)
@@ -367,7 +372,7 @@ subroutine scf_loop(basis,auxil_basis,&
    !
    ! Write down a "small" RESTART file at each step
    if( print_restart_ ) then
-     call write_restart(SMALL_RESTART,basis,nstate0,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+     call write_restart(SMALL_RESTART,basis,nstate,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
    endif
    
  !
@@ -384,7 +389,7 @@ subroutine scf_loop(basis,auxil_basis,&
 
  !
  ! Spin contamination?
- call evaluate_s2_operator(basis%nbf,nstate0,occupation,c_matrix,s_matrix)
+ call evaluate_s2_operator(basis%nbf,nstate,occupation,c_matrix,s_matrix)
 
  !
  ! Get the exchange operator if not already calculated
@@ -420,7 +425,7 @@ subroutine scf_loop(basis,auxil_basis,&
    ! Obtain the Fock matrix
    matrix_tmp(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
    ! And pass it to single_excitations
-   call single_excitations(nstate0,basis%nbf,energy,occupation,c_matrix,matrix_tmp)
+   call single_excitations(nstate,basis%nbf,energy,occupation,c_matrix,matrix_tmp)
    write(stdout,'(a25,x,f19.10)') 'Single Excitations (Ha):',en%se
    write(stdout,'(a25,x,f19.10)')     'Est. HF Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
 
@@ -428,8 +433,8 @@ subroutine scf_loop(basis,auxil_basis,&
 
    ! A dirty section for the Luttinger-Ward functional
    if(calc_type%gwmethod==LW .OR. calc_type%gwmethod==LW2 .OR. calc_type%gwmethod==GSIGMA) then
-     allocate(energy_exx(nstate0,nspin))
-     allocate(c_matrix_exx(basis%nbf,nstate0,nspin))
+     allocate(energy_exx(nstate,nspin))
+     allocate(c_matrix_exx(basis%nbf,nstate,nspin))
      call issue_warning('ugly coding here write temp file fort.1000 and fort.1001')
      do ispin=1,nspin
        write(stdout,*) 'Diagonalization H_exx for spin channel',ispin
@@ -441,7 +446,7 @@ subroutine scf_loop(basis,auxil_basis,&
      write(stdout,*) 'FBFB LW sum(tilde epsilon) + Eii - EH - Ex       ',SUM( occupation(:,:)*energy_exx(:,:) ) + en%nuc_nuc - en%hart - en%exx
      open(1000,form='unformatted')
      do ispin=1,nspin
-       do istate=1,nstate0
+       do istate=1,nstate
          write(1000) c_matrix_exx(:,istate,ispin)
        enddo
      enddo
@@ -471,16 +476,16 @@ subroutine scf_loop(basis,auxil_basis,&
    write(msg,'(a,i4,2x,i4)') 'core-valence splitting switched on up to state = ',ncore
    call issue_warning(msg)
 
-   allocate(occupation_tmp(nstate0,nspin))
+   allocate(occupation_tmp(nstate,nspin))
    allocate(p_matrix_tmp(basis%nbf,basis%nbf,nspin))
    ! Override the occupation of the core electrons
    occupation_tmp(:,:) = occupation(:,:)
    do istate=1,ncore
      occupation_tmp(istate,:) = 0.0_dp
    enddo
-   call setup_density_matrix(basis%nbf,nstate0,c_matrix,occupation_tmp,p_matrix_tmp)
+   call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation_tmp,p_matrix_tmp)
    call die('coding not correct')
-   call dft_exc_vxc(nstate0,basis,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,ehomo,hamiltonian_xc,en%xc)
+   call dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,ehomo,hamiltonian_xc,en%xc)
 
    if( .NOT. is_full_auxil ) then
      call setup_exchange(print_matrix_,basis%nbf,p_matrix_tmp,hamiltonian_exx,en%exx)
@@ -504,7 +509,7 @@ subroutine scf_loop(basis,auxil_basis,&
  ! Big RESTART file written if converged
  !
  if( is_converged .AND. print_bigrestart_ ) then
-   call write_restart(BIG_RESTART,basis,nstate0,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+   call write_restart(BIG_RESTART,basis,nstate,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
  endif
 
 

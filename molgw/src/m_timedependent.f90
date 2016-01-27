@@ -15,7 +15,7 @@ contains
 
 
 !=========================================================================
-subroutine polarizability(basis,auxil_basis,nstate0,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
+subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
  use m_tools
  use m_block_diago
  use m_basis_set
@@ -24,9 +24,9 @@ subroutine polarizability(basis,auxil_basis,nstate0,nstate,occupation,energy,c_m
  implicit none
 
  type(basis_set),intent(in)            :: basis,auxil_basis
- integer,intent(in)                    :: nstate0,nstate
- real(dp),intent(in)                   :: occupation(nstate0,nspin)
- real(dp),intent(in)                   :: energy(nstate0,nspin),c_matrix(basis%nbf,nstate0,nspin)
+ integer,intent(in)                    :: nstate
+ real(dp),intent(in)                   :: occupation(nstate,nspin)
+ real(dp),intent(in)                   :: energy(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(out)                  :: rpa_correlation
  type(spectral_function),intent(inout) :: wpol_out
 !=====
@@ -39,7 +39,7 @@ subroutine polarizability(basis,auxil_basis,nstate0,nstate,occupation,energy,c_m
  real(prec_td),allocatable :: a_diag(:)
  real(prec_td),allocatable :: bigx(:,:),bigy(:,:)
  real(dp),allocatable      :: eigenvalue(:)
- real(dp)                  :: energy_qp(nstate0,nspin)
+ real(dp)                  :: energy_qp(nstate,nspin)
  logical                   :: is_tddft
  logical                   :: is_ij
  logical                   :: is_rpa
@@ -60,7 +60,7 @@ subroutine polarizability(basis,auxil_basis,nstate0,nstate,occupation,energy,c_m
    write(stdout,'(a)') ' Singlet state'
  endif
 
- if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate0,c_matrix)
+ if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix)
 
  
  ! Set up all the switches to be able to treat
@@ -107,7 +107,7 @@ subroutine polarizability(basis,auxil_basis,nstate0,nstate,occupation,energy,c_m
  !
  if( calc_type%is_bse .OR. calc_type%gwmethod==GnWn ) then
    ! Get energy_qp 
-   call get_energy_qp(nstate0,energy,occupation,energy_qp)
+   call get_energy_qp(nstate,energy,occupation,energy_qp)
  else
    ! For any other type of calculation, just fill energy_qp array with energy
    energy_qp(:,:) = energy(:,:)
@@ -123,9 +123,9 @@ subroutine polarizability(basis,auxil_basis,nstate0,nstate,occupation,energy,c_m
    ! If a SCREENED_COULOMB file cannot be found,
    ! then recalculate it from scratch
    if( reading_status /= 0 ) then
-     call init_spectral_function(basis%nbf,nstate,occupation,wpol_static)
+     call init_spectral_function(nstate,occupation,wpol_static)
      wpol_static%nprodbasis = auxil_basis%nbf_local
-     call static_polarizability(nstate0,basis,auxil_basis,occupation,energy,wpol_static)
+     call static_polarizability(nstate,basis,auxil_basis,occupation,energy,wpol_static)
    endif
 
  endif
@@ -157,20 +157,20 @@ subroutine polarizability(basis,auxil_basis,nstate0,nstate,occupation,energy,c_m
  amb_matrix(:,:) = 0.0_dp
  write(stdout,'(/,a)') ' Build the electron-hole hamiltonian'
  ! Step 1
- call build_amb_apb_common(nmat,basis%nbf,nstate0,c_matrix,energy_qp,wpol_out,alpha_local, &
+ call build_amb_apb_common(nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,alpha_local, &
                            m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,rpa_correlation)
 
  ! Calculate the diagonal separately: it's needed for the single pole approximation
  if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) & 
-     call build_a_diag_common(nmat,basis%nbf,nstate0,c_matrix,energy_qp,wpol_out,a_diag)
+     call build_a_diag_common(nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,a_diag)
 
  ! Step 2
- if(is_tddft) call build_apb_tddft(nmat,nstate0,basis,c_matrix,occupation,wpol_out,m_apb,n_apb,apb_matrix)
+ if(is_tddft) call build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol_out,m_apb,n_apb,apb_matrix)
 
  ! Step 3
  if(calc_type%is_bse .AND. .NOT. is_rpa) then
    if(.NOT. has_auxil_basis ) then
-     call build_amb_apb_bse(basis%nbf,nstate0,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+     call build_amb_apb_bse(basis%nbf,nstate,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
    else
      call build_amb_apb_bse_auxil(nmat,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
    endif
@@ -243,15 +243,15 @@ subroutine polarizability(basis,auxil_basis,nstate0,nstate,occupation,energy,c_m
 
  write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy (eV):',MINVAL(ABS(eigenvalue(:)))*Ha_eV
 
- if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate0,c_matrix)
+ if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix)
 
  !
  ! Calculate the optical sprectrum
  ! and the dynamic dipole tensor
  !
  if( calc_type%is_td .OR. calc_type%is_bse ) then
-   call optical_spectrum(nstate0,basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
-   call stopping_power(nstate0,basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
+   call optical_spectrum(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
+   call stopping_power(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
  endif
 
  !
@@ -280,7 +280,7 @@ subroutine polarizability(basis,auxil_basis,nstate0,nstate,occupation,energy,c_m
         call chi_to_sqrtvchisqrtv_auxil_spa(basis%nbf,auxil_basis%nbf_local,a_diag,wpol_out)
 
    else
-     call chi_to_vchiv(basis%nbf,nstate0,c_matrix,bigx,eigenvalue,wpol_out)
+     call chi_to_vchiv(basis%nbf,nstate,c_matrix,bigx,eigenvalue,wpol_out)
    endif
   
  

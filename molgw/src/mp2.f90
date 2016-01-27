@@ -15,7 +15,6 @@ subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(out)       :: emp2
 !====
- integer                    :: nstate0
  integer                    :: astate,bstate,istate,jstate
  integer                    :: iaspin,jbspin
  real(dp)                   :: energy_denom

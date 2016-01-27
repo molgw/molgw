@@ -48,7 +48,7 @@ program molgw
  type(spectral_function) :: wpol
  integer                 :: reading_status,restart_type
  integer                 :: ibf,jbf
- integer                 :: nstate,nstate0
+ integer                 :: nstate
  integer                 :: ispin,istate
  logical                 :: is_restart,is_big_restart,is_basis_restart
  character(len=100)      :: title
@@ -139,8 +139,6 @@ program molgw
  if( parallel_ham ) then
    call setup_sqrt_overlap_sca(min_overlap,basis%nbf,m_ham,n_ham,s_matrix,nstate,m_ov,n_ov,s_matrix_sqrt_inv)
 
-!   nstate0 = basis%nbf ! TODO: eliminate this
-   nstate0 = nstate    ! TODO: eliminate this
 !   m_c     = m_ham     ! TODO: eliminate this
 !   n_c     = n_ham     ! TODO: eliminate this
    m_c     = m_ov     ! TODO: eliminate this
@@ -149,8 +147,6 @@ program molgw
  else
    call setup_sqrt_overlap(min_overlap,basis%nbf,s_matrix,nstate,s_matrix_sqrt_inv)
 
-!   nstate0 = basis%nbf ! TODO: eliminate this
-   nstate0 = nstate    ! TODO: eliminate this
    m_ov = basis%nbf
    n_ov = nstate
 !   m_c     = m_ham     ! TODO: eliminate this
@@ -160,7 +156,7 @@ program molgw
 
  endif
 
- if( m_ov /= basis%nbf .OR. n_ov /= nstate0 ) then
+ if( m_ov /= basis%nbf .OR. n_ov /= nstate ) then
    call issue_warning('SCALAPACK is used to distribute the wavefunction coefficients')
  endif
 
@@ -168,9 +164,9 @@ program molgw
  ! 2D arrays
  allocate(c_matrix(m_c,n_c,nspin))
  ! 1D arrays
- allocate(         occupation(nstate0,nspin))
- allocate(             energy(nstate0,nspin))
- allocate(exchange_m_vxc_diag(nstate0,nspin))
+ allocate(         occupation(nstate,nspin))
+ allocate(             energy(nstate,nspin))
+ allocate(exchange_m_vxc_diag(nstate,nspin))
 
 
  !
@@ -194,11 +190,11 @@ program molgw
  !
  ! Build the occupation array
  ! with zero temperature since we do not have the energy yet
- call set_occupation(nstate0,0.0_dp,electrons,magnetization,energy,occupation)
+ call set_occupation(nstate,0.0_dp,electrons,magnetization,energy,occupation)
 
  !
  ! Try to read a RESTART file if it exists
- call read_restart(restart_type,basis,nstate0,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+ call read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
  is_restart       = ( restart_type /= NO_RESTART )
  is_big_restart   = ( restart_type == BIG_RESTART )
  is_basis_restart = ( restart_type == BASIS_RESTART )
@@ -239,7 +235,7 @@ program molgw
    hamiltonian_tmp(:,:) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) &
                          + hamiltonian_hartree(:,:) + 0.5_dp * hamiltonian_xc(:,:,1)  &
                                                     + 0.5_dp * hamiltonian_xc(:,:,nspin)
-   call diagonalize_hamiltonian(1,basis%nbf,nstate0,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
+   call diagonalize_hamiltonian(1,basis%nbf,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
                                     energy(:,1),c_matrix(:,:,1))
    c_matrix(:,:,nspin) = c_matrix(:,:,1)
 
@@ -264,10 +260,10 @@ program molgw
    write(stdout,'(/,a)') ' Approximate hamiltonian'
 
    if( parallel_ham ) then
-     call diagonalize_hamiltonian_sca(1,basis%nbf,m_ham,n_ham,nstate0,nstate,m_ov,n_ov,hamiltonian_tmp,s_matrix_sqrt_inv, &
+     call diagonalize_hamiltonian_sca(1,basis%nbf,nstate,m_ham,n_ham,m_ov,n_ov,hamiltonian_tmp,s_matrix_sqrt_inv, &
                                       energy(:,1),m_c,n_c,c_matrix(:,:,1))
    else
-     call diagonalize_hamiltonian(1,basis%nbf,nstate0,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
+     call diagonalize_hamiltonian(1,basis%nbf,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
                                     energy(:,1),c_matrix(:,:,1))
    endif
 
@@ -291,9 +287,9 @@ program molgw
  !
  ! Setup the density matrix: p_matrix
  if( parallel_ham ) then
-   call setup_density_matrix_sca(basis%nbf,nstate0,m_c,n_c,c_matrix,occupation,m_ham,n_ham,p_matrix)
+   call setup_density_matrix_sca(basis%nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham,n_ham,p_matrix)
  else
-   call setup_density_matrix(basis%nbf,nstate0,c_matrix,occupation,p_matrix)
+   call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
  endif
 !!
 !! Test PSP = P
@@ -338,7 +334,7 @@ program molgw
  !
  if( .NOT. is_big_restart) then
    call scf_loop(basis,auxil_basis,                                             &
-                 nstate0,nstate,m_ov,n_ov,m_ham,n_ham,m_c,n_c,                  &
+                 nstate,m_ov,n_ov,m_ham,n_ham,m_c,n_c,                          &
                  s_matrix_sqrt_inv,                                             &
                  s_matrix,c_matrix,p_matrix,                                    &
                  hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_hartree,   & 
@@ -351,7 +347,7 @@ program molgw
  if( print_wfn_ ) call plot_wfn(basis,c_matrix)
  if( print_wfn_ ) call plot_rho(basis,occupation,c_matrix)
  if( print_cube_ ) call plot_cube_wfn(basis,c_matrix)
- if( print_pdos_ ) call mulliken_pdos(nstate0,basis,s_matrix,c_matrix,occupation,energy)
+ if( print_pdos_ ) call mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
 
 
  !
@@ -370,7 +366,7 @@ program molgw
  if(calc_type%is_ci) then
    if(nspin/=1) call die('for CI, nspin should be 1')
    if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) call die('CI is implemented for 2 electrons only')
-   call full_ci_2electrons_spin(print_wfn_,nstate0,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
+   call full_ci_2electrons_spin(print_wfn_,nstate,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
  endif
 
  !
@@ -380,8 +376,8 @@ program molgw
 
    if(calc_type%is_td .AND. calc_type%is_dft) call init_dft_grid(grid_level)
 
-   call init_spectral_function(nstate0,nstate,occupation,wpol)
-   call polarizability(basis,auxil_basis,nstate0,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+   call init_spectral_function(nstate,occupation,wpol)
+   call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
    call destroy_spectral_function(wpol)
 
    if(calc_type%is_td .AND. calc_type%is_dft) call destroy_dft_grid()
@@ -394,7 +390,7 @@ program molgw
  if( calc_type%is_mp2 .OR. calc_type%is_gw ) then
    exchange_m_vxc_diag(:,:) = 0.0_dp
    do ispin=1,nspin
-     do istate=1,nstate0
+     do istate=1,nstate
        do ibf=1,basis%nbf
          do jbf=1,basis%nbf
            exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
@@ -419,13 +415,13 @@ program molgw
    ! A section under development for the range-separated RPA
    if( calc_type%is_lr_mbpt ) call die('lr_mbpt code removed. Does not exist anymore')
 
-   call init_spectral_function(nstate0,nstate,occupation,wpol)
+   call init_spectral_function(nstate,occupation,wpol)
 
    ! Try to read a spectral function file in order to skip the calculation
    call read_spectral_function(wpol,reading_status)
    ! If reading has failed, then do the calculation
    if( reading_status /= 0 ) then
-     call polarizability(basis,auxil_basis,nstate0,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+     call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
    endif
 
    en%tot = en%tot + en%rpa
@@ -433,7 +429,7 @@ program molgw
    write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
 
    allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-   call gw_selfenergy(nstate0,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
+   call gw_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
 
    if( ABS(en%gw) > 1.0e-5_dp ) then
      write(stdout,'(/,a,f19.10)') ' Galitskii-Migdal Total energy (Ha): ',en%tot - en%rpa + en%gw
@@ -451,13 +447,13 @@ program molgw
  if( calc_type%is_mp2 .AND. calc_type%gwmethod == perturbative ) then
 
    if(has_auxil_basis) then
-     call mp2_energy_ri(nstate0,basis,occupation,energy,c_matrix,en%mp2)
+     call mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,en%mp2)
    else
-     call mp2_energy(nstate0,basis,occupation,c_matrix,energy,en%mp2)
+     call mp2_energy(nstate,basis,occupation,c_matrix,energy,en%mp2)
    endif
 
 ! This routine is slower but gives both the correlation energy and the self-energy
-!   call mp2_selfenergy(calc_type%gwmethod,nstate0,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,hamiltonian_exx,en%mp2)
+!   call mp2_selfenergy(calc_type%gwmethod,nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,hamiltonian_exx,en%mp2)
    write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
    write(stdout,*) 
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%mp2

@@ -98,10 +98,10 @@ end function index_prodstate
 
 
 !=========================================================================
-subroutine init_spectral_function(nstate0,nstate,occupation,sf)
+subroutine init_spectral_function(nstate,occupation,sf)
  implicit none
- integer,intent(in)                    :: nstate0,nstate
- real(dp),intent(in)                   :: occupation(nstate0,nspin)
+ integer,intent(in)                    :: nstate
+ real(dp),intent(in)                   :: occupation(nstate,nspin)
  type(spectral_function),intent(out)   :: sf
 !=====
  integer                               :: ijspin,istate,jstate,itrans,jtrans
