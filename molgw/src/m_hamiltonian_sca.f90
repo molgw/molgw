@@ -572,10 +572,11 @@ end subroutine setup_exchange_longrange_ri_sca
 
 
 !=========================================================================
-subroutine setup_density_matrix_sca(nbf,m_ham,n_ham,c_matrix,occupation,p_matrix)
+subroutine setup_density_matrix_sca(nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham,n_ham,p_matrix)
  implicit none
- integer,intent(in)   :: nbf,m_ham,n_ham
- real(dp),intent(in)  :: c_matrix(m_ham,n_ham,nspin)
+ integer,intent(in)   :: nbf,nstate
+ integer,intent(in)   :: m_ham,n_ham,m_c,n_c
+ real(dp),intent(in)  :: c_matrix(m_c,n_c,nspin)
  real(dp),intent(in)  :: occupation(nbf,nspin)
  real(dp),intent(out) :: p_matrix(m_ham,n_ham,nspin)
 !=====
@@ -587,13 +588,13 @@ subroutine setup_density_matrix_sca(nbf,m_ham,n_ham,c_matrix,occupation,p_matrix
 
  if( cntxt_ham > 0 ) then
    do ispin=1,nspin
-     do jlocal=1,n_ham
+     do jlocal=1,n_c
        jglobal = colindex_local_to_global('H',jlocal)
        matrix_tmp(:,jlocal) = c_matrix(:,jlocal,ispin) * SQRT( occupation(jglobal,ispin) )
      enddo
 
-     call PDGEMM('N','T',nbf,nbf,nbf,1.0_dp,matrix_tmp,1,1,desc_ham,           &
-                  matrix_tmp,1,1,desc_ham,0.0_dp,                              &
+     call PDGEMM('N','T',nbf,nbf,nstate,1.0_dp,matrix_tmp,1,1,desc_ov,       &
+                  matrix_tmp,1,1,desc_ov,0.0_dp,                             &
                   p_matrix,1,1,desc_ham)
 
 
@@ -662,7 +663,7 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,m_ham,n_ham,nstate0,nstat
 
 
      call diagonalize_sca(desc_small,nstate,m_small,n_small,h_small,energy(:,ispin))
-     energy(nstate+1:nbf,ispin) = 1.0e5_dp
+     energy(nstate+1:nstate0,ispin) = 1.0e5_dp
 
 
 !     c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )

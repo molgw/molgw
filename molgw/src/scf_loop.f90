@@ -36,7 +36,7 @@ subroutine scf_loop(basis,auxil_basis,&
  integer,intent(in)                 :: nstate,m_ov,n_ov,m_ham,n_ham,m_c,n_c
  real(dp),intent(in)                :: s_matrix_sqrt_inv(m_ov,n_ov)
  real(dp),intent(in)                :: s_matrix(m_ham,n_ham)
- real(dp),intent(inout)             :: c_matrix(m_ham,n_ham,nspin)
+ real(dp),intent(inout)             :: c_matrix(m_c,n_c,nspin)
  real(dp),intent(inout)             :: p_matrix(m_ham,n_ham,nspin)
  real(dp),intent(in)                :: hamiltonian_kinetic(m_ham,n_ham)
  real(dp),intent(in)                :: hamiltonian_nucleus(m_ham,n_ham)
@@ -328,7 +328,7 @@ subroutine scf_loop(basis,auxil_basis,&
    ! Save the old one for the convergence criterium
    p_matrix_old(:,:,:) = p_matrix(:,:,:)
    if( parallel_ham ) then
-     call setup_density_matrix_sca(basis%nbf,m_ham,n_ham,c_matrix,occupation,p_matrix)
+     call setup_density_matrix_sca(basis%nbf,nstate0,m_c,n_c,c_matrix,occupation,m_ham,n_ham,p_matrix)
    else
      call setup_density_matrix(basis%nbf,nstate0,c_matrix,occupation,p_matrix)
    endif

@@ -138,19 +138,27 @@ program molgw
  ! calculation
  if( parallel_ham ) then
    call setup_sqrt_overlap_sca(min_overlap,basis%nbf,m_ham,n_ham,s_matrix,nstate,m_ov,n_ov,s_matrix_sqrt_inv)
-   nstate0 = basis%nbf ! TODO: eliminate this
-!   nstate0 = nstate    ! TODO: eliminate this
+
+!   nstate0 = basis%nbf ! TODO: eliminate this
+   nstate0 = nstate    ! TODO: eliminate this
+!   m_c     = m_ham     ! TODO: eliminate this
+!   n_c     = n_ham     ! TODO: eliminate this
+   m_c     = m_ov     ! TODO: eliminate this
+   n_c     = n_ov     ! TODO: eliminate this
 
  else
    call setup_sqrt_overlap(min_overlap,basis%nbf,s_matrix,nstate,s_matrix_sqrt_inv)
-   nstate0 = basis%nbf ! TODO: eliminate this
-!   nstate0 = nstate    ! TODO: eliminate this
+
+!   nstate0 = basis%nbf ! TODO: eliminate this
+   nstate0 = nstate    ! TODO: eliminate this
    m_ov = basis%nbf
-   n_ov = nstate0
+   n_ov = nstate
+!   m_c     = m_ham     ! TODO: eliminate this
+!   n_c     = n_ham     ! TODO: eliminate this
+   m_c     = m_ov     ! TODO: eliminate this
+   n_c     = n_ov     ! TODO: eliminate this
 
  endif
- m_c     = m_ham     ! TODO: eliminate this
- n_c     = n_ham     ! TODO: eliminate this
 
  if( m_ov /= basis%nbf .OR. n_ov /= nstate0 ) then
    call issue_warning('SCALAPACK is used to distribute the wavefunction coefficients')
@@ -283,7 +291,7 @@ program molgw
  !
  ! Setup the density matrix: p_matrix
  if( parallel_ham ) then
-   call setup_density_matrix_sca(basis%nbf,m_ham,n_ham,c_matrix,occupation,p_matrix)
+   call setup_density_matrix_sca(basis%nbf,nstate0,m_c,n_c,c_matrix,occupation,m_ham,n_ham,p_matrix)
  else
    call setup_density_matrix(basis%nbf,nstate0,c_matrix,occupation,p_matrix)
  endif
