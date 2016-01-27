@@ -947,7 +947,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  enddo ! loop on the grid point
  !
  ! Sum up the contributions from all procs only if needed
- call xsum(normalization)   ! FIXME FBFBSCA CHECK this sum is it local or world
+ call xsum(normalization)
  call xlocal_sum(vhxc_ij)
 
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization

@@ -780,7 +780,7 @@ subroutine write_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ha
  real(dp),intent(in)        :: hamiltonian_exx(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)        :: hamiltonian_xc (basis%nbf,basis%nbf,nspin)
 !=====
- integer,parameter          :: restart_version=201510
+ integer,parameter          :: restart_version=201601
  integer                    :: restartfile
  integer                    :: ispin,istate,ibf,nstate_local
 !=====
@@ -814,6 +814,8 @@ subroutine write_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ha
  call write_basis_set(restartfile,basis)
  ! Spin channels
  write(restartfile) nspin
+ ! Nstate
+ write(restartfile) nstate
  ! Occupations
  write(restartfile) occupation(:,:)
  ! Eigen energies
@@ -896,6 +898,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
  real(dp),allocatable       :: zatom_read(:),x_read(:,:)
  type(basis_set)            :: basis_read
  integer                    :: nspin_read
+ integer                    :: nstate_read
  real(dp),allocatable       :: occupation_read(:,:)
  real(dp),allocatable       :: c_matrix_read(:,:,:)
  real(dp),allocatable       :: hh_read(:,:),hexx_read(:,:,:),hxc_read(:,:,:)
@@ -923,7 +926,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
  ! An integer to ensure backward compatibility in the future
  read(restartfile) restart_version_read
 
- if( restart_version_read /= 201510 ) then
+ if( restart_version_read /= 201601 ) then
    call issue_warning('RESTART file: Version not readable. Skipping the reading')
    restart_type = NO_RESTART
    close(restartfile)
@@ -986,22 +989,26 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
  endif
 
 
+ ! Nstate
+ read(restartfile) nstate_read
+ if( nstate /= nstate_read ) then
+   call issue_warning('RESTART file: Number of states has changed')
+ endif
+
+
  ! Occupations
- allocate(occupation_read(nstate,nspin_read))
+ allocate(occupation_read(nstate_read,nspin_read))
  read(restartfile) occupation_read(:,:)
- if( ANY( ABS( occupation_read(1:nstate,:) &
-             - occupation(1:nstate,:) )  > 1.0e-5_dp ) ) then
+ if( ANY( ABS( occupation_read(1:MIN(nstate_read,nstate),:) &
+             - occupation(1:MIN(nstate_read,nstate),:) )  > 1.0e-5_dp ) ) then
    call issue_warning('RESTART file: Occupations have changed')
  endif
  deallocate(occupation_read)
 
 
  ! Eigen energies
- read(restartfile) energy(1:nstate,:)
-! FIXME nstate
-! if( basis_read%nbf < basis%nbf ) then
-!   energy(basis_read%nbf+1:basis%nbf,:) = 1000.0_dp
-! endif
+ read(restartfile) energy(1:nstate_read,:)
+ energy(nstate_read+1:nstate,:) = 1000.0_dp
  
 
  ! Number of states written down in the RESTART file
