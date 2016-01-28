@@ -161,6 +161,9 @@ program molgw
  allocate(         occupation(nstate,nspin))
  allocate(             energy(nstate,nspin))
  allocate(exchange_m_vxc_diag(nstate,nspin))
+#ifdef TODAY
+ call allocate_buffer(basis%nbf)
+#endif
 
 
  !

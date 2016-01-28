@@ -294,6 +294,7 @@ subroutine distribute_auxil_basis(nbf_auxil_basis,nbf_auxil_basis_local)
 !=====
 
 #ifdef TODAY
+ ! Use nproc instead nproc_local
 
  allocate(iproc_ibf_auxil(nbf_auxil_basis))
  allocate(nbf_local_iproc(0:nproc-1))

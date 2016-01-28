@@ -529,6 +529,9 @@ subroutine scf_loop(basis,auxil_basis,&
  if( ALLOCATED(hamiltonian_vxc) ) deallocate(hamiltonian_vxc)
  if( ALLOCATED(p_matrix_sqrt) )   deallocate(p_matrix_sqrt)
  if( ALLOCATED(p_matrix_occ) )    deallocate(p_matrix_occ)
+#ifdef TODAY
+ call destroy_buffer()
+#endif
 
 
  call stop_clock(timing_scf)

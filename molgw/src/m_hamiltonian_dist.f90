@@ -4,28 +4,59 @@ module m_hamiltonian_dist
  use m_mpi
  use m_timing
  use m_warning
+ use m_memory
  use m_inputparam,only: nspin,spin_fact
+
+
+! real(dp),private,allocatable :: buffer(:,:)
+ real(dp),protected,allocatable :: buffer(:,:)
 
 
 contains
 
 
 !=========================================================================
-subroutine reduce_hamiltonian_sca(nbf,matrix_global,m_ham,n_ham,matrix_local)
+subroutine allocate_buffer(nbf)
  implicit none
 
- integer,intent(in)   :: nbf,m_ham,n_ham
- real(dp),intent(in)  :: matrix_global(nbf,nbf)
+ integer,intent(in) :: nbf
+!=====
+
+ call clean_allocate('A large buffer that is not distributed',buffer,nbf,nbf)
+
+end subroutine allocate_buffer
+
+
+!=========================================================================
+subroutine destroy_buffer()
+ implicit none
+
+!=====
+
+ call clean_deallocate('A large buffer that is not distributed',buffer)
+
+end subroutine destroy_buffer
+
+
+!=========================================================================
+subroutine reduce_hamiltonian_sca(m_ham,n_ham,matrix_local)
+ implicit none
+
+ integer,intent(in)   :: m_ham,n_ham
  real(dp),intent(out) :: matrix_local(m_ham,n_ham)
 !=====
+ integer              :: nbf
  integer              :: ipcol,iprow,rank_dest
  integer              :: ilocal,jlocal,iglobal,jglobal
  integer              :: m_block,n_block
  real(dp),allocatable :: matrix_block(:,:)
 !=====
 
-#ifdef HAVE_SCALAPACK
  call start_clock(timing_sca_distr)
+
+ nbf = SIZE(buffer(:,:),DIM=1)
+
+#ifdef HAVE_SCALAPACK
 
  ! Loops over the SCALAPACK grid
  do ipcol=0,npcol_ham-1
@@ -43,7 +74,7 @@ subroutine reduce_hamiltonian_sca(nbf,matrix_global,m_ham,n_ham,matrix_local)
        do ilocal=1,m_block
          iglobal = rowindex_local_to_global(iprow,nprow_ham,ilocal)
 
-         matrix_block(ilocal,jlocal) = matrix_global(iglobal,jglobal)
+         matrix_block(ilocal,jlocal) = buffer(iglobal,jglobal)
 
        enddo
      enddo
@@ -60,23 +91,25 @@ subroutine reduce_hamiltonian_sca(nbf,matrix_global,m_ham,n_ham,matrix_local)
  enddo
 
 
- call stop_clock(timing_sca_distr)
-
 #else
- call die('SCALAPACK is required for distribute_hamiltonian_sca')
+
+ matrix_local(:,:) = buffer(:,:)
+
 #endif
+
+ call stop_clock(timing_sca_distr)
 
 end subroutine reduce_hamiltonian_sca
 
 
 !=========================================================================
-subroutine broadcast_hamiltonian_sca(nbf,matrix_global,m_ham,n_ham,matrix_local)
+subroutine broadcast_hamiltonian_sca(m_ham,n_ham,matrix_local)
  implicit none
 
- integer,intent(in)     :: nbf,m_ham,n_ham
- real(dp),intent(inout) :: matrix_global(nbf,nbf)
+ integer,intent(in)     :: m_ham,n_ham
  real(dp),intent(in)    :: matrix_local(m_ham,n_ham)
 !=====
+ integer              :: nbf
  integer              :: ipcol,iprow,rank_orig
  integer              :: ier
  integer              :: ilocal,jlocal,iglobal,jglobal
@@ -84,8 +117,11 @@ subroutine broadcast_hamiltonian_sca(nbf,matrix_global,m_ham,n_ham,matrix_local)
  real(dp),allocatable :: matrix_block(:,:)
 !=====
 
-#ifdef HAVE_SCALAPACK
  call start_clock(timing_sca_distr)
+
+ nbf = SIZE(buffer(:,:),DIM=1)
+
+#ifdef HAVE_SCALAPACK
 
  ! Loops over the SCALAPACK grid
  do ipcol=0,npcol_ham-1
@@ -102,7 +138,6 @@ subroutine broadcast_hamiltonian_sca(nbf,matrix_global,m_ham,n_ham,matrix_local)
        matrix_block(:,:) = matrix_local(:,:)
      endif
 
-!     call MPI_BCAST(matrix_block,m_block * n_block,MPI_DOUBLE_PRECISION,rank_orig,comm_world,ier)
 
      call xbcast(rank_orig,matrix_block)
 
@@ -112,7 +147,7 @@ subroutine broadcast_hamiltonian_sca(nbf,matrix_global,m_ham,n_ham,matrix_local)
        do ilocal=1,m_block
          iglobal = rowindex_local_to_global(iprow,nprow_ham,ilocal)
 
-         matrix_global(iglobal,jglobal) = matrix_global(iglobal,jglobal) + matrix_block(ilocal,jlocal)
+         buffer(iglobal,jglobal) = buffer(iglobal,jglobal) + matrix_block(ilocal,jlocal)
 
        enddo
      enddo
@@ -123,11 +158,13 @@ subroutine broadcast_hamiltonian_sca(nbf,matrix_global,m_ham,n_ham,matrix_local)
  enddo
 
 
- call stop_clock(timing_sca_distr)
-
 #else
- call die('SCALAPACK is required for distribute_hamiltonian_sca')
+
+ buffer(:,:) = buffer(:,:) + matrix_local(:,:)
+
 #endif
+
+ call stop_clock(timing_sca_distr)
 
 end subroutine broadcast_hamiltonian_sca
 
@@ -150,13 +187,12 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
  integer              :: iatom
  real(dp),allocatable :: matrix_cart(:,:)
  real(dp)             :: vnucleus_ij
- real(dp),allocatable :: buffer(:,:)
 !=====
-
-#ifdef HAVE_SCALAPACK
 
  call start_clock(timing_hamiltonian_nuc)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK buffer'
+
+
  if( nproc > 1 ) then
    natom_local=0
    do iatom=1,natom
@@ -167,7 +203,6 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
    write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
  endif
 
- allocate(buffer(basis%nbf,basis%nbf))
 
  ibf_cart = 1
  jbf_cart = 1
@@ -212,16 +247,10 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
 
 
  ! Sum up the buffers and store the result in the sub matrix hamiltonian_nucleus
- call reduce_hamiltonian_sca(basis%nbf,buffer,m_ham,n_ham,hamiltonian_nucleus)
-
- deallocate(buffer)
+ call reduce_hamiltonian_sca(m_ham,n_ham,hamiltonian_nucleus)
 
 
  call stop_clock(timing_hamiltonian_nuc)
-
-
-#endif
-
 
 end subroutine setup_nucleus_buffer_sca
 
@@ -240,21 +269,19 @@ subroutine setup_hartree_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,po
  integer              :: ipair
  real(dp),allocatable :: partial_sum(:)
  real(dp)             :: rtmp
- real(dp),allocatable :: buffer(:,:)
 !=====
-
-
-#ifdef HAVE_SCALAPACK
 
  write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity: SCALAPACK buffer'
  call start_clock(timing_hartree)
 
- allocate(buffer(nbf,nbf))
+
+ !
+ ! First the buffer contains the density matrix p_matrix
  buffer(:,:) = 0.0_dp
 
- call broadcast_hamiltonian_sca(nbf,buffer,m_ham,n_ham,p_matrix(:,:,1))
+ call broadcast_hamiltonian_sca(m_ham,n_ham,p_matrix(:,:,1))
  if( nspin == 2 ) then
-   call broadcast_hamiltonian_sca(nbf,buffer,m_ham,n_ham,p_matrix(:,:,2))
+   call broadcast_hamiltonian_sca(m_ham,n_ham,p_matrix(:,:,2))
  endif
 
  allocate(partial_sum(nauxil_3center))
@@ -284,8 +311,7 @@ subroutine setup_hartree_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,po
  deallocate(partial_sum)
 
  ! Sum up the buffers and store the result in the sub matrix pot_exchange
- call reduce_hamiltonian_sca(nbf,buffer,m_ham,n_ham,pot_hartree)
- deallocate(buffer)
+ call reduce_hamiltonian_sca(m_ham,n_ham,pot_hartree)
 
  !
  ! Calculate the Hartree energy
@@ -298,8 +324,6 @@ subroutine setup_hartree_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,po
 
 
  call stop_clock(timing_hartree)
-
-#endif
 
 
 end subroutine setup_hartree_ri_buffer_sca
@@ -323,21 +347,19 @@ subroutine setup_exchange_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_o
  integer              :: ipair
  real(dp)             :: p_matrix_i(nbf)
  integer              :: iglobal,ilocal,jlocal
- real(dp),allocatable :: buffer(:,:)
 !=====
 
 
  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: SCALAPACK buffer'
  call start_clock(timing_exchange)
 
- allocate(buffer(nbf,nbf))
 
-
- buffer(:,:) = 0.0_dp
 
  allocate(tmp(nauxil_3center,nbf))
 
  do ispin=1,nspin
+
+   buffer(:,:) = 0.0_dp
 
    do istate=1,nbf
      if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
@@ -367,17 +389,16 @@ subroutine setup_exchange_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_o
             tmp(:,jbf) = tmp(:,jbf) + p_matrix_i(ibf) * eri_3center(:,ipair)
      enddo
 
-     buffer(:,:) = buffer(:,:) &
-                        - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+     buffer(:,:) = buffer(:,:) - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+
    enddo
+
+   ! Sum up the buffers and store the result in the sub matrix pot_exchange
+   call reduce_hamiltonian_sca(m_ham,n_ham,pot_exchange(:,:,ispin))
 
  enddo
  deallocate(tmp)
 
-
- ! Sum up the buffers and store the result in the sub matrix pot_exchange
- call reduce_hamiltonian_sca(nbf,buffer,m_ham,n_ham,pot_exchange)
- deallocate(buffer)
 
  !
  ! Calculate the exchange energy
