@@ -11,6 +11,11 @@ today=time.strftime("%Y")+'_'+time.strftime("%m")+'_'+time.strftime("%d")
 start_time = time.time()
 keeptmp = False
 
+mpirun=''
+nprocs=1
+
+
+
 ###################################
 def clean_run(inp,out,restart):
   shutil.copy('inputs/'+inp,tmpfolder+'/'+inp)
@@ -29,7 +34,10 @@ def clean_run(inp,out,restart):
     except FileNotFoundError:
       pass
   fout = open(out, 'w')
-  subprocess.call(['../../molgw',inp],stdout=fout)
+  if len(mpirun) < 1:
+    subprocess.call(['../../molgw',inp],stdout=fout)
+  else:
+    subprocess.call([mpirun,'-n',str(nprocs),'../../molgw',inp],stdout=fout)
   fout.close()
   os.chdir('..')
 
@@ -65,19 +73,33 @@ def check_output(out,testinfo):
 ###################################
 # Parse the command line
 
+
 if len(sys.argv) > 1:
-  if '--help' in sys.argv[1]:
+  if '--help' in sys.argv:
     print('Run the complete test suite of MOLGW')
-    print('--keep  Keep the temporary folder')
+    print('  --keep             Keep the temporary folder')
+    print('  --np     n         Set the number of cores to n')
+    print('  --mpirun launcher  Set the MPI launcher name')
     sys.exit(0)
-  if '--keep' in sys.argv[1]:
+  if '--keep' in sys.argv:
     keeptmp = True
-
-
-
+  if '--np' in sys.argv:
+    i = sys.argv.index('--np') + 1
+    nprocs = int( sys.argv[i] )
+  if '--mpirun' in sys.argv:
+    i = sys.argv.index('--mpirun') + 1
+    mpirun = sys.argv[i]
 
 print('\n===============================')
 print('Starting MOLGW test suite\n')
+
+if len(mpirun) < 1:
+  if( nprocs > 1 ):
+    print('No MPI launcher has been provided. Set the number of cores back to 1')
+  nprocs = 1
+
+
+print('Running with ',nprocs,'cores')
 
 ###################################
 # Parse the file testsuite
