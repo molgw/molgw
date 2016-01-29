@@ -194,9 +194,13 @@ subroutine scf_loop(basis,auxil_basis,&
    if( calc_type%is_dft ) then
 
      if( parallel_ham ) then
+#ifndef TODAY
        call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
        hamiltonian_vxc(:,:,:) = 0.0_dp
        en%xc = 0.0_dp
+#else
+       call dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_vxc,en%xc)
+#endif
      else
        call dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,hamiltonian_vxc,en%xc)
      endif

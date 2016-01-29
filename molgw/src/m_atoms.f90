@@ -36,6 +36,7 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read)
 !=====
  integer  :: iatom,jatom
  real(dp) :: xtmp(3),x21(3),x31(3)
+ real(dp) :: bond_length
  logical  :: found
 !=====
 
@@ -68,11 +69,12 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read)
  enddo
 
  !
- ! Find the covalent bond is a simple distance criterium
+ ! Find the covalent bonds based a simple distance criterium
  nbond = 0
  do iatom=1,natom
    do jatom=iatom+1,natom
-     if( NORM2( x(:,iatom)-x(:,jatom) ) < 4.0 ) then
+     bond_length =  element_covalent_radius(zatom(iatom)) + element_covalent_radius(zatom(jatom))
+     if( NORM2( x(:,iatom)-x(:,jatom) ) <  1.2_dp * bond_length  ) then
        nbond = nbond + 1
      endif
    enddo

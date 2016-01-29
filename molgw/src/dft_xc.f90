@@ -132,8 +132,17 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
    weight = w_grid(igrid)
 
    !
-   ! Get all the functions and gradients at point rr
+   ! Get the functions at point rr
    call get_basis_functions_r(basis,igrid,basis_function_r)
+   !
+   ! calculate the density at point r for spin up and spin down
+   call calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_function_r,rhor)
+
+   ! Skip all the rest if the density is too small
+   if( ALL( rhor(:) < TOL_RHO )  ) cycle
+
+   !
+   ! Get the gradient and laplacian at point rr
    if( require_gradient ) then
      call get_basis_functions_gradr(basis,igrid,basis_function_gradr)
    endif
@@ -141,13 +150,6 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
      call get_basis_functions_laplr(basis,igrid,basis_function_gradr,basis_function_laplr)
    endif
 
-
-   !
-   ! calculate the density at point r for spin up and spin down
-   call calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_function_r,rhor)
-
-   ! Skip all the rest if the density is too small
-   if( ALL( rhor(:) < TOL_RHO )  ) cycle
 
    !
    ! Normalization

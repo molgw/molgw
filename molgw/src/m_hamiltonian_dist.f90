@@ -8,8 +8,7 @@ module m_hamiltonian_dist
  use m_inputparam,only: nspin,spin_fact
 
 
-! real(dp),private,allocatable :: buffer(:,:)
- real(dp),protected,allocatable :: buffer(:,:)
+ real(dp),private,allocatable :: buffer(:,:)
 
 
 contains
@@ -416,6 +415,337 @@ subroutine setup_exchange_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_o
 end subroutine setup_exchange_ri_buffer_sca
 
 
+!=========================================================================
+subroutine dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,vxc_ij,exc_xc)
+ use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
+ use m_inputparam
+ use m_basis_set
+ use m_dft_grid
+#ifdef HAVE_LIBXC
+ use libxc_funcs_m
+ use xc_f90_lib_m
+ use xc_f90_types_m
+#endif
+ implicit none
+
+ integer,intent(in)         :: nstate
+ integer,intent(in)         :: m_ham,n_ham
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: p_matrix_occ(basis%nbf,nspin)
+ real(dp),intent(in)        :: p_matrix_sqrt(m_ham,n_ham,nspin)
+ real(dp),intent(in)        :: p_matrix(m_ham,n_ham,nspin)
+ real(dp),intent(out)       :: vxc_ij(m_ham,n_ham,nspin)
+ real(dp),intent(out)       :: exc_xc
+!=====
+
+ real(dp),parameter :: TOL_RHO=1.0e-10_dp
+ integer  :: idft_xc
+ logical  :: require_gradient,require_laplacian
+ integer  :: igrid,ibf,jbf,ispin
+ real(dp) :: rr(3)
+ real(dp) :: normalization(nspin)
+ real(dp) :: weight
+
+#ifdef HAVE_LIBXC
+ type(xc_f90_pointer_t) :: xc_func(ndft_xc),xc_functest
+ type(xc_f90_pointer_t) :: xc_info(ndft_xc),xc_infotest
+#endif
+
+ real(dp)             :: basis_function_r(basis%nbf)
+ real(dp)             :: basis_function_gradr(3,basis%nbf)
+ real(dp)             :: basis_function_laplr(3,basis%nbf)
+
+ real(dp)             :: rhor(nspin)
+ real(dp)             :: grad_rhor(3,nspin)
+ real(dp)             :: sigma(2*nspin-1)
+ real(dp)             :: tau(nspin),lapl_rhor(nspin)
+ real(dp)             :: vxc_libxc(nspin)
+ real(dp)             :: vxc_dummy(nspin)
+ real(dp)             :: exc_libxc(1)
+ real(dp)             :: vsigma(2*nspin-1)
+ real(dp)             :: vlapl_rho(nspin),vtau(nspin)
+ real(dp)             :: vxc_av(nspin)
+ real(dp)             :: dedd_r(nspin)
+ real(dp)             :: dedgd_r(3,nspin)
+ real(dp)             :: omega
+ character(len=256)   :: string
+!=====
+
+ if( nspin/=1 ) call die('DFT XC potential: SCALAPACK buffer not implemented for spin unrestricted')
+
+ exc_xc = 0.0_dp
+ vxc_ij(:,:,:) = 0.0_dp
+ if( ndft_xc == 0 ) return
+
+ call start_clock(timing_dft)
+
+
+#ifdef HAVE_LIBXC
+
+ write(stdout,*) 'Calculate DFT XC potential: SCALAPACK buffer'
+ 
+ require_gradient =.FALSE.
+ require_laplacian=.FALSE.
+ do idft_xc=1,ndft_xc
+
+   if( dft_xc_type(idft_xc) < 1000 ) then
+     if(nspin==1) then
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_UNPOLARIZED)
+     else
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_POLARIZED)
+     endif
+   else if(dft_xc_type(idft_xc) < 2000) then
+     write(stdout,*) 'Home-made functional LDA functional'
+     ! Fake LIBXC descriptor 
+     if(nspin==1) then
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_LDA_X, XC_UNPOLARIZED)
+     else
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_LDA_X, XC_POLARIZED)
+     endif
+   else
+     write(stdout,*) 'Home-made functional GGA functional'
+     ! Fake LIBXC descriptor 
+     if(nspin==1) then
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_GGA_X_PBE, XC_UNPOLARIZED)
+     else
+       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_GGA_X_PBE, XC_POLARIZED)
+    endif
+   endif
+
+   if( dft_xc_type(idft_xc) < 1000 ) then
+     call xc_f90_info_name(xc_info(idft_xc),string)
+     write(stdout,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),TRIM(string)
+   else
+     write(stdout,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),'FAKE LIBXC DESCRIPTOR'
+   endif
+
+   if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
+   if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) require_gradient  =.TRUE.
+   if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_MGGA    ) require_laplacian =.TRUE.
+
+   if( dft_xc_type(idft_xc) == XC_GGA_X_HJS_PBE ) then
+     call xc_f90_gga_x_hjs_set_par(xc_func(idft_xc), REAL(gamma_hybrid,C_DOUBLE) )
+   endif
+   if( dft_xc_type(idft_xc) == XC_GGA_X_WPBEH ) then
+     call xc_f90_gga_x_wpbeh_set_par(xc_func(idft_xc), REAL(gamma_hybrid,C_DOUBLE) )
+   endif
+
+ enddo
+
+
+ !
+ ! If it is the first time, then set up the stored arrays
+ !
+ if( .NOT. ALLOCATED(bfr) )                          call prepare_basis_functions_r(basis)
+ if( require_gradient  .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_gradr(basis)
+ if( require_laplacian .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_laplr(basis)
+
+ normalization(:)=0.0_dp
+
+ !
+ ! Buffer constains the p_matrix_sqrt for a spin channel 1
+ buffer(:,:) = 0.0_dp
+ call broadcast_hamiltonian_sca(m_ham,n_ham,p_matrix_sqrt(:,:,1))
+
+ do igrid=1,ngrid
+
+   rr(:) = rr_grid(:,igrid)
+   weight = w_grid(igrid)
+
+   !
+   ! Get all the functions at point rr
+   call get_basis_functions_r(basis,igrid,basis_function_r)
+   !
+   ! calculate the density at point r for spin up and spin down
+   call calc_density_r(1,basis,p_matrix_occ(:,1),buffer,rr,basis_function_r,rhor(1))
+
+   ! Skip all the rest if the density is too small
+   if( rhor(1) < TOL_RHO ) cycle
+
+   if( require_gradient ) then
+     call get_basis_functions_gradr(basis,igrid,basis_function_gradr)
+   endif
+!   if( require_laplacian ) then
+!     call get_basis_functions_laplr(basis,igrid,basis_function_gradr,basis_function_laplr)
+!   endif
+
+   !
+   ! Normalization
+   normalization(1) = normalization(1) + rhor(1) * weight
+
+
+   if( require_gradient ) then 
+     call calc_density_gradr(1,basis%nbf,p_matrix_occ(:,1),buffer,basis_function_r,basis_function_gradr,grad_rhor(:,1))
+   endif
+!   if( require_laplacian ) then
+!     call calc_density_gradr_laplr(nspin,basis%nbf,p_matrix,basis_function_r,basis_function_gradr,basis_function_laplr,grad_rhor,tau,lapl_rhor)
+!   endif
+
+   if( require_gradient .OR. require_laplacian ) then
+     sigma(1) = SUM( grad_rhor(:,1)**2 )
+     if(nspin==2) then
+       sigma(2) = SUM( grad_rhor(:,1) * grad_rhor(:,2) )
+       sigma(3) = SUM( grad_rhor(:,2)**2 )
+     endif
+   endif
+
+   !
+   ! LIBXC calls
+   !
+   dedd_r(:)    = 0.0_dp
+   dedgd_r(:,:) = 0.0_dp
+
+   do idft_xc=1,ndft_xc
+
+     select case(xc_f90_info_family(xc_info(idft_xc)))
+
+     case(XC_FAMILY_LDA)
+       if( dft_xc_type(idft_xc) < 1000 ) then 
+         call xc_f90_lda_exc_vxc(xc_func(idft_xc),1_C_INT,rhor(1),exc_libxc(1),vxc_libxc(1))
+       else
+         call my_lda_exc_vxc(nspin,dft_xc_type(idft_xc),rhor,exc_libxc(1),vxc_libxc)
+       endif
+
+     case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
+       if( dft_xc_type(idft_xc) < 2000 ) then 
+         !
+         ! Remove too small densities to stabilize the computation
+         ! especially useful for Becke88
+         if( ANY( rhor(:) > 1.0e-9_dp ) ) then
+           call xc_f90_gga_exc_vxc(xc_func(idft_xc),1_C_INT,rhor(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
+         else
+           exc_libxc(:)     = 0.0_dp
+           vxc_libxc(:)     = 0.0_dp
+           vsigma(:)        = 0.0_dp
+         endif
+       else
+         call my_gga_exc_vxc_hjs(gamma_hybrid,rhor(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
+       endif
+
+     case(XC_FAMILY_MGGA)
+       call xc_f90_mgga_vxc(xc_func(idft_xc),1_C_INT,rhor(1),sigma(1),lapl_rhor(1),tau(1),vxc_libxc(1),vsigma(1),vlapl_rho(1),vtau(1))
+       ! no expression for the energy
+       exc_libxc(1) = 0.0_dp
+
+     case default
+       call die('functional is not LDA nor GGA nor hybrid nor meta-GGA')
+     end select
+
+     exc_xc = exc_xc + weight * exc_libxc(1) * SUM( rhor(:) ) * dft_xc_coef(idft_xc)
+
+     dedd_r(:) = dedd_r(:) + vxc_libxc(:) * dft_xc_coef(idft_xc)
+
+     !
+     ! Set up divergence term if needed (GGA case)
+     !
+     if( xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_GGA &
+        .OR. xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) then
+       if(nspin==1) then
+
+         dedgd_r(:,1) = dedgd_r(:,1) + 2.0_dp * vsigma(1) * grad_rhor(:,1) * dft_xc_coef(idft_xc)
+
+       else
+
+         dedgd_r(:,1) = dedgd_r(:,1) + 2.0_dp * vsigma(1) * grad_rhor(:,1) * dft_xc_coef(idft_xc) &
+                               + vsigma(2) * grad_rhor(:,2)
+
+         dedgd_r(:,2) = dedgd_r(:,2) + 2.0_dp * vsigma(3) * grad_rhor(:,2) * dft_xc_coef(idft_xc) &
+                               + vsigma(2) * grad_rhor(:,1)
+       endif
+
+     endif
+
+
+   enddo ! loop on the XC functional
+
+ enddo ! grid point
+
+
+ do igrid=1,ngrid
+   !
+   ! Get all the functions at point rr
+   call get_basis_functions_r(basis,igrid,basis_function_r)
+   if( require_gradient ) then
+     call get_basis_functions_gradr(basis,igrid,basis_function_gradr)
+   endif
+
+   !
+   ! Eventually set up the vxc term
+   !
+   if( .NOT. require_gradient ) then 
+     ! LDA
+     do ispin=1,nspin
+       do jbf=1,basis%nbf
+         ! Only the lower part is calculated
+         do ibf=1,jbf ! basis%nbf 
+           vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight &
+               *  dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf) 
+         enddo
+       enddo
+     enddo
+
+   else 
+     ! GGA
+     do ispin=1,nspin
+       do jbf=1,basis%nbf
+         ! Only the lower part is calculated
+         do ibf=1,jbf ! basis%nbf 
+           vxc_ij(ibf,jbf,ispin) = vxc_ij(ibf,jbf,ispin) + weight  &
+               * dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf) 
+
+           vxc_ij(ibf,jbf,ispin) = vxc_ij(ibf,jbf,ispin) + weight &
+                    * DOT_PRODUCT( dedgd_r(:,ispin) ,                                     &
+                                      basis_function_gradr(:,ibf) * basis_function_r(jbf) &
+                                    + basis_function_gradr(:,jbf) * basis_function_r(ibf) )
+         enddo
+       enddo
+     enddo
+   endif
+
+ enddo ! loop on the grid point
+
+
+
+
+ ! Symmetrize now
+ do ispin=1,nspin
+   do jbf=1,basis%nbf
+     do ibf=1,jbf-1 ! basis%nbf 
+       vxc_ij(jbf,ibf,ispin) = vxc_ij(ibf,jbf,ispin)
+     enddo
+   enddo
+ enddo
+
+ !
+ ! Sum up the contributions from all procs only if needed
+ if( parallel_grid ) then
+   call xsum(normalization)
+   call xsum(vxc_ij)
+   call xsum(exc_xc)
+ endif
+
+ !
+ ! Destroy operations
+ do idft_xc=1,ndft_xc
+   call xc_f90_func_end(xc_func(idft_xc))
+ enddo
+
+#else
+!TODO write a call to teter to have MOLGW working without LIBXC
+!   call teter_lda_vxc_exc(rhor,vxc,exc)
+ write(stdout,*) 'XC energy and potential set to zero'
+ write(stdout,*) 'LIBXC is not present'
+#endif
+
+ write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
+ write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
+
+ call stop_clock(timing_dft)
+
+end subroutine dft_exc_vxc_buffer_sca
+
+
+!=========================================================================
 !=========================================================================
 end module m_hamiltonian_dist
 !=========================================================================
