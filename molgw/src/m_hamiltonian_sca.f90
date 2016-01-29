@@ -280,13 +280,13 @@ end subroutine setup_nucleus_sca
 
 
 !=========================================================================
-subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,pot_hartree,ehartree)
+subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,hartree_ij,ehartree)
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf,m_ham,n_ham
  real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
- real(dp),intent(out) :: pot_hartree(m_ham,n_ham)
+ real(dp),intent(out) :: hartree_ij(m_ham,n_ham)
  real(dp),intent(out) :: ehartree
 !=====
  integer              :: ilocal,jlocal
@@ -324,7 +324,7 @@ subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,pot_hartr
 
 
  ! Hartree potential is not sensitive to spin
- pot_hartree(:,:) = 0.0_dp
+ hartree_ij(:,:) = 0.0_dp
  do jlocal=1,n_ham
    jglobal = colindex_local_to_global('H',jlocal)
 
@@ -332,7 +332,7 @@ subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,pot_hartr
      iglobal = rowindex_local_to_global('H',ilocal)
      if( negligible_basispair(iglobal,jglobal) ) cycle
 
-     pot_hartree(ilocal,jlocal) = SUM( partial_sum(:) * eri_3center(:,index_pair(iglobal,jglobal)) )
+     hartree_ij(ilocal,jlocal) = SUM( partial_sum(:) * eri_3center(:,index_pair(iglobal,jglobal)) )
 
    enddo
  enddo
@@ -342,16 +342,16 @@ subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,pot_hartr
 
  !
  ! Sum up the different contribution from different procs only if needed
- call xlocal_sum(pot_hartree)
+ call xlocal_sum(hartree_ij)
 
 
  title='=== Hartree contribution ==='
- call dump_out_matrix(print_matrix_,title,nbf,1,pot_hartree)
+ call dump_out_matrix(print_matrix_,title,nbf,1,hartree_ij)
 
  !
  ! Calculate the Hartree energy
  if( cntxt_ham > 0 ) then
-   ehartree = 0.5_dp*SUM(pot_hartree(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+   ehartree = 0.5_dp*SUM(hartree_ij(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
  else
    ehartree = 0.0_dp
  endif
@@ -367,7 +367,7 @@ end subroutine setup_hartree_ri_sca
 
 
 !=========================================================================
-subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
@@ -375,7 +375,7 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_ma
  real(dp),intent(in)  :: p_matrix_occ(nbf,nspin)
  real(dp),intent(in)  :: p_matrix_sqrt(m_ham,n_ham,nspin)
  real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
- real(dp),intent(out) :: pot_exchange(m_ham,n_ham,nspin)
+ real(dp),intent(out) :: exchange_ij(m_ham,n_ham,nspin)
  real(dp),intent(out) :: eexchange
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
@@ -412,7 +412,7 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_ma
  allocate(tmpb(nauxil_3center,n_ham))
 
 
- pot_exchange(:,:,:) = 0.0_dp
+ exchange_ij(:,:,:) = 0.0_dp
 
  do ispin=1,nspin
    do istate=1,nbf
@@ -480,19 +480,19 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_ma
      deallocate(tmpc)
 
 
-     pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin)  &
+     exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin)  &
                         - MATMUL( TRANSPOSE(tmpa(:,:)) , tmpb(:,:) ) / spin_fact
 
 
    enddo
  enddo
 
- call xlocal_sum(pot_exchange)
+ call xlocal_sum(exchange_ij)
 
  !
  ! Calculate the Hartree energy
  if( cntxt_ham > 0 ) then
-   eexchange = 0.5_dp * SUM( pot_exchange(:,:,:) * p_matrix(:,:,:) )
+   eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
  else
    eexchange = 0.0_dp
  endif
@@ -507,7 +507,7 @@ end subroutine setup_exchange_ri_sca
 
 
 !=========================================================================
-subroutine setup_exchange_longrange_ri_sca(print_matrix_,nbf,occupation,c_matrix,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange_longrange_ri_sca(print_matrix_,nbf,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
@@ -515,7 +515,7 @@ subroutine setup_exchange_longrange_ri_sca(print_matrix_,nbf,occupation,c_matrix
  real(dp),intent(in)  :: occupation(nbf,nspin)
  real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin)
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
+ real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
@@ -532,7 +532,7 @@ subroutine setup_exchange_longrange_ri_sca(print_matrix_,nbf,occupation,c_matrix
  call start_clock(timing_exchange)
 
 
- pot_exchange(:,:,:)=0.0_dp
+ exchange_ij(:,:,:)=0.0_dp
 
  allocate(tmp(nauxil_3center_lr,nbf))
 
@@ -551,18 +551,18 @@ subroutine setup_exchange_longrange_ri_sca(print_matrix_,nbf,occupation,c_matrix
             tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center_lr(:,ipair) * SQRT( occupation(istate,ispin) )
      enddo
 
-     pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin) &
+     exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
                         - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
    enddo
 
  enddo
  deallocate(tmp)
 
- call xsum(pot_exchange)
+ call xsum(exchange_ij)
 
- call dump_out_matrix(print_matrix_,'=== LR Exchange contribution ===',nbf,nspin,pot_exchange)
+ call dump_out_matrix(print_matrix_,'=== LR Exchange contribution ===',nbf,nspin,exchange_ij)
 
- eexchange = 0.5_dp*SUM(pot_exchange(:,:,:)*p_matrix(:,:,:))
+ eexchange = 0.5_dp*SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
 
  call stop_clock(timing_exchange)
 

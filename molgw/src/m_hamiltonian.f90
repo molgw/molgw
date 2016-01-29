@@ -278,13 +278,13 @@ end subroutine setup_nucleus
 
 
 !=========================================================================
-subroutine setup_hartree(print_matrix_,nbf,p_matrix,pot_hartree,ehartree)
+subroutine setup_hartree(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: pot_hartree(nbf,nbf)
+ real(dp),intent(out) :: hartree_ij(nbf,nbf)
  real(dp),intent(out) :: ehartree
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin
@@ -294,7 +294,7 @@ subroutine setup_hartree(print_matrix_,nbf,p_matrix,pot_hartree,ehartree)
  write(stdout,*) 'Calculate Hartree term'
  call start_clock(timing_hartree)
 
- pot_hartree(:,:)=0.0_dp
+ hartree_ij(:,:)=0.0_dp
 
  do jbf=1,nbf
    do ibf=1,nbf
@@ -306,10 +306,10 @@ subroutine setup_hartree(print_matrix_,nbf,p_matrix,pot_hartree,ehartree)
          if( negligible_basispair(kbf,lbf) ) cycle
          !
          ! symmetry (ij|kl) = (kl|ij) has been used to loop in the fast order
-         pot_hartree(ibf,jbf) = pot_hartree(ibf,jbf) &
+         hartree_ij(ibf,jbf) = hartree_ij(ibf,jbf) &
                     + eri(kbf,lbf,ibf,jbf) * SUM( p_matrix(kbf,lbf,:) ) * 2.0_dp
        enddo
-       pot_hartree(ibf,jbf) = pot_hartree(ibf,jbf) &
+       hartree_ij(ibf,jbf) = hartree_ij(ibf,jbf) &
                   + eri(lbf,lbf,ibf,jbf) * SUM( p_matrix(lbf,lbf,:) )
      enddo
    enddo
@@ -317,11 +317,11 @@ subroutine setup_hartree(print_matrix_,nbf,p_matrix,pot_hartree,ehartree)
 
 
  title='=== Hartree contribution ==='
- call dump_out_matrix(print_matrix_,title,nbf,1,pot_hartree)
+ call dump_out_matrix(print_matrix_,title,nbf,1,hartree_ij)
 
- ehartree = 0.5_dp*SUM(pot_hartree(:,:)*p_matrix(:,:,1))
+ ehartree = 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,1))
  if( nspin == 2 ) then
-   ehartree = ehartree + 0.5_dp*SUM(pot_hartree(:,:)*p_matrix(:,:,2))
+   ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
  endif
 
  call stop_clock(timing_hartree)
@@ -330,13 +330,13 @@ end subroutine setup_hartree
 
 
 !=========================================================================
-subroutine setup_hartree_ri(print_matrix_,nbf,p_matrix,pot_hartree,ehartree)
+subroutine setup_hartree_ri(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: pot_hartree(nbf,nbf)
+ real(dp),intent(out) :: hartree_ij(nbf,nbf)
  real(dp),intent(out) :: ehartree
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin
@@ -364,28 +364,28 @@ subroutine setup_hartree_ri(print_matrix_,nbf,p_matrix,pot_hartree,ehartree)
  enddo
 
  ! Hartree potential is not sensitive to spin
- pot_hartree(:,:) = 0.0_dp
+ hartree_ij(:,:) = 0.0_dp
  do ipair=1,npair
    ibf = index_basis(1,ipair)
    jbf = index_basis(2,ipair)
    rtmp = DOT_PRODUCT( eri_3center(:,ipair) , partial_sum(:) )
-   pot_hartree(ibf,jbf) = rtmp
-   pot_hartree(jbf,ibf) = rtmp
+   hartree_ij(ibf,jbf) = rtmp
+   hartree_ij(jbf,ibf) = rtmp
  enddo
 
  deallocate(partial_sum)
 
  !
  ! Sum up the different contribution from different procs only if needed
- call xsum(pot_hartree)
+ call xsum(hartree_ij)
 
 
  title='=== Hartree contribution ==='
- call dump_out_matrix(print_matrix_,title,nbf,1,pot_hartree)
+ call dump_out_matrix(print_matrix_,title,nbf,1,hartree_ij)
 
- ehartree = 0.5_dp*SUM(pot_hartree(:,:)*p_matrix(:,:,1))
+ ehartree = 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,1))
  if( nspin == 2 ) then
-   ehartree = ehartree + 0.5_dp*SUM(pot_hartree(:,:)*p_matrix(:,:,2))
+   ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
  endif
 
  call stop_clock(timing_hartree)
@@ -394,13 +394,13 @@ end subroutine setup_hartree_ri
 
 
 !=========================================================================
-subroutine setup_exchange(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange(print_matrix_,nbf,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
+ real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin
@@ -411,7 +411,7 @@ subroutine setup_exchange(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
  call start_clock(timing_exchange)
 
 
- pot_exchange(:,:,:)=0.0_dp
+ exchange_ij(:,:,:)=0.0_dp
 
  do ispin=1,nspin
    do jbf=1,nbf
@@ -423,7 +423,7 @@ subroutine setup_exchange(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
            if( negligible_basispair(ibf,kbf) ) cycle
            !
            ! symmetry (ik|lj) = (ki|lj) has been used to loop in the fast order
-           pot_exchange(ibf,jbf,ispin) = pot_exchange(ibf,jbf,ispin) &
+           exchange_ij(ibf,jbf,ispin) = exchange_ij(ibf,jbf,ispin) &
                       - eri(ibf,kbf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact 
          enddo
        enddo
@@ -431,10 +431,8 @@ subroutine setup_exchange(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
    enddo
  enddo
 
- title='=== Exchange contribution ==='
- call dump_out_matrix(print_matrix_,title,nbf,nspin,pot_exchange)
 
- eexchange = 0.5_dp*SUM(pot_exchange(:,:,:)*p_matrix(:,:,:))
+ eexchange = 0.5_dp*SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
 
  call stop_clock(timing_exchange)
 
@@ -442,7 +440,7 @@ end subroutine setup_exchange
 
 
 !=========================================================================
-subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
@@ -450,7 +448,7 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
  real(dp),intent(in)  :: p_matrix_occ(nbf,nspin)
  real(dp),intent(in)  :: p_matrix_sqrt(nbf,nbf,nspin)
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
+ real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
@@ -465,7 +463,7 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
  call start_clock(timing_exchange)
 
 
- pot_exchange(:,:,:)=0.0_dp
+ exchange_ij(:,:,:)=0.0_dp
 
  allocate(tmp(nauxil_3center,nbf))
 
@@ -483,18 +481,16 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
             tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center(:,ipair) * SQRT(p_matrix_occ(istate,ispin))
      enddo
 
-     pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin) &
+     exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
                         - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
    enddo
 
  enddo
  deallocate(tmp)
 
- call xsum(pot_exchange)
+ call xsum(exchange_ij)
 
- call dump_out_matrix(print_matrix_,'=== Exchange contribution ===',nbf,nspin,pot_exchange)
-
- eexchange = 0.5_dp*SUM(pot_exchange(:,:,:)*p_matrix(:,:,:))
+ eexchange = 0.5_dp*SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
 
  call stop_clock(timing_exchange)
 
@@ -502,7 +498,7 @@ end subroutine setup_exchange_ri
 
 
 !=========================================================================
-subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
@@ -510,7 +506,7 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_s
  real(dp),intent(in)  :: p_matrix_occ(nbf,nspin)
  real(dp),intent(in)  :: p_matrix_sqrt(nbf,nbf,nspin)
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
+ real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
@@ -525,7 +521,7 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_s
  call start_clock(timing_exchange)
 
 
- pot_exchange(:,:,:)=0.0_dp
+ exchange_ij(:,:,:)=0.0_dp
 
  allocate(tmp(nauxil_3center_lr,nbf))
 
@@ -543,18 +539,18 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_s
             tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center_lr(:,ipair) * SQRT(p_matrix_occ(istate,ispin))
      enddo
 
-     pot_exchange(:,:,ispin) = pot_exchange(:,:,ispin) &
+     exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
                         - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
    enddo
 
  enddo
  deallocate(tmp)
 
- call xsum(pot_exchange)
+ call xsum(exchange_ij)
 
- call dump_out_matrix(print_matrix_,'=== LR Exchange contribution ===',nbf,nspin,pot_exchange)
+ call dump_out_matrix(print_matrix_,'=== LR Exchange contribution ===',nbf,nspin,exchange_ij)
 
- eexchange = 0.5_dp*SUM(pot_exchange(:,:,:)*p_matrix(:,:,:))
+ eexchange = 0.5_dp*SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
 
  call stop_clock(timing_exchange)
 
@@ -562,24 +558,23 @@ end subroutine setup_exchange_longrange_ri
 
 
 !=========================================================================
-subroutine setup_exchange_longrange(print_matrix_,nbf,p_matrix,pot_exchange,eexchange)
+subroutine setup_exchange_longrange(print_matrix_,nbf,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: pot_exchange(nbf,nbf,nspin)
+ real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin
- character(len=100)   :: title
 !=====
 
  write(stdout,*) 'Calculate Long-Range Exchange term'
  call start_clock(timing_exchange)
 
 
- pot_exchange(:,:,:)=0.0_dp
+ exchange_ij(:,:,:)=0.0_dp
 
  do ispin=1,nspin
    do jbf=1,nbf
@@ -588,7 +583,7 @@ subroutine setup_exchange_longrange(print_matrix_,nbf,p_matrix,pot_exchange,eexc
          do kbf=1,nbf
            !
            ! symmetry (ik|lj) = (ki|lj) has been used to loop in the fast order
-           pot_exchange(ibf,jbf,ispin) = pot_exchange(ibf,jbf,ispin) &
+           exchange_ij(ibf,jbf,ispin) = exchange_ij(ibf,jbf,ispin) &
                       - eri_lr(kbf,ibf,lbf,jbf) * p_matrix(kbf,lbf,ispin) / spin_fact 
          enddo
        enddo
@@ -596,10 +591,8 @@ subroutine setup_exchange_longrange(print_matrix_,nbf,p_matrix,pot_exchange,eexc
    enddo
  enddo
 
- title='=== Exchange contribution ==='
- call dump_out_matrix(print_matrix_,title,nbf,nspin,pot_exchange)
 
- eexchange = 0.5_dp*SUM(pot_exchange(:,:,:)*p_matrix(:,:,:))
+ eexchange = 0.5_dp*SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
 
  call stop_clock(timing_exchange)
 
