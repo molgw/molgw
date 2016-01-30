@@ -24,7 +24,7 @@ subroutine static_polarizability(nstate,basis,auxil_basis,occupation,energy,wpol
  real(dp),intent(in)                   :: energy(nstate,nspin)
  type(spectral_function),intent(inout) :: wpol_out
 !=====
- integer                   :: t_ij,t_kl
+ integer                   :: t_ij
  integer                   :: istate,jstate,ijspin
  integer                   :: jbf_auxil,ibf_auxil,ibf_auxil_local
  real(dp),allocatable      :: vsqchi0vsq(:,:),eri_3center_ij(:)
@@ -43,7 +43,7 @@ subroutine static_polarizability(nstate,basis,auxil_basis,occupation,energy,wpol
  
  call clean_allocate('temp chi0 matrix',vsqchi0vsq,nauxil_2center,nauxil_2center)
 
- allocate(eri_3center_ij(auxil_basis%nbf))
+ allocate(eri_3center_ij(nauxil_2center))
 
  !
  ! First evaluate v^{1/2} \chi_0 v^{1/2}
@@ -70,11 +70,15 @@ subroutine static_polarizability(nstate,basis,auxil_basis,occupation,energy,wpol
 
 
    do jbf_auxil=1,nauxil_2center
+     if( MODULO( jbf_auxil , nproc ) /= rank ) cycle  ! FBFB NEW
      vsqchi0vsq(:,jbf_auxil) = vsqchi0vsq(:,jbf_auxil) &
           + eri_3center_ij(:) * eri_3center_ij(jbf_auxil) * denom
    enddo
 
  enddo
+
+ call xsum(vsqchi0vsq)
+
 
  !
  ! Second calculate v^{1/2} \chi v^{1/2} = ( 1 -  v^{1/2} \chi_0 v^{1/2} )^{-1} 
@@ -85,8 +89,9 @@ subroutine static_polarizability(nstate,basis,auxil_basis,occupation,energy,wpol
    wpol_out%w0(jbf_auxil,jbf_auxil) = 1.0_dp + wpol_out%w0(jbf_auxil,jbf_auxil)
  end forall
 
- call invert(nauxil_2center,wpol_out%w0)
 
+ ! TODO I should use SCALAPACK for the next two operations
+ call invert(nauxil_2center,wpol_out%w0)
  wpol_out%w0(:,:) = MATMUL( wpol_out%w0(:,:) , vsqchi0vsq(:,:) )
 
 
