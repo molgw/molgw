@@ -70,7 +70,7 @@ subroutine static_polarizability(nstate,basis,auxil_basis,occupation,energy,wpol
 
 
    do jbf_auxil=1,nauxil_2center
-     if( MODULO( jbf_auxil , nproc ) /= rank ) cycle  ! FBFB NEW
+     if( MODULO( jbf_auxil , nproc ) /= rank ) cycle 
      vsqchi0vsq(:,jbf_auxil) = vsqchi0vsq(:,jbf_auxil) &
           + eri_3center_ij(:) * eri_3center_ij(jbf_auxil) * denom
    enddo

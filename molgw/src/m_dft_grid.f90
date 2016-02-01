@@ -8,6 +8,7 @@ module m_dft_grid
  use m_warning,only: die
  use m_mpi
  use m_memory
+ use m_timing
  use m_inputparam,only: partition_scheme
  
  !
@@ -64,6 +65,7 @@ subroutine init_dft_grid(grid_level_in)
  real(dp),allocatable :: w_grid_tmp(:)
 !=====
 
+ call start_clock(timing_grid_generation)
  ngrid_stored = 0
  select case(grid_level_in)
  case(low)       ! accuracy not guaranted, just for quick test runs
@@ -218,6 +220,8 @@ subroutine init_dft_grid(grid_level_in)
  ! Temporary storage before the screening of the low weights
  allocate(rr_grid_tmp(3,ngridmax),w_grid_tmp(ngridmax))
 
+ rr_grid_tmp(:,:) = 0.0_dp 
+ w_grid_tmp(:)    = 0.0_dp
  ir    = 0
  do iatom=1,natom_basis
    radius = element_covalent_radius(REAL(basis_element(iatom),dp))
@@ -231,6 +235,9 @@ subroutine init_dft_grid(grid_level_in)
 
      do iangular=1,nangular
        ir = ir + 1
+
+       ! Parallelization of the weights generation
+       if( MODULO(ir,nproc) /= rank ) cycle
 
        if( xa(iradial,iatom) < pruning_limit * radius ) then
          rr_grid_tmp(1,ir) = xa(iradial,iatom) * x2(iangular) + x(1,iatom)
@@ -307,6 +314,9 @@ subroutine init_dft_grid(grid_level_in)
  deallocate(x1,y1,z1,w1)
  deallocate(x2,y2,z2,w2)
 
+ call xsum(rr_grid_tmp)
+ call xsum(w_grid_tmp)
+
 
  ! Denombrate the number of non-negligible weight in the quadrature
  ngrid = COUNT( w_grid_tmp(:) > TOL_WEIGHT )
@@ -335,6 +345,8 @@ subroutine init_dft_grid(grid_level_in)
  end do
 
  deallocate(rr_grid_tmp,w_grid_tmp)
+
+ call stop_clock(timing_grid_generation)
 
 
 end subroutine init_dft_grid

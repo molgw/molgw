@@ -5,7 +5,7 @@ module m_timing
 
  integer,parameter :: NTIMING=100
 
- integer,parameter :: timing_total             = 90
+ integer,parameter :: timing_total             =  1
 
  integer,parameter :: timing_prescf            = 81
  integer,parameter :: timing_scf               = 82
@@ -41,7 +41,9 @@ module m_timing
  integer,parameter :: timing_eri_screening       = 29
  integer,parameter :: timing_hamiltonian_ecp     = 30
  integer,parameter :: timing_sca_distr           = 31
+ integer,parameter :: timing_grid_generation     = 32
  
+ integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
  integer,parameter :: timing_tmp2                = 92
  integer,parameter :: timing_tmp3                = 93
@@ -140,6 +142,7 @@ subroutine output_timing()
  write(stdout,'(a30,6x,f12.2,2x,i8)')  'Electron-nuclei Hamiltonian',timing(timing_hamiltonian_nuc),calls(timing_hamiltonian_nuc)
 
  write(stdout,*)
+ write(stdout,'(a30,6x,f12.2,2x,i8)')  'Grid generation'    ,timing(timing_grid_generation),calls(timing_grid_generation)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'SQRT density matrix' ,timing(timing_sqrt_density_matrix),calls(timing_sqrt_density_matrix)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Hartree'             ,timing(timing_hartree),calls(timing_hartree)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Exchange'            ,timing(timing_exchange),calls(timing_exchange)
