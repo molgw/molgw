@@ -115,7 +115,7 @@ subroutine new_p_matrix(p_matrix_in)
    else
      allocate(alpha_diis(nhist_current))
      call do_pulay_mixing(p_matrix_in,alpha_diis)
-     do while( ANY( ABS(alpha_diis(:)) > 4.0_dp ) .AND. nhist_current>3 )
+     do while( ANY( ABS(alpha_diis(:)) > 4.0_dp ) .AND. nhist_current>2 )
        nhist_current = nhist_current - 1
        deallocate(alpha_diis)
        allocate(alpha_diis(nhist_current))
@@ -151,29 +151,29 @@ subroutine do_pulay_mixing(p_matrix_in,alpha_diis)
  real(dp),intent(out) :: alpha_diis(nhist_current)
 !=====
  integer  :: ihist,jhist
- real(dp) :: amat(nhist_current+1,nhist_current+1)
- real(dp) :: amat_inv(nhist_current+1,nhist_current+1)
+ real(dp) :: a_matrix(nhist_current+1,nhist_current+1)
+ real(dp) :: a_matrix_inv(nhist_current+1,nhist_current+1)
  real(dp) :: residual_pred(m_ham_scf,n_ham_scf,nspin)
 !=====
 
  write(stdout,*) 'A Pulay mixing of the density matrix is used'
 
  !
- ! amat contains the scalar product of residuals
+ ! a_matrix contains the scalar product of residuals
  do jhist=1,nhist_current
    do ihist=1,nhist_current
-     amat(ihist,jhist) = SUM( residual_hist(:,:,:,ihist) * residual_hist(:,:,:,jhist) )
+     a_matrix(ihist,jhist) = SUM( residual_hist(:,:,:,ihist) * residual_hist(:,:,:,jhist) )
    enddo
  enddo
- call xtrans_sum(amat)
+ call xtrans_sum(a_matrix)
 
- amat(1:nhist_current,nhist_current+1) = -1.0_dp
- amat(nhist_current+1,1:nhist_current) = -1.0_dp
- amat(nhist_current+1,nhist_current+1) =  0.0_dp
+ a_matrix(1:nhist_current,nhist_current+1) = -1.0_dp
+ a_matrix(nhist_current+1,1:nhist_current) = -1.0_dp
+ a_matrix(nhist_current+1,nhist_current+1) =  0.0_dp
 
- call invert(nhist_current+1,amat,amat_inv)
+ call invert(nhist_current+1,a_matrix,a_matrix_inv)
 
- alpha_diis(1:nhist_current) = -amat_inv(1:nhist_current,nhist_current+1)
+ alpha_diis(1:nhist_current) = -a_matrix_inv(1:nhist_current,nhist_current+1)
 
 
  write(stdout,'(/,a,30(2x,f12.6))') ' alpha DIIS:',alpha_diis(1:nhist_current)

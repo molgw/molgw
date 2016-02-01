@@ -372,7 +372,7 @@ subroutine setup_exchange_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_o
        if( jlocal /= 0 ) then
          do ilocal=1,m_ham
            iglobal = rowindex_local_to_global('H',ilocal)
-           p_matrix_i(iglobal) = p_matrix_sqrt(ilocal,jlocal,ispin) * SQRT( p_matrix_occ(istate,ispin) )
+           p_matrix_i(iglobal) = p_matrix_sqrt(ilocal,jlocal,ispin) 
          enddo
        endif
      endif

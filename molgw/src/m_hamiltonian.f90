@@ -472,26 +472,13 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
      if( p_matrix_occ(istate,ispin) < completely_empty)  cycle
 
      tmp(:,:) = 0.0_dp
-#if 0
-     do ipair=1,nbf
-       ibf=index_basis(1,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center(:,ipair) * SQRT(p_matrix_occ(istate,ispin))
-     enddo
-     do ipair=nbf+1,npair
-       ibf=index_basis(1,ipair)
-       jbf=index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt(jbf,istate,ispin) * eri_3center(:,ipair) * SQRT(p_matrix_occ(istate,ispin))
-       tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center(:,ipair) * SQRT(p_matrix_occ(istate,ispin))
-     enddo
-#else
      do ipair=1,npair
        ibf=index_basis(1,ipair)
        jbf=index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt(jbf,istate,ispin) * eri_3center(:,ipair) * SQRT(p_matrix_occ(istate,ispin))
+       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt(jbf,istate,ispin) * eri_3center(:,ipair)
        if( ibf /= jbf ) &
-            tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center(:,ipair) * SQRT(p_matrix_occ(istate,ispin))
+            tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center(:,ipair)
      enddo
-#endif
 
      exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
                         - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
@@ -546,9 +533,9 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_s
      do ipair=1,npair
        ibf=index_basis(1,ipair)
        jbf=index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt(jbf,istate,ispin) * eri_3center_lr(:,ipair) * SQRT(p_matrix_occ(istate,ispin))
+       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt(jbf,istate,ispin) * eri_3center_lr(:,ipair)
        if( ibf /= jbf ) &
-            tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center_lr(:,ipair) * SQRT(p_matrix_occ(istate,ispin))
+            tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center_lr(:,ipair)
      enddo
 
      exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
@@ -995,7 +982,7 @@ subroutine setup_sqrt_density_matrix(nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
  real(dp),intent(out) :: p_matrix_sqrt(nbf,nbf,nspin)
  real(dp),intent(out) :: p_matrix_occ(nbf,nspin)
 !=====
- integer              :: ispin
+ integer              :: ispin,istate
 !=====
 
  write(stdout,*) 'Calculate the square root of the density matrix'
@@ -1008,6 +995,9 @@ subroutine setup_sqrt_density_matrix(nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
 #else
    call diagonalize(nbf,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
 #endif
+   do istate=1,nbf
+     p_matrix_sqrt(:,istate,ispin) = p_matrix_sqrt(:,istate,ispin) * SQRT( p_matrix_occ(istate,ispin) )
+   enddo
  enddo
 
  call stop_clock(timing_sqrt_density_matrix)

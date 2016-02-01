@@ -439,7 +439,7 @@ subroutine calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_functi
 !       if( SUM( (basis%bf(ibf)%x0(:) - rr(:))**2 ) > bf_rad2(ibf) ) cycle
        phi_ir = phi_ir + p_matrix_sqrt(ibf,istate,ispin) * basis_function_r(ibf)
      enddo
-     rhor(ispin) = rhor(ispin) + p_matrix_occ(istate,ispin) * phi_ir**2
+     rhor(ispin) = rhor(ispin) + phi_ir**2
    enddo
 
  enddo
@@ -513,7 +513,7 @@ subroutine calc_density_gradr(nspin,nbf,p_matrix_occ,p_matrix_sqrt,basis_functio
        phi_ir         = phi_ir         + p_matrix_sqrt(ibf,istate,ispin) * basis_function_r(ibf)
        grad_phi_ir(:) = grad_phi_ir(:) + p_matrix_sqrt(ibf,istate,ispin) * basis_function_gradr(:,ibf)
      enddo
-     grad_rhor(:,ispin) = grad_rhor(:,ispin) + p_matrix_occ(istate,ispin) * phi_ir * grad_phi_ir(:) * 2.0_dp
+     grad_rhor(:,ispin) = grad_rhor(:,ispin) + phi_ir * grad_phi_ir(:) * 2.0_dp
    enddo
 
  enddo

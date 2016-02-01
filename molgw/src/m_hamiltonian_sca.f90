@@ -314,7 +314,6 @@ subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,hartree_i
      iglobal = rowindex_local_to_global('H',ilocal)
      if( negligible_basispair(iglobal,jglobal) ) cycle
 
-     !FBFBSCA TODO distribute eri_3center
      partial_sum(:) = partial_sum(:) + eri_3center(:,index_pair(iglobal,jglobal)) * SUM( p_matrix(ilocal,jlocal,:) )  
 
    enddo
@@ -399,7 +398,6 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_ma
  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: SCALAPACK'
  call start_clock(timing_exchange)
 
-!FBFBSCA
  nbf_trans = 0
  do ibf=1,nbf
    if( MODULO(ibf-1,nproc_trans) == rank_trans ) then
@@ -427,7 +425,7 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_ma
        if( jlocal /= 0 ) then
          do ilocal=1,m_ham
            iglobal = rowindex_local_to_global('H',ilocal)
-           p_matrix_i(iglobal) = p_matrix_sqrt(ilocal,jlocal,ispin) * SQRT( p_matrix_occ(istate,ispin) )
+           p_matrix_i(iglobal) = p_matrix_sqrt(ilocal,jlocal,ispin)
          enddo
        endif
      endif
@@ -814,7 +812,7 @@ subroutine setup_sqrt_density_matrix_sca(nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,
  real(dp),intent(out) :: p_matrix_sqrt(m_ham,n_ham,nspin)
  real(dp),intent(out) :: p_matrix_occ(nbf,nspin)
 !=====
- integer              :: ispin
+ integer              :: ispin,jlocal,jglobal
 !=====
 
 #ifdef HAVE_SCALAPACK
@@ -826,6 +824,10 @@ subroutine setup_sqrt_density_matrix_sca(nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,
    do ispin=1,nspin
      p_matrix_sqrt(:,:,ispin) = p_matrix(:,:,ispin)
      call diagonalize_sca(desc_ham,nbf,m_ham,n_ham,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
+   enddo
+   do jlocal=1,n_ham
+     jglobal = colindex_local_to_global('H',jlocal)
+     p_matrix_sqrt(:,jlocal,ispin) = p_matrix_sqrt(:,jlocal,ispin) * SQRT( p_matrix_occ(jglobal,ispin) )
    enddo
  else
    p_matrix_sqrt(:,:,:) = 0.0_dp

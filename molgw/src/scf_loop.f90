@@ -369,6 +369,7 @@ subroutine scf_loop(basis,auxil_basis,&
 
    !
    ! Produce the next density matrix
+!   call new_p_matrix(p_matrix,s_matrix_sqrt)
    call new_p_matrix(p_matrix)
 
    is_converged = check_converged()
