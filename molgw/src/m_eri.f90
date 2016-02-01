@@ -403,10 +403,24 @@ subroutine setup_negligible_basispair()
  enddo
  allocate(index_basis(2,npair))
 
+ !
+ ! Specific ordering where the first nbf pairs contain the diagonal terms ibf=jbf
+ !
  npair = 0
  index_pair(:,:) = 0
  do jbf=1,nbf_eri
-   do ibf=1,jbf
+   if( negligible_basispair(jbf,jbf) ) then
+     call die('setup_negligible_basispair: this should not happen')
+   endif
+   npair = npair + 1
+   index_pair(jbf,jbf) = npair
+   index_pair(jbf,jbf) = npair
+   index_basis(1,npair) = jbf
+   index_basis(2,npair) = jbf
+ enddo
+
+ do jbf=1,nbf_eri
+   do ibf=1,jbf-1   ! Skip the diagonal terms since it is already included 
      if( .NOT. negligible_basispair(ibf,jbf) ) then
        npair = npair + 1
        index_pair(ibf,jbf) = npair

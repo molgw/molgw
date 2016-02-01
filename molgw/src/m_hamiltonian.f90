@@ -462,7 +462,6 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
  call start_clock(timing_exchange)
 
-
  exchange_ij(:,:,:)=0.0_dp
 
  allocate(tmp(nauxil_3center,nbf))
@@ -473,6 +472,18 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
      if( p_matrix_occ(istate,ispin) < completely_empty)  cycle
 
      tmp(:,:) = 0.0_dp
+#if 0
+     do ipair=1,nbf
+       ibf=index_basis(1,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center(:,ipair) * SQRT(p_matrix_occ(istate,ispin))
+     enddo
+     do ipair=nbf+1,npair
+       ibf=index_basis(1,ipair)
+       jbf=index_basis(2,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt(jbf,istate,ispin) * eri_3center(:,ipair) * SQRT(p_matrix_occ(istate,ispin))
+       tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center(:,ipair) * SQRT(p_matrix_occ(istate,ispin))
+     enddo
+#else
      do ipair=1,npair
        ibf=index_basis(1,ipair)
        jbf=index_basis(2,ipair)
@@ -480,6 +491,7 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
        if( ibf /= jbf ) &
             tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center(:,ipair) * SQRT(p_matrix_occ(istate,ispin))
      enddo
+#endif
 
      exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
                         - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
