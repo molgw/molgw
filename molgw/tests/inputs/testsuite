@@ -204,7 +204,7 @@ GW LUMO                   ,      0.964805       , 0 , 1.0e-4
 GW LUMO                   ,      1.007568       , 1 , 1.0e-4
 
 benzene_filtered.in       , HF benzene with RI having a filtered 2-center ERI
-Hartree Energy            ,    312.6276753074   , 0 , 1.0e-7
-SCF Total Energy          ,   -230.6242095323   , 0 , 1.0e-7
+Hartree Energy            ,    312.6277067326   , 0 , 1.0e-7
+SCF Total Energy          ,   -230.6242081120   , 0 , 1.0e-7
 
 

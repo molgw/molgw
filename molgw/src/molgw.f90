@@ -62,7 +62,6 @@ program molgw
  real(dp),allocatable    :: s_matrix(:,:)
  real(dp),allocatable    :: s_matrix_sqrt_inv(:,:)
  real(dp),allocatable    :: c_matrix(:,:,:)
- real(dp),allocatable    :: p_matrix(:,:,:)
  real(dp),allocatable    :: energy(:,:)
  real(dp),allocatable    :: s_eigval(:)
  real(dp),allocatable    :: occupation(:,:)
@@ -116,7 +115,6 @@ program molgw
  allocate(s_matrix           (m_ham,n_ham))
  allocate(hamiltonian_kinetic(m_ham,n_ham))
  allocate(hamiltonian_nucleus(m_ham,n_ham))
- allocate(p_matrix           (m_ham,n_ham,nspin))
  allocate(hamiltonian_hartree(m_ham,n_ham))
  allocate(hamiltonian_exx    (m_ham,n_ham,nspin))
  allocate(hamiltonian_xc     (m_ham,n_ham,nspin))
@@ -282,20 +280,6 @@ program molgw
  endif
 
  !
- ! Setup the density matrix: p_matrix
- if( parallel_ham ) then
-   call setup_density_matrix_sca(basis%nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham,n_ham,p_matrix)
- else
-   call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
- endif
-!!
-!! Test PSP = P
-! call test_density_matrix(basis%nbf,nspin,p_matrix,s_matrix)
-
- title='=== 1st density matrix P ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,p_matrix)
-
- !
  ! If an auxiliary basis is given,
  ! then set it up now and calculate the required ERI: 2- and 3-center integrals
  !
@@ -333,7 +317,7 @@ program molgw
    call scf_loop(basis,auxil_basis,                                             &
                  nstate,m_ham,n_ham,m_c,n_c,                                    &
                  s_matrix_sqrt_inv,                                             &
-                 s_matrix,c_matrix,p_matrix,                                    &
+                 s_matrix,c_matrix,                                             &
                  hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_hartree,   & 
                  hamiltonian_exx,hamiltonian_xc,                                &
                  occupation,energy)
@@ -464,7 +448,7 @@ program molgw
  !
  ! Cleanly exiting the code
  !
- deallocate(s_matrix,c_matrix,p_matrix)
+ deallocate(s_matrix,c_matrix)
  deallocate(s_matrix_sqrt_inv)
  deallocate(hamiltonian_kinetic,hamiltonian_nucleus)
  deallocate(hamiltonian_hartree)

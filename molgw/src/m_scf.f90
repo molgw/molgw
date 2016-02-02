@@ -9,9 +9,13 @@ module m_scf
  integer,private              :: nhistmax
  integer,private              :: nhist_current
  integer,private              :: m_ham_scf,n_ham_scf
+ integer,private              :: m_c_scf,n_c_scf
 
  real(dp),allocatable,private :: p_matrix_in_hist(:,:,:,:)
  real(dp),allocatable,private :: residual_hist(:,:,:,:)
+
+ real(dp),allocatable,private :: ham_hist(:,:,:,:)
+ real(dp),allocatable,private :: res_hist(:,:,:,:)
 
  integer,private              :: iscf
 
@@ -36,13 +40,15 @@ contains
 
 
 !=========================================================================
-subroutine init_scf(m_ham,n_ham)
+subroutine init_scf(m_ham,n_ham,m_c,n_c)
  implicit none
- integer,intent(in)  :: m_ham,n_ham
+ integer,intent(in)  :: m_ham,n_ham,m_c,n_c
 !=====
 
  m_ham_scf     = m_ham
  n_ham_scf     = n_ham
+ m_c_scf       = m_c
+ n_c_scf       = n_c
  iscf          = 1                 ! initialize with 1, since the new_p_matrix is not called for the first scf cycle
  nhist_current = 0
 
@@ -51,12 +57,16 @@ subroutine init_scf(m_ham,n_ham)
    nhistmax = 1
  case('PULAY')
    nhistmax = npulay_hist
+ case('DIIS')
+   nhistmax = npulay_hist
  case default
    call die('mixing scheme not implemented')
  end select
 
  call clean_allocate('P matrix history',p_matrix_in_hist,m_ham,n_ham,nspin,nhistmax)
  call clean_allocate('Residual history',residual_hist,m_ham,n_ham,nspin,nhistmax)
+ call clean_allocate('Hamiltonian history',ham_hist,m_ham,n_ham,nspin,nhistmax)
+ call clean_allocate('Residual history',res_hist,m_c,n_c,nspin,nhistmax)
  
 end subroutine init_scf
 
@@ -68,8 +78,137 @@ subroutine destroy_scf()
 
  if(ALLOCATED(p_matrix_in_hist)) call clean_deallocate('P matrix history',p_matrix_in_hist)
  if(ALLOCATED(residual_hist))    call clean_deallocate('Residual history',residual_hist)
+ if(ALLOCATED(ham_hist))         call clean_deallocate('Hamiltonian history',ham_hist)
 
 end subroutine destroy_scf
+
+
+!=========================================================================
+subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
+ implicit none
+ real(dp),intent(in)    :: s_matrix(m_ham_scf,n_ham_scf)
+ real(dp),intent(in)    :: s_matrix_sqrt_inv(m_c_scf,n_c_scf)
+ real(dp),intent(in)    :: p_matrix(m_ham_scf,n_ham_scf,nspin)
+ real(dp),intent(inout) :: ham(m_ham_scf,n_ham_scf,nspin)
+!=====
+ integer                :: ihist
+!=====
+
+ iscf = iscf + 1
+ nhist_current  = MIN(nhist_current+1,nhistmax) 
+
+ !
+ ! Shift the old matrices and then store the new ones
+ ! the newest is 1
+ ! the oldest is nhistmax
+ do ihist=nhistmax-1,1,-1
+   res_hist(:,:,:,ihist+1) = res_hist(:,:,:,ihist)
+   ham_hist(:,:,:,ihist+1) = ham_hist(:,:,:,ihist)
+ enddo
+ ham_hist(:,:,:,1) = ham(:,:,:)
+
+
+ select case(mixing_scheme)
+ case('SIMPLE')
+   ! New simple mixing prediction here !
+   call simple_mixing_prediction(ham)
+ case('PULAY')
+   ! New DIIS prediction here !
+   call diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
+ end select
+
+end subroutine hamiltonian_prediction
+
+
+!=========================================================================
+subroutine simple_mixing_prediction(ham)
+ implicit none
+ real(dp),intent(out) :: ham(m_ham_scf,n_ham_scf,nspin)
+!=====
+
+ write(stdout,*) 'A simple mixing of the Hamiltonian is used'
+
+ ham(:,:,:) = alpha_mixing * ham_hist(:,:,:,1) + (1.0_dp - alpha_mixing) * ham_hist(:,:,:,MIN(2,nhist_current))
+
+end subroutine simple_mixing_prediction
+
+
+!=========================================================================
+subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
+ implicit none
+ real(dp),intent(in)    :: s_matrix(m_ham_scf,n_ham_scf)
+ real(dp),intent(in)    :: s_matrix_sqrt_inv(m_c_scf,n_c_scf)
+ real(dp),intent(in)    :: p_matrix(m_ham_scf,n_ham_scf,nspin)
+ real(dp),intent(inout) :: ham(m_ham_scf,n_ham_scf,nspin)
+!=====
+ integer                :: ispin
+ integer                :: ihist,jhist
+ real(dp)               :: matrix_tmp(m_ham_scf,n_ham_scf)
+ real(dp),allocatable   :: a_matrix(:,:)
+ real(dp),allocatable   :: a_matrix_inv(:,:)
+ real(dp),allocatable   :: alpha_diis(:)
+ real(dp)               :: residual_pred(m_ham_scf,n_ham_scf,nspin)
+!=====
+
+
+ allocate(a_matrix(nhist_current+1,nhist_current+1))
+ allocate(a_matrix_inv(nhist_current+1,nhist_current+1))
+ allocate(alpha_diis(nhist_current))
+
+ !
+ ! Calcualte the residuals as proposed in
+ ! P. Pulay, J. Comput. Chem. 3, 554 (1982).
+ do ispin=1,nspin
+
+   matrix_tmp(:,:) = MATMUL( MATMUL( ham(:,:,ispin) , p_matrix(:,:,ispin) ) , s_matrix )  &
+                      - MATMUL( s_matrix , MATMUL( p_matrix(:,:,ispin) , ham(:,:,ispin) ) )
+
+   res_hist(:,:,ispin,1) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv) , MATMUL( matrix_tmp , s_matrix_sqrt_inv ) )
+
+ enddo
+
+
+ !
+ ! a_matrix contains the scalar product of residuals
+ do jhist=1,nhist_current
+   do ihist=1,nhist_current
+     a_matrix(ihist,jhist) = SUM( res_hist(:,:,:,ihist) * res_hist(:,:,:,jhist) )
+   enddo
+ enddo
+
+ write(stdout,'(/,a,30(2x,e12.6))') '  Residuals:',( SQRT(a_matrix(ihist,ihist)) , ihist=1,nhist_current )
+
+ a_matrix(1:nhist_current,nhist_current+1) = -1.0_dp
+ a_matrix(nhist_current+1,1:nhist_current) = -1.0_dp
+ a_matrix(nhist_current+1,nhist_current+1) =  0.0_dp
+
+ call invert(nhist_current+1,a_matrix,a_matrix_inv)
+
+ alpha_diis(1:nhist_current) = -a_matrix_inv(1:nhist_current,nhist_current+1)
+
+ write(stdout,'(/,a,30(2x,f12.6))') ' Alpha DIIS:',alpha_diis(1:nhist_current)
+
+ residual_pred(:,:,:) = 0.0_dp
+ do ihist=1,nhist_current
+   residual_pred(:,:,:) = residual_pred(:,:,:) + alpha_diis(ihist) * res_hist(:,:,:,ihist)
+ enddo
+ write(stdout,*) 'DIIS predicted residual',SQRT( SUM( residual_pred(:,:,:)**2 ))
+ write(stdout,*)
+
+
+ ham(:,:,:) = 0.0_dp
+ do ihist=1,nhist_current
+   ham(:,:,:) = ham(:,:,:) + alpha_diis(ihist) * ham_hist(:,:,:,ihist) 
+ enddo
+
+
+ deallocate(a_matrix)
+ deallocate(a_matrix_inv)
+ deallocate(alpha_diis)
+
+
+
+end subroutine diis_prediction
 
 
 !=========================================================================
@@ -115,7 +254,7 @@ subroutine new_p_matrix(p_matrix_in)
    else
      allocate(alpha_diis(nhist_current))
      call do_pulay_mixing(p_matrix_in,alpha_diis)
-     do while( ANY( ABS(alpha_diis(:)) > 4.0_dp ) .AND. nhist_current>2 )
+     do while( ANY( ABS(alpha_diis(:)) > 4.0_dp ) .AND. nhist_current > 3 )
        nhist_current = nhist_current - 1
        deallocate(alpha_diis)
        allocate(alpha_diis(nhist_current))
@@ -165,7 +304,7 @@ subroutine do_pulay_mixing(p_matrix_in,alpha_diis)
      a_matrix(ihist,jhist) = SUM( residual_hist(:,:,:,ihist) * residual_hist(:,:,:,jhist) )
    enddo
  enddo
- call xtrans_sum(a_matrix)
+! call xtrans_sum(a_matrix)
 
  a_matrix(1:nhist_current,nhist_current+1) = -1.0_dp
  a_matrix(nhist_current+1,1:nhist_current) = -1.0_dp
@@ -196,16 +335,19 @@ end subroutine do_pulay_mixing
 
 
 !=========================================================================
-function check_converged()
+function check_converged(p_matrix_old,p_matrix_new)
  implicit none
+
  logical               :: check_converged
+ real(dp),intent(in)   :: p_matrix_old(m_ham_scf,n_ham_scf,nspin)
+ real(dp),intent(in)   :: p_matrix_new(m_ham_scf,n_ham_scf,nspin)
 !=====
  real(dp)              :: rms
 !=====
 
- rms = SUM( residual_hist(:,:,:,1)**2 )
+ rms = SQRT( SUM( ( p_matrix_new(:,:,:) - p_matrix_old(:,:,:) )**2 ) )
+
  call xtrans_sum(rms)
- rms = SQRT( rms )
 
  write(stdout,*) 'convergence criterium on the density matrix',rms
  if( rms < tolscf ) then 

@@ -1,6 +1,6 @@
 &molgw
  scf='hf'
- tolscf=1.0e-4
+ tolscf=1.0e-6
  nscf=16
  print_restart='no'
  print_bigrestart='no'

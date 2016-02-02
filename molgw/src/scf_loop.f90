@@ -5,7 +5,7 @@
 subroutine scf_loop(basis,auxil_basis,&
                     nstate,m_ham,n_ham,m_c,n_c,&
                     s_matrix_sqrt_inv,&
-                    s_matrix,c_matrix,p_matrix,&
+                    s_matrix,c_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
                     hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc,&
                     occupation,energy)
@@ -36,7 +36,6 @@ subroutine scf_loop(basis,auxil_basis,&
  real(dp),intent(in)                :: s_matrix_sqrt_inv(m_c,n_c)
  real(dp),intent(in)                :: s_matrix(m_ham,n_ham)
  real(dp),intent(inout)             :: c_matrix(m_c,n_c,nspin)
- real(dp),intent(inout)             :: p_matrix(m_ham,n_ham,nspin)
  real(dp),intent(in)                :: hamiltonian_kinetic(m_ham,n_ham)
  real(dp),intent(in)                :: hamiltonian_nucleus(m_ham,n_ham)
  real(dp),intent(inout)             :: hamiltonian_hartree(m_ham,n_ham)
@@ -52,6 +51,7 @@ subroutine scf_loop(basis,auxil_basis,&
  character(len=100)      :: title
  real(dp)                :: energy_tmp
  real(dp)                :: ehomo(nspin),elumo(nspin)
+ real(dp),allocatable    :: p_matrix(:,:,:)
  real(dp),allocatable    :: p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
  real(dp),allocatable    :: hamiltonian(:,:,:)
  real(dp),allocatable    :: hamiltonian_vxc(:,:,:)
@@ -70,12 +70,13 @@ subroutine scf_loop(basis,auxil_basis,&
 
  !
  ! Initialize the SCF mixing procedure
- call init_scf(m_ham,n_ham)
+ call init_scf(m_ham,n_ham,m_c,n_c)
 
  !
  ! Allocate the main arrays
  allocate(hamiltonian (m_ham,n_ham,nspin))
  allocate(matrix_tmp  (m_ham,n_ham,nspin))
+ allocate(p_matrix    (m_ham,n_ham,nspin))
  allocate(p_matrix_old(m_ham,n_ham,nspin))
  allocate(p_matrix_sqrt(m_ham,n_ham,nspin))
  allocate(p_matrix_occ(basis%nbf,nspin))
@@ -96,6 +97,15 @@ subroutine scf_loop(basis,auxil_basis,&
  do iscf=1,nscf
    write(stdout,'(/,a)') '-------------------------------------------'
    write(stdout,'(a,x,i4,/)') ' *** SCF cycle No:',iscf
+
+
+   !
+   ! Setup the density matrix: p_matrix
+   if( parallel_ham ) then
+     call setup_density_matrix_sca(basis%nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham,n_ham,p_matrix)
+   else
+     call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
+   endif
   
    !
    ! Calculate the matrix square-root of the density matrix P
@@ -281,12 +291,17 @@ subroutine scf_loop(basis,auxil_basis,&
    if( level_shifting_energy > 1.0e-6_dp ) then
      call level_shifting(basis%nbf,nstate,s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
    endif
+
+
+   ! DIIS or simple mixing on the hamiltonian
+   call hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,hamiltonian)
+
   
   
    !
    ! Diagonalize the Hamiltonian H
    ! Generalized eigenvalue problem with overlap matrix S
-   ! H \phi = E S \phi
+   ! H \varphi = E S \varphi
    ! save the old eigenvalues
    if( parallel_ham ) then
      call diagonalize_hamiltonian_sca(nspin,basis%nbf,nstate,m_ham,n_ham,hamiltonian,s_matrix_sqrt_inv, &
@@ -318,7 +333,7 @@ subroutine scf_loop(basis,auxil_basis,&
    if(print_matrix_) then
      !
      ! REMEMBER:
-     ! \phi_i = \sum_alpha C_{alpha i} \varphi_alpha 
+     ! \varphi_i = \sum_alpha C_{alpha i} \phi_alpha 
      ! 
      ! hence transpose the c_matrix for a correct output by dump_out_matrix
      do ispin=1,nspin
@@ -334,19 +349,6 @@ subroutine scf_loop(basis,auxil_basis,&
      call dump_out_matrix(print_matrix_,title,basis%nbf,1,matrix_tmp)
    endif
 
-  
-   !
-   ! Setup the new density matrix: p_matrix
-   ! Save the old one for the convergence criterium
-   p_matrix_old(:,:,:) = p_matrix(:,:,:)
-   if( parallel_ham ) then
-     call setup_density_matrix_sca(basis%nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham,n_ham,p_matrix)
-   else
-     call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
-   endif
-   title='=== density matrix P ==='
-   call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,p_matrix)
-  
    !
    ! Output the total energy and its components
    write(stdout,*)
@@ -363,16 +365,27 @@ subroutine scf_loop(basis,auxil_basis,&
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx_hyb + en%xc
    write(stdout,'(/,a25,x,f19.10,/)') 'Total Energy    (Ha):',en%tot
 
-   !
-   ! Store the history of residuals
-   call store_residual(p_matrix_old,p_matrix)
+!TODO FBFB remove
+!   !
+!   ! Store the history of residuals
+!   call store_residual(p_matrix_old,p_matrix)
+!
+!   !
+!   ! Produce the next density matrix
+!   call new_p_matrix(p_matrix)
+
 
    !
-   ! Produce the next density matrix
-!   call new_p_matrix(p_matrix,s_matrix_sqrt)
-   call new_p_matrix(p_matrix)
+   ! Setup the new density matrix: p_matrix
+   ! Save the old one for the convergence criterium
+   p_matrix_old(:,:,:) = p_matrix(:,:,:)
+   if( parallel_ham ) then
+     call setup_density_matrix_sca(basis%nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham,n_ham,p_matrix)
+   else
+     call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
+   endif
 
-   is_converged = check_converged()
+   is_converged = check_converged(p_matrix_old,p_matrix)
    inquire(file='STOP',exist=stopfile_found)
 
    if( is_converged .OR. stopfile_found ) exit
@@ -532,6 +545,7 @@ subroutine scf_loop(basis,auxil_basis,&
  deallocate(matrix_tmp,p_matrix_old)
  if( ALLOCATED(self_energy_old) ) deallocate(self_energy_old)
  if( ALLOCATED(hamiltonian_vxc) ) deallocate(hamiltonian_vxc)
+ if( ALLOCATED(p_matrix) )        deallocate(p_matrix)
  if( ALLOCATED(p_matrix_sqrt) )   deallocate(p_matrix_sqrt)
  if( ALLOCATED(p_matrix_occ) )    deallocate(p_matrix_occ)
 #ifdef TODAY
