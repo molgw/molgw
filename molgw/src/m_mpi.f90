@@ -191,10 +191,10 @@ subroutine init_mpi()
 #ifdef HAVE_MPI
  call MPI_INIT(ier)
  comm_world = MPI_COMM_WORLD
-#endif
 
- call get_size()
- call get_rank()
+ call MPI_COMM_SIZE(comm_world,nproc,ier)
+ call MPI_COMM_RANK(comm_world,rank,ier)
+#endif
 
  if( rank /= iomaster ) then
    is_iomaster = .FALSE.
@@ -247,38 +247,6 @@ subroutine barrier()
 #endif
 
 end subroutine barrier
-
-
-!=========================================================================
-subroutine get_size()
- implicit none
- integer :: ier=0
-!=====
-
-#ifdef HAVE_MPI
- call MPI_COMM_SIZE(comm_world,nproc,ier)
-#endif
- if(ier/=0) then
-   write(stdout,*) 'error in get_size'
- endif
-
-end subroutine get_size
-
-
-!=========================================================================
-subroutine get_rank()
- implicit none
- integer :: ier=0
-!=====
-
-#ifdef HAVE_MPI
- call MPI_COMM_RANK(comm_world,rank,ier)
-#endif
- if(ier/=0) then
-   write(stdout,*) 'error in get_rank'
- endif
-
-end subroutine get_rank
 
 
 !=========================================================================
