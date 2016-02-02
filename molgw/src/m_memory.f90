@@ -73,13 +73,7 @@ subroutine clean_allocate_1d(array_name,array,n1)
  real(dp)            :: mem_mb
 !=====
 
- write(stdout,'(a,x,a)') ' Allocate',TRIM(array_name)
  mem_mb = REAL(dp,dp) * REAL(n1,dp) / 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Memory (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Memory (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  allocate(array(n1),stat=info)
@@ -92,13 +86,8 @@ subroutine clean_allocate_1d(array_name,array,n1)
 
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_allocate(array_name,mem_mb) 
 
 end subroutine clean_allocate_1d
 
@@ -115,13 +104,7 @@ subroutine clean_allocate_2d(array_name,array,n1,n2)
  real(dp)            :: mem_mb
 !=====
 
- write(stdout,'(a,x,a)') ' Allocate',TRIM(array_name)
  mem_mb = REAL(dp,dp) * REAL(n1,dp) * REAL(n2,dp) / 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Memory (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Memory (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  allocate(array(n1,n2),stat=info)
@@ -134,13 +117,8 @@ subroutine clean_allocate_2d(array_name,array,n1,n2)
 
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_allocate(array_name,mem_mb) 
 
 end subroutine clean_allocate_2d
 
@@ -157,13 +135,7 @@ subroutine clean_allocate_2d_range(array_name,array,n1s,n1f,n2s,n2f)
  real(dp)            :: mem_mb
 !=====
 
- write(stdout,'(a,x,a)') ' Allocate',TRIM(array_name)
  mem_mb = REAL(dp,dp) * REAL(n1f-n1s+1,dp) * REAL(n2f-n2s+1,dp) / 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Memory (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Memory (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  allocate(array(n1s:n1f,n2s:n2f),stat=info)
@@ -176,13 +148,8 @@ subroutine clean_allocate_2d_range(array_name,array,n1s,n1f,n2s,n2f)
 
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_allocate(array_name,mem_mb) 
 
 end subroutine clean_allocate_2d_range
 
@@ -199,13 +166,7 @@ subroutine clean_allocate_3d(array_name,array,n1,n2,n3)
  real(dp)            :: mem_mb
 !=====
 
- write(stdout,'(a,x,a)') ' Allocate',TRIM(array_name)
  mem_mb = REAL(dp,dp) * REAL(n1,dp) * REAL(n2,dp) * REAL(n3,dp) / 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Memory (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Memory (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  allocate(array(n1,n2,n3),stat=info)
@@ -218,13 +179,8 @@ subroutine clean_allocate_3d(array_name,array,n1,n2,n3)
 
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_allocate(array_name,mem_mb) 
 
 end subroutine clean_allocate_3d
 
@@ -241,13 +197,7 @@ subroutine clean_allocate_3d_range(array_name,array,n1s,n1f,n2s,n2f,n3s,n3f)
  real(dp)            :: mem_mb
 !=====
 
- write(stdout,'(a,x,a)') ' Allocate',TRIM(array_name)
  mem_mb = REAL(dp,dp) * REAL(n1f-n1s+1,dp) * REAL(n2f-n2s+1,dp) * REAL(n3f-n3s+1,dp) / 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Memory (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Memory (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  allocate(array(n1s:n1f,n2s:n2f,n3s:n3f),stat=info)
@@ -260,13 +210,8 @@ subroutine clean_allocate_3d_range(array_name,array,n1s,n1f,n2s,n2f,n3s,n3f)
 
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_allocate(array_name,mem_mb) 
 
 end subroutine clean_allocate_3d_range
 
@@ -283,13 +228,7 @@ subroutine clean_allocate_4d(array_name,array,n1,n2,n3,n4)
  real(dp)            :: mem_mb
 !=====
 
- write(stdout,'(a,x,a)') ' Allocate',TRIM(array_name)
  mem_mb = REAL(dp,dp) * REAL(n1,dp) * REAL(n2,dp) * REAL(n3,dp) * REAL(n4,dp) / 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Memory (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Memory (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  allocate(array(n1,n2,n3,n4),stat=info)
@@ -302,13 +241,8 @@ subroutine clean_allocate_4d(array_name,array,n1,n2,n3,n4)
 
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_allocate(array_name,mem_mb) 
 
 end subroutine clean_allocate_4d
 
@@ -325,13 +259,7 @@ subroutine clean_allocate_4d_range(array_name,array,n1s,n1f,n2s,n2f,n3s,n3f,n4s,
  real(dp)            :: mem_mb
 !=====
 
- write(stdout,'(a,x,a)') ' Allocate',TRIM(array_name)
  mem_mb = REAL(dp,dp) * REAL(n1f-n1s+1,dp) * REAL(n2f-n2s+1,dp) * REAL(n3f-n3s+1,dp) * REAL(n4f-n4s+1,dp) / 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Memory (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Memory (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  allocate(array(n1s:n1f,n2s:n2f,n3s:n3f,n4s:n4f),stat=info)
@@ -344,13 +272,8 @@ subroutine clean_allocate_4d_range(array_name,array,n1s,n1f,n2s,n2f,n3s,n3f,n4s,
 
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_allocate(array_name,mem_mb) 
 
 end subroutine clean_allocate_4d_range
 
@@ -371,25 +294,14 @@ subroutine clean_deallocate_1d(array_name,array)
 
  n1 = SIZE(array(:))
 
- write(stdout,'(a,x,a)') ' Deallocate',TRIM(array_name)
  mem_mb = REAL(dp,dp) * REAL(n1,dp) / 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Free (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Free (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  deallocate(array)
 
  total_memory = total_memory - mem_mb
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_deallocate(array_name,mem_mb) 
 
 end subroutine clean_deallocate_1d
 
@@ -411,25 +323,14 @@ subroutine clean_deallocate_2d(array_name,array)
  n1 = SIZE(array(:,:),DIM=1)
  n2 = SIZE(array(:,:),DIM=2)
 
- write(stdout,'(a,x,a)') ' Deallocate',TRIM(array_name)
  mem_mb = REAL(dp,dp) * REAL(n1,dp) * REAL(n2,dp) / 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Free (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Free (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  deallocate(array)
 
  total_memory = total_memory - mem_mb
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_deallocate(array_name,mem_mb) 
 
 end subroutine clean_deallocate_2d
 
@@ -452,25 +353,14 @@ subroutine clean_deallocate_3d(array_name,array)
  n2 = SIZE(array(:,:,:),DIM=2)
  n3 = SIZE(array(:,:,:),DIM=3)
 
- write(stdout,'(a,x,a)') ' Deallocate',TRIM(array_name)
  mem_mb = REAL(dp,dp) * REAL(n1,dp) *REAL(n2,dp) * REAL(n3,dp) / 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Free (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Free (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  deallocate(array)
 
  total_memory = total_memory - mem_mb
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_deallocate(array_name,mem_mb) 
 
 end subroutine clean_deallocate_3d
 
@@ -494,25 +384,14 @@ subroutine clean_deallocate_4d(array_name,array)
  n3 = SIZE(array(:,:,:,:),DIM=3)
  n4 = SIZE(array(:,:,:,:),DIM=4)
 
- write(stdout,'(a,x,a)') ' Deallocate',TRIM(array_name)
  mem_mb = REAL(dp,dp) * REAL(n1,dp) *REAL(n2,dp) * REAL(n3,dp) * REAL(n4,dp)/ 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Free (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Free (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  deallocate(array)
 
  total_memory = total_memory - mem_mb
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_deallocate(array_name,mem_mb) 
 
 end subroutine clean_deallocate_4d
 
@@ -529,13 +408,7 @@ subroutine clean_allocate_s1d(array_name,array,n1)
  real(dp)            :: mem_mb
 !=====
 
- write(stdout,'(a,x,a)') ' Allocate',TRIM(array_name)
  mem_mb = REAL(sp,dp) * REAL(n1,dp) / 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Memory (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Memory (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  allocate(array(n1),stat=info)
@@ -548,13 +421,8 @@ subroutine clean_allocate_s1d(array_name,array,n1)
 
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_allocate(array_name,mem_mb) 
 
 end subroutine clean_allocate_s1d
 
@@ -571,13 +439,7 @@ subroutine clean_allocate_s2d(array_name,array,n1,n2)
  real(dp)            :: mem_mb
 !=====
 
- write(stdout,'(a,x,a)') ' Allocate',TRIM(array_name)
  mem_mb = REAL(sp,dp) * REAL(n1,dp) * REAL(n2,dp) / 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Memory (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Memory (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  allocate(array(n1,n2),stat=info)
@@ -590,13 +452,8 @@ subroutine clean_allocate_s2d(array_name,array,n1,n2)
 
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_allocate(array_name,mem_mb) 
 
 end subroutine clean_allocate_s2d
 
@@ -613,13 +470,7 @@ subroutine clean_allocate_s3d(array_name,array,n1,n2,n3)
  real(dp)            :: mem_mb
 !=====
 
- write(stdout,'(a,x,a)') ' Allocate',TRIM(array_name)
  mem_mb = REAL(sp,dp) * REAL(n1,dp) * REAL(n2,dp) * REAL(n3,dp) / 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Memory (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Memory (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  allocate(array(n1,n2,n3),stat=info)
@@ -632,13 +483,8 @@ subroutine clean_allocate_s3d(array_name,array,n1,n2,n3)
 
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_allocate(array_name,mem_mb) 
 
 end subroutine clean_allocate_s3d
 
@@ -655,13 +501,7 @@ subroutine clean_allocate_s4d(array_name,array,n1,n2,n3,n4)
  real(dp)            :: mem_mb
 !=====
 
- write(stdout,'(a,x,a)') ' Allocate',TRIM(array_name)
  mem_mb = REAL(sp,dp) * REAL(n1,dp) * REAL(n2,dp) * REAL(n3,dp) * REAL(n4,dp) / 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Memory (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Memory (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  allocate(array(n1,n2,n3,n4),stat=info)
@@ -674,13 +514,8 @@ subroutine clean_allocate_s4d(array_name,array,n1,n2,n3,n4)
 
  total_memory = total_memory + mem_mb
  peak_memory = MAX(peak_memory,total_memory)
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_allocate(array_name,mem_mb) 
 
 end subroutine clean_allocate_s4d
 
@@ -701,25 +536,14 @@ subroutine clean_deallocate_s1d(array_name,array)
 
  n1 = SIZE(array(:))
 
- write(stdout,'(a,x,a)') ' Deallocate',TRIM(array_name)
  mem_mb = REAL(sp,dp) * REAL(n1,dp) / 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Free (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Free (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  deallocate(array)
 
  total_memory = total_memory - mem_mb
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_deallocate(array_name,mem_mb) 
 
 end subroutine clean_deallocate_s1d
 
@@ -741,25 +565,14 @@ subroutine clean_deallocate_s2d(array_name,array)
  n1 = SIZE(array(:,:),DIM=1)
  n2 = SIZE(array(:,:),DIM=2)
 
- write(stdout,'(a,x,a)') ' Deallocate',TRIM(array_name)
  mem_mb = REAL(sp,dp) * REAL(n1,dp) * REAL(n2,dp) / 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Free (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Free (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  deallocate(array)
 
  total_memory = total_memory - mem_mb
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_deallocate(array_name,mem_mb) 
 
 end subroutine clean_deallocate_s2d
 
@@ -782,25 +595,14 @@ subroutine clean_deallocate_s3d(array_name,array)
  n2 = SIZE(array(:,:,:),DIM=2)
  n3 = SIZE(array(:,:,:),DIM=3)
 
- write(stdout,'(a,x,a)') ' Deallocate',TRIM(array_name)
  mem_mb = REAL(sp,dp) * REAL(n1,dp) *REAL(n2,dp) * REAL(n3,dp) / 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Free (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Free (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  deallocate(array)
 
  total_memory = total_memory - mem_mb
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_deallocate(array_name,mem_mb) 
 
 end subroutine clean_deallocate_s3d
 
@@ -824,27 +626,72 @@ subroutine clean_deallocate_s4d(array_name,array)
  n3 = SIZE(array(:,:,:,:),DIM=3)
  n4 = SIZE(array(:,:,:,:),DIM=4)
 
- write(stdout,'(a,x,a)') ' Deallocate',TRIM(array_name)
  mem_mb = REAL(sp,dp) * REAL(n1,dp) *REAL(n2,dp) * REAL(n3,dp) * REAL(n4,dp)/ 1024._dp**2
- if( mem_mb < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Free (Mb): ',mem_mb
- else
-   write(stdout,'(a30,f9.3)') ' Free (Gb): ',mem_mb / 1024._dp
- endif
 
  ! The allocation itself
  deallocate(array)
 
  total_memory = total_memory - mem_mb
- if( total_memory < 500._dp ) then
-   write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
- else
-   write(stdout,'(a30,f9.3)') ' Total memory (Gb): ',total_memory / 1024._dp
- endif
 
- write(stdout,*)
+ call write_memory_deallocate(array_name,mem_mb) 
 
 end subroutine clean_deallocate_s4d
+
+
+!=========================================================================
+subroutine write_memory_allocate(array_name,mem_mb)
+ implicit none
+!=====
+ character(len=*),intent(in)       :: array_name
+ real(dp),intent(in)               :: mem_mb
+!=====
+
+ if( mem_mb < 500.0_dp .AND. total_memory < 500.0_dp ) then
+
+   write(stdout,'(x,a,a25,a,f8.3,a,a,f8.3,a)')   &
+         'Allocate:   ',TRIM(array_name),        &
+             ',  Mem: ', mem_mb      ,' (Mb)',   &
+       ',  Total Mem: ', total_memory,' (Mb)'
+
+ else
+
+   write(stdout,'(x,a,a25,a,f8.3,a,a,f8.3,a)')   &
+         '  Allocate: ',TRIM(array_name),        &
+             ',  Mem: ', mem_mb/1024.0_dp      ,' (Gb)',   &
+       ',  Total Mem: ', total_memory/1024.0_dp,' (Gb)'
+
+ endif
+
+
+end subroutine write_memory_allocate
+
+
+!=========================================================================
+subroutine write_memory_deallocate(array_name,mem_mb)
+ implicit none
+!=====
+ character(len=*),intent(in)       :: array_name
+ real(dp),intent(in)               :: mem_mb
+!=====
+
+ if( mem_mb < 500.0_dp .AND. total_memory < 500.0_dp ) then
+
+   write(stdout,'(x,a,a25,a,f8.3,a,a,f8.3,a)')   &
+         'Deallocate: ',TRIM(array_name),        &
+             ',  Mem: ',-mem_mb      ,' (Mb)',   &
+       ',  Total Mem: ', total_memory,' (Mb)'
+
+ else
+
+   write(stdout,'(x,a,a25,a,f8.3,a,a,f8.3,a)')   &
+         'Deallocate: ',TRIM(array_name),        &
+             ',  Mem: ',-mem_mb/1024.0_dp      ,' (Gb)',   &
+       ',  Total Mem: ', total_memory/1024.0_dp,' (Gb)'
+
+ endif
+
+
+end subroutine write_memory_deallocate
 
 
 end module m_memory
