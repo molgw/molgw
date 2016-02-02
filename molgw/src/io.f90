@@ -780,7 +780,7 @@ subroutine write_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ha
  real(dp),intent(in)        :: hamiltonian_exx(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)        :: hamiltonian_xc (basis%nbf,basis%nbf,nspin)
 !=====
- integer,parameter          :: restart_version=201601
+ integer,parameter          :: restart_version=201602
  integer                    :: restartfile
  integer                    :: ispin,istate,ibf,nstate_local
 !=====
@@ -926,7 +926,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
  ! An integer to ensure backward compatibility in the future
  read(restartfile) restart_version_read
 
- if( restart_version_read /= 201601 ) then
+ if( restart_version_read /= 201602 ) then
    call issue_warning('RESTART file: Version not readable. Skipping the reading')
    restart_type = NO_RESTART
    close(restartfile)

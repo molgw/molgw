@@ -19,8 +19,6 @@ module m_basis_set
  type(transform)                :: cart_to_pure_norm(0:lmax_transform)
 
  type basis_function
-   character(len=100)           :: basis_name                 ! Just a name
-   character(len=4)             :: gaussian_type              ! CART or PURE
    integer                      :: shell_index                ! This basis function belongs to a shell of basis functions
                                                               ! with the same exponents and angular momentum
    integer                      :: am                         ! Angular momentum number: l=0, 1, 2, 3 ...
@@ -337,10 +335,8 @@ function compare_basis_function(bf1,bf2) result(same_basis_function)
  same_basis_function = .TRUE.
 
 ! DO NOT compare the following commented fields. Not really necessary...
-! bf1%basis_name
 ! bf1%shell_index
 ! bf1%amc
- if( bf1%gaussian_type /= bf2%gaussian_type             ) same_basis_function = .FALSE.
  if( bf1%am            /= bf2%am                        ) same_basis_function = .FALSE.
  if( bf1%nx            /= bf2%nx                        ) same_basis_function = .FALSE.
  if( bf1%ny            /= bf2%ny                        ) same_basis_function = .FALSE.
@@ -417,8 +413,6 @@ subroutine write_basis_function(unitfile,bf)
 !=====
 !=====
 
- write(unitfile)  bf%basis_name   
- write(unitfile)  bf%gaussian_type
  write(unitfile)  bf%shell_index  
  write(unitfile)  bf%am           
  write(unitfile)  bf%amc          
@@ -444,8 +438,6 @@ subroutine read_basis_function(unitfile,bf)
 !=====
 !=====
 
- read(unitfile)  bf%basis_name
- read(unitfile)  bf%gaussian_type
  read(unitfile)  bf%shell_index
  read(unitfile)  bf%am
  read(unitfile)  bf%amc
