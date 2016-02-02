@@ -22,7 +22,7 @@ subroutine allocate_buffer(nbf)
 !=====
 
  write(stdout,'(/,x,a)') 'For SCALAPACK buffer, only this buffer is not distributed'
- call clean_allocate('A large buffer that is not distributed',buffer,nbf,nbf)
+ call clean_allocate('large buffer that is not distributed',buffer,nbf,nbf)
 
 end subroutine allocate_buffer
 
@@ -33,7 +33,7 @@ subroutine destroy_buffer()
 
 !=====
 
- call clean_deallocate('A large buffer that is not distributed',buffer)
+ call clean_deallocate('large buffer that is not distributed',buffer)
 
 end subroutine destroy_buffer
 

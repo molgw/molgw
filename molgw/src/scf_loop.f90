@@ -70,7 +70,7 @@ subroutine scf_loop(basis,auxil_basis,&
 
  !
  ! Initialize the SCF mixing procedure
- call init_scf(m_ham,n_ham,m_c,n_c)
+ call init_scf(m_ham,n_ham,m_c,n_c,nstate)
 
  !
  ! Allocate the main arrays
@@ -341,9 +341,6 @@ subroutine scf_loop(basis,auxil_basis,&
      enddo
      title='=== C coefficients ==='
      call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
-     matrix_tmp(:,:,1) = MATMUL( c_matrix(:,:,1), MATMUL( s_matrix(:,:), TRANSPOSE(c_matrix(:,:,1)) ) )
-     title='=== C S C^T = identity ? ==='
-     call dump_out_matrix(print_matrix_,title,basis%nbf,1,matrix_tmp)
      matrix_tmp(:,:,1) = MATMUL( TRANSPOSE(c_matrix(:,:,1)), MATMUL( s_matrix(:,:), c_matrix(:,:,1) ) )
      title='=== C^T S C = identity ? ==='
      call dump_out_matrix(print_matrix_,title,basis%nbf,1,matrix_tmp)
@@ -364,15 +361,6 @@ subroutine scf_loop(basis,auxil_basis,&
    endif
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx_hyb + en%xc
    write(stdout,'(/,a25,x,f19.10,/)') 'Total Energy    (Ha):',en%tot
-
-!TODO FBFB remove
-!   !
-!   ! Store the history of residuals
-!   call store_residual(p_matrix_old,p_matrix)
-!
-!   !
-!   ! Produce the next density matrix
-!   call new_p_matrix(p_matrix)
 
 
    !
