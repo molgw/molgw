@@ -249,6 +249,14 @@
      $                   LLDM, INDWORK, ITMP, DIMV, NZ, LIWKOPT
       DOUBLE PRECISION   DTMP
       DOUBLE PRECISION   T_CHOL, T_FORMW, T_DIAG, T_VEC1, T_VEC2, T_PREP
+#ifndef SELECT_PDSYEVR
+      DOUBLE PRECISION   ABSTOL
+      INTEGER            IFAIL(N)
+      EXTERNAL           PDLAMCH
+      DOUBLE PRECISION   PDLAMCH
+      INTEGER,ALLOCATABLE ::         ICLUSTR(:)
+      DOUBLE PRECISION,ALLOCATABLE :: GAP(:)
+#endif
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          DBLE, SQRT
@@ -314,9 +322,20 @@
 *
 !         CALL PDSYEV( 'V', 'L', N, DTMP, IK, JK, DESCK, DTMP, DTMP, IX,
 !     $        JX, DESCX, WORK, -1, ITMP )
+#ifndef SELECT_PDSYEVR
+         ALLOCATE(ICLUSTR(2*NPROCS))
+         ALLOCATE(GAP(NPROCS))
+         ABSTOL = PDLAMCH(DESCK(2), 'U')
+         CALL PDSYEVX( 'V', 'A', 'L', N, DTMP, IK, JK, DESCK, ZERO,
+     $        ZERO, 1, N, ABSTOL, DIMV, NZ, DTMP, ZERO, DTMP, IX, JX,
+     $        DESCX, WORK, -1,
+     $        IWORK, -1, IFAIL, ICLUSTR, GAP, ITMP )
+         DEALLOCATE(ICLUSTR,GAP)
+#else
          CALL PDSYEVR( 'V', 'A', 'L', N, DTMP, IK, JK, DESCK, ZERO,
      $        ZERO, 1, N, DIMV, NZ, DTMP, DTMP, IX, JX, DESCX, WORK, -1,
      $        IWORK, -1, ITMP )
+#endif
          LWKOPT = INT( WORK( 1 ) )
          LIWKOPT = IWORK( 1 )
 *
@@ -378,10 +397,21 @@
       T_DIAG = MPI_WTIME()
 !      CALL PDSYEV( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, X1,
 !     $     IX, JX, DESCX, WORK( INDWORK ), LLWORK, ITMP )
+#ifndef SELECT_PDSYEVR
+         ALLOCATE(ICLUSTR(2*NPROCS))
+         ALLOCATE(GAP(NPROCS))
+         ABSTOL = PDLAMCH(DESCK(2), 'U')
+         CALL PDSYEVX( 'V', 'A', 'L', N, K, IK, JK, DESCK, ZERO,
+     $        ZERO, 1, N, ABSTOL, DIMV, NZ, LAMBDA, ZERO, X1, IX, JX,
+     $        DESCX, WORK( INDWORK ), LLWORK,
+     $        IWORK, LIWORK, IFAIL, ICLUSTR, GAP, ITMP )
+         DEALLOCATE(ICLUSTR,GAP)
+#else
       CALL PDSYEVR( 'V', 'A', 'L', N, K, IK, JK, DESCK, ZERO, ZERO,
      $     1, N, DIMV, NZ, LAMBDA, X1, IX, JX, DESCX,
      $     WORK( INDWORK ), LLWORK, IWORK, LIWORK, ITMP )
       T_DIAG = MPI_WTIME() - T_DIAG
+#endif
 *      IF ( MYROW+MYCOL .EQ. 0 )
 *     $   WRITE( *, * ) 't_diag = ', T_DIAG, ';'
       IF ( ITMP .NE. 0 ) THEN

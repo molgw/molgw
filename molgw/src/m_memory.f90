@@ -42,6 +42,9 @@ subroutine total_memory_statement()
  implicit none
 !=====
 
+ write(stdout,'(/,a,/)') '                 ----------------------'
+ write(stdout,'(a)')     '                 --- Memory usage summary'
+
  write(stdout,'(/,a)') ' Total memory that was not deallocated properly'
  if( total_memory < 500._dp ) then
    write(stdout,'(a30,f9.3)') ' Total memory (Mb): ',total_memory
