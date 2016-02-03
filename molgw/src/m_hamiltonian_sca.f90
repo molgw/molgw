@@ -666,7 +666,7 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
    nh = NUMROC(nbf   ,block_col,ipcol,first_col,npcol)
    mc = NUMROC(nbf   ,block_row,iprow,first_row,nprow)
    nc = NUMROC(nstate,block_col,ipcol,first_col,npcol)
-   ms = NUMROC(nbf   ,block_row,iprow,first_row,nprow)
+   ms = NUMROC(nstate,block_row,iprow,first_row,nprow)
    ns = NUMROC(nstate,block_col,ipcol,first_col,npcol)
 
 
@@ -741,9 +741,6 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
                   0.0_dp,c_matrix_local,1,1,descc) 
 
 
-    ! Nullify the eigval and the c_matrix arrays for all CPUs but one, so that the all_reduce
-    ! operation in the end yields the correct value
-    ! Of course, using a broadcast instead would be a better solution, but I'm so lazy
      c_matrix(:,:,ispin) = 0.0_dp
      do jglobal=1,nstate
        if( INDXG2P(jglobal,block_col,0,first_col,npcol) /= ipcol ) cycle
@@ -752,18 +749,15 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
          ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow)
          jlocal = INDXG2L(jglobal,block_col,0,first_col,npcol)
   
-         if( rank_sca == 0 ) then
-           c_matrix(iglobal,jglobal,ispin) = c_matrix_local(ilocal,jlocal)
-         endif
+         c_matrix(iglobal,jglobal,ispin) = c_matrix_local(ilocal,jlocal)
   
        enddo
      enddo
 
-     if( rank_sca /= 0 ) then
-       energy(:,ispin) = 0.0_dp
-       c_matrix(:,:,ispin) = 0.0_dp
-     endif
-
+    ! Nullify the eigval array for all CPUs but one, so that the all_reduce
+    ! operation in the end yields the correct value
+    ! Of course, using a broadcast instead would be a better solution, but I'm so lazy
+     if( rank_sca /= 0 ) energy(:,ispin) = 0.0_dp
 
 
      call stop_clock(timing_diago_hamiltonian)
