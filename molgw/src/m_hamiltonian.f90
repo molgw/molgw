@@ -900,30 +900,18 @@ subroutine diagonalize_hamiltonian(nspin_local,nbf,nstate,hamiltonian,s_matrix_s
    write(stdout,'(a,i3)') ' Diagonalization for spin: ',ispin
    call start_clock(timing_diago_hamiltonian)
 
-!   !
-!   ! First symmetrize the hamiltonian from the lower triangle to the full matrix
-!   do jbf=1,nbf
-!     do ibf=1,jbf-1
-!       hamiltonian(jbf,ibf,ispin) = hamiltonian(ibf,jbf,ispin)
-!     enddo
-!   enddo
-
 
    h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
                             MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
 
-
-#ifdef HAVE_SCALAPACK
-   call diagonalize_scalapack(nstate,h_small,energy(1:nstate,ispin))
-#else
    call diagonalize(nstate,h_small,energy(1:nstate,ispin))
-#endif
 
    c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
 
 
    call stop_clock(timing_diago_hamiltonian)
  enddo
+
 
 end subroutine diagonalize_hamiltonian
 

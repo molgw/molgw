@@ -258,8 +258,13 @@ program molgw
      call diagonalize_hamiltonian_sca(1,basis%nbf,nstate,m_ham,n_ham,hamiltonian_tmp,s_matrix_sqrt_inv, &
                                       energy(:,1),m_c,n_c,c_matrix(:,:,1))
    else
+#ifdef HAVE_SCALAPACK
+     call diagonalize_hamiltonian_scalapack(1,basis%nbf,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
+                                            energy(:,1),c_matrix(:,:,1))
+#else
      call diagonalize_hamiltonian(1,basis%nbf,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
                                     energy(:,1),c_matrix(:,:,1))
+#endif
    endif
 
    deallocate(hamiltonian_tmp)

@@ -1913,9 +1913,9 @@ subroutine diagonalize_scalapack(nmat,matrix,eigval)
   
    ! set up the local copy of the matrix
    do jmat=1,nmat
+     if( INDXG2P(jmat,block_col,0,first_col,npcol) /= ipcol ) cycle
      do imat=1,nmat
        if( INDXG2P(imat,block_row,0,first_row,nprow) /= iprow ) cycle
-       if( INDXG2P(jmat,block_col,0,first_col,npcol) /= ipcol ) cycle
        imat_local = INDXG2L(imat,block_row,0,first_row,nprow)
        jmat_local = INDXG2L(jmat,block_col,0,first_col,npcol)
 
@@ -1934,9 +1934,9 @@ subroutine diagonalize_scalapack(nmat,matrix,eigval)
   
    matrix(:,:) = 0.0_dp
    do jmat=1,nmat
+     if( INDXG2P(jmat,block_col,0,first_col,npcol) /= ipcol ) cycle
      do imat=1,nmat
        if( INDXG2P(imat,block_row,0,first_row,nprow) /= iprow ) cycle
-       if( INDXG2P(jmat,block_col,0,first_col,npcol) /= ipcol ) cycle
        imat_local = INDXG2L(imat,block_row,0,first_row,nprow)
        jmat_local = INDXG2L(jmat,block_col,0,first_col,npcol)
   
