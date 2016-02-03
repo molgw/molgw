@@ -1,4 +1,6 @@
 !=========================================================================
+! This file is part of MOLGW.
+!
 ! This module contains
 ! the procedures to calculate the Generalized Oscillator Strengths (GOS)
 !=========================================================================

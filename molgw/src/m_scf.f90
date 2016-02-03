@@ -1,4 +1,6 @@
 !=========================================================================
+! This file is part of MOLGW.
+!=========================================================================
 module m_scf
  use m_definitions
  use m_warning
@@ -63,7 +65,15 @@ subroutine init_scf(m_ham,n_ham,m_c,n_c,nstate)
    call die('mixing scheme not implemented')
  end select
 
- call init_desc('H',nstate,nstate,desc_r,m_r_scf,n_r_scf)
+ if( cntxt_ham > 0 ) then
+   call init_desc('H',nstate,nstate,desc_r,m_r_scf,n_r_scf)
+ else
+   m_r_scf = 0
+   n_r_scf = 0
+ endif
+ call xlocal_max(m_r_scf)
+ call xlocal_max(n_r_scf)
+
 
  call clean_allocate('Hamiltonian history',ham_hist,m_ham,n_ham,nspin,nhistmax)
  call clean_allocate('Residual history',res_hist,n_r_scf,n_r_scf,nspin,nhistmax)
@@ -176,7 +186,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    enddo
  enddo
 
- write(stdout,'(a,4x,30(2x,es12.6))') '  Residuals:',( SQRT(a_matrix(ihist,ihist)) , ihist=1,nhist_current )
+ write(stdout,'(a,4x,30(2x,es12.5))') '  Residuals:',( SQRT(a_matrix(ihist,ihist)) , ihist=1,nhist_current )
 
  a_matrix(1:nhist_current,nhist_current+1) = -1.0_dp
  a_matrix(nhist_current+1,1:nhist_current) = -1.0_dp
@@ -192,7 +202,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  do ihist=1,nhist_current
    residual_pred(:,:,:) = residual_pred(:,:,:) + alpha_diis(ihist) * res_hist(:,:,:,ihist)
  enddo
- write(stdout,'(a,2x,es12.6)') ' DIIS predicted residual:',SQRT( SUM( residual_pred(:,:,:)**2 ))
+ write(stdout,'(a,2x,es12.5)') ' DIIS predicted residual:',SQRT( SUM( residual_pred(:,:,:)**2 ))
  write(stdout,*)
 
 
@@ -226,7 +236,7 @@ function check_converged(p_matrix_old,p_matrix_new)
 
  call xtrans_sum(rms)
 
- write(stdout,'(x,a,2x,es12.6)') 'Convergence criterium on the density matrix',rms
+ write(stdout,'(x,a,2x,es12.5)') 'Convergence criterium on the density matrix',rms
  if( rms < tolscf ) then 
    check_converged = .TRUE.
    write(stdout,*) ' ===> convergence has been reached'

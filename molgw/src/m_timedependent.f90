@@ -1,4 +1,6 @@
 !=========================================================================
+! This file is part of MOLGW.
+!
 ! This module contains
 ! the routines to calculate the polarizability within RPA, TDDFT or BSE
 ! and the corresponding optical spectra

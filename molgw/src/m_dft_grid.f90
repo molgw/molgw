@@ -1,4 +1,6 @@
 !=========================================================================
+! This file is part of MOLGW.
+!
 ! This module contains
 ! the basic operations related to the quadrature needed to evaluate the
 ! exchange-correlation integrals

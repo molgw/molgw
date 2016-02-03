@@ -1,4 +1,6 @@
 !=========================================================================
+! This file is part of MOLGW.
+!=========================================================================
 subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy,energy_gw)
  use m_definitions
  use m_mpi

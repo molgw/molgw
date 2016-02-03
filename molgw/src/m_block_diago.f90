@@ -1,4 +1,6 @@
 !=========================================================================
+! This file is part of MOLGW.
+!
 ! This module contains
 ! the routines to diagonalize the RPA, TDDFT or BSE matrix
 ! with the block form
