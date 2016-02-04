@@ -133,7 +133,7 @@ subroutine scf_loop(basis,auxil_basis,&
    ! density matrix and therefore of spin channel)
    !
    hamiltonian(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) 
-   if(nspin==2) hamiltonian(:,:,nspin)    = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) 
+   if(nspin==2) hamiltonian(:,:,nspin) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) 
 
    if( calc_type%read_potential ) then
      call read_potential(print_matrix_,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
@@ -298,7 +298,6 @@ subroutine scf_loop(basis,auxil_basis,&
    ! DIIS or simple mixing on the hamiltonian
    call hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,hamiltonian)
 
-  
   
    !
    ! Diagonalize the Hamiltonian H

@@ -674,10 +674,27 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
    call DESCINIT(descc,nbf   ,nstate,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
    call DESCINIT(descs,nstate,nstate,block_row,block_col,first_row,first_col,cntxt,MAX(1,ms),info)
 
+   c_matrix(:,:,:) = 0.0_dp
+
    allocate(ham_local(mh,nh))
    allocate(c_matrix_local(mc,nc))
    allocate(s_matrix_local(mc,nc))
    allocate(h_small(ms,ns))
+
+   !
+   ! Set up the local copy of s_matrix_sqrt_inv
+   do jglobal=1,nstate
+     if( INDXG2P(jglobal,block_col,0,first_col,npcol) /= ipcol ) cycle
+     do iglobal=1,nbf
+       if( INDXG2P(iglobal,block_row,0,first_row,nprow) /= iprow ) cycle
+       ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow)
+       jlocal = INDXG2L(jglobal,block_col,0,first_col,npcol)
+
+       s_matrix_local(ilocal,jlocal) = s_matrix_sqrt_inv(iglobal,jglobal)
+
+     enddo
+   enddo
+
 
    do ispin=1,nspin_local
      write(stdout,'(a,i3)') ' Diagonalization for spin: ',ispin
@@ -696,20 +713,6 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
   
        enddo
      enddo
-     !
-     ! Set up the local copy of s_matrix_sqrt_inv
-     do jglobal=1,nstate
-       if( INDXG2P(jglobal,block_col,0,first_col,npcol) /= ipcol ) cycle
-       do iglobal=1,nbf
-         if( INDXG2P(iglobal,block_row,0,first_row,nprow) /= iprow ) cycle
-         ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow)
-         jlocal = INDXG2L(jglobal,block_col,0,first_col,npcol)
-  
-         s_matrix_local(ilocal,jlocal) = s_matrix_sqrt_inv(iglobal,jglobal)
-  
-       enddo
-     enddo
-
 
 !     h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
 !                              MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
@@ -719,11 +722,11 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
      call PDGEMM('N','N',nbf,nstate,nbf,                &
                   1.0_dp,ham_local,1,1,desch,           &
                   s_matrix_local,1,1,descc,             &
-                  0.0_dp,c_matrix,1,1,descc)
+                  0.0_dp,c_matrix_local,1,1,descc)
 
      call PDGEMM('T','N',nstate,nstate,nbf,             &
                   1.0_dp,s_matrix_local,1,1,descc,      &
-                  c_matrix,1,1,descc,                   &
+                  c_matrix_local,1,1,descc,             &
                   0.0_dp,h_small,1,1,descs)
 
 
@@ -741,7 +744,6 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
                   0.0_dp,c_matrix_local,1,1,descc) 
 
 
-     c_matrix(:,:,ispin) = 0.0_dp
      do jglobal=1,nstate
        if( INDXG2P(jglobal,block_col,0,first_col,npcol) /= ipcol ) cycle
        do iglobal=1,nbf
@@ -767,8 +769,8 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
 
  else
    energy(:,:) = 0.0_dp
-   c_matrix(:,:,:) = 0.0_dp
  endif
+
 
  ! Poor man distribution TODO replace by a broadcast
  call xsum(energy)
