@@ -986,7 +986,13 @@ subroutine setup_sqrt_density_matrix(nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
    call diagonalize(nbf,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
 #endif
    do istate=1,nbf
-     p_matrix_sqrt(:,istate,ispin) = p_matrix_sqrt(:,istate,ispin) * SQRT( p_matrix_occ(istate,ispin) )
+     ! this is to avoid instabilities
+     if( p_matrix_occ(istate,ispin) < 1.0e-8_dp ) then
+       p_matrix_occ(istate,ispin)    = 0.0_dp
+       p_matrix_sqrt(:,istate,ispin) = 0.0_dp
+     else
+       p_matrix_sqrt(:,istate,ispin) = p_matrix_sqrt(:,istate,ispin) * SQRT( p_matrix_occ(istate,ispin) )
+     endif
    enddo
  enddo
 

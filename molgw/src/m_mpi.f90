@@ -1511,8 +1511,6 @@ subroutine diagonalize_sca(desc,nglobal,mlocal,nlocal,matrix,eigval)
  ! fake descriptor ! Why do I need this?
  desc_eigvec(:) = desc(:)
 
- 
-
  !
  ! First call to get the dimension of the array work
  lwork = -1
@@ -1526,10 +1524,11 @@ subroutine diagonalize_sca(desc,nglobal,mlocal,nlocal,matrix,eigval)
               eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
               ifail,iclustr,gap,info)
 #else
- call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
-              neigval,neigvec,eigval,                                &
-              eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
-              info)
+ call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+! call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
+!              neigval,neigvec,eigval,                                &
+!              eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
+!              info)
 #endif
 
 
@@ -1548,10 +1547,11 @@ subroutine diagonalize_sca(desc,nglobal,mlocal,nlocal,matrix,eigval)
               eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
               ifail,iclustr,gap,info)
 #else
- call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
-              neigval,neigvec,eigval,                                &
-              eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
-              info)
+ call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+! call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
+!              neigval,neigvec,eigval,                                &
+!              eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
+!              info)
 #endif
  deallocate(work)
  deallocate(iwork)
@@ -1608,10 +1608,11 @@ subroutine diagonalize_sca_outofplace(desc,nglobal,mlocal,nlocal,matrix,eigval, 
               eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
               ifail,iclustr,gap,info)
 #else
- call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
-              neigval,neigvec,eigval,                                &
-              eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
-              info)
+ call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+! call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
+!              neigval,neigvec,eigval,                                &
+!              eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
+!              info)
 #endif
 
 
@@ -1630,10 +1631,11 @@ subroutine diagonalize_sca_outofplace(desc,nglobal,mlocal,nlocal,matrix,eigval, 
               eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
               ifail,iclustr,gap,info)
 #else
- call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
-              neigval,neigvec,eigval,                                &
-              eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
-              info)
+ call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+! call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
+!              neigval,neigvec,eigval,                                &
+!              eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
+!              info)
 #endif
  deallocate(work)
  deallocate(iwork)
