@@ -136,7 +136,7 @@ subroutine simple_mixing_p_matrix(p_matrix_old,p_matrix_new)
 
  write(stdout,'(/,x,a,x,f8.4)') 'Simple mixing of the density matrix with alpha_mixing:',alpha_mixing
 
- p_matrix_new(:,:,:) = alpha_mixing * p_matrix_new(:,:,:) + (1.0_dp - alpha_hybrid) * p_matrix_old(:,:,:)
+ p_matrix_new(:,:,:) = alpha_mixing * p_matrix_new(:,:,:) + (1.0_dp - alpha_mixing) * p_matrix_old(:,:,:)
  
 end subroutine simple_mixing_p_matrix
 
@@ -194,6 +194,13 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  call invert(nhist_current+1,a_matrix,a_matrix_inv)
 
  alpha_diis(1:nhist_current) = -a_matrix_inv(1:nhist_current,nhist_current+1)
+
+ ! Renormalize the coefficients
+ ! It should not be needed in principle, but sometimes it is
+ if( ABS( SUM(alpha_diis(1:nhist_current)) -1.0_dp ) > 1.0e-4_dp ) then
+   call issue_warning('DIIS coefficients rescaled')
+   alpha_diis(1:nhist_current) = alpha_diis(1:nhist_current) / SUM( alpha_diis(1:nhist_current) )
+ endif
 
  write(stdout,'(a,30(2x,f12.6))') ' Alpha DIIS:',alpha_diis(1:nhist_current)
 
