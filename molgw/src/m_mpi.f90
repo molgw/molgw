@@ -1498,7 +1498,7 @@ subroutine diagonalize_sca(desc,nglobal,mlocal,nlocal,matrix,eigval)
  integer              :: neigval,neigvec
  integer,allocatable  :: iwork(:)
  integer              :: liwork
-#ifndef SELECT_PDSYEVR
+#ifdef SELECT_PDSYEVX
  real(dp)             :: ABSTOL
  integer              :: iclustr(2*nprow_sd*npcol_sd)
  real(dp)             :: gap(nprow_sd*npcol_sd)
@@ -1519,7 +1519,7 @@ subroutine diagonalize_sca(desc,nglobal,mlocal,nlocal,matrix,eigval)
  liwork = -1
  allocate(work(1))
  allocate(iwork(1))
-#ifndef SELECT_PDSYEVR
+#ifdef SELECT_PDSYEVX
  ABSTOL = PDLAMCH(desc(2), 'U')
  call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
               ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
@@ -1542,7 +1542,7 @@ subroutine diagonalize_sca(desc,nglobal,mlocal,nlocal,matrix,eigval)
  deallocate(iwork)
  allocate(work(lwork))
  allocate(iwork(liwork))
-#ifndef SELECT_PDSYEVR
+#ifdef SELECT_PDSYEVX
  call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
               ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
               eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
@@ -1583,7 +1583,7 @@ subroutine diagonalize_sca_outofplace(desc,nglobal,mlocal,nlocal,matrix,eigval, 
  integer              :: neigval,neigvec
  integer,allocatable  :: iwork(:)
  integer              :: liwork
-#ifndef SELECT_PDSYEVR
+#ifdef SELECT_PDSYEVX
  real(dp)             :: ABSTOL
  integer              :: iclustr(2*nprow_sd*npcol_sd)
  real(dp)             :: gap(nprow_sd*npcol_sd)
@@ -1601,7 +1601,7 @@ subroutine diagonalize_sca_outofplace(desc,nglobal,mlocal,nlocal,matrix,eigval, 
  liwork = -1
  allocate(work(1))
  allocate(iwork(1))
-#ifndef SELECT_PDSYEVR
+#ifdef SELECT_PDSYEVX
  ABSTOL = PDLAMCH(desc(2), 'U')
  call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
               ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
@@ -1624,7 +1624,7 @@ subroutine diagonalize_sca_outofplace(desc,nglobal,mlocal,nlocal,matrix,eigval, 
  deallocate(iwork)
  allocate(work(lwork))
  allocate(iwork(liwork))
-#ifndef SELECT_PDSYEVR
+#ifdef SELECT_PDSYEVX
  call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
               ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
               eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
