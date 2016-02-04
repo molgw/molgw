@@ -92,6 +92,14 @@ subroutine scf_loop(basis,auxil_basis,&
 !   call setup_bf_radius(basis)
  endif
 
+ !
+ ! Setup the density matrix: p_matrix
+ if( parallel_ham ) then
+   call setup_density_matrix_sca(basis%nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham,n_ham,p_matrix)
+ else
+   call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
+ endif
+
 
  !
  ! start the big scf loop
@@ -101,14 +109,6 @@ subroutine scf_loop(basis,auxil_basis,&
    write(stdout,'(a,x,i4,/)') ' *** SCF cycle No:',iscf
 
 
-   !
-   ! Setup the density matrix: p_matrix
-   if( parallel_ham ) then
-     call setup_density_matrix_sca(basis%nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham,n_ham,p_matrix)
-   else
-     call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
-   endif
-  
    !
    ! Calculate the matrix square-root of the density matrix P
    if( parallel_ham ) then
@@ -389,6 +389,9 @@ subroutine scf_loop(basis,auxil_basis,&
    if( print_restart_ ) then
      call write_restart(SMALL_RESTART,basis,nstate,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
    endif
+
+   ! Damping of the density matrix p_matrix
+   call simple_mixing_p_matrix(p_matrix_old,p_matrix)
    
  !
  ! end of the big SCF loop

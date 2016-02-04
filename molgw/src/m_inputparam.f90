@@ -57,6 +57,7 @@ module m_inputparam
  integer,protected                :: nspin
  real(dp),protected               :: spin_fact
  integer,protected                :: nscf
+ integer,protected                :: mixing_first_nscf
  real(dp),protected               :: alpha_mixing
  character(len=100),protected     :: basis_path
  character(len=100),protected     :: basis_name

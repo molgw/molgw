@@ -263,6 +263,15 @@ vl[i].comment  ='Sets the residual norm target for the density matrix for the SC
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='mixing_first_nscf'
+vl[i].family   ='scf'
+vl[i].default  =3
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the number of the initial SCF cycles that have an additional simple mixing of the density matrix in case of DIIS.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='min_overlap'
 vl[i].family   ='scf'
 vl[i].default  =1.0E-6

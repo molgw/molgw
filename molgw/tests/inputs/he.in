@@ -7,6 +7,6 @@
 
  natom=1
  alpha_mixing=0.5
- mixing_scheme='simple'
+! mixing_scheme='simple'
 /
 He 0. 0. 0.

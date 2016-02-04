@@ -51,15 +51,13 @@ subroutine init_scf(m_ham,n_ham,m_c,n_c,nstate)
  n_ham_scf     = n_ham
  m_c_scf       = m_c
  n_c_scf       = n_c
- iscf          = 1                 ! initialize with 1, since the new_p_matrix is not called for the first scf cycle
+ iscf          = 0
  nhist_current = 0
 
  select case(mixing_scheme)
  case('SIMPLE')
-   nhistmax = 1
- case('PULAY')
-   nhistmax = npulay_hist
- case('DIIS')
+   nhistmax = 0
+ case('PULAY','DIIS')
    nhistmax = npulay_hist
  case default
    call die('mixing scheme not implemented')
@@ -106,6 +104,8 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  iscf = iscf + 1
  nhist_current  = MIN(nhist_current+1,nhistmax) 
 
+ if( mixing_scheme=='SIMPLE') return
+
  !
  ! Shift the old matrices and then store the new ones
  ! the newest is 1
@@ -117,29 +117,28 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  ham_hist(:,:,:,1) = ham(:,:,:)
 
 
- select case(mixing_scheme)
- case('SIMPLE')
-   ! New simple mixing prediction here !
-   call simple_mixing_prediction(ham)
- case('PULAY')
-   ! New DIIS prediction here !
-   call diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
- end select
+ ! New DIIS prediction here !
+ call diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
 end subroutine hamiltonian_prediction
 
 
 !=========================================================================
-subroutine simple_mixing_prediction(ham)
+subroutine simple_mixing_p_matrix(p_matrix_old,p_matrix_new)
  implicit none
- real(dp),intent(out) :: ham(m_ham_scf,n_ham_scf,nspin)
+ real(dp),intent(out)   :: p_matrix_old(m_ham_scf,n_ham_scf,nspin)
+ real(dp),intent(inout) :: p_matrix_new(m_ham_scf,n_ham_scf,nspin)
 !=====
 
- write(stdout,'(/,x,a)') 'Simple mixing of the Hamiltonian'
+ if( ABS(alpha_mixing-1.0_dp) < 1.0e-5_dp ) return
 
- ham(:,:,:) = alpha_mixing * ham_hist(:,:,:,1) + (1.0_dp - alpha_mixing) * ham_hist(:,:,:,MIN(2,nhist_current))
+ if( mixing_scheme/='SIMPLE' .AND. iscf > mixing_first_nscf ) return
 
-end subroutine simple_mixing_prediction
+ write(stdout,'(/,x,a,x,f8.4)') 'Simple mixing of the density matrix with alpha_mixing:',alpha_mixing
+
+ p_matrix_new(:,:,:) = alpha_mixing * p_matrix_new(:,:,:) + (1.0_dp - alpha_hybrid) * p_matrix_old(:,:,:)
+ 
+end subroutine simple_mixing_p_matrix
 
 
 !=========================================================================
@@ -246,7 +245,7 @@ function check_converged(p_matrix_old,p_matrix_new)
    write(stdout,*) ' ===> convergence not reached yet'
    write(stdout,*)
 
-   if(iscf > nscf) then
+   if(iscf == nscf) then
      if(rms>1.d-3) then
        call issue_warning('SCF convergence is very poor')
      else if(rms>1.d-5) then
