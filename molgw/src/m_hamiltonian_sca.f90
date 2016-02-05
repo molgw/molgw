@@ -656,6 +656,7 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
  write(stdout,'(a,i4,a,i4)') ' Generalized diagonalization using SCALAPACK with a grid',nprow,' x ',npcol
 
+ c_matrix(:,:,:) = 0.0_dp
 
  !
  ! Participate to the diagonalization only if the CPU has been selected 
@@ -674,7 +675,6 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
    call DESCINIT(descc,nbf   ,nstate,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
    call DESCINIT(descs,nstate,nstate,block_row,block_col,first_row,first_col,cntxt,MAX(1,ms),info)
 
-   c_matrix(:,:,:) = 0.0_dp
 
    allocate(ham_local(mh,nh))
    allocate(c_matrix_local(mc,nc))

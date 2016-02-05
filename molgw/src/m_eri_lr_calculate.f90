@@ -305,7 +305,7 @@ end subroutine calculate_eri_4center_lr
 
 !=========================================================================
 subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
- use m_tools,only: boys_function, invert
+ use m_tools,only: boys_function
  implicit none
  logical,intent(in)           :: print_eri_
  type(basis_set),intent(in)   :: auxil_basis
