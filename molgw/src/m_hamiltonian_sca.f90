@@ -627,14 +627,13 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
  integer :: mh,nh,mc,nc,ms,ns
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
- integer :: imat,jmat,imat_local,jmat_local
  integer :: desch(ndel),descc(ndel),descs(ndel)
  real(dp) :: alpha
  real(dp),allocatable :: matrix_local(:,:)
  real(dp),allocatable :: work(:)
  integer :: lwork
  integer :: rank_sca,nprocs_sca
- integer,external :: NUMROC,INDXG2L,INDXG2P
+ integer,external :: NUMROC,INDXL2G
 
  integer  :: ispin
  integer  :: ilocal,jlocal,iglobal,jglobal
@@ -683,17 +682,14 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
 
    !
    ! Set up the local copy of s_matrix_sqrt_inv
-   do jglobal=1,nstate
-     if( INDXG2P(jglobal,block_col,0,first_col,npcol) /= ipcol ) cycle
-     do iglobal=1,nbf
-       if( INDXG2P(iglobal,block_row,0,first_row,nprow) /= iprow ) cycle
-       ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow)
-       jlocal = INDXG2L(jglobal,block_col,0,first_col,npcol)
-
+   do jlocal=1,nc
+     jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
+     do ilocal=1,mc
+       iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
        s_matrix_local(ilocal,jlocal) = s_matrix_sqrt_inv(iglobal,jglobal)
-
      enddo
    enddo
+  
 
 
    do ispin=1,nspin_local
@@ -702,15 +698,11 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
 
      !
      ! Set up the local copy of hamiltonian
-     do jglobal=1,nbf
-       if( INDXG2P(jglobal,block_col,0,first_col,npcol) /= ipcol ) cycle
-       do iglobal=1,nbf
-         if( INDXG2P(iglobal,block_row,0,first_row,nprow) /= iprow ) cycle
-         ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow)
-         jlocal = INDXG2L(jglobal,block_col,0,first_col,npcol)
-  
+     do jlocal=1,nh
+       jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
+       do ilocal=1,mh
+         iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
          ham_local(ilocal,jlocal) = hamiltonian(iglobal,jglobal,ispin)
-  
        enddo
      enddo
 
@@ -744,17 +736,14 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
                   0.0_dp,c_matrix_local,1,1,descc) 
 
 
-     do jglobal=1,nstate
-       if( INDXG2P(jglobal,block_col,0,first_col,npcol) /= ipcol ) cycle
-       do iglobal=1,nbf
-         if( INDXG2P(iglobal,block_row,0,first_row,nprow) /= iprow ) cycle
-         ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow)
-         jlocal = INDXG2L(jglobal,block_col,0,first_col,npcol)
-  
+     do jlocal=1,nc
+       jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
+       do ilocal=1,mc
+         iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
          c_matrix(iglobal,jglobal,ispin) = c_matrix_local(ilocal,jlocal)
-  
        enddo
      enddo
+
 
     ! Nullify the eigval array for all CPUs but one, so that the all_reduce
     ! operation in the end yields the correct value

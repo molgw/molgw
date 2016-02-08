@@ -935,11 +935,8 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,nbf,s_matrix,nstate,s_matrix_sqrt_inv)
  write(stdout,'(/,a)') ' Calculate overlap matrix square-root S^{1/2}'
 
  matrix_tmp(:,:) = s_matrix(:,:)
-#ifdef HAVE_SCALAPACK
+ ! Diagonalization with or without SCALAPACK
  call diagonalize_scalapack(scalapack_block_min,nbf,matrix_tmp,s_eigval)
-#else
- call diagonalize(nbf,matrix_tmp,s_eigval)
-#endif
 
  nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
 
@@ -980,11 +977,8 @@ subroutine setup_sqrt_density_matrix(nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
 
  do ispin=1,nspin
    p_matrix_sqrt(:,:,ispin) = p_matrix(:,:,ispin)
-#ifdef HAVE_SCALAPACK
+   ! Diagonalization with or without SCALAPACK
    call diagonalize_scalapack(scalapack_block_min,nbf,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
-#else
-   call diagonalize(nbf,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
-#endif
    do istate=1,nbf
      ! this is to avoid instabilities
      if( p_matrix_occ(istate,ispin) < 1.0e-8_dp ) then

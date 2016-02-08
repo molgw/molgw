@@ -1858,7 +1858,6 @@ function colindex_local_to_global_procindex(ipcol,npcol,ilocal)
 end function colindex_local_to_global_procindex
 
 
-#ifdef HAVE_SCALAPACK
 !=========================================================================
 subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix,eigval)
  implicit none
@@ -1871,16 +1870,17 @@ subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix,eigval)
  integer :: mlocal,nlocal
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
- integer :: imat,jmat,imat_local,jmat_local
+ integer :: iglobal,jglobal,ilocal,jlocal
  integer :: descm(ndel),descz(ndel)
  real(dp) :: alpha
  real(dp),allocatable :: matrix_local(:,:)
  real(dp),allocatable :: work(:)
  integer :: lwork
  integer :: rank_sca,nprocs_sca
- integer,external :: NUMROC,INDXG2L,INDXG2P
+ integer,external :: NUMROC,INDXL2G
 !=====
 
+#ifdef HAVE_SCALAPACK
  nprow = MIN(nprow_sd,nmat/scalapack_block_min)
  npcol = MIN(npcol_sd,nmat/scalapack_block_min)
  nprow = MAX(nprow,1)
@@ -1907,15 +1907,11 @@ subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix,eigval)
 
   
    ! set up the local copy of the matrix
-   do jmat=1,nmat
-     if( INDXG2P(jmat,block_col,0,first_col,npcol) /= ipcol ) cycle
-     do imat=1,nmat
-       if( INDXG2P(imat,block_row,0,first_row,nprow) /= iprow ) cycle
-       imat_local = INDXG2L(imat,block_row,0,first_row,nprow)
-       jmat_local = INDXG2L(jmat,block_col,0,first_col,npcol)
-
-       matrix_local(imat_local,jmat_local) = matrix(imat,jmat)
-
+   do jlocal=1,nlocal
+     jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
+     do ilocal=1,mlocal
+       iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
+       matrix_local(ilocal,jlocal) = matrix(iglobal,jglobal)
      enddo
    enddo
   
@@ -1928,15 +1924,11 @@ subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix,eigval)
    if(rank_sca /= 0 ) eigval(:) = 0.0_dp
   
    matrix(:,:) = 0.0_dp
-   do jmat=1,nmat
-     if( INDXG2P(jmat,block_col,0,first_col,npcol) /= ipcol ) cycle
-     do imat=1,nmat
-       if( INDXG2P(imat,block_row,0,first_row,nprow) /= iprow ) cycle
-       imat_local = INDXG2L(imat,block_row,0,first_row,nprow)
-       jmat_local = INDXG2L(jmat,block_col,0,first_col,npcol)
-  
-       matrix(imat,jmat) = matrix_local(imat_local,jmat_local)
-  
+   do jlocal=1,nlocal
+     jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
+     do ilocal=1,mlocal
+       iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
+       matrix(iglobal,jglobal) = matrix_local(ilocal,jlocal)
      enddo
    enddo
 
@@ -1953,8 +1945,14 @@ subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix,eigval)
  call xsum(eigval)
 
 
-end subroutine diagonalize_scalapack
+#else
+
+ call diagonalize(nmat,matrix,eigval)
+
 #endif
+
+
+end subroutine diagonalize_scalapack
 
 
 !=========================================================================

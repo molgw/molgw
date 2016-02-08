@@ -522,12 +522,8 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
 
  allocate(eigval(nauxil_2center_lr))
  !
- ! Perform in-place diagonalization here
-#ifdef HAVE_SCALAPACK
+ ! Perform in-place diagonalization here with or without scalapack
  call diagonalize_scalapack(scalapack_block_min,nauxil_2center_lr,eri_2center_m1_lr,eigval)
-#else
- call diagonalize(nauxil_2center_lr,eri_2center_m1_lr,eigval)
-#endif
 
  !
  ! Skip the too small eigenvalues
