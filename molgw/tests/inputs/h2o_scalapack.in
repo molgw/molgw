@@ -1,0 +1,21 @@
+&molgw
+ scalapack_block_min=32
+
+ scf='pbe0'
+ grid_quality='medium'
+
+ basis='aug-cc-pVTZ'
+ auxil_basis='aug-cc-pVTZ-RI'
+ no_4center='yes'
+
+
+ tolscf=1.0e-9
+
+ natom=3
+/
+8    0.000000     0.000000     0.119105    
+1    0.000000     0.760508    -0.476421    
+1    0.000000    -0.760508    -0.476421    
+ 
+ 
+ 

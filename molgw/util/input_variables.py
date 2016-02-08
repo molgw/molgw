@@ -554,6 +554,15 @@ vl[i].default  =0.
 vl[i].datatype ='real'
 vl[i].comment  ='Sets a rigid energy shift of the unoccupied states, so to mimick a GW calculation without actually doing it.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='scalapack_block_min'
+vl[i].family   ='parallel'
+vl[i].default  =400
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the minimum block size in SCALAPACK. If scalapack_block_min=400, then a 900x900 matrix will be distributed on a 2x2 processor grid.  \
+If scalapack_block_min=500, then a 900x900 matrix will no be distributed.'
 
 
 
@@ -624,7 +633,7 @@ for i in range(0,len(vl)):
     fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
 # System
-fhtml.write('<h3>Set up of the physical system input variables</h3>\n<p>\n')
+fhtml.write('<h3>Physical system setup input variables</h3>\n<p>\n')
 for i in range(0,len(vl)):
   if vl[i].family =='system':
     fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
@@ -647,13 +656,20 @@ for i in range(0,len(vl)):
   if vl[i].family =='post':
     fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
-
-
 # IO family
 fhtml.write('<h3>IO input variables</h3>\n<p>\n')
 for i in range(0,len(vl)):
   if vl[i].family =='io':
     fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
+
+# Parallelization family
+fhtml.write('<h3>Parallelization input variables</h3>\n<p>\n')
+for i in range(0,len(vl)):
+  if vl[i].family =='parallel':
+    fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
+
+
+
 
 fhtml.write('<br><br><br><hr>\n')
 

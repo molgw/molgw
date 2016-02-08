@@ -17,15 +17,23 @@
 #
 #####################################################
 
-he.in                     ,  HF helium atom cc-pVTZ without RI
+he.in                     , HF helium atom cc-pVTZ without RI
 SCF Total Energy          , -2.8611533447      , 0 , 1.0e-7
 HOMO energy               , -24.969849         , 0 , 1.0e-4
 LUMO energy               ,  17.323932         , 0 , 1.0e-4
 
-he_auxil.in               ,  HF helium atom cc-pVTZ with RI
+he_auxil.in               , HF helium atom cc-pVTZ with RI
 SCF Total Energy          , -2.8611875289      , 0 , 1.0e-7
 HOMO energy               , -24.970619         , 0 , 1.0e-4
 LUMO energy               ,  17.314207         , 0 , 1.0e-4
+
+h2o_scalapack.in          , H2O molecule within PBE0 with possibly SCALAPACK
+HOMO energy               ,   -9.039335        , 0 , 1.0e-4
+LUMO energy               ,   -0.359596        , 0 , 1.0e-4
+Hartree Energy            ,   46.6386768738    , 0 , 1.0e-7
+Exchange Energy           ,   -2.2284166998    , 0 , 1.0e-7
+XC Energy                 ,   -7.0110900711    , 0 , 1.0e-7
+Total Energy              ,  -76.3812141506    , 0 , 1.0e-7
 
 n2o_hse06.in              , range-separated hybrid function for N2O without RI with cartesian gaussian
 SCF Total Energy          , -184.3896918122    , 0 , 1.0e-7
