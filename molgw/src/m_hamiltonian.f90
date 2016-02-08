@@ -6,7 +6,7 @@ module m_hamiltonian
  use m_timing
  use m_mpi
  use m_warning
- use m_inputparam,only: nspin,spin_fact
+ use m_inputparam,only: nspin,spin_fact,scalapack_block_min
 
 contains
 
@@ -936,7 +936,7 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,nbf,s_matrix,nstate,s_matrix_sqrt_inv)
 
  matrix_tmp(:,:) = s_matrix(:,:)
 #ifdef HAVE_SCALAPACK
- call diagonalize_scalapack(nbf,matrix_tmp,s_eigval)
+ call diagonalize_scalapack(scalapack_block_min,nbf,matrix_tmp,s_eigval)
 #else
  call diagonalize(nbf,matrix_tmp,s_eigval)
 #endif
@@ -981,7 +981,7 @@ subroutine setup_sqrt_density_matrix(nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
  do ispin=1,nspin
    p_matrix_sqrt(:,:,ispin) = p_matrix(:,:,ispin)
 #ifdef HAVE_SCALAPACK
-   call diagonalize_scalapack(nbf,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
+   call diagonalize_scalapack(scalapack_block_min,nbf,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
 #else
    call diagonalize(nbf,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
 #endif

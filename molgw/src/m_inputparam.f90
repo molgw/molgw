@@ -81,6 +81,7 @@ module m_inputparam
  real(dp),protected               :: level_shifting_energy
  real(dp),protected               :: scissor
  integer,protected                :: npulay_hist
+ integer,protected                :: scalapack_block_min
 
  logical,protected                :: ignore_restart_
  logical,protected                :: ignore_bigrestart_

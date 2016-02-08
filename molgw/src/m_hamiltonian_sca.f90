@@ -6,7 +6,7 @@ module m_hamiltonian_sca
  use m_mpi
  use m_timing
  use m_warning
- use m_inputparam,only: nspin,spin_fact
+ use m_inputparam,only: nspin,spin_fact,scalapack_block_min
 
 
 contains
@@ -644,8 +644,8 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
 
 #ifdef HAVE_SCALAPACK
 
- nprow = MIN(nprow_sd,nbf/SCALAPACK_MIN)
- npcol = MIN(npcol_sd,nbf/SCALAPACK_MIN)
+ nprow = MIN(nprow_sd,nbf/scalapack_block_min)
+ npcol = MIN(npcol_sd,nbf/scalapack_block_min)
  nprow = MAX(nprow,1)
  npcol = MAX(npcol,1)
 

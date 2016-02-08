@@ -20,8 +20,6 @@ module m_mpi
  logical,parameter :: parallel_scalapack = .FALSE.
 #endif
 
- integer,parameter :: SCALAPACK_MIN = 400  ! TODO Better tune this parameter in the future
-
  integer,private   :: comm_world
  integer,protected :: nproc  = 1
  integer,protected :: rank   = 0
@@ -1862,8 +1860,9 @@ end function colindex_local_to_global_procindex
 
 #ifdef HAVE_SCALAPACK
 !=========================================================================
-subroutine diagonalize_scalapack(nmat,matrix,eigval)
+subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix,eigval)
  implicit none
+ integer,intent(in)     :: scalapack_block_min
  integer,intent(in)     :: nmat
  real(dp),intent(inout) :: matrix(nmat,nmat)
  real(dp),intent(out)   :: eigval(nmat)
@@ -1882,8 +1881,8 @@ subroutine diagonalize_scalapack(nmat,matrix,eigval)
  integer,external :: NUMROC,INDXG2L,INDXG2P
 !=====
 
- nprow = MIN(nprow_sd,nmat/SCALAPACK_MIN)
- npcol = MIN(npcol_sd,nmat/SCALAPACK_MIN)
+ nprow = MIN(nprow_sd,nmat/scalapack_block_min)
+ npcol = MIN(npcol_sd,nmat/scalapack_block_min)
  nprow = MAX(nprow,1)
  npcol = MAX(npcol,1)
 

@@ -8,6 +8,7 @@ module m_eri_lr_calculate
  use m_memory
  use m_basis_set
  use m_timing
+ use m_inputparam,only: scalapack_block_min
  use m_eri
 
 
@@ -523,7 +524,7 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
  !
  ! Perform in-place diagonalization here
 #ifdef HAVE_SCALAPACK
- call diagonalize_scalapack(nauxil_2center_lr,eri_2center_m1_lr,eigval)
+ call diagonalize_scalapack(scalapack_block_min,nauxil_2center_lr,eri_2center_m1_lr,eigval)
 #else
  call diagonalize(nauxil_2center_lr,eri_2center_m1_lr,eigval)
 #endif
