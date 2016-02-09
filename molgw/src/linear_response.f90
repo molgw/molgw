@@ -165,10 +165,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
 
    !
    ! Step 1
-!   call build_amb_apb_common(desc_apb,nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,alpha_local, &
-!                             m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,rpa_correlation)
-
-   call build_amb_apb_diag_auxil(nmat,nstate,energy,wpol_out,m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa)
+   call build_amb_apb_diag_auxil(nmat,nstate,energy_qp,wpol_out,m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa)
 
    call build_apb_hartree_auxil(desc_apb,wpol_out,m_apb,n_apb,apb_matrix)
 
