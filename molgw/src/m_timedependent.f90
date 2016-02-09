@@ -155,29 +155,52 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  ! Only the lower triangle is calculated
  ! the upper part will be filled later by symmetry
  !
- apb_matrix(:,:) = 0.0_dp
- amb_matrix(:,:) = 0.0_dp
- write(stdout,'(/,a)') ' Build the electron-hole hamiltonian'
- ! Step 1
- call build_amb_apb_common(nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,alpha_local, &
-                           m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,rpa_correlation)
 
- ! Calculate the diagonal separately: it's needed for the single pole approximation
+ ! Calculate the diagonal separately: it is needed for the single pole approximation
  if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) & 
      call build_a_diag_common(nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,a_diag)
 
- ! Step 2
- if(is_tddft) call build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol_out,m_apb,n_apb,apb_matrix)
+ apb_matrix(:,:) = 0.0_dp
+ amb_matrix(:,:) = 0.0_dp
+ write(stdout,'(/,a)') ' Build the electron-hole hamiltonian'
 
- ! Step 3
- if(calc_type%is_bse .AND. .NOT. is_rpa) then
-   if(.NOT. has_auxil_basis ) then
-     call build_amb_apb_bse(basis%nbf,nstate,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
-   else
-     call build_amb_apb_bse_auxil(nmat,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+ if( has_auxil_basis) then
+
+   !
+   ! Step 1
+   call build_amb_apb_common(desc_apb,nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,alpha_local, &
+                             m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,rpa_correlation)
+   !
+   ! Step 2
+   if(is_tddft) call build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol_out,m_apb,n_apb,apb_matrix)
+
+   !
+   ! Step 3
+   if(calc_type%is_bse .AND. .NOT. is_rpa) then
+     call build_amb_apb_bse_auxil(desc_apb,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+     call destroy_spectral_function(wpol_static)
    endif
-   call destroy_spectral_function(wpol_static)
+
+
+ else
+
+   !
+   ! Step 1
+   call build_amb_apb_common(desc_apb,nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,alpha_local, &
+                             m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,rpa_correlation)
+   !
+   ! Step 2
+   if(is_tddft) call build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol_out,m_apb,n_apb,apb_matrix)
+
+   !
+   ! Step 3
+   if(calc_type%is_bse .AND. .NOT. is_rpa) then
+     call build_amb_apb_bse(basis%nbf,nstate,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+     call destroy_spectral_function(wpol_static)
+   endif
+
  endif
+
 
  ! Warning if Tamm-Dancoff flag is on
  if(is_tda) then
@@ -308,14 +331,14 @@ end subroutine polarizability
 
 
 !=========================================================================
-subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local, &
+subroutine build_amb_apb_common(desc_apb,nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local, &
                                 m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,rpa_correlation)
  use m_tools 
  use m_spectral_function
  use m_eri_ao_mo
  implicit none
 
- integer,intent(in)                 :: nmat,nbf,nstate
+ integer,intent(in)                 :: desc_apb(ndel),nmat,nbf,nstate
  real(dp),intent(in)                :: energy(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(nbf,nstate,nspin)
  type(spectral_function),intent(in) :: wpol
@@ -445,13 +468,16 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
     
      enddo 
 
-     call xsum(amb_block)
-     call xsum(apb_block)
+
+     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,amb_block,m_apb_block,iprow,ipcol)
+     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,apb_block,m_apb_block,iprow,ipcol)
 
      if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
        amb_matrix(:,:) = amb_block(:,:)
        apb_matrix(:,:) = apb_block(:,:)
      endif
+
+
      deallocate(amb_block)
      deallocate(apb_block)
    enddo 
@@ -480,6 +506,169 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
  call stop_clock(timing_build_common)
 
 end subroutine build_amb_apb_common
+
+
+!=========================================================================
+subroutine build_amb_apb_common_auxil(desc_apb,nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local, &
+                                      m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,rpa_correlation)
+ use m_tools 
+ use m_spectral_function
+ use m_eri_ao_mo
+ implicit none
+
+ integer,intent(in)                 :: desc_apb(ndel),nmat,nbf,nstate
+ real(dp),intent(in)                :: energy(nstate,nspin)
+ real(dp),intent(in)                :: c_matrix(nbf,nstate,nspin)
+ type(spectral_function),intent(in) :: wpol
+ real(dp),intent(in)                :: alpha_local
+ integer,intent(in)                 :: m_apb,n_apb
+ real(prec_td),intent(out)          :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
+ real(dp),intent(out)               :: amb_diag_rpa(nmat)
+ real(dp),intent(out)               :: rpa_correlation
+!=====
+ integer              :: t_ij,t_kl,t_ij_global,t_kl_global
+ integer              :: istate,jstate,kstate,lstate
+ integer              :: ijspin,klspin
+ real(dp)             :: eri_eigen_ijkl
+ real(dp)             :: eri_eigen_ikjl,eri_eigen_iljk
+ integer              :: iprow,ipcol
+ integer              :: m_apb_block,n_apb_block
+ real(dp),allocatable :: amb_block(:,:)
+ real(dp),allocatable :: apb_block(:,:)
+ integer              :: ibf_auxil
+ real(dp),allocatable :: eri_3center_left(:),eri_3center_right(:)
+!=====
+
+ call start_clock(timing_build_common)
+
+ write(stdout,'(a)') ' Build Common part with auxil basis: Energies + Hartree + possibly Exchange'
+ write(stdout,'(a,f8.3)') ' Content of Exchange: ',alpha_local
+
+
+ if( nprow_sd * npcol_sd > 1 ) &
+    write(stdout,'(a,i4,a,i4)') ' SCALAPACK grid    :',nprow_sd,' x ',npcol_sd
+
+ rpa_correlation = 0.0_dp
+ !
+ ! Set up energy+hartree+exchange contributions to matrices (A+B) and (A-B) 
+ !
+
+ !
+ ! Set up the diagonal of A-B in the RPA approximation
+ ! 
+ do t_kl_global=1,nmat
+   t_ij = rowindex_global_to_local('S',t_kl_global)
+   t_kl = colindex_global_to_local('S',t_kl_global)
+
+   kstate = wpol%transition_table_apb(1,t_kl_global)
+   lstate = wpol%transition_table_apb(2,t_kl_global)
+   klspin = wpol%transition_table_apb(3,t_kl_global)
+   amb_diag_rpa(t_kl_global) = energy(lstate,klspin) - energy(kstate,klspin)
+
+   if( t_ij > 0 .AND. t_kl > 0 ) then
+     apb_matrix(t_ij,t_kl) =  amb_diag_rpa(t_kl_global)
+     amb_matrix(t_ij,t_kl) =  amb_diag_rpa(t_kl_global)
+   endif
+ enddo
+
+
+ 
+ ! First loops over the SCALAPACK grid
+ do ipcol=0,npcol_sd-1
+   do iprow=0,nprow_sd-1
+     m_apb_block = row_block_size(nmat,iprow,nprow_sd)
+     n_apb_block = col_block_size(nmat,ipcol,npcol_sd)
+
+     allocate(amb_block(m_apb_block,n_apb_block))
+     allocate(apb_block(m_apb_block,n_apb_block))
+
+     allocate(eri_3center_left(m_apb_block))
+     allocate(eri_3center_right(n_apb_block))
+
+     amb_block(:,:) = 0.0_dp
+     apb_block(:,:) = 0.0_dp
+
+
+     do ibf_auxil=1,nauxil_3center
+
+       !
+       ! Hartree term
+       !
+       if( .NOT. is_triplet) then
+
+         do t_kl=1,n_apb_block
+           t_kl_global = colindex_local_to_global(ipcol,npcol_sd,t_kl)
+           kstate = wpol%transition_table_apb(1,t_kl_global)
+           lstate = wpol%transition_table_apb(2,t_kl_global)
+           klspin = wpol%transition_table_apb(3,t_kl_global)
+
+           eri_3center_right(t_kl) = eri_3center_eigen(ibf_auxil,kstate,lstate,klspin)
+    
+         enddo
+      
+         do t_ij=1,m_apb_block
+           t_ij_global = rowindex_local_to_global(iprow,nprow_sd,t_ij)
+           istate = wpol%transition_table_apb(1,t_ij_global)
+           jstate = wpol%transition_table_apb(2,t_ij_global)
+           ijspin = wpol%transition_table_apb(3,t_ij_global)
+      
+           eri_3center_left(t_ij) = eri_3center_eigen(ibf_auxil,istate,jstate,ijspin)
+
+         enddo
+
+         call DGER(m_apb_block,n_apb_block,2.0_dp*spin_fact,eri_3center_left,1,eri_3center_right,1,apb_block,m_apb_block)
+
+       endif
+
+
+
+     enddo
+
+     deallocate(eri_3center_left,eri_3center_right)
+
+#if 0
+           if(ijspin==klspin) then
+             eri_eigen_ikjl = eri_eigen_ri_paral(istate,kstate,ijspin,jstate,lstate,klspin)
+             eri_eigen_iljk = eri_eigen_ri_paral(istate,lstate,ijspin,jstate,kstate,klspin)
+
+             apb_block(t_ij,t_kl) = apb_block(t_ij,t_kl) - eri_eigen_ikjl * alpha_local - eri_eigen_iljk * alpha_local
+             amb_block(t_ij,t_kl) = amb_block(t_ij,t_kl) - eri_eigen_ikjl * alpha_local + eri_eigen_iljk * alpha_local
+           endif
+         endif
+    
+         endif
+    
+       enddo 
+    
+     enddo 
+
+      rpa_correlation = rpa_correlation - 0.25_dp * ( apb_block(t_ij,t_kl) + amb_block(t_ij,t_kl) )
+#endif
+
+
+     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,amb_block,m_apb_block,iprow,ipcol)
+     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,apb_block,m_apb_block,iprow,ipcol)
+
+     if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
+       amb_matrix(:,:) = amb_matrix(:,:) + amb_block(:,:)
+       apb_matrix(:,:) = apb_matrix(:,:) + apb_block(:,:)
+     endif
+
+
+     deallocate(amb_block)
+     deallocate(apb_block)
+   enddo 
+ enddo 
+
+#ifdef HAVE_SCALAPACK
+ call xsum(rpa_correlation)
+#endif
+
+
+
+ call stop_clock(timing_build_common)
+
+end subroutine build_amb_apb_common_auxil
 
 
 !=========================================================================
@@ -876,18 +1065,19 @@ end subroutine build_amb_apb_bse
 
 
 !=========================================================================
-subroutine build_amb_apb_bse_auxil(nmat,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+subroutine build_amb_apb_bse_auxil(desc_apb,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
  use m_spectral_function
  use m_basis_set
  use m_eri_ao_mo
  use m_tools 
  implicit none
 
- integer,intent(in)                 :: nmat
+ integer,intent(in)                 :: desc_apb(ndel)
  type(spectral_function),intent(in) :: wpol,wpol_static
  integer,intent(in)                 :: m_apb,n_apb
  real(prec_td),intent(out)          :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
 !=====
+ integer              :: nmat
  integer              :: t_ij,t_kl,t_ij_global,t_kl_global
  integer              :: istate,jstate,kstate,lstate
  integer              :: kstate_prev
@@ -909,6 +1099,8 @@ subroutine build_amb_apb_bse_auxil(nmat,wpol,wpol_static,m_apb,n_apb,amb_matrix,
  if( .NOT. has_auxil_basis ) call die('Does not have auxil basis. This should not happen')
 
  write(stdout,'(a)') ' Build W part Auxil' 
+
+ nmat = desc_apb(3)
 
  kstate_max = MAXVAL( wpol%transition_table_apb(1,1:wpol%npole_reso_apb) )
 
@@ -1069,8 +1261,10 @@ subroutine build_amb_apb_bse_auxil(nmat,wpol,wpol_static,m_apb,n_apb,amb_matrix,
 
      enddo
 
-     call xsum(amb_block)
-     call xsum(apb_block)
+
+     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,amb_block,m_apb_block,iprow,ipcol)
+     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,apb_block,m_apb_block,iprow,ipcol)
+
      if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
        amb_matrix(:,:) = amb_matrix(:,:) + amb_block(:,:)
        apb_matrix(:,:) = apb_matrix(:,:) + apb_block(:,:)

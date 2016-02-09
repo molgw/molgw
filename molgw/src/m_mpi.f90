@@ -1860,6 +1860,7 @@ end function colindex_local_to_global_procindex
 
 !=========================================================================
 subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix,eigval)
+ use m_tools,only: diagonalize
  implicit none
  integer,intent(in)     :: scalapack_block_min
  integer,intent(in)     :: nmat

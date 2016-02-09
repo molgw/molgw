@@ -86,6 +86,7 @@ if len(sys.argv) > 1:
   if '--np' in sys.argv:
     i = sys.argv.index('--np') + 1
     nprocs = int( sys.argv[i] )
+    mpirun='mpirun'
   if '--mpirun' in sys.argv:
     i = sys.argv.index('--mpirun') + 1
     mpirun = sys.argv[i]

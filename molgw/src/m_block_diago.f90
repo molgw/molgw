@@ -197,13 +197,15 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
  write(stdout,'(/,a)') ' Performing the SCALAPACK block diago when A-B is diagonal'
 
  ! First symmetrize (A+B) 
- ! by adding (A+B)
+ ! by adding (A+B)^T
  do jlocal=1,n_apb
    jglobal = colindex_local_to_global('S',jlocal)
    do ilocal=1,m_apb
      iglobal = rowindex_local_to_global('S',ilocal)
      if( iglobal == jglobal ) then
        apb_matrix(ilocal,jlocal) = apb_matrix(ilocal,jlocal) * 0.5_dp
+     else if( iglobal < jglobal ) then
+       apb_matrix(ilocal,jlocal) = 0.0_dp
      endif
    enddo
  enddo
