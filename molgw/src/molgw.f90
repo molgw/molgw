@@ -39,7 +39,6 @@ program molgw
  use m_hamiltonian
  use m_hamiltonian_sca
  use m_hamiltonian_dist
- use m_timedependent
  implicit none
 
 !=====

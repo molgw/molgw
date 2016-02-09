@@ -28,7 +28,6 @@ subroutine scf_loop(basis,auxil_basis,&
  use m_hamiltonian
  use m_hamiltonian_sca
  use m_hamiltonian_dist
- use m_timedependent
  implicit none
 
 !=====

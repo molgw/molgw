@@ -57,20 +57,25 @@ module m_eri
                                          ! data distribution
 
 
-! TODO write a proper interface for the call to C
-! interface
-!   integer(C_INT) function eval_contr_integral() bind(C)
-!       info=eval_contr_integral(                &
-!                               am1,am2,am3,am4, &
-!                               ng1,ng2,ng3,ng4, &
-!                               coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
-!                               alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
-!                               x01(1),x02(1),x03(1),x04(1),&
-!                               rcut,
-!                               int_shell(1)
-!     character(kind=c_char) :: string(*)
-!   end subroutine print_c
-! end interface
+ interface
+   function eval_contr_integral(am1,am2,am3,am4, &
+                                ng1,ng2,ng3,ng4, &
+                                coeff1,coeff2,coeff3,coeff4,&
+                                alpha1,alpha2,alpha3,alpha4,&
+                                x01,x02,x03,x04,&
+                                rcut, &
+                                int_shell) bind(C)
+    use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+    integer(C_INT) :: eval_contr_integral
+    integer(C_INT) :: am1,am2,am3,am4
+    integer(C_INT) :: ng1,ng2,ng3,ng4
+    real(C_DOUBLE) :: coeff1(1),coeff2(1),coeff3(1),coeff4(1)
+    real(C_DOUBLE) :: alpha1(1),alpha2(1),alpha3(1),alpha4(1)
+    real(C_DOUBLE) :: x01(1),x02(1),x03(1),x04(1)
+    real(C_DOUBLE) :: rcut
+    real(C_DOUBLE) :: int_shell(1)
+   end function eval_contr_integral
+ end interface
 
 
 contains
@@ -509,7 +514,6 @@ subroutine identify_negligible_shellpair(basis)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
 !=====
 ! variables used to call C
- integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2
  integer(C_INT)               :: ng1,ng2
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:)

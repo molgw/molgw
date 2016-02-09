@@ -18,22 +18,6 @@ module m_eri_calculate
  real(prec_eri),private,allocatable :: eri_2center_m1(:,:)
 
 
-! TODO write a proper interface for the call to C
-! interface
-!   integer(C_INT) function eval_contr_integral() bind(C)
-!       info=eval_contr_integral(                &
-!                               am1,am2,am3,am4, &
-!                               ng1,ng2,ng3,ng4, &
-!                               coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
-!                               alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
-!                               x01(1),x02(1),x03(1),x04(1),&
-!                               rcut,
-!                               int_shell(1)
-!     character(kind=c_char) :: string(*)
-!   end subroutine print_c
-! end interface
-
-
 contains
 
 
@@ -84,7 +68,6 @@ subroutine calculate_eri_4center(basis)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
 !=====
 ! variables used to call C
- integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: ng1,ng2,ng3,ng4
  integer(C_INT)               :: am1,am2,am3,am4
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
@@ -322,7 +305,6 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
  real(dp),allocatable         :: eigval(:)
 !=====
 ! variables used to call C
- integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2,am3,am4
  integer(C_INT)               :: ng1,ng2,ng3,ng4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
@@ -570,7 +552,6 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  real(dp),allocatable         :: eri_3tmp(:,:,:)
 !=====
 ! variables used to call C
- integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2,am3,am4
  integer(C_INT)               :: ng1,ng2,ng3,ng4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
@@ -903,7 +884,6 @@ subroutine calculate_eri_approximate_hartree(print_eri_,basis,m_ham,n_ham,x0_rho
  integer                      :: ilocal,jlocal,iglobal,jglobal
 !=====
 ! variables used to call C
- integer(C_INT),external      :: eval_contr_integral
  integer(C_INT)               :: am1,am2,am3,am4
  integer(C_INT)               :: ng1,ng2,ng3,ng4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
