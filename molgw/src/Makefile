@@ -35,6 +35,7 @@ all:
 	+make  level000
 	+make  level005
 	+make  level010
+	+make  level012
 	+make  level015
 	+make  level020
 	+make  level025
@@ -48,7 +49,9 @@ level000: m_definitions.o libint_wrapper.o libint_wrapper_nounderscore.o lebedev
 
 level005: m_warning.o m_gos.o
 
-level010: m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o
+level010: m_elements.o m_timing.o m_memory.o m_tools.o 
+
+level012: m_mpi.o
 
 level015: m_atoms.o m_gaussian.o m_block_diago.o
 
