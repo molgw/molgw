@@ -48,6 +48,9 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  integer                   :: m_apb,n_apb,m_x,n_x
 ! Scalapack variables
  integer                   :: desc_apb(ndel),desc_x(ndel)
+#ifdef DEVEL
+ integer                   :: istate,jstate,t_ij
+#endif
 !=====
 
  call start_clock(timing_pola)
@@ -285,8 +288,17 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  !
  if( calc_type%is_td .OR. calc_type%is_bse ) then
    call optical_spectrum(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
-   call stopping_power(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
+!   call stopping_power(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
  endif
+
+#ifdef DEVEL
+ do t_ij=1,nmat
+   istate = wpol_out%transition_table_apb(1,t_ij)
+   jstate = wpol_out%transition_table_apb(2,t_ij)
+   write(999,*) istate,jstate,bigx(t_ij,1)+bigy(t_ij,1)
+ enddo
+ call pol_davidson(basis,auxil_basis,nstate,occupation,energy,c_matrix,wpol_out)
+#endif
 
  !
  ! Now only the sum ( bigx + bigy ) is needed in fact.
@@ -1198,6 +1210,367 @@ subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,nbf_auxil,a_diag,wpol)
  call stop_clock(timing_buildw)
 
 end subroutine chi_to_sqrtvchisqrtv_auxil_spa
+
+
+!=========================================================================
+#ifdef DEVEL
+subroutine pol_davidson(basis,auxil_basis,nstate,occupation,energy,c_matrix,wpol_out)
+ use m_definitions
+ use m_timing
+ use m_warning
+ use m_memory
+ use m_inputparam
+ use m_mpi
+ use m_tools
+ use m_block_diago
+ use m_basis_set
+ use m_spectral_function
+ use m_eri_ao_mo
+ implicit none
+
+ type(basis_set),intent(in)            :: basis,auxil_basis
+ integer,intent(in)                    :: nstate
+ real(dp),intent(in)                   :: occupation(nstate,nspin)
+ real(dp),intent(in)                   :: energy(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
+ type(spectral_function),intent(inout) :: wpol_out
+!=====
+ ! Davidson part
+ integer,parameter    :: neig=4
+ integer,parameter    :: ncycle=4
+ integer              :: nbb,nbbc
+ integer              :: ibb,jbb
+ integer              :: icycle
+ integer              :: imat
+ real(dp),allocatable :: bb(:,:)
+ real(dp),allocatable :: ql(:,:),qr(:,:)
+ real(dp),allocatable :: eigvec_left(:,:),eigvec_right(:,:)
+ real(dp),allocatable :: apb_bb(:,:)
+ real(dp),allocatable :: amb_bb(:,:)
+ real(dp),allocatable :: apb_tilde(:,:),amb_tilde(:,:),c_tilde(:,:)
+ real(dp),allocatable :: amb_sqrt_tilde(:,:),amb_sqrt_inv_tilde(:,:)
+ real(dp),allocatable :: omega2(:)
+ ! end of davidson
+ integer              :: nmat
+ real(dp),allocatable :: b_vector(:),c_vector(:),d_vector(:)
+ real(dp),allocatable :: apb(:,:),amb(:,:),diag(:)
+ real(dp)             :: p_matrix(basis%nbf,basis%nbf)
+ real(dp)             :: g_matrix(basis%nbf,basis%nbf)
+ real(dp)             :: k_matrix(basis%nbf,basis%nbf)
+ integer              :: istate,jstate,ijspin
+ integer              :: kstate,lstate,klspin
+ integer              :: ibf,jbf,kbf,lbf
+ integer              :: t_ij,t_kl
+ integer              :: iter
+!=====
+
+ ijspin = 1
+
+ if( .NOT. has_auxil_basis ) return
+
+ nmat = wpol_out%npole_reso_apb
+ write(*,*) 'FBFB',nmat
+
+ allocate(b_vector(nmat),c_vector(nmat),d_vector(nmat))
+ b_vector(:) = 0.0_dp
+ b_vector(1) = 1.0_dp
+
+ close(999)
+ do t_ij=1,nmat
+   read(999,*) istate,jstate,b_vector(t_ij)
+ enddo
+
+
+ !
+ ! Build the full TDHF hamiltonian to check
+ !
+ allocate(apb(nmat,nmat),amb(nmat,nmat),diag(nmat))
+
+ do t_kl=1,nmat
+   kstate = wpol_out%transition_table_apb(1,t_kl)
+   lstate = wpol_out%transition_table_apb(2,t_kl)
+   klspin = wpol_out%transition_table_apb(3,t_kl)
+
+   do t_ij=1,nmat
+       istate = wpol_out%transition_table_apb(1,t_ij)
+       jstate = wpol_out%transition_table_apb(2,t_ij)
+       ijspin = wpol_out%transition_table_apb(3,t_ij)
+
+       apb(t_ij,t_kl) = 4.0_dp * eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin) &
+                               - eri_eigen_ri(istate,lstate,ijspin,kstate,jstate,klspin) &
+                               - eri_eigen_ri(istate,kstate,ijspin,lstate,jstate,klspin)
+       amb(t_ij,t_kl) =   eri_eigen_ri(istate,lstate,ijspin,kstate,jstate,klspin) &
+                        - eri_eigen_ri(istate,kstate,ijspin,lstate,jstate,klspin)
+  
+ 
+   enddo
+   apb(t_kl,t_kl) = apb(t_kl,t_kl) + energy(lstate,klspin) - energy(kstate,klspin)
+   amb(t_kl,t_kl) = amb(t_kl,t_kl) + energy(lstate,klspin) - energy(kstate,klspin)
+   diag(t_kl) = energy(lstate,klspin) - energy(kstate,klspin)
+ enddo
+
+ c_vector(:) = MATMUL( apb , b_vector )
+ d_vector(:) = MATMUL( amb , c_vector )
+
+ do t_ij=1,nmat
+   write(1100,*) istate,jstate,d_vector(t_ij)/d_vector(1),d_vector(t_ij)/b_vector(t_ij)
+ enddo
+ ! THIS IS OK up to here !
+
+ ! Davidson diago
+
+ nbb = MAX( 2 * neig * ( 1 + ncycle ) , nmat)
+ allocate(bb(nmat,nbb))
+ allocate(amb_bb(nmat,nbb))
+ allocate(apb_bb(nmat,nbb))
+ allocate(ql(nmat,neig))
+ allocate(qr(nmat,neig))
+
+ nbbc = 2 * neig
+
+ !
+ ! Initialize with stupid coefficients
+ !
+ bb(:,1:nbbc)=0.001_dp
+ do ibb=1,nbbc
+   bb(ibb,ibb) = 1.0_dp
+ enddo
+
+ do ibb=1,nbbc
+   !
+   ! Orthogonalize to previous vectors
+   do jbb=1,ibb-1
+     bb(:,ibb) = bb(:,ibb) - bb(:,jbb) * DOT_PRODUCT( bb(:,ibb) , bb(:,jbb) )
+   enddo
+   !
+   ! Normalize
+   bb(:,ibb) = bb(:,ibb) / NORM2( bb(:,ibb) )
+ enddo
+
+! write(*,*)
+! write(*,*) 'Check orthonormality initial',nbbc
+! do ibb=1,nbbc
+!   do jbb=1,nbbc
+!     write(*,*) ibb,jbb,DOT_PRODUCT( bb(:,ibb) , bb(:,jbb) )
+!   enddo
+! enddo
+! write(*,*)
+   
+
+ amb_bb(:,1:nbbc) = MATMUL( amb(:,:) , bb(:,1:nbbc) )
+ apb_bb(:,1:nbbc) = MATMUL( apb(:,:) , bb(:,1:nbbc) )
+
+
+ do icycle=1,ncycle
+
+   nbbc = 2 * neig * icycle
+   write(*,*) 
+   write(*,*) 'FBFB icycle nbbc',icycle,nbbc
+
+   allocate(apb_tilde(nbbc,nbbc),amb_tilde(nbbc,nbbc))
+   allocate(c_tilde(nbbc,nbbc))
+   allocate(amb_sqrt_tilde(nbbc,nbbc),amb_sqrt_inv_tilde(nbbc,nbbc))
+   allocate(omega2(nbbc))
+   allocate(eigvec_left(nbbc,nbbc),eigvec_right(nbbc,nbbc))
+
+   apb_tilde(1:nbbc,1:nbbc) = MATMUL( TRANSPOSE(bb(:,1:nbbc)) , apb_bb(:,1:nbbc) )
+   amb_tilde(1:nbbc,1:nbbc) = MATMUL( TRANSPOSE(bb(:,1:nbbc)) , amb_bb(:,1:nbbc) )
+
+
+   ! Calculate the square-root of amb_tilde
+   amb_sqrt_tilde(:,:) = amb_tilde(:,:)
+   call diagonalize(nbbc,amb_sqrt_tilde,omega2)
+
+   if( ANY( omega2 < 1.0e-10_dp ) ) then
+     call die('Matrix (A-B) is not positive definite')
+   endif
+   do ibb=1,nbbc
+     amb_sqrt_tilde(:,ibb)     = amb_sqrt_tilde(:,ibb)     * SQRT( SQRT(omega2(ibb)) )
+     amb_sqrt_inv_tilde(:,ibb) = amb_sqrt_inv_tilde(:,ibb) / SQRT( SQRT(omega2(ibb)) )
+   enddo
+   amb_sqrt_tilde(:,:)     = MATMUL( amb_sqrt_tilde     , TRANSPOSE( amb_sqrt_tilde)     )
+   amb_sqrt_inv_tilde(:,:) = MATMUL( amb_sqrt_inv_tilde , TRANSPOSE( amb_sqrt_inv_tilde) )
+
+
+   c_tilde(:,:) = MATMUL( TRANSPOSE(amb_sqrt_tilde) , MATMUL( apb_tilde , amb_sqrt_tilde) )
+
+   ! Diagonalize the C matrix
+   call diagonalize(nbbc,c_tilde,omega2)
+
+   write(*,*) 'FBFB eigenvalues',SQRT(omega2(:)) * Ha_eV
+
+   if( icycle == ncycle ) then
+     write(*,*) 'FBFB cycles done'
+   endif
+
+   eigvec_left (:,:) = MATMUL( TRANSPOSE(c_tilde) , amb_sqrt_tilde )
+   eigvec_right(:,:) = MATMUL( amb_sqrt_inv_tilde , c_tilde )
+   
+   do ibb=1,neig
+
+     ql(:,ibb) = MATMUL( apb_bb(:,1:nbbc) ,  eigvec_right(:,ibb) ) &
+                   - SQRT( omega2(ibb) ) * MATMUL( bb(:,1:nbbc) , eigvec_left(:,ibb) )
+     qr(:,ibb) = MATMUL( amb_bb(:,1:nbbc) ,  eigvec_left(:,ibb) ) &
+                   - SQRT( omega2(ibb) ) * MATMUL( bb(:,1:nbbc) , eigvec_right(:,ibb) )
+
+   enddo
+
+   do ibb=1,neig
+     do imat=1,nmat
+       bb(imat,nbbc+2*ibb-1) = ql(imat,ibb) / ( SQRT(omega2(ibb)) - diag(imat) )
+       bb(imat,nbbc+2*ibb  ) = qr(imat,ibb) / ( SQRT(omega2(ibb)) - diag(imat) )
+     enddo
+   enddo
+
+   !
+   ! Orthogonalize to all previous
+   do ibb=nbbc+1,nbbc+2*neig
+     do jbb=1,ibb-1
+       bb(:,ibb) = bb(:,ibb) - bb(:,jbb) * DOT_PRODUCT( bb(:,ibb) , bb(:,jbb) )
+     enddo
+     ! Normalize
+     bb(:,ibb) = bb(:,ibb) / NORM2( bb(:,ibb) )
+   enddo
+
+!   write(*,*)
+!   write(*,*) 'Check orthonormality',nbbc+2*neig
+!   do ibb=1,nbbc+2*neig
+!     do jbb=1,nbbc+2*neig
+!       write(*,*) ibb,jbb,DOT_PRODUCT( bb(:,ibb) , bb(:,jbb) )
+!     enddo
+!   enddo
+!   write(*,*)
+   
+   amb_bb(:,nbbc+1:nbbc+2*neig) = MATMUL( amb(:,:) , bb(:,nbbc+1:nbbc+2*neig) )
+   apb_bb(:,nbbc+1:nbbc+2*neig) = MATMUL( apb(:,:) , bb(:,nbbc+1:nbbc+2*neig) )
+
+
+
+
+   deallocate(apb_tilde,amb_tilde,omega2)
+   deallocate(c_tilde)
+   deallocate(amb_sqrt_tilde,amb_sqrt_inv_tilde)
+   deallocate(eigvec_left,eigvec_right)
+ enddo
+
+
+
+
+
+
+
+ deallocate(apb,amb,diag)
+  
+
+! b_vector(:) = 0.0_dp
+! b_vector(1) = 1.0_dp
+
+ !
+ ! Build the application of Hamiltonian on trial vectors
+ !
+ do iter=1,1
+   !
+   ! First step
+   !
+   p_matrix(:,:) = 0.0_dp
+   do jbf=1,basis%nbf
+     do ibf=1,basis%nbf
+       do t_ij=1,nmat
+         istate = wpol_out%transition_table_apb(1,t_ij)
+         jstate = wpol_out%transition_table_apb(2,t_ij)
+         ijspin = wpol_out%transition_table_apb(3,t_ij)
+         p_matrix(ibf,jbf) = p_matrix(ibf,jbf) + c_matrix(ibf,istate,ijspin) & 
+                                      * b_vector(t_ij) * c_matrix(jbf,jstate,ijspin)
+       enddo
+     enddo
+   enddo
+  
+   g_matrix(:,:) = 0.0_dp
+   do jbf=1,basis%nbf
+     do ibf=1,basis%nbf
+       do kbf=1,basis%nbf
+         do lbf=1,basis%nbf
+           g_matrix(ibf,jbf) = g_matrix(ibf,jbf) + p_matrix(kbf,lbf) &
+                 * ( 4.0_dp * eri_ri(ibf,jbf,kbf,lbf) - eri_ri(ibf,kbf,jbf,lbf) - eri_ri(ibf,lbf,jbf,kbf) )  ! HERE I CHANGED A SIGN COMPARED TO THE PAPER
+         enddo
+       enddo
+     enddo
+   enddo
+  
+   ijspin = 1
+   g_matrix(1:nstate,1:nstate) = MATMUL( TRANSPOSE(c_matrix(:,:,ijspin)), MATMUL( g_matrix(:,:) , c_matrix(:,:,ijspin) ) )
+  
+   do t_ij=1,nmat
+     istate = wpol_out%transition_table_apb(1,t_ij)
+     jstate = wpol_out%transition_table_apb(2,t_ij)
+     ijspin = wpol_out%transition_table_apb(3,t_ij)
+  
+     c_vector(t_ij) = ( energy(jstate,ijspin) - energy(istate,ijspin) ) * b_vector(t_ij) + g_matrix(istate,jstate)
+  
+   enddo
+  
+  
+   !
+   ! Second step
+   !
+   p_matrix(:,:) = 0.0_dp
+   do jbf=1,basis%nbf
+     do ibf=1,basis%nbf
+       do t_ij=1,nmat
+         istate = wpol_out%transition_table_apb(1,t_ij)
+         jstate = wpol_out%transition_table_apb(2,t_ij)
+         ijspin = wpol_out%transition_table_apb(3,t_ij)
+         p_matrix(ibf,jbf) = p_matrix(ibf,jbf) + c_matrix(ibf,istate,ijspin) & 
+                                      * c_vector(t_ij) * c_matrix(jbf,jstate,ijspin)
+       enddo
+     enddo
+   enddo
+  
+   k_matrix(:,:) = 0.0_dp
+   do jbf=1,basis%nbf
+     do ibf=1,basis%nbf
+       do kbf=1,basis%nbf
+         do lbf=1,basis%nbf
+           k_matrix(ibf,jbf) = k_matrix(ibf,jbf) + p_matrix(kbf,lbf) &
+                 * ( eri_ri(ibf,lbf,jbf,kbf) - eri_ri(ibf,kbf,jbf,lbf) )  ! HERE I CHANGED THE SIGN COMPARED TO THE PAPER
+         enddo
+       enddo
+     enddo
+   enddo
+  
+   ijspin = 1
+   k_matrix(1:nstate,1:nstate) = MATMUL( TRANSPOSE(c_matrix(:,:,ijspin)), MATMUL( k_matrix(:,:) , c_matrix(:,:,ijspin) ) )
+  
+   do t_ij=1,nmat
+     istate = wpol_out%transition_table_apb(1,t_ij)
+     jstate = wpol_out%transition_table_apb(2,t_ij)
+     ijspin = wpol_out%transition_table_apb(3,t_ij)
+  
+     d_vector(t_ij) = ( energy(jstate,ijspin) - energy(istate,ijspin) ) * c_vector(t_ij) + k_matrix(istate,jstate)
+  
+!     write(1000+iter,*) istate,jstate,d_vector(t_ij),d_vector(t_ij)/b_vector(t_ij)
+  
+   enddo
+
+   ! For cycling
+   b_vector(:) = d_vector(:)
+
+ enddo
+
+
+ do t_ij=1,nmat
+   istate = wpol_out%transition_table_apb(1,t_ij)
+   jstate = wpol_out%transition_table_apb(2,t_ij)
+   ijspin = wpol_out%transition_table_apb(3,t_ij)
+   write(1000+iter,*) istate,jstate,d_vector(t_ij)/d_vector(1)
+ enddo
+
+
+
+ deallocate(b_vector,c_vector,d_vector)
+
+
+end subroutine pol_davidson
+#endif
 
 
 !=========================================================================

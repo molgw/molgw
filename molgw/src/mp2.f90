@@ -325,9 +325,10 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
  real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(in)        :: nuc_nuc
 !=====
- integer,parameter    :: neig=2
- integer,parameter    :: nblock=2
+ integer,parameter    :: neig=6
+ integer,parameter    :: nblock=1
  integer,parameter    :: ncycle=12
+ integer              :: bigm,bigm_max
  integer              :: ieig,jeig,keig,neigc,icycle,iblock,jblock
  real(dp),allocatable :: bb(:,:),qq(:,:),atilde(:,:),ab(:,:)
  real(dp),allocatable :: bb_s(:,:),atilde_s(:,:),ab_s(:,:)
@@ -516,6 +517,115 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
 
  endif ! OLD stepest descent
 
+ if( nconf>100 ) then
+   write(stdout,*) 
+   write(stdout,*) 'Davidson diago'
+   write(stdout,*) 'trial vectors'
+
+   bigm_max = neig + (ncycle-1) * neig
+   bigm     = neig
+
+   allocate(bb(nconf,bigm_max))
+   allocate(atilde(bigm_max,bigm_max))
+   allocate(ab(nconf,bigm_max))
+
+   allocate(qq(nconf,neig))
+
+   !
+   ! Initialize with stupid coefficients
+   bb(:,1:bigm)=0.001_dp
+   do ieig=1,bigm
+     bb(ieig,ieig) = 1.0_dp
+   enddo
+   do ieig=1,bigm
+     ! orthogonalize to previous vectors
+     do keig=1,ieig-1
+       bb(:,ieig) = bb(:,ieig) - bb(:,keig) * DOT_PRODUCT( bb(:,ieig) , bb(:,keig) ) 
+     enddo
+     ! normalize
+     bb(:,ieig) = bb(:,ieig) / NORM2( bb(:,ieig) )
+   enddo
+
+
+   ab(:,1:bigm) = MATMUL( hamiltonian(:,:) , bb(:,1:bigm) )
+
+
+   do icycle=1,ncycle
+
+     bigm = icycle * neig
+     write(*,*) 'icycle bigm',icycle,bigm
+
+
+     atilde(1:bigm,1:bigm) = MATMUL( TRANSPOSE(bb(:,1:bigm)) , ab(:,1:bigm) )
+!     write(*,*) 
+!     write(*,*) '==============================='
+!     do ieig=1,bigm
+!       write(*,'(i4,2x,20(2x,f14.6))') ieig,atilde(ieig,1:bigm)
+!     enddo
+!     write(*,*) '==============================='
+
+
+     allocate(lambda(bigm),alphavec(bigm,bigm))
+     call diagonalize(bigm,atilde(1:bigm,1:bigm),lambda,alphavec)
+
+     write(stdout,*) 'icycle',icycle,lambda(1:neig)
+
+     if( icycle == ncycle ) then
+       energy(1:neig) = lambda(1:neig)
+       eigenvector(:,1:neig) = MATMUL( bb(:,1:bigm) , alphavec(1:bigm,1:neig) )
+       deallocate(lambda,alphavec)
+       exit
+     endif
+
+     do ieig=1,neig
+
+       qq(:,ieig) = MATMUL( ab(:,1:bigm) ,  alphavec(1:bigm,ieig) ) &
+                     - lambda(ieig) * MATMUL( bb(:,1:bigm) , alphavec(1:bigm,ieig) )
+
+       write(stdout,'(a,i4,x,i4,x,e12.4)') ' Residual norm for eigenvalue,cycle',ieig,icycle,NORM2(qq(:,ieig))
+
+       do iconf=1,nconf
+         bb(iconf,bigm+ieig) = qq(iconf,ieig) / ( lambda(ieig) - hamiltonian(iconf,iconf) )
+       enddo
+     enddo
+
+     !
+     ! orthogonalize to all previous
+     do ieig=bigm+1,bigm+neig
+       do keig=1,ieig-1
+         bb(:,ieig) = bb(:,ieig) - bb(:,keig) * DOT_PRODUCT( bb(:,ieig) , bb(:,keig) )
+       enddo
+       ! normalize
+       bb(:,ieig) = bb(:,ieig) / NORM2( bb(:,ieig) )
+     enddo
+
+
+     ab(:,bigm+1:bigm+neig) = MATMUL( hamiltonian(:,:) , bb(:,bigm+1:bigm+neig) )
+
+
+
+     deallocate(lambda,alphavec)
+
+   enddo ! icycle
+
+   deallocate(ab,atilde)
+
+   
+
+   write(stdout,*) 
+   write(stdout,*) 'Davidson diago DONE'
+   write(stdout,*) energy(1:min(neig,nconf))
+
+   deallocate(bb,qq)
+   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Davidson   ',1,eigenvector(1:min(20,nconf),1)
+   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Davidson   ',2,eigenvector(1:min(20,nconf),2)
+   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Davidson   ',3,eigenvector(1:min(20,nconf),3)
+   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Davidson   ',4,eigenvector(1:min(20,nconf),4)
+   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Davidson   ',5,eigenvector(1:min(20,nconf),5)
+
+ endif
+
+
  if( nconf>800 ) then
    write(stdout,*) 
    write(stdout,*) 'Davidson diago'
@@ -553,6 +663,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
 
        allocate(lambda(neigc),alphavec(neigc,neigc))
        call diagonalize(neigc,atilde,lambda,alphavec)
+       write(stdout,*) 'icycle',icycle,lambda(1:neig)
 
        do iblock=1,nblock
          qq(:,iblock) = MATMUL( ab ,  alphavec(:,jeig+iblock-1) ) &
@@ -601,16 +712,21 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
 
   else
    ! full LAPACK diago
+   write(stdout,*) 
    write(stdout,*) 'starting the diago'
    call diagonalize(nconf,hamiltonian,energy,eigenvector)
-   write(stdout,*) 'diago DONE'
+   write(stdout,*) 'Full diago DONE'
    write(stdout,*) energy(1:min(neig,nconf))
+   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Full diago ',1,eigenvector(1:min(20,nconf),1)
+   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Full diago ',2,eigenvector(1:min(20,nconf),2)
+   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Full diago ',3,eigenvector(1:min(20,nconf),3)
+   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Full diago ',4,eigenvector(1:min(20,nconf),4)
+   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Full diago ',5,eigenvector(1:min(20,nconf),5)
 
  endif
 
  write(stdout,*)
  write(stdout,*) 'normalization',SUM(eigenvector(:,1)**2)
- write(stdout,'(i4,2x,20(x,f7.4))') 1,eigenvector(1:min(20,nconf),1)
  write(stdout,*)
  write(stdout,'(a30,2x,f16.10)') 'CI ground-state energy (Ha):',energy(1)
  write(stdout,'(a30,2x,f16.10)') 'correlation energy (Ha):',energy(1)-hamiltonian(1,1)
