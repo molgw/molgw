@@ -1236,7 +1236,7 @@ subroutine pol_davidson(basis,auxil_basis,nstate,occupation,energy,c_matrix,wpol
 !=====
  ! Davidson part
  integer,parameter    :: neig=4
- integer,parameter    :: ncycle=4
+ integer,parameter    :: ncycle=7
  integer              :: nbb,nbbc
  integer              :: ibb,jbb
  integer              :: icycle
@@ -1253,6 +1253,7 @@ subroutine pol_davidson(basis,auxil_basis,nstate,occupation,energy,c_matrix,wpol
  integer              :: nmat
  real(dp),allocatable :: b_vector(:),c_vector(:),d_vector(:)
  real(dp),allocatable :: apb(:,:),amb(:,:),diag(:)
+ logical,allocatable  :: maskmin(:)
  real(dp)             :: p_matrix(basis%nbf,basis%nbf)
  real(dp)             :: g_matrix(basis%nbf,basis%nbf)
  real(dp)             :: k_matrix(basis%nbf,basis%nbf)
@@ -1325,15 +1326,26 @@ subroutine pol_davidson(basis,auxil_basis,nstate,occupation,energy,c_matrix,wpol
  allocate(ql(nmat,neig))
  allocate(qr(nmat,neig))
 
- nbbc = 2 * neig
+ nbbc = neig ! 2*neig
 
  !
  ! Initialize with stupid coefficients
  !
  bb(:,1:nbbc)=0.001_dp
- do ibb=1,nbbc
-   bb(ibb,ibb) = 1.0_dp
+! do ibb=1,nbbc
+!   bb(ibb,ibb) = 1.0_dp
+! enddo
+
+ allocate(maskmin(nmat))
+ maskmin(:)=.TRUE.
+ do ibb=1,neig
+   jbb = MINLOC( diag(:) ,DIM=1, MASK=maskmin(:))
+   write(stdout,*) 'FBFB Init',ibb,jbb,wpol_out%transition_table_apb(1,jbb),wpol_out%transition_table_apb(2,jbb)
+   bb(jbb,ibb) = 1.0_dp
+   maskmin(jbb) = .FALSE. 
  enddo
+ deallocate(maskmin)
+
 
  do ibb=1,nbbc
    !
@@ -1346,23 +1358,13 @@ subroutine pol_davidson(basis,auxil_basis,nstate,occupation,energy,c_matrix,wpol
    bb(:,ibb) = bb(:,ibb) / NORM2( bb(:,ibb) )
  enddo
 
-! write(*,*)
-! write(*,*) 'Check orthonormality initial',nbbc
-! do ibb=1,nbbc
-!   do jbb=1,nbbc
-!     write(*,*) ibb,jbb,DOT_PRODUCT( bb(:,ibb) , bb(:,jbb) )
-!   enddo
-! enddo
-! write(*,*)
-   
-
  amb_bb(:,1:nbbc) = MATMUL( amb(:,:) , bb(:,1:nbbc) )
  apb_bb(:,1:nbbc) = MATMUL( apb(:,:) , bb(:,1:nbbc) )
 
 
  do icycle=1,ncycle
 
-   nbbc = 2 * neig * icycle
+   nbbc = neig + 2 * neig * (icycle-1) !   2 * neig * icycle
    write(*,*) 
    write(*,*) 'FBFB icycle nbbc',icycle,nbbc
 
@@ -1383,6 +1385,7 @@ subroutine pol_davidson(basis,auxil_basis,nstate,occupation,energy,c_matrix,wpol
    if( ANY( omega2 < 1.0e-10_dp ) ) then
      call die('Matrix (A-B) is not positive definite')
    endif
+   amb_sqrt_inv_tilde(:,:) = amb_sqrt_tilde(:,:)
    do ibb=1,nbbc
      amb_sqrt_tilde(:,ibb)     = amb_sqrt_tilde(:,ibb)     * SQRT( SQRT(omega2(ibb)) )
      amb_sqrt_inv_tilde(:,ibb) = amb_sqrt_inv_tilde(:,ibb) / SQRT( SQRT(omega2(ibb)) )
@@ -1396,23 +1399,76 @@ subroutine pol_davidson(basis,auxil_basis,nstate,occupation,energy,c_matrix,wpol
    ! Diagonalize the C matrix
    call diagonalize(nbbc,c_tilde,omega2)
 
-   write(*,*) 'FBFB eigenvalues',SQRT(omega2(:)) * Ha_eV
+!   write(*,*) 'FBFB eigenvalues',SQRT(omega2(:)) * Ha_eV
 
    if( icycle == ncycle ) then
      write(*,*) 'FBFB cycles done'
+     exit
    endif
 
-   eigvec_left (:,:) = MATMUL( TRANSPOSE(c_tilde) , amb_sqrt_tilde )
-   eigvec_right(:,:) = MATMUL( amb_sqrt_inv_tilde , c_tilde )
+   ! TRANSPOSE the left eigvec
+   eigvec_left (:,:) = TRANSPOSE(  MATMUL( TRANSPOSE(c_tilde) , amb_sqrt_inv_tilde ) ) 
+   ! Normalize it properly
+   do ibb=1,neig
+     eigvec_left(:,ibb) = eigvec_left(:,ibb) * SQRT(omega2(ibb))
+   enddo
+   eigvec_right(:,:) = MATMUL( amb_sqrt_tilde , c_tilde )
+
+!   write(*,*) 'TEST BI ORTHONORMALITY'
+!    OK
+!   do ibb=1,neig
+!     do jbb=1,neig
+!       write(*,*) ibb,jbb,DOT_PRODUCT( eigvec_left(:,ibb),eigvec_right(:,jbb) )
+!     enddo
+!   enddo
+   
+
+!   write(*,*) 'TEST LEFT EIGVEC tilde'
+!    OK
+!   do ibb=1,neig
+!     write(*,*) ' ========',ibb
+!     write(*,*) MATMUL( eigvec_left(:,ibb) , MATMUL( amb_tilde , apb_tilde ) ) 
+!     write(*,*)
+!     write(*,*) eigvec_left(:,ibb) * omega2(ibb)
+!     write(*,*)
+!   enddo
+!   
+!   write(*,*) 'TEST RIGHT EIGVEC tilde'
+!    OK
+!   do ibb=1,neig
+!     write(*,*) ' ========',ibb
+!     write(*,*) MATMUL( MATMUL( amb_tilde , apb_tilde ) , eigvec_right(:,ibb) ) 
+!     write(*,*)
+!     write(*,*) eigvec_right(:,ibb) * omega2(ibb)
+!     write(*,*)
+!   enddo
+
+!   write(*,*) 'TEST QL tilde'
+!   do ibb=1,neig
+!     write(*,*) ' ========',ibb
+!     write(*,*) MATMUL( apb_tilde , eigvec_right(:,ibb) )
+!     write(*,*) SQRT(omega2(ibb)) * eigvec_left(:,ibb) 
+!     write(*,*)
+!   enddo
+!   
+!   write(*,*) 'TEST QR tilde'
+!   do ibb=1,neig
+!     write(*,*) ' ========',ibb
+!     write(*,*) MATMUL( amb_tilde , eigvec_left(:,ibb) )
+!     write(*,*) SQRT(omega2(ibb)) * eigvec_right(:,ibb)   
+!     write(*,*)
+!   enddo
    
    do ibb=1,neig
-
+     write(*,*) 'FBFB: omega',ibb,SQRT(omega2(ibb))*Ha_eV
      ql(:,ibb) = MATMUL( apb_bb(:,1:nbbc) ,  eigvec_right(:,ibb) ) &
                    - SQRT( omega2(ibb) ) * MATMUL( bb(:,1:nbbc) , eigvec_left(:,ibb) )
      qr(:,ibb) = MATMUL( amb_bb(:,1:nbbc) ,  eigvec_left(:,ibb) ) &
                    - SQRT( omega2(ibb) ) * MATMUL( bb(:,1:nbbc) , eigvec_right(:,ibb) )
-
+     write(stdout,*) 'FBFB ql',icycle,ibb,NORM2(ql(:,ibb))
+     write(stdout,*) 'FBFB qr',icycle,ibb,NORM2(qr(:,ibb))
    enddo
+
 
    do ibb=1,neig
      do imat=1,nmat
@@ -1453,12 +1509,9 @@ subroutine pol_davidson(basis,auxil_basis,nstate,occupation,energy,c_matrix,wpol
  enddo
 
 
-
-
-
-
-
  deallocate(apb,amb,diag)
+
+ write(stdout,*) 'First part done'
   
 
 ! b_vector(:) = 0.0_dp
