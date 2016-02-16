@@ -93,7 +93,7 @@
  tda='no'
  triplet='no'
  nexcitation=0
- toldav=1e-05
+ toldav=0.0001
  frozencore='no'
  ncoreg=0
  ncorew=0

@@ -688,6 +688,7 @@ subroutine read_inputfile_namelist()
    call die('Please run with one CPU only or provide MOLGW with an auxiliary basis')
  endif
 
+
  !
  ! Read the atom positions
  allocate(x_read(3,natom+nghost),zatom_read(natom+nghost))
@@ -716,6 +717,10 @@ subroutine read_inputfile_namelist()
  endif
  call init_calculation_type(calc_type,input_key)
 
+ ! Some additional checks
+ if( nexcitation /=0 .AND. calc_type%is_gw ) then
+   call die('Davidson diago is not compatible with GW. Set nexcitation to 0')
+ endif
 
  spin_fact = REAL(-nspin+3,dp)
  electrons = SUM(zatom(:)) - charge

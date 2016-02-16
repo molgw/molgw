@@ -202,7 +202,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    alpha_diis(1:nhist_current) = alpha_diis(1:nhist_current) / SUM( alpha_diis(1:nhist_current) )
  endif
 
- write(stdout,'(a,30(2x,f12.6))') ' Alpha DIIS:',alpha_diis(1:nhist_current)
+ write(stdout,'(a,30(2x,f12.6))') ' Alpha DIIS: ',alpha_diis(1:nhist_current)
 
  residual_pred(:,:,:) = 0.0_dp
  do ihist=1,nhist_current

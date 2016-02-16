@@ -30,7 +30,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  type(spectral_function),intent(inout) :: wpol_out
 !=====
  type(spectral_function)   :: wpol_static
- integer                   :: nmat
+ integer                   :: nmat,nexc
  real(dp)                  :: energy_gm
  real(dp)                  :: alpha_local
  real(dp),allocatable      :: amb_diag_rpa(:)
@@ -232,9 +232,14 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  if(is_rpa) call clean_deallocate('A-B',amb_matrix)
  
 
+ !
+ ! Prepare the second dimension of bigx and bigy
+ nexc = nexcitation
+ if( nexc == 0 ) nexc = wpol_out%npole_reso_apb
+
  allocate(eigenvalue(nmat))
  ! bigX, and bigY (if needed)
- call init_desc('S',nmat,nmat,desc_x,m_x,n_x)
+ call init_desc('S',nmat,nexc,desc_x,m_x,n_x)
  write(stdout,*) 'Allocate eigenvector array'
  call clean_allocate('X',bigx,m_x,n_x)
  if( .NOT. is_rpa) &
@@ -253,7 +258,8 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
                              desc_x,m_x,n_x,bigx,bigy)
 #endif
    else ! Partial diagonalization with Davidson
-     call diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
+     call diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix, & 
+                                 eigenvalue,desc_x,m_x,n_x,bigx,bigy)
    endif
  else
 #ifndef HAVE_SCALAPACK
@@ -284,7 +290,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
    write(stdout,'(/,a,f16.10)') ' RPA energy (Ha): ',rpa_correlation
  endif
 
- write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy (eV):',MINVAL(ABS(eigenvalue(:)))*Ha_eV
+ write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy (eV):',MINVAL(ABS(eigenvalue(1:nexc)))*Ha_eV
 
  if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix)
 
@@ -380,22 +386,22 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bi
  real(prec_td),intent(in)           :: bigy(m_x,n_x)
  real(dp),intent(in)                :: eigenvalue(chi%npole_reso_apb)
 !=====
+ integer                            :: nexc
  integer                            :: t_ij,t_kl
  integer                            :: t_ij_global,t_kl_global
- integer                            :: nmat
  integer                            :: istate,jstate,ijspin
  integer                            :: ibf,jbf
  integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
  integer                            :: iomega,idir,jdir
  integer,parameter                  :: nomega=600
  complex(dp)                        :: omega(nomega)
- real(dp)                           :: coeff,trace
+ real(dp)                           :: coeff(2*chi%npole_reso_apb),trace
  real(dp)                           :: dynamical_pol(nomega,3,3),photoabsorp_cross(nomega,3,3)
  real(dp)                           :: static_polarizability(3,3)
  real(dp)                           :: oscillator_strength,trk_sumrule,mean_excitation
  real(dp),allocatable               :: dipole_basis(:,:,:),dipole_tmp(:,:,:),dipole_state(:,:,:,:)
  real(dp),allocatable               :: dipole_cart(:,:,:)
- real(dp),allocatable               :: residu_left(:,:)
+ real(dp),allocatable               :: residu(:,:)
  integer                            :: dynpolfile
  integer                            :: photocrossfile
  integer                            :: parityi,parityj,reflectioni,reflectionj
@@ -417,6 +423,9 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bi
    call issue_warning(msg)
    return
  endif
+
+ nexc = nexcitation
+ if( nexc == 0 ) nexc = chi%npole_reso_apb
 
  !
  ! First precalculate all the needed dipole in the basis set
@@ -482,10 +491,9 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bi
  deallocate(dipole_basis,dipole_tmp)
 
 
- allocate(residu_left(3,chi%npole_reso_apb))
+ allocate(residu(3,nexc))
 
- nmat=chi%npole_reso_apb
- residu_left(:,:) = 0.0_dp
+ residu(:,:) = 0.0_dp
  do t_ij=1,m_x
    t_ij_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ij)
    istate = chi%transition_table_apb(1,t_ij_global)
@@ -496,59 +504,29 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bi
    do t_kl=1,n_x
      t_kl_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_kl)
 
-     residu_left(:,t_kl_global) = residu_left(:,t_kl_global) &
-                  + dipole_state(:,istate,jstate,ijspin) * ( bigx(t_ij,t_kl) + bigy(t_ij,t_kl) ) * SQRT(spin_fact)
+     if( t_kl_global <= nexc) then
+       residu(:,t_kl_global) = residu(:,t_kl_global) &
+                    + dipole_state(:,istate,jstate,ijspin) * ( bigx(t_ij,t_kl) + bigy(t_ij,t_kl) ) * SQRT(spin_fact)
+     endif
    enddo
 
  enddo
- call xsum(residu_left)
+ call xsum(residu)
 
  deallocate(dipole_state)
 
-
- !
- ! Calculate the dynamical dipole polarizability
- ! and the static dipole polarizability
- !
- ! Set the frequency mesh
- omega(1)     =MAX( 0.0_dp      ,MINVAL(ABS(eigenvalue(:)))-10.00/Ha_eV)
- omega(nomega)=MIN(50.0_dp/Ha_eV,MAXVAL(ABS(eigenvalue(:)))+10.00/Ha_eV)
- do iomega=2,nomega-1
-   omega(iomega) = omega(1) + ( omega(nomega)-omega(1) ) /REAL(nomega-1,dp) * (iomega-1) 
- enddo
- ! Add the broadening
- omega(:) = omega(:) + im * 0.10/Ha_eV
-
- dynamical_pol(:,:,:) = 0.0_dp
- static_polarizability(:,:) = 0.0_dp
- do t_ij=1,nmat
-   do idir=1,3
-     do jdir=1,3
-       dynamical_pol(:,idir,jdir) = dynamical_pol(:,idir,jdir) &
-                            + residu_left(idir,t_ij) * residu_left(jdir,t_ij) &
-                              * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ij) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ij) ) ) )
-       static_polarizability(idir,jdir) = static_polarizability(idir,jdir) &
-                      + 2.0_dp * residu_left(idir,t_ij) * residu_left(jdir,t_ij) / eigenvalue(t_ij)
-     enddo
-   enddo
- enddo
- !
- ! Get the photoabsorption cross section
- do iomega=1,nomega
-   photoabsorp_cross(iomega,:,:) = 4.0_dp * pi * REAL(omega(iomega),dp) / c_speedlight * dynamical_pol(iomega,:,:)
- enddo
 
 
  write(stdout,'(/,a)') ' Excitation energies (eV)     Oscil. strengths   [Symmetry] '  
  trk_sumrule=0.0_dp
  mean_excitation=0.0_dp
- do t_kl_global=1,nmat
+ do t_kl_global=1,nexc
    t_kl = colindex_global_to_local('S',t_kl_global)
 
    if( is_triplet ) then 
      oscillator_strength = 0.0_dp
    else
-     oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu_left(:,t_kl_global),residu_left(:,t_kl_global)) * eigenvalue(t_kl_global)
+     oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu(:,t_kl_global),residu(:,t_kl_global)) * eigenvalue(t_kl_global)
    endif
    trk_sumrule = trk_sumrule + oscillator_strength
    mean_excitation = mean_excitation + oscillator_strength * LOG( eigenvalue(t_kl_global) )
@@ -606,38 +584,77 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bi
 
      !
      ! Output the transition coefficients
-     do t_ij_global=1,nmat
-       t_ij = rowindex_global_to_local('S',t_ij_global)
+     coeff(:) = 0.0_dp
+     do t_ij=1,m_x
+       t_ij_global = rowindex_local_to_global('S',t_ij)
        istate = chi%transition_table_apb(1,t_ij_global)
        jstate = chi%transition_table_apb(2,t_ij_global)
+       if( t_kl /= 0 ) then
+         ! Resonant
+         coeff(                     t_ij_global) = bigx(t_ij,t_kl) / SQRT(2.0_dp)
+         ! Anti-Resonant
+         coeff(chi%npole_reso_apb + t_ij_global) = bigy(t_ij,t_kl) / SQRT(2.0_dp)
+       endif
+     enddo
+     call xsum(coeff)
      
-       coeff = 0.0_dp
-       if( t_ij /= 0 .AND. t_kl /=0 ) then 
-         if( ABS(bigx(t_ij,t_kl)) / SQRT(2.0_dp) > 0.1_dp ) then
-           coeff = bigx(t_ij,t_kl) / SQRT(2.0_dp)
-         endif
-       endif
-       call xsum(coeff)
-       if( ABS(coeff) > 0.1_dp ) write(stdout,'(8x,i4,a,i4,1x,f12.5)') istate,' -> ',jstate,coeff
 
-       coeff = 0.0_dp
-       if( t_ij /= 0 .AND. t_kl /=0 ) then
-         if( ABS(bigy(t_ij,t_kl)) / SQRT(2.0_dp) > 1.0e-1_dp ) then
-           coeff = bigy(t_ij,t_kl) / SQRT(2.0_dp)
-         endif
-       endif
-       call xsum(coeff)
-       if( ABS(coeff) > 0.1_dp ) write(stdout,'(8x,i4,a,i4,1x,f12.5)') istate,' <- ',jstate,coeff
+     do t_ij_global=1,chi%npole_reso_apb
+       istate = chi%transition_table_apb(1,t_ij_global)
+       jstate = chi%transition_table_apb(2,t_ij_global)
+       ! Resonant
+       if( ABS(coeff(                   t_ij_global)) > 0.1_dp )  &
+         write(stdout,'(8x,i4,a,i4,1x,f12.5)') istate,' -> ',jstate,coeff(t_ij_global)
+       ! Anti-Resonant
+       if( ABS(coeff(chi%npole_reso_apb+t_ij_global)) > 0.1_dp )  &
+         write(stdout,'(8x,i4,a,i4,1x,f12.5)') istate,' <- ',jstate,coeff(chi%npole_reso_apb+t_ij_global)
      enddo
 
-
-
-
      write(stdout,*)
+
    endif
  enddo
 
- if( is_triplet ) return
+ !
+ ! For some calculation conditions, the rest of the subroutine is irrelevant
+ ! So skip it! Skip it!
+ if( is_triplet .OR. nexc /= chi%npole_reso_apb ) then
+   deallocate(residu)
+   return
+ endif
+
+
+ !
+ ! Calculate the dynamical dipole polarizability
+ ! and the static dipole polarizability
+ !
+ ! Set the frequency mesh
+ omega(1)     =MAX( 0.0_dp      ,MINVAL(ABS(eigenvalue(:)))-10.00/Ha_eV)
+ omega(nomega)=MIN(50.0_dp/Ha_eV,MAXVAL(ABS(eigenvalue(:)))+10.00/Ha_eV)
+ do iomega=2,nomega-1
+   omega(iomega) = omega(1) + ( omega(nomega)-omega(1) ) /REAL(nomega-1,dp) * (iomega-1) 
+ enddo
+ ! Add the broadening
+ omega(:) = omega(:) + im * 0.10/Ha_eV
+
+ dynamical_pol(:,:,:) = 0.0_dp
+ static_polarizability(:,:) = 0.0_dp
+ do t_ij=1,nexc
+   do idir=1,3
+     do jdir=1,3
+       dynamical_pol(:,idir,jdir) = dynamical_pol(:,idir,jdir) &
+                            + residu(idir,t_ij) * residu(jdir,t_ij) &
+                              * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ij) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ij) ) ) )
+       static_polarizability(idir,jdir) = static_polarizability(idir,jdir) &
+                      + 2.0_dp * residu(idir,t_ij) * residu(jdir,t_ij) / eigenvalue(t_ij)
+     enddo
+   enddo
+ enddo
+ !
+ ! Get the photoabsorption cross section
+ do iomega=1,nomega
+   photoabsorp_cross(iomega,:,:) = 4.0_dp * pi * REAL(omega(iomega),dp) / c_speedlight * dynamical_pol(iomega,:,:)
+ enddo
 
  write(stdout,'(/,a)')     ' TRK sum rule: the two following numbers should compare well'
  write(stdout,'(a,f12.6)') ' Sum over oscillator strengths: ',trk_sumrule
@@ -676,7 +693,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bi
  endif
 
 
- deallocate(residu_left)
+ deallocate(residu)
 
  call stop_clock(timing_spectrum)
 
@@ -720,7 +737,7 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy
  complex(dpc)                       :: bethe_sumrule
  complex(dpc),allocatable           :: gos_basis(:,:),gos_tmp(:,:),gos_state(:,:,:)
  complex(dpc),allocatable           :: gos_cart(:,:)
- complex(dpc),allocatable           :: residu_left(:)
+ complex(dpc),allocatable           :: residu(:)
  real(dp)                           :: qvec(3)
  integer,parameter                  :: nq=0 ! 1000
  integer                            :: iq
@@ -836,9 +853,9 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy
   
   
    nmat=chi%npole_reso_apb
-   allocate(residu_left(chi%npole_reso_apb))
+   allocate(residu(chi%npole_reso_apb))
   
-   residu_left(:) = 0.0_dp
+   residu(:) = 0.0_dp
    do t_ij=1,m_x
      t_ij_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ij)
      istate = chi%transition_table_apb(1,t_ij_global)
@@ -849,16 +866,16 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy
      do t_kl=1,n_x
        t_kl_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_kl)
   
-       residu_left(t_kl_global) = residu_left(t_kl_global) &
+       residu(t_kl_global) = residu(t_kl_global) &
                     + gos_state(istate,jstate,ijspin) * ( bigx(t_ij,t_kl) + bigy(t_ij,t_kl) ) * SQRT(spin_fact)
      enddo
   
    enddo
-   call xsum(residu_left)
+   call xsum(residu)
   
    deallocate(gos_state)
 
-   fnq(:) = 2.0_dp * ABS( residu_left(:) )**2 * eigenvalue(:) / SUM( qvec(:)**2 )
+   fnq(:) = 2.0_dp * ABS( residu(:) )**2 * eigenvalue(:) / SUM( qvec(:)**2 )
 
    write(stdout,*) 'bethe_sumrule',NORM2(qvec(:)),SUM(fnq(:))
 
@@ -867,7 +884,7 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy
    dynamical_pol(:) = 0.0_dp
    do t_ij=1,nmat
      dynamical_pol(:) = dynamical_pol(:) &
-                       + ABS(residu_left(t_ij))**2 &
+                       + ABS(residu(t_ij))**2 &
                         * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ij) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ij) ) ) )
    enddo
 !   !
@@ -880,7 +897,7 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy
 !   write(999,*)
 
 
-   deallocate(residu_left)
+   deallocate(residu)
 
 !   write(998,*) SUM( qvec(:)**2 ), fnq(6)
 
@@ -1117,10 +1134,6 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,eigenval
 
 #else 
 
-
-! ! bigx = bigx + bigy 
-! call PDGEADD('N',nmat,nmat,1.d0,bigy,1,1,desc_x,1.d0,bigx,1,1,desc_x)
-! Already done!
 
  bigx(:,:) = bigx(:,:) * SQRT(spin_fact)
 
@@ -1430,41 +1443,6 @@ subroutine pol_davidson(basis,auxil_basis,nstate,occupation,energy,c_matrix,wpol
 !   enddo
    
 
-!   write(*,*) 'TEST LEFT EIGVEC tilde'
-!    OK
-!   do ibb=1,neig
-!     write(*,*) ' ========',ibb
-!     write(*,*) MATMUL( eigvec_left(:,ibb) , MATMUL( amb_tilde , apb_tilde ) ) 
-!     write(*,*)
-!     write(*,*) eigvec_left(:,ibb) * omega2(ibb)
-!     write(*,*)
-!   enddo
-!   
-!   write(*,*) 'TEST RIGHT EIGVEC tilde'
-!    OK
-!   do ibb=1,neig
-!     write(*,*) ' ========',ibb
-!     write(*,*) MATMUL( MATMUL( amb_tilde , apb_tilde ) , eigvec_right(:,ibb) ) 
-!     write(*,*)
-!     write(*,*) eigvec_right(:,ibb) * omega2(ibb)
-!     write(*,*)
-!   enddo
-
-!   write(*,*) 'TEST QL tilde'
-!   do ibb=1,neig
-!     write(*,*) ' ========',ibb
-!     write(*,*) MATMUL( apb_tilde , eigvec_right(:,ibb) )
-!     write(*,*) SQRT(omega2(ibb)) * eigvec_left(:,ibb) 
-!     write(*,*)
-!   enddo
-!   
-!   write(*,*) 'TEST QR tilde'
-!   do ibb=1,neig
-!     write(*,*) ' ========',ibb
-!     write(*,*) MATMUL( amb_tilde , eigvec_left(:,ibb) )
-!     write(*,*) SQRT(omega2(ibb)) * eigvec_right(:,ibb)   
-!     write(*,*)
-!   enddo
    
    do ibb=1,neig
      write(*,*) 'FBFB: omega',ibb,SQRT(omega2(ibb))*Ha_eV

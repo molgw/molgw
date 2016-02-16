@@ -198,17 +198,21 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
 
  write(stdout,'(/,a)') ' Performing the SCALAPACK block diago when A-B is diagonal'
 
- ! First symmetrize (A+B) 
- ! by adding (A+B)^T
+ ! First symmetrize (A+B) (lower triangular matrix)
+ ! by adding (A+B)^T (upper triangular)
+ ! be careful about the diagonal terms
  do jlocal=1,n_apb
-   jglobal = colindex_local_to_global('S',jlocal)
+   jglobal = colindex_local_to_global(desc_apb,jlocal)
    do ilocal=1,m_apb
-     iglobal = rowindex_local_to_global('S',ilocal)
+     iglobal = rowindex_local_to_global(desc_apb,ilocal)
+
+     ! Half the diagonal and erase the upper triangle
      if( iglobal == jglobal ) then
        apb_matrix(ilocal,jlocal) = apb_matrix(ilocal,jlocal) * 0.5_dp
      else if( iglobal < jglobal ) then
        apb_matrix(ilocal,jlocal) = 0.0_dp
      endif
+
    enddo
  enddo
  bigx(:,:) = apb_matrix(:,:)
@@ -331,26 +335,37 @@ end subroutine diago_4blocks_rpa
 
 
 !=========================================================================
-subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
+subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
+                                  desc_apb,m_apb,n_apb,amb_matrix,apb_matrix, &
+                                  eigenvalue,desc_x,m_x,n_x,bigx,bigy)
  use m_tools
  implicit none
 
  real(dp),intent(in)    :: toldav
  integer,intent(in)     :: nexcitation
- integer,intent(in)     :: nmat
+ integer,intent(in)     :: nmat,m_apb,n_apb,m_x,n_x
+ integer,intent(in)     :: desc_apb(ndel),desc_x(ndel)
  real(dp),intent(in)    :: amb_diag_rpa(nmat)
- real(dp),intent(inout) :: amb_matrix(nmat,nmat)
- real(dp),intent(inout) :: apb_matrix(nmat,nmat)
+ real(dp),intent(inout) :: amb_matrix(m_apb,n_apb)
+ real(dp),intent(inout) :: apb_matrix(m_apb,n_apb)
  real(dp),intent(out)   :: eigenvalue(nmat)
- real(dp),intent(out)   :: bigx(nmat,nmat)
- real(dp),intent(out)   :: bigy(nmat,nmat)
+ real(dp),intent(out)   :: bigx(m_x,n_x)
+ real(dp),intent(out)   :: bigy(m_x,n_x)
 !=====
- integer,parameter    :: ncycle=20
- integer              :: nbb,nbbc
+ integer              :: descb(ndel),desce(ndel)
+ integer,parameter    :: SMALL_BLOCK=1
+ integer,parameter    :: NCYCLE=20
+ integer              :: nbb,nbbc,nbba
  integer              :: ibb,jbb
  integer              :: icycle
  integer              :: imat
+ integer              :: iglobal,jglobal,ib,jb
+ integer              :: mb,nb
+ integer              :: me,ne
+ integer              :: info
  real(dp)             :: tolres
+ real(dp),allocatable :: ab_local(:,:),bb_local(:,:)
+ real(dp),allocatable :: ev_local(:,:)
  real(dp),allocatable :: bb(:,:)
  real(dp),allocatable :: ql(:,:),qr(:,:)
  real(dp),allocatable :: eigvec_left(:,:),eigvec_right(:,:)
@@ -360,26 +375,23 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa,amb_matri
  real(dp),allocatable :: amb_sqrt_tilde(:,:),amb_sqrt_inv_tilde(:,:)
  real(dp),allocatable :: omega2(:)
  logical,allocatable  :: maskmin(:)
- integer              :: t_ij,t_kl
+ integer,external     :: NUMROC,INDXL2G
+ integer :: t_ij,t_kl
 !=====
 
  call start_clock(timing_diago_h2p)
 
- write(stdout,'(/,a,i4)') ' Performing the Davidson block diago for excitation counts ',nexcitation
+ write(stdout,'(/,a,i4)') ' Performing the Davidson block diago'
 
- ! First symmetrize the matrices since only the lower triangle was calculated
- do t_kl=1,nmat
-   do t_ij=t_kl+1,nmat
-     amb_matrix(t_kl,t_ij) = amb_matrix(t_ij,t_kl)
-     apb_matrix(t_kl,t_ij) = apb_matrix(t_ij,t_kl)
-   enddo
- enddo
+ !
+ ! No need to symmetrize (A+B) and (A-B), since we call the specialized DSYMM or PDSYMM
 
-
-
+ !
  ! Maximum dimension of the iterative subspace (tilde matrices)
- nbb = MIN( nexcitation * ( 1 + 2 * ncycle ) , nmat)
+ nbb = MIN( nexcitation * ( 1 + 2 * NCYCLE ) , nmat)
 
+ !
+ ! Allocate the small matrices
  allocate(bb(nmat,nbb))
  allocate(amb_bb(nmat,nbb))
  allocate(apb_bb(nmat,nbb))
@@ -387,7 +399,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa,amb_matri
  allocate(qr(nmat,nexcitation))
 
  ! Current dimension of the iterative subspace
- nbbc = nexcitation
+ nbbc = nexcitation 
 
  !
  ! Initialize with a stupid guess based on the diagonal
@@ -396,7 +408,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa,amb_matri
  ! Find the nexcitation lowest diagonal elements
  allocate(maskmin(nmat))
  maskmin(:)=.TRUE.
- do ibb=1,nexcitation
+ do ibb=1,nbbc
    jbb = MINLOC( amb_diag_rpa(:) ,DIM=1, MASK=maskmin(:))
    bb(jbb,ibb) = 1.0_dp
    maskmin(jbb) = .FALSE. 
@@ -414,14 +426,71 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa,amb_matri
    bb(:,ibb) = bb(:,ibb) / NORM2( bb(:,ibb) )
  enddo
 
- amb_bb(:,1:nbbc) = MATMUL( amb_matrix(:,:) , bb(:,1:nbbc) )
- apb_bb(:,1:nbbc) = MATMUL( apb_matrix(:,:) , bb(:,1:nbbc) )
+ ! 
+ ! The time-consumming operation:
+ ! Calculate (A-B) b  and  (A+B) b
+#ifndef HAVE_SCALAPACK
+! amb_bb(:,1:nbbc) = MATMUL( amb_matrix(:,:) , bb(:,1:nbbc) )
+! apb_bb(:,1:nbbc) = MATMUL( apb_matrix(:,:) , bb(:,1:nbbc) )
+ call DSYMM('L','L',nmat,nbbc,1.0_dp,amb_matrix,nmat,bb(:,1:nbbc),nmat,0.0_dp,amb_bb(:,1:nbbc),nmat)
+ call DSYMM('L','L',nmat,nbbc,1.0_dp,apb_matrix,nmat,bb(:,1:nbbc),nmat,0.0_dp,apb_bb(:,1:nbbc),nmat)
+#else
+
+  !
+  ! Distribute bb
+  mb = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
+  nb = NUMROC(nbbc,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
+  call DESCINIT(descb,nmat,nbbc,block_row,SMALL_BLOCK,first_row,first_col,cntxt_sd,MAX(1,mb),info)
+
+  allocate(bb_local(mb,nb),ab_local(mb,nb))
+  do jb=1,nb
+    jglobal = INDXL2G(jb,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
+    do ib=1,mb
+      iglobal = INDXL2G(ib,block_row,iprow_sd,first_row,nprow_sd)
+      bb_local(ib,jb) = bb(iglobal,jglobal)
+    enddo
+  enddo
+
+  !
+  ! Calculate (A-B) b
+  call PDSYMM('L','L',nmat,nbbc,              &
+              1.0_dp,amb_matrix,1,1,desc_apb, &
+              bb_local,1,1,descb,             &
+              0.0_dp,ab_local,1,1,descb)
+
+  amb_bb(:,1:nbbc) = 0.0_dp
+  do jb=1,nb
+    jglobal = INDXL2G(jb,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
+    do ib=1,mb
+      iglobal = INDXL2G(ib,block_row,iprow_sd,first_row,nprow_sd)
+      amb_bb(iglobal,jglobal) = ab_local(ib,jb)
+    enddo
+  enddo
+  call xsum(amb_bb(:,1:nbbc))
+
+  !
+  ! Calculate (A+B) b
+  call PDSYMM('L','L',nmat,nbbc,              &
+              1.0_dp,apb_matrix,1,1,desc_apb, &
+              bb_local,1,1,descb,             &
+              0.0_dp,ab_local,1,1,descb)
+
+  apb_bb(:,1:nbbc) = 0.0_dp
+  do jb=1,nb
+    jglobal = INDXL2G(jb,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
+    do ib=1,mb
+      iglobal = INDXL2G(ib,block_row,iprow_sd,first_row,nprow_sd)
+      apb_bb(iglobal,jglobal) = ab_local(ib,jb)
+    enddo
+  enddo
+  call xsum(apb_bb(:,1:nbbc))
 
 
- do icycle=1,ncycle
+  deallocate(bb_local,ab_local)
+#endif
 
-   nbbc = nexcitation + 2 * nexcitation * (icycle-1)
 
+ do icycle=1,NCYCLE
 
    allocate(apb_tilde(nbbc,nbbc),amb_tilde(nbbc,nbbc))
    allocate(c_tilde(nbbc,nbbc))
@@ -474,8 +543,9 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa,amb_matri
    enddo
 
    !
-   ! Some output
+   ! Some output at each cycle
    write(stdout,'(/,a,i4)') ' Davidson iteration ',icycle
+   write(stdout,'(a,i5)')   ' Iterative subspace dimension ',nbbc
    do ibb=1,nexcitation
      write(stdout,'(a,i4,x,f13.6,x,es12.4)') ' Excitation   Energy (eV)  Residual: ',ibb,SQRT(omega2(ibb)) * Ha_eV,&
                   MAX( NORM2(ql(:,ibb)) , NORM2(qr(:,ibb)) )
@@ -488,8 +558,8 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa,amb_matri
      write(stdout,'(a,es12.4,a,es12.4)') ' Davidson diago converged ',tolres,' is lower than ',toldav
      exit
    endif
-   if( icycle == ncycle ) then
-     write(stdout,'(a)') ' Maximum iteration number reached',ncycle
+   if( icycle == NCYCLE ) then
+     write(stdout,'(a)') ' Maximum iteration number reached',NCYCLE
      write(stdout,'(a,es12.4,a,es12.4)') ' Davidson diago not converged ',tolres,' is larger than ',toldav
      call issue_warning('TDDFT or BSE Davidson diago not fully converged')
      exit
@@ -522,9 +592,74 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa,amb_matri
 
    !
    ! Calculate the new  (A-B) * b   and   (A+B) * b
-   amb_bb(:,nbbc+1:nbbc+2*nexcitation) = MATMUL( amb_matrix(:,:) , bb(:,nbbc+1:nbbc+2*nexcitation) )
-   apb_bb(:,nbbc+1:nbbc+2*nexcitation) = MATMUL( apb_matrix(:,:) , bb(:,nbbc+1:nbbc+2*nexcitation) )
 
+   !  Dimensions to be added
+   nbba = 2 * nexcitation
+#ifndef HAVE_SCALAPACK
+!   amb_bb(:,nbbc+1:nbbc+nbba) = MATMUL( amb_matrix(:,:) , bb(:,nbbc+1:nbbc+2*nexcitation) )
+!   apb_bb(:,nbbc+1:nbbc+nbba) = MATMUL( apb_matrix(:,:) , bb(:,nbbc+1:nbbc+2*nexcitation) )
+   call DSYMM('L','L',nmat,nbba,1.0_dp,amb_matrix,nmat,bb(:,nbbc+1:nbbc+nbba),nmat,0.0_dp,amb_bb(:,nbbc+1:nbbc+nbba),nmat)
+   call DSYMM('L','L',nmat,nbba,1.0_dp,apb_matrix,nmat,bb(:,nbbc+1:nbbc+nbba),nmat,0.0_dp,apb_bb(:,nbbc+1:nbbc+nbba),nmat)
+#else
+
+    !
+    ! Distribute bb
+    mb = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
+    nb = NUMROC(nbba,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
+    call DESCINIT(descb,nmat,nbba,block_row,SMALL_BLOCK,first_row,first_col,cntxt_sd,MAX(1,mb),info)
+  
+    allocate(bb_local(mb,nb),ab_local(mb,nb))
+    do jb=1,nb
+      jglobal = INDXL2G(jb,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
+      do ib=1,mb
+        iglobal = INDXL2G(ib,block_row,iprow_sd,first_row,nprow_sd)
+        bb_local(ib,jb) = bb(iglobal,nbbc+jglobal)
+      enddo
+    enddo
+  
+    !
+    ! Calculate (A-B) b
+    call PDSYMM('L','L',nmat,nbba,              &
+                1.0_dp,amb_matrix,1,1,desc_apb, &
+                bb_local,1,1,descb,             &
+                0.0_dp,ab_local,1,1,descb)
+  
+    amb_bb(:,nbbc+1:nbbc+nbba) = 0.0_dp
+    do jb=1,nb
+      jglobal = INDXL2G(jb,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
+      do ib=1,mb
+        iglobal = INDXL2G(ib,block_row,iprow_sd,first_row,nprow_sd)
+        amb_bb(iglobal,nbbc+jglobal) = ab_local(ib,jb)
+      enddo
+    enddo
+    call xsum(amb_bb(:,nbbc+1:nbbc+nbba))
+  
+    !
+    ! Calculate (A+B) b
+    call PDSYMM('L','L',nmat,nbba,              &
+                1.0_dp,apb_matrix,1,1,desc_apb, &
+                bb_local,1,1,descb,             &
+                0.0_dp,ab_local,1,1,descb)
+  
+    apb_bb(:,nbbc+1:nbbc+nbba) = 0.0_dp
+    do jb=1,nb
+      jglobal = INDXL2G(jb,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
+      do ib=1,mb
+        iglobal = INDXL2G(ib,block_row,iprow_sd,first_row,nprow_sd)
+        apb_bb(iglobal,nbbc+jglobal) = ab_local(ib,jb)
+      enddo
+    enddo
+    call xsum(apb_bb(:,nbbc+1:nbbc+nbba))
+  
+  
+    deallocate(bb_local,ab_local)
+#endif
+
+
+
+   !
+   ! Set the new dimension for the tilde matrices
+   nbbc = nbbc + nbba
 
 
    deallocate(apb_tilde,amb_tilde,omega2)
@@ -534,15 +669,82 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa,amb_matri
  enddo
 
 
+
  ! Calculate X and Y from L and R
  ! Remember
  ! L = | X - Y >
  ! R = | X + Y >
  eigenvalue(1:nexcitation) = SQRT( omega2(1:nexcitation) )
+#ifndef HAVE_SCALAPACK
  bigx(:,1:nexcitation) = 0.5_dp *( MATMUL( bb(:,1:nbbc) , eigvec_left(:,1:nexcitation) )  &
                                   +MATMUL( bb(:,1:nbbc) , eigvec_right(:,1:nexcitation) ) )
  bigy(:,1:nexcitation) = 0.5_dp *(-MATMUL( bb(:,1:nbbc) , eigvec_left(:,1:nexcitation) )  &
                                   +MATMUL( bb(:,1:nbbc) , eigvec_right(:,1:nexcitation) ) )
+#else
+
+ !
+ ! 0. Distribute bb
+ !
+ mb = NUMROC(nmat,block_row,iprow_sd,first_row,nprow_sd)
+ nb = NUMROC(nbbc,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
+ call DESCINIT(descb,nmat,nbbc,block_row,SMALL_BLOCK,first_row,first_col,cntxt_sd,MAX(1,mb),info)
+  
+ allocate(bb_local(mb,nb))
+ do jb=1,nb
+   jglobal = INDXL2G(jb,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
+   do ib=1,mb
+     iglobal = INDXL2G(ib,block_row,iprow_sd,first_row,nprow_sd)
+     bb_local(ib,jb) = bb(iglobal,jglobal)
+   enddo
+ enddo
+
+ me = NUMROC(nbbc,SMALL_BLOCK,iprow_sd,first_row,nprow_sd)
+ ne = NUMROC(nexcitation,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
+ call DESCINIT(desce,nbbc,nexcitation,SMALL_BLOCK,SMALL_BLOCK,first_row,first_col,cntxt_sd,MAX(1,me),info)
+ allocate(ev_local(me,ne))
+ !
+ ! 1. Deal with 1/2 (X-Y)
+ !
+ do jb=1,ne
+   jglobal = INDXL2G(jb,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
+   do ib=1,me
+     iglobal = INDXL2G(ib,SMALL_BLOCK,iprow_sd,first_row,nprow_sd)
+     ev_local(ib,jb) = eigvec_left(iglobal,jglobal)
+   enddo
+ enddo
+
+ call PDGEMM('N','N',nmat,nexcitation,nbbc,  &
+             0.5_dp,bb_local,1,1,descb,      &
+             ev_local,1,1,desce,             &
+             0.0_dp,bigx,1,1,desc_x)
+
+ !
+ ! 2. Deal with 1/2 (X+Y)
+ !
+ do jb=1,ne
+   jglobal = INDXL2G(jb,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
+   do ib=1,me
+     iglobal = INDXL2G(ib,SMALL_BLOCK,iprow_sd,first_row,nprow_sd)
+     ev_local(ib,jb) = eigvec_right(iglobal,jglobal)
+   enddo
+ enddo
+
+ call PDGEMM('N','N',nmat,nexcitation,nbbc,  &
+             0.5_dp,bb_local,1,1,descb,      &
+             ev_local,1,1,desce,             &
+             0.0_dp,bigy,1,1,desc_x)
+
+ deallocate(bb_local,ev_local)
+
+ if( n_apb < n_x ) call die('Dimension of local matrix A+B is smaller than X')
+ apb_matrix(1:m_x,1:n_x) =  bigy(:,:) + bigx(:,:)
+ amb_matrix(1:m_x,1:n_x) =  bigy(:,:) - bigx(:,:)
+ bigx(:,:) = apb_matrix(1:m_x,1:n_x)
+ bigy(:,:) = amb_matrix(1:m_x,1:n_x)
+
+
+
+#endif
 
 
  deallocate(apb_tilde,amb_tilde,omega2)

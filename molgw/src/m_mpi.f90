@@ -121,11 +121,13 @@ module m_mpi
  interface colindex_local_to_global
    module procedure colindex_local_to_global_distrib
    module procedure colindex_local_to_global_procindex
+   module procedure colindex_local_to_global_descriptor
  end interface
 
  interface rowindex_local_to_global
    module procedure rowindex_local_to_global_distrib
    module procedure rowindex_local_to_global_procindex
+   module procedure rowindex_local_to_global_descriptor
  end interface
 
 
@@ -1806,6 +1808,28 @@ end function rowindex_local_to_global_procindex
 
 
 !=========================================================================
+function rowindex_local_to_global_descriptor(desc,ilocal)
+ implicit none
+ integer,intent(in)          :: desc(ndel),ilocal
+ integer                     :: rowindex_local_to_global_descriptor
+!=====
+#ifdef HAVE_SCALAPACK
+ integer          :: iprow,ipcol,nprow,npcol
+ integer,external :: INDXL2G
+#endif
+!=====
+
+#ifdef HAVE_SCALAPACK
+ call BLACS_GRIDINFO(desc(2),nprow,npcol,iprow,ipcol)
+ rowindex_local_to_global_descriptor = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
+#else
+ rowindex_local_to_global_descriptor = ilocal
+#endif
+
+end function rowindex_local_to_global_descriptor
+
+
+!=========================================================================
 function colindex_local_to_global_distrib(distribution,ilocal)
  implicit none
  character(len=1),intent(in) :: distribution
@@ -1856,6 +1880,28 @@ function colindex_local_to_global_procindex(ipcol,npcol,ilocal)
 #endif
 
 end function colindex_local_to_global_procindex
+
+
+!=========================================================================
+function colindex_local_to_global_descriptor(desc,ilocal)
+ implicit none
+ integer,intent(in)          :: desc(ndel),ilocal
+ integer                     :: colindex_local_to_global_descriptor
+!=====
+#ifdef HAVE_SCALAPACK
+ integer          :: iprow,ipcol,nprow,npcol
+ integer,external :: INDXL2G
+#endif
+!=====
+
+#ifdef HAVE_SCALAPACK
+ call BLACS_GRIDINFO(desc(2),nprow,npcol,iprow,ipcol)
+ colindex_local_to_global_descriptor = INDXL2G(ilocal,block_col,ipcol,first_col,npcol)
+#else
+ colindex_local_to_global_descriptor = ilocal
+#endif
+
+end function colindex_local_to_global_descriptor
 
 
 !=========================================================================
@@ -1954,6 +2000,53 @@ subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix,eigval)
 
 
 end subroutine diagonalize_scalapack
+
+
+!=========================================================================
+subroutine symmetrize_matrix_sca(desc,nglobal,mlocal,nlocal,matrix)
+ implicit none
+ integer,intent(in)     :: desc(ndel),nglobal,mlocal,nlocal
+ real(dp),intent(inout) :: matrix(mlocal,nlocal)
+!=====
+ integer                :: iglobal,jglobal,ilocal,jlocal
+ real(dp) :: matrix_tmp(mlocal,nlocal)
+!=====
+
+#ifndef HAVE_SCALAPACK
+
+ ! Symmetrize M (lower triangular matrix)
+ do jglobal=1,nglobal
+   do iglobal=jglobal+1,nglobal
+     matrix(jglobal,iglobal) = matrix(iglobal,jglobal)
+   enddo
+ enddo
+
+#else
+
+ ! Symmetrize M (lower triangular matrix)
+ ! by adding M^T (upper triangular)
+ ! be careful about the diagonal terms
+ do jlocal=1,nlocal
+   jglobal = colindex_local_to_global(desc,jlocal)
+   do ilocal=1,mlocal
+     iglobal = rowindex_local_to_global(desc,ilocal)
+
+     ! Half the diagonal and erase the upper triangle
+     if( iglobal == jglobal ) then
+       matrix(ilocal,jlocal) = matrix(ilocal,jlocal) * 0.5_dp
+     else if( iglobal < jglobal ) then
+       matrix(ilocal,jlocal) = 0.0_dp
+     endif
+
+   enddo
+ enddo
+ matrix_tmp(:,:) = matrix(:,:)
+ call PDGEADD('T',nglobal,nglobal,1.d0,matrix_tmp,1,1,desc,1.d0,matrix,1,1,desc)
+
+#endif
+
+
+end subroutine symmetrize_matrix_sca
 
 
 !=========================================================================
