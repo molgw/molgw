@@ -49,8 +49,9 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
 ! Scalapack variables
  integer                   :: desc_apb(ndel),desc_x(ndel)
 #ifdef DEVEL
- integer                   :: istate,jstate,t_ij
+ integer                   :: istate,jstate
 #endif
+ integer :: t_ij
 !=====
 
  call start_clock(timing_pola)
@@ -244,12 +245,16 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  ! With or Without SCALAPACK
  !
  if( .NOT. is_rpa ) then
+   if( nexcitation == 0 ) then
 #ifndef HAVE_SCALAPACK
-   call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
+     call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
 #else
-   call diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,eigenvalue,&
-                                desc_x,m_x,n_x,bigx,bigy)
+     call diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,eigenvalue,&
+                             desc_x,m_x,n_x,bigx,bigy)
 #endif
+   else ! Partial diagonalization with Davidson
+     call diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
+   endif
  else
 #ifndef HAVE_SCALAPACK
    call diago_4blocks_rpa(nmat,amb_diag_rpa,apb_matrix,eigenvalue,bigx)
@@ -258,6 +263,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
                               desc_x,m_x,n_x,bigx)
 #endif
  endif
+
 
  ! Deallocate the non-necessary matrices
  deallocate(amb_diag_rpa)
@@ -569,6 +575,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bi
        endif
      enddo
      call xmax(t_ij_global)
+     if( t_ij_global == 0 ) cycle
 
      istate = chi%transition_table_apb(1,t_ij_global)
      jstate = chi%transition_table_apb(2,t_ij_global)
@@ -1235,8 +1242,8 @@ subroutine pol_davidson(basis,auxil_basis,nstate,occupation,energy,c_matrix,wpol
  type(spectral_function),intent(inout) :: wpol_out
 !=====
  ! Davidson part
- integer,parameter    :: neig=4
- integer,parameter    :: ncycle=7
+ integer,parameter    :: neig=1
+ integer,parameter    :: ncycle=2
  integer              :: nbb,nbbc
  integer              :: ibb,jbb
  integer              :: icycle
@@ -1346,7 +1353,6 @@ subroutine pol_davidson(basis,auxil_basis,nstate,occupation,energy,c_matrix,wpol
  enddo
  deallocate(maskmin)
 
-
  do ibb=1,nbbc
    !
    ! Orthogonalize to previous vectors
@@ -1396,6 +1402,7 @@ subroutine pol_davidson(basis,auxil_basis,nstate,occupation,energy,c_matrix,wpol
 
    c_tilde(:,:) = MATMUL( TRANSPOSE(amb_sqrt_tilde) , MATMUL( apb_tilde , amb_sqrt_tilde) )
 
+   
    ! Diagonalize the C matrix
    call diagonalize(nbbc,c_tilde,omega2)
 

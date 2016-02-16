@@ -54,6 +54,7 @@ module m_inputparam
  integer,protected                :: nvirtualspa
  logical,protected                :: is_frozencore
  logical,protected                :: is_tda,is_triplet
+ integer,protected                :: nexcitation
  integer,protected                :: nspin
  real(dp),protected               :: spin_fact
  integer,protected                :: nscf
@@ -66,6 +67,7 @@ module m_inputparam
  character(len=12),protected      :: mixing_scheme
  character(len=12),protected      :: partition_scheme
  real(dp),protected               :: tolscf
+ real(dp),protected               :: toldav
  real(dp),protected               :: min_overlap
  real(dp),protected               :: electrons,charge
  real(dp),protected               :: temperature
