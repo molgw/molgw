@@ -328,7 +328,7 @@ subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix,eigval)
    enddo
   
 
-   call diagonalize_sca(descm,nmat,mlocal,nlocal,matrix_local,eigval)
+   call diagonalize_sca(nmat,descm,matrix_local,eigval)
   
    ! Nullify the eigval array for all CPUs but one, so that the all_reduce
    ! operation in the end yields the correct value
