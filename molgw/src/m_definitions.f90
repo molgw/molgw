@@ -9,11 +9,6 @@ module m_definitions
  integer,parameter  :: dpc=KIND((0.d0,0.d0))
 
  integer,parameter  :: prec_eri=dp
-#ifndef TD_SP
- integer,parameter  :: prec_td=dp
-#else
- integer,parameter  :: prec_td=sp
-#endif
 
  integer,parameter  :: stdout = OUTPUT_UNIT
  integer,parameter  :: stderr = ERROR_UNIT

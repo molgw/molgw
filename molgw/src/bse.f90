@@ -26,7 +26,7 @@ subroutine build_amb_apb_common(desc_apb,nmat,nbf,nstate,c_matrix,energy,wpol,al
  type(spectral_function),intent(in) :: wpol
  real(dp),intent(in)                :: alpha_local
  integer,intent(in)                 :: m_apb,n_apb
- real(prec_td),intent(inout)        :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
+ real(dp),intent(inout)             :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
  real(dp),intent(out)               :: amb_diag_rpa(nmat)
  real(dp),intent(out)               :: rpa_correlation
 !=====
@@ -209,7 +209,7 @@ subroutine build_amb_apb_diag_auxil(nmat,nstate,energy,wpol,m_apb,n_apb,amb_matr
  real(dp),intent(in)                :: energy(nstate,nspin)
  type(spectral_function),intent(in) :: wpol
  integer,intent(in)                 :: m_apb,n_apb
- real(prec_td),intent(inout)        :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
+ real(dp),intent(inout)             :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
  real(dp),intent(out)               :: amb_diag_rpa(nmat)
 !=====
  integer              :: t_ij,t_kl,t_kl_global
@@ -255,8 +255,8 @@ subroutine get_rpa_correlation(nmat,wpol,m_apb,n_apb,amb_matrix,apb_matrix,rpa_c
  integer,intent(in)                 :: nmat
  type(spectral_function),intent(in) :: wpol
  integer,intent(in)                 :: m_apb,n_apb
- real(prec_td),intent(in)           :: amb_matrix(m_apb,n_apb)
- real(prec_td),intent(in)           :: apb_matrix(m_apb,n_apb)
+ real(dp),intent(in)                :: amb_matrix(m_apb,n_apb)
+ real(dp),intent(in)                :: apb_matrix(m_apb,n_apb)
  real(dp),intent(out)               :: rpa_correlation
 !=====
  integer              :: t_ij,t_kl,t_kl_global
@@ -293,7 +293,7 @@ subroutine build_apb_hartree_auxil(desc_apb,wpol,m_apb,n_apb,apb_matrix)
  integer,intent(in)                 :: desc_apb(ndel)
  type(spectral_function),intent(in) :: wpol
  integer,intent(in)                 :: m_apb,n_apb
- real(prec_td),intent(inout)        :: apb_matrix(m_apb,n_apb)
+ real(dp),intent(inout)             :: apb_matrix(m_apb,n_apb)
 !=====
  integer              :: nmat
  integer              :: t_ij,t_kl,t_ij_global,t_kl_global
@@ -399,7 +399,7 @@ subroutine build_a_diag_common(nmat,nbf,nstate,c_matrix,energy,wpol,a_diag)
  real(dp),intent(in)                :: energy(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(nbf,nstate,nspin)
  type(spectral_function),intent(in) :: wpol
- real(prec_td),intent(out)          :: a_diag(wpol%npole_reso_spa)
+ real(dp),intent(out)               :: a_diag(wpol%npole_reso_spa)
 !=====
  integer              :: t_kl,t_kl_global
  integer              :: kstate,lstate
@@ -486,7 +486,7 @@ subroutine build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_ap
  real(dp),intent(in)                :: occupation(nstate,nspin)
  type(spectral_function),intent(in) :: wpol
  integer,intent(in)                 :: m_apb,n_apb
- real(prec_td),intent(inout)        :: apb_matrix(m_apb,n_apb)
+ real(dp),intent(inout)             :: apb_matrix(m_apb,n_apb)
 !=====
  integer              :: nspin_tddft
  integer              :: t_ij,t_kl,t_ij_global,t_kl_global
@@ -746,7 +746,7 @@ subroutine build_amb_apb_bse(nbf,nstate,wpol,wpol_static,m_apb,n_apb,amb_matrix,
  integer,intent(in)                 :: nbf,nstate
  type(spectral_function),intent(in) :: wpol,wpol_static
  integer,intent(in)                 :: m_apb,n_apb
- real(prec_td),intent(inout)        :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
+ real(dp),intent(inout)             :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
 !=====
  integer              :: t_ij,t_kl,t_ij_global,t_kl_global
  integer              :: istate,jstate,kstate,lstate
@@ -842,7 +842,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  integer,intent(in)                 :: desc_apb(ndel)
  type(spectral_function),intent(in) :: wpol,wpol_static
  integer,intent(in)                 :: m_apb,n_apb
- real(prec_td),intent(inout)        :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
+ real(dp),intent(inout)             :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
 !=====
  logical              :: is_bse
  integer              :: nmat

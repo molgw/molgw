@@ -1,0 +1,25 @@
+&molgw
+
+ scf='hf'
+ tolscf=1.0e-10
+
+ frozencore='yes'
+
+ postscf='bse'
+ scissor=0.02
+ toldav=1.0e-5
+ nexcitation=6
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+ no_4center='yes'
+
+ natom=6
+/
+6            .000000     .000000     .667480
+6            .000000     .000000    -.667480
+1            .000000     .922832    1.237695
+1            .000000    -.922832    1.237695
+1            .000000     .922832   -1.237695
+1            .000000    -.922832   -1.237695
+

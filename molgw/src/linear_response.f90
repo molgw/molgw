@@ -34,9 +34,9 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  real(dp)                  :: energy_gm
  real(dp)                  :: alpha_local
  real(dp),allocatable      :: amb_diag_rpa(:)
- real(prec_td),allocatable :: amb_matrix(:,:),apb_matrix(:,:)
- real(prec_td),allocatable :: a_diag(:)
- real(prec_td),allocatable :: bigx(:,:),bigy(:,:)
+ real(dp),allocatable      :: amb_matrix(:,:),apb_matrix(:,:)
+ real(dp),allocatable      :: a_diag(:)
+ real(dp),allocatable      :: bigx(:,:),bigy(:,:)
  real(dp),allocatable      :: eigenvalue(:)
  real(dp)                  :: energy_qp(nstate,nspin)
  logical                   :: is_tddft
@@ -262,12 +262,9 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
                                  eigenvalue,desc_x,m_x,n_x,bigx,bigy)
    endif
  else
-#ifndef HAVE_SCALAPACK
-   call diago_4blocks_rpa(nmat,amb_diag_rpa,apb_matrix,eigenvalue,bigx)
-#else
+   ! The following call works with AND without SCALAPACK
    call diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matrix,eigenvalue,&
                               desc_x,m_x,n_x,bigx)
-#endif
  endif
 
 
@@ -382,8 +379,8 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bi
  type(basis_set),intent(in)         :: basis
  real(dp),intent(in)                :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in) :: chi
- real(prec_td),intent(in)           :: bigx(m_x,n_x)
- real(prec_td),intent(in)           :: bigy(m_x,n_x)
+ real(dp),intent(in)                :: bigx(m_x,n_x)
+ real(dp),intent(in)                :: bigy(m_x,n_x)
  real(dp),intent(in)                :: eigenvalue(chi%npole_reso_apb)
 !=====
  integer                            :: nexc
@@ -719,8 +716,8 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy
  type(basis_set),intent(in)         :: basis
  real(dp),intent(in)                :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in) :: chi
- real(prec_td),intent(in)           :: bigx(m_x,n_x)
- real(prec_td),intent(in)           :: bigy(m_x,n_x)
+ real(dp),intent(in)                :: bigx(m_x,n_x)
+ real(dp),intent(in)                :: bigy(m_x,n_x)
  real(dp),intent(in)                :: eigenvalue(chi%npole_reso_apb)
 !=====
  integer                            :: t_ij,t_kl
@@ -996,7 +993,7 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,bigx,eigenvalue,wpol)
  integer,intent(in)                    :: nbf,nstate
  real(dp),intent(in)                   :: c_matrix(nbf,nstate,nspin)
  type(spectral_function),intent(inout) :: wpol
- real(prec_td),intent(in)              :: bigx(wpol%npole_reso_apb,wpol%npole_reso_apb)
+ real(dp),intent(in)                   :: bigx(wpol%npole_reso_apb,wpol%npole_reso_apb)
  real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso_apb)
 !=====
  integer                               :: t_kl,klspin,ijspin
@@ -1079,7 +1076,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,eigenval
  
  integer,intent(in)                    :: nbf,nbf_auxil,m_x,n_x
  integer,intent(in)                    :: desc_x(ndel)
- real(prec_td),intent(inout)           :: bigx(m_x,n_x)
+ real(dp),intent(inout)                :: bigx(m_x,n_x)
  type(spectral_function),intent(inout) :: wpol
  real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso_apb)
  real(dp),intent(out)                  :: energy_gm

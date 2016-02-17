@@ -4,6 +4,7 @@
 module m_hamiltonian_sca
  use m_definitions
  use m_mpi
+ use m_scalapack
  use m_timing
  use m_warning
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
@@ -723,7 +724,7 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
 
 
 
-     call diagonalize_sca(descs,nstate,ms,ns,h_small,energy(:,ispin))
+     call diagonalize_sca(nstate,descs,h_small,energy(:,ispin))
 
 
 !     c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
@@ -819,7 +820,7 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,nstate,m_ham,n_ham,  &
 
 
 
-     call diagonalize_sca(desc_small,nstate,m_small,n_small,h_small,energy(:,ispin))
+     call diagonalize_sca(nstate,desc_small,h_small,energy(:,ispin))
 
 
 !     c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
@@ -879,7 +880,7 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
 
  if( cntxt_ham > 0 ) then
    matrix_tmp(:,:) = s_matrix(:,:)
-   call diagonalize_sca(desc_ham,nbf,m_ham,n_ham,matrix_tmp,s_eigval)
+   call diagonalize_sca(nbf,desc_ham,matrix_tmp,s_eigval)
 
    nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
 
@@ -984,7 +985,7 @@ subroutine setup_sqrt_density_matrix_sca(nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,
  if( cntxt_ham > 0 ) then
    do ispin=1,nspin
      p_matrix_sqrt(:,:,ispin) = p_matrix(:,:,ispin)
-     call diagonalize_sca(desc_ham,nbf,m_ham,n_ham,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
+     call diagonalize_sca(nbf,desc_ham,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
    enddo
    do jlocal=1,n_ham
      jglobal = colindex_local_to_global('H',jlocal)

@@ -308,6 +308,25 @@ vl[i].comment  ='Triggers the calculation of the triplet final state in TD-DFT o
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='nexcitation'
+vl[i].family   ='post'
+vl[i].default  =0
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the number of neutral excitations to be calculated in TD-DFT or BSE. \
+                 0 stands for all the states and triggers the full diagonalization.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='toldav'
+vl[i].family   ='post'
+vl[i].default  =1.0e-4
+vl[i].datatype ='real'
+vl[i].comment  ='Sets the tolerance criterium for the maximum norm of the residual in the Davidson diagonalization of TD-DFT or BSE.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='frozencore'
 vl[i].family   ='post'
 vl[i].default  ='no'

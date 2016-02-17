@@ -5,6 +5,7 @@ module m_eri_calculate
  use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
  use m_definitions
  use m_mpi
+ use m_scalapack
  use m_memory
  use m_basis_set
  use m_timing

@@ -5,6 +5,7 @@ module m_hamiltonian
  use m_definitions
  use m_timing
  use m_mpi
+ use m_scalapack
  use m_warning
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
 

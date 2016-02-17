@@ -13,24 +13,25 @@ module m_block_diago
  use m_warning
  use m_memory
  use m_mpi
+ use m_scalapack
+ use m_tools
 
 
 contains
 
 
 !=========================================================================
-subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
- use m_tools 
+subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,bigomega,bigx,bigy)
  implicit none
 
- integer,intent(in)           :: nmat
- real(prec_td),intent(inout)  :: amb_matrix(nmat,nmat)
- real(prec_td),intent(inout)  :: apb_matrix(nmat,nmat)  ! apb_matrix constains (A+B) in the input, however it used a matrix buffer after
- real(dp),intent(out)         :: eigenvalue(nmat)
- real(prec_td),intent(out)    :: bigx(nmat,nmat),bigy(nmat,nmat)
+ integer,intent(in)      :: nmat
+ real(dp),intent(inout)  :: amb_matrix(nmat,nmat)
+ real(dp),intent(inout)  :: apb_matrix(nmat,nmat)  ! apb_matrix constains (A+B) in the input, however it used a matrix buffer after
+ real(dp),intent(out)    :: bigomega(nmat)
+ real(dp),intent(out)    :: bigx(nmat,nmat),bigy(nmat,nmat)
 !=====
- integer                   :: t_ij,t_kl
- real(prec_td),allocatable :: amb_eigval(:),bigomega(:)
+ integer                 :: t_ij,t_kl
+ real(dp),allocatable    :: amb_eigval(:)
 !=====
 
  call start_clock(timing_diago_h2p)
@@ -79,14 +80,13 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
 
 
  write(stdout,'(a,i8,a,i8)') ' Diago (A - B)^{1/2} * (A + B) * (A - B)^{1/2}',nmat,' x ',nmat
- allocate(bigomega(nmat))
  call diagonalize(nmat,apb_matrix,bigomega)
 
  bigomega(:) = SQRT(bigomega(:))
 
  forall(t_kl=1:nmat)
    apb_matrix(:,t_kl) = apb_matrix(:,t_kl) / SQRT(bigomega(t_kl))
-   eigenvalue(t_kl) = bigomega(t_kl)
+   bigomega(t_kl) = bigomega(t_kl)
  end forall
 
  ! Save (A-B)**-1/2 in amb_matrix 
@@ -99,7 +99,7 @@ subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
  forall(t_kl=1:nmat)
    apb_matrix(:,t_kl) = apb_matrix(:,t_kl) * bigomega(t_kl)
  end forall
- deallocate(bigomega)
+
 
  ! Finalize Resonant (positive excitations second index from 1 to nmat)
  bigx(:,:) = bigx(:,:) + apb_matrix(:,:)
@@ -114,14 +114,13 @@ end subroutine diago_4blocks_sqrt
 
 !=========================================================================
 subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
-                              eigenvalue,desc_x,m_x,n_x,bigx,bigy)
- use m_tools 
+                              bigomega,desc_x,m_x,n_x,bigx,bigy)
  implicit none
 
  integer,intent(in)     :: nmat,m_apb,n_apb,m_x,n_x
  integer,intent(in)     :: desc_apb(ndel),desc_x(ndel)
  real(dp),intent(inout) :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
- real(dp),intent(out)   :: eigenvalue(nmat)
+ real(dp),intent(out)   :: bigomega(nmat)
  real(dp),intent(out)   :: bigx(m_x,n_x)
  real(dp),intent(out)   :: bigy(m_x,n_x)
 !=====
@@ -141,7 +140,7 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  lwork=-1
  liwork=-1
  call pdbssolver1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
-                  eigenvalue,bigx,1,1,desc_x,bigy,                         &
+                  bigomega,bigx,1,1,desc_x,bigy,                           &
                   work,lwork,iwork,liwork,info)
  if(info/=0) call die('SCALAPACK failed')
 
@@ -154,7 +153,7 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  allocate(iwork(liwork))
 
  call pdbssolver1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
-                  eigenvalue,bigx,1,1,desc_x,bigy,                         &
+                  bigomega,bigx,1,1,desc_x,bigy,                           &
                   work,lwork,iwork,liwork,info)
  if(info/=0) call die('SCALAPACK failed')
 
@@ -174,15 +173,14 @@ end subroutine diago_4blocks_chol
 
 !=========================================================================
 subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matrix,&
-                                 eigenvalue,desc_x,m_x,n_x,bigx)
- use m_tools 
+                                 bigomega,desc_x,m_x,n_x,bigx)
  implicit none
 
  integer,intent(in)     :: nmat,m_apb,n_apb,m_x,n_x
  integer,intent(in)     :: desc_apb(ndel),desc_x(ndel)
  real(dp),intent(in)    :: amb_diag_rpa(nmat)
  real(dp),intent(inout) :: apb_matrix(m_apb,n_apb)
- real(dp),intent(out)   :: eigenvalue(nmat)
+ real(dp),intent(out)   :: bigomega(nmat)
  real(dp),intent(out)   :: bigx(m_x,n_x)
 !=====
  integer              :: info
@@ -192,153 +190,56 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
  real(dp)             :: amb_diag_sqrt(nmat)
 !=====
 
-#ifdef HAVE_SCALAPACK
  call start_clock(timing_diago_h2p)
 
 
  write(stdout,'(/,a)') ' Performing the SCALAPACK block diago when A-B is diagonal'
 
  ! First symmetrize (A+B) (lower triangular matrix)
- ! by adding (A+B)^T (upper triangular)
- ! be careful about the diagonal terms
- do jlocal=1,n_apb
-   jglobal = colindex_local_to_global(desc_apb,jlocal)
-   do ilocal=1,m_apb
-     iglobal = rowindex_local_to_global(desc_apb,ilocal)
+ ! Use X as a work buffer
+ call symmetrize_matrix_sca('L',nmat,desc_apb,apb_matrix,desc_x,bigx)
 
-     ! Half the diagonal and erase the upper triangle
-     if( iglobal == jglobal ) then
-       apb_matrix(ilocal,jlocal) = apb_matrix(ilocal,jlocal) * 0.5_dp
-     else if( iglobal < jglobal ) then
-       apb_matrix(ilocal,jlocal) = 0.0_dp
-     endif
-
-   enddo
- enddo
- bigx(:,:) = apb_matrix(:,:)
- call PDGEADD('T',nmat,nmat,1.d0,bigx,1,1,desc_x,1.d0,apb_matrix,1,1,desc_apb)
-
-
- ! Calculate (A-B)^1/2 * (A+B) * (A-B)^1/2
-
- ! Get (A-B)^1/2
+ ! Set (A-B)^1/2
  amb_diag_sqrt(:) = SQRT( amb_diag_rpa(:) )
 
- ! Calculate (A+B) * (A-B)^1/2
- ! Use bigx as a temporary matrix
- do jlocal=1,n_apb
-   jglobal = colindex_local_to_global('S',jlocal)
-   bigx(:,jlocal) = apb_matrix(:,jlocal) * amb_diag_sqrt(jglobal)
- enddo
+ !
+ ! Prepare (A-B)^1/2 * (A+B) * (A-B)^1/2
+ !
 
- ! Calculate (A-B)^1/2 * [ (A+B) (A-B)^1/2 ]
- do ilocal=1,m_apb
-   iglobal = rowindex_local_to_global('S',ilocal)
-   apb_matrix(ilocal,:) = amb_diag_sqrt(iglobal) * bigx(ilocal,:)
- enddo
+ ! Calculate (A+B) * (A-B)^1/2
+ call matmul_diag_sca('R',nmat,amb_diag_sqrt,desc_apb,apb_matrix)
+
+ ! Calculate (A-B)^1/2 * [ (A+B) * (A-B)^1/2 ]
+ call matmul_diag_sca('L',nmat,amb_diag_sqrt,desc_apb,apb_matrix)
+
 
  ! Diagonalization
- call diagonalize_sca_outofplace(desc_apb,nmat,m_apb,n_apb,apb_matrix,eigenvalue,desc_x,m_x,n_x,bigx)
+ call diagonalize_sca(nmat,desc_apb,apb_matrix,bigomega,desc_x,bigx)
 
- eigenvalue(:) = SQRT( eigenvalue(:) )
+ bigomega(:) = SQRT( bigomega(:) )
 
- ! Normalization
- do jlocal=1,n_apb
-   jglobal = colindex_local_to_global('S',jlocal)
-   bigx(:,jlocal) = bigx(:,jlocal) / SQRT( eigenvalue(jglobal) )
- enddo
 
- ! Calculate X + Y = (A-B)^1/2 * Z
- do ilocal=1,m_apb
-   iglobal = rowindex_local_to_global('S',ilocal)
-   bigx(ilocal,:) = amb_diag_sqrt(iglobal) * bigx(ilocal,:)
- enddo
+ !
+ ! Prepare  ( X + Y ) = (A-B)^{1/2} * Z * \Omega^{-1/2}
+ !
+
+ ! Calculate Z * \Omega^{-1/2}
+ call matmul_diag_sca('R',nmat,1.0_dp/SQRT(bigomega(:)),desc_x,bigx)
+
+ ! Calculate (A-B)^{1/2} * [ Z * \Omega^{-1/2} ]
+ call matmul_diag_sca('L',nmat,amb_diag_sqrt,desc_x,bigx)
 
 
  call stop_clock(timing_diago_h2p)
 
-#else
- call die('RPA block diago cannot run without SCALAPACK')
-#endif
 
 end subroutine diago_4blocks_rpa_sca
 
 
 !=========================================================================
-subroutine diago_4blocks_rpa(nmat,amb_diag_rpa,apb_matrix,eigenvalue,bigx)
- use m_tools 
- implicit none
-
- integer,intent(in)     :: nmat
- real(dp),intent(in)    :: amb_diag_rpa(nmat)
- real(dp),intent(inout) :: apb_matrix(nmat,nmat)
- real(dp),intent(out)   :: eigenvalue(nmat)
- real(dp),intent(out)   :: bigx(nmat,nmat)
-!=====
- integer              :: info
- integer              :: lwork
- real(dp),allocatable :: work(:)
- real(dp)             :: amb_diag_sqrt(nmat)
- integer              :: imat,jmat
-!=====
-
- call start_clock(timing_diago_h2p)
-
-
- write(stdout,'(/,a)') ' Performing the block diago when A-B is diagonal'
-
- ! First symmetrize (A+B)
- do jmat=1,nmat
-   do imat=jmat+1,nmat
-     apb_matrix(jmat,imat) = apb_matrix(imat,jmat)
-   enddo
- enddo
-
-
-
- ! Calculate (A-B)^1/2 * (A+B) * (A-B)^1/2
-
- ! Get (A-B)^1/2
- amb_diag_sqrt(:) = SQRT( amb_diag_rpa(:) )
-
- ! Calculate (A+B) * (A-B)^1/2
- ! Use bigx as a temporary matrix
- do jmat=1,nmat
-   bigx(:,jmat) = apb_matrix(:,jmat) * amb_diag_sqrt(jmat)
- enddo
-
- ! Calculate (A-B)^1/2 * [ (A+B) (A-B)^1/2 ]
- do imat=1,nmat
-   apb_matrix(imat,:) = amb_diag_sqrt(imat) * bigx(imat,:)
- enddo
-
- ! Diagonalization
- call diagonalize(nmat,apb_matrix,eigenvalue,bigx)
-
- eigenvalue(:) = SQRT( eigenvalue(:) )
-
- ! Normalization
- do jmat=1,nmat
-   bigx(:,jmat) = bigx(:,jmat) / SQRT( eigenvalue(jmat) )
- enddo
-
- ! Calculate X + Y = (A-B)^1/2 * Z
- do imat=1,nmat
-   bigx(imat,:) = amb_diag_sqrt(imat) * bigx(imat,:)
- enddo
-
-
- call stop_clock(timing_diago_h2p)
-
-
-end subroutine diago_4blocks_rpa
-
-
-!=========================================================================
 subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
                                   desc_apb,m_apb,n_apb,amb_matrix,apb_matrix, &
-                                  eigenvalue,desc_x,m_x,n_x,bigx,bigy)
- use m_tools
+                                  bigomega,desc_x,m_x,n_x,bigx,bigy)
  implicit none
 
  real(dp),intent(in)    :: toldav
@@ -348,7 +249,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
  real(dp),intent(in)    :: amb_diag_rpa(nmat)
  real(dp),intent(inout) :: amb_matrix(m_apb,n_apb)
  real(dp),intent(inout) :: apb_matrix(m_apb,n_apb)
- real(dp),intent(out)   :: eigenvalue(nmat)
+ real(dp),intent(out)   :: bigomega(nmat)
  real(dp),intent(out)   :: bigx(m_x,n_x)
  real(dp),intent(out)   :: bigy(m_x,n_x)
 !=====
@@ -674,7 +575,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
  ! Remember
  ! L = | X - Y >
  ! R = | X + Y >
- eigenvalue(1:nexcitation) = SQRT( omega2(1:nexcitation) )
+ bigomega(1:nexcitation) = SQRT( omega2(1:nexcitation) )
 #ifndef HAVE_SCALAPACK
  bigx(:,1:nexcitation) = 0.5_dp *( MATMUL( bb(:,1:nbbc) , eigvec_left(:,1:nexcitation) )  &
                                   +MATMUL( bb(:,1:nbbc) , eigvec_right(:,1:nexcitation) ) )
