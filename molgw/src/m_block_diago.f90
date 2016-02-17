@@ -21,95 +21,6 @@ contains
 
 
 !=========================================================================
-subroutine diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,bigomega,xpy_matrix,xmy_matrix)
- implicit none
-
- integer,intent(in)      :: nmat
- real(dp),intent(inout)  :: amb_matrix(nmat,nmat)
- real(dp),intent(inout)  :: apb_matrix(nmat,nmat)  ! apb_matrix constains (A+B) in the input, however it used a matrix buffer after
- real(dp),intent(out)    :: bigomega(nmat)
- real(dp),intent(out)    :: xpy_matrix(nmat,nmat),xmy_matrix(nmat,nmat)
-!=====
- integer                 :: t_ij,t_kl
- real(dp),allocatable    :: amb_eigval(:)
-!=====
-
- call start_clock(timing_diago_h2p)
-
- ! First symmetrize the matrices since only the lower triangle was calculated
- do t_kl=1,nmat
-   do t_ij=t_kl+1,nmat
-     amb_matrix(t_kl,t_ij) = amb_matrix(t_ij,t_kl)
-     apb_matrix(t_kl,t_ij) = apb_matrix(t_ij,t_kl)
-   enddo
- enddo
-
-
-
- write(stdout,'(/,a)') ' Performing the block diago with square root of matrices'
-
- !
- ! Calculate (A-B)^{1/2}
- ! First diagonalize (A-B):
- ! (A-B) R = R D
- ! (A-B) is real symmetric, hence R is orthogonal R^{-1} = tR
- ! (A-B)       = R D tR 
- ! (A-B)^{1/2} = R D^{1/2} tR 
- write(stdout,'(a,i8,a,i8)') ' Diago to get (A - B)^{1/2}                   ',nmat,' x ',nmat
- allocate(amb_eigval(nmat))
- call diagonalize(nmat,amb_matrix,amb_eigval)
-
-
- ! xpy_matrix contains the (A-B)**1/2
- ! xmy_matrix contains the (A-B)**-1/2
- forall(t_kl=1:nmat)
-   xpy_matrix(:,t_kl) = amb_matrix(:,t_kl)*SQRT(amb_eigval(t_kl))
-   xmy_matrix(:,t_kl) = amb_matrix(:,t_kl)/SQRT(amb_eigval(t_kl))
- end forall
- deallocate(amb_eigval)
-
- amb_matrix = TRANSPOSE( amb_matrix )
- xpy_matrix(:,:) = MATMUL( xpy_matrix(:,:) , amb_matrix(:,:) )
- xmy_matrix(:,:) = MATMUL( xmy_matrix(:,:) , amb_matrix(:,:) )
- 
- ! Use amb_matrix as a temporary matrix here:
- amb_matrix(:,:) = MATMUL( apb_matrix , xpy_matrix )
- apb_matrix(:,:)  = MATMUL( xpy_matrix, amb_matrix )
-
-! write(stdout,*) 'CC ',matrix_is_symmetric(nmat,apb_matrix)
-
-
- write(stdout,'(a,i8,a,i8)') ' Diago (A - B)^{1/2} * (A + B) * (A - B)^{1/2}',nmat,' x ',nmat
- call diagonalize(nmat,apb_matrix,bigomega)
-
- bigomega(:) = SQRT(bigomega(:))
-
- forall(t_kl=1:nmat)
-   apb_matrix(:,t_kl) = apb_matrix(:,t_kl) / SQRT(bigomega(t_kl))
-   bigomega(t_kl) = bigomega(t_kl)
- end forall
-
- ! Save (A-B)**-1/2 in amb_matrix 
- amb_matrix(:,:) = xmy_matrix(:,:)
-
- xpy_matrix(:,:) = MATMUL( xpy_matrix(:,:)   , apb_matrix(:,:) )
-
- apb_matrix(:,:) = MATMUL( amb_matrix(:,:) , apb_matrix(:,:) )
- forall(t_kl=1:nmat)
-   apb_matrix(:,t_kl) = apb_matrix(:,t_kl) * bigomega(t_kl)
- end forall
-
-
- xmy_matrix(:,:) = apb_matrix(:,:)
-
-
- call stop_clock(timing_diago_h2p)
-
-
-end subroutine diago_4blocks_sqrt
-
-
-!=========================================================================
 subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
                               bigomega,desc_x,m_x,n_x,xpy_matrix,xmy_matrix)
  implicit none
@@ -121,14 +32,16 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  real(dp),intent(out)   :: xpy_matrix(m_x,n_x)
  real(dp),intent(out)   :: xmy_matrix(m_x,n_x)
 !=====
- integer  :: info
+ integer  :: info,imat
  integer  :: lwork,liwork
  real(dp),allocatable :: work(:)
  integer,allocatable :: iwork(:)
 !=====
 
-#ifdef HAVE_SCALAPACK
  call start_clock(timing_diago_h2p)
+
+
+#ifdef HAVE_SCALAPACK
 
  write(stdout,'(/,a)') ' Performing the block diago with Cholesky'
 
@@ -169,11 +82,49 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  call PDGEADD('N',nmat,nmat,1.0_dp,apb_matrix,1,1,desc_apb,-1.0_dp,xmy_matrix,1,1,desc_x)
 
 
- call stop_clock(timing_diago_h2p)
 
 #else
- call die('Cholesky diago cannot run without SCALAPACK')
+
+ ! Cholevski decomposition of (A+B) = L * L^T
+ call DPOTRF('L',nmat,apb_matrix,nmat,info)
+
+ ! Calculate L^T * (A-B) * L
+ call DSYGST(3,'L',nmat,amb_matrix,nmat,apb_matrix,nmat,info)
+
+ ! Diagonalize L^T * (A-B) * L
+ lwork = -1
+ allocate(work(1))
+ call DSYEV('V','L',nmat,amb_matrix,nmat,bigomega,work,lwork,info)
+ lwork = NINT(work(1))
+ deallocate(work)
+
+ allocate(work(lwork))
+ call DSYEV('V','L',nmat,amb_matrix,nmat,bigomega,work,lwork,info)
+ deallocate(work)
+
+ bigomega(:) = SQRT( bigomega(:) )
+
+ xpy_matrix(:,:) = amb_matrix(:,:)
+ xmy_matrix(:,:) = amb_matrix(:,:)
+
+ ! Calculate L * Z
+ call DTRMM('L','L','N','N',nmat,nmat,1.0_dp,apb_matrix,nmat,xmy_matrix,nmat)
+
+ ! Calculate L^{-T} * Z
+ call DTRSM('L','L','T','N',nmat,nmat,1.0_dp,apb_matrix,nmat,xpy_matrix,nmat)
+
+ !
+ ! X-Y = L * Z / Omega^{1/2}
+ ! X+Y = L^{-T} * Z * Omega^{1/2}
+ forall(imat=1:nmat)
+   xpy_matrix(:,imat) = xpy_matrix(:,imat) * SQRT( bigomega(imat) )
+   xmy_matrix(:,imat) = xmy_matrix(:,imat) / SQRT( bigomega(imat) )
+ end forall
+
+
 #endif
+
+ call stop_clock(timing_diago_h2p)
 
 end subroutine diago_4blocks_chol
 
