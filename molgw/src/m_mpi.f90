@@ -68,6 +68,7 @@ module m_mpi
 ! integer,allocatable :: task_fast_number(:)  ! local index of the grid point
 
  interface xbcast
+   module procedure xbcast_ra1d
    module procedure xbcast_ra2d
  end interface
 
@@ -572,6 +573,28 @@ function get_ntask()
  get_ntask = ntask_proc(rank)
 
 end function get_ntask
+
+
+!=========================================================================
+subroutine xbcast_ra1d(iproc,array)
+ implicit none
+ integer,intent(in)     :: iproc
+ real(dp),intent(inout) :: array(:)
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+
+#ifdef HAVE_MPI
+ call MPI_BCAST(array,n1,MPI_DOUBLE_PRECISION,iproc,comm_world,ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xbcast_ra1d
 
 
 !=========================================================================

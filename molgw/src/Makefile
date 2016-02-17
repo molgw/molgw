@@ -242,4 +242,5 @@ doc:
 	mv notes.pdf ../doc/notes.pdf
 
 clean:
-	rm -f *.o *.mod *.log *.bib *.aux
+	rm -f *.o *.mod
+

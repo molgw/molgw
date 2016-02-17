@@ -29,8 +29,93 @@ contains
 
 
 !=========================================================================
+! Create a distributed copy of a global matrix owned by each core
+!
+!=========================================================================
+subroutine create_distributed_copy(nglobal,matrix_global,desc,matrix)
+ implicit none
+ integer,intent(in)   :: nglobal
+ integer,intent(in)   :: desc(ndel)
+ real(dp),intent(in)  :: matrix_global(nglobal,nglobal)
+ real(dp),intent(out) :: matrix(:,:)
+!=====
+ integer              :: mlocal,nlocal
+ integer              :: ilocal,jlocal,iglobal,jglobal
+!=====
+
+ mlocal = SIZE( matrix , DIM=1 )
+ nlocal = SIZE( matrix , DIM=2 )
+
+ do jlocal=1,nlocal
+   jglobal = colindex_local_to_global(desc,jlocal)
+   do ilocal=1,mlocal
+     iglobal = rowindex_local_to_global(desc,ilocal)
+     matrix(ilocal,jlocal) = matrix_global(iglobal,jglobal)
+   enddo
+ enddo
+
+
+end subroutine create_distributed_copy
+
+
+!=========================================================================
+! Gather a distributed matrix into a global matrix owned by each core
+!
+!=========================================================================
+subroutine gather_distributed_copy(nglobal,desc,matrix,matrix_global)
+ implicit none
+ integer,intent(in)   :: nglobal
+ integer,intent(in)   :: desc(ndel)
+ real(dp),intent(in)  :: matrix(:,:)
+ real(dp),intent(out) :: matrix_global(nglobal,nglobal)
+!=====
+ integer              :: contxt
+ integer              :: mlocal,nlocal
+ integer              :: ilocal,jlocal,iglobal,jglobal
+ integer              :: iprow,ipcol,nprow,npcol
+ integer              :: rank_master
+!=====
+
+ contxt = desc(2)
+
+ ! Find the master
+ call BLACS_GRIDINFO( contxt, nprow, npcol, iprow, ipcol )
+
+ if( iprow == 0 .AND. ipcol == 0 ) then
+   rank_master = rank
+ else
+   rank_master = -1
+ endif
+ call xmax(rank_master)
+
+ if( contxt > 0 ) then
+
+   mlocal = SIZE( matrix , DIM=1 )
+   nlocal = SIZE( matrix , DIM=2 )
+
+   matrix_global(:,:) = 0.0_dp
+   do jlocal=1,nlocal
+     jglobal = colindex_local_to_global(desc,jlocal)
+     do ilocal=1,mlocal
+       iglobal = rowindex_local_to_global(desc,ilocal)
+       matrix_global(iglobal,jglobal) = matrix(ilocal,jlocal)
+     enddo
+   enddo
+
+   ! Only the master proc (0,0) has the complete information
+   call DGSUM2D(contxt,'A',' ',nglobal,nglobal,matrix_global,nglobal,0,0)
+ endif
+
+ ! Then the master proc (0,0) broadcasts to all the others
+ call xbcast(rank_master,matrix_global)
+
+end subroutine gather_distributed_copy
+
+
+!=========================================================================
 ! Multiply on the left or on the right a distributed square matrix 
 ! with a non-distributed diagonal
+!=========================================================================
 subroutine matmul_diag_sca(side,nglobal,diag,desc,matrix)
  implicit none
  character(len=1),intent(in) :: side
@@ -99,6 +184,7 @@ end subroutine matmul_diag_sca
 
 !=========================================================================
 ! Diagonalize a distributed matrix
+!=========================================================================
 subroutine diagonalize_inplace_sca(nglobal,desc,matrix,eigval)
  implicit none
  integer,intent(in)     :: desc(ndel),nglobal
@@ -193,6 +279,7 @@ end subroutine diagonalize_inplace_sca
 
 !=========================================================================
 ! Diagonalize a distributed matrix
+!=========================================================================
 subroutine diagonalize_outofplace_sca(nglobal,desc,matrix,eigval,desc_eigvec,eigvec)
  implicit none
  integer,intent(in)     :: nglobal
@@ -275,11 +362,14 @@ end subroutine diagonalize_outofplace_sca
 
 
 !=========================================================================
-subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix,eigval)
+! Diagonalize a non-distributed matrix
+!
+!=========================================================================
+subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix_global,eigval)
  implicit none
  integer,intent(in)     :: scalapack_block_min
  integer,intent(in)     :: nmat
- real(dp),intent(inout) :: matrix(nmat,nmat)
+ real(dp),intent(inout) :: matrix_global(nmat,nmat)
  real(dp),intent(out)   :: eigval(nmat)
 !=====
  integer :: cntxt
@@ -289,9 +379,10 @@ subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix,eigval)
  integer :: iglobal,jglobal,ilocal,jlocal
  integer :: descm(ndel),descz(ndel)
  real(dp) :: alpha
- real(dp),allocatable :: matrix_local(:,:)
+ real(dp),allocatable :: matrix(:,:)
  real(dp),allocatable :: work(:)
  integer :: lwork
+ integer :: rank_master
  integer :: rank_sca,nprocs_sca
  integer,external :: NUMROC,INDXL2G
 !=====
@@ -309,61 +400,46 @@ subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix,eigval)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
  write(stdout,'(a,i4,a,i4)') ' Diagonalization using SCALAPACK with a grid',nprow,' x ',npcol
 
+ ! Find the master
+ if( iprow == 0 .AND. ipcol == 0 ) then
+   rank_master = rank
+ else
+   rank_master = -1
+ endif
+ call xmax(rank_master)
+
+ if( cntxt > 0 ) then
+   mlocal = NUMROC(nmat,block_row,iprow,first_row,nprow)
+   nlocal = NUMROC(nmat,block_col,ipcol,first_col,npcol)
+ else
+   mlocal = 1
+   nlocal = 0
+ endif
+
+ allocate(matrix(mlocal,nlocal))
+    
+ call DESCINIT(descm,nmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mlocal),info)
+
+ ! Set up the local copy of the matrix_global
+ call create_distributed_copy(nmat,matrix_global,descm,matrix)
+
  !
  ! Participate to the diagonalization only if the CPU has been selected 
  ! in the grid
- if( cntxt >= 0  ) then
-
-   mlocal = NUMROC(nmat,block_row,iprow,first_row,nprow)
-   nlocal = NUMROC(nmat,block_col,ipcol,first_col,npcol)
-  
-   allocate(matrix_local(mlocal,nlocal))
-    
-   call DESCINIT(descm,nmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mlocal),info)
-
-  
-   ! set up the local copy of the matrix
-   do jlocal=1,nlocal
-     jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
-     do ilocal=1,mlocal
-       iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
-       matrix_local(ilocal,jlocal) = matrix(iglobal,jglobal)
-     enddo
-   enddo
-  
-
-   call diagonalize_sca(nmat,descm,matrix_local,eigval)
-  
-   ! Nullify the eigval array for all CPUs but one, so that the all_reduce
-   ! operation in the end yields the correct value
-   ! Of course, using a broadcast instead would be a better solution, but I'm so lazy
-   if(rank_sca /= 0 ) eigval(:) = 0.0_dp
-  
-   matrix(:,:) = 0.0_dp
-   do jlocal=1,nlocal
-     jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
-     do ilocal=1,mlocal
-       iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
-       matrix(iglobal,jglobal) = matrix_local(ilocal,jlocal)
-     enddo
-   enddo
-
-   deallocate(matrix_local)
-   call BLACS_GRIDEXIT( cntxt )
-
- else
-   ! Those CPUs that are not used in the SCALAPACK process
-   matrix(:,:) = 0.0_dp
-   eigval(:) = 0.0_dp
+ if( cntxt > 0  ) then
+   call diagonalize_sca(nmat,descm,matrix,eigval)
  endif
 
- call xsum(matrix)
- call xsum(eigval)
+ call gather_distributed_copy(nmat,descm,matrix,matrix_global)
+ deallocate(matrix)
+ if( cntxt > 0 ) call BLACS_GRIDEXIT( cntxt )
+
+ call xbcast(rank_master,eigval)
 
 
 #else
 
- call diagonalize(nmat,matrix,eigval)
+ call diagonalize(nmat,matrix_global,eigval)
 
 #endif
 
@@ -373,6 +449,8 @@ end subroutine diagonalize_scalapack
 
 !=========================================================================
 ! Transform a lower or upper triangular matrix into the full representation
+!
+!=========================================================================
 subroutine symmetrize_matrix_sca(uplo,nglobal,desc,matrix,desc_tmp,matrix_tmp)
  implicit none
  character(len=1)       :: uplo
