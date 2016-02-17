@@ -36,7 +36,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  real(dp),allocatable      :: amb_diag_rpa(:)
  real(dp),allocatable      :: amb_matrix(:,:),apb_matrix(:,:)
  real(dp),allocatable      :: a_diag(:)
- real(dp),allocatable      :: bigx(:,:),bigy(:,:)
+ real(dp),allocatable      :: xpy_matrix(:,:),xmy_matrix(:,:)
  real(dp),allocatable      :: eigenvalue(:)
  real(dp)                  :: energy_qp(nstate,nspin)
  logical                   :: is_tddft
@@ -233,17 +233,19 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  
 
  !
- ! Prepare the second dimension of bigx and bigy
+ ! Prepare the second dimension of xpy_matrix and xmy_matrix
  nexc = nexcitation
  if( nexc == 0 ) nexc = wpol_out%npole_reso_apb
 
  allocate(eigenvalue(nmat))
- ! bigX, and bigY (if needed)
+
+ ! Allocate (X+Y) 
+ ! Allocate (X-Y) only if actually needed
  call init_desc('S',nmat,nexc,desc_x,m_x,n_x)
- write(stdout,*) 'Allocate eigenvector array'
- call clean_allocate('X',bigx,m_x,n_x)
+
+ call clean_allocate('X+Y',xpy_matrix,m_x,n_x)
  if( .NOT. is_rpa) &
-   call clean_allocate('Y',bigy,m_x,n_x)
+   call clean_allocate('X-Y',xmy_matrix,m_x,n_x)
 
  !
  ! Diago using the 4 block structure and the symmetry of each block
@@ -252,19 +254,20 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  if( .NOT. is_rpa ) then
    if( nexcitation == 0 ) then
 #ifndef HAVE_SCALAPACK
-     call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,eigenvalue,bigx,bigy)
+     call diago_4blocks_sqrt(nmat,amb_matrix,apb_matrix,eigenvalue,xpy_matrix,xmy_matrix)
 #else
      call diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,eigenvalue,&
-                             desc_x,m_x,n_x,bigx,bigy)
+                             desc_x,m_x,n_x,xpy_matrix,xmy_matrix)
 #endif
    else ! Partial diagonalization with Davidson
+     ! The following call works with AND without SCALAPACK
      call diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix, & 
-                                 eigenvalue,desc_x,m_x,n_x,bigx,bigy)
+                                 eigenvalue,desc_x,m_x,n_x,xpy_matrix,xmy_matrix)
    endif
  else
    ! The following call works with AND without SCALAPACK
    call diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matrix,eigenvalue,&
-                              desc_x,m_x,n_x,bigx)
+                              desc_x,m_x,n_x,xpy_matrix)
  endif
 
 
@@ -296,27 +299,23 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  ! and the dynamic dipole tensor
  !
  if( calc_type%is_td .OR. calc_type%is_bse ) then
-   call optical_spectrum(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
-!   call stopping_power(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,bigx,bigy,eigenvalue)
+   call optical_spectrum(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,xpy_matrix,xmy_matrix,eigenvalue)
+!   call stopping_power(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,xpy_matrix,eigenvalue)
  endif
 
 #ifdef DEVEL
  do t_ij=1,nmat
    istate = wpol_out%transition_table_apb(1,t_ij)
    jstate = wpol_out%transition_table_apb(2,t_ij)
-   write(999,*) istate,jstate,bigx(t_ij,1)+bigy(t_ij,1)
+   write(999,*) istate,jstate,xpy_matrix(t_ij,1)
  enddo
  call pol_davidson(basis,auxil_basis,nstate,occupation,energy,c_matrix,wpol_out)
 #endif
 
  !
- ! Now only the sum ( bigx + bigy ) is needed in fact.
- ! Let us set  bigx = bigx + bigy 
- !    and free bigy 
- if( .NOT. is_rpa) then
-   bigx(:,:) = bigx(:,:) + bigy(:,:)
-   call clean_deallocate('Y',bigy)
- endif
+ ! Now only the sum ( X + Y ) is needed in fact.
+ ! Free ( X - Y ) at once.
+ call clean_deallocate('X-Y',xmy_matrix)
 
  !
  ! Calculate Wp= v * chi * v    if necessary
@@ -324,7 +323,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  !
  if( print_w_ .OR. calc_type%is_gw ) then
    if( has_auxil_basis) then
-     call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf_local,desc_x,m_x,n_x,bigx,eigenvalue,wpol_out,energy_gm)
+     call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf_local,desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol_out,energy_gm)
      ! This following coding of the Galitskii-Migdal correlation energy is only working with
      ! an auxiliary basis
      if(is_rpa) write(stdout,'(a,f16.10,/)') ' Correlation energy in the Galitskii-Migdal formula (Ha): ',energy_gm
@@ -335,7 +334,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
         call chi_to_sqrtvchisqrtv_auxil_spa(basis%nbf,auxil_basis%nbf_local,a_diag,wpol_out)
 
    else
-     call chi_to_vchiv(basis%nbf,nstate,c_matrix,bigx,eigenvalue,wpol_out)
+     call chi_to_vchiv(basis%nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol_out)
    endif
   
  
@@ -347,7 +346,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  if( .NOT. calc_type%is_gw ) call destroy_spectral_function(wpol_out)
 
  write(stdout,*) 'Deallocate eigenvector arrays'
- call clean_deallocate('X',bigx)
+ call clean_deallocate('X+Y',xpy_matrix)
 
  if(has_auxil_basis) call destroy_eri_3center_eigen()
 
@@ -361,7 +360,7 @@ end subroutine polarizability
 
 
 !=========================================================================
-subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenvalue)
+subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matrix,xmy_matrix,eigenvalue)
  use m_definitions
  use m_timing
  use m_warning
@@ -379,8 +378,8 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bi
  type(basis_set),intent(in)         :: basis
  real(dp),intent(in)                :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in) :: chi
- real(dp),intent(in)                :: bigx(m_x,n_x)
- real(dp),intent(in)                :: bigy(m_x,n_x)
+ real(dp),intent(in)                :: xpy_matrix(m_x,n_x)
+ real(dp),intent(in)                :: xmy_matrix(m_x,n_x)
  real(dp),intent(in)                :: eigenvalue(chi%npole_reso_apb)
 !=====
  integer                            :: nexc
@@ -503,7 +502,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bi
 
      if( t_kl_global <= nexc) then
        residu(:,t_kl_global) = residu(:,t_kl_global) &
-                    + dipole_state(:,istate,jstate,ijspin) * ( bigx(t_ij,t_kl) + bigy(t_ij,t_kl) ) * SQRT(spin_fact)
+                    + dipole_state(:,istate,jstate,ijspin) * xpy_matrix(t_ij,t_kl) * SQRT(spin_fact)
      endif
    enddo
 
@@ -543,7 +542,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bi
      do t_ij=1,m_x
        ! t_kl is zero if the proc is not in charge of this process
        if( t_kl /=0 ) then 
-         if( ABS(bigx(t_ij,t_kl)) > 0.1_dp ) then
+         if( 0.5_dp * ABS( xpy_matrix(t_ij,t_kl) + xmy_matrix(t_ij,t_kl) ) > 0.1_dp ) then
            t_ij_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ij)
            exit
          endif
@@ -588,9 +587,9 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bi
        jstate = chi%transition_table_apb(2,t_ij_global)
        if( t_kl /= 0 ) then
          ! Resonant
-         coeff(                     t_ij_global) = bigx(t_ij,t_kl) / SQRT(2.0_dp)
+         coeff(                     t_ij_global) = 0.5_dp * ( xpy_matrix(t_ij,t_kl) + xmy_matrix(t_ij,t_kl) ) / SQRT(2.0_dp)
          ! Anti-Resonant
-         coeff(chi%npole_reso_apb + t_ij_global) = bigy(t_ij,t_kl) / SQRT(2.0_dp)
+         coeff(chi%npole_reso_apb + t_ij_global) = 0.5_dp * ( xpy_matrix(t_ij,t_kl) - xmy_matrix(t_ij,t_kl) ) / SQRT(2.0_dp)
        endif
      enddo
      call xsum(coeff)
@@ -698,7 +697,7 @@ end subroutine optical_spectrum
 
 
 !=========================================================================
-subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy,eigenvalue)
+subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalue)
  use m_definitions
  use m_timing
  use m_warning
@@ -716,8 +715,7 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy
  type(basis_set),intent(in)         :: basis
  real(dp),intent(in)                :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in) :: chi
- real(dp),intent(in)                :: bigx(m_x,n_x)
- real(dp),intent(in)                :: bigy(m_x,n_x)
+ real(dp),intent(in)                :: xpy_matrix(m_x,n_x)
  real(dp),intent(in)                :: eigenvalue(chi%npole_reso_apb)
 !=====
  integer                            :: t_ij,t_kl
@@ -864,7 +862,7 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,bigx,bigy
        t_kl_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_kl)
   
        residu(t_kl_global) = residu(t_kl_global) &
-                    + gos_state(istate,jstate,ijspin) * ( bigx(t_ij,t_kl) + bigy(t_ij,t_kl) ) * SQRT(spin_fact)
+                    + gos_state(istate,jstate,ijspin) * xpy_matrix(t_ij,t_kl) * SQRT(spin_fact)
      enddo
   
    enddo
@@ -982,7 +980,7 @@ end subroutine get_energy_qp
 
 
 !=========================================================================
-subroutine chi_to_vchiv(nbf,nstate,c_matrix,bigx,eigenvalue,wpol)
+subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
  use m_definitions
  use m_warning
  use m_basis_set
@@ -993,7 +991,7 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,bigx,eigenvalue,wpol)
  integer,intent(in)                    :: nbf,nstate
  real(dp),intent(in)                   :: c_matrix(nbf,nstate,nspin)
  type(spectral_function),intent(inout) :: wpol
- real(dp),intent(in)                   :: bigx(wpol%npole_reso_apb,wpol%npole_reso_apb)
+ real(dp),intent(in)                   :: xpy_matrix(wpol%npole_reso_apb,wpol%npole_reso_apb)
  real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso_apb)
 !=====
  integer                               :: t_kl,klspin,ijspin
@@ -1046,7 +1044,7 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,bigx,eigenvalue,wpol)
          ! and the block structure of eigenvector | X  Y |
          !                                        | Y  X |
          wpol%residu_left(ijstate_spin,:) = wpol%residu_left(ijstate_spin,:) &
-                              + eri_eigen_klij * bigx(t_kl,:)
+                              + eri_eigen_klij * xpy_matrix(t_kl,:)
 
        enddo
      enddo
@@ -1066,7 +1064,7 @@ end subroutine chi_to_vchiv
 
 
 !=========================================================================
-subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,eigenvalue,wpol,energy_gm)
+subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,energy_gm)
  use m_definitions
  use m_warning
  use m_basis_set
@@ -1076,7 +1074,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,eigenval
  
  integer,intent(in)                    :: nbf,nbf_auxil,m_x,n_x
  integer,intent(in)                    :: desc_x(ndel)
- real(dp),intent(inout)                :: bigx(m_x,n_x)
+ real(dp),intent(inout)                :: xpy_matrix(m_x,n_x)
  type(spectral_function),intent(inout) :: wpol
  real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso_apb)
  real(dp),intent(out)                  :: energy_gm
@@ -1093,8 +1091,8 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,eigenval
  integer                               :: m_3center,n_3center
  real(dp)                              :: rtmp
  integer                               :: iprow,ipcol
- integer                               :: m_bigx_block,n_bigx_block
- real(dp),allocatable                  :: bigx_block(:,:)
+ integer                               :: m_xpy_block,n_xpy_block
+ real(dp),allocatable                  :: xpy_block(:,:)
 !=====
 
  call start_clock(timing_buildw)
@@ -1120,7 +1118,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,eigenval
  ! and the block structure of eigenvector | X  Y |
  !                                        | Y  X |
  ! => only needs (X+Y)
- wpol%residu_left(:,:) = MATMUL( eri_3center_mat , bigx(:,:) ) * SQRT(spin_fact)
+ wpol%residu_left(:,:) = MATMUL( eri_3center_mat , xpy_matrix(:,:) ) * SQRT(spin_fact)
 
  energy_gm = 0.5_dp * ( SUM( wpol%residu_left(:,:)**2 ) - spin_fact * SUM( eri_3center_mat(:,:)**2 ) )
  !
@@ -1132,40 +1130,40 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,bigx,eigenval
 #else 
 
 
- bigx(:,:) = bigx(:,:) * SQRT(spin_fact)
+ xpy_matrix(:,:) = xpy_matrix(:,:) * SQRT(spin_fact)
 
  wpol%residu_left(:,:) = 0.0_dp
  ! First loop over the SCALAPACK grid
  do ipcol=0,npcol_sd-1
    do iprow=0,nprow_sd-1
-     m_bigx_block = row_block_size(nmat,iprow,nprow_sd)
-     n_bigx_block = col_block_size(nmat,ipcol,npcol_sd)
+     m_xpy_block = row_block_size(nmat,iprow,nprow_sd)
+     n_xpy_block = col_block_size(nmat,ipcol,npcol_sd)
 
-     allocate(bigx_block(m_bigx_block,n_bigx_block))
+     allocate(xpy_block(m_xpy_block,n_xpy_block))
      if( ipcol == ipcol_sd .AND. iprow == iprow_sd ) then
-       bigx_block(:,:) = bigx(:,:)
+       xpy_block(:,:) = xpy_matrix(:,:)
      else
-       bigx_block(:,:) = 0.0_dp
+       xpy_block(:,:) = 0.0_dp
      endif
-     call xsum(bigx_block)
+     call xsum(xpy_block)
 
-     do t_kl=1,n_bigx_block
+     do t_kl=1,n_xpy_block
        t_kl_global = colindex_local_to_global(ipcol,npcol_sd,t_kl)
 
-       do t_ij=1,m_bigx_block
+       do t_ij=1,m_xpy_block
          t_ij_global = rowindex_local_to_global(iprow,nprow_sd,t_ij)
          istate = wpol%transition_table_apb(1,t_ij_global)
          jstate = wpol%transition_table_apb(2,t_ij_global)
          ijspin = wpol%transition_table_apb(3,t_ij_global)
 
          wpol%residu_left(:,t_kl_global) = wpol%residu_left(:,t_kl_global) &
-                  + eri_3center_eigen(:,istate,jstate,ijspin) * bigx_block(t_ij,t_kl)
+                  + eri_3center_eigen(:,istate,jstate,ijspin) * xpy_block(t_ij,t_kl)
 
        enddo
      enddo
 
 
-     deallocate(bigx_block)
+     deallocate(xpy_block)
    enddo
  enddo
 
