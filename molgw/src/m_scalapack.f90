@@ -76,6 +76,10 @@ subroutine matmul_diag_sca(side,nglobal,diag,desc,matrix)
    enddo
 
  case('R')
+! Alternative coding
+!   do jglobal=1,nglobal
+!     call PDSCAL(nglobal,diag(jglobal),matrix,1,jglobal,desc,1)
+!   enddo
    do jlocal=1,nlocal
      jglobal = colindex_local_to_global(desc,jlocal)
      matrix(:,jlocal) = matrix(:,jlocal) * diag(jglobal)

@@ -126,7 +126,7 @@ end subroutine hamiltonian_prediction
 !=========================================================================
 subroutine simple_mixing_p_matrix(p_matrix_old,p_matrix_new)
  implicit none
- real(dp),intent(out)   :: p_matrix_old(m_ham_scf,n_ham_scf,nspin)
+ real(dp),intent(in)    :: p_matrix_old(m_ham_scf,n_ham_scf,nspin)
  real(dp),intent(inout) :: p_matrix_new(m_ham_scf,n_ham_scf,nspin)
 !=====
 
