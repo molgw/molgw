@@ -326,6 +326,9 @@ subroutine build_apb_hartree_auxil(desc_apb,wpol,m_apb,n_apb,apb_matrix)
      m_apb_block = row_block_size(nmat,iprow,nprow_sd)
      n_apb_block = col_block_size(nmat,ipcol,npcol_sd)
 
+     ! If block is of size 0, then skip it
+     if( m_apb_block == 0 .OR. n_apb_block == 0 ) cycle
+
      allocate(apb_block(m_apb_block,n_apb_block))
 
      allocate(eri_3center_left(m_apb_block))
