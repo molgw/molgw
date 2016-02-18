@@ -72,42 +72,26 @@ subroutine gather_distributed_copy(nglobal,desc,matrix,matrix_global)
  integer              :: contxt
  integer              :: mlocal,nlocal
  integer              :: ilocal,jlocal,iglobal,jglobal
- integer              :: iprow,ipcol,nprow,npcol
  integer              :: rank_master
 !=====
 
  contxt = desc(2)
 
- ! Find the master
- call BLACS_GRIDINFO( contxt, nprow, npcol, iprow, ipcol )
+ mlocal = SIZE( matrix , DIM=1 )
+ nlocal = SIZE( matrix , DIM=2 )
 
- if( iprow == 0 .AND. ipcol == 0 ) then
-   rank_master = rank
- else
-   rank_master = -1
- endif
- call xmax(rank_master)
-
- if( contxt > 0 ) then
-
-   mlocal = SIZE( matrix , DIM=1 )
-   nlocal = SIZE( matrix , DIM=2 )
-
-   matrix_global(:,:) = 0.0_dp
-   do jlocal=1,nlocal
-     jglobal = colindex_local_to_global(desc,jlocal)
-     do ilocal=1,mlocal
-       iglobal = rowindex_local_to_global(desc,ilocal)
-       matrix_global(iglobal,jglobal) = matrix(ilocal,jlocal)
-     enddo
+ matrix_global(:,:) = 0.0_dp
+ do jlocal=1,nlocal
+   jglobal = colindex_local_to_global(desc,jlocal)
+   do ilocal=1,mlocal
+     iglobal = rowindex_local_to_global(desc,ilocal)
+     matrix_global(iglobal,jglobal) = matrix(ilocal,jlocal)
    enddo
+ enddo
 
-   ! Only the master proc (0,0) has the complete information
-   call DGSUM2D(contxt,'A',' ',nglobal,nglobal,matrix_global,nglobal,0,0)
- endif
+ ! Only the master proc (0,0) gets the complete information
+ call DGSUM2D(contxt,'A',' ',nglobal,nglobal,matrix_global,nglobal,0,0)
 
- ! Then the master proc (0,0) broadcasts to all the others
- call xbcast(rank_master,matrix_global)
 
 end subroutine gather_distributed_copy
 
@@ -407,32 +391,31 @@ subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix_global,eigval)
  endif
  call xmax(rank_master)
 
- if( cntxt > 0 ) then
-   mlocal = NUMROC(nmat,block_row,iprow,first_row,nprow)
-   nlocal = NUMROC(nmat,block_col,ipcol,first_col,npcol)
- else
-   mlocal = 1
-   nlocal = 0
- endif
-
- allocate(matrix(mlocal,nlocal))
-    
- call DESCINIT(descm,nmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mlocal),info)
-
- ! Set up the local copy of the matrix_global
- call create_distributed_copy(nmat,matrix_global,descm,matrix)
-
  !
  ! Participate to the diagonalization only if the CPU has been selected 
  ! in the grid
- if( cntxt > 0  ) then
+ if( cntxt > 0 ) then
+   mlocal = NUMROC(nmat,block_row,iprow,first_row,nprow)
+   nlocal = NUMROC(nmat,block_col,ipcol,first_col,npcol)
+
+   allocate(matrix(mlocal,nlocal))
+    
+   call DESCINIT(descm,nmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mlocal),info)
+
+   ! Set up the local copy of the matrix_global
+   call create_distributed_copy(nmat,matrix_global,descm,matrix)
+
    call diagonalize_sca(nmat,descm,matrix,eigval)
+
+   call gather_distributed_copy(nmat,descm,matrix,matrix_global)
+   deallocate(matrix)
+
+   call BLACS_GRIDEXIT( cntxt )
+
  endif
 
- call gather_distributed_copy(nmat,descm,matrix,matrix_global)
- deallocate(matrix)
- if( cntxt > 0 ) call BLACS_GRIDEXIT( cntxt )
-
+ ! Then the master proc (0,0) broadcasts to all the others
+ call xbcast(rank_master,matrix_global)
  call xbcast(rank_master,eigval)
 
 
