@@ -209,6 +209,7 @@ subroutine diagonalize_inplace_sca(nglobal,desc,matrix,eigval)
 !=====
 
 #ifdef HAVE_SCALAPACK
+ desc_eigvec = desc
 
  mlocal = SIZE( matrix , DIM=1 )
  nlocal = SIZE( matrix , DIM=2 )

@@ -212,7 +212,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
  real(dp),intent(out)   :: xmy_matrix(m_x,n_x)
 !=====
  integer              :: descb(ndel),desce(ndel)
- integer,parameter    :: SMALL_BLOCK=1
+ integer,parameter    :: SMALL_BLOCK=4
  integer,parameter    :: NCYCLE=20
  integer              :: nbb,nbbc,nbba
  integer              :: ibb,jbb
@@ -228,11 +228,11 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
  real(dp),allocatable :: bb(:,:)
  real(dp),allocatable :: ql(:,:),qr(:,:)
  real(dp),allocatable :: eigvec_left(:,:),eigvec_right(:,:)
- real(dp),allocatable :: apb_bb(:,:)
- real(dp),allocatable :: amb_bb(:,:)
+ real(dp),allocatable :: bb_apb_bb(:,:),bb_amb_bb(:,:)
+ real(dp),allocatable :: apb_bb(:,:),amb_bb(:,:)
  real(dp),allocatable :: apb_tilde(:,:),amb_tilde(:,:),c_tilde(:,:)
  real(dp),allocatable :: amb_sqrt_tilde(:,:),amb_sqrt_inv_tilde(:,:)
- real(dp),allocatable :: omega2(:)
+ real(dp),allocatable :: bigomega_tmp(:)
  logical,allocatable  :: maskmin(:)
  integer,external     :: NUMROC,INDXL2G
  integer :: t_ij,t_kl
@@ -254,6 +254,8 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
  allocate(bb(nmat,nbb))
  allocate(amb_bb(nmat,nbb))
  allocate(apb_bb(nmat,nbb))
+ allocate(bb_amb_bb(nbb,nbb))
+ allocate(bb_apb_bb(nbb,nbb))
  allocate(ql(nmat,nexcitation))
  allocate(qr(nmat,nexcitation))
 
@@ -348,30 +350,35 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
   deallocate(bb_local,ab_local)
 #endif
 
+ bb_apb_bb(1:nbbc,1:nbbc) = MATMUL( TRANSPOSE(bb(:,1:nbbc)) , apb_bb(:,1:nbbc) )
+ bb_amb_bb(1:nbbc,1:nbbc) = MATMUL( TRANSPOSE(bb(:,1:nbbc)) , amb_bb(:,1:nbbc) )
+
 
  do icycle=1,NCYCLE
 
    allocate(apb_tilde(nbbc,nbbc),amb_tilde(nbbc,nbbc))
    allocate(c_tilde(nbbc,nbbc))
    allocate(amb_sqrt_tilde(nbbc,nbbc),amb_sqrt_inv_tilde(nbbc,nbbc))
-   allocate(omega2(nbbc))
+   allocate(bigomega_tmp(nbbc))
    allocate(eigvec_left(nbbc,nbbc),eigvec_right(nbbc,nbbc))
 
-   apb_tilde(1:nbbc,1:nbbc) = MATMUL( TRANSPOSE(bb(:,1:nbbc)) , apb_bb(:,1:nbbc) )
-   amb_tilde(1:nbbc,1:nbbc) = MATMUL( TRANSPOSE(bb(:,1:nbbc)) , amb_bb(:,1:nbbc) )
+   apb_tilde(:,:) = bb_apb_bb(1:nbbc,1:nbbc)
+   amb_tilde(:,:) = bb_amb_bb(1:nbbc,1:nbbc)
 
 
    ! Calculate the square-root of amb_tilde
    amb_sqrt_tilde(:,:) = amb_tilde(:,:)
-   call diagonalize(nbbc,amb_sqrt_tilde,omega2)
+   call diagonalize(nbbc,amb_sqrt_tilde,bigomega_tmp)
+   bigomega_tmp(:) = SQRT( bigomega_tmp(:) )
 
-   if( ANY( omega2 < 1.0e-10_dp ) ) then
+   if( ANY( bigomega_tmp < 1.0e-6_dp ) ) then
      call die('Matrix (A-B) is not positive definite')
    endif
+
    amb_sqrt_inv_tilde(:,:) = amb_sqrt_tilde(:,:)
    do ibb=1,nbbc
-     amb_sqrt_tilde(:,ibb)     = amb_sqrt_tilde(:,ibb)     * SQRT( SQRT(omega2(ibb)) )
-     amb_sqrt_inv_tilde(:,ibb) = amb_sqrt_inv_tilde(:,ibb) / SQRT( SQRT(omega2(ibb)) )
+     amb_sqrt_tilde(:,ibb)     = amb_sqrt_tilde(:,ibb)     *  SQRT(bigomega_tmp(ibb))
+     amb_sqrt_inv_tilde(:,ibb) = amb_sqrt_inv_tilde(:,ibb) /  SQRT(bigomega_tmp(ibb))
    enddo
    amb_sqrt_tilde(:,:)     = MATMUL( amb_sqrt_tilde     , TRANSPOSE( amb_sqrt_tilde)     )
    amb_sqrt_inv_tilde(:,:) = MATMUL( amb_sqrt_inv_tilde , TRANSPOSE( amb_sqrt_inv_tilde) )
@@ -380,7 +387,8 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
    c_tilde(:,:) = MATMUL( amb_sqrt_tilde , MATMUL( apb_tilde , amb_sqrt_tilde) )
 
    ! Diagonalize the C matrix
-   call diagonalize(nbbc,c_tilde,omega2)
+   call diagonalize(nbbc,c_tilde,bigomega_tmp)
+   bigomega_tmp(:) = SQRT( bigomega_tmp(:) )
 
 
    ! TRANSPOSE the left eigvec
@@ -388,17 +396,17 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
    eigvec_right(:,:) = MATMUL( amb_sqrt_tilde , c_tilde )
 
    do ibb=1,nbbc
-     eigvec_left (:,ibb) = eigvec_left (:,ibb) * omega2(ibb)**0.25_dp
-     eigvec_right(:,ibb) = eigvec_right(:,ibb) / omega2(ibb)**0.25_dp
+     eigvec_left (:,ibb) = eigvec_left (:,ibb) * SQRT(bigomega_tmp(ibb))
+     eigvec_right(:,ibb) = eigvec_right(:,ibb) / SQRT(bigomega_tmp(ibb))
    enddo
 
    !
    ! Calculate the WL and WR of Stratmann and Scuseria
    do ibb=1,nexcitation
      ql(:,ibb) = MATMUL( apb_bb(:,1:nbbc) ,  eigvec_right(:,ibb) ) &
-                   - SQRT( omega2(ibb) ) * MATMUL( bb(:,1:nbbc) , eigvec_left(:,ibb) )
+                   - bigomega_tmp(ibb) * MATMUL( bb(:,1:nbbc) , eigvec_left(:,ibb) )
      qr(:,ibb) = MATMUL( amb_bb(:,1:nbbc) ,  eigvec_left(:,ibb) )  &  
-                   - SQRT( omega2(ibb) ) * MATMUL( bb(:,1:nbbc) , eigvec_right(:,ibb) )
+                   - bigomega_tmp(ibb) * MATMUL( bb(:,1:nbbc) , eigvec_right(:,ibb) )
    enddo
 
    !
@@ -406,7 +414,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
    write(stdout,'(/,a,i4)') ' Davidson iteration ',icycle
    write(stdout,'(a,i5)')   ' Iterative subspace dimension ',nbbc
    do ibb=1,nexcitation
-     write(stdout,'(a,i4,x,f13.6,x,es12.4)') ' Excitation   Energy (eV)  Residual: ',ibb,SQRT(omega2(ibb)) * Ha_eV,&
+     write(stdout,'(a,i4,x,f13.6,x,es12.4)') ' Excitation   Energy (eV)  Residual: ',ibb,bigomega_tmp(ibb) * Ha_eV,&
                   MAX( NORM2(ql(:,ibb)) , NORM2(qr(:,ibb)) )
      tolres = MAXVAL( NORM2(ql(:,:),DIM=1) )
    enddo
@@ -434,8 +442,8 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
    ! Preconditioning of the residual to get the new trial vectors
    do ibb=1,nexcitation
      do imat=1,nmat
-       bb(imat,nbbc+2*ibb-1) = ql(imat,ibb) / ( SQRT(omega2(ibb)) - amb_diag_rpa(imat) )
-       bb(imat,nbbc+2*ibb  ) = qr(imat,ibb) / ( SQRT(omega2(ibb)) - amb_diag_rpa(imat) )
+       bb(imat,nbbc+2*ibb-1) = ql(imat,ibb) / ( bigomega_tmp(ibb) - amb_diag_rpa(imat) )
+       bb(imat,nbbc+2*ibb  ) = qr(imat,ibb) / ( bigomega_tmp(ibb) - amb_diag_rpa(imat) )
      enddo
    enddo
 
@@ -514,6 +522,15 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
     deallocate(bb_local,ab_local)
 #endif
 
+   ! Add the missing b ( A+B) b
+   bb_apb_bb(nbbc+1:nbbc+nbba,     1:nbbc+nbba) = MATMUL( TRANSPOSE(bb(:,nbbc+1:nbbc+nbba)) , apb_bb(:,     1:nbbc+nbba) )
+   bb_apb_bb(     1:nbbc+nbba,nbbc+1:nbbc+nbba) = MATMUL( TRANSPOSE(bb(:,     1:nbbc+nbba)) , apb_bb(:,nbbc+1:nbbc+nbba) )
+   bb_apb_bb(nbbc+1:nbbc+nbba,nbbc+1:nbbc+nbba) = MATMUL( TRANSPOSE(bb(:,nbbc+1:nbbc+nbba)) , apb_bb(:,nbbc+1:nbbc+nbba) )
+
+   ! Add the missing b ( A-B) b
+   bb_amb_bb(nbbc+1:nbbc+nbba,     1:nbbc+nbba) = MATMUL( TRANSPOSE(bb(:,nbbc+1:nbbc+nbba)) , amb_bb(:,     1:nbbc+nbba) )
+   bb_amb_bb(     1:nbbc+nbba,nbbc+1:nbbc+nbba) = MATMUL( TRANSPOSE(bb(:,     1:nbbc+nbba)) , amb_bb(:,nbbc+1:nbbc+nbba) )
+   bb_amb_bb(nbbc+1:nbbc+nbba,nbbc+1:nbbc+nbba) = MATMUL( TRANSPOSE(bb(:,nbbc+1:nbbc+nbba)) , amb_bb(:,nbbc+1:nbbc+nbba) )
 
 
    !
@@ -521,7 +538,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
    nbbc = nbbc + nbba
 
 
-   deallocate(apb_tilde,amb_tilde,omega2)
+   deallocate(apb_tilde,amb_tilde,bigomega_tmp)
    deallocate(c_tilde)
    deallocate(amb_sqrt_tilde,amb_sqrt_inv_tilde)
    deallocate(eigvec_left,eigvec_right)
@@ -533,7 +550,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
  ! Remember
  ! L = | X - Y >
  ! R = | X + Y >
- bigomega(1:nexcitation) = SQRT( omega2(1:nexcitation) )
+ bigomega(1:nexcitation) = bigomega_tmp(1:nexcitation)
 
 #ifndef HAVE_SCALAPACK
 
@@ -563,7 +580,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
  call DESCINIT(desce,nbbc,nexcitation,SMALL_BLOCK,SMALL_BLOCK,first_row,first_col,cntxt_sd,MAX(1,me),info)
  allocate(ev_local(me,ne))
  !
- ! 1. Deal with 1/2 (X-Y)
+ ! 1. Deal with (X-Y)
  !
  do jb=1,ne
    jglobal = INDXL2G(jb,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
@@ -579,7 +596,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
              0.0_dp,xmy_matrix,1,1,desc_x)
 
  !
- ! 2. Deal with 1/2 (X+Y)
+ ! 2. Deal with (X+Y)
  !
  do jb=1,ne
    jglobal = INDXL2G(jb,SMALL_BLOCK,ipcol_sd,first_col,npcol_sd)
@@ -600,7 +617,8 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
 #endif
 
 
- deallocate(apb_tilde,amb_tilde,omega2)
+ deallocate(bb_apb_bb,bb_amb_bb)
+ deallocate(apb_tilde,amb_tilde,bigomega_tmp)
  deallocate(c_tilde)
  deallocate(amb_sqrt_tilde,amb_sqrt_inv_tilde)
  deallocate(eigvec_left,eigvec_right)
