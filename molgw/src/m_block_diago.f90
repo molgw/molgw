@@ -143,8 +143,6 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
 !=====
  integer              :: info
  integer              :: ilocal,jlocal,iglobal,jglobal
- integer              :: lwork
- real(dp),allocatable :: work(:)
  real(dp)             :: amb_diag_sqrt(nmat)
 !=====
 
@@ -235,7 +233,9 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
  real(dp),allocatable :: bigomega_tmp(:)
  logical,allocatable  :: maskmin(:)
  integer,external     :: NUMROC,INDXL2G
- integer :: t_ij,t_kl
+ integer              :: t_ij,t_kl
+ integer              :: lwork
+ real(dp),allocatable :: work(:)
 !=====
 
  call start_clock(timing_diago_h2p)
@@ -350,8 +350,11 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
   deallocate(bb_local,ab_local)
 #endif
 
- bb_apb_bb(1:nbbc,1:nbbc) = MATMUL( TRANSPOSE(bb(:,1:nbbc)) , apb_bb(:,1:nbbc) )
- bb_amb_bb(1:nbbc,1:nbbc) = MATMUL( TRANSPOSE(bb(:,1:nbbc)) , amb_bb(:,1:nbbc) )
+
+ ! Calculate and store   b (A+B) b = b^T [ (A+B) b ]
+ call DGEMM('T','N',nbbc,nbbc,nmat,1.0_dp,bb(:,1:nbbc),nmat,apb_bb(:,1:nbbc),nmat,0.0_dp,bb_apb_bb(1:nbbc,1:nbbc),nbbc)
+ ! Calculate and store   b (A-B) b = b^T [ (A-B) b ]
+ call DGEMM('T','N',nbbc,nbbc,nmat,1.0_dp,bb(:,1:nbbc),nmat,amb_bb(:,1:nbbc),nmat,0.0_dp,bb_amb_bb(1:nbbc,1:nbbc),nbbc)
 
 
  do icycle=1,NCYCLE
@@ -362,43 +365,50 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
    allocate(bigomega_tmp(nbbc))
    allocate(eigvec_left(nbbc,nbbc),eigvec_right(nbbc,nbbc))
 
+
+   ! Copy the saved matrices into the work matrices
    apb_tilde(:,:) = bb_apb_bb(1:nbbc,1:nbbc)
    amb_tilde(:,:) = bb_amb_bb(1:nbbc,1:nbbc)
 
 
-   ! Calculate the square-root of amb_tilde
-   amb_sqrt_tilde(:,:) = amb_tilde(:,:)
-   call diagonalize(nbbc,amb_sqrt_tilde,bigomega_tmp)
-   bigomega_tmp(:) = SQRT( bigomega_tmp(:) )
-
-   if( ANY( bigomega_tmp < 1.0e-6_dp ) ) then
+   ! Cholevski decomposition of (A-B) = L * L^T
+   call DPOTRF('L',nbbc,amb_tilde,nbbc,info)
+   if( info /= 0 ) then
      call die('Matrix (A-B) is not positive definite')
    endif
 
-   amb_sqrt_inv_tilde(:,:) = amb_sqrt_tilde(:,:)
-   do ibb=1,nbbc
-     amb_sqrt_tilde(:,ibb)     = amb_sqrt_tilde(:,ibb)     *  SQRT(bigomega_tmp(ibb))
-     amb_sqrt_inv_tilde(:,ibb) = amb_sqrt_inv_tilde(:,ibb) /  SQRT(bigomega_tmp(ibb))
-   enddo
-   amb_sqrt_tilde(:,:)     = MATMUL( amb_sqrt_tilde     , TRANSPOSE( amb_sqrt_tilde)     )
-   amb_sqrt_inv_tilde(:,:) = MATMUL( amb_sqrt_inv_tilde , TRANSPOSE( amb_sqrt_inv_tilde) )
+   ! Calculate L^T * (A+B) * L
+   call DSYGST(3,'L',nbbc,apb_tilde,nbbc,amb_tilde,nbbc,info)
 
+   ! Diagonalize the matrix L^T * (A+B) * L = Z \Omega Z^T
+   lwork = -1
+   allocate(work(1))
+   call DSYEV('V','L',nbbc,apb_tilde,nbbc,bigomega_tmp,work,lwork,info)
+   lwork = NINT(work(1))
+   deallocate(work)
+  
+   allocate(work(lwork))
+   call DSYEV('V','L',nbbc,apb_tilde,nbbc,bigomega_tmp,work,lwork,info)
+   deallocate(work)
 
-   c_tilde(:,:) = MATMUL( amb_sqrt_tilde , MATMUL( apb_tilde , amb_sqrt_tilde) )
-
-   ! Diagonalize the C matrix
-   call diagonalize(nbbc,c_tilde,bigomega_tmp)
    bigomega_tmp(:) = SQRT( bigomega_tmp(:) )
 
+   eigvec_left(:,:)  = apb_tilde(:,:)
+   eigvec_right(:,:) = apb_tilde(:,:)
 
-   ! TRANSPOSE the left eigvec
-   eigvec_left (:,:) = MATMUL( amb_sqrt_inv_tilde , c_tilde )
-   eigvec_right(:,:) = MATMUL( amb_sqrt_tilde , c_tilde )
-
-   do ibb=1,nbbc
-     eigvec_left (:,ibb) = eigvec_left (:,ibb) * SQRT(bigomega_tmp(ibb))
-     eigvec_right(:,ibb) = eigvec_right(:,ibb) / SQRT(bigomega_tmp(ibb))
-   enddo
+   ! Calculate L * Z
+   call DTRMM('L','L','N','N',nbbc,nbbc,1.0_dp,amb_tilde,nbbc,eigvec_right,nbbc)
+  
+   ! Calculate L^{-T} * Z
+   call DTRSM('L','L','T','N',nbbc,nbbc,1.0_dp,amb_tilde,nbbc,eigvec_left,nbbc)
+  
+   !
+   ! X-Y = L * Z / Omega^{1/2}
+   ! X+Y = L^{-T} * Z * Omega^{1/2}
+   forall(ibb=1:nexcitation)
+     eigvec_left(:,ibb)  = eigvec_left(:,ibb)  * SQRT( bigomega_tmp(ibb) )
+     eigvec_right(:,ibb) = eigvec_right(:,ibb) / SQRT( bigomega_tmp(ibb) )
+   end forall
 
    !
    ! Calculate the WL and WR of Stratmann and Scuseria
