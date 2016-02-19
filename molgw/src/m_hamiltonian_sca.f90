@@ -766,7 +766,28 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
  call xsum(energy)
  call xsum(c_matrix)
 
+#else
 
+ allocate(h_small(nstate,nstate))
+
+ do ispin=1,nspin_local
+   write(stdout,'(a,i3)') ' Diagonalization for spin: ',ispin
+   call start_clock(timing_diago_hamiltonian)
+
+
+   h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
+                            MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) ) 
+
+   call diagonalize(nstate,h_small,energy(1:nstate,ispin))
+
+   c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
+
+
+   call stop_clock(timing_diago_hamiltonian)
+ enddo
+
+
+ deallocate(h_small)
 
 #endif
 

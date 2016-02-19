@@ -882,42 +882,6 @@ end subroutine level_shifting
 
 
 !=========================================================================
-subroutine diagonalize_hamiltonian(nspin_local,nbf,nstate,hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)
- use m_tools
- implicit none
-
- integer,intent(in)   :: nspin_local,nbf,nstate
- real(dp),intent(in)  :: hamiltonian(nbf,nbf,nspin_local)
- real(dp),intent(in)  :: s_matrix_sqrt_inv(nbf,nstate)
- real(dp),intent(out) :: c_matrix(nbf,nstate,nspin_local)
- real(dp),intent(out) :: energy(nstate,nspin_local)
-!=====
- integer  :: ispin,ibf,jbf,istate
- real(dp) :: h_small(nstate,nstate)
-!=====
-
-
- do ispin=1,nspin_local
-   write(stdout,'(a,i3)') ' Diagonalization for spin: ',ispin
-   call start_clock(timing_diago_hamiltonian)
-
-
-   h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
-                            MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
-
-   call diagonalize(nstate,h_small,energy(1:nstate,ispin))
-
-   c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
-
-
-   call stop_clock(timing_diago_hamiltonian)
- enddo
-
-
-end subroutine diagonalize_hamiltonian
-
-
-!=========================================================================
 subroutine setup_sqrt_overlap(TOL_OVERLAP,nbf,s_matrix,nstate,s_matrix_sqrt_inv)
  use m_tools
  implicit none
