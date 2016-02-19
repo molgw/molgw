@@ -445,8 +445,8 @@ subroutine plot_rho(basis,occupation,c_matrix)
  real(dp),intent(in)        :: occupation(basis%nbf,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
 !=====
- integer,parameter          :: nr=2000
- real(dp),parameter         :: length=2.0_dp
+ integer,parameter          :: nr=5000
+ real(dp),parameter         :: length=4.0_dp
  integer                    :: ir,ibf
  integer                    :: istate1,istate2,istate,ispin
  real(dp)                   :: rr(3)
@@ -516,6 +516,8 @@ subroutine plot_rho(basis,occupation,c_matrix)
    enddo
 
    write(103,'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( phi(:,:)**2 * occupation(:,:) )
+
+   write(104,'(50(e16.8,2x))') NORM2(rr(:)),SUM( phi(:,:)**2 * occupation(:,:) ) * 4.0_dp * pi * NORM2(rr(:))**2
 
  enddo
 
