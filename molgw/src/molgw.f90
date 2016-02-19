@@ -237,6 +237,17 @@ program molgw
 
  endif
 
+ !
+ ! For self-consistent calculations (QSMP2, QSGW, QSCOHSEX) that depend on empty states,
+ ! ignore the restart file if it is not a big one
+ if( calc_type%gwmethod == QS .OR. calc_type%gwmethod == QSCOHSEX ) then
+   if( restart_type /= EMPTY_STATES_RESTART .AND. restart_type /= BIG_RESTART ) then
+     call issue_warning('RESTART file has been ignored, since it does not contain empty states required')
+     is_restart = .FALSE.
+   endif
+ endif
+
+
  if( .NOT. is_restart) then
    !
    ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
@@ -278,6 +289,7 @@ program molgw
 
  endif
 
+
  !
  ! If an auxiliary basis is given,
  ! then set it up now and calculate the required ERI: 2- and 3-center integrals
@@ -313,7 +325,8 @@ program molgw
  ! Only do it if the calculation is NOT a big restart
  !
  if( .NOT. is_big_restart) then
-   call scf_loop(basis,auxil_basis,                                             &
+   call scf_loop(is_restart,                                                    &
+                 basis,auxil_basis,                                             &
                  nstate,m_ham,n_ham,m_c,n_c,                                    &
                  s_matrix_sqrt_inv,                                             &
                  s_matrix,c_matrix,                                             &

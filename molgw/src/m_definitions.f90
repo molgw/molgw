@@ -44,10 +44,11 @@ module m_definitions
 
  !
  ! Restart file types
- integer,parameter ::    NO_RESTART = 0
- integer,parameter :: SMALL_RESTART = 1
- integer,parameter ::   BIG_RESTART = 2
- integer,parameter :: BASIS_RESTART = 3
+ integer,parameter ::           NO_RESTART = 0
+ integer,parameter ::        SMALL_RESTART = 1
+ integer,parameter ::          BIG_RESTART = 2
+ integer,parameter ::        BASIS_RESTART = 3
+ integer,parameter :: EMPTY_STATES_RESTART = 4
 
 
 end module m_definitions

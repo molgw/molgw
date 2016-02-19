@@ -4,7 +4,8 @@
 ! This file contains
 ! the main SCF loop for Hartree-Fock or Kohn-Sham
 !=========================================================================
-subroutine scf_loop(basis,auxil_basis,&
+subroutine scf_loop(is_restart,& 
+                    basis,auxil_basis,&
                     nstate,m_ham,n_ham,m_c,n_c,&
                     s_matrix_sqrt_inv,&
                     s_matrix,c_matrix,&
@@ -31,6 +32,7 @@ subroutine scf_loop(basis,auxil_basis,&
  implicit none
 
 !=====
+ logical,intent(in)                 :: is_restart
  type(basis_set),intent(in)         :: basis
  type(basis_set),intent(in)         :: auxil_basis
  integer,intent(in)                 :: nstate,m_ham,n_ham,m_c,n_c
@@ -224,8 +226,8 @@ subroutine scf_loop(basis,auxil_basis,&
 
    !
    ! QPscGW self energy
-   if( calc_type%is_gw .AND. ( calc_type%gwmethod == QS .OR. calc_type%gwmethod == QSCOHSEX) &
-       .AND. iscf > 5 ) then
+   if( calc_type%is_gw .AND. ( calc_type%gwmethod == QS .OR. calc_type%gwmethod == QSCOHSEX ) &
+       .AND. ( iscf > 5 .OR. is_restart ) ) then
 
      call init_spectral_function(nstate,occupation,wpol)
      call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
@@ -257,7 +259,7 @@ subroutine scf_loop(basis,auxil_basis,&
 
    !
    ! QPscMP2
-   if( calc_type%is_mp2 .AND. calc_type%gwmethod == QS .AND. iscf > 5 ) then
+   if( calc_type%is_mp2 .AND. calc_type%gwmethod == QS .AND. ( iscf > 5 .OR. is_restart ) ) then
 
      allocate(exchange_m_vxc_diag(nstate,nspin))
      exchange_m_vxc_diag(:,:)=0.0_dp

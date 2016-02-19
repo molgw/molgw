@@ -1076,7 +1076,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
      if( same_scf .AND. same_geometry ) then
        restart_type = BIG_RESTART
      else
-       restart_type = SMALL_RESTART
+       restart_type = EMPTY_STATES_RESTART
      endif
      close(restartfile)
      return
