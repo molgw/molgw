@@ -23,7 +23,7 @@ module m_eri
  real(prec_eri),public,allocatable :: eri_3center(:,:)
  real(prec_eri),public,allocatable :: eri_3center_lr(:,:)
 
- logical,protected,allocatable      :: negligible_basispair(:,:)
+! logical,protected,allocatable      :: negligible_basispair(:,:)
  logical,protected,allocatable      :: negligible_shellpair(:,:)
  integer,protected,allocatable      :: index_pair(:,:)
  integer,protected,allocatable      :: index_basis(:,:)
@@ -43,6 +43,7 @@ module m_eri
  integer,protected                      :: nshell_auxil
  type(shell_type),protected,allocatable :: shell(:)
  type(shell_type),protected,allocatable :: shell_auxil(:)
+ integer,private,allocatable            :: shell_bf(:)
 
 
  integer,private   :: nbf_eri         ! local copy of nbf
@@ -113,11 +114,11 @@ subroutine prepare_eri(basis)
  if(.NOT.ALLOCATED(negligible_shellpair)) then
    call setup_shell_list(basis)
    allocate(negligible_shellpair(nshell,nshell))
-   allocate(negligible_basispair(nbf_eri,nbf_eri))
+!   allocate(negligible_basispair(nbf_eri,nbf_eri))
    allocate(index_pair(nbf_eri,nbf_eri))
    call identify_negligible_shellpair(basis)
    call setup_shellpair()
-   call setup_negligible_basispair()
+   call setup_basispair()
  endif
 
 
@@ -168,7 +169,7 @@ subroutine deallocate_eri()
    write(stdout,'(/,a)')     ' Deallocate LR ERI buffer'
    call clean_deallocate('4-center LR integrals',eri_4center_lr)
  endif
- if(ALLOCATED(negligible_basispair))  deallocate(negligible_basispair)
+! if(ALLOCATED(negligible_basispair))  deallocate(negligible_basispair)
  if(ALLOCATED(negligible_shellpair))  deallocate(negligible_shellpair)
  if(ALLOCATED(index_pair))            deallocate(index_pair)
  if(ALLOCATED(index_basis))           deallocate(index_basis)
@@ -180,6 +181,7 @@ subroutine deallocate_eri()
    if(ALLOCATED(shell(ishell)%coeff)) deallocate( shell(ishell)%coeff )
  enddo
  if(ALLOCATED(shell))                 deallocate(shell)
+ if(ALLOCATED(shell_bf))              deallocate(shell_bf)
 
 
 end subroutine deallocate_eri
@@ -296,7 +298,7 @@ subroutine setup_shell_list(basis)
 
  type(basis_set),intent(in)   :: basis
 !=====
- integer :: ibf,jbf
+ integer :: ibf,jbf,kbf
  integer :: ishell
 !=====
 
@@ -309,7 +311,7 @@ subroutine setup_shell_list(basis)
  jbf=0
  do ishell=1,nshell
    do ibf=1,basis%nbf_cart
-     if(basis%bf(ibf)%shell_index==ishell) then
+     if( basis%bf(ibf)%shell_index == ishell ) then
        shell(ishell)%am    = basis%bf(ibf)%am
        shell(ishell)%x0(:) = basis%bf(ibf)%x0(:)
        shell(ishell)%ng    = basis%bf(ibf)%ngaussian
@@ -330,6 +332,21 @@ subroutine setup_shell_list(basis)
      endif
    enddo
  enddo
+
+ !
+ ! Set up the correspondence between basis function and shells (the inverse of
+ ! the previous table more or less)
+ !
+ allocate(shell_bf(basis%nbf))
+ ibf=1
+ jbf=1
+ do while (ibf<=basis%nbf_cart)
+   kbf = jbf + number_basis_function_am( basis%gaussian_type , basis%bf(ibf)%am ) - 1
+   shell_bf(jbf:kbf) = basis%bf(ibf)%shell_index
+   jbf = kbf + 1
+   ibf = ibf + number_basis_function_am( 'CART' , basis%bf(ibf)%am )
+ enddo
+
 
 end subroutine setup_shell_list
 
@@ -379,26 +396,12 @@ end subroutine setup_shell_list_auxil
 
 
 !=========================================================================
-subroutine setup_negligible_basispair()
+subroutine setup_basispair()
  implicit none
 !=====
  integer :: ishell,jshell
  integer :: ibf,jbf
 !=====
-
- negligible_basispair(:,:) = .FALSE.
- do ishell=1,nshell
-   do jshell=1,nshell
-     if( negligible_shellpair(ishell,jshell) ) then 
-       do ibf=shell(ishell)%istart,shell(ishell)%iend
-         do jbf=shell(jshell)%istart,shell(jshell)%iend
-           negligible_basispair(ibf,jbf) = .TRUE.
-           negligible_basispair(jbf,ibf) = .TRUE.
-         enddo
-       enddo
-     endif
-   enddo
- enddo
 
  npair = 0
  do jbf=1,nbf_eri
@@ -439,52 +442,27 @@ subroutine setup_negligible_basispair()
  enddo
 
 
-end subroutine setup_negligible_basispair
+end subroutine setup_basispair
 
 
 !=========================================================================
-subroutine refine_negligible_basispair()
+function negligible_basispair(ibf,jbf)
  implicit none
 
+ integer,intent(in) :: ibf,jbf
+ logical :: negligible_basispair
 !=====
- integer  :: ibf,jbf,kbf,lbf
- integer  :: npair,npair_refined
- real(dp) :: max_ij
+ integer  :: ishell,jshell
 !=====
 
- npair         = 0
- npair_refined = 0
 
- do jbf=1,nbf_eri
-   do ibf=1,jbf
-     if( negligible_basispair(ibf,jbf) ) cycle
-     npair = npair + 1
+ ishell = shell_bf(ibf)
+ jshell = shell_bf(jbf)
 
-     max_ij=0.0_dp
-     do lbf=1,nbf_eri
-       do kbf=1,lbf
-         if( negligible_basispair(kbf,lbf) ) cycle
-         max_ij = MAX( max_ij , ABS(eri(ibf,jbf,kbf,lbf)) )
-       enddo
-     enddo
-     if( max_ij < TOL_INT ) then
-!       write(stdout,*) '    negl',max_ij,max_ij < TOL_INT
-       negligible_basispair(ibf,jbf) = .TRUE.
-     else
-!       write(stdout,*) 'non negl',max_ij,max_ij < TOL_INT
-       npair_refined = npair_refined + 1
-     endif
+ negligible_basispair = negligible_shellpair(ishell,jshell)
 
 
-   enddo
- enddo
-
- write(stdout,'(/,a)') ' Refining the negligible basis function pairs'
- write(stdout,'(a,x,i6)')   ' Non negligible basis function pairs stored in memory   ',npair
- write(stdout,'(a,x,i6)')   ' Non negligible basis function pairs used in calculation',npair_refined
-
-
-end subroutine refine_negligible_basispair
+end function negligible_basispair
 
 
 !=========================================================================
