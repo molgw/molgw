@@ -193,57 +193,69 @@ subroutine element_atomicdensity(zatom,coeff,alpha)
 
  select case(NINT(zatom))
  case( 1)
-   alpha(1) = 35.7662 
-   alpha(2) = 5.66045 
-   alpha(3) = 1.34388 
-   alpha(4) = 0.340268
-   coeff(2) = 0.038544
-   coeff(3) = 0.317984
-   coeff(4) = 0.641901 
-   coeff(1) = 1.0_dp - SUM(coeff(2:4))
-!  alpha(1) = 0.191852  
-!  alpha(2) = 5.6143    
-!  alpha(3) = 0.510303  
-!  alpha(4) = 1.47022   
-!  coeff(1) = 0.208981  
-!  coeff(2) = 0.0287008 
-!  coeff(3) = 0.358982  
-!  coeff(4) = 0.168689  
+!   alpha(1) = 35.7662 
+!   alpha(2) = 5.66045 
+!   alpha(3) = 1.34388 
+!   alpha(4) = 0.340268
+!   coeff(2) = 0.038544
+!   coeff(3) = 0.317984
+!   coeff(4) = 0.641901 
+!   coeff(1) = 1.0_dp - SUM(coeff(2:4))
+  alpha(1) = 0.191852  
+  alpha(2) = 5.6143    
+  alpha(3) = 0.510303  
+  alpha(4) = 1.47022   
+  coeff(1) = 0.208981  
+  coeff(2) = 0.0287008 
+  coeff(3) = 0.358982  
+  coeff(4) = 0.168689  
  case( 6)
-   alpha(1) = 167.342
-   alpha(2) =  28.2192
-   alpha(3) =   0.96127
-   alpha(4) = 1832.38 
-   coeff(2) =  1.3663 
-   coeff(3) =  4.49642
-   coeff(4) =  0.00210702
-   coeff(1) = 6.0_dp - SUM(coeff(2:4))
-!   alpha(1) = 0.294412 
-!   alpha(2) = 68.2412  
-!   alpha(3) = 16.7565  
-!   alpha(4) = 0.852332 
-!   coeff(1) = 1.90506  
-!   coeff(2) = 0.485794 
-!   coeff(3) = 1.2976   
-!   coeff(4) = 2.24937  
-! case( 7)
-!   alpha(1) = 0.404096 
-!   alpha(2) = 93.8331  
-!   alpha(3) = 1.24113  
-!   alpha(4) = 23.2099  
-!   coeff(1) = 5.34772  
-!   coeff(2) = 1.10327  
-!   coeff(3) = 6.26128  
-!   coeff(4) = 2.90708  
-! case( 8)
-!   alpha(1) = 122.833 
-!   alpha(2) = 30.5529 
-!   alpha(3) = 0.536011
-!   alpha(4) = 1.71315 
-!   coeff(1) = 0.495436
-!   coeff(2) = 1.27809 
-!   coeff(3) = 2.85614 
-!   coeff(4) = 3.27719 
+!!! C core
+!alpha(1)             = 52.6714 
+!alpha(2)             = 12.1559 
+!coeff(1)             = 0.69500
+!coeff(2)             = 1.30500
+!! C val          
+! alpha(3)             = 0.668341
+! alpha(4)             = 0.22974
+! coeff(3)             = 3.848
+! coeff(4)             = 1.152
+
+!   alpha(1) = 167.342
+!   alpha(2) =  28.2192
+!   alpha(3) =   0.96127
+!   alpha(4) = 1832.38 
+!   coeff(2) =  1.3663 
+!   coeff(3) =  4.49642
+!   coeff(4) =  0.00210702
+!   coeff(1) = 6.0_dp - SUM(coeff(2:4))
+
+   alpha(1) = 0.294412 
+   alpha(2) = 68.2412  
+   alpha(3) = 16.7565  
+   alpha(4) = 0.852332 
+   coeff(1) = 1.90506  
+   coeff(2) = 0.485794 
+   coeff(3) = 1.2976   
+   coeff(4) = 2.24937  
+ case( 7)
+   alpha(1) = 0.404121 
+   alpha(2) = 23.2108  
+   alpha(3) = 1.24119  
+   alpha(4) = 93.8394  
+   coeff(1) = 2.37996  
+   coeff(2) = 1.29369  
+   coeff(3) = 2.7861   
+   coeff(4) = 0.49092  
+ case( 8)
+   alpha(1) = 122.833 
+   alpha(2) = 30.5529 
+   alpha(3) = 0.536011
+   alpha(4) = 1.71315 
+   coeff(1) = 0.495436
+   coeff(2) = 1.27809 
+   coeff(3) = 2.85614 
+   coeff(4) = 3.27719 
  case default
    alpha(1) = 0.3_dp
    coeff(1) = 2.0_dp
