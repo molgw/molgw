@@ -114,8 +114,6 @@ subroutine prepare_eri(basis)
  if(.NOT.ALLOCATED(negligible_shellpair)) then
    call setup_shell_list(basis)
    allocate(negligible_shellpair(nshell,nshell))
-!   allocate(negligible_basispair(nbf_eri,nbf_eri))
-   allocate(index_pair(nbf_eri,nbf_eri))
    call identify_negligible_shellpair(basis)
    call setup_shellpair()
    call setup_basispair()
@@ -169,11 +167,11 @@ subroutine deallocate_eri()
    write(stdout,'(/,a)')     ' Deallocate LR ERI buffer'
    call clean_deallocate('4-center LR integrals',eri_4center_lr)
  endif
-! if(ALLOCATED(negligible_basispair))  deallocate(negligible_basispair)
  if(ALLOCATED(negligible_shellpair))  deallocate(negligible_shellpair)
- if(ALLOCATED(index_pair))            deallocate(index_pair)
- if(ALLOCATED(index_basis))           deallocate(index_basis)
  if(ALLOCATED(index_shellpair))       deallocate(index_shellpair)
+ call clean_deallocate('index pair',index_pair)
+ call clean_deallocate('index basis',index_basis)
+
  ! 
  ! Cleanly deallocate the shell objects
  do ishell=1,nshell
@@ -411,7 +409,9 @@ subroutine setup_basispair()
      endif
    enddo
  enddo
- allocate(index_basis(2,npair))
+
+ call clean_allocate('index pair',index_pair,nbf_eri,nbf_eri)
+ call clean_allocate('index basis',index_basis,2,npair)
 
  !
  ! Specific ordering where the first nbf pairs contain the diagonal terms ibf=jbf
