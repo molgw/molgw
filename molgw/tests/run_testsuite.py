@@ -11,6 +11,7 @@ today=time.strftime("%Y")+'_'+time.strftime("%m")+'_'+time.strftime("%d")
 start_time = time.time()
 keeptmp = False
 
+selected_input_file=''
 mpirun=''
 nprocs=1
 
@@ -80,6 +81,7 @@ if len(sys.argv) > 1:
     print('  --keep             Keep the temporary folder')
     print('  --np     n         Set the number of cores to n')
     print('  --mpirun launcher  Set the MPI launcher name')
+    print('  --input  file      Only run this input file')
     sys.exit(0)
   if '--keep' in sys.argv:
     keeptmp = True
@@ -90,6 +92,9 @@ if len(sys.argv) > 1:
   if '--mpirun' in sys.argv:
     i = sys.argv.index('--mpirun') + 1
     mpirun = sys.argv[i]
+  if '--input' in sys.argv:
+    i = sys.argv.index('--input') + 1
+    selected_input_file = sys.argv[i]
 
 print('\n===============================')
 print('Starting MOLGW test suite\n')
@@ -137,7 +142,16 @@ for line in ftestsuite:
 
 ftestsuite.close()
 
-print('Input files to be run:',ninput)
+if len(selected_input_file) == 0:
+  ninput2 = ninput
+else:
+  if not selected_input_file in input_files:
+    print('Input file name:',selected_input_file,'not present in the test suite')
+    sys.exit(1)
+  ninput2 = 1
+
+
+print('Input files to be run:',ninput2)
 
 
 ###################################
@@ -156,6 +170,9 @@ tested = 0
 fdiff = open(tmpfolder+'/diff', 'w')
 
 for iinput in range(0,ninput):
+
+  if len(selected_input_file) != 0 and selected_input_file != input_files[iinput]:
+    continue
 
   inp     = input_files[iinput]
   out     = input_files[iinput]+'_out'
