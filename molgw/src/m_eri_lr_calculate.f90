@@ -558,6 +558,7 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
  real(dp),allocatable         :: eri_3tmp(:,:,:)
+ real(dp),allocatable         :: eri_2tmp(:,:)
 !=====
 ! variables used to call C
  integer(C_INT)               :: am1,am2,am3,am4
@@ -571,7 +572,20 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
 
  call start_clock(timing_eri_3center)
 
- ! First allocate the LR 3-center integral array
+ !
+ ! First, copy the part of eri_2center_m1 that is actually needed and deallocate
+ ! the rest
+ allocate(eri_2tmp(nauxil_3center_lr,auxil_basis%nbf))
+ do ibf_auxil=1,nauxil_3center_lr
+   jbf_auxil = ibf_auxil_g(ibf_auxil)
+   eri_2tmp(ibf_auxil,:) = eri_2center_m1_lr(:,jbf_auxil)
+ enddo
+
+ write(stdout,*) 'Now deallocate the 2-center LR integrals: not needed anymore'
+ call clean_deallocate('2-center LR integrals',eri_2center_m1_lr)
+
+
+ ! Second, allocate the LR 3-center integral array
  !
  ! LR 3-CENTER INTEGRALS 
  !
@@ -831,30 +845,24 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
    !
    ! Combine the 2-center integral with the 3-center here
    !
-   do ibf_auxil=1,nauxil_3center_lr
-     jbf_auxil = ibf_auxil_g_lr(ibf_auxil)
-
-     do lbf=1,nl
-       do kbf=1,nk
-         ipair = index_pair(shell(kshell)%istart+kbf-1,shell(lshell)%istart+lbf-1)
+   do lbf=1,nl
+     do kbf=1,nk
+       ipair = index_pair(shell(kshell)%istart+kbf-1,shell(lshell)%istart+lbf-1)
     
-         eri_3center_lr(ibf_auxil,ipair) = DOT_PRODUCT( eri_2center_m1_lr(:,jbf_auxil) , eri_3tmp(:,kbf,lbf) ) 
-       enddo
+       eri_3center_lr(:,ipair) = MATMUL( eri_2tmp(:,:) , eri_3tmp(:,kbf,lbf) )
      enddo
-  enddo
+   enddo
 
-  deallocate(eri_3tmp)
+   deallocate(eri_3tmp)
 
  enddo
 
  write(stdout,'(a)') ' All 3-center LR integrals have been calculated and stored'
 
-
- write(stdout,*) 'Now deallocate the 2-center LR integrals: not needed anymore'
- call clean_deallocate('2-center LR integrals',eri_2center_m1_lr)
- 
+ deallocate(eri_2tmp)
 
  call stop_clock(timing_eri_3center)
+
 
 end subroutine calculate_eri_3center_lr
 
