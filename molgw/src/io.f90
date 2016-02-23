@@ -774,6 +774,7 @@ subroutine write_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ha
  use m_mpi
  use m_inputparam
  use m_atoms
+ use m_basis_set
  implicit none
 
  integer,intent(in)         :: restart_type
@@ -880,6 +881,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
  use m_mpi
  use m_inputparam
  use m_atoms
+ use m_basis_set
  use m_hamiltonian
  implicit none
 

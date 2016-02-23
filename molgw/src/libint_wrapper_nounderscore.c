@@ -1,4 +1,5 @@
 /*
+ * This file is part of MOLGW.
  * C wrapper to the libint library
  * includes contracted gaussian treatment
  */

@@ -4,8 +4,9 @@
 module m_inputparam
  use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
  use m_definitions
+ use m_mpi
+ use m_warning
  use m_atoms
- use m_basis_set
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
  use xc_f90_lib_m

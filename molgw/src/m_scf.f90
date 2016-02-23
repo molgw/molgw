@@ -7,6 +7,7 @@ module m_scf
  use m_memory
  use m_mpi
  use m_inputparam
+ use m_tools,only: invert
 
 
  integer,private              :: nhistmax
