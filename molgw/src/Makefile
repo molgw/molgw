@@ -37,8 +37,8 @@ all:
 	+make  level010
 	+make  level015
 	+make  level020
+	+make  level025
 	+make  level030
-	+make  level032
 	+make  level035
 	+make  level040
 	+make  ../molgw
@@ -53,9 +53,9 @@ level015: m_scalapack.o m_atoms.o m_gaussian.o
 
 level020: m_basis_set.o m_inputparam.o m_block_diago.o
 
-level030: m_eri.o m_scf.o m_dft_grid.o
+level025: m_eri.o m_scf.o m_dft_grid.o
 
-level032: m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o
+level030: m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o
 
 level035: m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o mp2_selfenergy.o
 

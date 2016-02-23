@@ -552,6 +552,7 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
  real(dp),allocatable         :: eri_3tmp(:,:,:)
  real(dp),allocatable         :: eri_2tmp(:,:)
+ real(dp),allocatable         :: eri_tmp(:,:,:)
 !=====
 ! variables used to call C
  integer(C_INT)               :: am1,am2,am3,am4
@@ -568,6 +569,11 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  !
  ! First, copy the part of eri_2center_m1 that is actually needed and deallocate
  ! the rest
+! allocate(eri_2tmp(auxil_basis%nbf,nauxil_3center))
+! do ibf_auxil=1,nauxil_3center
+!   jbf_auxil = ibf_auxil_g(ibf_auxil)
+!   eri_2tmp(:,ibf_auxil) = eri_2center_m1(:,jbf_auxil)
+! enddo
  allocate(eri_2tmp(nauxil_3center,auxil_basis%nbf))
  do ibf_auxil=1,nauxil_3center
    jbf_auxil = ibf_auxil_g(ibf_auxil)
@@ -756,41 +762,25 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
 
        do lbf=1,n4c
          do kbf=1,n3c
-           do jbf=1,n2c
-             do ibf=1,n1
-               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1c,jbf,kbf,lbf) * cart_to_pure_norm(am1)%matrix(1:n1c,ibf) )
-             enddo
-           enddo
+           integrals_tmp (1:n1,1:n2c,kbf,lbf) = MATMUL( TRANSPOSE( cart_to_pure_norm(am1)%matrix(1:n1c,:) ) ,  integrals_cart(1:n1c,1:n2c,kbf,lbf) )
          enddo
        enddo
 
        do lbf=1,n4c
          do kbf=1,n3c
-           do jbf=1,n2
-             do ibf=1,n1
-               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2c,kbf,lbf) * cart_to_pure_norm(am2)%matrix(1:n2c,jbf) )
-             enddo
-           enddo
+             integrals_cart(1:n1,1:n2,kbf,lbf) = MATMUL( integrals_tmp (1:n1,1:n2c,kbf,lbf) , cart_to_pure_norm(am2)%matrix(1:n2c,1:n2) )
          enddo
        enddo
 
        do lbf=1,n4c
-         do kbf=1,n3
-           do jbf=1,n2
-             do ibf=1,n1
-               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n3c,lbf) * cart_to_pure_norm(am3)%matrix(1:n3c,kbf) )
-             enddo
-           enddo
+         do jbf=1,n2
+           integrals_tmp (1:n1,jbf,1:n3,lbf) = MATMUL( integrals_cart(1:n1,jbf,1:n3c,lbf) , cart_to_pure_norm(am3)%matrix(1:n3c,1:n3) )
          enddo
        enddo
 
-       do lbf=1,n4
-         do kbf=1,n3
-           do jbf=1,n2
-             do ibf=1,n1
-               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n4c) * cart_to_pure_norm(am4)%matrix(1:n4c,lbf) )
-             enddo
-           enddo
+       do kbf=1,n3
+         do jbf=1,n2
+           integrals_cart(1:n1,jbf,kbf,1:n4) = MATMUL( integrals_tmp (1:n1,jbf,kbf,1:n4c) , cart_to_pure_norm(am4)%matrix(1:n4c,1:n4) )
          enddo
        enddo
 
@@ -839,15 +829,19 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
    !
    ! Combine the 2-center integral with the 3-center here
    !
+   allocate(eri_tmp(nauxil_3center,nk,nl))
+   call DGEMM('N','N',nauxil_3center,nk*nl,auxil_basis%nbf,1.0_dp,eri_2tmp,nauxil_3center,eri_3tmp,auxil_basis%nbf,0.0_dp,eri_tmp,nauxil_3center)
+
    do lbf=1,nl
      do kbf=1,nk
        ipair = index_pair(shell(kshell)%istart+kbf-1,shell(lshell)%istart+lbf-1)
-  
-       eri_3center(:,ipair) = MATMUL( eri_2tmp(:,:) , eri_3tmp(:,kbf,lbf) )
+       eri_3center(:,ipair) = eri_tmp(:,kbf,lbf)
      enddo
    enddo
+   deallocate(eri_tmp)
 
-  deallocate(eri_3tmp)
+
+   deallocate(eri_3tmp)
 
  enddo
 

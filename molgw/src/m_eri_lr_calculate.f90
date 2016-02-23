@@ -559,6 +559,7 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
  real(dp),allocatable         :: eri_3tmp(:,:,:)
  real(dp),allocatable         :: eri_2tmp(:,:)
+ real(dp),allocatable         :: eri_tmp(:,:,:)
 !=====
 ! variables used to call C
  integer(C_INT)               :: am1,am2,am3,am4
@@ -845,13 +846,16 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
    !
    ! Combine the 2-center integral with the 3-center here
    !
+   allocate(eri_tmp(nauxil_3center_lr,nk,nl))
+   call DGEMM('N','N',nauxil_3center_lr,nk*nl,auxil_basis%nbf,1.0_dp,eri_2tmp,nauxil_3center_lr,eri_3tmp,auxil_basis%nbf,0.0_dp,eri_tmp,nauxil_3center_lr)
+
    do lbf=1,nl
      do kbf=1,nk
        ipair = index_pair(shell(kshell)%istart+kbf-1,shell(lshell)%istart+lbf-1)
-    
-       eri_3center_lr(:,ipair) = MATMUL( eri_2tmp(:,:) , eri_3tmp(:,kbf,lbf) )
+       eri_3center_lr(:,ipair) = eri_tmp(:,kbf,lbf)
      enddo
    enddo
+   deallocate(eri_tmp)
 
    deallocate(eri_3tmp)
 
