@@ -127,7 +127,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
    ! then recalculate it from scratch
    if( reading_status /= 0 ) then
      call init_spectral_function(nstate,occupation,wpol_static)
-     wpol_static%nprodbasis = auxil_basis%nbf_local
+     wpol_static%nprodbasis = nauxil_3center
      call static_polarizability(nstate,basis,auxil_basis,occupation,energy,wpol_static)
    endif
 
@@ -321,7 +321,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  !
  if( print_w_ .OR. calc_type%is_gw ) then
    if( has_auxil_basis) then
-     call chi_to_sqrtvchisqrtv_auxil(basis%nbf,auxil_basis%nbf_local,desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol_out,energy_gm)
+     call chi_to_sqrtvchisqrtv_auxil(basis%nbf,nauxil_3center,desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol_out,energy_gm)
      ! This following coding of the Galitskii-Migdal correlation energy is only working with
      ! an auxiliary basis
      if(is_rpa) write(stdout,'(a,f16.10,/)') ' Correlation energy in the Galitskii-Migdal formula (Ha): ',energy_gm
@@ -329,7 +329,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
      ! Add the single pole approximation for the poles that have been neglected
      ! in the diagonalization
      if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) & 
-        call chi_to_sqrtvchisqrtv_auxil_spa(basis%nbf,auxil_basis%nbf_local,a_diag,wpol_out)
+        call chi_to_sqrtvchisqrtv_auxil_spa(basis%nbf,nauxil_3center,a_diag,wpol_out)
 
    else
      call chi_to_vchiv(basis%nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol_out)

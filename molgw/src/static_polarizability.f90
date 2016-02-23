@@ -64,7 +64,7 @@ subroutine static_polarizability(nstate,basis,auxil_basis,occupation,energy,wpol
    !
    ! Communicate the needed 3-center integrals
    eri_3center_ij(:) = 0.0_dp
-   do ibf_auxil_local=1,auxil_basis%nbf_local
+   do ibf_auxil_local=1,nauxil_3center
       ibf_auxil = ibf_auxil_g(ibf_auxil_local)
       eri_3center_ij(ibf_auxil) = eri_3center_eigen(ibf_auxil_local,istate,jstate,ijspin)
    enddo

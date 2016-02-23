@@ -571,10 +571,6 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
 
  call start_clock(timing_eri_3center)
 
- !
- ! Store internal number of auxil basis functions for this processor
- nauxil_3center_lr = auxil_basis%nbf_local_lr
-
  ! First allocate the LR 3-center integral array
  !
  ! LR 3-CENTER INTEGRALS 

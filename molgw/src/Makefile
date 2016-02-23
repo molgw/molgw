@@ -103,19 +103,19 @@ scf_loop.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_inputparam.f90 m_tool
             m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.o scf_loop.f90
 	$(FC_W_OPTS) -c scf_loop.f90 $(LIBXC_INCS)
 
-gw.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 m_eri_calculate.f90 m_eri_ao_mo.f90 \
+gw.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
       m_inputparam.f90 gw.f90
 	$(FC_W_OPTS) -c gw.f90 $(LIBXC_INCS)
 
-bse.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_tools.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 m_inputparam.f90 \
+bse.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_tools.f90 m_basis_set.f90 m_spectral_function.f90 m_inputparam.f90 \
         bse.f90
 	$(FC_W_OPTS) -c bse.f90 $(LIBXC_INCS)
 
-static_polarizability.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_tools.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 m_inputparam.f90 \
+static_polarizability.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_tools.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 m_inputparam.f90 \
         static_polarizability.f90
 	$(FC_W_OPTS) -c static_polarizability.f90 $(LIBXC_INCS)
 
-linear_response.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_block_diago.f90 m_basis_set.f90 m_spectral_function.f90 m_eri.f90 \
+linear_response.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_block_diago.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
                    m_hamiltonian.f90 linear_response.f90
 	$(FC_W_OPTS) -c linear_response.f90 $(LIBXC_INCS)
 

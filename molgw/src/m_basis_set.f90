@@ -42,8 +42,6 @@ module m_basis_set
    integer                          :: ammax           ! Maximum angular momentum contained in the basis set
    integer                          :: nbf             ! Number of basis functions in the basis set
    integer                          :: nbf_cart        ! Number of underlying Cartesian functions in the basis set
-   integer                          :: nbf_local       ! Number of basis functions owned by this processor
-   integer                          :: nbf_local_lr    ! Number of basis functions owned by this processor, this number can differ from previous one
    integer                          :: nshell          ! Number of shells in the basis sets
                                                        ! A shell is a group of basis functions sharing: 
                                                        ! the same center, 
@@ -240,10 +238,6 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  ! END OF THE LOOP OVER ATOMS
  enddo
  
- ! So far no parallelization is performed
- ! Set nbf_local to nbf for safety, this value will be modified later if
- ! necessary
- basis%nbf_local = basis%nbf
 
  basis%nshell = shell_index
  write(stdout,'(a50,i8)') 'Number of shells:',basis%nshell
