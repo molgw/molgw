@@ -1079,7 +1079,6 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,xpy_matrix,ei
 !=====
  integer                               :: t_kl,t_kl_global,klspin
  integer                               :: t_ij,t_ij_global,ijspin
- integer                               :: ibf_auxil,ibf_auxil_global
  integer                               :: nmat
  integer                               :: kstate,lstate
  integer                               :: istate,jstate
