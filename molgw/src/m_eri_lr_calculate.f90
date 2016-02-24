@@ -552,7 +552,7 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
  integer                      :: ibf,jbf,kbf,lbf
  integer                      :: iibf
  integer                      :: ibf_auxil,jbf_auxil,ipair
- integer                      :: info
+ integer                      :: info,ip
  real(dp)                     :: zeta_12,zeta_34,rho,rho1,f0t(0:0),tt
  real(dp)                     :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
@@ -560,6 +560,8 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
  real(dp),allocatable         :: eri_3tmp(:,:,:)
  real(dp),allocatable         :: eri_2tmp(:,:)
  real(dp),allocatable         :: eri_tmp(:,:,:)
+ real(dp)                     :: workload(nproc)
+ integer                      :: shell_proc(nshell_auxil)
 !=====
 ! variables used to call C
  integer(C_INT)               :: am1,am2,am3,am4
@@ -595,6 +597,19 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
 
  write(stdout,'(/,a)')    ' Calculate and store all the 3-center LR Electron Repulsion Integrals'
 
+ !
+ ! Load balancing
+ workload(:) = 0.0_dp
+ do ishell=1,nshell_auxil
+   ami = shell_auxil(ishell)%am
+   ip = MINLOC(workload(:),DIM=1)
+   !
+   ! Cost function was evaluated from a few runs
+   workload(ip) = workload(ip) + ( ami**2 + 4.6_dp )
+   shell_proc(ishell) = ip - 1
+ enddo
+
+
  rcut_libint = rcut
 
  do klshellpair=1,nshellpair
@@ -618,7 +633,7 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
 
      ! Use the distribution to avoid calculating all the integrals
      ! A summation is performed to propagate eri_3tmp to all processors
-     if( MODULO(ishell-1,nproc) /= rank ) cycle
+     if( shell_proc(ishell) /= rank ) cycle
 
      ami = shell_auxil(ishell)%am
      ni = number_basis_function_am( auxil_basis%gaussian_type , ami )

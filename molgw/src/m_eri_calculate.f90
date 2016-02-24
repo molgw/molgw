@@ -75,13 +75,11 @@ subroutine calculate_eri_4center(basis)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
- real(C_DOUBLE)               :: rcut_libint
 !=====
 
  write(stdout,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
 
 
- rcut_libint = 0.0_dp
 
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
@@ -186,7 +184,7 @@ subroutine calculate_eri_4center(basis)
                                coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
                                alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
                                x01(1),x02(1),x03(1),x04(1),&
-                               rcut_libint, &
+                               0.0_C_DOUBLE, &
                                int_shell(1))
 
 
@@ -312,7 +310,6 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
- real(C_DOUBLE)               :: rcut_libint
 !=====
 
  call start_clock(timing_eri_2center)
@@ -334,7 +331,6 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
 
  write(stdout,'(/,a)')    ' Calculate, invert and store the 2-center Electron Repulsion Integrals'
 
- rcut_libint = 0.0_dp
 
  do kshell=1,nshell_auxil
 
@@ -424,7 +420,7 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
                                coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
                                alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
                                x01(1),x02(1),x03(1),x04(1),&
-                               rcut_libint, &
+                               0.0_C_DOUBLE, &
                                int_shell(1))
 
 
@@ -563,7 +559,6 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
- real(C_DOUBLE)               :: rcut_libint
 !=====
 
  call start_clock(timing_eri_3center)
@@ -596,15 +591,12 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
  do ishell=1,nshell_auxil
    ami = shell_auxil(ishell)%am
    ip = MINLOC(workload(:),DIM=1)
-   ! Cost function out of nowhere: C ~ (l+1)^2
-   workload(ip) = workload(ip) + ( ami + 1.0_dp )**2
+   !
+   ! Cost function was evaluated from a few runs
+   workload(ip) = workload(ip) + ( ami**2 + 4.6_dp )
    shell_proc(ishell) = ip - 1
  enddo
- do ip=1,nproc
-   write(stdout,*) 'FBFB workload',ip,workload(ip)
- enddo
 
- rcut_libint = 0.0_dp
 
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
@@ -627,8 +619,7 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
 
      ! Use the distribution to avoid calculating all the integrals
      ! A summation is performed to propagate eri_3tmp to all processors
-     if( MODULO(ishell-1,nproc) /= rank ) cycle
-!     if( shell_proc(ishell) /= rank ) cycle
+     if( shell_proc(ishell) /= rank ) cycle
 
      ami = shell_auxil(ishell)%am
      ni = number_basis_function_am( auxil_basis%gaussian_type , ami )
@@ -749,7 +740,7 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
                                coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
                                alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
                                x01(1),x02(1),x03(1),x04(1),&
-                               rcut_libint, &
+                               0.0_C_DOUBLE, &
                                int_shell(1))
 
 
@@ -900,12 +891,10 @@ subroutine calculate_eri_approximate_hartree(print_eri_,basis,m_ham,n_ham,x0_rho
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
- real(C_DOUBLE)               :: rcut_libint
 !=====
 
 
  vhrho(:,:) = 0.0_dp
- rcut_libint = 0.0_dp
 
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
@@ -986,7 +975,7 @@ subroutine calculate_eri_approximate_hartree(print_eri_,basis,m_ham,n_ham,x0_rho
                              coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
                              alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
                              x01(1),x02(1),x03(1),x04(1),&
-                             rcut_libint, &
+                             0.0_C_DOUBLE, &
                              int_shell(1))
 
 
