@@ -303,11 +303,7 @@ program molgw
    ! Prepare the distribution of the 3-center integrals
    call distribute_auxil_basis(nauxil_2center,nauxil_3center)
    ! 3-center integrals
-#ifdef TEST
-   call calculate_eri_3center_sca(print_eri_,basis,auxil_basis)
-#else
    call calculate_eri_3center(print_eri_,basis,auxil_basis)
-#endif
 
    ! If Range-Separated Hybrid are requested
    ! If is_big_restart, these integrals are NOT needed

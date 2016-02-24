@@ -4,10 +4,10 @@ OPENMP=
 FC=mpif90 -fpp -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK 
 
 CC=icc
-FCOPTS= -O3 -xhost -opt-matmul -mkl=sequential  
+FCOPTS= -O3 -xhost -opt-matmul
 CCOPTS= -O3 -xhost  
 
-LAPACK=
+LAPACK= -mkl=sequential
 
 SCALAPACK= -L{MKLROOT}/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -lpthread -lm
 

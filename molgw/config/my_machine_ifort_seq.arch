@@ -4,10 +4,10 @@ OPENMP=
 FC=ifort -fpp -DHAVE_LIBXC 
 
 CC=icc
-FCOPTS= -O3 -xhost -parallel -opt-matmul -mkl=parallel 
+FCOPTS= -O3 -xhost -parallel -opt-matmul
 CCOPTS= -O3 -xhost  
 
-LAPACK=
+LAPACK= -mkl=parallel
 
 SCALAPACK= 
 
