@@ -186,7 +186,7 @@ subroutine output_timing()
  ! developer's timings
  if( ANY( calls(timing_tmp0:timing_tmp9) > 0 ) ) then
    write(stdout,*)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing tmp0   ' ,timing(timing_tmp1),calls(timing_tmp0)
+   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing tmp0   ' ,timing(timing_tmp0),calls(timing_tmp0)
    write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing tmp1   ' ,timing(timing_tmp1),calls(timing_tmp1)
    write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing tmp2   ' ,timing(timing_tmp2),calls(timing_tmp2)
    write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing tmp3   ' ,timing(timing_tmp3),calls(timing_tmp3)
