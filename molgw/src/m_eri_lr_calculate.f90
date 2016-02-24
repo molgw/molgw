@@ -289,10 +289,9 @@ end subroutine calculate_eri_4center_lr
 
 
 !=========================================================================
-subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
+subroutine calculate_eri_2center_lr(auxil_basis,rcut)
  use m_tools,only: boys_function
  implicit none
- logical,intent(in)           :: print_eri_
  type(basis_set),intent(in)   :: auxil_basis
  real(dp),intent(in)          :: rcut
 !=====
@@ -303,12 +302,14 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
  integer                      :: ami,amk
  integer                      :: ibf,jbf,kbf,lbf
  integer                      :: iibf
- integer                      :: info
+ integer                      :: info,ip
  real(dp)                     :: zeta_12,zeta_34,rho,rho1,f0t(0:0),tt
  real(dp)                     :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:)
  real(dp),allocatable         :: integrals_cart(:,:)
  real(dp),allocatable         :: eigval(:)
+ real(dp)                     :: workload(nproc)
+ integer                      :: shell_proc(nshell_auxil)
 !=====
 ! variables used to call C
  integer(C_INT)               :: am1,am2,am3,am4
@@ -338,12 +339,25 @@ subroutine calculate_eri_2center_lr(print_eri_,auxil_basis,rcut)
 
  write(stdout,'(/,a)')    ' Calculate, invert and store the 2-center LR Electron Repulsion Integrals'
 
+ !
+ ! Load balancing
+ workload(:) = 0.0_dp
+ do kshell=1,nshell_auxil
+   amk = shell_auxil(kshell)%am
+   ip = MINLOC(workload(:),DIM=1)
+   !
+   ! Cost function was evaluated from a few runs
+   workload(ip) = workload(ip) + cost_function_eri(amk)
+   shell_proc(kshell) = ip - 1
+ enddo
+
+
  rcut_libint = rcut
 
  do kshell=1,nshell_auxil
 
    ! Parallelization over the shell index
-   if( MODULO(kshell-1,nproc) /= rank ) cycle
+   if( shell_proc(kshell) /= rank ) cycle
 
    !
    ! Order the angular momenta so that libint is pleased
@@ -534,10 +548,9 @@ end subroutine calculate_eri_2center_lr
 
 
 !=========================================================================
-subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
+subroutine calculate_eri_3center_lr(basis,auxil_basis,rcut)
  use m_tools,only: boys_function
  implicit none
- logical,intent(in)           :: print_eri_
  type(basis_set),intent(in)   :: basis
  type(basis_set),intent(in)   :: auxil_basis
  real(dp),intent(in)          :: rcut
@@ -605,7 +618,7 @@ subroutine calculate_eri_3center_lr(print_eri_,basis,auxil_basis,rcut)
    ip = MINLOC(workload(:),DIM=1)
    !
    ! Cost function was evaluated from a few runs
-   workload(ip) = workload(ip) + ( ami**2 + 4.6_dp )
+   workload(ip) = workload(ip) + cost_function_eri(ami)
    shell_proc(ishell) = ip - 1
  enddo
 

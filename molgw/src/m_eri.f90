@@ -466,30 +466,31 @@ end function negligible_basispair
 
 
 !=========================================================================
+!
+! Find negligible shell pairs with
+! Cauchy-Schwarz inequality: (ij|1/r|kl)**2 <= (ij|1/r|ij) (kl|1/r|(kl) 
+!
+!=========================================================================
 subroutine identify_negligible_shellpair(basis)
-!
-! A first screening implementation
-! Find negligible shell pair with
-! Cauchy-Schwarz inequality
-! (ij|1/r|kl)**2 <= (ij|1/r|ij) (kl|1/r|(kl) 
-!
  use m_tools,only: boys_function
  implicit none
 
  type(basis_set),intent(in)   :: basis
 !=====
- integer  :: info
- integer  :: iibf
- integer  :: ibf,jbf,kbf,lbf
- integer  :: n1c,n2c
- integer  :: ni,nj
- integer  :: ami,amj
- integer  :: ishell,jshell
- integer  :: ig1,ig2,ig3,ig4
- real(dp) :: zeta_12,rho,rho1,f0t(0:0),tt
- real(dp) :: p(3),q(3)
+ integer                      :: info,ip
+ integer                      :: iibf
+ integer                      :: ibf,jbf,kbf,lbf
+ integer                      :: n1c,n2c
+ integer                      :: ni,nj
+ integer                      :: ami,amj
+ integer                      :: ishell,jshell
+ integer                      :: ig1,ig2,ig3,ig4
+ real(dp)                     :: zeta_12,rho,rho1,f0t(0:0),tt
+ real(dp)                     :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
+ real(dp)                     :: workload(nproc)
+ integer                      :: shell_proc(nshell)
 !=====
 ! variables used to call C
  integer(C_INT)               :: am1,am2
@@ -497,37 +498,49 @@ subroutine identify_negligible_shellpair(basis)
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:)
  real(C_DOUBLE)               :: x01(3),x02(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:)
- real(C_DOUBLE)               :: rcut_libint
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
 
  call start_clock(timing_eri_screening)
  write(stdout,'(/,a)')    ' Cauchy-Schwartz screening of the 3- or 4-center integrals'
 
- rcut_libint = 0.0_dp
+ !
+ ! Load balancing
+ workload(:) = 0.0_dp
+ do jshell=1,nshell
+   amj = shell(jshell)%am
+   ip = MINLOC(workload(:),DIM=1)
+   !
+   ! Cost function was evaluated from a few runs
+   workload(ip) = workload(ip) + cost_function_eri(amj)
+   shell_proc(jshell) = ip - 1
+ enddo
+
 
  negligible_shellpair(:,:) = .TRUE.
 
  do jshell=1,nshell
+   !
    ! Workload is distributed here
-   if( MODULO(jshell-1,nproc) /= rank ) cycle
+   if( shell_proc(jshell) /= rank ) cycle
+
+   amj = shell(jshell)%am
+   nj  = number_basis_function_am( basis%gaussian_type , amj )
+   n2c = number_basis_function_am( 'CART' , amj )
+   am2 = shell(jshell)%am
+   ng2 = shell(jshell)%ng
 
    do ishell=1,nshell
      ami = shell(ishell)%am
-     amj = shell(jshell)%am
      !TODO: Here time could be saved by only checking ishell<= jshell
      ! But then an interexchange of indexes would have to be implemented in
      ! order to satisfy ami >= amj (required condition in libint)
      if( ami < amj ) cycle
 
      ni = number_basis_function_am( basis%gaussian_type , ami )
-     nj = number_basis_function_am( basis%gaussian_type , amj )
      n1c = number_basis_function_am( 'CART' , ami )
-     n2c = number_basis_function_am( 'CART' , amj )
      am1 = shell(ishell)%am
-     am2 = shell(jshell)%am
      ng1 = shell(ishell)%ng
-     ng2 = shell(jshell)%ng
 
      allocate(alpha1(ng1),alpha2(ng2))
      allocate(coeff1(ng1),coeff2(ng2))
@@ -556,8 +569,8 @@ subroutine identify_negligible_shellpair(basis)
                q(:) = ( alpha1(ig3) * x01(:) + alpha2(ig4) * x02(:) ) / zeta_12 
                !
                ! Treat carefully the LR only integrals
-               rho  = zeta_12 * zeta_12 / ( zeta_12 + zeta_12 + zeta_12*zeta_12*rcut_libint**2 )
                rho1 = zeta_12 * zeta_12 / ( zeta_12 + zeta_12 )
+               rho  = rho1
                tt = rho * SUM( (p(:)-q(:))**2 )
                call boys_function(f0t(0),0,tt)
 
@@ -584,7 +597,7 @@ subroutine identify_negligible_shellpair(basis)
                                coeff1(1),coeff2(1),coeff1(1),coeff2(1),&
                                alpha1(1),alpha2(1),alpha1(1),alpha2(1),&
                                x01(1),x02(1),x01(1),x02(1),&
-                               rcut_libint, &
+                               0.0_C_DOUBLE, &
                                int_shell(1))
 
 
@@ -914,6 +927,22 @@ logical function read_eri(rcut)
 
 
 end function read_eri
+
+
+!=========================================================================
+! Rough evaluation of the CPU time to get an ERI as a function of the 
+! angular momentum
+! 
+!=========================================================================
+function cost_function_eri(am)
+ implicit none
+ integer,intent(in)  :: am
+ real(dp)            :: cost_function_eri
+!=====
+
+ cost_function_eri = am**2 + 4.6_dp 
+
+end function cost_function_eri
 
 
 !=========================================================================

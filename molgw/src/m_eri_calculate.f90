@@ -283,10 +283,9 @@ end subroutine calculate_eri_4center
 
 
 !=========================================================================
-subroutine calculate_eri_2center(print_eri_,auxil_basis)
+subroutine calculate_eri_2center(auxil_basis)
  use m_tools,only: boys_function
  implicit none
- logical,intent(in)           :: print_eri_
  type(basis_set),intent(in)   :: auxil_basis
 !=====
  integer                      :: ishell,kshell
@@ -296,12 +295,14 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
  integer                      :: ami,amk
  integer                      :: ibf,jbf,kbf,lbf
  integer                      :: iibf
- integer                      :: info
+ integer                      :: info,ip
  real(dp)                     :: zeta_12,zeta_34,rho,f0t(0:0),tt
  real(dp)                     :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:)
  real(dp),allocatable         :: integrals_cart(:,:)
  real(dp),allocatable         :: eigval(:)
+ real(dp)                     :: workload(nproc)
+ integer,allocatable          :: shell_proc(:)
 !=====
 ! variables used to call C
  integer(C_INT)               :: am1,am2,am3,am4
@@ -315,6 +316,8 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
  call start_clock(timing_eri_2center)
 
  call setup_shell_list_auxil(auxil_basis)
+
+ allocate(shell_proc(nshell_auxil))
 
  ! First allocate the 2-center integral array
  !
@@ -331,11 +334,22 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
 
  write(stdout,'(/,a)')    ' Calculate, invert and store the 2-center Electron Repulsion Integrals'
 
+ !
+ ! Load balancing
+ workload(:) = 0.0_dp
+ do kshell=1,nshell_auxil
+   amk = shell_auxil(kshell)%am
+   ip = MINLOC(workload(:),DIM=1)
+   !
+   ! Cost function was evaluated from a few runs
+   workload(ip) = workload(ip) + cost_function_eri(amk)
+   shell_proc(kshell) = ip - 1
+ enddo
 
  do kshell=1,nshell_auxil
 
    ! Parallelization over the shell index
-   if( MODULO(kshell-1,nproc) /= rank ) cycle
+   if( shell_proc(kshell) /= rank ) cycle
 
    !
    ! Order the angular momenta so that libint is pleased
@@ -517,6 +531,7 @@ subroutine calculate_eri_2center(print_eri_,auxil_basis)
  write(stdout,'(a,i6)')     ' Some have been eliminated ',auxil_basis%nbf-nauxil_2center
  write(stdout,'(a,es16.6)') ' because they were lower than:',TOO_LOW_EIGENVAL
 
+ deallocate(shell_proc)
 
  call stop_clock(timing_eri_2center)
 
@@ -524,10 +539,9 @@ end subroutine calculate_eri_2center
 
 
 !=========================================================================
-subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
+subroutine calculate_eri_3center(basis,auxil_basis)
  use m_tools,only: boys_function
  implicit none
- logical,intent(in)           :: print_eri_
  type(basis_set),intent(in)   :: basis
  type(basis_set),intent(in)   :: auxil_basis
 !=====
@@ -593,7 +607,7 @@ subroutine calculate_eri_3center(print_eri_,basis,auxil_basis)
    ip = MINLOC(workload(:),DIM=1)
    !
    ! Cost function was evaluated from a few runs
-   workload(ip) = workload(ip) + ( ami**2 + 4.6_dp )
+   workload(ip) = workload(ip) + cost_function_eri(ami)
    shell_proc(ishell) = ip - 1
  enddo
 
@@ -858,10 +872,9 @@ end subroutine calculate_eri_3center
 
 
 !=========================================================================
-subroutine calculate_eri_approximate_hartree(print_eri_,basis,m_ham,n_ham,x0_rho,alpha_rho,vhrho)
+subroutine calculate_eri_approximate_hartree(basis,m_ham,n_ham,x0_rho,alpha_rho,vhrho)
  use m_tools,only: boys_function
  implicit none
- logical,intent(in)           :: print_eri_
  type(basis_set),intent(in)   :: basis
  integer,intent(in)           :: m_ham,n_ham
  real(dp),intent(in)          :: x0_rho(3)

@@ -1076,7 +1076,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
 
 
    do igau=1,ngau
-     call calculate_eri_approximate_hartree(.FALSE.,basis,m_ham,n_ham,x(:,iatom),alpha(igau),vhgau)
+     call calculate_eri_approximate_hartree(basis,m_ham,n_ham,x(:,iatom),alpha(igau),vhgau)
      vhxc_ij(:,:) = vhxc_ij(:,:) + vhgau(:,:) * coeff(igau) / 2.0_dp**1.25_dp / pi**0.75_dp * alpha(igau)**1.5_dp
    enddo
 
