@@ -179,7 +179,7 @@ m_basis_set.o: m_definitions.f90 m_elements.f90 m_gaussian.f90 m_mpi.f90 m_basis
 m_gaussian.o: m_definitions.f90 m_tools.f90 m_gos.f90 m_mpi.f90 m_gaussian.f90
 	$(FC_W_OPTS) -c m_gaussian.f90 $(LIBXC_INCS)
 
-m_scf.o: m_definitions.f90 m_inputparam.f90 m_scf.f90
+m_scf.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_tools.f90 m_inputparam.f90 m_scf.f90
 	$(FC_W_OPTS) -c m_scf.f90 $(LIBXC_INCS)
 
 m_inputparam.o: m_definitions.f90 m_elements.f90 m_warning.f90 m_atoms.f90 m_inputparam.f90 input_variables.f90 basis_path.f90
@@ -236,5 +236,5 @@ doc:
 	mv notes.pdf ../doc/notes.pdf
 
 clean:
-	rm -f *.o *.mod
+	rm -f *.o *.mod molgw.tgz
 

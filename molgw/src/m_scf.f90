@@ -5,6 +5,7 @@ module m_scf
  use m_definitions
  use m_warning
  use m_memory
+ use m_timing
  use m_mpi
  use m_inputparam
  use m_tools,only: invert
@@ -161,6 +162,8 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  write(stdout,'(/,x,a)') 'Pulay DIIS mixing'
 
+ call start_clock(timing_diis)
+
  allocate(a_matrix(nhist_current+1,nhist_current+1))
  allocate(a_matrix_inv(nhist_current+1,nhist_current+1))
  allocate(alpha_diis(nhist_current))
@@ -224,6 +227,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  deallocate(alpha_diis)
 
 
+ call stop_clock(timing_diis)
 
 end subroutine diis_prediction
 

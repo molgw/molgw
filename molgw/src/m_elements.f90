@@ -201,6 +201,7 @@ subroutine element_atomicdensity(zatom,coeff,alpha)
 !   coeff(3) = 0.317984
 !   coeff(4) = 0.641901 
 !   coeff(1) = 1.0_dp - SUM(coeff(2:4))
+
   alpha(1) = 0.191852  
   alpha(2) = 5.6143    
   alpha(3) = 0.510303  
@@ -268,7 +269,7 @@ subroutine element_atomicdensity(zatom,coeff,alpha)
  end select
 
  ! Ensure the proper normalization
- coeff(:) = zatom / SUM(coeff(:))
+ coeff(:) = zatom / SUM(coeff(:)) * coeff(:)
 
 end subroutine element_atomicdensity
 

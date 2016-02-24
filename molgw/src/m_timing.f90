@@ -44,6 +44,7 @@ module m_timing
  integer,parameter :: timing_hamiltonian_ecp     = 30
  integer,parameter :: timing_sca_distr           = 31
  integer,parameter :: timing_grid_generation     = 32
+ integer,parameter :: timing_diis                = 33
  
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -144,12 +145,13 @@ subroutine output_timing()
  write(stdout,'(a30,6x,f12.2,2x,i8)')  'Electron-nuclei Hamiltonian',timing(timing_hamiltonian_nuc),calls(timing_hamiltonian_nuc)
 
  write(stdout,*)
- write(stdout,'(a30,6x,f12.2,2x,i8)')  'Grid generation'    ,timing(timing_grid_generation),calls(timing_grid_generation)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'Grid generation'     ,timing(timing_grid_generation),calls(timing_grid_generation)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'SQRT density matrix' ,timing(timing_sqrt_density_matrix),calls(timing_sqrt_density_matrix)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Hartree'             ,timing(timing_hartree),calls(timing_hartree)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Exchange'            ,timing(timing_exchange),calls(timing_exchange)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'DFT xc'              ,timing(timing_dft),calls(timing_dft)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Hamiltonian diago'   ,timing(timing_diago_hamiltonian),calls(timing_diago_hamiltonian)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'Pulay DIIS       '   ,timing(timing_diis),calls(timing_diis)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'RESTART file writing',timing(timing_restart_file),calls(timing_restart_file)
  write(stdout,*)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Single Excit.'   ,timing(timing_single_excitation),calls(timing_single_excitation)
