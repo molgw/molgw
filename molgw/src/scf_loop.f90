@@ -28,7 +28,7 @@ subroutine scf_loop(is_restart,&
  use m_spectral_function
  use m_hamiltonian
  use m_hamiltonian_sca
- use m_hamiltonian_dist
+ use m_hamiltonian_buffer
  implicit none
 
 !=====
@@ -73,7 +73,7 @@ subroutine scf_loop(is_restart,&
 
  !
  ! Initialize the SCF mixing procedure
- call init_scf(m_ham,n_ham,m_c,n_c,nstate)
+ call init_scf(m_ham,n_ham,m_c,n_c,basis%nbf,nstate)
 
  !
  ! Allocate the main arrays

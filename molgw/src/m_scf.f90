@@ -8,17 +8,22 @@ module m_scf
  use m_timing
  use m_mpi
  use m_inputparam
+ use m_scalapack
  use m_tools,only: invert
 
 
  integer,private              :: nhistmax
  integer,private              :: nhist_current
+
+ integer,private              :: nstate_scf,nbf_scf             ! Physical dimensions
+                                                                ! Storage  dimensions
  integer,private              :: m_ham_scf,n_ham_scf            ! nbf    x nbf
  integer,private              :: m_c_scf,n_c_scf                ! nbf    x nstate
  integer,private              :: m_r_scf,n_r_scf                ! nstate x nstate
 
  real(dp),allocatable,private :: ham_hist(:,:,:,:)
  real(dp),allocatable,private :: res_hist(:,:,:,:)
+ real(dp),allocatable,private :: a_matrix_hist(:,:)
 
  integer,private              :: iscf
  integer,private              :: desc_r(ndel)
@@ -44,11 +49,14 @@ contains
 
 
 !=========================================================================
-subroutine init_scf(m_ham,n_ham,m_c,n_c,nstate)
+subroutine init_scf(m_ham,n_ham,m_c,n_c,nbf,nstate)
  implicit none
- integer,intent(in)  :: m_ham,n_ham,m_c,n_c,nstate
+ integer,intent(in)  :: m_ham,n_ham,m_c,n_c,nbf,nstate
 !=====
 
+ nbf_scf    = nbf
+ nstate_scf = nstate
+ 
  m_ham_scf     = m_ham
  n_ham_scf     = n_ham
  m_c_scf       = m_c
@@ -61,6 +69,7 @@ subroutine init_scf(m_ham,n_ham,m_c,n_c,nstate)
    nhistmax = 0
  case('PULAY','DIIS')
    nhistmax = npulay_hist
+   allocate(a_matrix_hist(nhistmax,nhistmax))
  case default
    call die('mixing scheme not implemented')
  end select
@@ -88,6 +97,7 @@ subroutine destroy_scf()
 
  if(ALLOCATED(ham_hist))         call clean_deallocate('Hamiltonian history',ham_hist)
  if(ALLOCATED(res_hist))         call clean_deallocate('Residual history',res_hist)
+ if(ALLOCATED(a_matrix_hist))    deallocate(a_matrix_hist)
 
 end subroutine destroy_scf
 
@@ -115,6 +125,12 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  do ihist=nhistmax-1,1,-1
    res_hist(:,:,:,ihist+1) = res_hist(:,:,:,ihist)
    ham_hist(:,:,:,ihist+1) = ham_hist(:,:,:,ihist)
+
+   if( ALLOCATED(a_matrix_hist) ) then
+     a_matrix_hist(:,ihist+1) = a_matrix_hist(:,ihist)
+     a_matrix_hist(ihist+1,:) = a_matrix_hist(ihist,:)
+   endif
+
  enddo
  ham_hist(:,:,:,1) = ham(:,:,:)
 
@@ -153,7 +169,8 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 !=====
  integer                :: ispin
  integer                :: ihist,jhist
- real(dp)               :: matrix_tmp(m_ham_scf,n_ham_scf)
+ real(dp)               :: matrix_tmp1(m_ham_scf,n_ham_scf)
+ real(dp)               :: matrix_tmp2(m_ham_scf,n_ham_scf)
  real(dp),allocatable   :: a_matrix(:,:)
  real(dp),allocatable   :: a_matrix_inv(:,:)
  real(dp),allocatable   :: alpha_diis(:)
@@ -169,28 +186,50 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  allocate(alpha_diis(nhist_current))
 
  !
- ! Calculate the residuals as proposed in
+ ! Calculate the new residual as proposed in
  ! P. Pulay, J. Comput. Chem. 3, 554 (1982).
+ !
+ !  R =  U^T * [ H * P * S - S * P * H ] * U
  do ispin=1,nspin
 
-   matrix_tmp(:,:) = MATMUL( MATMUL( ham(:,:,ispin) , p_matrix(:,:,ispin) ) , s_matrix )  &
-                      - MATMUL( s_matrix , MATMUL( p_matrix(:,:,ispin) , ham(:,:,ispin) ) )
+   !
+   ! M1 = H * P * S
+   call product_abc_scalapack(scalapack_block_min,ham(:,:,ispin),p_matrix(:,:,ispin),s_matrix,matrix_tmp1)
+   !
+   ! M2 = S * P * H
+   call product_abc_scalapack(scalapack_block_min,s_matrix,p_matrix(:,:,ispin),ham(:,:,ispin),matrix_tmp2)
 
-   res_hist(:,:,ispin,1) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv) , MATMUL( matrix_tmp , s_matrix_sqrt_inv ) )
+   ! M1 = M1 + M2
+   matrix_tmp1(:,:) = matrix_tmp1(:,:) - matrix_tmp2(:,:)
+
+   !
+   ! R = U^T * M1 * U
+   ! Remeber that S = U * U^T
+   call product_transaba_scalapack(scalapack_block_min,s_matrix_sqrt_inv,matrix_tmp1,res_hist(:,:,ispin,1))
 
  enddo
 
 
  !
- ! a_matrix contains the scalar product of residuals
- do jhist=1,nhist_current
-   do ihist=1,nhist_current
-     a_matrix(ihist,jhist) = SUM( res_hist(:,:,:,ihist) * res_hist(:,:,:,jhist) )
-   enddo
+ ! Build up a_matrix that contains the scalar product of residuals
+ !
+
+ !
+ ! The older parts of a_matrix are saved in a_matrix_hist
+ ! Just calculate the new ones
+ a_matrix_hist(1,1) = SUM( res_hist(:,:,:,1) * res_hist(:,:,:,1) )
+
+ do ihist=2,nhist_current
+   a_matrix_hist(ihist,1) = SUM( res_hist(:,:,:,ihist) * res_hist(:,:,:,1) )
+   a_matrix_hist(1,ihist) = a_matrix_hist(ihist,1)
  enddo
 
- write(stdout,'(a,4x,30(2x,es12.5))') '  Residuals:',( SQRT(a_matrix(ihist,ihist)) , ihist=1,nhist_current )
+ a_matrix(1:nhist_current,1:nhist_current) = a_matrix_hist(1:nhist_current,1:nhist_current)
 
+
+ !
+ ! DIIS algorithm from Pulay (1980)
+ ! 
  a_matrix(1:nhist_current,nhist_current+1) = -1.0_dp
  a_matrix(nhist_current+1,1:nhist_current) = -1.0_dp
  a_matrix(nhist_current+1,nhist_current+1) =  0.0_dp
@@ -206,6 +245,10 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    alpha_diis(1:nhist_current) = alpha_diis(1:nhist_current) / SUM( alpha_diis(1:nhist_current) )
  endif
 
+ !
+ ! Output the residual history and coefficients
+ !
+ write(stdout,'(a,4x,30(2x,es12.5))') '  Residuals:',( SQRT(a_matrix(ihist,ihist)) , ihist=1,nhist_current )
  write(stdout,'(a,30(2x,f12.6))') ' Alpha DIIS: ',alpha_diis(1:nhist_current)
 
  residual_pred(:,:,:) = 0.0_dp

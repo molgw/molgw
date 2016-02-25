@@ -1,7 +1,7 @@
 !=========================================================================
 ! This file is part of MOLGW.
 !=========================================================================
-module m_hamiltonian_dist
+module m_hamiltonian_buffer
  use m_definitions
  use m_mpi
  use m_timing
@@ -745,6 +745,5 @@ end subroutine dft_exc_vxc_buffer_sca
 
 
 !=========================================================================
-!=========================================================================
-end module m_hamiltonian_dist
+end module m_hamiltonian_buffer
 !=========================================================================

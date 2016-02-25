@@ -38,7 +38,7 @@ program molgw
  use m_spectral_function
  use m_hamiltonian
  use m_hamiltonian_sca
- use m_hamiltonian_dist
+ use m_hamiltonian_buffer
  implicit none
 
 !=====
