@@ -169,17 +169,21 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 !=====
  integer                :: ispin
  integer                :: ihist,jhist
- real(dp)               :: matrix_tmp1(m_ham_scf,n_ham_scf)
- real(dp)               :: matrix_tmp2(m_ham_scf,n_ham_scf)
+ real(dp),allocatable   :: matrix_tmp1(:,:)
+ real(dp),allocatable   :: matrix_tmp2(:,:)
  real(dp),allocatable   :: a_matrix(:,:)
  real(dp),allocatable   :: a_matrix_inv(:,:)
  real(dp),allocatable   :: alpha_diis(:)
  real(dp)               :: residual_pred(m_r_scf,n_r_scf,nspin)
+ real(dp)               :: residual,work(1)
+ real(dp),external      :: PDLANGE
 !=====
+
+ call start_clock(timing_diis)
+
 
  write(stdout,'(/,x,a)') 'Pulay DIIS mixing'
 
- call start_clock(timing_diis)
 
  allocate(a_matrix(nhist_current+1,nhist_current+1))
  allocate(a_matrix_inv(nhist_current+1,nhist_current+1))
@@ -190,24 +194,79 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  ! P. Pulay, J. Comput. Chem. 3, 554 (1982).
  !
  !  R =  U^T * [ H * P * S - S * P * H ] * U
- do ispin=1,nspin
 
-   !
-   ! M1 = H * P * S
-   call product_abc_scalapack(scalapack_block_min,ham(:,:,ispin),p_matrix(:,:,ispin),s_matrix,matrix_tmp1)
-   !
-   ! M2 = S * P * H
-   call product_abc_scalapack(scalapack_block_min,s_matrix,p_matrix(:,:,ispin),ham(:,:,ispin),matrix_tmp2)
+ if( parallel_ham ) then
 
-   ! M1 = M1 + M2
-   matrix_tmp1(:,:) = matrix_tmp1(:,:) - matrix_tmp2(:,:)
+   if( cntxt_ham > 0 ) then
 
-   !
-   ! R = U^T * M1 * U
-   ! Remeber that S = U * U^T
-   call product_transaba_scalapack(scalapack_block_min,s_matrix_sqrt_inv,matrix_tmp1,res_hist(:,:,ispin,1))
+     do ispin=1,nspin
 
- enddo
+       allocate(matrix_tmp1(m_ham_scf,n_ham_scf))
+       allocate(matrix_tmp2(m_ham_scf,n_ham_scf))
+
+
+       ! M1 = H * P
+       call PDGEMM('N','N',nbf_scf,nbf_scf,nbf_scf,1.0_dp,ham(:,:,ispin),1,1,desc_ham,          &
+                   p_matrix(:,:,ispin),1,1,desc_ham,0.0_dp,matrix_tmp1,1,1,desc_ham)
+
+       ! M2 = ( H * P ) * S
+       call PDGEMM('N','N',nbf_scf,nbf_scf,nbf_scf,1.0_dp,matrix_tmp1,1,1,desc_ham,          &
+                   s_matrix,1,1,desc_ham,0.0_dp,matrix_tmp2,1,1,desc_ham)
+
+       ! M1 = S * P
+       call PDGEMM('N','N',nbf_scf,nbf_scf,nbf_scf,1.0_dp,s_matrix,1,1,desc_ham,          &
+                   p_matrix(:,:,ispin),1,1,desc_ham,0.0_dp,matrix_tmp1,1,1,desc_ham)
+
+       ! M2 = M2 - ( S * P ) * H 
+       call PDGEMM('N','N',nbf_scf,nbf_scf,nbf_scf,1.0_dp,matrix_tmp1,1,1,desc_ham,          &
+                   ham(:,:,ispin),1,1,desc_ham,-1.0_dp,matrix_tmp2,1,1,desc_ham)
+
+     
+       deallocate(matrix_tmp1)
+       allocate(matrix_tmp1(m_c_scf,n_c_scf))
+
+       ! M1 = M2 * U
+       call PDGEMM('N','N',nbf_scf,nstate_scf,nbf_scf,1.0_dp,matrix_tmp2,1,1,desc_ham,      &
+                   s_matrix_sqrt_inv,1,1,desc_c,0.0_dp,matrix_tmp1,1,1,desc_c)
+
+       ! R = U^T * M1
+       call PDGEMM('T','N',nstate_scf,nstate_scf,nbf_scf,1.0_dp,s_matrix_sqrt_inv,1,1,desc_c,      &
+                   matrix_tmp1,1,1,desc_c,0.0_dp,res_hist(:,:,ispin,1),1,1,desc_r)
+
+
+
+       deallocate(matrix_tmp1,matrix_tmp2)
+     enddo
+
+   endif
+
+ else
+
+   allocate(matrix_tmp1(m_ham_scf,n_ham_scf))
+   allocate(matrix_tmp2(m_ham_scf,n_ham_scf))
+
+   do ispin=1,nspin
+
+     !
+     ! M1 = H * P * S
+     call product_abc_scalapack(scalapack_block_min,ham(:,:,ispin),p_matrix(:,:,ispin),s_matrix,matrix_tmp1)
+     !
+     ! M2 = S * P * H
+     call product_abc_scalapack(scalapack_block_min,s_matrix,p_matrix(:,:,ispin),ham(:,:,ispin),matrix_tmp2)
+
+     ! M1 = M1 + M2
+     matrix_tmp1(:,:) = matrix_tmp1(:,:) - matrix_tmp2(:,:)
+
+     !
+     ! R = U^T * M1 * U
+     ! Remeber that S = U * U^T
+     call product_transaba_scalapack(scalapack_block_min,s_matrix_sqrt_inv,matrix_tmp1,res_hist(:,:,ispin,1))
+
+   enddo
+
+   deallocate(matrix_tmp1,matrix_tmp2)
+
+ endif
 
 
  !
@@ -217,12 +276,29 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  !
  ! The older parts of a_matrix are saved in a_matrix_hist
  ! Just calculate the new ones
- a_matrix_hist(1,1) = SUM( res_hist(:,:,:,1) * res_hist(:,:,:,1) )
+ if( parallel_ham ) then
 
- do ihist=2,nhist_current
-   a_matrix_hist(ihist,1) = SUM( res_hist(:,:,:,ihist) * res_hist(:,:,:,1) )
-   a_matrix_hist(1,ihist) = a_matrix_hist(ihist,1)
- enddo
+   if( cntxt_ham > 0 ) then
+     a_matrix_hist(1,1) = SUM( res_hist(:,:,:,1) * res_hist(:,:,:,1) )
+     do ihist=2,nhist_current
+       a_matrix_hist(ihist,1) = SUM( res_hist(:,:,:,ihist) * res_hist(:,:,:,1) )
+       a_matrix_hist(1,ihist) = a_matrix_hist(ihist,1)
+     enddo
+   else
+     a_matrix_hist(:,:) = 0.0_dp
+   endif
+   call xsum(a_matrix_hist)
+
+ else
+
+   a_matrix_hist(1,1) = SUM( res_hist(:,:,:,1) * res_hist(:,:,:,1) )
+
+   do ihist=2,nhist_current
+     a_matrix_hist(ihist,1) = SUM( res_hist(:,:,:,ihist) * res_hist(:,:,:,1) )
+     a_matrix_hist(1,ihist) = a_matrix_hist(ihist,1)
+   enddo
+
+ endif
 
  a_matrix(1:nhist_current,1:nhist_current) = a_matrix_hist(1:nhist_current,1:nhist_current)
 
@@ -251,18 +327,41 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  write(stdout,'(a,4x,30(2x,es12.5))') '  Residuals:',( SQRT(a_matrix(ihist,ihist)) , ihist=1,nhist_current )
  write(stdout,'(a,30(2x,f12.6))') ' Alpha DIIS: ',alpha_diis(1:nhist_current)
 
+
+ !
+ ! Calculate the predicted hamiltonian
+ !
  residual_pred(:,:,:) = 0.0_dp
- do ihist=1,nhist_current
-   residual_pred(:,:,:) = residual_pred(:,:,:) + alpha_diis(ihist) * res_hist(:,:,:,ihist)
- enddo
- write(stdout,'(a,2x,es12.5)') ' DIIS predicted residual:',SQRT( SUM( residual_pred(:,:,:)**2 ))
- write(stdout,*)
-
-
  ham(:,:,:) = 0.0_dp
- do ihist=1,nhist_current
-   ham(:,:,:) = ham(:,:,:) + alpha_diis(ihist) * ham_hist(:,:,:,ihist) 
- enddo
+ if( parallel_ham ) then
+
+   if( cntxt_ham > 0 ) then
+
+     residual = 0.0_dp
+     do ispin=1,nspin
+
+       do ihist=1,nhist_current
+         call PDGEADD('N',nstate_scf,nstate_scf,alpha_diis(ihist),res_hist(:,:,ispin,ihist),1,1,desc_r,1.0_dp,residual_pred,1,1,desc_r)
+         call PDGEADD('N',nbf_scf,nbf_scf,alpha_diis(ihist),ham_hist(:,:,ispin,ihist),1,1,desc_ham,1.0_dp,ham(:,:,ispin),1,1,desc_ham)
+       enddo
+
+       residual = residual + PDLANGE('F',nstate_scf,nstate_scf,residual_pred(:,:,ispin),1,1,desc_r,work)**2
+     enddo
+
+   endif
+   write(stdout,'(a,2x,es12.5,/)') ' DIIS predicted residual:',SQRT(residual)
+
+ else
+
+   do ihist=1,nhist_current
+     residual_pred(:,:,:) = residual_pred(:,:,:) + alpha_diis(ihist) * res_hist(:,:,:,ihist)
+     ham(:,:,:)           = ham(:,:,:)           + alpha_diis(ihist) * ham_hist(:,:,:,ihist) 
+   enddo
+   write(stdout,'(a,2x,es12.5,/)') ' DIIS predicted residual:',NORM2( residual_pred(:,:,:) )
+
+ endif
+
+
 
 
  deallocate(a_matrix)
@@ -286,7 +385,7 @@ function check_converged(p_matrix_old,p_matrix_new)
  real(dp)              :: rms
 !=====
 
- rms = SQRT( SUM( ( p_matrix_new(:,:,:) - p_matrix_old(:,:,:) )**2 ) )
+ rms = NORM2( p_matrix_new(:,:,:) - p_matrix_old(:,:,:) )
 
  call xtrans_sum(rms)
 
