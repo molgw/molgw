@@ -85,6 +85,8 @@ module m_inputparam
  real(dp),protected               :: scissor
  integer,protected                :: npulay_hist
  integer,protected                :: scalapack_block_min
+ integer,protected                :: scalapack_nprow
+ integer,protected                :: scalapack_npcol
 
  logical,protected                :: ignore_restart_
  logical,protected                :: ignore_bigrestart_
@@ -687,6 +689,14 @@ subroutine read_inputfile_namelist()
  if( .NOT. has_auxil_basis .AND. nproc > 1 ) then
    write(stdout,*) 'Parallelization is not available without an auxiliary basis'
    call die('Please run with one CPU only or provide MOLGW with an auxiliary basis')
+ endif
+ if( scalapack_nprow * scalapack_npcol > nproc ) then
+   write(stdout,'(x,a,i4,a,i4)') 'The requested number of processors in the SCALAPACK grid: ',scalapack_nprow,' x ',scalapack_npcol
+   write(stdout,'(x,a,i5)') 'is larger than the number of total processors: ',nproc
+   scalapack_nprow = FLOOR( SQRT( REAL(nproc,dp) ) )
+   scalapack_npcol = nproc / scalapack_nprow
+   write(stdout,'(x,a,i4,a,i4)') 'Continue with a reduced SCALAPACK grid: ',scalapack_nprow,' x ',scalapack_npcol
+   call issue_warning('scalapack_nprow or scalapack_npcol was decreased automatically: a too large value was requested')
  endif
 
 

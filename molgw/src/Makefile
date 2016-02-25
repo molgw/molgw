@@ -92,7 +92,7 @@ level040: linear_response.o static_polarizability.o gw.o bse.o dft_xc.o io.o mp2
                         $(LIBINT) $(LIBINT_INCS) \
                         $(LINKS)
 
-molgw.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
+molgw.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
   m_gos.f90 m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_eri_calculate.f90 m_eri_lr_calculate.f90 m_eri_ao_mo.o \
   m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.o \
   molgw.f90

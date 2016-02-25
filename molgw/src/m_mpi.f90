@@ -15,6 +15,7 @@ module m_mpi
  logical,parameter :: parallel_auxil     = .TRUE.
 
  logical,protected :: parallel_ham       = .FALSE.
+ logical,protected :: parallel_buffer    = .TRUE.
 
 #ifdef HAVE_SCALAPACK
  logical,parameter :: parallel_scalapack = .TRUE.
@@ -214,6 +215,7 @@ subroutine init_mpi()
   write(stdout,'(a50,6x,l1)') 'Parallelize auxiliary basis:',parallel_auxil
   write(stdout,'(a50,6x,l1)')  'Parallelize XC grid points:',parallel_grid
   write(stdout,'(a50,6x,l1)')               'Use SCALAPACK:',parallel_scalapack
+  write(stdout,'(a50,6x,l1)')    'Parallel using a buffer :',parallel_buffer
   write(stdout,'(/)')
 #endif
 
@@ -266,78 +268,74 @@ subroutine distribute_auxil_basis(nbf_auxil_basis,nbf_auxil_basis_local)
  integer :: iproc
 !=====
 
-#ifdef TODAY
- ! Use nproc instead nproc_local
+ if( parallel_buffer ) then
+   ! Use nproc instead nproc_local
+  
+   allocate(iproc_ibf_auxil(nbf_auxil_basis))
+   allocate(nbf_local_iproc(0:nproc-1))
+  
+   iproc              = nproc - 1
+   nbf_local_iproc(:) = 0
+   do ibf=1,nbf_auxil_basis
+  
+     iproc = MODULO(iproc+1,nproc)
+  
+     iproc_ibf_auxil(ibf) = iproc
+  
+     nbf_local_iproc(iproc) = nbf_local_iproc(iproc) + 1
+  
+   enddo
+  
+   nbf_auxil_basis_local = nbf_local_iproc(rank)
+  
+   allocate(ibf_auxil_g(nbf_auxil_basis_local))
+   allocate(ibf_auxil_l(nbf_auxil_basis))
+   ibf_local = 0
+   do ibf=1,nbf_auxil_basis
+     if( rank == iproc_ibf_auxil(ibf) ) then
+       ibf_local = ibf_local + 1
+       ibf_auxil_g(ibf_local) = ibf
+       ibf_auxil_l(ibf)       = ibf_local
+     endif
+   enddo
+  
+ else
 
- allocate(iproc_ibf_auxil(nbf_auxil_basis))
- allocate(nbf_local_iproc(0:nproc-1))
-
- iproc              = nproc - 1
- nbf_local_iproc(:) = 0
- do ibf=1,nbf_auxil_basis
-
-   iproc = MODULO(iproc+1,nproc)
-
-   iproc_ibf_auxil(ibf) = iproc
-
-   nbf_local_iproc(iproc) = nbf_local_iproc(iproc) + 1
-
- enddo
-
- nbf_auxil_basis_local = nbf_local_iproc(rank)
-
- allocate(ibf_auxil_g(nbf_auxil_basis_local))
- allocate(ibf_auxil_l(nbf_auxil_basis))
- ibf_local = 0
- do ibf=1,nbf_auxil_basis
-   if( rank == iproc_ibf_auxil(ibf) ) then
-     ibf_local = ibf_local + 1
-     ibf_auxil_g(ibf_local) = ibf
-     ibf_auxil_l(ibf)       = ibf_local
-   endif
- enddo
-
- write(stdout,'(/,a)') ' Distribute auxiliary basis functions among processors'
- do iproc=0,0
-   write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc(iproc),' auxiliary basis functions'
- enddo
-
-#else
-
- allocate(iproc_ibf_auxil(nbf_auxil_basis))
- allocate(nbf_local_iproc(0:nproc_local-1))
-
- iproc              = nproc_local-1
- nbf_local_iproc(:) = 0
- do ibf=1,nbf_auxil_basis
-
-   iproc = MODULO(iproc+1,nproc_local)
-
-   iproc_ibf_auxil(ibf) = iproc
-
-   nbf_local_iproc(iproc) = nbf_local_iproc(iproc) + 1
-
- enddo
-
- nbf_auxil_basis_local = nbf_local_iproc(rank_local)
-
- allocate(ibf_auxil_g(nbf_auxil_basis_local))
- allocate(ibf_auxil_l(nbf_auxil_basis))
- ibf_local = 0
- do ibf=1,nbf_auxil_basis
-   if( rank_local == iproc_ibf_auxil(ibf) ) then
-     ibf_local = ibf_local + 1
-     ibf_auxil_g(ibf_local) = ibf
-     ibf_auxil_l(ibf)       = ibf_local
-   endif
- enddo
+   allocate(iproc_ibf_auxil(nbf_auxil_basis))
+   allocate(nbf_local_iproc(0:nproc_local-1))
+  
+   iproc              = nproc_local-1
+   nbf_local_iproc(:) = 0
+   do ibf=1,nbf_auxil_basis
+  
+     iproc = MODULO(iproc+1,nproc_local)
+  
+     iproc_ibf_auxil(ibf) = iproc
+  
+     nbf_local_iproc(iproc) = nbf_local_iproc(iproc) + 1
+  
+   enddo
+  
+   nbf_auxil_basis_local = nbf_local_iproc(rank_local)
+  
+   allocate(ibf_auxil_g(nbf_auxil_basis_local))
+   allocate(ibf_auxil_l(nbf_auxil_basis))
+   ibf_local = 0
+   do ibf=1,nbf_auxil_basis
+     if( rank_local == iproc_ibf_auxil(ibf) ) then
+       ibf_local = ibf_local + 1
+       ibf_auxil_g(ibf_local) = ibf
+       ibf_auxil_l(ibf)       = ibf_local
+     endif
+   enddo
+  
+ endif
 
  write(stdout,'(/,a)') ' Distribute auxiliary basis functions among processors'
  do iproc=0,0
    write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc(iproc),' auxiliary basis functions'
  enddo
 
-#endif
 
 
 end subroutine distribute_auxil_basis
@@ -400,23 +398,23 @@ subroutine init_grid_distribution(ngrid)
 
  ngrid_mpi = ngrid
 
-#ifndef TODAY
- if( nproc_local > 1 .AND. parallel_grid ) then
-   write(stdout,'(/,a)') ' Initializing the distribution of the quadrature grid points'
+ if( parallel_buffer ) then
+   if( nproc > 1 .AND. parallel_grid ) then
+     write(stdout,'(/,a)') ' Initializing the distribution of the quadrature grid points'
+   endif
+ else
+   if( nproc_local > 1 .AND. parallel_grid ) then
+     write(stdout,'(/,a)') ' Initializing the distribution of the quadrature grid points'
+   endif
  endif
-#else
- if( nproc > 1 .AND. parallel_grid ) then
-   write(stdout,'(/,a)') ' Initializing the distribution of the quadrature grid points'
- endif
-#endif
 
  call distribute_grid_workload()
 
-#ifndef TODAY
- ngrid = ntask_grid_proc(rank_local)
-#else
- ngrid = ntask_grid_proc(rank)
-#endif
+ if( parallel_buffer ) then
+   ngrid = ntask_grid_proc(rank)
+ else
+   ngrid = ntask_grid_proc(rank_local)
+ endif
 
 end subroutine init_grid_distribution
 
@@ -440,7 +438,11 @@ function is_my_grid_task(igrid)
  logical            :: is_my_grid_task
 !=====
  
- is_my_grid_task = ( rank_local == task_grid_proc(igrid) )
+ if( parallel_buffer ) then
+   is_my_grid_task = ( rank       == task_grid_proc(igrid) )
+ else
+   is_my_grid_task = ( rank_local == task_grid_proc(igrid) )
+ endif
  
 end function is_my_grid_task
 
@@ -454,111 +456,115 @@ subroutine distribute_grid_workload()
  integer            :: max_grid_per_proc
 !=====
 
-#ifndef TODAY
- allocate(task_grid_proc(ngrid_mpi))
- allocate(ntask_grid_proc(0:nproc_local-1))
- allocate(task_grid_number(ngrid_mpi))
 
- if( parallel_grid) then
+ if( .NOT. parallel_buffer ) then
 
-   write(stdout,'(/,a)') ' Distributing the grid among procs'
-   
-   ntask_grid_proc(:) = 0
-   max_grid_per_proc = CEILING( DBLE(ngrid_mpi)/DBLE(nproc_local) )
-   write(stdout,*) 'Maximum number of grid points for a single proc',max_grid_per_proc
-
-   iproc_local=0
-   do igrid=1,ngrid_mpi
-
-     iproc_local = MODULO(igrid-1,nproc_local)
-
+   allocate(task_grid_proc(ngrid_mpi))
+   allocate(ntask_grid_proc(0:nproc_local-1))
+   allocate(task_grid_number(ngrid_mpi))
+  
+   if( parallel_grid) then
+  
+     write(stdout,'(/,a)') ' Distributing the grid among procs'
+     
+     ntask_grid_proc(:) = 0
+     max_grid_per_proc = CEILING( DBLE(ngrid_mpi)/DBLE(nproc_local) )
+     write(stdout,*) 'Maximum number of grid points for a single proc',max_grid_per_proc
+  
+     iproc_local=0
+     do igrid=1,ngrid_mpi
+  
+       iproc_local = MODULO(igrid-1,nproc_local)
+  
+       !
+       ! A simple check to avoid unexpected surprises
+       if( iproc_local < 0 .OR. iproc_local >= nproc_local ) then
+         call die('error in the distribution')
+       endif
+  
+       task_grid_proc(igrid)        = iproc_local
+       ntask_grid_proc(iproc_local) = ntask_grid_proc(iproc_local) + 1 
+  
+     enddo
+  
+     task_grid_number(:)=0
+     igrid_current=0
+     do igrid=1,ngrid_mpi
+       if( rank_local == task_grid_proc(igrid) ) then
+         igrid_current = igrid_current + 1 
+         task_grid_number(igrid) = igrid_current
+       endif
+     enddo
+  
+   else
      !
-     ! A simple check to avoid unexpected surprises
-     if( iproc_local < 0 .OR. iproc_local >= nproc_local ) then
-       call die('error in the distribution')
-     endif
-
-     task_grid_proc(igrid)        = iproc_local
-     ntask_grid_proc(iproc_local) = ntask_grid_proc(iproc_local) + 1 
-
-   enddo
-
-   task_grid_number(:)=0
-   igrid_current=0
-   do igrid=1,ngrid_mpi
-     if( rank_local == task_grid_proc(igrid) ) then
-       igrid_current = igrid_current + 1 
-       task_grid_number(igrid) = igrid_current
-     endif
-   enddo
-
- else
-   !
-   ! if parallel_grid is false,
-   ! faking the code with trivial values
-   ntask_grid_proc(:) = ngrid_mpi
-   task_grid_proc(:)  = rank_local
-   do igrid=1,ngrid_mpi
-     task_grid_number(igrid) = igrid
-   enddo
-
- endif
-#else
- allocate(task_grid_proc(ngrid_mpi))
- allocate(ntask_grid_proc(0:nproc-1))
- allocate(task_grid_number(ngrid_mpi))
-
- if( parallel_grid) then
-
-   write(stdout,'(/,a)') ' Distributing the grid among procs'
-   
-   ntask_grid_proc(:) = 0
-   max_grid_per_proc = CEILING( DBLE(ngrid_mpi)/DBLE(nproc) )
-   write(stdout,*) 'Maximum number of grid points for a single proc',max_grid_per_proc
-
-   iproc_local=0
-   do igrid=1,ngrid_mpi
-
-     iproc_local = MODULO(igrid-1,nproc)
-
-     !
-     ! A simple check to avoid unexpected surprises
-     if( iproc_local < 0 .OR. iproc_local >= nproc ) then
-       call die('error in the distribution')
-     endif
-
-     task_grid_proc(igrid)        = iproc_local
-     ntask_grid_proc(iproc_local) = ntask_grid_proc(iproc_local) + 1 
-
-   enddo
-
-   task_grid_number(:)=0
-   igrid_current=0
-   do igrid=1,ngrid_mpi
-     if( rank == task_grid_proc(igrid) ) then
-       igrid_current = igrid_current + 1 
-       task_grid_number(igrid) = igrid_current
-     endif
-   enddo
-
-   if( nproc > 1 ) then
-     write(stdout,'(/,a)') ' Distribute work load among procs'
-     write(stdout,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ngrid_mpi,dp) / REAL(nproc,dp)
-     write(stdout,'(a,i6,a,i10)') ' proc # , grid points',rank,' , ',ntask_grid_proc(rank)
+     ! if parallel_grid is false,
+     ! faking the code with trivial values
+     ntask_grid_proc(:) = ngrid_mpi
+     task_grid_proc(:)  = rank_local
+     do igrid=1,ngrid_mpi
+       task_grid_number(igrid) = igrid
+     enddo
+  
    endif
 
  else
-   !
-   ! if parallel_grid is false,
-   ! faking the code with trivial values
-   ntask_grid_proc(:) = ngrid_mpi
-   task_grid_proc(:)  = rank
-   do igrid=1,ngrid_mpi
-     task_grid_number(igrid) = igrid
-   enddo
 
+   allocate(task_grid_proc(ngrid_mpi))
+   allocate(ntask_grid_proc(0:nproc-1))
+   allocate(task_grid_number(ngrid_mpi))
+  
+   if( parallel_grid) then
+  
+     write(stdout,'(/,a)') ' Distributing the grid among procs'
+     
+     ntask_grid_proc(:) = 0
+     max_grid_per_proc = CEILING( DBLE(ngrid_mpi)/DBLE(nproc) )
+     write(stdout,*) 'Maximum number of grid points for a single proc',max_grid_per_proc
+  
+     iproc_local=0
+     do igrid=1,ngrid_mpi
+  
+       iproc_local = MODULO(igrid-1,nproc)
+  
+       !
+       ! A simple check to avoid unexpected surprises
+       if( iproc_local < 0 .OR. iproc_local >= nproc ) then
+         call die('error in the distribution')
+       endif
+  
+       task_grid_proc(igrid)        = iproc_local
+       ntask_grid_proc(iproc_local) = ntask_grid_proc(iproc_local) + 1 
+  
+     enddo
+  
+     task_grid_number(:)=0
+     igrid_current=0
+     do igrid=1,ngrid_mpi
+       if( rank == task_grid_proc(igrid) ) then
+         igrid_current = igrid_current + 1 
+         task_grid_number(igrid) = igrid_current
+       endif
+     enddo
+  
+     if( nproc > 1 ) then
+       write(stdout,'(/,a)') ' Distribute work load among procs'
+       write(stdout,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ngrid_mpi,dp) / REAL(nproc,dp)
+       write(stdout,'(a,i6,a,i10)') ' proc # , grid points',rank,' , ',ntask_grid_proc(rank)
+     endif
+  
+   else
+     !
+     ! if parallel_grid is false,
+     ! faking the code with trivial values
+     ntask_grid_proc(:) = ngrid_mpi
+     task_grid_proc(:)  = rank
+     do igrid=1,ngrid_mpi
+       task_grid_number(igrid) = igrid
+     enddo
+  
+   endif
  endif
-#endif
 
 
 end subroutine distribute_grid_workload
@@ -1260,10 +1266,11 @@ end subroutine init_scalapack
 
 
 !=========================================================================
-subroutine init_scalapack_ham(nbf,m_ham,n_ham)
+subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
  implicit none
 
  integer,intent(in)  :: nbf
+ integer,intent(in)  :: scalapack_nprow,scalapack_npcol
  integer,intent(out) :: m_ham,n_ham
 !=====
  integer :: ier=0
@@ -1275,14 +1282,13 @@ subroutine init_scalapack_ham(nbf,m_ham,n_ham)
 !=====
 
 #ifdef HAVE_SCALAPACK
- inquire(file='SCALAPACK_GRID',exist=parallel_ham)
+ parallel_ham = scalapack_nprow * scalapack_npcol > 1
 
  if( parallel_ham ) then
 
-   open(newunit=unitfile,file='SCALAPACK_GRID',status='old')
-   read(unitfile,*) nprow_ham,npcol_ham
+   nprow_ham = scalapack_nprow
+   npcol_ham = scalapack_npcol
    if( nprow_ham * npcol_ham > nproc ) call die('SCALAPACK manual distribution asks for too many processors')
-   close(unitfile)
 
    call BLACS_GET( -1, 0, cntxt_ham )
    call BLACS_GRIDINIT( cntxt_ham, 'R', nprow_ham, npcol_ham )
@@ -1312,7 +1318,6 @@ subroutine init_scalapack_ham(nbf,m_ham,n_ham)
 
    ! Distribute the remaing procs for auxiliary basis and grid points
    color = MODULO( rank , nprow_ham * npcol_ham )
-
    call MPI_COMM_SPLIT(comm_world,color,rank,comm_local,ier);
    call MPI_COMM_SIZE(comm_local,nproc_local,ier)
    call MPI_COMM_RANK(comm_local,rank_local,ier)

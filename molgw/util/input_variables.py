@@ -580,11 +580,29 @@ vl[i].keyword  ='scalapack_block_min'
 vl[i].family   ='parallel'
 vl[i].default  =400
 vl[i].datatype ='integer'
-vl[i].comment  ='Sets the minimum block size in SCALAPACK. If scalapack_block_min=400, then a 900x900 matrix will be distributed on a 2x2 processor grid.  \
+vl[i].comment  ='Sets the minimum block size to distribute a non-distributed matrix with SCALAPACK. \
+If scalapack_block_min=400, then a 900x900 matrix will be distributed on a 2x2 processor grid. \
 If scalapack_block_min=500, then a 900x900 matrix will no be distributed.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='scalapack_nprow'
+vl[i].family   ='parallel'
+vl[i].default  =1
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets number of row processors for SCALAPACK distribution of the SCF matrices.  \
+nprow X npcol should be lower or equal to the number of processors.'
 
-
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='scalapack_npcol'
+vl[i].family   ='parallel'
+vl[i].default  =1
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets number of column processors for SCALAPACK distribution of the SCF matrices.  \
+nprow X npcol should be lower or equal to the number of processors.'
 
 
 

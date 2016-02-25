@@ -102,8 +102,8 @@ program molgw
  call setup_cart_to_pure_transforms(gaussian_type)
 
  !
- ! Scalapack distribution of the hamiltonian
- call init_scalapack_ham(basis%nbf,m_ham,n_ham)
+ ! SCALAPACK distribution of the hamiltonian
+ call init_scalapack_ham(basis%nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
  if( m_ham /= basis%nbf .OR. n_ham /= basis%nbf ) then
    call issue_warning('SCALAPACK is used to distribute the SCF hamiltonian')
  endif
@@ -158,9 +158,8 @@ program molgw
  allocate(         occupation(nstate,nspin))
  allocate(             energy(nstate,nspin))
  allocate(exchange_m_vxc_diag(nstate,nspin))
-#ifdef TODAY
- call allocate_buffer(basis%nbf)
-#endif
+ if( parallel_buffer ) call allocate_parallel_buffer(basis%nbf)
+
 
 
  !
@@ -212,11 +211,11 @@ program molgw
    !
    ! Nucleus-electron interaction
    if( parallel_ham ) then
-#ifndef TODAY
-     call setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
-#else
-     call setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
-#endif
+     if( parallel_buffer ) then 
+       call setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
+     else
+       call setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
+     endif
    else
      call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
    endif
@@ -334,6 +333,8 @@ program molgw
                  hamiltonian_exx,hamiltonian_xc,                                &
                  occupation,energy)
  endif
+
+ if( parallel_buffer )            call destroy_parallel_buffer()
  
  call start_clock(timing_postscf)
 

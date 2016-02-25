@@ -42,6 +42,16 @@ XC Energy                 ,  -17.1161140356    , 0 , 1.0e-7
 HOMO energy               ,   -9.249028        , 0 , 1.0e-4
 LUMO energy               ,   -1.009892        , 0 , 1.0e-4
 
+methanol_sca_buffer_hf.in , methanol within HF with SCALAPACK distribution of hamiltinian
+HOMO energy               ,  -12.220058        , 0 , 1.0e-4
+LUMO energy               ,    0.952608        , 0 , 1.0e-4
+Nucleus-Nucleus           ,   40.2672693143    , 0 , 1.0e-7
+Kinetic Energy            ,  114.8545334406    , 0 , 1.0e-7
+Nucleus Energy            , -351.5356046432    , 0 , 1.0e-7
+Hartree Energy            ,   96.1858385911    , 0 , 1.0e-7
+Exchange Energy           ,  -14.8334416451    , 0 , 1.0e-7
+Total Energy              , -115.0614049423    , 0 , 1.0e-7
+
 boron_gw_spinpolarized.in , GW@BLYP boron atom without RI with spin
 Hartree Energy            ,   11.6344175422   , 0 , 1.0e-7
 XC Energy                 ,   -3.8788239774   , 0 , 1.0e-7

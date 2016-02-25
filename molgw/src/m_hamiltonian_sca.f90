@@ -886,7 +886,6 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
  integer,intent(out)                :: nstate,m_c,n_c
  real(dp),allocatable,intent(inout) :: s_matrix_sqrt_inv(:,:)
 !=====
- real(dp) :: TOL_OVERLAP_FAKE=-1.0_dp
  real(dp) :: matrix_tmp(m_ham,n_ham)
  integer  :: ibf,jbf
  integer  :: ilocal,jlocal
@@ -1007,10 +1006,9 @@ subroutine setup_sqrt_density_matrix_sca(nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,
    do ispin=1,nspin
      p_matrix_sqrt(:,:,ispin) = p_matrix(:,:,ispin)
      call diagonalize_sca(nbf,desc_ham,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
-   enddo
-   do jlocal=1,n_ham
-     jglobal = colindex_local_to_global('H',jlocal)
-     p_matrix_sqrt(:,jlocal,ispin) = p_matrix_sqrt(:,jlocal,ispin) * SQRT( p_matrix_occ(jglobal,ispin) )
+
+     call matmul_diag_sca('R',SQRT(p_matrix_occ(:,ispin)),desc_ham,p_matrix_sqrt(:,:,ispin))
+
    enddo
  else
    p_matrix_sqrt(:,:,:) = 0.0_dp

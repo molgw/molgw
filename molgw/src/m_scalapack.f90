@@ -100,45 +100,30 @@ end subroutine gather_distributed_copy
 ! Multiply on the left or on the right a distributed square matrix 
 ! with a non-distributed diagonal
 !=========================================================================
-subroutine matmul_diag_sca(side,nglobal,diag,desc,matrix)
+subroutine matmul_diag_sca(side,diag,desc,matrix)
  implicit none
  character(len=1),intent(in) :: side
- integer,intent(in)          :: nglobal
  integer,intent(in)          :: desc(ndel)
- real(dp),intent(in)         :: diag(nglobal)
+ real(dp),intent(in)         :: diag(:)
  real(dp),intent(inout)      :: matrix(:,:)
 !=====
+ integer                     :: nglobal
  integer                     :: mlocal,nlocal
  integer                     :: iglobal,jglobal,ilocal,jlocal
 !=====
 
+ nglobal = SIZE( diag(:) )
+ mlocal  = SIZE( matrix , DIM=1 )
+ nlocal  = SIZE( matrix , DIM=2 )
 
-#ifndef HAVE_SCALAPACK
 
  select case(side)
  case('L')
+#ifndef HAVE_SCALAPACK
    forall(iglobal=1:nglobal)
      matrix(iglobal,:) = matrix(iglobal,:) * diag(iglobal)
    end forall
-
- case('R')
-   forall(jglobal=1:nglobal)
-     matrix(:,jglobal) = matrix(:,jglobal) * diag(jglobal)
-   end forall
-
- case default
-   if( side /= 'L' .AND. side /= 'R' ) then
-     call die('matmul_diag_sca: argument side should be L or R')
-   endif
- end select
-
 #else
-
- mlocal = SIZE( matrix , DIM=1 )
- nlocal = SIZE( matrix , DIM=2 )
-
- select case(side)
- case('L')
 ! Alternative coding
 !   do iglobal=1,nglobal
 !     call PDSCAL(nglobal,diag(iglobal),matrix,iglobal,1,desc,nglobal)
@@ -147,8 +132,15 @@ subroutine matmul_diag_sca(side,nglobal,diag,desc,matrix)
      iglobal = rowindex_local_to_global(desc,ilocal)
      matrix(ilocal,:) = matrix(ilocal,:) * diag(iglobal)
    enddo
+#endif
+
 
  case('R')
+#ifndef HAVE_SCALAPACK
+   forall(jglobal=1:nglobal)
+     matrix(:,jglobal) = matrix(:,jglobal) * diag(jglobal)
+   end forall
+#else
 ! Alternative coding
 !   do jglobal=1,nglobal
 !     call PDSCAL(nglobal,diag(jglobal),matrix,1,jglobal,desc,1)
@@ -157,14 +149,14 @@ subroutine matmul_diag_sca(side,nglobal,diag,desc,matrix)
      jglobal = colindex_local_to_global(desc,jlocal)
      matrix(:,jlocal) = matrix(:,jlocal) * diag(jglobal)
    enddo
+#endif
+
 
  case default
    if( side /= 'L' .AND. side /= 'R' ) then
      call die('matmul_diag_sca: argument side should be L or R')
    endif
  end select
-
-#endif
 
 
 end subroutine matmul_diag_sca

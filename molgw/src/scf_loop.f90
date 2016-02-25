@@ -149,11 +149,11 @@ subroutine scf_loop(is_restart,&
        call setup_hartree(print_matrix_,basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
      else
        if( parallel_ham ) then
-#ifndef TODAY
-         call setup_hartree_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
-#else
-         call setup_hartree_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
-#endif
+         if( parallel_buffer ) then
+           call setup_hartree_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
+         else
+           call setup_hartree_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
+         endif
        else
          call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
        endif
@@ -176,11 +176,11 @@ subroutine scf_loop(is_restart,&
        call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
      else
        if( parallel_ham ) then
-#ifndef TODAY
-         call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
-#else
-         call setup_exchange_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
-#endif
+         if( parallel_buffer ) then
+           call setup_exchange_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+         else
+           call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+         endif
        else
          call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
        endif
@@ -207,13 +207,13 @@ subroutine scf_loop(is_restart,&
    if( calc_type%is_dft ) then
 
      if( parallel_ham ) then
-#ifndef TODAY
-       call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
-       hamiltonian_vxc(:,:,:) = 0.0_dp
-       en%xc = 0.0_dp
-#else
-       call dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_vxc,en%xc)
-#endif
+       if( parallel_buffer ) then
+         call dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_vxc,en%xc)
+       else
+         call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
+         hamiltonian_vxc(:,:,:) = 0.0_dp
+         en%xc = 0.0_dp
+       endif
      else
        call dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,hamiltonian_vxc,en%xc)
      endif
@@ -414,11 +414,11 @@ subroutine scf_loop(is_restart,&
  else
    if( ABS(en%exx) < 1.0e-6_dp ) then
      if( parallel_ham ) then
-#ifndef TODAY
-       call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
-#else
-       call setup_exchange_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
-#endif
+       if( parallel_buffer ) then
+         call setup_exchange_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+       else
+         call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+       endif
      else
        call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
      endif
@@ -542,9 +542,6 @@ subroutine scf_loop(is_restart,&
  if( ALLOCATED(p_matrix) )        deallocate(p_matrix)
  if( ALLOCATED(p_matrix_sqrt) )   deallocate(p_matrix_sqrt)
  if( ALLOCATED(p_matrix_occ) )    deallocate(p_matrix_occ)
-#ifdef TODAY
- call destroy_buffer()
-#endif
 
 
  call stop_clock(timing_scf)

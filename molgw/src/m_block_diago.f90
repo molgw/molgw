@@ -163,10 +163,10 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
  !
 
  ! Calculate (A+B) * (A-B)^1/2
- call matmul_diag_sca('R',nmat,amb_diag_sqrt,desc_apb,apb_matrix)
+ call matmul_diag_sca('R',amb_diag_sqrt,desc_apb,apb_matrix)
 
  ! Calculate (A-B)^1/2 * [ (A+B) * (A-B)^1/2 ]
- call matmul_diag_sca('L',nmat,amb_diag_sqrt,desc_apb,apb_matrix)
+ call matmul_diag_sca('L',amb_diag_sqrt,desc_apb,apb_matrix)
 
 
  ! Diagonalization
@@ -180,10 +180,10 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
  !
 
  ! Calculate Z * \Omega^{-1/2}
- call matmul_diag_sca('R',nmat,1.0_dp/SQRT(bigomega(:)),desc_x,xpy_matrix)
+ call matmul_diag_sca('R',1.0_dp/SQRT(bigomega(:)),desc_x,xpy_matrix)
 
  ! Calculate (A-B)^{1/2} * [ Z * \Omega^{-1/2} ]
- call matmul_diag_sca('L',nmat,amb_diag_sqrt,desc_x,xpy_matrix)
+ call matmul_diag_sca('L',amb_diag_sqrt,desc_x,xpy_matrix)
 
 
  call stop_clock(timing_diago_h2p)

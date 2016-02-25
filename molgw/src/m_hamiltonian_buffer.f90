@@ -17,7 +17,7 @@ contains
 
 
 !=========================================================================
-subroutine allocate_buffer(nbf)
+subroutine allocate_parallel_buffer(nbf)
  implicit none
 
  integer,intent(in) :: nbf
@@ -26,18 +26,18 @@ subroutine allocate_buffer(nbf)
  write(stdout,'(/,x,a)') 'For SCALAPACK buffer, only this buffer is not distributed'
  call clean_allocate('large buffer that is not distributed',buffer,nbf,nbf)
 
-end subroutine allocate_buffer
+end subroutine allocate_parallel_buffer
 
 
 !=========================================================================
-subroutine destroy_buffer()
+subroutine destroy_parallel_buffer()
  implicit none
 
 !=====
 
  call clean_deallocate('large buffer that is not distributed',buffer)
 
-end subroutine destroy_buffer
+end subroutine destroy_parallel_buffer
 
 
 !=========================================================================
