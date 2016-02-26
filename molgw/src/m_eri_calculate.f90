@@ -880,8 +880,7 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
  real(dp),intent(in)          :: x0_rho(3)
  integer,intent(in)           :: ng_rho
  real(dp),intent(in)          :: coeff_rho(ng_rho),alpha_rho(ng_rho)
-!FBFB real(dp),intent(out)         :: vhrho(mv,nv)
- real(dp),intent(inout)         :: vhrho(mv,nv)
+ real(dp),intent(inout)       :: vhrho(mv,nv)
 !=====
  integer                      :: kshell,lshell
  integer                      :: klshellpair
@@ -908,11 +907,15 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
 
- if( parallel_buffer ) then    
+ if( parallel_ham .AND. parallel_buffer ) then    
    if( mv /= basis%nbf .OR. nv /= basis%nbf ) call die('calculate_eri_approximate_hartree: wrong dimension for the buffer')
  endif
 
- vhrho(:,:) = 0.0_dp  !FBFB
+ ! Nullify vhrho just for safety.
+ ! I guess this is useless.
+ if( .NOT. ( parallel_ham .AND. parallel_buffer )  ) then    
+   vhrho(:,:) = 0.0_dp
+ endif
 
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
@@ -1028,25 +1031,18 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
    endif ! is (ss|ss)
    
 
-   if( parallel_buffer ) then    
+   if( parallel_ham .AND. parallel_buffer ) then    
      do lbf=1,nl
        do kbf=1,nk
          iglobal = shell(kshell)%istart+kbf-1
          jglobal = shell(lshell)%istart+lbf-1
          ilocal = iglobal
          jlocal = jglobal
-!FBFB         if( iglobal == jglobal ) then ! To avoid double-counting
-!FBFB           vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals_cart(kbf,lbf)  * 0.5_dp 
-!FBFB         else
-!FBFB           vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals_cart(kbf,lbf)
-!FBFB         endif
-         vhrho(ilocal,jlocal) = integrals_cart(kbf,lbf)      !FBFB
-         ! And the symmetric too                             !FBFB
-         iglobal = shell(lshell)%istart+lbf-1                !FBFB
-         jglobal = shell(kshell)%istart+kbf-1                !FBFB
-         ilocal = iglobal                                    !FBFB
-         jlocal = jglobal                                    !FBFB
-         vhrho(ilocal,jlocal) = integrals_cart(kbf,lbf)      !FBFB
+         if( kshell == lshell ) then ! To avoid double-counting   
+           vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals_cart(kbf,lbf)  * 0.5_dp 
+         else
+           vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals_cart(kbf,lbf) 
+         endif
        enddo
      enddo
 

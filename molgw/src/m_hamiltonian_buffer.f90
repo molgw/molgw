@@ -783,8 +783,6 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
  integer              :: iatom,igau,ngau
  real(dp),allocatable :: alpha(:),coeff(:)
  integer              :: ilocal,jlocal,iglobal,jglobal
-
- real(dp)             :: BUFFER2(basis%nbf,basis%nbf)
 !=====
 
  call start_clock(timing_approx_ham)
@@ -794,7 +792,6 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
  vhxc_ij(:,:) = 0.0_dp
 
  buffer(:,:) = 0.0_dp
- BUFFER2(:,:) = 0.0_dp
  do iatom=1,natom
    if( rank /= MODULO(iatom,nproc) ) cycle
 
@@ -802,22 +799,16 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
    allocate(alpha(ngau),coeff(ngau))
    call element_atomicdensity(zatom(iatom),coeff,alpha)
 
-   buffer(:,:) = 0.0 !FBFB
+   !
+   ! buffer +=  < i | v_h | j >
+   ! buffer is not full. It needs to be symmetrized
    call calculate_eri_approximate_hartree(basis,basis%nbf,basis%nbf,x(:,iatom),ngau,coeff,alpha,buffer)
-   BUFFER2(:,:) = BUFFER2(:,:) + buffer(:,:)  !FBFB
 
    deallocate(alpha,coeff)
  enddo
 
- buffer(:,:)   = BUFFER2(:,:) !FBFB
-! call xlocal_sum(vhxc_ij)
- call issue_warning('BUFFER2')
- call xsum(BUFFER2)
- write(100+rank,'(f18.8)')  BUFFER2(:,:)
+ buffer(:,:) = buffer(:,:) + TRANSPOSE(buffer(:,:))
 
- write(*,*) 'FBFB B',buffer(1,1),buffer(1,2),buffer(2,1),buffer(basis%nbf,basis%nbf)
-! buffer(:,:) = buffer(:,:) + TRANSPOSE(buffer(:,:))
-! write(*,*) 'FBFB ! A',buffer(1,1),buffer(1,2),buffer(2,1),buffer(basis%nbf,basis%nbf)
 
  write(stdout,*) 'Simple LDA functional on a coarse grid'
 
