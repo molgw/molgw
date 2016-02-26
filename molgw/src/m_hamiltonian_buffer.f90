@@ -312,7 +312,7 @@ subroutine setup_hartree_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,ha
 
  deallocate(partial_sum)
 
- ! Sum up the buffers and store the result in the sub matrix exchange_ij
+ ! Sum up the buffers and store the result in the sub matrix hartree_ij
  call reduce_hamiltonian_sca(m_ham,n_ham,hartree_ij)
 
  !
@@ -382,17 +382,32 @@ subroutine setup_exchange_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_o
 
 
      tmp(:,:) = 0.0_dp
-     do ipair=1,npair
+     do ipair=1,nbf
+       ibf = index_basis(1,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + p_matrix_i(ibf) * eri_3center(:,ipair)
+     enddo
+     do ipair=nbf+1,npair
        ibf = index_basis(1,ipair)
        jbf = index_basis(2,ipair)
-
        tmp(:,ibf) = tmp(:,ibf) + p_matrix_i(jbf) * eri_3center(:,ipair)
-       if( ibf /= jbf ) &
-            tmp(:,jbf) = tmp(:,jbf) + p_matrix_i(ibf) * eri_3center(:,ipair)
+       tmp(:,jbf) = tmp(:,jbf) + p_matrix_i(ibf) * eri_3center(:,ipair)
      enddo
 
-     buffer(:,:) = buffer(:,:) - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
 
+     ! buffer(:,:) = buffer(:,:) - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+     ! C = A^T * A + C
+     call DSYRK('L','T',nbf,nauxil_3center,-1.0_dp/spin_fact,tmp,nauxil_3center,1.0_dp,buffer,nbf)
+
+
+
+   enddo
+
+   !
+   ! Need to symmetrize buffer
+   do ibf=1,nbf
+     do jbf=ibf+1,nbf
+       buffer(ibf,jbf) = buffer(jbf,ibf)
+     enddo
    enddo
 
    ! Sum up the buffers and store the result in the sub matrix exchange_ij
