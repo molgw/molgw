@@ -872,15 +872,16 @@ end subroutine calculate_eri_3center
 
 
 !=========================================================================
-subroutine calculate_eri_approximate_hartree(basis,m_ham,n_ham,x0_rho,ng_rho,coeff_rho,alpha_rho,vhrho)
+subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho,alpha_rho,vhrho)
  use m_tools,only: boys_function
  implicit none
  type(basis_set),intent(in)   :: basis
- integer,intent(in)           :: m_ham,n_ham
+ integer,intent(in)           :: mv,nv
  real(dp),intent(in)          :: x0_rho(3)
  integer,intent(in)           :: ng_rho
  real(dp),intent(in)          :: coeff_rho(ng_rho),alpha_rho(ng_rho)
- real(dp),intent(out)         :: vhrho(m_ham,n_ham)
+!FBFB real(dp),intent(out)         :: vhrho(mv,nv)
+ real(dp),intent(inout)         :: vhrho(mv,nv)
 !=====
  integer                      :: kshell,lshell
  integer                      :: klshellpair
@@ -907,8 +908,11 @@ subroutine calculate_eri_approximate_hartree(basis,m_ham,n_ham,x0_rho,ng_rho,coe
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
 
+ if( parallel_buffer ) then    
+   if( mv /= basis%nbf .OR. nv /= basis%nbf ) call die('calculate_eri_approximate_hartree: wrong dimension for the buffer')
+ endif
 
- vhrho(:,:) = 0.0_dp
+ vhrho(:,:) = 0.0_dp  !FBFB
 
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
@@ -1023,28 +1027,51 @@ subroutine calculate_eri_approximate_hartree(basis,m_ham,n_ham,x0_rho,ng_rho,coe
 
    endif ! is (ss|ss)
    
-     
-   do lbf=1,nl
-     do kbf=1,nk
-       iglobal = shell(kshell)%istart+kbf-1
-       jglobal = shell(lshell)%istart+lbf-1
-       ilocal = rowindex_global_to_local('H',iglobal)
-       jlocal = colindex_global_to_local('H',jglobal)
-       if( ilocal*jlocal /= 0 ) then
-         vhrho(ilocal,jlocal) = integrals_cart(kbf,lbf)
-       endif
-       ! And the symmetric too
-       iglobal = shell(lshell)%istart+lbf-1
-       jglobal = shell(kshell)%istart+kbf-1
-       ilocal = rowindex_global_to_local('H',iglobal)
-       jlocal = colindex_global_to_local('H',jglobal)
-       if( ilocal*jlocal /= 0 ) then
-         vhrho(ilocal,jlocal) = integrals_cart(kbf,lbf)
-       endif
-     enddo
-   enddo
 
-!     vhxc_ij(:,:) = vhxc_ij(:,:) + vhgau(:,:) * coeff(igau) / 2.0_dp**1.25_dp / pi**0.75_dp * alpha(igau)**1.5_dp
+   if( parallel_buffer ) then    
+     do lbf=1,nl
+       do kbf=1,nk
+         iglobal = shell(kshell)%istart+kbf-1
+         jglobal = shell(lshell)%istart+lbf-1
+         ilocal = iglobal
+         jlocal = jglobal
+!FBFB         if( iglobal == jglobal ) then ! To avoid double-counting
+!FBFB           vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals_cart(kbf,lbf)  * 0.5_dp 
+!FBFB         else
+!FBFB           vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals_cart(kbf,lbf)
+!FBFB         endif
+         vhrho(ilocal,jlocal) = integrals_cart(kbf,lbf)      !FBFB
+         ! And the symmetric too                             !FBFB
+         iglobal = shell(lshell)%istart+lbf-1                !FBFB
+         jglobal = shell(kshell)%istart+kbf-1                !FBFB
+         ilocal = iglobal                                    !FBFB
+         jlocal = jglobal                                    !FBFB
+         vhrho(ilocal,jlocal) = integrals_cart(kbf,lbf)      !FBFB
+       enddo
+     enddo
+
+   else
+
+     do lbf=1,nl
+       do kbf=1,nk
+         iglobal = shell(kshell)%istart+kbf-1
+         jglobal = shell(lshell)%istart+lbf-1
+         ilocal = rowindex_global_to_local('H',iglobal)
+         jlocal = colindex_global_to_local('H',jglobal)
+         if( ilocal*jlocal /= 0 ) then
+           vhrho(ilocal,jlocal) = integrals_cart(kbf,lbf)
+         endif
+         ! And the symmetric too
+         iglobal = shell(lshell)%istart+lbf-1
+         jglobal = shell(kshell)%istart+kbf-1
+         ilocal = rowindex_global_to_local('H',iglobal)
+         jlocal = colindex_global_to_local('H',jglobal)
+         if( ilocal*jlocal /= 0 ) then
+           vhrho(ilocal,jlocal) = integrals_cart(kbf,lbf)
+         endif
+       enddo
+     enddo
+   endif
 
 
    deallocate(integrals_cart)

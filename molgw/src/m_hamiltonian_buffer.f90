@@ -108,8 +108,8 @@ end subroutine reduce_hamiltonian_sca
 subroutine broadcast_hamiltonian_sca(m_ham,n_ham,matrix_local)
  implicit none
 
- integer,intent(in)     :: m_ham,n_ham
- real(dp),intent(in)    :: matrix_local(m_ham,n_ham)
+ integer,intent(in)   :: m_ham,n_ham
+ real(dp),intent(in)  :: matrix_local(m_ham,n_ham)
 !=====
  integer              :: nbf
  integer              :: ipcol,iprow,rank_orig
@@ -783,30 +783,41 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
  integer              :: iatom,igau,ngau
  real(dp),allocatable :: alpha(:),coeff(:)
  integer              :: ilocal,jlocal,iglobal,jglobal
- real(dp),external    :: PDLATRA
+
+ real(dp)             :: BUFFER2(basis%nbf,basis%nbf)
 !=====
 
  call start_clock(timing_approx_ham)
 
- vhxc_ij(:,:) = 0.0_dp
-
  write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities: buffer SCALAPACK'
 
+ vhxc_ij(:,:) = 0.0_dp
+
+ buffer(:,:) = 0.0_dp
+ BUFFER2(:,:) = 0.0_dp
  do iatom=1,natom
-   if( rank_local /= MODULO(iatom,nproc_local) ) cycle
+   if( rank /= MODULO(iatom,nproc) ) cycle
 
    ngau = 4
    allocate(alpha(ngau),coeff(ngau))
    call element_atomicdensity(zatom(iatom),coeff,alpha)
 
-   call calculate_eri_approximate_hartree(basis,m_ham,n_ham,x(:,iatom),ngau,coeff,alpha,vhgau)
-   vhxc_ij(:,:) = vhxc_ij(:,:) + vhgau(:,:) 
+   buffer(:,:) = 0.0 !FBFB
+   call calculate_eri_approximate_hartree(basis,basis%nbf,basis%nbf,x(:,iatom),ngau,coeff,alpha,buffer)
+   BUFFER2(:,:) = BUFFER2(:,:) + buffer(:,:)  !FBFB
 
    deallocate(alpha,coeff)
  enddo
 
- call xlocal_sum(vhxc_ij)
+ buffer(:,:)   = BUFFER2(:,:) !FBFB
+! call xlocal_sum(vhxc_ij)
+ call issue_warning('BUFFER2')
+ call xsum(BUFFER2)
+ write(100+rank,'(f18.8)')  BUFFER2(:,:)
 
+ write(*,*) 'FBFB B',buffer(1,1),buffer(1,2),buffer(2,1),buffer(basis%nbf,basis%nbf)
+! buffer(:,:) = buffer(:,:) + TRANSPOSE(buffer(:,:))
+! write(*,*) 'FBFB ! A',buffer(1,1),buffer(1,2),buffer(2,1),buffer(basis%nbf,basis%nbf)
 
  write(stdout,*) 'Simple LDA functional on a coarse grid'
 
@@ -822,7 +833,6 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
 
  normalization = 0.0_dp
  exc           = 0.0_dp
- buffer(:,:)   = 0.0_dp
  do igrid=1,ngrid
 
    rr(:) = rr_grid(:,igrid)
