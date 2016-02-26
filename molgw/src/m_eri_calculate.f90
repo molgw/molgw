@@ -872,20 +872,21 @@ end subroutine calculate_eri_3center
 
 
 !=========================================================================
-subroutine calculate_eri_approximate_hartree(basis,m_ham,n_ham,x0_rho,alpha_rho,vhrho)
+subroutine calculate_eri_approximate_hartree(basis,m_ham,n_ham,x0_rho,ng_rho,coeff_rho,alpha_rho,vhrho)
  use m_tools,only: boys_function
  implicit none
  type(basis_set),intent(in)   :: basis
  integer,intent(in)           :: m_ham,n_ham
  real(dp),intent(in)          :: x0_rho(3)
- real(dp),intent(in)          :: alpha_rho
+ integer,intent(in)           :: ng_rho
+ real(dp),intent(in)          :: coeff_rho(ng_rho),alpha_rho(ng_rho)
  real(dp),intent(out)         :: vhrho(m_ham,n_ham)
 !=====
  integer                      :: kshell,lshell
  integer                      :: klshellpair
  integer                      :: n3,n4
  integer                      :: n3c,n4c
- integer                      :: ig3,ig4
+ integer                      :: ig1,ig3,ig4
  integer                      :: nk,nl
  integer                      :: amk,aml
  integer                      :: kbf,lbf
@@ -929,17 +930,17 @@ subroutine calculate_eri_approximate_hartree(basis,m_ham,n_ham,x0_rho,alpha_rho,
    n4c = number_basis_function_am( 'CART' , aml )
    n3 = nk
    n4 = nl
-   ng1 = 1
+   ng1 = ng_rho
    ng2 = 1
    ng3 = shell(kshell)%ng
    ng4 = shell(lshell)%ng
    allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
    allocate(coeff1(ng1),coeff2(ng2),coeff3(ng3),coeff4(ng4))
-   alpha1(:) = alpha_rho
+   alpha1(:) = alpha_rho(:)
    alpha2(:) = 0.0_dp
    alpha3(:) = shell(kshell)%alpha(:)
    alpha4(:) = shell(lshell)%alpha(:)
-   coeff1(:) = 1.0_dp
+   coeff1(:) = coeff_rho(:) / 2.0_dp**1.25_dp / pi**0.75_dp * alpha_rho(:)**1.5_dp
    coeff2(:) = 1.0_dp
    coeff3(:) = shell(kshell)%coeff(:)
    coeff4(:) = shell(lshell)%coeff(:)
@@ -958,25 +959,27 @@ subroutine calculate_eri_approximate_hartree(basis,m_ham,n_ham,x0_rho,alpha_rho,
 
      do ig4=1,ng4
        do ig3=1,ng3
+         do ig1=1,ng1
 
-         zeta_12 = alpha_rho
-         zeta_34 = alpha3(ig3) + alpha4(ig4)
-         p(:) = x01(:)
-         q(:) = ( alpha3(ig3) * x03(:) + alpha4(ig4) * x04(:) ) / zeta_34 
-         !
-         ! Full range or long-range only integrals
-         rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
-         
-         tt = rho * SUM( (p(:)-q(:))**2 )
-         call boys_function(f0t(0),0,tt)
+           zeta_12 = alpha_rho(ig1)
+           zeta_34 = alpha3(ig3) + alpha4(ig4)
+           p(:) = x01(:)
+           q(:) = ( alpha3(ig3) * x03(:) + alpha4(ig4) * x04(:) ) / zeta_34 
+           !
+           ! Full range or long-range only integrals
+           rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
+           
+           tt = rho * SUM( (p(:)-q(:))**2 )
+           call boys_function(f0t(0),0,tt)
 
-         integrals_cart(1,1) = integrals_cart(1,1) + &
-               2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
-               / zeta_12 & 
-               / zeta_34 * EXP( -alpha3(ig3)*alpha4(ig4)/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
-               * coeff3(ig3) * coeff4(ig4) &
-               * cart_to_pure_norm(0)%matrix(1,1)**4
+           integrals_cart(1,1) = integrals_cart(1,1) + &
+                 2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
+                 / zeta_12 & 
+                 / zeta_34 * EXP( -alpha3(ig3)*alpha4(ig4)/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
+                 * coeff1(ig1) * coeff3(ig3) * coeff4(ig4) &
+                 * cart_to_pure_norm(0)%matrix(1,1)**4
 
+         enddo
        enddo
      enddo
 
@@ -1041,6 +1044,7 @@ subroutine calculate_eri_approximate_hartree(basis,m_ham,n_ham,x0_rho,alpha_rho,
      enddo
    enddo
 
+!     vhxc_ij(:,:) = vhxc_ij(:,:) + vhgau(:,:) * coeff(igau) / 2.0_dp**1.25_dp / pi**0.75_dp * alpha(igau)**1.5_dp
 
 
    deallocate(integrals_cart)

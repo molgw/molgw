@@ -398,8 +398,6 @@ subroutine setup_exchange_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_o
      ! C = A^T * A + C
      call DSYRK('L','T',nbf,nauxil_3center,-1.0_dp/spin_fact,tmp,nauxil_3center,1.0_dp,buffer,nbf)
 
-
-
    enddo
 
    !
@@ -792,7 +790,7 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
 
  vhxc_ij(:,:) = 0.0_dp
 
- write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities: SCALAPACK'
+ write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities: buffer SCALAPACK'
 
  do iatom=1,natom
    if( rank_local /= MODULO(iatom,nproc_local) ) cycle
@@ -801,11 +799,8 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
    allocate(alpha(ngau),coeff(ngau))
    call element_atomicdensity(zatom(iatom),coeff,alpha)
 
-
-   do igau=1,ngau
-     call calculate_eri_approximate_hartree(basis,m_ham,n_ham,x(:,iatom),alpha(igau),vhgau)
-     vhxc_ij(:,:) = vhxc_ij(:,:) + vhgau(:,:) * coeff(igau) / 2.0_dp**1.25_dp / pi**0.75_dp * alpha(igau)**1.5_dp
-   enddo
+   call calculate_eri_approximate_hartree(basis,m_ham,n_ham,x(:,iatom),ngau,coeff,alpha,vhgau)
+   vhxc_ij(:,:) = vhxc_ij(:,:) + vhgau(:,:) 
 
    deallocate(alpha,coeff)
  enddo
