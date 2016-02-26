@@ -965,11 +965,6 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  use m_basis_set
  use m_dft_grid
  use m_eri_calculate
-#ifdef HAVE_LIBXC
- use libxc_funcs_m
- use xc_f90_lib_m
- use xc_f90_types_m
-#endif
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -982,7 +977,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  real(dp)             :: weight
  real(dp)             :: basis_function_r(basis%nbf)
  real(dp)             :: rhor
- real(dp)             :: vxc,exc
+ real(dp)             :: vxc,excr,exc
  real(dp)             :: vsigma(2*nspin-1)
  real(dp)             :: vhartree
  real(dp)             :: vhgau(basis%nbf,basis%nbf)
@@ -1024,6 +1019,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis)
 
  normalization = 0.0_dp
+ exc           = 0.0_dp
  do igrid=1,ngrid
 
    rr(:) = rr_grid(:,igrid)
@@ -1041,7 +1037,12 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
    ! Normalization
    normalization = normalization + rhor * weight
 
-   call teter_lda_vxc_exc(rhor,vxc,exc)
+   call teter_lda_vxc_exc(rhor,vxc,excr)
+
+   !
+   ! XC energy
+   exc = exc + excr * weight * rhor
+
    !
    ! HXC
    do jbf=1,basis%nbf
@@ -1055,9 +1056,11 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  !
  ! Sum up the contributions from all procs only if needed
  call xsum(normalization)
+ call xsum(exc)
  call xsum(vhxc_ij)
 
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization
+ write(stdout,  '(a,2(2x,f12.6))') '      XC energy (Ha):',exc
 
  !
  ! Temporary grid destroyed

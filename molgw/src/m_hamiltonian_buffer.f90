@@ -24,7 +24,7 @@ subroutine allocate_parallel_buffer(nbf)
 !=====
 
  write(stdout,'(/,x,a)') 'For SCALAPACK buffer, only this buffer is not distributed'
- call clean_allocate('large buffer that is not distributed',buffer,nbf,nbf)
+ call clean_allocate('non distributed SCALAPACK buffer',buffer,nbf,nbf)
 
 end subroutine allocate_parallel_buffer
 
@@ -35,7 +35,7 @@ subroutine destroy_parallel_buffer()
 
 !=====
 
- call clean_deallocate('large buffer that is not distributed',buffer)
+ call clean_deallocate('non distributed SCALAPACK buffer',buffer)
 
 end subroutine destroy_parallel_buffer
 
@@ -474,7 +474,7 @@ subroutine dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix
  character(len=256)   :: string
 !=====
 
- if( nspin/=1 ) call die('DFT XC potential: SCALAPACK buffer not implemented for spin unrestricted')
+! if( nspin/=1 ) call die('DFT XC potential: SCALAPACK buffer not implemented for spin unrestricted')
 
  exc_xc = 0.0_dp
  vxc_ij(:,:,:) = 0.0_dp
@@ -563,7 +563,7 @@ subroutine dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix
      ! Get all the functions at point rr
      call get_basis_functions_r(basis,igrid,basis_function_r)
      !
-     ! calculate the density at point r for spin up and spin down
+     ! Calculate the density at point r for spin ispin
      call calc_density_r(1,basis,p_matrix_occ(:,ispin),buffer,rr,basis_function_r,rhor(ispin,igrid))
 
      ! Skip all the rest if the density is too small
@@ -697,7 +697,7 @@ subroutine dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix
          do ibf=1,jbf ! basis%nbf 
            buffer(ibf,jbf) = buffer(ibf,jbf) +  weight                    &
                      * (  dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf)    &
-                     * DOT_PRODUCT( dedgd_r(:,ispin) ,                                     &
+                         + DOT_PRODUCT( dedgd_r(:,ispin) ,                                 &
                                        basis_function_gradr(:,ibf) * basis_function_r(jbf) &
                                      + basis_function_gradr(:,jbf) * basis_function_r(ibf) ) )
          enddo
@@ -742,6 +742,143 @@ subroutine dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix
  call stop_clock(timing_dft)
 
 end subroutine dft_exc_vxc_buffer_sca
+
+
+!=========================================================================
+subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
+ use m_basis_set
+ use m_dft_grid
+ use m_eri_calculate
+ use m_tools,only: matrix_trace
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+ integer,intent(in)         :: m_ham,n_ham
+ real(dp),intent(out)       :: vhxc_ij(m_ham,n_ham)
+!=====
+ integer              :: idft_xc
+ integer              :: igrid,ibf,jbf,ispin
+ real(dp)             :: rr(3)
+ real(dp)             :: normalization
+ real(dp)             :: weight
+ real(dp)             :: basis_function_r(basis%nbf)
+ real(dp)             :: rhor
+ real(dp)             :: vxc,exc,excr
+ real(dp)             :: vsigma(2*nspin-1)
+ real(dp)             :: vhartree
+ real(dp)             :: vhgau(m_ham,n_ham)
+ integer              :: iatom,igau,ngau
+ real(dp),allocatable :: alpha(:),coeff(:)
+ integer              :: ilocal,jlocal,iglobal,jglobal
+ real(dp),external    :: PDLATRA
+!=====
+
+#ifdef HAVE_SCALAPACK
+
+ vhxc_ij(:,:) = 0.0_dp
+
+ write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities: SCALAPACK'
+
+ do iatom=1,natom
+!   if( rank /= MODULO(iatom,nproc) ) cycle
+
+   ngau = 4
+   allocate(alpha(ngau),coeff(ngau))
+   call element_atomicdensity(zatom(iatom),coeff,alpha)
+
+
+   do igau=1,ngau
+     call calculate_eri_approximate_hartree(basis,m_ham,n_ham,x(:,iatom),alpha(igau),vhgau)
+     vhxc_ij(:,:) = vhxc_ij(:,:) + vhgau(:,:) * coeff(igau) / 2.0_dp**1.25_dp / pi**0.75_dp * alpha(igau)**1.5_dp
+   enddo
+
+   deallocate(alpha,coeff)
+ enddo
+
+
+ write(stdout,*) 'Simple LDA functional on a coarse grid'
+
+ !
+ ! Create a temporary grid with low quality
+ ! This grid is to be destroyed at the end of the present subroutine
+ call init_dft_grid(low)
+
+ !
+ ! If it is the first time, set up the stored arrays
+ !
+ if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis)
+
+ buffer(:,:)   = 0.0_dp
+ normalization = 0.0_dp
+ exc           = 0.0_dp
+ do igrid=1,ngrid
+
+   rr(:) = rr_grid(:,igrid)
+   weight = w_grid(igrid)
+
+   !
+   ! Get all the functions and gradients at point rr
+   call get_basis_functions_r(basis,igrid,basis_function_r)
+
+   !
+   ! calculate the density at point r for spin up and spin down
+   call setup_atomic_density(rr,rhor,vhartree)
+
+   !
+   ! Normalization
+   normalization = normalization + rhor * weight
+
+   call teter_lda_vxc_exc(rhor,vxc,excr)
+
+   !
+   ! XC energy
+   exc = exc + excr * weight * rhor
+
+
+   !
+   ! HXC
+   do jglobal=1,basis%nbf
+     do iglobal=1,basis%nbf
+
+       buffer(iglobal,jglobal) =  buffer(iglobal,jglobal) &
+            + weight * vxc * basis_function_r(iglobal)  &
+                           * basis_function_r(jglobal)
+
+     enddo
+   enddo
+ enddo ! loop on the grid point
+ !
+ ! Sum up the contributions from all procs only if needed
+ call xsum(normalization)
+ call xsum(exc)
+ call xsum(buffer)
+
+ !
+ ! Distribute the result
+ if( cntxt_ham > 0 ) then
+   do jlocal=1,n_ham
+     jglobal = colindex_local_to_global('H',jlocal)
+     do ilocal=1,m_ham
+       iglobal = rowindex_local_to_global('H',ilocal)
+
+       vhxc_ij(ilocal,jlocal) =  vhxc_ij(ilocal,jlocal) + buffer(iglobal,jglobal)
+
+     enddo
+   enddo
+ endif
+
+
+ write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization
+ write(stdout,  '(a,2(2x,f12.6))') '      XC energy (Ha):',exc
+
+ !
+ ! Temporary grid destroyed
+ call destroy_dft_grid()
+
+
+#endif
+
+end subroutine dft_approximate_vhxc_buffer_sca
 
 
 !=========================================================================

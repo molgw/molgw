@@ -578,11 +578,11 @@ subroutine setup_density_matrix_sca(nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham
  integer,intent(in)   :: nbf,nstate
  integer,intent(in)   :: m_ham,n_ham,m_c,n_c
  real(dp),intent(in)  :: c_matrix(m_c,n_c,nspin)
- real(dp),intent(in)  :: occupation(nbf,nspin)
+ real(dp),intent(in)  :: occupation(nstate,nspin)
  real(dp),intent(out) :: p_matrix(m_ham,n_ham,nspin)
 !=====
  integer  :: ispin,jlocal,jglobal
- real(dp) :: matrix_tmp(m_ham,n_ham)
+ real(dp) :: matrix_tmp(m_c,n_c)
 !=====
 
 #ifdef HAVE_SCALAPACK
@@ -596,8 +596,7 @@ subroutine setup_density_matrix_sca(nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham
 
      call PDGEMM('N','T',nbf,nbf,nstate,1.0_dp,matrix_tmp,1,1,desc_c,       &
                   matrix_tmp,1,1,desc_c,0.0_dp,                             &
-                  p_matrix,1,1,desc_ham)
-
+                  p_matrix(:,:,ispin),1,1,desc_ham)
 
    enddo
  else
@@ -1031,11 +1030,6 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  use m_basis_set
  use m_dft_grid
  use m_eri_calculate
-#ifdef HAVE_LIBXC
- use libxc_funcs_m
- use xc_f90_lib_m
- use xc_f90_types_m
-#endif
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -1049,7 +1043,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  real(dp)             :: weight
  real(dp)             :: basis_function_r(basis%nbf)
  real(dp)             :: rhor
- real(dp)             :: vxc,exc
+ real(dp)             :: vxc,exc,excr
  real(dp)             :: vsigma(2*nspin-1)
  real(dp)             :: vhartree
  real(dp)             :: vhgau(m_ham,n_ham)
@@ -1094,6 +1088,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis)
 
  normalization = 0.0_dp
+ exc           = 0.0_dp
  do igrid=1,ngrid
 
    rr(:) = rr_grid(:,igrid)
@@ -1111,7 +1106,11 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
    ! Normalization
    normalization = normalization + rhor * weight
 
-   call teter_lda_vxc_exc(rhor,vxc,exc)
+   call teter_lda_vxc_exc(rhor,vxc,excr)
+
+   !
+   ! XC energy
+   exc = exc + excr * weight * rhor
 
    !
    ! HXC
@@ -1131,9 +1130,11 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  !
  ! Sum up the contributions from all procs only if needed
  call xsum(normalization)
+ call xsum(exc)
  call xlocal_sum(vhxc_ij)
 
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization
+ write(stdout,  '(a,2(2x,f12.6))') '      XC energy (Ha):',exc
 
  !
  ! Temporary grid destroyed

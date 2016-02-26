@@ -1,0 +1,21 @@
+&molgw
+ nspin=2
+ scf='b3lyp'
+ tolscf=1.0e-10
+ min_overlap=1.0e-3
+
+ scalapack_nprow=1
+ scalapack_npcol=2
+
+ basis='aug-cc-pVDZ'
+ auxil_basis='aug-cc-pVDZ-RI'
+ no_4center='yes'
+
+ natom=6
+/
+O     1.0849    0.1713   -0.0000 
+C    -0.3366    0.1504    0.0000 
+H    -0.7076    1.1754    0.0000 
+H    -0.7006   -0.3636    0.8900 
+H    -0.7006   -0.3636   -0.8900 
+H     1.3606   -0.7699    0.0000 

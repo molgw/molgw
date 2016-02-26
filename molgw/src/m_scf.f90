@@ -85,7 +85,7 @@ subroutine init_scf(m_ham,n_ham,m_c,n_c,nbf,nstate)
 
 
  call clean_allocate('Hamiltonian history',ham_hist,m_ham,n_ham,nspin,nhistmax)
- call clean_allocate('Residual history',res_hist,n_r_scf,n_r_scf,nspin,nhistmax)
+ call clean_allocate('Residual history',res_hist,m_r_scf,n_r_scf,nspin,nhistmax)
  
 end subroutine init_scf
 
@@ -268,7 +268,6 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  endif
 
-
  !
  ! Build up a_matrix that contains the scalar product of residuals
  !
@@ -279,23 +278,26 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  if( parallel_ham ) then
 
    if( cntxt_ham > 0 ) then
-     a_matrix_hist(1,1) = SUM( res_hist(:,:,:,1) * res_hist(:,:,:,1) )
+     a_matrix_hist(1,1) = SUM( res_hist(:,:,:,1)**2 ) * nspin
      do ihist=2,nhist_current
-       a_matrix_hist(ihist,1) = SUM( res_hist(:,:,:,ihist) * res_hist(:,:,:,1) )
+       a_matrix_hist(ihist,1) = SUM( res_hist(:,:,:,ihist) * res_hist(:,:,:,1) ) * nspin
        a_matrix_hist(1,ihist) = a_matrix_hist(ihist,1)
      enddo
    else
-     a_matrix_hist(:,:) = 0.0_dp
+     a_matrix_hist(1,1:nhist_current) = 0.0_dp
+     a_matrix_hist(1:nhist_current,1) = 0.0_dp
    endif
-   call xsum(a_matrix_hist)
+   call xsum(a_matrix_hist(1,1))
+   call xsum(a_matrix_hist(1,2:nhist_current))
+   call xsum(a_matrix_hist(2:nhist_current,1))
 
  else
 
-   a_matrix_hist(1,1) = SUM( res_hist(:,:,:,1) * res_hist(:,:,:,1) )
+   a_matrix_hist(1,1) = SUM( res_hist(:,:,:,1)**2 ) * nspin
 
    do ihist=2,nhist_current
-     a_matrix_hist(ihist,1) = SUM( res_hist(:,:,:,ihist) * res_hist(:,:,:,1) )
-     a_matrix_hist(1,ihist) = a_matrix_hist(ihist,1)
+     a_matrix_hist(ihist,1) = SUM( res_hist(:,:,:,ihist) * res_hist(:,:,:,1) ) * nspin
+     a_matrix_hist(1,ihist) = a_matrix_hist(ihist,1) 
    enddo
 
  endif
@@ -341,7 +343,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
      do ispin=1,nspin
 
        do ihist=1,nhist_current
-         call PDGEADD('N',nstate_scf,nstate_scf,alpha_diis(ihist),res_hist(:,:,ispin,ihist),1,1,desc_r,1.0_dp,residual_pred,1,1,desc_r)
+         call PDGEADD('N',nstate_scf,nstate_scf,alpha_diis(ihist),res_hist(:,:,ispin,ihist),1,1,desc_r,1.0_dp,residual_pred(:,:,ispin),1,1,desc_r)
          call PDGEADD('N',nbf_scf,nbf_scf,alpha_diis(ihist),ham_hist(:,:,ispin,ihist),1,1,desc_ham,1.0_dp,ham(:,:,ispin),1,1,desc_ham)
        enddo
 
@@ -349,7 +351,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
      enddo
 
    endif
-   write(stdout,'(a,2x,es12.5,/)') ' DIIS predicted residual:',SQRT(residual)
+   write(stdout,'(a,2x,es12.5,/)') ' DIIS predicted residual:',SQRT( residual * nspin )
 
  else
 
@@ -357,7 +359,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
      residual_pred(:,:,:) = residual_pred(:,:,:) + alpha_diis(ihist) * res_hist(:,:,:,ihist)
      ham(:,:,:)           = ham(:,:,:)           + alpha_diis(ihist) * ham_hist(:,:,:,ihist) 
    enddo
-   write(stdout,'(a,2x,es12.5,/)') ' DIIS predicted residual:',NORM2( residual_pred(:,:,:) )
+   write(stdout,'(a,2x,es12.5,/)') ' DIIS predicted residual:',NORM2( residual_pred(:,:,:) ) * SQRT(REAL(nspin,dp))
 
  endif
 
@@ -385,9 +387,19 @@ function check_converged(p_matrix_old,p_matrix_new)
  real(dp)              :: rms
 !=====
 
- rms = NORM2( p_matrix_new(:,:,:) - p_matrix_old(:,:,:) )
+ if( parallel_ham ) then
+   if( cntxt_ham > 0 ) then
+     rms = NORM2( p_matrix_new(:,:,:) - p_matrix_old(:,:,:) )**2
+   else
+     rms = 0.0_dp
+   endif
+   call xsum(rms)
+ else
+   rms = NORM2( p_matrix_new(:,:,:) - p_matrix_old(:,:,:) )**2
+ endif
 
- call xtrans_sum(rms)
+
+ rms = SQRT( rms * nspin )
 
  write(stdout,'(x,a,2x,es12.5)') 'Convergence criterium on the density matrix',rms
  if( rms < tolscf ) then 
@@ -400,9 +412,9 @@ function check_converged(p_matrix_old,p_matrix_new)
    write(stdout,*)
 
    if(iscf == nscf) then
-     if(rms>1.d-3) then
+     if(rms>1.d-2) then
        call issue_warning('SCF convergence is very poor')
-     else if(rms>1.d-5) then
+     else if(rms>1.d-4) then
        call issue_warning('SCF convergence is poor')
      endif
    endif

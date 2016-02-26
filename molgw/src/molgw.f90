@@ -254,7 +254,11 @@ program molgw
    !
    ! Calculate a very approximate vhxc based on simple gaussians placed on atoms
    if( parallel_ham ) then
-     call dft_approximate_vhxc_sca(basis,m_ham,n_ham,hamiltonian_tmp)
+     if( parallel_buffer ) then
+       call dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,hamiltonian_tmp)
+     else
+       call dft_approximate_vhxc_sca(basis,m_ham,n_ham,hamiltonian_tmp)
+     endif
    else
      call dft_approximate_vhxc(basis,hamiltonian_tmp)
    endif

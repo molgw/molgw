@@ -28,6 +28,22 @@ module m_tools
 
 contains
 
+function matrix_trace(matrix)
+ real(dp),intent(in) :: matrix(:,:)
+ real(dp)            :: matrix_trace
+!=====
+ integer :: n1,i1
+!=====
+
+ n1 = SIZE( matrix , DIM=1 )
+ if( n1 /= SIZE( matrix , DIM=2 ) ) call die('matrix_trace: non square matrix')
+
+ matrix_trace = 0.0_dp
+ do i1=1,n1
+   matrix_trace = matrix_trace + matrix(i1,i1)
+ enddo
+
+end function matrix_trace
 
 !=========================================================================
 subroutine init_seed(iseed)
