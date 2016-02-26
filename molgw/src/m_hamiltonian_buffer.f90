@@ -60,6 +60,7 @@ subroutine reduce_hamiltonian_sca(m_ham,n_ham,matrix_local)
 
 #ifdef HAVE_SCALAPACK
 
+#if 0
  ! Loops over the SCALAPACK grid
  do ipcol=0,npcol_ham-1
    do iprow=0,nprow_ham-1
@@ -92,9 +93,29 @@ subroutine reduce_hamiltonian_sca(m_ham,n_ham,matrix_local)
    enddo
  enddo
 
+#else
+
+ ! Another coding.. Maybe more efficient
+ call xsum(buffer)
+ do jlocal=1,n_ham
+   jglobal = colindex_local_to_global('H',jlocal)
+   do ilocal=1,m_ham
+     iglobal = rowindex_local_to_global('H',ilocal)
+
+     matrix_local(ilocal,jlocal) = buffer(iglobal,jglobal)
+
+   enddo
+ enddo
+
+
+
+
+#endif
+
 
 #else
 
+ call xsum(buffer)
  matrix_local(:,:) = buffer(:,:)
 
 #endif
