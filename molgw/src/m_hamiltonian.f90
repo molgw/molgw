@@ -985,8 +985,9 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  real(dp),allocatable :: alpha(:),coeff(:)
 !=====
 
- vhxc_ij(:,:) = 0.0_dp
+ call start_clock(timing_approx_ham)
 
+ vhxc_ij(:,:) = 0.0_dp
 
  write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities'
 
@@ -1066,6 +1067,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  ! Temporary grid destroyed
  call destroy_dft_grid()
 
+ call stop_clock(timing_approx_ham)
 
 end subroutine dft_approximate_vhxc
 

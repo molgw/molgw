@@ -773,14 +773,14 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
  real(dp),external    :: PDLATRA
 !=====
 
-#ifdef HAVE_SCALAPACK
+ call start_clock(timing_approx_ham)
 
  vhxc_ij(:,:) = 0.0_dp
 
  write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities: SCALAPACK'
 
  do iatom=1,natom
-!   if( rank /= MODULO(iatom,nproc) ) cycle
+   if( rank_local /= MODULO(iatom,nproc_local) ) cycle
 
    ngau = 4
    allocate(alpha(ngau),coeff(ngau))
@@ -795,6 +795,8 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
    deallocate(alpha,coeff)
  enddo
 
+ call xlocal_sum(vhxc_ij)
+
 
  write(stdout,*) 'Simple LDA functional on a coarse grid'
 
@@ -808,9 +810,9 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
  !
  if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis)
 
- buffer(:,:)   = 0.0_dp
  normalization = 0.0_dp
  exc           = 0.0_dp
+ buffer(:,:)   = 0.0_dp
  do igrid=1,ngrid
 
    rr(:) = rr_grid(:,igrid)
@@ -876,7 +878,7 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
  call destroy_dft_grid()
 
 
-#endif
+ call stop_clock(timing_approx_ham)
 
 end subroutine dft_approximate_vhxc_buffer_sca
 

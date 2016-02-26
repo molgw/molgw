@@ -1052,7 +1052,8 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  integer              :: ilocal,jlocal,iglobal,jglobal
 !=====
 
-#ifdef HAVE_SCALAPACK
+ call start_clock(timing_approx_ham)
+
 
  vhxc_ij(:,:) = 0.0_dp
 
@@ -1141,7 +1142,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  call destroy_dft_grid()
 
 
-#endif
+ call stop_clock(timing_approx_ham)
 
 end subroutine dft_approximate_vhxc_sca
 

@@ -1031,8 +1031,8 @@ subroutine calculate_eri_approximate_hartree(basis,m_ham,n_ham,x0_rho,alpha_rho,
          vhrho(ilocal,jlocal) = integrals_cart(kbf,lbf)
        endif
        ! And the symmetric too
-       jglobal = shell(kshell)%istart+kbf-1
        iglobal = shell(lshell)%istart+lbf-1
+       jglobal = shell(kshell)%istart+kbf-1
        ilocal = rowindex_global_to_local('H',iglobal)
        jlocal = colindex_global_to_local('H',jglobal)
        if( ilocal*jlocal /= 0 ) then
