@@ -483,8 +483,18 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
             tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center(:,ipair)
      enddo
 
-     exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
-                        - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+     ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+     !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+     ! C = A^T * A + C
+     call DSYRK('L','T',nbf,nauxil_3center,-1.0_dp/spin_fact,tmp,nauxil_3center,1.0_dp,exchange_ij(:,:,ispin),nbf)
+   enddo
+
+   !
+   ! Need to symmetrize exchange_ij
+   do ibf=1,nbf
+     do jbf=ibf+1,nbf
+       exchange_ij(ibf,jbf,ispin) = exchange_ij(jbf,ibf,ispin)
+     enddo
    enddo
 
  enddo
@@ -541,8 +551,18 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_s
             tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center_lr(:,ipair)
      enddo
 
-     exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
-                        - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+     !exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+     !                   - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+     ! C = A^T * A + C
+     call DSYRK('L','T',nbf,nauxil_3center_lr,-1.0_dp/spin_fact,tmp,nauxil_3center_lr,1.0_dp,exchange_ij(:,:,ispin),nbf)
+   enddo
+
+   !
+   ! Need to symmetrize exchange_ij
+   do ibf=1,nbf
+     do jbf=ibf+1,nbf
+       exchange_ij(ibf,jbf,ispin) = exchange_ij(jbf,ibf,ispin)
+     enddo
    enddo
 
  enddo
