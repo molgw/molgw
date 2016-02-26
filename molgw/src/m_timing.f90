@@ -42,10 +42,11 @@ module m_timing
  integer,parameter :: timing_spectrum            = 28
  integer,parameter :: timing_eri_screening       = 29
  integer,parameter :: timing_hamiltonian_ecp     = 30
- integer,parameter :: timing_sca_distr           = 31
+ integer,parameter :: timing_sca_distr1          = 31
  integer,parameter :: timing_grid_generation     = 32
  integer,parameter :: timing_diis                = 33
  integer,parameter :: timing_approx_ham          = 34
+ integer,parameter :: timing_sca_distr2          = 35
  
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -182,8 +183,9 @@ subroutine output_timing()
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'MP2 energy'      ,timing(timing_mp2_energy),calls(timing_mp2_energy)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'MP2 self-energy' ,timing(timing_mp2_self),calls(timing_mp2_self)
  write(stdout,'(a)') '                 ----------------------'
- if( calls(timing_sca_distr) > 0 ) then
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing SCA    ' ,timing(timing_sca_distr),calls(timing_sca_distr)
+ if( calls(timing_sca_distr1)+calls(timing_sca_distr2) > 0 ) then
+   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing SCA1   ' ,timing(timing_sca_distr1),calls(timing_sca_distr2)
+   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing SCA2   ' ,timing(timing_sca_distr1),calls(timing_sca_distr2)
  endif
 
  !

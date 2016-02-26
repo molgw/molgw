@@ -54,7 +54,7 @@ subroutine reduce_hamiltonian_sca(m_ham,n_ham,matrix_local)
  real(dp),allocatable :: matrix_block(:,:)
 !=====
 
- call start_clock(timing_sca_distr)
+ call start_clock(timing_sca_distr1)
 
  nbf = SIZE(buffer(:,:),DIM=1)
 
@@ -120,7 +120,7 @@ subroutine reduce_hamiltonian_sca(m_ham,n_ham,matrix_local)
 
 #endif
 
- call stop_clock(timing_sca_distr)
+ call stop_clock(timing_sca_distr1)
 
 end subroutine reduce_hamiltonian_sca
 
@@ -140,12 +140,13 @@ subroutine broadcast_hamiltonian_sca(m_ham,n_ham,matrix_local)
  real(dp),allocatable :: matrix_block(:,:)
 !=====
 
- call start_clock(timing_sca_distr)
+ call start_clock(timing_sca_distr2)
 
  nbf = SIZE(buffer(:,:),DIM=1)
 
 #ifdef HAVE_SCALAPACK
 
+#if 0
  ! Loops over the SCALAPACK grid
  do ipcol=0,npcol_ham-1
    do iprow=0,nprow_ham-1
@@ -180,6 +181,24 @@ subroutine broadcast_hamiltonian_sca(m_ham,n_ham,matrix_local)
    enddo
  enddo
 
+#else
+
+ buffer(:,:) = buffer(:,:) / REAL( nproc , dp )
+ if( cntxt_ham > 0 ) then
+   do jlocal=1,n_ham
+     jglobal = colindex_local_to_global('H',jlocal)
+     do ilocal=1,m_ham
+       iglobal = rowindex_local_to_global('H',ilocal)
+
+       buffer(iglobal,jglobal) = buffer(iglobal,jglobal) + matrix_local(ilocal,jlocal)
+
+     enddo
+   enddo
+ endif
+ call xsum(buffer)
+
+#endif
+
 
 #else
 
@@ -187,7 +206,7 @@ subroutine broadcast_hamiltonian_sca(m_ham,n_ham,matrix_local)
 
 #endif
 
- call stop_clock(timing_sca_distr)
+ call stop_clock(timing_sca_distr2)
 
 end subroutine broadcast_hamiltonian_sca
 
