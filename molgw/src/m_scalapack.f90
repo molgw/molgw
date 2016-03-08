@@ -565,8 +565,11 @@ subroutine product_abc_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix,
 
    allocate(m_matrix(mmat,lmat))
   
-   m_matrix(:,:) = MATMUL( a_matrix , b_matrix )
-   d_matrix(:,:) = MATMUL( m_matrix , c_matrix )
+!   m_matrix(:,:) = MATMUL( a_matrix , b_matrix )
+!   d_matrix(:,:) = MATMUL( m_matrix , c_matrix )
+   call DGEMM('N','N',mmat,lmat,kmat,1.0_dp,a_matrix,mmat,b_matrix,kmat,0.0_dp,m_matrix,mmat)
+   call DGEMM('N','N',mmat,nmat,lmat,1.0_dp,m_matrix,mmat,c_matrix,lmat,0.0_dp,d_matrix,mmat)
+
   
    deallocate(m_matrix)
 
@@ -576,8 +579,10 @@ subroutine product_abc_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix,
 
  allocate(m_matrix(mmat,lmat))
 
- m_matrix(:,:) = MATMUL( a_matrix , b_matrix )
- d_matrix(:,:) = MATMUL( m_matrix , c_matrix )
+! m_matrix(:,:) = MATMUL( a_matrix , b_matrix )
+! d_matrix(:,:) = MATMUL( m_matrix , c_matrix )
+ call DGEMM('N','N',mmat,lmat,kmat,1.0_dp,a_matrix,mmat,b_matrix,kmat,0.0_dp,m_matrix,mmat)
+ call DGEMM('N','N',mmat,nmat,lmat,1.0_dp,m_matrix,mmat,c_matrix,lmat,0.0_dp,d_matrix,mmat)
 
  deallocate(m_matrix)
 
@@ -714,8 +719,10 @@ subroutine product_transaba_scalapack(scalapack_block_min,a_matrix,b_matrix,c_ma
 
    allocate(m_matrix(mmat,kmat))
   
-   m_matrix(:,:) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
-   c_matrix(:,:)   = MATMUL( m_matrix , a_matrix )
+!   m_matrix(:,:) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
+!   c_matrix(:,:) = MATMUL( m_matrix , a_matrix )
+   call DGEMM('T','N',mmat,kmat,kmat,1.0_dp,a_matrix,kmat,b_matrix,kmat,0.0_dp,m_matrix,mmat)
+   call DGEMM('N','N',mmat,mmat,kmat,1.0_dp,m_matrix,mmat,a_matrix,kmat,0.0_dp,c_matrix,mmat)
   
    deallocate(m_matrix)
 
@@ -725,8 +732,10 @@ subroutine product_transaba_scalapack(scalapack_block_min,a_matrix,b_matrix,c_ma
 
  allocate(m_matrix(mmat,kmat))
 
- m_matrix(:,:) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
- c_matrix(:,:)   = MATMUL( m_matrix , a_matrix )
+! m_matrix(:,:) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
+! c_matrix(:,:) = MATMUL( m_matrix , a_matrix )
+ call DGEMM('T','N',mmat,kmat,kmat,1.0_dp,a_matrix,kmat,b_matrix,kmat,0.0_dp,m_matrix,mmat)
+ call DGEMM('N','N',mmat,mmat,kmat,1.0_dp,m_matrix,mmat,a_matrix,kmat,0.0_dp,c_matrix,mmat)
 
  deallocate(m_matrix)
 

@@ -152,7 +152,7 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
  write(stdout,'(/,a)') ' Performing the SCALAPACK block diago when A-B is diagonal'
 
  ! First symmetrize (A+B) (lower triangular matrix)
- ! Use X as a work buffer
+ ! Use X+Y as a work buffer
  call symmetrize_matrix_sca('L',nmat,desc_apb,apb_matrix,desc_x,xpy_matrix)
 
  ! Set (A-B)^1/2

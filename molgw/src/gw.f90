@@ -230,7 +230,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
 
      do ipole=1,wpol%npole_reso
 
-       if( rank /= MODULO(ipole,nproc) ) cycle
+       if( rank /= MODULO(ipole-1,nproc) ) cycle
 
        select case(gwmethod)
 
