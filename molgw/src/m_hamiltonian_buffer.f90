@@ -24,7 +24,7 @@ subroutine allocate_parallel_buffer(nbf)
 !=====
 
  write(stdout,'(/,x,a)') 'For SCALAPACK buffer, only this buffer is not distributed'
- call clean_allocate('non distributed SCALAPACK buffer',buffer,nbf,nbf)
+ call clean_allocate('non distributed buffer',buffer,nbf,nbf)
 
 end subroutine allocate_parallel_buffer
 
@@ -35,7 +35,7 @@ subroutine destroy_parallel_buffer()
 
 !=====
 
- call clean_deallocate('non distributed SCALAPACK buffer',buffer)
+ call clean_deallocate('non distributed buffer',buffer)
 
 end subroutine destroy_parallel_buffer
 

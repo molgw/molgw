@@ -256,7 +256,7 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='tolscf'
 vl[i].family   ='scf'
-vl[i].default  =1.0E-7
+vl[i].default  =1.0e-7
 vl[i].datatype ='real'
 vl[i].comment  ='Sets the residual norm target for the density matrix for the SCF cycles.'
 
@@ -274,7 +274,7 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='min_overlap'
 vl[i].family   ='scf'
-vl[i].default  =1.0E-6
+vl[i].default  =1.0e-5
 vl[i].datatype ='real'
 vl[i].comment  ='Sets the minimal eigenvalue of the overlap matrix S. Small eigenvalues imply overcompleteness of the basis set.'
 
