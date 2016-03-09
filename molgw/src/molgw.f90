@@ -158,7 +158,7 @@ program molgw
  allocate(         occupation(nstate,nspin))
  allocate(             energy(nstate,nspin))
  allocate(exchange_m_vxc_diag(nstate,nspin))
- if( parallel_buffer ) call allocate_parallel_buffer(basis%nbf)
+ if( parallel_ham .AND. parallel_buffer ) call allocate_parallel_buffer(basis%nbf)
 
 
 
@@ -338,7 +338,7 @@ program molgw
                  occupation,energy)
  endif
 
- if( parallel_buffer )            call destroy_parallel_buffer()
+ if( parallel_ham .AND. parallel_buffer )            call destroy_parallel_buffer()
  
  call start_clock(timing_postscf)
 

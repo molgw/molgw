@@ -833,7 +833,7 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
 
  buffer(:,:) = 0.0_dp
  do iatom=1,natom
-   if( rank /= MODULO(iatom,nproc) ) cycle
+   if( rank /= MODULO(iatom-1,nproc) ) cycle
 
    ngau = 4
    allocate(alpha(ngau),coeff(ngau))
