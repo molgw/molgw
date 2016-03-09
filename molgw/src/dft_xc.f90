@@ -55,7 +55,7 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
  real(dp)             :: vxc_av(nspin)
  real(dp)             :: dedd_r(nspin)
  real(dp)             :: dedgd_r(3,nspin)
- real(dp)             :: omega
+ real(dp)             :: gradtmp(basis%nbf)
  character(len=256)   :: string
 !=====
 
@@ -262,21 +262,27 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
    if( .NOT. require_gradient ) then 
      ! LDA
      do ispin=1,nspin
+#if 0
        do jbf=1,basis%nbf
          ! Only the lower part is calculated
-         do ibf=1,jbf ! basis%nbf 
+         do ibf=jbf,basis%nbf 
            vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight &
                *  dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf) 
          enddo
        enddo
+#else
+       call DSYR('L',basis%nbf,weight*dedd_r(ispin),basis_function_r,1,vxc_ij(:,:,ispin),basis%nbf)
+#endif
      enddo
 
    else 
      ! GGA
      do ispin=1,nspin
+
+#if 0
        do jbf=1,basis%nbf
          ! Only the lower part is calculated
-         do ibf=1,jbf ! basis%nbf 
+         do ibf=jbf,basis%nbf 
            vxc_ij(ibf,jbf,ispin) = vxc_ij(ibf,jbf,ispin) + weight  &
                * dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf) 
 
@@ -286,6 +292,16 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
                                     + basis_function_gradr(:,jbf) * basis_function_r(ibf) )
          enddo
        enddo
+#else
+
+       gradtmp(:) = MATMUL( dedgd_r(:,ispin) , basis_function_gradr(:,:) )
+
+       call DSYR('L',basis%nbf,weight*(dedd_r(ispin)-1.0_dp),basis_function_r,1,vxc_ij(:,:,ispin),basis%nbf)
+
+       call DSYR('L',basis%nbf, weight,basis_function_r+gradtmp,1,vxc_ij(:,:,ispin),basis%nbf)
+       call DSYR('L',basis%nbf,-weight,gradtmp                 ,1,vxc_ij(:,:,ispin),basis%nbf)
+
+#endif
      enddo
    endif
 !   call stop_clock(timing_tmp2)
@@ -298,7 +314,7 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
  ! Symmetrize now
  do ispin=1,nspin
    do jbf=1,basis%nbf
-     do ibf=1,jbf-1 ! basis%nbf 
+     do ibf=jbf+1,basis%nbf 
        vxc_ij(jbf,ibf,ispin) = vxc_ij(ibf,jbf,ispin)
      enddo
    enddo

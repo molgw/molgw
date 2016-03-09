@@ -523,7 +523,7 @@ subroutine dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix
  real(dp)             :: vxc_av(nspin)
  real(dp)             :: dedd_r(nspin)
  real(dp)             :: dedgd_r(3,nspin)
- real(dp)             :: omega
+ real(dp)             :: gradtmp(basis%nbf)
  character(len=256)   :: string
 !=====
 
@@ -735,19 +735,24 @@ subroutine dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix
      !
      if( .NOT. require_gradient ) then 
        ! LDA
+#if 0
        do jbf=1,basis%nbf
          ! Only the lower part is calculated
-         do ibf=1,jbf ! basis%nbf 
+         do ibf=jbf,basis%nbf 
            buffer(ibf,jbf) =  buffer(ibf,jbf) + weight &
                *  dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf) 
          enddo
        enddo
+#else
+       call DSYR('L',basis%nbf,weight*dedd_r(ispin),basis_function_r,1,buffer,basis%nbf)
+#endif
 
      else 
        ! GGA
+#if 0
        do jbf=1,basis%nbf
          ! Only the lower part is calculated
-         do ibf=1,jbf ! basis%nbf 
+         do ibf=jbf,basis%nbf 
            buffer(ibf,jbf) = buffer(ibf,jbf) +  weight                    &
                      * (  dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf)    &
                          + DOT_PRODUCT( dedgd_r(:,ispin) ,                                 &
@@ -755,13 +760,21 @@ subroutine dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix
                                      + basis_function_gradr(:,jbf) * basis_function_r(ibf) ) )
          enddo
        enddo
+#else
+       gradtmp(:) = MATMUL( dedgd_r(:,ispin) , basis_function_gradr(:,:) )
+
+       call DSYR('L',basis%nbf,weight*(dedd_r(ispin)-1.0_dp),basis_function_r,1,vxc_ij(:,:,ispin),basis%nbf)
+       call DSYR('L',basis%nbf, weight,basis_function_r+gradtmp,1,vxc_ij(:,:,ispin),basis%nbf)
+
+       call DSYR('L',basis%nbf,-weight,gradtmp                 ,1,vxc_ij(:,:,ispin),basis%nbf)
+#endif
      endif
 
    enddo ! loop on the grid point
 
    ! Symmetrize now
    do jbf=1,basis%nbf
-     do ibf=1,jbf-1
+     do ibf=jbf+1,basis%nbf
        buffer(jbf,ibf) = buffer(ibf,jbf)
      enddo
    enddo
