@@ -762,11 +762,8 @@ subroutine dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix
        enddo
 #else
        gradtmp(:) = MATMUL( dedgd_r(:,ispin) , basis_function_gradr(:,:) )
-
-       call DSYR('L',basis%nbf,weight*(dedd_r(ispin)-1.0_dp),basis_function_r,1,vxc_ij(:,:,ispin),basis%nbf)
-       call DSYR('L',basis%nbf, weight,basis_function_r+gradtmp,1,vxc_ij(:,:,ispin),basis%nbf)
-
-       call DSYR('L',basis%nbf,-weight,gradtmp                 ,1,vxc_ij(:,:,ispin),basis%nbf)
+       call DSYR('L',basis%nbf,weight*dedd_r(ispin),basis_function_r,1,buffer,basis%nbf)
+       call DSYR2('L',basis%nbf,weight,basis_function_r,1,gradtmp,1,buffer,basis%nbf)
 #endif
      endif
 
