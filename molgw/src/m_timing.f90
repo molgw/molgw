@@ -67,6 +67,8 @@ module m_timing
  
 contains
 
+
+!=========================================================================
 subroutine init_timing()
  implicit none
  
@@ -99,6 +101,8 @@ subroutine start_clock(itiming)
 
 end subroutine start_clock
  
+
+!=========================================================================
 subroutine stop_clock(itiming)
  implicit none
  integer,intent(in) :: itiming
@@ -120,6 +124,8 @@ subroutine stop_clock(itiming)
 
 end subroutine stop_clock
 
+
+!=========================================================================
 subroutine output_timing()
  implicit none
 !=====
@@ -127,12 +133,12 @@ subroutine output_timing()
  write(stdout,'(/,a,/)') '                 --- Timings in (s) and # of calls ---'
 
  write(stdout,'(a30,6x,f12.2)')  'Total time',timing(timing_total)
- write(stdout,'(/,a,/)') '                 ----------------------'
+ write(stdout,'(/,a,/)') '                 -------------------------------------'
 
  write(stdout,'(a30,6x,f12.2)')  'Total pre SCF',timing(timing_prescf)
  write(stdout,'(a30,6x,f12.2)')      'Total SCF',timing(timing_scf)
  write(stdout,'(a30,6x,f12.2)') 'Total post SCF',timing(timing_postscf)
- write(stdout,'(/,a,/)') '                 ----------------------'
+ write(stdout,'(/,a,/)') '                 -------------------------------------'
 
  write(stdout,'(a30,6x,f12.2,2x,i8)')          'Integral screening',timing(timing_eri_screening),calls(timing_eri_screening)
  if( calls(timing_eri_4center) > 0 ) then
@@ -182,7 +188,7 @@ subroutine output_timing()
  write(stdout,*)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'MP2 energy'      ,timing(timing_mp2_energy),calls(timing_mp2_energy)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'MP2 self-energy' ,timing(timing_mp2_self),calls(timing_mp2_self)
- write(stdout,'(a)') '                 ----------------------'
+ write(stdout,'(a)') '                 -------------------------------------'
  if( calls(timing_sca_distr1)+calls(timing_sca_distr2) > 0 ) then
    write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing SCA1   ' ,timing(timing_sca_distr1),calls(timing_sca_distr2)
    write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing SCA2   ' ,timing(timing_sca_distr1),calls(timing_sca_distr2)
@@ -205,6 +211,8 @@ subroutine output_timing()
    write(stdout,*)
  endif
 
-end subroutine
+end subroutine output_timing
 
+
+!=========================================================================
 end module m_timing

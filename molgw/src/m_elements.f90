@@ -6,13 +6,21 @@ module m_elements
  use m_warning,only: die
 
 
- integer,parameter,private :: nelement_max = 54
+ integer,parameter,private :: nelement_max = 103
  character(len=2),parameter,private :: element_list(nelement_max) =                            &
-  (/' H',                                                                                'He', &  !  2
-    'Li','Be',                                                  ' B',' C',' N',' O',' F','Ne', &  ! 10
-    'Na','Mg',                                                  'Al','Si',' P',' S','Cl','Ar', &  ! 18
-    ' K','Ca','Sc','Ti',' V','Cr','Mn','Fe','Co','Ni','Cu','Zn','Ga','Ge','As','Se','Br','Kr', &  ! 36
-    'Rb','Sr',' Y','Zr','Nb','Mo','Tc','Ru','Rh','Pd','Ag','Cd','In','Sn','Sb','Te',' I','Xe'  /) ! 54
+  (/' H',                                                                                'He', &  !   2
+    'Li','Be',                                                  ' B',' C',' N',' O',' F','Ne', &  !  10
+    'Na','Mg',                                                  'Al','Si',' P',' S','Cl','Ar', &  !  18
+    ' K','Ca','Sc','Ti',' V','Cr','Mn','Fe','Co','Ni','Cu','Zn','Ga','Ge','As','Se','Br','Kr', &  !  36
+    'Rb','Sr',' Y','Zr','Nb','Mo','Tc','Ru','Rh','Pd','Ag','Cd','In','Sn','Sb','Te',' I','Xe', &  !  54
+    'Cs','Ba',                                                                                 &  !  56
+    'La','Ce','Pr','Nd','Pm','Sm','Eu','Gd','Tb','Dy','Ho','Er','Tm','Yb',                     &  !  70
+              'Lu','Hf','Ta',' W','Re','Os','Ir','Pt','Au','Hg','Tl','Pb','Bi','Po','At','Rn', &  !  86
+    'Fr','Ra',                                                                                 &  !  88
+              'Ac','Th','Pa',' U','Np','Pu','Am','Cm','Bk','Cf','Es','Fm','Md','No',           &  ! 102
+    'Lr'                                                                                       &  ! 103
+  /)
+
 
 
 

@@ -1042,11 +1042,7 @@ end subroutine my_gga_exc_vxc_hjs
 subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
 
  implicit none
-!
-!case...start
-! #include "case.fh"
-!case...end
-!
+
 ! HSE evaluates the Heyd et al. Screened Coulomb
 ! Exchange Functional
 !
