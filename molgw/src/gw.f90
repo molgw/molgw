@@ -305,7 +305,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
            do iomegai=-nomegai,nomegai
              selfenergy_omega(iomegai,astate,1,ispin) = selfenergy_omega(iomegai,astate,1,ispin) &
                       + bra(ipole,astate) * bra(ipole,astate)                                          & 
-                        * ( REAL(  fact_full_i   / ( energy_qp(astate,ispin) + omegai(iomegai) - energy_qp(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
+                        * ( REAL(  fact_full_i  / ( energy_qp(astate,ispin) + omegai(iomegai) - energy_qp(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
                           + REAL(  fact_empty_i / ( energy_qp(astate,ispin) + omegai(iomegai) - energy_qp(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
            enddo
          enddo
@@ -339,9 +339,9 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
            ! SEX
            !
            selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
-                      - bra(ipole,astate) * bra(ipole,astate) &
-                            * fact_full_i / (-wpol%pole(ipole)) * 2.0_dp &
-                          *  ( 0.75_dp + fact_full_a *0.50_dp)
+                      + bra(ipole,astate) * bra(ipole,astate) &
+                            * fact_full_i / wpol%pole(ipole) * 2.0_dp &
+                          *  1.06_dp
 
            !
            ! COH
@@ -349,7 +349,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
            selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
                       - bra(ipole,astate) * bra(ipole,astate) &
                             / wpol%pole(ipole)  &
-                          *  ( 0.75_dp + fact_full_a *0.25_dp)
+                          *  0.84_dp
          enddo
 
 
