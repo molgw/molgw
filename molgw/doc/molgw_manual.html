@@ -13,15 +13,58 @@
 
 
 
+<h2><span style="font-variant: small-caps">molgw</span>: What is it?</h2>
+
+<p>
+<span style="font-variant: small-caps">molgw</span>
+is a code that implements the many-body perturbtation theory (MBPT) to describe the excited electronic state in finite systems (atoms, molecules, clusters).<br>
+It most importantly implements the <i>GW</i> approximation for the self-energy and the Bethe-Salpeter equation for the optical excitations.
+</p>
+<p> 
+<span style="font-variant: small-caps">molgw</span>
+comes with a fully functional density-functional theory (DFT) code to prepare the subsequent MBPT runs.<br>
+Standard local and semi-local approximations to DFT are available, as well as several hybrid functionals and range-separated hybrid functionals.<br>
+<span style="font-variant: small-caps">molgw</span>
+uses a Gaussian-type orbitals basis set so to reuse all the standard quantum-chemistry tools.
+</p>
+<p> 
+In parallel, 
+<span style="font-variant: small-caps">molgw</span>
+can straightforwardly calculate systems containing about 100 atoms
+or, in terms of basis functions, systems requiring about 2000 basis functions.<br>
+Larger calculations are of course feasible, but require large computers, lots of memory, and some patience...
+</p>
+
+
+
+
 <h2>Compilation</h2>
 
-<p><span style="font-variant: small-caps">molgw</span> requires working Fortran and C compilers.</p>
+<p>
+<span style="font-variant: small-caps">molgw</span> requires working Fortran2003 and C compilers.<br>
+The code has been extensively tested with gfortran/gcc and with ifort/icc suites.</p>
 
-<p><span style="font-variant: small-caps">molgw</span> requires three external libraries:
+
+<p>
+Some scripts for <span style="font-variant: small-caps">molgw</span> use Python3, however it is not mandatory.
+</p>
+
+
+<p>
+<span style="font-variant: small-caps">molgw</span> requires three external libraries:
+</p>
 <ul>
- <li><b>BLAS/LAPACK</b> for linear algegra from <a href='http://www.netlib.org/lapack/'>netlib.org</a> or better from the vendor of your specific machine.
- <li><b>Libint</b> for the Coulomb integrals evaluation. <a href='http://sourceforge.net/projects/libint/files/libint-for-mpqc/'>Download Page</a>
- <li><b>Libxc</b> for the exchange-correlation approximation of DFT. <a href='http://www.tddft.org/programs/octopus/wiki/index.php/Libxc:download'>Download Page</a>
+<li><b>BLAS/LAPACK</b> (<i>mandatory</i>) for linear algegra from <a href='http://www.netlib.org/lapack/'>netlib.org</a> or better from the vendor of your specific machine.
+ <li><b>Libint</b> (<i>mandatory</i>) for the Coulomb integrals evaluation. <a href='http://sourceforge.net/projects/libint/files/libint-for-mpqc/'>Download Page</a> <br>
+        Version &ge; 2.0.0-stable
+ <li><b>Libxc</b> (<i>mandatory</i>) for the exchange-correlation approximation of DFT. <a href='http://www.tddft.org/programs/octopus/wiki/index.php/Libxc:download'>Download Page</a> <br>
+        Version &ge; 2.2.0
+</ul>
+
+<p><span style="font-variant: small-caps">molgw</span> needs two external libraries to run in parallel:
+<ul>
+ <li><b>MPI</b> (<i>optional</i>) for distributed calculations from <a href='https://www.open-mpi.org/'>open-mpi.org</a> or better from the vendor of your specific machine.
+ <li><b>SCALAPACK</b> (<i>optional</i>) for distributed linear algegra from <a href='http://www.netlib.org/lapack/'>netlib.org</a> or better from the vendor of your specific machine.
 </ul>
 </p>
 
@@ -31,13 +74,39 @@ Examples for this file are provided in folder <span style="font-family: Courier"
 
 <p><b>Note:</b> be careful about compiling Libxc (that contains Fortran modules) with the same Fortran compiler as <span style="font-variant: small-caps">molgw</span>.
 
+
+<h2>Running the tests</h2>
+
+<p>
+A test suite can be run automatically if Python3 is available.
+The script <code>run_testsuite.py</code> is located in <span style="font-family: Courier">~molgw/tests</span>.
+It runs both in serial:
+</p>
+<div class="codebox">
+&#36; ./run_testsuite.py 
+</div>
+<p>
+or in parallel (with 4 cores for instance):
+<div class="codebox">
+&#36; ./run_testsuite.py --np 4 --mpirun='mpirun'
+</div>
+</p>
+<p>Some help can be further obtained with</p>
+<div class="codebox">
+&#36; ./run_testsuite.py --help
+</div>
+
+
+
+
 <h2>Input file</h2>
 
-<p>The input file made of two sections:</p>
+<p>The input file consists of two sections:</p>
 <ul>
-  <li>A fortran namelist named molgw. It starts with <code>&amp;molgw</code> and ends with /.
+  <li>A fortran namelist named <code>molgw</code>. It starts with <code>&amp;molgw</code> and ends with /.<br>
+      Comments starting with delimiter ! are allowed.
   <li>A list of elements and the cartesian coordinates. The element is either an integer or a symbol (e.g. 4 or Be).<br>
-   The coordinates are in 'angstrom' by default, but can be input in 'bohr' if the statement length_unit='bohr' is in the previous &amp;molgw namelist.
+   The coordinates are in 'angstrom' by default, but can be input in 'bohr' if the statement <code>length_unit='bohr'</code> is in the previous <code>&amp;molgw</code> namelist.
 </ul>
 
 
@@ -52,7 +121,7 @@ Examples for this file are provided in folder <span style="font-family: Courier"
 </div>
 
 
-<p>A longer example:</p>
+<p>A slightly longer example:</p>
 <div class="codebox">
  <pre>&amp;molgw                                                                           
    ! Formaldehyde
@@ -81,7 +150,7 @@ Examples for this file are provided in folder <span style="font-family: Courier"
 
 
 
-<h2>Run the executable</h2>
+<h2>Running the code</h2>
 
 <p>If the name of the input file is <span style="font-family: Courier">molgw.in</span>, then</p>
 <div class="codebox">
@@ -103,7 +172,7 @@ Examples for this file are provided in folder <span style="font-family: Courier"
     This file contains all the necessary information to skip the SCF cycles and go directly to the postscf step.
 
   <li> <code>STOP</code><br>
-    If a STOP file is present in the current folder, then the SCF cycling will be smoothly stop after the completion
+    If a STOP file is present in the current folder, then the SCF cycling will be smoothly stopped after the completion
     of the current cycle and the code will proceed to the post-SCF part.
     This might be useful when the SCF procedure is almost converged but has difficulties to improve further.
 

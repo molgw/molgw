@@ -604,6 +604,28 @@ vl[i].datatype ='integer'
 vl[i].comment  ='Sets number of column processors for SCALAPACK distribution of the SCF matrices.  \
 nprow X npcol should be lower or equal to the number of processors.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='alpha_cohsex'
+vl[i].family   ='post'
+vl[i].default  =1.0
+vl[i].datatype ='real'
+vl[i].comment  ='Sets the amount of static Screened EXchange in the self-energy. Only works with scf=\'COHSEX\' or with postscf=\'COHSEX\'.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='beta_cohsex'
+vl[i].family   ='post'
+vl[i].default  =1.0
+vl[i].datatype ='real'
+vl[i].comment  ='Sets the amount of static COulomb Hole in the self-energy. Only works with scf=\'COHSEX\' or with postscf=\'COHSEX\'.'
+
+
+
+
+
 
 
 

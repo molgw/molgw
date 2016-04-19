@@ -69,15 +69,19 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  case(GV)
    write(stdout,*) 'Perform a perturbative HF calculation'
  case(QS)
-   write(stdout,*) 'Perform a QP self-consistent GW calculation'
+   write(stdout,*) 'Perform a QP self-consistent GW calculation (QSGW)'
  case(G0W0)
    write(stdout,*) 'Perform a one-shot G0W0 calculation'
  case(COHSEX)
    write(stdout,*) 'Perform a COHSEX calculation'
+   if( ABS(alpha_cohsex - 1.0_dp) > 1.0e-4_dp .OR. ABS(beta_cohsex - 1.0_dp) > 1.0e-4_dp ) then
+     write(stdout,'(a,2(2x,f12.6))') ' Tuned COHSEX with parameters alpha, beta: ',alpha_cohsex,beta_cohsex
+   endif
  case(QSCOHSEX)
    write(stdout,*) 'Perform a self-consistent COHSEX calculation'
- case(CUSTOMIZED)
-   write(stdout,*) 'Perform a devel COHSEX calculation'
+   if( ABS(alpha_cohsex - 1.0_dp) > 1.0e-4_dp .OR. ABS(beta_cohsex - 1.0_dp) > 1.0e-4_dp ) then
+     write(stdout,'(a,2(2x,f12.6))') ' Tuned COHSEX with parameters alpha, beta: ',alpha_cohsex,beta_cohsex
+   endif
  case(GnW0)
    write(stdout,*) 'Perform an eigenvalue self-consistent GnW0 calculation'
  case(GnWn)
@@ -113,7 +117,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
 
 
  select case(gwmethod)
- case(GV,QS,COHSEX,GSIGMA3,QSCOHSEX,GnW0,GnWn,CUSTOMIZED)
+ case(GV,QS,COHSEX,GSIGMA3,QSCOHSEX,GnW0,GnWn)
    nomegai = 0
    allocate(omegai(-nomegai:nomegai))
    omegai(0) = 0.0_dp
@@ -176,7 +180,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  ! Which calculation type needs a complex sigma?
  !
  select case(gwmethod)
- case(COHSEX,GV,GSIGMA,G0W0,GnW0,GnWn,CUSTOMIZED)   ! diagonal real
+ case(COHSEX,GV,GSIGMA,G0W0,GnW0,GnWn)   ! diagonal real
    allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,1,nspin))
 
  case(QS,QSCOHSEX,GSIGMA3) ! matrix real
@@ -318,58 +322,38 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
            ! SEX
            !
            selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
-                      - bra(ipole,astate) * bra(ipole,astate) &
-                            * fact_full_i / (-wpol%pole(ipole)) * 2.0_dp
-
-           !
-           ! COH
-           !
-           selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
-                      - bra(ipole,astate) * bra(ipole,astate) &
-                            / wpol%pole(ipole)
-
-         enddo
-
-       case(CUSTOMIZED)
-
-         do astate=nsemin,nsemax
-           fact_full_a   = occupation(astate,ispin) / spin_fact
-           fact_empty_a  = (spin_fact - occupation(astate,ispin)) / spin_fact
-           !
-           ! SEX
-           !
-           selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
                       + bra(ipole,astate) * bra(ipole,astate) &
-                            * fact_full_i / wpol%pole(ipole) * 2.0_dp &
-                          *  1.06_dp
+                            * fact_full_i / wpol%pole(ipole) * 2.0_dp  &
+                            * alpha_cohsex
 
            !
            ! COH
            !
            selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
                       - bra(ipole,astate) * bra(ipole,astate) &
-                            / wpol%pole(ipole)  &
-                          *  0.84_dp
-         enddo
+                            / wpol%pole(ipole)                &
+                            * beta_cohsex
 
+         enddo
 
        case(QSCOHSEX) 
-
          do bstate=nsemin,nsemax
            do astate=nsemin,nsemax
              !
              ! SEX
              !
              selfenergy_omega(0,astate,bstate,ispin) = selfenergy_omega(0,astate,bstate,ispin) &
-                        - bra(ipole,astate) * bra(ipole,bstate)                            & 
-                              * fact_full_i / (-wpol%pole(ipole)) * 2.0_dp
+                        + bra(ipole,astate) * bra(ipole,bstate)                                & 
+                              * fact_full_i / wpol%pole(ipole) * 2.0_dp                        &
+                              * alpha_cohsex
 
              !
              ! COH
              !
              selfenergy_omega(0,astate,bstate,ispin) = selfenergy_omega(0,astate,bstate,ispin) &
                         - bra(ipole,astate) * bra(ipole,bstate) & 
-                              / wpol%pole(ipole)
+                              / wpol%pole(ipole)                &
+                              * beta_cohsex
            enddo
          enddo
 
@@ -421,6 +405,14 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
 
 
  case(QSCOHSEX)
+   !FBFB
+   write(stdout,*)  'FBFB    #    sigc  '
+   do ispin=1,nspin
+     do astate=nsemin,nsemax
+       write(stdout,*) astate,selfenergy_omega(0,astate,astate,ispin)
+     enddo
+   enddo
+   write(stdout,*) 
    ! Transform the matrix elements back to the AO basis
    ! do not forget the overlap matrix S
    ! C^T S C = I
@@ -455,7 +447,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
    call write_energy_qp(nstate,energy_qp_new)
 
 
- case(COHSEX,CUSTOMIZED) !==========================================================
+ case(COHSEX) !==========================================================
 
    ! Only had the diagonal calculated...
    selfenergy(:,:,:) = 0.0_dp

@@ -2,9 +2,17 @@
 #                 MOLGW
 =========================================
 
-Many-body perturbation theory and (TD)-DFT calculations for small to medium molecules
+Many-body perturbation theory for small to medium molecules
+
+
+## Getting started
+
+This is a minimalist README file.
+Many more details can be found ~/doc/molgw_manual.html
+
 
 ##Features
+
 - Hartree-Fock
 - LDA (PW, VWN)
 - GGA (PBE, PW91, BLYP)
@@ -27,7 +35,7 @@ Many-body perturbation theory and (TD)-DFT calculations for small to medium mole
 
 ##Installation
 
-MOLGW needs Fortran 2003, c and c++ compilers.
+MOLGW needs Fortran 2003, C and C++ compilers.
 The machine dependent variables should be set in file `~molgw/src/my_machine.arch`
 Examples for this file are given in the folder `~molgw/config/`.
 Then
@@ -36,9 +44,9 @@ Then
 
 - BLAS and LAPACK linear algebra libraries are required.
 - libint is required:
-http://sourceforge.net/projects/libint/files/libint-for-beginners/libint-2.0.0-prealpha.tgz/download
-- libxc is required: (version > 2.0.1) for DFT calculations
-http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.0.1.tar.gz
+https://sourceforge.net/projects/libint/files/latest/download?source=files
+- libxc is required: (version >= 2.2.0) for DFT calculations
+http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.2.2.tar.gz
 
 
 ##Basis sets
