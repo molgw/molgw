@@ -249,6 +249,7 @@
      $                   LLDM, INDWORK, ITMP, DIMV, NZ, LIWKOPT
       DOUBLE PRECISION   DTMP
       DOUBLE PRECISION   T_CHOL, T_FORMW, T_DIAG, T_VEC1, T_VEC2, T_PREP
+      DOUBLE PRECISION   DDUM( 3 )
 #ifdef SELECT_PDSYEVX
       DOUBLE PRECISION   ABSTOL
       INTEGER            IFAIL(N)
@@ -259,7 +260,7 @@
 #endif
 *     ..
 *     .. Intrinsic Functions ..
-      INTRINSIC          DBLE, SQRT
+      INTRINSIC          DBLE, DSQRT
 *     ..
 *     .. External Functions ..
       EXTERNAL           NUMROC, MPI_WTIME
@@ -328,15 +329,15 @@
          ABSTOL = PDLAMCH(DESCK(2), 'U')
          CALL PDSYEVX( 'V', 'A', 'L', N, DTMP, IK, JK, DESCK, ZERO,
      $        ZERO, 1, N, ABSTOL, DIMV, NZ, DTMP, ZERO, DTMP, IX, JX,
-     $        DESCX, WORK, -1,
+     $        DESCX, DDUM, -1,
      $        IWORK, -1, IFAIL, ICLUSTR, GAP, ITMP )
          DEALLOCATE(ICLUSTR,GAP)
 #else
          CALL PDSYEVR( 'V', 'A', 'L', N, DTMP, IK, JK, DESCK, ZERO,
-     $        ZERO, 1, N, DIMV, NZ, DTMP, DTMP, IX, JX, DESCX, WORK, -1,
+     $        ZERO, 1, N, DIMV, NZ, DTMP, DTMP, IX, JX, DESCX, DDUM, -1,
      $        IWORK, -1, ITMP )
 #endif
-         LWKOPT = INT( WORK( 1 ) )
+         LWKOPT = INT( DDUM( 1 ) )
          LIWKOPT = IWORK( 1 )
 *
          LWKOPT = INDWORK - 1 + LWKOPT

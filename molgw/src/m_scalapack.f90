@@ -200,15 +200,16 @@ subroutine diagonalize_inplace_sca(nglobal,desc,matrix,eigval)
  ! First call to get the dimension of the array work
  lwork = -1
  liwork = -1
- allocate(work(1))
  allocate(iwork(1))
 #ifdef SELECT_PDSYEVX
+ allocate(work(3))
  ABSTOL = PDLAMCH(desc(2), 'U')
  call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
               ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
               eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
               ifail,iclustr,gap,info)
 #else
+ allocate(work(1))
  call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
 ! call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
 !              neigval,neigvec,eigval,                                &
@@ -288,15 +289,16 @@ subroutine diagonalize_outofplace_sca(nglobal,desc,matrix,eigval,desc_eigvec,eig
  ! First call to get the dimension of the array work
  lwork = -1
  liwork = -1
- allocate(work(1))
  allocate(iwork(1))
 #ifdef SELECT_PDSYEVX
+ allocate(work(3))
  ABSTOL = PDLAMCH(desc(2), 'U')
  call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
               ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
               eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
               ifail,iclustr,gap,info)
 #else
+ allocate(work(1))
  call PDSYEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
 ! call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
 !              neigval,neigvec,eigval,                                &
