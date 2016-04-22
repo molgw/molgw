@@ -13,6 +13,7 @@ Many more details can be found ~/doc/molgw_manual.html
 
 ##Features
 
+MOLGW implements the following schemes:
 - Hartree-Fock
 - LDA (PW, VWN)
 - GGA (PBE, PW91, BLYP)
@@ -35,7 +36,7 @@ Many more details can be found ~/doc/molgw_manual.html
 
 ##Installation
 
-MOLGW needs Fortran 2003, C and C++ compilers.
+MOLGW needs Fortran 2003 and C compilers.
 The machine dependent variables should be set in file `~molgw/src/my_machine.arch`
 Examples for this file are given in the folder `~molgw/config/`.
 Then

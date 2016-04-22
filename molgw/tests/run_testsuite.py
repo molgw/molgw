@@ -1,6 +1,10 @@
 #!/usr/bin/python3
 
 ###################################
+# This file is part of MOLGW
+
+
+###################################
 # Running the MOLGW test suite
 ###################################
 

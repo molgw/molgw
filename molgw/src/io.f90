@@ -52,9 +52,6 @@ subroutine header()
 
 
  write(stdout,'(a)') ' Compilation options:'
-#ifdef TD_SP
- call issue_warning('TD-DFT and BSE are using single precision to save memory')
-#endif
 #ifdef HAVE_LIBXC
 !#ifndef LIBXC_SVN
 ! call xc_f90_version(values(1),values(2))

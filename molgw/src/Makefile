@@ -4,6 +4,7 @@ FC=ifort
 CC=g++
 FCOPTS= -O0
 CCOPTS= 
+CPPFLAGS=
 
 LAPACK=
 
@@ -15,7 +16,7 @@ LIBINT_ROOT=
 
 include ./my_machine.arch
 
-FC_W_OPTS= $(FC) $(FCOPTS) $(OPENMP)
+FC_W_OPTS= $(FC) $(FCOPTS) $(OPENMP) $(CPPFLAGS)
 CC_W_OPTS= $(CC) $(CCOPTS)
 
 LINKS= -lstdc++ -lm
@@ -236,5 +237,5 @@ doc:
 	mv notes.pdf ../doc/notes.pdf
 
 clean:
-	rm -f *.o *.mod molgw.tgz
+	rm -f *.o *.mod molgw.tgz ../molgw
 

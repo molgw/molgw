@@ -176,7 +176,9 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  real(dp),allocatable   :: alpha_diis(:)
  real(dp)               :: residual_pred(m_r_scf,n_r_scf,nspin)
  real(dp)               :: residual,work(1)
+#ifdef HAVE_SCALAPACK
  real(dp),external      :: PDLANGE
+#endif
 !=====
 
  call start_clock(timing_diis)
@@ -197,6 +199,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  if( parallel_ham ) then
 
+#ifdef HAVE_SCALAPACK
    if( cntxt_ham > 0 ) then
 
      do ispin=1,nspin
@@ -239,6 +242,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
      enddo
 
    endif
+#endif
 
  else
 
@@ -337,6 +341,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  ham(:,:,:) = 0.0_dp
  if( parallel_ham ) then
 
+#ifdef HAVE_SCALAPACK
    if( cntxt_ham > 0 ) then
 
      residual = 0.0_dp
@@ -352,6 +357,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
    endif
    write(stdout,'(a,2x,es12.5,/)') ' DIIS predicted residual:',SQRT( residual * nspin )
+#endif
 
  else
 

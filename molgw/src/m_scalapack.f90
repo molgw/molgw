@@ -89,8 +89,10 @@ subroutine gather_distributed_copy(desc,matrix,matrix_global)
    enddo
  enddo
 
+#ifdef HAVE_SCALAPACK
  ! Only the master proc (0,0) gets the complete information
  call DGSUM2D(contxt,'A',' ',mglobal,nglobal,matrix_global,nglobal,0,0)
+#endif
 
 
 end subroutine gather_distributed_copy
