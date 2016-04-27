@@ -1,5 +1,10 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This module contains
+! the methods to deal with the basis set and basis functions
+! It works for both wavefunctions basis sets and auxiliary basis sets
+!
 !=========================================================================
 module m_basis_set
  use m_definitions

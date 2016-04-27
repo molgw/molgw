@@ -1,5 +1,9 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This module contains
+! the structure of the molecule (atomic positions etc)
+!
 !=========================================================================
 module m_atoms
  use m_definitions

@@ -1,5 +1,9 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This module contains
+! the timings of the code
+!
 !=========================================================================
 module m_timing
  use m_definitions

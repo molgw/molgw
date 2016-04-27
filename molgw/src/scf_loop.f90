@@ -3,6 +3,7 @@
 !
 ! This file contains
 ! the main SCF loop for Hartree-Fock or Kohn-Sham
+!
 !=========================================================================
 subroutine scf_loop(is_restart,& 
                     basis,auxil_basis,&

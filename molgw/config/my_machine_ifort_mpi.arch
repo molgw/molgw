@@ -1,7 +1,9 @@
 OPENMP= 
 
 # Parallel MPI SCALAPACK compilation
-FC=mpif90 -fpp -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK 
+FC=mpif90 -fpp
+
+CPPFLAGS= -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK
 
 CC=icc
 FCOPTS= -O3 -xhost -opt-matmul

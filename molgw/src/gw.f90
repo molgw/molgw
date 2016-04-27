@@ -1,5 +1,9 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This file contains the calculation of the GW self-energy
+! within different flavors: G0W0, GnW0, GnWn, COHSEX
+!
 !=========================================================================
 subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy,energy_gw)
  use m_definitions
@@ -324,7 +328,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
            selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
                       + bra(ipole,astate) * bra(ipole,astate) &
                             * fact_full_i / wpol%pole(ipole) * 2.0_dp  &
-                            * alpha_cohsex
+                            * beta_cohsex
 
            !
            ! COH
@@ -332,7 +336,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
            selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
                       - bra(ipole,astate) * bra(ipole,astate) &
                             / wpol%pole(ipole)                &
-                            * beta_cohsex
+                            * alpha_cohsex
 
          enddo
 
@@ -345,7 +349,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
              selfenergy_omega(0,astate,bstate,ispin) = selfenergy_omega(0,astate,bstate,ispin) &
                         + bra(ipole,astate) * bra(ipole,bstate)                                & 
                               * fact_full_i / wpol%pole(ipole) * 2.0_dp                        &
-                              * alpha_cohsex
+                              * beta_cohsex
 
              !
              ! COH
@@ -353,7 +357,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
              selfenergy_omega(0,astate,bstate,ispin) = selfenergy_omega(0,astate,bstate,ispin) &
                         - bra(ipole,astate) * bra(ipole,bstate) & 
                               / wpol%pole(ipole)                &
-                              * beta_cohsex
+                              * alpha_cohsex
            enddo
          enddo
 

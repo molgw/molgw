@@ -1,5 +1,9 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This file contains the calculation of the exchange-correlation
+! potentials and energies for self-consistent Kohn-Sham calculations
+!
 !=========================================================================
 subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,exc_xc)
  use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE

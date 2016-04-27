@@ -1,3 +1,13 @@
+!=========================================================================
+! This file is part of MOLGW.
+! Author: Meyiue Shao
+!
+! This file contains
+! the SCALAPACK diagonalization of a matrix of the form
+!  ( A  B )
+!  (-B -A )
+!
+!=========================================================================
 #ifdef HAVE_SCALAPACK
       SUBROUTINE PDBSSOLVER1( N, M, IM, JM, DESCM, K, IK, JK, DESCK,
      $                        LAMBDA, X1, IX, JX, DESCX, X2, WORK,

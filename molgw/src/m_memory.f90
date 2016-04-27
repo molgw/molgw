@@ -1,5 +1,8 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This modules contains
+! the memory management
 !=========================================================================
 module m_memory
  use m_definitions

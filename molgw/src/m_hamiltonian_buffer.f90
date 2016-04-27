@@ -1,5 +1,10 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This module contains
+! the methods to evaluate the Kohn-Sham hamiltonian with SCALAPACK
+! when a single buffer allocation is permitted.
+!
 !=========================================================================
 module m_hamiltonian_buffer
  use m_definitions

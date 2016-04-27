@@ -1,8 +1,9 @@
 OPENMP= 
 
 # Sequential compilation
-FC=gfortran -cpp -ffree-line-length-none -DHAVE_LIBXC 
+FC=gfortran -cpp -ffree-line-length-none
 
+CPPFLAGS= -DHAVE_LIBXC
 
 CC=gcc
 FCOPTS= -O2 # -O0 -g -check all -traceback 

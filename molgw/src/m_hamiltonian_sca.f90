@@ -1,5 +1,12 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This module contains
+! the methods to evaluate the Kohn-Sham Hamiltonian with full distribution
+! of the memory with SCALAPACK
+!
+! !!! EXPERIMENTAL!!!
+!
 !=========================================================================
 module m_hamiltonian_sca
  use m_definitions

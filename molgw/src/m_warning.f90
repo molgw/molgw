@@ -1,5 +1,9 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This module contains
+! the management of the warning and error messages.
+!
 !=========================================================================
 module m_warning
  use m_definitions

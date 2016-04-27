@@ -1,5 +1,9 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This file contains
+! the most basic definitions. It should be "used" in all routines.
+!
 !=========================================================================
 module m_definitions
  use,intrinsic :: iso_fortran_env, only: OUTPUT_UNIT,ERROR_UNIT

@@ -3,6 +3,7 @@
 !
 ! This module contains
 ! the procedures to calculate the Generalized Oscillator Strengths (GOS)
+!
 !=========================================================================
 module m_gos
  use m_definitions

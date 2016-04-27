@@ -220,9 +220,11 @@ m_definitions.o: m_definitions.f90
 	$(FC_W_OPTS) -c m_definitions.f90 $(LIBXC_INCS)
 
 archive:
-	tar czf molgw.tgz ../../molgw/README.md ../../molgw/COPYING ../../molgw/src/Makefile \
+	tar czf molgw.tgz ../../molgw/README.md ../../molgw/COPYING ../../molgw/src/Makefile    \
                           ../../molgw/src/*.py ../../molgw/src/*.f90 ../../molgw/src/*.f ../../molgw/src/*.c \
-                          ../../molgw/basis/* ../../molgw/util/* ../../molgw/tests/ ../../molgw/src/my_machine.arch
+                          ../../molgw/basis/* ../../molgw/util/* ../../molgw/tests/*            \
+                          ../../molgw/doc/* ../../molgw/config/*           \
+                          ../../molgw/src/my_machine.arch
 
 prepare_sourcecode:
 	python prepare_sourcecode.py

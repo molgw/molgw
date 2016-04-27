@@ -1,5 +1,9 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This module contains
+! the methods to set up and store the input parameters from the input file
+!
 !=========================================================================
 module m_inputparam
  use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE

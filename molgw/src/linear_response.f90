@@ -4,6 +4,7 @@
 ! This file contains
 ! the routines to calculate the polarizability within RPA, TDDFT or BSE
 ! and the corresponding optical spectra
+!
 !=========================================================================
 
 

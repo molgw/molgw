@@ -1,5 +1,9 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This module contains
+! some unsorted basic numerical algorithms
+!
 !=========================================================================
 module m_tools
  use m_definitions

@@ -1,8 +1,9 @@
 OPENMP= 
 
 # Parallel MPI SCALAPACK compilation
-FC=mpif90 -cpp -ffree-line-length-none -DHAVE_LIBXC -DHAVE_MPI  -DHAVE_SCALAPACK 
+FC=mpif90 -cpp -ffree-line-length-none
 
+CPPFLAGS= -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK
 
 CC=gcc
 FCOPTS= -O2 # -O0 -g -check all -traceback 

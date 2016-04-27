@@ -1,5 +1,8 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This file contains
+! the MP2 self-energy evaluation
 !=========================================================================
 subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,selfenergy,emp2)
  use m_definitions

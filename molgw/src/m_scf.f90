@@ -1,5 +1,9 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This module contains
+! the self-consistent field cycle methods (DIIS, simple mixing)
+!
 !=========================================================================
 module m_scf
  use m_definitions

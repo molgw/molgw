@@ -1,7 +1,9 @@
 !=========================================================================
 ! This file is part of MOLGW.
 !
-! This file contains a module with the MPI information and basic functions
+! This modules contains
+! the MPI information and MPI basic functions
+!
 !=========================================================================
 module m_mpi
  use m_definitions

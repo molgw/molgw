@@ -1,5 +1,9 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This module contains
+! the methods to perform operations on the single Cartesian Gaussian functions
+!
 !=========================================================================
 module m_gaussian
  use m_definitions

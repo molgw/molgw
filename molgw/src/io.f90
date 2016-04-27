@@ -1,7 +1,9 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
 ! This file contains
 ! the procedures for input and outputs
+!
 !=========================================================================
 subroutine header()
  use,intrinsic :: iso_c_binding, only: C_INT

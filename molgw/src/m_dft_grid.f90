@@ -4,6 +4,7 @@
 ! This module contains
 ! the basic operations related to the quadrature needed to evaluate the
 ! exchange-correlation integrals
+!
 !=========================================================================
 module m_dft_grid
  use m_definitions

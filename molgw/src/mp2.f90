@@ -1,5 +1,10 @@
 !==================================================================
 ! This file is part of MOLGW.
+!
+! This file contains
+! - MP2 total energy with or without Resolution-of-Identity
+! - Single excitation contribution to total energy
+! - Full CI for 2 electrons
 !=========================================================================
 subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
  use m_definitions

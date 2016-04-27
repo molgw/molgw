@@ -3,6 +3,7 @@
 !
 ! This file contains
 ! the routine to calculate the static polarizability within RPA
+!
 !=========================================================================
 
 

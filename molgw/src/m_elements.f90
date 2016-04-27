@@ -1,5 +1,9 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This module contains
+! the methods and data concerning the periodic table elements
+!
 !=========================================================================
 module m_elements
  use m_definitions

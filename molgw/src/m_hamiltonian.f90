@@ -1,5 +1,10 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This module contains
+! the methods to evaluate the Kohn-Sham Hamiltonian
+! with no distribution of the memory
+!
 !=========================================================================
 module m_hamiltonian
  use m_definitions

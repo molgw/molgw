@@ -1,5 +1,10 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This module contains
+! the method to calculate the 2-, 3-, and 4-center Coulomb integrals
+! for a screened interaction
+!
 !=========================================================================
 module m_eri_lr_calculate
  use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE

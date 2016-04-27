@@ -1,5 +1,9 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This module contains
+! the spectral decomposition of the screened Coulomb interaction W
+!
 !=========================================================================
 module m_spectral_function
  use m_definitions

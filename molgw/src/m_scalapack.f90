@@ -1,13 +1,15 @@
 !=========================================================================
 ! This file is part of MOLGW.
 !
-! This file contains a module with some SCALAPACK wrappers
+! This file contains
+! a module with some SCALAPACK wrappers
 ! These wrappers are meant to be independant from the global variables 
 ! defined in module m_mpi:
 ! All the required SCALAPACK proc grid information, block size are contained in a descriptor
 !
 ! All the subroutine are meant to be valid with OR without SCALAPACK
-
+! Do not forget the preprocessor flags!
+!
 !=========================================================================
 module m_scalapack
  use m_definitions

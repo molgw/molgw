@@ -1,5 +1,9 @@
 !=========================================================================
 ! This file is part of MOLGW.
+!
+! This module contains
+! the methods to perform the Atomic Orbital to Molecular Orbital transform
+!
 !=========================================================================
 module m_eri_ao_mo
  use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
