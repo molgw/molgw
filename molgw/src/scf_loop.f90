@@ -1,5 +1,6 @@
 !=========================================================================
 ! This file is part of MOLGW.
+! Author: Fabien Bruneval
 !
 ! This file contains
 ! the main SCF loop for Hartree-Fock or Kohn-Sham

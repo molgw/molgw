@@ -1,5 +1,6 @@
 !=========================================================================
 ! This file is part of MOLGW.
+! Author: Fabien Bruneval
 !
 ! This module contains
 ! the method to calculate the 2-, 3-, and 4-center Coulomb integrals

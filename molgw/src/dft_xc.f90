@@ -1,5 +1,6 @@
 !=========================================================================
 ! This file is part of MOLGW.
+! Author: Fabien Bruneval
 !
 ! This file contains the calculation of the exchange-correlation
 ! potentials and energies for self-consistent Kohn-Sham calculations

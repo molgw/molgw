@@ -1,5 +1,6 @@
 !=========================================================================
 ! This file is part of MOLGW.
+! Author: Fabien Bruneval
 !
 ! This module contains
 ! the basic operations related to the quadrature needed to evaluate the

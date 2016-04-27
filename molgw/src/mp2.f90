@@ -1,5 +1,6 @@
 !==================================================================
 ! This file is part of MOLGW.
+! Author: Fabien Bruneval
 !
 ! This file contains
 ! - MP2 total energy with or without Resolution-of-Identity

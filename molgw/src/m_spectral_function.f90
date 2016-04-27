@@ -1,5 +1,6 @@
 !=========================================================================
 ! This file is part of MOLGW.
+! Author: Fabien Bruneval
 !
 ! This module contains
 ! the spectral decomposition of the screened Coulomb interaction W

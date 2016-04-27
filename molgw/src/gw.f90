@@ -1,5 +1,6 @@
 !=========================================================================
 ! This file is part of MOLGW.
+! Author: Fabien Bruneval
 !
 ! This file contains the calculation of the GW self-energy
 ! within different flavors: G0W0, GnW0, GnWn, COHSEX

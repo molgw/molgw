@@ -1,5 +1,6 @@
 !=========================================================================
 ! This file is part of MOLGW.
+! Author: Fabien Bruneval
 !
 ! This module contains
 ! the routines to diagonalize the RPA, TDDFT or BSE matrix

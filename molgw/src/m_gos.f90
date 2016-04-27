@@ -1,5 +1,6 @@
 !=========================================================================
 ! This file is part of MOLGW.
+! Author: Fabien Bruneval
 !
 ! This module contains
 ! the procedures to calculate the Generalized Oscillator Strengths (GOS)

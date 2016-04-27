@@ -1,5 +1,6 @@
 !=========================================================================
 ! This file is part of MOLGW.
+! Author: Fabien Bruneval
 !
 ! This file contains
 ! the routines to calculate the polarizability within RPA, TDDFT or BSE

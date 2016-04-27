@@ -1,5 +1,6 @@
 !=========================================================================
 ! This file is part of MOLGW.
+! Author: Fabien Bruneval
 !
 ! This file contains the construction the BSE hamiltonian
 ! or alternatively, the TDDFT "Casida" equations
