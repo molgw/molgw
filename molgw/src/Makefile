@@ -183,7 +183,7 @@ m_gaussian.o: m_definitions.f90 m_tools.f90 m_gos.f90 m_mpi.f90 m_gaussian.f90
 m_scf.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_tools.f90 m_inputparam.f90 m_scalapack.f90 m_scf.f90
 	$(FC_W_OPTS) -c m_scf.f90 $(LIBXC_INCS)
 
-m_inputparam.o: m_definitions.f90 m_elements.f90 m_warning.f90 m_atoms.f90 m_inputparam.f90 input_variables.f90 basis_path.f90
+m_inputparam.o: m_definitions.f90 m_elements.f90 m_warning.f90 m_atoms.f90 m_inputparam.f90 input_variables.f90 basis_path.f90 echo_input_variables.f90
 	$(FC_W_OPTS) -c m_inputparam.f90 $(LIBXC_INCS)
 
 m_block_diago.o: m_definitions.f90 m_warning.f90 m_memory.f90 m_mpi.f90 m_tools.f90 m_scalapack.f90 m_block_diago.f90
