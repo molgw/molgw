@@ -2,6 +2,7 @@
 
 ###################################
 # This file is part of MOLGW
+# Author: Fabien Bruneval
 
 
 ###################################

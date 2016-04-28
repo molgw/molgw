@@ -2,6 +2,7 @@
 
 ###################################
 # This file is part of MOLGW
+# Author: Fabien Bruneval
 
 
 ###################################
@@ -40,9 +41,9 @@ def clean_run(inp,out,restart):
       pass
   fout = open(out, 'w')
   if len(mpirun) < 1:
-    subprocess.call(['../../molgw',inp],stdout=fout)
+    subprocess.call(['../../molgw',inp],stdout=fout,stderr=subprocess.STDOUT)
   else:
-    subprocess.call([mpirun,'-n',str(nprocs),'../../molgw',inp],stdout=fout)
+    subprocess.call([mpirun,'-n',str(nprocs),'../../molgw',inp],stdout=fout,stderr=subprocess.STDOUT)
   fout.close()
   os.chdir('..')
 
@@ -50,7 +51,19 @@ def clean_run(inp,out,restart):
 ###################################
 def check_output(out,testinfo):
   global success,tested
-  for itest in range(0,len(testinfo)):
+
+  #
+  # First check if the test was aborted because of parallelization not available
+  #
+  for line in open(tmpfolder+'/'+out,'r').readlines():
+    if 'one CPU only' in line:
+      print('Test not functional in parallel => skip it')
+      return
+
+  #
+  # Then, parse the output and perform the checks
+  # 
+  for itest in range(len(testinfo)):
     tested += 1
     key = testinfo[itest][0].strip()
     ref = float(testinfo[itest][1])
@@ -173,7 +186,7 @@ tested = 0
 
 fdiff = open(tmpfolder+'/diff', 'w')
 
-for iinput in range(0,ninput):
+for iinput in range(ninput):
 
   if len(selected_input_file) != 0 and selected_input_file != input_files[iinput]:
     continue
