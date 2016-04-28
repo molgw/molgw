@@ -951,6 +951,12 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
  endif
  restart_type = restart_type_read
 
+ !
+ ! Input keyword ignore_bigrestart enforces a small_restart
+ if( ignore_bigrestart_ ) then
+   restart_type = SMALL_RESTART
+ endif
+
 
  ! Atomic structure
  read(restartfile) natom_read
