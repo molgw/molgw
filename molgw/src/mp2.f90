@@ -12,7 +12,7 @@ subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
  use m_mpi
  use m_basis_set
  use m_eri_ao_mo
- use m_inputparam,only: nspin,spin_fact,ncoreg,is_frozencore
+ use m_inputparam,only: nspin,spin_fact,ncoreg,nvirtualg,is_frozencore
  implicit none
 
  integer,intent(in)         :: nstate
@@ -28,7 +28,7 @@ subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
  real(dp)                   :: contrib1,contrib2
  real(dp)                   :: fact
  integer                    :: nocc(nspin)
- integer                    :: ncore
+ integer                    :: ncore,nstate_mp2
 !=====
 
  call start_clock(timing_mp2_energy)
@@ -41,6 +41,8 @@ subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
  if(is_frozencore) then
    if( ncore == 0) ncore = atoms_core_states()
  endif
+
+ nstate_mp2 = MIN( nvirtualg-1, nstate )
 
 
 
@@ -71,10 +73,10 @@ subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
 
        do jstate=ncore+1,nocc(jbspin)
        
-         do astate=ncore+1,nstate
+         do astate=ncore+1,nstate_mp2
            if( occupation(astate,iaspin) > spin_fact - completely_empty ) cycle
 
-           do bstate=ncore+1,nstate
+           do bstate=ncore+1,nstate_mp2
              if( occupation(bstate,jbspin) > spin_fact - completely_empty ) cycle
 
              fact =  occupation(istate,iaspin) * ( spin_fact - occupation(astate,iaspin) ) &

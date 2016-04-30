@@ -400,6 +400,14 @@ program molgw
    enddo
  endif
 
+#ifdef TODAY
+ allocate(hamiltonian_tmp(basis%nbf,basis%nbf))
+ hamiltonian_tmp(:,:) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) + hamiltonian_hartree(:,:) &
+                           +        hamiltonian_xc(:,:,1)
+ call pola_fno(basis,auxil_basis,nstate,occupation,energy,c_matrix,hamiltonian_tmp)
+ deallocate(hamiltonian_tmp)
+! stop'ENOUGH'
+#endif
  !
  ! final evaluation for perturbative GW
  if( calc_type%is_gw .AND. &
