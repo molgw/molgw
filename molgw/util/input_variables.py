@@ -624,7 +624,16 @@ vl[i].default  =1.0
 vl[i].datatype ='real'
 vl[i].comment  ='Sets the amount of static COulomb Hole in the self-energy. Only works with scf=\'COHSEX\' or with postscf=\'COHSEX\'.'
 
-
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='virtual_fno'
+vl[i].family   ='post'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Activates the Frozen Natural Orbitals technique to span the virtual orbitals subspace with fewer orbitals. \
+The dimension of the space is set up with the input keyword nvirtualg or nvirtualw. \
+Actually the virtual orbital space is determined by the minimum MIN(nvirtualg,nvirtualw).'
 
 
 

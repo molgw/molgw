@@ -59,6 +59,7 @@ module m_inputparam
  integer,protected                :: nvirtualspa
  logical,protected                :: is_frozencore
  logical,protected                :: is_tda,is_triplet
+ logical,protected                :: is_virtual_fno
  integer,protected                :: nexcitation
  integer,protected                :: nspin
  real(dp),protected               :: spin_fact
@@ -562,7 +563,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_matrix,print_eri,print_wfn,print_w,print_sigma
  character(len=3)     :: print_restart,print_bigrestart
  character(len=3)     :: print_pdos,print_cube
- character(len=3)     :: tda,triplet,frozencore
+ character(len=3)     :: tda,triplet,frozencore,virtual_fno
  real(dp)             :: length_factor,eta
  integer              :: atom_number,info,iatom
  character(len=2)     :: atom_symbol
@@ -640,6 +641,7 @@ subroutine read_inputfile_namelist()
  is_tda             = yesno(tda)
  is_triplet         = yesno(triplet)
  is_frozencore      = yesno(frozencore)
+ is_virtual_fno     = yesno(virtual_fno)
 
  print_matrix_      = yesno(print_matrix)
  print_eri_         = yesno(print_eri)

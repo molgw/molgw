@@ -52,6 +52,7 @@ module m_timing
  integer,parameter :: timing_diis                = 33
  integer,parameter :: timing_approx_ham          = 34
  integer,parameter :: timing_sca_distr2          = 35
+ integer,parameter :: timing_fno                 = 36
  
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -168,7 +169,8 @@ subroutine output_timing()
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Pulay DIIS       '   ,timing(timing_diis),calls(timing_diis)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'RESTART file writing',timing(timing_restart_file),calls(timing_restart_file)
  write(stdout,*)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'Single Excit.'   ,timing(timing_single_excitation),calls(timing_single_excitation)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'Single Excitations'  ,timing(timing_single_excitation),calls(timing_single_excitation)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'FNO generation'      ,timing(timing_fno),calls(timing_fno)
  write(stdout,*)
 
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Total chi polarization' ,timing(timing_pola),calls(timing_pola)

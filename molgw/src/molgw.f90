@@ -368,21 +368,6 @@ program molgw
  endif
 
  !
- ! Time Dependent calculations
- ! works for DFT, HF, and hybrid
- if(calc_type%is_td .OR. calc_type%is_bse) then
-
-   if(calc_type%is_td .AND. calc_type%is_dft) call init_dft_grid(grid_level)
-
-   call init_spectral_function(nstate,occupation,wpol)
-   call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
-   call destroy_spectral_function(wpol)
-
-   if(calc_type%is_td .AND. calc_type%is_dft) call destroy_dft_grid()
-
- endif
-  
- !
  ! Prepare the diagonal of the matrix Sigma_x - Vxc
  ! for the forthcoming GW corrections
  if( calc_type%is_mp2 .OR. calc_type%is_gw ) then
@@ -400,14 +385,32 @@ program molgw
    enddo
  endif
 
-#ifdef TODAY
- allocate(hamiltonian_tmp(basis%nbf,basis%nbf))
- hamiltonian_tmp(:,:) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) + hamiltonian_hartree(:,:) &
-                           +        hamiltonian_xc(:,:,1)
- call pola_fno(basis,auxil_basis,nstate,occupation,energy,c_matrix,hamiltonian_tmp)
- deallocate(hamiltonian_tmp)
-! stop'ENOUGH'
-#endif
+ !
+ ! If requested,
+ ! prepare an optmized virtual subspace based on 
+ ! Frozen Natural Orbitals technique
+ if( is_virtual_fno ) then
+   !
+   ! Be aware that the energies and the c_matrix for virtual orbitals are altered after this point!
+   !
+   call virtual_fno(basis,auxil_basis,nstate,occupation,energy,c_matrix)
+ endif
+
+ !
+ ! Time Dependent calculations
+ ! works for DFT, HF, and hybrid
+ if(calc_type%is_td .OR. calc_type%is_bse) then
+
+   if(calc_type%is_td .AND. calc_type%is_dft) call init_dft_grid(grid_level)
+
+   call init_spectral_function(nstate,occupation,wpol)
+   call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+   call destroy_spectral_function(wpol)
+
+   if(calc_type%is_td .AND. calc_type%is_dft) call destroy_dft_grid()
+
+ endif
+  
  !
  ! final evaluation for perturbative GW
  if( calc_type%is_gw .AND. &

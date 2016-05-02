@@ -1215,7 +1215,7 @@ end subroutine chi_to_sqrtvchisqrtv_auxil_spa
 
 
 !=========================================================================
-#ifdef DEVEL
+#if 0
 subroutine pol_davidson(basis,auxil_basis,nstate,occupation,energy,c_matrix,wpol_out)
  use m_definitions
  use m_timing
@@ -1594,7 +1594,7 @@ end subroutine pol_davidson
 
 
 !=========================================================================
-subroutine pola_fno(basis,auxil_basis,nstate,occupation,energy,c_matrix,hamiltonian)
+subroutine virtual_fno(basis,auxil_basis,nstate,occupation,energy,c_matrix)
  use m_definitions
  use m_timing
  use m_warning
@@ -1611,17 +1611,15 @@ subroutine pola_fno(basis,auxil_basis,nstate,occupation,energy,c_matrix,hamilton
  type(basis_set),intent(in)            :: basis,auxil_basis
  integer,intent(in)                    :: nstate
  real(dp),intent(in)                   :: occupation(nstate,nspin)
- real(dp),intent(in)                   :: energy(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(in)                   :: hamiltonian(basis%nbf,basis%nbf)
+ real(dp),intent(inout)                :: energy(nstate,nspin)
+ real(dp),intent(inout)                :: c_matrix(basis%nbf,nstate,nspin)
 !=====
- real(dp)                              :: virtual_fraction_kept=1.00_dp
+ real(dp),parameter                    :: alpha_mp2=1.0_dp
  integer                               :: istate,jstate,astate,bstate,cstate
  integer                               :: ispin
- integer                               :: nocc,ncore,nvirtual,nvirtual_kept,nstate_mp2
+ integer                               :: nocc,ncore,nvirtual,nvirtual_kept
  real(dp),allocatable                  :: p_matrix_mp2(:,:),ham_virtual(:,:),ham_virtual_kept(:,:)
  real(dp),allocatable                  :: occupation_mp2(:),energy_virtual(:)
- real(dp),allocatable                  :: c_matrix_mp2(:,:,:),energy_mp2(:,:)
- real(dp)                              :: eri_ca_ij,eri_cb_ij
  real(dp)                              :: eri_ci_aj,eri_ci_bj
  real(dp)                              :: den_ca_ij,den_cb_ij
  real(dp)                              :: en_mp2
@@ -1629,27 +1627,30 @@ subroutine pola_fno(basis,auxil_basis,nstate,occupation,energy,c_matrix,hamilton
  integer                               :: file_unit
 !=====
 
- call start_clock(timing_pola)
+ call start_clock(timing_fno)
 
- if( .NOT. has_auxil_basis ) then
-   call issue_warning('pola_fno not implemented when no auxiliary basis is provided')
+ if( MIN(nvirtualw,nvirtualg) > nstate ) then 
+   call issue_warning('virtual_fno is on, however nvirtualw and nvirtualg are not set. Skipping the Frozen Natural Orbitals generation.')
    return
  endif
 
- inquire(file='manual_virtual',exist=file_found)
- if(file_found) then
-   open(newunit=file_unit,file='manual_virtual',status='old')
-   read(file_unit,*) virtual_fraction_kept
-   close(file_unit)
-   if( virtual_fraction_kept < 0.0_dp ) return
+ if( .NOT. has_auxil_basis ) then
+   call issue_warning('virtual_fno not implemented when no auxiliary basis is provided')
+   return
  endif
- write(stdout,*) 'fraction of the virtual space retained',virtual_fraction_kept
 
+ if( nspin > 1 ) then
+   call issue_warning('virtual_fno not implemented yet for spin polarized calculations')
+   return
+ endif
 
  ncore = ncoreg
  if(is_frozencore) then
    if( ncore == 0) ncore = atoms_core_states()
  endif
+
+
+
 
  do ispin=1,nspin
    !
@@ -1673,26 +1674,36 @@ subroutine pola_fno(basis,auxil_basis,nstate,occupation,energy,c_matrix,hamilton
 
        do cstate=nocc+1,nstate
          do istate=ncore+1,nocc
+#if 0
+           ! Full calculation of the MP2 density matrix on virtual orbitals (See Taube and Bartlett)
            do jstate=ncore+1,nocc
 
              den_cb_ij = energy(istate,ispin) + energy(jstate,ispin) - energy(bstate,ispin) - energy(cstate,ispin)
              den_ca_ij = energy(istate,ispin) + energy(jstate,ispin) - energy(astate,ispin) - energy(cstate,ispin)
 
-!             eri_cb_ij = eri_eigen_ri(cstate,bstate,ispin,istate,jstate,ispin) &
-!                         - eri_eigen_ri(cstate,istate,ispin,bstate,jstate,ispin) 
-!             eri_ca_ij = eri_eigen_ri(cstate,astate,ispin,istate,jstate,ispin) &
-!                          - eri_eigen_ri(cstate,istate,ispin,astate,jstate,ispin) 
-
              eri_ci_aj = eri_eigen_ri(cstate,istate,ispin,astate,jstate,ispin) &
-                          - eri_eigen_ri(cstate,jstate,ispin,astate,istate,ispin) 
+                          - eri_eigen_ri(cstate,jstate,ispin,astate,istate,ispin)  * alpha_mp2
              eri_ci_bj = eri_eigen_ri(cstate,istate,ispin,bstate,jstate,ispin) &
-                         - eri_eigen_ri(cstate,jstate,ispin,bstate,istate,ispin) 
+                         - eri_eigen_ri(cstate,jstate,ispin,bstate,istate,ispin)   * alpha_mp2
 
              p_matrix_mp2(astate-nocc,bstate-nocc) = &
                   p_matrix_mp2(astate-nocc,bstate-nocc)  & 
                      + 0.50_dp * eri_ci_aj * eri_ci_bj / ( den_cb_ij * den_ca_ij )
 
            enddo
+#else
+           ! Approximation by Aquilante et al.
+           den_cb_ij = energy(istate,ispin) + energy(istate,ispin) - energy(bstate,ispin) - energy(cstate,ispin)
+           den_ca_ij = energy(istate,ispin) + energy(istate,ispin) - energy(astate,ispin) - energy(cstate,ispin)
+
+           eri_ci_aj = eri_eigen_ri(cstate,istate,ispin,astate,istate,ispin) 
+           eri_ci_bj = eri_eigen_ri(cstate,istate,ispin,bstate,istate,ispin) 
+
+           p_matrix_mp2(astate-nocc,bstate-nocc) = &
+                p_matrix_mp2(astate-nocc,bstate-nocc)  & 
+                   + 0.50_dp * eri_ci_aj * eri_ci_bj / ( den_cb_ij * den_ca_ij )
+
+#endif
          enddo
        enddo
 
@@ -1705,11 +1716,11 @@ subroutine pola_fno(basis,auxil_basis,nstate,occupation,energy,c_matrix,hamilton
    allocate(occupation_mp2(nvirtual))
    call diagonalize(nvirtual,p_matrix_mp2,occupation_mp2)
 
-   write(stdout,*) 
-   do astate=1,nvirtual
-     write(stdout,'(i4,2x,es16.4)') astate,occupation_mp2(astate)
-   enddo
-   write(stdout,*) 
+!   write(stdout,*) 
+!   do astate=1,nvirtual
+!     write(stdout,'(i4,2x,es16.4)') astate,occupation_mp2(astate)
+!   enddo
+!   write(stdout,*) 
 
    allocate(ham_virtual(nvirtual,nvirtual))
 
@@ -1718,11 +1729,12 @@ subroutine pola_fno(basis,auxil_basis,nstate,occupation,energy,c_matrix,hamilton
      ham_virtual(astate,astate) = energy(astate+nocc,ispin)
    enddo
 
-   nvirtual_kept = NINT( virtual_fraction_kept * nvirtual )
+   nvirtual_kept = MIN(nvirtualw,nvirtualg) - 1 - nocc
 
-   write(stdout,*) ' Retain',virtual_fraction_kept
-   write(stdout,*) ' corresponds to',nvirtual_kept,'out of',nvirtual
-   write(stdout,*) ' max state index included',nocc + nvirtual_kept
+   write(stdout,'(/,x,a,i5)')    'Max state index included ',MIN(nvirtualw,nvirtualg) - 1
+   write(stdout,'(x,a,i5,a,i5)') 'Retain ',nvirtual_kept,' virtual orbitals out of ',nvirtual
+   write(stdout,'(x,a,es14.6)')  'Occupation number of the last virtual state',occupation_mp2(nvirtual - (nocc + nvirtual_kept))
+   write(stdout,'(x,a,es14.6,4x,es14.6)') '  to be compared to the first and last virtual states',occupation_mp2(nvirtual),occupation_mp2(1)
    write(stdout,*)
 
    allocate(ham_virtual_kept(nvirtual_kept,nvirtual_kept))
@@ -1735,30 +1747,20 @@ subroutine pola_fno(basis,auxil_basis,nstate,occupation,energy,c_matrix,hamilton
 
    call diagonalize(nvirtual_kept,ham_virtual_kept,energy_virtual)
 
-   write(stdout,'(/,x,a)') ' virtual state    FNO energy (eV)   reference energy (eV)'
-   do astate=1,nvirtual_kept
-     write(stdout,'(i4,4x,f16.5,2x,f16.5)') astate,energy_virtual(astate)*Ha_eV,energy(astate+nocc,ispin)*Ha_eV
-   enddo
-   write(stdout,*)
+!   write(stdout,'(/,x,a)') ' virtual state    FNO energy (eV)   reference energy (eV)'
+!   do astate=1,nvirtual_kept
+!     write(stdout,'(i4,4x,f16.5,2x,f16.5)') astate,energy_virtual(astate)*Ha_eV,energy(astate+nocc,ispin)*Ha_eV
+!   enddo
+!   write(stdout,*)
    
 
-   nstate_mp2 = nocc + nvirtual_kept
-
-   if( .NOT. ALLOCATED(c_matrix_mp2) ) allocate( c_matrix_mp2(basis%nbf,nstate_mp2,nspin) )
-   if( .NOT. ALLOCATED(energy_mp2) )   allocate( energy_mp2(nstate_mp2,nspin) )
 
    !
-   ! Keep occupied state unchanged
-   energy_mp2(1:nocc,ispin)     = energy(1:nocc,ispin)
-   c_matrix_mp2(:,1:nocc,ispin) = c_matrix(:,1:nocc,ispin)
-   !
-   !
-   energy_mp2(nocc+1:,ispin)     = energy_virtual(:)
-   c_matrix_mp2(:,nocc+1:,ispin) = MATMUL( c_matrix(:,nocc+1:,ispin) ,  &
-                               MATMUL( p_matrix_mp2(:,nvirtual-nvirtual_kept+1:) , ham_virtual_kept(:,:) ) )
-
-
-
+   ! Override the c_matrix and the energy with the fresh new ones
+   energy(nocc+1:nocc+nvirtual_kept,ispin)     = energy_virtual(:)
+   c_matrix(:,nocc+1:nocc+nvirtual_kept,ispin) = MATMUL( c_matrix(:,nocc+1:,ispin) ,  &
+                                                    MATMUL( p_matrix_mp2(:,nvirtual-nvirtual_kept+1:) , &
+                                                       ham_virtual_kept(:,:) ) )
 
 
    deallocate(ham_virtual_kept)
@@ -1768,20 +1770,9 @@ subroutine pola_fno(basis,auxil_basis,nstate,occupation,energy,c_matrix,hamilton
 
 
 
+ call stop_clock(timing_fno)
 
-
- call mp2_energy_ri(nstate_mp2,basis,occupation(:,1:nstate_mp2),energy_mp2,c_matrix_mp2,en_mp2)
- write(stdout,*) 'FBFB Ec MP2 (Ha):',en_mp2
-
-
-
- deallocate(energy_mp2)
- deallocate(c_matrix_mp2)
-
-
- call stop_clock(timing_pola)
-
-end subroutine pola_fno
+end subroutine virtual_fno
 
 
 !=========================================================================
