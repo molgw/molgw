@@ -410,7 +410,7 @@ subroutine build_a_diag_common(nmat,nbf,nstate,c_matrix,energy,wpol,a_diag)
  real(dp),allocatable :: eri_eigenstate_klmin(:,:,:,:)
  real(dp)             :: eri_eigen_klkl
  logical              :: k_is_klmin
- real(dp),parameter   :: empirical_fact=1.5_dp
+ real(dp),parameter   :: empirical_fact=1.50_dp
  character(len=100)   :: ctmp
 !=====
 

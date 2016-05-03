@@ -126,7 +126,7 @@ m_hamiltonian_buffer.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m
 m_hamiltonian_sca.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_eri.f90 m_basis_set.f90 m_hamiltonian_sca.f90
 	$(FC_W_OPTS) -c m_hamiltonian_sca.f90 $(LIBXC_INCS)
 
-m_hamiltonian.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_eri.f90 m_basis_set.f90 m_hamiltonian.f90
+m_hamiltonian.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_eri.f90 m_basis_set.f90 m_eri_ao_mo.o m_hamiltonian.f90
 	$(FC_W_OPTS) -c m_hamiltonian.f90 $(LIBXC_INCS)
 
 dft_xc.o: m_definitions.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90 m_mpi.f90 dft_xc.f90

@@ -61,7 +61,9 @@ program molgw
  real(dp),allocatable    :: s_matrix(:,:)
  real(dp),allocatable    :: s_matrix_sqrt_inv(:,:)
  real(dp),allocatable    :: c_matrix(:,:,:)
+ real(dp),allocatable    :: c_matrix_ref(:,:,:)
  real(dp),allocatable    :: energy(:,:)
+ real(dp),allocatable    :: energy_ref(:,:)
  real(dp),allocatable    :: s_eigval(:)
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
@@ -391,9 +393,10 @@ program molgw
  ! Frozen Natural Orbitals technique
  if( is_virtual_fno ) then
    !
-   ! Be aware that the energies and the c_matrix for virtual orbitals are altered after this point!
+   ! Be aware that the energies and the c_matrix for virtual orbitals are altered after this point
+   ! and until they are restored in destroy_fno
    !
-   call virtual_fno(basis,auxil_basis,nstate,occupation,energy,c_matrix)
+   call virtual_fno(basis,nstate,occupation,energy,c_matrix,energy_ref,c_matrix_ref)
  endif
 
  !
@@ -436,6 +439,10 @@ program molgw
    en%tot = en%tot + en%rpa
    if( calc_type%is_dft ) en%tot = en%tot - en%xc - en%exx_hyb + en%exx 
    write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
+
+   if( is_virtual_fno ) then
+     call destroy_fno(basis,nstate,energy,c_matrix,energy_ref,c_matrix_ref)
+   endif
 
    allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
    call gw_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
