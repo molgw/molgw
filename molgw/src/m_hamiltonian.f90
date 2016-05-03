@@ -1118,19 +1118,23 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix,energy_ref,c_matr
  integer                               :: ispin
  integer                               :: nocc,ncore,nvirtual,nvirtual_kept
  real(dp),allocatable                  :: p_matrix_mp2(:,:),ham_virtual(:,:),ham_virtual_kept(:,:)
- real(dp),allocatable                  :: occupation_mp2(:),energy_virtual(:)
+ real(dp),allocatable                  :: occupation_mp2(:),energy_virtual_kept(:)
  real(dp)                              :: eri_ci_aj,eri_ci_bj
  real(dp)                              :: den_ca_ij,den_cb_ij
  real(dp)                              :: en_mp2
  logical                               :: file_found
  integer                               :: file_unit
+ integer                               :: nvirtualmin
+ real(dp),allocatable                  :: eri_ci_i(:)
 !=====
 
  call start_clock(timing_fno)
 
  write(stdout,'(/,x,a)') 'Prepare optimized empty states with Frozen Natural Orbitals'
 
- if( MIN(nvirtualw,nvirtualg) > nstate ) then 
+ nvirtualmin = MIN(nvirtualw,nvirtualg)
+
+ if( nvirtualmin > nstate ) then 
    call issue_warning('virtual_fno is on, however nvirtualw and nvirtualg are not set. Skipping the Frozen Natural Orbitals generation.')
    return
  endif
@@ -1172,6 +1176,34 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix,energy_ref,c_matr
 
    allocate(p_matrix_mp2(nvirtual,nvirtual))
    p_matrix_mp2(:,:) = 0.0_dp
+
+   allocate(eri_ci_i(nocc+1:nstate))
+
+#if 1
+   ! Approximation by Aquilante et al.
+   do istate=ncore+1,nocc
+     do cstate=nocc+1,nstate
+
+       do astate=nocc+1,nstate
+         eri_ci_i(astate) = eri_eigen_ri(cstate,istate,ispin,astate,istate,ispin) &
+                              / ( energy(istate,ispin) + energy(istate,ispin) - energy(astate,ispin) - energy(cstate,ispin) )
+       enddo
+       call xsum(eri_ci_i)
+
+       do bstate=nocc+1,nstate
+         do astate=nocc+1,nstate
+
+           p_matrix_mp2(astate-nocc,bstate-nocc) = &
+                p_matrix_mp2(astate-nocc,bstate-nocc)  &
+                   + 0.50_dp * eri_ci_i(astate) * eri_ci_i(bstate)
+
+         enddo
+       enddo
+
+     enddo
+   enddo
+   deallocate(eri_ci_i)
+#else
 
    do bstate=nocc+1,nstate
      do astate=nocc+1,nstate
@@ -1249,6 +1281,7 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix,energy_ref,c_matr
    enddo
 
 
+#endif
 
    allocate(occupation_mp2(nvirtual))
    call diagonalize(nvirtual,p_matrix_mp2,occupation_mp2)
@@ -1266,7 +1299,7 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix,energy_ref,c_matr
      ham_virtual(astate,astate) = energy(astate+nocc,ispin)
    enddo
 
-   nvirtual_kept = MIN(nvirtualw,nvirtualg) - 1 - nocc
+   nvirtual_kept = nvirtualmin - 1 - nocc
 
    write(stdout,'(/,x,a,i5)')    'Max state index included ',nvirtual_kept + nocc
    write(stdout,'(x,a,i5,a,i5)') 'Retain ',nvirtual_kept,' virtual orbitals out of ',nvirtual
@@ -1275,18 +1308,18 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix,energy_ref,c_matr
    write(stdout,*)
 
    allocate(ham_virtual_kept(nvirtual_kept,nvirtual_kept))
-   allocate(energy_virtual(nvirtual_kept))
+   allocate(energy_virtual_kept(nvirtual_kept))
 
    ham_virtual_kept(:,:)  = MATMUL( TRANSPOSE( p_matrix_mp2(:,nvirtual-nvirtual_kept+1:) ) ,   &
                                         MATMUL( ham_virtual , p_matrix_mp2(:,nvirtual-nvirtual_kept+1:) ) )
 
    deallocate(ham_virtual)
 
-   call diagonalize(nvirtual_kept,ham_virtual_kept,energy_virtual)
+   call diagonalize(nvirtual_kept,ham_virtual_kept,energy_virtual_kept)
 
 !   write(stdout,'(/,x,a)') ' virtual state    FNO energy (eV)   reference energy (eV)'
 !   do astate=1,nvirtual_kept
-!     write(stdout,'(i4,4x,f16.5,2x,f16.5)') astate,energy_virtual(astate)*Ha_eV,energy(astate+nocc,ispin)*Ha_eV
+!     write(stdout,'(i4,4x,f16.5,2x,f16.5)') astate,energy_virtual_kept(astate)*Ha_eV,energy(astate+nocc,ispin)*Ha_eV
 !   enddo
 !   write(stdout,*)
    
@@ -1303,13 +1336,13 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix,energy_ref,c_matr
 
    !
    ! And then override the c_matrix and the energy with the fresh new ones
-   energy(nocc+1:nocc+nvirtual_kept,ispin)     = energy_virtual(:)
+   energy(nocc+1:nocc+nvirtual_kept,ispin)     = energy_virtual_kept(:)
    c_matrix(:,nocc+1:nocc+nvirtual_kept,ispin) = MATMUL( c_matrix(:,nocc+1:,ispin) ,  &
                                                     MATMUL( p_matrix_mp2(:,nvirtual-nvirtual_kept+1:) , &
                                                        ham_virtual_kept(:,:) ) )
 
 
-   deallocate(energy_virtual)
+   deallocate(energy_virtual_kept)
    deallocate(ham_virtual_kept)
    deallocate(p_matrix_mp2,occupation_mp2)
  enddo
