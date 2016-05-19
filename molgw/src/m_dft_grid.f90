@@ -85,9 +85,9 @@ subroutine init_dft_grid(grid_level_in)
    nangular_fine   = 110
    nangular_coarse =  38
  case(very_high) ! almost perfect potentials
-   nradial         =  70
-   nangular_fine   = 230
-   nangular_coarse =  50
+   nradial         =  70 
+   nangular_fine   = 170 
+   nangular_coarse =  50 
  case(insane)    ! overdoing a lot
    nradial         = 200
    nangular_fine   = 434
@@ -167,6 +167,8 @@ subroutine init_dft_grid(grid_level_in)
    call ld0170(x1,y1,z1,w1,n1)
  case(230)
    call ld0230(x1,y1,z1,w1,n1)
+ case(302)
+   call ld0302(x1,y1,z1,w1,n1)
  case(434)
    call ld0434(x1,y1,z1,w1,n1)
  case default
