@@ -429,8 +429,14 @@ program molgw
 
    call init_spectral_function(nstate,occupation,wpol)
 
-   ! Try to read a spectral function file in order to skip the calculation
-   call read_spectral_function(wpol,reading_status)
+   ! Try to read a spectral function file in order to skip the polarizability calculation
+   ! Skip the reading if GnWn (=evGW) is requested
+   if( calc_type%gwmethod /= GnWn ) then
+     call read_spectral_function(wpol,reading_status)
+   else
+     write(stdout,'(/,x,a)') 'For GnWn calculations, never try to read file SCREENED_COULOMB'
+     reading_status = 1
+   endif
    ! If reading has failed, then do the calculation
    if( reading_status /= 0 ) then
      call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)

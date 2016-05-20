@@ -443,7 +443,7 @@ subroutine scf_loop(is_restart,&
    matrix_tmp(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
    ! And pass it to single_excitations
    call single_excitations(nstate,basis%nbf,energy,occupation,c_matrix,matrix_tmp)
-   write(stdout,'(a25,x,f19.10)') 'Single Excitations (Ha):',en%se
+   write(stdout,'(a25,x,f19.10)') 'Singles correction (Ha):',en%se
    write(stdout,'(a25,x,f19.10,/)')   'Est. HF Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
 
 

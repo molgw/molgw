@@ -106,7 +106,7 @@ HOMO energy               ,     -8.191536      , 0 , 1.0e-4
 LUMO energy               ,     -2.674684      , 0 , 1.0e-4
 RPA energy                ,     -0.0837682569  , 0 , 1.0e-7
 Lowest neutral excitation ,      9.996186      , 0 , 1.0e-4
-Single Excitations        ,     -0.0029125289  , 0 , 1.0e-7
+Singles correction        ,     -0.0029125289  , 0 , 1.0e-7
 Total EXX Energy          ,     -1.0186704037  , 0 , 1.0e-7
 GW HOMO                   ,    -12.854961      , 0 , 1.0e-4
 GW LUMO                   ,      1.475164      , 0 , 1.0e-4

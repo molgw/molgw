@@ -19,6 +19,7 @@ keeptmp = False
 selected_input_file=''
 mpirun=''
 nprocs=1
+debug=False
 
 
 
@@ -70,10 +71,23 @@ def check_output(out,testinfo):
     pos = int(  testinfo[itest][2])
     tol = float(testinfo[itest][3])
 
+    if debug:
+      print('===debug:')
+      print('open file: '+tmpfolder+'/'+out)
+      print('===end debug')
+
     for line in reversed(open(tmpfolder+'/'+out,'r').readlines()):
       if key in line:
         parsing  = line.split(':')
+        if debug:
+          print('===debug:')
+          print(parsing)
+          print('===end debug')
         parsing2 = parsing[1].split()
+        if debug:
+          print('===debug:')
+          print(parsing2)
+          print('===end debug')
 
 
         if abs( float(parsing2[pos]) - ref ) < tol:
@@ -99,6 +113,7 @@ if len(sys.argv) > 1:
     print('  --np     n         Set the number of cores to n')
     print('  --mpirun launcher  Set the MPI launcher name')
     print('  --input  file      Only run this input file')
+    print('  --debug            Outputs debug information for this script')
     sys.exit(0)
   if '--keep' in sys.argv:
     keeptmp = True
@@ -112,6 +127,8 @@ if len(sys.argv) > 1:
   if '--input' in sys.argv:
     i = sys.argv.index('--input') + 1
     selected_input_file = sys.argv[i]
+  if '--debug' in sys.argv:
+    debug = True
 
 print('\n===============================')
 print('Starting MOLGW test suite\n')
