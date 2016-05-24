@@ -60,7 +60,7 @@ level030: m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o
 
 level035: m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o mp2_selfenergy.o
 
-level040: linear_response.o static_polarizability.o gw.o bse.o dft_xc.o io.o mp2.o scf_loop.o molgw.o
+level040: linear_response.o static_polarizability.o gw.o cohsex.o bse.o dft_xc.o io.o mp2.o scf_loop.o molgw.o
 
 
 
@@ -78,13 +78,13 @@ level040: linear_response.o static_polarizability.o gw.o bse.o dft_xc.o io.o mp2
         m_eri.o m_scf.o m_dft_grid.o \
         m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o \
         m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o mp2_selfenergy.o \
-        linear_response.o static_polarizability.o gw.o bse.o dft_xc.o io.o mp2.o scf_loop.o molgw.o
+        linear_response.o static_polarizability.o gw.o cohsex.o bse.o dft_xc.o io.o mp2.o scf_loop.o molgw.o
 	$(FC_W_OPTS) \
                         m_definitions.o m_warning.o m_elements.o m_mpi.o m_scalapack.o m_timing.o m_memory.o m_inputparam.o m_tools.o m_scf.o m_atoms.o \
                         m_gos.o m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o \
                         m_spectral_function.o \
                         libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o mp2_selfenergy.o \
-                        mp2.o gw.o bse.o linear_response.o static_polarizability.o dft_xc.o io.o \
+                        mp2.o gw.o cohsex.o bse.o linear_response.o static_polarizability.o dft_xc.o io.o \
                         m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o scf_loop.o pdbssolver1.o  \
                         molgw.o \
                         -o ../molgw \
@@ -103,6 +103,10 @@ scf_loop.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_inputparam.f90 m_tool
             m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_eri_calculate.f90 m_eri_lr_calculate.f90 m_eri_ao_mo.o \
             m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.o scf_loop.f90
 	$(FC_W_OPTS) -c scf_loop.f90 $(LIBXC_INCS)
+
+cohsex.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
+      m_inputparam.f90 cohsex.f90
+	$(FC_W_OPTS) -c cohsex.f90 $(LIBXC_INCS)
 
 gw.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
       m_inputparam.f90 gw.f90

@@ -410,15 +410,6 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
 
 
  case(QSCOHSEX)
-#ifdef TODAY
-   !FBFB
-   write(stdout,*)  'FBFB    #    sigc  '
-   do ispin=1,nspin
-     do astate=nsemin,nsemax
-       write(stdout,*) astate,selfenergy_omega(0,astate,astate,ispin)
-     enddo
-   enddo
-#endif
    write(stdout,*) 
    ! Transform the matrix elements back to the AO basis
    ! do not forget the overlap matrix S

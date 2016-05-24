@@ -23,6 +23,7 @@ module m_eri_calculate
 
  real(prec_eri),private,allocatable :: eri_2center_m1(:,:)
 
+ real(prec_eri),protected,allocatable :: eri_2center_rotation(:,:)
 
 contains
 
@@ -512,25 +513,29 @@ subroutine calculate_eri_2center(auxil_basis)
  call xsum(eri_2center_m1)
 
 
- allocate(eigval(nauxil_2center))
+ allocate(eigval(auxil_basis%nbf))
  !
  ! Perform in-place diagonalization here with or without scalapack
- call diagonalize_scalapack(scalapack_block_min,nauxil_2center,eri_2center_m1,eigval)
+ call diagonalize_scalapack(scalapack_block_min,auxil_basis%nbf,eri_2center_m1,eigval)
 
  !
  ! Skip the too small eigenvalues
+ nauxil_2center = COUNT( ABS(eigval(:)) > TOO_LOW_EIGENVAL )
+#ifdef TODAY
+ allocate(eri_2center_rotation(auxil_basis%nbf,nauxil_2center))
+#endif
+
  ibf = 0
- do jbf=1,nauxil_2center
-   if( eigval(jbf) < TOO_LOW_EIGENVAL ) cycle
+ do jbf=1,auxil_basis%nbf
+   if( ABS(eigval(jbf)) < TOO_LOW_EIGENVAL ) cycle
    ibf = ibf + 1
+#ifdef TODAY
+   eri_2center_rotation(:,ibf) = eri_2center_m1(:,jbf) 
+#endif
    eri_2center_m1(:,ibf) = eri_2center_m1(:,jbf) / SQRT( eigval(jbf) )
  enddo
  deallocate(eigval)
 
- !
- ! Resize the 2-center integral matrix
- ! Now the array is eri_2center_m1(auxil_basis%nbf,nauxil_2center)
- nauxil_2center = ibf
 
  write(stdout,'(a)')        ' All 2-center integrals have been calculated, diagonalized and stored'
  write(stdout,'(a,i6)')     ' Some have been eliminated ',auxil_basis%nbf-nauxil_2center

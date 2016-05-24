@@ -423,10 +423,6 @@ program molgw
     .OR. calc_type%gwmethod == G0W0 .OR. calc_type%gwmethod == COHSEX   &
     .OR. calc_type%gwmethod == GnW0 .OR. calc_type%gwmethod == GnWn ) ) then
 
-   !
-   ! A section under development for the range-separated RPA
-   if( calc_type%is_lr_mbpt ) call die('lr_mbpt code removed. Does not exist anymore')
-
    call init_spectral_function(nstate,occupation,wpol)
 
    ! Try to read a spectral function file in order to skip the polarizability calculation
@@ -463,6 +459,44 @@ program molgw
    deallocate(matrix_tmp)
 
  endif ! G0W0
+ !
+ ! final evaluation for perturbative GW
+ if( calc_type%is_gw .AND. calc_type%gwmethod == COHSEX_DEVEL ) then
+
+   if( .NOT. has_auxil_basis ) stop'Not coded yet and will never be'
+   call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix)
+   call init_spectral_function(nstate,occupation,wpol)
+   !
+   ! Calculate v^{1/2} \chi v^{1/2}
+   call static_polarizability(nstate,basis,auxil_basis,occupation,energy,wpol)
+
+   !
+   allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
+   call cohsex_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
+
+   call destroy_eri_3center_eigen()
+
+   !
+   ! A section under development for the range-separated RPA
+   if( calc_type%is_lr_mbpt ) then
+
+     ! 2-center integrals
+     call calculate_eri_2center_lr(auxil_basis,rcut_mbpt)
+     ! Prepare the distribution of the 3-center integrals
+     call distribute_auxil_basis_lr(nauxil_2center_lr,nauxil_3center_lr)
+     ! 3-center integrals
+     call calculate_eri_3center_lr(basis,auxil_basis,rcut_mbpt)
+
+     call calculate_eri_3center_eigen_lr(basis%nbf,nstate,c_matrix)
+
+     call cohsex_selfenergy_lr(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
+
+     call destroy_eri_3center_eigen_lr()
+
+   endif
+
+
+ endif ! COHSEX
 
  !
  ! final evaluation for MP2

@@ -24,6 +24,7 @@ module m_eri_lr_calculate
 
  real(prec_eri),private,allocatable :: eri_2center_m1_lr(:,:)
 
+ real(prec_eri),protected,allocatable :: eri_2center_rotation_lr(:,:)
 
 contains
 
@@ -523,25 +524,30 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
  call xsum(eri_2center_m1_lr)
 
 
- allocate(eigval(nauxil_2center_lr))
+ allocate(eigval(auxil_basis%nbf))
  !
  ! Perform in-place diagonalization here with or without scalapack
- call diagonalize_scalapack(scalapack_block_min,nauxil_2center_lr,eri_2center_m1_lr,eigval)
+ call diagonalize_scalapack(scalapack_block_min,auxil_basis%nbf,eri_2center_m1_lr,eigval)
 
  !
  ! Skip the too small eigenvalues
+ nauxil_2center_lr = COUNT( ABS(eigval(:)) > TOO_LOW_EIGENVAL )
+#ifdef TODAY
+ allocate(eri_2center_rotation_lr(auxil_basis%nbf,nauxil_2center_lr))
+#endif
+
  ibf = 0
- do jbf=1,nauxil_2center_lr
-   if( eigval(jbf) < TOO_LOW_EIGENVAL ) cycle
+ do jbf=1,auxil_basis%nbf
+   if( ABS(eigval(jbf)) < TOO_LOW_EIGENVAL ) cycle
    ibf = ibf + 1
+#ifdef TODAY
+   eri_2center_rotation_lr(:,ibf) = eri_2center_m1_lr(:,jbf)
+#endif
    eri_2center_m1_lr(:,ibf) = eri_2center_m1_lr(:,jbf) / SQRT( eigval(jbf) )
  enddo
  deallocate(eigval)
 
- !
- ! Resize the 2-center LR integral matrix
- ! Now the array is eri_2center_m1_lr(auxil_basis%nbf,nauxil_2center_lr)
- nauxil_2center_lr = ibf
+
 
  write(stdout,'(a)')        ' All 2-center LR integrals have been calculated, diagonalized and stored'
  write(stdout,'(a,i6)')     ' Some have been eliminated ',auxil_basis%nbf-nauxil_2center_lr

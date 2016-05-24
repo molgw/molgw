@@ -32,6 +32,8 @@ module m_inputparam
  integer,parameter :: LW           = 110   ! Luttinger-Ward log term
  integer,parameter :: GSIGMA3      = 112   ! Total energy calc
  integer,parameter :: LW2          = 113   ! Luttinger-Ward log term
+ integer,parameter :: COHSEX_DEVEL = 114
+ integer,parameter :: TUNED_COHSEX = 115
 
  type calculation_type
    character(len=100) :: calc_name
@@ -105,6 +107,7 @@ module m_inputparam
  logical,protected                :: print_bigrestart_
  logical,protected                :: print_pdos_
  logical,protected                :: print_cube_
+ real(dp),protected               :: rcut_mbpt
 
  real(dp),protected               :: alpha_hybrid    = 0.0_dp
  real(dp),protected               :: alpha_hybrid_lr = 0.0_dp
@@ -189,6 +192,13 @@ subroutine init_calculation_type(calc_type,input_key)
    case('COHSEX')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = COHSEX
+   case('COHSEX_DEVEL')
+     calc_type%is_gw    =.TRUE.
+     calc_type%gwmethod = COHSEX_DEVEL
+   case('TUNED_COHSEX')
+     calc_type%is_gw    =.TRUE.
+     calc_type%gwmethod = COHSEX_DEVEL
+     calc_type%is_lr_mbpt = .TRUE.
    case('LRGW')
      calc_type%is_gw      =.TRUE.
      calc_type%gwmethod   = G0W0
