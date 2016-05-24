@@ -907,6 +907,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
  integer                    :: nspin_read
  integer                    :: nstate_read
  real(dp),allocatable       :: occupation_read(:,:)
+ real(dp),allocatable       :: energy_read(:,:)
  real(dp),allocatable       :: c_matrix_read(:,:,:)
  real(dp),allocatable       :: hh_read(:,:),hexx_read(:,:,:),hxc_read(:,:,:)
  real(dp),allocatable       :: overlap_mixedbasis(:,:)
@@ -1020,8 +1021,11 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
 
 
  ! Eigen energies
- read(restartfile) energy(1:nstate_read,:)
- energy(nstate_read+1:nstate,:) = 1000.0_dp
+ allocate(energy_read(nstate_read,nspin_read))
+ read(restartfile) energy_read(:,:)
+ energy(:,:) = 1000.0_dp
+ energy(1:MIN(nstate,nstate_read),:) = energy_read(1:MIN(nstate,nstate_read),:)
+ deallocate(energy_read)
  
 
  ! Number of states written down in the RESTART file

@@ -44,6 +44,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  integer               :: ibf_auxil,jbf_auxil
  integer               :: ibf_auxil_global,jbf_auxil_global
  real(dp),allocatable  :: wp0(:,:),wp0_i(:),w0_local(:)
+ real(dp)              :: sigx
 !=====
 
  call start_clock(timing_self)
@@ -52,7 +53,6 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  if( .NOT. ALLOCATED(wpol%w0) ) stop'static W should be available here'
 
 
- write(stdout,*)
  select case(gwmethod)
  case(COHSEX)
    write(stdout,*) 'Perform a COHSEX calculation'
@@ -67,6 +67,27 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  nsemax = MIN(nvirtual_G-1,selfenergy_state_max,nstate)
 
  write(stdout,'(a,i4,a,i4)') ' Calculate state range from ',nsemin,' to ',nsemax
+
+
+
+ write(stdout,*) '=============='
+ write(stdout,*) 'FBFB exchange'
+ do ispin=1,nspin
+   do bstate=nsemin,nsemax
+     sigx = 0.0_dp
+     do istate=ncore_G+1,nstate
+       fact_full_i   = occupation(istate,ispin) / spin_fact
+       if( fact_full_i < completely_empty ) cycle
+
+       sigx = sigx - SUM( eri_3center_eigen(:,bstate,istate,ispin)**2 ) * fact_full_i
+
+     enddo
+     call xsum(sigx)
+
+     write(stdout,'(i4,4x,f16.6)') bstate,sigx * Ha_eV
+   enddo
+ enddo
+ write(stdout,*) '=============='
 
 
  energy_gw = 0.0_dp
@@ -179,7 +200,6 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
 
        enddo
 
-!FBFB
 !     case(QSCOHSEX) 
 !       do bstate=nsemin,nsemax
 !         do astate=nsemin,nsemax
@@ -350,6 +370,7 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
  real(dp),allocatable  :: wp0(:,:),wp0_i(:),w0_local(:)
  real(dp),allocatable  :: wp0_tmp(:,:),wp0_rotation(:,:)
  integer               :: nbf_auxil
+ real(dp)              :: sigx
 !=====
 
  call start_clock(timing_self)
@@ -360,6 +381,7 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
 #ifndef TODAY
  stop '-DTODAY is required'
 #endif
+
 
  write(stdout,*)
  select case(gwmethod)
@@ -387,6 +409,28 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
  nsemax = MIN(nvirtual_G-1,selfenergy_state_max,nstate)
 
  write(stdout,'(a,i4,a,i4)') ' Calculate state range from ',nsemin,' to ',nsemax
+
+
+
+ write(stdout,*) '=============='
+ write(stdout,*) 'FBFB exchange'
+ do ispin=1,nspin
+   do bstate=nsemin,nsemax
+     sigx = 0.0_dp
+     do istate=ncore_G+1,nstate
+       fact_full_i   = occupation(istate,ispin) / spin_fact
+       if( fact_full_i < completely_empty ) cycle
+
+       sigx = sigx - SUM( eri_3center_eigen_lr(:,bstate,istate,ispin)**2 ) * fact_full_i
+
+     enddo
+     call xsum(sigx)
+
+     write(stdout,'(i4,4x,f16.6)') bstate,sigx * Ha_eV
+   enddo
+ enddo
+ write(stdout,*) '=============='
+
 
 
  energy_gw = 0.0_dp
