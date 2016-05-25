@@ -67,6 +67,7 @@ program molgw
  real(dp),allocatable    :: s_eigval(:)
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
+ real(dp),allocatable    :: sigc(:,:)
  integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
  integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix 
 !=============================
@@ -461,7 +462,7 @@ program molgw
  endif ! G0W0
  !
  ! final evaluation for perturbative GW
- if( calc_type%is_gw .AND. calc_type%gwmethod == COHSEX_DEVEL ) then
+ if( calc_type%is_gw .AND. (calc_type%gwmethod == COHSEX_DEVEL .OR. calc_type%gwmethod == TUNED_COHSEX) ) then
 
    if( .NOT. has_auxil_basis ) stop'Not coded yet and will never be'
    call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix)
@@ -472,7 +473,9 @@ program molgw
 
    !
    allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-   call cohsex_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
+   allocate(sigc(nstate,nspin))
+   call cohsex_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag, & 
+                          c_matrix,s_matrix,wpol,matrix_tmp,sigc,en%gw)
 
    call destroy_eri_3center_eigen()
 
@@ -489,12 +492,15 @@ program molgw
 
      call calculate_eri_3center_eigen_lr(basis%nbf,nstate,c_matrix)
 
-     call cohsex_selfenergy_lr(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
+     call cohsex_selfenergy_lr(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag, &
+                               c_matrix,s_matrix,wpol,matrix_tmp,sigc,en%gw)
 
      call destroy_eri_3center_eigen_lr()
 
    endif
 
+   deallocate(matrix_tmp)
+   deallocate(sigc)
 
  endif ! COHSEX
 

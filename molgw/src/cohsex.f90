@@ -6,7 +6,8 @@
 ! within different flavors: G0W0, GnW0, GnWn, COHSEX
 !
 !=========================================================================
-subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy,energy_gw)
+subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_diag, &
+                             c_matrix,s_matrix,wpol,selfenergy,sigc,energy_gw)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -24,6 +25,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  real(dp),intent(in)                :: s_matrix(basis%nbf,basis%nbf)
  type(spectral_function),intent(in) :: wpol
  real(dp),intent(out)               :: selfenergy(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(inout)             :: sigc(nstate,nspin)
  real(dp),intent(out)               :: energy_gw
 !=====
  logical               :: file_exists=.FALSE.
@@ -54,11 +56,13 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
 
 
  select case(gwmethod)
- case(COHSEX)
+ case(COHSEX_DEVEL)
    write(stdout,*) 'Perform a COHSEX calculation'
    if( ABS(alpha_cohsex - 1.0_dp) > 1.0e-4_dp .OR. ABS(beta_cohsex - 1.0_dp) > 1.0e-4_dp ) then
      write(stdout,'(a,2(2x,f12.6))') ' Tuned COHSEX with parameters alpha, beta: ',alpha_cohsex,beta_cohsex
    endif
+ case(TUNED_COHSEX)
+   write(stdout,*) 'Perform a tuned COHSEX calculation'
  end select
 
  !
@@ -85,6 +89,10 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
      call xsum(sigx)
 
      write(stdout,'(i4,4x,f16.6)') bstate,sigx * Ha_eV
+
+     ! Store the result in sigc
+     sigc(bstate,ispin) = sigc(bstate,ispin) + sigx * delta_cohsex
+
    enddo
  enddo
  write(stdout,*) '=============='
@@ -200,6 +208,22 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
 
        enddo
 
+     case(TUNED_COHSEX)
+
+       do astate=nsemin,nsemax
+         !
+         ! SEX
+         !
+         selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
+                    -  DOT_PRODUCT( eri_3center_eigen(:,astate,istate,ispin) , wp0(:,astate) ) &
+                          * fact_full_i * 1.0_dp  &
+                          * beta_cohsex
+         !
+         ! No COH 
+         !
+       enddo
+
+
 !     case(QSCOHSEX) 
 !       do bstate=nsemin,nsemax
 !         do astate=nsemin,nsemax
@@ -239,29 +263,10 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
 
  write(stdout,'(a)') ' Sigma_c is calculated'
 
- !
- ! Kotani's Hermitianization trick
- !
- if(gwmethod==QS) then
-   do ispin=1,nspin
-     selfenergy_omega(0,:,:,ispin) = 0.5_dp * ( selfenergy_omega(0,:,:,ispin) + TRANSPOSE(selfenergy_omega(0,:,:,ispin)) )
-   enddo
- endif
 
  select case(gwmethod)
- case(QS)
-   ! Transform the matrix elements back to the AO basis
-   ! do not forget the overlap matrix S
-   ! C^T S C = I
-   ! the inverse of C is C^T S
-   ! the inverse of C^T is S C
-   do ispin=1,nspin
-     selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ispin) ) , MATMUL( selfenergy_omega(0,:,:,ispin), &
-                             MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ispin)), s_matrix(:,:) ) ) )
-   enddo
 
-
- case(QSCOHSEX)
+ case(QSCOHSEX)     !==========================================================
    write(stdout,*) 
    ! Transform the matrix elements back to the AO basis
    ! do not forget the overlap matrix S
@@ -300,6 +305,11 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
    call write_energy_qp(nstate,energy_qp_new)
 
 
+ case(TUNED_COHSEX) !==========================================================
+
+   sigc(nsemin:nsemax,:) = sigc(nsemin:nsemax,:) + selfenergy_omega(0,nsemin:nsemax,1,:)
+
+
  end select
 
 
@@ -327,7 +337,8 @@ end subroutine cohsex_selfenergy
 
 
 !=========================================================================
-subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy,energy_gw)
+subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_diag, &
+                                c_matrix,s_matrix,wpol,selfenergy,sigc,energy_gw)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -348,6 +359,7 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
  real(dp),intent(in)                :: s_matrix(basis%nbf,basis%nbf)
  type(spectral_function),intent(in) :: wpol
  real(dp),intent(out)               :: selfenergy(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(inout)             :: sigc(nstate,nspin)
  real(dp),intent(out)               :: energy_gw
 !=====
  logical               :: file_exists=.FALSE.
@@ -390,6 +402,8 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
    if( ABS(alpha_cohsex - 1.0_dp) > 1.0e-4_dp .OR. ABS(beta_cohsex - 1.0_dp) > 1.0e-4_dp ) then
      write(stdout,'(a,2(2x,f12.6))') ' Tuned COHSEX with parameters alpha, beta: ',alpha_cohsex,beta_cohsex
    endif
+ case(TUNED_COHSEX)
+   write(stdout,*) 'Perform a tuned COHSEX calculation'
  end select
 
  ! Rotation of W0
@@ -427,6 +441,10 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
      call xsum(sigx)
 
      write(stdout,'(i4,4x,f16.6)') bstate,sigx * Ha_eV
+
+     ! Store the result in sigc
+     sigc(bstate,ispin) = sigc(bstate,ispin) - sigx * delta_cohsex
+
    enddo
  enddo
  write(stdout,*) '=============='
@@ -543,6 +561,23 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
 
        enddo
 
+     case(TUNED_COHSEX)
+
+       do astate=nsemin,nsemax
+         !
+         ! no SEX... today
+         !
+
+         !
+         ! COH
+         !
+         selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
+                    +  DOT_PRODUCT( eri_3center_eigen_lr(:,astate,istate,ispin) , wp0(:,astate) ) &
+                          * alpha_cohsex * 0.5_dp
+
+       enddo
+
+
 !FBFB
 !     case(QSCOHSEX) 
 !       do bstate=nsemin,nsemax
@@ -583,29 +618,10 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
 
  write(stdout,'(a)') ' Sigma_c is calculated'
 
- !
- ! Kotani's Hermitianization trick
- !
- if(gwmethod==QS) then
-   do ispin=1,nspin
-     selfenergy_omega(0,:,:,ispin) = 0.5_dp * ( selfenergy_omega(0,:,:,ispin) + TRANSPOSE(selfenergy_omega(0,:,:,ispin)) )
-   enddo
- endif
+
 
  select case(gwmethod)
- case(QS)
-   ! Transform the matrix elements back to the AO basis
-   ! do not forget the overlap matrix S
-   ! C^T S C = I
-   ! the inverse of C is C^T S
-   ! the inverse of C^T is S C
-   do ispin=1,nspin
-     selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ispin) ) , MATMUL( selfenergy_omega(0,:,:,ispin), &
-                             MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ispin)), s_matrix(:,:) ) ) )
-   enddo
-
-
- case(QSCOHSEX)
+ case(QSCOHSEX)     !==========================================================
    write(stdout,*) 
    ! Transform the matrix elements back to the AO basis
    ! do not forget the overlap matrix S
@@ -642,6 +658,29 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
    enddo
 
    call write_energy_qp(nstate,energy_qp_new)
+
+ case(TUNED_COHSEX) !==========================================================
+
+
+   sigc(nsemin:nsemax,:) = sigc(nsemin:nsemax,:) + selfenergy_omega(0,nsemin:nsemax,1,:)
+
+   write(stdout,'(/,a)') ' COHSEX Eigenvalues (eV)'
+   if(nspin==1) then
+     write(stdout,*) '  #          E0        SigX-Vxc      SigC          Z         COHSEX'
+   else
+     write(stdout,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       COHSEX'
+   endif
+   do astate=nsemin,nsemax
+     energy_qp_new(astate,:) = energy_qp(astate,:) + sigc(astate,:) + exchange_m_vxc_diag(astate,:)
+
+     write(stdout,'(i4,x,20(x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,               &
+                                                 exchange_m_vxc_diag(astate,:)*Ha_eV,     &
+                                                 sigc(astate,:)*Ha_eV, &
+                                           1.0_dp ,energy_qp_new(astate,:)*Ha_eV
+   enddo
+
+   call write_energy_qp(nstate,energy_qp_new)
+
 
 
  end select

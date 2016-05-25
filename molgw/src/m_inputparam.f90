@@ -94,7 +94,7 @@ module m_inputparam
  integer,protected                :: scalapack_block_min
  integer,protected                :: scalapack_nprow
  integer,protected                :: scalapack_npcol
- real(dp),protected               :: alpha_cohsex,beta_cohsex
+ real(dp),protected               :: alpha_cohsex,beta_cohsex,delta_cohsex
 
  logical,protected                :: ignore_restart_
  logical,protected                :: ignore_bigrestart_
@@ -197,7 +197,7 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%gwmethod = COHSEX_DEVEL
    case('TUNED_COHSEX')
      calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = COHSEX_DEVEL
+     calc_type%gwmethod = TUNED_COHSEX
      calc_type%is_lr_mbpt = .TRUE.
    case('LRGW')
      calc_type%is_gw      =.TRUE.

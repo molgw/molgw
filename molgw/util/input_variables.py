@@ -627,6 +627,15 @@ vl[i].comment  ='Sets the amount of static COulomb Hole in the self-energy. Only
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='delta_cohsex'
+vl[i].family   ='post'
+vl[i].default  =0.0
+vl[i].datatype ='real'
+vl[i].comment  ='EXPERIMENTAL'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='virtual_fno'
 vl[i].family   ='post'
 vl[i].default  ='no'
@@ -643,6 +652,7 @@ vl[i].family   ='post'
 vl[i].default  ='1.0'
 vl[i].datatype ='real'
 vl[i].comment  ='EXPERIMENTAL'
+
 
 
 
