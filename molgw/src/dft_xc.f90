@@ -7,7 +7,6 @@
 !
 !=========================================================================
 subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,exc_xc)
- use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
  use m_definitions
  use m_mpi
  use m_timing
@@ -39,11 +38,6 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
  real(dp) :: normalization(nspin)
  real(dp) :: weight
 
-#ifdef HAVE_LIBXC
- type(xc_f90_pointer_t) :: xc_func(ndft_xc),xc_functest
- type(xc_f90_pointer_t) :: xc_info(ndft_xc),xc_infotest
-#endif
-
  real(dp)             :: basis_function_r(basis%nbf)
  real(dp)             :: basis_function_gradr(3,basis%nbf)
  real(dp)             :: basis_function_laplr(3,basis%nbf)
@@ -61,7 +55,6 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
  real(dp)             :: dedd_r(nspin)
  real(dp)             :: dedgd_r(3,nspin)
  real(dp)             :: gradtmp(basis%nbf)
- character(len=256)   :: string
 !=====
 
  exc_xc = 0.0_dp
@@ -79,47 +72,9 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
  require_laplacian=.FALSE.
  do idft_xc=1,ndft_xc
 
-   if( dft_xc_type(idft_xc) < 1000 ) then
-     if(nspin==1) then
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_UNPOLARIZED)
-     else
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_POLARIZED)
-     endif
-   else if(dft_xc_type(idft_xc) < 2000) then
-     write(stdout,*) 'Home-made functional LDA functional'
-     ! Fake LIBXC descriptor 
-     if(nspin==1) then
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_LDA_X, XC_UNPOLARIZED)
-     else
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_LDA_X, XC_POLARIZED)
-     endif
-   else
-     write(stdout,*) 'Home-made functional GGA functional'
-     ! Fake LIBXC descriptor 
-     if(nspin==1) then
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_GGA_X_PBE, XC_UNPOLARIZED)
-     else
-       call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), XC_GGA_X_PBE, XC_POLARIZED)
-    endif
-   endif
-
-   if( dft_xc_type(idft_xc) < 1000 ) then
-     call xc_f90_info_name(xc_info(idft_xc),string)
-     write(stdout,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),TRIM(string)
-   else
-     write(stdout,'(a,i4,a,i6,5x,a)') '   XC functional ',idft_xc,' :  ',xc_f90_info_number(xc_info(idft_xc)),'FAKE LIBXC DESCRIPTOR'
-   endif
-
-   if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
-   if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) require_gradient  =.TRUE.
-   if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_MGGA    ) require_laplacian =.TRUE.
-
-   if( dft_xc_type(idft_xc) == XC_GGA_X_HJS_PBE ) then
-     call xc_f90_gga_x_hjs_set_par(xc_func(idft_xc), REAL(gamma_hybrid,C_DOUBLE) )
-   endif
-   if( dft_xc_type(idft_xc) == XC_GGA_X_WPBEH ) then
-     call xc_f90_gga_x_wpbeh_set_par(xc_func(idft_xc), REAL(gamma_hybrid,C_DOUBLE) )
-   endif
+   if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
+   if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) require_gradient  =.TRUE.
+   if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_MGGA    ) require_laplacian =.TRUE.
 
  enddo
 
@@ -189,14 +144,13 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
 
    do idft_xc=1,ndft_xc
 
-     select case(xc_f90_info_family(xc_info(idft_xc)))
+     select case(xc_f90_info_family(calc_type%xc_info(idft_xc)))
 
      case(XC_FAMILY_LDA)
        if( dft_xc_type(idft_xc) < 1000 ) then 
-         call xc_f90_lda_exc_vxc(xc_func(idft_xc),1_C_INT,rhor(1),exc_libxc(1),vxc_libxc(1))
+         call xc_f90_lda_exc_vxc(calc_type%xc_func(idft_xc),1,rhor(1),exc_libxc(1),vxc_libxc(1))
        else
          call my_lda_exc_vxc(nspin,dft_xc_type(idft_xc),rhor,exc_libxc(1),vxc_libxc)
-!         call my_lda_exc_vxc_mu(1.00_dp,rhor,exc_libxc,vxc_libxc)
        endif
 
      case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
@@ -205,7 +159,7 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
          ! Remove too small densities to stabilize the computation
          ! especially useful for Becke88
          if( ANY( rhor(:) > 1.0e-9_dp ) ) then
-           call xc_f90_gga_exc_vxc(xc_func(idft_xc),1_C_INT,rhor(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
+           call xc_f90_gga_exc_vxc(calc_type%xc_func(idft_xc),1,rhor(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
          else
            exc_libxc(:)     = 0.0_dp
            vxc_libxc(:)     = 0.0_dp
@@ -216,7 +170,7 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
        endif
 
      case(XC_FAMILY_MGGA)
-       call xc_f90_mgga_vxc(xc_func(idft_xc),1_C_INT,rhor(1),sigma(1),lapl_rhor(1),tau(1),vxc_libxc(1),vsigma(1),vlapl_rho(1),vtau(1))
+       call xc_f90_mgga_vxc(calc_type%xc_func(idft_xc),1,rhor(1),sigma(1),lapl_rhor(1),tau(1),vxc_libxc(1),vsigma(1),vlapl_rho(1),vtau(1))
        ! no expression for the energy
        exc_libxc(1) = 0.0_dp
 
@@ -231,8 +185,8 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
      !
      ! Set up divergence term if needed (GGA case)
      !
-     if( xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_GGA &
-        .OR. xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) then
+     if( xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_GGA &
+        .OR. xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) then
        if(nspin==1) then
 
          dedgd_r(:,1) = dedgd_r(:,1) + 2.0_dp * vsigma(1) * grad_rhor(:,1) * dft_xc_coef(idft_xc)
@@ -329,11 +283,11 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
    call xsum(exc_xc)
  endif
 
- !
- ! Destroy operations
- do idft_xc=1,ndft_xc
-   call xc_f90_func_end(xc_func(idft_xc))
- enddo
+! !
+! ! Destroy operations
+! do idft_xc=1,ndft_xc
+!   call xc_f90_func_end(calc_type%xc_func(idft_xc))
+! enddo
 
 #else
 !TODO write a call to teter to have MOLGW working without LIBXC
@@ -534,7 +488,6 @@ subroutine calc_density_gradr(nspin,nbf,p_matrix_occ,p_matrix_sqrt,basis_functio
      enddo
      grad_rhor(:,ispin) = grad_rhor(:,ispin) + phi_ir * grad_phi_ir(:) * 2.0_dp
    enddo
-
  enddo
 
 

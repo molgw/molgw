@@ -511,7 +511,6 @@ subroutine build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_ap
 !=====
  interface 
    subroutine prepare_tddft(nspin_tddft,nstate,basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2sigma2,wf_r,wf_gradr,rho_gradr)
-     use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
      use m_definitions
      use m_timing
      use m_warning
@@ -1084,7 +1083,6 @@ end subroutine build_amb_apb_screened_exchange_auxil
 
 !=========================================================================
 subroutine prepare_tddft(nspin_tddft,nstate,basis,c_matrix,occupation,v2rho2,vsigma,v2rhosigma,v2sigma2,wf_r,wf_gradr,rho_gradr)
- use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
  use m_definitions
  use m_timing
  use m_warning
@@ -1129,13 +1127,13 @@ subroutine prepare_tddft(nspin_tddft,nstate,basis,c_matrix,occupation,v2rho2,vsi
  type(xc_f90_pointer_t) :: xc_func(ndft_xc),xc_functest
  type(xc_f90_pointer_t) :: xc_info(ndft_xc),xc_infotest
 #endif
- real(C_DOUBLE) :: rho_c(nspin_tddft)
- real(C_DOUBLE) :: v2rho2_c(2*nspin_tddft-1)
- real(C_DOUBLE) :: sigma_c(2*nspin_tddft-1)
- real(C_DOUBLE) :: vrho_c(nspin_tddft)
- real(C_DOUBLE) :: vsigma_c(2*nspin_tddft-1)
- real(C_DOUBLE) :: v2rhosigma_c(5*nspin_tddft-4)
- real(C_DOUBLE) :: v2sigma2_c(5*nspin_tddft-4)
+ real(dp) :: rho_c(nspin_tddft)
+ real(dp) :: v2rho2_c(2*nspin_tddft-1)
+ real(dp) :: sigma_c(2*nspin_tddft-1)
+ real(dp) :: vrho_c(nspin_tddft)
+ real(dp) :: vsigma_c(2*nspin_tddft-1)
+ real(dp) :: v2rhosigma_c(5*nspin_tddft-4)
+ real(dp) :: v2sigma2_c(5*nspin_tddft-4)
 !=====
 
  !
@@ -1237,10 +1235,10 @@ subroutine prepare_tddft(nspin_tddft,nstate,basis,c_matrix,occupation,v2rho2,vsi
    do idft_xc=1,ndft_xc
      select case(xc_f90_info_family(xc_info(idft_xc)))
      case(XC_FAMILY_LDA)
-       call xc_f90_lda_fxc(xc_func(idft_xc),1_C_INT,rho_c(1),v2rho2_c(1))
+       call xc_f90_lda_fxc(xc_func(idft_xc),1,rho_c(1),v2rho2_c(1))
      case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
-       call xc_f90_gga_vxc(xc_func(idft_xc),1_C_INT,rho_c(1),sigma_c(1),vrho_c(1),vsigma_c(1))
-       call xc_f90_gga_fxc(xc_func(idft_xc),1_C_INT,rho_c(1),sigma_c(1),v2rho2_c(1),v2rhosigma_c(1),v2sigma2_c(1))
+       call xc_f90_gga_vxc(xc_func(idft_xc),1,rho_c(1),sigma_c(1),vrho_c(1),vsigma_c(1))
+       call xc_f90_gga_fxc(xc_func(idft_xc),1,rho_c(1),sigma_c(1),v2rho2_c(1),v2rhosigma_c(1),v2sigma2_c(1))
      case default
        call die('Other kernels not yet implemented')
      end select

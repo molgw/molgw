@@ -73,7 +73,6 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  write(stdout,'(a,i4,a,i4)') ' Calculate state range from ',nsemin,' to ',nsemax
 
 
-
  write(stdout,*) '=============='
  write(stdout,*) 'FBFB exchange'
  do ispin=1,nspin
@@ -91,7 +90,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
      write(stdout,'(i4,4x,f16.6)') bstate,sigx * Ha_eV
 
      ! Store the result in sigc
-     sigc(bstate,ispin) = sigc(bstate,ispin) + sigx * delta_cohsex
+     sigc(bstate,ispin) = sigc(bstate,ispin) + sigx * epsilon_cohsex
 
    enddo
  enddo
@@ -217,9 +216,9 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
          selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
                     -  DOT_PRODUCT( eri_3center_eigen(:,astate,istate,ispin) , wp0(:,astate) ) &
                           * fact_full_i * 1.0_dp  &
-                          * beta_cohsex
+                          * ( beta_cohsex + gamma_cohsex )
          !
-         ! No COH 
+         ! No full range COH in tuned-COHSEX
          !
        enddo
 
@@ -313,18 +312,20 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  end select
 
 
- !
- ! Output the new HOMO and LUMO energies
- !
- do istate=1,nstate
-   if( ANY(occupation(istate,:) > completely_empty) ) homo = istate
- enddo
- write(stdout,*)
- if( homo >= nsemin .AND. homo <= nsemax ) then
-   write(stdout,'(a,2(2x,f12.6))') ' GW HOMO (eV):',energy_qp_new(homo,:)*Ha_eV
- endif
- if( homo+1 >= nsemin .AND. homo+1 <= nsemax ) then
-   write(stdout,'(a,2(2x,f12.6))') ' GW LUMO (eV):',energy_qp_new(homo+1,:)*Ha_eV
+ if( gwmethod == COHSEX_DEVEL ) then
+   !
+   ! Output the new HOMO and LUMO energies
+   !
+   do istate=1,nstate
+     if( ANY(occupation(istate,:) > completely_empty) ) homo = istate
+   enddo
+   write(stdout,*)
+   if( homo >= nsemin .AND. homo <= nsemax ) then
+     write(stdout,'(a,2(2x,f12.6))') ' GW HOMO (eV):',energy_qp_new(homo,:)*Ha_eV
+   endif
+   if( homo+1 >= nsemin .AND. homo+1 <= nsemax ) then
+     write(stdout,'(a,2(2x,f12.6))') ' GW LUMO (eV):',energy_qp_new(homo+1,:)*Ha_eV
+   endif
  endif
 
  if(ALLOCATED(omegai)) deallocate(omegai)
@@ -443,7 +444,7 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
      write(stdout,'(i4,4x,f16.6)') bstate,sigx * Ha_eV
 
      ! Store the result in sigc
-     sigc(bstate,ispin) = sigc(bstate,ispin) - sigx * delta_cohsex
+     sigc(bstate,ispin) = sigc(bstate,ispin) - sigx * epsilon_cohsex
 
    enddo
  enddo
@@ -565,11 +566,15 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
 
        do astate=nsemin,nsemax
          !
-         ! no SEX... today
+         ! LR-SEX 
          !
+         selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
+                    -  DOT_PRODUCT( eri_3center_eigen_lr(:,astate,istate,ispin) , wp0(:,astate) ) &
+                          * fact_full_i * 1.0_dp  &
+                          * (-gamma_cohsex)
 
          !
-         ! COH
+         ! LR-COH
          !
          selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
                     +  DOT_PRODUCT( eri_3center_eigen_lr(:,astate,istate,ispin) , wp0(:,astate) ) &

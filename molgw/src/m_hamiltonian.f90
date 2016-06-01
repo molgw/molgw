@@ -960,7 +960,7 @@ subroutine setup_sqrt_density_matrix(nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
  real(dp),intent(out) :: p_matrix_sqrt(nbf,nbf,nspin)
  real(dp),intent(out) :: p_matrix_occ(nbf,nspin)
 !=====
- integer              :: ispin,istate
+ integer              :: ispin,ibf
 !=====
 
  write(stdout,*) 'Calculate the square root of the density matrix'
@@ -970,13 +970,13 @@ subroutine setup_sqrt_density_matrix(nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
    p_matrix_sqrt(:,:,ispin) = p_matrix(:,:,ispin)
    ! Diagonalization with or without SCALAPACK
    call diagonalize_scalapack(scalapack_block_min,nbf,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
-   do istate=1,nbf
+   do ibf=1,nbf
      ! this is to avoid instabilities
-     if( p_matrix_occ(istate,ispin) < 1.0e-8_dp ) then
-       p_matrix_occ(istate,ispin)    = 0.0_dp
-       p_matrix_sqrt(:,istate,ispin) = 0.0_dp
+     if( p_matrix_occ(ibf,ispin) < 1.0e-8_dp ) then
+       p_matrix_occ(ibf,ispin)    = 0.0_dp
+       p_matrix_sqrt(:,ibf,ispin) = 0.0_dp
      else
-       p_matrix_sqrt(:,istate,ispin) = p_matrix_sqrt(:,istate,ispin) * SQRT( p_matrix_occ(istate,ispin) )
+       p_matrix_sqrt(:,ibf,ispin) = p_matrix_sqrt(:,ibf,ispin) * SQRT( p_matrix_occ(ibf,ispin) )
      endif
    enddo
  enddo

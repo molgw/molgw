@@ -70,6 +70,10 @@ program molgw
  real(dp),allocatable    :: sigc(:,:)
  integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
  integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix 
+#ifdef TODAY
+ real(dp),allocatable    :: p_matrix(:,:,:),p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
+ real(dp)                :: ehomo,exc
+#endif
 !=============================
 
  call init_mpi()
@@ -474,6 +478,47 @@ program molgw
    !
    allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
    allocate(sigc(nstate,nspin))
+
+   ! Calculate the DFT potential part
+   if( ABS( delta_cohsex ) > 1.0e-6_dp ) then
+
+     allocate(p_matrix(basis%nbf,basis%nbf,nspin))
+     allocate(p_matrix_sqrt(basis%nbf,basis%nbf,nspin))
+     allocate(p_matrix_occ(basis%nbf,nspin))
+     call init_dft_grid(grid_level)
+     call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
+     call setup_sqrt_density_matrix(basis%nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
+
+     ! Override the DFT XC correlation settings
+     call init_dft_type('HJSx',calc_type)
+#ifdef HAVE_LIBXC
+     call xc_f90_gga_x_hjs_set_par(calc_type%xc_func(1),1.0_dp/rcut_mbpt)
+#endif
+     call dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,matrix_tmp,exc)
+ 
+     write(stdout,*) '===== SigX SR ======'
+     do ispin=1,nspin
+       do istate=1,nstate
+         sigc(istate,ispin) = DOT_PRODUCT( c_matrix(:,istate,ispin) , &
+                                   MATMUL( matrix_tmp(:,:,ispin) , c_matrix(:,istate,ispin ) ) )
+         write(stdout,*) istate,ispin,sigc(istate,ispin) * Ha_eV
+       enddo
+     enddo
+     write(stdout,*) '===================='
+     sigc(istate,ispin) = sigc(istate,ispin) * delta_cohsex 
+
+     deallocate(p_matrix)
+     deallocate(p_matrix_sqrt)
+     deallocate(p_matrix_occ)
+     call destroy_dft_grid()
+
+   else
+
+     sigc(:,:) = 0.0_dp
+
+   endif
+
+
    call cohsex_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag, & 
                           c_matrix,s_matrix,wpol,matrix_tmp,sigc,en%gw)
 

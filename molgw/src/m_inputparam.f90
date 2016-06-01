@@ -50,8 +50,13 @@ module m_inputparam
    logical            :: read_potential
    logical            :: is_bse,is_td
    integer            :: gwmethod                    ! perturbative or quasiparticle self-consistent
+#ifdef HAVE_LIBXC
+   type(xc_f90_pointer_t),allocatable :: xc_func(:)
+   type(xc_f90_pointer_t),allocatable :: xc_info(:)
+#endif
  end type calculation_type
 
+ type(calculation_type),public    :: calc_type                   ! Sometimes we may need to tune this
  integer,protected                :: selfenergy_state_min
  integer,protected                :: selfenergy_state_max
  integer,protected                :: ncoreg 
@@ -80,7 +85,6 @@ module m_inputparam
  real(dp),protected               :: electrons,charge
  real(dp),protected               :: temperature
  real(dp),protected               :: magnetization
- type(calculation_type),protected :: calc_type
  integer,protected                :: grid_level
  integer,protected                :: integral_level
  logical,protected                :: has_auxil_basis
@@ -94,7 +98,7 @@ module m_inputparam
  integer,protected                :: scalapack_block_min
  integer,protected                :: scalapack_nprow
  integer,protected                :: scalapack_npcol
- real(dp),protected               :: alpha_cohsex,beta_cohsex,delta_cohsex
+ real(dp),protected               :: alpha_cohsex,beta_cohsex,gamma_cohsex,delta_cohsex,epsilon_cohsex
 
  logical,protected                :: ignore_restart_
  logical,protected                :: ignore_bigrestart_
@@ -114,7 +118,8 @@ module m_inputparam
  real(dp),protected               :: rcut            = 0.0_dp
  real(dp),protected               :: gamma_hybrid  
 
- integer,protected                    :: ndft_xc      = 0
+!This ones are not protected, as we sometimes need to hack them
+ integer,protected                 :: ndft_xc = 0
  integer(C_INT),protected,allocatable :: dft_xc_type(:)
  real(C_DOUBLE),protected,allocatable :: dft_xc_coef(:)
 
@@ -267,14 +272,17 @@ end subroutine init_calculation_type
 subroutine init_dft_type(key,calc_type)
  implicit none
 !=====
- character(len=100),intent(in)          :: key
- type(calculation_type),intent(inout)   :: calc_type
+ character(len=*),intent(in)          :: key
+ type(calculation_type),intent(inout) :: calc_type
+!=====
+ integer              :: idft_xc
+ character(len=256)   :: string
 !=====
 
 
  select case(TRIM(key))
  case('LDAx','HFPBE','PBEx','PBEhx','Bx','PW91x','BJx','RPPx',&
-      'BHANDH','BHANDHLYP','BHLYP','B3LYP','PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TUNED-CAM-B3LYP')
+      'BHANDH','BHANDHLYP','BHLYP','B3LYP','PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TUNED-CAM-B3LYP','HJSx')
    ndft_xc=1
  case('LDA','SPL','VWN','VWN_RPA','PBE','PBEh','BLYP','PW91')
    ndft_xc=2
@@ -289,6 +297,9 @@ subroutine init_dft_type(key,calc_type)
    write(stdout,*) TRIM(key)
    call die('DFT xc is unknown')
  end select
+
+ if( ALLOCATED(dft_xc_type) ) deallocate(dft_xc_type)
+ if( ALLOCATED(dft_xc_coef) ) deallocate(dft_xc_coef)
 
  allocate(dft_xc_type(ndft_xc))
  allocate(dft_xc_coef(ndft_xc))
@@ -370,6 +381,10 @@ subroutine init_dft_type(key,calc_type)
    dft_xc_type(1) = XC_GGA_XC_TH1
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
+ case('HJSx')
+   dft_xc_type(1) = XC_GGA_X_HJS_PBE
+   alpha_hybrid   = 0.00_dp
+   alpha_hybrid_lr= 0.00_dp
  !
  ! Meta-GGA functionals
  case('BJx')
@@ -432,7 +447,6 @@ subroutine init_dft_type(key,calc_type)
  case('RSH')
    dft_xc_type(1) = XC_GGA_X_PBE
    dft_xc_type(2) = XC_GGA_X_HJS_PBE  ! HJS is not correct in Libxc <= 2.2.2
-!   dft_xc_type(2) = 2001 ! XC_GGA_X_HJS_PBE
    dft_xc_type(3) = XC_GGA_C_PBE
    dft_xc_coef(1) = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
    dft_xc_coef(2) = alpha_hybrid_lr
@@ -469,6 +483,48 @@ subroutine init_dft_type(key,calc_type)
    call die('Error reading keyword scf')
  end select
 
+
+#ifdef HAVE_LIBXC
+ !
+ ! Initialize the DFT objects for LIBXC
+ !
+ if( ALLOCATED(calc_type%xc_func) ) then
+   do idft_xc=1,SIZE(calc_type%xc_func(:))
+     call xc_f90_func_end(calc_type%xc_func(idft_xc))
+   enddo
+   deallocate(calc_type%xc_func)
+   deallocate(calc_type%xc_info)
+ endif
+
+ allocate(calc_type%xc_func(ndft_xc))
+ allocate(calc_type%xc_info(ndft_xc))
+
+ do idft_xc=1,ndft_xc
+
+   if( nspin == 1 ) then
+     call xc_f90_func_init(calc_type%xc_func(idft_xc),calc_type%xc_info(idft_xc),dft_xc_type(idft_xc),XC_UNPOLARIZED)
+   else
+     call xc_f90_func_init(calc_type%xc_func(idft_xc),calc_type%xc_info(idft_xc),dft_xc_type(idft_xc),XC_POLARIZED)
+   endif
+
+
+   if( dft_xc_type(idft_xc) < 1000 ) then
+     call xc_f90_info_name(calc_type%xc_info(idft_xc),string)
+     write(stdout,'(a,i4,a,a)') '   XC functional ',idft_xc,' :  ',TRIM(string)
+   else
+     write(stdout,'(a,i4,a,a)') '   XC functional ',idft_xc,' :  ','INTERNAL EXCHANGE-CORRELATION'
+   endif
+
+   !
+   ! Tune the range for range separated hybrids
+   if( dft_xc_type(idft_xc) == XC_GGA_X_HJS_PBE ) then
+     call xc_f90_gga_x_hjs_set_par(calc_type%xc_func(idft_xc), gamma_hybrid )
+   endif
+   if( dft_xc_type(idft_xc) == XC_GGA_X_WPBEH ) then
+     call xc_f90_gga_x_wpbeh_set_par(calc_type%xc_func(idft_xc),gamma_hybrid )
+   endif
+ enddo
+#endif
 
 end subroutine init_dft_type
 
