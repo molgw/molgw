@@ -479,6 +479,7 @@ program molgw
    allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
    allocate(sigc(nstate,nspin))
 
+#ifdef TODAY
    ! Calculate the DFT potential part
    if( ABS( delta_cohsex ) > 1.0e-6_dp ) then
 
@@ -518,6 +519,7 @@ program molgw
 
    endif
 
+#endif
 
    call cohsex_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag, & 
                           c_matrix,s_matrix,wpol,matrix_tmp,sigc,en%gw)
