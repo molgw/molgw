@@ -2,8 +2,7 @@
 ! This file is part of MOLGW.
 ! Author: Fabien Bruneval
 !
-! This file contains the calculation of the GW self-energy
-! within different flavors: G0W0, GnW0, GnWn, COHSEX
+! This file contains the calculation of the COHSEX self-energy
 !
 !=========================================================================
 subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_diag, &

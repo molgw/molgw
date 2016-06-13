@@ -34,6 +34,7 @@ module m_inputparam
  integer,parameter :: LW2          = 113   ! Luttinger-Ward log term
  integer,parameter :: COHSEX_DEVEL = 114
  integer,parameter :: TUNED_COHSEX = 115
+ integer,parameter :: G0W0_IOMEGA  = 116
 
  type calculation_type
    character(len=100) :: calc_name
@@ -200,6 +201,9 @@ subroutine init_calculation_type(calc_type,input_key)
    case('COHSEX_DEVEL')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = COHSEX_DEVEL
+   case('G0W0_IOMEGA')
+     calc_type%is_gw    =.TRUE.
+     calc_type%gwmethod = G0W0_IOMEGA
    case('TUNED_COHSEX')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = TUNED_COHSEX

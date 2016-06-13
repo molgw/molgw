@@ -77,6 +77,8 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
    write(stdout,*) 'Perform a QP self-consistent GW calculation (QSGW)'
  case(G0W0)
    write(stdout,*) 'Perform a one-shot G0W0 calculation'
+ case(G0W0_IOMEGA)
+   write(stdout,*) 'Perform a one-shot G0W0 calculation'
  case(COHSEX)
    write(stdout,*) 'Perform a COHSEX calculation'
    if( ABS(alpha_cohsex - 1.0_dp) > 1.0e-4_dp .OR. ABS(beta_cohsex - 1.0_dp) > 1.0e-4_dp ) then
@@ -132,7 +134,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
    allocate(omegai(-nomegai:nomegai))
    omegai(:) = 0.0_dp
 
- case(LW,LW2)
+ case(LW,LW2,G0W0_IOMEGA)
    nomegai =  32
 
    allocate(omegac(1:nomegai))
@@ -145,7 +147,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
    do iomegai=1,nomegai
      omegac(iomegai) = x1(iomegai) / ( 1.0_dp - x1(iomegai) ) * im + mu
      weights(iomegai) = weights(iomegai) / (1.0_dp - x1(iomegai))**2
-     write(stdout,*) iomegai,AIMAG(omegac(iomegai)),weights(iomegai)
+     write(stdout,'(i4,3(2x,f12.4))') iomegai,REAL(omegac(iomegai)),AIMAG(omegac(iomegai)),weights(iomegai)
    enddo
    deallocate(x1)
 
@@ -191,12 +193,13 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  case(QS,QSCOHSEX,GSIGMA3) ! matrix real
    allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nsemin:nsemax,nspin))
 
- case(LW,LW2)                     ! matrix complex
+ case(LW,LW2,G0W0_IOMEGA)                     ! matrix complex
    allocate(selfenergy_omegac(1:nomegai,nsemin:nsemax,nsemin:nsemax,nspin))
 
  case default
    call die('GW case does not exist. Should not happen')
  end select
+
  if( ALLOCATED(selfenergy_omega) )  selfenergy_omega(:,:,:,:)  = 0.0_dp
  if( ALLOCATED(selfenergy_omegac) ) selfenergy_omegac(:,:,:,:) = 0.0_dp
 
@@ -316,6 +319,19 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
                       + bra(ipole,astate) * bra(ipole,astate)                                          & 
                         * ( REAL(  fact_full_i  / ( energy_qp(astate,ispin) + omegai(iomegai) - energy_qp(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
                           + REAL(  fact_empty_i / ( energy_qp(astate,ispin) + omegai(iomegai) - energy_qp(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
+           enddo
+         enddo
+
+       case(G0W0_IOMEGA)
+
+         do astate=nsemin,nsemax
+           !
+           ! calculate only the diagonal !
+             do iomegai=1,nomegai
+               selfenergy_omegac(iomegai,astate,1,ispin) = selfenergy_omegac(iomegai,astate,1,ispin) &
+                      + bra(ipole,astate) * bra(ipole,astate)                                          & 
+                        * ( fact_full_i  / ( omegac(iomegai) - energy_qp(istate,ispin) + wpol%pole(ipole) ) &  !  - ieta )    &
+                          + fact_empty_i / ( omegac(iomegai) - energy_qp(istate,ispin) - wpol%pole(ipole) ) )  ! + ieta )  )
            enddo
          enddo
 
@@ -472,12 +488,34 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
    call write_energy_qp(nstate,energy_qp_new)
 
 
+ case(G0W0_IOMEGA) !==========================================================
+
+   if(print_sigma_ .AND. is_iomaster ) then
+
+     do astate=nsemin,nsemax
+       write(ctmp,'(i3.3)') astate
+       write(stdout,'(x,a,a)') 'Printing file: ','selfenergy_omegac_state'//TRIM(ctmp)
+       open(newunit=selfenergyfile,file='selfenergy_omegac_state'//TRIM(ctmp))
+       write(selfenergyfile,'(a)') '# Re omega (eV)  Im omega (eV)  SigmaC (eV) '
+       do iomegai=1,nomegai
+         write(selfenergyfile,'(20(f12.6,2x))') omegac(iomegai)*Ha_eV,                                     &
+                                            selfenergy_omegac(iomegai,astate,1,:)*Ha_eV
+       enddo
+       write(selfenergyfile,*)
+       close(selfenergyfile)
+     enddo
+
+   endif
+
+
+
  case(G0W0) !==========================================================
 
    if(print_sigma_ .AND. is_iomaster ) then
 
      do astate=nsemin,nsemax
        write(ctmp,'(i3.3)') astate
+       write(stdout,'(x,a,a)') 'Printing file: ','selfenergy_omega_state'//TRIM(ctmp)
        open(newunit=selfenergyfile,file='selfenergy_omega_state'//TRIM(ctmp))
        write(selfenergyfile,'(a)') '# omega (eV)             SigmaC (eV)    omega - e_KS - Vxc + SigmaX (eV)     A (eV^-1) '
        do iomegai=-nomegai,nomegai
