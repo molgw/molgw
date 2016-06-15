@@ -465,6 +465,21 @@ program molgw
    deallocate(matrix_tmp)
 
  endif ! G0W0
+
+ if( calc_type%is_gw .AND. calc_type%gwmethod == G0W0GAMMA0 ) then
+   call init_spectral_function(nstate,occupation,wpol)
+   call read_spectral_function(wpol,reading_status)
+   ! If reading has failed, then do the calculation
+   if( reading_status /= 0 ) then
+     call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+   endif
+   allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
+   call gw_selfenergy(nstate,G0W0,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
+   call gwgamma_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
+   deallocate(matrix_tmp)
+   call destroy_spectral_function(wpol)
+ endif
+
  !
  ! final evaluation for perturbative GW
  if( calc_type%is_gw .AND. (calc_type%gwmethod == COHSEX_DEVEL .OR. calc_type%gwmethod == TUNED_COHSEX) ) then

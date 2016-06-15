@@ -35,6 +35,7 @@ module m_inputparam
  integer,parameter :: COHSEX_DEVEL = 114
  integer,parameter :: TUNED_COHSEX = 115
  integer,parameter :: G0W0_IOMEGA  = 116
+ integer,parameter :: G0W0GAMMA0   = 117
 
  type calculation_type
    character(len=100) :: calc_name
@@ -204,6 +205,9 @@ subroutine init_calculation_type(calc_type,input_key)
    case('G0W0_IOMEGA')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = G0W0_IOMEGA
+   case('G0W0GAMMA0')
+     calc_type%is_gw    =.TRUE.
+     calc_type%gwmethod = G0W0GAMMA0
    case('TUNED_COHSEX')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = TUNED_COHSEX
