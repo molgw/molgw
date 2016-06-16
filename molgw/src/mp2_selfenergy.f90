@@ -22,14 +22,14 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  real(dp),intent(in)        :: s_matrix(basis%nbf,basis%nbf)
  real(dp),intent(out)       :: selfenergy(basis%nbf,basis%nbf,nspin),emp2
 !=====
- integer     :: bbf,ibf,kbf,lbf
- integer     :: astate,bstate
- real(dp)    :: homo,lumo,fact_full,fact_empty
 #ifdef CHI0
  logical,parameter     :: ring_only=.true.
 #else
  logical,parameter     :: ring_only=.false.
 #endif
+ integer               :: bbf,ibf,kbf,lbf
+ integer               :: astate,bstate,bstate2
+ real(dp)              :: homo,lumo,fact_full,fact_empty
  real(dp),allocatable  :: selfenergy_ring(:,:,:,:)
  real(dp),allocatable  :: selfenergy_sox(:,:,:,:)
  real(dp)              :: selfenergy_final(nstate,nstate,nspin)
@@ -42,7 +42,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  real(dp)              :: fi,fj,fk,ei,ej,ek
  real(dp)              :: omega
  real(dp)              :: zz(nspin)
- real(dp)              :: fact_real,fact_nega
+ real(dp)              :: fact_real,fact_energy
  real(dp)              :: emp2_sox,emp2_ring
  logical               :: file_exists
  character(len=3)      :: ctmp
@@ -139,7 +139,13 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
      ei = energy(istate,abispin)
 
      do astate=nsemin,nsemax ! external loop ( bra )
-       do bstate=nket1,nket2     ! external loop ( ket )
+       do bstate=nsemin,nsemax   ! external loop ( ket )
+         if( astate /= bstate .AND. method == perturbative ) cycle
+         if( method == perturbative ) then
+           bstate2 = 1
+         else
+           bstate2 = bstate
+         endif
 
          do jkspin=1,nspin
            do jstate=ncore_G+1,nvirtual_G-1  !LOOP of the second Green's function
@@ -159,7 +165,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
                  omega = energy(bstate,abispin) + omegai(iomegai)
   
                  fact_real = REAL( fact_occ1 / (omega-ei+ej-ek+ieta) + fact_occ2 / (omega-ei+ej-ek-ieta) , dp)
-                 fact_nega = REAL( fact_occ1 / (energy(astate,abispin)-ei+ej-ek+ieta) , dp )
+                 fact_energy = REAL( fact_occ1 / (energy(astate,abispin)-ei+ej-ek+ieta) , dp )
   
                  if( has_auxil_basis ) then
                    coul_iakj = eri_eigen_ri(istate,astate,abispin,kstate,jstate,jkspin)
@@ -169,12 +175,12 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
                    coul_ibjk = eri_eigenstate_i(bstate,jstate,kstate,jkspin)
                  endif
 
-                 selfenergy_ring(iomegai,astate,bstate,abispin) = selfenergy_ring(iomegai,astate,bstate,abispin) &
+                 selfenergy_ring(iomegai,astate,bstate2,abispin) = selfenergy_ring(iomegai,astate,bstate2,abispin) &
                           + fact_real * coul_iakj * coul_ibjk * spin_fact
 
                  if(iomegai==2 .AND. astate==bstate .AND. occupation(astate,abispin)>completely_empty) then
                    emp2_ring = emp2_ring + occupation(astate,abispin) &
-                                         * fact_nega * coul_iakj * coul_ibjk * spin_fact
+                                         * fact_energy * coul_iakj * coul_ibjk * spin_fact
                  endif
   
                  if( abispin == jkspin ) then
@@ -184,12 +190,12 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
                      coul_ijkb = eri_eigenstate_i(jstate,kstate,bstate,abispin) 
                    endif
 
-                   selfenergy_sox(iomegai,astate,bstate,abispin) = selfenergy_sox(iomegai,astate,bstate,abispin) &
+                   selfenergy_sox(iomegai,astate,bstate2,abispin) = selfenergy_sox(iomegai,astate,bstate2,abispin) &
                             - fact_real * coul_iakj * coul_ijkb
 
                    if(iomegai==2 .AND. astate==bstate .AND. occupation(astate,abispin)>completely_empty) then
                      emp2_sox = emp2_sox - occupation(astate,abispin) &
-                               * fact_nega * coul_iakj * coul_ijkb
+                               * fact_energy * coul_iakj * coul_ijkb
                    endif
 
                  endif
