@@ -48,6 +48,7 @@ module m_inputparam
    logical            :: is_lr_mbpt
    logical            :: is_gw
    logical            :: is_mp2
+   logical            :: is_mp2_selfenergy
    logical            :: is_ci
    logical            :: read_potential
    logical            :: is_bse,is_td
@@ -150,6 +151,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%is_lr_mbpt          = .FALSE.
  calc_type%is_gw               = .FALSE.
  calc_type%is_mp2              = .FALSE.
+ calc_type%is_mp2_selfenergy   = .FALSE.
  calc_type%is_ci               = .FALSE.
  calc_type%is_bse              = .FALSE.
  calc_type%is_td               = .FALSE.
@@ -218,6 +220,9 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%is_lr_mbpt = .TRUE.
    case('MP2')
      calc_type%is_mp2   =.TRUE.
+     calc_type%gwmethod = perturbative
+   case('MP2_SELFENERGY')
+     calc_type%is_mp2_selfenergy =.TRUE.
      calc_type%gwmethod = perturbative
    case('CI')
      calc_type%is_ci =.TRUE.

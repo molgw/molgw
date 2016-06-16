@@ -377,7 +377,7 @@ program molgw
  !
  ! Prepare the diagonal of the matrix Sigma_x - Vxc
  ! for the forthcoming GW corrections
- if( calc_type%is_mp2 .OR. calc_type%is_gw ) then
+ if( calc_type%is_mp2 .OR. calc_type%is_mp2_selfenergy .OR. calc_type%is_gw ) then
    exchange_m_vxc_diag(:,:) = 0.0_dp
    do ispin=1,nspin
      do istate=1,nstate
@@ -569,7 +569,7 @@ program molgw
  endif ! COHSEX
 
  !
- ! final evaluation for MP2
+ ! final evaluation for MP2 total energy
  if( calc_type%is_mp2 .AND. calc_type%gwmethod == perturbative ) then
 
    if(has_auxil_basis) then
@@ -578,8 +578,6 @@ program molgw
      call mp2_energy(nstate,basis,occupation,c_matrix,energy,en%mp2)
    endif
 
-! This routine is slower but gives both the correlation energy and the self-energy
-!   call mp2_selfenergy(calc_type%gwmethod,nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,hamiltonian_exx,en%mp2)
    write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
    write(stdout,*) 
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%mp2
@@ -588,6 +586,22 @@ program molgw
    write(stdout,'(a,2x,f19.10)') ' SE+MP2  Total En (Ha):',en%tot+en%se
 
  endif
+
+
+ !
+ ! final evaluation for MP2 self-energy
+ if( calc_type%is_mp2_selfenergy .AND. calc_type%gwmethod == perturbative ) then
+
+   call mp2_selfenergy(calc_type%gwmethod,nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,hamiltonian_exx,en%mp2)
+   write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
+   write(stdout,*)
+   en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%mp2
+
+   write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en%tot
+   write(stdout,'(a,2x,f19.10)') ' SE+MP2  Total En (Ha):',en%tot+en%se
+
+ endif
+
 
 
  !
