@@ -511,6 +511,16 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
 
  case(G0W0) !==========================================================
 
+   if( calc_type%gwmethod == G0W0GAMMA0 ) then
+     open(newunit=selfenergyfile,file='g0w0.dat',form='unformatted')
+     do ispin=1,nspin
+       do astate=nsemin,nsemax
+         write(selfenergyfile) selfenergy_omega(:,astate,1,ispin)
+       enddo
+     enddo
+     close(selfenergyfile)
+   endif
+
    if(print_sigma_ .AND. is_iomaster ) then
 
      do astate=nsemin,nsemax
