@@ -204,48 +204,6 @@ end subroutine dump_out_matrix
 
 
 !=========================================================================
-subroutine output_homolumo(nstate,occupation,energy,homo,lumo)
- use m_definitions
- use m_mpi
- use m_inputparam,only: nspin,spin_fact
- implicit none
- integer,intent(in)  :: nstate
- real(dp),intent(in) :: occupation(nstate,nspin),energy(nstate,nspin)
- real(dp),intent(out) :: homo(nspin),lumo(nspin)
-!=====
- real(dp) :: homo_tmp,lumo_tmp
- integer :: ispin,istate
-!=====
-
- do ispin=1,nspin
-   homo_tmp=-1.d+5
-   lumo_tmp= 1.d+5
-   do istate=1,nstate
-     if(occupation(istate,ispin)/spin_fact > completely_empty) then
-       homo_tmp = MAX( homo_tmp , energy(istate,ispin) )
-     endif
-
-     if(occupation(istate,ispin)/spin_fact < 1.0_dp - completely_empty ) then
-       lumo_tmp = MIN( lumo_tmp , energy(istate,ispin) )
-     endif
-
-   enddo
-   homo(ispin) = homo_tmp
-   lumo(ispin) = lumo_tmp
- enddo
-
-
- write(stdout,*)
- write(stdout,'(a,2(3x,f12.6))') ' HOMO energy    (eV):',homo(:) * Ha_eV
- write(stdout,'(a,2(3x,f12.6))') ' LUMO energy    (eV):',lumo(:) * Ha_eV
- write(stdout,'(a,2(3x,f12.6))') ' HOMO-LUMO gap  (eV):',( lumo(:)-homo(:) ) * Ha_eV
- write(stdout,*)
-
-
-end subroutine output_homolumo
-
-
-!=========================================================================
 subroutine output_new_homolumo(calculation_name,nstate,occupation,energy,istate_min,istate_max,ehomo,elumo)
  use m_definitions
  use m_mpi

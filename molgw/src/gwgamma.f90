@@ -29,7 +29,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 !=====
  logical               :: file_exists=.FALSE.
  integer               :: nprodbasis
- integer               :: homo
+ real(dp)              :: ehomo,elumo
  integer               :: nomegai
  integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
@@ -403,16 +403,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  !
  select case(gwmethod)
  case(G0W0GAMMA0)
-   do istate=1,nstate
-     if( ANY(occupation(istate,:) > completely_empty) ) homo = istate
-   enddo
-   write(stdout,*)
-   if( homo >= nsemin .AND. homo <= nsemax ) then
-     write(stdout,'(a,2(2x,f12.6))') ' GW HOMO (eV):',energy_qp_new(homo,:)*Ha_eV
-   endif
-   if( homo+1 >= nsemin .AND. homo+1 <= nsemax ) then
-     write(stdout,'(a,2(2x,f12.6))') ' GW LUMO (eV):',energy_qp_new(homo+1,:)*Ha_eV
-   endif
+   call output_new_homolumo('G0W0Gamma0',nstate,occupation,energy_qp_new,nsemin,nsemax,ehomo,elumo)
  end select
 
  call clean_deallocate('Temporary array',bra)
@@ -507,7 +498,7 @@ subroutine gwgamma2_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_
 !=====
  logical               :: file_exists=.FALSE.
  integer               :: nprodbasis
- integer               :: homo
+ real(dp)              :: ehomo,elumo
  integer               :: nomegai
  integer               :: iomegai
  complex(dp),allocatable  :: omegai(:)

@@ -250,7 +250,7 @@ subroutine init_calculation_type(calc_type,input_key)
  case('HF')
    alpha_hybrid            = 1.00_dp
  case('MP2')
-   calc_type%is_mp2        = .TRUE.
+   calc_type%is_mp2_selfenergy = .TRUE.
    calc_type%gwmethod      = QS
    alpha_hybrid            = 1.00_dp
  case('GW')

@@ -29,7 +29,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
 !=====
  logical               :: file_exists=.FALSE.
  integer               :: nprodbasis
- integer               :: homo
+ real(dp)              :: ehomo,elumo
  integer               :: nomegai
  integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
@@ -453,9 +453,9 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
      energy_qp_new(astate,:) = energy_qp(astate,:) + selfenergy_omega(0,astate,1,:) + exchange_m_vxc_diag(astate,:)
 
      write(stdout,'(i4,x,20(x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,               &
-                                                 exchange_m_vxc_diag(astate,:)*Ha_eV,     &
-                                                 selfenergy_omega(0,astate,1,:)*Ha_eV, &
-                                           zz_a(:),energy_qp_new(astate,:)*Ha_eV
+                                        exchange_m_vxc_diag(astate,:)*Ha_eV,     &
+                                        selfenergy_omega(0,astate,1,:)*Ha_eV, &
+                                        zz_a(:),energy_qp_new(astate,:)*Ha_eV
    enddo
 
    call write_energy_qp(nstate,energy_qp_new)
@@ -480,9 +480,9 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
      energy_qp_new(astate,:) = energy_qp(astate,:) + selfenergy_omega(0,astate,1,:) + exchange_m_vxc_diag(astate,:)
 
      write(stdout,'(i4,x,20(x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,               &
-                                                 exchange_m_vxc_diag(astate,:)*Ha_eV,     &
-                                                 selfenergy_omega(0,astate,1,:)*Ha_eV, &
-                                           zz_a(:),energy_qp_new(astate,:)*Ha_eV
+                                        exchange_m_vxc_diag(astate,:)*Ha_eV,     &
+                                        selfenergy_omega(0,astate,1,:)*Ha_eV, &
+                                        zz_a(:),energy_qp_new(astate,:)*Ha_eV
    enddo
 
    call write_energy_qp(nstate,energy_qp_new)
@@ -752,18 +752,14 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  ! Output the new HOMO and LUMO energies
  !
  select case(gwmethod)
- case(G0W0,GV,COHSEX,GnW0,GnWn)
-   do istate=1,nstate
-     if( ANY(occupation(istate,:) > completely_empty) ) homo = istate
-   enddo
-   write(stdout,*)
-   if( homo >= nsemin .AND. homo <= nsemax ) then
-     write(stdout,'(a,2(2x,f12.6))') ' GW HOMO (eV):',energy_qp_new(homo,:)*Ha_eV
-   endif
-   if( homo+1 >= nsemin .AND. homo+1 <= nsemax ) then
-     write(stdout,'(a,2(2x,f12.6))') ' GW LUMO (eV):',energy_qp_new(homo+1,:)*Ha_eV
-   endif
+ case(G0W0,GV,GnW0,GnWn)
+   call output_new_homolumo('GW',nstate,occupation,energy_qp_new,nsemin,nsemax,ehomo,elumo)
+ case(COHSEX)
+   call output_new_homolumo('COHSEX',nstate,occupation,energy_qp_new,nsemin,nsemax,ehomo,elumo)
  end select
+
+
+
 
  call clean_deallocate('Temporary array',bra)
  if(ALLOCATED(bra_exx)) call clean_deallocate('Temporary array for LW',bra_exx)

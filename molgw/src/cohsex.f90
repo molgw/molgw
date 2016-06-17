@@ -28,7 +28,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  real(dp),intent(out)               :: energy_gw
 !=====
  logical               :: file_exists=.FALSE.
- integer               :: homo
+ real(dp)              :: ehomo,elumo
  integer               :: nomegai
  integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
@@ -311,20 +311,11 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  end select
 
 
+ !
+ ! Output the new HOMO and LUMO energies
+ !
  if( gwmethod == COHSEX_DEVEL ) then
-   !
-   ! Output the new HOMO and LUMO energies
-   !
-   do istate=1,nstate
-     if( ANY(occupation(istate,:) > completely_empty) ) homo = istate
-   enddo
-   write(stdout,*)
-   if( homo >= nsemin .AND. homo <= nsemax ) then
-     write(stdout,'(a,2(2x,f12.6))') ' GW HOMO (eV):',energy_qp_new(homo,:)*Ha_eV
-   endif
-   if( homo+1 >= nsemin .AND. homo+1 <= nsemax ) then
-     write(stdout,'(a,2(2x,f12.6))') ' GW LUMO (eV):',energy_qp_new(homo+1,:)*Ha_eV
-   endif
+   call output_new_homolumo('COHSEX',nstate,occupation,energy_qp_new,nsemin,nsemax,ehomo,elumo)
  endif
 
  if(ALLOCATED(omegai)) deallocate(omegai)

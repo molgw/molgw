@@ -261,7 +261,7 @@ subroutine scf_loop(is_restart,&
 
    !
    ! QPscMP2
-   if( calc_type%is_mp2 .AND. calc_type%gwmethod == QS .AND. ( iscf > 5 .OR. is_restart ) ) then
+   if( calc_type%is_mp2_selfenergy .AND. calc_type%gwmethod == QS .AND. ( iscf > 5 .OR. is_restart ) ) then
 
      allocate(exchange_m_vxc_diag(nstate,nspin))
      exchange_m_vxc_diag(:,:)=0.0_dp
@@ -332,7 +332,7 @@ subroutine scf_loop(is_restart,&
    title='=== Energies ==='
    call dump_out_energy(title,nstate,nspin,occupation,energy)
 
-   call output_homolumo(nstate,occupation,energy,ehomo,elumo)
+   call output_new_homolumo('gKS',nstate,occupation,energy,1,nstate,ehomo,elumo)
 
 
    if(print_matrix_) then

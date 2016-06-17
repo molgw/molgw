@@ -19,32 +19,36 @@
 
 he.in                     , HF helium atom cc-pVTZ without RI
 SCF Total Energy          , -2.8611533447      , 0 , 1.0e-7
-HOMO energy               , -24.969849         , 0 , 1.0e-4
-LUMO energy               ,  17.323932         , 0 , 1.0e-4
+gKS HOMO energy           , -24.969849         , 0 , 1.0e-4
+gKS LUMO energy           ,  17.323932         , 0 , 1.0e-4
 
 he_auxil.in               , HF helium atom cc-pVTZ with RI
 SCF Total Energy          , -2.8611875289      , 0 , 1.0e-7
-HOMO energy               , -24.970619         , 0 , 1.0e-4
-LUMO energy               ,  17.314207         , 0 , 1.0e-4
+gKS HOMO energy           , -24.970619         , 0 , 1.0e-4
+gKS LUMO energy           ,  17.314207         , 0 , 1.0e-4
 
 h2o_scalapack.in          , H2O molecule within PBE0 with possibly SCALAPACK
-HOMO energy               ,   -9.039335        , 0 , 1.0e-4
-LUMO energy               ,   -0.359596        , 0 , 1.0e-4
+gKS HOMO energy           ,   -9.039335        , 0 , 1.0e-4
+gKS LUMO energy           ,   -0.359596        , 0 , 1.0e-4
 Hartree Energy            ,   46.6386768738    , 0 , 1.0e-7
 Exchange Energy           ,   -2.2284166998    , 0 , 1.0e-7
 XC Energy                 ,   -7.0110900711    , 0 , 1.0e-7
 Total Energy              ,  -76.3812141506    , 0 , 1.0e-7
 
+benzene_filtered.in       , HF benzene with RI having a filtered 2-center ERI
+Hartree Energy            ,    312.6277067326   , 0 , 1.0e-7
+SCF Total Energy          ,   -230.6242081120   , 0 , 1.0e-7
+
 n2o_hse06.in              , range-separated hybrid function for N2O without RI with cartesian gaussian
 SCF Total Energy          , -184.3896918122    , 0 , 1.0e-7
 Exchange Energy           ,   -4.9713001171    , 0 , 1.0e-7
 XC Energy                 ,  -17.1161140356    , 0 , 1.0e-7
-HOMO energy               ,   -9.249028        , 0 , 1.0e-4
-LUMO energy               ,   -1.009892        , 0 , 1.0e-4
+gKS HOMO energy           ,   -9.249028        , 0 , 1.0e-4
+gKS LUMO energy           ,   -1.009892        , 0 , 1.0e-4
 
 methanol_sca_buffer_hf.in , methanol within HF with SCALAPACK distribution of hamiltonian
-HOMO energy               ,  -12.220058        , 0 , 1.0e-4
-LUMO energy               ,    0.952608        , 0 , 1.0e-4
+gKS HOMO energy           ,  -12.220058        , 0 , 1.0e-4
+gKS LUMO energy           ,    0.952608        , 0 , 1.0e-4
 Nucleus-Nucleus           ,   40.2672693143    , 0 , 1.0e-7
 Kinetic Energy            ,  114.8545334406    , 0 , 1.0e-7
 Nucleus Energy            , -351.5356046432    , 0 , 1.0e-7
@@ -53,10 +57,10 @@ Exchange Energy           ,  -14.8334416451    , 0 , 1.0e-7
 Total Energy              , -115.0614049423    , 0 , 1.0e-7
 
 methanol_sca_buffer_uks.in, methanol with UKS with SCALAPACK distribution of hamiltonian
-HOMO energy               ,  -7.661792         , 0 , 1.0e-4
-HOMO energy               ,  -7.661792         , 1 , 1.0e-4
-LUMO energy               ,  -0.414295         , 0 , 1.0e-4
-LUMO energy               ,  -0.414295         , 1 , 1.0e-4
+gKS HOMO energy           ,  -7.661792         , 0 , 1.0e-4
+gKS HOMO energy           ,  -7.661792         , 1 , 1.0e-4
+gKS LUMO energy           ,  -0.414295         , 0 , 1.0e-4
+gKS LUMO energy           ,  -0.414295         , 1 , 1.0e-4
 Kinetic Energy            ,  114.9660216330    , 0 , 1.0e-7
 Nucleus Energy            , -351.7459564760    , 0 , 1.0e-7
 Hartree Energy            ,   96.2670765071    , 0 , 1.0e-7
@@ -86,17 +90,17 @@ Hartree Energy            ,   11.6344175422   , 0 , 1.0e-7
 XC Energy                 ,   -3.8788239774   , 0 , 1.0e-7
 Number of electrons       ,    3.000000       , 0 , 1.0e-3
 Number of electrons       ,    2.000000       , 1 , 1.0e-3
-HOMO energy               ,   -4.011284       , 0 , 1.0e-4
-HOMO energy               ,   -8.519013       , 1 , 1.0e-4
-LUMO energy               ,   -3.405726       , 0 , 1.0e-4
-LUMO energy               ,   -3.172052       , 1 , 1.0e-4
+gKS HOMO energy           ,   -4.011284       , 0 , 1.0e-4
+gKS HOMO energy           ,   -8.519013       , 1 , 1.0e-4
+gKS LUMO energy           ,   -3.405726       , 0 , 1.0e-4
+gKS LUMO energy           ,   -3.172052       , 1 , 1.0e-4
 Total Spin S**2           ,    0.7528         , 0 , 1.0e-3
 RPA energy                ,   -0.1402933151   , 0 , 1.0e-7
 Lowest neutral excitation ,    0.987826       , 0 , 1.0e-4
-GW HOMO                   ,   -7.659691       , 0 , 1.0e-4
-GW HOMO                   ,    0.457163       , 1 , 1.0e-4
-GW LUMO                   ,    0.017788       , 0 , 1.0e-4
-GW LUMO                   ,    0.457163       , 1 , 1.0e-4
+GW HOMO energy            ,   -7.659691       , 0 , 1.0e-4
+GW HOMO energy            ,  -12.475216       , 1 , 1.0e-4
+GW LUMO energy            ,    0.017788       , 0 , 1.0e-4
+GW LUMO energy            ,    0.457163       , 1 , 1.0e-4
 
 co2.in                    , GW@LDA CO2 without RI with 6-31G
 Kinetic Energy            ,    186.4258076613  , 0 , 1.0e-7
@@ -104,64 +108,64 @@ Nucleus Energy            ,   -548.2550188543  , 0 , 1.0e-7
 Hartree Energy            ,    142.7897017889  , 0 , 1.0e-7
 Lowest neutral excitation ,      2.531059      , 0 , 1.0e-4
 RPA Total energy          ,   -187.8892338918  , 0 , 1.0e-7
-GW HOMO                   ,    -11.039136      , 0 , 1.0e-4
-GW LUMO                   ,     -1.357914      , 0 , 1.0e-4
+GW HOMO energy            ,    -11.039136      , 0 , 1.0e-4
+GW LUMO energy            ,     -1.357914      , 0 , 1.0e-4
 
 ar_camb3lyp_gw.in         , Range-separated hybrid argon atom with 6-31*G+ and G0W0
 SCF Total Energy          ,   -527.5394815512  , 0 , 1.0e-7
-HOMO-LUMO gap             ,     15.378169      , 0 , 1.0e-4
+gKS HOMO-LUMO gap         ,     15.378169      , 0 , 1.0e-4
 Galitskii-Migdal formula  ,     -0.3335895161  , 0 , 1.0e-7
 Lowest neutral excitation ,     15.692205      , 0 , 1.0e-4
 RPA Total energy          ,   -526.9633301175  , 0 , 1.0e-7
- GW HOMO                  ,    -15.012653      , 0 , 1.0e-4
- GW LUMO                  ,      3.143477      , 0 , 1.0e-4
+ GW HOMO energy           ,    -15.012653      , 0 , 1.0e-4
+ GW LUMO energy           ,      3.143477      , 0 , 1.0e-4
 
 h2_pbe_gw.in              , PBE H2 molecule cc-pVDZ and G0W0
 SCF Total Energy          ,     -1.0727602939  , 0 , 1.0e-7
-HOMO energy               ,     -8.191536      , 0 , 1.0e-4
-LUMO energy               ,     -2.674684      , 0 , 1.0e-4
+gKS HOMO energy           ,     -8.191536      , 0 , 1.0e-4
+gKS LUMO energy           ,     -2.674684      , 0 , 1.0e-4
 RPA energy                ,     -0.0837682569  , 0 , 1.0e-7
 Lowest neutral excitation ,      9.996186      , 0 , 1.0e-4
 Singles correction        ,     -0.0029125289  , 0 , 1.0e-7
 Total EXX Energy          ,     -1.0186704037  , 0 , 1.0e-7
-GW HOMO                   ,    -12.854961      , 0 , 1.0e-4
-GW LUMO                   ,      1.475164      , 0 , 1.0e-4
+GW HOMO energy            ,    -12.854961      , 0 , 1.0e-4
+GW LUMO energy            ,      1.475164      , 0 , 1.0e-4
 
 h2_hse06_overlap_gw.in    , HSE06 H2 molecule aug-cc-pVDZ and G0W0 with a filtered overlap
 Exchange Energy           ,     -0.1340583009  , 0 , 1.0e-7
 XC Energy                 ,     -0.5589344847  , 0 , 1.0e-7
-HOMO energy               ,    -11.541033      , 0 , 1.0e-4   
-LUMO energy               ,      0.507931      , 0 , 1.0e-4   
-GW HOMO                   ,    -15.804859      , 0 , 1.0e-4   
-GW LUMO                   ,      1.963418      , 0 , 1.0e-4
+gKS HOMO energy           ,    -11.541033      , 0 , 1.0e-4   
+gKS LUMO energy           ,      0.507931      , 0 , 1.0e-4   
+GW HOMO energy            ,    -15.804859      , 0 , 1.0e-4   
+GW LUMO energy            ,      1.785876      , 0 , 1.0e-4
 
 h2_rsh_overlap_ci.in      , RSH recipe for HSE06 H2 molecule no RI and CI with a filtered overlap
 Exchange Energy           ,     -0.1340776991  , 0 , 1.0e-7
 XC Energy                 ,     -0.5585487906  , 0 , 1.0e-7
-HOMO energy               ,    -11.534702      , 0 , 1.0e-4   
-LUMO energy               ,      0.508373      , 0 , 1.0e-4   
+gKS HOMO energy           ,    -11.534702      , 0 , 1.0e-4   
+gKS LUMO energy           ,      0.508373      , 0 , 1.0e-4   
 CI ground-state energy    ,     -1.1645948686  , 0 , 1.0e-7
 
 be_qsgw.in                , QSGW Be atom cc-pVDZ without RI
 RPA Total energy          ,    -14.6144623635  , 0 , 1.0e-7
-HOMO energy               ,     -8.944298      , 0 , 1.0e-4
-LUMO energy               ,      1.283104      , 0 , 1.0e-4
+gKS HOMO energy           ,     -8.944298      , 0 , 1.0e-4
+gKS LUMO energy           ,      1.283104      , 0 , 1.0e-4
 
 be_qsgw_ri.in             , QSGW Be atom cc-pVDZ with RI
 RPA Total energy          ,    -14.6146048917  , 0 , 1.0e-7
-HOMO energy               ,     -8.944487      , 0 , 1.0e-4
-LUMO energy               ,      1.282521      , 0 , 1.0e-4
+gKS HOMO energy           ,     -8.944487      , 0 , 1.0e-4
+gKS LUMO energy           ,      1.282521      , 0 , 1.0e-4
 
 be_cohsex.in              , self-consistent COHSEX Be atom cc-pVDZ with RI
-HOMO energy               ,     -9.681476      , 0 , 1.0e-4
-LUMO energy               ,      1.133775      , 0 , 1.0e-4
+gKS HOMO energy           ,     -9.681476      , 0 , 1.0e-4
+gKS LUMO energy           ,      1.133775      , 0 , 1.0e-4
 
-h2_mp2.in                 , MP2 H2 molecule aug-cc-pVDZ (spin-unrestricted)
+h2_mp2.in                 , MP2 energy of H2 molecule aug-cc-pVDZ (spin-unrestricted)
 SCF Total Energy          ,     -1.0224203713  , 0 , 1.0e-7
 Total Spin S**2           ,     -0.0000        , 0 , 1.0e-3
 MP2 Total Energy          ,     -1.0578154072  , 0 , 1.0e-7
 
-h2_mp2_ri.in              , MP2 H2 molecule with RI and ferromagnetic configuration
+h2_mp2_ri.in              , MP2 energy of H2 molecule with RI and ferromagnetic configuration
 SCF Total Energy          ,     -0.9561408560  , 0 , 1.0e-7 
 Total Spin S**2           ,      2.0000        , 0 , 1.0e-3
 2-ring diagram            ,     -0.0373333132  , 0 , 1.0e-7
@@ -190,8 +194,8 @@ sih4_hf_tda.in            , TDHF SiH4 aug-cc-pVDZ with TDA restarting from previ
 
 ch4_bse_scissor.in        , BSE CH4 aug-cc-pVDZ without GW (scissor)
 XC Energy                 ,     -3.5802787452   , 0 , 1.0e-7
-HOMO energy               ,    -12.451955       , 0 , 1.0e-4
-LUMO energy               ,      0.291176       , 0 , 1.0e-4
+gKS HOMO energy           ,    -12.451955       , 0 , 1.0e-4
+gKS LUMO energy           ,      0.291176       , 0 , 1.0e-4
 Scissor operator          ,      1.360569       , 0 , 1.0e-4
 0001 :                    ,      9.05385518     , 0 , 1.0e-4
 0001 :                    ,      0.13289440     , 1 , 1.0e-4
@@ -206,8 +210,8 @@ SCF Total Energy          ,   -114.5110479343   , 0 , 1.0e-7
 Est. HF Energy            ,   -113.8786939682   , 0 , 1.0e-7
 Galitskii-Migdal formula  ,     -0.7854236777   , 0 , 1.0e-7
 RPA Total energy          ,   -114.3237167485   , 0 , 1.0e-4
-GW HOMO                   ,     -9.921426       , 0 , 1.0e-4
-GW LUMO                   ,      2.494864       , 0 , 1.0e-4
+GW HOMO energy            ,     -9.921426       , 0 , 1.0e-4
+GW LUMO energy            ,      2.494864       , 0 , 1.0e-4
 
 ch2o_bse.in               , BSE on formaldehyde , Restart
 Lowest neutral excitation ,      3.388926       , 0 , 1.0e-4
@@ -220,39 +224,35 @@ oh_m_1.in                 , GnWn (eigenvalue self-consistent) on OH- 1st iterati
 SCF Total Energy          ,    -75.7671834802   , 0 , 1.0e-7
 RPA energy                ,     -0.2924060323   , 0 , 1.0e-7
 Galitskii-Migdal formula  ,     -0.5031685208   , 0 , 1.0e-7
-GW HOMO                   ,     -1.100134       , 0 , 1.0e-4
-GW LUMO                   ,      5.328126       , 0 , 1.0e-4
+GW HOMO energy            ,     -1.100134       , 0 , 1.0e-4
+GW LUMO energy            ,      5.328126       , 0 , 1.0e-4
 
 oh_m_2.in                 , GnWn (eigenvalue self-consistent) on OH- 2nd iteration , Restart
 Galitskii-Migdal formula  ,     -0.4816111091   , 0 , 1.0e-7
 RPA energy                ,     -0.2780353842   , 0 , 1.0e-7
-GW HOMO                   ,     -1.208873       , 0 , 1.0e-4
-GW LUMO                   ,      5.337010       , 0 , 1.0e-4
+GW HOMO energy            ,     -1.208873       , 0 , 1.0e-4
+GW LUMO energy            ,      5.337010       , 0 , 1.0e-4
 
 oh_m_3.in                 , GnWn (eigenvalue self-consistent) on OH- 3rd iteration , Restart
 Galitskii-Migdal formula  ,     -0.4785659835   , 0 , 1.0e-7
 RPA energy                ,     -0.2760358773   , 0 , 1.0e-7
-GW HOMO                   ,     -1.209056       , 0 , 1.0e-4
-GW LUMO                   ,      5.336834       , 0 , 1.0e-4
+GW HOMO energy            ,     -1.207707       , 0 , 1.0e-4
+GW LUMO energy            ,      5.336834       , 0 , 1.0e-4
 
 oh_0_1.in                 , GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 1st iteration
 Total Spin S**2           ,      0.7532         , 0 , 1.0e-3
 SCF Total Energy          ,    -75.7190424535   , 0 , 1.0e-7
 RPA Total energy          ,    -75.6295502398   , 0 , 1.0e-7
-GW HOMO                   ,    -13.404668       , 0 , 1.0e-4
-GW HOMO                   ,     -0.293377       , 1 , 1.0e-4
-GW LUMO                   ,      0.964613       , 0 , 1.0e-4
-GW LUMO                   ,      1.004876       , 1 , 1.0e-4
+GW HOMO energy            ,    -13.404668       , 0 , 1.0e-4
+GW HOMO energy            ,    -12.467650       , 1 , 1.0e-4
+GW LUMO energy            ,      0.964613       , 0 , 1.0e-4
+GW LUMO energy            ,     -0.293379       , 1 , 1.0e-4
 
 oh_0_2.in                 , GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 2nd iteration , Restart
-GW HOMO                   ,    -13.340412       , 0 , 1.0e-4
-GW HOMO                   ,     -0.331161       , 1 , 1.0e-4
-GW LUMO                   ,      0.964805       , 0 , 1.0e-4
-GW LUMO                   ,      1.007568       , 1 , 1.0e-4
-
-benzene_filtered.in       , HF benzene with RI having a filtered 2-center ERI
-Hartree Energy            ,    312.6277067326   , 0 , 1.0e-7
-SCF Total Energy          ,   -230.6242081120   , 0 , 1.0e-7
+GW HOMO energy            ,    -13.340412       , 0 , 1.0e-4
+GW HOMO energy            ,    -12.400933       , 1 , 1.0e-4
+GW LUMO energy            ,      0.964805       , 0 , 1.0e-4
+GW LUMO energy            ,     -0.331161       , 1 , 1.0e-4
 
 ethylene_davidson.in      , BSE@HF for ethyelene with iterative Davidson diago
 SCF Total Energy          , -78.0413852386     , 0 , 1.0e-7

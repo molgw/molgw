@@ -202,6 +202,7 @@ success = 0
 tested = 0
 
 fdiff = open(tmpfolder+'/diff', 'w')
+fdiff.write('#  test index          calculated                   reference                   difference        test status \n')
 
 for iinput in range(ninput):
 
