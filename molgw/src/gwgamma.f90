@@ -16,6 +16,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  use m_spectral_function
  use m_eri_ao_mo
  use m_tools,only: coeffs_gausslegint
+ use m_selfenergy_tools
  implicit none
 
  integer,intent(in)                 :: nstate,gwmethod
@@ -305,29 +306,9 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  end forall
 
 
- if(print_sigma_ .AND. is_iomaster ) then
-
-   do astate=nsemin,nsemax
-     write(ctmp,'(i3.3)') astate
-     write(stdout,'(x,a,a)') 'Printing file: ','selfenergygamma_omega_state'//TRIM(ctmp)
-     open(newunit=selfenergyfile,file='selfenergygamma_omega_state'//TRIM(ctmp))
-     write(selfenergyfile,'(a)') '# omega (eV)             SigmaC (eV)    omega - e_KS - Vxc + SigmaX (eV)     A (eV^-1) '
-     do iomegai=-nomegai,nomegai
-       write(selfenergyfile,'(20(f12.6,2x))') ( omegai(iomegai) + energy_qp(astate,:) )*Ha_eV,            &
-                                          selfenergy_omega(iomegai,astate,1,:) * Ha_eV,   &
-                                          selfenergy_omega_gw(iomegai,astate,1,:) * Ha_eV,   &
-                                          selfenergy_omega_sox(iomegai,astate,1,:) * Ha_eV,   &
-                                          selfenergy_omega_gamma(0,astate,1,:) * Ha_eV,   &
-                                          ( omegai(iomegai) - exchange_m_vxc_diag(astate,:) )*Ha_eV,     &
-                                          1.0_dp/pi/ABS( omegai(iomegai) - exchange_m_vxc_diag(astate,:) &
-                                                  - selfenergy_omega(iomegai,astate,1,:) ) / Ha_eV
-     enddo
-     write(selfenergyfile,*)
-     close(selfenergyfile)
-   enddo
-
+ if( print_sigma_) then
+   call write_selfenergy_omega('selfenergy_gwgamma',nstate,energy_qp,exchange_m_vxc_diag,SIZE(omegai),omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:))
  endif
-
 
  ! Only had the diagonal calculated...
  selfenergy(:,:,:) = 0.0_dp
@@ -418,53 +399,6 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  if(ALLOCATED(selfenergy_omega)) deallocate(selfenergy_omega)
 
  call stop_clock(timing_self)
-
-
-contains
-
-
-function find_fixed_point(nx,xx,fx) result(fixed_point)
- implicit none
- integer,intent(in)  :: nx
- real(dp),intent(in) :: xx(-nx:nx)
- real(dp),intent(in) :: fx(-nx:nx)
- real(dp)            :: fixed_point
-!=====
- integer             :: ix,imin
- real(dp)            :: rmin
- real(dp)            :: gx(-nx:nx)
- real(dp)            :: gpx
-!=====
-
-
- gx(:) = fx(:) - xx(:)
-
- rmin = HUGE(1.0_dp)
- do ix=-nx,nx
-   if( ABS(gx(ix)) < rmin ) then
-     rmin = ABS(gx(ix))
-     imin = ix
-   endif
- enddo 
-
-
- if( imin == -nx .OR. imin == nx) then
-   fixed_point = xx(imin)
- else 
-   if( gx(imin)*gx(imin+1) < 0.0_dp )  then
-     gpx = ( gx(imin+1) - gx(imin) ) / ( xx(imin+1) - xx(imin) )
-     fixed_point = xx(imin) - gx(imin) / gpx 
-   else if( gx(imin)*gx(imin-1) < 0.0_dp )  then
-     gpx = ( gx(imin) - gx(imin-1) ) / ( xx(imin) - xx(imin-1) )
-     fixed_point = xx(imin-1) - gx(imin-1) / gpx 
-   else
-     fixed_point = xx(imin)
-   endif
- endif
-
-
-
-end function find_fixed_point
 
 
 end subroutine gwgamma_selfenergy

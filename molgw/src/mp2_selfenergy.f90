@@ -13,6 +13,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  use m_eri_ao_mo
  use m_inputparam
  use m_spectral_function
+ use m_selfenergy_tools
  implicit none
 
  integer,intent(in)         :: method,nstate
@@ -35,8 +36,9 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  integer               :: nomegai
  integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
+ real(dp),allocatable  :: sigma_xc_m_vxc_diag(:)
  integer               :: istate,jstate,kstate
- integer               :: abispin,jkspin
+ integer               :: abispin,jkspin,ispin
  real(dp)              :: fact_occ1,fact_occ2
  real(dp)              :: fi,fj,fk,ei,ej,ek
  real(dp)              :: omega
@@ -45,12 +47,14 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  real(dp)              :: emp2_sox,emp2_ring
  logical               :: file_exists
  character(len=3)      :: ctmp
- integer               :: selfenergyfile,iomegafile
+ integer               :: iomegafile
  real(dp),allocatable  :: eri_eigenstate_i(:,:,:,:)
  integer               :: nket1,nket2
  integer               :: nsemin,nsemax
  real(dp)              :: coul_ibjk,coul_ijkb,coul_iakj
  real(dp)              :: energy_qp_z(nstate,nspin)
+ real(dp)              :: energy_qp_new(nstate,nspin)
+ real(dp)              :: energy_qp_omega(nspin)
  real(dp)              :: ehomo,elumo
  type(spectral_function) :: sf_dummy
 !=====
@@ -86,31 +90,15 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
 
 
  if(method==QS) then
-   nomegai=1
-   allocate(omegai(nomegai))
-   omegai(1) =  0.00_dp
+   nomegai=0
+   allocate(omegai(-nomegai:nomegai))
+   omegai(0) =  0.00_dp
  else
-   ! look for manual omegas
-   inquire(file='manual_omega',exist=file_exists)
-   if(file_exists) then
-     msg='reading frequency file for self-energy evaluation'
-     call issue_warning(msg)
-     open(newunit=iomegafile,file='manual_omega',status='old')
-     read(iomegafile,*) nomegai
-     allocate(omegai(nomegai))
-     read(iomegafile,*) omegai(1)
-     read(iomegafile,*) omegai(nomegai)
-     close(iomegafile)
-     do iomegai=2,nomegai-1
-       omegai(iomegai) = omegai(1) + (omegai(nomegai)-omegai(1)) * (iomegai-1) / REAL(nomegai-1,dp)
-     enddo
-   else
-     nomegai=3
-     allocate(omegai(nomegai))
-     omegai(1) = -0.01_dp
-     omegai(2) =  0.00_dp
-     omegai(3) =  0.01_dp
-   endif
+   nomegai = nomega_sigma/2
+   allocate(omegai(-nomegai:nomegai))
+   do iomegai=-nomegai,nomegai
+     omegai(iomegai) = step_sigma * iomegai
+   enddo
  endif
 
 
@@ -122,8 +110,8 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
 
 
 
- allocate(selfenergy_ring(nomegai,nsemin:nsemax,nket1:nket2,nspin))
- allocate(selfenergy_sox (nomegai,nsemin:nsemax,nket1:nket2,nspin))
+ allocate(selfenergy_ring(-nomegai:nomegai,nsemin:nsemax,nket1:nket2,nspin))
+ allocate(selfenergy_sox (-nomegai:nomegai,nsemin:nsemax,nket1:nket2,nspin))
 
 
  selfenergy_ring(:,:,:,:) = 0.0_dp
@@ -162,39 +150,40 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
   
                if( fact_occ1 < completely_empty .AND. fact_occ2 < completely_empty ) cycle
 
-               do iomegai=1,nomegai
+               if( has_auxil_basis ) then
+                 coul_iakj = eri_eigen_ri(istate,astate,abispin,kstate,jstate,jkspin)
+                 coul_ibjk = eri_eigen_ri(istate,bstate,abispin,jstate,kstate,jkspin)
+                 if( abispin == jkspin ) then
+                   coul_ijkb = eri_eigen_ri(istate,jstate,abispin,kstate,bstate,abispin) 
+                 endif
+               else
+                 coul_iakj = eri_eigenstate_i(astate,kstate,jstate,jkspin)
+                 coul_ibjk = eri_eigenstate_i(bstate,jstate,kstate,jkspin)
+                 if( abispin == jkspin ) then
+                   coul_ijkb = eri_eigenstate_i(jstate,kstate,bstate,abispin) 
+                 endif
+               endif
+
+               do iomegai=-nomegai,nomegai
                  omega = energy(bstate,abispin) + omegai(iomegai)
   
                  fact_real = REAL( fact_occ1 / (omega-ei+ej-ek+ieta) + fact_occ2 / (omega-ei+ej-ek-ieta) , dp)
                  fact_energy = REAL( fact_occ1 / (energy(astate,abispin)-ei+ej-ek+ieta) , dp )
   
-                 if( has_auxil_basis ) then
-                   coul_iakj = eri_eigen_ri(istate,astate,abispin,kstate,jstate,jkspin)
-                   coul_ibjk = eri_eigen_ri(istate,bstate,abispin,jstate,kstate,jkspin)
-                 else
-                   coul_iakj = eri_eigenstate_i(astate,kstate,jstate,jkspin)
-                   coul_ibjk = eri_eigenstate_i(bstate,jstate,kstate,jkspin)
-                 endif
-
                  selfenergy_ring(iomegai,astate,bstate2,abispin) = selfenergy_ring(iomegai,astate,bstate2,abispin) &
                           + fact_real * coul_iakj * coul_ibjk * spin_fact
 
-                 if(iomegai==2 .AND. astate==bstate .AND. occupation(astate,abispin)>completely_empty) then
+                 if(iomegai==0 .AND. astate==bstate .AND. occupation(astate,abispin)>completely_empty) then
                    emp2_ring = emp2_ring + occupation(astate,abispin) &
                                          * fact_energy * coul_iakj * coul_ibjk * spin_fact
                  endif
   
                  if( abispin == jkspin ) then
-                   if( has_auxil_basis ) then
-                     coul_ijkb = eri_eigen_ri(istate,jstate,abispin,kstate,bstate,abispin) 
-                   else
-                     coul_ijkb = eri_eigenstate_i(jstate,kstate,bstate,abispin) 
-                   endif
 
                    selfenergy_sox(iomegai,astate,bstate2,abispin) = selfenergy_sox(iomegai,astate,bstate2,abispin) &
                             - fact_real * coul_iakj * coul_ijkb
 
-                   if(iomegai==2 .AND. astate==bstate .AND. occupation(astate,abispin)>completely_empty) then
+                   if(iomegai==0 .AND. astate==bstate .AND. occupation(astate,abispin)>completely_empty) then
                      emp2_sox = emp2_sox - occupation(astate,abispin) &
                                * fact_energy * coul_iakj * coul_ijkb
                    endif
@@ -220,57 +209,54 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  write(stdout,'(a,f14.8)')   ' SOX diagram     :',emp2_sox
  write(stdout,'(a,f14.8,/)') ' MP2 correlation :',emp2
 
+
  if(method==perturbative) then
 
-   if(file_exists .AND. is_iomaster ) then
-     if( print_sigma_ ) then
-       do astate=nsemin,nsemax
-         write(ctmp,'(i3.3)') astate
-         open(newunit=selfenergyfile,file='selfenergy_omega_state'//TRIM(ctmp))
-         do iomegai=1,nomegai
-           write(selfenergyfile,'(20(f12.6,2x))') REAL(omegai(iomegai),dp)+energy(astate,:),&
-&                           selfenergy_ring(iomegai,astate,1,:),&
-&                           selfenergy_sox(iomegai,astate,1,:),&
-&                           selfenergy_ring(iomegai,astate,1,:)+&
-&                           selfenergy_sox(iomegai,astate,1,:),&
-&                           REAL(omegai(iomegai),dp)-exchange_m_vxc_diag(astate,:)
-         enddo
-         write(selfenergyfile,*)
-       enddo
-       close(selfenergyfile)
-     endif
+   if( print_sigma_) then
+     call write_selfenergy_omega('selfenergy_mp2',nstate,energy,exchange_m_vxc_diag,SIZE(omegai),omegai, &
+                                 nsemin,nsemax,selfenergy_ring(:,:,1,:)+selfenergy_sox(:,:,1,:))
    endif
-
 
 
    write(stdout,*) '=============================='
    write(stdout,*) ' selfenergy RING + SOX'
-   write(stdout,'(a)') ' #         Energies           Sigx-Vxc       one-ring              SOX             MP2                Z           eMP2_Z'
+   write(stdout,'(a)') ' #         Energies           Sigx-Vxc       one-ring              SOX             MP2                Z       eMP2_Z       eMP2_qp'
+
    do astate=nsemin,nsemax
-     zz(:) = ( selfenergy_ring(3,astate,1,:)+selfenergy_sox(3,astate,1,:) &
-                 - selfenergy_ring(1,astate,1,:)-selfenergy_sox(1,astate,1,:) ) / REAL( omegai(3)-omegai(1) ,dp)
+     zz(:) = ( selfenergy_ring(1,astate,1,:)+selfenergy_sox(1,astate,1,:) &
+                 - selfenergy_ring(-1,astate,1,:)-selfenergy_sox(-1,astate,1,:) ) / REAL( omegai(1)-omegai(-1) ,dp)
      zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
 
-     energy_qp_z(astate,:) = energy(astate,:) + zz(:) * ( selfenergy_ring(2,astate,1,:) + selfenergy_sox(2,astate,1,:) + exchange_m_vxc_diag(astate,:) )
+     energy_qp_z(astate,:) = energy(astate,:) + zz(:) * ( selfenergy_ring(0,astate,1,:) + selfenergy_sox(0,astate,1,:) + exchange_m_vxc_diag(astate,:) )
 
-     write(stdout,'(i4,18(3x,f14.5))') astate,energy(astate,:)*Ha_eV,&
+     allocate(sigma_xc_m_vxc_diag(-nomegai:nomegai))
+     do ispin=1,nspin
+       sigma_xc_m_vxc_diag(:) = selfenergy_ring(:,astate,1,ispin) + selfenergy_sox(:,astate,1,ispin) + exchange_m_vxc_diag(astate,ispin)
+       energy_qp_omega(ispin) = find_fixed_point(nomegai,omegai,sigma_xc_m_vxc_diag) + energy(astate,ispin)
+     enddo
+     deallocate(sigma_xc_m_vxc_diag)
+     energy_qp_new(astate,:) = energy_qp_omega(:) 
+
+
+     write(stdout,'(i4,20(3x,f14.5))') astate,energy(astate,:)*Ha_eV,&
            exchange_m_vxc_diag(astate,:)*Ha_eV,&
-           selfenergy_ring(2,astate,1,:) * Ha_eV,&
-           selfenergy_sox (2,astate,1,:) * Ha_eV,&
-         ( selfenergy_ring(2,astate,1,:)+selfenergy_sox(2,astate,1,:) ) * Ha_eV,&
+           selfenergy_ring(0,astate,1,:) * Ha_eV,&
+           selfenergy_sox (0,astate,1,:) * Ha_eV,&
+         ( selfenergy_ring(0,astate,1,:)+selfenergy_sox(0,astate,1,:) ) * Ha_eV,&
          zz(:),&
-         energy_qp_z(astate,:) * Ha_eV
+         energy_qp_z(astate,:) * Ha_eV, &
+         energy_qp_new(astate,:) * Ha_eV
    enddo
    write(stdout,*) '=============================='
 
    selfenergy(:,:,:) = 0.0_dp
    if(.NOT.ring_only) then
      do astate=nsemin,nsemax
-       selfenergy(astate,1,:) = selfenergy_ring(2,astate,1,:) + selfenergy_sox(2,astate,1,:)
+       selfenergy(astate,1,:) = selfenergy_ring(0,astate,1,:) + selfenergy_sox(0,astate,1,:)
      enddo
    else
      do astate=nsemin,nsemax
-       selfenergy(astate,1,:) = selfenergy_ring(2,astate,1,:)
+       selfenergy(astate,1,:) = selfenergy_ring(0,astate,1,:)
      enddo
    endif
 
@@ -283,12 +269,12 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  ! QS trick of Faleev-Kotani-vanSchilfgaarde
    do abispin=1,nspin
      if(.NOT.ring_only) then
-       selfenergy_final(:,:,abispin) = 0.5_dp * ( selfenergy_ring(1,:,:,abispin) + selfenergy_sox(1,:,:,abispin) &
-                                               +  TRANSPOSE( selfenergy_ring(1,:,:,abispin) + selfenergy_sox(1,:,:,abispin) ) )
+       selfenergy_final(:,:,abispin) = 0.5_dp * ( selfenergy_ring(0,:,:,abispin) + selfenergy_sox(0,:,:,abispin) &
+                                               +  TRANSPOSE( selfenergy_ring(0,:,:,abispin) + selfenergy_sox(0,:,:,abispin) ) )
      else
        write(stdout,*) 'ring_only'
-       selfenergy_final(:,:,abispin) = 0.5_dp * ( selfenergy_ring(1,:,:,abispin)  &
-                                               +  TRANSPOSE( selfenergy_ring(1,:,:,abispin) ) )
+       selfenergy_final(:,:,abispin) = 0.5_dp * ( selfenergy_ring(0,:,:,abispin)  &
+                                               +  TRANSPOSE( selfenergy_ring(0,:,:,abispin) ) )
      endif
    enddo
 

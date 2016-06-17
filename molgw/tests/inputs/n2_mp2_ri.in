@@ -10,6 +10,8 @@
  postscf='mp2_selfenergy'
  selfenergy_state_min=5
  selfenergy_state_max=12
+ nomega_sigma=3
+ step_sigma=0.01
 
  natom=2
 /

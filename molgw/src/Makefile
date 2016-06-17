@@ -54,7 +54,7 @@ level015: m_scalapack.o m_atoms.o m_gaussian.o
 
 level020: m_basis_set.o m_inputparam.o m_block_diago.o
 
-level025: m_eri.o m_scf.o m_dft_grid.o
+level025: m_eri.o m_scf.o m_dft_grid.o m_selfenergy_tools.o
 
 level030: m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o
 
@@ -75,12 +75,12 @@ level040: mp2_selfenergy.o linear_response.o static_polarizability.o gw.o gwgamm
         m_atoms.o m_gaussian.o m_block_diago.o \
         m_basis_set.o \
         m_inputparam.o \
-        m_eri.o m_scf.o m_dft_grid.o \
+        m_eri.o m_scf.o m_dft_grid.o m_selfenergy_tools.o \
         m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o \
         m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o mp2_selfenergy.o \
         linear_response.o static_polarizability.o gw.o gwgamma.o cohsex.o bse.o dft_xc.o io.o mp2.o scf_loop.o molgw.o
 	$(FC_W_OPTS) \
-                        m_definitions.o m_warning.o m_elements.o m_mpi.o m_scalapack.o m_timing.o m_memory.o m_inputparam.o m_tools.o m_scf.o m_atoms.o \
+                        m_definitions.o m_warning.o m_elements.o m_mpi.o m_scalapack.o m_timing.o m_memory.o m_inputparam.o m_tools.o m_scf.o m_selfenergy_tools.o m_atoms.o \
                         m_gos.o m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o \
                         m_spectral_function.o \
                         libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o mp2_selfenergy.o \
@@ -190,6 +190,9 @@ m_gaussian.o: m_definitions.f90 m_tools.f90 m_gos.f90 m_mpi.f90 m_gaussian.f90
 
 m_scf.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_tools.f90 m_inputparam.f90 m_scalapack.f90 m_scf.f90
 	$(FC_W_OPTS) -c m_scf.f90 $(LIBXC_INCS)
+
+m_selfenergy_tools.o: m_definitions.f90 m_warning.f90 m_inputparam.f90 m_selfenergy_tools.f90
+	$(FC_W_OPTS) -c m_selfenergy_tools.f90 $(LIBXC_INCS)
 
 m_inputparam.o: m_definitions.f90 m_elements.f90 m_warning.f90 m_atoms.f90 m_inputparam.f90 input_variables.f90 basis_path.f90 echo_input_variables.f90
 	$(FC_W_OPTS) -c m_inputparam.f90 $(LIBXC_INCS)
