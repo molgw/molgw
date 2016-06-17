@@ -1,0 +1,16 @@
+&molgw
+ scf='pbe0'
+ nscf=30
+ tolscf=1.0e-10
+
+ basis='cc-pVDZ'
+
+ postscf='mp2_selfenergy'
+ selfenergy_state_min=5
+ selfenergy_state_max=12
+
+ natom=2
+/
+7            .000000     .000000     .564990
+7            .000000     .000000    -.564990
+

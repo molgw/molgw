@@ -207,7 +207,7 @@ end subroutine dump_out_matrix
 subroutine output_homolumo(nstate,occupation,energy,homo,lumo)
  use m_definitions
  use m_mpi
- use m_inputparam,only: nspin
+ use m_inputparam,only: nspin,spin_fact
  implicit none
  integer,intent(in)  :: nstate
  real(dp),intent(in) :: occupation(nstate,nspin),energy(nstate,nspin)
@@ -221,11 +221,11 @@ subroutine output_homolumo(nstate,occupation,energy,homo,lumo)
    homo_tmp=-1.d+5
    lumo_tmp= 1.d+5
    do istate=1,nstate
-     if(occupation(istate,ispin)>completely_empty) then
+     if(occupation(istate,ispin)/spin_fact > completely_empty) then
        homo_tmp = MAX( homo_tmp , energy(istate,ispin) )
      endif
 
-     if(occupation(istate,ispin)<1.0_dp - completely_empty ) then
+     if(occupation(istate,ispin)/spin_fact < 1.0_dp - completely_empty ) then
        lumo_tmp = MIN( lumo_tmp , energy(istate,ispin) )
      endif
 
@@ -243,6 +243,60 @@ subroutine output_homolumo(nstate,occupation,energy,homo,lumo)
 
 
 end subroutine output_homolumo
+
+
+!=========================================================================
+subroutine output_new_homolumo(calculation_name,nstate,occupation,energy,istate_min,istate_max,ehomo,elumo)
+ use m_definitions
+ use m_mpi
+ use m_inputparam,only: nspin,spin_fact
+ implicit none
+
+ character(len=*),intent(in) :: calculation_name
+ integer,intent(in)          :: nstate,istate_min,istate_max
+ real(dp),intent(in)         :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(out)        :: ehomo(nspin),elumo(nspin)
+!=====
+ real(dp) :: ehomo_tmp,elumo_tmp
+ integer  :: ispin,istate
+!=====
+
+ do ispin=1,nspin
+   ehomo_tmp=-HUGE(1.0_dp)
+   elumo_tmp= HUGE(1.0_dp)
+
+   do istate=istate_min,istate_max
+
+     if( occupation(istate,ispin)/spin_fact > completely_empty ) then
+       ehomo_tmp = MAX( ehomo_tmp , energy(istate,ispin) )
+     endif
+
+     if( occupation(istate,ispin)/spin_fact < 1.0_dp - completely_empty ) then
+       elumo_tmp = MIN( elumo_tmp , energy(istate,ispin) )
+     endif
+
+   enddo
+
+   ehomo(ispin) = ehomo_tmp
+   elumo(ispin) = elumo_tmp
+
+ enddo
+
+
+ write(stdout,*)
+ if( ALL( ehomo(:) > -1.0e6 ) ) then
+   write(stdout,'(x,a,x,a,2(3x,f12.6))') TRIM(calculation_name),'HOMO energy    (eV):',ehomo(:) * Ha_eV
+ endif
+ if( ALL( elumo(:) <  1.0e6 ) ) then
+   write(stdout,'(x,a,x,a,2(3x,f12.6))') TRIM(calculation_name),'LUMO energy    (eV):',elumo(:) * Ha_eV
+ endif
+ if( ALL( ehomo(:) > -1.0e6 ) .AND. ALL( elumo(:) <  1.0e6 ) ) then
+   write(stdout,'(x,a,x,a,2(3x,f12.6))') TRIM(calculation_name),'HOMO-LUMO gap  (eV):',( elumo(:)-ehomo(:) ) * Ha_eV
+ endif
+ write(stdout,*)
+
+
+end subroutine output_new_homolumo
 
 
 !=========================================================================

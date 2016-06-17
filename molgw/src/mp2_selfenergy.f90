@@ -27,9 +27,8 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
 #else
  logical,parameter     :: ring_only=.false.
 #endif
- integer               :: bbf,ibf,kbf,lbf
  integer               :: astate,bstate,bstate2
- real(dp)              :: homo,lumo,fact_full,fact_empty
+ integer               :: homo
  real(dp),allocatable  :: selfenergy_ring(:,:,:,:)
  real(dp),allocatable  :: selfenergy_sox(:,:,:,:)
  real(dp)              :: selfenergy_final(nstate,nstate,nspin)
@@ -51,6 +50,8 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  integer               :: nket1,nket2
  integer               :: nsemin,nsemax
  real(dp)              :: coul_ibjk,coul_ijkb,coul_iakj
+ real(dp)              :: energy_qp_z(nstate,nspin)
+ real(dp)              :: ehomo,elumo
  type(spectral_function) :: sf_dummy
 !=====
 
@@ -241,33 +242,39 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
    endif
 
 
+
    write(stdout,*) '=============================='
    write(stdout,*) ' selfenergy RING + SOX'
-   write(stdout,'(a)') ' #         Energies           Sigx-Vxc       one-ring              SOX             MP2              Z            QP-eigenvalues'
-   do bstate=nsemin,nsemax
-     zz(:) = ( selfenergy_ring(3,bstate,1,:)+selfenergy_sox(3,bstate,1,:) &
-                 - selfenergy_ring(1,bstate,1,:)-selfenergy_sox(1,bstate,1,:) ) / REAL( omegai(3)-omegai(1) ,dp)
+   write(stdout,'(a)') ' #         Energies           Sigx-Vxc       one-ring              SOX             MP2                Z           eMP2_Z'
+   do astate=nsemin,nsemax
+     zz(:) = ( selfenergy_ring(3,astate,1,:)+selfenergy_sox(3,astate,1,:) &
+                 - selfenergy_ring(1,astate,1,:)-selfenergy_sox(1,astate,1,:) ) / REAL( omegai(3)-omegai(1) ,dp)
      zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
-     write(stdout,'(i4,18(3x,f14.5))') bstate,energy(bstate,:)*Ha_eV,&
-           exchange_m_vxc_diag(bstate,:)*Ha_eV,&
-           selfenergy_ring(2,bstate,1,:) * Ha_eV,&
-           selfenergy_sox (2,bstate,1,:) * Ha_eV,&
-         ( selfenergy_ring(2,bstate,1,:)+selfenergy_sox(2,bstate,1,:) ) * Ha_eV,&
+
+     energy_qp_z(astate,:) = energy(astate,:) + zz(:) * ( selfenergy_ring(2,astate,1,:) + selfenergy_sox(2,astate,1,:) + exchange_m_vxc_diag(astate,:) )
+
+     write(stdout,'(i4,18(3x,f14.5))') astate,energy(astate,:)*Ha_eV,&
+           exchange_m_vxc_diag(astate,:)*Ha_eV,&
+           selfenergy_ring(2,astate,1,:) * Ha_eV,&
+           selfenergy_sox (2,astate,1,:) * Ha_eV,&
+         ( selfenergy_ring(2,astate,1,:)+selfenergy_sox(2,astate,1,:) ) * Ha_eV,&
          zz(:),&
-         ( energy(bstate,:) + exchange_m_vxc_diag(bstate,:) + selfenergy_ring(2,bstate,1,:) + selfenergy_sox(2,bstate,1,:) ) * Ha_eV
+         energy_qp_z(astate,:) * Ha_eV
    enddo
    write(stdout,*) '=============================='
 
    selfenergy(:,:,:) = 0.0_dp
    if(.NOT.ring_only) then
-     do bstate=nsemin,nsemax
-       selfenergy(bstate,1,:) = selfenergy_ring(2,bstate,1,:) + selfenergy_sox(2,bstate,1,:)
+     do astate=nsemin,nsemax
+       selfenergy(astate,1,:) = selfenergy_ring(2,astate,1,:) + selfenergy_sox(2,astate,1,:)
      enddo
    else
-     do bstate=nsemin,nsemax
-       selfenergy(bstate,1,:) = selfenergy_ring(2,bstate,1,:)
+     do astate=nsemin,nsemax
+       selfenergy(astate,1,:) = selfenergy_ring(2,astate,1,:)
      enddo
    endif
+
+   call output_new_homolumo('MP2',nstate,occupation,energy_qp_z,nsemin,nsemax,ehomo,elumo)
 
  endif
 

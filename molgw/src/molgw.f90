@@ -584,6 +584,7 @@ program molgw
 
    write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en%tot
    write(stdout,'(a,2x,f19.10)') ' SE+MP2  Total En (Ha):',en%tot+en%se
+   write(stdout,*)
 
  endif
 
@@ -599,6 +600,7 @@ program molgw
 
    write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en%tot
    write(stdout,'(a,2x,f19.10)') ' SE+MP2  Total En (Ha):',en%tot+en%se
+   write(stdout,*)
 
  endif
 
