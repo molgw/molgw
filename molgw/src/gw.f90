@@ -37,7 +37,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  complex(dp),allocatable  :: omegac(:)
  real(dp),allocatable     :: selfenergy_omega(:,:,:,:)
  complex(dp),allocatable  :: selfenergy_omegac(:,:,:,:)
- real(dp),allocatable  :: sigma_xc_m_vxc_diag(:)
+ real(dp),allocatable  :: sigma_xc_m_vxc_diag(:),zz(:,:)
  integer               :: ndim2
  integer               :: bbf,ibf,iastate
  integer               :: astate,bstate
@@ -46,9 +46,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  real(dp),allocatable  :: bra_exx(:,:)
  real(dp)              :: fact_full_i,fact_empty_i
  real(dp)              :: fact_full_a,fact_empty_a
- real(dp)              :: zz_a(nspin)
  real(dp)              :: energy_qp(nstate,nspin)
- real(dp)              :: zz(nstate,nspin)
  real(dp)              :: energy_qp_new(nstate,nspin),energy_qp_z(nstate,nspin)
  real(dp)              :: energy_qp_z_a(nspin),energy_qp_omega(nspin)
  character(len=3)      :: ctmp
@@ -413,8 +411,9 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
    enddo
  endif
 
+
  select case(gwmethod)
- case(QS)
+ case(QS,QSCOHSEX)
    ! Transform the matrix elements back to the AO basis
    ! do not forget the overlap matrix S
    ! C^T S C = I
@@ -424,40 +423,13 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
      selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ispin) ) , MATMUL( selfenergy_omega(0,:,:,ispin), &
                              MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ispin)), s_matrix(:,:) ) ) )
    enddo
-
-
- case(QSCOHSEX)
-   write(stdout,*) 
-   ! Transform the matrix elements back to the AO basis
-   ! do not forget the overlap matrix S
-   ! C^T S C = I
-   ! the inverse of C is C^T S
-   ! the inverse of C^T is S C
-   do ispin=1,nspin
-     selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ispin) ) , MATMUL( selfenergy_omega(0,:,:,ispin), &
-                             MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ispin)), s_matrix(:,:) ) ) )
-   enddo
-
 
  case(GV) !==========================================================
 
    selfenergy(:,:,:) = selfenergy_omega(0,:,:,:)
    
-   write(stdout,'(/,a)') ' Gv     Eigenvalues (eV)'
-   if(nspin==1) then
-     write(stdout,*) '  #          E0        SigX-Vxc      SigC          Z         COHSEX'
-   else
-     write(stdout,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       COHSEX'
-   endif
-   do astate=nsemin,nsemax
-     zz_a(:) = 1.0_dp 
-     energy_qp_new(astate,:) = energy_qp(astate,:) + selfenergy_omega(0,astate,1,:) + exchange_m_vxc_diag(astate,:)
-
-     write(stdout,'(i4,x,20(x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,               &
-                                        exchange_m_vxc_diag(astate,:)*Ha_eV,     &
-                                        selfenergy_omega(0,astate,1,:)*Ha_eV, &
-                                        zz_a(:),energy_qp_new(astate,:)*Ha_eV
-   enddo
+   call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy_qp,energy_qp_new)
+   call output_qp_energy('GV',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_new)
 
    call write_energy_qp(nstate,energy_qp_new)
 
@@ -470,21 +442,8 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
      selfenergy(astate,astate,:) = selfenergy_omega(0,astate,1,:)
    end forall
    
-   write(stdout,'(/,a)') ' COHSEX Eigenvalues (eV)'
-   if(nspin==1) then
-     write(stdout,*) '  #          E0        SigX-Vxc      SigC          Z         COHSEX'
-   else
-     write(stdout,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       COHSEX'
-   endif
-   do astate=nsemin,nsemax
-     zz_a(:) = 1.0_dp 
-     energy_qp_new(astate,:) = energy_qp(astate,:) + selfenergy_omega(0,astate,1,:) + exchange_m_vxc_diag(astate,:)
-
-     write(stdout,'(i4,x,20(x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,               &
-                                        exchange_m_vxc_diag(astate,:)*Ha_eV,     &
-                                        selfenergy_omega(0,astate,1,:)*Ha_eV, &
-                                        zz_a(:),energy_qp_new(astate,:)*Ha_eV
-   enddo
+   call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy_qp,energy_qp_new)
+   call output_qp_energy('COHSEX',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_new)
 
    call write_energy_qp(nstate,energy_qp_new)
 
@@ -533,60 +492,12 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
      selfenergy(astate,astate,:) = selfenergy_omega(0,astate,1,:)
    end forall
 
-   zz(:,:) = 0.0_dp
-   energy_qp_z(:,:) = 0.0_dp
-   energy_qp_new(:,:) = 0.0_dp
+   allocate(zz(nsemin:nsemax,nspin))
+   call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy_qp,energy_qp_z,zz)
+   call find_qp_energy_graphical(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy_qp,energy_qp_new)
 
-   ! Then overwrite the interesting energy with the calculated GW one
-   do astate=nsemin,nsemax
-
-     if( MODULO(astate-nsemin,nproc) /= rank ) cycle
-
-     zz_a(:) = ( selfenergy_omega(1,astate,1,:) - selfenergy_omega(-1,astate,1,:) ) / ( omegai(1) - omegai(-1) )
-     zz_a(:) = 1.0_dp / ( 1.0_dp - zz_a(:) )
-     ! Contrain Z to be in [0:1] to avoid crazy values
-     do ispin=1,nspin
-       zz_a(ispin) = MIN( MAX(zz_a(ispin),0.0_dp) , 1.0_dp )
-     enddo
-
-     energy_qp_z_a(:) = energy_qp(astate,:) + zz_a(:) * ( selfenergy_omega(0,astate,1,:) + exchange_m_vxc_diag(astate,:) )
-
-     allocate(sigma_xc_m_vxc_diag(-nomegai:nomegai))
-     do ispin=1,nspin
-       sigma_xc_m_vxc_diag(:) = selfenergy_omega(:,astate,1,ispin) + exchange_m_vxc_diag(astate,ispin)
-       energy_qp_omega(ispin) = find_fixed_point(nomegai,omegai,sigma_xc_m_vxc_diag) + energy_qp(astate,ispin) 
-     enddo
-     deallocate(sigma_xc_m_vxc_diag)
-
-     zz(astate,:)            = zz_a(:)
-     energy_qp_z(astate,:)   = energy_qp_z_a(:)
-     energy_qp_new(astate,:) = energy_qp_omega(:) 
-   enddo
-
-   call xsum(zz)
-   call xsum(energy_qp_z)
-   call xsum(energy_qp_new)
-
-   energy_qp_new(:nsemin-1,:) = energy(:nsemin-1,:)
-   energy_qp_new(nsemax+1:,:) = energy(nsemax+1:,:)
-
-   write(stdout,'(/,a)') ' G0W0 Eigenvalues (eV)'
-   if(nspin==1) then
-     write(stdout,'(a)') '   #          E0        SigX-Vxc      SigC          Z         G0W0_Z         G0W0_qp'
-   else
-     write(stdout,'(a)') &
-       '   #                E0                      SigX-Vxc                    SigC                       Z                       G0W0_Z                      G0W0_qp'
-   endif
-
-   do astate=nsemin,nsemax
-     write(stdout,'(i4,x,20(x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,          & 
-                                        exchange_m_vxc_diag(astate,:)*Ha_eV,       &
-                                        selfenergy_omega(0,astate,1,:)*Ha_eV,      &
-                                        zz(astate,:),                              & 
-                                        energy_qp_z(astate,:)*Ha_eV,               &
-                                        energy_qp_new(astate,:)*Ha_eV
-   enddo
-
+   call output_qp_energy('G0W0',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
+   deallocate(zz)
 
    call write_energy_qp(nstate,energy_qp_new)
 
@@ -600,33 +511,13 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
      selfenergy(astate,astate,:) = selfenergy_omega(0,astate,1,:)
    end forall
 
+   call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_new)
 
    if( gwmethod==GnW0) then
-     write(stdout,'(/,a)') ' GnW0 Eigenvalues (eV)'
+     call output_qp_energy('GnW0',nstate,nsemin,nsemax,energy,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_new)
    else
-     write(stdout,'(/,a)') ' GnWn Eigenvalues (eV)'
+     call output_qp_energy('GnWn',nstate,nsemin,nsemax,energy,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_new)
    endif
-   if(nspin==1) then
-     write(stdout,'(a)') '  #          E0        SigX-Vxc      SigC          Z          GW(n-1)       GW(n)'
-   else
-     write(stdout,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       GW'
-   endif
-
-   ! First give energy_qp_new a meaningful default value
-   energy_qp_new(:,:) = energy(:,:)
-   ! Then overwrite the interesting energy with the calculated GW one
-   do astate=nsemin,nsemax
-     zz_a(:) = 1.0_dp 
-
-     energy_qp_new(astate,:) = energy(astate,:) + selfenergy_omega(0,astate,1,:) + exchange_m_vxc_diag(astate,:)
-
-     write(stdout,'(i4,x,20(x,f12.6))') astate,energy(astate,:)*Ha_eV,                    &
-                                                 exchange_m_vxc_diag(astate,:)*Ha_eV,       &
-                                                 selfenergy_omega(0,astate,1,:)*Ha_eV,      &
-                                                 zz_a(:),                                     &
-                                                 energy_qp(astate,:)*Ha_eV,                 &
-                                                 energy_qp_new(astate,:)*Ha_eV
-   enddo
 
    call write_energy_qp(nstate,energy_qp_new)
 

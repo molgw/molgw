@@ -15,6 +15,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
+ use m_selfenergy_tools
  implicit none
 
  integer,intent(in)                 :: nstate,gwmethod
@@ -285,20 +286,8 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
      selfenergy(astate,astate,:) = selfenergy_omega(0,astate,1,:)
    end forall
    
-   write(stdout,'(/,a)') ' COHSEX Eigenvalues (eV)'
-   if(nspin==1) then
-     write(stdout,*) '  #          E0        SigX-Vxc      SigC          Z         COHSEX'
-   else
-     write(stdout,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       COHSEX'
-   endif
-   do astate=nsemin,nsemax
-     energy_qp_new(astate,:) = energy_qp(astate,:) + selfenergy_omega(0,astate,1,:) + exchange_m_vxc_diag(astate,:)
-
-     write(stdout,'(i4,x,20(x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,               &
-                                                 exchange_m_vxc_diag(astate,:)*Ha_eV,     &
-                                                 selfenergy_omega(0,astate,1,:)*Ha_eV, &
-                                           1.0_dp ,energy_qp_new(astate,:)*Ha_eV
-   enddo
+   call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy_qp,energy_qp_new)
+   call output_qp_energy('COHSEX',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_new)
 
    call write_energy_qp(nstate,energy_qp_new)
 
