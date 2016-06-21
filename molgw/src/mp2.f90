@@ -321,7 +321,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
  use m_tools
  use m_basis_set
  use m_eri_ao_mo
- use m_inputparam,only: nspin
+ use m_inputparam,only: nspin,has_auxil_basis
  implicit none
 !
  integer,parameter :: cip=dp
@@ -333,44 +333,50 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
  real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(in)        :: nuc_nuc
 !=====
- integer,parameter    :: neig=6
- integer,parameter    :: nblock=1
- integer,parameter    :: ncycle=12
- integer              :: bigm,bigm_max
- integer              :: ieig,jeig,keig,neigc,icycle,iblock,jblock
- real(dp),allocatable :: bb(:,:),qq(:,:),atilde(:,:),ab(:,:)
- real(dp),allocatable :: bb_s(:,:),atilde_s(:,:),ab_s(:,:)
- real(dp),allocatable :: lambda(:),alphavec(:,:)
- real(dp) :: h_1e_hf(nstate,nstate)
- integer :: nconf,iconf,jconf,kconf
- integer :: ibf,jbf
- integer :: istate,jstate,kstate,lstate
- integer :: istate1,istate2,jstate1,jstate2,ispin1,ispin2,jspin1,jspin2
+ integer,parameter     :: neig=6
+ integer,parameter     :: nblock=1
+ integer,parameter     :: ncycle=12
+ integer               :: bigm,bigm_max
+ integer               :: ieig,jeig,keig,neigc,icycle,iblock,jblock
+ real(dp),allocatable  :: bb(:,:),qq(:,:),atilde(:,:),ab(:,:)
+ real(dp),allocatable  :: bb_s(:,:),atilde_s(:,:),ab_s(:,:)
+ real(dp),allocatable  :: lambda(:),alphavec(:,:)
+ real(dp)              :: h_1e_hf(nstate,nstate)
+ integer               :: nconf,iconf,jconf,kconf
+ integer               :: ibf,jbf
+ integer               :: istate,jstate,kstate,lstate
+ integer               :: istate1,istate2,jstate1,jstate2,ispin1,ispin2,jspin1,jspin2
  real(cip),allocatable :: hamiltonian(:,:)
  real(cip),allocatable :: energy(:),eigenvector(:,:)
  real(cip),allocatable :: test1(:),test2(:),test3(:),hphi(:),gr1(:),gr2(:)
- real(cip) :: delta,eigen,hessian,norm_gr1
- integer :: iline,ix
- real(dp) :: rhor(nx),rhor_hf(nx),rr(3)
- real(dp) :: rhor_t(nx)
- real(dp) :: eval_wfn(nstate)
- real(dp) :: eri_hf_i(nstate,nstate,nstate,1)
- integer,parameter :: ny=nx,nz=nx
- integer :: iy,iz
- real(dp) :: xxx(nx),y(ny),z(nz)
- real(dp) :: wx(nx),wy(ny),wz(nz)
- real(dp) :: norm
-
- integer :: ibf_cart,li,ni,ni_cart,i_cart
- real(dp),allocatable :: basis_function_r_cart(:)
- real(dp) :: basis_function_r(basis%nbf)
-
+ real(cip)             :: delta,eigen,hessian,norm_gr1
+ integer               :: iline,ix
+ real(dp)              :: rhor(nx),rhor_hf(nx),rr(3)
+ real(dp)              :: rhor_t(nx)
+ integer,parameter     :: ny=nx,nz=nx
+ integer               :: iy,iz
+ real(dp)              :: xxx(nx),y(ny),z(nz)
+ real(dp)              :: wx(nx),wy(ny),wz(nz)
+ real(dp)              :: norm
+ integer               :: ibf_cart,li,ni,ni_cart,i_cart
+ real(dp),allocatable  :: basis_function_r_cart(:)
+ real(dp)              :: basis_function_r(basis%nbf)
+ real(dp)              :: eval_wfn(nstate)
+ real(dp),allocatable  :: eri_hf_i(:,:,:,:)
 !=====
- write(stdout,*) 
- write(stdout,*) 'Enter full CI subroutine'
- write(stdout,*) 
+
+ call start_clock(timing_full_ci)
+
+ write(stdout,'(/,x,a,/)') 'Enter full CI subroutine'
 
  if( nspin /= 1) call die('CI is only implemented starting from spin-restricted SCF')
+
+ if( .NOT. has_auxil_basis ) then
+   allocate(eri_hf_i(nstate,nstate,nstate,nspin))
+ else
+   call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix)
+ endif
+
 
  write(stdout,*) 'Obtain the one-electron Hamiltonian in the HF basis'
 
@@ -396,7 +402,10 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
 
  iconf=0
  do istate1=1,nstate
-   call calculate_eri_4center_eigen(basis%nbf,nstate,c_matrix,istate1,1,eri_hf_i)
+
+   if( .NOT. has_auxil_basis ) then
+     call calculate_eri_4center_eigen(basis%nbf,nstate,c_matrix,istate1,1,eri_hf_i)
+   endif
 
    do ispin1=1,2
 
@@ -439,8 +448,17 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
                  ! Not so painful implementation of the determinant rules as shown in
                  ! p. 70 of "Modern Quantum Chemistry" by A. Szabo and N. S. Ostlung
 
-                 if( ispin1==jspin1 .AND. ispin2==jspin2 ) hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf_i(jstate1,istate2,jstate2,1)
-                 if( ispin1==jspin2 .AND. ispin2==jspin1 ) hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) - eri_hf_i(jstate2,istate2,jstate1,1)
+                 if( has_auxil_basis ) then
+                   if( ispin1==jspin1 .AND. ispin2==jspin2 ) &
+                      hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_eigen_ri(istate1,jstate1,1,istate2,jstate2,1)
+                   if( ispin1==jspin2 .AND. ispin2==jspin1 ) &
+                      hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) - eri_eigen_ri(istate1,jstate2,1,istate2,jstate1,1)
+                 else
+                   if( ispin1==jspin1 .AND. ispin2==jspin2 ) &
+                      hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) + eri_hf_i(jstate1,istate2,jstate2,1)
+                   if( ispin1==jspin2 .AND. ispin2==jspin1 ) &
+                      hamiltonian(iconf,jconf) =  hamiltonian(iconf,jconf) - eri_hf_i(jstate2,istate2,jstate1,1)
+                 endif
 
                enddo
              enddo
@@ -451,6 +469,13 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
      enddo
    enddo
  enddo
+
+ ! I dont need the integrals anymore
+ if( .NOT. has_auxil_basis ) then
+   deallocate(eri_hf_i)
+ else
+   call destroy_eri_3center_eigen()
+ endif
 
  ! Adjust the real size of the CI hamiltonian
  nconf=iconf
@@ -785,7 +810,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
      !
 
   
-     eval_wfn(:)=0.0_dp
+     eval_wfn(:) = 0.0_dp
      do istate=1,nstate
        do ibf=1,basis%nbf
          eval_wfn(istate) = eval_wfn(istate) + c_matrix(ibf,istate,1) * basis_function_r(ibf)
@@ -918,6 +943,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
  ! finalize the CI calculation
  deallocate(energy,eigenvector)
 
+ call stop_clock(timing_full_ci)
 
 end subroutine full_ci_2electrons_spin
 

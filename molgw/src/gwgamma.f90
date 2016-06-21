@@ -183,14 +183,13 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  enddo
 
 
-#if 1
  write(stdout,*) 'Calculate SOSEX'
 
  do ispin=1,nspin
 
    do spole=1,wpol%npole_reso
 
-     write(stdout,*) 'FBFB poles:',spole,' / ',wpol%npole_reso
+     write(stdout,*) 'SOSEX W poles:',spole,' / ',wpol%npole_reso
      pole_s = wpol%pole(spole)
 
      do kcstate=1,nstate
@@ -198,13 +197,6 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
        bra(:,kcstate)     = MATMUL( wpol%residu_left(:,spole) , eri_3center_eigen(:,:,kcstate,ispin) )
      enddo
      call xsum(bra)
-
-!FBFB   do spole=1,nauxil_3center
-!FBFB     pole_s = 10000000.0_dp
-!FBFB     do kcstate=1,nstate
-!FBFB       bra(:,kcstate)     = eri_3center_eigen(spole,:,kcstate,ispin)   &
-!FBFB                  * SQRT( pole_s )
-!FBFB     enddo
 
 
      !==========================
@@ -326,7 +318,6 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
    enddo !spole
  enddo !ispin
-#endif
 
 
  write(stdout,'(a)') ' Sigma_c(omega) is calculated'

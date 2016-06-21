@@ -53,6 +53,7 @@ module m_timing
  integer,parameter :: timing_approx_ham          = 34
  integer,parameter :: timing_sca_distr2          = 35
  integer,parameter :: timing_fno                 = 36
+ integer,parameter :: timing_full_ci             = 37
  
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -160,6 +161,9 @@ subroutine output_timing()
  write(stdout,'(a30,6x,f12.2,2x,i8)')  'Electron-nuclei Hamiltonian',timing(timing_hamiltonian_nuc),calls(timing_hamiltonian_nuc)
 
  write(stdout,*)
+ write(stdout,'(a)') '                 -------------------------------------'
+ write(stdout,*)
+
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Grid generation'     ,timing(timing_grid_generation),calls(timing_grid_generation)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'SQRT density matrix' ,timing(timing_sqrt_density_matrix),calls(timing_sqrt_density_matrix)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Hartree'             ,timing(timing_hartree),calls(timing_hartree)
@@ -171,6 +175,10 @@ subroutine output_timing()
  write(stdout,*)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Single Excitations'  ,timing(timing_single_excitation),calls(timing_single_excitation)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'FNO generation'      ,timing(timing_fno),calls(timing_fno)
+ write(stdout,*)
+
+ write(stdout,*)
+ write(stdout,'(a)') '                 -------------------------------------'
  write(stdout,*)
 
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Total chi polarization' ,timing(timing_pola),calls(timing_pola)
@@ -195,8 +203,13 @@ subroutine output_timing()
  write(stdout,*)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'MP2 energy'      ,timing(timing_mp2_energy),calls(timing_mp2_energy)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'MP2 self-energy' ,timing(timing_mp2_self),calls(timing_mp2_self)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'Full CI for 2e'  ,timing(timing_full_ci),calls(timing_full_ci)
+
+ write(stdout,*)
  write(stdout,'(a)') '                 -------------------------------------'
+
  if( calls(timing_sca_distr1)+calls(timing_sca_distr2) > 0 ) then
+   write(stdout,*)
    write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing SCA1   ' ,timing(timing_sca_distr1),calls(timing_sca_distr2)
    write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing SCA2   ' ,timing(timing_sca_distr1),calls(timing_sca_distr2)
  endif
