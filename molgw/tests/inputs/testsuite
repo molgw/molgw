@@ -68,6 +68,16 @@ Exchange Energy           ,   -2.9606225006    , 0 , 1.0e-7
 XC Energy                 ,  -12.5371878224    , 0 , 1.0e-7
 Total Energy              , -115.7433993446    , 0 , 1.0e-7
 
+he_tdpbe0.in              , TDDFT calculation of He atom with PBE0
+SCF Total Energy          ,   -2.8945155987    , 0 , 1.0e-7
+0001                      ,   32.27823228      , 0 , 1.0e-4
+0001                      ,    0.00000000      , 1 , 1.0e-4
+0002                      ,   50.92943400      , 0 , 1.0e-4
+0002                      ,    0.76144839      , 1 , 1.0e-4
+Sum over oscillator strengths ,  2.285259      , 0 , 1.0e-4
+Mean excitation energy    ,   50.958526        , 0 , 1.0e-4
+polarizability trace      ,    0.652132        , 0 , 1.0e-4
+
 n2_mp2.in                 , 2nd order self-energy of N2 with no RI
 MP2 HOMO energy           ,  -12.374331        , 0 , 1.0e-4
 MP2 LUMO energy           ,    3.632074        , 0 , 1.0e-4
@@ -175,6 +185,11 @@ h2_ci.in                  , Full CI for 2 electrons applied to H2
 SCF Total Energy          ,     -1.1636125481  , 0 , 1.0e-7
 Single determinant        ,     -1.1285529198  , 0 , 1.0e-7
 CI ground-state energy    ,     -1.1646077906  , 0 , 1.0e-7
+
+h2_ci_ri.in               , Full CI for 2 electrons applied to H2 with RI
+SCF Total Energy          ,     -1.1636322091  , 0 , 1.0e-7
+Single determinant        ,     -1.1285642534  , 0 , 1.0e-7
+CI ground-state energy    ,     -1.1646360042  , 0 , 1.0e-7
 
 sih4_hf.in                , TDHF SiH4 aug-cc-pVDZ
 SCF Total Energy          ,   -291.2427972343   , 0 , 1.0e-7

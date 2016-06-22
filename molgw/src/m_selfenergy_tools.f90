@@ -11,10 +11,6 @@ module m_selfenergy_tools
  use m_warning
  use m_mpi
  use m_inputparam,only: nspin
-! use m_memory
-! use m_timing
-! use m_scalapack
-! use m_tools,only: invert
 
 
 contains

@@ -53,6 +53,9 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  integer               :: reading_status
  integer               :: selfenergyfile
  integer               :: nsemin,nsemax
+ real(dp),allocatable  :: vsqchi0vsqm1(:,:)
+! GW tilde
+ real(dp)              :: omega_m_ei,bra2
 ! LW devel
  complex(dp),allocatable :: matrix(:,:),eigvec(:,:)
  real(dp),allocatable    :: eigval(:),x1(:),weights(:)
@@ -74,6 +77,8 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
    write(stdout,*) 'Perform a perturbative HF calculation'
  case(QS)
    write(stdout,*) 'Perform a QP self-consistent GW calculation (QSGW)'
+ case(GWTILDE)
+   write(stdout,*) 'Perform a one-shot GWtilde calculation'
  case(G0W0)
    write(stdout,*) 'Perform a one-shot G0W0 calculation'
  case(G0W0_IOMEGA)
@@ -186,9 +191,6 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  ! Which calculation type needs a complex sigma?
  !
  select case(gwmethod)
- case(COHSEX,GV,GSIGMA,G0W0,GnW0,GnWn)   ! diagonal real
-   allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,1,nspin))
-
  case(QS,QSCOHSEX,GSIGMA3) ! matrix real
    allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nsemin:nsemax,nspin))
 
@@ -196,7 +198,8 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
    allocate(selfenergy_omegac(1:nomegai,nsemin:nsemax,nsemin:nsemax,nspin))
 
  case default
-   call die('GW case does not exist. Should not happen')
+   allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,1,nspin))
+
  end select
 
  if( ALLOCATED(selfenergy_omega) )  selfenergy_omega(:,:,:,:)  = 0.0_dp
@@ -205,12 +208,8 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
 
 
  do ispin=1,nspin
-   do istate=1,nstate !INNER LOOP of G
-     if(gwmethod==LW .or. gwmethod==LW2) write(stdout,*) 'FBFB LW',istate
-     !
-     ! Apply the frozen core and frozen virtual approximation to G
-     if(istate <= ncore_G)    cycle
-     if(istate >= nvirtual_G) cycle
+   do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
+
 
      !
      ! Prepare the bra and ket with the knowledge of index istate and astate
@@ -259,6 +258,8 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
          enddo
 
        case(LW,LW2)
+
+         if(ipole==1) write(stdout,*) 'FBFB LW',istate
 
          do bstate=nsemin,nsemax
            do astate=nsemin,nsemax
@@ -320,6 +321,26 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
                           + REAL(  fact_empty_i / ( energy_qp(astate,ispin) + omegai(iomegai) - energy_qp(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
            enddo
          enddo
+
+       case(GWTILDE)
+
+         allocate(vsqchi0vsqm1(nauxil_2center,nauxil_2center))
+
+         do astate=nsemin,nsemax
+           do iomegai=-nomegai,nomegai
+             omega_m_ei = energy_qp(astate,ispin) + omegai(iomegai) - energy_qp(istate,ispin)
+             call dynamical_polarizability(nstate,basis,occupation,energy_qp,omega_m_ei,wpol,vsqchi0vsqm1)
+
+             bra2 = DOT_PRODUCT( eri_3center_eigen(:,astate,istate,ispin) , MATMUL( vsqchi0vsqm1(:,:) , wpol%residu_left(:,ipole)) )
+
+             selfenergy_omega(iomegai,astate,1,ispin) = selfenergy_omega(iomegai,astate,1,ispin) &
+                      + bra2 * bra(ipole,astate)                                          & 
+                        * ( REAL(  fact_full_i  / ( omega_m_ei + wpol%pole(ipole) - ieta )  , dp )  &
+                          + REAL(  fact_empty_i / ( omega_m_ei - wpol%pole(ipole) + ieta )  , dp ) )
+           enddo
+         enddo
+
+         deallocate(vsqchi0vsqm1)
 
        case(G0W0_IOMEGA)
 
@@ -469,7 +490,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
 
 
 
- case(G0W0) !==========================================================
+ case(G0W0,GWTILDE) !==========================================================
 
    if( calc_type%gwmethod == G0W0GAMMA0 ) then
      open(newunit=selfenergyfile,file='g0w0.dat',form='unformatted')

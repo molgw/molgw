@@ -425,7 +425,7 @@ program molgw
        ( calc_type%gwmethod == GV .OR. calc_type%gwmethod == GSIGMA .OR.  calc_type%gwmethod == LW &
     .OR. calc_type%gwmethod == LW2 &
     .OR. calc_type%gwmethod == GSIGMA3     & ! FBFB LW testing purposes to be removed
-    .OR. calc_type%gwmethod == G0W0_IOMEGA &
+    .OR. calc_type%gwmethod == G0W0_IOMEGA .OR. calc_type%gwmethod == GWTILDE &
     .OR. calc_type%gwmethod == G0W0 .OR. calc_type%gwmethod == COHSEX   &
     .OR. calc_type%gwmethod == GnW0 .OR. calc_type%gwmethod == GnWn ) ) then
 
@@ -490,7 +490,7 @@ program molgw
    call init_spectral_function(nstate,occupation,wpol)
    !
    ! Calculate v^{1/2} \chi v^{1/2}
-   call static_polarizability(nstate,basis,auxil_basis,occupation,energy,wpol)
+   call static_polarizability(nstate,basis,occupation,energy,wpol)
 
    !
    allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))

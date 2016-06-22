@@ -127,7 +127,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
    if( reading_status /= 0 ) then
      call init_spectral_function(nstate,occupation,wpol_static)
      wpol_static%nprodbasis = nauxil_3center
-     call static_polarizability(nstate,basis,auxil_basis,occupation,energy,wpol_static)
+     call static_polarizability(nstate,basis,occupation,energy,wpol_static)
    endif
 
  endif

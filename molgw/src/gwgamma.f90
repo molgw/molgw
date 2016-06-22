@@ -124,6 +124,8 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  if( ALLOCATED(selfenergy_omega_gamma) ) selfenergy_omega_gamma(:,:,:,:)  = 0.0_dp
  if( ALLOCATED(selfenergy_omega_sox) )   selfenergy_omega_sox(:,:,:,:)  = 0.0_dp
 
+
+#if 0
  write(stdout,*) 'Calculate SOX'
 
  do ispin=1,nspin
@@ -182,8 +184,81 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
  enddo
 
+#else
 
- write(stdout,*) 'Calculate SOSEX'
+ call static_polarizability(nstate,basis,occupation,energy_qp,wpol)
+
+ write(stdout,*) 'Calculate static SOSEX'
+
+ do ispin=1,nspin
+
+   !==========================
+   do kstate=ncore_G+1,nvirtual_G-1
+     if( occupation(kstate,ispin) / spin_fact < completely_empty ) cycle
+     do istate=ncore_G+1,nvirtual_G-1
+       if( occupation(istate,ispin) / spin_fact < completely_empty ) cycle
+       do bstate=ncore_G+1,nvirtual_G-1
+         if( (spin_fact - occupation(bstate,ispin)) / spin_fact < completely_empty) cycle
+
+         do mstate=nsemin,nsemax
+
+           vcoul1 = eri_eigen_ri(mstate,istate,ispin,bstate,kstate,ispin)   &
+                   +DOT_PRODUCT( eri_3center_eigen(:,mstate,istate,ispin) , &
+                                 MATMUL( wpol%w0(:,:) , eri_3center_eigen(:,bstate,kstate,ispin) ) )
+!FBFB           vcoul2 = eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin)
+           vcoul2 = eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin)   &
+                   +DOT_PRODUCT( eri_3center_eigen(:,istate,bstate,ispin) , &
+                                 MATMUL( wpol%w0(:,:) , eri_3center_eigen(:,kstate,mstate,ispin) ) )
+           !
+           ! calculate only the diagonal !
+           do iomegai=-nomegai,nomegai
+             selfenergy_omega_sox(iomegai,mstate,1,ispin) = selfenergy_omega_sox(iomegai,mstate,1,ispin) &
+                 - vcoul1 * vcoul2            &
+                   *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(istate,ispin) - energy_qp(kstate,ispin) + energy_qp(bstate,ispin) - ieta )  , dp ) 
+           enddo
+         enddo
+
+       enddo
+     enddo
+   enddo
+
+
+   !==========================
+   do cstate=ncore_G+1,nvirtual_G-1
+     if( (spin_fact - occupation(cstate,ispin)) / spin_fact < completely_empty) cycle
+     do jstate=ncore_G+1,nvirtual_G-1
+       if( occupation(jstate,ispin) / spin_fact < completely_empty ) cycle
+       do astate=ncore_G+1,nvirtual_G-1
+         if( (spin_fact - occupation(astate,ispin)) / spin_fact < completely_empty) cycle
+
+         do mstate=nsemin,nsemax
+
+           vcoul1 = eri_eigen_ri(mstate,astate,ispin,jstate,cstate,ispin)   &
+                   +DOT_PRODUCT( eri_3center_eigen(:,mstate,astate,ispin) , &
+                                 MATMUL( wpol%w0(:,:) , eri_3center_eigen(:,jstate,cstate,ispin) ) )
+!FBFB           vcoul2 = eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin)
+           vcoul2 = eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin)   &
+                   +DOT_PRODUCT( eri_3center_eigen(:,jstate,astate,ispin) , &
+                                 MATMUL( wpol%w0(:,:) , eri_3center_eigen(:,mstate,cstate,ispin) ) )
+           !
+           ! calculate only the diagonal !
+           do iomegai=-nomegai,nomegai
+             selfenergy_omega_sox(iomegai,mstate,1,ispin) = selfenergy_omega_sox(iomegai,mstate,1,ispin) &
+                 - vcoul1 * vcoul2            &
+                   *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(astate,ispin) - energy_qp(cstate,ispin) + energy_qp(jstate,ispin) + ieta )  , dp ) 
+           enddo
+         enddo
+
+       enddo
+     enddo
+   enddo
+
+
+ enddo
+#endif
+
+
+ write(stdout,*) 'Calculate dynamical SOSEX'
 
  do ispin=1,nspin
 
@@ -191,10 +266,12 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
      write(stdout,*) 'SOSEX W poles:',spole,' / ',wpol%npole_reso
      pole_s = wpol%pole(spole)
+!FBFB     pole_s = 1.0e8_dp
 
      do kcstate=1,nstate
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
        bra(:,kcstate)     = MATMUL( wpol%residu_left(:,spole) , eri_3center_eigen(:,:,kcstate,ispin) )
+!FBFB       bra(:,kcstate)     = MATMUL( wpol%residu_left(:,spole) , eri_3center_eigen(:,:,kcstate,ispin) ) * SQRT( pole_s / wpol%pole(spole) )
      enddo
      call xsum(bra)
 

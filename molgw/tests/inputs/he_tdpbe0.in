@@ -1,0 +1,15 @@
+&molgw
+ scf='pbe0'
+ nspin=1
+
+ basis='cc-pVTZ'
+ basis_path='../../basis/'
+
+ natom=1
+ alpha_mixing=0.5
+ mixing_scheme='simple'
+
+ postscf='td'
+
+/
+He 0. 0. 0.

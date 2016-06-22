@@ -418,7 +418,6 @@ subroutine calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_functi
  enddo
 
 
-
 end subroutine calc_density_r
 
 
