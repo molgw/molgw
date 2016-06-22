@@ -68,7 +68,7 @@ Exchange Energy           ,   -2.9606225006    , 0 , 1.0e-7
 XC Energy                 ,  -12.5371878224    , 0 , 1.0e-7
 Total Energy              , -115.7433993446    , 0 , 1.0e-7
 
-he_tdpbe0.in              , TDDFT calculation of He atom with PBE0
+he_tdpbe0.in              , TDDFT calculation of He atom with PBE0 without RI
 SCF Total Energy          ,   -2.8945155987    , 0 , 1.0e-7
 0001                      ,   32.27823228      , 0 , 1.0e-4
 0001                      ,    0.00000000      , 1 , 1.0e-4
@@ -77,6 +77,16 @@ SCF Total Energy          ,   -2.8945155987    , 0 , 1.0e-7
 Sum over oscillator strengths ,  2.285259      , 0 , 1.0e-4
 Mean excitation energy    ,   50.958526        , 0 , 1.0e-4
 polarizability trace      ,    0.652132        , 0 , 1.0e-4
+
+he_tdpbe0_ri.in           , TDDFT calculation of He atom with PBE0 with RI
+SCF Total Energy          ,   -2.8945750464    , 0 , 1.0e-7
+0001                      ,   32.27007245      , 0 , 1.0e-4
+0001                      ,    0.00000000      , 1 , 1.0e-4
+0002                      ,   50.93742103      , 0 , 1.0e-4
+0002                      ,    0.76155796      , 1 , 1.0e-4
+Sum over oscillator strengths ,  2.285574      , 0 , 1.0e-4
+Mean excitation energy    ,   50.966087        , 0 , 1.0e-4
+polarizability trace      ,    0.652021        , 0 , 1.0e-4
 
 n2_mp2.in                 , 2nd order self-energy of N2 with no RI
 MP2 HOMO energy           ,  -12.374331        , 0 , 1.0e-4
