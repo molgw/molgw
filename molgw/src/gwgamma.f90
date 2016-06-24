@@ -35,10 +35,10 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  integer               :: nomegai
  integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
- real(dp),allocatable     :: selfenergy_omega(:,:,:,:)
- real(dp),allocatable     :: selfenergy_omega_gw(:,:,:,:)
- real(dp),allocatable     :: selfenergy_omega_gamma(:,:,:,:)
- real(dp),allocatable     :: selfenergy_omega_sox(:,:,:,:)
+ real(dp),allocatable  :: selfenergy_omega(:,:,:,:)
+ real(dp),allocatable  :: selfenergy_omega_gw(:,:,:,:)
+ real(dp),allocatable  :: selfenergy_omega_gamma(:,:,:,:)
+ real(dp),allocatable  :: selfenergy_omega_sox(:,:,:,:)
  real(dp),allocatable  :: sigma_xc_m_vxc_diag(:)
  integer               :: ndim2
  integer               :: astate,bstate,cstate
@@ -60,8 +60,8 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  integer               :: selfenergyfile
  integer               :: nsemin,nsemax
  real(dp)              :: pole_s
-! logical,parameter     :: tddft_kernel = .FALSE.
- logical,parameter     :: tddft_kernel = .TRUE.
+ logical,parameter     :: tddft_kernel = .FALSE.
+! logical,parameter     :: tddft_kernel = .TRUE.
 !=====
 
  call start_clock(timing_self)

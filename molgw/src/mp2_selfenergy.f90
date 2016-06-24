@@ -25,11 +25,6 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  real(dp),intent(out)       :: selfenergy(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: emp2
 !=====
-#ifdef CHI0
- logical,parameter     :: ring_only=.true.
-#else
- logical,parameter     :: ring_only=.false.
-#endif
  integer               :: astate,bstate,bstate2
  integer               :: homo
  real(dp),allocatable  :: selfenergy_ring(:,:,:,:)
@@ -40,13 +35,11 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  integer               :: nomegai
  integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
- real(dp),allocatable  :: sigma_xc_m_vxc_diag(:)
  integer               :: istate,jstate,kstate
  integer               :: abispin,jkspin,ispin
  real(dp)              :: fact_occ1,fact_occ2
  real(dp)              :: fi,fj,fk,ei,ej,ek
  real(dp)              :: omega
- real(dp)              :: zz_a(nspin)
  real(dp)              :: fact_real,fact_energy
  real(dp)              :: emp2_sox,emp2_ring
  logical               :: file_exists
@@ -189,7 +182,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
                do iomegai=-nomegai,nomegai
                  omega = energy_qp(bstate,abispin) + omegai(iomegai)
   
-                 fact_real = REAL( fact_occ1 / (omega-ei+ej-ek+ieta) + fact_occ2 / (omega-ei+ej-ek-ieta) , dp)
+                 fact_real   = REAL( fact_occ1 / (omega-ei+ej-ek+ieta) + fact_occ2 / (omega-ei+ej-ek-ieta) , dp)
                  fact_energy = REAL( fact_occ1 / (energy_qp(astate,abispin)-ei+ej-ek+ieta) , dp )
   
                  selfenergy_ring(iomegai,astate,bstate2,abispin) = selfenergy_ring(iomegai,astate,bstate2,abispin) &
@@ -268,14 +261,8 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
    ! QS trick of Faleev-Kotani-vanSchilfgaarde
    allocate(selfenergy_final(nstate,nstate))
    do abispin=1,nspin
-     if(.NOT.ring_only) then
-       selfenergy_final(:,:) = 0.5_dp * ( selfenergy_ring(0,:,:,abispin) + selfenergy_sox(0,:,:,abispin) &
-                                               +  TRANSPOSE( selfenergy_ring(0,:,:,abispin) + selfenergy_sox(0,:,:,abispin) ) )
-     else
-       write(stdout,*) 'ring_only'
-       selfenergy_final(:,:) = 0.5_dp * ( selfenergy_ring(0,:,:,abispin)  &
-                                               +  TRANSPOSE( selfenergy_ring(0,:,:,abispin) ) )
-     endif
+     selfenergy_final(:,:) = 0.5_dp * ( selfenergy_ring(0,:,:,abispin) + selfenergy_sox(0,:,:,abispin) &
+                                             +  TRANSPOSE( selfenergy_ring(0,:,:,abispin) + selfenergy_sox(0,:,:,abispin) ) )
 
      ! Transform the matrix elements back to the non interacting states
      ! do not forget the overlap matrix S

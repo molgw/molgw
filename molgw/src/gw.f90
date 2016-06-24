@@ -34,12 +34,11 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  integer               :: nomegai
  integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
- complex(dp),allocatable  :: omegac(:)
- real(dp),allocatable     :: selfenergy_omega(:,:,:,:)
- complex(dp),allocatable  :: selfenergy_omegac(:,:,:,:)
- real(dp),allocatable  :: sigma_xc_m_vxc_diag(:),zz(:,:)
- integer               :: ndim2
- integer               :: bbf,ibf,iastate
+ complex(dp),allocatable :: omegac(:)
+ complex(dp),allocatable :: selfenergy_omegac(:,:,:,:)
+ real(dp),allocatable  :: selfenergy_omega(:,:,:,:)
+ real(dp),allocatable  :: zz(:,:)
+ integer               :: iastate
  integer               :: astate,bstate
  integer               :: istate,ispin,ipole
  real(dp),allocatable  :: bra(:,:)
@@ -53,8 +52,8 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  integer               :: reading_status
  integer               :: selfenergyfile
  integer               :: nsemin,nsemax
- real(dp),allocatable  :: vsqchi0vsqm1(:,:)
 ! GW tilde
+ real(dp),allocatable  :: vsqchi0vsqm1(:,:)
  real(dp)              :: omega_m_ei,bra2
 ! LW devel
  complex(dp),allocatable :: matrix(:,:),eigvec(:,:)
