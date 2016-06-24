@@ -234,7 +234,6 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
  real(dp),allocatable :: bigomega_tmp(:)
  logical,allocatable  :: maskmin(:)
  integer,external     :: NUMROC,INDXL2G
- integer              :: t_ij,t_kl
  integer              :: lwork
  real(dp),allocatable :: work(:)
 !=====

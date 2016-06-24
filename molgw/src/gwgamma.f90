@@ -17,6 +17,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  use m_eri_ao_mo
  use m_tools,only: coeffs_gausslegint
  use m_selfenergy_tools
+ use m_tddft_fxc
  implicit none
 
  integer,intent(in)                 :: nstate,gwmethod
@@ -59,6 +60,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  integer               :: selfenergyfile
  integer               :: nsemin,nsemax
  real(dp)              :: pole_s
+ logical,parameter     :: tddft_kernel = .FALSE.
 !=====
 
  call start_clock(timing_self)
@@ -68,6 +70,11 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  case(G0W0GAMMA0)
    write(stdout,*) 'Perform a one-shot G0W0GAMMA0 calculation'
  end select
+
+ if( tddft_kernel ) then
+   write(stdout,*) 'Include a TDDFT kernel contribution to the vertex'
+   call prepare_tddft(nstate,basis,c_matrix,occupation)
+ endif
 
  nprodbasis = index_prodstate(nstate,nstate)
 
@@ -125,7 +132,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  if( ALLOCATED(selfenergy_omega_sox) )   selfenergy_omega_sox(:,:,:,:)  = 0.0_dp
 
 
-#if 0
+#if 1
  write(stdout,*) 'Calculate SOX'
 
  do ispin=1,nspin
@@ -266,12 +273,10 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
      write(stdout,*) 'SOSEX W poles:',spole,' / ',wpol%npole_reso
      pole_s = wpol%pole(spole)
-!FBFB     pole_s = 1.0e8_dp
 
      do kcstate=1,nstate
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
        bra(:,kcstate)     = MATMUL( wpol%residu_left(:,spole) , eri_3center_eigen(:,:,kcstate,ispin) )
-!FBFB       bra(:,kcstate)     = MATMUL( wpol%residu_left(:,spole) , eri_3center_eigen(:,:,kcstate,ispin) ) * SQRT( pole_s / wpol%pole(spole) )
      enddo
      call xsum(bra)
 
@@ -509,6 +514,10 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
  if(ALLOCATED(omegai)) deallocate(omegai)
  if(ALLOCATED(selfenergy_omega)) deallocate(selfenergy_omega)
+
+ if( tddft_kernel ) then
+   call destroy_tddft()
+ endif
 
  call stop_clock(timing_self)
 

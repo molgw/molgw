@@ -394,7 +394,7 @@ end subroutine distribute_auxil_basis_lr
 
 
 !=========================================================================
-subroutine init_grid_distribution(ngrid)
+subroutine init_dft_grid_distribution(ngrid)
  implicit none
  integer,intent(inout) :: ngrid
 !=====
@@ -419,11 +419,11 @@ subroutine init_grid_distribution(ngrid)
    ngrid = ntask_grid_proc(rank_local)
  endif
 
-end subroutine init_grid_distribution
+end subroutine init_dft_grid_distribution
 
 
 !=========================================================================
-subroutine destroy_grid_distribution()
+subroutine destroy_dft_grid_distribution()
  implicit none
 !=====
 
@@ -431,7 +431,7 @@ subroutine destroy_grid_distribution()
  if( ALLOCATED(ntask_grid_proc) )  deallocate(ntask_grid_proc)
  if( ALLOCATED(task_grid_number) ) deallocate(task_grid_number)
 
-end subroutine destroy_grid_distribution
+end subroutine destroy_dft_grid_distribution
 
 
 !=========================================================================

@@ -14,6 +14,8 @@ module m_tddft_fxc
  use m_memory
  use m_timing
  use m_inputparam
+ use m_dft_grid
+ use m_basis_set
 
  integer,private   :: nspin_tddft
  logical,private   :: require_gradient
@@ -39,13 +41,12 @@ module m_tddft_fxc
  real(dp),allocatable,protected :: dot_rho_ij(:,:)
  real(dp),allocatable,protected :: dot_rho_kl(:,:)
 
+
 contains
 
 
 !=========================================================================
 subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
- use m_dft_grid
- use m_basis_set
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
  use xc_f90_lib_m
@@ -87,6 +88,8 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
  else
    nspin_tddft = nspin
  endif
+
+ call init_dft_grid(grid_level)
 
  allocate( rho_c(nspin_tddft)            )
  allocate( v2rho2_c(2*nspin_tddft-1)     )
@@ -377,6 +380,8 @@ end function eval_fxc_rks_triplet
 !=========================================================================
 subroutine destroy_tddft()
  implicit none
+
+ call destroy_dft_grid()
 
  if( ALLOCATED(v2rho2))     deallocate(v2rho2)
  if( ALLOCATED(vsigma))     deallocate(vsigma)

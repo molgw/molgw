@@ -328,7 +328,7 @@ subroutine init_dft_grid(grid_level_in)
  ngrid = COUNT( w_grid_tmp(:) > TOL_WEIGHT )
 
  ! Distribute the grid over processors
- call init_grid_distribution(ngrid)
+ call init_dft_grid_distribution(ngrid)
 
  write(stdout,'(/,a)')            ' Setup the DFT quadrature'
  write(stdout,'(a,i4,x,i4,x,i4)') ' discretization grid per atom [radial , angular max - angular min] ',nradial,nangular_fine,nangular_coarse
@@ -377,7 +377,7 @@ subroutine destroy_dft_grid()
  if( ALLOCATED(bflr) ) then
    call clean_deallocate('basis lapl ftns on grid',bflr)
  endif
- call destroy_grid_distribution()
+ call destroy_dft_grid_distribution()
  
 end subroutine destroy_dft_grid
 

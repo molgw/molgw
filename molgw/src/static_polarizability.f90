@@ -28,8 +28,8 @@ subroutine static_polarizability(nstate,basis,occupation,energy,wpol_out)
  real(dp),intent(in)                   :: energy(nstate,nspin)
  type(spectral_function),intent(inout) :: wpol_out
 !=====
- integer                   :: t_ij
- integer                   :: istate,jstate,ijspin
+ integer                   :: t_ia
+ integer                   :: istate,astate,iaspin
  integer                   :: jbf_auxil,ibf_auxil,ibf_auxil_local
  real(dp),allocatable      :: vsqchi0vsq(:,:)
  real(dp)                  :: eri_3center_ij(nauxil_2center)
@@ -54,21 +54,21 @@ subroutine static_polarizability(nstate,basis,occupation,energy,wpol_out)
  !
  ! Loop over resonant transitions
  vsqchi0vsq(:,:) = 0.0_dp
- do t_ij=1,wpol_out%npole_reso
-   istate = wpol_out%transition_table_apb(1,t_ij)
-   jstate = wpol_out%transition_table_apb(2,t_ij)
-   ijspin = wpol_out%transition_table_apb(3,t_ij)
+ do t_ia=1,wpol_out%npole_reso
+   istate = wpol_out%transition_table_apb(1,t_ia)
+   astate = wpol_out%transition_table_apb(2,t_ia)
+   iaspin = wpol_out%transition_table_apb(3,t_ia)
 
-   docc = occupation(jstate,ijspin) - occupation(istate,ijspin)
+   docc = occupation(astate,iaspin) - occupation(istate,iaspin)
    ! Factor 2.0 comes from resonant+antiresonant
-   denom = -2.0_dp * docc / ( energy(istate,ijspin) - energy(jstate,ijspin) )
+   denom = -2.0_dp * docc / ( energy(istate,iaspin) - energy(astate,iaspin) )
 
    !
    ! Communicate the needed 3-center integrals
    eri_3center_ij(:) = 0.0_dp
    do ibf_auxil_local=1,nauxil_3center
      ibf_auxil = ibf_auxil_g(ibf_auxil_local)
-     eri_3center_ij(ibf_auxil) = eri_3center_eigen(ibf_auxil_local,istate,jstate,ijspin)
+     eri_3center_ij(ibf_auxil) = eri_3center_eigen(ibf_auxil_local,istate,astate,iaspin)
    enddo
    call xsum(eri_3center_ij)
 
@@ -129,12 +129,12 @@ subroutine dynamical_polarizability(nstate,basis,occupation,energy,omega,wpol_in
  type(spectral_function),intent(in)    :: wpol_in
  real(dp),intent(out)                  :: vsqchi0vsqm1(nauxil_2center,nauxil_2center)
 !=====
- integer                   :: t_ij
- integer                   :: istate,jstate,ijspin
+ integer                   :: t_ia
+ integer                   :: istate,astate,iaspin
  integer                   :: jbf_auxil,ibf_auxil,ibf_auxil_local
  real(dp)                  :: eri_3center_ij(nauxil_2center)
  real(dp)                  :: docc,denom
- real(dp) :: tmp(nauxil_2center,nauxil_2center)
+ real(dp)                  :: tmp(nauxil_2center,nauxil_2center)
 !=====
 
  call start_clock(timing_pola_static)
@@ -151,21 +151,21 @@ subroutine dynamical_polarizability(nstate,basis,occupation,energy,omega,wpol_in
  !
  ! Loop over resonant transitions
  vsqchi0vsqm1(:,:) = 0.0_dp
- do t_ij=1,wpol_in%npole_reso
-   istate = wpol_in%transition_table_apb(1,t_ij)
-   jstate = wpol_in%transition_table_apb(2,t_ij)
-   ijspin = wpol_in%transition_table_apb(3,t_ij)
+ do t_ia=1,wpol_in%npole_reso
+   istate = wpol_in%transition_table_apb(1,t_ia)
+   astate = wpol_in%transition_table_apb(2,t_ia)
+   iaspin = wpol_in%transition_table_apb(3,t_ia)
 
-   docc = occupation(istate,ijspin) - occupation(jstate,ijspin)
-   denom = REAL( docc / ( omega - energy(jstate,ijspin) + energy(istate,ijspin) + ieta  ) &
-                -docc / ( omega + energy(jstate,ijspin) - energy(istate,ijspin) - ieta  ) , dp )
+   docc = occupation(istate,iaspin) - occupation(astate,iaspin)
+   denom = REAL( docc / ( omega - energy(astate,iaspin) + energy(istate,iaspin) + ieta  ) &
+                -docc / ( omega + energy(astate,iaspin) - energy(istate,iaspin) - ieta  ) , dp )
 
    !
    ! Communicate the needed 3-center integrals
    eri_3center_ij(:) = 0.0_dp
    do ibf_auxil_local=1,nauxil_3center
      ibf_auxil = ibf_auxil_g(ibf_auxil_local)
-     eri_3center_ij(ibf_auxil) = eri_3center_eigen(ibf_auxil_local,istate,jstate,ijspin)
+     eri_3center_ij(ibf_auxil) = eri_3center_eigen(ibf_auxil_local,istate,astate,iaspin)
    enddo
    call xsum(eri_3center_ij)
 

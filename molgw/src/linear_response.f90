@@ -50,7 +50,6 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  integer                   :: m_apb,n_apb,m_x,n_x
 ! Scalapack variables
  integer                   :: desc_apb(ndel),desc_x(ndel)
- integer :: t_ij
 !=====
 
  call start_clock(timing_pola)
@@ -371,9 +370,10 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  real(dp),intent(in)                :: eigenvalue(chi%npole_reso_apb)
 !=====
  integer                            :: nexc
- integer                            :: t_ij,t_kl
- integer                            :: t_ij_global,t_kl_global
- integer                            :: istate,jstate,ijspin
+ integer                            :: t_ia,t_jb
+ integer                            :: t_ia_global,t_jb_global
+ integer                            :: istate,astate,iaspin
+ integer                            :: mstate,pstate,mpspin
  integer                            :: ibf,jbf
  integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
  integer                            :: iomega,idir,jdir
@@ -458,16 +458,16 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  allocate(dipole_state(3,nstate,nstate,nspin))
  allocate(dipole_tmp(3,basis%nbf,nstate))
 
- do ijspin=1,nspin
-   do istate=1,nstate
+ do mpspin=1,nspin
+   do mstate=1,nstate
      do jbf=1,basis%nbf
-       dipole_tmp(:,jbf,istate) = MATMUL( dipole_basis(:,:,jbf) , c_matrix(:,istate,ijspin) )
+       dipole_tmp(:,jbf,mstate) = MATMUL( dipole_basis(:,:,jbf) , c_matrix(:,mstate,mpspin) )
      enddo
    enddo
 
-   do jstate=1,nstate
-     do istate=1,nstate
-       dipole_state(:,istate,jstate,ijspin) = MATMUL( dipole_tmp(:,:,istate) , c_matrix(:,jstate,ijspin) )
+   do pstate=1,nstate
+     do mstate=1,nstate
+       dipole_state(:,mstate,pstate,mpspin) = MATMUL( dipole_tmp(:,:,mstate) , c_matrix(:,pstate,mpspin) )
      enddo
    enddo
 
@@ -478,19 +478,19 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  allocate(residu(3,nexc))
 
  residu(:,:) = 0.0_dp
- do t_ij=1,m_x
-   t_ij_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ij)
-   istate = chi%transition_table_apb(1,t_ij_global)
-   jstate = chi%transition_table_apb(2,t_ij_global)
-   ijspin = chi%transition_table_apb(3,t_ij_global)
+ do t_ia=1,m_x
+   t_ia_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ia)
+   istate = chi%transition_table_apb(1,t_ia_global)
+   astate = chi%transition_table_apb(2,t_ia_global)
+   iaspin = chi%transition_table_apb(3,t_ia_global)
 
    ! Let use (i <-> j) symmetry to halve the loop
-   do t_kl=1,n_x
-     t_kl_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_kl)
+   do t_jb=1,n_x
+     t_jb_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_jb)
 
-     if( t_kl_global <= nexc) then
-       residu(:,t_kl_global) = residu(:,t_kl_global) &
-                    + dipole_state(:,istate,jstate,ijspin) * xpy_matrix(t_ij,t_kl) * SQRT(spin_fact)
+     if( t_jb_global <= nexc) then
+       residu(:,t_jb_global) = residu(:,t_jb_global) &
+                    + dipole_state(:,istate,astate,iaspin) * xpy_matrix(t_ia,t_jb) * SQRT(spin_fact)
      endif
    enddo
 
@@ -504,18 +504,18 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  write(stdout,'(/,a)') ' Excitation energies (eV)     Oscil. strengths   [Symmetry] '  
  trk_sumrule=0.0_dp
  mean_excitation=0.0_dp
- do t_kl_global=1,nexc
-   t_kl = colindex_global_to_local('S',t_kl_global)
+ do t_jb_global=1,nexc
+   t_jb = colindex_global_to_local('S',t_jb_global)
 
    if( is_triplet ) then 
      oscillator_strength = 0.0_dp
    else
-     oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu(:,t_kl_global),residu(:,t_kl_global)) * eigenvalue(t_kl_global)
+     oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu(:,t_jb_global),residu(:,t_jb_global)) * eigenvalue(t_jb_global)
    endif
    trk_sumrule = trk_sumrule + oscillator_strength
-   mean_excitation = mean_excitation + oscillator_strength * LOG( eigenvalue(t_kl_global) )
+   mean_excitation = mean_excitation + oscillator_strength * LOG( eigenvalue(t_jb_global) )
 
-   if(t_kl_global<=30) then
+   if(t_jb_global<=30) then
 
      if( is_triplet ) then
        symsymbol='3'
@@ -526,25 +526,25 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
      !
      ! Test the parity in case of molecule with inversion symmetry
     
-     t_ij_global = 0
-     do t_ij=1,m_x
-       ! t_kl is zero if the proc is not in charge of this process
-       if( t_kl /=0 ) then 
-         if( 0.5_dp * ABS( xpy_matrix(t_ij,t_kl) + xmy_matrix(t_ij,t_kl) ) > 0.1_dp ) then
-           t_ij_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ij)
+     t_ia_global = 0
+     do t_ia=1,m_x
+       ! t_jb is zero if the proc is not in charge of this process
+       if( t_jb /=0 ) then 
+         if( 0.5_dp * ABS( xpy_matrix(t_ia,t_jb) + xmy_matrix(t_ia,t_jb) ) > 0.1_dp ) then
+           t_ia_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ia)
            exit
          endif
        endif
      enddo
-     call xmax(t_ij_global)
-     if( t_ij_global == 0 ) cycle
+     call xmax(t_ia_global)
+     if( t_ia_global == 0 ) cycle
 
-     istate = chi%transition_table_apb(1,t_ij_global)
-     jstate = chi%transition_table_apb(2,t_ij_global)
-     ijspin = chi%transition_table_apb(3,t_ij_global)
+     istate = chi%transition_table_apb(1,t_ia_global)
+     astate = chi%transition_table_apb(2,t_ia_global)
+     iaspin = chi%transition_table_apb(3,t_ia_global)
      if(planar) then
-       reflectioni = wfn_reflection(basis,c_matrix,istate,ijspin)
-       reflectionj = wfn_reflection(basis,c_matrix,jstate,ijspin)
+       reflectioni = wfn_reflection(basis,c_matrix,istate,iaspin)
+       reflectionj = wfn_reflection(basis,c_matrix,astate,iaspin)
        select case(reflectioni*reflectionj)
        case( 1)
          symsymbol=TRIM(symsymbol)//'(A1, B2 or Ap )'
@@ -553,8 +553,8 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
        end select
      endif
      if(inversion) then
-       parityi = wfn_parity(basis,c_matrix,istate,ijspin)
-       parityj = wfn_parity(basis,c_matrix,jstate,ijspin)
+       parityi = wfn_parity(basis,c_matrix,istate,iaspin)
+       parityj = wfn_parity(basis,c_matrix,astate,iaspin)
        select case(parityi*parityj)
        case( 1)
          symsymbol=TRIM(symsymbol)//'g'
@@ -563,35 +563,35 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
        end select
      endif
 
-     write(stdout,'(1x,i4.4,a3,2(f18.8,2x),5x,a32)') t_kl_global,' : ', &
-                  eigenvalue(t_kl_global)*Ha_eV,oscillator_strength,symsymbol
+     write(stdout,'(1x,i4.4,a3,2(f18.8,2x),5x,a32)') t_jb_global,' : ', &
+                  eigenvalue(t_jb_global)*Ha_eV,oscillator_strength,symsymbol
 
      !
      ! Output the transition coefficients
      coeff(:) = 0.0_dp
-     do t_ij=1,m_x
-       t_ij_global = rowindex_local_to_global('S',t_ij)
-       istate = chi%transition_table_apb(1,t_ij_global)
-       jstate = chi%transition_table_apb(2,t_ij_global)
-       if( t_kl /= 0 ) then
+     do t_ia=1,m_x
+       t_ia_global = rowindex_local_to_global('S',t_ia)
+       istate = chi%transition_table_apb(1,t_ia_global)
+       astate = chi%transition_table_apb(2,t_ia_global)
+       if( t_jb /= 0 ) then
          ! Resonant
-         coeff(                     t_ij_global) = 0.5_dp * ( xpy_matrix(t_ij,t_kl) + xmy_matrix(t_ij,t_kl) ) / SQRT(2.0_dp)
+         coeff(                     t_ia_global) = 0.5_dp * ( xpy_matrix(t_ia,t_jb) + xmy_matrix(t_ia,t_jb) ) / SQRT(2.0_dp)
          ! Anti-Resonant
-         coeff(chi%npole_reso_apb + t_ij_global) = 0.5_dp * ( xpy_matrix(t_ij,t_kl) - xmy_matrix(t_ij,t_kl) ) / SQRT(2.0_dp)
+         coeff(chi%npole_reso_apb + t_ia_global) = 0.5_dp * ( xpy_matrix(t_ia,t_jb) - xmy_matrix(t_ia,t_jb) ) / SQRT(2.0_dp)
        endif
      enddo
      call xsum(coeff)
      
 
-     do t_ij_global=1,chi%npole_reso_apb
-       istate = chi%transition_table_apb(1,t_ij_global)
-       jstate = chi%transition_table_apb(2,t_ij_global)
+     do t_ia_global=1,chi%npole_reso_apb
+       istate = chi%transition_table_apb(1,t_ia_global)
+       astate = chi%transition_table_apb(2,t_ia_global)
        ! Resonant
-       if( ABS(coeff(                   t_ij_global)) > 0.1_dp )  &
-         write(stdout,'(8x,i4,a,i4,1x,f12.5)') istate,' -> ',jstate,coeff(t_ij_global)
+       if( ABS(coeff(                   t_ia_global)) > 0.1_dp )  &
+         write(stdout,'(8x,i4,a,i4,1x,f12.5)') istate,' -> ',astate,coeff(t_ia_global)
        ! Anti-Resonant
-       if( ABS(coeff(chi%npole_reso_apb+t_ij_global)) > 0.1_dp )  &
-         write(stdout,'(8x,i4,a,i4,1x,f12.5)') istate,' <- ',jstate,coeff(chi%npole_reso_apb+t_ij_global)
+       if( ABS(coeff(chi%npole_reso_apb+t_ia_global)) > 0.1_dp )  &
+         write(stdout,'(8x,i4,a,i4,1x,f12.5)') istate,' <- ',astate,coeff(chi%npole_reso_apb+t_ia_global)
      enddo
 
      write(stdout,*)
@@ -623,14 +623,14 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
 
  dynamical_pol(:,:,:) = 0.0_dp
  static_polarizability(:,:) = 0.0_dp
- do t_ij=1,nexc
+ do t_ia=1,nexc
    do idir=1,3
      do jdir=1,3
        dynamical_pol(:,idir,jdir) = dynamical_pol(:,idir,jdir) &
-                            + residu(idir,t_ij) * residu(jdir,t_ij) &
-                              * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ij) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ij) ) ) )
+                            + residu(idir,t_ia) * residu(jdir,t_ia) &
+                              * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ia) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ia) ) ) )
        static_polarizability(idir,jdir) = static_polarizability(idir,jdir) &
-                      + 2.0_dp * residu(idir,t_ij) * residu(jdir,t_ij) / eigenvalue(t_ij)
+                      + 2.0_dp * residu(idir,t_ia) * residu(jdir,t_ia) / eigenvalue(t_ia)
      enddo
    enddo
  enddo
@@ -706,10 +706,11 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
  real(dp),intent(in)                :: xpy_matrix(m_x,n_x)
  real(dp),intent(in)                :: eigenvalue(chi%npole_reso_apb)
 !=====
- integer                            :: t_ij,t_kl
- integer                            :: t_ij_global,t_kl_global
+ integer                            :: t_ia,t_jb
+ integer                            :: t_ia_global,t_jb_global
  integer                            :: nmat
- integer                            :: istate,jstate,ijspin
+ integer                            :: istate,astate,iaspin
+ integer                            :: mpspin
  integer                            :: ibf,jbf
  integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
  integer                            :: iomega,idir,jdir
@@ -826,10 +827,10 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
    allocate(gos_state(basis%nbf,basis%nbf,nspin))
    allocate(gos_tmp(basis%nbf,basis%nbf))
   
-   do ijspin=1,nspin
-     gos_tmp(:,:) = MATMUL( TRANSPOSE( c_matrix(:,:,ijspin) ) , gos_basis(:,:) )
+   do mpspin=1,nspin
+     gos_tmp(:,:) = MATMUL( TRANSPOSE( c_matrix(:,:,mpspin) ) , gos_basis(:,:) )
   
-     gos_state(:,:,ijspin) = MATMUL( gos_tmp(:,:) , c_matrix(:,:,ijspin) )
+     gos_state(:,:,mpspin) = MATMUL( gos_tmp(:,:) , c_matrix(:,:,mpspin) )
   
    enddo
    deallocate(gos_basis,gos_tmp)
@@ -839,18 +840,18 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
    allocate(residu(chi%npole_reso_apb))
   
    residu(:) = 0.0_dp
-   do t_ij=1,m_x
-     t_ij_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ij)
-     istate = chi%transition_table_apb(1,t_ij_global)
-     jstate = chi%transition_table_apb(2,t_ij_global)
-     ijspin = chi%transition_table_apb(3,t_ij_global)
+   do t_ia=1,m_x
+     t_ia_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ia)
+     istate = chi%transition_table_apb(1,t_ia_global)
+     astate = chi%transition_table_apb(2,t_ia_global)
+     iaspin = chi%transition_table_apb(3,t_ia_global)
   
      ! Let use (i <-> j) symmetry to halve the loop
-     do t_kl=1,n_x
-       t_kl_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_kl)
+     do t_jb=1,n_x
+       t_jb_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_jb)
   
-       residu(t_kl_global) = residu(t_kl_global) &
-                    + gos_state(istate,jstate,ijspin) * xpy_matrix(t_ij,t_kl) * SQRT(spin_fact)
+       residu(t_jb_global) = residu(t_jb_global) &
+                    + gos_state(istate,astate,iaspin) * xpy_matrix(t_ia,t_jb) * SQRT(spin_fact)
      enddo
   
    enddo
@@ -865,10 +866,10 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
 
   
    dynamical_pol(:) = 0.0_dp
-   do t_ij=1,nmat
+   do t_ia=1,nmat
      dynamical_pol(:) = dynamical_pol(:) &
-                       + ABS(residu(t_ij))**2 &
-                        * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ij) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ij) ) ) )
+                       + ABS(residu(t_ia))**2 &
+                        * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ia) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ia) ) ) )
    enddo
 !   !
 !   ! Get the structure factor
@@ -886,9 +887,9 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
 
 !   do iv=1,nv
 !     vv = iv * 0.1_dp
-!     do t_ij=1,nmat
-!       if( NORM2(qvec) < eigenvalue(t_ij) / vv )   &
-!          stopping(iv) = stopping(iv) + 1.0_dp / ( pi * vv**2 )  * fnq(t_ij)  * NORM2(qvec)**2
+!     do t_ia=1,nmat
+!       if( NORM2(qvec) < eigenvalue(t_ia) / vv )   &
+!          stopping(iv) = stopping(iv) + 1.0_dp / ( pi * vv**2 )  * fnq(t_ia)  * NORM2(qvec)**2
 !     enddo
 !
 !   enddo
@@ -923,7 +924,7 @@ subroutine get_energy_qp(nstate,energy,occupation,energy_qp)
 !=====
  integer  :: reading_status
  real(dp) :: scissor_energy(nspin)
- integer  :: ispin,istate
+ integer  :: mspin,mstate
 !=====
 
  ! If the keyword scissor is used in the input file,
@@ -933,18 +934,18 @@ subroutine get_energy_qp(nstate,energy,occupation,energy_qp)
    call issue_warning('Using a manual scissor to open up the fundamental gap')
 
    write(stdout,'(a,2(1x,f12.6))') ' Scissor operator with value (eV):',scissor*Ha_eV
-   do ispin=1,nspin
-     do istate=1,nstate
-       if( occupation(istate,ispin) > completely_empty/spin_fact ) then
-         energy_qp(istate,ispin) = energy(istate,ispin)
+   do mspin=1,nspin
+     do mstate=1,nstate
+       if( occupation(mstate,mspin) > completely_empty/spin_fact ) then
+         energy_qp(mstate,mspin) = energy(mstate,mspin)
        else
-         energy_qp(istate,ispin) = energy(istate,ispin) + scissor
+         energy_qp(mstate,mspin) = energy(mstate,mspin) + scissor
        endif
      enddo
    enddo
    write(stdout,'(/,a)') ' Scissor updated energies'
-   do istate=1,nstate
-     write(stdout,'(i5,4(2x,f16.6))') istate,energy(istate,:)*Ha_eV,energy_qp(istate,:)*Ha_eV
+   do mstate=1,nstate
+     write(stdout,'(i5,4(2x,f16.6))') mstate,energy(mstate,:)*Ha_eV,energy_qp(mstate,:)*Ha_eV
    enddo
    write(stdout,*)
 
@@ -982,10 +983,10 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
  real(dp),intent(in)                   :: xpy_matrix(wpol%npole_reso_apb,wpol%npole_reso_apb)
  real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso_apb)
 !=====
- integer                               :: t_kl,klspin,ijspin
- integer                               :: istate,jstate,kstate,lstate,ijstate,ijstate_spin
- integer                               :: klstate_min
- integer                               :: klstate_max
+ integer                               :: t_jb,jbspin,mpspin
+ integer                               :: mstate,pstate,jstate,bstate,mpstate_spin
+ integer                               :: kbstate_min
+ integer                               :: kbstate_max
  integer                               :: nmat,nprodbasis
  real(dp)                              :: eri_eigen_klij
  real(dp),allocatable                  :: eri_eigenstate_klmin(:,:,:,:)
@@ -1011,28 +1012,28 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
  nmat = wpol%npole_reso_apb
 
  wpol%residu_left(:,:) = 0.0_dp
- do t_kl=1,nmat 
-   kstate = wpol%transition_table_apb(1,t_kl)
-   lstate = wpol%transition_table_apb(2,t_kl)
-   klspin = wpol%transition_table_apb(3,t_kl)
+ do t_jb=1,nmat 
+   jstate = wpol%transition_table_apb(1,t_jb)
+   bstate = wpol%transition_table_apb(2,t_jb)
+   jbspin = wpol%transition_table_apb(3,t_jb)
 
-   klstate_min = MIN(kstate,lstate)
-   klstate_max = MAX(kstate,lstate)
-   call calculate_eri_4center_eigen(nbf,nstate,c_matrix,klstate_min,klspin,eri_eigenstate_klmin)
+   kbstate_min = MIN(jstate,bstate)
+   kbstate_max = MAX(jstate,bstate)
+   call calculate_eri_4center_eigen(nbf,nstate,c_matrix,kbstate_min,jbspin,eri_eigenstate_klmin)
 
-   ijstate_spin = 0
-   do ijspin=1,nspin
-     do jstate=1,nstate
-       do istate = 1,jstate
-         ijstate_spin = ijstate_spin + 1
+   mpstate_spin = 0
+   do mpspin=1,nspin
+     do pstate=1,nstate
+       do mstate = 1,pstate
+         mpstate_spin = mpstate_spin + 1
 
-         eri_eigen_klij = eri_eigenstate_klmin(klstate_max,istate,jstate,ijspin)
+         eri_eigen_klij = eri_eigenstate_klmin(kbstate_max,mstate,pstate,mpspin)
 
          ! Use the symmetry ( k l | i j ) to regroup (kl) and (lk) contributions
          ! and the block structure of eigenvector | X  Y |
          !                                        | Y  X |
-         wpol%residu_left(ijstate_spin,:) = wpol%residu_left(ijstate_spin,:) &
-                              + eri_eigen_klij * xpy_matrix(t_kl,:)
+         wpol%residu_left(mpstate_spin,:) = wpol%residu_left(mpstate_spin,:) &
+                              + eri_eigen_klij * xpy_matrix(t_jb,:)
 
        enddo
      enddo
@@ -1067,11 +1068,11 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,xpy_matrix,ei
  real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso_apb)
  real(dp),intent(out)                  :: energy_gm
 !=====
- integer                               :: t_kl,t_kl_global,klspin
- integer                               :: t_ij,t_ij_global,ijspin
+ integer                               :: t_jb,t_jb_global,jbspin
+ integer                               :: t_ia,t_ia_global,iaspin
  integer                               :: nmat
- integer                               :: kstate,lstate
- integer                               :: istate,jstate
+ integer                               :: jstate,bstate
+ integer                               :: istate,astate
  real(dp),allocatable                  :: eri_3center_mat(:,:),residu_local(:,:)
  integer                               :: desc_3center_eigen(ndel)
  integer                               :: desc_residu(ndel)
@@ -1094,11 +1095,11 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,xpy_matrix,ei
 #ifndef HAVE_SCALAPACK
 
  allocate(eri_3center_mat(nbf_auxil,nmat))
- do t_kl=1,nmat
-   kstate = wpol%transition_table_apb(1,t_kl)
-   lstate = wpol%transition_table_apb(2,t_kl)
-   klspin = wpol%transition_table_apb(3,t_kl)
-   eri_3center_mat(:,t_kl) = eri_3center_eigen(:,kstate,lstate,klspin)
+ do t_jb=1,nmat
+   jstate = wpol%transition_table_apb(1,t_jb)
+   bstate = wpol%transition_table_apb(2,t_jb)
+   jbspin = wpol%transition_table_apb(3,t_jb)
+   eri_3center_mat(:,t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin)
  end do
 
  ! Use the symmetry ( I | k l ) to regroup (kl) and (lk) contributions
@@ -1134,17 +1135,17 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,xpy_matrix,ei
      endif
      call xsum(xpy_block)
 
-     do t_kl=1,n_xpy_block
-       t_kl_global = colindex_local_to_global(ipcol,npcol_sd,t_kl)
+     do t_jb=1,n_xpy_block
+       t_jb_global = colindex_local_to_global(ipcol,npcol_sd,t_jb)
 
-       do t_ij=1,m_xpy_block
-         t_ij_global = rowindex_local_to_global(iprow,nprow_sd,t_ij)
-         istate = wpol%transition_table_apb(1,t_ij_global)
-         jstate = wpol%transition_table_apb(2,t_ij_global)
-         ijspin = wpol%transition_table_apb(3,t_ij_global)
+       do t_ia=1,m_xpy_block
+         t_ia_global = rowindex_local_to_global(iprow,nprow_sd,t_ia)
+         istate = wpol%transition_table_apb(1,t_ia_global)
+         astate = wpol%transition_table_apb(2,t_ia_global)
+         iaspin = wpol%transition_table_apb(3,t_ia_global)
 
-         wpol%residu_left(:,t_kl_global) = wpol%residu_left(:,t_kl_global) &
-                  + eri_3center_eigen(:,istate,jstate,ijspin) * xpy_block(t_ij,t_kl)
+         wpol%residu_left(:,t_jb_global) = wpol%residu_left(:,t_jb_global) &
+                  + eri_3center_eigen(:,istate,astate,iaspin) * xpy_block(t_ia,t_jb)
 
        enddo
      enddo
@@ -1155,11 +1156,11 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,xpy_matrix,ei
  enddo
 
  energy_gm = 0.0_dp
- do t_ij_global=1,nmat
-   istate = wpol%transition_table_apb(1,t_ij_global)
-   jstate = wpol%transition_table_apb(2,t_ij_global)
-   ijspin = wpol%transition_table_apb(3,t_ij_global)
-   energy_gm = energy_gm - SUM( eri_3center_eigen(:,istate,jstate,ijspin)**2 ) * spin_fact * 0.5_dp
+ do t_ia_global=1,nmat
+   istate = wpol%transition_table_apb(1,t_ia_global)
+   astate = wpol%transition_table_apb(2,t_ia_global)
+   iaspin = wpol%transition_table_apb(3,t_ia_global)
+   energy_gm = energy_gm - SUM( eri_3center_eigen(:,istate,astate,iaspin)**2 ) * spin_fact * 0.5_dp
  enddo
 
  energy_gm = energy_gm + 0.5_dp * ( SUM( wpol%residu_left(:,:)**2 ) )
@@ -1188,8 +1189,8 @@ subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,nbf_auxil,a_diag,wpol)
  type(spectral_function),intent(inout) :: wpol
  real(dp),intent(in)                   :: a_diag(wpol%npole_reso_spa)
 !=====
- integer                               :: t_kl,klspin
- integer                               :: kstate,lstate
+ integer                               :: t_jb,jbspin
+ integer                               :: jstate,bstate
 !=====
 
  call start_clock(timing_buildw)
@@ -1198,13 +1199,13 @@ subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,nbf_auxil,a_diag,wpol)
 
  wpol%pole(wpol%npole_reso_apb+1:wpol%npole_reso) = a_diag(:)
 
- do t_kl=1,wpol%npole_reso_spa
-   kstate = wpol%transition_table_spa(1,t_kl)
-   lstate = wpol%transition_table_spa(2,t_kl)
-   klspin = wpol%transition_table_spa(3,t_kl)
+ do t_jb=1,wpol%npole_reso_spa
+   jstate = wpol%transition_table_spa(1,t_jb)
+   bstate = wpol%transition_table_spa(2,t_jb)
+   jbspin = wpol%transition_table_spa(3,t_jb)
 
 
-   wpol%residu_left(:,wpol%npole_reso_apb+t_kl) = eri_3center_eigen(:,kstate,lstate,klspin) * SQRT(spin_fact) 
+   wpol%residu_left(:,wpol%npole_reso_apb+t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin) * SQRT(spin_fact) 
 
  end do
 
@@ -1212,385 +1213,6 @@ subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,nbf_auxil,a_diag,wpol)
  call stop_clock(timing_buildw)
 
 end subroutine chi_to_sqrtvchisqrtv_auxil_spa
-
-
-!=========================================================================
-#if 0
-subroutine pol_davidson(basis,auxil_basis,nstate,occupation,energy,c_matrix,wpol_out)
- use m_definitions
- use m_timing
- use m_warning
- use m_memory
- use m_inputparam
- use m_mpi
- use m_tools
- use m_block_diago
- use m_basis_set
- use m_spectral_function
- use m_eri_ao_mo
- implicit none
-
- type(basis_set),intent(in)            :: basis,auxil_basis
- integer,intent(in)                    :: nstate
- real(dp),intent(in)                   :: occupation(nstate,nspin)
- real(dp),intent(in)                   :: energy(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
- type(spectral_function),intent(inout) :: wpol_out
-!=====
- ! Davidson part
- integer,parameter    :: neig=1
- integer,parameter    :: ncycle=2
- integer              :: nbb,nbbc
- integer              :: ibb,jbb
- integer              :: icycle
- integer              :: imat
- real(dp),allocatable :: bb(:,:)
- real(dp),allocatable :: ql(:,:),qr(:,:)
- real(dp),allocatable :: eigvec_left(:,:),eigvec_right(:,:)
- real(dp),allocatable :: apb_bb(:,:)
- real(dp),allocatable :: amb_bb(:,:)
- real(dp),allocatable :: apb_tilde(:,:),amb_tilde(:,:),c_tilde(:,:)
- real(dp),allocatable :: amb_sqrt_tilde(:,:),amb_sqrt_inv_tilde(:,:)
- real(dp),allocatable :: omega2(:)
- ! end of davidson
- integer              :: nmat
- real(dp),allocatable :: b_vector(:),c_vector(:),d_vector(:)
- real(dp),allocatable :: apb(:,:),amb(:,:),diag(:)
- logical,allocatable  :: maskmin(:)
- real(dp)             :: p_matrix(basis%nbf,basis%nbf)
- real(dp)             :: g_matrix(basis%nbf,basis%nbf)
- real(dp)             :: k_matrix(basis%nbf,basis%nbf)
- integer              :: istate,jstate,ijspin
- integer              :: kstate,lstate,klspin
- integer              :: ibf,jbf,kbf,lbf
- integer              :: t_ij,t_kl
- integer              :: iter
-!=====
-
- ijspin = 1
-
- if( .NOT. has_auxil_basis ) return
-
- nmat = wpol_out%npole_reso_apb
- write(*,*) 'FBFB',nmat
-
- allocate(b_vector(nmat),c_vector(nmat),d_vector(nmat))
- b_vector(:) = 0.0_dp
- b_vector(1) = 1.0_dp
-
- close(999)
- do t_ij=1,nmat
-   read(999,*) istate,jstate,b_vector(t_ij)
- enddo
-
-
- !
- ! Build the full TDHF hamiltonian to check
- !
- allocate(apb(nmat,nmat),amb(nmat,nmat),diag(nmat))
-
- do t_kl=1,nmat
-   kstate = wpol_out%transition_table_apb(1,t_kl)
-   lstate = wpol_out%transition_table_apb(2,t_kl)
-   klspin = wpol_out%transition_table_apb(3,t_kl)
-
-   do t_ij=1,nmat
-       istate = wpol_out%transition_table_apb(1,t_ij)
-       jstate = wpol_out%transition_table_apb(2,t_ij)
-       ijspin = wpol_out%transition_table_apb(3,t_ij)
-
-       apb(t_ij,t_kl) = 4.0_dp * eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin) &
-                               - eri_eigen_ri(istate,lstate,ijspin,kstate,jstate,klspin) &
-                               - eri_eigen_ri(istate,kstate,ijspin,lstate,jstate,klspin)
-       amb(t_ij,t_kl) =   eri_eigen_ri(istate,lstate,ijspin,kstate,jstate,klspin) &
-                        - eri_eigen_ri(istate,kstate,ijspin,lstate,jstate,klspin)
-  
- 
-   enddo
-   apb(t_kl,t_kl) = apb(t_kl,t_kl) + energy(lstate,klspin) - energy(kstate,klspin)
-   amb(t_kl,t_kl) = amb(t_kl,t_kl) + energy(lstate,klspin) - energy(kstate,klspin)
-   diag(t_kl) = energy(lstate,klspin) - energy(kstate,klspin)
- enddo
-
- c_vector(:) = MATMUL( apb , b_vector )
- d_vector(:) = MATMUL( amb , c_vector )
-
- do t_ij=1,nmat
-   write(1100,*) istate,jstate,d_vector(t_ij)/d_vector(1),d_vector(t_ij)/b_vector(t_ij)
- enddo
- ! THIS IS OK up to here !
-
- ! Davidson diago
-
- nbb = MAX( 2 * neig * ( 1 + ncycle ) , nmat)
- allocate(bb(nmat,nbb))
- allocate(amb_bb(nmat,nbb))
- allocate(apb_bb(nmat,nbb))
- allocate(ql(nmat,neig))
- allocate(qr(nmat,neig))
-
- nbbc = neig ! 2*neig
-
- !
- ! Initialize with stupid coefficients
- !
- bb(:,1:nbbc)=0.001_dp
-! do ibb=1,nbbc
-!   bb(ibb,ibb) = 1.0_dp
-! enddo
-
- allocate(maskmin(nmat))
- maskmin(:)=.TRUE.
- do ibb=1,neig
-   jbb = MINLOC( diag(:) ,DIM=1, MASK=maskmin(:))
-   write(stdout,*) 'FBFB Init',ibb,jbb,wpol_out%transition_table_apb(1,jbb),wpol_out%transition_table_apb(2,jbb)
-   bb(jbb,ibb) = 1.0_dp
-   maskmin(jbb) = .FALSE. 
- enddo
- deallocate(maskmin)
-
- do ibb=1,nbbc
-   !
-   ! Orthogonalize to previous vectors
-   do jbb=1,ibb-1
-     bb(:,ibb) = bb(:,ibb) - bb(:,jbb) * DOT_PRODUCT( bb(:,ibb) , bb(:,jbb) )
-   enddo
-   !
-   ! Normalize
-   bb(:,ibb) = bb(:,ibb) / NORM2( bb(:,ibb) )
- enddo
-
- amb_bb(:,1:nbbc) = MATMUL( amb(:,:) , bb(:,1:nbbc) )
- apb_bb(:,1:nbbc) = MATMUL( apb(:,:) , bb(:,1:nbbc) )
-
-
- do icycle=1,ncycle
-
-   nbbc = neig + 2 * neig * (icycle-1) !   2 * neig * icycle
-   write(*,*) 
-   write(*,*) 'FBFB icycle nbbc',icycle,nbbc
-
-   allocate(apb_tilde(nbbc,nbbc),amb_tilde(nbbc,nbbc))
-   allocate(c_tilde(nbbc,nbbc))
-   allocate(amb_sqrt_tilde(nbbc,nbbc),amb_sqrt_inv_tilde(nbbc,nbbc))
-   allocate(omega2(nbbc))
-   allocate(eigvec_left(nbbc,nbbc),eigvec_right(nbbc,nbbc))
-
-   apb_tilde(1:nbbc,1:nbbc) = MATMUL( TRANSPOSE(bb(:,1:nbbc)) , apb_bb(:,1:nbbc) )
-   amb_tilde(1:nbbc,1:nbbc) = MATMUL( TRANSPOSE(bb(:,1:nbbc)) , amb_bb(:,1:nbbc) )
-
-
-   ! Calculate the square-root of amb_tilde
-   amb_sqrt_tilde(:,:) = amb_tilde(:,:)
-   call diagonalize(nbbc,amb_sqrt_tilde,omega2)
-
-   if( ANY( omega2 < 1.0e-10_dp ) ) then
-     call die('Matrix (A-B) is not positive definite')
-   endif
-   amb_sqrt_inv_tilde(:,:) = amb_sqrt_tilde(:,:)
-   do ibb=1,nbbc
-     amb_sqrt_tilde(:,ibb)     = amb_sqrt_tilde(:,ibb)     * SQRT( SQRT(omega2(ibb)) )
-     amb_sqrt_inv_tilde(:,ibb) = amb_sqrt_inv_tilde(:,ibb) / SQRT( SQRT(omega2(ibb)) )
-   enddo
-   amb_sqrt_tilde(:,:)     = MATMUL( amb_sqrt_tilde     , TRANSPOSE( amb_sqrt_tilde)     )
-   amb_sqrt_inv_tilde(:,:) = MATMUL( amb_sqrt_inv_tilde , TRANSPOSE( amb_sqrt_inv_tilde) )
-
-
-   c_tilde(:,:) = MATMUL( TRANSPOSE(amb_sqrt_tilde) , MATMUL( apb_tilde , amb_sqrt_tilde) )
-
-   
-   ! Diagonalize the C matrix
-   call diagonalize(nbbc,c_tilde,omega2)
-
-!   write(*,*) 'FBFB eigenvalues',SQRT(omega2(:)) * Ha_eV
-
-   if( icycle == ncycle ) then
-     write(*,*) 'FBFB cycles done'
-     exit
-   endif
-
-   ! TRANSPOSE the left eigvec
-   eigvec_left (:,:) = TRANSPOSE(  MATMUL( TRANSPOSE(c_tilde) , amb_sqrt_inv_tilde ) ) 
-   ! Normalize it properly
-   do ibb=1,neig
-     eigvec_left(:,ibb) = eigvec_left(:,ibb) * SQRT(omega2(ibb))
-   enddo
-   eigvec_right(:,:) = MATMUL( amb_sqrt_tilde , c_tilde )
-
-!   write(*,*) 'TEST BI ORTHONORMALITY'
-!    OK
-!   do ibb=1,neig
-!     do jbb=1,neig
-!       write(*,*) ibb,jbb,DOT_PRODUCT( eigvec_left(:,ibb),eigvec_right(:,jbb) )
-!     enddo
-!   enddo
-   
-
-   
-   do ibb=1,neig
-     write(*,*) 'FBFB: omega',ibb,SQRT(omega2(ibb))*Ha_eV
-     ql(:,ibb) = MATMUL( apb_bb(:,1:nbbc) ,  eigvec_right(:,ibb) ) &
-                   - SQRT( omega2(ibb) ) * MATMUL( bb(:,1:nbbc) , eigvec_left(:,ibb) )
-     qr(:,ibb) = MATMUL( amb_bb(:,1:nbbc) ,  eigvec_left(:,ibb) ) &
-                   - SQRT( omega2(ibb) ) * MATMUL( bb(:,1:nbbc) , eigvec_right(:,ibb) )
-     write(stdout,*) 'FBFB ql',icycle,ibb,NORM2(ql(:,ibb))
-     write(stdout,*) 'FBFB qr',icycle,ibb,NORM2(qr(:,ibb))
-   enddo
-
-
-   do ibb=1,neig
-     do imat=1,nmat
-       bb(imat,nbbc+2*ibb-1) = ql(imat,ibb) / ( SQRT(omega2(ibb)) - diag(imat) )
-       bb(imat,nbbc+2*ibb  ) = qr(imat,ibb) / ( SQRT(omega2(ibb)) - diag(imat) )
-     enddo
-   enddo
-
-   !
-   ! Orthogonalize to all previous
-   do ibb=nbbc+1,nbbc+2*neig
-     do jbb=1,ibb-1
-       bb(:,ibb) = bb(:,ibb) - bb(:,jbb) * DOT_PRODUCT( bb(:,ibb) , bb(:,jbb) )
-     enddo
-     ! Normalize
-     bb(:,ibb) = bb(:,ibb) / NORM2( bb(:,ibb) )
-   enddo
-
-!   write(*,*)
-!   write(*,*) 'Check orthonormality',nbbc+2*neig
-!   do ibb=1,nbbc+2*neig
-!     do jbb=1,nbbc+2*neig
-!       write(*,*) ibb,jbb,DOT_PRODUCT( bb(:,ibb) , bb(:,jbb) )
-!     enddo
-!   enddo
-!   write(*,*)
-   
-   amb_bb(:,nbbc+1:nbbc+2*neig) = MATMUL( amb(:,:) , bb(:,nbbc+1:nbbc+2*neig) )
-   apb_bb(:,nbbc+1:nbbc+2*neig) = MATMUL( apb(:,:) , bb(:,nbbc+1:nbbc+2*neig) )
-
-
-
-
-   deallocate(apb_tilde,amb_tilde,omega2)
-   deallocate(c_tilde)
-   deallocate(amb_sqrt_tilde,amb_sqrt_inv_tilde)
-   deallocate(eigvec_left,eigvec_right)
- enddo
-
-
- deallocate(apb,amb,diag)
-
- write(stdout,*) 'First part done'
-  
-
-! b_vector(:) = 0.0_dp
-! b_vector(1) = 1.0_dp
-
- !
- ! Build the application of Hamiltonian on trial vectors
- !
- do iter=1,1
-   !
-   ! First step
-   !
-   p_matrix(:,:) = 0.0_dp
-   do jbf=1,basis%nbf
-     do ibf=1,basis%nbf
-       do t_ij=1,nmat
-         istate = wpol_out%transition_table_apb(1,t_ij)
-         jstate = wpol_out%transition_table_apb(2,t_ij)
-         ijspin = wpol_out%transition_table_apb(3,t_ij)
-         p_matrix(ibf,jbf) = p_matrix(ibf,jbf) + c_matrix(ibf,istate,ijspin) & 
-                                      * b_vector(t_ij) * c_matrix(jbf,jstate,ijspin)
-       enddo
-     enddo
-   enddo
-  
-   g_matrix(:,:) = 0.0_dp
-   do jbf=1,basis%nbf
-     do ibf=1,basis%nbf
-       do kbf=1,basis%nbf
-         do lbf=1,basis%nbf
-           g_matrix(ibf,jbf) = g_matrix(ibf,jbf) + p_matrix(kbf,lbf) &
-                 * ( 4.0_dp * eri_ri(ibf,jbf,kbf,lbf) - eri_ri(ibf,kbf,jbf,lbf) - eri_ri(ibf,lbf,jbf,kbf) )  ! HERE I CHANGED A SIGN COMPARED TO THE PAPER
-         enddo
-       enddo
-     enddo
-   enddo
-  
-   ijspin = 1
-   g_matrix(1:nstate,1:nstate) = MATMUL( TRANSPOSE(c_matrix(:,:,ijspin)), MATMUL( g_matrix(:,:) , c_matrix(:,:,ijspin) ) )
-  
-   do t_ij=1,nmat
-     istate = wpol_out%transition_table_apb(1,t_ij)
-     jstate = wpol_out%transition_table_apb(2,t_ij)
-     ijspin = wpol_out%transition_table_apb(3,t_ij)
-  
-     c_vector(t_ij) = ( energy(jstate,ijspin) - energy(istate,ijspin) ) * b_vector(t_ij) + g_matrix(istate,jstate)
-  
-   enddo
-  
-  
-   !
-   ! Second step
-   !
-   p_matrix(:,:) = 0.0_dp
-   do jbf=1,basis%nbf
-     do ibf=1,basis%nbf
-       do t_ij=1,nmat
-         istate = wpol_out%transition_table_apb(1,t_ij)
-         jstate = wpol_out%transition_table_apb(2,t_ij)
-         ijspin = wpol_out%transition_table_apb(3,t_ij)
-         p_matrix(ibf,jbf) = p_matrix(ibf,jbf) + c_matrix(ibf,istate,ijspin) & 
-                                      * c_vector(t_ij) * c_matrix(jbf,jstate,ijspin)
-       enddo
-     enddo
-   enddo
-  
-   k_matrix(:,:) = 0.0_dp
-   do jbf=1,basis%nbf
-     do ibf=1,basis%nbf
-       do kbf=1,basis%nbf
-         do lbf=1,basis%nbf
-           k_matrix(ibf,jbf) = k_matrix(ibf,jbf) + p_matrix(kbf,lbf) &
-                 * ( eri_ri(ibf,lbf,jbf,kbf) - eri_ri(ibf,kbf,jbf,lbf) )  ! HERE I CHANGED THE SIGN COMPARED TO THE PAPER
-         enddo
-       enddo
-     enddo
-   enddo
-  
-   ijspin = 1
-   k_matrix(1:nstate,1:nstate) = MATMUL( TRANSPOSE(c_matrix(:,:,ijspin)), MATMUL( k_matrix(:,:) , c_matrix(:,:,ijspin) ) )
-  
-   do t_ij=1,nmat
-     istate = wpol_out%transition_table_apb(1,t_ij)
-     jstate = wpol_out%transition_table_apb(2,t_ij)
-     ijspin = wpol_out%transition_table_apb(3,t_ij)
-  
-     d_vector(t_ij) = ( energy(jstate,ijspin) - energy(istate,ijspin) ) * c_vector(t_ij) + k_matrix(istate,jstate)
-  
-!     write(1000+iter,*) istate,jstate,d_vector(t_ij),d_vector(t_ij)/b_vector(t_ij)
-  
-   enddo
-
-   ! For cycling
-   b_vector(:) = d_vector(:)
-
- enddo
-
-
- do t_ij=1,nmat
-   istate = wpol_out%transition_table_apb(1,t_ij)
-   jstate = wpol_out%transition_table_apb(2,t_ij)
-   ijspin = wpol_out%transition_table_apb(3,t_ij)
-   write(1000+iter,*) istate,jstate,d_vector(t_ij)/d_vector(1)
- enddo
-
-
-
- deallocate(b_vector,c_vector,d_vector)
-
-
-end subroutine pol_davidson
-#endif
 
 
 !=========================================================================
