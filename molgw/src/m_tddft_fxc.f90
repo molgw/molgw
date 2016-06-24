@@ -103,6 +103,8 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
  !
  require_gradient  =.FALSE.
  do idft_xc=1,ndft_xc
+   if( ABS(dft_xc_coef(idft_xc)) < 1.0e-6_dp ) cycle
+
    if(nspin_tddft==1) then
      call xc_f90_func_init(xc_func(idft_xc), xc_info(idft_xc), dft_xc_type(idft_xc), XC_UNPOLARIZED)
    else
@@ -204,6 +206,8 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
    ! Calculate the kernel
    ! 
    do idft_xc=1,ndft_xc
+     if( ABS(dft_xc_coef(idft_xc)) < 1.0e-6_dp ) cycle
+
      select case(xc_f90_info_family(xc_info(idft_xc)))
      case(XC_FAMILY_LDA)
        call xc_f90_lda_fxc(xc_func(idft_xc),1,rho_c(1),v2rho2_c(1))

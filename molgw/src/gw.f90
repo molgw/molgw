@@ -492,7 +492,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
 
  case(G0W0,GWTILDE) !==========================================================
 
-   if( calc_type%gwmethod == G0W0GAMMA0 ) then
+   if( calc_type%gwmethod == G0W0GAMMA0 .OR. calc_type%gwmethod == G0W0SOX0 ) then
      open(newunit=selfenergyfile,file='g0w0.dat',form='unformatted')
      do ispin=1,nspin
        do astate=nsemin,nsemax
@@ -514,7 +514,9 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
    end forall
 
    allocate(zz(nsemin:nsemax,nspin))
+   !FBFB FIXME energy_qp OR energy
    call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy_qp,energy_qp_z,zz)
+   !FBFB FIXME energy_qp OR energy
    call find_qp_energy_graphical(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy_qp,energy_qp_new)
 
    call output_qp_energy('G0W0',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
@@ -534,7 +536,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
 
    call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_new)
 
-   if( gwmethod==GnW0) then
+   if( gwmethod == GnW0 ) then
      call output_qp_energy('GnW0',nstate,nsemin,nsemax,energy,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_new)
    else
      call output_qp_energy('GnWn',nstate,nsemin,nsemax,energy,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_new)

@@ -109,7 +109,7 @@ cohsex.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90
 	$(FC_W_OPTS) -c cohsex.f90 $(LIBXC_INCS)
 
 gwgamma.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
-      m_inputparam.f90 gwgamma.f90
+      m_inputparam.f90 m_tddft_fxc.o gwgamma.f90
 	$(FC_W_OPTS) -c gwgamma.f90 $(LIBXC_INCS)
 
 gw.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
@@ -146,7 +146,7 @@ io.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_se
 mp2.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_mpi.f90 m_basis_set.f90 m_eri.f90 mp2.f90 
 	$(FC_W_OPTS) -c mp2.f90 $(LIBXC_INCS)
 
-mp2_selfenergy.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 m_spectral_function.f90 mp2_selfenergy.f90
+mp2_selfenergy.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 m_spectral_function.f90 m_inputparam.f90 mp2_selfenergy.f90
 	$(FC_W_OPTS) -c mp2_selfenergy.f90 $(LIBXC_INCS)
 
 pdbssolver1.o: pdbssolver1.f

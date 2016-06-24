@@ -3,7 +3,7 @@
 ! Author: Fabien Bruneval
 !
 ! This file contains the calculation of the GW self-energy with vertex function
-! within different flavors: G0W0GAMMA0
+! within different flavors: G0W0GAMMA0 G0W0SOX0
 !
 !=========================================================================
 subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy,energy_gw)
@@ -60,20 +60,28 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  integer               :: selfenergyfile
  integer               :: nsemin,nsemax
  real(dp)              :: pole_s
- logical,parameter     :: tddft_kernel = .FALSE.
+! logical,parameter     :: tddft_kernel = .FALSE.
+ logical,parameter     :: tddft_kernel = .TRUE.
 !=====
 
  call start_clock(timing_self)
 
  write(stdout,*)
  select case(gwmethod)
+ case(G0W0SOX0)
+   write(stdout,*) 'Perform a one-shot G0W0SOX0 calculation'
  case(G0W0GAMMA0)
    write(stdout,*) 'Perform a one-shot G0W0GAMMA0 calculation'
  end select
 
+
  if( tddft_kernel ) then
    write(stdout,*) 'Include a TDDFT kernel contribution to the vertex'
+   write(stdout,'(x,a,f12.4)') 'Exact-exchange amount: ',alpha_hybrid
    call prepare_tddft(nstate,basis,c_matrix,occupation)
+#ifdef PLUS
+   write(stdout,*) 'Hacking the sign of the kernel'
+#endif
  endif
 
  nprodbasis = index_prodstate(nstate,nstate)
@@ -149,6 +157,13 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
            vcoul1 = eri_eigen_ri(mstate,istate,ispin,bstate,kstate,ispin)
            vcoul2 = eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin)
+           if( tddft_kernel ) then
+#ifdef PLUS
+             vcoul2 = alpha_hybrid * vcoul2 + eval_fxc_rks_singlet(istate,bstate,ispin,kstate,mstate,ispin)   !FBFB
+#else
+             vcoul2 = alpha_hybrid * vcoul2 - eval_fxc_rks_singlet(istate,bstate,ispin,kstate,mstate,ispin)   !FBFB
+#endif
+           endif
            !
            ! calculate only the diagonal !
            do iomegai=-nomegai,nomegai
@@ -175,6 +190,13 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
            vcoul1 = eri_eigen_ri(mstate,astate,ispin,jstate,cstate,ispin)
            vcoul2 = eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin)
+           if( tddft_kernel ) then
+#ifdef PLUS
+             vcoul2 = alpha_hybrid * vcoul2 + eval_fxc_rks_singlet(astate,jstate,ispin,cstate,mstate,ispin)   !FBFB
+#else
+             vcoul2 = alpha_hybrid * vcoul2 - eval_fxc_rks_singlet(astate,jstate,ispin,cstate,mstate,ispin)   !FBFB
+#endif
+           endif
            !
            ! calculate only the diagonal !
            do iomegai=-nomegai,nomegai
@@ -265,141 +287,177 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 #endif
 
 
- write(stdout,*) 'Calculate dynamical SOSEX'
+ if( gwmethod == G0W0GAMMA0 ) then 
 
- do ispin=1,nspin
+   write(stdout,*) 'Calculate dynamical SOSEX'
+  
+   do ispin=1,nspin
+  
+     do spole=1,wpol%npole_reso
+  
+       write(stdout,*) 'SOSEX W poles:',spole,' / ',wpol%npole_reso
+       pole_s = wpol%pole(spole)
+  
+       do kcstate=1,nstate
+         ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
+         bra(:,kcstate)     = MATMUL( wpol%residu_left(:,spole) , eri_3center_eigen(:,:,kcstate,ispin) )
+       enddo
+       call xsum(bra)
+  
+  
+       !==========================
+       do istate=ncore_G+1,nvirtual_G-1
+         if( occupation(istate,ispin) / spin_fact < completely_empty ) cycle
+         do bstate=ncore_G+1,nvirtual_G-1
+           if( (spin_fact - occupation(bstate,ispin)) / spin_fact < completely_empty) cycle
+           do kstate=ncore_G+1,nvirtual_G-1
+             if( occupation(kstate,ispin) / spin_fact < completely_empty ) cycle
+  
+             !
+             ! calculate only the diagonal !
+             do mstate=nsemin,nsemax
+  
+               vcoul = eri_eigen_ri(istate,kstate,ispin,bstate,mstate,ispin)
+               if( tddft_kernel ) then
+#ifdef PLUS
+                 vcoul = alpha_hybrid * vcoul + eval_fxc_rks_singlet(istate,kstate,ispin,bstate,mstate,ispin)  !FBFB
+#else
+                 vcoul = alpha_hybrid * vcoul - eval_fxc_rks_singlet(istate,kstate,ispin,bstate,mstate,ispin)  !FBFB
+#endif
+               endif
 
-   do spole=1,wpol%npole_reso
-
-     write(stdout,*) 'SOSEX W poles:',spole,' / ',wpol%npole_reso
-     pole_s = wpol%pole(spole)
-
-     do kcstate=1,nstate
-       ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-       bra(:,kcstate)     = MATMUL( wpol%residu_left(:,spole) , eri_3center_eigen(:,:,kcstate,ispin) )
-     enddo
-     call xsum(bra)
-
-
-     !==========================
-     do istate=ncore_G+1,nvirtual_G-1
-       if( occupation(istate,ispin) / spin_fact < completely_empty ) cycle
-       do bstate=ncore_G+1,nvirtual_G-1
-         if( (spin_fact - occupation(bstate,ispin)) / spin_fact < completely_empty) cycle
-         do kstate=ncore_G+1,nvirtual_G-1
-           if( occupation(kstate,ispin) / spin_fact < completely_empty ) cycle
-
-           !
-           ! calculate only the diagonal !
-           do mstate=nsemin,nsemax
-
-             vcoul = eri_eigen_ri(istate,kstate,ispin,bstate,mstate,ispin)
-             do iomegai=-nomegai,nomegai
-               selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
-                        - bra(mstate,kstate) * bra(istate,bstate) * vcoul                          &  
-                          *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(kstate,ispin) + pole_s - ieta )  , dp )  &
-                          *  REAL(  1.0_dp / ( -pole_s + energy_qp(istate,ispin) - energy_qp(bstate,ispin) + ieta )  , dp ) 
+               do iomegai=-nomegai,nomegai
+                 selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
+                          - bra(mstate,kstate) * bra(istate,bstate) * vcoul                          &  
+                            *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(kstate,ispin) + pole_s - ieta )  , dp )  &
+                            *  REAL(  1.0_dp / ( -pole_s + energy_qp(istate,ispin) - energy_qp(bstate,ispin) + ieta )  , dp ) 
+               enddo
              enddo
+  
            enddo
-
          enddo
        enddo
-     enddo
+  
+       !==========================
+       do istate=ncore_G+1,nvirtual_G-1
+         if( occupation(istate,ispin) / spin_fact < completely_empty ) cycle
+         do bstate=ncore_G+1,nvirtual_G-1
+           if( (spin_fact - occupation(bstate,ispin)) / spin_fact < completely_empty ) cycle
+           do cstate=ncore_G+1,nvirtual_G-1
+             if( (spin_fact - occupation(cstate,ispin)) / spin_fact < completely_empty ) cycle
+  
+             !
+             ! calculate only the diagonal !
+             do mstate=nsemin,nsemax
+  
+               vcoul = eri_eigen_ri(istate,cstate,ispin,bstate,mstate,ispin)
+               if( tddft_kernel ) then
+#ifdef PLUS
+                 vcoul = alpha_hybrid * vcoul + eval_fxc_rks_singlet(istate,cstate,ispin,bstate,mstate,ispin)  !FBFB
+#else
+                 vcoul = alpha_hybrid * vcoul - eval_fxc_rks_singlet(istate,cstate,ispin,bstate,mstate,ispin)  !FBFB
+#endif
+               endif
 
-     !==========================
-     do istate=ncore_G+1,nvirtual_G-1
-       if( occupation(istate,ispin) / spin_fact < completely_empty ) cycle
-       do bstate=ncore_G+1,nvirtual_G-1
-         if( (spin_fact - occupation(bstate,ispin)) / spin_fact < completely_empty ) cycle
-         do cstate=ncore_G+1,nvirtual_G-1
-           if( (spin_fact - occupation(cstate,ispin)) / spin_fact < completely_empty ) cycle
-
-           !
-           ! calculate only the diagonal !
-           do mstate=nsemin,nsemax
-
-             vcoul = eri_eigen_ri(istate,cstate,ispin,bstate,mstate,ispin)
-             do iomegai=-nomegai,nomegai
-               selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
-                        - bra(mstate,cstate) * bra(istate,bstate) * vcoul                          &  
-                          *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(cstate,ispin) - pole_s + ieta )  , dp )  &
-                          *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(cstate,ispin) + energy_qp(istate,ispin) - energy_qp(bstate,ispin) + ieta )  , dp ) 
-
-
-               selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
-                        + bra(mstate,cstate) * bra(istate,bstate) * vcoul                          &  
-                          *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(bstate,ispin) - energy_qp(cstate,ispin) + energy_qp(istate,ispin) + ieta )  , dp )  &
-                          *  REAL(  1.0_dp / ( energy_qp(bstate,ispin) - energy_qp(istate,ispin) + pole_s - ieta )  , dp ) 
-
+               do iomegai=-nomegai,nomegai
+                 selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
+                          - bra(mstate,cstate) * bra(istate,bstate) * vcoul                          &  
+                            *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(cstate,ispin) - pole_s + ieta )  , dp )  &
+                            *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(cstate,ispin) + energy_qp(istate,ispin) - energy_qp(bstate,ispin) + ieta )  , dp ) 
+  
+  
+                 selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
+                          + bra(mstate,cstate) * bra(istate,bstate) * vcoul                          &  
+                            *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(bstate,ispin) - energy_qp(cstate,ispin) + energy_qp(istate,ispin) + ieta )  , dp )  &
+                            *  REAL(  1.0_dp / ( energy_qp(bstate,ispin) - energy_qp(istate,ispin) + pole_s - ieta )  , dp ) 
+  
+               enddo
              enddo
+  
            enddo
-
          enddo
        enddo
-     enddo
+  
+       !==========================
+       do astate=ncore_G+1,nvirtual_G-1
+         if( (spin_fact - occupation(astate,ispin)) / spin_fact < completely_empty  ) cycle
+         do jstate=ncore_G+1,nvirtual_G-1
+           if( occupation(jstate,ispin) / spin_fact < completely_empty ) cycle
+           do kstate=ncore_G+1,nvirtual_G-1
+             if( occupation(kstate,ispin) / spin_fact < completely_empty ) cycle
+  
+             !
+             ! calculate only the diagonal !
+             do mstate=nsemin,nsemax
+  
+               vcoul = eri_eigen_ri(astate,kstate,ispin,jstate,mstate,ispin)
+               if( tddft_kernel ) then
+#ifdef PLUS
+                 vcoul = alpha_hybrid * vcoul + eval_fxc_rks_singlet(astate,kstate,ispin,jstate,mstate,ispin)  !FBFB
+#else
+                 vcoul = alpha_hybrid * vcoul - eval_fxc_rks_singlet(astate,kstate,ispin,jstate,mstate,ispin)  !FBFB
+#endif
+               endif
 
-     !==========================
-     do astate=ncore_G+1,nvirtual_G-1
-       if( (spin_fact - occupation(astate,ispin)) / spin_fact < completely_empty  ) cycle
-       do jstate=ncore_G+1,nvirtual_G-1
-         if( occupation(jstate,ispin) / spin_fact < completely_empty ) cycle
-         do kstate=ncore_G+1,nvirtual_G-1
-           if( occupation(kstate,ispin) / spin_fact < completely_empty ) cycle
-
-           !
-           ! calculate only the diagonal !
-           do mstate=nsemin,nsemax
-
-             vcoul = eri_eigen_ri(astate,kstate,ispin,jstate,mstate,ispin)
-             do iomegai=-nomegai,nomegai
-               selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
-                        - bra(mstate,kstate) * bra(astate,jstate) * vcoul                          &  
-                          *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(kstate,ispin) + energy_qp(astate,ispin) - energy_qp(jstate,ispin)  - ieta )  , dp )  &
-                          *  REAL(  1.0_dp / ( energy_qp(jstate,ispin) - energy_qp(astate,ispin) - pole_s + ieta )  , dp ) 
-
-               selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
-                        + bra(mstate,kstate) * bra(astate,jstate) * vcoul                          &  
-                          *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(kstate,ispin) + energy_qp(astate,ispin) - energy_qp(jstate,ispin)  - ieta )  , dp )  &
-                          *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(kstate,ispin) + pole_s - ieta )  , dp ) 
-
-
+               do iomegai=-nomegai,nomegai
+                 selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
+                          - bra(mstate,kstate) * bra(astate,jstate) * vcoul                          &  
+                            *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(kstate,ispin) + energy_qp(astate,ispin) - energy_qp(jstate,ispin)  - ieta )  , dp )  &
+                            *  REAL(  1.0_dp / ( energy_qp(jstate,ispin) - energy_qp(astate,ispin) - pole_s + ieta )  , dp ) 
+  
+                 selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
+                          + bra(mstate,kstate) * bra(astate,jstate) * vcoul                          &  
+                            *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(kstate,ispin) + energy_qp(astate,ispin) - energy_qp(jstate,ispin)  - ieta )  , dp )  &
+                            *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(kstate,ispin) + pole_s - ieta )  , dp ) 
+  
+  
+               enddo
              enddo
+  
            enddo
-
          enddo
        enddo
-     enddo
+  
+       !==========================
+       do astate=ncore_G+1,nvirtual_G-1
+         if( (spin_fact - occupation(astate,ispin)) / spin_fact < completely_empty  ) cycle
+         do jstate=ncore_G+1,nvirtual_G-1
+           if( occupation(jstate,ispin) / spin_fact < completely_empty ) cycle
+           do cstate=ncore_G+1,nvirtual_G-1
+             if( (spin_fact - occupation(cstate,ispin)) / spin_fact < completely_empty ) cycle
+  
+             !
+             ! calculate only the diagonal !
+             do mstate=nsemin,nsemax
+  
+               vcoul = eri_eigen_ri(astate,cstate,ispin,jstate,mstate,ispin)
+               if( tddft_kernel ) then
+#ifdef PLUS
+                 vcoul = alpha_hybrid * vcoul + eval_fxc_rks_singlet(astate,cstate,ispin,jstate,mstate,ispin)   !FBFB
+#else
+                 vcoul = alpha_hybrid * vcoul - eval_fxc_rks_singlet(astate,cstate,ispin,jstate,mstate,ispin)   !FBFB
+#endif
+               endif
 
-     !==========================
-     do astate=ncore_G+1,nvirtual_G-1
-       if( (spin_fact - occupation(astate,ispin)) / spin_fact < completely_empty  ) cycle
-       do jstate=ncore_G+1,nvirtual_G-1
-         if( occupation(jstate,ispin) / spin_fact < completely_empty ) cycle
-         do cstate=ncore_G+1,nvirtual_G-1
-           if( (spin_fact - occupation(cstate,ispin)) / spin_fact < completely_empty ) cycle
-
-           !
-           ! calculate only the diagonal !
-           do mstate=nsemin,nsemax
-
-             vcoul = eri_eigen_ri(astate,cstate,ispin,jstate,mstate,ispin)
-             do iomegai=-nomegai,nomegai
-               selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
-                        + bra(mstate,cstate) * bra(astate,jstate) * vcoul                          &  
-                          *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(cstate,ispin) - pole_s + ieta )  , dp )  &
-                          *  REAL(  1.0_dp / ( pole_s + energy_qp(astate,ispin) - energy_qp(jstate,ispin) - ieta )  , dp ) 
-
+               do iomegai=-nomegai,nomegai
+                 selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
+                          + bra(mstate,cstate) * bra(astate,jstate) * vcoul                          &  
+                            *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(cstate,ispin) - pole_s + ieta )  , dp )  &
+                            *  REAL(  1.0_dp / ( pole_s + energy_qp(astate,ispin) - energy_qp(jstate,ispin) - ieta )  , dp ) 
+  
+               enddo
              enddo
+  
            enddo
-
          enddo
        enddo
-     enddo
+  
+  
+  
+     enddo !spole
+   enddo !ispin
 
-
-
-   enddo !spole
- enddo !ispin
+ endif
 
 
  write(stdout,'(a)') ' Sigma_c(omega) is calculated'
@@ -488,7 +546,12 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
                                       energy_qp_new(astate,:)*Ha_eV
  enddo
 
- call output_qp_energy('G0W0Gamma0',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
+ select case(gwmethod)
+ case(G0W0SOX0)
+   call output_qp_energy('G0W0SOX0',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
+ case(G0W0GAMMA0)
+   call output_qp_energy('G0W0Gamma0',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
+ end select
  deallocate(zz)
 
  call write_energy_qp(nstate,energy_qp_new)
@@ -500,6 +563,8 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  ! Output the new HOMO and LUMO energies
  !
  select case(gwmethod)
+ case(G0W0SOX0)
+   call output_new_homolumo('G0W0SOX0',nstate,occupation,energy_qp_new,nsemin,nsemax,ehomo,elumo)
  case(G0W0GAMMA0)
    call output_new_homolumo('G0W0Gamma0',nstate,occupation,energy_qp_new,nsemin,nsemax,ehomo,elumo)
  end select

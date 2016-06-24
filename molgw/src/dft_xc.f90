@@ -71,6 +71,7 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
  require_gradient =.FALSE.
  require_laplacian=.FALSE.
  do idft_xc=1,ndft_xc
+   if( ABS(dft_xc_coef(idft_xc)) < 1.0e-6_dp ) cycle
 
    if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
    if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) require_gradient  =.TRUE.
@@ -143,6 +144,7 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
    dedgd_r(:,:) = 0.0_dp
 
    do idft_xc=1,ndft_xc
+     if( ABS(dft_xc_coef(idft_xc)) < 1.0e-6_dp ) cycle
 
      select case(xc_f90_info_family(calc_type%xc_info(idft_xc)))
 

@@ -37,6 +37,7 @@ module m_inputparam
  integer,parameter :: G0W0_IOMEGA  = 116
  integer,parameter :: G0W0GAMMA0   = 117
  integer,parameter :: GWTILDE      = 118
+ integer,parameter :: G0W0SOX0     = 119
 
  type calculation_type
    character(len=100) :: calc_name
@@ -53,6 +54,7 @@ module m_inputparam
    logical            :: is_ci
    logical            :: read_potential
    logical            :: is_bse,is_td
+   logical            :: read_energy_qp
    integer            :: gwmethod                    ! perturbative or quasiparticle self-consistent
 #ifdef HAVE_LIBXC
    type(xc_f90_pointer_t),allocatable :: xc_func(:)
@@ -159,6 +161,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%gwmethod            = 0
  calc_type%read_potential      = .FALSE.
  calc_type%postscf_name        = 'None'
+ calc_type%read_energy_qp      = .FALSE.
  
 
  ipos=index(input_key,'+',.TRUE.)
@@ -211,6 +214,9 @@ subroutine init_calculation_type(calc_type,input_key)
    case('GWTILDE')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = GWTILDE
+   case('G0W0SOX0')
+     calc_type%is_gw    =.TRUE.
+     calc_type%gwmethod = G0W0SOX0
    case('G0W0GAMMA0')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = G0W0GAMMA0
@@ -227,6 +233,10 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%gwmethod = perturbative
    case('MP2_SELFENERGY')
      calc_type%is_mp2_selfenergy =.TRUE.
+     calc_type%gwmethod = perturbative
+   case('EVMP2')
+     calc_type%is_mp2_selfenergy =.TRUE.
+     calc_type%read_energy_qp    =.TRUE.
      calc_type%gwmethod = perturbative
    case('CI')
      calc_type%is_ci =.TRUE.

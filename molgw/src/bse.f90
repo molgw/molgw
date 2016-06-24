@@ -116,7 +116,7 @@ subroutine build_amb_apb_common(desc_apb,nmat,nbf,nstate,c_matrix,energy,wpol,al
          amb_block(t_ia,t_jb) = 0.0_dp
     
          if( alpha_local > 1.0e-6_dp ) then
-           if(iaspin==jbspin) then
+           if( iaspin == jbspin ) then
              if(has_auxil_basis) then
                eri_eigen_ijab = eri_eigen_ri_paral(istate,jstate,iaspin,astate,bstate,jbspin)
                eri_eigen_ibaj = eri_eigen_ri_paral(istate,bstate,iaspin,astate,jstate,jbspin)
@@ -640,7 +640,7 @@ subroutine build_amb_apb_bse(nbf,nstate,wpol,wpol_static,m_apb,n_apb,amb_matrix,
      ! Symmetrization will be performed later (in the diago subroutines)
      if( t_ia_global < t_jb_global ) cycle
 
-     if(iaspin/=jbspin) cycle
+     if( iaspin /= jbspin ) cycle
 
      kbf = index_prodstate(istate,jstate) + nprodbasis * (iaspin-1)
      bra(:) = wpol_static%residu_left(kbf,:)

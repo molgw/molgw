@@ -4,6 +4,7 @@
 !
 ! This file contains
 ! the MP2 self-energy evaluation
+!
 !=========================================================================
 subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,selfenergy,emp2)
  use m_definitions
@@ -21,7 +22,8 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin),exchange_m_vxc_diag(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(in)        :: s_matrix(basis%nbf,basis%nbf)
- real(dp),intent(out)       :: selfenergy(basis%nbf,basis%nbf,nspin),emp2
+ real(dp),intent(out)       :: selfenergy(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(out)       :: emp2
 !=====
 #ifdef CHI0
  logical,parameter     :: ring_only=.true.
@@ -32,7 +34,9 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  integer               :: homo
  real(dp),allocatable  :: selfenergy_ring(:,:,:,:)
  real(dp),allocatable  :: selfenergy_sox(:,:,:,:)
- real(dp)              :: selfenergy_final(nstate,nstate,nspin)
+ real(dp),allocatable  :: selfenergy_omega(:,:,:,:)
+ real(dp),allocatable  :: zz(:,:)
+ real(dp),allocatable  :: selfenergy_final(:,:)
  integer               :: nomegai
  integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
@@ -42,7 +46,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  real(dp)              :: fact_occ1,fact_occ2
  real(dp)              :: fi,fj,fk,ei,ej,ek
  real(dp)              :: omega
- real(dp)              :: zz(nspin)
+ real(dp)              :: zz_a(nspin)
  real(dp)              :: fact_real,fact_energy
  real(dp)              :: emp2_sox,emp2_ring
  logical               :: file_exists
@@ -51,7 +55,9 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  real(dp),allocatable  :: eri_eigenstate_i(:,:,:,:)
  integer               :: nket1,nket2
  integer               :: nsemin,nsemax
+ integer               :: reading_status
  real(dp)              :: coul_ibjk,coul_ijkb,coul_iakj
+ real(dp)              :: energy_qp(nstate,nspin)
  real(dp)              :: energy_qp_z(nstate,nspin)
  real(dp)              :: energy_qp_new(nstate,nspin)
  real(dp)              :: energy_qp_omega(nspin)
@@ -88,8 +94,23 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
    nket2 = 1
  end select
 
+ 
+ if( calc_type%read_energy_qp ) then
 
- if(method==QS) then
+   call read_energy_qp(nstate,energy_qp,reading_status)
+   if(reading_status/=0) then
+     call issue_warning('File energy_qp not found: assuming 1st iteration')
+     energy_qp(:,:) = energy(:,:)
+   endif
+
+ else
+ 
+   energy_qp(:,:) = energy(:,:)
+
+ endif
+
+
+ if( method==QS .OR. calc_type%read_energy_qp ) then
    nomegai=0
    allocate(omegai(-nomegai:nomegai))
    omegai(0) =  0.00_dp
@@ -110,8 +131,9 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
 
 
 
- allocate(selfenergy_ring(-nomegai:nomegai,nsemin:nsemax,nket1:nket2,nspin))
- allocate(selfenergy_sox (-nomegai:nomegai,nsemin:nsemax,nket1:nket2,nspin))
+ allocate(selfenergy_ring (-nomegai:nomegai,nsemin:nsemax,nket1:nket2,nspin))
+ allocate(selfenergy_sox  (-nomegai:nomegai,nsemin:nsemax,nket1:nket2,nspin))
+ allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nket1:nket2,nspin))
 
 
  selfenergy_ring(:,:,:,:) = 0.0_dp
@@ -125,7 +147,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
      endif
 
      fi = occupation(istate,abispin)
-     ei = energy(istate,abispin)
+     ei = energy_qp(istate,abispin)
 
      do astate=nsemin,nsemax ! external loop ( bra )
        do bstate=nsemin,nsemax   ! external loop ( ket )
@@ -139,11 +161,11 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
          do jkspin=1,nspin
            do jstate=ncore_G+1,nvirtual_G-1  !LOOP of the second Green's function
              fj=occupation(jstate,jkspin)
-             ej=energy(jstate,jkspin)
+             ej=energy_qp(jstate,jkspin)
   
              do kstate=ncore_G+1,nvirtual_G-1 !LOOP of the third Green's function
                fk=occupation(kstate,jkspin)
-               ek=energy(kstate,jkspin)
+               ek=energy_qp(kstate,jkspin)
   
                fact_occ1 = (spin_fact-fi) *            fj  * (spin_fact-fk) / spin_fact**3
                fact_occ2 =            fi  * (spin_fact-fj) *            fk  / spin_fact**3
@@ -165,10 +187,10 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
                endif
 
                do iomegai=-nomegai,nomegai
-                 omega = energy(bstate,abispin) + omegai(iomegai)
+                 omega = energy_qp(bstate,abispin) + omegai(iomegai)
   
                  fact_real = REAL( fact_occ1 / (omega-ei+ej-ek+ieta) + fact_occ2 / (omega-ei+ej-ek-ieta) , dp)
-                 fact_energy = REAL( fact_occ1 / (energy(astate,abispin)-ei+ej-ek+ieta) , dp )
+                 fact_energy = REAL( fact_occ1 / (energy_qp(astate,abispin)-ei+ej-ek+ieta) , dp )
   
                  selfenergy_ring(iomegai,astate,bstate2,abispin) = selfenergy_ring(iomegai,astate,bstate2,abispin) &
                           + fact_real * coul_iakj * coul_ibjk * spin_fact
@@ -209,84 +231,63 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  write(stdout,'(a,f14.8)')   ' SOX diagram     :',emp2_sox
  write(stdout,'(a,f14.8,/)') ' MP2 correlation :',emp2
 
+ selfenergy_omega(:,:,:,:) = selfenergy_ring(:,:,:,:)+selfenergy_sox(:,:,:,:)
 
- if(method==perturbative) then
+ if( method == perturbative ) then
 
    if( print_sigma_) then
      call write_selfenergy_omega('selfenergy_mp2',nstate,energy,exchange_m_vxc_diag,SIZE(omegai),omegai, &
-                                 nsemin,nsemax,selfenergy_ring(:,:,1,:)+selfenergy_sox(:,:,1,:))
+                                 nsemin,nsemax,selfenergy_omega(:,:,1,:))
    endif
 
 
-   write(stdout,*) '=============================='
-   write(stdout,*) ' selfenergy RING + SOX'
-   write(stdout,'(a)') ' #         Energies           Sigx-Vxc       one-ring              SOX             MP2                Z       eMP2_Z       eMP2_qp'
 
-   do astate=nsemin,nsemax
-     zz(:) = ( selfenergy_ring(1,astate,1,:)+selfenergy_sox(1,astate,1,:) &
-                 - selfenergy_ring(-1,astate,1,:)-selfenergy_sox(-1,astate,1,:) ) / REAL( omegai(1)-omegai(-1) ,dp)
-     zz(:) = 1.0_dp / ( 1.0_dp - zz(:) )
-
-     energy_qp_z(astate,:) = energy(astate,:) + zz(:) * ( selfenergy_ring(0,astate,1,:) + selfenergy_sox(0,astate,1,:) + exchange_m_vxc_diag(astate,:) )
-
-     allocate(sigma_xc_m_vxc_diag(-nomegai:nomegai))
-     do ispin=1,nspin
-       sigma_xc_m_vxc_diag(:) = selfenergy_ring(:,astate,1,ispin) + selfenergy_sox(:,astate,1,ispin) + exchange_m_vxc_diag(astate,ispin)
-       energy_qp_omega(ispin) = find_fixed_point(nomegai,omegai,sigma_xc_m_vxc_diag) + energy(astate,ispin)
-     enddo
-     deallocate(sigma_xc_m_vxc_diag)
-     energy_qp_new(astate,:) = energy_qp_omega(:) 
-
-
-     write(stdout,'(i4,20(3x,f14.5))') astate,energy(astate,:)*Ha_eV,&
-           exchange_m_vxc_diag(astate,:)*Ha_eV,&
-           selfenergy_ring(0,astate,1,:) * Ha_eV,&
-           selfenergy_sox (0,astate,1,:) * Ha_eV,&
-         ( selfenergy_ring(0,astate,1,:)+selfenergy_sox(0,astate,1,:) ) * Ha_eV,&
-         zz(:),&
-         energy_qp_z(astate,:) * Ha_eV, &
-         energy_qp_new(astate,:) * Ha_eV
-   enddo
-   write(stdout,*) '=============================='
-
-   selfenergy(:,:,:) = 0.0_dp
-   if(.NOT.ring_only) then
-     do astate=nsemin,nsemax
-       selfenergy(astate,1,:) = selfenergy_ring(0,astate,1,:) + selfenergy_sox(0,astate,1,:)
-     enddo
+   allocate(zz(nsemin:nsemax,nspin))
+   call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+   if( nomegai > 0 ) then
+     call find_qp_energy_graphical(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_new)
    else
-     do astate=nsemin,nsemax
-       selfenergy(astate,1,:) = selfenergy_ring(0,astate,1,:)
-     enddo
+     energy_qp_new(:,:) = energy_qp_z(:,:)
    endif
+   if( calc_type%read_energy_qp ) then
+     call output_qp_energy('MP2',nstate,nsemin,nsemax,energy,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_z)
+   else
+     call output_qp_energy('MP2',nstate,nsemin,nsemax,energy,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
+   endif
+   deallocate(zz)
 
-   call output_new_homolumo('MP2',nstate,occupation,energy_qp_z,nsemin,nsemax,ehomo,elumo)
+   call write_energy_qp(nstate,energy_qp_new)
+
+   call output_new_homolumo('MP2',nstate,occupation,energy_qp_new,nsemin,nsemax,ehomo,elumo)
 
  endif
 
 
  if(method==QS) then
- ! QS trick of Faleev-Kotani-vanSchilfgaarde
+   !
+   ! QS trick of Faleev-Kotani-vanSchilfgaarde
+   allocate(selfenergy_final(nstate,nstate))
    do abispin=1,nspin
      if(.NOT.ring_only) then
-       selfenergy_final(:,:,abispin) = 0.5_dp * ( selfenergy_ring(0,:,:,abispin) + selfenergy_sox(0,:,:,abispin) &
+       selfenergy_final(:,:) = 0.5_dp * ( selfenergy_ring(0,:,:,abispin) + selfenergy_sox(0,:,:,abispin) &
                                                +  TRANSPOSE( selfenergy_ring(0,:,:,abispin) + selfenergy_sox(0,:,:,abispin) ) )
      else
        write(stdout,*) 'ring_only'
-       selfenergy_final(:,:,abispin) = 0.5_dp * ( selfenergy_ring(0,:,:,abispin)  &
+       selfenergy_final(:,:) = 0.5_dp * ( selfenergy_ring(0,:,:,abispin)  &
                                                +  TRANSPOSE( selfenergy_ring(0,:,:,abispin) ) )
      endif
-   enddo
 
-   ! Transform the matrix elements back to the non interacting states
-   ! do not forget the overlap matrix S
-   ! C^T S C = I
-   ! the inverse of C is C^T S
-   ! the inverse of C^T is S C
-   do abispin=1,nspin
-     selfenergy(:,:,abispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,:,abispin) ) , MATMUL( selfenergy_final(:,:,abispin), &
-                             MATMUL( TRANSPOSE(c_matrix(:,:,abispin)), s_matrix(:,:) ) ) )
+     ! Transform the matrix elements back to the non interacting states
+     ! do not forget the overlap matrix S
+     ! C^T S C = I
+     ! the inverse of C is C^T S
+     ! the inverse of C^T is S C
+     selfenergy(:,:,abispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,:,abispin) ) , MATMUL( selfenergy_final(:,:), &
+                                 MATMUL( TRANSPOSE(c_matrix(:,:,abispin)), s_matrix(:,:) ) ) )
+
    enddo
+   deallocate(selfenergy_final)
+
  endif
 
  if( ALLOCATED(eri_eigenstate_i) ) deallocate(eri_eigenstate_i)

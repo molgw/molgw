@@ -462,7 +462,7 @@ program molgw
 
  endif ! G0W0
 
- if( calc_type%is_gw .AND. calc_type%gwmethod == G0W0GAMMA0 ) then
+ if( calc_type%is_gw .AND. ( calc_type%gwmethod == G0W0GAMMA0 .OR. calc_type%gwmethod == G0W0SOX0 ) ) then
    call init_spectral_function(nstate,occupation,wpol)
    call read_spectral_function(wpol,reading_status)
    ! If reading has failed, then do the calculation
