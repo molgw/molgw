@@ -116,7 +116,7 @@ gw.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_s
       m_inputparam.f90 gw.f90
 	$(FC_W_OPTS) -c gw.f90 $(LIBXC_INCS)
 
-bse.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_tools.f90 m_basis_set.f90 m_spectral_function.f90 m_inputparam.f90 m_tddft_fxc.o \
+bse.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_tools.f90 m_basis_set.f90 m_spectral_function.f90 m_inputparam.f90 m_tddft_fxc.f90 \
         bse.f90
 	$(FC_W_OPTS) -c bse.f90 $(LIBXC_INCS)
 

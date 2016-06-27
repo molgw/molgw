@@ -70,7 +70,11 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  case(G0W0SOX0)
    write(stdout,*) 'Perform a one-shot G0W0SOX0 calculation'
  case(G0W0GAMMA0)
-   write(stdout,*) 'Perform a one-shot G0W0GAMMA0 calculation'
+   if( calc_type%read_energy_qp ) then
+     write(stdout,*) 'Perform an eigenvalue-self-consistent GWGAMMA calculation'
+   else
+     write(stdout,*) 'Perform a one-shot G0W0GAMMA0 calculation'
+   endif
  end select
 
 
@@ -114,17 +118,19 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  !
  ! Which calculation type needs to update energy_qp
  !
- select case(gwmethod)
- case(GnW0,GnWn,GSIGMA3)
+ if( calc_type%read_energy_qp ) then
+
    call read_energy_qp(nstate,energy_qp,reading_status)
    if(reading_status/=0) then
      call issue_warning('File energy_qp not found: assuming 1st iteration')
      energy_qp(:,:) = energy(:,:)
    endif
- case default
+
+ else
+
    energy_qp(:,:) = energy(:,:)
 
- end select
+ endif
 
  !
  !
@@ -501,12 +507,12 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
      zz_a(ispin) = MIN( MAX(zz_a(ispin),0.0_dp) , 1.0_dp )
    enddo
 
-   energy_qp_z_a(:) = energy_qp(astate,:) + zz_a(:) * ( selfenergy_omega(0,astate,1,:) + exchange_m_vxc_diag(astate,:) )
+   energy_qp_z_a(:) = energy(astate,:) + zz_a(:) * ( selfenergy_omega(0,astate,1,:) + exchange_m_vxc_diag(astate,:) )  ! FBFB
 
    allocate(sigma_xc_m_vxc_diag(-nomegai:nomegai))
    do ispin=1,nspin
      sigma_xc_m_vxc_diag(:) = selfenergy_omega(:,astate,1,ispin) + exchange_m_vxc_diag(astate,ispin)
-     energy_qp_omega(ispin) = find_fixed_point(nomegai,omegai,sigma_xc_m_vxc_diag) + energy_qp(astate,ispin) 
+     energy_qp_omega(ispin) = find_fixed_point(nomegai,omegai,sigma_xc_m_vxc_diag) + energy(astate,ispin) 
    enddo
    deallocate(sigma_xc_m_vxc_diag)
 

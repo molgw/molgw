@@ -218,9 +218,13 @@ subroutine init_calculation_type(calc_type,input_key)
    case('G0W0SOX0')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = G0W0SOX0
-   case('G0W0GAMMA0')
+   case('G0W0GAMMA0','GWGAMMA')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = G0W0GAMMA0
+   case('EVGWGAMMA','GNW0GAMMAN')
+     calc_type%is_gw    =.TRUE.
+     calc_type%gwmethod = G0W0GAMMA0
+     calc_type%read_energy_qp    =.TRUE.
    case('TUNED_COHSEX')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = TUNED_COHSEX

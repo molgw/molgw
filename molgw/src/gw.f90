@@ -162,24 +162,25 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  !
  ! Which calculation type needs to update energy_qp
  !
- select case(gwmethod)
- case(GnW0,GnWn,GSIGMA3)
+ if( calc_type%read_energy_qp ) then
    call read_energy_qp(nstate,energy_qp,reading_status)
    if(reading_status/=0) then
      call issue_warning('File energy_qp not found: assuming 1st iteration')
      energy_qp(:,:) = energy(:,:)
    endif
 
- case(LW,LW2,GSIGMA)
+ else
+   energy_qp(:,:) = energy(:,:)
+
+ endif
+
+ if( gwmethod == LW .OR. gwmethod == LW2 .OR. gwmethod == GSIGMA ) then
    call issue_warning('reading G\tilde')
    open(1001,form='unformatted')
    read(1001) energy_qp(:,:)
    close(1001,status='delete')
+ endif
 
- case default
-   energy_qp(:,:) = energy(:,:)
-
- end select
 
  !
  ! Which calculation type needs the diagonal only?
@@ -509,15 +510,15 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
    end forall
 
    allocate(zz(nsemin:nsemax,nspin))
-   !FBFB FIXME energy_qp OR energy
-   call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy_qp,energy_qp_z,zz)
-   !FBFB FIXME energy_qp OR energy
-   call find_qp_energy_graphical(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy_qp,energy_qp_new)
+   call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+   call find_qp_energy_graphical(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_new)
 
    call output_qp_energy('G0W0',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
    deallocate(zz)
 
-   call write_energy_qp(nstate,energy_qp_new)
+   if( .NOT. (calc_type%gwmethod == G0W0GAMMA0 .OR. calc_type%gwmethod == G0W0SOX0) )  then
+     call write_energy_qp(nstate,energy_qp_new)
+   endif
 
 
 
