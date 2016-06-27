@@ -188,6 +188,7 @@ subroutine init_calculation_type(calc_type,input_key)
    case('GSIGMA3')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = GSIGMA3
+     calc_type%read_energy_qp = .TRUE.
    case('GSIGMA')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = GSIGMA
@@ -197,9 +198,11 @@ subroutine init_calculation_type(calc_type,input_key)
    case('GNW0')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = GnW0
+     calc_type%read_energy_qp = .TRUE.
    case('GNWN')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = GnWn
+     calc_type%read_energy_qp = .TRUE.
    case('GW','G0W0')
      calc_type%is_gw    =.TRUE.
      calc_type%gwmethod = G0W0
