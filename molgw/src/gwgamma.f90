@@ -293,10 +293,10 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
    write(stdout,*) 'Calculate dynamical SOSEX'
 
-!$OMP PARALLEL
   
    do ispin=1,nspin
   
+!$OMP PARALLEL DO PRIVATE(vcoul,bra,pole_s) REDUCTION(+:selfenergy_omega_gamma)
      do spole=1,wpol%npole_reso
   
        write(stdout,*) 'SOSEX W poles:',spole,' / ',wpol%npole_reso
@@ -310,7 +310,6 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
   
   
        !==========================
-!$OMP DO PRIVATE(vcoul)
        do istate=ncore_G+1,nvirtual_G-1
          if( occupation(istate,ispin) / spin_fact < completely_empty ) cycle
          do bstate=ncore_G+1,nvirtual_G-1
@@ -342,10 +341,8 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
            enddo
          enddo
        enddo
-!$OMP END DO
   
        !==========================
-!$OMP DO PRIVATE(vcoul)
        do istate=ncore_G+1,nvirtual_G-1
          if( occupation(istate,ispin) / spin_fact < completely_empty ) cycle
          do bstate=ncore_G+1,nvirtual_G-1
@@ -384,10 +381,8 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
            enddo
          enddo
        enddo
-!$OMP END DO
   
        !==========================
-!$OMP DO PRIVATE(vcoul)
        do astate=ncore_G+1,nvirtual_G-1
          if( (spin_fact - occupation(astate,ispin)) / spin_fact < completely_empty  ) cycle
          do jstate=ncore_G+1,nvirtual_G-1
@@ -426,10 +421,8 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
            enddo
          enddo
        enddo
-!$OMP END DO
   
        !==========================
-!$OMP DO PRIVATE(vcoul)
        do astate=ncore_G+1,nvirtual_G-1
          if( (spin_fact - occupation(astate,ispin)) / spin_fact < completely_empty  ) cycle
          do jstate=ncore_G+1,nvirtual_G-1
@@ -462,13 +455,12 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
            enddo
          enddo
        enddo
-!$OMP END DO
   
   
   
      enddo !spole
+!$OMP END PARALLEL DO
    enddo !ispin
-!$OMP END PARALLEL
 
  endif
 
