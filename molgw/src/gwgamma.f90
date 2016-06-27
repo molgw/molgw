@@ -58,7 +58,6 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  character(len=3)      :: ctmp
  integer               :: reading_status
  integer               :: selfenergyfile
- integer               :: nsemin,nsemax
  real(dp)              :: pole_s
  logical,parameter     :: tddft_kernel = .FALSE.
 ! logical,parameter     :: tddft_kernel = .TRUE.
@@ -84,6 +83,9 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 #endif
  endif
 
+ ! Set the range of states on which to evaluate the self-energy
+ call selfenergy_set_state_ranges(nstate,occupation)
+
  nprodbasis = index_prodstate(nstate,nstate)
 
  if(has_auxil_basis) then
@@ -92,14 +94,8 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
    stop'NOT implemented'
  endif
 
- !
- ! Set the range of states on which to evaluate the self-energy
- nsemin = MAX(ncore_G+1   ,selfenergy_state_min,1)
- nsemax = MIN(nvirtual_G-1,selfenergy_state_max,nstate)
 
- write(stdout,'(a,i4,a,i4)') ' Calculate state range from ',nsemin,' to ',nsemax
  call clean_allocate('Temporary array',bra,nstate,nstate)
-
 
  energy_gw = 0.0_dp
 

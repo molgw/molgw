@@ -403,6 +403,17 @@ vl[i].comment  ='Sets the final states for the range of the self-energy evaluati
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='selfenergy_state_range'
+vl[i].family   ='post'
+vl[i].default  =100000
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the range of states around the HOMO level for the self-energy evaluation. For instance, selfenergy_state_range=0 will trigger the calculation of the HOMO only. \
+            selfenergy_state_range=1 will trigger the evaluation of the HOMO-1, HOMO, HOMO+1. etc.'
+
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='nomega_sigma'
 vl[i].family   ='post'
 vl[i].default  =51

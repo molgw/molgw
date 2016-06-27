@@ -15,7 +15,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
- use m_selfenergy_tools
+ use m_selfenergy_tools,only : ncore_G,nsemin,nsemax,nvirtual_G,selfenergy_set_state_ranges
  implicit none
 
  integer,intent(in)                 :: nstate,gwmethod
@@ -42,7 +42,6 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  real(dp)              :: energy_qp_new(nstate,nspin)
  integer               :: reading_status
  integer               :: selfenergyfile
- integer               :: nsemin,nsemax
  integer               :: ibf_auxil,jbf_auxil
  integer               :: ibf_auxil_global,jbf_auxil_global
  real(dp),allocatable  :: wp0(:,:),wp0_i(:),w0_local(:)
@@ -65,12 +64,8 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
    write(stdout,*) 'Perform a tuned COHSEX calculation'
  end select
 
- !
  ! Set the range of states on which to evaluate the self-energy
- nsemin = MAX(ncore_G+1   ,selfenergy_state_min,1)
- nsemax = MIN(nvirtual_G-1,selfenergy_state_max,nstate)
-
- write(stdout,'(a,i4,a,i4)') ' Calculate state range from ',nsemin,' to ',nsemax
+ call selfenergy_set_state_ranges(nstate,occupation)
 
 
  write(stdout,*) '=============='
@@ -395,14 +390,6 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
  wp0_tmp(:,:)      = MATMUL( eri_2center_rotation(:,:) , MATMUL( wpol%w0(:,:) , TRANSPOSE( eri_2center_rotation(:,:) ) ) )
  wp0_rotation(:,:) = MATMUL( TRANSPOSE(eri_2center_rotation_lr(:,:)) , MATMUL( wp0_tmp(:,:) , eri_2center_rotation_lr(:,:) ) )
  deallocate( wp0_tmp )
-
-
- !
- ! Set the range of states on which to evaluate the self-energy
- nsemin = MAX(ncore_G+1   ,selfenergy_state_min,1)
- nsemax = MIN(nvirtual_G-1,selfenergy_state_max,nstate)
-
- write(stdout,'(a,i4,a,i4)') ' Calculate state range from ',nsemin,' to ',nsemax
 
 
 

@@ -34,8 +34,9 @@ subroutine header()
 !=====
 
  write(stdout,'(x,70("="))') 
- write(stdout,'(/,/,12x,a,/,/)') ' Welcome to the fascinating world of MOLGW'
- write(stdout,'(x,70("="))') 
+ write(stdout,'(/,/,12x,a,/)') 'Welcome to the fascinating world of MOLGW'
+ write(stdout,'(24x,a)')    'version 1.A'
+ write(stdout,'(/,/,x,70("="))') 
 
  write(stdout,'(/,a,i6,/)') ' MOLGW revision is',revision
 #ifdef HAVE_FORTRAN2008
@@ -73,7 +74,7 @@ subroutine header()
  end select
 
 
- write(stdout,'(a)') ' Compilation options:'
+ write(stdout,'(/,x,a)') 'Linking options:'
 #ifdef HAVE_LIBXC
 !#ifndef LIBXC_SVN
 ! call xc_f90_version(values(1),values(2))
@@ -101,9 +102,8 @@ subroutine header()
  call die('Code compiled with SCALAPACK, but without MPI. This is not permitted')
 #endif
 #endif
- write(stdout,'(a)')      ' MOLGW relies on the library LIBINT to calculate the Coulomb integrals'
- write(stdout,'(a,i5,/)') ' Max angular momentum handled by your Libint compilation: ',libint_init()
- write(stdout,*)
+ write(stdout,'(x,a)')         'Running with LIBINT (to calculate the Coulomb integrals)'
+ write(stdout,'(6x,a,i5,/,/)') 'max angular momentum handled by your LIBINT compilation: ',libint_init()
 
 
 

@@ -427,7 +427,7 @@
 *     $   WRITE( *, * ) 't_diag = ', T_DIAG, ';'
       IF ( ITMP .NE. 0 ) THEN
          INFO = ITMP
-         WRITE( *, * ), '% PDSYEVR fails with INFO =', INFO
+         WRITE( *, * ) '% PDSYEVR fails with INFO =', INFO
          RETURN
       END IF
       DO I = 1, N

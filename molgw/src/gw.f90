@@ -51,7 +51,6 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  character(len=3)      :: ctmp
  integer               :: reading_status
  integer               :: selfenergyfile
- integer               :: nsemin,nsemax
 ! GW tilde
  real(dp),allocatable  :: vsqchi0vsqm1(:,:)
  real(dp)              :: omega_m_ei,bra2
@@ -98,6 +97,9 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
    write(stdout,*) 'Perform an eigenvalue self-consistent GnWn calculation'
  end select
 
+ ! Set the range of states on which to evaluate the self-energy
+ call selfenergy_set_state_ranges(nstate,occupation)
+
  nprodbasis = index_prodstate(nstate,nstate)
 
  if(has_auxil_basis) then
@@ -106,12 +108,6 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
        call calculate_eri_3center_eigen_mixed(basis%nbf,nstate,c_matrix)
  endif
 
- !
- ! Set the range of states on which to evaluate the self-energy
- nsemin = MAX(ncore_G+1   ,selfenergy_state_min,1)
- nsemax = MIN(nvirtual_G-1,selfenergy_state_max,nstate)
-
- write(stdout,'(a,i4,a,i4)') ' Calculate state range from ',nsemin,' to ',nsemax
  call clean_allocate('Temporary array',bra,1,wpol%npole_reso,nsemin,nsemax)
 
  if(gwmethod==LW .OR. gwmethod==LW2 .OR. gwmethod==GSIGMA) then

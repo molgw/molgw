@@ -105,11 +105,11 @@ scf_loop.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_inputparam.f90 m_tool
 	$(FC_W_OPTS) -c scf_loop.f90 $(LIBXC_INCS)
 
 cohsex.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
-      m_inputparam.f90 cohsex.f90
+      m_inputparam.f90 m_selfenergy_tools.f90 cohsex.f90
 	$(FC_W_OPTS) -c cohsex.f90 $(LIBXC_INCS)
 
 gwgamma.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
-      m_inputparam.f90 m_tddft_fxc.o gwgamma.f90
+      m_inputparam.f90 m_tddft_fxc.f90 m_selfenergy_tools.f90 gwgamma.f90
 	$(FC_W_OPTS) -c gwgamma.f90 $(LIBXC_INCS)
 
 gw.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \

@@ -59,12 +59,10 @@ module m_spectral_function
 
  !
  ! frozen core approximation parameters
- integer,protected :: ncore_G
  integer,protected :: ncore_W
 
  !
  ! frozen virtual approximation parameters
- integer,protected :: nvirtual_G
  integer,protected :: nvirtual_W
 
  integer,protected :: nvirtual_SPA
@@ -117,23 +115,20 @@ subroutine init_spectral_function(nstate,occupation,sf)
 
  ieta = (0.0_dp,1.0_dp) * pole_eta 
 
- ncore_G      = ncoreg
  ncore_W      = ncorew
- nvirtual_G   = MIN(nvirtualg,nstate+1)
  nvirtual_W   = MIN(nvirtualw,nstate+1)
  nvirtual_SPA = MIN(nvirtualspa,nstate+1)
 
  if(is_frozencore) then
-   if( ncore_G == 0) ncore_G = atoms_core_states()
    if( ncore_W == 0) ncore_W = atoms_core_states()
  endif
- if( ncore_G > 0 .OR. ncore_W > 0 ) then
-   write(msg,'(a,i4,2x,i4)') 'frozen core approximation switched on up to state (G,W) = ',ncore_G,ncore_W
+ if( ncore_W > 0 ) then
+   write(msg,'(a,i4,2x,i4)') 'frozen core approximation in W switched on up to state : ',ncore_W
    call issue_warning(msg)
  endif
 
- if( nvirtual_G <= nstate .OR. nvirtual_W <= nstate ) then
-   write(msg,'(a,i4,2x,i4)') 'frozen virtual approximation switched on starting with state (G,W) = ',nvirtual_G,nvirtual_W
+ if( nvirtual_W <= nstate ) then
+   write(msg,'(a,i4,2x,i4)') 'frozen virtual approximation in W switched on starting with state : ',nvirtual_W
    call issue_warning(msg)
  endif
 

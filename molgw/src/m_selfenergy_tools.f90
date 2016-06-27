@@ -10,7 +10,16 @@ module m_selfenergy_tools
  use m_definitions
  use m_warning
  use m_mpi
- use m_inputparam,only: nspin
+ use m_inputparam,only: nspin,ncoreg,nvirtualg,is_frozencore, &
+                        selfenergy_state_min,selfenergy_state_max,selfenergy_state_range
+
+ !
+ ! frozen core approximation parameters
+ integer,protected :: ncore_G
+ integer,protected :: nvirtual_G
+
+ integer,protected :: nsemin
+ integer,protected :: nsemax
 
 
 contains
@@ -254,6 +263,54 @@ subroutine output_qp_energy(calcname,nstate,nsemin,nsemax,energy0,exchange_m_vxc
  endif
 
 end subroutine output_qp_energy
+
+
+!=========================================================================
+subroutine selfenergy_set_state_ranges(nstate,occupation)
+ use m_atoms
+ implicit none
+!=====
+ integer,intent(in)  :: nstate
+ real(dp),intent(in) :: occupation(nstate,nspin)
+!=====
+ integer :: istate,ihomo
+ integer :: nsemax_tmp
+!=====
+
+ ncore_G      = ncoreg
+ nvirtual_G   = MIN(nvirtualg,nstate+1)
+
+ if(is_frozencore) then
+   if( ncore_G == 0) ncore_G = atoms_core_states()
+ endif
+
+ if( ncore_G > 0 ) then
+   write(msg,'(a,i4,2x,i4)') 'frozen core approximation in G switched on up to state = ',ncore_G
+   call issue_warning(msg)
+ endif
+
+ if( nvirtual_G <= nstate ) then
+   write(msg,'(a,i4,2x,i4)') 'frozen virtual approximation in G switched on starting with state = ',nvirtual_G
+   call issue_warning(msg)
+ endif
+
+ ! Find the HOMO index
+ ihomo = 1
+ do istate=1,nstate
+   if( .NOT. ANY( occupation(istate,:) < completely_empty ) ) then
+     ihomo = MAX(ihomo,istate)
+   endif
+ enddo
+
+ nsemin = MAX(ncore_G+1,selfenergy_state_min,1,ihomo-selfenergy_state_range)
+
+ nsemax = MIN(nvirtual_G-1,selfenergy_state_max,nstate,ihomo+selfenergy_state_range)
+
+ write(stdout,'(a,i4,a,i4)') ' Calculate state range from ',nsemin,' to ',nsemax
+
+
+end subroutine selfenergy_set_state_ranges
+
 
 
 end module m_selfenergy_tools

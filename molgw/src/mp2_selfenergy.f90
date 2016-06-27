@@ -47,7 +47,6 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  integer               :: iomegafile
  real(dp),allocatable  :: eri_eigenstate_i(:,:,:,:)
  integer               :: nket1,nket2
- integer               :: nsemin,nsemax
  integer               :: reading_status
  real(dp)              :: coul_ibjk,coul_ijkb,coul_iakj
  real(dp)              :: energy_qp(nstate,nspin)
@@ -55,13 +54,12 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  real(dp)              :: energy_qp_new(nstate,nspin)
  real(dp)              :: energy_qp_omega(nspin)
  real(dp)              :: ehomo,elumo
- type(spectral_function) :: sf_dummy
 !=====
 
  call start_clock(timing_mp2_self)
 
- ! This call does not allocate anything fortunately
- call init_spectral_function(nstate,occupation,sf_dummy)
+ ! Set the range of states on which to evaluate the self-energy
+ call selfenergy_set_state_ranges(nstate,occupation)
 
  emp2_ring = 0.0_dp
  emp2_sox  = 0.0_dp
@@ -70,10 +68,6 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  msg='small complex number is '//msg
  call issue_warning(msg)
 
- !
- ! Set the range of states on which to evaluate the self-energy
- nsemin = MAX(ncore_G+1   ,selfenergy_state_min,1)
- nsemax = MIN(nvirtual_G-1,selfenergy_state_max,nstate)
 
  write(stdout,'(/,a)') ' Perform the second-order self-energy calculation'
  select case(method)

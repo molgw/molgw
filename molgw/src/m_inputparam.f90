@@ -65,6 +65,7 @@ module m_inputparam
  type(calculation_type),public    :: calc_type                   ! Sometimes we may need to tune this
  integer,protected                :: selfenergy_state_min
  integer,protected                :: selfenergy_state_max
+ integer,protected                :: selfenergy_state_range
  integer,protected                :: ncoreg 
  integer,protected                :: ncorew 
  integer,protected                :: nvirtualg 
