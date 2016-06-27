@@ -29,7 +29,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  real(dp),intent(out)               :: energy_gw
 !=====
  logical               :: file_exists=.FALSE.
- real(dp)              :: ehomo,elumo
+ real(dp)              :: ehomo(nspin),elumo(nspin)
  integer               :: nomegai
  integer               :: iomegai
  real(dp),allocatable  :: omegai(:)

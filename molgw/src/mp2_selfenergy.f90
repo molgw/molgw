@@ -53,7 +53,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  real(dp)              :: energy_qp_z(nstate,nspin)
  real(dp)              :: energy_qp_new(nstate,nspin)
  real(dp)              :: energy_qp_omega(nspin)
- real(dp)              :: ehomo,elumo
+ real(dp)              :: ehomo(nspin),elumo(nspin)
 !=====
 
  call start_clock(timing_mp2_self)

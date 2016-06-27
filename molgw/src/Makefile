@@ -26,7 +26,7 @@ LIBINT=-L$(LIBINT_ROOT)/lib -lint2
 LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
 
 
-.PHONY: all clean archive doc input prepare_sourcecode
+.PHONY: all clean archive tarball doc input prepare_sourcecode
 
 
 ####################################################

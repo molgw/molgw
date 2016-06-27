@@ -31,7 +31,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 !=====
  logical               :: file_exists=.FALSE.
  integer               :: nprodbasis
- real(dp)              :: ehomo,elumo
+ real(dp)              :: ehomo(nspin),elumo(nspin)
  integer               :: nomegai
  integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
