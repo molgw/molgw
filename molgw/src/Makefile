@@ -140,7 +140,7 @@ m_hamiltonian.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_tim
 dft_xc.o: m_definitions.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90 m_mpi.f90 dft_xc.f90
 	$(FC_W_OPTS) -c dft_xc.f90 $(LIBXC_INCS)
 
-io.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 revision.f90 m_hamiltonian.f90 io.f90
+io.o: my_machine.arch m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 revision.f90 m_hamiltonian.f90 io.f90
 	$(FC_W_OPTS) -c io.f90 $(LIBXC_INCS)
 
 mp2.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_mpi.f90 m_basis_set.f90 m_eri.f90 mp2.f90 
@@ -233,6 +233,9 @@ m_warning.o: m_definitions.f90 m_warning.f90
 
 m_definitions.o: m_definitions.f90
 	$(FC_W_OPTS) -c m_definitions.f90 $(LIBXC_INCS)
+
+tarball: 
+	+make archive
 
 archive:
 	tar czf molgw.tgz ../../molgw/README.md ../../molgw/COPYING ../../molgw/src/Makefile    \
