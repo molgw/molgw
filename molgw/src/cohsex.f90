@@ -15,7 +15,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
- use m_selfenergy_tools,only : ncore_G,nsemin,nsemax,nvirtual_G,selfenergy_set_state_ranges
+ use m_selfenergy_tools
  implicit none
 
  integer,intent(in)                 :: nstate,gwmethod
@@ -325,6 +325,7 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
  use m_eri
  use m_eri_calculate
  use m_eri_lr_calculate
+ use m_selfenergy_tools
  implicit none
 
  integer,intent(in)                 :: nstate,gwmethod
@@ -351,7 +352,6 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
  real(dp)              :: energy_qp_new(nstate,nspin)
  integer               :: reading_status
  integer               :: selfenergyfile
- integer               :: nsemin,nsemax
  integer               :: ibf_auxil,jbf_auxil
  integer               :: ibf_auxil_global,jbf_auxil_global
  real(dp),allocatable  :: wp0(:,:),wp0_i(:),w0_local(:)
@@ -380,6 +380,9 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
  case(TUNED_COHSEX)
    write(stdout,*) 'Perform a tuned COHSEX calculation'
  end select
+
+ ! Set the range of states on which to evaluate the self-energy
+ call selfenergy_set_state_ranges(nstate,occupation)
 
  ! Rotation of W0
 
