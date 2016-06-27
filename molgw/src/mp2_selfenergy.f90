@@ -35,6 +35,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  integer               :: nomegai
  integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
+ integer               :: ihomo
  integer               :: istate,jstate,kstate
  integer               :: abispin,jkspin,ispin
  real(dp)              :: fact_occ1,fact_occ2
@@ -80,6 +81,14 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
    nket1 = 1
    nket2 = 1
  end select
+
+ ! Find the HOMO index
+ ihomo = 1
+ do istate=1,nstate
+   if( .NOT. ANY( occupation(istate,:) < completely_empty ) ) then
+     ihomo = MAX(ihomo,istate)
+   endif
+ enddo
 
  
  if( calc_type%read_energy_qp ) then
@@ -212,11 +221,15 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
 
  emp2_ring = 0.5_dp * emp2_ring
  emp2_sox  = 0.5_dp * emp2_sox
- emp2 = emp2_ring + emp2_sox
- write(stdout,'(/,a)')       ' MP2 Energy'
- write(stdout,'(a,f14.8)')   ' 2-ring diagram  :',emp2_ring
- write(stdout,'(a,f14.8)')   ' SOX diagram     :',emp2_sox
- write(stdout,'(a,f14.8,/)') ' MP2 correlation :',emp2
+ if( nsemin <= ncore_G+1 .AND. nsemax >= ihomo ) then
+   emp2 = emp2_ring + emp2_sox
+   write(stdout,'(/,a)')       ' MP2 Energy'
+   write(stdout,'(a,f14.8)')   ' 2-ring diagram  :',emp2_ring
+   write(stdout,'(a,f14.8)')   ' SOX diagram     :',emp2_sox
+   write(stdout,'(a,f14.8,/)') ' MP2 correlation :',emp2
+ else
+   emp2 = 0.0_dp
+ endif
 
  selfenergy_omega(:,:,:,:) = selfenergy_ring(:,:,:,:)+selfenergy_sox(:,:,:,:)
 
