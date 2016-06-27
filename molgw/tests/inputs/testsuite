@@ -89,18 +89,18 @@ Mean excitation energy    ,   50.966087        , 0 , 1.0e-4
 polarizability trace      ,    0.652021        , 0 , 1.0e-4
 
 n2_mp2.in                 , 2nd order self-energy of N2 with no RI
-MP2 HOMO energy           ,  -12.374331        , 0 , 1.0e-4
-MP2 LUMO energy           ,    3.632074        , 0 , 1.0e-4
-MP2 HOMO-LUMO gap         ,   16.006405        , 0 , 1.0e-4
+MP2 HOMO energy           ,  -12.036139        , 0 , 1.0e-4
+MP2 LUMO energy           ,   -0.248705        , 0 , 1.0e-4
+MP2 HOMO-LUMO gap         ,   11.787433        , 0 , 1.0e-4
 MP2 Energy                ,   -0.3624329074    , 0 , 1.0e-7
 MP2 Total Energy          , -109.3018605494    , 0 , 1.0e-7
 SE+MP2  Total En          , -109.3101206567    , 0 , 1.0e-7
 
 n2_mp2_ri.in              , 2nd order self-energy of N2 with RI
 SCF Total Energy          , -108.9743823838    , 0 , 1.0e-7
-MP2 HOMO energy           ,  -15.003147        , 0 , 1.0e-4
-MP2 LUMO energy           ,    2.756290        , 0 , 1.0e-4
-MP2 HOMO-LUMO gap         ,   17.759438        , 0 , 1.0e-4
+MP2 HOMO energy           ,  -16.559251        , 0 , 1.0e-4
+MP2 LUMO energy           ,    3.708942        , 0 , 1.0e-4
+MP2 HOMO-LUMO gap         ,   20.268193        , 0 , 1.0e-4
 MP2 Energy                ,   -0.2777330622    , 0 , 1.0e-7
 MP2 Total Energy          , -109.2521154459    , 0 , 1.0e-7
 SE+MP2  Total En          , -109.2521154459    , 0 , 1.0e-7

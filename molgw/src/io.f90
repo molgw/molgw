@@ -8,13 +8,15 @@
 !=========================================================================
 subroutine header()
  use,intrinsic :: iso_c_binding, only: C_INT
+ use,intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
  use m_definitions
  use m_mpi
  use m_warning,only: issue_warning,msg
  implicit none
- integer           :: revision
- integer           :: values(8) 
- character(len=12) :: chartmp
+ integer             :: revision
+ integer             :: values(8) 
+ character(len=1024) :: chartmp
+ integer             :: nchar,kchar,lchar
 #ifdef _OPENMP
  integer,external :: OMP_get_max_threads
 #endif
@@ -34,6 +36,19 @@ subroutine header()
  write(stdout,'(x,70("="))') 
 
  write(stdout,'(/,a,i6,/)') ' MOLGW revision is',revision
+ write(stdout,'(x,a,a)')    'compiled with',compiler_version()
+ write(stdout,'(x,a)')      'with options: '
+ chartmp = compiler_options()
+ nchar = LEN(TRIM(chartmp))
+ kchar = 1
+ lchar = 0
+ do 
+   lchar = SCAN(chartmp(kchar:nchar),' ')
+   if( lchar == 0 ) exit
+   write(stdout,'(6x,a,a)') 'FCOPT  ',chartmp(kchar:kchar+lchar-1)
+   kchar = kchar + lchar
+ enddo
+ write(stdout,*)
 
 
  call date_and_time(VALUES=values)
