@@ -292,6 +292,8 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  if( gwmethod == G0W0GAMMA0 ) then 
 
    write(stdout,*) 'Calculate dynamical SOSEX'
+
+!$OMP PARALLEL
   
    do ispin=1,nspin
   
@@ -308,6 +310,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
   
   
        !==========================
+!$OMP DO PRIVATE(vcoul)
        do istate=ncore_G+1,nvirtual_G-1
          if( occupation(istate,ispin) / spin_fact < completely_empty ) cycle
          do bstate=ncore_G+1,nvirtual_G-1
@@ -339,8 +342,10 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
            enddo
          enddo
        enddo
+!$OMP END DO
   
        !==========================
+!$OMP DO PRIVATE(vcoul)
        do istate=ncore_G+1,nvirtual_G-1
          if( occupation(istate,ispin) / spin_fact < completely_empty ) cycle
          do bstate=ncore_G+1,nvirtual_G-1
@@ -379,8 +384,10 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
            enddo
          enddo
        enddo
+!$OMP END DO
   
        !==========================
+!$OMP DO PRIVATE(vcoul)
        do astate=ncore_G+1,nvirtual_G-1
          if( (spin_fact - occupation(astate,ispin)) / spin_fact < completely_empty  ) cycle
          do jstate=ncore_G+1,nvirtual_G-1
@@ -419,8 +426,10 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
            enddo
          enddo
        enddo
+!$OMP END DO
   
        !==========================
+!$OMP DO PRIVATE(vcoul)
        do astate=ncore_G+1,nvirtual_G-1
          if( (spin_fact - occupation(astate,ispin)) / spin_fact < completely_empty  ) cycle
          do jstate=ncore_G+1,nvirtual_G-1
@@ -453,11 +462,13 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
            enddo
          enddo
        enddo
+!$OMP END DO
   
   
   
      enddo !spole
    enddo !ispin
+!$OMP END PARALLEL
 
  endif
 
