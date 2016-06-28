@@ -170,7 +170,7 @@ function find_fixed_point(nx,xx,fx) result(fixed_point)
  real(dp),intent(in) :: fx(-nx:nx)
  real(dp)            :: fixed_point
 !=====
- integer             :: ix,imin1,imin2,imin
+ integer             :: ix,imin1,imin2
  real(dp)            :: rmin
  real(dp)            :: gx(-nx:nx)
  real(dp)            :: gpx
@@ -186,6 +186,7 @@ function find_fixed_point(nx,xx,fx) result(fixed_point)
  do ix=0,nx-1
    if( gx(ix) * gx(ix+1) < 0.0_dp ) then
      imin1 = ix
+     exit
    endif
  enddo
  ! Search negative x
@@ -193,6 +194,7 @@ function find_fixed_point(nx,xx,fx) result(fixed_point)
  do ix=0,-nx+1,-1
    if( gx(ix) * gx(ix-1) < 0.0_dp ) then
      imin2 = ix
+     exit
    endif
  enddo
 

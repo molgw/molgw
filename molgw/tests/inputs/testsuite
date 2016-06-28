@@ -239,11 +239,11 @@ GW HOMO energy            ,     -9.921426       , 0 , 1.0e-4
 GW LUMO energy            ,      2.494864       , 0 , 1.0e-4
 
 ch2o_bse.in               , BSE on formaldehyde , Restart
-Lowest neutral excitation ,      3.389385       , 0 , 1.0e-4
-0002 :                    ,      7.93091602     , 0 , 1.0e-4   
-0002 :                    ,      0.11545787     , 1 , 1.0e-4
-Sum over oscillator strengths , 12.249371       , 0 , 1.0e-4
-polarizability trace      ,     13.187517       , 0 , 1.0e-4
+Lowest neutral excitation ,      3.388914       , 0 , 1.0e-4
+0002 :                    ,      7.92591508     , 0 , 1.0e-4   
+0002 :                    ,      0.11513601     , 1 , 1.0e-4
+Sum over oscillator strengths , 11.944445       , 0 , 1.0e-4
+polarizability trace      ,     13.359089       , 0 , 1.0e-4
 
 oh_m_1.in                 , GnWn (eigenvalue self-consistent) on OH- 1st iteration
 SCF Total Energy          ,    -75.7671834802   , 0 , 1.0e-7
