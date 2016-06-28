@@ -80,6 +80,7 @@ module m_inputparam
  integer,protected                :: nscf
  integer,protected                :: mixing_first_nscf
  real(dp),protected               :: alpha_mixing
+ character(len=100),protected     :: xyz_file
  character(len=100),protected     :: basis_path
  character(len=100),protected     :: basis_name
  character(len=100),protected     :: auxil_basis_name
@@ -650,7 +651,7 @@ subroutine read_inputfile_namelist()
 !=====
  integer              :: ninput_argument
  character(len=100)   :: input_file_name
- integer              :: inputfile
+ integer              :: inputfile,xyzfile
  logical              :: file_exists
 
  character(len=100)   :: input_key
@@ -666,6 +667,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_pdos,print_cube
  character(len=3)     :: tda,triplet,frozencore,virtual_fno
  real(dp)             :: length_factor,eta
+ integer              :: natom_read
  integer              :: atom_number,info,iatom
  character(len=2)     :: atom_symbol
  real(dp),allocatable :: zatom_read(:),x_read(:,:)
@@ -775,7 +777,6 @@ subroutine read_inputfile_namelist()
 
 
  ! A few consistency checks
- if(natom<1) call die('natom<1')
  if(alpha_mixing<0.0 .OR. alpha_mixing > 1.0 ) call die('alpha_mixing should be inside [0,1]')
  if(ncoreg<0) call die('negative ncoreg is meaningless')
  if(ncorew<0) call die('negative ncorew is meaningless')
@@ -813,23 +814,69 @@ subroutine read_inputfile_namelist()
 
 
  !
- ! Read the atom positions
- allocate(x_read(3,natom+nghost),zatom_read(natom+nghost))
- do iatom=1,natom+nghost
-   read(inputfile,*) atom_symbol,x_read(:,iatom)
+ ! Read the atom positions if no xyz file is specified
+ if( LEN(TRIM(xyz_file)) == 0 ) then
+    !
+    ! In this case, natom must be set to a positive value
+    if(natom<1) call die('natom<1')
+
+   allocate(x_read(3,natom+nghost),zatom_read(natom+nghost))
+   do iatom=1,natom+nghost
+     read(inputfile,*) atom_symbol,x_read(:,iatom)
+     !
+     ! First, try to interpret atom_symbol as an integer
+     read(atom_symbol,'(i2)',iostat=info) atom_number
+     ! If it fails, then assumes it is a character
+     if( info /=0 ) then
+       atom_number = element_number(atom_symbol)
+     endif
+     zatom_read(iatom) = atom_number
+   enddo
+
+ else
    !
-   ! First, try to interpret atom_symbol as an integer
-   read(atom_symbol,'(i2)',iostat=info) atom_number
-   ! If it fails, then assumes it is a character
-   if( info /=0 ) then
-     atom_number = element_number(atom_symbol)
+   ! Try to open the xyz file
+   write(stdout,'(a,a)') ' Opening xyz file: ',TRIM(xyz_file)
+   inquire(file=TRIM(xyz_file),exist=file_exists)
+   if( .NOT. file_exists) then
+     write(stdout,*) 'Tried to open the requested xyz file:',TRIM(xyz_file)
+     call die('xyz file not found')
    endif
-   zatom_read(iatom) = atom_number
- enddo
+   open(newunit=xyzfile,file=TRIM(xyz_file),status='old')
+   read(xyzfile,*) natom_read
+   if( natom /= 0 .AND. natom+nghost /= natom_read ) then
+     call die('the number of atoms in the input file does not correspond to the number of atoms in the xyz file')
+   endif
+   read(xyzfile,*) 
+
+   natom = natom_read-nghost
+
+   allocate(x_read(3,natom+nghost),zatom_read(natom+nghost))
+   do iatom=1,natom+nghost
+     read(xyzfile,*) atom_symbol,x_read(:,iatom)
+     !
+     ! First, try to interpret atom_symbol as an integer
+     read(atom_symbol,'(i2)',iostat=info) atom_number
+     ! If it fails, then assumes it is a character
+     if( info /=0 ) then
+       atom_number = element_number(atom_symbol)
+     endif
+     zatom_read(iatom) = atom_number
+   enddo
+
+   close(xyzfile)
+   
+
+   if( ABS(length_factor - 1.0_dp ) < 1.0e-6_dp  ) then
+     write(stdout,*) 'xyz files are always in Angstrom. However, length_unit was set to bohr'
+     call die('Please set length_unit to Angstrom')
+   endif
+
+ endif
+
  x_read(:,:) = x_read(:,:) * length_factor
  call init_atoms(natom,nghost,zatom_read,x_read)
  deallocate(x_read,zatom_read)
-
 
  !
  ! Interpret the scf and postscf input parameters

@@ -550,10 +550,18 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='natom'
 vl[i].family   ='system'
-vl[i].mandatory='yes'
 vl[i].default  =0
 vl[i].datatype ='integer'
-vl[i].comment  ='Sets the number of atoms in the molecule. This is the number of lines to be read in the following section of the input file.'
+vl[i].comment  ='Sets the number of atoms in the molecule. This is the number of lines to be read in the following section of the input file if no xyz file is provided.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='xyz_file'
+vl[i].family   ='system'
+vl[i].default  =''
+vl[i].datatype ='characters'
+vl[i].comment  ='Specifies the location of the xyz file that contains the atomic positions. It can be used as an alternate route to set atomic coordinate.'
 
 #================================
 vl.append(variable())
