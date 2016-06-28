@@ -170,35 +170,45 @@ function find_fixed_point(nx,xx,fx) result(fixed_point)
  real(dp),intent(in) :: fx(-nx:nx)
  real(dp)            :: fixed_point
 !=====
- integer             :: ix,imin
+ integer             :: ix,imin1,imin2,imin
  real(dp)            :: rmin
  real(dp)            :: gx(-nx:nx)
  real(dp)            :: gpx
 !=====
 
-
+ !
+ ! g(x) contains f(x) - x
  gx(:) = fx(:) - xx(:)
 
- rmin = HUGE(1.0_dp)
- do ix=-nx,nx
-   if( ABS(gx(ix)) < rmin ) then
-     rmin = ABS(gx(ix))
-     imin = ix
+ ! Find the sign change in g(x) which is the closest to ix=0
+ ! Search positive x
+ imin1 = 1000000
+ do ix=0,nx-1
+   if( gx(ix) * gx(ix+1) < 0.0_dp ) then
+     imin1 = ix
    endif
- enddo 
+ enddo
+ ! Search negative x
+ imin2 = 1000000
+ do ix=0,-nx+1,-1
+   if( gx(ix) * gx(ix-1) < 0.0_dp ) then
+     imin2 = ix
+   endif
+ enddo
 
+ if( imin1 == 1000000 .AND. imin2 == 1000000 ) then
+   call issue_warning('No fixed point found for the QP equation')
+   fixed_point = xx(0)
 
- if( imin == -nx .OR. imin == nx) then
-   fixed_point = xx(imin)
- else 
-   if( gx(imin)*gx(imin+1) < 0.0_dp )  then
-     gpx = ( gx(imin+1) - gx(imin) ) / ( xx(imin+1) - xx(imin) )
-     fixed_point = xx(imin) - gx(imin) / gpx 
-   else if( gx(imin)*gx(imin-1) < 0.0_dp )  then
-     gpx = ( gx(imin) - gx(imin-1) ) / ( xx(imin) - xx(imin-1) )
-     fixed_point = xx(imin-1) - gx(imin-1) / gpx 
+ else
+   ! 
+   ! If sign change found, interpolate the abscissa between 2 grid points
+   if( ABS(imin1) <= ABS(imin2) )  then
+     gpx = ( gx(imin1+1) - gx(imin1) ) / ( xx(imin1+1) - xx(imin1) )
+     fixed_point = xx(imin1) - gx(imin1) / gpx 
    else
-     fixed_point = xx(imin)
+     gpx = ( gx(imin2) - gx(imin2-1) ) / ( xx(imin2) - xx(imin2-1) )
+     fixed_point = xx(imin2-1) - gx(imin2-1) / gpx 
    endif
  endif
 
