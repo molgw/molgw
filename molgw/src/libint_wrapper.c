@@ -17,17 +17,17 @@ int nint(int am);
 int max4(int am0, int am1, int am2, int am3);
 void calc_boys(double*, int, double);
 
-int libint_init_();
+int libint_init();
 
-int eval_contr_integral_(
-                         int *am0_in, int *am1_in, int *am2_in, int *am3_in,
-                         int *ncontr0, int *ncontr1, int *ncontr2, int *ncontr3,
-                         double *contr0, double *contr1, double *contr2, double *contr3,
-                         double *alpha0, double *alpha1, double *alpha2, double *alpha3,
-                         double *x0, double *x1, double *x2, double *x3,
-                         double* rcut,          /* rcut is omega^{-1} */
-                         double *integrals
-                        );
+int eval_contr_integral(
+                        int *am0_in, int *am1_in, int *am2_in, int *am3_in,
+                        int *ncontr0, int *ncontr1, int *ncontr2, int *ncontr3,
+                        double *contr0, double *contr1, double *contr2, double *contr3,
+                        double *alpha0, double *alpha1, double *alpha2, double *alpha3,
+                        double *x0, double *x1, double *x2, double *x3,
+                        double* rcut,          /* rcut is omega^{-1} */
+                        double *integrals
+                       );
 
 void prep_libint2_contr(Libint_t *erieval,
                         unsigned int am1, double alpha1, double A[3],
@@ -42,21 +42,21 @@ void prep_libint2_contr(Libint_t *erieval,
 
 /* Then the real coding */
 
-int libint_init_() {
+int libint_init() {
   /* this initializes internal Libint data structures -- must happen once in the program */
   LIBINT2_PREFIXED_NAME(libint2_static_init)();
   return LIBINT2_MAX_AM_ERI;
 }
 
-int eval_contr_integral_(
-                         int *am0_in, int *am1_in, int *am2_in, int *am3_in,
-                         int *ncontr0, int *ncontr1, int *ncontr2, int *ncontr3,
-                         double *contr0, double *contr1, double *contr2, double *contr3,
-                         double *alpha0, double *alpha1, double *alpha2, double *alpha3,
-                         double *x0, double *x1, double *x2, double *x3,
-                         double* rcut,          /* rcut is omega^{-1} */
-                         double *integrals
-                        ) {
+int eval_contr_integral(
+                        int *am0_in, int *am1_in, int *am2_in, int *am3_in,
+                        int *ncontr0, int *ncontr1, int *ncontr2, int *ncontr3,
+                        double *contr0, double *contr1, double *contr2, double *contr3,
+                        double *alpha0, double *alpha1, double *alpha2, double *alpha3,
+                        double *x0, double *x1, double *x2, double *x3,
+                        double* rcut,          /* rcut is omega^{-1} */
+                        double *integrals
+                       ) {
 
  unsigned int am0 = *am0_in;
  unsigned int am1 = *am1_in;

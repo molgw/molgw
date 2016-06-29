@@ -1,7 +1,7 @@
 OPENMP=
 
-FC=ifort 
-CC=g++
+FC=gfortran
+CC=gcc
 FCOPTS= -O0
 CCOPTS= 
 CPPFLAGS=
@@ -23,7 +23,7 @@ LINKS= -lstdc++ -lm
 LIBXC_INCS=-I$(LIBXC_ROOT)/include
 LIBXC=-L$(LIBXC_ROOT)/lib -Bstatic -lxcf90 -lxc -Bdynamic
 LIBINT=-L$(LIBINT_ROOT)/lib -lint2
-LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2
+LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2 -I$(LIBINT_ROOT)/include
 
 
 .PHONY: all clean archive tarball doc input prepare_sourcecode
@@ -44,7 +44,7 @@ all:
 	+make  level040
 	+make  ../molgw
 
-level000: m_definitions.o libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o pdbssolver1.o
+level000: m_definitions.o libint_wrapper.o lebedev_quadrature.o pdbssolver1.o
 
 level005: m_warning.o m_gos.o
 
@@ -68,7 +68,7 @@ level040: mp2_selfenergy.o linear_response.o static_polarizability.o gw.o gwgamm
 
 
 
-../molgw: m_definitions.o libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o pdbssolver1.o \
+../molgw: m_definitions.o libint_wrapper.o lebedev_quadrature.o pdbssolver1.o \
         m_warning.o m_gos.o \
         m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o \
         m_scalapack.o \
@@ -83,7 +83,7 @@ level040: mp2_selfenergy.o linear_response.o static_polarizability.o gw.o gwgamm
                         m_definitions.o m_warning.o m_elements.o m_mpi.o m_scalapack.o m_timing.o m_memory.o m_inputparam.o m_tools.o m_scf.o m_selfenergy_tools.o m_atoms.o \
                         m_gos.o m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o m_tddft_fxc.o \
                         m_spectral_function.o \
-                        libint_wrapper.o libint_wrapper_nounderscore.o lebedev_quadrature.o mp2_selfenergy.o \
+                        libint_wrapper.o lebedev_quadrature.o mp2_selfenergy.o \
                         mp2.o gw.o gwgamma.o cohsex.o bse.o linear_response.o static_polarizability.o dft_xc.o io.o \
                         m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o scf_loop.o pdbssolver1.o  \
                         molgw.o \
@@ -158,9 +158,6 @@ lebedev_quadrature.o: lebedev_quadrature.f
 
 libint_wrapper.o: libint_wrapper.c
 	$(CC_W_OPTS) -c libint_wrapper.c $(LIBINT_INCS)
-
-libint_wrapper_nounderscore.o: libint_wrapper_nounderscore.c
-	$(CC_W_OPTS) -c libint_wrapper_nounderscore.c $(LIBINT_INCS)
 
 m_dft_grid.o: m_definitions.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_atoms.f90 m_mpi.f90 m_basis_set.f90 m_dft_grid.f90
 	$(FC_W_OPTS) -c m_dft_grid.f90 $(LIBXC_INCS)

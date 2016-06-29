@@ -70,7 +70,7 @@ module m_eri
                                 alpha1,alpha2,alpha3,alpha4,&
                                 x01,x02,x03,x04,&
                                 rcut, &
-                                int_shell) bind(C)
+                                int_shell) bind(C,name='eval_contr_integral')
     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
     integer(C_INT) :: eval_contr_integral
     integer(C_INT) :: am1,am2,am3,am4
