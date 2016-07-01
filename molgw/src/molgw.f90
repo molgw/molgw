@@ -164,7 +164,6 @@ program molgw
  ! 1D arrays
  allocate(         occupation(nstate,nspin))
  allocate(             energy(nstate,nspin))
- allocate(exchange_m_vxc_diag(nstate,nspin))
  if( parallel_ham .AND. parallel_buffer ) call allocate_parallel_buffer(basis%nbf)
 
 
@@ -377,17 +376,23 @@ program molgw
  !
  ! Prepare the diagonal of the matrix Sigma_x - Vxc
  ! for the forthcoming GW corrections
- if( calc_type%is_mp2 .OR. calc_type%is_mp2_selfenergy .OR. calc_type%is_gw ) then
+ if( calc_type%is_mp2_selfenergy .OR. calc_type%is_gw ) then
+   allocate(exchange_m_vxc_diag(nstate,nspin))
    exchange_m_vxc_diag(:,:) = 0.0_dp
    do ispin=1,nspin
      do istate=1,nstate
-       do ibf=1,basis%nbf
-         do jbf=1,basis%nbf
-           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-                   + c_matrix(ibf,istate,ispin) * ( hamiltonian_exx(ibf,jbf,ispin) - hamiltonian_xc(ibf,jbf,ispin) )&
-                    * c_matrix(jbf,istate,ispin)
-         enddo
-       enddo
+
+        exchange_m_vxc_diag(istate,ispin) =  DOT_PRODUCT(  c_matrix(:,istate,ispin) , &
+                                                MATMUL( ( hamiltonian_exx(:,:,ispin) - hamiltonian_xc(:,:,ispin) ) , &
+                                                          c_matrix(:,istate,ispin) ) )
+
+!       do ibf=1,basis%nbf
+!         do jbf=1,basis%nbf
+!           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
+!                   + c_matrix(ibf,istate,ispin) * ( hamiltonian_exx(ibf,jbf,ispin) - hamiltonian_xc(ibf,jbf,ispin) )&
+!                    * c_matrix(jbf,istate,ispin)
+!         enddo
+!       enddo
      enddo
    enddo
  endif
@@ -472,7 +477,6 @@ program molgw
    allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
    call gw_selfenergy(nstate,G0W0,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
    call gwgamma_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
-!!!!!!!!!   call gwgamma2_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
    deallocate(matrix_tmp)
    call destroy_spectral_function(wpol)
  endif
@@ -566,7 +570,7 @@ program molgw
 
  !
  ! final evaluation for MP2 total energy
- if( calc_type%is_mp2 .AND. calc_type%gwmethod == perturbative ) then
+ if( calc_type%is_mp2 ) then
 
    if(has_auxil_basis) then
      call mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,en%mp2)
@@ -614,7 +618,7 @@ program molgw
  deallocate(hamiltonian_exx,hamiltonian_xc)
 
  deallocate(energy,occupation)
- deallocate(exchange_m_vxc_diag)
+ if( ALLOCATED(exchange_m_vxc_diag) ) deallocate(exchange_m_vxc_diag)
 
  call deallocate_eri()
  if(has_auxil_basis) call destroy_eri_3center()

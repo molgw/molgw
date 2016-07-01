@@ -165,6 +165,12 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 #else
              vcoul2 = alpha_hybrid * vcoul2 - eval_fxc_rks_singlet(istate,bstate,ispin,kstate,mstate,ispin)   !FBFB
 #endif
+             if( ABS( eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin)-vcoul2)> 0.05 ) then
+               write(*,'(4(i4,x),4(x,f12.6))') istate,bstate,kstate,mstate, &
+                  eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin), &
+                  vcoul2
+             endif
+
            endif
            !
            ! calculate only the diagonal !
@@ -179,6 +185,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
      enddo
    enddo
 
+   write(*,*) '========================================================' !FBFB
 
    !==========================
    do cstate=ncore_G+1,nvirtual_G-1
@@ -198,6 +205,12 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 #else
              vcoul2 = alpha_hybrid * vcoul2 - eval_fxc_rks_singlet(astate,jstate,ispin,cstate,mstate,ispin)   !FBFB
 #endif
+             if( cstate < 50 .AND. ABS( eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin) - vcoul2)> 0.05 ) then
+               write(*,'(4(i4,x),4(x,f12.6))') astate,jstate,cstate,mstate, &
+                  eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin), &
+                  vcoul2
+             endif
+
            endif
            !
            ! calculate only the diagonal !
@@ -212,6 +225,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
      enddo
    enddo
 
+   write(*,*) '========================================================' !FBFB
 
  enddo
 
