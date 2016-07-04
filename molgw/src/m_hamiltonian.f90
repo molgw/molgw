@@ -15,6 +15,7 @@ module m_hamiltonian
  use m_warning
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
 
+
 contains
 
 
@@ -1392,6 +1393,8 @@ subroutine destroy_fno(basis,nstate,energy,c_matrix,energy_ref,c_matrix_ref)
 
 
 end subroutine destroy_fno
+
+
 
 
 !=========================================================================

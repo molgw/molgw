@@ -52,7 +52,6 @@ subroutine scf_loop(is_restart,&
  type(spectral_function) :: wpol
  logical                 :: is_converged,stopfile_found,file_exists
  integer                 :: ispin,iscf,istate
- integer                 :: fileunit,ncore
  character(len=100)      :: title
  real(dp)                :: energy_tmp
  real(dp)                :: ehomo(nspin),elumo(nspin)
@@ -66,7 +65,6 @@ subroutine scf_loop(is_restart,&
  real(dp),allocatable    :: self_energy_old(:,:,:)
  real(dp),allocatable    :: energy_exx(:,:)
  real(dp),allocatable    :: c_matrix_exx(:,:,:)
- real(dp),allocatable    :: occupation_tmp(:,:),p_matrix_tmp(:,:,:)
 !=============================
 
 
@@ -474,51 +472,6 @@ subroutine scf_loop(is_restart,&
      deallocate(energy_exx,c_matrix_exx)
    endif
 
- endif
-
-
-
- !
- ! Testing the core/valence splitting
- !
- inquire(file='manual_coresplitting',exist=file_exists)
- if(file_exists) then
-   if( alpha_hybrid_lr > 0.001 ) then
-     call die('RSH not implemented yet')
-   endif
-   write(stdout,'(/,a)') ' TESTING CORE-VALENCE SPLITTING'
-   open(newunit=fileunit,file='manual_coresplitting',status='old')
-   read(fileunit,*) ncore
-   close(fileunit)
-   write(msg,'(a,i4,2x,i4)') 'core-valence splitting switched on up to state = ',ncore
-   call issue_warning(msg)
-
-   allocate(occupation_tmp(nstate,nspin))
-   allocate(p_matrix_tmp(basis%nbf,basis%nbf,nspin))
-   ! Override the occupation of the core electrons
-   occupation_tmp(:,:) = occupation(:,:)
-   do istate=1,ncore
-     occupation_tmp(istate,:) = 0.0_dp
-   enddo
-   call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation_tmp,p_matrix_tmp)
-   call die('coding not correct')
-   call dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,ehomo,hamiltonian_xc,en%xc)
-
-   if( .NOT. is_full_auxil ) then
-     call setup_exchange(print_matrix_,basis%nbf,p_matrix_tmp,hamiltonian_exx,en%exx)
-   else
-     if( parallel_ham ) then
-       call die('coding not correct')
-       call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
-     else
-       call die('coding not correct')
-       call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,hamiltonian_exx,en%exx)
-     endif
-   endif
-
-   deallocate(occupation_tmp,p_matrix_tmp)
-
-   hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + alpha_hybrid * hamiltonian_exx(:,:,:)
  endif
 
 

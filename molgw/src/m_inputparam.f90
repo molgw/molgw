@@ -7,7 +7,6 @@
 !
 !=========================================================================
 module m_inputparam
- use,intrinsic ::  iso_c_binding, only: C_INT,C_DOUBLE
  use m_definitions
  use m_mpi
  use m_warning
@@ -102,6 +101,7 @@ module m_inputparam
  real(dp),protected               :: step_sigma
  real(dp),protected               :: level_shifting_energy
  real(dp),protected               :: scissor
+ integer,protected                :: dft_core
  integer,protected                :: npulay_hist
  integer,protected                :: scalapack_block_min
  integer,protected                :: scalapack_nprow
@@ -128,8 +128,8 @@ module m_inputparam
 
 !This ones are not protected, as we sometimes need to hack them
  integer,protected                 :: ndft_xc = 0
- integer(C_INT),protected,allocatable :: dft_xc_type(:)
- real(C_DOUBLE),protected,allocatable :: dft_xc_coef(:)
+ integer,protected,allocatable     :: dft_xc_type(:)
+ real(dp),protected,allocatable    :: dft_xc_coef(:)
 
 
 contains
@@ -317,10 +317,10 @@ subroutine init_dft_type(key,calc_type)
 
 
  select case(TRIM(key))
- case('LDAx','HFPBE','PBEx','PBEhx','Bx','PW91x','BJx','RPPx',&
-      'BHANDH','BHANDHLYP','BHLYP','B3LYP','PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TUNED-CAM-B3LYP','HJSx')
+ case('LDAX','HFPBE','PBEX','PBEHX','BX','PW91X','BJX','RPPX',&
+      'BHANDH','BHANDHLYP','BHLYP','B3LYP','PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TUNED-CAM-B3LYP','HJSX')
    ndft_xc=1
- case('LDA','SPL','VWN','VWN_RPA','PBE','PBEh','BLYP','PW91')
+ case('LDA','SPL','VWN','VWN_RPA','PBE','PBEH','BLYP','PW91')
    ndft_xc=2
  case('RSH')
    ndft_xc=3
@@ -347,7 +347,7 @@ subroutine init_dft_type(key,calc_type)
 #ifdef HAVE_LIBXC
  !
  ! LDA functionals
- case('LDAx')
+ case('LDAX')
    dft_xc_type(1) = XC_LDA_X
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
@@ -373,7 +373,7 @@ subroutine init_dft_type(key,calc_type)
    alpha_hybrid_lr= 0.00_dp
  !
  ! GGA functionals
- case('PBEx')
+ case('PBEX')
    dft_xc_type(1) = XC_GGA_X_PBE
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
@@ -382,16 +382,16 @@ subroutine init_dft_type(key,calc_type)
    dft_xc_type(2) = XC_GGA_C_PBE
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
- case('PBEhx')
+ case('PBEHX')
    dft_xc_type(1) = XC_GGA_X_WPBEH
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
- case('PBEh')
+ case('PBEH')
    dft_xc_type(1) = XC_GGA_X_WPBEH
    dft_xc_type(2) = XC_GGA_C_PBE
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
- case('Bx')
+ case('BX')
    dft_xc_type(1) = XC_GGA_X_B88
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
@@ -400,7 +400,7 @@ subroutine init_dft_type(key,calc_type)
    dft_xc_type(2) = XC_GGA_C_LYP
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
- case('PW91x')
+ case('PW91X')
    dft_xc_type(1) = XC_GGA_X_PW91
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
@@ -417,17 +417,17 @@ subroutine init_dft_type(key,calc_type)
    dft_xc_type(1) = XC_GGA_XC_TH1
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
- case('HJSx')
+ case('HJSX')
    dft_xc_type(1) = XC_GGA_X_HJS_PBE
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
  !
  ! Meta-GGA functionals
- case('BJx')
+ case('BJX')
    dft_xc_type(1) = XC_MGGA_X_BJ06
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp
- case('RPPx')
+ case('RPPX')
    dft_xc_type(1) = XC_MGGA_X_RPP09
    alpha_hybrid   = 0.00_dp
    alpha_hybrid_lr= 0.00_dp

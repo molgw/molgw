@@ -131,6 +131,11 @@ RPA Total energy          ,   -187.8892338918  , 0 , 1.0e-7
 GW HOMO energy            ,    -10.573504      , 0 , 1.0e-4
 GW LUMO energy            ,     -1.357914      , 0 , 1.0e-4
 
+sih4_dftcore.in           , GW@PBE0 with DFT core-valence interaction
+SCF Total Energy          ,   -291.7541352166  , 0 , 1.0e-7
+GW HOMO energy            ,    -12.305926      , 0 , 1.0e-4
+GW LUMO energy            ,      4.000047      , 0 , 1.0e-4
+
 ar_camb3lyp_gw.in         , Range-separated hybrid argon atom with 6-31*G+ and G0W0
 SCF Total Energy          ,   -527.5394815512  , 0 , 1.0e-7
 gKS HOMO-LUMO gap         ,     15.378169      , 0 , 1.0e-4

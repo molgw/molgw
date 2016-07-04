@@ -646,6 +646,15 @@ vl[i].comment  ='Sets the amount of static COulomb Hole in the self-energy. Only
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='dft_core'
+vl[i].family   ='post'
+vl[i].default  =0
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the number of states considered as core in &lt;&Sigma;<sub>x</sub>-<i>v</i><sub>xc</sub>&gt. This options is meant to mimic the pseudopotential approximation.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='gamma_cohsex'
 vl[i].family   ='post'
 vl[i].default  =0.0

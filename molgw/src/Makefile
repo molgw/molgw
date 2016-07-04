@@ -41,6 +41,7 @@ all:
 	+make  level025
 	+make  level030
 	+make  level035
+	+make  level038
 	+make  level040
 	+make  ../molgw
 
@@ -54,11 +55,13 @@ level015: m_scalapack.o m_atoms.o m_gaussian.o
 
 level020: m_basis_set.o m_inputparam.o m_block_diago.o
 
-level025: m_eri.o m_scf.o m_dft_grid.o m_selfenergy_tools.o
+level025: m_eri.o m_scf.o m_dft_grid.o
 
 level030: m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o m_tddft_fxc.o
 
 level035: m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o
+
+level038: m_selfenergy_tools.o
 
 level040: mp2_selfenergy.o linear_response.o static_polarizability.o gw.o gwgamma.o cohsex.o bse.o dft_xc.o io.o mp2.o scf_loop.o molgw.o
 
@@ -95,7 +98,7 @@ level040: mp2_selfenergy.o linear_response.o static_polarizability.o gw.o gwgamm
 
 molgw.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
   m_gos.f90 m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_eri_calculate.f90 m_eri_lr_calculate.f90 m_eri_ao_mo.o \
-  m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.o \
+  m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.o m_selfenergy_tools.o \
   molgw.f90
 	$(FC_W_OPTS) -c molgw.f90 $(LIBXC_INCS)
 
@@ -193,7 +196,7 @@ m_gaussian.o: m_definitions.f90 m_tools.f90 m_gos.f90 m_mpi.f90 m_gaussian.f90
 m_scf.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_tools.f90 m_inputparam.f90 m_scalapack.f90 m_scf.f90
 	$(FC_W_OPTS) -c m_scf.f90 $(LIBXC_INCS)
 
-m_selfenergy_tools.o: m_definitions.f90 m_warning.f90 m_inputparam.f90 m_selfenergy_tools.f90
+m_selfenergy_tools.o: m_definitions.f90 m_warning.f90 m_inputparam.f90 m_mpi.f90 m_basis_set.f90 m_dft_grid.f90 m_selfenergy_tools.f90
 	$(FC_W_OPTS) -c m_selfenergy_tools.f90 $(LIBXC_INCS)
 
 m_inputparam.o: m_definitions.f90 m_elements.f90 m_warning.f90 m_atoms.f90 m_inputparam.f90 input_variables.f90 basis_path.f90 echo_input_variables.f90

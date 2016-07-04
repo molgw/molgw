@@ -39,6 +39,7 @@ program molgw
  use m_hamiltonian
  use m_hamiltonian_sca
  use m_hamiltonian_buffer
+ use m_selfenergy_tools
  implicit none
 
 !=====
@@ -378,23 +379,7 @@ program molgw
  ! for the forthcoming GW corrections
  if( calc_type%is_mp2_selfenergy .OR. calc_type%is_gw ) then
    allocate(exchange_m_vxc_diag(nstate,nspin))
-   exchange_m_vxc_diag(:,:) = 0.0_dp
-   do ispin=1,nspin
-     do istate=1,nstate
-
-        exchange_m_vxc_diag(istate,ispin) =  DOT_PRODUCT(  c_matrix(:,istate,ispin) , &
-                                                MATMUL( ( hamiltonian_exx(:,:,ispin) - hamiltonian_xc(:,:,ispin) ) , &
-                                                          c_matrix(:,istate,ispin) ) )
-
-!       do ibf=1,basis%nbf
-!         do jbf=1,basis%nbf
-!           exchange_m_vxc_diag(istate,ispin) = exchange_m_vxc_diag(istate,ispin) &
-!                   + c_matrix(ibf,istate,ispin) * ( hamiltonian_exx(ibf,jbf,ispin) - hamiltonian_xc(ibf,jbf,ispin) )&
-!                    * c_matrix(jbf,istate,ispin)
-!         enddo
-!       enddo
-     enddo
-   enddo
+   call setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham,occupation,c_matrix,hamiltonian_exx,hamiltonian_xc,exchange_m_vxc_diag)
  endif
 
  !
