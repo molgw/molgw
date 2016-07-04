@@ -144,7 +144,7 @@ subroutine find_qp_energy_graphical(nomegai,omegai,nsemin,nsemax,selfenergy_omeg
  ! Then overwrite the interesting energy with the calculated GW one
  do astate=nsemin,nsemax
 
-   if( MODULO(astate-nsemin,nproc) /= rank ) cycle
+   if( MODULO(astate-nsemin,nproc_world) /= rank_world ) cycle
 
    do aspin=1,nspin
      sigma_xc_m_vxc(:) = selfenergy_omega(:,astate,aspin) + exchange_m_vxc(astate,aspin)
@@ -162,7 +162,7 @@ subroutine find_qp_energy_graphical(nomegai,omegai,nsemin,nsemax,selfenergy_omeg
 
  enddo
 
- call xsum(energy_qp_g)
+ call xsum_world(energy_qp_g)
 
  energy_qp_g(:nsemin-1,:) = energy0(:nsemin-1,:)
  energy_qp_g(nsemax+1:,:) = energy0(nsemax+1:,:)

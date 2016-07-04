@@ -494,7 +494,7 @@ subroutine identify_negligible_shellpair(basis)
  real(dp)                     :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
- real(dp)                     :: workload(nproc)
+ real(dp)                     :: workload(nproc_world)
  integer                      :: shell_proc(nshell)
 !=====
 ! variables used to call C
@@ -527,7 +527,7 @@ subroutine identify_negligible_shellpair(basis)
  do jshell=1,nshell
    !
    ! Workload is distributed here
-   if( shell_proc(jshell) /= rank ) cycle
+   if( shell_proc(jshell) /= rank_world ) cycle
 
    amj = shell(jshell)%am
    nj  = number_basis_function_am( basis%gaussian_type , amj )

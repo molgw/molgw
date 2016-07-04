@@ -224,10 +224,10 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
 
  call start_clock(timing_hamiltonian_nuc)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian'
- if( nproc > 1 ) then
+ if( nproc_world > 1 ) then
    natom_local=0
    do iatom=1,natom
-     if( rank /= MODULO(iatom-1,nproc) ) cycle
+     if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
      natom_local = natom_local + 1
    enddo
    write(stdout,'(a)')         '   Parallelizing over atoms'
@@ -251,7 +251,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
      allocate(matrix_cart(ni_cart,nj_cart))
      matrix_cart(:,:) = 0.0_dp
      do iatom=1,natom
-       if( rank /= MODULO(iatom-1,nproc) ) cycle
+       if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
        do i_cart=1,ni_cart
          do j_cart=1,nj_cart
            call nucleus_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
@@ -277,7 +277,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
 
  !
  ! Reduce operation
- call xsum(hamiltonian_nucleus)
+ call xsum_world(hamiltonian_nucleus)
 
  title='===  Nucleus potential contribution ==='
  call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_nucleus)
@@ -1019,7 +1019,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities'
 
  do iatom=1,natom
-   if( rank /= MODULO(iatom,nproc) ) cycle
+   if( rank_auxil_grid /= MODULO(iatom,nproc_auxil_grid) ) cycle
 
    ngau = 4
    allocate(alpha(ngau),coeff(ngau))

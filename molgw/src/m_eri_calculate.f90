@@ -307,7 +307,7 @@ subroutine calculate_eri_2center(auxil_basis)
  real(dp),allocatable         :: integrals_tmp(:,:)
  real(dp),allocatable         :: integrals_cart(:,:)
  real(dp),allocatable         :: eigval(:)
- real(dp)                     :: workload(nproc)
+ real(dp)                     :: workload(nproc_world)
  integer,allocatable          :: shell_proc(:)
 !=====
 ! variables used to call C
@@ -355,7 +355,7 @@ subroutine calculate_eri_2center(auxil_basis)
  do kshell=1,nshell_auxil
 
    ! Parallelization over the shell index
-   if( shell_proc(kshell) /= rank ) cycle
+   if( shell_proc(kshell) /= rank_world ) cycle
 
    !
    ! Order the angular momenta so that libint is pleased
@@ -510,7 +510,7 @@ subroutine calculate_eri_2center(auxil_basis)
  enddo
 
  ! Sum up the contribution from the different procs
- call xsum(eri_2center_m1)
+ call xsum_world(eri_2center_m1)
 
 
  allocate(eigval(auxil_basis%nbf))
@@ -573,7 +573,7 @@ subroutine calculate_eri_3center(basis,auxil_basis)
  real(dp),allocatable         :: eri_3tmp(:,:,:)
  real(dp),allocatable         :: eri_2tmp(:,:)
  real(dp),allocatable         :: eri_tmp(:,:,:)
- real(dp)                     :: workload(nproc)
+ real(dp)                     :: workload(nproc_world)
  integer                      :: shell_proc(nshell_auxil)
 !=====
 ! variables used to call C
@@ -643,7 +643,7 @@ subroutine calculate_eri_3center(basis,auxil_basis)
 
      ! Use the distribution to avoid calculating all the integrals
      ! A summation is performed to propagate eri_3tmp to all processors
-     if( shell_proc(ishell) /= rank ) cycle
+     if( shell_proc(ishell) /= rank_world ) cycle
 
      ami = shell_auxil(ishell)%am
      ni = number_basis_function_am( auxil_basis%gaussian_type , ami )
@@ -850,7 +850,7 @@ subroutine calculate_eri_3center(basis,auxil_basis)
    call barrier()
 
    ! Parallelization over the auxiliary shell
-   call xsum(eri_3tmp)
+   call xsum_world(eri_3tmp)
 
    !
    ! Combine the 2-center integral with the 3-center here

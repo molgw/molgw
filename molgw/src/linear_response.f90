@@ -495,7 +495,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
    enddo
 
  enddo
- call xsum(residu)
+ call xsum_world(residu)
 
  deallocate(dipole_state)
 
@@ -580,7 +580,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
          coeff(chi%npole_reso_apb + t_ia_global) = 0.5_dp * ( xpy_matrix(t_ia,t_jb) - xmy_matrix(t_ia,t_jb) ) / SQRT(2.0_dp)
        endif
      enddo
-     call xsum(coeff)
+     call xsum_world(coeff)
      
 
      do t_ia_global=1,chi%npole_reso_apb
@@ -855,7 +855,7 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
      enddo
   
    enddo
-   call xsum(residu)
+   call xsum_world(residu)
   
    deallocate(gos_state)
 
@@ -1111,7 +1111,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,xpy_matrix,ei
  energy_gm = 0.5_dp * ( SUM( wpol%residu_left(:,:)**2 ) - spin_fact * SUM( eri_3center_mat(:,:)**2 ) )
  !
  ! Since wpol%residu_left and eri_3center_mat are distributed, we have to sum up
- call xsum(energy_gm)
+ call xsum_world(energy_gm)
 
  deallocate(eri_3center_mat)
 
@@ -1133,7 +1133,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,xpy_matrix,ei
      else
        xpy_block(:,:) = 0.0_dp
      endif
-     call xsum(xpy_block)
+     call xsum_world(xpy_block)
 
      do t_jb=1,n_xpy_block
        t_jb_global = colindex_local_to_global(ipcol,npcol_sd,t_jb)
@@ -1164,7 +1164,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,xpy_matrix,ei
  enddo
 
  energy_gm = energy_gm + 0.5_dp * ( SUM( wpol%residu_left(:,:)**2 ) )
- call xsum(energy_gm)
+ call xsum_world(energy_gm)
 
 
 #endif

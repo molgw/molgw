@@ -26,11 +26,39 @@ module m_mpi
  logical,parameter :: parallel_scalapack = .FALSE.
 #endif
 
- integer,private   :: comm_world
- integer,protected :: nproc  = 1
- integer,protected :: rank   = 0
+!===================================================
+! MPI distribution 
+!  Example: nproc_ortho = 2 x  nproc_auxil_grid = 8  = nproc_world = 16
+!
+! comm_world
+!                     rank_auxil_grid
+!                 0 |  1 |  2 |     |  7 
+! rank_ortho    ---------------------------
+!      0          0 |  2 |  4 | ... | 14 |-> comm_auxil_grid
+!      1          1 |  3 |  5 | ... | 15 |-> comm_auxil_grid
+!               ---------------------------
+!                 | |    |    | ... |  | |
+!                 v                    v
+!              comm_ortho           comm_ortho
+!===================================================
+
+ integer,private   :: comm_world             ! MPI_COMM_WORLD
+ integer,protected :: nproc_world  = 1       ! number of procs in the world communicator
+ integer,protected :: rank_world   = 0       ! index           in the world communicator
+
+ integer,private   :: comm_auxil_grid        ! communicator over auxiliary basis functions OR DFT grid points
+ integer,protected :: nproc_auxil_grid  = 1  ! number of procs in the auxil_grid communicator
+ integer,protected :: rank_auxil_grid   = 0  ! index           in the auxil_grid communicator
+
+ integer,private   :: comm_ortho             ! communicator over the rest (=ortho)
+ integer,protected :: nproc_ortho  = 1       ! number of procs in the ortho communicator
+ integer,protected :: rank_ortho   = 0       ! index           in the ortho communicator
+
  integer,private   :: iomaster = 0
  logical,protected :: is_iomaster = .TRUE.
+
+
+
 
  integer,private   :: comm_local
  integer,protected :: nproc_local  = 1
@@ -70,6 +98,29 @@ module m_mpi
  integer,allocatable,private :: task_fast_proc(:)    ! index of the processor working for this grid point
 ! integer,allocatable :: ntask_fast_proc(:)   ! number of grid points for each procressor
 ! integer,allocatable :: task_fast_number(:)  ! local index of the grid point
+
+
+
+ interface xmax_world
+   module procedure xmax_world_i
+ end interface
+ 
+ interface xsum_world
+   module procedure xsum_world_r
+   module procedure xsum_world_ra1d
+   module procedure xsum_world_ra2d
+   module procedure xsum_world_ra3d
+   module procedure xsum_world_ra4d
+   module procedure xsum_world_ca1d
+   module procedure xsum_world_ca4d
+ end interface
+
+ interface xbcast_world
+   module procedure xbcast_world_ra1d
+   module procedure xbcast_world_ra2d
+ end interface
+
+
 
  interface xbcast
    module procedure xbcast_ra1d
@@ -194,18 +245,48 @@ contains
 !=========================================================================
 subroutine init_mpi()
  implicit none
+
+!=====
+ integer :: color
  integer :: ier
 !=====
 
 #ifdef HAVE_MPI
  call MPI_INIT(ier)
- comm_world = MPI_COMM_WORLD
 
- call MPI_COMM_SIZE(comm_world,nproc,ier)
- call MPI_COMM_RANK(comm_world,rank,ier)
+ comm_world = MPI_COMM_WORLD
+ call MPI_COMM_SIZE(comm_world,nproc_world,ier)
+ call MPI_COMM_RANK(comm_world,rank_world,ier)
+
+ !
+ ! Set up auxil or grid communicator
+ !
+ nproc_auxil_grid = nproc_world / nproc_ortho
+
+ color = MODULO( rank_world , nproc_ortho )
+ call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_auxil_grid,ier);
+
+ call MPI_COMM_SIZE(comm_auxil_grid,nproc_auxil_grid,ier)
+ call MPI_COMM_RANK(comm_auxil_grid,rank_auxil_grid,ier)
+ if( nproc_auxil_grid /= nproc_world / nproc_ortho ) then
+   write(stdout,*) rank_world,color,nproc_auxil_grid,nproc_world,nproc_ortho
+   call die('Problem in init_mpi')
+ endif
+
+ !
+ ! Set up ortho communicator
+ !
+ nproc_ortho = nproc_world / nproc_auxil_grid
+
+ color = rank_world / nproc_ortho
+ call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_ortho,ier);
+ call MPI_COMM_RANK(comm_ortho,rank_ortho,ier)
+
+! write(stdout,*) '=FBFB',rank_world,rank_ortho,rank_auxil_grid
+
 #endif
 
- if( rank /= iomaster ) then
+ if( rank_world /= iomaster ) then
    is_iomaster = .FALSE.
    close(stdout)
    open(unit=stdout,file='/dev/null')
@@ -213,7 +294,7 @@ subroutine init_mpi()
 
 #ifdef HAVE_MPI
   write(stdout,'(/,a)')       ' ==== MPI info'
-  write(stdout,'(a50,x,i6)')  'Number of proc:',nproc
+  write(stdout,'(a50,x,i6)')  'Number of proc:',nproc_world
   write(stdout,'(a50,x,i6)')  'Master proc is:',iomaster
   write(stdout,'(a50,6x,l1)') 'Parallelize auxiliary basis:',parallel_auxil
   write(stdout,'(a50,6x,l1)')  'Parallelize XC grid points:',parallel_grid
@@ -253,7 +334,7 @@ subroutine barrier()
 !=====
 
 #ifdef HAVE_MPI
- call MPI_BARRIER(comm_world,ier)
+ call MPI_BARRIER(MPI_COMM_WORLD,ier)
 #endif
 
 end subroutine barrier
@@ -275,13 +356,13 @@ subroutine distribute_auxil_basis(nbf_auxil_basis,nbf_auxil_basis_local)
    ! Use nproc instead nproc_local
   
    allocate(iproc_ibf_auxil(nbf_auxil_basis))
-   allocate(nbf_local_iproc(0:nproc-1))
+   allocate(nbf_local_iproc(0:nproc_auxil_grid-1))
   
-   iproc              = nproc - 1
+   iproc              = nproc_auxil_grid - 1
    nbf_local_iproc(:) = 0
    do ibf=1,nbf_auxil_basis
   
-     iproc = MODULO(iproc+1,nproc)
+     iproc = MODULO(iproc+1,nproc_auxil_grid)
   
      iproc_ibf_auxil(ibf) = iproc
   
@@ -289,13 +370,13 @@ subroutine distribute_auxil_basis(nbf_auxil_basis,nbf_auxil_basis_local)
   
    enddo
   
-   nbf_auxil_basis_local = nbf_local_iproc(rank)
+   nbf_auxil_basis_local = nbf_local_iproc(rank_auxil_grid)
   
    allocate(ibf_auxil_g(nbf_auxil_basis_local))
    allocate(ibf_auxil_l(nbf_auxil_basis))
    ibf_local = 0
    do ibf=1,nbf_auxil_basis
-     if( rank == iproc_ibf_auxil(ibf) ) then
+     if( rank_auxil_grid == iproc_ibf_auxil(ibf) ) then
        ibf_local = ibf_local + 1
        ibf_auxil_g(ibf_local) = ibf
        ibf_auxil_l(ibf)       = ibf_local
@@ -357,13 +438,13 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis,nbf_auxil_basis_local)
 !=====
 
  allocate(iproc_ibf_auxil_lr(nbf_auxil_basis))
- allocate(nbf_local_iproc_lr(0:nproc-1))
+ allocate(nbf_local_iproc_lr(0:nproc_auxil_grid-1))
 
- iproc = nproc-1
+ iproc = nproc_auxil_grid-1
  nbf_local_iproc_lr(:) = 0
  do ibf=1,nbf_auxil_basis
 
-   iproc = MODULO(iproc+1,nproc)
+   iproc = MODULO(iproc+1,nproc_auxil_grid)
 
    iproc_ibf_auxil_lr(ibf) = iproc
 
@@ -371,13 +452,13 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis,nbf_auxil_basis_local)
 
  enddo
 
- nbf_auxil_basis_local = nbf_local_iproc_lr(rank)
+ nbf_auxil_basis_local = nbf_local_iproc_lr(rank_auxil_grid)
 
  allocate(ibf_auxil_g_lr(nbf_auxil_basis_local))
  allocate(ibf_auxil_l_lr(nbf_auxil_basis))
  ibf_local = 0
  do ibf=1,nbf_auxil_basis
-   if( rank == iproc_ibf_auxil_lr(ibf) ) then
+   if( rank_auxil_grid == iproc_ibf_auxil_lr(ibf) ) then
      ibf_local = ibf_local + 1
      ibf_auxil_g_lr(ibf_local) = ibf
      ibf_auxil_l_lr(ibf)       = ibf_local
@@ -402,7 +483,7 @@ subroutine init_dft_grid_distribution(ngrid)
  ngrid_mpi = ngrid
 
  if( parallel_buffer ) then
-   if( nproc > 1 .AND. parallel_grid ) then
+   if( nproc_auxil_grid > 1 .AND. parallel_grid ) then
      write(stdout,'(/,a)') ' Initializing the distribution of the quadrature grid points'
    endif
  else
@@ -414,7 +495,7 @@ subroutine init_dft_grid_distribution(ngrid)
  call distribute_grid_workload()
 
  if( parallel_buffer ) then
-   ngrid = ntask_grid_proc(rank)
+   ngrid = ntask_grid_proc(rank_auxil_grid)
  else
    ngrid = ntask_grid_proc(rank_local)
  endif
@@ -442,7 +523,7 @@ function is_my_grid_task(igrid)
 !=====
  
  if( parallel_buffer ) then
-   is_my_grid_task = ( rank       == task_grid_proc(igrid) )
+   is_my_grid_task = ( rank_auxil_grid == task_grid_proc(igrid) )
  else
    is_my_grid_task = ( rank_local == task_grid_proc(igrid) )
  endif
@@ -514,7 +595,7 @@ subroutine distribute_grid_workload()
  else
 
    allocate(task_grid_proc(ngrid_mpi))
-   allocate(ntask_grid_proc(0:nproc-1))
+   allocate(ntask_grid_proc(0:nproc_auxil_grid-1))
    allocate(task_grid_number(ngrid_mpi))
   
    if( parallel_grid) then
@@ -522,17 +603,17 @@ subroutine distribute_grid_workload()
      write(stdout,'(/,a)') ' Distributing the grid among procs'
      
      ntask_grid_proc(:) = 0
-     max_grid_per_proc = CEILING( DBLE(ngrid_mpi)/DBLE(nproc) )
+     max_grid_per_proc = CEILING( DBLE(ngrid_mpi)/DBLE(nproc_auxil_grid) )
      write(stdout,*) 'Maximum number of grid points for a single proc',max_grid_per_proc
   
      iproc_local=0
      do igrid=1,ngrid_mpi
   
-       iproc_local = MODULO(igrid-1,nproc)
+       iproc_local = MODULO(igrid-1,nproc_auxil_grid)
   
        !
        ! A simple check to avoid unexpected surprises
-       if( iproc_local < 0 .OR. iproc_local >= nproc ) then
+       if( iproc_local < 0 .OR. iproc_local >= nproc_auxil_grid ) then
          call die('error in the distribution')
        endif
   
@@ -544,16 +625,16 @@ subroutine distribute_grid_workload()
      task_grid_number(:)=0
      igrid_current=0
      do igrid=1,ngrid_mpi
-       if( rank == task_grid_proc(igrid) ) then
+       if( rank_auxil_grid == task_grid_proc(igrid) ) then
          igrid_current = igrid_current + 1 
          task_grid_number(igrid) = igrid_current
        endif
      enddo
   
-     if( nproc > 1 ) then
+     if( nproc_auxil_grid > 1 ) then
        write(stdout,'(/,a)') ' Distribute work load among procs'
-       write(stdout,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ngrid_mpi,dp) / REAL(nproc,dp)
-       write(stdout,'(a,i6,a,i10)') ' proc # , grid points',rank,' , ',ntask_grid_proc(rank)
+       write(stdout,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ngrid_mpi,dp) / REAL(nproc_auxil_grid,dp)
+       write(stdout,'(a,i6,a,i10)') ' proc # , grid points',rank_auxil_grid,' , ',ntask_grid_proc(rank_auxil_grid)
      endif
   
    else
@@ -561,7 +642,7 @@ subroutine distribute_grid_workload()
      ! if parallel_grid is false,
      ! faking the code with trivial values
      ntask_grid_proc(:) = ngrid_mpi
-     task_grid_proc(:)  = rank
+     task_grid_proc(:)  = rank_auxil_grid
      do igrid=1,ngrid_mpi
        task_grid_number(igrid) = igrid
      enddo
@@ -571,17 +652,6 @@ subroutine distribute_grid_workload()
 
 
 end subroutine distribute_grid_workload
-
-
-!=========================================================================
-function get_ntask()
- implicit none
- integer :: get_ntask
-!=====
-
- get_ntask = ntask_proc(rank)
-
-end function get_ntask
 
 
 !=========================================================================
@@ -597,7 +667,7 @@ subroutine xbcast_ra1d(iproc,array)
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
- call MPI_BCAST(array,n1,MPI_DOUBLE_PRECISION,iproc,comm_world,ier)
+ call MPI_BCAST(array,n1,MPI_DOUBLE_PRECISION,iproc,comm_auxil_grid,ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -620,7 +690,7 @@ subroutine xbcast_ra2d(iproc,array)
  n2 = SIZE( array, DIM=2 )
 
 #ifdef HAVE_MPI
- call MPI_BCAST(array,n1*n2,MPI_DOUBLE_PRECISION,iproc,comm_world,ier)
+ call MPI_BCAST(array,n1*n2,MPI_DOUBLE_PRECISION,iproc,comm_auxil_grid,ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -641,7 +711,7 @@ subroutine xand_l(logical_variable)
  n1 = 1
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, logical_variable, n1, MPI_LOGICAL, MPI_LAND, comm_world, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, logical_variable, n1, MPI_LOGICAL, MPI_LAND, comm_auxil_grid, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -662,7 +732,7 @@ subroutine xand_la1d(logical_array)
  n1 = SIZE(logical_array,DIM=1)
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, logical_array, n1, MPI_LOGICAL, MPI_LAND, comm_world, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, logical_array, n1, MPI_LOGICAL, MPI_LAND, comm_auxil_grid, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -684,7 +754,7 @@ subroutine xand_la2d(logical_array)
  n2 = SIZE(logical_array,DIM=2)
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, logical_array, n1*n2, MPI_LOGICAL, MPI_LAND, comm_world, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, logical_array, n1*n2, MPI_LOGICAL, MPI_LAND, comm_auxil_grid, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -705,7 +775,7 @@ subroutine xmin_i(integer_number)
  n1 = 1
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER, MPI_MIN, comm_world, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER, MPI_MIN, comm_auxil_grid, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -726,7 +796,7 @@ subroutine xmax_i(integer_number)
  n1 = 1
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER, MPI_MAX, comm_world, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER, MPI_MAX, comm_auxil_grid, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -747,7 +817,7 @@ subroutine xmax_r(real_number)
  n1 = 1
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE, MPI_MAX, comm_world, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE, MPI_MAX, comm_auxil_grid, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -769,7 +839,7 @@ subroutine xmax_ia2d(array)
  n2 = SIZE( array, DIM=2 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_INTEGER, MPI_MAX, comm_world, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_INTEGER, MPI_MAX, comm_auxil_grid, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -790,7 +860,7 @@ subroutine xmax_ra1d(array)
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE, MPI_MAX, comm_world, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE, MPI_MAX, comm_auxil_grid, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -843,7 +913,73 @@ end subroutine xtrans_max_ia2d
 
 
 !=========================================================================
-subroutine xsum_r(real_number)
+subroutine xbcast_world_ra1d(iproc,array)
+ implicit none
+ integer,intent(in)     :: iproc
+ real(dp),intent(inout) :: array(:)
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+
+#ifdef HAVE_MPI
+ call MPI_BCAST(array,n1,MPI_DOUBLE_PRECISION,iproc,comm_world,ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xbcast_world_ra1d
+
+
+!=========================================================================
+subroutine xbcast_world_ra2d(iproc,array)
+ implicit none
+ integer,intent(in)     :: iproc
+ real(dp),intent(inout) :: array(:,:)
+!=====
+ integer :: n1,n2
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+
+#ifdef HAVE_MPI
+ call MPI_BCAST(array,n1*n2,MPI_DOUBLE_PRECISION,iproc,comm_world,ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xbcast_world_ra2d
+
+
+!=========================================================================
+subroutine xmax_world_i(integer_number)
+ implicit none
+ integer,intent(inout) :: integer_number
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = 1
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER, MPI_MAX, comm_world, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xmax_world_i
+
+
+!=========================================================================
+subroutine xsum_world_r(real_number)
  implicit none
  real(dp),intent(inout) :: real_number
 !=====
@@ -855,6 +991,162 @@ subroutine xsum_r(real_number)
 
 #ifdef HAVE_MPI
  call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE_PRECISION, MPI_SUM, comm_world, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xsum_world_r
+
+
+!=========================================================================
+subroutine xsum_world_ra1d(array)
+ implicit none
+ real(dp),intent(inout) :: array(:)
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_PRECISION, MPI_SUM, comm_world, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xsum_world_ra1d
+
+
+!=========================================================================
+subroutine xsum_world_ra2d(array)
+ implicit none
+ real(dp),intent(inout) :: array(:,:)
+!=====
+ integer :: n1,n2
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, comm_world, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xsum_world_ra2d
+
+
+!=========================================================================
+subroutine xsum_world_ra3d(array)
+ implicit none
+ real(dp),intent(inout) :: array(:,:,:)
+!=====
+ integer :: n1,n2,n3
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+ n3 = SIZE( array, DIM=3 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3, MPI_DOUBLE_PRECISION, MPI_SUM, comm_world, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xsum_world_ra3d
+
+
+!=========================================================================
+subroutine xsum_world_ra4d(array)
+ implicit none
+ real(dp),intent(inout) :: array(:,:,:,:)
+!=====
+ integer :: n1,n2,n3,n4
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+ n3 = SIZE( array, DIM=3 )
+ n4 = SIZE( array, DIM=4 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3*n4, MPI_DOUBLE_PRECISION, MPI_SUM, comm_world, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xsum_world_ra4d
+
+
+!=========================================================================
+subroutine xsum_world_ca1d(array)
+ implicit none
+ complex(dpc),intent(inout) :: array(:)
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_COMPLEX, MPI_SUM, comm_world, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xsum_world_ca1d
+
+
+!=========================================================================
+subroutine xsum_world_ca4d(array)
+ implicit none
+ complex(dpc),intent(inout) :: array(:,:,:,:)
+!=====
+ integer :: n1,n2,n3,n4
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+ n3 = SIZE( array, DIM=3 )
+ n4 = SIZE( array, DIM=4 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3*n4, MPI_DOUBLE_COMPLEX, MPI_SUM, comm_world, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xsum_world_ca4d
+
+
+!=========================================================================
+subroutine xsum_r(real_number)
+ implicit none
+ real(dp),intent(inout) :: real_number
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = 1
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE_PRECISION, MPI_SUM, comm_auxil_grid, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -875,7 +1167,7 @@ subroutine xsum_ra1d(array)
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_PRECISION, MPI_SUM, comm_world, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_PRECISION, MPI_SUM, comm_auxil_grid, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -897,7 +1189,7 @@ subroutine xsum_ra2d(array)
  n2 = SIZE( array, DIM=2 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, comm_world, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, comm_auxil_grid, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -920,7 +1212,7 @@ subroutine xsum_ra3d(array)
  n3 = SIZE( array, DIM=3 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3, MPI_DOUBLE_PRECISION, MPI_SUM, comm_world, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3, MPI_DOUBLE_PRECISION, MPI_SUM, comm_auxil_grid, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -944,7 +1236,7 @@ subroutine xsum_ra4d(array)
  n4 = SIZE( array, DIM=4 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3*n4, MPI_DOUBLE_PRECISION, MPI_SUM, comm_world, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3*n4, MPI_DOUBLE_PRECISION, MPI_SUM, comm_auxil_grid, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -965,7 +1257,7 @@ subroutine xsum_ca1d(array)
  n1 = SIZE( array, DIM=1 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_COMPLEX, MPI_SUM, comm_world, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_COMPLEX, MPI_SUM, comm_auxil_grid, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -987,7 +1279,7 @@ subroutine xsum_ca2d(array)
  n2 = SIZE( array, DIM=2 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_COMPLEX, MPI_SUM, comm_world, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_COMPLEX, MPI_SUM, comm_auxil_grid, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -1011,7 +1303,7 @@ subroutine xsum_ca4d(array)
  n4 = SIZE( array, DIM=4 )
 
 #ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3*n4, MPI_DOUBLE_COMPLEX, MPI_SUM, comm_world, ier)
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3*n4, MPI_DOUBLE_COMPLEX, MPI_SUM, comm_auxil_grid, ier)
 #endif
  if(ier/=0) then
    write(stdout,*) 'error in mpi_allreduce'
@@ -1034,10 +1326,10 @@ subroutine xsum_procindex_ra2d(iproc,array)
  n2 = SIZE( array, DIM=2 )
 
 #ifdef HAVE_MPI
- if( rank == iproc ) then
-   call MPI_REDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, iproc, comm_world, ier)
+ if( rank_auxil_grid == iproc ) then
+   call MPI_REDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, iproc, comm_auxil_grid, ier)
  else
-   call MPI_REDUCE( array, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, iproc, comm_world, ier)
+   call MPI_REDUCE( array, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, iproc, comm_auxil_grid, ier)
  endif
 #endif
  if(ier/=0) then
@@ -1291,15 +1583,15 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 
    nprow_ham = scalapack_nprow
    npcol_ham = scalapack_npcol
-   if( nprow_ham * npcol_ham > nproc ) call die('SCALAPACK manual distribution asks for too many processors')
+   if( nprow_ham * npcol_ham > nproc_auxil_grid ) call die('SCALAPACK manual distribution asks for too many processors')
 
    call BLACS_GET( -1, 0, cntxt_ham )
    call BLACS_GRIDINIT( cntxt_ham, 'R', nprow_ham, npcol_ham )
    call BLACS_GRIDINFO( cntxt_ham, nprow_ham, npcol_ham, iprow_ham, ipcol_ham )
 
    ! Propagate the scalapack grid to all processors
-   call xmax(nprow_ham)
-   call xmax(npcol_ham)
+   call xmax_world(nprow_ham)
+   call xmax_world(npcol_ham)
 
 
    if( cntxt_ham > 0 ) then
@@ -1312,7 +1604,7 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
    allocate(rank_ham_sca_to_mpi(0:nprow_ham-1,0:npcol_ham-1))
    rank_ham_sca_to_mpi(:,:) = -1
    if( iprow_ham >= 0 .AND. ipcol_ham >= 0 ) &
-     rank_ham_sca_to_mpi(iprow_ham,ipcol_ham) = rank
+     rank_ham_sca_to_mpi(iprow_ham,ipcol_ham) = rank_auxil_grid
    call xmax(rank_ham_sca_to_mpi)
 
    write(stdout,'(/,a)')           ' ==== SCALAPACK Hamiltonian'
@@ -1320,8 +1612,8 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
    write(stdout,'(a50,x,i8,x,i8)')   'Grid of dedicated processors:',nprow_ham,npcol_ham
 
    ! Distribute the remaing procs for auxiliary basis and grid points
-   color = MODULO( rank , nprow_ham * npcol_ham )
-   call MPI_COMM_SPLIT(comm_world,color,rank,comm_local,ier);
+   color = MODULO( rank_auxil_grid , nprow_ham * npcol_ham )
+   call MPI_COMM_SPLIT(comm_auxil_grid,color,rank_auxil_grid,comm_local,ier);
    call MPI_COMM_SIZE(comm_local,nproc_local,ier)
    call MPI_COMM_RANK(comm_local,rank_local,ier)
 
@@ -1334,9 +1626,9 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 
 
    ! Define the transversal communicator
-   color = rank / ( nprow_ham * npcol_ham )
+   color = rank_auxil_grid / ( nprow_ham * npcol_ham )
 
-   call MPI_COMM_SPLIT(comm_world,color,rank,comm_trans,ier);
+   call MPI_COMM_SPLIT(comm_auxil_grid,color,rank_auxil_grid,comm_trans,ier);
    call MPI_COMM_SIZE(comm_trans,nproc_trans,ier)
    call MPI_COMM_RANK(comm_trans,rank_trans,ier)
 
@@ -1348,7 +1640,7 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 
  else
 
-   if( rank == 0 ) then
+   if( rank_auxil_grid == 0 ) then
      cntxt_ham = 1
    else
      cntxt_ham = -1
@@ -1360,9 +1652,9 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
    m_ham = nbf
    n_ham = nbf
 
-   comm_local  = comm_world
-   nproc_local = nproc
-   rank_local  = rank
+   comm_local  = comm_auxil_grid
+   nproc_local = nproc_auxil_grid
+   rank_local  = rank_auxil_grid
 
    comm_trans  = MPI_COMM_SELF
    nproc_trans = 1

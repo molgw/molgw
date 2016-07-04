@@ -236,7 +236,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
 
      do ipole=1,wpol%npole_reso
 
-       if( rank /= MODULO(ipole-1,nproc) ) cycle
+       if( rank_world /= MODULO(ipole-1,nproc_world) ) cycle
 
        select case(gwmethod)
 
@@ -410,10 +410,10 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
 
  ! Sum up the contribution from different poles (= different procs)
  if( ALLOCATED(selfenergy_omega) ) then
-   call xsum(selfenergy_omega)
+   call xsum_world(selfenergy_omega)
  endif
  if( ALLOCATED(selfenergy_omegac) ) then
-   call xsum(selfenergy_omegac)
+   call xsum_world(selfenergy_omegac)
  endif
 
 

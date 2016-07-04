@@ -73,7 +73,6 @@ subroutine gather_distributed_copy(desc,matrix,matrix_global)
  integer              :: contxt
  integer              :: mlocal,nlocal,mglobal,nglobal
  integer              :: ilocal,jlocal,iglobal,jglobal
- integer              :: rank_master
 !=====
 
  contxt = desc(2)
@@ -368,11 +367,11 @@ subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix_global,eigval)
 
    ! Find the master
    if( iprow == 0 .AND. ipcol == 0 ) then
-     rank_master = rank
+     rank_master = rank_world
    else
      rank_master = -1
    endif
-   call xmax(rank_master)
+   call xmax_world(rank_master)
 
    !
    ! Participate to the diagonalization only if the CPU has been selected 
@@ -398,8 +397,8 @@ subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix_global,eigval)
    endif
 
    ! Then the master proc (0,0) broadcasts to all the others
-   call xbcast(rank_master,matrix_global)
-   call xbcast(rank_master,eigval)
+   call xbcast_world(rank_master,matrix_global)
+   call xbcast_world(rank_master,eigval)
 
 
  else ! Only one SCALAPACK proc
@@ -478,11 +477,11 @@ subroutine product_abc_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix,
   
    ! Find the master
    if( iprow == 0 .AND. ipcol == 0 ) then
-     rank_master = rank
+     rank_master = rank_world
    else
      rank_master = -1
    endif
-   call xmax(rank_master)
+   call xmax_world(rank_master)
   
    !
    ! Participate to the diagonalization only if the CPU has been selected 
@@ -549,7 +548,7 @@ subroutine product_abc_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix,
    endif
   
    ! Then the master proc (0,0) broadcasts to all the others
-   call xbcast(rank_master,d_matrix)
+   call xbcast_world(rank_master,d_matrix)
 
 
  else ! Only one SCALAPACK proc
@@ -641,11 +640,11 @@ subroutine product_transaba_scalapack(scalapack_block_min,a_matrix,b_matrix,c_ma
   
    ! Find the master
    if( iprow == 0 .AND. ipcol == 0 ) then
-     rank_master = rank
+     rank_master = rank_world
    else
      rank_master = -1
    endif
-   call xmax(rank_master)
+   call xmax_world(rank_master)
   
    !
    ! Participate to the diagonalization only if the CPU has been selected 
@@ -703,7 +702,7 @@ subroutine product_transaba_scalapack(scalapack_block_min,a_matrix,b_matrix,c_ma
    endif
   
    ! Then the master proc (0,0) broadcasts to all the others
-   call xbcast(rank_master,c_matrix)
+   call xbcast_world(rank_master,c_matrix)
 
 
  else ! Only one SCALAPACK proc

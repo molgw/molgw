@@ -199,7 +199,8 @@ m_scf.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_t
 m_selfenergy_tools.o: m_definitions.f90 m_warning.f90 m_inputparam.f90 m_mpi.f90 m_basis_set.f90 m_dft_grid.f90 m_selfenergy_tools.f90
 	$(FC_W_OPTS) -c m_selfenergy_tools.f90 $(LIBXC_INCS)
 
-m_inputparam.o: m_definitions.f90 m_elements.f90 m_warning.f90 m_atoms.f90 m_inputparam.f90 input_variables.f90 basis_path.f90 echo_input_variables.f90
+m_inputparam.o: m_definitions.f90 m_mpi.f90  m_elements.f90 m_warning.f90 m_atoms.f90 input_variables.f90 basis_path.f90 echo_input_variables.f90 \
+             m_inputparam.f90
 	$(FC_W_OPTS) -c m_inputparam.f90 $(LIBXC_INCS)
 
 m_block_diago.o: m_definitions.f90 m_warning.f90 m_memory.f90 m_mpi.f90 m_tools.f90 m_scalapack.f90 m_block_diago.f90
@@ -208,7 +209,7 @@ m_block_diago.o: m_definitions.f90 m_warning.f90 m_memory.f90 m_mpi.f90 m_tools.
 m_atoms.o: m_definitions.f90 m_warning.f90 m_elements.f90 m_atoms.f90
 	$(FC_W_OPTS) -c m_atoms.f90 $(LIBXC_INCS)
 
-m_scalapack.o: m_definitions.f90 m_warning.f90 m_tools.f90 m_scalapack.f90
+m_scalapack.o: m_definitions.f90 m_warning.f90 m_tools.f90 m_mpi.f90  m_scalapack.f90
 	$(FC_W_OPTS) -c m_scalapack.f90 $(LIBXC_INCS)
 
 m_mpi.o: m_definitions.f90 m_warning.f90 m_mpi.f90

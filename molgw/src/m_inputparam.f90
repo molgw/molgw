@@ -798,15 +798,15 @@ subroutine read_inputfile_namelist()
    call die('Please provide MOLGW with an auxiliary basis set')
  endif
 
- if( .NOT. has_auxil_basis .AND. nproc > 1 ) then
+ if( .NOT. has_auxil_basis .AND. nproc_world > 1 ) then
    write(stdout,*) 'Parallelization is not available without an auxiliary basis'
    call die('Please run with one CPU only or provide MOLGW with an auxiliary basis')
  endif
- if( scalapack_nprow * scalapack_npcol > nproc ) then
+ if( scalapack_nprow * scalapack_npcol > nproc_world ) then
    write(stdout,'(x,a,i4,a,i4)') 'The requested number of processors in the SCALAPACK grid: ',scalapack_nprow,' x ',scalapack_npcol
-   write(stdout,'(x,a,i5)') 'is larger than the number of total processors: ',nproc
-   scalapack_nprow = FLOOR( SQRT( REAL(nproc,dp) ) )
-   scalapack_npcol = nproc / scalapack_nprow
+   write(stdout,'(x,a,i5)') 'is larger than the number of total processors: ',nproc_world
+   scalapack_nprow = FLOOR( SQRT( REAL(nproc_world,dp) ) )
+   scalapack_npcol = nproc_world / scalapack_nprow
    write(stdout,'(x,a,i4,a,i4)') 'Continue with a reduced SCALAPACK grid: ',scalapack_nprow,' x ',scalapack_npcol
    write(ctmp,'(a,i4,a,i4)') 'scalapack_nprow or scalapack_npcol was decreased automatically to ',scalapack_nprow,' x ',scalapack_npcol
    call issue_warning(ctmp)

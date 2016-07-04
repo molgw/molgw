@@ -160,7 +160,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
        wp0_i(nsemin:nsemax) = MATMUL( w0_local(:) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
        call xsum(wp0_i)
 
-       if( iproc_ibf_auxil(ibf_auxil_global) == rank ) then
+       if( iproc_ibf_auxil(ibf_auxil_global) == rank_auxil_grid ) then
          wp0(ibf_auxil_l(ibf_auxil_global),:) = wp0_i(:)
        endif
 
@@ -489,7 +489,7 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
        wp0_i(nsemin:nsemax) = MATMUL( w0_local(:) , eri_3center_eigen_lr(:,nsemin:nsemax,istate,ispin) )
        call xsum(wp0_i)
 
-       if( iproc_ibf_auxil(ibf_auxil_global) == rank ) then
+       if( iproc_ibf_auxil(ibf_auxil_global) == rank_auxil_grid ) then
          wp0(ibf_auxil_l(ibf_auxil_global),:) = wp0_i(:)
        endif
 

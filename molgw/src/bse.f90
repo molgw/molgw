@@ -137,7 +137,7 @@ subroutine build_amb_apb_common(desc_apb,nmat,nbf,nstate,c_matrix,energy,wpol,al
          if( t_ia_global == t_jb_global ) then
            !
            ! Only one proc should add the diagonal
-           if( rank == 0 ) then
+           if( rank_auxil_grid == 0 ) then
              apb_block(t_ia,t_jb) =  apb_block(t_ia,t_jb) + ( energy(bstate,jbspin) - energy(jstate,jbspin) )
              amb_block(t_ia,t_jb) =  amb_block(t_ia,t_jb) + ( energy(bstate,jbspin) - energy(jstate,jbspin) )
            endif
@@ -790,7 +790,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
          enddo
          call xsum(wp0_i)
   
-         if( iproc_ibf_auxil(ibf_auxil_global) == rank ) then
+         if( iproc_ibf_auxil(ibf_auxil_global) == rank_auxil_grid ) then
            wp0(ibf_auxil_l(ibf_auxil_global),:,:,iaspin) = wp0_i(:,:)
          endif
   
@@ -805,7 +805,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
       
        do ibf_auxil=1,nauxil_2center
       
-         if( iproc_ibf_auxil(ibf_auxil) == rank ) then
+         if( iproc_ibf_auxil(ibf_auxil) == rank_auxil_grid ) then
            residu_i(:) = wpol_static%residu_left(ibf_auxil_l(ibf_auxil),:)
          else
            residu_i(:) = 0.0_dp
@@ -825,7 +825,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
          enddo
          call xsum(wp0_i)
       
-         if( iproc_ibf_auxil(ibf_auxil) == rank ) then
+         if( iproc_ibf_auxil(ibf_auxil) == rank_auxil_grid ) then
            wp0(ibf_auxil_l(ibf_auxil),:,:,iaspin) = wp0_i(:,:)
          endif
       

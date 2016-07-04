@@ -74,7 +74,7 @@ subroutine static_polarizability(nstate,basis,occupation,energy,wpol_out)
 
 
    do jbf_auxil=1,nauxil_2center
-     if( MODULO( jbf_auxil , nproc ) /= rank ) cycle 
+     if( MODULO( jbf_auxil , nproc_auxil_grid ) /= rank_auxil_grid ) cycle 
      vsqchi0vsq(:,jbf_auxil) = vsqchi0vsq(:,jbf_auxil) &
           + eri_3center_ij(:) * eri_3center_ij(jbf_auxil) * denom
    enddo
@@ -171,7 +171,7 @@ subroutine dynamical_polarizability(nstate,basis,occupation,energy,omega,wpol_in
 
 
    do jbf_auxil=1,nauxil_2center
-     if( MODULO( jbf_auxil , nproc ) /= rank ) cycle 
+     if( MODULO( jbf_auxil , nproc_auxil_grid ) /= rank_auxil_grid ) cycle 
      vsqchi0vsqm1(:,jbf_auxil) = vsqchi0vsqm1(:,jbf_auxil) &
           + eri_3center_ij(:) * eri_3center_ij(jbf_auxil) * denom
    enddo

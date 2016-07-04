@@ -497,7 +497,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  ! Then overwrite the interesting energy with the calculated GW one
  do astate=nsemin,nsemax
 
-   if( MODULO(astate-nsemin,nproc) /= rank ) cycle
+   if( MODULO(astate-nsemin,nproc_world) /= rank_world ) cycle
 
    zz_a(:) = ( selfenergy_omega(1,astate,1,:) - selfenergy_omega(-1,astate,1,:) ) / ( omegai(1) - omegai(-1) )
    zz_a(:) = 1.0_dp / ( 1.0_dp - zz_a(:) )
@@ -520,9 +520,9 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
    energy_qp_new(astate,:) = energy_qp_omega(:) 
  enddo
 
- call xsum(zz)
- call xsum(energy_qp_z)
- call xsum(energy_qp_new)
+ call xsum_world(zz)
+ call xsum_world(energy_qp_z)
+ call xsum_world(energy_qp_new)
 
  energy_qp_new(:nsemin-1,:) = energy(:nsemin-1,:)
  energy_qp_new(nsemax+1:,:) = energy(nsemax+1:,:)

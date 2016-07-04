@@ -189,7 +189,7 @@ subroutine broadcast_hamiltonian_sca(m_ham,n_ham,matrix_local)
 
 #else
 
- buffer(:,:) = buffer(:,:) / REAL( nproc , dp )
+ buffer(:,:) = buffer(:,:) / REAL( nprow_ham * npcol_ham, dp )
  if( cntxt_ham > 0 ) then
    do jlocal=1,n_ham
      jglobal = colindex_local_to_global('H',jlocal)
@@ -241,10 +241,10 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK buffer'
 
 
- if( nproc > 1 ) then
+ if( nproc_world > 1 ) then
    natom_local=0
    do iatom=1,natom
-     if( rank /= MODULO(iatom-1,nproc) ) cycle
+     if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
      natom_local = natom_local + 1
    enddo
    write(stdout,'(a)')         '   Parallelizing over atoms'
@@ -269,7 +269,7 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
      allocate(matrix_cart(ni_cart,nj_cart))
      matrix_cart(:,:) = 0.0_dp
      do iatom=1,natom
-       if( rank /= MODULO(iatom-1,nproc) ) cycle
+       if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
        do i_cart=1,ni_cart
          do j_cart=1,nj_cart
            call nucleus_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
@@ -804,7 +804,7 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
 
  buffer(:,:) = 0.0_dp
  do iatom=1,natom
-   if( rank /= MODULO(iatom-1,nproc) ) cycle
+   if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
 
    ngau = 4
    allocate(alpha(ngau),coeff(ngau))
