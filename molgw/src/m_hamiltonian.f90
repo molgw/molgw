@@ -472,7 +472,7 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
  call start_clock(timing_exchange)
 
- exchange_ij(:,:,:)=0.0_dp
+ exchange_ij(:,:,:) = 0.0_dp
 
  allocate(tmp(nauxil_3center,nbf))
 
@@ -480,6 +480,7 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
 
    do istate=1,nbf
      if( p_matrix_occ(istate,ispin) < completely_empty)  cycle
+     if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle
 
      tmp(:,:) = 0.0_dp
      do ipair=1,npair
@@ -507,7 +508,7 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
  enddo
  deallocate(tmp)
 
- call xsum_auxil(exchange_ij)
+ call xsum_world(exchange_ij)
 
  eexchange = 0.5_dp*SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
 
@@ -540,7 +541,7 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_s
  call start_clock(timing_exchange)
 
 
- exchange_ij(:,:,:)=0.0_dp
+ exchange_ij(:,:,:) = 0.0_dp
 
  allocate(tmp(nauxil_3center_lr,nbf))
 
@@ -548,6 +549,7 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_s
 
    do istate=1,nbf
      if( p_matrix_occ(istate,ispin) < completely_empty)  cycle
+     if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle
 
      tmp(:,:) = 0.0_dp
      do ipair=1,npair
@@ -575,7 +577,7 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_s
  enddo
  deallocate(tmp)
 
- call xsum_auxil(exchange_ij)
+ call xsum_world(exchange_ij)
 
  call dump_out_matrix(print_matrix_,'=== LR Exchange contribution ===',nbf,nspin,exchange_ij)
 
