@@ -34,7 +34,7 @@ function eri_eigen_ri(istate,jstate,ijspin,kstate,lstate,klspin)
 
  eri_eigen_ri = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,ijspin) , eri_3center_eigen(:,kstate,lstate,klspin) )
 
- call xsum(eri_eigen_ri)
+ call xsum_auxil(eri_eigen_ri)
 
 end function eri_eigen_ri
 

@@ -280,9 +280,9 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
  !
  ! Sum up the contributions from all procs only if needed
  if( parallel_grid ) then
-   call xsum(normalization)
-   call xsum(vxc_ij)
-   call xsum(exc_xc)
+   call xsum_grid(normalization)
+   call xsum_grid(vxc_ij)
+   call xsum_grid(exc_xc)
  endif
 
 ! !

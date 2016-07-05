@@ -150,10 +150,13 @@ subroutine build_amb_apb_common(desc_apb,nmat,nbf,nstate,c_matrix,energy,wpol,al
      enddo 
 
 
-#ifdef HAVE_SCALAPACK
-     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,amb_block,m_apb_block,iprow,ipcol)
-     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,apb_block,m_apb_block,iprow,ipcol)
-#endif
+!FBFB
+!#ifdef HAVE_SCALAPACK
+!     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,amb_block,m_apb_block,iprow,ipcol)
+!     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,apb_block,m_apb_block,iprow,ipcol)
+!#endif
+     call xsum(amb_block)
+     call xsum(apb_block)
 
      if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
        amb_matrix(:,:) = amb_block(:,:)
@@ -167,7 +170,7 @@ subroutine build_amb_apb_common(desc_apb,nmat,nbf,nstate,c_matrix,energy,wpol,al
  enddo 
 
 #ifdef HAVE_SCALAPACK
- call xsum(rpa_correlation)
+ call xsum_world(rpa_correlation)
 #endif
 
  !
@@ -269,12 +272,15 @@ subroutine get_rpa_correlation(nmat,wpol,m_apb,n_apb,amb_matrix,apb_matrix,rpa_c
 
    ! If the diagonal element belongs to this proc, then add it.
    if( t_ia > 0 .AND. t_jb > 0 ) then
+     write(999,'(4(i4,x),f12.6,x,f12.6)') rank_world,rank_ortho,rank_auxil_grid,t_jb_global,apb_matrix(t_ia,t_jb),amb_matrix(t_ia,t_jb) ! FBFB
      rpa_correlation = rpa_correlation - 0.25_dp * apb_matrix(t_ia,t_jb)   &
                                        - 0.25_dp * amb_matrix(t_ia,t_jb) 
    endif
  enddo
 
- call xsum(rpa_correlation)
+ write(1000+rank_world,*) rank_world,rank_ortho,rank_auxil_grid,rpa_correlation    !FBFB
+ call xsum_world(rpa_correlation)
+ write(1000+rank_world,*) rank_world,rank_ortho,rank_auxil_grid,rpa_correlation    !FBFB
 
 
 end subroutine get_rpa_correlation
@@ -365,9 +371,7 @@ subroutine build_apb_hartree_auxil(desc_apb,wpol,m_apb,n_apb,apb_matrix)
      
      deallocate(eri_3center_left,eri_3center_right)
 
-#ifdef HAVE_SCALAPACK
-     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,apb_block,m_apb_block,iprow,ipcol)
-#endif
+     call xsum(apb_block)
 
      if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
        apb_matrix(:,:) = apb_matrix(:,:) + apb_block(:,:)
@@ -561,7 +565,7 @@ subroutine build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_ap
 
      !
      ! real-space integration grid is distributed, one needs to sum contributions here
-     call xsum(apb_block)
+     call xsum_world(apb_block)
 
      if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
        apb_matrix(:,:) = apb_matrix(:,:) + apb_block(:,:)
@@ -905,10 +909,13 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
      enddo
 
 
-#ifdef HAVE_SCALAPACK
-     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,amb_block,m_apb_block,iprow,ipcol)
-     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,apb_block,m_apb_block,iprow,ipcol)
-#endif
+!FBFB
+!#ifdef HAVE_SCALAPACK
+!     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,amb_block,m_apb_block,iprow,ipcol)
+!     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,apb_block,m_apb_block,iprow,ipcol)
+!#endif
+     call xsum(amb_block)
+     call xsum(apb_block)
 
      if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
        amb_matrix(:,:) = amb_matrix(:,:) + amb_block(:,:)

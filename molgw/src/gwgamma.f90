@@ -318,7 +318,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
          ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
          bra(:,kcstate)     = MATMUL( wpol%residu_left(:,spole) , eri_3center_eigen(:,:,kcstate,ispin) )
        enddo
-       call xsum(bra)
+       call xsum_auxil(bra)
   
   
        !==========================

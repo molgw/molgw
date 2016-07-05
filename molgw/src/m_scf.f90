@@ -296,9 +296,9 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
      a_matrix_hist(1,1:nhist_current) = 0.0_dp
      a_matrix_hist(1:nhist_current,1) = 0.0_dp
    endif
-   call xsum(a_matrix_hist(1,1))
-   call xsum(a_matrix_hist(1,2:nhist_current))
-   call xsum(a_matrix_hist(2:nhist_current,1))
+   call xsum_world(a_matrix_hist(1,1))
+   call xsum_world(a_matrix_hist(1,2:nhist_current))
+   call xsum_world(a_matrix_hist(2:nhist_current,1))
 
  else
 
@@ -404,7 +404,7 @@ function check_converged(p_matrix_old,p_matrix_new)
    else
      rms = 0.0_dp
    endif
-   call xsum(rms)
+   call xsum_world(rms)
  else
    rms = NORM2( p_matrix_new(:,:,:) - p_matrix_old(:,:,:) )**2
  endif

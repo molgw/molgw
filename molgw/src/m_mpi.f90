@@ -99,8 +99,10 @@ module m_mpi
 ! integer,allocatable :: ntask_fast_proc(:)   ! number of grid points for each procressor
 ! integer,allocatable :: task_fast_number(:)  ! local index of the grid point
 
-
-
+ !
+ ! Interfaces for high-level MPI reduce operations
+ ! "world" series
+ !
  interface xmax_world
    module procedure xmax_world_i
  end interface
@@ -120,8 +122,17 @@ module m_mpi
    module procedure xbcast_world_ra2d
  end interface
 
+ interface xand_world
+   module procedure xand_world_l
+   module procedure xand_world_la1d
+   module procedure xand_world_la2d
+ end interface
 
 
+ !
+ ! Interfaces for high-level MPI reduce operations
+ ! auxil or grid series
+ !
  interface xbcast
    module procedure xbcast_ra1d
    module procedure xbcast_ra2d
@@ -163,6 +174,32 @@ module m_mpi
    module procedure xsum_ca4d
    module procedure xsum_procindex_ra2d
  end interface
+
+ interface xsum_auxil
+   module procedure xsum_r
+   module procedure xsum_ra1d
+   module procedure xsum_ra2d
+   module procedure xsum_ra3d
+   module procedure xsum_ra4d
+   module procedure xsum_ca1d
+   module procedure xsum_ca2d
+   module procedure xsum_ca4d
+   module procedure xsum_procindex_ra2d
+ end interface
+
+ interface xsum_grid
+   module procedure xsum_r
+   module procedure xsum_ra1d
+   module procedure xsum_ra2d
+   module procedure xsum_ra3d
+   module procedure xsum_ra4d
+   module procedure xsum_ca1d
+   module procedure xsum_ca2d
+   module procedure xsum_ca4d
+   module procedure xsum_procindex_ra2d
+ end interface
+
+
 
  interface xlocal_sum
    module procedure xlocal_sum_ra2d
@@ -261,6 +298,9 @@ subroutine init_mpi()
  !
  ! Set up auxil or grid communicator
  !
+ open(unit=1234,status='old')
+ read(1234,*) nproc_ortho
+ close(1234)
  nproc_auxil_grid = nproc_world / nproc_ortho
 
  color = MODULO( rank_world , nproc_ortho )
@@ -958,6 +998,70 @@ end subroutine xbcast_world_ra2d
 
 
 !=========================================================================
+subroutine xand_world_l(logical_variable)
+ implicit none
+ logical,intent(inout) :: logical_variable
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = 1
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, logical_variable, n1, MPI_LOGICAL, MPI_LAND, comm_world, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xand_world_l
+
+
+!=========================================================================
+subroutine xand_world_la1d(logical_array)
+ implicit none
+ logical,intent(inout) :: logical_array(:)
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = SIZE(logical_array,DIM=1)
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, logical_array, n1, MPI_LOGICAL, MPI_LAND, comm_world, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xand_world_la1d
+
+
+!=========================================================================
+subroutine xand_world_la2d(logical_array)
+ implicit none
+ logical,intent(inout) :: logical_array(:,:)
+!=====
+ integer :: n1,n2
+ integer :: ier=0
+!=====
+
+ n1 = SIZE(logical_array,DIM=1)
+ n2 = SIZE(logical_array,DIM=2)
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, logical_array, n1*n2, MPI_LOGICAL, MPI_LAND, comm_world, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xand_world_la2d
+
+
+!=========================================================================
 subroutine xmax_world_i(integer_number)
  implicit none
  integer,intent(inout) :: integer_number
@@ -1640,7 +1744,7 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 
  else
 
-   if( rank_auxil_grid == 0 ) then
+   if( rank_world == 0 ) then
      cntxt_ham = 1
    else
      cntxt_ham = -1
@@ -1665,7 +1769,11 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 #else
 
  ! Fake values
- cntxt_ham = 1
+ if( rank_world == 0 ) then
+   cntxt_ham = 1
+ else
+   cntxt_ham = -1
+ endif
  nprow_ham = 1
  npcol_ham = 1
  iprow_ham = 0

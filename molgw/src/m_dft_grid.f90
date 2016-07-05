@@ -320,8 +320,8 @@ subroutine init_dft_grid(grid_level_in)
  deallocate(x1,y1,z1,w1)
  deallocate(x2,y2,z2,w2)
 
- call xsum(rr_grid_tmp)
- call xsum(w_grid_tmp)
+ call xsum_world(rr_grid_tmp)
+ call xsum_world(w_grid_tmp)
 
 
  ! Denombrate the number of non-negligible weight in the quadrature

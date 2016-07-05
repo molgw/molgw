@@ -264,7 +264,7 @@ function eri_ri(ibf,jbf,kbf,lbf)
   
    eri_ri = DOT_PRODUCT( eri_3center(:,index_ij) , eri_3center(:,index_kl) )
 
-   call xsum(eri_ri)
+   call xsum_auxil(eri_ri)
 
  endif
 
@@ -288,7 +288,7 @@ function eri_ri_lr(ibf,jbf,kbf,lbf)
 
    eri_ri_lr = DOT_PRODUCT( eri_3center_lr(:,index_ij) , eri_3center_lr(:,index_kl) )
 
-   call xsum(eri_ri_lr)
+   call xsum_auxil(eri_ri_lr)
 
  endif
 
@@ -685,7 +685,7 @@ subroutine identify_negligible_shellpair(basis)
    enddo
  enddo
 
- call xand(negligible_shellpair)
+ call xand_world(negligible_shellpair)
 
  call stop_clock(timing_eri_screening)
 

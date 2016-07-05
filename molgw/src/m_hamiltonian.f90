@@ -387,7 +387,7 @@ subroutine setup_hartree_ri(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
 
  !
  ! Sum up the different contribution from different procs only if needed
- call xsum(hartree_ij)
+ call xsum_auxil(hartree_ij)
 
 
  title='=== Hartree contribution ==='
@@ -507,7 +507,7 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
  enddo
  deallocate(tmp)
 
- call xsum(exchange_ij)
+ call xsum_auxil(exchange_ij)
 
  eexchange = 0.5_dp*SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
 
@@ -575,7 +575,7 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_s
  enddo
  deallocate(tmp)
 
- call xsum(exchange_ij)
+ call xsum_auxil(exchange_ij)
 
  call dump_out_matrix(print_matrix_,'=== LR Exchange contribution ===',nbf,nspin,exchange_ij)
 
@@ -1081,9 +1081,9 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  enddo ! loop on the grid point
  !
  ! Sum up the contributions from all procs only if needed
- call xsum(normalization)
- call xsum(exc)
- call xsum(vhxc_ij)
+ call xsum_auxil(normalization)
+ call xsum_auxil(exc)
+ call xsum_auxil(vhxc_ij)
 
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization
  write(stdout,  '(a,2(2x,f12.6))') '      XC energy (Ha):',exc
@@ -1186,10 +1186,10 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix,energy_ref,c_matr
      do cstate=nocc+1,nstate
 
        do astate=nocc+1,nstate
-         eri_ci_i(astate) = eri_eigen_ri(cstate,istate,ispin,astate,istate,ispin) &
+         eri_ci_i(astate) = eri_eigen_ri_paral(cstate,istate,ispin,astate,istate,ispin) &
                               / ( energy(istate,ispin) + energy(istate,ispin) - energy(astate,ispin) - energy(cstate,ispin) )
        enddo
-       call xsum(eri_ci_i)
+       call xsum_auxil(eri_ci_i)
 
        do bstate=nocc+1,nstate
          do astate=nocc+1,nstate
