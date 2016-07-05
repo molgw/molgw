@@ -770,8 +770,8 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
 
 
  ! Poor man distribution TODO replace by a broadcast
- call xsum(energy)
- call xsum(c_matrix)
+ call xsum_world(energy)
+ call xsum_world(c_matrix)
 
 #else
 
@@ -1135,8 +1135,8 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  enddo ! loop on the grid point
  !
  ! Sum up the contributions from all procs only if needed
- call xsum(normalization)
- call xsum(exc)
+ call xsum_world(normalization)
+ call xsum_world(exc)
  call xlocal_sum(vhxc_ij)
 
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization

@@ -14,7 +14,7 @@
 !=========================================================================
 module m_scalapack
  use m_definitions
- use m_warning,only: die,issue_warning
+ use m_warning
  use m_tools,only: diagonalize
  use m_mpi
 #ifdef HAVE_MPI
@@ -619,10 +619,22 @@ subroutine product_transaba_scalapack(scalapack_block_min,a_matrix,b_matrix,c_ma
  mmat1 = SIZE( c_matrix , DIM=1)
  mmat2 = SIZE( c_matrix , DIM=2)
 
- if( mmat1 /= mmat ) call die('Dimension error in product_transaba_scalapack')
- if( mmat2 /= mmat ) call die('Dimension error in product_transaba_scalapack')
- if( kmat1 /= kmat ) call die('Dimension error in product_transaba_scalapack')
- if( kmat2 /= kmat ) call die('Dimension error in product_transaba_scalapack')
+ if( mmat1 /= mmat ) then
+   write(msg,*) 'mmat1 /= mmat',mmat1,mmat
+   call die('Dimension error in product_transaba_scalapack'//msg)
+ endif
+ if( mmat2 /= mmat ) then
+   write(msg,*) 'mmat2 /= mmat',mmat2,mmat
+   call die('Dimension error in product_transaba_scalapack'//msg)
+ endif
+ if( kmat1 /= kmat ) then
+   write(msg,*) 'kmat1 /= kmat',kmat1,kmat
+   call die('Dimension error in product_transaba_scalapack'//msg)
+ endif
+ if( kmat2 /= kmat ) then
+   write(msg,*) 'kmat2 /= kmat',kmat2,kmat
+   call die('Dimension error in product_transaba_scalapack'//msg)
+ endif
 
 
 #ifdef HAVE_SCALAPACK

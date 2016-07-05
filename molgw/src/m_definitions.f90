@@ -15,7 +15,7 @@ module m_definitions
 
  integer,parameter  :: prec_eri=dp
 
- integer,parameter  :: stdout = OUTPUT_UNIT
+ integer,protected  :: stdout = OUTPUT_UNIT
  integer,parameter  :: stderr = ERROR_UNIT
 
 
@@ -54,6 +54,25 @@ module m_definitions
  integer,parameter ::          BIG_RESTART = 2
  integer,parameter ::        BASIS_RESTART = 3
  integer,parameter :: EMPTY_STATES_RESTART = 4
+
+
+contains
+
+
+subroutine set_standard_output(unit_stdout)
+ implicit none 
+ integer,intent(in) :: unit_stdout
+!=====
+!=====
+
+ if( unit_stdout /= OUTPUT_UNIT ) then
+   close(OUTPUT_UNIT)
+   stdout = unit_stdout
+   open(unit=stdout)
+ endif
+
+
+end subroutine set_standard_output
 
 
 end module m_definitions

@@ -126,8 +126,8 @@ subroutine scf_loop(is_restart,&
      en%kin  = 0.0_dp
      en%nuc  = 0.0_dp
    endif
-   call xsum_world(en%kin)
-   call xsum_world(en%nuc)
+   call xtrans_sum(en%kin)
+   call xtrans_sum(en%nuc)
 
    !
    ! Setup kinetic and nucleus contributions (that are independent of the
@@ -387,8 +387,12 @@ subroutine scf_loop(is_restart,&
      call write_restart(SMALL_RESTART,basis,nstate,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
    endif
 
+   write(1000+rank_world,*) 'FBFB I AM HERE  001',rank_world
+   call flush(1000+rank_world)
    ! Damping of the density matrix p_matrix
    call simple_mixing_p_matrix(p_matrix_old,p_matrix)
+   write(1000+rank_world,*) 'FBFB I AM HERE  002',rank_world
+   call flush(1000+rank_world)
    
  !
  ! end of the big SCF loop

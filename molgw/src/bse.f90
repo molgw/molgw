@@ -272,15 +272,15 @@ subroutine get_rpa_correlation(nmat,wpol,m_apb,n_apb,amb_matrix,apb_matrix,rpa_c
 
    ! If the diagonal element belongs to this proc, then add it.
    if( t_ia > 0 .AND. t_jb > 0 ) then
-     write(999,'(4(i4,x),f12.6,x,f12.6)') rank_world,rank_ortho,rank_auxil_grid,t_jb_global,apb_matrix(t_ia,t_jb),amb_matrix(t_ia,t_jb) ! FBFB
+!     write(999,'(4(i4,x),f12.6,x,f12.6)') rank_world,rank_ortho,rank_auxil_grid,t_jb_global,apb_matrix(t_ia,t_jb),amb_matrix(t_ia,t_jb) ! FBFB
      rpa_correlation = rpa_correlation - 0.25_dp * apb_matrix(t_ia,t_jb)   &
                                        - 0.25_dp * amb_matrix(t_ia,t_jb) 
    endif
  enddo
 
- write(1000+rank_world,*) rank_world,rank_ortho,rank_auxil_grid,rpa_correlation    !FBFB
+! write(1000+rank_world,*) rank_world,rank_ortho,rank_auxil_grid,rpa_correlation    !FBFB
  call xsum_world(rpa_correlation)
- write(1000+rank_world,*) rank_world,rank_ortho,rank_auxil_grid,rpa_correlation    !FBFB
+! write(1000+rank_world,*) rank_world,rank_ortho,rank_auxil_grid,rpa_correlation    !FBFB
 
 
 end subroutine get_rpa_correlation

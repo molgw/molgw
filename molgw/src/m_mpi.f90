@@ -95,9 +95,6 @@ module m_mpi
  integer,allocatable,private :: ntask_grid_proc(:)   ! number of grid points for each procressor
  integer,allocatable,private :: task_grid_number(:)  ! local index of the grid point
 
- integer,allocatable,private :: task_fast_proc(:)    ! index of the processor working for this grid point
-! integer,allocatable :: ntask_fast_proc(:)   ! number of grid points for each procressor
-! integer,allocatable :: task_fast_number(:)  ! local index of the grid point
 
  !
  ! Interfaces for high-level MPI reduce operations
@@ -322,15 +319,21 @@ subroutine init_mpi()
  call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_ortho,ier);
  call MPI_COMM_RANK(comm_ortho,rank_ortho,ier)
 
-! write(stdout,*) '=FBFB',rank_world,rank_ortho,rank_auxil_grid
 
 #endif
 
+#ifndef DEBUG
  if( rank_world /= iomaster ) then
    is_iomaster = .FALSE.
    close(stdout)
    open(unit=stdout,file='/dev/null')
  endif
+#else
+ if( rank_world /= iomaster ) then
+   is_iomaster = .FALSE.
+   call set_standard_output(2000+rank_world)
+ endif
+#endif
 
 #ifdef HAVE_MPI
   write(stdout,'(/,a)')       ' ==== MPI info'
@@ -1437,7 +1440,7 @@ subroutine xsum_procindex_ra2d(iproc,array)
  endif
 #endif
  if(ier/=0) then
-   write(stdout,*) 'error in mpi_allreduce'
+   write(stdout,*) 'error in mpi_reduce'
  endif
 
 end subroutine xsum_procindex_ra2d
@@ -1744,11 +1747,10 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 
  else
 
-   if( rank_world == 0 ) then
-     cntxt_ham = 1
-   else
-     cntxt_ham = -1
-   endif
+   !
+   ! Hamiltonian and C matrix are NOT distributed with SCALAPACK
+   !
+   cntxt_ham = 1
    nprow_ham = 1
    npcol_ham = 1
    iprow_ham = 0
@@ -1756,9 +1758,9 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
    m_ham = nbf
    n_ham = nbf
 
-   comm_local  = comm_auxil_grid
-   nproc_local = nproc_auxil_grid
-   rank_local  = rank_auxil_grid
+   comm_local  = comm_world
+   nproc_local = nproc_world
+   rank_local  = rank_world
 
    comm_trans  = MPI_COMM_SELF
    nproc_trans = 1
