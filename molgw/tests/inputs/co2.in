@@ -5,6 +5,9 @@
 
  postscf='gw'
  frozencore='yes'
+ print_sigma='yes'
+ selfenergy_state_min=11
+ selfenergy_state_max=12
 
  basis='6-31G'
  gaussian_type='cart'
