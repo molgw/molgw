@@ -470,13 +470,18 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
  allocate(selfenergy_omega_gw(-nomegai:nomegai,nsemin:nsemax,1,nspin))
 
- open(newunit=selfenergyfile,file='g0w0.dat',status='old',form='unformatted')
- do ispin=1,nspin
-   do astate=nsemin,nsemax
-     read(selfenergyfile) selfenergy_omega_gw(:,astate,1,ispin)
+ if( is_iomaster ) then
+   open(newunit=selfenergyfile,file='g0w0.dat',status='old',form='unformatted')
+   do ispin=1,nspin
+     do astate=nsemin,nsemax
+       read(selfenergyfile) selfenergy_omega_gw(:,astate,1,ispin)
+     enddo
    enddo
- enddo
- close(selfenergyfile,status='delete')
+   close(selfenergyfile,status='delete')
+ else
+   selfenergy_omega_gw(:,:,:,:) = 0.0_dp
+ endif
+ call xsum_world(selfenergy_omega_gw)
 
 
  forall(astate=nsemin:nsemax)

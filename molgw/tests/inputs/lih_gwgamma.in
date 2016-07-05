@@ -1,0 +1,17 @@
+&molgw
+  scf='PBE0'
+
+  postscf='G0W0GAMMA0'
+  selfenergy_state_range=0
+
+  basis='cc-pVTZ'
+  auxil_basis='cc-pVTZ-RI'
+  no_4center='yes'
+
+  mpi_nproc_ortho=2
+
+  natom=2
+/
+3           .000000     .000000     .410000
+1           .000000     .000000   -1.230000
+

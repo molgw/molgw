@@ -387,12 +387,8 @@ subroutine scf_loop(is_restart,&
      call write_restart(SMALL_RESTART,basis,nstate,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
    endif
 
-   write(1000+rank_world,*) 'FBFB I AM HERE  001',rank_world
-   call flush(1000+rank_world)
    ! Damping of the density matrix p_matrix
    call simple_mixing_p_matrix(p_matrix_old,p_matrix)
-   write(1000+rank_world,*) 'FBFB I AM HERE  002',rank_world
-   call flush(1000+rank_world)
    
  !
  ! end of the big SCF loop

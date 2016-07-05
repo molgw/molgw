@@ -13,6 +13,8 @@
  nomega_sigma=21
  step_sigma=0.01
 
+ mpi_nproc_ortho=2
+
  natom=2
 /
 7            .000000     .000000     .564990

@@ -278,9 +278,7 @@ subroutine get_rpa_correlation(nmat,wpol,m_apb,n_apb,amb_matrix,apb_matrix,rpa_c
    endif
  enddo
 
-! write(1000+rank_world,*) rank_world,rank_ortho,rank_auxil_grid,rpa_correlation    !FBFB
  call xsum_world(rpa_correlation)
-! write(1000+rank_world,*) rank_world,rank_ortho,rank_auxil_grid,rpa_correlation    !FBFB
 
 
 end subroutine get_rpa_correlation
