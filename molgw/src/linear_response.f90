@@ -538,7 +538,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
          endif
        endif
      enddo
-     call xmax(t_ia_global)
+     call xmax_world(t_ia_global)
      if( t_ia_global == 0 ) cycle
 
      istate = chi%transition_table_apb(1,t_ia_global)

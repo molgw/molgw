@@ -54,6 +54,7 @@ module m_timing
  integer,parameter :: timing_sca_distr2          = 35
  integer,parameter :: timing_fno                 = 36
  integer,parameter :: timing_full_ci             = 37
+ integer,parameter :: timing_gwgamma             = 38
  
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -199,11 +200,11 @@ subroutine output_timing()
  write(stdout,'(a32,4x,f12.2,2x,i8)') '               Build W' ,timing(timing_buildw),calls(timing_buildw)
  write(stdout,'(a32,4x,f12.2,2x,i8)') '      Optical spectrum' ,timing(timing_spectrum),calls(timing_spectrum)
  write(stdout,*)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'GW self-energy'  ,timing(timing_self),calls(timing_self)
- write(stdout,*)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'MP2 energy'      ,timing(timing_mp2_energy),calls(timing_mp2_energy)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'MP2 self-energy' ,timing(timing_mp2_self),calls(timing_mp2_self)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'Full CI for 2e'  ,timing(timing_full_ci),calls(timing_full_ci)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'GW self-energy'     ,timing(timing_self),calls(timing_self)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'MP2 self-energy'    ,timing(timing_mp2_self),calls(timing_mp2_self)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'GWGamma self-energy',timing(timing_gwgamma),calls(timing_gwgamma)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'MP2 energy'         ,timing(timing_mp2_energy),calls(timing_mp2_energy)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'Full CI for 2e'     ,timing(timing_full_ci),calls(timing_full_ci)
 
  write(stdout,*)
  write(stdout,'(a)') '                 -------------------------------------'

@@ -239,7 +239,7 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
    enddo
  enddo
  if(require_gradient) then
-   call xmax(max_v2sigma2)
+   call xmax_world(max_v2sigma2)
    write(stdout,'(a,e18.6)') ' Maximum numerical value for fxc: ',max_v2sigma2
 
    allocate(grad_ij(3,ngrid,nspin))

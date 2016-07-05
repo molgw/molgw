@@ -60,11 +60,11 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  integer               :: selfenergyfile
  integer               :: info
  real(dp)              :: pole_s
-! logical,parameter     :: tddft_kernel = .FALSE.
- logical,parameter     :: tddft_kernel = .TRUE.
+ logical,parameter     :: tddft_kernel = .FALSE.
+! logical,parameter     :: tddft_kernel = .TRUE.
 !=====
 
- call start_clock(timing_self)
+ call start_clock(timing_gwgamma)
 
  write(stdout,*)
  select case(gwmethod)
@@ -148,6 +148,8 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
    !==========================
    do kstate=ncore_G+1,nvirtual_G-1
      if( occupation(kstate,ispin) / spin_fact < completely_empty ) cycle
+     if( MODULO( kstate-(ncore_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+
      do istate=ncore_G+1,nvirtual_G-1
        if( occupation(istate,ispin) / spin_fact < completely_empty ) cycle
        do bstate=ncore_G+1,nvirtual_G-1
@@ -183,11 +185,11 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
      enddo
    enddo
 
-   write(*,*) '========================================================' !FBFB
-
    !==========================
    do cstate=ncore_G+1,nvirtual_G-1
      if( (spin_fact - occupation(cstate,ispin)) / spin_fact < completely_empty) cycle
+     if( MODULO( cstate-(ncore_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+
      do jstate=ncore_G+1,nvirtual_G-1
        if( occupation(jstate,ispin) / spin_fact < completely_empty ) cycle
        do astate=ncore_G+1,nvirtual_G-1
@@ -223,9 +225,10 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
      enddo
    enddo
 
-   write(*,*) '========================================================' !FBFB
 
  enddo
+
+ call xsum_ortho(selfenergy_omega_sox)
 
 #else
 
@@ -308,10 +311,11 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
   
    do ispin=1,nspin
   
-!$OMP PARALLEL DO PRIVATE(vcoul,bra,pole_s) REDUCTION(+:selfenergy_omega_gamma)
      do spole=1,wpol%npole_reso
   
+       if( MODULO( spole - 1 , nproc_ortho ) /= rank_ortho ) cycle
        write(stdout,*) 'SOSEX W poles:',spole,' / ',wpol%npole_reso
+
        pole_s = wpol%pole(spole)
   
        do kcstate=1,nstate
@@ -455,8 +459,9 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
   
   
      enddo !spole
-!$OMP END PARALLEL DO
    enddo !ispin
+
+   call xsum_ortho(selfenergy_omega_gamma)
 
  endif
 
@@ -585,7 +590,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
    call destroy_tddft()
  endif
 
- call stop_clock(timing_self)
+ call stop_clock(timing_gwgamma)
 
 
 end subroutine gwgamma_selfenergy

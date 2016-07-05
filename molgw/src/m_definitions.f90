@@ -59,6 +59,7 @@ module m_definitions
 contains
 
 
+!=========================================================================
 subroutine set_standard_output(unit_stdout)
  implicit none 
  integer,intent(in) :: unit_stdout
@@ -75,7 +76,6 @@ subroutine set_standard_output(unit_stdout)
 end subroutine set_standard_output
 
 
+!=========================================================================
 end module m_definitions
-
-
 !=========================================================================

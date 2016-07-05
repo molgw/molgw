@@ -877,8 +877,8 @@ subroutine calculate_eri_3center_lr(basis,auxil_basis,rcut)
 
    enddo
 
-   call barrier()
-   call barrier()
+   call barrier_world()
+   call barrier_world()
 
    ! Parallelization over the auxiliary shell
    call xsum_world(eri_3tmp)

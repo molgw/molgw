@@ -35,6 +35,7 @@ all:
 	+make  prepare_sourcecode
 	+make  level000
 	+make  level005
+	+make  level008
 	+make  level010
 	+make  level015
 	+make  level020
@@ -48,6 +49,8 @@ all:
 level000: m_definitions.o libint_wrapper.o lebedev_quadrature.o pdbssolver1.o
 
 level005: m_warning.o m_gos.o
+
+level008: m_mpi_world.o m_mpi_auxil_grid.o m_mpi_ortho.o 
 
 level010: m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o
 
@@ -73,9 +76,9 @@ level040: mp2_selfenergy.o linear_response.o static_polarizability.o gw.o gwgamm
 
 ../molgw: m_definitions.o libint_wrapper.o lebedev_quadrature.o pdbssolver1.o \
         m_warning.o m_gos.o \
+        m_mpi_world.o m_mpi_auxil_grid.o m_mpi_ortho.o \
         m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o \
-        m_scalapack.o \
-        m_atoms.o m_gaussian.o m_block_diago.o \
+        m_scalapack.o m_atoms.o m_gaussian.o m_block_diago.o \
         m_basis_set.o \
         m_inputparam.o \
         m_eri.o m_scf.o m_dft_grid.o m_selfenergy_tools.o \
@@ -83,7 +86,9 @@ level040: mp2_selfenergy.o linear_response.o static_polarizability.o gw.o gwgamm
         m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o mp2_selfenergy.o \
         linear_response.o static_polarizability.o gw.o gwgamma.o cohsex.o bse.o dft_xc.o io.o mp2.o scf_loop.o molgw.o
 	$(FC_W_OPTS) \
-                        m_definitions.o m_warning.o m_elements.o m_mpi.o m_scalapack.o m_timing.o m_memory.o m_inputparam.o m_tools.o m_scf.o m_selfenergy_tools.o m_atoms.o \
+                        m_definitions.o m_warning.o m_elements.o m_mpi.o m_mpi_world.o m_mpi_auxil_grid.o  m_mpi_ortho.o \
+                        m_scalapack.o m_timing.o m_memory.o m_inputparam.o \
+                        m_tools.o m_scf.o m_selfenergy_tools.o m_atoms.o \
                         m_gos.o m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o m_tddft_fxc.o \
                         m_spectral_function.o \
                         libint_wrapper.o lebedev_quadrature.o mp2_selfenergy.o \
@@ -96,7 +101,7 @@ level040: mp2_selfenergy.o linear_response.o static_polarizability.o gw.o gwgamm
                         $(LIBINT) $(LIBINT_INCS) \
                         $(LINKS)
 
-molgw.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
+molgw.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_mpi_world.o m_mpi_auxil_grid.o  m_warning.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
   m_gos.f90 m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_eri_calculate.f90 m_eri_lr_calculate.f90 m_eri_ao_mo.o \
   m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.o m_selfenergy_tools.o \
   molgw.f90
@@ -111,11 +116,11 @@ cohsex.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90
       m_inputparam.f90 m_selfenergy_tools.f90 cohsex.f90
 	$(FC_W_OPTS) -c cohsex.f90 $(LIBXC_INCS)
 
-gwgamma.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
+gwgamma.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
       m_inputparam.f90 m_tddft_fxc.f90 m_selfenergy_tools.f90 gwgamma.f90
 	$(FC_W_OPTS) -c gwgamma.f90 $(LIBXC_INCS)
 
-gw.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
+gw.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
       m_inputparam.f90 m_selfenergy_tools.f90 gw.f90
 	$(FC_W_OPTS) -c gw.f90 $(LIBXC_INCS)
 
@@ -149,8 +154,8 @@ io.o: my_machine.arch m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_sc
 mp2.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_mpi.f90 m_basis_set.f90 m_eri.f90 mp2.f90 
 	$(FC_W_OPTS) -c mp2.f90 $(LIBXC_INCS)
 
-mp2_selfenergy.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 m_spectral_function.f90 m_inputparam.f90 \
-                  m_selfenergy_tools.f90 mp2_selfenergy.f90
+mp2_selfenergy.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 \
+                  m_spectral_function.f90 m_inputparam.f90 m_selfenergy_tools.f90 mp2_selfenergy.f90
 	$(FC_W_OPTS) -c mp2_selfenergy.f90 $(LIBXC_INCS)
 
 pdbssolver1.o: pdbssolver1.f
@@ -212,7 +217,16 @@ m_atoms.o: m_definitions.f90 m_warning.f90 m_elements.f90 m_atoms.f90
 m_scalapack.o: m_definitions.f90 m_warning.f90 m_tools.f90 m_mpi.f90  m_scalapack.f90
 	$(FC_W_OPTS) -c m_scalapack.f90 $(LIBXC_INCS)
 
-m_mpi.o: m_definitions.f90 m_warning.f90 m_mpi.f90
+m_mpi_world.o: m_definitions.f90 m_warning.f90 m_mpi_world.f90
+	$(FC_W_OPTS) -c m_mpi_world.f90 $(LIBXC_INCS)
+
+m_mpi_ortho.o: m_definitions.f90 m_warning.f90 m_mpi_ortho.f90
+	$(FC_W_OPTS) -c m_mpi_ortho.f90 $(LIBXC_INCS)
+
+m_mpi_auxil_grid.o: m_definitions.f90 m_warning.f90 m_mpi_auxil_grid.f90
+	$(FC_W_OPTS) -c m_mpi_auxil_grid.f90 $(LIBXC_INCS)
+
+m_mpi.o: m_definitions.f90 m_warning.f90 m_mpi_world.f90 m_mpi_auxil_grid.f90 m_mpi_ortho.f90 m_mpi.f90
 	$(FC_W_OPTS) -c m_mpi.f90 $(LIBXC_INCS)
 
 m_tools.o: m_definitions.f90 m_warning.f90 m_tools.f90

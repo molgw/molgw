@@ -688,7 +688,7 @@ subroutine setup_bf_radius(basis)
    enddo
  enddo
 
- call xmax(bf_rad2)
+ call xmax_grid(bf_rad2)
 
 ! Output the radii
 ! do ibf=1,basis%nbf

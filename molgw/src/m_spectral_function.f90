@@ -67,11 +67,6 @@ module m_spectral_function
 
  integer,protected :: nvirtual_SPA
 
- !
- ! the boring small complex number eta: (0.0_dp,0.001_dp) is typically over converged
- ! Having a larger ieta value smoothen the oscillation far from the HOMO-LUMO gap
- complex(dp),protected :: ieta
-
 
 contains
 
@@ -112,8 +107,6 @@ subroutine init_spectral_function(nstate,occupation,sf)
  integer                               :: ijspin,istate,jstate,itrans,jtrans
  logical                               :: file_exists
 !=====
-
- ieta = (0.0_dp,1.0_dp) * pole_eta 
 
  ncore_W      = ncorew
  nvirtual_W   = MIN(nvirtualw,nstate+1)

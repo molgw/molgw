@@ -206,6 +206,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  do ispin=1,nspin
    do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
 
+     if( MODULO( istate -(ncore_G+1) , nproc_ortho) /= rank_ortho ) cycle
 
      !
      ! Prepare the bra and ket with the knowledge of index istate and astate
@@ -236,7 +237,6 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
 
      do ipole=1,wpol%npole_reso
 
-       if( rank_world /= MODULO(ipole-1,nproc_world) ) cycle
 
        select case(gwmethod)
 
@@ -410,10 +410,10 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
 
  ! Sum up the contribution from different poles (= different procs)
  if( ALLOCATED(selfenergy_omega) ) then
-   call xsum_world(selfenergy_omega)
+   call xsum_ortho(selfenergy_omega)
  endif
  if( ALLOCATED(selfenergy_omegac) ) then
-   call xsum_world(selfenergy_omegac)
+   call xsum_ortho(selfenergy_omegac)
  endif
 
 

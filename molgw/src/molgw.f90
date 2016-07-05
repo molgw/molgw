@@ -77,7 +77,7 @@ program molgw
 #endif
 !=============================
 
- call init_mpi()
+ call init_mpi_world()
 
  call init_scalapack()
  !
@@ -97,6 +97,9 @@ program molgw
  !
  ! Reading input file: the input parameters are stored in the module m_inputparam
  call read_inputfile_namelist()
+
+ ! Finalize the MPI initialization
+ call init_mpi_details(mpi_nproc_ortho)
 
  !
  ! Nucleus-nucleus repulsion contribution to the energy

@@ -628,6 +628,16 @@ nprow X npcol should be lower or equal to the number of processors.'
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='mpi_nproc_ortho'
+vl[i].family   ='parallel'
+vl[i].default  =1
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the number of processors left to parallelize on other directions. The main direction (auxiliary basis or DFT grid points) is obtained by \
+<b>mpi_nproc</b> / <b>mpi_nproc_ortho</b>, which must be an integer.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='alpha_cohsex'
 vl[i].family   ='post'
 vl[i].default  =1.0

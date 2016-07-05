@@ -96,7 +96,11 @@ module m_inputparam
  integer,protected                :: integral_level
  logical,protected                :: has_auxil_basis
  logical,protected                :: is_full_auxil
- real(dp),protected               :: pole_eta
+ !
+ ! the boring small complex number eta: (0.0_dp,0.001_dp) is typically over converged
+ ! Having a larger ieta value smoothen the oscillation far from the HOMO-LUMO gap
+ complex(dp),protected            :: ieta
+
  integer,protected                :: nomega_sigma
  real(dp),protected               :: step_sigma
  real(dp),protected               :: level_shifting_energy
@@ -106,6 +110,7 @@ module m_inputparam
  integer,protected                :: scalapack_block_min
  integer,protected                :: scalapack_nprow
  integer,protected                :: scalapack_npcol
+ integer,protected                :: mpi_nproc_ortho
  real(dp),protected               :: alpha_cohsex,beta_cohsex,gamma_cohsex,delta_cohsex,epsilon_cohsex
 
  logical,protected                :: ignore_restart_
@@ -726,7 +731,7 @@ subroutine read_inputfile_namelist()
  basis_name = basis
  auxil_basis_name = auxil_basis
  has_auxil_basis = TRIM(auxil_basis) /= ''
- pole_eta = eta
+ ieta = (0.0_dp,1.0_dp) * eta 
  alpha_hybrid_lr = beta_hybrid
  
 
@@ -810,6 +815,10 @@ subroutine read_inputfile_namelist()
    write(stdout,'(x,a,i4,a,i4)') 'Continue with a reduced SCALAPACK grid: ',scalapack_nprow,' x ',scalapack_npcol
    write(ctmp,'(a,i4,a,i4)') 'scalapack_nprow or scalapack_npcol was decreased automatically to ',scalapack_nprow,' x ',scalapack_npcol
    call issue_warning(ctmp)
+ endif
+ if( MODULO( nproc_world , mpi_nproc_ortho) /= 0 ) then
+   write(stdout,'(x,a,i6,a,i6)') 'mpi_nproc_ortho must be a divisor of nproc ',mpi_nproc_ortho,' / ',nproc_world
+   call die('Change the number of processors')
  endif
 
 

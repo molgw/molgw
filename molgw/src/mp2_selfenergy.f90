@@ -137,6 +137,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
 
  do abispin=1,nspin
    do istate=ncore_G+1,nvirtual_G-1 !LOOP of the first Green's function
+     if( MODULO( istate - (ncore_G+1) , nproc_ortho ) /= rank_ortho ) cycle
 
      if( .NOT. has_auxil_basis ) then
        call calculate_eri_4center_eigen(basis%nbf,nstate,c_matrix,istate,abispin,eri_eigenstate_i)
@@ -218,6 +219,11 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
      enddo
    enddo 
  enddo ! abispin
+
+ call xsum_ortho(selfenergy_ring)
+ call xsum_ortho(selfenergy_sox)
+ call xsum_ortho(emp2_ring)
+ call xsum_ortho(emp2_sox)
 
  emp2_ring = 0.5_dp * emp2_ring
  emp2_sox  = 0.5_dp * emp2_sox
