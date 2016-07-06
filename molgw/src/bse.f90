@@ -137,7 +137,7 @@ subroutine build_amb_apb_common(desc_apb,nmat,nbf,nstate,c_matrix,energy,wpol,al
          if( t_ia_global == t_jb_global ) then
            !
            ! Only one proc should add the diagonal
-           if( rank_auxil_grid == 0 ) then
+           if( rank_auxil == 0 ) then
              apb_block(t_ia,t_jb) =  apb_block(t_ia,t_jb) + ( energy(bstate,jbspin) - energy(jstate,jbspin) )
              amb_block(t_ia,t_jb) =  amb_block(t_ia,t_jb) + ( energy(bstate,jbspin) - energy(jstate,jbspin) )
            endif
@@ -150,13 +150,8 @@ subroutine build_amb_apb_common(desc_apb,nmat,nbf,nstate,c_matrix,energy,wpol,al
      enddo 
 
 
-!FBFB
-!#ifdef HAVE_SCALAPACK
-!     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,amb_block,m_apb_block,iprow,ipcol)
-!     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,apb_block,m_apb_block,iprow,ipcol)
-!#endif
-     call xsum(amb_block)
-     call xsum(apb_block)
+     call xsum_auxil(amb_block)
+     call xsum_auxil(apb_block)
 
      if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
        amb_matrix(:,:) = amb_block(:,:)
@@ -272,7 +267,6 @@ subroutine get_rpa_correlation(nmat,wpol,m_apb,n_apb,amb_matrix,apb_matrix,rpa_c
 
    ! If the diagonal element belongs to this proc, then add it.
    if( t_ia > 0 .AND. t_jb > 0 ) then
-!     write(999,'(4(i4,x),f12.6,x,f12.6)') rank_world,rank_ortho,rank_auxil_grid,t_jb_global,apb_matrix(t_ia,t_jb),amb_matrix(t_ia,t_jb) ! FBFB
      rpa_correlation = rpa_correlation - 0.25_dp * apb_matrix(t_ia,t_jb)   &
                                        - 0.25_dp * amb_matrix(t_ia,t_jb) 
    endif
@@ -369,7 +363,7 @@ subroutine build_apb_hartree_auxil(desc_apb,wpol,m_apb,n_apb,apb_matrix)
      
      deallocate(eri_3center_left,eri_3center_right)
 
-     call xsum(apb_block)
+     call xsum_auxil(apb_block)
 
      if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
        apb_matrix(:,:) = apb_matrix(:,:) + apb_block(:,:)
@@ -790,9 +784,9 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
          do jstate=ncore_W+1,jstate_max
            wp0_i(ncore_W+1:nvirtual_W-1,jstate) = MATMUL( w0_local(:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) )
          enddo
-         call xsum(wp0_i)
+         call xsum_auxil(wp0_i)
   
-         if( iproc_ibf_auxil(ibf_auxil_global) == rank_auxil_grid ) then
+         if( iproc_ibf_auxil(ibf_auxil_global) == rank_auxil ) then
            wp0(ibf_auxil_l(ibf_auxil_global),:,:,iaspin) = wp0_i(:,:)
          endif
   
@@ -807,12 +801,12 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
       
        do ibf_auxil=1,nauxil_2center
       
-         if( iproc_ibf_auxil(ibf_auxil) == rank_auxil_grid ) then
+         if( iproc_ibf_auxil(ibf_auxil) == rank_auxil ) then
            residu_i(:) = wpol_static%residu_left(ibf_auxil_l(ibf_auxil),:)
          else
            residu_i(:) = 0.0_dp
          endif
-         call xsum(residu_i)
+         call xsum_auxil(residu_i)
       
          vsqrt_chi_vsqrt_i(:) = 0.0_dp
          do ipole=1,wpol_static%npole_reso
@@ -825,9 +819,9 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
          do jstate=ncore_W+1,jstate_max
            wp0_i(ncore_W+1:nvirtual_W-1,jstate) = MATMUL( vsqrt_chi_vsqrt_i(:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) )
          enddo
-         call xsum(wp0_i)
+         call xsum_auxil(wp0_i)
       
-         if( iproc_ibf_auxil(ibf_auxil) == rank_auxil_grid ) then
+         if( iproc_ibf_auxil(ibf_auxil) == rank_auxil ) then
            wp0(ibf_auxil_l(ibf_auxil),:,:,iaspin) = wp0_i(:,:)
          endif
       
@@ -912,8 +906,8 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
 !     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,amb_block,m_apb_block,iprow,ipcol)
 !     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,apb_block,m_apb_block,iprow,ipcol)
 !#endif
-     call xsum(amb_block)
-     call xsum(apb_block)
+     call xsum_auxil(amb_block)
+     call xsum_auxil(apb_block)
 
      if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
        amb_matrix(:,:) = amb_matrix(:,:) + amb_block(:,:)

@@ -10,7 +10,8 @@ module m_mpi
  use m_definitions
  use m_warning,only: die
  use m_mpi_world
- use m_mpi_auxil_grid
+ use m_mpi_auxil
+ use m_mpi_grid
  use m_mpi_ortho
 #ifdef HAVE_MPI
  use mpi
@@ -31,14 +32,14 @@ module m_mpi
 
 !===================================================
 ! MPI distribution 
-!  Example: nproc_ortho = 2 x  nproc_auxil_grid = 8  = nproc_world = 16
+!  Example: nproc_ortho = 2 x  nproc_auxil = 8  = nproc_world = 16
 !
 ! comm_world
 !                                        
-! rank_auxil_grid    0 |  1 |  2 |     |  7 
+! rank_auxil         0 |  1 |  2 |     |  7 
 ! rank_ortho       ---------------------------
-!      0             0 |  2 |  4 | ... | 14 |-> comm_auxil_grid
-!      1             1 |  3 |  5 | ... | 15 |-> comm_auxil_grid
+!      0             0 |  2 |  4 | ... | 14 |-> comm_auxil
+!      1             1 |  3 |  5 | ... | 15 |-> comm_auxil
 !                  ---------------------------
 !                    | |    |    | ... |  | |
 !                    v                    v
@@ -101,6 +102,8 @@ module m_mpi
 
 
  interface xlocal_sum
+   module procedure xlocal_sum_r
+   module procedure xlocal_sum_ra1d
    module procedure xlocal_sum_ra2d
    module procedure xlocal_sum_ra3d
  end interface
@@ -218,7 +221,7 @@ end subroutine init_mpi_world
 
 
 !=========================================================================
-subroutine init_mpi_details(nproc_ortho_in)
+subroutine init_mpi_other_communicators(nproc_ortho_in)
  implicit none
 
  integer,intent(in) :: nproc_ortho_in
@@ -229,26 +232,33 @@ subroutine init_mpi_details(nproc_ortho_in)
 
 #ifdef HAVE_MPI
  !
- ! Set up auxil or grid communicator
+ ! Set up grid communicator
+ !
+ nproc_grid = nproc_world
+ comm_grid  = comm_world
+ call MPI_COMM_RANK(comm_grid,rank_grid,ier)
+
+ !
+ ! Set up auxil communicator
  !
  nproc_ortho = nproc_ortho_in
  
- nproc_auxil_grid = nproc_world / nproc_ortho
+ nproc_auxil = nproc_world / nproc_ortho
 
  color = MODULO( rank_world , nproc_ortho )
- call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_auxil_grid,ier);
+ call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_auxil,ier);
 
- call MPI_COMM_SIZE(comm_auxil_grid,nproc_auxil_grid,ier)
- call MPI_COMM_RANK(comm_auxil_grid,rank_auxil_grid,ier)
- if( nproc_auxil_grid /= nproc_world / nproc_ortho ) then
-   write(stdout,*) rank_world,color,nproc_auxil_grid,nproc_world,nproc_ortho
+ call MPI_COMM_SIZE(comm_auxil,nproc_auxil,ier)
+ call MPI_COMM_RANK(comm_auxil,rank_auxil,ier)
+ if( nproc_auxil /= nproc_world / nproc_ortho ) then
+   write(stdout,*) rank_world,color,nproc_auxil,nproc_world,nproc_ortho
    call die('Problem in init_mpi')
  endif
 
  !
  ! Set up ortho communicator
  !
- nproc_ortho = nproc_world / nproc_auxil_grid
+ nproc_ortho = nproc_world / nproc_auxil
 
  color = rank_world / nproc_ortho
  call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_ortho,ier);
@@ -258,28 +268,19 @@ subroutine init_mpi_details(nproc_ortho_in)
 #else
  nproc_ortho = 1
  rank_ortho  = 0
- nproc_auxil_grid = 1
- rank_auxil_grid  = 0
+ nproc_auxil = 1
+ rank_auxil  = 0
+ nproc_grid  = 1
+ rank_grid   = 0
 #endif
 
-#ifndef DEBUG
- if( rank_world /= iomaster ) then
-   is_iomaster = .FALSE.
-   close(stdout)
-   open(unit=stdout,file='/dev/null')
- endif
-#else
- if( rank_world /= iomaster ) then
-   is_iomaster = .FALSE.
-   call set_standard_output(2000+rank_world)
- endif
-#endif
 
 #ifdef HAVE_MPI
   write(stdout,'(/,a)')       ' ==== MPI info'
   write(stdout,'(a50,x,i6)')  'Number of proc:',nproc_world
-  write(stdout,'(a50,x,i6)')  'nproc_auxil or grid',nproc_auxil_grid
-  write(stdout,'(a50,x,i6)')  'nproc_ortho        ',nproc_ortho
+  write(stdout,'(a50,x,i6)')  'nproc_grid:    ',nproc_grid
+  write(stdout,'(a50,x,i6)')  'nproc_auxil:   ',nproc_auxil
+  write(stdout,'(a50,x,i6)')  'nproc_ortho:   ',nproc_ortho
   write(stdout,'(a50,x,i6)')  'Master proc is:',iomaster
   write(stdout,'(a50,6x,l1)') 'Parallelize auxiliary basis:',parallel_auxil
   write(stdout,'(a50,6x,l1)')  'Parallelize XC grid points:',parallel_grid
@@ -288,7 +289,7 @@ subroutine init_mpi_details(nproc_ortho_in)
   write(stdout,'(/)')
 #endif
 
-end subroutine init_mpi_details
+end subroutine init_mpi_other_communicators
 
 
 !=========================================================================
@@ -328,13 +329,13 @@ subroutine distribute_auxil_basis(nbf_auxil_basis,nbf_auxil_basis_local)
    ! Use nproc instead nproc_local
   
    allocate(iproc_ibf_auxil(nbf_auxil_basis))
-   allocate(nbf_local_iproc(0:nproc_auxil_grid-1))
+   allocate(nbf_local_iproc(0:nproc_auxil-1))
   
-   iproc              = nproc_auxil_grid - 1
+   iproc              = nproc_auxil - 1
    nbf_local_iproc(:) = 0
    do ibf=1,nbf_auxil_basis
   
-     iproc = MODULO(iproc+1,nproc_auxil_grid)
+     iproc = MODULO(iproc+1,nproc_auxil)
   
      iproc_ibf_auxil(ibf) = iproc
   
@@ -342,13 +343,13 @@ subroutine distribute_auxil_basis(nbf_auxil_basis,nbf_auxil_basis_local)
   
    enddo
   
-   nbf_auxil_basis_local = nbf_local_iproc(rank_auxil_grid)
+   nbf_auxil_basis_local = nbf_local_iproc(rank_auxil)
   
    allocate(ibf_auxil_g(nbf_auxil_basis_local))
    allocate(ibf_auxil_l(nbf_auxil_basis))
    ibf_local = 0
    do ibf=1,nbf_auxil_basis
-     if( rank_auxil_grid == iproc_ibf_auxil(ibf) ) then
+     if( rank_auxil == iproc_ibf_auxil(ibf) ) then
        ibf_local = ibf_local + 1
        ibf_auxil_g(ibf_local) = ibf
        ibf_auxil_l(ibf)       = ibf_local
@@ -410,13 +411,13 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis,nbf_auxil_basis_local)
 !=====
 
  allocate(iproc_ibf_auxil_lr(nbf_auxil_basis))
- allocate(nbf_local_iproc_lr(0:nproc_auxil_grid-1))
+ allocate(nbf_local_iproc_lr(0:nproc_auxil-1))
 
- iproc = nproc_auxil_grid-1
+ iproc = nproc_auxil - 1
  nbf_local_iproc_lr(:) = 0
  do ibf=1,nbf_auxil_basis
 
-   iproc = MODULO(iproc+1,nproc_auxil_grid)
+   iproc = MODULO(iproc+1,nproc_auxil)
 
    iproc_ibf_auxil_lr(ibf) = iproc
 
@@ -424,13 +425,13 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis,nbf_auxil_basis_local)
 
  enddo
 
- nbf_auxil_basis_local = nbf_local_iproc_lr(rank_auxil_grid)
+ nbf_auxil_basis_local = nbf_local_iproc_lr(rank_auxil)
 
  allocate(ibf_auxil_g_lr(nbf_auxil_basis_local))
  allocate(ibf_auxil_l_lr(nbf_auxil_basis))
  ibf_local = 0
  do ibf=1,nbf_auxil_basis
-   if( rank_auxil_grid == iproc_ibf_auxil_lr(ibf) ) then
+   if( rank_auxil == iproc_ibf_auxil_lr(ibf) ) then
      ibf_local = ibf_local + 1
      ibf_auxil_g_lr(ibf_local) = ibf
      ibf_auxil_l_lr(ibf)       = ibf_local
@@ -455,7 +456,7 @@ subroutine init_dft_grid_distribution(ngrid)
  ngrid_mpi = ngrid
 
  if( parallel_buffer ) then
-   if( nproc_auxil_grid > 1 .AND. parallel_grid ) then
+   if( nproc_grid > 1 .AND. parallel_grid ) then
      write(stdout,'(/,a)') ' Initializing the distribution of the quadrature grid points'
    endif
  else
@@ -467,7 +468,7 @@ subroutine init_dft_grid_distribution(ngrid)
  call distribute_grid_workload()
 
  if( parallel_buffer ) then
-   ngrid = ntask_grid_proc(rank_auxil_grid)
+   ngrid = ntask_grid_proc(rank_grid)
  else
    ngrid = ntask_grid_proc(rank_local)
  endif
@@ -495,7 +496,7 @@ function is_my_grid_task(igrid)
 !=====
  
  if( parallel_buffer ) then
-   is_my_grid_task = ( rank_auxil_grid == task_grid_proc(igrid) )
+   is_my_grid_task = ( rank_grid  == task_grid_proc(igrid) )
  else
    is_my_grid_task = ( rank_local == task_grid_proc(igrid) )
  endif
@@ -567,7 +568,7 @@ subroutine distribute_grid_workload()
  else
 
    allocate(task_grid_proc(ngrid_mpi))
-   allocate(ntask_grid_proc(0:nproc_auxil_grid-1))
+   allocate(ntask_grid_proc(0:nproc_grid-1))
    allocate(task_grid_number(ngrid_mpi))
   
    if( parallel_grid) then
@@ -575,17 +576,17 @@ subroutine distribute_grid_workload()
      write(stdout,'(/,a)') ' Distributing the grid among procs'
      
      ntask_grid_proc(:) = 0
-     max_grid_per_proc = CEILING( DBLE(ngrid_mpi)/DBLE(nproc_auxil_grid) )
+     max_grid_per_proc = CEILING( DBLE(ngrid_mpi)/DBLE(nproc_grid) )
      write(stdout,*) 'Maximum number of grid points for a single proc',max_grid_per_proc
   
      iproc_local=0
      do igrid=1,ngrid_mpi
   
-       iproc_local = MODULO(igrid-1,nproc_auxil_grid)
+       iproc_local = MODULO(igrid-1,nproc_grid)
   
        !
        ! A simple check to avoid unexpected surprises
-       if( iproc_local < 0 .OR. iproc_local >= nproc_auxil_grid ) then
+       if( iproc_local < 0 .OR. iproc_local >= nproc_grid ) then
          call die('error in the distribution')
        endif
   
@@ -597,16 +598,16 @@ subroutine distribute_grid_workload()
      task_grid_number(:)=0
      igrid_current=0
      do igrid=1,ngrid_mpi
-       if( rank_auxil_grid == task_grid_proc(igrid) ) then
+       if( rank_grid == task_grid_proc(igrid) ) then
          igrid_current = igrid_current + 1 
          task_grid_number(igrid) = igrid_current
        endif
      enddo
   
-     if( nproc_auxil_grid > 1 ) then
+     if( nproc_grid > 1 ) then
        write(stdout,'(/,a)') ' Distribute work load among procs'
-       write(stdout,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ngrid_mpi,dp) / REAL(nproc_auxil_grid,dp)
-       write(stdout,'(a,i6,a,i10)') ' proc # , grid points',rank_auxil_grid,' , ',ntask_grid_proc(rank_auxil_grid)
+       write(stdout,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ngrid_mpi,dp) / REAL(nproc_grid,dp)
+       write(stdout,'(a,i6,a,i10)') ' proc # , grid points',rank_grid,' , ',ntask_grid_proc(rank_grid)
      endif
   
    else
@@ -614,7 +615,7 @@ subroutine distribute_grid_workload()
      ! if parallel_grid is false,
      ! faking the code with trivial values
      ntask_grid_proc(:) = ngrid_mpi
-     task_grid_proc(:)  = rank_auxil_grid
+     task_grid_proc(:)  = rank_grid
      do igrid=1,ngrid_mpi
        task_grid_number(igrid) = igrid
      enddo
@@ -667,6 +668,47 @@ subroutine xtrans_max_ia2d(array)
  endif
 
 end subroutine xtrans_max_ia2d
+
+
+!=========================================================================
+subroutine xlocal_sum_r(real_number)
+ implicit none
+ real(dp),intent(inout) :: real_number
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = 1
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE_PRECISION, MPI_SUM, comm_local, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xlocal_sum_r
+
+!=========================================================================
+subroutine xlocal_sum_ra1d(array)
+ implicit none
+ real(dp),intent(inout) :: array(:)
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_PRECISION, MPI_SUM, comm_local, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xlocal_sum_ra1d
 
 
 !=========================================================================
@@ -903,7 +945,10 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 #ifdef HAVE_SCALAPACK
  integer,external :: NUMROC 
 #endif
- integer :: unitfile
+#ifdef DEBUG
+ integer          :: fileunit
+ character(len=3) :: ctmp
+#endif 
 !=====
 
 #ifdef HAVE_SCALAPACK
@@ -913,7 +958,7 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 
    nprow_ham = scalapack_nprow
    npcol_ham = scalapack_npcol
-   if( nprow_ham * npcol_ham > nproc_auxil_grid ) call die('SCALAPACK manual distribution asks for too many processors')
+   if( nprow_ham * npcol_ham > nproc_world ) call die('SCALAPACK manual distribution asks for too many processors')
 
    call BLACS_GET( -1, 0, cntxt_ham )
    call BLACS_GRIDINIT( cntxt_ham, 'R', nprow_ham, npcol_ham )
@@ -934,7 +979,7 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
    allocate(rank_ham_sca_to_mpi(0:nprow_ham-1,0:npcol_ham-1))
    rank_ham_sca_to_mpi(:,:) = -1
    if( iprow_ham >= 0 .AND. ipcol_ham >= 0 ) &
-     rank_ham_sca_to_mpi(iprow_ham,ipcol_ham) = rank_auxil_grid
+     rank_ham_sca_to_mpi(iprow_ham,ipcol_ham) = rank_world
    call xmax_world(rank_ham_sca_to_mpi)
 
    write(stdout,'(/,a)')           ' ==== SCALAPACK Hamiltonian'
@@ -942,8 +987,8 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
    write(stdout,'(a50,x,i8,x,i8)')   'Grid of dedicated processors:',nprow_ham,npcol_ham
 
    ! Distribute the remaing procs for auxiliary basis and grid points
-   color = MODULO( rank_auxil_grid , nprow_ham * npcol_ham )
-   call MPI_COMM_SPLIT(comm_auxil_grid,color,rank_auxil_grid,comm_local,ier);
+   color = MODULO( rank_world , nprow_ham * npcol_ham )
+   call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_local,ier);
    call MPI_COMM_SIZE(comm_local,nproc_local,ier)
    call MPI_COMM_RANK(comm_local,rank_local,ier)
 
@@ -956,9 +1001,9 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 
 
    ! Define the transversal communicator
-   color = rank_auxil_grid / ( nprow_ham * npcol_ham )
+   color = rank_world / ( nprow_ham * npcol_ham )
 
-   call MPI_COMM_SPLIT(comm_auxil_grid,color,rank_auxil_grid,comm_trans,ier);
+   call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_trans,ier);
    call MPI_COMM_SIZE(comm_trans,nproc_trans,ier)
    call MPI_COMM_RANK(comm_trans,rank_trans,ier)
 
@@ -1012,6 +1057,26 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
  nproc_trans = 1
  rank_trans  = 0
 
+#endif
+
+#ifdef DEBUG
+ write(ctmp,'(i3.3)') rank_world
+ open(newunit=fileunit,file='DEBUG_mpiinfo_rank'//TRIM(ctmp))
+ write(fileunit,*) 'nproc_world:',nproc_world 
+ write(fileunit,*) 'rank_world:',rank_world 
+ write(fileunit,*) 
+ write(fileunit,*) 'nproc_local:',nproc_local
+ write(fileunit,*) 'rank_local:',rank_local
+ write(fileunit,*) 
+ write(fileunit,*) 'nproc_trans:',nproc_trans
+ write(fileunit,*) 'rank_trans:',rank_trans
+ write(fileunit,*) 
+ write(fileunit,*) 'nproc_auxil:',nproc_auxil
+ write(fileunit,*) 'rank_auxil:',rank_auxil
+ write(fileunit,*) 
+ write(fileunit,*) 'nproc_grid:',nproc_grid
+ write(fileunit,*) 'rank_grid:',rank_grid
+ close(fileunit)
 #endif
 
 

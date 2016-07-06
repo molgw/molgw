@@ -1021,7 +1021,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities'
 
  do iatom=1,natom
-   if( rank_auxil_grid /= MODULO(iatom,nproc_auxil_grid) ) cycle
+   if( rank_grid /= MODULO(iatom,nproc_grid) ) cycle
 
    ngau = 4
    allocate(alpha(ngau),coeff(ngau))
@@ -1083,9 +1083,9 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  enddo ! loop on the grid point
  !
  ! Sum up the contributions from all procs only if needed
- call xsum_auxil(normalization)
- call xsum_auxil(exc)
- call xsum_auxil(vhxc_ij)
+ call xsum_grid(normalization)
+ call xsum_grid(exc)
+ call xsum_grid(vhxc_ij)
 
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization
  write(stdout,  '(a,2(2x,f12.6))') '      XC energy (Ha):',exc

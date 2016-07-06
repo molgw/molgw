@@ -66,43 +66,8 @@ subroutine reduce_hamiltonian_sca(m_ham,n_ham,matrix_local)
 
 #ifdef HAVE_SCALAPACK
 
-#if 0
- ! Loops over the SCALAPACK grid
- do ipcol=0,npcol_ham-1
-   do iprow=0,nprow_ham-1
-
-     ! Identify the destination processor
-     rank_dest = rank_ham_sca_to_mpi(iprow,ipcol)
-
-     m_block = row_block_size(nbf,iprow,nprow_ham)
-     n_block = col_block_size(nbf,ipcol,npcol_ham)
-     allocate(matrix_block(m_block,n_block))
-
-     do jlocal=1,n_block
-       jglobal = colindex_local_to_global(ipcol,npcol_ham,jlocal)
-       do ilocal=1,m_block
-         iglobal = rowindex_local_to_global(iprow,nprow_ham,ilocal)
-
-         matrix_block(ilocal,jlocal) = buffer(iglobal,jglobal)
-
-       enddo
-     enddo
-
-
-     call xsum(rank_dest,matrix_block)
-
-     if( rank == rank_dest ) then
-       matrix_local(:,:) = matrix_block(:,:)
-     endif
-     deallocate(matrix_block)
-
-   enddo
- enddo
-
-#else
-
- ! Another coding.. Maybe more efficient
- call xsum(buffer)
+ ! Dirty coding.. however surprisingly efficient
+ call xsum_world(buffer)
  do jlocal=1,n_ham
    jglobal = colindex_local_to_global('H',jlocal)
    do ilocal=1,m_ham
@@ -114,14 +79,9 @@ subroutine reduce_hamiltonian_sca(m_ham,n_ham,matrix_local)
  enddo
 
 
-
-
-#endif
-
-
 #else
 
- call xsum(buffer)
+ call xsum_world(buffer)
  matrix_local(:,:) = buffer(:,:)
 
 #endif
@@ -201,7 +161,7 @@ subroutine broadcast_hamiltonian_sca(m_ham,n_ham,matrix_local)
      enddo
    enddo
  endif
- call xsum(buffer)
+ call xsum_world(buffer)
 
 #endif
 
@@ -240,6 +200,7 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
  call start_clock(timing_hamiltonian_nuc)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK buffer'
 
+ buffer(:,:) = 0.0_dp
 
  if( nproc_world > 1 ) then
    natom_local=0
@@ -368,7 +329,7 @@ subroutine setup_hartree_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,ha
  else
    ehartree = 0.0_dp
  endif
- call xsum(ehartree)
+ call xsum_world(ehartree)
 
 
  call stop_clock(timing_hartree)
@@ -402,7 +363,6 @@ subroutine setup_exchange_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_o
  call start_clock(timing_exchange)
 
 
-
  allocate(tmp(nauxil_3center,nbf))
 
  do ispin=1,nspin
@@ -424,7 +384,7 @@ subroutine setup_exchange_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_o
          enddo
        endif
      endif
-     call xsum(p_matrix_i)
+     call xsum_world(p_matrix_i)
 
 
      tmp(:,:) = 0.0_dp
@@ -468,7 +428,7 @@ subroutine setup_exchange_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_o
  else
    eexchange = 0.0_dp
  endif
- call xsum(eexchange)
+ call xsum_world(eexchange)
 
  call stop_clock(timing_exchange)
 
@@ -744,10 +704,8 @@ subroutine dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix
 
  !
  ! Sum up the contributions from all procs only if needed
- if( parallel_grid ) then
-   call xsum(normalization)
-   call xsum(exc_xc)
- endif
+ call xsum_grid(normalization)
+ call xsum_grid(exc_xc)
 
 ! !
 ! ! Destroy operations
@@ -873,9 +831,9 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
  enddo ! loop on the grid point
  !
  ! Sum up the contributions from all procs only if needed
- call xsum(normalization)
- call xsum(exc)
- call xsum(buffer)
+ call xsum_grid(normalization)
+ call xsum_grid(exc)
+ call xsum_grid(buffer)
 
  !
  ! Distribute the result

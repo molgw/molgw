@@ -80,7 +80,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
        sigx = sigx - SUM( eri_3center_eigen(:,bstate,istate,ispin)**2 ) * fact_full_i
 
      enddo
-     call xsum(sigx)
+     call xsum_auxil(sigx)
 
      write(stdout,'(i4,4x,f16.6)') bstate,sigx * Ha_eV
 
@@ -144,6 +144,8 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
    ! Apply the frozen core and frozen virtual approximation to G
    do istate=ncore_G+1,nvirtual_G-1
 
+     if( MODULO( istate -(ncore_G+1) , nproc_ortho) /= rank_ortho ) cycle
+
      !
      ! Prepare the right hand side
      allocate(wp0_i(nsemin:nsemax))
@@ -158,9 +160,9 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
 
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (sqrt(v) * chi * v)
        wp0_i(nsemin:nsemax) = MATMUL( w0_local(:) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
-       call xsum(wp0_i)
+       call xsum_auxil(wp0_i)
 
-       if( iproc_ibf_auxil(ibf_auxil_global) == rank_auxil_grid ) then
+       if( iproc_ibf_auxil(ibf_auxil_global) == rank_auxil ) then
          wp0(ibf_auxil_l(ibf_auxil_global),:) = wp0_i(:)
        endif
 
@@ -251,7 +253,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
 
  ! Sum up the contribution from different procs
  if( ALLOCATED(selfenergy_omega) ) then
-   call xsum(selfenergy_omega)
+   call xsum_ortho(selfenergy_omega)
  endif
 
 
@@ -408,7 +410,7 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
        sigx = sigx - SUM( eri_3center_eigen_lr(:,bstate,istate,ispin)**2 ) * fact_full_i
 
      enddo
-     call xsum(sigx)
+     call xsum_auxil(sigx)
 
      write(stdout,'(i4,4x,f16.6)') bstate,sigx * Ha_eV
 
@@ -473,6 +475,8 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
    ! Apply the frozen core and frozen virtual approximation to G
    do istate=ncore_G+1,nvirtual_G-1
 
+     if( MODULO( istate -(ncore_G+1) , nproc_ortho) /= rank_ortho ) cycle
+
      !
      ! Prepare the right hand side
      allocate(wp0_i(nsemin:nsemax))
@@ -487,9 +491,9 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
 
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (sqrt(v) * chi * v)
        wp0_i(nsemin:nsemax) = MATMUL( w0_local(:) , eri_3center_eigen_lr(:,nsemin:nsemax,istate,ispin) )
-       call xsum(wp0_i)
+       call xsum_auxil(wp0_i)
 
-       if( iproc_ibf_auxil(ibf_auxil_global) == rank_auxil_grid ) then
+       if( iproc_ibf_auxil(ibf_auxil_global) == rank_auxil ) then
          wp0(ibf_auxil_l(ibf_auxil_global),:) = wp0_i(:)
        endif
 
@@ -586,7 +590,7 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
 
  ! Sum up the contribution from different procs
  if( ALLOCATED(selfenergy_omega) ) then
-   call xsum(selfenergy_omega)
+   call xsum_ortho(selfenergy_omega)
  endif
 
 

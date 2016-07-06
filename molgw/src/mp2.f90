@@ -275,7 +275,7 @@ end subroutine mp2_energy
 subroutine single_excitations(nstate,nbf,energy,occupation,c_matrix,fock_matrix)
  use m_definitions
  use m_timing
- use m_inputparam,only: nspin,spin_fact,print_matrix_
+ use m_inputparam,only: nspin,spin_fact
  use m_scf,only: en
  use m_hamiltonian
  implicit none

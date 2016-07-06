@@ -1111,7 +1111,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,xpy_matrix,ei
  energy_gm = 0.5_dp * ( SUM( wpol%residu_left(:,:)**2 ) - spin_fact * SUM( eri_3center_mat(:,:)**2 ) )
  !
  ! Since wpol%residu_left and eri_3center_mat are distributed, we have to sum up
- call xsum(energy_gm)
+ call xsum_auxil(energy_gm)
 
  deallocate(eri_3center_mat)
 
@@ -1164,7 +1164,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,xpy_matrix,ei
  enddo
 
  energy_gm = energy_gm + 0.5_dp * ( SUM( wpol%residu_left(:,:)**2 ) )
- call xsum(energy_gm)
+ call xsum_auxil(energy_gm)
 
 
 #endif

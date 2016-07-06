@@ -327,7 +327,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
       amb_bb(iglobal,jglobal) = ab_local(ib,jb)
     enddo
   enddo
-  call xsum(amb_bb(:,1:nbbc))
+  call xsum_world(amb_bb(:,1:nbbc))
 
   !
   ! Calculate (A+B) b
@@ -344,7 +344,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
       apb_bb(iglobal,jglobal) = ab_local(ib,jb)
     enddo
   enddo
-  call xsum(apb_bb(:,1:nbbc))
+  call xsum_world(apb_bb(:,1:nbbc))
 
 
   deallocate(bb_local,ab_local)
@@ -509,7 +509,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
         amb_bb(iglobal,nbbc+jglobal) = ab_local(ib,jb)
       enddo
     enddo
-    call xsum(amb_bb(:,nbbc+1:nbbc+nbba))
+    call xsum_world(amb_bb(:,nbbc+1:nbbc+nbba))
   
     !
     ! Calculate (A+B) b
@@ -526,7 +526,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
         apb_bb(iglobal,nbbc+jglobal) = ab_local(ib,jb)
       enddo
     enddo
-    call xsum(apb_bb(:,nbbc+1:nbbc+nbba))
+    call xsum_world(apb_bb(:,nbbc+1:nbbc+nbba))
   
   
     deallocate(bb_local,ab_local)

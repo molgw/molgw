@@ -365,7 +365,7 @@ subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,hartree_i
  else
    ehartree = 0.0_dp
  endif
- call xsum(ehartree)
+ call xlocal_sum(ehartree)
 
 
  call stop_clock(timing_hartree)
@@ -440,7 +440,7 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_ma
          enddo
        endif
      endif
-     call xsum(p_matrix_i)
+     call xlocal_sum(p_matrix_i)
 
 
      allocate(tmpc(nauxil_3center,nbf_trans))
@@ -505,7 +505,7 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_ma
  else
    eexchange = 0.0_dp
  endif
- call xsum(eexchange)
+ call xlocal_sum(eexchange)
 
  call stop_clock(timing_exchange)
 
@@ -567,7 +567,7 @@ subroutine setup_exchange_longrange_ri_sca(print_matrix_,nbf,occupation,c_matrix
  enddo
  deallocate(tmp)
 
- call xsum(exchange_ij)
+ call xlocal_sum(exchange_ij)
 
  call dump_out_matrix(print_matrix_,'=== LR Exchange contribution ===',nbf,nspin,exchange_ij)
 

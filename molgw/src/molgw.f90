@@ -99,7 +99,7 @@ program molgw
  call read_inputfile_namelist()
 
  ! Finalize the MPI initialization
- call init_mpi_details(mpi_nproc_ortho)
+ call init_mpi_other_communicators(mpi_nproc_ortho)
 
  !
  ! Nucleus-nucleus repulsion contribution to the energy

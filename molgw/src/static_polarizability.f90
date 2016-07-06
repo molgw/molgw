@@ -70,18 +70,18 @@ subroutine static_polarizability(nstate,basis,occupation,energy,wpol_out)
      ibf_auxil = ibf_auxil_g(ibf_auxil_local)
      eri_3center_ij(ibf_auxil) = eri_3center_eigen(ibf_auxil_local,istate,astate,iaspin)
    enddo
-   call xsum(eri_3center_ij)
+   call xsum_auxil(eri_3center_ij)
 
 
    do jbf_auxil=1,nauxil_2center
-     if( MODULO( jbf_auxil , nproc_auxil_grid ) /= rank_auxil_grid ) cycle 
+     if( MODULO( jbf_auxil , nproc_auxil ) /= rank_auxil ) cycle 
      vsqchi0vsq(:,jbf_auxil) = vsqchi0vsq(:,jbf_auxil) &
           + eri_3center_ij(:) * eri_3center_ij(jbf_auxil) * denom
    enddo
 
  enddo
 
- call xsum(vsqchi0vsq)
+ call xsum_auxil(vsqchi0vsq)
 
 
  !
@@ -167,18 +167,18 @@ subroutine dynamical_polarizability(nstate,basis,occupation,energy,omega,wpol_in
      ibf_auxil = ibf_auxil_g(ibf_auxil_local)
      eri_3center_ij(ibf_auxil) = eri_3center_eigen(ibf_auxil_local,istate,astate,iaspin)
    enddo
-   call xsum(eri_3center_ij)
+   call xsum_auxil(eri_3center_ij)
 
 
    do jbf_auxil=1,nauxil_2center
-     if( MODULO( jbf_auxil , nproc_auxil_grid ) /= rank_auxil_grid ) cycle 
+     if( MODULO( jbf_auxil , nproc_auxil ) /= rank_auxil ) cycle 
      vsqchi0vsqm1(:,jbf_auxil) = vsqchi0vsqm1(:,jbf_auxil) &
           + eri_3center_ij(:) * eri_3center_ij(jbf_auxil) * denom
    enddo
 
  enddo
 
- call xsum(vsqchi0vsqm1)
+ call xsum_auxil(vsqchi0vsqm1)
 
 ! write(stdout,'(20(es14.6,2x))') vsqchi0vsqm1(1,:)
 ! write(stdout,'(20(es14.6,2x))') vsqchi0vsqm1(2,:)
