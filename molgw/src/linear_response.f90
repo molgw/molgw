@@ -993,7 +993,7 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
  real(dp)                              :: rtmp
 !=====
 
- call start_clock(timing_buildw)
+ call start_clock(timing_vchiv)
 
  write(stdout,'(/,a)') ' Build W = v * chi * v'
  if(has_auxil_basis) then
@@ -1047,7 +1047,7 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
 
  if(ALLOCATED(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
 
- call stop_clock(timing_buildw)
+ call stop_clock(timing_vchiv)
 
 end subroutine chi_to_vchiv
 
@@ -1083,7 +1083,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,xpy_matrix,ei
  real(dp),allocatable                  :: xpy_block(:,:)
 !=====
 
- call start_clock(timing_buildw)
+ call start_clock(timing_vchiv)
 
  write(stdout,'(/,a)') ' Build v^{1/2} * chi * v^{1/2}'
 
@@ -1171,7 +1171,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,xpy_matrix,ei
 
 
 
- call stop_clock(timing_buildw)
+ call stop_clock(timing_vchiv)
 
 end subroutine chi_to_sqrtvchisqrtv_auxil
 
@@ -1193,7 +1193,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,nbf_auxil,a_diag,wpol)
  integer                               :: jstate,bstate
 !=====
 
- call start_clock(timing_buildw)
+ call start_clock(timing_vchiv)
 
  write(stdout,'(/,a)') ' Build v^{1/2} * chi * v^{1/2} part from single pole approximation'
 
@@ -1210,7 +1210,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,nbf_auxil,a_diag,wpol)
  end do
 
 
- call stop_clock(timing_buildw)
+ call stop_clock(timing_vchiv)
 
 end subroutine chi_to_sqrtvchisqrtv_auxil_spa
 

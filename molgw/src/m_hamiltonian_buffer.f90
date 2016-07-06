@@ -111,45 +111,10 @@ subroutine broadcast_hamiltonian_sca(m_ham,n_ham,matrix_local)
  nbf = SIZE(buffer(:,:),DIM=1)
 
 #ifdef HAVE_SCALAPACK
-
-#if 0
- ! Loops over the SCALAPACK grid
- do ipcol=0,npcol_ham-1
-   do iprow=0,nprow_ham-1
-
-     ! Identify the destination processor
-     rank_orig = rank_ham_sca_to_mpi(iprow,ipcol)
-
-     m_block = row_block_size(nbf,iprow,nprow_ham)
-     n_block = col_block_size(nbf,ipcol,npcol_ham)
-     allocate(matrix_block(m_block,n_block))
-
-     if( rank == rank_orig ) then
-       matrix_block(:,:) = matrix_local(:,:)
-     endif
-
-
-     call xbcast(rank_orig,matrix_block)
-
-
-     do jlocal=1,n_block
-       jglobal = colindex_local_to_global(ipcol,npcol_ham,jlocal)
-       do ilocal=1,m_block
-         iglobal = rowindex_local_to_global(iprow,nprow_ham,ilocal)
-
-         buffer(iglobal,jglobal) = buffer(iglobal,jglobal) + matrix_block(ilocal,jlocal)
-
-       enddo
-     enddo
-
-     deallocate(matrix_block)
-
-   enddo
- enddo
-
-#else
-
- buffer(:,:) = buffer(:,:) / REAL( nprow_ham * npcol_ham, dp )
+ 
+ ! buffer is first divided by the number of procs,
+ ! since there will be an allreduce operation at the end
+ buffer(:,:) = buffer(:,:) / REAL( nproc_world , dp )
  if( cntxt_ham > 0 ) then
    do jlocal=1,n_ham
      jglobal = colindex_local_to_global('H',jlocal)
@@ -162,9 +127,6 @@ subroutine broadcast_hamiltonian_sca(m_ham,n_ham,matrix_local)
    enddo
  endif
  call xsum_world(buffer)
-
-#endif
-
 
 #else
 
@@ -325,7 +287,7 @@ subroutine setup_hartree_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,ha
  !
  ! Calculate the Hartree energy
  if( cntxt_ham > 0 ) then
-   ehartree = 0.5_dp*SUM(hartree_ij(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+   ehartree = 0.5_dp * SUM( hartree_ij(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
  else
    ehartree = 0.0_dp
  endif

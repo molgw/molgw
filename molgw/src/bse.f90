@@ -557,7 +557,7 @@ subroutine build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_ap
 
      !
      ! real-space integration grid is distributed, one needs to sum contributions here
-     call xsum_world(apb_block)
+     call xsum_grid(apb_block)
 
      if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
        apb_matrix(:,:) = apb_matrix(:,:) + apb_block(:,:)
@@ -698,12 +698,12 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  integer              :: iaspin,jbspin
  integer              :: kbf
  real(dp)             :: wtmp
- integer              :: jstate_max
+ integer              :: jstate_min,jstate_max
  integer              :: ipole,ibf_auxil,jbf_auxil,ibf_auxil_global,jbf_auxil_global
  real(dp),allocatable :: vsqrt_chi_vsqrt(:,:)
  real(dp),allocatable :: vsqrt_chi_vsqrt_i(:),residu_i(:),wp0_i(:,:)
  real(dp),allocatable :: wp0(:,:,:,:),w0_local(:)
- integer              :: iprow,ipcol
+ integer              :: iprow,ipcol,irank
  integer              :: m_apb_block,n_apb_block
  real(dp),allocatable :: amb_block(:,:)
  real(dp),allocatable :: apb_block(:,:)
@@ -720,9 +720,18 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  is_bse = ALLOCATED(wpol_static%w0) .OR. ALLOCATED(wpol_static%residu_left)
 
 
+ !
+ ! Distribution over the "ortho" parallelization direction
+ ! 
+ jstate_min = ncore_W+1
  jstate_max = MAXVAL( wpol%transition_table_apb(1,1:wpol%npole_reso_apb) )
+ do irank=0,rank_ortho
+   if( irank > 0 ) jstate_min = jstate_max + 1
+   jstate_max = MAXVAL( wpol%transition_table_apb(1,1:wpol%npole_reso_apb) )
+   jstate_max = MIN( jstate_min + (jstate_max-jstate_min+1) / (nproc_ortho-irank) - 1 , jstate_max )
+ enddo
 
- call clean_allocate('Temporary array for W',wp0,1,nauxil_3center,ncore_W+1,nvirtual_W-1,ncore_W+1,jstate_max,1,nspin)
+ call clean_allocate('Temporary array for W',wp0,1,nauxil_3center,ncore_W+1,nvirtual_W-1,jstate_min,jstate_max,1,nspin)
  wp0(:,:,:,:) = 0.0_dp
 
 
@@ -755,7 +764,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
      !
      ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
      ! Be careful not to forget it in the following 
-     do jstate=ncore_W+1,jstate_max
+     do jstate=jstate_min,jstate_max
        wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) = MATMUL( vsqrt_chi_vsqrt(:,:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) )
      enddo
     
@@ -771,7 +780,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
      ! Test if w0 is already available or if we need to calculate it first
      if( ALLOCATED(wpol_static%w0) ) then
   
-       allocate(wp0_i(ncore_W+1:nvirtual_W-1,ncore_W+1:jstate_max))
+       allocate(wp0_i(ncore_W+1:nvirtual_W-1,jstate_min:jstate_max))
        allocate(w0_local(nauxil_3center))
   
        do ibf_auxil_global=1,nauxil_2center
@@ -781,7 +790,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
            w0_local(jbf_auxil) = wpol_static%w0(ibf_auxil_global,jbf_auxil_global)
          enddo
   
-         do jstate=ncore_W+1,jstate_max
+         do jstate=jstate_min,jstate_max
            wp0_i(ncore_W+1:nvirtual_W-1,jstate) = MATMUL( w0_local(:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) )
          enddo
          call xsum_auxil(wp0_i)
@@ -797,7 +806,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
   
        allocate(vsqrt_chi_vsqrt_i(nauxil_3center))
        allocate(residu_i(wpol_static%npole_reso))
-       allocate(wp0_i(ncore_W+1:nvirtual_W-1,ncore_W+1:jstate_max))
+       allocate(wp0_i(ncore_W+1:nvirtual_W-1,jstate_min:jstate_max))
       
        do ibf_auxil=1,nauxil_2center
       
@@ -816,7 +825,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
          !
          ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
          ! Be careful in the following not to forget it
-         do jstate=ncore_W+1,jstate_max
+         do jstate=jstate_min,jstate_max
            wp0_i(ncore_W+1:nvirtual_W-1,jstate) = MATMUL( vsqrt_chi_vsqrt_i(:) , eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) )
          enddo
          call xsum_auxil(wp0_i)
@@ -841,7 +850,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  if( alpha_local > 1.0e-6_dp ) then
 
    do iaspin=1,nspin
-     do jstate=ncore_W+1,jstate_max
+     do jstate=jstate_min,jstate_max
        wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) = wp0(:,ncore_W+1:nvirtual_W-1,jstate,iaspin) &
                           + alpha_local *  eri_3center_eigen(:,ncore_W+1:nvirtual_W-1,jstate,iaspin)
      enddo
@@ -861,6 +870,8 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
 
      allocate(amb_block(m_apb_block,n_apb_block))
      allocate(apb_block(m_apb_block,n_apb_block))
+     apb_block(:,:) = 0.0_dp
+     amb_block(:,:) = 0.0_dp
 
 
      ! Set up -W contributions to matrices (A+B) and (A-B)
@@ -870,6 +881,9 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
        jstate = wpol%transition_table_apb(1,t_jb_global)
        bstate = wpol%transition_table_apb(2,t_jb_global)
        jbspin = wpol%transition_table_apb(3,t_jb_global)
+
+!       if( MODULO( jstate, nproc_ortho ) /= rank_ortho ) cycle
+       if( jstate < jstate_min .OR. jstate > jstate_max ) cycle
 
        do t_ia=1,m_apb_block
          t_ia_global = rowindex_local_to_global(iprow,nprow_sd,t_ia)
@@ -901,13 +915,8 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
      enddo
 
 
-!FBFB
-!#ifdef HAVE_SCALAPACK
-!     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,amb_block,m_apb_block,iprow,ipcol)
-!     call DGSUM2D(desc_apb(2),'A',' ',m_apb_block,n_apb_block,apb_block,m_apb_block,iprow,ipcol)
-!#endif
-     call xsum_auxil(amb_block)
-     call xsum_auxil(apb_block)
+     call xsum_world(amb_block)
+     call xsum_world(apb_block)
 
      if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
        amb_matrix(:,:) = amb_matrix(:,:) + amb_block(:,:)

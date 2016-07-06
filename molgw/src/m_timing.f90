@@ -35,7 +35,7 @@ module m_timing
  integer,parameter :: timing_eri_2center         = 16
  integer,parameter :: timing_eri_3center         = 17
  integer,parameter :: timing_eri_3center_eigen   = 18
- integer,parameter :: timing_buildw              = 19
+ integer,parameter :: timing_vchiv               = 19
  integer,parameter :: timing_build_h2p           = 20
  integer,parameter :: timing_restart_file        = 21
  integer,parameter :: timing_diago_hamiltonian   = 22
@@ -197,7 +197,7 @@ subroutine output_timing()
  write(stdout,'(a34,2x,f12.2,2x,i8)') '            TDDFT part' ,timing(timing_build_tddft),calls(timing_build_tddft)
  write(stdout,'(a34,2x,f12.2,2x,i8)') '              BSE part' ,timing(timing_build_bse),calls(timing_build_bse)
  write(stdout,'(a32,4x,f12.2,2x,i8)') '    Diago 2 particle H' ,timing(timing_diago_h2p),calls(timing_diago_h2p)
- write(stdout,'(a32,4x,f12.2,2x,i8)') '               Build W' ,timing(timing_buildw),calls(timing_buildw)
+ write(stdout,'(a32,4x,f12.2,2x,i8)') '               Build W' ,timing(timing_vchiv),calls(timing_vchiv)
  write(stdout,'(a32,4x,f12.2,2x,i8)') '      Optical spectrum' ,timing(timing_spectrum),calls(timing_spectrum)
  write(stdout,*)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'GW self-energy'     ,timing(timing_self),calls(timing_self)
