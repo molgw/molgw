@@ -13,6 +13,8 @@ module m_mpi
  use m_mpi_auxil
  use m_mpi_grid
  use m_mpi_ortho
+ use m_mpi_local
+ use m_mpi_trans
 #ifdef HAVE_MPI
  use mpi
 #endif
@@ -50,19 +52,7 @@ module m_mpi
  integer,private   :: iomaster = 0
  logical,protected :: is_iomaster = .TRUE.
 
-
-
- integer,private   :: comm_local
- integer,protected :: nproc_local  = 1
- integer,protected :: rank_local   = 0
-
- integer,protected :: comm_trans
- integer,protected :: nproc_trans  = 1
- integer,protected :: rank_trans   = 0
-
- integer,private :: nbf_mpi
  integer,private :: ngrid_mpi
- integer,private :: nocc_mp
 
 ! Parallelization on the auxiliary basis
  integer,allocatable,protected :: iproc_ibf_auxil(:)
@@ -87,33 +77,6 @@ module m_mpi
  integer,allocatable,private :: ntask_grid_proc(:)   ! number of grid points for each procressor
  integer,allocatable,private :: task_grid_number(:)  ! local index of the grid point
 
-
- !
- ! Interfaces for high-level MPI reduce operations
- ! auxil or grid series
- !
- interface xlocal_max
-   module procedure xlocal_max_i
- end interface
-
- interface xtrans_max
-   module procedure xtrans_max_ia2d
- end interface
-
-
- interface xlocal_sum
-   module procedure xlocal_sum_r
-   module procedure xlocal_sum_ra1d
-   module procedure xlocal_sum_ra2d
-   module procedure xlocal_sum_ra3d
- end interface
-
- interface xtrans_sum
-   module procedure xtrans_sum_r
-   module procedure xtrans_sum_ra1d
-   module procedure xtrans_sum_ra2d
-   module procedure xtrans_sum_ra3d
- end interface
 
  interface colindex_local_to_global
    module procedure colindex_local_to_global_distrib
@@ -628,222 +591,6 @@ end subroutine distribute_grid_workload
 
 
 !=========================================================================
-subroutine xlocal_max_i(integer_number)
- implicit none
- integer,intent(inout) :: integer_number
-!=====
- integer :: n1
- integer :: ier=0
-!=====
-
- n1 = 1
-
-#ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, integer_number, n1, MPI_INTEGER, MPI_MAX, comm_local, ier)
-#endif
- if(ier/=0) then
-   write(stdout,*) 'error in mpi_allreduce'
- endif
-
-end subroutine xlocal_max_i
-
-
-!=========================================================================
-subroutine xtrans_max_ia2d(array)
- implicit none
- integer,intent(inout) :: array(:,:)
-!=====
- integer :: n1,n2
- integer :: ier=0
-!=====
-
- n1 = SIZE( array, DIM=1 )
- n2 = SIZE( array, DIM=2 )
-
-#ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_INTEGER, MPI_MAX, comm_trans, ier)
-#endif
- if(ier/=0) then
-   write(stdout,*) 'error in mpi_allreduce'
- endif
-
-end subroutine xtrans_max_ia2d
-
-
-!=========================================================================
-subroutine xlocal_sum_r(real_number)
- implicit none
- real(dp),intent(inout) :: real_number
-!=====
- integer :: n1
- integer :: ier=0
-!=====
-
- n1 = 1
-
-#ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE_PRECISION, MPI_SUM, comm_local, ier)
-#endif
- if(ier/=0) then
-   write(stdout,*) 'error in mpi_allreduce'
- endif
-
-end subroutine xlocal_sum_r
-
-!=========================================================================
-subroutine xlocal_sum_ra1d(array)
- implicit none
- real(dp),intent(inout) :: array(:)
-!=====
- integer :: n1
- integer :: ier=0
-!=====
-
- n1 = SIZE( array, DIM=1 )
-
-#ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_PRECISION, MPI_SUM, comm_local, ier)
-#endif
- if(ier/=0) then
-   write(stdout,*) 'error in mpi_allreduce'
- endif
-
-end subroutine xlocal_sum_ra1d
-
-
-!=========================================================================
-subroutine xlocal_sum_ra2d(array)
- implicit none
- real(dp),intent(inout) :: array(:,:)
-!=====
- integer :: n1,n2
- integer :: ier=0
-!=====
-
- n1 = SIZE( array, DIM=1 )
- n2 = SIZE( array, DIM=2 )
-
-#ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, comm_local, ier)
-#endif
- if(ier/=0) then
-   write(stdout,*) 'error in mpi_allreduce'
- endif
-
-end subroutine xlocal_sum_ra2d
-
-
-!=========================================================================
-subroutine xlocal_sum_ra3d(array)
- implicit none
- real(dp),intent(inout) :: array(:,:,:)
-!=====
- integer :: n1,n2,n3
- integer :: ier=0
-!=====
-
- n1 = SIZE( array, DIM=1 )
- n2 = SIZE( array, DIM=2 )
- n3 = SIZE( array, DIM=3 )
-
-#ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3, MPI_DOUBLE_PRECISION, MPI_SUM, comm_local, ier)
-#endif
- if(ier/=0) then
-   write(stdout,*) 'error in mpi_allreduce'
- endif
-
-end subroutine xlocal_sum_ra3d
-
-
-!=========================================================================
-subroutine xtrans_sum_r(real_number)
- implicit none
- real(dp),intent(inout) :: real_number
-!=====
- integer :: n1
- integer :: ier=0
-!=====
-
- n1 = 1
-
-#ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE_PRECISION, MPI_SUM, comm_trans, ier)
-#endif
- if(ier/=0) then
-   write(stdout,*) 'error in mpi_allreduce'
- endif
-
-end subroutine xtrans_sum_r
-
-
-!=========================================================================
-subroutine xtrans_sum_ra1d(array)
- implicit none
- real(dp),intent(inout) :: array(:)
-!=====
- integer :: n1
- integer :: ier=0
-!=====
-
- n1 = SIZE( array, DIM=1 )
-
-#ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_PRECISION, MPI_SUM, comm_trans, ier)
-#endif
- if(ier/=0) then
-   write(stdout,*) 'error in mpi_allreduce'
- endif
-
-end subroutine xtrans_sum_ra1d
-
-
-!=========================================================================
-subroutine xtrans_sum_ra2d(array)
- implicit none
- real(dp),intent(inout) :: array(:,:)
-!=====
- integer :: n1,n2
- integer :: ier=0
-!=====
-
- n1 = SIZE( array, DIM=1 )
- n2 = SIZE( array, DIM=2 )
-
-#ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_PRECISION, MPI_SUM, comm_trans, ier)
-#endif
- if(ier/=0) then
-   write(stdout,*) 'error in mpi_allreduce'
- endif
-
-end subroutine xtrans_sum_ra2d
-
-
-!=========================================================================
-subroutine xtrans_sum_ra3d(array)
- implicit none
- real(dp),intent(inout) :: array(:,:,:)
-!=====
- integer :: n1,n2,n3
- integer :: ier=0
-!=====
-
- n1 = SIZE( array, DIM=1 )
- n2 = SIZE( array, DIM=2 )
- n3 = SIZE( array, DIM=3 )
-
-#ifdef HAVE_MPI
- call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3, MPI_DOUBLE_PRECISION, MPI_SUM, comm_trans, ier)
-#endif
- if(ier/=0) then
-   write(stdout,*) 'error in mpi_allreduce'
- endif
-
-end subroutine xtrans_sum_ra3d
-
-
-!=========================================================================
 subroutine init_scalapack()
  implicit none
 !=====
@@ -994,10 +741,10 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 
    write(stdout,'(a50,x,i8)')      'Number of local processors:',nproc_local
 
-   call xlocal_max(m_ham)
-   call xlocal_max(n_ham)
-   call xlocal_max(iprow_ham)
-   call xlocal_max(ipcol_ham)
+   call xmax_local(m_ham)
+   call xmax_local(n_ham)
+   call xmax_local(iprow_ham)
+   call xmax_local(ipcol_ham)
 
 
    ! Define the transversal communicator
@@ -1010,7 +757,7 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
    allocate(rank_sca_to_mpi(0:nprow_ham-1,0:npcol_ham-1))
    rank_sca_to_mpi(:,:) = -1
    rank_sca_to_mpi(iprow_ham,ipcol_ham) = rank_trans
-   call xtrans_max(rank_sca_to_mpi)
+   call xmax_trans(rank_sca_to_mpi)
 
 
  else

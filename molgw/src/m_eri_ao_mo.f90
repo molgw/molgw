@@ -167,6 +167,8 @@ subroutine calculate_eri_3center_eigen(nbf,nstate,c_matrix)
  do klspin=1,nspin
 
    do lstate=1,nstate
+     if( MODULO( lstate - 1 , nproc_ortho ) /= rank_ortho ) cycle
+
      eri_3center_tmp_l(:,:) = 0.0_dp
 
      ! Transformation of the first index
@@ -175,19 +177,21 @@ subroutine calculate_eri_3center_eigen(nbf,nstate,c_matrix)
        lbf = index_basis(2,ipair)
        eri_3center_tmp_l(:,kbf) = eri_3center_tmp_l(:,kbf) &
                                        + c_matrix(lbf,lstate,klspin) * eri_3center(:,ipair)
-       if( kbf /= lbf )  &
-         eri_3center_tmp_l(:,lbf) = eri_3center_tmp_l(:,lbf) &
-                                         + c_matrix(kbf,lstate,klspin) * eri_3center(:,ipair)
-
+       if( kbf /= lbf ) &
+       eri_3center_tmp_l(:,lbf) = eri_3center_tmp_l(:,lbf) &
+                                       + c_matrix(kbf,lstate,klspin) * eri_3center(:,ipair)
      enddo
 
-   ! Transformation of the second index
+
+     ! Transformation of the second index
      eri_3center_eigen(:,:,lstate,klspin) = MATMUL( eri_3center_tmp_l(:,:) , c_matrix(:,:,klspin) )
 
    enddo
 
  enddo ! klspin
  deallocate(eri_3center_tmp_l)
+
+ call xsum_ortho(eri_3center_eigen)
 
  call stop_clock(timing_eri_3center_eigen)
 
@@ -222,6 +226,8 @@ subroutine calculate_eri_3center_eigen_lr(nbf,nstate,c_matrix)
  do klspin=1,nspin
 
    do lstate=1,nstate
+     if( MODULO( lstate - 1 , nproc_ortho ) /= rank_ortho ) cycle
+
      eri_3center_tmp_l(:,:) = 0.0_dp
 
      ! Transformation of the first index
@@ -243,6 +249,8 @@ subroutine calculate_eri_3center_eigen_lr(nbf,nstate,c_matrix)
 
  enddo ! klspin
  deallocate(eri_3center_tmp_l)
+
+ call xsum_ortho(eri_3center_eigen)
 
  call stop_clock(timing_eri_3center_eigen)
 

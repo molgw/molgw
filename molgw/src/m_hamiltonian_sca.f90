@@ -278,7 +278,7 @@ subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus
 
  !
  ! Reduce operation
- call xlocal_sum(hamiltonian_nucleus)
+ call xsum_local(hamiltonian_nucleus)
 
  title='===  Nucleus potential contribution ==='
  call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_nucleus)
@@ -330,7 +330,7 @@ subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,hartree_i
    enddo
  enddo
 
- call xtrans_sum(partial_sum)
+ call xsum_trans(partial_sum)
 
 
  ! Hartree potential is not sensitive to spin
@@ -352,7 +352,7 @@ subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,hartree_i
 
  !
  ! Sum up the different contribution from different procs only if needed
- call xlocal_sum(hartree_ij)
+ call xsum_local(hartree_ij)
 
 
  title='=== Hartree contribution ==='
@@ -365,7 +365,7 @@ subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,hartree_i
  else
    ehartree = 0.0_dp
  endif
- call xlocal_sum(ehartree)
+ call xsum_local(ehartree)
 
 
  call stop_clock(timing_hartree)
@@ -440,7 +440,7 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_ma
          enddo
        endif
      endif
-     call xlocal_sum(p_matrix_i)
+     call xsum_local(p_matrix_i)
 
 
      allocate(tmpc(nauxil_3center,nbf_trans))
@@ -496,7 +496,7 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_ma
    enddo
  enddo
 
- call xlocal_sum(exchange_ij)
+ call xsum_local(exchange_ij)
 
  !
  ! Calculate the Hartree energy
@@ -505,7 +505,7 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_ma
  else
    eexchange = 0.0_dp
  endif
- call xlocal_sum(eexchange)
+ call xsum_local(eexchange)
 
  call stop_clock(timing_exchange)
 
@@ -567,7 +567,7 @@ subroutine setup_exchange_longrange_ri_sca(print_matrix_,nbf,occupation,c_matrix
  enddo
  deallocate(tmp)
 
- call xlocal_sum(exchange_ij)
+ call xsum_local(exchange_ij)
 
  call dump_out_matrix(print_matrix_,'=== LR Exchange contribution ===',nbf,nspin,exchange_ij)
 
@@ -612,7 +612,7 @@ subroutine setup_density_matrix_sca(nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham
  endif
 
  ! Poor man distribution
- call xlocal_sum(p_matrix)
+ call xsum_local(p_matrix)
 
 
 #endif
@@ -872,8 +872,8 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,nstate,m_ham,n_ham,  &
  endif
 
  ! Poor man distribution
- call xlocal_sum(energy)
- call xlocal_sum(c_matrix)
+ call xsum_local(energy)
+ call xsum_local(c_matrix)
 
 
 
@@ -921,9 +921,9 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
    n_c    = 0
  endif
  ! Propagate nstate
- call xlocal_max(nstate)
- call xlocal_max(m_c)
- call xlocal_max(n_c)
+ call xmax_local(nstate)
+ call xmax_local(m_c)
+ call xmax_local(n_c)
 
 
  allocate(s_matrix_sqrt_inv(m_c,n_c))
@@ -983,7 +983,7 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
 
 
  endif
- call xlocal_sum(s_matrix_sqrt_inv)
+ call xsum_local(s_matrix_sqrt_inv)
 
 
 #endif
@@ -1022,8 +1022,8 @@ subroutine setup_sqrt_density_matrix_sca(nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,
    p_matrix_occ(:,:)    = 0.0_dp
  endif
 
- call xlocal_sum(p_matrix_sqrt)
- call xlocal_sum(p_matrix_occ)
+ call xsum_local(p_matrix_sqrt)
+ call xsum_local(p_matrix_occ)
 
  call stop_clock(timing_sqrt_density_matrix)
 
@@ -1137,7 +1137,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  ! Sum up the contributions from all procs only if needed
  call xsum_world(normalization)
  call xsum_world(exc)
- call xlocal_sum(vhxc_ij)
+ call xsum_local(vhxc_ij)
 
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization
  write(stdout,  '(a,2(2x,f12.6))') '      XC energy (Ha):',exc

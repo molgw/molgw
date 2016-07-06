@@ -126,8 +126,8 @@ subroutine scf_loop(is_restart,&
      en%kin  = 0.0_dp
      en%nuc  = 0.0_dp
    endif
-   call xtrans_sum(en%kin)
-   call xtrans_sum(en%nuc)
+   call xsum_trans(en%kin)
+   call xsum_trans(en%nuc)
 
    !
    ! Setup kinetic and nucleus contributions (that are independent of the

@@ -85,8 +85,8 @@ subroutine init_scf(m_ham,n_ham,m_c,n_c,nbf,nstate)
    m_r_scf = 0
    n_r_scf = 0
  endif
- call xlocal_max(m_r_scf)
- call xlocal_max(n_r_scf)
+ call xmax_local(m_r_scf)
+ call xmax_local(n_r_scf)
 
  call clean_allocate('Hamiltonian history',ham_hist,m_ham,n_ham,nspin,nhistmax)
  call clean_allocate('Residual history',res_hist,m_r_scf,n_r_scf,nspin,nhistmax)
