@@ -1135,6 +1135,8 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix,energy_ref,c_matr
 
  write(stdout,'(/,x,a)') 'Prepare optimized empty states with Frozen Natural Orbitals'
 
+ call assert_experimental()
+
  nvirtualmin = MIN(nvirtualw,nvirtualg)
 
  if( nvirtualmin > nstate ) then 
@@ -1158,7 +1160,7 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix,energy_ref,c_matr
  endif
 
 
- call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix)
+ call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,1,nstate,1,nstate)
 
 
  do ispin=1,nspin

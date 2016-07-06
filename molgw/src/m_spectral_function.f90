@@ -56,15 +56,24 @@ module m_spectral_function
 
  end type spectral_function
 
+ !
+ ! Highest occupied state
+ integer,protected :: nhomo_W
 
  !
- ! frozen core approximation parameters
+ ! Highest occupied state
+ integer,protected :: nlumo_W
+
+ !
+ ! frozen core approximation parameter
  integer,protected :: ncore_W
 
  !
- ! frozen virtual approximation parameters
+ ! frozen virtual approximation parameter
  integer,protected :: nvirtual_W
 
+ !
+ ! Single Pole Approximation parameter
  integer,protected :: nvirtual_SPA
 
 
@@ -124,6 +133,27 @@ subroutine init_spectral_function(nstate,occupation,sf)
    write(msg,'(a,i4,2x,i4)') 'frozen virtual approximation in W switched on starting with state : ',nvirtual_W
    call issue_warning(msg)
  endif
+
+ !
+ ! Find the highest occupied state
+ nhomo_W = 0
+ do ijspin=1,nspin
+   do istate=1,nstate
+     if( occupation(istate,ijspin) / spin_fact < completely_empty ) cycle
+     nhomo_W = MAX(nhomo_W,istate)
+   enddo
+ enddo
+
+ !
+ ! Find the lowest occupied state
+ nlumo_W = 100000
+ do ijspin=1,nspin
+   do istate=1,nstate
+     if( (spin_fact - occupation(istate,ijspin)) / spin_fact < completely_empty) cycle
+     nlumo_W = MIN(nlumo_W,istate)
+   enddo
+ enddo
+
 
  !
  ! First, count the number of resonant transitions

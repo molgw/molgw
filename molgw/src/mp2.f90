@@ -35,7 +35,7 @@ subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
 
  write(stdout,'(/,a)') ' RI-MP2 correlation calculation'
 
- call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix)
+ call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore+1,nstate,ncore+1,nstate)
 
  ncore = ncoreg
  if(is_frozencore) then
@@ -374,7 +374,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
  if( .NOT. has_auxil_basis ) then
    allocate(eri_hf_i(nstate,nstate,nstate,nspin))
  else
-   call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix)
+   call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,1,nstate,1,nstate)
  endif
 
 

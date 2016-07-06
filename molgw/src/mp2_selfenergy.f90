@@ -120,7 +120,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
 
 
  if(has_auxil_basis) then
-   call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix)
+   call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
  else
    allocate(eri_eigenstate_i(nstate,nstate,nstate,nspin))
  endif

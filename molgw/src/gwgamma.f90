@@ -91,7 +91,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  nprodbasis = index_prodstate(nstate,nstate)
 
  if(has_auxil_basis) then
-   call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix)
+   call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
  else
    stop'NOT implemented'
  endif
@@ -584,8 +584,6 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
  if(has_auxil_basis) then
    call destroy_eri_3center_eigen()
-   if( calc_type%gwmethod == LW .OR. calc_type%gwmethod == LW2 .OR. calc_type%gwmethod == GSIGMA ) &
-       call calculate_eri_3center_eigen_mixed(basis%nbf,nstate,c_matrix)
  endif
 
  if(ALLOCATED(omegai)) deallocate(omegai)

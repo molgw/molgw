@@ -71,7 +71,7 @@ program molgw
  real(dp),allocatable    :: sigc(:,:)
  integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
  integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix 
-#ifdef TODAY
+#ifdef ACTIVATE_EXPERIMENTAL
  real(dp),allocatable    :: p_matrix(:,:,:),p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
  real(dp)                :: ehomo,exc
 #endif
@@ -474,17 +474,19 @@ program molgw
  if( calc_type%is_gw .AND. (calc_type%gwmethod == COHSEX_DEVEL .OR. calc_type%gwmethod == TUNED_COHSEX) ) then
 
    if( .NOT. has_auxil_basis ) stop'Not coded yet and will never be'
-   call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix)
    call init_spectral_function(nstate,occupation,wpol)
+   call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
    !
    ! Calculate v^{1/2} \chi v^{1/2}
    call static_polarizability(nstate,basis,occupation,energy,wpol)
+
+   call destroy_eri_3center_eigen()
 
    !
    allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
    allocate(sigc(nstate,nspin))
 
-#ifdef TODAY
+#ifdef ACTIVATE_EXPERIMENTAL
    ! Calculate the DFT potential part
    if( ABS( delta_cohsex ) > 1.0e-6_dp ) then
 
@@ -529,7 +531,6 @@ program molgw
    call cohsex_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag, & 
                           c_matrix,s_matrix,wpol,matrix_tmp,sigc,en%gw)
 
-   call destroy_eri_3center_eigen()
 
    !
    ! A section under development for the range-separated RPA
@@ -542,13 +543,8 @@ program molgw
      ! 3-center integrals
      call calculate_eri_3center_lr(basis,auxil_basis,rcut_mbpt)
 
-     call calculate_eri_3center_eigen_lr(basis%nbf,nstate,c_matrix)
-
      call cohsex_selfenergy_lr(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag, &
                                c_matrix,s_matrix,wpol,matrix_tmp,sigc,en%gw)
-
-     call destroy_eri_3center_eigen_lr()
-
    endif
 
    deallocate(matrix_tmp)

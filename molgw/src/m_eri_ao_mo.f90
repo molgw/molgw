@@ -140,11 +140,12 @@ end subroutine calculate_eri_4center_eigen
 
 
 !=================================================================
-subroutine calculate_eri_3center_eigen(nbf,nstate,c_matrix)
+subroutine calculate_eri_3center_eigen(nbf,nstate,c_matrix,mstate_min,mstate_max,nstate_min,nstate_max)
  use m_inputparam,only: nspin
  implicit none
  integer,intent(in)   :: nbf,nstate
  real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
+ integer,intent(in)   :: mstate_min,mstate_max,nstate_min,nstate_max
 !=====
  integer              :: kbf,lbf
  integer              :: kstate,lstate
@@ -159,14 +160,14 @@ subroutine calculate_eri_3center_eigen(nbf,nstate,c_matrix)
 
 
  !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
- call clean_allocate('3-center MO integrals',eri_3center_eigen,nauxil_3center,nstate,nstate,nspin)
+ call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_3center,mstate_min,mstate_max,nstate_min,nstate_max,1,nspin)
  eri_3center_eigen(:,:,:,:) = 0.0_dp
 
  allocate(eri_3center_tmp_l(nauxil_3center,nbf))
 
  do klspin=1,nspin
 
-   do lstate=1,nstate
+   do lstate=nstate_min,nstate_max
      if( MODULO( lstate - 1 , nproc_ortho ) /= rank_ortho ) cycle
 
      eri_3center_tmp_l(:,:) = 0.0_dp
@@ -184,7 +185,7 @@ subroutine calculate_eri_3center_eigen(nbf,nstate,c_matrix)
 
 
      ! Transformation of the second index
-     eri_3center_eigen(:,:,lstate,klspin) = MATMUL( eri_3center_tmp_l(:,:) , c_matrix(:,:,klspin) )
+     eri_3center_eigen(:,mstate_min:mstate_max,lstate,klspin) = MATMUL( eri_3center_tmp_l(:,:) , c_matrix(:,mstate_min:mstate_max,klspin) )
 
    enddo
 

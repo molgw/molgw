@@ -67,13 +67,14 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  ! Set the range of states on which to evaluate the self-energy
  call selfenergy_set_state_ranges(nstate,occupation)
 
+ call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
 
  write(stdout,*) '=============='
  write(stdout,*) 'FBFB exchange'
  do ispin=1,nspin
    do bstate=nsemin,nsemax
      sigx = 0.0_dp
-     do istate=ncore_G+1,nstate
+     do istate=ncore_G+1,nvirtual_G-1
        fact_full_i   = occupation(istate,ispin) / spin_fact
        if( fact_full_i < completely_empty ) cycle
 
@@ -307,6 +308,8 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  if(ALLOCATED(omegai)) deallocate(omegai)
  if(ALLOCATED(selfenergy_omega)) deallocate(selfenergy_omega)
 
+ call destroy_eri_3center_eigen()
+
  call stop_clock(timing_self)
 
 
@@ -367,9 +370,10 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
  if( .NOT. has_auxil_basis )    stop'Not coded'
  if( .NOT. ALLOCATED(wpol%w0) ) stop'static W should be available here'
 
-#ifndef TODAY
- stop '-DTODAY is required'
-#endif
+ call assert_experimental()
+
+
+ call calculate_eri_3center_eigen_lr(basis%nbf,nstate,c_matrix)
 
 
  write(stdout,*)
@@ -680,6 +684,9 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
 
  if(ALLOCATED(omegai)) deallocate(omegai)
  if(ALLOCATED(selfenergy_omega)) deallocate(selfenergy_omega)
+
+ call destroy_eri_3center_eigen_lr()
+
 
  call stop_clock(timing_self)
 

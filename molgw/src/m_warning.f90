@@ -71,6 +71,7 @@ subroutine die(msg)
  implicit none
  character(*),intent(in) :: msg
 !=====
+!=====
 
  write(stdout,'(/,a)') '=============================='
  write(stdout,'(a,a)') 'STOP: ',msg
@@ -79,6 +80,22 @@ subroutine die(msg)
  stop
 
 end subroutine die
+
+
+!=========================================================================
+subroutine assert_experimental()
+ implicit none
+!=====
+!=====
+
+#ifdef ACTIVATE_EXPERIMENTAL
+ call issue_warning('Activating an experimental part of the code. Hopefully you know what you are doing')
+#else
+ write(stdout,*) 'This part of the code is experimental. It should not be used unless you know what you are doing'
+ call die('Compilation with -DACTIVATE_EXPERIMENTAL is required')
+#endif
+
+end subroutine assert_experimental
 
 
 !=========================================================================

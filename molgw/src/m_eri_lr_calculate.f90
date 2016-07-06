@@ -532,7 +532,7 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
  !
  ! Skip the too small eigenvalues
  nauxil_2center_lr = COUNT( ABS(eigval(:)) > TOO_LOW_EIGENVAL )
-#ifdef TODAY
+#ifdef ACTIVATE_EXPERIMENTAL
  allocate(eri_2center_rotation_lr(auxil_basis%nbf,nauxil_2center_lr))
 #endif
 
@@ -540,7 +540,7 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
  do jbf=1,auxil_basis%nbf
    if( ABS(eigval(jbf)) < TOO_LOW_EIGENVAL ) cycle
    ibf = ibf + 1
-#ifdef TODAY
+#ifdef ACTIVATE_EXPERIMENTAL
    eri_2center_rotation_lr(:,ibf) = eri_2center_m1_lr(:,jbf)
 #endif
    eri_2center_m1_lr(:,ibf) = eri_2center_m1_lr(:,jbf) / SQRT( eigval(jbf) )

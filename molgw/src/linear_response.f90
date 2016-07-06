@@ -61,7 +61,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
    write(stdout,'(a)') ' Singlet state'
  endif
 
- if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix)
+ if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1)
 
  
  ! Set up all the switches to be able to treat
@@ -288,7 +288,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
 
  write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy (eV):',MINVAL(ABS(eigenvalue(1:nexc)))*Ha_eV
 
- if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix)
+ if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
 
  !
  ! Calculate the optical sprectrum
@@ -332,7 +332,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
 
  if( .NOT. calc_type%is_gw ) call destroy_spectral_function(wpol_out)
 
- write(stdout,*) 'Deallocate eigenvector arrays'
+ write(stdout,*) 'Deallocate eigenvector array'
  call clean_deallocate('X+Y',xpy_matrix)
 
  if(has_auxil_basis) call destroy_eri_3center_eigen()
