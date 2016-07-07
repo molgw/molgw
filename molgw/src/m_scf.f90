@@ -156,7 +156,7 @@ subroutine simple_mixing_p_matrix(p_matrix_old,p_matrix_new)
 
  if( mixing_scheme/='SIMPLE' .AND. iscf > mixing_first_nscf ) return
 
- write(stdout,'(/,x,a,x,f8.4)') 'Simple mixing of the density matrix with alpha_mixing:',alpha_mixing
+ write(stdout,'(/,1x,a,1x,f8.4)') 'Simple mixing of the density matrix with alpha_mixing:',alpha_mixing
 
  p_matrix_new(:,:,:) = alpha_mixing * p_matrix_new(:,:,:) + (1.0_dp - alpha_mixing) * p_matrix_old(:,:,:)
  
@@ -188,7 +188,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  call start_clock(timing_diis)
 
 
- write(stdout,'(/,x,a)') 'Pulay DIIS mixing'
+ write(stdout,'(/,1x,a)') 'Pulay DIIS mixing'
 
 
  allocate(a_matrix(nhist_current+1,nhist_current+1))
@@ -411,7 +411,7 @@ function check_converged(p_matrix_old,p_matrix_new)
 
  rms = SQRT( rms * nspin )
 
- write(stdout,'(x,a,2x,es12.5)') 'Convergence criterium on the density matrix',rms
+ write(stdout,'(1x,a,2x,es12.5)') 'Convergence criterium on the density matrix',rms
  if( rms < tolscf ) then 
    check_converged = .TRUE.
    write(stdout,*) ' ===> convergence has been reached'

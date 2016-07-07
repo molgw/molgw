@@ -425,7 +425,7 @@ program molgw
    if( calc_type%gwmethod /= GnWn ) then
      call read_spectral_function(wpol,reading_status)
    else
-     write(stdout,'(/,x,a)') 'For GnWn calculations, never try to read file SCREENED_COULOMB'
+     write(stdout,'(/,1x,a)') 'For GnWn calculations, never try to read file SCREENED_COULOMB'
      reading_status = 1
    endif
    ! If reading has failed, then do the calculation

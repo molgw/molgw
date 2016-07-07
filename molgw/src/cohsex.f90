@@ -591,7 +591,7 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
    do pstate=nsemin,nsemax
      energy_qp_new(pstate,:) = energy_qp(pstate,:) + selfenergy_omega(0,pstate,1,:) + exchange_m_vxc_diag(pstate,:)
 
-     write(stdout,'(i4,x,20(x,f12.6))') pstate,energy_qp(pstate,:)*Ha_eV,               &
+     write(stdout,'(i4,1x,20(1x,f12.6))') pstate,energy_qp(pstate,:)*Ha_eV,               &
                                                  exchange_m_vxc_diag(pstate,:)*Ha_eV,     &
                                                  selfenergy_omega(0,pstate,1,:)*Ha_eV, &
                                            1.0_dp ,energy_qp_new(pstate,:)*Ha_eV
@@ -613,7 +613,7 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
    do pstate=nsemin,nsemax
      energy_qp_new(pstate,:) = energy_qp(pstate,:) + sigc(pstate,:) + exchange_m_vxc_diag(pstate,:)
 
-     write(stdout,'(i4,x,20(x,f12.6))') pstate,energy_qp(pstate,:)*Ha_eV,               &
+     write(stdout,'(i4,1x,20(1x,f12.6))') pstate,energy_qp(pstate,:)*Ha_eV,               &
                                                  exchange_m_vxc_diag(pstate,:)*Ha_eV,     &
                                                  sigc(pstate,:)*Ha_eV, &
                                            1.0_dp ,energy_qp_new(pstate,:)*Ha_eV

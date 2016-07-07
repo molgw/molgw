@@ -240,11 +240,11 @@ subroutine init_mpi_other_communicators(nproc_ortho_in)
 
 #ifdef HAVE_MPI
   write(stdout,'(/,a)')       ' ==== MPI info'
-  write(stdout,'(a50,x,i6)')  'Number of proc:',nproc_world
-  write(stdout,'(a50,x,i6)')  'nproc_grid:    ',nproc_grid
-  write(stdout,'(a50,x,i6)')  'nproc_auxil:   ',nproc_auxil
-  write(stdout,'(a50,x,i6)')  'nproc_ortho:   ',nproc_ortho
-  write(stdout,'(a50,x,i6)')  'Master proc is:',iomaster
+  write(stdout,'(a50,1x,i6)')  'Number of proc:',nproc_world
+  write(stdout,'(a50,1x,i6)')  'nproc_grid:    ',nproc_grid
+  write(stdout,'(a50,1x,i6)')  'nproc_auxil:   ',nproc_auxil
+  write(stdout,'(a50,1x,i6)')  'nproc_ortho:   ',nproc_ortho
+  write(stdout,'(a50,1x,i6)')  'Master proc is:',iomaster
   write(stdout,'(a50,6x,l1)') 'Parallelize auxiliary basis:',parallel_auxil
   write(stdout,'(a50,6x,l1)')  'Parallelize XC grid points:',parallel_grid
   write(stdout,'(a50,6x,l1)')               'Use SCALAPACK:',parallel_scalapack
@@ -569,7 +569,7 @@ subroutine distribute_grid_workload()
   
      if( nproc_grid > 1 ) then
        write(stdout,'(/,a)') ' Distribute work load among procs'
-       write(stdout,'(a,x,f8.2)') ' Avg. tasks per cpu:',REAL(ngrid_mpi,dp) / REAL(nproc_grid,dp)
+       write(stdout,'(a,1x,f8.2)') ' Avg. tasks per cpu:',REAL(ngrid_mpi,dp) / REAL(nproc_grid,dp)
        write(stdout,'(a,i6,a,i10)') ' proc # , grid points',rank_grid,' , ',ntask_grid_proc(rank_grid)
      endif
   
@@ -659,14 +659,14 @@ subroutine init_scalapack()
 
 ! write(stdout,'(/,a)')           ' ==== SCALAPACK info'
 ! write(stdout,'(a)')             '   Squared distribution'
-! write(stdout,'(a50,x,i8)')      'Number of proc:',nprow_sd*npcol_sd
-! write(stdout,'(a50,x,i8,x,i8)') 'Grid of procs:',nprow_sd,npcol_sd
+! write(stdout,'(a50,1x,i8)')      'Number of proc:',nprow_sd*npcol_sd
+! write(stdout,'(a50,1x,i8,1x,i8)') 'Grid of procs:',nprow_sd,npcol_sd
 ! write(stdout,'(a)')             '       Row distribution'
-! write(stdout,'(a50,x,i8)')      'Number of proc:',nprow_rd*npcol_rd
-! write(stdout,'(a50,x,i8,x,i8)') 'Grid of procs:',nprow_rd,npcol_rd
+! write(stdout,'(a50,1x,i8)')      'Number of proc:',nprow_rd*npcol_rd
+! write(stdout,'(a50,1x,i8,1x,i8)') 'Grid of procs:',nprow_rd,npcol_rd
 ! write(stdout,'(a)')             '    Column distribution'
-! write(stdout,'(a50,x,i8)')      'Number of proc:',nprow_cd*npcol_cd
-! write(stdout,'(a50,x,i8,x,i8)') 'Grid of procs:',nprow_cd,npcol_cd
+! write(stdout,'(a50,1x,i8)')      'Number of proc:',nprow_cd*npcol_cd
+! write(stdout,'(a50,1x,i8,1x,i8)') 'Grid of procs:',nprow_cd,npcol_cd
  write(stdout,'(/)')
  
 #else
@@ -730,8 +730,8 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
    call xmax_world(rank_ham_sca_to_mpi)
 
    write(stdout,'(/,a)')           ' ==== SCALAPACK Hamiltonian'
-   write(stdout,'(a50,x,i8)')      'Number of dedicated processors:',nprow_ham * npcol_ham
-   write(stdout,'(a50,x,i8,x,i8)')   'Grid of dedicated processors:',nprow_ham,npcol_ham
+   write(stdout,'(a50,1x,i8)')      'Number of dedicated processors:',nprow_ham * npcol_ham
+   write(stdout,'(a50,1x,i8,1x,i8)')   'Grid of dedicated processors:',nprow_ham,npcol_ham
 
    ! Distribute the remaing procs for auxiliary basis and grid points
    color = MODULO( rank_world , nprow_ham * npcol_ham )
@@ -739,7 +739,7 @@ subroutine init_scalapack_ham(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
    call MPI_COMM_SIZE(comm_local,nproc_local,ier)
    call MPI_COMM_RANK(comm_local,rank_local,ier)
 
-   write(stdout,'(a50,x,i8)')      'Number of local processors:',nproc_local
+   write(stdout,'(a50,1x,i8)')      'Number of local processors:',nproc_local
 
    call xmax_local(m_ham)
    call xmax_local(n_ham)

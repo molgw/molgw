@@ -29,7 +29,7 @@ subroutine allocate_parallel_buffer(nbf)
  integer,intent(in) :: nbf
 !=====
 
- write(stdout,'(/,x,a)') 'For SCALAPACK buffer, only this buffer is not distributed'
+ write(stdout,'(/,1x,a)') 'For SCALAPACK buffer, only this buffer is not distributed'
  call clean_allocate('non distributed buffer',buffer,nbf,nbf)
 
 end subroutine allocate_parallel_buffer

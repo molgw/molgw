@@ -63,7 +63,7 @@ subroutine init_seed(iseed)
   call system_clock(idum,i,j)
  endif
 
- write(stdout,'(a,x,i12)') 'Random seed set to',idum
+ write(stdout,'(a,1x,i12)') 'Random seed set to',idum
 
 
 end subroutine

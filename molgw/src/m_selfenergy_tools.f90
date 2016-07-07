@@ -21,6 +21,11 @@ module m_selfenergy_tools
  integer,protected :: nsemin
  integer,protected :: nsemax
 
+ !
+ ! Highest occupied state
+ integer,protected :: nhomo_G
+
+
 
 contains
 
@@ -45,7 +50,7 @@ subroutine write_selfenergy_omega(filename_root,nstate,energy0,exchange_m_vxc,no
  ! Just the master writes
  if( .NOT. is_iomaster ) return
 
- write(stdout,'(/,x,a)') 'Write Sigma(omega) on file'
+ write(stdout,'(/,1x,a)') 'Write Sigma(omega) on file'
 
  !
  ! omega is defined with respect to energy0_a
@@ -54,7 +59,7 @@ subroutine write_selfenergy_omega(filename_root,nstate,energy0,exchange_m_vxc,no
  do astate=nsemin,nsemax
    write(ctmp,'(i3.3)') astate
    filename = TRIM(filename_root) // '_state' // TRIM(ctmp) // '.dat'
-   write(stdout,'(x,a,a)') 'Writing selfenergy in file: ', TRIM(filename)
+   write(stdout,'(1x,a,a)') 'Writing selfenergy in file: ', TRIM(filename)
    open(newunit=selfenergyfile,file=filename)
 
    write(selfenergyfile,'(a)') '# omega (eV)             SigmaC (eV)    omega - e_gKS - Vxc + SigmaX (eV)     A (eV^-1) '
@@ -155,7 +160,7 @@ subroutine find_qp_energy_graphical(nomegai,omegai,nsemin,nsemax,selfenergy_omeg
      ! Remember: omegai = E_GW - E_gKS
      energy_qp_g(astate,aspin) = find_fixed_point(nomegai,omegai,sigma_xc_m_vxc,info) + energy0(astate,aspin)
      if( info /= 0 ) then
-       write(stdout,'(x,a,i4,2x,i4)') 'Unreliable graphical solution of the QP equation for state,spin: ',astate,aspin
+       write(stdout,'(1x,a,i4,2x,i4)') 'Unreliable graphical solution of the QP equation for state,spin: ',astate,aspin
        call issue_warning('No fixed point found for the QP equation. Try to increase nomega_sigma or step_sigma.')
      endif
    enddo
@@ -250,7 +255,7 @@ subroutine output_qp_energy(calcname,nstate,nsemin,nsemax,energy0,exchange_m_vxc
 !=====
 
 
- write(stdout,'(/,x,a,x,a)') TRIM(calcname),'eigenvalues (eV)'
+ write(stdout,'(/,1x,a,1x,a)') TRIM(calcname),'eigenvalues (eV)'
 
  if( PRESENT(zz) .AND. PRESENT(energy2) ) then
 
@@ -263,12 +268,12 @@ subroutine output_qp_energy(calcname,nstate,nsemin,nsemax,energy0,exchange_m_vxc
 
    do astate=nsemin,nsemax
 
-     write(stdout,'(i4,x,20(x,f12.6))') astate,energy0(astate,:)*Ha_eV,   &
-                                        exchange_m_vxc(astate,:)*Ha_eV,   &
-                                        selfenergy(astate,:)*Ha_eV,       &
-                                        zz(astate,:),                     &
-                                        energy1(astate,:)*Ha_eV,          &
-                                        energy2(astate,:)*Ha_eV
+     write(stdout,'(i4,1x,20(1x,f12.6))') astate,energy0(astate,:)*Ha_eV,   &
+                                          exchange_m_vxc(astate,:)*Ha_eV,   &
+                                          selfenergy(astate,:)*Ha_eV,       &
+                                          zz(astate,:),                     &
+                                          energy1(astate,:)*Ha_eV,          &
+                                          energy2(astate,:)*Ha_eV
    enddo
 
  else
@@ -282,10 +287,10 @@ subroutine output_qp_energy(calcname,nstate,nsemin,nsemax,energy0,exchange_m_vxc
 
    do astate=nsemin,nsemax
 
-     write(stdout,'(i4,x,20(x,f12.6))') astate,energy0(astate,:)*Ha_eV,       &
-                                        exchange_m_vxc(astate,:)*Ha_eV,       &
-                                        selfenergy(astate,:)*Ha_eV,           &
-                                        energy1(astate,:)*Ha_eV
+     write(stdout,'(i4,1x,20(1x,f12.6))') astate,energy0(astate,:)*Ha_eV,       &
+                                          exchange_m_vxc(astate,:)*Ha_eV,       &
+                                          selfenergy(astate,:)*Ha_eV,           &
+                                          energy1(astate,:)*Ha_eV
    enddo
 
 
@@ -303,7 +308,7 @@ subroutine selfenergy_set_state_ranges(nstate,occupation)
  integer,intent(in)  :: nstate
  real(dp),intent(in) :: occupation(nstate,nspin)
 !=====
- integer :: istate,ihomo
+ integer :: istate
  integer :: nsemax_tmp
 !=====
 
@@ -325,16 +330,16 @@ subroutine selfenergy_set_state_ranges(nstate,occupation)
  endif
 
  ! Find the HOMO index
- ihomo = 1
+ nhomo_G = 1
  do istate=1,nstate
    if( .NOT. ANY( occupation(istate,:) < completely_empty ) ) then
-     ihomo = MAX(ihomo,istate)
+     nhomo_G = MAX(nhomo_G,istate)
    endif
  enddo
 
- nsemin = MAX(ncore_G+1,selfenergy_state_min,1,ihomo-selfenergy_state_range)
+ nsemin = MAX(ncore_G+1,selfenergy_state_min,1,nhomo_G-selfenergy_state_range)
 
- nsemax = MIN(nvirtual_G-1,selfenergy_state_max,nstate,ihomo+selfenergy_state_range)
+ nsemax = MIN(nvirtual_G-1,selfenergy_state_max,nstate,nhomo_G+selfenergy_state_range)
 
  write(stdout,'(a,i4,a,i4)') ' Calculate state range from ',nsemin,' to ',nsemax
 

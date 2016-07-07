@@ -367,7 +367,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
 
  call start_clock(timing_full_ci)
 
- write(stdout,'(/,x,a,/)') 'Enter full CI subroutine'
+ write(stdout,'(/,1x,a,/)') 'Enter full CI subroutine'
 
  if( nspin /= 1) call die('CI is only implemented starting from spin-restricted SCF')
 
@@ -485,11 +485,11 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
  write(stdout,'(a,f16.10)') ' Single determinant ground state energy (Ha): ',hamiltonian(1,1)
 ! write(stdout,*) '=========== H_1e ============== '
 ! do istate=1,nstate
-!   write(stdout,'(i4,2x,20(x,f12.6))') iconf,h_1e_hf(istate,1:nstate)
+!   write(stdout,'(i4,2x,20(1x,f12.6))') iconf,h_1e_hf(istate,1:nstate)
 ! enddo
 ! write(stdout,*) '=========== full H ============== '
 ! do iconf=1,nconf
-!   write(stdout,'(i4,2x,20(x,f12.6))') iconf,hamiltonian(iconf,1:nconf)
+!   write(stdout,'(i4,2x,20(1x,f12.6))') iconf,hamiltonian(iconf,1:nconf)
 ! enddo
 
  allocate(energy(nconf),eigenvector(nconf,nconf))
@@ -615,7 +615,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
        qq(:,ieig) = MATMUL( ab(:,1:bigm) ,  alphavec(1:bigm,ieig) ) &
                      - lambda(ieig) * MATMUL( bb(:,1:bigm) , alphavec(1:bigm,ieig) )
 
-       write(stdout,'(a,i4,x,i4,x,e12.4)') ' Residual norm for eigenvalue,cycle',ieig,icycle,NORM2(qq(:,ieig))
+       write(stdout,'(a,i4,1x,i4,1x,e12.4)') ' Residual norm for eigenvalue,cycle',ieig,icycle,NORM2(qq(:,ieig))
 
        do iconf=1,nconf
          bb(iconf,bigm+ieig) = qq(iconf,ieig) / ( lambda(ieig) - hamiltonian(iconf,iconf) )
@@ -650,11 +650,11 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
    write(stdout,*) energy(1:min(neig,nconf))
 
    deallocate(bb,qq)
-   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Davidson   ',1,eigenvector(1:min(20,nconf),1)
-   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Davidson   ',2,eigenvector(1:min(20,nconf),2)
-   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Davidson   ',3,eigenvector(1:min(20,nconf),3)
-   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Davidson   ',4,eigenvector(1:min(20,nconf),4)
-   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Davidson   ',5,eigenvector(1:min(20,nconf),5)
+   write(stdout,'(a,i4,2x,20(1x,f7.4))') ' Davidson   ',1,eigenvector(1:min(20,nconf),1)
+   write(stdout,'(a,i4,2x,20(1x,f7.4))') ' Davidson   ',2,eigenvector(1:min(20,nconf),2)
+   write(stdout,'(a,i4,2x,20(1x,f7.4))') ' Davidson   ',3,eigenvector(1:min(20,nconf),3)
+   write(stdout,'(a,i4,2x,20(1x,f7.4))') ' Davidson   ',4,eigenvector(1:min(20,nconf),4)
+   write(stdout,'(a,i4,2x,20(1x,f7.4))') ' Davidson   ',5,eigenvector(1:min(20,nconf),5)
 
  endif
 
@@ -702,7 +702,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
          qq(:,iblock) = MATMUL( ab ,  alphavec(:,jeig+iblock-1) ) &
                  - lambda(jeig+iblock-1) * MATMUL ( bb , alphavec(:,jeig+iblock-1) )
 
-         write(stdout,'(a,i4,x,i4,x,e12.4)') ' Residual norm for eigenvalue,cycle',&
+         write(stdout,'(a,i4,1x,i4,1x,e12.4)') ' Residual norm for eigenvalue,cycle',&
                        icycle,jeig+iblock-1,NORM2(qq(:,iblock))
 
          do iconf=1,nconf
@@ -750,11 +750,11 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
    call diagonalize(nconf,hamiltonian,energy,eigenvector)
    write(stdout,*) 'Full diago DONE'
    write(stdout,*) energy(1:min(neig,nconf))
-   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Full diago ',1,eigenvector(1:min(20,nconf),1)
-   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Full diago ',2,eigenvector(1:min(20,nconf),2)
-   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Full diago ',3,eigenvector(1:min(20,nconf),3)
-   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Full diago ',4,eigenvector(1:min(20,nconf),4)
-   write(stdout,'(a,i4,2x,20(x,f7.4))') ' Full diago ',5,eigenvector(1:min(20,nconf),5)
+   write(stdout,'(a,i4,2x,20(1x,f7.4))') ' Full diago ',1,eigenvector(1:min(20,nconf),1)
+   write(stdout,'(a,i4,2x,20(1x,f7.4))') ' Full diago ',2,eigenvector(1:min(20,nconf),2)
+   write(stdout,'(a,i4,2x,20(1x,f7.4))') ' Full diago ',3,eigenvector(1:min(20,nconf),3)
+   write(stdout,'(a,i4,2x,20(1x,f7.4))') ' Full diago ',4,eigenvector(1:min(20,nconf),4)
+   write(stdout,'(a,i4,2x,20(1x,f7.4))') ' Full diago ',5,eigenvector(1:min(20,nconf),5)
 
  endif
 

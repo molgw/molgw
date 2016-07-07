@@ -720,14 +720,14 @@ subroutine write_memory_allocate(array_name,mem_mb)
 
  if( mem_mb < 500.0_dp .AND. total_memory < 500.0_dp ) then
 
-   write(stdout,'(x,a,a25,a,sp,f8.3,s,a,a,f8.3,a)')   &
+   write(stdout,'(1x,a,a25,a,sp,f8.3,s,a,a,f8.3,a)')   &
          '  Allocate: ',TRIM(array_name),        &
              ',  Mem: ', mem_mb      ,' (Mb)',   &
        ',  Total Mem: ', total_memory,' (Mb)'
 
  else
 
-   write(stdout,'(x,a,a25,a,sp,f8.3,s,a,a,f8.3,a)')   &
+   write(stdout,'(1x,a,a25,a,sp,f8.3,s,a,a,f8.3,a)')   &
          '  Allocate: ',TRIM(array_name),        &
              ',  Mem: ', mem_mb/1024.0_dp      ,' (Gb)',   &
        ',  Total Mem: ', total_memory/1024.0_dp,' (Gb)'
@@ -748,14 +748,14 @@ subroutine write_memory_deallocate(array_name,mem_mb)
 
  if( mem_mb < 500.0_dp .AND. total_memory < 500.0_dp ) then
 
-   write(stdout,'(x,a,a25,a,sp,f8.3,s,a,a,f8.3,a)')   &
+   write(stdout,'(1x,a,a25,a,sp,f8.3,s,a,a,f8.3,a)')   &
          'Deallocate: ',TRIM(array_name),        &
              ',  Mem: ',-mem_mb      ,' (Mb)',   &
        ',  Total Mem: ', total_memory,' (Mb)'
 
  else
 
-   write(stdout,'(x,a,a25,a,sp,f8.3,s,a,a,f8.3,a)')   &
+   write(stdout,'(1x,a,a25,a,sp,f8.3,s,a,a,f8.3,a)')   &
          'Deallocate: ',TRIM(array_name),        &
              ',  Mem: ',-mem_mb/1024.0_dp      ,' (Gb)',   &
        ',  Total Mem: ', total_memory/1024.0_dp,' (Gb)'

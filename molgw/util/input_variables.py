@@ -767,13 +767,13 @@ ffor.write('!===================================================================
 
 for i in range(len(vl)):
   if 'real' in vl[i].datatype:
-    fortran_format = '\'(x,a24,2x,es16.8)\''
+    fortran_format = '\'(1x,a24,2x,es16.8)\''
   elif 'integer' in vl[i].datatype:
-    fortran_format = '\'(x,a24,2x,i8)\''
+    fortran_format = '\'(1x,a24,2x,i8)\''
   elif 'characters' in vl[i].datatype:
-    fortran_format = '\'(x,a24,6x,a)\''
+    fortran_format = '\'(1x,a24,6x,a)\''
   elif 'yes' in vl[i].datatype:
-    fortran_format = '\'(x,a24,6x,a)\''
+    fortran_format = '\'(1x,a24,6x,a)\''
   else:
     fortran_format = 'ERROR'
   ffor.write('write(stdout,'+fortran_format+') \''+vl[i].keyword+'\','+vl[i].keyword+' \n')

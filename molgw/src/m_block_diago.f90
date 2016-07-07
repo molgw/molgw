@@ -424,7 +424,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
    write(stdout,'(/,a,i4)') ' Davidson iteration ',icycle
    write(stdout,'(a,i5)')   ' Iterative subspace dimension ',nbbc
    do ibb=1,nexcitation
-     write(stdout,'(a,i4,x,f13.6,x,es12.4)') ' Excitation   Energy (eV)  Residual: ',ibb,bigomega_tmp(ibb) * Ha_eV,&
+     write(stdout,'(a,i4,1x,f13.6,1x,es12.4)') ' Excitation   Energy (eV)  Residual: ',ibb,bigomega_tmp(ibb) * Ha_eV,&
                   MAX( NORM2(ql(:,ibb)) , NORM2(qr(:,ibb)) )
      tolres = MAXVAL( NORM2(ql(:,:),DIM=1) )
    enddo

@@ -107,7 +107,7 @@ subroutine scf_loop(is_restart,&
  !
  do iscf=1,nscf
    write(stdout,'(/,a)') '-------------------------------------------'
-   write(stdout,'(a,x,i4,/)') ' *** SCF cycle No:',iscf
+   write(stdout,'(a,1x,i4,/)') ' *** SCF cycle No:',iscf
 
 
    !
@@ -352,18 +352,18 @@ subroutine scf_loop(is_restart,&
    !
    ! Output the total energy and its components
    write(stdout,*)
-   write(stdout,'(a25,x,f19.10)') 'Nucleus-Nucleus (Ha):',en%nuc_nuc
-   write(stdout,'(a25,x,f19.10)') 'Kinetic Energy  (Ha):',en%kin
-   write(stdout,'(a25,x,f19.10)') 'Nucleus Energy  (Ha):',en%nuc
-   write(stdout,'(a25,x,f19.10)') 'Hartree Energy  (Ha):',en%hart
+   write(stdout,'(a25,1x,f19.10)') 'Nucleus-Nucleus (Ha):',en%nuc_nuc
+   write(stdout,'(a25,1x,f19.10)') 'Kinetic Energy  (Ha):',en%kin
+   write(stdout,'(a25,1x,f19.10)') 'Nucleus Energy  (Ha):',en%nuc
+   write(stdout,'(a25,1x,f19.10)') 'Hartree Energy  (Ha):',en%hart
    if(calc_type%need_exchange) then
-     write(stdout,'(a25,x,f19.10)') 'Exchange Energy (Ha):',en%exx_hyb
+     write(stdout,'(a25,1x,f19.10)') 'Exchange Energy (Ha):',en%exx_hyb
    endif
    if( calc_type%is_dft ) then
-     write(stdout,'(a25,x,f19.10)') 'XC Energy       (Ha):',en%xc
+     write(stdout,'(a25,1x,f19.10)') 'XC Energy       (Ha):',en%xc
    endif
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx_hyb + en%xc
-   write(stdout,'(/,a25,x,f19.10,/)') 'Total Energy    (Ha):',en%tot
+   write(stdout,'(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):',en%tot
 
 
    !
@@ -425,9 +425,9 @@ subroutine scf_loop(is_restart,&
    endif
  endif
 
- write(stdout,'(/,/,a25,x,f19.10,/)') 'SCF Total Energy (Ha):',en%tot
- write(stdout,'(a25,x,f19.10)')       '      EXX Energy (Ha):',en%exx
- write(stdout,'(a25,x,f19.10)')       'Total EXX Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
+ write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en%tot
+ write(stdout,'(a25,1x,f19.10)')       '      EXX Energy (Ha):',en%exx
+ write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
 
  !
  ! Skip a bunch of things if parallel_ham is activated
@@ -441,8 +441,8 @@ subroutine scf_loop(is_restart,&
    matrix_tmp(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
    ! And pass it to single_excitations
    call single_excitations(nstate,basis%nbf,energy,occupation,c_matrix,matrix_tmp)
-   write(stdout,'(a25,x,f19.10)') 'Singles correction (Ha):',en%se
-   write(stdout,'(a25,x,f19.10,/)')   'Est. HF Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
+   write(stdout,'(a25,1x,f19.10)') 'Singles correction (Ha):',en%se
+   write(stdout,'(a25,1x,f19.10,/)')   'Est. HF Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
 
 
 

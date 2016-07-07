@@ -1133,7 +1133,7 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix,energy_ref,c_matr
 
  call start_clock(timing_fno)
 
- write(stdout,'(/,x,a)') 'Prepare optimized empty states with Frozen Natural Orbitals'
+ write(stdout,'(/,1x,a)') 'Prepare optimized empty states with Frozen Natural Orbitals'
 
  call assert_experimental()
 
@@ -1303,10 +1303,10 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix,energy_ref,c_matr
 
    nvirtual_kept = nvirtualmin - 1 - nocc
 
-   write(stdout,'(/,x,a,i5)')    'Max state index included ',nvirtual_kept + nocc
-   write(stdout,'(x,a,i5,a,i5)') 'Retain ',nvirtual_kept,' virtual orbitals out of ',nvirtual
-   write(stdout,'(x,a,es14.6)')  'Occupation number of the last virtual state',occupation_mp2(nvirtual - (nocc + nvirtual_kept))
-   write(stdout,'(x,a,es14.6,4x,es14.6)') '  to be compared to the first and last virtual states',occupation_mp2(nvirtual),occupation_mp2(1)
+   write(stdout,'(/,1x,a,i5)')    'Max state index included ',nvirtual_kept + nocc
+   write(stdout,'(1x,a,i5,a,i5)') 'Retain ',nvirtual_kept,' virtual orbitals out of ',nvirtual
+   write(stdout,'(1x,a,es14.6)')  'Occupation number of the last virtual state',occupation_mp2(nvirtual - (nocc + nvirtual_kept))
+   write(stdout,'(1x,a,es14.6,4x,es14.6)') '  to be compared to the first and last virtual states',occupation_mp2(nvirtual),occupation_mp2(1)
    write(stdout,*)
 
    allocate(ham_virtual_kept(nvirtual_kept,nvirtual_kept))
@@ -1319,7 +1319,7 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix,energy_ref,c_matr
 
    call diagonalize(nvirtual_kept,ham_virtual_kept,energy_virtual_kept)
 
-!   write(stdout,'(/,x,a)') ' virtual state    FNO energy (eV)   reference energy (eV)'
+!   write(stdout,'(/,1x,a)') ' virtual state    FNO energy (eV)   reference energy (eV)'
 !   do astate=1,nvirtual_kept
 !     write(stdout,'(i4,4x,f16.5,2x,f16.5)') astate,energy_virtual_kept(astate)*Ha_eV,energy(astate+nocc,ispin)*Ha_eV
 !   enddo
@@ -1353,7 +1353,7 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix,energy_ref,c_matr
 
  call destroy_eri_3center_eigen()
 
- write(stdout,'(x,a)') 'Optimized empty states with Frozen Natural Orbitals'
+ write(stdout,'(1x,a)') 'Optimized empty states with Frozen Natural Orbitals'
 
  call stop_clock(timing_fno)
 
@@ -1379,7 +1379,7 @@ subroutine destroy_fno(basis,nstate,energy,c_matrix,energy_ref,c_matrix_ref)
  integer                               :: lowerb,upperb
 !=====
 
- write(stdout,'(/,x,a)') 'Deallocate the Frozen Natural Orbitals'
+ write(stdout,'(/,1x,a)') 'Deallocate the Frozen Natural Orbitals'
 
  lowerb = LBOUND(energy_ref,DIM=1)
  upperb = UBOUND(energy_ref,DIM=1)

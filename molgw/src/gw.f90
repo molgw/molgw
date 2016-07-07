@@ -471,7 +471,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
 
      do astate=nsemin,nsemax
        write(ctmp,'(i3.3)') astate
-       write(stdout,'(x,a,a)') 'Printing file: ','selfenergy_omegac_state'//TRIM(ctmp)
+       write(stdout,'(1x,a,a)') 'Printing file: ','selfenergy_omegac_state'//TRIM(ctmp)
        open(newunit=selfenergyfile,file='selfenergy_omegac_state'//TRIM(ctmp))
        write(selfenergyfile,'(a)') '# Re omega (eV)  Im omega (eV)  SigmaC (eV) '
        do iomegai=1,nomegai

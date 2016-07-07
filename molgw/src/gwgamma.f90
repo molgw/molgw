@@ -81,7 +81,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
  if( tddft_kernel ) then
    write(stdout,*) 'Include a TDDFT kernel contribution to the vertex'
-   write(stdout,'(x,a,f12.4)') 'Exact-exchange amount: ',alpha_hybrid
+   write(stdout,'(1x,a,f12.4)') 'Exact-exchange amount: ',alpha_hybrid
    call prepare_tddft(nstate,basis,c_matrix,occupation)
  endif
 
@@ -163,7 +163,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
              vcoul2 = alpha_hybrid * vcoul2 - eval_fxc_rks_singlet(istate,bstate,ispin,kstate,mstate,ispin)
 
              if( ABS( eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin) -vcoul2)> 0.10 ) then
-               write(*,'(4(i4,x),4(x,f12.6))') istate,bstate,kstate,mstate, &
+               write(*,'(4(i4,1x),4(1x,f12.6))') istate,bstate,kstate,mstate, &
                   eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin), &
                   vcoul2
                write(*,*) 'Hack'
@@ -203,7 +203,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
              vcoul2 = alpha_hybrid * vcoul2 - eval_fxc_rks_singlet(astate,jstate,ispin,cstate,mstate,ispin)
 
              if( ABS( eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin) -vcoul2 )> 0.10 ) then
-               write(*,'(4(i4,x),4(x,f12.6))') astate,jstate,cstate,mstate, &
+               write(*,'(4(i4,1x),4(1x,f12.6))') astate,jstate,cstate,mstate, &
                   eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin), &
                   vcoul2
 !               write(*,*) 'Hack'
@@ -490,9 +490,11 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
 
  if( print_sigma_) then
-   call write_selfenergy_omega('selfenergy_gwgamma',nstate,energy_qp,exchange_m_vxc_diag,SIZE(omegai),omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:))
+   call write_selfenergy_omega('selfenergy_sox'    ,nstate,energy_qp,exchange_m_vxc_diag,SIZE(omegai),omegai,nsemin,nsemax,selfenergy_omega_sox  (:,:,1,:))
+   call write_selfenergy_omega('selfenergy_gamma'  ,nstate,energy_qp,exchange_m_vxc_diag,SIZE(omegai),omegai,nsemin,nsemax,selfenergy_omega_gamma(:,:,1,:))
+   call write_selfenergy_omega('selfenergy_gwgamma',nstate,energy_qp,exchange_m_vxc_diag,SIZE(omegai),omegai,nsemin,nsemax,selfenergy_omega      (:,:,1,:))
  endif
-
+ 
  ! Only had the diagonal calculated...
  selfenergy(:,:,:) = 0.0_dp
  forall(astate=nsemin:nsemax)
@@ -509,12 +511,12 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  endif
 
  do astate=nsemin,nsemax
-   write(stdout,'(i4,x,20(x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,          & 
-                                      exchange_m_vxc_diag(astate,:)*Ha_eV,       &
-                                      selfenergy_omega_gw(0,astate,1,:)*Ha_eV,   &
-                                      selfenergy_omega_sox(0,astate,1,:)*Ha_eV,  &
-                                      selfenergy_omega_gamma(0,astate,1,:)*Ha_eV,&
-                                      selfenergy_omega(0,astate,1,:)*Ha_eV
+   write(stdout,'(i4,1x,20(1x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,          & 
+                                        exchange_m_vxc_diag(astate,:)*Ha_eV,       &
+                                        selfenergy_omega_gw(0,astate,1,:)*Ha_eV,   &
+                                        selfenergy_omega_sox(0,astate,1,:)*Ha_eV,  &
+                                        selfenergy_omega_gamma(0,astate,1,:)*Ha_eV,&
+                                        selfenergy_omega(0,astate,1,:)*Ha_eV
  enddo
 
 

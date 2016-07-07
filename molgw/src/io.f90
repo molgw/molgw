@@ -37,15 +37,15 @@ subroutine header()
  
 !=====
 
- write(stdout,'(x,70("="))') 
+ write(stdout,'(1x,70("="))') 
  write(stdout,'(/,/,12x,a,/)') 'Welcome to the fascinating world of MOLGW'
  write(stdout,'(24x,a)')       'version 1.A'
- write(stdout,'(/,/,x,70("="))') 
+ write(stdout,'(/,/,1x,70("="))') 
 
  write(stdout,'(/,a,i6,/)') ' MOLGW revision is',revision
 #ifdef FORTRAN2008
- write(stdout,'(x,a,a)')    'compiled with',compiler_version()
- write(stdout,'(x,a)')      'with options: '
+ write(stdout,'(1x,a,a)')    'compiled with',compiler_version()
+ write(stdout,'(1x,a)')      'with options: '
  chartmp = compiler_options()
  nchar = LEN(TRIM(chartmp))
  kchar = 1
@@ -78,7 +78,7 @@ subroutine header()
  end select
 
 
- write(stdout,'(/,x,a)') 'Linking options:'
+ write(stdout,'(/,1x,a)') 'Linking options:'
 #ifdef HAVE_LIBXC
 !#ifndef LIBXC_SVN
 ! call xc_f90_version(values(1),values(2))
@@ -106,7 +106,7 @@ subroutine header()
  call die('Code compiled with SCALAPACK, but without MPI. This is not permitted')
 #endif
 #endif
- write(stdout,'(x,a)')         'Running with LIBINT (to calculate the Coulomb integrals)'
+ write(stdout,'(1x,a)')         'Running with LIBINT (to calculate the Coulomb integrals)'
  write(stdout,'(6x,a,i5,/,/)') 'max angular momentum handled by your LIBINT compilation: ',libint_init()
 
 
@@ -127,7 +127,7 @@ subroutine dump_out_occupation(title,nbf,nspin,occupation)
  integer :: istate,ispin
 !=====
 
- write(stdout,'(/,x,a)') TRIM(title)
+ write(stdout,'(/,1x,a)') TRIM(title)
 
  if(nspin==2) then
    write(stdout,'(a)') '           spin 1       spin 2 '
@@ -138,7 +138,7 @@ subroutine dump_out_occupation(title,nbf,nspin,occupation)
  maxsize = maxsize + 5
 
  do istate=1,MIN(nbf,maxsize)
-   write(stdout,'(x,i3,2(2(x,f12.5)),2x)') istate,occupation(istate,:)
+   write(stdout,'(1x,i3,2(2(1x,f12.5)),2x)') istate,occupation(istate,:)
  enddo
  write(stdout,*)
 
@@ -162,7 +162,7 @@ subroutine dump_out_energy(title,nbf,nspin,occupation,energy)
 
  spin_fact = REAL(-nspin+3,dp)
 
- write(stdout,'(/,x,a)') TRIM(title)
+ write(stdout,'(/,1x,a)') TRIM(title)
 
  if(nspin==1) then
    write(stdout,'(a)') '   #       (Ha)         (eV)      '
@@ -173,9 +173,9 @@ subroutine dump_out_energy(title,nbf,nspin,occupation,energy)
  do istate=1,MIN(nbf,MAXSIZE)
    select case(nspin)
    case(1)
-     write(stdout,'(x,i3,2(x,f12.5),4x,f8.4)') istate,energy(istate,:),energy(istate,:)*Ha_eV,occupation(istate,:)
+     write(stdout,'(1x,i3,2(1x,f12.5),4x,f8.4)') istate,energy(istate,:),energy(istate,:)*Ha_eV,occupation(istate,:)
    case(2)
-     write(stdout,'(x,i3,2(2(x,f12.5)),4x,2(f8.4,2x))') istate,energy(istate,:),energy(istate,:)*Ha_eV,occupation(istate,:)
+     write(stdout,'(1x,i3,2(2(1x,f12.5)),4x,2(f8.4,2x))') istate,energy(istate,:),energy(istate,:)*Ha_eV,occupation(istate,:)
    end select
    if(istate < nbf) then
      if( ANY( occupation(istate+1,:) < spin_fact/2.0_dp .AND. occupation(istate,:) > spin_fact/2.0 ) ) then 
@@ -210,14 +210,14 @@ subroutine dump_out_matrix(print_matrix,title,n,nspin,matrix)
 
  if( .NOT. print_matrix ) return
 
- write(stdout,'(/,x,a)') TRIM(title)
+ write(stdout,'(/,1x,a)') TRIM(title)
 
  do ispin=1,nspin
    if(nspin==2) then
      write(stdout,'(a,i1)') ' spin polarization # ',ispin
    endif
    do i=1,MIN(n,MAXSIZE)
-     write(stdout,'(x,i3,100(x,f12.5))') i,matrix(i,1:MIN(n,MAXSIZE),ispin)
+     write(stdout,'(1x,i3,100(1x,f12.5))') i,matrix(i,1:MIN(n,MAXSIZE),ispin)
    enddo
    write(stdout,*)
  enddo
@@ -266,13 +266,13 @@ subroutine output_new_homolumo(calculation_name,nstate,occupation,energy,istate_
 
  write(stdout,*)
  if( ALL( ehomo(:) > -1.0e6 ) ) then
-   write(stdout,'(x,a,x,a,2(3x,f12.6))') TRIM(calculation_name),'HOMO energy    (eV):',ehomo(:) * Ha_eV
+   write(stdout,'(1x,a,1x,a,2(3x,f12.6))') TRIM(calculation_name),'HOMO energy    (eV):',ehomo(:) * Ha_eV
  endif
  if( ALL( elumo(:) <  1.0e6 ) ) then
-   write(stdout,'(x,a,x,a,2(3x,f12.6))') TRIM(calculation_name),'LUMO energy    (eV):',elumo(:) * Ha_eV
+   write(stdout,'(1x,a,1x,a,2(3x,f12.6))') TRIM(calculation_name),'LUMO energy    (eV):',elumo(:) * Ha_eV
  endif
  if( ALL( ehomo(:) > -1.0e6 ) .AND. ALL( elumo(:) <  1.0e6 ) ) then
-   write(stdout,'(x,a,x,a,2(3x,f12.6))') TRIM(calculation_name),'HOMO-LUMO gap  (eV):',( elumo(:)-ehomo(:) ) * Ha_eV
+   write(stdout,'(1x,a,1x,a,2(3x,f12.6))') TRIM(calculation_name),'HOMO-LUMO gap  (eV):',( elumo(:)-ehomo(:) ) * Ha_eV
  endif
  write(stdout,*)
 
@@ -350,7 +350,7 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
      enddo
      proj_charge = proj_charge + occupation(istate,ispin) * SUM(proj_state_i(:))
 
-     write(stdout,'(i3,x,i5,x,20(f16.6,4x))') ispin,istate,energy(istate,ispin) * Ha_eV,&
+     write(stdout,'(i3,1x,i5,1x,20(f16.6,4x))') ispin,istate,energy(istate,ispin) * Ha_eV,&
           SUM(proj_state_i(:)),proj_state_i(:)
    enddo
  enddo
