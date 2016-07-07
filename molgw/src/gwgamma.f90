@@ -28,7 +28,6 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  real(dp),intent(out)               :: selfenergy(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)               :: energy_gw
 !=====
- integer               :: nprodbasis
  integer               :: nomegai
  integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
@@ -38,7 +37,6 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  real(dp),allocatable  :: selfenergy_omega_sox(:,:,:,:)
  integer               :: astate,bstate,cstate
  integer               :: istate,jstate,kstate,ispin,spole
- integer               :: kcstate
  integer               :: mstate
  real(dp),allocatable  :: bra(:,:)
  real(dp)              :: vcoul,vcoul1,vcoul2
@@ -76,8 +74,6 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  ! Set the range of states on which to evaluate the self-energy
  call selfenergy_set_state_ranges(nstate,occupation)
 
- nprodbasis = index_prodstate(nstate,nstate)
-
  if(has_auxil_basis) then
    call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
  else
@@ -85,7 +81,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  endif
 
 
- call clean_allocate('Temporary array',bra,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
+ call clean_allocate('Temporary array',bra,ncore_G+1,nvirtual_G-1,ncore_G+1,MAX(nhomo_G,nsemax))
 
  energy_gw = 0.0_dp
 
@@ -305,10 +301,10 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
        pole_s = wpol%pole(spole)
   
-       do kcstate=ncore_G+1,nvirtual_G-1
+       forall(mstate=ncore_G+1:MAX(nhomo_G,nsemax))
          ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-         bra(:,kcstate)     = MATMUL( wpol%residu_left(:,spole) , eri_3center_eigen(:,:,kcstate,ispin) )
-       enddo
+         bra(:,mstate)     = MATMUL( wpol%residu_left(:,spole) , eri_3center_eigen(:,:,mstate,ispin) )
+       end forall
        call xsum_auxil(bra)
   
   
@@ -331,7 +327,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
                do iomegai=-nomegai,nomegai
                  selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
-                          - bra(mstate,kstate) * bra(istate,bstate) * vcoul                          &  
+                          - bra(kstate,mstate) * bra(bstate,istate) * vcoul                          &  
                             *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(kstate,ispin) + pole_s - ieta )  , dp )  &
                             *  REAL(  1.0_dp / ( -pole_s + energy_qp(istate,ispin) - energy_qp(bstate,ispin) + ieta )  , dp ) 
                enddo
@@ -360,13 +356,13 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
                do iomegai=-nomegai,nomegai
                  selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
-                          - bra(mstate,cstate) * bra(istate,bstate) * vcoul                          &  
+                          - bra(cstate,mstate) * bra(bstate,istate) * vcoul                          &  
                             *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(cstate,ispin) - pole_s + ieta )  , dp )  &
                             *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(cstate,ispin) + energy_qp(istate,ispin) - energy_qp(bstate,ispin) + ieta )  , dp ) 
   
   
                  selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
-                          + bra(mstate,cstate) * bra(istate,bstate) * vcoul                          &  
+                          + bra(cstate,mstate) * bra(bstate,istate) * vcoul                          &  
                             *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(bstate,ispin) - energy_qp(cstate,ispin) + energy_qp(istate,ispin) + ieta )  , dp )  &
                             *  REAL(  1.0_dp / ( energy_qp(bstate,ispin) - energy_qp(istate,ispin) + pole_s - ieta )  , dp ) 
   
@@ -396,12 +392,12 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
                do iomegai=-nomegai,nomegai
                  selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
-                          - bra(mstate,kstate) * bra(astate,jstate) * vcoul                          &  
+                          - bra(kstate,mstate) * bra(astate,jstate) * vcoul                          &  
                             *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(kstate,ispin) + energy_qp(astate,ispin) - energy_qp(jstate,ispin)  - ieta )  , dp )  &
                             *  REAL(  1.0_dp / ( energy_qp(jstate,ispin) - energy_qp(astate,ispin) - pole_s + ieta )  , dp ) 
   
                  selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
-                          + bra(mstate,kstate) * bra(astate,jstate) * vcoul                          &  
+                          + bra(kstate,mstate) * bra(astate,jstate) * vcoul                          &  
                             *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(kstate,ispin) + energy_qp(astate,ispin) - energy_qp(jstate,ispin)  - ieta )  , dp )  &
                             *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(kstate,ispin) + pole_s - ieta )  , dp ) 
   
@@ -432,7 +428,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
                do iomegai=-nomegai,nomegai
                  selfenergy_omega_gamma(iomegai,mstate,1,ispin) = selfenergy_omega_gamma(iomegai,mstate,1,ispin) &
-                          + bra(mstate,cstate) * bra(astate,jstate) * vcoul                          &  
+                          + bra(cstate,mstate) * bra(astate,jstate) * vcoul                          &  
                             *  REAL(  1.0_dp / ( energy_qp(mstate,ispin) + omegai(iomegai) - energy_qp(cstate,ispin) - pole_s + ieta )  , dp )  &
                             *  REAL(  1.0_dp / ( pole_s + energy_qp(astate,ispin) - energy_qp(jstate,ispin) - ieta )  , dp ) 
   
