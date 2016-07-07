@@ -1,0 +1,26 @@
+&molgw
+ scf='bhlyp'
+ nscf=30
+ tolscf=1.0e-10
+ nspin=2
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+ no_4center='yes'
+
+ postscf='g0w0gamma0'
+ selfenergy_state_min=7
+ selfenergy_state_max=8
+ nomega_sigma=11
+ step_sigma=0.05
+
+ frozencore='yes'
+ nvirtualg=18
+
+ mpi_nproc_ortho=2
+
+ natom=2
+/
+7            .000000     .000000     .564990
+7            .000000     .000000    -.564990
+

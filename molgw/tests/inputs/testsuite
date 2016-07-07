@@ -294,10 +294,25 @@ SCF Total Energy          , -78.0413852386      , 0 , 1.0e-7
 0005 :                    ,     11.25700794     , 0 , 1.0e-4
 0005 :                    ,      0.00000000     , 1 , 1.0e-4
 
-lih_gwgamma.in            , GWGamma for LiH with non-auxiliary basis parallelization (=ortho paral)
+lih_gwgamma.in            , LiH: GWGamma@PBE0 with non-auxiliary basis parallelization (=ortho paral)
 SCF Total Energy          ,    -8.0512581571    , 0 , 1.0e-7
 RPA energy                ,    -0.0854827210    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.426968        , 0 , 1.0e-4
 G0W0Gamma0 HOMO energy    ,    -8.003938        , 0 , 1.0e-4
 
+n2_gwgamma.in             , N2: GWGamma@BHLYP with frozencore and frozen virtual with ortho paral
+SCF Total Energy          ,  -109.4724604609    , 0 , 1.0e-7
+gKS HOMO energy           ,   -13.734359        , 0 , 1.0e-4
+gKS HOMO energy           ,   -13.734359        , 1 , 1.0e-4
+gKS LUMO energy           ,     0.899610        , 0 , 1.0e-4
+gKS LUMO energy           ,     0.899610        , 1 , 1.0e-4
+RPA energy                ,    -0.3765925757    , 0 , 1.0e-7
+GW HOMO energy            ,   -14.590159        , 0 , 1.0e-4
+GW HOMO energy            ,   -14.590159        , 1 , 1.0e-4
+GW LUMO energy            ,     4.439916        , 0 , 1.0e-4
+GW LUMO energy            ,     4.439916        , 1 , 1.0e-4
+G0W0Gamma0 HOMO energy    ,   -15.238221        , 0 , 1.0e-4
+G0W0Gamma0 HOMO energy    ,   -15.238221        , 1 , 1.0e-4
+G0W0Gamma0 LUMO energy    ,     4.607546        , 0 , 1.0e-4
+G0W0Gamma0 LUMO energy    ,     4.607546        , 1 , 1.0e-4
 

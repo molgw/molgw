@@ -8,7 +8,7 @@
 !=========================================================================
 subroutine header()
  use,intrinsic :: iso_c_binding, only: C_INT
-#ifdef HAVE_FORTRAN2008
+#ifdef FORTRAN2008
  use,intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
 #endif
  use m_definitions
@@ -43,7 +43,7 @@ subroutine header()
  write(stdout,'(/,/,x,70("="))') 
 
  write(stdout,'(/,a,i6,/)') ' MOLGW revision is',revision
-#ifdef HAVE_FORTRAN2008
+#ifdef FORTRAN2008
  write(stdout,'(x,a,a)')    'compiled with',compiler_version()
  write(stdout,'(x,a)')      'with options: '
  chartmp = compiler_options()
