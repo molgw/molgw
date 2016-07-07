@@ -95,7 +95,6 @@ subroutine setup_overlap_mixedbasis(print_matrix_,basis1,basis2,s_matrix)
  integer              :: ibf_cart,jbf_cart
  integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
- character(len=100)   :: title
  real(dp),allocatable :: matrix_cart(:,:)
 !=====
 
@@ -1125,8 +1124,6 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix,energy_ref,c_matr
  real(dp)                              :: eri_ci_aj,eri_ci_bj
  real(dp)                              :: den_ca_ij,den_cb_ij
  real(dp)                              :: en_mp2
- logical                               :: file_found
- integer                               :: file_unit
  integer                               :: nvirtualmin
  real(dp),allocatable                  :: eri_ci_i(:)
 !=====

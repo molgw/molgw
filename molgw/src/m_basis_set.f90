@@ -1027,7 +1027,6 @@ subroutine setup_cart_to_pure_transforms(gaussian_type)
  character(len=4),intent(in) :: gaussian_type
 !=====
  integer  :: il,ni,ii,jj,kk
- integer  :: ibf,jbf
  integer  :: nx,ny,nz
 !=====
 

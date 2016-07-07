@@ -172,7 +172,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  real(dp),intent(inout) :: ham(m_ham_scf,n_ham_scf,nspin)
 !=====
  integer                :: ispin
- integer                :: ihist,jhist
+ integer                :: ihist
  real(dp),allocatable   :: matrix_tmp1(:,:)
  real(dp),allocatable   :: matrix_tmp2(:,:)
  real(dp),allocatable   :: a_matrix(:,:)

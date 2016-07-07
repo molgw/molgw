@@ -161,7 +161,7 @@ subroutine init_spectral_function(nstate,occupation,sf)
  do ijspin=1,nspin
    do istate=1,nstate
      do jstate=1,nstate
-       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
+       if( skip_transition(jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
        if( occupation(jstate,ijspin) - occupation(istate,ijspin) > 0.0_dp ) cycle
        itrans = itrans + 1
      enddo
@@ -175,7 +175,7 @@ subroutine init_spectral_function(nstate,occupation,sf)
  do ijspin=1,nspin
    do istate=1,nstate
      do jstate=1,nstate
-       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
+       if( skip_transition(jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
        if( occupation(jstate,ijspin) - occupation(istate,ijspin) > 0.0_dp ) cycle
        itrans = itrans + 1
        ! Set the resonant transition table
@@ -197,8 +197,8 @@ subroutine init_spectral_function(nstate,occupation,sf)
  do ijspin=1,nspin
    do istate=1,nstate
      do jstate=1,nstate
-       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
-       if( skip_transition_apb(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
+       if( skip_transition(jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
+       if( skip_transition_apb(jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
        if( occupation(jstate,ijspin) - occupation(istate,ijspin) > 0.0_dp ) cycle
        itrans = itrans + 1
      enddo
@@ -215,10 +215,10 @@ subroutine init_spectral_function(nstate,occupation,sf)
  do ijspin=1,nspin
    do istate=1,nstate
      do jstate=1,nstate
-       if( skip_transition(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
+       if( skip_transition(jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) cycle
        if( occupation(jstate,ijspin) - occupation(istate,ijspin) > 0.0_dp ) cycle
 
-       if( .NOT. skip_transition_apb(nspin,jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) then
+       if( .NOT. skip_transition_apb(jstate,istate,occupation(jstate,ijspin),occupation(istate,ijspin)) ) then
          itrans = itrans + 1
          ! Set the resonant transition table
          sf%transition_table_apb(1,itrans) = istate
@@ -265,10 +265,10 @@ end subroutine allocate_spectral_function
 
 
 !=========================================================================
-function skip_transition(nspin,ib1,ib2,occ1,occ2)
+function skip_transition(ib1,ib2,occ1,occ2)
  implicit none
  logical             :: skip_transition
- integer,intent(in)  :: nspin,ib1,ib2
+ integer,intent(in)  :: ib1,ib2
  real(dp),intent(in) :: occ1,occ2
 !=====
 
@@ -289,10 +289,10 @@ end function skip_transition
 
 
 !=========================================================================
-function skip_transition_apb(nspin,ib1,ib2,occ1,occ2)
+function skip_transition_apb(ib1,ib2,occ1,occ2)
  implicit none
  logical             :: skip_transition_apb
- integer,intent(in)  :: nspin,ib1,ib2
+ integer,intent(in)  :: ib1,ib2
  real(dp),intent(in) :: occ1,occ2
 !=====
 
@@ -341,7 +341,7 @@ subroutine write_spectral_function(sf)
  integer             :: tmpfile
  integer             :: ipole,ibf_auxil
  integer             :: npole_write,ipole_write
- integer             :: ierr,bufsize,iproc
+ integer             :: ierr
  logical             :: file_exists
  real(dp)            :: ecut_pole
  integer,allocatable :: index_pole(:)
@@ -458,7 +458,7 @@ subroutine read_spectral_function(sf,reading_status)
  integer            :: ipole_read,ibf_auxil
  logical            :: file_exists
  integer            :: npole_read,nprodbasis_read
- integer            :: ierr,bufsize,iproc
+ integer            :: ierr
  real(dp),allocatable :: buffer(:)
 #ifdef HAVE_MPI
  integer(kind=MPI_OFFSET_KIND) :: disp

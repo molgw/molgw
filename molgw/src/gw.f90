@@ -28,7 +28,6 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  real(dp),intent(out)               :: selfenergy(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)               :: energy_gw
 !=====
- logical               :: file_exists=.FALSE.
  integer               :: nprodbasis
  real(dp)              :: ehomo(nspin),elumo(nspin)
  integer               :: nomegai
@@ -47,7 +46,6 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  real(dp)              :: fact_full_a,fact_empty_a
  real(dp)              :: energy_qp(nstate,nspin)
  real(dp)              :: energy_qp_new(nstate,nspin),energy_qp_z(nstate,nspin)
- real(dp)              :: energy_qp_z_a(nspin),energy_qp_omega(nspin)
  character(len=3)      :: ctmp
  integer               :: reading_status
  integer               :: selfenergyfile
@@ -118,8 +116,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  energy_gw = 0.0_dp
 
  write(msg,'(es9.2)') AIMAG(ieta)
- msg='small complex number is '//msg
- call issue_warning(msg)
+ call issue_warning('small complex number is '//msg)
 
 
  select case(gwmethod)

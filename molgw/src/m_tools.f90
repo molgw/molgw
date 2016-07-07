@@ -335,7 +335,6 @@ subroutine diagonalize_generalized_sym(n,matrix,overlap,eigval,eigvec)
  real(dp),intent(out) :: eigvec(n,n)
 !=====
  real(dp) :: work(3*n-1),tmp(n,n)
- real(dp) :: rwork(3*n-2)
  integer :: info
 !=====
 

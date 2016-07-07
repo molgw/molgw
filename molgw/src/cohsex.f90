@@ -28,21 +28,16 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  real(dp),intent(inout)             :: sigc(nstate,nspin)
  real(dp),intent(out)               :: energy_gw
 !=====
- logical               :: file_exists=.FALSE.
  real(dp)              :: ehomo(nspin),elumo(nspin)
  integer               :: nomegai
- integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
  real(dp),allocatable  :: selfenergy_omega(:,:,:,:)
- real(dp),allocatable  :: sigma_xc_m_vxc_diag(:)
  integer               :: pstate
  integer               :: istate,ipspin
  real(dp)              :: fact_full_i,fact_empty_i
  real(dp)              :: energy_qp(nstate,nspin)
  real(dp)              :: energy_qp_new(nstate,nspin)
- integer               :: reading_status
- integer               :: selfenergyfile
- integer               :: ibf_auxil,jbf_auxil
+ integer               :: jbf_auxil
  integer               :: ibf_auxil_global,jbf_auxil_global
  real(dp),allocatable  :: wp0(:,:),wp0_i(:),w0_local(:)
  real(dp)              :: sigx
@@ -96,8 +91,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  energy_gw = 0.0_dp
 
  write(msg,'(es9.2)') AIMAG(ieta)
- msg='small complex number is '//msg
- call issue_warning(msg)
+ call issue_warning('small complex number is '//msg)
 
 
  nomegai = 0
@@ -323,21 +317,16 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
  real(dp),intent(inout)             :: sigc(nstate,nspin)
  real(dp),intent(out)               :: energy_gw
 !=====
- logical               :: file_exists=.FALSE.
  integer               :: homo
  integer               :: nomegai
- integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
  real(dp),allocatable  :: selfenergy_omega(:,:,:,:)
- real(dp),allocatable  :: sigma_xc_m_vxc_diag(:)
  integer               :: pstate
  integer               :: istate,ipspin
  real(dp)              :: fact_full_i,fact_empty_i
  real(dp)              :: energy_qp(nstate,nspin)
  real(dp)              :: energy_qp_new(nstate,nspin)
- integer               :: reading_status
- integer               :: selfenergyfile
- integer               :: ibf_auxil,jbf_auxil
+ integer               :: jbf_auxil
  integer               :: ibf_auxil_global,jbf_auxil_global
  real(dp),allocatable  :: wp0(:,:),wp0_i(:),w0_local(:)
  real(dp),allocatable  :: wp0_tmp(:,:),wp0_rotation(:,:)
@@ -410,8 +399,7 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
  energy_gw = 0.0_dp
 
  write(msg,'(es9.2)') AIMAG(ieta)
- msg='small complex number is '//msg
- call issue_warning(msg)
+ call issue_warning('small complex number is '//msg)
 
 
  nomegai = 0

@@ -50,7 +50,7 @@ subroutine scf_loop(is_restart,&
  real(dp),intent(inout)             :: energy(nstate,nspin)
 !=====
  type(spectral_function) :: wpol
- logical                 :: is_converged,stopfile_found,file_exists
+ logical                 :: is_converged,stopfile_found
  integer                 :: ispin,iscf,istate
  character(len=100)      :: title
  real(dp)                :: energy_tmp

@@ -909,7 +909,7 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
  integer                      :: ilocal,jlocal,iglobal,jglobal
 !=====
 ! variables used to call C
- integer(C_INT)               :: am1,am2,am3,am4
+ integer(C_INT)               :: am3,am4
  integer(C_INT)               :: ng1,ng2,ng3,ng4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)

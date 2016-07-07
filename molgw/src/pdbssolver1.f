@@ -255,7 +255,7 @@
 *     .. Local Scalars ..
       LOGICAL            LQUERY
       INTEGER            ICTXT, NPROCS, NPROW, NPCOL, MYROW, MYCOL, NB,
-     $                   I, J, LWKOPT, LLWORK, LOCALMAT, MROWS, MCOLS,
+     $                   I, LWKOPT, LLWORK, LOCALMAT, MROWS, MCOLS,
      $                   LLDM, INDWORK, ITMP, DIMV, NZ, LIWKOPT
       DOUBLE PRECISION   DTMP
       DOUBLE PRECISION   T_CHOL, T_FORMW, T_DIAG, T_VEC1, T_VEC2, T_PREP

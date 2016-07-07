@@ -282,7 +282,7 @@ function orbital_momentum_name(am)
  case(12)
    orbital_momentum_name='q'
  case default
-   orbital_momentum_name='tmp'
+   orbital_momentum_name='x'
  end select
 
 end function orbital_momentum_name

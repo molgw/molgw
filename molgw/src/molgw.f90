@@ -47,7 +47,6 @@ program molgw
  type(basis_set)         :: auxil_basis
  type(spectral_function) :: wpol
  integer                 :: reading_status,restart_type
- integer                 :: ibf,jbf
  integer                 :: nstate
  integer                 :: ispin,istate
  logical                 :: is_restart,is_big_restart,is_basis_restart
@@ -65,7 +64,6 @@ program molgw
  real(dp),allocatable    :: c_matrix_ref(:,:,:)
  real(dp),allocatable    :: energy(:,:)
  real(dp),allocatable    :: energy_ref(:,:)
- real(dp),allocatable    :: s_eigval(:)
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  real(dp),allocatable    :: sigc(:,:)
@@ -464,7 +462,7 @@ program molgw
    endif
    allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
    call gw_selfenergy(nstate,G0W0,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
-   call gwgamma_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
+   call gwgamma_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,wpol,matrix_tmp,en%gw)
    deallocate(matrix_tmp)
    call destroy_spectral_function(wpol)
  endif

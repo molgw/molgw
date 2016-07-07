@@ -92,7 +92,6 @@ subroutine start_clock(itiming)
  implicit none
  integer,intent(in) :: itiming
 !=====
- real(dp)           :: time_tmp
  integer            :: count_tmp
 !=====
  
@@ -115,7 +114,6 @@ subroutine stop_clock(itiming)
  implicit none
  integer,intent(in) :: itiming
 !=====
- real(dp)           :: time_tmp
  integer            :: count_tmp
 !===== 
   
