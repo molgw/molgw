@@ -322,7 +322,7 @@ subroutine init_dft_type(key,calc_type)
 
 
  select case(TRIM(key))
- case('LDAX','HFPBE','PBEX','PBEHX','BX','PW91X','BJX','RPPX',&
+ case('LDAX','HFPBE','PBEX','PBEHX','BX','PW91X','RPPX',&
       'BHANDH','BHANDHLYP','BHLYP','B3LYP','PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TUNED-CAM-B3LYP','HJSX')
    ndft_xc=1
  case('LDA','SPL','VWN','VWN_RPA','PBE','PBEH','BLYP','PW91')
@@ -428,10 +428,6 @@ subroutine init_dft_type(key,calc_type)
    alpha_hybrid_lr= 0.00_dp
  !
  ! Meta-GGA functionals
- case('BJX')
-   dft_xc_type(1) = XC_MGGA_X_BJ06
-   alpha_hybrid   = 0.00_dp
-   alpha_hybrid_lr= 0.00_dp
  case('RPPX')
    dft_xc_type(1) = XC_MGGA_X_RPP09
    alpha_hybrid   = 0.00_dp

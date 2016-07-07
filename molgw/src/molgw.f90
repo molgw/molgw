@@ -48,7 +48,7 @@ program molgw
  type(spectral_function) :: wpol
  integer                 :: reading_status,restart_type
  integer                 :: nstate
- integer                 :: ispin,istate
+ integer                 :: ispin
  logical                 :: is_restart,is_big_restart,is_basis_restart
  character(len=100)      :: title
  real(dp),allocatable    :: hamiltonian_tmp(:,:)
@@ -71,7 +71,7 @@ program molgw
  integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix 
 #ifdef ACTIVATE_EXPERIMENTAL
  real(dp),allocatable    :: p_matrix(:,:,:),p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
- real(dp)                :: ehomo,exc
+ integer                 :: istate
 #endif
 !=============================
 
@@ -500,7 +500,7 @@ program molgw
 #ifdef HAVE_LIBXC
      call xc_f90_gga_x_hjs_set_par(calc_type%xc_func(1),1.0_dp/rcut_mbpt)
 #endif
-     call dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,matrix_tmp,exc)
+     call dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,matrix_tmp,exc)
  
      write(stdout,*) '===== SigX SR ======'
      do ispin=1,nspin

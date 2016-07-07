@@ -6,7 +6,7 @@
 ! potentials and energies for self-consistent Kohn-Sham calculations
 !
 !=========================================================================
-subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vxc_ij,exc_xc)
+subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,vxc_ij,exc_xc)
  use m_definitions
  use m_mpi
  use m_timing
@@ -25,7 +25,6 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
  real(dp),intent(in)        :: p_matrix_occ(basis%nbf,nspin)
  real(dp),intent(in)        :: p_matrix_sqrt(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)        :: p_matrix(basis%nbf,basis%nbf,nspin)
- real(dp),intent(in)        :: ehomo(nspin)
  real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: exc_xc
 !=====
@@ -204,14 +203,6 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,vx
 
      endif
 
-
-     !
-     ! In the case of the BJ06 meta-GGA functional, a spin-dependent shift is applied
-     ! since the potential does not vanish at infinity
-     !
-     if( dft_xc_type(idft_xc) == XC_MGGA_X_BJ06 ) then
-       dedd_r(:) = dedd_r(:) - SQRT( 5.0_dp * ABS(ehomo(:)) / 6.0_dp ) / pi
-     endif
 
    enddo ! loop on the XC functional
 

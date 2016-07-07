@@ -227,7 +227,7 @@ end subroutine dump_out_matrix
 
 
 !=========================================================================
-subroutine output_new_homolumo(calculation_name,nstate,occupation,energy,istate_min,istate_max,ehomo,elumo)
+subroutine output_new_homolumo(calculation_name,nstate,occupation,energy,istate_min,istate_max)
  use m_definitions
  use m_mpi
  use m_inputparam,only: nspin,spin_fact
@@ -236,9 +236,9 @@ subroutine output_new_homolumo(calculation_name,nstate,occupation,energy,istate_
  character(len=*),intent(in) :: calculation_name
  integer,intent(in)          :: nstate,istate_min,istate_max
  real(dp),intent(in)         :: occupation(nstate,nspin),energy(nstate,nspin)
- real(dp),intent(out)        :: ehomo(nspin),elumo(nspin)
 !=====
  real(dp) :: ehomo_tmp,elumo_tmp
+ real(dp) :: ehomo(nspin),elumo(nspin)
  integer  :: ispin,istate
 !=====
 

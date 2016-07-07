@@ -365,7 +365,7 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham, &
  real(dp),intent(out)       :: exchange_m_vxc_diag(nstate,nspin)
 !=====
  integer  :: ispin,istate
- real(dp) :: exc,eexx,ehomo
+ real(dp) :: exc,eexx
  real(dp),allocatable :: occupation_tmp(:,:)
  real(dp),allocatable :: p_matrix_tmp(:,:,:),p_matrix_occ(:,:),p_matrix_sqrt(:,:,:)
 !=====
@@ -395,7 +395,7 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham, &
      call init_dft_grid(grid_level)
      call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation_tmp,p_matrix_tmp)
      call setup_sqrt_density_matrix(basis%nbf,p_matrix_tmp,p_matrix_sqrt,p_matrix_occ)
-     call dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,ehomo,hamiltonian_xc,exc)
+     call dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,hamiltonian_xc,exc)
      call destroy_dft_grid()
    endif
 

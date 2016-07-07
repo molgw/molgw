@@ -28,7 +28,6 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  real(dp),intent(inout)             :: sigc(nstate,nspin)
  real(dp),intent(out)               :: energy_gw
 !=====
- real(dp)              :: ehomo(nspin),elumo(nspin)
  integer               :: nomegai
  real(dp),allocatable  :: omegai(:)
  real(dp),allocatable  :: selfenergy_omega(:,:,:,:)
@@ -276,7 +275,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  ! Output the new HOMO and LUMO energies
  !
  if( gwmethod == COHSEX_DEVEL ) then
-   call output_new_homolumo('COHSEX',nstate,occupation,energy_qp_new,nsemin,nsemax,ehomo,elumo)
+   call output_new_homolumo('COHSEX',nstate,occupation,energy_qp_new,nsemin,nsemax)
  endif
 
  if(ALLOCATED(omegai)) deallocate(omegai)

@@ -29,7 +29,6 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  real(dp),intent(out)               :: energy_gw
 !=====
  integer               :: nprodbasis
- real(dp)              :: ehomo(nspin),elumo(nspin)
  integer               :: nomegai
  integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
@@ -647,9 +646,9 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  !
  select case(gwmethod)
  case(G0W0,GV,GnW0,GnWn)
-   call output_new_homolumo('GW',nstate,occupation,energy_qp_new,nsemin,nsemax,ehomo,elumo)
+   call output_new_homolumo('GW',nstate,occupation,energy_qp_new,nsemin,nsemax)
  case(COHSEX)
-   call output_new_homolumo('COHSEX',nstate,occupation,energy_qp_new,nsemin,nsemax,ehomo,elumo)
+   call output_new_homolumo('COHSEX',nstate,occupation,energy_qp_new,nsemin,nsemax)
  end select
 
 

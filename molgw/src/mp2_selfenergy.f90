@@ -52,7 +52,6 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  real(dp)              :: energy_qp_z(nstate,nspin)
  real(dp)              :: energy_qp_new(nstate,nspin)
  real(dp)              :: energy_qp_omega(nspin)
- real(dp)              :: ehomo(nspin),elumo(nspin)
 !=====
 
  call start_clock(timing_mp2_self)
@@ -254,7 +253,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
 
    call write_energy_qp(nstate,energy_qp_new)
 
-   call output_new_homolumo('MP2',nstate,occupation,energy_qp_new,nsemin,nsemax,ehomo,elumo)
+   call output_new_homolumo('MP2',nstate,occupation,energy_qp_new,nsemin,nsemax)
 
  endif
 

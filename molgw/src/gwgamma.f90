@@ -29,7 +29,6 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  real(dp),intent(out)               :: energy_gw
 !=====
  integer               :: nprodbasis
- real(dp)              :: ehomo(nspin),elumo(nspin)
  integer               :: nomegai
  integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
@@ -531,9 +530,9 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  !
  select case(gwmethod)
  case(G0W0SOX0)
-   call output_new_homolumo('G0W0SOX0',nstate,occupation,energy_qp_new,nsemin,nsemax,ehomo,elumo)
+   call output_new_homolumo('G0W0SOX0',nstate,occupation,energy_qp_new,nsemin,nsemax)
  case(G0W0GAMMA0)
-   call output_new_homolumo('G0W0Gamma0',nstate,occupation,energy_qp_new,nsemin,nsemax,ehomo,elumo)
+   call output_new_homolumo('G0W0Gamma0',nstate,occupation,energy_qp_new,nsemin,nsemax)
  end select
 
  call clean_deallocate('Temporary array',bra)

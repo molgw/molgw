@@ -54,7 +54,6 @@ subroutine scf_loop(is_restart,&
  integer                 :: ispin,iscf,istate
  character(len=100)      :: title
  real(dp)                :: energy_tmp
- real(dp)                :: ehomo(nspin),elumo(nspin)
  real(dp),allocatable    :: p_matrix(:,:,:)
  real(dp),allocatable    :: p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
  real(dp),allocatable    :: hamiltonian(:,:,:)
@@ -215,7 +214,7 @@ subroutine scf_loop(is_restart,&
          en%xc = 0.0_dp
        endif
      else
-       call dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,ehomo,hamiltonian_vxc,en%xc)
+       call dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_vxc,en%xc)
      endif
 
      title='=== DFT XC contribution ==='
@@ -330,7 +329,7 @@ subroutine scf_loop(is_restart,&
    title='=== Energies ==='
    call dump_out_energy(title,nstate,nspin,occupation,energy)
 
-   call output_new_homolumo('gKS',nstate,occupation,energy,1,nstate,ehomo,elumo)
+   call output_new_homolumo('gKS',nstate,occupation,energy,1,nstate)
 
 
    if(print_matrix_) then
