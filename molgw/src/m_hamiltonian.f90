@@ -1172,9 +1172,6 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix,energy_ref,c_matr
      nocc = istate
    enddo
 
-!   call issue_warning('FBFB cheating here')
-!   nocc = nocc + 1
- 
 
 
    nvirtual = nstate - nocc

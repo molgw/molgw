@@ -146,14 +146,14 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  do ispin=1,nspin
 
    !==========================
-   do kstate=ncore_G+1,nvirtual_G-1
-     if( occupation(kstate,ispin) / spin_fact < completely_empty ) cycle
-     if( MODULO( kstate-(ncore_G+1) , nproc_ortho ) /= rank_ortho ) cycle
+   do bstate=ncore_G+1,nvirtual_G-1
+     if( (spin_fact - occupation(bstate,ispin)) / spin_fact < completely_empty) cycle
+     if( MODULO( bstate-(ncore_G+1) , nproc_ortho ) /= rank_ortho ) cycle
 
      do istate=ncore_G+1,nvirtual_G-1
        if( occupation(istate,ispin) / spin_fact < completely_empty ) cycle
-       do bstate=ncore_G+1,nvirtual_G-1
-         if( (spin_fact - occupation(bstate,ispin)) / spin_fact < completely_empty) cycle
+       do kstate=ncore_G+1,nvirtual_G-1
+         if( occupation(kstate,ispin) / spin_fact < completely_empty ) cycle
 
          do mstate=nsemin,nsemax
 
