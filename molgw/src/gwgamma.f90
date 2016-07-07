@@ -97,7 +97,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  endif
 
 
- call clean_allocate('Temporary array',bra,nstate,nstate)
+ call clean_allocate('Temporary array',bra,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
 
  energy_gw = 0.0_dp
 
@@ -318,7 +318,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
        pole_s = wpol%pole(spole)
   
-       do kcstate=1,nstate
+       do kcstate=ncore_G+1,nvirtual_G-1
          ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
          bra(:,kcstate)     = MATMUL( wpol%residu_left(:,spole) , eri_3center_eigen(:,:,kcstate,ispin) )
        enddo

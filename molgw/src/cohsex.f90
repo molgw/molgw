@@ -35,8 +35,8 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  real(dp),allocatable  :: omegai(:)
  real(dp),allocatable  :: selfenergy_omega(:,:,:,:)
  real(dp),allocatable  :: sigma_xc_m_vxc_diag(:)
- integer               :: astate,bstate
- integer               :: istate,ispin
+ integer               :: pstate
+ integer               :: istate,ipspin
  real(dp)              :: fact_full_i,fact_empty_i
  real(dp)              :: energy_qp(nstate,nspin)
  real(dp)              :: energy_qp_new(nstate,nspin)
@@ -71,22 +71,22 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
 
  write(stdout,*) '=============='
  write(stdout,*) 'FBFB exchange'
- do ispin=1,nspin
-   do bstate=nsemin,nsemax
+ do ipspin=1,nspin
+   do pstate=nsemin,nsemax
      sigx = 0.0_dp
      do istate=ncore_G+1,nvirtual_G-1
-       fact_full_i   = occupation(istate,ispin) / spin_fact
+       fact_full_i   = occupation(istate,ipspin) / spin_fact
        if( fact_full_i < completely_empty ) cycle
 
-       sigx = sigx - SUM( eri_3center_eigen(:,bstate,istate,ispin)**2 ) * fact_full_i
+       sigx = sigx - SUM( eri_3center_eigen(:,pstate,istate,ipspin)**2 ) * fact_full_i
 
      enddo
      call xsum_auxil(sigx)
 
-     write(stdout,'(i4,4x,f16.6)') bstate,sigx * Ha_eV
+     write(stdout,'(i4,4x,f16.6)') pstate,sigx * Ha_eV
 
      ! Store the result in sigc
-     sigc(bstate,ispin) = sigc(bstate,ispin) + sigx * epsilon_cohsex
+     sigc(pstate,ipspin) = sigc(pstate,ipspin) + sigx * epsilon_cohsex
 
    enddo
  enddo
@@ -140,7 +140,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
 
  allocate(wp0(nauxil_3center,nsemin:nsemax))
 
- do ispin=1,nspin
+ do ipspin=1,nspin
    !
    ! Apply the frozen core and frozen virtual approximation to G
    do istate=ncore_G+1,nvirtual_G-1
@@ -160,7 +160,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
        enddo
 
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (sqrt(v) * chi * v)
-       wp0_i(nsemin:nsemax) = MATMUL( w0_local(:) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
+       wp0_i(nsemin:nsemax) = MATMUL( w0_local(:) , eri_3center_eigen(:,nsemin:nsemax,istate,ipspin) )
        call xsum_auxil(wp0_i)
 
        if( iproc_ibf_auxil(ibf_auxil_global) == rank_auxil ) then
@@ -178,8 +178,8 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
      ! quadrants.
      ! The positive poles of W go with the poles of occupied states in G
      ! The negative poles of W go with the poles of empty states in G
-     fact_full_i   = occupation(istate,ispin) / spin_fact
-     fact_empty_i = (spin_fact - occupation(istate,ispin)) / spin_fact
+     fact_full_i   = occupation(istate,ipspin) / spin_fact
+     fact_empty_i = (spin_fact - occupation(istate,ipspin)) / spin_fact
 
 
 
@@ -187,32 +187,32 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
 
      case(COHSEX_DEVEL)
 
-       do astate=nsemin,nsemax
+       do pstate=nsemin,nsemax
          !
          ! SEX
          !
-         selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
-                    -  DOT_PRODUCT( eri_3center_eigen(:,astate,istate,ispin) , wp0(:,astate) ) &
+         selfenergy_omega(0,pstate,1,ipspin) = selfenergy_omega(0,pstate,1,ipspin) &
+                    -  DOT_PRODUCT( eri_3center_eigen(:,pstate,istate,ipspin) , wp0(:,pstate) ) &
                           * fact_full_i * 1.0_dp  &
                           * beta_cohsex
 
          !
          ! COH
          !
-         selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
-                    +  DOT_PRODUCT( eri_3center_eigen(:,astate,istate,ispin) , wp0(:,astate) ) &
+         selfenergy_omega(0,pstate,1,ipspin) = selfenergy_omega(0,pstate,1,ipspin) &
+                    +  DOT_PRODUCT( eri_3center_eigen(:,pstate,istate,ipspin) , wp0(:,pstate) ) &
                           * alpha_cohsex * 0.5_dp
 
        enddo
 
      case(TUNED_COHSEX)
 
-       do astate=nsemin,nsemax
+       do pstate=nsemin,nsemax
          !
          ! SEX
          !
-         selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
-                    -  DOT_PRODUCT( eri_3center_eigen(:,astate,istate,ispin) , wp0(:,astate) ) &
+         selfenergy_omega(0,pstate,1,ipspin) = selfenergy_omega(0,pstate,1,ipspin) &
+                    -  DOT_PRODUCT( eri_3center_eigen(:,pstate,istate,ipspin) , wp0(:,pstate) ) &
                           * fact_full_i * 1.0_dp  &
                           * ( beta_cohsex + gamma_cohsex )
          !
@@ -221,34 +221,13 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
        enddo
 
 
-!     case(QSCOHSEX) 
-!       do bstate=nsemin,nsemax
-!         do astate=nsemin,nsemax
-!           !
-!           ! SEX
-!           !
-!           selfenergy_omega(0,astate,bstate,ispin) = selfenergy_omega(0,astate,bstate,ispin) &
-!                      + bra(ipole,astate) * bra(ipole,bstate)                                & 
-!                            * fact_full_i / wpol%pole(ipole) * 2.0_dp                        &
-!                            * beta_cohsex
-!
-!           !
-!           ! COH
-!           !
-!           selfenergy_omega(0,astate,bstate,ispin) = selfenergy_omega(0,astate,bstate,ispin) &
-!                      - bra(ipole,astate) * bra(ipole,bstate) & 
-!                            / wpol%pole(ipole)                &
-!                            * alpha_cohsex
-!         enddo
-!       enddo
-
 
      case default 
        call die('BUG')
      end select
 
    enddo !istate
- enddo !ispin
+ enddo !ipspin
 
  deallocate(wp0)
 
@@ -270,9 +249,10 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
    ! C^T S C = I
    ! the inverse of C is C^T S
    ! the inverse of C^T is S C
-   do ispin=1,nspin
-     selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ispin) ) , MATMUL( selfenergy_omega(0,:,:,ispin), &
-                             MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ispin)), s_matrix(:,:) ) ) )
+   do ipspin=1,nspin
+     selfenergy(:,:,ipspin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ipspin) ) , &
+                                MATMUL( selfenergy_omega(0,:,:,ipspin), &
+                                  MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ipspin)), s_matrix(:,:) ) ) )
    enddo
 
 
@@ -280,8 +260,8 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
 
    ! Only had the diagonal calculated...
    selfenergy(:,:,:) = 0.0_dp
-   forall(astate=nsemin:nsemax)
-     selfenergy(astate,astate,:) = selfenergy_omega(0,astate,1,:)
+   forall(pstate=nsemin:nsemax)
+     selfenergy(pstate,pstate,:) = selfenergy_omega(0,pstate,1,:)
    end forall
    
    call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy_qp,energy_qp_new)
@@ -350,8 +330,8 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
  real(dp),allocatable  :: omegai(:)
  real(dp),allocatable  :: selfenergy_omega(:,:,:,:)
  real(dp),allocatable  :: sigma_xc_m_vxc_diag(:)
- integer               :: astate,bstate
- integer               :: istate,ispin
+ integer               :: pstate
+ integer               :: istate,ipspin
  real(dp)              :: fact_full_i,fact_empty_i
  real(dp)              :: energy_qp(nstate,nspin)
  real(dp)              :: energy_qp_new(nstate,nspin)
@@ -404,22 +384,22 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
 
  write(stdout,*) '=============='
  write(stdout,*) 'FBFB exchange'
- do ispin=1,nspin
-   do bstate=nsemin,nsemax
+ do ipspin=1,nspin
+   do pstate=nsemin,nsemax
      sigx = 0.0_dp
      do istate=ncore_G+1,nstate
-       fact_full_i   = occupation(istate,ispin) / spin_fact
+       fact_full_i   = occupation(istate,ipspin) / spin_fact
        if( fact_full_i < completely_empty ) cycle
 
-       sigx = sigx - SUM( eri_3center_eigen_lr(:,bstate,istate,ispin)**2 ) * fact_full_i
+       sigx = sigx - SUM( eri_3center_eigen_lr(:,pstate,istate,ipspin)**2 ) * fact_full_i
 
      enddo
      call xsum_auxil(sigx)
 
-     write(stdout,'(i4,4x,f16.6)') bstate,sigx * Ha_eV
+     write(stdout,'(i4,4x,f16.6)') pstate,sigx * Ha_eV
 
      ! Store the result in sigc
-     sigc(bstate,ispin) = sigc(bstate,ispin) - sigx * epsilon_cohsex
+     sigc(pstate,ipspin) = sigc(pstate,ipspin) - sigx * epsilon_cohsex
 
    enddo
  enddo
@@ -474,7 +454,7 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
 
  allocate(wp0(nauxil_3center_lr,nsemin:nsemax))
 
- do ispin=1,nspin
+ do ipspin=1,nspin
    !
    ! Apply the frozen core and frozen virtual approximation to G
    do istate=ncore_G+1,nvirtual_G-1
@@ -494,7 +474,7 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
        enddo
 
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (sqrt(v) * chi * v)
-       wp0_i(nsemin:nsemax) = MATMUL( w0_local(:) , eri_3center_eigen_lr(:,nsemin:nsemax,istate,ispin) )
+       wp0_i(nsemin:nsemax) = MATMUL( w0_local(:) , eri_3center_eigen_lr(:,nsemin:nsemax,istate,ipspin) )
        call xsum_auxil(wp0_i)
 
        if( iproc_ibf_auxil(ibf_auxil_global) == rank_auxil ) then
@@ -512,8 +492,8 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
      ! quadrants.
      ! The positive poles of W go with the poles of occupied states in G
      ! The negative poles of W go with the poles of empty states in G
-     fact_full_i   = occupation(istate,ispin) / spin_fact
-     fact_empty_i = (spin_fact - occupation(istate,ispin)) / spin_fact
+     fact_full_i   = occupation(istate,ipspin) / spin_fact
+     fact_empty_i = (spin_fact - occupation(istate,ipspin)) / spin_fact
 
 
 
@@ -521,66 +501,43 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
 
      case(COHSEX_DEVEL)
 
-       do astate=nsemin,nsemax
+       do pstate=nsemin,nsemax
          !
          ! SEX
          !
-         selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
-                    -  DOT_PRODUCT( eri_3center_eigen_lr(:,astate,istate,ispin) , wp0(:,astate) ) &
+         selfenergy_omega(0,pstate,1,ipspin) = selfenergy_omega(0,pstate,1,ipspin) &
+                    -  DOT_PRODUCT( eri_3center_eigen_lr(:,pstate,istate,ipspin) , wp0(:,pstate) ) &
                           * fact_full_i * 1.0_dp  &
                           * beta_cohsex
 
          !
          ! COH
          !
-         selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
-                    +  DOT_PRODUCT( eri_3center_eigen_lr(:,astate,istate,ispin) , wp0(:,astate) ) &
+         selfenergy_omega(0,pstate,1,ipspin) = selfenergy_omega(0,pstate,1,ipspin) &
+                    +  DOT_PRODUCT( eri_3center_eigen_lr(:,pstate,istate,ipspin) , wp0(:,pstate) ) &
                           * alpha_cohsex * 0.5_dp
 
        enddo
 
      case(TUNED_COHSEX)
 
-       do astate=nsemin,nsemax
+       do pstate=nsemin,nsemax
          !
          ! LR-SEX 
          !
-         selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
-                    -  DOT_PRODUCT( eri_3center_eigen_lr(:,astate,istate,ispin) , wp0(:,astate) ) &
+         selfenergy_omega(0,pstate,1,ipspin) = selfenergy_omega(0,pstate,1,ipspin) &
+                    -  DOT_PRODUCT( eri_3center_eigen_lr(:,pstate,istate,ipspin) , wp0(:,pstate) ) &
                           * fact_full_i * 1.0_dp  &
                           * (-gamma_cohsex)
 
          !
          ! LR-COH
          !
-         selfenergy_omega(0,astate,1,ispin) = selfenergy_omega(0,astate,1,ispin) &
-                    +  DOT_PRODUCT( eri_3center_eigen_lr(:,astate,istate,ispin) , wp0(:,astate) ) &
+         selfenergy_omega(0,pstate,1,ipspin) = selfenergy_omega(0,pstate,1,ipspin) &
+                    +  DOT_PRODUCT( eri_3center_eigen_lr(:,pstate,istate,ipspin) , wp0(:,pstate) ) &
                           * alpha_cohsex * 0.5_dp
 
        enddo
-
-
-!FBFB
-!     case(QSCOHSEX) 
-!       do bstate=nsemin,nsemax
-!         do astate=nsemin,nsemax
-!           !
-!           ! SEX
-!           !
-!           selfenergy_omega(0,astate,bstate,ispin) = selfenergy_omega(0,astate,bstate,ispin) &
-!                      + bra(ipole,astate) * bra(ipole,bstate)                                & 
-!                            * fact_full_i / wpol%pole(ipole) * 2.0_dp                        &
-!                            * beta_cohsex
-!
-!           !
-!           ! COH
-!           !
-!           selfenergy_omega(0,astate,bstate,ispin) = selfenergy_omega(0,astate,bstate,ispin) &
-!                      - bra(ipole,astate) * bra(ipole,bstate) & 
-!                            / wpol%pole(ipole)                &
-!                            * alpha_cohsex
-!         enddo
-!       enddo
 
 
      case default 
@@ -588,7 +545,7 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
      end select
 
    enddo !istate
- enddo !ispin
+ enddo !ipspin
 
  deallocate(wp0)
 
@@ -610,9 +567,10 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
    ! C^T S C = I
    ! the inverse of C is C^T S
    ! the inverse of C^T is S C
-   do ispin=1,nspin
-     selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ispin) ) , MATMUL( selfenergy_omega(0,:,:,ispin), &
-                             MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ispin)), s_matrix(:,:) ) ) )
+   do ipspin=1,nspin
+     selfenergy(:,:,ipspin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ipspin) ) , &
+                                MATMUL( selfenergy_omega(0,:,:,ipspin), &
+                                  MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ipspin)), s_matrix(:,:) ) ) )
    enddo
 
 
@@ -620,8 +578,8 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
 
    ! Only had the diagonal calculated...
    selfenergy(:,:,:) = 0.0_dp
-   forall(astate=nsemin:nsemax)
-     selfenergy(astate,astate,:) = selfenergy_omega(0,astate,1,:)
+   forall(pstate=nsemin:nsemax)
+     selfenergy(pstate,pstate,:) = selfenergy_omega(0,pstate,1,:)
    end forall
    
    write(stdout,'(/,a)') ' COHSEX Eigenvalues (eV)'
@@ -630,13 +588,13 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
    else
      write(stdout,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       COHSEX'
    endif
-   do astate=nsemin,nsemax
-     energy_qp_new(astate,:) = energy_qp(astate,:) + selfenergy_omega(0,astate,1,:) + exchange_m_vxc_diag(astate,:)
+   do pstate=nsemin,nsemax
+     energy_qp_new(pstate,:) = energy_qp(pstate,:) + selfenergy_omega(0,pstate,1,:) + exchange_m_vxc_diag(pstate,:)
 
-     write(stdout,'(i4,x,20(x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,               &
-                                                 exchange_m_vxc_diag(astate,:)*Ha_eV,     &
-                                                 selfenergy_omega(0,astate,1,:)*Ha_eV, &
-                                           1.0_dp ,energy_qp_new(astate,:)*Ha_eV
+     write(stdout,'(i4,x,20(x,f12.6))') pstate,energy_qp(pstate,:)*Ha_eV,               &
+                                                 exchange_m_vxc_diag(pstate,:)*Ha_eV,     &
+                                                 selfenergy_omega(0,pstate,1,:)*Ha_eV, &
+                                           1.0_dp ,energy_qp_new(pstate,:)*Ha_eV
    enddo
 
    call write_energy_qp(nstate,energy_qp_new)
@@ -652,13 +610,13 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
    else
      write(stdout,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       COHSEX'
    endif
-   do astate=nsemin,nsemax
-     energy_qp_new(astate,:) = energy_qp(astate,:) + sigc(astate,:) + exchange_m_vxc_diag(astate,:)
+   do pstate=nsemin,nsemax
+     energy_qp_new(pstate,:) = energy_qp(pstate,:) + sigc(pstate,:) + exchange_m_vxc_diag(pstate,:)
 
-     write(stdout,'(i4,x,20(x,f12.6))') astate,energy_qp(astate,:)*Ha_eV,               &
-                                                 exchange_m_vxc_diag(astate,:)*Ha_eV,     &
-                                                 sigc(astate,:)*Ha_eV, &
-                                           1.0_dp ,energy_qp_new(astate,:)*Ha_eV
+     write(stdout,'(i4,x,20(x,f12.6))') pstate,energy_qp(pstate,:)*Ha_eV,               &
+                                                 exchange_m_vxc_diag(pstate,:)*Ha_eV,     &
+                                                 sigc(pstate,:)*Ha_eV, &
+                                           1.0_dp ,energy_qp_new(pstate,:)*Ha_eV
    enddo
 
    call write_energy_qp(nstate,energy_qp_new)
