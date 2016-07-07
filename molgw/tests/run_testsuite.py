@@ -179,10 +179,18 @@ ftestsuite.close()
 if len(selected_input_file) == 0:
   ninput2 = ninput
 else:
+  ninput2 = 1
+
+  if not '.in' in selected_input_file:
+    selected_input_file = selected_input_file + '.in'
+
+  if '/' in selected_input_file:
+    parsing  = selected_input_file.split('/')
+    selected_input_file = parsing[len(parsing)-1]
+
   if not selected_input_file in input_files:
     print('Input file name:',selected_input_file,'not present in the test suite')
     sys.exit(1)
-  ninput2 = 1
 
 
 print('Input files to be run:',ninput2)

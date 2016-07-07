@@ -499,50 +499,13 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
    selfenergy(astate,astate,:) = selfenergy_omega(0,astate,1,:)
  end forall
 
- allocate(zz(nsemin:nsemax,nspin))
- zz(:,:) = 0.0_dp
- energy_qp_z(:,:) = 0.0_dp
- energy_qp_new(:,:) = 0.0_dp
 
- ! Then overwrite the interesting energy with the calculated GW one
- do astate=nsemin,nsemax
-
-   if( MODULO(astate-nsemin,nproc_world) /= rank_world ) cycle
-
-   zz_a(:) = ( selfenergy_omega(1,astate,1,:) - selfenergy_omega(-1,astate,1,:) ) / ( omegai(1) - omegai(-1) )
-   zz_a(:) = 1.0_dp / ( 1.0_dp - zz_a(:) )
-   ! Contrain Z to be in [0:1] to avoid crazy values
-   do ispin=1,nspin
-     zz_a(ispin) = MIN( MAX(zz_a(ispin),0.0_dp) , 1.0_dp )
-   enddo
-
-   energy_qp_z_a(:) = energy(astate,:) + zz_a(:) * ( selfenergy_omega(0,astate,1,:) + exchange_m_vxc_diag(astate,:) )
-
-   allocate(sigma_xc_m_vxc_diag(-nomegai:nomegai))
-   do ispin=1,nspin
-     sigma_xc_m_vxc_diag(:) = selfenergy_omega(:,astate,1,ispin) + exchange_m_vxc_diag(astate,ispin)
-     energy_qp_omega(ispin) = find_fixed_point(nomegai,omegai,sigma_xc_m_vxc_diag,info) + energy(astate,ispin) 
-   enddo
-   deallocate(sigma_xc_m_vxc_diag)
-
-   zz(astate,:)            = zz_a(:)
-   energy_qp_z(astate,:)   = energy_qp_z_a(:)
-   energy_qp_new(astate,:) = energy_qp_omega(:) 
- enddo
-
- call xsum_world(zz)
- call xsum_world(energy_qp_z)
- call xsum_world(energy_qp_new)
-
- energy_qp_new(:nsemin-1,:) = energy(:nsemin-1,:)
- energy_qp_new(nsemax+1:,:) = energy(nsemax+1:,:)
-
- write(stdout,'(/,a)') ' G0W0Gamma0 Eigenvalues (eV)'
+ write(stdout,'(/,a)') ' G0W0Gamma0 self-energy contributions at E0 (eV)'
  if(nspin==1) then
-   write(stdout,'(a)') '   #          E0        SigX-Vxc    SigC_G0W0    SigC_SOX   SigC_Gamma0   SigC_TOT      Z         G0W0_Z         G0W0_qp'
+   write(stdout,'(a)') '   #          E0        SigX-Vxc    SigC_G0W0    SigC_SOX   SigC_Gamma0   SigC_TOT'
  else
    write(stdout,'(a)') &
-     '   #                E0                      SigX-Vxc                    SigC                       Z                       G0W0_Z                      G0W0_qp'
+     '   #                E0                      SigX-Vxc                    SigC_G0W0            SigC_SOX             SigC_Gamma0                SigC_TOT'
  endif
 
  do astate=nsemin,nsemax
@@ -551,11 +514,14 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
                                       selfenergy_omega_gw(0,astate,1,:)*Ha_eV,   &
                                       selfenergy_omega_sox(0,astate,1,:)*Ha_eV,  &
                                       selfenergy_omega_gamma(0,astate,1,:)*Ha_eV,&
-                                      selfenergy_omega(0,astate,1,:)*Ha_eV, &
-                                      zz(astate,:),                              & 
-                                      energy_qp_z(astate,:)*Ha_eV,               &
-                                      energy_qp_new(astate,:)*Ha_eV
+                                      selfenergy_omega(0,astate,1,:)*Ha_eV
  enddo
+
+
+ allocate(zz(nsemin:nsemax,nspin))
+
+ call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+ call find_qp_energy_graphical    (nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_new)
 
  select case(gwmethod)
  case(G0W0SOX0)
