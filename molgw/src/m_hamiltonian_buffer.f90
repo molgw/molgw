@@ -400,7 +400,7 @@ end subroutine setup_exchange_ri_buffer_sca
 
 
 !=========================================================================
-subroutine dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,vxc_ij,exc_xc)
+subroutine dft_exc_vxc_buffer_sca(m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,vxc_ij,exc_xc)
  use m_inputparam
  use m_basis_set
  use m_dft_grid
@@ -411,7 +411,6 @@ subroutine dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix
 #endif
  implicit none
 
- integer,intent(in)         :: nstate
  integer,intent(in)         :: m_ham,n_ham
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: p_matrix_occ(basis%nbf,nspin)
@@ -425,7 +424,6 @@ subroutine dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix
  integer  :: idft_xc
  logical  :: require_gradient,require_laplacian
  integer  :: igrid,ibf,jbf,ispin
- real(dp) :: rr(3)
  real(dp) :: normalization(nspin)
  real(dp) :: weight
 
@@ -492,15 +490,14 @@ subroutine dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix
 
    do igrid=1,ngrid
 
-     rr(:) = rr_grid(:,igrid)
      weight = w_grid(igrid)
 
      !
-     ! Get all the functions at point rr
+     ! Get all the functions at point r
      call get_basis_functions_r(basis,igrid,basis_function_r)
      !
      ! Calculate the density at point r for spin ispin
-     call calc_density_r(1,basis,p_matrix_occ(:,ispin),buffer,rr,basis_function_r,rhor(ispin,igrid))
+     call calc_density_r(1,basis,p_matrix_occ(:,ispin),buffer,basis_function_r,rhor(ispin,igrid))
 
      ! Skip all the rest if the density is too small
      if( rhor(ispin,igrid) < TOL_RHO ) cycle
@@ -530,7 +527,6 @@ subroutine dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix
 
    do igrid=1,ngrid
 
-     rr(:) = rr_grid(:,igrid)
      weight = w_grid(igrid)
 
      if( require_gradient .OR. require_laplacian ) then
@@ -607,7 +603,7 @@ subroutine dft_exc_vxc_buffer_sca(nstate,m_ham,n_ham,basis,p_matrix_occ,p_matrix
 
 
      !
-     ! Get all the functions at point rr
+     ! Get all the functions at point r
      call get_basis_functions_r(basis,igrid,basis_function_r)
      if( require_gradient ) then
        call get_basis_functions_gradr(basis,igrid,basis_function_gradr)

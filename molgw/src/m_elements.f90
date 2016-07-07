@@ -37,7 +37,7 @@ contains
 function element_core(zatom)
  implicit none
  real(dp),intent(in) :: zatom
- real(dp)            :: element_core
+ integer             :: element_core
 !=====
 
  if( zatom <= 4.00001 ) then  ! up to Be

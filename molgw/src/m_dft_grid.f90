@@ -672,9 +672,8 @@ subroutine setup_bf_radius(basis)
 
  type(basis_set),intent(in) :: basis
 !=====
- integer  :: igrid,ibf,ntmp
+ integer  :: igrid,ibf
  real(dp) :: basis_function_r(basis%nbf)
- real(dp) :: dr
 !=====
 
  allocate(bf_rad2(basis%nbf))
@@ -689,16 +688,6 @@ subroutine setup_bf_radius(basis)
  enddo
 
  call xmax_grid(bf_rad2)
-
-! Output the radii
-! do ibf=1,basis%nbf
-!   write(*,*) ibf,SQRT(bf_rad2(ibf))
-!   do igrid=1,ngrid
-!     if( SUM( (rr_grid(:,igrid) - basis%bf(ibf)%x0(:))**2 ) < bf_rad2(ibf) ) then
-!       ntmp=ntmp+1
-!     endif
-!   enddo
-! enddo
 
 end subroutine setup_bf_radius
 

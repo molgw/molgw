@@ -126,7 +126,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
    if( reading_status /= 0 ) then
      call init_spectral_function(nstate,occupation,wpol_static)
      wpol_static%nprodbasis = nauxil_3center
-     call static_polarizability(nstate,basis,occupation,energy,wpol_static)
+     call static_polarizability(nstate,occupation,energy,wpol_static)
    endif
 
  endif
@@ -171,7 +171,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
 
    call build_apb_hartree_auxil(desc_apb,wpol_out,m_apb,n_apb,apb_matrix)
 
-   call get_rpa_correlation(nmat,wpol_out,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
+   call get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
 
 
 
@@ -194,7 +194,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
 
    !
    ! Step 1
-   call build_amb_apb_common(desc_apb,nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,alpha_local, &
+   call build_amb_apb_common(nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,alpha_local, &
                              m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,rpa_correlation)
 
    !

@@ -321,7 +321,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
          do astate=nsemin,nsemax
            do iomegai=-nomegai,nomegai
              omega_m_ei = energy_qp(astate,ispin) + omegai(iomegai) - energy_qp(istate,ispin)
-             call dynamical_polarizability(nstate,basis,occupation,energy_qp,omega_m_ei,wpol,vsqchi0vsqm1)
+             call dynamical_polarizability(nstate,occupation,energy_qp,omega_m_ei,wpol,vsqchi0vsqm1)
 
              bra2 = DOT_PRODUCT( eri_3center_eigen(:,astate,istate,ispin) , MATMUL( vsqchi0vsqm1(:,:) , wpol%residu_left(:,ipole)) )
 

@@ -67,7 +67,6 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
  character(len=256)   :: string
  integer              :: idft_xc,igrid
  integer              :: ispin,ibf,jbf
- real(dp)             :: rr(3)
  real(dp)             :: basis_function_r(basis%nbf)
  real(dp)             :: basis_function_gradr(3,basis%nbf)
  real(dp)             :: rhor_r(nspin)
@@ -153,8 +152,6 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
  max_v2sigma2 = -1.0_dp
  do igrid=1,ngrid
 
-   rr(:) = rr_grid(:,igrid)
-
    if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis)
    if( require_gradient .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_gradr(basis)
    !
@@ -176,7 +173,7 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
    endif
 
 
-   call calc_density_pmatrix(nspin,basis,p_matrix,rr,basis_function_r,rhor_r)
+   call calc_density_pmatrix(nspin,basis,p_matrix,basis_function_r,rhor_r)
    if( require_gradient ) then
      call calc_density_gradr_pmatrix(nspin,basis%nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
 

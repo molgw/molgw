@@ -68,7 +68,6 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
  integer              :: ibf,jbf,kbf,lbf
  integer              :: jstate,kstate,lstate
  real(dp)             :: eri_tmp3(nbf,nbf,nbf),eri_tmp2(nbf,nbf,nbf)
- real(dp)             :: wtime
 !=====
 
  ! Check if the calculation can be skipped
@@ -148,7 +147,7 @@ subroutine calculate_eri_3center_eigen(nbf,nstate,c_matrix,mstate_min,mstate_max
  integer,intent(in)   :: mstate_min,mstate_max,nstate_min,nstate_max
 !=====
  integer              :: kbf,lbf
- integer              :: kstate,lstate
+ integer              :: lstate
  integer              :: klspin
  real(dp),allocatable :: eri_3center_tmp_l(:,:)
  integer              :: ipair
@@ -207,7 +206,7 @@ subroutine calculate_eri_3center_eigen_lr(nbf,nstate,c_matrix)
  real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
 !=====
  integer              :: kbf,lbf
- integer              :: kstate,lstate
+ integer              :: lstate
  integer              :: klspin
  real(dp),allocatable :: eri_3center_tmp_l(:,:)
  integer              :: ipair
@@ -267,7 +266,7 @@ subroutine calculate_eri_3center_eigen_mixed(nbf,nstate,c_matrix)
  real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
 !=====
  integer              :: kbf,lbf
- integer              :: kstate,lstate
+ integer              :: lstate
  integer              :: klspin
  real(dp),allocatable :: eri_3center_tmp(:,:,:)
  real(dp),allocatable :: c_matrix_exx(:,:,:)

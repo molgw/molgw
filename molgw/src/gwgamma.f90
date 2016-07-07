@@ -215,7 +215,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
 #else
 
- call static_polarizability(nstate,basis,occupation,energy_qp,wpol)
+ call static_polarizability(nstate,occupation,energy_qp,wpol)
 
  write(stdout,*) 'Calculate static SOSEX'
 

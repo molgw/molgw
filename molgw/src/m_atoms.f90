@@ -42,7 +42,7 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read)
  real(dp),intent(in) :: zatom_read(natom_read+nghost_read),x_read(3,natom_read+nghost_read)
 !=====
  integer  :: iatom,jatom
- real(dp) :: xtmp(3),x21(3),x31(3)
+ real(dp) :: x21(3),x31(3)
  real(dp) :: bond_length
 !=====
 

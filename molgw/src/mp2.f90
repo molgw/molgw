@@ -35,12 +35,13 @@ subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
 
  write(stdout,'(/,a)') ' RI-MP2 correlation calculation'
 
- call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore+1,nstate,ncore+1,nstate)
 
  ncore = ncoreg
  if(is_frozencore) then
    if( ncore == 0) ncore = atoms_core_states()
  endif
+
+ call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore+1,nstate,ncore+1,nstate)
 
  nstate_mp2 = MIN( nvirtualg-1, nstate )
 

@@ -636,10 +636,7 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
  integer :: desch(ndel),descc(ndel),descs(ndel)
- real(dp) :: alpha
  real(dp),allocatable :: matrix_local(:,:)
- real(dp),allocatable :: work(:)
- integer :: lwork
  integer :: rank_sca,nprocs_sca
  integer,external :: NUMROC,INDXL2G
 

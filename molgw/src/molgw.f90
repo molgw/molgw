@@ -476,7 +476,7 @@ program molgw
    call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
    !
    ! Calculate v^{1/2} \chi v^{1/2}
-   call static_polarizability(nstate,basis,occupation,energy,wpol)
+   call static_polarizability(nstate,occupation,energy,wpol)
 
    call destroy_eri_3center_eigen()
 
@@ -500,7 +500,7 @@ program molgw
 #ifdef HAVE_LIBXC
      call xc_f90_gga_x_hjs_set_par(calc_type%xc_func(1),1.0_dp/rcut_mbpt)
 #endif
-     call dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,matrix_tmp,exc)
+     call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,matrix_tmp,exc)
  
      write(stdout,*) '===== SigX SR ======'
      do ispin=1,nspin

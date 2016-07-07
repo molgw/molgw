@@ -6,7 +6,7 @@
 ! potentials and energies for self-consistent Kohn-Sham calculations
 !
 !=========================================================================
-subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,vxc_ij,exc_xc)
+subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,vxc_ij,exc_xc)
  use m_definitions
  use m_mpi
  use m_timing
@@ -20,7 +20,6 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,vxc_ij,e
 #endif
  implicit none
 
- integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: p_matrix_occ(basis%nbf,nspin)
  real(dp),intent(in)        :: p_matrix_sqrt(basis%nbf,basis%nbf,nspin)
@@ -33,7 +32,6 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,vxc_ij,e
  integer  :: idft_xc
  logical  :: require_gradient,require_laplacian
  integer  :: igrid,ibf,jbf,ispin
- real(dp) :: rr(3)
  real(dp) :: normalization(nspin)
  real(dp) :: weight
 
@@ -46,11 +44,9 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,vxc_ij,e
  real(dp)             :: sigma(2*nspin-1)
  real(dp)             :: tau(nspin),lapl_rhor(nspin)
  real(dp)             :: vxc_libxc(nspin)
- real(dp)             :: vxc_dummy(nspin)
  real(dp)             :: exc_libxc(1)
  real(dp)             :: vsigma(2*nspin-1)
  real(dp)             :: vlapl_rho(nspin),vtau(nspin)
- real(dp)             :: vxc_av(nspin)
  real(dp)             :: dedd_r(nspin)
  real(dp)             :: dedgd_r(3,nspin)
  real(dp)             :: gradtmp(basis%nbf)
@@ -90,21 +86,20 @@ subroutine dft_exc_vxc(nstate,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,vxc_ij,e
 
  do igrid=1,ngrid
 
-   rr(:) = rr_grid(:,igrid)
    weight = w_grid(igrid)
 
    !
-   ! Get the functions at point rr
+   ! Get the functions at point r
    call get_basis_functions_r(basis,igrid,basis_function_r)
    !
    ! calculate the density at point r for spin up and spin down
-   call calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_function_r,rhor)
+   call calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,basis_function_r,rhor)
 
    ! Skip all the rest if the density is too small
    if( ALL( rhor(:) < TOL_RHO )  ) cycle
 
    !
-   ! Get the gradient and laplacian at point rr
+   ! Get the gradient and laplacian at point r
    if( require_gradient ) then
      call get_basis_functions_gradr(basis,igrid,basis_function_gradr)
    endif
@@ -307,10 +302,9 @@ subroutine setup_atomic_density(rr,rhor,vhartree)
  real(dp),intent(out) :: rhor,vhartree
 !=====
  real(dp),parameter   :: bondcharge=1.000_dp
- integer              :: iatom,igau,ngau,ibond
+ integer              :: iatom,igau,ngau
  real(dp)             :: dr
  real(dp),allocatable :: alpha(:),coeff(:)
- real(dp)             :: xbond(3)
 !=====
 
  rhor = 0.0_dp
@@ -337,17 +331,17 @@ end subroutine setup_atomic_density
 
 
 !=========================================================================
-subroutine calc_density_pmatrix(nspin,basis,p_matrix,rr,basis_function_r,rhor)
+subroutine calc_density_pmatrix(nspin,basis,p_matrix,basis_function_r,rhor)
  use m_definitions
  use m_mpi
  use m_timing
  use m_basis_set
- use m_dft_grid,only: bf_rad2
+! use m_dft_grid,only: bf_rad2
  implicit none
  integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)  :: p_matrix(basis%nbf,basis%nbf,nspin)
- real(dp),intent(in)  :: rr(3),basis_function_r(basis%nbf)
+ real(dp),intent(in)  :: basis_function_r(basis%nbf)
  real(dp),intent(out) :: rhor(nspin)
 !=====
  integer :: ispin,ibf,jbf
@@ -372,21 +366,20 @@ end subroutine calc_density_pmatrix
 
 
 !=========================================================================
-subroutine calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_function_r,rhor)
+subroutine calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,basis_function_r,rhor)
  use m_definitions
  use m_mpi
  use m_timing
  use m_basis_set
- use m_dft_grid,only: bf_rad2
  implicit none
  integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: p_matrix_sqrt(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)        :: p_matrix_occ(basis%nbf,nspin)
- real(dp),intent(in)        :: rr(3),basis_function_r(basis%nbf)
+ real(dp),intent(in)        :: basis_function_r(basis%nbf)
  real(dp),intent(out)       :: rhor(nspin)
 !=====
- integer              :: ispin,ibf,istate,nocc
+ integer              :: ispin,ibf,istate
  real(dp)             :: phi_ir
 !=====
 
@@ -400,7 +393,6 @@ subroutine calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,rr,basis_functi
      if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
      phi_ir = 0.0_dp
      do ibf=1,basis%nbf
-!       if( SUM( (basis%bf(ibf)%x0(:) - rr(:))**2 ) > bf_rad2(ibf) ) cycle
        phi_ir = phi_ir + p_matrix_sqrt(ibf,istate,ispin) * basis_function_r(ibf)
      enddo
      rhor(ispin) = rhor(ispin) + phi_ir**2
@@ -447,7 +439,6 @@ subroutine calc_density_gradr(nspin,nbf,p_matrix_occ,p_matrix_sqrt,basis_functio
  use m_mpi
  use m_timing
  use m_basis_set
- use m_dft_grid,only: bf_rad2
  implicit none
  integer,intent(in)         :: nspin,nbf
  real(dp),intent(in)        :: p_matrix_sqrt(nbf,nbf,nspin)
@@ -456,7 +447,7 @@ subroutine calc_density_gradr(nspin,nbf,p_matrix_occ,p_matrix_sqrt,basis_functio
  real(dp),intent(in)        :: basis_function_gradr(3,nbf)
  real(dp),intent(out)       :: grad_rhor(3,nspin)
 !=====
- integer              :: ispin,ibf,istate,nocc
+ integer              :: ispin,ibf,istate
  real(dp)             :: phi_ir
  real(dp)             :: grad_phi_ir(3)
 !=====
@@ -819,31 +810,19 @@ subroutine my_lda_exc_vxc_mu(mu,rhor,exc,vxc)
  use m_definitions
  implicit none
 
-!Arguments ------------------------------------
-!scalars
  real(dp),intent(in) :: mu
  integer,parameter :: npt=1
  integer,parameter :: order=1
-!arrays
  real(dp),intent(in) :: rhor(npt)
  real(dp),intent(out) :: exc(npt),vxc(npt)
-
-!Local variables-------------------------------
-!Set value of alpha in "X-alpha" method
-!scalars
- integer :: ipt
- real(dp) :: efac,rs,rsm1,vfac
- character(len=500) :: message
-
- real(dp)           :: biga,kf,fact_mu
- real(dp)           :: rs_step=1.0e-6_dp
- real(dp)           :: rsp,rsm1p
- real(dp)           :: bigap,kfp,fact_mup
+!=====
+ real(dp)           :: efac,rs,vfac
+ real(dp)           :: kf
  real(dp)           :: omega
  real(dp)           :: rho,aa,f_aa
  real(dp)           :: exp4aa2,rhodaadrho,dfdaa
+!=====
 
-! *************************************************************************
 
  efac=0.75_dp*(1.5_dp/pi)**(2.0_dp/3.0_dp)
  vfac=4.0/3.0 * efac
@@ -877,7 +856,7 @@ end subroutine my_lda_exc_vxc_mu
 subroutine my_gga_exc_vxc_hjs(omega,nn,sigma,exc,vxc,vsigma)
  use m_definitions
  implicit none
-!=====
+
  real(dp),intent(in)  :: omega,nn,sigma
  real(dp),intent(out) :: exc,vxc,vsigma
 !=====
@@ -988,7 +967,7 @@ end subroutine my_gga_exc_vxc_hjs
 
 !=========================================================================
 subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
-
+ use m_definitions
  implicit none
 
 ! HSE evaluates the Heyd et al. Screened Coulomb
@@ -996,40 +975,33 @@ subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
 !
 ! Calculates the enhancement factor
 !
- double precision omega
- integer ipol
- double precision rho,s,Fxhse,d10Fxhse,d01Fxhse
-
- double precision  A,B,C,D,E
- double precision  ha2,ha3,ha4,ha5,ha6,ha7
- double precision  hb1,hb2,hb3,hb4,hb5,hb6,hb7,hb8,hb9
- double precision  smax,strans,sconst
-
- double precision  zero,one,two,three,four,five,six,seven,eight
- double precision  nine,ten
- double precision  fifteen,sixteen
-
- double precision  H,hnum,hden 
- double precision  d1H,d1hnum,d1hden 
- double precision  s2,s3,s4,s5,s6,s7,s8,s9
- double precision  Fs, d1Fs
- double precision  zeta, lambda, eta, kf, nu, chi, lambda2
- double precision  d1zeta,d1lambda,d1eta,d1nu,d1chi,d1lambda2
- double precision  EGs,d1EGs
- double precision  nu2,L2,L3,nu3,nu4,nu5,nu6
- double precision  Js,Ks,Ms,Ns
- double precision  d1Js,d1Ks,d1Ms,d1Ns
-
- double precision  tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8
- double precision  tmp9,tmp10,tmp11,tmp12,tmp13,tmp14,tmp15
- double precision  Fxhse1,Fxhse2,Fxhse3,Fxhse4,Fxhse5,Fxhse6
- double precision  d1Fxhse1,d1Fxhse2,d1Fxhse3,d1Fxhse4,d1Fxhse5
- double precision  d1Fxhse6,d1Fxhse7
-
- double precision  r42,r27,r12,r15,r14,r18,r20,r30,r56,r72
- double precision  r16,r32,r24,r48,r11,r64,r35
- double precision  pi,pi2,srpi,s02
- double precision  f12,f13,f32,f52,f72,f92
+ integer  :: ipol
+ real(dp) :: omega
+ real(dp) :: rho,s,Fxhse,d10Fxhse,d01Fxhse
+ real(dp) :: A,B,C,D,E
+ real(dp) :: ha2,ha3,ha4,ha5,ha6,ha7
+ real(dp) :: hb1,hb2,hb3,hb4,hb5,hb6,hb7,hb8,hb9
+ real(dp) :: zero,one,two,three,four,five,six,seven,eight
+ real(dp) :: nine,ten
+ real(dp) :: H,hnum,hden 
+ real(dp) :: d1H,d1hnum,d1hden 
+ real(dp) :: s2,s3,s4,s5,s6,s7,s8,s9
+ real(dp) :: Fs, d1Fs
+ real(dp) :: zeta, lambda, eta, kf, nu, chi, lambda2
+ real(dp) :: d1zeta,d1lambda,d1eta,d1nu,d1chi,d1lambda2
+ real(dp) :: EGs,d1EGs
+ real(dp) :: nu2,L2,L3,nu3,nu4,nu5,nu6
+ real(dp) :: Js,Ks,Ms,Ns
+ real(dp) :: d1Js,d1Ks,d1Ms,d1Ns
+ real(dp) :: tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8
+ real(dp) :: tmp9,tmp10,tmp11,tmp12,tmp13,tmp14,tmp15
+ real(dp) :: Fxhse1,Fxhse2,Fxhse3,Fxhse4,Fxhse5,Fxhse6
+ real(dp) :: d1Fxhse1,d1Fxhse2,d1Fxhse3,d1Fxhse4,d1Fxhse5
+ real(dp) :: d1Fxhse6,d1Fxhse7
+ real(dp) :: r42,r27,r12,r15,r14,r18,r20,r30,r56,r72
+ real(dp) :: r16,r32,r24,r48,r11,r64,r35
+ real(dp) :: srpi,s02
+ real(dp) :: f12,f13,f32,f52,f72,f92
 
 !
 !Constants for HJS hole
@@ -1073,8 +1045,6 @@ subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
  f52   = five/two
  f72   = seven/two
  f92   = nine/two
- pi    = ACos(-one)
- pi2   = pi*pi
  srpi = dsqrt(pi)
 !
 !

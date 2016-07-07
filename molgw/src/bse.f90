@@ -6,7 +6,7 @@
 ! or alternatively, the TDDFT "Casida" equations
 !
 !=========================================================================
-subroutine build_amb_apb_common(desc_apb,nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local, &
+subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local, &
                                 m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa,rpa_correlation)
  use m_definitions
  use m_timing
@@ -19,7 +19,7 @@ subroutine build_amb_apb_common(desc_apb,nmat,nbf,nstate,c_matrix,energy,wpol,al
  use m_eri_ao_mo
  implicit none
 
- integer,intent(in)                 :: desc_apb(ndel),nmat,nbf,nstate
+ integer,intent(in)                 :: nmat,nbf,nstate
  real(dp),intent(in)                :: energy(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(nbf,nstate,nspin)
  type(spectral_function),intent(in) :: wpol
@@ -237,7 +237,7 @@ end subroutine build_amb_apb_diag_auxil
 
 
 !=========================================================================
-subroutine get_rpa_correlation(nmat,wpol,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
+subroutine get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
  use m_definitions
  use m_timing
  use m_warning
@@ -250,7 +250,6 @@ subroutine get_rpa_correlation(nmat,wpol,m_apb,n_apb,amb_matrix,apb_matrix,rpa_c
  implicit none
 
  integer,intent(in)                 :: nmat
- type(spectral_function),intent(in) :: wpol
  integer,intent(in)                 :: m_apb,n_apb
  real(dp),intent(in)                :: amb_matrix(m_apb,n_apb)
  real(dp),intent(in)                :: apb_matrix(m_apb,n_apb)

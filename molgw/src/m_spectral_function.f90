@@ -114,7 +114,6 @@ subroutine init_spectral_function(nstate,occupation,sf)
  type(spectral_function),intent(out)   :: sf
 !=====
  integer                               :: ijspin,istate,jstate,itrans,jtrans
- logical                               :: file_exists
 !=====
 
  ncore_W      = ncorew
@@ -455,13 +454,15 @@ subroutine read_spectral_function(sf,reading_status)
 !=====
  integer            :: wfile
  character(len=100) :: postscf_name_read
- integer            :: ipole_read,ibf_auxil
+ integer            :: ibf_auxil
  logical            :: file_exists
  integer            :: npole_read,nprodbasis_read
  integer            :: ierr
  real(dp),allocatable :: buffer(:)
 #ifdef HAVE_MPI
  integer(kind=MPI_OFFSET_KIND) :: disp
+#else
+ integer :: ipole_read
 #endif
 !=====
 

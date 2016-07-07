@@ -35,15 +35,12 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  integer               :: iomegai
  real(dp),allocatable  :: omegai(:)
  integer               :: istate,jstate,kstate
- integer               :: abispin,jkspin,ispin
+ integer               :: abispin,jkspin
  real(dp)              :: fact_occ1,fact_occ2
  real(dp)              :: fi,fj,fk,ei,ej,ek
  real(dp)              :: omega
  real(dp)              :: fact_real,fact_energy
  real(dp)              :: emp2_sox,emp2_ring
- logical               :: file_exists
- character(len=3)      :: ctmp
- integer               :: iomegafile
  real(dp),allocatable  :: eri_eigenstate_i(:,:,:,:)
  integer               :: nket1,nket2
  integer               :: reading_status
@@ -51,7 +48,6 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  real(dp)              :: energy_qp(nstate,nspin)
  real(dp)              :: energy_qp_z(nstate,nspin)
  real(dp)              :: energy_qp_new(nstate,nspin)
- real(dp)              :: energy_qp_omega(nspin)
 !=====
 
  call start_clock(timing_mp2_self)
@@ -63,8 +59,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  emp2_sox  = 0.0_dp
 
  write(msg,'(es9.2)') AIMAG(ieta)
- msg='small complex number is '//msg
- call issue_warning(msg)
+ call issue_warning('small complex number is '//msg)
 
 
  write(stdout,'(/,a)') ' Perform the second-order self-energy calculation'

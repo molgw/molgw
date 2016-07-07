@@ -1217,7 +1217,6 @@ subroutine write_density_grid(basis,p_matrix)
  integer  :: densityfile
  integer  :: ispin,igrid
  real(dp) :: basis_function_r(basis%nbf)
- real(dp) :: rr(3),weight
  real(dp) :: rhor_r(nspin)
  real(dp) :: rhor(ngrid,nspin)
 !=====
@@ -1225,13 +1224,10 @@ subroutine write_density_grid(basis,p_matrix)
 
  do igrid=1,ngrid
 
-   rr(:) = rr_grid(:,igrid)
-   weight = w_grid(igrid)
-
    !
    ! Get all the functions at point rr
    call get_basis_functions_r(basis,igrid,basis_function_r)
-   call calc_density_r(nspin,basis,p_matrix,rr,basis_function_r,rhor_r)
+   call calc_density_r(nspin,basis,p_matrix,basis_function_r,rhor_r)
    rhor(igrid,:) = rhor_r(:)
 
  enddo

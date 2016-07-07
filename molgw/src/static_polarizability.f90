@@ -9,7 +9,7 @@
 
 
 !=========================================================================
-subroutine static_polarizability(nstate,basis,occupation,energy,wpol_out)
+subroutine static_polarizability(nstate,occupation,energy,wpol_out)
  use m_definitions
  use m_timing
  use m_warning
@@ -23,7 +23,6 @@ subroutine static_polarizability(nstate,basis,occupation,energy,wpol_out)
  implicit none
 
  integer,intent(in)                    :: nstate
- type(basis_set),intent(in)            :: basis
  real(dp),intent(in)                   :: occupation(nstate,nspin)
  real(dp),intent(in)                   :: energy(nstate,nspin)
  type(spectral_function),intent(inout) :: wpol_out
@@ -108,7 +107,7 @@ end subroutine static_polarizability
 
 
 !=========================================================================
-subroutine dynamical_polarizability(nstate,basis,occupation,energy,omega,wpol_in,vsqchi0vsqm1)
+subroutine dynamical_polarizability(nstate,occupation,energy,omega,wpol_in,vsqchi0vsqm1)
  use m_definitions
  use m_timing
  use m_warning
@@ -122,7 +121,6 @@ subroutine dynamical_polarizability(nstate,basis,occupation,energy,omega,wpol_in
  implicit none
 
  integer,intent(in)                    :: nstate
- type(basis_set),intent(in)            :: basis
  real(dp),intent(in)                   :: occupation(nstate,nspin)
  real(dp),intent(in)                   :: energy(nstate,nspin)
  real(dp),intent(in)                   :: omega
