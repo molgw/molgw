@@ -89,7 +89,7 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
    nspin_tddft = nspin
  endif
 
- call init_dft_grid(grid_level)
+ call init_dft_grid(tddft_grid_level)
 
  allocate( rho_c(nspin_tddft)            )
  allocate( v2rho2_c(2*nspin_tddft-1)     )

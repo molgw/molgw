@@ -20,6 +20,7 @@ write(stdout,'(1x,a24,2x,es16.8)') 'charge',charge
 write(stdout,'(1x,a24,2x,es16.8)') 'magnetization',magnetization 
 write(stdout,'(1x,a24,2x,es16.8)') 'temperature',temperature 
 write(stdout,'(1x,a24,6x,a)') 'grid_quality',grid_quality 
+write(stdout,'(1x,a24,6x,a)') 'tddft_grid_quality',tddft_grid_quality 
 write(stdout,'(1x,a24,6x,a)') 'integral_quality',integral_quality 
 write(stdout,'(1x,a24,6x,a)') 'partition_scheme',partition_scheme 
 write(stdout,'(1x,a24,2x,i8)') 'nscf',nscf 

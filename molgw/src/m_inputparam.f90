@@ -92,6 +92,7 @@ module m_inputparam
  real(dp),protected               :: electrons,charge
  real(dp),protected               :: temperature
  real(dp),protected               :: magnetization
+ integer,protected                :: tddft_grid_level
  integer,protected                :: grid_level
  integer,protected                :: integral_level
  logical,protected                :: has_auxil_basis
@@ -673,6 +674,7 @@ subroutine read_inputfile_namelist()
  character(len=2)     :: atom_symbol
  real(dp),allocatable :: zatom_read(:),x_read(:,:)
  real(dp)             :: beta_hybrid
+ character(len=12)    :: tddft_grid_quality
  character(len=12)    :: grid_quality
  character(len=12)    :: integral_quality
  character(len=100)   :: ctmp
@@ -734,6 +736,7 @@ subroutine read_inputfile_namelist()
  scf                = capitalize(scf)
  postscf            = capitalize(postscf)
  gaussian_type      = capitalize(gaussian_type)
+ tddft_grid_quality = capitalize(tddft_grid_quality)
  grid_quality       = capitalize(grid_quality)
  integral_quality   = capitalize(integral_quality)
  mixing_scheme      = capitalize(mixing_scheme)
@@ -757,8 +760,9 @@ subroutine read_inputfile_namelist()
  print_pdos_        = yesno(print_pdos)
  print_cube_        = yesno(print_cube)
 
- grid_level     = interpret_quality(grid_quality)
- integral_level = interpret_quality(integral_quality)
+ tddft_grid_level   = interpret_quality(tddft_grid_quality)
+ grid_level         = interpret_quality(grid_quality)
+ integral_level     = interpret_quality(integral_quality)
 
  select case(TRIM(mixing_scheme))
  case('SIMPLE','PULAY')

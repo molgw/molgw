@@ -187,7 +187,19 @@ vl[i].keyword  ='grid_quality'
 vl[i].family   ='scf'
 vl[i].default  ='high'
 vl[i].datatype ='characters'
-vl[i].comment  ='Sets the number of grid points use to evaluate the exchange-correlation integrals in real space. \
+vl[i].comment  ='Sets the number of grid points use to evaluate the exchange-correlation integrals in real space for the DFT potential and energy. \
+Possible values are \'low\', \'medium\', \'high\', \'very high\', \'insane\'. \
+It could be abbreviated in \'l\', \'m\', \'h\', \'vh\', \'i\'. \
+\'high\' is usually fine. \'insane\' is only meant for debugging since it is overdoing a lot.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='tddft_grid_quality'
+vl[i].family   ='post'
+vl[i].default  ='high'
+vl[i].datatype ='characters'
+vl[i].comment  ='Sets the number of grid points use to evaluate the exchange-correlation integrals in real space for the TDDFT kernel. \
 Possible values are \'low\', \'medium\', \'high\', \'very high\', \'insane\'. \
 It could be abbreviated in \'l\', \'m\', \'h\', \'vh\', \'i\'. \
 \'high\' is usually fine. \'insane\' is only meant for debugging since it is overdoing a lot.'

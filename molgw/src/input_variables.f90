@@ -21,6 +21,7 @@
     magnetization,       &
     temperature,       &
     grid_quality,       &
+    tddft_grid_quality,       &
     integral_quality,       &
     partition_scheme,       &
     nscf,       &
@@ -93,6 +94,7 @@
  magnetization=0.0_dp 
  temperature=0.0_dp 
  grid_quality='high'
+ tddft_grid_quality='high'
  integral_quality='high'
  partition_scheme='ssf'
  nscf=30
