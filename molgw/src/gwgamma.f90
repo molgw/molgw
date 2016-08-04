@@ -15,7 +15,6 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
- use m_tools,only: coeffs_gausslegint
  use m_selfenergy_tools
  use m_tddft_fxc
  implicit none
@@ -46,8 +45,9 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  integer               :: reading_status
  integer               :: selfenergyfile
  real(dp)              :: pole_s
- logical,parameter     :: tddft_kernel = .FALSE.
-! logical,parameter     :: tddft_kernel = .TRUE.
+ real(dp)              :: fxc
+! logical,parameter     :: tddft_kernel = .FALSE.
+ logical,parameter     :: tddft_kernel = .TRUE.
 !=====
 
  call start_clock(timing_gwgamma)
@@ -143,18 +143,19 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
            vcoul1 = eri_eigen_ri(mstate,istate,ispin,bstate,kstate,ispin)
            vcoul2 = eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin)
            if( tddft_kernel ) then
-             vcoul2 = alpha_hybrid * vcoul2 - eval_fxc_rks_singlet(istate,bstate,ispin,kstate,mstate,ispin)
+             fxc = eval_fxc_rks_singlet(istate,bstate,ispin,kstate,mstate,ispin)
+             call xsum_grid(fxc)
+             vcoul2 = alpha_hybrid * vcoul2 - fxc
 
-             if( ABS( eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin) -vcoul2)> 0.10 ) then
-               write(*,'(4(i4,1x),4(1x,f12.6))') istate,bstate,kstate,mstate, &
-                  eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin), &
-                  vcoul2
-               write(*,*) 'Hack'
-               vcoul2 = eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin)
-             endif
+!             if( ABS( eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin) -vcoul2)> 0.10 ) then
+!               write(*,'(4(i4,1x),4(1x,f12.6))') istate,bstate,kstate,mstate, &
+!                  eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin), &
+!                  vcoul2
+!               write(*,*) 'Hack'
+!               vcoul2 = eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin)
+!             endif
 
            endif
-!           vcoul2 = 0.0_dp  !FBFB
            !
            ! calculate only the diagonal !
            do iomegai=-nomegai,nomegai
@@ -183,18 +184,19 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
            vcoul1 = eri_eigen_ri(mstate,astate,ispin,jstate,cstate,ispin)
            vcoul2 = eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin)
            if( tddft_kernel ) then
-             vcoul2 = alpha_hybrid * vcoul2 - eval_fxc_rks_singlet(astate,jstate,ispin,cstate,mstate,ispin)
+             fxc = eval_fxc_rks_singlet(astate,jstate,ispin,cstate,mstate,ispin)
+             call xsum_grid(fxc)
+             vcoul2 = alpha_hybrid * vcoul2 - fxc
 
-             if( ABS( eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin) -vcoul2 )> 0.10 ) then
-               write(*,'(4(i4,1x),4(1x,f12.6))') astate,jstate,cstate,mstate, &
-                  eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin), &
-                  vcoul2
-!               write(*,*) 'Hack'
-!               vcoul2 =  eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin)
-             endif
+!             if( ABS( eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin) -vcoul2 )> 0.10 ) then
+!               write(*,'(4(i4,1x),4(1x,f12.6))') astate,jstate,cstate,mstate, &
+!                  eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin), &
+!                  vcoul2
+!!               write(*,*) 'Hack'
+!!               vcoul2 =  eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin)
+!             endif
 
            endif
-!           vcoul2 = 0.0_dp  !FBFB
            !
            ! calculate only the diagonal !
            do iomegai=-nomegai,nomegai
@@ -301,10 +303,10 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
        pole_s = wpol%pole(spole)
   
-       forall(mstate=ncore_G+1:MAX(nhomo_G,nsemax))
+       do mstate=ncore_G+1,MAX(nhomo_G,nsemax)
          ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
          bra(:,mstate)     = MATMUL( wpol%residu_left(:,spole) , eri_3center_eigen(:,:,mstate,ispin) )
-       end forall
+       enddo
        call xsum_auxil(bra)
   
   
@@ -322,7 +324,9 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
   
                vcoul = eri_eigen_ri(istate,kstate,ispin,bstate,mstate,ispin)
                if( tddft_kernel ) then
-                 vcoul = alpha_hybrid * vcoul - eval_fxc_rks_singlet(istate,kstate,ispin,bstate,mstate,ispin)
+                 fxc = eval_fxc_rks_singlet(istate,kstate,ispin,bstate,mstate,ispin)
+                 call xsum_grid(fxc)
+                 vcoul = alpha_hybrid * vcoul - fxc
                endif
 
                do iomegai=-nomegai,nomegai
@@ -351,7 +355,9 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
   
                vcoul = eri_eigen_ri(istate,cstate,ispin,bstate,mstate,ispin)
                if( tddft_kernel ) then
-                 vcoul = alpha_hybrid * vcoul - eval_fxc_rks_singlet(istate,cstate,ispin,bstate,mstate,ispin)
+                 fxc = eval_fxc_rks_singlet(istate,cstate,ispin,bstate,mstate,ispin)
+                 call xsum_grid(fxc)
+                 vcoul = alpha_hybrid * vcoul - fxc
                endif
 
                do iomegai=-nomegai,nomegai
@@ -387,7 +393,9 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
   
                vcoul = eri_eigen_ri(astate,kstate,ispin,jstate,mstate,ispin)
                if( tddft_kernel ) then
-                 vcoul = alpha_hybrid * vcoul - eval_fxc_rks_singlet(astate,kstate,ispin,jstate,mstate,ispin)
+                 fxc = eval_fxc_rks_singlet(astate,kstate,ispin,jstate,mstate,ispin)
+                 call xsum_grid(fxc)
+                 vcoul = alpha_hybrid * vcoul - fxc
                endif
 
                do iomegai=-nomegai,nomegai
@@ -423,7 +431,9 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
   
                vcoul = eri_eigen_ri(astate,cstate,ispin,jstate,mstate,ispin)
                if( tddft_kernel ) then
-                 vcoul = alpha_hybrid * vcoul - eval_fxc_rks_singlet(astate,cstate,ispin,jstate,mstate,ispin)
+                 fxc = eval_fxc_rks_singlet(astate,cstate,ispin,jstate,mstate,ispin)
+                 call xsum_grid(fxc)
+                 vcoul = alpha_hybrid * vcoul - fxc
                endif
 
                do iomegai=-nomegai,nomegai
