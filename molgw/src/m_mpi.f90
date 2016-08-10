@@ -194,18 +194,33 @@ subroutine init_mpi_other_communicators(nproc_ortho_in)
 !=====
 
 #ifdef HAVE_MPI
+
+ nproc_ortho = nproc_ortho_in
+
  !
  ! Set up grid communicator
  !
+#if 0
  nproc_grid = nproc_world
  comm_grid  = comm_world
  call MPI_COMM_RANK(comm_grid,rank_grid,ier)
+#else
+ nproc_grid = nproc_world / nproc_ortho
+
+ color = MODULO( rank_world , nproc_ortho )
+ call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_grid,ier);
+
+ call MPI_COMM_SIZE(comm_grid,nproc_grid,ier)
+ call MPI_COMM_RANK(comm_grid,rank_grid,ier)
+ if( nproc_grid /= nproc_world / nproc_ortho ) then
+   write(stdout,*) rank_world,color,nproc_grid,nproc_world,nproc_ortho
+   call die('Problem in init_mpi')
+ endif
+#endif
 
  !
  ! Set up auxil communicator
  !
- nproc_ortho = nproc_ortho_in
- 
  nproc_auxil = nproc_world / nproc_ortho
 
  color = MODULO( rank_world , nproc_ortho )

@@ -209,42 +209,17 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,vxc_ij,exc_xc)
    if( .NOT. require_gradient ) then 
      ! LDA
      do ispin=1,nspin
-#if 0
-       do jbf=1,basis%nbf
-         ! Only the lower part is calculated
-         do ibf=jbf,basis%nbf 
-           vxc_ij(ibf,jbf,ispin) =  vxc_ij(ibf,jbf,ispin) + weight &
-               *  dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf) 
-         enddo
-       enddo
-#else
        call DSYR('L',basis%nbf,weight*dedd_r(ispin),basis_function_r,1,vxc_ij(:,:,ispin),basis%nbf)
-#endif
      enddo
 
    else 
      ! GGA
      do ispin=1,nspin
 
-#if 0
-       do jbf=1,basis%nbf
-         ! Only the lower part is calculated
-         do ibf=jbf,basis%nbf 
-           vxc_ij(ibf,jbf,ispin) = vxc_ij(ibf,jbf,ispin) + weight  &
-               * dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf) 
-
-           vxc_ij(ibf,jbf,ispin) = vxc_ij(ibf,jbf,ispin) + weight &
-                    * DOT_PRODUCT( dedgd_r(:,ispin) ,                                     &
-                                      basis_function_gradr(:,ibf) * basis_function_r(jbf) &
-                                    + basis_function_gradr(:,jbf) * basis_function_r(ibf) )
-         enddo
-       enddo
-#else
        gradtmp(:) = MATMUL( dedgd_r(:,ispin) , basis_function_gradr(:,:) )
        call DSYR('L',basis%nbf,weight*dedd_r(ispin),basis_function_r,1,vxc_ij(:,:,ispin),basis%nbf)
        call DSYR2('L',basis%nbf,weight,basis_function_r,1,gradtmp,1,vxc_ij(:,:,ispin),basis%nbf)
 
-#endif
      enddo
    endif
 !   call stop_clock(timing_tmp2)

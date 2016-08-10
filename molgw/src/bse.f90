@@ -881,7 +881,6 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
        bstate = wpol%transition_table_apb(2,t_jb_global)
        jbspin = wpol%transition_table_apb(3,t_jb_global)
 
-!       if( MODULO( jstate, nproc_ortho ) /= rank_ortho ) cycle
        if( jstate < jstate_min .OR. jstate > jstate_max ) cycle
 
        do t_ia=1,m_apb_block

@@ -227,7 +227,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
 
  call stop_clock(timing_build_h2p)
 
- if(is_rpa) call clean_deallocate('A-B',amb_matrix)
+ if( is_rpa .AND. .NOT. is_tda ) call clean_deallocate('A-B',amb_matrix)
  
 
  !
@@ -242,14 +242,14 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  call init_desc('S',nmat,nexc,desc_x,m_x,n_x)
 
  call clean_allocate('X+Y',xpy_matrix,m_x,n_x)
- if( .NOT. is_rpa) &
+ if( .NOT. is_rpa .OR. is_tda ) &
    call clean_allocate('X-Y',xmy_matrix,m_x,n_x)
 
  !
  ! Diago using the 4 block structure and the symmetry of each block
  ! With or Without SCALAPACK
  !
- if( .NOT. is_rpa ) then
+ if( .NOT. is_rpa .OR. is_tda ) then
    if( nexcitation == 0 ) then
      ! The following call works with AND without SCALAPACK
      call diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,eigenvalue,&
