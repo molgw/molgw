@@ -334,7 +334,7 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  
 
  write(stdout,*) '==========================================='
- write(stdout,*) ' spin state  energy(eV)  Mulliken proj.'
+ write(stdout,*) ' spin state  energy(eV)  Mulliken proj. total        proj s         proj p      proj d ... '
  proj_charge = 0.0_dp
  do ispin=1,nspin
    do istate=1,nstate

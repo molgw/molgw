@@ -1,0 +1,24 @@
+&molgw
+ charge=1
+ magnetization=1.00
+ nspin=2
+
+ scf='hf'
+ tolscf=1.0e-5
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+ no_4center='yes'
+
+ postscf='td'
+ frozencore='yes'
+ nexcitation=4
+
+ natom=6
+/
+H   0.000000   0.923274    1.238289
+H   0.000000   -0.923274   1.238289
+H   0.000000   0.923274   -1.238289
+H   0.000000   -0.923274  -1.238289
+C   0.000000   0.000000    0.668188
+C   0.000000   0.000000   -0.668188

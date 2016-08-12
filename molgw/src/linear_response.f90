@@ -402,11 +402,6 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
 
  write(stdout,'(/,a)') ' Calculate the optical spectrum'
 
- if (nspin/=1) then
-   msg='no nspin/=1 allowed'
-   call issue_warning(msg)
-   return
- endif
 
  nexc = nexcitation
  if( nexc == 0 ) nexc = chi%npole_reso_apb
