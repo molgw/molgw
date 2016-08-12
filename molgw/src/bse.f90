@@ -799,6 +799,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
          endif
   
        enddo
+       deallocate(wp0_i)
        deallocate(w0_local)
   
      else if( ALLOCATED(wpol_static%residu_left) ) then
