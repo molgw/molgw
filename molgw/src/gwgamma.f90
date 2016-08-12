@@ -46,8 +46,6 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  integer               :: selfenergyfile
  real(dp)              :: pole_s
  real(dp)              :: fxc
-! logical,parameter     :: tddft_kernel = .FALSE.
- logical,parameter     :: tddft_kernel = .TRUE.
 !=====
 
  call start_clock(timing_gwgamma)
@@ -65,7 +63,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  end select
 
 
- if( tddft_kernel ) then
+ if( gwgamma_tddft_ ) then
    write(stdout,*) 'Include a TDDFT kernel contribution to the vertex'
    write(stdout,'(1x,a,f12.4)') 'Exact-exchange amount: ',alpha_hybrid
    call prepare_tddft(nstate,basis,c_matrix,occupation)
@@ -142,7 +140,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
            vcoul1 = eri_eigen_ri(mstate,istate,ispin,bstate,kstate,ispin)
            vcoul2 = eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin)
-           if( tddft_kernel ) then
+           if( gwgamma_tddft_ ) then
              fxc = eval_fxc_rks_singlet(istate,bstate,ispin,kstate,mstate,ispin)
              call xsum_grid(fxc)
              vcoul2 = alpha_hybrid * vcoul2 - fxc
@@ -183,7 +181,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
            vcoul1 = eri_eigen_ri(mstate,astate,ispin,jstate,cstate,ispin)
            vcoul2 = eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin)
-           if( tddft_kernel ) then
+           if( gwgamma_tddft_ ) then
              fxc = eval_fxc_rks_singlet(astate,jstate,ispin,cstate,mstate,ispin)
              call xsum_grid(fxc)
              vcoul2 = alpha_hybrid * vcoul2 - fxc
@@ -323,7 +321,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
              do mstate=nsemin,nsemax
   
                vcoul = eri_eigen_ri(istate,kstate,ispin,bstate,mstate,ispin)
-               if( tddft_kernel ) then
+               if( gwgamma_tddft_ ) then
                  fxc = eval_fxc_rks_singlet(istate,kstate,ispin,bstate,mstate,ispin)
                  call xsum_grid(fxc)
                  vcoul = alpha_hybrid * vcoul - fxc
@@ -354,7 +352,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
              do mstate=nsemin,nsemax
   
                vcoul = eri_eigen_ri(istate,cstate,ispin,bstate,mstate,ispin)
-               if( tddft_kernel ) then
+               if( gwgamma_tddft_ ) then
                  fxc = eval_fxc_rks_singlet(istate,cstate,ispin,bstate,mstate,ispin)
                  call xsum_grid(fxc)
                  vcoul = alpha_hybrid * vcoul - fxc
@@ -392,7 +390,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
              do mstate=nsemin,nsemax
   
                vcoul = eri_eigen_ri(astate,kstate,ispin,jstate,mstate,ispin)
-               if( tddft_kernel ) then
+               if( gwgamma_tddft_ ) then
                  fxc = eval_fxc_rks_singlet(astate,kstate,ispin,jstate,mstate,ispin)
                  call xsum_grid(fxc)
                  vcoul = alpha_hybrid * vcoul - fxc
@@ -430,7 +428,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
              do mstate=nsemin,nsemax
   
                vcoul = eri_eigen_ri(astate,cstate,ispin,jstate,mstate,ispin)
-               if( tddft_kernel ) then
+               if( gwgamma_tddft_ ) then
                  fxc = eval_fxc_rks_singlet(astate,cstate,ispin,jstate,mstate,ispin)
                  call xsum_grid(fxc)
                  vcoul = alpha_hybrid * vcoul - fxc
@@ -550,7 +548,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  if(ALLOCATED(omegai)) deallocate(omegai)
  if(ALLOCATED(selfenergy_omega)) deallocate(selfenergy_omega)
 
- if( tddft_kernel ) then
+ if( gwgamma_tddft_ ) then
    call destroy_tddft()
  endif
 

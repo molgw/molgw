@@ -49,12 +49,13 @@ vl[i].keyword  ='postscf'
 vl[i].family   ='post'
 vl[i].datatype ='characters'
 vl[i].comment  ='Contains the post-processing scheme name. \n\
-TD stands for TD-DFT.\n\
+TD stands for TD-DFT or TD-HF.\n\
 BSE stands for Bethe-Salpeter.\n\
 GW stands for perturbative G0W0.\n\
 GnW0 stands for GW with eigenvalue self-consistentcy on G.\n\
 GnWn stands for GW with eigenvalue self-consistentcy on both G and W.\n\
-MP2 stands for guess what.'
+MP2 stands for guess what.\n\
+GWGAMMA (EXPERIMENTAL) stands for vertex corrections.'
 
 #================================
 vl.append(variable())
@@ -720,6 +721,15 @@ vl[i].family   ='post'
 vl[i].default  ='1.0'
 vl[i].datatype ='real'
 vl[i].comment  ='EXPERIMENTAL'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='gwgamma_tddft'
+vl[i].family   ='post'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='EXPERIMENTAL. Calculates the vertex using the DFT flavor specified in the ground-state calculation. '
 
 
 

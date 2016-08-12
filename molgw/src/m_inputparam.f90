@@ -39,25 +39,25 @@ module m_inputparam
  integer,parameter :: G0W0SOX0     = 119
 
  type calculation_type
-   character(len=100) :: calc_name
-   character(len=100) :: scf_name
-   character(len=100) :: postscf_name
-   logical            :: is_dft
-   logical            :: need_exchange
-   logical            :: need_exchange_lr
-   logical            :: need_rpa
-   logical            :: is_lr_mbpt
-   logical            :: is_gw
-   logical            :: is_mp2
-   logical            :: is_mp2_selfenergy
-   logical            :: is_ci
-   logical            :: read_potential
-   logical            :: is_bse,is_td
-   logical            :: read_energy_qp
-   integer            :: gwmethod                    ! perturbative or quasiparticle self-consistent
+ character(len=100) :: calc_name
+ character(len=100) :: scf_name
+ character(len=100) :: postscf_name
+ logical            :: is_dft
+ logical            :: need_exchange
+ logical            :: need_exchange_lr
+ logical            :: need_rpa
+ logical            :: is_lr_mbpt
+ logical            :: is_gw
+ logical            :: is_mp2
+ logical            :: is_mp2_selfenergy
+ logical            :: is_ci
+ logical            :: read_potential
+ logical            :: is_bse,is_td
+ logical            :: read_energy_qp
+ integer            :: gwmethod                    ! perturbative or quasiparticle self-consistent
 #ifdef HAVE_LIBXC
-   type(xc_f90_pointer_t),allocatable :: xc_func(:)
-   type(xc_f90_pointer_t),allocatable :: xc_info(:)
+ type(xc_f90_pointer_t),allocatable :: xc_func(:)
+ type(xc_f90_pointer_t),allocatable :: xc_info(:)
 #endif
  end type calculation_type
 
@@ -114,6 +114,7 @@ module m_inputparam
  integer,protected                :: mpi_nproc_ortho
  real(dp),protected               :: alpha_cohsex,beta_cohsex,gamma_cohsex,delta_cohsex,epsilon_cohsex
 
+ logical,protected                :: gwgamma_tddft_
  logical,protected                :: ignore_restart_
  logical,protected                :: ignore_bigrestart_
  logical,protected                :: print_matrix_
@@ -668,6 +669,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_restart,print_bigrestart
  character(len=3)     :: print_pdos,print_cube
  character(len=3)     :: tda,triplet,frozencore,virtual_fno
+ character(len=3)     :: gwgamma_tddft
  real(dp)             :: length_factor,eta
  integer              :: natom_read
  integer              :: atom_number,info,iatom
@@ -759,6 +761,7 @@ subroutine read_inputfile_namelist()
  print_bigrestart_  = yesno(print_bigrestart)
  print_pdos_        = yesno(print_pdos)
  print_cube_        = yesno(print_cube)
+ gwgamma_tddft_     = yesno(gwgamma_tddft)
 
  tddft_grid_level   = interpret_quality(tddft_grid_quality)
  grid_level         = interpret_quality(grid_quality)
