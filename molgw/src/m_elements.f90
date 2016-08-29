@@ -141,7 +141,8 @@ function element_covalent_radius(zatom)
  case(36) ! Kr.
    element_covalent_radius = 116.
  case default
-   call die('radius not available')
+   ! If not available, then invent one!
+   element_covalent_radius = 150.
  end select
   
  !
