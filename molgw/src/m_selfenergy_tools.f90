@@ -242,54 +242,68 @@ end function find_fixed_point
 
 
 !=========================================================================
-subroutine output_qp_energy(calcname,nstate,nsemin,nsemax,energy0,exchange_m_vxc,selfenergy,energy1,energy2,zz)
+subroutine output_qp_energy(calcname,nstate,nsemin,nsemax,energy0,exchange_m_vxc,ncomponent,selfenergy,energy1,energy2,zz)
  implicit none
  
  character(len=*)             :: calcname
- integer                      :: nstate,nsemin,nsemax
+ integer                      :: nstate,nsemin,nsemax,ncomponent
  real(dp),intent(in)          :: energy0(nstate,nspin),exchange_m_vxc(nstate,nspin)
- real(dp),intent(in)          :: selfenergy(nsemin:nsemax,nspin),energy1(nstate,nspin)
+ real(dp),intent(in)          :: selfenergy(nsemin:nsemax,nspin,ncomponent),energy1(nstate,nspin)
  real(dp),intent(in),optional :: energy2(nstate,nspin),zz(nsemin:nsemax,nspin)
 !=====
- integer  :: astate
+ integer           :: astate,ii
+ character(len=36) :: sigc_label
 !=====
 
+ if( ncomponent > 2 ) call die('output_qp_energy: too many components. Not implemented yet')
+ if( ncomponent < 1 ) call die('output_qp_energy: too few components. Something is not correct in the coding.')
+
+ if( ncomponent == 1 ) then
+   sigc_label = 'SigC'
+ else
+   if( nspin == 1 ) then
+     sigc_label = 'SigC_1      SigC_2'
+   else
+     sigc_label = 'SigC_1                  SigC_2'
+   endif
+ endif
+ 
 
  write(stdout,'(/,1x,a,1x,a)') TRIM(calcname),'eigenvalues (eV)'
 
  if( PRESENT(zz) .AND. PRESENT(energy2) ) then
 
    if(nspin==1) then
-     write(stdout,'(3x,a,8x,a,9x,a,7x,a,10x,a,11x,a,10x,a)') '#','E0','SigX-Vxc','SigC','Z','E_Z','E_qp'
+     write(stdout,'(3x,a,8x,a,9x,a,7x,a,10x,a,11x,a,10x,a)') '#','E0','SigX-Vxc',TRIM(sigc_label),'Z','E_Z','E_qp'
    else
-     write(stdout,'(3x,a,15x,a,22x,a,19x,a,24x,a,23x,a,23x,a)') '#','E0','SigX-Vxc','SigC','Z','E_Z','E_qp'
-     write(stdout,'(12x,12(a4,9x))') ' up ','down',' up ','down',' up ','down',' up ','down',' up ','down',' up ','down'
+     write(stdout,'(3x,a,15x,a,22x,a,19x,a,24x,a,23x,a,23x,a)') '#','E0','SigX-Vxc',TRIM(sigc_label),'Z','E_Z','E_qp'
+     write(stdout,'(12x,14(a4,9x))') (' up ','down',ii=1,5+ncomponent)
    endif
 
    do astate=nsemin,nsemax
 
-     write(stdout,'(i4,1x,20(1x,f12.6))') astate,energy0(astate,:)*Ha_eV,   &
-                                          exchange_m_vxc(astate,:)*Ha_eV,   &
-                                          selfenergy(astate,:)*Ha_eV,       &
-                                          zz(astate,:),                     &
-                                          energy1(astate,:)*Ha_eV,          &
+     write(stdout,'(i4,1x,20(1x,f12.6))') astate,energy0(astate,:)*Ha_eV,  &
+                                          exchange_m_vxc(astate,:)*Ha_eV,  &
+                                          selfenergy(astate,:,:)*Ha_eV,    &
+                                          zz(astate,:),                    &
+                                          energy1(astate,:)*Ha_eV,         &
                                           energy2(astate,:)*Ha_eV
    enddo
 
  else
 
    if(nspin==1) then
-     write(stdout,'(3x,a,8x,a,9x,a,7x,a,9x,a)') '#','E0','SigX-Vxc','SigC','E_qp'
+     write(stdout,'(3x,a,8x,a,9x,a,7x,a,9x,a)') '#','E0','SigX-Vxc',TRIM(sigc_label),'E_qp'
    else
-     write(stdout,'(3x,a,15x,a,22x,a,20x,a,22x,a)') '#','E0','SigX-Vxc','SigC','E_qp'
-     write(stdout,'(12x,8(a4,9x))') ' up ','down',' up ','down',' up ','down',' up ','down'
+     write(stdout,'(3x,a,15x,a,22x,a,20x,a,22x,a)') '#','E0','SigX-Vxc',TRIM(sigc_label),'E_qp'
+     write(stdout,'(12x,10(a4,9x))') (' up ','down',ii=1,3+ncomponent)
    endif
 
    do astate=nsemin,nsemax
 
      write(stdout,'(i4,1x,20(1x,f12.6))') astate,energy0(astate,:)*Ha_eV,       &
                                           exchange_m_vxc(astate,:)*Ha_eV,       &
-                                          selfenergy(astate,:)*Ha_eV,           &
+                                          selfenergy(astate,:,:)*Ha_eV,         &
                                           energy1(astate,:)*Ha_eV
    enddo
 

@@ -518,9 +518,9 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
  select case(gwmethod)
  case(G0W0SOX0)
-   call output_qp_energy('G0W0SOX0',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
+   call output_qp_energy('G0W0SOX0',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,1,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
  case(G0W0GAMMA0)
-   call output_qp_energy('G0W0Gamma0',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
+   call output_qp_energy('G0W0Gamma0',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,1,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
  end select
  deallocate(zz)
 

@@ -29,6 +29,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  real(dp),allocatable  :: selfenergy_ring(:,:,:,:)
  real(dp),allocatable  :: selfenergy_sox(:,:,:,:)
  real(dp),allocatable  :: selfenergy_omega(:,:,:,:)
+ real(dp),allocatable  :: selfenergy_output(:,:,:)
  real(dp),allocatable  :: zz(:,:)
  real(dp),allocatable  :: selfenergy_final(:,:)
  integer               :: nomegai
@@ -221,7 +222,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
    emp2 = 0.0_dp
  endif
 
- selfenergy_omega(:,:,:,:) = selfenergy_ring(:,:,:,:)+selfenergy_sox(:,:,:,:)
+ selfenergy_omega(:,:,:,:) = selfenergy_ring(:,:,:,:) + selfenergy_sox(:,:,:,:)
 
  if( method == perturbative ) then
 
@@ -239,12 +240,17 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
    else
      energy_qp_new(:,:) = energy_qp_z(:,:)
    endif
+
+   allocate(selfenergy_output(nsemin:nsemax,nspin,2))
+   selfenergy_output(:,:,1) = selfenergy_ring(0,:,1,:)
+   selfenergy_output(:,:,2) = selfenergy_sox(0,:,1,:)
+
    if( calc_type%read_energy_qp ) then
-     call output_qp_energy('MP2',nstate,nsemin,nsemax,energy,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_z)
+     call output_qp_energy('MP2',nstate,nsemin,nsemax,energy,exchange_m_vxc_diag,2,selfenergy_output,energy_qp_z)
    else
-     call output_qp_energy('MP2',nstate,nsemin,nsemax,energy,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
+     call output_qp_energy('MP2',nstate,nsemin,nsemax,energy,exchange_m_vxc_diag,2,selfenergy_output,energy_qp_z,energy_qp_new,zz)
    endif
-   deallocate(zz)
+   deallocate(zz,selfenergy_output)
 
    call write_energy_qp(nstate,energy_qp_new)
 

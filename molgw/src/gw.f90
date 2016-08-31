@@ -442,7 +442,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
    selfenergy(:,:,:) = selfenergy_omega(0,:,:,:)
    
    call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy_qp,energy_qp_new)
-   call output_qp_energy('GV',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_new)
+   call output_qp_energy('GV',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,1,selfenergy_omega(0,:,1,:),energy_qp_new)
 
    call write_energy_qp(nstate,energy_qp_new)
 
@@ -456,7 +456,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
    end forall
    
    call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy_qp,energy_qp_new)
-   call output_qp_energy('COHSEX',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_new)
+   call output_qp_energy('COHSEX',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,1,selfenergy_omega(0,:,1,:),energy_qp_new)
 
    call write_energy_qp(nstate,energy_qp_new)
 
@@ -511,7 +511,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
    call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
    call find_qp_energy_graphical(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_new)
 
-   call output_qp_energy('G0W0',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
+   call output_qp_energy('G0W0',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,1,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
    deallocate(zz)
 
    if( .NOT. (calc_type%gwmethod == G0W0GAMMA0 .OR. calc_type%gwmethod == G0W0SOX0) )  then
@@ -531,9 +531,9 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
    call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_new)
 
    if( gwmethod == GnW0 ) then
-     call output_qp_energy('GnW0',nstate,nsemin,nsemax,energy,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_new)
+     call output_qp_energy('GnW0',nstate,nsemin,nsemax,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,1,:),energy_qp_new)
    else
-     call output_qp_energy('GnWn',nstate,nsemin,nsemax,energy,exchange_m_vxc_diag,selfenergy_omega(0,:,1,:),energy_qp_new)
+     call output_qp_energy('GnWn',nstate,nsemin,nsemax,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,1,:),energy_qp_new)
    endif
 
    call write_energy_qp(nstate,energy_qp_new)

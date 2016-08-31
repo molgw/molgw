@@ -247,10 +247,10 @@ subroutine init_calculation_type(calc_type,input_key)
    case('MP2')
      calc_type%is_mp2   =.TRUE.
      calc_type%gwmethod = perturbative
-   case('MP2_SELFENERGY')
+   case('MP2_SELFENERGY','PT2')
      calc_type%is_mp2_selfenergy =.TRUE.
      calc_type%gwmethod = perturbative
-   case('EVMP2')
+   case('EVMP2','EVPT2')
      calc_type%is_mp2_selfenergy =.TRUE.
      calc_type%read_energy_qp    =.TRUE.
      calc_type%gwmethod = perturbative
