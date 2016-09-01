@@ -27,9 +27,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  real(dp),intent(out)               :: selfenergy(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)               :: energy_gw
 !=====
- integer               :: nomegai
  integer               :: iomegai
- real(dp),allocatable  :: omegai(:)
  real(dp),allocatable  :: selfenergy_omega(:,:,:,:)
  real(dp),allocatable  :: selfenergy_omega_gw(:,:,:,:)
  real(dp),allocatable  :: selfenergy_omega_gamma(:,:,:,:)
@@ -69,9 +67,6 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
    call prepare_tddft(nstate,basis,c_matrix,occupation)
  endif
 
- ! Set the range of states on which to evaluate the self-energy
- call selfenergy_set_state_ranges(nstate,occupation)
-
  if(has_auxil_basis) then
    call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
  else
@@ -85,13 +80,6 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
  write(msg,'(es9.2)') AIMAG(ieta)
  call issue_warning('small complex number is '//msg)
-
-
- nomegai = nomega_sigma/2
- allocate(omegai(-nomegai:nomegai))
- do iomegai=-nomegai,nomegai
-   omegai(iomegai) = step_sigma * iomegai
- enddo
 
 
  !
@@ -545,7 +533,6 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
    call destroy_eri_3center_eigen()
  endif
 
- if(ALLOCATED(omegai)) deallocate(omegai)
  if(ALLOCATED(selfenergy_omega)) deallocate(selfenergy_omega)
 
  if( gwgamma_tddft_ ) then

@@ -377,10 +377,14 @@ program molgw
 
  !
  ! Prepare the diagonal of the matrix Sigma_x - Vxc
- ! for the forthcoming GW corrections
+ ! for the forthcoming GW or PT2 corrections
  if( calc_type%is_mp2_selfenergy .OR. calc_type%is_gw ) then
    allocate(exchange_m_vxc_diag(nstate,nspin))
    call setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham,occupation,c_matrix,hamiltonian_exx,hamiltonian_xc,exchange_m_vxc_diag)
+   !
+   ! Set the range of states on which to evaluate the self-energy
+   call selfenergy_set_state_range(nstate,occupation)
+   call selfenergy_set_omega_grid(calc_type%gwmethod)
  endif
 
  !
@@ -600,6 +604,9 @@ program molgw
  !
  ! Cleanly exiting the code
  !
+ if( calc_type%is_mp2_selfenergy .OR. calc_type%is_gw ) then
+   call selfenergy_destroy_omega_grid()
+ endif
  deallocate(s_matrix,c_matrix)
  deallocate(s_matrix_sqrt_inv)
  deallocate(hamiltonian_kinetic,hamiltonian_nucleus)

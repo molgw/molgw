@@ -3,7 +3,7 @@
 ! Author: Fabien Bruneval
 !
 ! This file contains
-! the MP2 self-energy evaluation
+! the perturbation theory to 2nd order evaluation of the self-energy
 !
 !=========================================================================
 subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,selfenergy,emp2)
@@ -32,9 +32,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  real(dp),allocatable  :: selfenergy_output(:,:,:)
  real(dp),allocatable  :: zz(:,:)
  real(dp),allocatable  :: selfenergy_final(:,:)
- integer               :: nomegai
  integer               :: iomegai
- real(dp),allocatable  :: omegai(:)
  integer               :: istate,jstate,kstate
  integer               :: abispin,jkspin
  real(dp)              :: fact_occ1,fact_occ2
@@ -52,9 +50,6 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
 !=====
 
  call start_clock(timing_mp2_self)
-
- ! Set the range of states on which to evaluate the self-energy
- call selfenergy_set_state_ranges(nstate,occupation)
 
  emp2_ring = 0.0_dp
  emp2_sox  = 0.0_dp
@@ -88,19 +83,6 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  
    energy_qp(:,:) = energy(:,:)
 
- endif
-
-
- if( method==QS .OR. calc_type%read_energy_qp ) then
-   nomegai=0
-   allocate(omegai(-nomegai:nomegai))
-   omegai(0) =  0.00_dp
- else
-   nomegai = nomega_sigma/2
-   allocate(omegai(-nomegai:nomegai))
-   do iomegai=-nomegai,nomegai
-     omegai(iomegai) = step_sigma * iomegai
-   enddo
  endif
 
 
@@ -281,7 +263,6 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  endif
 
  if( ALLOCATED(eri_eigenstate_i) ) deallocate(eri_eigenstate_i)
- deallocate(omegai)
  deallocate(selfenergy_ring)
  deallocate(selfenergy_sox)
 

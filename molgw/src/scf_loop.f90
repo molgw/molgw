@@ -31,6 +31,7 @@ subroutine scf_loop(is_restart,&
  use m_hamiltonian
  use m_hamiltonian_sca
  use m_hamiltonian_buffer
+ use m_selfenergy_tools
  implicit none
 
 !=====
@@ -239,6 +240,11 @@ subroutine scf_loop(is_restart,&
      allocate(exchange_m_vxc_diag(nstate,nspin))
      exchange_m_vxc_diag(:,:)=0.0_dp
 
+     !
+     ! Set the range of states on which to evaluate the self-energy
+     call selfenergy_set_state_range(nstate,occupation)
+     call selfenergy_set_omega_grid(calc_type%gwmethod)
+
      call gw_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
      deallocate(exchange_m_vxc_diag)
 
@@ -254,6 +260,7 @@ subroutine scf_loop(is_restart,&
 
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
 
+     call selfenergy_destroy_omega_grid()
    endif
 
    !
@@ -262,6 +269,11 @@ subroutine scf_loop(is_restart,&
 
      allocate(exchange_m_vxc_diag(nstate,nspin))
      exchange_m_vxc_diag(:,:)=0.0_dp
+
+     !
+     ! Set the range of states on which to evaluate the self-energy
+     call selfenergy_set_state_range(nstate,occupation)
+     call selfenergy_set_omega_grid(calc_type%gwmethod)
 
      call mp2_selfenergy(calc_type%gwmethod,nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
      deallocate(exchange_m_vxc_diag)
@@ -278,6 +290,7 @@ subroutine scf_loop(is_restart,&
   
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
 
+     call selfenergy_destroy_omega_grid()
    endif
 
    !

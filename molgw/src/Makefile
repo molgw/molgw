@@ -110,7 +110,7 @@ molgw.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_i
 
 scf_loop.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
             m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_eri_calculate.f90 m_eri_lr_calculate.f90 m_eri_ao_mo.o \
-            m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.o scf_loop.f90
+            m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.o m_selfenergy_tools.o scf_loop.f90
 	$(FC_W_OPTS) -c scf_loop.f90 $(LIBXC_INCS)
 
 cohsex.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \

@@ -10,14 +10,15 @@ module m_selfenergy_tools
  use m_definitions
  use m_warning
  use m_mpi
- use m_inputparam,only: nspin,ncoreg,nvirtualg,is_frozencore, &
-                        selfenergy_state_min,selfenergy_state_max,selfenergy_state_range
+ use m_inputparam
 
  !
  ! frozen core approximation parameters
  integer,protected :: ncore_G
  integer,protected :: nvirtual_G
 
+ !
+ ! Range of states to evaluate the self-energy
  integer,protected :: nsemin
  integer,protected :: nsemax
 
@@ -25,6 +26,11 @@ module m_selfenergy_tools
  ! Highest occupied state
  integer,protected :: nhomo_G
 
+
+ !
+ ! Frequency grid for \Sigma(\omega)
+ integer,protected              :: nomegai
+ real(dp),allocatable,protected :: omegai(:)
 
 
 contains
@@ -315,7 +321,62 @@ end subroutine output_qp_energy
 
 
 !=========================================================================
-subroutine selfenergy_set_state_ranges(nstate,occupation)
+subroutine selfenergy_set_omega_grid(gwmethod)
+ implicit none
+
+ integer,intent(in) :: gwmethod
+!=====
+ integer :: iomegai
+!=====
+
+ if( calc_type%read_energy_qp ) then
+
+   nomegai = 0
+   allocate(omegai(-nomegai:nomegai))
+   omegai(0) = 0.0_dp
+
+ else
+
+   select case(gwmethod)
+   case(GV,QS,COHSEX,GSIGMA3,QSCOHSEX,GnW0,GnWn)
+     nomegai = 0
+     allocate(omegai(-nomegai:nomegai))
+     omegai(0) = 0.0_dp
+
+   case(GSIGMA)
+     nomegai = 1
+     allocate(omegai(-nomegai:nomegai))
+     omegai(:) = 0.0_dp
+
+   case(LW,LW2,G0W0_IOMEGA)
+     nomegai =  32
+
+   case default
+     nomegai = nomega_sigma/2
+     allocate(omegai(-nomegai:nomegai))
+     do iomegai=-nomegai,nomegai
+       omegai(iomegai) = step_sigma * iomegai
+     enddo
+
+   end select
+
+ endif
+
+end subroutine selfenergy_set_omega_grid
+
+
+!=========================================================================
+subroutine selfenergy_destroy_omega_grid()
+ implicit none
+!=====
+
+ deallocate(omegai)
+
+end subroutine selfenergy_destroy_omega_grid
+
+
+!=========================================================================
+subroutine selfenergy_set_state_range(nstate,occupation)
  use m_atoms
  implicit none
 !=====
@@ -358,7 +419,7 @@ subroutine selfenergy_set_state_ranges(nstate,occupation)
  write(stdout,'(a,i4,a,i4)') ' Calculate state range from ',nsemin,' to ',nsemax
 
 
-end subroutine selfenergy_set_state_ranges
+end subroutine selfenergy_set_state_range
 
 
 !=========================================================================

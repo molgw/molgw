@@ -62,8 +62,9 @@ subroutine setup_virtual_subspace(basis,nstate,occupation,energy,c_matrix)
  if( .NOT. has_small_basis ) return
 
  ! Initialize the smaller basis set
- write(stdout,*) 'Small basis set:',TRIM(small_basis_name)
+ write(stdout,*) 'Set up a smaller basis set to optimize the virtual orbital space'
  call init_basis_set(basis_path,small_basis_name,gaussian_type,basis_small)
+ call issue_warning('Reduce the virtual orbital space by using a smaller basis set: '//TRIM(small_basis_name))
 
 
  ! Calculate overlap matrix S_small_small

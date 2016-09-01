@@ -28,8 +28,6 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  real(dp),intent(inout)             :: sigc(nstate,nspin)
  real(dp),intent(out)               :: energy_gw
 !=====
- integer               :: nomegai
- real(dp),allocatable  :: omegai(:)
  real(dp),allocatable  :: selfenergy_omega(:,:,:,:)
  integer               :: pstate
  integer               :: istate,ipspin
@@ -58,8 +56,6 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
    write(stdout,*) 'Perform a tuned COHSEX calculation'
  end select
 
- ! Set the range of states on which to evaluate the self-energy
- call selfenergy_set_state_ranges(nstate,occupation)
 
  call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
 
@@ -92,10 +88,6 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  write(msg,'(es9.2)') AIMAG(ieta)
  call issue_warning('small complex number is '//msg)
 
-
- nomegai = 0
- allocate(omegai(-nomegai:nomegai))
- omegai(0) = 0.0_dp
 
  !
  ! Which calculation type needs to update energy_qp
@@ -278,7 +270,6 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
    call output_new_homolumo('COHSEX',nstate,occupation,energy_qp_new,nsemin,nsemax)
  endif
 
- if(ALLOCATED(omegai)) deallocate(omegai)
  if(ALLOCATED(selfenergy_omega)) deallocate(selfenergy_omega)
 
  call destroy_eri_3center_eigen()
@@ -317,8 +308,6 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
  real(dp),intent(out)               :: energy_gw
 !=====
  integer               :: homo
- integer               :: nomegai
- real(dp),allocatable  :: omegai(:)
  real(dp),allocatable  :: selfenergy_omega(:,:,:,:)
  integer               :: pstate
  integer               :: istate,ipspin
@@ -355,8 +344,6 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
    write(stdout,*) 'Perform a tuned COHSEX calculation'
  end select
 
- ! Set the range of states on which to evaluate the self-energy
- call selfenergy_set_state_ranges(nstate,occupation)
 
  ! Rotation of W0
 
@@ -400,10 +387,6 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
  write(msg,'(es9.2)') AIMAG(ieta)
  call issue_warning('small complex number is '//msg)
 
-
- nomegai = 0
- allocate(omegai(-nomegai:nomegai))
- omegai(0) = 0.0_dp
 
  !
  ! Which calculation type needs to update energy_qp
@@ -627,7 +610,6 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
    write(stdout,'(a,2(2x,f12.6))') ' GW LUMO (eV):',energy_qp_new(homo+1,:)*Ha_eV
  endif
 
- if(ALLOCATED(omegai)) deallocate(omegai)
  if(ALLOCATED(selfenergy_omega)) deallocate(selfenergy_omega)
 
  call destroy_eri_3center_eigen_lr()

@@ -29,9 +29,7 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  real(dp),intent(out)               :: energy_gw
 !=====
  integer               :: nprodbasis
- integer               :: nomegai
  integer               :: iomegai
- real(dp),allocatable  :: omegai(:)
  complex(dp),allocatable :: omegac(:)
  complex(dp),allocatable :: selfenergy_omegac(:,:,:,:)
  real(dp),allocatable  :: selfenergy_omega(:,:,:,:)
@@ -94,8 +92,6 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
    write(stdout,*) 'Perform an eigenvalue self-consistent GnWn calculation'
  end select
 
- ! Set the range of states on which to evaluate the self-energy
- call selfenergy_set_state_ranges(nstate,occupation)
 
  nprodbasis = index_prodstate(nstate,nstate)
 
@@ -118,20 +114,10 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
  call issue_warning('small complex number is '//msg)
 
 
+ !
+ ! The ones with imaginary frequencies
  select case(gwmethod)
- case(GV,QS,COHSEX,GSIGMA3,QSCOHSEX,GnW0,GnWn)
-   nomegai = 0
-   allocate(omegai(-nomegai:nomegai))
-   omegai(0) = 0.0_dp
-
- case(GSIGMA)
-   nomegai = 1
-   allocate(omegai(-nomegai:nomegai))
-   omegai(:) = 0.0_dp
-
  case(LW,LW2,G0W0_IOMEGA)
-   nomegai =  32
-
    allocate(omegac(1:nomegai))
    
    allocate(x1(nomegai),weights(nomegai))  
@@ -145,14 +131,6 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
      write(stdout,'(i4,3(2x,f12.4))') iomegai,REAL(omegac(iomegai)),AIMAG(omegac(iomegai)),weights(iomegai)
    enddo
    deallocate(x1)
-
- case default
-   nomegai = nomega_sigma/2
-   allocate(omegai(-nomegai:nomegai))
-   do iomegai=-nomegai,nomegai
-     omegai(iomegai) = step_sigma * iomegai
-   enddo
-
  end select
 
  !
@@ -663,7 +641,6 @@ subroutine gw_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_
        call calculate_eri_3center_eigen_mixed(basis%nbf,nstate,c_matrix)
  endif
 
- if(ALLOCATED(omegai)) deallocate(omegai)
  if(ALLOCATED(omegac)) deallocate(omegac)
  if(ALLOCATED(weights)) deallocate(weights)
  if(ALLOCATED(selfenergy_omega)) deallocate(selfenergy_omega)
