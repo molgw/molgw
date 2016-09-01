@@ -383,7 +383,6 @@ program molgw
    call setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham,occupation,c_matrix,hamiltonian_exx,hamiltonian_xc,exchange_m_vxc_diag)
    !
    ! Set the range of states on which to evaluate the self-energy
-   call selfenergy_set_state_range(nstate,occupation)
    call selfenergy_set_omega_grid(calc_type%gwmethod)
  endif
 
@@ -403,6 +402,10 @@ program molgw
    if( .NOT. parallel_ham ) then  
      call setup_virtual_subspace(basis,nstate,occupation,energy,c_matrix)
    endif
+ endif
+ ! Set the range after the change of the virtual space
+ if( calc_type%is_mp2_selfenergy .OR. calc_type%is_gw ) then
+   call selfenergy_set_state_range(nstate,occupation)
  endif
 
  !
