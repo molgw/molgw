@@ -75,7 +75,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  if(has_auxil_basis) then
    call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
  else
-   stop'NOT implemented'
+   call die('gwgamma needs an auxiliary basis')
  endif
 
 

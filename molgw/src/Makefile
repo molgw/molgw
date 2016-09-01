@@ -64,7 +64,7 @@ level030: m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o m_tddft_fxc.o
 
 level035: m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o
 
-level038: m_selfenergy_tools.o
+level038: m_selfenergy_tools.o m_virtual_orbital_space.o
 
 level040: mp2_selfenergy.o linear_response.o static_polarizability.o gw.o gwgamma.o cohsex.o bse.o dft_xc.o io.o mp2.o scf_loop.o molgw.o
 
@@ -83,7 +83,8 @@ level040: mp2_selfenergy.o linear_response.o static_polarizability.o gw.o gwgamm
         m_inputparam.o \
         m_eri.o m_scf.o m_dft_grid.o m_selfenergy_tools.o \
         m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o m_tddft_fxc.o \
-        m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o mp2_selfenergy.o \
+        m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o \
+        m_virtual_orbital_space.o mp2_selfenergy.o \
         linear_response.o static_polarizability.o gw.o gwgamma.o cohsex.o bse.o dft_xc.o io.o mp2.o scf_loop.o molgw.o
 	$(FC_W_OPTS) \
                         m_definitions.o m_warning.o m_elements.o m_mpi.o m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_local.o m_mpi_trans.o \
@@ -91,7 +92,7 @@ level040: mp2_selfenergy.o linear_response.o static_polarizability.o gw.o gwgamm
                         m_tools.o m_scf.o m_selfenergy_tools.o m_atoms.o \
                         m_gos.o m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_eri_calculate.o m_eri_lr_calculate.o m_eri_ao_mo.o m_tddft_fxc.o \
                         m_spectral_function.o \
-                        libint_wrapper.o lebedev_quadrature.o mp2_selfenergy.o \
+                        libint_wrapper.o lebedev_quadrature.o m_virtual_orbital_space.o mp2_selfenergy.o \
                         mp2.o gw.o gwgamma.o cohsex.o bse.o linear_response.o static_polarizability.o dft_xc.o io.o \
                         m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o scf_loop.o pdbssolver1.o  \
                         molgw.o \
@@ -103,7 +104,7 @@ level040: mp2_selfenergy.o linear_response.o static_polarizability.o gw.o gwgamm
 
 molgw.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
   m_gos.f90 m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_eri_calculate.f90 m_eri_lr_calculate.f90 m_eri_ao_mo.o \
-  m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.o m_selfenergy_tools.o \
+  m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.o m_selfenergy_tools.o m_virtual_orbital_space.o \
   molgw.f90
 	$(FC_W_OPTS) -c molgw.f90 $(LIBXC_INCS)
 
@@ -142,7 +143,7 @@ m_hamiltonian_buffer.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m
 m_hamiltonian_sca.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_eri.f90 m_basis_set.f90 m_hamiltonian_sca.f90
 	$(FC_W_OPTS) -c m_hamiltonian_sca.f90 $(LIBXC_INCS)
 
-m_hamiltonian.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_eri.f90 m_basis_set.f90 m_eri_ao_mo.o m_hamiltonian.f90
+m_hamiltonian.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_eri.f90 m_basis_set.f90 m_hamiltonian.f90
 	$(FC_W_OPTS) -c m_hamiltonian.f90 $(LIBXC_INCS)
 
 dft_xc.o: m_definitions.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90 m_mpi.f90 dft_xc.f90
@@ -153,6 +154,10 @@ io.o: my_machine.arch m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_sc
 
 mp2.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_mpi.f90 m_basis_set.f90 m_eri.f90 mp2.f90 
 	$(FC_W_OPTS) -c mp2.f90 $(LIBXC_INCS)
+
+m_virtual_orbital_space.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 m_eri_ao_mo.f90 \
+                         m_inputparam.f90 m_hamiltonian.f90 m_hamiltonian_sca.f90 m_virtual_orbital_space.f90
+	$(FC_W_OPTS) -c m_virtual_orbital_space.f90 $(LIBXC_INCS)
 
 mp2_selfenergy.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_eri.f90 \
                   m_spectral_function.f90 m_inputparam.f90 m_selfenergy_tools.f90 mp2_selfenergy.f90

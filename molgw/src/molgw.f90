@@ -40,6 +40,7 @@ program molgw
  use m_hamiltonian_sca
  use m_hamiltonian_buffer
  use m_selfenergy_tools
+ use m_virtual_orbital_space
  implicit none
 
 !=====
@@ -61,9 +62,7 @@ program molgw
  real(dp),allocatable    :: s_matrix(:,:)
  real(dp),allocatable    :: s_matrix_sqrt_inv(:,:)
  real(dp),allocatable    :: c_matrix(:,:,:)
- real(dp),allocatable    :: c_matrix_ref(:,:,:)
  real(dp),allocatable    :: energy(:,:)
- real(dp),allocatable    :: energy_ref(:,:)
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  real(dp),allocatable    :: sigc(:,:)
@@ -72,6 +71,7 @@ program molgw
 #ifdef ACTIVATE_EXPERIMENTAL
  real(dp),allocatable    :: p_matrix(:,:,:),p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
  integer                 :: istate
+ real(dp)                :: exc
 #endif
 !=============================
 
@@ -392,7 +392,13 @@ program molgw
    ! Be aware that the energies and the c_matrix for virtual orbitals are altered after this point
    ! and until they are restored in destroy_fno
    !
-   call virtual_fno(basis,nstate,occupation,energy,c_matrix,energy_ref,c_matrix_ref)
+   call virtual_fno(basis,nstate,occupation,energy,c_matrix)
+ endif
+ ! Alternatively use the small basis technique
+ if( has_small_basis ) then
+   if( .NOT. parallel_ham ) then  
+     call setup_virtual_subspace(basis,nstate,occupation,energy,c_matrix)
+   endif
  endif
 
  !
@@ -435,9 +441,6 @@ program molgw
    if( calc_type%is_dft ) en%tot = en%tot - en%xc - en%exx_hyb + en%exx 
    write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
 
-   if( is_virtual_fno ) then
-     call destroy_fno(basis,nstate,energy,c_matrix,energy_ref,c_matrix_ref)
-   endif
 
    allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
    call gw_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
@@ -448,8 +451,12 @@ program molgw
 
    title='=== Self-energy === (in the eigenstate basis)'
    call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
-   call destroy_spectral_function(wpol)
    deallocate(matrix_tmp)
+   call destroy_spectral_function(wpol)
+
+   if( is_virtual_fno .OR. has_small_basis ) then
+     call destroy_fno(basis,nstate,energy,c_matrix)
+   endif
 
  endif ! G0W0
 
@@ -471,7 +478,7 @@ program molgw
  ! final evaluation for perturbative GW
  if( calc_type%is_gw .AND. (calc_type%gwmethod == COHSEX_DEVEL .OR. calc_type%gwmethod == TUNED_COHSEX) ) then
 
-   if( .NOT. has_auxil_basis ) stop'Not coded yet and will never be'
+   if( .NOT. has_auxil_basis ) call die('cohsex needs an auxiliary basis')
    call init_spectral_function(nstate,occupation,wpol)
    call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
    !

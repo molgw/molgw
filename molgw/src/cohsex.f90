@@ -44,8 +44,8 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
 
  call start_clock(timing_self)
 
- if( .NOT. has_auxil_basis )    stop'Not coded'
- if( .NOT. ALLOCATED(wpol%w0) ) stop'static W should be available here'
+ if( .NOT. has_auxil_basis )    call die('cohsex: no RI is not coded')
+ if( .NOT. ALLOCATED(wpol%w0) ) call die('cohsex: static W should be available here')
 
 
  select case(gwmethod)
@@ -335,8 +335,8 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
 
  call start_clock(timing_self)
 
- if( .NOT. has_auxil_basis )    stop'Not coded'
- if( .NOT. ALLOCATED(wpol%w0) ) stop'static W should be available here'
+ if( .NOT. has_auxil_basis )    call die('cohsex: no RI is not coded')
+ if( .NOT. ALLOCATED(wpol%w0) ) call die('cohsex: static W should be available here')
 
  call assert_experimental()
 

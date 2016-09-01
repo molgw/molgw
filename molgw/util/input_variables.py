@@ -124,6 +124,16 @@ vl[i].comment  ='Sets the path pointing to the basis functions files. \
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='small_basis'
+vl[i].family   ='postscf'
+vl[i].default  =''
+vl[i].datatype ='characters'
+vl[i].comment  ='Calls for a smaller basis set used to represent the virtual orbital space with fewer functions. \
+Only works for GW (EXPERIMENTAL)'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='gaussian_type'
 vl[i].family   ='general'
 vl[i].default  ='pure'

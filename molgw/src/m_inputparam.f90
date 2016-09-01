@@ -67,8 +67,8 @@ module m_inputparam
  integer,protected                :: selfenergy_state_range
  integer,protected                :: ncoreg 
  integer,protected                :: ncorew 
- integer,protected                :: nvirtualg 
- integer,protected                :: nvirtualw 
+ integer,public                   :: nvirtualg 
+ integer,public                   :: nvirtualw 
  integer,protected                :: nvirtualspa
  logical,protected                :: is_frozencore
  logical,protected                :: is_tda,is_triplet
@@ -83,6 +83,7 @@ module m_inputparam
  character(len=100),protected     :: basis_path
  character(len=100),protected     :: basis_name
  character(len=100),protected     :: auxil_basis_name
+ character(len=100),protected     :: small_basis_name
  character(len=4),protected       :: gaussian_type
  character(len=12),protected      :: mixing_scheme
  character(len=12),protected      :: partition_scheme
@@ -96,6 +97,7 @@ module m_inputparam
  integer,protected                :: grid_level
  integer,protected                :: integral_level
  logical,protected                :: has_auxil_basis
+ logical,protected                :: has_small_basis
  logical,protected                :: is_full_auxil
  !
  ! the boring small complex number eta: (0.0_dp,0.001_dp) is typically over converged
@@ -662,6 +664,7 @@ subroutine read_inputfile_namelist()
  character(len=24)    :: postscf
  character(len=100)   :: basis
  character(len=100)   :: auxil_basis
+ character(len=100)   :: small_basis
  character(len=100)   :: default_basis_path
  character(len=12)    :: length_unit
  character(len=3)     :: ignore_restart,ignore_bigrestart,no_4center
@@ -730,7 +733,9 @@ subroutine read_inputfile_namelist()
 
  basis_name = basis
  auxil_basis_name = auxil_basis
+ small_basis_name = small_basis
  has_auxil_basis = TRIM(auxil_basis) /= ''
+ has_small_basis = TRIM(small_basis) /= ''
  ieta = (0.0_dp,1.0_dp) * eta 
  alpha_hybrid_lr = beta_hybrid
  
