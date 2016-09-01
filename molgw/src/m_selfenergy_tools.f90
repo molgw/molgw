@@ -26,7 +26,6 @@ module m_selfenergy_tools
  ! Highest occupied state
  integer,protected :: nhomo_G
 
-
  !
  ! Frequency grid for \Sigma(\omega)
  integer,protected              :: nomegai
@@ -37,14 +36,13 @@ contains
 
 
 !=========================================================================
-subroutine write_selfenergy_omega(filename_root,nstate,energy0,exchange_m_vxc,nomegai,omegai,nsemin,nsemax,selfenergy_omega)
+subroutine write_selfenergy_omega(filename_root,nstate,energy0,exchange_m_vxc,selfenergy_omega)
  implicit none
 
  character(len=*)    :: filename_root
- integer,intent(in)  :: nstate,nsemin,nsemax,nomegai
+ integer,intent(in)  :: nstate
  real(dp),intent(in) :: energy0(nstate,nspin),exchange_m_vxc(nstate,nspin)
- real(dp),intent(in) :: omegai(nomegai)
- real(dp),intent(in) :: selfenergy_omega(nomegai,nsemin:nsemax,nspin)
+ real(dp),intent(in) :: selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nspin)
 !=====
  character(len=3)   :: ctmp
  character(len=256) :: filename
@@ -70,7 +68,7 @@ subroutine write_selfenergy_omega(filename_root,nstate,energy0,exchange_m_vxc,no
 
    write(selfenergyfile,'(a)') '# omega (eV)             SigmaC (eV)    omega - e_gKS - Vxc + SigmaX (eV)     A (eV^-1) '
 
-   do iomegai=1,nomegai
+   do iomegai=-nomegai,nomegai
      write(selfenergyfile,'(20(f12.6,2x))') ( omegai(iomegai) + energy0(astate,:) )*Ha_eV,               &
                                         selfenergy_omega(iomegai,astate,:)*Ha_eV,                    &
                                         ( omegai(iomegai) - exchange_m_vxc(astate,:) )*Ha_eV,     &
@@ -87,13 +85,10 @@ end subroutine write_selfenergy_omega
 
 
 !=========================================================================
-subroutine find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega,nstate,exchange_m_vxc,energy0,energy_qp_z,zz)
+subroutine find_qp_energy_linearization(selfenergy_omega,nstate,exchange_m_vxc,energy0,energy_qp_z,zz)
  implicit none
 
- integer,intent(in)            :: nomegai
- integer,intent(in)            :: nsemin,nsemax
  integer,intent(in)            :: nstate
- real(dp),intent(in)           :: omegai(-nomegai:nomegai)
  real(dp),intent(in)           :: selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nspin)
  real(dp),intent(in)           :: exchange_m_vxc(nstate,nspin),energy0(nstate,nspin)
  real(dp),intent(out)          :: energy_qp_z(nstate,nspin)
@@ -133,13 +128,10 @@ end subroutine find_qp_energy_linearization
 
 
 !=========================================================================
-subroutine find_qp_energy_graphical(nomegai,omegai,nsemin,nsemax,selfenergy_omega,nstate,exchange_m_vxc,energy0,energy_qp_g)
+subroutine find_qp_energy_graphical(selfenergy_omega,nstate,exchange_m_vxc,energy0,energy_qp_g)
  implicit none
 
- integer,intent(in)   :: nomegai
- integer,intent(in)   :: nsemin,nsemax
  integer,intent(in)   :: nstate
- real(dp),intent(in)  :: omegai(-nomegai:nomegai)
  real(dp),intent(in)  :: selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nspin)
  real(dp),intent(in)  :: exchange_m_vxc(nstate,nspin),energy0(nstate,nspin)
  real(dp),intent(out) :: energy_qp_g(nstate,nspin)
@@ -248,11 +240,11 @@ end function find_fixed_point
 
 
 !=========================================================================
-subroutine output_qp_energy(calcname,nstate,nsemin,nsemax,energy0,exchange_m_vxc,ncomponent,selfenergy,energy1,energy2,zz)
+subroutine output_qp_energy(calcname,nstate,energy0,exchange_m_vxc,ncomponent,selfenergy,energy1,energy2,zz)
  implicit none
  
  character(len=*)             :: calcname
- integer                      :: nstate,nsemin,nsemax,ncomponent
+ integer                      :: nstate,ncomponent
  real(dp),intent(in)          :: energy0(nstate,nspin),exchange_m_vxc(nstate,nspin)
  real(dp),intent(in)          :: selfenergy(nsemin:nsemax,nspin,ncomponent),energy1(nstate,nspin)
  real(dp),intent(in),optional :: energy2(nstate,nspin),zz(nsemin:nsemax,nspin)

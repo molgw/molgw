@@ -469,9 +469,9 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
 
  if( print_sigma_) then
-   call write_selfenergy_omega('selfenergy_sox'    ,nstate,energy_qp,exchange_m_vxc_diag,SIZE(omegai),omegai,nsemin,nsemax,selfenergy_omega_sox  (:,:,1,:))
-   call write_selfenergy_omega('selfenergy_gamma'  ,nstate,energy_qp,exchange_m_vxc_diag,SIZE(omegai),omegai,nsemin,nsemax,selfenergy_omega_gamma(:,:,1,:))
-   call write_selfenergy_omega('selfenergy_gwgamma',nstate,energy_qp,exchange_m_vxc_diag,SIZE(omegai),omegai,nsemin,nsemax,selfenergy_omega      (:,:,1,:))
+   call write_selfenergy_omega('selfenergy_sox'    ,nstate,energy_qp,exchange_m_vxc_diag,selfenergy_omega_sox  (:,:,1,:))
+   call write_selfenergy_omega('selfenergy_gamma'  ,nstate,energy_qp,exchange_m_vxc_diag,selfenergy_omega_gamma(:,:,1,:))
+   call write_selfenergy_omega('selfenergy_gwgamma',nstate,energy_qp,exchange_m_vxc_diag,selfenergy_omega      (:,:,1,:))
  endif
  
  ! Only had the diagonal calculated...
@@ -501,14 +501,14 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 
  allocate(zz(nsemin:nsemax,nspin))
 
- call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
- call find_qp_energy_graphical    (nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_new)
+ call find_qp_energy_linearization(selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+ call find_qp_energy_graphical    (selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_new)
 
  select case(gwmethod)
  case(G0W0SOX0)
-   call output_qp_energy('G0W0SOX0',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,1,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
+   call output_qp_energy('G0W0SOX0',nstate,energy_qp,exchange_m_vxc_diag,1,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
  case(G0W0GAMMA0)
-   call output_qp_energy('G0W0Gamma0',nstate,nsemin,nsemax,energy_qp,exchange_m_vxc_diag,1,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
+   call output_qp_energy('G0W0Gamma0',nstate,energy_qp,exchange_m_vxc_diag,1,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
  end select
  deallocate(zz)
 

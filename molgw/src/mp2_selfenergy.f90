@@ -209,16 +209,16 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  if( method == perturbative ) then
 
    if( print_sigma_) then
-     call write_selfenergy_omega('selfenergy_mp2',nstate,energy,exchange_m_vxc_diag,SIZE(omegai),omegai, &
-                                 nsemin,nsemax,selfenergy_omega(:,:,1,:))
+     call write_selfenergy_omega('selfenergy_mp2',nstate,energy,exchange_m_vxc_diag, &
+                                 selfenergy_omega(:,:,1,:))
    endif
 
 
 
    allocate(zz(nsemin:nsemax,nspin))
-   call find_qp_energy_linearization(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+   call find_qp_energy_linearization(selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
    if( nomegai > 0 ) then
-     call find_qp_energy_graphical(nomegai,omegai,nsemin,nsemax,selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_new)
+     call find_qp_energy_graphical(selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_new)
    else
      energy_qp_new(:,:) = energy_qp_z(:,:)
    endif
@@ -228,9 +228,9 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
    selfenergy_output(:,:,2) = selfenergy_sox(0,:,1,:)
 
    if( calc_type%read_energy_qp ) then
-     call output_qp_energy('MP2',nstate,nsemin,nsemax,energy,exchange_m_vxc_diag,2,selfenergy_output,energy_qp_z)
+     call output_qp_energy('MP2',nstate,energy,exchange_m_vxc_diag,2,selfenergy_output,energy_qp_z)
    else
-     call output_qp_energy('MP2',nstate,nsemin,nsemax,energy,exchange_m_vxc_diag,2,selfenergy_output,energy_qp_z,energy_qp_new,zz)
+     call output_qp_energy('MP2',nstate,energy,exchange_m_vxc_diag,2,selfenergy_output,energy_qp_z,energy_qp_new,zz)
    endif
    deallocate(zz,selfenergy_output)
 
