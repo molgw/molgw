@@ -217,9 +217,10 @@ subroutine scf_loop(is_restart,&
    endif
 
    !
-   ! QSGW self energy
-   if( calc_type%selfenergy_approx == GW .AND. calc_type%selfenergy_technique == QS  &
-       .AND. ( iscf > 5 .OR. is_restart ) ) then
+   ! QSGW or COHSEX self energy
+   if( ( calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == COHSEX ) &
+        .AND. calc_type%selfenergy_technique == QS  &
+        .AND. ( iscf > 5 .OR. is_restart ) ) then
 
      call init_spectral_function(nstate,occupation,wpol)
      call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
