@@ -24,7 +24,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,selfe
  real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in) :: wpol
- real(dp),intent(out)               :: selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nspin)
+ real(dp),intent(inout)             :: selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nspin)
 !=====
  integer               :: iomegai
  real(dp),allocatable  :: selfenergy_omega_gw(:,:,:)
@@ -84,6 +84,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,selfe
  !
  allocate(selfenergy_omega_gamma(-nomegai:nomegai,nsemin:nsemax,nspin))
  allocate(selfenergy_omega_sox(-nomegai:nomegai,nsemin:nsemax,nspin))
+ allocate(selfenergy_omega_gw(-nomegai:nomegai,nsemin:nsemax,nspin))
 
  selfenergy_omega_gamma(:,:,:)  = 0.0_dp
  selfenergy_omega_sox(:,:,:)  = 0.0_dp
@@ -427,20 +428,10 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,selfe
 
  write(stdout,'(a)') ' Sigma_c(omega) is calculated'
 
- allocate(selfenergy_omega_gw(-nomegai:nomegai,nsemin:nsemax,nspin))
 
- if( is_iomaster ) then
-   open(newunit=selfenergyfile,file='g0w0.dat',status='old',form='unformatted')
-   do ispin=1,nspin
-     do astate=nsemin,nsemax
-       read(selfenergyfile) selfenergy_omega_gw(:,astate,ispin)
-     enddo
-   enddo
-   close(selfenergyfile,status='delete')
- else
-   selfenergy_omega_gw(:,:,:) = 0.0_dp
- endif
- call xsum_world(selfenergy_omega_gw)
+ !
+ ! The input selfenergy_omega contains the GW selfenergy
+ selfenergy_omega_gw(:,:,:) = selfenergy_omega(:,:,:)
 
 
  forall(astate=nsemin:nsemax)

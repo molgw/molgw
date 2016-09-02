@@ -194,7 +194,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
    allocate(zz(nsemin:nsemax,nspin))
    call find_qp_energy_linearization(selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
    call find_qp_energy_graphical(selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
-   call output_qp_energy(TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,:),energy_qp_z,energy_qp_new,zz)
+   call output_qp_energy('GW',nstate,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,:),energy_qp_z,energy_qp_new,zz)
    deallocate(zz)
    deallocate(energy_qp_z)
    call output_new_homolumo('GW',nstate,occupation,energy_qp_new,nsemin,nsemax)
@@ -326,7 +326,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  allocate(energy_qp_new(nstate,nspin))
 
  select case(calc_type%selfenergy_approx)
- case(GW,PT2)
+ case(GW,PT2,G0W0Gamma0,G0W0SOX0)
    allocate(energy_qp_z(nstate,nspin))
    allocate(zz(nsemin:nsemax,nspin))
    call find_qp_energy_linearization(selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)

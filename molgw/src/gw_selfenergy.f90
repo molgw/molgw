@@ -329,23 +329,6 @@ subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,c_matr
 
    endif
 
-
-
- case(GW) !==========================================================
-
-   if( calc_type%selfenergy_approx == G0W0GAMMA0 .OR. calc_type%selfenergy_approx == G0W0SOX0 ) then
-     if( is_iomaster ) then
-       open(newunit=selfenergyfile,file='g0w0.dat',form='unformatted')
-       do ispin=1,nspin
-         do astate=nsemin,nsemax
-           write(selfenergyfile) selfenergy_omega(:,astate,ispin)
-         enddo
-       enddo
-       close(selfenergyfile)
-     endif
-   endif
-
-
  case(GSIGMA) !==========================================================
 
    energy_gw = 0.5_dp * SUM(selfenergy_omega(1,:,:)) * spin_fact
