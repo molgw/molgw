@@ -18,6 +18,11 @@
 !
 ! This is the main of MOLGW
 !
+! It consists of 3 parts:
+!   1. Initialization
+!   2. SCF cycles
+!   3. Post-processings: self-energy, MP2, CI, TDDFT etc.
+!
 !=========================================================================
 program molgw
  use m_definitions
@@ -39,19 +44,16 @@ program molgw
  use m_hamiltonian
  use m_hamiltonian_sca
  use m_hamiltonian_buffer
- use m_selfenergy_tools
- use m_virtual_orbital_space
  implicit none
 
 !=====
  type(basis_set)         :: basis
  type(basis_set)         :: auxil_basis
  type(spectral_function) :: wpol
- integer                 :: reading_status,restart_type
+ integer                 :: restart_type
  integer                 :: nstate
  integer                 :: ispin
  logical                 :: is_restart,is_big_restart,is_basis_restart
- character(len=100)      :: title
  real(dp),allocatable    :: hamiltonian_tmp(:,:)
  real(dp),allocatable    :: hamiltonian_kinetic(:,:)
  real(dp),allocatable    :: hamiltonian_nucleus(:,:)
@@ -64,16 +66,15 @@ program molgw
  real(dp),allocatable    :: c_matrix(:,:,:)
  real(dp),allocatable    :: energy(:,:)
  real(dp),allocatable    :: occupation(:,:)
- real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
- real(dp),allocatable    :: sigc(:,:)
  integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
  integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix 
-#ifdef ACTIVATE_EXPERIMENTAL
- real(dp),allocatable    :: p_matrix(:,:,:),p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
- integer                 :: istate
- real(dp)                :: exc
-#endif
-!=============================
+!=====
+
+ !
+ !
+ ! Part 1 / 3 : Initialization 
+ !
+ !
 
  call init_mpi_world()
 
@@ -293,8 +294,7 @@ program molgw
      do ispin=1,nspin
        matrix_tmp(:,:,ispin) = TRANSPOSE( c_matrix(:,:,ispin) )
      enddo
-     title='=== Initial C matrix ==='
-     call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
+     call dump_out_matrix(print_matrix_,'=== Initial C matrix ===',basis%nbf,nspin,matrix_tmp)
      deallocate(matrix_tmp)
    endif
 
@@ -332,9 +332,14 @@ program molgw
  call stop_clock(timing_prescf)
 
  !
+ !
+ ! Part 2 / 3 : SCF cycles
+ !
+ !
+
+ !
  ! Big SCF loop is in there
  ! Only do it if the calculation is NOT a big restart
- !
  if( .NOT. is_big_restart) then
    call scf_loop(is_restart,                                                    &
                  basis,auxil_basis,                                             &
@@ -346,7 +351,13 @@ program molgw
                  occupation,energy)
  endif
 
- if( parallel_ham .AND. parallel_buffer )            call destroy_parallel_buffer()
+
+
+ !
+ !
+ ! Part 3 / 3 : Post-processings
+ !
+ !
  
  call start_clock(timing_postscf)
 
@@ -357,215 +368,39 @@ program molgw
 
 
  !
- ! Some deallocations here
+ ! Deallocate all what you can at this stage
  !
+ if( parallel_ham .AND. parallel_buffer ) call destroy_parallel_buffer()
  ! If an auxiliary basis is given, the 4-center integrals are not needed anymore
  if( has_auxil_basis ) call deallocate_eri_4center()
  ! If RSH calculations were performed, then deallocate the LR integrals which
  ! are not needed anymore
  if( calc_type%need_exchange_lr .AND. .NOT. is_big_restart ) call deallocate_eri_4center_lr()
  if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
+ deallocate(s_matrix_sqrt_inv)
+ deallocate(hamiltonian_hartree)
+
+
+ ! 
+ !
+ ! Post-processing start here
+ !
+ !
 
  !
  ! CI calculation is done here
  ! implemented for 2 electrons only!
+ !
  if(calc_type%is_ci) then
    if(nspin/=1) call die('for CI, nspin should be 1')
    if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) call die('CI is implemented for 2 electrons only')
    call full_ci_2electrons_spin(print_wfn_,nstate,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
  endif
-
- !
- ! Prepare the diagonal of the matrix Sigma_x - Vxc
- ! for the forthcoming GW or PT2 corrections
- if( calc_type%is_mp2_selfenergy .OR. calc_type%is_gw ) then
-   allocate(exchange_m_vxc_diag(nstate,nspin))
-   call setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham,occupation,c_matrix,hamiltonian_exx,hamiltonian_xc,exchange_m_vxc_diag)
-   !
-   ! Set the range of states on which to evaluate the self-energy
-   call selfenergy_set_omega_grid(calc_type%gwmethod)
- endif
-
- !
- ! If requested,
- ! prepare an optmized virtual subspace based on 
- ! Frozen Natural Orbitals technique
- if( is_virtual_fno ) then
-   !
-   ! Be aware that the energies and the c_matrix for virtual orbitals are altered after this point
-   ! and until they are restored in destroy_fno
-   !
-   call virtual_fno(basis,nstate,occupation,energy,c_matrix)
- endif
- ! Alternatively use the small basis technique
- if( has_small_basis ) then
-   if( .NOT. parallel_ham ) then  
-     call setup_virtual_subspace(basis,nstate,occupation,energy,c_matrix)
-   endif
- endif
- ! Set the range after the change of the virtual space
- if( calc_type%is_mp2_selfenergy .OR. calc_type%is_gw ) then
-   call selfenergy_set_state_range(nstate,occupation)
- endif
-
- !
- ! Time Dependent calculations
- ! works for DFT, HF, and hybrid
- if(calc_type%is_td .OR. calc_type%is_bse) then
-
-   call init_spectral_function(nstate,occupation,wpol)
-   call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
-   call destroy_spectral_function(wpol)
-
- endif
-  
- !
- ! final evaluation for perturbative GW
- if( calc_type%is_gw .AND. &
-       ( calc_type%gwmethod == GV .OR. calc_type%gwmethod == GSIGMA .OR.  calc_type%gwmethod == LW &
-    .OR. calc_type%gwmethod == LW2 &
-    .OR. calc_type%gwmethod == GSIGMA3     & ! FBFB LW testing purposes to be removed
-    .OR. calc_type%gwmethod == G0W0_IOMEGA .OR. calc_type%gwmethod == GWTILDE &
-    .OR. calc_type%gwmethod == G0W0 .OR. calc_type%gwmethod == COHSEX   &
-    .OR. calc_type%gwmethod == GnW0 .OR. calc_type%gwmethod == GnWn ) ) then
-
-   call init_spectral_function(nstate,occupation,wpol)
-
-   ! Try to read a spectral function file in order to skip the polarizability calculation
-   ! Skip the reading if GnWn (=evGW) is requested
-   if( calc_type%gwmethod /= GnWn ) then
-     call read_spectral_function(wpol,reading_status)
-   else
-     write(stdout,'(/,1x,a)') 'For GnWn calculations, never try to read file SCREENED_COULOMB'
-     reading_status = 1
-   endif
-   ! If reading has failed, then do the calculation
-   if( reading_status /= 0 ) then
-     call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
-   endif
-
-   en%tot = en%tot + en%rpa
-   if( calc_type%is_dft ) en%tot = en%tot - en%xc - en%exx_hyb + en%exx 
-   write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
-
-
-   allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-   call gw_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
-
-   if( ABS(en%gw) > 1.0e-5_dp ) then
-     write(stdout,'(/,a,f19.10)') ' Galitskii-Migdal Total energy (Ha): ',en%tot - en%rpa + en%gw
-   endif
-
-   title='=== Self-energy === (in the eigenstate basis)'
-   call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
-   deallocate(matrix_tmp)
-   call destroy_spectral_function(wpol)
-
-   if( is_virtual_fno .OR. has_small_basis ) then
-     call destroy_fno(basis,nstate,energy,c_matrix)
-   endif
-
- endif ! G0W0
-
- if( calc_type%is_gw .AND. ( calc_type%gwmethod == G0W0GAMMA0 .OR. calc_type%gwmethod == G0W0SOX0 ) ) then
-   call init_spectral_function(nstate,occupation,wpol)
-   call read_spectral_function(wpol,reading_status)
-   ! If reading has failed, then do the calculation
-   if( reading_status /= 0 ) then
-     call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
-   endif
-   allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-   call gw_selfenergy(nstate,G0W0,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
-   call gwgamma_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,wpol,matrix_tmp,en%gw)
-   deallocate(matrix_tmp)
-   call destroy_spectral_function(wpol)
- endif
-
- !
- ! final evaluation for perturbative GW
- if( calc_type%is_gw .AND. (calc_type%gwmethod == COHSEX_DEVEL .OR. calc_type%gwmethod == TUNED_COHSEX) ) then
-
-   if( .NOT. has_auxil_basis ) call die('cohsex needs an auxiliary basis')
-   call init_spectral_function(nstate,occupation,wpol)
-   call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
-   !
-   ! Calculate v^{1/2} \chi v^{1/2}
-   call static_polarizability(nstate,occupation,energy,wpol)
-
-   call destroy_eri_3center_eigen()
-
-   !
-   allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-   allocate(sigc(nstate,nspin))
-
-#ifdef ACTIVATE_EXPERIMENTAL
-   ! Calculate the DFT potential part
-   if( ABS( delta_cohsex ) > 1.0e-6_dp ) then
-
-     allocate(p_matrix(basis%nbf,basis%nbf,nspin))
-     allocate(p_matrix_sqrt(basis%nbf,basis%nbf,nspin))
-     allocate(p_matrix_occ(basis%nbf,nspin))
-     call init_dft_grid(grid_level)
-     call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
-     call setup_sqrt_density_matrix(basis%nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
-
-     ! Override the DFT XC correlation settings
-     call init_dft_type('HJSx',calc_type)
-#ifdef HAVE_LIBXC
-     call xc_f90_gga_x_hjs_set_par(calc_type%xc_func(1),1.0_dp/rcut_mbpt)
-#endif
-     call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,matrix_tmp,exc)
- 
-     write(stdout,*) '===== SigX SR ======'
-     do ispin=1,nspin
-       do istate=1,nstate
-         sigc(istate,ispin) = DOT_PRODUCT( c_matrix(:,istate,ispin) , &
-                                   MATMUL( matrix_tmp(:,:,ispin) , c_matrix(:,istate,ispin ) ) )
-         write(stdout,*) istate,ispin,sigc(istate,ispin) * Ha_eV
-       enddo
-     enddo
-     write(stdout,*) '===================='
-     sigc(istate,ispin) = sigc(istate,ispin) * delta_cohsex 
-
-     deallocate(p_matrix)
-     deallocate(p_matrix_sqrt)
-     deallocate(p_matrix_occ)
-     call destroy_dft_grid()
-
-   else
-
-     sigc(:,:) = 0.0_dp
-
-   endif
-
-#endif
-
-   call cohsex_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag, & 
-                          c_matrix,s_matrix,wpol,matrix_tmp,sigc,en%gw)
-
-
-   !
-   ! A section under development for the range-separated RPA
-   if( calc_type%is_lr_mbpt ) then
-
-     ! 2-center integrals
-     call calculate_eri_2center_lr(auxil_basis,rcut_mbpt)
-     ! Prepare the distribution of the 3-center integrals
-     call distribute_auxil_basis_lr(nauxil_2center_lr,nauxil_3center_lr)
-     ! 3-center integrals
-     call calculate_eri_3center_lr(basis,auxil_basis,rcut_mbpt)
-
-     call cohsex_selfenergy_lr(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag, &
-                               c_matrix,s_matrix,wpol,matrix_tmp,sigc,en%gw)
-   endif
-
-   deallocate(matrix_tmp)
-   deallocate(sigc)
-
- endif ! COHSEX
+ deallocate(hamiltonian_kinetic,hamiltonian_nucleus)
 
  !
  ! final evaluation for MP2 total energy
+ !
  if( calc_type%is_mp2 ) then
 
    if(has_auxil_basis) then
@@ -584,40 +419,31 @@ program molgw
 
  endif
 
+ !
+ ! Time Dependent calculations
+ ! works for DFT, HF, and hybrid
+ !
+ if(calc_type%is_td .OR. calc_type%is_bse) then
+   call init_spectral_function(nstate,occupation,wpol)
+   call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+   call destroy_spectral_function(wpol)
+ endif
+  
 
  !
- ! final evaluation for MP2 self-energy
- if( calc_type%is_mp2_selfenergy .AND. calc_type%gwmethod == perturbative ) then
-
-   call mp2_selfenergy(calc_type%gwmethod,nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,hamiltonian_exx,en%mp2)
-   if( ABS( en%mp2 ) > 1.0e-8 ) then
-     write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
-     write(stdout,*)
-     en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%mp2
-
-     write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en%tot
-     write(stdout,'(a,2x,f19.10)') ' SE+MP2  Total En (Ha):',en%tot+en%se
-     write(stdout,*)
-   endif
-
+ ! Self-energy calculation: PT2, GW, GWGamma, COHSEX
+ !
+ if( calc_type%is_mp2_selfenergy .OR. calc_type%is_gw ) then
+   call selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation,energy,c_matrix,s_matrix,hamiltonian_exx,hamiltonian_xc)
  endif
-
 
 
  !
  ! Cleanly exiting the code
  !
- if( calc_type%is_mp2_selfenergy .OR. calc_type%is_gw ) then
-   call selfenergy_destroy_omega_grid()
- endif
- deallocate(s_matrix,c_matrix)
- deallocate(s_matrix_sqrt_inv)
- deallocate(hamiltonian_kinetic,hamiltonian_nucleus)
- deallocate(hamiltonian_hartree)
  deallocate(hamiltonian_exx,hamiltonian_xc)
-
+ deallocate(s_matrix,c_matrix)
  deallocate(energy,occupation)
- if( ALLOCATED(exchange_m_vxc_diag) ) deallocate(exchange_m_vxc_diag)
 
  call deallocate_eri()
  if(has_auxil_basis) call destroy_eri_3center()
@@ -630,12 +456,11 @@ program molgw
 
  call stop_clock(timing_postscf)
  call stop_clock(timing_total)
-
  call output_timing()
 
  call output_all_warnings()
 
- write(stdout,'(/,a,/)') ' This is the end'
+ write(stdout,'(/,1x,a,/)') 'This is the end'
 
  call finish_mpi()
 

@@ -428,13 +428,15 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham, &
  integer,intent(in)         :: nstate,m_ham,n_ham
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(inout)     :: hamiltonian_exx(m_ham,n_ham,nspin),hamiltonian_xc(m_ham,n_ham,nspin)
+ real(dp),intent(in)        :: hamiltonian_exx(m_ham,n_ham,nspin),hamiltonian_xc(m_ham,n_ham,nspin)
  real(dp),intent(out)       :: exchange_m_vxc_diag(nstate,nspin)
 !=====
  integer  :: ispin,istate
+ real(dp) :: hxmxc(m_ham,n_ham,nspin)
  real(dp) :: exc,eexx
  real(dp),allocatable :: occupation_tmp(:,:)
  real(dp),allocatable :: p_matrix_tmp(:,:,:),p_matrix_occ(:,:),p_matrix_sqrt(:,:,:)
+ real(dp),allocatable :: hxc_val(:,:,:),hexx_val(:,:,:)
 !=====
 
 
@@ -452,6 +454,8 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham, &
    allocate(p_matrix_tmp(basis%nbf,basis%nbf,nspin))
    allocate(p_matrix_sqrt(basis%nbf,basis%nbf,nspin))
    allocate(p_matrix_occ(basis%nbf,nspin))
+   allocate(hxc_val(basis%nbf,basis%nbf,nspin))
+   allocate(hexx_val(m_ham,n_ham,nspin))
    ! Override the occupation of the core electrons
    occupation_tmp(:,:) = occupation(:,:)
    do istate=1,dft_core
@@ -462,23 +466,30 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham, &
      call init_dft_grid(grid_level)
      call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation_tmp,p_matrix_tmp)
      call setup_sqrt_density_matrix(basis%nbf,p_matrix_tmp,p_matrix_sqrt,p_matrix_occ)
-     call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,hamiltonian_xc,exc)
+     call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,hxc_val,exc)
      call destroy_dft_grid()
    endif
 
    if( .NOT. is_full_auxil ) then
-     call setup_exchange(print_matrix_,basis%nbf,p_matrix_tmp,hamiltonian_exx,eexx)
+     call setup_exchange(print_matrix_,basis%nbf,p_matrix_tmp,hexx_val,eexx)
    else
      if( parallel_ham ) then
-       call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,hamiltonian_exx,eexx)
+       call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,hexx_val,eexx)
      else
-       call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,hamiltonian_exx,eexx)
+       call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,hexx_val,eexx)
      endif
    endif
 
-   deallocate(occupation_tmp,p_matrix_tmp,p_matrix_sqrt,p_matrix_occ)
+   hxc_val(:,:,:) = hxc_val(:,:,:) + alpha_hybrid * hexx_val(:,:,:)
+   hxmxc(:,:,:) = hexx_val(:,:,:) - hxc_val(:,:,:) 
 
-   hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + alpha_hybrid * hamiltonian_exx(:,:,:)
+   deallocate(occupation_tmp,p_matrix_tmp,p_matrix_sqrt,p_matrix_occ)
+   deallocate(hxc_val,hexx_val)
+
+
+ else
+   hxmxc(:,:,:) = hamiltonian_exx(:,:,:) - hamiltonian_xc(:,:,:) 
+
  endif
 
 
@@ -491,8 +502,7 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham, &
    do istate=1,nstate
 
       exchange_m_vxc_diag(istate,ispin) =  DOT_PRODUCT(  c_matrix(:,istate,ispin) , &
-                                              MATMUL( ( hamiltonian_exx(:,:,ispin) - hamiltonian_xc(:,:,ispin) ) , &
-                                                        c_matrix(:,istate,ispin) ) )
+                                              MATMUL( hxmxc(:,:,ispin) , c_matrix(:,istate,ispin) ) )
    enddo
  enddo
 
