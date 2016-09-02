@@ -106,7 +106,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  !
  ! Prepare the QP energies
  !
- if( calc_type%is_bse .OR. calc_type%selfenergy_approx == GnWn ) then
+ if( calc_type%is_bse ) then
    ! Get energy_qp 
    call get_energy_qp(nstate,energy,occupation,energy_qp)
  else

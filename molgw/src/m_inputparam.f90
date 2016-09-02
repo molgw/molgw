@@ -33,7 +33,6 @@ module m_inputparam
  integer,parameter :: GV           = 208   ! perturbative HF
  integer,parameter :: GSIGMA       = 209   ! Total energy calc
  integer,parameter :: LW           = 210   ! Luttinger-Ward log term
- integer,parameter :: GSIGMA3      = 212   ! Total energy calc
  integer,parameter :: LW2          = 213   ! Luttinger-Ward log term
  integer,parameter :: COHSEX_DEVEL = 214
  integer,parameter :: TUNED_COHSEX = 215
@@ -198,10 +197,6 @@ subroutine init_calculation_type(calc_type,input_key)
    case('LW2')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = LW2
-   case('GSIGMA3')
-     calc_type%is_gw    =.TRUE.
-     calc_type%selfenergy_approx = GSIGMA3
-     calc_type%selfenergy_technique = EVSC
    case('GSIGMA')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = GSIGMA
@@ -212,7 +207,7 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = GnW0
      calc_type%selfenergy_technique = EVSC
-   case('GNWN')
+   case('GNWN','EVGW')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = GnWn
      calc_type%selfenergy_technique = EVSC

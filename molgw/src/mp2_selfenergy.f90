@@ -44,7 +44,6 @@ subroutine mp2_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_m
  integer               :: nket1,nket2
  integer               :: reading_status
  real(dp)              :: coul_ibjk,coul_ijkb,coul_iakj
- real(dp)              :: energy_qp(nstate,nspin)
  real(dp)              :: energy_qp_z(nstate,nspin)
  real(dp)              :: energy_qp_new(nstate,nspin)
 !=====
@@ -71,20 +70,6 @@ subroutine mp2_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_m
  end select
 
  
- if( calc_type%selfenergy_technique == EVSC ) then
-
-   call read_energy_qp(nstate,energy_qp,reading_status)
-   if(reading_status/=0) then
-     call issue_warning('File energy_qp not found: assuming 1st iteration')
-     energy_qp(:,:) = energy(:,:)
-   endif
-
- else
- 
-   energy_qp(:,:) = energy(:,:)
-
- endif
-
 
  if(has_auxil_basis) then
    call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
@@ -111,7 +96,7 @@ subroutine mp2_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_m
      endif
 
      fi = occupation(istate,abispin)
-     ei = energy_qp(istate,abispin)
+     ei = energy(istate,abispin)
 
      do astate=nsemin,nsemax ! external loop ( bra )
        do bstate=nsemin,nsemax   ! external loop ( ket )
@@ -124,12 +109,12 @@ subroutine mp2_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_m
 
          do jkspin=1,nspin
            do jstate=ncore_G+1,nvirtual_G-1  !LOOP of the second Green's function
-             fj=occupation(jstate,jkspin)
-             ej=energy_qp(jstate,jkspin)
+             fj = occupation(jstate,jkspin)
+             ej = energy(jstate,jkspin)
   
              do kstate=ncore_G+1,nvirtual_G-1 !LOOP of the third Green's function
-               fk=occupation(kstate,jkspin)
-               ek=energy_qp(kstate,jkspin)
+               fk = occupation(kstate,jkspin)
+               ek = energy(kstate,jkspin)
   
                fact_occ1 = (spin_fact-fi) *            fj  * (spin_fact-fk) / spin_fact**3
                fact_occ2 =            fi  * (spin_fact-fj) *            fk  / spin_fact**3
@@ -151,10 +136,10 @@ subroutine mp2_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_m
                endif
 
                do iomegai=-nomegai,nomegai
-                 omega = energy_qp(bstate,abispin) + omegai(iomegai)
+                 omega = energy(bstate,abispin) + omegai(iomegai)
   
                  fact_real   = REAL( fact_occ1 / (omega-ei+ej-ek+ieta) + fact_occ2 / (omega-ei+ej-ek-ieta) , dp)
-                 fact_energy = REAL( fact_occ1 / (energy_qp(astate,abispin)-ei+ej-ek+ieta) , dp )
+                 fact_energy = REAL( fact_occ1 / (energy(astate,abispin)-ei+ej-ek+ieta) , dp )
   
                  selfenergy_ring(iomegai,astate,bstate2,abispin) = selfenergy_ring(iomegai,astate,bstate2,abispin) &
                           + fact_real * coul_iakj * coul_ibjk * spin_fact
@@ -299,13 +284,12 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,exchange_m_vxc_diag,
  integer               :: istate,jstate,kstate
  integer               :: abispin,jkspin
  real(dp)              :: fact_occ1,fact_occ2
- real(dp)              :: fi,fj,fk,ei,ej,ek,eb
+ real(dp)              :: fi,fj,fk,ei,ej,ek,ea,eb
  real(dp)              :: fact_real,fact_energy
  real(dp)              :: emp2_sox,emp2_ring
  real(dp),allocatable  :: eri_eigenstate_i(:,:,:,:)
  integer               :: reading_status
  real(dp)              :: coul_ibjk,coul_ijkb,coul_iakj
- real(dp)              :: energy_qp(nstate,nspin)
  real(dp)              :: energy_qp_z(nstate,nspin)
  real(dp)              :: energy_qp_new(nstate,nspin)
 !=====
@@ -323,9 +307,6 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,exchange_m_vxc_diag,
  write(stdout,*) 'with the QP self-consistent approach'
 
  
- energy_qp(:,:) = energy(:,:)
-
-
 
  if(has_auxil_basis) then
    call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
@@ -351,7 +332,7 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,exchange_m_vxc_diag,
      endif
 
      fi = occupation(istate,abispin)
-     ei = energy_qp(istate,abispin)
+     ei = energy(istate,abispin)
 
      do astate=nsemin,nsemax ! external loop ( bra )
        do bstate=nsemin,nsemax   ! external loop ( ket )
@@ -364,12 +345,12 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,exchange_m_vxc_diag,
 
          do jkspin=1,nspin
            do jstate=ncore_G+1,nvirtual_G-1  !LOOP of the second Green's function
-             fj=occupation(jstate,jkspin)
-             ej=energy_qp(jstate,jkspin)
+             fj = occupation(jstate,jkspin)
+             ej = energy(jstate,jkspin)
   
              do kstate=ncore_G+1,nvirtual_G-1 !LOOP of the third Green's function
-               fk=occupation(kstate,jkspin)
-               ek=energy_qp(kstate,jkspin)
+               fk = occupation(kstate,jkspin)
+               ek = energy(kstate,jkspin)
   
                fact_occ1 = (spin_fact-fi) *            fj  * (spin_fact-fk) / spin_fact**3
                fact_occ2 =            fi  * (spin_fact-fj) *            fk  / spin_fact**3
@@ -390,10 +371,11 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,exchange_m_vxc_diag,
                  endif
                endif
 
-               eb = energy_qp(bstate,abispin) 
+               ea = energy(astate,abispin) 
+               eb = energy(bstate,abispin) 
   
                fact_real   = REAL( fact_occ1 / (eb-ei+ej-ek+ieta) + fact_occ2 / (eb-ei+ej-ek-ieta) , dp)
-               fact_energy = REAL( fact_occ1 / (energy_qp(astate,abispin)-ei+ej-ek+ieta) , dp )
+               fact_energy = REAL( fact_occ1 / (ea-ei+ej-ek+ieta) , dp )
   
                selfenergy_ring(astate,bstate2,abispin) = selfenergy_ring(astate,bstate2,abispin) &
                         + fact_real * coul_iakj * coul_ibjk * spin_fact

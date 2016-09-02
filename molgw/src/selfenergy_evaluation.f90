@@ -43,6 +43,9 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
  real(dp),allocatable    :: sigc(:,:)
+ real(dp),allocatable    :: selfenergy_omega(:,:,:)
+ real(dp)                :: energy_g(nstate,nspin)
+ real(dp)                :: energy_w(nstate,nspin)
 #ifdef ACTIVATE_EXPERIMENTAL
  real(dp),allocatable    :: p_matrix(:,:,:),p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
  integer                 :: istate
@@ -58,7 +61,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  !
  ! Set the range of states on which to evaluate the self-energy
  call selfenergy_set_omega_grid()
-
 
  !
  ! If requested,
@@ -78,18 +80,48 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
      call setup_virtual_subspace(basis,nstate,occupation,energy,c_matrix)
    endif
  endif
+
  !
  ! Set the range after the change of the virtual space
  call selfenergy_set_state_range(nstate,occupation)
 
 
+ allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nspin))
+
 
  !
- ! final evaluation for perturbative GW
+ ! Choose the one-electron energies to use
+ ! one_shot or EVGW
+
+ if( calc_type%selfenergy_technique == EVSC ) then
+   call read_energy_qp(nstate,energy_g,reading_status)
+   if(reading_status/=0) then
+     call issue_warning('File energy_qp not found: assuming 1st iteration')
+     energy_g(:,:) = energy(:,:)
+   endif
+
+   if( calc_type%selfenergy_approx == GnWn ) then
+     energy_w(:,:) = energy_g(:,:)
+   else
+     energy_w(:,:) = energy(:,:)
+   endif
+
+ else
+   energy_g(:,:) = energy(:,:)
+   energy_w(:,:) = energy(:,:)
+ endif
+
+
+
+
+
+
+ !
+ ! selfenergy = GW or COHSEX
+ !
  if( calc_type%is_gw .AND. &
        ( calc_type%selfenergy_approx == GV .OR. calc_type%selfenergy_approx == GSIGMA .OR.  calc_type%selfenergy_approx == LW &
     .OR. calc_type%selfenergy_approx == LW2 &
-    .OR. calc_type%selfenergy_approx == GSIGMA3     & ! FBFB LW testing purposes to be removed
     .OR. calc_type%selfenergy_approx == G0W0_IOMEGA .OR. calc_type%selfenergy_approx == GWTILDE &
     .OR. calc_type%selfenergy_approx == G0W0 .OR. calc_type%selfenergy_approx == COHSEX   &
     .OR. calc_type%selfenergy_approx == GnW0 .OR. calc_type%selfenergy_approx == GnWn ) ) then
@@ -106,7 +138,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
    endif
    ! If reading has failed, then do the calculation
    if( reading_status /= 0 ) then
-     call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+     call polarizability(basis,auxil_basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
    endif
 
    en%tot = en%tot + en%rpa
@@ -114,46 +146,70 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
    write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
 
 
-   allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-   call gw_selfenergy(nstate,calc_type%selfenergy_approx,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
+   call gw_selfenergy(nstate,calc_type%selfenergy_approx,basis,occupation,energy_g,exchange_m_vxc_diag,c_matrix,wpol,selfenergy_omega,en%gw)
 
    if( ABS(en%gw) > 1.0e-5_dp ) then
      write(stdout,'(/,a,f19.10)') ' Galitskii-Migdal Total energy (Ha): ',en%tot - en%rpa + en%gw
    endif
 
-   call dump_out_matrix(print_matrix_,'=== Self-energy === (in the eigenstate basis)',basis%nbf,nspin,matrix_tmp)
-   deallocate(matrix_tmp)
    call destroy_spectral_function(wpol)
 
    if( is_virtual_fno .OR. has_small_basis ) then
      call destroy_fno(basis,nstate,energy,c_matrix)
    endif
 
- endif ! G0W0
+ endif
 
- if( calc_type%is_gw .AND. ( calc_type%selfenergy_approx == G0W0GAMMA0 .OR. calc_type%selfenergy_approx == G0W0SOX0 ) ) then
+ !
+ ! GWGamma
+ !
+ if( calc_type%selfenergy_approx == G0W0GAMMA0 .OR. calc_type%selfenergy_approx == G0W0SOX0 ) then
    call init_spectral_function(nstate,occupation,wpol)
    call read_spectral_function(wpol,reading_status)
    ! If reading has failed, then do the calculation
    if( reading_status /= 0 ) then
-     call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+     call polarizability(basis,auxil_basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
    endif
-   allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-   call gw_selfenergy(nstate,G0W0,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
-   call gwgamma_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,wpol,matrix_tmp,en%gw)
-   deallocate(matrix_tmp)
+
+   call gw_selfenergy(nstate,G0W0,basis,occupation,energy_g,exchange_m_vxc_diag,c_matrix,wpol,selfenergy_omega,en%gw)
+   call gwgamma_selfenergy(nstate,basis,occupation,energy_g,exchange_m_vxc_diag,c_matrix,wpol,selfenergy_omega)
    call destroy_spectral_function(wpol)
  endif
 
+
+ !
+ ! Selfenergy = PT2
+ ! 
+ if( calc_type%selfenergy_approx == PT2 ) then
+
+   allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
+   call mp2_selfenergy(nstate,basis,occupation,energy_g,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
+   deallocate(matrix_tmp)
+   if( ABS( en%mp2 ) > 1.0e-8 ) then
+     write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
+     write(stdout,*)
+     en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%mp2
+
+     write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en%tot
+     write(stdout,'(a,2x,f19.10)') ' SE+MP2  Total En (Ha):',en%tot+en%se
+     write(stdout,*)
+   endif
+
+ endif
+
+
+ !
+ ! EXPERIMENTAL COHSEX implementation
  ! final evaluation for perturbative COHSEX
- if( calc_type%is_gw .AND. (calc_type%selfenergy_approx == COHSEX_DEVEL .OR. calc_type%selfenergy_approx == TUNED_COHSEX) ) then
+ !
+ if( calc_type%selfenergy_approx == COHSEX_DEVEL .OR. calc_type%selfenergy_approx == TUNED_COHSEX ) then
 
    if( .NOT. has_auxil_basis ) call die('cohsex needs an auxiliary basis')
    call init_spectral_function(nstate,occupation,wpol)
    call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
    !
    ! Calculate v^{1/2} \chi v^{1/2}
-   call static_polarizability(nstate,occupation,energy,wpol)
+   call static_polarizability(nstate,occupation,energy_w,wpol)
 
    call destroy_eri_3center_eigen()
 
@@ -203,7 +259,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
 
 #endif
 
-   call cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag, & 
+   call cohsex_selfenergy(nstate,basis,occupation,energy_g,exchange_m_vxc_diag, & 
                           c_matrix,s_matrix,wpol,matrix_tmp,sigc,en%gw)
 
 
@@ -218,7 +274,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
      ! 3-center integrals
      call calculate_eri_3center_lr(basis,auxil_basis,rcut_mbpt)
 
-     call cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_diag, &
+     call cohsex_selfenergy_lr(nstate,basis,occupation,energy_g,exchange_m_vxc_diag, &
                                c_matrix,s_matrix,wpol,matrix_tmp,sigc,en%gw)
    endif
 
@@ -226,26 +282,12 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
    deallocate(sigc)
 
  endif ! COHSEX
-
-
  !
- ! final evaluation for MP2 self-energy
- if( calc_type%selfenergy_approx == PT2 ) then
+ ! end of EXPERIMENTAL COHSEX implementation
+ !
 
-   allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-   call mp2_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
-   deallocate(matrix_tmp)
-   if( ABS( en%mp2 ) > 1.0e-8 ) then
-     write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
-     write(stdout,*)
-     en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%mp2
 
-     write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en%tot
-     write(stdout,'(a,2x,f19.10)') ' SE+MP2  Total En (Ha):',en%tot+en%se
-     write(stdout,*)
-   endif
 
- endif
 
 
  !

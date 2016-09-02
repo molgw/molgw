@@ -333,7 +333,7 @@ subroutine selfenergy_set_omega_grid()
 
  case(one_shot)
    select case(calc_type%selfenergy_approx)
-   case(GV,COHSEX,GSIGMA3)
+   case(GV,COHSEX)
      nomegai = 0
      allocate(omegai(-nomegai:nomegai))
      omegai(0) = 0.0_dp
@@ -507,6 +507,37 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham, &
  enddo
 
 end subroutine setup_exchange_m_vxc_diag
+
+
+!=========================================================================
+subroutine apply_qs_approximation(nbf,nstate,s_matrix,c_matrix,selfenergy)
+ implicit none
+
+ integer,intent(in)     :: nbf,nstate
+ real(dp),intent(in)    :: s_matrix(nbf,nbf),c_matrix(nbf,nstate,nspin)
+ real(dp),intent(inout) :: selfenergy(nbf,nbf,nspin)
+!=====
+ integer :: ispin
+!=====
+
+ !
+ ! Kotani's Hermitianization trick
+ !
+ do ispin=1,nspin
+   selfenergy(:,:,ispin) = 0.5_dp * ( selfenergy(:,:,ispin) + TRANSPOSE(selfenergy(:,:,ispin)) )
+
+   ! Transform the matrix elements back to the AO basis
+   ! do not forget the overlap matrix S
+   ! C^T S C = I
+   ! the inverse of C is C^T S
+   ! the inverse of C^T is S C
+   selfenergy(:,:,ispin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ispin) ) , &
+                             MATMUL( selfenergy(nsemin:nsemax,nsemin:nsemax,ispin), &
+                               MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ispin)), s_matrix(:,:) ) ) )
+
+ enddo
+
+end subroutine apply_qs_approximation
 
 
 !=========================================================================
