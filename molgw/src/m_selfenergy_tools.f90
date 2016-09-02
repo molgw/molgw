@@ -313,24 +313,27 @@ end subroutine output_qp_energy
 
 
 !=========================================================================
-subroutine selfenergy_set_omega_grid(gwmethod)
+subroutine selfenergy_set_omega_grid()
  implicit none
 
- integer,intent(in) :: gwmethod
 !=====
  integer :: iomegai
 !=====
 
- if( calc_type%read_energy_qp ) then
+ select case(calc_type%selfenergy_technique)
+ 
+ case(EVSC,QS)
 
    nomegai = 0
    allocate(omegai(-nomegai:nomegai))
    omegai(0) = 0.0_dp
 
- else
+ case(imaginary_axis)
+   nomegai =  32
 
-   select case(gwmethod)
-   case(GV,QS,COHSEX,GSIGMA3,QSCOHSEX,GnW0,GnWn)
+ case(one_shot)
+   select case(calc_type%selfenergy_approx)
+   case(GV,COHSEX,GSIGMA3)
      nomegai = 0
      allocate(omegai(-nomegai:nomegai))
      omegai(0) = 0.0_dp
@@ -339,9 +342,6 @@ subroutine selfenergy_set_omega_grid(gwmethod)
      nomegai = 1
      allocate(omegai(-nomegai:nomegai))
      omegai(:) = 0.0_dp
-
-   case(LW,LW2,G0W0_IOMEGA)
-     nomegai =  32
 
    case default
      nomegai = nomega_sigma/2
@@ -352,7 +352,7 @@ subroutine selfenergy_set_omega_grid(gwmethod)
 
    end select
 
- endif
+ end select
 
 end subroutine selfenergy_set_omega_grid
 

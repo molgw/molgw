@@ -248,7 +248,7 @@ program molgw
  !
  ! For self-consistent calculations (QSMP2, QSGW, QSCOHSEX) that depend on empty states,
  ! ignore the restart file if it is not a big one
- if( calc_type%gwmethod == QS .OR. calc_type%gwmethod == QSCOHSEX ) then
+ if( calc_type%selfenergy_technique == QS ) then
    if( restart_type /= EMPTY_STATES_RESTART .AND. restart_type /= BIG_RESTART ) then
      call issue_warning('RESTART file has been ignored, since it does not contain the required empty states')
      is_restart = .FALSE.
@@ -433,7 +433,7 @@ program molgw
  !
  ! Self-energy calculation: PT2, GW, GWGamma, COHSEX
  !
- if( calc_type%is_mp2_selfenergy .OR. calc_type%is_gw ) then
+ if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS ) then
    call selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation,energy,c_matrix,s_matrix,hamiltonian_exx,hamiltonian_xc)
  endif
 

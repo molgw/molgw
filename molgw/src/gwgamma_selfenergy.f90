@@ -6,7 +6,7 @@
 ! within different flavors: G0W0GAMMA0 G0W0SOX0
 !
 !=========================================================================
-subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,wpol,selfenergy,energy_gw)
+subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,wpol,selfenergy,energy_gw)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -19,7 +19,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  use m_tddft_fxc
  implicit none
 
- integer,intent(in)                 :: nstate,gwmethod
+ integer,intent(in)                 :: nstate
  type(basis_set)                    :: basis
  real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin),exchange_m_vxc_diag(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
@@ -49,15 +49,17 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  call start_clock(timing_gwgamma)
 
  write(stdout,*)
- select case(gwmethod)
+ select case(calc_type%selfenergy_approx)
  case(G0W0SOX0)
    write(stdout,*) 'Perform a one-shot G0W0SOX0 calculation'
  case(G0W0GAMMA0)
-   if( calc_type%read_energy_qp ) then
+   if( calc_type%selfenergy_technique == EVSC ) then
      write(stdout,*) 'Perform an eigenvalue-self-consistent GWGAMMA calculation'
    else
      write(stdout,*) 'Perform a one-shot G0W0GAMMA0 calculation'
    endif
+ case default
+   call die('gwgamma_selfenergy: calculation type unknown')
  end select
 
 
@@ -85,7 +87,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  !
  ! Which calculation type needs to update energy_qp
  !
- if( calc_type%read_energy_qp ) then
+ if( calc_type%selfenergy_technique == EVSC ) then
 
    call read_energy_qp(nstate,energy_qp,reading_status)
    if(reading_status/=0) then
@@ -275,7 +277,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
 #endif
 
 
- if( gwmethod == G0W0GAMMA0 ) then 
+ if( calc_type%selfenergy_approx == G0W0GAMMA0 ) then 
 
    write(stdout,*) 'Calculate dynamical SOSEX'
 
@@ -504,7 +506,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  call find_qp_energy_linearization(selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
  call find_qp_energy_graphical    (selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy,energy_qp_new)
 
- select case(gwmethod)
+ select case(calc_type%selfenergy_approx)
  case(G0W0SOX0)
    call output_qp_energy('G0W0SOX0',nstate,energy_qp,exchange_m_vxc_diag,1,selfenergy_omega(0,:,1,:),energy_qp_z,energy_qp_new,zz)
  case(G0W0GAMMA0)
@@ -520,7 +522,7 @@ subroutine gwgamma_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m
  !
  ! Output the new HOMO and LUMO energies
  !
- select case(gwmethod)
+ select case(calc_type%selfenergy_approx)
  case(G0W0SOX0)
    call output_new_homolumo('G0W0SOX0',nstate,occupation,energy_qp_new,nsemin,nsemax)
  case(G0W0GAMMA0)

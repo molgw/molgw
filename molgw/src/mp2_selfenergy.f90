@@ -6,7 +6,7 @@
 ! the perturbation theory to 2nd order evaluation of the self-energy
 !
 !=========================================================================
-subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,selfenergy,emp2)
+subroutine mp2_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,selfenergy,emp2)
  use m_definitions
  use m_mpi
  use m_warning
@@ -17,7 +17,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  use m_selfenergy_tools
  implicit none
 
- integer,intent(in)         :: method,nstate
+ integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin),exchange_m_vxc_diag(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
@@ -59,19 +59,19 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
 
 
  write(stdout,'(/,a)') ' Perform the second-order self-energy calculation'
- select case(method)
+ select case(calc_type%selfenergy_technique)
  case(QS)
    write(stdout,*) 'with the QP self-consistent approach'
    nket1 = nsemin
    nket2 = nsemax
- case(perturbative)
+ case(one_shot)
    write(stdout,*) 'with the perturbative approach'
    nket1 = 1
    nket2 = 1
  end select
 
  
- if( calc_type%read_energy_qp ) then
+ if( calc_type%selfenergy_technique == EVSC ) then
 
    call read_energy_qp(nstate,energy_qp,reading_status)
    if(reading_status/=0) then
@@ -115,8 +115,8 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
 
      do astate=nsemin,nsemax ! external loop ( bra )
        do bstate=nsemin,nsemax   ! external loop ( ket )
-         if( astate /= bstate .AND. method == perturbative ) cycle
-         if( method == perturbative ) then
+         if( astate /= bstate .AND. calc_type%selfenergy_technique == one_shot ) cycle
+         if( calc_type%selfenergy_technique == one_shot ) then
            bstate2 = 1
          else
            bstate2 = bstate
@@ -206,7 +206,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
 
  selfenergy_omega(:,:,:,:) = selfenergy_ring(:,:,:,:) + selfenergy_sox(:,:,:,:)
 
- if( method == perturbative ) then
+ if( calc_type%selfenergy_technique == one_shot ) then
 
    if( print_sigma_) then
      call write_selfenergy_omega('selfenergy_mp2',nstate,energy,exchange_m_vxc_diag, &
@@ -227,7 +227,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
    selfenergy_output(:,:,1) = selfenergy_ring(0,:,1,:)
    selfenergy_output(:,:,2) = selfenergy_sox(0,:,1,:)
 
-   if( calc_type%read_energy_qp ) then
+   if( calc_type%selfenergy_technique == EVSC ) then
      call output_qp_energy('MP2',nstate,energy,exchange_m_vxc_diag,2,selfenergy_output,energy_qp_z)
    else
      call output_qp_energy('MP2',nstate,energy,exchange_m_vxc_diag,2,selfenergy_output,energy_qp_z,energy_qp_new,zz)
@@ -241,7 +241,7 @@ subroutine mp2_selfenergy(method,nstate,basis,occupation,energy,exchange_m_vxc_d
  endif
 
 
- if(method==QS) then
+ if( calc_type%selfenergy_technique == QS ) then
    !
    ! QS trick of Faleev-Kotani-vanSchilfgaarde
    allocate(selfenergy_final(nstate,nstate))

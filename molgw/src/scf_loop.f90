@@ -136,32 +136,25 @@ subroutine scf_loop(is_restart,&
    hamiltonian(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) 
    if(nspin==2) hamiltonian(:,:,nspin) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) 
 
-   if( calc_type%read_potential ) then
-     call read_potential(print_matrix_,basis%nbf,nspin,p_matrix,matrix_tmp,en%hart)
-     hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
-
+   !
+   ! Hartree contribution to the Hamiltonian
+   !
+   if( .NOT. is_full_auxil) then
+     call setup_hartree(print_matrix_,basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
    else
-
-     !
-     ! Hartree contribution to the Hamiltonian
-     !
-     if( .NOT. is_full_auxil) then
-       call setup_hartree(print_matrix_,basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
-     else
-       if( parallel_ham ) then
-         if( parallel_buffer ) then
-           call setup_hartree_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
-         else
-           call setup_hartree_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
-         endif
+     if( parallel_ham ) then
+       if( parallel_buffer ) then
+         call setup_hartree_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
        else
-         call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
+         call setup_hartree_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
        endif
+     else
+       call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
      endif
-     do ispin=1,nspin
-       hamiltonian(:,:,ispin) = hamiltonian(:,:,ispin) + hamiltonian_hartree(:,:)
-     enddo
    endif
+   do ispin=1,nspin
+     hamiltonian(:,:,ispin) = hamiltonian(:,:,ispin) + hamiltonian_hartree(:,:)
+   enddo
 
 
    !
@@ -226,7 +219,7 @@ subroutine scf_loop(is_restart,&
 
    !
    ! QPscGW self energy
-   if( calc_type%is_gw .AND. ( calc_type%gwmethod == QS .OR. calc_type%gwmethod == QSCOHSEX ) &
+   if( calc_type%is_gw .AND. calc_type%selfenergy_technique == QS  &
        .AND. ( iscf > 5 .OR. is_restart ) ) then
 
      call init_spectral_function(nstate,occupation,wpol)
@@ -243,9 +236,9 @@ subroutine scf_loop(is_restart,&
      !
      ! Set the range of states on which to evaluate the self-energy
      call selfenergy_set_state_range(nstate,occupation)
-     call selfenergy_set_omega_grid(calc_type%gwmethod)
+     call selfenergy_set_omega_grid()
 
-     call gw_selfenergy(nstate,calc_type%gwmethod,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp,en%gw)
+     call gw_selfenergy_qs(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp)
      deallocate(exchange_m_vxc_diag)
 
      if( .NOT. ALLOCATED(self_energy_old) ) then
@@ -265,7 +258,7 @@ subroutine scf_loop(is_restart,&
 
    !
    ! QPscMP2
-   if( calc_type%is_mp2_selfenergy .AND. calc_type%gwmethod == QS .AND. ( iscf > 5 .OR. is_restart ) ) then
+   if( calc_type%selfenergy_approx == PT2 .AND. calc_type%selfenergy_technique == QS .AND. ( iscf > 5 .OR. is_restart ) ) then
 
      allocate(exchange_m_vxc_diag(nstate,nspin))
      exchange_m_vxc_diag(:,:)=0.0_dp
@@ -273,9 +266,9 @@ subroutine scf_loop(is_restart,&
      !
      ! Set the range of states on which to evaluate the self-energy
      call selfenergy_set_state_range(nstate,occupation)
-     call selfenergy_set_omega_grid(calc_type%gwmethod)
+     call selfenergy_set_omega_grid()
 
-     call mp2_selfenergy(calc_type%gwmethod,nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
+     call mp2_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
      deallocate(exchange_m_vxc_diag)
 
      write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
@@ -459,7 +452,7 @@ subroutine scf_loop(is_restart,&
 
 
    ! A dirty section for the Luttinger-Ward functional
-   if(calc_type%gwmethod==LW .OR. calc_type%gwmethod==LW2 .OR. calc_type%gwmethod==GSIGMA) then
+   if(calc_type%selfenergy_approx==LW .OR. calc_type%selfenergy_approx==LW2 .OR. calc_type%selfenergy_approx==GSIGMA) then
      allocate(energy_exx(nstate,nspin))
      allocate(c_matrix_exx(basis%nbf,nstate,nspin))
      call issue_warning('ugly coding here write temp file fort.1000 and fort.1001')

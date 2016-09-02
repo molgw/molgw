@@ -18,25 +18,30 @@ module m_inputparam
 #endif
 
  !
- ! Method definitions
- integer,parameter :: perturbative = 101
- integer,parameter :: QS           = 102
- integer,parameter :: COHSEX       = 103
- integer,parameter :: QSCOHSEX     = 104
- integer,parameter :: GnW0         = 105
- integer,parameter :: GnWn         = 106
- integer,parameter :: G0W0         = 107
- integer,parameter :: GV           = 108   ! perturbative HF
- integer,parameter :: GSIGMA       = 109   ! Total energy calc
- integer,parameter :: LW           = 110   ! Luttinger-Ward log term
- integer,parameter :: GSIGMA3      = 112   ! Total energy calc
- integer,parameter :: LW2          = 113   ! Luttinger-Ward log term
- integer,parameter :: COHSEX_DEVEL = 114
- integer,parameter :: TUNED_COHSEX = 115
- integer,parameter :: G0W0_IOMEGA  = 116
- integer,parameter :: G0W0GAMMA0   = 117
- integer,parameter :: GWTILDE      = 118
- integer,parameter :: G0W0SOX0     = 119
+ ! Self-energy evaluation technique
+ integer,parameter :: one_shot       = 101
+ integer,parameter :: QS             = 102
+ integer,parameter :: EVSC           = 103
+ integer,parameter :: imaginary_axis = 104
+
+ !
+ ! Self-energy approximation
+ integer,parameter :: COHSEX       = 204
+ integer,parameter :: GnW0         = 205
+ integer,parameter :: GnWn         = 206
+ integer,parameter :: GW           = 207
+ integer,parameter :: GV           = 208   ! perturbative HF
+ integer,parameter :: GSIGMA       = 209   ! Total energy calc
+ integer,parameter :: LW           = 210   ! Luttinger-Ward log term
+ integer,parameter :: GSIGMA3      = 212   ! Total energy calc
+ integer,parameter :: LW2          = 213   ! Luttinger-Ward log term
+ integer,parameter :: COHSEX_DEVEL = 214
+ integer,parameter :: TUNED_COHSEX = 215
+ integer,parameter :: G0W0_IOMEGA  = 216
+ integer,parameter :: G0W0GAMMA0   = 217
+ integer,parameter :: GWTILDE      = 218
+ integer,parameter :: G0W0SOX0     = 219
+ integer,parameter :: PT2          = 220
 
  type calculation_type
  character(len=100) :: calc_name
@@ -49,12 +54,11 @@ module m_inputparam
  logical            :: is_lr_mbpt
  logical            :: is_gw
  logical            :: is_mp2
- logical            :: is_mp2_selfenergy
+ logical            :: is_selfenergy
  logical            :: is_ci
- logical            :: read_potential
  logical            :: is_bse,is_td
- logical            :: read_energy_qp
- integer            :: gwmethod                    ! perturbative or quasiparticle self-consistent
+ integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
+ integer            :: selfenergy_approx         ! GW, COHSEX, PT2
 #ifdef HAVE_LIBXC
  type(xc_f90_pointer_t),allocatable :: xc_func(:)
  type(xc_f90_pointer_t),allocatable :: xc_info(:)
@@ -165,14 +169,13 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%is_lr_mbpt          = .FALSE.
  calc_type%is_gw               = .FALSE.
  calc_type%is_mp2              = .FALSE.
- calc_type%is_mp2_selfenergy   = .FALSE.
  calc_type%is_ci               = .FALSE.
  calc_type%is_bse              = .FALSE.
  calc_type%is_td               = .FALSE.
- calc_type%gwmethod            = 0
- calc_type%read_potential      = .FALSE.
+ calc_type%selfenergy_technique= one_shot
+ calc_type%selfenergy_approx   = 0
  calc_type%postscf_name        = 'None'
- calc_type%read_energy_qp      = .FALSE.
+ calc_type%is_selfenergy       = .FALSE.
  
 
  ipos=index(input_key,'+',.TRUE.)
@@ -190,78 +193,75 @@ subroutine init_calculation_type(calc_type,input_key)
 
    select case(TRIM(key2))
    case('LW')
-     calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = LW
+     calc_type%is_gw             = .TRUE.
+     calc_type%selfenergy_approx = LW
    case('LW2')
      calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = LW2
+     calc_type%selfenergy_approx = LW2
    case('GSIGMA3')
      calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = GSIGMA3
-     calc_type%read_energy_qp = .TRUE.
+     calc_type%selfenergy_approx = GSIGMA3
+     calc_type%selfenergy_technique = EVSC
    case('GSIGMA')
      calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = GSIGMA
+     calc_type%selfenergy_approx = GSIGMA
    case('GV')
      calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = GV
+     calc_type%selfenergy_approx = GV
    case('GNW0')
      calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = GnW0
-     calc_type%read_energy_qp = .TRUE.
+     calc_type%selfenergy_approx = GnW0
+     calc_type%selfenergy_technique = EVSC
    case('GNWN')
      calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = GnWn
-     calc_type%read_energy_qp = .TRUE.
+     calc_type%selfenergy_approx = GnWn
+     calc_type%selfenergy_technique = EVSC
    case('GW','G0W0')
      calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = G0W0
+     calc_type%selfenergy_approx = GW
    case('COHSEX')
      calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = COHSEX
+     calc_type%selfenergy_approx = COHSEX
    case('COHSEX_DEVEL')
-     calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = COHSEX_DEVEL
+     calc_type%is_gw    =.TRUE.                             ! ABCD
+     calc_type%selfenergy_approx = COHSEX_DEVEL
    case('G0W0_IOMEGA')
      calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = G0W0_IOMEGA
+     calc_type%selfenergy_approx = G0W0_IOMEGA
    case('GWTILDE')
      calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = GWTILDE
+     calc_type%selfenergy_approx = GWTILDE
    case('G0W0SOX0')
      calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = G0W0SOX0
+     calc_type%selfenergy_approx = G0W0SOX0
    case('G0W0GAMMA0','GWGAMMA')
      calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = G0W0GAMMA0
+     calc_type%selfenergy_approx = G0W0GAMMA0
    case('EVGWGAMMA','GNW0GAMMAN')
      calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = G0W0GAMMA0
-     calc_type%read_energy_qp    =.TRUE.
+     calc_type%selfenergy_approx = G0W0GAMMA0
+     calc_type%selfenergy_technique = EVSC
    case('TUNED_COHSEX')
-     calc_type%is_gw    =.TRUE.
-     calc_type%gwmethod = TUNED_COHSEX
+     calc_type%is_gw    =.TRUE.                                 ! ABCD
+     calc_type%selfenergy_approx = TUNED_COHSEX
      calc_type%is_lr_mbpt = .TRUE.
    case('LRGW')
      calc_type%is_gw      =.TRUE.
-     calc_type%gwmethod   = G0W0
+     calc_type%selfenergy_approx   = GW
      calc_type%is_lr_mbpt = .TRUE.
    case('MP2')
      calc_type%is_mp2   =.TRUE.
-     calc_type%gwmethod = perturbative
    case('MP2_SELFENERGY','PT2')
-     calc_type%is_mp2_selfenergy =.TRUE.
-     calc_type%gwmethod = perturbative
+     calc_type%selfenergy_approx = PT2
    case('EVMP2','EVPT2')
-     calc_type%is_mp2_selfenergy =.TRUE.
-     calc_type%read_energy_qp    =.TRUE.
-     calc_type%gwmethod = perturbative
+     calc_type%selfenergy_approx = PT2
+     calc_type%selfenergy_technique = EVSC
    case('CI')
      calc_type%is_ci =.TRUE.
    case('BSE')
-     calc_type%is_bse     =.TRUE.
+     calc_type%is_bse =.TRUE.
    case('TD')
-     calc_type%is_td      =.TRUE.
+     calc_type%is_td =.TRUE.
    case default
      call die('Error reading keyword: postscf')
    end select
@@ -282,19 +282,19 @@ subroutine init_calculation_type(calc_type,input_key)
  case('HF')
    alpha_hybrid            = 1.00_dp
  case('MP2')
-   calc_type%is_mp2_selfenergy = .TRUE.
-   calc_type%gwmethod      = QS
+   calc_type%selfenergy_approx = PT2
+   calc_type%selfenergy_technique = QS
    alpha_hybrid            = 1.00_dp
  case('GW')
-   calc_type%is_gw         = .TRUE.
-   calc_type%gwmethod      = QS
+   calc_type%is_gw                = .TRUE.
+   calc_type%selfenergy_approx    = GW
+   calc_type%selfenergy_technique = QS
    alpha_hybrid            = 1.00_dp
  case('COHSEX')
-   calc_type%is_gw         = .TRUE.
-   calc_type%gwmethod      = QSCOHSEX
+   calc_type%is_gw                = .TRUE.           !ABCD
+   calc_type%selfenergy_approx    = COHSEX
+   calc_type%selfenergy_technique = QS
    alpha_hybrid            = 1.00_dp
- case('VIN')
-   calc_type%read_potential= .TRUE.  
  case default
    !
    ! If the calculation type is none of the above, let's assume it is DFT-type
@@ -309,6 +309,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%need_exchange    = ( alpha_hybrid > 1.0e-6 )
  calc_type%need_exchange_lr = ( rcut > 1.0e-6 )
 
+ calc_type%is_selfenergy = ( calc_type%selfenergy_approx > 0 )
 
 end subroutine init_calculation_type
 

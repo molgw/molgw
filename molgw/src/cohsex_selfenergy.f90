@@ -5,7 +5,7 @@
 ! This file contains the calculation of the COHSEX self-energy
 !
 !=========================================================================
-subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_diag, &
+subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag, &
                              c_matrix,s_matrix,wpol,selfenergy,sigc,energy_gw)
  use m_definitions
  use m_mpi
@@ -18,7 +18,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  use m_selfenergy_tools
  implicit none
 
- integer,intent(in)                 :: nstate,gwmethod
+ integer,intent(in)                 :: nstate
  type(basis_set)                    :: basis
  real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin),exchange_m_vxc_diag(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
@@ -46,7 +46,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  if( .NOT. ALLOCATED(wpol%w0) ) call die('cohsex: static W should be available here')
 
 
- select case(gwmethod)
+ select case(calc_type%selfenergy_approx)
  case(COHSEX_DEVEL)
    write(stdout,*) 'Perform a COHSEX calculation'
    if( ABS(alpha_cohsex - 1.0_dp) > 1.0e-4_dp .OR. ABS(beta_cohsex - 1.0_dp) > 1.0e-4_dp ) then
@@ -54,6 +54,8 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
    endif
  case(TUNED_COHSEX)
    write(stdout,*) 'Perform a tuned COHSEX calculation'
+ case default
+   call die('cohsex_selfenergy: calculation type unknown')
  end select
 
 
@@ -89,38 +91,10 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  call issue_warning('small complex number is '//msg)
 
 
- !
- ! Which calculation type needs to update energy_qp
- !
-!FBFB
-! select case(gwmethod)
-! case(GnW0,GnWn,GSIGMA3)
-!   call read_energy_qp(nstate,energy_qp,reading_status)
-!   if(reading_status/=0) then
-!     call issue_warning('File energy_qp not found: assuming 1st iteration')
-!     energy_qp(:,:) = energy(:,:)
-!   endif
-! case default
-   energy_qp(:,:) = energy(:,:)
+ energy_qp(:,:) = energy(:,:)
 
-! end select
-
- !
- ! Which calculation type needs the diagonal only?
- ! Which calculation type needs a complex sigma?
- !
-!FBFB
-! select case(gwmethod)
-! case(COHSEX,GV,GSIGMA,G0W0,GnW0,GnWn)   ! diagonal real
-   allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,1,nspin))
-
-! case(QS,QSCOHSEX,GSIGMA3) ! matrix real
-!   allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nsemin:nsemax,nspin))
-!
-! case default
-!   call die('GW case does not exist. Should not happen')
-! end select
- if( ALLOCATED(selfenergy_omega) )  selfenergy_omega(:,:,:,:)  = 0.0_dp
+ allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,1,nspin))
+ selfenergy_omega(:,:,:,:)  = 0.0_dp
 
 
  allocate(wp0(nauxil_3center,nsemin:nsemax))
@@ -168,7 +142,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
 
 
 
-     select case(gwmethod)
+     select case(calc_type%selfenergy_approx)
 
      case(COHSEX_DEVEL)
 
@@ -225,21 +199,21 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  write(stdout,'(a)') ' Sigma_c is calculated'
 
 
- select case(gwmethod)
+ select case(calc_type%selfenergy_approx)
 
- case(QSCOHSEX)     !==========================================================
-   write(stdout,*) 
-   ! Transform the matrix elements back to the AO basis
-   ! do not forget the overlap matrix S
-   ! C^T S C = I
-   ! the inverse of C is C^T S
-   ! the inverse of C^T is S C
-   do ipspin=1,nspin
-     selfenergy(:,:,ipspin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ipspin) ) , &
-                                MATMUL( selfenergy_omega(0,:,:,ipspin), &
-                                  MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ipspin)), s_matrix(:,:) ) ) )
-   enddo
-
+! case(QSCOHSEX)     !==========================================================
+!   write(stdout,*) 
+!   ! Transform the matrix elements back to the AO basis
+!   ! do not forget the overlap matrix S
+!   ! C^T S C = I
+!   ! the inverse of C is C^T S
+!   ! the inverse of C^T is S C
+!   do ipspin=1,nspin
+!     selfenergy(:,:,ipspin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ipspin) ) , &
+!                                MATMUL( selfenergy_omega(0,:,:,ipspin), &
+!                                  MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ipspin)), s_matrix(:,:) ) ) )
+!   enddo
+!
 
  case(COHSEX_DEVEL) !==========================================================
 
@@ -266,7 +240,7 @@ subroutine cohsex_selfenergy(nstate,gwmethod,basis,occupation,energy,exchange_m_
  !
  ! Output the new HOMO and LUMO energies
  !
- if( gwmethod == COHSEX_DEVEL ) then
+ if( calc_type%selfenergy_approx == COHSEX_DEVEL ) then
    call output_new_homolumo('COHSEX',nstate,occupation,energy_qp_new,nsemin,nsemax)
  endif
 
@@ -281,7 +255,7 @@ end subroutine cohsex_selfenergy
 
 
 !=========================================================================
-subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange_m_vxc_diag, &
+subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_diag, &
                                 c_matrix,s_matrix,wpol,selfenergy,sigc,energy_gw)
  use m_definitions
  use m_mpi
@@ -297,7 +271,7 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
  use m_selfenergy_tools
  implicit none
 
- integer,intent(in)                 :: nstate,gwmethod
+ integer,intent(in)                 :: nstate
  type(basis_set)                    :: basis
  real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin),exchange_m_vxc_diag(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
@@ -334,7 +308,7 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
 
 
  write(stdout,*)
- select case(gwmethod)
+ select case(calc_type%selfenergy_approx)
  case(COHSEX)
    write(stdout,*) 'Perform a COHSEX calculation'
    if( ABS(alpha_cohsex - 1.0_dp) > 1.0e-4_dp .OR. ABS(beta_cohsex - 1.0_dp) > 1.0e-4_dp ) then
@@ -388,38 +362,10 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
  call issue_warning('small complex number is '//msg)
 
 
- !
- ! Which calculation type needs to update energy_qp
- !
-!FBFB
-! select case(gwmethod)
-! case(GnW0,GnWn,GSIGMA3)
-!   call read_energy_qp(nstate,energy_qp,reading_status)
-!   if(reading_status/=0) then
-!     call issue_warning('File energy_qp not found: assuming 1st iteration')
-!     energy_qp(:,:) = energy(:,:)
-!   endif
-! case default
-   energy_qp(:,:) = energy(:,:)
+ energy_qp(:,:) = energy(:,:)
 
-! end select
-
- !
- ! Which calculation type needs the diagonal only?
- ! Which calculation type needs a complex sigma?
- !
-!FBFB
-! select case(gwmethod)
-! case(COHSEX,GV,GSIGMA,G0W0,GnW0,GnWn)   ! diagonal real
-   allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,1,nspin))
-
-! case(QS,QSCOHSEX,GSIGMA3) ! matrix real
-!   allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nsemin:nsemax,nspin))
-!
-! case default
-!   call die('GW case does not exist. Should not happen')
-! end select
- if( ALLOCATED(selfenergy_omega) )  selfenergy_omega(:,:,:,:)  = 0.0_dp
+ allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,1,nspin))
+ selfenergy_omega(:,:,:,:)  = 0.0_dp
 
 
  allocate(wp0(nauxil_3center_lr,nsemin:nsemax))
@@ -467,7 +413,7 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
 
 
 
-     select case(gwmethod)
+     select case(calc_type%selfenergy_approx)
 
      case(COHSEX_DEVEL)
 
@@ -529,19 +475,19 @@ subroutine cohsex_selfenergy_lr(nstate,gwmethod,basis,occupation,energy,exchange
 
 
 
- select case(gwmethod)
- case(QSCOHSEX)     !==========================================================
-   write(stdout,*) 
-   ! Transform the matrix elements back to the AO basis
-   ! do not forget the overlap matrix S
-   ! C^T S C = I
-   ! the inverse of C is C^T S
-   ! the inverse of C^T is S C
-   do ipspin=1,nspin
-     selfenergy(:,:,ipspin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ipspin) ) , &
-                                MATMUL( selfenergy_omega(0,:,:,ipspin), &
-                                  MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ipspin)), s_matrix(:,:) ) ) )
-   enddo
+ select case(calc_type%selfenergy_approx)
+! case(QSCOHSEX)     !==========================================================
+!   write(stdout,*) 
+!   ! Transform the matrix elements back to the AO basis
+!   ! do not forget the overlap matrix S
+!   ! C^T S C = I
+!   ! the inverse of C is C^T S
+!   ! the inverse of C^T is S C
+!   do ipspin=1,nspin
+!     selfenergy(:,:,ipspin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ipspin) ) , &
+!                                MATMUL( selfenergy_omega(0,:,:,ipspin), &
+!                                  MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ipspin)), s_matrix(:,:) ) ) )
+!   enddo
 
 
  case(COHSEX_DEVEL) !==========================================================

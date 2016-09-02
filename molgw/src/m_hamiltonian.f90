@@ -630,7 +630,7 @@ end subroutine setup_exchange_longrange
 
 
 !=========================================================================
-subroutine read_potential(print_matrix_,nbf,nspin,p_matrix,pot_read,eread)
+subroutine read_external_potential(print_matrix_,nbf,nspin,p_matrix,pot_read,eread)
  use m_eri
  implicit none
  logical,intent(in)   :: print_matrix_
@@ -669,7 +669,7 @@ subroutine read_potential(print_matrix_,nbf,nspin,p_matrix,pot_read,eread)
 
  eread = 0.5_dp*SUM(pot_read(:,:,:)*p_matrix(:,:,:))
 
-end subroutine read_potential
+end subroutine read_external_potential
 
 
 !=========================================================================
