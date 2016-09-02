@@ -281,7 +281,7 @@ subroutine init_calculation_type(calc_type,input_key)
    alpha_hybrid            = 0.0_dp
  case('HF')
    alpha_hybrid            = 1.00_dp
- case('MP2')
+ case('MP2','PT2')
    calc_type%selfenergy_approx = PT2
    calc_type%selfenergy_technique = QS
    alpha_hybrid            = 1.00_dp

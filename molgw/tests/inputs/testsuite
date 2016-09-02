@@ -182,6 +182,11 @@ RPA Total energy          ,    -14.6146048917  , 0 , 1.0e-7
 gKS HOMO energy           ,     -8.944487      , 0 , 1.0e-4
 gKS LUMO energy           ,      1.282521      , 0 , 1.0e-4
 
+be_qspt2_ri.in            , QSPT2 Be atom cc-pVDZ with RI
+MP2 Total Energy          ,    -14.5997371900  , 0 , 1.0e-7
+gKS HOMO energy           ,     -8.817876      , 0 , 1.0e-4
+gKS LUMO energy           ,      1.203606      , 0 , 1.0e-4
+
 be_cohsex.in              , self-consistent COHSEX Be atom cc-pVDZ with RI
 gKS HOMO energy           ,     -9.681476      , 0 , 1.0e-4
 gKS LUMO energy           ,      1.133775      , 0 , 1.0e-4

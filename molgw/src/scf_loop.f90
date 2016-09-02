@@ -236,7 +236,6 @@ subroutine scf_loop(is_restart,&
      !
      ! Set the range of states on which to evaluate the self-energy
      call selfenergy_set_state_range(nstate,occupation)
-     call selfenergy_set_omega_grid()
 
      call gw_selfenergy_qs(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp)
      deallocate(exchange_m_vxc_diag)
@@ -253,7 +252,6 @@ subroutine scf_loop(is_restart,&
 
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
 
-     call selfenergy_destroy_omega_grid()
    endif
 
    !
@@ -266,9 +264,8 @@ subroutine scf_loop(is_restart,&
      !
      ! Set the range of states on which to evaluate the self-energy
      call selfenergy_set_state_range(nstate,occupation)
-     call selfenergy_set_omega_grid()
 
-     call mp2_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
+     call pt2_selfenergy_qs(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
      deallocate(exchange_m_vxc_diag)
 
      write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
@@ -276,6 +273,10 @@ subroutine scf_loop(is_restart,&
      en%tot = en%tot + en%mp2
      write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en%tot
 
+     if( .NOT. ALLOCATED(self_energy_old) ) then
+       allocate(self_energy_old(basis%nbf,basis%nbf,nspin))
+       self_energy_old(:,:,:) = 0.0_dp
+     endif
      matrix_tmp(:,:,:) = alpha_mixing * matrix_tmp(:,:,:) + (1.0_dp-alpha_mixing) * self_energy_old(:,:,:)
      self_energy_old(:,:,:) = matrix_tmp(:,:,:)
      title='=== Self-energy ==='
@@ -283,7 +284,6 @@ subroutine scf_loop(is_restart,&
   
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
 
-     call selfenergy_destroy_omega_grid()
    endif
 
    !

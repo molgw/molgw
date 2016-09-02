@@ -322,7 +322,7 @@ subroutine selfenergy_set_omega_grid()
 
  select case(calc_type%selfenergy_technique)
  
- case(EVSC,QS)
+ case(EVSC)
 
    nomegai = 0
    allocate(omegai(-nomegai:nomegai))

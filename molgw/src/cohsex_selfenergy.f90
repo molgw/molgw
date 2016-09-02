@@ -200,7 +200,6 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,
 
 
  select case(calc_type%selfenergy_approx)
-
 ! case(QSCOHSEX)     !==========================================================
 !   write(stdout,*) 
 !   ! Transform the matrix elements back to the AO basis
