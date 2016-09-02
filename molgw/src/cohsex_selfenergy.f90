@@ -6,7 +6,7 @@
 !
 !=========================================================================
 subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag, &
-                             c_matrix,s_matrix,wpol,selfenergy,sigc,energy_gw)
+                             c_matrix,s_matrix,wpol,selfenergy_omega)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -24,16 +24,11 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,
  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(in)                :: s_matrix(basis%nbf,basis%nbf)
  type(spectral_function),intent(in) :: wpol
- real(dp),intent(out)               :: selfenergy(basis%nbf,basis%nbf,nspin)
- real(dp),intent(inout)             :: sigc(nstate,nspin)
- real(dp),intent(out)               :: energy_gw
+ real(dp),intent(inout)             :: selfenergy_omega(0:0,nsemin:nsemax,nspin)
 !=====
- real(dp),allocatable  :: selfenergy_omega(:,:,:,:)
  integer               :: pstate
  integer               :: istate,ipspin
  real(dp)              :: fact_full_i,fact_empty_i
- real(dp)              :: energy_qp(nstate,nspin)
- real(dp)              :: energy_qp_new(nstate,nspin)
  integer               :: jbf_auxil
  integer               :: ibf_auxil_global,jbf_auxil_global
  real(dp),allocatable  :: wp0(:,:),wp0_i(:),w0_local(:)
@@ -77,24 +72,20 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,
 
      write(stdout,'(i4,4x,f16.6)') pstate,sigx * Ha_eV
 
-     ! Store the result in sigc
-     sigc(pstate,ipspin) = sigc(pstate,ipspin) + sigx * epsilon_cohsex
+     ! Store the result in selfenergy_omega
+     selfenergy_omega(0,pstate,ipspin) = selfenergy_omega(0,pstate,ipspin) + sigx * epsilon_cohsex
 
    enddo
  enddo
  write(stdout,*) '=============='
 
 
- energy_gw = 0.0_dp
 
  write(msg,'(es9.2)') AIMAG(ieta)
  call issue_warning('small complex number is '//msg)
 
 
- energy_qp(:,:) = energy(:,:)
-
- allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,1,nspin))
- selfenergy_omega(:,:,:,:)  = 0.0_dp
+ selfenergy_omega(:,:,:)  = 0.0_dp
 
 
  allocate(wp0(nauxil_3center,nsemin:nsemax))
@@ -150,7 +141,7 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,
          !
          ! SEX
          !
-         selfenergy_omega(0,pstate,1,ipspin) = selfenergy_omega(0,pstate,1,ipspin) &
+         selfenergy_omega(0,pstate,ipspin) = selfenergy_omega(0,pstate,ipspin) &
                     -  DOT_PRODUCT( eri_3center_eigen(:,pstate,istate,ipspin) , wp0(:,pstate) ) &
                           * fact_full_i * 1.0_dp  &
                           * beta_cohsex
@@ -158,7 +149,7 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,
          !
          ! COH
          !
-         selfenergy_omega(0,pstate,1,ipspin) = selfenergy_omega(0,pstate,1,ipspin) &
+         selfenergy_omega(0,pstate,ipspin) = selfenergy_omega(0,pstate,ipspin) &
                     +  DOT_PRODUCT( eri_3center_eigen(:,pstate,istate,ipspin) , wp0(:,pstate) ) &
                           * alpha_cohsex * 0.5_dp
 
@@ -170,7 +161,7 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,
          !
          ! SEX
          !
-         selfenergy_omega(0,pstate,1,ipspin) = selfenergy_omega(0,pstate,1,ipspin) &
+         selfenergy_omega(0,pstate,ipspin) = selfenergy_omega(0,pstate,ipspin) &
                     -  DOT_PRODUCT( eri_3center_eigen(:,pstate,istate,ipspin) , wp0(:,pstate) ) &
                           * fact_full_i * 1.0_dp  &
                           * ( beta_cohsex + gamma_cohsex )
@@ -191,59 +182,23 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,
  deallocate(wp0)
 
  ! Sum up the contribution from different procs
- if( ALLOCATED(selfenergy_omega) ) then
-   call xsum_ortho(selfenergy_omega)
- endif
+ call xsum_ortho(selfenergy_omega)
 
 
  write(stdout,'(a)') ' Sigma_c is calculated'
 
 
  select case(calc_type%selfenergy_approx)
-! case(QSCOHSEX)     !==========================================================
-!   write(stdout,*) 
-!   ! Transform the matrix elements back to the AO basis
-!   ! do not forget the overlap matrix S
-!   ! C^T S C = I
-!   ! the inverse of C is C^T S
-!   ! the inverse of C^T is S C
-!   do ipspin=1,nspin
-!     selfenergy(:,:,ipspin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ipspin) ) , &
-!                                MATMUL( selfenergy_omega(0,:,:,ipspin), &
-!                                  MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ipspin)), s_matrix(:,:) ) ) )
-!   enddo
-!
-
- case(COHSEX_DEVEL) !==========================================================
-
-   ! Only had the diagonal calculated...
-   selfenergy(:,:,:) = 0.0_dp
-   forall(pstate=nsemin:nsemax)
-     selfenergy(pstate,pstate,:) = selfenergy_omega(0,pstate,1,:)
-   end forall
-   
-   call find_qp_energy_linearization(selfenergy_omega(:,:,1,:),nstate,exchange_m_vxc_diag,energy_qp,energy_qp_new)
-   call output_qp_energy('COHSEX',nstate,energy_qp,exchange_m_vxc_diag,1,selfenergy_omega(0,:,1,:),energy_qp_new)
-
-   call write_energy_qp(nstate,energy_qp_new)
-
-
  case(TUNED_COHSEX) !==========================================================
 
-   sigc(nsemin:nsemax,:) = sigc(nsemin:nsemax,:) + selfenergy_omega(0,nsemin:nsemax,1,:)
+   ! This coding has been corrupted !
+   ! FIXME
+   call die('the following line is obviously wrong')
+   selfenergy_omega(0,nsemin:nsemax,:) = selfenergy_omega(0,nsemin:nsemax,:) + selfenergy_omega(0,nsemin:nsemax,:)
 
 
  end select
 
-
- !
- ! Output the new HOMO and LUMO energies
- !
- if( calc_type%selfenergy_approx == COHSEX_DEVEL ) then
-   call output_new_homolumo('COHSEX',nstate,occupation,energy_qp_new,nsemin,nsemax)
- endif
-
- if(ALLOCATED(selfenergy_omega)) deallocate(selfenergy_omega)
 
  call destroy_eri_3center_eigen()
 
@@ -255,7 +210,7 @@ end subroutine cohsex_selfenergy
 
 !=========================================================================
 subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_diag, &
-                                c_matrix,s_matrix,wpol,selfenergy,sigc,energy_gw)
+                                c_matrix,s_matrix,wpol,selfenergy_omega)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -276,17 +231,12 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(in)                :: s_matrix(basis%nbf,basis%nbf)
  type(spectral_function),intent(in) :: wpol
- real(dp),intent(out)               :: selfenergy(basis%nbf,basis%nbf,nspin)
- real(dp),intent(inout)             :: sigc(nstate,nspin)
- real(dp),intent(out)               :: energy_gw
+ real(dp),intent(inout)             :: selfenergy_omega(0:0,nsemin:nsemax,nspin)
 !=====
  integer               :: homo
- real(dp),allocatable  :: selfenergy_omega(:,:,:,:)
  integer               :: pstate
  integer               :: istate,ipspin
  real(dp)              :: fact_full_i,fact_empty_i
- real(dp)              :: energy_qp(nstate,nspin)
- real(dp)              :: energy_qp_new(nstate,nspin)
  integer               :: jbf_auxil
  integer               :: ibf_auxil_global,jbf_auxil_global
  real(dp),allocatable  :: wp0(:,:),wp0_i(:),w0_local(:)
@@ -346,8 +296,8 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
 
      write(stdout,'(i4,4x,f16.6)') pstate,sigx * Ha_eV
 
-     ! Store the result in sigc
-     sigc(pstate,ipspin) = sigc(pstate,ipspin) - sigx * epsilon_cohsex
+     ! Store the result in selfenergy_omega
+     selfenergy_omega(0,pstate,ipspin) = selfenergy_omega(0,pstate,ipspin) - sigx * epsilon_cohsex
 
    enddo
  enddo
@@ -355,16 +305,12 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
 
 
 
- energy_gw = 0.0_dp
 
  write(msg,'(es9.2)') AIMAG(ieta)
  call issue_warning('small complex number is '//msg)
 
 
- energy_qp(:,:) = energy(:,:)
-
- allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,1,nspin))
- selfenergy_omega(:,:,:,:)  = 0.0_dp
+ selfenergy_omega(:,:,:)  = 0.0_dp
 
 
  allocate(wp0(nauxil_3center_lr,nsemin:nsemax))
@@ -420,7 +366,7 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
          !
          ! SEX
          !
-         selfenergy_omega(0,pstate,1,ipspin) = selfenergy_omega(0,pstate,1,ipspin) &
+         selfenergy_omega(0,pstate,ipspin) = selfenergy_omega(0,pstate,ipspin) &
                     -  DOT_PRODUCT( eri_3center_eigen_lr(:,pstate,istate,ipspin) , wp0(:,pstate) ) &
                           * fact_full_i * 1.0_dp  &
                           * beta_cohsex
@@ -428,7 +374,7 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
          !
          ! COH
          !
-         selfenergy_omega(0,pstate,1,ipspin) = selfenergy_omega(0,pstate,1,ipspin) &
+         selfenergy_omega(0,pstate,ipspin) = selfenergy_omega(0,pstate,ipspin) &
                     +  DOT_PRODUCT( eri_3center_eigen_lr(:,pstate,istate,ipspin) , wp0(:,pstate) ) &
                           * alpha_cohsex * 0.5_dp
 
@@ -440,7 +386,7 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
          !
          ! LR-SEX 
          !
-         selfenergy_omega(0,pstate,1,ipspin) = selfenergy_omega(0,pstate,1,ipspin) &
+         selfenergy_omega(0,pstate,ipspin) = selfenergy_omega(0,pstate,ipspin) &
                     -  DOT_PRODUCT( eri_3center_eigen_lr(:,pstate,istate,ipspin) , wp0(:,pstate) ) &
                           * fact_full_i * 1.0_dp  &
                           * (-gamma_cohsex)
@@ -448,7 +394,7 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
          !
          ! LR-COH
          !
-         selfenergy_omega(0,pstate,1,ipspin) = selfenergy_omega(0,pstate,1,ipspin) &
+         selfenergy_omega(0,pstate,ipspin) = selfenergy_omega(0,pstate,ipspin) &
                     +  DOT_PRODUCT( eri_3center_eigen_lr(:,pstate,istate,ipspin) , wp0(:,pstate) ) &
                           * alpha_cohsex * 0.5_dp
 
@@ -465,9 +411,7 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
  deallocate(wp0)
 
  ! Sum up the contribution from different procs
- if( ALLOCATED(selfenergy_omega) ) then
-   call xsum_ortho(selfenergy_omega)
- endif
+ call xsum_ortho(selfenergy_omega)
 
 
  write(stdout,'(a)') ' Sigma_c is calculated'
@@ -475,87 +419,35 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
 
 
  select case(calc_type%selfenergy_approx)
-! case(QSCOHSEX)     !==========================================================
-!   write(stdout,*) 
-!   ! Transform the matrix elements back to the AO basis
-!   ! do not forget the overlap matrix S
-!   ! C^T S C = I
-!   ! the inverse of C is C^T S
-!   ! the inverse of C^T is S C
-!   do ipspin=1,nspin
-!     selfenergy(:,:,ipspin) = MATMUL( MATMUL( s_matrix(:,:) , c_matrix(:,nsemin:nsemax,ipspin) ) , &
-!                                MATMUL( selfenergy_omega(0,:,:,ipspin), &
-!                                  MATMUL( TRANSPOSE(c_matrix(:,nsemin:nsemax,ipspin)), s_matrix(:,:) ) ) )
-!   enddo
-
-
- case(COHSEX_DEVEL) !==========================================================
-
-   ! Only had the diagonal calculated...
-   selfenergy(:,:,:) = 0.0_dp
-   forall(pstate=nsemin:nsemax)
-     selfenergy(pstate,pstate,:) = selfenergy_omega(0,pstate,1,:)
-   end forall
-   
-   write(stdout,'(/,a)') ' COHSEX Eigenvalues (eV)'
-   if(nspin==1) then
-     write(stdout,*) '  #          E0        SigX-Vxc      SigC          Z         COHSEX'
-   else
-     write(stdout,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       COHSEX'
-   endif
-   do pstate=nsemin,nsemax
-     energy_qp_new(pstate,:) = energy_qp(pstate,:) + selfenergy_omega(0,pstate,1,:) + exchange_m_vxc_diag(pstate,:)
-
-     write(stdout,'(i4,1x,20(1x,f12.6))') pstate,energy_qp(pstate,:)*Ha_eV,               &
-                                                 exchange_m_vxc_diag(pstate,:)*Ha_eV,     &
-                                                 selfenergy_omega(0,pstate,1,:)*Ha_eV, &
-                                           1.0_dp ,energy_qp_new(pstate,:)*Ha_eV
-   enddo
-
-   call write_energy_qp(nstate,energy_qp_new)
-
  case(TUNED_COHSEX) !==========================================================
 
-
-   sigc(nsemin:nsemax,:) = sigc(nsemin:nsemax,:) + selfenergy_omega(0,nsemin:nsemax,1,:)
-
-   write(stdout,'(/,a)') ' COHSEX Eigenvalues (eV)'
-   if(nspin==1) then
-     write(stdout,*) '  #          E0        SigX-Vxc      SigC          Z         COHSEX'
-   else
-     write(stdout,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       COHSEX'
-   endif
-   do pstate=nsemin,nsemax
-     energy_qp_new(pstate,:) = energy_qp(pstate,:) + sigc(pstate,:) + exchange_m_vxc_diag(pstate,:)
-
-     write(stdout,'(i4,1x,20(1x,f12.6))') pstate,energy_qp(pstate,:)*Ha_eV,               &
-                                                 exchange_m_vxc_diag(pstate,:)*Ha_eV,     &
-                                                 sigc(pstate,:)*Ha_eV, &
-                                           1.0_dp ,energy_qp_new(pstate,:)*Ha_eV
-   enddo
-
-   call write_energy_qp(nstate,energy_qp_new)
+  call die('coding is corrupted')
+! this is corrupted ! FIXME
+!
+!   sigc(nsemin:nsemax,:) = sigc(nsemin:nsemax,:) + selfenergy_omega(0,nsemin:nsemax,:)
+!
+!   write(stdout,'(/,a)') ' COHSEX Eigenvalues (eV)'
+!   if(nspin==1) then
+!     write(stdout,*) '  #          E0        SigX-Vxc      SigC          Z         COHSEX'
+!   else
+!     write(stdout,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       COHSEX'
+!   endif
+!   do pstate=nsemin,nsemax
+!     energy_qp_new(pstate,:) = energy_qp(pstate,:) + sigc(pstate,:) + exchange_m_vxc_diag(pstate,:)
+!
+!     write(stdout,'(i4,1x,20(1x,f12.6))') pstate,energy_qp(pstate,:)*Ha_eV,               &
+!                                                 exchange_m_vxc_diag(pstate,:)*Ha_eV,     &
+!                                                 sigc(pstate,:)*Ha_eV, &
+!                                           1.0_dp ,energy_qp_new(pstate,:)*Ha_eV
+!   enddo
+!
+!   call write_energy_qp(nstate,energy_qp_new)
 
 
 
  end select
 
 
- !
- ! Output the new HOMO and LUMO energies
- !
- do istate=1,nstate
-   if( ANY(occupation(istate,:) > completely_empty) ) homo = istate
- enddo
- write(stdout,*)
- if( homo >= nsemin .AND. homo <= nsemax ) then
-   write(stdout,'(a,2(2x,f12.6))') ' GW HOMO (eV):',energy_qp_new(homo,:)*Ha_eV
- endif
- if( homo+1 >= nsemin .AND. homo+1 <= nsemax ) then
-   write(stdout,'(a,2(2x,f12.6))') ' GW LUMO (eV):',energy_qp_new(homo+1,:)*Ha_eV
- endif
-
- if(ALLOCATED(selfenergy_omega)) deallocate(selfenergy_omega)
 
  call destroy_eri_3center_eigen_lr()
 

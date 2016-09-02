@@ -37,15 +37,18 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  real(dp),intent(in)        :: hamiltonian_exx(m_ham,n_ham,nspin)
  real(dp),intent(in)        :: hamiltonian_xc(m_ham,n_ham,nspin)
 !=====
+ character(len=36)       :: selfenergy_tag
  integer                 :: reading_status
  integer                 :: ispin
  type(spectral_function) :: wpol
- real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
+ real(dp)                :: exchange_m_vxc_diag(nstate,nspin)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
  real(dp),allocatable    :: sigc(:,:)
  real(dp),allocatable    :: selfenergy_omega(:,:,:)
  real(dp)                :: energy_g(nstate,nspin)
  real(dp)                :: energy_w(nstate,nspin)
+ real(dp),allocatable    :: zz(:,:)
+ real(dp),allocatable    :: energy_qp_new(:,:),energy_qp_z(:,:)
 #ifdef ACTIVATE_EXPERIMENTAL
  real(dp),allocatable    :: p_matrix(:,:,:),p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
  integer                 :: istate
@@ -53,10 +56,25 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
 #endif
 !=====
 
+ select case(calc_type%selfenergy_approx)
+ case(GW,GnW0,GnWn)
+   selfenergy_tag='GW'
+ case(PT2)
+   selfenergy_tag='PT2'
+ case(G0W0SOX0)
+   selfenergy_tag='GWSOX'
+ case(G0W0Gamma0)
+   selfenergy_tag='GWGamma'
+ case(COHSEX,COHSEX_DEVEL,TUNED_COHSEX)
+   selfenergy_tag='COHSEX'
+ case default
+   write(stdout,*) 'selfenergy approx not listed:',calc_type%selfenergy_approx
+   call die('selfenergy_evaluation: bug')
+ end select
+
  !
  ! Prepare the diagonal of the matrix Sigma_x - Vxc
  ! for the forthcoming GW or PT2 corrections
- allocate(exchange_m_vxc_diag(nstate,nspin))
  call setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham,occupation,c_matrix,hamiltonian_exx,hamiltonian_xc,exchange_m_vxc_diag)
  !
  ! Set the range of states on which to evaluate the self-energy
@@ -113,18 +131,14 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
 
 
 
-
-
-
  !
  ! selfenergy = GW or COHSEX
  !
- if( calc_type%is_gw .AND. &
-       ( calc_type%selfenergy_approx == GV .OR. calc_type%selfenergy_approx == GSIGMA .OR.  calc_type%selfenergy_approx == LW &
+ if(     calc_type%selfenergy_approx == GV .OR. calc_type%selfenergy_approx == GSIGMA .OR.  calc_type%selfenergy_approx == LW &
     .OR. calc_type%selfenergy_approx == LW2 &
     .OR. calc_type%selfenergy_approx == G0W0_IOMEGA .OR. calc_type%selfenergy_approx == GWTILDE &
-    .OR. calc_type%selfenergy_approx == G0W0 .OR. calc_type%selfenergy_approx == COHSEX   &
-    .OR. calc_type%selfenergy_approx == GnW0 .OR. calc_type%selfenergy_approx == GnWn ) ) then
+    .OR. calc_type%selfenergy_approx == GW   .OR. calc_type%selfenergy_approx == COHSEX   &
+    .OR. calc_type%selfenergy_approx == GnW0 .OR. calc_type%selfenergy_approx == GnWn   ) then
 
    call init_spectral_function(nstate,occupation,wpol)
 
@@ -146,7 +160,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
    write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
 
 
-   call gw_selfenergy(nstate,calc_type%selfenergy_approx,basis,occupation,energy_g,exchange_m_vxc_diag,c_matrix,wpol,selfenergy_omega,en%gw)
+   call gw_selfenergy(nstate,calc_type%selfenergy_approx,basis,occupation,energy_g,c_matrix,wpol,selfenergy_omega,en%gw)
 
    if( ABS(en%gw) > 1.0e-5_dp ) then
      write(stdout,'(/,a,f19.10)') ' Galitskii-Migdal Total energy (Ha): ',en%tot - en%rpa + en%gw
@@ -171,8 +185,23 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
      call polarizability(basis,auxil_basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
    endif
 
-   call gw_selfenergy(nstate,G0W0,basis,occupation,energy_g,exchange_m_vxc_diag,c_matrix,wpol,selfenergy_omega,en%gw)
-   call gwgamma_selfenergy(nstate,basis,occupation,energy_g,exchange_m_vxc_diag,c_matrix,wpol,selfenergy_omega)
+   call gw_selfenergy(nstate,GW,basis,occupation,energy_g,c_matrix,wpol,selfenergy_omega,en%gw)
+
+   !
+   ! Output the G0W0 results first
+   allocate(energy_qp_z(nstate,nspin))
+   allocate(energy_qp_new(nstate,nspin))
+   allocate(zz(nsemin:nsemax,nspin))
+   call find_qp_energy_linearization(selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+   call find_qp_energy_graphical(selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
+   call output_qp_energy(TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,:),energy_qp_z,energy_qp_new,zz)
+   deallocate(zz)
+   deallocate(energy_qp_z)
+   call output_new_homolumo('GW',nstate,occupation,energy_qp_new,nsemin,nsemax)
+   deallocate(energy_qp_new)
+
+
+   call gwgamma_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,selfenergy_omega)
    call destroy_spectral_function(wpol)
  endif
 
@@ -182,9 +211,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  ! 
  if( calc_type%selfenergy_approx == PT2 ) then
 
-   allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-   call mp2_selfenergy(nstate,basis,occupation,energy_g,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
-   deallocate(matrix_tmp)
+   call pt2_selfenergy(nstate,basis,occupation,energy_g,c_matrix,s_matrix,selfenergy_omega,en%mp2)
+
    if( ABS( en%mp2 ) > 1.0e-8 ) then
      write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
      write(stdout,*)
@@ -287,6 +315,47 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  !
 
 
+ !
+ ! Output the quasiparticle energies, the self-energy etc.
+ !
+ if( print_sigma_) then
+   call write_selfenergy_omega('selfenergy'//TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,selfenergy_omega)
+ endif
+
+
+ allocate(energy_qp_new(nstate,nspin))
+
+ select case(calc_type%selfenergy_approx)
+ case(GW,PT2)
+   allocate(energy_qp_z(nstate,nspin))
+   allocate(zz(nsemin:nsemax,nspin))
+   call find_qp_energy_linearization(selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+   call find_qp_energy_graphical(selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
+  
+   call output_qp_energy(TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,:),energy_qp_z,energy_qp_new,zz)
+   deallocate(zz)
+   deallocate(energy_qp_z)
+
+ case(GnWn,GnW0,GV,COHSEX,COHSEX_DEVEL,TUNED_COHSEX)
+   call find_qp_energy_linearization(selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
+
+   call output_qp_energy(TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,:),energy_qp_new)
+
+ end select
+
+ !
+ ! Write the QP energies on disk: ENERGY_QP file
+ ! 
+ call write_energy_qp(nstate,energy_qp_new)
+
+ !
+ ! Output the new HOMO and LUMO energies
+ !
+ call output_new_homolumo(TRIM(selfenergy_tag),nstate,occupation,energy_qp_new,nsemin,nsemax)
+
+
+
+ deallocate(energy_qp_new)
 
 
 
@@ -294,7 +363,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  ! Deallocations
  !
  call selfenergy_destroy_omega_grid()
- if( ALLOCATED(exchange_m_vxc_diag) ) deallocate(exchange_m_vxc_diag)
 
 
 end subroutine selfenergy_evaluation

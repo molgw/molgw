@@ -6,7 +6,7 @@
 ! within different flavors: G0W0, GnW0, GnWn, COHSEX
 !
 !=========================================================================
-subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,wpol,selfenergy_omega,energy_gw)
+subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,c_matrix,wpol,selfenergy_omega,energy_gw)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -21,7 +21,7 @@ subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,exchan
 
  integer,intent(in)                 :: nstate,selfenergy_approx
  type(basis_set)                    :: basis
- real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin),exchange_m_vxc_diag(nstate,nspin)
+ real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in) :: wpol
  real(dp),intent(out)               :: selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nspin)
@@ -65,7 +65,7 @@ subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,exchan
    write(stdout,*) 'Perform a perturbative HF calculation'
  case(GWTILDE)
    write(stdout,*) 'Perform a one-shot GWtilde calculation'
- case(G0W0)
+ case(GW)
    write(stdout,*) 'Perform a one-shot G0W0 calculation'
  case(G0W0_IOMEGA)
    write(stdout,*) 'Perform a one-shot G0W0 calculation?'
@@ -217,7 +217,7 @@ subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,exchan
          enddo
 
 
-       case(G0W0,GnW0,GnWn)
+       case(GW,GnW0,GnWn)
 
          do astate=nsemin,nsemax
            !
@@ -310,22 +310,6 @@ subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,exchan
 
 
  select case(selfenergy_approx)
- case(GV) !==========================================================
-
-   call find_qp_energy_linearization(selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
-   call output_qp_energy('GV',nstate,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,:),energy_qp_new)
-
-   call write_energy_qp(nstate,energy_qp_new)
-
-
- case(COHSEX) !==========================================================
-
-   call find_qp_energy_linearization(selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
-   call output_qp_energy('COHSEX',nstate,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,:),energy_qp_new)
-
-   call write_energy_qp(nstate,energy_qp_new)
-
-
  case(G0W0_IOMEGA) !==========================================================
 
    if( is_iomaster ) then
@@ -347,7 +331,7 @@ subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,exchan
 
 
 
- case(G0W0,GWTILDE) !==========================================================
+ case(GW) !==========================================================
 
    if( calc_type%selfenergy_approx == G0W0GAMMA0 .OR. calc_type%selfenergy_approx == G0W0SOX0 ) then
      if( is_iomaster ) then
@@ -361,34 +345,6 @@ subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,exchan
      endif
    endif
 
-   if( print_sigma_) then
-     call write_selfenergy_omega('selfenergy_gw',nstate,energy,exchange_m_vxc_diag,selfenergy_omega(:,:,:))
-   endif
-
-   allocate(zz(nsemin:nsemax,nspin))
-   call find_qp_energy_linearization(selfenergy_omega(:,:,:),nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
-   call find_qp_energy_graphical(selfenergy_omega(:,:,:),nstate,exchange_m_vxc_diag,energy,energy_qp_new)
-
-   call output_qp_energy('G0W0',nstate,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,:),energy_qp_z,energy_qp_new,zz)
-   deallocate(zz)
-
-   if( .NOT. (calc_type%selfenergy_approx == G0W0GAMMA0 .OR. calc_type%selfenergy_approx == G0W0SOX0) )  then
-     call write_energy_qp(nstate,energy_qp_new)
-   endif
-
-
-
- case(GnW0,GnWn) !==========================================================
-
-   call find_qp_energy_linearization(selfenergy_omega(:,:,:),nstate,exchange_m_vxc_diag,energy,energy_qp_new)
-
-   if( selfenergy_approx == GnW0 ) then
-     call output_qp_energy('GnW0',nstate,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,:),energy_qp_new)
-   else
-     call output_qp_energy('GnWn',nstate,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,:),energy_qp_new)
-   endif
-
-   call write_energy_qp(nstate,energy_qp_new)
 
  case(GSIGMA) !==========================================================
 
@@ -463,18 +419,6 @@ subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,exchan
  end select
 
 
- !
- ! Output the new HOMO and LUMO energies
- !
- select case(selfenergy_approx)
- case(G0W0,GV,GnW0,GnWn)
-   call output_new_homolumo('GW',nstate,occupation,energy_qp_new,nsemin,nsemax)
- case(COHSEX)
-   call output_new_homolumo('COHSEX',nstate,occupation,energy_qp_new,nsemin,nsemax)
- end select
-
-
-
 
  call clean_deallocate('Temporary array',bra)
  if(ALLOCATED(bra_exx)) call clean_deallocate('Temporary array for LW',bra_exx)
@@ -497,7 +441,7 @@ end subroutine gw_selfenergy
 
 
 !=========================================================================
-subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,selfenergy)
+subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpol,selfenergy)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -512,7 +456,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,exchange_m_vxc_diag,c
 
  integer,intent(in)                 :: nstate
  type(basis_set)                    :: basis
- real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin),exchange_m_vxc_diag(nstate,nspin)
+ real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(in)                :: s_matrix(basis%nbf,basis%nbf)
  type(spectral_function),intent(in) :: wpol

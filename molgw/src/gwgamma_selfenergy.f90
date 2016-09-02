@@ -6,7 +6,7 @@
 ! within different flavors: G0W0GAMMA0 G0W0SOX0
 !
 !=========================================================================
-subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,wpol,selfenergy_omega)
+subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,selfenergy_omega)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -21,7 +21,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag
 
  integer,intent(in)                 :: nstate
  type(basis_set)                    :: basis
- real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin),exchange_m_vxc_diag(nstate,nspin)
+ real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in) :: wpol
  real(dp),intent(out)               :: selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nspin)
@@ -448,24 +448,23 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag
  end forall
 
 
- if( print_sigma_) then
-   call write_selfenergy_omega('selfenergy_sox'    ,nstate,energy,exchange_m_vxc_diag,selfenergy_omega_sox)
-   call write_selfenergy_omega('selfenergy_gamma'  ,nstate,energy,exchange_m_vxc_diag,selfenergy_omega_gamma)
-   call write_selfenergy_omega('selfenergy_gwgamma',nstate,energy,exchange_m_vxc_diag,selfenergy_omega)
- endif
+! if( print_sigma_) then
+!   call write_selfenergy_omega('selfenergy_sox'    ,nstate,energy,exchange_m_vxc_diag,selfenergy_omega_sox)
+!   call write_selfenergy_omega('selfenergy_gamma'  ,nstate,energy,exchange_m_vxc_diag,selfenergy_omega_gamma)
+!   call write_selfenergy_omega('selfenergy_gwgamma',nstate,energy,exchange_m_vxc_diag,selfenergy_omega)
+! endif
  
 
  write(stdout,'(/,a)') ' G0W0Gamma0 self-energy contributions at E0 (eV)'
  if(nspin==1) then
-   write(stdout,'(a)') '   #          E0        SigX-Vxc    SigC_G0W0    SigC_SOX   SigC_Gamma0   SigC_TOT'
+   write(stdout,'(a)') '   #          E0         SigC_G0W0    SigC_SOX   SigC_Gamma0   SigC_TOT'
  else
    write(stdout,'(a)') &
-     '   #                E0                      SigX-Vxc                    SigC_G0W0            SigC_SOX             SigC_Gamma0                SigC_TOT'
+     '   #                E0                              SigC_G0W0            SigC_SOX             SigC_Gamma0                SigC_TOT'
  endif
 
  do astate=nsemin,nsemax
    write(stdout,'(i4,1x,20(1x,f12.6))') astate,energy(astate,:)*Ha_eV,          & 
-                                        exchange_m_vxc_diag(astate,:)*Ha_eV,       &
                                         selfenergy_omega_gw(0,astate,:)*Ha_eV,   &
                                         selfenergy_omega_sox(0,astate,:)*Ha_eV,  &
                                         selfenergy_omega_gamma(0,astate,:)*Ha_eV,&
@@ -473,33 +472,21 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag
  enddo
 
 
- allocate(zz(nsemin:nsemax,nspin))
-
- call find_qp_energy_linearization(selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
- call find_qp_energy_graphical    (selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
-
- select case(calc_type%selfenergy_approx)
- case(G0W0SOX0)
-   call output_qp_energy('G0W0SOX0',nstate,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,:),energy_qp_z,energy_qp_new,zz)
- case(G0W0GAMMA0)
-   call output_qp_energy('G0W0Gamma0',nstate,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,:),energy_qp_z,energy_qp_new,zz)
- end select
- deallocate(zz)
-
- call write_energy_qp(nstate,energy_qp_new)
+! allocate(zz(nsemin:nsemax,nspin))
+!
+! call find_qp_energy_linearization(selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+! call find_qp_energy_graphical    (selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
+!
+! select case(calc_type%selfenergy_approx)
+! case(G0W0SOX0)
+!   call output_qp_energy('G0W0SOX0',nstate,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,:),energy_qp_z,energy_qp_new,zz)
+! case(G0W0GAMMA0)
+!   call output_qp_energy('G0W0Gamma0',nstate,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,:),energy_qp_z,energy_qp_new,zz)
+! end select
+! deallocate(zz)
 
 
 
-
- !
- ! Output the new HOMO and LUMO energies
- !
- select case(calc_type%selfenergy_approx)
- case(G0W0SOX0)
-   call output_new_homolumo('G0W0SOX0',nstate,occupation,energy_qp_new,nsemin,nsemax)
- case(G0W0GAMMA0)
-   call output_new_homolumo('G0W0Gamma0',nstate,occupation,energy_qp_new,nsemin,nsemax)
- end select
 
  call clean_deallocate('Temporary array',bra)
 

@@ -61,7 +61,6 @@ subroutine scf_loop(is_restart,&
  real(dp),allocatable    :: hamiltonian_vxc(:,:,:)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
  real(dp),allocatable    :: p_matrix_old(:,:,:)
- real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  real(dp),allocatable    :: self_energy_old(:,:,:)
  real(dp),allocatable    :: energy_exx(:,:)
  real(dp),allocatable    :: c_matrix_exx(:,:,:)
@@ -218,8 +217,8 @@ subroutine scf_loop(is_restart,&
    endif
 
    !
-   ! QPscGW self energy
-   if( calc_type%is_gw .AND. calc_type%selfenergy_technique == QS  &
+   ! QSGW self energy
+   if( calc_type%selfenergy_approx == GW .AND. calc_type%selfenergy_technique == QS  &
        .AND. ( iscf > 5 .OR. is_restart ) ) then
 
      call init_spectral_function(nstate,occupation,wpol)
@@ -230,15 +229,11 @@ subroutine scf_loop(is_restart,&
        write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
      endif
 
-     allocate(exchange_m_vxc_diag(nstate,nspin))
-     exchange_m_vxc_diag(:,:)=0.0_dp
-
      !
      ! Set the range of states on which to evaluate the self-energy
      call selfenergy_set_state_range(nstate,occupation)
 
-     call gw_selfenergy_qs(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,wpol,matrix_tmp)
-     deallocate(exchange_m_vxc_diag)
+     call gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpol,matrix_tmp)
 
      if( .NOT. ALLOCATED(self_energy_old) ) then
        allocate(self_energy_old(basis%nbf,basis%nbf,nspin))
@@ -255,18 +250,14 @@ subroutine scf_loop(is_restart,&
    endif
 
    !
-   ! QPscMP2
+   ! QSPT2
    if( calc_type%selfenergy_approx == PT2 .AND. calc_type%selfenergy_technique == QS .AND. ( iscf > 5 .OR. is_restart ) ) then
-
-     allocate(exchange_m_vxc_diag(nstate,nspin))
-     exchange_m_vxc_diag(:,:)=0.0_dp
 
      !
      ! Set the range of states on which to evaluate the self-energy
      call selfenergy_set_state_range(nstate,occupation)
 
-     call pt2_selfenergy_qs(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,s_matrix,matrix_tmp,en%mp2)
-     deallocate(exchange_m_vxc_diag)
+     call pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,matrix_tmp,en%mp2)
 
      write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
      write(stdout,*) 

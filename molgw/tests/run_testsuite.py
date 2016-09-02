@@ -76,8 +76,11 @@ def check_output(out,testinfo):
       print('open file: '+tmpfolder+'/'+out)
       print('===end debug')
 
+    key_found = False
+
     for line in reversed(open(tmpfolder+'/'+out,'r').readlines()):
       if key in line:
+        key_found = True
         parsing  = line.split(':')
         if debug:
           print('===debug:')
@@ -101,6 +104,8 @@ def check_output(out,testinfo):
           fdiff.write(str(tested).rjust(6) + parsing2[pos].rjust(30) \
                 + str(ref).rjust(30)+str(float(parsing2[pos]) - ref).rjust(30)+' FAIL \n')
           break
+    if not key_found:
+      print(key.rjust(30)+'[\033[91m\033[1mNOT FOUND\033[0m]'.rjust(30))
      
 ###################################
 # Parse the command line
