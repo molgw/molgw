@@ -110,7 +110,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  !
  ! Choose the one-electron energies to use
  ! one_shot or EVGW
-
+ !
  if( calc_type%selfenergy_technique == EVSC ) then
    call read_energy_qp(nstate,energy_g,reading_status)
    if(reading_status/=0) then

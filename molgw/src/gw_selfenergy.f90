@@ -3,7 +3,7 @@
 ! Author: Fabien Bruneval
 !
 ! This file contains the calculation of the GW self-energy
-! within different flavors: G0W0, GnW0, GnWn, COHSEX
+! within different flavors: G0W0, GnW0, GnWn, COHSEX, QSGW
 !
 !=========================================================================
 subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,c_matrix,wpol,selfenergy_omega,energy_gw)
@@ -28,7 +28,6 @@ subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,c_matr
  real(dp),intent(out)               :: energy_gw
 !=====
  integer               :: iomegai
- real(dp),allocatable  :: zz(:,:)
  integer               :: iastate
  integer               :: astate,bstate
  integer               :: istate,ispin,ipole
@@ -37,9 +36,7 @@ subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,c_matr
  real(dp)              :: fact_full_i,fact_empty_i
  real(dp)              :: fact_full_a,fact_empty_a
  real(dp)              :: energy_lw(nstate,nspin)
- real(dp)              :: energy_qp_new(nstate,nspin),energy_qp_z(nstate,nspin)
  character(len=3)      :: ctmp
- integer               :: reading_status
  integer               :: selfenergyfile
 ! GW tilde
  real(dp),allocatable  :: vsqchi0vsqm1(:,:)
@@ -65,10 +62,12 @@ subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,c_matr
    write(stdout,*) 'Perform a perturbative HF calculation'
  case(GWTILDE)
    write(stdout,*) 'Perform a one-shot GWtilde calculation'
+   call assert_experimental()
  case(GW)
    write(stdout,*) 'Perform a one-shot G0W0 calculation'
  case(G0W0_IOMEGA)
-   write(stdout,*) 'Perform a one-shot G0W0 calculation?'
+   write(stdout,*) 'Perform a one-shot G0W0 calculation EXPERIMENTAL!'
+   call assert_experimental()
  case(COHSEX)
    write(stdout,*) 'Perform a COHSEX calculation'
    if( ABS(alpha_cohsex - 1.0_dp) > 1.0e-4_dp .OR. ABS(beta_cohsex - 1.0_dp) > 1.0e-4_dp ) then
@@ -140,14 +139,13 @@ subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,c_matr
    selfenergy_omegac(:,:,:,:) = 0.0_dp
  end select
 
+
  selfenergy_omega(:,:,:)  = 0.0_dp
-
-
 
  do ispin=1,nspin
    do istate=ncore_G+1,nvirtual_G-1 !INNER LOOP of G
 
-     if( MODULO( istate -(ncore_G+1) , nproc_ortho) /= rank_ortho ) cycle
+     if( MODULO( istate - (ncore_G+1) , nproc_ortho) /= rank_ortho ) cycle
 
      !
      ! Prepare the bra and ket with the knowledge of index istate and astate
@@ -309,6 +307,8 @@ subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,c_matr
  write(stdout,'(a)') ' Sigma_c(omega) is calculated'
 
 
+ !
+ ! Only the EXPERIMENTAL features need to do some post-processing here!
  select case(selfenergy_approx)
  case(G0W0_IOMEGA) !==========================================================
 

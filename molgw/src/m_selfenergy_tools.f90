@@ -54,6 +54,11 @@ subroutine write_selfenergy_omega(filename_root,nstate,energy0,exchange_m_vxc,se
  ! Just the master writes
  if( .NOT. is_iomaster ) return
 
+ if( nomegai < 1 ) then
+   call issue_warning('Only one frequency is available for this self-energy. Do not write the requested Sigma(omega) file')
+   return
+ endif
+
  write(stdout,'(/,1x,a)') 'Write Sigma(omega) on file'
 
  !
@@ -328,20 +333,17 @@ subroutine selfenergy_set_omega_grid()
    allocate(omegai(-nomegai:nomegai))
    omegai(0) = 0.0_dp
 
+
  case(imaginary_axis)
    nomegai =  32
 
  case(one_shot)
    select case(calc_type%selfenergy_approx)
-   case(GV,COHSEX)
+   case(GV,COHSEX,COHSEX_DEVEL)
      nomegai = 0
-     allocate(omegai(-nomegai:nomegai))
-     omegai(0) = 0.0_dp
 
    case(GSIGMA)
      nomegai = 1
-     allocate(omegai(-nomegai:nomegai))
-     omegai(:) = 0.0_dp
 
    case default
      nomegai = nomega_sigma/2
