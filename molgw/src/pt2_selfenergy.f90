@@ -202,19 +202,8 @@ subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c
  real(dp),intent(out)       :: selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nspin)
  real(dp),intent(out)       :: emp2
 !=====
- integer               :: pstate,qstate
- integer               :: iomegai
- integer               :: istate,jstate,kstate
- integer               :: pqispin,jkspin
- real(dp)              :: fact_occ1,fact_occ2
- real(dp)              :: fi,fj,fk,ei,ej,ek
- real(dp)              :: omega
- real(dp)              :: fact_real,fact_energy
- real(dp)              :: emp2_ring
- real(dp)              :: coul_iqjk,coul_ijkq,coul_ipkj
-
  type(spectral_function) :: vsqrtchi0vsqrt
- integer                 :: bstate,jbspin,t_jb
+ integer                 :: jstate,bstate,jbspin,t_jb
 !=====
 
  call start_clock(timing_mp2_self)
@@ -222,7 +211,7 @@ subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c
  if( .NOT. has_auxil_basis ) &
    call die('onering_selfenergy: only implemented when an auxiliary basis is available')
 
- emp2_ring = 0.0_dp
+ emp2 = 0.0_dp
 
 
  write(stdout,'(/,a)') ' Perform the one-ring self-energy calculation'
@@ -246,7 +235,7 @@ subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c
 
  call destroy_eri_3center_eigen()
 
- call gw_selfenergy(GW,nstate,basis,occupation,energy,c_matrix,vsqrtchi0vsqrt,selfenergy_omega,emp2_ring)
+ call gw_selfenergy(GW,nstate,basis,occupation,energy,c_matrix,vsqrtchi0vsqrt,selfenergy_omega,emp2)
  
  call destroy_spectral_function(vsqrtchi0vsqrt)
 

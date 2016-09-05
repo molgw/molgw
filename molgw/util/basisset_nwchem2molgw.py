@@ -2,7 +2,7 @@
 
 import os, sys, numpy
 
-list_am       = 'S P D F G H I       SP'
+list_am       = 'S P D F G H I K     SP'
 list_elements = [ 'H',                                                                                                 'He', \
                  'Li', 'Be',                                                              'B',  'C',  'N',  'O',  'F', 'Ne', \
                  'Na', 'Mg',                                                             'Al', 'Si',  'P',  'S', 'Cl', 'Ar', \
