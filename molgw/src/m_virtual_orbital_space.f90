@@ -55,6 +55,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  real(dp),allocatable                  :: s_bar(:,:),h_bar(:,:,:),s_bar_sqrt_inv(:,:)
  real(dp),allocatable                  :: energy_bar(:,:),c_bar(:,:,:)
  integer                               :: nstate_bar
+ integer                               :: nocc,nfrozen
 !=====
 
  call start_clock(timing_fno)
@@ -63,53 +64,45 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
 
  call assert_experimental()
 
- ! If the small basis is not defined in the input file, then skip the subroutine
- if( .NOT. has_small_basis ) return
+ ! Remember how to go from the small basis set to the big one
+ ! 
+ ! | \phi^small_a > = \sum_{bc} | \phi^big_b > * S^-1_ac * Sbs_cb
+ !
+ ! This is key to everything else!
 
- ! Initialize the smaller basis set
+
+ ! Initialize the small basis set
  write(stdout,*) 'Set up a smaller basis set to optimize the virtual orbital space'
  call init_basis_set(basis_path,small_basis_name,gaussian_type,basis_small)
  call issue_warning('Reduce the virtual orbital subspace by using a smaller basis set: '//TRIM(small_basis_name))
 
- ! Get the overlap matrix of the wavefunction basis set: s_matrix
+ ! Get the overlap matrix of the wavefunction basis set S: s_matrix
  allocate(s_matrix(basis%nbf,basis%nbf))
  call setup_overlap(.FALSE.,basis,s_matrix)
 
- ! Calculate overlap matrix S_small_small
- allocate(s_small(basis_small%nbf,basis_small%nbf))
- call setup_overlap(.FALSE.,basis_small,s_small)
-
- ! Calculate the mixed overlap matrix S_big_small
+ ! Calculate the mixed overlap matrix Sbs: s_bigsmall
  allocate(s_bigsmall(basis%nbf,basis_small%nbf))
  call setup_overlap_mixedbasis(.FALSE.,basis,basis_small,s_bigsmall)
 
- write(*,*) 'overwrite s_small'
- write(*,*) '==== S small direct calculation ===='
- do ibf=1,basis_small%nbf
-   write(stdout,'(i5,2x,50(1x,f9.4))') ibf,s_small(ibf,:)
- enddo
- write(*,*) '======================='
-! s_small(:,:) = MATMUL( TRANSPOSE(s_bigsmall) , MATMUL( s_matrix , s_bigsmall ) )
-! write(*,*) '==== S small 1st formula S^bs * S * S^bs ===='
-! do ibf=1,basis_small%nbf
-!   write(stdout,'(i5,2x,50(1x,f9.4))') ibf,s_small(ibf,:)
-! enddo
-! write(*,*) '======================='
-
  call setup_sqrt_overlap(min_overlap,basis%nbf,s_matrix,nstate_new,s_matrix_sqrt_inv)
+ if( nstate_new /= nstate) call die('setup_virtual_smallbasis: bug this should not happen')
+
+ ! Calculate the overlap matrix in the small basis:
+ !  tilde S = Sbs^T S^-1 Sbs
  allocate(matrix_tmp(nstate_new,basis_small%nbf))
+ allocate(s_small(basis_small%nbf,basis_small%nbf))
  matrix_tmp(:,:) = MATMUL( TRANSPOSE( s_matrix_sqrt_inv ) , s_bigsmall )
  s_small(:,:) = MATMUL( TRANSPOSE( matrix_tmp ) , matrix_tmp )
- write(*,*) '==== S small 2nd formula S^bs * S^-1 * S^bs ===='
- do ibf=1,basis_small%nbf
-   write(stdout,'(i5,2x,50(1x,f9.4))') ibf,s_small(ibf,:)
- enddo
- write(*,*) '======================='
  deallocate(matrix_tmp)
-! s_small(:,:) = MATMUL( TRANSPOSE(s_bigsmall) , MATMUL( s_matrix , s_bigsmall ) )
+
+ ! Calculate ( tilde S )^{-1/2}
+ call setup_sqrt_overlap(min_overlap,basis_small%nbf,s_small,nstate_small,s_small_sqrt_inv)
 
 
-!FBFB getting h_big
+ ! Obtain the Hamiltonian in the big basis (it will be useful later)
+ !
+ ! H = S * C * E * C^T * S
+ !
  allocate(h_big(basis%nbf,basis%nbf,nspin))
  allocate(matrix_tmp(basis%nbf,basis%nbf))
  do ispin=1,nspin
@@ -128,14 +121,13 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
    h_big(:,:,ispin) = MATMUL( s_matrix(:,:) , matrix_tmp(:,:) )
  enddo
  deallocate(matrix_tmp)
-!
-
-! call diagonalize_hamiltonian_scalapack(nspin,basis%nbf,nstate,h_big,s_matrix_sqrt_inv,energy,c_matrix)
-! call dump_out_energy('=== Energies in the newly calculated hamiltonian big ===',&
-!              nstate,nspin,occupation,energy)
 
 
-
+ ! Obtain the Hamiltonian in the small basis (it is useful now!)
+ !
+ ! tilde H = Sbs^T * S^-1 * H * S^-1 * Sbs
+ !         = Sbs^T *    C * E * C^T  * Sbs
+ !
  allocate(h_small(basis_small%nbf,basis_small%nbf,nspin))
  allocate(matrix_tmp(basis%nbf,basis%nbf))
  do ispin=1,nspin
@@ -155,35 +147,56 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  enddo
  deallocate(matrix_tmp)
 
-! write(*,*) 'overwrite h_small'
-! do ispin=1,nspin
-!   h_small(:,:,ispin) = MATMUL( TRANSPOSE(s_bigsmall(:,:)) , MATMUL( h_big(:,:,ispin) , s_bigsmall(:,:) ) )
-! enddo
-
- 
- call setup_sqrt_overlap(min_overlap,basis_small%nbf,s_small,nstate_small,s_small_sqrt_inv)
+ ! Diagonalize the small Hamiltonian in the small basis
+ !
+ ! tilde H * tilde C = tilde S * tilde C * tilde E
+ !
  allocate(energy_small(nstate_small,nspin))
  allocate(c_small(basis_small%nbf,nstate_small,nspin))
  call diagonalize_hamiltonian_scalapack(nspin,basis_small%nbf,nstate_small,h_small,s_small_sqrt_inv,energy_small,c_small)
- call dump_out_energy('=== Energies in the small basis ===',&
+ call dump_out_energy('=== Energies in the initial small basis ===',&
               nstate_small,nspin,occupation(1:nstate_small,:),energy_small)
 
+ deallocate(h_small)
+ deallocate(energy_small)
+ deallocate(s_small_sqrt_inv)
 
+
+ !
+ ! Transform the wavefunction coefficients from the small basis to the big basis
+ ! tilde C -> Cbig
  allocate(c_big(basis%nbf,nstate_small,nspin))
  allocate(matrix_tmp(basis%nbf,basis%nbf))
  ! M = S^-1
  matrix_tmp(:,:) = MATMUL( s_matrix_sqrt_inv(:,:) , TRANSPOSE( s_matrix_sqrt_inv(:,:) ) )
 
- ! C = S^-1 * S_bs * C_s
+ ! Cbig = S^-1 * Sbs * tilde C
  do ispin=1,nspin
    c_big(:,:,ispin) = MATMUL( matrix_tmp(:,:) , MATMUL( s_bigsmall(:,:) , c_small(:,:,ispin) ) )
  enddo
+ deallocate(c_small)
  deallocate(matrix_tmp)
+ deallocate(s_matrix_sqrt_inv)
 
- write(stdout,'(1x,a,i6)') 'Leave the first state frozen: ',nsemax
- c_big(:,1:nsemax,:) = c_matrix(:,1:nsemax,:)
+ ! 
+ ! Frozen orbitals for occupied state plus the selfenergy braket
+ !
+ ! Find the highest occupied state
+ do istate=1,nstate
+   if( ALL(occupation(istate,:) < completely_empty) ) cycle
+   nocc = istate
+ enddo
 
+ ! Override the Cbig coefficients with the original C coefficients up to max(nocc,nsemax)
+ nfrozen = MAX(nocc,nsemax)
+ write(stdout,'(1x,a,i6)') 'Leave the first states frozen up to: ',nfrozen
+ c_big(:,1:nfrozen,:) = c_matrix(:,1:nfrozen,:)
 
+ !
+ ! Final diagonalization of in the composite basis
+ ! with frozen orbitals complemented with the small basis
+ !
+ ! Calculate the corresponding overlap matrix Sbar and hamiltonian Hbar
  allocate(s_bar(basis_small%nbf,basis_small%nbf))
  allocate(h_bar(basis_small%nbf,basis_small%nbf,nspin))
  s_bar(:,:) = MATMUL( TRANSPOSE(c_big(:,:,1)) , MATMUL( s_matrix , c_big(:,:,1) ) )
@@ -199,36 +212,25 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
    c_big(:,:,ispin) = MATMUL( c_big(:,:,ispin) , c_bar(:,:,ispin) )
  enddo
 
- call dump_out_energy('=== Energies in the bar basis ===',&
+ call dump_out_energy('=== Energies in the final small basis ===',&
               nstate_bar,nspin,occupation(1:nstate_bar,:),energy_bar)
 
-
-!TEST E = C^T * H * C
- allocate(matrix_tmp(nstate_bar,nstate_bar))
- matrix_tmp(:,:) = MATMUL( TRANSPOSE(c_big(:,:,1)) , MATMUL( h_big(:,:,1) , c_big(:,:,1) ) )
- do istate=1,nstate_bar
-   write(stdout,'(i4,2x,30(1x,f9.4))') istate,matrix_tmp(istate,:)
- enddo
- do istate=1,nstate_bar
-   do jstate=1,nstate_bar
-     if( ABS( matrix_tmp(istate,jstate) ) > 0.0002 ) write(stdout,*) istate,jstate,matrix_tmp(istate,jstate)*Ha_eV
-   enddo
- enddo
- deallocate(matrix_tmp)
-! stop 'ENOUGH'
-!TESTING IS OK
-
+ deallocate(c_bar)
+ deallocate(s_bar)
+ deallocate(h_bar)
+ deallocate(s_bar_sqrt_inv)
  deallocate(h_big)
+ deallocate(s_matrix)
 
  
  !
  ! Save the original c_matrix and energies
  if( .NOT. ALLOCATED(energy_ref) ) then
-   allocate(energy_ref(nstate_small,nspin))
-   allocate(c_matrix_ref(basis%nbf,nstate_small,nspin))   ! TODO clean_allocate of this
+   allocate(energy_ref(nstate_bar,nspin))
+   allocate(c_matrix_ref(basis%nbf,nstate_bar,nspin))   ! TODO clean_allocate of this
 
-   energy_ref(:,:)     = energy(1:nstate_small,:)
-   c_matrix_ref(:,:,:) = c_matrix(:,1:nstate_small,:)
+   energy_ref(:,:)     = energy(1:nstate_bar,:)
+   c_matrix_ref(:,:,:) = c_matrix(:,1:nstate_bar,:)
  endif
 
  !
@@ -237,9 +239,8 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  c_matrix(:,1:nstate_bar,:) = c_big(:,:,:)
 
  nstate_small = nstate_bar
-! nvirtualg = nstate_bar + 1
-! nvirtualw = nstate_bar + 1
 
+ deallocate(energy_bar)
  deallocate(s_small)
  deallocate(c_big)
  deallocate(s_bigsmall)
