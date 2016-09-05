@@ -78,6 +78,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  case(GnWn)
    write(stdout,*) 'Perform an eigenvalue self-consistent GnWn calculation'
  case default
+   write(stdout,*) 'type:',selfenergy_approx
    call die('gw_selfenergy: calculation type unknown')
  end select
 

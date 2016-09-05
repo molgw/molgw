@@ -13,7 +13,6 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
  use m_basis_set
  use m_eri_ao_mo
  use m_inputparam
- use m_spectral_function
  use m_selfenergy_tools
  implicit none
 
@@ -27,22 +26,16 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
  integer               :: pstate,qstate
  real(dp),allocatable  :: selfenergy_ring(:,:,:)
  real(dp),allocatable  :: selfenergy_sox(:,:,:)
- real(dp),allocatable  :: selfenergy_output(:,:,:)
- real(dp),allocatable  :: zz(:,:)
- real(dp),allocatable  :: selfenergy_final(:,:)
  integer               :: iomegai
  integer               :: istate,jstate,kstate
- integer               :: abispin,jkspin
+ integer               :: pqispin,jkspin
  real(dp)              :: fact_occ1,fact_occ2
  real(dp)              :: fi,fj,fk,ei,ej,ek
  real(dp)              :: omega
  real(dp)              :: fact_real,fact_energy
  real(dp)              :: emp2_sox,emp2_ring
  real(dp),allocatable  :: eri_eigenstate_i(:,:,:,:)
- integer               :: reading_status
  real(dp)              :: coul_iqjk,coul_ijkq,coul_ipkj
- real(dp)              :: energy_qp_z(nstate,nspin)
- real(dp)              :: energy_qp_new(nstate,nspin)
 !=====
 
  call start_clock(timing_mp2_self)
@@ -71,16 +64,16 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
  selfenergy_ring(:,:,:) = 0.0_dp
  selfenergy_sox(:,:,:)  = 0.0_dp
 
- do abispin=1,nspin
+ do pqispin=1,nspin
    do istate=ncore_G+1,nvirtual_G-1 !LOOP of the first Green's function
      if( MODULO( istate - (ncore_G+1) , nproc_ortho ) /= rank_ortho ) cycle
 
      if( .NOT. has_auxil_basis ) then
-       call calculate_eri_4center_eigen(basis%nbf,nstate,c_matrix,istate,abispin,eri_eigenstate_i)
+       call calculate_eri_4center_eigen(basis%nbf,nstate,c_matrix,istate,pqispin,eri_eigenstate_i)
      endif
 
-     fi = occupation(istate,abispin)
-     ei = energy(istate,abispin)
+     fi = occupation(istate,pqispin)
+     ei = energy(istate,pqispin)
 
      do pstate=nsemin,nsemax ! external loop ( bra )
        qstate=pstate         ! external loop ( ket )
@@ -101,40 +94,40 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
              if( fact_occ1 < completely_empty .AND. fact_occ2 < completely_empty ) cycle
 
              if( has_auxil_basis ) then
-               coul_ipkj = eri_eigen_ri(istate,pstate,abispin,kstate,jstate,jkspin)
-               coul_iqjk = eri_eigen_ri(istate,qstate,abispin,jstate,kstate,jkspin)
-               if( abispin == jkspin ) then
-                 coul_ijkq = eri_eigen_ri(istate,jstate,abispin,kstate,qstate,abispin) 
+               coul_ipkj = eri_eigen_ri(istate,pstate,pqispin,kstate,jstate,jkspin)
+               coul_iqjk = eri_eigen_ri(istate,qstate,pqispin,jstate,kstate,jkspin)
+               if( pqispin == jkspin ) then
+                 coul_ijkq = eri_eigen_ri(istate,jstate,pqispin,kstate,qstate,pqispin) 
                endif
              else
                coul_ipkj = eri_eigenstate_i(pstate,kstate,jstate,jkspin)
                coul_iqjk = eri_eigenstate_i(qstate,jstate,kstate,jkspin)
-               if( abispin == jkspin ) then
-                 coul_ijkq = eri_eigenstate_i(jstate,kstate,qstate,abispin) 
+               if( pqispin == jkspin ) then
+                 coul_ijkq = eri_eigenstate_i(jstate,kstate,qstate,pqispin) 
                endif
              endif
 
              do iomegai=-nomegai,nomegai
-               omega = energy(qstate,abispin) + omegai(iomegai)
+               omega = energy(qstate,pqispin) + omegai(iomegai)
 
                fact_real   = REAL( fact_occ1 / (omega-ei+ej-ek+ieta) + fact_occ2 / (omega-ei+ej-ek-ieta) , dp)
-               fact_energy = REAL( fact_occ1 / (energy(pstate,abispin)-ei+ej-ek+ieta) , dp )
+               fact_energy = REAL( fact_occ1 / (energy(pstate,pqispin)-ei+ej-ek+ieta) , dp )
 
-               selfenergy_ring(iomegai,pstate,abispin) = selfenergy_ring(iomegai,pstate,abispin) &
+               selfenergy_ring(iomegai,pstate,pqispin) = selfenergy_ring(iomegai,pstate,pqispin) &
                         + fact_real * coul_ipkj * coul_iqjk * spin_fact
 
-               if(iomegai==0 .AND. occupation(pstate,abispin)>completely_empty) then
-                 emp2_ring = emp2_ring + occupation(pstate,abispin) &
+               if(iomegai==0 .AND. occupation(pstate,pqispin)>completely_empty) then
+                 emp2_ring = emp2_ring + occupation(pstate,pqispin) &
                                        * fact_energy * coul_ipkj * coul_iqjk * spin_fact
                endif
 
-               if( abispin == jkspin ) then
+               if( pqispin == jkspin ) then
 
-                 selfenergy_sox(iomegai,pstate,abispin) = selfenergy_sox(iomegai,pstate,abispin) &
+                 selfenergy_sox(iomegai,pstate,pqispin) = selfenergy_sox(iomegai,pstate,pqispin) &
                           - fact_real * coul_ipkj * coul_ijkq
 
-                 if(iomegai==0 .AND. occupation(pstate,abispin)>completely_empty) then
-                   emp2_sox = emp2_sox - occupation(pstate,abispin) &
+                 if(iomegai==0 .AND. occupation(pstate,pqispin)>completely_empty) then
+                   emp2_sox = emp2_sox - occupation(pstate,pqispin) &
                              * fact_energy * coul_ipkj * coul_ijkq
                  endif
 
@@ -148,7 +141,7 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
        enddo 
      enddo
    enddo 
- enddo ! abispin
+ enddo ! pqispin
 
  call xsum_ortho(selfenergy_ring)
  call xsum_ortho(selfenergy_sox)
@@ -191,7 +184,7 @@ end subroutine pt2_selfenergy
 
 
 !=========================================================================
-subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,selfenergy,emp2)
+subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,selfenergy_omega,emp2)
  use m_definitions
  use m_mpi
  use m_warning
@@ -199,6 +192,77 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
  use m_eri_ao_mo
  use m_inputparam
  use m_spectral_function
+ use m_selfenergy_tools
+ implicit none
+
+ integer,intent(in)         :: selfenergy_approx,nstate
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(out)       :: selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nspin)
+ real(dp),intent(out)       :: emp2
+!=====
+ integer               :: pstate,qstate
+ integer               :: iomegai
+ integer               :: istate,jstate,kstate
+ integer               :: pqispin,jkspin
+ real(dp)              :: fact_occ1,fact_occ2
+ real(dp)              :: fi,fj,fk,ei,ej,ek
+ real(dp)              :: omega
+ real(dp)              :: fact_real,fact_energy
+ real(dp)              :: emp2_ring
+ real(dp)              :: coul_iqjk,coul_ijkq,coul_ipkj
+
+ type(spectral_function) :: vsqrtchi0vsqrt
+ integer                 :: bstate,jbspin,t_jb
+!=====
+
+ call start_clock(timing_mp2_self)
+
+ if( .NOT. has_auxil_basis ) &
+   call die('onering_selfenergy: only implemented when an auxiliary basis is available')
+
+ emp2_ring = 0.0_dp
+
+
+ write(stdout,'(/,a)') ' Perform the one-ring self-energy calculation'
+ write(stdout,*) 'with the perturbative approach'
+
+ 
+ call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
+
+ call init_spectral_function(nstate,occupation,vsqrtchi0vsqrt)
+ call allocate_spectral_function(nauxil_3center,vsqrtchi0vsqrt)
+
+ do t_jb=1,vsqrtchi0vsqrt%npole_reso
+   jstate = vsqrtchi0vsqrt%transition_table_apb(1,t_jb)
+   bstate = vsqrtchi0vsqrt%transition_table_apb(2,t_jb)
+   jbspin = vsqrtchi0vsqrt%transition_table_apb(3,t_jb)
+
+   vsqrtchi0vsqrt%residu_left(:,t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin) * SQRT(spin_fact)
+   vsqrtchi0vsqrt%pole(t_jb)          = energy(bstate,jbspin) - energy(jstate,jbspin)
+
+ end do
+
+ call destroy_eri_3center_eigen()
+
+ call gw_selfenergy(GW,nstate,basis,occupation,energy,c_matrix,vsqrtchi0vsqrt,selfenergy_omega,emp2_ring)
+ 
+ call destroy_spectral_function(vsqrtchi0vsqrt)
+
+ call stop_clock(timing_mp2_self)
+
+end subroutine onering_selfenergy
+
+
+!=========================================================================
+subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,selfenergy,emp2)
+ use m_definitions
+ use m_mpi
+ use m_warning
+ use m_basis_set
+ use m_eri_ao_mo
+ use m_inputparam
  use m_selfenergy_tools
  implicit none
 
@@ -213,18 +277,14 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
  integer               :: pstate,qstate,qstate2
  real(dp),allocatable  :: selfenergy_ring(:,:,:)
  real(dp),allocatable  :: selfenergy_sox(:,:,:)
- real(dp),allocatable  :: selfenergy_output(:,:,:)
  integer               :: istate,jstate,kstate
- integer               :: abispin,jkspin
+ integer               :: pqispin,jkspin
  real(dp)              :: fact_occ1,fact_occ2
  real(dp)              :: fi,fj,fk,ei,ej,ek,ep,eq
  real(dp)              :: fact_real,fact_energy
  real(dp)              :: emp2_sox,emp2_ring
  real(dp),allocatable  :: eri_eigenstate_i(:,:,:,:)
- integer               :: reading_status
  real(dp)              :: coul_iqjk,coul_ijkq,coul_ipkj
- real(dp)              :: energy_qp_z(nstate,nspin)
- real(dp)              :: energy_qp_new(nstate,nspin)
 !=====
 
  call start_clock(timing_mp2_self)
@@ -253,16 +313,16 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
  selfenergy_ring(:,:,:) = 0.0_dp
  selfenergy_sox(:,:,:)  = 0.0_dp
 
- do abispin=1,nspin
+ do pqispin=1,nspin
    do istate=ncore_G+1,nvirtual_G-1 !LOOP of the first Green's function
      if( MODULO( istate - (ncore_G+1) , nproc_ortho ) /= rank_ortho ) cycle
 
      if( .NOT. has_auxil_basis ) then
-       call calculate_eri_4center_eigen(basis%nbf,nstate,c_matrix,istate,abispin,eri_eigenstate_i)
+       call calculate_eri_4center_eigen(basis%nbf,nstate,c_matrix,istate,pqispin,eri_eigenstate_i)
      endif
 
-     fi = occupation(istate,abispin)
-     ei = energy(istate,abispin)
+     fi = occupation(istate,pqispin)
+     ei = energy(istate,pqispin)
 
      do pstate=nsemin,nsemax ! external loop ( bra )
        do qstate=nsemin,nsemax   ! external loop ( ket )
@@ -283,41 +343,41 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
                if( fact_occ1 < completely_empty .AND. fact_occ2 < completely_empty ) cycle
 
                if( has_auxil_basis ) then
-                 coul_ipkj = eri_eigen_ri(istate,pstate,abispin,kstate,jstate,jkspin)
-                 coul_iqjk = eri_eigen_ri(istate,qstate,abispin,jstate,kstate,jkspin)
-                 if( abispin == jkspin ) then
-                   coul_ijkq = eri_eigen_ri(istate,jstate,abispin,kstate,qstate,abispin) 
+                 coul_ipkj = eri_eigen_ri(istate,pstate,pqispin,kstate,jstate,jkspin)
+                 coul_iqjk = eri_eigen_ri(istate,qstate,pqispin,jstate,kstate,jkspin)
+                 if( pqispin == jkspin ) then
+                   coul_ijkq = eri_eigen_ri(istate,jstate,pqispin,kstate,qstate,pqispin) 
                  endif
                else
                  coul_ipkj = eri_eigenstate_i(pstate,kstate,jstate,jkspin)
                  coul_iqjk = eri_eigenstate_i(qstate,jstate,kstate,jkspin)
-                 if( abispin == jkspin ) then
-                   coul_ijkq = eri_eigenstate_i(jstate,kstate,qstate,abispin) 
+                 if( pqispin == jkspin ) then
+                   coul_ijkq = eri_eigenstate_i(jstate,kstate,qstate,pqispin) 
                  endif
                endif
 
-               ep = energy(pstate,abispin) 
-               eq = energy(qstate,abispin) 
+               ep = energy(pstate,pqispin) 
+               eq = energy(qstate,pqispin) 
   
                fact_real   = REAL( fact_occ1 / ( eq - ei + ej - ek + ieta) &
                                  + fact_occ2 / ( eq - ei + ej - ek - ieta) , dp)
                fact_energy = REAL( fact_occ1 / ( ep - ei + ej - ek + ieta) , dp )
   
-               selfenergy_ring(pstate,qstate,abispin) = selfenergy_ring(pstate,qstate,abispin) &
+               selfenergy_ring(pstate,qstate,pqispin) = selfenergy_ring(pstate,qstate,pqispin) &
                         + fact_real * coul_ipkj * coul_iqjk * spin_fact
 
-               if(pstate==qstate .AND. occupation(pstate,abispin)>completely_empty) then
-                 emp2_ring = emp2_ring + occupation(pstate,abispin) &
+               if(pstate==qstate .AND. occupation(pstate,pqispin)>completely_empty) then
+                 emp2_ring = emp2_ring + occupation(pstate,pqispin) &
                                        * fact_energy * coul_ipkj * coul_iqjk * spin_fact
                endif
  
-               if( abispin == jkspin ) then
+               if( pqispin == jkspin ) then
 
-                 selfenergy_sox(pstate,qstate,abispin) = selfenergy_sox(pstate,qstate,abispin) &
+                 selfenergy_sox(pstate,qstate,pqispin) = selfenergy_sox(pstate,qstate,pqispin) &
                           - fact_real * coul_ipkj * coul_ijkq
 
-                 if(pstate==qstate .AND. occupation(pstate,abispin)>completely_empty) then
-                   emp2_sox = emp2_sox - occupation(pstate,abispin) &
+                 if(pstate==qstate .AND. occupation(pstate,pqispin)>completely_empty) then
+                   emp2_sox = emp2_sox - occupation(pstate,pqispin) &
                              * fact_energy * coul_ipkj * coul_ijkq
                  endif
 
@@ -331,7 +391,7 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
        enddo 
      enddo
    enddo 
- enddo ! abispin
+ enddo ! pqispin
 
  call xsum_ortho(selfenergy_ring)
  call xsum_ortho(selfenergy_sox)

@@ -4,7 +4,7 @@
 !
 ! This file contains
 ! the driver for the different self-energy methods:
-! PT2, GW, evGW, COHSEX, GWGamma
+! PT2, GW, evGW, COHSEX, GWGamma, etc.
 !
 !=========================================================================
 subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation,energy,c_matrix, &
@@ -196,7 +196,9 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
      allocate(selfenergy_omega3(-nomegai:nomegai,nsemin:nsemax,nspin))
   
      ! Sigma^2 = Sigma^{1-ring}_small
-     call pt2_selfenergy(ONE_RING,nstate_gw,basis,occupation(1:nstate_gw,:),energy_g(1:nstate_gw,:), &
+     !call pt2_selfenergy(ONE_RING,nstate_gw,basis,occupation(1:nstate_gw,:),energy_g(1:nstate_gw,:), &
+     !                    c_matrix(:,1:nstate_gw,:),selfenergy_omega2,en%mp2)
+     call onering_selfenergy(ONE_RING,nstate_gw,basis,occupation(1:nstate_gw,:),energy_g(1:nstate_gw,:), &
                          c_matrix(:,1:nstate_gw,:),selfenergy_omega2,en%mp2)
 
      ! Reset wavefunctions, eigenvalues and number of virtual orbitals in G
@@ -204,16 +206,10 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
      energy_g(:,:) = energy(:,:)
      call selfenergy_set_state_range(nstate,occupation)
 
-     write(*,*) 'FBFB E 12 1',energy(12,1)*Ha_eV
-     write(*,*) 'FBFB C 12 12 1',c_matrix(12,12,1)
-     write(*,*) 'FBFB nbirtual_g',nvirtual_g
-     write(*,*) 'FBFB avant ',selfenergy_omega3(0,nsemin:nsemax,:) * Ha_eV
      ! Sigma^3 = Sigma^{1-ring}_big
-     call pt2_selfenergy(ONE_RING,nstate,basis,occupation,energy_g,c_matrix,selfenergy_omega3,en%mp2)
+     !call pt2_selfenergy(ONE_RING,nstate,basis,occupation,energy_g,c_matrix,selfenergy_omega3,en%mp2)
+     call onering_selfenergy(ONE_RING,nstate,basis,occupation,energy_g,c_matrix,selfenergy_omega3,en%mp2)
 
-     write(*,*) 'FBFB ',selfenergy_omega(0,nsemin:nsemax,:) * Ha_eV
-     write(*,*) 'FBFB ',selfenergy_omega2(0,nsemin:nsemax,:) * Ha_eV
-     write(*,*) 'FBFB apres ',selfenergy_omega3(0,nsemin:nsemax,:) * Ha_eV
      ! Extrapolated Sigma = Sigma^{GW}_small + Sigma^{1-ring}_big - Sigma^{1-ring}_small
      selfenergy_omega(:,:,:) = selfenergy_omega(:,:,:) + selfenergy_omega3(:,:,:) - selfenergy_omega2(:,:,:)
 
