@@ -6,7 +6,7 @@
 !
 !=========================================================================
 subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag, &
-                             c_matrix,s_matrix,wpol,selfenergy_omega)
+                             c_matrix,wpol,selfenergy_omega)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -22,7 +22,6 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,
  type(basis_set)                    :: basis
  real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin),exchange_m_vxc_diag(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(in)                :: s_matrix(basis%nbf,basis%nbf)
  type(spectral_function),intent(in) :: wpol
  real(dp),intent(inout)             :: selfenergy_omega(0:0,nsemin:nsemax,nspin)
 !=====
@@ -80,9 +79,6 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,
  write(stdout,*) '=============='
 
 
-
- write(msg,'(es9.2)') AIMAG(ieta)
- call issue_warning('small complex number is '//msg)
 
 
  selfenergy_omega(:,:,:)  = 0.0_dp
@@ -210,7 +206,7 @@ end subroutine cohsex_selfenergy
 
 !=========================================================================
 subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_diag, &
-                                c_matrix,s_matrix,wpol,selfenergy_omega)
+                                c_matrix,wpol,selfenergy_omega)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -229,7 +225,6 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
  type(basis_set)                    :: basis
  real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin),exchange_m_vxc_diag(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(in)                :: s_matrix(basis%nbf,basis%nbf)
  type(spectral_function),intent(in) :: wpol
  real(dp),intent(inout)             :: selfenergy_omega(0:0,nsemin:nsemax,nspin)
 !=====
@@ -305,9 +300,6 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
 
 
 
-
- write(msg,'(es9.2)') AIMAG(ieta)
- call issue_warning('small complex number is '//msg)
 
 
  selfenergy_omega(:,:,:)  = 0.0_dp

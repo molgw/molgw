@@ -6,7 +6,7 @@
 ! the perturbation theory to 2nd order evaluation of the self-energy
 !
 !=========================================================================
-subroutine pt2_selfenergy(nstate,basis,occupation,energy,c_matrix,s_matrix,selfenergy_omega,emp2)
+subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,selfenergy_omega,emp2)
  use m_definitions
  use m_mpi
  use m_warning
@@ -17,15 +17,14 @@ subroutine pt2_selfenergy(nstate,basis,occupation,energy,c_matrix,s_matrix,selfe
  use m_selfenergy_tools
  implicit none
 
- integer,intent(in)         :: nstate
+ integer,intent(in)         :: selfenergy_approx,nstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(in)        :: s_matrix(basis%nbf,basis%nbf)
  real(dp),intent(out)       :: selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nspin)
  real(dp),intent(out)       :: emp2
 !=====
- integer               :: astate,bstate
+ integer               :: pstate,qstate
  real(dp),allocatable  :: selfenergy_ring(:,:,:)
  real(dp),allocatable  :: selfenergy_sox(:,:,:)
  real(dp),allocatable  :: selfenergy_output(:,:,:)
@@ -41,7 +40,7 @@ subroutine pt2_selfenergy(nstate,basis,occupation,energy,c_matrix,s_matrix,selfe
  real(dp)              :: emp2_sox,emp2_ring
  real(dp),allocatable  :: eri_eigenstate_i(:,:,:,:)
  integer               :: reading_status
- real(dp)              :: coul_ibjk,coul_ijkb,coul_iakj
+ real(dp)              :: coul_iqjk,coul_ijkq,coul_ipkj
  real(dp)              :: energy_qp_z(nstate,nspin)
  real(dp)              :: energy_qp_new(nstate,nspin)
 !=====
@@ -50,9 +49,6 @@ subroutine pt2_selfenergy(nstate,basis,occupation,energy,c_matrix,s_matrix,selfe
 
  emp2_ring = 0.0_dp
  emp2_sox  = 0.0_dp
-
- write(msg,'(es9.2)') AIMAG(ieta)
- call issue_warning('small complex number is '//msg)
 
 
  write(stdout,'(/,a)') ' Perform the second-order self-energy calculation'
@@ -86,8 +82,8 @@ subroutine pt2_selfenergy(nstate,basis,occupation,energy,c_matrix,s_matrix,selfe
      fi = occupation(istate,abispin)
      ei = energy(istate,abispin)
 
-     do astate=nsemin,nsemax ! external loop ( bra )
-       bstate=astate         ! external loop ( ket )
+     do pstate=nsemin,nsemax ! external loop ( bra )
+       qstate=pstate         ! external loop ( ket )
 
 
        do jkspin=1,nspin
@@ -105,41 +101,41 @@ subroutine pt2_selfenergy(nstate,basis,occupation,energy,c_matrix,s_matrix,selfe
              if( fact_occ1 < completely_empty .AND. fact_occ2 < completely_empty ) cycle
 
              if( has_auxil_basis ) then
-               coul_iakj = eri_eigen_ri(istate,astate,abispin,kstate,jstate,jkspin)
-               coul_ibjk = eri_eigen_ri(istate,bstate,abispin,jstate,kstate,jkspin)
+               coul_ipkj = eri_eigen_ri(istate,pstate,abispin,kstate,jstate,jkspin)
+               coul_iqjk = eri_eigen_ri(istate,qstate,abispin,jstate,kstate,jkspin)
                if( abispin == jkspin ) then
-                 coul_ijkb = eri_eigen_ri(istate,jstate,abispin,kstate,bstate,abispin) 
+                 coul_ijkq = eri_eigen_ri(istate,jstate,abispin,kstate,qstate,abispin) 
                endif
              else
-               coul_iakj = eri_eigenstate_i(astate,kstate,jstate,jkspin)
-               coul_ibjk = eri_eigenstate_i(bstate,jstate,kstate,jkspin)
+               coul_ipkj = eri_eigenstate_i(pstate,kstate,jstate,jkspin)
+               coul_iqjk = eri_eigenstate_i(qstate,jstate,kstate,jkspin)
                if( abispin == jkspin ) then
-                 coul_ijkb = eri_eigenstate_i(jstate,kstate,bstate,abispin) 
+                 coul_ijkq = eri_eigenstate_i(jstate,kstate,qstate,abispin) 
                endif
              endif
 
              do iomegai=-nomegai,nomegai
-               omega = energy(bstate,abispin) + omegai(iomegai)
+               omega = energy(qstate,abispin) + omegai(iomegai)
 
                fact_real   = REAL( fact_occ1 / (omega-ei+ej-ek+ieta) + fact_occ2 / (omega-ei+ej-ek-ieta) , dp)
-               fact_energy = REAL( fact_occ1 / (energy(astate,abispin)-ei+ej-ek+ieta) , dp )
+               fact_energy = REAL( fact_occ1 / (energy(pstate,abispin)-ei+ej-ek+ieta) , dp )
 
-               selfenergy_ring(iomegai,astate,abispin) = selfenergy_ring(iomegai,astate,abispin) &
-                        + fact_real * coul_iakj * coul_ibjk * spin_fact
+               selfenergy_ring(iomegai,pstate,abispin) = selfenergy_ring(iomegai,pstate,abispin) &
+                        + fact_real * coul_ipkj * coul_iqjk * spin_fact
 
-               if(iomegai==0 .AND. astate==bstate .AND. occupation(astate,abispin)>completely_empty) then
-                 emp2_ring = emp2_ring + occupation(astate,abispin) &
-                                       * fact_energy * coul_iakj * coul_ibjk * spin_fact
+               if(iomegai==0 .AND. occupation(pstate,abispin)>completely_empty) then
+                 emp2_ring = emp2_ring + occupation(pstate,abispin) &
+                                       * fact_energy * coul_ipkj * coul_iqjk * spin_fact
                endif
 
                if( abispin == jkspin ) then
 
-                 selfenergy_sox(iomegai,astate,abispin) = selfenergy_sox(iomegai,astate,abispin) &
-                          - fact_real * coul_iakj * coul_ijkb
+                 selfenergy_sox(iomegai,pstate,abispin) = selfenergy_sox(iomegai,pstate,abispin) &
+                          - fact_real * coul_ipkj * coul_ijkq
 
-                 if(iomegai==0 .AND. astate==bstate .AND. occupation(astate,abispin)>completely_empty) then
-                   emp2_sox = emp2_sox - occupation(astate,abispin) &
-                             * fact_energy * coul_iakj * coul_ijkb
+                 if(iomegai==0 .AND. occupation(pstate,abispin)>completely_empty) then
+                   emp2_sox = emp2_sox - occupation(pstate,abispin) &
+                             * fact_energy * coul_ipkj * coul_ijkq
                  endif
 
                endif
@@ -161,6 +157,16 @@ subroutine pt2_selfenergy(nstate,basis,occupation,energy,c_matrix,s_matrix,selfe
 
  emp2_ring = 0.5_dp * emp2_ring
  emp2_sox  = 0.5_dp * emp2_sox
+
+ if( selfenergy_approx == ONE_RING ) then
+   emp2_sox = 0.0_dp
+   selfenergy_sox(:,:,:) = 0.0_dp
+ endif
+ if( selfenergy_approx == SOX ) then
+   emp2_ring = 0.0_dp
+   selfenergy_ring(:,:,:) = 0.0_dp
+ endif
+
  if( nsemin <= ncore_G+1 .AND. nsemax >= nhomo_G ) then
    emp2 = emp2_ring + emp2_sox
    write(stdout,'(/,a)')       ' MP2 Energy'
@@ -204,19 +210,19 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
  real(dp),intent(out)       :: selfenergy(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: emp2
 !=====
- integer               :: astate,bstate,bstate2
+ integer               :: pstate,qstate,qstate2
  real(dp),allocatable  :: selfenergy_ring(:,:,:)
  real(dp),allocatable  :: selfenergy_sox(:,:,:)
  real(dp),allocatable  :: selfenergy_output(:,:,:)
  integer               :: istate,jstate,kstate
  integer               :: abispin,jkspin
  real(dp)              :: fact_occ1,fact_occ2
- real(dp)              :: fi,fj,fk,ei,ej,ek,ea,eb
+ real(dp)              :: fi,fj,fk,ei,ej,ek,ep,eq
  real(dp)              :: fact_real,fact_energy
  real(dp)              :: emp2_sox,emp2_ring
  real(dp),allocatable  :: eri_eigenstate_i(:,:,:,:)
  integer               :: reading_status
- real(dp)              :: coul_ibjk,coul_ijkb,coul_iakj
+ real(dp)              :: coul_iqjk,coul_ijkq,coul_ipkj
  real(dp)              :: energy_qp_z(nstate,nspin)
  real(dp)              :: energy_qp_new(nstate,nspin)
 !=====
@@ -225,9 +231,6 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
 
  emp2_ring = 0.0_dp
  emp2_sox  = 0.0_dp
-
- write(msg,'(es9.2)') AIMAG(ieta)
- call issue_warning('small complex number is '//msg)
 
 
  write(stdout,'(/,a)') ' Perform the second-order self-energy calculation'
@@ -261,14 +264,9 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
      fi = occupation(istate,abispin)
      ei = energy(istate,abispin)
 
-     do astate=nsemin,nsemax ! external loop ( bra )
-       do bstate=nsemin,nsemax   ! external loop ( ket )
-         if( astate /= bstate .AND. calc_type%selfenergy_technique == one_shot ) cycle
-         if( calc_type%selfenergy_technique == one_shot ) then
-           bstate2 = 1
-         else
-           bstate2 = bstate
-         endif
+     do pstate=nsemin,nsemax ! external loop ( bra )
+       do qstate=nsemin,nsemax   ! external loop ( ket )
+
 
          do jkspin=1,nspin
            do jstate=ncore_G+1,nvirtual_G-1  !LOOP of the second Green's function
@@ -285,41 +283,42 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
                if( fact_occ1 < completely_empty .AND. fact_occ2 < completely_empty ) cycle
 
                if( has_auxil_basis ) then
-                 coul_iakj = eri_eigen_ri(istate,astate,abispin,kstate,jstate,jkspin)
-                 coul_ibjk = eri_eigen_ri(istate,bstate,abispin,jstate,kstate,jkspin)
+                 coul_ipkj = eri_eigen_ri(istate,pstate,abispin,kstate,jstate,jkspin)
+                 coul_iqjk = eri_eigen_ri(istate,qstate,abispin,jstate,kstate,jkspin)
                  if( abispin == jkspin ) then
-                   coul_ijkb = eri_eigen_ri(istate,jstate,abispin,kstate,bstate,abispin) 
+                   coul_ijkq = eri_eigen_ri(istate,jstate,abispin,kstate,qstate,abispin) 
                  endif
                else
-                 coul_iakj = eri_eigenstate_i(astate,kstate,jstate,jkspin)
-                 coul_ibjk = eri_eigenstate_i(bstate,jstate,kstate,jkspin)
+                 coul_ipkj = eri_eigenstate_i(pstate,kstate,jstate,jkspin)
+                 coul_iqjk = eri_eigenstate_i(qstate,jstate,kstate,jkspin)
                  if( abispin == jkspin ) then
-                   coul_ijkb = eri_eigenstate_i(jstate,kstate,bstate,abispin) 
+                   coul_ijkq = eri_eigenstate_i(jstate,kstate,qstate,abispin) 
                  endif
                endif
 
-               ea = energy(astate,abispin) 
-               eb = energy(bstate,abispin) 
+               ep = energy(pstate,abispin) 
+               eq = energy(qstate,abispin) 
   
-               fact_real   = REAL( fact_occ1 / (eb-ei+ej-ek+ieta) + fact_occ2 / (eb-ei+ej-ek-ieta) , dp)
-               fact_energy = REAL( fact_occ1 / (ea-ei+ej-ek+ieta) , dp )
+               fact_real   = REAL( fact_occ1 / ( eq - ei + ej - ek + ieta) &
+                                 + fact_occ2 / ( eq - ei + ej - ek - ieta) , dp)
+               fact_energy = REAL( fact_occ1 / ( ep - ei + ej - ek + ieta) , dp )
   
-               selfenergy_ring(astate,bstate2,abispin) = selfenergy_ring(astate,bstate2,abispin) &
-                        + fact_real * coul_iakj * coul_ibjk * spin_fact
+               selfenergy_ring(pstate,qstate,abispin) = selfenergy_ring(pstate,qstate,abispin) &
+                        + fact_real * coul_ipkj * coul_iqjk * spin_fact
 
-               if(astate==bstate .AND. occupation(astate,abispin)>completely_empty) then
-                 emp2_ring = emp2_ring + occupation(astate,abispin) &
-                                       * fact_energy * coul_iakj * coul_ibjk * spin_fact
+               if(pstate==qstate .AND. occupation(pstate,abispin)>completely_empty) then
+                 emp2_ring = emp2_ring + occupation(pstate,abispin) &
+                                       * fact_energy * coul_ipkj * coul_iqjk * spin_fact
                endif
  
                if( abispin == jkspin ) then
 
-                 selfenergy_sox(astate,bstate2,abispin) = selfenergy_sox(astate,bstate2,abispin) &
-                          - fact_real * coul_iakj * coul_ijkb
+                 selfenergy_sox(pstate,qstate,abispin) = selfenergy_sox(pstate,qstate,abispin) &
+                          - fact_real * coul_ipkj * coul_ijkq
 
-                 if(astate==bstate .AND. occupation(astate,abispin)>completely_empty) then
-                   emp2_sox = emp2_sox - occupation(astate,abispin) &
-                             * fact_energy * coul_iakj * coul_ijkb
+                 if(pstate==qstate .AND. occupation(pstate,abispin)>completely_empty) then
+                   emp2_sox = emp2_sox - occupation(pstate,abispin) &
+                             * fact_energy * coul_ipkj * coul_ijkq
                  endif
 
                endif

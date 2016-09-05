@@ -76,9 +76,6 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,selfe
  call clean_allocate('Temporary array',bra,ncore_G+1,nvirtual_G-1,ncore_G+1,MAX(nhomo_G,nsemax))
 
 
- write(msg,'(es9.2)') AIMAG(ieta)
- call issue_warning('small complex number is '//msg)
-
 
  !
  !

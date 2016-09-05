@@ -41,6 +41,8 @@ module m_inputparam
  integer,parameter :: GWTILDE      = 218
  integer,parameter :: G0W0SOX0     = 219
  integer,parameter :: PT2          = 220
+ integer,parameter :: ONE_RING     = 221
+ integer,parameter :: SOX          = 222
 
  type calculation_type
  character(len=100) :: calc_name
@@ -64,14 +66,17 @@ module m_inputparam
 #endif
  end type calculation_type
 
- type(calculation_type),public    :: calc_type                   ! Sometimes we may need to tune this
+ ! There are the input variables of MOLGW
+ ! They should not be modified anywhere else in the code.
+ ! Declare them as protected and work on copies if absolutely necessary.
+ type(calculation_type),protected :: calc_type
  integer,protected                :: selfenergy_state_min
  integer,protected                :: selfenergy_state_max
  integer,protected                :: selfenergy_state_range
  integer,protected                :: ncoreg 
  integer,protected                :: ncorew 
- integer,public                   :: nvirtualg 
- integer,public                   :: nvirtualw 
+ integer,protected                :: nvirtualg 
+ integer,protected                :: nvirtualw 
  integer,protected                :: nvirtualspa
  logical,protected                :: is_frozencore
  logical,protected                :: is_tda,is_triplet
@@ -248,6 +253,10 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%is_mp2   =.TRUE.
    case('MP2_SELFENERGY','PT2')
      calc_type%selfenergy_approx = PT2
+   case('ONE_RING','ONE-RING','ONERING')
+     calc_type%selfenergy_approx = ONE_RING
+   case('SOX')
+     calc_type%selfenergy_approx = SOX
    case('EVMP2','EVPT2')
      calc_type%selfenergy_approx = PT2
      calc_type%selfenergy_technique = EVSC

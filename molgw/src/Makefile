@@ -106,13 +106,13 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
 
 molgw.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
   m_gos.f90 m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_eri_calculate.f90 m_eri_lr_calculate.f90 m_eri_ao_mo.f90 \
-  m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.f90 m_selfenergy_tools.f90 m_virtual_orbital_space.f90 \
+  m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.f90 m_selfenergy_tools.f90 \
   molgw.f90
 	$(FC_W_OPTS) -c molgw.f90 $(LIBXC_INCS)
 
 selfenergy_evaluation.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \
             m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_eri_calculate.f90 m_eri_lr_calculate.f90 m_eri_ao_mo.f90 \
-            m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.f90 m_selfenergy_tools.f90 selfenergy_evaluation.f90
+            m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.f90 m_selfenergy_tools.f90 m_virtual_orbital_space.f90 selfenergy_evaluation.f90
 	$(FC_W_OPTS) -c selfenergy_evaluation.f90 $(LIBXC_INCS)
 
 scf_loop.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \

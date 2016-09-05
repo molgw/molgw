@@ -6,7 +6,7 @@
 ! within different flavors: G0W0, GnW0, GnWn, COHSEX, QSGW
 !
 !=========================================================================
-subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,c_matrix,wpol,selfenergy_omega,energy_gw)
+subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,selfenergy_omega,energy_gw)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -97,9 +97,6 @@ subroutine gw_selfenergy(nstate,selfenergy_approx,basis,occupation,energy,c_matr
 
 
  energy_gw = 0.0_dp
-
- write(msg,'(es9.2)') AIMAG(ieta)
- call issue_warning('small complex number is '//msg)
 
 
  !
@@ -465,9 +462,6 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
  case default
    call die('gw_selfenergy_qs: calculation type unknown')
  end select
-
- write(msg,'(es9.2)') AIMAG(ieta)
- call issue_warning('small complex number is '//msg)
 
 
  if(has_auxil_basis) then
