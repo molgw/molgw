@@ -21,8 +21,8 @@ module m_basis_set
  type transform
    real(dp),allocatable         :: matrix(:,:)
  end type
- integer,parameter              :: lmax_transform     =6
- integer,parameter              :: lmax_transform_pure=5
+ integer,parameter              :: lmax_transform     = 7
+ integer,parameter              :: lmax_transform_pure= 5
  type(transform)                :: cart_to_pure(0:lmax_transform)
  type(transform)                :: cart_to_pure_norm(0:lmax_transform)
 
