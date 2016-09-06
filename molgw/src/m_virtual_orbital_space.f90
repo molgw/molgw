@@ -39,7 +39,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  integer                               :: ispin
  integer                               :: ibf
  integer                               :: istate,jstate
- integer                               :: nstate_new
+!SQRT integer                               :: nstate_new
  type(basis_set)                       :: basis_small
  real(dp),allocatable                  :: s_bigsmall(:,:)
  real(dp),allocatable                  :: s_small(:,:)
@@ -50,7 +50,8 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  real(dp),allocatable                  :: c_big(:,:,:)
  real(dp),allocatable                  :: s_matrix(:,:)
  real(dp),allocatable                  :: h_big(:,:,:)
- real(dp),allocatable                  :: s_matrix_sqrt_inv(:,:)
+!SQRT real(dp),allocatable                  :: s_matrix_sqrt_inv(:,:)
+ real(dp),allocatable                  :: s_matrix_inv(:,:)
  real(dp),allocatable                  :: matrix_tmp(:,:)
  real(dp),allocatable                  :: s_bar(:,:),h_bar(:,:,:),s_bar_sqrt_inv(:,:)
  real(dp),allocatable                  :: energy_bar(:,:),c_bar(:,:,:)
@@ -78,22 +79,25 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
 
  ! Get the overlap matrix of the wavefunction basis set S: s_matrix
  allocate(s_matrix(basis%nbf,basis%nbf))
+ allocate(s_matrix_inv(basis%nbf,basis%nbf))
  call setup_overlap(.FALSE.,basis,s_matrix)
+ call invert(basis%nbf,s_matrix,s_matrix_inv)
 
  ! Calculate the mixed overlap matrix Sbs: s_bigsmall
  allocate(s_bigsmall(basis%nbf,basis_small%nbf))
  call setup_overlap_mixedbasis(.FALSE.,basis,basis_small,s_bigsmall)
 
- call setup_sqrt_overlap(min_overlap,basis%nbf,s_matrix,nstate_new,s_matrix_sqrt_inv)
- if( nstate_new /= nstate) call die('setup_virtual_smallbasis: bug this should not happen')
+!SQRT call setup_sqrt_overlap(min_overlap,basis%nbf,s_matrix,nstate_new,s_matrix_sqrt_inv)
+!SQRT if( nstate_new /= nstate) call die('setup_virtual_smallbasis: bug this should not happen')
 
  ! Calculate the overlap matrix in the small basis:
  !  tilde S = Sbs^T S^-1 Sbs
- allocate(matrix_tmp(nstate_new,basis_small%nbf))
  allocate(s_small(basis_small%nbf,basis_small%nbf))
- matrix_tmp(:,:) = MATMUL( TRANSPOSE( s_matrix_sqrt_inv ) , s_bigsmall )
- s_small(:,:) = MATMUL( TRANSPOSE( matrix_tmp ) , matrix_tmp )
- deallocate(matrix_tmp)
+ s_small(:,:) = MATMUL( TRANSPOSE(s_bigsmall), MATMUL( s_matrix_inv , s_bigsmall ) )
+!SQRT allocate(matrix_tmp(nstate,basis_small%nbf))
+!SQRT matrix_tmp(:,:) = MATMUL( TRANSPOSE( s_matrix_sqrt_inv ) , s_bigsmall )
+!SQRT s_small(:,:) = MATMUL( TRANSPOSE( matrix_tmp ) , matrix_tmp )
+!SQRT deallocate(matrix_tmp)
 
  ! Calculate ( tilde S )^{-1/2}
  call setup_sqrt_overlap(min_overlap,basis_small%nbf,s_small,nstate_small,s_small_sqrt_inv)
@@ -166,17 +170,19 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  ! Transform the wavefunction coefficients from the small basis to the big basis
  ! tilde C -> Cbig
  allocate(c_big(basis%nbf,nstate_small,nspin))
- allocate(matrix_tmp(basis%nbf,basis%nbf))
+!SQRT allocate(matrix_tmp(basis%nbf,basis%nbf))
  ! M = S^-1
- matrix_tmp(:,:) = MATMUL( s_matrix_sqrt_inv(:,:) , TRANSPOSE( s_matrix_sqrt_inv(:,:) ) )
+!SQRT matrix_tmp(:,:) = MATMUL( s_matrix_sqrt_inv(:,:) , TRANSPOSE( s_matrix_sqrt_inv(:,:) ) )
 
  ! Cbig = S^-1 * Sbs * tilde C
  do ispin=1,nspin
-   c_big(:,:,ispin) = MATMUL( matrix_tmp(:,:) , MATMUL( s_bigsmall(:,:) , c_small(:,:,ispin) ) )
+!SQRT   c_big(:,:,ispin) = MATMUL( matrix_tmp(:,:) , MATMUL( s_bigsmall(:,:) , c_small(:,:,ispin) ) )
+   c_big(:,:,ispin) = MATMUL( s_matrix_inv(:,:) , MATMUL( s_bigsmall(:,:) , c_small(:,:,ispin) ) )
  enddo
  deallocate(c_small)
- deallocate(matrix_tmp)
- deallocate(s_matrix_sqrt_inv)
+!SQRT deallocate(matrix_tmp)
+!SQRT deallocate(s_matrix_sqrt_inv)
+ deallocate(s_matrix_inv)
 
  ! 
  ! Frozen orbitals for occupied state plus the selfenergy braket
@@ -189,6 +195,13 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
 
  ! Override the Cbig coefficients with the original C coefficients up to max(nocc,nsemax)
  nfrozen = MAX(nocc,nsemax)
+
+ ! Avoid separating degenerate states
+ do while( ANY( ABS(energy(nfrozen+1,:)-energy(nfrozen,:)) < 1.0e-4_dp ) )
+   nfrozen = nfrozen + 1
+   if( nfrozen == nstate_small ) exit
+ end do
+ 
  write(stdout,'(1x,a,i6)') 'Leave the first states frozen up to: ',nfrozen
  c_big(:,1:nfrozen,:) = c_matrix(:,1:nfrozen,:)
 
