@@ -52,6 +52,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  real(dp)                :: energy_w(nstate,nspin)
  real(dp),allocatable    :: zz(:,:)
  real(dp),allocatable    :: energy_qp_new(:,:),energy_qp_z(:,:)
+ integer                 :: iomegai
 #ifdef ACTIVATE_EXPERIMENTAL
  type(calculation_type)  :: calc_type_tmp
  real(dp),allocatable    :: p_matrix(:,:,:),p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
@@ -210,8 +211,17 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
      !call pt2_selfenergy(ONE_RING,nstate,basis,occupation,energy_g,c_matrix,selfenergy_omega3,en%mp2)
      call onering_selfenergy(ONE_RING,nstate,basis,occupation,energy_g,c_matrix,selfenergy_omega3,en%mp2)
 
-     ! Extrapolated Sigma = Sigma^{GW}_small + Sigma^{1-ring}_big - Sigma^{1-ring}_small
-     selfenergy_omega(:,:,:) = selfenergy_omega(:,:,:) + selfenergy_omega3(:,:,:) - selfenergy_omega2(:,:,:)
+     if( print_sigma_ ) then
+       call write_selfenergy_omega('selfenergy_GW_small',nstate,energy,exchange_m_vxc_diag,selfenergy_omega)
+       call write_selfenergy_omega('selfenergy_1ring_big',nstate,energy,exchange_m_vxc_diag,selfenergy_omega3)
+       call write_selfenergy_omega('selfenergy_1ring_small',nstate,energy,exchange_m_vxc_diag,selfenergy_omega2)
+     endif
+
+     !
+     ! Extrapolated Sigma(omega) = Sigma^{GW}_small(omega) + Sigma^{1-ring}_big(0) - Sigma^{1-ring}_small(0)
+     do iomegai=-nomegai,nomegai
+       selfenergy_omega(iomegai,:,:) = selfenergy_omega(iomegai,:,:) + selfenergy_omega3(0,:,:) - selfenergy_omega2(0,:,:)
+     enddo
 
      deallocate(selfenergy_omega2)
      deallocate(selfenergy_omega3)
@@ -366,7 +376,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  !
  ! Output the quasiparticle energies, the self-energy etc.
  !
- if( print_sigma_) then
+ if( print_sigma_ ) then
    call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,selfenergy_omega)
  endif
 
