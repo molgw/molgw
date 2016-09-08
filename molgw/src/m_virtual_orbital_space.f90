@@ -210,19 +210,19 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  ! with frozen orbitals complemented with the small basis
  !
  ! Calculate the corresponding overlap matrix Sbar and hamiltonian Hbar
- allocate(s_bar(basis_small%nbf,basis_small%nbf))
- allocate(h_bar(basis_small%nbf,basis_small%nbf,nspin))
+ allocate(s_bar(nstate_small,nstate_small))
+ allocate(h_bar(nstate_small,nstate_small,nspin))
  s_bar(:,:) = MATMUL( TRANSPOSE(c_big(:,:,1)) , MATMUL( s_matrix , c_big(:,:,1) ) )
- call setup_sqrt_overlap(min_overlap,basis_small%nbf,s_bar,nstate_bar,s_bar_sqrt_inv)
+ call setup_sqrt_overlap(min_overlap,nstate_small,s_bar,nstate_bar,s_bar_sqrt_inv)
  do ispin=1,nspin
    h_bar(:,:,ispin) = MATMUL( TRANSPOSE(c_big(:,:,ispin)) , MATMUL( h_big(:,:,ispin) , c_big(:,:,ispin) ) )
  enddo
- allocate(energy_bar(nstate_small,nspin))
- allocate(c_bar(basis_small%nbf,nstate_bar,nspin))
- call diagonalize_hamiltonian_scalapack(nspin,basis_small%nbf,nstate_bar,h_bar,s_bar_sqrt_inv,energy_bar,c_bar)
+ allocate(energy_bar(nstate_bar,nspin))
+ allocate(c_bar(nstate_small,nstate_bar,nspin))
+ call diagonalize_hamiltonian_scalapack(nspin,nstate_small,nstate_bar,h_bar,s_bar_sqrt_inv,energy_bar,c_bar)
 
  do ispin=1,nspin
-   c_big(:,:,ispin) = MATMUL( c_big(:,:,ispin) , c_bar(:,:,ispin) )
+   c_big(:,1:nstate_bar,ispin) = MATMUL( c_big(:,:,ispin) , c_bar(:,:,ispin) )
  enddo
 
  call dump_out_energy('=== Energies in the final small basis ===',&
