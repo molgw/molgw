@@ -217,11 +217,11 @@ subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c
  write(stdout,'(/,a)') ' Perform the one-ring self-energy calculation'
  write(stdout,*) 'with the perturbative approach'
 
- 
- call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
-
  call init_spectral_function(nstate,occupation,vsqrtchi0vsqrt)
  call allocate_spectral_function(nauxil_3center,vsqrtchi0vsqrt)
+ 
+ call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
+
 
  do t_jb=1,vsqrtchi0vsqrt%npole_reso
    jstate = vsqrtchi0vsqrt%transition_table_apb(1,t_jb)
