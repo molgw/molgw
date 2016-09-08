@@ -63,7 +63,6 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
 
  write(stdout,'(/,1x,a)') 'Prepare optimized empty states using a smaller basis set'
 
- call assert_experimental()
 
  ! Remember how to go from the small basis set to the big one
  ! 

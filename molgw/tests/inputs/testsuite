@@ -290,7 +290,7 @@ GW HOMO energy            ,    -12.400933       , 1 , 1.0e-4
 GW LUMO energy            ,      0.964805       , 0 , 1.0e-4
 GW LUMO energy            ,     -0.331161       , 1 , 1.0e-4
 
-ethylene_davidson.in      , BSE@HF for ethyelene with iterative Davidson diago
+ethylene_davidson.in      , C2H4: BSE@HF for ethyelene with iterative Davidson diago
 SCF Total Energy          , -78.0413852386      , 0 , 1.0e-7
 0001 :                    ,      9.69283827     , 0 , 1.0e-4
 0001 :                    ,      0.49473918     , 1 , 1.0e-4
@@ -321,7 +321,7 @@ GWGamma HOMO energy       ,   -15.238221        , 1 , 1.0e-4
 GWGamma LUMO energy       ,     4.607546        , 0 , 1.0e-4
 GWGamma LUMO energy       ,     4.607546        , 1 , 1.0e-4
 
-ethene_p_tdhf.in          , C2H4+ TDHF with doublet configuration
+ethene_p_tdhf.in          , C2H4+: TDHF with doublet configuration (spin unrestricted)
 SCF Total Energy          , -77.7149628447      , 0 , 1.0e-7
 0001                      ,   3.83416085        , 0 , 1.0e-4
 0001                      ,   0.00000000        , 1 , 1.0e-4
@@ -331,4 +331,11 @@ SCF Total Energy          , -77.7149628447      , 0 , 1.0e-7
 0003                      ,   0.21189336        , 1 , 1.0e-4
 0004                      ,   6.27559067        , 0 , 1.0e-4
 0004                      ,   0.00000000        , 1 , 1.0e-4
+
+h2o_gw_smallbasis.in      , H2O: GW@PBE0 using a small basis set for virtual orbitals
+SCF Total Energy          , -76.3743156395     , 0 , 1.0e-7
+GW HOMO energy            , -11.920078         , 0 , 1.0e-4
+GW LUMO energy            ,   3.316783         , 0 , 1.0e-4
+
+
 
