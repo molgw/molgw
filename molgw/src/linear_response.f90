@@ -614,7 +614,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
    omega(iomega) = omega(1) + ( omega(nomega)-omega(1) ) /REAL(nomega-1,dp) * (iomega-1) 
  enddo
  ! Add the broadening
- omega(:) = omega(:) + im * 0.10/Ha_eV
+ omega(:) = omega(:) + ieta 
 
  dynamical_pol(:,:,:) = 0.0_dp
  static_polarizability(:,:) = 0.0_dp

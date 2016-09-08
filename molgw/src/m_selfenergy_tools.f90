@@ -364,7 +364,7 @@ subroutine selfenergy_destroy_omega_grid()
  implicit none
 !=====
 
- deallocate(omegai)
+ if( ALLOCATED(omegai) ) deallocate(omegai)
 
 end subroutine selfenergy_destroy_omega_grid
 
