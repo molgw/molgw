@@ -37,22 +37,20 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  real(dp),intent(in)        :: hamiltonian_exx(m_ham,n_ham,nspin)
  real(dp),intent(in)        :: hamiltonian_xc(m_ham,n_ham,nspin)
 !=====
+ type(selfenergy_grid)   :: se,se2,se3
  character(len=36)       :: selfenergy_tag
- integer                 :: nstate_gw
  integer                 :: reading_status
  integer                 :: ispin
+ integer                 :: nstate_small
  type(spectral_function) :: wpol
  real(dp)                :: exchange_m_vxc_diag(nstate,nspin)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
  real(dp),allocatable    :: sigc(:,:)
- real(dp),allocatable    :: selfenergy_omega(:,:,:)
- real(dp),allocatable    :: selfenergy_omega2(:,:,:)
- real(dp),allocatable    :: selfenergy_omega3(:,:,:)
  real(dp)                :: energy_g(nstate,nspin)
  real(dp)                :: energy_w(nstate,nspin)
  real(dp),allocatable    :: zz(:,:)
  real(dp),allocatable    :: energy_qp_new(:,:),energy_qp_z(:,:)
- integer                 :: iomegai
+ integer                 :: iomega
 #ifdef ACTIVATE_EXPERIMENTAL
  type(calculation_type)  :: calc_type_tmp
  real(dp),allocatable    :: p_matrix(:,:,:),p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
@@ -61,7 +59,9 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
 #endif
 !=====
 
- write(stdout,'(/,1x,a)') 'Self-energy evaluation starts'
+ write(stdout,'(/,1x,a)') '=================================================='
+ write(stdout,'(1x,a)')   'Self-energy evaluation starts here'
+ write(stdout,'(/,1x,a)') '=================================================='
 
  select case(calc_type%selfenergy_approx)
  case(GW,GnW0,GnWn)
@@ -97,8 +97,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  !
  ! Set the range of states on which to evaluate the self-energy
  call selfenergy_set_state_range(nstate,occupation)
- ! Set the frequency grid on which to evaluate the self-energy
- call selfenergy_set_omega_grid()
 
  !
  ! If requested,
@@ -114,18 +112,14 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  !
  ! Or alternatively use the small basis technique
  if( has_small_basis ) then
-   call setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matrix,nstate_gw)
+   call setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matrix,nstate_small)
    !
    ! Set the range again after the change of the virtual space
    ! to nstate
-   call selfenergy_set_state_range(nstate_gw,occupation(1:nstate_gw,:))
- else
-   nstate_gw = nstate
+   call selfenergy_set_state_range(nstate_small,occupation)
  endif
 
 
-
- allocate(selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nspin))
 
 
  !
@@ -152,6 +146,9 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  endif
 
 
+ call init_selfenergy_grid(calc_type%selfenergy_technique,nstate,energy,se)
+
+
 
  !
  ! selfenergy = GW or COHSEX
@@ -162,7 +159,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
     .OR. calc_type%selfenergy_approx == GW   .OR. calc_type%selfenergy_approx == COHSEX   &
     .OR. calc_type%selfenergy_approx == GnW0 .OR. calc_type%selfenergy_approx == GnWn   ) then
 
-   call init_spectral_function(nstate_gw,occupation(1:nstate_gw,:),wpol)
+   call init_spectral_function(nstate,occupation,wpol)
 
    ! Try to read a spectral function file in order to skip the polarizability calculation
    ! Skip the reading if GnWn (=evGW) is requested
@@ -174,7 +171,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
    endif
    ! If reading has failed, then do the calculation
    if( reading_status /= 0 ) then
-     call polarizability(basis,auxil_basis,nstate_gw,occupation(1:nstate_gw,:),energy_w(1:nstate_gw,:),c_matrix(:,1:nstate_gw,:),en%rpa,wpol)
+     call polarizability(basis,auxil_basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
    endif
 
    en%tot = en%tot + en%rpa
@@ -182,8 +179,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
    write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
 
 
-   call gw_selfenergy(calc_type%selfenergy_approx,nstate_gw,basis,occupation(1:nstate_gw,:),energy_g(1:nstate_gw,:), &
-                      c_matrix(:,1:nstate_gw,:),wpol,selfenergy_omega,en%gw)
+   call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
 
    if( ABS(en%gw) > 1.0e-5_dp ) then
      write(stdout,'(/,a,f19.10)') ' Galitskii-Migdal Total energy (Ha): ',en%tot - en%rpa + en%gw
@@ -193,14 +189,11 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
 
    if( has_small_basis ) then
 
-     allocate(selfenergy_omega2(-nomegai:nomegai,nsemin:nsemax,nspin))
-     allocate(selfenergy_omega3(-nomegai:nomegai,nsemin:nsemax,nspin))
+     call init_selfenergy_grid(static,nstate,energy,se2)
+     call init_selfenergy_grid(static,nstate,energy,se3)
   
      ! Sigma^2 = Sigma^{1-ring}_small
-     !call pt2_selfenergy(ONE_RING,nstate_gw,basis,occupation(1:nstate_gw,:),energy_g(1:nstate_gw,:), &
-     !                    c_matrix(:,1:nstate_gw,:),selfenergy_omega2,en%mp2)
-     call onering_selfenergy(ONE_RING,nstate_gw,basis,occupation(1:nstate_gw,:),energy_g(1:nstate_gw,:), &
-                         c_matrix(:,1:nstate_gw,:),selfenergy_omega2,en%mp2)
+     call onering_selfenergy(ONE_RING,nstate,basis,occupation,energy_g,c_matrix,se2,en%mp2)
 
      ! Reset wavefunctions, eigenvalues and number of virtual orbitals in G
      call destroy_fno(basis,nstate,energy,c_matrix)
@@ -208,23 +201,23 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
      call selfenergy_set_state_range(nstate,occupation)
 
      ! Sigma^3 = Sigma^{1-ring}_big
-     !call pt2_selfenergy(ONE_RING,nstate,basis,occupation,energy_g,c_matrix,selfenergy_omega3,en%mp2)
-     call onering_selfenergy(ONE_RING,nstate,basis,occupation,energy_g,c_matrix,selfenergy_omega3,en%mp2)
+     call onering_selfenergy(ONE_RING,nstate,basis,occupation,energy_g,c_matrix,se3,en%mp2)
 
      if( print_sigma_ ) then
-       call write_selfenergy_omega('selfenergy_GW_small',nstate,energy,exchange_m_vxc_diag,selfenergy_omega)
-       call write_selfenergy_omega('selfenergy_1ring_big',nstate,energy,exchange_m_vxc_diag,selfenergy_omega3)
-       call write_selfenergy_omega('selfenergy_1ring_small',nstate,energy,exchange_m_vxc_diag,selfenergy_omega2)
+       call write_selfenergy_omega('selfenergy_GW_small',nstate,exchange_m_vxc_diag,se)
+       call write_selfenergy_omega('selfenergy_1ring_big',nstate,exchange_m_vxc_diag,se3)
+       call write_selfenergy_omega('selfenergy_1ring_small',nstate,exchange_m_vxc_diag,se2)
      endif
 
      !
      ! Extrapolated Sigma(omega) = Sigma^{GW}_small(omega) + Sigma^{1-ring}_big(0) - Sigma^{1-ring}_small(0)
-     do iomegai=-nomegai,nomegai
-       selfenergy_omega(iomegai,:,:) = selfenergy_omega(iomegai,:,:) + selfenergy_omega3(0,:,:) - selfenergy_omega2(0,:,:)
+     do iomega=-se%nomega,se%nomega
+       se%sigma(iomega,:,:) = se%sigma(iomega,:,:) + se3%sigma(0,:,:) - se2%sigma(0,:,:)
      enddo
 
-     deallocate(selfenergy_omega2)
-     deallocate(selfenergy_omega3)
+     call destroy_selfenergy_grid(se2)
+     call destroy_selfenergy_grid(se3)
+
    endif
 
  endif
@@ -240,23 +233,23 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
      call polarizability(basis,auxil_basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
    endif
 
-   call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,selfenergy_omega,en%gw)
+   call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
 
    !
    ! Output the G0W0 results first
    allocate(energy_qp_z(nstate,nspin))
    allocate(energy_qp_new(nstate,nspin))
    allocate(zz(nsemin:nsemax,nspin))
-   call find_qp_energy_linearization(selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
-   call find_qp_energy_graphical(selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
-   call output_qp_energy('GW',nstate,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,:),energy_qp_z,energy_qp_new,zz)
+   call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+   call find_qp_energy_graphical(se,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
+   call output_qp_energy('GW',nstate,energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
    deallocate(zz)
    deallocate(energy_qp_z)
    call output_new_homolumo('GW',nstate,occupation,energy_qp_new,nsemin,nsemax)
    deallocate(energy_qp_new)
 
 
-   call gwgamma_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,selfenergy_omega)
+   call gwgamma_selfenergy(nstate,basis,occupation,energy_g,c_matrix,wpol,se)
    call destroy_spectral_function(wpol)
  endif
 
@@ -268,7 +261,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
   .OR. calc_type%selfenergy_approx == ONE_RING  &
   .OR. calc_type%selfenergy_approx == SOX ) then
 
-   call pt2_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,selfenergy_omega,en%mp2)
+   call pt2_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,se,en%mp2)
 
    if( ABS( en%mp2 ) > 1.0e-8 ) then
      write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
@@ -377,7 +370,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  ! Output the quasiparticle energies, the self-energy etc.
  !
  if( print_sigma_ ) then
-   call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,selfenergy_omega)
+   call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),nstate,exchange_m_vxc_diag,se)
  endif
 
 
@@ -387,17 +380,17 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  case(GW,PT2,ONE_RING,SOX,G0W0Gamma0,G0W0SOX0)
    allocate(energy_qp_z(nstate,nspin))
    allocate(zz(nsemin:nsemax,nspin))
-   call find_qp_energy_linearization(selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
-   call find_qp_energy_graphical(selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
+   call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+   call find_qp_energy_graphical(se,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
   
-   call output_qp_energy(TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,:),energy_qp_z,energy_qp_new,zz)
+   call output_qp_energy(TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
    deallocate(zz)
    deallocate(energy_qp_z)
 
  case(GnWn,GnW0,GV,COHSEX,COHSEX_DEVEL,TUNED_COHSEX)
-   call find_qp_energy_linearization(selfenergy_omega,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
+   call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
 
-   call output_qp_energy(TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,1,selfenergy_omega(0,:,:),energy_qp_new)
+   call output_qp_energy(TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,1,se,energy_qp_new)
 
  end select
 
@@ -420,7 +413,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  !
  ! Deallocations
  !
- call selfenergy_destroy_omega_grid()
+ call destroy_selfenergy_grid(se)
 
 
 end subroutine selfenergy_evaluation

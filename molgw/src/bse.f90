@@ -608,7 +608,7 @@ subroutine build_amb_apb_bse(nbf,nstate,wpol,wpol_static,m_apb,n_apb,amb_matrix,
 
  write(stdout,'(a)') ' Build W part'
 
- nprodbasis = index_prodstate(nstate,nstate)
+ nprodbasis = index_prodstate(nvirtual_W-1,nvirtual_W-1)
 
  !
  ! Prepare the bra and ket for BSE

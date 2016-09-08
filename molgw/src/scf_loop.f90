@@ -392,10 +392,9 @@ subroutine scf_loop(is_restart,&
  enddo
 
 
- write(stdout,*)
- write(stdout,*) '=================================================='
- write(stdout,*) 'The SCF loop ends here'
- write(stdout,*) '=================================================='
+ write(stdout,'(/,1x,a)') '=================================================='
+ write(stdout,'(1x,a)') 'The SCF loop ends here'
+ write(stdout,'(1x,a)') '=================================================='
 
  call destroy_scf()
 

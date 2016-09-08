@@ -6,7 +6,7 @@
 ! the perturbation theory to 2nd order evaluation of the self-energy
 !
 !=========================================================================
-subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,selfenergy_omega,emp2)
+subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,se,emp2)
  use m_definitions
  use m_mpi
  use m_warning
@@ -20,13 +20,13 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(out)       :: selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nspin)
+ type(selfenergy_grid),intent(inout) :: se
  real(dp),intent(out)       :: emp2
 !=====
  integer               :: pstate,qstate
  real(dp),allocatable  :: selfenergy_ring(:,:,:)
  real(dp),allocatable  :: selfenergy_sox(:,:,:)
- integer               :: iomegai
+ integer               :: iomega
  integer               :: istate,jstate,kstate
  integer               :: pqispin,jkspin
  real(dp)              :: fact_occ1,fact_occ2
@@ -57,8 +57,8 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
 
 
 
- allocate(selfenergy_ring(-nomegai:nomegai,nsemin:nsemax,nspin))
- allocate(selfenergy_sox (-nomegai:nomegai,nsemin:nsemax,nspin))
+ allocate(selfenergy_ring(-se%nomega:se%nomega,nsemin:nsemax,nspin))
+ allocate(selfenergy_sox (-se%nomega:se%nomega,nsemin:nsemax,nspin))
 
 
  selfenergy_ring(:,:,:) = 0.0_dp
@@ -107,26 +107,26 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
                endif
              endif
 
-             do iomegai=-nomegai,nomegai
-               omega = energy(qstate,pqispin) + omegai(iomegai)
+             do iomega=-se%nomega,se%nomega
+               omega = energy(qstate,pqispin) + se%omega(iomega)
 
                fact_real   = REAL( fact_occ1 / (omega-ei+ej-ek+ieta) + fact_occ2 / (omega-ei+ej-ek-ieta) , dp)
                fact_energy = REAL( fact_occ1 / (energy(pstate,pqispin)-ei+ej-ek+ieta) , dp )
 
-               selfenergy_ring(iomegai,pstate,pqispin) = selfenergy_ring(iomegai,pstate,pqispin) &
+               selfenergy_ring(iomega,pstate,pqispin) = selfenergy_ring(iomega,pstate,pqispin) &
                         + fact_real * coul_ipkj * coul_iqjk * spin_fact
 
-               if(iomegai==0 .AND. occupation(pstate,pqispin)>completely_empty) then
+               if(iomega==0 .AND. occupation(pstate,pqispin)>completely_empty) then
                  emp2_ring = emp2_ring + occupation(pstate,pqispin) &
                                        * fact_energy * coul_ipkj * coul_iqjk * spin_fact
                endif
 
                if( pqispin == jkspin ) then
 
-                 selfenergy_sox(iomegai,pstate,pqispin) = selfenergy_sox(iomegai,pstate,pqispin) &
+                 selfenergy_sox(iomega,pstate,pqispin) = selfenergy_sox(iomega,pstate,pqispin) &
                           - fact_real * coul_ipkj * coul_ijkq
 
-                 if(iomegai==0 .AND. occupation(pstate,pqispin)>completely_empty) then
+                 if(iomega==0 .AND. occupation(pstate,pqispin)>completely_empty) then
                    emp2_sox = emp2_sox - occupation(pstate,pqispin) &
                              * fact_energy * coul_ipkj * coul_ijkq
                  endif
@@ -170,7 +170,7 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
    emp2 = 0.0_dp
  endif
 
- selfenergy_omega(:,:,:) = selfenergy_ring(:,:,:) + selfenergy_sox(:,:,:)
+ se%sigma(:,:,:) = selfenergy_ring(:,:,:) + selfenergy_sox(:,:,:)
 
 
  if( ALLOCATED(eri_eigenstate_i) ) deallocate(eri_eigenstate_i)
@@ -184,7 +184,7 @@ end subroutine pt2_selfenergy
 
 
 !=========================================================================
-subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,selfenergy_omega,emp2)
+subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,se,emp2)
  use m_definitions
  use m_mpi
  use m_warning
@@ -199,7 +199,7 @@ subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(out)       :: selfenergy_omega(-nomegai:nomegai,nsemin:nsemax,nspin)
+ type(selfenergy_grid),intent(inout) :: se
  real(dp),intent(out)       :: emp2
 !=====
  type(spectral_function) :: vsqrtchi0vsqrt
@@ -235,11 +235,12 @@ subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c
 
  call destroy_eri_3center_eigen()
 
- call gw_selfenergy(GW,nstate,basis,occupation,energy,c_matrix,vsqrtchi0vsqrt,selfenergy_omega,emp2)
+ call gw_selfenergy(GW,nstate,basis,occupation,energy,c_matrix,vsqrtchi0vsqrt,se,emp2)
  
  call destroy_spectral_function(vsqrtchi0vsqrt)
 
  call stop_clock(timing_mp2_self)
+
 
 end subroutine onering_selfenergy
 

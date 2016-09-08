@@ -23,6 +23,7 @@ module m_inputparam
  integer,parameter :: QS             = 102
  integer,parameter :: EVSC           = 103
  integer,parameter :: imaginary_axis = 104
+ integer,parameter :: static         = 105
 
  !
  ! Self-energy approximation

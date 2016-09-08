@@ -999,7 +999,7 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
  ! Set this to zero and then enforce the calculation of the first array of Coulomb integrals
  eri_eigenstate_klmin(:,:,:,:) = 0.0_dp
 
- nprodbasis = index_prodstate(nstate,nstate) * nspin
+ nprodbasis = index_prodstate(nvirtual_W-1,nvirtual_W-1) * nspin
  call allocate_spectral_function(nprodbasis,wpol)
 
  wpol%pole(1:wpol%npole_reso_apb) = eigenvalue(:)
