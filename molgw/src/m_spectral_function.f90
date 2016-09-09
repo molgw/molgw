@@ -157,6 +157,10 @@ subroutine init_spectral_function(nstate,occupation,sf)
    enddo
  enddo
 
+ write(stdout,'(/,1x,a)') 'Prepare a polarizability spectral function with'
+ write(stdout,'(30x,a,i6)') ' Occupied states: ',nhomo_W-ncore_W
+ write(stdout,'(30x,a,i6)') '  Virtual states: ',nvirtual_W-nlumo_W
+ write(stdout,'(30x,a,i6)') 'Transition space: ',(nvirtual_W-nlumo_W)*(nhomo_W-ncore_W)
 
  !
  ! First, count the number of resonant transitions

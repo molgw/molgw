@@ -334,8 +334,8 @@ SCF Total Energy          , -77.7149628447      , 0 , 1.0e-7
 
 h2o_gw_smallbasis.in      , H2O: GW@PBE0 using a small basis set for virtual orbitals
 SCF Total Energy          , -76.3743156395     , 0 , 1.0e-7
-GW HOMO energy            , -11.772320         , 0 , 1.0e-4
-GW LUMO energy            ,   3.366969         , 0 , 1.0e-4
+GW HOMO energy            , -11.927726         , 0 , 1.0e-4
+GW LUMO energy            ,   3.286831         , 0 , 1.0e-4
 
 
 
