@@ -59,7 +59,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
 #endif
 !=====
 
- write(stdout,'(/,1x,a)') '=================================================='
+ write(stdout,'(/,/,1x,a)') '=================================================='
  write(stdout,'(1x,a)')   'Self-energy evaluation starts here'
  write(stdout,'(/,1x,a)') '=================================================='
 
@@ -117,6 +117,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
    ! Set the range again after the change of the virtual space
    ! to nstate
    call selfenergy_set_state_range(nstate_small,occupation)
+ else
+   nstate_small = nstate
  endif
 
 
@@ -159,7 +161,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
     .OR. calc_type%selfenergy_approx == GW   .OR. calc_type%selfenergy_approx == COHSEX   &
     .OR. calc_type%selfenergy_approx == GnW0 .OR. calc_type%selfenergy_approx == GnWn   ) then
 
-   call init_spectral_function(nstate,occupation,wpol)
+
+   call init_spectral_function(nstate_small,occupation,wpol)
 
    ! Try to read a spectral function file in order to skip the polarizability calculation
    ! Skip the reading if GnWn (=evGW) is requested

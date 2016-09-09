@@ -48,6 +48,10 @@ subroutine selfenergy_set_state_range(nstate,occupation)
  integer :: istate
 !=====
 
+ if( nstate > SIZE( occupation(:,:) , DIM=1 ) ) then
+   call die('selfenergy_set_state_range: nstate is too large')
+ endif
+
  ncore_G      = ncoreg
  nvirtual_G   = MIN(nvirtualg,nstate+1)
 

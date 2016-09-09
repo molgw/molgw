@@ -110,11 +110,15 @@ end function index_prodstate
 subroutine init_spectral_function(nstate,occupation,sf)
  implicit none
  integer,intent(in)                    :: nstate
- real(dp),intent(in)                   :: occupation(nstate,nspin)
+ real(dp),intent(in)                   :: occupation(:,:)
  type(spectral_function),intent(out)   :: sf
 !=====
  integer                               :: ijspin,istate,jstate,itrans,jtrans
 !=====
+
+ if( nstate > SIZE( occupation(:,:) , DIM=1 ) ) then
+   call die('init_spectral_function: nstate is too large')
+ endif
 
  ncore_W      = ncorew
  nvirtual_W   = MIN(nvirtualw,nstate+1)
