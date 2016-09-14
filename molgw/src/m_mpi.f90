@@ -325,6 +325,7 @@ subroutine distribute_auxil_basis(nbf_auxil_basis,nbf_auxil_basis_local)
   
    allocate(ibf_auxil_g(nbf_auxil_basis_local))
    allocate(ibf_auxil_l(nbf_auxil_basis))
+   ibf_auxil_l(:) = 0
    ibf_local = 0
    do ibf=1,nbf_auxil_basis
      if( rank_auxil == iproc_ibf_auxil(ibf) ) then
@@ -355,6 +356,7 @@ subroutine distribute_auxil_basis(nbf_auxil_basis,nbf_auxil_basis_local)
   
    allocate(ibf_auxil_g(nbf_auxil_basis_local))
    allocate(ibf_auxil_l(nbf_auxil_basis))
+   ibf_auxil_l(:) = 0
    ibf_local = 0
    do ibf=1,nbf_auxil_basis
      if( rank_local == iproc_ibf_auxil(ibf) ) then
@@ -407,6 +409,7 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis,nbf_auxil_basis_local)
 
  allocate(ibf_auxil_g_lr(nbf_auxil_basis_local))
  allocate(ibf_auxil_l_lr(nbf_auxil_basis))
+ ibf_auxil_l_lr(:) = 0
  ibf_local = 0
  do ibf=1,nbf_auxil_basis
    if( rank_auxil == iproc_ibf_auxil_lr(ibf) ) then

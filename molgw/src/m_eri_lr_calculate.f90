@@ -555,6 +555,8 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
  write(stdout,'(a,i6)')     ' Some have been eliminated ',auxil_basis%nbf-nauxil_2center_lr
  write(stdout,'(a,es16.6)') ' because they were lower than:',TOO_LOW_EIGENVAL
 
+ ! Prepare the distribution of the 3-center integrals
+ call distribute_auxil_basis_lr(nauxil_2center_lr,nauxil_3center_lr)
 
  call stop_clock(timing_eri_2center)
 
