@@ -1,5 +1,6 @@
 OPENMP=
 
+PYTHON=python
 FC=gfortran
 CC=gcc
 FCOPTS= -O0
@@ -283,10 +284,10 @@ archive:
                           ../../molgw/src/my_machine.arch
 
 prepare_sourcecode:
-	python prepare_sourcecode.py
+	$(PYTHON) prepare_sourcecode.py
 
 input:
-	python ../util/input_variables.py
+	$(PYTHON) ../util/input_variables.py
 
 doc:
 	pdflatex ../doc/notes.tex	

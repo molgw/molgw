@@ -28,7 +28,6 @@ module m_eri
  real(prec_eri),public,allocatable :: eri_3center(:,:)
  real(prec_eri),public,allocatable :: eri_3center_lr(:,:)
 
-! logical,protected,allocatable      :: negligible_basispair(:,:)
  logical,protected,allocatable      :: negligible_shellpair(:,:)
  integer,protected,allocatable      :: index_pair(:,:)
  integer,protected,allocatable      :: index_basis(:,:)
@@ -419,7 +418,7 @@ subroutine setup_basispair()
  call clean_allocate('index basis',index_basis,2,npair)
 
  !
- ! Specific ordering where the first nbf pairs contain the diagonal terms ibf=jbf
+ ! Specific ordering where the first nbf pairs contain the diagonal terms ibf==jbf
  !
  npair = 0
  index_pair(:,:) = 0

@@ -2,7 +2,7 @@
 #                 MOLGW
 =========================================
 
-Many-body perturbation theory for small to medium molecules
+Many-body perturbation theory for atoms, molecules, and clusters
 
 
 ## Getting started
@@ -44,7 +44,7 @@ Then
 `make`
 
 - BLAS and LAPACK linear algebra libraries are required.
-- libint is required:
+- libint is required: (version 2.0.x, newest versions are not compatible)
 https://sourceforge.net/projects/libint/files/latest/download?source=files
 - libxc is required: (version >= 2.2.0) for DFT calculations
 http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.2.2.tar.gz
