@@ -118,6 +118,55 @@ program molgw
    call issue_warning('SCALAPACK is used to distribute the SCF hamiltonian')
  endif
 
+
+ !
+ !
+ ! Precalculate the Coulomb integrals here
+ ! 
+ !
+ ! ERI are stored "privately" in the module m_eri
+ call prepare_eri(basis)
+ if( .NOT. is_full_auxil) then
+   call calculate_eri(print_eri_,basis)
+   !
+   ! for Range-separated hybrids, calculate the long-range ERI
+   if(calc_type%need_exchange_lr) then
+     call calculate_eri_lr(print_eri_,basis,rcut)
+   endif
+ endif
+
+ !
+ ! If an auxiliary basis is given,
+ ! then set it up now and calculate the required ERI: 2- and 3-center integrals
+ !
+ if( has_auxil_basis ) then
+   write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
+   call init_basis_set(basis_path,auxil_basis_name,gaussian_type,auxil_basis)
+
+   ! 2-center integrals
+   call calculate_eri_2center(auxil_basis)
+   ! Prepare the distribution of the 3-center integrals
+   call distribute_auxil_basis(nauxil_2center,nauxil_3center)
+   ! 3-center integrals
+   call calculate_eri_3center(basis,auxil_basis)
+
+   ! If Range-Separated Hybrid are requested
+   ! If is_big_restart, these integrals are NOT needed
+   if(calc_type%need_exchange_lr .AND. .NOT. is_big_restart) then
+     ! 2-center integrals
+     call calculate_eri_2center_lr(auxil_basis,rcut)
+     ! Prepare the distribution of the 3-center integrals
+     call distribute_auxil_basis_lr(nauxil_2center_lr,nauxil_3center_lr)
+     ! 3-center integrals
+     call calculate_eri_3center_lr(basis,auxil_basis,rcut)
+   endif
+
+ endif
+ ! Coulomb integrals have been computed and stored
+ !
+
+
+
  !
  ! Allocate the main arrays
  ! 2D arrays
@@ -161,6 +210,8 @@ program molgw
    call issue_warning('SCALAPACK is used to distribute the wavefunction coefficients')
  endif
 
+
+
  ! Allocate the main arrays
  ! 2D arrays
  allocate(c_matrix(m_c,n_c,nspin))
@@ -169,25 +220,6 @@ program molgw
  allocate(             energy(nstate,nspin))
  if( parallel_ham .AND. parallel_buffer ) call allocate_parallel_buffer(basis%nbf)
 
-
-
- !
- ! Set up the electron repulsion integrals
- !
- ! ERI are stored "privately" in the module m_eri
- call prepare_eri(basis)
- if( .NOT. is_full_auxil) then
-   call calculate_eri(print_eri_,basis)
- endif
-
-
- !
- ! for Range-separated hybrids, calculate the long-range ERI
- if(calc_type%need_exchange_lr) then
-   if( .NOT. is_full_auxil) then
-     call calculate_eri_lr(print_eri_,basis,rcut)
-   endif
- endif
 
  !
  ! Build the occupation array
@@ -301,33 +333,6 @@ program molgw
  endif
 
 
- !
- ! If an auxiliary basis is given,
- ! then set it up now and calculate the required ERI: 2- and 3-center integrals
- !
- if( has_auxil_basis ) then
-   write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
-   call init_basis_set(basis_path,auxil_basis_name,gaussian_type,auxil_basis)
-
-   ! 2-center integrals
-   call calculate_eri_2center(auxil_basis)
-   ! Prepare the distribution of the 3-center integrals
-   call distribute_auxil_basis(nauxil_2center,nauxil_3center)
-   ! 3-center integrals
-   call calculate_eri_3center(basis,auxil_basis)
-
-   ! If Range-Separated Hybrid are requested
-   ! If is_big_restart, these integrals are NOT needed
-   if(calc_type%need_exchange_lr .AND. .NOT. is_big_restart) then
-     ! 2-center integrals
-     call calculate_eri_2center_lr(auxil_basis,rcut)
-     ! Prepare the distribution of the 3-center integrals
-     call distribute_auxil_basis_lr(nauxil_2center_lr,nauxil_3center_lr)
-     ! 3-center integrals
-     call calculate_eri_3center_lr(basis,auxil_basis,rcut)
-   endif
-
- endif
 
  call stop_clock(timing_prescf)
 

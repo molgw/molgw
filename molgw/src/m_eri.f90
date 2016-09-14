@@ -55,10 +55,10 @@ module m_eri
  integer,protected :: npair         ! number of independent pairs (i,j) with i<=j 
 
  integer,public    :: nauxil_3center     ! size of the 3-center matrix
-                                         ! may differ from the previous one due to
+                                         ! may differ from the total number of 3-center integrals due to
                                          ! data distribution
  integer,public    :: nauxil_3center_lr  ! size of the 3-center matrix
-                                         ! may differ from the previous one due to
+                                         ! may differ from the total number of 3-center integrals due to
                                          ! data distribution
 
 

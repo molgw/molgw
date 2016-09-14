@@ -24,7 +24,9 @@ module m_eri_lr_calculate
 
  real(prec_eri),private,allocatable :: eri_2center_m1_lr(:,:)
 
+#ifdef COHSEX_DEVEL
  real(prec_eri),protected,allocatable :: eri_2center_rotation_lr(:,:)
+#endif
 
 contains
 
@@ -532,7 +534,7 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
  !
  ! Skip the too small eigenvalues
  nauxil_2center_lr = COUNT( ABS(eigval(:)) > TOO_LOW_EIGENVAL )
-#ifdef ACTIVATE_EXPERIMENTAL
+#ifdef COHSEX_DEVEL
  allocate(eri_2center_rotation_lr(auxil_basis%nbf,nauxil_2center_lr))
 #endif
 
@@ -540,7 +542,7 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
  do jbf=1,auxil_basis%nbf
    if( ABS(eigval(jbf)) < TOO_LOW_EIGENVAL ) cycle
    ibf = ibf + 1
-#ifdef ACTIVATE_EXPERIMENTAL
+#ifdef COHSEX_DEVEL
    eri_2center_rotation_lr(:,ibf) = eri_2center_m1_lr(:,jbf)
 #endif
    eri_2center_m1_lr(:,ibf) = eri_2center_m1_lr(:,jbf) / SQRT( eigval(jbf) )

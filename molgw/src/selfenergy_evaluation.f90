@@ -51,7 +51,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  real(dp),allocatable    :: zz(:,:)
  real(dp),allocatable    :: energy_qp_new(:,:),energy_qp_z(:,:)
  integer                 :: iomega
-#ifdef ACTIVATE_EXPERIMENTAL
+#ifdef COHSEX_DEVEL
  type(calculation_type)  :: calc_type_tmp
  real(dp),allocatable    :: p_matrix(:,:,:),p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
  integer                 :: istate
@@ -298,7 +298,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
    allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
    allocate(sigc(nstate,nspin))
 
-#ifdef ACTIVATE_EXPERIMENTAL
+#ifdef COHSEX_DEVEL
    ! Calculate the DFT potential part
    if( ABS( delta_cohsex ) > 1.0e-6_dp ) then
 

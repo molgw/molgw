@@ -264,6 +264,7 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
 
  ! Rotation of W0
 
+#ifdef COHSEX_DEVEL
  nbf_auxil    = SIZE( eri_2center_rotation   (:,:) , DIM=1)
 
  allocate( wp0_tmp(nbf_auxil,nbf_auxil) )
@@ -271,6 +272,7 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
  wp0_tmp(:,:)      = MATMUL( eri_2center_rotation(:,:) , MATMUL( wpol%w0(:,:) , TRANSPOSE( eri_2center_rotation(:,:) ) ) )
  wp0_rotation(:,:) = MATMUL( TRANSPOSE(eri_2center_rotation_lr(:,:)) , MATMUL( wp0_tmp(:,:) , eri_2center_rotation_lr(:,:) ) )
  deallocate( wp0_tmp )
+#endif
 
 
 
