@@ -216,7 +216,7 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
  use m_eri_ao_mo
  use m_eri
  use m_eri_calculate
- use m_eri_lr_calculate
+ use m_eri_calculate_lr
  use m_selfenergy_tools
  implicit none
 

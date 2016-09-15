@@ -16,7 +16,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  use m_inputparam
  use m_eri
  use m_eri_calculate
- use m_eri_lr_calculate
+ use m_eri_calculate_lr
  use m_eri_ao_mo
  use m_dft_grid
  use m_scf,only: en
@@ -351,8 +351,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
 
      ! 2-center integrals
      call calculate_eri_2center_lr(auxil_basis,rcut_mbpt)
-     ! Prepare the distribution of the 3-center integrals
-     call distribute_auxil_basis_lr(nauxil_2center_lr,nauxil_3center_lr)
      ! 3-center integrals
      call calculate_eri_3center_lr(basis,auxil_basis,rcut_mbpt)
 

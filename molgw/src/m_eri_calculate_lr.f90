@@ -7,7 +7,7 @@
 ! for a screened interaction
 !
 !=========================================================================
-module m_eri_lr_calculate
+module m_eri_calculate_lr
  use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
  use m_definitions
  use m_mpi
@@ -556,7 +556,8 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
  write(stdout,'(a,es16.6)') ' because they were lower than:',TOO_LOW_EIGENVAL
 
  ! Prepare the distribution of the 3-center integrals
- call distribute_auxil_basis_lr(nauxil_2center_lr,nauxil_3center_lr)
+ ! nauxil_3center_lr variable is now set up
+ call distribute_auxil_basis_lr(nauxil_2center_lr)
 
  call stop_clock(timing_eri_2center)
 
@@ -916,4 +917,4 @@ end subroutine calculate_eri_3center_lr
 
 
 !=========================================================================
-end module m_eri_lr_calculate
+end module m_eri_calculate_lr

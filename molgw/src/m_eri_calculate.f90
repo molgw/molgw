@@ -587,7 +587,8 @@ subroutine calculate_eri_2center(auxil_basis)
 
 
  ! Prepare the distribution of the 3-center integrals
- call distribute_auxil_basis(nauxil_2center,nauxil_3center)
+ ! nauxil_3center variable is now set up
+ call distribute_auxil_basis(nauxil_2center)
 
  call clean_allocate('Distributed 2-center integrals',eri_2center_distrib,nauxil_3center,auxil_basis%nbf)
 
@@ -858,7 +859,8 @@ subroutine calculate_eri_2center(auxil_basis)
  deallocate(eigval)
 
  ! Prepare the distribution of the 3-center integrals
- call distribute_auxil_basis(nauxil_2center,nauxil_3center)
+ ! nauxil_3center variable is now set up
+ call distribute_auxil_basis(nauxil_2center)
 
  call clean_allocate('Distributed 2-center integrals',eri_2center_distrib,nauxil_3center,auxil_basis%nbf)
  do ibf_auxil=1,nauxil_3center
@@ -1413,8 +1415,6 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
 
 
 end subroutine calculate_eri_approximate_hartree
-
-
 
 
 !=========================================================================

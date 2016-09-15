@@ -40,7 +40,7 @@ module m_eri
    real(dp),allocatable :: alpha(:)
    real(dp),allocatable :: coeff(:)
    real(dp)             :: x0(3)
-   integer              :: istart,iend
+   integer              :: istart,iend   ! index of the shell's basis functions in the basis set
  end type shell_type
 
  integer,protected                      :: nshell
@@ -54,12 +54,25 @@ module m_eri
  integer,protected :: nsize           ! size of the eri_4center array
  integer,protected :: npair         ! number of independent pairs (i,j) with i<=j 
 
- integer,public    :: nauxil_3center     ! size of the 3-center matrix
+ integer,protected :: nauxil_3center     ! size of the 3-center matrix
                                          ! may differ from the total number of 3-center integrals due to
                                          ! data distribution
- integer,public    :: nauxil_3center_lr  ! size of the 3-center matrix
+ integer,protected :: nauxil_3center_lr  ! size of the 3-center matrix
                                          ! may differ from the total number of 3-center integrals due to
                                          ! data distribution
+
+
+! Parallelization information for the auxiliary basis
+ integer,allocatable,protected :: iproc_ibf_auxil(:)
+ integer,allocatable,protected :: ibf_auxil_g(:)       ! auxil bf index from local to global
+ integer,allocatable,protected :: ibf_auxil_l(:)       ! auxil bf index from global to local
+ integer,allocatable,protected :: nbf_local_iproc(:)
+
+! Parallelization information for the auxiliary basis (LR part)
+ integer,allocatable,protected :: iproc_ibf_auxil_lr(:)
+ integer,allocatable,protected :: ibf_auxil_g_lr(:)
+ integer,allocatable,protected :: ibf_auxil_l_lr(:)
+ integer,allocatable,protected :: nbf_local_iproc_lr(:)
 
 
  interface
@@ -947,6 +960,141 @@ function cost_function_eri(am)
  cost_function_eri = am**2 + 4.6_dp 
 
 end function cost_function_eri
+
+
+!=========================================================================
+subroutine distribute_auxil_basis(nbf_auxil_basis)
+ implicit none
+
+ integer,intent(in)  :: nbf_auxil_basis
+!=====
+ integer :: ibf
+ integer :: ibf_local
+ integer :: iproc
+!=====
+
+ if( parallel_buffer ) then
+   ! Use nproc instead nproc_local
+  
+   allocate(iproc_ibf_auxil(nbf_auxil_basis))
+   allocate(nbf_local_iproc(0:nproc_auxil-1))
+  
+   iproc              = nproc_auxil - 1
+   nbf_local_iproc(:) = 0
+   do ibf=1,nbf_auxil_basis
+  
+     iproc = MODULO(iproc+1,nproc_auxil)
+  
+     iproc_ibf_auxil(ibf) = iproc
+  
+     nbf_local_iproc(iproc) = nbf_local_iproc(iproc) + 1
+  
+   enddo
+  
+   nauxil_3center = nbf_local_iproc(rank_auxil)
+  
+   allocate(ibf_auxil_g(nauxil_3center))
+   allocate(ibf_auxil_l(nbf_auxil_basis))
+   ibf_auxil_l(:) = 0
+   ibf_local = 0
+   do ibf=1,nbf_auxil_basis
+     if( rank_auxil == iproc_ibf_auxil(ibf) ) then
+       ibf_local = ibf_local + 1
+       ibf_auxil_g(ibf_local) = ibf
+       ibf_auxil_l(ibf)       = ibf_local
+     endif
+   enddo
+  
+ else
+
+   allocate(iproc_ibf_auxil(nbf_auxil_basis))
+   allocate(nbf_local_iproc(0:nproc_local-1))
+  
+   iproc              = nproc_local-1
+   nbf_local_iproc(:) = 0
+   do ibf=1,nbf_auxil_basis
+  
+     iproc = MODULO(iproc+1,nproc_local)
+  
+     iproc_ibf_auxil(ibf) = iproc
+  
+     nbf_local_iproc(iproc) = nbf_local_iproc(iproc) + 1
+  
+   enddo
+  
+   nauxil_3center = nbf_local_iproc(rank_local)
+  
+   allocate(ibf_auxil_g(nauxil_3center))
+   allocate(ibf_auxil_l(nbf_auxil_basis))
+   ibf_auxil_l(:) = 0
+   ibf_local = 0
+   do ibf=1,nbf_auxil_basis
+     if( rank_local == iproc_ibf_auxil(ibf) ) then
+       ibf_local = ibf_local + 1
+       ibf_auxil_g(ibf_local) = ibf
+       ibf_auxil_l(ibf)       = ibf_local
+     endif
+   enddo
+  
+ endif
+
+ write(stdout,'(/,a)') ' Distribute auxiliary basis functions among processors'
+ do iproc=0,0
+   write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc(iproc),' auxiliary basis functions'
+ enddo
+
+
+
+end subroutine distribute_auxil_basis
+
+
+!=========================================================================
+subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
+ implicit none
+
+ integer,intent(in)  :: nbf_auxil_basis
+!=====
+ integer :: ibf
+ integer :: ibf_local
+ integer :: iproc
+!=====
+
+ allocate(iproc_ibf_auxil_lr(nbf_auxil_basis))
+ allocate(nbf_local_iproc_lr(0:nproc_auxil-1))
+
+ iproc = nproc_auxil - 1
+ nbf_local_iproc_lr(:) = 0
+ do ibf=1,nbf_auxil_basis
+
+   iproc = MODULO(iproc+1,nproc_auxil)
+
+   iproc_ibf_auxil_lr(ibf) = iproc
+
+   nbf_local_iproc_lr(iproc) = nbf_local_iproc_lr(iproc) + 1
+
+ enddo
+
+ nauxil_3center_lr = nbf_local_iproc_lr(rank_auxil)
+
+ allocate(ibf_auxil_g_lr(nauxil_3center_lr))
+ allocate(ibf_auxil_l_lr(nbf_auxil_basis))
+ ibf_auxil_l_lr(:) = 0
+ ibf_local = 0
+ do ibf=1,nbf_auxil_basis
+   if( rank_auxil == iproc_ibf_auxil_lr(ibf) ) then
+     ibf_local = ibf_local + 1
+     ibf_auxil_g_lr(ibf_local) = ibf
+     ibf_auxil_l_lr(ibf)       = ibf_local
+   endif
+ enddo
+
+ write(stdout,'(/,a)') ' Distribute LR auxiliary basis functions among processors'
+ do iproc=0,0
+   write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc_lr(iproc),' auxiliary basis functions'
+ enddo
+
+
+end subroutine distribute_auxil_basis_lr
 
 
 !=========================================================================
