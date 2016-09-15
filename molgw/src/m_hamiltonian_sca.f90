@@ -631,15 +631,16 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
  real(dp),intent(out) :: c_matrix(nbf,nstate,nspin_local)
  real(dp),intent(out) :: energy(nstate,nspin_local)
 !=====
- integer :: cntxt
  integer :: mh,nh,mc,nc,ms,ns
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
  integer :: desch(ndel),descc(ndel),descs(ndel)
  real(dp),allocatable :: matrix_local(:,:)
+#ifdef HAVE_SCALAPACK
+ integer :: cntxt
  integer :: rank_sca,nprocs_sca
  integer,external :: NUMROC,INDXL2G
-
+#endif
  integer  :: ispin
  integer  :: ilocal,jlocal,iglobal,jglobal
  integer  :: m_small,n_small
@@ -761,6 +762,8 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
 
    deallocate(ham_local,c_matrix_local,s_matrix_local,h_small)
 
+   call BLACS_GRIDEXIT( cntxt )
+
  else
    energy(:,:) = 0.0_dp
  endif
@@ -769,6 +772,7 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
  ! Poor man distribution TODO replace by a broadcast
  call xsum_world(energy)
  call xsum_world(c_matrix)
+
 
 #else
 

@@ -332,7 +332,7 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
  integer :: nprow,npcol,iprow,ipcol,jprow,jpcol
  integer :: iglobal,jglobal,ilocal,jlocal
  integer :: kglobal,klocal
- integer :: desc2center(ndel),descz(ndel)
+ integer :: desc2center(ndel)
  real(dp),allocatable         :: eri_2center_tmp(:,:)
  logical :: skip_shell
 #endif
@@ -355,10 +355,8 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
 #ifdef HAVE_SCALAPACK
 
 
- nprow = MIN(nprow_sd,auxil_basis%nbf/scalapack_block_min)
- npcol = MIN(npcol_sd,auxil_basis%nbf/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ nprow = nprow_sd
+ npcol = npcol_sd
 
  call BLACS_GET( -1, 0, cntxt )
  call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
@@ -381,7 +379,7 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
    nlocal = NUMROC(auxil_basis%nbf,block_col,ipcol,first_col,npcol)
 
    call clean_allocate('2-center LR integrals',eri_2center_tmp,mlocal,nlocal)
-   call clean_allocate('2-center LR integrals square-root',eri_2center_m1_lr,mlocal,nlocal)
+   call clean_allocate('2-center LR integrals sqrt',eri_2center_m1_lr,mlocal,nlocal)
 
    eri_2center_tmp(:,:) = 0.0_dp
 
@@ -583,7 +581,6 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
 
    call clean_deallocate('2-center LR integrals',eri_2center_tmp)
 
-
  endif
 
  call xbcast_world(master,eigval)
@@ -600,6 +597,10 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
 
  call clean_allocate('Distributed 2-center LR integrals',eri_2center_distrib_lr,nauxil_3center_lr,auxil_basis%nbf)
 
+
+ !
+ ! Changing the data distribution method
+ ! 
  do jpcol=0,npcol-1
    nlocal = NUMROC(auxil_basis%nbf,block_col,jpcol,first_col,npcol)
 
@@ -644,6 +645,7 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
  enddo
 
 
+ call BLACS_GRIDEXIT( cntxt )
 
 
 
@@ -658,7 +660,7 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
  !
  ! 2-CENTER LR INTEGRALS 
  !
- call clean_allocate('2-center LR integrals',eri_2center_m1_lr,auxil_basis%nbf,auxil_basis%nbf)
+ call clean_allocate('2-center LR integrals sqrt',eri_2center_m1_lr,auxil_basis%nbf,auxil_basis%nbf)
 
  eri_2center_m1_lr(:,:) = 0.0_dp
 
@@ -885,7 +887,7 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
 
 
  write(stdout,*) 'Now deallocate the 2-center integrals: not needed anymore'
- call clean_deallocate('2-center LR integrals square-root',eri_2center_m1_lr)
+ call clean_deallocate('2-center LR integrals sqrt',eri_2center_m1_lr)
 
 
 

@@ -60,7 +60,6 @@ program molgw
  real(dp),allocatable    :: hamiltonian_hartree(:,:)
  real(dp),allocatable    :: hamiltonian_exx(:,:,:)
  real(dp),allocatable    :: hamiltonian_xc(:,:,:)
- real(dp),allocatable    :: matrix_tmp(:,:,:)
  real(dp),allocatable    :: s_matrix(:,:)
  real(dp),allocatable    :: s_matrix_sqrt_inv(:,:)
  real(dp),allocatable    :: c_matrix(:,:,:)
@@ -143,10 +142,17 @@ program molgw
    write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
    call init_basis_set(basis_path,auxil_basis_name,gaussian_type,auxil_basis)
 
+#ifndef HAVE_SCALAPACK_EXPERIMENTAL
    ! 2-center integrals
    call calculate_eri_2center(auxil_basis)
    ! 3-center integrals
    call calculate_eri_3center(basis,auxil_basis)
+#else
+   ! 2-center integrals
+   call calculate_eri_2center_sca(auxil_basis)
+   ! 3-center integrals
+   call calculate_eri_3center_sca(basis,auxil_basis)
+#endif
 
    ! If Range-Separated Hybrid are requested
    ! If is_big_restart, these integrals are NOT needed
@@ -317,15 +323,6 @@ program molgw
    ! The hamiltonian is still spin-independent:
    c_matrix(:,:,nspin) = c_matrix(:,:,1)
   
-   if( print_matrix_ ) then
-     allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-     do ispin=1,nspin
-       matrix_tmp(:,:,ispin) = TRANSPOSE( c_matrix(:,:,ispin) )
-     enddo
-     call dump_out_matrix(print_matrix_,'=== Initial C matrix ===',basis%nbf,nspin,matrix_tmp)
-     deallocate(matrix_tmp)
-   endif
-
  endif
 
 

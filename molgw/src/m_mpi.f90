@@ -122,12 +122,6 @@ module m_mpi
  integer,protected :: iprow_cd
  integer,protected :: ipcol_cd
 
- ! SCALAPACK grid: no distribution
- integer,protected :: cntxt_nd
- integer,protected :: nprow_nd
- integer,protected :: npcol_nd
- integer,protected :: iprow_nd
- integer,protected :: ipcol_nd
 
 contains
 
@@ -137,7 +131,6 @@ subroutine init_mpi_world()
  implicit none
 
 !=====
- integer :: color
  integer :: ier
 !=====
 
@@ -179,6 +172,10 @@ subroutine init_mpi_other_communicators(nproc_ortho_in)
 !=====
  integer :: color
  integer :: ier
+#ifdef HAVE_SCALAPACK
+ integer             :: iproc_auxil
+ integer,allocatable :: usermap(:,:)
+#endif
 !=====
 
 #ifdef HAVE_MPI
@@ -188,11 +185,6 @@ subroutine init_mpi_other_communicators(nproc_ortho_in)
  !
  ! Set up grid communicator
  !
-#if 0
- nproc_grid = nproc_world
- comm_grid  = comm_world
- call MPI_COMM_RANK(comm_grid,rank_grid,ier)
-#else
  nproc_grid = nproc_world / nproc_ortho
 
  color = MODULO( rank_world , nproc_ortho )
@@ -204,7 +196,7 @@ subroutine init_mpi_other_communicators(nproc_ortho_in)
    write(stdout,*) rank_world,color,nproc_grid,nproc_world,nproc_ortho
    call die('Problem in init_mpi')
  endif
-#endif
+
 
  !
  ! Set up auxil communicator
@@ -229,6 +221,30 @@ subroutine init_mpi_other_communicators(nproc_ortho_in)
  color = rank_world / nproc_ortho
  call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_ortho,ier);
  call MPI_COMM_RANK(comm_ortho,rank_ortho,ier)
+
+
+#ifdef HAVE_SCALAPACK
+ !
+ ! Create the SCALAPACK context cntxt_auxil 
+ ! that precisely matches the MPI_COMMUNICATOR comm_auxil
+ !
+ call BLACS_GET( -1, 0, cntxt_auxil )
+ 
+ if( rank_world /= iproc_sca ) then
+   call die('init_mpi_other_communicators: coding is valid only if SCALAPACK and MPI order the procs in the same manner')
+ endif
+
+ allocate(usermap(nproc_auxil,1))
+ do iproc_auxil=0,nproc_auxil-1
+   usermap(iproc_auxil+1,1) = iproc_auxil * nproc_ortho
+ enddo
+ call BLACS_GRIDMAP(cntxt_auxil,usermap,nproc_auxil,nproc_auxil,1)
+ deallocate(usermap)
+
+ call BLACS_GRIDINFO(cntxt_auxil,nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil)
+ call xmax_ortho(nprow_auxil)
+ call xmax_ortho(npcol_auxil)
+#endif
 
 
 #else
@@ -519,13 +535,6 @@ subroutine init_scalapack()
  call BLACS_GRIDINIT( cntxt_cd, 'R', nprow_cd, npcol_cd )
  call BLACS_GRIDINFO( cntxt_cd, nprow_cd, npcol_cd, iprow_cd, ipcol_cd )
 
- ! No division of tasks
- nprow_nd = 1
- npcol_nd = 1
- call BLACS_GET( -1, 0, cntxt_nd )
- call BLACS_GRIDINIT( cntxt_nd, 'R', nprow_nd, npcol_nd )
- call BLACS_GRIDINFO( cntxt_nd, nprow_nd, npcol_nd, iprow_nd, ipcol_nd )
-
 ! write(stdout,'(/,a)')           ' ==== SCALAPACK info'
 ! write(stdout,'(a)')             '   Squared distribution'
 ! write(stdout,'(a50,1x,i8)')      'Number of proc:',nprow_sd*npcol_sd
@@ -770,9 +779,6 @@ subroutine init_desc(distribution,mglobal,nglobal,desc,mlocal,nlocal)
    mlocal = NUMROC(mglobal,block_row,iprow_cd,first_row,nprow_cd)
    nlocal = NUMROC(nglobal,block_col,ipcol_cd,first_col,npcol_cd)
    call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_cd,MAX(1,mlocal),info)
- case('N')
-   mlocal = NUMROC(mglobal,block_row,iprow_nd,first_row,nprow_nd)
-   nlocal = NUMROC(nglobal,block_col,ipcol_nd,first_col,npcol_nd)
  case default
    write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
    call die('BUG')
@@ -1086,6 +1092,10 @@ subroutine finish_scalapack()
  call BLACS_GRIDEXIT( cntxt_sd )
  call BLACS_GRIDEXIT( cntxt_cd )
  call BLACS_GRIDEXIT( cntxt_rd )
+ if( parallel_ham ) then
+   if( cntxt_ham > 0 ) call BLACS_GRIDEXIT( cntxt_ham )
+ endif
+ if( cntxt_auxil > 0 ) call BLACS_GRIDEXIT( cntxt_auxil )
  call BLACS_EXIT( 0 )
 #endif
 

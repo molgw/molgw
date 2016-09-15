@@ -77,7 +77,6 @@ subroutine scf_loop(is_restart,&
  !
  ! Allocate the main arrays
  allocate(hamiltonian (m_ham,n_ham,nspin))
- allocate(matrix_tmp  (m_ham,n_ham,nspin))
  allocate(p_matrix    (m_ham,n_ham,nspin))
  allocate(p_matrix_old(m_ham,n_ham,nspin))
  allocate(p_matrix_sqrt(m_ham,n_ham,nspin))
@@ -183,6 +182,7 @@ subroutine scf_loop(is_restart,&
    endif
 
    if(calc_type%need_exchange_lr) then
+     allocate(matrix_tmp(m_ham,n_ham,nspin))
      if( .NOT. is_full_auxil) then
        call setup_exchange_longrange(print_matrix_,basis%nbf,p_matrix,matrix_tmp,energy_tmp)
      else
@@ -191,6 +191,7 @@ subroutine scf_loop(is_restart,&
      ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
      en%exx_hyb = en%exx_hyb + alpha_hybrid_lr * energy_tmp
      hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix_tmp(:,:,:) * alpha_hybrid_lr
+     deallocate(matrix_tmp)
    endif
 
 
@@ -234,6 +235,7 @@ subroutine scf_loop(is_restart,&
      ! Set the range of states on which to evaluate the self-energy
      call selfenergy_set_state_range(nstate,occupation)
 
+     allocate(matrix_tmp(m_ham,n_ham,nspin))
      call gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpol,matrix_tmp)
 
      if( .NOT. ALLOCATED(self_energy_old) ) then
@@ -247,6 +249,7 @@ subroutine scf_loop(is_restart,&
      call destroy_spectral_function(wpol)
 
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
+     deallocate(matrix_tmp)
 
    endif
 
@@ -258,6 +261,7 @@ subroutine scf_loop(is_restart,&
      ! Set the range of states on which to evaluate the self-energy
      call selfenergy_set_state_range(nstate,occupation)
 
+     allocate(matrix_tmp(m_ham,n_ham,nspin))
      call pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,matrix_tmp,en%mp2)
 
      write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
@@ -275,6 +279,7 @@ subroutine scf_loop(is_restart,&
      call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
   
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
+     deallocate(matrix_tmp)
 
    endif
 
@@ -329,22 +334,6 @@ subroutine scf_loop(is_restart,&
 
    call output_new_homolumo('gKS',nstate,occupation,energy,1,nstate)
 
-
-   if(print_matrix_) then
-     !
-     ! REMEMBER:
-     ! \varphi_i = \sum_alpha C_{alpha i} \phi_alpha 
-     ! 
-     ! hence transpose the c_matrix for a correct output by dump_out_matrix
-     do ispin=1,nspin
-       matrix_tmp(:,:,ispin) = TRANSPOSE( c_matrix(:,:,ispin) )
-     enddo
-     title='=== C coefficients ==='
-     call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
-     matrix_tmp(:,:,1) = MATMUL( TRANSPOSE(c_matrix(:,:,1)), MATMUL( s_matrix(:,:), c_matrix(:,:,1) ) )
-     title='=== C^T S C = identity ? ==='
-     call dump_out_matrix(print_matrix_,title,basis%nbf,1,matrix_tmp)
-   endif
 
    !
    ! Output the total energy and its components
@@ -434,6 +423,7 @@ subroutine scf_loop(is_restart,&
    ! Single excitation term
    !
    ! Obtain the Fock matrix
+   allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
    matrix_tmp(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
    ! And pass it to single_excitations
    call single_excitations(nstate,basis%nbf,energy,occupation,c_matrix,matrix_tmp)
@@ -441,12 +431,12 @@ subroutine scf_loop(is_restart,&
    write(stdout,'(a25,1x,f19.10,/)')   'Est. HF Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
 
 
-
    ! A dirty section for the Luttinger-Ward functional
    if(calc_type%selfenergy_approx==LW .OR. calc_type%selfenergy_approx==LW2 .OR. calc_type%selfenergy_approx==GSIGMA) then
      allocate(energy_exx(nstate,nspin))
      allocate(c_matrix_exx(basis%nbf,nstate,nspin))
      call issue_warning('ugly coding here write temp file fort.1000 and fort.1001')
+
      do ispin=1,nspin
        write(stdout,*) 'Diagonalization H_exx for spin channel',ispin
        call diagonalize_generalized_sym(basis%nbf,&
@@ -468,6 +458,8 @@ subroutine scf_loop(is_restart,&
      deallocate(energy_exx,c_matrix_exx)
    endif
 
+   deallocate(matrix_tmp)
+
  endif
 
 
@@ -487,7 +479,7 @@ subroutine scf_loop(is_restart,&
  ! Cleanly deallocate the arrays
  !
  deallocate(hamiltonian)
- deallocate(matrix_tmp,p_matrix_old)
+ deallocate(p_matrix_old)
  if( ALLOCATED(self_energy_old) ) deallocate(self_energy_old)
  if( ALLOCATED(hamiltonian_vxc) ) deallocate(hamiltonian_vxc)
  if( ALLOCATED(p_matrix) )        deallocate(p_matrix)
