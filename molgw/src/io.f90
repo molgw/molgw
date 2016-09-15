@@ -136,7 +136,7 @@ subroutine dump_out_occupation(title,nstate,nspin,occupation)
    if( ANY(occupation(istate,:) > 0.001_dp) ) ihomo = istate 
  enddo
 
- do istate=ihomo-5,ihomo+5
+ do istate=MAX(1,ihomo-5),MIN(ihomo+5,nstate)
    write(stdout,'(1x,i3,2(2(1x,f12.5)),2x)') istate,occupation(istate,:)
  enddo
  write(stdout,*)

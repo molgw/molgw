@@ -304,15 +304,15 @@ subroutine calculate_eri_2center(auxil_basis)
  integer                      :: ibf,jbf,kbf,lbf
  integer                      :: iibf
  integer                      :: info,ip
- real(dp)                     :: zeta_12,zeta_34,rho,f0t(0:0),tt
- real(dp)                     :: p(3),q(3)
- real(dp),allocatable         :: integrals_tmp(:,:)
- real(dp),allocatable         :: integrals_cart(:,:)
- real(dp),allocatable         :: eigval(:)
- real(dp)                     :: workload(nproc_world)
- integer,allocatable          :: shell_proc(:)
  integer                      :: ibf_auxil,jbf_auxil
  integer                      :: nauxil_neglect
+ real(dp)                     :: zeta_12,zeta_34,rho,f0t(0:0),tt
+ real(dp)                     :: p(3),q(3)
+ real(dp)                     :: workload(nproc_world)
+ real(dp)                     :: eigval(auxil_basis%nbf)
+ real(dp),allocatable         :: integrals_tmp(:,:)
+ real(dp),allocatable         :: integrals_cart(:,:)
+ integer,allocatable          :: shell_proc(:)
  real(dp)                     :: symmetrization_factor
  real(dp),allocatable         :: eri_2center_m1(:,:)
 #ifdef HAVE_SCALAPACK
@@ -342,12 +342,9 @@ subroutine calculate_eri_2center(auxil_basis)
 
  call setup_shell_list_auxil(auxil_basis)
 
- allocate(shell_proc(nshell_auxil))
-
 
 #ifdef HAVE_SCALAPACK
 
- allocate(eigval(auxil_basis%nbf))
 
  nprow = MIN(nprow_sd,auxil_basis%nbf/scalapack_block_min)
  npcol = MIN(npcol_sd,auxil_basis%nbf/scalapack_block_min)
@@ -635,7 +632,6 @@ subroutine calculate_eri_2center(auxil_basis)
    enddo
  enddo
 
- deallocate(eigval)
 
 
 
@@ -658,6 +654,7 @@ subroutine calculate_eri_2center(auxil_basis)
 
  !
  ! Load balancing
+ allocate(shell_proc(nshell_auxil))
  workload(:) = 0.0_dp
  do kshell=1,nshell_auxil
    amk = shell_auxil(kshell)%am
@@ -831,8 +828,8 @@ subroutine calculate_eri_2center(auxil_basis)
  eri_2center_m1(:,:) = eri_2center_m1(:,:) + TRANSPOSE( eri_2center_m1(:,:) )
 
 
+ deallocate(shell_proc)
 
- allocate(eigval(auxil_basis%nbf))
  !
  ! Perform in-place diagonalization here with or without scalapack
  call diagonalize_scalapack(scalapack_block_min,auxil_basis%nbf,eri_2center_m1,eigval)
@@ -856,7 +853,6 @@ subroutine calculate_eri_2center(auxil_basis)
    eri_2center_rotation(:,ibf) = eri_2center_m1(:,jbf) 
 #endif
  enddo
- deallocate(eigval)
 
  ! Prepare the distribution of the 3-center integrals
  ! nauxil_3center variable is now set up
@@ -874,8 +870,6 @@ subroutine calculate_eri_2center(auxil_basis)
  write(stdout,'(a)')        ' All 2-center integrals have been calculated, diagonalized and stored'
  write(stdout,'(a,i6)')     ' Some have been eliminated due to too large overlap ',nauxil_neglect
  write(stdout,'(a,es16.6)') ' because their eigenvalue was lower than:',TOO_LOW_EIGENVAL
-
- deallocate(shell_proc)
 
  write(stdout,*) 'Now deallocate the 2-center integrals: not needed anymore'
  call clean_deallocate('2-center integrals square-root',eri_2center_m1)
