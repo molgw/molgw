@@ -21,13 +21,11 @@ module m_eri_calculate
  integer,protected :: nauxil_2center     ! size of the 2-center matrix
                                          ! 2-center integrals are NOT distributed
 
- real(prec_eri),private,allocatable :: eri_2center_distrib(:,:)
-
  real(dp),private,allocatable :: eri_2center(:,:)
- integer,private :: desc_2center(ndel)
+ integer,private              :: desc_2center(ndel)
 
 #ifdef COHSEX_DEVEL
- real(prec_eri),protected,allocatable :: eri_2center_rotation(:,:)
+ real(dp),protected,allocatable :: eri_2center_rotation(:,:)
 #endif
 
 contains
@@ -588,7 +586,7 @@ subroutine calculate_eri_2center(auxil_basis)
  ! nauxil_3center variable is now set up
  call distribute_auxil_basis(nauxil_2center)
 
- call clean_allocate('Distributed 2-center integrals',eri_2center_distrib,nauxil_3center,auxil_basis%nbf)
+ call clean_allocate('Distributed 2-center integrals',eri_2center,nauxil_3center,auxil_basis%nbf)
 
 
  !
@@ -625,7 +623,7 @@ subroutine calculate_eri_2center(auxil_basis)
        do ilocal=1,mlocal
          jbf_auxil_global = rowindex_local_to_global(jprow,nprow,ilocal)
  
-         eri_2center_distrib(ibf_auxil_local,jbf_auxil_global) = eri_2center_tmp(ilocal,jlocal) / SQRT( eigval(jglobal) )
+         eri_2center(ibf_auxil_local,jbf_auxil_global) = eri_2center_tmp(ilocal,jlocal) / SQRT( eigval(jglobal) )
 
        enddo
 
@@ -864,10 +862,10 @@ subroutine calculate_eri_2center(auxil_basis)
  ! nauxil_3center variable is now set up
  call distribute_auxil_basis(nauxil_2center)
 
- call clean_allocate('Distributed 2-center integrals',eri_2center_distrib,nauxil_3center,auxil_basis%nbf)
+ call clean_allocate('Distributed 2-center integrals',eri_2center,nauxil_3center,auxil_basis%nbf)
  do ibf_auxil=1,nauxil_3center
    jbf_auxil = ibf_auxil_g(ibf_auxil)
-   eri_2center_distrib(ibf_auxil,:) = eri_2center_m1(:,jbf_auxil)
+   eri_2center(ibf_auxil,:) = eri_2center_m1(:,jbf_auxil)
  enddo
 
 #endif
@@ -1181,7 +1179,7 @@ subroutine calculate_eri_3center(basis,auxil_basis)
    ! Combine the 2-center integral with the 3-center here
    !
    allocate(eri_tmp(nauxil_3center,nk,nl))
-   call DGEMM('N','N',nauxil_3center,nk*nl,auxil_basis%nbf,1.0_dp,eri_2center_distrib,nauxil_3center,eri_3tmp,auxil_basis%nbf,0.0_dp,eri_tmp,nauxil_3center)
+   call DGEMM('N','N',nauxil_3center,nk*nl,auxil_basis%nbf,1.0_dp,eri_2center,nauxil_3center,eri_3tmp,auxil_basis%nbf,0.0_dp,eri_tmp,nauxil_3center)
 
    do lbf=1,nl
      do kbf=1,nk
@@ -1198,7 +1196,7 @@ subroutine calculate_eri_3center(basis,auxil_basis)
 
  write(stdout,'(a)') ' All 3-center integrals have been calculated and stored'
 
- call clean_deallocate('Distributed 2-center integrals',eri_2center_distrib)
+ call clean_deallocate('Distributed 2-center integrals',eri_2center)
 
  call stop_clock(timing_eri_3center)
 
@@ -1231,7 +1229,7 @@ subroutine calculate_eri_2center_sca(auxil_basis)
  real(dp),allocatable         :: integrals_cart(:,:)
  integer,allocatable          :: shell_proc(:)
  real(dp)                     :: symmetrization_factor
- real(dp),allocatable         :: eri_2center_m1(:,:)
+ real(dp),allocatable         :: eri_2center_sqrt(:,:)
 
  integer,external :: NUMROC,INDXG2P,INDXG2L,INDXL2G
  integer :: ibf_auxil_local,jbf_auxil_global
@@ -1282,8 +1280,8 @@ subroutine calculate_eri_2center_sca(auxil_basis)
    mlocal = NUMROC(auxil_basis%nbf,block_row,iprow,first_row,nprow)
    nlocal = NUMROC(auxil_basis%nbf,block_col,ipcol,first_col,npcol)
 
-   call clean_allocate('2-center integrals',eri_2center_tmp,mlocal,nlocal)
-   call clean_allocate('2-center integrals sqrt',eri_2center_m1,mlocal,nlocal)
+   call clean_allocate('tmp 2-center integrals',eri_2center_tmp,mlocal,nlocal)
+   call clean_allocate('2-center integrals sqrt',eri_2center_sqrt,mlocal,nlocal)
 
    eri_2center_tmp(:,:) = 0.0_dp
 
@@ -1474,14 +1472,14 @@ subroutine calculate_eri_2center_sca(auxil_basis)
    enddo   ! kshell
 
    ! B = A
-   call PDLACPY('A',auxil_basis%nbf,auxil_basis%nbf,eri_2center_tmp,1,1,desc2center,eri_2center_m1,1,1,desc2center)
+   call PDLACPY('A',auxil_basis%nbf,auxil_basis%nbf,eri_2center_tmp,1,1,desc2center,eri_2center_sqrt,1,1,desc2center)
    ! A = A + B**T
-   call PDGEADD('T',auxil_basis%nbf,auxil_basis%nbf,1.0d0,eri_2center_m1,1,1,desc2center,1.0d0,eri_2center_tmp,1,1,desc2center)
+   call PDGEADD('T',auxil_basis%nbf,auxil_basis%nbf,1.0d0,eri_2center_sqrt,1,1,desc2center,1.0d0,eri_2center_tmp,1,1,desc2center)
 
 
-   call diagonalize_sca(auxil_basis%nbf,desc2center,eri_2center_tmp,eigval,desc2center,eri_2center_m1)
+   call diagonalize_sca(auxil_basis%nbf,desc2center,eri_2center_tmp,eigval,desc2center,eri_2center_sqrt)
 
-   call clean_deallocate('2-center integrals',eri_2center_tmp)
+   call clean_deallocate('tmp 2-center integrals',eri_2center_tmp)
 
 
    !
@@ -1496,9 +1494,11 @@ subroutine calculate_eri_2center_sca(auxil_basis)
    call DESCINIT(desc_2center,auxil_basis%nbf,nauxil_2center,block_row,block_col,first_row,first_col,cntxt,MAX(1,mlocal),info)
 
    call clean_allocate('Distributed 2-center integrals',eri_2center,mlocal,nlocal)
-   allocate(eri_2center_tmp(mlocal,nlocal))
-   eri_2center_tmp(:,:) = 0.0_dp
+   call clean_allocate('tmp 2-center integrals',eri_2center_tmp,mlocal,nlocal)
 
+   !
+   ! Create a rectangular matrix with only 1 / SQRT( eigval) on a diagonal
+   eri_2center_tmp(:,:) = 0.0_dp
    do jlocal=1,nlocal
      jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
      do ilocal=1,mlocal
@@ -1511,12 +1511,12 @@ subroutine calculate_eri_2center_sca(auxil_basis)
 
 
    call PDGEMM('N','N',auxil_basis%nbf,nauxil_2center,auxil_basis%nbf, &
-               1.0_dp,eri_2center_m1 ,1,1,desc2center,  &
+               1.0_dp,eri_2center_sqrt ,1,1,desc2center,  &
                       eri_2center_tmp,1,1,desc_2center,   &
                0.0_dp,eri_2center    ,1,1,desc_2center)
 
-   deallocate(eri_2center_tmp)
-   call clean_deallocate('2-center integrals sqrt',eri_2center_m1)
+   call clean_deallocate('tmp 2-center integrals',eri_2center_tmp)
+   call clean_deallocate('2-center integrals sqrt',eri_2center_sqrt)
 
  endif
 
@@ -1526,9 +1526,9 @@ subroutine calculate_eri_2center_sca(auxil_basis)
  ! nauxil_3center variable is now set up
  call distribute_auxil_basis(nauxil_2center)
 
- write(stdout,'(a)')        ' All 2-center integrals have been calculated, diagonalized and stored'
- write(stdout,'(a,i6)')     ' Some have been eliminated due to too large overlap ',nauxil_neglect
- write(stdout,'(a,es16.6)') ' because their eigenvalue was lower than:',TOO_LOW_EIGENVAL
+ write(stdout,'(/,1x,a)')      'All 2-center integrals have been calculated, diagonalized and stored'
+ write(stdout,'(1x,a,i6)')     'Some have been eliminated due to too large overlap ',nauxil_neglect
+ write(stdout,'(1x,a,es16.6)') 'because their eigenvalue was lower than:',TOO_LOW_EIGENVAL
 
 
 
@@ -1884,7 +1884,7 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
 
    call DESCINIT(desc3tmp,nauxil_2center,npair,block_row,block_col,first_row,first_col,cntxt,MAX(1,mlocal),info)
 
-   allocate(eri_3tmp(mlocal,nlocal))
+   call clean_allocate('tmp 3-center integrals',eri_3tmp,mlocal,nlocal)
 
    call PDGEMM('T','N',nauxil_2center,npair,auxil_basis%nbf, &
                1.0_dp,eri_2center,1,1,desc_2center,  &
@@ -1892,7 +1892,8 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
                0.0_dp,eri_3tmp   ,1,1,desc3tmp)
 
 
-  deallocate(eri_3center)
+  call clean_deallocate('Distributed 2-center integrals',eri_2center)
+  call clean_deallocate('3-center integrals',eri_3center)
 
 
  else
@@ -1913,14 +1914,16 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
  call xmax_ortho(mlocal)
  call xmax_ortho(nlocal)
 
- allocate(eri_3center(mlocal,nlocal))
+ call clean_allocate('3-center integrals',eri_3center,mlocal,nlocal)
   
  call DESCINIT(desc3final,nauxil_2center,npair,1,1,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
 
  call PDGEMR2D(nauxil_2center,npair,eri_3tmp,1,1,desc3tmp, &
                                  eri_3center,1,1,desc3final,cntxt)
 
- if( ALLOCATED(eri_3tmp) ) deallocate(eri_3tmp)
+ if( cntxt > 0 ) then
+   call clean_deallocate('tmp 3-center integrals',eri_3tmp)
+ endif
 
  !
  ! Propagate to the ortho MPI direction
@@ -1929,9 +1932,8 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
  endif
  call xsum_ortho(eri_3center)
 
- write(stdout,'(a)') ' All 3-center integrals have been calculated and stored'
+ write(stdout,'(/,1x,a)') 'All 3-center integrals have been calculated and stored'
 
- call clean_deallocate('Distributed 2-center integrals',eri_2center)
 
  call BLACS_GRIDEXIT( cntxt )
 

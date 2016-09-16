@@ -60,6 +60,33 @@ def check_output(out,testinfo):
     if 'one CPU only' in line:
       print('Test not functional in parallel => skip it')
       return
+  #
+  # Second check if there is a memory leak
+  #
+  key = '    Memory ('
+  ref = 0.000
+  tol = 0.001
+  key_found = False
+  tested += 1
+  for line in reversed(open(tmpfolder+'/'+out,'r').readlines()):
+    if key in line:
+      key_found = True
+      parsing  = line.split(':')
+      parsing2 = parsing[1].split()
+      if abs( float(parsing2[0]) - ref ) < tol:
+        print('No memory leak'.rjust(30)+'[ \033[92m\033[1mOK\033[0m ]'.rjust(30))
+        success += 1
+        fdiff.write(str(tested).rjust(6) + parsing2[0].rjust(30) \
+              + str(ref).rjust(30)+str(float(parsing2[0]) - ref).rjust(30)+'  OK  \n')
+        break
+      else:
+        print('No memory leak'.rjust(30)+'[\033[91m\033[1mFAIL\033[0m]'.rjust(30))
+        fdiff.write(str(tested).rjust(6) + parsing2[0].rjust(30) \
+              + str(ref).rjust(30)+str(float(parsing2[0]) - ref).rjust(30)+' FAIL \n')
+        break
+
+  if not key_found:
+    print('No memory leak'.rjust(30)+'[\033[91m\033[1mNOT FOUND\033[0m]'.rjust(30))
 
   #
   # Then, parse the output and perform the checks

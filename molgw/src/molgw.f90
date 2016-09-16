@@ -142,7 +142,7 @@ program molgw
    write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
    call init_basis_set(basis_path,auxil_basis_name,gaussian_type,auxil_basis)
 
-#ifndef HAVE_SCALAPACK_EXPERIMENTAL
+#ifndef HAVE_SCALAPACK
    ! 2-center integrals
    call calculate_eri_2center(auxil_basis)
    ! 3-center integrals

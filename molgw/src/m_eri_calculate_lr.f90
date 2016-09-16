@@ -22,7 +22,7 @@ module m_eri_calculate_lr
  integer,protected :: nauxil_2center_lr  ! size of the 2-center matrix
                                          ! 2-center integrals are NOT distributed
 
- real(prec_eri),private,allocatable :: eri_2center_distrib_lr(:,:)
+ real(prec_eri),private,allocatable :: eri_2center_lr(:,:)
 
 #ifdef COHSEX_DEVEL
  real(prec_eri),protected,allocatable :: eri_2center_rotation_lr(:,:)
@@ -595,7 +595,7 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
  ! nauxil_3center_lr variable is now set up
  call distribute_auxil_basis_lr(nauxil_2center_lr)
 
- call clean_allocate('Distributed 2-center LR integrals',eri_2center_distrib_lr,nauxil_3center_lr,auxil_basis%nbf)
+ call clean_allocate('Distributed 2-center LR integrals',eri_2center_lr,nauxil_3center_lr,auxil_basis%nbf)
 
 
  !
@@ -632,7 +632,7 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
        do ilocal=1,mlocal
          jbf_auxil_global = rowindex_local_to_global(jprow,nprow,ilocal)
  
-         eri_2center_distrib_lr(ibf_auxil_local,jbf_auxil_global) = eri_2center_tmp(ilocal,jlocal) / SQRT( eigval(jglobal) )
+         eri_2center_lr(ibf_auxil_local,jbf_auxil_global) = eri_2center_tmp(ilocal,jlocal) / SQRT( eigval(jglobal) )
 
        enddo
 
@@ -872,10 +872,10 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
  ! nauxil_3center_lr variable is now set up
  call distribute_auxil_basis_lr(nauxil_2center_lr)
 
- call clean_allocate('Distributed LR 2-center integrals',eri_2center_distrib_lr,nauxil_3center_lr,auxil_basis%nbf)
+ call clean_allocate('Distributed LR 2-center integrals',eri_2center_lr,nauxil_3center_lr,auxil_basis%nbf)
  do ibf_auxil=1,nauxil_3center_lr
    jbf_auxil = ibf_auxil_g_lr(ibf_auxil)
-   eri_2center_distrib_lr(ibf_auxil,:) = eri_2center_m1_lr(:,jbf_auxil)
+   eri_2center_lr(ibf_auxil,:) = eri_2center_m1_lr(:,jbf_auxil)
  enddo
 
 #endif
@@ -1197,7 +1197,7 @@ subroutine calculate_eri_3center_lr(basis,auxil_basis,rcut)
    ! Combine the 2-center integral with the 3-center here
    !
    allocate(eri_tmp(nauxil_3center_lr,nk,nl))
-   call DGEMM('N','N',nauxil_3center_lr,nk*nl,auxil_basis%nbf,1.0_dp,eri_2center_distrib_lr,nauxil_3center_lr,eri_3tmp,auxil_basis%nbf,0.0_dp,eri_tmp,nauxil_3center_lr)
+   call DGEMM('N','N',nauxil_3center_lr,nk*nl,auxil_basis%nbf,1.0_dp,eri_2center_lr,nauxil_3center_lr,eri_3tmp,auxil_basis%nbf,0.0_dp,eri_tmp,nauxil_3center_lr)
 
    do lbf=1,nl
      do kbf=1,nk
@@ -1213,7 +1213,7 @@ subroutine calculate_eri_3center_lr(basis,auxil_basis,rcut)
 
  write(stdout,'(a)') ' All 3-center LR integrals have been calculated and stored'
 
- call clean_deallocate('Distributed 2-center LR integrals',eri_2center_distrib_lr)
+ call clean_deallocate('Distributed 2-center LR integrals',eri_2center_lr)
 
  call stop_clock(timing_eri_3center)
 
