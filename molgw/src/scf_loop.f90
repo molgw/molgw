@@ -58,7 +58,6 @@ subroutine scf_loop(is_restart,&
  real(dp),allocatable    :: p_matrix(:,:,:)
  real(dp),allocatable    :: p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
  real(dp),allocatable    :: hamiltonian(:,:,:)
- real(dp),allocatable    :: hamiltonian_vxc(:,:,:)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
  real(dp),allocatable    :: p_matrix_old(:,:,:)
  real(dp),allocatable    :: self_energy_old(:,:,:)
@@ -76,14 +75,13 @@ subroutine scf_loop(is_restart,&
 
  !
  ! Allocate the main arrays
- allocate(hamiltonian (m_ham,n_ham,nspin))
- allocate(p_matrix    (m_ham,n_ham,nspin))
- allocate(p_matrix_old(m_ham,n_ham,nspin))
- allocate(p_matrix_sqrt(m_ham,n_ham,nspin))
+ call clean_allocate('Hamiltonian H',hamiltonian,m_ham,n_ham,nspin)
+ call clean_allocate('Density matrix P',p_matrix,m_ham,n_ham,nspin)
+ call clean_allocate('Previous density matrix Pold',p_matrix_old,m_ham,n_ham,nspin)
+ call clean_allocate('Density matrix sqrt P^{1/2}',p_matrix_sqrt,m_ham,n_ham,nspin)
  allocate(p_matrix_occ(basis%nbf,nspin))
 
  if( calc_type%is_dft ) then
-   allocate(hamiltonian_vxc(m_ham,n_ham,nspin))
    !
    ! Setup the grids for the quadrature of DFT potential/energy
    call init_dft_grid(grid_level)
@@ -156,8 +154,47 @@ subroutine scf_loop(is_restart,&
 
 
    !
-   ! Reset XC part of the Hamiltonian
+   !  XC part of the Hamiltonian
+   !
    hamiltonian_xc(:,:,:) = 0.0_dp
+   en%exx_hyb = 0.0_dp
+
+   !
+   ! DFT XC potential is added here
+   ! hamiltonian_xc is used as a temporary matrix
+   if( calc_type%is_dft ) then
+
+     if( parallel_ham ) then
+       if( parallel_buffer ) then
+         call dft_exc_vxc_buffer_sca(m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_xc,en%xc)
+       else
+         call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
+         hamiltonian_xc(:,:,:) = 0.0_dp
+         en%xc = 0.0_dp
+       endif
+     else
+       call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_xc,en%xc)
+     endif
+
+     title='=== DFT XC contribution ==='
+     call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,hamiltonian_xc)
+
+   endif
+
+   !
+   ! LR Exchange contribution to the Hamiltonian
+   ! Use hamiltonian_exx as a temporary matrix (no need to save it for later use)
+   if(calc_type%need_exchange_lr) then
+
+     if( .NOT. is_full_auxil) then
+       call setup_exchange_longrange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,energy_tmp)
+     else
+       call setup_exchange_longrange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,energy_tmp)
+     endif
+     ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
+     en%exx_hyb = en%exx_hyb + alpha_hybrid_lr * energy_tmp
+     hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:) * alpha_hybrid_lr
+   endif
 
    !
    ! Exchange contribution to the Hamiltonian
@@ -177,45 +214,10 @@ subroutine scf_loop(is_restart,&
        endif
      endif
      ! Rescale with alpha_hybrid for hybrid functionals
-     en%exx_hyb = alpha_hybrid * en%exx
-     hamiltonian_xc(:,:,:) = hamiltonian_exx(:,:,:) * alpha_hybrid
+     en%exx_hyb = en%exx_hyb + alpha_hybrid * en%exx
+     hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:) * alpha_hybrid
    endif
 
-   if(calc_type%need_exchange_lr) then
-     allocate(matrix_tmp(m_ham,n_ham,nspin))
-     if( .NOT. is_full_auxil) then
-       call setup_exchange_longrange(print_matrix_,basis%nbf,p_matrix,matrix_tmp,energy_tmp)
-     else
-       call setup_exchange_longrange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,matrix_tmp,energy_tmp)
-     endif
-     ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
-     en%exx_hyb = en%exx_hyb + alpha_hybrid_lr * energy_tmp
-     hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + matrix_tmp(:,:,:) * alpha_hybrid_lr
-     deallocate(matrix_tmp)
-   endif
-
-
-   !
-   ! DFT XC potential is added here
-   if( calc_type%is_dft ) then
-
-     if( parallel_ham ) then
-       if( parallel_buffer ) then
-         call dft_exc_vxc_buffer_sca(m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_vxc,en%xc)
-       else
-         call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
-         hamiltonian_vxc(:,:,:) = 0.0_dp
-         en%xc = 0.0_dp
-       endif
-     else
-       call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_vxc,en%xc)
-     endif
-
-     title='=== DFT XC contribution ==='
-     call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,hamiltonian_vxc)
-
-     hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + hamiltonian_vxc(:,:,:)
-   endif
 
    !
    ! QSGW or COHSEX self energy
@@ -478,12 +480,12 @@ subroutine scf_loop(is_restart,&
  !
  ! Cleanly deallocate the arrays
  !
- deallocate(hamiltonian)
- deallocate(p_matrix_old)
+ call clean_deallocate('Hamiltonian H',hamiltonian)
+ call clean_deallocate('Density matrix P',p_matrix)
+ call clean_deallocate('Previous density matrix Pold',p_matrix_old)
+ call clean_deallocate('Density matrix sqrt P^{1/2}',p_matrix_sqrt)
+
  if( ALLOCATED(self_energy_old) ) deallocate(self_energy_old)
- if( ALLOCATED(hamiltonian_vxc) ) deallocate(hamiltonian_vxc)
- if( ALLOCATED(p_matrix) )        deallocate(p_matrix)
- if( ALLOCATED(p_matrix_sqrt) )   deallocate(p_matrix_sqrt)
  if( ALLOCATED(p_matrix_occ) )    deallocate(p_matrix_occ)
 
 

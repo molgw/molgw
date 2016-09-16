@@ -172,12 +172,12 @@ program molgw
  !
  ! Allocate the main arrays
  ! 2D arrays
- allocate(s_matrix           (m_ham,n_ham))
- allocate(hamiltonian_kinetic(m_ham,n_ham))
- allocate(hamiltonian_nucleus(m_ham,n_ham))
- allocate(hamiltonian_hartree(m_ham,n_ham))
- allocate(hamiltonian_exx    (m_ham,n_ham,nspin))
- allocate(hamiltonian_xc     (m_ham,n_ham,nspin))
+ call clean_allocate('Overlap matrix S',s_matrix,m_ham,n_ham)
+ call clean_allocate('Kinetic operator T',hamiltonian_kinetic,m_ham,n_ham)
+ call clean_allocate('Nucleus operator V',hamiltonian_nucleus,m_ham,n_ham)
+ call clean_allocate('Hartree potential Vh',hamiltonian_hartree,m_ham,n_ham)
+ call clean_allocate('Exchange operator Sigx',hamiltonian_exx,m_ham,n_ham,nspin)
+ call clean_allocate('XC potential Vxc',hamiltonian_xc,m_ham,n_ham,nspin)
 
 
  !
@@ -216,10 +216,10 @@ program molgw
 
  ! Allocate the main arrays
  ! 2D arrays
- allocate(c_matrix(m_c,n_c,nspin))
+ call clean_allocate('Wavefunctions C',c_matrix,m_c,n_c,nspin)
  ! 1D arrays
- allocate(         occupation(nstate,nspin))
- allocate(             energy(nstate,nspin))
+ allocate(occupation(nstate,nspin))
+ allocate(    energy(nstate,nspin))
  if( parallel_ham .AND. parallel_buffer ) call allocate_parallel_buffer(basis%nbf)
 
 
@@ -375,8 +375,9 @@ program molgw
  ! are not needed anymore
  if( calc_type%need_exchange_lr .AND. .NOT. is_big_restart ) call deallocate_eri_4center_lr()
  if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
- deallocate(s_matrix_sqrt_inv)
- deallocate(hamiltonian_hartree)
+
+ call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
+ call clean_deallocate('Hartree potential Vh',hamiltonian_hartree)
 
 
  ! 
@@ -394,7 +395,8 @@ program molgw
    if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) call die('CI is implemented for 2 electrons only')
    call full_ci_2electrons_spin(print_wfn_,nstate,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
  endif
- deallocate(hamiltonian_kinetic,hamiltonian_nucleus)
+ call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
+ call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
 
  !
  ! final evaluation for MP2 total energy
@@ -439,8 +441,10 @@ program molgw
  !
  ! Cleanly exiting the code
  !
- deallocate(hamiltonian_exx,hamiltonian_xc)
- deallocate(s_matrix,c_matrix)
+ call clean_deallocate('Overlap matrix S',s_matrix)
+ call clean_deallocate('Wavefunctions C',c_matrix)
+ call clean_deallocate('Exchange operator Sigx',hamiltonian_exx)
+ call clean_deallocate('XC potential Vxc',hamiltonian_xc)
  deallocate(energy,occupation)
 
  call deallocate_eri()

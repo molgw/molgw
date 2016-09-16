@@ -39,7 +39,6 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  integer                               :: ispin
  integer                               :: ibf
  integer                               :: istate,jstate
-!SQRT integer                               :: nstate_new
  type(basis_set)                       :: basis_small
  real(dp),allocatable                  :: s_bigsmall(:,:)
  real(dp),allocatable                  :: s_small(:,:)
@@ -50,7 +49,6 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  real(dp),allocatable                  :: c_big(:,:,:)
  real(dp),allocatable                  :: s_matrix(:,:)
  real(dp),allocatable                  :: h_big(:,:,:)
-!SQRT real(dp),allocatable                  :: s_matrix_sqrt_inv(:,:)
  real(dp),allocatable                  :: s_matrix_inv(:,:)
  real(dp),allocatable                  :: matrix_tmp(:,:)
  real(dp),allocatable                  :: s_bar(:,:),h_bar(:,:,:),s_bar_sqrt_inv(:,:)
@@ -86,17 +84,10 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  allocate(s_bigsmall(basis%nbf,basis_small%nbf))
  call setup_overlap_mixedbasis(.FALSE.,basis,basis_small,s_bigsmall)
 
-!SQRT call setup_sqrt_overlap(min_overlap,basis%nbf,s_matrix,nstate_new,s_matrix_sqrt_inv)
-!SQRT if( nstate_new /= nstate) call die('setup_virtual_smallbasis: bug this should not happen')
-
  ! Calculate the overlap matrix in the small basis:
  !  tilde S = Sbs^T S^-1 Sbs
  allocate(s_small(basis_small%nbf,basis_small%nbf))
  s_small(:,:) = MATMUL( TRANSPOSE(s_bigsmall), MATMUL( s_matrix_inv , s_bigsmall ) )
-!SQRT allocate(matrix_tmp(nstate,basis_small%nbf))
-!SQRT matrix_tmp(:,:) = MATMUL( TRANSPOSE( s_matrix_sqrt_inv ) , s_bigsmall )
-!SQRT s_small(:,:) = MATMUL( TRANSPOSE( matrix_tmp ) , matrix_tmp )
-!SQRT deallocate(matrix_tmp)
 
  ! Calculate ( tilde S )^{-1/2}
  call setup_sqrt_overlap(min_overlap,basis_small%nbf,s_small,nstate_small,s_small_sqrt_inv)
@@ -162,25 +153,20 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
 
  deallocate(h_small)
  deallocate(energy_small)
- deallocate(s_small_sqrt_inv)
+ call clean_deallocate('Overlap sqrt S^{-1/2}',s_small_sqrt_inv)
 
 
  !
  ! Transform the wavefunction coefficients from the small basis to the big basis
  ! tilde C -> Cbig
  allocate(c_big(basis%nbf,nstate_small,nspin))
-!SQRT allocate(matrix_tmp(basis%nbf,basis%nbf))
  ! M = S^-1
-!SQRT matrix_tmp(:,:) = MATMUL( s_matrix_sqrt_inv(:,:) , TRANSPOSE( s_matrix_sqrt_inv(:,:) ) )
 
  ! Cbig = S^-1 * Sbs * tilde C
  do ispin=1,nspin
-!SQRT   c_big(:,:,ispin) = MATMUL( matrix_tmp(:,:) , MATMUL( s_bigsmall(:,:) , c_small(:,:,ispin) ) )
    c_big(:,:,ispin) = MATMUL( s_matrix_inv(:,:) , MATMUL( s_bigsmall(:,:) , c_small(:,:,ispin) ) )
  enddo
  deallocate(c_small)
-!SQRT deallocate(matrix_tmp)
-!SQRT deallocate(s_matrix_sqrt_inv)
  deallocate(s_matrix_inv)
 
  ! 
@@ -227,10 +213,10 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  call dump_out_energy('=== Energies in the final small basis ===',&
               nstate_bar,nspin,occupation(1:nstate_bar,:),energy_bar)
 
+ call clean_deallocate('Overlap sqrt S^{-1/2}',s_bar_sqrt_inv)
  deallocate(c_bar)
  deallocate(s_bar)
  deallocate(h_bar)
- deallocate(s_bar_sqrt_inv)
  deallocate(h_big)
  deallocate(s_matrix)
 
