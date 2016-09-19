@@ -1892,8 +1892,8 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
                0.0_dp,eri_3tmp   ,1,1,desc3tmp)
 
 
-  call clean_deallocate('Distributed 2-center integrals',eri_2center)
-  call clean_deallocate('3-center integrals',eri_3center)
+   call clean_deallocate('Distributed 2-center integrals',eri_2center)
+   call clean_deallocate('3-center integrals',eri_3center)
 
 
  else

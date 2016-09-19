@@ -8,7 +8,7 @@
 !
 !=========================================================================
 subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation,energy,c_matrix, &
-                                 s_matrix,hamiltonian_exx,hamiltonian_xc)
+                                 exchange_m_vxc_diag)
  use m_definitions
  use m_timing
  use m_warning
@@ -33,9 +33,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(inout)     :: energy(nstate,nspin)
  real(dp),intent(inout)     :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(in)        :: s_matrix(m_ham,n_ham)
- real(dp),intent(in)        :: hamiltonian_exx(m_ham,n_ham,nspin)
- real(dp),intent(in)        :: hamiltonian_xc(m_ham,n_ham,nspin)
+ real(dp),intent(in)        :: exchange_m_vxc_diag(nstate,nspin)
 !=====
  type(selfenergy_grid)   :: se,se2,se3
  character(len=36)       :: selfenergy_tag
@@ -43,7 +41,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  integer                 :: ispin
  integer                 :: nstate_small
  type(spectral_function) :: wpol
- real(dp)                :: exchange_m_vxc_diag(nstate,nspin)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
  real(dp),allocatable    :: sigc(:,:)
  real(dp)                :: energy_g(nstate,nspin)
@@ -90,10 +87,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
  call issue_warning('small complex number is '//msg)
 
 
- !
- ! Prepare the diagonal of the matrix Sigma_x - Vxc
- ! for the forthcoming GW or PT2 corrections
- call setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham,occupation,c_matrix,hamiltonian_exx,hamiltonian_xc,exchange_m_vxc_diag)
  !
  ! Set the range of states on which to evaluate the self-energy
  call selfenergy_set_state_range(nstate,occupation)

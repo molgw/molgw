@@ -614,36 +614,13 @@ subroutine dft_exc_vxc_buffer_sca(m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p
      !
      if( .NOT. require_gradient ) then 
        ! LDA
-#if 0
-       do jbf=1,basis%nbf
-         ! Only the lower part is calculated
-         do ibf=jbf,basis%nbf 
-           buffer(ibf,jbf) =  buffer(ibf,jbf) + weight &
-               *  dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf) 
-         enddo
-       enddo
-#else
        call DSYR('L',basis%nbf,weight*dedd_r(ispin),basis_function_r,1,buffer,basis%nbf)
-#endif
 
      else 
        ! GGA
-#if 0
-       do jbf=1,basis%nbf
-         ! Only the lower part is calculated
-         do ibf=jbf,basis%nbf 
-           buffer(ibf,jbf) = buffer(ibf,jbf) +  weight                    &
-                     * (  dedd_r(ispin) * basis_function_r(ibf) * basis_function_r(jbf)    &
-                         + DOT_PRODUCT( dedgd_r(:,ispin) ,                                 &
-                                       basis_function_gradr(:,ibf) * basis_function_r(jbf) &
-                                     + basis_function_gradr(:,jbf) * basis_function_r(ibf) ) )
-         enddo
-       enddo
-#else
        gradtmp(:) = MATMUL( dedgd_r(:,ispin) , basis_function_gradr(:,:) )
        call DSYR('L',basis%nbf,weight*dedd_r(ispin),basis_function_r,1,buffer,basis%nbf)
        call DSYR2('L',basis%nbf,weight,basis_function_r,1,gradtmp,1,buffer,basis%nbf)
-#endif
      endif
 
    enddo ! loop on the grid point

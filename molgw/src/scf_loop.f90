@@ -176,9 +176,6 @@ subroutine scf_loop(is_restart,&
        call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_xc,en%xc)
      endif
 
-     title='=== DFT XC contribution ==='
-     call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,hamiltonian_xc)
-
    endif
 
    !
@@ -225,6 +222,8 @@ subroutine scf_loop(is_restart,&
         .AND. calc_type%selfenergy_technique == QS  &
         .AND. ( iscf > 5 .OR. is_restart ) ) then
 
+     if( parallel_ham ) call die('QSGW not implemented with parallel_ham')
+
      call init_spectral_function(nstate,occupation,wpol)
      call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
 
@@ -259,6 +258,8 @@ subroutine scf_loop(is_restart,&
    ! QSPT2
    if( calc_type%selfenergy_approx == PT2 .AND. calc_type%selfenergy_technique == QS .AND. ( iscf > 5 .OR. is_restart ) ) then
 
+     if( parallel_ham ) call die('QSPT2 not implemented with parallel_ham')
+
      !
      ! Set the range of states on which to evaluate the self-energy
      call selfenergy_set_state_range(nstate,occupation)
@@ -289,13 +290,12 @@ subroutine scf_loop(is_restart,&
    ! Add the XC part of the hamiltonian to the total hamiltonian
    hamiltonian(:,:,:) = hamiltonian(:,:,:) + hamiltonian_xc(:,:,:)
    
-   title='=== Total Hamiltonian ==='
-   call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,hamiltonian)
 
    !
    ! If requested, the level shifting procedure is triggered: 
    ! All the unoccupied states are penalized with an energy =  level_shifting_energy
    if( level_shifting_energy > 1.0e-6_dp ) then
+     if( parallel_ham ) call die('level_shifting: not implemented with parallel_ham')
      call level_shifting(basis%nbf,nstate,s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
    endif
 
@@ -388,47 +388,50 @@ subroutine scf_loop(is_restart,&
  write(stdout,'(1x,a)') '=================================================='
 
  call destroy_scf()
-
- !
- ! Spin contamination?
- call evaluate_s2_operator(basis%nbf,nstate,occupation,c_matrix,s_matrix)
-
- !
- ! Get the exchange operator if not already calculated
- !
- if( .NOT. is_full_auxil) then
-   if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
- else
-   if( ABS(en%exx) < 1.0e-6_dp ) then
-     if( parallel_ham ) then
-       if( parallel_buffer ) then
-         call setup_exchange_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
-       else
-         call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
-       endif
-     else
-       call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
-     endif
-   endif
- endif
-
- write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en%tot
- write(stdout,'(a25,1x,f19.10)')       '      EXX Energy (Ha):',en%exx
- write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
+ call clean_deallocate('Hamiltonian H',hamiltonian)
 
  !
  ! Skip a bunch of things if parallel_ham is activated
  ! TODO:FIXME
  if( .NOT. parallel_ham ) then  
+   !
+   ! Spin contamination?
+   call evaluate_s2_operator(basis%nbf,nstate,occupation,c_matrix,s_matrix)
+
+   !
+   ! Get the exchange operator if not already calculated
+   !
+   if( .NOT. is_full_auxil) then
+     if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+   else
+     if( ABS(en%exx) < 1.0e-6_dp ) then
+       if( parallel_ham ) then
+         if( parallel_buffer ) then
+           call setup_exchange_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+         else
+           call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+         endif
+       else
+         call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+       endif
+     endif
+   endif
+
+   write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en%tot
+   write(stdout,'(a25,1x,f19.10)')       '      EXX Energy (Ha):',en%exx
+   write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
+
 
    !
    ! Single excitation term
    !
    ! Obtain the Fock matrix
    allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-   matrix_tmp(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
+   matrix_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) + hamiltonian_hartree(:,:) + hamiltonian_exx(:,:,1)
+   matrix_tmp(:,:,nspin) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) + hamiltonian_hartree(:,:) + hamiltonian_exx(:,:,nspin)
+
    ! And pass it to single_excitations
-   call single_excitations(nstate,basis%nbf,energy,occupation,c_matrix,matrix_tmp)
+   call single_excitations(nstate,basis%nbf,energy,occupation,c_matrix,matrix_tmp,en%se)
    write(stdout,'(a25,1x,f19.10)') 'Singles correction (Ha):',en%se
    write(stdout,'(a25,1x,f19.10,/)')   'Est. HF Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
 
@@ -480,7 +483,6 @@ subroutine scf_loop(is_restart,&
  !
  ! Cleanly deallocate the arrays
  !
- call clean_deallocate('Hamiltonian H',hamiltonian)
  call clean_deallocate('Density matrix P',p_matrix)
  call clean_deallocate('Previous density matrix Pold',p_matrix_old)
  call clean_deallocate('Density matrix sqrt P^{1/2}',p_matrix_sqrt)

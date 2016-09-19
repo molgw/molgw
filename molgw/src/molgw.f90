@@ -44,6 +44,7 @@ program molgw
  use m_hamiltonian
  use m_hamiltonian_sca
  use m_hamiltonian_buffer
+ use m_selfenergy_tools
  implicit none
 
 !=====
@@ -65,6 +66,7 @@ program molgw
  real(dp),allocatable    :: c_matrix(:,:,:)
  real(dp),allocatable    :: energy(:,:)
  real(dp),allocatable    :: occupation(:,:)
+ real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
  integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix 
 !=====
@@ -177,7 +179,7 @@ program molgw
  call clean_allocate('Nucleus operator V',hamiltonian_nucleus,m_ham,n_ham)
  call clean_allocate('Hartree potential Vh',hamiltonian_hartree,m_ham,n_ham)
  call clean_allocate('Exchange operator Sigx',hamiltonian_exx,m_ham,n_ham,nspin)
- call clean_allocate('XC potential Vxc',hamiltonian_xc,m_ham,n_ham,nspin)
+ call clean_allocate('XC operator Vxc',hamiltonian_xc,m_ham,n_ham,nspin)
 
 
  !
@@ -376,6 +378,7 @@ program molgw
  if( calc_type%need_exchange_lr .AND. .NOT. is_big_restart ) call deallocate_eri_4center_lr()
  if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
 
+ call clean_deallocate('Overlap matrix S',s_matrix)
  call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
  call clean_deallocate('Hartree potential Vh',hamiltonian_hartree)
 
@@ -385,6 +388,16 @@ program molgw
  ! Post-processing start here
  !
  !
+
+ !
+ ! Prepare the diagonal of the matrix Sigma_x - Vxc
+ ! for the forthcoming GW or PT2 corrections
+ if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS ) then
+   allocate(exchange_m_vxc_diag(nstate,nspin))
+   call setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham,occupation,c_matrix,hamiltonian_exx,hamiltonian_xc,exchange_m_vxc_diag)
+ endif
+ call clean_deallocate('Exchange operator Sigx',hamiltonian_exx)
+ call clean_deallocate('XC operator Vxc',hamiltonian_xc)
 
  !
  ! CI calculation is done here
@@ -434,17 +447,15 @@ program molgw
  ! Self-energy calculation: PT2, GW, GWGamma, COHSEX
  !
  if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS ) then
-   call selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation,energy,c_matrix,s_matrix,hamiltonian_exx,hamiltonian_xc)
+   call selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation,energy,c_matrix,exchange_m_vxc_diag)
+   deallocate(exchange_m_vxc_diag)
  endif
 
 
  !
  ! Cleanly exiting the code
  !
- call clean_deallocate('Overlap matrix S',s_matrix)
  call clean_deallocate('Wavefunctions C',c_matrix)
- call clean_deallocate('Exchange operator Sigx',hamiltonian_exx)
- call clean_deallocate('XC potential Vxc',hamiltonian_xc)
  deallocate(energy,occupation)
 
  call deallocate_eri()

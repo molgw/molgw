@@ -273,11 +273,10 @@ end subroutine mp2_energy
 
 
 !==================================================================
-subroutine single_excitations(nstate,nbf,energy,occupation,c_matrix,fock_matrix)
+subroutine single_excitations(nstate,nbf,energy,occupation,c_matrix,fock_matrix,energy_se)
  use m_definitions
  use m_timing
  use m_inputparam,only: nspin,spin_fact
- use m_scf,only: en
  use m_hamiltonian
  implicit none
 
@@ -285,6 +284,7 @@ subroutine single_excitations(nstate,nbf,energy,occupation,c_matrix,fock_matrix)
  real(dp),intent(in)        :: energy(nstate,nspin),occupation(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(nbf,nstate,nspin)
  real(dp),intent(inout)     :: fock_matrix(nbf,nbf,nspin)
+ real(dp),intent(out)       :: energy_se
 !=====
  integer                    :: ispin
  integer                    :: istate,astate
@@ -297,7 +297,7 @@ subroutine single_excitations(nstate,nbf,energy,occupation,c_matrix,fock_matrix)
  call matrix_basis_to_eigen(nbf,nstate,c_matrix,fock_matrix)
 
 
- en%se = 0.0_dp
+ energy_se = 0.0_dp
  do ispin=1,nspin
    ! loop on occupied states
    do istate=1,nstate
@@ -305,7 +305,7 @@ subroutine single_excitations(nstate,nbf,energy,occupation,c_matrix,fock_matrix)
      ! loop on virtual states
      do astate=1,nstate
        if( occupation(astate,ispin) > spin_fact - completely_empty ) cycle
-       en%se = en%se + fock_matrix(istate,astate,ispin)**2 / ( energy(istate,ispin) - energy(astate,ispin) ) * spin_fact
+       energy_se = energy_se + fock_matrix(istate,astate,ispin)**2 / ( energy(istate,ispin) - energy(astate,ispin) ) * spin_fact
      enddo
    enddo
  enddo
