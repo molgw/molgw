@@ -45,6 +45,7 @@ program molgw
  use m_hamiltonian_sca
  use m_hamiltonian_buffer
  use m_selfenergy_tools
+ use m_scf_loop
  implicit none
 
 !=====
@@ -276,6 +277,9 @@ program molgw
 
  endif
 
+ ! Deallocate it here
+ call clean_deallocate('Fock operator F',hamiltonian_fock) ! Never distributed
+
  !
  ! For self-consistent calculations (QSMP2, QSGW, QSCOHSEX) that depend on empty states,
  ! ignore the restart file if it is not a big one
@@ -339,11 +343,11 @@ program molgw
    call scf_loop(is_restart,                                     &
                  basis,auxil_basis,                              &
                  nstate,m_ham,n_ham,m_c,n_c,                     &
-                 s_matrix_sqrt_inv,                              &
-                 s_matrix,c_matrix,                              &
+                 s_matrix_sqrt_inv,s_matrix,                     &
                  hamiltonian_kinetic,hamiltonian_nucleus,        & 
+                 occupation,energy,                              &
                  hamiltonian_fock,                               &
-                 occupation,energy)
+                 c_matrix)
  endif
 
 

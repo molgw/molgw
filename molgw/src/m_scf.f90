@@ -88,6 +88,8 @@ subroutine init_scf(m_ham,n_ham,m_c,n_c,nbf,nstate)
  call xmax_local(m_r_scf)
  call xmax_local(n_r_scf)
 
+ write(1000+rank_world,*) m_ham_scf,n_ham_scf,m_c_scf,n_c_scf,m_r_scf,n_r_scf
+
  call clean_allocate('Hamiltonian history',ham_hist,m_ham,n_ham,nspin,nhistmax)
  call clean_allocate('Residual history',res_hist,m_r_scf,n_r_scf,nspin,nhistmax)
  
@@ -130,14 +132,15 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    res_hist(:,:,:,ihist+1) = res_hist(:,:,:,ihist)
    ham_hist(:,:,:,ihist+1) = ham_hist(:,:,:,ihist)
 
-   if( ALLOCATED(a_matrix_hist) ) then
-     a_matrix_hist(:,ihist+1) = a_matrix_hist(:,ihist)
-     a_matrix_hist(ihist+1,:) = a_matrix_hist(ihist,:)
-   endif
+   a_matrix_hist(:,ihist+1) = a_matrix_hist(:,ihist)
+   a_matrix_hist(ihist+1,:) = a_matrix_hist(ihist,:)
 
  enddo
- ham_hist(:,:,:,1) = ham(:,:,:)
 
+ if( cntxt_ham > 0 ) then
+   ham_hist(:,:,:,1) = ham(:,:,:)
+   write(1110+rank_world,*) ham(:,:,:)
+ endif
 
  ! New DIIS prediction here !
  call diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
@@ -211,6 +214,10 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
        allocate(matrix_tmp1(m_ham_scf,n_ham_scf))
        allocate(matrix_tmp2(m_ham_scf,n_ham_scf))
 
+       write(1100+rank_world,*) ham(:,:,:)
+       write(1020+rank_world,*) p_matrix(:,:,:)
+       write(1040+rank_world,*) s_matrix(:,:)
+       write(1050+rank_world,*) s_matrix_sqrt_inv(:,:)
 
        ! M1 = H * P
        call PDGEMM('N','N',nbf_scf,nbf_scf,nbf_scf,1.0_dp,ham(:,:,ispin),1,1,desc_ham,          &
@@ -240,6 +247,8 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
        call PDGEMM('T','N',nstate_scf,nstate_scf,nbf_scf,1.0_dp,s_matrix_sqrt_inv,1,1,desc_c,      &
                    matrix_tmp1,1,1,desc_c,0.0_dp,res_hist(:,:,ispin,1),1,1,desc_r)
 
+       write(1010+rank_world,*) res_hist(:,:,:,1)
+       call flush(1010+rank_world)
 
 
        deallocate(matrix_tmp1,matrix_tmp2)
@@ -295,6 +304,10 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
      a_matrix_hist(1,1:nhist_current) = 0.0_dp
      a_matrix_hist(1:nhist_current,1) = 0.0_dp
    endif
+   write(1000+rank_world,*) 'Before xsum_world'
+   do ihist=1,nhist_current
+     write(1000+rank_world,'(i4,10(2x,es12.3))') ihist,a_matrix_hist(ihist,1:nhist_current)
+   enddo
    call xsum_world(a_matrix_hist(1,1))
    call xsum_world(a_matrix_hist(1,2:nhist_current))
    call xsum_world(a_matrix_hist(2:nhist_current,1))
@@ -319,7 +332,14 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  a_matrix(1:nhist_current,nhist_current+1) = -1.0_dp
  a_matrix(nhist_current+1,1:nhist_current) = -1.0_dp
  a_matrix(nhist_current+1,nhist_current+1) =  0.0_dp
-
+ !FBFB
+ write(1000+rank_world,*) nhist_current+1
+ do ihist=1,nhist_current+1
+   write(1000+rank_world,'(i4,10(2x,es12.3))') ihist,a_matrix(ihist,1:nhist_current+1)
+ enddo
+ call flush(1000+rank_world)
+ call barrier_world()
+ call barrier_world()
  call invert(nhist_current+1,a_matrix,a_matrix_inv)
 
  alpha_diis(1:nhist_current) = -a_matrix_inv(1:nhist_current,nhist_current+1)

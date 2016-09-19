@@ -454,6 +454,10 @@ subroutine dft_exc_vxc_buffer_sca(m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p
 
  call start_clock(timing_dft)
 
+ if( cntxt_ham > 0 ) then
+   write(1200+rank_world,*) p_matrix_sqrt(:,:,:)
+   write(1210+rank_world,*) p_matrix(:,:,:)
+ endif
 
 #ifdef HAVE_LIBXC
 

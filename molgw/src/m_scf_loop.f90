@@ -2,25 +2,33 @@
 ! This file is part of MOLGW.
 ! Author: Fabien Bruneval
 !
-! This file contains
+! This module contains
 ! the main SCF loop for Hartree-Fock or Kohn-Sham
 !
+!=========================================================================
+module m_scf_loop
+ use m_definitions
+ use m_timing
+ use m_warning
+ use m_memory
+ use m_inputparam
+
+
+contains
+
+
 !=========================================================================
 subroutine scf_loop(is_restart,& 
                     basis,auxil_basis,&
                     nstate,m_ham,n_ham,m_c,n_c,&
-                    s_matrix_sqrt_inv,&
-                    s_matrix,c_matrix,&
+                    s_matrix_sqrt_inv,s_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
+                    occupation, &
+                    energy, &
                     hamiltonian_fock,&
-                    occupation,energy)
- use m_definitions
- use m_timing
- use m_warning
- use m_inputparam
+                    c_matrix)
  use m_tools
  use m_atoms
- use m_mpi
  use m_basis_set
  use m_scf
  use m_eri
@@ -42,17 +50,16 @@ subroutine scf_loop(is_restart,&
  integer,intent(in)                 :: nstate,m_ham,n_ham,m_c,n_c
  real(dp),intent(in)                :: s_matrix_sqrt_inv(m_c,n_c)
  real(dp),intent(in)                :: s_matrix(m_ham,n_ham)
- real(dp),intent(inout)             :: c_matrix(m_c,n_c,nspin)
  real(dp),intent(in)                :: hamiltonian_kinetic(m_ham,n_ham)
  real(dp),intent(in)                :: hamiltonian_nucleus(m_ham,n_ham)
- real(dp),intent(inout)             :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
  real(dp),intent(inout)             :: occupation(nstate,nspin)
  real(dp),intent(out)               :: energy(nstate,nspin)
+ real(dp),allocatable,intent(inout) :: hamiltonian_fock(:,:,:)
+ real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
 !=====
  type(spectral_function) :: wpol
  logical                 :: is_converged,stopfile_found
  integer                 :: ispin,iscf,istate
- integer                 :: rank_master
  real(dp)                :: energy_tmp
  real(dp),allocatable    :: p_matrix(:,:,:)
  real(dp),allocatable    :: p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
@@ -118,6 +125,9 @@ subroutine scf_loop(is_restart,&
    else
      call setup_sqrt_density_matrix(basis%nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
    endif
+   if( cntxt_ham > 0 ) then
+      write(1230+rank_world,*) p_matrix_sqrt(:,:,:)
+   endif
 
 
    if( cntxt_ham > 0 ) then
@@ -136,6 +146,9 @@ subroutine scf_loop(is_restart,&
    !
    hamiltonian(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) 
    if(nspin==2) hamiltonian(:,:,nspin) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) 
+   if( cntxt_ham > 0 ) then
+     write(1130+rank_world,*) hamiltonian(:,:,:)
+   endif
 
    !
    ! Hartree contribution to the Hamiltonian
@@ -156,6 +169,9 @@ subroutine scf_loop(is_restart,&
    do ispin=1,nspin
      hamiltonian(:,:,ispin) = hamiltonian(:,:,ispin) + hamiltonian_hartree(:,:)
    enddo
+   if( cntxt_ham > 0 ) then
+     write(1140+rank_world,*) hamiltonian(:,:,:)
+   endif
 
 
    !
@@ -168,6 +184,9 @@ subroutine scf_loop(is_restart,&
    ! DFT XC potential is added here
    ! hamiltonian_xc is used as a temporary matrix
    if( calc_type%is_dft ) then
+      if( cntxt_ham > 0 ) then
+        write(1220+rank_world,*) p_matrix_sqrt(:,:,:)
+      endif
 
      if( parallel_ham ) then
        if( parallel_buffer ) then
@@ -179,6 +198,9 @@ subroutine scf_loop(is_restart,&
        endif
      else
        call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_xc,en%xc)
+     endif
+     if( cntxt_ham > 0 ) then
+       write(1160+rank_world,*) hamiltonian_xc(:,:,:)
      endif
 
    endif
@@ -213,6 +235,9 @@ subroutine scf_loop(is_restart,&
          endif
        else
          call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+       endif
+       if( cntxt_ham > 0 ) then
+         write(1170+rank_world,*) hamiltonian_exx(:,:,:)
        endif
      endif
      ! Rescale with alpha_hybrid for hybrid functionals
@@ -293,6 +318,9 @@ subroutine scf_loop(is_restart,&
    ! Add the XC part of the hamiltonian to the total hamiltonian
    hamiltonian(:,:,:) = hamiltonian(:,:,:) + hamiltonian_xc(:,:,:)
    
+   if( cntxt_ham > 0 ) then
+     write(1150+rank_world,*) hamiltonian(:,:,:)
+   endif
 
    !
    ! If requested, the level shifting procedure is triggered: 
@@ -303,6 +331,9 @@ subroutine scf_loop(is_restart,&
    endif
 
 
+   if( cntxt_ham > 0 ) then
+     write(1120+rank_world,*) hamiltonian(:,:,:)
+   endif
    ! DIIS or simple mixing on the hamiltonian
    call hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,hamiltonian)
 
@@ -373,8 +404,11 @@ subroutine scf_loop(is_restart,&
 
    !
    ! Write down a "small" RESTART file at each step
-   if( print_restart_ ) then
+   if( print_restart_ .AND. .NOT. parallel_ham ) then
+     call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin)
+     call get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamiltonian_fock)
      call write_restart(SMALL_RESTART,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
+     call clean_deallocate('Fock operator F',hamiltonian_fock)
    endif
 
    ! Damping of the density matrix p_matrix
@@ -419,25 +453,8 @@ subroutine scf_loop(is_restart,&
  !
  ! Obtain the Fock matrix and store it
  !
- if( parallel_ham ) then
-   !
-   ! Coding to be moved to low-level subroutines
-   if( iprow_ham == 0 .AND. ipcol_ham == 0 ) then
-     rank_master = rank_world
-   else
-     rank_master = -1
-   endif
-   call xmax_world(rank_master)
-
-   if( cntxt_ham > 0 ) then
-     ! hamiltonian is overriden with the Fock operator
-     hamiltonian(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
-     call gather_distributed_copy_spin(desc_ham,hamiltonian,hamiltonian_fock)
-   endif
-   call xbcast_world(rank_master,hamiltonian_fock)
- else
-   hamiltonian_fock(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
- endif
+ call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin)
+ call get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamiltonian_fock)
 
  !
  ! Cleanly deallocate the arrays
@@ -458,9 +475,12 @@ subroutine scf_loop(is_restart,&
 
 
  !
- ! Skip a bunch of things if parallel_ham is activated
- ! TODO:FIXME
- if( .NOT. parallel_ham ) then  
+ ! At this point, all procs get the complete c_matrix
+ !
+ call form_c_matrix_global(basis%nbf,nstate,c_matrix)
+
+
+ if( parallel_buffer ) then  
    !
    ! Spin contamination?
    call evaluate_s2_operator(basis%nbf,nstate,occupation,c_matrix,s_matrix)
@@ -506,8 +526,12 @@ subroutine scf_loop(is_restart,&
  !
  ! Big RESTART file written if converged
  ! TODO: implement writing with a parallelized hamiltonian
- if( is_converged .AND. print_bigrestart_ .AND. (.NOT. parallel_ham) ) then
+ if( is_converged .AND. print_bigrestart_ ) then
    call write_restart(BIG_RESTART,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
+ else  
+   if( print_restart_ ) then
+     call write_restart(SMALL_RESTART,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
+   endif
  endif
 
 
@@ -516,4 +540,95 @@ subroutine scf_loop(is_restart,&
 end subroutine scf_loop
 
 
+!=========================================================================
+subroutine get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamiltonian_fock)
+ use m_mpi
+ use m_scalapack
+ implicit none
+
+ real(dp),intent(in)    :: hamiltonian(:,:,:)
+ real(dp),intent(in)    :: hamiltonian_xc(:,:,:)
+ real(dp),intent(in)    :: hamiltonian_exx(:,:,:)
+ real(dp),intent(out)   :: hamiltonian_fock(:,:,:)
+!=====
+ real(dp),allocatable   :: hfock_local(:,:,:)
+ integer                :: rank_master
+!=====
+
+ if( parallel_ham ) then
+   !
+   ! Coding to be moved to low-level subroutines
+   if( cntxt_ham > 0 .AND. iprow_ham == 0 .AND. ipcol_ham == 0 ) then
+     rank_master = rank_world
+   else
+     rank_master = -1
+   endif
+   call xmax_world(rank_master)
+
+   if( cntxt_ham > 0 ) then
+     call clean_allocate('Local Fock operator F',hfock_local,SIZE(hamiltonian,DIM=1),SIZE(hamiltonian,DIM=2),nspin)
+     hfock_local(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
+     call gather_distributed_copy_spin(desc_ham,hfock_local,hamiltonian_fock)
+     call clean_deallocate('Local Fock operator F',hfock_local)
+   endif
+   call xbcast_world(rank_master,hamiltonian_fock)
+
+ else
+   hamiltonian_fock(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
+
+ endif
+
+end subroutine get_fock_operator
+
+
+!=========================================================================
+subroutine form_c_matrix_global(nbf,nstate,c_matrix)
+ use m_mpi
+ use m_scalapack
+ implicit none
+
+ integer,intent(in)                 :: nbf,nstate
+ real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
+!=====
+ real(dp),allocatable :: c_matrix_local(:,:,:)
+ integer              :: rank_master
+!=====
+
+ if( .NOT. parallel_ham ) return    ! Nothing to do
+
+ write(stdout,'(/,1x,a)') 'Form the C matrix on all procs'
+ !
+ ! Coding to be moved to low-level subroutines
+ if( cntxt_ham > 0 .AND. iprow_ham == 0 .AND. ipcol_ham == 0 ) then
+   rank_master = rank_world
+ else
+   rank_master = -1
+ endif
+ call xmax_world(rank_master)
+
+ if( cntxt_ham > 0 ) then
+   call clean_allocate('Local wfn coeff C',c_matrix_local,SIZE(c_matrix,DIM=1),SIZE(c_matrix,DIM=2),nspin)
+   c_matrix_local(:,:,:) = c_matrix(:,:,:)
+   call clean_deallocate('Wavefunctions C',c_matrix)
+   call clean_allocate('Wavefunctions C',c_matrix,nbf,nstate,nspin)
+
+   call gather_distributed_copy_spin(desc_c,c_matrix_local,c_matrix)
+
+   call clean_deallocate('Local wfn coeff C',c_matrix_local)
+
+ else
+   call clean_deallocate('Wavefunctions C',c_matrix)
+   call clean_allocate('Wavefunctions C',c_matrix,nbf,nstate,nspin)
+ endif
+
+ call xbcast_world(rank_master,c_matrix)
+
+ write(stdout,'(1x,a)') 'C matrix on all procs formed'
+
+end subroutine form_c_matrix_global
+
+
+
+!=========================================================================
+end module m_scf_loop
 !=========================================================================

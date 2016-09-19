@@ -1002,7 +1002,7 @@ subroutine setup_sqrt_density_matrix_sca(nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,
  real(dp),intent(out) :: p_matrix_sqrt(m_ham,n_ham,nspin)
  real(dp),intent(out) :: p_matrix_occ(nbf,nspin)
 !=====
- integer              :: ispin,jlocal,jglobal
+ integer              :: ispin,ibf
 !=====
 
 #ifdef HAVE_SCALAPACK
@@ -1014,6 +1014,17 @@ subroutine setup_sqrt_density_matrix_sca(nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,
    do ispin=1,nspin
      p_matrix_sqrt(:,:,ispin) = p_matrix(:,:,ispin)
      call diagonalize_sca(nbf,desc_ham,p_matrix_sqrt(:,:,ispin),p_matrix_occ(:,ispin))
+     if( cntxt_ham > 0 ) then
+       write(1240+rank_world,*) p_matrix_sqrt(:,:,1)
+       write(1250+rank_world,*) p_matrix_occ(:,1)
+     endif
+     do ibf=1,nbf
+       p_matrix_occ(ibf,ispin) = MAX( p_matrix_occ(ibf,ispin) , TINY(1.0_dp) )
+     enddo
+     if( cntxt_ham > 0 ) then
+       write(1260+rank_world,*) p_matrix_occ(:,1)
+     endif
+     call flush(1260+rank_world)
 
      call matmul_diag_sca('R',SQRT(p_matrix_occ(:,ispin)),desc_ham,p_matrix_sqrt(:,:,ispin))
 
