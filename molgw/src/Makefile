@@ -65,7 +65,9 @@ level030: m_eri_calculate.o m_eri_calculate_lr.o m_eri_ao_mo.o m_tddft_fxc.o
 
 level035: m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o
 
-level038: m_selfenergy_tools.o m_virtual_orbital_space.o m_scf_loop.o
+level037: m_selfenergy_tools.o m_virtual_orbital_space.o 
+
+level038: m_scf_loop.o
 
 level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o dft_xc.o \
           io.o restart.o mp2.o selfenergy_evaluation.o molgw.o
