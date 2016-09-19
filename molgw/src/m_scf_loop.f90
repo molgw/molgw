@@ -125,9 +125,6 @@ subroutine scf_loop(is_restart,&
    else
      call setup_sqrt_density_matrix(basis%nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
    endif
-   if( cntxt_ham > 0 ) then
-      write(1230+rank_world,*) p_matrix_sqrt(:,:,:)
-   endif
 
 
    if( cntxt_ham > 0 ) then
@@ -146,9 +143,6 @@ subroutine scf_loop(is_restart,&
    !
    hamiltonian(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) 
    if(nspin==2) hamiltonian(:,:,nspin) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) 
-   if( cntxt_ham > 0 ) then
-     write(1130+rank_world,*) hamiltonian(:,:,:)
-   endif
 
    !
    ! Hartree contribution to the Hamiltonian
@@ -169,9 +163,6 @@ subroutine scf_loop(is_restart,&
    do ispin=1,nspin
      hamiltonian(:,:,ispin) = hamiltonian(:,:,ispin) + hamiltonian_hartree(:,:)
    enddo
-   if( cntxt_ham > 0 ) then
-     write(1140+rank_world,*) hamiltonian(:,:,:)
-   endif
 
 
    !
@@ -184,9 +175,6 @@ subroutine scf_loop(is_restart,&
    ! DFT XC potential is added here
    ! hamiltonian_xc is used as a temporary matrix
    if( calc_type%is_dft ) then
-      if( cntxt_ham > 0 ) then
-        write(1220+rank_world,*) p_matrix_sqrt(:,:,:)
-      endif
 
      if( parallel_ham ) then
        if( parallel_buffer ) then
@@ -198,9 +186,6 @@ subroutine scf_loop(is_restart,&
        endif
      else
        call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_xc,en%xc)
-     endif
-     if( cntxt_ham > 0 ) then
-       write(1160+rank_world,*) hamiltonian_xc(:,:,:)
      endif
 
    endif
@@ -235,9 +220,6 @@ subroutine scf_loop(is_restart,&
          endif
        else
          call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
-       endif
-       if( cntxt_ham > 0 ) then
-         write(1170+rank_world,*) hamiltonian_exx(:,:,:)
        endif
      endif
      ! Rescale with alpha_hybrid for hybrid functionals
@@ -318,9 +300,6 @@ subroutine scf_loop(is_restart,&
    ! Add the XC part of the hamiltonian to the total hamiltonian
    hamiltonian(:,:,:) = hamiltonian(:,:,:) + hamiltonian_xc(:,:,:)
    
-   if( cntxt_ham > 0 ) then
-     write(1150+rank_world,*) hamiltonian(:,:,:)
-   endif
 
    !
    ! If requested, the level shifting procedure is triggered: 
@@ -331,9 +310,6 @@ subroutine scf_loop(is_restart,&
    endif
 
 
-   if( cntxt_ham > 0 ) then
-     write(1120+rank_world,*) hamiltonian(:,:,:)
-   endif
    ! DIIS or simple mixing on the hamiltonian
    call hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,hamiltonian)
 
