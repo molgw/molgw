@@ -277,8 +277,6 @@ program molgw
 
  endif
 
- ! Deallocate it here
- call clean_deallocate('Fock operator F',hamiltonian_fock) ! Never distributed
 
  !
  ! For self-consistent calculations (QSMP2, QSGW, QSCOHSEX) that depend on empty states,

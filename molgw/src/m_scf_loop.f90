@@ -77,6 +77,9 @@ subroutine scf_loop(is_restart,&
 
  call start_clock(timing_scf)
 
+ ! Old Fock operator will be updated
+ ! Get rid of it!
+ call clean_deallocate('Fock operator F',hamiltonian_fock) ! Never distributed
 
  !
  ! Initialize the SCF mixing procedure
