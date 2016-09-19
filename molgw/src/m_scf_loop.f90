@@ -438,7 +438,7 @@ subroutine scf_loop(is_restart,&
  call clean_deallocate('Density matrix P',p_matrix)
  call clean_deallocate('Density matrix sqrt P^{1/2}',p_matrix_sqrt)
  call clean_deallocate('Previous density matrix Pold',p_matrix_old)
- call clean_deallocate('Hamiltonian H',hamiltonian)
+ call clean_deallocate('Total Hamiltonian H',hamiltonian)
  call clean_deallocate('Hartree potential Vh',hamiltonian_hartree)
  call clean_deallocate('Exchange operator Sigx',hamiltonian_exx)
  call clean_deallocate('XC operator Vxc',hamiltonian_xc)

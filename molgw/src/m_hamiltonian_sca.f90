@@ -15,6 +15,7 @@ module m_hamiltonian_sca
  use m_scalapack
  use m_timing
  use m_warning
+ use m_memory
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
 
 
@@ -927,7 +928,7 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
  call xmax_local(n_c)
 
 
- allocate(s_matrix_sqrt_inv(m_c,n_c))
+ call clean_allocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv,m_c,n_c)
 
  write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
  write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is           ',MINVAL( s_eigval(:) )
