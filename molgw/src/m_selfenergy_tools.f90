@@ -441,8 +441,7 @@ end subroutine destroy_selfenergy_grid
 
 
 !=========================================================================
-subroutine setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham, &
-     occupation,c_matrix,hamiltonian_exx,hamiltonian_xc,exchange_m_vxc_diag)
+subroutine setup_exchange_m_vxc_diag(basis,nstate,energy,occupation,c_matrix,hamiltonian_fock,exchange_m_vxc_diag)
  use m_inputparam
  use m_basis_set
  use m_dft_grid
@@ -451,18 +450,18 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham, &
  implicit none
 
  type(basis_set),intent(in) :: basis
- integer,intent(in)         :: nstate,m_ham,n_ham
+ integer,intent(in)         :: nstate
  real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: energy(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(in)        :: hamiltonian_exx(m_ham,n_ham,nspin),hamiltonian_xc(m_ham,n_ham,nspin)
+ real(dp),intent(in)        :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: exchange_m_vxc_diag(nstate,nspin)
 !=====
- integer  :: ispin,istate
- real(dp) :: hxmxc(m_ham,n_ham,nspin)
- real(dp) :: exc,eexx
+ integer              :: ispin,istate
+ real(dp)             :: exc,eexx
  real(dp),allocatable :: occupation_tmp(:,:)
  real(dp),allocatable :: p_matrix_tmp(:,:,:),p_matrix_occ(:,:),p_matrix_sqrt(:,:,:)
- real(dp),allocatable :: hxc_val(:,:,:),hexx_val(:,:,:)
+ real(dp),allocatable :: hxc_val(:,:,:),hexx_val(:,:,:),hxmxc(:,:,:)
 !=====
 
 
@@ -481,7 +480,8 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham, &
    allocate(p_matrix_sqrt(basis%nbf,basis%nbf,nspin))
    allocate(p_matrix_occ(basis%nbf,nspin))
    allocate(hxc_val(basis%nbf,basis%nbf,nspin))
-   allocate(hexx_val(m_ham,n_ham,nspin))
+   allocate(hexx_val(basis%nbf,basis%nbf,nspin))
+   allocate(hxmxc(basis%nbf,basis%nbf,nspin))
    ! Override the occupation of the core electrons
    occupation_tmp(:,:) = occupation(:,:)
    do istate=1,dft_core
@@ -500,7 +500,7 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham, &
      call setup_exchange(print_matrix_,basis%nbf,p_matrix_tmp,hexx_val,eexx)
    else
      if( parallel_ham ) then
-       call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,hexx_val,eexx)
+       call setup_exchange_ri_sca(print_matrix_,basis%nbf,basis%nbf,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,hexx_val,eexx)
      else
        call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,hexx_val,eexx)
      endif
@@ -510,27 +510,37 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham, &
    hxmxc(:,:,:) = hexx_val(:,:,:) - hxc_val(:,:,:) 
 
    deallocate(occupation_tmp,p_matrix_tmp,p_matrix_sqrt,p_matrix_occ)
-   deallocate(hxc_val,hexx_val)
 
+   !
+   ! Calculate the diagonal of the matrix Sigma_x - Vxc
+   ! for the forthcoming GW corrections
+   exchange_m_vxc_diag(:,:) = 0.0_dp
+   do ispin=1,nspin
+     do istate=1,nstate
+
+        exchange_m_vxc_diag(istate,ispin) =  DOT_PRODUCT(  c_matrix(:,istate,ispin) , &
+                                                MATMUL( hxmxc(:,:,ispin) , c_matrix(:,istate,ispin) ) )
+     enddo
+   enddo
+   deallocate(hxc_val,hexx_val,hxmxc)
 
  else
-   hxmxc(:,:,:) = hamiltonian_exx(:,:,:) - hamiltonian_xc(:,:,:) 
+
+   !
+   ! Calculate the diagonal of the matrix Sigma_x - Vxc
+   ! for the forthcoming GW corrections
+   exchange_m_vxc_diag(:,:) = 0.0_dp
+   do ispin=1,nspin
+     do istate=1,nstate
+
+        exchange_m_vxc_diag(istate,ispin) =  DOT_PRODUCT(  c_matrix(:,istate,ispin) , &
+                                                MATMUL( hamiltonian_fock(:,:,ispin) , c_matrix(:,istate,ispin) ) ) &
+                                              - energy(istate,ispin)
+     enddo
+   enddo
 
  endif
 
-
-
- !
- ! Calculate the diagonal of the matrix Sigma_x - Vxc
- ! for the forthcoming GW corrections
- exchange_m_vxc_diag(:,:) = 0.0_dp
- do ispin=1,nspin
-   do istate=1,nstate
-
-      exchange_m_vxc_diag(istate,ispin) =  DOT_PRODUCT(  c_matrix(:,istate,ispin) , &
-                                              MATMUL( hxmxc(:,:,ispin) , c_matrix(:,istate,ispin) ) )
-   enddo
- enddo
 
 end subroutine setup_exchange_m_vxc_diag
 

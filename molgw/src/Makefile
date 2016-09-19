@@ -67,8 +67,8 @@ level035: m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonia
 
 level038: m_selfenergy_tools.o m_virtual_orbital_space.o
 
-level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o dft_xc.o io.o mp2.o scf_loop.o selfenergy_evaluation.o \
-          molgw.o
+level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o dft_xc.o \
+          io.o restart.o mp2.o scf_loop.o selfenergy_evaluation.o molgw.o
 
 
 
@@ -87,7 +87,7 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
         m_eri_calculate.o m_eri_calculate_lr.o m_eri_ao_mo.o m_tddft_fxc.o \
         m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o \
         m_virtual_orbital_space.o pt2_selfenergy.o \
-        linear_response.o static_polarizability.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o dft_xc.o io.o mp2.o scf_loop.o selfenergy_evaluation.o \
+        linear_response.o static_polarizability.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o dft_xc.o io.o restart.o mp2.o scf_loop.o selfenergy_evaluation.o \
         molgw.o
 	$(FC_W_OPTS) \
                         m_definitions.o m_warning.o m_elements.o m_mpi.o m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_local.o m_mpi_trans.o \
@@ -96,7 +96,7 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
                         m_gos.o m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_eri_calculate.o m_eri_calculate_lr.o m_eri_ao_mo.o m_tddft_fxc.o \
                         m_spectral_function.o \
                         libint_wrapper.o lebedev_quadrature.o m_virtual_orbital_space.o pt2_selfenergy.o \
-                        mp2.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o linear_response.o static_polarizability.o dft_xc.o io.o \
+                        mp2.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o linear_response.o static_polarizability.o dft_xc.o io.o restart.o \
                         m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o scf_loop.o pdbssolver1.o selfenergy_evaluation.o \
                         molgw.o \
                         -o ../molgw \
@@ -157,8 +157,11 @@ m_hamiltonian.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_tim
 dft_xc.o: m_definitions.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90 m_mpi.f90 dft_xc.f90
 	$(FC_W_OPTS) -c dft_xc.f90 $(LIBXC_INCS)
 
-io.o: my_machine.arch m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 revision.f90 m_hamiltonian.f90 io.f90
+io.o: my_machine.arch m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 revision.f90 io.f90
 	$(FC_W_OPTS) -c io.f90 $(LIBXC_INCS)
+
+restart.o: my_machine.arch m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 revision.f90 m_hamiltonian.f90 restart.f90
+	$(FC_W_OPTS) -c restart.f90 $(LIBXC_INCS)
 
 mp2.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_mpi.f90 m_basis_set.f90 m_eri.f90 mp2.f90 
 	$(FC_W_OPTS) -c mp2.f90 $(LIBXC_INCS)

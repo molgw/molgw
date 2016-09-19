@@ -7,7 +7,7 @@
 ! PT2, GW, evGW, COHSEX, GWGamma, etc.
 !
 !=========================================================================
-subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation,energy,c_matrix, &
+subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_matrix, &
                                  exchange_m_vxc_diag)
  use m_definitions
  use m_timing
@@ -28,7 +28,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation
 
  type(basis_set),intent(in) :: basis
  type(basis_set),intent(in) :: auxil_basis
- integer,intent(in)         :: m_ham,n_ham
  integer,intent(in)         :: nstate
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(inout)     :: energy(nstate,nspin)

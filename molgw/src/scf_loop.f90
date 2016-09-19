@@ -12,7 +12,7 @@ subroutine scf_loop(is_restart,&
                     s_matrix_sqrt_inv,&
                     s_matrix,c_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
-                    hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc,&
+                    hamiltonian_fock,&
                     occupation,energy)
  use m_definitions
  use m_timing
@@ -44,11 +44,9 @@ subroutine scf_loop(is_restart,&
  real(dp),intent(inout)             :: c_matrix(m_c,n_c,nspin)
  real(dp),intent(in)                :: hamiltonian_kinetic(m_ham,n_ham)
  real(dp),intent(in)                :: hamiltonian_nucleus(m_ham,n_ham)
- real(dp),intent(inout)             :: hamiltonian_hartree(m_ham,n_ham)
- real(dp),intent(inout)             :: hamiltonian_exx(m_ham,n_ham,nspin)
- real(dp),intent(inout)             :: hamiltonian_xc(m_ham,n_ham,nspin)
+ real(dp),intent(out)               :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
  real(dp),intent(inout)             :: occupation(nstate,nspin)
- real(dp),intent(inout)             :: energy(nstate,nspin)
+ real(dp),intent(out)               :: energy(nstate,nspin)
 !=====
  type(spectral_function) :: wpol
  logical                 :: is_converged,stopfile_found
@@ -58,6 +56,9 @@ subroutine scf_loop(is_restart,&
  real(dp),allocatable    :: p_matrix(:,:,:)
  real(dp),allocatable    :: p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
  real(dp),allocatable    :: hamiltonian(:,:,:)
+ real(dp),allocatable    :: hamiltonian_hartree(:,:)
+ real(dp),allocatable    :: hamiltonian_exx(:,:,:)
+ real(dp),allocatable    :: hamiltonian_xc(:,:,:)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
  real(dp),allocatable    :: p_matrix_old(:,:,:)
  real(dp),allocatable    :: self_energy_old(:,:,:)
@@ -75,7 +76,10 @@ subroutine scf_loop(is_restart,&
 
  !
  ! Allocate the main arrays
- call clean_allocate('Hamiltonian H',hamiltonian,m_ham,n_ham,nspin)
+ call clean_allocate('Total Hamiltonian H',hamiltonian,m_ham,n_ham,nspin)
+ call clean_allocate('Hartree potential Vh',hamiltonian_hartree,m_ham,n_ham)
+ call clean_allocate('Exchange operator Sigx',hamiltonian_exx,m_ham,n_ham,nspin)
+ call clean_allocate('XC operator Vxc',hamiltonian_xc,m_ham,n_ham,nspin)
  call clean_allocate('Density matrix P',p_matrix,m_ham,n_ham,nspin)
  call clean_allocate('Previous density matrix Pold',p_matrix_old,m_ham,n_ham,nspin)
  call clean_allocate('Density matrix sqrt P^{1/2}',p_matrix_sqrt,m_ham,n_ham,nspin)
@@ -372,7 +376,7 @@ subroutine scf_loop(is_restart,&
    !
    ! Write down a "small" RESTART file at each step
    if( print_restart_ ) then
-     call write_restart(SMALL_RESTART,basis,nstate,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+     call write_restart(SMALL_RESTART,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
    endif
 
    ! Damping of the density matrix p_matrix
@@ -387,8 +391,59 @@ subroutine scf_loop(is_restart,&
  write(stdout,'(1x,a)') 'The SCF loop ends here'
  write(stdout,'(1x,a)') '=================================================='
 
+ !
+ ! Cleanly deallocate the integral grid information
+ ! and the scf mixing information
+ !
  call destroy_scf()
+ if( calc_type%is_dft ) call destroy_dft_grid()
+
+
+ !
+ ! Get the exchange operator if not already calculated
+ !
+ if( .NOT. is_full_auxil) then
+   if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+ else
+   if( ABS(en%exx) < 1.0e-6_dp ) then
+     if( parallel_ham ) then
+       if( parallel_buffer ) then
+         call setup_exchange_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+       else
+         call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+       endif
+     else
+       call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+     endif
+   endif
+ endif
+
+ !
+ ! Obtain the Fock matrix and store it
+ !
+ if( parallel_ham ) then
+   call die('not implemented')
+ else
+   hamiltonian_fock(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
+ endif
+
+ !
+ ! Cleanly deallocate the arrays
+ !
+ call clean_deallocate('Density matrix P',p_matrix)
+ call clean_deallocate('Density matrix sqrt P^{1/2}',p_matrix_sqrt)
+ call clean_deallocate('Previous density matrix Pold',p_matrix_old)
  call clean_deallocate('Hamiltonian H',hamiltonian)
+ call clean_deallocate('Hartree potential Vh',hamiltonian_hartree)
+ call clean_deallocate('Exchange operator Sigx',hamiltonian_exx)
+ call clean_deallocate('XC operator Vxc',hamiltonian_xc)
+ if( ALLOCATED(self_energy_old) ) deallocate(self_energy_old)
+ if( ALLOCATED(p_matrix_occ) )    deallocate(p_matrix_occ)
+
+ write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en%tot
+ write(stdout,'(a25,1x,f19.10)')       '      EXX Energy (Ha):',en%exx
+ write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
+
 
  !
  ! Skip a bunch of things if parallel_ham is activated
@@ -399,39 +454,9 @@ subroutine scf_loop(is_restart,&
    call evaluate_s2_operator(basis%nbf,nstate,occupation,c_matrix,s_matrix)
 
    !
-   ! Get the exchange operator if not already calculated
-   !
-   if( .NOT. is_full_auxil) then
-     if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
-   else
-     if( ABS(en%exx) < 1.0e-6_dp ) then
-       if( parallel_ham ) then
-         if( parallel_buffer ) then
-           call setup_exchange_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
-         else
-           call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
-         endif
-       else
-         call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
-       endif
-     endif
-   endif
-
-   write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en%tot
-   write(stdout,'(a25,1x,f19.10)')       '      EXX Energy (Ha):',en%exx
-   write(stdout,'(a25,1x,f19.10)')       'Total EXX Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
-
-
-   !
    ! Single excitation term
    !
-   ! Obtain the Fock matrix
-   allocate(matrix_tmp(basis%nbf,basis%nbf,nspin))
-   matrix_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) + hamiltonian_hartree(:,:) + hamiltonian_exx(:,:,1)
-   matrix_tmp(:,:,nspin) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) + hamiltonian_hartree(:,:) + hamiltonian_exx(:,:,nspin)
-
-   ! And pass it to single_excitations
-   call single_excitations(nstate,basis%nbf,energy,occupation,c_matrix,matrix_tmp,en%se)
+   call single_excitations(nstate,basis%nbf,energy,occupation,c_matrix,hamiltonian_fock,en%se)
    write(stdout,'(a25,1x,f19.10)') 'Singles correction (Ha):',en%se
    write(stdout,'(a25,1x,f19.10,/)')   'Est. HF Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
 
@@ -445,7 +470,7 @@ subroutine scf_loop(is_restart,&
      do ispin=1,nspin
        write(stdout,*) 'Diagonalization H_exx for spin channel',ispin
        call diagonalize_generalized_sym(basis%nbf,&
-                                        matrix_tmp(:,:,ispin),s_matrix(:,:),&
+                                        hamiltonian_fock(:,:,ispin),s_matrix(:,:),&
                                         energy_exx(:,ispin),c_matrix_exx(:,:,ispin))
      enddo
      write(stdout,*) 'FBFB LW sum(      epsilon) + Eii -<vxc> - EH + Ex',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
@@ -463,32 +488,15 @@ subroutine scf_loop(is_restart,&
      deallocate(energy_exx,c_matrix_exx)
    endif
 
-   deallocate(matrix_tmp)
-
  endif
 
 
  !
  ! Big RESTART file written if converged
- !
- if( is_converged .AND. print_bigrestart_ ) then
-   call write_restart(BIG_RESTART,basis,nstate,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+ ! TODO: implement writing with a parallelized hamiltonian
+ if( is_converged .AND. print_bigrestart_ .AND. (.NOT. parallel_ham) ) then
+   call write_restart(BIG_RESTART,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
  endif
-
-
- !
- ! Cleanly deallocate the integral grid information
- if( calc_type%is_dft ) call destroy_dft_grid()
-
- !
- ! Cleanly deallocate the arrays
- !
- call clean_deallocate('Density matrix P',p_matrix)
- call clean_deallocate('Previous density matrix Pold',p_matrix_old)
- call clean_deallocate('Density matrix sqrt P^{1/2}',p_matrix_sqrt)
-
- if( ALLOCATED(self_energy_old) ) deallocate(self_energy_old)
- if( ALLOCATED(p_matrix_occ) )    deallocate(p_matrix_occ)
 
 
  call stop_clock(timing_scf)

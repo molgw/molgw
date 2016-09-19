@@ -58,9 +58,7 @@ program molgw
  real(dp),allocatable    :: hamiltonian_tmp(:,:)
  real(dp),allocatable    :: hamiltonian_kinetic(:,:)
  real(dp),allocatable    :: hamiltonian_nucleus(:,:)
- real(dp),allocatable    :: hamiltonian_hartree(:,:)
- real(dp),allocatable    :: hamiltonian_exx(:,:,:)
- real(dp),allocatable    :: hamiltonian_xc(:,:,:)
+ real(dp),allocatable    :: hamiltonian_fock(:,:,:)
  real(dp),allocatable    :: s_matrix(:,:)
  real(dp),allocatable    :: s_matrix_sqrt_inv(:,:)
  real(dp),allocatable    :: c_matrix(:,:,:)
@@ -177,9 +175,7 @@ program molgw
  call clean_allocate('Overlap matrix S',s_matrix,m_ham,n_ham)
  call clean_allocate('Kinetic operator T',hamiltonian_kinetic,m_ham,n_ham)
  call clean_allocate('Nucleus operator V',hamiltonian_nucleus,m_ham,n_ham)
- call clean_allocate('Hartree potential Vh',hamiltonian_hartree,m_ham,n_ham)
- call clean_allocate('Exchange operator Sigx',hamiltonian_exx,m_ham,n_ham,nspin)
- call clean_allocate('XC operator Vxc',hamiltonian_xc,m_ham,n_ham,nspin)
+ call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin)
 
 
  !
@@ -232,7 +228,7 @@ program molgw
 
  !
  ! Try to read a RESTART file if it exists
- call read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_hartree,hamiltonian_exx,hamiltonian_xc)
+ call read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
  is_restart       = ( restart_type /= NO_RESTART )
  is_big_restart   = ( restart_type == BIG_RESTART )
  is_basis_restart = ( restart_type == BASIS_RESTART )
@@ -269,15 +265,14 @@ program molgw
  if( is_basis_restart ) then
    !
    ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
-   allocate(hamiltonian_tmp(basis%nbf,basis%nbf))
-   hamiltonian_tmp(:,:) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) &
-                         + hamiltonian_hartree(:,:) + 0.5_dp * hamiltonian_xc(:,:,1)  &
-                                                    + 0.5_dp * hamiltonian_xc(:,:,nspin)
-   call diagonalize_hamiltonian_scalapack(1,basis%nbf,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
-                                          energy(:,1),c_matrix(:,:,1))
-   c_matrix(:,:,nspin) = c_matrix(:,:,1)
-
-   deallocate(hamiltonian_tmp)
+   if( parallel_ham ) call die('basis_restart not implemented with distributed hamiltonian')
+   call issue_warning('basis restart is not fully implemented: use with care')
+!   allocate(hamiltonian_tmp(basis%nbf,basis%nbf))
+!   hamiltonian_tmp(:,:) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) &
+!                         + hamiltonian_hartree(:,:) + 0.5_dp * hamiltonian_xc(:,:,1)  &
+!                                                    + 0.5_dp * hamiltonian_xc(:,:,nspin)
+   call diagonalize_hamiltonian_scalapack(nspin,basis%nbf,nstate,hamiltonian_fock,s_matrix_sqrt_inv,&
+                                          energy,c_matrix)
 
  endif
 
@@ -341,13 +336,13 @@ program molgw
  ! Big SCF loop is in there
  ! Only do it if the calculation is NOT a big restart
  if( .NOT. is_big_restart) then
-   call scf_loop(is_restart,                                                    &
-                 basis,auxil_basis,                                             &
-                 nstate,m_ham,n_ham,m_c,n_c,                                    &
-                 s_matrix_sqrt_inv,                                             &
-                 s_matrix,c_matrix,                                             &
-                 hamiltonian_kinetic,hamiltonian_nucleus,hamiltonian_hartree,   & 
-                 hamiltonian_exx,hamiltonian_xc,                                &
+   call scf_loop(is_restart,                                     &
+                 basis,auxil_basis,                              &
+                 nstate,m_ham,n_ham,m_c,n_c,                     &
+                 s_matrix_sqrt_inv,                              &
+                 s_matrix,c_matrix,                              &
+                 hamiltonian_kinetic,hamiltonian_nucleus,        & 
+                 hamiltonian_fock,                               &
                  occupation,energy)
  endif
 
@@ -380,7 +375,6 @@ program molgw
 
  call clean_deallocate('Overlap matrix S',s_matrix)
  call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
- call clean_deallocate('Hartree potential Vh',hamiltonian_hartree)
 
 
  ! 
@@ -394,10 +388,9 @@ program molgw
  ! for the forthcoming GW or PT2 corrections
  if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS ) then
    allocate(exchange_m_vxc_diag(nstate,nspin))
-   call setup_exchange_m_vxc_diag(basis,nstate,m_ham,n_ham,occupation,c_matrix,hamiltonian_exx,hamiltonian_xc,exchange_m_vxc_diag)
+   call setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag)
  endif
- call clean_deallocate('Exchange operator Sigx',hamiltonian_exx)
- call clean_deallocate('XC operator Vxc',hamiltonian_xc)
+ call clean_deallocate('Fock operator F',hamiltonian_fock)
 
  !
  ! CI calculation is done here
@@ -447,7 +440,7 @@ program molgw
  ! Self-energy calculation: PT2, GW, GWGamma, COHSEX
  !
  if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS ) then
-   call selfenergy_evaluation(basis,auxil_basis,nstate,m_ham,n_ham,occupation,energy,c_matrix,exchange_m_vxc_diag)
+   call selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_matrix,exchange_m_vxc_diag)
    deallocate(exchange_m_vxc_diag)
  endif
 

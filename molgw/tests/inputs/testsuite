@@ -214,6 +214,8 @@ CI ground-state energy    ,     -1.1646360042  , 0 , 1.0e-7
 
 sih4_hf.in                , TDHF SiH4 aug-cc-pVDZ
 SCF Total Energy          ,   -291.2427972343   , 0 , 1.0e-7
+Singles correction        ,     -0.0000000000   , 0 , 1.0e-7
+Est. HF Energy            ,   -291.2427972343   , 0 , 1.0e-7
 0001 :                    ,      9.81657258     , 0 , 1.0e-4
 0001 :                    ,      0.21703439     , 1 , 1.0e-4
 0010 :                    ,     11.17712689     , 0 , 1.0e-4
@@ -223,8 +225,6 @@ polarizability trace      ,     30.035246       , 0 , 1.0e-4
 Mean excitation energy    ,     15.838736       , 0 , 1.0e-4
 
 sih4_hf_tda.in            , TDHF SiH4 aug-cc-pVDZ with TDA restarting from previous run, Restart
-Singles correction        ,     -0.0000000000   , 0 , 1.0e-7
-Est. HF Energy            ,   -291.2427972343   , 0 , 1.0e-7
 0001 :                    ,      9.82654263     , 0 , 1.0e-4
 0001 :                    ,      0.22685574     , 1 , 1.0e-4
 0010 :                    ,     11.2463169      , 0 , 1.0e-4
