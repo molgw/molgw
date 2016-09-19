@@ -19,9 +19,10 @@ subroutine scf_loop(is_restart,&
  use m_warning
  use m_inputparam
  use m_tools
- use m_scf
  use m_atoms
+ use m_mpi
  use m_basis_set
+ use m_scf
  use m_eri
  use m_eri_calculate
  use m_eri_calculate_lr
@@ -44,14 +45,14 @@ subroutine scf_loop(is_restart,&
  real(dp),intent(inout)             :: c_matrix(m_c,n_c,nspin)
  real(dp),intent(in)                :: hamiltonian_kinetic(m_ham,n_ham)
  real(dp),intent(in)                :: hamiltonian_nucleus(m_ham,n_ham)
- real(dp),intent(out)               :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(inout)             :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
  real(dp),intent(inout)             :: occupation(nstate,nspin)
  real(dp),intent(out)               :: energy(nstate,nspin)
 !=====
  type(spectral_function) :: wpol
  logical                 :: is_converged,stopfile_found
  integer                 :: ispin,iscf,istate
- character(len=100)      :: title
+ integer                 :: rank_master
  real(dp)                :: energy_tmp
  real(dp),allocatable    :: p_matrix(:,:,:)
  real(dp),allocatable    :: p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
@@ -249,8 +250,7 @@ subroutine scf_loop(is_restart,&
      endif
      matrix_tmp(:,:,:) = alpha_mixing * matrix_tmp(:,:,:) + (1.0_dp-alpha_mixing) * self_energy_old(:,:,:)
      self_energy_old(:,:,:) = matrix_tmp(:,:,:)
-     title='=== Self-energy ==='
-     call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
+     call dump_out_matrix(print_matrix_,'=== Self-energy ===',basis%nbf,nspin,matrix_tmp)
      call destroy_spectral_function(wpol)
 
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
@@ -282,8 +282,7 @@ subroutine scf_loop(is_restart,&
      endif
      matrix_tmp(:,:,:) = alpha_mixing * matrix_tmp(:,:,:) + (1.0_dp-alpha_mixing) * self_energy_old(:,:,:)
      self_energy_old(:,:,:) = matrix_tmp(:,:,:)
-     title='=== Self-energy ==='
-     call dump_out_matrix(print_matrix_,title,basis%nbf,nspin,matrix_tmp)
+     call dump_out_matrix(print_matrix_,'=== Self-energy ===',basis%nbf,nspin,matrix_tmp)
   
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
      deallocate(matrix_tmp)
@@ -335,8 +334,7 @@ subroutine scf_loop(is_restart,&
      enddo
    endif
   
-   title='=== Energies ==='
-   call dump_out_energy(title,nstate,nspin,occupation,energy)
+   call dump_out_energy('=== Energies ===',nstate,nspin,occupation,energy)
 
    call output_new_homolumo('gKS',nstate,occupation,energy,1,nstate)
 
@@ -422,7 +420,21 @@ subroutine scf_loop(is_restart,&
  ! Obtain the Fock matrix and store it
  !
  if( parallel_ham ) then
-   call die('not implemented')
+   !
+   ! Coding to be moved to low-level subroutines
+   if( iprow_ham == 0 .AND. ipcol_ham == 0 ) then
+     rank_master = rank_world
+   else
+     rank_master = -1
+   endif
+   call xmax_world(rank_master)
+
+   if( cntxt_ham > 0 ) then
+     ! hamiltonian is overriden with the Fock operator
+     hamiltonian(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
+     call gather_distributed_copy_spin(desc_ham,hamiltonian,hamiltonian_fock)
+   endif
+   call xbcast_world(rank_master,hamiltonian_fock)
  else
    hamiltonian_fock(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
  endif

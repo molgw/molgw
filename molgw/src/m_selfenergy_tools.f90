@@ -441,7 +441,7 @@ end subroutine destroy_selfenergy_grid
 
 
 !=========================================================================
-subroutine setup_exchange_m_vxc_diag(basis,nstate,energy,occupation,c_matrix,hamiltonian_fock,exchange_m_vxc_diag)
+subroutine setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag)
  use m_inputparam
  use m_basis_set
  use m_dft_grid

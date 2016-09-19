@@ -101,6 +101,51 @@ end subroutine gather_distributed_copy
 
 
 !=========================================================================
+! Gather a distributed matrix into a global matrix owned by each core
+!
+!=========================================================================
+subroutine gather_distributed_copy_spin(desc,matrix,matrix_global)
+ implicit none
+ integer,intent(in)   :: desc(ndel)
+ real(dp),intent(in)  :: matrix(:,:,:)
+ real(dp),intent(out) :: matrix_global(:,:,:)
+!=====
+ integer              :: contxt
+ integer              :: idim3,ndim3
+ integer              :: mlocal,nlocal,mglobal,nglobal
+ integer              :: ilocal,jlocal,iglobal,jglobal
+!=====
+
+ contxt = desc(2)
+
+ mlocal  = SIZE( matrix , DIM=1 )
+ nlocal  = SIZE( matrix , DIM=2 )
+ mglobal = SIZE( matrix_global , DIM=1 )
+ nglobal = SIZE( matrix_global , DIM=2 )
+ ndim3   = SIZE( matrix , DIM=3 )
+
+ matrix_global(:,:,:) = 0.0_dp
+ do idim3=1,ndim3
+   do jlocal=1,nlocal
+     jglobal = colindex_local_to_global(desc,jlocal)
+     do ilocal=1,mlocal
+       iglobal = rowindex_local_to_global(desc,ilocal)
+       matrix_global(iglobal,jglobal,idim3) = matrix(ilocal,jlocal,idim3)
+     enddo
+   enddo
+
+#ifdef HAVE_SCALAPACK
+   ! Only the master proc (0,0) gets the complete information
+   call DGSUM2D(contxt,'A',' ',mglobal,nglobal,matrix_global(1,1,idim3),nglobal,0,0)
+#endif
+ enddo
+
+
+end subroutine gather_distributed_copy_spin
+
+
+
+!=========================================================================
 ! Multiply on the left or on the right a distributed square matrix 
 ! with a non-distributed diagonal
 !=========================================================================

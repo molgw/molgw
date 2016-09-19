@@ -283,18 +283,29 @@ subroutine single_excitations(nstate,nbf,energy,occupation,c_matrix,fock_matrix,
  integer,intent(in)         :: nstate,nbf
  real(dp),intent(in)        :: energy(nstate,nspin),occupation(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(inout)     :: fock_matrix(nbf,nbf,nspin)
+ real(dp),intent(in)        :: fock_matrix(nbf,nbf,nspin)
  real(dp),intent(out)       :: energy_se
 !=====
+ integer                    :: ier
  integer                    :: ispin
  integer                    :: istate,astate
+ real(dp),allocatable       :: fock_matrix_eigen(:,:,:)
 !=====
 
  call start_clock(timing_single_excitation)
 
+ allocate(fock_matrix_eigen(nbf,nbf,nspin),stat=ier)
+ ier = ABS(ier)
+ call xmax_world(ier)
+ if( ier /= 0 ) then
+   write(stdout,*) 'Skip this step that is too memory demanding'
+   return
+ endif
+ 
+ fock_matrix_eigen(:,:,:) = fock_matrix(:,:,:)
  !
  ! Rotate the Fock matrix to the eigenstate basis
- call matrix_basis_to_eigen(nbf,nstate,c_matrix,fock_matrix)
+ call matrix_basis_to_eigen(nbf,nstate,c_matrix,fock_matrix_eigen)
 
 
  energy_se = 0.0_dp
@@ -305,10 +316,12 @@ subroutine single_excitations(nstate,nbf,energy,occupation,c_matrix,fock_matrix,
      ! loop on virtual states
      do astate=1,nstate
        if( occupation(astate,ispin) > spin_fact - completely_empty ) cycle
-       energy_se = energy_se + fock_matrix(istate,astate,ispin)**2 / ( energy(istate,ispin) - energy(astate,ispin) ) * spin_fact
+       energy_se = energy_se + fock_matrix_eigen(istate,astate,ispin)**2 / ( energy(istate,ispin) - energy(astate,ispin) ) * spin_fact
      enddo
    enddo
  enddo
+
+ deallocate(fock_matrix_eigen)
 
  call stop_clock(timing_single_excitation)
 

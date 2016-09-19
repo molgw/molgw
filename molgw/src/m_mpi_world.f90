@@ -62,6 +62,7 @@ module m_mpi_world
  interface xbcast_world
    module procedure xbcast_world_ra1d
    module procedure xbcast_world_ra2d
+   module procedure xbcast_world_ra3d
  end interface
 
  interface xand_world
@@ -130,6 +131,30 @@ subroutine xbcast_world_ra2d(iproc,array)
  endif
 
 end subroutine xbcast_world_ra2d
+
+
+!=========================================================================
+subroutine xbcast_world_ra3d(iproc,array)
+ implicit none
+ integer,intent(in)     :: iproc
+ real(dp),intent(inout) :: array(:,:,:)
+!=====
+ integer :: n1,n2,n3
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+ n3 = SIZE( array, DIM=3 )
+
+#ifdef HAVE_MPI
+ call MPI_BCAST(array,n1*n2*n3,MPI_DOUBLE_PRECISION,iproc,comm_world,ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xbcast_world_ra3d
 
 
 !=========================================================================

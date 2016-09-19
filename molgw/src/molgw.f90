@@ -175,7 +175,7 @@ program molgw
  call clean_allocate('Overlap matrix S',s_matrix,m_ham,n_ham)
  call clean_allocate('Kinetic operator T',hamiltonian_kinetic,m_ham,n_ham)
  call clean_allocate('Nucleus operator V',hamiltonian_nucleus,m_ham,n_ham)
- call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin)
+ call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin) ! Never distributed
 
 
  !
@@ -345,7 +345,6 @@ program molgw
                  hamiltonian_fock,                               &
                  occupation,energy)
  endif
-
 
 
  !
