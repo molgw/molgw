@@ -383,6 +383,7 @@ subroutine scf_loop(is_restart,&
 
    !
    ! Write down a "small" RESTART file at each step
+   ! Skip writing when parallel_ham since all the information is not available on the master proc.
    if( print_restart_ .AND. .NOT. parallel_ham ) then
      call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin)
      call get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamiltonian_fock)
@@ -504,7 +505,7 @@ subroutine scf_loop(is_restart,&
 
  !
  ! Big RESTART file written if converged
- ! TODO: implement writing with a parallelized hamiltonian
+ ! 
  if( is_converged .AND. print_bigrestart_ ) then
    call write_restart(BIG_RESTART,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
  else  

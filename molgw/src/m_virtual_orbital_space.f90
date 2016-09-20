@@ -75,99 +75,81 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  call issue_warning('Reduce the virtual orbital subspace by using a smaller basis set: '//TRIM(small_basis_name))
 
  ! Get the overlap matrix of the wavefunction basis set S: s_matrix
- allocate(s_matrix(basis%nbf,basis%nbf))
- allocate(s_matrix_inv(basis%nbf,basis%nbf))
+ call clean_allocate('Overlap matrix S',s_matrix,basis%nbf,basis%nbf)
+ call clean_allocate('Overlap inverse S^{-1}',s_matrix_inv,basis%nbf,basis%nbf)
  call setup_overlap(.FALSE.,basis,s_matrix)
  call invert(basis%nbf,s_matrix,s_matrix_inv)
 
  ! Calculate the mixed overlap matrix Sbs: s_bigsmall
- allocate(s_bigsmall(basis%nbf,basis_small%nbf))
+ call clean_allocate('Big-small overlap Sbs',s_bigsmall,basis%nbf,basis_small%nbf)
  call setup_overlap_mixedbasis(.FALSE.,basis,basis_small,s_bigsmall)
 
  ! Calculate the overlap matrix in the small basis:
  !  tilde S = Sbs^T S^-1 Sbs
- allocate(s_small(basis_small%nbf,basis_small%nbf))
+ call clean_allocate('Overlap matrix Ssmall',s_small,basis_small%nbf,basis_small%nbf)
  s_small(:,:) = MATMUL( TRANSPOSE(s_bigsmall), MATMUL( s_matrix_inv , s_bigsmall ) )
 
  ! Calculate ( tilde S )^{-1/2}
  call setup_sqrt_overlap(min_overlap,basis_small%nbf,s_small,nstate_small,s_small_sqrt_inv)
+ call clean_deallocate('Overlap matrix Ssmall',s_small)
 
 
- ! Obtain the Hamiltonian in the big basis (it will be useful later)
+ ! Obtain the Hamiltonian in the big basis and in the small basis
  !
  ! H = S * C * E * C^T * S
- !
- allocate(h_big(basis%nbf,basis%nbf,nspin))
- allocate(matrix_tmp(basis%nbf,basis%nbf))
- do ispin=1,nspin
-   
-   ! M = E * C^T
-   do istate=1,nstate
-     matrix_tmp(istate,:) = energy(istate,ispin) * c_matrix(:,istate,ispin)
-   enddo
-   
-   ! M = E * C^T * S
-   matrix_tmp(1:nstate,:) = MATMUL( matrix_tmp(1:nstate,:) , s_matrix(:,:) )
-
-   ! M = C * E * C^T * S
-   matrix_tmp(:,:) = MATMUL( c_matrix(:,:,ispin) , matrix_tmp(1:nstate,:) )
- 
-   h_big(:,:,ispin) = MATMUL( s_matrix(:,:) , matrix_tmp(:,:) )
- enddo
- deallocate(matrix_tmp)
-
-
- ! Obtain the Hamiltonian in the small basis (it is useful now!)
- !
+ ! and 
  ! tilde H = Sbs^T * S^-1 * H * S^-1 * Sbs
  !         = Sbs^T *    C * E * C^T  * Sbs
  !
- allocate(h_small(basis_small%nbf,basis_small%nbf,nspin))
- allocate(matrix_tmp(basis%nbf,basis%nbf))
+ call clean_allocate('Hamiltonian H',h_big,basis%nbf,basis%nbf,nspin)
+ call clean_allocate('Hamiltonian small basis',h_small,basis_small%nbf,basis_small%nbf,nspin)
+
+ call clean_allocate('Tmp matrix',matrix_tmp,basis%nbf,basis%nbf)
  do ispin=1,nspin
    
    ! M = E * C^T
    do istate=1,nstate
      matrix_tmp(istate,:) = energy(istate,ispin) * c_matrix(:,istate,ispin)
    enddo
+   ! M = C * E * C^T
+   matrix_tmp(:,:) = MATMUL( c_matrix(:,1:nstate,ispin) , matrix_tmp(:,:) )
    
-   ! M = E * C^T * S
-   matrix_tmp(1:nstate,1:basis_small%nbf) = MATMUL( matrix_tmp(1:nstate,:) , s_bigsmall(:,:) )
+   ! H = S * M * S
+   h_big(:,:,ispin) = MATMUL( s_matrix , MATMUL( matrix_tmp , s_matrix ) )
+   ! Hsmall = Sbs^T * M * Sbs
+   h_small(:,:,ispin) = MATMUL( TRANSPOSE(s_bigsmall) , MATMUL( matrix_tmp , s_bigsmall ) )
 
-   ! M = C * E * C^T * S
-   matrix_tmp(:,1:basis_small%nbf) = MATMUL( c_matrix(:,:,ispin) , matrix_tmp(1:nstate,1:basis_small%nbf) )
- 
-   h_small(:,:,ispin) = MATMUL( TRANSPOSE(s_bigsmall(:,:)) , matrix_tmp(:,1:basis_small%nbf) )
  enddo
- deallocate(matrix_tmp)
+ call clean_deallocate('Tmp matrix',matrix_tmp)
 
  ! Diagonalize the small Hamiltonian in the small basis
  !
  ! tilde H * tilde C = tilde S * tilde C * tilde E
  !
  allocate(energy_small(nstate_small,nspin))
- allocate(c_small(basis_small%nbf,nstate_small,nspin))
+ call clean_allocate('Coefficients small basis',c_small,basis_small%nbf,nstate_small,nspin)
  call diagonalize_hamiltonian_scalapack(nspin,basis_small%nbf,nstate_small,h_small,s_small_sqrt_inv,energy_small,c_small)
  call dump_out_energy('=== Energies in the initial small basis ===',&
               nstate_small,nspin,occupation(1:nstate_small,:),energy_small)
 
- deallocate(h_small)
- deallocate(energy_small)
+ call clean_deallocate('Hamiltonian small basis',h_small)
  call clean_deallocate('Overlap sqrt S^{-1/2}',s_small_sqrt_inv)
+ deallocate(energy_small)
 
 
  !
  ! Transform the wavefunction coefficients from the small basis to the big basis
  ! tilde C -> Cbig
- allocate(c_big(basis%nbf,nstate_small,nspin))
+ call clean_allocate('Small wavefunction coeff C',c_big,basis%nbf,nstate_small,nspin)
  ! M = S^-1
 
  ! Cbig = S^-1 * Sbs * tilde C
  do ispin=1,nspin
    c_big(:,:,ispin) = MATMUL( s_matrix_inv(:,:) , MATMUL( s_bigsmall(:,:) , c_small(:,:,ispin) ) )
  enddo
- deallocate(c_small)
- deallocate(s_matrix_inv)
+ call clean_deallocate('Coefficients small basis',c_small)
+ call clean_deallocate('Overlap inverse S^{-1}',s_matrix_inv)
+ call clean_deallocate('Big-small overlap Sbs',s_bigsmall)
 
  ! 
  ! Frozen orbitals for occupied state plus the selfenergy braket
@@ -195,16 +177,24 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  ! with frozen orbitals complemented with the small basis
  !
  ! Calculate the corresponding overlap matrix Sbar and hamiltonian Hbar
- allocate(s_bar(nstate_small,nstate_small))
- allocate(h_bar(nstate_small,nstate_small,nspin))
+ call clean_allocate('Overlap selected states',s_bar,nstate_small,nstate_small)
+ call clean_allocate('Hamiltonian selected states',h_bar,nstate_small,nstate_small,nspin)
  s_bar(:,:) = MATMUL( TRANSPOSE(c_big(:,:,1)) , MATMUL( s_matrix , c_big(:,:,1) ) )
+
+ call clean_deallocate('Overlap matrix S',s_matrix)
+
  call setup_sqrt_overlap(min_overlap,nstate_small,s_bar,nstate_bar,s_bar_sqrt_inv)
+ call clean_deallocate('Overlap selected states',s_bar)
+
  do ispin=1,nspin
    h_bar(:,:,ispin) = MATMUL( TRANSPOSE(c_big(:,:,ispin)) , MATMUL( h_big(:,:,ispin) , c_big(:,:,ispin) ) )
  enddo
+ call clean_deallocate('Hamiltonian H',h_big)
+
  allocate(energy_bar(nstate_bar,nspin))
- allocate(c_bar(nstate_small,nstate_bar,nspin))
+ call clean_allocate('Selected states coeffs C',c_bar,nstate_small,nstate_bar,nspin)
  call diagonalize_hamiltonian_scalapack(nspin,nstate_small,nstate_bar,h_bar,s_bar_sqrt_inv,energy_bar,c_bar)
+
 
  do ispin=1,nspin
    c_big(:,1:nstate_bar,ispin) = MATMUL( c_big(:,:,ispin) , c_bar(:,:,ispin) )
@@ -214,11 +204,8 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
               nstate_bar,nspin,occupation(1:nstate_bar,:),energy_bar)
 
  call clean_deallocate('Overlap sqrt S^{-1/2}',s_bar_sqrt_inv)
- deallocate(c_bar)
- deallocate(s_bar)
- deallocate(h_bar)
- deallocate(h_big)
- deallocate(s_matrix)
+ call clean_deallocate('Hamiltonian selected states',h_bar)
+ call clean_deallocate('Selected states coeffs C',c_bar)
 
  
  !
@@ -239,9 +226,9 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  nstate_small = nstate_bar
 
  deallocate(energy_bar)
- deallocate(s_small)
- deallocate(c_big)
- deallocate(s_bigsmall)
+ call clean_deallocate('Small wavefunction coeff C',c_big)
+
+ call destroy_basis_set(basis_small)
 
  write(stdout,'(1x,a)') 'Optimized empty states with a smaller basis set'
 
