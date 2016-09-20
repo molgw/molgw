@@ -137,22 +137,23 @@ end function matrix_is_symmetric
 !=========================================================================
 subroutine invert_dp(n,matrix,matrix_inv)
  implicit none
- integer,intent(in) :: n
- real(dp),intent(in) :: matrix(n,n)
+
+ integer,intent(in)   :: n
+ real(dp),intent(in)  :: matrix(n,n)
  real(dp),intent(out) :: matrix_inv(n,n)
- real(dp) :: a(n,n)
+!=====
  real(dp) :: work(n)
- integer :: ipvt(n),info
+ integer  :: ipiv(n),info
+!=====
 
- a = matrix
+ matrix_inv(:,:) = matrix(:,:)
 
- call DGETRF(n,n,a,n,ipvt,info)
+ call DGETRF(n,n,matrix_inv,n,ipiv,info)
  if(info/=0) call die('FAILURE in DGETRF')
 
- call DGETRI(n,a,n,ipvt,work,n,info)
+ call DGETRI(n,matrix_inv,n,ipiv,work,n,info)
  if(info/=0) call die('FAILURE in DGETRI')
 
- matrix_inv = a
 
 end subroutine invert_dp
 
@@ -160,15 +161,18 @@ end subroutine invert_dp
 !=========================================================================
 subroutine invert_inplace_dp(n,matrix)
  implicit none
+
  integer,intent(in)     :: n
  real(dp),intent(inout) :: matrix(n,n)
+!=====
  real(dp) :: work(n)
- integer :: ipvt(n),info
+ integer  :: ipiv(n),info
+!=====
 
- call DGETRF(n,n,matrix,n,ipvt,info)
+ call DGETRF(n,n,matrix,n,ipiv,info)
  if(info/=0) call die('FAILURE in DGETRF')
 
- call DGETRI(n,matrix,n,ipvt,work,n,info)
+ call DGETRI(n,matrix,n,ipiv,work,n,info)
  if(info/=0) call die('FAILURE in DGETRI')
 
 
@@ -178,22 +182,23 @@ end subroutine invert_inplace_dp
 !=========================================================================
 subroutine invert_cdp(n,matrix,matrix_inv)
  implicit none
+
  integer,intent(in) :: n
  complex(dp),intent(in) :: matrix(n,n)
  complex(dp),intent(out) :: matrix_inv(n,n)
- complex(dp) :: a(n,n)
+!=====
  complex(dp) :: work(n)
- integer :: ipvt(n),info
+ integer     :: ipiv(n),info
+!=====
 
- a = matrix
+ matrix_inv(:,:) = matrix(:,:)
 
- call ZGETRF(n,n,a,n,ipvt,info)
+ call ZGETRF(n,n,matrix_inv,n,ipiv,info)
  if(info/=0) call die('FAILURE in ZGETRF')
 
- call ZGETRI(n,a,n,ipvt,work,n,info)
+ call ZGETRI(n,matrix_inv,n,ipiv,work,n,info)
  if(info/=0) call die('FAILURE in ZGETRI')
 
- matrix_inv = a
 
 end subroutine invert_cdp
 

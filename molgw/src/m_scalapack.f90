@@ -837,6 +837,164 @@ end subroutine product_transaba_scalapack
 
 
 !=========================================================================
+! Calculate D = A * B * C for distributed matrices
+!
+!=========================================================================
+subroutine product_abc_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_matrix_local,descd,d_matrix_local)
+ implicit none
+ integer ,intent(in)  :: desca(ndel),descb(ndel),descc(ndel),descd(ndel)
+ real(dp),intent(in)  :: a_matrix_local(:,:)
+ real(dp),intent(in)  :: b_matrix_local(:,:)
+ real(dp),intent(in)  :: c_matrix_local(:,:)
+ real(dp),intent(out) :: d_matrix_local(:,:)
+!=====
+ integer              :: mmat,nmat,kmat,lmat
+ integer              :: mmat1,nmat1,kmat1,lmat1
+ real(dp),allocatable :: m_matrix_local(:,:)
+ real(dp),allocatable :: m_matrix(:,:)
+ integer :: cntxt
+ integer :: ma,na,mb,nb,mc,nc,md,nd,mm,nm
+ integer :: descm(ndel)
+ integer :: nprow,npcol,iprow,ipcol
+ integer :: info
+ integer,external :: NUMROC
+!=====
+
+ mmat  = desca(3)
+ kmat1 = desca(4)
+ kmat  = descb(3)
+ lmat1 = descb(4)
+ lmat  = descc(3)
+ nmat1 = descc(4)
+ mmat1 = descd(3)
+ nmat  = descd(4)
+
+ if( mmat1 /= mmat ) call die('Dimension error in product_abc_scalapack')
+ if( nmat1 /= nmat ) call die('Dimension error in product_abc_scalapack')
+ if( kmat1 /= kmat ) call die('Dimension error in product_abc_scalapack')
+ if( lmat1 /= lmat ) call die('Dimension error in product_abc_scalapack')
+
+
+#ifdef HAVE_SCALAPACK
+
+ cntxt = desca(2)
+ call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+ write(stdout,'(a,i4,a,i4)') ' Matrix product A * B * C using SCALAPACK with a grid',nprow,' x ',npcol
+
+ !
+ ! Participate to the diagonalization only if the CPU has been selected 
+ ! in the grid
+ if( cntxt > 0 ) then
+
+   !
+   ! Prepare M = A * B
+   mm = NUMROC(mmat,block_row,iprow,first_row,nprow)
+   nm = NUMROC(lmat,block_col,ipcol,first_col,npcol)
+   allocate(m_matrix_local(mm,nm))
+   call DESCINIT(descm,mmat,lmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mm),info)
+
+   ! Calculate M = A * B
+   call PDGEMM('N','N',mmat,lmat,kmat,1.0_dp,a_matrix_local,1,1,desca,    &
+                b_matrix_local,1,1,descb,0.0_dp,m_matrix_local,1,1,descm)
+
+   ! Calculate D = M * C
+   call PDGEMM('N','N',mmat,nmat,lmat,1.0_dp,m_matrix_local,1,1,descm,    &
+                c_matrix_local,1,1,descc,0.0_dp,d_matrix_local,1,1,descd)
+
+   deallocate(m_matrix_local)
+
+ endif
+
+#endif
+
+
+end subroutine product_abc_sca
+
+
+!=========================================================================
+! Calculate C = A^T * B * A for distributed matrices
+!
+!=========================================================================
+subroutine product_transaba_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_matrix_local)
+ implicit none
+ integer,intent(in)     :: desca(ndel),descb(ndel),descc(ndel)
+ real(dp),intent(in)    :: a_matrix_local(:,:)
+ real(dp),intent(in)    :: b_matrix_local(:,:)
+ real(dp),intent(out)   :: c_matrix_local(:,:)
+!=====
+ integer                :: mmat,kmat
+ integer                :: mmat1,kmat1
+ integer                :: mmat2,kmat2
+ real(dp),allocatable   :: m_matrix_local(:,:)
+ integer :: cntxt
+ integer :: ma,na,mb,nb,mc,nc,mm,nm
+ integer :: descm(ndel)
+ integer :: nprow,npcol,iprow,ipcol
+ integer :: info
+ integer,external :: NUMROC
+!=====
+
+
+ kmat  = desca(3)
+ mmat  = desca(4)
+ kmat1 = descb(3)
+ kmat2 = descb(4)
+ mmat1 = descc(3)
+ mmat2 = descc(4)
+
+ if( mmat1 /= mmat ) then
+   write(msg,*) 'mmat1 /= mmat',mmat1,mmat
+   call die('Dimension error in product_transaba_scalapack'//msg)
+ endif
+ if( mmat2 /= mmat ) then
+   write(msg,*) 'mmat2 /= mmat',mmat2,mmat
+   call die('Dimension error in product_transaba_scalapack'//msg)
+ endif
+ if( kmat1 /= kmat ) then
+   write(msg,*) 'kmat1 /= kmat',kmat1,kmat
+   call die('Dimension error in product_transaba_scalapack'//msg)
+ endif
+ if( kmat2 /= kmat ) then
+   write(msg,*) 'kmat2 /= kmat',kmat2,kmat
+   call die('Dimension error in product_transaba_scalapack'//msg)
+ endif
+
+#ifdef HAVE_SCALAPACK
+ cntxt = desca(2)
+ call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+ write(stdout,'(a,i4,a,i4)') ' Matrix product A**T * B * A using SCALAPACK with a grid',nprow,' x ',npcol
+ 
+ !
+ ! Participate to the diagonalization only if the CPU has been selected 
+ ! in the grid
+ if( cntxt > 0 ) then
+ 
+   !
+   ! Prepare M = A^T * B
+   mm = NUMROC(mmat,block_row,iprow,first_row,nprow)
+   nm = NUMROC(kmat,block_col,ipcol,first_col,npcol)
+   allocate(m_matrix_local(mm,nm))
+   call DESCINIT(descm,mmat,kmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mm),info)
+ 
+   ! Calculate M = A^T * B
+   call PDGEMM('T','N',mmat,kmat,kmat,1.0_dp,a_matrix_local,1,1,desca,    &
+                b_matrix_local,1,1,descb,0.0_dp,m_matrix_local,1,1,descm)
+
+   ! Calculate C = M * A
+   call PDGEMM('N','N',mmat,mmat,kmat,1.0_dp,m_matrix_local,1,1,descm,    &
+                a_matrix_local,1,1,desca,0.0_dp,c_matrix_local,1,1,descc)
+
+   deallocate(m_matrix_local)
+
+ endif
+ 
+#endif
+
+
+end subroutine product_transaba_sca
+
+
+!=========================================================================
 ! Transform a lower or upper triangular matrix into the full representation
 !
 !=========================================================================
@@ -932,6 +1090,55 @@ subroutine symmetrize_matrix_sca(uplo,nglobal,desc,matrix,desc_tmp,matrix_tmp)
 
 
 end subroutine symmetrize_matrix_sca
+
+
+!=========================================================================
+subroutine invert_sca(desc,matrix,matrix_inv)
+ implicit none
+
+ integer,intent(in)   :: desc(ndel)
+ real(dp),intent(in)  :: matrix(:,:)
+ real(dp),intent(out) :: matrix_inv(:,:)
+!=====
+ real(dp),allocatable :: work(:)
+ integer ,allocatable :: iwork(:)
+ integer ,allocatable :: ipiv(:)
+ integer  :: mlocal,nlocal
+ integer  :: n
+ integer  :: info
+ integer  :: lwork,liwork
+!=====
+
+ n = desc(3)
+ mlocal = SIZE( matrix , DIM=1 )
+ nlocal = SIZE( matrix , DIM=2 )
+ matrix_inv(:,:) = matrix(:,:)
+
+ allocate(ipiv(block_row+mlocal))
+
+ call PDGETRF(n,n,matrix_inv,1,1,desc,ipiv,info)
+
+ if(info/=0) call die('FAILURE in PDGETRF')
+
+ ! Query
+ allocate(work(1),iwork(1))
+ lwork  = -1
+ liwork = -1
+ call PDGETRI(n,matrix_inv,1,1,desc,ipiv,work, lwork, iwork, liwork, info )
+ if(info/=0) call die('FAILURE in PDGETRI')
+ 
+ lwork  = NINT(work(1))
+ liwork = iwork(1)
+ deallocate(work,iwork)
+ allocate(work(lwork),iwork(liwork))
+ call PDGETRI(n,matrix_inv,1,1,desc,ipiv,work, lwork, iwork, liwork, info )
+ if(info/=0) call die('FAILURE in PDGETRI')
+
+ deallocate(ipiv)
+ deallocate(work,iwork)
+
+
+end subroutine invert_sca
 
 
 !=========================================================================
