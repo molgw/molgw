@@ -29,6 +29,7 @@ program molgw
  use m_timing
  use m_warning
  use m_memory
+ use m_scalapack
  use m_inputparam
  use m_tools
  use m_scf
@@ -62,7 +63,7 @@ program molgw
  real(dp),allocatable    :: hamiltonian_fock(:,:,:)
  real(dp),allocatable    :: s_matrix(:,:)
  real(dp),allocatable    :: s_matrix_sqrt_inv(:,:)
- real(dp),allocatable    :: c_matrix(:,:,:)
+ real(dp),allocatable    :: c_matrix(:,:,:),c_matrix_tmp(:,:,:)
  real(dp),allocatable    :: energy(:,:)
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
@@ -156,8 +157,8 @@ program molgw
 #endif
 
    ! If Range-Separated Hybrid are requested
-   ! If is_big_restart, these integrals are NOT needed
-   if(calc_type%need_exchange_lr .AND. .NOT. is_big_restart) then
+   ! If is_big_restart, these integrals are NOT needed, I chose code this! 
+   if(calc_type%need_exchange_lr ) then
      ! 2-center integrals
      call calculate_eri_2center_lr(auxil_basis,rcut)
      ! 3-center integrals
@@ -215,7 +216,7 @@ program molgw
 
  ! Allocate the main arrays
  ! 2D arrays
- call clean_allocate('Wavefunctions C',c_matrix,m_c,n_c,nspin)
+ call clean_allocate('Wavefunctions C',c_matrix,basis%nbf,nstate,nspin)  ! not distributed right now
  ! 1D arrays
  allocate(occupation(nstate,nspin))
  allocate(    energy(nstate,nspin))
@@ -237,6 +238,12 @@ program molgw
  if( is_big_restart   ) write(stdout,*) 'Restarting from a finalized RESTART file'
  if( is_basis_restart ) write(stdout,*) 'Restarting from a finalized RESTART but with a different basis set'
 
+ if( parallel_ham .AND. .NOT. is_big_restart ) then
+   call clean_allocate('Wavefunctions C',c_matrix_tmp,m_c,n_c,nspin)
+   call create_distributed_copy(c_matrix,desc_c,c_matrix_tmp)
+   call clean_deallocate('Wavefunctions C',c_matrix)
+   call move_alloc(c_matrix_tmp,c_matrix)
+ endif
 
  !
  ! Calculate the parts of the hamiltonian that does not change along
@@ -371,7 +378,7 @@ program molgw
  if( has_auxil_basis ) call deallocate_eri_4center()
  ! If RSH calculations were performed, then deallocate the LR integrals which
  ! are not needed anymore
- if( calc_type%need_exchange_lr .AND. .NOT. is_big_restart ) call deallocate_eri_4center_lr()
+ if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()
  if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
 
  call clean_deallocate('Overlap matrix S',s_matrix)

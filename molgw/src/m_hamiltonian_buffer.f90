@@ -41,6 +41,8 @@ subroutine destroy_parallel_buffer()
 
 !=====
 
+ if( .NOT. ALLOCATED(buffer) ) call die('destroy_parallel_buffer: this should not happen')
+
  call clean_deallocate('non distributed buffer',buffer)
 
 end subroutine destroy_parallel_buffer

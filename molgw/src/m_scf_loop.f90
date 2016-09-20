@@ -548,7 +548,7 @@ subroutine get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamilton
    if( cntxt_ham > 0 ) then
      call clean_allocate('Local Fock operator F',hfock_local,SIZE(hamiltonian,DIM=1),SIZE(hamiltonian,DIM=2),nspin)
      hfock_local(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
-     call gather_distributed_copy_spin(desc_ham,hfock_local,hamiltonian_fock)
+     call gather_distributed_copy(desc_ham,hfock_local,hamiltonian_fock)
      call clean_deallocate('Local Fock operator F',hfock_local)
    endif
    call xbcast_world(rank_master,hamiltonian_fock)
@@ -592,7 +592,7 @@ subroutine form_c_matrix_global(nbf,nstate,c_matrix)
    call clean_deallocate('Wavefunctions C',c_matrix)
    call clean_allocate('Wavefunctions C',c_matrix,nbf,nstate,nspin)
 
-   call gather_distributed_copy_spin(desc_c,c_matrix_local,c_matrix)
+   call gather_distributed_copy(desc_c,c_matrix_local,c_matrix)
 
    call clean_deallocate('Local wfn coeff C',c_matrix_local)
 

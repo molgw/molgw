@@ -27,6 +27,16 @@ module m_scalapack
    module procedure diagonalize_outofplace_sca
  end interface
 
+ interface create_distributed_copy
+   module procedure create_distributed_copy_nospin
+   module procedure create_distributed_copy_spin
+ end interface create_distributed_copy
+
+ interface gather_distributed_copy
+   module procedure gather_distributed_copy_nospin
+   module procedure gather_distributed_copy_spin
+ end interface gather_distributed_copy
+
 
 contains
 
@@ -35,7 +45,7 @@ contains
 ! Create a distributed copy of a global matrix owned by each core
 !
 !=========================================================================
-subroutine create_distributed_copy(matrix_global,desc,matrix)
+subroutine create_distributed_copy_nospin(matrix_global,desc,matrix)
  implicit none
  integer,intent(in)   :: desc(ndel)
  real(dp),intent(in)  :: matrix_global(:,:)
@@ -57,14 +67,47 @@ subroutine create_distributed_copy(matrix_global,desc,matrix)
  enddo
 
 
-end subroutine create_distributed_copy
+end subroutine create_distributed_copy_nospin
+
+
+!=========================================================================
+! Create a distributed copy of a global matrix owned by each core
+! with spin
+!=========================================================================
+subroutine create_distributed_copy_spin(matrix_global,desc,matrix)
+ implicit none
+ integer,intent(in)   :: desc(ndel)
+ real(dp),intent(in)  :: matrix_global(:,:,:)
+ real(dp),intent(out) :: matrix(:,:,:)
+!=====
+ integer              :: idim3,ndim3
+ integer              :: mlocal,nlocal
+ integer              :: ilocal,jlocal,iglobal,jglobal
+!=====
+
+ mlocal = SIZE( matrix , DIM=1 )
+ nlocal = SIZE( matrix , DIM=2 )
+ ndim3  = SIZE( matrix , DIM=3 )
+
+ do idim3=1,ndim3
+   do jlocal=1,nlocal
+     jglobal = colindex_local_to_global(desc,jlocal)
+     do ilocal=1,mlocal
+       iglobal = rowindex_local_to_global(desc,ilocal)
+       matrix(ilocal,jlocal,idim3) = matrix_global(iglobal,jglobal,idim3)
+     enddo
+   enddo
+ enddo
+
+
+end subroutine create_distributed_copy_spin
 
 
 !=========================================================================
 ! Gather a distributed matrix into a global matrix owned by each core
 !
 !=========================================================================
-subroutine gather_distributed_copy(desc,matrix,matrix_global)
+subroutine gather_distributed_copy_nospin(desc,matrix,matrix_global)
  implicit none
  integer,intent(in)   :: desc(ndel)
  real(dp),intent(in)  :: matrix(:,:)
@@ -97,7 +140,7 @@ subroutine gather_distributed_copy(desc,matrix,matrix_global)
 #endif
 
 
-end subroutine gather_distributed_copy
+end subroutine gather_distributed_copy_nospin
 
 
 !=========================================================================
