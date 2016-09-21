@@ -339,5 +339,10 @@ SCF Total Energy          , -76.3743156395     , 0 , 1.0e-7
 GW HOMO energy            , -11.927726         , 0 , 1.0e-4
 GW LUMO energy            ,   3.286831         , 0 , 1.0e-4
 
+h2o_gw_smallbasis_sca.in  , H2O: GW@PBE0 using a small basis set for virtual orbitals and SCALAPACK
+SCF Total Energy          , -76.3797751142     , 0 , 1.0e-7
+Lowest neutral excitation ,   8.939514         , 0 , 1.0e-4
+GW HOMO energy            , -12.165369         , 0 , 1.0e-4
+GW LUMO energy            ,   0.871728         , 0 , 1.0e-4
 
 

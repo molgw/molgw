@@ -1,0 +1,25 @@
+&molgw
+ scf='pbe0'
+ min_overlap = 5.0e-4
+
+ scalapack_nprow=2
+ scalapack_npcol=2
+
+ basis='aug-cc-pVTZ'
+ auxil_basis='aug-cc-pVTZ-RI'
+ no_4center='yes'
+
+ postscf='g0w0'
+ frozencore='yes'
+ selfenergy_state_min=5
+ selfenergy_state_max=6
+
+ small_basis='aug-cc-pVDZ'
+
+
+ natom=3
+/
+8    0.000000     0.000000     0.119105
+1    0.000000     0.760508    -0.476421
+1    0.000000    -0.760508    -0.476421
+
