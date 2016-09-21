@@ -57,7 +57,7 @@ program molgw
  integer                 :: nstate
  integer                 :: ispin
  logical                 :: is_restart,is_big_restart,is_basis_restart
- real(dp),allocatable    :: hamiltonian_tmp(:,:)
+ real(dp),allocatable    :: hamiltonian_tmp(:,:,:)
  real(dp),allocatable    :: hamiltonian_kinetic(:,:)
  real(dp),allocatable    :: hamiltonian_nucleus(:,:)
  real(dp),allocatable    :: hamiltonian_fock(:,:,:)
@@ -198,7 +198,10 @@ program molgw
  !                                      m_c and n_c 
  !
  if( parallel_ham ) then
-   call setup_sqrt_overlap_sca(min_overlap,basis%nbf,m_ham,n_ham,s_matrix,nstate,m_c,n_c,s_matrix_sqrt_inv)
+   call setup_sqrt_overlap_sca(min_overlap,desc_ham,s_matrix,desc_c,s_matrix_sqrt_inv)
+   nstate = desc_c(N_A)
+   m_c    = SIZE( s_matrix_sqrt_inv , DIM=1 )
+   n_c    = SIZE( s_matrix_sqrt_inv , DIM=2 )
 
  else
    call setup_sqrt_overlap(min_overlap,basis%nbf,s_matrix,nstate,s_matrix_sqrt_inv)
@@ -275,8 +278,8 @@ program molgw
    ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
    if( parallel_ham ) call die('basis_restart not implemented with distributed hamiltonian')
    call issue_warning('basis restart is not fully implemented: use with care')
-!   allocate(hamiltonian_tmp(basis%nbf,basis%nbf))
-!   hamiltonian_tmp(:,:) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) &
+!   allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
+!   hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) &
 !                         + hamiltonian_hartree(:,:) + 0.5_dp * hamiltonian_xc(:,:,1)  &
 !                                                    + 0.5_dp * hamiltonian_xc(:,:,nspin)
    call diagonalize_hamiltonian_scalapack(nspin,basis%nbf,nstate,hamiltonian_fock,s_matrix_sqrt_inv,&
@@ -299,28 +302,27 @@ program molgw
  if( .NOT. is_restart) then
    !
    ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
-   allocate(hamiltonian_tmp(m_ham,n_ham))
+   allocate(hamiltonian_tmp(m_ham,n_ham,1))
    !
    ! Calculate a very approximate vhxc based on simple gaussians placed on atoms
    if( parallel_ham ) then
      if( parallel_buffer ) then
-       call dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,hamiltonian_tmp)
+       call dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,hamiltonian_tmp(:,:,1))
      else
-       call dft_approximate_vhxc_sca(basis,m_ham,n_ham,hamiltonian_tmp)
+       call dft_approximate_vhxc_sca(basis,m_ham,n_ham,hamiltonian_tmp(:,:,1))
      endif
    else
-     call dft_approximate_vhxc(basis,hamiltonian_tmp)
+     call dft_approximate_vhxc(basis,hamiltonian_tmp(:,:,1))
    endif
 
-   hamiltonian_tmp(:,:) = hamiltonian_tmp(:,:) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+   hamiltonian_tmp(:,:,1) = hamiltonian_tmp(:,:,1) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
 
    write(stdout,'(/,a)') ' Approximate hamiltonian'
 
    if( parallel_ham ) then
-     call diagonalize_hamiltonian_sca(1,basis%nbf,nstate,m_ham,n_ham,hamiltonian_tmp,s_matrix_sqrt_inv, &
-                                      energy(:,1),m_c,n_c,c_matrix(:,:,1))
+     call diagonalize_hamiltonian_sca(1,1,desc_ham,hamiltonian_tmp,desc_c,s_matrix_sqrt_inv,energy,c_matrix)
    else
-     call diagonalize_hamiltonian_scalapack(1,basis%nbf,nstate,hamiltonian_tmp,s_matrix_sqrt_inv,&
+     call diagonalize_hamiltonian_scalapack(1,basis%nbf,nstate,hamiltonian_tmp(:,:,1),s_matrix_sqrt_inv,&
                                             energy(:,1),c_matrix(:,:,1))
    endif
 

@@ -323,8 +323,7 @@ subroutine scf_loop(is_restart,&
    ! H \varphi = E S \varphi
    ! save the old eigenvalues
    if( parallel_ham ) then
-     call diagonalize_hamiltonian_sca(nspin,basis%nbf,nstate,m_ham,n_ham,hamiltonian,s_matrix_sqrt_inv, &
-                                      energy,m_c,n_c,c_matrix)
+     call diagonalize_hamiltonian_sca(1,nspin,desc_ham,hamiltonian,desc_c,s_matrix_sqrt_inv,energy,c_matrix)
    else
      ! This subroutine works with or without scalapack
      call diagonalize_hamiltonian_scalapack(nspin,basis%nbf,nstate,hamiltonian,s_matrix_sqrt_inv,energy,c_matrix)

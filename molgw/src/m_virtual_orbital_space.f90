@@ -16,6 +16,9 @@ module m_virtual_orbital_space
  real(dp),allocatable,private :: energy_ref(:,:)
  real(dp),allocatable,private :: c_matrix_ref(:,:,:)
 
+ real(dp),allocatable,private :: c_local(:,:,:)              ! C coefficients:  basis%nbf x nstate
+ integer,private              :: desc_bb_sb(ndel)            ! and the corresponding descriptor
+
 
 contains
 
@@ -112,7 +115,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
      matrix_tmp(istate,:) = energy(istate,ispin) * c_matrix(:,istate,ispin)
    enddo
    ! M = C * E * C**T
-   matrix_tmp(:,:) = MATMUL( c_matrix(:,1:nstate,ispin) , matrix_tmp(:,:) )
+   matrix_tmp(:,:) = MATMUL( c_matrix(:,1:nstate,ispin) , matrix_tmp(1:nstate,:) )
    
    ! H = S * M * S
    h_big(:,:,ispin) = MATMUL( s_matrix , MATMUL( matrix_tmp , s_matrix ) )
@@ -241,7 +244,6 @@ end subroutine setup_virtual_smallbasis
 !=========================================================================
 subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_matrix,nstate_small)
  use m_inputparam
- use m_tools,only: diagonalize
  use m_basis_set
  use m_hamiltonian
  use m_hamiltonian_sca
@@ -260,7 +262,8 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
  integer                    :: desc_bs_bs(ndel)            ! basis_small%nbf x basis_small%nbf
  integer                    :: desc_bs_ss(ndel)            ! basis_small%nbf x nstate_small
  integer                    :: desc_bb_ss(ndel)            ! basis%nbf x nstate_small
- integer                    :: desc_bb_sb(ndel)            ! basis%nbf x nstate
+ integer                    :: desc_ss_ss(ndel)            ! nstate_small x nstate_small
+ integer                    :: desc_tmp(ndel)              ! Dummy
  integer                    :: nprow,npcol,iprow,ipcol
  integer                    :: cntxt
  integer                    :: rank_master
@@ -270,11 +273,11 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
  integer                    :: md,nd
  integer                    :: me,ne
  integer                    :: mf,nf
+ integer                    :: mg,ng
  integer                    :: ispin
  integer                    :: ibf
  integer                    :: istate,jstate
  type(basis_set)            :: basis_small
- real(dp),allocatable       :: c_local(:,:,:)           !TODO: remove this in the future
  real(dp),allocatable       :: s_bigsmall_global(:,:)   !TODO: remove this in the future
  real(dp),allocatable       :: s_bigsmall(:,:)
  real(dp),allocatable       :: s_small(:,:)
@@ -290,16 +293,19 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
  real(dp),allocatable       :: matrix_tmp2(:,:)
  real(dp),allocatable       :: s_bar(:,:),h_bar(:,:,:),s_bar_sqrt_inv(:,:)
  real(dp),allocatable       :: energy_bar(:,:),c_bar(:,:,:)
- integer                    :: nstate_bar
  integer                    :: nocc,nfrozen
  integer                    :: info
- integer,external           :: NUMROC
+ integer                    :: jglobal,jlocal
 !=====
 
  call start_clock(timing_fno)
 
  write(stdout,'(/,1x,a)') 'Prepare optimized empty states using a smaller basis set'
 
+ !
+ ! All procs save the original energies
+ allocate(energy_ref(nstate,nspin))
+ energy_ref(:,:)     = energy(:,:)
 
  ! Remember how to go from the small basis set to the big one
  ! 
@@ -309,9 +315,8 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
 
 
  ! First set up the SCALAPACK grid
- nprow = nprow_ham
- npcol = npcol_ham
- cntxt = desc_ham(2)
+ cntxt = desc_ham(CTXT_A)
+ call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
  write(stdout,'(a,i4,a,i4)') 'SCALAPACK with a grid',nprow,' x ',npcol
 
  ! Find the master
@@ -364,9 +369,9 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
       
    !
    ! Descriptor desc_bs_bs  mc,nc
-   mc = NUMROC(basis%nbf,block_row,iprow,first_row,nprow)
-   nc = NUMROC(basis%nbf,block_col,ipcol,first_col,npcol)
-   call DESCINIT(desc_bb_bb,basis_small%nbf,basis_small%nbf,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info) 
+   mc = NUMROC(basis_small%nbf,block_row,iprow,first_row,nprow)
+   nc = NUMROC(basis_small%nbf,block_col,ipcol,first_col,npcol)
+   call DESCINIT(desc_bs_bs,basis_small%nbf,basis_small%nbf,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info) 
 
    ! Calculate the overlap matrix in the small basis:
    ! tilde S = Sbs**T *  S**-1 * Sbs
@@ -375,13 +380,17 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
    call product_transaba_sca(desc_bb_bs,s_bigsmall,desc_bb_bb,s_matrix_inv,desc_bs_bs,s_small)
 
    ! Calculate ( tilde S )^{-1/2}
-   call setup_sqrt_overlap_sca(min_overlap,basis_small%nbf,mc,nc,s_small,nstate_small,md,nd,s_small_sqrt_inv)
-   call clean_deallocate('Overlap matrix Ssmall',s_small)
+
+   call setup_sqrt_overlap_sca(min_overlap,desc_bs_bs,s_small,desc_bs_ss,s_small_sqrt_inv)
+   nstate_small = desc_bs_ss(N_A)
+   md = NUMROC(basis_small%nbf,block_row,iprow,first_row,nprow)
+   nd = NUMROC(nstate_small   ,block_col,ipcol,first_col,npcol)
    !
    ! Descriptor desc_bs_ss  md,nd
-   md = NUMROC(basis_small%nbf,block_row,iprow,first_row,nprow)
-   nd = NUMROC(nstate_small,block_col,ipcol,first_col,npcol)
-   call DESCINIT(desc_bs_ss,basis_small%nbf,nstate_small,block_row,block_col,first_row,first_col,cntxt,MAX(1,md),info) 
+!   TODO remove this line
+!   call DESCINIT(desc_bs_ss,basis_small%nbf,nstate_small,block_row,block_col,first_row,first_col,cntxt,MAX(1,md),info) 
+
+   call clean_deallocate('Overlap matrix Ssmall',s_small)
 
 
    ! Obtain the Hamiltonian in the big basis and in the small basis
@@ -416,115 +425,138 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
      call clean_deallocate('Tmp matrix',matrix_tmp2)
    enddo
 
- endif ! FBFB
+   ! Diagonalize the small Hamiltonian in the small basis
+   !
+   ! tilde H * tilde C = tilde S * tilde C * tilde E
+   !
+   allocate(energy_small(nstate_small,nspin))
+   call clean_allocate('Coefficients small basis',c_small,md,nd,nspin)
+   call diagonalize_hamiltonian_sca(1,nspin,desc_bs_bs,h_small,desc_bs_ss,s_small_sqrt_inv,energy_small,c_small)
+
+   call dump_out_energy('=== Energies in the initial small basis ===',&
+                        nstate_small,nspin,occupation(1:nstate_small,:),energy_small)
+
+   call clean_deallocate('Hamiltonian small basis',h_small)
+   call clean_deallocate('Overlap sqrt S^{-1/2}',s_small_sqrt_inv)
+   deallocate(energy_small)
+
+   !
+   ! Transform the wavefunction coefficients from the small basis to the big basis
+   ! tilde C -> Cbig
+   me = NUMROC(basis%nbf   ,block_row,iprow,first_row,nprow)
+   ne = NUMROC(nstate_small,block_col,ipcol,first_col,npcol)
+   call DESCINIT(desc_bb_ss,basis%nbf,nstate_small,block_row,block_col,first_row,first_col,cntxt,MAX(1,me),info) 
+   call clean_allocate('Small wavefunction coeff C',c_big,me,ne,nspin)
 
 
- ! Diagonalize the small Hamiltonian in the small basis
- !
- ! tilde H * tilde C = tilde S * tilde C * tilde E
- !
- allocate(energy_small(nstate_small,nspin))
- call clean_allocate('Coefficients small basis',c_small,basis_small%nbf,nstate_small,nspin)
- call diagonalize_hamiltonian_scalapack(nspin,basis_small%nbf,nstate_small,h_small,s_small_sqrt_inv,energy_small,c_small)
- call dump_out_energy('=== Energies in the initial small basis ===',&
-              nstate_small,nspin,occupation(1:nstate_small,:),energy_small)
-
- call clean_deallocate('Hamiltonian small basis',h_small)
- call clean_deallocate('Overlap sqrt S^{-1/2}',s_small_sqrt_inv)
- deallocate(energy_small)
+   ! Cbig = S**-1 * Sbs * tilde C
+   do ispin=1,nspin
+     call product_abc_sca(desc_bb_bb,s_matrix_inv,desc_bb_bs,s_bigsmall,desc_bs_ss,c_small(:,:,ispin),desc_bb_ss,c_big(:,:,ispin))
+   enddo
 
 
- !
- ! Transform the wavefunction coefficients from the small basis to the big basis
- ! tilde C -> Cbig
- call clean_allocate('Small wavefunction coeff C',c_big,basis%nbf,nstate_small,nspin)
- ! M = S^-1
-
- ! Cbig = S**-1 * Sbs * tilde C
- do ispin=1,nspin
-   c_big(:,:,ispin) = MATMUL( s_matrix_inv(:,:) , MATMUL( s_bigsmall(:,:) , c_small(:,:,ispin) ) )
- enddo
- call clean_deallocate('Coefficients small basis',c_small)
- call clean_deallocate('Overlap inverse S^{-1}',s_matrix_inv)
- call clean_deallocate('Big-Small overlap Sbs',s_bigsmall)
-
- ! 
- ! Frozen orbitals for occupied state plus the selfenergy braket
- !
- ! Find the highest occupied state
- do istate=1,nstate
-   if( ALL(occupation(istate,:) < completely_empty) ) cycle
-   nocc = istate
- enddo
-
- ! Override the Cbig coefficients with the original C coefficients up to max(nocc,nsemax)
- nfrozen = MAX(nocc,nsemax)
-
- ! Avoid separating degenerate states
- do while( ANY( ABS(energy(nfrozen+1,:)-energy(nfrozen,:)) < 1.0e-4_dp ) )
-   nfrozen = nfrozen + 1
-   if( nfrozen == nstate_small ) exit
- end do
- 
- write(stdout,'(1x,a,i6)') 'Leave the first states frozen up to: ',nfrozen
- c_big(:,1:nfrozen,:) = c_matrix(:,1:nfrozen,:)
-
- !
- ! Final diagonalization of in the composite basis
- ! with frozen orbitals complemented with the small basis
- !
- ! Calculate the corresponding overlap matrix Sbar and hamiltonian Hbar
- call clean_allocate('Overlap selected states',s_bar,nstate_small,nstate_small)
- call clean_allocate('Hamiltonian selected states',h_bar,nstate_small,nstate_small,nspin)
- s_bar(:,:) = MATMUL( TRANSPOSE(c_big(:,:,1)) , MATMUL( s_matrix , c_big(:,:,1) ) )
-
- call clean_deallocate('Overlap matrix S',s_matrix)
-
- call setup_sqrt_overlap(min_overlap,nstate_small,s_bar,nstate_bar,s_bar_sqrt_inv)
- if( nstate_small /= nstate_bar ) call die('virtual_smallbasis: this usually never happens')
- call clean_deallocate('Overlap selected states',s_bar)
-
- do ispin=1,nspin
-   h_bar(:,:,ispin) = MATMUL( TRANSPOSE(c_big(:,:,ispin)) , MATMUL( h_big(:,:,ispin) , c_big(:,:,ispin) ) )
- enddo
- call clean_deallocate('Hamiltonian H',h_big)
-
- allocate(energy_bar(nstate_bar,nspin))
- call clean_allocate('Selected states coeffs C',c_bar,nstate_small,nstate_bar,nspin)
- call diagonalize_hamiltonian_scalapack(nspin,nstate_small,nstate_bar,h_bar,s_bar_sqrt_inv,energy_bar,c_bar)
+   call clean_deallocate('Coefficients small basis',c_small)
+   call clean_deallocate('Overlap inverse S^{-1}',s_matrix_inv)
+   call clean_deallocate('Big-Small overlap Sbs',s_bigsmall)
 
 
- do ispin=1,nspin
-   c_big(:,1:nstate_bar,ispin) = MATMUL( c_big(:,:,ispin) , c_bar(:,:,ispin) )
- enddo
+   ! 
+   ! Frozen orbitals for occupied state plus the selfenergy braket
+   !
+   ! Find the highest occupied state
+   do istate=1,nstate
+     if( ALL(occupation(istate,:) < completely_empty) ) cycle
+     nocc = istate
+   enddo
+  
+   ! Override the Cbig coefficients with the original C coefficients up to max(nocc,nsemax)
+   nfrozen = MAX(nocc,nsemax)
+  
+   ! Avoid separating degenerate states
+   do while( ANY( ABS(energy(nfrozen+1,:)-energy(nfrozen,:)) < 1.0e-4_dp ) )
+     nfrozen = nfrozen + 1
+     if( nfrozen == nstate_small ) exit
+   end do
+   
+   write(stdout,'(1x,a,i6)') 'Leave the first states frozen up to: ',nfrozen
 
- call dump_out_energy('=== Energies in the final small basis ===',&
-              nstate_bar,nspin,occupation(1:nstate_bar,:),energy_bar)
+   do jlocal=1,ne
+     jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
+     if( jglobal > nfrozen ) cycle
+     c_big(:,jlocal,:) = c_local(:,jlocal,:)
+   enddo
 
- call clean_deallocate('Overlap sqrt S^{-1/2}',s_bar_sqrt_inv)
- call clean_deallocate('Hamiltonian selected states',h_bar)
- call clean_deallocate('Selected states coeffs C',c_bar)
+   
 
- 
- !
- ! Save the original c_matrix and energies
- if( .NOT. ALLOCATED(energy_ref) ) then
-   allocate(energy_ref(nstate_bar,nspin))
-   allocate(c_matrix_ref(basis%nbf,nstate_bar,nspin))   ! TODO clean_allocate of this
 
-   energy_ref(:,:)     = energy(1:nstate_bar,:)
-   c_matrix_ref(:,:,:) = c_matrix(:,1:nstate_bar,:)
+   !
+   ! Final diagonalization of in the composite basis
+   ! with frozen orbitals complemented with the small basis
+   !
+   ! Calculate the corresponding overlap matrix Sbar and hamiltonian Hbar
+   mg = NUMROC(nstate_small,block_row,iprow,first_row,nprow)
+   ng = NUMROC(nstate_small,block_col,ipcol,first_col,npcol)
+   call DESCINIT(desc_ss_ss,nstate_small,nstate_small,block_row,block_col,first_row,first_col,cntxt,MAX(1,mg),info) 
+   call clean_allocate('Overlap selected states',s_bar,mg,ng)
+   call clean_allocate('Hamiltonian selected states',h_bar,mg,ng,nspin)
+
+   ! Sbar = C'**T * S * C'
+   ! s_bar(:,:) = MATMUL( TRANSPOSE(c_big(:,:,1)) , MATMUL( s_matrix , c_big(:,:,1) ) )
+   call product_transaba_sca(desc_bb_ss,c_big(:,:,1),desc_bb_bb,s_matrix,desc_ss_ss,s_bar)
+
+   call clean_deallocate('Overlap matrix S',s_matrix)
+
+   call setup_sqrt_overlap_sca(min_overlap,desc_ss_ss,s_bar,desc_tmp,s_bar_sqrt_inv)
+   if( nstate_small /= desc_tmp(N_A) ) call die('virtual_smallbasis: this usually never happens')
+   call clean_deallocate('Overlap selected states',s_bar)
+
+   do ispin=1,nspin
+     ! Sbar = C'**T * H * C'
+     ! h_bar(:,:,ispin) = MATMUL( TRANSPOSE(c_big(:,:,ispin)) , MATMUL( h_big(:,:,ispin) , c_big(:,:,ispin) ) )
+     call product_transaba_sca(desc_bb_ss,c_big(:,:,1),desc_bb_bb,h_big(:,:,ispin),desc_ss_ss,h_bar(:,:,ispin))
+   enddo
+
+   call clean_deallocate('Hamiltonian H',h_big)
+
+   allocate(energy_bar(nstate_small,nspin))
+   call clean_allocate('Selected states coeffs C',c_bar,mg,ng,nspin)
+   call diagonalize_hamiltonian_sca(1,nspin,desc_ss_ss,h_bar,desc_ss_ss,s_bar_sqrt_inv,energy_bar,c_bar)
+
+
+   call clean_allocate('Tmp matrix',matrix_tmp1,me,ne)
+   do ispin=1,nspin
+     ! C' <- C' * Cbar
+     ! c_big(:,:,ispin) = MATMUL( c_big(:,:,ispin) , c_bar(:,:,ispin) )
+     matrix_tmp1(:,:) = c_big(:,:,ispin)
+     call PDGEMM('N','N',basis%nbf,nstate_small,nstate_small,  &
+                  1.0_dp,     matrix_tmp1,1,1,desc_bb_ss,  &
+                         c_bar(1,1,ispin),1,1,desc_ss_ss,  &
+                  0.0_dp,c_big(1,1,ispin),1,1,desc_bb_ss)
+   enddo
+   call clean_deallocate('Tmp matrix',matrix_tmp1)
+
+
+   call dump_out_energy('=== Energies in the final small basis ===',&
+                        nstate_small,nspin,occupation(1:nstate_small,:),energy_bar)
+
+   call clean_deallocate('Overlap sqrt S^{-1/2}',s_bar_sqrt_inv)
+   call clean_deallocate('Hamiltonian selected states',h_bar)
+   call clean_deallocate('Selected states coeffs C',c_bar)
+
+   ! Override the energies now
+   energy(1:nstate_small,:) = energy_bar(:,:)
  endif
-
  !
  ! And then override the c_matrix and the energy with the fresh new ones
- energy(1:nstate_bar,:)     = energy_bar(:,:)
- c_matrix(:,1:nstate_bar,:) = c_big(:,:,:)
+ call xbcast_world(rank_master,energy)
 
- nstate_small = nstate_bar
+ if( cntxt > 0 ) then
+   call gather_distributed_copy(desc_bb_ss,c_big,c_matrix(:,1:nstate_small,:))
+   call clean_deallocate('Small wavefunction coeff C',c_big)
+ endif
+ call xbcast_world(rank_master,c_matrix)
 
  deallocate(energy_bar)
- call clean_deallocate('Small wavefunction coeff C',c_big)
 
  call destroy_basis_set(basis_small)
 
@@ -797,14 +829,16 @@ subroutine destroy_fno(basis,nstate,energy,c_matrix)
  use m_tools,only: diagonalize
  use m_basis_set
  use m_eri_ao_mo
+ use m_scalapack
  implicit none
 
- type(basis_set),intent(in)            :: basis
- integer,intent(in)                    :: nstate
- real(dp),intent(inout)                :: energy(nstate,nspin)
- real(dp),intent(inout)                :: c_matrix(basis%nbf,nstate,nspin)
+ type(basis_set),intent(in)           :: basis
+ integer,intent(in)                   :: nstate
+ real(dp),intent(inout)               :: energy(nstate,nspin)
+ real(dp),intent(inout)               :: c_matrix(basis%nbf,nstate,nspin)
 !=====
- integer                               :: lowerb,upperb
+ integer                              :: lowerb,upperb
+ integer                              :: rank_master,nprow,npcol,iprow,ipcol,cntxt
 !=====
 
  write(stdout,'(/,1x,a)') 'Deallocate the Frozen Natural Orbitals'
@@ -813,12 +847,29 @@ subroutine destroy_fno(basis,nstate,energy,c_matrix)
  upperb = UBOUND(energy_ref,DIM=1)
 
 
- energy    (lowerb:upperb,:) = energy_ref    (lowerb:upperb,:)
- c_matrix(:,lowerb:upperb,:) = c_matrix_ref(:,lowerb:upperb,:)
-
-
+ energy(lowerb:upperb,:) = energy_ref(lowerb:upperb,:)
  deallocate(energy_ref)
- deallocate(c_matrix_ref)   ! TODO clean_allocate of this
+
+ if( ALLOCATED(c_matrix_ref) ) then
+   c_matrix(:,lowerb:upperb,:) = c_matrix_ref(:,lowerb:upperb,:)
+   deallocate(c_matrix_ref)   ! TODO clean_allocate of this
+ else
+   cntxt = desc_bb_sb(CTXT_A)
+   call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+   ! Find the master
+   if( iprow == 0 .AND. ipcol == 0 ) then
+     rank_master = rank_world
+   else
+     rank_master = -1
+   endif
+   call xmax_world(rank_master)
+
+   if( cntxt > 0 ) then
+     call gather_distributed_copy(desc_bb_sb,c_local,c_matrix)
+   endif
+   call xbcast_world(rank_master,c_matrix)
+   call clean_deallocate('Distributed C',c_local)
+ endif
 
 
 end subroutine destroy_fno

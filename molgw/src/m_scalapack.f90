@@ -21,6 +21,16 @@ module m_scalapack
  use mpi
 #endif
 
+ ! Indexes in the BLACS descriptor
+ integer,parameter :: DTYPE_A = 1
+ integer,parameter :: CTXT_A  = 2
+ integer,parameter :: M_A     = 3
+ integer,parameter :: N_A     = 4
+ integer,parameter :: MB_A    = 5
+ integer,parameter :: NB_A    = 6
+ integer,parameter :: RSRC_A  = 7
+ integer,parameter :: CSRC_A  = 8
+ integer,parameter :: LLD_A   = 9
 
  interface diagonalize_sca
    module procedure diagonalize_inplace_sca
@@ -37,6 +47,7 @@ module m_scalapack
    module procedure gather_distributed_copy_spin
  end interface gather_distributed_copy
 
+ integer,external :: NUMROC,INDXL2G,INDXG2L,INDXG2P
 
 contains
 
@@ -118,7 +129,7 @@ subroutine gather_distributed_copy_nospin(desc,matrix,matrix_global)
  integer              :: ilocal,jlocal,iglobal,jglobal
 !=====
 
- contxt = desc(2)
+ contxt = desc(CTXT_A)
 
  mlocal  = SIZE( matrix , DIM=1 )
  nlocal  = SIZE( matrix , DIM=2 )
@@ -159,7 +170,7 @@ subroutine gather_distributed_copy_spin(desc,matrix,matrix_global)
  integer              :: ilocal,jlocal,iglobal,jglobal
 !=====
 
- contxt = desc(2)
+ contxt = desc(CTXT_A)
 
  mlocal  = SIZE( matrix , DIM=1 )
  nlocal  = SIZE( matrix , DIM=2 )

@@ -402,7 +402,6 @@ subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_ma
  integer              :: iglobal,jglobal,ilocal,jlocal
  integer              :: ii
  integer              :: ibf_global,ier,to,iprow_recv,ipcol_recv
- integer,external     :: INDXG2P
 !=====
 
 #ifdef HAVE_SCALAPACK
@@ -640,7 +639,6 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
 #ifdef HAVE_SCALAPACK
  integer :: cntxt
  integer :: rank_sca,nprocs_sca
- integer,external :: NUMROC,INDXL2G
 #endif
  integer  :: ispin
  integer  :: ilocal,jlocal,iglobal,jglobal
@@ -804,63 +802,74 @@ end subroutine diagonalize_hamiltonian_scalapack
 
 
 !=========================================================================
-subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,nstate,m_ham,n_ham,  &
-                                       hamiltonian,s_matrix_sqrt_inv,energy,m_c,n_c,c_matrix)
+subroutine diagonalize_hamiltonian_sca(ispin_min,ispin_max,desc_h,hamiltonian,desc_sqrt,s_matrix_sqrt_inv,energy,c_matrix)
  implicit none
 
- integer,intent(in)   :: nspin_local,nbf,nstate
- integer,intent(in)   :: m_ham,n_ham
- integer,intent(in)   :: m_c,n_c
- real(dp),intent(in)  :: hamiltonian(m_ham,n_ham,nspin_local)
- real(dp),intent(in)  :: s_matrix_sqrt_inv(m_c,n_c)
- real(dp),intent(out) :: c_matrix(m_c,n_c,nspin_local)
- real(dp),intent(out) :: energy(nstate,nspin_local)
+ integer,intent(in)   :: ispin_min,ispin_max
+ integer,intent(in)   :: desc_h(ndel),desc_sqrt(ndel)
+ real(dp),intent(in)  :: hamiltonian(:,:,:)
+ real(dp),intent(in)  :: s_matrix_sqrt_inv(:,:)
+ real(dp),intent(out) :: c_matrix(:,:,:)
+ real(dp),intent(out) :: energy(:,:)
 !=====
+ integer  :: cntxt
+ integer  :: iprow,ipcol,nprow,npcol
+ integer  :: nstate,nbf
+ integer  :: m_ham,n_ham
+ integer  :: m_c,n_c
  integer  :: ispin
  integer  :: ilocal,jlocal,jglobal
  integer  :: m_small,n_small
+ integer  :: info
  real(dp),allocatable :: h_small(:,:)
 !=====
 
 #ifdef HAVE_SCALAPACK
 
+ !FBFB
+ cntxt  = desc_h(CTXT_A)
+ nbf    = desc_h(M_A)
+ nstate = desc_sqrt(N_A)
+ m_ham  = SIZE(hamiltonian, DIM=1 )
+ n_ham  = SIZE(hamiltonian, DIM=2 )
+ m_c    = SIZE(c_matrix, DIM=1 )
+ n_c    = SIZE(c_matrix, DIM=2 )
+
+ call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
 
  if(cntxt_ham > 0 ) then
-   call init_desc('H',nstate,nstate,desc_small,m_small,n_small)
+   m_small = NUMROC(nstate,desc_h(MB_A),iprow,desc_h(RSRC_A),nprow)
+   n_small = NUMROC(nstate,desc_h(NB_A),ipcol,desc_h(CSRC_A),npcol)
+   call DESCINIT(desc_small,nstate,nstate,desc_h(MB_A),desc_h(NB_A),desc_h(RSRC_A),desc_h(CSRC_A),cntxt,m_small,info)
    allocate(h_small(m_small,n_small))
 
-   do ispin=1,nspin_local
+   do ispin=ispin_min,ispin_max
      write(stdout,'(a,i3)') ' Diagonalization for spin: ',ispin
      call start_clock(timing_diago_hamiltonian)
 
-!     h_small(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
-!                              MATMUL( hamiltonian(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
-
      !
-     ! H_small = ^tS^{-1/2} H S^{-1/2}
-     call PDGEMM('N','N',nbf,nstate,nbf,                          &
-                  1.0_dp,hamiltonian(:,:,ispin),1,1,desc_ham,     &
-                  s_matrix_sqrt_inv,1,1,desc_c,                  &
-                  0.0_dp,c_matrix(:,:,ispin),1,1,desc_c)
+     ! H_small = S^{-1/2}**T H S^{-1/2}
+     call PDGEMM('N','N',nbf,nstate,nbf,                         &
+                  1.0_dp,hamiltonian(1,1,ispin),1,1,desc_h,      &
+                              s_matrix_sqrt_inv,1,1,desc_sqrt,   &
+                  0.0_dp,   c_matrix(1,1,ispin),1,1,desc_sqrt)
 
-     call PDGEMM('T','N',nstate,nstate,nbf,                       &
-                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_c,           &
-                  c_matrix(:,:,ispin),1,1,desc_c,                         &
-                  0.0_dp,h_small,1,1,desc_small)
+     call PDGEMM('T','N',nstate,nstate,nbf,                      &
+                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_sqrt,        &
+                       c_matrix(1,1,ispin),1,1,desc_sqrt,        &
+                  0.0_dp,          h_small,1,1,desc_small)
 
 
 
      call diagonalize_sca(nstate,desc_small,h_small,energy(:,ispin))
 
 
-!     c_matrix(:,1:nstate,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , h_small(:,:) )
-
      !
      ! C = S^{-1/2} C_small 
      call PDGEMM('N','N',nbf,nstate,nstate,                   &
-                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_c,       &
-                  h_small,1,1,desc_small,                     &
-                  0.0_dp,c_matrix(:,:,ispin),1,1,desc_c) 
+                  1.0_dp,s_matrix_sqrt_inv,1,1,desc_sqrt,     &
+                                 h_small,1,1,desc_small,      &
+                  0.0_dp,c_matrix(1,1,ispin),1,1,desc_sqrt) 
 
 
      call stop_clock(timing_diago_hamiltonian)
@@ -869,12 +878,16 @@ subroutine diagonalize_hamiltonian_sca(nspin_local,nbf,nstate,m_ham,n_ham,  &
    deallocate(h_small)
 
  else
-   energy(:,:) = 0.0_dp
    c_matrix(:,:,:) = 0.0_dp
  endif
 
+ ! Ensure that all procs know the energies
+ if( rank_world /= 0 ) then
+   energy(:,ispin_min:ispin_max) = 0.0_dp
+ endif
+ call xsum_world(energy(:,ispin_min:ispin_max))
+
  ! Poor man distribution
- call xsum_local(energy)
  call xsum_local(c_matrix)
 
 
@@ -885,21 +898,26 @@ end subroutine diagonalize_hamiltonian_sca
 
 
 !=========================================================================
-subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_c,n_c,s_matrix_sqrt_inv)
+subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix,desc_sqrt,s_matrix_sqrt_inv)
  use m_tools
  implicit none
 
  real(dp),intent(in)                :: TOL_OVERLAP
- integer,intent(in)                 :: nbf,m_ham,n_ham
- real(dp),intent(in)                :: s_matrix(m_ham,n_ham)
- integer,intent(out)                :: nstate,m_c,n_c
+ integer,intent(in)                 :: desc_s(ndel)
+ real(dp),intent(in)                :: s_matrix(:,:)
+ integer,intent(out)                :: desc_sqrt(ndel)
  real(dp),allocatable,intent(inout) :: s_matrix_sqrt_inv(:,:)
 !=====
- real(dp) :: matrix_tmp(m_ham,n_ham)
- integer  :: ibf,jbf
- integer  :: ilocal,jlocal
- integer  :: iglobal,jglobal
- real(dp) :: s_eigval(nbf)
+ integer              :: cntxt
+ integer              :: ms,ns,msqrt,nsqrt
+ integer              :: iprow,ipcol,nprow,npcol
+ integer              :: nbf,nstate
+ integer              :: ibf,jbf
+ integer              :: ilocal,jlocal
+ integer              :: iglobal,jglobal
+ integer              :: info
+ real(dp),allocatable :: matrix_tmp(:,:)
+ real(dp),allocatable :: s_eigval(:)
  real(dp),allocatable :: diag(:,:)
 !=====
 
@@ -907,28 +925,41 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
 
  write(stdout,'(/,a)') ' Calculate overlap matrix square-root S^{1/2}: SCALAPACK'
 
- if( cntxt_ham > 0 ) then
+ if( desc_s(M_A) /= desc_s(N_A) ) call die('setup_sqrt_overlap_sca: S matrix should be square')
+ cntxt = desc_s(CTXT_A)
+ nbf   = desc_s(M_A)
+ ms    = SIZE(s_matrix, DIM=1 )
+ ns    = SIZE(s_matrix, DIM=2 )
+ call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+
+ if( cntxt > 0 ) then
+
+   allocate(s_eigval(nbf))
+   allocate(matrix_tmp(ms,ns))
    matrix_tmp(:,:) = s_matrix(:,:)
-   call diagonalize_sca(nbf,desc_ham,matrix_tmp,s_eigval)
+
+   call diagonalize_sca(nbf,desc_s,matrix_tmp,s_eigval)
 
    nstate = COUNT( s_eigval(:) > TOL_OVERLAP )
 
    ! 
    ! Initialize the descriptor of the rectangular matric S^{-1/2}
-   call init_desc('H',nbf,nstate,desc_c,m_c,n_c)
+   msqrt = NUMROC(nbf   ,desc_s(MB_A),iprow,desc_s(RSRC_A),nprow)
+   nsqrt = NUMROC(nstate,desc_s(NB_A),ipcol,desc_s(CSRC_A),npcol)
+   call DESCINIT(desc_sqrt,nbf,nstate,desc_s(MB_A),desc_s(NB_A),desc_s(RSRC_A),desc_s(CSRC_A),cntxt,msqrt,info)
    
  else
    nstate = 0
-   m_c    = 0
-   n_c    = 0
+   msqrt    = 0
+   nsqrt    = 0
  endif
  ! Propagate nstate
- call xmax_local(nstate)
- call xmax_local(m_c)
- call xmax_local(n_c)
+ call xmax_local(nstate)     !FBFB
+ call xmax_local(msqrt)      !FBFB
+ call xmax_local(nsqrt)      !FBFB
 
 
- call clean_allocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv,m_c,n_c)
+ call clean_allocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv,msqrt,nsqrt)
 
  write(stdout,'(/,a)')       ' Filtering basis functions that induce overcompleteness'
  write(stdout,'(a,es9.2)')   '   Lowest S eigenvalue is           ',MINVAL( s_eigval(:) )
@@ -936,56 +967,43 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,nbf,m_ham,n_ham,s_matrix,nstate,m_
  write(stdout,'(a,i5,a,i5)') '   Retaining ',nstate,' among ',nbf
 
  !
- ! Whether a filtering is necessary
- if( nstate == nbf ) then
+ ! Filter now
+ if( cntxt > 0 ) then
 
-   if( cntxt_ham > 0 ) then
+   ! Create the diagonal matrix than transforms a square matrix into a
+   ! rectangular one
+   allocate(diag(msqrt,nsqrt))
+   diag(:,:) = 0.0_dp
 
-     do jlocal=1,n_ham
-       jglobal = colindex_local_to_global('H',jlocal)
-       s_matrix_sqrt_inv(:,jlocal) = matrix_tmp(:,jlocal) / SQRT( s_eigval(jglobal) )
-     enddo
+   jglobal = 0
+   do iglobal=1,nbf
+     if( s_eigval(iglobal) > TOL_OVERLAP ) then
+       jglobal = jglobal + 1
+       if( iprow /= INDXG2P(iglobal,desc_s(MB_A),0,desc_s(RSRC_A),nprow) ) cycle
+       if( ipcol /= INDXG2P(jglobal,desc_s(NB_A),0,desc_s(CSRC_A),npcol) ) cycle
+       ilocal = INDXG2L(iglobal,desc_s(MB_A),0,desc_s(RSRC_A),nprow)
+       jlocal = INDXG2L(jglobal,desc_s(NB_A),0,desc_s(CSRC_A),npcol)
 
-   else
-     s_matrix_sqrt_inv(:,:) = 0.0_dp
-   endif
+       if( ilocal * jlocal /= 0 ) then
+         diag(ilocal,jlocal) = 1.0_dp / SQRT( s_eigval(iglobal) )
+       endif
+     endif
+   enddo
+
+
+   call PDGEMM('N','N',nbf,nstate,nbf,                   &
+                1.0_dp,       matrix_tmp,1,1,desc_s,     &
+                                    diag,1,1,desc_sqrt,  &
+                0.0_dp,s_matrix_sqrt_inv,1,1,desc_sqrt)
+
+   deallocate(diag)
+   deallocate(matrix_tmp,s_eigval)
 
  else
-
-   if( cntxt_ham > 0 ) then
-
-     ! Create the diagonal matrix than transforms a square matrix into a
-     ! rectangular one
-     allocate(diag(m_c,n_c))
-     diag(:,:) = 0.0_dp
-
-     jglobal = 0
-     do iglobal=1,nbf
-       if( s_eigval(iglobal) > TOL_OVERLAP ) then
-         jglobal = jglobal + 1
-         ilocal = rowindex_global_to_local('H',iglobal)
-         jlocal = colindex_global_to_local('H',jglobal)
-         if( ilocal * jlocal /= 0 ) then
-           diag(ilocal,jlocal) = 1.0_dp / SQRT( s_eigval(iglobal) )
-         endif
-       endif
-     enddo
-
-
-     call PDGEMM('N','N',nbf,nstate,nbf,               &
-                  1.0_dp,matrix_tmp,1,1,desc_ham,      &
-                  diag,1,1,desc_c,                    &
-                  0.0_dp,s_matrix_sqrt_inv,1,1,desc_c)
-
-     deallocate(diag)
-
-   else
-     s_matrix_sqrt_inv(:,:) = 0.0_dp
-   endif
-
-
+   s_matrix_sqrt_inv(:,:) = 0.0_dp
  endif
- call xsum_local(s_matrix_sqrt_inv)
+
+ call xsum_local(s_matrix_sqrt_inv)   !FBFB
 
 
 #endif
