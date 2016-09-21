@@ -550,11 +550,10 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
  ! And then override the c_matrix and the energy with the fresh new ones
  call xbcast_world(rank_master,energy)
 
+ call gather_distributed_copy(desc_bb_ss,c_big,c_matrix(:,1:nstate_small,:))
  if( cntxt > 0 ) then
-   call gather_distributed_copy(desc_bb_ss,c_big,c_matrix(:,1:nstate_small,:))
    call clean_deallocate('Small wavefunction coeff C',c_big)
  endif
- call xbcast_world(rank_master,c_matrix)
 
  deallocate(energy_bar)
 
@@ -838,7 +837,6 @@ subroutine destroy_fno(basis,nstate,energy,c_matrix)
  real(dp),intent(inout)               :: c_matrix(basis%nbf,nstate,nspin)
 !=====
  integer                              :: lowerb,upperb
- integer                              :: rank_master,nprow,npcol,iprow,ipcol,cntxt
 !=====
 
  write(stdout,'(/,1x,a)') 'Deallocate the Frozen Natural Orbitals'
@@ -854,21 +852,12 @@ subroutine destroy_fno(basis,nstate,energy,c_matrix)
    c_matrix(:,lowerb:upperb,:) = c_matrix_ref(:,lowerb:upperb,:)
    deallocate(c_matrix_ref)   ! TODO clean_allocate of this
  else
-   cntxt = desc_bb_sb(CTXT_A)
-   call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-   ! Find the master
-   if( iprow == 0 .AND. ipcol == 0 ) then
-     rank_master = rank_world
-   else
-     rank_master = -1
-   endif
-   call xmax_world(rank_master)
 
-   if( cntxt > 0 ) then
-     call gather_distributed_copy(desc_bb_sb,c_local,c_matrix)
+   call gather_distributed_copy(desc_bb_sb,c_local,c_matrix)
+   if( desc_bb_sb(CTXT_A) > 0 ) then
+     call clean_deallocate('Distributed C',c_local)
    endif
-   call xbcast_world(rank_master,c_matrix)
-   call clean_deallocate('Distributed C',c_local)
+
  endif
 
 

@@ -120,36 +120,53 @@ end subroutine create_distributed_copy_spin
 !=========================================================================
 subroutine gather_distributed_copy_nospin(desc,matrix,matrix_global)
  implicit none
- integer,intent(in)   :: desc(ndel)
- real(dp),intent(in)  :: matrix(:,:)
- real(dp),intent(out) :: matrix_global(:,:)
+ integer,intent(in)               :: desc(ndel)
+ real(dp),allocatable,intent(in)  :: matrix(:,:)
+ real(dp),intent(out)             :: matrix_global(:,:)
 !=====
- integer              :: contxt
+ integer              :: cntxt
  integer              :: mlocal,nlocal,mglobal,nglobal
  integer              :: ilocal,jlocal,iglobal,jglobal
+ integer              :: rank_master,iprow,ipcol,nprow,npcol
 !=====
 
- contxt = desc(CTXT_A)
-
- mlocal  = SIZE( matrix , DIM=1 )
- nlocal  = SIZE( matrix , DIM=2 )
- mglobal = SIZE( matrix_global , DIM=1 )
- nglobal = SIZE( matrix_global , DIM=2 )
-
- matrix_global(:,:) = 0.0_dp
- do jlocal=1,nlocal
-   jglobal = colindex_local_to_global(desc,jlocal)
-   do ilocal=1,mlocal
-     iglobal = rowindex_local_to_global(desc,ilocal)
-     matrix_global(iglobal,jglobal) = matrix(ilocal,jlocal)
-   enddo
- enddo
-
 #ifdef HAVE_SCALAPACK
- ! Only the master proc (0,0) gets the complete information
- call DGSUM2D(contxt,'A',' ',mglobal,nglobal,matrix_global,nglobal,0,0)
-#endif
 
+ cntxt = desc(CTXT_A)
+ call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+
+ ! Find the master
+ if( iprow == 0 .AND. ipcol == 0 ) then
+   rank_master = rank_world
+ else
+   rank_master = -1
+ endif
+ call xmax_world(rank_master)
+
+ if( cntxt > 0 ) then
+
+   mlocal  = SIZE( matrix , DIM=1 )
+   nlocal  = SIZE( matrix , DIM=2 )
+   mglobal = SIZE( matrix_global , DIM=1 )
+   nglobal = SIZE( matrix_global , DIM=2 )
+
+   matrix_global(:,:) = 0.0_dp
+   do jlocal=1,nlocal
+     jglobal = colindex_local_to_global(desc,jlocal)
+     do ilocal=1,mlocal
+       iglobal = rowindex_local_to_global(desc,ilocal)
+       matrix_global(iglobal,jglobal) = matrix(ilocal,jlocal)
+     enddo
+   enddo
+
+   ! Only the master proc (0,0) gets the complete information
+   call DGSUM2D(cntxt,'A',' ',mglobal,nglobal,matrix_global,nglobal,0,0)
+
+ endif
+
+ call xbcast_world(rank_master,matrix_global)
+
+#endif
 
 end subroutine gather_distributed_copy_nospin
 
@@ -160,40 +177,55 @@ end subroutine gather_distributed_copy_nospin
 !=========================================================================
 subroutine gather_distributed_copy_spin(desc,matrix,matrix_global)
  implicit none
- integer,intent(in)   :: desc(ndel)
- real(dp),intent(in)  :: matrix(:,:,:)
- real(dp),intent(out) :: matrix_global(:,:,:)
+ integer,intent(in)               :: desc(ndel)
+ real(dp),allocatable,intent(in)  :: matrix(:,:,:)
+ real(dp),intent(out)             :: matrix_global(:,:,:)
 !=====
- integer              :: contxt
+ integer              :: cntxt
  integer              :: idim3,ndim3
  integer              :: mlocal,nlocal,mglobal,nglobal
  integer              :: ilocal,jlocal,iglobal,jglobal
+ integer              :: rank_master,iprow,ipcol,nprow,npcol
 !=====
 
- contxt = desc(CTXT_A)
+#ifdef HAVE_SCALAPACK
 
- mlocal  = SIZE( matrix , DIM=1 )
- nlocal  = SIZE( matrix , DIM=2 )
- mglobal = SIZE( matrix_global , DIM=1 )
- nglobal = SIZE( matrix_global , DIM=2 )
- ndim3   = SIZE( matrix , DIM=3 )
+ cntxt = desc(CTXT_A)
+ call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
 
- matrix_global(:,:,:) = 0.0_dp
- do idim3=1,ndim3
-   do jlocal=1,nlocal
-     jglobal = colindex_local_to_global(desc,jlocal)
-     do ilocal=1,mlocal
-       iglobal = rowindex_local_to_global(desc,ilocal)
-       matrix_global(iglobal,jglobal,idim3) = matrix(ilocal,jlocal,idim3)
+ ! Find the master
+ if( iprow == 0 .AND. ipcol == 0 ) then
+   rank_master = rank_world
+ else
+   rank_master = -1
+ endif
+ call xmax_world(rank_master)
+
+ if( cntxt > 0 ) then
+   mlocal  = SIZE( matrix , DIM=1 )
+   nlocal  = SIZE( matrix , DIM=2 )
+   mglobal = SIZE( matrix_global , DIM=1 )
+   nglobal = SIZE( matrix_global , DIM=2 )
+   ndim3   = SIZE( matrix , DIM=3 )
+  
+   matrix_global(:,:,:) = 0.0_dp
+   do idim3=1,ndim3
+     do jlocal=1,nlocal
+       jglobal = colindex_local_to_global(desc,jlocal)
+       do ilocal=1,mlocal
+         iglobal = rowindex_local_to_global(desc,ilocal)
+         matrix_global(iglobal,jglobal,idim3) = matrix(ilocal,jlocal,idim3)
+       enddo
      enddo
+  
+     ! Only the master proc (0,0) gets the complete information
+     call DGSUM2D(cntxt,'A',' ',mglobal,nglobal,matrix_global(1,1,idim3),nglobal,0,0)
    enddo
 
-#ifdef HAVE_SCALAPACK
-   ! Only the master proc (0,0) gets the complete information
-   call DGSUM2D(contxt,'A',' ',mglobal,nglobal,matrix_global(1,1,idim3),nglobal,0,0)
-#endif
- enddo
+ endif
+ call xbcast_world(rank_master,matrix_global)
 
+#endif
 
 end subroutine gather_distributed_copy_spin
 
@@ -488,15 +520,16 @@ subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix_global,eigval)
 
      call diagonalize_sca(nmat,descm,matrix,eigval)
 
-     call gather_distributed_copy(descm,matrix,matrix_global)
+   endif
+
+   call gather_distributed_copy(descm,matrix,matrix_global)
+
+   if( cntxt > 0 ) then
      deallocate(matrix)
-
      call BLACS_GRIDEXIT( cntxt )
-
    endif
 
    ! Then the master proc (0,0) broadcasts to all the others
-   call xbcast_world(rank_master,matrix_global)
    call xbcast_world(rank_master,eigval)
 
 
@@ -542,7 +575,6 @@ subroutine product_abc_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix,
  integer :: descm(ndel)
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
- integer :: rank_master
  integer,external :: NUMROC
 !=====
 
@@ -574,13 +606,6 @@ subroutine product_abc_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix,
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
    write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
   
-   ! Find the master
-   if( iprow == 0 .AND. ipcol == 0 ) then
-     rank_master = rank_world
-   else
-     rank_master = -1
-   endif
-   call xmax_world(rank_master)
   
    !
    ! Participate to the diagonalization only if the CPU has been selected 
@@ -638,16 +663,14 @@ subroutine product_abc_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix,
 
      deallocate(m_matrix_local,c_matrix_local)
 
-  
-     call gather_distributed_copy(descd,d_matrix_local,d_matrix)
-     deallocate(d_matrix_local)
-  
-     call BLACS_GRIDEXIT( cntxt )
-  
    endif
   
-   ! Then the master proc (0,0) broadcasts to all the others
-   call xbcast_world(rank_master,d_matrix)
+   call gather_distributed_copy(descd,d_matrix_local,d_matrix)
+
+   if( cntxt > 0 ) then
+     deallocate(d_matrix_local)
+     call BLACS_GRIDEXIT( cntxt )
+   endif
 
 
  else ! Only one SCALAPACK proc
@@ -707,7 +730,6 @@ subroutine product_transaba_scalapack(scalapack_block_min,a_matrix,b_matrix,c_ma
  integer :: descm(ndel)
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
- integer :: rank_master
  integer,external :: NUMROC
 !=====
 
@@ -748,14 +770,6 @@ subroutine product_transaba_scalapack(scalapack_block_min,a_matrix,b_matrix,c_ma
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
    write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
-  
-   ! Find the master
-   if( iprow == 0 .AND. ipcol == 0 ) then
-     rank_master = rank_world
-   else
-     rank_master = -1
-   endif
-   call xmax_world(rank_master)
   
    !
    ! Participate to the diagonalization only if the CPU has been selected 
@@ -804,16 +818,14 @@ subroutine product_transaba_scalapack(scalapack_block_min,a_matrix,b_matrix,c_ma
 
      deallocate(m_matrix_local,a_matrix_local)
 
-     call gather_distributed_copy(descc,c_matrix_local,c_matrix)
-     deallocate(c_matrix_local)
-  
-
-     call BLACS_GRIDEXIT( cntxt )
-  
    endif
-  
-   ! Then the master proc (0,0) broadcasts to all the others
-   call xbcast_world(rank_master,c_matrix)
+
+   call gather_distributed_copy(descc,c_matrix_local,c_matrix)
+
+   if( cntxt > 0 ) then
+     deallocate(c_matrix_local)
+     call BLACS_GRIDEXIT( cntxt )
+   endif
 
 
  else ! Only one SCALAPACK proc
