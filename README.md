@@ -9,6 +9,7 @@ Many-body perturbation theory for atoms, molecules, and clusters
 
 This is a minimalistic README file.
 Many more details can be found ~/docs/molgw_manual.html
+or on the web site [a link](http://www.molgw.org/start.html)
 
 
 ##Features
