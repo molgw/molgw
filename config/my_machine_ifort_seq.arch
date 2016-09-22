@@ -1,4 +1,5 @@
 OPENMP= 
+PYTHON=python
 
 # Sequential compilation
 FC=ifort -fpp -DHAVE_LIBXC 

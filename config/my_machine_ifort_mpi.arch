@@ -1,4 +1,5 @@
 OPENMP= 
+PYTHON=python
 
 # Parallel MPI SCALAPACK compilation
 FC=mpif90 -fpp
