@@ -1560,10 +1560,10 @@ subroutine init_desc(distribution,mglobal,nglobal,desc,mlocal,nlocal)
  write(stdout,'(/,a,i6,a,i6,4x,i6)') ' SCALAPACK info: size of the local matrix for proc #', mlocal,' x ',nlocal,iproc_sca
 
 #else
- desc(:)= 0
- desc(3)= mglobal
- desc(4)= nglobal
- desc(9)= mglobal
+ desc(:)     = 0
+ desc(M_A)   = mglobal
+ desc(N_A)   = nglobal
+ desc(LLD_A) = mglobal
  mlocal = mglobal
  nlocal = nglobal
 #endif
@@ -1772,7 +1772,7 @@ function rowindex_local_to_global_descriptor(desc,ilocal)
 !=====
 
 #ifdef HAVE_SCALAPACK
- call BLACS_GRIDINFO(desc(2),nprow,npcol,iprow,ipcol)
+ call BLACS_GRIDINFO(desc(CTXT_A),nprow,npcol,iprow,ipcol)
  rowindex_local_to_global_descriptor = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
 #else
  rowindex_local_to_global_descriptor = ilocal
@@ -1847,7 +1847,7 @@ function colindex_local_to_global_descriptor(desc,ilocal)
 !=====
 
 #ifdef HAVE_SCALAPACK
- call BLACS_GRIDINFO(desc(2),nprow,npcol,iprow,ipcol)
+ call BLACS_GRIDINFO(desc(CTXT_A),nprow,npcol,iprow,ipcol)
  colindex_local_to_global_descriptor = INDXL2G(ilocal,block_col,ipcol,first_col,npcol)
 #else
  colindex_local_to_global_descriptor = ilocal

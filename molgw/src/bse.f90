@@ -312,7 +312,7 @@ subroutine build_apb_hartree_auxil(desc_apb,wpol,m_apb,n_apb,apb_matrix)
 
  write(stdout,'(a)') ' Build Hartree part with auxil basis'
 
- nmat = desc_apb(3)
+ nmat = desc_apb(M_A)
 
 
  if( nprow_sd * npcol_sd > 1 ) &
@@ -721,7 +721,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  write(stdout,'(a)')       ' Build W part Auxil' 
  write(stdout,'(a,f8.3)') ' Content of Exchange: ',alpha_local
 
- nmat = desc_apb(3)
+ nmat = desc_apb(M_A)
  ! Is it an exchange or a screened exchange calculation
  is_bse = ALLOCATED(wpol_static%w0) .OR. ALLOCATED(wpol_static%residu_left)
 
