@@ -27,7 +27,7 @@ LIBINT=-L$(LIBINT_ROOT)/lib -lint2
 LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2 -I$(LIBINT_ROOT)/include
 
 
-.PHONY: all clean archive tarball doc input prepare_sourcecode
+.PHONY: all clean archive tarball docs input prepare_sourcecode
 
 
 ####################################################
@@ -287,7 +287,7 @@ archive:
 	tar czf molgw.tgz ../../molgw/README.md ../../molgw/COPYING ../../molgw/src/Makefile    \
                           ../../molgw/src/*.py ../../molgw/src/*.f90 ../../molgw/src/*.f ../../molgw/src/*.c \
                           ../../molgw/basis/* ../../molgw/utils/* ../../molgw/tests/*            \
-                          ../../molgw/doc/* ../../molgw/config/*           \
+                          ../../molgw/docs/* ../../molgw/config/*           \
                           ../../molgw/src/my_machine.arch
 
 prepare_sourcecode:
@@ -296,11 +296,11 @@ prepare_sourcecode:
 input:
 	$(PYTHON) ../utils/input_variables.py
 
-doc:
-	pdflatex ../doc/notes.tex	
-	pdflatex ../doc/notes.tex	
+docs:
+	pdflatex ../docs/notes.tex	
+	pdflatex ../docs/notes.tex	
 	rm -f notes.aux notes.log notesNotes.bib
-	mv notes.pdf ../doc/notes.pdf
+	mv notes.pdf ../docs/notes.pdf
 
 clean:
 	rm -f *.o *.mod molgw.tgz ../molgw
