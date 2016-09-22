@@ -317,7 +317,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
  ! First set up the SCALAPACK grid
  cntxt = desc_ham(CTXT_A)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
- write(stdout,'(a,i4,a,i4)') 'SCALAPACK with a grid',nprow,' x ',npcol
+ write(stdout,'(1x,a,i4,a,i4)') 'SCALAPACK with a grid',nprow,' x ',npcol
 
  ! Find the master
  if( iprow == 0 .AND. ipcol == 0 ) then

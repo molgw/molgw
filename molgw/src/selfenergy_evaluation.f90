@@ -187,6 +187,18 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    call destroy_spectral_function(wpol)
 
    if( has_small_basis ) then
+     !
+     ! Output the G0W0 results in the small basis first
+     allocate(energy_qp_z(nstate,nspin))
+     allocate(energy_qp_new(nstate,nspin))
+     allocate(zz(nsemin:nsemax,nspin))
+     call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+     call find_qp_energy_graphical(se,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
+     call output_qp_energy('GW small basis',nstate,energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
+     deallocate(zz)
+     deallocate(energy_qp_z)
+     call output_new_homolumo('GW small basis',nstate,occupation,energy_qp_new,nsemin,nsemax)
+     deallocate(energy_qp_new)
 
      call init_selfenergy_grid(static,nstate,energy,se2)
      call init_selfenergy_grid(static,nstate,energy,se3)
