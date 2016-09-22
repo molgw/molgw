@@ -286,7 +286,7 @@ tarball:
 archive:
 	tar czf molgw.tgz ../../molgw/README.md ../../molgw/COPYING ../../molgw/src/Makefile    \
                           ../../molgw/src/*.py ../../molgw/src/*.f90 ../../molgw/src/*.f ../../molgw/src/*.c \
-                          ../../molgw/basis/* ../../molgw/util/* ../../molgw/tests/*            \
+                          ../../molgw/basis/* ../../molgw/utils/* ../../molgw/tests/*            \
                           ../../molgw/doc/* ../../molgw/config/*           \
                           ../../molgw/src/my_machine.arch
 
@@ -294,7 +294,7 @@ prepare_sourcecode:
 	$(PYTHON) prepare_sourcecode.py
 
 input:
-	$(PYTHON) ../util/input_variables.py
+	$(PYTHON) ../utils/input_variables.py
 
 doc:
 	pdflatex ../doc/notes.tex	
