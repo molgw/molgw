@@ -22,7 +22,7 @@ module m_eri_calculate
                                          ! 2-center integrals are NOT distributed
 
  real(dp),private,allocatable :: eri_2center(:,:)
- integer,private              :: desc_2center(ndel)
+ integer,private              :: desc_2center(NDEL)
 
 #ifdef COHSEX_DEVEL
  real(dp),protected,allocatable :: eri_2center_rotation(:,:)
@@ -325,7 +325,7 @@ subroutine calculate_eri_2center(auxil_basis)
  integer :: nprow,npcol,iprow,ipcol,jprow,jpcol
  integer :: iglobal,jglobal,ilocal,jlocal
  integer :: kglobal,klocal
- integer :: desc2center(ndel)
+ integer :: desc2center(NDEL)
  real(dp),allocatable         :: eri_2center_tmp(:,:)
  logical :: skip_shell
 #endif
@@ -1239,7 +1239,7 @@ subroutine calculate_eri_2center_sca(auxil_basis)
  integer :: nprow,npcol,iprow,ipcol,jprow,jpcol
  integer :: iglobal,jglobal,ilocal,jlocal
  integer :: kglobal,klocal
- integer :: desc2center(ndel)
+ integer :: desc2center(NDEL)
  real(dp),allocatable         :: eri_2center_tmp(:,:)
  logical :: skip_shell
 
@@ -1571,9 +1571,9 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
  integer :: nprow,npcol,iprow,ipcol,jprow,jpcol
  integer :: iglobal,jglobal,ilocal,jlocal
  integer :: kglobal,klocal
- integer :: desc3center(ndel)
- integer :: desc3tmp(ndel)
- integer :: desc3final(ndel)
+ integer :: desc3center(NDEL)
+ integer :: desc3tmp(NDEL)
+ integer :: desc3final(NDEL)
  logical :: skip_shell
 
 !=====
@@ -1590,7 +1590,7 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
 
  write(stdout,'(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals'
 
- cntxt = desc_2center(2)
+ cntxt = desc_2center(CTXT_A)
 
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
 

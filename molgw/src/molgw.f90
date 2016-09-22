@@ -114,7 +114,7 @@ program molgw
 
  !
  ! SCALAPACK distribution of the hamiltonian
- call init_scalapack_ham(basis%nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
+ call init_scalapack_other(basis%nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
  if( m_ham /= basis%nbf .OR. n_ham /= basis%nbf ) then
    call issue_warning('SCALAPACK is used to distribute the SCF hamiltonian')
  endif

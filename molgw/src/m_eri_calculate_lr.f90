@@ -332,7 +332,7 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
  integer :: nprow,npcol,iprow,ipcol,jprow,jpcol
  integer :: iglobal,jglobal,ilocal,jlocal
  integer :: kglobal,klocal
- integer :: desc2center(ndel)
+ integer :: desc2center(NDEL)
  real(dp),allocatable         :: eri_2center_tmp(:,:)
  logical :: skip_shell
 #endif

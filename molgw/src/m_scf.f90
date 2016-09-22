@@ -31,7 +31,7 @@ module m_scf
  real(dp),allocatable,private :: a_matrix_hist(:,:)
 
  integer,private              :: iscf
- integer,private              :: desc_r(ndel)
+ integer,private              :: desc_r(NDEL)
 
  type energy_contributions
    real(dp) :: nuc_nuc = 0.0_dp

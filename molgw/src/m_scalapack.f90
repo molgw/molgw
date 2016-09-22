@@ -32,6 +32,67 @@ module m_scalapack
  integer,parameter :: CSRC_A  = 8
  integer,parameter :: LLD_A   = 9
 
+ !
+ ! SCALAPACK variables
+ !
+ integer,parameter :: NDEL=9
+ integer,parameter :: block_col = 32
+ integer,parameter :: block_row = 32
+ integer,parameter :: first_row = 0
+ integer,parameter :: first_col = 0
+
+ integer,protected :: nproc_sca = 1
+ integer,protected :: iproc_sca = 0
+
+
+ ! SCALAPACK grid: square distribution
+ integer,protected :: cntxt_sd
+ integer,protected :: nprow_sd
+ integer,protected :: npcol_sd
+ integer,protected :: iprow_sd
+ integer,protected :: ipcol_sd
+
+ ! SCALAPACK grid: hamiltonian
+ integer,protected :: cntxt_ham
+ integer,protected :: nprow_ham
+ integer,protected :: npcol_ham
+ integer,protected :: iprow_ham
+ integer,protected :: ipcol_ham
+ integer,protected :: desc_ham(NDEL)
+ integer,public    :: desc_c(NDEL)
+ integer,public    :: desc_small(NDEL)
+
+ ! SCALAPACK grid: row distribution
+ integer,protected :: cntxt_rd
+ integer,protected :: nprow_rd
+ integer,protected :: npcol_rd
+ integer,protected :: iprow_rd
+ integer,protected :: ipcol_rd
+
+ ! SCALAPACK grid: column distribution
+ integer,protected :: cntxt_cd
+ integer,protected :: nprow_cd
+ integer,protected :: npcol_cd
+ integer,protected :: iprow_cd
+ integer,protected :: ipcol_cd
+
+ logical,protected :: parallel_ham       = .FALSE.
+
+ ! Correspondence between SCALAPACK ham and MPI
+ integer,allocatable,protected :: rank_sca_to_mpi(:,:)
+
+ interface colindex_local_to_global
+   module procedure colindex_local_to_global_distrib
+   module procedure colindex_local_to_global_procindex
+   module procedure colindex_local_to_global_descriptor
+ end interface
+
+ interface rowindex_local_to_global
+   module procedure rowindex_local_to_global_distrib
+   module procedure rowindex_local_to_global_procindex
+   module procedure rowindex_local_to_global_descriptor
+ end interface
+
  interface diagonalize_sca
    module procedure diagonalize_inplace_sca
    module procedure diagonalize_outofplace_sca
@@ -47,7 +108,9 @@ module m_scalapack
    module procedure gather_distributed_copy_spin
  end interface gather_distributed_copy
 
+#ifdef HAVE_SCALAPACK
  integer,external :: NUMROC,INDXL2G,INDXG2L,INDXG2P
+#endif
 
 contains
 
@@ -58,7 +121,7 @@ contains
 !=========================================================================
 subroutine create_distributed_copy_nospin(matrix_global,desc,matrix)
  implicit none
- integer,intent(in)   :: desc(ndel)
+ integer,intent(in)   :: desc(NDEL)
  real(dp),intent(in)  :: matrix_global(:,:)
  real(dp),intent(out) :: matrix(:,:)
 !=====
@@ -87,7 +150,7 @@ end subroutine create_distributed_copy_nospin
 !=========================================================================
 subroutine create_distributed_copy_spin(matrix_global,desc,matrix)
  implicit none
- integer,intent(in)   :: desc(ndel)
+ integer,intent(in)   :: desc(NDEL)
  real(dp),intent(in)  :: matrix_global(:,:,:)
  real(dp),intent(out) :: matrix(:,:,:)
 !=====
@@ -120,7 +183,7 @@ end subroutine create_distributed_copy_spin
 !=========================================================================
 subroutine gather_distributed_copy_nospin(desc,matrix,matrix_global)
  implicit none
- integer,intent(in)               :: desc(ndel)
+ integer,intent(in)               :: desc(NDEL)
  real(dp),allocatable,intent(in)  :: matrix(:,:)
  real(dp),intent(out)             :: matrix_global(:,:)
 !=====
@@ -177,7 +240,7 @@ end subroutine gather_distributed_copy_nospin
 !=========================================================================
 subroutine gather_distributed_copy_spin(desc,matrix,matrix_global)
  implicit none
- integer,intent(in)               :: desc(ndel)
+ integer,intent(in)               :: desc(NDEL)
  real(dp),allocatable,intent(in)  :: matrix(:,:,:)
  real(dp),intent(out)             :: matrix_global(:,:,:)
 !=====
@@ -238,7 +301,7 @@ end subroutine gather_distributed_copy_spin
 subroutine matmul_diag_sca(side,diag,desc,matrix)
  implicit none
  character(len=1),intent(in) :: side
- integer,intent(in)          :: desc(ndel)
+ integer,intent(in)          :: desc(NDEL)
  real(dp),intent(in)         :: diag(:)
  real(dp),intent(inout)      :: matrix(:,:)
 !=====
@@ -302,11 +365,11 @@ end subroutine matmul_diag_sca
 !=========================================================================
 subroutine diagonalize_inplace_sca(nglobal,desc,matrix,eigval)
  implicit none
- integer,intent(in)     :: desc(ndel),nglobal
+ integer,intent(in)     :: desc(NDEL),nglobal
  real(dp),intent(inout) :: matrix(:,:)
  real(dp),intent(out)   :: eigval(nglobal)
 !=====
- integer              :: desc_eigvec(ndel)
+ integer              :: desc_eigvec(NDEL)
  integer              :: mlocal,nlocal
  integer              :: lwork,info
  real(dp),allocatable :: work(:)
@@ -338,7 +401,7 @@ subroutine diagonalize_inplace_sca(nglobal,desc,matrix,eigval)
  liwork = -1
  allocate(iwork(1))
  allocate(work(3))
- ABSTOL = PDLAMCH(desc(2), 'U')
+ ABSTOL = PDLAMCH(desc(CTXT_A), 'U')
  call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
               ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
               eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
@@ -390,8 +453,8 @@ end subroutine diagonalize_inplace_sca
 subroutine diagonalize_outofplace_sca(nglobal,desc,matrix,eigval,desc_eigvec,eigvec)
  implicit none
  integer,intent(in)     :: nglobal
- integer,intent(in)     :: desc(ndel)
- integer,intent(in)     :: desc_eigvec(ndel)
+ integer,intent(in)     :: desc(NDEL)
+ integer,intent(in)     :: desc_eigvec(NDEL)
  real(dp),intent(inout) :: matrix(:,:)
  real(dp),intent(out)   :: eigval(nglobal)
  real(dp),intent(out)   :: eigvec(:,:)
@@ -419,7 +482,7 @@ subroutine diagonalize_outofplace_sca(nglobal,desc,matrix,eigval,desc_eigvec,eig
  allocate(work(3))
  liwork = -1
  allocate(iwork(1))
- ABSTOL = PDLAMCH(desc(2), 'U')
+ ABSTOL = PDLAMCH(desc(CTXT_A), 'U')
  call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
               ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
               eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
@@ -477,7 +540,7 @@ subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix_global,eigval)
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
  integer :: iglobal,jglobal,ilocal,jlocal
- integer :: descm(ndel),descz(ndel)
+ integer :: descm(NDEL),descz(NDEL)
  real(dp),allocatable :: matrix(:,:)
  integer :: rank_master
  integer,external :: NUMROC
@@ -571,8 +634,8 @@ subroutine product_abc_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix,
  real(dp),allocatable   :: m_matrix(:,:)
  integer :: cntxt
  integer :: ma,na,mb,nb,mc,nc,md,nd,mm,nm
- integer :: desca(ndel),descb(ndel),descc(ndel),descd(ndel)
- integer :: descm(ndel)
+ integer :: desca(NDEL),descb(NDEL),descc(NDEL),descd(NDEL)
+ integer :: descm(NDEL)
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
  integer,external :: NUMROC
@@ -726,8 +789,8 @@ subroutine product_transaba_scalapack(scalapack_block_min,a_matrix,b_matrix,c_ma
  real(dp),allocatable   :: m_matrix(:,:)
  integer :: cntxt
  integer :: ma,na,mb,nb,mc,nc,mm,nm
- integer :: desca(ndel),descb(ndel),descc(ndel)
- integer :: descm(ndel)
+ integer :: desca(NDEL),descb(NDEL),descc(NDEL)
+ integer :: descm(NDEL)
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
  integer,external :: NUMROC
@@ -865,7 +928,7 @@ end subroutine product_transaba_scalapack
 !=========================================================================
 subroutine product_abc_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_matrix_local,descd,d_matrix_local)
  implicit none
- integer ,intent(in)  :: desca(ndel),descb(ndel),descc(ndel),descd(ndel)
+ integer ,intent(in)  :: desca(NDEL),descb(NDEL),descc(NDEL),descd(NDEL)
  real(dp),intent(in)  :: a_matrix_local(:,:)
  real(dp),intent(in)  :: b_matrix_local(:,:)
  real(dp),intent(in)  :: c_matrix_local(:,:)
@@ -877,20 +940,20 @@ subroutine product_abc_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_mat
  real(dp),allocatable :: m_matrix(:,:)
  integer :: cntxt
  integer :: ma,na,mb,nb,mc,nc,md,nd,mm,nm
- integer :: descm(ndel)
+ integer :: descm(NDEL)
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
  integer,external :: NUMROC
 !=====
 
- mmat  = desca(3)
- kmat1 = desca(4)
- kmat  = descb(3)
- lmat1 = descb(4)
- lmat  = descc(3)
- nmat1 = descc(4)
- mmat1 = descd(3)
- nmat  = descd(4)
+ mmat  = desca(M_A)
+ kmat1 = desca(N_A)
+ kmat  = descb(M_A)
+ lmat1 = descb(N_A)
+ lmat  = descc(M_A)
+ nmat1 = descc(N_A)
+ mmat1 = descd(M_A)
+ nmat  = descd(N_A)
 
  if( mmat1 /= mmat ) call die('Dimension error in product_abc_scalapack')
  if( nmat1 /= nmat ) call die('Dimension error in product_abc_scalapack')
@@ -900,7 +963,7 @@ subroutine product_abc_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_mat
 
 #ifdef HAVE_SCALAPACK
 
- cntxt = desca(2)
+ cntxt = desca(CTXT_A)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
  write(stdout,'(a,i4,a,i4)') ' Matrix product A * B * C using SCALAPACK with a grid',nprow,' x ',npcol
 
@@ -940,7 +1003,7 @@ end subroutine product_abc_sca
 !=========================================================================
 subroutine product_transaba_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_matrix_local)
  implicit none
- integer,intent(in)     :: desca(ndel),descb(ndel),descc(ndel)
+ integer,intent(in)     :: desca(NDEL),descb(NDEL),descc(NDEL)
  real(dp),intent(in)    :: a_matrix_local(:,:)
  real(dp),intent(in)    :: b_matrix_local(:,:)
  real(dp),intent(out)   :: c_matrix_local(:,:)
@@ -951,19 +1014,19 @@ subroutine product_transaba_sca(desca,a_matrix_local,descb,b_matrix_local,descc,
  real(dp),allocatable   :: m_matrix_local(:,:)
  integer :: cntxt
  integer :: ma,na,mb,nb,mc,nc,mm,nm
- integer :: descm(ndel)
+ integer :: descm(NDEL)
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
  integer,external :: NUMROC
 !=====
 
 
- kmat  = desca(3)
- mmat  = desca(4)
- kmat1 = descb(3)
- kmat2 = descb(4)
- mmat1 = descc(3)
- mmat2 = descc(4)
+ kmat  = desca(M_A)
+ mmat  = desca(N_A)
+ kmat1 = descb(M_A)
+ kmat2 = descb(N_A)
+ mmat1 = descc(M_A)
+ mmat2 = descc(N_A)
 
  if( mmat1 /= mmat ) then
    write(msg,*) 'mmat1 /= mmat',mmat1,mmat
@@ -983,7 +1046,7 @@ subroutine product_transaba_sca(desca,a_matrix_local,descb,b_matrix_local,descc,
  endif
 
 #ifdef HAVE_SCALAPACK
- cntxt = desca(2)
+ cntxt = desca(CTXT_A)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
  write(stdout,'(a,i4,a,i4)') ' Matrix product A**T * B * A using SCALAPACK with a grid',nprow,' x ',npcol
  
@@ -1025,7 +1088,7 @@ subroutine symmetrize_matrix_sca(uplo,nglobal,desc,matrix,desc_tmp,matrix_tmp)
  implicit none
  character(len=1)       :: uplo
  integer,intent(in)     :: nglobal
- integer,intent(in)     :: desc(ndel),desc_tmp(ndel)
+ integer,intent(in)     :: desc(NDEL),desc_tmp(NDEL)
  real(dp),intent(inout) :: matrix(:,:)
  real(dp),intent(inout) :: matrix_tmp(:,:)
 !=====
@@ -1119,7 +1182,7 @@ end subroutine symmetrize_matrix_sca
 subroutine invert_sca(desc,matrix,matrix_inv)
  implicit none
 
- integer,intent(in)   :: desc(ndel)
+ integer,intent(in)   :: desc(NDEL)
  real(dp),intent(in)  :: matrix(:,:)
  real(dp),intent(out) :: matrix_inv(:,:)
 !=====
@@ -1132,7 +1195,7 @@ subroutine invert_sca(desc,matrix,matrix_inv)
  integer  :: lwork,liwork
 !=====
 
- n = desc(3)
+ n = desc(M_A)
  mlocal = SIZE( matrix , DIM=1 )
  nlocal = SIZE( matrix , DIM=2 )
  matrix_inv(:,:) = matrix(:,:)
@@ -1162,6 +1225,654 @@ subroutine invert_sca(desc,matrix,matrix_inv)
 
 
 end subroutine invert_sca
+
+
+!=========================================================================
+subroutine init_scalapack()
+ implicit none
+
+!=====
+!=====
+
+#ifdef HAVE_SCALAPACK
+
+ ! Get iproc_sca and nproc_sca
+ call BLACS_PINFO( iproc_sca, nproc_sca )
+ 
+ ! Set nprow, npcol
+
+ ! Squared division of tasks
+ nprow_sd = INT(SQRT(REAL(nproc_sca,dp)))
+ npcol_sd = nproc_sca / nprow_sd
+ if( nprow_sd * npcol_sd /= nproc_sca ) then
+
+   ! Since the attempted distribution does not fit the total number of CPUs
+   ! make a new attempt.
+   nprow_sd = MAX( nprow_sd - 1 , 1 )
+   npcol_sd = nproc_sca / nprow_sd
+   if( nprow_sd * npcol_sd /= nproc_sca ) then
+     ! Since the attempted distribution does not fit the total number of CPUs
+     ! make a new attempt.
+     nprow_sd = MAX( nprow_sd - 1 , 1 )
+     npcol_sd = nproc_sca / nprow_sd
+
+     if( nprow_sd * npcol_sd /= nproc_sca ) then
+       ! Since the attempted distribution does not fit the total number of CPUs
+       ! make a new attempt.
+       nprow_sd = MAX( nprow_sd - 1 , 1 )
+       npcol_sd = nproc_sca / nprow_sd
+       if( nprow_sd * npcol_sd /= nproc_sca ) then
+         write(stdout,'(a)') ' Some procs will be idling in the SCALAPACK distribution'
+         write(stdout,'(a)') ' This is a waste and it is not yet coded anyway!'
+         write(stdout,'(a)') ' => select a number of procs that is not a prime number'
+         call die('proc distribution not permitted')
+       endif
+     endif
+   endif
+ endif
+
+ call BLACS_GET( -1, 0, cntxt_sd )
+ call BLACS_GRIDINIT( cntxt_sd, 'R', nprow_sd, npcol_sd )
+ call BLACS_GRIDINFO( cntxt_sd, nprow_sd, npcol_sd, iprow_sd, ipcol_sd )
+
+ ! Row-only division of tasks
+ nprow_rd = nproc_sca
+ npcol_rd = 1
+ call BLACS_GET( -1, 0, cntxt_rd )
+ call BLACS_GRIDINIT( cntxt_rd, 'R', nprow_rd, npcol_rd )
+ call BLACS_GRIDINFO( cntxt_rd, nprow_rd, npcol_rd, iprow_rd, ipcol_rd )
+
+ ! Column-only division of tasks
+ nprow_cd = 1
+ npcol_cd = nproc_sca 
+ call BLACS_GET( -1, 0, cntxt_cd )
+ call BLACS_GRIDINIT( cntxt_cd, 'R', nprow_cd, npcol_cd )
+ call BLACS_GRIDINFO( cntxt_cd, nprow_cd, npcol_cd, iprow_cd, ipcol_cd )
+
+
+
+#ifdef DEBUG
+ write(stdout,'(/,a)')           ' ==== SCALAPACK info'
+ write(stdout,'(a)')             '   Squared distribution'
+ write(stdout,'(a50,1x,i8)')      'Number of proc:',nprow_sd*npcol_sd
+ write(stdout,'(a50,1x,i8,1x,i8)') 'Grid of procs:',nprow_sd,npcol_sd
+ write(stdout,'(a)')             '       Row distribution'
+ write(stdout,'(a50,1x,i8)')      'Number of proc:',nprow_rd*npcol_rd
+ write(stdout,'(a50,1x,i8,1x,i8)') 'Grid of procs:',nprow_rd,npcol_rd
+ write(stdout,'(a)')             '    Column distribution'
+ write(stdout,'(a50,1x,i8)')      'Number of proc:',nprow_cd*npcol_cd
+ write(stdout,'(a50,1x,i8,1x,i8)') 'Grid of procs:',nprow_cd,npcol_cd
+ write(stdout,'(/)')
+#endif
+ 
+#else
+ nprow_sd = 1
+ npcol_sd = 1
+ iprow_sd = 0
+ ipcol_sd = 0
+#endif
+
+end subroutine init_scalapack
+
+
+!=========================================================================
+subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
+ implicit none
+
+ integer,intent(in)  :: nbf
+ integer,intent(in)  :: scalapack_nprow,scalapack_npcol
+ integer,intent(out) :: m_ham,n_ham
+!=====
+ integer :: ier=0
+ integer :: color
+ integer             :: iproc_auxil
+ integer,allocatable :: usermap(:,:)
+#ifdef DEBUG
+ integer          :: fileunit
+ character(len=3) :: ctmp
+#endif 
+!=====
+
+#ifdef HAVE_SCALAPACK
+ parallel_ham = scalapack_nprow * scalapack_npcol > 1
+
+ if( parallel_ham ) then
+
+   nprow_ham = scalapack_nprow
+   npcol_ham = scalapack_npcol
+   if( nprow_ham * npcol_ham > nproc_world ) call die('SCALAPACK manual distribution asks for too many processors')
+
+   call BLACS_GET( -1, 0, cntxt_ham )
+   call BLACS_GRIDINIT( cntxt_ham, 'R', nprow_ham, npcol_ham )
+   call BLACS_GRIDINFO( cntxt_ham, nprow_ham, npcol_ham, iprow_ham, ipcol_ham )
+
+   ! Propagate the scalapack grid to all processors
+   call xmax_world(nprow_ham)
+   call xmax_world(npcol_ham)
+
+
+   if( cntxt_ham > 0 ) then
+     call init_desc('H',nbf,nbf,desc_ham,m_ham,n_ham)
+   else
+     m_ham = 0
+     n_ham = 0
+   endif
+
+   write(stdout,'(/,a)')           ' ==== SCALAPACK Hamiltonian'
+   write(stdout,'(a50,1x,i8)')      'Number of dedicated processors:',nprow_ham * npcol_ham
+   write(stdout,'(a50,1x,i8,1x,i8)')   'Grid of dedicated processors:',nprow_ham,npcol_ham
+
+   ! Distribute the remaing procs for auxiliary basis and grid points
+   color = MODULO( rank_world , nprow_ham * npcol_ham )
+   call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_local,ier);
+   call MPI_COMM_SIZE(comm_local,nproc_local,ier)
+   call MPI_COMM_RANK(comm_local,rank_local,ier)
+
+   write(stdout,'(a50,1x,i8)')      'Number of local processors:',nproc_local
+
+   call xmax_local(m_ham)
+   call xmax_local(n_ham)
+   call xmax_local(iprow_ham)
+   call xmax_local(ipcol_ham)
+
+
+   ! Define the transversal communicator
+   color = rank_world / ( nprow_ham * npcol_ham )
+
+   call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_trans,ier);
+   call MPI_COMM_SIZE(comm_trans,nproc_trans,ier)
+   call MPI_COMM_RANK(comm_trans,rank_trans,ier)
+
+   allocate(rank_sca_to_mpi(0:nprow_ham-1,0:npcol_ham-1))
+   rank_sca_to_mpi(:,:) = -1
+   rank_sca_to_mpi(iprow_ham,ipcol_ham) = rank_trans
+   call xmax_trans(rank_sca_to_mpi)
+
+
+ else
+
+   !
+   ! Hamiltonian and C matrix are NOT distributed with SCALAPACK
+   !
+   cntxt_ham = 1
+   nprow_ham = 1
+   npcol_ham = 1
+   iprow_ham = 0
+   ipcol_ham = 0
+   m_ham = nbf
+   n_ham = nbf
+
+   comm_local  = comm_world
+   nproc_local = nproc_world
+   rank_local  = rank_world
+
+   comm_trans  = MPI_COMM_SELF
+   nproc_trans = 1
+   rank_trans  = 0
+
+ endif
+
+#else
+
+ ! Fake values
+ if( rank_world == 0 ) then
+   cntxt_ham = 1
+ else
+   cntxt_ham = -1
+ endif
+ nprow_ham = 1
+ npcol_ham = 1
+ iprow_ham = 0
+ ipcol_ham = 0
+ m_ham = nbf
+ n_ham = nbf
+
+ nproc_local = 1
+ rank_local  = 0
+
+ nproc_trans = 1
+ rank_trans  = 0
+
+#endif
+
+ !
+ ! Create the SCALAPACK context cntxt_auxil 
+ ! that precisely matches the MPI_COMMUNICATOR comm_auxil
+ !
+ call BLACS_GET( -1, 0, cntxt_auxil )
+ 
+ if( rank_world /= iproc_sca ) then
+   call die('init_mpi_other_communicators: coding is valid only if SCALAPACK and MPI order the procs in the same manner')
+ endif
+
+ allocate(usermap(nproc_auxil,1))
+ do iproc_auxil=0,nproc_auxil-1
+   usermap(iproc_auxil+1,1) = iproc_auxil * nproc_ortho
+ enddo
+ call BLACS_GRIDMAP(cntxt_auxil,usermap,nproc_auxil,nproc_auxil,1)
+ deallocate(usermap)
+
+ call BLACS_GRIDINFO(cntxt_auxil,nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil)
+ call xmax_ortho(nprow_auxil)
+ call xmax_ortho(npcol_auxil)
+
+
+#ifdef DEBUG
+ write(ctmp,'(i3.3)') rank_world
+ open(newunit=fileunit,file='DEBUG_mpiinfo_rank'//TRIM(ctmp))
+ write(fileunit,*) 'nproc_world:',nproc_world 
+ write(fileunit,*) 'rank_world:',rank_world 
+ write(fileunit,*) 
+ write(fileunit,*) 'nproc_local:',nproc_local
+ write(fileunit,*) 'rank_local:',rank_local
+ write(fileunit,*) 
+ write(fileunit,*) 'nproc_trans:',nproc_trans
+ write(fileunit,*) 'rank_trans:',rank_trans
+ write(fileunit,*) 
+ write(fileunit,*) 'nproc_auxil:',nproc_auxil
+ write(fileunit,*) 'rank_auxil:',rank_auxil
+ write(fileunit,*) 
+ write(fileunit,*) 'nproc_grid:',nproc_grid
+ write(fileunit,*) 'rank_grid:',rank_grid
+ close(fileunit)
+#endif
+
+
+end subroutine init_scalapack_other
+
+
+!=========================================================================
+function row_block_size(mglobal,iprow,nprow)
+ implicit none
+
+ integer,intent(in) :: mglobal,iprow,nprow
+ integer            :: row_block_size
+#ifdef HAVE_SCALAPACK
+ integer,external :: NUMROC 
+#endif
+!=====
+
+#ifdef HAVE_SCALAPACK
+ row_block_size = NUMROC(mglobal,block_row,iprow,first_row,nprow)
+#else
+ row_block_size = mglobal
+#endif
+
+end function row_block_size
+
+
+!=========================================================================
+function col_block_size(nglobal,ipcol,npcol)
+ implicit none
+
+ integer,intent(in) :: nglobal,ipcol,npcol
+ integer            :: col_block_size
+#ifdef HAVE_SCALAPACK
+ integer,external :: NUMROC 
+#endif
+!=====
+
+#ifdef HAVE_SCALAPACK
+ col_block_size = NUMROC(nglobal,block_col,ipcol,first_col,npcol)
+#else
+ col_block_size = nglobal
+#endif
+
+end function col_block_size
+
+
+!=========================================================================
+subroutine init_desc(distribution,mglobal,nglobal,desc,mlocal,nlocal)
+ implicit none
+ character(len=1),intent(in) :: distribution
+ integer,intent(in)          :: mglobal,nglobal
+ integer,intent(out)         :: desc(NDEL),mlocal,nlocal
+!=====
+ integer :: info
+#ifdef HAVE_SCALAPACK
+ integer,external :: NUMROC 
+#endif
+!=====
+
+#ifdef HAVE_SCALAPACK
+ select case(distribution)
+ case('S')
+   mlocal = NUMROC(mglobal,block_row,iprow_sd,first_row,nprow_sd)
+   nlocal = NUMROC(nglobal,block_col,ipcol_sd,first_col,npcol_sd)
+   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+ case('H')
+   mlocal = NUMROC(mglobal,block_row,iprow_ham,first_row,nprow_ham)
+   nlocal = NUMROC(nglobal,block_col,ipcol_ham,first_col,npcol_ham)
+   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_ham,MAX(1,mlocal),info)
+ case('R')
+   mlocal = NUMROC(mglobal,block_row,iprow_rd,first_row,nprow_rd)
+   nlocal = NUMROC(nglobal,block_col,ipcol_rd,first_col,npcol_rd)
+   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_rd,MAX(1,mlocal),info)
+ case('C')
+   mlocal = NUMROC(mglobal,block_row,iprow_cd,first_row,nprow_cd)
+   nlocal = NUMROC(nglobal,block_col,ipcol_cd,first_col,npcol_cd)
+   call DESCINIT(desc,mglobal,nglobal,block_row,block_col,first_row,first_col,cntxt_cd,MAX(1,mlocal),info)
+ case default
+   write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
+   call die('BUG')
+ end select
+
+ write(stdout,'(/,a,i6,a,i6,4x,i6)') ' SCALAPACK info: size of the local matrix for proc #', mlocal,' x ',nlocal,iproc_sca
+
+#else
+ desc(:)= 0
+ desc(3)= mglobal
+ desc(4)= nglobal
+ desc(9)= mglobal
+ mlocal = mglobal
+ nlocal = nglobal
+#endif
+
+end subroutine init_desc
+
+
+
+!=========================================================================
+subroutine sum_sca_sd(real_number)
+ implicit none
+ real(dp),intent(inout) :: real_number
+!=====
+
+#ifdef HAVE_SCALAPACK
+ call dgsum2d(cntxt_sd,'All',' ',1,1,real_number,1,-1,-1)
+#endif
+
+end subroutine sum_sca_sd
+
+
+!=========================================================================
+subroutine max_matrix_sca_sd(m,n,real_matrix)
+ implicit none
+ integer, intent(in)    :: m,n
+ real(dp),intent(inout) :: real_matrix(m,n)
+!=====
+ integer :: idum1(1),idum2(1)
+!=====
+
+#ifdef HAVE_SCALAPACK
+ call dgamx2d(cntxt_sd,'All',' ',m,n,real_matrix,m,-1,idum1,idum2,-1,-1)
+#endif
+
+
+end subroutine max_matrix_sca_sd
+
+
+!=========================================================================
+function rowindex_global_to_local(distribution,iglobal)
+ implicit none
+ character(len=1),intent(in) :: distribution
+ integer,intent(in)          :: iglobal
+ integer                     :: rowindex_global_to_local
+!=====
+#ifdef HAVE_SCALAPACK
+ integer,external :: INDXG2P,INDXG2L
+#endif
+!=====
+ !
+ ! returns the local index if this is proc in charge
+ ! else returns 0 
+
+#ifdef HAVE_SCALAPACK
+ select case(distribution)
+ case('S')
+   if( iprow_sd == INDXG2P(iglobal,block_row,0,first_row,nprow_sd) ) then
+     rowindex_global_to_local = INDXG2L(iglobal,block_row,0,first_row,nprow_sd)
+   else
+     rowindex_global_to_local = 0
+   endif
+ case('H')
+   if( iprow_ham == INDXG2P(iglobal,block_row,0,first_row,nprow_ham) ) then
+     rowindex_global_to_local = INDXG2L(iglobal,block_row,0,first_row,nprow_ham)
+   else
+     rowindex_global_to_local = 0
+   endif
+ case('R')
+   if( iprow_rd == INDXG2P(iglobal,block_row,0,first_row,nprow_rd) ) then
+     rowindex_global_to_local = INDXG2L(iglobal,block_row,0,first_row,nprow_rd)
+   else
+     rowindex_global_to_local = 0
+   endif
+ case('C')
+   if( iprow_cd == INDXG2P(iglobal,block_row,0,first_row,nprow_cd) ) then
+     rowindex_global_to_local = INDXG2L(iglobal,block_row,0,first_row,nprow_cd)
+   else
+     rowindex_global_to_local = 0
+   endif
+ case default
+   write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
+   call die('BUG')
+ end select
+#else
+ rowindex_global_to_local = iglobal
+#endif
+
+end function rowindex_global_to_local
+
+
+!=========================================================================
+function colindex_global_to_local(distribution,iglobal)
+ implicit none
+ character(len=1),intent(in) :: distribution
+ integer,intent(in)          :: iglobal
+ integer                     :: colindex_global_to_local
+!=====
+#ifdef HAVE_SCALAPACK
+ integer,external :: INDXG2P,INDXG2L
+#endif
+!=====
+ !
+ ! returns the local index if this is proc in charge
+ ! else returns 0 
+
+#ifdef HAVE_SCALAPACK
+ select case(distribution)
+ case('S')
+   if( ipcol_sd == INDXG2P(iglobal,block_col,0,first_col,npcol_sd) ) then
+     colindex_global_to_local = INDXG2L(iglobal,block_col,0,first_col,npcol_sd)
+   else
+     colindex_global_to_local = 0
+   endif
+ case('H')
+   if( ipcol_ham == INDXG2P(iglobal,block_col,0,first_col,npcol_ham) ) then
+     colindex_global_to_local = INDXG2L(iglobal,block_col,0,first_col,npcol_ham)
+   else
+     colindex_global_to_local = 0
+   endif
+ case('R')
+   if( ipcol_rd == INDXG2P(iglobal,block_col,0,first_col,npcol_rd) ) then
+     colindex_global_to_local = INDXG2L(iglobal,block_col,0,first_col,npcol_rd)
+   else
+     colindex_global_to_local = 0
+   endif
+ case('C')
+   if( ipcol_cd == INDXG2P(iglobal,block_col,0,first_col,npcol_cd) ) then
+     colindex_global_to_local = INDXG2L(iglobal,block_col,0,first_col,npcol_cd)
+   else
+     colindex_global_to_local = 0
+   endif
+ case default
+   write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
+   call die('BUG')
+ end select
+#else
+ colindex_global_to_local = iglobal
+#endif
+
+end function colindex_global_to_local
+
+
+!=========================================================================
+function rowindex_local_to_global_distrib(distribution,ilocal)
+ implicit none
+ character(len=1),intent(in) :: distribution
+ integer,intent(in)          :: ilocal
+ integer                     :: rowindex_local_to_global_distrib
+!=====
+#ifdef HAVE_SCALAPACK
+ integer,external :: INDXL2G
+#endif
+!=====
+
+#ifdef HAVE_SCALAPACK
+ select case(distribution)
+ case('S')
+   rowindex_local_to_global_distrib = INDXL2G(ilocal,block_row,iprow_sd,first_row,nprow_sd)
+ case('H')
+   rowindex_local_to_global_distrib = INDXL2G(ilocal,block_row,iprow_ham,first_row,nprow_ham)
+ case('R')
+   rowindex_local_to_global_distrib = INDXL2G(ilocal,block_row,iprow_rd,first_row,nprow_rd)
+ case('C')
+   rowindex_local_to_global_distrib = INDXL2G(ilocal,block_row,iprow_cd,first_row,nprow_cd)
+ case default
+   write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
+   call die('BUG')
+ end select
+#else
+ rowindex_local_to_global_distrib = ilocal
+#endif
+
+end function rowindex_local_to_global_distrib
+
+
+!=========================================================================
+function rowindex_local_to_global_procindex(iprow,nprow,ilocal)
+ implicit none
+ integer,intent(in)          :: iprow,nprow,ilocal
+ integer                     :: rowindex_local_to_global_procindex
+!=====
+#ifdef HAVE_SCALAPACK
+ integer,external :: INDXL2G
+#endif
+!=====
+
+#ifdef HAVE_SCALAPACK
+ rowindex_local_to_global_procindex = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
+#else
+ rowindex_local_to_global_procindex = ilocal
+#endif
+
+end function rowindex_local_to_global_procindex
+
+
+!=========================================================================
+function rowindex_local_to_global_descriptor(desc,ilocal)
+ implicit none
+ integer,intent(in)          :: desc(NDEL),ilocal
+ integer                     :: rowindex_local_to_global_descriptor
+!=====
+#ifdef HAVE_SCALAPACK
+ integer          :: iprow,ipcol,nprow,npcol
+ integer,external :: INDXL2G
+#endif
+!=====
+
+#ifdef HAVE_SCALAPACK
+ call BLACS_GRIDINFO(desc(2),nprow,npcol,iprow,ipcol)
+ rowindex_local_to_global_descriptor = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
+#else
+ rowindex_local_to_global_descriptor = ilocal
+#endif
+
+end function rowindex_local_to_global_descriptor
+
+
+!=========================================================================
+function colindex_local_to_global_distrib(distribution,ilocal)
+ implicit none
+ character(len=1),intent(in) :: distribution
+ integer,intent(in)          :: ilocal
+ integer                     :: colindex_local_to_global_distrib
+!=====
+#ifdef HAVE_SCALAPACK
+ integer,external :: INDXL2G
+#endif
+!=====
+
+#ifdef HAVE_SCALAPACK
+ select case(distribution)
+ case('S')
+   colindex_local_to_global_distrib = INDXL2G(ilocal,block_col,ipcol_sd,first_col,npcol_sd)
+ case('H')
+   colindex_local_to_global_distrib = INDXL2G(ilocal,block_col,ipcol_ham,first_col,npcol_ham)
+ case('R')
+   colindex_local_to_global_distrib = INDXL2G(ilocal,block_col,ipcol_rd,first_col,npcol_rd)
+ case('C')
+   colindex_local_to_global_distrib = INDXL2G(ilocal,block_col,ipcol_cd,first_col,npcol_cd)
+ case default
+   write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
+   call die('BUG')
+ end select
+#else
+ colindex_local_to_global_distrib = ilocal
+#endif
+
+end function colindex_local_to_global_distrib
+
+
+!=========================================================================
+function colindex_local_to_global_procindex(ipcol,npcol,ilocal)
+ implicit none
+ integer,intent(in)          :: ipcol,npcol,ilocal
+ integer                     :: colindex_local_to_global_procindex
+!=====
+#ifdef HAVE_SCALAPACK
+ integer,external :: INDXL2G
+#endif
+!=====
+
+#ifdef HAVE_SCALAPACK
+ colindex_local_to_global_procindex = INDXL2G(ilocal,block_col,ipcol,first_col,npcol)
+#else
+ colindex_local_to_global_procindex = ilocal
+#endif
+
+end function colindex_local_to_global_procindex
+
+
+!=========================================================================
+function colindex_local_to_global_descriptor(desc,ilocal)
+ implicit none
+ integer,intent(in)          :: desc(NDEL),ilocal
+ integer                     :: colindex_local_to_global_descriptor
+!=====
+#ifdef HAVE_SCALAPACK
+ integer          :: iprow,ipcol,nprow,npcol
+ integer,external :: INDXL2G
+#endif
+!=====
+
+#ifdef HAVE_SCALAPACK
+ call BLACS_GRIDINFO(desc(2),nprow,npcol,iprow,ipcol)
+ colindex_local_to_global_descriptor = INDXL2G(ilocal,block_col,ipcol,first_col,npcol)
+#else
+ colindex_local_to_global_descriptor = ilocal
+#endif
+
+end function colindex_local_to_global_descriptor
+
+
+!=========================================================================
+subroutine finish_scalapack()
+ implicit none
+!=====
+
+#ifdef HAVE_SCALAPACK
+ call BLACS_GRIDEXIT( cntxt_sd )
+ call BLACS_GRIDEXIT( cntxt_cd )
+ call BLACS_GRIDEXIT( cntxt_rd )
+ if( parallel_ham ) then
+   if( cntxt_ham > 0 ) call BLACS_GRIDEXIT( cntxt_ham )
+ endif
+ if( cntxt_auxil > 0 ) call BLACS_GRIDEXIT( cntxt_auxil )
+ call BLACS_EXIT( 0 )
+#endif
+
+end subroutine finish_scalapack
 
 
 !=========================================================================

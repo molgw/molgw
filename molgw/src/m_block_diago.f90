@@ -27,7 +27,7 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  implicit none
 
  integer,intent(in)     :: nmat,m_apb,n_apb,m_x,n_x
- integer,intent(in)     :: desc_apb(ndel),desc_x(ndel)
+ integer,intent(in)     :: desc_apb(NDEL),desc_x(NDEL)
  real(dp),intent(inout) :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
  real(dp),intent(out)   :: bigomega(nmat)
  real(dp),intent(out)   :: xpy_matrix(m_x,n_x)
@@ -136,7 +136,7 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
  implicit none
 
  integer,intent(in)     :: nmat,m_apb,n_apb,m_x,n_x
- integer,intent(in)     :: desc_apb(ndel),desc_x(ndel)
+ integer,intent(in)     :: desc_apb(NDEL),desc_x(NDEL)
  real(dp),intent(in)    :: amb_diag_rpa(nmat)
  real(dp),intent(inout) :: apb_matrix(m_apb,n_apb)
  real(dp),intent(out)   :: bigomega(nmat)
@@ -202,7 +202,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
  real(dp),intent(in)    :: toldav
  integer,intent(in)     :: nexcitation
  integer,intent(in)     :: nmat,m_apb,n_apb,m_x,n_x
- integer,intent(in)     :: desc_apb(ndel),desc_x(ndel)
+ integer,intent(in)     :: desc_apb(NDEL),desc_x(NDEL)
  real(dp),intent(in)    :: amb_diag_rpa(nmat)
  real(dp),intent(inout) :: amb_matrix(m_apb,n_apb)
  real(dp),intent(inout) :: apb_matrix(m_apb,n_apb)
@@ -210,7 +210,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
  real(dp),intent(out)   :: xpy_matrix(m_x,n_x)
  real(dp),intent(out)   :: xmy_matrix(m_x,n_x)
 !=====
- integer              :: descb(ndel),desce(ndel)
+ integer              :: descb(NDEL),desce(NDEL)
  integer,parameter    :: SMALL_BLOCK=4
  integer,parameter    :: NCYCLE=20
  integer              :: nbb,nbbc,nbba

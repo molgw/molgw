@@ -12,12 +12,13 @@ module m_virtual_orbital_space
  use m_mpi
  use m_warning
  use m_memory
+ use m_scalapack
 
  real(dp),allocatable,private :: energy_ref(:,:)
  real(dp),allocatable,private :: c_matrix_ref(:,:,:)
 
  real(dp),allocatable,private :: c_local(:,:,:)              ! C coefficients:  basis%nbf x nstate
- integer,private              :: desc_bb_sb(ndel)            ! and the corresponding descriptor
+ integer,private              :: desc_bb_sb(NDEL)            ! and the corresponding descriptor
 
 
 contains
@@ -257,13 +258,13 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
  real(dp),intent(inout)     :: c_matrix(basis%nbf,nstate,nspin)
  integer,intent(out)        :: nstate_small
 !=====
- integer                    :: desc_bb_bb(ndel)            ! basis%nbf x basis%nbf
- integer                    :: desc_bb_bs(ndel)            ! basis%nbf x basis_small%nbf
- integer                    :: desc_bs_bs(ndel)            ! basis_small%nbf x basis_small%nbf
- integer                    :: desc_bs_ss(ndel)            ! basis_small%nbf x nstate_small
- integer                    :: desc_bb_ss(ndel)            ! basis%nbf x nstate_small
- integer                    :: desc_ss_ss(ndel)            ! nstate_small x nstate_small
- integer                    :: desc_tmp(ndel)              ! Dummy
+ integer                    :: desc_bb_bb(NDEL)            ! basis%nbf x basis%nbf
+ integer                    :: desc_bb_bs(NDEL)            ! basis%nbf x basis_small%nbf
+ integer                    :: desc_bs_bs(NDEL)            ! basis_small%nbf x basis_small%nbf
+ integer                    :: desc_bs_ss(NDEL)            ! basis_small%nbf x nstate_small
+ integer                    :: desc_bb_ss(NDEL)            ! basis%nbf x nstate_small
+ integer                    :: desc_ss_ss(NDEL)            ! nstate_small x nstate_small
+ integer                    :: desc_tmp(NDEL)              ! Dummy
  integer                    :: nprow,npcol,iprow,ipcol
  integer                    :: cntxt
  integer                    :: rank_master
@@ -298,9 +299,10 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
  integer                    :: jglobal,jlocal
 !=====
 
+#ifdef HAVE_SCALAPACK
  call start_clock(timing_fno)
 
- write(stdout,'(/,1x,a)') 'Prepare optimized empty states using a smaller basis set'
+ write(stdout,'(/,1x,a)') 'Prepare optimized empty states using a smaller basis set with SCALAPACK'
 
  !
  ! All procs save the original energies
@@ -380,15 +382,12 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
    call product_transaba_sca(desc_bb_bs,s_bigsmall,desc_bb_bb,s_matrix_inv,desc_bs_bs,s_small)
 
    ! Calculate ( tilde S )^{-1/2}
-
+   !
+   ! Descriptor desc_bs_ss  md,nd   is set up inside setup_sqrt_overlap_sca
    call setup_sqrt_overlap_sca(min_overlap,desc_bs_bs,s_small,desc_bs_ss,s_small_sqrt_inv)
    nstate_small = desc_bs_ss(N_A)
    md = NUMROC(basis_small%nbf,block_row,iprow,first_row,nprow)
    nd = NUMROC(nstate_small   ,block_col,ipcol,first_col,npcol)
-   !
-   ! Descriptor desc_bs_ss  md,nd
-!   TODO remove this line
-!   call DESCINIT(desc_bs_ss,basis_small%nbf,nstate_small,block_row,block_col,first_row,first_col,cntxt,MAX(1,md),info) 
 
    call clean_deallocate('Overlap matrix Ssmall',s_small)
 
@@ -562,6 +561,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
  write(stdout,'(1x,a)') 'Optimized empty states with a smaller basis set'
 
  call stop_clock(timing_fno)
+#endif
 
 end subroutine setup_virtual_smallbasis_sca
 
@@ -844,6 +844,8 @@ subroutine destroy_fno(basis,nstate,energy,c_matrix)
  lowerb = LBOUND(energy_ref,DIM=1)
  upperb = UBOUND(energy_ref,DIM=1)
 
+ if( lowerb < 1      ) call die('destroy_fno: lowerb too small. BUG')
+ if( upperb > nstate ) call die('destroy_fno: upperb too high. BUG')
 
  energy(lowerb:upperb,:) = energy_ref(lowerb:upperb,:)
  deallocate(energy_ref)

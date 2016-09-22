@@ -17,6 +17,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  use m_memory
  use m_inputparam
  use m_mpi
+ use m_scalapack
  use m_tools
  use m_block_diago
  use m_basis_set
@@ -49,7 +50,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  integer                   :: tdhffile
  integer                   :: m_apb,n_apb,m_x,n_x
 ! Scalapack variables
- integer                   :: desc_apb(ndel),desc_x(ndel)
+ integer                   :: desc_apb(NDEL),desc_x(NDEL)
 !=====
 
  call start_clock(timing_pola)
@@ -352,9 +353,10 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  use m_timing
  use m_warning
  use m_memory
- use m_inputparam
  use m_mpi
+ use m_scalapack
  use m_tools
+ use m_inputparam
  use m_basis_set
  use m_dft_grid
  use m_spectral_function
@@ -685,9 +687,10 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
  use m_timing
  use m_warning
  use m_memory
- use m_inputparam
  use m_mpi
+ use m_scalapack
  use m_tools
+ use m_inputparam
  use m_basis_set
  use m_dft_grid
  use m_spectral_function
@@ -1051,13 +1054,14 @@ end subroutine chi_to_vchiv
 subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,energy_gm)
  use m_definitions
  use m_warning
+ use m_scalapack
  use m_basis_set
  use m_eri_ao_mo
  use m_spectral_function
  implicit none
  
  integer,intent(in)                    :: nbf,nbf_auxil,m_x,n_x
- integer,intent(in)                    :: desc_x(ndel)
+ integer,intent(in)                    :: desc_x(NDEL)
  real(dp),intent(inout)                :: xpy_matrix(m_x,n_x)
  type(spectral_function),intent(inout) :: wpol
  real(dp),intent(in)                   :: eigenvalue(wpol%npole_reso_apb)
@@ -1069,8 +1073,8 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,xpy_matrix,ei
  integer                               :: jstate,bstate
  integer                               :: istate,astate
  real(dp),allocatable                  :: eri_3center_mat(:,:),residu_local(:,:)
- integer                               :: desc_3center_eigen(ndel)
- integer                               :: desc_residu(ndel)
+ integer                               :: desc_3center_eigen(NDEL)
+ integer                               :: desc_residu(NDEL)
  integer                               :: m_3center,n_3center
  real(dp)                              :: rtmp
  integer                               :: iprow,ipcol

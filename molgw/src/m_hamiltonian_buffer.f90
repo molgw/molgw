@@ -13,6 +13,7 @@ module m_hamiltonian_buffer
  use m_timing
  use m_warning
  use m_memory
+ use m_scalapack
  use m_inputparam,only: nspin,spin_fact
 
 

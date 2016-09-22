@@ -12,9 +12,10 @@ subroutine build_amb_apb_common(nmat,nbf,nstate,c_matrix,energy,wpol,alpha_local
  use m_timing
  use m_warning
  use m_memory
- use m_inputparam
  use m_mpi
+ use m_scalapack
  use m_tools 
+ use m_inputparam
  use m_spectral_function
  use m_eri_ao_mo
  implicit none
@@ -195,9 +196,10 @@ subroutine build_amb_apb_diag_auxil(nmat,nstate,energy,wpol,m_apb,n_apb,amb_matr
  use m_timing
  use m_warning
  use m_memory
- use m_inputparam
  use m_mpi
+ use m_scalapack
  use m_tools 
+ use m_inputparam
  use m_spectral_function
  use m_eri_ao_mo
  implicit none
@@ -242,9 +244,10 @@ subroutine get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correl
  use m_timing
  use m_warning
  use m_memory
- use m_inputparam
  use m_mpi
+ use m_scalapack
  use m_tools 
+ use m_inputparam
  use m_spectral_function
  use m_eri_ao_mo
  implicit none
@@ -282,11 +285,12 @@ subroutine build_apb_hartree_auxil(desc_apb,wpol,m_apb,n_apb,apb_matrix)
  use m_definitions
  use m_timing
  use m_mpi
+ use m_scalapack
  use m_spectral_function
  use m_eri_ao_mo
  implicit none
 
- integer,intent(in)                 :: desc_apb(ndel)
+ integer,intent(in)                 :: desc_apb(NDEL)
  type(spectral_function),intent(in) :: wpol
  integer,intent(in)                 :: m_apb,n_apb
  real(dp),intent(inout)             :: apb_matrix(m_apb,n_apb)
@@ -470,8 +474,9 @@ subroutine build_apb_tddft(nmat,nstate,basis,c_matrix,occupation,wpol,m_apb,n_ap
  use m_timing
  use m_warning
  use m_memory
- use m_inputparam
  use m_mpi
+ use m_scalapack
+ use m_inputparam
  use m_spectral_function
  use m_basis_set
  use m_dft_grid
@@ -580,8 +585,9 @@ subroutine build_amb_apb_bse(nbf,nstate,wpol,wpol_static,m_apb,n_apb,amb_matrix,
  use m_timing
  use m_warning
  use m_memory
- use m_inputparam
  use m_mpi
+ use m_scalapack
+ use m_inputparam
  use m_spectral_function
  use m_basis_set
  use m_eri_ao_mo
@@ -675,8 +681,9 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  use m_timing
  use m_warning
  use m_memory
- use m_inputparam
  use m_mpi
+ use m_scalapack
+ use m_inputparam
  use m_spectral_function
  use m_basis_set
  use m_eri_ao_mo
@@ -684,7 +691,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  implicit none
 
  real(dp),intent(in)                :: alpha_local
- integer,intent(in)                 :: desc_apb(ndel)
+ integer,intent(in)                 :: desc_apb(NDEL)
  type(spectral_function),intent(in) :: wpol,wpol_static
  integer,intent(in)                 :: m_apb,n_apb
  real(dp),intent(inout)             :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)

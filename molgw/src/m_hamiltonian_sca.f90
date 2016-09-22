@@ -634,7 +634,7 @@ subroutine diagonalize_hamiltonian_scalapack(nspin_local,nbf,nstate,  &
  integer :: mh,nh,mc,nc,ms,ns
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
- integer :: desch(ndel),descc(ndel),descs(ndel)
+ integer :: desch(NDEL),descc(NDEL),descs(NDEL)
  real(dp),allocatable :: matrix_local(:,:)
 #ifdef HAVE_SCALAPACK
  integer :: cntxt
@@ -806,7 +806,7 @@ subroutine diagonalize_hamiltonian_sca(ispin_min,ispin_max,desc_h,hamiltonian,de
  implicit none
 
  integer,intent(in)   :: ispin_min,ispin_max
- integer,intent(in)   :: desc_h(ndel),desc_sqrt(ndel)
+ integer,intent(in)   :: desc_h(NDEL),desc_sqrt(NDEL)
  real(dp),intent(in)  :: hamiltonian(:,:,:)
  real(dp),intent(in)  :: s_matrix_sqrt_inv(:,:)
  real(dp),intent(out) :: c_matrix(:,:,:)
@@ -903,9 +903,9 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix,desc_sqrt,s_matrix
  implicit none
 
  real(dp),intent(in)                :: TOL_OVERLAP
- integer,intent(in)                 :: desc_s(ndel)
+ integer,intent(in)                 :: desc_s(NDEL)
  real(dp),intent(in)                :: s_matrix(:,:)
- integer,intent(out)                :: desc_sqrt(ndel)
+ integer,intent(out)                :: desc_sqrt(NDEL)
  real(dp),allocatable,intent(inout) :: s_matrix_sqrt_inv(:,:)
 !=====
  integer              :: cntxt
