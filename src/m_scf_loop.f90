@@ -454,52 +454,53 @@ subroutine scf_loop(is_restart,&
 
 
  !
+ ! Deallocate the buffer here
+ if( parallel_ham .AND. parallel_buffer ) call destroy_parallel_buffer()
+ !
  ! At this point, all procs get the complete c_matrix
  !
  call form_c_matrix_global(basis%nbf,nstate,c_matrix)
 
 
- if( parallel_buffer ) then  
-   !
-   ! Spin contamination?
-   call evaluate_s2_operator(basis%nbf,nstate,occupation,c_matrix,s_matrix)
+ !
+ ! Spin contamination?
+ call evaluate_s2_operator(basis%nbf,nstate,occupation,c_matrix,s_matrix)
 
-   !
-   ! Single excitation term
-   !
-   call single_excitations(nstate,basis%nbf,energy,occupation,c_matrix,hamiltonian_fock,en%se)
-   write(stdout,'(a25,1x,f19.10)') 'Singles correction (Ha):',en%se
-   write(stdout,'(a25,1x,f19.10,/)')   'Est. HF Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
+ !
+ ! Single excitation term
+ !
+ call single_excitations(nstate,basis%nbf,energy,occupation,c_matrix,hamiltonian_fock,en%se)
+ write(stdout,'(a25,1x,f19.10)') 'Singles correction (Ha):',en%se
+ write(stdout,'(a25,1x,f19.10,/)')   'Est. HF Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
 
 
-   ! A dirty section for the Luttinger-Ward functional
-   if(calc_type%selfenergy_approx==LW .OR. calc_type%selfenergy_approx==LW2 .OR. calc_type%selfenergy_approx==GSIGMA) then
-     allocate(energy_exx(nstate,nspin))
-     allocate(c_matrix_exx(basis%nbf,nstate,nspin))
-     call issue_warning('ugly coding here write temp file fort.1000 and fort.1001')
+ ! A dirty section for the Luttinger-Ward functional
+ if(calc_type%selfenergy_approx==LW .OR. calc_type%selfenergy_approx==LW2 .OR. calc_type%selfenergy_approx==GSIGMA) then
+   allocate(energy_exx(nstate,nspin))
+   allocate(c_matrix_exx(basis%nbf,nstate,nspin))
+   call issue_warning('ugly coding here write temp file fort.1000 and fort.1001')
 
-     do ispin=1,nspin
-       write(stdout,*) 'Diagonalization H_exx for spin channel',ispin
-       call diagonalize_generalized_sym(basis%nbf,&
-                                        hamiltonian_fock(:,:,ispin),s_matrix(:,:),&
-                                        energy_exx(:,ispin),c_matrix_exx(:,:,ispin))
+   do ispin=1,nspin
+     write(stdout,*) 'Diagonalization H_exx for spin channel',ispin
+     call diagonalize_generalized_sym(basis%nbf,&
+                                      hamiltonian_fock(:,:,ispin),s_matrix(:,:),&
+                                      energy_exx(:,ispin),c_matrix_exx(:,:,ispin))
+   enddo
+   write(stdout,*) 'FBFB LW sum(      epsilon) + Eii -<vxc> - EH + Ex',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
+   write(stdout,*) 'FBFB LW sum(tilde epsilon) + Eii - EH - Ex       ',SUM( occupation(:,:)*energy_exx(:,:) ) + en%nuc_nuc - en%hart - en%exx
+   open(1000,form='unformatted')
+   do ispin=1,nspin
+     do istate=1,nstate
+       write(1000) c_matrix_exx(:,istate,ispin)
      enddo
-     write(stdout,*) 'FBFB LW sum(      epsilon) + Eii -<vxc> - EH + Ex',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
-     write(stdout,*) 'FBFB LW sum(tilde epsilon) + Eii - EH - Ex       ',SUM( occupation(:,:)*energy_exx(:,:) ) + en%nuc_nuc - en%hart - en%exx
-     open(1000,form='unformatted')
-     do ispin=1,nspin
-       do istate=1,nstate
-         write(1000) c_matrix_exx(:,istate,ispin)
-       enddo
-     enddo
-     close(1000)
-     open(1001,form='unformatted')
-     write(1001) energy_exx(:,:)
-     close(1001)
-     deallocate(energy_exx,c_matrix_exx)
-   endif
-
+   enddo
+   close(1000)
+   open(1001,form='unformatted')
+   write(1001) energy_exx(:,:)
+   close(1001)
+   deallocate(energy_exx,c_matrix_exx)
  endif
+
 
 
  !

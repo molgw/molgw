@@ -355,6 +355,8 @@ program molgw
                  occupation,energy,                              &
                  hamiltonian_fock,                               &
                  c_matrix)
+ else
+   if( parallel_ham .AND. parallel_buffer ) call destroy_parallel_buffer()
  endif
 
 
@@ -375,7 +377,6 @@ program molgw
  !
  ! Deallocate all what you can at this stage
  !
- if( parallel_ham .AND. parallel_buffer ) call destroy_parallel_buffer()
  ! If an auxiliary basis is given, the 4-center integrals are not needed anymore
  if( has_auxil_basis ) call deallocate_eri_4center()
  ! If RSH calculations were performed, then deallocate the LR integrals which

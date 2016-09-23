@@ -1902,7 +1902,7 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
 
 
 
- write(stdout,'(a,i4,a,i4)') ' Final 3-center integrals distributed using a SCALAPACK grid: ',nprow_auxil,' x ',npcol_auxil
+ write(stdout,'(a,i8,a,i4)') ' Final 3-center integrals distributed using a SCALAPACK grid: ',nprow_auxil,' x ',npcol_auxil
 
  if( cntxt_auxil > 0 ) then
    mlocal = NUMROC(nauxil_2center,1,iprow_auxil,first_row,nprow_auxil)
