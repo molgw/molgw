@@ -384,6 +384,83 @@ end subroutine build_apb_hartree_auxil
 
 
 !=========================================================================
+subroutine build_apb_hartree_auxil_scalapack(desc_apb,wpol,m_apb,n_apb,apb_matrix)
+ use m_definitions
+ use m_timing
+ use m_mpi
+ use m_scalapack
+ use m_spectral_function
+ use m_eri_ao_mo
+ implicit none
+
+ integer,intent(in)                 :: desc_apb(NDEL)
+ type(spectral_function),intent(in) :: wpol
+ integer,intent(in)                 :: m_apb,n_apb
+ real(dp),intent(inout)             :: apb_matrix(m_apb,n_apb)
+!=====
+ integer              :: nmat
+ integer              :: t_jb_global
+ integer              :: jstate,bstate
+ integer              :: jbspin
+ real(dp),allocatable :: eri_3center_left(:),eri_3center_right(:)
+ real(dp),allocatable :: eri_3tmp(:,:),eri_3tmp_sd(:,:)
+ integer              :: desc_auxil(NDEL),desc_sd(NDEL)
+ integer              :: mlocal,nlocal
+ integer              :: info
+!=====
+
+ if( is_triplet) return
+
+#ifdef HAVE_SCALAPACK
+
+ call start_clock(timing_build_common)
+
+ write(stdout,'(a)') ' Build Hartree part with auxil basis using DSYRK'
+
+ nmat = desc_apb(M_A)
+
+
+ if( nprow_sd * npcol_sd > 1 ) &
+    write(stdout,'(a,i4,a,i4)') ' SCALAPACK grid    :',nprow_sd,' x ',npcol_sd
+
+ call clean_allocate('TMP 3-center integrals',eri_3tmp,nauxil_3center,nmat)
+ do t_jb_global=1,nmat
+   jstate = wpol%transition_table_apb(1,t_jb_global)
+   bstate = wpol%transition_table_apb(2,t_jb_global)
+   jbspin = wpol%transition_table_apb(3,t_jb_global)
+   eri_3tmp(:,t_jb_global) = eri_3center_eigen(:,jstate,bstate,jbspin)
+ end do
+
+ !
+ ! Descriptors
+ mlocal = NUMROC(nauxil_2center,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+ if( mlocal /= nauxil_3center ) call die('BUG here')
+ call DESCINIT(desc_auxil,nauxil_2center,nmat,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+ mlocal = NUMROC(nauxil_2center,block_row,iprow_sd,first_row,nprow_sd)
+ nlocal = NUMROC(nmat          ,block_col,ipcol_sd,first_col,npcol_sd)
+ call DESCINIT(desc_sd,nauxil_2center,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+ call clean_allocate('TMP 3-center integrals',eri_3tmp_sd,mlocal,nlocal)
+
+ call PDGEMR2D(nauxil_2center,nmat,eri_3tmp,1,1,desc_auxil, &
+                                eri_3tmp_sd,1,1,desc_sd,cntxt_sd)
+
+ call clean_deallocate('TMP 3-center integrals',eri_3tmp)
+
+
+
+ call PDSYRK('L','T',nmat,nauxil_2center,DBLE(2.0_dp*spin_fact),eri_3tmp_sd,1,1,desc_sd,  &
+                                         DBLE(1.0_dp),apb_matrix,1,1,desc_apb)
+
+ call clean_deallocate('TMP 3-center integrals',eri_3tmp_sd)
+#endif 
+
+
+ call stop_clock(timing_build_common)
+
+end subroutine build_apb_hartree_auxil_scalapack
+
+
+!=========================================================================
 subroutine build_a_diag_common(nmat,nbf,nstate,c_matrix,energy,wpol,a_diag)
  use m_definitions
  use m_timing

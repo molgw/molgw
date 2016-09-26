@@ -170,7 +170,11 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
    ! Step 1
    call build_amb_apb_diag_auxil(nmat,nstate,energy_qp,wpol_out,m_apb,n_apb,amb_matrix,apb_matrix,amb_diag_rpa)
 
+#ifdef HAVE_SCALAPACK
+   call build_apb_hartree_auxil_scalapack(desc_apb,wpol_out,m_apb,n_apb,apb_matrix)
+#else
    call build_apb_hartree_auxil(desc_apb,wpol_out,m_apb,n_apb,apb_matrix)
+#endif
 
    call get_rpa_correlation(nmat,m_apb,n_apb,amb_matrix,apb_matrix,rpa_correlation)
 
