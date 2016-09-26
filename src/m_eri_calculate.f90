@@ -1905,8 +1905,8 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
  write(stdout,'(a,i8,a,i4)') ' Final 3-center integrals distributed using a SCALAPACK grid: ',nprow_auxil,' x ',npcol_auxil
 
  if( cntxt_auxil > 0 ) then
-   mlocal = NUMROC(nauxil_2center,1,iprow_auxil,first_row,nprow_auxil)
-   nlocal = NUMROC(npair         ,1,ipcol_auxil,first_col,npcol_auxil)
+   mlocal = NUMROC(nauxil_2center,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+   nlocal = NUMROC(npair         ,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
  else
    mlocal = -1
    nlocal = -1
@@ -1916,7 +1916,7 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
 
  call clean_allocate('3-center integrals',eri_3center,mlocal,nlocal)
   
- call DESCINIT(desc3final,nauxil_2center,npair,1,1,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+ call DESCINIT(desc3final,nauxil_2center,npair,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
 
  call PDGEMR2D(nauxil_2center,npair,eri_3tmp,1,1,desc3tmp, &
                                  eri_3center,1,1,desc3final,cntxt)

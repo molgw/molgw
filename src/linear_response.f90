@@ -311,7 +311,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  !
  if( print_w_ .OR. calc_type%is_gw ) then
    if( has_auxil_basis) then
-     call chi_to_sqrtvchisqrtv_auxil(basis%nbf,nauxil_3center,desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol_out,energy_gm)
+     call chi_to_sqrtvchisqrtv_auxil(basis%nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol_out,energy_gm)
      ! This following coding of the Galitskii-Migdal correlation energy is only working with
      ! an auxiliary basis
      if(is_rpa) write(stdout,'(a,f16.10,/)') ' Correlation energy in the Galitskii-Migdal formula (Ha): ',energy_gm
@@ -319,7 +319,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
      ! Add the single pole approximation for the poles that have been neglected
      ! in the diagonalization
      if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) & 
-        call chi_to_sqrtvchisqrtv_auxil_spa(basis%nbf,nauxil_3center,a_diag,wpol_out)
+        call chi_to_sqrtvchisqrtv_auxil_spa(basis%nbf,a_diag,wpol_out)
 
    else
      call chi_to_vchiv(basis%nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol_out)
@@ -988,7 +988,6 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
  integer                               :: nmat,nprodbasis
  real(dp)                              :: eri_eigen_klij
  real(dp),allocatable                  :: eri_eigenstate_klmin(:,:,:,:)
- real(dp)                              :: rtmp
 !=====
 
  call start_clock(timing_vchiv)
@@ -1051,16 +1050,17 @@ end subroutine chi_to_vchiv
 
 
 !=========================================================================
-subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,energy_gm)
+subroutine chi_to_sqrtvchisqrtv_auxil(nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,energy_gm)
  use m_definitions
  use m_warning
  use m_scalapack
  use m_basis_set
+ use m_eri
  use m_eri_ao_mo
  use m_spectral_function
  implicit none
  
- integer,intent(in)                    :: nbf,nbf_auxil,m_x,n_x
+ integer,intent(in)                    :: nbf,m_x,n_x
  integer,intent(in)                    :: desc_x(NDEL)
  real(dp),intent(inout)                :: xpy_matrix(m_x,n_x)
  type(spectral_function),intent(inout) :: wpol
@@ -1068,98 +1068,104 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,nbf_auxil,desc_x,m_x,n_x,xpy_matrix,ei
  real(dp),intent(out)                  :: energy_gm
 !=====
  integer                               :: t_jb,t_jb_global,jbspin
- integer                               :: t_ia,t_ia_global,iaspin
  integer                               :: nmat
  integer                               :: jstate,bstate
- integer                               :: istate,astate
- real(dp),allocatable                  :: eri_3center_mat(:,:),residu_local(:,:)
- integer                               :: desc_3center_eigen(NDEL)
- integer                               :: desc_residu(NDEL)
- integer                               :: m_3center,n_3center
- real(dp)                              :: rtmp
- integer                               :: iprow,ipcol
- integer                               :: m_xpy_block,n_xpy_block
+ real(dp),allocatable                  :: eri_3tmp(:,:)
+ real(dp),allocatable                  :: eri_3tmp_sd(:,:)
  real(dp),allocatable                  :: xpy_block(:,:)
+ real(dp),allocatable                  :: vsqrt_xpy(:,:)
+ integer                               :: desc_auxil(NDEL),desc_sd(NDEL)
+ integer                               :: mlocal,nlocal
+ integer                               :: info
 !=====
 
  call start_clock(timing_vchiv)
 
  write(stdout,'(/,a)') ' Build v^{1/2} * chi * v^{1/2}'
 
- call allocate_spectral_function(nbf_auxil,wpol)
+ call allocate_spectral_function(nauxil_3center,wpol)
  wpol%pole(1:wpol%npole_reso_apb) = eigenvalue(:)
 
  nmat = wpol%npole_reso_apb
 
 #ifndef HAVE_SCALAPACK
 
- allocate(eri_3center_mat(nbf_auxil,nmat))
+ allocate(eri_3tmp(nauxil_3center,nmat))
  do t_jb=1,nmat
    jstate = wpol%transition_table_apb(1,t_jb)
    bstate = wpol%transition_table_apb(2,t_jb)
    jbspin = wpol%transition_table_apb(3,t_jb)
-   eri_3center_mat(:,t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin)
+   eri_3tmp(:,t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin)
  end do
 
  ! Use the symmetry ( I | k l ) to regroup (kl) and (lk) contributions
  ! and the block structure of eigenvector | X  Y |
  !                                        | Y  X |
  ! => only needs (X+Y)
- wpol%residu_left(:,:) = MATMUL( eri_3center_mat , xpy_matrix(:,:) ) * SQRT(spin_fact)
+ wpol%residu_left(:,:) = MATMUL( eri_3tmp , xpy_matrix(:,:) ) * SQRT(spin_fact)
 
- energy_gm = 0.5_dp * ( SUM( wpol%residu_left(:,:)**2 ) - spin_fact * SUM( eri_3center_mat(:,:)**2 ) )
+ energy_gm = 0.5_dp * ( SUM( wpol%residu_left(:,:)**2 ) - spin_fact * SUM( eri_3tmp(:,:)**2 ) )
  !
- ! Since wpol%residu_left and eri_3center_mat are distributed, we have to sum up
+ ! Since wpol%residu_left and eri_3tmp are distributed, we have to sum up
  call xsum_auxil(energy_gm)
 
- deallocate(eri_3center_mat)
+ deallocate(eri_3tmp)
 
 #else 
 
+ call clean_allocate('TMP 3-center integrals',eri_3tmp,nauxil_3center,nmat)
+ do t_jb=1,nmat
+   jstate = wpol%transition_table_apb(1,t_jb)
+   bstate = wpol%transition_table_apb(2,t_jb)
+   jbspin = wpol%transition_table_apb(3,t_jb)
+   eri_3tmp(:,t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin)
+ end do
 
- xpy_matrix(:,:) = xpy_matrix(:,:) * SQRT(spin_fact)
+ !
+ ! Descriptors
+ mlocal = NUMROC(nauxil_2center,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+! nlocal = NUMROC(nmat          ,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
+ if( mlocal /= nauxil_3center ) call die('BUG here')
+ call DESCINIT(desc_auxil,nauxil_2center,nmat,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
 
- wpol%residu_left(:,:) = 0.0_dp
- ! First loop over the SCALAPACK grid
- do ipcol=0,npcol_sd-1
-   do iprow=0,nprow_sd-1
-     m_xpy_block = row_block_size(nmat,iprow,nprow_sd)
-     n_xpy_block = col_block_size(nmat,ipcol,npcol_sd)
+ mlocal = NUMROC(nauxil_2center,block_row,iprow_sd,first_row,nprow_sd)
+ nlocal = NUMROC(nmat          ,block_col,ipcol_sd,first_col,npcol_sd)
+ call DESCINIT(desc_sd,nauxil_2center,nmat,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+ call clean_allocate('TMP 3-center integrals',eri_3tmp_sd,mlocal,nlocal)
 
-     allocate(xpy_block(m_xpy_block,n_xpy_block))
-     if( ipcol == ipcol_sd .AND. iprow == iprow_sd ) then
-       xpy_block(:,:) = xpy_matrix(:,:)
-     else
-       xpy_block(:,:) = 0.0_dp
-     endif
-     call xsum_world(xpy_block)
+ call PDGEMR2D(nauxil_2center,nmat,eri_3tmp,1,1,desc_auxil, &
+                                eri_3tmp_sd,1,1,desc_sd,cntxt_sd)
 
-     do t_jb=1,n_xpy_block
-       t_jb_global = colindex_local_to_global(ipcol,npcol_sd,t_jb)
+ call clean_deallocate('TMP 3-center integrals',eri_3tmp)
+ 
+ !
+ !   SQRT(spin_fact) * v**1/2 * ( X + Y )
+ call clean_allocate('TMP v**1/2 * (X+Y)',vsqrt_xpy,mlocal,nlocal)
+ call PDGEMM('N','N',nauxil_2center,nmat,nmat, &
+               DSQRT(spin_fact),eri_3tmp_sd,1,1,desc_sd,  &
+                                 xpy_matrix,1,1,desc_x,   &
+                      0.0_dp,     vsqrt_xpy,1,1,desc_sd)
 
-       do t_ia=1,m_xpy_block
-         t_ia_global = rowindex_local_to_global(iprow,nprow_sd,t_ia)
-         istate = wpol%transition_table_apb(1,t_ia_global)
-         astate = wpol%transition_table_apb(2,t_ia_global)
-         iaspin = wpol%transition_table_apb(3,t_ia_global)
-
-         wpol%residu_left(:,t_jb_global) = wpol%residu_left(:,t_jb_global) &
-                  + eri_3center_eigen(:,istate,astate,iaspin) * xpy_block(t_ia,t_jb)
-
-       enddo
-     enddo
+ call clean_deallocate('TMP 3-center integrals',eri_3tmp_sd)
 
 
-     deallocate(xpy_block)
-   enddo
- enddo
+ call PDGEMR2D(nauxil_2center,nmat,vsqrt_xpy,1,1,desc_sd, &
+                            wpol%residu_left,1,1,desc_auxil,cntxt_sd)
+ !
+ ! Do not forget ortho parallelization direction
+ if( nproc_ortho > 1 ) then
+   call xbcast_ortho(0,wpol%residu_left)
+ endif
+
+ call clean_deallocate('TMP v**1/2 * (X+Y)',vsqrt_xpy)
+
 
  energy_gm = 0.0_dp
- do t_ia_global=1,nmat
-   istate = wpol%transition_table_apb(1,t_ia_global)
-   astate = wpol%transition_table_apb(2,t_ia_global)
-   iaspin = wpol%transition_table_apb(3,t_ia_global)
-   energy_gm = energy_gm - SUM( eri_3center_eigen(:,istate,astate,iaspin)**2 ) * spin_fact * 0.5_dp
+ do t_jb_global=1,nmat
+   jstate = wpol%transition_table_apb(1,t_jb_global)
+   bstate = wpol%transition_table_apb(2,t_jb_global)
+   jbspin = wpol%transition_table_apb(3,t_jb_global)
+   energy_gm = energy_gm - SUM( eri_3center_eigen(:,jstate,bstate,jbspin)**2 ) * spin_fact * 0.5_dp
  enddo
 
  energy_gm = energy_gm + 0.5_dp * ( SUM( wpol%residu_left(:,:)**2 ) )
@@ -1176,7 +1182,7 @@ end subroutine chi_to_sqrtvchisqrtv_auxil
 
 
 !=========================================================================
-subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,nbf_auxil,a_diag,wpol)
+subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,a_diag,wpol)
  use m_definitions
  use m_warning
  use m_basis_set
@@ -1184,7 +1190,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,nbf_auxil,a_diag,wpol)
  use m_spectral_function
  implicit none
  
- integer,intent(in)                    :: nbf,nbf_auxil
+ integer,intent(in)                    :: nbf
  type(spectral_function),intent(inout) :: wpol
  real(dp),intent(in)                   :: a_diag(wpol%npole_reso_spa)
 !=====

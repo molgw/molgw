@@ -37,10 +37,6 @@ module m_mpi_auxil
  integer,public    :: nproc_auxil = 1        ! number of procs in the auxil communicator
  integer,public    :: rank_auxil  = 0        ! index           in the auxil communicator
 
-#ifdef HAVE_SCALAPACK
- integer,public    :: cntxt_auxil
- integer,public    :: nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil
-#endif
 
  !
  ! Interfaces for high-level MPI reduce operations

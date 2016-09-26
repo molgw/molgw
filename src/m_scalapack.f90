@@ -40,10 +40,18 @@ module m_scalapack
  integer,parameter :: block_row = 32
  integer,parameter :: first_row = 0
  integer,parameter :: first_col = 0
+ 
+ ! Specific values for the MPI / SCALAPACK transposition
+ integer,parameter :: MBLOCK_AUXIL = 1
+ integer,parameter :: NBLOCK_AUXIL = 1
 
  integer,protected :: nproc_sca = 1
  integer,protected :: iproc_sca = 0
 
+
+ ! SCALAPACK grid: auxil distribution (so to mimic MPI distribution on auxiliary functions)
+ integer,protected :: cntxt_auxil
+ integer,protected :: nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil
 
  ! SCALAPACK grid: square distribution
  integer,protected :: cntxt_sd
