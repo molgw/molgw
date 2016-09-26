@@ -434,7 +434,6 @@ subroutine build_apb_hartree_auxil_scalapack(desc_apb,wpol,m_apb,n_apb,apb_matri
  !
  ! Descriptors
  mlocal = NUMROC(nauxil_2center,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
- if( mlocal /= nauxil_3center ) call die('BUG here')
  call DESCINIT(desc_auxil,nauxil_2center,nmat,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
  mlocal = NUMROC(nauxil_2center,block_row,iprow_sd,first_row,nprow_sd)
  nlocal = NUMROC(nmat          ,block_col,ipcol_sd,first_col,npcol_sd)

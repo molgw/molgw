@@ -82,13 +82,15 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
    call die('gw_selfenergy: calculation type unknown')
  end select
 
-
+! call start_clock(timing_tmp3) !FBFB
 
  if(has_auxil_basis) then
    call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
    if( calc_type%selfenergy_approx == LW .OR. calc_type%selfenergy_approx == LW2 .OR. calc_type%selfenergy_approx == GSIGMA ) &
        call calculate_eri_3center_eigen_mixed(basis%nbf,nstate,c_matrix)
  endif
+
+! call stop_clock(timing_tmp3) !FBFB
 
  call clean_allocate('Temporary array',bra,1,wpol%npole_reso,nsemin,nsemax)
 
@@ -145,6 +147,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
      if( MODULO( istate - (ncore_G+1) , nproc_ortho) /= rank_ortho ) cycle
 
+!  call start_clock(timing_tmp1) !FBFB
      !
      ! Prepare the bra and ket with the knowledge of index istate and astate
      if( .NOT. has_auxil_basis) then
@@ -163,6 +166,8 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
        endif
      endif
 
+!  call stop_clock(timing_tmp1)   !FBFB
+
 
      ! The application of residu theorem only retains the pole in certain
      ! quadrants.
@@ -172,7 +177,10 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
      fact_empty_i = (spin_fact - occupation(istate,ispin)) / spin_fact
 
 
+!  call start_clock(timing_tmp2) !FBFB
      do ipole=1,wpol%npole_reso
+
+       if( MODULO( ipole - 1 , nproc_auxil ) /= rank_auxil ) cycle
 
 
        select case(selfenergy_approx)
@@ -290,15 +298,16 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
        end select
 
      enddo !ipole
+!  call stop_clock(timing_tmp2) !FBFB
 
    enddo !istate
  enddo !ispin
 
  ! Sum up the contribution from different poles (= different procs)
- call xsum_ortho(se%sigma)
+ call xsum_world(se%sigma)
 
  if( ALLOCATED(selfenergy_omegac) ) then
-   call xsum_ortho(selfenergy_omegac)
+   call xsum_world(selfenergy_omegac)
  endif
 
 

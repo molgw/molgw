@@ -1128,8 +1128,6 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,w
  !
  ! Descriptors
  mlocal = NUMROC(nauxil_2center,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
-! nlocal = NUMROC(nmat          ,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
- if( mlocal /= nauxil_3center ) call die('BUG here')
  call DESCINIT(desc_auxil,nauxil_2center,nmat,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
 
  mlocal = NUMROC(nauxil_2center,block_row,iprow_sd,first_row,nprow_sd)
