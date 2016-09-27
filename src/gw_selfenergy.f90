@@ -11,7 +11,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  use m_mpi
  use m_timing 
  use m_inputparam
- use m_warning,only: issue_warning,msg
+ use m_warning,only: issue_warning
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
@@ -431,12 +431,203 @@ end subroutine gw_selfenergy
 
 
 !=========================================================================
+subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,se)
+ use m_definitions
+ use m_timing 
+ use m_warning,only: issue_warning
+ use m_mpi
+ use m_scalapack
+ use m_inputparam
+ use m_basis_set
+ use m_spectral_function
+ use m_eri_ao_mo
+ use m_tools,only: coeffs_gausslegint
+ use m_selfenergy_tools
+ implicit none
+
+ integer,intent(in)                  :: nstate,selfenergy_approx
+ type(basis_set)                     :: basis
+ real(dp),intent(in)                 :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(in)                 :: c_matrix(basis%nbf,nstate,nspin)
+ type(spectral_function),intent(in)  :: wpol
+ type(selfenergy_grid),intent(inout) :: se
+!=====
+ integer               :: pstate,pspin
+ integer               :: iomega
+ integer               :: istate,ipole
+ real(dp)              :: fact_full_i,fact_empty_i
+ integer               :: selfenergyfile
+ integer               :: desc_wauxil(NDEL),desc_wsd(NDEL)
+ integer               :: desc_3auxil(NDEL),desc_3sd(NDEL)
+ integer               :: desc_bra(NDEL)
+ integer               :: mlocal,nlocal
+ integer               :: ilocal,jlocal,iglobal,jglobal
+ integer               :: info
+ real(dp),allocatable  :: eri_3tmp_auxil(:,:),eri_3tmp_sd(:,:)
+ real(dp),allocatable  :: wresidu_sd(:,:)
+ real(dp),allocatable  :: bra(:,:)
+!=====
+
+#ifdef HAVE_SCALAPACK
+ call start_clock(timing_self)
+
+ write(stdout,*)
+ select case(selfenergy_approx)
+ case(GW)
+   write(stdout,*) 'Perform a one-shot G0W0 calculation: SCALAPACK'
+ case(GnW0)
+   write(stdout,*) 'Perform an eigenvalue self-consistent GnW0 calculation: SCALAPACK'
+ case(GnWn)
+   write(stdout,*) 'Perform an eigenvalue self-consistent GnWn calculation: SCALAPACK'
+ case default
+   write(stdout,*) 'type:',selfenergy_approx
+   call die('gw_selfenergy: calculation type unknown')
+ end select
+
+! call start_clock(timing_tmp3) !FBFB
+
+ if(has_auxil_basis) then
+   call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_G+1,nvirtual_G-1,nsemin,nsemax)
+ endif
+
+! call stop_clock(timing_tmp3) !FBFB
+
+ se%sigma(:,:,:)  = 0.0_dp
+
+
+ !
+ ! SCALAPACK preparation for W
+ !  wpol%residu_left
+ mlocal = NUMROC(nauxil_2center ,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+ nlocal = NUMROC(wpol%npole_reso,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
+ call DESCINIT(desc_wauxil,nauxil_2center,wpol%npole_reso,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+ !
+ ! Change data distribution
+ ! from cntxt_auxil to cntxt_sd
+ mlocal = NUMROC(nauxil_2center ,block_row,iprow_sd,first_row,nprow_sd)
+ nlocal = NUMROC(wpol%npole_reso,block_col,ipcol_sd,first_col,npcol_sd)
+ call DESCINIT(desc_wsd,nauxil_2center,wpol%npole_reso,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+ call clean_allocate('TMP 3center eigen',wresidu_sd,mlocal,nlocal)
+ call PDGEMR2D(nauxil_2center,wpol%npole_reso,wpol%residu_left,1,1,desc_wauxil, &
+                                                    wresidu_sd,1,1,desc_wsd,cntxt_sd)
+
+ ! TODO maybe I should deallocate here wpol%residu_left 
+ 
+
+
+ do pspin=1,nspin
+   do pstate=nsemin,nsemax
+
+
+!  call start_clock(timing_tmp1)   !FBFB
+     !
+     ! SCALAPACK preparation for the 3-center integrals
+     !
+     mlocal = NUMROC(nauxil_2center      ,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+     nlocal = NUMROC(nvirtual_G-ncore_G-1,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
+     call DESCINIT(desc_3auxil,nauxil_2center,nvirtual_G-ncore_G-1,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+!     write(1000+rank_world,*) 'FBFB',iprow_auxil,mlocal,nlocal,SIZE(eri_3center_eigen,DIM=1)
+!     write(1000+rank_world,*) 'FBFB',mlocal,nlocal,nauxil_2center,nvirtual_G-ncore_G-1,nauxil_3center
+!     call flush(1000+rank_world)
+!     call barrier_world()
+
+     if( cntxt_auxil > 0 ) then
+       call clean_allocate('TMP 3center eigen',eri_3tmp_auxil,mlocal,nlocal)
+       do jlocal=1,nlocal
+         jglobal = INDXL2G(jlocal,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil) + ncore_G
+         do ilocal=1,mlocal
+!           iglobal = INDXL2G(ilocal,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+!           write(1000+rank_world,*) ilocal,jlocal,iglobal,jglobal,iprow_auxil,mlocal,nlocal,SIZE(eri_3center_eigen,DIM=1)
+!           call flush(1000+rank_world)
+           eri_3tmp_auxil(ilocal,jlocal) = eri_3center_eigen(ilocal,jglobal,pstate,pspin)
+         enddo
+       enddo
+     endif
+     !
+     ! Change data distribution
+     ! from cntxt_auxil to cntxt_sd
+     mlocal = NUMROC(nauxil_2center      ,block_row,iprow_sd,first_row,nprow_sd)
+     nlocal = NUMROC(nvirtual_G-ncore_G-1,block_col,ipcol_sd,first_col,npcol_sd)
+     call DESCINIT(desc_3sd,nauxil_2center,nvirtual_G-ncore_G-1,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+     call clean_allocate('TMP 3center eigen',eri_3tmp_sd,mlocal,nlocal)
+     call PDGEMR2D(nauxil_2center,nvirtual_G-ncore_G-1,eri_3tmp_auxil,1,1,desc_3auxil, &
+                                                          eri_3tmp_sd,1,1,desc_3sd,cntxt_sd)
+     call clean_deallocate('TMP 3center eigen',eri_3tmp_auxil)
+
+
+     !
+     ! Prepare a SCALAPACKed bra that is to contain  wresidu**T * v**1/2
+     mlocal = NUMROC(wpol%npole_reso     ,block_row,iprow_sd,first_row,nprow_sd)
+     nlocal = NUMROC(nvirtual_G-ncore_G-1,block_col,ipcol_sd,first_col,npcol_sd)
+     call DESCINIT(desc_bra,wpol%npole_reso,nvirtual_G-ncore_G-1,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+     call clean_allocate('Temporary array',bra,mlocal,nlocal)
+
+     ! And calculate it
+     call PDGEMM('T','N',wpol%npole_reso,nvirtual_G-ncore_G-1,nauxil_2center, &
+                             1.0_dp,wresidu_sd,1,1,desc_wsd,    &
+                                   eri_3tmp_sd,1,1,desc_3sd,    &
+                             0.0_dp,bra,1,1,desc_bra)
+     call clean_deallocate('TMP 3center eigen',eri_3tmp_sd)
+!  call stop_clock(timing_tmp1)   !FBFB
+
+
+!  call start_clock(timing_tmp2) !FBFB
+
+     do jlocal=1,nlocal
+       istate = INDXL2G(jlocal,block_col,ipcol_sd,first_col,npcol_sd) + ncore_G
+       do ilocal=1,mlocal
+         ipole = INDXL2G(ilocal,block_row,iprow_sd,first_row,nprow_sd)
+
+
+         ! The application of residu theorem only retains the pole in well-defined
+         ! quadrants.
+         ! The positive poles of W go with the poles of occupied states in G
+         ! The negative poles of W go with the poles of empty states in G
+         fact_full_i   = occupation(istate,pspin) / spin_fact
+         fact_empty_i = (spin_fact - occupation(istate,pspin)) / spin_fact
+
+         !
+         ! calculate only the diagonal !
+         do iomega=-se%nomega,se%nomega
+           se%sigma(iomega,pstate,pspin) = se%sigma(iomega,pstate,pspin) &
+                    + bra(ilocal,jlocal) * bra(ilocal,jlocal)                    & 
+                      * ( REAL(  fact_full_i  / ( energy(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) + wpol%pole(ipole) - ieta )  , dp )  &
+                        + REAL(  fact_empty_i / ( energy(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) - wpol%pole(ipole) + ieta )  , dp ) )
+         enddo !iomega
+       enddo  !ilocal -> ipole
+     enddo !jlocal -> istate
+
+     call clean_deallocate('Temporary array',bra)
+!  call stop_clock(timing_tmp2) !FBFB
+
+   enddo !pstate
+ enddo !pspin
+
+ ! Sum up the contribution from different poles (= different procs)
+ call xsum_world(se%sigma)
+
+
+ write(stdout,'(a)') ' Sigma_c(omega) is calculated'
+
+ call clean_deallocate('TMP 3center eigen',wresidu_sd)
+ if(has_auxil_basis) then
+   call destroy_eri_3center_eigen()
+ endif
+
+ call stop_clock(timing_self)
+
+#endif
+
+end subroutine gw_selfenergy_scalapack
+
+
+!=========================================================================
 subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpol,selfenergy)
  use m_definitions
  use m_mpi
  use m_timing 
  use m_inputparam
- use m_warning,only: issue_warning,msg
+ use m_warning,only: issue_warning
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo

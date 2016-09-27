@@ -178,7 +178,19 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
 
 
+#ifdef HAVE_SCALAPACK
+   ! The SCALAPACK implementation only works for plain vanilla GW
+   ! TODO: extend it to COHSEX
+   if( calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GnW0 .OR. calc_type%selfenergy_approx == GnWn ) then
+     call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+   else
+     call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+   endif
+#else
    call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+#endif
+
+   
 
    if( ABS(en%gw) > 1.0e-5_dp ) then
      write(stdout,'(/,a,f19.10)') ' Galitskii-Migdal Total energy (Ha): ',en%tot - en%rpa + en%gw

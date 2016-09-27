@@ -1721,9 +1721,6 @@ function rowindex_local_to_global_distrib(distribution,ilocal)
  integer,intent(in)          :: ilocal
  integer                     :: rowindex_local_to_global_distrib
 !=====
-#ifdef HAVE_SCALAPACK
- integer,external :: INDXL2G
-#endif
 !=====
 
 #ifdef HAVE_SCALAPACK
@@ -1753,9 +1750,6 @@ function rowindex_local_to_global_procindex(iprow,nprow,ilocal)
  integer,intent(in)          :: iprow,nprow,ilocal
  integer                     :: rowindex_local_to_global_procindex
 !=====
-#ifdef HAVE_SCALAPACK
- integer,external :: INDXL2G
-#endif
 !=====
 
 #ifdef HAVE_SCALAPACK
@@ -1775,7 +1769,6 @@ function rowindex_local_to_global_descriptor(desc,ilocal)
 !=====
 #ifdef HAVE_SCALAPACK
  integer          :: iprow,ipcol,nprow,npcol
- integer,external :: INDXL2G
 #endif
 !=====
 
@@ -1796,9 +1789,6 @@ function colindex_local_to_global_distrib(distribution,ilocal)
  integer,intent(in)          :: ilocal
  integer                     :: colindex_local_to_global_distrib
 !=====
-#ifdef HAVE_SCALAPACK
- integer,external :: INDXL2G
-#endif
 !=====
 
 #ifdef HAVE_SCALAPACK
@@ -1828,9 +1818,6 @@ function colindex_local_to_global_procindex(ipcol,npcol,ilocal)
  integer,intent(in)          :: ipcol,npcol,ilocal
  integer                     :: colindex_local_to_global_procindex
 !=====
-#ifdef HAVE_SCALAPACK
- integer,external :: INDXL2G
-#endif
 !=====
 
 #ifdef HAVE_SCALAPACK
@@ -1850,7 +1837,6 @@ function colindex_local_to_global_descriptor(desc,ilocal)
 !=====
 #ifdef HAVE_SCALAPACK
  integer          :: iprow,ipcol,nprow,npcol
- integer,external :: INDXL2G
 #endif
 !=====
 
