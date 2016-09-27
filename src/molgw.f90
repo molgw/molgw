@@ -334,6 +334,18 @@ program molgw
  endif
 
 
+ ! Deallocate the array index_pair when it is not needed
+ ! This array can be pretty large indeed.
+ ! index_pair is only need for the development version of Luttinger-Ward
+ ! or for the SCALAPACK with no buffer part of the code (which is not functional anyway)
+ ! or for the 4-center integrals code
+ if( .NOT. (calc_type%selfenergy_approx == LW                         &
+            .OR. calc_type%selfenergy_approx == LW2                   &
+            .OR. calc_type%selfenergy_approx == GSIGMA )              &
+     .AND. .NOT. ( parallel_ham .AND. .NOT. parallel_buffer )         &
+     .AND. is_full_auxil ) then
+   call deallocate_index_pair()
+ endif
 
  call stop_clock(timing_prescf)
 

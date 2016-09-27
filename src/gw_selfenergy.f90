@@ -28,8 +28,8 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  real(dp),intent(out)               :: energy_gw
 !=====
  integer               :: iomega
- integer               :: iastate
- integer               :: astate,bstate
+ integer               :: ipstate
+ integer               :: pstate,bstate
  integer               :: istate,ispin,ipole
  real(dp),allocatable  :: bra(:,:)
  real(dp),allocatable  :: bra_exx(:,:)
@@ -65,6 +65,8 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
    call assert_experimental()
  case(GW)
    write(stdout,*) 'Perform a one-shot G0W0 calculation'
+ case(ONE_RING)
+   write(stdout,*) 'Perform a one-shot one-ring calculation'
  case(G0W0_IOMEGA)
    write(stdout,*) 'Perform a one-shot G0W0 calculation EXPERIMENTAL!'
    call assert_experimental()
@@ -82,7 +84,6 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
    call die('gw_selfenergy: calculation type unknown')
  end select
 
-! call start_clock(timing_tmp3) !FBFB
 
  if(has_auxil_basis) then
    call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
@@ -90,7 +91,6 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
        call calculate_eri_3center_eigen_mixed(basis%nbf,nstate,c_matrix)
  endif
 
-! call stop_clock(timing_tmp3) !FBFB
 
  call clean_allocate('Temporary array',bra,1,wpol%npole_reso,nsemin,nsemax)
 
@@ -147,14 +147,13 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
      if( MODULO( istate - (ncore_G+1) , nproc_ortho) /= rank_ortho ) cycle
 
-!  call start_clock(timing_tmp1) !FBFB
      !
-     ! Prepare the bra and ket with the knowledge of index istate and astate
+     ! Prepare the bra and ket with the knowledge of index istate and pstate
      if( .NOT. has_auxil_basis) then
        ! Here just grab the precalculated value
-       do astate=nsemin,nsemax
-         iastate = index_prodstate(istate,astate) + (ispin-1) * index_prodstate(nvirtual_W-1,nvirtual_W-1)
-         bra(:,astate) = wpol%residue_left(iastate,:)
+       do pstate=nsemin,nsemax
+         ipstate = index_prodstate(istate,pstate) + (ispin-1) * index_prodstate(nvirtual_W-1,nvirtual_W-1)
+         bra(:,pstate) = wpol%residue_left(ipstate,:)
        end do
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
@@ -166,10 +165,9 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
        endif
      endif
 
-!  call stop_clock(timing_tmp1)   !FBFB
 
 
-     ! The application of residue theorem only retains the pole in certain
+     ! The application of residue theorem only retains the pole in given
      ! quadrants.
      ! The positive poles of W go with the poles of occupied states in G
      ! The negative poles of W go with the poles of empty states in G
@@ -177,7 +175,6 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
      fact_empty_i = (spin_fact - occupation(istate,ispin)) / spin_fact
 
 
-!  call start_clock(timing_tmp2) !FBFB
      do ipole=1,wpol%npole_reso
 
        if( MODULO( ipole - 1 , nproc_auxil ) /= rank_auxil ) cycle
@@ -187,17 +184,15 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
        case(LW,LW2)
 
-         if(ipole==1) write(stdout,*) 'FBFB LW',istate
-
          do bstate=nsemin,nsemax
-           do astate=nsemin,nsemax
+           do pstate=nsemin,nsemax
 
              do iomega=1,se%nomega
-               selfenergy_omegac(iomega,astate,bstate,ispin) = selfenergy_omegac(iomega,astate,bstate,ispin) &
-                        + bra_exx(ipole,astate) * bra_exx(ipole,bstate) &
+               selfenergy_omegac(iomega,pstate,bstate,ispin) = selfenergy_omegac(iomega,pstate,bstate,ispin) &
+                        + bra_exx(ipole,pstate) * bra_exx(ipole,bstate) &
                           * (  fact_full_i  / ( omegac(iomega) - energy(istate,ispin) + wpol%pole(ipole)  )    &
                              + fact_empty_i / ( omegac(iomega) - energy(istate,ispin) - wpol%pole(ipole) ) )   &
-                          / ( omegac(iomega) - energy_lw(astate,ispin) )
+                          / ( omegac(iomega) - energy_lw(pstate,ispin) )
              enddo
 
            enddo
@@ -205,32 +200,32 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
        case(GSIGMA)
 
-         do astate=nsemin,nsemax
-           fact_full_a   = occupation(astate,ispin) / spin_fact
-           fact_empty_a  = (spin_fact - occupation(astate,ispin)) / spin_fact
-           !
-           ! calculate only the diagonal !
-           se%sigma(0,astate,ispin) = se%sigma(0,astate,ispin) &
-                    - bra(ipole,astate) * bra(ipole,astate) &
-                      * ( REAL(  fact_full_i  * fact_empty_a / ( energy(astate,ispin)  - energy(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
-                        - REAL(  fact_empty_i * fact_full_a  / ( energy(astate,ispin)  - energy(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
-           se%sigma(1,astate,ispin) = se%sigma(1,astate,ispin) &
-                    - bra_exx(ipole,astate) * bra_exx(ipole,astate) &
-                      * ( REAL(  fact_full_i  * fact_empty_a / ( energy_lw(astate,ispin)  - energy(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
-                        - REAL(  fact_empty_i * fact_full_a  / ( energy_lw(astate,ispin)  - energy(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
+         !
+         ! calculate only the diagonal !
+         do pstate=nsemin,nsemax
+           fact_full_a   = occupation(pstate,ispin) / spin_fact
+           fact_empty_a  = (spin_fact - occupation(pstate,ispin)) / spin_fact
+           se%sigma(0,pstate,ispin) = se%sigma(0,pstate,ispin) &
+                    - bra(ipole,pstate) * bra(ipole,pstate) &
+                      * ( REAL(  fact_full_i  * fact_empty_a / ( energy(pstate,ispin)  - energy(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
+                        - REAL(  fact_empty_i * fact_full_a  / ( energy(pstate,ispin)  - energy(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
+           se%sigma(1,pstate,ispin) = se%sigma(1,pstate,ispin) &
+                    - bra_exx(ipole,pstate) * bra_exx(ipole,pstate) &
+                      * ( REAL(  fact_full_i  * fact_empty_a / ( energy_lw(pstate,ispin)  - energy(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
+                        - REAL(  fact_empty_i * fact_full_a  / ( energy_lw(pstate,ispin)  - energy(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
          enddo
 
 
-       case(GW,GnW0,GnWn)
+       case(GW,GnW0,GnWn,ONE_RING)
 
-         do astate=nsemin,nsemax
-           !
-           ! calculate only the diagonal !
+         !
+         ! calculate only the diagonal !
+         do pstate=nsemin,nsemax
            do iomega=-se%nomega,se%nomega
-             se%sigma(iomega,astate,ispin) = se%sigma(iomega,astate,ispin) &
-                      + bra(ipole,astate) * bra(ipole,astate)                                          & 
-                        * ( REAL(  fact_full_i  / ( energy(astate,ispin) + se%omega(iomega) - energy(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
-                          + REAL(  fact_empty_i / ( energy(astate,ispin) + se%omega(iomega) - energy(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
+             se%sigma(iomega,pstate,ispin) = se%sigma(iomega,pstate,ispin) &
+                      + bra(ipole,pstate) * bra(ipole,pstate)                                          & 
+                        * ( REAL(  fact_full_i  / ( energy(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
+                          + REAL(  fact_empty_i / ( energy(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
            enddo
          enddo
 
@@ -238,15 +233,15 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
          allocate(vsqchi0vsqm1(nauxil_2center,nauxil_2center))
 
-         do astate=nsemin,nsemax
+         do pstate=nsemin,nsemax
            do iomega=-se%nomega,se%nomega
-             omega_m_ei = energy(astate,ispin) + se%omega(iomega) - energy(istate,ispin)
+             omega_m_ei = energy(pstate,ispin) + se%omega(iomega) - energy(istate,ispin)
              call dynamical_polarizability(nstate,occupation,energy,omega_m_ei,wpol,vsqchi0vsqm1)
 
-             bra2 = DOT_PRODUCT( eri_3center_eigen(:,astate,istate,ispin) , MATMUL( vsqchi0vsqm1(:,:) , wpol%residue_left(:,ipole)) )
+             bra2 = DOT_PRODUCT( eri_3center_eigen(:,pstate,istate,ispin) , MATMUL( vsqchi0vsqm1(:,:) , wpol%residue_left(:,ipole)) )
 
-             se%sigma(iomega,astate,ispin) = se%sigma(iomega,astate,ispin) &
-                      + bra2 * bra(ipole,astate)                                          & 
+             se%sigma(iomega,pstate,ispin) = se%sigma(iomega,pstate,ispin) &
+                      + bra2 * bra(ipole,pstate)                                          & 
                         * ( REAL(  fact_full_i  / ( omega_m_ei + wpol%pole(ipole) - ieta )  , dp )  &
                           + REAL(  fact_empty_i / ( omega_m_ei - wpol%pole(ipole) + ieta )  , dp ) )
            enddo
@@ -256,34 +251,32 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
        case(G0W0_IOMEGA)
 
-         do astate=nsemin,nsemax
-           !
-           ! calculate only the diagonal !
-             do iomega=1,se%nomega
-               selfenergy_omegac(iomega,astate,1,ispin) = selfenergy_omegac(iomega,astate,1,ispin) &
-                      + bra(ipole,astate) * bra(ipole,astate)                                          & 
-                        * ( fact_full_i  / ( omegac(iomega) - energy(istate,ispin) + wpol%pole(ipole) ) &  !  - ieta )    &
-                          + fact_empty_i / ( omegac(iomega) - energy(istate,ispin) - wpol%pole(ipole) ) )  ! + ieta )  )
+         do pstate=nsemin,nsemax
+           do iomega=1,se%nomega
+             selfenergy_omegac(iomega,pstate,1,ispin) = selfenergy_omegac(iomega,pstate,1,ispin) &
+                    + bra(ipole,pstate) * bra(ipole,pstate)                                          & 
+                      * ( fact_full_i  / ( omegac(iomega) - energy(istate,ispin) + wpol%pole(ipole) ) &  !  - ieta )    &
+                        + fact_empty_i / ( omegac(iomega) - energy(istate,ispin) - wpol%pole(ipole) ) )  ! + ieta )  )
            enddo
          enddo
 
 
        case(COHSEX)
 
-         do astate=nsemin,nsemax
+         do pstate=nsemin,nsemax
            !
            ! SEX
            !
-           se%sigma(0,astate,ispin) = se%sigma(0,astate,ispin) &
-                      + bra(ipole,astate) * bra(ipole,astate) &
+           se%sigma(0,pstate,ispin) = se%sigma(0,pstate,ispin) &
+                      + bra(ipole,pstate) * bra(ipole,pstate) &
                             * fact_full_i / wpol%pole(ipole) * 2.0_dp  &
                             * beta_cohsex
 
            !
            ! COH
            !
-           se%sigma(0,astate,ispin) = se%sigma(0,astate,ispin) &
-                      - bra(ipole,astate) * bra(ipole,astate) &
+           se%sigma(0,pstate,ispin) = se%sigma(0,pstate,ispin) &
+                      - bra(ipole,pstate) * bra(ipole,pstate) &
                             / wpol%pole(ipole)                &
                             * alpha_cohsex
 
@@ -298,7 +291,6 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
        end select
 
      enddo !ipole
-!  call stop_clock(timing_tmp2) !FBFB
 
    enddo !istate
  enddo !ispin
@@ -321,14 +313,14 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
    if( is_iomaster ) then
 
-     do astate=nsemin,nsemax
-       write(ctmp,'(i3.3)') astate
+     do pstate=nsemin,nsemax
+       write(ctmp,'(i3.3)') pstate
        write(stdout,'(1x,a,a)') 'Printing file: ','selfenergy_omegac_state'//TRIM(ctmp)
        open(newunit=selfenergyfile,file='selfenergy_omegac_state'//TRIM(ctmp))
        write(selfenergyfile,'(a)') '# Re omega (eV)  Im omega (eV)  SigmaC (eV) '
        do iomega=1,se%nomega
          write(selfenergyfile,'(20(f12.6,2x))') omegac(iomega)*Ha_eV,                                     &
-                                            selfenergy_omegac(iomega,astate,1,:)*Ha_eV
+                                            selfenergy_omegac(iomega,pstate,1,:)*Ha_eV
        enddo
        write(selfenergyfile,*)
        close(selfenergyfile)
@@ -468,11 +460,15 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  real(dp),allocatable  :: bra(:,:)
 !=====
 
+ if(.NOT. has_auxil_basis) return
+
 #ifdef HAVE_SCALAPACK
  call start_clock(timing_self)
 
  write(stdout,*)
  select case(selfenergy_approx)
+ case(ONE_RING)
+   write(stdout,*) 'Perform a one-shot one_ring calculation: SCALAPACK'
  case(GW)
    write(stdout,*) 'Perform a one-shot G0W0 calculation: SCALAPACK'
  case(GnW0)
@@ -484,15 +480,9 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
    call die('gw_selfenergy: calculation type unknown')
  end select
 
-! call start_clock(timing_tmp3) !FBFB
 
- if(has_auxil_basis) then
-   call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_G+1,nvirtual_G-1,nsemin,nsemax)
- endif
+ call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_G+1,nvirtual_G-1,nsemin,nsemax)
 
-! call stop_clock(timing_tmp3) !FBFB
-
- se%sigma(:,:,:)  = 0.0_dp
 
 
  !
@@ -507,38 +497,31 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  mlocal = NUMROC(nauxil_2center ,block_row,iprow_sd,first_row,nprow_sd)
  nlocal = NUMROC(wpol%npole_reso,block_col,ipcol_sd,first_col,npcol_sd)
  call DESCINIT(desc_wsd,nauxil_2center,wpol%npole_reso,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
- call clean_allocate('TMP 3center eigen',wresidue_sd,mlocal,nlocal)
+ call clean_allocate('TMP distributed W',wresidue_sd,mlocal,nlocal)
  call PDGEMR2D(nauxil_2center,wpol%npole_reso,wpol%residue_left,1,1,desc_wauxil, &
                                                     wresidue_sd,1,1,desc_wsd,cntxt_sd)
 
  ! TODO maybe I should deallocate here wpol%residue_left 
  
 
+ se%sigma(:,:,:)  = 0.0_dp
 
  do pspin=1,nspin
    do pstate=nsemin,nsemax
 
 
-!  call start_clock(timing_tmp1)   !FBFB
      !
      ! SCALAPACK preparation for the 3-center integrals
      !
      mlocal = NUMROC(nauxil_2center      ,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
      nlocal = NUMROC(nvirtual_G-ncore_G-1,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
      call DESCINIT(desc_3auxil,nauxil_2center,nvirtual_G-ncore_G-1,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
-!     write(1000+rank_world,*) 'FBFB',iprow_auxil,mlocal,nlocal,SIZE(eri_3center_eigen,DIM=1)
-!     write(1000+rank_world,*) 'FBFB',mlocal,nlocal,nauxil_2center,nvirtual_G-ncore_G-1,nauxil_3center
-!     call flush(1000+rank_world)
-!     call barrier_world()
 
      if( cntxt_auxil > 0 ) then
        call clean_allocate('TMP 3center eigen',eri_3tmp_auxil,mlocal,nlocal)
        do jlocal=1,nlocal
          jglobal = INDXL2G(jlocal,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil) + ncore_G
          do ilocal=1,mlocal
-!           iglobal = INDXL2G(ilocal,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
-!           write(1000+rank_world,*) ilocal,jlocal,iglobal,jglobal,iprow_auxil,mlocal,nlocal,SIZE(eri_3center_eigen,DIM=1)
-!           call flush(1000+rank_world)
            eri_3tmp_auxil(ilocal,jlocal) = eri_3center_eigen(ilocal,jglobal,pstate,pspin)
          enddo
        enddo
@@ -568,10 +551,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
                                    eri_3tmp_sd,1,1,desc_3sd,    &
                              0.0_dp,bra,1,1,desc_bra)
      call clean_deallocate('TMP 3center eigen',eri_3tmp_sd)
-!  call stop_clock(timing_tmp1)   !FBFB
 
 
-!  call start_clock(timing_tmp2) !FBFB
 
      do jlocal=1,nlocal
        istate = INDXL2G(jlocal,block_col,ipcol_sd,first_col,npcol_sd) + ncore_G
@@ -579,15 +560,13 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
          ipole = INDXL2G(ilocal,block_row,iprow_sd,first_row,nprow_sd)
 
 
-         ! The application of residue theorem only retains the pole in well-defined
+         ! The application of residue theorem only retains the pole in given
          ! quadrants.
          ! The positive poles of W go with the poles of occupied states in G
          ! The negative poles of W go with the poles of empty states in G
          fact_full_i   = occupation(istate,pspin) / spin_fact
          fact_empty_i = (spin_fact - occupation(istate,pspin)) / spin_fact
 
-         !
-         ! calculate only the diagonal !
          do iomega=-se%nomega,se%nomega
            se%sigma(iomega,pstate,pspin) = se%sigma(iomega,pstate,pspin) &
                     + bra(ilocal,jlocal) * bra(ilocal,jlocal)                    & 
@@ -598,7 +577,6 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
      enddo !jlocal -> istate
 
      call clean_deallocate('Temporary array',bra)
-!  call stop_clock(timing_tmp2) !FBFB
 
    enddo !pstate
  enddo !pspin
@@ -609,10 +587,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
 
  write(stdout,'(a)') ' Sigma_c(omega) is calculated'
 
- call clean_deallocate('TMP 3center eigen',wresidue_sd)
- if(has_auxil_basis) then
-   call destroy_eri_3center_eigen()
- endif
+ call clean_deallocate('TMP distributed W',wresidue_sd)
+ call destroy_eri_3center_eigen()
 
  call stop_clock(timing_self)
 
@@ -693,7 +669,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
      endif
 
 
-     ! The application of residue theorem only retains the pole in certain
+     ! The application of residue theorem only retains the pole in given
      ! quadrants.
      ! The positive poles of W go with the poles of occupied states in G
      ! The negative poles of W go with the poles of empty states in G

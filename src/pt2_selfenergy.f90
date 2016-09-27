@@ -235,7 +235,11 @@ subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c
 
  call destroy_eri_3center_eigen()
 
- call gw_selfenergy(GW,nstate,basis,occupation,energy,c_matrix,vsqrtchi0vsqrt,se,emp2)
+#ifdef HAVE_SCALAPACK
+ call gw_selfenergy_scalapack(ONE_RING,nstate,basis,occupation,energy,c_matrix,vsqrtchi0vsqrt,se)
+#else
+ call gw_selfenergy(ONE_RING,nstate,basis,occupation,energy,c_matrix,vsqrtchi0vsqrt,se,emp2)
+#endif
  
  call destroy_spectral_function(vsqrtchi0vsqrt)
 

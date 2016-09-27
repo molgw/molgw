@@ -181,7 +181,9 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
 #ifdef HAVE_SCALAPACK
    ! The SCALAPACK implementation only works for plain vanilla GW
    ! TODO: extend it to COHSEX
-   if( calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GnW0 .OR. calc_type%selfenergy_approx == GnWn ) then
+   if( has_auxil_basis &
+     .AND. (calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GnW0  &
+                                              .OR. calc_type%selfenergy_approx == GnWn) ) then
      call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
    else
      call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)

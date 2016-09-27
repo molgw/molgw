@@ -48,6 +48,7 @@ module m_eri
  type(shell_type),protected,allocatable :: shell(:)
  type(shell_type),protected,allocatable :: shell_auxil(:)
  integer,private,allocatable            :: shell_bf(:)
+! integer,private,allocatable            :: index_in_shell_bf(:)
 
 
  integer,private   :: nbf_eri         ! local copy of nbf
@@ -184,10 +185,10 @@ subroutine deallocate_eri()
    write(stdout,'(/,a)')     ' Deallocate LR ERI buffer'
    call clean_deallocate('4-center LR integrals',eri_4center_lr)
  endif
- if(ALLOCATED(negligible_shellpair))  deallocate(negligible_shellpair)
- if(ALLOCATED(index_shellpair))       deallocate(index_shellpair)
- call clean_deallocate('index pair',index_pair)
- call clean_deallocate('index basis',index_basis)
+ if(ALLOCATED(negligible_shellpair))   deallocate(negligible_shellpair)
+ if(ALLOCATED(index_shellpair))        deallocate(index_shellpair)
+ if(ALLOCATED(index_pair))  call clean_deallocate('index pair',index_pair)
+ if(ALLOCATED(index_basis)) call clean_deallocate('index basis',index_basis)
 
  ! 
  ! Cleanly deallocate the shell objects
@@ -197,9 +198,20 @@ subroutine deallocate_eri()
  enddo
  if(ALLOCATED(shell))                 deallocate(shell)
  if(ALLOCATED(shell_bf))              deallocate(shell_bf)
+! if(ALLOCATED(index_in_shell_bf))     deallocate(index_in_shell_bf)
 
 
 end subroutine deallocate_eri
+
+
+!=========================================================================
+subroutine deallocate_index_pair()
+ implicit none
+
+!=====
+ call clean_deallocate('index pair',index_pair)
+
+end subroutine deallocate_index_pair
 
 
 !=========================================================================
@@ -221,7 +233,6 @@ function index_eri(ibf,jbf,kbf,lbf)
 
  index_eri = (klmin-1)*npair - (klmin-1)*(klmin-2)/2 + ijmax-klmin+1
 
-! index_eri = ibf+(jbf-1)*nbf_eri+(kbf-1)*nbf_eri**2+(lbf-1)*nbf_eri**3
 
 end function index_eri
 
@@ -361,6 +372,10 @@ subroutine setup_shell_list(basis)
    jbf = kbf + 1
    ibf = ibf + number_basis_function_am( 'CART' , basis%bf(ibf)%am )
  enddo
+! allocate(index_in_shell_bf(basis%nbf))
+! do ibf=1,basis%nbf
+!   index_in_shell_bf(ibf) = basis%bff(ibf)%index_in_shell
+! enddo
 
 
 end subroutine setup_shell_list
@@ -717,7 +732,7 @@ subroutine setup_shellpair()
  ishellpair = 0
  jshellpair = 0
  do jshell=1,nshell
-   do ishell=1,jshell ! nshell
+   do ishell=1,jshell 
      jshellpair = jshellpair + 1
      ! skip the identified negligible shell pairs
      if( negligible_shellpair(ishell,jshell) ) cycle
@@ -733,7 +748,7 @@ subroutine setup_shellpair()
 
  ishellpair = 0
  do jshell=1,nshell
-   do ishell=1,jshell ! nshell
+   do ishell=1,jshell 
      ! skip the identified negligible shell pairs
      if( negligible_shellpair(ishell,jshell) ) cycle
      ami = shell(ishell)%am
