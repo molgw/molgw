@@ -269,7 +269,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
   
        do mstate=ncore_G+1,MAX(nhomo_G,nsemax)
          ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-         bra(:,mstate)     = MATMUL( wpol%residu_left(:,spole) , eri_3center_eigen(:,:,mstate,ispin) )
+         bra(:,mstate)     = MATMUL( wpol%residue_left(:,spole) , eri_3center_eigen(:,:,mstate,ispin) )
        enddo
        call xsum_auxil(bra)
   

@@ -154,14 +154,14 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
        ! Here just grab the precalculated value
        do astate=nsemin,nsemax
          iastate = index_prodstate(istate,astate) + (ispin-1) * index_prodstate(nvirtual_W-1,nvirtual_W-1)
-         bra(:,astate) = wpol%residu_left(iastate,:)
+         bra(:,astate) = wpol%residue_left(iastate,:)
        end do
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-       bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residu_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
+       bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
        call xsum_auxil(bra)
        if( selfenergy_approx==LW .OR. selfenergy_approx==LW2 .OR. selfenergy_approx==GSIGMA) then
-         bra_exx(:,nsemin:nsemax) = MATMUL( TRANSPOSE(wpol%residu_left(:,:)) , eri_3center_eigen_mixed(:,istate,nsemin:nsemax,ispin) )
+         bra_exx(:,nsemin:nsemax) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen_mixed(:,istate,nsemin:nsemax,ispin) )
          call xsum_auxil(bra_exx)
        endif
      endif
@@ -169,7 +169,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 !  call stop_clock(timing_tmp1)   !FBFB
 
 
-     ! The application of residu theorem only retains the pole in certain
+     ! The application of residue theorem only retains the pole in certain
      ! quadrants.
      ! The positive poles of W go with the poles of occupied states in G
      ! The negative poles of W go with the poles of empty states in G
@@ -243,7 +243,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
              omega_m_ei = energy(astate,ispin) + se%omega(iomega) - energy(istate,ispin)
              call dynamical_polarizability(nstate,occupation,energy,omega_m_ei,wpol,vsqchi0vsqm1)
 
-             bra2 = DOT_PRODUCT( eri_3center_eigen(:,astate,istate,ispin) , MATMUL( vsqchi0vsqm1(:,:) , wpol%residu_left(:,ipole)) )
+             bra2 = DOT_PRODUCT( eri_3center_eigen(:,astate,istate,ispin) , MATMUL( vsqchi0vsqm1(:,:) , wpol%residue_left(:,ipole)) )
 
              se%sigma(iomega,astate,ispin) = se%sigma(iomega,astate,ispin) &
                       + bra2 * bra(ipole,astate)                                          & 
@@ -464,7 +464,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  integer               :: ilocal,jlocal,iglobal,jglobal
  integer               :: info
  real(dp),allocatable  :: eri_3tmp_auxil(:,:),eri_3tmp_sd(:,:)
- real(dp),allocatable  :: wresidu_sd(:,:)
+ real(dp),allocatable  :: wresidue_sd(:,:)
  real(dp),allocatable  :: bra(:,:)
 !=====
 
@@ -497,7 +497,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
 
  !
  ! SCALAPACK preparation for W
- !  wpol%residu_left
+ !  wpol%residue_left
  mlocal = NUMROC(nauxil_2center ,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
  nlocal = NUMROC(wpol%npole_reso,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
  call DESCINIT(desc_wauxil,nauxil_2center,wpol%npole_reso,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
@@ -507,11 +507,11 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  mlocal = NUMROC(nauxil_2center ,block_row,iprow_sd,first_row,nprow_sd)
  nlocal = NUMROC(wpol%npole_reso,block_col,ipcol_sd,first_col,npcol_sd)
  call DESCINIT(desc_wsd,nauxil_2center,wpol%npole_reso,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
- call clean_allocate('TMP 3center eigen',wresidu_sd,mlocal,nlocal)
- call PDGEMR2D(nauxil_2center,wpol%npole_reso,wpol%residu_left,1,1,desc_wauxil, &
-                                                    wresidu_sd,1,1,desc_wsd,cntxt_sd)
+ call clean_allocate('TMP 3center eigen',wresidue_sd,mlocal,nlocal)
+ call PDGEMR2D(nauxil_2center,wpol%npole_reso,wpol%residue_left,1,1,desc_wauxil, &
+                                                    wresidue_sd,1,1,desc_wsd,cntxt_sd)
 
- ! TODO maybe I should deallocate here wpol%residu_left 
+ ! TODO maybe I should deallocate here wpol%residue_left 
  
 
 
@@ -556,7 +556,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
 
 
      !
-     ! Prepare a SCALAPACKed bra that is to contain  wresidu**T * v**1/2
+     ! Prepare a SCALAPACKed bra that is to contain  wresidue**T * v**1/2
      mlocal = NUMROC(wpol%npole_reso     ,block_row,iprow_sd,first_row,nprow_sd)
      nlocal = NUMROC(nvirtual_G-ncore_G-1,block_col,ipcol_sd,first_col,npcol_sd)
      call DESCINIT(desc_bra,wpol%npole_reso,nvirtual_G-ncore_G-1,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
@@ -564,7 +564,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
 
      ! And calculate it
      call PDGEMM('T','N',wpol%npole_reso,nvirtual_G-ncore_G-1,nauxil_2center, &
-                             1.0_dp,wresidu_sd,1,1,desc_wsd,    &
+                             1.0_dp,wresidue_sd,1,1,desc_wsd,    &
                                    eri_3tmp_sd,1,1,desc_3sd,    &
                              0.0_dp,bra,1,1,desc_bra)
      call clean_deallocate('TMP 3center eigen',eri_3tmp_sd)
@@ -579,7 +579,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
          ipole = INDXL2G(ilocal,block_row,iprow_sd,first_row,nprow_sd)
 
 
-         ! The application of residu theorem only retains the pole in well-defined
+         ! The application of residue theorem only retains the pole in well-defined
          ! quadrants.
          ! The positive poles of W go with the poles of occupied states in G
          ! The negative poles of W go with the poles of empty states in G
@@ -609,7 +609,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
 
  write(stdout,'(a)') ' Sigma_c(omega) is calculated'
 
- call clean_deallocate('TMP 3center eigen',wresidu_sd)
+ call clean_deallocate('TMP 3center eigen',wresidue_sd)
  if(has_auxil_basis) then
    call destroy_eri_3center_eigen()
  endif
@@ -684,16 +684,16 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
        ! Here just grab the precalculated value
        do pstate=nsemin,nsemax
          ipstate = index_prodstate(istate,pstate) + (ispin-1) * index_prodstate(nvirtual_W-1,nvirtual_W-1)
-         bra(:,pstate) = wpol%residu_left(ipstate,:)
+         bra(:,pstate) = wpol%residue_left(ipstate,:)
        end do
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-       bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residu_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
+       bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
        call xsum_auxil(bra)
      endif
 
 
-     ! The application of residu theorem only retains the pole in certain
+     ! The application of residue theorem only retains the pole in certain
      ! quadrants.
      ! The positive poles of W go with the poles of occupied states in G
      ! The negative poles of W go with the poles of empty states in G

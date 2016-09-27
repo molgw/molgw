@@ -49,7 +49,7 @@ module m_spectral_function
                                                       ! transition index to state pair indexes
 
    real(dp),allocatable :: pole(:)
-   real(dp),allocatable :: residu_left(:,:)       ! first index runs on n, second index on i
+   real(dp),allocatable :: residue_left(:,:)       ! first index runs on n, second index on i
 
    !
    ! Static W might be stored directly in the auxiliary basis
@@ -266,7 +266,7 @@ subroutine allocate_spectral_function(nprodbasis,sf)
  write(stdout,'(a,i8)')   ' Spectral function initialized with resonant poles         : ',sf%npole_reso
 
  allocate(sf%pole(sf%npole_reso))
- call clean_allocate('left residu',sf%residu_left,sf%nprodbasis,sf%npole_reso)
+ call clean_allocate('Left residue',sf%residue_left,sf%nprodbasis,sf%npole_reso)
  
 
 end subroutine allocate_spectral_function
@@ -328,11 +328,11 @@ subroutine destroy_spectral_function(sf)
 
  if(ALLOCATED(sf%transition_table)) deallocate(sf%transition_table)
  if(ALLOCATED(sf%pole))             deallocate(sf%pole)
- if(ALLOCATED(sf%residu_left)) then
-   call clean_deallocate('left residu',sf%residu_left)
+ if(ALLOCATED(sf%residue_left)) then
+   call clean_deallocate('Left residue',sf%residue_left)
  endif
  if(ALLOCATED(sf%w0)) then
-   call clean_deallocate('static W',sf%w0)
+   call clean_deallocate('Static W',sf%w0)
  endif
 
  write(stdout,'(/,a)') ' Spectral function destroyed'
@@ -404,7 +404,7 @@ subroutine write_spectral_function(sf)
    write(wfile) npole_write
    write(wfile) sf%pole(index_pole(:))
    do ipole_write=1,npole_write
-     write(wfile) sf%residu_left(:,index_pole(ipole_write))
+     write(wfile) sf%residue_left(:,index_pole(ipole_write))
    enddo
 
    close(wfile)
@@ -434,24 +434,24 @@ subroutine write_spectral_function(sf)
 
  if( has_auxil_basis ) then
    !
-   ! Write the residu in "the" universal ordering that does not depend on the
+   ! Write the residue in "the" universal ordering that does not depend on the
    ! data distribution
    allocate(buffer(sf%npole_reso))
    do ibf_auxil=1,nauxil_2center
      if( rank_auxil == iproc_ibf_auxil(ibf_auxil) ) then
-       buffer(:) = sf%residu_left(ibf_auxil_l(ibf_auxil),:)
+       buffer(:) = sf%residue_left(ibf_auxil_l(ibf_auxil),:)
        call MPI_FILE_WRITE_AT(wfile,disp,buffer,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
 
 
      endif
-     disp = disp + sf%npole_reso * SIZEOF(sf%residu_left(1,1))
+     disp = disp + sf%npole_reso * SIZEOF(sf%residue_left(1,1))
    enddo
    deallocate(buffer)
  else
    if(is_iomaster) then
      do iprodbasis=1,sf%nprodbasis
-       call MPI_FILE_WRITE_AT(wfile,disp,sf%residu_left(iprodbasis,:),sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
-       disp = disp + sf%npole_reso * SIZEOF(sf%residu_left(1,1))
+       call MPI_FILE_WRITE_AT(wfile,disp,sf%residue_left(iprodbasis,:),sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
+       disp = disp + sf%npole_reso * SIZEOF(sf%residue_left(1,1))
      enddo
    endif
  endif
@@ -508,7 +508,7 @@ subroutine read_spectral_function(sf,reading_status)
 
  read(wfile) sf%pole(:)
  do ipole_read=1,npole_read
-   read(wfile) sf%residu_left(:,ipole_read)
+   read(wfile) sf%residue_left(:,ipole_read)
  enddo
 
  reading_status=0
@@ -546,21 +546,21 @@ subroutine read_spectral_function(sf,reading_status)
 
  if( has_auxil_basis ) then
    !
-   ! Read the residu from "the" universal ordering that does not depend on the
+   ! Read the residue from "the" universal ordering that does not depend on the
    ! data distribution
    allocate(buffer(sf%npole_reso))
    do ibf_auxil=1,nauxil_2center
      if( rank_auxil == iproc_ibf_auxil(ibf_auxil) ) then
        call MPI_FILE_READ_AT(wfile,disp,buffer,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
-       sf%residu_left(ibf_auxil_l(ibf_auxil),:) = buffer(:)
+       sf%residue_left(ibf_auxil_l(ibf_auxil),:) = buffer(:)
      endif
-     disp = disp + sf%npole_reso * SIZEOF(sf%residu_left(1,1))
+     disp = disp + sf%npole_reso * SIZEOF(sf%residue_left(1,1))
    enddo
    deallocate(buffer)
  else
    do iprodbasis=1,sf%nprodbasis
-     call MPI_FILE_READ_AT(wfile,disp,sf%residu_left(iprodbasis,:),sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
-     disp = disp + sf%npole_reso * SIZEOF(sf%residu_left(1,1))
+     call MPI_FILE_READ_AT(wfile,disp,sf%residue_left(iprodbasis,:),sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
+     disp = disp + sf%npole_reso * SIZEOF(sf%residue_left(1,1))
    enddo
  endif
 

@@ -119,7 +119,7 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,
 
 
 
-     ! The application of residu theorem only retains the pole in certain
+     ! The application of residue theorem only retains the pole in certain
      ! quadrants.
      ! The positive poles of W go with the poles of occupied states in G
      ! The negative poles of W go with the poles of empty states in G
@@ -342,7 +342,7 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
 
 
 
-     ! The application of residu theorem only retains the pole in certain
+     ! The application of residue theorem only retains the pole in certain
      ! quadrants.
      ! The positive poles of W go with the poles of occupied states in G
      ! The negative poles of W go with the poles of empty states in G

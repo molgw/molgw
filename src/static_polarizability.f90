@@ -43,7 +43,7 @@ subroutine static_polarizability(nstate,occupation,energy,wpol_out)
    call die('static_polarizability requires an auxiliary basis')
  endif
 
- call clean_allocate('static W',wpol_out%w0,nauxil_2center,nauxil_2center)
+ call clean_allocate('Static W',wpol_out%w0,nauxil_2center,nauxil_2center)
  
  call clean_allocate('temp chi0 matrix',vsqchi0vsq,nauxil_2center,nauxil_2center)
 

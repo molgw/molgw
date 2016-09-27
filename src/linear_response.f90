@@ -391,7 +391,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  real(dp)                           :: oscillator_strength,trk_sumrule,mean_excitation
  real(dp),allocatable               :: dipole_basis(:,:,:),dipole_tmp(:,:,:),dipole_state(:,:,:,:)
  real(dp),allocatable               :: dipole_cart(:,:,:)
- real(dp),allocatable               :: residu(:,:)
+ real(dp),allocatable               :: residue(:,:)
  integer                            :: dynpolfile
  integer                            :: photocrossfile
  integer                            :: parityi,parityj,reflectioni,reflectionj
@@ -476,9 +476,9 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  deallocate(dipole_basis,dipole_tmp)
 
 
- allocate(residu(3,nexc))
+ allocate(residue(3,nexc))
 
- residu(:,:) = 0.0_dp
+ residue(:,:) = 0.0_dp
  do t_ia=1,m_x
    t_ia_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ia)
    istate = chi%transition_table_apb(1,t_ia_global)
@@ -490,13 +490,13 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
      t_jb_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_jb)
 
      if( t_jb_global <= nexc) then
-       residu(:,t_jb_global) = residu(:,t_jb_global) &
+       residue(:,t_jb_global) = residue(:,t_jb_global) &
                     + dipole_state(:,istate,astate,iaspin) * xpy_matrix(t_ia,t_jb) * SQRT(spin_fact)
      endif
    enddo
 
  enddo
- call xsum_world(residu)
+ call xsum_world(residue)
 
  deallocate(dipole_state)
 
@@ -511,7 +511,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
    if( is_triplet ) then 
      oscillator_strength = 0.0_dp
    else
-     oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residu(:,t_jb_global),residu(:,t_jb_global)) * eigenvalue(t_jb_global)
+     oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residue(:,t_jb_global),residue(:,t_jb_global)) * eigenvalue(t_jb_global)
    endif
    trk_sumrule = trk_sumrule + oscillator_strength
    mean_excitation = mean_excitation + oscillator_strength * LOG( eigenvalue(t_jb_global) )
@@ -604,7 +604,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  ! For some calculation conditions, the rest of the subroutine is irrelevant
  ! So skip it! Skip it!
  if( is_triplet .OR. nexc /= chi%npole_reso_apb ) then
-   deallocate(residu)
+   deallocate(residue)
    return
  endif
 
@@ -628,10 +628,10 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
    do idir=1,3
      do jdir=1,3
        dynamical_pol(:,idir,jdir) = dynamical_pol(:,idir,jdir) &
-                            + residu(idir,t_ia) * residu(jdir,t_ia) &
+                            + residue(idir,t_ia) * residue(jdir,t_ia) &
                               * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ia) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ia) ) ) )
        static_polarizability(idir,jdir) = static_polarizability(idir,jdir) &
-                      + 2.0_dp * residu(idir,t_ia) * residu(jdir,t_ia) / eigenvalue(t_ia)
+                      + 2.0_dp * residue(idir,t_ia) * residue(jdir,t_ia) / eigenvalue(t_ia)
      enddo
    enddo
  enddo
@@ -678,7 +678,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  endif
 
 
- deallocate(residu)
+ deallocate(residue)
 
  call stop_clock(timing_spectrum)
 
@@ -723,7 +723,7 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
  complex(dpc)                       :: bethe_sumrule
  complex(dpc),allocatable           :: gos_basis(:,:),gos_tmp(:,:),gos_state(:,:,:)
  complex(dpc),allocatable           :: gos_cart(:,:)
- complex(dpc),allocatable           :: residu(:)
+ complex(dpc),allocatable           :: residue(:)
  real(dp)                           :: qvec(3)
  integer,parameter                  :: nq=0 ! 1000
  integer                            :: iq
@@ -839,9 +839,9 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
   
   
    nmat=chi%npole_reso_apb
-   allocate(residu(chi%npole_reso_apb))
+   allocate(residue(chi%npole_reso_apb))
   
-   residu(:) = 0.0_dp
+   residue(:) = 0.0_dp
    do t_ia=1,m_x
      t_ia_global = rowindex_local_to_global(iprow_sd,nprow_sd,t_ia)
      istate = chi%transition_table_apb(1,t_ia_global)
@@ -852,16 +852,16 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
      do t_jb=1,n_x
        t_jb_global = colindex_local_to_global(ipcol_sd,npcol_sd,t_jb)
   
-       residu(t_jb_global) = residu(t_jb_global) &
+       residue(t_jb_global) = residue(t_jb_global) &
                     + gos_state(istate,astate,iaspin) * xpy_matrix(t_ia,t_jb) * SQRT(spin_fact)
      enddo
   
    enddo
-   call xsum_world(residu)
+   call xsum_world(residue)
   
    deallocate(gos_state)
 
-   fnq(:) = 2.0_dp * ABS( residu(:) )**2 * eigenvalue(:) / SUM( qvec(:)**2 )
+   fnq(:) = 2.0_dp * ABS( residue(:) )**2 * eigenvalue(:) / SUM( qvec(:)**2 )
 
    write(stdout,*) 'bethe_sumrule',NORM2(qvec(:)),SUM(fnq(:))
 
@@ -870,7 +870,7 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
    dynamical_pol(:) = 0.0_dp
    do t_ia=1,nmat
      dynamical_pol(:) = dynamical_pol(:) &
-                       + ABS(residu(t_ia))**2 &
+                       + ABS(residue(t_ia))**2 &
                         * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ia) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ia) ) ) )
    enddo
 !   !
@@ -883,7 +883,7 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
 !   write(999,*)
 
 
-   deallocate(residu)
+   deallocate(residue)
 
 !   write(998,*) SUM( qvec(:)**2 ), fnq(6)
 
@@ -1012,7 +1012,7 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
 
  nmat = wpol%npole_reso_apb
 
- wpol%residu_left(:,:) = 0.0_dp
+ wpol%residue_left(:,:) = 0.0_dp
  do t_jb=1,nmat 
    jstate = wpol%transition_table_apb(1,t_jb)
    bstate = wpol%transition_table_apb(2,t_jb)
@@ -1033,7 +1033,7 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
          ! Use the symmetry ( k l | i j ) to regroup (kl) and (lk) contributions
          ! and the block structure of eigenvector | X  Y |
          !                                        | Y  X |
-         wpol%residu_left(mpstate_spin,:) = wpol%residu_left(mpstate_spin,:) &
+         wpol%residue_left(mpstate_spin,:) = wpol%residue_left(mpstate_spin,:) &
                               + eri_eigen_klij * xpy_matrix(t_jb,:)
 
        enddo
@@ -1042,7 +1042,7 @@ subroutine chi_to_vchiv(nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol)
 
  enddo
 
- wpol%residu_left(:,:) = wpol%residu_left(:,:) * SQRT(spin_fact)
+ wpol%residue_left(:,:) = wpol%residue_left(:,:) * SQRT(spin_fact)
 
 
 
@@ -1106,11 +1106,11 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,w
  ! and the block structure of eigenvector | X  Y |
  !                                        | Y  X |
  ! => only needs (X+Y)
- wpol%residu_left(:,:) = MATMUL( eri_3tmp , xpy_matrix(:,:) ) * SQRT(spin_fact)
+ wpol%residue_left(:,:) = MATMUL( eri_3tmp , xpy_matrix(:,:) ) * SQRT(spin_fact)
 
- energy_gm = 0.5_dp * ( SUM( wpol%residu_left(:,:)**2 ) - spin_fact * SUM( eri_3tmp(:,:)**2 ) )
+ energy_gm = 0.5_dp * ( SUM( wpol%residue_left(:,:)**2 ) - spin_fact * SUM( eri_3tmp(:,:)**2 ) )
  !
- ! Since wpol%residu_left and eri_3tmp are distributed, we have to sum up
+ ! Since wpol%residue_left and eri_3tmp are distributed, we have to sum up
  call xsum_auxil(energy_gm)
 
  deallocate(eri_3tmp)
@@ -1152,11 +1152,11 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,w
 
 
  call PDGEMR2D(nauxil_2center,nmat,vsqrt_xpy,1,1,desc_sd, &
-                            wpol%residu_left,1,1,desc_auxil,cntxt_sd)
+                            wpol%residue_left,1,1,desc_auxil,cntxt_sd)
  !
  ! Do not forget ortho parallelization direction
  if( nproc_ortho > 1 ) then
-   call xbcast_ortho(0,wpol%residu_left)
+   call xbcast_ortho(0,wpol%residue_left)
  endif
 
  call clean_deallocate('TMP v**1/2 * (X+Y)',vsqrt_xpy)
@@ -1170,7 +1170,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,w
    energy_gm = energy_gm - SUM( eri_3center_eigen(:,jstate,bstate,jbspin)**2 ) * spin_fact * 0.5_dp
  enddo
 
- energy_gm = energy_gm + 0.5_dp * ( SUM( wpol%residu_left(:,:)**2 ) )
+ energy_gm = energy_gm + 0.5_dp * ( SUM( wpol%residue_left(:,:)**2 ) )
  call xsum_auxil(energy_gm)
 
 
@@ -1212,7 +1212,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,a_diag,wpol)
    jbspin = wpol%transition_table_spa(3,t_jb)
 
 
-   wpol%residu_left(:,wpol%npole_reso_apb+t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin) * SQRT(spin_fact) 
+   wpol%residue_left(:,wpol%npole_reso_apb+t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin) * SQRT(spin_fact) 
 
  end do
 

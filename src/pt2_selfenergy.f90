@@ -228,8 +228,8 @@ subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c
    bstate = vsqrtchi0vsqrt%transition_table_apb(2,t_jb)
    jbspin = vsqrtchi0vsqrt%transition_table_apb(3,t_jb)
 
-   vsqrtchi0vsqrt%residu_left(:,t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin) * SQRT(spin_fact)
-   vsqrtchi0vsqrt%pole(t_jb)          = energy(bstate,jbspin) - energy(jstate,jbspin)
+   vsqrtchi0vsqrt%residue_left(:,t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin) * SQRT(spin_fact)
+   vsqrtchi0vsqrt%pole(t_jb)           = energy(bstate,jbspin) - energy(jstate,jbspin)
 
  end do
 
