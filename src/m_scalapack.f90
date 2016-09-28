@@ -1203,6 +1203,7 @@ subroutine invert_sca(desc,matrix,matrix_inv)
  integer  :: lwork,liwork
 !=====
 
+#ifdef HAVE_SCALAPACK
  n = desc(M_A)
  mlocal = SIZE( matrix , DIM=1 )
  nlocal = SIZE( matrix , DIM=2 )
@@ -1230,7 +1231,7 @@ subroutine invert_sca(desc,matrix,matrix_inv)
 
  deallocate(ipiv)
  deallocate(work,iwork)
-
+#endif
 
 end subroutine invert_sca
 
@@ -1443,6 +1444,7 @@ subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
 
 #endif
 
+#ifdef HAVE_SCALAPACK
  !
  ! Create the SCALAPACK context cntxt_auxil 
  ! that precisely matches the MPI_COMMUNICATOR comm_auxil
@@ -1463,6 +1465,7 @@ subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
  call BLACS_GRIDINFO(cntxt_auxil,nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil)
  call xmax_ortho(nprow_auxil)
  call xmax_ortho(npcol_auxil)
+#endif
 
 
 #ifdef DEBUG

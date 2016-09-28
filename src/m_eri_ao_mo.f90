@@ -162,7 +162,7 @@ subroutine calculate_eri_3center_eigen(nbf,nstate,c_matrix,mstate_min,mstate_max
  call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_3center,mstate_min,mstate_max,nstate_min,nstate_max,1,nspin)
  eri_3center_eigen(:,:,:,:) = 0.0_dp
 
- allocate(eri_3center_tmp_l(nauxil_3center,nbf))
+ call clean_allocate('TMP 3-center ints',eri_3center_tmp_l,nauxil_3center,nbf)
 
  do klspin=1,nspin
 
@@ -189,7 +189,8 @@ subroutine calculate_eri_3center_eigen(nbf,nstate,c_matrix,mstate_min,mstate_max
    enddo
 
  enddo ! klspin
- deallocate(eri_3center_tmp_l)
+
+ call clean_deallocate('TMP 3-center ints',eri_3center_tmp_l)
 
  call xsum_ortho(eri_3center_eigen)
 
