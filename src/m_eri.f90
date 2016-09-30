@@ -29,7 +29,7 @@ module m_eri
  real(prec_eri),public,allocatable :: eri_3center_lr(:,:)
 
  logical,protected,allocatable      :: negligible_shellpair(:,:)
- integer,protected,allocatable      :: index_pair(:,:)
+ integer,protected,allocatable      :: index_pair_1d(:)
  integer,protected,allocatable      :: index_basis(:,:)
  integer,protected,allocatable      :: index_shellpair(:,:)
  integer,protected                  :: nshellpair
@@ -187,8 +187,8 @@ subroutine deallocate_eri()
  endif
  if(ALLOCATED(negligible_shellpair))   deallocate(negligible_shellpair)
  if(ALLOCATED(index_shellpair))        deallocate(index_shellpair)
- if(ALLOCATED(index_pair))  call clean_deallocate('index pair',index_pair)
- if(ALLOCATED(index_basis)) call clean_deallocate('index basis',index_basis)
+ if(ALLOCATED(index_pair_1d)) call clean_deallocate('index pair',index_pair_1d)
+ if(ALLOCATED(index_basis))   call clean_deallocate('index basis',index_basis)
 
  ! 
  ! Cleanly deallocate the shell objects
@@ -209,7 +209,7 @@ subroutine deallocate_index_pair()
  implicit none
 
 !=====
- call clean_deallocate('index pair',index_pair)
+ call clean_deallocate('index pair',index_pair_1d)
 
 end subroutine deallocate_index_pair
 
@@ -217,10 +217,10 @@ end subroutine deallocate_index_pair
 !=========================================================================
 function index_eri(ibf,jbf,kbf,lbf)
  implicit none
+
  integer,intent(in) :: ibf,jbf,kbf,lbf
  integer            :: index_eri
 !=====
-! integer            :: imin,jmax,kmin,lmax
  integer            :: klmin,ijmax
  integer            :: index_ij,index_kl
 !===== 
@@ -235,6 +235,31 @@ function index_eri(ibf,jbf,kbf,lbf)
 
 
 end function index_eri
+
+
+!=========================================================================
+function index_pair(ibf,jbf)
+ implicit none
+
+ integer,intent(in) :: ibf,jbf
+ integer            :: index_pair
+!=====
+ integer            :: ijmin,ijmax
+!=====
+
+ if( ibf == jbf ) then
+   index_pair = ibf
+ else
+   ijmax=MAX(ibf,jbf)
+   ijmin=MIN(ibf,jbf)
+
+   index_pair = (ijmin-1) * (nbf_eri-1) - (ijmin-1) * (ijmin-2)/2     + ijmax - ijmin + nbf_eri
+
+   index_pair = index_pair_1d(index_pair)
+ endif
+
+
+end function index_pair
 
 
 !=========================================================================
@@ -430,7 +455,7 @@ subroutine setup_basispair()
  implicit none
 !=====
  integer :: ishell,jshell
- integer :: ibf,jbf
+ integer :: ibf,jbf,ijbf
 !=====
 
  npair = 0
@@ -442,31 +467,33 @@ subroutine setup_basispair()
    enddo
  enddo
 
- call clean_allocate('index pair',index_pair,nbf_eri,nbf_eri)
+ call clean_allocate('index pair',index_pair_1d,(nbf_eri*(nbf_eri+1))/2)
  call clean_allocate('index basis',index_basis,2,npair)
 
  !
  ! Specific ordering where the first nbf pairs contain the diagonal terms ibf==jbf
  !
  npair = 0
- index_pair(:,:) = 0
+ index_pair_1d(:) = 0
  do jbf=1,nbf_eri
    if( negligible_basispair(jbf,jbf) ) then
      call die('setup_negligible_basispair: this should not happen')
    endif
    npair = npair + 1
-   index_pair(jbf,jbf) = npair
-   index_pair(jbf,jbf) = npair
+   index_pair_1d(jbf) = npair
+   index_pair_1d(jbf) = npair
    index_basis(1,npair) = jbf
    index_basis(2,npair) = jbf
  enddo
 
- do jbf=1,nbf_eri
-   do ibf=1,jbf-1   ! Skip the diagonal terms since it is already included 
+ ijbf = nbf_eri
+
+ do ibf=1,nbf_eri 
+   do jbf=ibf+1,nbf_eri  ! Skip the diagonal terms since it is already included 
+     ijbf = ijbf + 1
      if( .NOT. negligible_basispair(ibf,jbf) ) then
        npair = npair + 1
-       index_pair(ibf,jbf) = npair
-       index_pair(jbf,ibf) = npair
+       index_pair_1d(ijbf) = npair
        index_basis(1,npair) = ibf
        index_basis(2,npair) = jbf
      endif

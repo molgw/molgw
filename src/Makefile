@@ -287,7 +287,7 @@ tarball:
 
 archive:
 	tar czf molgw.tgz ../../molgw/README.md ../../molgw/COPYING ../../molgw/src/Makefile    \
-                          ../../molgw/src/*.py ../../molgw/src/*.f90 ../../molgw/src/*.f ../../molgw/src/*.c \
+                          ../../molgw/src/*.py ../../molgw/src/*.f90 ../../molgw/src/*.f ../../molgw/src/*.cc \
                           ../../molgw/basis/* ../../molgw/utils/* ../../molgw/tests/*            \
                           ../../molgw/docs/* ../../molgw/config/*           \
                           ../../molgw/src/my_machine.arch

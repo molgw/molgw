@@ -15,6 +15,7 @@ module m_memory
                                              ! by the big arrays in Mb
 
  interface clean_allocate
+  module procedure clean_allocate_i1d
   module procedure clean_allocate_i2d
   module procedure clean_allocate_s1d
   module procedure clean_allocate_s2d
@@ -30,6 +31,7 @@ module m_memory
  end interface
 
  interface clean_deallocate
+  module procedure clean_deallocate_i1d
   module procedure clean_deallocate_i2d
   module procedure clean_deallocate_s1d
   module procedure clean_deallocate_s2d
@@ -70,6 +72,42 @@ subroutine total_memory_statement()
  write(stdout,*)
 
 end subroutine total_memory_statement
+
+
+!=========================================================================
+subroutine clean_allocate_i1d(array_name,array,n1)
+ implicit none
+
+ character(len=*),intent(in)       :: array_name
+ integer,allocatable,intent(inout) :: array(:)
+ integer,intent(in)                :: n1
+!=====
+ integer             :: info
+ real(dp)            :: mem_mb
+!=====
+
+ if( ALLOCATED(array) ) then
+   call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
+ endif
+
+ mem_mb = REAL(4,dp) * REAL(n1,dp) / 1024._dp**2
+
+ ! The allocation itself
+ allocate(array(n1),stat=info)
+
+ if(info/=0) then
+   write(stdout,'(a,a)')    ' Failure when allocating ',array_name
+   write(stdout,'(a,f9.3)') ' with size (Mb) ',mem_mb
+   call die('clean_allocate: Not enough memory. Buy a bigger computer')
+ endif
+
+
+ total_memory = total_memory + mem_mb
+ peak_memory = MAX(peak_memory,total_memory)
+
+ call write_memory_allocate(array_name,mem_mb)
+
+end subroutine clean_allocate_i1d
 
 
 !=========================================================================
@@ -351,6 +389,34 @@ subroutine clean_allocate_4d_range(array_name,array,n1s,n1f,n2s,n2f,n3s,n3f,n4s,
  call write_memory_allocate(array_name,mem_mb) 
 
 end subroutine clean_allocate_4d_range
+
+
+!=========================================================================
+subroutine clean_deallocate_i1d(array_name,array)
+ implicit none
+
+ character(len=*),intent(in)       :: array_name
+ integer,allocatable,intent(inout) :: array(:)
+!=====
+ integer             :: info
+ real(dp)            :: mem_mb
+ integer             :: n1
+!=====
+
+ if( .NOT. ALLOCATED(array) ) return
+
+ n1 = SIZE(array(:),DIM=1)
+
+ mem_mb = REAL(4,dp) * REAL(n1,dp) / 1024._dp**2
+
+ ! The allocation itself
+ deallocate(array)
+
+ total_memory = total_memory - mem_mb
+
+ call write_memory_deallocate(array_name,mem_mb)
+
+end subroutine clean_deallocate_i1d
 
 
 !=========================================================================
