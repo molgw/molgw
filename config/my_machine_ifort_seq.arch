@@ -1,14 +1,15 @@
 OPENMP= 
 PYTHON=python
+LIBTOOL=libtool --mode=link --tag=FC
 
 # Sequential compilation
 FC=ifort -fpp -DHAVE_LIBXC 
 
 CPPFLAGS= -DHAVE_LIBXC
 
-CC=icc
+CXX=icpc
 FCOPTS= -O3 -xhost -parallel -opt-matmul
-CCOPTS= -O3 -xhost  
+CXXOPTS= -O3 -xhost  
 
 LAPACK= -mkl=parallel
 

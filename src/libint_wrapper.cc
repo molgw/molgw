@@ -17,8 +17,9 @@ int nint(int am);
 int max4(int am0, int am1, int am2, int am3);
 void calc_boys(double*, int, double);
 
-int libint_init();
+extern "C" int libint_init();
 
+extern "C"
 int eval_contr_integral(
                         int *am0_in, int *am1_in, int *am2_in, int *am3_in,
                         int *ncontr0, int *ncontr1, int *ncontr2, int *ncontr3,
@@ -42,12 +43,15 @@ void prep_libint2_contr(Libint_t *erieval,
 
 /* Then the real coding */
 
+extern "C" {
 int libint_init() {
   /* this initializes internal Libint data structures -- must happen once in the program */
   LIBINT2_PREFIXED_NAME(libint2_static_init)();
   return LIBINT2_MAX_AM_ERI;
 }
+}
 
+extern "C" {
 int eval_contr_integral(
                         int *am0_in, int *am1_in, int *am2_in, int *am3_in,
                         int *ncontr0, int *ncontr1, int *ncontr2, int *ncontr3,
@@ -118,6 +122,7 @@ int eval_contr_integral(
 
  return 0;
 
+}
 }
 
 /* Number of cartesian function for a given angular momentum */

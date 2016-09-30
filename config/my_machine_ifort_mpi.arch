@@ -1,14 +1,15 @@
 OPENMP= 
 PYTHON=python
+LIBTOOL=libtool --mode=link --tag=FC
 
 # Parallel MPI SCALAPACK compilation
 FC=mpif90 -fpp
 
 CPPFLAGS= -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK
 
-CC=icc
+CXX=icpc
 FCOPTS= -O3 -xhost -opt-matmul
-CCOPTS= -O3 -xhost  
+CXXOPTS= -O3 -xhost  
 
 LAPACK= -mkl=sequential
 

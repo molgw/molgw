@@ -2,10 +2,11 @@ OPENMP=
 
 PYTHON=python
 FC=gfortran
-CC=gcc
-FCOPTS= -O0
-CCOPTS= 
+CXX=g++
+FCOPTS=
+CXXOPTS= 
 CPPFLAGS=
+LIBTOOL=
 
 LAPACK=
 
@@ -18,7 +19,8 @@ LIBINT_ROOT=
 include ./my_machine.arch
 
 FC_W_OPTS= $(FC) $(FCOPTS) $(OPENMP) $(CPPFLAGS)
-CC_W_OPTS= $(CC) $(CCOPTS)
+CXX_W_OPTS= $(CXX) $(CXXOPTS)
+LINKER= $(LIBTOOL) $(FC_W_OPTS)
 
 LINKS= -lstdc++ -lm
 LIBXC_INCS=-I$(LIBXC_ROOT)/include
@@ -92,7 +94,7 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
         m_virtual_orbital_space.o pt2_selfenergy.o \
         linear_response.o static_polarizability.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o dft_xc.o io.o restart.o mp2.o m_scf_loop.o selfenergy_evaluation.o \
         molgw.o
-	$(FC_W_OPTS) \
+	$(LINKER) \
                         m_definitions.o m_warning.o m_elements.o m_mpi.o m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_local.o m_mpi_trans.o \
                         m_scalapack.o m_timing.o m_memory.o m_inputparam.o \
                         m_tools.o m_scf.o m_selfenergy_tools.o m_atoms.o \
@@ -164,7 +166,7 @@ dft_xc.o: m_definitions.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90 m_mpi.f90 dft
 io.o: my_machine.arch m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 revision.f90 io.f90
 	$(FC_W_OPTS) -c io.f90 $(LIBXC_INCS)
 
-restart.o: my_machine.arch m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 m_hamiltonian.f90 restart.f90
+restart.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 m_hamiltonian.f90 restart.f90
 	$(FC_W_OPTS) -c restart.f90 $(LIBXC_INCS)
 
 mp2.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_mpi.f90 m_basis_set.f90 m_eri.f90 mp2.f90 
@@ -184,8 +186,8 @@ pdbssolver1.o: pdbssolver1.f
 lebedev_quadrature.o: lebedev_quadrature.f
 	$(FC_W_OPTS) -c lebedev_quadrature.f $(LIBXC_INCS)
 
-libint_wrapper.o: libint_wrapper.c
-	$(CC_W_OPTS) -c libint_wrapper.c $(LIBINT_INCS)
+libint_wrapper.o: libint_wrapper.cc
+	$(CXX_W_OPTS) -c libint_wrapper.cc $(LIBINT_INCS)
 
 m_dft_grid.o: m_definitions.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_atoms.f90 m_mpi.f90 m_basis_set.f90 m_dft_grid.f90
 	$(FC_W_OPTS) -c m_dft_grid.f90 $(LIBXC_INCS)

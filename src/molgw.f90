@@ -21,7 +21,7 @@
 ! It consists of 3 parts:
 !   1. Initialization
 !   2. SCF cycles
-!   3. Post-processings: self-energy, MP2, CI, TDDFT etc.
+!   3. Post-processings: GW, MP2, CI, TDDFT etc.
 !
 !=========================================================================
 program molgw
