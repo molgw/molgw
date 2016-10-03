@@ -1,20 +1,19 @@
-OPENMP=
+# This file is part of MOLGW
+# Author: Fabien Bruneval
 
 PYTHON=python
 FC=gfortran
 CXX=g++
 FCOPTS=
 CXXOPTS= 
+OPENMP=
 CPPFLAGS=
 LIBTOOL=
-
 LAPACK=
-
 SCALAPACK=
+#LIBXC_ROOT= 
+#LIBINT_ROOT=
 
-LIBXC_ROOT= 
-
-LIBINT_ROOT=
 
 include ./my_machine.arch
 

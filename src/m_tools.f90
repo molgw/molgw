@@ -633,7 +633,7 @@ subroutine boys_function(fnt,n,t)
 
  if(n>maxfac) call die(' boys function Fm(t) for a too high m value')
 
- if( ABS(df(1))<1.d-10 ) then
+ if( ABS(df(1)) < 1.0e-10_dp ) then
 !   write(stdout,*) 'initialize df'
    df(1:3) = 1.0_dp
    do i=4,2*maxfac
@@ -641,11 +641,11 @@ subroutine boys_function(fnt,n,t)
    enddo
  endif
 
- if( t > 20.0 ) then ! For big t's do upward recursion 
-   t2 = 2 * t
-   et = exp(-t)
-   tt  = sqrt(t)
-   fnt(0) = kk *erf(tt) / tt
+ if( t > 20.0_dp ) then ! For big t's do upward recursion 
+   t2 = 2.0_dp * t
+   et = EXP(-t)
+   tt  = SQRT(t)
+   fnt(0) = kk * ERF(tt) / tt
    do m=0,n-1
      fnt(m+1) = ( (2*m+1) * fnt(m) - et ) / t2
    enddo
@@ -656,7 +656,7 @@ subroutine boys_function(fnt,n,t)
    !   Methods in Computational Physics, ed. B. Alder eta l,
    !   vol 2, 1963, page 8)
 
-   et = exp(-t)
+   et = EXP(-t)
    t2 = 2.0_dp * t
    m2 = 2 * n
    num = df(m2+1)
@@ -665,7 +665,7 @@ subroutine boys_function(fnt,n,t)
      num = num * t2
      term1 = num / df(m2 + 2*i + 3)
      sum = sum + term1
-     if(ABS(term1) < eps) exit
+     if( ABS(term1) < eps ) exit
    enddo
    fnt(n) = sum * et 
    !
