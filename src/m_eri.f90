@@ -84,16 +84,24 @@ module m_eri
                                 x01,x02,x03,x04,&
                                 rcut, &
                                 int_shell) bind(C,name='eval_contr_integral')
-    use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
-    integer(C_INT) :: eval_contr_integral
-    integer(C_INT) :: am1,am2,am3,am4
-    integer(C_INT) :: ng1,ng2,ng3,ng4
-    real(C_DOUBLE) :: coeff1(1),coeff2(1),coeff3(1),coeff4(1)
-    real(C_DOUBLE) :: alpha1(1),alpha2(1),alpha3(1),alpha4(1)
-    real(C_DOUBLE) :: x01(1),x02(1),x03(1),x04(1)
-    real(C_DOUBLE) :: rcut
-    real(C_DOUBLE) :: int_shell(1)
+     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     integer(C_INT) :: eval_contr_integral
+     integer(C_INT) :: am1,am2,am3,am4
+     integer(C_INT) :: ng1,ng2,ng3,ng4
+     real(C_DOUBLE) :: coeff1(1),coeff2(1),coeff3(1),coeff4(1)
+     real(C_DOUBLE) :: alpha1(1),alpha2(1),alpha3(1),alpha4(1)
+     real(C_DOUBLE) :: x01(1),x02(1),x03(1),x04(1)
+     real(C_DOUBLE) :: rcut
+     real(C_DOUBLE) :: int_shell(1)
    end function eval_contr_integral
+
+   subroutine boys_function_c(fnt,n,t) BIND(C,NAME='boys_function_c')
+     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     integer(C_INT),value       :: n
+     real(C_DOUBLE),value       :: t
+     real(C_DOUBLE),intent(out) :: fnt(0:n)
+   end subroutine boys_function_c
+   
  end interface
 
 
@@ -531,7 +539,6 @@ end function negligible_basispair
 !
 !=========================================================================
 subroutine identify_negligible_shellpair(basis)
- use m_tools,only: boys_function
  implicit none
 
  type(basis_set),intent(in)   :: basis
@@ -631,7 +638,7 @@ subroutine identify_negligible_shellpair(basis)
                rho1 = zeta_12 * zeta_12 / ( zeta_12 + zeta_12 )
                rho  = rho1
                tt = rho * SUM( (p(:)-q(:))**2 )
-               call boys_function(f0t(0),0,tt)
+               call boys_function_c(f0t(0),0,tt)
 
                integrals_cart(1,1,1,1) = integrals_cart(1,1,1,1) + &
                      2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_12 ) * f0t(0) &

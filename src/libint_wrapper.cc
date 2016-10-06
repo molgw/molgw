@@ -15,7 +15,7 @@
 /* First, the interfaces */
 int nint(int am);
 int max4(int am0, int am1, int am2, int am3);
-void calc_boys(double*, int, double);
+extern "C" void boys_function_c(double*, int, double);
 
 extern "C" int libint_init();
 
@@ -334,14 +334,16 @@ void prep_libint2_contr(Libint_t* erieval,
   double pfac = 2 * pow(M_PI, 2.5) * K1 * K2 / (gammap * gammaq * sqrt(gammap + gammaq));
   pfac *= norm_prefactor;
 
+/*
   if (norm_flag > 0) {
-    /*    pfac *= norm_const(l1,m1,n1,alpha1,A);
+     pfac *= norm_const(l1,m1,n1,alpha1,A);
      pfac *= norm_const(l2,m2,n2,alpha2,B);
      pfac *= norm_const(l3,m3,n3,alpha3,C);
-     pfac *= norm_const(l4,m4,n4,alpha4,D);*/
+     pfac *= norm_const(l4,m4,n4,alpha4,D);
   }
+*/
 
-  calc_boys(F, am, PQ2 * gammapq_rc2);
+  boys_function_c(F, am, PQ2 * gammapq_rc2);
 
   // using dangerous macros from libint2.h
 #if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(0))
@@ -409,74 +411,4 @@ void prep_libint2_contr(Libint_t* erieval,
 #endif
 
 }
-
-void calc_boys(double *F, int n, double t) {
-  int i, m, k;
-  int m2;
-  double t2;
-  double num;
-  double sum;
-  double term1, term2;
-  static double K = 1.0 / M_2_SQRTPI;
-  double et;
-  double doublefac[2*MAXFAC_BOYS];
-
-
-  for(i=0; i<2*MAXFAC_BOYS; ++i) doublefac[i] = 0.0;
-/* Recalculate the constant array all the time: This is a small waste */
-
-  doublefac[0] = 1.0;
-  doublefac[1] = 1.0;
-  doublefac[2] = 1.0;
-  for (i = 3; i < 2*MAXFAC_BOYS; i++) {
-      doublefac[i] = (i - 1) * doublefac[i - 2];
-  }
-
-/*
-  if (df == NULL) {
-    df = init_array(2 * MAXFAC_BOYS);
-    df[0] = 1.0;
-    df[1] = 1.0;
-    df[2] = 1.0;
-    for (i = 3; i < MAXFAC_BOYS * 2; i++) {
-      df[i] = (i - 1) * df[i - 2];
-    }
-  }
-*/
-
-  if (t > 20.0) { /* For big t's do upward recursion */
-    t2 = 2 * t;
-    et = exp(-t);
-    t = sqrt(t);
-    F[0] = K * erf(t) / t;
-    for (m = 0; m <= n - 1; m++) {
-      F[m + 1] = ((2 * m + 1) * F[m] - et) / (t2);
-    }
-  } else { /* For smaller t's compute F with highest n using
-   asymptotic series (see I. Shavitt in
-   Methods in Computational Physics, ed. B. Alder eta l,
-   vol 2, 1963, page 8) */
-
-    et = exp(-t);
-    t2 = 2 * t;
-    m2 = 2 * n;
-    num = doublefac[m2];
-    i = 0;
-    sum = 1.0 / (m2 + 1);
-    do {
-      i++;
-      num = num * t2;
-      term1 = num / doublefac[m2 + 2 * i + 2];
-      sum += term1;
-    } while (fabs(term1) > EPS_BOYS && i < MAXFAC_BOYS);
-    F[n] = sum * et;
-    for (m = n - 1; m >= 0; m--) { /* And then do downward recursion */
-      F[m] = (t2 * F[m + 1] + et) / (2 * m + 1);
-    }
-  }
-/* std::cout << "F[n] " <<  F[n] << std::endl; */
-}
-
-
-
 

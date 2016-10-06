@@ -22,6 +22,14 @@ module m_gaussian
    real(dp)         :: norm_factor   ! normalization factor for the gaussian squared
  end type gaussian
 
+ interface
+   subroutine boys_function_c(fnt,n,t) BIND(C,NAME='boys_function_c')
+     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     integer(C_INT),value       :: n
+     real(C_DOUBLE),value       :: t
+     real(C_DOUBLE),intent(out) :: fnt(0:n)
+   end subroutine boys_function_c
+ end interface
 
 contains
 
@@ -580,7 +588,6 @@ end subroutine kinetic_recurrence
 
 !=========================================================================
 subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
- use m_tools, only: boys_function
  implicit none
  real(dp),intent(in)       :: zatom,c(3)
  type(gaussian),intent(in) :: ga,gb
@@ -628,7 +635,7 @@ subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
 
  do mm=ga%am+gb%am,0,-1
    allocate(fmu(0:mm))
-   call boys_function(fmu,mm,bigu)
+   call boys_function_c(fmu,mm,bigu)
 
    !
    ! direction X

@@ -60,7 +60,6 @@ end subroutine calculate_eri_lr
 
 !=========================================================================
 subroutine calculate_eri_4center_lr(basis,rcut)
- use m_tools,only: boys_function
  implicit none
  type(basis_set),intent(in)   :: basis
  real(dp),intent(in)          :: rcut
@@ -173,7 +172,7 @@ subroutine calculate_eri_4center_lr(basis,rcut)
                rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 + zeta_12*zeta_34*rcut**2 )
                rho1 = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
                tt = rho * SUM( (p(:)-q(:))**2 )
-               call boys_function(f0t(0),0,tt)
+               call boys_function_c(f0t(0),0,tt)
 
                integrals_cart(1,1,1,1) = integrals_cart(1,1,1,1) + &
                      2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
@@ -299,7 +298,6 @@ end subroutine calculate_eri_4center_lr
 
 !=========================================================================
 subroutine calculate_eri_2center_lr(auxil_basis,rcut)
- use m_tools,only: boys_function
  implicit none
  type(basis_set),intent(in)   :: auxil_basis
  real(dp),intent(in)          :: rcut
@@ -470,7 +468,7 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
              rho1 = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
              
              tt = rho * SUM( (p(:)-q(:))**2 )
-             call boys_function(f0t(0),0,tt)
+             call boys_function_c(f0t(0),0,tt)
   
              integrals_cart(1,1) = integrals_cart(1,1) + &
                    2.0_dp * pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
@@ -752,7 +750,7 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
            rho1 = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
            
            tt = rho * SUM( (p(:)-q(:))**2 )
-           call boys_function(f0t(0),0,tt)
+           call boys_function_c(f0t(0),0,tt)
 
            integrals_cart(1,1) = integrals_cart(1,1) + &
                  2.0_dp * pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
@@ -900,7 +898,6 @@ end subroutine calculate_eri_2center_lr
 
 !=========================================================================
 subroutine calculate_eri_3center_lr(basis,auxil_basis,rcut)
- use m_tools,only: boys_function
  implicit none
  type(basis_set),intent(in)   :: basis
  type(basis_set),intent(in)   :: auxil_basis
@@ -1081,7 +1078,7 @@ subroutine calculate_eri_3center_lr(basis,auxil_basis,rcut)
                rho1 = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
                
                tt = rho * SUM( (p(:)-q(:))**2 )
-               call boys_function(f0t(0),0,tt)
+               call boys_function_c(f0t(0),0,tt)
 
                integrals_cart(1,1,1,1) = integrals_cart(1,1,1,1) + &
                      2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &

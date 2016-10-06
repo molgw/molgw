@@ -288,6 +288,185 @@ end subroutine setup_nucleus
 
 
 !=========================================================================
+subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
+ use m_basis_set
+ use m_atoms
+ implicit none
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(inout)     :: hamiltonian_nucleus(basis%nbf,basis%nbf)
+!=====
+ integer              :: natom_local
+ integer              :: ibf,jbf,kbf,lbf
+ integer              :: ibf_cart,jbf_cart
+ integer              :: i_cart,j_cart
+ integer              :: ni,nj,ni_cart,nj_cart,li,lj
+ integer              :: iatom
+ character(len=100)   :: title
+ real(dp),allocatable :: matrix_cart(:,:)
+ real(dp)             :: vnucleus_ij
+
+ type(basis_set)      :: ecp
+ real(dp)             :: x0(3)
+ logical,parameter    :: normalized=.TRUE.
+ integer              :: index_in_shell
+ integer              :: ll,nx,ny,nz
+ integer              :: shell_index
+ integer,parameter    :: ng=1
+ real(dp)             :: alpha(ng),coeff(ng)
+ integer,parameter    :: necp=1 ! 12
+ integer              :: ecp_l(necp)
+ real(dp)             :: ecp_d(necp)
+ real(dp)             :: ecp_zeta(necp)
+ integer              :: iecp
+ real(dp),allocatable :: proj_matrix(:,:)
+ integer              :: iproj,nproj
+!=====
+
+#if 0
+! S
+ ecp_l(1:2)  = 0
+ ecp_d(1)    = 399.9863990
+ ecp_zeta(1) = 34.1740010
+ ecp_d(2)    = 85.4897500
+ ecp_zeta(2) = 14.4563710
+! P
+ ecp_l   (3:6) = 1
+ ecp_d   (3) = 92.3810770
+ ecp_zeta(3) = 39.8886830
+ ecp_d   (4) = 184.7711760
+ ecp_zeta(4) = 39.6550170
+ ecp_d   (5) = 23.0025410
+ ecp_zeta(5) = 15.2905460
+ ecp_d   (6) = 46.0574270
+ ecp_zeta(6) = 14.9035240
+! Zn D
+ ecp_l   (7:10) = 2
+ ecp_d   ( 7) = -13.6907340
+ ecp_zeta( 7) =  43.7082960
+ ecp_d   ( 8) = -20.5439800
+ ecp_zeta( 8) =  43.6985360
+ ecp_d   ( 9) =  -1.3161540
+ ecp_zeta( 9) =  15.1507180
+ ecp_d   (10) =  -1.8387150
+ ecp_zeta(10) =  15.2824410
+!Zn F
+ ecp_l   (11:12) = 3
+ ecp_d   (11) =  -0.3703600
+ ecp_zeta(11) =   8.1600140
+ ecp_d   (12) =  -1.0629430
+ ecp_zeta(12) =  12.2284220
+#else
+ ecp_l   (1) = 0
+ ecp_d   (1) =   0.500000000d0
+ ecp_zeta(1) =   0.500000000d0
+#endif
+
+ write(*,*) 'Hnucl before 1 1',hamiltonian_nucleus(1,1)
+
+ ecp%nshell   = necp
+ ecp%gaussian_type = 'PURE'
+ ecp%nbf_cart = 0
+ ecp%nbf      = 0
+ do iecp=1,necp
+   ecp%nbf_cart = ecp%nbf_cart + number_basis_function_am('CART',ecp_l(iecp))
+   ecp%nbf      = ecp%nbf      + number_basis_function_am('PURE',ecp_l(iecp))
+ enddo
+ ecp%ammax = MAXVAL(ecp_l(:))
+
+ write(*,*) 'FBFB nbf',ecp%nbf_cart,ecp%nbf
+
+ allocate(ecp%bf(ecp%nbf_cart))
+ allocate(ecp%bff(ecp%nbf))
+ x0(:) = 0.0_dp
+
+ jbf_cart = 0
+ jbf      = 0
+ do iecp=1,necp
+
+   nx = ecp_l(iecp)
+   ny = 0
+   nz = 0
+   index_in_shell = 0
+   shell_index = 1
+   iatom = 1
+   alpha(1) = ecp_zeta(iecp) * 0.50_dp
+   coeff(1) = 1.0_dp
+  
+   do
+     ! Add the new basis function
+     jbf_cart = jbf_cart + 1
+     index_in_shell = index_in_shell + 1
+     call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell_index,index_in_shell,ecp%bf(jbf_cart))
+     if(ecp%gaussian_type == 'CART') then
+       jbf = jbf + 1
+       call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell_index,index_in_shell,ecp%bff(jbf))
+     endif
+  
+     ! Break the loop when nz is equal to l
+     if( nz == ecp_l(iecp) ) exit
+  
+     if( nz < ecp_l(iecp) - nx ) then
+       ny = ny - 1
+       nz = nz + 1
+     else
+       nx = nx - 1
+       ny = ecp_l(iecp) - nx
+       nz = 0
+     endif
+  
+   enddo
+
+ enddo
+
+ write(*,*) 'ECP setup'
+
+ allocate(proj_matrix(basis%nbf,ecp%nbf))
+ write(*,*) 'mixedbasis'
+ call setup_overlap_mixedbasis(.FALSE.,basis,ecp,proj_matrix)
+ proj_matrix(:,1) = proj_matrix(:,1) / (2.8280_dp*ecp_zeta(1)**0.75_dp)
+ write(*,*) 'mixedbasis',ecp%nbf,proj_matrix(1,1)
+ write(*,*) 'mixedbasis**2',ecp%nbf,proj_matrix(1,1)**2
+ write(*,*) '1.0 / mixedbasis**2',ecp%nbf,1.0d0/proj_matrix(1,1)**2
+ write(*,*) 'coeff zeta',ecp_zeta(1)
+ write(*,*) 'coeff zeta 1',pi/ecp_zeta(1)
+ write(*,*) 'coeff zeta 1 SQRT',SQRT( pi/ecp_zeta(1) )
+ write(*,*) 'coeff zeta 2 ',2.0*pi/ecp_zeta(1)
+ write(*,*) 'coeff zeta 2 SQRT',SQRT( 2.0*pi/ecp_zeta(1) )
+ write(*,*) 'gaussian norm',ecp%bf(1)%g(1)%norm_factor
+
+
+ lbf = 0
+! hamiltonian_nucleus(:,:) = 0.0_dp
+ do iecp=1,necp
+   nproj = number_basis_function_am('PURE',ecp_l(iecp))
+   
+   do kbf=1,nproj
+     iproj = lbf + kbf
+     do jbf=1,basis%nbf
+       do ibf=1,basis%nbf
+         hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf) &
+                    + ecp_d(iecp) * proj_matrix(ibf,iproj)           &
+                                  * proj_matrix(jbf,iproj)           &
+                                   * 1.0 ! * ( pi / ecp_zeta(iecp) )**1.5_dp
+       enddo
+     enddo
+   enddo
+   lbf = lbf + nproj
+
+ enddo
+
+
+
+
+ deallocate(proj_matrix)
+ write(*,*) 'Done'
+ write(*,*) 'Hnucl after  1 1',hamiltonian_nucleus(1,1)
+
+
+end subroutine setup_nucleus_ecp
+
+
+!=========================================================================
 subroutine setup_hartree(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
  use m_eri
  implicit none
