@@ -19,15 +19,16 @@ function real_spherical_harmonics(ll,mm,cos_theta,phi) result(slm)
  real(dp),external :: legendre_polynomial
 !=====
 
-
  abs_mm = ABS(mm)
+
  factorial = 1.0_dp
- do ilm = ll-abs_mm,ll+abs_mm
-   factorial = factorial * REAL(ilm,dp)
- enddo
+ if( abs_mm > 0 ) then
+   do ilm = ll-abs_mm,ll+abs_mm
+     factorial = factorial * REAL(ilm,dp)
+   enddo
+ endif
 
  factor = SQRT( (2.0_dp * ll + 1.0_dp) / (2.0_dp * pi) ) / factorial
- write(*,*) factorial,factor
 
  if( mm == 0 ) then
    slm = 1.0_dp / SQRT(2.0_dp)
@@ -39,7 +40,6 @@ function real_spherical_harmonics(ll,mm,cos_theta,phi) result(slm)
 
  slm = slm * factor * legendre_polynomial(ll,abs_mm,cos_theta)
   
-
 end function real_spherical_harmonics
 
 

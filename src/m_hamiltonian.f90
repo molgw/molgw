@@ -340,7 +340,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  real(dp)             :: xtmp,phi
  real(dp)             :: wxa(nradial),xa(nradial)
  real(dp)             :: w1(n1),x1(n1),y1(n1),z1(n1)
- real(dp)             :: int_fixed_r(basis%nbf)
+ real(dp),allocatable :: int_fixed_r(:,:)
  real(dp),external    :: real_spherical_harmonics
 !=====
 
@@ -388,8 +388,8 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
 #endif
 
  write(*,*) 'Hnucl before 1 1',hamiltonian_nucleus(1,1)
- write(*,*) 'spherical harmo',real_spherical_harmonics(0,0,0.50_dp,0.0_dp)
- write(*,*) 'done'
+ xtmp = real_spherical_harmonics(0,0,0.50_dp,0.0_dp)
+ write(*,*) 'done',xtmp
 
  ecp%nshell   = necp
  ecp%gaussian_type = 'PURE'
@@ -478,28 +478,41 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  mm = n1
  call ld0110(x1,y1,z1,w1,mm)
 
+ allocate(int_fixed_r(basis%nbf,ecp%nbf))
  do iradial=1,nradial
-   int_fixed_r(:) = 0.0_dp
+   int_fixed_r(:,:) = 0.0_dp
    do i1=1,n1
      rr(1) = xa(iradial) * x1(i1) + x(1,1)
      rr(2) = xa(iradial) * y1(i1) + x(2,1)
      rr(3) = xa(iradial) * z1(i1) + x(3,1)
      call calculate_basis_functions_r(basis,rr,basis_function_r)
-!     write(*,*) iradial,i1,basis_function_r(1),w1(i1)
-     ! S potential only so far
+
      phi = ACOS( x1(i1) / SQRT( 1.0_dp - z1(i1)**2 ) )
      phi = SIGN( phi , y1(i1) )
-     int_fixed_r(:) = int_fixed_r(:) + basis_function_r(:) &
-                                       * real_spherical_harmonics(ecp_f_l(1),0,z1(i1),phi) &
-                                           * w1(i1) * 4.0_dp * pi  
-   enddo
-!   write(*,*) iradial,int_fixed_r(1)
 
-   do jbf=1,basis%nbf
-     do ibf=1,basis%nbf
-       hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
-           + int_fixed_r(ibf) * int_fixed_r(jbf) * wxa(iradial) * xa(iradial)**2  &
-              * ecp_f_d(1) * EXP( -ecp_f_zeta(1) * xa(iradial)**2 )
+     iproj = 0
+     do iecp=1,necp
+       do mm=-ecp_l(iecp),ecp_l(iecp)
+         iproj = iproj + 1
+         int_fixed_r(:,iproj) = int_fixed_r(:,iproj) + basis_function_r(:) &
+                                   * real_spherical_harmonics(ecp_l(iecp),mm,z1(i1),phi) &
+                                      * w1(i1) * 4.0_dp * pi  
+       enddo
+     enddo
+   enddo
+
+
+   iproj = 0
+   do iecp=1,necp
+     do mm=-ecp_l(iecp),ecp_l(iecp)
+       iproj = iproj + 1
+       do jbf=1,basis%nbf
+         do ibf=1,basis%nbf
+           hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
+               + int_fixed_r(ibf,iproj) * int_fixed_r(jbf,iproj) * wxa(iradial) * xa(iradial)**2  &
+                  * ecp_d(iecp) * EXP( -ecp_zeta(iecp) * xa(iradial)**2 )
+         enddo
+       enddo
      enddo
    enddo
 
