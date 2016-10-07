@@ -13,18 +13,19 @@ subroutine header()
 #endif
  use m_definitions
  use m_mpi
- use m_warning,only: issue_warning,msg
+ use m_warning,only: issue_warning
+ use m_gaussian,only: orbital_momentum_name
  implicit none
  integer             :: revision
  integer             :: values(8) 
  character(len=1024) :: chartmp
  integer             :: nchar,kchar,lchar
+ integer             :: ammax
 #ifdef _OPENMP
  integer,external :: OMP_get_max_threads
 #endif
 !=====
 ! variables used to call C
-! integer(C_INT),external      :: libint_init
  interface
    function libint_init() bind(C, name='libint_init')
    end function libint_init
@@ -44,7 +45,7 @@ subroutine header()
 
  write(stdout,'(/,a,i6,/)') ' MOLGW revision is',revision
 #ifdef FORTRAN2008
- write(stdout,'(1x,a,a)')    'compiled with',compiler_version()
+ write(stdout,'(1x,a,a)')    'compiled with ',compiler_version()
  write(stdout,'(1x,a)')      'with options: '
  chartmp = compiler_options()
  nchar = LEN(TRIM(chartmp))
@@ -106,8 +107,10 @@ subroutine header()
  call die('Code compiled with SCALAPACK, but without MPI. This is not permitted')
 #endif
 #endif
- write(stdout,'(1x,a)')         'Running with LIBINT (to calculate the Coulomb integrals)'
- write(stdout,'(6x,a,i5,/,/)') 'max angular momentum handled by your LIBINT compilation: ',libint_init()
+ ammax = libint_init()
+ write(stdout,'(1x,a)')        'Running with LIBINT (to calculate the Coulomb integrals)'
+ write(stdout,'(6x,a,i5,3x,a,/,/)') 'max angular momentum handled by your LIBINT compilation: ', &
+                                ammax,orbital_momentum_name(ammax)
 
 
 

@@ -270,6 +270,8 @@ program molgw
      endif
    else
      call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
+!     call issue_warning('FBFB ECP')
+!     call setup_nucleus_ecp(basis,hamiltonian_nucleus)
    endif
  endif
 

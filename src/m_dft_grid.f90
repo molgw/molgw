@@ -18,9 +18,9 @@ module m_dft_grid
  !
  ! Grid definition
  integer,protected    :: ngrid
- integer,protected    :: nradial
- integer,protected    :: nangular_fine
- integer,protected    :: nangular_coarse
+ integer,private      :: nradial
+ integer,private      :: nangular_fine
+ integer,private      :: nangular_coarse
 
  real(dp),protected,allocatable :: rr_grid(:,:)
  real(dp),protected,allocatable :: w_grid(:)
@@ -28,7 +28,7 @@ module m_dft_grid
 
  real(dp),parameter,private :: pruning_limit = 0.75_dp    ! in terms of covalent radius
 
- real(dp),parameter,private :: aa = 0.64 ! Scuseria value
+ real(dp),parameter,private :: aa = 0.64_dp ! Scuseria value
 
  real(dp),parameter,private :: TOL_WEIGHT = 1.0e-14_dp
  real(dp),parameter,private :: TOL_BF     = 1.0e-06_dp

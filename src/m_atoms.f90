@@ -8,7 +8,7 @@
 !=========================================================================
 module m_atoms
  use m_definitions
- use m_warning,only: die
+ use m_warning,only: die,issue_warning
  use m_elements
 
  real(dp),parameter,private     :: tol_geom=1.0e-5_dp
@@ -57,6 +57,11 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read)
  zatom(1:natom)              = zatom_read(1:natom)
  ! Ghost atoms do not have a positive nucleus
  zatom(natom+1:natom+nghost) = 0.0_dp
+!FBFB
+! call issue_warning('HACK Be')
+! zatom(1) = 2.0d0
+! call issue_warning('HACK Zn')
+! zatom(1) = 20.0d0
  ! But ghost atoms have basis functions centered on them.
  basis_element(:)=NINT(zatom_read(:))
 

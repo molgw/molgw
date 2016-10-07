@@ -93,10 +93,10 @@ function eval_gaussian(ga,x)
  dx(:) = x(:) - ga%x0(:)
  dx2 = SUM( dx(:)**2 )
 
- eval_gaussian = dx(1)**ga%nx &
-                *dx(2)**ga%ny &
-                *dx(3)**ga%nz &
-                *exp( - ga%alpha * dx2 )
+ eval_gaussian =  dx(1)**ga%nx &
+                * dx(2)**ga%ny &
+                * dx(3)**ga%nz &
+                * EXP( - ga%alpha * dx2 )
 
  !
  ! normalize the cartesian gaussian
@@ -137,7 +137,7 @@ function eval_gaussian_grad(ga,x)
  !
  ! multiply by the common exponential factor
  ! and normalize the cartesian gaussian
- eval_gaussian_grad(:) = eval_gaussian_grad(:) * ga%norm_factor * exp( - ga%alpha * dx2 )
+ eval_gaussian_grad(:) = eval_gaussian_grad(:) * ga%norm_factor * EXP( - ga%alpha * dx2 )
 
 
 end function eval_gaussian_grad
@@ -180,7 +180,7 @@ function eval_gaussian_lapl(ga,x)
  !
  ! multiply by the common exponential factor
  ! and normalize the cartesian gaussian
- eval_gaussian_lapl(:) = eval_gaussian_lapl(:) * ga%norm_factor * exp( - ga%alpha * dx2 )
+ eval_gaussian_lapl(:) = eval_gaussian_lapl(:) * ga%norm_factor * EXP( - ga%alpha * dx2 )
 
 
 end function eval_gaussian_lapl

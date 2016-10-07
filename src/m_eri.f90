@@ -94,15 +94,17 @@ module m_eri
      real(C_DOUBLE) :: rcut
      real(C_DOUBLE) :: int_shell(1)
    end function eval_contr_integral
-
-   subroutine boys_function_c(fnt,n,t) BIND(C,NAME='boys_function_c')
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
-     integer(C_INT),value       :: n
-     real(C_DOUBLE),value       :: t
-     real(C_DOUBLE),intent(out) :: fnt(0:n)
-   end subroutine boys_function_c
-   
  end interface
+
+! interface
+!   subroutine boys_function_c(fnt,n,t) bind(C,NAME='boys_function_c')
+!     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+!     integer(C_INT),value       :: n
+!     real(C_DOUBLE),value       :: t
+!     real(C_DOUBLE),intent(out) :: fnt(0:n)
+!   end subroutine boys_function_c
+!   
+! end interface
 
 
 contains

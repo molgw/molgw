@@ -7,24 +7,22 @@
 !
 !=========================================================================
 subroutine boys_function_c(fnt,n,t)  BIND(C)
- use,intrinsic :: ISO_C_BINDING
+ use,intrinsic :: ISO_C_BINDING,only: C_INT,C_DOUBLE
  implicit none
  integer(C_INT),value       :: n
  real(C_DOUBLE),value       :: t
  real(C_DOUBLE),intent(out) :: fnt(0:n)
 !=====
  integer(C_INT),parameter  :: maxfac=100
- real(C_DOUBLE),parameter :: eps=1.0e-17_C_DOUBLE
- integer(C_INT) :: i,m,k
- integer(C_INT) :: m2
- real(C_DOUBLE) :: t2,num,sum,term1,term2,et,tt
-! real(C_DOUBLE),parameter :: kk = 0.5_C_DOUBLE * SQRT( pi ) 
- real(C_DOUBLE),parameter :: kk = 0.8862269254527579_C_DOUBLE
- real(C_DOUBLE),save :: df(2*maxfac)=0.0_C_DOUBLE
+ real(C_DOUBLE),parameter  :: eps=1.0e-17_C_DOUBLE
+ integer(C_INT)            :: i,m,k
+ integer(C_INT)            :: m2
+ real(C_DOUBLE)            :: t2,num,sum,term1,term2,et,tt
+ real(C_DOUBLE),parameter  :: kk = 0.8862269254527579_C_DOUBLE  ! 0.5 * sqrt(pi)
+ real(C_DOUBLE),save       :: df(2*maxfac)=0.0_C_DOUBLE
 !=====
 
  if( ABS(df(1)) < 1.0e-10_C_DOUBLE ) then
-!   write(stdout,*) 'initialize df'
    df(1:3) = 1.0_C_DOUBLE
    do i=4,2*maxfac
      df(i) = (i-2) * df(i-2)
