@@ -23,12 +23,12 @@ function real_spherical_harmonics(ll,mm,cos_theta,phi) result(slm)
 
  factorial = 1.0_dp
  if( abs_mm > 0 ) then
-   do ilm = ll-abs_mm,ll+abs_mm
+   do ilm = ll-abs_mm+1,ll+abs_mm
      factorial = factorial * REAL(ilm,dp)
    enddo
  endif
 
- factor = SQRT( (2.0_dp * ll + 1.0_dp) / (2.0_dp * pi) ) / factorial
+ factor = SQRT( (2.0_dp * ll + 1.0_dp) / (2.0_dp * pi) / factorial )
 
  if( mm == 0 ) then
    slm = 1.0_dp / SQRT(2.0_dp)

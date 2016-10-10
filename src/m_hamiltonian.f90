@@ -297,61 +297,39 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  real(dp),intent(inout)     :: hamiltonian_nucleus(basis%nbf,basis%nbf)
 !=====
  integer              :: natom_local
- integer              :: ibf,jbf,kbf,lbf
- integer              :: ibf_cart,jbf_cart
- integer              :: i_cart,j_cart
- integer              :: ni,nj,ni_cart,nj_cart,li,lj
+ integer              :: ibf,jbf
  integer              :: iatom
- character(len=100)   :: title
- real(dp),allocatable :: matrix_cart(:,:)
  real(dp)             :: vnucleus_ij
 
- type(basis_set)      :: ecp
- real(dp)             :: x0(3)
- logical,parameter    :: normalized=.TRUE.
- integer              :: index_in_shell
- integer              :: ll,nx,ny,nz
- integer              :: shell_index
- integer,parameter    :: ng=1
- real(dp)             :: alpha(ng),coeff(ng)
- integer,parameter    :: necp=1  ! 1 ! 12
+ integer,parameter    :: necp=12 ! 1 ! 12
  integer              :: ecp_l(necp)
  real(dp)             :: ecp_d(necp)
  real(dp)             :: ecp_zeta(necp)
  integer              :: iecp
- real(dp),allocatable :: proj_matrix(:,:)
  integer              :: iproj,nproj
  integer              :: mm
-
  integer              :: igrid
  real(dp)             :: rr(3)
  real(dp)             :: weight
  real(dp)             :: basis_function_r(basis%nbf)
- real(dp),allocatable :: ecp_r(:)
- integer ,allocatable :: ecp_f_l(:)
- real(dp),allocatable :: ecp_f_d(:)
- real(dp),allocatable :: ecp_f_zeta(:)
- real(dp)             :: norm_wfn,norm_proj
-
- integer,parameter    :: nradial=100
+ integer,parameter    :: nradial=50
  integer              :: iradial
  integer,parameter    :: n1=110
  integer              :: i1,i2
- real(dp)             :: xtmp,phi
+ real(dp)             :: xtmp,phi,cos_theta
  real(dp)             :: wxa(nradial),xa(nradial)
  real(dp)             :: w1(n1),x1(n1),y1(n1),z1(n1)
  real(dp),allocatable :: int_fixed_r(:,:)
  real(dp),external    :: real_spherical_harmonics
 !=====
 
-#if 0
+#if 1
 ! S
  ecp_l(1:2)  = 0
  ecp_d(1)    = 399.9863990
  ecp_zeta(1) = 34.1740010
  ecp_d(2)    = 85.4897500
  ecp_zeta(2) = 14.4563710
-#if 0
 ! P
  ecp_l   (3:6) = 1
  ecp_d   (3) = 92.3810770
@@ -378,95 +356,29 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  ecp_zeta(11) =   8.1600140
  ecp_d   (12) =  -1.0629430
  ecp_zeta(12) =  12.2284220
-#endif
 #else
- ecp_l (1  ) = 0
- ecp_d   (1) = 0.50000000d0
- ecp_zeta(1) = 0.000100000d0
+ ecp_l (1  ) = 1
+ ecp_d   (1) = 2.00000000d0
+ ecp_zeta(1) = 10.000000000d0
 ! ecp_d   (2) = 1.000000000d0
 ! ecp_zeta(2) = 0.000100000d0
 #endif
 
  write(*,*) 'Hnucl before 1 1',hamiltonian_nucleus(1,1)
+ write(*,*) 'Hnucl before 5 5',hamiltonian_nucleus(5,5)
+ write(*,*) 'Hnucl before 6 6',hamiltonian_nucleus(6,6)
+ write(*,*) 'Hnucl before 7 7',hamiltonian_nucleus(7,7)
+ write(*,*) 'Hnucl before 8 8',hamiltonian_nucleus(8,8)
+ write(*,*) 'Hnucl before 9 9',hamiltonian_nucleus(9,9)
+ write(*,*) 'Hnucl before1010',hamiltonian_nucleus(10,10)
  xtmp = real_spherical_harmonics(0,0,0.50_dp,0.0_dp)
  write(*,*) 'done',xtmp
 
- ecp%nshell   = necp
- ecp%gaussian_type = 'PURE'
- ecp%nbf_cart = 0
- ecp%nbf      = 0
+ nproj = 0
  do iecp=1,necp
-   ecp%nbf_cart = ecp%nbf_cart + number_basis_function_am('CART',ecp_l(iecp))
-   ecp%nbf      = ecp%nbf      + number_basis_function_am('PURE',ecp_l(iecp))
+   nproj = nproj + number_basis_function_am('PURE',ecp_l(iecp))
  enddo
- ecp%ammax = MAXVAL(ecp_l(:))
- allocate(ecp_f_l(ecp%nbf))
- allocate(ecp_f_d(ecp%nbf))
- allocate(ecp_f_zeta(ecp%nbf))
-
- write(*,*) 'FBFB nbf',ecp%nbf_cart,ecp%nbf
-
- allocate(ecp%bf(ecp%nbf_cart))
- allocate(ecp%bff(ecp%nbf))
- x0(:) = 0.0_dp
-
- jbf_cart = 0
- jbf      = 0
- shell_index = 0
- iatom = 1
- do iecp=1,necp
-
-   nx = ecp_l(iecp)
-   ny = 0
-   nz = 0
-   index_in_shell = 0
-   shell_index = shell_index + 1
-   alpha(1) = ecp_zeta(iecp) * 0.50_dp
-   coeff(1) = 1.0_dp
-  
-   do
-     ! Add the new basis function
-     jbf_cart = jbf_cart + 1
-     index_in_shell = index_in_shell + 1
-     call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell_index,index_in_shell,ecp%bf(jbf_cart))
-  
-     ! Break the loop when nz is equal to l
-     if( nz == ecp_l(iecp) ) exit
-  
-     if( nz < ecp_l(iecp) - nx ) then
-       ny = ny - 1
-       nz = nz + 1
-     else
-       nx = nx - 1
-       ny = ecp_l(iecp) - nx
-       nz = 0
-     endif
-  
-   enddo
-
-   index_in_shell = 0
-   do mm=-ecp_l(iecp),ecp_l(iecp)
-     jbf = jbf + 1
-     write(*,*) 'setting up :',jbf
-     ecp_f_l(jbf)    = ecp_l(iecp)
-     ecp_f_d(jbf)    = ecp_d(iecp)
-     ecp_f_zeta(jbf) = ecp_zeta(iecp)
-     index_in_shell = index_in_shell + 1
-     call init_basis_function_pure(normalized,ng,ecp_l(iecp),mm,iatom,x0,alpha,coeff,shell_index,index_in_shell,ecp%bff(jbf))
-   enddo
-
-
- enddo
-
- write(*,*) 'ECP setup'
- call overlap_basis_function(ecp%bf(1),ecp%bf(1),norm_proj)
- write(*,*) 'overlap proj1',norm_proj
- call overlap_basis_function(basis%bf(1),basis%bf(1),norm_wfn)
- write(*,*) 'overlap  wfn1',norm_wfn
-
- allocate(proj_matrix(basis%nbf,ecp%nbf))
- allocate(ecp_r(ecp%nbf))
-
+ write(*,*) 'FBFB nproj',nproj
 
  do iradial=1,nradial
    xtmp = ( iradial - 0.5_dp ) / REAL(nradial,dp)
@@ -478,7 +390,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  mm = n1
  call ld0110(x1,y1,z1,w1,mm)
 
- allocate(int_fixed_r(basis%nbf,ecp%nbf))
+ allocate(int_fixed_r(basis%nbf,nproj))
  do iradial=1,nradial
    int_fixed_r(:,:) = 0.0_dp
    do i1=1,n1
@@ -487,16 +399,22 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
      rr(3) = xa(iradial) * z1(i1) + x(3,1)
      call calculate_basis_functions_r(basis,rr,basis_function_r)
 
-     phi = ACOS( x1(i1) / SQRT( 1.0_dp - z1(i1)**2 ) )
-     phi = SIGN( phi , y1(i1) )
+     cos_theta = z1(i1)
+     phi       = ATAN2(y1(i1),x1(i1))
 
      iproj = 0
      do iecp=1,necp
        do mm=-ecp_l(iecp),ecp_l(iecp)
          iproj = iproj + 1
          int_fixed_r(:,iproj) = int_fixed_r(:,iproj) + basis_function_r(:) &
-                                   * real_spherical_harmonics(ecp_l(iecp),mm,z1(i1),phi) &
+                                   * real_spherical_harmonics(ecp_l(iecp),mm,cos_theta,phi) &
                                       * w1(i1) * 4.0_dp * pi  
+!         write(*,*) '==============='
+!         write(*,*) iradial,i1,iecp,ecp_l(iecp),mm,real_spherical_harmonics(ecp_l(iecp),mm,z1(i1),phi)
+!         write(*,*) z1(i1),phi
+!         write(*,*) phi,ACOS( x1(i1) / SQRT( 1.0_dp - z1(i1)**2 ) ),SIGN( ACOS( x1(i1) / SQRT( 1.0_dp - z1(i1)**2 ) ) , y1(i1) )
+!         write(*,*) x1(i1),y1(i1),z1(i1)
+!         write(*,*) 
        enddo
      enddo
    enddo
@@ -518,38 +436,17 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
 
  enddo
 
+ deallocate(int_fixed_r)
 
 
-! write(*,*) 'mixedbasis'
-! call setup_overlap_mixedbasis(.FALSE.,basis,ecp,proj_matrix)
-! proj_matrix(:,1) = proj_matrix(:,1) / (2.8280_dp*ecp_zeta(1)**0.75_dp)
-! write(*,*) 'mixedbasis',ecp%nbf,proj_matrix(1,1)
-! write(*,*) 'mixedbasis**2',ecp%nbf,proj_matrix(1,1)**2
-! write(*,*) '1.0 / mixedbasis**2',ecp%nbf,1.0d0/proj_matrix(1,1)**2
-! write(*,*) 'coeff zeta',ecp_zeta(1)
-! write(*,*) 'coeff zeta 1',pi/ecp_zeta(1)
-! write(*,*) 'coeff zeta 1 SQRT',SQRT( pi/ecp_zeta(1) )
-! write(*,*) 'coeff zeta 2 ',2.0*pi/ecp_zeta(1)
-! write(*,*) 'coeff zeta 2 SQRT',SQRT( 2.0*pi/ecp_zeta(1) )
- write(*,*) 'gaussian norm',ecp%bf(1)%g(1)%norm_factor
-
-! ecp_f_d(:) = 0.0_dp
-
-! hamiltonian_nucleus(:,:) = 0.0_dp
-! do kbf=1,ecp%nbf
-!   do jbf=1,basis%nbf
-!     do ibf=1,basis%nbf
-!       hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf) &
-!                  + ecp_f_d(kbf) * proj_matrix(ibf,kbf)            &
-!                                 * proj_matrix(jbf,kbf)
-!     enddo
-!   enddo
-! enddo
-
-
- deallocate(proj_matrix)
  write(*,*) 'Done'
  write(*,*) 'Hnucl after  1 1',hamiltonian_nucleus(1,1)
+ write(*,*) 'Hnucl after  5 5',hamiltonian_nucleus(5,5)
+ write(*,*) 'Hnucl after  6 6',hamiltonian_nucleus(6,6)
+ write(*,*) 'Hnucl after  7 7',hamiltonian_nucleus(7,7)
+ write(*,*) 'Hnucl after  8 8',hamiltonian_nucleus(8,8)
+ write(*,*) 'Hnucl after  9 9',hamiltonian_nucleus(9,9)
+ write(*,*) 'Hnucl after 1010',hamiltonian_nucleus(10,10)
 
 
 end subroutine setup_nucleus_ecp
