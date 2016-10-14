@@ -1,0 +1,14 @@
+&molgw
+ scf='pbe'
+
+ basis='cc-pVDZ-PP'
+ auxil_basis='cc-pVDZ-PP-RI'
+ no_4center='yes'
+
+ ecp_elements='Zn'
+
+ natom=2
+/
+30  0. 0. 0.
+30  3. 0. 0.
+

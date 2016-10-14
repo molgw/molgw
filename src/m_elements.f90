@@ -160,6 +160,7 @@ function element_number(element_name)
 !=====
  integer :: ielement
 !=====
+
  ielement=1
  do while( ADJUSTL(element_name) /= ADJUSTL(element_list(ielement)) )
    if( ielement == nelement_max ) then
@@ -182,6 +183,7 @@ function element_name(zatom)
  real(dp),intent(in) :: zatom
  character(len=2)  :: element_name
 !=====
+
  if( NINT(zatom) == 0 ) then
    element_name='X'
    return

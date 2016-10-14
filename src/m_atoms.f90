@@ -19,7 +19,7 @@ module m_atoms
  integer,protected              :: natom_type
  integer,protected              :: nbond
 
- real(dp),allocatable,protected :: zatom(:)
+ real(dp),allocatable,public    :: zatom(:)
  integer,allocatable,protected  :: basis_element(:)
 
  real(dp),allocatable,protected :: x(:,:)
@@ -57,11 +57,6 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read)
  zatom(1:natom)              = zatom_read(1:natom)
  ! Ghost atoms do not have a positive nucleus
  zatom(natom+1:natom+nghost) = 0.0_dp
-!FBFB
-! call issue_warning('HACK Be')
-! zatom(1) = 2.0d0
-! call issue_warning('HACK FBFB Zn')
-! zatom(1) = 20.0d0
  ! But ghost atoms have basis functions centered on them.
  basis_element(:)=NINT(zatom_read(:))
 

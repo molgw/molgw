@@ -13,7 +13,7 @@ module m_basis_set
  use m_mpi
  use m_timing
  use m_elements
- use m_tools, only: diagonalize,invert,double_factorial
+ use m_tools, only: diagonalize,invert,double_factorial,orbital_momentum_name
  use m_atoms
  use m_gaussian
 

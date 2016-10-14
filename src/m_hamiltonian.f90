@@ -292,6 +292,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  use m_basis_set
  use m_atoms
  use m_dft_grid
+ use m_ecp
  implicit none
  type(basis_set),intent(in) :: basis
  real(dp),intent(inout)     :: hamiltonian_nucleus(basis%nbf,basis%nbf)
@@ -301,13 +302,8 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  integer              :: iatom
  real(dp)             :: vnucleus_ij
 
- integer,parameter    :: necp=12 !12 ! 1 ! 12
  integer,parameter    :: nradial=50  ! 100
  integer,parameter    :: n1=110  ! 230
- integer              :: ecp_l(necp)
- integer              :: ecp_n(necp)
- real(dp)             :: ecp_d(necp)
- real(dp)             :: ecp_zeta(necp)
  integer              :: iecp
  integer              :: iproj,nproj
  integer              :: mm
@@ -322,132 +318,89 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  real(dp)             :: w1(n1),x1(n1),y1(n1),z1(n1)
  real(dp),allocatable :: int_fixed_r(:,:)
  real(dp),external    :: real_spherical_harmonics
+ integer              :: necp,ie
+ logical              :: element_has_ecp
 !=====
 
- ecp_n(:) = 0
-#if 1
-! S
- ecp_l(1:2)  = 0
- ecp_d(1)    = 399.9863990
- ecp_zeta(1) = 34.1740010
- ecp_d(2)    = 85.4897500
- ecp_zeta(2) = 14.4563710
-! P
- ecp_l   (3:6) = 1
- ecp_d   (3) = 92.3810770
- ecp_zeta(3) = 39.8886830
- ecp_d   (4) = 184.7711760
- ecp_zeta(4) = 39.6550170
- ecp_d   (5) = 23.0025410
- ecp_zeta(5) = 15.2905460
- ecp_d   (6) = 46.0574270
- ecp_zeta(6) = 14.9035240
-! Zn D
- ecp_l   (7:10) = 2
- ecp_d   ( 7) = -13.6907340
- ecp_zeta( 7) =  43.7082960
- ecp_d   ( 8) = -20.5439800
- ecp_zeta( 8) =  43.6985360
- ecp_d   ( 9) =  -1.3161540
- ecp_zeta( 9) =  15.1507180
- ecp_d   (10) =  -1.8387150
- ecp_zeta(10) =  15.2824410
-!Zn F
- ecp_l   (11:12) = 3
- ecp_d   (11) =  -0.3703600
- ecp_zeta(11) =   8.1600140
- ecp_d   (12) =  -1.0629430
- ecp_zeta(12) =  12.2284220
-#else
- ecp_l (1  ) = 0
- ecp_d   (1) = 0.00000000d0
- ecp_zeta(1) =  0.000100000d0
-! ecp_d   (2) = 1.000000000d0
-! ecp_zeta(2) = 0.000100000d0
-#endif
-
- write(*,*) 'Hnucl before 1 1',hamiltonian_nucleus(1,1)
- write(*,*) 'Hnucl before 5 5',hamiltonian_nucleus(5,5)
- write(*,*) 'Hnucl before 6 6',hamiltonian_nucleus(6,6)
- write(*,*) 'Hnucl before 7 7',hamiltonian_nucleus(7,7)
- write(*,*) 'Hnucl before 8 8',hamiltonian_nucleus(8,8)
- write(*,*) 'Hnucl before 9 9',hamiltonian_nucleus(9,9)
- write(*,*) 'Hnucl before1010',hamiltonian_nucleus(10,10)
-
- nproj = 0
- do iecp=1,necp
-   nproj = nproj + number_basis_function_am('PURE',ecp_l(iecp))
- enddo
- write(*,*) 'FBFB nproj',nproj
-
- do iradial=1,nradial
-   xtmp = ( iradial - 0.5_dp ) / REAL(nradial,dp)
-   xa(iradial)   = -5.0_dp * log( 1.0_dp - xtmp**3)
-   wxa(iradial)  = 3.0_dp * 5.0_dp * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial,dp)
- enddo
- write(*,*) 'Integration range:',xa(1),xa(nradial)
- 
- mm = n1
- call ld0110(x1,y1,z1,w1,mm)
-! call ld0230(x1,y1,z1,w1,mm)
-
- allocate(int_fixed_r(basis%nbf,nproj))
- do iradial=1,nradial
-   int_fixed_r(:,:) = 0.0_dp
-   do i1=1,n1
-     rr(1) = xa(iradial) * x1(i1) + x(1,1)
-     rr(2) = xa(iradial) * y1(i1) + x(2,1)
-     rr(3) = xa(iradial) * z1(i1) + x(3,1)
-     call calculate_basis_functions_r(basis,rr,basis_function_r)
-
-     cos_theta = z1(i1)
-     phi       = ATAN2(y1(i1),x1(i1))
-
-     iproj = 0
-     do iecp=1,necp
-       do mm=-ecp_l(iecp),ecp_l(iecp)
-         iproj = iproj + 1
-         int_fixed_r(:,iproj) = int_fixed_r(:,iproj) + basis_function_r(:) &
-                                   * real_spherical_harmonics(ecp_l(iecp),mm,cos_theta,phi) &
-                                      * w1(i1) * 4.0_dp * pi  
-!         write(*,*) '==============='
-!         write(*,*) iradial,i1,iecp,ecp_l(iecp),mm,real_spherical_harmonics(ecp_l(iecp),mm,z1(i1),phi)
-!         write(*,*) z1(i1),phi
-!         write(*,*) phi,ACOS( x1(i1) / SQRT( 1.0_dp - z1(i1)**2 ) ),SIGN( ACOS( x1(i1) / SQRT( 1.0_dp - z1(i1)**2 ) ) , y1(i1) )
-!         write(*,*) x1(i1),y1(i1),z1(i1)
-!         write(*,*) 
-       enddo
-     enddo
-   enddo
+ ! Check if there are some ECP
+ if( nelement_ecp == 0 ) return
 
 
-   iproj = 0
+
+ do iatom=1,natom
+   element_has_ecp = .FALSE.
+   do ie=1,nelement_ecp
+     if( element_ecp(ie) == basis_element(iatom) ) then
+       element_has_ecp = .TRUE.
+       exit
+     endif
+   enddo 
+
+   if( .NOT. element_has_ecp ) cycle
+
+   necp = ecp(ie)%necp
+     
+
+   nproj = 0
    do iecp=1,necp
-     do mm=-ecp_l(iecp),ecp_l(iecp)
-       iproj = iproj + 1
-       do jbf=1,basis%nbf
-         do ibf=1,basis%nbf
-           hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
-               + int_fixed_r(ibf,iproj) * int_fixed_r(jbf,iproj) * wxa(iradial) * xa(iradial)**2  &
-                  * ecp_d(iecp) * EXP( -ecp_zeta(iecp) * xa(iradial)**2 ) * xa(iradial)**ecp_n(iecp)
+     nproj = nproj + number_basis_function_am('PURE',ecp(ie)%lk(iecp))
+   enddo
+  
+   do iradial=1,nradial
+     xtmp = ( iradial - 0.5_dp ) / REAL(nradial,dp)
+     xa(iradial)   = -5.0_dp * log( 1.0_dp - xtmp**3)
+     wxa(iradial)  = 3.0_dp * 5.0_dp * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial,dp)
+   enddo
+   
+   mm = n1
+   call ld0110(x1,y1,z1,w1,mm)
+  ! call ld0230(x1,y1,z1,w1,mm)
+  
+   allocate(int_fixed_r(basis%nbf,nproj))
+   do iradial=1,nradial
+     int_fixed_r(:,:) = 0.0_dp
+     do i1=1,n1
+       rr(1) = xa(iradial) * x1(i1) + x(1,iatom)
+       rr(2) = xa(iradial) * y1(i1) + x(2,iatom)
+       rr(3) = xa(iradial) * z1(i1) + x(3,iatom)
+       call calculate_basis_functions_r(basis,rr,basis_function_r)
+  
+       cos_theta = z1(i1)
+       phi       = ATAN2(y1(i1),x1(i1))
+  
+       iproj = 0
+       do iecp=1,necp
+         do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
+           iproj = iproj + 1
+           int_fixed_r(:,iproj) = int_fixed_r(:,iproj) + basis_function_r(:) &
+                                     * real_spherical_harmonics(ecp(ie)%lk(iecp),mm,cos_theta,phi) &
+                                        * w1(i1) * 4.0_dp * pi  
          enddo
        enddo
      enddo
+  
+  
+     iproj = 0
+     do iecp=1,necp
+       do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
+         iproj = iproj + 1
+         do jbf=1,basis%nbf
+           do ibf=1,basis%nbf
+             hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
+                 + int_fixed_r(ibf,iproj) * int_fixed_r(jbf,iproj) * wxa(iradial) * xa(iradial)**2  &
+                    * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
+           enddo
+         enddo
+       enddo
+     enddo
+  
    enddo
-
- enddo
-
- deallocate(int_fixed_r)
+  
+   deallocate(int_fixed_r)
 
 
- write(*,*) 'Done'
- write(*,*) 'Hnucl after  1 1',hamiltonian_nucleus(1,1)
- write(*,*) 'Hnucl after  5 5',hamiltonian_nucleus(5,5)
- write(*,*) 'Hnucl after  6 6',hamiltonian_nucleus(6,6)
- write(*,*) 'Hnucl after  7 7',hamiltonian_nucleus(7,7)
- write(*,*) 'Hnucl after  8 8',hamiltonian_nucleus(8,8)
- write(*,*) 'Hnucl after  9 9',hamiltonian_nucleus(9,9)
- write(*,*) 'Hnucl after 1010',hamiltonian_nucleus(10,10)
+ enddo 
+
 
 
 end subroutine setup_nucleus_ecp

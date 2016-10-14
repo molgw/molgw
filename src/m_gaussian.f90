@@ -257,46 +257,6 @@ end subroutine overlap
 
 
 !=========================================================================
-function orbital_momentum_name(am)
- integer,intent(in) :: am
- character(len=1) :: orbital_momentum_name
-!=====
-
- select case(am)
- case(0)
-   orbital_momentum_name='s'
- case(1)
-   orbital_momentum_name='p'
- case(2)
-   orbital_momentum_name='d'
- case(3)
-   orbital_momentum_name='f'
- case(4)
-   orbital_momentum_name='g'
- case(5)
-   orbital_momentum_name='h'
- case(6)
-   orbital_momentum_name='i'
- case(7)
-   orbital_momentum_name='k'
- case(8)
-   orbital_momentum_name='l'
- case(9)
-   orbital_momentum_name='m'
- case(10)
-   orbital_momentum_name='n'
- case(11)
-   orbital_momentum_name='o'
- case(12)
-   orbital_momentum_name='q'
- case default
-   orbital_momentum_name='x'
- end select
-
-end function orbital_momentum_name
-
-
-!=========================================================================
 subroutine overlap_recurrence(ga,gb,s_ab)
  implicit none
  type(gaussian),intent(in) :: ga,gb

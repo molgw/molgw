@@ -30,8 +30,14 @@ module m_tools
    module procedure diagonalize_inplace_sp
  end interface
 
+ interface append_to_list
+   module procedure append_to_list_i
+   module procedure append_to_list_r
+ end interface
+
 
 contains
+
 
 function matrix_trace(matrix)
  real(dp),intent(in) :: matrix(:,:)
@@ -807,6 +813,146 @@ function capitalize(str)
  end do
 
 end function capitalize
+
+
+!=========================================================================
+function orbital_momentum_number(amc)
+ character(len=1),intent(in) :: amc
+ integer :: orbital_momentum_number
+!=====
+
+ select case(capitalize(amc))
+ case('S')
+   orbital_momentum_number = 0
+ case('P')
+   orbital_momentum_number = 1
+ case('D')
+   orbital_momentum_number = 2
+ case('F')
+   orbital_momentum_number = 3
+ case('G')
+   orbital_momentum_number = 4
+ case('H')
+   orbital_momentum_number = 5
+ case('I')
+   orbital_momentum_number = 6
+ case('K')
+   orbital_momentum_number = 7
+ case default
+   write(stdout,*) amc,capitalize(amc)
+   call die('orbital_momentum_number: keyword unknown')
+ end select
+
+
+end function orbital_momentum_number
+
+
+!=========================================================================
+function orbital_momentum_name(am)
+ integer,intent(in) :: am
+ character(len=1) :: orbital_momentum_name
+!=====
+
+ select case(am)
+ case(0)
+   orbital_momentum_name='s'
+ case(1)
+   orbital_momentum_name='p'
+ case(2)
+   orbital_momentum_name='d'
+ case(3)
+   orbital_momentum_name='f'
+ case(4)
+   orbital_momentum_name='g'
+ case(5)
+   orbital_momentum_name='h'
+ case(6)
+   orbital_momentum_name='i'
+ case(7)
+   orbital_momentum_name='k'
+ case(8)
+   orbital_momentum_name='l'
+ case(9)
+   orbital_momentum_name='m'
+ case(10)
+   orbital_momentum_name='n'
+ case(11)
+   orbital_momentum_name='o'
+ case(12)
+   orbital_momentum_name='q'
+ case default
+   orbital_momentum_name='x'
+ end select
+
+end function orbital_momentum_name
+
+
+!=========================================================================
+subroutine append_to_list_i(new_element,list)
+ implicit none
+
+ integer,intent(in)                :: new_element
+ integer,allocatable,intent(inout) :: list(:)
+!=====
+ integer :: nsize
+ integer,allocatable :: list_old(:)
+!=====
+
+ if( ALLOCATED(list) ) then
+   nsize = SIZE(list)
+ else
+   nsize = 0
+ endif
+
+ ! Copy old list and free the list
+ allocate(list_old(nsize))
+ if( nsize > 0 ) then
+   list_old(1:nsize) =list(1:nsize)
+   deallocate(list)
+ endif
+
+ allocate(list(nsize+1))
+ if( nsize > 0 ) then
+   list(1:nsize) = list_old(1:nsize)
+ endif
+ list(nsize+1) = new_element
+
+
+end subroutine append_to_list_i
+
+
+!=========================================================================
+subroutine append_to_list_r(new_element,list)
+ implicit none
+
+ real(dp),intent(in)                :: new_element
+ real(dp),allocatable,intent(inout) :: list(:)
+!=====
+ integer :: nsize
+ real(dp),allocatable :: list_old(:)
+!=====
+
+ if( ALLOCATED(list) ) then
+   nsize = SIZE(list)
+ else
+   nsize = 0
+ endif
+
+ ! Copy old list and free the list
+ allocate(list_old(nsize))
+ if( nsize > 0 ) then
+   list_old(1:nsize) =list(1:nsize)
+   deallocate(list)
+ endif
+
+ allocate(list(nsize+1))
+ if( nsize > 0 ) then
+   list(1:nsize) = list_old(1:nsize)
+ endif
+ list(nsize+1) = new_element
+
+
+end subroutine append_to_list_r
 
 
 !=========================================================================

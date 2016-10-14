@@ -741,6 +741,16 @@ vl[i].default  ='no'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='EXPERIMENTAL. Calculates the vertex using the DFT flavor specified in the ground-state calculation. '
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='ecp_elements'
+vl[i].family   ='general'
+vl[i].default  =''
+vl[i].datatype ='characters'
+vl[i].comment  ='Contains the list of elements (separated by spaces) that should be treated with an Effective Core Potential.'
+
+
 
 
 
@@ -819,8 +829,8 @@ ffor.close()
 #============================================================================
 #            HTML output
 #============================================================================
-print("Set up file: ../doc/input_variables.html")
-fhtml = open('../doc/input_variables.html','w')
+print("Set up file: ../docs/input_variables.html")
+fhtml = open('../docs/input_variables.html','w')
 
 fhtml.write('<html>\n')
 fhtml.write('<head>\n')

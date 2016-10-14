@@ -14,7 +14,7 @@ subroutine header()
  use m_definitions
  use m_mpi
  use m_warning,only: issue_warning
- use m_gaussian,only: orbital_momentum_name
+ use m_tools,only: orbital_momentum_name
  implicit none
  integer             :: revision
  integer             :: values(8) 

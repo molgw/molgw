@@ -34,6 +34,7 @@ program molgw
  use m_tools
  use m_scf
  use m_atoms
+ use m_ecp
  use m_gaussian
  use m_basis_set
  use m_eri
@@ -270,8 +271,9 @@ program molgw
      endif
    else
      call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
-!     call issue_warning('FBFB ECP')
-!     call setup_nucleus_ecp(basis,hamiltonian_nucleus)
+     if( nelement_ecp > 0 ) then
+       call setup_nucleus_ecp(basis,hamiltonian_nucleus)
+     endif
    endif
  endif
 
