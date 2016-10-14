@@ -60,7 +60,7 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read)
 !FBFB
 ! call issue_warning('HACK Be')
 ! zatom(1) = 2.0d0
-! call issue_warning('HACK Zn')
+! call issue_warning('HACK FBFB Zn')
 ! zatom(1) = 20.0d0
  ! But ghost atoms have basis functions centered on them.
  basis_element(:)=NINT(zatom_read(:))

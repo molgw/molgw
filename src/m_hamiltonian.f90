@@ -301,8 +301,11 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  integer              :: iatom
  real(dp)             :: vnucleus_ij
 
- integer,parameter    :: necp=12 ! 1 ! 12
+ integer,parameter    :: necp=12 !12 ! 1 ! 12
+ integer,parameter    :: nradial=50  ! 100
+ integer,parameter    :: n1=110  ! 230
  integer              :: ecp_l(necp)
+ integer              :: ecp_n(necp)
  real(dp)             :: ecp_d(necp)
  real(dp)             :: ecp_zeta(necp)
  integer              :: iecp
@@ -312,10 +315,8 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  real(dp)             :: rr(3)
  real(dp)             :: weight
  real(dp)             :: basis_function_r(basis%nbf)
- integer,parameter    :: nradial=50
  integer              :: iradial
- integer,parameter    :: n1=110
- integer              :: i1,i2
+ integer              :: i1
  real(dp)             :: xtmp,phi,cos_theta
  real(dp)             :: wxa(nradial),xa(nradial)
  real(dp)             :: w1(n1),x1(n1),y1(n1),z1(n1)
@@ -323,6 +324,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  real(dp),external    :: real_spherical_harmonics
 !=====
 
+ ecp_n(:) = 0
 #if 1
 ! S
  ecp_l(1:2)  = 0
@@ -357,9 +359,9 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  ecp_d   (12) =  -1.0629430
  ecp_zeta(12) =  12.2284220
 #else
- ecp_l (1  ) = 1
- ecp_d   (1) = 2.00000000d0
- ecp_zeta(1) = 10.000000000d0
+ ecp_l (1  ) = 0
+ ecp_d   (1) = 0.00000000d0
+ ecp_zeta(1) =  0.000100000d0
 ! ecp_d   (2) = 1.000000000d0
 ! ecp_zeta(2) = 0.000100000d0
 #endif
@@ -371,8 +373,6 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  write(*,*) 'Hnucl before 8 8',hamiltonian_nucleus(8,8)
  write(*,*) 'Hnucl before 9 9',hamiltonian_nucleus(9,9)
  write(*,*) 'Hnucl before1010',hamiltonian_nucleus(10,10)
- xtmp = real_spherical_harmonics(0,0,0.50_dp,0.0_dp)
- write(*,*) 'done',xtmp
 
  nproj = 0
  do iecp=1,necp
@@ -389,6 +389,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  
  mm = n1
  call ld0110(x1,y1,z1,w1,mm)
+! call ld0230(x1,y1,z1,w1,mm)
 
  allocate(int_fixed_r(basis%nbf,nproj))
  do iradial=1,nradial
@@ -428,7 +429,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
          do ibf=1,basis%nbf
            hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
                + int_fixed_r(ibf,iproj) * int_fixed_r(jbf,iproj) * wxa(iradial) * xa(iradial)**2  &
-                  * ecp_d(iecp) * EXP( -ecp_zeta(iecp) * xa(iradial)**2 )
+                  * ecp_d(iecp) * EXP( -ecp_zeta(iecp) * xa(iradial)**2 ) * xa(iradial)**ecp_n(iecp)
          enddo
        enddo
      enddo
@@ -1262,6 +1263,99 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  call stop_clock(timing_approx_ham)
 
 end subroutine dft_approximate_vhxc
+
+
+!=========================================================================
+subroutine static_dipole(nstate,basis,occupation,c_matrix)
+ use m_basis_set
+ use m_atoms
+ implicit none
+
+ integer,intent(in)                 :: nstate
+ type(basis_set),intent(in)         :: basis
+ real(dp),intent(in)                :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
+!=====
+ integer                            :: istate,astate,iaspin
+ integer                            :: mstate,pstate,mpspin
+ integer                            :: ibf,jbf
+ integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
+ integer                            :: iatom,idir
+ real(dp)                           :: dipole(3)
+ real(dp),allocatable               :: dipole_basis(:,:,:)
+ real(dp),allocatable               :: dipole_cart(:,:,:)
+ real(dp),allocatable               :: residue(:,:)
+ real(dp)                           :: p_matrix(basis%nbf,basis%nbf,nspin)
+!=====
+
+
+! call start_clock(timing_spectrum)
+
+ write(stdout,'(/,a)') ' Calculate the static dipole'
+
+
+ !
+ ! First precalculate all the needed dipole in the basis set
+ !
+ allocate(dipole_basis(3,basis%nbf,basis%nbf))
+ ibf_cart = 1
+ ibf      = 1
+ do while(ibf_cart<=basis%nbf_cart)
+   li      = basis%bf(ibf_cart)%am
+   ni_cart = number_basis_function_am('CART',li)
+   ni      = number_basis_function_am(basis%gaussian_type,li)
+
+   jbf_cart = 1
+   jbf      = 1
+   do while(jbf_cart<=basis%nbf_cart)
+     lj      = basis%bf(jbf_cart)%am
+     nj_cart = number_basis_function_am('CART',lj)
+     nj      = number_basis_function_am(basis%gaussian_type,lj)
+
+     allocate(dipole_cart(3,ni_cart,nj_cart))
+
+
+     do i_cart=1,ni_cart
+       do j_cart=1,nj_cart
+         call basis_function_dipole(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),dipole_cart(:,i_cart,j_cart))
+       enddo
+     enddo
+
+     do idir=1,3
+       dipole_basis(idir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
+             MATMUL(  dipole_cart(idir,:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+     enddo
+
+     deallocate(dipole_cart)
+
+     jbf      = jbf      + nj
+     jbf_cart = jbf_cart + nj_cart
+   enddo
+
+   ibf      = ibf      + ni
+   ibf_cart = ibf_cart + ni_cart
+ enddo
+
+
+ call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
+
+ do idir=1,3
+   dipole(idir) = -SUM( dipole_basis(idir,:,:) * SUM( p_matrix(:,:,:) , DIM=3 ) )
+ enddo
+
+ deallocate(dipole_basis)
+
+ do iatom=1,natom
+   dipole(:) = dipole(:) + zatom(iatom) * x(:,iatom)
+ enddo
+
+ write(stdout,'(1x,a,3(2x,f14.6))') 'Dipole (a.u.):  ',dipole(:)
+ write(stdout,'(1x,a,3(2x,f14.6))') 'Dipole (Debye): ',dipole(:) * au_debye
+
+
+
+
+end subroutine static_dipole
+
 
 end module m_hamiltonian
 !=========================================================================

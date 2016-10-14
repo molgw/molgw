@@ -34,6 +34,7 @@ Hartree Energy            ,   46.6386768738    , 0 , 1.0e-7
 Exchange Energy           ,   -2.2284166998    , 0 , 1.0e-7
 XC Energy                 ,   -7.0110900711    , 0 , 1.0e-7
 Total Energy              ,  -76.3812141506    , 0 , 1.0e-7
+Dipole (a.u.)             ,   -0.738914        , 2 , 1.0e-4
 
 benzene_filtered.in       , HF benzene with RI having a filtered 2-center ERI
 Hartree Energy            ,    312.6277067326   , 0 , 1.0e-7
@@ -45,6 +46,7 @@ Exchange Energy           ,   -4.9713001171    , 0 , 1.0e-7
 XC Energy                 ,  -17.1161140356    , 0 , 1.0e-7
 gKS HOMO energy           ,   -9.249028        , 0 , 1.0e-4
 gKS LUMO energy           ,   -1.009892        , 0 , 1.0e-4
+Dipole (a.u.)             ,   -0.085879        , 0 , 1.0e-4
 
 methanol_sca_buffer_hf.in , methanol within HF with SCALAPACK distribution of hamiltonian
 gKS HOMO energy           ,  -12.220058        , 0 , 1.0e-4
