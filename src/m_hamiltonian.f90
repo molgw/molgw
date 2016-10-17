@@ -326,6 +326,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  if( nelement_ecp == 0 ) return
 
 
+ call start_clock(timing_ecp)
 
  do iatom=1,natom
    element_has_ecp = .FALSE.
@@ -402,6 +403,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  enddo 
 
 
+ call stop_clock(timing_ecp)
 
 end subroutine setup_nucleus_ecp
 

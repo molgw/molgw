@@ -92,6 +92,7 @@ module m_inputparam
  character(len=100),protected     :: xyz_file
  character(len=100),protected     :: basis_path
  character(len=100),protected     :: basis_name
+ character(len=100),protected     :: ecp_type
  character(len=100),protected     :: auxil_basis_name
  character(len=100),protected     :: small_basis_name
  character(len=4),protected       :: gaussian_type
@@ -902,13 +903,13 @@ subroutine read_inputfile_namelist()
  call init_atoms(natom,nghost,zatom_read,x_read)
  deallocate(x_read,zatom_read)
 
- call init_ecp(ecp_elements,basis_path)
+ call init_ecp(ecp_elements,basis_path,ecp_type)
  ! If ECP are used, tweak the nuclei charges here
  if( nelement_ecp > 0 ) then
    do iatom=1,natom
      do ielement_ecp=1,nelement_ecp
        if( element_ecp(ielement_ecp) == basis_element(iatom) ) then
-         zatom(iatom) = zatom(iatom) - ecp(ielement_ecp)%nelec
+         zatom(iatom) = zatom(iatom) - REAL( ecp(ielement_ecp)%nelec , dp )
          exit
        endif
      enddo

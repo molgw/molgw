@@ -13,7 +13,7 @@
 <p>
 <a href=#nspin>nspin</a> <a href=#charge>charge</a> <a href=#magnetization>magnetization</a> <a href=#temperature>temperature</a> <a href=#length_unit>length_unit</a> <a href=#natom>natom</a> <a href=#xyz_file>xyz_file</a> <a href=#nghost>nghost</a> <h3>General input variables</h3>
 <p>
-<a href=#scf>scf</a> <a href=#basis>basis</a> <a href=#auxil_basis>auxil_basis</a> <a href=#gaussian_type>gaussian_type</a> <a href=#ecp_elements>ecp_elements</a> <h3>Self-consistency input variables</h3>
+<a href=#scf>scf</a> <a href=#basis>basis</a> <a href=#auxil_basis>auxil_basis</a> <a href=#gaussian_type>gaussian_type</a> <a href=#ecp_type>ecp_type</a> <a href=#ecp_elements>ecp_elements</a> <h3>Self-consistency input variables</h3>
 <p>
 <a href=#alpha_hybrid>alpha_hybrid</a> <a href=#beta_hybrid>beta_hybrid</a> <a href=#gamma_hybrid>gamma_hybrid</a> <a href=#no_4center>no_4center</a> <a href=#grid_quality>grid_quality</a> <a href=#integral_quality>integral_quality</a> <a href=#partition_scheme>partition_scheme</a> <a href=#nscf>nscf</a> <a href=#alpha_mixing>alpha_mixing</a> <a href=#mixing_scheme>mixing_scheme</a> <a href=#level_shifting_energy>level_shifting_energy</a> <a href=#tolscf>tolscf</a> <a href=#mixing_first_nscf>mixing_first_nscf</a> <a href=#min_overlap>min_overlap</a> <a href=#npulay_hist>npulay_hist</a> <h3>Correlation and excited states post-treatment input variables</h3>
 <p>
@@ -27,13 +27,15 @@
 <br><br>
 <ul>
 <hr>
-<a name=scf><li><b>scf</b><br><br>
+<a name=scf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>scf</b>  </span>  
+<br><br>
 <i>Mandatory</i><br>
 Default: None<br><br>
 Contains the self-consistent scheme name. 
 Try LDA, PBE, HSE06, or HF for instance</li><br>
 <hr>
-<a name=postscf><li><b>postscf</b><br><br>
+<a name=postscf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>postscf</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: None<br><br>
 Contains the post-processing scheme name. 
@@ -45,361 +47,444 @@ GnWn stands for GW with eigenvalue self-consistentcy on both G and W.
 MP2 stands for guess what.
 GWGAMMA (EXPERIMENTAL) stands for vertex corrections.</li><br>
 <hr>
-<a name=alpha_hybrid><li><b>alpha_hybrid</b><br><br>
+<a name=alpha_hybrid><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>alpha_hybrid</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount of range-independent exact-exchange</li><br>
 <hr>
-<a name=beta_hybrid><li><b>beta_hybrid</b><br><br>
+<a name=beta_hybrid><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>beta_hybrid</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 Only works for Range-Separated hybrid functionals scf='rsh' Sets the amount of long-range exact-exchange</li><br>
 <hr>
-<a name=gamma_hybrid><li><b>gamma_hybrid</b><br><br>
+<a name=gamma_hybrid><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>gamma_hybrid</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 1000000.0<br><br>
 Only works for Range-Separated hybrid functionals scf='rsh' Sets the separation between long-range and short-range. It is input in bohr^-1.</li><br>
 <hr>
-<a name=basis><li><b>basis</b><br><br>
+<a name=basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>basis</b>  </span>  
+<br><br>
 <i>Mandatory</i><br>
 Default: None<br><br>
 Sets the basis set For Pople sets, use 6-31G for instance or 6-31pGs, where p stands for + and s for *. For Dunning sets, use aug-cc-pVTZ for instance. Note that Pople sets are to be used with gaussian_type='cart' One may use ones own basis sets provided that the files are labeled X_mybasisset where X is the element.</li><br>
 <hr>
-<a name=auxil_basis><li><b>auxil_basis</b><br><br>
+<a name=auxil_basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>auxil_basis</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: None<br><br>
 Sets the auxiliary basis set. For instance, cc-pVDZ-RI for a Weigend basis set. If present, the auxiliary basis will be used for postscf calculations (TD-DFT, BSE, or GW) If specifically requested with no_4center, the auxiliary basis can be used for scf cycles too.</li><br>
 <hr>
-<a name=basis_path><li><b>basis_path</b><br><br>
+<a name=basis_path><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>basis_path</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: None<br><br>
 Sets the path pointing to the basis functions files.                  If not specified, then the basis set files will be searched in folder ~molgw/basis/.</li><br>
 <hr>
-<a name=small_basis><li><b>small_basis</b><br><br>
+<a name=small_basis><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>small_basis</b>  </span>  
+<b><font color="red">EXPERIMENTAL</font> </b> 
+<br><br>
 <i>Optional</i><br>
 Default: None<br><br>
-Calls for a smaller basis set used to represent the virtual orbital space with fewer functions. Only works for GW (EXPERIMENTAL)</li><br>
+Calls for a smaller basis set used to represent the virtual orbital space with fewer functions. Only works for GW.</li><br>
 <hr>
-<a name=gaussian_type><li><b>gaussian_type</b><br><br>
+<a name=gaussian_type><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>gaussian_type</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: pure<br><br>
 Asks for pure or spherical Gaussian type orbitals with 'pure' or for Cartesian Gaussian orbital with 'cart'.</li><br>
 <hr>
-<a name=no_4center><li><b>no_4center</b><br><br>
+<a name=no_4center><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>no_4center</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 If switched on, the auxiliary basis set is used in both SCF cycles and in post-scf methods.This avoids the calculation and the storage of the 4-center Coulomb integrals.</li><br>
 <hr>
-<a name=nspin><li><b>nspin</b><br><br>
+<a name=nspin><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nspin</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Sets the number of spin channels. 1 enforces spin-restricted calculations. 2 means spin-unrestricted.</li><br>
 <hr>
-<a name=charge><li><b>charge</b><br><br>
+<a name=charge><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>charge</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 Sets the total charge of the system. 0 is a neutral system. -2 is a doubly charged anion etc.</li><br>
 <hr>
-<a name=magnetization><li><b>magnetization</b><br><br>
+<a name=magnetization><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>magnetization</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 Sets the number of unpaired electrons. In other words, this is the difference between the spin up and spin down occupation. For instance, a spin-doublet calculation is obtained with magnetization=1.0. Only meaningful when nspin=2.</li><br>
 <hr>
-<a name=temperature><li><b>temperature</b><br><br>
+<a name=temperature><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>temperature</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 Sets the electronic temperature in the Fermi-Dirac functions. Helps the convergence for some systems. The value is input in Hartree atomic units.</li><br>
 <hr>
-<a name=grid_quality><li><b>grid_quality</b><br><br>
+<a name=grid_quality><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>grid_quality</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: high<br><br>
 Sets the number of grid points use to evaluate the exchange-correlation integrals in real space for the DFT potential and energy. Possible values are 'low', 'medium', 'high', 'very high', 'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only meant for debugging since it is overdoing a lot.</li><br>
 <hr>
-<a name=tddft_grid_quality><li><b>tddft_grid_quality</b><br><br>
+<a name=tddft_grid_quality><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tddft_grid_quality</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: high<br><br>
 Sets the number of grid points use to evaluate the exchange-correlation integrals in real space for the TDDFT kernel. Possible values are 'low', 'medium', 'high', 'very high', 'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only meant for debugging since it is overdoing a lot.</li><br>
 <hr>
-<a name=integral_quality><li><b>integral_quality</b><br><br>
+<a name=integral_quality><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>integral_quality</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: high<br><br>
 Sets the tolerance value for the screening of the negligible integrals. Possible values are 'low', 'medium', 'high', 'very high', 'insane'. It could be abbreviated in 'l', 'm', 'h', 'vh', 'i'. 'high' is usually fine. 'insane' is only meant for debugging since it is overdoing a lot.</li><br>
 <hr>
-<a name=partition_scheme><li><b>partition_scheme</b><br><br>
+<a name=partition_scheme><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>partition_scheme</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: ssf<br><br>
 Sets the partition scheme for the xc quadrature. Possible choices are 'becke' or 'ssf' (Stratmann-Scuseria-Frisch).</li><br>
 <hr>
-<a name=nscf><li><b>nscf</b><br><br>
+<a name=nscf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nscf</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 30<br><br>
 Sets the maximum number of SCF cycles</li><br>
 <hr>
-<a name=alpha_mixing><li><b>alpha_mixing</b><br><br>
+<a name=alpha_mixing><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>alpha_mixing</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 0.7<br><br>
 Sets the amount of output density-matrix for the next iteration. When the SCF cycles have difficulties to converge, one may try to lower this value.</li><br>
 <hr>
-<a name=mixing_scheme><li><b>mixing_scheme</b><br><br>
+<a name=mixing_scheme><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>mixing_scheme</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: pulay<br><br>
 Sets the density-matrix update method for SCF cycles. Possible choices are 'pulay' for Pulay DIIS method or 'simple' for a simple linear mixing between input and output density-matrices.</li><br>
 <hr>
-<a name=level_shifting_energy><li><b>level_shifting_energy</b><br><br>
+<a name=level_shifting_energy><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>level_shifting_energy</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 Sets the energy shift up of the unoccupied states. Should help the convergence in the case of small HOMO-LUMO gaps.</li><br>
 <hr>
-<a name=tolscf><li><b>tolscf</b><br><br>
+<a name=tolscf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tolscf</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 1e-07<br><br>
 Sets the residual norm target for the density matrix for the SCF cycles.</li><br>
 <hr>
-<a name=mixing_first_nscf><li><b>mixing_first_nscf</b><br><br>
+<a name=mixing_first_nscf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>mixing_first_nscf</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 3<br><br>
 Sets the number of the initial SCF cycles that have an additional simple mixing of the density matrix in case of DIIS.</li><br>
 <hr>
-<a name=min_overlap><li><b>min_overlap</b><br><br>
+<a name=min_overlap><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>min_overlap</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 1e-05<br><br>
 Sets the minimal eigenvalue of the overlap matrix S. Small eigenvalues imply overcompleteness of the basis set.</li><br>
 <hr>
-<a name=npulay_hist><li><b>npulay_hist</b><br><br>
+<a name=npulay_hist><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>npulay_hist</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 6<br><br>
 Sets the history record length for Pulay DIIS.</li><br>
 <hr>
-<a name=tda><li><b>tda</b><br><br>
+<a name=tda><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tda</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Triggers the use of Tamm-Dancoff approximation in TD-DFT or BSE.</li><br>
 <hr>
-<a name=triplet><li><b>triplet</b><br><br>
+<a name=triplet><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>triplet</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Triggers the calculation of the triplet final state in TD-DFT or BSE.</li><br>
 <hr>
-<a name=nexcitation><li><b>nexcitation</b><br><br>
+<a name=nexcitation><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nexcitation</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 0<br><br>
 Sets the number of neutral excitations to be calculated in TD-DFT or BSE.                  0 stands for all the states and triggers the full diagonalization.</li><br>
 <hr>
-<a name=toldav><li><b>toldav</b><br><br>
+<a name=toldav><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>toldav</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 0.0001<br><br>
 Sets the tolerance criterium for the maximum norm of the residual in the Davidson diagonalization of TD-DFT or BSE.</li><br>
 <hr>
-<a name=frozencore><li><b>frozencore</b><br><br>
+<a name=frozencore><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>frozencore</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Triggers the neglect of core states in GW. H, He, Li, Be have no core states. B-Na have the 1s. Al-Ca have the 1s2s2p. Manual tuning could be achieved with ncoreg, ncorew.</li><br>
 <hr>
-<a name=ncoreg><li><b>ncoreg</b><br><br>
+<a name=ncoreg><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ncoreg</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 0<br><br>
 Sets the number of frozen core states in the Green's function G.</li><br>
 <hr>
-<a name=ncorew><li><b>ncorew</b><br><br>
+<a name=ncorew><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ncorew</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 0<br><br>
 Sets the number of frozen core states in the screened Coulomb interaction W, in TD-DFT, and in BSE.</li><br>
 <hr>
-<a name=nvirtualg><li><b>nvirtualg</b><br><br>
+<a name=nvirtualg><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nvirtualg</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 100000<br><br>
 Sets the starting state beyond which states are excluded from the sum in the Green's function G.</li><br>
 <hr>
-<a name=nvirtualw><li><b>nvirtualw</b><br><br>
+<a name=nvirtualw><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nvirtualw</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 100000<br><br>
 Sets the starting state beyond which states are excluded from the sum in the screened Coulomb interaction W, in TD-DFT, and in BSE.</li><br>
 <hr>
-<a name=nvirtualspa><li><b>nvirtualspa</b><br><br>
+<a name=nvirtualspa><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nvirtualspa</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 100000<br><br>
 Sets the starting state beyond which states are accounted for with a Single Pole Approximation for the screened Coulomb interaction W for GW.</li><br>
 <hr>
-<a name=selfenergy_state_min><li><b>selfenergy_state_min</b><br><br>
+<a name=selfenergy_state_min><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>selfenergy_state_min</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Sets the starting states for the range of the self-energy evaluation</li><br>
 <hr>
-<a name=selfenergy_state_max><li><b>selfenergy_state_max</b><br><br>
+<a name=selfenergy_state_max><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>selfenergy_state_max</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 100000<br><br>
 Sets the final states for the range of the self-energy evaluation</li><br>
 <hr>
-<a name=selfenergy_state_range><li><b>selfenergy_state_range</b><br><br>
+<a name=selfenergy_state_range><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>selfenergy_state_range</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 100000<br><br>
 Sets the range of states around the HOMO level for the self-energy evaluation. For instance, selfenergy_state_range=0 will trigger the calculation of the HOMO only.             selfenergy_state_range=1 will trigger the evaluation of the HOMO-1, HOMO, HOMO+1. etc.</li><br>
 <hr>
-<a name=nomega_sigma><li><b>nomega_sigma</b><br><br>
+<a name=nomega_sigma><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nomega_sigma</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 51<br><br>
 Sets the number of frequencies used to solve the quasiparticle equation in the GW self-energy.</li><br>
 <hr>
-<a name=step_sigma><li><b>step_sigma</b><br><br>
+<a name=step_sigma><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>step_sigma</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 0.01<br><br>
 Sets the spacing between frequencies in the GW self-energy evaluation.</li><br>
 <hr>
-<a name=ignore_restart><li><b>ignore_restart</b><br><br>
+<a name=ignore_restart><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ignore_restart</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Ignore the RESTART file and restart from scratch.</li><br>
 <hr>
-<a name=ignore_bigrestart><li><b>ignore_bigrestart</b><br><br>
+<a name=ignore_bigrestart><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ignore_bigrestart</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Considers a big RESTART as if it was a small RESTART.</li><br>
 <hr>
-<a name=print_matrix><li><b>print_matrix</b><br><br>
+<a name=print_matrix><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_matrix</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints some matrices for debugging purposes.</li><br>
 <hr>
-<a name=print_eri><li><b>print_eri</b><br><br>
+<a name=print_eri><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_eri</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Dumps the Electron Repulsion Integral on a file.</li><br>
 <hr>
-<a name=print_wfn><li><b>print_wfn</b><br><br>
+<a name=print_wfn><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_wfn</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints some wavefunctions along some selected lines.</li><br>
 <hr>
-<a name=print_cube><li><b>print_cube</b><br><br>
+<a name=print_cube><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_cube</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints some wavefunctions in a 3D volumetric file with cube format</li><br>
 <hr>
-<a name=print_w><li><b>print_w</b><br><br>
+<a name=print_w><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_w</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Dumps the spectral function of the screened Coulomb W. This is necessary for a subsequent BSE run.</li><br>
 <hr>
-<a name=print_restart><li><b>print_restart</b><br><br>
+<a name=print_restart><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_restart</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: yes<br><br>
 Prints a small RESTART file at each SCF cycle. There are two kinds of RESTART files: the small RESTART and the big RESTART. The former contains only the information about the occupied wavefunctions. This is a very small file and the writing should not hit too much on performance.</li><br>
 <hr>
-<a name=print_bigrestart><li><b>print_bigrestart</b><br><br>
+<a name=print_bigrestart><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_bigrestart</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: yes<br><br>
 Prints the big RESTART file at the end of the SCF loop. There are two kinds of RESTART files: the small RESTART and the big RESTART. The latter is written only when self-consistency has been reached. It contains all the states and the Hamiltonian and allows one to completely skip the scf loop or to start over with another basis set.</li><br>
 <hr>
-<a name=print_sigma><li><b>print_sigma</b><br><br>
+<a name=print_sigma><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_sigma</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints the value of the GW self-energy on the sampling frequencies in files.</li><br>
 <hr>
-<a name=print_pdos><li><b>print_pdos</b><br><br>
+<a name=print_pdos><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>print_pdos</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Prints the Mulliken weight of each eigenvector on a given atom or a given series of atoms.</li><br>
 <hr>
-<a name=length_unit><li><b>length_unit</b><br><br>
+<a name=length_unit><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>length_unit</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: angstrom<br><br>
 Chooses the units of the atomic coordinates. Can be 'angstrom' or 'bohr'. Could be abbreviated in 'A' or 'au'.</li><br>
 <hr>
-<a name=natom><li><b>natom</b><br><br>
+<a name=natom><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>natom</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 0<br><br>
 Sets the number of atoms in the molecule. This is the number of lines to be read in the following section of the input file if no xyz file is provided.</li><br>
 <hr>
-<a name=xyz_file><li><b>xyz_file</b><br><br>
+<a name=xyz_file><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>xyz_file</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: None<br><br>
 Specifies the location of the xyz file that contains the atomic positions. It can be used as an alternate route to set atomic coordinate.</li><br>
 <hr>
-<a name=nghost><li><b>nghost</b><br><br>
+<a name=nghost><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nghost</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 0<br><br>
 Sets the number of ghost atoms in the molecule. Used to place basis function where there is no atom. Useful for Basis Set Superposition Error</li><br>
 <hr>
-<a name=eta><li><b>eta</b><br><br>
+<a name=eta><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>eta</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 0.001<br><br>
 Is a the tiny imaginary part used in the denominator of the Green's function to shift the pole off the axis, so to avoid divergences.This is an energy in Hartree. It should be set to the lowest value possible in theory. However, in practice, a too low value of eta would induce huge and unstable GW corrections. The default value is usually very accurate and there is no need to use a lower value. But for states apart from the band gap, a large value of eta may be beneficial for stability. eta=0.01 is already much more stable. Note that for QSGW increasing eta is most often unavoidable.</li><br>
 <hr>
-<a name=scissor><li><b>scissor</b><br><br>
+<a name=scissor><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>scissor</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 Sets a rigid energy shift of the unoccupied states, so to mimick a GW calculation without actually doing it.</li><br>
 <hr>
-<a name=scalapack_block_min><li><b>scalapack_block_min</b><br><br>
+<a name=scalapack_block_min><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>scalapack_block_min</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 400<br><br>
 Sets the minimum block size to distribute a non-distributed matrix with SCALAPACK. If scalapack_block_min=400, then a 900x900 matrix will be distributed on a 2x2 processor grid. If scalapack_block_min=500, then a 900x900 matrix will no be distributed.</li><br>
 <hr>
-<a name=scalapack_nprow><li><b>scalapack_nprow</b><br><br>
+<a name=scalapack_nprow><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>scalapack_nprow</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Sets number of row processors for SCALAPACK distribution of the SCF matrices.  nprow X npcol should be lower or equal to the number of processors.</li><br>
 <hr>
-<a name=scalapack_npcol><li><b>scalapack_npcol</b><br><br>
+<a name=scalapack_npcol><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>scalapack_npcol</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Sets number of column processors for SCALAPACK distribution of the SCF matrices.  nprow X npcol should be lower or equal to the number of processors.</li><br>
 <hr>
-<a name=mpi_nproc_ortho><li><b>mpi_nproc_ortho</b><br><br>
+<a name=mpi_nproc_ortho><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>mpi_nproc_ortho</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 1<br><br>
 Sets the number of processors left to parallelize on other directions. The main direction (auxiliary basis or DFT grid points) is obtained by <b>mpi_nproc</b> / <b>mpi_nproc_ortho</b>, which must be an integer.</li><br>
 <hr>
-<a name=alpha_cohsex><li><b>alpha_cohsex</b><br><br>
+<a name=alpha_cohsex><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>alpha_cohsex</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 1.0<br><br>
 Sets the amount of static Screened EXchange in the self-energy. Only works with scf='COHSEX' or with postscf='COHSEX'.</li><br>
 <hr>
-<a name=beta_cohsex><li><b>beta_cohsex</b><br><br>
+<a name=beta_cohsex><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>beta_cohsex</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 1.0<br><br>
 Sets the amount of static COulomb Hole in the self-energy. Only works with scf='COHSEX' or with postscf='COHSEX'.</li><br>
 <hr>
-<a name=dft_core><li><b>dft_core</b><br><br>
+<a name=dft_core><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>dft_core</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: 0<br><br>
 Sets the number of states considered as core in &lt;&Sigma;<sub>x</sub>-<i>v</i><sub>xc</sub>&gt. This options is meant to mimic the pseudopotential approximation.</li><br>
 <hr>
-<a name=gamma_cohsex><li><b>gamma_cohsex</b><br><br>
+<a name=gamma_cohsex><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>gamma_cohsex</b>  </span>  
+<b><font color="red">EXPERIMENTAL</font> </b> 
+<br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 EXPERIMENTAL</li><br>
 <hr>
-<a name=delta_cohsex><li><b>delta_cohsex</b><br><br>
+<a name=delta_cohsex><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>delta_cohsex</b>  </span>  
+<b><font color="red">EXPERIMENTAL</font> </b> 
+<br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 EXPERIMENTAL</li><br>
 <hr>
-<a name=epsilon_cohsex><li><b>epsilon_cohsex</b><br><br>
+<a name=epsilon_cohsex><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>epsilon_cohsex</b>  </span>  
+<b><font color="red">EXPERIMENTAL</font> </b> 
+<br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 EXPERIMENTAL</li><br>
 <hr>
-<a name=virtual_fno><li><b>virtual_fno</b><br><br>
+<a name=virtual_fno><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>virtual_fno</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: no<br><br>
 Activates the Frozen Natural Orbitals technique to span the virtual orbitals subspace with fewer orbitals. The dimension of the space is set up with the input keyword nvirtualg or nvirtualw. Actually the virtual orbital space is determined by the minimum MIN(nvirtualg,nvirtualw).</li><br>
 <hr>
-<a name=rcut_mbpt><li><b>rcut_mbpt</b><br><br>
+<a name=rcut_mbpt><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>rcut_mbpt</b>  </span>  
+<b><font color="red">EXPERIMENTAL</font> </b> 
+<br><br>
 <i>Optional</i><br>
 Default: 1.0<br><br>
 EXPERIMENTAL</li><br>
 <hr>
-<a name=gwgamma_tddft><li><b>gwgamma_tddft</b><br><br>
+<a name=gwgamma_tddft><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>gwgamma_tddft</b>  </span>  
+<b><font color="red">EXPERIMENTAL</font> </b> 
+<br><br>
 <i>Optional</i><br>
 Default: no<br><br>
-EXPERIMENTAL. Calculates the vertex using the DFT flavor specified in the ground-state calculation. </li><br>
+EXPERIMENTAL. Calculates the vertex using the DFT flavor specified in the ground-state calculation.</li><br>
 <hr>
-<a name=ecp_elements><li><b>ecp_elements</b><br><br>
+<a name=ecp_type><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_type</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: None<br><br>
+Name of the Effective Core Potential. For instance, Gold using the cc-pVDZ-PP basis set should have ecp_type='PP', so that MOLGW looks for the file Au_PP in the basis_path folder.</li><br>
+<hr>
+<a name=ecp_elements><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>ecp_elements</b>  </span>  
+<br><br>
 <i>Optional</i><br>
 Default: None<br><br>
 Contains the list of elements (separated by spaces) that should be treated with an Effective Core Potential.</li><br>
 </ul>
 <br><br><br><br><br><br><br><br>
-<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_parameter.py on 14 October 2016</i><br><br></body>
+<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_parameter.py on 17 October 2016</i><br><br></body>
 </html>

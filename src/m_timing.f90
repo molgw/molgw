@@ -55,6 +55,7 @@ module m_timing
  integer,parameter :: timing_fno                 = 36
  integer,parameter :: timing_full_ci             = 37
  integer,parameter :: timing_gwgamma             = 38
+ integer,parameter :: timing_ecp                 = 39
  
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -158,6 +159,7 @@ subroutine output_timing()
  write(stdout,'(a30,6x,f12.2,2x,i8)')           'Approx Hamiltonian',timing(timing_approx_ham),calls(timing_approx_ham)
  write(stdout,'(a30,6x,f12.2,2x,i8)')          'Kinetic Hamiltonian',timing(timing_hamiltonian_kin),calls(timing_hamiltonian_kin)
  write(stdout,'(a30,6x,f12.2,2x,i8)')  'Electron-nuclei Hamiltonian',timing(timing_hamiltonian_nuc),calls(timing_hamiltonian_nuc)
+ write(stdout,'(a30,6x,f12.2,2x,i8)')  '            ECP Hamiltonian',timing(timing_ecp),calls(timing_ecp)
 
  write(stdout,*)
  write(stdout,'(a)') '                 -------------------------------------'

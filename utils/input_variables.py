@@ -12,12 +12,20 @@ class variable:
   family   =''
   datatype =''
   mandatory='no'
+  experimental='no'
   default  =''
   comment  =''
   def printhtml(self,f):
     f.write('<hr>\n')
     f.write('<a name='+self.keyword+'>')
-    f.write('<li><b>'+self.keyword+'</b><br><br>\n')
+    f.write('<li>    \
+             <span style="display:inline-block;background:#EEEEEE;width:400px">  \
+             <b>'+self.keyword+'</b>  </span>  \n')
+
+    if self.experimental == 'yes':
+      f.write('<b><font color="red">EXPERIMENTAL</font> </b> \n')
+    f.write('<br><br>\n')
+
     if self.mandatory == 'yes':
       f.write('<i>Mandatory</i><br>\n')
     else:
@@ -127,9 +135,10 @@ i = len(vl) - 1
 vl[i].keyword  ='small_basis'
 vl[i].family   ='postscf'
 vl[i].default  =''
+vl[i].experimental='yes'
 vl[i].datatype ='characters'
 vl[i].comment  ='Calls for a smaller basis set used to represent the virtual orbital space with fewer functions. \
-Only works for GW (EXPERIMENTAL)'
+Only works for GW.'
 
 #================================
 vl.append(variable())
@@ -692,6 +701,7 @@ vl[i].keyword  ='gamma_cohsex'
 vl[i].family   ='post'
 vl[i].default  =0.0
 vl[i].datatype ='real'
+vl[i].experimental  ='yes'
 vl[i].comment  ='EXPERIMENTAL'
 
 #================================
@@ -701,6 +711,7 @@ vl[i].keyword  ='delta_cohsex'
 vl[i].family   ='post'
 vl[i].default  =0.0
 vl[i].datatype ='real'
+vl[i].experimental  ='yes'
 vl[i].comment  ='EXPERIMENTAL'
 
 #================================
@@ -710,6 +721,7 @@ vl[i].keyword  ='epsilon_cohsex'
 vl[i].family   ='post'
 vl[i].default  =0.0
 vl[i].datatype ='real'
+vl[i].experimental  ='yes'
 vl[i].comment  ='EXPERIMENTAL'
 
 #================================
@@ -730,6 +742,7 @@ vl[i].keyword  ='rcut_mbpt'
 vl[i].family   ='post'
 vl[i].default  ='1.0'
 vl[i].datatype ='real'
+vl[i].experimental  ='yes'
 vl[i].comment  ='EXPERIMENTAL'
 
 #================================
@@ -739,7 +752,18 @@ vl[i].keyword  ='gwgamma_tddft'
 vl[i].family   ='post'
 vl[i].default  ='no'
 vl[i].datatype ='yes/no'
-vl[i].comment  ='EXPERIMENTAL. Calculates the vertex using the DFT flavor specified in the ground-state calculation. '
+vl[i].experimental  ='yes'
+vl[i].comment  ='EXPERIMENTAL. Calculates the vertex using the DFT flavor specified in the ground-state calculation.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='ecp_type'
+vl[i].family   ='general'
+vl[i].default  =''
+vl[i].datatype ='characters'
+vl[i].comment  ='Name of the Effective Core Potential. For instance, Gold using the cc-pVDZ-PP basis set should have ecp_type=\'PP\', \
+so that MOLGW looks for the file Au_PP in the basis_path folder.'
 
 #================================
 vl.append(variable())

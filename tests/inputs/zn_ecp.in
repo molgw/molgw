@@ -2,6 +2,8 @@
  scf='hf'
 
  basis='cc-pVDZ-PP'
+
+ ecp_type='PP'
  ecp_elements=' Zn '
 
  natom=1

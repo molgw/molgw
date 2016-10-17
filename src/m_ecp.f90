@@ -32,11 +32,12 @@ module m_ecp
 contains
 
 
-subroutine init_ecp(ecp_elements,ecp_path)
+subroutine init_ecp(ecp_elements,ecp_path,ecp_name)
  implicit none
 
  character(len=*),intent(in) :: ecp_elements
  character(len=*),intent(in) :: ecp_path
+ character(len=*),intent(in) :: ecp_name
 !=====
  character(len=132) :: string,ecp_filename
  character(len=2)   :: element
@@ -78,7 +79,7 @@ subroutine init_ecp(ecp_elements,ecp_path)
    element = element_name(REAL(element_ecp(ielement_ecp),dp))
    write(stdout,'(1x,a,a)') 'ECP for element: ',element
 
-   ecp_filename = TRIM(ecp_path)//TRIM(element)//'_ECP'
+   ecp_filename = TRIM(ecp_path)//TRIM(element)//'_'//TRIM(ecp_name)
    inquire(file=TRIM(ecp_filename),exist=file_exists)
    if( .NOT. file_exists ) then
      write(stdout,*) 'Looking for file: ',ecp_filename
