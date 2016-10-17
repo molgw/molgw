@@ -136,7 +136,6 @@ subroutine read_ecp_file(ecpunit,element,ecpi)
    if( line(1:5) == '_____' ) then 
      read(ecpunit,'(a)',iostat=istat) line
      if( istat == iostat_end ) then
-!       write(*,*) 'End of file reached'
        end_of_file = .TRUE.
        exit
      endif
@@ -155,19 +154,16 @@ subroutine read_ecp_file(ecpunit,element,ecpi)
      cycle
    endif
    i1 = INDEX(line,' ')
-!   write(*,*) i1,'_'//line(1:i1-1)//'_'
 
    if( line(1:i1-1) /= TRIM(element) .AND. capitalize(line(1:i1-1)) /= TRIM(element) ) then
      write(stdout,*) 'ECP file should only contain information about element '//TRIM(element)
      write(stdout,*) 'While '//line(1:i1-1)//' was found'
      call die('ECP file reading problem')
    endif
-!   if( i1-1 > 2 ) write(*,*) 'in line ',iline,'the first symbol should be an element'
 
    line = ADJUSTL(line(i1+1:))
 
    i2 = INDEX(line,' ')
-!   write(*,*) 'key  _'//line(1:i2-1)//'_'
    amc = capitalize(line(1:i2-1))
    if( amc == 'NELEC' ) then
      read(line(i2+1:),'(i10)') ecpi%nelec
@@ -184,7 +180,6 @@ subroutine read_ecp_file(ecpunit,element,ecpi)
      do while(istat == 0)
        read(ecpunit,'(a)',iostat=istat) line
        if( istat == iostat_end ) then
-         write(*,*) 'End of file reached'
          end_of_file = .TRUE.
          exit
        endif
@@ -207,7 +202,7 @@ subroutine read_ecp_file(ecpunit,element,ecpi)
        endif
      end do
    else
-     write(*,*) capitalize(line(1:i2-1)),line(1:i2-1)
+     write(stdout,*) capitalize(line(1:i2-1)),line(1:i2-1)
      call die('problem reading ECP file')
    endif
      

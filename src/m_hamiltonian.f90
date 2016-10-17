@@ -303,7 +303,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  real(dp)             :: vnucleus_ij
 
  integer,parameter    :: nradial=50  ! 100
- integer,parameter    :: n1=110  ! 230
+ integer,parameter    :: n1=110      ! 230
  integer              :: iecp
  integer              :: iproj,nproj
  integer              :: mm
@@ -328,6 +328,24 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
 
  call start_clock(timing_ecp)
 
+ !
+ ! Since there will be an allreduce operation in the end, 
+ ! anticipate by dividing the input value of Hnucl by the number of procs
+ if( nproc_world > 1 ) then
+   hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) / nproc_world
+ endif
+
+ mm = n1
+ call ld0110(x1,y1,z1,w1,mm)
+! call ld0230(x1,y1,z1,w1,mm)
+
+ do iradial=1,nradial
+   xtmp = ( iradial - 0.5_dp ) / REAL(nradial,dp)
+   xa(iradial)   = -5.0_dp * log( 1.0_dp - xtmp**3)
+   wxa(iradial)  = 3.0_dp * 5.0_dp * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial,dp)
+ enddo
+
+
  do iatom=1,natom
    element_has_ecp = .FALSE.
    do ie=1,nelement_ecp
@@ -347,18 +365,11 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
      nproj = nproj + number_basis_function_am('PURE',ecp(ie)%lk(iecp))
    enddo
   
-   do iradial=1,nradial
-     xtmp = ( iradial - 0.5_dp ) / REAL(nradial,dp)
-     xa(iradial)   = -5.0_dp * log( 1.0_dp - xtmp**3)
-     wxa(iradial)  = 3.0_dp * 5.0_dp * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial,dp)
-   enddo
-   
-   mm = n1
-   call ld0110(x1,y1,z1,w1,mm)
-  ! call ld0230(x1,y1,z1,w1,mm)
   
    allocate(int_fixed_r(basis%nbf,nproj))
    do iradial=1,nradial
+     if( MODULO(iradial-1,nproc_world) /= rank_world ) cycle
+
      int_fixed_r(:,:) = 0.0_dp
      do i1=1,n1
        rr(1) = xa(iradial) * x1(i1) + x(1,iatom)
@@ -399,8 +410,9 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
   
    deallocate(int_fixed_r)
 
-
  enddo 
+
+ call xsum_world(hamiltonian_nucleus)
 
 
  call stop_clock(timing_ecp)
