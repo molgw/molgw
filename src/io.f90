@@ -389,8 +389,9 @@ subroutine plot_wfn(basis,c_matrix)
  integer                    :: wfrfile
 !=====
 
- write(stdout,*) 
- write(stdout,*) 'Plotting some selected wavefunctions'
+ if( .NOT. is_iomaster ) return
+
+ write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions'
  inquire(file='manual_plotwfn',exist=file_exists)
  if(file_exists) then
    open(newunit=wfrfile,file='manual_plotwfn',status='old')
@@ -497,7 +498,10 @@ subroutine plot_rho(basis,occupation,c_matrix)
  integer                    :: rhorfile
 !=====
 
- write(stdout,*) 'Plotting the density'
+ if( .NOT. is_iomaster ) return
+
+ write(stdout,'(/,1x,a)') 'Plotting the density'
+
  inquire(file='manual_plotrho',exist=file_exists)
  if(file_exists) then
    open(newunit=rhorfile,file='manual_plotrho',status='old')
@@ -598,8 +602,8 @@ subroutine plot_cube_wfn(basis,c_matrix)
 
  if( .NOT. is_iomaster ) return
 
- write(stdout,*) 
- write(stdout,*) 'Plotting some selected wavefunctions in a cube file'
+ write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
+
  inquire(file='manual_cubewfn',exist=file_exists)
  if(file_exists) then
    open(newunit=icubefile,file='manual_cubewfn',status='old')

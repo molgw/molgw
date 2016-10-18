@@ -5,6 +5,7 @@
 
  ecp_type='PP'
  ecp_elements=' Zn '
+ ecp_quality='high'
 
  natom=1
 /

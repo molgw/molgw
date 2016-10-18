@@ -27,17 +27,22 @@ module m_ecp
 
  type(effective_core_potential),allocatable :: ecp(:)
 
+ !
+ ! Grid quality description
+ integer,protected      :: nradial_ecp,nangular_ecp
 
 
 contains
 
 
-subroutine init_ecp(ecp_elements,ecp_path,ecp_name)
+!=========================================================================
+subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
  implicit none
 
  character(len=*),intent(in) :: ecp_elements
  character(len=*),intent(in) :: ecp_path
  character(len=*),intent(in) :: ecp_name
+ integer,intent(in)          :: ecp_level_in
 !=====
  character(len=132) :: string,ecp_filename
  character(len=2)   :: element
@@ -56,6 +61,30 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name)
 
  string = ecp_elements
  write(stdout,'(/,1x,a)') 'Reading ECP element list'
+
+ !
+ ! Set up the integration grid
+ select case(ecp_level_in)
+ case(low)       ! accuracy not guaranted, just for quick test runs
+   nradial_ecp     =  12
+   nangular_ecp    =   6
+ case(medium)    
+   nradial_ecp     =  20
+   nangular_ecp    =  26
+ case(high)     
+   nradial_ecp     =  35
+   nangular_ecp    =  38
+ case(very_high) ! almost perfect potentials
+   nradial_ecp     =  50
+   nangular_ecp    = 110
+ case(insane)    ! overdoing a lot
+   nradial_ecp     = 200
+   nangular_ecp    = 434
+ case default
+   call die('integration quality not recognized')
+ end select
+ write(stdout,'(1x,a,i5,2x,i5)') 'ECP are integrated numerically with a grid (radial,angular): ',nradial_ecp,nangular_ecp
+
 
  do while( ilen > 0 )
    string = ADJUSTL(string)

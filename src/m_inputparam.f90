@@ -106,6 +106,7 @@ module m_inputparam
  real(dp),protected               :: magnetization
  integer,protected                :: tddft_grid_level
  integer,protected                :: grid_level
+ integer,protected                :: ecp_level
  integer,protected                :: integral_level
  logical,protected                :: has_auxil_basis
  logical,protected                :: has_small_basis
@@ -686,6 +687,7 @@ subroutine read_inputfile_namelist()
  real(dp)             :: beta_hybrid
  character(len=12)    :: tddft_grid_quality
  character(len=12)    :: grid_quality
+ character(len=12)    :: ecp_quality
  character(len=12)    :: integral_quality
  character(len=100)   :: ctmp
  character(len=100)   :: ecp_elements
@@ -752,6 +754,7 @@ subroutine read_inputfile_namelist()
  gaussian_type      = capitalize(gaussian_type)
  tddft_grid_quality = capitalize(tddft_grid_quality)
  grid_quality       = capitalize(grid_quality)
+ ecp_quality        = capitalize(ecp_quality)
  integral_quality   = capitalize(integral_quality)
  mixing_scheme      = capitalize(mixing_scheme)
  length_unit        = capitalize(length_unit)
@@ -777,6 +780,7 @@ subroutine read_inputfile_namelist()
 
  tddft_grid_level   = interpret_quality(tddft_grid_quality)
  grid_level         = interpret_quality(grid_quality)
+ ecp_level          = interpret_quality(ecp_quality)
  integral_level     = interpret_quality(integral_quality)
 
  select case(TRIM(mixing_scheme))
@@ -903,7 +907,7 @@ subroutine read_inputfile_namelist()
  call init_atoms(natom,nghost,zatom_read,x_read)
  deallocate(x_read,zatom_read)
 
- call init_ecp(ecp_elements,basis_path,ecp_type)
+ call init_ecp(ecp_elements,basis_path,ecp_type,ecp_level)
  ! If ECP are used, tweak the nuclei charges here
  if( nelement_ecp > 0 ) then
    do iatom=1,natom

@@ -302,8 +302,6 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  integer              :: iatom
  real(dp)             :: vnucleus_ij
 
- integer,parameter    :: nradial=50  ! 100
- integer,parameter    :: n1=110      ! 230
  integer              :: iecp
  integer              :: iproj,nproj
  integer              :: mm
@@ -312,10 +310,10 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  real(dp)             :: weight
  real(dp)             :: basis_function_r(basis%nbf)
  integer              :: iradial
- integer              :: i1
+ integer              :: i1,n1
  real(dp)             :: xtmp,phi,cos_theta
- real(dp)             :: wxa(nradial),xa(nradial)
- real(dp)             :: w1(n1),x1(n1),y1(n1),z1(n1)
+ real(dp)             :: wxa(nradial_ecp),xa(nradial_ecp)
+ real(dp)             :: w1(nangular_ecp),x1(nangular_ecp),y1(nangular_ecp),z1(nangular_ecp)
  real(dp),allocatable :: int_fixed_r(:,:)
  real(dp),external    :: real_spherical_harmonics
  integer              :: necp,ie
@@ -335,14 +333,44 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
    hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) / nproc_world
  endif
 
- mm = n1
- call ld0110(x1,y1,z1,w1,mm)
-! call ld0230(x1,y1,z1,w1,mm)
+ n1 = nangular_ecp
+ select case(nangular_ecp)
+ case(6)
+   call ld0006(x1,y1,z1,w1,n1)
+ case(14)
+   call ld0014(x1,y1,z1,w1,n1)
+ case(26)
+   call ld0026(x1,y1,z1,w1,n1)
+ case(38)
+   call ld0038(x1,y1,z1,w1,n1)
+ case(50)
+   call ld0050(x1,y1,z1,w1,n1)
+ case(74)
+   call ld0074(x1,y1,z1,w1,n1)
+ case(86)
+   call ld0086(x1,y1,z1,w1,n1)
+ case(110)
+   call ld0110(x1,y1,z1,w1,n1)
+ case(146)
+   call ld0146(x1,y1,z1,w1,n1)
+ case(170)
+   call ld0170(x1,y1,z1,w1,n1)
+ case(230)
+   call ld0230(x1,y1,z1,w1,n1)
+ case(302)
+   call ld0302(x1,y1,z1,w1,n1)
+ case(434)
+   call ld0434(x1,y1,z1,w1,n1)
+ case default
+   write(stdout,*) 'grid points: ',nangular_ecp
+   call die('setup_nucleus_ecp: Lebedev grid is not available')
+ end select
 
- do iradial=1,nradial
-   xtmp = ( iradial - 0.5_dp ) / REAL(nradial,dp)
+
+ do iradial=1,nradial_ecp
+   xtmp = ( iradial - 0.5_dp ) / REAL(nradial_ecp,dp)
    xa(iradial)   = -5.0_dp * log( 1.0_dp - xtmp**3)
-   wxa(iradial)  = 3.0_dp * 5.0_dp * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial,dp)
+   wxa(iradial)  = 3.0_dp * 5.0_dp * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial_ecp,dp)
  enddo
 
 
@@ -367,11 +395,11 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
   
   
    allocate(int_fixed_r(basis%nbf,nproj))
-   do iradial=1,nradial
+   do iradial=1,nradial_ecp
      if( MODULO(iradial-1,nproc_world) /= rank_world ) cycle
 
      int_fixed_r(:,:) = 0.0_dp
-     do i1=1,n1
+     do i1=1,nangular_ecp
        rr(1) = xa(iradial) * x1(i1) + x(1,iatom)
        rr(2) = xa(iradial) * y1(i1) + x(2,iatom)
        rr(3) = xa(iradial) * z1(i1) + x(3,iatom)

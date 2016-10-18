@@ -129,12 +129,12 @@ subroutine init_spectral_function(nstate,occupation,sf)
    if( ncore_W == 0) ncore_W = atoms_core_states()
  endif
  if( ncore_W > 0 ) then
-   write(msg,'(a,i4,2x,i4)') 'frozen core approximation in W switched on up to state : ',ncore_W
+   write(msg,'(a,i4,2x,i4)') 'frozen core approximation in W switched on up to state = ',ncore_W
    call issue_warning(msg)
  endif
 
  if( nvirtual_W <= nstate ) then
-   write(msg,'(a,i4,2x,i4)') 'frozen virtual approximation in W switched on starting with state : ',nvirtual_W
+   write(msg,'(a,i4,2x,i4)') 'frozen virtual approximation in W switched on starting with state = ',nvirtual_W
    call issue_warning(msg)
  endif
 
