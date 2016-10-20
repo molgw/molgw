@@ -318,7 +318,7 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
    natom1=1
    natom2=1
  endif
- write(stdout,'(a,i5,2x,i5)') ' Range of atoms considered: ',natom1,natom2
+ write(stdout,'(1x,a,i5,2x,i5)') 'Range of atoms considered: ',natom1,natom2
 
  ibf_cart = 1
  ibf      = 1
@@ -335,8 +335,8 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  enddo
  
 
- write(stdout,*) '==========================================='
- write(stdout,*) ' spin state  energy(eV)  Mulliken proj. total        proj s         proj p      proj d ... '
+ write(stdout,'(1x,a)') '==========================================='
+ write(stdout,'(1x,a)') 'spin state  energy(eV)  Mulliken proj. total        proj s         proj p      proj d ... '
  proj_charge = 0.0_dp
  do ispin=1,nspin
    do istate=1,nstate
@@ -356,8 +356,8 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
           SUM(proj_state_i(:)),proj_state_i(:)
    enddo
  enddo
- write(stdout,*) '==========================================='
- write(stdout,'(a,f12.6)') ' Total Mulliken charge: ',proj_charge
+ write(stdout,'(1x,a)') '==========================================='
+ write(stdout,'(1x,a,f12.6)') 'Total Mulliken charge: ',proj_charge
 
 
 end subroutine mulliken_pdos

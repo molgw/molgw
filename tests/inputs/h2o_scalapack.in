@@ -8,6 +8,7 @@
  auxil_basis='aug-cc-pVTZ-RI'
  no_4center='yes'
 
+ print_multipole='yes'
 
  tolscf=1.0e-9
 

@@ -470,13 +470,6 @@ subroutine scf_loop(is_restart,&
  write(stdout,'(a25,1x,f19.10,/)')   'Est. HF Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
 
  !
- ! Evaluate the static dipole
- call static_dipole(nstate,basis,occupation,c_matrix)
- !
- ! Evaluate the static quadrupole
- call static_quadrupole(nstate,basis,occupation,c_matrix)
-
- !
  ! Evaluate spin contamination
  call evaluate_s2_operator(basis%nbf,nstate,occupation,c_matrix,s_matrix)
 

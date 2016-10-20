@@ -570,6 +570,15 @@ vl[i].comment  ='Prints the Mulliken weight of each eigenvector on a given atom 
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='print_multipole'
+vl[i].family   ='io'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints the electric multipole expansion for the electronic density and the nuclei.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='length_unit'
 vl[i].family   ='system'
 vl[i].default  ='angstrom'

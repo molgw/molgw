@@ -7,6 +7,8 @@
  basis='6-31G'
  gaussian_type='cart'
 
+ print_multipole='yes'
+
  natom=3
 /
 N  -1.1282 0. 0.
