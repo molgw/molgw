@@ -1278,7 +1278,6 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
  real(dp)                           :: dipole(3)
  real(dp),allocatable               :: dipole_basis(:,:,:)
  real(dp),allocatable               :: dipole_cart(:,:,:)
- real(dp),allocatable               :: residue(:,:)
  real(dp)                           :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
 
@@ -1333,6 +1332,7 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
 
  call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
 
+ ! Minus sign for electrons
  do idir=1,3
    dipole(idir) = -SUM( dipole_basis(idir,:,:) * SUM( p_matrix(:,:,:) , DIM=3 ) )
  enddo
@@ -1350,6 +1350,123 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
 
 
 end subroutine static_dipole
+
+
+!=========================================================================
+subroutine static_quadrupole(nstate,basis,occupation,c_matrix)
+ use m_basis_set
+ use m_atoms
+ implicit none
+
+ integer,intent(in)                 :: nstate
+ type(basis_set),intent(in)         :: basis
+ real(dp),intent(in)                :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
+!=====
+ integer                            :: istate,astate,iaspin
+ integer                            :: mstate,pstate,mpspin
+ integer                            :: ibf,jbf
+ integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
+ integer                            :: iatom,idir,jdir
+ real(dp)                           :: trace
+ real(dp)                           :: quad(3,3)
+ real(dp),allocatable               :: quad_basis(:,:,:,:)
+ real(dp),allocatable               :: quad_cart(:,:,:,:)
+ real(dp)                           :: p_matrix(basis%nbf,basis%nbf,nspin)
+!=====
+
+
+! call start_clock(timing_spectrum)
+
+ write(stdout,'(/,a)') ' Calculate the static quadrupole'
+
+
+ !
+ ! First precalculate all the needed quadrupoles in the basis set
+ !
+ allocate(quad_basis(3,3,basis%nbf,basis%nbf))
+ ibf_cart = 1
+ ibf      = 1
+ do while(ibf_cart<=basis%nbf_cart)
+   li      = basis%bf(ibf_cart)%am
+   ni_cart = number_basis_function_am('CART',li)
+   ni      = number_basis_function_am(basis%gaussian_type,li)
+
+   jbf_cart = 1
+   jbf      = 1
+   do while(jbf_cart<=basis%nbf_cart)
+     lj      = basis%bf(jbf_cart)%am
+     nj_cart = number_basis_function_am('CART',lj)
+     nj      = number_basis_function_am(basis%gaussian_type,lj)
+
+     allocate(quad_cart(3,3,ni_cart,nj_cart))
+
+
+     do i_cart=1,ni_cart
+       do j_cart=1,nj_cart
+         call basis_function_quadrupole(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),quad_cart(:,:,i_cart,j_cart))
+       enddo
+     enddo
+
+     do jdir=1,3
+       do idir=1,3
+         quad_basis(idir,jdir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
+               MATMUL(  quad_cart(idir,jdir,:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+       enddo
+     enddo
+
+     deallocate(quad_cart)
+
+     jbf      = jbf      + nj
+     jbf_cart = jbf_cart + nj_cart
+   enddo
+
+   ibf      = ibf      + ni
+   ibf_cart = ibf_cart + ni_cart
+ enddo
+
+
+ call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
+
+ ! Minus sign for electrons
+ do jdir=1,3
+   do idir=1,3
+     quad(idir,jdir) = -SUM( quad_basis(idir,jdir,:,:) * SUM( p_matrix(:,:,:) , DIM=3 ) )
+   enddo
+ enddo
+
+ deallocate(quad_basis)
+
+ do iatom=1,natom
+   do jdir=1,3
+     quad(:,jdir) = quad(:,jdir) + zatom(iatom) * x(:,iatom) * x(jdir,iatom)
+   enddo
+ enddo
+
+ write(stdout,'(1x,a,3(2x,f14.6))') 'Quadrupole (a.u.):    ',quad(1,:)
+ write(stdout,'(1x,a,3(2x,f14.6))') '                      ',quad(2,:)
+ write(stdout,'(1x,a,3(2x,f14.6))') '                      ',quad(3,:)
+ write(stdout,*)
+ write(stdout,'(1x,a,3(2x,f14.6))') 'Quadrupole (Debye.A): ',quad(1,:) * au_debye * bohr_A
+ write(stdout,'(1x,a,3(2x,f14.6))') '                      ',quad(1,:) * au_debye * bohr_A
+ write(stdout,'(1x,a,3(2x,f14.6))') '                      ',quad(1,:) * au_debye * bohr_A
+
+ trace = quad(1,1) + quad(2,2) + quad(3,3)
+ quad(1,1) = quad(1,1) - trace / 3.0_dp
+ quad(2,2) = quad(2,2) - trace / 3.0_dp
+ quad(3,3) = quad(3,3) - trace / 3.0_dp
+
+ write(stdout,*)
+ write(stdout,'(1x,a,3(2x,f14.6))') 'Traceless quadrupole (a.u.):    ',quad(1,:)
+ write(stdout,'(1x,a,3(2x,f14.6))') '                                ',quad(2,:)
+ write(stdout,'(1x,a,3(2x,f14.6))') '                                ',quad(3,:)
+ write(stdout,*)
+ write(stdout,'(1x,a,3(2x,f14.6))') 'Traceless quadrupole (Debye.A): ',quad(1,:) * au_debye * bohr_A
+ write(stdout,'(1x,a,3(2x,f14.6))') '                                ',quad(2,:) * au_debye * bohr_A
+ write(stdout,'(1x,a,3(2x,f14.6))') '                                ',quad(3,:) * au_debye * bohr_A
+
+
+
+end subroutine static_quadrupole
 
 
 end module m_hamiltonian

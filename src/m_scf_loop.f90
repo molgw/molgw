@@ -472,6 +472,9 @@ subroutine scf_loop(is_restart,&
  !
  ! Evaluate the static dipole
  call static_dipole(nstate,basis,occupation,c_matrix)
+ !
+ ! Evaluate the static quadrupole
+ call static_quadrupole(nstate,basis,occupation,c_matrix)
 
  !
  ! Evaluate spin contamination

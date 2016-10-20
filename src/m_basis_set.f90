@@ -853,10 +853,9 @@ subroutine basis_function_dipole(bf1,bf2,dipole)
 !=====
  type(basis_function)             :: bftmp
  real(dp)                         :: dipole_tmp
- integer                          :: ig
  logical,parameter                :: normalized=.FALSE.
- integer                         :: fake_shell=1
- integer                         :: fake_index=1
+ integer                          :: fake_shell=1
+ integer                          :: fake_index=1
 !=====
 
  ! 
@@ -864,48 +863,48 @@ subroutine basis_function_dipole(bf1,bf2,dipole)
  ! using r = ( r - B ) + B
  !
 
- ! first set up | (x-xB) phi_2 >
+ ! first set up | (x-Bx) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx+1,bf2%ny,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
- ! then overlap < phi1 | (x-xB) phi2 >
+ ! then overlap < phi1 | (x-Bx) phi2 >
  call overlap_basis_function(bf1,bftmp,dipole_tmp)
  dipole(1) = dipole_tmp
- ! first set up | xB phi_2 >
+ ! first set up | Bx phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor 
- ! then overlap < phi1 | xB phi2 >
+ ! then overlap < phi1 | Bx phi2 >
  call overlap_basis_function(bf1,bftmp,dipole_tmp)
  dipole(1) = dipole(1) + dipole_tmp * bf2%x0(1)
 
- ! first set up | (y-yB) phi_2 >
+ ! first set up | (y-By) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+1,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
- ! then overlap < phi1 | (y-yB) phi2 >
+ ! then overlap < phi1 | (y-By) phi2 >
  call overlap_basis_function(bf1,bftmp,dipole_tmp)
  dipole(2) = dipole_tmp
- ! first set up | yB phi_2 >
+ ! first set up | By phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor 
- ! then overlap < phi1 | yB phi2 >
+ ! then overlap < phi1 | By phi2 >
  call overlap_basis_function(bf1,bftmp,dipole_tmp)
  dipole(2) = dipole(2) + dipole_tmp * bf2%x0(2)
 
- ! first set up | (z-zB) phi_2 >
+ ! first set up | (z-Bz) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz+1,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
- ! then overlap < phi1 | (z-zB) phi2 >
+ ! then overlap < phi1 | (z-Bz) phi2 >
  call overlap_basis_function(bf1,bftmp,dipole_tmp)
  dipole(3) = dipole_tmp
- ! first set up | zB phi_2 >
+ ! first set up | Bz phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor 
- ! then overlap < phi1 | zB phi2 >
+ ! then overlap < phi1 | Bz phi2 >
  call overlap_basis_function(bf1,bftmp,dipole_tmp)
  dipole(3) = dipole(3) + dipole_tmp * bf2%x0(3)
 
@@ -914,101 +913,221 @@ end subroutine basis_function_dipole
 
 
 !=========================================================================
-subroutine basis_function_dipole_sq(bf1,bf2,dipole)
+subroutine basis_function_quadrupole(bf1,bf2,quad)
  implicit none
  type(basis_function),intent(in)  :: bf1,bf2
- real(dp),intent(out)             :: dipole(3)
+ real(dp),intent(out)             :: quad(3,3)
 !=====
  type(basis_function)             :: bftmp
- real(dp)                         :: dipole_tmp
- integer                          :: ig
+ real(dp)                         :: quad_tmp
  logical,parameter                :: normalized=.FALSE.
- integer                         :: fake_shell=1
- integer                         :: fake_index=1
+ integer                          :: fake_shell=1
+ integer                          :: fake_index=1
 !=====
 
  ! 
- ! Calculate < phi_1 | r^2 | phi_2 >
- ! using r^2 = ( r - B )^2 + 2 B ( r - B ) + B^2
+ ! Calculate < phi_1 | x y | phi_2 >
+ ! using x y = ( x - Bx ) * ( y - By) + Bx * ( y - By ) + By * ( x - Bx ) + Bx * By
  !
 
- ! first set up | (x-xB)^2 phi_2 >
- call init_basis_function(normalized,bf2%ngaussian,bf2%nx+2,bf2%ny,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+
+
+ !
+ !  terms x * y and y * x
+ ! 
+
+ ! first set up | (x-Bx)*(y-By) phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx+1,bf2%ny+1,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
- ! then overlap < phi1 | (x-xB)^2 phi2 >
- call overlap_basis_function(bf1,bftmp,dipole_tmp)
- dipole(1) = dipole_tmp
+ ! then overlap < phi1 | (x-Bx)*(y-By) phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(1,2) = quad_tmp
 
- ! first set up | 2B*(x-xB) phi_2 >
- call init_basis_function(normalized,bf2%ngaussian,bf2%nx+1,bf2%ny,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
- ! override the usual normalization
- bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
- ! then overlap < phi1 | 2B*(x-xB) phi2 >
- call overlap_basis_function(bf1,bftmp,dipole_tmp)
- dipole(1) = dipole(1) + dipole_tmp * 2.0_dp * bf2%x0(1)
-
- ! first set up | xB phi_2 >
- call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
- ! override the usual normalization
- bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor 
- ! then overlap < phi1 | xB phi2 >
- call overlap_basis_function(bf1,bftmp,dipole_tmp)
- dipole(1) = dipole(1) + dipole_tmp * bf2%x0(1)**2
-
-
-
- ! first set up | (y-yB)^2 phi_2 >
- call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+2,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
- ! override the usual normalization
- bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
- ! then overlap < phi1 | (y-yB)^2 phi2 >
- call overlap_basis_function(bf1,bftmp,dipole_tmp)
- dipole(2) = dipole_tmp
-
- ! first set up | 2B*(y-yB) phi_2 >
+ ! first set up | Bx*(y-By) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+1,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
- ! then overlap < phi1 | 2B*(y-yB) phi2 >
- call overlap_basis_function(bf1,bftmp,dipole_tmp)
- dipole(2) = dipole(2) + dipole_tmp * 2.0_dp * bf2%x0(2)
+ ! then overlap < phi1 | Bx*(y-By) phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(1,2) = quad(1,2) + quad_tmp * bf2%x0(1)
 
- ! first set up | yB phi_2 >
- call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
- ! override the usual normalization
- bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor 
- ! then overlap < phi1 | yB phi2 >
- call overlap_basis_function(bf1,bftmp,dipole_tmp)
- dipole(2) = dipole(2) + dipole_tmp * bf2%x0(2)**2
-
-
-
- ! first set up | (z-zB)^2 phi_2 >
- call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz+2,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ ! first set up | By*(x-Bx) phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx+1,bf2%ny,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
- ! then overlap < phi1 | (z-zB)^2 phi2 >
- call overlap_basis_function(bf1,bftmp,dipole_tmp)
- dipole(3) = dipole_tmp
+ ! then overlap < phi1 | By*(x-Bx) phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(1,2) = quad(1,2) + quad_tmp * bf2%x0(2)
 
- ! first set up | 2B*(z-zB) phi_2 >
+ ! Overlap < phi1 | Bx*By phi2 >
+ call overlap_basis_function(bf1,bf2,quad_tmp)
+ quad(1,2) = quad(1,2) + quad_tmp * bf2%x0(1) * bf2%x0(2)
+
+ quad(2,1) = quad(1,2)
+
+
+ !
+ !  terms x * z and z * x
+ ! 
+
+ ! first set up | (x-Bx)*(z-Bz) phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx+1,bf2%ny,bf2%nz+1,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | (x-Bx)*(z-Bz) phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(1,3) = quad_tmp
+
+ ! first set up | Bx*(z-Bz) phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz+1,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
- ! then overlap < phi1 | 2B*(z-zB) phi2 >
- call overlap_basis_function(bf1,bftmp,dipole_tmp)
- dipole(3) = dipole(3) + dipole_tmp * 2.0_dp * bf2%x0(3)
+ ! then overlap < phi1 | Bx*(z-Bz) phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(1,3) = quad(1,3) + quad_tmp * bf2%x0(1)
 
- ! first set up | zB phi_2 >
+ ! first set up | Bz*(x-Bx) phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx+1,bf2%ny,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | Bz*(x-Bx) phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(1,3) = quad(1,3) + quad_tmp * bf2%x0(3)
+
+ ! Overlap < phi1 | Bx*Bz phi2 >
+ call overlap_basis_function(bf1,bf2,quad_tmp)
+ quad(1,3) = quad(1,3) + quad_tmp * bf2%x0(1) * bf2%x0(3)
+
+ quad(3,1) = quad(1,3)
+
+
+ !
+ !  terms y * z and z * y
+ ! 
+
+ ! first set up | (y-By)*(z-Bz) phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+1,bf2%nz+1,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | (y-By)*(z-Bz) phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(2,3) = quad_tmp
+
+ ! first set up | By*(z-Bz) phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz+1,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | By*(z-Bz) phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(2,3) = quad(2,3) + quad_tmp * bf2%x0(2)
+
+ ! first set up | Bz*(y-By) phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+1,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | Bz*(y-By) phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(2,3) = quad(2,3) + quad_tmp * bf2%x0(3)
+
+ ! Overlap < phi1 | By*Bz phi2 >
+ call overlap_basis_function(bf1,bf2,quad_tmp)
+ quad(2,3) = quad(2,3) + quad_tmp * bf2%x0(2) * bf2%x0(3)
+
+ quad(3,2) = quad(2,3)
+
+
+
+
+ !
+ !  term x * x
+ ! 
+
+ ! first set up | (x-Bx)*(x-Bx) phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx+2,bf2%ny,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | (x-Bx)^2 phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(1,1) = quad_tmp
+
+ ! first set up | 2Bx*(x-Bx) phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx+1,bf2%ny,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | 2Bx*(x-Bx) phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(1,1) = quad(1,1) + quad_tmp * 2.0_dp * bf2%x0(1)
+
+ ! first set up | Bx**2 phi_2 >
  call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
  ! override the usual normalization
  bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor 
- ! then overlap < phi1 | zB phi2 >
- call overlap_basis_function(bf1,bftmp,dipole_tmp)
- dipole(3) = dipole(3) + dipole_tmp * bf2%x0(3)**2
+ ! then overlap < phi1 | Bx**2 phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(1,1) = quad(1,1) + quad_tmp * bf2%x0(1)**2
 
-end subroutine basis_function_dipole_sq
+
+ !
+ !  term y * y
+ ! 
+
+ ! first set up | (y-By)^2 phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+2,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | (y-By)^2 phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(2,2) = quad_tmp
+
+ ! first set up | 2B*(y-By) phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny+1,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | 2B*(y-By) phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(2,2) = quad(2,2) + quad_tmp * 2.0_dp * bf2%x0(2)
+
+ ! first set up | By**2 phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor 
+ ! then overlap < phi1 | By**2 phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(2,2) = quad(2,2) + quad_tmp * bf2%x0(2)**2
+
+
+ !
+ !  term z * z
+ ! 
+
+ ! first set up | (z-Bz)^2 phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz+2,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | (z-Bz)^2 phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(3,3) = quad_tmp
+
+ ! first set up | 2B*(z-Bz) phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz+1,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor
+ ! then overlap < phi1 | 2B*(z-Bz) phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(3,3) = quad(3,3) + quad_tmp * 2.0_dp * bf2%x0(3)
+
+ ! first set up | Bz**2 phi_2 >
+ call init_basis_function(normalized,bf2%ngaussian,bf2%nx,bf2%ny,bf2%nz,0,bf2%x0,bf2%g(:)%alpha,bf2%coeff,fake_shell,fake_index,bftmp)
+ ! override the usual normalization
+ bftmp%g(:)%norm_factor = bf2%g(:)%norm_factor 
+ ! then overlap < phi1 | Bz**2 phi2 >
+ call overlap_basis_function(bf1,bftmp,quad_tmp)
+ quad(3,3) = quad(3,3) + quad_tmp * bf2%x0(3)**2
+
+
+
+end subroutine basis_function_quadrupole
 
 
 !=========================================================================

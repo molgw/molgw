@@ -513,7 +513,7 @@ subroutine plot_rho(basis,occupation,c_matrix)
    u(1)=1.0_dp
    a(:)=0.0_dp
  endif
- u(:) = u(:) / SQRT(SUM(u(:)**2))
+ u(:) = u(:) / NORM2(u)
  allocate(phi(basis%nbf,nspin))
  write(stdout,'(a,3(2x,f8.3))') ' direction:',u(:)
  write(stdout,'(a,3(2x,f8.3))') ' origin:   ',a(:)
