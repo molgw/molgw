@@ -364,15 +364,16 @@ end subroutine mulliken_pdos
 
 
 !=========================================================================
-subroutine plot_wfn(basis,c_matrix)
+subroutine plot_wfn(nstate,basis,c_matrix)
  use m_definitions
  use m_mpi
  use m_inputparam, only: nspin
  use m_atoms
  use m_basis_set
  implicit none
+ integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
 !=====
  integer,parameter          :: nr=2000
  real(dp),parameter         :: length=10.0_dp
@@ -472,16 +473,17 @@ end subroutine plot_wfn
 
 
 !=========================================================================
-subroutine plot_rho(basis,occupation,c_matrix)
+subroutine plot_rho(nstate,basis,occupation,c_matrix)
  use m_definitions
  use m_mpi
  use m_atoms
  use m_inputparam, only: nspin
  use m_basis_set
  implicit none
+ integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(basis%nbf,nspin)
- real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
 !=====
  integer,parameter          :: nr=5000
  real(dp),parameter         :: length=4.0_dp
@@ -514,7 +516,7 @@ subroutine plot_rho(basis,occupation,c_matrix)
    a(:)=0.0_dp
  endif
  u(:) = u(:) / NORM2(u)
- allocate(phi(basis%nbf,nspin))
+ allocate(phi(nstate,nspin))
  write(stdout,'(a,3(2x,f8.3))') ' direction:',u(:)
  write(stdout,'(a,3(2x,f8.3))') ' origin:   ',a(:)
 
@@ -558,9 +560,9 @@ subroutine plot_rho(basis,occupation,c_matrix)
 
    write(103,'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( phi(:,:)**2 * occupation(:,:) )
 
-   write(104,'(50(e16.8,2x))') NORM2(rr(:)),SUM( phi(:,:)**2 * occupation(:,:) ) * 4.0_dp * pi * NORM2(rr(:))**2
-   write(105,'(50(e16.8,2x))') NORM2(rr(:)),SUM( phi(1,:)**2 * occupation(1,:) ) * 4.0_dp * pi * NORM2(rr(:))**2
-   write(106,'(50(e16.8,2x))') NORM2(rr(:)),SUM( phi(2:,:)**2 * occupation(2:,:) ) * 4.0_dp * pi * NORM2(rr(:))**2
+!   write(104,'(50(e16.8,2x))') NORM2(rr(:)),SUM( phi(:,:)**2 * occupation(:,:) ) * 4.0_dp * pi * NORM2(rr(:))**2
+!   write(105,'(50(e16.8,2x))') NORM2(rr(:)),SUM( phi(1,:)**2 * occupation(1,:) ) * 4.0_dp * pi * NORM2(rr(:))**2
+!   write(106,'(50(e16.8,2x))') NORM2(rr(:)),SUM( phi(2:,:)**2 * occupation(2:,:) ) * 4.0_dp * pi * NORM2(rr(:))**2
 
  enddo
 
@@ -570,15 +572,17 @@ end subroutine plot_rho
 
 
 !=========================================================================
-subroutine plot_cube_wfn(basis,c_matrix)
+subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
  use m_definitions
  use m_mpi
- use m_inputparam, only: nspin
+ use m_inputparam, only: nspin,spin_fact
  use m_atoms
  use m_basis_set
  implicit none
+ integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
 !=====
  integer                    :: nx
  integer                    :: ny
@@ -596,6 +600,7 @@ subroutine plot_cube_wfn(basis,c_matrix)
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
  real(dp),allocatable       :: basis_function_r_cart(:)
  integer,allocatable        :: ocubefile(:,:)
+ integer                    :: ocuberho(nspin)
  character(len=200)         :: file_name
  integer                    :: icubefile
 !=====
@@ -644,6 +649,24 @@ subroutine plot_cube_wfn(basis,c_matrix)
      enddo
    enddo
  enddo
+
+ !
+ ! check whether istate1:istate2 spans all the occupied states
+ if( istate1==1 .AND. ALL( occupation(istate2+1,:) < completely_empty ) ) then
+   do ispin=1,nspin
+     write(file_name,'(a,i1,a)') 'rho_',ispin,'.cube'
+     open(newunit=ocuberho(ispin),file=file_name)
+     write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
+     write(ocuberho(ispin),'(a,i4)') 'density for spin ',ispin
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xxmin,ymin,zmin
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,(xxmax-xxmin)/REAL(nx,dp),0.,0.
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,(ymax-ymin)/REAL(ny,dp),0.
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') nz,0.,0.,(zmax-zmin)/REAL(nz,dp)
+     do iatom=1,natom
+       write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,x(:,iatom)
+     enddo
+   enddo
+ endif
 
  phase(:,:)=1.0_dp
 
@@ -695,6 +718,15 @@ subroutine plot_cube_wfn(basis,c_matrix)
            enddo
          enddo
        endif
+
+       !
+       ! check whether istate1:istate2 spans all the occupied states
+       if( istate1==1 .AND. ALL( occupation(istate2+1,:) < completely_empty ) ) then
+         do ispin=1,nspin
+           write(ocuberho(ispin),'(50(e16.8,2x))') SUM( phi(:,ispin)**2 * occupation(istate1:istate2,ispin) ) * spin_fact
+         enddo
+       endif
+
 
        do istate=istate1,istate2
          do ispin=1,nspin
