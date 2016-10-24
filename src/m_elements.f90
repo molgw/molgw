@@ -202,12 +202,13 @@ end function element_name
 !=========================================================================
 subroutine element_atomicdensity(zval,zelement,coeff,alpha)
  implicit none
- real(dp),intent(in)  :: zval,zelement
+ real(dp),intent(in)  :: zval
+ integer,intent(in)   :: zelement
  real(dp),intent(out) :: coeff(4)
  real(dp),intent(out) :: alpha(4)
 !=====
 
- select case(NINT(zelement))
+ select case(zelement)
  case( 1)
   alpha(1) = 0.191852  
   alpha(2) = 5.6143    

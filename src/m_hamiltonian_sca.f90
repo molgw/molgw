@@ -1099,7 +1099,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
 
    ngau = 4
    allocate(alpha(ngau),coeff(ngau))
-   call element_atomicdensity(zatom(iatom),coeff,alpha)
+   call element_atomicdensity(zatom(iatom),basis_element(iatom),coeff,alpha)
 
    call calculate_eri_approximate_hartree(basis,m_ham,n_ham,x(:,iatom),ngau,coeff,alpha,vhgau)
    vhxc_ij(:,:) = vhxc_ij(:,:) + vhgau(:,:) 

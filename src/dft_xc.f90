@@ -288,7 +288,7 @@ subroutine setup_atomic_density(rr,rhor,vhartree)
 
    ngau = 4
    allocate(alpha(ngau),coeff(ngau))
-   call element_atomicdensity(zatom(iatom),coeff,alpha)
+   call element_atomicdensity(zatom(iatom),basis_element(iatom),coeff,alpha)
 
    dr=NORM2( rr(:) - x(:,iatom) )
 
