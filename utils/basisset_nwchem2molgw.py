@@ -1,4 +1,6 @@
 #!/usr/bin/python3
+# This file is part of MOLGW
+# Author: Fabien Bruneval
 
 import os, sys, numpy
 

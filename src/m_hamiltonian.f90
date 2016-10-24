@@ -1447,8 +1447,8 @@ subroutine static_quadrupole(nstate,basis,occupation,c_matrix)
  write(stdout,'(1x,a,3(2x,f14.6))') '                      ',quad(3,:)
  write(stdout,*)
  write(stdout,'(1x,a,3(2x,f14.6))') 'Quadrupole (Debye.A): ',quad(1,:) * au_debye * bohr_A
- write(stdout,'(1x,a,3(2x,f14.6))') '                      ',quad(1,:) * au_debye * bohr_A
- write(stdout,'(1x,a,3(2x,f14.6))') '                      ',quad(1,:) * au_debye * bohr_A
+ write(stdout,'(1x,a,3(2x,f14.6))') '                      ',quad(2,:) * au_debye * bohr_A
+ write(stdout,'(1x,a,3(2x,f14.6))') '                      ',quad(3,:) * au_debye * bohr_A
 
  trace = quad(1,1) + quad(2,2) + quad(3,3)
  quad(1,1) = quad(1,1) - trace / 3.0_dp

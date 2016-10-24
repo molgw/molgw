@@ -200,24 +200,15 @@ end function element_name
 
 
 !=========================================================================
-subroutine element_atomicdensity(zatom,coeff,alpha)
+subroutine element_atomicdensity(zval,zelement,coeff,alpha)
  implicit none
- real(dp),intent(in)  :: zatom
+ real(dp),intent(in)  :: zval,zelement
  real(dp),intent(out) :: coeff(4)
  real(dp),intent(out) :: alpha(4)
 !=====
 
- select case(NINT(zatom))
+ select case(NINT(zelement))
  case( 1)
-!   alpha(1) = 35.7662 
-!   alpha(2) = 5.66045 
-!   alpha(3) = 1.34388 
-!   alpha(4) = 0.340268
-!   coeff(2) = 0.038544
-!   coeff(3) = 0.317984
-!   coeff(4) = 0.641901 
-!   coeff(1) = 1.0_dp - SUM(coeff(2:4))
-
   alpha(1) = 0.191852  
   alpha(2) = 5.6143    
   alpha(3) = 0.510303  
@@ -227,26 +218,6 @@ subroutine element_atomicdensity(zatom,coeff,alpha)
   coeff(3) = 0.358982  
   coeff(4) = 0.168689  
  case( 6)
-!!! C core
-!alpha(1)             = 52.6714 
-!alpha(2)             = 12.1559 
-!coeff(1)             = 0.69500
-!coeff(2)             = 1.30500
-!! C val          
-! alpha(3)             = 0.668341
-! alpha(4)             = 0.22974
-! coeff(3)             = 3.848
-! coeff(4)             = 1.152
-
-!   alpha(1) = 167.342
-!   alpha(2) =  28.2192
-!   alpha(3) =   0.96127
-!   alpha(4) = 1832.38 
-!   coeff(2) =  1.3663 
-!   coeff(3) =  4.49642
-!   coeff(4) =  0.00210702
-!   coeff(1) = 6.0_dp - SUM(coeff(2:4))
-
    alpha(1) = 0.294412 
    alpha(2) = 68.2412  
    alpha(3) = 16.7565  
@@ -273,11 +244,31 @@ subroutine element_atomicdensity(zatom,coeff,alpha)
    coeff(2) = 1.27809 
    coeff(3) = 2.85614 
    coeff(4) = 3.27719 
+ case(79) ! Au
+   if( NINT(zval) == 19 ) then   ! Au ECP
+     coeff(1) = zval -2.0_dp + 4.1_dp 
+     alpha(1) = 1.0_dp
+     coeff(2) = 0.2_dp
+     alpha(2) = 2.0_dp
+     coeff(3) =-4.1_dp
+     alpha(3) =  3.0_dp
+     coeff(4) = 0.0_dp
+     alpha(4) = 2.0_dp
+   else
+     alpha(1) = 0.3_dp
+     coeff(1) = 2.0_dp
+     alpha(2) = 2.6_dp
+     coeff(2) = zval - coeff(1) 
+     coeff(3) = 0.0_dp
+     coeff(4) = 0.0_dp
+     alpha(3) = 1.0_dp
+     alpha(4) = 1.0_dp
+   endif
  case default
    alpha(1) = 0.3_dp
    coeff(1) = 2.0_dp
    alpha(2) = 2.6_dp
-   coeff(2) = zatom - coeff(1) 
+   coeff(2) = zval - coeff(1) 
    coeff(3) = 0.0_dp
    coeff(4) = 0.0_dp
    alpha(3) = 1.0_dp
@@ -285,7 +276,7 @@ subroutine element_atomicdensity(zatom,coeff,alpha)
  end select
 
  ! Ensure the proper normalization
- coeff(:) = zatom / SUM(coeff(:)) * coeff(:)
+ coeff(:) = zval / SUM(coeff(:)) * coeff(:)
 
 end subroutine element_atomicdensity
 

@@ -560,7 +560,7 @@ subroutine plot_rho(nstate,basis,occupation,c_matrix)
 
    write(103,'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( phi(:,:)**2 * occupation(:,:) )
 
-!   write(104,'(50(e16.8,2x))') NORM2(rr(:)),SUM( phi(:,:)**2 * occupation(:,:) ) * 4.0_dp * pi * NORM2(rr(:))**2
+   write(104,'(50(e16.8,2x))') NORM2(rr(:)),SUM( phi(:,:)**2 * occupation(:,:) ) * 4.0_dp * pi * NORM2(rr(:))**2
 !   write(105,'(50(e16.8,2x))') NORM2(rr(:)),SUM( phi(1,:)**2 * occupation(1,:) ) * 4.0_dp * pi * NORM2(rr(:))**2
 !   write(106,'(50(e16.8,2x))') NORM2(rr(:)),SUM( phi(2:,:)**2 * occupation(2:,:) ) * 4.0_dp * pi * NORM2(rr(:))**2
 
@@ -645,7 +645,7 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
      write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') ny,0.,(ymax-ymin)/REAL(ny,dp),0.
      write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') nz,0.,0.,(zmax-zmin)/REAL(nz,dp)
      do iatom=1,natom
-       write(ocubefile(istate,ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,x(:,iatom)
+       write(ocubefile(istate,ispin),'(i6,4(2x,f12.6))') basis_element(iatom),0.0,x(:,iatom)
      enddo
    enddo
  enddo
