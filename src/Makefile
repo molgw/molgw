@@ -219,7 +219,7 @@ m_eri_calculate.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_timing.f90 m_wa
 m_eri.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 m_eri.f90 
 	$(FC_W_OPTS) -c m_eri.f90 $(LIBXC_INCS)
 
-m_basis_set.o: m_definitions.f90 m_elements.f90 m_gaussian.f90 m_mpi.f90 m_basis_set.f90 
+m_basis_set.o: m_definitions.f90 m_elements.f90 m_gaussian.f90 m_mpi.f90 m_ecp.f90 m_basis_set.f90 
 	$(FC_W_OPTS) -c m_basis_set.f90 $(LIBXC_INCS)
 
 m_gaussian.o: m_definitions.f90 m_tools.f90 m_gos.f90 m_mpi.f90 m_gaussian.f90

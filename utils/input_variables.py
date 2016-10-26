@@ -138,7 +138,19 @@ vl[i].default  =''
 vl[i].experimental='yes'
 vl[i].datatype ='characters'
 vl[i].comment  ='Calls for a smaller basis set used to represent the virtual orbital space with fewer functions. \
-Only works for GW.'
+Only meaningful for GW.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='ecp_small_basis'
+vl[i].family   ='postscf'
+vl[i].default  =''
+vl[i].experimental='yes'
+vl[i].datatype ='characters'
+vl[i].comment  ='Calls for a smaller basis set used to represent the virtual orbital space with fewer functions. \
+This is the small basis set used for elements with an effective core potential. Only meaningful for GW.'
+
 
 #================================
 vl.append(variable())
@@ -768,7 +780,7 @@ vl[i].comment  ='EXPERIMENTAL. Calculates the vertex using the DFT flavor specif
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='ecp_type'
-vl[i].family   ='scf'
+vl[i].family   ='general'
 vl[i].default  =''
 vl[i].datatype ='characters'
 vl[i].comment  ='Name of the Effective Core Potential. For instance, Gold using the cc-pVDZ-PP basis set should have ecp_type=\'PP\', \
@@ -778,7 +790,7 @@ so that MOLGW looks for the file Au_PP in the basis_path folder.'
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='ecp_elements'
-vl[i].family   ='scf'
+vl[i].family   ='general'
 vl[i].default  =''
 vl[i].datatype ='characters'
 vl[i].comment  ='Contains the list of elements (separated by spaces) that should be treated with an Effective Core Potential.'
@@ -787,7 +799,7 @@ vl[i].comment  ='Contains the list of elements (separated by spaces) that should
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='ecp_quality'
-vl[i].family   ='scf'
+vl[i].family   ='general'
 vl[i].default  ='high'
 vl[i].datatype ='characters'
 vl[i].comment  ='Sets the number of grid points use to evaluate the Effective Core Potential integrals in real space. \
@@ -795,6 +807,23 @@ Possible values are \'low\', \'medium\', \'high\', \'very high\', \'insane\'. \
 It could be abbreviated in \'l\', \'m\', \'h\', \'vh\', \'i\'. \
 \'high\' is usually fine. \'insane\' is only meant for debugging since it is overdoing a lot.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='ecp_basis'
+vl[i].family   ='general'
+vl[i].default  =''
+vl[i].datatype ='characters'
+vl[i].comment  ='Name of the basis set to be used for elements specified in list ecp_elements.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='ecp_auxil_basis'
+vl[i].family   ='general'
+vl[i].default  =''
+vl[i].datatype ='characters'
+vl[i].comment  ='Name of the auxiliary basis set to be used for elements specified in list ecp_elements.'
 
 
 

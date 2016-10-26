@@ -92,9 +92,12 @@ module m_inputparam
  character(len=100),protected     :: xyz_file
  character(len=100),protected     :: basis_path
  character(len=100),protected     :: basis_name
- character(len=100),protected     :: ecp_type
  character(len=100),protected     :: auxil_basis_name
  character(len=100),protected     :: small_basis_name
+ character(len=100),protected     :: ecp_basis_name
+ character(len=100),protected     :: ecp_auxil_basis_name
+ character(len=100),protected     :: ecp_small_basis_name
+ character(len=100),protected     :: ecp_type
  character(len=4),protected       :: gaussian_type
  character(len=12),protected      :: mixing_scheme
  character(len=12),protected      :: partition_scheme
@@ -672,6 +675,9 @@ subroutine read_inputfile_namelist()
  character(len=100)   :: basis
  character(len=100)   :: auxil_basis
  character(len=100)   :: small_basis
+ character(len=100)   :: ecp_basis
+ character(len=100)   :: ecp_auxil_basis
+ character(len=100)   :: ecp_small_basis
  character(len=100)   :: default_basis_path
  character(len=12)    :: length_unit
  character(len=3)     :: ignore_restart,ignore_bigrestart,no_4center
@@ -741,11 +747,14 @@ subroutine read_inputfile_namelist()
  write(stdout,'(/,1x,a,/)') ' ================================================'
 
 
- basis_name = basis
+ basis_name             = basis
  auxil_basis_name = auxil_basis
  small_basis_name = small_basis
- has_auxil_basis = TRIM(auxil_basis) /= ''
- has_small_basis = TRIM(small_basis) /= ''
+ ecp_basis_name         = ecp_basis
+ ecp_auxil_basis_name   = ecp_auxil_basis
+ ecp_small_basis_name   = ecp_small_basis
+ has_auxil_basis = TRIM(auxil_basis) /= '' .OR. TRIM(ecp_auxil_basis) /= ''
+ has_small_basis = TRIM(small_basis) /= '' .OR. TRIM(ecp_small_basis) /= ''
  ieta = (0.0_dp,1.0_dp) * eta 
  alpha_hybrid_lr = beta_hybrid
  

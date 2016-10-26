@@ -15,6 +15,7 @@ module m_basis_set
  use m_elements
  use m_tools, only: diagonalize,invert,double_factorial,orbital_momentum_name
  use m_atoms
+ use m_ecp
  use m_gaussian
 
 
@@ -66,11 +67,12 @@ contains
 
 
 !=========================================================================
-subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
+subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,basis)
  implicit none
  character(len=4),intent(in)   :: gaussian_type
  character(len=100),intent(in) :: basis_path
  character(len=100),intent(in) :: basis_name
+ character(len=100),intent(in) :: ecp_basis_name
  type(basis_set),intent(out)   :: basis
 !=====
  character(len=100)            :: basis_filename
@@ -100,14 +102,12 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  !
  do iatom=1,natom_basis
 
-!   write(stdout,*)
-!   write(stdout,*) 'Element used for Z value:    ',TRIM(element_name(zatom(iatom)))
-!   write(stdout,*) 'Element used for the basis:  ',TRIM(element_name(REAL(basis_element(iatom),dp)))
-!   write(stdout,*) 'Basis type: ',TRIM(basis_name)
-   basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
+   if( ANY( element_ecp(:) == basis_element(iatom) ) ) then
+     basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(ecp_basis_name))
+   else
+     basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
+   endif
   
-!   write(stdout,*)
-!   write(stdout,*) 'open the basis set file ',TRIM(basis_filename)
    inquire(file=TRIM(basis_filename),exist=file_exists)
    if(.NOT.file_exists) then
      write(stdout,'(a,a)') ' Looking for file ',TRIM(basis_filename)
@@ -146,7 +146,12 @@ subroutine init_basis_set(basis_path,basis_name,gaussian_type,basis)
  shell_index = 0
  do iatom=1,natom_basis
 
-   basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
+   if( ANY( element_ecp(:) == basis_element(iatom) ) ) then
+     basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(ecp_basis_name))
+   else
+     basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
+   endif
+  
    open(newunit=basisfile,file=TRIM(basis_filename),status='old')
    read(basisfile,*) nbf_file
    do ibf_file=1,nbf_file

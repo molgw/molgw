@@ -110,7 +110,7 @@ program molgw
  ! Build up the basis set 
  !
  write(stdout,*) 'Setting up the basis set for wavefunctions'
- call init_basis_set(basis_path,basis_name,gaussian_type,basis)
+ call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,basis)
  call setup_cart_to_pure_transforms(gaussian_type)
 
  !
@@ -143,7 +143,7 @@ program molgw
  !
  if( has_auxil_basis ) then
    write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
-   call init_basis_set(basis_path,auxil_basis_name,gaussian_type,auxil_basis)
+   call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type,auxil_basis)
 
 #ifndef HAVE_SCALAPACK
    ! 2-center integrals

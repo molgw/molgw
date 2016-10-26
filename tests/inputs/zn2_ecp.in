@@ -1,8 +1,8 @@
 &molgw
  scf='pbe'
 
- basis='cc-pVDZ-PP'
- auxil_basis='cc-pVDZ-PP-RI'
+ ecp_basis='cc-pVDZ-PP'
+ ecp_auxil_basis='cc-pVDZ-PP-RI'
  no_4center='yes'
 
  ecp_type='PP'
