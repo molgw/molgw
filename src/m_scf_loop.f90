@@ -521,6 +521,113 @@ end subroutine scf_loop
 
 
 !=========================================================================
+subroutine calculate_hamiltonian_hxc_ri(basis,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_hxc)
+ use m_scalapack
+ use m_basis_set
+ use m_hamiltonian
+ use m_hamiltonian_sca
+ use m_hamiltonian_buffer
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+ integer,intent(in)         :: m_ham,n_ham
+ real(dp),intent(in)        :: p_matrix_occ(basis%nbf,nspin)
+ real(dp),intent(in)        :: p_matrix_sqrt(m_ham,n_ham,nspin)
+ real(dp),intent(in)        :: p_matrix(m_ham,n_ham,nspin)
+ real(dp),intent(out)       :: hamiltonian_hxc(m_ham,n_ham,nspin)
+!=====
+ integer  :: ispin
+ real(dp) :: hamiltonian_tmp(m_ham,n_ham)
+ real(dp) :: hamiltonian_spin_tmp(m_ham,n_ham,nspin)
+ real(dp) :: ehart,exc,eexx,eexx_hyb
+!=====
+
+
+
+ !
+ ! Hartree contribution to the Hamiltonian
+ !
+ if( parallel_ham ) then
+   if( parallel_buffer ) then
+     call setup_hartree_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_tmp,ehart)
+   else
+     call setup_hartree_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_tmp,ehart)
+   endif
+ else
+   call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix,hamiltonian_tmp,ehart)
+ endif
+
+ do ispin=1,nspin
+   hamiltonian_hxc(:,:,ispin) = hamiltonian_tmp(:,:)
+ enddo
+
+
+ !
+ !  XC part of the Hamiltonian
+ !
+
+ !
+ ! DFT XC potential is added here
+ ! 
+ if( calc_type%is_dft ) then
+   hamiltonian_spin_tmp(:,:,:) = 0.0_dp
+
+   if( parallel_ham ) then
+     if( parallel_buffer ) then
+       call dft_exc_vxc_buffer_sca(m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_spin_tmp,exc)
+     else
+       call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
+       hamiltonian_spin_tmp(:,:,:) = 0.0_dp
+       exc = 0.0_dp
+     endif
+   else
+     call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_spin_tmp,exc)
+   endif
+
+   hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) 
+ endif
+
+
+ !
+ ! LR Exchange contribution to the Hamiltonian
+ !
+ if(calc_type%need_exchange_lr) then
+   hamiltonian_spin_tmp(:,:,:) = 0.0_dp
+
+   call setup_exchange_longrange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_spin_tmp,eexx)
+   ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
+   eexx_hyb = alpha_hybrid_lr * eexx
+   hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * alpha_hybrid_lr
+ endif
+
+
+ !
+ ! Exchange contribution to the Hamiltonian
+ !
+ if( calc_type%need_exchange ) then
+   hamiltonian_spin_tmp(:,:,:) = 0.0_dp
+
+   if( parallel_ham ) then
+     if( parallel_buffer ) then
+       call setup_exchange_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_spin_tmp,eexx)
+     else
+       call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_spin_tmp,eexx)
+     endif
+   else
+     call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_spin_tmp,eexx)
+   endif
+   ! Rescale with alpha_hybrid for hybrid functionals
+   eexx_hyb = eexx_hyb + alpha_hybrid * eexx
+   hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * alpha_hybrid
+ endif
+
+
+
+
+end subroutine  calculate_hamiltonian_hxc_ri
+
+
+!=========================================================================
 subroutine get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamiltonian_fock)
  use m_mpi
  use m_scalapack
