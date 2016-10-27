@@ -34,22 +34,32 @@ contains
 
 
 !=========================================================================
-function element_core(zatom)
+function element_core(zval,zelement)
  implicit none
- real(dp),intent(in) :: zatom
+ real(dp),intent(in) :: zval
+ integer,intent(in)  :: zelement
  integer             :: element_core
 !=====
 
- if( zatom <= 4.00001 ) then  ! up to Be
-  element_core = 0
- else if( zatom <= 12.00001 ) then  ! up to Mg
-  element_core = 1
- else if( zatom <= 30.00001 ) then  ! up to Ca
-  element_core = 5
- else if( zatom <= 48.00001 ) then  ! up to Sr
-  element_core = 9
+ !
+ ! If zval /= zelement, this is certainly an effective core potential
+ ! and no core states should be frozen.
+ if( ABS(zval - zelement) > 1.0e-3_dp ) then
+   element_core = 0
  else
-   call die('not imlemented in element_core')
+ 
+   if( zval <= 4.00001 ) then  ! up to Be
+     element_core = 0
+   else if( zval <= 12.00001 ) then  ! up to Mg
+     element_core = 1
+   else if( zval <= 30.00001 ) then  ! up to Ca
+     element_core = 5
+   else if( zval <= 48.00001 ) then  ! up to Sr
+     element_core = 9
+   else
+     call die('not imlemented in element_core')
+   endif
+
  endif
 
 

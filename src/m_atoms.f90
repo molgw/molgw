@@ -134,7 +134,7 @@ function atoms_core_states()
 
  atoms_core_states=0
  do iatom=1,natom
-   atoms_core_states = atoms_core_states + element_core(zatom(iatom))
+   atoms_core_states = atoms_core_states + element_core(zatom(iatom),basis_element(iatom))
  enddo
  
 end function atoms_core_states
