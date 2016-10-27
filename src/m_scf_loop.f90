@@ -309,7 +309,7 @@ subroutine scf_loop(is_restart,&
    ! All the unoccupied states are penalized with an energy =  level_shifting_energy
    if( level_shifting_energy > 1.0e-6_dp ) then
      if( parallel_ham ) call die('level_shifting: not implemented with parallel_ham')
-     call level_shifting(basis%nbf,nstate,s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
+     call level_shifting_up(basis%nbf,nstate,s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
    endif
 
 
@@ -334,13 +334,8 @@ subroutine scf_loop(is_restart,&
    ! back to their original value,
    ! So that the "physical" energies are written down
    if( level_shifting_energy > 1.0e-6_dp ) then
-     do ispin=1,nspin
-       do istate=1,nstate
-         if( occupation(istate,ispin) < completely_empty ) then
-           energy(istate,ispin) = energy(istate,ispin) - level_shifting_energy
-         endif
-       enddo
-     enddo
+     if( parallel_ham ) call die('level_shifting: not implemented with parallel_ham')
+     call level_shifting_down(basis%nbf,nstate,s_matrix,c_matrix,occupation,level_shifting_energy,energy,hamiltonian)
    endif
   
    call dump_out_energy('=== Energies ===',nstate,nspin,occupation,energy)

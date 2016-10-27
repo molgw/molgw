@@ -144,6 +144,14 @@ RPA Total energy          ,   -187.8892338918  , 0 , 1.0e-7
 GW HOMO energy            ,    -11.039136      , 0 , 1.0e-4
 GW LUMO energy            ,     -1.357914      , 0 , 1.0e-4
 
+cdo_ecp_gw.in             , CdO- (ECP) within GW@PBE0 with level shifting
+SCF Total Energy          ,    -242.8403297283 , 0 , 1.0e-7
+RPA energy                ,      -0.9666447760 , 0 , 1.0e-7
+GW HOMO energy            ,      -1.787167     , 0 , 1.0e-4
+GW HOMO energy            ,      -1.350953     , 1 , 1.0e-4
+GW LUMO energy            ,       3.687303     , 0 , 1.0e-4
+GW LUMO energy            ,       3.689409     , 1 , 1.0e-4
+
 sih4_dftcore.in           , GW@PBE0 with DFT core-valence interaction
 SCF Total Energy          ,   -291.7541352166  , 0 , 1.0e-7
 GW HOMO energy            ,    -12.305926      , 0 , 1.0e-4

@@ -1,0 +1,30 @@
+&molgw
+ scf='pbe0'
+ tolscf=1.0e-6
+ nspin=2
+ magnetization=1.0
+ charge=-1.0
+ level_shifting_energy=0.11
+
+ grid_quality='medium'
+
+ postscf='gw'
+ selfenergy_state_range=2
+ frozencore='yes'
+
+ basis='aug-cc-pVDZ'
+ auxil_basis='aug-cc-pVDZ-RI'
+ no_4center='yes'
+
+ ecp_basis='aug-cc-pVDZ-PP'
+ ecp_auxil_basis='aug-cc-pVDZ-PP-RI'
+
+ ecp_type='PP'
+ ecp_elements='Cd'
+ ecp_quality='high'
+
+ natom=2
+/
+Cd  0. 0. 0.
+O   2. 0. 0.
+
