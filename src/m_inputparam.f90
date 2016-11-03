@@ -627,7 +627,7 @@ subroutine summary_input(grid_quality,integral_quality)
  write(stdout,*) '      Atom list'
  write(stdout,*) '                       bohr                                        angstrom'
  do iatom=1,natom
-   write(stdout,'(2x,a2,3(1x,f12.6),6x,3(1x,f12.6))') element_name(REAL(basis_element(natom+ighost),dp)),x(:,iatom),x(:,iatom)*bohr_A
+   write(stdout,'(2x,a2,3(1x,f12.6),6x,3(1x,f12.6))') element_name(REAL(basis_element(natom),dp)),x(:,iatom),x(:,iatom)*bohr_A
  enddo
  if( nghost>0) write(stdout,'(a)') ' == ghost list'
  do ighost=1,nghost

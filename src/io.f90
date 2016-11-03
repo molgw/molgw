@@ -572,6 +572,107 @@ end subroutine plot_rho
 
 
 !=========================================================================
+subroutine plot_rho_list(nstate,basis,occupation,c_matrix)
+ use m_definitions
+ use m_mpi
+ use m_atoms
+ use m_inputparam, only: nspin
+ use m_basis_set
+ implicit none
+ integer,intent(in)         :: nstate
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+!=====
+ integer                    :: ir,ibf
+ integer                    :: istate1,istate2,istate,ispin
+ real(dp)                   :: rr(3)
+ real(dp),allocatable       :: phi(:,:)
+ real(dp)                   :: u(3),a(3)
+ logical                    :: file_exists
+ real(dp)                   :: xxmin,xxmax
+ real(dp)                   :: basis_function_r(basis%nbf)
+ integer                    :: ibf_cart,ni_cart,ni,li,i_cart
+ real(dp),allocatable       :: basis_function_r_cart(:)
+ integer                    :: rhorfile
+ integer                    :: ix,iy,iz
+ integer,parameter          :: nx=87
+ integer,parameter          :: ny=91
+ integer,parameter          :: nz=65
+ real(dp),parameter         :: dx = 0.204034
+ real(dp)                   :: rr0(3)
+ integer                    :: unitfile
+!=====
+
+ if( .NOT. is_iomaster ) return
+
+ write(stdout,'(/,1x,a)') 'Plotting the density'
+
+ inquire(file='manual_plotrho',exist=file_exists)
+ if(file_exists) then
+   open(newunit=rhorfile,file='manual_plotrho',status='old')
+   close(rhorfile)
+ else
+ endif
+ allocate(phi(nstate,nspin))
+
+ rr0(1) = -8.790885
+ rr0(2) = -9.143313 
+ rr0(3) = -6.512752
+
+ open(newunit=unitfile,file='rho.dat',action='WRITE')
+ do ix=1,nx
+ do iy=1,ny
+ do iz=1,nz
+   rr(1) = ix-1
+   rr(2) = iy-1
+   rr(3) = iz-1
+   rr(:) = rr0(:) + rr(:) * dx 
+
+   phi(:,:) = 0.0_dp
+   
+   !
+   ! First precalculate all the needed basis function evaluations at point rr
+   !
+   ibf_cart = 1
+   ibf      = 1
+   do while(ibf_cart<=basis%nbf_cart)
+     li      = basis%bf(ibf_cart)%am
+     ni_cart = number_basis_function_am('CART',li)
+     ni      = number_basis_function_am(basis%gaussian_type,li)
+
+     allocate(basis_function_r_cart(ni_cart))
+
+     do i_cart=1,ni_cart
+       basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
+     enddo
+     basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li)%matrix(:,:) )
+     deallocate(basis_function_r_cart)
+
+     ibf      = ibf      + ni
+     ibf_cart = ibf_cart + ni_cart
+   enddo
+   !
+   ! Precalculation done!
+   !
+
+   do ispin=1,nspin
+     phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
+   enddo
+
+   write(unitfile,'(1x,e16.8)') SUM( phi(:,:)**2 * occupation(:,:) )
+
+ enddo
+ enddo
+ enddo
+ close(unitfile)
+
+ deallocate(phi)
+
+end subroutine plot_rho_list
+
+
+!=========================================================================
 subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
  use m_definitions
  use m_mpi
