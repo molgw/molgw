@@ -660,7 +660,7 @@ subroutine plot_rho_list(nstate,basis,occupation,c_matrix)
      phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
    enddo
 
-   write(unitfile,'(1x,e16.8)') SUM( phi(:,:)**2 * occupation(:,:) )
+   write(unitfile,'(1x,e16.8)') SUM( phi(7:,:)**2 * occupation(7:,:) )
 
  enddo
  enddo
