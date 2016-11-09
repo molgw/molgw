@@ -101,6 +101,7 @@ module m_inputparam
  character(len=4),protected       :: gaussian_type
  character(len=12),protected      :: mixing_scheme
  character(len=12),protected      :: partition_scheme
+ character(len=12),protected      :: init_hamiltonian
  real(dp),protected               :: tolscf
  real(dp),protected               :: toldav
  real(dp),protected               :: min_overlap
@@ -768,6 +769,7 @@ subroutine read_inputfile_namelist()
  integral_quality   = capitalize(integral_quality)
  mixing_scheme      = capitalize(mixing_scheme)
  length_unit        = capitalize(length_unit)
+ init_hamiltonian   = capitalize(init_hamiltonian)
 
  ignore_restart_    = yesno(ignore_restart)
  ignore_bigrestart_ = yesno(ignore_bigrestart)

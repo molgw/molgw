@@ -304,22 +304,31 @@ program molgw
 
 
  if( .NOT. is_restart) then
-   !
-   ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
-   allocate(hamiltonian_tmp(m_ham,n_ham,1))
-   !
-   ! Calculate a very approximate vhxc based on simple gaussians placed on atoms
-   if( parallel_ham ) then
-     if( parallel_buffer ) then
-       call dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,hamiltonian_tmp(:,:,1))
-     else
-       call dft_approximate_vhxc_sca(basis,m_ham,n_ham,hamiltonian_tmp(:,:,1))
-     endif
-   else
-     call dft_approximate_vhxc(basis,hamiltonian_tmp(:,:,1))
-   endif
 
-   hamiltonian_tmp(:,:,1) = hamiltonian_tmp(:,:,1) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+   allocate(hamiltonian_tmp(m_ham,n_ham,1))
+
+   select case(TRIM(init_hamiltonian))
+   case('GUESS')
+     !
+     ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
+     !
+     ! Calculate a very approximate vhxc based on simple gaussians placed on atoms
+     if( parallel_ham ) then
+       if( parallel_buffer ) then
+         call dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,hamiltonian_tmp(:,:,1))
+       else
+         call dft_approximate_vhxc_sca(basis,m_ham,n_ham,hamiltonian_tmp(:,:,1))
+       endif
+     else
+       call dft_approximate_vhxc(basis,hamiltonian_tmp(:,:,1))
+     endif
+     hamiltonian_tmp(:,:,1) = hamiltonian_tmp(:,:,1) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+   case('CORE')
+     hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+   case default
+     call die('molgw: init_hamiltonian option is not valid')
+   end select
+
 
    write(stdout,'(/,a)') ' Approximate hamiltonian'
 

@@ -596,10 +596,10 @@ subroutine plot_rho_list(nstate,basis,occupation,c_matrix)
  real(dp),allocatable       :: basis_function_r_cart(:)
  integer                    :: rhorfile
  integer                    :: ix,iy,iz
- integer,parameter          :: nx=87
- integer,parameter          :: ny=91
- integer,parameter          :: nz=65
- real(dp),parameter         :: dx = 0.204034
+ integer,parameter          :: nx=75 ! 87
+ integer,parameter          :: ny=75 ! 91
+ integer,parameter          :: nz=90 ! 65
+ real(dp),parameter         :: dx = 0.174913 ! 0.204034
  real(dp)                   :: rr0(3)
  integer                    :: unitfile
 !=====
@@ -616,9 +616,9 @@ subroutine plot_rho_list(nstate,basis,occupation,c_matrix)
  endif
  allocate(phi(nstate,nspin))
 
- rr0(1) = -8.790885
- rr0(2) = -9.143313 
- rr0(3) = -6.512752
+ rr0(1) = -6.512752 ! -8.790885
+ rr0(2) = -6.512752 ! -9.143313 
+ rr0(3) = -7.775444 ! -6.512752
 
  open(newunit=unitfile,file='rho.dat',action='WRITE')
  do ix=1,nx
@@ -660,7 +660,7 @@ subroutine plot_rho_list(nstate,basis,occupation,c_matrix)
      phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
    enddo
 
-   write(unitfile,'(1x,e16.8)') SUM( phi(7:,:)**2 * occupation(7:,:) )
+   write(unitfile,'(1x,e16.8)') SUM( phi(3:,:)**2 * occupation(3:,:) )
 
  enddo
  enddo
