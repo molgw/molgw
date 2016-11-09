@@ -59,14 +59,17 @@ ediff.append(0.0)
 for iscf in range(1,ncycle):
   ediff.append(etot[iscf] - etot[iscf-1])
 
+eerror = []
+for iscf in range(0,ncycle):
+  eerror.append(etot[iscf] - etot[ncycle-1])
 
 
 print('{0:d} completed cycles found \n'.format(ncycle))
 
-print('SCF cycle        Etotal            Diff            HOMO        H-L Gap      Residual')
+print('SCF cycle          Etotal               Diff                 Deviation         HOMO          H-L Gap        Residual')
 for iscf in range(ncycle):
-  print('  {0:4d}     {1:.10f}     {2:+.10f}     {3:.4f}       {4:.4f}      {5:.6f}  '  \
-              .format(scf_cycle[iscf],etot[iscf],ediff[iscf],homo[iscf],homo_lumo[iscf],residual[iscf]))
+  print('  {0:4d}     {1:18.10f}     {2:+16.10f}      {3:+16.10f}     {4:8.4f}       {5:8.4f}      {6:12.6f}  '  \
+              .format(scf_cycle[iscf],etot[iscf],ediff[iscf],eerror[iscf],homo[iscf],homo_lumo[iscf],residual[iscf]))
 
 
 sys.exit(0)

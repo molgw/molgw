@@ -29,6 +29,7 @@
     nscf,       &
     alpha_mixing,       &
     mixing_scheme,       &
+    diis_switch,       &
     level_shifting_energy,       &
     init_hamiltonian,       &
     tolscf,       &
@@ -112,6 +113,7 @@
  nscf=30
  alpha_mixing=0.7_dp 
  mixing_scheme='pulay'
+ diis_switch=0.05_dp 
  level_shifting_energy=0.0_dp 
  init_hamiltonian='guess'
  tolscf=1e-07_dp 

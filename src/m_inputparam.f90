@@ -102,6 +102,7 @@ module m_inputparam
  character(len=12),protected      :: mixing_scheme
  character(len=12),protected      :: partition_scheme
  character(len=12),protected      :: init_hamiltonian
+ real(dp),protected               :: diis_switch
  real(dp),protected               :: tolscf
  real(dp),protected               :: toldav
  real(dp),protected               :: min_overlap
@@ -797,7 +798,7 @@ subroutine read_inputfile_namelist()
  integral_level     = interpret_quality(integral_quality)
 
  select case(TRIM(mixing_scheme))
- case('SIMPLE','PULAY')
+ case('SIMPLE','PULAY','DIIS','ADIIS')
  case default
    write(stdout,*) TRIM(mixing_scheme)
    call die('mixing scheme not recognized')

@@ -15,7 +15,7 @@
 <p>
 <a href=#scf>scf</a> <a href=#basis>basis</a> <a href=#auxil_basis>auxil_basis</a> <a href=#gaussian_type>gaussian_type</a> <a href=#ecp_type>ecp_type</a> <a href=#ecp_elements>ecp_elements</a> <a href=#ecp_quality>ecp_quality</a> <a href=#ecp_basis>ecp_basis</a> <a href=#ecp_auxil_basis>ecp_auxil_basis</a> <h3>Self-consistency input variables</h3>
 <p>
-<a href=#alpha_hybrid>alpha_hybrid</a> <a href=#beta_hybrid>beta_hybrid</a> <a href=#gamma_hybrid>gamma_hybrid</a> <a href=#no_4center>no_4center</a> <a href=#grid_quality>grid_quality</a> <a href=#integral_quality>integral_quality</a> <a href=#partition_scheme>partition_scheme</a> <a href=#nscf>nscf</a> <a href=#alpha_mixing>alpha_mixing</a> <a href=#mixing_scheme>mixing_scheme</a> <a href=#level_shifting_energy>level_shifting_energy</a> <a href=#tolscf>tolscf</a> <a href=#mixing_first_nscf>mixing_first_nscf</a> <a href=#min_overlap>min_overlap</a> <a href=#npulay_hist>npulay_hist</a> <h3>Correlation and excited states post-treatment input variables</h3>
+<a href=#alpha_hybrid>alpha_hybrid</a> <a href=#beta_hybrid>beta_hybrid</a> <a href=#gamma_hybrid>gamma_hybrid</a> <a href=#no_4center>no_4center</a> <a href=#grid_quality>grid_quality</a> <a href=#integral_quality>integral_quality</a> <a href=#partition_scheme>partition_scheme</a> <a href=#nscf>nscf</a> <a href=#alpha_mixing>alpha_mixing</a> <a href=#mixing_scheme>mixing_scheme</a> <a href=#diis_switch>diis_switch</a> <a href=#level_shifting_energy>level_shifting_energy</a> <a href=#init_hamiltonian>init_hamiltonian</a> <a href=#tolscf>tolscf</a> <a href=#mixing_first_nscf>mixing_first_nscf</a> <a href=#min_overlap>min_overlap</a> <a href=#npulay_hist>npulay_hist</a> <h3>Correlation and excited states post-treatment input variables</h3>
 <p>
 <a href=#postscf>postscf</a> <a href=#tddft_grid_quality>tddft_grid_quality</a> <a href=#tda>tda</a> <a href=#triplet>triplet</a> <a href=#nexcitation>nexcitation</a> <a href=#toldav>toldav</a> <a href=#frozencore>frozencore</a> <a href=#ncoreg>ncoreg</a> <a href=#ncorew>ncorew</a> <a href=#nvirtualg>nvirtualg</a> <a href=#nvirtualw>nvirtualw</a> <a href=#nvirtualspa>nvirtualspa</a> <a href=#selfenergy_state_min>selfenergy_state_min</a> <a href=#selfenergy_state_max>selfenergy_state_max</a> <a href=#selfenergy_state_range>selfenergy_state_range</a> <a href=#nomega_sigma>nomega_sigma</a> <a href=#step_sigma>step_sigma</a> <a href=#eta>eta</a> <a href=#scissor>scissor</a> <a href=#alpha_cohsex>alpha_cohsex</a> <a href=#beta_cohsex>beta_cohsex</a> <a href=#dft_core>dft_core</a> <a href=#gamma_cohsex>gamma_cohsex</a> <a href=#delta_cohsex>delta_cohsex</a> <a href=#epsilon_cohsex>epsilon_cohsex</a> <a href=#virtual_fno>virtual_fno</a> <a href=#rcut_mbpt>rcut_mbpt</a> <a href=#gwgamma_tddft>gwgamma_tddft</a> <h3>IO input variables</h3>
 <p>
@@ -173,13 +173,25 @@ Sets the amount of output density-matrix for the next iteration. When the SCF cy
 <br><br>
 <i>Optional</i><br>
 Default: pulay<br><br>
-Sets the density-matrix update method for SCF cycles. Possible choices are 'pulay' for Pulay DIIS method or 'simple' for a simple linear mixing between input and output density-matrices.</li><br>
+Sets the density-matrix update method for SCF cycles. Possible choices are 'pulay' for Pulay DIIS method, 'adiis' for Hu-Yang method, or 'simple' for a simple linear mixing between input and output density-matrices.</li><br>
+<hr>
+<a name=diis_switch><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>diis_switch</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: 0.05<br><br>
+When running ADIIS, sets the residue value below which the DIIS method is used to finalize the convergence.</li><br>
 <hr>
 <a name=level_shifting_energy><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>level_shifting_energy</b>  </span>  
 <br><br>
 <i>Optional</i><br>
 Default: 0.0<br><br>
 Sets the energy shift up of the unoccupied states. Should help the convergence in the case of small HOMO-LUMO gaps.</li><br>
+<hr>
+<a name=init_hamiltonian><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>init_hamiltonian</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: guess<br><br>
+Selects how to initiate the first hamiltonian for SCF cycles. Today, two options are available: 'guess' for an educated guess based on approximate atomic densities or 'core' for the core hamiltonian.</li><br>
 <hr>
 <a name=tolscf><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tolscf</b>  </span>  
 <br><br>
@@ -517,5 +529,5 @@ Default: None<br><br>
 Name of the auxiliary basis set to be used for elements specified in list ecp_elements.</li><br>
 </ul>
 <br><br><br><br><br><br><br><br>
-<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_parameter.py on 26 October 2016</i><br><br></body>
+<a href=#top>Back to the top of the page</a> <div style="float: right"><a href=molgw_manual.html>Back to the manual</a></div><br><br><i>Generated by input_parameter.py on 09 November 2016</i><br><br></body>
 </html>

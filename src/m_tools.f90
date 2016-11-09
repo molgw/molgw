@@ -39,6 +39,7 @@ module m_tools
 contains
 
 
+!=========================================================================
 function matrix_trace(matrix)
  real(dp),intent(in) :: matrix(:,:)
  real(dp)            :: matrix_trace

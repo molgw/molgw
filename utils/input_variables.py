@@ -286,7 +286,16 @@ vl[i].family   ='scf'
 vl[i].default  ='pulay'
 vl[i].datatype ='characters'
 vl[i].comment  ='Sets the density-matrix update method for SCF cycles. \
-Possible choices are \'pulay\' for Pulay DIIS method or \'simple\' for a simple linear mixing between input and output density-matrices.'
+Possible choices are \'pulay\' for Pulay DIIS method, \'adiis\' for Hu-Yang method, or \'simple\' for a simple linear mixing between input and output density-matrices.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='diis_switch'
+vl[i].family   ='scf'
+vl[i].default  =0.05
+vl[i].datatype ='real'
+vl[i].comment  ='When running ADIIS, sets the residue value below which the DIIS method is used to finalize the convergence.'
 
 #================================
 vl.append(variable())
@@ -296,6 +305,16 @@ vl[i].family   ='scf'
 vl[i].default  =0.
 vl[i].datatype ='real'
 vl[i].comment  ='Sets the energy shift up of the unoccupied states. Should help the convergence in the case of small HOMO-LUMO gaps.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='init_hamiltonian'
+vl[i].family   ='scf'
+vl[i].default  ='guess'
+vl[i].datatype ='characters'
+vl[i].comment  ='Selects how to initiate the first hamiltonian for SCF cycles. Today, two options are available: \'guess\' for an educated guess based on approximate atomic densities \
+or \'core\' for the core hamiltonian.'
 
 #================================
 vl.append(variable())
@@ -892,7 +911,7 @@ for i in range(len(vl)):
     fortran_format = '\'(1x,a24,6x,a)\''
   else:
     fortran_format = 'ERROR'
-  ffor.write('write(stdout,'+fortran_format+') \''+vl[i].keyword+'\','+vl[i].keyword+' \n')
+  ffor.write(' write(stdout,'+fortran_format+') \''+vl[i].keyword+'\','+vl[i].keyword+' \n')
 
 
 
