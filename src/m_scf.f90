@@ -417,6 +417,7 @@ end subroutine diis_prediction
 !=========================================================================
 subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  use m_tools,only: matrix_trace,random
+ use m_lbfgs
  implicit none
  real(dp),intent(in)    :: s_matrix(m_ham_scf,n_ham_scf)
  real(dp),intent(in)    :: s_matrix_sqrt_inv(m_c_scf,n_c_scf)
@@ -424,7 +425,7 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  real(dp),intent(out)   :: ham(m_ham_scf,n_ham_scf,nspin)
 !=====
  integer                :: ispin
- integer                :: ihist
+ integer                :: ihist,khist
  real(dp),allocatable   :: matrix_tmp1(:,:)
  real(dp),allocatable   :: matrix_tmp2(:,:)
  real(dp),allocatable   :: a_matrix(:,:)
@@ -433,11 +434,15 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  real(dp)               :: residual_pred(m_r_scf,n_r_scf,nspin)
  real(dp)               :: residual,work(1)
  real(dp)               :: ph_trace
+ real(dp),allocatable   :: ph_matrix(:,:)
+ real(dp),allocatable   :: ti(:),gradf(:),ci(:)
+ real(dp)               :: sum_ti2
 #ifdef HAVE_SCALAPACK
  real(dp),external      :: PDLANGE
 #endif
- integer :: imc
- integer,parameter :: nmc=10000
+ integer :: info
+ integer :: iter
+ integer,parameter :: niter=50 ! 000000
  real(dp) :: f_adiis,f_adiis_min
 !=====
 
@@ -474,27 +479,86 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  allocate(alpha_diis(nhist_current))
  allocate(alpha_diis_min(nhist_current))
+ allocate(ph_matrix(nhist_current,nhist_current))
+ ph_matrix(:,:) = p_dot_h_hist(1:nhist_current,1:nhist_current)
 
+#if 0
  f_adiis_min = HUGE(1.0_dp)
- do imc=1,nmc
+ do iter=1,niter
 
    do ihist=1,nhist_current
      alpha_diis(ihist)=random()
    enddo
    alpha_diis(:) = alpha_diis(:) / SUM( alpha_diis(:) )
 
-   f_adiis =  DOT_PRODUCT( alpha_diis(:) , p_dot_h_hist(1:nhist_current,1) ) &
-                + DOT_PRODUCT( alpha_diis , MATMUL( p_dot_h_hist(1:nhist_current,1:nhist_current) , alpha_diis ) ) &
-                - DOT_PRODUCT( p_dot_h_hist(1,1:nhist_current) , alpha_diis(:) )  &
-                - p_dot_h_hist(1,1)
+   f_adiis =  DOT_PRODUCT( alpha_diis , ph_matrix(:,1) ) &
+              + DOT_PRODUCT( alpha_diis , MATMUL( ph_matrix(:,:) , alpha_diis ) ) &
+              - DOT_PRODUCT( ph_matrix(1,:) , alpha_diis )  &
+              - ph_matrix(1,1)
    
    if( f_adiis < f_adiis_min ) then
-     write(stdout,'(1x,i6,8(2x,f12.6))') imc,alpha_diis(1:nhist_current),f_adiis
+     write(stdout,'(1x,i6,12(2x,f12.6))') iter,alpha_diis(1:nhist_current),f_adiis
      f_adiis_min = f_adiis
      alpha_diis_min(:) = alpha_diis(:)
    endif
 
  enddo
+
+#else
+
+ allocate(ti(nhist_current),ci(nhist_current))
+ allocate(gradf(nhist_current))
+
+ do ihist=1,nhist_current
+   ti(ihist)=EXP( -REAL(ihist,dp) )
+ enddo
+ 
+ if( nhist_current > 1 ) then
+
+   call setup_lbfgs(nhist_current)
+
+   do iter=1,niter
+
+     sum_ti2 = SUM( ti(:)**2 )
+     ci(:) = ti(:)**2 / sum_ti2
+
+     ! Evaluate function
+     f_adiis =  DOT_PRODUCT( ci , ph_matrix(:,1) ) &
+                + DOT_PRODUCT( ci , MATMUL( ph_matrix , ci ) ) &
+                - DOT_PRODUCT( ph_matrix(1,:) , ci )  &
+                - ph_matrix(1,1)
+
+
+     do khist=1,nhist_current
+       gradf(khist) = ph_matrix(khist,1) - DOT_PRODUCT( ti(:)**2 , ph_matrix(:,1) ) / sum_ti2  &
+                     - ph_matrix(1,khist) + DOT_PRODUCT( ph_matrix(1,:) , ti(:)**2 ) / sum_ti2  &
+                     + DOT_PRODUCT( ph_matrix(khist,:) , ti(:)**2 ) / sum_ti2  &
+                     + DOT_PRODUCT( ti(:)**2 , ph_matrix(:,khist) ) / sum_ti2  &
+                     - 2.0_dp * DOT_PRODUCT( ti(:)**2 , MATMUL( ph_matrix(:,:) , ti(:)**2 ) ) / sum_ti2**2
+     enddo
+
+     gradf(:) = gradf(:) * 2.0_dp * ti(:) / sum_ti2
+
+     write(stdout,'(1x,i6,12(2x,f12.6))') iter,ci(:),f_adiis
+
+     info = lbfgs_wrapper(ti,f_adiis,gradf)
+
+     if( info <= 0 ) exit
+
+   enddo
+
+   call destroy_lbfgs()
+
+ endif
+
+
+ alpha_diis_min(:) = ti(:)**2 / SUM( ti(:)**2 )
+
+ write(stdout,'(1x,a,12(2x,es14.6))') 'Final coefficients',ci(:)
+
+ deallocate(ti,ci,gradf)
+
+#endif
 
  
  ham(:,:,:) = 0.0_dp
@@ -504,6 +568,7 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  deallocate(alpha_diis)
  deallocate(alpha_diis_min)
+ deallocate(ph_matrix)
 
  call stop_clock(timing_diis)
 
