@@ -432,6 +432,7 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  real(dp),allocatable   :: alpha_diis(:),alpha_diis_min(:)
  real(dp)               :: residual_pred(m_r_scf,n_r_scf,nspin)
  real(dp)               :: residual,work(1)
+ real(dp)               :: ph_trace
 #ifdef HAVE_SCALAPACK
  real(dp),external      :: PDLANGE
 #endif
@@ -445,33 +446,30 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  write(stdout,'(/,1x,a)') 'ADIIS mixing'
 
- allocate(matrix_tmp1(m_ham_scf,n_ham_scf))
  p_dot_h_hist(1,:) = 0.0_dp
  p_dot_h_hist(:,1) = 0.0_dp
 
  !
  ! Fill the p_dot_h matrix with the new row and column
  do ispin=1,nspin
-   matrix_tmp1(:,:) = MATMUL( TRANSPOSE( p_matrix_hist(:,:,ispin,1) ) , ham_hist(:,:,ispin,1) )  ! TRANSPOSE is not really necessary
-   p_dot_h_hist(1,1) =  p_dot_h_hist(1,1) + matrix_trace(matrix_tmp1)
+   call trace_transab_scalapack(scalapack_block_min,p_matrix_hist(:,:,ispin,1),ham_hist(:,:,ispin,1),ph_trace)
+   p_dot_h_hist(1,1) =  p_dot_h_hist(1,1) + ph_trace
  enddo
  write(stdout,*) 'FBFB < P | H >',p_dot_h_hist(1,1)
 
  do ihist=2,nhist_current
    do ispin=1,nspin
-     matrix_tmp1(:,:) = MATMUL( TRANSPOSE( p_matrix_hist(:,:,ispin,ihist) ) , ham_hist(:,:,ispin,1) )  ! TRANSPOSE is not really necessary
-     p_dot_h_hist(ihist,1) =  p_dot_h_hist(ihist,1) + matrix_trace(matrix_tmp1)
+     call trace_transab_scalapack(scalapack_block_min,p_matrix_hist(:,:,ispin,ihist),ham_hist(:,:,ispin,1),ph_trace)
+     p_dot_h_hist(ihist,1) =  p_dot_h_hist(ihist,1) + ph_trace
    enddo
  enddo
 
  do ihist=2,nhist_current
    do ispin=1,nspin
-     matrix_tmp1(:,:) = MATMUL( TRANSPOSE( p_matrix_hist(:,:,ispin,1) ) , ham_hist(:,:,ispin,ihist) )  ! TRANSPOSE is not really necessary
-     p_dot_h_hist(1,ihist) =  p_dot_h_hist(1,ihist) + matrix_trace(matrix_tmp1)
+     call trace_transab_scalapack(scalapack_block_min,p_matrix_hist(:,:,ispin,1),ham_hist(:,:,ispin,ihist),ph_trace)
+     p_dot_h_hist(1,ihist) =  p_dot_h_hist(1,ihist) + ph_trace
    enddo
  enddo
-
- deallocate(matrix_tmp1)
 
 
  allocate(alpha_diis(nhist_current))

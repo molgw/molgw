@@ -117,7 +117,7 @@ module m_scalapack
  end interface gather_distributed_copy
 
 #ifdef HAVE_SCALAPACK
- integer,external :: NUMROC,INDXL2G,INDXG2L,INDXG2P
+ integer,external :: NUMROC,INDXL2G,INDXG2L,INDXG2P,PDLATRA
 #endif
 
 contains
@@ -928,6 +928,140 @@ subroutine product_transaba_scalapack(scalapack_block_min,a_matrix,b_matrix,c_ma
 
 
 end subroutine product_transaba_scalapack
+
+
+!=========================================================================
+! Calculate Trace ( A^T * B ) for non-distributed matrices
+!
+!=========================================================================
+subroutine trace_transab_scalapack(scalapack_block_min,a_matrix,b_matrix,ab_trace)
+ use m_tools,only: matrix_trace
+ implicit none
+ integer,intent(in)     :: scalapack_block_min
+ real(dp),intent(in)    :: a_matrix(:,:)
+ real(dp),intent(in)    :: b_matrix(:,:)
+ real(dp),intent(out)   :: ab_trace
+!=====
+ integer                :: mmat1,kmat1
+ integer                :: mmat2,kmat2
+ real(dp),allocatable   :: a_matrix_local(:,:)
+ real(dp),allocatable   :: b_matrix_local(:,:)
+ real(dp),allocatable   :: m_matrix_local(:,:)
+ real(dp),allocatable   :: m_matrix(:,:)
+ integer :: cntxt
+ integer :: ma,na,mb,nb,mm,nm
+ integer :: desca(NDEL),descb(NDEL)
+ integer :: descm(NDEL)
+ integer :: nprow,npcol,iprow,ipcol
+ integer :: info
+!=====
+
+ kmat1 = SIZE( a_matrix , DIM=1)
+ kmat2 = SIZE( a_matrix , DIM=2)
+ mmat1 = SIZE( b_matrix , DIM=1)
+ mmat2 = SIZE( b_matrix , DIM=2)
+
+ if( mmat1 /= kmat1 ) then
+   write(msg,*) 'kmat1 /= mmat1',kmat1,mmat1
+   call die('Dimension error in trace_transab_scalapack'//msg)
+ endif
+ if( mmat2 /= kmat2 ) then
+   write(msg,*) 'mmat2 /= kmat2',mmat2,kmat2
+   call die('Dimension error in trace_transab_scalapack'//msg)
+ endif
+
+#ifdef HAVE_SCALAPACK
+ nprow = MIN(nprow_sd,kmat1/scalapack_block_min)
+ npcol = MIN(npcol_sd,kmat2/scalapack_block_min)
+ nprow = MAX(nprow,1)
+ npcol = MAX(npcol,1)
+
+ if( nprow /= 1 .OR. npcol /= 1 ) then
+
+   call BLACS_GET( -1, 0, cntxt )
+   call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
+   call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+   write(stdout,'(a,i4,a,i4)') ' Trace of matrix product using SCALAPACK with a grid',nprow,' x ',npcol
+  
+   !
+   ! Participate to the calculation only if the CPU has been selected 
+   ! in the grid
+   if( cntxt > 0 ) then
+  
+     !
+     ! Distribute A
+     ma = NUMROC(kmat1,block_row,iprow,first_row,nprow)
+     na = NUMROC(kmat2,block_col,ipcol,first_col,npcol)
+     allocate(a_matrix_local(ma,na))
+     call DESCINIT(desca,kmat1,kmat2,block_row,block_col,first_row,first_col,cntxt,MAX(1,ma),info)
+     ! Set up the local copy of the global matrix A
+     call create_distributed_copy(a_matrix,desca,a_matrix_local)
+     !
+     ! Distribute B
+     mb = NUMROC(mmat1,block_row,iprow,first_row,nprow)
+     nb = NUMROC(mmat2,block_col,ipcol,first_col,npcol)
+     allocate(b_matrix_local(mb,nb))
+     call DESCINIT(descb,mmat1,mmat2,block_row,block_col,first_row,first_col,cntxt,MAX(1,mb),info)
+     ! Set up the local copy of the global matrix B
+     call create_distributed_copy(b_matrix,descb,b_matrix_local)
+     !
+     ! Prepare M = A^T * B
+     mm = NUMROC(kmat2,block_row,iprow,first_row,nprow)
+     nm = NUMROC(mmat2,block_col,ipcol,first_col,npcol)
+     allocate(m_matrix_local(mm,nm))
+     call DESCINIT(descm,kmat2,mmat2,block_row,block_col,first_row,first_col,cntxt,MAX(1,mm),info)
+  
+     ! Calculate M = A^T * B
+     call PDGEMM('T','N',kmat2,mmat2,mmat1,1.0_dp,a_matrix_local,1,1,desca,    &
+                  b_matrix_local,1,1,descb,0.0_dp,m_matrix_local,1,1,descm)
+
+     deallocate(a_matrix_local)
+     deallocate(b_matrix_local)
+
+     ab_trace = PDLATRA(kmat2,m_matrix_local,1,1,descm) / REAL(nprow*npcol,dp)
+
+     call BLACS_GRIDEXIT( cntxt )
+
+   else
+     ab_trace = 0.0_dp
+   endif
+
+   call xsum_world(ab_trace)
+
+
+
+ else ! Only one SCALAPACK proc
+
+   allocate(m_matrix(kmat2,mmat2))
+  
+   m_matrix(:,:) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
+   ab_trace = matrix_trace(m_matrix)
+
+! FIXME the following coding
+!   call DGEMM('T','N',mmat,kmat,kmat,1.0_dp,a_matrix,kmat,b_matrix,kmat,0.0_dp,m_matrix,mmat)
+!   call DGEMM('N','N',mmat,mmat,kmat,1.0_dp,m_matrix,mmat,a_matrix,kmat,0.0_dp,c_matrix,mmat)
+  
+   deallocate(m_matrix)
+
+ endif
+
+#else
+
+ allocate(m_matrix(kmat2,mmat2))
+
+ m_matrix(:,:) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
+ ab_trace = matrix_trace(m_matrix)
+
+! call DGEMM('T','N',mmat,kmat,kmat,1.0_dp,a_matrix,kmat,b_matrix,kmat,0.0_dp,m_matrix,mmat)
+! call DGEMM('N','N',mmat,mmat,kmat,1.0_dp,m_matrix,mmat,a_matrix,kmat,0.0_dp,c_matrix,mmat)
+
+ deallocate(m_matrix)
+
+
+#endif
+
+
+end subroutine trace_transab_scalapack
 
 
 !=========================================================================
