@@ -297,7 +297,7 @@ end subroutine destroy_lbfgs
 !
 !  GENERAL INFORMATION
 ! 
-!    Other routines called directly:  DAXPY, DDOT, LB1, MCSRCH
+!    Other routines called directly:  DAXPY, LB1, MCSRCH
 ! 
 !    Input/Output  :  No input; diagnostic messages on unit MP and
 !                     error messages on unit LP.
@@ -305,35 +305,35 @@ end subroutine destroy_lbfgs
 ! 
 !     - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 !
-      DOUBLE PRECISION ONE,ZERO,GNORM,DDOT,STP1,FTOL, &
+      DOUBLE PRECISION GNORM,STP1,FTOL, &
                        STP,YS,YY,SQ,YR,BETA,XNORM
       INTEGER ITER,NFUN,POINT,ISPT,IYPT,MAXFEV,INFO, &
               BOUND,NPT,CP,I,NFEV,INMC,IYCN,ISCN
       LOGICAL FINISH
 !
-      SAVE
-      DATA ONE,ZERO/1.0D+0,0.0D+0/
+      real(dp),parameter :: one =1.0_dp
+      real(dp),parameter :: zero=0.0_dp
 !
 !     INITIALIZE
 !     ----------
 !
-      IF(IFLAG.EQ.0) GO TO 10
+      IF(IFLAG == 0) GO TO 10
       GO TO (172,100) IFLAG
   10  ITER= 0
-      IF(N.LE.0.OR.M.LE.0) GO TO 196
-      IF(GTOL.LE.1.D-04) THEN
-        IF(LP.GT.0) WRITE(LP,245)
+      IF(N<=0.OR.M<=0) GO TO 196
+      IF(GTOL<=1.D-04) THEN
+        IF(LP>0) WRITE(LP,245)
         GTOL=9.D-01
       ENDIF
       NFUN= 1
       POINT= 0
       FINISH= .FALSE.
       IF(DIAGCO) THEN
-         DO 30 I=1,N
- 30      IF (DIAG(I).LE.ZERO) GO TO 195
+         DO I=1,N
+           IF (DIAG(I)<=ZERO) GO TO 195
+         ENDDO
       ELSE
-         DO 40 I=1,N
- 40      DIAG(I)= 1.0D0
+         DIAG(:)= 1.0D0
       ENDIF
 !
 !     THE WORK VECTOR W IS DIVIDED AS FOLLOWS:
@@ -353,9 +353,8 @@ end subroutine destroy_lbfgs
 !
       ISPT= N+2*M
       IYPT= ISPT+N*M     
-      DO 50 I=1,N
- 50   W(ISPT+I)= -G(I)*DIAG(I)
-      GNORM= DSQRT(DDOT(N,G,1,G,1))
+      W(ISPT+1:ISPT+N)= -G(:) * DIAG(:)
+      GNORM= NORM2( G )
       STP1= ONE/GNORM
 !
 !     PARAMETERS FOR LINE SEARCH ROUTINE
@@ -363,7 +362,7 @@ end subroutine destroy_lbfgs
       FTOL= 1.0D-4
       MAXFEV= 20
 !
-      IF(IPRINT(1).GE.0) CALL LB1(IPRINT,ITER,NFUN,GNORM,N,M,X,F,G,STP,FINISH)
+      IF(IPRINT(1) >= 0) CALL LB1(IPRINT,ITER,NFUN,GNORM,N,M,X,F,G,STP,FINISH)
 !
 !    --------------------
 !     MAIN ITERATION LOOP
@@ -372,22 +371,22 @@ end subroutine destroy_lbfgs
  80   ITER= ITER+1
       INFO=0
       BOUND=ITER-1
-      IF(ITER.EQ.1) GO TO 165
-      IF (ITER .GT. M)BOUND=M
-!
-         YS= DDOT(N,W(IYPT+NPT+1),1,W(ISPT+NPT+1),1)
+      IF(ITER == 1) GO TO 165
+      IF (ITER > M) BOUND=M
+
+      YS = DOT_PRODUCT( W(IYPT+NPT+1:IYPT+NPT+N) , W(ISPT+NPT+1:ISPT+NPT+N) )
+
       IF(.NOT.DIAGCO) THEN
-         YY= DDOT(N,W(IYPT+NPT+1),1,W(IYPT+NPT+1),1)
-         DO 90 I=1,N
-   90    DIAG(I)= YS/YY
+         YY = DOT_PRODUCT( W(IYPT+NPT+1:IYPT+NPT+N) , W(IYPT+NPT+1:IYPT+NPT+N) )
+         DIAG(:)= YS / YY
       ELSE
          IFLAG=2
          RETURN
       ENDIF
+
  100  CONTINUE
       IF(DIAGCO) THEN
-        DO 110 I=1,N
- 110    IF (DIAG(I).LE.ZERO) GO TO 195
+        IF( ANY(DIAG(:) <= ZERO) ) GO TO 195
       ENDIF
 !
 !     COMPUTE -H*G USING THE FORMULA GIVEN IN: Nocedal, J. 1980,
@@ -395,78 +394,77 @@ end subroutine destroy_lbfgs
 !     Mathematics of Computation, Vol.24, No.151, pp. 773-782.
 !     ---------------------------------------------------------
 !
-      CP= POINT
-      IF (POINT.EQ.0) CP=M
-      W(N+CP)= ONE/YS
-      DO 112 I=1,N
- 112  W(I)= -G(I)
-      CP= POINT
-      DO 125 I= 1,BOUND
+      CP = POINT
+      IF(POINT == 0) CP=M
+      W(N+CP) = ONE / YS
+      W(1:N) = -G(:)
+
+      CP = POINT
+      DO I=1,BOUND
          CP=CP-1
-         IF (CP.EQ. -1)CP=M-1
-         SQ= DDOT(N,W(ISPT+CP*N+1),1,W,1)
-         INMC=N+M+CP+1
-         IYCN=IYPT+CP*N
-         W(INMC)= W(N+CP+1)*SQ
+         IF (CP == -1) CP = M-1
+         SQ = DOT_PRODUCT( W(ISPT+CP*N+1:ISPT+CP*N+N), W(1:N) )
+         INMC = N+M+CP+1
+         IYCN = IYPT+CP*N
+         W(INMC)= W(N+CP+1) * SQ
          CALL DAXPY(N,-W(INMC),W(IYCN+1),1,W,1)
- 125  CONTINUE
+      ENDDO
 !
-      DO 130 I=1,N
- 130  W(I)=DIAG(I)*W(I)
+      W(1:N) = DIAG(:) * W(1:N)
 !
-      DO 145 I=1,BOUND
-         YR= DDOT(N,W(IYPT+CP*N+1),1,W,1)
-         BETA= W(N+CP+1)*YR
-         INMC=N+M+CP+1
-         BETA= W(INMC)-BETA
-         ISCN=ISPT+CP*N
-         CALL DAXPY(N,BETA,W(ISCN+1),1,W,1)
-         CP=CP+1
-         IF (CP.EQ.M)CP=0
- 145  CONTINUE
+      DO I=1,BOUND
+        YR= DOT_PRODUCT( W(IYPT+CP*N+1:IYPT+CP*N+N), W(1:N) )
+        BETA= W(N+CP+1) * YR
+        INMC=N+M+CP+1
+        BETA= W(INMC) - BETA
+        ISCN=ISPT+CP*N
+        CALL DAXPY(N,BETA,W(ISCN+1),1,W,1)
+        CP = CP + 1
+        IF (CP == M) CP = 0
+      ENDDO
 !
 !     STORE THE NEW SEARCH DIRECTION
 !     ------------------------------
 !
-       DO 160 I=1,N
- 160   W(ISPT+POINT*N+I)= W(I)
+      W(ISPT+POINT*N+1:ISPT+POINT*N+N)= W(1:N)
 !
 !     OBTAIN THE ONE-DIMENSIONAL MINIMIZER OF THE FUNCTION 
 !     BY USING THE LINE SEARCH ROUTINE MCSRCH
 !     ----------------------------------------------------
  165  NFEV=0
       STP=ONE
-      IF (ITER.EQ.1) STP=STP1
-      DO 170 I=1,N
- 170  W(I)=G(I)
+      IF (ITER == 1) STP=STP1
+      W(1:N) = G(:)
+
  172  CONTINUE
       CALL MCSRCH(N,X,F,G,W(ISPT+POINT*N+1),STP,FTOL,XTOL,MAXFEV,INFO,NFEV,DIAG)
-      IF (INFO .EQ. -1) THEN
+      IF (INFO  ==  -1) THEN
         IFLAG=1
         RETURN
       ENDIF
-      IF (INFO .NE. 1) GO TO 190
+      IF (INFO /= 1) GO TO 190
       NFUN= NFUN + NFEV
 !
 !     COMPUTE THE NEW STEP AND GRADIENT CHANGE 
 !     -----------------------------------------
 !
       NPT=POINT*N
-      DO 175 I=1,N
-      W(ISPT+NPT+I)= STP*W(ISPT+NPT+I)
- 175  W(IYPT+NPT+I)= G(I)-W(I)
-      POINT=POINT+1
-      IF (POINT.EQ.M)POINT=0
+      do I=1,N
+        W(ISPT+NPT+I)= STP*W(ISPT+NPT+I)
+        W(IYPT+NPT+I)= G(I)-W(I)
+      enddo
+      POINT = POINT + 1
+      IF(POINT == M) POINT=0
 !
 !     TERMINATION TEST
 !     ----------------
 !
-      GNORM= DSQRT(DDOT(N,G,1,G,1))
-      XNORM= DSQRT(DDOT(N,X,1,X,1))
-      XNORM= DMAX1(1.0D0,XNORM)
-      IF (GNORM/XNORM .LE. EPS) FINISH=.TRUE.
+      GNORM = NORM2( G )
+      XNORM = NORM2( X )
+      XNORM = MAX(1.0D0,XNORM)
+      IF(GNORM/XNORM <= EPS) FINISH=.TRUE.
 !
-      IF(IPRINT(1).GE.0) CALL LB1(IPRINT,ITER,NFUN,GNORM,N,M,X,F,G,STP,FINISH)
+      IF(IPRINT(1) >= 0) CALL LB1(IPRINT,ITER,NFUN,GNORM,N,M,X,F,G,STP,FINISH)
       IF (FINISH) THEN
          IFLAG=0
          RETURN
@@ -478,13 +476,13 @@ end subroutine destroy_lbfgs
 !     ------------------------------------------------------------
 !
  190  IFLAG=-1
-      IF(LP.GT.0) WRITE(LP,200) INFO
+      IF(LP>0) WRITE(LP,200) INFO
       RETURN
  195  IFLAG=-2
-      IF(LP.GT.0) WRITE(LP,235) I
+      IF(LP>0) WRITE(LP,235) I
       RETURN
  196  IFLAG= -3
-      IF(LP.GT.0) WRITE(LP,240)
+      IF(LP>0) WRITE(LP,240)
 !
 !     FORMATS
 !     -------
@@ -501,7 +499,7 @@ end subroutine destroy_lbfgs
  245  FORMAT(/'  GTOL IS LESS THAN OR EQUAL TO 1.D-04', &
             / ' IT HAS BEEN RESET TO 9.D-01')
       RETURN
-      END
+      END SUBROUTINE
 !
 !     LAST LINE OF SUBROUTINE LBFGS
 !
@@ -518,11 +516,11 @@ end subroutine destroy_lbfgs
       LOGICAL FINISH
       !COMMON /LB3/MP,LP
 !
-      IF (ITER.EQ.0)THEN
+      IF (ITER == 0)THEN
            WRITE(MP,10)
            WRITE(MP,20) N,M
            WRITE(MP,30)F,GNORM
-                 IF (IPRINT(2).GE.1)THEN
+                 IF (IPRINT(2) >= 1)THEN
                      WRITE(MP,40)
                      WRITE(MP,50) (X(I),I=1,N)
                      WRITE(MP,60)
@@ -531,26 +529,26 @@ end subroutine destroy_lbfgs
            WRITE(MP,10)
            WRITE(MP,70)
       ELSE
-          IF ((IPRINT(1).EQ.0).AND.(ITER.NE.1.AND..NOT.FINISH))RETURN
-              IF (IPRINT(1).NE.0)THEN
-                   IF(MOD(ITER-1,IPRINT(1)).EQ.0.OR.FINISH)THEN
-                         IF(IPRINT(2).GT.1.AND.ITER.GT.1) WRITE(MP,70)
+          IF ((IPRINT(1) == 0).AND.(ITER /=1 .AND..NOT.FINISH)) RETURN
+              IF (IPRINT(1) /= 0) THEN
+                   IF(MOD(ITER-1,IPRINT(1)) == 0.OR.FINISH) THEN
+                         IF(IPRINT(2)>1.AND.ITER>1) WRITE(MP,70)
                          WRITE(MP,80)ITER,NFUN,F,GNORM,STP
                    ELSE
                          RETURN
                    ENDIF
               ELSE
-                   IF( IPRINT(2).GT.1.AND.FINISH) WRITE(MP,70)
+                   IF( IPRINT(2)>1.AND.FINISH) WRITE(MP,70)
                    WRITE(MP,80)ITER,NFUN,F,GNORM,STP
               ENDIF
-              IF (IPRINT(2).EQ.2.OR.IPRINT(2).EQ.3)THEN
+              IF (IPRINT(2) == 2.OR.IPRINT(2) == 3)THEN
                     IF (FINISH)THEN
                         WRITE(MP,90)
                     ELSE
                         WRITE(MP,40)
                     ENDIF
                       WRITE(MP,50)(X(I),I=1,N)
-                  IF (IPRINT(2).EQ.3)THEN
+                  IF (IPRINT(2) == 3)THEN
                       WRITE(MP,60)
                       WRITE(MP,50)(G(I),I=1,N)
                   ENDIF
@@ -572,7 +570,7 @@ end subroutine destroy_lbfgs
              /' IFLAG = 0')
 !
       RETURN
-      END
+      END SUBROUTINE
 !     ******
 !
 !
@@ -629,61 +627,11 @@ end subroutine destroy_lbfgs
         dy(i + 2) = dy(i + 2) + da*dx(i + 2)
         dy(i + 3) = dy(i + 3) + da*dx(i + 3)
    50 continue
-      return
-      end
+
+      end subroutine
 !
 !
 !   ----------------------------------------------------------
-!
-      double precision function ddot(n,dx,incx,dy,incy)
-!
-!     forms the dot product of two vectors.
-!     uses unrolled loops for increments equal to one.
-!     jack dongarra, linpack, 3/11/78.
-!
-      double precision dx(1),dy(1),dtemp
-      integer i,incx,incy,ix,iy,m,mp1,n
-!
-      ddot = 0.0d0
-      dtemp = 0.0d0
-      if(n.le.0)return
-      if(incx.eq.1.and.incy.eq.1)go to 20
-!
-!        code for unequal increments or equal increments
-!          not equal to 1
-!
-      ix = 1
-      iy = 1
-      if(incx.lt.0)ix = (-n+1)*incx + 1
-      if(incy.lt.0)iy = (-n+1)*incy + 1
-      do 10 i = 1,n
-        dtemp = dtemp + dx(ix)*dy(iy)
-        ix = ix + incx
-        iy = iy + incy
-   10 continue
-      ddot = dtemp
-      return
-!
-!        code for both increments equal to 1
-!
-!
-!        clean-up loop
-!
-   20 m = mod(n,5)
-      if( m .eq. 0 ) go to 40
-      do 30 i = 1,m
-        dtemp = dtemp + dx(i)*dy(i)
-   30 continue
-      if( n .lt. 5 ) go to 60
-   40 mp1 = m + 1
-      do 50 i = mp1,n,5
-        dtemp = dtemp + dx(i)*dy(i) + dx(i + 1)*dy(i + 1) + &
-         dx(i + 2)*dy(i + 2) + dx(i + 3)*dy(i + 3) + dx(i + 4)*dy(i + 4)
-   50 continue
-   60 ddot = dtemp
-      return
-      end
-!    ------------------------------------------------------------------
 !
 !     **************************
 !     LINE SEARCH ROUTINE MCSRCH
@@ -720,11 +668,11 @@ end subroutine destroy_lbfgs
 !     THE ALGORITHM IS DESIGNED TO FIND A STEP WHICH SATISFIES
 !     THE SUFFICIENT DECREASE CONDITION
 !
-!           F(X+STP*S) .LE. F(X) + FTOL*STP*(GRADF(X)'S),
+!           F(X+STP*S) <= F(X) + FTOL*STP*(GRADF(X)'S),
 !
 !     AND THE CURVATURE CONDITION
 !
-!           ABS(GRADF(X+STP*S)'S)) .LE. GTOL*ABS(GRADF(X)'S).
+!           ABS(GRADF(X+STP*S)'S)) <= GTOL*ABS(GRADF(X)'S).
 !
 !     IF FTOL IS LESS THAN GTOL AND IF, FOR EXAMPLE, THE FUNCTION
 !     IS BOUNDED BELOW, THEN THERE IS ALWAYS A STEP WHICH SATISFIES
@@ -822,27 +770,24 @@ end subroutine destroy_lbfgs
              FINIT,FTEST1,FM,FX,FXM,FY,FYM,P5,P66,STX,STY, &
              STMIN,STMAX,WIDTH,WIDTH1,XTRAPF,ZERO
       DATA P5,P66,XTRAPF,ZERO /0.5D0,0.66D0,4.0D0,0.0D0/
-      IF(INFO.EQ.-1) GO TO 45
+      IF(INFO == -1) GO TO 45
       INFOC = 1
 !
 !     CHECK THE INPUT PARAMETERS FOR ERRORS.
 !
-      IF (N .LE. 0 .OR. STP .LE. ZERO .OR. FTOL .LT. ZERO .OR.  &
-          GTOL .LT. ZERO .OR. XTOL .LT. ZERO .OR. STPMIN .LT. ZERO &
-          .OR. STPMAX .LT. STPMIN .OR. MAXFEV .LE. 0) RETURN
+      IF (N <= 0 .OR. STP <= ZERO .OR. FTOL < ZERO .OR.  &
+          GTOL < ZERO .OR. XTOL < ZERO .OR. STPMIN < ZERO &
+          .OR. STPMAX < STPMIN .OR. MAXFEV <= 0) RETURN
 !
 !     COMPUTE THE INITIAL GRADIENT IN THE SEARCH DIRECTION
 !     AND CHECK THAT S IS A DESCENT DIRECTION.
 !
-      DGINIT = ZERO
-      DO 10 J = 1, N
-         DGINIT = DGINIT + G(J)*S(J)
-   10    CONTINUE
-      IF (DGINIT .GE. ZERO) then
-         write(LP,15)
-   15    FORMAT(/'  THE SEARCH DIRECTION IS NOT A DESCENT DIRECTION')
+      DGINIT = DOT_PRODUCT( G , S )
+
+      IF (DGINIT > ZERO) then
+         write(LP,'(1x,a)') 'THE SEARCH DIRECTION IS NOT A DESCENT DIRECTION'
          RETURN
-         ENDIF
+      ENDIF
 !
 !     INITIALIZE LOCAL VARIABLES.
 !
@@ -853,9 +798,7 @@ end subroutine destroy_lbfgs
       DGTEST = FTOL*DGINIT
       WIDTH = STPMAX - STPMIN
       WIDTH1 = WIDTH/P5
-      DO 20 J = 1, N
-         WA(J) = X(J)
-   20    CONTINUE
+      WA(:) = X(:)
 !
 !     THE VARIABLES STX, FX, DGX CONTAIN THE VALUES OF THE STEP,
 !     FUNCTION, AND DIRECTIONAL DERIVATIVE AT THE BEST STEP.
@@ -895,49 +838,48 @@ end subroutine destroy_lbfgs
 !        IF AN UNUSUAL TERMINATION IS TO OCCUR THEN LET
 !        STP BE THE LOWEST POINT OBTAINED SO FAR.
 !
-         IF ((BRACKT .AND. (STP .LE. STMIN .OR. STP .GE. STMAX)) &
-            .OR. NFEV .GE. MAXFEV-1 .OR. INFOC .EQ. 0 &
-            .OR. (BRACKT .AND. STMAX-STMIN .LE. XTOL*STMAX)) STP = STX
+         IF ((BRACKT .AND. (STP <= STMIN .OR. STP  >=  STMAX)) &
+            .OR. NFEV  >=  MAXFEV-1 .OR. INFOC  ==  0 &
+            .OR. (BRACKT .AND. STMAX-STMIN <= XTOL*STMAX)) STP = STX
 !
 !        EVALUATE THE FUNCTION AND GRADIENT AT STP
 !        AND COMPUTE THE DIRECTIONAL DERIVATIVE.
 !        We return to main program to obtain F and G.
 !
-         DO 40 J = 1, N
+         DO J = 1, N
             X(J) = WA(J) + STP*S(J)
-   40       CONTINUE
+         ENDDO
+
          INFO=-1
          RETURN
 !
    45    INFO=0
          NFEV = NFEV + 1
-         DG = ZERO
-         DO 50 J = 1, N
-            DG = DG + G(J)*S(J)
-   50       CONTINUE
+         DG = DOT_PRODUCT( G , S )
+
          FTEST1 = FINIT + STP*DGTEST
 !
 !        TEST FOR CONVERGENCE.
 !
-         IF ((BRACKT .AND. (STP .LE. STMIN .OR. STP .GE. STMAX)) &
-            .OR. INFOC .EQ. 0) INFO = 6
-         IF (STP .EQ. STPMAX .AND. &
-             F .LE. FTEST1 .AND. DG .LE. DGTEST) INFO = 5
-         IF (STP .EQ. STPMIN .AND.  &
-             (F .GT. FTEST1 .OR. DG .GE. DGTEST)) INFO = 4
-         IF (NFEV .GE. MAXFEV) INFO = 3
-         IF (BRACKT .AND. STMAX-STMIN .LE. XTOL*STMAX) INFO = 2
-         IF (F .LE. FTEST1 .AND. ABS(DG) .LE. GTOL*(-DGINIT)) INFO = 1
+         IF ((BRACKT .AND. (STP <= STMIN .OR. STP  >=  STMAX)) &
+            .OR. INFOC  ==  0) INFO = 6
+         IF (STP  ==  STPMAX .AND. &
+             F <= FTEST1 .AND. DG <= DGTEST) INFO = 5
+         IF (STP  ==  STPMIN .AND.  &
+             (F > FTEST1 .OR. DG  >=  DGTEST)) INFO = 4
+         IF (NFEV  >=  MAXFEV) INFO = 3
+         IF (BRACKT .AND. STMAX-STMIN <= XTOL*STMAX) INFO = 2
+         IF (F <= FTEST1 .AND. ABS(DG) <= GTOL*(-DGINIT)) INFO = 1
 !
 !        CHECK FOR TERMINATION.
 !
-         IF (INFO .NE. 0) RETURN
+         IF (INFO /= 0) RETURN
 !
 !        IN THE FIRST STAGE WE SEEK A STEP FOR WHICH THE MODIFIED
 !        FUNCTION HAS A NONPOSITIVE VALUE AND NONNEGATIVE DERIVATIVE.
 !
-         IF (STAGE1 .AND. F .LE. FTEST1 .AND. &
-             DG .GE. MIN(FTOL,GTOL)*DGINIT) STAGE1 = .FALSE.
+         IF (STAGE1 .AND. F <= FTEST1 .AND. &
+             DG  >=  MIN(FTOL,GTOL)*DGINIT) STAGE1 = .FALSE.
 !
 !        A MODIFIED FUNCTION IS USED TO PREDICT THE STEP ONLY IF
 !        WE HAVE NOT OBTAINED A STEP FOR WHICH THE MODIFIED
@@ -945,7 +887,7 @@ end subroutine destroy_lbfgs
 !        DERIVATIVE, AND IF A LOWER FUNCTION VALUE HAS BEEN
 !        OBTAINED BUT THE DECREASE IS NOT SUFFICIENT.
 !
-         IF (STAGE1 .AND. F .LE. FX .AND. F .GT. FTEST1) THEN
+         IF (STAGE1 .AND. F <= FX .AND. F > FTEST1) THEN
 !
 !           DEFINE THE MODIFIED FUNCTION AND DERIVATIVE VALUES.
 !
@@ -979,7 +921,7 @@ end subroutine destroy_lbfgs
 !        INTERVAL OF UNCERTAINTY.
 !
          IF (BRACKT) THEN
-            IF (ABS(STY-STX) .GE. P66*WIDTH1) STP = STX + P5*(STY - STX)
+            IF (ABS(STY-STX)  >=  P66*WIDTH1) STP = STX + P5*(STY - STX)
             WIDTH1 = WIDTH
             WIDTH = ABS(STY-STX)
             END IF
@@ -990,7 +932,8 @@ end subroutine destroy_lbfgs
 !
 !     LAST LINE OF SUBROUTINE MCSRCH.
 !
-      END
+      END SUBROUTINE
+
       SUBROUTINE MCSTEP(STX,FX,DX,STY,FY,DY,STP,FP,DP,BRACKT,STPMIN,STPMAX,INFO)
       INTEGER INFO
       DOUBLE PRECISION STX,FX,DX,STY,FY,DY,STP,FP,DP,STPMIN,STPMAX
@@ -1057,9 +1000,9 @@ end subroutine destroy_lbfgs
 !
 !     CHECK THE INPUT PARAMETERS FOR ERRORS.
 !
-      IF ((BRACKT .AND. (STP .LE. MIN(STX,STY) .OR. &
-          STP .GE. MAX(STX,STY))) .OR.  &
-          DX*(STP-STX) .GE. 0.0 .OR. STPMAX .LT. STPMIN) RETURN
+      IF ((BRACKT .AND. (STP <= MIN(STX,STY) .OR. &
+          STP  >=  MAX(STX,STY))) .OR.  &
+          DX*(STP-STX)  >=  0.0 .OR. STPMAX < STPMIN) RETURN
 !
 !     DETERMINE IF THE DERIVATIVES HAVE OPPOSITE SIGN.
 !
@@ -1070,19 +1013,19 @@ end subroutine destroy_lbfgs
 !     TO STX THAN THE QUADRATIC STEP, THE CUBIC STEP IS TAKEN,
 !     ELSE THE AVERAGE OF THE CUBIC AND QUADRATIC STEPS IS TAKEN.
 !
-      IF (FP .GT. FX) THEN
+      IF (FP > FX) THEN
          INFO = 1
          BOUND = .TRUE.
          THETA = 3*(FX - FP)/(STP - STX) + DX + DP
          S = MAX(ABS(THETA),ABS(DX),ABS(DP))
          GAMMA = S*SQRT((THETA/S)**2 - (DX/S)*(DP/S))
-         IF (STP .LT. STX) GAMMA = -GAMMA
+         IF (STP < STX) GAMMA = -GAMMA
          P = (GAMMA - DX) + THETA
          Q = ((GAMMA - DX) + GAMMA) + DP
          R = P/Q
          STPC = STX + R*(STP - STX)
          STPQ = STX + ((DX/((FX-FP)/(STP-STX)+DX))/2)*(STP - STX)
-         IF (ABS(STPC-STX) .LT. ABS(STPQ-STX)) THEN
+         IF (ABS(STPC-STX) < ABS(STPQ-STX)) THEN
             STPF = STPC
          ELSE
            STPF = STPC + (STPQ - STPC)/2
@@ -1094,19 +1037,19 @@ end subroutine destroy_lbfgs
 !     STEP IS CLOSER TO STX THAN THE QUADRATIC (SECANT) STEP,
 !     THE CUBIC STEP IS TAKEN, ELSE THE QUADRATIC STEP IS TAKEN.
 !
-      ELSE IF (SGND .LT. 0.0) THEN
+      ELSE IF (SGND < 0.0) THEN
          INFO = 2
          BOUND = .FALSE.
          THETA = 3*(FX - FP)/(STP - STX) + DX + DP
          S = MAX(ABS(THETA),ABS(DX),ABS(DP))
          GAMMA = S*SQRT((THETA/S)**2 - (DX/S)*(DP/S))
-         IF (STP .GT. STX) GAMMA = -GAMMA
+         IF (STP > STX) GAMMA = -GAMMA
          P = (GAMMA - DP) + THETA
          Q = ((GAMMA - DP) + GAMMA) + DX
          R = P/Q
          STPC = STP + R*(STX - STP)
          STPQ = STP + (DP/(DP-DX))*(STX - STP)
-         IF (ABS(STPC-STP) .GT. ABS(STPQ-STP)) THEN
+         IF (ABS(STPC-STP) > ABS(STPQ-STP)) THEN
             STPF = STPC
          ELSE
             STPF = STPQ
@@ -1122,7 +1065,7 @@ end subroutine destroy_lbfgs
 !     COMPUTED AND IF THE MINIMUM IS BRACKETED THEN THE THE STEP
 !     CLOSEST TO STX IS TAKEN, ELSE THE STEP FARTHEST AWAY IS TAKEN.
 !
-      ELSE IF (ABS(DP) .LT. ABS(DX)) THEN
+      ELSE IF (ABS(DP) < ABS(DX)) THEN
          INFO = 3
          BOUND = .TRUE.
          THETA = 3*(FX - FP)/(STP - STX) + DX + DP
@@ -1132,26 +1075,26 @@ end subroutine destroy_lbfgs
 !        TO INFINITY IN THE DIRECTION OF THE STEP.
 !
          GAMMA = S*SQRT(MAX(0.0D0,(THETA/S)**2 - (DX/S)*(DP/S)))
-         IF (STP .GT. STX) GAMMA = -GAMMA
+         IF (STP > STX) GAMMA = -GAMMA
          P = (GAMMA - DP) + THETA
          Q = (GAMMA + (DX - DP)) + GAMMA
          R = P/Q
-         IF (R .LT. 0.0 .AND. GAMMA .NE. 0.0) THEN
+         IF (R < 0.0 .AND. GAMMA /= 0.0) THEN
             STPC = STP + R*(STX - STP)
-         ELSE IF (STP .GT. STX) THEN
+         ELSE IF (STP > STX) THEN
             STPC = STPMAX
          ELSE
             STPC = STPMIN
             END IF
          STPQ = STP + (DP/(DP-DX))*(STX - STP)
          IF (BRACKT) THEN
-            IF (ABS(STP-STPC) .LT. ABS(STP-STPQ)) THEN
+            IF (ABS(STP-STPC) < ABS(STP-STPQ)) THEN
                STPF = STPC
             ELSE
                STPF = STPQ
                END IF
          ELSE
-            IF (ABS(STP-STPC) .GT. ABS(STP-STPQ)) THEN
+            IF (ABS(STP-STPC) > ABS(STP-STPQ)) THEN
                STPF = STPC
             ELSE
                STPF = STPQ
@@ -1170,13 +1113,13 @@ end subroutine destroy_lbfgs
             THETA = 3*(FP - FY)/(STY - STP) + DY + DP
             S = MAX(ABS(THETA),ABS(DY),ABS(DP))
             GAMMA = S*SQRT((THETA/S)**2 - (DY/S)*(DP/S))
-            IF (STP .GT. STY) GAMMA = -GAMMA
+            IF (STP > STY) GAMMA = -GAMMA
             P = (GAMMA - DP) + THETA
             Q = ((GAMMA - DP) + GAMMA) + DY
             R = P/Q
             STPC = STP + R*(STY - STP)
             STPF = STPC
-         ELSE IF (STP .GT. STX) THEN
+         ELSE IF (STP > STX) THEN
             STPF = STPMAX
          ELSE
             STPF = STPMIN
@@ -1186,12 +1129,12 @@ end subroutine destroy_lbfgs
 !     UPDATE THE INTERVAL OF UNCERTAINTY. THIS UPDATE DOES NOT
 !     DEPEND ON THE NEW STEP OR THE CASE ANALYSIS ABOVE.
 !
-      IF (FP .GT. FX) THEN
+      IF (FP > FX) THEN
          STY = STP
          FY = FP
          DY = DP
       ELSE
-         IF (SGND .LT. 0.0) THEN
+         IF (SGND < 0.0) THEN
             STY = STX
             FY = FX
             DY = DX
@@ -1207,7 +1150,7 @@ end subroutine destroy_lbfgs
       STPF = MAX(STPMIN,STPF)
       STP = STPF
       IF (BRACKT .AND. BOUND) THEN
-         IF (STY .GT. STX) THEN
+         IF (STY > STX) THEN
             STP = MIN(STX+0.66*(STY-STX),STP)
          ELSE
             STP = MAX(STX+0.66*(STY-STX),STP)

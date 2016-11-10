@@ -483,6 +483,7 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  ph_matrix(:,:) = p_dot_h_hist(1:nhist_current,1:nhist_current)
 
 #if 0
+
  f_adiis_min = HUGE(1.0_dp)
  do iter=1,niter
 
@@ -510,7 +511,7 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  allocate(gradf(nhist_current))
 
  do ihist=1,nhist_current
-   ti(ihist)=EXP( -REAL(ihist,dp) )
+   ti(ihist) = 1.0_dp / ( -REAL(ihist,dp) )**2
  enddo
  
  if( nhist_current > 1 ) then
@@ -554,7 +555,7 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  alpha_diis_min(:) = ti(:)**2 / SUM( ti(:)**2 )
 
- write(stdout,'(1x,a,12(2x,es14.6))') 'Final coefficients',ci(:)
+ write(stdout,'(1x,a,12(2x,f14.6))') 'Final coefficients',alpha_diis_min(:)
 
  deallocate(ti,ci,gradf)
 
