@@ -131,7 +131,7 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  implicit none
  real(dp),intent(in)    :: s_matrix(m_ham_scf,n_ham_scf)
  real(dp),intent(in)    :: s_matrix_sqrt_inv(m_c_scf,n_c_scf)
- real(dp),intent(in)    :: p_matrix(m_ham_scf,n_ham_scf,nspin)
+ real(dp),intent(inout) :: p_matrix(m_ham_scf,n_ham_scf,nspin)
  real(dp),intent(inout) :: ham(m_ham_scf,n_ham_scf,nspin)
 !=====
  integer                :: ihist
@@ -147,19 +147,39 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  ! the newest is 1
  ! the oldest is nhistmax
  do ihist=nhistmax-1,1,-1
-   en_hist(ihist+1)        = en_hist(ihist)
    ham_hist(:,:,:,ihist+1) = ham_hist(:,:,:,ihist)
    res_hist(:,:,:,ihist+1) = res_hist(:,:,:,ihist)
-   a_matrix_hist(:,ihist+1) = a_matrix_hist(:,ihist)
-   a_matrix_hist(ihist+1,:) = a_matrix_hist(ihist,:)
 
    if( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
      p_matrix_hist(:,:,:,ihist+1) = p_matrix_hist(:,:,:,ihist)
-     p_dot_h_hist(:,ihist+1) = p_dot_h_hist(:,ihist)
-     p_dot_h_hist(ihist+1,:) = p_dot_h_hist(ihist,:)
    endif
 
  enddo
+
+ en_hist(2:)        = en_hist(1:nhistmax-1)
+
+! write(stdout,*) ' ==== FBFB ====',nhist_current
+! write(stdout,*) ' = P H = before shift'
+! do ihist=1,nhistmax
+!   write(stdout,'(i4,x,24(f14.6,x))') ihist,p_dot_h_hist(ihist,:)
+! enddo
+ a_matrix_hist(2:,2:) = a_matrix_hist(1:nhistmax-1,1:nhistmax-1)
+ a_matrix_hist(1,:) = 0.0_dp
+ a_matrix_hist(:,1) = 0.0_dp
+ if( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
+   p_dot_h_hist(2:,2:) = p_dot_h_hist(1:nhistmax-1,1:nhistmax-1)
+   p_dot_h_hist(1,:)   = 0.0_dp
+   p_dot_h_hist(:,1)   = 0.0_dp
+ endif
+! write(stdout,*) ' = P H = after shift'
+! do ihist=1,nhistmax
+!   write(stdout,'(i4,x,24(f14.6,x))') ihist,p_dot_h_hist(ihist,:)
+! enddo
+! write(stdout,*) ' =  A  ='
+! do ihist=1,nhistmax
+!   write(stdout,'(i4,x,24(f14.6,x))') ihist,a_matrix_hist(ihist,:)
+! enddo
+! write(stdout,*) '======================='
 
  !
  ! Set the newest values in history
@@ -599,7 +619,7 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  implicit none
  real(dp),intent(in)    :: s_matrix(m_ham_scf,n_ham_scf)
  real(dp),intent(in)    :: s_matrix_sqrt_inv(m_c_scf,n_c_scf)
- real(dp),intent(in)    :: p_matrix(m_ham_scf,n_ham_scf,nspin)
+ real(dp),intent(out)   :: p_matrix(m_ham_scf,n_ham_scf,nspin)
  real(dp),intent(out)   :: ham(m_ham_scf,n_ham_scf,nspin)
 !=====
  integer                :: ispin
@@ -620,7 +640,7 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 #endif
  integer :: info
  integer :: iter,ibfgs
- integer,parameter :: niter = 20  ! 000000
+ integer,parameter :: niter = 100  ! 000000
  integer,parameter :: nbfgs = 20
  real(dp) :: f_ediis,f_ediis_min
 !=====
@@ -656,7 +676,7 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  ph_matrix(:,:) = p_dot_h_hist(1:nhist_current,1:nhist_current)
 
 
- write(stdout,*) 'FBFB en_hist',en_hist(1:nhist_current)
+ write(stdout,'(a,18(2x,f14.8))') ' FBFB en_hist ',en_hist(1:nhist_current)
 
 #if 0
 
@@ -688,12 +708,17 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  allocate(gradf(nhist_current))
  allocate(diag(nhist_current))
 
- ti(1)  = 1.0_dp 
-! ti(2:) = 1.0_dp / REAL(nhist_current,dp)
+ do ihist=1,nhist_current
+   diag(ihist) = en_hist(ihist) - ph_matrix(ihist,ihist)
+ enddo
+
+ ci(1)               = 1.0_dp 
+ ci(2:nhist_current) = 0.0_dp
+ alpha_diis_min(:)  = ci(:)
+ f_ediis_min = DOT_PRODUCT( ci , MATMUL( ph_matrix , ci ) ) + DOT_PRODUCT( ci , diag )
    
  if( nhist_current > 1 ) then
 
-   f_ediis_min = HUGE(1.0_dp)
    do iter=1,niter
 
      do ihist=1,nhist_current
@@ -702,9 +727,6 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
      call setup_lbfgs(nhist_current)
 
-     do ihist=1,nhist_current
-       diag(ihist) = en_hist(ihist) - ph_matrix(ihist,ihist)
-     enddo
 
      do ibfgs=1,nbfgs
 
@@ -769,9 +791,11 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 #endif
 
  
- ham(:,:,:) = 0.0_dp
+ ham(:,:,:)      = 0.0_dp
+ p_matrix(:,:,:) = 0.0_dp
  do ihist=1,nhist_current
-   ham(:,:,:) = ham(:,:,:) + alpha_diis_min(ihist) * ham_hist(:,:,:,ihist) 
+   ham(:,:,:)      = ham(:,:,:)      + alpha_diis_min(ihist) * ham_hist(:,:,:,ihist) 
+   p_matrix(:,:,:) = p_matrix(:,:,:) + alpha_diis_min(ihist) * p_matrix_hist(:,:,:,ihist) 
  enddo
 
  deallocate(alpha_diis)
