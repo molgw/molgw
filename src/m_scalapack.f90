@@ -621,6 +621,123 @@ end subroutine diagonalize_scalapack
 
 
 !=========================================================================
+! Calculate C = A * B for non-distributed matrices
+!
+!=========================================================================
+subroutine product_ab_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix)
+ implicit none
+ integer,intent(in)     :: scalapack_block_min
+ real(dp),intent(in)    :: a_matrix(:,:)
+ real(dp),intent(in)    :: b_matrix(:,:)
+ real(dp),intent(out)   :: c_matrix(:,:)
+!=====
+ integer                :: mmat,nmat,kmat,lmat
+ integer                :: kmat1,lmat1
+ real(dp),allocatable   :: a_matrix_local(:,:)
+ real(dp),allocatable   :: b_matrix_local(:,:)
+ real(dp),allocatable   :: c_matrix_local(:,:)
+ real(dp),allocatable   :: m_matrix_local(:,:)
+ real(dp),allocatable   :: m_matrix(:,:)
+ integer :: cntxt
+ integer :: ma,na,mb,nb,mc,nc
+ integer :: desca(NDEL),descb(NDEL),descc(NDEL)
+ integer :: descm(NDEL)
+ integer :: nprow,npcol,iprow,ipcol
+ integer :: info
+ integer,external :: NUMROC
+!=====
+
+ mmat  = SIZE( a_matrix , DIM=1)
+ kmat1 = SIZE( a_matrix , DIM=2)
+ kmat  = SIZE( b_matrix , DIM=1)
+ lmat1 = SIZE( b_matrix , DIM=2)
+ lmat  = SIZE( c_matrix , DIM=1)
+ nmat  = SIZE( c_matrix , DIM=2)
+
+ if( kmat1 /= kmat ) call die('Dimension error in product_ab_scalapack')
+ if( mmat  /= lmat ) call die('Dimension error in product_ab_scalapack')
+ if( lmat1 /= nmat ) call die('Dimension error in product_ab_scalapack')
+
+
+#ifdef HAVE_SCALAPACK
+ nprow = MIN(nprow_sd,mmat/scalapack_block_min)
+ npcol = MIN(npcol_sd,nmat/scalapack_block_min)
+ nprow = MAX(nprow,1)
+ npcol = MAX(npcol,1)
+
+ if( nprow /= 1 .OR. npcol /= 1 ) then
+
+   call BLACS_GET( -1, 0, cntxt )
+   call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
+   call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+   write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
+  
+   !
+   ! Participate to the calculation only if the CPU has been selected 
+   ! in the grid
+   if( cntxt > 0 ) then
+  
+     !
+     ! Distribute A
+     ma = NUMROC(mmat,block_row,iprow,first_row,nprow)
+     na = NUMROC(kmat1,block_col,ipcol,first_col,npcol)
+     allocate(a_matrix_local(ma,na))
+     call DESCINIT(desca,mmat,kmat1,block_row,block_col,first_row,first_col,cntxt,MAX(1,ma),info)
+     ! Set up the local copy of the global matrix A
+     call create_distributed_copy(a_matrix,desca,a_matrix_local)
+     !
+     ! Distribute B
+     mb = NUMROC(kmat,block_row,iprow,first_row,nprow)
+     nb = NUMROC(lmat1,block_col,ipcol,first_col,npcol)
+     allocate(b_matrix_local(mb,nb))
+     call DESCINIT(descb,kmat,lmat1,block_row,block_col,first_row,first_col,cntxt,MAX(1,mb),info)
+     ! Set up the local copy of the global matrix B
+     call create_distributed_copy(b_matrix,descb,b_matrix_local)
+     !
+     ! Prepare C = A * B
+     mc = NUMROC(mmat,block_row,iprow,first_row,nprow)
+     nc = NUMROC(nmat,block_col,ipcol,first_col,npcol)
+     allocate(c_matrix_local(mc,nc))
+     call DESCINIT(descm,mmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
+  
+     ! Calculate C = A * B
+     call PDGEMM('N','N',mmat,nmat,kmat,1.0_dp,a_matrix_local,1,1,desca,    &
+                  b_matrix_local,1,1,descb,0.0_dp,c_matrix_local,1,1,descc)
+
+     deallocate(a_matrix_local,b_matrix_local)
+
+
+   endif
+  
+   call gather_distributed_copy(descc,c_matrix_local,c_matrix)
+
+   if( cntxt > 0 ) then
+     deallocate(c_matrix_local)
+     call BLACS_GRIDEXIT( cntxt )
+   endif
+
+
+ else ! Only one SCALAPACK proc
+
+!   c_matrix(:,:) = MATMUL( a_matrix , b_matrix )
+   call DGEMM('N','N',mmat,nmat,kmat,1.0_dp,a_matrix,mmat,b_matrix,kmat,0.0_dp,c_matrix,mmat)
+  
+ endif
+
+#else
+
+! c_matrix(:,:) = MATMUL( a_matrix , b_matrix )
+ call DGEMM('N','N',mmat,nmat,kmat,1.0_dp,a_matrix,mmat,b_matrix,kmat,0.0_dp,c_matrix,mmat)
+
+
+
+#endif
+
+
+end subroutine product_ab_scalapack
+
+
+!=========================================================================
 ! Calculate D = A * B * C for non-distributed matrices
 !
 !=========================================================================
@@ -666,7 +783,7 @@ subroutine product_abc_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix,
 
 #ifdef HAVE_SCALAPACK
  nprow = MIN(nprow_sd,mmat/scalapack_block_min)
- npcol = MIN(npcol_sd,mmat/scalapack_block_min)
+ npcol = MIN(npcol_sd,nmat/scalapack_block_min)
  nprow = MAX(nprow,1)
  npcol = MAX(npcol,1)
 

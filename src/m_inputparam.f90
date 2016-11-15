@@ -798,7 +798,7 @@ subroutine read_inputfile_namelist()
  integral_level     = interpret_quality(integral_quality)
 
  select case(TRIM(mixing_scheme))
- case('SIMPLE','PULAY','DIIS','ADIIS')
+ case('SIMPLE','PULAY','DIIS','ADIIS','EDIIS')
  case default
    write(stdout,*) TRIM(mixing_scheme)
    call die('mixing scheme not recognized')

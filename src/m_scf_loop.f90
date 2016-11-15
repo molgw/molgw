@@ -303,6 +303,9 @@ subroutine scf_loop(is_restart,&
    ! Add the XC part of the hamiltonian to the total hamiltonian
    hamiltonian(:,:,:) = hamiltonian(:,:,:) + hamiltonian_xc(:,:,:)
    
+   ! All the components of the energy have been calculated at this stage
+   ! Sum up to get the total energy
+   en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx_hyb + en%xc
 
    !
    ! If requested, the level shifting procedure is triggered: 
@@ -356,7 +359,6 @@ subroutine scf_loop(is_restart,&
    if( calc_type%is_dft ) then
      write(stdout,'(a25,1x,f19.10)') 'XC Energy       (Ha):',en%xc
    endif
-   en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx_hyb + en%xc
    write(stdout,'(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):',en%tot
 
 

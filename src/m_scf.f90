@@ -31,6 +31,7 @@ module m_scf
  real(dp),allocatable,private :: p_matrix_hist(:,:,:,:)
  real(dp),allocatable,private :: a_matrix_hist(:,:)
  real(dp),allocatable,private :: p_dot_h_hist(:,:)
+ real(dp),allocatable,private :: en_hist(:)
 
  logical,private              :: adiis_regime
 
@@ -81,7 +82,7 @@ subroutine init_scf(m_ham,n_ham,m_c,n_c,nbf,nstate)
  case('PULAY','DIIS')
    nhistmax = npulay_hist
    allocate(a_matrix_hist(nhistmax,nhistmax))
- case('ADIIS')
+ case('ADIIS','EDIIS')
    adiis_regime = .TRUE.
    nhistmax = npulay_hist
    allocate(a_matrix_hist(nhistmax,nhistmax))
@@ -102,9 +103,10 @@ subroutine init_scf(m_ham,n_ham,m_c,n_c,nbf,nstate)
 
  call clean_allocate('Hamiltonian history',ham_hist,m_ham,n_ham,nspin,nhistmax)
  call clean_allocate('Residual history',res_hist,m_r_scf,n_r_scf,nspin,nhistmax)
- if( mixing_scheme == 'ADIIS' ) then
+ if( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
    call clean_allocate('Density matrix history',p_matrix_hist,m_ham,n_ham,nspin,nhistmax)
  endif
+ allocate(en_hist(nhistmax))
  
 end subroutine init_scf
 
@@ -114,6 +116,7 @@ subroutine destroy_scf()
  implicit none
 !=====
 
+ if(ALLOCATED(en_hist))          deallocate(en_hist)
  if(ALLOCATED(ham_hist))         call clean_deallocate('Hamiltonian history',ham_hist)
  if(ALLOCATED(res_hist))         call clean_deallocate('Residual history',res_hist)
  if(ALLOCATED(p_matrix_hist))    call clean_deallocate('Density matrix history',p_matrix_hist)
@@ -144,12 +147,13 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  ! the newest is 1
  ! the oldest is nhistmax
  do ihist=nhistmax-1,1,-1
+   en_hist(ihist+1)        = en_hist(ihist)
    ham_hist(:,:,:,ihist+1) = ham_hist(:,:,:,ihist)
    res_hist(:,:,:,ihist+1) = res_hist(:,:,:,ihist)
    a_matrix_hist(:,ihist+1) = a_matrix_hist(:,ihist)
    a_matrix_hist(ihist+1,:) = a_matrix_hist(ihist,:)
 
-   if( mixing_scheme == 'ADIIS' ) then
+   if( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
      p_matrix_hist(:,:,:,ihist+1) = p_matrix_hist(:,:,:,ihist)
      p_dot_h_hist(:,ihist+1) = p_dot_h_hist(:,ihist)
      p_dot_h_hist(ihist+1,:) = p_dot_h_hist(ihist,:)
@@ -157,9 +161,12 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  enddo
 
+ !
+ ! Set the newest values in history
+ en_hist(1) = en%tot
  if( cntxt_ham > 0 ) then
    ham_hist(:,:,:,1) = ham(:,:,:)
-   if( mixing_scheme == 'ADIIS' ) then
+   if( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
      p_matrix_hist(:,:,:,1) = p_matrix(:,:,:)
    endif
  endif
@@ -170,6 +177,11 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  ! If ADIIS prediction, overwrite the hamiltonian with a new one
  if( mixing_scheme == 'ADIIS' .AND. adiis_regime ) then
    call adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
+ endif
+
+ ! If EDIIS prediction, overwrite the hamiltonian with a new one
+ if( mixing_scheme == 'EDIIS' .AND. adiis_regime ) then
+   call ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  endif
 
 end subroutine hamiltonian_prediction
@@ -416,7 +428,7 @@ end subroutine diis_prediction
 
 !=========================================================================
 subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
- use m_tools,only: matrix_trace,random
+ use m_tools,only: random
  use m_lbfgs
  implicit none
  real(dp),intent(in)    :: s_matrix(m_ham_scf,n_ham_scf)
@@ -425,7 +437,7 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  real(dp),intent(out)   :: ham(m_ham_scf,n_ham_scf,nspin)
 !=====
  integer                :: ispin
- integer                :: ihist,khist
+ integer                :: ihist,jhist,khist
  real(dp),allocatable   :: matrix_tmp1(:,:)
  real(dp),allocatable   :: matrix_tmp2(:,:)
  real(dp),allocatable   :: a_matrix(:,:)
@@ -442,7 +454,7 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 #endif
  integer :: info
  integer :: iter
- integer,parameter :: niter=50 ! 000000
+ integer,parameter :: niter=1000 ! 000000
  real(dp) :: f_adiis,f_adiis_min
 !=====
 
@@ -454,27 +466,23 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  p_dot_h_hist(1,:) = 0.0_dp
  p_dot_h_hist(:,1) = 0.0_dp
 
- !
- ! Fill the p_dot_h matrix with the new row and column
- do ispin=1,nspin
-   call trace_transab_scalapack(scalapack_block_min,p_matrix_hist(:,:,ispin,1),ham_hist(:,:,ispin,1),ph_trace)
-   p_dot_h_hist(1,1) =  p_dot_h_hist(1,1) + ph_trace
- enddo
- write(stdout,*) 'FBFB < P | H >',p_dot_h_hist(1,1)
 
- do ihist=2,nhist_current
+ do ihist=1,nhist_current
    do ispin=1,nspin
      call trace_transab_scalapack(scalapack_block_min,p_matrix_hist(:,:,ispin,ihist),ham_hist(:,:,ispin,1),ph_trace)
      p_dot_h_hist(ihist,1) =  p_dot_h_hist(ihist,1) + ph_trace
    enddo
  enddo
 
- do ihist=2,nhist_current
+ do jhist=2,nhist_current
    do ispin=1,nspin
-     call trace_transab_scalapack(scalapack_block_min,p_matrix_hist(:,:,ispin,1),ham_hist(:,:,ispin,ihist),ph_trace)
-     p_dot_h_hist(1,ihist) =  p_dot_h_hist(1,ihist) + ph_trace
+     call trace_transab_scalapack(scalapack_block_min,p_matrix_hist(:,:,ispin,1),ham_hist(:,:,ispin,jhist),ph_trace)
+     p_dot_h_hist(1,jhist) =  p_dot_h_hist(1,jhist) + ph_trace
    enddo
  enddo
+
+
+ write(stdout,*) 'FBFB < P | H >',p_dot_h_hist(1,1)
 
 
  allocate(alpha_diis(nhist_current))
@@ -510,9 +518,11 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  allocate(ti(nhist_current),ci(nhist_current))
  allocate(gradf(nhist_current))
 
- do ihist=1,nhist_current
-   ti(ihist) = 1.0_dp / ( -REAL(ihist,dp) )**2
- enddo
+! do ihist=1,nhist_current
+!   ti(ihist) = 1.0_dp / REAL(ihist,dp)
+! enddo
+ ti(1)  = 2.0_dp 
+ ti(2:) = 1.0_dp / REAL(nhist_current,dp)
  
  if( nhist_current > 1 ) then
 
@@ -540,9 +550,16 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
      gradf(:) = gradf(:) * 2.0_dp * ti(:) / sum_ti2
 
-     write(stdout,'(1x,i6,12(2x,f12.6))') iter,ci(:),f_adiis
 
+     ! Perform a LBGS step
      info = lbfgs_wrapper(ti,f_adiis,gradf)
+
+     !
+     ! If the coefficient ci are identical within 1.0e-4, then consider they are converged
+     if( ALL( ABS(ci(:) - ti(:)**2 / SUM( ti(:)**2 ) ) < 1.0e-4_dp ) ) then
+        write(stdout,'(1x,a,i5)') 'LBFGS minization converged after # iterations: ',iter
+        exit
+     endif
 
      if( info <= 0 ) exit
 
@@ -552,10 +569,9 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  endif
 
-
  alpha_diis_min(:) = ti(:)**2 / SUM( ti(:)**2 )
 
- write(stdout,'(1x,a,12(2x,f14.6))') 'Final coefficients',alpha_diis_min(:)
+ write(stdout,'(1x,a,12(2x,f14.6))') 'ADIIS coefficients',alpha_diis_min(:)
 
  deallocate(ti,ci,gradf)
 
@@ -574,6 +590,197 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  call stop_clock(timing_diis)
 
 end subroutine adiis_prediction
+
+
+!=========================================================================
+subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
+ use m_tools,only: random
+ use m_lbfgs
+ implicit none
+ real(dp),intent(in)    :: s_matrix(m_ham_scf,n_ham_scf)
+ real(dp),intent(in)    :: s_matrix_sqrt_inv(m_c_scf,n_c_scf)
+ real(dp),intent(in)    :: p_matrix(m_ham_scf,n_ham_scf,nspin)
+ real(dp),intent(out)   :: ham(m_ham_scf,n_ham_scf,nspin)
+!=====
+ integer                :: ispin
+ integer                :: ihist,jhist,khist
+ real(dp),allocatable   :: matrix_tmp1(:,:)
+ real(dp),allocatable   :: matrix_tmp2(:,:)
+ real(dp),allocatable   :: a_matrix(:,:)
+ real(dp),allocatable   :: a_matrix_inv(:,:)
+ real(dp),allocatable   :: alpha_diis(:),alpha_diis_min(:)
+ real(dp)               :: residual_pred(m_r_scf,n_r_scf,nspin)
+ real(dp)               :: residual,work(1)
+ real(dp)               :: ph_trace
+ real(dp),allocatable   :: ph_matrix(:,:)
+ real(dp),allocatable   :: ti(:),gradf(:),ci(:),dcdt(:,:),diag(:)
+ real(dp)               :: sum_ti2
+#ifdef HAVE_SCALAPACK
+ real(dp),external      :: PDLANGE
+#endif
+ integer :: info
+ integer :: iter,ibfgs
+ integer,parameter :: niter = 20  ! 000000
+ integer,parameter :: nbfgs = 20
+ real(dp) :: f_ediis,f_ediis_min
+!=====
+
+ call start_clock(timing_diis)
+
+
+ write(stdout,'(/,1x,a)') 'EDIIS mixing'
+
+ p_dot_h_hist(1,:) = 0.0_dp
+ p_dot_h_hist(:,1) = 0.0_dp
+
+ do ihist=1,nhist_current
+   do ispin=1,nspin
+     call trace_transab_scalapack(scalapack_block_min,p_matrix_hist(:,:,ispin,ihist),ham_hist(:,:,ispin,1),ph_trace)
+     p_dot_h_hist(ihist,1) =  p_dot_h_hist(ihist,1) + ph_trace
+   enddo
+ enddo
+
+ do jhist=2,nhist_current
+   do ispin=1,nspin
+     call trace_transab_scalapack(scalapack_block_min,p_matrix_hist(:,:,ispin,1),ham_hist(:,:,ispin,jhist),ph_trace)
+     p_dot_h_hist(1,jhist) =  p_dot_h_hist(1,jhist) + ph_trace
+   enddo
+ enddo
+
+ write(stdout,*) 'FBFB < P | H >',p_dot_h_hist(1,1)
+
+
+ allocate(alpha_diis(nhist_current))
+ allocate(alpha_diis_min(nhist_current))
+ allocate(ph_matrix(nhist_current,nhist_current))
+ ph_matrix(:,:) = p_dot_h_hist(1:nhist_current,1:nhist_current)
+
+
+ write(stdout,*) 'FBFB en_hist',en_hist(1:nhist_current)
+
+#if 0
+
+ f_ediis_min = HUGE(1.0_dp)
+ do iter=1,niter
+
+   do ihist=1,nhist_current
+     alpha_diis(ihist)=random()
+   enddo
+   alpha_diis(:) = alpha_diis(:) / SUM( alpha_diis(:) )
+
+   f_ediis =  DOT_PRODUCT( alpha_diis , MATMUL( ph_matrix(:,:) , alpha_diis ) )
+   do ihist=1,nhist_current
+     f_ediis = f_ediis + alpha_diis(ihist) * ( en_hist(ihist) -  ph_matrix(ihist,ihist) )
+   enddo
+   
+   if( f_ediis < f_ediis_min ) then
+     write(stdout,'(1x,i6,12(2x,f12.6))') iter,alpha_diis(1:nhist_current),f_ediis
+     f_ediis_min = f_ediis
+     alpha_diis_min(:) = alpha_diis(:)
+   endif
+
+ enddo
+
+#else
+
+ allocate(ti(nhist_current),ci(nhist_current))
+ allocate(dcdt(nhist_current,nhist_current))
+ allocate(gradf(nhist_current))
+ allocate(diag(nhist_current))
+
+ ti(1)  = 1.0_dp 
+! ti(2:) = 1.0_dp / REAL(nhist_current,dp)
+   
+ if( nhist_current > 1 ) then
+
+   f_ediis_min = HUGE(1.0_dp)
+   do iter=1,niter
+
+     do ihist=1,nhist_current
+       ti(ihist)=random()
+     enddo
+
+     call setup_lbfgs(nhist_current)
+
+     do ihist=1,nhist_current
+       diag(ihist) = en_hist(ihist) - ph_matrix(ihist,ihist)
+     enddo
+
+     do ibfgs=1,nbfgs
+
+       sum_ti2 = SUM( ti(:)**2 )
+       ci(:) = ti(:)**2 / sum_ti2
+
+       do jhist=1,nhist_current
+         do ihist=1,nhist_current
+           dcdt(ihist,jhist) = - 2.0_dp * ti(ihist)**2 * ti(jhist) / sum_ti2**2
+         enddo
+         dcdt(jhist,jhist) = 2.0_dp * ti(jhist) / sum_ti2
+       enddo
+   
+
+       ! Evaluate EDIIS function
+       f_ediis =  DOT_PRODUCT( ci , MATMUL( ph_matrix , ci ) ) + DOT_PRODUCT( ci , diag )
+
+       gradf(:) = MATMUL( diag , dcdt ) + MATMUL( TRANSPOSE(dcdt) , MATMUL( ph_matrix , ci ) )  &
+                                        + MATMUL( ci , MATMUL( ph_matrix , TRANSPOSE(dcdt) ) )
+
+       ! Perform a LBGS step
+       info = lbfgs_wrapper(ti,f_ediis,gradf)
+
+       !
+       ! If the coefficient ci are identical within 1.0e-4, then consider they are converged
+       if( ALL( ABS(ci(:) - ti(:)**2 / SUM( ti(:)**2 ) ) < 1.0e-4_dp ) ) then
+          write(stdout,'(1x,a,i5)')    'LBFGS minization converged after # iterations: ',ibfgs
+          exit
+       endif
+
+       if( info <= 0 ) exit
+
+     enddo
+
+     call destroy_lbfgs()
+
+     sum_ti2 = SUM( ti(:)**2 )
+     ci(:) = ti(:)**2 / sum_ti2
+     f_ediis =  DOT_PRODUCT( ci , MATMUL( ph_matrix , ci ) ) + DOT_PRODUCT( ci , diag )
+
+     write(stdout,*) '========== ',iter,' ======'
+     write(stdout,'(1x,a,12(2x,f14.6))') 'EDIIS try coefficients',ci(:)
+     write(stdout,'(1x,a,12(2x,f16.8))') 'f_ediis: ',f_ediis
+
+     if( f_ediis < f_ediis_min ) then
+       alpha_diis_min(:) = ci(:)
+       f_ediis_min = f_ediis
+       write(stdout,'(1x,a,12(2x,f14.6))') 'EDIIS improved coefficients',alpha_diis_min(:)
+     endif
+     write(stdout,*) 
+
+
+   enddo
+ endif
+
+ write(stdout,'(1x,a,12(2x,f14.6))') 'EDIIS final f_ediis     ',f_ediis_min
+ write(stdout,'(1x,a,12(2x,f14.6))') 'EDIIS final coefficients',alpha_diis_min(:)
+
+ deallocate(ti,ci,gradf,diag)
+ deallocate(dcdt)
+
+#endif
+
+ 
+ ham(:,:,:) = 0.0_dp
+ do ihist=1,nhist_current
+   ham(:,:,:) = ham(:,:,:) + alpha_diis_min(ihist) * ham_hist(:,:,:,ihist) 
+ enddo
+
+ deallocate(alpha_diis)
+ deallocate(alpha_diis_min)
+ deallocate(ph_matrix)
+
+ call stop_clock(timing_diis)
+
+end subroutine ediis_prediction
 
 
 !=========================================================================
