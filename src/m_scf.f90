@@ -146,43 +146,25 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  ! Shift the old matrices and then store the new ones
  ! the newest is 1
  ! the oldest is nhistmax
- do ihist=nhistmax-1,1,-1
-   ham_hist(:,:,:,ihist+1) = ham_hist(:,:,:,ihist)
-   res_hist(:,:,:,ihist+1) = res_hist(:,:,:,ihist)
-
-   if( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
-     p_matrix_hist(:,:,:,ihist+1) = p_matrix_hist(:,:,:,ihist)
-   endif
-
- enddo
-
- en_hist(2:)        = en_hist(1:nhistmax-1)
-
-! write(stdout,*) ' ==== FBFB ====',nhist_current
-! write(stdout,*) ' = P H = before shift'
-! do ihist=1,nhistmax
-!   write(stdout,'(i4,x,24(f14.6,x))') ihist,p_dot_h_hist(ihist,:)
-! enddo
+ !
+ en_hist(2:)          = en_hist(1:nhistmax-1)
+ ham_hist(:,:,:,2:)   = ham_hist(:,:,:,1:nhistmax-1)
+ res_hist(:,:,:,2:)   = res_hist(:,:,:,1:nhistmax-1)
  a_matrix_hist(2:,2:) = a_matrix_hist(1:nhistmax-1,1:nhistmax-1)
- a_matrix_hist(1,:) = 0.0_dp
- a_matrix_hist(:,1) = 0.0_dp
+ a_matrix_hist(1,:)   = 0.0_dp
+ a_matrix_hist(:,1)   = 0.0_dp
+
  if( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
+   p_matrix_hist(:,:,:,2:) = p_matrix_hist(:,:,:,1:nhistmax-1)
+
    p_dot_h_hist(2:,2:) = p_dot_h_hist(1:nhistmax-1,1:nhistmax-1)
    p_dot_h_hist(1,:)   = 0.0_dp
    p_dot_h_hist(:,1)   = 0.0_dp
  endif
-! write(stdout,*) ' = P H = after shift'
-! do ihist=1,nhistmax
-!   write(stdout,'(i4,x,24(f14.6,x))') ihist,p_dot_h_hist(ihist,:)
-! enddo
-! write(stdout,*) ' =  A  ='
-! do ihist=1,nhistmax
-!   write(stdout,'(i4,x,24(f14.6,x))') ihist,a_matrix_hist(ihist,:)
-! enddo
-! write(stdout,*) '======================='
 
  !
  ! Set the newest values in history
+ ! if already available here
  en_hist(1) = en%tot
  if( cntxt_ham > 0 ) then
    ham_hist(:,:,:,1) = ham(:,:,:)
@@ -190,6 +172,7 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
      p_matrix_hist(:,:,:,1) = p_matrix(:,:,:)
    endif
  endif
+
 
  ! Standard Pulay DIIS prediction here !
  call diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
@@ -203,6 +186,7 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  if( mixing_scheme == 'EDIIS' .AND. adiis_regime ) then
    call ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  endif
+
 
 end subroutine hamiltonian_prediction
 
@@ -474,7 +458,7 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 #endif
  integer :: info
  integer :: iter
- integer,parameter :: niter=1000 ! 000000
+ integer,parameter :: niter=10000000 ! 000000
  real(dp) :: f_adiis,f_adiis_min
 !=====
 
@@ -490,7 +474,7 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  do ihist=1,nhist_current
    do ispin=1,nspin
      call trace_transab_scalapack(scalapack_block_min,p_matrix_hist(:,:,ispin,ihist),ham_hist(:,:,ispin,1),ph_trace)
-     p_dot_h_hist(ihist,1) =  p_dot_h_hist(ihist,1) + ph_trace
+     p_dot_h_hist(ihist,1) =  p_dot_h_hist(ihist,1) + ph_trace 
    enddo
  enddo
 
@@ -510,9 +494,15 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  allocate(ph_matrix(nhist_current,nhist_current))
  ph_matrix(:,:) = p_dot_h_hist(1:nhist_current,1:nhist_current)
 
-#if 0
+#if 1
+ alpha_diis(1)  = 1.0_dp
+ alpha_diis(2:) = 0.0_dp
+ alpha_diis_min(:) = alpha_diis(:)
+ f_adiis_min = en_hist(1) +  DOT_PRODUCT( alpha_diis , ph_matrix(:,1) ) &
+              + DOT_PRODUCT( alpha_diis , MATMUL( ph_matrix(:,:) , alpha_diis ) ) &
+              - DOT_PRODUCT( ph_matrix(1,:) , alpha_diis )  &
+              - ph_matrix(1,1)
 
- f_adiis_min = HUGE(1.0_dp)
  do iter=1,niter
 
    do ihist=1,nhist_current
@@ -520,7 +510,7 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    enddo
    alpha_diis(:) = alpha_diis(:) / SUM( alpha_diis(:) )
 
-   f_adiis =  DOT_PRODUCT( alpha_diis , ph_matrix(:,1) ) &
+   f_adiis =  en_hist(1) + DOT_PRODUCT( alpha_diis , ph_matrix(:,1) ) &
               + DOT_PRODUCT( alpha_diis , MATMUL( ph_matrix(:,:) , alpha_diis ) ) &
               - DOT_PRODUCT( ph_matrix(1,:) , alpha_diis )  &
               - ph_matrix(1,1)
@@ -589,14 +579,16 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  endif
 
+ f_adiis_min = f_adiis
  alpha_diis_min(:) = ti(:)**2 / SUM( ti(:)**2 )
 
- write(stdout,'(1x,a,12(2x,f14.6))') 'ADIIS coefficients',alpha_diis_min(:)
 
  deallocate(ti,ci,gradf)
 
 #endif
 
+ write(stdout,'(1x,a,12(2x,f14.6))') 'ADIIS final f_ediis     ',f_adiis_min
+ write(stdout,'(1x,a,12(2x,f14.6))') 'ADIIS final coefficients',alpha_diis_min(:)
  
  ham(:,:,:) = 0.0_dp
  do ihist=1,nhist_current
@@ -632,7 +624,7 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  real(dp)               :: residual_pred(m_r_scf,n_r_scf,nspin)
  real(dp)               :: residual,work(1)
  real(dp)               :: ph_trace
- real(dp),allocatable   :: ph_matrix(:,:)
+ real(dp),allocatable   :: half_ph(:,:)
  real(dp),allocatable   :: ti(:),gradf(:),ci(:),dcdt(:,:),diag(:)
  real(dp)               :: sum_ti2
 #ifdef HAVE_SCALAPACK
@@ -640,7 +632,7 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 #endif
  integer :: info
  integer :: iter,ibfgs
- integer,parameter :: niter = 100  ! 000000
+ integer,parameter :: niter = 10000000  ! 000000
  integer,parameter :: nbfgs = 20
  real(dp) :: f_ediis,f_ediis_min
 !=====
@@ -672,15 +664,24 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  allocate(alpha_diis(nhist_current))
  allocate(alpha_diis_min(nhist_current))
- allocate(ph_matrix(nhist_current,nhist_current))
- ph_matrix(:,:) = p_dot_h_hist(1:nhist_current,1:nhist_current)
+ allocate(half_ph(nhist_current,nhist_current))
+ half_ph(:,:) = p_dot_h_hist(1:nhist_current,1:nhist_current) * 0.5_dp
 
 
  write(stdout,'(a,18(2x,f14.8))') ' FBFB en_hist ',en_hist(1:nhist_current)
 
-#if 0
+ allocate(diag(nhist_current))
 
- f_ediis_min = HUGE(1.0_dp)
+ do ihist=1,nhist_current
+   diag(ihist) = en_hist(ihist) - half_ph(ihist,ihist)
+ enddo
+
+#if 1
+
+ alpha_diis_min(1)   = 1.0_dp
+ alpha_diis_min(2:)  = 0.0_dp
+ f_ediis_min = DOT_PRODUCT( alpha_diis_min , MATMUL( half_ph , alpha_diis_min ) ) + DOT_PRODUCT( alpha_diis_min , diag )
+
  do iter=1,niter
 
    do ihist=1,nhist_current
@@ -688,10 +689,7 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    enddo
    alpha_diis(:) = alpha_diis(:) / SUM( alpha_diis(:) )
 
-   f_ediis =  DOT_PRODUCT( alpha_diis , MATMUL( ph_matrix(:,:) , alpha_diis ) )
-   do ihist=1,nhist_current
-     f_ediis = f_ediis + alpha_diis(ihist) * ( en_hist(ihist) -  ph_matrix(ihist,ihist) )
-   enddo
+   f_ediis = DOT_PRODUCT( alpha_diis , MATMUL( half_ph , alpha_diis ) ) + DOT_PRODUCT( alpha_diis , diag )
    
    if( f_ediis < f_ediis_min ) then
      write(stdout,'(1x,i6,12(2x,f12.6))') iter,alpha_diis(1:nhist_current),f_ediis
@@ -706,16 +704,11 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  allocate(ti(nhist_current),ci(nhist_current))
  allocate(dcdt(nhist_current,nhist_current))
  allocate(gradf(nhist_current))
- allocate(diag(nhist_current))
-
- do ihist=1,nhist_current
-   diag(ihist) = en_hist(ihist) - ph_matrix(ihist,ihist)
- enddo
 
  ci(1)               = 1.0_dp 
  ci(2:nhist_current) = 0.0_dp
  alpha_diis_min(:)  = ci(:)
- f_ediis_min = DOT_PRODUCT( ci , MATMUL( ph_matrix , ci ) ) + DOT_PRODUCT( ci , diag )
+ f_ediis_min = DOT_PRODUCT( ci , MATMUL( half_ph , ci ) ) + DOT_PRODUCT( ci , diag )
    
  if( nhist_current > 1 ) then
 
@@ -742,10 +735,10 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    
 
        ! Evaluate EDIIS function
-       f_ediis =  DOT_PRODUCT( ci , MATMUL( ph_matrix , ci ) ) + DOT_PRODUCT( ci , diag )
+       f_ediis =  DOT_PRODUCT( ci , MATMUL( half_ph , ci ) ) + DOT_PRODUCT( ci , diag )
 
-       gradf(:) = MATMUL( diag , dcdt ) + MATMUL( TRANSPOSE(dcdt) , MATMUL( ph_matrix , ci ) )  &
-                                        + MATMUL( ci , MATMUL( ph_matrix , TRANSPOSE(dcdt) ) )
+       gradf(:) = MATMUL( diag , dcdt ) + MATMUL( TRANSPOSE(dcdt) , MATMUL( half_ph , ci ) )  &
+                                        + MATMUL( ci , MATMUL( half_ph , TRANSPOSE(dcdt) ) )
 
        ! Perform a LBGS step
        info = lbfgs_wrapper(ti,f_ediis,gradf)
@@ -765,7 +758,7 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
      sum_ti2 = SUM( ti(:)**2 )
      ci(:) = ti(:)**2 / sum_ti2
-     f_ediis =  DOT_PRODUCT( ci , MATMUL( ph_matrix , ci ) ) + DOT_PRODUCT( ci , diag )
+     f_ediis =  DOT_PRODUCT( ci , MATMUL( half_ph , ci ) ) + DOT_PRODUCT( ci , diag )
 
      write(stdout,*) '========== ',iter,' ======'
      write(stdout,'(1x,a,12(2x,f14.6))') 'EDIIS try coefficients',ci(:)
@@ -782,15 +775,16 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    enddo
  endif
 
- write(stdout,'(1x,a,12(2x,f14.6))') 'EDIIS final f_ediis     ',f_ediis_min
- write(stdout,'(1x,a,12(2x,f14.6))') 'EDIIS final coefficients',alpha_diis_min(:)
 
- deallocate(ti,ci,gradf,diag)
+ deallocate(ti,ci,gradf)
  deallocate(dcdt)
 
 #endif
+ deallocate(diag)
 
- 
+ write(stdout,'(1x,a,12(2x,f14.6))') 'EDIIS final f_ediis     ',f_ediis_min
+ write(stdout,'(1x,a,12(2x,f14.6))') 'EDIIS final coefficients',alpha_diis_min(:)
+
  ham(:,:,:)      = 0.0_dp
  p_matrix(:,:,:) = 0.0_dp
  do ihist=1,nhist_current
@@ -800,7 +794,7 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  deallocate(alpha_diis)
  deallocate(alpha_diis_min)
- deallocate(ph_matrix)
+ deallocate(half_ph)
 
  call stop_clock(timing_diis)
 
