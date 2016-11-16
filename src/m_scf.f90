@@ -486,8 +486,6 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  enddo
 
 
- write(stdout,*) 'FBFB < P | H >',p_dot_h_hist(1,1)
-
 
  allocate(alpha_diis(nhist_current))
  allocate(alpha_diis_min(nhist_current))
@@ -632,7 +630,7 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 #endif
  integer :: info
  integer :: iter,ibfgs
- integer,parameter :: niter = 10000000  ! 000000
+ integer,parameter :: niter = 1000000 
  integer,parameter :: nbfgs = 20
  real(dp) :: f_ediis,f_ediis_min
 !=====
@@ -659,8 +657,6 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    enddo
  enddo
 
- write(stdout,*) 'FBFB < P | H >',p_dot_h_hist(1,1)
-
 
  allocate(alpha_diis(nhist_current))
  allocate(alpha_diis_min(nhist_current))
@@ -668,15 +664,13 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  half_ph(:,:) = p_dot_h_hist(1:nhist_current,1:nhist_current) * 0.5_dp
 
 
- write(stdout,'(a,18(2x,f14.8))') ' FBFB en_hist ',en_hist(1:nhist_current)
-
  allocate(diag(nhist_current))
 
  do ihist=1,nhist_current
    diag(ihist) = en_hist(ihist) - half_ph(ihist,ihist)
  enddo
 
-#if 1
+#if 0
 
  alpha_diis_min(1)   = 1.0_dp
  alpha_diis_min(2:)  = 0.0_dp
@@ -712,67 +706,63 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    
  if( nhist_current > 1 ) then
 
-   do iter=1,niter
-
-     do ihist=1,nhist_current
-       ti(ihist)=random()
-     enddo
-
-     call setup_lbfgs(nhist_current)
+   do ihist=1,nhist_current
+     ti(1)  = 1.0_dp
+     ti(2:) = 0.2_dp
+   enddo
 
 
-     do ibfgs=1,nbfgs
+   call setup_lbfgs(nhist_current)
 
-       sum_ti2 = SUM( ti(:)**2 )
-       ci(:) = ti(:)**2 / sum_ti2
 
-       do jhist=1,nhist_current
-         do ihist=1,nhist_current
-           dcdt(ihist,jhist) = - 2.0_dp * ti(ihist)**2 * ti(jhist) / sum_ti2**2
-         enddo
-         dcdt(jhist,jhist) = 2.0_dp * ti(jhist) / sum_ti2
-       enddo
-   
-
-       ! Evaluate EDIIS function
-       f_ediis =  DOT_PRODUCT( ci , MATMUL( half_ph , ci ) ) + DOT_PRODUCT( ci , diag )
-
-       gradf(:) = MATMUL( diag , dcdt ) + MATMUL( TRANSPOSE(dcdt) , MATMUL( half_ph , ci ) )  &
-                                        + MATMUL( ci , MATMUL( half_ph , TRANSPOSE(dcdt) ) )
-
-       ! Perform a LBGS step
-       info = lbfgs_wrapper(ti,f_ediis,gradf)
-
-       !
-       ! If the coefficient ci are identical within 1.0e-4, then consider they are converged
-       if( ALL( ABS(ci(:) - ti(:)**2 / SUM( ti(:)**2 ) ) < 1.0e-4_dp ) ) then
-          write(stdout,'(1x,a,i5)')    'LBFGS minization converged after # iterations: ',ibfgs
-          exit
-       endif
-
-       if( info <= 0 ) exit
-
-     enddo
-
-     call destroy_lbfgs()
+   do ibfgs=1,nbfgs
 
      sum_ti2 = SUM( ti(:)**2 )
      ci(:) = ti(:)**2 / sum_ti2
+
+     do jhist=1,nhist_current
+       do ihist=1,nhist_current
+         dcdt(ihist,jhist) = - 2.0_dp * ti(ihist)**2 * ti(jhist) / sum_ti2**2
+       enddo
+       dcdt(jhist,jhist) = dcdt(jhist,jhist) + 2.0_dp * ti(jhist) / sum_ti2 
+     enddo
+  
+
+     ! Evaluate EDIIS function
      f_ediis =  DOT_PRODUCT( ci , MATMUL( half_ph , ci ) ) + DOT_PRODUCT( ci , diag )
 
-     write(stdout,*) '========== ',iter,' ======'
-     write(stdout,'(1x,a,12(2x,f14.6))') 'EDIIS try coefficients',ci(:)
-     write(stdout,'(1x,a,12(2x,f16.8))') 'f_ediis: ',f_ediis
+     gradf(:) = MATMUL( diag , dcdt ) + MATMUL( TRANSPOSE(dcdt) , MATMUL( half_ph , ci ) )  &
+                                      + MATMUL( ci , MATMUL( half_ph , dcdt ) )
 
-     if( f_ediis < f_ediis_min ) then
-       alpha_diis_min(:) = ci(:)
-       f_ediis_min = f_ediis
-       write(stdout,'(1x,a,12(2x,f14.6))') 'EDIIS improved coefficients',alpha_diis_min(:)
+     ! Perform a LBGS step
+     info = lbfgs_wrapper(ti,f_ediis,gradf)
+
+     !
+     ! If the coefficient ci are identical within 1.0e-4, then consider they are converged
+     if( ALL( ABS(ci(:) - ti(:)**2 / SUM( ti(:)**2 ) ) < 1.0e-4_dp ) ) then
+!        write(stdout,'(1x,a,i5)')    'LBFGS minization converged after # iterations: ',ibfgs
+        exit
      endif
-     write(stdout,*) 
 
+     if( info <= 0 ) exit
 
    enddo
+
+   call destroy_lbfgs()
+
+   sum_ti2 = SUM( ti(:)**2 )
+   ci(:) = ti(:)**2 / sum_ti2
+   f_ediis =  DOT_PRODUCT( ci , MATMUL( half_ph , ci ) ) + DOT_PRODUCT( ci , diag )
+
+!   write(stdout,'(1x,a,12(2x,f14.6))') 'EDIIS LBFGS coefficients:',ci(:)
+!   write(stdout,'(1x,a,12(2x,f16.8))') '      LBFGS f_ediis:     ',f_ediis
+
+   if( f_ediis < f_ediis_min ) then
+     alpha_diis_min(:) = ci(:)
+     f_ediis_min = f_ediis
+   endif
+
+
  endif
 
 
@@ -782,8 +772,9 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 #endif
  deallocate(diag)
 
- write(stdout,'(1x,a,12(2x,f14.6))') 'EDIIS final f_ediis     ',f_ediis_min
- write(stdout,'(1x,a,12(2x,f14.6))') 'EDIIS final coefficients',alpha_diis_min(:)
+ write(stdout,'(1x,a,12(2x,f14.6))') 'EDIIS final coefficients:',alpha_diis_min(:)
+ write(stdout,'(1x,a,12(2x,f14.6))') 'Total energy history:    ',en_hist(1:nhist_current)
+ write(stdout,'(1x,a,12(2x,f16.8))') 'EDIIS final f_ediis:     ',f_ediis_min
 
  ham(:,:,:)      = 0.0_dp
  p_matrix(:,:,:) = 0.0_dp
