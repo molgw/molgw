@@ -451,14 +451,16 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  real(dp)               :: residual,work(1)
  real(dp)               :: ph_trace
  real(dp),allocatable   :: ph_matrix(:,:)
- real(dp),allocatable   :: ti(:),gradf(:),ci(:)
+ real(dp),allocatable   :: ti(:),gradf(:),ci(:),dcdt(:,:)
  real(dp)               :: sum_ti2
 #ifdef HAVE_SCALAPACK
  real(dp),external      :: PDLANGE
 #endif
  integer :: info
  integer :: iter
- integer,parameter :: niter=10000000 ! 000000
+ integer :: ibfgs
+ integer,parameter :: nbfgs=50
+ integer,parameter :: niter=1000000 ! 000000
  real(dp) :: f_adiis,f_adiis_min
 !=====
 
@@ -524,39 +526,41 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 #else
 
  allocate(ti(nhist_current),ci(nhist_current))
+ allocate(dcdt(nhist_current,nhist_current))
  allocate(gradf(nhist_current))
 
 ! do ihist=1,nhist_current
 !   ti(ihist) = 1.0_dp / REAL(ihist,dp)
 ! enddo
- ti(1)  = 2.0_dp 
- ti(2:) = 1.0_dp / REAL(nhist_current,dp)
+ ti(1)  = 1.0_dp 
+ ti(2:) = 0.2_dp
  
  if( nhist_current > 1 ) then
 
    call setup_lbfgs(nhist_current)
 
-   do iter=1,niter
+   do ibfgs=1,nbfgs
 
      sum_ti2 = SUM( ti(:)**2 )
      ci(:) = ti(:)**2 / sum_ti2
 
      ! Evaluate function
-     f_adiis =  DOT_PRODUCT( ci , ph_matrix(:,1) ) &
-                + DOT_PRODUCT( ci , MATMUL( ph_matrix , ci ) ) &
+     f_adiis =  en_hist(1) - ph_matrix(1,1)  &
+                + DOT_PRODUCT( ci , ph_matrix(:,1) ) &
                 - DOT_PRODUCT( ph_matrix(1,:) , ci )  &
-                - ph_matrix(1,1)
+                + DOT_PRODUCT( ci , MATMUL( ph_matrix , ci ) )  
 
-
-     do khist=1,nhist_current
-       gradf(khist) = ph_matrix(khist,1) - DOT_PRODUCT( ti(:)**2 , ph_matrix(:,1) ) / sum_ti2  &
-                     - ph_matrix(1,khist) + DOT_PRODUCT( ph_matrix(1,:) , ti(:)**2 ) / sum_ti2  &
-                     + DOT_PRODUCT( ph_matrix(khist,:) , ti(:)**2 ) / sum_ti2  &
-                     + DOT_PRODUCT( ti(:)**2 , ph_matrix(:,khist) ) / sum_ti2  &
-                     - 2.0_dp * DOT_PRODUCT( ti(:)**2 , MATMUL( ph_matrix(:,:) , ti(:)**2 ) ) / sum_ti2**2
+     do jhist=1,nhist_current
+       do ihist=1,nhist_current
+         dcdt(ihist,jhist) = - 2.0_dp * ti(ihist)**2 * ti(jhist) / sum_ti2**2
+       enddo
+       dcdt(jhist,jhist) = dcdt(jhist,jhist) + 2.0_dp * ti(jhist) / sum_ti2 
      enddo
+  
 
-     gradf(:) = gradf(:) * 2.0_dp * ti(:) / sum_ti2
+     gradf(:) = MATMUL( TRANSPOSE(dcdt) , ph_matrix(:,1) ) - MATMUL( ph_matrix(1,:) , dcdt )  &
+               + MATMUL( TRANSPOSE(dcdt) , MATMUL( ph_matrix , ci ) )  &
+               + MATMUL( ci , MATMUL( ph_matrix , dcdt ) )  
 
 
      ! Perform a LBGS step
@@ -565,7 +569,7 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
      !
      ! If the coefficient ci are identical within 1.0e-4, then consider they are converged
      if( ALL( ABS(ci(:) - ti(:)**2 / SUM( ti(:)**2 ) ) < 1.0e-4_dp ) ) then
-        write(stdout,'(1x,a,i5)') 'LBFGS minization converged after # iterations: ',iter
+        write(stdout,'(1x,a,i5)') 'LBFGS minization converged after # iterations: ',ibfgs
         exit
      endif
 
@@ -582,6 +586,7 @@ subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
 
  deallocate(ti,ci,gradf)
+ deallocate(dcdt)
 
 #endif
 
@@ -711,9 +716,7 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
      ti(2:) = 0.2_dp
    enddo
 
-
    call setup_lbfgs(nhist_current)
-
 
    do ibfgs=1,nbfgs
 
@@ -740,7 +743,6 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
      !
      ! If the coefficient ci are identical within 1.0e-4, then consider they are converged
      if( ALL( ABS(ci(:) - ti(:)**2 / SUM( ti(:)**2 ) ) < 1.0e-4_dp ) ) then
-!        write(stdout,'(1x,a,i5)')    'LBFGS minization converged after # iterations: ',ibfgs
         exit
      endif
 
@@ -754,13 +756,15 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    ci(:) = ti(:)**2 / sum_ti2
    f_ediis =  DOT_PRODUCT( ci , MATMUL( half_ph , ci ) ) + DOT_PRODUCT( ci , diag )
 
-!   write(stdout,'(1x,a,12(2x,f14.6))') 'EDIIS LBFGS coefficients:',ci(:)
-!   write(stdout,'(1x,a,12(2x,f16.8))') '      LBFGS f_ediis:     ',f_ediis
-
    if( f_ediis < f_ediis_min ) then
      alpha_diis_min(:) = ci(:)
      f_ediis_min = f_ediis
    endif
+
+
+!   ! If a coefficient is too large, start again the minimization 
+!   if( ANY( alpha_diis_min(1:) > 0.80_dp ) ) then
+!   endif
 
 
  endif
@@ -819,7 +823,7 @@ function check_converged(p_matrix_old,p_matrix_new)
 
  write(stdout,'(1x,a,2x,es12.5)') 'Convergence criterium on the density matrix',rms
 
- if( mixing_scheme == 'ADIIS' .AND. adiis_regime ) then
+ if( ( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) .AND. adiis_regime ) then
    if( rms < diis_switch ) then
      write(stdout,'(1x,a,es12.5)') 'Fair convergence has been reached: lower than ',diis_switch
      write(stdout,*) 'Now switch on regular DIIS'
