@@ -177,14 +177,9 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  ! Standard Pulay DIIS prediction here !
  call diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
- ! If ADIIS prediction, overwrite the hamiltonian with a new one
- if( mixing_scheme == 'ADIIS' .AND. adiis_regime ) then
-   call adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
- endif
-
- ! If EDIIS prediction, overwrite the hamiltonian with a new one
- if( mixing_scheme == 'EDIIS' .AND. adiis_regime ) then
-   call ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
+ ! If ADIIS or EDIIS prediction, overwrite the hamiltonian with a new one
+ if( ( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) .AND. adiis_regime ) then
+   call xdiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  endif
 
 
@@ -431,185 +426,7 @@ end subroutine diis_prediction
 
 
 !=========================================================================
-subroutine adiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
- use m_tools,only: random
- use m_lbfgs
- implicit none
- real(dp),intent(in)    :: s_matrix(m_ham_scf,n_ham_scf)
- real(dp),intent(in)    :: s_matrix_sqrt_inv(m_c_scf,n_c_scf)
- real(dp),intent(in)    :: p_matrix(m_ham_scf,n_ham_scf,nspin)
- real(dp),intent(out)   :: ham(m_ham_scf,n_ham_scf,nspin)
-!=====
- integer                :: ispin
- integer                :: ihist,jhist,khist
- real(dp),allocatable   :: matrix_tmp1(:,:)
- real(dp),allocatable   :: matrix_tmp2(:,:)
- real(dp),allocatable   :: a_matrix(:,:)
- real(dp),allocatable   :: a_matrix_inv(:,:)
- real(dp),allocatable   :: alpha_diis(:),alpha_diis_min(:)
- real(dp)               :: residual_pred(m_r_scf,n_r_scf,nspin)
- real(dp)               :: residual,work(1)
- real(dp)               :: ph_trace
- real(dp),allocatable   :: ph_matrix(:,:)
- real(dp),allocatable   :: ti(:),gradf(:),ci(:),dcdt(:,:)
- real(dp)               :: sum_ti2
-#ifdef HAVE_SCALAPACK
- real(dp),external      :: PDLANGE
-#endif
- integer :: info
- integer :: iter
- integer :: ibfgs
- integer,parameter :: nbfgs=50
- integer,parameter :: niter=1000000 ! 000000
- real(dp) :: f_adiis,f_adiis_min
-!=====
-
- call start_clock(timing_diis)
-
-
- write(stdout,'(/,1x,a)') 'ADIIS mixing'
-
- p_dot_h_hist(1,:) = 0.0_dp
- p_dot_h_hist(:,1) = 0.0_dp
-
-
- do ihist=1,nhist_current
-   do ispin=1,nspin
-     call trace_transab_scalapack(scalapack_block_min,p_matrix_hist(:,:,ispin,ihist),ham_hist(:,:,ispin,1),ph_trace)
-     p_dot_h_hist(ihist,1) =  p_dot_h_hist(ihist,1) + ph_trace 
-   enddo
- enddo
-
- do jhist=2,nhist_current
-   do ispin=1,nspin
-     call trace_transab_scalapack(scalapack_block_min,p_matrix_hist(:,:,ispin,1),ham_hist(:,:,ispin,jhist),ph_trace)
-     p_dot_h_hist(1,jhist) =  p_dot_h_hist(1,jhist) + ph_trace
-   enddo
- enddo
-
-
-
- allocate(alpha_diis(nhist_current))
- allocate(alpha_diis_min(nhist_current))
- allocate(ph_matrix(nhist_current,nhist_current))
- ph_matrix(:,:) = p_dot_h_hist(1:nhist_current,1:nhist_current)
-
-#if 1
- alpha_diis(1)  = 1.0_dp
- alpha_diis(2:) = 0.0_dp
- alpha_diis_min(:) = alpha_diis(:)
- f_adiis_min = en_hist(1) +  DOT_PRODUCT( alpha_diis , ph_matrix(:,1) ) &
-              + DOT_PRODUCT( alpha_diis , MATMUL( ph_matrix(:,:) , alpha_diis ) ) &
-              - DOT_PRODUCT( ph_matrix(1,:) , alpha_diis )  &
-              - ph_matrix(1,1)
-
- do iter=1,niter
-
-   do ihist=1,nhist_current
-     alpha_diis(ihist)=random()
-   enddo
-   alpha_diis(:) = alpha_diis(:) / SUM( alpha_diis(:) )
-
-   f_adiis =  en_hist(1) + DOT_PRODUCT( alpha_diis , ph_matrix(:,1) ) &
-              + DOT_PRODUCT( alpha_diis , MATMUL( ph_matrix(:,:) , alpha_diis ) ) &
-              - DOT_PRODUCT( ph_matrix(1,:) , alpha_diis )  &
-              - ph_matrix(1,1)
-   
-   if( f_adiis < f_adiis_min ) then
-     write(stdout,'(1x,i6,12(2x,f12.6))') iter,alpha_diis(1:nhist_current),f_adiis
-     f_adiis_min = f_adiis
-     alpha_diis_min(:) = alpha_diis(:)
-   endif
-
- enddo
-
-#else
-
- allocate(ti(nhist_current),ci(nhist_current))
- allocate(dcdt(nhist_current,nhist_current))
- allocate(gradf(nhist_current))
-
-! do ihist=1,nhist_current
-!   ti(ihist) = 1.0_dp / REAL(ihist,dp)
-! enddo
- ti(1)  = 1.0_dp 
- ti(2:) = 0.2_dp
- 
- if( nhist_current > 1 ) then
-
-   call setup_lbfgs(nhist_current)
-
-   do ibfgs=1,nbfgs
-
-     sum_ti2 = SUM( ti(:)**2 )
-     ci(:) = ti(:)**2 / sum_ti2
-
-     ! Evaluate function
-     f_adiis =  en_hist(1) - ph_matrix(1,1)  &
-                + DOT_PRODUCT( ci , ph_matrix(:,1) ) &
-                - DOT_PRODUCT( ph_matrix(1,:) , ci )  &
-                + DOT_PRODUCT( ci , MATMUL( ph_matrix , ci ) )  
-
-     do jhist=1,nhist_current
-       do ihist=1,nhist_current
-         dcdt(ihist,jhist) = - 2.0_dp * ti(ihist)**2 * ti(jhist) / sum_ti2**2
-       enddo
-       dcdt(jhist,jhist) = dcdt(jhist,jhist) + 2.0_dp * ti(jhist) / sum_ti2 
-     enddo
-  
-
-     gradf(:) = MATMUL( TRANSPOSE(dcdt) , ph_matrix(:,1) ) - MATMUL( ph_matrix(1,:) , dcdt )  &
-               + MATMUL( TRANSPOSE(dcdt) , MATMUL( ph_matrix , ci ) )  &
-               + MATMUL( ci , MATMUL( ph_matrix , dcdt ) )  
-
-
-     ! Perform a LBGS step
-     info = lbfgs_wrapper(ti,f_adiis,gradf)
-
-     !
-     ! If the coefficient ci are identical within 1.0e-4, then consider they are converged
-     if( ALL( ABS(ci(:) - ti(:)**2 / SUM( ti(:)**2 ) ) < 1.0e-4_dp ) ) then
-        write(stdout,'(1x,a,i5)') 'LBFGS minization converged after # iterations: ',ibfgs
-        exit
-     endif
-
-     if( info <= 0 ) exit
-
-   enddo
-
-   call destroy_lbfgs()
-
- endif
-
- f_adiis_min = f_adiis
- alpha_diis_min(:) = ti(:)**2 / SUM( ti(:)**2 )
-
-
- deallocate(ti,ci,gradf)
- deallocate(dcdt)
-
-#endif
-
- write(stdout,'(1x,a,12(2x,f14.6))') 'ADIIS final f_ediis     ',f_adiis_min
- write(stdout,'(1x,a,12(2x,f14.6))') 'ADIIS final coefficients',alpha_diis_min(:)
- 
- ham(:,:,:) = 0.0_dp
- do ihist=1,nhist_current
-   ham(:,:,:) = ham(:,:,:) + alpha_diis_min(ihist) * ham_hist(:,:,:,ihist) 
- enddo
-
- deallocate(alpha_diis)
- deallocate(alpha_diis_min)
- deallocate(ph_matrix)
-
- call stop_clock(timing_diis)
-
-end subroutine adiis_prediction
-
-
-!=========================================================================
-subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
- use m_tools,only: random
+subroutine xdiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  use m_lbfgs
  implicit none
  real(dp),intent(in)    :: s_matrix(m_ham_scf,n_ham_scf)
@@ -621,29 +438,28 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  integer                :: ihist,jhist,khist
  real(dp),allocatable   :: matrix_tmp1(:,:)
  real(dp),allocatable   :: matrix_tmp2(:,:)
- real(dp),allocatable   :: a_matrix(:,:)
- real(dp),allocatable   :: a_matrix_inv(:,:)
  real(dp),allocatable   :: alpha_diis(:),alpha_diis_min(:)
- real(dp)               :: residual_pred(m_r_scf,n_r_scf,nspin)
- real(dp)               :: residual,work(1)
  real(dp)               :: ph_trace
  real(dp),allocatable   :: half_ph(:,:)
  real(dp),allocatable   :: ti(:),gradf(:),ci(:),dcdt(:,:),diag(:)
  real(dp)               :: sum_ti2
+ integer :: info,iproc
+ integer :: imc,ibfgs
+ integer :: nseed,iseed
+ integer,allocatable :: seed(:)
+ integer,parameter :: nmc = 1000000
+ integer,parameter :: nbfgs = 20
+ real(dp) :: f_xdiis,f_xdiis_min
+ real(dp),parameter :: alpha_max=0.80_dp
 #ifdef HAVE_SCALAPACK
  real(dp),external      :: PDLANGE
 #endif
- integer :: info
- integer :: iter,ibfgs
- integer,parameter :: niter = 1000000 
- integer,parameter :: nbfgs = 20
- real(dp) :: f_ediis,f_ediis_min
 !=====
 
  call start_clock(timing_diis)
 
 
- write(stdout,'(/,1x,a)') 'EDIIS mixing'
+ write(stdout,'(/,1x,a)') TRIM(mixing_scheme)//' mixing'
 
  p_dot_h_hist(1,:) = 0.0_dp
  p_dot_h_hist(:,1) = 0.0_dp
@@ -675,30 +491,6 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    diag(ihist) = en_hist(ihist) - half_ph(ihist,ihist)
  enddo
 
-#if 0
-
- alpha_diis_min(1)   = 1.0_dp
- alpha_diis_min(2:)  = 0.0_dp
- f_ediis_min = DOT_PRODUCT( alpha_diis_min , MATMUL( half_ph , alpha_diis_min ) ) + DOT_PRODUCT( alpha_diis_min , diag )
-
- do iter=1,niter
-
-   do ihist=1,nhist_current
-     alpha_diis(ihist)=random()
-   enddo
-   alpha_diis(:) = alpha_diis(:) / SUM( alpha_diis(:) )
-
-   f_ediis = DOT_PRODUCT( alpha_diis , MATMUL( half_ph , alpha_diis ) ) + DOT_PRODUCT( alpha_diis , diag )
-   
-   if( f_ediis < f_ediis_min ) then
-     write(stdout,'(1x,i6,12(2x,f12.6))') iter,alpha_diis(1:nhist_current),f_ediis
-     f_ediis_min = f_ediis
-     alpha_diis_min(:) = alpha_diis(:)
-   endif
-
- enddo
-
-#else
 
  allocate(ti(nhist_current),ci(nhist_current))
  allocate(dcdt(nhist_current,nhist_current))
@@ -707,7 +499,7 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  ci(1)               = 1.0_dp 
  ci(2:nhist_current) = 0.0_dp
  alpha_diis_min(:)  = ci(:)
- f_ediis_min = DOT_PRODUCT( ci , MATMUL( half_ph , ci ) ) + DOT_PRODUCT( ci , diag )
+ f_xdiis_min = eval_f_xdiis(ci)
    
  if( nhist_current > 1 ) then
 
@@ -731,14 +523,13 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
      enddo
   
 
-     ! Evaluate EDIIS function
-     f_ediis =  DOT_PRODUCT( ci , MATMUL( half_ph , ci ) ) + DOT_PRODUCT( ci , diag )
+     ! Evaluate XDIIS function
+     f_xdiis =  eval_f_xdiis(ci)
 
-     gradf(:) = MATMUL( diag , dcdt ) + MATMUL( TRANSPOSE(dcdt) , MATMUL( half_ph , ci ) )  &
-                                      + MATMUL( ci , MATMUL( half_ph , dcdt ) )
+     gradf(:) = eval_gradf_xdiis(ci,dcdt) 
 
      ! Perform a LBGS step
-     info = lbfgs_wrapper(ti,f_ediis,gradf)
+     info = lbfgs_wrapper(ti,f_xdiis,gradf)
 
      !
      ! If the coefficient ci are identical within 1.0e-4, then consider they are converged
@@ -754,17 +545,68 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
    sum_ti2 = SUM( ti(:)**2 )
    ci(:) = ti(:)**2 / sum_ti2
-   f_ediis =  DOT_PRODUCT( ci , MATMUL( half_ph , ci ) ) + DOT_PRODUCT( ci , diag )
+   f_xdiis = eval_f_xdiis(ci)
 
-   if( f_ediis < f_ediis_min ) then
+   if( f_xdiis < f_xdiis_min ) then
      alpha_diis_min(:) = ci(:)
-     f_ediis_min = f_ediis
+     f_xdiis_min = f_xdiis
    endif
 
 
-!   ! If a coefficient is too large, start again the minimization 
-!   if( ANY( alpha_diis_min(1:) > 0.80_dp ) ) then
-!   endif
+   ! If a coefficient is too large, start again the minimization 
+   if( ANY( alpha_diis_min(2:) > alpha_max ) ) then
+
+     !
+     ! Find the offender
+     khist = MAXLOC(alpha_diis_min(2:),DIM=1) + 1
+     write(stdout,'(1x,a,i4,1x,f12.6)') 'Performing a sub-optimal XDIIS because one too-old coefficient is too large: ', &
+                                        khist,alpha_diis_min(khist)
+
+     call RANDOM_SEED(SIZE=nseed)
+     allocate(seed(nseed))
+     do iseed=1,nseed
+       seed(iseed) = NINT( rank_world * iseed * pi * 27.21 )
+     enddo
+     call RANDOM_SEED(PUT=seed)
+     deallocate(seed)
+
+     alpha_diis_min(1)   = alpha_max
+     alpha_diis_min(2:)  = (1.0_dp - alpha_max) / REAL(nhist_current-1,dp)
+     f_xdiis_min = eval_f_xdiis(alpha_diis_min)
+    
+     do imc=1,nmc
+       if( MODULO( imc - 1 , nproc_world ) /= rank_world ) cycle
+     
+       ! Find random coefficients that keep alpha_k = alpha_max and that sum up to 1
+       call RANDOM_NUMBER(alpha_diis)
+       alpha_diis(khist) = alpha_max
+       sum_ti2 = ( SUM( alpha_diis(:khist-1) ) + SUM( alpha_diis(khist+1:) ) )
+       alpha_diis(:khist-1) = alpha_diis(:khist-1) / sum_ti2 * (1.0_dp - alpha_max)
+       alpha_diis(khist+1:) = alpha_diis(khist+1:) / sum_ti2 * (1.0_dp - alpha_max)
+    
+       f_xdiis = eval_f_xdiis(alpha_diis)
+    
+       if( f_xdiis < f_xdiis_min ) then
+         f_xdiis_min = f_xdiis
+         alpha_diis_min(:) = alpha_diis(:)
+       endif
+    
+     enddo
+
+     ! Propage f_xdiis_min and alpha_diis_min to all procs
+     f_xdiis = f_xdiis_min
+     call xmin_world(f_xdiis_min)
+
+     if( ABS( f_xdiis_min - f_xdiis ) < 1.0e-14_dp ) then
+       iproc = rank_world
+     else
+       iproc = -1
+     endif
+     call xmax_world(iproc)
+     call xbcast_world(iproc,alpha_diis_min)
+
+
+   endif
 
 
  endif
@@ -772,13 +614,11 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  deallocate(ti,ci,gradf)
  deallocate(dcdt)
-
-#endif
  deallocate(diag)
 
- write(stdout,'(1x,a,12(2x,f14.6))') 'EDIIS final coefficients:',alpha_diis_min(:)
- write(stdout,'(1x,a,12(2x,f14.6))') 'Total energy history:    ',en_hist(1:nhist_current)
- write(stdout,'(1x,a,12(2x,f16.8))') 'EDIIS final f_ediis:     ',f_ediis_min
+ write(stdout,'(1x,a,12(2x,f16.6))') TRIM(mixing_scheme)//' final coefficients:',alpha_diis_min(:)
+ write(stdout,'(1x,a,12(2x,f16.8))') 'Total energy history:    ',en_hist(1:nhist_current)
+ write(stdout,'(1x,a,12(2x,f16.8))') TRIM(mixing_scheme)//' final energy:      ',f_xdiis_min
 
  ham(:,:,:)      = 0.0_dp
  p_matrix(:,:,:) = 0.0_dp
@@ -793,7 +633,53 @@ subroutine ediis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  call stop_clock(timing_diis)
 
-end subroutine ediis_prediction
+
+contains
+
+
+function eval_f_xdiis(xi)
+ real(dp),intent(in) :: xi(nhist_current)
+ real(dp) :: eval_f_xdiis
+!=====
+ 
+ select case(mixing_scheme)
+ case('EDIIS')
+   eval_f_xdiis = DOT_PRODUCT( xi , MATMUL( half_ph , xi ) ) + DOT_PRODUCT( xi , diag )
+ case('ADIIS')
+   eval_f_xdiis =  en_hist(1) - 2.0_dp * half_ph(1,1)  &
+                + 2.0_dp * DOT_PRODUCT( xi , half_ph(:,1) ) &
+                - 2.0_dp * DOT_PRODUCT( half_ph(1,:) , xi )  &
+                + 2.0_dp * DOT_PRODUCT( xi , MATMUL( half_ph , xi ) )  
+ case default
+   call die('eval_f_xdiis: sheme not allowed')
+ end select
+
+end function eval_f_xdiis
+
+
+function eval_gradf_xdiis(xi,dxdt)
+ real(dp),intent(in) :: xi(nhist_current)
+ real(dp),intent(in) :: dxdt(nhist_current,nhist_current)
+ real(dp) :: eval_gradf_xdiis(nhist_current)
+!=====
+ 
+ select case(mixing_scheme)
+ case('EDIIS')
+   eval_gradf_xdiis(:) = MATMUL( diag , dxdt ) + MATMUL( TRANSPOSE(dxdt) , MATMUL( half_ph , xi ) )  &
+                                               + MATMUL( xi , MATMUL( half_ph , dxdt ) )
+ case('ADIIS')
+   eval_gradf_xdiis(:) =  &
+                 2.0_dp * MATMUL( TRANSPOSE(dxdt) , half_ph(:,1) ) &
+               - 2.0_dp * MATMUL( half_ph(1,:) , dxdt )  &
+               + 2.0_dp * MATMUL( TRANSPOSE(dxdt) , MATMUL( half_ph , xi ) )  &
+               + 2.0_dp * MATMUL( xi , MATMUL( half_ph , dxdt ) )  
+ case default
+   call die('eval_gradf_xdiis: sheme not allowed')
+ end select
+
+end function eval_gradf_xdiis
+
+end subroutine xdiis_prediction
 
 
 !=========================================================================

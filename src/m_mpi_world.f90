@@ -42,6 +42,10 @@ module m_mpi_world
  ! Interfaces for high-level MPI reduce operations
  ! "world" series
  !
+ interface xmin_world
+   module procedure xmin_world_r
+ end interface
+
  interface xmax_world
    module procedure xmax_world_i
    module procedure xmax_world_r
@@ -222,6 +226,27 @@ end subroutine xand_world_la2d
 
 
 !=========================================================================
+subroutine xmin_world_r(real_number)
+ implicit none
+ real(dp),intent(inout) :: real_number
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = 1
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, real_number, n1, MPI_DOUBLE, MPI_MIN, comm_world, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xmin_world_r
+
+
+!=========================================================================
 subroutine xmax_world_i(integer_number)
  implicit none
  integer,intent(inout) :: integer_number
@@ -240,7 +265,6 @@ subroutine xmax_world_i(integer_number)
  endif
 
 end subroutine xmax_world_i
-
 
 
 !=========================================================================
