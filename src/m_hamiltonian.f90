@@ -639,11 +639,21 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
 
  do ispin=1,nspin
 
+   ! Find highest occupied state
+   nocc = 0
    do istate=1,nbf
+     if( p_matrix_occ(istate,ispin) < completely_empty)  cycle
+     nocc = istate
+   enddo
+
+
+   do istate=1,nocc
      if( p_matrix_occ(istate,ispin) < completely_empty)  cycle
      if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle
 
      tmp(:,:) = 0.0_dp
+     !$OMP PARALLEL PRIVATE(ibf,jbf) 
+     !$OMP DO REDUCTION(+:tmp)
      do ipair=1,npair
        ibf=index_basis(1,ipair)
        jbf=index_basis(2,ipair)
@@ -651,6 +661,8 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
        if( ibf /= jbf ) &
             tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center(:,ipair)
      enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
 
      ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact

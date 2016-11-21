@@ -21,6 +21,7 @@ subroutine header()
  character(len=1024) :: chartmp
  integer             :: nchar,kchar,lchar
  integer             :: ammax
+ character(len=128)  :: msg
 #ifdef _OPENMP
  integer,external :: OMP_get_max_threads
 #endif

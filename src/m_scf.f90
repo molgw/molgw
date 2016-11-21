@@ -450,7 +450,7 @@ subroutine xdiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  integer,parameter :: nmc = 1000000
  integer,parameter :: nbfgs = 20
  real(dp) :: f_xdiis,f_xdiis_min
- real(dp),parameter :: alpha_max=0.80_dp
+ real(dp),parameter :: alpha_max=0.60_dp
 #ifdef HAVE_SCALAPACK
  real(dp),external      :: PDLANGE
 #endif
