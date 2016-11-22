@@ -332,9 +332,9 @@ subroutine output_qp_energy(calcname,nstate,energy0,exchange_m_vxc,ncomponent,se
  if( PRESENT(zz) .AND. PRESENT(energy2) ) then
 
    if(nspin==1) then
-     write(stdout,'(3x,a,8x,a,9x,a,7x,a,10x,a,11x,a,10x,a)') '#','E0','SigX-Vxc',TRIM(sigc_label),'Z','E_Z','E_qp'
+     write(stdout,'(3x,a,8x,a,9x,a,7x,a,10x,a,8x,a,5x,a)') '#','E0','SigX-Vxc',TRIM(sigc_label),'Z','E_qp^lin','E_qp^graph'
    else
-     write(stdout,'(3x,a,15x,a,22x,a,19x,a,24x,a,23x,a,23x,a)') '#','E0','SigX-Vxc',TRIM(sigc_label),'Z','E_Z','E_qp'
+     write(stdout,'(3x,a,15x,a,22x,a,19x,a,24x,a,21x,a,17x,a)') '#','E0','SigX-Vxc',TRIM(sigc_label),'Z','E_qp^lin','E_qp^graph'
      write(stdout,'(12x,14(a4,9x))') (' up ','down',ii=1,5+ncomponent)
    endif
 
