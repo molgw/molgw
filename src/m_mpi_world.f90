@@ -60,6 +60,8 @@ module m_mpi_world
    module procedure xsum_world_ra3d
    module procedure xsum_world_ra4d
    module procedure xsum_world_ca1d
+   module procedure xsum_world_ca2d
+   module procedure xsum_world_ca3d
    module procedure xsum_world_ca4d
  end interface
 
@@ -461,6 +463,51 @@ subroutine xsum_world_ca1d(array)
  endif
 
 end subroutine xsum_world_ca1d
+
+
+!=========================================================================
+subroutine xsum_world_ca2d(array)
+ implicit none
+ complex(dpc),intent(inout) :: array(:,:)
+!=====
+ integer :: n1,n2
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2, MPI_DOUBLE_COMPLEX, MPI_SUM, comm_world, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xsum_world_ca2d
+
+
+!=========================================================================
+subroutine xsum_world_ca3d(array)
+ implicit none
+ complex(dpc),intent(inout) :: array(:,:,:)
+!=====
+ integer :: n1,n2,n3
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+ n2 = SIZE( array, DIM=2 )
+ n3 = SIZE( array, DIM=3 )
+
+#ifdef HAVE_MPI
+ call MPI_ALLREDUCE( MPI_IN_PLACE, array, n1*n2*n3, MPI_DOUBLE_COMPLEX, MPI_SUM, comm_world, ier)
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_allreduce'
+ endif
+
+end subroutine xsum_world_ca3d
 
 
 !=========================================================================

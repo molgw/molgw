@@ -1504,31 +1504,16 @@ subroutine init_scalapack()
  ! Squared division of tasks
  nprow_sd = INT(SQRT(REAL(nproc_sca,dp)))
  npcol_sd = nproc_sca / nprow_sd
- if( nprow_sd * npcol_sd /= nproc_sca ) then
+ do while( npcol_sd <= nproc_sca .AND. nprow_sd >= 1 )
+   ! Found a correct distribution
+   if( nprow_sd * npcol_sd == nproc_sca ) exit
+   npcol_sd = npcol_sd + 1
+   nprow_sd = nproc_sca / npcol_sd
+ enddo
 
-   ! Since the attempted distribution does not fit the total number of CPUs
-   ! make a new attempt.
-   nprow_sd = MAX( nprow_sd - 1 , 1 )
-   npcol_sd = nproc_sca / nprow_sd
-   if( nprow_sd * npcol_sd /= nproc_sca ) then
-     ! Since the attempted distribution does not fit the total number of CPUs
-     ! make a new attempt.
-     nprow_sd = MAX( nprow_sd - 1 , 1 )
-     npcol_sd = nproc_sca / nprow_sd
-
-     if( nprow_sd * npcol_sd /= nproc_sca ) then
-       ! Since the attempted distribution does not fit the total number of CPUs
-       ! make a new attempt.
-       nprow_sd = MAX( nprow_sd - 1 , 1 )
-       npcol_sd = nproc_sca / nprow_sd
-       if( nprow_sd * npcol_sd /= nproc_sca ) then
-         write(stdout,'(a)') ' Some procs will be idling in the SCALAPACK distribution'
-         write(stdout,'(a)') ' This is a waste and it is not yet coded anyway!'
-         write(stdout,'(a)') ' => select a number of procs that is not a prime number'
-         call die('proc distribution not permitted')
-       endif
-     endif
-   endif
+ if( npcol_sd / nprow_sd > 8 ) then
+   call issue_warning('SCALAPACK distribution of processors is much rectangular. ' &
+                      // 'This may affect the performance. Try to change the number of processors')
  endif
 
  call BLACS_GET( -1, 0, cntxt_sd )

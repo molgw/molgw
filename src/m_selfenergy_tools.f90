@@ -29,10 +29,10 @@ module m_selfenergy_tools
  !
  ! Selfenergy evaluated on a frequency grid
  type selfenergy_grid
-   integer              :: nomega
-   real(dp),allocatable :: omega(:)
-   real(dp),allocatable :: energy0(:,:)
-   real(dp),allocatable :: sigma(:,:,:)
+   integer                 :: nomega
+   real(dp),allocatable    :: omega(:)
+   real(dp),allocatable    :: energy0(:,:)
+   complex(dp),allocatable :: sigma(:,:,:)
  end type
 
 
@@ -99,6 +99,7 @@ subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,se)
  integer :: selfenergyfile
  integer :: pstate
  integer :: iomega
+ real(dp) :: spectral_function_w(nspin)
 !=====
 
  ! Just the master writes
@@ -121,14 +122,17 @@ subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,se)
    write(stdout,'(1x,a,a)') 'Writing selfenergy in file: ', TRIM(filename)
    open(newunit=selfenergyfile,file=filename)
 
-   write(selfenergyfile,'(a)') '# omega (eV)             SigmaC (eV)    omega - e_gKS - Vxc + SigmaX (eV)     A (eV^-1) '
+   write(selfenergyfile,'(a)') '# omega (eV)          Re SigmaC (eV)    omega - e_gKS - Vxc + SigmaX (eV)     A (eV^-1) '
 
    do iomega=-se%nomega,se%nomega
-     write(selfenergyfile,'(20(f12.6,2x))') ( se%omega(iomega) + se%energy0(pstate,:) )*Ha_eV,               &
-                                        se%sigma(iomega,pstate,:)*Ha_eV,                    &
-                                        ( se%omega(iomega) - exchange_m_vxc(pstate,:) )*Ha_eV,     &
-                                        1.0_dp/pi/ABS( se%omega(iomega) - exchange_m_vxc(pstate,:) &
-                                                - se%sigma(iomega,pstate,:) ) / Ha_eV
+     spectral_function_w(:) = 1.0_dp / pi * ABS(   &
+                                       AIMAG( 1.0_dp   &
+                                         / ( se%omega(iomega) - exchange_m_vxc(pstate,:) - se%sigma(iomega,pstate,:) ) ) )
+
+     write(selfenergyfile,'(20(f14.6,2x))') ( se%omega(iomega) + se%energy0(pstate,:) )*Ha_eV,     &
+                                            REAL(se%sigma(iomega,pstate,:),dp) * Ha_eV,            &
+                                            ( se%omega(iomega) - exchange_m_vxc(pstate,:) )*Ha_eV, &
+                                            spectral_function_w(:) / Ha_eV
    enddo
    write(selfenergyfile,*)
    close(selfenergyfile)
@@ -160,7 +164,7 @@ subroutine find_qp_energy_linearization(se,nstate,exchange_m_vxc,energy0,energy_
  do pstate=nsemin,nsemax
 
    if( se%nomega > 0 .AND. PRESENT(zz) ) then
-     zz_a(:) = ( se%sigma(1,pstate,:) - se%sigma(-1,pstate,:) ) / ( se%omega(1) - se%omega(-1) )
+     zz_a(:) = ( REAL(se%sigma(1,pstate,:),dp) - REAL(se%sigma(-1,pstate,:),dp) ) / ( se%omega(1) - se%omega(-1) )
      zz_a(:) = 1.0_dp / ( 1.0_dp - zz_a(:) )
      ! Contrain Z to be in [0:1] to avoid crazy values
      do aspin=1,nspin
@@ -168,11 +172,11 @@ subroutine find_qp_energy_linearization(se,nstate,exchange_m_vxc,energy0,energy_
      enddo
 
      zz(pstate,:)          = zz_a(:)
-     energy_qp_z(pstate,:) = energy0(pstate,:) + zz_a(:) * ( se%sigma(0,pstate,:) + exchange_m_vxc(pstate,:) )
+     energy_qp_z(pstate,:) = energy0(pstate,:) + zz_a(:) * ( REAL(se%sigma(0,pstate,:),dp) + exchange_m_vxc(pstate,:) )
 
    else
 
-     energy_qp_z(pstate,:) = energy0(pstate,:) + se%sigma(0,pstate,:) + exchange_m_vxc(pstate,:)
+     energy_qp_z(pstate,:) = energy0(pstate,:) + REAL(se%sigma(0,pstate,:),dp) + exchange_m_vxc(pstate,:)
 
    endif
 
@@ -205,7 +209,7 @@ subroutine find_qp_energy_graphical(se,nstate,exchange_m_vxc,energy0,energy_qp_g
    if( MODULO(pstate-nsemin,nproc_world) /= rank_world ) cycle
 
    do aspin=1,nspin
-     sigma_xc_m_vxc(:) = se%sigma(:,pstate,aspin) + exchange_m_vxc(pstate,aspin)
+     sigma_xc_m_vxc(:) = REAL(se%sigma(:,pstate,aspin),dp) + exchange_m_vxc(pstate,aspin)
      !
      ! QP equation:
      ! E_GW - E_gKS = \Sigma_c(E_GW) + \Sigma_x - v_xc
@@ -338,7 +342,7 @@ subroutine output_qp_energy(calcname,nstate,energy0,exchange_m_vxc,ncomponent,se
 
      write(stdout,'(i4,1x,20(1x,f12.6))') pstate,energy0(pstate,:)*Ha_eV,  &
                                           exchange_m_vxc(pstate,:)*Ha_eV,  &
-                                          se%sigma(0,pstate,:)*Ha_eV,    &
+                                          REAL(se%sigma(0,pstate,:)*Ha_eV,dp),  &
                                           zz(pstate,:),                    &
                                           energy1(pstate,:)*Ha_eV,         &
                                           energy2(pstate,:)*Ha_eV
@@ -357,7 +361,7 @@ subroutine output_qp_energy(calcname,nstate,energy0,exchange_m_vxc,ncomponent,se
 
      write(stdout,'(i4,1x,20(1x,f12.6))') pstate,energy0(pstate,:)*Ha_eV,       &
                                           exchange_m_vxc(pstate,:)*Ha_eV,       &
-                                          se%sigma(0,pstate,:)*Ha_eV,         &
+                                          REAL(se%sigma(0,pstate,:)*Ha_eV,dp),  &
                                           energy1(pstate,:)*Ha_eV
    enddo
 

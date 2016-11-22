@@ -207,12 +207,12 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
            fact_empty_a  = (spin_fact - occupation(pstate,ispin)) / spin_fact
            se%sigma(0,pstate,ispin) = se%sigma(0,pstate,ispin) &
                     - bra(ipole,pstate) * bra(ipole,pstate) &
-                      * ( REAL(  fact_full_i  * fact_empty_a / ( energy(pstate,ispin)  - energy(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
-                        - REAL(  fact_empty_i * fact_full_a  / ( energy(pstate,ispin)  - energy(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
+                      * ( fact_full_i  * fact_empty_a / ( energy(pstate,ispin)  - energy(istate,ispin) + wpol%pole(ipole) - ieta )   &
+                        - fact_empty_i * fact_full_a  / ( energy(pstate,ispin)  - energy(istate,ispin) - wpol%pole(ipole) + ieta )   )
            se%sigma(1,pstate,ispin) = se%sigma(1,pstate,ispin) &
                     - bra_exx(ipole,pstate) * bra_exx(ipole,pstate) &
-                      * ( REAL(  fact_full_i  * fact_empty_a / ( energy_lw(pstate,ispin)  - energy(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
-                        - REAL(  fact_empty_i * fact_full_a  / ( energy_lw(pstate,ispin)  - energy(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
+                      * ( fact_full_i  * fact_empty_a / ( energy_lw(pstate,ispin)  - energy(istate,ispin) + wpol%pole(ipole) - ieta )   &
+                        - fact_empty_i * fact_full_a  / ( energy_lw(pstate,ispin)  - energy(istate,ispin) - wpol%pole(ipole) + ieta )  )
          enddo
 
 
@@ -224,8 +224,8 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
            do iomega=-se%nomega,se%nomega
              se%sigma(iomega,pstate,ispin) = se%sigma(iomega,pstate,ispin) &
                       + bra(ipole,pstate) * bra(ipole,pstate)                                          & 
-                        * ( REAL(  fact_full_i  / ( energy(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) + wpol%pole(ipole) - ieta )  , dp )  &
-                          + REAL(  fact_empty_i / ( energy(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) - wpol%pole(ipole) + ieta )  , dp ) )
+                        * ( fact_full_i  / ( energy(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) + wpol%pole(ipole) - ieta )  &
+                          + fact_empty_i / ( energy(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) - wpol%pole(ipole) + ieta ) )
            enddo
          enddo
 
@@ -242,8 +242,8 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
              se%sigma(iomega,pstate,ispin) = se%sigma(iomega,pstate,ispin) &
                       + bra2 * bra(ipole,pstate)                                          & 
-                        * ( REAL(  fact_full_i  / ( omega_m_ei + wpol%pole(ipole) - ieta )  , dp )  &
-                          + REAL(  fact_empty_i / ( omega_m_ei - wpol%pole(ipole) + ieta )  , dp ) )
+                        * ( fact_full_i  / ( omega_m_ei + wpol%pole(ipole) - ieta )   &
+                          + fact_empty_i / ( omega_m_ei - wpol%pole(ipole) + ieta )  )
            enddo
          enddo
 
@@ -570,8 +570,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
          do iomega=-se%nomega,se%nomega
            se%sigma(iomega,pstate,pspin) = se%sigma(iomega,pstate,pspin) &
                     + bra(ilocal,jlocal) * bra(ilocal,jlocal)                    & 
-                      * ( REAL(  fact_full_i  / ( energy(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) + wpol%pole(ipole) - ieta )  , dp )  &
-                        + REAL(  fact_empty_i / ( energy(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) - wpol%pole(ipole) + ieta )  , dp ) )
+                      * ( fact_full_i  / ( energy(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) + wpol%pole(ipole) - ieta )   &
+                        + fact_empty_i / ( energy(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) - wpol%pole(ipole) + ieta )  )
          enddo !iomega
        enddo  !ilocal -> ipole
      enddo !jlocal -> istate
