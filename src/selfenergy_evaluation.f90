@@ -175,7 +175,9 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
 
    en%tot = en%tot + en%rpa
    if( calc_type%is_dft ) en%tot = en%tot - en%xc - en%exx_hyb + en%exx 
-   write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
+   if( ABS(en%rpa) > 1.e-6_dp) then
+     write(stdout,'(/,a,f19.10)') ' RPA Total energy (Ha): ',en%tot
+   endif
 
 
 #ifdef HAVE_SCALAPACK
