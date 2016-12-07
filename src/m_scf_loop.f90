@@ -3,7 +3,7 @@
 ! Author: Fabien Bruneval
 !
 ! This module contains
-! the main SCF loop for Hartree-Fock or Kohn-Sham
+! the main SCF loop for Hartree-Fock or generalized Kohn-Sham
 !
 !=========================================================================
 module m_scf_loop
@@ -68,7 +68,6 @@ subroutine scf_loop(is_restart,&
  real(dp),allocatable    :: hamiltonian_exx(:,:,:)
  real(dp),allocatable    :: hamiltonian_xc(:,:,:)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
- real(dp),allocatable    :: p_matrix_old(:,:,:)
  real(dp),allocatable    :: self_energy_old(:,:,:)
  real(dp),allocatable    :: energy_exx(:,:)
  real(dp),allocatable    :: c_matrix_exx(:,:,:)
@@ -92,7 +91,6 @@ subroutine scf_loop(is_restart,&
  call clean_allocate('Exchange operator Sigx',hamiltonian_exx,m_ham,n_ham,nspin)
  call clean_allocate('XC operator Vxc',hamiltonian_xc,m_ham,n_ham,nspin)
  call clean_allocate('Density matrix P',p_matrix,m_ham,n_ham,nspin)
- call clean_allocate('Previous density matrix Pold',p_matrix_old,m_ham,n_ham,nspin)
  call clean_allocate('Density matrix sqrt P^{1/2}',p_matrix_sqrt,m_ham,n_ham,nspin)
  allocate(p_matrix_occ(basis%nbf,nspin))
 
@@ -365,14 +363,13 @@ subroutine scf_loop(is_restart,&
    !
    ! Setup the new density matrix: p_matrix
    ! Save the old one for the convergence criterium
-   p_matrix_old(:,:,:) = p_matrix(:,:,:)
    if( parallel_ham ) then
      call setup_density_matrix_sca(basis%nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham,n_ham,p_matrix)
    else
      call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
    endif
 
-   is_converged = check_converged(p_matrix_old,p_matrix)
+   is_converged = check_converged(p_matrix)
    inquire(file='STOP',exist=stopfile_found)
 
    if( is_converged .OR. stopfile_found ) exit
@@ -387,8 +384,6 @@ subroutine scf_loop(is_restart,&
      call clean_deallocate('Fock operator F',hamiltonian_fock)
    endif
 
-   ! Damping of the density matrix p_matrix
-   call simple_mixing_p_matrix(p_matrix_old,p_matrix)
    
  !
  ! end of the big SCF loop
@@ -437,7 +432,6 @@ subroutine scf_loop(is_restart,&
  !
  call clean_deallocate('Density matrix P',p_matrix)
  call clean_deallocate('Density matrix sqrt P^{1/2}',p_matrix_sqrt)
- call clean_deallocate('Previous density matrix Pold',p_matrix_old)
  call clean_deallocate('Total Hamiltonian H',hamiltonian)
  call clean_deallocate('Hartree potential Vh',hamiltonian_hartree)
  call clean_deallocate('Exchange operator Sigx',hamiltonian_exx)

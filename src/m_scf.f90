@@ -18,6 +18,7 @@ module m_scf
 
 
  integer,private              :: nhistmax
+ integer,private              :: nhistmax_pmatrix
  integer,private              :: nhist_current
 
  integer,private              :: nstate_scf,nbf_scf             ! Physical dimensions
@@ -78,15 +79,21 @@ subroutine init_scf(m_ham,n_ham,m_c,n_c,nbf,nstate)
 
  select case(mixing_scheme)
  case('SIMPLE')
-   nhistmax = 0
+   nhistmax         = 2
+   nhistmax_pmatrix = 1
+
  case('PULAY','DIIS')
-   nhistmax = npulay_hist
+   nhistmax         = npulay_hist
+   nhistmax_pmatrix = 1
    allocate(a_matrix_hist(nhistmax,nhistmax))
+
  case('ADIIS','EDIIS')
    adiis_regime = .TRUE.
-   nhistmax = npulay_hist
+   nhistmax         = npulay_hist
+   nhistmax_pmatrix = npulay_hist
    allocate(a_matrix_hist(nhistmax,nhistmax))
    allocate(p_dot_h_hist(nhistmax,nhistmax))
+
  case default
    call die('mixing scheme not implemented')
  end select
@@ -102,11 +109,13 @@ subroutine init_scf(m_ham,n_ham,m_c,n_c,nbf,nstate)
 
 
  call clean_allocate('Hamiltonian history',ham_hist,m_ham,n_ham,nspin,nhistmax)
- call clean_allocate('Residual history',res_hist,m_r_scf,n_r_scf,nspin,nhistmax)
- if( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
-   call clean_allocate('Density matrix history',p_matrix_hist,m_ham,n_ham,nspin,nhistmax)
+ call clean_allocate('Density matrix history',p_matrix_hist,m_ham,n_ham,nspin,nhistmax_pmatrix)
+ if( mixing_scheme /= 'SIMPLE' ) then 
+   call clean_allocate('Residual history',res_hist,m_r_scf,n_r_scf,nspin,nhistmax)
  endif
+
  allocate(en_hist(nhistmax))
+
  
 end subroutine init_scf
 
@@ -140,8 +149,6 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  iscf = iscf + 1
  nhist_current  = MIN(nhist_current+1,nhistmax) 
 
- if( mixing_scheme=='SIMPLE') return
-
  !
  ! Shift the old matrices and then store the new ones
  ! the newest is 1
@@ -149,15 +156,19 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  !
  en_hist(2:)          = en_hist(1:nhistmax-1)
  ham_hist(:,:,:,2:)   = ham_hist(:,:,:,1:nhistmax-1)
- res_hist(:,:,:,2:)   = res_hist(:,:,:,1:nhistmax-1)
- a_matrix_hist(2:,2:) = a_matrix_hist(1:nhistmax-1,1:nhistmax-1)
- a_matrix_hist(1,:)   = 0.0_dp
- a_matrix_hist(:,1)   = 0.0_dp
+ if( ALLOCATED(res_hist) ) then
+   res_hist(:,:,:,2:)   = res_hist(:,:,:,1:nhistmax-1)
+ endif
+ if( ALLOCATED(a_matrix_hist) ) then
+   a_matrix_hist(2:,2:) = a_matrix_hist(1:nhistmax-1,1:nhistmax-1)
+   a_matrix_hist(1,:)   = 0.0_dp
+   a_matrix_hist(:,1)   = 0.0_dp
+ endif
 
  if( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
-   p_matrix_hist(:,:,:,2:) = p_matrix_hist(:,:,:,1:nhistmax-1)
+   p_matrix_hist(:,:,:,2:) = p_matrix_hist(:,:,:,1:nhistmax_pmatrix-1)
 
-   p_dot_h_hist(2:,2:) = p_dot_h_hist(1:nhistmax-1,1:nhistmax-1)
+   p_dot_h_hist(2:,2:) = p_dot_h_hist(1:nhistmax_pmatrix-1,1:nhistmax_pmatrix-1)
    p_dot_h_hist(1,:)   = 0.0_dp
    p_dot_h_hist(:,1)   = 0.0_dp
  endif
@@ -167,15 +178,18 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  ! if already available here
  en_hist(1) = en%tot
  if( cntxt_ham > 0 ) then
-   ham_hist(:,:,:,1) = ham(:,:,:)
-   if( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
-     p_matrix_hist(:,:,:,1) = p_matrix(:,:,:)
-   endif
+   ham_hist(:,:,:,1)      = ham(:,:,:)
+   p_matrix_hist(:,:,:,1) = p_matrix(:,:,:)
  endif
 
 
  ! Standard Pulay DIIS prediction here !
- call diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
+ if( mixing_scheme /= 'SIMPLE' ) then
+   call diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
+ else
+   call simple_prediction(ham)
+ endif
+
 
  ! If ADIIS or EDIIS prediction, overwrite the hamiltonian with a new one
  if( ( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) .AND. adiis_regime ) then
@@ -187,21 +201,18 @@ end subroutine hamiltonian_prediction
 
 
 !=========================================================================
-subroutine simple_mixing_p_matrix(p_matrix_old,p_matrix_new)
+subroutine simple_prediction(ham)
  implicit none
- real(dp),intent(in)    :: p_matrix_old(m_ham_scf,n_ham_scf,nspin)
- real(dp),intent(inout) :: p_matrix_new(m_ham_scf,n_ham_scf,nspin)
+ real(dp),intent(inout) :: ham(m_ham_scf,n_ham_scf,nspin)
+!=====
 !=====
 
- if( ABS(alpha_mixing-1.0_dp) < 1.0e-5_dp ) return
+ if( nhist_current >= 2 ) then
+   ham(:,:,:) = alpha_mixing * ham_hist(:,:,:,1) + (1.0_dp - alpha_mixing) * ham_hist(:,:,:,2)
+ endif
+ ham_hist(:,:,:,1) = ham(:,:,:)
 
- if( mixing_scheme/='SIMPLE' .AND. iscf > mixing_first_nscf ) return
-
- write(stdout,'(/,1x,a,1x,f8.4)') 'Simple mixing of the density matrix with alpha_mixing:',alpha_mixing
-
- p_matrix_new(:,:,:) = alpha_mixing * p_matrix_new(:,:,:) + (1.0_dp - alpha_mixing) * p_matrix_old(:,:,:)
- 
-end subroutine simple_mixing_p_matrix
+end subroutine simple_prediction
 
 
 !=========================================================================
@@ -683,11 +694,10 @@ end subroutine xdiis_prediction
 
 
 !=========================================================================
-function check_converged(p_matrix_old,p_matrix_new)
+function check_converged(p_matrix_new)
  implicit none
 
  logical               :: check_converged
- real(dp),intent(in)   :: p_matrix_old(m_ham_scf,n_ham_scf,nspin)
  real(dp),intent(in)   :: p_matrix_new(m_ham_scf,n_ham_scf,nspin)
 !=====
  real(dp)              :: rms
@@ -695,13 +705,13 @@ function check_converged(p_matrix_old,p_matrix_new)
 
  if( parallel_ham ) then
    if( cntxt_ham > 0 ) then
-     rms = NORM2( p_matrix_new(:,:,:) - p_matrix_old(:,:,:) )**2
+     rms = NORM2( p_matrix_new(:,:,:) - p_matrix_hist(:,:,:,1) )**2
    else
      rms = 0.0_dp
    endif
    call xsum_world(rms)
  else
-   rms = NORM2( p_matrix_new(:,:,:) - p_matrix_old(:,:,:) )**2
+   rms = NORM2( p_matrix_new(:,:,:) - p_matrix_hist(:,:,:,1) )**2
  endif
 
 
@@ -726,10 +736,10 @@ function check_converged(p_matrix_old,p_matrix_new)
    write(stdout,*) ' ===> convergence not reached yet'
    write(stdout,*)
 
-   if(iscf == nscf) then
-     if(rms>1.0e-2_dp) then
+   if( iscf == nscf ) then
+     if( rms > 1.0e-2_dp ) then
        call issue_warning('SCF convergence is very poor')
-     else if(rms>1.0e-4_dp) then
+     else if( rms > 1.0e-4_dp ) then
        call issue_warning('SCF convergence is poor')
      endif
    endif
