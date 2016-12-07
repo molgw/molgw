@@ -199,7 +199,11 @@ subroutine scf_loop(is_restart,&
        call setup_exchange_longrange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,energy_tmp)
      else
        if( parallel_ham ) then
-         call die('Range-separated functionals not implemented with SCALAPACK yet')
+         if( parallel_buffer ) then
+           call setup_exchange_longrange_ri_buffer_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,energy_tmp)
+         else
+           call die('Range-separated functionals not implemented with full SCALAPACK yet')
+         endif
        else
          call setup_exchange_longrange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_exx,energy_tmp)
        endif
@@ -581,7 +585,15 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
  if(calc_type%need_exchange_lr) then
    hamiltonian_spin_tmp(:,:,:) = 0.0_dp
 
-   call setup_exchange_longrange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
+   if( parallel_ham ) then
+     if( parallel_buffer ) then
+       call setup_exchange_longrange_ri_buffer_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
+     else
+       call die('Range-separated functionals not implemented with full SCALAPACK yet')
+     endif
+   else
+     call setup_exchange_longrange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
+   endif
    ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
    eexx_hyb = alpha_hybrid_lr * eexx
    hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * alpha_hybrid_lr
