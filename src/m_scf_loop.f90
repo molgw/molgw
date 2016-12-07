@@ -62,7 +62,6 @@ subroutine scf_loop(is_restart,&
  integer                 :: ispin,iscf,istate
  real(dp)                :: energy_tmp
  real(dp),allocatable    :: p_matrix(:,:,:)
- real(dp),allocatable    :: p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
  real(dp),allocatable    :: hamiltonian(:,:,:)
  real(dp),allocatable    :: hamiltonian_hartree(:,:)
  real(dp),allocatable    :: hamiltonian_exx(:,:,:)
@@ -90,8 +89,7 @@ subroutine scf_loop(is_restart,&
  call clean_allocate('Exchange operator Sigx',hamiltonian_exx,m_ham,n_ham,nspin)
  call clean_allocate('XC operator Vxc',hamiltonian_xc,m_ham,n_ham,nspin)
  call clean_allocate('Density matrix P',p_matrix,m_ham,n_ham,nspin)
- call clean_allocate('Density matrix sqrt P^{1/2}',p_matrix_sqrt,m_ham,n_ham,nspin)
- allocate(p_matrix_occ(basis%nbf,nspin))
+
 
  if( calc_type%is_dft ) then
    !
@@ -116,15 +114,6 @@ subroutine scf_loop(is_restart,&
  do iscf=1,nscf
    write(stdout,'(/,a)') '-------------------------------------------'
    write(stdout,'(a,1x,i4,/)') ' *** SCF cycle No:',iscf
-
-
-   !
-   ! Calculate the matrix square-root of the density matrix P
-   if( parallel_ham ) then
-     call setup_sqrt_density_matrix_sca(basis%nbf,m_ham,n_ham,p_matrix,p_matrix_sqrt,p_matrix_occ)
-   else
-     call setup_sqrt_density_matrix(basis%nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
-   endif
 
 
    if( cntxt_ham > 0 ) then
@@ -408,7 +397,6 @@ subroutine scf_loop(is_restart,&
        if( parallel_buffer ) then
          call setup_exchange_ri_buffer_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
        else
-         !call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
          call die('Exchange with fully distributed hamiltonian: case not implemented yet')
        endif
      else
@@ -427,12 +415,10 @@ subroutine scf_loop(is_restart,&
  ! Cleanly deallocate the arrays
  !
  call clean_deallocate('Density matrix P',p_matrix)
- call clean_deallocate('Density matrix sqrt P^{1/2}',p_matrix_sqrt)
  call clean_deallocate('Total Hamiltonian H',hamiltonian)
  call clean_deallocate('Hartree potential Vh',hamiltonian_hartree)
  call clean_deallocate('Exchange operator Sigx',hamiltonian_exx)
  call clean_deallocate('XC operator Vxc',hamiltonian_xc)
- if( ALLOCATED(p_matrix_occ) )    deallocate(p_matrix_occ)
 
  write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en%tot
  write(stdout,'(a25,1x,f19.10)')       '      EXX Energy (Ha):',en%exx
@@ -507,8 +493,7 @@ end subroutine scf_loop
 
 
 !=========================================================================
-subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupation,c_matrix,p_matrix_occ, &
-                                       p_matrix_sqrt,p_matrix,hamiltonian_hxc)
+subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupation,c_matrix,p_matrix,hamiltonian_hxc)
  use m_scalapack
  use m_basis_set
  use m_hamiltonian
@@ -522,8 +507,6 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
  integer,intent(in)         :: m_c,n_c
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(m_c,n_c,nspin)
- real(dp),intent(in)        :: p_matrix_occ(basis%nbf,nspin)
- real(dp),intent(in)        :: p_matrix_sqrt(m_ham,n_ham,nspin)
  real(dp),intent(in)        :: p_matrix(m_ham,n_ham,nspin)
  real(dp),intent(out)       :: hamiltonian_hxc(m_ham,n_ham,nspin)
 !=====
@@ -610,7 +593,6 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
      if( parallel_buffer ) then
        call setup_exchange_ri_buffer_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
      else
-       !call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_spin_tmp,eexx)
        call die('Exchange with fully distributed hamiltonian: case not implemented yet')
      endif
    else

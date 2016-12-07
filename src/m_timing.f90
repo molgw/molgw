@@ -166,7 +166,6 @@ subroutine output_timing()
  write(stdout,*)
 
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Grid generation'     ,timing(timing_grid_generation),calls(timing_grid_generation)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'SQRT density matrix' ,timing(timing_sqrt_density_matrix),calls(timing_sqrt_density_matrix)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Hartree'             ,timing(timing_hartree),calls(timing_hartree)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Exchange'            ,timing(timing_exchange),calls(timing_exchange)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'DFT xc'              ,timing(timing_dft),calls(timing_dft)
