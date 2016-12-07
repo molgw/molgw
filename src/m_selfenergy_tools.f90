@@ -495,7 +495,7 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,ham
      call init_dft_grid(grid_level)
      call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation_tmp,p_matrix_tmp)
      call setup_sqrt_density_matrix(basis%nbf,p_matrix_tmp,p_matrix_sqrt,p_matrix_occ)
-     call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,hxc_val,exc)
+     call dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix_tmp,hxc_val,exc)
      call destroy_dft_grid()
    endif
 

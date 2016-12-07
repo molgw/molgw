@@ -944,49 +944,6 @@ end subroutine read_energy_qp
 
 
 !=========================================================================
-subroutine write_density_grid(basis,p_matrix)
- use m_definitions
- use m_mpi
- use m_timing
- use m_inputparam
- use m_basis_set
- use m_dft_grid
- implicit none
-
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: p_matrix(basis%nbf,basis%nbf,nspin)
-!=====
- integer  :: densityfile
- integer  :: ispin,igrid
- real(dp) :: basis_function_r(basis%nbf)
- real(dp) :: rhor_r(nspin)
- real(dp) :: rhor(ngrid,nspin)
-!=====
-
-
- do igrid=1,ngrid
-
-   !
-   ! Get all the functions at point rr
-   call get_basis_functions_r(basis,igrid,basis_function_r)
-   call calc_density_r(nspin,basis,p_matrix,basis_function_r,rhor_r)
-   rhor(igrid,:) = rhor_r(:)
-
- enddo
-
- open(newunit=densityfile,file='DENSITY',form='unformatted')
- write(densityfile) nspin
- write(densityfile) ngrid
- do ispin=1,nspin
-   do igrid=1,ngrid,1024
-     write(densityfile) rhor(igrid:MIN(igrid+1023,ngrid),ispin)
-   enddo
- enddo
-
-end subroutine write_density_grid
-
-
-!=========================================================================
 function evaluate_wfn_r(nspin,basis,c_matrix,istate,ispin,rr)
  use m_definitions
  use m_mpi

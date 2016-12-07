@@ -178,14 +178,14 @@ subroutine scf_loop(is_restart,&
 
      if( parallel_ham ) then
        if( parallel_buffer ) then
-         call dft_exc_vxc_buffer_sca(m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_xc,en%xc)
+         call dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_xc,en%xc)
        else
          call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
          hamiltonian_xc(:,:,:) = 0.0_dp
          en%xc = 0.0_dp
        endif
      else
-       call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_xc,en%xc)
+       call dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_xc,en%xc)
      endif
 
    endif
@@ -498,7 +498,8 @@ end subroutine scf_loop
 
 
 !=========================================================================
-subroutine calculate_hamiltonian_hxc_ri(basis,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_hxc)
+subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupation,c_matrix,p_matrix_occ, &
+                                       p_matrix_sqrt,p_matrix,hamiltonian_hxc)
  use m_scalapack
  use m_basis_set
  use m_hamiltonian
@@ -508,6 +509,10 @@ subroutine calculate_hamiltonian_hxc_ri(basis,m_ham,n_ham,p_matrix_occ,p_matrix_
 
  type(basis_set),intent(in) :: basis
  integer,intent(in)         :: m_ham,n_ham
+ integer,intent(in)         :: nstate
+ integer,intent(in)         :: m_c,n_c
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(m_c,n_c,nspin)
  real(dp),intent(in)        :: p_matrix_occ(basis%nbf,nspin)
  real(dp),intent(in)        :: p_matrix_sqrt(m_ham,n_ham,nspin)
  real(dp),intent(in)        :: p_matrix(m_ham,n_ham,nspin)
@@ -551,14 +556,14 @@ subroutine calculate_hamiltonian_hxc_ri(basis,m_ham,n_ham,p_matrix_occ,p_matrix_
 
    if( parallel_ham ) then
      if( parallel_buffer ) then
-       call dft_exc_vxc_buffer_sca(m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_spin_tmp,exc)
+       call dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,exc)
      else
        call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
        hamiltonian_spin_tmp(:,:,:) = 0.0_dp
        exc = 0.0_dp
      endif
    else
-     call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_spin_tmp,exc)
+     call dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,exc)
    endif
 
    hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) 

@@ -6,7 +6,7 @@
 ! potentials and energies for self-consistent Kohn-Sham calculations
 !
 !=========================================================================
-subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,vxc_ij,exc_xc)
+subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
  use m_definitions
  use m_mpi
  use m_timing
@@ -21,8 +21,9 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,vxc_ij,exc_xc)
  implicit none
 
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: p_matrix_occ(basis%nbf,nspin)
- real(dp),intent(in)        :: p_matrix_sqrt(basis%nbf,basis%nbf,nspin)
+ integer,intent(in)         :: nstate
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(in)        :: p_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: exc_xc
@@ -93,7 +94,7 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,vxc_ij,exc_xc)
    call get_basis_functions_r(basis,igrid,basis_function_r)
    !
    ! calculate the density at point r for spin up and spin down
-   call calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,basis_function_r,rhor)
+   call calc_density_r(nspin,basis%nbf,nstate,occupation,c_matrix,basis_function_r,rhor)
 
    ! Skip all the rest if the density is too small
    if( ALL( rhor(:) < TOL_RHO )  ) cycle
@@ -115,7 +116,7 @@ subroutine dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,vxc_ij,exc_xc)
 
 !   call start_clock(timing_tmp1)
    if( require_gradient ) then 
-     call calc_density_gradr(nspin,basis%nbf,p_matrix_occ,p_matrix_sqrt,basis_function_r,basis_function_gradr,grad_rhor)
+     call calc_density_gradr(nspin,basis%nbf,nstate,occupation,c_matrix,basis_function_r,basis_function_gradr,grad_rhor)
    endif
 !   call stop_clock(timing_tmp1)
 
@@ -341,20 +342,20 @@ end subroutine calc_density_pmatrix
 
 
 !=========================================================================
-subroutine calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,basis_function_r,rhor)
+subroutine calc_density_r(nspin,nbf,nstate,occupation,c_matrix,basis_function_r,rhor)
  use m_definitions
  use m_mpi
  use m_timing
  use m_basis_set
  implicit none
- integer,intent(in)         :: nspin
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: p_matrix_sqrt(basis%nbf,basis%nbf,nspin)
- real(dp),intent(in)        :: p_matrix_occ(basis%nbf,nspin)
- real(dp),intent(in)        :: basis_function_r(basis%nbf)
+
+ integer,intent(in)         :: nspin,nbf,nstate
+ real(dp),intent(in)        :: c_matrix(nbf,nstate,nspin)
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: basis_function_r(nbf)
  real(dp),intent(out)       :: rhor(nspin)
 !=====
- integer              :: ispin,ibf,istate
+ integer              :: ispin,istate
  real(dp)             :: phi_ir
 !=====
 
@@ -364,13 +365,12 @@ subroutine calc_density_r(nspin,basis,p_matrix_occ,p_matrix_sqrt,basis_function_
 
  do ispin=1,nspin
 
-   do istate=1,basis%nbf
-     if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
-     phi_ir = 0.0_dp
-     do ibf=1,basis%nbf
-       phi_ir = phi_ir + p_matrix_sqrt(ibf,istate,ispin) * basis_function_r(ibf)
-     enddo
-     rhor(ispin) = rhor(ispin) + phi_ir**2
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty ) cycle
+
+     phi_ir = DOT_PRODUCT( basis_function_r(:) , c_matrix(:,istate,ispin) )
+     rhor(ispin) = rhor(ispin) + phi_ir**2 * occupation(istate,ispin)
+
    enddo
 
  enddo
@@ -409,15 +409,15 @@ end subroutine calc_density_gradr_pmatrix
 
 
 !=========================================================================
-subroutine calc_density_gradr(nspin,nbf,p_matrix_occ,p_matrix_sqrt,basis_function_r,basis_function_gradr,grad_rhor)
+subroutine calc_density_gradr(nspin,nbf,nstate,occupation,c_matrix,basis_function_r,basis_function_gradr,grad_rhor)
  use m_definitions
  use m_mpi
  use m_timing
  use m_basis_set
  implicit none
- integer,intent(in)         :: nspin,nbf
- real(dp),intent(in)        :: p_matrix_sqrt(nbf,nbf,nspin)
- real(dp),intent(in)        :: p_matrix_occ(nbf,nspin)
+ integer,intent(in)         :: nspin,nbf,nstate
+ real(dp),intent(in)        :: c_matrix(nbf,nstate,nspin)
+ real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(in)        :: basis_function_r(nbf)
  real(dp),intent(in)        :: basis_function_gradr(3,nbf)
  real(dp),intent(out)       :: grad_rhor(3,nspin)
@@ -433,16 +433,13 @@ subroutine calc_density_gradr(nspin,nbf,p_matrix_occ,p_matrix_sqrt,basis_functio
 
  do ispin=1,nspin
    do istate=1,nbf
-     if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
+     if( occupation(istate,ispin) < completely_empty ) cycle
 
-     phi_ir         = 0.0_dp
-     grad_phi_ir(:) = 0.0_dp
+     phi_ir         = DOT_PRODUCT( basis_function_r(:) , c_matrix(:,istate,ispin) )
+     grad_phi_ir(:) = MATMUL( basis_function_gradr(:,:) , c_matrix(:,istate,ispin) )
 
-     do ibf=1,nbf
-       phi_ir         = phi_ir         + p_matrix_sqrt(ibf,istate,ispin) * basis_function_r(ibf)
-       grad_phi_ir(:) = grad_phi_ir(:) + p_matrix_sqrt(ibf,istate,ispin) * basis_function_gradr(:,ibf)
-     enddo
-     grad_rhor(:,ispin) = grad_rhor(:,ispin) + phi_ir * grad_phi_ir(:) * 2.0_dp
+     grad_rhor(:,ispin) = grad_rhor(:,ispin) + phi_ir * grad_phi_ir(:) * 2.0_dp * occupation(istate,ispin)
+
    enddo
  enddo
 

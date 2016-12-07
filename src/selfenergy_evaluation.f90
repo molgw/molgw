@@ -339,7 +339,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
 #ifdef HAVE_LIBXC
      call xc_f90_gga_x_hjs_set_par(calc_type_tmp%xc_func(1),1.0_dp/rcut_mbpt)
 #endif
-     call dft_exc_vxc(basis,p_matrix_occ,p_matrix_sqrt,p_matrix,matrix_tmp,exc)
+     call dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,matrix_tmp,exc)
  
      write(stdout,*) '===== SigX SR ======'
      do ispin=1,nspin

@@ -403,7 +403,7 @@ end subroutine setup_exchange_ri_buffer_sca
 
 
 !=========================================================================
-subroutine dft_exc_vxc_buffer_sca(m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p_matrix,vxc_ij,exc_xc)
+subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
  use m_inputparam
  use m_basis_set
  use m_dft_grid
@@ -414,10 +414,12 @@ subroutine dft_exc_vxc_buffer_sca(m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p
 #endif
  implicit none
 
- integer,intent(in)         :: m_ham,n_ham
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: p_matrix_occ(basis%nbf,nspin)
- real(dp),intent(in)        :: p_matrix_sqrt(m_ham,n_ham,nspin)
+ integer,intent(in)         :: nstate
+ integer,intent(in)         :: m_c,n_c
+ integer,intent(in)         :: m_ham,n_ham
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(m_c,n_c,nspin)
  real(dp),intent(in)        :: p_matrix(m_ham,n_ham,nspin)
  real(dp),intent(out)       :: vxc_ij(m_ham,n_ham,nspin)
  real(dp),intent(out)       :: exc_xc
@@ -487,9 +489,9 @@ subroutine dft_exc_vxc_buffer_sca(m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p
 
  do ispin=1,nspin
    !
-   ! Buffer constains the p_matrix_sqrt for a spin channel ispin
+   ! Buffer constains the c_matrix for a spin channel ispin
    buffer(:,:) = 0.0_dp
-   call broadcast_hamiltonian_sca(m_ham,n_ham,p_matrix_sqrt(:,:,ispin))
+   call broadcast_hamiltonian_sca(m_c,n_c,c_matrix(:,:,ispin))
 
 
    do igrid=1,ngrid
@@ -501,7 +503,7 @@ subroutine dft_exc_vxc_buffer_sca(m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p
      call get_basis_functions_r(basis,igrid,basis_function_r)
      !
      ! Calculate the density at point r for spin ispin
-     call calc_density_r(1,basis,p_matrix_occ(:,ispin),buffer,basis_function_r,rhor(ispin,igrid))
+     call calc_density_r(1,basis%nbf,nstate,occupation(:,ispin),buffer,basis_function_r,rhor(ispin,igrid))
 
      ! Skip all the rest if the density is too small
      if( rhor(ispin,igrid) < TOL_RHO ) cycle
@@ -516,7 +518,7 @@ subroutine dft_exc_vxc_buffer_sca(m_ham,n_ham,basis,p_matrix_occ,p_matrix_sqrt,p
 
 
      if( require_gradient ) then 
-       call calc_density_gradr(1,basis%nbf,p_matrix_occ(:,ispin),buffer,basis_function_r,basis_function_gradr,grad_rhor(:,ispin,igrid))
+       call calc_density_gradr(1,basis%nbf,nstate,occupation(:,ispin),buffer,basis_function_r,basis_function_gradr,grad_rhor(:,ispin,igrid))
      endif
 
    enddo
