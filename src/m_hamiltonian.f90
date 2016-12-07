@@ -611,13 +611,12 @@ end subroutine setup_exchange
 
 
 !=========================================================================
-subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_ri(nbf,nstate,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
- logical,intent(in)   :: print_matrix_
- integer,intent(in)   :: nbf
- real(dp),intent(in)  :: p_matrix_occ(nbf,nspin)
- real(dp),intent(in)  :: p_matrix_sqrt(nbf,nbf,nspin)
+ integer,intent(in)   :: nbf,nstate
+ real(dp),intent(in)  :: occupation(nstate,nspin)
+ real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
@@ -641,14 +640,13 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
 
    ! Find highest occupied state
    nocc = 0
-   do istate=1,nbf
-     if( p_matrix_occ(istate,ispin) < completely_empty)  cycle
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty)  cycle
      nocc = istate
    enddo
 
 
    do istate=1,nocc
-     if( p_matrix_occ(istate,ispin) < completely_empty)  cycle
      if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle
 
      tmp(:,:) = 0.0_dp
@@ -657,9 +655,9 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
      do ipair=1,npair
        ibf=index_basis(1,ipair)
        jbf=index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt(jbf,istate,ispin) * eri_3center(:,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair)
        if( ibf /= jbf ) &
-            tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center(:,ipair)
+            tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair)
      enddo
      !$OMP END DO
      !$OMP END PARALLEL
@@ -667,7 +665,7 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
      ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
      ! C = A^T * A + C
-     call DSYRK('L','T',nbf,nauxil_3center,-1.0_dp/spin_fact,tmp,nauxil_3center,1.0_dp,exchange_ij(:,:,ispin),nbf)
+     call DSYRK('L','T',nbf,nauxil_3center,-occupation(istate,ispin)/spin_fact,tmp,nauxil_3center,1.0_dp,exchange_ij(:,:,ispin),nbf)
    enddo
 
    !
@@ -683,7 +681,7 @@ subroutine setup_exchange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matr
 
  call xsum_world(exchange_ij)
 
- eexchange = 0.5_dp*SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
+ eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
 
  call stop_clock(timing_exchange)
 
@@ -691,13 +689,12 @@ end subroutine setup_exchange_ri
 
 
 !=========================================================================
-subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_longrange_ri(nbf,nstate,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
- logical,intent(in)   :: print_matrix_
- integer,intent(in)   :: nbf
- real(dp),intent(in)  :: p_matrix_occ(nbf,nspin)
- real(dp),intent(in)  :: p_matrix_sqrt(nbf,nbf,nspin)
+ integer,intent(in)   :: nbf,nstate
+ real(dp),intent(in)  :: occupation(nstate,nspin)
+ real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
@@ -720,23 +717,23 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_s
 
  do ispin=1,nspin
 
-   do istate=1,nbf
-     if( p_matrix_occ(istate,ispin) < completely_empty)  cycle
-     if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty)  cycle
+     if( MODULO( istate - 1 , nproc_ortho ) /= rank_ortho ) cycle
 
      tmp(:,:) = 0.0_dp
      do ipair=1,npair
-       ibf=index_basis(1,ipair)
-       jbf=index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + p_matrix_sqrt(jbf,istate,ispin) * eri_3center_lr(:,ipair)
+       ibf = index_basis(1,ipair)
+       jbf = index_basis(2,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center_lr(:,ipair)
        if( ibf /= jbf ) &
-            tmp(:,jbf) = tmp(:,jbf) + p_matrix_sqrt(ibf,istate,ispin) * eri_3center_lr(:,ipair)
+            tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center_lr(:,ipair)
      enddo
 
      !exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
      !                   - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
      ! C = A^T * A + C
-     call DSYRK('L','T',nbf,nauxil_3center_lr,-1.0_dp/spin_fact,tmp,nauxil_3center_lr,1.0_dp,exchange_ij(:,:,ispin),nbf)
+     call DSYRK('L','T',nbf,nauxil_3center_lr,-occupation(istate,ispin)/spin_fact,tmp,nauxil_3center_lr,1.0_dp,exchange_ij(:,:,ispin),nbf)
    enddo
 
    !
@@ -752,9 +749,7 @@ subroutine setup_exchange_longrange_ri(print_matrix_,nbf,p_matrix_occ,p_matrix_s
 
  call xsum_world(exchange_ij)
 
- call dump_out_matrix(print_matrix_,'=== LR Exchange contribution ===',nbf,nspin,exchange_ij)
-
- eexchange = 0.5_dp*SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
+ eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
 
  call stop_clock(timing_exchange)
 

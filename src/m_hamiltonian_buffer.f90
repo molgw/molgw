@@ -304,13 +304,13 @@ end subroutine setup_hartree_ri_buffer_sca
 
 
 !=========================================================================
-subroutine setup_exchange_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_ri_buffer_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
- logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf,m_ham,n_ham
- real(dp),intent(in)  :: p_matrix_occ(nbf,nspin)
- real(dp),intent(in)  :: p_matrix_sqrt(m_ham,n_ham,nspin)
+ integer,intent(in)   :: nstate,m_c,n_c
+ real(dp),intent(in)  :: occupation(nstate,nspin)
+ real(dp),intent(in)  :: c_matrix(m_c,n_c,nspin)
  real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
  real(dp),intent(out) :: exchange_ij(m_ham,n_ham,nspin)
  real(dp),intent(out) :: eexchange
@@ -319,7 +319,7 @@ subroutine setup_exchange_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_o
  real(dp),allocatable :: tmp(:,:)
  real(dp)             :: eigval(nbf)
  integer              :: ipair
- real(dp)             :: p_matrix_i(nbf)
+ real(dp)             :: c_matrix_i(nbf)
  integer              :: iglobal,ilocal,jlocal
 !=====
 
@@ -334,40 +334,40 @@ subroutine setup_exchange_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_o
 
    buffer(:,:) = 0.0_dp
 
-   do istate=1,nbf
-     if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty ) cycle
 
      !
-     ! First all processors must have the p_matrix for (istate, ispin)
-     p_matrix_i(:) = 0.0_dp
+     ! First all processors must have the c_matrix for (istate, ispin)
+     c_matrix_i(:) = 0.0_dp
      if( cntxt_ham > 0 ) then
        jlocal = colindex_global_to_local('H',istate)
        if( jlocal /= 0 ) then
-         do ilocal=1,m_ham
+         do ilocal=1,m_c
            iglobal = rowindex_local_to_global('H',ilocal)
-           p_matrix_i(iglobal) = p_matrix_sqrt(ilocal,jlocal,ispin) 
+           c_matrix_i(iglobal) = c_matrix(ilocal,jlocal,ispin) 
          enddo
        endif
      endif
-     call xsum_world(p_matrix_i)
+     call xsum_world(c_matrix_i)
 
 
      tmp(:,:) = 0.0_dp
      do ipair=1,nbf
        ibf = index_basis(1,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + p_matrix_i(ibf) * eri_3center(:,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(ibf) * eri_3center(:,ipair)
      enddo
      do ipair=nbf+1,npair
        ibf = index_basis(1,ipair)
        jbf = index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + p_matrix_i(jbf) * eri_3center(:,ipair)
-       tmp(:,jbf) = tmp(:,jbf) + p_matrix_i(ibf) * eri_3center(:,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3center(:,ipair)
+       tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3center(:,ipair)
      enddo
 
 
-     ! buffer(:,:) = buffer(:,:) - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+     ! buffer(:,:) = buffer(:,:) - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact * occ(i)
      ! C = A^T * A + C
-     call DSYRK('L','T',nbf,nauxil_3center,-1.0_dp/spin_fact,tmp,nauxil_3center,1.0_dp,buffer,nbf)
+     call DSYRK('L','T',nbf,nauxil_3center,-occupation(istate,ispin)/spin_fact,tmp,nauxil_3center,1.0_dp,buffer,nbf)
 
    enddo
 

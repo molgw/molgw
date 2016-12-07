@@ -503,9 +503,9 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,ham
      call setup_exchange(print_matrix_,basis%nbf,p_matrix_tmp,hexx_val,eexx)
    else
      if( parallel_ham ) then
-       call setup_exchange_ri_sca(print_matrix_,basis%nbf,basis%nbf,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,hexx_val,eexx)
+       call die('setup_exchange_m_vxc_diag: case not implemented')
      else
-       call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix_tmp,hexx_val,eexx)
+       call setup_exchange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix_tmp,hexx_val,eexx)
      endif
    endif
 

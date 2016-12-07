@@ -198,7 +198,11 @@ subroutine scf_loop(is_restart,&
      if( .NOT. is_full_auxil) then
        call setup_exchange_longrange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,energy_tmp)
      else
-       call setup_exchange_longrange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,energy_tmp)
+       if( parallel_ham ) then
+         call die('Range-separated functionals not implemented with SCALAPACK yet')
+       else
+         call setup_exchange_longrange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_exx,energy_tmp)
+       endif
      endif
      ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
      en%exx_hyb = en%exx_hyb + alpha_hybrid_lr * energy_tmp
@@ -214,12 +218,12 @@ subroutine scf_loop(is_restart,&
      else
        if( parallel_ham ) then
          if( parallel_buffer ) then
-           call setup_exchange_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+           call setup_exchange_ri_buffer_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
          else
-           call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+           call die('Exchange with fully distributed hamiltonian: case not implemented yet')
          endif
        else
-         call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+         call setup_exchange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
        endif
      endif
      ! Rescale with alpha_hybrid for hybrid functionals
@@ -398,12 +402,13 @@ subroutine scf_loop(is_restart,&
    if( ABS(en%exx) < 1.0e-6_dp ) then
      if( parallel_ham ) then
        if( parallel_buffer ) then
-         call setup_exchange_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+         call setup_exchange_ri_buffer_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
        else
-         call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+         !call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+         call die('Exchange with fully distributed hamiltonian: case not implemented yet')
        endif
      else
-       call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_exx,en%exx)
+       call setup_exchange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
      endif
    endif
  endif
@@ -576,7 +581,7 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
  if(calc_type%need_exchange_lr) then
    hamiltonian_spin_tmp(:,:,:) = 0.0_dp
 
-   call setup_exchange_longrange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_spin_tmp,eexx)
+   call setup_exchange_longrange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
    ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
    eexx_hyb = alpha_hybrid_lr * eexx
    hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * alpha_hybrid_lr
@@ -591,12 +596,13 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
 
    if( parallel_ham ) then
      if( parallel_buffer ) then
-       call setup_exchange_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_spin_tmp,eexx)
+       call setup_exchange_ri_buffer_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
      else
-       call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_spin_tmp,eexx)
+       !call setup_exchange_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_spin_tmp,eexx)
+       call die('Exchange with fully distributed hamiltonian: case not implemented yet')
      endif
    else
-     call setup_exchange_ri(print_matrix_,basis%nbf,p_matrix_occ,p_matrix_sqrt,p_matrix,hamiltonian_spin_tmp,eexx)
+     call setup_exchange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
    endif
    ! Rescale with alpha_hybrid for hybrid functionals
    eexx_hyb = eexx_hyb + alpha_hybrid * eexx

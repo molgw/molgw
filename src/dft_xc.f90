@@ -432,7 +432,7 @@ subroutine calc_density_gradr(nspin,nbf,nstate,occupation,c_matrix,basis_functio
  grad_rhor(:,:) = 0.0_dp
 
  do ispin=1,nspin
-   do istate=1,nbf
+   do istate=1,nstate
      if( occupation(istate,ispin) < completely_empty ) cycle
 
      phi_ir         = DOT_PRODUCT( basis_function_r(:) , c_matrix(:,istate,ispin) )
