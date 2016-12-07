@@ -68,7 +68,6 @@ subroutine scf_loop(is_restart,&
  real(dp),allocatable    :: hamiltonian_exx(:,:,:)
  real(dp),allocatable    :: hamiltonian_xc(:,:,:)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
- real(dp),allocatable    :: self_energy_old(:,:,:)
  real(dp),allocatable    :: energy_exx(:,:)
  real(dp),allocatable    :: c_matrix_exx(:,:,:)
 !=============================
@@ -252,12 +251,6 @@ subroutine scf_loop(is_restart,&
      allocate(matrix_tmp(m_ham,n_ham,nspin))
      call gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpol,matrix_tmp)
 
-     if( .NOT. ALLOCATED(self_energy_old) ) then
-       allocate(self_energy_old(basis%nbf,basis%nbf,nspin))
-       self_energy_old(:,:,:) = 0.0_dp
-     endif
-     matrix_tmp(:,:,:) = alpha_mixing * matrix_tmp(:,:,:) + (1.0_dp-alpha_mixing) * self_energy_old(:,:,:)
-     self_energy_old(:,:,:) = matrix_tmp(:,:,:)
      call dump_out_matrix(print_matrix_,'=== Self-energy ===',basis%nbf,nspin,matrix_tmp)
      call destroy_spectral_function(wpol)
 
@@ -284,12 +277,6 @@ subroutine scf_loop(is_restart,&
      en%tot = en%tot + en%mp2
      write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en%tot
 
-     if( .NOT. ALLOCATED(self_energy_old) ) then
-       allocate(self_energy_old(basis%nbf,basis%nbf,nspin))
-       self_energy_old(:,:,:) = 0.0_dp
-     endif
-     matrix_tmp(:,:,:) = alpha_mixing * matrix_tmp(:,:,:) + (1.0_dp-alpha_mixing) * self_energy_old(:,:,:)
-     self_energy_old(:,:,:) = matrix_tmp(:,:,:)
      call dump_out_matrix(print_matrix_,'=== Self-energy ===',basis%nbf,nspin,matrix_tmp)
   
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
@@ -436,7 +423,6 @@ subroutine scf_loop(is_restart,&
  call clean_deallocate('Hartree potential Vh',hamiltonian_hartree)
  call clean_deallocate('Exchange operator Sigx',hamiltonian_exx)
  call clean_deallocate('XC operator Vxc',hamiltonian_xc)
- if( ALLOCATED(self_energy_old) ) deallocate(self_energy_old)
  if( ALLOCATED(p_matrix_occ) )    deallocate(p_matrix_occ)
 
  write(stdout,'(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):',en%tot
