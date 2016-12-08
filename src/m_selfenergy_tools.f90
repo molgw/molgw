@@ -464,7 +464,7 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,ham
  integer              :: ispin,istate
  real(dp)             :: exc,eexx
  real(dp),allocatable :: occupation_tmp(:,:)
- real(dp),allocatable :: p_matrix_tmp(:,:,:),p_matrix_occ(:,:),p_matrix_sqrt(:,:,:)
+ real(dp),allocatable :: p_matrix_tmp(:,:,:)
  real(dp),allocatable :: hxc_val(:,:,:),hexx_val(:,:,:),hxmxc(:,:,:)
 !=====
 
@@ -480,22 +480,18 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,ham
 
    allocate(occupation_tmp(nstate,nspin))
    allocate(p_matrix_tmp(basis%nbf,basis%nbf,nspin))
-   allocate(p_matrix_sqrt(basis%nbf,basis%nbf,nspin))
-   allocate(p_matrix_occ(basis%nbf,nspin))
    allocate(hxc_val(basis%nbf,basis%nbf,nspin))
    allocate(hexx_val(basis%nbf,basis%nbf,nspin))
    allocate(hxmxc(basis%nbf,basis%nbf,nspin))
+
    ! Override the occupation of the core electrons
    occupation_tmp(:,:) = occupation(:,:)
-   do istate=1,dft_core
-     occupation_tmp(istate,:) = 0.0_dp
-   enddo
+   occupation_tmp(1:dft_core,:) = 0.0_dp
 
    if( calc_type%is_dft ) then
      call init_dft_grid(grid_level)
      call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation_tmp,p_matrix_tmp)
-     call setup_sqrt_density_matrix(basis%nbf,p_matrix_tmp,p_matrix_sqrt,p_matrix_occ)
-     call dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix_tmp,hxc_val,exc)
+     call dft_exc_vxc(basis,nstate,occupation_tmp,c_matrix,p_matrix_tmp,hxc_val,exc)
      call destroy_dft_grid()
    endif
 
@@ -505,14 +501,14 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,ham
      if( parallel_ham ) then
        call die('setup_exchange_m_vxc_diag: case not implemented')
      else
-       call setup_exchange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix_tmp,hexx_val,eexx)
+       call setup_exchange_ri(basis%nbf,nstate,occupation_tmp,c_matrix,p_matrix_tmp,hexx_val,eexx)
      endif
    endif
 
    hxc_val(:,:,:) = hxc_val(:,:,:) + alpha_hybrid * hexx_val(:,:,:)
    hxmxc(:,:,:) = hexx_val(:,:,:) - hxc_val(:,:,:) 
 
-   deallocate(occupation_tmp,p_matrix_tmp,p_matrix_sqrt,p_matrix_occ)
+   deallocate(occupation_tmp,p_matrix_tmp)
 
    !
    ! Calculate the diagonal of the matrix Sigma_x - Vxc

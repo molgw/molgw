@@ -49,7 +49,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  integer                 :: iomega
 #ifdef COHSEX_DEVEL
  type(calculation_type)  :: calc_type_tmp
- real(dp),allocatable    :: p_matrix(:,:,:),p_matrix_sqrt(:,:,:),p_matrix_occ(:,:)
+ real(dp),allocatable    :: p_matrix(:,:,:)
  integer                 :: istate
  real(dp)                :: exc
 #endif
@@ -327,11 +327,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    if( ABS( delta_cohsex ) > 1.0e-6_dp ) then
 
      allocate(p_matrix(basis%nbf,basis%nbf,nspin))
-     allocate(p_matrix_sqrt(basis%nbf,basis%nbf,nspin))
-     allocate(p_matrix_occ(basis%nbf,nspin))
      call init_dft_grid(grid_level)
      call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
-     call setup_sqrt_density_matrix(basis%nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
 
      ! Override the DFT XC correlation settings
      calc_type_tmp = calc_type
@@ -353,8 +350,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      sigc(istate,ispin) = sigc(istate,ispin) * delta_cohsex 
 
      deallocate(p_matrix)
-     deallocate(p_matrix_sqrt)
-     deallocate(p_matrix_occ)
      call destroy_dft_grid()
 
    else
