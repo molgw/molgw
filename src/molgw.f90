@@ -199,8 +199,7 @@ program molgw
  !                                      m_c and n_c 
  !
  if( parallel_ham ) then
-   call setup_sqrt_overlap_sca(min_overlap,desc_ham,s_matrix,desc_c,s_matrix_sqrt_inv)
-   nstate = desc_c(N_A)
+   call setup_sqrt_overlap_sca(min_overlap,desc_ham,s_matrix,desc_c,nstate,s_matrix_sqrt_inv)
    m_c    = SIZE( s_matrix_sqrt_inv , DIM=1 )
    n_c    = SIZE( s_matrix_sqrt_inv , DIM=2 )
 

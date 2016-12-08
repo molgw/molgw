@@ -278,6 +278,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
  integer                    :: ispin
  integer                    :: ibf
  integer                    :: istate,jstate
+ integer                    :: nstate_tmp
  type(basis_set)            :: basis_small
  real(dp),allocatable       :: s_bigsmall_global(:,:)   !TODO: remove this in the future
  real(dp),allocatable       :: s_bigsmall(:,:)
@@ -384,8 +385,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
    ! Calculate ( tilde S )^{-1/2}
    !
    ! Descriptor desc_bs_ss  md,nd   is set up inside setup_sqrt_overlap_sca
-   call setup_sqrt_overlap_sca(min_overlap,desc_bs_bs,s_small,desc_bs_ss,s_small_sqrt_inv)
-   nstate_small = desc_bs_ss(N_A)
+   call setup_sqrt_overlap_sca(min_overlap,desc_bs_bs,s_small,desc_bs_ss,nstate_small,s_small_sqrt_inv)
    md = NUMROC(basis_small%nbf,block_row,iprow,first_row,nprow)
    nd = NUMROC(nstate_small   ,block_col,ipcol,first_col,npcol)
 
@@ -505,8 +505,8 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
 
    call clean_deallocate('Overlap matrix S',s_matrix)
 
-   call setup_sqrt_overlap_sca(min_overlap,desc_ss_ss,s_bar,desc_tmp,s_bar_sqrt_inv)
-   if( nstate_small /= desc_tmp(N_A) ) call die('virtual_smallbasis: this usually never happens')
+   call setup_sqrt_overlap_sca(min_overlap,desc_ss_ss,s_bar,desc_tmp,nstate_tmp,s_bar_sqrt_inv)
+   if( nstate_small /= nstate_tmp ) call die('virtual_smallbasis: this usually never happens')
    call clean_deallocate('Overlap selected states',s_bar)
 
    do ispin=1,nspin

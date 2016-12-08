@@ -897,7 +897,8 @@ end subroutine diagonalize_hamiltonian_sca
 
 
 !=========================================================================
-subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix,desc_sqrt,s_matrix_sqrt_inv)
+subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix, &
+                                  desc_sqrt,nstate,s_matrix_sqrt_inv)
  use m_tools
  implicit none
 
@@ -905,12 +906,13 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix,desc_sqrt,s_matrix
  integer,intent(in)                 :: desc_s(NDEL)
  real(dp),intent(in)                :: s_matrix(:,:)
  integer,intent(out)                :: desc_sqrt(NDEL)
+ integer,intent(out)                :: nstate
  real(dp),allocatable,intent(inout) :: s_matrix_sqrt_inv(:,:)
 !=====
  integer              :: cntxt
  integer              :: ms,ns,msqrt,nsqrt
  integer              :: iprow,ipcol,nprow,npcol
- integer              :: nbf,nstate
+ integer              :: nbf
  integer              :: ibf,jbf
  integer              :: ilocal,jlocal
  integer              :: iglobal,jglobal
