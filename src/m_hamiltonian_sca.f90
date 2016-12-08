@@ -826,7 +826,6 @@ subroutine diagonalize_hamiltonian_sca(ispin_min,ispin_max,desc_h,hamiltonian,de
 
 #ifdef HAVE_SCALAPACK
 
- !FBFB
  cntxt  = desc_h(CTXT_A)
  nbf    = desc_h(M_A)
  nstate = desc_sqrt(N_A)
@@ -932,9 +931,10 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix,desc_sqrt,s_matrix
  ns    = SIZE(s_matrix, DIM=2 )
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
 
+ allocate(s_eigval(nbf))
+
  if( cntxt > 0 ) then
 
-   allocate(s_eigval(nbf))
    allocate(matrix_tmp(ms,ns))
    matrix_tmp(:,:) = s_matrix(:,:)
 
@@ -954,9 +954,9 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix,desc_sqrt,s_matrix
    nsqrt    = 0
  endif
  ! Propagate nstate
- call xmax_local(nstate)     !FBFB
- call xmax_local(msqrt)      !FBFB
- call xmax_local(nsqrt)      !FBFB
+ call xmax_world(nstate)
+ call xmax_local(msqrt)
+ call xmax_local(nsqrt)
 
 
  call clean_allocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv,msqrt,nsqrt)
@@ -997,14 +997,15 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix,desc_sqrt,s_matrix
                 0.0_dp,s_matrix_sqrt_inv,1,1,desc_sqrt)
 
    deallocate(diag)
-   deallocate(matrix_tmp,s_eigval)
+   deallocate(matrix_tmp)
 
  else
    s_matrix_sqrt_inv(:,:) = 0.0_dp
  endif
 
- call xsum_local(s_matrix_sqrt_inv)   !FBFB
+ call xsum_local(s_matrix_sqrt_inv)
 
+ deallocate(s_eigval)
 
 #endif
 
