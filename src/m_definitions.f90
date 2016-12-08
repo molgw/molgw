@@ -56,6 +56,15 @@ module m_definitions
  integer,parameter ::        BASIS_RESTART = 3
  integer,parameter :: EMPTY_STATES_RESTART = 4
 
+#ifdef NEED_NORM2
+ interface norm2
+   module procedure norm2_ra1
+   module procedure norm2_ra2
+   module procedure norm2_ra2_dim
+   module procedure norm2_ra3
+   module procedure norm2_ra4
+ end interface
+#endif
 
 contains
 
@@ -75,6 +84,76 @@ subroutine set_standard_output(unit_stdout)
 
 
 end subroutine set_standard_output
+
+
+#ifdef NEED_NORM2
+!=========================================================================
+function norm2_ra1(array) RESULT(norm2)
+ implicit none
+ real(dp),intent(in) :: array(:)
+ real(dp)            :: norm2
+!=====
+!=====
+
+ norm2 = SQRT( SUM( array**2 ) )
+
+end function norm2_ra1
+
+
+!=========================================================================
+function norm2_ra2(array) RESULT(norm2)
+ implicit none
+ real(dp),intent(in)          :: array(:,:)
+ real(dp)                     :: norm2
+!=====
+!=====
+
+ norm2 = SQRT( SUM( array**2 ) )
+
+end function norm2_ra2
+
+
+!=========================================================================
+function norm2_ra2_dim(array,dim) RESULT(norm2)
+ implicit none
+ real(dp),intent(in) :: array(:,:)
+ integer,intent(in)  :: dim
+ real(dp)            :: norm2(1:SIZE(array,DIM=2))
+!=====
+!=====
+
+ if( dim /= 1 ) stop 'NORM2 not correctly implemented. Use a newer compiler that implemented NORM2'
+
+ norm2(:) = SQRT( SUM( array(:,:)**2 , DIM=1) )
+
+end function norm2_ra2_dim
+
+
+!=========================================================================
+function norm2_ra3(array) RESULT(norm2)
+ implicit none
+ real(dp),intent(in) :: array(:,:,:)
+ real(dp)            :: norm2
+!=====
+!=====
+
+ norm2 = SQRT( SUM( array**2 ) )
+
+end function norm2_ra3
+
+
+!=========================================================================
+function norm2_ra4(array) RESULT(norm2)
+ implicit none
+ real(dp),intent(in) :: array(:,:,:,:)
+ real(dp)            :: norm2
+!=====
+!=====
+
+ norm2 = SQRT( SUM( array**2 ) )
+
+end function norm2_ra4
+#endif
 
 
 !=========================================================================

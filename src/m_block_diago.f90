@@ -435,7 +435,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
      exit
    endif
    if( icycle == NCYCLE ) then
-     write(stdout,'(a)') ' Maximum iteration number reached',NCYCLE
+     write(stdout,'(a,1x,i4)')           ' Maximum iteration number reached',NCYCLE
      write(stdout,'(a,es12.4,a,es12.4)') ' Davidson diago not converged ',tolres,' is larger than ',toldav
      call issue_warning('TDDFT or BSE Davidson diago not fully converged')
      exit
