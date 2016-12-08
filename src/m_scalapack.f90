@@ -140,13 +140,15 @@ subroutine create_distributed_copy_nospin(matrix_global,desc,matrix)
  mlocal = SIZE( matrix , DIM=1 )
  nlocal = SIZE( matrix , DIM=2 )
 
- do jlocal=1,nlocal
-   jglobal = colindex_local_to_global(desc,jlocal)
-   do ilocal=1,mlocal
-     iglobal = rowindex_local_to_global(desc,ilocal)
-     matrix(ilocal,jlocal) = matrix_global(iglobal,jglobal)
+ if( desc(CTXT_A) > 0 ) then
+   do jlocal=1,nlocal
+     jglobal = colindex_local_to_global(desc,jlocal)
+     do ilocal=1,mlocal
+       iglobal = rowindex_local_to_global(desc,ilocal)
+       matrix(ilocal,jlocal) = matrix_global(iglobal,jglobal)
+     enddo
    enddo
- enddo
+ endif
 
 
 end subroutine create_distributed_copy_nospin
@@ -171,15 +173,17 @@ subroutine create_distributed_copy_spin(matrix_global,desc,matrix)
  nlocal = SIZE( matrix , DIM=2 )
  ndim3  = SIZE( matrix , DIM=3 )
 
- do idim3=1,ndim3
-   do jlocal=1,nlocal
-     jglobal = colindex_local_to_global(desc,jlocal)
-     do ilocal=1,mlocal
-       iglobal = rowindex_local_to_global(desc,ilocal)
-       matrix(ilocal,jlocal,idim3) = matrix_global(iglobal,jglobal,idim3)
+ if( desc(CTXT_A) > 0 ) then
+   do idim3=1,ndim3
+     do jlocal=1,nlocal
+       jglobal = colindex_local_to_global(desc,jlocal)
+       do ilocal=1,mlocal
+         iglobal = rowindex_local_to_global(desc,ilocal)
+         matrix(ilocal,jlocal,idim3) = matrix_global(iglobal,jglobal,idim3)
+       enddo
      enddo
    enddo
- enddo
+ endif
 
 
 end subroutine create_distributed_copy_spin
