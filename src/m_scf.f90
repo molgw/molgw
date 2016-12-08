@@ -33,6 +33,7 @@ module m_scf
  real(dp),allocatable,private :: a_matrix_hist(:,:)
  real(dp),allocatable,private :: p_dot_h_hist(:,:)
  real(dp),allocatable,private :: en_hist(:)
+ real(dp),allocatable,private :: alpha_diis(:)
 
  logical,private              :: adiis_regime
 
@@ -149,6 +150,8 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  iscf = iscf + 1
  nhist_current  = MIN(nhist_current+1,nhistmax) 
 
+ allocate(alpha_diis(nhist_current))
+
  !
  ! Shift the old matrices and then store the new ones
  ! the newest is 1
@@ -196,6 +199,7 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    call xdiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  endif
 
+ deallocate(alpha_diis)
 
 end subroutine hamiltonian_prediction
 
@@ -208,7 +212,12 @@ subroutine simple_prediction(ham)
 !=====
 
  if( nhist_current >= 2 ) then
+   alpha_diis(1) = alpha_mixing
+   alpha_diis(2) = 1.0_dp - alpha_mixing
+
+   write(stdout,'(/,1x,a,f8.4)') 'Simple mixing with parameter:',alpha_mixing
    ham(:,:,:) = alpha_mixing * ham_hist(:,:,:,1) + (1.0_dp - alpha_mixing) * ham_hist(:,:,:,2)
+
  endif
  ham_hist(:,:,:,1) = ham(:,:,:)
 
@@ -229,7 +238,6 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  real(dp),allocatable   :: matrix_tmp2(:,:)
  real(dp),allocatable   :: a_matrix(:,:)
  real(dp),allocatable   :: a_matrix_inv(:,:)
- real(dp),allocatable   :: alpha_diis(:)
  real(dp)               :: residual_pred(m_r_scf,n_r_scf,nspin)
  real(dp)               :: residual,work(1)
 #ifdef HAVE_SCALAPACK
@@ -245,7 +253,6 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  allocate(a_matrix(nhist_current+1,nhist_current+1))
  allocate(a_matrix_inv(nhist_current+1,nhist_current+1))
- allocate(alpha_diis(nhist_current))
 
  !
  ! Calculate the new residual as proposed in
@@ -428,7 +435,6 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  deallocate(a_matrix)
  deallocate(a_matrix_inv)
- deallocate(alpha_diis)
 
 
  call stop_clock(timing_diis)
@@ -449,7 +455,7 @@ subroutine xdiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  integer                :: ihist,jhist,khist
  real(dp),allocatable   :: matrix_tmp1(:,:)
  real(dp),allocatable   :: matrix_tmp2(:,:)
- real(dp),allocatable   :: alpha_diis(:),alpha_diis_min(:)
+ real(dp),allocatable   :: alpha_diis_mc(:)
  real(dp)               :: ph_trace
  real(dp),allocatable   :: half_ph(:,:)
  real(dp),allocatable   :: ti(:),gradf(:),ci(:),dcdt(:,:),diag(:)
@@ -490,8 +496,7 @@ subroutine xdiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  enddo
 
 
- allocate(alpha_diis(nhist_current))
- allocate(alpha_diis_min(nhist_current))
+ allocate(alpha_diis_mc(nhist_current))
  allocate(half_ph(nhist_current,nhist_current))
  half_ph(:,:) = p_dot_h_hist(1:nhist_current,1:nhist_current) * 0.5_dp
 
@@ -509,7 +514,7 @@ subroutine xdiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  ci(1)               = 1.0_dp 
  ci(2:nhist_current) = 0.0_dp
- alpha_diis_min(:)  = ci(:)
+ alpha_diis(:)  = ci(:)
  f_xdiis_min = eval_f_xdiis(ci)
    
  if( nhist_current > 1 ) then
@@ -559,19 +564,19 @@ subroutine xdiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    f_xdiis = eval_f_xdiis(ci)
 
    if( f_xdiis < f_xdiis_min ) then
-     alpha_diis_min(:) = ci(:)
+     alpha_diis(:) = ci(:)
      f_xdiis_min = f_xdiis
    endif
 
 
    ! If a coefficient is too large, start again the minimization 
-   if( ANY( alpha_diis_min(2:) > alpha_max ) ) then
+   if( ANY( alpha_diis(2:) > alpha_max ) ) then
 
      !
      ! Find the offender
-     khist = MAXLOC(alpha_diis_min(2:),DIM=1) + 1
+     khist = MAXLOC(alpha_diis(2:),DIM=1) + 1
      write(stdout,'(1x,a,i4,1x,f12.6)') 'Performing a sub-optimal XDIIS because one too-old coefficient is too large: ', &
-                                        khist,alpha_diis_min(khist)
+                                        khist,alpha_diis(khist)
 
      call RANDOM_SEED(SIZE=nseed)
      allocate(seed(nseed))
@@ -581,30 +586,30 @@ subroutine xdiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
      call RANDOM_SEED(PUT=seed)
      deallocate(seed)
 
-     alpha_diis_min(1)   = alpha_max
-     alpha_diis_min(2:)  = (1.0_dp - alpha_max) / REAL(nhist_current-1,dp)
-     f_xdiis_min = eval_f_xdiis(alpha_diis_min)
+     alpha_diis(1)   = alpha_max
+     alpha_diis(2:)  = (1.0_dp - alpha_max) / REAL(nhist_current-1,dp)
+     f_xdiis_min = eval_f_xdiis(alpha_diis)
     
      do imc=1,nmc
        if( MODULO( imc - 1 , nproc_world ) /= rank_world ) cycle
      
        ! Find random coefficients that keep alpha_k = alpha_max and that sum up to 1
-       call RANDOM_NUMBER(alpha_diis)
-       alpha_diis(khist) = alpha_max
-       sum_ti2 = ( SUM( alpha_diis(:khist-1) ) + SUM( alpha_diis(khist+1:) ) )
-       alpha_diis(:khist-1) = alpha_diis(:khist-1) / sum_ti2 * (1.0_dp - alpha_max)
-       alpha_diis(khist+1:) = alpha_diis(khist+1:) / sum_ti2 * (1.0_dp - alpha_max)
+       call RANDOM_NUMBER(alpha_diis_mc)
+       alpha_diis_mc(khist) = alpha_max
+       sum_ti2 = ( SUM( alpha_diis_mc(:khist-1) ) + SUM( alpha_diis_mc(khist+1:) ) )
+       alpha_diis_mc(:khist-1) = alpha_diis_mc(:khist-1) / sum_ti2 * (1.0_dp - alpha_max)
+       alpha_diis_mc(khist+1:) = alpha_diis_mc(khist+1:) / sum_ti2 * (1.0_dp - alpha_max)
     
-       f_xdiis = eval_f_xdiis(alpha_diis)
+       f_xdiis = eval_f_xdiis(alpha_diis_mc)
     
        if( f_xdiis < f_xdiis_min ) then
          f_xdiis_min = f_xdiis
-         alpha_diis_min(:) = alpha_diis(:)
+         alpha_diis(:) = alpha_diis_mc(:)
        endif
     
      enddo
 
-     ! Propage f_xdiis_min and alpha_diis_min to all procs
+     ! Propage f_xdiis_min and alpha_diis to all procs
      f_xdiis = f_xdiis_min
      call xmin_world(f_xdiis_min)
 
@@ -614,7 +619,7 @@ subroutine xdiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
        iproc = -1
      endif
      call xmax_world(iproc)
-     call xbcast_world(iproc,alpha_diis_min)
+     call xbcast_world(iproc,alpha_diis)
 
 
    endif
@@ -627,19 +632,18 @@ subroutine xdiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  deallocate(dcdt)
  deallocate(diag)
 
- write(stdout,'(1x,a,12(2x,f16.6))') TRIM(mixing_scheme)//' final coefficients:',alpha_diis_min(:)
+ write(stdout,'(1x,a,12(2x,f16.6))') TRIM(mixing_scheme)//' final coefficients:',alpha_diis(:)
  write(stdout,'(1x,a,12(2x,f16.8))') 'Total energy history:    ',en_hist(1:nhist_current)
  write(stdout,'(1x,a,12(2x,f16.8))') TRIM(mixing_scheme)//' final energy:      ',f_xdiis_min
 
  ham(:,:,:)      = 0.0_dp
  p_matrix(:,:,:) = 0.0_dp
  do ihist=1,nhist_current
-   ham(:,:,:)      = ham(:,:,:)      + alpha_diis_min(ihist) * ham_hist(:,:,:,ihist) 
-   p_matrix(:,:,:) = p_matrix(:,:,:) + alpha_diis_min(ihist) * p_matrix_hist(:,:,:,ihist) 
+   ham(:,:,:)      = ham(:,:,:)      + alpha_diis(ihist) * ham_hist(:,:,:,ihist) 
+   p_matrix(:,:,:) = p_matrix(:,:,:) + alpha_diis(ihist) * p_matrix_hist(:,:,:,ihist) 
  enddo
 
- deallocate(alpha_diis)
- deallocate(alpha_diis_min)
+ deallocate(alpha_diis_mc)
  deallocate(half_ph)
 
  call stop_clock(timing_diis)
