@@ -625,22 +625,11 @@ subroutine get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamilton
 !=====
 
  if( parallel_ham ) then
-   !
-   ! Coding to be moved to low-level subroutines
-   if( cntxt_ham > 0 .AND. iprow_ham == 0 .AND. ipcol_ham == 0 ) then
-     rank_master = rank_world
-   else
-     rank_master = -1
-   endif
-   call xmax_world(rank_master)
 
-   if( cntxt_ham > 0 ) then
-     call clean_allocate('Local Fock operator F',hfock_local,SIZE(hamiltonian,DIM=1),SIZE(hamiltonian,DIM=2),nspin)
-     hfock_local(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
-     call gather_distributed_copy(desc_ham,hfock_local,hamiltonian_fock)
-     call clean_deallocate('Local Fock operator F',hfock_local)
-   endif
-   call xbcast_world(rank_master,hamiltonian_fock)
+   call clean_allocate('Local Fock operator F',hfock_local,SIZE(hamiltonian,DIM=1),SIZE(hamiltonian,DIM=2),nspin)
+   hfock_local(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
+   call gather_distributed_copy(desc_ham,hfock_local,hamiltonian_fock)
+   call clean_deallocate('Local Fock operator F',hfock_local)
 
  else
    hamiltonian_fock(:,:,:) = hamiltonian(:,:,:) - hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:)
@@ -666,31 +655,19 @@ subroutine form_c_matrix_global(nbf,nstate,c_matrix)
  if( .NOT. parallel_ham ) return    ! Nothing to do
 
  write(stdout,'(/,1x,a)') 'Form the C matrix on all procs'
- !
- ! Coding to be moved to low-level subroutines
- if( cntxt_ham > 0 .AND. iprow_ham == 0 .AND. ipcol_ham == 0 ) then
-   rank_master = rank_world
- else
-   rank_master = -1
- endif
- call xmax_world(rank_master)
 
- if( cntxt_ham > 0 ) then
-   call clean_allocate('Local wfn coeff C',c_matrix_local,SIZE(c_matrix,DIM=1),SIZE(c_matrix,DIM=2),nspin)
-   c_matrix_local(:,:,:) = c_matrix(:,:,:)
-   call clean_deallocate('Wavefunctions C',c_matrix)
-   call clean_allocate('Wavefunctions C',c_matrix,nbf,nstate,nspin)
 
-   call gather_distributed_copy(desc_c,c_matrix_local,c_matrix)
+ call clean_allocate('Local wfn coeff C',c_matrix_local,SIZE(c_matrix,DIM=1),SIZE(c_matrix,DIM=2),nspin)
+! if( cntxt_ham > 0 ) then
+ c_matrix_local(:,:,:) = c_matrix(:,:,:)
+! endif
+ call clean_deallocate('Wavefunctions C',c_matrix)
+ call clean_allocate('Wavefunctions C',c_matrix,nbf,nstate,nspin)
 
-   call clean_deallocate('Local wfn coeff C',c_matrix_local)
+ call gather_distributed_copy(desc_c,c_matrix_local,c_matrix)
 
- else
-   call clean_deallocate('Wavefunctions C',c_matrix)
-   call clean_allocate('Wavefunctions C',c_matrix,nbf,nstate,nspin)
- endif
+ call clean_deallocate('Local wfn coeff C',c_matrix_local)
 
- call xbcast_world(rank_master,c_matrix)
 
  write(stdout,'(1x,a)') 'C matrix on all procs formed'
 
