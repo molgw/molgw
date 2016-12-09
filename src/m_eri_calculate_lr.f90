@@ -584,7 +584,7 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
  call xbcast_world(master,eigval)
  !
  ! Skip the too small eigenvalues
- nauxil_2center_lr = COUNT( ABS(eigval(:)) > TOO_LOW_EIGENVAL )
+ nauxil_2center_lr = COUNT( eigval(:) > TOO_LOW_EIGENVAL )
 
  nauxil_neglect = auxil_basis%nbf - nauxil_2center_lr
 
@@ -848,7 +848,7 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
 
  !
  ! Skip the too small eigenvalues
- nauxil_2center_lr = COUNT( ABS(eigval(:)) > TOO_LOW_EIGENVAL )
+ nauxil_2center_lr = COUNT( eigval(:) > TOO_LOW_EIGENVAL )
  nauxil_neglect = auxil_basis%nbf - nauxil_2center_lr
 
 #ifdef COHSEX_DEVEL
@@ -857,7 +857,7 @@ subroutine calculate_eri_2center_lr(auxil_basis,rcut)
 
  ibf = 0
  do jbf=1,auxil_basis%nbf
-   if( ABS(eigval(jbf)) < TOO_LOW_EIGENVAL ) cycle
+   if( eigval(jbf) < TOO_LOW_EIGENVAL ) cycle
    ibf = ibf + 1
    eri_2center_m1_lr(:,ibf) = eri_2center_m1_lr(:,jbf) / SQRT( eigval(jbf) )
 
