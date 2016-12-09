@@ -8,7 +8,6 @@
  frozencore='yes'
 
  postscf='gw'
- print_w='yes'
  eta=0.005
 
  basis='cc-pVDZ'
