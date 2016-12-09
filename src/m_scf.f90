@@ -416,7 +416,10 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
        residual = residual + PDLANGE('F',nstate_scf,nstate_scf,residual_pred(:,:,ispin),1,1,desc_r,work)**2
      enddo
 
+   else
+     residual = -1.0_dp
    endif
+   call xmax_world(residual)
    write(stdout,'(a,2x,es12.5,/)') ' DIIS predicted residual:',SQRT( residual * nspin )
 #endif
 
