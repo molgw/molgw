@@ -15,7 +15,7 @@ module m_spectral_function
  use m_inputparam
  use m_atoms
  use m_eri,only: nbf_local_iproc,iproc_ibf_auxil,ibf_auxil_l
- use m_eri_calculate,only: nauxil_2center
+ use m_eri_calculate,only: nauxil_2center,nauxil_3center
 
  !
  ! General form of any spectral function
@@ -25,7 +25,9 @@ module m_spectral_function
  !
 
  type spectral_function 
-   integer              :: nprodbasis
+
+   integer              :: nprodbasis_total       ! total over all procs
+   integer              :: nprodbasis             ! for this proc
 
    !
    ! Information about all the poles (the calculated ones + the approximated ones)
@@ -120,6 +122,8 @@ subroutine init_spectral_function(nstate,occupation,sf)
  if( nstate > SIZE( occupation(:,:) , DIM=1 ) ) then
    call die('init_spectral_function: nstate is too large')
  endif
+
+ sf%nprodbasis_total = nauxil_2center
 
  ncore_W      = ncorew
  nvirtual_W   = MIN(nvirtualw,nstate+1)
@@ -348,11 +352,8 @@ subroutine write_spectral_function(sf)
  integer             :: wfile
  integer             :: tmpfile
  integer             :: ipole,ibf_auxil
- integer             :: npole_write,ipole_write
  integer             :: ierr
  logical             :: file_exists
- real(dp)            :: ecut_pole
- integer,allocatable :: index_pole(:)
  real(dp),allocatable :: buffer(:)
  integer             :: iprodbasis
 #ifdef HAVE_MPI
@@ -360,56 +361,28 @@ subroutine write_spectral_function(sf)
 #endif
 !=====
 
- write(stdout,'(/,a,/)') ' Writing the spectral function on file' 
+ write(stdout,'(/,a,/)') ' Writing the spectral function on file: SCREENED_COULOMB' 
 
- inquire(file='manual_poles',exist=file_exists)
- if(file_exists) then
-   open(newunit=tmpfile,file='manual_poles',status='old')
-   read(tmpfile,*) ecut_pole
-   if( ecut_pole < 0.0_dp ) then
-     call die('error when reading manual_poles')
-   endif
-   close(tmpfile)
-   write(msg,'(a,f10.4)') 'Ouput of the spectral function with an energy cutoff (eV) ',ecut_pole*Ha_eV
-   call issue_warning(msg)
- else
-  ecut_pole = HUGE(1.0_dp)
- endif
+ write(stdout,*) 'Number of poles written down:',sf%npole_reso
 
- npole_write = 0
- do ipole=1,sf%npole_reso
-   if( ABS(sf%pole(ipole)) < ecut_pole ) npole_write = npole_write + 1
- enddo
- write(stdout,*) 'Writing',npole_write,'poles over a total of',sf%npole_reso
- allocate(index_pole(npole_write))
- ipole_write = 0
- do ipole=1,sf%npole_reso
-   if( ABS(sf%pole(ipole)) < ecut_pole ) then
-     ipole_write = ipole_write + 1
-     index_pole(ipole_write) = ipole
-   endif
- enddo
 
 #ifndef HAVE_MPI
  if( is_iomaster ) then
    open(newunit=wfile,file='SCREENED_COULOMB',form='unformatted')
 
-   if(.NOT. file_exists) then
-     write(wfile) calc_type%postscf_name
-   else
-     write(msg,'(a,a,f10.4)') TRIM(calc_type%postscf_name),' with cutoff above energy (eV) ',ecut_pole*Ha_eV
-     write(wfile) msg
-   endif
-   write(wfile) sf%nprodbasis
-   write(wfile) npole_write
-   write(wfile) sf%pole(index_pole(:))
-   do ipole_write=1,npole_write
-     write(wfile) sf%residue_left(:,index_pole(ipole_write))
+   write(wfile) calc_type%postscf_name
+   write(wfile) sf%nprodbasis_total
+   write(wfile) sf%npole_reso
+   write(wfile) sf%pole(:)
+   do ipole=1,sf%npole_reso
+     write(wfile) sf%residue_left(:,ipole)
    enddo
 
    close(wfile)
  endif
+
 #else
+
  call MPI_FILE_OPEN(MPI_COMM_WORLD,'SCREENED_COULOMB', & 
                     MPI_MODE_WRONLY + MPI_MODE_CREATE, & 
                     MPI_INFO_NULL,wfile,ierr) 
@@ -421,8 +394,8 @@ subroutine write_spectral_function(sf)
  disp = disp + SIZEOF(calc_type%postscf_name)
 
  if(is_iomaster) &
-   call MPI_FILE_WRITE_AT(wfile,disp,sf%nprodbasis,1,MPI_INTEGER,MPI_STATUS_IGNORE,ierr)
- disp = disp + SIZEOF(sf%nprodbasis)
+   call MPI_FILE_WRITE_AT(wfile,disp,sf%nprodbasis_total,1,MPI_INTEGER,MPI_STATUS_IGNORE,ierr)
+ disp = disp + SIZEOF(sf%nprodbasis_total)
 
  if(is_iomaster) &
    call MPI_FILE_WRITE_AT(wfile,disp,sf%npole_reso,1,MPI_INTEGER,MPI_STATUS_IGNORE,ierr)
@@ -432,16 +405,17 @@ subroutine write_spectral_function(sf)
    call MPI_FILE_WRITE_AT(wfile,disp,sf%pole,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
  disp = disp + sf%npole_reso * SIZEOF(sf%pole(1))
 
+
  if( has_auxil_basis ) then
    !
    ! Write the residue in "the" universal ordering that does not depend on the
    ! data distribution
    allocate(buffer(sf%npole_reso))
-   do ibf_auxil=1,nauxil_2center
+   do ibf_auxil=1,sf%nprodbasis_total
      if( rank_auxil == iproc_ibf_auxil(ibf_auxil) ) then
+
        buffer(:) = sf%residue_left(ibf_auxil_l(ibf_auxil),:)
        call MPI_FILE_WRITE_AT(wfile,disp,buffer,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
-
 
      endif
      disp = disp + sf%npole_reso * SIZEOF(sf%residue_left(1,1))
@@ -449,7 +423,7 @@ subroutine write_spectral_function(sf)
    deallocate(buffer)
  else
    if(is_iomaster) then
-     do iprodbasis=1,sf%nprodbasis
+     do iprodbasis=1,sf%nprodbasis_total
        call MPI_FILE_WRITE_AT(wfile,disp,sf%residue_left(iprodbasis,:),sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
        disp = disp + sf%npole_reso * SIZEOF(sf%residue_left(1,1))
      enddo
@@ -460,7 +434,6 @@ subroutine write_spectral_function(sf)
 
 #endif
 
- deallocate(index_pole)
 
 end subroutine write_spectral_function
 
@@ -517,10 +490,12 @@ subroutine read_spectral_function(sf,reading_status)
 
  close(wfile)
 #else
- write(stdout,*) 'Reading file'
+
+ write(stdout,*) 'Reading file SCREENED_COULOMB'
  call MPI_FILE_OPEN(MPI_COMM_WORLD,'SCREENED_COULOMB', & 
                     MPI_MODE_RDONLY, & 
                     MPI_INFO_NULL,wfile,ierr) 
+
  disp = 0
  call MPI_FILE_READ_AT(wfile,disp,postscf_name_read,LEN(postscf_name_read),MPI_CHARACTER,MPI_STATUS_IGNORE,ierr)
  disp = disp + SIZEOF(postscf_name_read)
@@ -528,7 +503,7 @@ subroutine read_spectral_function(sf,reading_status)
  call MPI_FILE_READ_AT(wfile,disp,nprodbasis_read,1,MPI_INTEGER,MPI_STATUS_IGNORE,ierr)
  disp = disp + SIZEOF(nprodbasis_read)
 
- sf%nprodbasis = nprodbasis_read
+ sf%nprodbasis_total = nprodbasis_read
 
  call MPI_FILE_READ_AT(wfile,disp,npole_read,1,MPI_INTEGER,MPI_STATUS_IGNORE,ierr)
  disp = disp + SIZEOF(npole_read)
@@ -543,6 +518,7 @@ subroutine read_spectral_function(sf,reading_status)
 
  call MPI_FILE_READ_AT(wfile,disp,sf%pole,sf%npole_reso,MPI_DOUBLE_PRECISION,MPI_STATUS_IGNORE,ierr)
  disp = disp + sf%npole_reso * SIZEOF(sf%pole(1))
+
 
  if( has_auxil_basis ) then
    !

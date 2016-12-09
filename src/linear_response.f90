@@ -64,7 +64,6 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
 
  if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1)
 
- 
  ! Set up all the switches to be able to treat
  ! GW, BSE, TDHF, TDDFT (semilocal or hybrid)
 
@@ -120,18 +119,17 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  ! It is stored in object wpol_static
  !
  if( calc_type%is_bse ) then
+   call init_spectral_function(nstate,occupation,wpol_static)
    call read_spectral_function(wpol_static,reading_status)
 
    ! If a SCREENED_COULOMB file cannot be found,
    ! then recalculate it from scratch
    if( reading_status /= 0 ) then
-     call init_spectral_function(nstate,occupation,wpol_static)
      wpol_static%nprodbasis = nauxil_3center
      call static_polarizability(nstate,occupation,energy,wpol_static)
    endif
 
  endif
-
 
  !
  ! Prepare the big matrices (A+B) and (A-B)
