@@ -45,10 +45,10 @@ Then
 `make`
 
 - BLAS and LAPACK linear algebra libraries are required.
-- libint is required: (version 2.0.x, newest versions are not compatible)
+- libint is required: (version 2.0.x or 2.1.x, newest versions have not been tested)
 https://sourceforge.net/projects/libint/files/latest/download?source=files
-- libxc is required: (version >= 2.2.0) for DFT calculations
-http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-2.2.2.tar.gz
+- libxc is required: (version >= 3.0.0) for DFT calculations
+http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-3.0.0.tar.gz
 
 
 ##Basis sets
