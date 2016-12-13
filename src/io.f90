@@ -41,7 +41,7 @@ subroutine header()
 
  write(stdout,'(1x,70("="))') 
  write(stdout,'(/,/,12x,a,/)') 'Welcome to the fascinating world of MOLGW'
- write(stdout,'(24x,a)')       'version 1.A'
+ write(stdout,'(24x,a)')       'version 1.B'
  write(stdout,'(/,/,1x,70("="))') 
 
  write(stdout,'(/,a,i6,/)') ' MOLGW revision is',revision
