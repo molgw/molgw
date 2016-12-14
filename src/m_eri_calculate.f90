@@ -1913,8 +1913,7 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
   
  call DESCINIT(desc3final,nauxil_2center,npair,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
 
- call PDGEMR2D(nauxil_2center,npair,eri_3tmp,1,1,desc3tmp, &
-                                 eri_3center,1,1,desc3final,cntxt)
+ call PDGEMR2D(nauxil_2center,npair,eri_3tmp,1,1,desc3tmp,eri_3center,1,1,desc3final,cntxt)
 
  if( cntxt > 0 ) then
    call clean_deallocate('tmp 3-center integrals',eri_3tmp)

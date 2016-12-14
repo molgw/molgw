@@ -589,27 +589,24 @@ subroutine setup_density_matrix_sca(nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham
  real(dp),intent(in)  :: occupation(nstate,nspin)
  real(dp),intent(out) :: p_matrix(m_ham,n_ham,nspin)
 !=====
- integer  :: ispin,jlocal,jglobal
- real(dp) :: matrix_tmp(m_c,n_c)
+ integer  :: ispin,istate
+ real(dp) :: matrix_tmp(m_ham,n_ham)
 !=====
 
 #ifdef HAVE_SCALAPACK
  call start_clock(timing_density_matrix)
+ write(stdout,'(1x,a)') 'Build density matrix: SCALAPACK'
+
+ p_matrix(:,:,:) = 0.0_dp
 
  if( cntxt_ham > 0 ) then
    do ispin=1,nspin
-     do jlocal=1,n_c
-       jglobal = colindex_local_to_global('H',jlocal)
-       matrix_tmp(:,jlocal) = c_matrix(:,jlocal,ispin) * SQRT( occupation(jglobal,ispin) )
+     do istate=1,nstate
+       if( occupation(istate,ispin) < completely_empty ) cycle
+       call PDSYR('L',nbf,occupation(istate,ispin),c_matrix(:,:,ispin),1,istate,desc_c,1,p_matrix(:,:,ispin),1,1,desc_ham)
      enddo
-
-     call PDGEMM('N','T',nbf,nbf,nstate,1.0_dp,matrix_tmp,1,1,desc_c,       &
-                  matrix_tmp,1,1,desc_c,0.0_dp,                             &
-                  p_matrix(:,:,ispin),1,1,desc_ham)
-
+     call symmetrize_matrix_sca('L',nbf,desc_ham,p_matrix(:,:,ispin),desc_ham,matrix_tmp)
    enddo
- else
-   p_matrix(:,:,:) = 0.0_dp
  endif
 
  ! Poor man distribution

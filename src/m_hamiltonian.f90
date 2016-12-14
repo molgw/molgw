@@ -854,6 +854,8 @@ subroutine setup_density_matrix(nbf,nstate,c_matrix,occupation,p_matrix)
 !=====
 
  call start_clock(timing_density_matrix)
+ write(stdout,'(1x,a)') 'Build density matrix'
+
  p_matrix(:,:,:) = 0.0_dp
  do ispin=1,nspin
    do istate=1,nstate
@@ -1337,11 +1339,9 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
    normalization(:) = normalization(:) + rhor(:) * weight
 
 
-!   call start_clock(timing_tmp1)
    if( require_gradient ) then 
      call calc_density_gradr(nspin,basis%nbf,nstate,occupation,c_matrix,basis_function_r,basis_function_gradr,grad_rhor)
    endif
-!   call stop_clock(timing_tmp1)
 
    if( require_laplacian ) then
      call calc_density_gradr_laplr(nspin,basis%nbf,p_matrix,basis_function_r,basis_function_gradr,basis_function_laplr,grad_rhor,tau,lapl_rhor)
@@ -1426,7 +1426,6 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
    enddo ! loop on the XC functional
 
 
-!   call start_clock(timing_tmp2)
    !
    ! Eventually set up the vxc term
    !
@@ -1446,7 +1445,6 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
 
      enddo
    endif
-!   call stop_clock(timing_tmp2)
 
  enddo ! loop on the grid point
 
