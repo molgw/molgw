@@ -944,7 +944,7 @@ end subroutine read_energy_qp
 
 
 !=========================================================================
-function evaluate_wfn_r(nspin,basis,c_matrix,istate,ispin,rr)
+function evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate,ispin,rr)
  use m_definitions
  use m_mpi
  use m_atoms
@@ -952,7 +952,8 @@ function evaluate_wfn_r(nspin,basis,c_matrix,istate,ispin,rr)
  implicit none
  integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
+ integer,intent(in)         :: nstate
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
  integer,intent(in)         :: istate,ispin
  real(dp),intent(in)        :: rr(3)
  real(dp)                   :: evaluate_wfn_r
@@ -996,15 +997,16 @@ end function evaluate_wfn_r
 
 
 !=========================================================================
-function wfn_parity(basis,c_matrix,istate,ispin)
+function wfn_parity(nstate,basis,c_matrix,istate,ispin)
  use m_definitions
  use m_mpi
  use m_atoms
  use m_basis_set
  use m_inputparam
  implicit none
+ integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
  integer,intent(in)         :: istate,ispin
  integer                    :: wfn_parity
 !=====
@@ -1015,11 +1017,11 @@ function wfn_parity(basis,c_matrix,istate,ispin)
  xtmp(1) = xcenter(1) +  2.0_dp
  xtmp(2) = xcenter(2) +  1.0_dp
  xtmp(3) = xcenter(3) +  3.0_dp
- phi_tmp1 = evaluate_wfn_r(nspin,basis,c_matrix,istate,ispin,xtmp)
+ phi_tmp1 = evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate,ispin,xtmp)
  xtmp(1) = xcenter(1) -  2.0_dp
  xtmp(2) = xcenter(2) -  1.0_dp
  xtmp(3) = xcenter(3) -  3.0_dp
- phi_tmp2 = evaluate_wfn_r(nspin,basis,c_matrix,istate,ispin,xtmp)
+ phi_tmp2 = evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate,ispin,xtmp)
 
  if( ABS(phi_tmp1 - phi_tmp2)/ABS(phi_tmp1) < 1.0e-6_dp ) then
    wfn_parity = 1
@@ -1032,15 +1034,16 @@ end function wfn_parity
 
 
 !=========================================================================
-function wfn_reflection(basis,c_matrix,istate,ispin)
+function wfn_reflection(nstate,basis,c_matrix,istate,ispin)
  use m_definitions
  use m_mpi
  use m_atoms
  use m_basis_set
  use m_inputparam
  implicit none
+ integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: c_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
  integer,intent(in)         :: istate,ispin
  integer                    :: wfn_reflection
 !=====
@@ -1052,11 +1055,11 @@ function wfn_reflection(basis,c_matrix,istate,ispin)
  xtmp1(1) = x(1,1) +  2.0_dp
  xtmp1(2) = x(2,1) +  1.0_dp
  xtmp1(3) = x(3,1) +  3.0_dp
- phi_tmp1 = evaluate_wfn_r(nspin,basis,c_matrix,istate,ispin,xtmp1)
+ phi_tmp1 = evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate,ispin,xtmp1)
 
  proj = DOT_PRODUCT( xtmp1 , xnormal )
  xtmp2(:) = xtmp1(:) -  2.0_dp * proj * xnormal(:)
- phi_tmp2 = evaluate_wfn_r(nspin,basis,c_matrix,istate,ispin,xtmp2)
+ phi_tmp2 = evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate,ispin,xtmp2)
 
  if( ABS(phi_tmp1 - phi_tmp2)/ABS(phi_tmp1) < 1.0e-6_dp ) then
    wfn_reflection = 1

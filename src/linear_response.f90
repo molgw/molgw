@@ -542,8 +542,8 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
      astate = chi%transition_table_apb(2,t_ia_global)
      iaspin = chi%transition_table_apb(3,t_ia_global)
      if(planar) then
-       reflectioni = wfn_reflection(basis,c_matrix,istate,iaspin)
-       reflectionj = wfn_reflection(basis,c_matrix,astate,iaspin)
+       reflectioni = wfn_reflection(nstate,basis,c_matrix,istate,iaspin)
+       reflectionj = wfn_reflection(nstate,basis,c_matrix,astate,iaspin)
        select case(reflectioni*reflectionj)
        case( 1)
          symsymbol=TRIM(symsymbol)//'(A1, B2 or Ap )'
@@ -552,8 +552,8 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
        end select
      endif
      if(inversion) then
-       parityi = wfn_parity(basis,c_matrix,istate,iaspin)
-       parityj = wfn_parity(basis,c_matrix,astate,iaspin)
+       parityi = wfn_parity(nstate,basis,c_matrix,istate,iaspin)
+       parityj = wfn_parity(nstate,basis,c_matrix,astate,iaspin)
        select case(parityi*parityj)
        case( 1)
          symsymbol=TRIM(symsymbol)//'g'

@@ -403,6 +403,110 @@ end subroutine setup_exchange_ri_buffer_sca
 
 
 !=========================================================================
+subroutine setup_exchange_ri_buffer_scasca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
+ use m_eri
+ implicit none
+ integer,intent(in)   :: nbf,m_ham,n_ham
+ integer,intent(in)   :: nstate,m_c,n_c
+ real(dp),intent(in)  :: occupation(nstate,nspin)
+ real(dp),intent(in)  :: c_matrix(m_c,n_c,nspin)
+ real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
+ real(dp),intent(out) :: exchange_ij(m_ham,n_ham,nspin)
+ real(dp),intent(out) :: eexchange
+!=====
+ integer              :: ibf,jbf,ispin,istate
+ real(dp),allocatable :: tmp(:,:)
+ real(dp)             :: eigval(nbf)
+ integer              :: ipair
+ real(dp)             :: c_matrix_i(nbf)
+ integer              :: iglobal,ilocal,jlocal
+!=====
+
+
+ write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: SCALAPACK buffer'
+ call start_clock(timing_exchange)
+
+
+ allocate(tmp(nauxil_3center,nbf))
+
+ do ispin=1,nspin
+
+   buffer(:,:) = 0.0_dp
+
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty ) cycle
+
+     call start_clock(timing_tmp9)
+     !
+     ! First all processors must have the c_matrix for (istate, ispin)
+     c_matrix_i(:) = 0.0_dp
+     if( cntxt_ham > 0 ) then
+       jlocal = colindex_global_to_local('H',istate)
+       if( jlocal /= 0 ) then
+         do ilocal=1,m_c
+           iglobal = rowindex_local_to_global('H',ilocal)
+           c_matrix_i(iglobal) = c_matrix(ilocal,jlocal,ispin) 
+         enddo
+       endif
+     endif
+     call xsum_world(c_matrix_i)
+
+     call stop_clock(timing_tmp9)
+
+
+     call start_clock(timing_tmp1)
+     tmp(:,:) = 0.0_dp
+     do ipair=1,nbf
+       ibf = index_basis(1,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(ibf) * eri_3center(:,ipair)
+     enddo
+     do ipair=nbf+1,npair
+       ibf = index_basis(1,ipair)
+       jbf = index_basis(2,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3center(:,ipair)
+       tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3center(:,ipair)
+     enddo
+     call stop_clock(timing_tmp1)
+
+
+     ! buffer(:,:) = buffer(:,:) - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact * occ(i)
+     ! C = A^T * A + C
+     call DSYRK('L','T',nbf,nauxil_3center,-occupation(istate,ispin)/spin_fact,tmp,nauxil_3center,1.0_dp,buffer,nbf)
+
+   enddo
+
+   !
+   ! Need to symmetrize buffer
+   do ibf=1,nbf
+     do jbf=ibf+1,nbf
+       buffer(ibf,jbf) = buffer(jbf,ibf)
+     enddo
+   enddo
+
+   ! Sum up the buffers and store the result in the sub matrix exchange_ij
+   call reduce_hamiltonian_sca(m_ham,n_ham,exchange_ij(:,:,ispin))
+
+ enddo
+ deallocate(tmp)
+
+
+ !
+ ! Calculate the exchange energy
+ if( cntxt_ham > 0 ) then
+   eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
+ else
+   eexchange = 0.0_dp
+ endif
+ call xsum_world(eexchange)
+
+ call stop_clock(timing_exchange)
+
+
+
+end subroutine setup_exchange_ri_buffer_scasca
+
+
+!=========================================================================
 subroutine setup_exchange_longrange_ri_buffer_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
