@@ -852,6 +852,7 @@ subroutine setup_density_matrix(nbf,nstate,c_matrix,occupation,p_matrix)
  integer :: ispin,ibf,jbf
 !=====
 
+ call start_clock(timing_density_matrix)
  do ispin=1,nspin
    do jbf=1,nbf
      do ibf=1,nbf
@@ -859,6 +860,7 @@ subroutine setup_density_matrix(nbf,nstate,c_matrix,occupation,p_matrix)
      enddo
    enddo
  enddo
+ call stop_clock(timing_density_matrix)
 
 
 end subroutine setup_density_matrix

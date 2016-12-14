@@ -56,6 +56,7 @@ module m_timing
  integer,parameter :: timing_full_ci             = 37
  integer,parameter :: timing_gwgamma             = 38
  integer,parameter :: timing_ecp                 = 39
+ integer,parameter :: timing_density_matrix      = 40
  
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -166,11 +167,12 @@ subroutine output_timing()
  write(stdout,*)
 
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Grid generation'     ,timing(timing_grid_generation),calls(timing_grid_generation)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'Density Matrix'      ,timing(timing_density_matrix),calls(timing_density_matrix)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Hartree'             ,timing(timing_hartree),calls(timing_hartree)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Exchange'            ,timing(timing_exchange),calls(timing_exchange)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'DFT xc'              ,timing(timing_dft),calls(timing_dft)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Hamiltonian diago'   ,timing(timing_diago_hamiltonian),calls(timing_diago_hamiltonian)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'Pulay DIIS       '   ,timing(timing_diis),calls(timing_diis)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'Pulay DIIS'          ,timing(timing_diis),calls(timing_diis)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'RESTART file writing',timing(timing_restart_file),calls(timing_restart_file)
  write(stdout,*)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Single Excitations'  ,timing(timing_single_excitation),calls(timing_single_excitation)

@@ -594,6 +594,7 @@ subroutine setup_density_matrix_sca(nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham
 !=====
 
 #ifdef HAVE_SCALAPACK
+ call start_clock(timing_density_matrix)
 
  if( cntxt_ham > 0 ) then
    do ispin=1,nspin
@@ -615,6 +616,9 @@ subroutine setup_density_matrix_sca(nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham
  call xsum_local(p_matrix)
 
 
+ call stop_clock(timing_density_matrix)
+#else
+ call die('setup_density_matrix_sca: is being called without SCALAPACK')
 #endif
 
 end subroutine setup_density_matrix_sca
