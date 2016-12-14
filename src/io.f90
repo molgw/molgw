@@ -693,7 +693,7 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
  integer                    :: ibf
  integer                    :: istate1,istate2,istate,ispin
  real(dp)                   :: rr(3)
- real(dp),allocatable       :: phi(:,:),phase(:,:)
+ real(dp),allocatable       :: phi(:,:)
  real(dp)                   :: u(3),a(3)
  logical                    :: file_exists
  real(dp)                   :: xxmin,xxmax,ymin,ymax,zmin,zmax
@@ -724,7 +724,7 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
    ny=40
    nz=40
  endif
- allocate(phase(istate1:istate2,nspin),phi(istate1:istate2,nspin))
+ allocate(phi(istate1:istate2,nspin))
  write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
 
  xxmin = MINVAL( x(1,:) ) - length
@@ -770,8 +770,6 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
    enddo
  endif
 
- phase(:,:)=1.0_dp
-
  do ix=1,nx
    rr(1) = ( xxmin + (ix-1)*(xxmax-xxmin)/REAL(nx,dp) ) 
    do iy=1,ny
@@ -812,16 +810,6 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
        enddo
 
        !
-       ! turn the wfns so that they are all positive at a given point
-       if(iz==1) then
-         do ispin=1,nspin
-           do istate=istate1,istate2
-             if( phi(istate,ispin) < 0.0_dp ) phase(istate,ispin) = -1.0_dp
-           enddo
-         enddo
-       endif
-
-       !
        ! check whether istate1:istate2 spans all the occupied states
        if( istate1==1 .AND. ALL( occupation(istate2+1,:) < completely_empty ) ) then
          do ispin=1,nspin
@@ -832,7 +820,7 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
 
        do istate=istate1,istate2
          do ispin=1,nspin
-           write(ocubefile(istate,ispin),'(50(e16.8,2x))') phi(istate,ispin)*phase(istate,ispin)
+           write(ocubefile(istate,ispin),'(50(e16.8,2x))') phi(istate,ispin)
          enddo
        enddo
 
@@ -840,7 +828,7 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
    enddo
  enddo
 
- deallocate(phase,phi)
+ deallocate(phi)
 
  do istate=istate1,istate2
    do ispin=1,nspin
