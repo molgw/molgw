@@ -436,6 +436,7 @@ subroutine setup_exchange_ri_buffer_scasca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupa
  integer :: ipair_local,ipair_global
  integer :: jbf_local,jbf_global
  integer :: mbf_local,nbf_local
+ integer,parameter :: pfac = 2
 !=====
 
 
@@ -459,7 +460,7 @@ subroutine setup_exchange_ri_buffer_scasca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupa
 
 
  call BLACS_GET( -1, 0, cntxt )
- call BLACS_GRIDINIT( cntxt, 'R', nproc_world / 2 , 2  )
+ call BLACS_GRIDINIT( cntxt, 'R', nproc_world / pfac , pfac  )
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
  write(stdout,*) 'SCALAPACK local grid',nprow,npcol
  write(stdout,*) 'This is process:',iprow,ipcol
@@ -524,19 +525,24 @@ subroutine setup_exchange_ri_buffer_scasca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupa
      enddo
      call stop_clock(timing_tmp1)
 
+
      call start_clock(timing_tmp2)
-     call dgsum2d(cntxt,'C',' ',mwork,nbf,tmp,mwork,-1,-1)
+     call dgsum2d(cntxt,'R',' ',mwork,nbf,tmp,mwork,-1,-1)
+
+
      do jbf_local=1,nbf_local
        jbf_global = INDXL2G(jbf_local,block_col,ipcol,first_col,npcol)
        tmp_local(:,jbf_local) = tmp(:,jbf_global)
      enddo
      call stop_clock(timing_tmp2)
 
+
      call start_clock(timing_tmp3)
      ! Sigx(:,:) = Sigx(:,:) - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact * occ(i)
      ! C = A^T * A + C
      call PDSYRK('L','T',nbf,nauxil_2center,-occupation(istate,ispin)/spin_fact,tmp_local,1,1,desctmp,1.0_dp,sigx,1,1,descx)
      call stop_clock(timing_tmp3)
+
 
    enddo
 
