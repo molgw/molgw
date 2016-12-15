@@ -211,7 +211,12 @@ subroutine scf_loop(is_restart,&
      else
        if( parallel_ham ) then
          if( parallel_buffer ) then
+#ifndef SCASCA
            call setup_exchange_ri_buffer_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+#else
+           call issue_warning('FBFB hack scasca')
+           call setup_exchange_ri_buffer_scasca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+#endif
          else
            call die('Exchange with fully distributed hamiltonian: case not implemented yet')
          endif
