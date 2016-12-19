@@ -401,18 +401,13 @@ subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_mat
  integer :: desctmp(NDEL)
  integer :: descx(NDEL)
  integer :: mwork,nwork
- real(dp),allocatable :: eri_3work(:,:)
  real(dp),allocatable :: tmp_local(:,:)
  real(dp),allocatable :: matrix_tmp(:,:)
  real(dp),allocatable :: sigx(:,:)
- integer :: nprow,npcol,iprow,ipcol
- integer :: cntxt,info
+ integer :: info
  integer :: ipair_local,ipair_global,ipair
  integer :: jbf_local,jbf_global
  integer :: mbf_local,nbf_local
- integer,parameter :: pfac = 4
- integer,parameter :: block_row_local =  block_row
- integer,parameter :: block_col_local =  block_col
 !=====
 
 
@@ -421,47 +416,31 @@ subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_mat
 
  exchange_ij(:,:,:) = 0.0_dp
 
- if( cntxt_auxil > 0 ) then
-   mlocal = NUMROC(nauxil_2center,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
-   nlocal = NUMROC(npair         ,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
- else
-   mlocal = -1
-   nlocal = -1
- endif
- call xmax_ortho(mlocal)
- call xmax_ortho(nlocal)
+ write(stdout,*) 'SCALAPACK local grid',nprow_3center,npcol_3center
+ write(stdout,*) 'This is process:',iprow_3center,ipcol_3center
+ write(stdout,*) 'Size of the non-SCALAPACK 3-center integrals:',nauxil_3center,npair
 
- call DESCINIT(desc3final,nauxil_2center,npair,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+ ! nauxil x npair
+ mwork = NUMROC(nauxil_2center,block_row,iprow_3center,first_row,nprow_3center)
+ nwork = NUMROC(npair         ,block_col,ipcol_3center,first_col,npcol_3center)
+ call DESCINIT(desc3work,nauxil_2center,npair,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mwork),info)
 
+! call start_clock(timing_tmp8)
+! call PDGEMR2D(nauxil_2center,npair,eri_3center,1,1,desc3final,eri_3work,1,1,desc3work,cntxt)
+! call stop_clock(timing_tmp8)
 
- call BLACS_GET( -1, 0, cntxt )
- call BLACS_GRIDINIT( cntxt, 'R', nproc_world / pfac , pfac  )
- call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
- write(stdout,*) 'SCALAPACK local grid',nprow,npcol
- write(stdout,*) 'This is process:',iprow,ipcol
- write(stdout,*) 'Size of the local 3-center integrals:',nauxil_3center,npair
- write(stdout,*) 'Size of the local 3-center integrals:',mlocal,nlocal
-
- mwork = NUMROC(nauxil_2center,block_row_local,iprow,first_row,nprow)
- nwork = NUMROC(npair         ,block_col_local,ipcol,first_col,npcol)
- call DESCINIT(desc3work,nauxil_2center,npair,block_row_local,block_col_local,first_row,first_col,cntxt,MAX(1,mwork),info)
-
- allocate(eri_3work(mwork,nwork))
-
- call start_clock(timing_tmp8)
- call PDGEMR2D(nauxil_2center,npair,eri_3center,1,1,desc3final,eri_3work,1,1,desc3work,cntxt)
- call stop_clock(timing_tmp8)
-
- write(stdout,*) 'Size of the local 3-center integrals after comm:',mwork,nwork
+ write(stdout,*) 'Size of the SCALAPACK 3-center integrals:',mwork,nwork
 
  allocate(tmp(mwork,nbf))
 
- nbf_local = NUMROC(nbf,block_col_local,ipcol,first_col,npcol)
- call DESCINIT(desctmp,nauxil_2center,nbf,block_row_local,block_col_local,first_row,first_col,cntxt,MAX(1,mwork),info)
+ ! nauxil x nbf
+ nbf_local = NUMROC(nbf,block_col,ipcol_3center,first_col,npcol_3center)
+ call DESCINIT(desctmp,nauxil_2center,nbf,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mwork),info)
  allocate(tmp_local(mwork,nbf_local))
 
- mbf_local = NUMROC(nbf,block_row_local,iprow,first_row,nprow)
- call DESCINIT(descx,nbf,nbf,block_row_local,block_col_local,first_row,first_col,cntxt,MAX(1,mbf_local),info)
+ ! nbf x nbf
+ mbf_local = NUMROC(nbf,block_row,iprow_3center,first_row,nprow_3center)
+ call DESCINIT(descx,nbf,nbf,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mbf_local),info)
  allocate(sigx(mbf_local,nbf_local))
 
  do ispin=1,nspin
@@ -491,32 +470,32 @@ subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_mat
      tmp(:,:) = 0.0_dp
 #if 1
      do ipair_local=1,nwork
-       ipair_global = INDXL2G(ipair_local,block_col_local,ipcol,first_col,npcol)
+       ipair_global = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
        ibf = index_basis(1,ipair_global)
        jbf = index_basis(2,ipair_global)
-       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3work(:,ipair_local)
+       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3center_sca(:,ipair_local)
        if( ibf /= jbf )  &
-         tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3work(:,ipair_local)
+         tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3center_sca(:,ipair_local)
      enddo
 #else
      do ipair_local=1,nwork
        ipair = ipair_local
        ibf = index_basis(1,ipair)
        jbf = index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3work(:,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3center_sca(:,ipair)
        if( ibf /= jbf )  &
-         tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3work(:,ipair)
+         tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3center_sca(:,ipair)
      enddo
 #endif
      call stop_clock(timing_tmp1)
 
 
      call start_clock(timing_tmp2)
-     call dgsum2d(cntxt,'R',' ',mwork,nbf,tmp,mwork,-1,-1)
+     call dgsum2d(cntxt_3center,'R',' ',mwork,nbf,tmp,mwork,-1,-1)
 
 
      do jbf_local=1,nbf_local
-       jbf_global = INDXL2G(jbf_local,block_col_local,ipcol,first_col,npcol)
+       jbf_global = INDXL2G(jbf_local,block_col,ipcol_3center,first_col,npcol_3center)
        tmp_local(:,jbf_local) = tmp(:,jbf_global)
      enddo
      call stop_clock(timing_tmp2)
@@ -532,7 +511,7 @@ subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_mat
    enddo
 
    call start_clock(timing_tmp7)
-   call PDGEMR2D(nbf,nbf,sigx,1,1,descx,exchange_ij(:,:,ispin),1,1,desc_ham,cntxt)
+   call PDGEMR2D(nbf,nbf,sigx,1,1,descx,exchange_ij(:,:,ispin),1,1,desc_ham,cntxt_3center)
    call stop_clock(timing_tmp7)
 
    if( cntxt_ham > 0 ) then
@@ -544,11 +523,6 @@ subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_mat
  enddo
  deallocate(tmp)
  deallocate(tmp_local)
- deallocate(eri_3work)
-
- if( cntxt > 0 ) then
-   call BLACS_GRIDEXIT( cntxt )
- endif
 
  !
  ! Calculate the exchange energy
