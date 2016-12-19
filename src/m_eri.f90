@@ -62,6 +62,7 @@ module m_eri
                                          ! may differ from the total number of 3-center integrals due to
                                          ! data distribution
 
+ real(dp),allocatable,public  :: eri_3center_sca(:,:)
 
 ! Parallelization information for the auxiliary basis
  integer,allocatable,protected :: iproc_ibf_auxil(:)
@@ -95,16 +96,6 @@ module m_eri
      real(C_DOUBLE) :: int_shell(1)
    end function eval_contr_integral
  end interface
-
-! interface
-!   subroutine boys_function_c(fnt,n,t) bind(C,NAME='boys_function_c')
-!     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
-!     integer(C_INT),value       :: n
-!     real(C_DOUBLE),value       :: t
-!     real(C_DOUBLE),intent(out) :: fnt(0:n)
-!   end subroutine boys_function_c
-!   
-! end interface
 
 
 contains
@@ -846,6 +837,11 @@ subroutine destroy_eri_3center()
  if(ALLOCATED(eri_3center)) then
    call clean_deallocate('3-center integrals',eri_3center)
  endif
+#ifdef SCASCA
+ if(ALLOCATED(eri_3center_sca)) then
+   call clean_deallocate('3-center integrals',eri_3center_sca)
+ endif
+#endif
 
 end subroutine destroy_eri_3center
 
