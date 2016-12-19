@@ -918,9 +918,7 @@ subroutine calculate_eri_2center_sca(auxil_basis)
  integer,external :: NUMROC,INDXG2P,INDXG2L,INDXL2G
  integer :: ibf_auxil_local,jbf_auxil_global
  integer :: master,owner
- integer :: cntxt
  integer :: mlocal,nlocal
- integer :: nprow,npcol,iprow,ipcol,jprow,jpcol
  integer :: iglobal,jglobal,ilocal,jlocal
  integer :: kglobal,klocal
  integer :: desc2center(NDEL)
@@ -941,35 +939,27 @@ subroutine calculate_eri_2center_sca(auxil_basis)
 
  call setup_shell_list_auxil(auxil_basis)
 
- nprow = nprow_sd
- npcol = npcol_sd
-
- call BLACS_GET( -1, 0, cntxt )
- call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
- call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
  
- write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid: ',nprow,' x ',npcol
+ write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid: ',nprow_3center,' x ',npcol_3center
 
- if( iprow == 0 .AND. ipcol == 0 ) then
+ if( iprow_3center == 0 .AND. ipcol_3center == 0 ) then
    master = rank_world
  else
    master = -1
  endif
- ! Propagate master, nprow and npcol values to all procs
- call xmax_world(nprow)
- call xmax_world(npcol)
+ ! Propagate master, nprow_3center and npcol_3center values to all procs
  call xmax_world(master)
 
- if( cntxt > 0 ) then
-   mlocal = NUMROC(auxil_basis%nbf,block_row,iprow,first_row,nprow)
-   nlocal = NUMROC(auxil_basis%nbf,block_col,ipcol,first_col,npcol)
+ if( cntxt_3center > 0 ) then
+   mlocal = NUMROC(auxil_basis%nbf,block_row,iprow_3center,first_row,nprow_3center)
+   nlocal = NUMROC(auxil_basis%nbf,block_col,ipcol_3center,first_col,npcol_3center)
 
    call clean_allocate('tmp 2-center integrals',eri_2center_tmp,mlocal,nlocal)
    call clean_allocate('2-center integrals sqrt',eri_2center_sqrt,mlocal,nlocal)
 
    eri_2center_tmp(:,:) = 0.0_dp
 
-   call DESCINIT(desc2center,auxil_basis%nbf,auxil_basis%nbf,block_row,block_col,first_row,first_col,cntxt,MAX(1,mlocal),info)
+   call DESCINIT(desc2center,auxil_basis%nbf,auxil_basis%nbf,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
 
    do kshell=1,nshell_auxil
@@ -980,7 +970,7 @@ subroutine calculate_eri_2center_sca(auxil_basis)
      skip_shell = .TRUE.
      do kbf=1,nk
        kglobal = shell_auxil(kshell)%istart + kbf - 1
-       skip_shell = skip_shell .AND. .NOT. ( ipcol == INDXG2P(kglobal,block_col,0,first_col,npcol) )
+       skip_shell = skip_shell .AND. .NOT. ( ipcol_3center == INDXG2P(kglobal,block_col,0,first_col,npcol_3center) )
      enddo
 
      if( skip_shell ) cycle
@@ -1004,7 +994,7 @@ subroutine calculate_eri_2center_sca(auxil_basis)
        skip_shell = .TRUE.
        do ibf=1,ni
          iglobal = shell_auxil(ishell)%istart + ibf - 1
-         skip_shell = skip_shell .AND. .NOT. ( iprow == INDXG2P(iglobal,block_row,0,first_row,nprow) )
+         skip_shell = skip_shell .AND. .NOT. ( iprow_3center == INDXG2P(iglobal,block_row,0,first_row,nprow_3center) )
        enddo
 
        if( skip_shell ) cycle
@@ -1125,8 +1115,8 @@ subroutine calculate_eri_2center_sca(auxil_basis)
          kglobal = shell_auxil(kshell)%istart + kbf - 1
 
 
-         if( ipcol == INDXG2P(kglobal,block_col,0,first_col,npcol) ) then
-           klocal = INDXG2L(kglobal,block_col,0,first_col,npcol)
+         if( ipcol_3center == INDXG2P(kglobal,block_col,0,first_col,npcol_3center) ) then
+           klocal = INDXG2L(kglobal,block_col,0,first_col,npcol_3center)
          else
            cycle
          endif
@@ -1134,8 +1124,8 @@ subroutine calculate_eri_2center_sca(auxil_basis)
          do ibf=1,ni
            iglobal = shell_auxil(ishell)%istart + ibf - 1
 
-           if( iprow == INDXG2P(iglobal,block_row,0,first_row,nprow) ) then
-             ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow)
+           if( iprow_3center == INDXG2P(iglobal,block_row,0,first_row,nprow_3center) ) then
+             ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow_3center)
            else
              cycle
            endif
@@ -1173,9 +1163,9 @@ subroutine calculate_eri_2center_sca(auxil_basis)
    nauxil_neglect = auxil_basis%nbf - nauxil_2center
 
 
-   mlocal = NUMROC(auxil_basis%nbf,block_row,iprow,first_row,nprow)
-   nlocal = NUMROC(nauxil_2center ,block_col,ipcol,first_col,npcol)
-   call DESCINIT(desc_2center,auxil_basis%nbf,nauxil_2center,block_row,block_col,first_row,first_col,cntxt,MAX(1,mlocal),info)
+   mlocal = NUMROC(auxil_basis%nbf,block_row,iprow_3center,first_row,nprow_3center)
+   nlocal = NUMROC(nauxil_2center ,block_col,ipcol_3center,first_col,npcol_3center)
+   call DESCINIT(desc_2center,auxil_basis%nbf,nauxil_2center,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
    call clean_allocate('Distributed 2-center integrals',eri_2center,mlocal,nlocal)
    call clean_allocate('tmp 2-center integrals',eri_2center_tmp,mlocal,nlocal)
@@ -1184,9 +1174,9 @@ subroutine calculate_eri_2center_sca(auxil_basis)
    ! Create a rectangular matrix with only 1 / SQRT( eigval) on a diagonal
    eri_2center_tmp(:,:) = 0.0_dp
    do jlocal=1,nlocal
-     jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
+     jglobal = INDXL2G(jlocal,block_col,ipcol_3center,first_col,npcol_3center)
      do ilocal=1,mlocal
-       iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
+       iglobal = INDXL2G(ilocal,block_row,iprow_3center,first_row,nprow_3center)
 
        if( iglobal == jglobal + nauxil_neglect ) eri_2center_tmp(ilocal,jlocal) = 1.0_dp / SQRT( eigval(jglobal+nauxil_neglect) )
 
@@ -1243,15 +1233,12 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
  real(dp),allocatable         :: integrals_cart(:,:,:,:)
  real(dp),allocatable         :: eri_tmp(:,:,:)
- real(dp),allocatable         :: eri_3tmp(:,:)
 
- integer,external :: NUMROC,INDXG2P,INDXG2L,INDXL2G
  integer :: klpair_global
  integer :: ibf_auxil_local,ibf_auxil_global
  integer :: master,owner
- integer :: cntxt
  integer :: mlocal,nlocal
- integer :: nprow,npcol,iprow,ipcol,jprow,jpcol
+ integer :: nprow,npcol,iprow,ipcol
  integer :: iglobal,jglobal,ilocal,jlocal
  integer :: kglobal,klocal
  integer :: desc3center(NDEL)
@@ -1273,9 +1260,7 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
 
  write(stdout,'(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals'
 
- cntxt = desc_2center(CTXT_A)
-
- call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+ call BLACS_GRIDINFO( cntxt_3center, nprow, npcol, iprow, ipcol )
 
  write(stdout,'(a,i4,a,i4)') ' 3-center integrals distributed using a SCALAPACK grid: ',nprow,' x ',npcol
 
@@ -1289,11 +1274,11 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
  call xmax_world(npcol)
  call xmax_world(master)
 
- if( cntxt > 0 ) then
+ if( cntxt_3center > 0 ) then
    mlocal = NUMROC(auxil_basis%nbf,block_row,iprow,first_row,nprow)
    nlocal = NUMROC(npair          ,block_col,ipcol,first_col,npcol)
 
-   call DESCINIT(desc3center,auxil_basis%nbf,npair,block_row,block_col,first_row,first_col,cntxt,MAX(1,mlocal),info)
+   call DESCINIT(desc3center,auxil_basis%nbf,npair,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
    !  Allocate the 3-center integral array
    !
@@ -1565,14 +1550,14 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
    mlocal = NUMROC(nauxil_2center,block_row,iprow,first_row,nprow)
    nlocal = NUMROC(npair         ,block_col,ipcol,first_col,npcol)
 
-   call DESCINIT(desc3tmp,nauxil_2center,npair,block_row,block_col,first_row,first_col,cntxt,MAX(1,mlocal),info)
+   call DESCINIT(desc3tmp,nauxil_2center,npair,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
-   call clean_allocate('tmp 3-center integrals',eri_3tmp,mlocal,nlocal)
+   call clean_allocate('3-center integrals SCALAPACK',eri_3center_sca,mlocal,nlocal)
 
    call PDGEMM('T','N',nauxil_2center,npair,auxil_basis%nbf, &
                1.0_dp,eri_2center,1,1,desc_2center,  &
                       eri_3center,1,1,desc3center,   &
-               0.0_dp,eri_3tmp   ,1,1,desc3tmp)
+               0.0_dp,eri_3center_sca,1,1,desc3tmp)
 
 
    call clean_deallocate('Distributed 2-center integrals',eri_2center)
@@ -1581,7 +1566,7 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
 
  else
    call die('distribution not permitted')
- endif ! cntxt
+ endif ! cntxt_3center
 
 
 
@@ -1601,11 +1586,13 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
   
  call DESCINIT(desc3final,nauxil_2center,npair,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
 
- call PDGEMR2D(nauxil_2center,npair,eri_3tmp,1,1,desc3tmp,eri_3center,1,1,desc3final,cntxt)
+ call PDGEMR2D(nauxil_2center,npair,eri_3center_sca,1,1,desc3tmp,eri_3center,1,1,desc3final,cntxt_3center)
 
- if( cntxt > 0 ) then
-   call clean_deallocate('tmp 3-center integrals',eri_3tmp)
+#ifndef SCASCA
+ if( cntxt_3center > 0 ) then
+   call clean_deallocate('3-center integrals SCALAPACK',eri_3center_sca)
  endif
+#endif
 
  !
  ! Propagate to the ortho MPI direction
@@ -1616,8 +1603,6 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
 
  write(stdout,'(/,1x,a)') 'All 3-center integrals have been calculated and stored'
 
-
- call BLACS_GRIDEXIT( cntxt )
 
  call stop_clock(timing_eri_3center)
 

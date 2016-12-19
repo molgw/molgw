@@ -839,7 +839,7 @@ subroutine destroy_eri_3center()
  endif
 #ifdef SCASCA
  if(ALLOCATED(eri_3center_sca)) then
-   call clean_deallocate('3-center integrals',eri_3center_sca)
+   call clean_deallocate('3-center integrals SCALAPACK',eri_3center_sca)
  endif
 #endif
 
