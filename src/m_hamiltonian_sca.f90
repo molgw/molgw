@@ -378,139 +378,190 @@ end subroutine setup_hartree_ri_sca
 
 
 !=========================================================================
-subroutine setup_exchange_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix_occ,p_matrix_sqrt,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  use m_eri
+ use m_eri_calculate,only: nauxil_2center
  implicit none
- logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf,m_ham,n_ham
- real(dp),intent(in)  :: p_matrix_occ(nbf,nspin)
- real(dp),intent(in)  :: p_matrix_sqrt(m_ham,n_ham,nspin)
+ integer,intent(in)   :: nstate,m_c,n_c
+ real(dp),intent(in)  :: occupation(nstate,nspin)
+ real(dp),intent(in)  :: c_matrix(m_c,n_c,nspin)
  real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
  real(dp),intent(out) :: exchange_ij(m_ham,n_ham,nspin)
  real(dp),intent(out) :: eexchange
 !=====
- integer              :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
- integer              :: index_ij
- integer              :: nocc
- real(dp),allocatable :: tmpa(:,:)
- real(dp),allocatable :: tmpb(:,:)
- real(dp),allocatable :: tmpc(:,:)
+ integer              :: ibf,jbf,ispin,istate
+ real(dp),allocatable :: tmp(:,:)
  real(dp)             :: eigval(nbf)
- integer              :: ipair
- real(dp)             :: p_matrix_i(nbf)
- integer              :: nbf_trans
- integer              :: iglobal,jglobal,ilocal,jlocal
- integer              :: ii
- integer              :: ibf_global,ier,to,iprow_recv,ipcol_recv
+ real(dp)             :: c_matrix_i(nbf)
+ integer              :: iglobal,ilocal,jlocal
+ integer :: mlocal,nlocal
+ integer :: desc3final(NDEL)
+ integer :: desc3work(NDEL)
+ integer :: desctmp(NDEL)
+ integer :: descx(NDEL)
+ integer :: mwork,nwork
+ real(dp),allocatable :: eri_3work(:,:)
+ real(dp),allocatable :: tmp_local(:,:)
+ real(dp),allocatable :: matrix_tmp(:,:)
+ real(dp),allocatable :: sigx(:,:)
+ integer :: nprow,npcol,iprow,ipcol
+ integer :: cntxt,info
+ integer :: ipair_local,ipair_global,ipair
+ integer :: jbf_local,jbf_global
+ integer :: mbf_local,nbf_local
+ integer,parameter :: pfac = 4
+ integer,parameter :: block_row_local =  block_row
+ integer,parameter :: block_col_local =  block_col
 !=====
 
-#ifdef HAVE_SCALAPACK
 
- write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: SCALAPACK'
+ write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: SCALAPACK no buffer'
  call start_clock(timing_exchange)
-
- nbf_trans = 0
- do ibf=1,nbf
-   if( MODULO(ibf-1,nproc_trans) == rank_trans ) then
-     nbf_trans = nbf_trans + 1
-   endif
- enddo
-
-
- allocate(tmpa(nauxil_3center,m_ham))
- allocate(tmpb(nauxil_3center,n_ham))
-
 
  exchange_ij(:,:,:) = 0.0_dp
 
+ if( cntxt_auxil > 0 ) then
+   mlocal = NUMROC(nauxil_2center,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+   nlocal = NUMROC(npair         ,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
+ else
+   mlocal = -1
+   nlocal = -1
+ endif
+ call xmax_ortho(mlocal)
+ call xmax_ortho(nlocal)
+
+ call DESCINIT(desc3final,nauxil_2center,npair,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+
+
+ call BLACS_GET( -1, 0, cntxt )
+ call BLACS_GRIDINIT( cntxt, 'R', nproc_world / pfac , pfac  )
+ call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+ write(stdout,*) 'SCALAPACK local grid',nprow,npcol
+ write(stdout,*) 'This is process:',iprow,ipcol
+ write(stdout,*) 'Size of the local 3-center integrals:',nauxil_3center,npair
+ write(stdout,*) 'Size of the local 3-center integrals:',mlocal,nlocal
+
+ mwork = NUMROC(nauxil_2center,block_row_local,iprow,first_row,nprow)
+ nwork = NUMROC(npair         ,block_col_local,ipcol,first_col,npcol)
+ call DESCINIT(desc3work,nauxil_2center,npair,block_row_local,block_col_local,first_row,first_col,cntxt,MAX(1,mwork),info)
+
+ allocate(eri_3work(mwork,nwork))
+
+ call start_clock(timing_tmp8)
+ call PDGEMR2D(nauxil_2center,npair,eri_3center,1,1,desc3final,eri_3work,1,1,desc3work,cntxt)
+ call stop_clock(timing_tmp8)
+
+ write(stdout,*) 'Size of the local 3-center integrals after comm:',mwork,nwork
+
+ allocate(tmp(mwork,nbf))
+
+ nbf_local = NUMROC(nbf,block_col_local,ipcol,first_col,npcol)
+ call DESCINIT(desctmp,nauxil_2center,nbf,block_row_local,block_col_local,first_row,first_col,cntxt,MAX(1,mwork),info)
+ allocate(tmp_local(mwork,nbf_local))
+
+ mbf_local = NUMROC(nbf,block_row_local,iprow,first_row,nprow)
+ call DESCINIT(descx,nbf,nbf,block_row_local,block_col_local,first_row,first_col,cntxt,MAX(1,mbf_local),info)
+ allocate(sigx(mbf_local,nbf_local))
+
  do ispin=1,nspin
-   do istate=1,nbf
 
-     if( p_matrix_occ(istate,ispin) < completely_empty ) cycle
+   sigx(:,:) = 0.0_dp
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty ) cycle
 
+     call start_clock(timing_tmp9)
      !
-     ! First all processors must have the p_matrix for (istate, ispin)
-     p_matrix_i(:) = 0.0_dp
+     ! First all processors must have the c_matrix for (istate, ispin)
+     c_matrix_i(:) = 0.0_dp
      if( cntxt_ham > 0 ) then
        jlocal = colindex_global_to_local('H',istate)
        if( jlocal /= 0 ) then
-         do ilocal=1,m_ham
+         do ilocal=1,m_c
            iglobal = rowindex_local_to_global('H',ilocal)
-           p_matrix_i(iglobal) = p_matrix_sqrt(ilocal,jlocal,ispin)
+           c_matrix_i(iglobal) = c_matrix(ilocal,jlocal,ispin) 
          enddo
        endif
      endif
-     call xsum_local(p_matrix_i)
+     call xsum_world(c_matrix_i)
+     call stop_clock(timing_tmp9)
 
 
-     allocate(tmpc(nauxil_3center,nbf_trans))
-
-     tmpc(:,:) = 0.0_dp
-     do ibf=1,nbf_trans
-       ibf_global = rank_trans + (ibf-1) * nproc_trans + 1
-       do ii=1,nbf
-         if( negligible_basispair(ii,ibf_global) ) cycle
-         tmpc(:,ibf) = tmpc(:,ibf) + eri_3center(:,index_pair(ii,ibf_global)) * p_matrix_i(ii)
-       enddo
+     call start_clock(timing_tmp1)
+     tmp(:,:) = 0.0_dp
+#if 1
+     do ipair_local=1,nwork
+       ipair_global = INDXL2G(ipair_local,block_col_local,ipcol,first_col,npcol)
+       ibf = index_basis(1,ipair_global)
+       jbf = index_basis(2,ipair_global)
+       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3work(:,ipair_local)
+       if( ibf /= jbf )  &
+         tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3work(:,ipair_local)
      enddo
-
-
-     tmpa(:,:) = 0.0_dp
-     tmpb(:,:) = 0.0_dp
-     
-     do ibf=1,nbf_trans
-       ibf_global = rank_trans + (ibf-1) * nproc_trans + 1
-
-       iprow_recv = INDXG2P(ibf_global,block_row,0,first_row,nprow_ham)
-       do ipcol_recv=0,npcol_ham-1
-         to = rank_sca_to_mpi(iprow_recv,ipcol_recv)
-         call MPI_SEND(tmpc(:,ibf),nauxil_3center,MPI_DOUBLE_PRECISION,to,ibf_global,comm_trans,ier) 
-       enddo
-
-       ipcol_recv = INDXG2P(ibf_global,block_col,0,first_col,npcol_ham)
-       do iprow_recv=0,nprow_ham-1
-         to = rank_sca_to_mpi(iprow_recv,ipcol_recv)
-         call MPI_SEND(tmpc(:,ibf),nauxil_3center,MPI_DOUBLE_PRECISION,to,nbf+ibf_global,comm_trans,ier) 
-       enddo
-
+#else
+     do ipair_local=1,nwork
+       ipair = ipair_local
+       ibf = index_basis(1,ipair)
+       jbf = index_basis(2,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3work(:,ipair)
+       if( ibf /= jbf )  &
+         tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3work(:,ipair)
      enddo
+#endif
+     call stop_clock(timing_tmp1)
 
-     do ilocal=1,m_ham
-       iglobal = rowindex_local_to_global('H',ilocal)
-       call MPI_RECV(tmpa(:,ilocal),nauxil_3center,MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE,iglobal,comm_trans,MPI_STATUS_IGNORE,ier) 
+
+     call start_clock(timing_tmp2)
+     call dgsum2d(cntxt,'R',' ',mwork,nbf,tmp,mwork,-1,-1)
+
+
+     do jbf_local=1,nbf_local
+       jbf_global = INDXL2G(jbf_local,block_col_local,ipcol,first_col,npcol)
+       tmp_local(:,jbf_local) = tmp(:,jbf_global)
      enddo
-
-     do jlocal=1,n_ham
-       jglobal = colindex_local_to_global('H',jlocal)
-       call MPI_RECV(tmpb(:,jlocal),nauxil_3center,MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE,nbf+jglobal,comm_trans,MPI_STATUS_IGNORE,ier) 
-     enddo
+     call stop_clock(timing_tmp2)
 
 
-     deallocate(tmpc)
-
-
-     exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin)  &
-                        - MATMUL( TRANSPOSE(tmpa(:,:)) , tmpb(:,:) ) / spin_fact
+     call start_clock(timing_tmp3)
+     ! Sigx(:,:) = Sigx(:,:) - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact * occ(i)
+     ! C = A^T * A + C
+     call PDSYRK('L','T',nbf,nauxil_2center,-occupation(istate,ispin)/spin_fact,tmp_local,1,1,desctmp,1.0_dp,sigx,1,1,descx)
+     call stop_clock(timing_tmp3)
 
 
    enddo
- enddo
 
- call xsum_local(exchange_ij)
+   call start_clock(timing_tmp7)
+   call PDGEMR2D(nbf,nbf,sigx,1,1,descx,exchange_ij(:,:,ispin),1,1,desc_ham,cntxt)
+   call stop_clock(timing_tmp7)
+
+   if( cntxt_ham > 0 ) then
+     allocate(matrix_tmp(m_ham,n_ham))
+     call symmetrize_matrix_sca('L',nbf,desc_ham,exchange_ij(:,:,ispin),desc_ham,matrix_tmp)
+     deallocate(matrix_tmp)
+   endif
+
+ enddo
+ deallocate(tmp)
+ deallocate(tmp_local)
+ deallocate(eri_3work)
+
+ if( cntxt > 0 ) then
+   call BLACS_GRIDEXIT( cntxt )
+ endif
 
  !
- ! Calculate the Hartree energy
+ ! Calculate the exchange energy
  if( cntxt_ham > 0 ) then
    eexchange = 0.5_dp * SUM( exchange_ij(:,:,:) * p_matrix(:,:,:) )
  else
    eexchange = 0.0_dp
  endif
- call xsum_local(eexchange)
+ call xsum_world(eexchange)
 
  call stop_clock(timing_exchange)
 
 
-#endif
 
 end subroutine setup_exchange_ri_sca
 

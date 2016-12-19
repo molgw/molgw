@@ -54,6 +54,13 @@ module m_scalapack
  integer,protected :: nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil
 
  ! SCALAPACK grid: square distribution
+ integer,protected :: cntxt_3center
+ integer,protected :: nprow_3center
+ integer,protected :: npcol_3center
+ integer,protected :: iprow_3center
+ integer,protected :: ipcol_3center
+
+ ! SCALAPACK grid: square distribution
  integer,protected :: cntxt_sd
  integer,protected :: nprow_sd
  integer,protected :: npcol_sd
@@ -1524,6 +1531,13 @@ subroutine init_scalapack()
  call BLACS_GRIDINIT( cntxt_sd, 'R', nprow_sd, npcol_sd )
  call BLACS_GRIDINFO( cntxt_sd, nprow_sd, npcol_sd, iprow_sd, ipcol_sd )
 
+ ! 3center integrals distribution
+ nprow_3center = nprow_sd
+ npcol_3center = npcol_sd
+ call BLACS_GET( -1, 0, cntxt_3center )
+ call BLACS_GRIDINIT( cntxt_3center, 'R', nprow_3center, npcol_3center )
+ call BLACS_GRIDINFO( cntxt_3center, nprow_3center, npcol_3center, iprow_3center, ipcol_3center )
+
  ! Row-only division of tasks
  nprow_rd = nproc_sca
  npcol_rd = 1
@@ -2102,6 +2116,7 @@ subroutine finish_scalapack()
  call BLACS_GRIDEXIT( cntxt_sd )
  call BLACS_GRIDEXIT( cntxt_cd )
  call BLACS_GRIDEXIT( cntxt_rd )
+ call BLACS_GRIDEXIT( cntxt_3center )
  if( parallel_ham ) then
    if( cntxt_ham > 0 ) call BLACS_GRIDEXIT( cntxt_ham )
  endif
