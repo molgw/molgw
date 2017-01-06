@@ -65,7 +65,6 @@ The basis file needs to be located in the working directory.
 Example input files can be found in `~molgw/tests/`
 
 
-
 ##Known issues
 - QPscGW scf loop is quite unstable for large basis sets, use a low alpha (<= 0.50), use a large eta
 - TD-DFT GGA kernel can induce very large numerical values which limits the numerical stability and breaks some comparison with other codes.
