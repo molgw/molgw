@@ -48,6 +48,7 @@ program molgw
  use m_hamiltonian_buffer
  use m_selfenergy_tools
  use m_scf_loop
+! use m_tddft_propagator
  implicit none
 
 !=====
@@ -71,6 +72,8 @@ program molgw
  integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
  integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix 
 !=====
+ integer :: var_i, var_j
+ integer :: unitfile
 
  !
  !
@@ -383,6 +386,44 @@ program molgw
    if( parallel_ham .AND. parallel_buffer ) call destroy_parallel_buffer()
  endif
 
+!****INTERVENTIONS****
+print *, "Here is me", basis%nbf
+
+
+open(newunit=unitfile, file='hamiltonian_fock.dat')
+do var_i=1, basis%nbf
+   write(unitfile,*) hamiltonian_fock(var_i,:,1)
+enddo
+close(unitfile)
+
+open(newunit=unitfile, file='s_matrix.dat')
+do var_i=1, basis%nbf
+        write(unitfile,*) s_matrix(var_i,:)
+enddo
+close(unitfile)
+
+open(newunit=unitfile, file='c_matrix.dat')
+do var_i=1, basis%nbf
+        write(unitfile,*) c_matrix(var_i,:,1)
+enddo
+close(unitfile)
+
+open(newunit=unitfile, file='energy.dat')
+do var_i=1, basis%nbf
+        write(unitfile,*) energy(var_i,1)
+enddo
+close(unitfile)
+call static_dipole(nstate,basis,occupation,c_matrix)
+
+!****PROPAGATOR****
+
+write(stdout,*) "OPACHA"
+call calculate_propagation(nstate, basis, occupation, energy, s_matrix, c_matrix,hamiltonian_kinetic,hamiltonian_nucleus)
+write(stdout,*) "OPACHA2"
+
+
+
+!****END INTERVENTIONS****
 
  !
  !

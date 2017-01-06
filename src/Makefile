@@ -69,11 +69,10 @@ level035: m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonia
 
 level037: m_selfenergy_tools.o m_virtual_orbital_space.o 
 
-level038: m_scf_loop.o
+level038: m_scf_loop.o 
 
 level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o density_tools.o \
-          io.o restart.o mp2.o selfenergy_evaluation.o molgw.o
-
+          io.o restart.o mp2.o selfenergy_evaluation.o tddft_propagator.o molgw.o 
 
 
 ####################################################
@@ -92,7 +91,8 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
         m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o \
         m_virtual_orbital_space.o pt2_selfenergy.o \
         linear_response.o static_polarizability.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o density_tools.o io.o restart.o mp2.o m_scf_loop.o selfenergy_evaluation.o \
-        molgw.o
+        tddft_propagator.o \
+        molgw.o 
 	$(LINKER) \
                         m_definitions.o m_warning.o m_lbfgs.o m_elements.o m_mpi.o m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_local.o m_mpi_trans.o \
                         m_scalapack.o m_timing.o m_memory.o m_inputparam.o \
@@ -103,6 +103,7 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
                         mp2.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o linear_response.o static_polarizability.o density_tools.o io.o restart.o \
                         m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o m_scf_loop.o pdbssolver1.o selfenergy_evaluation.o real_spherical_harmonics.o \
                         molgw.o \
+                        tddft_propagator.o \
                         -o ../molgw \
                         $(SCALAPACK) $(LAPACK)   \
                         $(LIBXC) $(LIBXC _INCS)  \
@@ -292,6 +293,9 @@ m_lbfgs.o: m_definitions.f90 m_warning.f90 m_lbfgs.f90
 
 m_definitions.o: m_definitions.f90
 	$(FC_W_OPTS) -c m_definitions.f90 $(LIBXC_INCS)
+
+tddft_propagator.o: tddft_propagator.f90 m_definitions.f90 m_basis_set.f90 m_scf_loop.f90 m_memory.f90
+	 $(FC_W_OPTS) -c tddft_propagator.f90 $(LIBXC_INCS)
 
 tarball: 
 	+make archive

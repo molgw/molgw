@@ -541,6 +541,10 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
  enddo
 
 
+write(stdout,*) "This is calculate_hamiltonian_hxc_ri and logical values are:"
+write(stdout,*) "calc_type%is_dft ", calc_type%is_dft, "calc_type%need_exchange_lr ", &
+calc_type%need_exchange_lr,"calc_type%need_exchange ",calc_type%need_exchange
+write(stdout,*) "------------------"
  !
  !  XC part of the Hamiltonian
  !
@@ -612,6 +616,111 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
 
 
 end subroutine  calculate_hamiltonian_hxc_ri
+
+
+!=========================================================================
+subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,nstate,m_ham,n_ham,m_c,n_c,occupation, &
+ c_matrix_cmplx,hamiltonian_hxc_cmplx)
+ use m_scalapack
+ use m_basis_set
+ use m_hamiltonian
+ use m_hamiltonian_sca
+ use m_hamiltonian_buffer
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+ integer,intent(in)         :: m_ham,n_ham
+ integer,intent(in)         :: nstate
+ integer,intent(in)         :: m_c,n_c
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ complex(dpc),intent(in)    :: c_matrix_cmplx(m_c,n_c,nspin)
+ complex(dpc),intent(out)   :: hamiltonian_hxc_cmplx(m_ham,n_ham,nspin)
+!=====
+ integer         :: ispin
+ real(dp)        :: ehart,exc,eexx,eexx_hyb
+ real(dp)        :: c_matrix(m_c,n_c,nspin)
+ real(dp)        :: p_matrix(m_ham,n_ham,nspin)
+ real(dp)        :: hamiltonian_tmp(m_ham,n_ham,nspin)
+ complex(dpc)    :: p_matrix_cmplx(m_ham,n_ham,nspin)
+!=====
+
+
+!write(stdout,*) "------------------"
+!write(stdout,*) "This is calculate_hamiltonian_hxc_ri_cmplx and logical values are:"
+!write(stdout,*) "Parallelisation info:"
+!write(stdout,*) "parallel_ham ", parallel_ham, "parallel_buffer ", parallel_buffer
+!write(stdout,*) "Calculation type:"
+!write(stdout,*) "calc_type%is_dft ", calc_type%is_dft, "calc_type%need_exchange_lr ", &
+!calc_type%need_exchange_lr,"calc_type%need_exchange ",calc_type%need_exchange
+!write(stdout,*) "------------------"
+
+
+if ( parallel_ham ) call die('parallel_ham not yet implemented for propagator')
+
+call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
+
+ ! Initialize real arrays
+ c_matrix=real(c_matrix_cmplx,dp)
+ p_matrix=real(p_matrix_cmplx,dp)
+ 
+ hamiltonian_hxc_cmplx = ( 0.0_dp , 0.0_dp ) 
+ 
+ !
+ ! Exchange contribution to the Hamiltonian
+ !
+ if( calc_type%need_exchange ) then
+     call setup_exchange_ri_cmplx(basis%nbf,nstate,occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_hxc_cmplx,eexx)
+   
+   ! Rescale with alpha_hybrid for hybrid functionals
+   eexx_hyb = eexx_hyb + alpha_hybrid * eexx
+   hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) * alpha_hybrid
+ endif
+
+
+ !
+ ! Hartree contribution to the Hamiltonian
+ !
+ ! Hartree contribution is real and depends only on real(p_matrix)
+ !
+
+ ! #### Pass real arrays p_matrix and hamiltonian_tmp ####
+   call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix,hamiltonian_tmp(:,:,1),ehart)
+    
+ do ispin=1,nspin
+    hamiltonian_hxc_cmplx(:,:,ispin) = hamiltonian_hxc_cmplx(:,:,ispin) + hamiltonian_tmp(:,:,1)
+enddo
+
+
+ !
+ !  XC part of the Hamiltonian
+ !
+
+ !
+ ! DFT XC potential is added here
+ ! 
+ if( calc_type%is_dft ) then
+    hamiltonian_tmp(:,:,:) = 0.0_dp
+     call dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_tmp,exc)
+   
+   hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) + hamiltonian_tmp(:,:,:) 
+ endif
+
+
+ !
+ ! LR Exchange contribution to the Hamiltonian
+ !
+! if(calc_type%need_exchange_lr) then
+!   hamiltonian_spin_tmp(:,:,:) = 0.0_dp
+!
+!     call setup_exchange_longrange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
+!   
+!   ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
+!   eexx_hyb = alpha_hybrid_lr * eexx
+!   hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * alpha_hybrid_lr
+! endif
+
+
+end subroutine  calculate_hamiltonian_hxc_ri_cmplx
 
 
 !=========================================================================

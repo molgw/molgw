@@ -664,7 +664,7 @@ subroutine setup_exchange_ri(nbf,nstate,occupation,c_matrix,p_matrix,exchange_ij
 
      ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
-     ! C = A^T * A + C
+     ! C = A^T * A + C ; C - exchange_ij(:,:,ispin); A - tmp
      call DSYRK('L','T',nbf,nauxil_3center,-occupation(istate,ispin)/spin_fact,tmp,nauxil_3center,1.0_dp,exchange_ij(:,:,ispin),nbf)
    enddo
 
@@ -687,6 +687,88 @@ subroutine setup_exchange_ri(nbf,nstate,occupation,c_matrix,p_matrix,exchange_ij
 
 end subroutine setup_exchange_ri
 
+
+!=========================================================================
+subroutine setup_exchange_ri_cmplx(nbf,nstate,occupation,c_matrix_cmplx,p_matrix_cmplx, &
+                                   exchange_ij_cmplx,eexchange)
+ use m_eri
+ implicit none
+ integer,intent(in)         :: nbf,nstate
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(out)       :: eexchange
+ complex(dpc),intent(in)    :: c_matrix_cmplx(nbf,nstate,nspin)
+ complex(dpc),intent(in)    :: p_matrix_cmplx(nbf,nbf,nspin)
+ complex(dpc),intent(out)   :: exchange_ij_cmplx(nbf,nbf,nspin)
+!=====
+ integer                    :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
+ integer                    :: index_ij
+ integer                    :: nocc
+ real(dp),allocatable       :: tmp(:,:)
+ real(dp)                   :: eigval(nbf)
+ integer                    :: ipair
+ complex(dpc),allocatable   :: tmp_cmplx(:,:)
+!=====
+
+ write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
+ call start_clock(timing_exchange)
+
+ exchange_ij_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
+! allocate(tmp(nauxil_3center,nbf))
+ allocate(tmp_cmplx(nauxil_3center,nbf))
+ do ispin=1,nspin
+
+   ! Find highest occupied state
+   nocc = 0
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty)  cycle
+     nocc = istate
+   enddo
+
+
+   do istate=1,nocc
+     if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle
+
+     tmp_cmplx(:,:) = 0.0_dp
+     !$OMP PARALLEL PRIVATE(ibf,jbf) 
+     !$OMP DO REDUCTION(+:tmp_cmplx)
+     do ipair=1,npair
+       ibf=index_basis(1,ipair)
+       jbf=index_basis(2,ipair)
+       tmp_cmplx(:,ibf) = tmp_cmplx(:,ibf) + c_matrix_cmplx(jbf,istate,ispin) * eri_3center(:,ipair)
+       if( ibf /= jbf ) &
+            tmp_cmplx(:,jbf) = tmp_cmplx(:,jbf) + c_matrix_cmplx(ibf,istate,ispin) * eri_3center(:,ipair)
+     enddo
+     !$OMP END DO
+     !$OMP END PARALLEL
+
+     ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
+     !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+     ! C = A^T * A + C ; C - exchange_ij(:,:,ispin); A - tmp
+     call ZHERK('L','C',nbf,nauxil_3center,-occupation(istate,ispin)/spin_fact,tmp_cmplx,nauxil_3center,1.0_dp,exchange_ij_cmplx(:,:,ispin),nbf)
+   enddo
+
+   !
+   ! Need to symmetrize exchange_ij
+   do ibf=1,nbf
+     do jbf=ibf+1,nbf
+       exchange_ij_cmplx(ibf,jbf,ispin) = exchange_ij_cmplx(jbf,ibf,ispin)
+     enddo
+   enddo
+
+ enddo ! end of loop do ispin=1,nspin
+! deallocate(tmp)
+! call xsum_world(exchange_ij)
+ ! This interface should work also for complex exchange_ij_cmplx 
+ deallocate(tmp_cmplx)
+ call xsum_world(exchange_ij_cmplx)
+ !!!!! CHECK THAT IM(EEXCHANGE)=0.0
+ eexchange = real( 0.5_dp * SUM( exchange_ij_cmplx(:,:,:) * p_matrix_cmplx(:,:,:) ),dp)
+
+ write(stdout,*) "This is subroutine setup_exchange_ri_cmplx and the eexchange value is: "
+ write(stdout,*) eexchange, 0.5_dp * SUM(exchange_ij_cmplx(:,:,:) * p_matrix_cmplx(:,:,:))
+ call stop_clock(timing_exchange)
+
+end subroutine setup_exchange_ri_cmplx
 
 !=========================================================================
 subroutine setup_exchange_longrange_ri(nbf,nstate,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
@@ -875,6 +957,63 @@ subroutine setup_density_matrix(nbf,nstate,c_matrix,occupation,p_matrix)
 
 end subroutine setup_density_matrix
 
+!=========================================================================
+subroutine setup_density_matrix_cmplx(nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
+ implicit none
+ integer,intent(in)   :: nbf,nstate
+ complex(dpc),intent(in)  :: c_matrix_cmplx(nbf,nstate,nspin)
+ real(dp),intent(in)  :: occupation(nstate,nspin)
+ complex(dpc),intent(out) :: p_matrix_cmplx(nbf,nbf,nspin)
+!=====
+ integer :: ispin,ibf,jbf
+ integer :: istate
+
+!=====
+
+ call start_clock(timing_density_matrix)
+ write(stdout,'(1x,a)') 'Build density matrix'
+
+ p_matrix_cmplx(:,:,:) = 0.0_dp
+ do ispin=1,nspin
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty ) cycle
+     call ZHER('L',nbf,occupation(istate,ispin),c_matrix_cmplx(:,istate,ispin),1,p_matrix_cmplx(:,:,ispin),nbf)
+   enddo
+
+   ! Symmetrize
+   do jbf=1,nbf
+     do ibf=jbf+1,nbf
+       p_matrix_cmplx(jbf,ibf,ispin) = p_matrix_cmplx(ibf,jbf,ispin)
+     enddo
+   enddo
+ enddo
+ call stop_clock(timing_density_matrix)
+
+
+
+end subroutine setup_density_matrix_cmplx
+
+!=========================================================================
+subroutine setup_density_matrix_cmplx_slow(nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
+ implicit none
+ integer,intent(in)   :: nbf,nstate
+ complex(dpc),intent(in)  :: c_matrix_cmplx(nbf,nstate,nspin)
+ real(dp),intent(in)  :: occupation(nstate,nspin)
+ complex(dpc),intent(out) :: p_matrix_cmplx(nbf,nbf,nspin)
+!=====
+ integer :: ispin,ibf,jbf
+!=====
+
+ do ispin=1,nspin
+   do jbf=1,nbf
+     do ibf=1,nbf
+       p_matrix_cmplx(ibf,jbf,ispin) = SUM( occupation(:,ispin) * c_matrix_cmplx(ibf,:,ispin) * conjg(c_matrix_cmplx(jbf,:,ispin)) )
+     enddo
+   enddo
+ enddo
+
+
+end subroutine setup_density_matrix_cmplx_slow
 
 !=========================================================================
 subroutine test_density_matrix(nbf,nspin,p_matrix,s_matrix)
@@ -1617,7 +1756,7 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
  real(dp),allocatable               :: dipole_cart(:,:,:)
  real(dp)                           :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
-
+ integer :: unitfile,var_i
 
 ! call start_clock(timing_spectrum)
 
@@ -1673,6 +1812,17 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
  do idir=1,3
    dipole(idir) = -SUM( dipole_basis(idir,:,:) * SUM( p_matrix(:,:,:) , DIM=3 ) )
  enddo
+
+!****INTERVENTIONS****
+print *, "dipoe_basis WRITING"
+open(newunit=unitfile, file='dipole_basis.dat')
+do idir=1,3
+   do var_i=1, basis%nbf
+      write(unitfile,*) dipole_basis(idir,var_i,:)
+   enddo
+enddo
+close(unitfile)
+!****INTERVENTIONS****
 
  deallocate(dipole_basis)
 
