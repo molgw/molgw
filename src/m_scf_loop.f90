@@ -620,7 +620,7 @@ end subroutine  calculate_hamiltonian_hxc_ri
 
 !=========================================================================
 subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,nstate,m_ham,n_ham,m_c,n_c,occupation, &
- c_matrix_cmplx,hamiltonian_hxc_cmplx)
+ c_matrix_cmplx,hamiltonian_hxc_cmplx,write_unit)
  use m_scalapack
  use m_basis_set
  use m_hamiltonian
@@ -629,7 +629,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,nstate,m_ham,n_ham,m_c,n_c,o
  implicit none
 
  type(basis_set),intent(in) :: basis
- integer,intent(in)         :: m_ham,n_ham
+ integer,intent(in)         :: m_ham,n_ham,write_unit
  integer,intent(in)         :: nstate
  integer,intent(in)         :: m_c,n_c
  real(dp),intent(in)        :: occupation(nstate,nspin)
@@ -658,8 +658,10 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,nstate,m_ham,n_ham,m_c,n_c,o
 if ( parallel_ham ) call die('parallel_ham not yet implemented for propagator')
 
 call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
+!write(write_unit,*) real(c_matrix_cmplx(1,1,1)), aimag(c_matrix_cmplx(1,1,1)), real(p_matrix_cmplx(1,1,1)), aimag(p_matrix_cmplx(1,1,1))
+! Initialize real arrays
+ call print_square_2d_matrix_cmplx("p_matrix(spin=1) = ",p_matrix_cmplx(:,:,1),basis%nbf,write_unit,4)
 
- ! Initialize real arrays
  c_matrix=real(c_matrix_cmplx,dp)
  p_matrix=real(p_matrix_cmplx,dp)
  

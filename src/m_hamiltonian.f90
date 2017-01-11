@@ -748,18 +748,18 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,occupation,c_matrix_cmplx,p_matrix
    enddo
 
    !
-   ! Need to symmetrize exchange_ij
+   ! Need to make exchange_ij Hermitian (not just symmetric)
    do ibf=1,nbf
      do jbf=ibf+1,nbf
-       exchange_ij_cmplx(ibf,jbf,ispin) = exchange_ij_cmplx(jbf,ibf,ispin)
+       exchange_ij_cmplx(ibf,jbf,ispin) = conjg( exchange_ij_cmplx(jbf,ibf,ispin) )
      enddo
    enddo
 
  enddo ! end of loop do ispin=1,nspin
 ! deallocate(tmp)
 ! call xsum_world(exchange_ij)
- ! This interface should work also for complex exchange_ij_cmplx 
  deallocate(tmp_cmplx)
+ ! This interface should work also for complex exchange_ij_cmplx 
  call xsum_world(exchange_ij_cmplx)
  !!!!! CHECK THAT IM(EEXCHANGE)=0.0
  eexchange = real( 0.5_dp * SUM( exchange_ij_cmplx(:,:,:) * p_matrix_cmplx(:,:,:) ),dp)
@@ -980,11 +980,12 @@ subroutine setup_density_matrix_cmplx(nbf,nstate,c_matrix_cmplx,occupation,p_mat
      call ZHER('L',nbf,occupation(istate,ispin),c_matrix_cmplx(:,istate,ispin),1,p_matrix_cmplx(:,:,ispin),nbf)
    enddo
 
-   ! Symmetrize
+   ! Hermitianalize
    do jbf=1,nbf
      do ibf=jbf+1,nbf
-       p_matrix_cmplx(jbf,ibf,ispin) = p_matrix_cmplx(ibf,jbf,ispin)
-     enddo
+       p_matrix_cmplx(jbf,ibf,ispin) = conjg( p_matrix_cmplx(ibf,jbf,ispin) )
+       write(stdout,*) "StUpId thing ", p_matrix_cmplx(jbf,ibf,ispin), p_matrix_cmplx(ibf,jbf,ispin)
+       enddo
    enddo
  enddo
  call stop_clock(timing_density_matrix)
@@ -1814,14 +1815,14 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
  enddo
 
 !****INTERVENTIONS****
-print *, "dipoe_basis WRITING"
-open(newunit=unitfile, file='dipole_basis.dat')
-do idir=1,3
-   do var_i=1, basis%nbf
-      write(unitfile,*) dipole_basis(idir,var_i,:)
-   enddo
-enddo
-close(unitfile)
+!print *, "dipoe_basis WRITING"
+!open(newunit=unitfile, file='dipole_basis.dat')
+!do idir=1,3
+!   do var_i=1, basis%nbf
+!      write(unitfile,*) dipole_basis(idir,var_i,:)
+!   enddo
+!enddo
+!close(unitfile)
 !****INTERVENTIONS****
 
  deallocate(dipole_basis)
@@ -1833,10 +1834,167 @@ close(unitfile)
  write(stdout,'(1x,a,3(2x,f14.6))') 'Dipole (a.u.):  ',dipole(:)
  write(stdout,'(1x,a,3(2x,f14.6))') 'Dipole (Debye): ',dipole(:) * au_debye
 
-
-
-
 end subroutine static_dipole
+
+!=========================================================================
+subroutine static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole)
+ use m_basis_set
+ use m_atoms
+ implicit none
+
+ integer,intent(in)                 :: nstate
+ type(basis_set),intent(in)         :: basis
+ real(dpc),intent(in)               :: occupation(nstate,nspin)
+ complex(dpc),intent(in)            :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ real(dp),intent(out)               :: dipole(3)
+!=====
+ integer                            :: istate,astate,iaspin
+ integer                            :: mstate,pstate,mpspin
+ integer                            :: ibf,jbf
+ integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
+ integer                            :: iatom,idir
+ real(dp),allocatable               :: dipole_basis(:,:,:)
+ real(dp),allocatable               :: dipole_cart(:,:,:)
+ complex(dp)                        :: p_matrix_cmplx(basis%nbf,basis%nbf,nspin)
+!=====
+ integer :: unitfile,var_i
+
+! call start_clock(timing_spectrum)
+
+ write(stdout,'(/,a)') ' Calculate the static dipole'
+
+
+ !
+ ! First precalculate all the needed dipole in the basis set
+ !
+ allocate(dipole_basis(3,basis%nbf,basis%nbf))
+ ibf_cart = 1
+ ibf      = 1
+ do while(ibf_cart<=basis%nbf_cart)
+   li      = basis%bf(ibf_cart)%am
+   ni_cart = number_basis_function_am('CART',li)
+   ni      = number_basis_function_am(basis%gaussian_type,li)
+
+   jbf_cart = 1
+   jbf      = 1
+   do while(jbf_cart<=basis%nbf_cart)
+     lj      = basis%bf(jbf_cart)%am
+     nj_cart = number_basis_function_am('CART',lj)
+     nj      = number_basis_function_am(basis%gaussian_type,lj)
+
+     allocate(dipole_cart(3,ni_cart,nj_cart))
+
+
+     do i_cart=1,ni_cart
+       do j_cart=1,nj_cart
+         call basis_function_dipole(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),dipole_cart(:,i_cart,j_cart))
+       enddo
+     enddo
+
+     do idir=1,3
+       dipole_basis(idir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
+             MATMUL(  dipole_cart(idir,:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+     enddo
+
+     deallocate(dipole_cart)
+
+     jbf      = jbf      + nj
+     jbf_cart = jbf_cart + nj_cart
+   enddo
+
+   ibf      = ibf      + ni
+   ibf_cart = ibf_cart + ni_cart
+ enddo
+
+
+ call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
+
+ ! Minus sign for electrons
+ do idir=1,3
+   dipole(idir) = real( -SUM( dipole_basis(idir,:,:) * SUM( p_matrix_cmplx(:,:,:) , DIM=3 ) ),dp)
+   write(stdout,*) "DiPoLe", -SUM( dipole_basis(idir,:,:) * SUM( p_matrix_cmplx(:,:,:), DIM=3 ) )
+ enddo
+
+ deallocate(dipole_basis)
+
+ do iatom=1,natom
+   dipole(:) = dipole(:) + zatom(iatom) * x(:,iatom)
+ enddo
+
+! write(stdout,'(1x,a,3(2x,f14.6))') 'Dipole (a.u.):  ',dipole(:)
+! write(stdout,'(1x,a,3(2x,f14.6))') 'Dipole (Debye): ',dipole(:) * au_debye
+
+end subroutine static_dipole_cmplx
+
+
+
+!=========================================================================
+subroutine calculate_dipole_basis_cmplx(basis,dipole_basis)
+ use m_basis_set
+ use m_atoms
+ implicit none
+ type(basis_set),intent(in)         :: basis
+ real(dp),allocatable,intent(out)   :: dipole_basis(:,:,:)
+!=====
+ integer                            :: istate,astate,iaspin
+ integer                            :: mstate,pstate,mpspin
+ integer                            :: ibf,jbf
+ integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
+ integer                            :: iatom,idir
+ real(dp),allocatable               :: dipole_cart(:,:,:)
+!=====
+ integer :: unitfile,var_i
+
+! call start_clock(timing_spectrum)
+
+! write(stdout,'(/,a)') ' Calculate the static dipole'
+
+
+ !
+ ! First precalculate all the needed dipole in the basis set
+ !
+ allocate(dipole_basis(3,basis%nbf,basis%nbf))
+ ibf_cart = 1
+ ibf      = 1
+ do while(ibf_cart<=basis%nbf_cart)
+   li      = basis%bf(ibf_cart)%am
+   ni_cart = number_basis_function_am('CART',li)
+   ni      = number_basis_function_am(basis%gaussian_type,li)
+
+   jbf_cart = 1
+   jbf      = 1
+   do while(jbf_cart<=basis%nbf_cart)
+     lj      = basis%bf(jbf_cart)%am
+     nj_cart = number_basis_function_am('CART',lj)
+     nj      = number_basis_function_am(basis%gaussian_type,lj)
+
+     allocate(dipole_cart(3,ni_cart,nj_cart))
+
+
+     do i_cart=1,ni_cart
+       do j_cart=1,nj_cart
+         call basis_function_dipole(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),dipole_cart(:,i_cart,j_cart))
+       enddo
+     enddo
+
+     do idir=1,3
+       dipole_basis(idir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
+             MATMUL(  dipole_cart(idir,:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+     enddo
+
+     deallocate(dipole_cart)
+
+     jbf      = jbf      + nj
+     jbf_cart = jbf_cart + nj_cart
+   enddo
+
+   ibf      = ibf      + ni
+   ibf_cart = ibf_cart + ni_cart
+ enddo
+
+end subroutine calculate_dipole_basis_cmplx
+
+
 
 
 !=========================================================================

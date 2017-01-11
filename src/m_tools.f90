@@ -16,6 +16,7 @@ module m_tools
    module procedure invert_dp
    module procedure invert_inplace_dp
    module procedure invert_cdp
+   module procedure invert_inplace_cdp
  end interface
 
  interface diagonalize_wo_vectors
@@ -208,6 +209,27 @@ subroutine invert_cdp(n,matrix,matrix_inv)
 
 
 end subroutine invert_cdp
+
+
+!=========================================================================
+subroutine invert_inplace_cdp(n,matrix)
+ implicit none
+
+ integer,intent(in) :: n
+ complex(dpc),intent(in) :: matrix(n,n)
+!=====
+ complex(dpc) :: work(n)
+ integer     :: ipiv(n),info
+!=====
+
+ call ZGETRF(n,n,matrix,n,ipiv,info)
+ if(info/=0) call die('FAILURE in ZGETRF')
+
+ call ZGETRI(n,matrix,n,ipiv,work,n,info)
+ if(info/=0) call die('FAILURE in ZGETRI')
+
+
+end subroutine invert_inplace_cdp
 
 
 !=========================================================================

@@ -387,39 +387,39 @@ program molgw
  endif
 
 !****INTERVENTIONS****
-print *, "Here is me", basis%nbf
-
-
-open(newunit=unitfile, file='hamiltonian_fock.dat')
-do var_i=1, basis%nbf
-   write(unitfile,*) hamiltonian_fock(var_i,:,1)
-enddo
-close(unitfile)
-
-open(newunit=unitfile, file='s_matrix.dat')
-do var_i=1, basis%nbf
-        write(unitfile,*) s_matrix(var_i,:)
-enddo
-close(unitfile)
-
-open(newunit=unitfile, file='c_matrix.dat')
-do var_i=1, basis%nbf
-        write(unitfile,*) c_matrix(var_i,:,1)
-enddo
-close(unitfile)
-
-open(newunit=unitfile, file='energy.dat')
-do var_i=1, basis%nbf
-        write(unitfile,*) energy(var_i,1)
-enddo
-close(unitfile)
-call static_dipole(nstate,basis,occupation,c_matrix)
+!print *, "Here is me", basis%nbf
+!
+!
+!open(newunit=unitfile, file='hamiltonian_fock.dat')
+!do var_i=1, basis%nbf
+!   write(unitfile,*) hamiltonian_fock(var_i,:,1)
+!enddo
+!close(unitfile)
+!
+!open(newunit=unitfile, file='s_matrix.dat')
+!do var_i=1, basis%nbf
+!        write(unitfile,*) s_matrix(var_i,:)
+!enddo
+!close(unitfile)
+!
+!open(newunit=unitfile, file='c_matrix.dat')
+!do var_i=1, basis%nbf
+!        write(unitfile,*) c_matrix(var_i,:,1)
+!enddo
+!close(unitfile)
+!
+!open(newunit=unitfile, file='energy.dat')
+!do var_i=1, basis%nbf
+!        write(unitfile,*) energy(var_i,1)
+!enddo
+!close(unitfile)
+!call static_dipole(nstate,basis,occupation,c_matrix)
 
 !****PROPAGATOR****
 
-write(stdout,*) "OPACHA"
+write(stdout,*) "Start tddft propagator"
 call calculate_propagation(nstate, basis, occupation, energy, s_matrix, c_matrix,hamiltonian_kinetic,hamiltonian_nucleus)
-write(stdout,*) "OPACHA2"
+write(stdout,*) "End tddft propagator"
 
 
 
