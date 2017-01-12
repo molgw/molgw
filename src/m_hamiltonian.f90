@@ -1867,7 +1867,7 @@ subroutine static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole)
  !
  ! First precalculate all the needed dipole in the basis set
  !
- allocate(dipole_basis(3,basis%nbf,basis%nbf))
+ allocate(dipole_basis(basis%nbf,basis%nbf,3))
  ibf_cart = 1
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
@@ -1882,18 +1882,18 @@ subroutine static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole)
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
-     allocate(dipole_cart(3,ni_cart,nj_cart))
+     allocate(dipole_cart(ni_cart,nj_cart,3))
 
 
      do i_cart=1,ni_cart
        do j_cart=1,nj_cart
-         call basis_function_dipole(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),dipole_cart(:,i_cart,j_cart))
+         call basis_function_dipole(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),dipole_cart(i_cart,j_cart,:))
        enddo
      enddo
 
      do idir=1,3
-       dipole_basis(idir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
-             MATMUL(  dipole_cart(idir,:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+       dipole_basis(ibf:ibf+ni-1,jbf:jbf+nj-1,idir) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
+             MATMUL(  dipole_cart(:,:,idir) , cart_to_pure(lj)%matrix(:,:) ) )
      enddo
 
      deallocate(dipole_cart)
@@ -1911,8 +1911,8 @@ subroutine static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole)
 
  ! Minus sign for electrons
  do idir=1,3
-   dipole(idir) = real( -SUM( dipole_basis(idir,:,:) * SUM( p_matrix_cmplx(:,:,:) , DIM=3 ) ),dp)
-   write(stdout,*) "DiPoLe", -SUM( dipole_basis(idir,:,:) * SUM( p_matrix_cmplx(:,:,:), DIM=3 ) )
+   dipole(idir) = real( -SUM( dipole_basis(:,:,idir) * SUM( p_matrix_cmplx(:,:,:) , DIM=3 ) ),dp)
+   write(stdout,*) "DiPoLe", -SUM( dipole_basis(:,:,idir) * SUM( p_matrix_cmplx(:,:,:), DIM=3 ) )
  enddo
 
  deallocate(dipole_basis)
@@ -1953,7 +1953,7 @@ subroutine calculate_dipole_basis_cmplx(basis,dipole_basis)
  !
  ! First precalculate all the needed dipole in the basis set
  !
- allocate(dipole_basis(3,basis%nbf,basis%nbf))
+ allocate(dipole_basis(basis%nbf,basis%nbf,3))
  ibf_cart = 1
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
@@ -1968,18 +1968,18 @@ subroutine calculate_dipole_basis_cmplx(basis,dipole_basis)
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
-     allocate(dipole_cart(3,ni_cart,nj_cart))
+     allocate(dipole_cart(ni_cart,nj_cart,3))
 
 
      do i_cart=1,ni_cart
        do j_cart=1,nj_cart
-         call basis_function_dipole(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),dipole_cart(:,i_cart,j_cart))
+         call basis_function_dipole(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),dipole_cart(i_cart,j_cart,:))
        enddo
      enddo
 
      do idir=1,3
-       dipole_basis(idir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
-             MATMUL(  dipole_cart(idir,:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+       dipole_basis(ibf:ibf+ni-1,jbf:jbf+nj-1,idir) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
+             MATMUL(  dipole_cart(:,:,idir) , cart_to_pure(lj)%matrix(:,:) ) )
      enddo
 
      deallocate(dipole_cart)

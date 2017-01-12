@@ -11,6 +11,7 @@ CPPFLAGS=
 LIBTOOL=
 LAPACK=
 SCALAPACK=
+FFTW_ROOT=
 #LIBXC_ROOT= 
 #LIBINT_ROOT=
 
@@ -26,7 +27,8 @@ LIBXC_INCS=-I$(LIBXC_ROOT)/include
 LIBXC=-L$(LIBXC_ROOT)/lib -Bstatic -lxcf90 -lxc -Bdynamic
 LIBINT=-L$(LIBINT_ROOT)/lib -lint2
 LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2 -I$(LIBINT_ROOT)/include
-
+FFTW=-L$(FFTW_ROOT)/lib/ -lfftw3
+FFTW_INCS=-I$(FFTW_ROOT)/include/ 
 
 .PHONY: all clean archive tarball docs input prepare_sourcecode
 
@@ -107,8 +109,9 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
                         -o ../molgw \
                         $(SCALAPACK) $(LAPACK)   \
                         $(LIBXC) $(LIBXC _INCS)  \
+			$(FFTW) $(FFTW_INCS) \
                         $(LIBINT) $(LIBINT_INCS) \
-                        $(LINKS)
+                        $(LINKS) 
 
 molgw.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 m_scalapack.f90  \
   m_gos.f90 m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_eri_calculate.f90 m_eri_calculate_lr.f90 m_eri_ao_mo.f90 \
@@ -295,7 +298,7 @@ m_definitions.o: m_definitions.f90
 	$(FC_W_OPTS) -c m_definitions.f90 $(LIBXC_INCS)
 
 tddft_propagator.o: tddft_propagator.f90 m_definitions.f90 m_basis_set.f90 m_scf_loop.f90 m_memory.f90
-	 $(FC_W_OPTS) -c tddft_propagator.f90 $(LIBXC_INCS)
+	 $(FC_W_OPTS) -c tddft_propagator.f90 $(LIBXC_INCS) $(FFTW_INCS)  
 
 tarball: 
 	+make archive

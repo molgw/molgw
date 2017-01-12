@@ -386,44 +386,13 @@ program molgw
    if( parallel_ham .AND. parallel_buffer ) call destroy_parallel_buffer()
  endif
 
-!****INTERVENTIONS****
-!print *, "Here is me", basis%nbf
-!
-!
-!open(newunit=unitfile, file='hamiltonian_fock.dat')
-!do var_i=1, basis%nbf
-!   write(unitfile,*) hamiltonian_fock(var_i,:,1)
-!enddo
-!close(unitfile)
-!
-!open(newunit=unitfile, file='s_matrix.dat')
-!do var_i=1, basis%nbf
-!        write(unitfile,*) s_matrix(var_i,:)
-!enddo
-!close(unitfile)
-!
-!open(newunit=unitfile, file='c_matrix.dat')
-!do var_i=1, basis%nbf
-!        write(unitfile,*) c_matrix(var_i,:,1)
-!enddo
-!close(unitfile)
-!
-!open(newunit=unitfile, file='energy.dat')
-!do var_i=1, basis%nbf
-!        write(unitfile,*) energy(var_i,1)
-!enddo
-!close(unitfile)
-!call static_dipole(nstate,basis,occupation,c_matrix)
-
 !****PROPAGATOR****
-
-write(stdout,*) "Start tddft propagator"
-call calculate_propagation(nstate, basis, occupation, energy, s_matrix, c_matrix,hamiltonian_kinetic,hamiltonian_nucleus)
-write(stdout,*) "End tddft propagator"
-
-
-
-!****END INTERVENTIONS****
+ if(calc_type%is_real_time) then
+   write(stdout,*) "Start tddft propagator"
+   call calculate_propagation(nstate, basis, occupation, energy, s_matrix, c_matrix,hamiltonian_kinetic,hamiltonian_nucleus)
+   write(stdout,*) "End tddft propagator"
+ end if
+!********
 
  !
  !

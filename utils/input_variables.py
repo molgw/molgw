@@ -835,8 +835,33 @@ vl[i].default  =''
 vl[i].datatype ='characters'
 vl[i].comment  ='Name of the auxiliary basis set to be used for elements specified in list ecp_elements.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='time_step'
+vl[i].family   ='post'
+vl[i].default  =1.
+vl[i].datatype ='real'
+vl[i].comment  ='Time step for real-time dynamics in atomic units.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='time_sim'
+vl[i].family   ='post'
+vl[i].default  =10.
+vl[i].datatype ='real'
+vl[i].comment  ='Duration of a real-time dynamics in atomic units.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='prop_type'
+vl[i].family   ='post'
+vl[i].default  ='CN'
+vl[i].datatype ='characters'
+vl[i].comment  ='Sets the type of propagation algorithm in the rela-time dynamics. \
+                 \'CN stands for Crank-Nickolson\''
 
 
 

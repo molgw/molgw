@@ -47,24 +47,24 @@ module m_inputparam
  integer,parameter :: SOX          = 222
 
  type calculation_type
- character(len=100) :: calc_name
- character(len=100) :: scf_name
- character(len=100) :: postscf_name
- logical            :: is_dft
- logical            :: need_exchange
- logical            :: need_exchange_lr
- logical            :: need_rpa
- logical            :: is_lr_mbpt
- logical            :: is_gw
- logical            :: is_mp2
- logical            :: is_selfenergy
- logical            :: is_ci
- logical            :: is_bse,is_td
- integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
- integer            :: selfenergy_approx         ! GW, COHSEX, PT2
+   character(len=100) :: calc_name
+   character(len=100) :: scf_name
+   character(len=100) :: postscf_name
+   logical            :: is_dft
+   logical            :: need_exchange
+   logical            :: need_exchange_lr
+   logical            :: need_rpa
+   logical            :: is_lr_mbpt
+   logical            :: is_gw
+   logical            :: is_mp2
+   logical            :: is_selfenergy
+   logical            :: is_ci
+   logical            :: is_bse,is_td,is_real_time
+   integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
+   integer            :: selfenergy_approx         ! GW, COHSEX, PT2
 #ifdef HAVE_LIBXC
- type(xc_f90_pointer_t),allocatable :: xc_func(:)
- type(xc_f90_pointer_t),allocatable :: xc_info(:)
+   type(xc_f90_pointer_t),allocatable :: xc_func(:)
+   type(xc_f90_pointer_t),allocatable :: xc_info(:)
 #endif
  end type calculation_type
 
@@ -101,6 +101,7 @@ module m_inputparam
  character(len=12),protected      :: mixing_scheme
  character(len=12),protected      :: partition_scheme
  character(len=12),protected      :: init_hamiltonian
+ character(len=12),protected      :: prop_type
  real(dp),protected               :: diis_switch
  real(dp),protected               :: tolscf
  real(dp),protected               :: toldav
@@ -156,7 +157,8 @@ module m_inputparam
  integer,protected,allocatable    :: dft_xc_type(:)
  real(dp),protected,allocatable   :: dft_xc_coef(:)
 
-
+ real(dp),protected               :: time_step, time_sim
+ 
 contains
 
 
@@ -182,6 +184,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%is_ci               = .FALSE.
  calc_type%is_bse              = .FALSE.
  calc_type%is_td               = .FALSE.
+ calc_type%is_real_time        = .FALSE.
  calc_type%selfenergy_technique= one_shot
  calc_type%selfenergy_approx   = 0
  calc_type%postscf_name        = 'None'
@@ -272,6 +275,8 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%is_bse =.TRUE.
    case('TD')
      calc_type%is_td =.TRUE.
+   case('REAL_TIME')
+     calc_type%is_real_time =.TRUE.
    case default
      call die('Error reading keyword: postscf')
    end select
@@ -775,6 +780,7 @@ subroutine read_inputfile_namelist()
  mixing_scheme      = capitalize(mixing_scheme)
  length_unit        = capitalize(length_unit)
  init_hamiltonian   = capitalize(init_hamiltonian)
+ prop_type          = capitalize(prop_type)
 
  ignore_restart_    = yesno(ignore_restart)
  ignore_bigrestart_ = yesno(ignore_bigrestart)

@@ -660,7 +660,7 @@ if ( parallel_ham ) call die('parallel_ham not yet implemented for propagator')
 call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
 !write(write_unit,*) real(c_matrix_cmplx(1,1,1)), aimag(c_matrix_cmplx(1,1,1)), real(p_matrix_cmplx(1,1,1)), aimag(p_matrix_cmplx(1,1,1))
 ! Initialize real arrays
- call print_square_2d_matrix_cmplx("p_matrix(spin=1) = ",p_matrix_cmplx(:,:,1),basis%nbf,write_unit,4)
+! call print_square_2d_matrix_cmplx("p_matrix(spin=1) = ",p_matrix_cmplx(:,:,1),basis%nbf,write_unit,4)
 
  c_matrix=real(c_matrix_cmplx,dp)
  p_matrix=real(p_matrix_cmplx,dp)
