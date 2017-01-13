@@ -416,6 +416,8 @@ subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_mat
 
  exchange_ij(:,:,:) = 0.0_dp
 
+#ifdef HAVE_SCALAPACK
+
  write(stdout,*) 'SCALAPACK local grid',nprow_3center,npcol_3center
  write(stdout,*) 'This is process:',iprow_3center,ipcol_3center
  write(stdout,*) 'Size of the non-SCALAPACK 3-center integrals:',nauxil_3center,npair
@@ -468,7 +470,6 @@ subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_mat
 
      call start_clock(timing_tmp1)
      tmp(:,:) = 0.0_dp
-#if 1
      do ipair_local=1,nwork
        ipair_global = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
        ibf = index_basis(1,ipair_global)
@@ -477,16 +478,6 @@ subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_mat
        if( ibf /= jbf )  &
          tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3center_sca(:,ipair_local)
      enddo
-#else
-     do ipair_local=1,nwork
-       ipair = ipair_local
-       ibf = index_basis(1,ipair)
-       jbf = index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3center_sca(:,ipair)
-       if( ibf /= jbf )  &
-         tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3center_sca(:,ipair)
-     enddo
-#endif
      call stop_clock(timing_tmp1)
 
 
@@ -533,6 +524,7 @@ subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_mat
  endif
  call xsum_world(eexchange)
 
+#endif
  call stop_clock(timing_exchange)
 
 
