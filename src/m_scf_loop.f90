@@ -349,6 +349,11 @@ subroutine scf_loop(is_restart,&
    write(stdout,'(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):',en%tot
 
 
+   ! If fractional occupancies are allowed, then recalculate the occupations
+   if( temperature > 1.0e-8_dp ) then
+     call set_occupation(nstate,temperature,electrons,magnetization,energy,occupation)
+   endif
+
    !
    ! Setup the new density matrix: p_matrix
    ! Save the old one for the convergence criterium

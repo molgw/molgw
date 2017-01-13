@@ -23,9 +23,15 @@ gKS HOMO energy           , -24.969849         , 0 , 1.0e-4
 gKS LUMO energy           ,  17.323932         , 0 , 1.0e-4
 
 he_auxil.in               , HF helium atom cc-pVTZ with RI
-SCF Total Energy          , -2.8611875289      , 0 , 1.0e-7
+SCF Total Energy          ,  -2.8611875289     , 0 , 1.0e-7
 gKS HOMO energy           , -24.970619         , 0 , 1.0e-4
 gKS LUMO energy           ,  17.314207         , 0 , 1.0e-4
+
+b_temperature.in          , LDA boron atom cc-pVTZ with finite temperature
+SCF Total Energy          , -24.3458246337     , 0 , 1.0e-7
+Fermi level               ,  -4.065450         , 0 , 1.0e-4
+gKS HOMO energy           ,  -3.970996         , 0 , 1.0e-4
+gKS HOMO energy           ,  -2.931370         , 1 , 1.0e-4
 
 zn_ecp.in                 , HF zinc atom with ECP and no RI
 SCF Total Energy          , -225.9507739234    , 0 , 1.0e-7

@@ -227,8 +227,8 @@ program molgw
 
 
  !
- ! Build the occupation array
- ! with zero temperature since we do not have the energy yet
+ ! Build the first occupation array
+ ! as the energy are not known yet, set temperature to zero
  call set_occupation(nstate,0.0_dp,electrons,magnetization,energy,occupation)
 
  !
