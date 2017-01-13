@@ -860,7 +860,7 @@ vl[i].keyword  ='prop_type'
 vl[i].family   ='post'
 vl[i].default  ='CN'
 vl[i].datatype ='characters'
-vl[i].comment  ='Sets the type of propagation algorithm in the rela-time dynamics. \
+vl[i].comment  ='Sets the type of propagation algorithm in the real-time dynamics. \
                  \'CN stands for Crank-Nickolson\''
 
 
