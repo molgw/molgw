@@ -619,13 +619,25 @@ end subroutine  calculate_hamiltonian_hxc_ri
 
 
 !=========================================================================
-subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,nstate,m_ham,n_ham,m_c,n_c,occupation, &
- c_matrix_cmplx,hamiltonian_hxc_cmplx,write_unit)
+subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &        
+                                              nstate,                 &        
+                                              m_ham,                  &       
+                                              n_ham,                  &       
+                                              m_c,                    &     
+                                              n_c,                    &     
+                                              occupation,             &             
+                                              c_matrix_cmplx,         &
+                                              p_matrix_cmplx,         &             
+                                              hamiltonian_hxc_cmplx,  &         
+                                              hamiltonian_kinetic,    &
+                                              hamiltonian_nucleus,    &
+                                              write_unit)
  use m_scalapack
  use m_basis_set
  use m_hamiltonian
  use m_hamiltonian_sca
  use m_hamiltonian_buffer
+ use m_tools,only: matrix_trace_cmplx
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -634,34 +646,39 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,nstate,m_ham,n_ham,m_c,n_c,o
  integer,intent(in)         :: m_c,n_c
  real(dp),intent(in)        :: occupation(nstate,nspin)
  complex(dpc),intent(in)    :: c_matrix_cmplx(m_c,n_c,nspin)
+ real(dp),intent(in)        :: hamiltonian_kinetic(basis%nbf,basis%nbf)
+ real(dp),intent(in)        :: hamiltonian_nucleus(basis%nbf,basis%nbf)
+ complex(dpc),intent(in)    :: p_matrix_cmplx(m_ham,n_ham,nspin)
  complex(dpc),intent(out)   :: hamiltonian_hxc_cmplx(m_ham,n_ham,nspin)
 !=====
  integer         :: ispin
- real(dp)        :: ehart,exc,eexx,eexx_hyb
+ real(dp)        :: ehart,exc,eexx,eexx_hyb,ekin,enuc
  real(dp)        :: c_matrix(m_c,n_c,nspin)
  real(dp)        :: p_matrix(m_ham,n_ham,nspin)
  real(dp)        :: hamiltonian_tmp(m_ham,n_ham,nspin)
- complex(dpc)    :: p_matrix_cmplx(m_ham,n_ham,nspin)
 !=====
 
+ ehart=0.0_dp
+ exc=0.0_dp
+ eexx=0.0_dp
+ eexx_hyb=0.0_dp
 
-!write(stdout,*) "------------------"
-!write(stdout,*) "This is calculate_hamiltonian_hxc_ri_cmplx and logical values are:"
-!write(stdout,*) "Parallelisation info:"
-!write(stdout,*) "parallel_ham ", parallel_ham, "parallel_buffer ", parallel_buffer
-!write(stdout,*) "Calculation type:"
-!write(stdout,*) "calc_type%is_dft ", calc_type%is_dft, "calc_type%need_exchange_lr ", &
-!calc_type%need_exchange_lr,"calc_type%need_exchange ",calc_type%need_exchange
-!write(stdout,*) "------------------"
+ !write(stdout,*) "------------------"
+ !write(stdout,*) "This is calculate_hamiltonian_hxc_ri_cmplx and logical values are:"
+ !write(stdout,*) "Parallelisation info:"
+ !write(stdout,*) "parallel_ham ", parallel_ham, "parallel_buffer ", parallel_buffer
+ !write(stdout,*) "Calculation type:"
+ !write(stdout,*) "calc_type%is_dft ", calc_type%is_dft, "calc_type%need_exchange_lr ", &
+ !calc_type%need_exchange_lr,"calc_type%need_exchange ",calc_type%need_exchange
+ !write(stdout,*) "------------------",
 
 
-if ( parallel_ham ) call die('parallel_ham not yet implemented for propagator')
-
-call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
-!write(write_unit,*) real(c_matrix_cmplx(1,1,1)), aimag(c_matrix_cmplx(1,1,1)), real(p_matrix_cmplx(1,1,1)), aimag(p_matrix_cmplx(1,1,1))
-! Initialize real arrays
-! call print_square_2d_matrix_cmplx("p_matrix(spin=1) = ",p_matrix_cmplx(:,:,1),basis%nbf,write_unit,4)
-
+ if ( parallel_ham ) call die('parallel_ham not yet implemented for propagator')
+ 
+ !write(write_unit,*) real(c_matrix_cmplx(1,1,1)), aimag(c_matrix_cmplx(1,1,1)), real(p_matrix_cmplx(1,1,1)), aimag(p_matrix_cmplx(1,1,1))
+ ! Initialize real arrays
+ ! call print_square_2d_matrix_cmplx("p_matrix(spin=1) = ",p_matrix_cmplx(:,:,1),basis%nbf,write_unit,4)
+ 
  c_matrix=real(c_matrix_cmplx,dp)
  p_matrix=real(p_matrix_cmplx,dp)
  
@@ -671,7 +688,7 @@ call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_mat
  ! Exchange contribution to the Hamiltonian
  !
  if( calc_type%need_exchange ) then
-     call setup_exchange_ri_cmplx(basis%nbf,nstate,occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_hxc_cmplx,eexx)
+   call setup_exchange_ri_cmplx(basis%nbf,nstate,occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_hxc_cmplx,eexx)
    
    ! Rescale with alpha_hybrid for hybrid functionals
    eexx_hyb = eexx_hyb + alpha_hybrid * eexx
@@ -689,8 +706,8 @@ call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_mat
    call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix,hamiltonian_tmp(:,:,1),ehart)
     
  do ispin=1,nspin
-    hamiltonian_hxc_cmplx(:,:,ispin) = hamiltonian_hxc_cmplx(:,:,ispin) + hamiltonian_tmp(:,:,1)
-enddo
+   hamiltonian_hxc_cmplx(:,:,ispin) = hamiltonian_hxc_cmplx(:,:,ispin) + hamiltonian_tmp(:,:,1)
+ enddo
 
 
  !
@@ -701,25 +718,28 @@ enddo
  ! DFT XC potential is added here
  ! 
  if( calc_type%is_dft ) then
-    hamiltonian_tmp(:,:,:) = 0.0_dp
-     call dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_tmp,exc)
+   call dft_exc_vxc_cmplx(basis,nstate,occupation,c_matrix_cmplx,p_matrix,hamiltonian_tmp,exc)
    
    hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) + hamiltonian_tmp(:,:,:) 
  endif
 
+ ekin  = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+ enuc  = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
+ 
 
+ write(write_unit,"(6(F9.4),'    ')",advance='no') enuc,ekin,ehart, eexx_hyb,exc, enuc+ekin+ehart+eexx_hyb+exc  
  !
  ! LR Exchange contribution to the Hamiltonian
  !
-! if(calc_type%need_exchange_lr) then
-!   hamiltonian_spin_tmp(:,:,:) = 0.0_dp
-!
-!     call setup_exchange_longrange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
-!   
-!   ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
-!   eexx_hyb = alpha_hybrid_lr * eexx
-!   hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * alpha_hybrid_lr
-! endif
+ ! if(calc_type%need_exchange_lr) then
+ !   hamiltonian_spin_tmp(:,:,:) = 0.0_dp
+ !
+ !     call setup_exchange_longrange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
+ !   
+ !   ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
+ !   eexx_hyb = alpha_hybrid_lr * eexx
+ !   hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * alpha_hybrid_lr
+ ! endif
 
 
 end subroutine  calculate_hamiltonian_hxc_ri_cmplx

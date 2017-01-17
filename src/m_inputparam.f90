@@ -102,6 +102,7 @@ module m_inputparam
  character(len=12),protected      :: partition_scheme
  character(len=12),protected      :: init_hamiltonian
  character(len=12),protected      :: prop_type
+ character(len=12),protected      :: excit_type
  real(dp),protected               :: diis_switch
  real(dp),protected               :: tolscf
  real(dp),protected               :: toldav
@@ -158,7 +159,8 @@ module m_inputparam
  real(dp),protected,allocatable   :: dft_xc_coef(:)
 
  real(dp),protected               :: time_step, time_sim
- 
+ real(dp),protected               :: excit_kappa, excit_omega, excit_time0
+ real(dp),protected               :: excit_dir(3)
 contains
 
 
@@ -781,6 +783,7 @@ subroutine read_inputfile_namelist()
  length_unit        = capitalize(length_unit)
  init_hamiltonian   = capitalize(init_hamiltonian)
  prop_type          = capitalize(prop_type)
+ excit_type         = capitalize(excit_type)
 
  ignore_restart_    = yesno(ignore_restart)
  ignore_bigrestart_ = yesno(ignore_bigrestart)

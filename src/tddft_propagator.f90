@@ -16,7 +16,14 @@
 
 
 !=========================================================================
-subroutine calculate_propagation(nstate, basis, occupation, energy, s_matrix, c_matrix,hamiltonian_kinetic,hamiltonian_nucleus)
+subroutine calculate_propagation(nstate,              &  
+                                 basis,               &  
+                                 occupation,          &   
+                                 energy,              &
+                                 s_matrix,            & 
+                                 c_matrix,            &
+                                 hamiltonian_kinetic, & 
+                                 hamiltonian_nucleus)
  use ISO_C_BINDING
  use m_definitions
  use m_basis_set
@@ -40,10 +47,9 @@ subroutine calculate_propagation(nstate, basis, occupation, energy, s_matrix, c_
 !=====
  integer                    :: itau, jtau, ntau, idir, info, ispin
  integer                    :: file_time_data, file_excit_field, file_check_matrix
- integer                    :: file_lin_resp 
- real(dp)                   :: t_min, time_cur, excit_field(3)
+ integer                    :: file_dipolar_spectra, file_dipole_time 
+ real(dp)                   :: t_min, time_cur, excit_field(3), eexcit
  real(dp),allocatable       :: s_matrix_inv(:,:)
- real(dp),allocatable       :: p_matrix(:,:,:)
  real(dp),allocatable       :: dipole_basis(:,:,:)
  real(dp)                   :: dipole(3)
  complex(dpc),allocatable   :: dipole_time(:,:)
@@ -64,9 +70,8 @@ subroutine calculate_propagation(nstate, basis, occupation, energy, s_matrix, c_
  call init_dft_grid(grid_level)
  
  t_min=0.0_dp
-
+write(stdout,*) "ONLY ONCE", excit_dir
  allocate(s_matrix_inv(basis%nbf,basis%nbf))
- allocate(p_matrix(basis%nbf,basis%nbf,nspin))
  allocate(hamiltonian_fock_cmplx(basis%nbf,basis%nbf,nspin))
  allocate(c_matrix_cmplx(basis%nbf,nstate,nspin))
  allocate(p_matrix_cmplx(basis%nbf,basis%nbf,nspin))
@@ -76,8 +81,13 @@ subroutine calculate_propagation(nstate, basis, occupation, energy, s_matrix, c_
  allocate(dipole_basis(basis%nbf,basis%nbf,3))
  allocate(check_matrix(basis%nbf,basis%nbf))
 
+
+
  c_matrix_cmplx(:,:,:)=c_matrix(:,:,:) 
- p_matrix_cmplx(:,:,:)=p_matrix(:,:,:)
+
+ call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
+
+
 
  call invert(basis%nbf,s_matrix,s_matrix_inv)  
  call fill_unity(m_unity,basis%nbf)
@@ -90,64 +100,81 @@ subroutine calculate_propagation(nstate, basis, occupation, energy, s_matrix, c_
  
  dipole_time(:,:)= ( 0.0_dp , 0.0_dp )
  
- ! open(newunit=file_time_data,file="time_data.dat")
+ open(newunit=file_time_data,file="time_data.dat")
  open(newunit=file_excit_field,file="excitation.dat")
- ! open(newunit=file_check_matrix,file="check_matrix.dat")
+ open(newunit=file_dipole_time,file="dipole_time.dat")
+ open(newunit=file_check_matrix,file="check_matrix.dat")
 
  !do idir=1,3
  !  call print_square_2d_matrix_real("dipole_basis", dipole_basis(:,:,idir) , basis%nbf, file_check_matrix, 3 )
  !end do 
 
  !write(file_time_data,*) "# time_cur real(c_matrix_cmplx(1,1,1)), aimag(c_matrix_cmplx(1,1,1)), real(p_matrix_cmplx(2,1,1)), aimag(p_matrix_cmplx(2,1,1))"
-
+ 
 
  select case (prop_type)
  case('CN')
    !********start time loop*************
    do itau=1,ntau
      time_cur=t_min+itau*time_step
-     ! write(file_time_data,"(F9.4)",advance='no') time_cur
-      write(stdout,"(A,F9.4)") "time_cur = ", time_cur
-      ! write(file_check_matrix,*) "========================="
-      ! write(file_check_matrix,"(A,F9.4)") "time_cur = ", time_cur
+     eexcit=0.0_dp
+     write(file_time_data,"(F9.4)",advance='no') time_cur
+     !write(stdout,"(A,F9.4)") "time_cur = ", time_cur
+     write(file_check_matrix,*) "========================="
+     write(file_check_matrix,"(A,F9.4)") "time_cur = ", time_cur
       !--Hamiltonian - Hartree Exchange Correlation---
       call calculate_hamiltonian_hxc_ri_cmplx(basis,nstate,basis%nbf,basis%nbf,basis%nbf,nstate,occupation, &
-                 c_matrix_cmplx,hamiltonian_fock_cmplx,file_check_matrix)
+      c_matrix_cmplx,p_matrix_cmplx,hamiltonian_fock_cmplx,hamiltonian_kinetic,hamiltonian_nucleus,file_time_data)
      do ispin=1, nspin  
+
        !--ChEcK c_MaTrIx--
        !     write(file_check_matrix,"(A,I2)") "ispin = ", ispin
        !     check_matrix = MATMUL(MATMUL(s_matrix(:,:) ,c_matrix_cmplx(:,:,nspin) ) ,TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin)))  )
        !     call print_square_2d_matrix_cmplx("S*C*C**H = ",check_matrix,basis%nbf,file_check_matrix,4)
+
+       call print_square_2d_matrix_cmplx("c_matrx_cmplx = ",c_matrix_cmplx,basis%nbf,file_check_matrix,2)
        !------
+
        !--Hamiltonian - Static part--
        hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+
        !--Hamiltonian - Excitation--
-       call calculate_excit_field(time_cur,excit_field)
-       write(file_excit_field,*) time_cur, excit_field
-       do idir=1,3
-         hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) - &
-                                   & dipole_basis(:,:,idir) * excit_field(idir)
-       end do     
-       !call print_square_2d_matrix_cmplx("Hamiltonian = ",hamiltonian_fock_cmplx,basis%nbf,file_check_matrix,4)
+       select case(excit_type)
+       case('GEF')
+         call calculate_excit_field(time_cur,excit_field)
+         write(file_excit_field,*) time_cur, excit_field
+         do idir=1,3
+           hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) - &
+                                     & dipole_basis(:,:,idir) * excit_field(idir)
+           eexcit=eexcit+real(SUM(dipole_basis(:,:,idir)*excit_field(idir)*SUM(p_matrix_cmplx(:,:,:),DIM=3)),dp)                  
+         end do     
+         !call print_square_2d_matrix_cmplx("Hamiltonian = ",hamiltonian_fock_cmplx,basis%nbf,file_check_matrix,4)
+       case default
+         call die('Invalid choice for the excitation type. Change excit_type value in the input file')
+       end select
        !-------------------------------
        l_matrix(:,:,ispin) = m_unity + im * time_step / 2.0_dp * matmul( s_matrix_inv,hamiltonian_fock_cmplx(:,:,ispin)  )
        b_matrix(:,:,ispin) = m_unity - im * time_step / 2.0_dp * matmul( s_matrix_inv,hamiltonian_fock_cmplx(:,:,ispin)  )
        call invert(basis%nbf , l_matrix(:,:,ispin))
        c_matrix_cmplx(:,:,ispin) = matmul( l_matrix(:,:,ispin),matmul( b_matrix(:,:,ispin),c_matrix_cmplx(:,:,ispin) ) )
        
-       call static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole(:))
-       dipole_time(itau,:)=dipole(:)
      end do !spin loop
+     call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
+
+     write(file_time_data,"(F9.4,'   ',2(2x,F7.2))") eexcit, matrix_trace_cmplx(matmul(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
+     call static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole(:))
+     dipole_time(itau,:)=dipole(:)
+     write(file_dipole_time,*) time_cur, dipole(:)
    end do
    !********end time loop*******************
  case default
    call die('Invalid choice for the propagation algorithm. Change prop_type value in the input file')
  end select
 
- ! close(file_time_data)
+ close(file_time_data)
  close(file_excit_field)
  ! close(file_check_matrix)
-
+ close(file_dipole_time)
 #ifdef HAVE_FFTW
  !---Fourier Transform of dipole_time---
  do idir=1,3
@@ -159,9 +186,9 @@ subroutine calculate_propagation(nstate, basis, occupation, energy, s_matrix, c_
 
  trans_dipole_time(:,:)=trans_dipole_time(:,:) / ( 2.0_dp * ntau )
  
- open(newunit=file_lin_resp,file="lin_resp.dat")
+ open(newunit=file_dipolar_spectra,file="dipolar_spectra.dat")
  do itau=1,2*ntau
-   write(file_lin_resp,*) pi * itau / time_sim * Ha_eV, (abs(trans_dipole_time(itau,:)))**2 
+   write(file_dipolar_spectra,*) pi * itau / time_sim * Ha_eV, (abs(trans_dipole_time(itau,:)))**2 
  end do
 
 
@@ -179,21 +206,18 @@ end subroutine calculate_propagation
 !==========================================
 subroutine calculate_excit_field(time_cur,excit_field)
  use m_definitions
+ use m_inputparam
  implicit none
  real(dp),intent(in)      :: time_cur ! time in au
  real(dp),intent(inout)   :: excit_field(3) ! electric field in 3 dimensions
 !=====
- real(dp)              :: omega, kappa ! Follow notations from article Lopata et al. Modeling Fast Electron ... J. Chem Theory Comput, 2011
- real(dp)              :: time_0
- integer               :: dir
-!=====   
- kappa=5.01_dp
- omega=0.2_dp
- time_0=3.0_dp
- dir=1
-  
- excit_field(:) = 0.0_dp
- excit_field(dir) = kappa * exp( -(time_cur-time_0)**2 / 2.0_dp / omega**2 )
+ real(dp)    :: norm_dir
+!=====
+
+ norm_dir=NORM2(excit_dir(:))
+ 
+ excit_field(:) = excit_kappa * exp( -(time_cur-excit_time0)**2 / 2.0_dp / excit_omega**2 ) * &
+                  & excit_dir(:) / norm_dir
 
 end subroutine calculate_excit_field
 

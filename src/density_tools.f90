@@ -118,6 +118,46 @@ subroutine calc_density_r(nspin,nbf,nstate,occupation,c_matrix,basis_function_r,
 end subroutine calc_density_r
 
 
+
+!=========================================================================
+subroutine calc_density_r_cmplx(nspin,nbf,nstate,occupation,c_matrix_cmplx,basis_function_r,rhor)
+ use m_definitions
+ use m_mpi
+ use m_timing
+ use m_basis_set
+ implicit none
+
+ integer,intent(in)         :: nspin,nbf,nstate
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: basis_function_r(nbf)
+ real(dp),intent(out)       :: rhor(nspin)
+ complex(dpc),intent(in)    :: c_matrix_cmplx(nbf,nstate,nspin)
+ !=====
+ integer                    :: ispin,istate
+ complex(dpc)               :: phi_ir_cmplx
+ complex(dpc)               :: test
+ !=====
+
+ !
+ ! Calculate the density rho at point r
+ rhor(:)=0.0_dp
+ 
+ do ispin=1,nspin
+ test=(0.0_dp,0.0_dp)
+   do istate=1,nstate
+   if( occupation(istate,ispin) < completely_empty ) cycle
+
+      phi_ir_cmplx = DOT_PRODUCT( basis_function_r(:) , c_matrix_cmplx(:,istate,ispin) )
+      rhor(ispin) = rhor(ispin) + REAL( phi_ir_cmplx * CONJG(phi_ir_cmplx) * occupation(istate,ispin), dp )
+      test=test+phi_ir_cmplx * CONJG(phi_ir_cmplx) * occupation(istate,ispin)
+    enddo
+  enddo
+
+
+end subroutine calc_density_r_cmplx
+
+
+
 !=========================================================================
 subroutine calc_density_gradr_pmatrix(nspin,nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
  use m_definitions
@@ -184,6 +224,45 @@ subroutine calc_density_gradr(nspin,nbf,nstate,occupation,c_matrix,basis_functio
 
 
 end subroutine calc_density_gradr
+
+
+!=========================================================================
+subroutine calc_density_gradr_cmplx(nspin,nbf,nstate,occupation,c_matrix_cmplx,basis_function_r,basis_function_gradr,grad_rhor)
+ use m_definitions
+ use m_mpi
+ use m_timing
+ use m_basis_set
+ implicit none
+ integer,intent(in)         :: nspin,nbf,nstate
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: basis_function_r(nbf)
+ real(dp),intent(in)        :: basis_function_gradr(3,nbf)
+ real(dp),intent(out)       :: grad_rhor(3,nspin)
+ real(dpc),intent(in)       :: c_matrix_cmplx(nbf,nstate,nspin)
+!=====
+ integer              :: ispin,ibf,istate
+ complex(dp)          :: phi_ir_cmplx
+ complex(dp)          :: grad_phi_ir_cmplx(3)
+!=====
+
+ !
+ ! Calculate the density gradient \nabla rho at point r
+ grad_rhor(:,:) = 0.0_dp
+
+ do ispin=1,nspin
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty ) cycle
+
+     phi_ir_cmplx         = DOT_PRODUCT( basis_function_r(:) , c_matrix_cmplx(:,istate,ispin) )
+     grad_phi_ir_cmplx(:) = MATMUL( basis_function_gradr(:,:) , c_matrix_cmplx(:,istate,ispin) )
+
+     grad_rhor(:,ispin) = grad_rhor(:,ispin) + REAL ( ( phi_ir_cmplx * CONJG( grad_phi_ir_cmplx(:)) + CONJG(phi_ir_cmplx) * grad_phi_ir_cmplx(:)) * occupation(istate,ispin) , dp )
+
+   enddo
+ enddo
+
+
+end subroutine calc_density_gradr_cmplx
 
 
 !=========================================================================

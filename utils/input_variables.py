@@ -863,6 +863,53 @@ vl[i].datatype ='characters'
 vl[i].comment  ='Sets the type of propagation algorithm in the real-time dynamics. \
                  \'CN stands for Crank-Nickolson\''
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='excit_type'
+vl[i].family   ='post'
+vl[i].default  ='GEF'
+vl[i].datatype ='characters'
+vl[i].comment  ='Sets the type of excitation of a system in the real-time dynamics. \
+                         \'GEF stands for a linearly polarized uniform Gaussian electric field\''
+
+# For excitation field parameters follow notations from article Lopata et al. Modeling Fast Electron ... J. Chem Theory Comput, 2011
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='excit_kappa'
+vl[i].family   ='post'
+vl[i].default  =2.e-5
+vl[i].datatype ='real'
+vl[i].comment  ='Maximum Gaussian excitation field strength in atomic units.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='excit_omega'
+vl[i].family   ='post'
+vl[i].default  =0.2
+vl[i].datatype ='real'
+vl[i].comment  ='The excitation pulse width in atomic units for the real-time dynamics.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='excit_time0'
+vl[i].family   ='post'
+vl[i].default  =3.
+vl[i].datatype ='real'
+vl[i].comment  ='Center of the excitation pulse in atomic units for the real-time dynamics.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='excit_dir'
+vl[i].family   ='post'
+vl[i].default  =( 1.0 , 0.0, 0.0 )
+vl[i].datatype ='vector_1d_3'
+vl[i].comment  ='Excitation direction for the real-time dynamics.'
 
 
 
@@ -894,6 +941,9 @@ for i in range(len(vl)):
     ffor.write(' '+vl[i].keyword+'='+str(vl[i].default)+'\n')
   if vl[i].datatype =='real':
     ffor.write(' '+vl[i].keyword+'='+str(vl[i].default)+'_dp \n')
+  if vl[i].datatype =='vector_1d_3':
+     x,y,z=str(vl[i].default).strip("()").split(',')
+     ffor.write(' '+vl[i].keyword+'='+'(/ '+x+'_dp ,'+y+'_dp ,'+z+'_dp'+' /)'+'\n')
   elif vl[i].datatype =='yes/no' or vl[i].datatype =='characters':
     ffor.write(' '+vl[i].keyword+'=\''+str(vl[i].default)+'\'\n')
 
@@ -925,6 +975,8 @@ for i in range(len(vl)):
     fortran_format = '\'(1x,a24,6x,a)\''
   elif 'yes' in vl[i].datatype:
     fortran_format = '\'(1x,a24,6x,a)\''
+  elif 'vector_1d_3' in vl[i].datatype:
+    fortran_format = '\'(1x,a24,2x,"(",3(es16.8,2x),")")\''
   else:
     fortran_format = 'ERROR'
   ffor.write(' write(stdout,'+fortran_format+') \''+vl[i].keyword+'\','+vl[i].keyword+' \n')

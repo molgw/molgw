@@ -59,6 +59,26 @@ function matrix_trace(matrix)
 end function matrix_trace
 
 !=========================================================================
+function matrix_trace_cmplx(matrix)
+ implicit none
+ complex(dpc),intent(in) :: matrix(:,:)
+ complex(dpc)            :: matrix_trace_cmplx
+!=====
+ integer :: n1,i1
+!=====
+
+ n1 = SIZE( matrix , DIM=1 )
+ if( n1 /= SIZE( matrix , DIM=2 ) ) call die('matrix_trace: non square matrix')
+
+ matrix_trace_cmplx = ( 0.0_dp, 0.0_dp )
+ do i1=1,n1
+   matrix_trace_cmplx = matrix_trace_cmplx + matrix(i1,i1)
+ enddo
+
+end function matrix_trace_cmplx
+
+
+!=========================================================================
 subroutine init_seed(iseed)
  implicit none
  integer,intent(in),optional :: iseed
