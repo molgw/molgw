@@ -216,7 +216,7 @@ subroutine calculate_excit_field(time_cur,excit_field)
 
  norm_dir=NORM2(excit_dir(:))
  
- excit_field(:) = excit_kappa * exp( -(time_cur-excit_time0)**2 / 2.0_dp / excit_omega**2 ) * &
+ excit_field(:) = excit_kappa * exp( -( time_cur-excit_time0 )**2 / 2.0_dp / excit_omega**2 ) * &
                   & excit_dir(:) / norm_dir
 
 end subroutine calculate_excit_field
