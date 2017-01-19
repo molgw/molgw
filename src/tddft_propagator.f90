@@ -82,7 +82,7 @@ write(stdout,*) "ONLY ONCE", excit_dir
  allocate(check_matrix(basis%nbf,basis%nbf))
 
 
-
+ ! c_matrix_cmplx(:,:,:)=c_matrix(:,:,:)
  c_matrix_cmplx(:,:,:)=c_matrix(:,:,:) 
 
  call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
@@ -103,14 +103,17 @@ write(stdout,*) "ONLY ONCE", excit_dir
  open(newunit=file_time_data,file="time_data.dat")
  open(newunit=file_excit_field,file="excitation.dat")
  open(newunit=file_dipole_time,file="dipole_time.dat")
+
+ write(file_time_data,*) "# time_cur enuc  ekin  ehart  eexx_hyb  exc   e_total eexcit trace"
+
+#ifdef CHECK_MATRIX
+
  open(newunit=file_check_matrix,file="check_matrix.dat")
+ do idir=1,3
+   call print_square_2d_matrix_real("dipole_basis", dipole_basis(:,:,idir) , basis%nbf, file_check_matrix, 3 )
+ end do 
 
- !do idir=1,3
- !  call print_square_2d_matrix_real("dipole_basis", dipole_basis(:,:,idir) , basis%nbf, file_check_matrix, 3 )
- !end do 
-
- !write(file_time_data,*) "# time_cur real(c_matrix_cmplx(1,1,1)), aimag(c_matrix_cmplx(1,1,1)), real(p_matrix_cmplx(2,1,1)), aimag(p_matrix_cmplx(2,1,1))"
- 
+#endif
 
  select case (prop_type)
  case('CN')
@@ -119,22 +122,32 @@ write(stdout,*) "ONLY ONCE", excit_dir
      time_cur=t_min+itau*time_step
      eexcit=0.0_dp
      write(file_time_data,"(F9.4)",advance='no') time_cur
-     !write(stdout,"(A,F9.4)") "time_cur = ", time_cur
+     write(stdout,"(A,F9.4)") "time_cur = ", time_cur
+
+#ifdef CHECK_MATRIX
+
      write(file_check_matrix,*) "========================="
      write(file_check_matrix,"(A,F9.4)") "time_cur = ", time_cur
-      !--Hamiltonian - Hartree Exchange Correlation---
-      call calculate_hamiltonian_hxc_ri_cmplx(basis,nstate,basis%nbf,basis%nbf,basis%nbf,nstate,occupation, &
-      c_matrix_cmplx,p_matrix_cmplx,hamiltonian_fock_cmplx,hamiltonian_kinetic,hamiltonian_nucleus,file_time_data)
-     do ispin=1, nspin  
 
-       !--ChEcK c_MaTrIx--
-       !     write(file_check_matrix,"(A,I2)") "ispin = ", ispin
-       !     check_matrix = MATMUL(MATMUL(s_matrix(:,:) ,c_matrix_cmplx(:,:,nspin) ) ,TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin)))  )
-       !     call print_square_2d_matrix_cmplx("S*C*C**H = ",check_matrix,basis%nbf,file_check_matrix,4)
+#endif
 
-       call print_square_2d_matrix_cmplx("c_matrx_cmplx = ",c_matrix_cmplx,basis%nbf,file_check_matrix,2)
+     !--Hamiltonian - Hartree Exchange Correlation---
+     call calculate_hamiltonian_hxc_ri_cmplx(basis,                    &
+                                             nstate,                   &
+                                             basis%nbf,                &
+                                             basis%nbf,                &
+                                             basis%nbf,                &
+                                             nstate,                   &      
+                                             occupation,               &       
+                                             c_matrix_cmplx,           &          
+                                             p_matrix_cmplx,           &          
+                                             hamiltonian_fock_cmplx,   &                   
+                                             hamiltonian_kinetic,      &                
+                                             hamiltonian_nucleus,      &                
+                                             file_time_data,           &            
+                                             file_check_matrix)         
+     do ispin=1, nspin                                                  
        !------
-
        !--Hamiltonian - Static part--
        hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
 
@@ -148,7 +161,17 @@ write(stdout,*) "ONLY ONCE", excit_dir
                                      & dipole_basis(:,:,idir) * excit_field(idir)
            eexcit=eexcit+real(SUM(dipole_basis(:,:,idir)*excit_field(idir)*SUM(p_matrix_cmplx(:,:,:),DIM=3)),dp)                  
          end do     
-         !call print_square_2d_matrix_cmplx("Hamiltonian = ",hamiltonian_fock_cmplx,basis%nbf,file_check_matrix,4)
+#ifdef CHECK_MATRIX                                                                        
+       !--ChEcK c_MaTrIx--
+        write(file_check_matrix,"(A,I2)") "ispin = ", ispin
+        check_matrix = MATMUL(MATMUL(s_matrix(:,:) ,c_matrix_cmplx(:,:,ispin) ) ,TRANSPOSE(CONJG(c_matrix_cmplx(:,:,ispin)))  )
+        call print_square_2d_matrix_cmplx("S*C*C**H = ",check_matrix,basis%nbf,file_check_matrix,4)
+        call print_square_2d_matrix_cmplx("c_matrx_cmplx = ",c_matrix_cmplx(:,:,ispin),basis%nbf,file_check_matrix,2)
+        call print_square_2d_matrix_cmplx("p_matrix_cmplx = ",p_matrix_cmplx(:,:,ispin),basis%nbf,file_check_matrix,2)
+        call print_square_2d_matrix_cmplx("Hamiltonian_cmplx = ",hamiltonian_fock_cmplx(:,:,ispin),basis%nbf,file_check_matrix,4)
+
+#endif
+
        case default
          call die('Invalid choice for the excitation type. Change excit_type value in the input file')
        end select
@@ -159,12 +182,12 @@ write(stdout,*) "ONLY ONCE", excit_dir
        c_matrix_cmplx(:,:,ispin) = matmul( l_matrix(:,:,ispin),matmul( b_matrix(:,:,ispin),c_matrix_cmplx(:,:,ispin) ) )
        
      end do !spin loop
-     call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
 
+     call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
      write(file_time_data,"(F9.4,'   ',2(2x,F7.2))") eexcit, matrix_trace_cmplx(matmul(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
      call static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole(:))
      dipole_time(itau,:)=dipole(:)
-     write(file_dipole_time,*) time_cur, dipole(:)
+     write(file_dipole_time,*) time_cur, dipole(:) * au_debye
    end do
    !********end time loop*******************
  case default
@@ -173,8 +196,14 @@ write(stdout,*) "ONLY ONCE", excit_dir
 
  close(file_time_data)
  close(file_excit_field)
- ! close(file_check_matrix)
  close(file_dipole_time)
+
+#ifdef CHECK_MATRIX  
+
+ close(file_check_matrix)
+
+#endif 
+
 #ifdef HAVE_FFTW
  !---Fourier Transform of dipole_time---
  do idir=1,3
@@ -257,7 +286,7 @@ subroutine print_square_2d_matrix_cmplx (desc,matrix_cmplx,size_m,write_unit,pre
  character(100)  :: write_format1, write_format2
  integer            :: ivar
 
- write(write_format1,*) '(',size_m," ('(',F", prec+4, ".", prec,"' ,',F", prec+4, ".",prec,",')  ') " ,')' ! (  1.01 ,  -0.03)  (  0.04 ,  0.10) 
+ write(write_format1,*) '(',size_m," ('( ',F", prec+4, ".", prec,"' ,',F", prec+4, ".",prec,",' )  ') " ,')' ! (  1.01 ,  -0.03)  (  0.04 ,  0.10) 
  write(write_format2,*) '(',size_m," (F", prec+4, ".", prec,"' +  i',F", prec+4, ".",prec,",'  ') " ,')'   ! 1.01 +  i  -0.03    0.03 +  i  0.10
  write(write_unit,*) desc
  do ivar=1,size_m

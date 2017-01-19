@@ -713,7 +713,6 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,occupation,c_matrix_cmplx,p_matrix
  call start_clock(timing_exchange)
 
  exchange_ij_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
-! allocate(tmp(nauxil_3center,nbf))
  allocate(tmp_cmplx(nauxil_3center,nbf))
  do ispin=1,nspin
 
@@ -728,7 +727,7 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,occupation,c_matrix_cmplx,p_matrix
    do istate=1,nocc
      if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle
 
-     tmp_cmplx(:,:) = 0.0_dp
+     tmp_cmplx(:,:) = ( 0.0_dp, 0.0_dp )
      !$OMP PARALLEL PRIVATE(ibf,jbf) 
      !$OMP DO REDUCTION(+:tmp_cmplx)
      do ipair=1,npair
@@ -743,7 +742,7 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,occupation,c_matrix_cmplx,p_matrix
 
      ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
-     ! C = A^T * A + C ; C - exchange_ij(:,:,ispin); A - tmp
+     ! C = A^H * A + C ; C - exchange_ij(:,:,ispin); A - tmp
      call ZHERK('L','C',nbf,nauxil_3center,-occupation(istate,ispin)/spin_fact,tmp_cmplx,nauxil_3center,1.0_dp,exchange_ij_cmplx(:,:,ispin),nbf)
    enddo
 
@@ -756,16 +755,11 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,occupation,c_matrix_cmplx,p_matrix
    enddo
 
  enddo ! end of loop do ispin=1,nspin
-! deallocate(tmp)
-! call xsum_world(exchange_ij)
  deallocate(tmp_cmplx)
  ! This interface should work also for complex exchange_ij_cmplx 
  call xsum_world(exchange_ij_cmplx)
- !!!!! CHECK THAT IM(EEXCHANGE)=0.0
- eexchange = real( 0.5_dp * SUM( exchange_ij_cmplx(:,:,:) * p_matrix_cmplx(:,:,:) ),dp)
+ eexchange = real( 0.5_dp * SUM( exchange_ij_cmplx(:,:,:) * conjg(p_matrix_cmplx(:,:,:)) ),dp)
 
- write(stdout,*) "This is subroutine setup_exchange_ri_cmplx and the eexchange value is: "
- write(stdout,*) eexchange, 0.5_dp * SUM(exchange_ij_cmplx(:,:,:) * p_matrix_cmplx(:,:,:))
  call stop_clock(timing_exchange)
 
 end subroutine setup_exchange_ri_cmplx
@@ -973,7 +967,7 @@ subroutine setup_density_matrix_cmplx(nbf,nstate,c_matrix_cmplx,occupation,p_mat
  call start_clock(timing_density_matrix)
  write(stdout,'(1x,a)') 'Build density matrix'
 
- p_matrix_cmplx(:,:,:) = 0.0_dp
+ p_matrix_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
  do ispin=1,nspin
    do istate=1,nstate
      if( occupation(istate,ispin) < completely_empty ) cycle
@@ -984,7 +978,7 @@ subroutine setup_density_matrix_cmplx(nbf,nstate,c_matrix_cmplx,occupation,p_mat
    do jbf=1,nbf
      do ibf=jbf+1,nbf
        p_matrix_cmplx(jbf,ibf,ispin) = conjg( p_matrix_cmplx(ibf,jbf,ispin) )
-       enddo
+     enddo
    enddo
  enddo
  call stop_clock(timing_density_matrix)

@@ -631,7 +631,8 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
                                               hamiltonian_hxc_cmplx,  &         
                                               hamiltonian_kinetic,    &
                                               hamiltonian_nucleus,    &
-                                              write_unit)
+                                              file_time_data,         &
+                                              file_check_matrix)
  use m_scalapack
  use m_basis_set
  use m_hamiltonian
@@ -641,7 +642,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  implicit none
 
  type(basis_set),intent(in) :: basis
- integer,intent(in)         :: m_ham,n_ham,write_unit
+ integer,intent(in)         :: m_ham,n_ham,file_time_data, file_check_matrix
  integer,intent(in)         :: nstate
  integer,intent(in)         :: m_c,n_c
  real(dp),intent(in)        :: occupation(nstate,nspin)
@@ -675,9 +676,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
 
  if ( parallel_ham ) call die('parallel_ham not yet implemented for propagator')
  
- !write(write_unit,*) real(c_matrix_cmplx(1,1,1)), aimag(c_matrix_cmplx(1,1,1)), real(p_matrix_cmplx(1,1,1)), aimag(p_matrix_cmplx(1,1,1))
  ! Initialize real arrays
- ! call print_square_2d_matrix_cmplx("p_matrix(spin=1) = ",p_matrix_cmplx(:,:,1),basis%nbf,write_unit,4)
  
  c_matrix=real(c_matrix_cmplx,dp)
  p_matrix=real(p_matrix_cmplx,dp)
@@ -695,6 +694,11 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
    hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) * alpha_hybrid
  endif
 
+#ifdef CHECK_MATRIX
+
+ call print_square_2d_matrix_cmplx("exchange = ",hamiltonian_hxc_cmplx(:,:,1),basis%nbf,file_check_matrix,2)
+
+#endif
 
  !
  ! Hartree contribution to the Hamiltonian
@@ -709,6 +713,11 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
    hamiltonian_hxc_cmplx(:,:,ispin) = hamiltonian_hxc_cmplx(:,:,ispin) + hamiltonian_tmp(:,:,1)
  enddo
 
+#ifdef CHECK_MATRIX
+
+ call print_square_2d_matrix_real("hartree = ",hamiltonian_tmp(:,:,1),basis%nbf,file_check_matrix,2)
+
+#endif
 
  !
  !  XC part of the Hamiltonian
@@ -726,8 +735,13 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  ekin  = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
  enuc  = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
  
+#ifdef CHECK_MATRIX
 
- write(write_unit,"(6(F9.4),'    ')",advance='no') enuc,ekin,ehart, eexx_hyb,exc, enuc+ekin+ehart+eexx_hyb+exc  
+ call print_square_2d_matrix_real("dft_xc = ",hamiltonian_tmp(:,:,1),basis%nbf,file_check_matrix,2)
+
+#endif
+
+ write(file_time_data,"(6(F9.4),'    ')",advance='no') enuc,ekin,ehart, eexx_hyb,exc, enuc+ekin+ehart+eexx_hyb+exc
  !
  ! LR Exchange contribution to the Hamiltonian
  !
