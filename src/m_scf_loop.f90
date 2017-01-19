@@ -694,11 +694,9 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
    hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) * alpha_hybrid
  endif
 
-#ifdef CHECK_MATRIX
+ if ( print_tddft_matrices_  ) & 
+  call print_square_2d_matrix_cmplx("exchange = ",hamiltonian_hxc_cmplx(:,:,1),basis%nbf,file_check_matrix,2)
 
- call print_square_2d_matrix_cmplx("exchange = ",hamiltonian_hxc_cmplx(:,:,1),basis%nbf,file_check_matrix,2)
-
-#endif
 
  !
  ! Hartree contribution to the Hamiltonian
@@ -713,11 +711,9 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
    hamiltonian_hxc_cmplx(:,:,ispin) = hamiltonian_hxc_cmplx(:,:,ispin) + hamiltonian_tmp(:,:,1)
  enddo
 
-#ifdef CHECK_MATRIX
+ if ( print_tddft_matrices_  ) & 
+   call print_square_2d_matrix_real("hartree = ",hamiltonian_tmp(:,:,1),basis%nbf,file_check_matrix,2)
 
- call print_square_2d_matrix_real("hartree = ",hamiltonian_tmp(:,:,1),basis%nbf,file_check_matrix,2)
-
-#endif
 
  !
  !  XC part of the Hamiltonian
@@ -735,11 +731,9 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  ekin  = SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
  enuc  = SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
  
-#ifdef CHECK_MATRIX
+ if ( print_tddft_matrices_  ) & 
+   call print_square_2d_matrix_real("dft_xc = ",hamiltonian_tmp(:,:,1),basis%nbf,file_check_matrix,2)
 
- call print_square_2d_matrix_real("dft_xc = ",hamiltonian_tmp(:,:,1),basis%nbf,file_check_matrix,2)
-
-#endif
 
  write(file_time_data,"(6(F9.4),'    ')",advance='no') enuc,ekin,ehart, eexx_hyb,exc, enuc+ekin+ehart+eexx_hyb+exc
  !

@@ -911,6 +911,14 @@ vl[i].default  =( 1.0 , 0.0, 0.0 )
 vl[i].datatype ='vector_1d_3'
 vl[i].comment  ='Excitation direction for the real-time dynamics.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='print_tddft_matrices'
+vl[i].family   ='post'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints some matrices of the real-time dynamics into the file check_matrix.dat.'
 
 
 #============================================================================

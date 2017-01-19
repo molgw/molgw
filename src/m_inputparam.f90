@@ -161,6 +161,7 @@ module m_inputparam
  real(dp),protected               :: time_step, time_sim
  real(dp),protected               :: excit_kappa, excit_omega, excit_time0
  real(dp),protected               :: excit_dir(3)
+ logical,protected                :: print_tddft_matrices_
 contains
 
 
@@ -699,6 +700,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_pdos,print_cube,print_multipole
  character(len=3)     :: tda,triplet,frozencore,virtual_fno
  character(len=3)     :: gwgamma_tddft
+ character(len=3)     :: print_tddft_matrices
  real(dp)             :: length_factor,eta
  integer              :: natom_read
  integer              :: atom_number,info,iatom
@@ -804,7 +806,7 @@ subroutine read_inputfile_namelist()
  print_multipole_   = yesno(print_multipole)
  print_cube_        = yesno(print_cube)
  gwgamma_tddft_     = yesno(gwgamma_tddft)
-
+ print_tddft_matrices_ = yesno(print_tddft_matrices)
  tddft_grid_level   = interpret_quality(tddft_grid_quality)
  grid_level         = interpret_quality(grid_quality)
  ecp_level          = interpret_quality(ecp_quality)

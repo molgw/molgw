@@ -278,11 +278,11 @@ end subroutine diagonalize_wo_vectors_dp
 subroutine diagonalize_cdp(n,matrix,eigval,eigvec)
  implicit none
  integer,intent(in) :: n
- complex(dp),intent(in) :: matrix(n,n)
+ complex(dpc),intent(in) :: matrix(n,n)
  real(dp),intent(out) :: eigval(n)
- complex(dp),intent(out) :: eigvec(n,n)
+ complex(dpc),intent(out) :: eigvec(n,n)
 
- complex(dp) :: work(2*n-1)
+ complex(dpc) :: work(2*n-1)
  real(dp) :: rwork(3*n-2)
  integer :: info
 
