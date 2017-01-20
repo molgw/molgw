@@ -2,3 +2,4 @@ molgw
 *.mod
 *.o
 src/my_machine.arch
+tests/tmp_*

@@ -837,15 +837,15 @@ subroutine evaluate_gos(ga,gb,qvec,gos_ab)
 !=====
  type(gaussian),intent(in) :: ga,gb
  real(dp),intent(in)       :: qvec(3)
- complex(dpc),intent(out)   :: gos_ab
+ complex(dp),intent(out)   :: gos_ab
 !=====
- complex(dpc) :: sumx,sumy,sumz
- complex(dpc) :: fx,gx
- complex(dpc) :: fy,gy
- complex(dpc) :: fz,gz
- complex(dpc) :: factor
- real(dp)     :: aa,bb,ab
- integer :: ip
+ complex(dp) :: sumx,sumy,sumz
+ complex(dp) :: fx,gx
+ complex(dp) :: fy,gy
+ complex(dp) :: fz,gz
+ complex(dp) :: factor
+ real(dp)    :: aa,bb,ab
+ integer     :: ip
 !=====
 
  aa = ga%alpha
