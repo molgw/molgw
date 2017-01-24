@@ -270,9 +270,8 @@ program molgw
        call setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
      endif
    else
-     call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
+!     call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
      call setup_nucleus_libint(print_matrix_,basis,hamiltonian_nucleus)
-     call die('FBFB stop')
      if( nelement_ecp > 0 ) then
        call setup_nucleus_ecp(basis,hamiltonian_nucleus)
      endif

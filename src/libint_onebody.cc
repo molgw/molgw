@@ -60,6 +60,7 @@ void libint_overlap(int amA, int contrdepthA , double A [] , double alphaA [], d
      inteval[icontrdepth2].PB_y[0] = B[1] - P[1] ;
      inteval[icontrdepth2].PB_z[0] = B[2] - P[2] ;
 
+
      inteval[icontrdepth2]._0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,amA+amB)
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_x[0] * inteval[icontrdepth2].AB_x[0] / alphaP );
      inteval[icontrdepth2]._0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
@@ -133,7 +134,7 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
 
  double alphaP, ksiP ;
  double P[3];
- double ab2 ;
+ double ab2, pfac ;
 
  int icontrdepth2 = 0 ;
  for( int icontrdepthA=0; icontrdepthA < contrdepthA; icontrdepthA++)  {
@@ -155,6 +156,10 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
      inteval[icontrdepth2].PB_x[0] = B[0] - P[0] ;
      inteval[icontrdepth2].PB_y[0] = B[1] - P[1] ;
      inteval[icontrdepth2].PB_z[0] = B[2] - P[2] ;
+     inteval[icontrdepth2].PC_x[0] = C[0] - P[0] ;
+     inteval[icontrdepth2].PC_y[0] = C[1] - P[1] ;
+     inteval[icontrdepth2].PC_z[0] = C[2] - P[2] ;
+
      ab2 =  inteval[icontrdepth2].AB_x[0] * inteval[icontrdepth2].AB_x[0] 
           + inteval[icontrdepth2].AB_y[0] * inteval[icontrdepth2].AB_y[0]
           + inteval[icontrdepth2].AB_z[0] * inteval[icontrdepth2].AB_z[0] ;
@@ -174,18 +179,19 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
      U = alphaP * ( ( C[0] - P[0] ) * ( C[0] - P[0] ) + ( C[1] - P[1] ) * ( C[1] - P[1] ) + ( C[2] - P[2] ) * ( C[2] - P[2] ) ) ;
      boys_function_c(F, am, U);
 
-     inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_0[0] = 2.0 * ( M_PI / alphaP ) * exp( - ksiP * ab2 ) * F[0] 
-                                                                    * cA[icontrdepthA] * cB[icontrdepthB]
-                                                                    * pow(-1,amA+amB) ;
-     inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_1[0] = 2.0 * ( M_PI / alphaP ) * exp( - ksiP * ab2 ) * F[1] 
-                                                                    * cA[icontrdepthA] * cB[icontrdepthB]
-                                                                    * pow(-1,amA+amB) ;
-     inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_2[0] = 2.0 * ( M_PI / alphaP ) * exp( - ksiP * ab2 ) * F[2] 
-                                                                    * cA[icontrdepthA] * cB[icontrdepthB]
-                                                                    * pow(-1,amA+amB) ;
-     inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_3[0] = 2.0 * ( M_PI / alphaP ) * exp( - ksiP * ab2 ) * F[3] 
-                                                                    * cA[icontrdepthA] * cB[icontrdepthB]
-                                                                    * pow(-1,amA+amB) ;
+     pfac = 2.0 * ( M_PI / alphaP ) * exp( - ksiP * ab2 ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,amA+amB) ;
+
+     /* TODO what happens when F is evaluated beyond its range? */
+     inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_0[0] = pfac * F[0] ;
+     inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_1[0] = pfac * F[1] ;
+     inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_2[0] = pfac * F[2] ;
+     inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_3[0] = pfac * F[3] ;
+     inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_4[0] = pfac * F[4] ;
+     inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_5[0] = pfac * F[5] ;
+     inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_6[0] = pfac * F[6] ;
+     inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_7[0] = pfac * F[7] ;
+     inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_8[0] = pfac * F[8] ;
+     inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_9[0] = pfac * F[9] ;
 
 
      icontrdepth2++ ;
