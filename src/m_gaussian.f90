@@ -18,8 +18,10 @@ module m_gaussian
    character(len=1) :: amc
    integer          :: nx,ny,nz
    real(dp)         :: alpha
-   real(dp)         :: x0(3)         ! center of the gaussian
-   real(dp)         :: norm_factor   ! normalization factor for the gaussian squared
+   real(dp)         :: x0(3)                ! center of the gaussian
+   real(dp)         :: norm_factor          ! normalization factor for the gaussian squared
+   real(dp)         :: common_norm_factor   ! normalization factor for the gaussian squared
+                                            ! without the nx,ny,nz dependence
  end type gaussian
 
  interface
@@ -54,6 +56,10 @@ subroutine init_gaussian_general(nx,ny,nz,alpha,x0,ga)
  ga%norm_factor = ( 2.0_dp / pi )**0.75_dp &
                  * 2.0_dp**ga%am * ga%alpha**( 0.25_dp * ( 2.0_dp*ga%am + 3.0_dp ) ) &
                  / SQRT( REAL( double_factorial(2*nx-1) * double_factorial(2*ny-1) * double_factorial(2*nz-1) , dp ) )
+
+ ga%common_norm_factor = ( 2.0_dp / pi )**0.75_dp &
+                 * 2.0_dp**ga%am * ga%alpha**( 0.25_dp * ( 2.0_dp*ga%am + 3.0_dp ) ) 
+                 
 
  ga%x0(:) = x0(:)
 

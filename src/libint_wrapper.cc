@@ -8,9 +8,6 @@
 #include<libint2.h>
 #include<math.h>
   
-#define MAXFAC_BOYS  100
-#define EPS_BOYS 1.0E-17     /* Absolute precision in computing Fm(t) */
-
 
 /* First, the interfaces */
 int nint(int am);
@@ -47,7 +44,7 @@ extern "C" {
 int libint_init() {
   /* this initializes internal Libint data structures -- must happen once in the program */
   LIBINT2_PREFIXED_NAME(libint2_static_init)();
-  return LIBINT2_MAX_AM_ERI;
+  return LIBINT2_MAX_AM_eri;
 }
 }
 
@@ -77,12 +74,12 @@ int eval_contr_integral(
 
  ammax = max4(am0,am1,am2,am3);
 
- /* LIBINT2_MAX_AM_ERI is a macro defined in libint2.h that specifies the maximum angular momentum
+ /* LIBINT2_MAX_AM_eri is a macro defined in libint2.h that specifies the maximum angular momentum
     this Libint library instance can handle */
- if( ammax > LIBINT2_MAX_AM_ERI)
+ if( ammax > LIBINT2_MAX_AM_eri)
    return 1;
 
- LIBINT2_PREFIXED_NAME( libint2_init_eri)(&inteval[0], ammax, 0);
+ LIBINT2_PREFIXED_NAME(libint2_init_eri)(&inteval[0], ammax, 0);
 
 /* 
  * Prepare the calculation for each contraction
@@ -118,7 +115,7 @@ int eval_contr_integral(
  }
 
  // this releases all memory that was allocated for this object
- LIBINT2_PREFIXED_NAME( libint2_cleanup_eri)(&inteval[0]);
+ LIBINT2_PREFIXED_NAME(libint2_cleanup_eri)(&inteval[0]);
 
  return 0;
 

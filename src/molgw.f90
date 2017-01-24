@@ -188,6 +188,7 @@ program molgw
    call setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
  else
    call setup_overlap(print_matrix_,basis,s_matrix)
+!   call setup_overlap_libint(print_matrix_,basis,s_matrix) 
  endif
 
  !
