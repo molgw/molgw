@@ -100,7 +100,6 @@ subroutine setup_overlap_libint(print_matrix_,basis,s_matrix)
  character(len=100)   :: title
 
  real(C_DOUBLE),allocatable,target :: matrix_cart(:,:)
-
  integer(C_INT)                    :: amA,contrdepthA
  real(C_DOUBLE),target             :: A(3)
  real(C_DOUBLE),allocatable,target :: alphaA(:)
@@ -114,7 +113,7 @@ subroutine setup_overlap_libint(print_matrix_,basis,s_matrix)
    subroutine libint_overlap(amA,contrdepthA,A,alphaA,cA, &
                              amB,contrdepthB,B,alphaB,cB, &
                              overlapAB) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE,C_PTR
+     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
      integer(C_INT),value  :: amA,contrdepthA
      real(C_DOUBLE),intent(in) :: A(*)
      real(C_DOUBLE),intent(in) :: alphaA(*)
@@ -394,6 +393,139 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
  call stop_clock(timing_hamiltonian_nuc)
 
 end subroutine setup_nucleus
+
+
+!=========================================================================
+subroutine setup_nucleus_libint(print_matrix_,basis,hamiltonian_nucleus)
+ use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+ use m_basis_set
+ use m_atoms
+ implicit none
+ logical,intent(in)         :: print_matrix_
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(out)       :: hamiltonian_nucleus(basis%nbf,basis%nbf)
+!=====
+ integer              :: natom_local
+ integer              :: ibf,jbf
+ integer              :: ibf_cart,jbf_cart
+ integer              :: i_cart,j_cart
+ integer              :: ni,nj,ni_cart,nj_cart,li,lj
+ integer              :: iatom
+ character(len=100)   :: title
+ real(dp)             :: vnucleus_ij
+
+ real(C_DOUBLE),allocatable,target :: matrix_cart(:,:)
+ integer(C_INT)                    :: amA,contrdepthA
+ real(C_DOUBLE),target             :: A(3)
+ real(C_DOUBLE),allocatable,target :: alphaA(:)
+ real(C_DOUBLE),allocatable,target :: cA(:)
+ integer(C_INT)                    :: amB,contrdepthB
+ real(C_DOUBLE),target             :: B(3)
+ real(C_DOUBLE),allocatable,target :: alphaB(:)
+ real(C_DOUBLE),allocatable,target :: cB(:)
+ real(C_DOUBLE),target             :: C(3)
+
+ interface
+   subroutine libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
+                             amB,contrdepthB,B,alphaB,cB, &
+                             C,elecpotAB) bind(C)
+     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     integer(C_INT),value         :: amA,contrdepthA
+     real(C_DOUBLE),intent(in)    :: A(*)
+     real(C_DOUBLE),intent(in)    :: alphaA(*)
+     real(C_DOUBLE),intent(in)    :: cA(*)
+     integer(C_INT),value         :: amB,contrdepthB
+     real(C_DOUBLE),intent(in)    :: B(*)
+     real(C_DOUBLE),intent(in)    :: alphaB(*)
+     real(C_DOUBLE),intent(in)    :: cB(*)
+     real(C_DOUBLE),intent(in)    :: C(*)
+     real(C_DOUBLE),intent(inout) :: elecpotAB(*)
+     
+   end subroutine libint_elecpot
+ end interface
+!=====
+
+ call start_clock(timing_hamiltonian_nuc)
+ write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian'
+ if( nproc_world > 1 ) then
+   natom_local=0
+   do iatom=1,natom
+     if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
+     natom_local = natom_local + 1
+   enddo
+   write(stdout,'(a)')         '   Parallelizing over atoms'
+   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
+ endif
+
+ ibf_cart = 1
+ jbf_cart = 1
+ ibf      = 1
+ jbf      = 1
+ do while(ibf_cart<=basis%nbf_cart)
+   li      = basis%bf(ibf_cart)%am
+   ni_cart = number_basis_function_am('CART',li)
+   ni      = number_basis_function_am(basis%gaussian_type,li)
+
+   do while(jbf_cart<=basis%nbf_cart)
+     lj      = basis%bf(jbf_cart)%am
+     nj_cart = number_basis_function_am('CART',lj)
+     nj      = number_basis_function_am(basis%gaussian_type,lj)
+
+     allocate(matrix_cart(ni_cart,nj_cart))
+     matrix_cart(:,:) = 0.0_dp
+
+     amA = li
+     amB = lj
+     contrdepthA = basis%bf(ibf_cart)%ngaussian
+     contrdepthB = basis%bf(jbf_cart)%ngaussian
+     A(:) = basis%bf(ibf_cart)%x0(:)
+     B(:) = basis%bf(jbf_cart)%x0(:)
+     allocate(alphaA(contrdepthA),alphaB(contrdepthB))
+     alphaA(:) = basis%bf(ibf_cart)%g(:)%alpha
+     alphaB(:) = basis%bf(jbf_cart)%g(:)%alpha
+     allocate(cA(contrdepthA),cB(contrdepthB))
+     cA(:) = basis%bf(ibf_cart)%coeff(:) * basis%bf(ibf_cart)%g(:)%common_norm_factor
+
+     do iatom=1,natom
+       if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
+
+       cB(:) = basis%bf(jbf_cart)%coeff(:) * basis%bf(jbf_cart)%g(:)%common_norm_factor * (-zatom(iatom))
+
+       C(:) = x(:,iatom)
+       call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
+                           amB,contrdepthB,B,alphaB,cB, &
+                           C,matrix_cart)
+
+     enddo
+     deallocate(alphaA,alphaB,cA,cB)
+
+
+     hamiltonian_nucleus(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) , &
+                                                              MATMUL( matrix_cart(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) ) 
+
+
+     deallocate(matrix_cart)
+     jbf      = jbf      + nj
+     jbf_cart = jbf_cart + nj_cart
+   enddo
+   jbf      = 1
+   jbf_cart = 1
+
+   ibf      = ibf      + ni
+   ibf_cart = ibf_cart + ni_cart
+
+ enddo
+
+ !
+ ! Reduce operation
+ call xsum_world(hamiltonian_nucleus)
+
+ title='===  Nucleus potential contribution ==='
+ call dump_out_matrix(.TRUE.,title,basis%nbf,1,hamiltonian_nucleus)
+
+ call stop_clock(timing_hamiltonian_nuc)
+
+end subroutine setup_nucleus_libint
 
 
 !=========================================================================

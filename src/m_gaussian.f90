@@ -53,13 +53,11 @@ subroutine init_gaussian_general(nx,ny,nz,alpha,x0,ga)
 
  ga%alpha = alpha
 
- ga%norm_factor = ( 2.0_dp / pi )**0.75_dp &
-                 * 2.0_dp**ga%am * ga%alpha**( 0.25_dp * ( 2.0_dp*ga%am + 3.0_dp ) ) &
-                 / SQRT( REAL( double_factorial(2*nx-1) * double_factorial(2*ny-1) * double_factorial(2*nz-1) , dp ) )
-
  ga%common_norm_factor = ( 2.0_dp / pi )**0.75_dp &
                  * 2.0_dp**ga%am * ga%alpha**( 0.25_dp * ( 2.0_dp*ga%am + 3.0_dp ) ) 
                  
+ ga%norm_factor = ga%common_norm_factor &
+                   / SQRT( REAL( double_factorial(2*nx-1) * double_factorial(2*ny-1) * double_factorial(2*nz-1) , dp ) )
 
  ga%x0(:) = x0(:)
 

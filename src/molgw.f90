@@ -187,8 +187,8 @@ program molgw
  if( parallel_ham ) then
    call setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
  else
-   call setup_overlap(print_matrix_,basis,s_matrix)
-!   call setup_overlap_libint(print_matrix_,basis,s_matrix) 
+!   call setup_overlap(print_matrix_,basis,s_matrix)
+   call setup_overlap_libint(print_matrix_,basis,s_matrix) 
  endif
 
  !
@@ -271,6 +271,8 @@ program molgw
      endif
    else
      call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
+     call setup_nucleus_libint(print_matrix_,basis,hamiltonian_nucleus)
+     call die('FBFB stop')
      if( nelement_ecp > 0 ) then
        call setup_nucleus_ecp(basis,hamiltonian_nucleus)
      endif
