@@ -76,7 +76,7 @@ subroutine setup_overlap(print_matrix_,basis,s_matrix)
  enddo
 
  title='=== Overlap matrix S ==='
- call dump_out_matrix(.TRUE.,title,basis%nbf,1,s_matrix)
+ call dump_out_matrix(print_matrix_,title,basis%nbf,1,s_matrix)
 
  call stop_clock(timing_overlap)
 
@@ -86,7 +86,7 @@ end subroutine setup_overlap
 
 !=========================================================================
 subroutine setup_overlap_libint(print_matrix_,basis,s_matrix)
- use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE,C_LOC
+ use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
  use m_basis_set
  implicit none
  logical,intent(in)         :: print_matrix_
@@ -160,8 +160,10 @@ subroutine setup_overlap_libint(print_matrix_,basis,s_matrix)
      cA(:) = basis%bf(ibf_cart)%coeff(:) * basis%bf(ibf_cart)%g(:)%common_norm_factor
      cB(:) = basis%bf(jbf_cart)%coeff(:) * basis%bf(jbf_cart)%g(:)%common_norm_factor
      
+#ifdef HAVE_LIBINT_ONEBODY
      call libint_overlap(amA,contrdepthA,A,alphaA,cA, &
                          amB,contrdepthB,B,alphaB,cB,matrix_cart)
+#endif
 
      deallocate(alphaA,alphaB,cA,cB)
 
@@ -182,8 +184,8 @@ subroutine setup_overlap_libint(print_matrix_,basis,s_matrix)
 
  enddo
 
- title='=== Overlap matrix S ==='
- call dump_out_matrix(.TRUE.,title,basis%nbf,1,s_matrix)
+ title='=== Overlap matrix S (LIBINT) ==='
+ call dump_out_matrix(print_matrix_,title,basis%nbf,1,s_matrix)
 
  call stop_clock(timing_overlap)
 
@@ -311,6 +313,115 @@ end subroutine setup_kinetic
 
 
 !=========================================================================
+subroutine setup_kinetic_libint(print_matrix_,basis,hamiltonian_kinetic)
+ use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+ use m_basis_set
+ implicit none
+ logical,intent(in)         :: print_matrix_
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(out)       :: hamiltonian_kinetic(basis%nbf,basis%nbf)
+!=====
+ integer              :: ibf,jbf
+ integer              :: ibf_cart,jbf_cart
+ integer              :: i_cart,j_cart
+ integer              :: ni,nj,ni_cart,nj_cart,li,lj
+ character(len=100)   :: title
+
+ real(C_DOUBLE),allocatable,target :: matrix_cart(:,:)
+ integer(C_INT)                    :: amA,contrdepthA
+ real(C_DOUBLE),target             :: A(3)
+ real(C_DOUBLE),allocatable,target :: alphaA(:)
+ real(C_DOUBLE),allocatable,target :: cA(:)
+ integer(C_INT)                    :: amB,contrdepthB
+ real(C_DOUBLE),target             :: B(3)
+ real(C_DOUBLE),allocatable,target :: alphaB(:)
+ real(C_DOUBLE),allocatable,target :: cB(:)
+
+ interface
+   subroutine libint_kinetic(amA,contrdepthA,A,alphaA,cA, &
+                             amB,contrdepthB,B,alphaB,cB, &
+                             kineticAB) bind(C)
+     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     integer(C_INT),value       :: amA,contrdepthA
+     real(C_DOUBLE),intent(in)  :: A(*)
+     real(C_DOUBLE),intent(in)  :: alphaA(*)
+     real(C_DOUBLE),intent(in)  :: cA(*)
+     integer(C_INT),value       :: amB,contrdepthB
+     real(C_DOUBLE),intent(in)  :: B(*)
+     real(C_DOUBLE),intent(in)  :: alphaB(*)
+     real(C_DOUBLE),intent(in)  :: cB(*)
+     real(C_DOUBLE),intent(out) :: kineticAB(*)
+
+   end subroutine libint_kinetic
+ end interface
+!=====
+
+ call start_clock(timing_hamiltonian_kin)
+ write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian'
+
+ ibf_cart = 1
+ jbf_cart = 1
+ ibf      = 1
+ jbf      = 1
+ do while(ibf_cart<=basis%nbf_cart)
+   li      = basis%bf(ibf_cart)%am
+   ni_cart = number_basis_function_am('CART',li)
+   ni      = number_basis_function_am(basis%gaussian_type,li)
+
+   do while(jbf_cart<=basis%nbf_cart)
+     lj      = basis%bf(jbf_cart)%am
+     nj_cart = number_basis_function_am('CART',lj)
+     nj      = number_basis_function_am(basis%gaussian_type,lj)
+
+     allocate(matrix_cart(ni_cart,nj_cart))
+
+
+     amA = li
+     amB = lj
+     contrdepthA = basis%bf(ibf_cart)%ngaussian
+     contrdepthB = basis%bf(jbf_cart)%ngaussian
+     A(:) = basis%bf(ibf_cart)%x0(:)
+     B(:) = basis%bf(jbf_cart)%x0(:)
+     allocate(alphaA(contrdepthA),alphaB(contrdepthB))
+     alphaA(:) = basis%bf(ibf_cart)%g(:)%alpha
+     alphaB(:) = basis%bf(jbf_cart)%g(:)%alpha
+     allocate(cA(contrdepthA),cB(contrdepthB))
+     cA(:) = basis%bf(ibf_cart)%coeff(:) * basis%bf(ibf_cart)%g(:)%common_norm_factor
+     cB(:) = basis%bf(jbf_cart)%coeff(:) * basis%bf(jbf_cart)%g(:)%common_norm_factor
+
+#ifdef HAVE_LIBINT_ONEBODY
+     call libint_kinetic(amA,contrdepthA,A,alphaA,cA, &
+                         amB,contrdepthB,B,alphaB,cB,matrix_cart)
+#endif
+
+     deallocate(alphaA,alphaB,cA,cB)
+
+
+     hamiltonian_kinetic(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) , &
+                                                              MATMUL( matrix_cart(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) )
+
+
+     deallocate(matrix_cart)
+     jbf      = jbf      + nj
+     jbf_cart = jbf_cart + nj_cart
+   enddo
+   jbf      = 1
+   jbf_cart = 1
+
+   ibf      = ibf      + ni
+   ibf_cart = ibf_cart + ni_cart
+
+ enddo
+
+ title='===  Kinetic energy contribution (LIBINT) ==='
+ call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_kinetic)
+
+ call stop_clock(timing_hamiltonian_kin)
+
+end subroutine setup_kinetic_libint
+
+
+!=========================================================================
 subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
  use m_basis_set
  use m_atoms
@@ -388,7 +499,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
  call xsum_world(hamiltonian_nucleus)
 
  title='===  Nucleus potential contribution ==='
- call dump_out_matrix(.TRUE.,title,basis%nbf,1,hamiltonian_nucleus)
+ call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_nucleus)
 
  call stop_clock(timing_hamiltonian_nuc)
 
@@ -492,9 +603,11 @@ subroutine setup_nucleus_libint(print_matrix_,basis,hamiltonian_nucleus)
        cB(:) = basis%bf(jbf_cart)%coeff(:) * basis%bf(jbf_cart)%g(:)%common_norm_factor * (-zatom(iatom))
 
        C(:) = x(:,iatom)
+#ifdef HAVE_LIBINT_ONEBODY
        call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
                            amB,contrdepthB,B,alphaB,cB, &
                            C,matrix_cart)
+#endif
 
      enddo
      deallocate(alphaA,alphaB,cA,cB)
@@ -520,8 +633,8 @@ subroutine setup_nucleus_libint(print_matrix_,basis,hamiltonian_nucleus)
  ! Reduce operation
  call xsum_world(hamiltonian_nucleus)
 
- title='===  Nucleus potential contribution ==='
- call dump_out_matrix(.TRUE.,title,basis%nbf,1,hamiltonian_nucleus)
+ title='===  Nucleus potential contribution (LIBINT) ==='
+ call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_nucleus)
 
  call stop_clock(timing_hamiltonian_nuc)
 

@@ -18,7 +18,7 @@ SCALAPACK=
 include ./my_machine.arch
 
 FC_W_OPTS= $(FC) $(FCOPTS) $(OPENMP) $(CPPFLAGS)
-CXX_W_OPTS= $(CXX) $(CXXOPTS)
+CXX_W_OPTS= $(CXX) $(CXXOPTS) $(CPPFLAGS)
 LINKER= $(LIBTOOL) $(FC_W_OPTS)
 
 LINKS= -lstdc++ -lm

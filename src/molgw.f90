@@ -187,8 +187,11 @@ program molgw
  if( parallel_ham ) then
    call setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
  else
-!   call setup_overlap(print_matrix_,basis,s_matrix)
+#ifdef HAVE_LIBINT_ONEBODY
    call setup_overlap_libint(print_matrix_,basis,s_matrix) 
+#else
+   call setup_overlap(print_matrix_,basis,s_matrix)
+#endif
  endif
 
  !
@@ -258,7 +261,11 @@ program molgw
    if( parallel_ham ) then
      call setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic)
    else
+#ifdef HAVE_LIBINT_ONEBODY
+     call setup_kinetic_libint(print_matrix_,basis,hamiltonian_kinetic)
+#else
      call setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
+#endif
    endif
   
    !
@@ -270,8 +277,11 @@ program molgw
        call setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
      endif
    else
-!     call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
+#ifdef HAVE_LIBINT_ONEBODY
      call setup_nucleus_libint(print_matrix_,basis,hamiltonian_nucleus)
+#else
+     call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
+#endif
      if( nelement_ecp > 0 ) then
        call setup_nucleus_ecp(basis,hamiltonian_nucleus)
      endif
