@@ -1,7 +1,7 @@
 /*
  * This file is part of MOLGW.
  * C/C++ wrapper to the libint library
- * One-body terms: overlap, kinetic, nuclear attraction
+ * One-body gradient terms: overlap, kinetic, nuclear attraction
  * with contracted gaussians
  * Author: F. Bruneval
  */
@@ -106,21 +106,20 @@ void libint_overlap_grad(int amA, int contrdepthA , double A [] , double alphaA 
  }
 
 
-// LIBINT2_PREFIXED_NAME(libint2_cleanup_overlap1)(inteval);
+ LIBINT2_PREFIXED_NAME(libint2_cleanup_overlap1)(inteval);
 
 }
 }
 
-#if 0
 
 /* ==========================================================================                    
  *                           Kinetic
  * ========================================================================== */
 
 extern "C" {
-void libint_kinetic(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
-                    int amB, int contrdepthB , double B [] , double alphaB [], double cB [],
-                    double kineticAB [] ) {
+void libint_kinetic_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
+                         int amB, int contrdepthB , double B [] , double alphaB [], double cB [],
+                         double kineticABx [], double kineticABy [], double kineticABz [] ) {
 
  const unsigned int contrdepth2 = contrdepthA * contrdepthB;
  Libint_kinetic_t * inteval = libint2::malloc<Libint_kinetic_t>(contrdepth2);
@@ -136,7 +135,7 @@ void libint_kinetic(int amA, int contrdepthA , double A [] , double alphaA [], d
  const unsigned int ammax = LIBINT2_MAX_AM_eri ;
 
 
- LIBINT2_PREFIXED_NAME(libint2_init_kinetic)(inteval, ammax, 0);
+ LIBINT2_PREFIXED_NAME(libint2_init_kinetic1)(inteval, ammax, 0);
 
  double alphaP, ksiP ;
  double P[3];
@@ -191,32 +190,26 @@ void libint_kinetic(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 
 
- if( amA + amB == 0 ) {
-
-   kineticAB[0] = 0.0 ;
-   for( int icontrdepth2=0; icontrdepth2 < contrdepth2; icontrdepth2++) {
-     kineticAB[0] +=   inteval[icontrdepth2]._0_Overlap_0_x[0]
-                     * inteval[icontrdepth2]._0_Overlap_0_y[0]
-                     * inteval[icontrdepth2]._0_Overlap_0_z[0]
-                     * pfac[icontrdepth2] ;
-   }
-
- } else {
-
-   LIBINT2_PREFIXED_NAME(libint2_build_kinetic)[amA][amB](inteval);
-   for( int i12=0; i12 < nint(amA) * nint(amB) ; ++i12 ) {
-     kineticAB[i12] = inteval[0].targets[0][i12] ;
-   }
+ LIBINT2_PREFIXED_NAME(libint2_build_kinetic1)[amA][amB](inteval);
+ for( int i12=0; i12 < nint(amA) * nint(amB) ; i12++ ) {
+   kineticABx[i12] = inteval[0].targets[0][i12] ;
+ }
+ for( int i12=0; i12 < nint(amA) * nint(amB) ; i12++ ) {
+   kineticABy[i12] = inteval[0].targets[0][i12+nint(amA) * nint(amB)] ;
+ }
+ for( int i12=0; i12 < nint(amA) * nint(amB) ; i12++ ) {
+   kineticABz[i12] = inteval[0].targets[0][i12+2*nint(amA)*nint(amB)] ;
  }
 
 
 
- LIBINT2_PREFIXED_NAME(libint2_cleanup_kinetic)(inteval);
+ LIBINT2_PREFIXED_NAME(libint2_cleanup_kinetic1)(inteval);
 
 }
 }
 
 
+#if 0
 /* ==========================================================================                    
  *                           ElecPot         
  * ========================================================================== */

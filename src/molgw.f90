@@ -398,6 +398,7 @@ program molgw
 !TODO:  Evaluate forces here
 !   allocate(hamiltonian_tmp(basis%nbf,basis%nbf,3))
 !   call setup_overlap_grad_libint(print_matrix_,basis,hamiltonian_tmp)
+!   call setup_kinetic_grad_libint(print_matrix_,basis,hamiltonian_tmp)
 !   deallocate(hamiltonian_tmp)
 
 

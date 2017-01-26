@@ -549,6 +549,133 @@ end subroutine setup_kinetic_libint
 
 
 !=========================================================================
+subroutine setup_kinetic_grad_libint(print_matrix_,basis,hamiltonian_kinetic_grad)
+ use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+ use m_basis_set
+ implicit none
+ logical,intent(in)         :: print_matrix_
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(out)       :: hamiltonian_kinetic_grad(basis%nbf,basis%nbf,3)
+!=====
+ integer              :: ibf,jbf
+ integer              :: ibf_cart,jbf_cart
+ integer              :: i_cart,j_cart
+ integer              :: ni,nj,ni_cart,nj_cart,li,lj
+ character(len=100)   :: title
+
+ real(C_DOUBLE),allocatable        :: matrix_cart_gradx(:,:)
+ real(C_DOUBLE),allocatable        :: matrix_cart_grady(:,:)
+ real(C_DOUBLE),allocatable        :: matrix_cart_gradz(:,:)
+ integer(C_INT)                    :: amA,contrdepthA
+ real(C_DOUBLE)                    :: A(3)
+ real(C_DOUBLE),allocatable        :: alphaA(:)
+ real(C_DOUBLE),allocatable        :: cA(:)
+ integer(C_INT)                    :: amB,contrdepthB
+ real(C_DOUBLE)                    :: B(3)
+ real(C_DOUBLE),allocatable        :: alphaB(:)
+ real(C_DOUBLE),allocatable        :: cB(:)
+
+ interface
+   subroutine libint_kinetic_grad(amA,contrdepthA,A,alphaA,cA, &
+                                  amB,contrdepthB,B,alphaB,cB, &
+                                  kineticABx,kineticABy,kineticABz) bind(C)
+     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     integer(C_INT),value       :: amA,contrdepthA
+     real(C_DOUBLE),intent(in)  :: A(*)
+     real(C_DOUBLE),intent(in)  :: alphaA(*)
+     real(C_DOUBLE),intent(in)  :: cA(*)
+     integer(C_INT),value       :: amB,contrdepthB
+     real(C_DOUBLE),intent(in)  :: B(*)
+     real(C_DOUBLE),intent(in)  :: alphaB(*)
+     real(C_DOUBLE),intent(in)  :: cB(*)
+     real(C_DOUBLE),intent(out) :: kineticABx(*)
+     real(C_DOUBLE),intent(out) :: kineticABy(*)
+     real(C_DOUBLE),intent(out) :: kineticABz(*)
+
+   end subroutine libint_kinetic_grad
+ end interface
+!=====
+
+ call start_clock(timing_hamiltonian_kin)
+ write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian'
+
+ ibf_cart = 1
+ jbf_cart = 1
+ ibf      = 1
+ jbf      = 1
+ do while(ibf_cart<=basis%nbf_cart)
+   li      = basis%bf(ibf_cart)%am
+   ni_cart = number_basis_function_am('CART',li)
+   ni      = number_basis_function_am(basis%gaussian_type,li)
+
+   do while(jbf_cart<=basis%nbf_cart)
+     lj      = basis%bf(jbf_cart)%am
+     nj_cart = number_basis_function_am('CART',lj)
+     nj      = number_basis_function_am(basis%gaussian_type,lj)
+
+     allocate(matrix_cart_gradx(ni_cart,nj_cart))
+     allocate(matrix_cart_grady(ni_cart,nj_cart))
+     allocate(matrix_cart_gradz(ni_cart,nj_cart))
+
+
+     amA = li
+     amB = lj
+     contrdepthA = basis%bf(ibf_cart)%ngaussian
+     contrdepthB = basis%bf(jbf_cart)%ngaussian
+     A(:) = basis%bf(ibf_cart)%x0(:)
+     B(:) = basis%bf(jbf_cart)%x0(:)
+     allocate(alphaA(contrdepthA),alphaB(contrdepthB))
+     alphaA(:) = basis%bf(ibf_cart)%g(:)%alpha
+     alphaB(:) = basis%bf(jbf_cart)%g(:)%alpha
+     allocate(cA(contrdepthA),cB(contrdepthB))
+     cA(:) = basis%bf(ibf_cart)%coeff(:) * basis%bf(ibf_cart)%g(:)%common_norm_factor
+     cB(:) = basis%bf(jbf_cart)%coeff(:) * basis%bf(jbf_cart)%g(:)%common_norm_factor
+
+#ifdef HAVE_LIBINT_ONEBODY
+     call libint_kinetic_grad(amA,contrdepthA,A,alphaA,cA, &
+                              amB,contrdepthB,B,alphaB,cB, &
+                              matrix_cart_gradx,matrix_cart_grady,matrix_cart_gradz)
+#endif
+
+     deallocate(alphaA,alphaB,cA,cB)
+
+
+     hamiltonian_kinetic_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,1) = MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) , &
+                                                              MATMUL( matrix_cart_gradx(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) )
+     hamiltonian_kinetic_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,2) = MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) , &
+                                                              MATMUL( matrix_cart_grady(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) )
+     hamiltonian_kinetic_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,3) = MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) , &
+                                                              MATMUL( matrix_cart_gradz(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) )
+
+
+     deallocate(matrix_cart_gradx)
+     deallocate(matrix_cart_grady)
+     deallocate(matrix_cart_gradz)
+
+     jbf      = jbf      + nj
+     jbf_cart = jbf_cart + nj_cart
+   enddo
+   jbf      = 1
+   jbf_cart = 1
+
+   ibf      = ibf      + ni
+   ibf_cart = ibf_cart + ni_cart
+
+ enddo
+
+ title='===  Kinetic energy contribution (LIBINT) X ==='
+ call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_kinetic_grad(:,:,1))
+ title='===  Kinetic energy contribution (LIBINT) Y ==='
+ call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_kinetic_grad(:,:,2))
+ title='===  Kinetic energy contribution (LIBINT) Z ==='
+ call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_kinetic_grad(:,:,3))
+
+ call stop_clock(timing_hamiltonian_kin)
+
+end subroutine setup_kinetic_grad_libint
+
+
+!=========================================================================
 subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
  use m_basis_set
  use m_atoms
