@@ -27,9 +27,9 @@ extern "C" void boys_function_c(double*, int, double);
  * ========================================================================== */
 
 extern "C" {
-void libint_overlap(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
-                    int amB, int contrdepthB , double B [] , double alphaB [], double cB [],
-                    double overlapAB [] ) {
+void libint_overlap_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
+                         int amB, int contrdepthB , double B [] , double alphaB [], double cB [],
+                         double overlapABx [], double overlapABy [], double overlapABz []) {
 
  const unsigned int contrdepth2 = contrdepthA * contrdepthB;
  Libint_overlap_t * inteval = libint2::malloc<Libint_overlap_t>(contrdepth2);
@@ -45,7 +45,7 @@ void libint_overlap(int amA, int contrdepthA , double A [] , double alphaA [], d
  const unsigned int ammax = LIBINT2_MAX_AM_eri ;
 
 
- LIBINT2_PREFIXED_NAME(libint2_init_overlap)(inteval, ammax, 0);
+ LIBINT2_PREFIXED_NAME(libint2_init_overlap1)(inteval, ammax, 0);
 
  double alphaP ;
  double P[3];
@@ -83,6 +83,9 @@ void libint_overlap(int amA, int contrdepthA , double A [] , double alphaA [], d
      inteval[icontrdepth2].veclen = 1 ;
      inteval[icontrdepth2].contrdepth = contrdepth2 ;
 
+     inteval[icontrdepth2].two_alpha0_bra[0] = 2.0 * alphaA[icontrdepthA];
+     inteval[icontrdepth2].two_alpha0_ket[0] = 2.0 * alphaB[icontrdepthB];
+
      icontrdepth2++ ;
    }
  }
@@ -90,30 +93,25 @@ void libint_overlap(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 
 
- if( amA + amB == 0 ) {
 
-   overlapAB[0] = 0.0 ;
-   for( int icontrdepth2=0; icontrdepth2 < contrdepth2; icontrdepth2++) {
-     overlapAB[0] +=   inteval[icontrdepth2]._0_Overlap_0_x[0]
-                     * inteval[icontrdepth2]._0_Overlap_0_y[0]
-                     * inteval[icontrdepth2]._0_Overlap_0_z[0] ;
-   }
-
- } else {
-
-   LIBINT2_PREFIXED_NAME(libint2_build_overlap)[amA][amB](inteval);
-   for( int i12=0; i12 < nint(amA) * nint(amB) ; ++i12 ) {
-     overlapAB[i12] = inteval[0].targets[0][i12] ;
-   }
+ LIBINT2_PREFIXED_NAME(libint2_build_overlap1)[amA][amB](inteval);
+ for( int i12=0; i12 < nint(amA) * nint(amB) ; i12++ ) {
+   overlapABx[i12] = inteval[0].targets[0][i12] ;
+ }
+ for( int i12=0; i12 < nint(amA) * nint(amB) ; i12++ ) {
+   overlapABy[i12] = inteval[0].targets[0][i12+nint(amA) * nint(amB)] ;
+ }
+ for( int i12=0; i12 < nint(amA) * nint(amB) ; i12++ ) {
+   overlapABz[i12] = inteval[0].targets[0][i12+2*nint(amA)*nint(amB)] ;
  }
 
 
-
- LIBINT2_PREFIXED_NAME(libint2_cleanup_overlap)(inteval);
+// LIBINT2_PREFIXED_NAME(libint2_cleanup_overlap1)(inteval);
 
 }
 }
 
+#if 0
 
 /* ==========================================================================                    
  *                           Kinetic
@@ -366,6 +364,7 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
 }
 }
 
+#endif
 
 #endif
 
