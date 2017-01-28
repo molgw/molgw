@@ -1,4 +1,5 @@
 molgw
+molgw.tgz
 *.mod
 *.o
 src/my_machine.arch
