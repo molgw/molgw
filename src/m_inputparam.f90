@@ -922,6 +922,12 @@ subroutine read_inputfile_namelist()
 
  endif
 
+#ifndef HAVE_LIBINT_ONEBODY
+ if( move_nuclei /= 'no' ) then
+   call die('Need to compile MOLGW with HAVE_LIBINT_ONEBODY to have move_nuclei different from no')
+ endif
+#endif
+
  x_read(:,:) = x_read(:,:) * length_factor
  call init_atoms(natom,nghost,zatom_read,x_read,(move_nuclei/='no'))
  deallocate(x_read,zatom_read)

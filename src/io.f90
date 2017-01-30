@@ -116,14 +116,17 @@ subroutine header()
  ! LIBINT details
  call libint_init(ammax,has_onebody,has_gradient)
  write(stdout,'(1x,a)')        'Running with LIBINT (to calculate the Coulomb integrals)'
- write(stdout,'(6x,a,i5,3x,a,/,/)') 'max angular momentum handled by your LIBINT compilation: ', &
+ write(stdout,'(6x,a,i5,3x,a)') 'max angular momentum handled by your LIBINT compilation: ', &
                                 ammax,orbital_momentum_name(ammax)
 #ifdef HAVE_LIBINT_ONEBODY
  if( .NOT. has_onebody ) &
    call die('MOLGW compiled with LIBINT one-body terms, however the LIBINT compilation does not calculate the one-body terms')
  if( .NOT. has_gradient ) &
    call die('LIBINT compilation does not have the first derivative')
+ write(stdout,'(1x,a)') 'Using LIBINT for the one-body parts of the Hamiltonian as well'
 #endif
+ write(stdout,*)
+ write(stdout,*)
 
 
 end subroutine header

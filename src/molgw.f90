@@ -407,7 +407,7 @@ program molgw
 
    allocate(grad_tmp(basis%nbf,basis%nbf,natom,3))
    call setup_nucleus_grad_libint(print_matrix_,basis,grad_tmp)
-   write(stdout,'(/,1x,a)') ' ====== forces ====== '
+   write(stdout,'(/,1x,a)') ' ====== Forces ====== '
    write(*,'(4x,a)') 'Atom           Fx               Fy                 Fz'
    call nucleus_nucleus_force()
    do iatom=1,natom
