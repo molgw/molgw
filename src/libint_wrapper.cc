@@ -14,8 +14,6 @@ int nint(int am);
 int max4(int am0, int am1, int am2, int am3);
 extern "C" void boys_function_c(double*, int, double);
 
-extern "C" int libint_init();
-
 extern "C"
 int eval_contr_integral(
                         int *am0_in, int *am1_in, int *am2_in, int *am3_in,
@@ -41,10 +39,12 @@ void prep_libint2_contr(Libint_t *erieval,
 /* Then the real coding */
 
 extern "C" {
-int libint_init() {
-  /* this initializes internal Libint data structures -- must happen once in the program */
-  LIBINT2_PREFIXED_NAME(libint2_static_init)();
-  return LIBINT2_MAX_AM_eri;
+void libint_init(int *ammax, bool *has_onebody, bool *has_gradient) {
+ /* this initializes internal Libint data structures -- must happen once in the program */
+ LIBINT2_PREFIXED_NAME(libint2_static_init)();
+ *has_onebody = LIBINT2_SUPPORT_ONEBODY ;
+ *has_gradient = ( LIBINT2_DERIV_ERI_ORDER > 0 );
+ *ammax = LIBINT2_MAX_AM_eri ;
 }
 }
 

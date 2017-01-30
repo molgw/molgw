@@ -7,7 +7,7 @@
 !
 !=========================================================================
 subroutine header()
- use,intrinsic :: iso_c_binding, only: C_INT
+ use,intrinsic :: iso_c_binding, only: C_INT,C_BOOL
 #ifdef FORTRAN2008
  use,intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
 #endif
@@ -20,7 +20,8 @@ subroutine header()
  integer             :: values(8) 
  character(len=1024) :: chartmp
  integer             :: nchar,kchar,lchar
- integer             :: ammax
+ integer(C_INT)      :: ammax
+ logical(C_BOOL)     :: has_onebody,has_gradient
  character(len=128)  :: msg
 #ifdef _OPENMP
  integer,external :: OMP_get_max_threads
@@ -28,8 +29,11 @@ subroutine header()
 !=====
 ! variables used to call C
  interface
-   function libint_init() bind(C, name='libint_init')
-   end function libint_init
+   subroutine libint_init(ammax,has_onebody,has_gradient) bind(C)
+     use,intrinsic :: iso_c_binding, only: C_INT,C_BOOL
+     integer(C_INT),intent(out)  :: ammax
+     logical(C_BOOL),intent(out) :: has_onebody,has_gradient
+   end subroutine libint_init
  end interface
 !=====
 
@@ -108,11 +112,18 @@ subroutine header()
  call die('Code compiled with SCALAPACK, but without MPI. This is not permitted')
 #endif
 #endif
- ammax = libint_init()
+
+ ! LIBINT details
+ call libint_init(ammax,has_onebody,has_gradient)
  write(stdout,'(1x,a)')        'Running with LIBINT (to calculate the Coulomb integrals)'
  write(stdout,'(6x,a,i5,3x,a,/,/)') 'max angular momentum handled by your LIBINT compilation: ', &
                                 ammax,orbital_momentum_name(ammax)
-
+#ifdef HAVE_LIBINT_ONEBODY
+ if( .NOT. has_onebody ) &
+   call die('MOLGW compiled with LIBINT one-body terms, however the LIBINT compilation does not calculate the one-body terms')
+ if( .NOT. has_gradient ) &
+   call die('LIBINT compilation does not have the first derivative')
+#endif
 
 
 end subroutine header

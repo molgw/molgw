@@ -44,6 +44,7 @@ program molgw
  use m_dft_grid
  use m_spectral_function
  use m_hamiltonian
+ use m_hamiltonian_libint
  use m_hamiltonian_sca
  use m_hamiltonian_buffer
  use m_selfenergy_tools
