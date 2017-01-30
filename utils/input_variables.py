@@ -68,6 +68,16 @@ GWGAMMA (EXPERIMENTAL) stands for vertex corrections.'
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='move_nuclei'
+vl[i].family   ='general'
+vl[i].default  ='no'
+vl[i].datatype ='characters'
+vl[i].comment  ='Tell the code to move or not the position of the nuclei. \
+Available options are \'no\' or \'relax\'.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='alpha_hybrid'
 vl[i].family   ='scf'
 vl[i].default  =0.

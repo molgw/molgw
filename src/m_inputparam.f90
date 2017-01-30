@@ -88,6 +88,7 @@ module m_inputparam
  real(dp),protected               :: spin_fact
  integer,protected                :: nscf
  real(dp),protected               :: alpha_mixing
+ character(len=100),protected     :: move_nuclei
  character(len=100),protected     :: xyz_file
  character(len=100),protected     :: basis_path
  character(len=100),protected     :: basis_name
@@ -922,7 +923,7 @@ subroutine read_inputfile_namelist()
  endif
 
  x_read(:,:) = x_read(:,:) * length_factor
- call init_atoms(natom,nghost,zatom_read,x_read)
+ call init_atoms(natom,nghost,zatom_read,x_read,(move_nuclei/='no'))
  deallocate(x_read,zatom_read)
 
  call init_ecp(ecp_elements,basis_path,ecp_type,ecp_level)

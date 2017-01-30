@@ -56,7 +56,6 @@ program molgw
  type(spectral_function) :: wpol
  integer                 :: restart_type
  integer                 :: nstate
- integer                 :: ispin
  logical                 :: is_restart,is_big_restart,is_basis_restart
  real(dp),allocatable    :: hamiltonian_tmp(:,:,:)
  real(dp),allocatable    :: hamiltonian_kinetic(:,:)
@@ -70,6 +69,9 @@ program molgw
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
  integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix 
+!FBFB
+ integer                 :: istate,iatom,ibf,jbf,ispin
+ real(dp),allocatable    :: grad_tmp(:,:,:,:)
 !=====
 
  !
@@ -396,10 +398,37 @@ program molgw
  endif
 
 !TODO:  Evaluate forces here
-!   allocate(hamiltonian_tmp(basis%nbf,basis%nbf,3))
-!   call setup_overlap_grad_libint(print_matrix_,basis,hamiltonian_tmp)
-!   call setup_kinetic_grad_libint(print_matrix_,basis,hamiltonian_tmp)
-!   deallocate(hamiltonian_tmp)
+ if( move_nuclei == 'relax' ) then
+!   allocate(grad_tmp(basis%nbf,basis%nbf,1,1))
+!   call setup_overlap_grad_libint(print_matrix_,basis,grad_tmp(:,:,1,1))
+!   call setup_kinetic_grad_libint(print_matrix_,basis,grad_tmp(:,:,1,1))
+!   deallocate(grad_tmp)
+
+   allocate(grad_tmp(basis%nbf,basis%nbf,natom,3))
+   call setup_nucleus_grad_libint(print_matrix_,basis,grad_tmp)
+   write(stdout,'(/,1x,a)') ' ====== forces ====== '
+   write(*,'(4x,a)') 'Atom           Fx               Fy                 Fz'
+   call nucleus_nucleus_force()
+   do iatom=1,natom
+     do ispin=1,nspin
+       do istate=1,nstate
+         force(1,iatom) = force(1,iatom)  &
+              + occupation(istate,ispin) * DOT_PRODUCT( c_matrix(:,istate,ispin) , &
+                   MATMUL( grad_tmp(:,:,iatom,1) , c_matrix(:,istate,ispin) ) )
+         force(2,iatom) = force(2,iatom)  &
+              + occupation(istate,ispin) * DOT_PRODUCT( c_matrix(:,istate,ispin) , &
+                   MATMUL( grad_tmp(:,:,iatom,2) , c_matrix(:,istate,ispin) ) )
+         force(3,iatom) = force(3,iatom)  &
+              + occupation(istate,ispin) * DOT_PRODUCT( c_matrix(:,istate,ispin) , &
+                   MATMUL( grad_tmp(:,:,iatom,3) , c_matrix(:,istate,ispin) ) )
+
+       enddo
+     enddo
+     write(*,'(1x,i4,2x,3(2x,f16.8))') iatom,force(:,iatom)
+   enddo
+   write(stdout,'(1x,a,/)') ' ==================== '
+   deallocate(grad_tmp)
+ endif
 
 
  !

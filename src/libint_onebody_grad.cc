@@ -32,7 +32,7 @@ void libint_overlap_grad(int amA, int contrdepthA , double A [] , double alphaA 
                          double overlapABx [], double overlapABy [], double overlapABz []) {
 
  const unsigned int contrdepth2 = contrdepthA * contrdepthB;
- Libint_overlap_t * inteval = libint2::malloc<Libint_overlap_t>(contrdepth2);
+ Libint_overlap1_t * inteval = libint2::malloc<Libint_overlap1_t>(contrdepth2);
 
  assert(amA <= LIBINT2_MAX_AM_eri);
  assert(amB <= LIBINT2_MAX_AM_eri);
@@ -122,7 +122,7 @@ void libint_kinetic_grad(int amA, int contrdepthA , double A [] , double alphaA 
                          double kineticABx [], double kineticABy [], double kineticABz [] ) {
 
  const unsigned int contrdepth2 = contrdepthA * contrdepthB;
- Libint_kinetic_t * inteval = libint2::malloc<Libint_kinetic_t>(contrdepth2);
+ Libint_kinetic1_t * inteval = libint2::malloc<Libint_kinetic1_t>(contrdepth2);
 
  assert(amA <= LIBINT2_MAX_AM_eri);
  assert(amB <= LIBINT2_MAX_AM_eri);
@@ -191,11 +191,12 @@ void libint_kinetic_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
 
  LIBINT2_PREFIXED_NAME(libint2_build_kinetic1)[amA][amB](inteval);
+
  for( int i12=0; i12 < nint(amA) * nint(amB) ; i12++ ) {
    kineticABx[i12] = inteval[0].targets[0][i12] ;
  }
  for( int i12=0; i12 < nint(amA) * nint(amB) ; i12++ ) {
-   kineticABy[i12] = inteval[0].targets[0][i12+nint(amA) * nint(amB)] ;
+   kineticABy[i12] = inteval[0].targets[0][i12+nint(amA)*nint(amB)] ;
  }
  for( int i12=0; i12 < nint(amA) * nint(amB) ; i12++ ) {
    kineticABz[i12] = inteval[0].targets[0][i12+2*nint(amA)*nint(amB)] ;
@@ -209,19 +210,19 @@ void libint_kinetic_grad(int amA, int contrdepthA , double A [] , double alphaA 
 }
 
 
-#if 0
 /* ==========================================================================                    
  *                           ElecPot         
  * ========================================================================== */
 
 extern "C" {
-void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
-                    int amB, int contrdepthB , double B [] , double alphaB [], double cB [],
-                    double C [],
-                    double elecpotAB [] ) {
+void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
+                         int amB, int contrdepthB , double B [] , double alphaB [], double cB [],
+                         double C [],
+                         double elecpotAx [], double elecpotAy [], double elecpotAz [],
+                         double elecpotBx [], double elecpotBy [], double elecpotBz []) {
 
  const unsigned int contrdepth2 = contrdepthA * contrdepthB;
- Libint_elecpot_t * inteval = libint2::malloc<Libint_elecpot_t>(contrdepth2);
+ Libint_elecpot1_t * inteval = libint2::malloc<Libint_elecpot1_t>(contrdepth2);
 
  assert(amA <= LIBINT2_MAX_AM_eri);
  assert(amB <= LIBINT2_MAX_AM_eri);
@@ -234,10 +235,10 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
  const unsigned int ammax = LIBINT2_MAX_AM_eri ;
  int am = amA + amB ;
  double U ;
- double F[am+1] ;
+ double F[am+2] ;
 
 
- LIBINT2_PREFIXED_NAME(libint2_init_elecpot)(inteval, ammax, 0);
+ LIBINT2_PREFIXED_NAME(libint2_init_elecpot1)(inteval, ammax, 0);
 
  double alphaP, ksiP ;
  double P[3];
@@ -260,9 +261,12 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
      inteval[icontrdepth2].PA_x[0] = A[0] - P[0] ;
      inteval[icontrdepth2].PA_y[0] = A[1] - P[1] ;
      inteval[icontrdepth2].PA_z[0] = A[2] - P[2] ;
+/*
+ *   Not used for nuclear potential
      inteval[icontrdepth2].PB_x[0] = B[0] - P[0] ;
      inteval[icontrdepth2].PB_y[0] = B[1] - P[1] ;
      inteval[icontrdepth2].PB_z[0] = B[2] - P[2] ;
+*/
      inteval[icontrdepth2].PC_x[0] = C[0] - P[0] ;
      inteval[icontrdepth2].PC_y[0] = C[1] - P[1] ;
      inteval[icontrdepth2].PC_z[0] = C[2] - P[2] ;
@@ -283,8 +287,15 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
      inteval[icontrdepth2].veclen = 1 ;
      inteval[icontrdepth2].contrdepth = contrdepth2 ;
 
+     inteval[icontrdepth2].two_alpha0_bra[0] = 2.0 * alphaA[icontrdepthA] ;
+     inteval[icontrdepth2].two_alpha0_ket[0] = 2.0 * alphaB[icontrdepthB] ;
+     inteval[icontrdepth2].rho12_over_alpha1[0] = alphaB[icontrdepthA] / alphaP ;
+#if LIBINT2_DEFINED(eri, rho12_over_alpha2)
+     inteval[icontrdepth2].rho12_over_alpha2[0] = alphaA[icontrdepthB] / alphaP ;
+#endif
+
      U = alphaP * ( ( C[0] - P[0] ) * ( C[0] - P[0] ) + ( C[1] - P[1] ) * ( C[1] - P[1] ) + ( C[2] - P[2] ) * ( C[2] - P[2] ) ) ;
-     boys_function_c(F, am, U);
+     boys_function_c(F, am+1, U);
 
      pfac = 2.0 * ( M_PI / alphaP ) * exp( - ksiP * ab2 ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,amA+amB) ;
 
@@ -293,40 +304,40 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
      if( am >=0 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_0[0] = pfac * F[0] ;
 #endif
 #ifdef LIBINT2_DEFINED__aB_s___0___ElecPot_s___0___Ab__up_1
-     if( am >=1 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_1[0] = pfac * F[1] ;
+     if( am >=0 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_1[0] = pfac * F[1] ;
 #endif
 #ifdef LIBINT2_DEFINED__aB_s___0___ElecPot_s___0___Ab__up_2
-     if( am >=2 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_2[0] = pfac * F[2] ;
+     if( am >=1 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_2[0] = pfac * F[2] ;
 #endif
 #ifdef LIBINT2_DEFINED__aB_s___0___ElecPot_s___0___Ab__up_3
-     if( am >=3 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_3[0] = pfac * F[3] ;
+     if( am >=2 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_3[0] = pfac * F[3] ;
 #endif
 #ifdef LIBINT2_DEFINED__aB_s___0___ElecPot_s___0___Ab__up_4
-     if( am >=4 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_4[0] = pfac * F[4] ;
+     if( am >=3 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_4[0] = pfac * F[4] ;
 #endif
 #ifdef LIBINT2_DEFINED__aB_s___0___ElecPot_s___0___Ab__up_5
-     if( am >=5 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_5[0] = pfac * F[5] ;
+     if( am >=4 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_5[0] = pfac * F[5] ;
 #endif
 #ifdef LIBINT2_DEFINED__aB_s___0___ElecPot_s___0___Ab__up_6
-     if( am >=6 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_6[0] = pfac * F[6] ;
+     if( am >=5 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_6[0] = pfac * F[6] ;
 #endif
 #ifdef LIBINT2_DEFINED__aB_s___0___ElecPot_s___0___Ab__up_7
-     if( am >=7 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_7[0] = pfac * F[7] ;
+     if( am >=6 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_7[0] = pfac * F[7] ;
 #endif
 #ifdef LIBINT2_DEFINED__aB_s___0___ElecPot_s___0___Ab__up_8
-     if( am >=8 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_8[0] = pfac * F[8] ;
+     if( am >=7 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_8[0] = pfac * F[8] ;
 #endif
 #ifdef LIBINT2_DEFINED__aB_s___0___ElecPot_s___0___Ab__up_9
-     if( am >=9 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_9[0] = pfac * F[9] ;
+     if( am >=8 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_9[0] = pfac * F[9] ;
 #endif
 #ifdef LIBINT2_DEFINED__aB_s___0___ElecPot_s___0___Ab__up_10
-     if( am >=10 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_10[0] = pfac * F[10] ;
+     if( am >=9 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_10[0] = pfac * F[10] ;
 #endif
 #ifdef LIBINT2_DEFINED__aB_s___0___ElecPot_s___0___Ab__up_11
-     if( am >=11 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_11[0] = pfac * F[11] ;
+     if( am >=10 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_11[0] = pfac * F[11] ;
 #endif
 #ifdef LIBINT2_DEFINED__aB_s___0___ElecPot_s___0___Ab__up_12
-     if( am >=12 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_12[0] = pfac * F[12] ;
+     if( am >=11 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_12[0] = pfac * F[12] ;
 #endif
 
 
@@ -336,28 +347,33 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 
 
- if( amA + amB == 0 ) {
+ LIBINT2_PREFIXED_NAME(libint2_build_elecpot1)[amA][amB](inteval);
 
-   for( int icontrdepth2=0; icontrdepth2 < contrdepth2; icontrdepth2++) {
-     elecpotAB[0] +=   inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_0[0] ;
-   }
-
- } else {
-
-   LIBINT2_PREFIXED_NAME(libint2_build_elecpot)[amA][amB](inteval);
-   for( int i12=0; i12 < nint(amA) * nint(amB) ; ++i12 ) {
-     elecpotAB[i12] += inteval[0].targets[0][i12] ;
-   }
+ for( int i12=0; i12 < nint(amA) * nint(amB) ; i12++ ) {
+   elecpotAx[i12]+= inteval[0].targets[0][i12] ;
+ }
+ for( int i12=0; i12 < nint(amA) * nint(amB) ; i12++ ) {
+   elecpotAy[i12]+= inteval[0].targets[0][i12+nint(amA)*nint(amB)*1] ;
+ }
+ for( int i12=0; i12 < nint(amA) * nint(amB) ; i12++ ) {
+   elecpotAz[i12]+= inteval[0].targets[0][i12+nint(amA)*nint(amB)*2] ;
+ }
+ for( int i12=0; i12 < nint(amA) * nint(amB) ; i12++ ) {
+   elecpotBx[i12]+= inteval[0].targets[0][i12+nint(amA)*nint(amB)*3] ;
+ }
+ for( int i12=0; i12 < nint(amA) * nint(amB) ; i12++ ) {
+   elecpotBy[i12]+= inteval[0].targets[0][i12+nint(amA)*nint(amB)*4] ;
+ }
+ for( int i12=0; i12 < nint(amA) * nint(amB) ; i12++ ) {
+   elecpotBz[i12]+= inteval[0].targets[0][i12+nint(amA)*nint(amB)*5] ;
  }
 
 
 
- LIBINT2_PREFIXED_NAME(libint2_cleanup_elecpot)(inteval);
+ LIBINT2_PREFIXED_NAME(libint2_cleanup_elecpot1)(inteval);
 
 }
 }
-
-#endif
 
 #endif
 

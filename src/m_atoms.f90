@@ -23,6 +23,8 @@ module m_atoms
  integer,allocatable,protected  :: basis_element(:)
 
  real(dp),allocatable,protected :: x(:,:)
+ real(dp),allocatable,protected :: vel(:,:)
+ real(dp),allocatable,public    :: force(:,:)
 
  logical,protected              :: inversion=.TRUE.
  logical,protected              :: linear=.TRUE.
@@ -35,11 +37,12 @@ contains
 
 
 !=========================================================================
-subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read)
+subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read,calculate_forces)
  use m_tools,only: cross_product
  implicit none
  integer,intent(in)  :: natom_read,nghost_read
  real(dp),intent(in) :: zatom_read(natom_read+nghost_read),x_read(3,natom_read+nghost_read)
+ logical,intent(in)  :: calculate_forces
 !=====
  integer  :: iatom,jatom
  real(dp) :: x21(3),x31(3)
@@ -53,6 +56,8 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read)
  allocate(zatom(natom_basis))
  allocate(basis_element(natom_basis))
  allocate(x(3,natom_basis))
+ ! For relaxation or dynamics only 
+ if( calculate_forces ) allocate(force(3,natom))
 
  zatom(1:natom)              = zatom_read(1:natom)
  ! Ghost atoms do not have a positive nucleus
@@ -69,7 +74,7 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read)
      if( NORM2( x(:,iatom)-x(:,jatom) ) < 0.2 ) then
        write(stdout,*) 'Atoms',iatom,jatom
        write(stdout,*) 'are closer than 0.2 bohr'
-       call die('atoms too close')
+       call issue_warning('Some atoms are too close')
      endif
    enddo
  enddo
@@ -171,9 +176,10 @@ subroutine destroy_atoms()
  implicit none
 !=====
 
- if(ALLOCATED(zatom)) deallocate(zatom)
+ if(ALLOCATED(zatom))         deallocate(zatom)
  if(ALLOCATED(basis_element)) deallocate(basis_element)
- if(ALLOCATED(x)) deallocate(x)
+ if(ALLOCATED(x))             deallocate(x)
+ if(ALLOCATED(force))         deallocate(force)
 
 end subroutine destroy_atoms
 
@@ -194,6 +200,29 @@ subroutine nucleus_nucleus_energy(energy)
  enddo
 
 end subroutine nucleus_nucleus_energy
+
+
+!=========================================================================
+subroutine nucleus_nucleus_force()
+ implicit none
+!=====
+ integer              :: iatom,jatom
+!=====
+
+ force(:,:) = 0.0_dp
+ do iatom=1,natom
+   do jatom=1,natom
+     if( iatom == jatom ) cycle
+     force(1,iatom) = force(1,iatom) + zatom(iatom) * zatom(jatom) / ( SUM( (x(:,iatom) - x(:,jatom))**2) )**1.50_dp &
+                          * ( x(1,iatom) - x(1,jatom) )
+     force(2,iatom) = force(2,iatom) + zatom(iatom) * zatom(jatom) / ( SUM( (x(:,iatom) - x(:,jatom))**2) )**1.50_dp &
+                          * ( x(2,iatom) - x(2,jatom) )
+     force(3,iatom) = force(3,iatom) + zatom(iatom) * zatom(jatom) / ( SUM( (x(:,iatom) - x(:,jatom))**2) )**1.50_dp &
+                          * ( x(3,iatom) - x(3,jatom) )
+   enddo
+ enddo
+
+end subroutine nucleus_nucleus_force
 
 
 !=========================================================================
