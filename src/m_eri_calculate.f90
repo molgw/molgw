@@ -925,14 +925,14 @@ subroutine calculate_eri_2center_sca(auxil_basis)
 
 !=====
 ! variables used to call C
- integer(C_INT)               :: am1,am2,am3,am4
+ integer(C_INT)               :: am1,am3
  integer(C_INT)               :: ng1,ng2,ng3,ng4
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
 
-#ifdef HAVE_LIBINT_ONEBODY
+#ifdef HAVE_LIBINT_2CENTER
  interface
    subroutine libint_2center(amA,contrdepthA,A,alphaA,cA, &
                              amC,contrdepthC,C,alphaC,cC, &
@@ -960,7 +960,7 @@ subroutine calculate_eri_2center_sca(auxil_basis)
  call setup_shell_list_auxil(auxil_basis)
 
  
-#ifndef HAVE_LIBINT_ONEBODY
+#ifndef HAVE_LIBINT_2CENTER
  write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid: ',nprow_3center,' x ',npcol_3center
 #else
  write(stdout,'(a,i4,a,i4)') ' LIBINT 2-center integrals distributed using a SCALAPACK grid: ',nprow_3center,' x ',npcol_3center
@@ -1047,7 +1047,7 @@ subroutine calculate_eri_2center_sca(auxil_basis)
        integrals_cart(:,:) = 0.0_dp
   
   
-#ifndef HAVE_LIBINT_ONEBODY
+#ifndef HAVE_LIBINT_2CENTER
        if(am1+am3==0) then
   
          do ig3=1,ng3
@@ -1076,14 +1076,13 @@ subroutine calculate_eri_2center_sca(auxil_basis)
   
        else
   
-         info=eval_contr_integral(                &
-                                 am1,0_C_INT,am3,0_C_INT, &
-                                 ng1,ng2,ng3,ng4, &
-                                 coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
-                                 alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
-                                 x01(1),x02(1),x03(1),x04(1),&
-                                 0.0_C_DOUBLE, &
-                                 int_shell(1))
+         info=eval_contr_integral(am1,0_C_INT,am3,0_C_INT, &
+                                  ng1,ng2,ng3,ng4, &
+                                  coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
+                                  alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
+                                  x01(1),x02(1),x03(1),x04(1),&
+                                  0.0_C_DOUBLE, &
+                                  int_shell(1))
   
   
          if(info/=0) then
@@ -1095,23 +1094,13 @@ subroutine calculate_eri_2center_sca(auxil_basis)
          do ibf=1,n1c
            do kbf=1,n3c
              iibf=iibf+1
-             integrals_cart(ibf,kbf) = int_shell(iibf)
+             integrals_cart(ibf,kbf) = int_shell(iibf) * cart_to_pure_norm(0)%matrix(1,1)**2
            enddo
          enddo
   
-         do kbf=1,n3c
-           do ibf=1,ni
-             integrals_tmp (ibf,kbf) = SUM( integrals_cart(1:n1c,kbf) * cart_to_pure_norm(am1)%matrix(1:n1c,ibf) )
-           enddo
-         enddo
-  
-         do kbf=1,nk
-           do ibf=1,ni
-             integrals_cart(ibf,kbf) = SUM( integrals_tmp(ibf,1:n3c) * cart_to_pure_norm(am3)%matrix(1:n3c,kbf) )
-           enddo
-         enddo
-  
-         integrals_cart(1:ni,1:nk) = integrals_cart(1:ni,1:nk) * cart_to_pure_norm(0)%matrix(1,1)**2
+         integrals_cart(1:ni,1:n3c) = MATMUL( TRANSPOSE( cart_to_pure_norm(am1)%matrix(1:n1c,1:ni) ) , integrals_cart(1:n1c,1:n3c) )
+
+         integrals_cart(1:ni,1:nk) = MATMUL( integrals_cart(1:ni,1:n3c) , cart_to_pure_norm(am3)%matrix(1:n3c,1:nk) )
   
        endif
 #else
@@ -1119,6 +1108,7 @@ subroutine calculate_eri_2center_sca(auxil_basis)
        call libint_2center(am1,ng1,x01,alpha1,coeff1, &
                            am3,ng3,x03,alpha3,coeff3, &
                            0.0_C_DOUBLE,int_shell)
+
        iibf=0
        do ibf=1,n1c
          do kbf=1,n3c

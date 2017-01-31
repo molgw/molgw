@@ -163,7 +163,7 @@ void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], d
      int12->roe[0] = gammapq/alphaQ;
 #endif
 
-     pfac = 2 * pi_2p5 / (alphaP * alphaQ * sqrt(alphaP + alphaQ)) * cA[icontrdepthA] * cC[icontrdepthC] * pow(-1,am) ;
+     pfac = 2 * pi_2p5 / (alphaP * alphaQ * sqrt(alphaP + alphaQ)) * cA[icontrdepthA] * cC[icontrdepthC] ;
      U = PQ2 * gammapq_rc2 ;
    
      boys_function_c(F, am, U);
