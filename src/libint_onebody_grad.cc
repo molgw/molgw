@@ -43,6 +43,7 @@ void libint_overlap_grad(int amA, int contrdepthA , double A [] , double alphaA 
 #endif
 
  const unsigned int ammax = LIBINT2_MAX_AM_eri ;
+ int am = amA + amB ;
 
 
  LIBINT2_PREFIXED_NAME(libint2_init_overlap1)(inteval, ammax, 0);
@@ -71,7 +72,7 @@ void libint_overlap_grad(int amA, int contrdepthA , double A [] , double alphaA 
      inteval[icontrdepth2].PB_z[0] = B[2] - P[2] ;
 
 
-     inteval[icontrdepth2]._0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,amA+amB)
+     inteval[icontrdepth2]._0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am)
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_x[0] * inteval[icontrdepth2].AB_x[0] / alphaP );
      inteval[icontrdepth2]._0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_y[0] * inteval[icontrdepth2].AB_y[0] / alphaP );
@@ -133,6 +134,7 @@ void libint_kinetic_grad(int amA, int contrdepthA , double A [] , double alphaA 
 #endif
 
  const unsigned int ammax = LIBINT2_MAX_AM_eri ;
+ int am = amA + amB ;
 
 
  LIBINT2_PREFIXED_NAME(libint2_init_kinetic1)(inteval, ammax, 0);
@@ -169,7 +171,7 @@ void libint_kinetic_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
      pfac[icontrdepth2] = ksiP * ( 3.0 - 2.0 * ksiP * ab2 ) ;
 
-     inteval[icontrdepth2]._0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,amA+amB)
+     inteval[icontrdepth2]._0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am)
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_x[0] * inteval[icontrdepth2].AB_x[0] / alphaP );
      inteval[icontrdepth2]._0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_y[0] * inteval[icontrdepth2].AB_y[0] / alphaP );
@@ -275,7 +277,7 @@ void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA 
           + inteval[icontrdepth2].AB_y[0] * inteval[icontrdepth2].AB_y[0]
           + inteval[icontrdepth2].AB_z[0] * inteval[icontrdepth2].AB_z[0] ;
 
-     inteval[icontrdepth2]._0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,amA+amB) 
+     inteval[icontrdepth2]._0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am) 
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_x[0] * inteval[icontrdepth2].AB_x[0] / alphaP );
      inteval[icontrdepth2]._0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_y[0] * inteval[icontrdepth2].AB_y[0] / alphaP );
@@ -297,7 +299,7 @@ void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA 
      U = alphaP * ( ( C[0] - P[0] ) * ( C[0] - P[0] ) + ( C[1] - P[1] ) * ( C[1] - P[1] ) + ( C[2] - P[2] ) * ( C[2] - P[2] ) ) ;
      boys_function_c(F, am+1, U);
 
-     pfac = 2.0 * ( M_PI / alphaP ) * exp( - ksiP * ab2 ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,amA+amB) ;
+     pfac = 2.0 * ( M_PI / alphaP ) * exp( - ksiP * ab2 ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am) ;
 
      /* FIXME what happens when F is evaluated beyond its range? */
 #ifdef LIBINT2_DEFINED__aB_s___0___ElecPot_s___0___Ab__up_0

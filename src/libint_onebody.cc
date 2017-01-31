@@ -43,6 +43,7 @@ void libint_overlap(int amA, int contrdepthA , double A [] , double alphaA [], d
 #endif
 
  const unsigned int ammax = LIBINT2_MAX_AM_eri ;
+ const int am = amA + amB ;
 
 
  LIBINT2_PREFIXED_NAME(libint2_init_overlap)(inteval, ammax, 0);
@@ -71,7 +72,7 @@ void libint_overlap(int amA, int contrdepthA , double A [] , double alphaA [], d
      inteval[icontrdepth2].PB_z[0] = B[2] - P[2] ;
 
 
-     inteval[icontrdepth2]._0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,amA+amB)
+     inteval[icontrdepth2]._0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am)
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_x[0] * inteval[icontrdepth2].AB_x[0] / alphaP );
      inteval[icontrdepth2]._0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_y[0] * inteval[icontrdepth2].AB_y[0] / alphaP );
@@ -136,6 +137,7 @@ void libint_kinetic(int amA, int contrdepthA , double A [] , double alphaA [], d
 #endif
 
  const unsigned int ammax = LIBINT2_MAX_AM_eri ;
+ const int am = amA + amB ;
 
 
  LIBINT2_PREFIXED_NAME(libint2_init_kinetic)(inteval, ammax, 0);
@@ -172,7 +174,7 @@ void libint_kinetic(int amA, int contrdepthA , double A [] , double alphaA [], d
 
      pfac[icontrdepth2] = ksiP * ( 3.0 - 2.0 * ksiP * ab2 ) ;
 
-     inteval[icontrdepth2]._0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,amA+amB)
+     inteval[icontrdepth2]._0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am)
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_x[0] * inteval[icontrdepth2].AB_x[0] / alphaP );
      inteval[icontrdepth2]._0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_y[0] * inteval[icontrdepth2].AB_y[0] / alphaP );
@@ -241,7 +243,7 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
 #endif
 
  const unsigned int ammax = LIBINT2_MAX_AM_eri ;
- int am = amA + amB ;
+ const int am = amA + amB ;
  double U ;
  double F[am+1] ;
 
@@ -280,7 +282,7 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
           + inteval[icontrdepth2].AB_y[0] * inteval[icontrdepth2].AB_y[0]
           + inteval[icontrdepth2].AB_z[0] * inteval[icontrdepth2].AB_z[0] ;
 
-     inteval[icontrdepth2]._0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,amA+amB) 
+     inteval[icontrdepth2]._0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am) 
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_x[0] * inteval[icontrdepth2].AB_x[0] / alphaP );
      inteval[icontrdepth2]._0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
                                                 * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_y[0] * inteval[icontrdepth2].AB_y[0] / alphaP );
@@ -295,7 +297,7 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
      U = alphaP * ( ( C[0] - P[0] ) * ( C[0] - P[0] ) + ( C[1] - P[1] ) * ( C[1] - P[1] ) + ( C[2] - P[2] ) * ( C[2] - P[2] ) ) ;
      boys_function_c(F, am, U);
 
-     pfac = 2.0 * ( M_PI / alphaP ) * exp( - ksiP * ab2 ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,amA+amB) ;
+     pfac = 2.0 * ( M_PI / alphaP ) * exp( - ksiP * ab2 ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am) ;
 
      /* FIXME what happens when F is evaluated beyond its range? */
 #ifdef LIBINT2_DEFINED__aB_s___0___ElecPot_s___0___Ab__up_0
@@ -345,7 +347,7 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 
 
- if( amA + amB == 0 ) {
+ if( am == 0 ) {
 
    for( int icontrdepth2=0; icontrdepth2 < contrdepth2; icontrdepth2++) {
      elecpotAB[0] +=   inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_0[0] ;
