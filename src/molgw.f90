@@ -149,7 +149,7 @@ program molgw
    call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type,auxil_basis)
 
    ! 2-center integrals
-   call calculate_eri_2center_scalapack(auxil_basis)
+   call calculate_eri_2center_scalapack(auxil_basis,0.0_dp)
    ! 3-center integrals
    call calculate_eri_3center_scalapack(basis,auxil_basis)
 
@@ -159,6 +159,7 @@ program molgw
    if(calc_type%need_exchange_lr ) then
      ! 2-center integrals
      call calculate_eri_2center_lr(auxil_basis,rcut)
+!     call calculate_eri_2center_scalapack(auxil_basis,rcut)
      ! 3-center integrals
      call calculate_eri_3center_lr(basis,auxil_basis,rcut)
    endif

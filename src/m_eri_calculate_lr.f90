@@ -19,11 +19,6 @@ module m_eri_calculate_lr
  use m_eri
 
 
- integer,protected :: nauxil_2center_lr  ! size of the 2-center matrix
-                                         ! 2-center integrals are NOT distributed
-
- real(dp),private,allocatable :: eri_2center_lr(:,:)
-
 
 contains
 

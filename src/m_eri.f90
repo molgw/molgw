@@ -23,10 +23,15 @@ module m_eri
 
  real(dp),private           :: TOL_INT
 
+ integer,public :: nauxil_2center_lr  ! size of the 2-center matrix
+                                         ! 2-center integrals are NOT distributed
+
  real(dp),public,allocatable :: eri_4center(:)
  real(dp),public,allocatable :: eri_4center_lr(:)
  real(dp),public,allocatable :: eri_3center(:,:)
  real(dp),public,allocatable :: eri_3center_lr(:,:)
+ real(dp),public,allocatable :: eri_2center_lr(:,:)
+
 
  logical,protected,allocatable      :: negligible_shellpair(:,:)
  integer,protected,allocatable      :: index_pair_1d(:)
