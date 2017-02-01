@@ -150,20 +150,12 @@ subroutine calculate_eri_4center(basis)
      integrals_cart(:,:,:,:) = 0.0_dp
 
 
-     info=eval_contr_integral(                &
-                             am1,am2,am3,am4, &
-                             ng1,ng2,ng3,ng4, &
-                             coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
-                             alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
-                             x01(1),x02(1),x03(1),x04(1),&
-                             0.0_C_DOUBLE, &
-                             int_shell(1))
+     call libint_4center(am1,ng1,x01,alpha1,coeff1, &
+                         am2,ng2,x02,alpha2,coeff2, &
+                         am3,ng3,x03,alpha3,coeff3, &
+                         am4,ng4,x04,alpha4,coeff4, &
+                         0.0_C_DOUBLE,int_shell)
 
-
-     if(info/=0) then
-       write(stdout,*) am1,am2,am3,am4
-       call die('ERI calculated by libint failed')
-     endif
 
      iibf=0
      do ibf=1,n1c
