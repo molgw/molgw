@@ -20,12 +20,12 @@ extern "C" void boys_function_c(double*, int, double);
 
 /* Code */
 
-#ifdef HAVE_LIBINT_2CENTER
 
 /* ==========================================================================                    
  *                           2-center integrals
  * ========================================================================== */
 
+#ifdef HAVE_LIBINT_2CENTER
 extern "C" {
 void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
                     int amC, int contrdepthC , double C [] , double alphaC [], double cC [],
@@ -35,8 +35,8 @@ void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], d
  const unsigned int contrdepth2 = contrdepthA * contrdepthC;
  Libint_2eri_t* inteval = libint2::malloc<Libint_2eri_t>(contrdepth2);
 
- assert(amA <= LIBINT2_MAX_AM_eri);
- assert(amC <= LIBINT2_MAX_AM_eri);
+ assert(amA <= LIBINT2_MAX_AM_2eri);
+ assert(amC <= LIBINT2_MAX_AM_2eri);
 
 #ifndef LIBINT2_CONTRACTED_INTS
  assert( contrdepthA == 1 );
@@ -268,6 +268,8 @@ void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 }
 }
+#endif
+
 
 
 /* ==========================================================================                    
@@ -275,28 +277,29 @@ void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], d
  * ========================================================================== */
 
 
+#ifdef HAVE_LIBINT_3CENTER
 extern "C" {
 void libint_3center(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
-                    int amB, int contrdepthB , double B [] , double alphaB [], double cB [], 
-                    int amC, int contrdepthC , double C [] , double alphaC [], double cC [],
+                    int amC, int contrdepthC , double C [] , double alphaC [], double cC [], 
+                    int amD, int contrdepthD , double D [] , double alphaD [], double cD [],
                     double rcut,
-                    double eriABC [] ) {
+                    double eriACD [] ) {
 
- const unsigned int contrdepth3 = contrdepthA * contrdepthB * contrdepthC ;
+ const unsigned int contrdepth3 = contrdepthA * contrdepthC * contrdepthD ;
  Libint_3eri_t* inteval = libint2::malloc<Libint_3eri_t>(contrdepth3);
 
- assert(amA <= LIBINT2_MAX_AM_eri);
- assert(amB <= LIBINT2_MAX_AM_eri);
- assert(amC <= LIBINT2_MAX_AM_eri);
+ assert(amA <= LIBINT2_MAX_AM_3eri);
+ assert(amC <= LIBINT2_MAX_AM_3eri);
+ assert(amD <= LIBINT2_MAX_AM_3eri);
 
 #ifndef LIBINT2_CONTRACTED_INTS
  assert( contrdepthA == 1 );
- assert( contrdepthB == 1 );
  assert( contrdepthC == 1 );
+ assert( contrdepthD == 1 );
 #endif
 
- const unsigned int ammax = max(max(amA,amB),amC) ;
- const int am = amA + amB + amC ;
+ const unsigned int ammax = max(max(amA,amC),amD) ;
+ const int am = amA + amC + amD ;
 
 
  LIBINT2_PREFIXED_NAME(libint2_init_3eri)(inteval, ammax, 0);
@@ -317,37 +320,40 @@ void libint_3center(int amA, int contrdepthA , double A [] , double alphaA [], d
  double Wy ;
  double Wz ;
  double AB2 ;
+ double CD2 ;
  double pfac ;
  constexpr double pi_2p5 = pow(M_PI,2.5) ;
 
 
  int icontrdepth3 = 0 ;
  for( int icontrdepthA=0; icontrdepthA < contrdepthA; icontrdepthA++)  {
-   for( int icontrdepthB=0; icontrdepthB < contrdepthB; icontrdepthB++)  {
-     for( int icontrdepthC=0; icontrdepthC < contrdepthC; icontrdepthC++)  {
+   for( int icontrdepthC=0; icontrdepthC < contrdepthC; icontrdepthC++)  {
+     for( int icontrdepthD=0; icontrdepthD < contrdepthD; icontrdepthD++)  {
+
 
        int12 = &inteval[icontrdepth3] ;
-       alphaP = alphaA[icontrdepthA] + alphaB[icontrdepthB] ;
-       alphaQ = alphaC[icontrdepthC] ;
-       P[0] = (alphaA[icontrdepthA] * A[0] + alphaB[icontrdepthB] * B[0]) / alphaP ;
-       P[1] = (alphaA[icontrdepthA] * A[1] + alphaB[icontrdepthB] * B[1]) / alphaP ;
-       P[2] = (alphaA[icontrdepthA] * A[2] + alphaB[icontrdepthB] * B[2]) / alphaP ;
+       alphaP = alphaA[icontrdepthA] ;
+       alphaQ = alphaC[icontrdepthC] + alphaD[icontrdepthD];
+       P[0] =  A[0] ;
+       P[1] =  A[1] ;
+       P[2] =  A[2] ;
+       Q[0] = (alphaC[icontrdepthC] * C[0] + alphaD[icontrdepthD] * D[0]) / alphaQ ;
+       Q[1] = (alphaC[icontrdepthC] * C[1] + alphaD[icontrdepthD] * D[1]) / alphaQ ;
+       Q[2] = (alphaC[icontrdepthC] * C[2] + alphaD[icontrdepthD] * D[2]) / alphaQ ;
 
   
-       int12->PA_x[0] = P[0] - A[0] ;
-       int12->PA_y[0] = P[1] - A[1] ;
-       int12->PA_z[0] = P[2] - A[2] ;
-       int12->PB_x[0] = P[0] - B[0] ;
-       int12->PB_y[0] = P[1] - B[1] ;
-       int12->PB_z[0] = P[2] - B[2] ;
-       int12->AB_x[0] = A[0] - B[0] ;
-       int12->AB_y[0] = A[1] - B[1] ;
-       int12->AB_z[0] = A[2] - B[2] ;
+       int12->PA_x[0] = 0.0 ;
+       int12->PA_y[0] = 0.0 ;
+       int12->PA_z[0] = 0.0 ;
+       int12->PB_x[0] = 0.0 ;
+       int12->PB_y[0] = 0.0 ;
+       int12->PB_z[0] = 0.0 ;
+       int12->AB_x[0] = 0.0 ;
+       int12->AB_y[0] = 0.0 ;
+       int12->AB_z[0] = 0.0 ;
        int12->oo2z[0] = 0.5 / alphaP ;
 
-       AB2 = int12->AB_x[0] * int12->AB_x[0] 
-           + int12->AB_y[0] * int12->AB_y[0] 
-           + int12->AB_z[0] * int12->AB_z[0] ;
+       AB2 = 0.0 ;
   
        gammapq = alphaP * alphaQ / (alphaP + alphaQ);
   
@@ -360,32 +366,35 @@ void libint_3center(int amA, int contrdepthA , double A [] , double alphaA [], d
        gammapq_ratio = ( alphaP + alphaQ ) / ( alphaP + alphaQ + alphaP * alphaQ * rcut * rcut );
   
   
-       int12->QC_x[0] = 0 ;
-       int12->QC_y[0] = 0 ;
-       int12->QC_z[0] = 0 ;
-       int12->CD_x[0] = 0 ;
-       int12->CD_y[0] = 0 ;
-       int12->CD_z[0] = 0 ;
+       int12->QC_x[0] = Q[0] - C[0] ;
+       int12->QC_y[0] = Q[1] - C[1] ;
+       int12->QC_z[0] = Q[2] - C[2] ;
+       int12->CD_x[0] = C[0] - D[0] ;
+       int12->CD_y[0] = C[1] - D[1] ;
+       int12->CD_z[0] = C[2] - D[2] ;
+       CD2 = int12->CD_x[0] * int12->CD_x[0] 
+           + int12->CD_y[0] * int12->CD_y[0] 
+           + int12->CD_z[0] * int12->CD_z[0] ;
        int12->oo2e[0] = 0.5 / alphaQ;
   
       // Prefactors for interelecttron transfer relation
 #if LIBINT2_DEFINED(eri,TwoPRepITR_pfac0_0_x)
-     int12->TwoPRepITR_pfac0_0_x[0] = -alphaB * int12->AB_x[0] /alphaP ; 
+     int12->TwoPRepITR_pfac0_0_x[0] = -alphaD * int12->CD_x[0] /alphaP ; 
 #endif
 #if LIBINT2_DEFINED(eri,TwoPRepITR_pfac0_0_y)
-     int12->TwoPRepITR_pfac0_0_y[0] = -alphaB * int12->AB_y[0] /alphaP ; 
+     int12->TwoPRepITR_pfac0_0_y[0] = -alphaD * int12->CD_y[0] /alphaP ; 
 #endif
 #if LIBINT2_DEFINED(eri,TwoPRepITR_pfac0_0_z)
-     int12->TwoPRepITR_pfac0_0_z[0] = -alphaB * int12->AB_z[0] /alphaP ; ;
+     int12->TwoPRepITR_pfac0_0_z[0] = -alphaD * int12->CD_z[0] /alphaP ; ;
 #endif
 #if LIBINT2_DEFINED(eri,TwoPRepITR_pfac0_1_x)
-     int12->TwoPRepITR_pfac0_1_x[0] = -alphaB * int12->AB_x[0] /alphaQ ;
+     int12->TwoPRepITR_pfac0_1_x[0] = -alphaD * int12->CD_x[0] /alphaQ ;
 #endif
 #if LIBINT2_DEFINED(eri,TwoPRepITR_pfac0_1_y)
-     int12->TwoPRepITR_pfac0_1_y[0] = -alphaB * int12->AB_y[0] /alphaQ ;
+     int12->TwoPRepITR_pfac0_1_y[0] = -alphaD * int12->CD_y[0] /alphaQ ;
 #endif
 #if LIBINT2_DEFINED(eri,TwoPRepITR_pfac0_1_z)
-     int12->TwoPRepITR_pfac0_1_z[0] = -alphaB * int12->AB_z[0] /alphaQ ;
+     int12->TwoPRepITR_pfac0_1_z[0] = -alphaD * int12->CD_z[0] /alphaQ ;
 #endif
 #if LIBINT2_DEFINED(eri,TwoPRepITR_pfac1_0)
      int12->TwoPRepITR_pfac1_0[0] = -alphaQ / alphaP;
@@ -394,20 +403,20 @@ void libint_3center(int amA, int contrdepthA , double A [] , double alphaA [], d
      int12->TwoPRepITR_pfac1_1[0] = -alphaP / alphaQ;
 #endif
 
-     PQx = P[0] - C[0];
-     PQy = P[1] - C[1];
-     PQz = P[2] - C[2];
+     PQx = P[0] - Q[0];
+     PQy = P[1] - Q[1];
+     PQz = P[2] - Q[2];
      PQ2 = PQx * PQx + PQy * PQy + PQz * PQz;
-     Wx = (alphaP * P[0] + alphaQ * C[0]) / (alphaP + alphaQ);
-     Wy = (alphaP * P[1] + alphaQ * C[1]) / (alphaP + alphaQ);
-     Wz = (alphaP * P[2] + alphaQ * C[2]) / (alphaP + alphaQ);
+     Wx = (alphaP * P[0] + alphaQ * Q[0]) / (alphaP + alphaQ);
+     Wy = (alphaP * P[1] + alphaQ * Q[1]) / (alphaP + alphaQ);
+     Wz = (alphaP * P[2] + alphaQ * Q[2]) / (alphaP + alphaQ);
 
      int12->WP_x[0] = Wx - P[0];
      int12->WP_y[0] = Wy - P[1];
      int12->WP_z[0] = Wz - P[2];
-     int12->WQ_x[0] = Wx - C[0];
-     int12->WQ_y[0] = Wy - C[1];
-     int12->WQ_z[0] = Wz - C[2];
+     int12->WQ_x[0] = Wx - Q[0];
+     int12->WQ_y[0] = Wy - Q[1];
+     int12->WQ_z[0] = Wz - Q[2];
      int12->oo2ze[0] = 0.5 / ( alphaP + alphaQ ) ;
 #if LIBINT2_DEFINED(eri,roz)
      int12->roz[0] = gammapq/alphaP;
@@ -418,8 +427,8 @@ void libint_3center(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 
      pfac = 2 * pi_2p5 / (alphaP * alphaQ * sqrt(alphaP + alphaQ))
-               * exp(-alphaA[icontrdepthA] * alphaB[icontrdepthB] * AB2 / alphaP) 
-                * cA[icontrdepthA] * cB[icontrdepthB] * cC[icontrdepthC] ;
+               * exp(-alphaC[icontrdepthC] * alphaD[icontrdepthD] * CD2 / alphaQ) 
+                * cA[icontrdepthA] * cC[icontrdepthC] * cD[icontrdepthD] ;
      U = PQ2 * gammapq_rc2 ;
    
      boys_function_c(F, am, U);
@@ -504,19 +513,18 @@ void libint_3center(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 
 
-
  if( am == 0 ) {
 
-   eriABC[0] = 0.0 ;
+   eriACD[0] = 0.0 ;
    for( int icontrdepth3=0; icontrdepth3 < contrdepth3; icontrdepth3++) {
-     eriABC[0] +=  inteval[icontrdepth3].LIBINT_T_SS_EREP_SS(0)[0] ;
+     eriACD[0] +=  inteval[icontrdepth3].LIBINT_T_SS_EREP_SS(0)[0] ;
    }
 
  } else {
 
-   LIBINT2_PREFIXED_NAME(libint2_build_3eri)[amA][amB][amC](inteval);
-   for( int i123=0; i123 < nint(amA) * nint(amB) * nint(amC) ; ++i123 ) {
-     eriABC[i123] = inteval[0].targets[0][i123] ;
+   LIBINT2_PREFIXED_NAME(libint2_build_3eri)[amA][amC][amD](inteval);
+   for( int i123=0; i123 < nint(amA) * nint(amC) * nint(amD) ; ++i123 ) {
+     eriACD[i123] = inteval[0].targets[0][i123] ;
    }
  }
 
@@ -526,10 +534,7 @@ void libint_3center(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 }
 }
-
-
-
-
-
 #endif
 
+
+/* ========================================================================== */

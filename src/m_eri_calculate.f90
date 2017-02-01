@@ -893,7 +893,7 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
  integer                      :: ibf,jbf,kbf,lbf
  integer                      :: iibf
  integer                      :: info,ip
- integer                      :: ibf_auxil,jbf_auxil,ipair
+ integer                      :: ibf_auxil,jbf_auxil
  real(dp)                     :: zeta_12,zeta_34,rho,rho1,f0t(0:0),tt
  real(dp)                     :: p(3),q(3)
  real(dp),allocatable         :: integrals_tmp(:,:,:,:)
@@ -1090,7 +1090,7 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
          enddo
   
        else
-  
+
          info=eval_contr_integral(                &
                                  am1,am2,am3,am4, &
                                  ng1,ng2,ng3,ng4, &
@@ -1099,12 +1099,6 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
                                  x01(1),x02(1),x03(1),x04(1),&
                                  0.0_C_DOUBLE, &
                                  int_shell(1))
-  
-  
-         if(info/=0) then
-           write(stdout,*) am1,am2,am3,am4
-           call die('ERI calculated by libint failed')
-         endif
   
          iibf=0
          do ibf=1,n1c
@@ -1259,6 +1253,225 @@ subroutine calculate_eri_3center_sca(basis,auxil_basis)
 
 
 end subroutine calculate_eri_3center_sca
+#endif
+
+
+#ifdef HAVE_SCALAPACK
+!=========================================================================
+subroutine calculate_eri_3center_scalapack(basis,auxil_basis)
+ implicit none
+ type(basis_set),intent(in)   :: basis
+ type(basis_set),intent(in)   :: auxil_basis
+!=====
+ integer                      :: ishell,kshell,lshell
+ integer                      :: klshellpair
+ integer                      :: n1c,n2c,n3c,n4c
+ integer                      :: ig1,ig3,ig4
+ integer                      :: ni,nk,nl
+ integer                      :: ami,amk,aml
+ integer                      :: ibf,jbf,kbf,lbf
+ integer                      :: ibf_auxil,jbf_auxil
+ integer                      :: info
+ real(dp),allocatable         :: integrals(:,:,:)
+ real(dp),allocatable         :: eri_tmp(:,:,:)
+ integer :: klpair_global
+ integer :: ibf_auxil_local,ibf_auxil_global
+ integer :: mlocal,nlocal
+ integer :: iglobal,jglobal,ilocal,jlocal
+ integer :: kglobal,klocal
+ integer :: desc3center(NDEL)
+ integer :: desc3tmp(NDEL)
+ integer :: desc3final(NDEL)
+ logical :: skip_shell
+!=====
+! variables used to call C
+ integer(C_INT)               :: am1,am3,am4
+ integer(C_INT)               :: ng1,ng3,ng4
+ real(C_DOUBLE),allocatable   :: alpha1(:),alpha3(:),alpha4(:)
+ real(C_DOUBLE)               :: x01(3),x03(3),x04(3)
+ real(C_DOUBLE),allocatable   :: coeff1(:),coeff3(:),coeff4(:)
+ real(C_DOUBLE),allocatable   :: int_shell(:)
+!=====
+
+ call start_clock(timing_eri_3center)
+
+ write(stdout,'(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals (LIBINT 3center)'
+
+ write(stdout,'(a,i4,a,i4)') ' 3-center integrals distributed using a SCALAPACK grid: ',nprow_3center,' x ',npcol_3center
+
+ if( cntxt_3center > 0 ) then
+   mlocal = NUMROC(auxil_basis%nbf,block_row,iprow_3center,first_row,nprow_3center)
+   nlocal = NUMROC(npair          ,block_col,ipcol_3center,first_col,npcol_3center)
+
+   call DESCINIT(desc3center,auxil_basis%nbf,npair,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+
+   !  Allocate the 3-center integral array
+   !
+   ! 3-CENTER INTEGRALS 
+   !
+   call clean_allocate('3-center integrals',eri_3center,mlocal,nlocal)
+
+
+
+   do klshellpair=1,nshellpair
+     kshell = index_shellpair(1,klshellpair)
+     lshell = index_shellpair(2,klshellpair)
+  
+     amk = shell(kshell)%am
+     aml = shell(lshell)%am
+     nk = number_basis_function_am( basis%gaussian_type , amk )
+     nl = number_basis_function_am( basis%gaussian_type , aml )
+  
+  
+     ! Check if this shell is actually needed for the local matrix
+     skip_shell = .TRUE.
+     do lbf=1,nl
+       do kbf=1,nk
+         klpair_global = index_pair(shell(kshell)%istart+kbf-1,shell(lshell)%istart+lbf-1)
+
+         skip_shell = skip_shell .AND. .NOT. ( ipcol_3center == INDXG2P(klpair_global,block_col,0,first_col,npcol_3center) )
+       enddo
+     enddo
+
+     if( skip_shell ) cycle
+
+
+     do ishell=1,nshell_auxil
+  
+       ami = shell_auxil(ishell)%am
+       ni = number_basis_function_am( auxil_basis%gaussian_type , ami )
+
+       ! Check if this shell is actually needed for the local matrix
+       skip_shell = .TRUE.
+       do ibf=1,ni
+         iglobal = shell_auxil(ishell)%istart + ibf - 1
+         skip_shell = skip_shell .AND. .NOT. ( iprow_3center == INDXG2P(iglobal,block_row,0,first_row,nprow_3center) )
+       enddo
+
+       if( skip_shell ) cycle
+
+
+       am1 = ami
+       am3 = amk
+       am4 = aml
+       n1c = number_basis_function_am( 'CART' , ami )
+       n3c = number_basis_function_am( 'CART' , amk )
+       n4c = number_basis_function_am( 'CART' , aml )
+       ng1 = shell_auxil(ishell)%ng
+       ng3 = shell(kshell)%ng
+       ng4 = shell(lshell)%ng
+       allocate(alpha1(ng1),alpha3(ng3),alpha4(ng4))
+       allocate(coeff1(ng1),coeff3(ng3),coeff4(ng4))
+       alpha1(:) = shell_auxil(ishell)%alpha(:) 
+       alpha3(:) = shell(kshell)%alpha(:)
+       alpha4(:) = shell(lshell)%alpha(:)
+       coeff1(:) = shell_auxil(ishell)%coeff(:) * cart_to_pure_norm(0)%matrix(1,1)
+       coeff3(:) = shell(kshell)%coeff(:)
+       coeff4(:) = shell(lshell)%coeff(:)
+       x01(:) = shell_auxil(ishell)%x0(:)
+       x03(:) = shell(kshell)%x0(:)
+       x04(:) = shell(lshell)%x0(:)
+  
+  
+       allocate( int_shell(n1c*n3c*n4c) )
+  
+       call libint_3center(am1,ng1,x01,alpha1,coeff1, &
+                           am3,ng3,x03,alpha3,coeff3, &
+                           am4,ng4,x04,alpha4,coeff4, &
+                           0.0_C_DOUBLE,int_shell)
+  
+       call transform_libint_to_molgw_3d(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
+
+       
+       do lbf=1,nl
+         do kbf=1,nk
+           klpair_global = index_pair(shell(kshell)%istart+kbf-1,shell(lshell)%istart+lbf-1)
+           if( ipcol_3center /= INDXG2P(klpair_global,block_col,0,first_col,npcol_3center) ) cycle
+           jlocal = INDXG2L(klpair_global,block_col,0,first_col,npcol_3center)
+
+           do ibf=1,ni
+             ibf_auxil_global = shell_auxil(ishell)%istart+ibf-1
+             if( iprow_3center /= INDXG2P(ibf_auxil_global,block_row,0,first_row,nprow_3center) ) cycle
+             ilocal = INDXG2L(ibf_auxil_global,block_row,0,first_row,nprow_3center)
+
+             eri_3center(ilocal,jlocal) = integrals(ibf,kbf,lbf)
+
+           enddo
+         enddo
+       enddo
+  
+
+       deallocate(integrals)
+       deallocate(int_shell)
+       deallocate(alpha1,alpha3,alpha4)
+       deallocate(coeff1,coeff3,coeff4)
+
+     enddo ! ishell_auxil
+ 
+   enddo ! klshellpair
+
+
+   mlocal = NUMROC(nauxil_2center,block_row,iprow_3center,first_row,nprow_3center)
+   nlocal = NUMROC(npair         ,block_col,ipcol_3center,first_col,npcol_3center)
+
+   call DESCINIT(desc3tmp,nauxil_2center,npair,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+
+   call clean_allocate('3-center integrals SCALAPACK',eri_3center_sca,mlocal,nlocal)
+
+   call PDGEMM('T','N',nauxil_2center,npair,auxil_basis%nbf, &
+               1.0_dp,eri_2center,1,1,desc_2center,  &
+                      eri_3center,1,1,desc3center,   &
+               0.0_dp,eri_3center_sca,1,1,desc3tmp)
+
+
+   call clean_deallocate('Distributed 2-center integrals',eri_2center)
+   call clean_deallocate('3-center integrals',eri_3center)
+
+
+ else
+   call die('distribution not permitted')
+ endif ! cntxt_3center
+
+
+
+ write(stdout,'(a,i8,a,i4)') ' Final 3-center integrals distributed using a SCALAPACK grid: ',nprow_auxil,' x ',npcol_auxil
+
+ if( cntxt_auxil > 0 ) then
+   mlocal = NUMROC(nauxil_2center,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+   nlocal = NUMROC(npair         ,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
+ else
+   mlocal = -1
+   nlocal = -1
+ endif
+ call xmax_ortho(mlocal)
+ call xmax_ortho(nlocal)
+
+ call clean_allocate('3-center integrals',eri_3center,mlocal,nlocal)
+  
+ call DESCINIT(desc3final,nauxil_2center,npair,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+
+ call PDGEMR2D(nauxil_2center,npair,eri_3center_sca,1,1,desc3tmp,eri_3center,1,1,desc3final,cntxt_3center)
+
+#ifndef SCASCA
+ if( cntxt_3center > 0 ) then
+   call clean_deallocate('3-center integrals SCALAPACK',eri_3center_sca)
+ endif
+#endif
+
+ !
+ ! Propagate to the ortho MPI direction
+ if( cntxt_auxil <= 0 ) then
+   eri_3center(:,:) = 0.0_dp
+ endif
+ call xsum_ortho(eri_3center)
+
+ write(stdout,'(/,1x,a)') 'All 3-center integrals have been calculated and stored'
+
+
+ call stop_clock(timing_eri_3center)
+
+
+end subroutine calculate_eri_3center_scalapack
 #endif
 
 

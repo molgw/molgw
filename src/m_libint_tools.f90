@@ -148,13 +148,38 @@ module m_libint_tools
    end subroutine libint_2center
 #endif
 
+#ifdef HAVE_LIBINT_3CENTER
+   subroutine libint_3center(amA,contrdepthA,A,alphaA,cA, &
+                             amB,contrdepthB,B,alphaB,cB, &
+                             amC,contrdepthC,C,alphaC,cC, &
+                             rcut,eriABC) bind(C)
+     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     integer(C_INT),value         :: amA,contrdepthA
+     real(C_DOUBLE),intent(in)    :: A(*)
+     real(C_DOUBLE),intent(in)    :: alphaA(*)
+     real(C_DOUBLE),intent(in)    :: cA(*)
+     integer(C_INT),value         :: amB,contrdepthB
+     real(C_DOUBLE),intent(in)    :: B(*)
+     real(C_DOUBLE),intent(in)    :: alphaB(*)
+     real(C_DOUBLE),intent(in)    :: cB(*)
+     integer(C_INT),value         :: amC,contrdepthC
+     real(C_DOUBLE),intent(in)    :: C(*)
+     real(C_DOUBLE),intent(in)    :: alphaC(*)
+     real(C_DOUBLE),intent(in)    :: cC(*)
+     real(C_DOUBLE),intent(in),value :: rcut
+     real(C_DOUBLE),intent(inout)    :: eriABC(*)
+
+   end subroutine libint_3center
+#endif
+
+
  end interface
 
 
 
  interface transform_libint_to_molgw
    module procedure transform_libint_to_molgw_2d
-!   module procedure transform_libint_to_molgw_3d
+   module procedure transform_libint_to_molgw_3d
 !   module procedure transform_libint_to_molgw_4d
  end interface
 
@@ -172,7 +197,6 @@ subroutine transform_libint_to_molgw_2d(gaussian_type,am1,am2,array_in,matrix_ou
  real(dp),allocatable,intent(out) :: matrix_out(:,:)
 !=====
  integer :: n1,n2,n1c,n2c
- integer :: i1c,i2c,i12c
  real(dp),allocatable :: matrix_tmp(:,:)
 !=====
 
@@ -202,9 +226,14 @@ subroutine transform_libint_to_molgw_3d(gaussian_type_left,am1,gaussian_type_rig
  real(dp),allocatable,intent(out) :: matrix_out(:,:,:)
 !=====
  integer :: n1,n2,n3,n1c,n2c,n3c
- integer :: i1c,i2c,i12c
- real(dp),allocatable :: matrix_tmp(:,:,:)
+ integer :: i1
+ real(dp),allocatable :: matrix_tmp1(:,:)
+ real(dp),allocatable :: matrix_tmp2(:,:)
 !=====
+
+ if( gaussian_type_left /= gaussian_type_right ) then
+   call die('transform_libint_to_molgw_3d: different gaussian_type for auxil and wfn basis sets. Not implemented yet')
+ endif
 
  n1c = number_basis_function_am('CART',am1)
  n2c = number_basis_function_am('CART',am2)
@@ -213,23 +242,25 @@ subroutine transform_libint_to_molgw_3d(gaussian_type_left,am1,gaussian_type_rig
  n2  = number_basis_function_am(gaussian_type_right,am2)
  n3  = number_basis_function_am(gaussian_type_right,am3)
 
- if( am2 + am3 >= am1 ) then
+ if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1,n2,n3))
 
+ allocate(matrix_tmp1(n1,n2c*n3c))
+ allocate(matrix_tmp2(n2,n3c))
 
- else
+ ! Transform the 1st index
+ matrix_tmp1(:,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c * n3c , n1c /) ) , cart_to_pure_norm(am1)%matrix(1:n1c,1:n1) ) )
 
- endif
+ do i1=1,n1
+   ! Transform the 2nd index
 
+   matrix_tmp2(1:n2,:) = TRANSPOSE( MATMUL( RESHAPE( matrix_tmp1(i1,:) , (/ n3c , n2c /) ) ,  &
+                                             cart_to_pure_norm(am2)%matrix(1:n2c,1:n2) ) )
 
+   ! Transform the 3rd index
+   matrix_out(i1,:,:) = MATMUL( matrix_tmp2(:,:) , cart_to_pure_norm(am3)%matrix(:,:) )
+ enddo
 
-! if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1,n2,n3))
-! allocate(matrix_tmp(n1,n2c))
-!
-! matrix_tmp(:,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c , n1c /) ) , cart_to_pure_norm(am1)%matrix(1:n1c,1:n1) ) )
-!
-! matrix_out(:,:) = MATMUL( matrix_tmp(:,:) , cart_to_pure_norm(am2)%matrix(:,:) )
-!
-! deallocate(matrix_tmp)
+ deallocate(matrix_tmp1,matrix_tmp2)
 
 end subroutine transform_libint_to_molgw_3d
 
