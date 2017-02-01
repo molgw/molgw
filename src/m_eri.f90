@@ -23,10 +23,10 @@ module m_eri
 
  real(dp),private           :: TOL_INT
 
- real(prec_eri),public,allocatable :: eri_4center(:)
- real(prec_eri),public,allocatable :: eri_4center_lr(:)
- real(prec_eri),public,allocatable :: eri_3center(:,:)
- real(prec_eri),public,allocatable :: eri_3center_lr(:,:)
+ real(dp),public,allocatable :: eri_4center(:)
+ real(dp),public,allocatable :: eri_4center_lr(:)
+ real(dp),public,allocatable :: eri_3center(:,:)
+ real(dp),public,allocatable :: eri_3center_lr(:,:)
 
  logical,protected,allocatable      :: negligible_shellpair(:,:)
  integer,protected,allocatable      :: index_pair_1d(:)
@@ -920,7 +920,7 @@ subroutine dump_out_eri(rcut)
    filename='molgw_eri_lr.data'
  endif
  write(stdout,*) 'Dump out the ERI into file'
- write(stdout,*) 'Size of file [bytes]',REAL(nsize,dp)*prec_eri
+ write(stdout,*) 'Size of file [bytes]',REAL(nsize,dp)*dp
 
  if( is_iomaster ) then
    open(newunit=erifile,file=TRIM(filename),form='unformatted')

@@ -13,8 +13,6 @@ module m_definitions
  integer,parameter  :: sp=KIND(0.0)
  integer,parameter  :: dpc=KIND((0.d0,0.d0))
 
- integer,parameter  :: prec_eri=dp
-
  integer,protected  :: stdout = OUTPUT_UNIT
  integer,parameter  :: stderr = ERROR_UNIT
 

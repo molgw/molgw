@@ -154,7 +154,7 @@ module m_libint_tools
 
  interface transform_libint_to_molgw
    module procedure transform_libint_to_molgw_2d
-   module procedure transform_libint_to_molgw_3d
+!   module procedure transform_libint_to_molgw_3d
 !   module procedure transform_libint_to_molgw_4d
  end interface
 
@@ -193,6 +193,7 @@ subroutine transform_libint_to_molgw_2d(gaussian_type,am1,am2,array_in,matrix_ou
 end subroutine transform_libint_to_molgw_2d
 
 
+#if 0
 !=========================================================================
 subroutine transform_libint_to_molgw_3d(gaussian_type_left,am1,gausian_type_right,am2,am3,array_in,matrix_out)
  implicit none
@@ -221,7 +222,7 @@ subroutine transform_libint_to_molgw_3d(gaussian_type_left,am1,gausian_type_righ
  deallocate(matrix_tmp)
 
 end subroutine transform_libint_to_molgw_3d
-
+#endif
 
 
 

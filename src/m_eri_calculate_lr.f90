@@ -22,11 +22,8 @@ module m_eri_calculate_lr
  integer,protected :: nauxil_2center_lr  ! size of the 2-center matrix
                                          ! 2-center integrals are NOT distributed
 
- real(prec_eri),private,allocatable :: eri_2center_lr(:,:)
+ real(dp),private,allocatable :: eri_2center_lr(:,:)
 
-#ifdef COHSEX_DEVEL
- real(prec_eri),protected,allocatable :: eri_2center_rotation_lr(:,:)
-#endif
 
 contains
 
