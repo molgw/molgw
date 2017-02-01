@@ -558,8 +558,8 @@ void libint_4center(int amA, int contrdepthA , double A [] , double alphaA [], d
          int12->PB_y[0] = P[1] - B[1] ;
          int12->PB_z[0] = P[2] - B[2] ;
          int12->AB_x[0] = A[0] - B[0] ;
-         int12->AB_y[0] = A[0] - B[0] ;
-         int12->AB_z[0] = A[0] - B[0] ;
+         int12->AB_y[0] = A[1] - B[1] ;
+         int12->AB_z[0] = A[2] - B[2] ;
          int12->oo2z[0] = 0.5 / alphaP ;
 
          AB2 = int12->AB_x[0] * int12->AB_x[0] 

@@ -147,15 +147,12 @@ subroutine calculate_eri_4center(basis)
      allocate( int_shell( n1c*n2c*n3c*n4c ) )
      allocate( integrals_cart(n1c,n2c,n3c,n4c) )
      allocate( integrals_tmp(n1c,n2c,n3c,n4c) )
-     integrals_cart(:,:,:,:) = 0.0_dp
-
 
      call libint_4center(am1,ng1,x01,alpha1,coeff1, &
                          am2,ng2,x02,alpha2,coeff2, &
                          am3,ng3,x03,alpha3,coeff3, &
                          am4,ng4,x04,alpha4,coeff4, &
                          0.0_C_DOUBLE,int_shell)
-
 
      iibf=0
      do ibf=1,n1c
