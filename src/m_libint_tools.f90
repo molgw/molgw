@@ -129,7 +129,6 @@ module m_libint_tools
    end subroutine libint_elecpot_grad
 #endif
 
-#ifdef HAVE_LIBINT_2CENTER
    subroutine libint_2center(amA,contrdepthA,A,alphaA,cA, &
                              amC,contrdepthC,C,alphaC,cC, &
                              rcut,eriAC) bind(C)
@@ -146,13 +145,35 @@ module m_libint_tools
      real(C_DOUBLE),intent(inout)    :: eriAC(*)
 
    end subroutine libint_2center
-#endif
 
-#ifdef HAVE_LIBINT_3CENTER
    subroutine libint_3center(amA,contrdepthA,A,alphaA,cA, &
+                             amC,contrdepthC,C,alphaC,cC, &
+                             amD,contrdepthD,D,alphaD,cD, &
+                             rcut,eriACD) bind(C)
+     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     integer(C_INT),value         :: amA,contrdepthA
+     real(C_DOUBLE),intent(in)    :: A(*)
+     real(C_DOUBLE),intent(in)    :: alphaA(*)
+     real(C_DOUBLE),intent(in)    :: cA(*)
+     integer(C_INT),value         :: amC,contrdepthC
+     real(C_DOUBLE),intent(in)    :: C(*)
+     real(C_DOUBLE),intent(in)    :: alphaC(*)
+     real(C_DOUBLE),intent(in)    :: cC(*)
+     integer(C_INT),value         :: amD,contrdepthD
+     real(C_DOUBLE),intent(in)    :: D(*)
+     real(C_DOUBLE),intent(in)    :: alphaD(*)
+     real(C_DOUBLE),intent(in)    :: cD(*)
+     real(C_DOUBLE),intent(in),value :: rcut
+     real(C_DOUBLE),intent(inout)    :: eriACD(*)
+
+   end subroutine libint_3center
+
+
+   subroutine libint_4center(amA,contrdepthA,A,alphaA,cA, &
                              amB,contrdepthB,B,alphaB,cB, &
                              amC,contrdepthC,C,alphaC,cC, &
-                             rcut,eriABC) bind(C)
+                             amD,contrdepthD,D,alphaD,cD, &
+                             rcut,eriABCD) bind(C)
      use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
      integer(C_INT),value         :: amA,contrdepthA
      real(C_DOUBLE),intent(in)    :: A(*)
@@ -166,11 +187,14 @@ module m_libint_tools
      real(C_DOUBLE),intent(in)    :: C(*)
      real(C_DOUBLE),intent(in)    :: alphaC(*)
      real(C_DOUBLE),intent(in)    :: cC(*)
+     integer(C_INT),value         :: amD,contrdepthD
+     real(C_DOUBLE),intent(in)    :: D(*)
+     real(C_DOUBLE),intent(in)    :: alphaD(*)
+     real(C_DOUBLE),intent(in)    :: cD(*)
      real(C_DOUBLE),intent(in),value :: rcut
-     real(C_DOUBLE),intent(inout)    :: eriABC(*)
+     real(C_DOUBLE),intent(inout)    :: eriABCD(*)
 
-   end subroutine libint_3center
-#endif
+   end subroutine libint_4center
 
 
  end interface

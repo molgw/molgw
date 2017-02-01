@@ -155,11 +155,7 @@ program molgw
    call calculate_eri_3center(basis,auxil_basis)
 #else
    ! 3-center integrals
-#ifdef HAVE_LIBINT_3CENTER
    call calculate_eri_3center_scalapack(basis,auxil_basis)
-#else
-   call calculate_eri_3center_sca(basis,auxil_basis)
-#endif
 #endif
 
    ! If Range-Separated Hybrid are requested
