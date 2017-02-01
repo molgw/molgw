@@ -30,24 +30,30 @@ contains
 
 
 !=========================================================================
-subroutine calculate_eri(print_eri_,basis)
+subroutine calculate_eri(print_eri_,basis,rcut)
  implicit none
  logical,intent(in)           :: print_eri_
  type(basis_set),intent(in)   :: basis
+ real(dp),intent(in)          :: rcut
 !=====
 
  call start_clock(timing_eri_4center)
 
  write(stdout,'(/,a,i12)') ' Number of integrals to be stored: ',nsize
 
- call clean_allocate('4-center integrals',eri_4center,nsize)
- eri_4center(:) = 0.0_dp
+ if( rcut < 1.0e-12_dp ) then
+   call clean_allocate('4-center integrals',eri_4center,nsize)
+   eri_4center(:) = 0.0_dp
+ else
+   call clean_allocate('4-center LR integrals',eri_4center_lr,nsize)
+   eri_4center_lr(:) = 0.0_dp
+ endif
 
- if( .NOT. read_eri(0.0_dp) ) call calculate_eri_4center(basis)
+ if( .NOT. read_eri(rcut) ) call calculate_eri_4center(basis,rcut)
 
 
  if( print_eri_ ) then
-   call dump_out_eri(0.0_dp)
+   call dump_out_eri(rcut)
  endif
 
  call stop_clock(timing_eri_4center)
@@ -56,10 +62,12 @@ end subroutine calculate_eri
 
 
 !=========================================================================
-subroutine calculate_eri_4center(basis)
+subroutine calculate_eri_4center(basis,rcut)
  implicit none
  type(basis_set),intent(in)   :: basis
+ real(dp),intent(in)          :: rcut
 !=====
+ logical                      :: is_longrange
  integer                      :: ishell,jshell,kshell,lshell
  integer                      :: ijshellpair,klshellpair
  integer                      :: n1c,n2c,n3c,n4c
@@ -67,14 +75,10 @@ subroutine calculate_eri_4center(basis)
  integer                      :: ni,nj,nk,nl
  integer                      :: ami,amj,amk,aml
  integer                      :: ibf,jbf,kbf,lbf
- integer                      :: iibf
- integer                      :: info
- real(dp)                     :: zeta_12,zeta_34,rho,rho1,f0t(0:0),tt
- real(dp)                     :: p(3),q(3)
- real(dp),allocatable         :: integrals_tmp(:,:,:,:)
- real(dp),allocatable         :: integrals_cart(:,:,:,:)
+ real(dp),allocatable         :: integrals(:,:,:,:)
 !=====
 ! variables used to call C
+ real(C_DOUBLE)               :: rcut_libint
  integer(C_INT)               :: ng1,ng2,ng3,ng4
  integer(C_INT)               :: am1,am2,am3,am4
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
@@ -83,7 +87,13 @@ subroutine calculate_eri_4center(basis)
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
 
- write(stdout,'(/,a)') ' Calculate and store all the Electron Repulsion Integrals (ERI)'
+ is_longrange = (rcut > 1.0e-12_dp)
+ rcut_libint = rcut
+ if( .NOT. is_longrange ) then 
+   write(stdout,'(/,a)') ' Calculate and store the 4-center Coulomb integrals'
+ else
+   write(stdout,'(/,a)') ' Calculate and store the 4-center Long-Range-only Coulomb integrals'
+ endif
 
 
 
@@ -92,10 +102,10 @@ subroutine calculate_eri_4center(basis)
    lshell = index_shellpair(2,klshellpair)
 
    !
-   ! Order the angular momenta so that libint is pleased
-   ! 1) am3+am4 >= am1+am2
-   ! 2) am3>=am4
-   ! 3) am1>=am2
+   ! The angular momenta are already ordered so that libint is pleased
+   ! 1) amk+aml >= ami+amj
+   ! 2) amk>=aml
+   ! 3) ami>=amj
    amk = shell(kshell)%am
    aml = shell(lshell)%am
 
@@ -144,85 +154,46 @@ subroutine calculate_eri_4center(basis)
      coeff3(:)=shell(kshell)%coeff(:)
      coeff4(:)=shell(lshell)%coeff(:)
 
-     allocate( int_shell( n1c*n2c*n3c*n4c ) )
-     allocate( integrals_cart(n1c,n2c,n3c,n4c) )
-     allocate( integrals_tmp(n1c,n2c,n3c,n4c) )
+     allocate(int_shell(n1c*n2c*n3c*n4c))
 
      call libint_4center(am1,ng1,x01,alpha1,coeff1, &
                          am2,ng2,x02,alpha2,coeff2, &
                          am3,ng3,x03,alpha3,coeff3, &
                          am4,ng4,x04,alpha4,coeff4, &
-                         0.0_C_DOUBLE,int_shell)
+                         rcut_libint,int_shell)
 
-     iibf=0
-     do ibf=1,n1c
-       do jbf=1,n2c
-         do kbf=1,n3c
-           do lbf=1,n4c
-             iibf=iibf+1
-             integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
+     call transform_libint_to_molgw_4d(basis%gaussian_type,ami,amj,amk,aml,int_shell,integrals)
+
+     if( .NOT. is_longrange ) then
+       do lbf=1,nl
+         do kbf=1,nk
+           do jbf=1,nj
+             do ibf=1,ni
+               eri_4center( index_eri(shell(ishell)%istart+ibf-1, &
+                                      shell(jshell)%istart+jbf-1, &
+                                      shell(kshell)%istart+kbf-1, &
+                                      shell(lshell)%istart+lbf-1) ) = integrals(ibf,jbf,kbf,lbf)
+             enddo
            enddo
          enddo
        enddo
-     enddo
-
-
-     do lbf=1,n4c
-       do kbf=1,n3c
-         do jbf=1,n2c
-           do ibf=1,ni
-             integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1c,jbf,kbf,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1c,ibf) )
+     else
+       do lbf=1,nl
+         do kbf=1,nk
+           do jbf=1,nj
+             do ibf=1,ni
+               eri_4center_lr( index_eri(shell(ishell)%istart+ibf-1, &
+                                         shell(jshell)%istart+jbf-1, &
+                                         shell(kshell)%istart+kbf-1, &
+                                         shell(lshell)%istart+lbf-1) ) = integrals(ibf,jbf,kbf,lbf)
+             enddo
            enddo
          enddo
        enddo
-     enddo
-
-     do lbf=1,n4c
-       do kbf=1,n3c
-         do jbf=1,nj
-           do ibf=1,ni
-             integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2c,kbf,lbf) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2c,jbf) )
-           enddo
-         enddo
-       enddo
-     enddo
-
-     do lbf=1,n4c
-       do kbf=1,nk
-         do jbf=1,nj
-           do ibf=1,ni
-             integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n3c,lbf) * cart_to_pure_norm(shell(kshell)%am)%matrix(1:n3c,kbf) )
-           enddo
-         enddo
-       enddo
-     enddo
-
-     do lbf=1,nl
-       do kbf=1,nk
-         do jbf=1,nj
-           do ibf=1,ni
-             integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n4c) * cart_to_pure_norm(shell(lshell)%am)%matrix(1:n4c,lbf) )
-           enddo
-         enddo
-       enddo
-     enddo
-
-     do lbf=1,nl
-       do kbf=1,nk
-         do jbf=1,nj
-           do ibf=1,ni
-             eri_4center( index_eri(shell(ishell)%istart+ibf-1, &
-                                    shell(jshell)%istart+jbf-1, &
-                                    shell(kshell)%istart+kbf-1, &
-                                    shell(lshell)%istart+lbf-1) ) = integrals_cart(ibf,jbf,kbf,lbf)
-           enddo
-         enddo
-       enddo
-     enddo
+     endif
 
 
-     deallocate(integrals_cart)
-     deallocate(integrals_tmp)
+     deallocate(integrals)
      deallocate(int_shell)
      deallocate(alpha1,alpha2,alpha3,alpha4)
      deallocate(coeff1)
@@ -252,8 +223,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis)
  integer                      :: ni,nj,nk
  integer                      :: ami,amk
  integer                      :: ibf,kbf
- integer                      :: iibf
- integer                      :: info,ip
+ integer                      :: info
  integer                      :: ibf_auxil,jbf_auxil
  integer                      :: nauxil_neglect
  real(dp)                     :: eigval(auxil_basis%nbf)
@@ -755,8 +725,7 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
  integer                      :: ig1,ig3,ig4
  integer                      :: nk,nl
  integer                      :: amk,aml
- integer                      :: kbf,lbf
- integer                      :: iibf
+ integer                      :: kbf,lbf,iibf
  integer                      :: info
  real(dp)                     :: zeta_12,zeta_34,rho,f0t(0:0),tt
  real(dp)                     :: p(3),q(3)

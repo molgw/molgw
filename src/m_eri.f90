@@ -151,7 +151,6 @@ subroutine deallocate_eri_4center()
 !=====
 
  if(ALLOCATED(eri_4center)) then
-   write(stdout,'(/,a)')     ' Deallocate ERI buffer'
    call clean_deallocate('4-center integrals',eri_4center)
  endif
 
@@ -164,7 +163,6 @@ subroutine deallocate_eri_4center_lr()
 !=====
 
  if(ALLOCATED(eri_4center_lr)) then
-   write(stdout,'(/,a)')     ' Deallocate LR ERI buffer'
    call clean_deallocate('4-center LR integrals',eri_4center_lr)
  endif
 
@@ -179,11 +177,9 @@ subroutine deallocate_eri()
 !=====
 
  if(ALLOCATED(eri_4center)) then
-   write(stdout,'(/,a)')     ' Deallocate ERI buffer'
    call clean_deallocate('4-center integrals',eri_4center)
  endif
  if(ALLOCATED(eri_4center_lr)) then
-   write(stdout,'(/,a)')     ' Deallocate LR ERI buffer'
    call clean_deallocate('4-center LR integrals',eri_4center_lr)
  endif
  if(ALLOCATED(negligible_shellpair))   deallocate(negligible_shellpair)

@@ -132,11 +132,11 @@ program molgw
  ! ERI are stored "privately" in the module m_eri
  call prepare_eri(basis)
  if( .NOT. is_full_auxil) then
-   call calculate_eri(print_eri_,basis)
+   call calculate_eri(print_eri_,basis,0.0_dp)
    !
    ! for Range-separated hybrids, calculate the long-range ERI
    if(calc_type%need_exchange_lr) then
-     call calculate_eri_lr(print_eri_,basis,rcut)
+     call calculate_eri(print_eri_,basis,rcut)
    endif
  endif
 
