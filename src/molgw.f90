@@ -150,13 +150,9 @@ program molgw
 
    ! 2-center integrals
    call calculate_eri_2center_scalapack(auxil_basis)
-#ifndef HAVE_SCALAPACK
-   ! 3-center integrals
-   call calculate_eri_3center(basis,auxil_basis)
-#else
    ! 3-center integrals
    call calculate_eri_3center_scalapack(basis,auxil_basis)
-#endif
+
 
    ! If Range-Separated Hybrid are requested
    ! If is_big_restart, these integrals are NOT needed, I chose code this! 

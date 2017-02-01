@@ -214,7 +214,7 @@ subroutine scf_loop(is_restart,&
 #ifndef SCASCA
            call setup_exchange_ri_buffer_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
 #else
-           call issue_warning('FBFB hack sca')
+           call issue_warning('FBFB devel SCASCA')
            call setup_exchange_ri_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
 #endif
          else

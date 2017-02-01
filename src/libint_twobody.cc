@@ -25,7 +25,6 @@ extern "C" void boys_function_c(double*, int, double);
  *                           2-center integrals
  * ========================================================================== */
 
-#ifdef HAVE_LIBINT_2CENTER
 extern "C" {
 void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
                     int amC, int contrdepthC , double C [] , double alphaC [], double cC [],
@@ -268,7 +267,6 @@ void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 }
 }
-#endif
 
 
 
@@ -277,7 +275,6 @@ void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], d
  * ========================================================================== */
 
 
-#ifdef HAVE_LIBINT_3CENTER
 extern "C" {
 void libint_3center(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
                     int amC, int contrdepthC , double C [] , double alphaC [], double cC [], 
@@ -534,7 +531,6 @@ void libint_3center(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 }
 }
-#endif
 
 
 /* ========================================================================== */
