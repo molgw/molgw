@@ -61,7 +61,7 @@ level015: m_scalapack.o m_atoms.o m_ecp.o m_gaussian.o
 
 level020: m_basis_set.o m_inputparam.o m_block_diago.o
 
-level025: m_eri.o m_scf.o m_dft_grid.o
+level025: m_eri.o m_scf.o m_dft_grid.o m_libint_tools.o
 
 level030: m_eri_calculate.o m_eri_calculate_lr.o m_eri_ao_mo.o m_tddft_fxc.o
 
@@ -87,7 +87,7 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
         m_scalapack.o m_atoms.o m_ecp.o m_gaussian.o m_block_diago.o \
         m_basis_set.o \
         m_inputparam.o \
-        m_eri.o m_scf.o m_dft_grid.o m_selfenergy_tools.o \
+        m_eri.o m_scf.o m_dft_grid.o m_libint_tools.o m_selfenergy_tools.o \
         m_eri_calculate.o m_eri_calculate_lr.o m_eri_ao_mo.o m_tddft_fxc.o \
         m_spectral_function.o m_hamiltonian.o m_hamiltonian_libint.o m_hamiltonian_sca.o m_hamiltonian_buffer.o \
         m_virtual_orbital_space.o pt2_selfenergy.o \
@@ -97,7 +97,8 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
                         m_definitions.o m_warning.o m_lbfgs.o m_elements.o m_mpi.o m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_local.o m_mpi_trans.o \
                         m_scalapack.o m_timing.o m_memory.o m_inputparam.o \
                         m_tools.o m_scf.o m_selfenergy_tools.o m_atoms.o m_ecp.o \
-                        m_gos.o m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_eri_calculate.o m_eri_calculate_lr.o m_eri_ao_mo.o m_tddft_fxc.o \
+                        m_gos.o m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_libint_tools.o \
+                        m_eri_calculate.o m_eri_calculate_lr.o m_eri_ao_mo.o m_tddft_fxc.o \
                         m_spectral_function.o \
                         libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_wrapper.o boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt2_selfenergy.o \
                         mp2.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o linear_response.o static_polarizability.o density_tools.o io.o restart.o \
@@ -156,7 +157,7 @@ m_hamiltonian_buffer.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m
 m_hamiltonian_sca.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_eri.f90 m_basis_set.f90 m_hamiltonian_sca.f90
 	$(FC_W_OPTS) -c m_hamiltonian_sca.f90 $(LIBXC_INCS)
 
-m_hamiltonian_libint.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_atoms.f90 m_basis_set.f90 m_hamiltonian_libint.f90
+m_hamiltonian_libint.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_atoms.f90 m_basis_set.f90 m_libint_tools.f90 m_hamiltonian_libint.f90
 	$(FC_W_OPTS) -c m_hamiltonian_libint.f90 $(LIBXC_INCS)
 
 m_hamiltonian.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_atoms.f90 m_ecp.f90 m_eri.f90 m_basis_set.f90 m_dft_grid.f90 m_hamiltonian.f90
@@ -165,7 +166,7 @@ m_hamiltonian.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_tim
 density_tools.o: m_definitions.f90 m_dft_grid.f90 m_tools.f90 m_atoms.f90 m_mpi.f90 density_tools.f90
 	$(FC_W_OPTS) -c density_tools.f90 $(LIBXC_INCS)
 
-io.o: my_machine.arch m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 m_tools.f90 revision.f90 io.f90
+io.o: my_machine.arch m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 m_tools.f90 git_sha.f90 io.f90
 	$(FC_W_OPTS) -c io.f90 $(LIBXC_INCS)
 
 restart.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_scf.f90 m_basis_set.f90 m_hamiltonian.f90 restart.f90
@@ -206,6 +207,9 @@ libint_twobody.o: libint_twobody.cc
 libint_wrapper.o: libint_wrapper.cc
 	$(CXX_W_OPTS) -c libint_wrapper.cc $(LIBINT_INCS)
 
+m_libint_tools.o: m_definitions.f90 m_basis_set.f90 m_libint_tools.f90
+	$(FC_W_OPTS) -c m_libint_tools.f90 $(LIBXC_INCS)
+
 m_dft_grid.o: m_definitions.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_atoms.f90 m_mpi.f90 m_basis_set.f90 m_dft_grid.f90
 	$(FC_W_OPTS) -c m_dft_grid.f90 $(LIBXC_INCS)
 
@@ -225,7 +229,7 @@ m_eri_calculate_lr.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_timing.f90 m
 	$(FC_W_OPTS) -c m_eri_calculate_lr.f90 $(LIBXC_INCS)
 
 m_eri_calculate.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 \
-                   m_eri.f90 m_eri_calculate.f90
+                   m_libint_tools.f90 m_eri.f90 m_eri_calculate.f90
 	$(FC_W_OPTS) -c m_eri_calculate.f90 $(LIBXC_INCS)
 
 m_eri.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 m_eri.f90 

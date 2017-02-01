@@ -16,120 +16,10 @@ module m_hamiltonian_libint
  use m_warning
  use m_memory
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
+ use m_basis_set
+ use m_libint_tools
 
 
-
- interface
-
-   subroutine libint_overlap(amA,contrdepthA,A,alphaA,cA, &
-                             amB,contrdepthB,B,alphaB,cB, &
-                             overlapAB) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
-     integer(C_INT),value  :: amA,contrdepthA
-     real(C_DOUBLE),intent(in) :: A(*)
-     real(C_DOUBLE),intent(in) :: alphaA(*)
-     real(C_DOUBLE),intent(in) :: cA(*)
-     integer(C_INT),value  :: amB,contrdepthB
-     real(C_DOUBLE),intent(in) :: B(*)
-     real(C_DOUBLE),intent(in) :: alphaB(*)
-     real(C_DOUBLE),intent(in) :: cB(*)
-     real(C_DOUBLE),intent(out) :: overlapAB(*)
-     
-   end subroutine libint_overlap
-
-   subroutine libint_overlap_grad(amA,contrdepthA,A,alphaA,cA, &
-                             amB,contrdepthB,B,alphaB,cB, &
-                             overlapABx,overlapABy,overlapABz) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
-     integer(C_INT),value  :: amA,contrdepthA
-     real(C_DOUBLE),intent(in) :: A(*)
-     real(C_DOUBLE),intent(in) :: alphaA(*)
-     real(C_DOUBLE),intent(in) :: cA(*)
-     integer(C_INT),value  :: amB,contrdepthB
-     real(C_DOUBLE),intent(in) :: B(*)
-     real(C_DOUBLE),intent(in) :: alphaB(*)
-     real(C_DOUBLE),intent(in) :: cB(*)
-     real(C_DOUBLE),intent(out) :: overlapABx(*)
-     real(C_DOUBLE),intent(out) :: overlapABy(*)
-     real(C_DOUBLE),intent(out) :: overlapABz(*)
-     
-   end subroutine libint_overlap_grad
-
-   subroutine libint_kinetic(amA,contrdepthA,A,alphaA,cA, &
-                             amB,contrdepthB,B,alphaB,cB, &
-                             kineticAB) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
-     integer(C_INT),value       :: amA,contrdepthA
-     real(C_DOUBLE),intent(in)  :: A(*)
-     real(C_DOUBLE),intent(in)  :: alphaA(*)
-     real(C_DOUBLE),intent(in)  :: cA(*)
-     integer(C_INT),value       :: amB,contrdepthB
-     real(C_DOUBLE),intent(in)  :: B(*)
-     real(C_DOUBLE),intent(in)  :: alphaB(*)
-     real(C_DOUBLE),intent(in)  :: cB(*)
-     real(C_DOUBLE),intent(out) :: kineticAB(*)
-
-   end subroutine libint_kinetic
-
-   subroutine libint_kinetic_grad(amA,contrdepthA,A,alphaA,cA, &
-                                  amB,contrdepthB,B,alphaB,cB, &
-                                  kineticABx,kineticABy,kineticABz) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
-     integer(C_INT),value       :: amA,contrdepthA
-     real(C_DOUBLE),intent(in)  :: A(*)
-     real(C_DOUBLE),intent(in)  :: alphaA(*)
-     real(C_DOUBLE),intent(in)  :: cA(*)
-     integer(C_INT),value       :: amB,contrdepthB
-     real(C_DOUBLE),intent(in)  :: B(*)
-     real(C_DOUBLE),intent(in)  :: alphaB(*)
-     real(C_DOUBLE),intent(in)  :: cB(*)
-     real(C_DOUBLE),intent(out) :: kineticABx(*)
-     real(C_DOUBLE),intent(out) :: kineticABy(*)
-     real(C_DOUBLE),intent(out) :: kineticABz(*)
-
-   end subroutine libint_kinetic_grad
-
-   subroutine libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
-                             amB,contrdepthB,B,alphaB,cB, &
-                             C,elecpotAB) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
-     integer(C_INT),value         :: amA,contrdepthA
-     real(C_DOUBLE),intent(in)    :: A(*)
-     real(C_DOUBLE),intent(in)    :: alphaA(*)
-     real(C_DOUBLE),intent(in)    :: cA(*)
-     integer(C_INT),value         :: amB,contrdepthB
-     real(C_DOUBLE),intent(in)    :: B(*)
-     real(C_DOUBLE),intent(in)    :: alphaB(*)
-     real(C_DOUBLE),intent(in)    :: cB(*)
-     real(C_DOUBLE),intent(in)    :: C(*)
-     real(C_DOUBLE),intent(inout) :: elecpotAB(*)
-     
-   end subroutine libint_elecpot
-
-   subroutine libint_elecpot_grad(amA,contrdepthA,A,alphaA,cA, &
-                                  amB,contrdepthB,B,alphaB,cB, &
-                                  C,elecpotAx,elecpotAy,elecpotAz, &
-                                    elecpotBx,elecpotBy,elecpotBz) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
-     integer(C_INT),value         :: amA,contrdepthA
-     real(C_DOUBLE),intent(in)    :: A(*)
-     real(C_DOUBLE),intent(in)    :: alphaA(*)
-     real(C_DOUBLE),intent(in)    :: cA(*)
-     integer(C_INT),value         :: amB,contrdepthB
-     real(C_DOUBLE),intent(in)    :: B(*)
-     real(C_DOUBLE),intent(in)    :: alphaB(*)
-     real(C_DOUBLE),intent(in)    :: cB(*)
-     real(C_DOUBLE),intent(in)    :: C(*)
-     real(C_DOUBLE),intent(inout) :: elecpotAx(*)
-     real(C_DOUBLE),intent(inout) :: elecpotAy(*)
-     real(C_DOUBLE),intent(inout) :: elecpotAz(*)
-     real(C_DOUBLE),intent(inout) :: elecpotBx(*)
-     real(C_DOUBLE),intent(inout) :: elecpotBy(*)
-     real(C_DOUBLE),intent(inout) :: elecpotBz(*)
-     
-   end subroutine libint_elecpot_grad
-
- end interface
 
 
 
@@ -137,28 +27,7 @@ contains
 
 
 !=========================================================================
-subroutine transform_c_to_fortran_2d(array_in,matrix_out)
- implicit none
- real(C_DOUBLE),intent(in)  :: array_in(:)
- real(C_DOUBLE),intent(out) :: matrix_out(:,:)
-!=====
- integer :: i1,i2,i12
-!=====
-
- i12 = 0
- do i1=1,SIZE(matrix_out,DIM=1)
-   do i2=1,SIZE(matrix_out,DIM=2)
-     i12 = i12 + 1
-     matrix_out(i1,i2) = array_in(i12)
-   enddo
- enddo
-
-end subroutine transform_c_to_fortran_2d
-
-
-!=========================================================================
 subroutine setup_overlap_libint(print_matrix_,basis,s_matrix)
- use m_basis_set
  implicit none
  logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
@@ -169,8 +38,9 @@ subroutine setup_overlap_libint(print_matrix_,basis,s_matrix)
  integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  character(len=100)   :: title
+ real(dp),allocatable :: matrix(:,:)
 
- real(C_DOUBLE),allocatable        :: array_cart(:),matrix_cart(:,:)
+ real(C_DOUBLE),allocatable        :: array_cart(:)
  integer(C_INT)                    :: amA,contrdepthA
  real(C_DOUBLE)                    :: A(3)
  real(C_DOUBLE),allocatable        :: alphaA(:)
@@ -182,7 +52,7 @@ subroutine setup_overlap_libint(print_matrix_,basis,s_matrix)
 !=====
 
  call start_clock(timing_overlap)
- write(stdout,'(/,a)') ' Setup overlap matrix S'
+ write(stdout,'(/,a)') ' Setup overlap matrix S (LIBINT)'
 
  ibf_cart = 1
  jbf_cart = 1
@@ -199,7 +69,6 @@ subroutine setup_overlap_libint(print_matrix_,basis,s_matrix)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
      allocate(array_cart(ni_cart*nj_cart))
-     allocate(matrix_cart(ni_cart,nj_cart))
 
      amA = li
      amB = lj
@@ -221,14 +90,12 @@ subroutine setup_overlap_libint(print_matrix_,basis,s_matrix)
 
      deallocate(alphaA,alphaB,cA,cB)
 
-     call transform_c_to_fortran_2d(array_cart,matrix_cart)
+     call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 
+     s_matrix(ibf:ibf+ni-1,jbf:jbf+nj-1) = matrix(:,:)
 
-     s_matrix(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) , &
-                                                   MATMUL( matrix_cart(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) )
+     deallocate(array_cart,matrix)
 
-
-     deallocate(array_cart,matrix_cart)
      jbf      = jbf      + nj
      jbf_cart = jbf_cart + nj_cart
    enddo
@@ -251,7 +118,6 @@ end subroutine setup_overlap_libint
 
 !=========================================================================
 subroutine setup_overlap_grad_libint(print_matrix_,basis,s_matrix_grad)
- use m_basis_set
  implicit none
  logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
@@ -262,11 +128,11 @@ subroutine setup_overlap_grad_libint(print_matrix_,basis,s_matrix_grad)
  integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  character(len=100)   :: title
+ real(dp),allocatable :: matrix(:,:)
 
  real(C_DOUBLE),allocatable        :: array_cart_gradx(:)
  real(C_DOUBLE),allocatable        :: array_cart_grady(:)
  real(C_DOUBLE),allocatable        :: array_cart_gradz(:)
- real(C_DOUBLE),allocatable        :: matrix_cart_grad(:,:)
  integer(C_INT)                    :: amA,contrdepthA
  real(C_DOUBLE)                    :: A(3)
  real(C_DOUBLE),allocatable        :: alphaA(:)
@@ -278,7 +144,7 @@ subroutine setup_overlap_grad_libint(print_matrix_,basis,s_matrix_grad)
 !=====
 
  call start_clock(timing_overlap)
- write(stdout,'(/,a)') ' Setup overlap matrix S'
+ write(stdout,'(/,a)') ' Setup gradient of the overlap matrix S (LIBINT)'
 
  ibf_cart = 1
  jbf_cart = 1
@@ -297,7 +163,6 @@ subroutine setup_overlap_grad_libint(print_matrix_,basis,s_matrix_grad)
      allocate(array_cart_gradx(ni_cart*nj_cart))
      allocate(array_cart_grady(ni_cart*nj_cart))
      allocate(array_cart_gradz(ni_cart*nj_cart))
-     allocate(matrix_cart_grad(ni_cart,nj_cart))
 
      amA = li
      amB = lj
@@ -316,28 +181,29 @@ subroutine setup_overlap_grad_libint(print_matrix_,basis,s_matrix_grad)
      call libint_overlap_grad(amA,contrdepthA,A,alphaA,cA, &
                               amB,contrdepthB,B,alphaB,cB, &
                               array_cart_gradx,array_cart_grady,array_cart_gradz)
+#else
+     call die('overlap gradient not implemented without LIBINT one-body terms')
 #endif
 
      deallocate(alphaA,alphaB,cA,cB)
 
+     ! X
+     call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradx,matrix)
+     s_matrix_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,1) = matrix(:,:)
 
-     call transform_c_to_fortran_2d(array_cart_gradx,matrix_cart_grad)
-     s_matrix_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,1) = MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) , &
-                                                        MATMUL( matrix_cart_grad(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) )
+     ! Y
+     call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_grady,matrix)
+     s_matrix_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,2) = matrix(:,:)
 
-     call transform_c_to_fortran_2d(array_cart_grady,matrix_cart_grad)
-     s_matrix_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,2) = MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) , &
-                                                        MATMUL( matrix_cart_grad(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) )
-
-     call transform_c_to_fortran_2d(array_cart_gradz,matrix_cart_grad)
-     s_matrix_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,3) = MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) , &
-                                                        MATMUL( matrix_cart_grad(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) )
+     ! Z
+     call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradz,matrix)
+     s_matrix_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,3) = matrix(:,:)
 
 
      deallocate(array_cart_gradx)
      deallocate(array_cart_grady)
      deallocate(array_cart_gradz)
-     deallocate(matrix_cart_grad)
+     deallocate(matrix)
 
      jbf      = jbf      + nj
      jbf_cart = jbf_cart + nj_cart
@@ -365,7 +231,6 @@ end subroutine setup_overlap_grad_libint
 
 !=========================================================================
 subroutine setup_kinetic_libint(print_matrix_,basis,hamiltonian_kinetic)
- use m_basis_set
  implicit none
  logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
@@ -376,8 +241,9 @@ subroutine setup_kinetic_libint(print_matrix_,basis,hamiltonian_kinetic)
  integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  character(len=100)   :: title
+ real(dp),allocatable :: matrix(:,:)
 
- real(C_DOUBLE),allocatable        :: array_cart(:),matrix_cart(:,:)
+ real(C_DOUBLE),allocatable        :: array_cart(:)
  integer(C_INT)                    :: amA,contrdepthA
  real(C_DOUBLE)                    :: A(3)
  real(C_DOUBLE),allocatable        :: alphaA(:)
@@ -389,7 +255,7 @@ subroutine setup_kinetic_libint(print_matrix_,basis,hamiltonian_kinetic)
 !=====
 
  call start_clock(timing_hamiltonian_kin)
- write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian'
+ write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian (LIBINT)'
 
  ibf_cart = 1
  jbf_cart = 1
@@ -405,7 +271,7 @@ subroutine setup_kinetic_libint(print_matrix_,basis,hamiltonian_kinetic)
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
-     allocate(array_cart(ni_cart*nj_cart),matrix_cart(ni_cart,nj_cart))
+     allocate(array_cart(ni_cart*nj_cart))
 
 
      amA = li
@@ -428,13 +294,12 @@ subroutine setup_kinetic_libint(print_matrix_,basis,hamiltonian_kinetic)
 
      deallocate(alphaA,alphaB,cA,cB)
 
-     call transform_c_to_fortran_2d(array_cart,matrix_cart)
+     call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 
-     hamiltonian_kinetic(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) , &
-                                                              MATMUL( matrix_cart(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) )
+     hamiltonian_kinetic(ibf:ibf+ni-1,jbf:jbf+nj-1) = matrix(:,:)
 
 
-     deallocate(array_cart,matrix_cart)
+     deallocate(array_cart,matrix)
      jbf      = jbf      + nj
      jbf_cart = jbf_cart + nj_cart
    enddo
@@ -456,7 +321,6 @@ end subroutine setup_kinetic_libint
 
 !=========================================================================
 subroutine setup_kinetic_grad_libint(print_matrix_,basis,hamiltonian_kinetic_grad)
- use m_basis_set
  implicit none
  logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
@@ -467,11 +331,11 @@ subroutine setup_kinetic_grad_libint(print_matrix_,basis,hamiltonian_kinetic_gra
  integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  character(len=100)   :: title
+ real(dp),allocatable :: matrix(:,:)
 
  real(C_DOUBLE),allocatable        :: array_cart_gradx(:)
  real(C_DOUBLE),allocatable        :: array_cart_grady(:)
  real(C_DOUBLE),allocatable        :: array_cart_gradz(:)
- real(C_DOUBLE),allocatable        :: matrix_cart_grad(:,:)
  integer(C_INT)                    :: amA,contrdepthA
  real(C_DOUBLE)                    :: A(3)
  real(C_DOUBLE),allocatable        :: alphaA(:)
@@ -483,7 +347,7 @@ subroutine setup_kinetic_grad_libint(print_matrix_,basis,hamiltonian_kinetic_gra
 !=====
 
  call start_clock(timing_hamiltonian_kin)
- write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian'
+ write(stdout,'(/,a)') ' Setup gradient of the kinetic part of the Hamiltonian (LIBINT)'
 
  ibf_cart = 1
  jbf_cart = 1
@@ -502,7 +366,6 @@ subroutine setup_kinetic_grad_libint(print_matrix_,basis,hamiltonian_kinetic_gra
      allocate(array_cart_gradx(ni_cart*nj_cart))
      allocate(array_cart_grady(ni_cart*nj_cart))
      allocate(array_cart_gradz(ni_cart*nj_cart))
-     allocate(matrix_cart_grad(ni_cart,nj_cart))
 
 
      amA = li
@@ -522,28 +385,29 @@ subroutine setup_kinetic_grad_libint(print_matrix_,basis,hamiltonian_kinetic_gra
      call libint_kinetic_grad(amA,contrdepthA,A,alphaA,cA, &
                               amB,contrdepthB,B,alphaB,cB, &
                               array_cart_gradx,array_cart_grady,array_cart_gradz)
+#else
+     call die('kinetic operator gradient not implemented without LIBINT one-body terms')
 #endif
 
      deallocate(alphaA,alphaB,cA,cB)
 
+     ! X
+     call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradx,matrix)
+     hamiltonian_kinetic_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,1) = matrix(:,:)
 
-     call transform_c_to_fortran_2d(array_cart_gradx,matrix_cart_grad)
-     hamiltonian_kinetic_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,1) = MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) , &
-                                                              MATMUL( matrix_cart_grad(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) )
+     ! Y
+     call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_grady,matrix)
+     hamiltonian_kinetic_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,2) = matrix(:,:)
 
-     call transform_c_to_fortran_2d(array_cart_gradx,matrix_cart_grad)
-     hamiltonian_kinetic_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,2) = MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) , &
-                                                              MATMUL( matrix_cart_grad(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) )
-
-     call transform_c_to_fortran_2d(array_cart_gradx,matrix_cart_grad)
-     hamiltonian_kinetic_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,3) = MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) , &
-                                                              MATMUL( matrix_cart_grad(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) )
+     ! Z
+     call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradz,matrix)
+     hamiltonian_kinetic_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,3) = matrix(:,:)
 
 
      deallocate(array_cart_gradx)
      deallocate(array_cart_grady)
      deallocate(array_cart_gradz)
-     deallocate(matrix_cart_grad)
+     deallocate(matrix)
 
      jbf      = jbf      + nj
      jbf_cart = jbf_cart + nj_cart
@@ -570,7 +434,6 @@ end subroutine setup_kinetic_grad_libint
 
 !=========================================================================
 subroutine setup_nucleus_libint(print_matrix_,basis,hamiltonian_nucleus)
- use m_basis_set
  use m_atoms
  implicit none
  logical,intent(in)         :: print_matrix_
@@ -584,9 +447,10 @@ subroutine setup_nucleus_libint(print_matrix_,basis,hamiltonian_nucleus)
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  integer              :: iatom
  character(len=100)   :: title
+ real(dp),allocatable :: matrix(:,:)
  real(dp)             :: vnucleus_ij
 
- real(C_DOUBLE),allocatable        :: array_cart(:),matrix_cart(:,:)
+ real(C_DOUBLE),allocatable        :: array_cart(:)
  integer(C_INT)                    :: amA,contrdepthA
  real(C_DOUBLE)                    :: A(3)
  real(C_DOUBLE),allocatable        :: alphaA(:)
@@ -624,7 +488,7 @@ subroutine setup_nucleus_libint(print_matrix_,basis,hamiltonian_nucleus)
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
-     allocate(array_cart(ni_cart*nj_cart),matrix_cart(ni_cart,nj_cart))
+     allocate(array_cart(ni_cart*nj_cart))
      array_cart(:) = 0.0_dp
 
      amA = li
@@ -654,13 +518,12 @@ subroutine setup_nucleus_libint(print_matrix_,basis,hamiltonian_nucleus)
      enddo
      deallocate(alphaA,alphaB,cA,cB)
 
-     call transform_c_to_fortran_2d(array_cart,matrix_cart)
+     call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 
-     hamiltonian_nucleus(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) , &
-                                                              MATMUL( matrix_cart(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) ) 
+     hamiltonian_nucleus(ibf:ibf+ni-1,jbf:jbf+nj-1) = matrix(:,:)
 
 
-     deallocate(array_cart,matrix_cart)
+     deallocate(array_cart,matrix)
      jbf      = jbf      + nj
      jbf_cart = jbf_cart + nj_cart
    enddo
@@ -686,7 +549,6 @@ end subroutine setup_nucleus_libint
 
 !=========================================================================
 subroutine setup_nucleus_grad_libint(print_matrix_,basis,hamiltonian_nucleus_grad)
- use m_basis_set
  use m_atoms
  implicit none
  logical,intent(in)         :: print_matrix_
@@ -701,6 +563,8 @@ subroutine setup_nucleus_grad_libint(print_matrix_,basis,hamiltonian_nucleus_gra
  integer              :: iatom
  character(len=100)   :: title
  real(dp)             :: vnucleus_ij
+ real(dp),allocatable :: matrixA(:,:)
+ real(dp),allocatable :: matrixB(:,:)
 
  real(C_DOUBLE),allocatable        :: array_cart_gradAx(:)
  real(C_DOUBLE),allocatable        :: array_cart_gradAy(:)
@@ -708,8 +572,6 @@ subroutine setup_nucleus_grad_libint(print_matrix_,basis,hamiltonian_nucleus_gra
  real(C_DOUBLE),allocatable        :: array_cart_gradBx(:)
  real(C_DOUBLE),allocatable        :: array_cart_gradBy(:)
  real(C_DOUBLE),allocatable        :: array_cart_gradBz(:)
- real(C_DOUBLE),allocatable        :: matrix_cart_gradA(:,:)
- real(C_DOUBLE),allocatable        :: matrix_cart_gradB(:,:)
  integer(C_INT)                    :: amA,contrdepthA
  real(C_DOUBLE)                    :: A(3)
  real(C_DOUBLE),allocatable        :: alphaA(:)
@@ -753,8 +615,6 @@ subroutine setup_nucleus_grad_libint(print_matrix_,basis,hamiltonian_nucleus_gra
      allocate(array_cart_gradBx(ni_cart*nj_cart))
      allocate(array_cart_gradBy(ni_cart*nj_cart))
      allocate(array_cart_gradBz(ni_cart*nj_cart))
-     allocate(matrix_cart_gradA(ni_cart,nj_cart))
-     allocate(matrix_cart_gradB(ni_cart,nj_cart))
 
      amA = li
      amB = lj
@@ -787,28 +647,25 @@ subroutine setup_nucleus_grad_libint(print_matrix_,basis,hamiltonian_nucleus_gra
                                 C,                           &
                                 array_cart_gradAx,array_cart_gradAy,array_cart_gradAz, &
                                 array_cart_gradBx,array_cart_gradBy,array_cart_gradBz)
+#else
+     call die('nuclear potential gradient not implemented without LIBINT one-body terms')
 #endif
 
-       call transform_c_to_fortran_2d(array_cart_gradAx,matrix_cart_gradA)
-       call transform_c_to_fortran_2d(array_cart_gradBx,matrix_cart_gradB)
-       hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,iatom,1) = -MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) , &
-                                                  MATMUL( matrix_cart_gradA(:,:) , cart_to_pure_norm(lj)%matrix(:,:)) )   &
-                                                - MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) ,                   &
-                                                  MATMUL( matrix_cart_gradB(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) ) 
+       ! X
+       call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAx,matrixA)
+       call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBx,matrixB)
+       hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,iatom,1) = -matrixA(:,:) - matrixB(:,:)
 
-       call transform_c_to_fortran_2d(array_cart_gradAy,matrix_cart_gradA)
-       call transform_c_to_fortran_2d(array_cart_gradBy,matrix_cart_gradB)
-       hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,iatom,2) = -MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) , &
-                                                  MATMUL( matrix_cart_gradA(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) )  &
-                                                - MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) ,                   &  
-                                                  MATMUL( matrix_cart_gradB(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) ) 
+       ! Y
+       call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAy,matrixA)
+       call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBy,matrixB)
+       hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,iatom,2) = -matrixA(:,:) - matrixB(:,:)
 
-       call transform_c_to_fortran_2d(array_cart_gradAz,matrix_cart_gradA)
-       call transform_c_to_fortran_2d(array_cart_gradBz,matrix_cart_gradB)
-       hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,iatom,3) = -MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) , &
-                                                  MATMUL( matrix_cart_gradA(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) )  &
-                                                - MATMUL( TRANSPOSE(cart_to_pure_norm(li)%matrix(:,:)) ,                   &
-                                                  MATMUL( matrix_cart_gradB(:,:) , cart_to_pure_norm(lj)%matrix(:,:) ) ) 
+       ! Z
+       call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAz,matrixA)
+       call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBz,matrixB)
+       hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,iatom,3) = -matrixA(:,:) - matrixB(:,:)
+
      enddo
      deallocate(alphaA,alphaB,cA,cB)
 
@@ -819,8 +676,8 @@ subroutine setup_nucleus_grad_libint(print_matrix_,basis,hamiltonian_nucleus_gra
      deallocate(array_cart_gradBx)
      deallocate(array_cart_gradBy)
      deallocate(array_cart_gradBz)
-     deallocate(matrix_cart_gradA)
-     deallocate(matrix_cart_gradB)
+     deallocate(matrixA)
+     deallocate(matrixB)
 
      jbf      = jbf      + nj
      jbf_cart = jbf_cart + nj_cart

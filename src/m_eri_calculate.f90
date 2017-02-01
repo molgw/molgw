@@ -16,6 +16,7 @@ module m_eri_calculate
  use m_timing
  use m_inputparam,only: scalapack_block_min
  use m_eri
+ use m_libint_tools
 
 
  integer,protected :: nauxil_2center     ! size of the 2-center matrix
@@ -24,9 +25,6 @@ module m_eri_calculate
  real(dp),private,allocatable :: eri_2center(:,:)
  integer,private              :: desc_2center(NDEL)
 
-#ifdef COHSEX_DEVEL
- real(dp),protected,allocatable :: eri_2center_rotation(:,:)
-#endif
 
 contains
 
@@ -531,19 +529,11 @@ subroutine calculate_eri_2center(auxil_basis)
  nauxil_2center = COUNT( eigval(:) > TOO_LOW_EIGENVAL )
  nauxil_neglect = auxil_basis%nbf - nauxil_2center
 
-#ifdef COHSEX_DEVEL
- allocate(eri_2center_rotation(auxil_basis%nbf,nauxil_2center))
-#endif
-
  ibf = 0
  do jbf=1,auxil_basis%nbf
    if( eigval(jbf) < TOO_LOW_EIGENVAL ) cycle
    ibf = ibf + 1
    eri_2center_m1(:,ibf) = eri_2center_m1(:,jbf) / SQRT( eigval(jbf) )
-
-#ifdef COHSEX_DEVEL
-   eri_2center_rotation(:,ibf) = eri_2center_m1(:,jbf) 
-#endif
  enddo
 
  ! Prepare the distribution of the 3-center integrals
@@ -932,27 +922,6 @@ subroutine calculate_eri_2center_sca(auxil_basis)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
 
-#ifdef HAVE_LIBINT_2CENTER
- interface
-   subroutine libint_2center(amA,contrdepthA,A,alphaA,cA, &
-                             amC,contrdepthC,C,alphaC,cC, &
-                             rcut,eriAC) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
-     integer(C_INT),value         :: amA,contrdepthA
-     real(C_DOUBLE),intent(in)    :: A(*)
-     real(C_DOUBLE),intent(in)    :: alphaA(*)
-     real(C_DOUBLE),intent(in)    :: cA(*)
-     integer(C_INT),value         :: amC,contrdepthC
-     real(C_DOUBLE),intent(in)    :: C(*)
-     real(C_DOUBLE),intent(in)    :: alphaC(*)
-     real(C_DOUBLE),intent(in)    :: cC(*)
-     real(C_DOUBLE),intent(in),value :: rcut
-     real(C_DOUBLE),intent(inout)    :: eriAC(*)
-
-   end subroutine libint_2center
- end interface
-#endif
-
 !=====
 
  call start_clock(timing_eri_2center)
@@ -1036,9 +1005,9 @@ subroutine calculate_eri_2center_sca(auxil_basis)
        allocate(coeff2(1))
        allocate(coeff3(shell_auxil(kshell)%ng))
        allocate(coeff4(1))
-       coeff1(:)=shell_auxil(ishell)%coeff(:)
+       coeff1(:)=shell_auxil(ishell)%coeff(:) * cart_to_pure_norm(0)%matrix(1,1)
        coeff2(:)=1.0_dp
-       coeff3(:)=shell_auxil(kshell)%coeff(:)
+       coeff3(:)=shell_auxil(kshell)%coeff(:) * cart_to_pure_norm(0)%matrix(1,1)
        coeff4(:)=1.0_dp
   
        allocate( int_shell( n1c*n3c ) )
@@ -1069,7 +1038,7 @@ subroutine calculate_eri_2center_sca(auxil_basis)
                    / zeta_12 & 
                    / zeta_34 &
                    * coeff1(ig1)* coeff3(ig3) &
-                   * cart_to_pure_norm(0)%matrix(1,1)**4
+                   * cart_to_pure_norm(0)%matrix(1,1)**2
   
            enddo
          enddo
@@ -1094,13 +1063,13 @@ subroutine calculate_eri_2center_sca(auxil_basis)
          do ibf=1,n1c
            do kbf=1,n3c
              iibf=iibf+1
-             integrals_cart(ibf,kbf) = int_shell(iibf) * cart_to_pure_norm(0)%matrix(1,1)**2
+             integrals_cart(ibf,kbf) = int_shell(iibf)
            enddo
          enddo
   
-         integrals_cart(1:ni,1:n3c) = MATMUL( TRANSPOSE( cart_to_pure_norm(am1)%matrix(1:n1c,1:ni) ) , integrals_cart(1:n1c,1:n3c) )
+         integrals_cart(1:ni,1:n3c) = MATMUL( TRANSPOSE( cart_to_pure_norm(ami)%matrix(1:n1c,1:ni) ) , integrals_cart(1:n1c,1:n3c) )
 
-         integrals_cart(1:ni,1:nk) = MATMUL( integrals_cart(1:ni,1:n3c) , cart_to_pure_norm(am3)%matrix(1:n3c,1:nk) )
+         integrals_cart(1:ni,1:nk) = MATMUL( integrals_cart(1:ni,1:n3c) , cart_to_pure_norm(amk)%matrix(1:n3c,1:nk) )
   
        endif
 #else
@@ -1109,17 +1078,7 @@ subroutine calculate_eri_2center_sca(auxil_basis)
                            am3,ng3,x03,alpha3,coeff3, &
                            0.0_C_DOUBLE,int_shell)
 
-       iibf=0
-       do ibf=1,n1c
-         do kbf=1,n3c
-           iibf=iibf+1
-           integrals_cart(ibf,kbf) = int_shell(iibf) * cart_to_pure_norm(0)%matrix(1,1)**2
-         enddo
-       enddo
-
-       integrals_cart(1:ni,1:n3c) = MATMUL( TRANSPOSE( cart_to_pure_norm(am1)%matrix(1:n1c,1:ni) ) , integrals_cart(1:n1c,1:n3c) )
-
-       integrals_cart(1:ni,1:nk) = MATMUL( integrals_cart(1:ni,1:n3c) , cart_to_pure_norm(am3)%matrix(1:n3c,1:nk) )
+       call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,amk,int_shell,integrals_cart)
 
 #endif
 
