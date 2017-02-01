@@ -101,16 +101,15 @@ subroutine header()
  msg='OPENMP option is activated with threads number'//msg
  call issue_warning(msg)
 #endif
-#ifdef HAVE_MPI
-! call issue_warning('Running with MPI')
+#if defined HAVE_MPI && defined HAVE_SCALAPACK
  write(stdout,*) 'Running with MPI'
-#endif
-#ifdef HAVE_SCALAPACK
-! call issue_warning('Running with SCALAPACK')
  write(stdout,*) 'Running with SCALAPACK'
-#ifndef HAVE_MPI
+#endif
+#if defined(HAVE_MPI) && !defined(HAVE_SCALAPACK)
  call die('Code compiled with SCALAPACK, but without MPI. This is not permitted')
 #endif
+#if !defined(HAVE_MPI) && defined(HAVE_SCALAPACK)
+ call die('Code compiled with MPI, but without SCALAPACK. This is not permitted')
 #endif
 
  ! LIBINT details

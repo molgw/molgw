@@ -150,110 +150,74 @@ subroutine calculate_eri_4center(basis)
      integrals_cart(:,:,:,:) = 0.0_dp
 
 
-     if(am1+am2+am3+am4==0) then
+     info=eval_contr_integral(                &
+                             am1,am2,am3,am4, &
+                             ng1,ng2,ng3,ng4, &
+                             coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
+                             alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
+                             x01(1),x02(1),x03(1),x04(1),&
+                             0.0_C_DOUBLE, &
+                             int_shell(1))
 
-       do ig4=1,ng4
-         do ig3=1,ng3
-           do ig2=1,ng2
-             do ig1=1,ng1
 
-               zeta_12 = alpha1(ig1) + alpha2(ig2)
-               zeta_34 = alpha3(ig3) + alpha4(ig4)
-               p(:) = ( alpha1(ig1) * x01(:) + alpha2(ig2) * x02(:) ) / zeta_12 
-               q(:) = ( alpha3(ig3) * x03(:) + alpha4(ig4) * x04(:) ) / zeta_34 
-               !
-               ! Treat carefully the LR only integrals
-               rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
-               tt = rho * SUM( (p(:)-q(:))**2 )
-               call boys_function_c(f0t(0),0,tt)
+     if(info/=0) then
+       write(stdout,*) am1,am2,am3,am4
+       call die('ERI calculated by libint failed')
+     endif
 
-               integrals_cart(1,1,1,1) = integrals_cart(1,1,1,1) + &
-                     2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
-                     / zeta_12 * EXP( -alpha1(ig1)*alpha2(ig2)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
-                     / zeta_34 * EXP( -alpha3(ig3)*alpha4(ig4)/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
-                     * coeff1(ig1) &
-                     * coeff2(ig2) &
-                     * coeff3(ig3) &
-                     * coeff4(ig4) * cart_to_pure_norm(0)%matrix(1,1)**4
-
-             enddo
+     iibf=0
+     do ibf=1,n1c
+       do jbf=1,n2c
+         do kbf=1,n3c
+           do lbf=1,n4c
+             iibf=iibf+1
+             integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
            enddo
          enddo
        enddo
-
-     else
-
-        
-       info=eval_contr_integral(                &
-                               am1,am2,am3,am4, &
-                               ng1,ng2,ng3,ng4, &
-                               coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
-                               alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
-                               x01(1),x02(1),x03(1),x04(1),&
-                               0.0_C_DOUBLE, &
-                               int_shell(1))
+     enddo
 
 
-       if(info/=0) then
-         write(stdout,*) am1,am2,am3,am4
-         call die('ERI calculated by libint failed')
-       endif
-
-       iibf=0
-       do ibf=1,n1c
+     do lbf=1,n4c
+       do kbf=1,n3c
          do jbf=1,n2c
-           do kbf=1,n3c
-             do lbf=1,n4c
-               iibf=iibf+1
-               integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
-             enddo
+           do ibf=1,ni
+             integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1c,jbf,kbf,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1c,ibf) )
            enddo
          enddo
        enddo
+     enddo
 
-
-       do lbf=1,n4c
-         do kbf=1,n3c
-           do jbf=1,n2c
-             do ibf=1,ni
-               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1c,jbf,kbf,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1c,ibf) )
-             enddo
+     do lbf=1,n4c
+       do kbf=1,n3c
+         do jbf=1,nj
+           do ibf=1,ni
+             integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2c,kbf,lbf) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2c,jbf) )
            enddo
          enddo
        enddo
+     enddo
 
-       do lbf=1,n4c
-         do kbf=1,n3c
-           do jbf=1,nj
-             do ibf=1,ni
-               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2c,kbf,lbf) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2c,jbf) )
-             enddo
+     do lbf=1,n4c
+       do kbf=1,nk
+         do jbf=1,nj
+           do ibf=1,ni
+             integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n3c,lbf) * cart_to_pure_norm(shell(kshell)%am)%matrix(1:n3c,kbf) )
            enddo
          enddo
        enddo
+     enddo
 
-       do lbf=1,n4c
-         do kbf=1,nk
-           do jbf=1,nj
-             do ibf=1,ni
-               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n3c,lbf) * cart_to_pure_norm(shell(kshell)%am)%matrix(1:n3c,kbf) )
-             enddo
+     do lbf=1,nl
+       do kbf=1,nk
+         do jbf=1,nj
+           do ibf=1,ni
+             integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n4c) * cart_to_pure_norm(shell(lshell)%am)%matrix(1:n4c,lbf) )
            enddo
          enddo
        enddo
+     enddo
 
-       do lbf=1,nl
-         do kbf=1,nk
-           do jbf=1,nj
-             do ibf=1,ni
-               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n4c) * cart_to_pure_norm(shell(lshell)%am)%matrix(1:n4c,lbf) )
-             enddo
-           enddo
-         enddo
-       enddo
-
-     endif ! is (ss|ss)
-     
      do lbf=1,nl
        do kbf=1,nk
          do jbf=1,nj
@@ -286,278 +250,6 @@ subroutine calculate_eri_4center(basis)
 
 
 end subroutine calculate_eri_4center
-
-
-!=========================================================================
-subroutine calculate_eri_2center(auxil_basis)
- implicit none
- type(basis_set),intent(in)   :: auxil_basis
-!=====
- integer                      :: ishell,kshell
- integer                      :: n1c,n3c
- integer                      :: ig1,ig2,ig3,ig4
- integer                      :: ni,nj,nk
- integer                      :: ami,amk
- integer                      :: ibf,jbf,kbf,lbf
- integer                      :: iibf
- integer                      :: info,ip
- integer                      :: ibf_auxil,jbf_auxil
- integer                      :: nauxil_neglect
- real(dp)                     :: zeta_12,zeta_34,rho,f0t(0:0),tt
- real(dp)                     :: p(3),q(3)
- real(dp)                     :: workload(nproc_world)
- real(dp)                     :: eigval(auxil_basis%nbf)
- real(dp),allocatable         :: integrals_tmp(:,:)
- real(dp),allocatable         :: integrals_cart(:,:)
- integer,allocatable          :: shell_proc(:)
- real(dp)                     :: symmetrization_factor
- real(dp),allocatable         :: eri_2center_m1(:,:)
-!=====
-! variables used to call C
- integer(C_INT)               :: am1,am2,am3,am4
- integer(C_INT)               :: ng1,ng2,ng3,ng4
- real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
- real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
- real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
- real(C_DOUBLE),allocatable   :: int_shell(:)
-!=====
-
- call start_clock(timing_eri_2center)
-
- call setup_shell_list_auxil(auxil_basis)
-
-
- ! First allocate the 2-center integral array
- !
- ! The 2-center integrals are not distributed because they are small anyway
- ! The size of the 2-center integrals might be reduced later on
- ! by removing the zero eigenvalues
- nauxil_2center = auxil_basis%nbf
- !
- ! 2-CENTER INTEGRALS 
- !
- call clean_allocate('2-center integrals sqrt',eri_2center_m1,auxil_basis%nbf,auxil_basis%nbf)
-
- eri_2center_m1(:,:) = 0.0_dp
-
- write(stdout,'(/,a)')    ' Calculate, invert and store the 2-center Electron Repulsion Integrals'
-
- !
- ! Load balancing
- allocate(shell_proc(nshell_auxil))
- workload(:) = 0.0_dp
- do kshell=1,nshell_auxil
-   amk = shell_auxil(kshell)%am
-   ip = MINLOC(workload(:),DIM=1)
-   !
-   ! Cost function was evaluated from a few runs
-   workload(ip) = workload(ip) + cost_function_eri(amk)
-   shell_proc(kshell) = ip - 1
- enddo
-
- do kshell=1,nshell_auxil
-
-   ! Parallelization over the shell index
-   if( shell_proc(kshell) /= rank_world ) cycle
-
-   !
-   ! Order the angular momenta so that libint is pleased
-   ! 1) am3+am4 >= am1+am2
-   ! 2) am3>=am4
-   ! 3) am1>=am2
-   amk = shell_auxil(kshell)%am
-   nk  = number_basis_function_am( auxil_basis%gaussian_type , amk )
-
-   do ishell=1,nshell_auxil
-     ami = shell_auxil(ishell)%am
-     ni = number_basis_function_am( auxil_basis%gaussian_type , ami )
-     if( amk < ami ) cycle
-
-     if( amk == ami ) then
-       symmetrization_factor = 0.5_dp
-     else
-       symmetrization_factor = 1.0_dp
-     endif
-
-
-     am1 = shell_auxil(ishell)%am
-     am2 = 0
-     am3 = shell_auxil(kshell)%am
-     am4 = 0
-     n1c = number_basis_function_am( 'CART' , ami )
-     n3c = number_basis_function_am( 'CART' , amk )
-     ng1 = shell_auxil(ishell)%ng
-     ng2 = 1
-     ng3 = shell_auxil(kshell)%ng
-     ng4 = 1
-     allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
-     alpha1(:) = shell_auxil(ishell)%alpha(:) 
-     alpha2(:) = 0.0_dp
-     alpha3(:) = shell_auxil(kshell)%alpha(:)
-     alpha4(:) = 0.0_dp 
-     x01(:) = shell_auxil(ishell)%x0(:)
-     x02(:) = shell_auxil(ishell)%x0(:)
-     x03(:) = shell_auxil(kshell)%x0(:)
-     x04(:) = shell_auxil(kshell)%x0(:)
-     allocate(coeff1(shell_auxil(ishell)%ng))
-     allocate(coeff2(1))
-     allocate(coeff3(shell_auxil(kshell)%ng))
-     allocate(coeff4(1))
-     coeff1(:)=shell_auxil(ishell)%coeff(:)
-     coeff2(:)=1.0_dp
-     coeff3(:)=shell_auxil(kshell)%coeff(:)
-     coeff4(:)=1.0_dp
-
-     allocate( int_shell( n1c*n3c ) )
-     allocate( integrals_cart(n1c,n3c) )
-     allocate( integrals_tmp(n1c,n3c) )
-     integrals_cart(:,:) = 0.0_dp
-
-
-     if(am1+am3==0) then
-
-       do ig3=1,ng3
-         do ig1=1,ng1
-
-           zeta_12 = alpha1(ig1) 
-           zeta_34 = alpha3(ig3) 
-           p(:) = x01(:)
-           q(:) = x03(:)
-           !
-           ! Full range or long-range only integrals
-           rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
-           
-           tt = rho * SUM( (p(:)-q(:))**2 )
-           call boys_function_c(f0t(0),0,tt)
-
-           integrals_cart(1,1) = integrals_cart(1,1) + &
-                 2.0_dp * pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
-                 / zeta_12 & 
-                 / zeta_34 &
-                 * coeff1(ig1)* coeff3(ig3) &
-                 * cart_to_pure_norm(0)%matrix(1,1)**4
-
-         enddo
-       enddo
-
-     else
-
-
-       info=eval_contr_integral(                &
-                               am1,am2,am3,am4, &
-                               ng1,ng2,ng3,ng4, &
-                               coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
-                               alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
-                               x01(1),x02(1),x03(1),x04(1),&
-                               0.0_C_DOUBLE, &
-                               int_shell(1))
-
-
-       if(info/=0) then
-         write(stdout,*) am1,am2,am3,am4
-         call die('ERI calculated by libint failed')
-       endif
-
-       iibf=0
-       do ibf=1,n1c
-         do kbf=1,n3c
-           iibf=iibf+1
-           integrals_cart(ibf,kbf) = int_shell(iibf)
-         enddo
-       enddo
-
-
-       do kbf=1,n3c
-         do ibf=1,ni
-           integrals_tmp (ibf,kbf) = SUM( integrals_cart(1:n1c,kbf) * cart_to_pure_norm(am1)%matrix(1:n1c,ibf) )
-         enddo
-       enddo
-
-       do kbf=1,n3c
-         do ibf=1,ni
-           integrals_cart(ibf,kbf) = integrals_tmp (ibf,kbf) * cart_to_pure_norm(0)%matrix(1,1) 
-         enddo
-       enddo
-
-       do kbf=1,nk
-         do ibf=1,ni
-           integrals_tmp (ibf,kbf) = SUM( integrals_cart(ibf,1:n3c) * cart_to_pure_norm(am3)%matrix(1:n3c,kbf) )
-         enddo
-       enddo
-
-       do kbf=1,nk
-         do ibf=1,ni
-           integrals_cart(ibf,kbf) = integrals_tmp (ibf,kbf) * cart_to_pure_norm(0)%matrix(1,1) 
-         enddo
-       enddo
-
-     endif
-     
-
-     do kbf=1,nk
-       do ibf=1,ni
-         eri_2center_m1( shell_auxil(ishell)%istart+ibf-1,    &
-                         shell_auxil(kshell)%istart+kbf-1 )    = integrals_cart(ibf,kbf) * symmetrization_factor
-       enddo
-     enddo
-
-     deallocate(integrals_cart)
-     deallocate(integrals_tmp)
-     deallocate(int_shell)
-     deallocate(alpha1,alpha2,alpha3,alpha4)
-     deallocate(coeff1,coeff2,coeff3,coeff4)
-
-   enddo
- enddo
-
- ! Sum up the contribution from the different procs
- call xsum_world(eri_2center_m1)
-
- !
- ! Add the transpose to complete the missing angular momentum pairs when amk < ami
- eri_2center_m1(:,:) = eri_2center_m1(:,:) + TRANSPOSE( eri_2center_m1(:,:) )
-
-
- deallocate(shell_proc)
-
- !
- ! Perform in-place diagonalization here with or without scalapack
- call diagonalize_scalapack(scalapack_block_min,auxil_basis%nbf,eri_2center_m1,eigval)
-
- !
- ! Skip the too small eigenvalues
- nauxil_2center = COUNT( eigval(:) > TOO_LOW_EIGENVAL )
- nauxil_neglect = auxil_basis%nbf - nauxil_2center
-
- ibf = 0
- do jbf=1,auxil_basis%nbf
-   if( eigval(jbf) < TOO_LOW_EIGENVAL ) cycle
-   ibf = ibf + 1
-   eri_2center_m1(:,ibf) = eri_2center_m1(:,jbf) / SQRT( eigval(jbf) )
- enddo
-
- ! Prepare the distribution of the 3-center integrals
- ! nauxil_3center variable is now set up
- call distribute_auxil_basis(nauxil_2center)
-
- call clean_allocate('Distributed 2-center integrals',eri_2center,nauxil_3center,auxil_basis%nbf)
- do ibf_auxil=1,nauxil_3center
-   jbf_auxil = ibf_auxil_g(ibf_auxil)
-   eri_2center(ibf_auxil,:) = eri_2center_m1(:,jbf_auxil)
- enddo
-
-
- write(stdout,'(a)')        ' All 2-center integrals have been calculated, diagonalized and stored'
- write(stdout,'(a,i6)')     ' Some have been eliminated due to too large overlap ',nauxil_neglect
- write(stdout,'(a,es16.6)') ' because their eigenvalue was lower than:',TOO_LOW_EIGENVAL
-
- write(stdout,*) 'Now deallocate the 2-center integrals: not needed anymore'
- call clean_deallocate('2-center integrals sqrt',eri_2center_m1)
-
-
- call stop_clock(timing_eri_2center)
-
-end subroutine calculate_eri_2center
 
 
 !=========================================================================
@@ -879,49 +571,39 @@ subroutine calculate_eri_3center(basis,auxil_basis)
 end subroutine calculate_eri_3center
 
 
-#ifdef HAVE_SCALAPACK
 !=========================================================================
-subroutine calculate_eri_2center_sca(auxil_basis)
+subroutine calculate_eri_2center_scalapack(auxil_basis)
  implicit none
  type(basis_set),intent(in)   :: auxil_basis
 !=====
  integer                      :: ishell,kshell
  integer                      :: n1c,n3c
- integer                      :: ig1,ig2,ig3,ig4
+ integer                      :: ig1,ig3
  integer                      :: ni,nj,nk
  integer                      :: ami,amk
- integer                      :: ibf,jbf,kbf,lbf
+ integer                      :: ibf,kbf
  integer                      :: iibf
  integer                      :: info,ip
  integer                      :: ibf_auxil,jbf_auxil
  integer                      :: nauxil_neglect
- real(dp)                     :: zeta_12,zeta_34,rho,f0t(0:0),tt
- real(dp)                     :: p(3),q(3)
- real(dp)                     :: workload(nproc_world)
  real(dp)                     :: eigval(auxil_basis%nbf)
- real(dp),allocatable         :: integrals_tmp(:,:)
- real(dp),allocatable         :: integrals_cart(:,:)
- integer,allocatable          :: shell_proc(:)
+ real(dp),allocatable         :: integrals(:,:)
  real(dp)                     :: symmetrization_factor
  real(dp),allocatable         :: eri_2center_sqrt(:,:)
-
- integer :: ibf_auxil_local,jbf_auxil_global
- integer :: mlocal,nlocal
- integer :: iglobal,jglobal,ilocal,jlocal
- integer :: kglobal,klocal
- integer :: desc2center(NDEL)
  real(dp),allocatable         :: eri_2center_tmp(:,:)
- logical :: skip_shell
-
+ integer                      :: mlocal,nlocal
+ integer                      :: iglobal,jglobal,ilocal,jlocal
+ integer                      :: kglobal,klocal
+ integer                      :: desc2center(NDEL)
+ logical                      :: skip_shell
 !=====
 ! variables used to call C
  integer(C_INT)               :: am1,am3
- integer(C_INT)               :: ng1,ng2,ng3,ng4
+ integer(C_INT)               :: ng1,ng3
  real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
  real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
-
 !=====
 
  call start_clock(timing_eri_2center)
@@ -929,28 +611,35 @@ subroutine calculate_eri_2center_sca(auxil_basis)
  call setup_shell_list_auxil(auxil_basis)
 
  
-#ifndef HAVE_LIBINT_2CENTER
- write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid: ',nprow_3center,' x ',npcol_3center
-#else
+#ifdef HAVE_LIBINT_2CENTER
  write(stdout,'(a,i4,a,i4)') ' LIBINT 2-center integrals distributed using a SCALAPACK grid: ',nprow_3center,' x ',npcol_3center
+#else
+ write(stdout,'(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid: ',nprow_3center,' x ',npcol_3center
 #endif
 
  if( cntxt_3center > 0 ) then
+
+#ifdef HAVE_SCALAPACK
    mlocal = NUMROC(auxil_basis%nbf,block_row,iprow_3center,first_row,nprow_3center)
    nlocal = NUMROC(auxil_basis%nbf,block_col,ipcol_3center,first_col,npcol_3center)
+   call DESCINIT(desc2center,auxil_basis%nbf,auxil_basis%nbf,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+#else
+   mlocal = auxil_basis%nbf
+   nlocal = auxil_basis%nbf
+#endif
 
    call clean_allocate('tmp 2-center integrals',eri_2center_tmp,mlocal,nlocal)
-   call clean_allocate('2-center integrals sqrt',eri_2center_sqrt,mlocal,nlocal)
 
+
+   ! Initialization need since we are going to symmetrize the matrix then
    eri_2center_tmp(:,:) = 0.0_dp
-
-   call DESCINIT(desc2center,auxil_basis%nbf,auxil_basis%nbf,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
 
 
    do kshell=1,nshell_auxil
      amk = shell_auxil(kshell)%am
      nk  = number_basis_function_am( auxil_basis%gaussian_type , amk )
 
+#ifdef HAVE_SCALAPACK
      ! Check if this shell is actually needed for the local matrix
      skip_shell = .TRUE.
      do kbf=1,nk
@@ -959,6 +648,7 @@ subroutine calculate_eri_2center_sca(auxil_basis)
      enddo
 
      if( skip_shell ) cycle
+#endif
 
   
      do ishell=1,nshell_auxil
@@ -975,6 +665,7 @@ subroutine calculate_eri_2center_sca(auxil_basis)
          symmetrization_factor = 1.0_dp
        endif
 
+#ifdef HAVE_SCALAPACK
        ! Check if this shell is actually needed for the local matrix
        skip_shell = .TRUE.
        do ibf=1,ni
@@ -983,107 +674,64 @@ subroutine calculate_eri_2center_sca(auxil_basis)
        enddo
 
        if( skip_shell ) cycle
+#endif
 
        am1 = shell_auxil(ishell)%am
        am3 = shell_auxil(kshell)%am
        n1c = number_basis_function_am( 'CART' , ami )
        n3c = number_basis_function_am( 'CART' , amk )
+       allocate( int_shell( n1c*n3c ) )
        ng1 = shell_auxil(ishell)%ng
-       ng2 = 1
        ng3 = shell_auxil(kshell)%ng
-       ng4 = 1
-       allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
+       allocate(alpha1(ng1),alpha3(ng3))
        alpha1(:) = shell_auxil(ishell)%alpha(:) 
-       alpha2(:) = 0.0_dp
        alpha3(:) = shell_auxil(kshell)%alpha(:)
-       alpha4(:) = 0.0_dp 
        x01(:) = shell_auxil(ishell)%x0(:)
-       x02(:) = shell_auxil(ishell)%x0(:)
        x03(:) = shell_auxil(kshell)%x0(:)
-       x04(:) = shell_auxil(kshell)%x0(:)
        allocate(coeff1(shell_auxil(ishell)%ng))
-       allocate(coeff2(1))
        allocate(coeff3(shell_auxil(kshell)%ng))
-       allocate(coeff4(1))
        coeff1(:)=shell_auxil(ishell)%coeff(:) * cart_to_pure_norm(0)%matrix(1,1)
-       coeff2(:)=1.0_dp
        coeff3(:)=shell_auxil(kshell)%coeff(:) * cart_to_pure_norm(0)%matrix(1,1)
+
+#ifndef HAVE_LIBINT_2CENTER
+       !
+       ! Fill the 4-center integrals with fake values
+       allocate(alpha2(1),alpha4(1))
+       alpha2(:) = 0.0_dp
+       alpha4(:) = 0.0_dp 
+       x02(:) = shell_auxil(ishell)%x0(:)
+       x04(:) = shell_auxil(kshell)%x0(:)
+       allocate(coeff2(1))
+       allocate(coeff4(1))
+       coeff2(:)=1.0_dp
        coeff4(:)=1.0_dp
   
-       allocate( int_shell( n1c*n3c ) )
-       allocate( integrals_cart(n1c,n3c) )
-       allocate( integrals_tmp(n1c,n3c) )
-       integrals_cart(:,:) = 0.0_dp
-  
-  
-#ifndef HAVE_LIBINT_2CENTER
-       if(am1+am3==0) then
-  
-         do ig3=1,ng3
-           do ig1=1,ng1
-  
-             zeta_12 = alpha1(ig1) 
-             zeta_34 = alpha3(ig3) 
-             p(:) = x01(:)
-             q(:) = x03(:)
-             !
-             ! Full range or long-range only integrals
-             rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
-             
-             tt = rho * SUM( (p(:)-q(:))**2 )
-             call boys_function_c(f0t(0),0,tt)
-  
-             integrals_cart(1,1) = integrals_cart(1,1) + &
-                   2.0_dp * pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
-                   / zeta_12 & 
-                   / zeta_34 &
-                   * coeff1(ig1)* coeff3(ig3) &
-                   * cart_to_pure_norm(0)%matrix(1,1)**2
-  
-           enddo
-         enddo
-  
-       else
-  
-         info=eval_contr_integral(am1,0_C_INT,am3,0_C_INT, &
-                                  ng1,ng2,ng3,ng4, &
-                                  coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
-                                  alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
-                                  x01(1),x02(1),x03(1),x04(1),&
-                                  0.0_C_DOUBLE, &
-                                  int_shell(1))
-  
-  
-         if(info/=0) then
-           write(stdout,*) am1,am3
-           call die('ERI calculated by libint failed')
-         endif
-  
-         iibf=0
-         do ibf=1,n1c
-           do kbf=1,n3c
-             iibf=iibf+1
-             integrals_cart(ibf,kbf) = int_shell(iibf)
-           enddo
-         enddo
-  
-         integrals_cart(1:ni,1:n3c) = MATMUL( TRANSPOSE( cart_to_pure_norm(ami)%matrix(1:n1c,1:ni) ) , integrals_cart(1:n1c,1:n3c) )
+       info=eval_contr_integral(am1,0_C_INT,am3,0_C_INT, &
+                                ng1,1_C_INT,ng3,1_C_INT, &
+                                coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
+                                alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
+                                x01(1),x02(1),x03(1),x04(1),&
+                                0.0_C_DOUBLE, &
+                                int_shell(1))
+       deallocate(alpha2,alpha4)
+       deallocate(coeff2,coeff4)
 
-         integrals_cart(1:ni,1:nk) = MATMUL( integrals_cart(1:ni,1:n3c) , cart_to_pure_norm(amk)%matrix(1:n3c,1:nk) )
-  
-       endif
 #else
 
        call libint_2center(am1,ng1,x01,alpha1,coeff1, &
                            am3,ng3,x03,alpha3,coeff3, &
                            0.0_C_DOUBLE,int_shell)
 
-       call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,amk,int_shell,integrals_cart)
-
 #endif
+       deallocate(alpha1,alpha3)
+       deallocate(coeff1,coeff3)
+
+       call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,amk,int_shell,integrals)
+
+       deallocate(int_shell)
 
        
-  
+#ifdef HAVE_SCALAPACK  
        do kbf=1,nk
          kglobal = shell_auxil(kshell)%istart + kbf - 1
 
@@ -1104,29 +752,48 @@ subroutine calculate_eri_2center_sca(auxil_basis)
            endif
 
 
-           eri_2center_tmp(ilocal,klocal) = integrals_cart(ibf,kbf) * symmetrization_factor
+           eri_2center_tmp(ilocal,klocal) = integrals(ibf,kbf) * symmetrization_factor
 
          enddo
        enddo
+#else
+       do kbf=1,nk
+         do ibf=1,ni
+           eri_2center_tmp( shell_auxil(ishell)%istart+ibf-1,    &
+                            shell_auxil(kshell)%istart+kbf-1 ) = integrals(ibf,kbf) * symmetrization_factor
+         enddo
+       enddo
+#endif
   
-       deallocate(integrals_cart)
-       deallocate(integrals_tmp)
-       deallocate(int_shell)
-       deallocate(alpha1,alpha2,alpha3,alpha4)
-       deallocate(coeff1,coeff2,coeff3,coeff4)
+       deallocate(integrals)
 
      enddo   ! ishell
    enddo   ! kshell
+
+   !
+   ! Symmetrize and then diagonalize the 2-center integral matrix
+   !
+#ifdef HAVE_SCALAPACK
+
+   call clean_allocate('2-center integrals sqrt',eri_2center_sqrt,mlocal,nlocal)
 
    ! B = A
    call PDLACPY('A',auxil_basis%nbf,auxil_basis%nbf,eri_2center_tmp,1,1,desc2center,eri_2center_sqrt,1,1,desc2center)
    ! A = A + B**T
    call PDGEADD('T',auxil_basis%nbf,auxil_basis%nbf,1.0d0,eri_2center_sqrt,1,1,desc2center,1.0d0,eri_2center_tmp,1,1,desc2center)
-
-
+   ! Diagonalize
    call diagonalize_sca(auxil_basis%nbf,desc2center,eri_2center_tmp,eigval,desc2center,eri_2center_sqrt)
-
    call clean_deallocate('tmp 2-center integrals',eri_2center_tmp)
+
+#else
+
+   ! Symmetrize
+   eri_2center_tmp(:,:) = eri_2center_tmp(:,:) + TRANSPOSE( eri_2center_tmp(:,:) )
+   ! Diagonalize
+   call diagonalize_scalapack(scalapack_block_min,auxil_basis%nbf,eri_2center_tmp,eigval)
+   call move_alloc(eri_2center_tmp,eri_2center_sqrt)
+
+#endif
 
 
    !
@@ -1135,14 +802,28 @@ subroutine calculate_eri_2center_sca(auxil_basis)
 
    nauxil_neglect = auxil_basis%nbf - nauxil_2center
 
+   ! Prepare the distribution of the 3-center integrals
+   ! nauxil_3center variable is now set up
+   call distribute_auxil_basis(nauxil_2center)
 
+
+   !
+   ! and resize the matrix accordingly
+#ifdef HAVE_SCALAPACK
    mlocal = NUMROC(auxil_basis%nbf,block_row,iprow_3center,first_row,nprow_3center)
    nlocal = NUMROC(nauxil_2center ,block_col,ipcol_3center,first_col,npcol_3center)
    call DESCINIT(desc_2center,auxil_basis%nbf,nauxil_2center,block_row,block_col,first_row,first_col,cntxt_3center,MAX(1,mlocal),info)
+#else
+   mlocal = nauxil_3center
+   nlocal = nauxil_2center
+#endif
 
    call clean_allocate('Distributed 2-center integrals',eri_2center,mlocal,nlocal)
-   call clean_allocate('tmp 2-center integrals',eri_2center_tmp,mlocal,nlocal)
 
+
+
+#ifdef HAVE_SCALAPACK
+   call clean_allocate('tmp 2-center integrals',eri_2center_tmp,mlocal,nlocal)
    !
    ! Create a rectangular matrix with only 1 / SQRT( eigval) on a diagonal
    eri_2center_tmp(:,:) = 0.0_dp
@@ -1163,27 +844,39 @@ subroutine calculate_eri_2center_sca(auxil_basis)
                0.0_dp,eri_2center    ,1,1,desc_2center)
 
    call clean_deallocate('tmp 2-center integrals',eri_2center_tmp)
+
+#else
+ ilocal = 0
+ do jlocal=1,auxil_basis%nbf
+   if( eigval(jlocal) < TOO_LOW_EIGENVAL ) cycle
+   ilocal = ilocal + 1
+   eri_2center_sqrt(:,ilocal) = eri_2center_sqrt(:,jlocal) / SQRT( eigval(jlocal) )
+ enddo
+
+ do ibf_auxil=1,nauxil_3center
+   jbf_auxil = ibf_auxil_g(ibf_auxil)
+   eri_2center(ibf_auxil,:) = eri_2center_sqrt(:,jbf_auxil)
+ enddo
+
+
+#endif
    call clean_deallocate('2-center integrals sqrt',eri_2center_sqrt)
 
  endif
 
 
 
- ! Prepare the distribution of the 3-center integrals
- ! nauxil_3center variable is now set up
- call distribute_auxil_basis(nauxil_2center)
-
  write(stdout,'(/,1x,a)')      'All 2-center integrals have been calculated, diagonalized and stored'
  write(stdout,'(1x,a,i6)')     'Some have been eliminated due to too large overlap ',nauxil_neglect
  write(stdout,'(1x,a,es16.6)') 'because their eigenvalue was lower than:',TOO_LOW_EIGENVAL
 
 
-
  call stop_clock(timing_eri_2center)
 
-end subroutine calculate_eri_2center_sca
+end subroutine calculate_eri_2center_scalapack
 
 
+#ifdef HAVE_SCALAPACK
 !=========================================================================
 subroutine calculate_eri_3center_sca(basis,auxil_basis)
  implicit none

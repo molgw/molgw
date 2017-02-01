@@ -20,12 +20,12 @@ extern "C" void boys_function_c(double*, int, double);
 
 /* Code */
 
-#ifdef HAVE_LIBINT_ONEBODY
 
 /* ==========================================================================                    
  *                           2-center integrals
  * ========================================================================== */
 
+#ifdef HAVE_LIBINT_2CENTER
 extern "C" {
 void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
                     int amC, int contrdepthC , double C [] , double alphaC [], double cC [],
@@ -236,7 +236,7 @@ void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], d
 
      int12->_0_Overlap_0_x[0] = 0.0 ;
      int12->_0_Overlap_0_y[0] = 0.0 ;
-     int12->_0_Overlap_0_z[0] =  0.0 ;
+     int12->_0_Overlap_0_z[0] = 0.0 ;
  
      int12->veclen = 1 ;
      int12->contrdepth = contrdepth2 ;
@@ -252,7 +252,7 @@ void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], d
 
    eriAC[0] = 0.0 ;
    for( int icontrdepth2=0; icontrdepth2 < contrdepth2; icontrdepth2++) {
-     eriAC[0] +=  inteval[0].LIBINT_T_SS_EREP_SS(0)[0] ;
+     eriAC[0] +=  inteval[icontrdepth2].LIBINT_T_SS_EREP_SS(0)[0] ;
    }
 
  } else {

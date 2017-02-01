@@ -107,11 +107,18 @@ int eval_contr_integral(
  inteval[0].contrdepth = ncontr0123;
 
 
- /* this compute the shell set (quartet) of integrals */
- LIBINT2_PREFIXED_NAME(libint2_build_eri)[am0][am1][am2][am3](&inteval[0]);
+ if( ammax == 0 ) {
+   integrals[0] = 0.0 ;
+   for(p0123=0; p0123<ncontr0123; ++p0123) 
+     integrals[0] += inteval[p0123].LIBINT_T_SS_EREP_SS(0)[0] ;
+   
+ } else {
+   /* this compute the shell set (quartet) of integrals */
+   LIBINT2_PREFIXED_NAME(libint2_build_eri)[am0][am1][am2][am3](&inteval[0]);
 
- for(p0123 = 0 ; p0123< nint(am0)*nint(am1)*nint(am2)*nint(am3) ; ++p0123) {
-   integrals[p0123] = inteval[0].targets[0][p0123];
+   for(p0123 = 0 ; p0123< nint(am0)*nint(am1)*nint(am2)*nint(am3) ; ++p0123) {
+     integrals[p0123] = inteval[0].targets[0][p0123];
+   }
  }
 
  // this releases all memory that was allocated for this object
