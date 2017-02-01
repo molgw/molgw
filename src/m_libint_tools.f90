@@ -193,36 +193,45 @@ subroutine transform_libint_to_molgw_2d(gaussian_type,am1,am2,array_in,matrix_ou
 end subroutine transform_libint_to_molgw_2d
 
 
-#if 0
 !=========================================================================
-subroutine transform_libint_to_molgw_3d(gaussian_type_left,am1,gausian_type_right,am2,am3,array_in,matrix_out)
+subroutine transform_libint_to_molgw_3d(gaussian_type_left,am1,gaussian_type_right,am2,am3,array_in,matrix_out)
  implicit none
- character(len=4),intent(in)      :: gaussian_type
- integer,intent(in)               :: am1,am2
+ character(len=4),intent(in)      :: gaussian_type_left,gaussian_type_right
+ integer,intent(in)               :: am1,am2,am3
  real(C_DOUBLE),intent(in)        :: array_in(:)
  real(dp),allocatable,intent(out) :: matrix_out(:,:,:)
 !=====
- integer :: n1,n2,n1c,n2c
+ integer :: n1,n2,n3,n1c,n2c,n3c
  integer :: i1c,i2c,i12c
- real(dp),allocatable :: matrix_tmp(:,:)
+ real(dp),allocatable :: matrix_tmp(:,:,:)
 !=====
 
  n1c = number_basis_function_am('CART',am1)
  n2c = number_basis_function_am('CART',am2)
- n1  = number_basis_function_am(gaussian_type,am1)
- n2  = number_basis_function_am(gaussian_type,am2)
+ n3c = number_basis_function_am('CART',am3)
+ n1  = number_basis_function_am(gaussian_type_left,am1)
+ n2  = number_basis_function_am(gaussian_type_right,am2)
+ n3  = number_basis_function_am(gaussian_type_right,am3)
 
- if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1,n2))
- allocate(matrix_tmp(n1,n2c))
+ if( am2 + am3 >= am1 ) then
 
- matrix_tmp(:,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c , n1c /) ) , cart_to_pure_norm(am1)%matrix(1:n1c,1:n1) ) )
 
- matrix_out(:,:) = MATMUL( matrix_tmp(:,:) , cart_to_pure_norm(am2)%matrix(:,:) )
+ else
 
- deallocate(matrix_tmp)
+ endif
+
+
+
+! if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1,n2,n3))
+! allocate(matrix_tmp(n1,n2c))
+!
+! matrix_tmp(:,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c , n1c /) ) , cart_to_pure_norm(am1)%matrix(1:n1c,1:n1) ) )
+!
+! matrix_out(:,:) = MATMUL( matrix_tmp(:,:) , cart_to_pure_norm(am2)%matrix(:,:) )
+!
+! deallocate(matrix_tmp)
 
 end subroutine transform_libint_to_molgw_3d
-#endif
 
 
 

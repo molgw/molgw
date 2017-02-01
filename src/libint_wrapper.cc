@@ -338,14 +338,6 @@ void prep_libint2_contr(Libint_t* erieval,
   double pfac = 2 * pow(M_PI, 2.5) * K1 * K2 / (gammap * gammaq * sqrt(gammap + gammaq));
   pfac *= norm_prefactor;
 
-/*
-  if (norm_flag > 0) {
-     pfac *= norm_const(l1,m1,n1,alpha1,A);
-     pfac *= norm_const(l2,m2,n2,alpha2,B);
-     pfac *= norm_const(l3,m3,n3,alpha3,C);
-     pfac *= norm_const(l4,m4,n4,alpha4,D);
-  }
-*/
 
   boys_function_c(F, am, PQ2 * gammapq_rc2);
 

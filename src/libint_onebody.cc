@@ -42,7 +42,7 @@ void libint_overlap(int amA, int contrdepthA , double A [] , double alphaA [], d
  assert( contrdepthB == 1 );
 #endif
 
- const unsigned int ammax = LIBINT2_MAX_AM_eri ;
+ const unsigned int ammax = max(amA,amB) ;
  const int am = amA + amB ;
 
 
@@ -136,7 +136,7 @@ void libint_kinetic(int amA, int contrdepthA , double A [] , double alphaA [], d
  assert( contrdepthB == 1 );
 #endif
 
- const unsigned int ammax = LIBINT2_MAX_AM_eri ;
+ const unsigned int ammax = max(amA,amB) ;
  const int am = amA + amB ;
 
 
@@ -242,7 +242,7 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
  assert( contrdepthB == 1 );
 #endif
 
- const unsigned int ammax = LIBINT2_MAX_AM_eri ;
+ const unsigned int ammax = max(amA,amB) ;
  const int am = amA + amB ;
  double U ;
  double F[am+1] ;
