@@ -313,11 +313,14 @@ tarball:
 	+make archive
 
 archive:
-	tar czf molgw.tgz ../../molgw/README.md ../../molgw/COPYING ../../molgw/src/Makefile    \
-                          ../../molgw/src/*.py ../../molgw/src/*.f90 ../../molgw/src/*.f ../../molgw/src/*.cc \
-                          ../../molgw/basis/* ../../molgw/utils/* ../../molgw/tests/*            \
-                          ../../molgw/docs/* ../../molgw/config/*           \
-                          ../../molgw/src/my_machine.arch
+	mkdir -p ../tmp/molgw/src
+	cp -rp  ../README.md ../COPYING   \
+            ../basis/ ../utils/ ../tests/            \
+            ../docs/ ../config/      ../tmp/molgw
+	cp -rp  ../src/*.py ../src/*.f90 ../src/*.f ../src/*.cc \
+            ../src/my_machine.arch  ../tmp/molgw/src
+	cd ../tmp && tar czf ../molgw.tgz molgw/
+	rm -rf ../tmp/
 
 prepare_sourcecode:
 	$(PYTHON) prepare_sourcecode.py

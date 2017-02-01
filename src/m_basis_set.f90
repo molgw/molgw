@@ -1148,10 +1148,10 @@ subroutine gos_basis_function(bf1,bf2,qvec,gos_bf1bf2)
  implicit none
  type(basis_function),intent(in)  :: bf1,bf2
  real(dp),intent(in)              :: qvec(3)
- complex(dpc),intent(out)         :: gos_bf1bf2
+ complex(dp),intent(out)          :: gos_bf1bf2
 !=====
  integer                          :: ig,jg
- complex(dpc)                     :: gos_one_gaussian
+ complex(dp)                      :: gos_one_gaussian
 !=====
 
  gos_bf1bf2 = 0.0_dp

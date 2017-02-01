@@ -421,7 +421,7 @@ end subroutine xsum_auxil_ra4d
 !=========================================================================
 subroutine xsum_auxil_ca1d(array)
  implicit none
- complex(dpc),intent(inout) :: array(:)
+ complex(dp),intent(inout) :: array(:)
 !=====
  integer :: n1
  integer :: ier=0
@@ -442,7 +442,7 @@ end subroutine xsum_auxil_ca1d
 !=========================================================================
 subroutine xsum_auxil_ca2d(array)
  implicit none
- complex(dpc),intent(inout) :: array(:,:)
+ complex(dp),intent(inout) :: array(:,:)
 !=====
  integer :: n1,n2
  integer :: ier=0
@@ -464,7 +464,7 @@ end subroutine xsum_auxil_ca2d
 !=========================================================================
 subroutine xsum_auxil_ca4d(array)
  implicit none
- complex(dpc),intent(inout) :: array(:,:,:,:)
+ complex(dp),intent(inout) :: array(:,:,:,:)
 !=====
  integer :: n1,n2,n3,n4
  integer :: ier=0

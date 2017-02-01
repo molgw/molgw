@@ -718,10 +718,10 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
  complex(dp)                        :: omega(nomega)
  real(dp)                           :: coeff
  real(dp)                           :: dynamical_pol(nomega),structure_factor(nomega)
- complex(dpc)                       :: bethe_sumrule
- complex(dpc),allocatable           :: gos_basis(:,:),gos_tmp(:,:),gos_state(:,:,:)
- complex(dpc),allocatable           :: gos_cart(:,:)
- complex(dpc),allocatable           :: residue(:)
+ complex(dp)                        :: bethe_sumrule
+ complex(dp),allocatable            :: gos_basis(:,:),gos_tmp(:,:),gos_state(:,:,:)
+ complex(dp),allocatable            :: gos_cart(:,:)
+ complex(dp),allocatable            :: residue(:)
  real(dp)                           :: qvec(3)
  integer,parameter                  :: nq=0 ! 1000
  integer                            :: iq
