@@ -7,7 +7,6 @@
 !
 !=========================================================================
 module m_eri_ao_mo
- use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
  use m_definitions
  use m_mpi
  use m_memory

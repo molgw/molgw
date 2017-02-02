@@ -7,7 +7,6 @@
 !
 !=========================================================================
 subroutine header()
- use,intrinsic :: iso_c_binding, only: C_INT,C_BOOL
 #ifdef FORTRAN2008
  use,intrinsic :: iso_fortran_env, only: compiler_version,compiler_options
 #endif
@@ -30,7 +29,7 @@ subroutine header()
 ! variables used to call C
  interface
    subroutine libint_init(ammax,has_onebody,has_gradient) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_BOOL
+     import :: C_INT,C_BOOL
      integer(C_INT),intent(out)  :: ammax
      logical(C_BOOL),intent(out) :: has_onebody,has_gradient
    end subroutine libint_init

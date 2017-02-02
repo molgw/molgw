@@ -7,7 +7,6 @@
 !
 !=========================================================================
 module m_eri
- use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
  use m_definitions
  use m_mpi
  use m_memory
@@ -90,7 +89,7 @@ module m_eri
                                 x01,x02,x03,x04,&
                                 rcut, &
                                 int_shell) bind(C,name='eval_contr_integral')
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     import :: C_INT,C_DOUBLE
      integer(C_INT) :: eval_contr_integral
      integer(C_INT) :: am1,am2,am3,am4
      integer(C_INT) :: ng1,ng2,ng3,ng4

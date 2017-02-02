@@ -26,7 +26,7 @@ module m_gaussian
 
  interface
    subroutine boys_function_c(fnt,n,t) BIND(C,NAME='boys_function_c')
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     import :: C_INT,C_DOUBLE
      integer(C_INT),value       :: n
      real(C_DOUBLE),value       :: t
      real(C_DOUBLE),intent(out) :: fnt(0:n)

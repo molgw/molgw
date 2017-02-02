@@ -151,7 +151,7 @@ program molgw
    ! 2-center integrals
    call calculate_eri_2center_scalapack(auxil_basis,0.0_dp)
    ! 3-center integrals
-   call calculate_eri_3center_scalapack(basis,auxil_basis)
+   call calculate_eri_3center_scalapack(basis,auxil_basis,0.0_dp)
 
 
    ! If Range-Separated Hybrid are requested
@@ -160,7 +160,7 @@ program molgw
      ! 2-center integrals
      call calculate_eri_2center_scalapack(auxil_basis,rcut)
      ! 3-center integrals
-     call calculate_eri_3center_lr(basis,auxil_basis,rcut)
+     call calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    endif
 
  endif

@@ -7,7 +7,6 @@
 !
 !=========================================================================
 module m_libint_tools
- use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
  use m_definitions
  use m_basis_set
 
@@ -23,7 +22,7 @@ module m_libint_tools
    subroutine libint_overlap(amA,contrdepthA,A,alphaA,cA, &
                              amB,contrdepthB,B,alphaB,cB, &
                              overlapAB) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     import :: C_INT,C_DOUBLE
      integer(C_INT),value  :: amA,contrdepthA
      real(C_DOUBLE),intent(in) :: A(*)
      real(C_DOUBLE),intent(in) :: alphaA(*)
@@ -39,7 +38,7 @@ module m_libint_tools
    subroutine libint_overlap_grad(amA,contrdepthA,A,alphaA,cA, &
                              amB,contrdepthB,B,alphaB,cB, &
                              overlapABx,overlapABy,overlapABz) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     import :: C_INT,C_DOUBLE
      integer(C_INT),value  :: amA,contrdepthA
      real(C_DOUBLE),intent(in) :: A(*)
      real(C_DOUBLE),intent(in) :: alphaA(*)
@@ -57,7 +56,7 @@ module m_libint_tools
    subroutine libint_kinetic(amA,contrdepthA,A,alphaA,cA, &
                              amB,contrdepthB,B,alphaB,cB, &
                              kineticAB) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     import :: C_INT,C_DOUBLE
      integer(C_INT),value       :: amA,contrdepthA
      real(C_DOUBLE),intent(in)  :: A(*)
      real(C_DOUBLE),intent(in)  :: alphaA(*)
@@ -73,7 +72,7 @@ module m_libint_tools
    subroutine libint_kinetic_grad(amA,contrdepthA,A,alphaA,cA, &
                                   amB,contrdepthB,B,alphaB,cB, &
                                   kineticABx,kineticABy,kineticABz) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     import :: C_INT,C_DOUBLE
      integer(C_INT),value       :: amA,contrdepthA
      real(C_DOUBLE),intent(in)  :: A(*)
      real(C_DOUBLE),intent(in)  :: alphaA(*)
@@ -91,7 +90,7 @@ module m_libint_tools
    subroutine libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
                              amB,contrdepthB,B,alphaB,cB, &
                              C,elecpotAB) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     import :: C_INT,C_DOUBLE
      integer(C_INT),value         :: amA,contrdepthA
      real(C_DOUBLE),intent(in)    :: A(*)
      real(C_DOUBLE),intent(in)    :: alphaA(*)
@@ -109,7 +108,7 @@ module m_libint_tools
                                   amB,contrdepthB,B,alphaB,cB, &
                                   C,elecpotAx,elecpotAy,elecpotAz, &
                                     elecpotBx,elecpotBy,elecpotBz) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     import :: C_INT,C_DOUBLE
      integer(C_INT),value         :: amA,contrdepthA
      real(C_DOUBLE),intent(in)    :: A(*)
      real(C_DOUBLE),intent(in)    :: alphaA(*)
@@ -132,7 +131,7 @@ module m_libint_tools
    subroutine libint_2center(amA,contrdepthA,A,alphaA,cA, &
                              amC,contrdepthC,C,alphaC,cC, &
                              rcut,eriAC) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     import ::  C_INT,C_DOUBLE
      integer(C_INT),value         :: amA,contrdepthA
      real(C_DOUBLE),intent(in)    :: A(*)
      real(C_DOUBLE),intent(in)    :: alphaA(*)
@@ -150,7 +149,7 @@ module m_libint_tools
                              amC,contrdepthC,C,alphaC,cC, &
                              amD,contrdepthD,D,alphaD,cD, &
                              rcut,eriACD) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     import ::  C_INT,C_DOUBLE
      integer(C_INT),value         :: amA,contrdepthA
      real(C_DOUBLE),intent(in)    :: A(*)
      real(C_DOUBLE),intent(in)    :: alphaA(*)
@@ -174,7 +173,7 @@ module m_libint_tools
                              amC,contrdepthC,C,alphaC,cC, &
                              amD,contrdepthD,D,alphaD,cD, &
                              rcut,eriABCD) bind(C)
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     import :: C_INT,C_DOUBLE
      integer(C_INT),value         :: amA,contrdepthA
      real(C_DOUBLE),intent(in)    :: A(*)
      real(C_DOUBLE),intent(in)    :: alphaA(*)
