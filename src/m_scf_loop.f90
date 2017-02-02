@@ -33,7 +33,6 @@ subroutine scf_loop(is_restart,&
  use m_scf
  use m_eri
  use m_eri_calculate
- use m_eri_calculate_lr
  use m_eri_ao_mo
  use m_dft_grid
  use m_spectral_function

@@ -22,14 +22,11 @@ module m_eri
 
  real(dp),private           :: TOL_INT
 
- integer,public :: nauxil_2center_lr  ! size of the 2-center matrix
-                                         ! 2-center integrals are NOT distributed
 
  real(dp),public,allocatable :: eri_4center(:)
  real(dp),public,allocatable :: eri_4center_lr(:)
  real(dp),public,allocatable :: eri_3center(:,:)
  real(dp),public,allocatable :: eri_3center_lr(:,:)
- real(dp),public,allocatable :: eri_2center_lr(:,:)
 
 
  logical,protected,allocatable      :: negligible_shellpair(:,:)
@@ -52,7 +49,6 @@ module m_eri
  type(shell_type),protected,allocatable :: shell(:)
  type(shell_type),protected,allocatable :: shell_auxil(:)
  integer,private,allocatable            :: shell_bf(:)
-! integer,private,allocatable            :: index_in_shell_bf(:)
 
 
  integer,private   :: nbf_eri         ! local copy of nbf
@@ -199,7 +195,6 @@ subroutine deallocate_eri()
  enddo
  if(ALLOCATED(shell))                 deallocate(shell)
  if(ALLOCATED(shell_bf))              deallocate(shell_bf)
-! if(ALLOCATED(index_in_shell_bf))     deallocate(index_in_shell_bf)
 
 
 end subroutine deallocate_eri
@@ -398,10 +393,6 @@ subroutine setup_shell_list(basis)
    jbf = kbf + 1
    ibf = ibf + number_basis_function_am( 'CART' , basis%bf(ibf)%am )
  enddo
-! allocate(index_in_shell_bf(basis%nbf))
-! do ibf=1,basis%nbf
-!   index_in_shell_bf(ibf) = basis%bff(ibf)%index_in_shell
-! enddo
 
 
 end subroutine setup_shell_list
