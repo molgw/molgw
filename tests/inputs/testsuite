@@ -33,6 +33,11 @@ Fermi level               ,  -4.065450         , 0 , 1.0e-4
 gKS HOMO energy           ,  -3.970996         , 0 , 1.0e-4
 gKS HOMO energy           ,  -2.931370         , 1 , 1.0e-4
 
+acetamide.in              , one single LDA cycle based on a guessed starting point
+SCF Total Energy          , -207.1430859034    , 0 , 1.0e-7
+gKS HOMO energy           ,    0.560330        , 0 , 1.0e-4
+gKS LUMO energy           ,    2.254836        , 0 , 1.0e-4
+
 zn_ecp.in                 , HF zinc atom with ECP and no RI
 SCF Total Energy          , -225.9507739234    , 0 , 1.0e-7
 gKS HOMO energy           ,  -8.086232         , 0 , 1.0e-4
