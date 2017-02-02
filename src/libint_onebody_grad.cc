@@ -11,12 +11,8 @@
 #include<iostream>
 #include<math.h>
 #include<assert.h>
-using namespace std;
+#include "libint_molgw.h"
 
-
-/* Headers */
-int nint(int am);
-extern "C" void boys_function_c(double*, int, double);
 
 /* Code */
 

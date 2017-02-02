@@ -1,7 +1,7 @@
 /*
  * This file is part of MOLGW.
  * C/C++ wrapper to the libint library
- * two-body terms: 2- 3- and 4- center Coulomb integrals
+ * two-body gradient terms: 2- 3- and 4- center Coulomb integrals
  * with contracted gaussians
  * Author: F. Bruneval
  */
@@ -14,21 +14,7 @@
 #include "libint_molgw.h"
 
 
-
 /* Code */
-
-/* ==========================================================================                    
- *                        LIBINT initialization
- * ========================================================================== */
-extern "C" {
-void libint_init(int *ammax, bool *has_onebody, bool *has_gradient) {
- LIBINT2_PREFIXED_NAME(libint2_static_init)();
- *has_onebody  = LIBINT2_SUPPORT_ONEBODY ;
- *has_gradient = ( LIBINT2_DERIV_ERI_ORDER > 0 );
- *ammax = LIBINT2_MAX_AM_eri ;
-}
-}
-
 
 
 /* ==========================================================================                    
@@ -36,10 +22,10 @@ void libint_init(int *ammax, bool *has_onebody, bool *has_gradient) {
  * ========================================================================== */
 
 extern "C" {
-void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
-                    int amC, int contrdepthC , double C [] , double alphaC [], double cC [],
-                    double rcut,
-                    double eriAC [] ) {
+void libint_2center_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
+                         int amC, int contrdepthC , double C [] , double alphaC [], double cC [],
+                         double rcut,
+                         double eriAC [] ) {
 
  const unsigned int contrdepth2 = contrdepthA * contrdepthC;
  Libint_2eri_t* inteval = libint2::malloc<Libint_2eri_t>(contrdepth2);
@@ -252,11 +238,11 @@ void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 
 extern "C" {
-void libint_3center(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
-                    int amC, int contrdepthC , double C [] , double alphaC [], double cC [], 
-                    int amD, int contrdepthD , double D [] , double alphaD [], double cD [],
-                    double rcut,
-                    double eriACD [] ) {
+void libint_3center_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
+                         int amC, int contrdepthC , double C [] , double alphaC [], double cC [], 
+                         int amD, int contrdepthD , double D [] , double alphaD [], double cD [],
+                         double rcut,
+                         double eriACD [] ) {
 
  const unsigned int contrdepth3 = contrdepthA * contrdepthC * contrdepthD ;
  Libint_3eri_t* inteval = libint2::malloc<Libint_3eri_t>(contrdepth3);
@@ -490,12 +476,12 @@ void libint_3center(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 
 extern "C" {
-void libint_4center(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
-                    int amB, int contrdepthB , double B [] , double alphaB [], double cB [], 
-                    int amC, int contrdepthC , double C [] , double alphaC [], double cC [], 
-                    int amD, int contrdepthD , double D [] , double alphaD [], double cD [],
-                    double rcut,
-                    double eriABCD [] ) {
+void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA [], double cA [], 
+                         int amB, int contrdepthB , double B [] , double alphaB [], double cB [], 
+                         int amC, int contrdepthC , double C [] , double alphaC [], double cC [], 
+                         int amD, int contrdepthD , double D [] , double alphaD [], double cD [],
+                         double rcut,
+                         double eriABCD [] ) {
 
  const unsigned int contrdepth4 = contrdepthA * contrdepthB * contrdepthC * contrdepthD ;
  Libint_eri_t* inteval = libint2::malloc<Libint_eri_t>(contrdepth4);
