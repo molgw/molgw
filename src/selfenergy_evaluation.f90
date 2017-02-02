@@ -369,7 +369,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    if( calc_type%is_lr_mbpt ) then
 
      ! 2-center integrals
-     call calculate_eri_2center_lr(auxil_basis,rcut_mbpt)
+     call calculate_eri_2center_scalapack(auxil_basis,rcut_mbpt)
      ! 3-center integrals
      call calculate_eri_3center_lr(basis,auxil_basis,rcut_mbpt)
 

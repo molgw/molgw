@@ -158,8 +158,7 @@ program molgw
    ! If is_big_restart, these integrals are NOT needed, I chose code this! 
    if(calc_type%need_exchange_lr ) then
      ! 2-center integrals
-     call calculate_eri_2center_lr(auxil_basis,rcut)
-!     call calculate_eri_2center_scalapack(auxil_basis,rcut)
+     call calculate_eri_2center_scalapack(auxil_basis,rcut)
      ! 3-center integrals
      call calculate_eri_3center_lr(basis,auxil_basis,rcut)
    endif
