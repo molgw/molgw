@@ -350,7 +350,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 
      call libint_2center(am1,ng1,x01,alpha1,coeff1, &
                          am3,ng3,x03,alpha3,coeff3, &
-                         0.0_C_DOUBLE,int_shell)
+                         rcut_libint,int_shell)
 
 
      deallocate(alpha1,alpha3)
@@ -444,7 +444,9 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  if( .NOT. is_longrange ) then
    call clean_allocate('Distributed 2-center integrals',eri_2center,mlocal,nlocal)
  else
-   call clean_allocate('Distributed LR 2-center integrals',eri_2center_lr,mlocal,nlocal)
+   ! FBFB TODO change order
+   call clean_allocate('Distributed LR 2-center integrals',eri_2center_lr,nlocal,mlocal)
+!   call clean_allocate('Distributed LR 2-center integrals',eri_2center_lr,mlocal,nlocal)
  endif
 
 #ifdef HAVE_SCALAPACK
@@ -494,7 +496,9 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  else
    do ibf_auxil=1,nauxil_3center_lr
      jbf_auxil = ibf_auxil_g_lr(ibf_auxil)
-     eri_2center_lr(:,ibf_auxil) = eri_2center_sqrt(:,jbf_auxil)
+     ! FBFB TODO change order
+!     eri_2center_lr(:,ibf_auxil) = eri_2center_sqrt(:,jbf_auxil)
+     eri_2center_lr(ibf_auxil,:) = eri_2center_sqrt(:,jbf_auxil)
    enddo
  endif
 
