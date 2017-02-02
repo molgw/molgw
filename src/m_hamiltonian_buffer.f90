@@ -789,7 +789,6 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
  real(dp)             :: rhor
  real(dp)             :: vxc,exc,excr
  real(dp)             :: vsigma(2*nspin-1)
- real(dp)             :: vhartree
  real(dp)             :: vhgau(m_ham,n_ham)
  integer              :: iatom,igau,ngau
  real(dp),allocatable :: alpha(:),coeff(:)
@@ -846,7 +845,7 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
 
    !
    ! calculate the density at point r for spin up and spin down
-   call setup_atomic_density(rr,rhor,vhartree)
+   call setup_atomic_density(rr,rhor)
 
    !
    ! Normalization

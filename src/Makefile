@@ -49,7 +49,7 @@ all:
 	+make  level040
 	+make  ../molgw
 
-level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_wrapper.o lebedev_quadrature.o pdbssolver1.o boys_function.o 
+level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o lebedev_quadrature.o pdbssolver1.o boys_function.o 
 
 level005: m_warning.o m_gos.o real_spherical_harmonics.o 
 
@@ -80,7 +80,7 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
 
 
 
-../molgw: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_wrapper.o lebedev_quadrature.o pdbssolver1.o boys_function.o \
+../molgw: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o lebedev_quadrature.o pdbssolver1.o boys_function.o \
         m_warning.o m_gos.o real_spherical_harmonics.o m_lbfgs.o \
         m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_local.o m_mpi_trans.o  \
         m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o \
@@ -100,7 +100,7 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
                         m_gos.o m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_libint_tools.o \
                         m_eri_calculate.o m_eri_ao_mo.o m_tddft_fxc.o \
                         m_spectral_function.o \
-                        libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_wrapper.o boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt2_selfenergy.o \
+                        libint_onebody.o libint_onebody_grad.o libint_twobody.o boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt2_selfenergy.o \
                         mp2.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o linear_response.o static_polarizability.o density_tools.o io.o restart.o \
                         m_hamiltonian.o m_hamiltonian_libint.o m_hamiltonian_sca.o m_hamiltonian_buffer.o m_scf_loop.o pdbssolver1.o selfenergy_evaluation.o real_spherical_harmonics.o \
                         molgw.o \
@@ -204,9 +204,6 @@ libint_onebody_grad.o: libint_onebody_grad.cc
 libint_twobody.o: libint_twobody.cc
 	$(CXX_W_OPTS) -c libint_twobody.cc $(LIBINT_INCS)
 
-libint_wrapper.o: libint_wrapper.cc
-	$(CXX_W_OPTS) -c libint_wrapper.cc $(LIBINT_INCS)
-
 m_libint_tools.o: m_definitions.f90 m_basis_set.f90 m_libint_tools.f90
 	$(FC_W_OPTS) -c m_libint_tools.f90 $(LIBXC_INCS)
 
@@ -228,7 +225,7 @@ m_eri_calculate.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_timing.f90 m_wa
                    m_libint_tools.f90 m_eri.f90 m_eri_calculate.f90
 	$(FC_W_OPTS) -c m_eri_calculate.f90 $(LIBXC_INCS)
 
-m_eri.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 m_eri.f90 
+m_eri.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_basis_set.f90 m_inputparam.f90 m_libint_tools.f90 m_eri.f90 
 	$(FC_W_OPTS) -c m_eri.f90 $(LIBXC_INCS)
 
 m_basis_set.o: m_definitions.f90 m_elements.f90 m_gaussian.f90 m_mpi.f90 m_ecp.f90 m_basis_set.f90 

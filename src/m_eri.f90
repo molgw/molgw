@@ -12,6 +12,7 @@ module m_eri
  use m_memory
  use m_basis_set
  use m_timing
+ use m_libint_tools
 
 
  real(dp),parameter,public :: TOO_LOW_EIGENVAL=1.0e-6_dp
@@ -75,27 +76,6 @@ module m_eri
  integer,allocatable,protected :: ibf_auxil_g_lr(:)
  integer,allocatable,protected :: ibf_auxil_l_lr(:)
  integer,allocatable,protected :: nbf_local_iproc_lr(:)
-
-
- interface
-   function eval_contr_integral(am1,am2,am3,am4, &
-                                ng1,ng2,ng3,ng4, &
-                                coeff1,coeff2,coeff3,coeff4,&
-                                alpha1,alpha2,alpha3,alpha4,&
-                                x01,x02,x03,x04,&
-                                rcut, &
-                                int_shell) bind(C,name='eval_contr_integral')
-     import :: C_INT,C_DOUBLE
-     integer(C_INT) :: eval_contr_integral
-     integer(C_INT) :: am1,am2,am3,am4
-     integer(C_INT) :: ng1,ng2,ng3,ng4
-     real(C_DOUBLE) :: coeff1(1),coeff2(1),coeff3(1),coeff4(1)
-     real(C_DOUBLE) :: alpha1(1),alpha2(1),alpha3(1),alpha4(1)
-     real(C_DOUBLE) :: x01(1),x02(1),x03(1),x04(1)
-     real(C_DOUBLE) :: rcut
-     real(C_DOUBLE) :: int_shell(1)
-   end function eval_contr_integral
- end interface
 
 
 contains
@@ -528,17 +508,12 @@ subroutine identify_negligible_shellpair(basis)
  type(basis_set),intent(in)   :: basis
 !=====
  integer                      :: info,ip
- integer                      :: iibf
- integer                      :: ibf,jbf,kbf,lbf
+ integer                      :: ibf,jbf
  integer                      :: n1c,n2c
  integer                      :: ni,nj
  integer                      :: ami,amj
  integer                      :: ishell,jshell
- integer                      :: ig1,ig2,ig3,ig4
- real(dp)                     :: zeta_12,rho,rho1,f0t(0:0),tt
- real(dp)                     :: p(3),q(3)
- real(dp),allocatable         :: integrals_tmp(:,:,:,:)
- real(dp),allocatable         :: integrals_cart(:,:,:,:)
+ real(dp),allocatable         :: integrals(:,:,:,:)
  real(dp)                     :: workload(nproc_world)
  integer                      :: shell_proc(nshell)
 !=====
@@ -582,9 +557,6 @@ subroutine identify_negligible_shellpair(basis)
 
    do ishell=1,nshell
      ami = shell(ishell)%am
-     !TODO: Here time could be saved by only checking ishell<= jshell
-     ! But then an interexchange of indexes would have to be implemented in
-     ! order to satisfy ami >= amj (required condition in libint)
      if( ami < amj ) cycle
 
      ni = number_basis_function_am( basis%gaussian_type , ami )
@@ -602,118 +574,20 @@ subroutine identify_negligible_shellpair(basis)
      coeff2(:) = shell(jshell)%coeff(:)
 
      allocate( int_shell( n1c*n2c*n1c*n2c ) )
-     allocate( integrals_cart(n1c,n2c,n1c,n2c) )
-     allocate( integrals_tmp (n1c,n2c,n1c,n2c) )
-
-     integrals_cart(:,:,:,:) = 0.0_dp
-
-     if(ami+amj==0) then
-
-       do ig4=1,ng2
-         do ig3=1,ng1
-           do ig2=1,ng2
-             do ig1=1,ng1
-
-               zeta_12 = alpha1(ig1) + alpha2(ig2)
-               p(:) = ( alpha1(ig1) * x01(:) + alpha2(ig2) * x02(:) ) / zeta_12 
-               q(:) = ( alpha1(ig3) * x01(:) + alpha2(ig4) * x02(:) ) / zeta_12 
-               !
-               ! Treat carefully the LR only integrals
-               rho1 = zeta_12 * zeta_12 / ( zeta_12 + zeta_12 )
-               rho  = rho1
-               tt = rho * SUM( (p(:)-q(:))**2 )
-               call boys_function_c(f0t(0),0,tt)
-
-               integrals_cart(1,1,1,1) = integrals_cart(1,1,1,1) + &
-                     2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_12 ) * f0t(0) &
-                     / zeta_12 * EXP( -alpha1(ig1)*alpha2(ig2)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
-                     / zeta_12 * EXP( -alpha1(ig3)*alpha2(ig4)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) &
-                     * SQRT( rho / rho1 ) &
-                     * coeff1(ig1) &
-                     * coeff2(ig2) &
-                     * coeff1(ig3) &
-                     * coeff2(ig4) * cart_to_pure_norm(0)%matrix(1,1)**4
-
-             enddo
-           enddo
-         enddo
-       enddo
-
-     else
-
-       info=eval_contr_integral(                &
-                               am1,am2,am1,am2, &
-                               ng1,ng2,ng1,ng2, &
-                               coeff1(1),coeff2(1),coeff1(1),coeff2(1),&
-                               alpha1(1),alpha2(1),alpha1(1),alpha2(1),&
-                               x01(1),x02(1),x01(1),x02(1),&
-                               0.0_C_DOUBLE, &
-                               int_shell(1))
 
 
-       if(info/=0) then
-         write(stdout,*) am1,am2,am1,am2
-         call die('ERI calculated by libint failed')
-       endif
+     call libint_4center(am1,ng1,x01,alpha1,coeff1, &
+                         am2,ng2,x02,alpha2,coeff2, &
+                         am1,ng1,x01,alpha1,coeff1, &
+                         am2,ng2,x02,alpha2,coeff2, &
+                         0.0_C_DOUBLE,int_shell)
 
-       iibf=0
-       do ibf=1,n1c
-         do jbf=1,n2c
-           do kbf=1,n1c
-             do lbf=1,n2c
-               iibf=iibf+1
-               integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
-             enddo
-           enddo
-         enddo
-       enddo
+     call transform_libint_to_molgw_4d(basis%gaussian_type,ami,amj,ami,amj,int_shell,integrals)
 
-
-       do lbf=1,n2c
-         do kbf=1,n1c
-           do jbf=1,n2c
-             do ibf=1,ni
-               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1c,jbf,kbf,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1c,ibf) )
-             enddo
-           enddo
-         enddo
-       enddo
-
-       do lbf=1,n2c
-         do kbf=1,n1c
-           do jbf=1,nj
-             do ibf=1,ni
-               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2c,kbf,lbf) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2c,jbf) )
-             enddo
-           enddo
-         enddo
-       enddo
-
-       do lbf=1,n2c
-         do kbf=1,ni
-           do jbf=1,nj
-             do ibf=1,ni
-               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n1c,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1c,kbf) )
-             enddo
-           enddo
-         enddo
-       enddo
-
-       do lbf=1,nj
-         do kbf=1,ni
-           do jbf=1,nj
-             do ibf=1,ni
-               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n2c) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2c,lbf) )
-             enddo
-           enddo
-         enddo
-       enddo
-            
-     endif
 
      do ibf=1,ni
        do jbf=1,nj
-         if( ABS( integrals_cart(ibf,jbf,ibf,jbf) ) > TOL_INT**2 ) negligible_shellpair(ishell,jshell) = .FALSE.
+         if( ABS( integrals(ibf,jbf,ibf,jbf) ) > TOL_INT**2 ) negligible_shellpair(ishell,jshell) = .FALSE.
        enddo
      enddo
 
@@ -721,8 +595,7 @@ subroutine identify_negligible_shellpair(basis)
      ! Symmetrize
      negligible_shellpair(jshell,ishell) = negligible_shellpair(ishell,jshell)
 
-     deallocate(integrals_cart)
-     deallocate(integrals_tmp)
+     deallocate(integrals)
      deallocate(int_shell)
      deallocate(alpha1,alpha2)
      deallocate(coeff1,coeff2)

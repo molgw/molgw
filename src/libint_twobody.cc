@@ -15,10 +15,26 @@ using namespace std;
 
 
 /* Headers */
-int nint(int am);
 extern "C" void boys_function_c(double*, int, double);
 
 /* Code */
+
+/* ==========================================================================                    
+ *                        LIBINT initialization
+ * ========================================================================== */
+extern "C" {
+void libint_init(int *ammax, bool *has_onebody, bool *has_gradient) {
+ LIBINT2_PREFIXED_NAME(libint2_static_init)();
+ *has_onebody  = LIBINT2_SUPPORT_ONEBODY ;
+ *has_gradient = ( LIBINT2_DERIV_ERI_ORDER > 0 );
+ *ammax = LIBINT2_MAX_AM_eri ;
+}
+}
+
+/* Number of cartesian function for a given angular momentum */
+int inline nint(int am) {
+  return (am+1)*(am+2)/2;
+}
 
 
 /* ==========================================================================                    
@@ -50,7 +66,6 @@ void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], d
 
  Libint_2eri_t* int12 ;
  double alphaP, alphaQ ;
- double P[3], Q[3] ;
  double U ;
  double F[am+1] ;
  double gammapq ;
@@ -74,9 +89,6 @@ void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], d
      int12 = &inteval[icontrdepth2] ;
      alphaP = alphaA[icontrdepthA] ;
      alphaQ = alphaC[icontrdepthC] ;
-     P[0] = A[0] ;
-     P[1] = A[1] ;
-     P[2] = A[2] ;
 
      int12->PA_x[0] = 0 ;
      int12->PA_y[0] = 0 ;

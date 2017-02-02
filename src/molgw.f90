@@ -70,7 +70,7 @@ program molgw
  integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
  integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix 
 !FBFB
- integer                 :: istate,iatom,ibf,jbf,ispin
+ integer                 :: istate,iatom,ispin
  real(dp),allocatable    :: grad_tmp(:,:,:,:)
 !=====
 

@@ -630,7 +630,6 @@ subroutine get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamilton
  real(dp),intent(out)   :: hamiltonian_fock(:,:,:)
 !=====
  real(dp),allocatable   :: hfock_local(:,:,:)
- integer                :: rank_master
 !=====
 
  if( parallel_ham ) then
@@ -658,7 +657,6 @@ subroutine form_c_matrix_global(nbf,nstate,c_matrix)
  real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
 !=====
  real(dp),allocatable :: c_matrix_local(:,:,:)
- integer              :: rank_master
 !=====
 
  if( .NOT. parallel_ham ) return    ! Nothing to do

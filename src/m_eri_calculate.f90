@@ -71,7 +71,6 @@ subroutine calculate_eri_4center(basis,rcut)
  integer                      :: ishell,jshell,kshell,lshell
  integer                      :: ijshellpair,klshellpair
  integer                      :: n1c,n2c,n3c,n4c
- integer                      :: ig1,ig2,ig3,ig4
  integer                      :: ni,nj,nk,nl
  integer                      :: ami,amj,amk,aml
  integer                      :: ibf,jbf,kbf,lbf
@@ -221,8 +220,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  logical                      :: is_longrange
  integer                      :: ishell,kshell
  integer                      :: n1c,n3c
- integer                      :: ig1,ig3
- integer                      :: ni,nj,nk
+ integer                      :: ni,nk
  integer                      :: ami,amk
  integer                      :: ibf,kbf
  integer                      :: info
@@ -243,9 +241,9 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  real(C_DOUBLE)               :: rcut_libint
  integer(C_INT)               :: am1,am3
  integer(C_INT)               :: ng1,ng3
- real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
- real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
- real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
+ real(C_DOUBLE),allocatable   :: alpha1(:),alpha3(:)
+ real(C_DOUBLE)               :: x01(3),x03(3)
+ real(C_DOUBLE),allocatable   :: coeff1(:),coeff3(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
 
@@ -526,10 +524,9 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  integer                      :: ishell,kshell,lshell
  integer                      :: klshellpair
  integer                      :: n1c,n3c,n4c
- integer                      :: ig1,ig3,ig4
  integer                      :: ni,nk,nl
  integer                      :: ami,amk,aml
- integer                      :: ibf,jbf,kbf,lbf
+ integer                      :: ibf,kbf,lbf
  integer                      :: ibf_auxil,jbf_auxil
  integer                      :: info
  real(dp),allocatable         :: integrals(:,:,:)
@@ -821,25 +818,19 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
 !=====
  integer                      :: kshell,lshell
  integer                      :: klshellpair
- integer                      :: n3,n4
  integer                      :: n3c,n4c
- integer                      :: ig1,ig3,ig4
  integer                      :: nk,nl
  integer                      :: amk,aml
- integer                      :: kbf,lbf,iibf
- integer                      :: info
- real(dp)                     :: zeta_12,zeta_34,rho,f0t(0:0),tt
- real(dp)                     :: p(3),q(3)
- real(dp),allocatable         :: integrals_tmp(:,:)
- real(dp),allocatable         :: integrals_cart(:,:)
+ integer                      :: kbf,lbf
+ real(dp),allocatable         :: integrals(:,:,:)
  integer                      :: ilocal,jlocal,iglobal,jglobal
 !=====
 ! variables used to call C
- integer(C_INT)               :: am3,am4
- integer(C_INT)               :: ng1,ng2,ng3,ng4
- real(C_DOUBLE),allocatable   :: alpha1(:),alpha2(:),alpha3(:),alpha4(:)
- real(C_DOUBLE)               :: x01(3),x02(3),x03(3),x04(3)
- real(C_DOUBLE),allocatable   :: coeff1(:),coeff2(:),coeff3(:),coeff4(:)
+ integer(C_INT)               :: am1,am3,am4
+ integer(C_INT)               :: ng1,ng3,ng4
+ real(C_DOUBLE),allocatable   :: alpha1(:),alpha3(:),alpha4(:)
+ real(C_DOUBLE)               :: x01(3),x03(3),x04(3)
+ real(C_DOUBLE),allocatable   :: coeff1(:),coeff3(:),coeff4(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
 
@@ -857,115 +848,42 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
    kshell = index_shellpair(1,klshellpair)
    lshell = index_shellpair(2,klshellpair)
 
-   ! Order the angular momenta so that libint is pleased
-   ! No need for that here!
-
    amk = shell(kshell)%am
    aml = shell(lshell)%am
 
    nk = number_basis_function_am( basis%gaussian_type , amk )
    nl = number_basis_function_am( basis%gaussian_type , aml )
 
-
-   am3 = shell(kshell)%am
-   am4 = shell(lshell)%am
+   am1 = 0
+   am3 = amk
+   am4 = aml
    n3c = number_basis_function_am( 'CART' , amk )
    n4c = number_basis_function_am( 'CART' , aml )
-   n3 = nk
-   n4 = nl
    ng1 = ng_rho
-   ng2 = 1
    ng3 = shell(kshell)%ng
    ng4 = shell(lshell)%ng
-   allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
-   allocate(coeff1(ng1),coeff2(ng2),coeff3(ng3),coeff4(ng4))
+   allocate(alpha1(ng1),alpha3(ng3),alpha4(ng4))
+   allocate(coeff1(ng1),coeff3(ng3),coeff4(ng4))
    alpha1(:) = alpha_rho(:)
-   alpha2(:) = 0.0_dp
    alpha3(:) = shell(kshell)%alpha(:)
    alpha4(:) = shell(lshell)%alpha(:)
-   coeff1(:) = coeff_rho(:) / 2.0_dp**1.25_dp / pi**0.75_dp * alpha_rho(:)**1.5_dp
-   coeff2(:) = 1.0_dp
+   coeff1(:) = coeff_rho(:) / 2.0_dp**1.25_dp / pi**0.75_dp * alpha_rho(:)**1.5_dp * cart_to_pure_norm(0)%matrix(1,1)
    coeff3(:) = shell(kshell)%coeff(:)
    coeff4(:) = shell(lshell)%coeff(:)
    x01(:) = x0_rho(:)
-   x02(:) = x0_rho(:)
    x03(:) = shell(kshell)%x0(:)
    x04(:) = shell(lshell)%x0(:)
 
    allocate( int_shell(n3c*n4c) )
-   allocate( integrals_cart(n3c,n4c) )
-   allocate( integrals_tmp (n3c,n4c) )
-   integrals_cart(:,:) = 0.0_dp
 
+   call libint_3center(am1,ng1,x01,alpha1,coeff1, &
+                       am3,ng3,x03,alpha3,coeff3, &
+                       am4,ng4,x04,alpha4,coeff4, &
+                       0.0_C_DOUBLE,int_shell)
 
-   if(am3+am4==0) then
+   call transform_libint_to_molgw_3d(basis%gaussian_type,0,basis%gaussian_type,amk,aml,int_shell,integrals)
 
-     do ig4=1,ng4
-       do ig3=1,ng3
-         do ig1=1,ng1
-
-           zeta_12 = alpha_rho(ig1)
-           zeta_34 = alpha3(ig3) + alpha4(ig4)
-           p(:) = x01(:)
-           q(:) = ( alpha3(ig3) * x03(:) + alpha4(ig4) * x04(:) ) / zeta_34 
-           !
-           ! Full range or long-range only integrals
-           rho  = zeta_12 * zeta_34 / ( zeta_12 + zeta_34 )
-           
-           tt = rho * SUM( (p(:)-q(:))**2 )
-           call boys_function_c(f0t(0),0,tt)
-
-           integrals_cart(1,1) = integrals_cart(1,1) + &
-                 2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_34 ) * f0t(0) &
-                 / zeta_12 & 
-                 / zeta_34 * EXP( -alpha3(ig3)*alpha4(ig4)/zeta_34 * SUM( (x03(:)-x04(:))**2 ) ) &
-                 * coeff1(ig1) * coeff3(ig3) * coeff4(ig4) &
-                 * cart_to_pure_norm(0)%matrix(1,1)**4
-
-         enddo
-       enddo
-     enddo
-
-   else
-
-     info=eval_contr_integral(                &
-                             0_C_INT,0_C_INT,am3,am4, &
-                             ng1,ng2,ng3,ng4, &
-                             coeff1(1),coeff2(1),coeff3(1),coeff4(1),&
-                             alpha1(1),alpha2(1),alpha3(1),alpha4(1),&
-                             x01(1),x02(1),x03(1),x04(1),&
-                             0.0_C_DOUBLE, &
-                             int_shell(1))
-
-
-     if(info/=0) then
-       write(stdout,*) 0,0,am3,am4
-       call die('ERI calculated by libint failed')
-     endif
-
-     iibf=0
-     do kbf=1,n3c
-       do lbf=1,n4c
-         iibf=iibf+1
-         integrals_cart(kbf,lbf) = int_shell(iibf) * cart_to_pure_norm(0)%matrix(1,1)**2
-       enddo
-     enddo
-
-     do lbf=1,n4c
-       do kbf=1,n3
-         integrals_tmp (kbf,lbf) = SUM( integrals_cart(1:n3c,lbf) * cart_to_pure_norm(am3)%matrix(1:n3c,kbf) )
-       enddo
-     enddo
-
-     do lbf=1,n4
-       do kbf=1,n3
-         integrals_cart(kbf,lbf) = SUM( integrals_tmp (kbf,1:n4c) * cart_to_pure_norm(am4)%matrix(1:n4c,lbf) )
-       enddo
-     enddo
-
-
-   endif ! is (ss|ss)
-   
+     
 
    if( parallel_ham .AND. parallel_buffer ) then    
      do lbf=1,nl
@@ -975,9 +893,9 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
          ilocal = iglobal
          jlocal = jglobal
          if( kshell == lshell ) then ! To avoid double-counting   
-           vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals_cart(kbf,lbf)  * 0.5_dp 
+           vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals(1,kbf,lbf)  * 0.5_dp 
          else
-           vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals_cart(kbf,lbf) 
+           vhrho(ilocal,jlocal) = vhrho(ilocal,jlocal) + integrals(1,kbf,lbf) 
          endif
        enddo
      enddo
@@ -991,7 +909,7 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
          ilocal = rowindex_global_to_local('H',iglobal)
          jlocal = colindex_global_to_local('H',jglobal)
          if( ilocal*jlocal /= 0 ) then
-           vhrho(ilocal,jlocal) = integrals_cart(kbf,lbf)
+           vhrho(ilocal,jlocal) = integrals(1,kbf,lbf)
          endif
          ! And the symmetric too
          iglobal = shell(lshell)%istart+lbf-1
@@ -999,18 +917,17 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
          ilocal = rowindex_global_to_local('H',iglobal)
          jlocal = colindex_global_to_local('H',jglobal)
          if( ilocal*jlocal /= 0 ) then
-           vhrho(ilocal,jlocal) = integrals_cart(kbf,lbf)
+           vhrho(ilocal,jlocal) = integrals(1,kbf,lbf)
          endif
        enddo
      enddo
    endif
 
 
-   deallocate(integrals_cart)
-   deallocate(integrals_tmp)
+   deallocate(integrals)
    deallocate(int_shell)
-   deallocate(alpha1,alpha2,alpha3,alpha4)
-   deallocate(coeff1,coeff2,coeff3,coeff4)
+   deallocate(alpha1,alpha3,alpha4)
+   deallocate(coeff1,coeff3,coeff4)
 
  enddo
 
