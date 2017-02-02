@@ -126,6 +126,39 @@ module m_libint_tools
      real(C_DOUBLE),intent(inout) :: elecpotBz(*)
      
    end subroutine libint_elecpot_grad
+
+   subroutine libint_4center_grad(amA,contrdepthA,A,alphaA,cA, &
+                                  amB,contrdepthB,B,alphaB,cB, &
+                                  amC,contrdepthC,C,alphaC,cC, &
+                                  amD,contrdepthD,D,alphaD,cD, &
+                                  rcut, &
+                                  eriAx,eriAy,eriAz, &
+                                  eriCx,eriCy,eriCz, &
+                                  eriDx,eriDy,eriDz) bind(C)
+     import :: C_INT,C_DOUBLE
+     integer(C_INT),value         :: amA,contrdepthA
+     real(C_DOUBLE),intent(in)    :: A(*)
+     real(C_DOUBLE),intent(in)    :: alphaA(*)
+     real(C_DOUBLE),intent(in)    :: cA(*)
+     integer(C_INT),value         :: amC,contrdepthC
+     real(C_DOUBLE),intent(in)    :: C(*)
+     real(C_DOUBLE),intent(in)    :: alphaC(*)
+     real(C_DOUBLE),intent(in)    :: cC(*)
+     integer(C_INT),value         :: amD,contrdepthD
+     real(C_DOUBLE),intent(in)    :: D(*)
+     real(C_DOUBLE),intent(in)    :: alphaD(*)
+     real(C_DOUBLE),intent(in)    :: cD(*)
+     real(C_DOUBLE),intent(inout) :: eriAx(*)
+     real(C_DOUBLE),intent(inout) :: eriAy(*)
+     real(C_DOUBLE),intent(inout) :: eriAz(*)
+     real(C_DOUBLE),intent(inout) :: eriCx(*)
+     real(C_DOUBLE),intent(inout) :: eriCy(*)
+     real(C_DOUBLE),intent(inout) :: eriCz(*)
+     real(C_DOUBLE),intent(inout) :: eriDx(*)
+     real(C_DOUBLE),intent(inout) :: eriDy(*)
+     real(C_DOUBLE),intent(inout) :: eriDz(*)
+     
+   end subroutine libint_4center_grad
 #endif
 
    subroutine libint_2center(amA,contrdepthA,A,alphaA,cA, &

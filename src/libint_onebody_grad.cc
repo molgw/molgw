@@ -30,8 +30,8 @@ void libint_overlap_grad(int amA, int contrdepthA , double A [] , double alphaA 
  const unsigned int contrdepth2 = contrdepthA * contrdepthB;
  Libint_overlap1_t * inteval = libint2::malloc<Libint_overlap1_t>(contrdepth2);
 
- assert(amA <= LIBINT2_MAX_AM_eri);
- assert(amB <= LIBINT2_MAX_AM_eri);
+ assert(amA <= LIBINT2_MAX_AM_overlap1);
+ assert(amB <= LIBINT2_MAX_AM_overlap1);
 
 #ifndef LIBINT2_CONTRACTED_INTS
  assert( contrdepthA == 1 );
@@ -121,8 +121,8 @@ void libint_kinetic_grad(int amA, int contrdepthA , double A [] , double alphaA 
  const unsigned int contrdepth2 = contrdepthA * contrdepthB;
  Libint_kinetic1_t * inteval = libint2::malloc<Libint_kinetic1_t>(contrdepth2);
 
- assert(amA <= LIBINT2_MAX_AM_eri);
- assert(amB <= LIBINT2_MAX_AM_eri);
+ assert(amA <= LIBINT2_MAX_AM_kinetic1);
+ assert(amB <= LIBINT2_MAX_AM_kinetic1);
 
 #ifndef LIBINT2_CONTRACTED_INTS
  assert( contrdepthA == 1 );
@@ -222,8 +222,8 @@ void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA 
  const unsigned int contrdepth2 = contrdepthA * contrdepthB;
  Libint_elecpot1_t * inteval = libint2::malloc<Libint_elecpot1_t>(contrdepth2);
 
- assert(amA <= LIBINT2_MAX_AM_eri);
- assert(amB <= LIBINT2_MAX_AM_eri);
+ assert(amA <= LIBINT2_MAX_AM_elecpot1);
+ assert(amB <= LIBINT2_MAX_AM_elecpot1);
 
 #ifndef LIBINT2_CONTRACTED_INTS
  assert( contrdepthA == 1 );
@@ -259,12 +259,6 @@ void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA 
      inteval[icontrdepth2].PA_x[0] = A[0] - P[0] ;
      inteval[icontrdepth2].PA_y[0] = A[1] - P[1] ;
      inteval[icontrdepth2].PA_z[0] = A[2] - P[2] ;
-/*
- *   Not used for nuclear potential
-     inteval[icontrdepth2].PB_x[0] = B[0] - P[0] ;
-     inteval[icontrdepth2].PB_y[0] = B[1] - P[1] ;
-     inteval[icontrdepth2].PB_z[0] = B[2] - P[2] ;
-*/
      inteval[icontrdepth2].PC_x[0] = C[0] - P[0] ;
      inteval[icontrdepth2].PC_y[0] = C[1] - P[1] ;
      inteval[icontrdepth2].PC_z[0] = C[2] - P[2] ;
@@ -299,10 +293,10 @@ void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
      /* FIXME what happens when F is evaluated beyond its range? */
 #ifdef LIBINT2_DEFINED__aB_s___0___ElecPot_s___0___Ab__up_0
-     if( am >=0 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_0[0] = pfac * F[0] ;
+     inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_0[0] = pfac * F[0] ;
 #endif
 #ifdef LIBINT2_DEFINED__aB_s___0___ElecPot_s___0___Ab__up_1
-     if( am >=0 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_1[0] = pfac * F[1] ;
+     inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_1[0] = pfac * F[1] ;
 #endif
 #ifdef LIBINT2_DEFINED__aB_s___0___ElecPot_s___0___Ab__up_2
      if( am >=1 ) inteval[icontrdepth2]._aB_s___0___ElecPot_s___0___Ab__up_2[0] = pfac * F[2] ;

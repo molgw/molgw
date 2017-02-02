@@ -62,7 +62,9 @@ level015: m_scalapack.o m_atoms.o m_ecp.o m_gaussian.o
 
 level020: m_basis_set.o m_inputparam.o m_block_diago.o
 
-level025: m_eri.o m_scf.o m_dft_grid.o m_libint_tools.o
+level022: m_libint_tools.o
+
+level025: m_eri.o m_scf.o m_dft_grid.o
 
 level030: m_eri_calculate.o m_eri_ao_mo.o m_tddft_fxc.o
 
