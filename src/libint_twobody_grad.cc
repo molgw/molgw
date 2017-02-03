@@ -60,7 +60,6 @@ void libint_2center_grad(int amA, int contrdepthA , double A [] , double alphaA 
  double Wy ;
  double Wz ;
  double pfac ;
- constexpr double pi_2p5 = pow(M_PI,2.5) ;
 
 
  int icontrdepth2 = 0 ;
@@ -285,7 +284,6 @@ void libint_3center_grad(int amA, int contrdepthA , double A [] , double alphaA 
  double AB2 ;
  double CD2 ;
  double pfac ;
- constexpr double pi_2p5 = pow(M_PI,2.5) ;
 
 
  int icontrdepth3 = 0 ;
@@ -530,7 +528,6 @@ void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA 
  double AB2 ;
  double CD2 ;
  double pfac ;
- constexpr double pi_2p5 = pow(M_PI,2.5) ;
 
 
  int icontrdepth4 = 0 ;

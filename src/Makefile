@@ -204,16 +204,16 @@ real_spherical_harmonics.o: m_definitions.f90 real_spherical_harmonics.f90
 lebedev_quadrature.o: lebedev_quadrature.f
 	$(FC_W_OPTS) -c lebedev_quadrature.f $(LIBXC_INCS)
 
-libint_onebody.o: libint_onebody.cc
+libint_onebody.o: libint_molgw.h libint_onebody.cc
 	$(CXX_W_OPTS) -c libint_onebody.cc $(LIBINT_INCS)
 
-libint_onebody_grad.o: libint_onebody_grad.cc
+libint_onebody_grad.o: libint_molgw.h libint_onebody_grad.cc
 	$(CXX_W_OPTS) -c libint_onebody_grad.cc $(LIBINT_INCS)
 
-libint_twobody.o: libint_twobody.cc
+libint_twobody.o: libint_molgw.h libint_twobody.cc
 	$(CXX_W_OPTS) -c libint_twobody.cc $(LIBINT_INCS)
 
-libint_twobody_grad.o: libint_twobody_grad.cc
+libint_twobody_grad.o: libint_molgw.h libint_twobody_grad.cc
 	$(CXX_W_OPTS) -c libint_twobody_grad.cc $(LIBINT_INCS)
 
 m_libint_tools.o: m_definitions.f90 m_basis_set.f90 m_libint_tools.f90

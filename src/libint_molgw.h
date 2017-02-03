@@ -18,3 +18,7 @@ inline int nint(int am) {
 
 using namespace std;
 
+#ifndef PI_2P5
+#define PI_2P5
+const double pi_2p5 = pow(M_PI,2.5) ;
+#endif
