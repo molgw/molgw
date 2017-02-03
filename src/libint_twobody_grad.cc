@@ -227,6 +227,7 @@ void libint_2center_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
 
  LIBINT2_PREFIXED_NAME(libint2_cleanup_2eri)(inteval);
+ free(inteval);
 
 }
 }
@@ -468,6 +469,7 @@ void libint_3center_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
 
  LIBINT2_PREFIXED_NAME(libint2_cleanup_3eri)(inteval);
+ free(inteval);
 
 }
 }
@@ -731,6 +733,7 @@ void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
 
  LIBINT2_PREFIXED_NAME(libint2_cleanup_eri1)(inteval);
+ free(inteval);
 
 }
 }

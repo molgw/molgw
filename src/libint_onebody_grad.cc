@@ -104,6 +104,7 @@ void libint_overlap_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
 
  LIBINT2_PREFIXED_NAME(libint2_cleanup_overlap1)(inteval);
+ free(inteval);
 
 }
 }
@@ -203,6 +204,7 @@ void libint_kinetic_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
 
  LIBINT2_PREFIXED_NAME(libint2_cleanup_kinetic1)(inteval);
+ free(inteval);
 
 }
 }
@@ -363,6 +365,7 @@ void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
 
  LIBINT2_PREFIXED_NAME(libint2_cleanup_elecpot1)(inteval);
+ free(inteval);
 
 }
 }

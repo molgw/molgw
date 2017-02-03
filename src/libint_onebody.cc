@@ -106,6 +106,7 @@ void libint_overlap(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 
  LIBINT2_PREFIXED_NAME(libint2_cleanup_overlap)(inteval);
+ free(inteval);
 
 }
 }
@@ -211,6 +212,7 @@ void libint_kinetic(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 
  LIBINT2_PREFIXED_NAME(libint2_cleanup_kinetic)(inteval);
+ free(inteval);
 
 }
 }
@@ -359,6 +361,7 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 
  LIBINT2_PREFIXED_NAME(libint2_cleanup_elecpot)(inteval);
+ free(inteval);
 
 }
 }

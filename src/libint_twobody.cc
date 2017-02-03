@@ -240,6 +240,7 @@ void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 
  LIBINT2_PREFIXED_NAME(libint2_cleanup_2eri)(inteval);
+ free(inteval);
 
 }
 }
@@ -479,6 +480,7 @@ void libint_3center(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 
  LIBINT2_PREFIXED_NAME(libint2_cleanup_3eri)(inteval);
+ free(inteval);
 
 }
 }
@@ -725,6 +727,7 @@ void libint_4center(int amA, int contrdepthA , double A [] , double alphaA [], d
 
 
  LIBINT2_PREFIXED_NAME(libint2_cleanup_eri)(inteval);
+ free(inteval);
 
 }
 }
