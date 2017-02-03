@@ -41,6 +41,7 @@ all:
 	+make  level010
 	+make  level015
 	+make  level020
+	+make  level022
 	+make  level025
 	+make  level030
 	+make  level035
@@ -319,9 +320,12 @@ archive:
 	mkdir -p ../tmp/molgw/src
 	cp -rp  ../README.md ../COPYING   \
             ../basis/ ../utils/ ../tests/            \
-            ../docs/ ../config/      ../tmp/molgw
-	cp -rp  ../src/*.py ../src/*.f90 ../src/*.f ../src/*.cc \
-            ../src/my_machine.arch  ../tmp/molgw/src
+            ../docs/ ../config/   \
+            ../tmp/molgw
+	cp -rp  ../src/*.py ../src/*.f90 ../src/*.f  \
+            ../src/*.cc ../src/*.h  \
+            ../src/my_machine.arch ../src/Makefile \
+            ../tmp/molgw/src
 	cd ../tmp && tar czf ../molgw.tgz molgw/
 	rm -rf ../tmp/
 
