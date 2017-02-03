@@ -16,6 +16,7 @@ module m_hamiltonian_sca
  use m_timing
  use m_warning
  use m_memory
+ use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
 
 

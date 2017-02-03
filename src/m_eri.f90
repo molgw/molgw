@@ -12,6 +12,7 @@ module m_eri
  use m_memory
  use m_basis_set
  use m_timing
+ use m_cart_to_pure
  use m_libint_tools
 
 

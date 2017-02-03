@@ -26,7 +26,7 @@ contains
 !=========================================================================
 subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matrix,nstate_small)
  use m_inputparam
- use m_tools,only: diagonalize
+ use m_tools,only: diagonalize,invert
  use m_basis_set
  use m_hamiltonian
  use m_hamiltonian_sca

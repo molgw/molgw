@@ -15,7 +15,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
- use m_tools,only: coeffs_gausslegint
+ use m_tools,only: coeffs_gausslegint,diagonalize
  use m_selfenergy_tools
  implicit none
 

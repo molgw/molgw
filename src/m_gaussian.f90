@@ -10,6 +10,7 @@ module m_gaussian
  use m_definitions
  use m_mpi
  use m_gos
+ use m_cart_to_pure
 
  ! type containing all the information for one unnormalized cartesian gaussian
  ! x**nx * y**ny * z**nz * exp( - alpha * ( x**2 + y**2 + z**2 ) )

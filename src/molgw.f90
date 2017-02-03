@@ -105,6 +105,10 @@ program molgw
  call init_mpi_other_communicators(mpi_nproc_ortho)
 
  !
+ ! Build all the Cartesian to Pure Gaussian transforms
+ call setup_cart_to_pure_transforms()
+
+ !
  ! Nucleus-nucleus repulsion contribution to the energy
  call nucleus_nucleus_energy(en%nuc_nuc)
 
@@ -113,7 +117,6 @@ program molgw
  !
  write(stdout,*) 'Setting up the basis set for wavefunctions'
  call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,basis)
- call setup_cart_to_pure_transforms(gaussian_type)
 
  !
  ! SCALAPACK distribution of the hamiltonian

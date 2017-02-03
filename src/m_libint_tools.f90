@@ -8,6 +8,7 @@
 !=========================================================================
 module m_libint_tools
  use m_definitions
+ use m_cart_to_pure
  use m_basis_set
 
 
@@ -161,6 +162,12 @@ module m_libint_tools
    end subroutine libint_4center_grad
 #endif
 
+   subroutine libint_init(ammax,has_onebody,has_gradient) bind(C)
+     import :: C_INT,C_BOOL
+     integer(C_INT),intent(out)  :: ammax
+     logical(C_BOOL),intent(out) :: has_onebody,has_gradient
+   end subroutine libint_init
+
    subroutine libint_2center(amA,contrdepthA,A,alphaA,cA, &
                              amC,contrdepthC,C,alphaC,cC, &
                              rcut,eriAC) bind(C)
@@ -253,9 +260,11 @@ subroutine transform_libint_to_molgw_2d(gaussian_type,am1,am2,array_in,matrix_ou
  real(dp),allocatable,intent(out) :: matrix_out(:,:)
 !=====
  integer :: n1,n2,n1c,n2c
+ integer :: gt_tag
  real(dp),allocatable :: matrix_tmp(:,:)
 !=====
 
+ gt_tag = get_gaussian_type_tag(gaussian_type)
  n1c = number_basis_function_am('CART',am1)
  n2c = number_basis_function_am('CART',am2)
  n1  = number_basis_function_am(gaussian_type,am1)
@@ -265,10 +274,10 @@ subroutine transform_libint_to_molgw_2d(gaussian_type,am1,am2,array_in,matrix_ou
  allocate(matrix_tmp(n1,n2c))
 
  ! Transform the 1st index
- matrix_tmp(:,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c , n1c /) ) , cart_to_pure_norm(am1)%matrix(1:n1c,1:n1) ) )
+ matrix_tmp(:,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c , n1c /) ) , cart_to_pure_norm(am1,gt_tag)%matrix(1:n1c,1:n1) ) )
 
  ! Transform the 2nd index
- matrix_out(:,:) = MATMUL( matrix_tmp(:,:) , cart_to_pure_norm(am2)%matrix(:,:) )
+ matrix_out(:,:) = MATMUL( matrix_tmp(:,:) , cart_to_pure_norm(am2,gt_tag)%matrix(:,:) )
 
  deallocate(matrix_tmp)
 
@@ -285,14 +294,13 @@ subroutine transform_libint_to_molgw_3d(gaussian_type_left,am1,gaussian_type_rig
 !=====
  integer :: n1,n2,n3,n1c,n2c,n3c
  integer :: i1
+ integer :: gt_tagl,gt_tagr
  real(dp),allocatable :: matrix_tmp1(:,:)
  real(dp),allocatable :: matrix_tmp2(:,:)
 !=====
 
- if( gaussian_type_left /= gaussian_type_right ) then
-   call die('transform_libint_to_molgw_3d: different gaussian_type for auxil and wfn basis sets. Not implemented yet')
- endif
-
+ gt_tagl = get_gaussian_type_tag(gaussian_type_left)
+ gt_tagr = get_gaussian_type_tag(gaussian_type_right)
  n1c = number_basis_function_am('CART',am1)
  n2c = number_basis_function_am('CART',am2)
  n3c = number_basis_function_am('CART',am3)
@@ -306,15 +314,15 @@ subroutine transform_libint_to_molgw_3d(gaussian_type_left,am1,gaussian_type_rig
  allocate(matrix_tmp2(n2,n3c))
 
  ! Transform the 1st index
- matrix_tmp1(:,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c * n3c , n1c /) ) , cart_to_pure_norm(am1)%matrix(1:n1c,1:n1) ) )
+ matrix_tmp1(:,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c * n3c , n1c /) ) , cart_to_pure_norm(am1,gt_tagl)%matrix(1:n1c,1:n1) ) )
 
  do i1=1,n1
    ! Transform the 2nd index
    matrix_tmp2(1:n2,:) = TRANSPOSE( MATMUL( RESHAPE( matrix_tmp1(i1,:) , (/ n3c , n2c /) ) ,  &
-                                             cart_to_pure_norm(am2)%matrix(1:n2c,1:n2) ) )
+                                             cart_to_pure_norm(am2,gt_tagr)%matrix(1:n2c,1:n2) ) )
 
    ! Transform the 3rd index
-   matrix_out(i1,:,:) = MATMUL( matrix_tmp2(:,:) , cart_to_pure_norm(am3)%matrix(:,:) )
+   matrix_out(i1,:,:) = MATMUL( matrix_tmp2(:,:) , cart_to_pure_norm(am3,gt_tagr)%matrix(:,:) )
  enddo
 
  deallocate(matrix_tmp1,matrix_tmp2)
@@ -332,11 +340,13 @@ subroutine transform_libint_to_molgw_4d(gaussian_type,am1,am2,am3,am4,array_in,m
 !=====
  integer :: n1,n2,n3,n4,n1c,n2c,n3c,n4c
  integer :: i1,i2
+ integer :: gt_tag
  real(dp),allocatable :: matrix_tmp1(:,:)
  real(dp),allocatable :: matrix_tmp2(:,:)
  real(dp),allocatable :: matrix_tmp3(:,:)
 !=====
 
+ gt_tag = get_gaussian_type_tag(gaussian_type)
  n1c = number_basis_function_am('CART',am1)
  n2c = number_basis_function_am('CART',am2)
  n3c = number_basis_function_am('CART',am3)
@@ -353,19 +363,19 @@ subroutine transform_libint_to_molgw_4d(gaussian_type,am1,am2,am3,am4,array_in,m
  allocate(matrix_tmp3(n3,n4c))
 
  ! Transform the 1st index
- matrix_tmp1(1:n1,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c * n3c * n4c , n1c /) ) , cart_to_pure_norm(am1)%matrix(1:n1c,1:n1) ) )
+ matrix_tmp1(1:n1,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c * n3c * n4c , n1c /) ) , cart_to_pure_norm(am1,gt_tag)%matrix(1:n1c,1:n1) ) )
 
  do i1=1,n1
    ! Transform the 2nd index
    matrix_tmp2(1:n2,:) = TRANSPOSE( MATMUL( RESHAPE( matrix_tmp1(i1,:) , (/ n3c * n4c , n2c /) ) ,  &
-                                             cart_to_pure_norm(am2)%matrix(1:n2c,1:n2) ) )
+                                             cart_to_pure_norm(am2,gt_tag)%matrix(1:n2c,1:n2) ) )
    do i2=1,n2
      ! Transform the 3rd index
      matrix_tmp3(1:n2,:) = TRANSPOSE( MATMUL( RESHAPE( matrix_tmp2(i2,:) , (/ n4c , n3c /) ) ,  &
-                                             cart_to_pure_norm(am3)%matrix(1:n3c,1:n3) ) )
+                                             cart_to_pure_norm(am3,gt_tag)%matrix(1:n3c,1:n3) ) )
 
      ! Transform the 4th index
-     matrix_out(i1,i2,:,:) = MATMUL( matrix_tmp3(:,:) , cart_to_pure_norm(am4)%matrix(:,:) )
+     matrix_out(i1,i2,:,:) = MATMUL( matrix_tmp3(:,:) , cart_to_pure_norm(am4,gt_tag)%matrix(:,:) )
    enddo
  enddo
 

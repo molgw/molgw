@@ -14,6 +14,7 @@ module m_hamiltonian_libint
  use m_scalapack
  use m_warning
  use m_memory
+ use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
  use m_basis_set
  use m_libint_tools

@@ -13,6 +13,7 @@ module m_eri_calculate
  use m_memory
  use m_basis_set
  use m_timing
+ use m_cart_to_pure
  use m_inputparam,only: scalapack_block_min
  use m_eri
  use m_libint_tools
@@ -223,6 +224,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  integer                      :: ni,nk
  integer                      :: ami,amk
  integer                      :: ibf,kbf
+ integer                      :: agt
  integer                      :: info
  integer                      :: ibf_auxil,jbf_auxil
  integer                      :: nauxil_neglect,nauxil_kept
@@ -255,6 +257,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 
  is_longrange = (rcut > 1.0e-12_dp)
  rcut_libint = rcut
+ agt = get_gaussian_type_tag(auxil_basis%gaussian_type)
 
  if( .NOT. is_longrange ) then
 #ifdef HAVE_SCALAPACK
@@ -342,8 +345,8 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
      x03(:) = shell_auxil(kshell)%x0(:)
      allocate(coeff1(shell_auxil(ishell)%ng))
      allocate(coeff3(shell_auxil(kshell)%ng))
-     coeff1(:)=shell_auxil(ishell)%coeff(:) * cart_to_pure_norm(0)%matrix(1,1)
-     coeff3(:)=shell_auxil(kshell)%coeff(:) * cart_to_pure_norm(0)%matrix(1,1)
+     coeff1(:)=shell_auxil(ishell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
+     coeff3(:)=shell_auxil(kshell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
 
 
      call libint_2center(am1,ng1,x01,alpha1,coeff1, &
@@ -521,6 +524,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  real(dp),intent(in)          :: rcut
 !=====
  logical                      :: is_longrange
+ integer                      :: agt
  integer                      :: ishell,kshell,lshell
  integer                      :: klshellpair
  integer                      :: n1c,n3c,n4c
@@ -556,6 +560,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
 
  is_longrange = (rcut > 1.0e-12_dp)
  rcut_libint = rcut
+ agt = get_gaussian_type_tag(auxil_basis%gaussian_type)
+
  if( .NOT. is_longrange ) then
    nauxil_kept = nauxil_2center
  else
@@ -643,7 +649,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
      alpha1(:) = shell_auxil(ishell)%alpha(:) 
      alpha3(:) = shell(kshell)%alpha(:)
      alpha4(:) = shell(lshell)%alpha(:)
-     coeff1(:) = shell_auxil(ishell)%coeff(:) * cart_to_pure_norm(0)%matrix(1,1)
+     coeff1(:) = shell_auxil(ishell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
      coeff3(:) = shell(kshell)%coeff(:)
      coeff4(:) = shell(lshell)%coeff(:)
      x01(:) = shell_auxil(ishell)%x0(:)
@@ -867,7 +873,7 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
    alpha1(:) = alpha_rho(:)
    alpha3(:) = shell(kshell)%alpha(:)
    alpha4(:) = shell(lshell)%alpha(:)
-   coeff1(:) = coeff_rho(:) / 2.0_dp**1.25_dp / pi**0.75_dp * alpha_rho(:)**1.5_dp * cart_to_pure_norm(0)%matrix(1,1)
+   coeff1(:) = coeff_rho(:) / 2.0_dp**1.25_dp / pi**0.75_dp * alpha_rho(:)**1.5_dp * cart_to_pure_norm(0,PUREG)%matrix(1,1)
    coeff3(:) = shell(kshell)%coeff(:)
    coeff4(:) = shell(lshell)%coeff(:)
    x01(:) = x0_rho(:)

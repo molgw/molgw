@@ -14,6 +14,7 @@ module m_hamiltonian
  use m_scalapack
  use m_warning
  use m_memory
+ use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
 
 
@@ -28,6 +29,7 @@ subroutine setup_overlap(print_matrix_,basis,s_matrix)
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: s_matrix(basis%nbf,basis%nbf)
 !=====
+ integer              :: gt
  integer              :: ibf,jbf
  integer              :: ibf_cart,jbf_cart
  integer              :: i_cart,j_cart
@@ -38,6 +40,7 @@ subroutine setup_overlap(print_matrix_,basis,s_matrix)
 
  call start_clock(timing_overlap)
  write(stdout,'(/,a)') ' Setup overlap matrix S'
+ gt = get_gaussian_type_tag(basis%gaussian_type)
 
  ibf_cart = 1
  jbf_cart = 1
@@ -59,8 +62,8 @@ subroutine setup_overlap(print_matrix_,basis,s_matrix)
          call overlap_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
        enddo
      enddo
-     s_matrix(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
-                                                   MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+     s_matrix(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
+                                                   MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
 
 
      deallocate(matrix_cart)
@@ -92,12 +95,15 @@ subroutine setup_overlap_mixedbasis(print_matrix_,basis1,basis2,s_matrix)
  type(basis_set),intent(in) :: basis1,basis2
  real(dp),intent(out)       :: s_matrix(basis1%nbf,basis2%nbf)
 !=====
+ integer              :: gt
  integer              :: ibf,jbf
  integer              :: ibf_cart,jbf_cart
  integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  real(dp),allocatable :: matrix_cart(:,:)
 !=====
+
+ gt = get_gaussian_type_tag(basis1%gaussian_type)
 
  ibf_cart = 1
  jbf_cart = 1
@@ -119,8 +125,8 @@ subroutine setup_overlap_mixedbasis(print_matrix_,basis1,basis2,s_matrix)
          call overlap_basis_function(basis1%bf(ibf_cart+i_cart-1),basis2%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
        enddo
      enddo
-     s_matrix(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
-                                                   MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+     s_matrix(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
+                                                   MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
 
 
      deallocate(matrix_cart)
@@ -147,6 +153,7 @@ subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: hamiltonian_kinetic(basis%nbf,basis%nbf)
 !=====
+ integer              :: gt
  integer              :: ibf,jbf
  integer              :: ibf_cart,jbf_cart
  integer              :: i_cart,j_cart
@@ -157,6 +164,7 @@ subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
 
  call start_clock(timing_hamiltonian_kin)
  write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian'
+ gt = get_gaussian_type_tag(basis%gaussian_type)
 
  ibf_cart = 1
  jbf_cart = 1
@@ -178,8 +186,8 @@ subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
          call kinetic_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
        enddo
      enddo
-     hamiltonian_kinetic(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
-                                                              MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+     hamiltonian_kinetic(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
+                                                              MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
 
 
      deallocate(matrix_cart)
@@ -211,6 +219,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: hamiltonian_nucleus(basis%nbf,basis%nbf)
 !=====
+ integer              :: gt
  integer              :: natom_local
  integer              :: ibf,jbf
  integer              :: ibf_cart,jbf_cart
@@ -224,6 +233,8 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
 
  call start_clock(timing_hamiltonian_nuc)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian'
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+
  if( nproc_world > 1 ) then
    natom_local=0
    do iatom=1,natom
@@ -259,8 +270,8 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
          enddo
        enddo
      enddo
-     hamiltonian_nucleus(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
-                                                              MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) ) 
+     hamiltonian_nucleus(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
+                                                              MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) ) 
 
 
      deallocate(matrix_cart)
@@ -1645,25 +1656,27 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
  use m_atoms
  implicit none
 
- integer,intent(in)                 :: nstate
- type(basis_set),intent(in)         :: basis
- real(dp),intent(in)                :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
+ integer,intent(in)         :: nstate
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
 !=====
- integer                            :: istate,astate,iaspin
- integer                            :: mstate,pstate,mpspin
- integer                            :: ibf,jbf
- integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
- integer                            :: iatom,idir
- real(dp)                           :: dipole(3)
- real(dp),allocatable               :: dipole_basis(:,:,:)
- real(dp),allocatable               :: dipole_cart(:,:,:)
- real(dp)                           :: p_matrix(basis%nbf,basis%nbf,nspin)
+ integer                    :: gt
+ integer                    :: istate,astate,iaspin
+ integer                    :: mstate,pstate,mpspin
+ integer                    :: ibf,jbf
+ integer                    :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
+ integer                    :: iatom,idir
+ real(dp)                   :: dipole(3)
+ real(dp),allocatable       :: dipole_basis(:,:,:)
+ real(dp),allocatable       :: dipole_cart(:,:,:)
+ real(dp)                   :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
 
 
 ! call start_clock(timing_spectrum)
 
  write(stdout,'(/,a)') ' Calculate the static dipole'
+ gt = get_gaussian_type_tag(basis%gaussian_type)
 
 
  !
@@ -1694,8 +1707,8 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
      enddo
 
      do idir=1,3
-       dipole_basis(idir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
-             MATMUL(  dipole_cart(idir,:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+       dipole_basis(idir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
+             MATMUL(  dipole_cart(idir,:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
      enddo
 
      deallocate(dipole_cart)
@@ -1737,26 +1750,28 @@ subroutine static_quadrupole(nstate,basis,occupation,c_matrix)
  use m_atoms
  implicit none
 
- integer,intent(in)                 :: nstate
- type(basis_set),intent(in)         :: basis
- real(dp),intent(in)                :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
+ integer,intent(in)         :: nstate
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
 !=====
- integer                            :: istate,astate,iaspin
- integer                            :: mstate,pstate,mpspin
- integer                            :: ibf,jbf
- integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
- integer                            :: iatom,idir,jdir
- real(dp)                           :: trace
- real(dp)                           :: quad(3,3)
- real(dp),allocatable               :: quad_basis(:,:,:,:)
- real(dp),allocatable               :: quad_cart(:,:,:,:)
- real(dp)                           :: p_matrix(basis%nbf,basis%nbf,nspin)
+ integer                    :: gt
+ integer                    :: istate,astate,iaspin
+ integer                    :: mstate,pstate,mpspin
+ integer                    :: ibf,jbf
+ integer                    :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
+ integer                    :: iatom,idir,jdir
+ real(dp)                   :: trace
+ real(dp)                   :: quad(3,3)
+ real(dp),allocatable       :: quad_basis(:,:,:,:)
+ real(dp),allocatable       :: quad_cart(:,:,:,:)
+ real(dp)                   :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
 
 
 ! call start_clock(timing_spectrum)
 
  write(stdout,'(/,a)') ' Calculate the static quadrupole'
+ gt = get_gaussian_type_tag(basis%gaussian_type)
 
 
  !
@@ -1788,8 +1803,8 @@ subroutine static_quadrupole(nstate,basis,occupation,c_matrix)
 
      do jdir=1,3
        do idir=1,3
-         quad_basis(idir,jdir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
-               MATMUL(  quad_cart(idir,jdir,:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+         quad_basis(idir,jdir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
+               MATMUL(  quad_cart(idir,jdir,:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
        enddo
      enddo
 
