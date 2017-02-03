@@ -24,17 +24,20 @@ contains
 
 
 !=========================================================================
-subroutine matrix_cart_to_local(ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,matrix_local)
+subroutine matrix_cart_to_local(gaussian_type,ibf,jbf,li,lj,ni_cart,nj_cart, &
+                                matrix_cart,ni,nj,m_ham,n_ham,matrix_local)
  use m_basis_set
  implicit none
 
- integer,intent(in)     :: ibf,jbf
- integer,intent(in)     :: li,lj
- integer,intent(in)     :: ni_cart,nj_cart,ni,nj
- integer,intent(in)     :: m_ham,n_ham
- real(dp),intent(in)    :: matrix_cart(ni_cart,nj_cart)
- real(dp),intent(inout) :: matrix_local(m_ham,n_ham)
+ character(len=4),intent(in) :: gaussian_type
+ integer,intent(in)          :: ibf,jbf
+ integer,intent(in)          :: li,lj
+ integer,intent(in)          :: ni_cart,nj_cart,ni,nj
+ integer,intent(in)          :: m_ham,n_ham
+ real(dp),intent(in)         :: matrix_cart(ni_cart,nj_cart)
+ real(dp),intent(inout)      :: matrix_local(m_ham,n_ham)
 !=====
+ integer  :: gt
  integer  :: iglobal,jglobal
  integer  :: ilocal,jlocal
  real(dp) :: matrix_final(ibf:ibf+ni-1,jbf:jbf+nj-1)
@@ -42,8 +45,10 @@ subroutine matrix_cart_to_local(ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,
 
 #ifdef HAVE_SCALAPACK
 
- matrix_final(:,:) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
-                             MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+ gt = get_gaussian_type_tag(gaussian_type)
+
+ matrix_final(:,:) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
+                             MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
 
  do jglobal=jbf,jbf+nj-1
    jlocal = colindex_global_to_local('H',jglobal)
@@ -107,7 +112,7 @@ subroutine setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
        enddo
      enddo
 
-     call matrix_cart_to_local(ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,s_matrix)
+     call matrix_cart_to_local(basis%gaussian_type,ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,s_matrix)
 
 
      deallocate(matrix_cart)
@@ -178,7 +183,7 @@ subroutine setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic
        enddo
      enddo
 
-     call matrix_cart_to_local(ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,hamiltonian_kinetic)
+     call matrix_cart_to_local(basis%gaussian_type,ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,hamiltonian_kinetic)
 
      deallocate(matrix_cart,matrix_final)
      jbf      = jbf      + nj
@@ -263,7 +268,7 @@ subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus
        enddo
      enddo
 
-     call matrix_cart_to_local(ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,hamiltonian_nucleus)
+     call matrix_cart_to_local(basis%gaussian_type,ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,hamiltonian_nucleus)
 
 
      deallocate(matrix_cart)
