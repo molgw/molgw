@@ -840,6 +840,157 @@ end subroutine plot_cube_wfn
 
 
 !=========================================================================
+subroutine plot_cube_wfn_cmplx(nstate,basis,occupation,c_matrix_cmplx,num)
+ use m_definitions
+ use m_mpi
+ use m_inputparam, only: nspin,spin_fact
+ use m_atoms
+ use m_basis_set
+ implicit none
+ integer,intent(in)         :: nstate
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ integer                    :: num
+!=====
+ integer                    :: nx
+ integer                    :: ny
+ integer                    :: nz
+ integer                    :: nocc(2)
+ real(dp),parameter         :: length=4.0_dp
+ integer                    :: ibf
+ integer                    :: istate1,istate2,istate,ispin
+ real(dp)                   :: rr(3)
+ complex(dp),allocatable    :: phi_cmplx(:,:)
+ real(dp)                   :: u(3),a(3)
+ logical                    :: file_exists
+ real(dp)                   :: xxmin,xxmax,ymin,ymax,zmin,zmax
+ real(dp)                   :: basis_function_r(basis%nbf)
+ integer                    :: ix,iy,iz,iatom
+ integer                    :: ibf_cart,ni_cart,ni,li,i_cart
+ real(dp),allocatable       :: basis_function_r_cart(:)
+ integer,allocatable        :: ocubefile(:,:)
+ integer                    :: ocuberho(nspin)
+ character(len=200)         :: file_name
+ integer                    :: icubefile
+!=====
+
+ if( .NOT. is_iomaster ) return
+
+ write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
+ ! Find highest occupied state
+ nocc = 0
+ do ispin=1,nspin
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty)  cycle
+     nocc(ispin) = istate
+   enddo 
+   if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
+     call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
+   endif 
+ enddo
+
+ inquire(file='manual_cubewfn',exist=file_exists)
+ if(file_exists) then
+   open(newunit=icubefile,file='manual_cubewfn',status='old')
+   read(icubefile,*) istate1,istate2
+   read(icubefile,*) nx,ny,nz
+   close(icubefile)
+ else
+   istate1=1
+   istate2=nocc(1)
+   nx=40
+   ny=40
+   nz=40
+ endif
+ allocate(phi_cmplx(istate1:istate2,nspin))
+ write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
+
+
+
+
+ xxmin = MINVAL( x(1,:) ) - length
+ xxmax = MAXVAL( x(1,:) ) + length
+ ymin = MINVAL( x(2,:) ) - length
+ ymax = MAXVAL( x(2,:) ) + length
+ zmin = MINVAL( x(3,:) ) - length
+ zmax = MAXVAL( x(3,:) ) + length
+
+
+
+ 
+   do ispin=1,nspin
+
+!     write(file_name,'(a,i1,a,i3.3,a)') 'rho_',ispin,'_',num,'.cube'
+     write(file_name,'(i3.3,a)') num,'.cube'
+     open(newunit=ocuberho(ispin),file=file_name)                
+     write(ocuberho(ispin),'(a)') 'cube file generated from MOLG W'
+     write(ocuberho(ispin),'(a,i4)') 'density for spin ',ispin   
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xxmin,ymin, zmin
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,(xxmax-xxmin)/ REAL(nx,dp),0.,0.
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,(ymax-ymin)/REAL(ny,dp),0.
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') nz,0.,0.,(zmax-zmin)/REAL(nz,dp)
+     do iatom=1,natom
+       write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,x(:,iatom)
+     enddo
+   enddo
+
+ do ix=1,nx
+   rr(1) = ( xxmin + (ix-1)*(xxmax-xxmin)/REAL(nx,dp) ) 
+   do iy=1,ny
+     rr(2) = ( ymin + (iy-1)*(ymax-ymin)/REAL(ny,dp) ) 
+     do iz=1,nz
+       rr(3) = ( zmin + (iz-1)*(zmax-zmin)/REAL(nz,dp) ) 
+
+
+       phi_cmplx(:,:) = ( 0.0_dp, 0.0_dp )
+       
+       !
+       ! First precalculate all the needed basis function evaluations at point rr
+       !
+       ibf_cart = 1
+       ibf      = 1
+       do while(ibf_cart<=basis%nbf_cart)
+         li      = basis%bf(ibf_cart)%am
+         ni_cart = number_basis_function_am('CART',li)
+         ni      = number_basis_function_am(basis%gaussian_type,li)
+    
+         allocate(basis_function_r_cart(ni_cart))
+    
+         do i_cart=1,ni_cart
+           basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
+         enddo
+         basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li)%matrix(:,:) )
+         deallocate(basis_function_r_cart)
+    
+         ibf      = ibf      + ni
+         ibf_cart = ibf_cart + ni_cart
+       enddo
+       !
+       ! Precalculation done!
+       !
+
+       do ispin=1,nspin
+         istate2=nocc(ispin)
+         phi_cmplx(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,istate1:istate2,ispin) )
+         write(ocuberho(ispin),'(50(e16.8,2x))') SUM( abs(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact
+       enddo
+
+     enddo
+   enddo
+ enddo
+
+ do ispin=1,nspin
+   close(ocuberho(ispin))
+ end do
+
+ deallocate(phi_cmplx)
+
+end subroutine plot_cube_wfn_cmplx
+
+
+
+!=========================================================================
 subroutine write_energy_qp(nstate,energy_qp)
  use m_definitions
  use m_mpi

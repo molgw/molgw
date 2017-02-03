@@ -868,10 +868,10 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='excit_type'
 vl[i].family   ='post'
-vl[i].default  ='GEF'
+vl[i].default  ='GAU'
 vl[i].datatype ='characters'
 vl[i].comment  ='Sets the type of excitation of a system in the real-time dynamics. \
-                         \'GEF stands for a linearly polarized uniform Gaussian electric field\''
+                         \'GAU stands for a linearly polarized uniform Gaussian electric field\''
 
 # For excitation field parameters follow notations from article Lopata et al. Modeling Fast Electron ... J. Chem Theory Comput, 2011
 
@@ -919,6 +919,16 @@ vl[i].family   ='post'
 vl[i].default  ='no'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='Prints some matrices of the real-time dynamics into the file check_matrix.dat.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='print_cube_rho_tddft'
+vl[i].family   ='io'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints electronic density in a 3D volumetric file with cube format for each simulation step in the real-time dynamice'
+
 
 
 #============================================================================

@@ -690,10 +690,10 @@ end subroutine setup_exchange_ri
 
 !=========================================================================
 subroutine setup_exchange_ri_cmplx(nbf,nstate,occupation,c_matrix_cmplx,p_matrix_cmplx, &
-                                   exchange_ij_cmplx,eexchange)
+                                   exchange_ij_cmplx,eexchange,write_unit1)
  use m_eri
  implicit none
- integer,intent(in)         :: nbf,nstate
+ integer,intent(in)         :: nbf,nstate, write_unit1
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(out)       :: eexchange
  complex(dpc),intent(in)    :: c_matrix_cmplx(nbf,nstate,nspin)
@@ -703,7 +703,6 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,occupation,c_matrix_cmplx,p_matrix
  integer                    :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
  integer                    :: index_ij
  integer                    :: nocc
- real(dp),allocatable       :: tmp(:,:)
  real(dp)                   :: eigval(nbf)
  integer                    :: ipair
  complex(dpc),allocatable   :: tmp_cmplx(:,:)
@@ -734,18 +733,21 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,occupation,c_matrix_cmplx,p_matrix
        ibf=index_basis(1,ipair)
        jbf=index_basis(2,ipair)
        tmp_cmplx(:,ibf) = tmp_cmplx(:,ibf) + c_matrix_cmplx(jbf,istate,ispin) * eri_3center(:,ipair)
-       if( ibf /= jbf ) &
-            tmp_cmplx(:,jbf) = tmp_cmplx(:,jbf) + c_matrix_cmplx(ibf,istate,ispin) * eri_3center(:,ipair)
+       if( ibf /= jbf ) then
+          tmp_cmplx(:,jbf) = tmp_cmplx(:,jbf) + c_matrix_cmplx(ibf,istate,ispin) * eri_3center(:,ipair)
+       end if
      enddo
      !$OMP END DO
      !$OMP END PARALLEL
-
      ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
      ! C = A^H * A + C ; C - exchange_ij(:,:,ispin); A - tmp
+     !    exchange_ij_cmplx(:,:,ispin) = exchange_ij_cmplx(:,:,ispin) - & 
+     !            MATMUL( TRANSPOSE(tmp_cmplx(:,:)) , CONJG(tmp_cmplx(:,:)) ) * occupation(istate,ispin)/ spin_fact
      call ZHERK('L','C',nbf,nauxil_3center,-occupation(istate,ispin)/spin_fact,tmp_cmplx,nauxil_3center,1.0_dp,exchange_ij_cmplx(:,:,ispin),nbf)
+       
    enddo
-
+   exchange_ij_cmplx(:,:,ispin)=CONJG(exchange_ij_cmplx(:,:,ispin))
    !
    ! Need to make exchange_ij Hermitian (not just symmetric)
    do ibf=1,nbf

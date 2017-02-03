@@ -162,6 +162,7 @@ module m_inputparam
  real(dp),protected               :: excit_kappa, excit_omega, excit_time0
  real(dp),protected               :: excit_dir(3)
  logical,protected                :: print_tddft_matrices_
+ logical,protected                :: print_cube_rho_tddft_
 contains
 
 
@@ -701,6 +702,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: tda,triplet,frozencore,virtual_fno
  character(len=3)     :: gwgamma_tddft
  character(len=3)     :: print_tddft_matrices
+ character(len=3)     :: print_cube_rho_tddft
  real(dp)             :: length_factor,eta
  integer              :: natom_read
  integer              :: atom_number,info,iatom
@@ -795,22 +797,23 @@ subroutine read_inputfile_namelist()
  is_frozencore      = yesno(frozencore)
  is_virtual_fno     = yesno(virtual_fno)
 
- print_matrix_      = yesno(print_matrix)
- print_eri_         = yesno(print_eri)
- print_wfn_         = yesno(print_wfn)
- print_w_           = yesno(print_w)
- print_sigma_       = yesno(print_sigma)
- print_restart_     = yesno(print_restart)
- print_bigrestart_  = yesno(print_bigrestart)
- print_pdos_        = yesno(print_pdos)
- print_multipole_   = yesno(print_multipole)
- print_cube_        = yesno(print_cube)
- gwgamma_tddft_     = yesno(gwgamma_tddft)
+ print_matrix_         = yesno(print_matrix)
+ print_eri_            = yesno(print_eri)
+ print_wfn_            = yesno(print_wfn)
+ print_w_              = yesno(print_w)
+ print_sigma_          = yesno(print_sigma)
+ print_restart_        = yesno(print_restart)
+ print_bigrestart_     = yesno(print_bigrestart)
+ print_pdos_           = yesno(print_pdos)
+ print_multipole_      = yesno(print_multipole)
+ print_cube_           = yesno(print_cube)
+ gwgamma_tddft_        = yesno(gwgamma_tddft)
  print_tddft_matrices_ = yesno(print_tddft_matrices)
- tddft_grid_level   = interpret_quality(tddft_grid_quality)
- grid_level         = interpret_quality(grid_quality)
- ecp_level          = interpret_quality(ecp_quality)
- integral_level     = interpret_quality(integral_quality)
+ print_cube_rho_tddft_ = yesno(print_cube_rho_tddft)
+ tddft_grid_level      = interpret_quality(tddft_grid_quality)
+ grid_level            = interpret_quality(grid_quality)
+ ecp_level             = interpret_quality(ecp_quality)
+ integral_level        = interpret_quality(integral_quality)
 
  select case(TRIM(mixing_scheme))
  case('SIMPLE','PULAY','DIIS','ADIIS','EDIIS')
