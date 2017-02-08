@@ -389,7 +389,7 @@ program molgw
 !****PROPAGATOR****
  if(calc_type%is_real_time) then
    write(stdout,*) "Start tddft propagator"
-   call calculate_propagation(nstate, basis, occupation, energy, s_matrix, c_matrix,hamiltonian_kinetic,hamiltonian_nucleus)
+   call calculate_propagation(nstate, basis, occupation, s_matrix, s_matrix_sqrt_inv, c_matrix,hamiltonian_kinetic,hamiltonian_nucleus)
    write(stdout,*) "End tddft propagator"
  end if
 !********

@@ -927,7 +927,7 @@ vl[i].keyword  ='print_cube_rho_tddft'
 vl[i].family   ='io'
 vl[i].default  ='no'
 vl[i].datatype ='yes/no'
-vl[i].comment  ='Prints electronic density in a 3D volumetric file with cube format for each simulation step in the real-time dynamice'
+vl[i].comment  ='Prints electronic density in a 3D volumetric file with cube format for each simulation step in the real-time dynamics'
 
 
 
