@@ -219,24 +219,27 @@ subroutine calculate_propagation(nstate,              &
     case('IEH') 
       h_small_cmplx(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
                             MATMUL( hamiltonian_fock_cmplx(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
+
       call diagonalize(nstate,h_small_cmplx(:,:),energies_inst(:),a_matrix_cmplx)
       a_matrix_cmplx(:,1:nstate) = MATMUL( s_matrix_sqrt_inv(:,:) , a_matrix_cmplx(:,:) )
-    
-      do ibf=1,basis%nbf
-        propagator_eigen(ibf,ibf) = exp(-im*time_step*energies_inst(ibf))
-      end do   
-      c_matrix_cmplx(:,:,ispin) = matmul( matmul( matmul( matmul( a_matrix_cmplx(:,:), propagator_eigen(:,:)  ) , &
-              conjg(transpose(a_matrix_cmplx(:,:)))  ), s_matrix(:,:) ), c_matrix_cmplx(:,:,ispin) )
 
       if ( print_tddft_matrices_ ) then
         ! test of diagonalization
         call print_square_2d_matrix_cmplx("propagator_eigen = ",propagator_eigen(:,:),basis%nbf,file_check_matrix,8)
         call print_square_2d_matrix_cmplx("a_matrx_cmplx = ",a_matrix_cmplx(:,:),basis%nbf,file_check_matrix,4)
         call print_square_2d_matrix_cmplx("h_small_cmplx = ",h_small_cmplx(:,:),basis%nbf,file_check_matrix,4)
+        call print_square_2d_matrix_real("s_matrix_sqrt_inv= ",s_matrix_sqrt_inv(:,:),basis%nbf,file_check_matrix,4)
         call print_square_2d_matrix_cmplx("test of diagonalization = ", &
                  matmul(matmul(transpose(conjg(a_matrix_cmplx)),hamiltonian_fock_cmplx(:,:,ispin)),a_matrix_cmplx),basis%nbf,file_check_matrix,2)
         write(file_check_matrix,*) "energies: ", energies_inst(:)
       end if
+
+      do ibf=1,basis%nbf
+        propagator_eigen(ibf,ibf) = exp(-im*time_step*energies_inst(ibf))
+      end do   
+      c_matrix_cmplx(:,:,ispin) = matmul( matmul( matmul( matmul( a_matrix_cmplx(:,:), propagator_eigen(:,:)  ) , &
+              conjg(transpose(a_matrix_cmplx(:,:)))  ), s_matrix(:,:) ), c_matrix_cmplx(:,:,ispin) )
+
 
     case default
       call die('Invalid choice for the propagation algorithm. Change prop_type value in the input file')
@@ -673,8 +676,9 @@ subroutine calculate_p_matrix_time_cmplx(nstate,                           &
    end do !spin loop
 
    call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
-   if(mod(itau-1,mod_write)==0) p_matrix_time_cmplx(:,:,:,itau/mod_write+1)=p_matrix_cmplx(:,:,:); write(stdout,*) "error ", time_step_cur, time_cur
-
+   if(mod(itau-1,mod_write)==0) then
+      p_matrix_time_cmplx(:,:,:,itau/mod_write+1)=p_matrix_cmplx(:,:,:) 
+   end if
    en%kin = real(SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
    en%nuc = real(SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
    en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc
