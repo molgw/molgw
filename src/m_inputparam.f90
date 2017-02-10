@@ -103,6 +103,8 @@ module m_inputparam
  character(len=12),protected      :: init_hamiltonian
  character(len=12),protected      :: prop_type
  character(len=12),protected      :: excit_type
+ character(len=100),protected     :: error_prop_types
+ character(len=100),protected     :: error_time_steps
  real(dp),protected               :: diis_switch
  real(dp),protected               :: tolscf
  real(dp),protected               :: toldav
@@ -161,8 +163,10 @@ module m_inputparam
  real(dp),protected               :: time_step, time_sim
  real(dp),protected               :: excit_kappa, excit_omega, excit_time0
  real(dp),protected               :: excit_dir(3)
+ real(dp),protected               :: write_step
  logical,protected                :: print_tddft_matrices_
  logical,protected                :: print_cube_rho_tddft_
+ logical,protected                :: calc_p_matrix_error_
 contains
 
 
@@ -703,6 +707,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: gwgamma_tddft
  character(len=3)     :: print_tddft_matrices
  character(len=3)     :: print_cube_rho_tddft
+ character(len=3)     :: calc_p_matrix_error
  real(dp)             :: length_factor,eta
  integer              :: natom_read
  integer              :: atom_number,info,iatom
@@ -810,6 +815,7 @@ subroutine read_inputfile_namelist()
  gwgamma_tddft_        = yesno(gwgamma_tddft)
  print_tddft_matrices_ = yesno(print_tddft_matrices)
  print_cube_rho_tddft_ = yesno(print_cube_rho_tddft)
+ calc_p_matrix_error_  = yesno(calc_p_matrix_error)
  tddft_grid_level      = interpret_quality(tddft_grid_quality)
  grid_level            = interpret_quality(grid_quality)
  ecp_level             = interpret_quality(ecp_quality)

@@ -10,7 +10,7 @@ module m_timing
  use m_definitions
  use m_warning,only: die
 
- integer,parameter :: NTIMING=100
+ integer,parameter :: NTIMING=140
 
  integer,parameter :: timing_total             =  1
 
@@ -68,6 +68,9 @@ module m_timing
  integer,parameter :: timing_tmp7                = 97
  integer,parameter :: timing_tmp8                = 98
  integer,parameter :: timing_tmp9                = 99
+
+ integer,parameter :: timing_tddft_loop          = 110
+ integer,parameter :: timing_tddft_fourier       = 111
 
  integer           :: count_rate,count_max
  logical           :: time_running(NTIMING)
@@ -233,6 +236,11 @@ subroutine output_timing()
    write(stdout,*)
  endif
 
+ if( calls(timing_tddft_loop) > 0 ) then
+   write(stdout,*)
+   write(stdout,'(a32,4x,f12.2,2x,i8)') '                  TD-DFT Loop' ,timing(timing_tddft_loop),calls(timing_tddft_loop)
+   write(stdout,'(a32,4x,f12.2,2x,i8)') 'Fourier Transforms for TD-DFT' ,timing(timing_tddft_fourier),calls(timing_tddft_fourier)
+ end if
 end subroutine output_timing
 
 

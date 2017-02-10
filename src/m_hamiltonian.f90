@@ -518,7 +518,7 @@ subroutine setup_hartree_ri(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
  character(len=100)   :: title
 !=====
 
- write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
+! write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
  call start_clock(timing_hartree)
 
 
@@ -708,7 +708,7 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,occupation,c_matrix_cmplx,p_matrix
  complex(dpc),allocatable   :: tmp_cmplx(:,:)
 !=====
 
- write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
+! write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
  call start_clock(timing_exchange)
 
  exchange_ij_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
@@ -967,7 +967,7 @@ subroutine setup_density_matrix_cmplx(nbf,nstate,c_matrix_cmplx,occupation,p_mat
 !=====
 
  call start_clock(timing_density_matrix)
- write(stdout,'(1x,a)') 'Build density matrix'
+! write(stdout,'(1x,a)') 'Build density matrix'
 
  p_matrix_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
  do ispin=1,nspin
@@ -1679,7 +1679,7 @@ subroutine dft_exc_vxc_cmplx(basis,nstate,occupation,c_matrix_cmplx,p_matrix,vxc
 
 #ifdef HAVE_LIBXC
 
- write(stdout,*) 'Calculate DFT XC potential'
+! write(stdout,*) 'Calculate DFT XC potential'
  
  require_gradient =.FALSE.
  require_laplacian=.FALSE.
@@ -1871,8 +1871,8 @@ subroutine dft_exc_vxc_cmplx(basis,nstate,occupation,c_matrix_cmplx,p_matrix,vxc
  write(stdout,*) 'LIBXC is not present'
 #endif
 
- write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
- write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
+! write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
+! write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
 
  call stop_clock(timing_dft)
 
@@ -2114,7 +2114,7 @@ subroutine static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole)
 
 ! call start_clock(timing_spectrum)
 
- write(stdout,'(/,a)') ' Calculate the static dipole'
+! write(stdout,'(/,a)') ' Calculate the static dipole'
 
 
  !

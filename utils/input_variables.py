@@ -929,6 +929,42 @@ vl[i].default  ='no'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='Prints electronic density in a 3D volumetric file with cube format for each simulation step in the real-time dynamics'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='calc_p_matrix_error'
+vl[i].family   ='io'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Calculates difference between a reference propagator and a tested one in the real-time dynamics'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='error_prop_types'
+vl[i].family   ='io'
+vl[i].default  ='CN'
+vl[i].datatype ='characters'
+vl[i].comment  ='Set of the propagator types for the p_matrix tests in the real-time dynamics'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='error_time_steps'
+vl[i].family   ='io'
+vl[i].default  ='0.1_dp'
+vl[i].datatype ='characters'
+vl[i].comment  ='Set of time steps for each propagator from the list error_prop_types fir the p_matrix test in the real-time dynamics'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='write_step'
+vl[i].family   ='io'
+vl[i].default  ='1'
+vl[i].datatype ='real'
+vl[i].comment  ='Determines the time step for data recording in the real-time dynamics'
+
 
 
 #============================================================================
