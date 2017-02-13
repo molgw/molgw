@@ -43,8 +43,8 @@ program molgw
  use m_dft_grid
  use m_spectral_function
  use m_hamiltonian
- use m_hamiltonian_libint
  use m_hamiltonian_sca
+ use m_hamiltonian_libint
  use m_hamiltonian_buffer
  use m_selfenergy_tools
  use m_scf_loop
@@ -69,9 +69,6 @@ program molgw
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
  integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
  integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix 
-!FBFB
- integer                 :: istate,iatom,ispin
- real(dp),allocatable    :: grad_tmp(:,:,:,:)
 !=====
 
  !
@@ -394,38 +391,6 @@ program molgw
    if( parallel_ham .AND. parallel_buffer ) call destroy_parallel_buffer()
  endif
 
-!TODO:  Evaluate forces here
- if( move_nuclei == 'relax' ) then
-!   allocate(grad_tmp(basis%nbf,basis%nbf,1,1))
-!   call setup_overlap_grad_libint(print_matrix_,basis,grad_tmp(:,:,1,1))
-!   call setup_kinetic_grad_libint(print_matrix_,basis,grad_tmp(:,:,1,1))
-!   deallocate(grad_tmp)
-
-   allocate(grad_tmp(basis%nbf,basis%nbf,natom,3))
-   call setup_nucleus_grad_libint(print_matrix_,basis,grad_tmp)
-   write(stdout,'(/,1x,a)') ' ====== Forces ====== '
-   write(*,'(1x,a)') 'Atoms                  Fx               Fy                 Fz'
-   call nucleus_nucleus_force()
-   do iatom=1,natom
-     do ispin=1,nspin
-       do istate=1,nstate
-         force(1,iatom) = force(1,iatom)  &
-              + occupation(istate,ispin) * DOT_PRODUCT( c_matrix(:,istate,ispin) , &
-                   MATMUL( grad_tmp(:,:,iatom,1) , c_matrix(:,istate,ispin) ) )
-         force(2,iatom) = force(2,iatom)  &
-              + occupation(istate,ispin) * DOT_PRODUCT( c_matrix(:,istate,ispin) , &
-                   MATMUL( grad_tmp(:,:,iatom,2) , c_matrix(:,istate,ispin) ) )
-         force(3,iatom) = force(3,iatom)  &
-              + occupation(istate,ispin) * DOT_PRODUCT( c_matrix(:,istate,ispin) , &
-                   MATMUL( grad_tmp(:,:,iatom,3) , c_matrix(:,istate,ispin) ) )
-
-       enddo
-     enddo
-     write(*,'(1x,a,i4,a,2x,3(2x,f16.8))') 'atom ',iatom,':',force(:,iatom)
-   enddo
-   write(stdout,'(1x,a,/)') ' ==================== '
-   deallocate(grad_tmp)
- endif
 
 
  !
@@ -435,6 +400,12 @@ program molgw
  !
  
  call start_clock(timing_postscf)
+
+ !
+ ! If requested, evaluate the forces
+ if( move_nuclei == 'relax' ) then
+   call calculate_force(basis,nstate,occupation,energy,c_matrix)
+ endif
 
 
  if( print_multipole_ ) then

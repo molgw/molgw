@@ -1,0 +1,14 @@
+&molgw
+ move_nuclei='relax'
+ scf='hf'
+
+ basis='cc-pVDZ'
+ basis_path='../../basis/'
+
+ natom=2
+ alpha_mixing=0.7
+ mixing_scheme='simple'
+
+/
+H  -1.0 0. 0.
+H   1.0 0. 0. 

@@ -380,4 +380,9 @@ GW small basis LUMO energy,   0.949613         , 0 , 1.0e-4
 GW HOMO energy            , -12.165369         , 0 , 1.0e-4
 GW LUMO energy            ,   0.871728         , 0 , 1.0e-4
 
+h2_relax.in               , H2 forces without RI
+SCF Total Energy          ,      -0.9219085941 , 0 , 1.0e-7
+atom    1                 ,       0.06285210   , 0 , 1.0e-4
+atom    2                 ,      -0.06285210   , 0 , 1.0e-4
+
 
