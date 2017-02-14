@@ -2243,7 +2243,6 @@ subroutine calculate_dipole_basis_cmplx(basis,dipole_basis)
    ibf      = ibf      + ni
    ibf_cart = ibf_cart + ni_cart
  enddo
-
 end subroutine calculate_dipole_basis_cmplx
 
 

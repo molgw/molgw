@@ -13,7 +13,6 @@ module m_scf_loop
  use m_memory
  use m_inputparam
 
-
 contains
 
 
@@ -678,8 +677,8 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
    ! Rescale with alpha_hybrid for hybrid functionals
    en%exx_hyb = alpha_hybrid * en%exx
    hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) * alpha_hybrid
-   if ( print_tddft_matrices_  ) & 
-    call print_square_2d_matrix_cmplx("exchange = ",hamiltonian_hxc_cmplx(:,:,1),basis%nbf,file_check_matrix,2)
+!   if ( print_tddft_matrices_  ) & 
+!    call print_square_2d_matrix_cmplx("exchange = ",hamiltonian_hxc_cmplx(:,:,1),basis%nbf,file_check_matrix,2)
  endif
 
 
@@ -695,8 +694,8 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
     
  do ispin=1,nspin
    hamiltonian_hxc_cmplx(:,:,ispin) = hamiltonian_hxc_cmplx(:,:,ispin) + hamiltonian_tmp(:,:,1)
-   if ( print_tddft_matrices_  ) & 
-     call print_square_2d_matrix_real("hartree = ",hamiltonian_tmp(:,:,1),basis%nbf,file_check_matrix,2)
+!   if ( print_tddft_matrices_  ) & 
+!     call print_square_2d_matrix_real("hartree = ",hamiltonian_tmp(:,:,1),basis%nbf,file_check_matrix,2)
  enddo
 
 
@@ -712,8 +711,8 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
    call dft_exc_vxc_cmplx(basis,nstate,occupation,c_matrix_cmplx,p_matrix,hamiltonian_tmp,en%xc)
    
    hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) + hamiltonian_tmp(:,:,:) 
-   if ( print_tddft_matrices_  ) & 
-     call print_square_2d_matrix_real("dft_xc = ",hamiltonian_tmp(:,:,1),basis%nbf,file_check_matrix,2)
+!   if ( print_tddft_matrices_  ) & 
+!     call print_square_2d_matrix_real("dft_xc = ",hamiltonian_tmp(:,:,1),basis%nbf,file_check_matrix,2)
  endif
 
 

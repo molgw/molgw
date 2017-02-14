@@ -48,6 +48,7 @@ all:
 	+make  level035
 	+make  level037
 	+make  level038
+	+make  level039
 	+make  level040
 	+make  ../molgw
 
@@ -73,8 +74,10 @@ level037: m_selfenergy_tools.o m_virtual_orbital_space.o
 
 level038: m_scf_loop.o 
 
+level039: m_tddft_propagator.o
+
 level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o density_tools.o \
-          io.o restart.o mp2.o selfenergy_evaluation.o tddft_propagator.o molgw.o 
+          io.o restart.o mp2.o selfenergy_evaluation.o molgw.o 
 
 
 ####################################################
@@ -92,8 +95,7 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
         m_eri_calculate.o m_eri_calculate_lr.o m_eri_ao_mo.o m_tddft_fxc.o \
         m_spectral_function.o m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o \
         m_virtual_orbital_space.o pt2_selfenergy.o \
-        linear_response.o static_polarizability.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o density_tools.o io.o restart.o mp2.o m_scf_loop.o selfenergy_evaluation.o \
-        tddft_propagator.o \
+        linear_response.o static_polarizability.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o density_tools.o io.o restart.o mp2.o m_scf_loop.o selfenergy_evaluation.o m_tddft_propagator.o \
         molgw.o 
 	$(LINKER) \
                         m_definitions.o m_warning.o m_lbfgs.o m_elements.o m_mpi.o m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_local.o m_mpi_trans.o \
@@ -103,9 +105,8 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
                         m_spectral_function.o \
                         libint_wrapper.o boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt2_selfenergy.o \
                         mp2.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o linear_response.o static_polarizability.o density_tools.o io.o restart.o \
-                        m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o m_scf_loop.o pdbssolver1.o selfenergy_evaluation.o real_spherical_harmonics.o \
+                        m_hamiltonian.o m_hamiltonian_sca.o m_hamiltonian_buffer.o m_scf_loop.o pdbssolver1.o selfenergy_evaluation.o real_spherical_harmonics.o m_tddft_propagator.o \
                         molgw.o \
-                        tddft_propagator.o \
                         -o ../molgw \
                         $(SCALAPACK) $(LAPACK)   \
                         $(LIBXC) $(LIBXC _INCS)  \
@@ -115,7 +116,7 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
 
 molgw.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 m_scalapack.f90  \
   m_gos.f90 m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_eri_calculate.f90 m_eri_calculate_lr.f90 m_eri_ao_mo.f90 \
-  m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.f90 m_selfenergy_tools.f90 m_scf_loop.f90 \
+  m_hamiltonian.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.f90 m_selfenergy_tools.f90 m_scf_loop.f90 m_tddft_propagator.o \
   molgw.f90
 	$(FC_W_OPTS) -c molgw.f90 $(LIBXC_INCS)
 
@@ -297,8 +298,8 @@ m_lbfgs.o: m_definitions.f90 m_warning.f90 m_lbfgs.f90
 m_definitions.o: m_definitions.f90
 	$(FC_W_OPTS) -c m_definitions.f90 $(LIBXC_INCS)
 
-tddft_propagator.o: tddft_propagator.f90 m_definitions.f90 m_basis_set.f90 m_scf_loop.f90 m_memory.f90
-	 $(FC_W_OPTS) -c tddft_propagator.f90 $(LIBXC_INCS) $(FFTW_INCS)  
+m_tddft_propagator.o: m_tddft_propagator.f90 m_definitions.f90 m_basis_set.f90 m_scf_loop.f90 m_memory.f90
+	 $(FC_W_OPTS) -c m_tddft_propagator.f90 $(LIBXC_INCS) $(FFTW_INCS)  
 
 tarball: 
 	+make archive
