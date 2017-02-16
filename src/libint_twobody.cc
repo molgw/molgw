@@ -141,70 +141,12 @@ void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], d
    
      boys_function_c(F, am, U);
 
-     // using dangerous macros from libint2.h
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(0))
-     int12->LIBINT_T_SS_EREP_SS(0)[0] = pfac*F[0] * pow(gammapq_ratio,0.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(1))
-     if( am > 0 ) int12->LIBINT_T_SS_EREP_SS(1)[0] = pfac*F[1] * pow(gammapq_ratio,1.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(2))
-     if( am > 1 ) int12->LIBINT_T_SS_EREP_SS(2)[0] = pfac*F[2] * pow(gammapq_ratio,2.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(3))
-     if( am > 2 ) int12->LIBINT_T_SS_EREP_SS(3)[0] = pfac*F[3] * pow(gammapq_ratio,3.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(4))
-     if( am > 3 ) int12->LIBINT_T_SS_EREP_SS(4)[0] = pfac*F[4] * pow(gammapq_ratio,4.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(5))
-     if( am > 4 ) int12->LIBINT_T_SS_EREP_SS(5)[0] = pfac*F[5] * pow(gammapq_ratio,5.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(6))
-     if( am > 5 ) int12->LIBINT_T_SS_EREP_SS(6)[0] = pfac*F[6] * pow(gammapq_ratio,6.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(7))
-     if( am > 6 ) int12->LIBINT_T_SS_EREP_SS(7)[0] = pfac*F[7] * pow(gammapq_ratio,7.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(8))
-     if( am > 7 ) int12->LIBINT_T_SS_EREP_SS(8)[0] = pfac*F[8] * pow(gammapq_ratio,8.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(9))
-     if( am > 8 ) int12->LIBINT_T_SS_EREP_SS(9)[0] = pfac*F[9] * pow(gammapq_ratio,9.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(10))
-     if( am > 9 ) int12->LIBINT_T_SS_EREP_SS(10)[0] = pfac*F[10] * pow(gammapq_ratio,10.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(11))
-     if( am > 10) int12->LIBINT_T_SS_EREP_SS(11)[0] = pfac*F[11] * pow(gammapq_ratio,11.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(12))
-     if( am > 11) int12->LIBINT_T_SS_EREP_SS(12)[0] = pfac*F[12] * pow(gammapq_ratio,12.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(13))
-     if( am > 12) int12->LIBINT_T_SS_EREP_SS(13)[0] = pfac*F[13] * pow(gammapq_ratio,13.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(14))
-     if( am > 13) int12->LIBINT_T_SS_EREP_SS(14)[0] = pfac*F[14] * pow(gammapq_ratio,14.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(15))
-     if( am > 14) int12->LIBINT_T_SS_EREP_SS(15)[0] = pfac*F[15] * pow(gammapq_ratio,15.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(16))
-     if( am > 15) int12->LIBINT_T_SS_EREP_SS(16)[0] = pfac*F[16] * pow(gammapq_ratio,16.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(17))
-     if( am > 16) int12->LIBINT_T_SS_EREP_SS(17)[0] = pfac*F[17] * pow(gammapq_ratio,17.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(18))
-     if( am > 17) int12->LIBINT_T_SS_EREP_SS(18)[0] = pfac*F[18] * pow(gammapq_ratio,18.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(19))
-     if( am > 18) int12->LIBINT_T_SS_EREP_SS(19)[0] = pfac*F[19] * pow(gammapq_ratio,19.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(20))
-     if( am > 19) int12->LIBINT_T_SS_EREP_SS(20)[0] = pfac*F[20] * pow(gammapq_ratio,20.5);
-#endif
+     pfac *= sqrt(gammapq_ratio);
+     double* erep = int12->LIBINT_T_SS_EREP_SS(0);
+     for( int l=0; l <= am ; ++l , ++erep ) {
+       *erep = pfac * F[l] ;
+       pfac *= gammapq_ratio ;
+     }
 
 
      int12->_0_Overlap_0_x[0] = 0.0 ;
@@ -380,70 +322,12 @@ void libint_3center(int amA, int contrdepthA , double A [] , double alphaA [], d
    
        boys_function_c(F, am, U);
 
-       // using dangerous macros from libint2.h
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(0))
-       int12->LIBINT_T_SS_EREP_SS(0)[0] = pfac*F[0] * pow(gammapq_ratio,0.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(1))
-       if( am > 0 ) int12->LIBINT_T_SS_EREP_SS(1)[0] = pfac*F[1] * pow(gammapq_ratio,1.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(2))
-       if( am > 1 ) int12->LIBINT_T_SS_EREP_SS(2)[0] = pfac*F[2] * pow(gammapq_ratio,2.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(3))
-       if( am > 2 ) int12->LIBINT_T_SS_EREP_SS(3)[0] = pfac*F[3] * pow(gammapq_ratio,3.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(4))
-       if( am > 3 ) int12->LIBINT_T_SS_EREP_SS(4)[0] = pfac*F[4] * pow(gammapq_ratio,4.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(5))
-       if( am > 4 ) int12->LIBINT_T_SS_EREP_SS(5)[0] = pfac*F[5] * pow(gammapq_ratio,5.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(6))
-       if( am > 5 ) int12->LIBINT_T_SS_EREP_SS(6)[0] = pfac*F[6] * pow(gammapq_ratio,6.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(7))
-       if( am > 6 ) int12->LIBINT_T_SS_EREP_SS(7)[0] = pfac*F[7] * pow(gammapq_ratio,7.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(8))
-       if( am > 7 ) int12->LIBINT_T_SS_EREP_SS(8)[0] = pfac*F[8] * pow(gammapq_ratio,8.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(9))
-       if( am > 8 ) int12->LIBINT_T_SS_EREP_SS(9)[0] = pfac*F[9] * pow(gammapq_ratio,9.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(10))
-       if( am > 9 ) int12->LIBINT_T_SS_EREP_SS(10)[0] = pfac*F[10] * pow(gammapq_ratio,10.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(11))
-       if( am > 10) int12->LIBINT_T_SS_EREP_SS(11)[0] = pfac*F[11] * pow(gammapq_ratio,11.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(12))
-       if( am > 11) int12->LIBINT_T_SS_EREP_SS(12)[0] = pfac*F[12] * pow(gammapq_ratio,12.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(13))
-       if( am > 12) int12->LIBINT_T_SS_EREP_SS(13)[0] = pfac*F[13] * pow(gammapq_ratio,13.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(14))
-       if( am > 13) int12->LIBINT_T_SS_EREP_SS(14)[0] = pfac*F[14] * pow(gammapq_ratio,14.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(15))
-       if( am > 14) int12->LIBINT_T_SS_EREP_SS(15)[0] = pfac*F[15] * pow(gammapq_ratio,15.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(16))
-       if( am > 15) int12->LIBINT_T_SS_EREP_SS(16)[0] = pfac*F[16] * pow(gammapq_ratio,16.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(17))
-       if( am > 16) int12->LIBINT_T_SS_EREP_SS(17)[0] = pfac*F[17] * pow(gammapq_ratio,17.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(18))
-       if( am > 17) int12->LIBINT_T_SS_EREP_SS(18)[0] = pfac*F[18] * pow(gammapq_ratio,18.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(19))
-       if( am > 18) int12->LIBINT_T_SS_EREP_SS(19)[0] = pfac*F[19] * pow(gammapq_ratio,19.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(20))
-       if( am > 19) int12->LIBINT_T_SS_EREP_SS(20)[0] = pfac*F[20] * pow(gammapq_ratio,20.5);
-#endif
+       pfac *= sqrt(gammapq_ratio);
+       double* erep = int12->LIBINT_T_SS_EREP_SS(0);
+       for( int l=0; l <= am ; ++l , ++erep ) {
+         *erep = pfac * F[l] ;
+         pfac *= gammapq_ratio ;
+       }
 
 
        int12->_0_Overlap_0_x[0] = 0.0 ;
@@ -625,70 +509,12 @@ void libint_4center(int amA, int contrdepthA , double A [] , double alphaA [], d
      
          boys_function_c(F, am, U);
 
-  // using dangerous macros from libint2.h
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(0))
-         int12->LIBINT_T_SS_EREP_SS(0)[0] = pfac*F[0] * pow(gammapq_ratio,0.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(1))
-         if( am > 0 ) int12->LIBINT_T_SS_EREP_SS(1)[0] = pfac*F[1] * pow(gammapq_ratio,1.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(2))
-         if( am > 1 ) int12->LIBINT_T_SS_EREP_SS(2)[0] = pfac*F[2] * pow(gammapq_ratio,2.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(3))
-         if( am > 2 ) int12->LIBINT_T_SS_EREP_SS(3)[0] = pfac*F[3] * pow(gammapq_ratio,3.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(4))
-         if( am > 3 ) int12->LIBINT_T_SS_EREP_SS(4)[0] = pfac*F[4] * pow(gammapq_ratio,4.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(5))
-         if( am > 4 ) int12->LIBINT_T_SS_EREP_SS(5)[0] = pfac*F[5] * pow(gammapq_ratio,5.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(6))
-         if( am > 5 ) int12->LIBINT_T_SS_EREP_SS(6)[0] = pfac*F[6] * pow(gammapq_ratio,6.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(7))
-         if( am > 6 ) int12->LIBINT_T_SS_EREP_SS(7)[0] = pfac*F[7] * pow(gammapq_ratio,7.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(8))
-         if( am > 7 ) int12->LIBINT_T_SS_EREP_SS(8)[0] = pfac*F[8] * pow(gammapq_ratio,8.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(9))
-         if( am > 8 ) int12->LIBINT_T_SS_EREP_SS(9)[0] = pfac*F[9] * pow(gammapq_ratio,9.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(10))
-         if( am > 9 ) int12->LIBINT_T_SS_EREP_SS(10)[0] = pfac*F[10] * pow(gammapq_ratio,10.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(11))
-         if( am > 10) int12->LIBINT_T_SS_EREP_SS(11)[0] = pfac*F[11] * pow(gammapq_ratio,11.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(12))
-         if( am > 11) int12->LIBINT_T_SS_EREP_SS(12)[0] = pfac*F[12] * pow(gammapq_ratio,12.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(13))
-         if( am > 12) int12->LIBINT_T_SS_EREP_SS(13)[0] = pfac*F[13] * pow(gammapq_ratio,13.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(14))
-         if( am > 13) int12->LIBINT_T_SS_EREP_SS(14)[0] = pfac*F[14] * pow(gammapq_ratio,14.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(15))
-         if( am > 14) int12->LIBINT_T_SS_EREP_SS(15)[0] = pfac*F[15] * pow(gammapq_ratio,15.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(16))
-         if( am > 15) int12->LIBINT_T_SS_EREP_SS(16)[0] = pfac*F[16] * pow(gammapq_ratio,16.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(17))
-         if( am > 16) int12->LIBINT_T_SS_EREP_SS(17)[0] = pfac*F[17] * pow(gammapq_ratio,17.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(18))
-         if( am > 17) int12->LIBINT_T_SS_EREP_SS(18)[0] = pfac*F[18] * pow(gammapq_ratio,18.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(19))
-         if( am > 18) int12->LIBINT_T_SS_EREP_SS(19)[0] = pfac*F[19] * pow(gammapq_ratio,19.5);
-#endif
-#if LIBINT2_DEFINED(eri,LIBINT_T_SS_EREP_SS(20))
-         if( am > 19) int12->LIBINT_T_SS_EREP_SS(20)[0] = pfac*F[20] * pow(gammapq_ratio,20.5);
-#endif
+         pfac *= sqrt(gammapq_ratio);
+         double* erep = int12->LIBINT_T_SS_EREP_SS(0);
+         for( int l=0; l <= am ; ++l , ++erep ) {
+           *erep = pfac * F[l] ;
+           pfac *= gammapq_ratio ;
+         }
 
 
          int12->_0_Overlap_0_x[0] = 0.0 ;
