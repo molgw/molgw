@@ -485,6 +485,7 @@ void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA 
                          int amD, int contrdepthD , double D [] , double alphaD [], double cD [],
                          double rcut,
                          double eriAx [], double eriAy [], double eriAz [], 
+                         double eriBx [], double eriBy [], double eriBz [], 
                          double eriCx [], double eriCy [], double eriCz [], 
                          double eriDx [], double eriDy [], double eriDz [] ) {
 
@@ -512,6 +513,7 @@ void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
  Libint_eri1_t* int12 ;
  double alphaP, alphaQ ;
+ double rhoP, rhoQ ;
  double P[3], Q[3] ;
  double U ;
  double F[am+2] ;
@@ -538,8 +540,10 @@ void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
 
          int12 = &inteval[icontrdepth4] ;
-         alphaP = alphaA[icontrdepthA] + alphaB[icontrdepthB];
+         alphaP = alphaA[icontrdepthA] + alphaB[icontrdepthB] ;
+         rhoP   = alphaA[icontrdepthA] * alphaB[icontrdepthB] / alphaP ;
          alphaQ = alphaC[icontrdepthC] + alphaD[icontrdepthD];
+         rhoQ   = alphaC[icontrdepthC] * alphaD[icontrdepthD] / alphaQ ;
          P[0] = (alphaA[icontrdepthA] * A[0] + alphaB[icontrdepthB] * B[0]) / alphaP ;
          P[1] = (alphaA[icontrdepthA] * A[1] + alphaB[icontrdepthB] * B[1]) / alphaP ;
          P[2] = (alphaA[icontrdepthA] * A[2] + alphaB[icontrdepthB] * B[2]) / alphaP ;
@@ -606,6 +610,56 @@ void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA 
 #endif
 #if LIBINT2_DEFINED(eri,roe)
          int12->roe[0] = gammapq/alphaQ;
+#endif
+
+/* For derivatives only */
+#if LIBINT2_DEFINED(eri,alpha1_rho_over_zeta2)
+            int12->alpha1_rho_over_zeta2[0] = alphaA[icontrdepthA] * gammapq / (alphaP * alphaP);
+#endif
+#if LIBINT2_DEFINED(eri,alpha2_rho_over_zeta2)
+            int12->alpha2_rho_over_zeta2[0] = alphaB[icontrdepthB] * gammapq / (alphaP * alphaP);
+#endif
+#if LIBINT2_DEFINED(eri,alpha3_rho_over_eta2)
+            int12->alpha3_rho_over_eta2[0] = alphaC[icontrdepthC] * gammapq / (alphaQ * alphaQ);
+#endif
+#if LIBINT2_DEFINED(eri,alpha4_rho_over_eta2)
+            int12->alpha4_rho_over_eta2[0] = alphaD[icontrdepthD] * gammapq / (alphaQ * alphaQ);
+#endif
+#if LIBINT2_DEFINED(eri,alpha1_over_zetapluseta)
+            int12->alpha1_over_zetapluseta[0] = alphaA[icontrdepthA] / (alphaP + alphaQ);
+#endif
+#if LIBINT2_DEFINED(eri,alpha2_over_zetapluseta)
+            int12->alpha2_over_zetapluseta[0] = alphaB[icontrdepthB] / (alphaP + alphaQ);
+#endif
+#if LIBINT2_DEFINED(eri,alpha3_over_zetapluseta)
+            int12->alpha3_over_zetapluseta[0] = alphaC[icontrdepthC] / (alphaP + alphaQ);
+#endif
+#if LIBINT2_DEFINED(eri,alpha4_over_zetapluseta)
+            int12->alpha4_over_zetapluseta[0] = alphaD[icontrdepthD] / (alphaP + alphaQ);
+#endif
+#if LIBINT2_DEFINED(eri,rho12_over_alpha1)
+            int12->rho12_over_alpha1[0] = rhoP / alphaA[icontrdepthA];
+#endif
+#if LIBINT2_DEFINED(eri,rho12_over_alpha2)
+            int12->rho12_over_alpha2[0] = rhoP / alphaB[icontrdepthB];
+#endif
+#if LIBINT2_DEFINED(eri,rho34_over_alpha3)
+            int12->rho34_over_alpha3[0] = rhoQ / alphaC[icontrdepthC];
+#endif
+#if LIBINT2_DEFINED(eri,rho34_over_alpha4)
+            int12->rho34_over_alpha4[0] = rhoQ / alphaD[icontrdepthD];
+#endif
+#if LIBINT2_DEFINED(eri,two_alpha0_bra)
+            int12->two_alpha0_bra[0] = 2.0 * alphaA[icontrdepthA];
+#endif
+#if LIBINT2_DEFINED(eri,two_alpha0_ket)
+            int12->two_alpha0_ket[0] = 2.0 * alphaB[icontrdepthB];
+#endif
+#if LIBINT2_DEFINED(eri,two_alpha1_bra)
+            int12->two_alpha1_bra[0] = 2.0 * alphaC[icontrdepthC];
+#endif
+#if LIBINT2_DEFINED(eri,two_alpha1_ket)
+            int12->two_alpha1_ket[0] = 2.0 * alphaD[icontrdepthD];;
 #endif
 
 
@@ -697,34 +751,52 @@ void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA 
  }
 
 
-
  LIBINT2_PREFIXED_NAME(libint2_build_eri1)[amA][amB][amC][amD](inteval);
- for( int i1234 = 0*ni; i1234 < 1*ni ; ++i1234 ) {
-   eriAx[i1234] = inteval[0].targets[0][i1234] ;
+
+/*
+ for( int i = 0; i < 12 ; ++i ) {
+   cout << i << "  " << inteval[0].targets[0][i] << "  " << inteval[0].targets[i][0] << endl;
  }
- for( int i1234 = 1*ni; i1234 < 2*ni ; ++i1234 ) {
-   eriAy[i1234] = inteval[0].targets[0][i1234] ;
+ for( int i = 0; i < 12 ; ++i ) {
+   cout << i << "  " << &inteval[0].targets[0][i] << "  " << &inteval[0].targets[i][0] << "  " << &inteval[0].targets[0][0]+i << endl;
  }
- for( int i1234 = 2*ni; i1234 < 3*ni ; ++i1234 ) {
-   eriAz[i1234] = inteval[0].targets[0][i1234] ;
+*/
+
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
+   eriAx[i1234] = inteval[0].targets[0][i1234 + 0*ni] ;
  }
- for( int i1234 = 3*ni; i1234 < 4*ni ; ++i1234 ) {
-   eriCx[i1234] = inteval[0].targets[0][i1234] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
+   eriAy[i1234] = inteval[0].targets[0][i1234 + 1*ni] ;
  }
- for( int i1234 = 4*ni; i1234 < 5*ni ; ++i1234 ) {
-   eriCy[i1234] = inteval[0].targets[0][i1234] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
+   eriAz[i1234] = inteval[0].targets[0][i1234 + 2*ni] ;
  }
- for( int i1234 = 5*ni; i1234 < 6*ni ; ++i1234 ) {
-   eriCz[i1234] = inteval[0].targets[0][i1234] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
+   eriBx[i1234] = inteval[0].targets[0][i1234 + 3*ni] ;
  }
- for( int i1234 = 6*ni; i1234 < 7*ni ; ++i1234 ) {
-   eriDx[i1234] = inteval[0].targets[0][i1234] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
+   eriBy[i1234] = inteval[0].targets[0][i1234 + 4*ni] ;
  }
- for( int i1234 = 7*ni; i1234 < 8*ni ; ++i1234 ) {
-   eriDx[i1234] = inteval[0].targets[0][i1234] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
+   eriBz[i1234] = inteval[0].targets[0][i1234 + 5*ni] ;
  }
- for( int i1234 = 8*ni; i1234 < 9*ni ; ++i1234 ) {
-   eriDx[i1234] = inteval[0].targets[0][i1234] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
+   eriCx[i1234] = inteval[0].targets[0][i1234 + 6*ni] ;
+ }
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
+   eriCy[i1234] = inteval[0].targets[0][i1234 + 7*ni] ;
+ }
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
+   eriCz[i1234] = inteval[0].targets[0][i1234 + 8*ni] ;
+ }
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
+   eriDx[i1234] = inteval[0].targets[0][i1234 + 9*ni] ;
+ }
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
+   eriDy[i1234] = inteval[0].targets[0][i1234 +10*ni] ;
+ }
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
+   eriDz[i1234] = inteval[0].targets[0][i1234 +11*ni] ;
  }
 
 

@@ -635,7 +635,9 @@ subroutine setup_shellpair()
    enddo
  enddo
  nshellpair = ishellpair
- write(stdout,'(/,a,i8,a,i8)') ' Non negligible shellpairs to be computed',nshellpair,'  over a total of',jshellpair
+ write(stdout,'(/,1x,a,i8,a,i8)') 'Non negligible shellpairs to be computed',nshellpair,'  over a total of',jshellpair
+ write(stdout,'(1x,a,f12.4)')     'Gain (%): ', REAL(jshellpair-nshellpair,dp)/REAL(jshellpair,dp)
+
  allocate(index_shellpair(2,nshellpair))
 
  ishellpair = 0

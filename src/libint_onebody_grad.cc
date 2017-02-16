@@ -340,7 +340,6 @@ void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA 
  }
 
 
-
  LIBINT2_PREFIXED_NAME(libint2_build_elecpot1)[amA][amB](inteval);
 
  for( int i12=0; i12 < nint(amA) * nint(amB) ; i12++ ) {

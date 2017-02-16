@@ -125,7 +125,7 @@ molgw.o: m_definitions.f90 m_mpi.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_i
   molgw.f90
 	$(FC_W_OPTS) -c molgw.f90 $(LIBXC_INCS)
 
-force.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_atoms.f90 m_basis_set.f90 m_hamiltonian_libint.f90 force.f90
+force.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_atoms.f90 m_basis_set.f90 m_hamiltonian.f90 m_hamiltonian_libint.f90 force.f90
 	$(FC_W_OPTS) -c force.f90  $(LIBXC_INCS)
 
 selfenergy_evaluation.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_inputparam.f90 m_tools.f90 m_scf.f90 \

@@ -134,6 +134,7 @@ module m_libint_tools
                                   amD,contrdepthD,D,alphaD,cD, &
                                   rcut, &
                                   eriAx,eriAy,eriAz, &
+                                  eriBx,eriBy,eriBz, &
                                   eriCx,eriCy,eriCz, &
                                   eriDx,eriDy,eriDz) bind(C)
      import :: C_INT,C_DOUBLE
@@ -141,6 +142,10 @@ module m_libint_tools
      real(C_DOUBLE),intent(in)    :: A(*)
      real(C_DOUBLE),intent(in)    :: alphaA(*)
      real(C_DOUBLE),intent(in)    :: cA(*)
+     integer(C_INT),value         :: amB,contrdepthB
+     real(C_DOUBLE),intent(in)    :: B(*)
+     real(C_DOUBLE),intent(in)    :: alphaB(*)
+     real(C_DOUBLE),intent(in)    :: cB(*)
      integer(C_INT),value         :: amC,contrdepthC
      real(C_DOUBLE),intent(in)    :: C(*)
      real(C_DOUBLE),intent(in)    :: alphaC(*)
@@ -149,9 +154,13 @@ module m_libint_tools
      real(C_DOUBLE),intent(in)    :: D(*)
      real(C_DOUBLE),intent(in)    :: alphaD(*)
      real(C_DOUBLE),intent(in)    :: cD(*)
+     real(C_DOUBLE),intent(in),value :: rcut
      real(C_DOUBLE),intent(inout) :: eriAx(*)
      real(C_DOUBLE),intent(inout) :: eriAy(*)
      real(C_DOUBLE),intent(inout) :: eriAz(*)
+     real(C_DOUBLE),intent(inout) :: eriBx(*)
+     real(C_DOUBLE),intent(inout) :: eriBy(*)
+     real(C_DOUBLE),intent(inout) :: eriBz(*)
      real(C_DOUBLE),intent(inout) :: eriCx(*)
      real(C_DOUBLE),intent(inout) :: eriCy(*)
      real(C_DOUBLE),intent(inout) :: eriCz(*)
