@@ -102,6 +102,7 @@ module m_inputparam
  character(len=12),protected      :: partition_scheme
  character(len=12),protected      :: init_hamiltonian
  character(len=12),protected      :: prop_type
+ character(len=12),protected      :: pred_corr
  character(len=12),protected      :: excit_type
  character(len=100),protected     :: error_prop_types
  character(len=100),protected     :: error_time_steps
@@ -793,6 +794,7 @@ subroutine read_inputfile_namelist()
  init_hamiltonian   = capitalize(init_hamiltonian)
  prop_type          = capitalize(prop_type)
  excit_type         = capitalize(excit_type)
+ pred_corr          = capitalize(pred_corr)
 
  ignore_restart_    = yesno(ignore_restart)
  ignore_bigrestart_ = yesno(ignore_bigrestart)

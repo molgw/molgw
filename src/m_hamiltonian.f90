@@ -690,10 +690,10 @@ end subroutine setup_exchange_ri
 
 !=========================================================================
 subroutine setup_exchange_ri_cmplx(nbf,nstate,occupation,c_matrix_cmplx,p_matrix_cmplx, &
-                                   exchange_ij_cmplx,eexchange,write_unit1)
+                                   exchange_ij_cmplx,eexchange)
  use m_eri
  implicit none
- integer,intent(in)         :: nbf,nstate, write_unit1
+ integer,intent(in)         :: nbf,nstate
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(out)       :: eexchange
  complex(dpc),intent(in)    :: c_matrix_cmplx(nbf,nstate,nspin)
