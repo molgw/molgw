@@ -4,6 +4,8 @@
 !
 ! This module contains
 ! the methods to interface with the C++ library LIBINT
+! * explicit interfaces with C binding
+! * subroutines to pass from row-major (C convention) to column-major (Fortran convention)
 !
 !=========================================================================
 module m_libint_tools

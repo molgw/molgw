@@ -404,7 +404,7 @@ program molgw
  !
  ! If requested, evaluate the forces
  if( move_nuclei == 'relax' ) then
-   call calculate_force(basis,nstate,occupation,energy,c_matrix)
+   call calculate_force(basis,nstate,occupation,energy,c_matrix,hamiltonian_kinetic,hamiltonian_nucleus)
  endif
 
 
