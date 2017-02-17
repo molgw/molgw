@@ -105,6 +105,7 @@ module m_inputparam
  character(len=12),protected      :: pred_corr
  character(len=12),protected      :: excit_type
  character(len=100),protected     :: error_prop_types
+ character(len=100),protected     :: error_pred_corrs
  character(len=100),protected     :: error_time_steps
  real(dp),protected               :: diis_switch
  real(dp),protected               :: tolscf
@@ -795,6 +796,8 @@ subroutine read_inputfile_namelist()
  prop_type          = capitalize(prop_type)
  excit_type         = capitalize(excit_type)
  pred_corr          = capitalize(pred_corr)
+ error_prop_types   = capitalize(error_prop_types)
+ error_pred_corrs   = capitalize(error_pred_corrs)
 
  ignore_restart_    = yesno(ignore_restart)
  ignore_bigrestart_ = yesno(ignore_bigrestart)

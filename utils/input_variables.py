@@ -970,10 +970,18 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='pred_corr'
 vl[i].family   ='post'
-vl[i].default  ='NO'
+vl[i].default  ='PC1'
 vl[i].datatype ='characters'
 vl[i].comment  ='Sets the predictor-corrector scheme in the real-time dynamics.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='error_pred_corrs'
+vl[i].family   ='io'
+vl[i].default  ='PC0'
+vl[i].datatype ='characters'
+vl[i].comment  ='Set of predictor-corrector schemes for each propagator from the list error_prop_types for the p_matrix test in the real-time dynamics'
 
 #============================================================================
 #            Fortran output: input variable namelist and their default value

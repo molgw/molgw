@@ -71,6 +71,7 @@ module m_timing
 
  integer,parameter :: timing_tddft_loop          = 110
  integer,parameter :: timing_tddft_fourier       = 111
+ integer,parameter :: timing_tddft_one_iter    = 112
 
  integer           :: count_rate,count_max
  logical           :: time_running(NTIMING)
