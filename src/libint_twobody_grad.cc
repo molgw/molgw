@@ -45,7 +45,6 @@ void libint_2center_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
  LIBINT2_PREFIXED_NAME(libint2_init_2eri)(inteval, ammax, 0);
 
- Libint_2eri_t* int12 ;
  double alphaP, alphaQ ;
  double U ;
  double F[am+1] ;
@@ -66,7 +65,7 @@ void libint_2center_grad(int amA, int contrdepthA , double A [] , double alphaA 
  for( int icontrdepthA=0; icontrdepthA < contrdepthA; icontrdepthA++)  {
    for( int icontrdepthC=0; icontrdepthC < contrdepthC; icontrdepthC++)  {
 
-     int12 = &inteval[icontrdepth2] ;
+     Libint_2eri_t* int12 = &inteval[icontrdepth2] ;
      alphaP = alphaA[icontrdepthA] ;
      alphaQ = alphaC[icontrdepthC] ;
 
@@ -198,7 +197,6 @@ void libint_3center_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
  LIBINT2_PREFIXED_NAME(libint2_init_3eri)(inteval, ammax, 0);
 
- Libint_3eri_t* int12 ;
  double alphaP, alphaQ ;
  double P[3], Q[3] ;
  double U ;
@@ -224,7 +222,7 @@ void libint_3center_grad(int amA, int contrdepthA , double A [] , double alphaA 
      for( int icontrdepthD=0; icontrdepthD < contrdepthD; icontrdepthD++)  {
 
 
-       int12 = &inteval[icontrdepth3] ;
+       Libint_3eri_t* int12 = &inteval[icontrdepth3] ;
        alphaP = alphaA[icontrdepthA] ;
        alphaQ = alphaC[icontrdepthC] + alphaD[icontrdepthD];
        P[0] =  A[0] ;
@@ -376,7 +374,6 @@ void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
  LIBINT2_PREFIXED_NAME(libint2_init_eri1)(inteval, ammax, 0);
 
- Libint_eri1_t* int12 ;
  double alphaP, alphaQ ;
  double rhoP, rhoQ ;
  double P[3], Q[3] ;
@@ -404,7 +401,7 @@ void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA 
        for( int icontrdepthD=0; icontrdepthD < contrdepthD; icontrdepthD++)  {
 
 
-         int12 = &inteval[icontrdepth4] ;
+         Libint_eri1_t* int12 = &inteval[icontrdepth4] ;
          alphaP = alphaA[icontrdepthA] + alphaB[icontrdepthB] ;
          rhoP   = alphaA[icontrdepthA] * alphaB[icontrdepthB] / alphaP ;
          alphaQ = alphaC[icontrdepthC] + alphaD[icontrdepthD];

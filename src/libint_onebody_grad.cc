@@ -52,37 +52,38 @@ void libint_overlap_grad(int amA, int contrdepthA , double A [] , double alphaA 
  for( int icontrdepthA=0; icontrdepthA < contrdepthA; icontrdepthA++)  {
    for( int icontrdepthB=0; icontrdepthB < contrdepthB; icontrdepthB++)  {
 
+     Libint_overlap1_t* int12 = &inteval[icontrdepth2];
      alphaP = alphaA[icontrdepthA] + alphaB[icontrdepthB] ;
      P[0] = (alphaA[icontrdepthA] * A[0] + alphaB[icontrdepthB] * B[0] ) / alphaP ;
      P[1] = (alphaA[icontrdepthA] * A[1] + alphaB[icontrdepthB] * B[1] ) / alphaP ;
      P[2] = (alphaA[icontrdepthA] * A[2] + alphaB[icontrdepthB] * B[2] ) / alphaP ;
 
 
-     inteval[icontrdepth2].AB_x[0] = B[0] - A[0] ;
-     inteval[icontrdepth2].AB_y[0] = B[1] - A[1] ;
-     inteval[icontrdepth2].AB_z[0] = B[2] - A[2] ;
-     inteval[icontrdepth2].PA_x[0] = A[0] - P[0] ;
-     inteval[icontrdepth2].PA_y[0] = A[1] - P[1] ;
-     inteval[icontrdepth2].PA_z[0] = A[2] - P[2] ;
-     inteval[icontrdepth2].PB_x[0] = B[0] - P[0] ;
-     inteval[icontrdepth2].PB_y[0] = B[1] - P[1] ;
-     inteval[icontrdepth2].PB_z[0] = B[2] - P[2] ;
+     int12->AB_x[0] = B[0] - A[0] ;
+     int12->AB_y[0] = B[1] - A[1] ;
+     int12->AB_z[0] = B[2] - A[2] ;
+     int12->PA_x[0] = A[0] - P[0] ;
+     int12->PA_y[0] = A[1] - P[1] ;
+     int12->PA_z[0] = A[2] - P[2] ;
+     int12->PB_x[0] = B[0] - P[0] ;
+     int12->PB_y[0] = B[1] - P[1] ;
+     int12->PB_z[0] = B[2] - P[2] ;
 
 
-     inteval[icontrdepth2]._0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am)
-                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_x[0] * inteval[icontrdepth2].AB_x[0] / alphaP );
-     inteval[icontrdepth2]._0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
-                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_y[0] * inteval[icontrdepth2].AB_y[0] / alphaP );
-     inteval[icontrdepth2]._0_Overlap_0_z[0] = sqrt( M_PI / alphaP ) 
-                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_z[0] * inteval[icontrdepth2].AB_z[0] / alphaP );
+     int12->_0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am)
+                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_x[0] * int12->AB_x[0] / alphaP );
+     int12->_0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
+                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_y[0] * int12->AB_y[0] / alphaP );
+     int12->_0_Overlap_0_z[0] = sqrt( M_PI / alphaP ) 
+                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_z[0] * int12->AB_z[0] / alphaP );
  
-     inteval[icontrdepth2].oo2z[0] = 0.5 / alphaP ;
+     int12->oo2z[0] = 0.5 / alphaP ;
     
-     inteval[icontrdepth2].veclen = 1 ;
-     inteval[icontrdepth2].contrdepth = contrdepth2 ;
+     int12->veclen = 1 ;
+     int12->contrdepth = contrdepth2 ;
 
-     inteval[icontrdepth2].two_alpha0_bra[0] = 2.0 * alphaA[icontrdepthA];
-     inteval[icontrdepth2].two_alpha0_ket[0] = 2.0 * alphaB[icontrdepthB];
+     int12->two_alpha0_bra[0] = 2.0 * alphaA[icontrdepthA];
+     int12->two_alpha0_ket[0] = 2.0 * alphaB[icontrdepthB];
 
      icontrdepth2++ ;
    }
@@ -147,6 +148,7 @@ void libint_kinetic_grad(int amA, int contrdepthA , double A [] , double alphaA 
  for( int icontrdepthA=0; icontrdepthA < contrdepthA; icontrdepthA++)  {
    for( int icontrdepthB=0; icontrdepthB < contrdepthB; icontrdepthB++)  {
 
+     Libint_kinetic1_t* int12 = &inteval[icontrdepth2];
      alphaP = alphaA[icontrdepthA] + alphaB[icontrdepthB] ;
      ksiP = alphaA[icontrdepthA] * alphaB[icontrdepthB] / alphaP ;
      P[0] = (alphaA[icontrdepthA] * A[0] + alphaB[icontrdepthB] * B[0] ) / alphaP ;
@@ -154,36 +156,36 @@ void libint_kinetic_grad(int amA, int contrdepthA , double A [] , double alphaA 
      P[2] = (alphaA[icontrdepthA] * A[2] + alphaB[icontrdepthB] * B[2] ) / alphaP ;
 
 
-     inteval[icontrdepth2].AB_x[0] = B[0] - A[0] ;
-     inteval[icontrdepth2].AB_y[0] = B[1] - A[1] ;
-     inteval[icontrdepth2].AB_z[0] = B[2] - A[2] ;
-     inteval[icontrdepth2].PA_x[0] = A[0] - P[0] ;
-     inteval[icontrdepth2].PA_y[0] = A[1] - P[1] ;
-     inteval[icontrdepth2].PA_z[0] = A[2] - P[2] ;
-     inteval[icontrdepth2].PB_x[0] = B[0] - P[0] ;
-     inteval[icontrdepth2].PB_y[0] = B[1] - P[1] ;
-     inteval[icontrdepth2].PB_z[0] = B[2] - P[2] ;
+     int12->AB_x[0] = B[0] - A[0] ;
+     int12->AB_y[0] = B[1] - A[1] ;
+     int12->AB_z[0] = B[2] - A[2] ;
+     int12->PA_x[0] = A[0] - P[0] ;
+     int12->PA_y[0] = A[1] - P[1] ;
+     int12->PA_z[0] = A[2] - P[2] ;
+     int12->PB_x[0] = B[0] - P[0] ;
+     int12->PB_y[0] = B[1] - P[1] ;
+     int12->PB_z[0] = B[2] - P[2] ;
 
-     ab2 =  inteval[icontrdepth2].AB_x[0] * inteval[icontrdepth2].AB_x[0] 
-          + inteval[icontrdepth2].AB_y[0] * inteval[icontrdepth2].AB_y[0]
-          + inteval[icontrdepth2].AB_z[0] * inteval[icontrdepth2].AB_z[0] ;
+     ab2 =  int12->AB_x[0] * int12->AB_x[0] 
+          + int12->AB_y[0] * int12->AB_y[0]
+          + int12->AB_z[0] * int12->AB_z[0] ;
 
      pfac[icontrdepth2] = ksiP * ( 3.0 - 2.0 * ksiP * ab2 ) ;
 
-     inteval[icontrdepth2]._0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am)
-                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_x[0] * inteval[icontrdepth2].AB_x[0] / alphaP );
-     inteval[icontrdepth2]._0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
-                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_y[0] * inteval[icontrdepth2].AB_y[0] / alphaP );
-     inteval[icontrdepth2]._0_Overlap_0_z[0] = sqrt( M_PI / alphaP ) 
-                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_z[0] * inteval[icontrdepth2].AB_z[0] / alphaP );
+     int12->_0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am)
+                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_x[0] * int12->AB_x[0] / alphaP );
+     int12->_0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
+                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_y[0] * int12->AB_y[0] / alphaP );
+     int12->_0_Overlap_0_z[0] = sqrt( M_PI / alphaP ) 
+                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_z[0] * int12->AB_z[0] / alphaP );
 
-     inteval[icontrdepth2].oo2z[0] = 0.5 / alphaP ;
+     int12->oo2z[0] = 0.5 / alphaP ;
     
-     inteval[icontrdepth2].veclen = 1 ;
-     inteval[icontrdepth2].contrdepth = contrdepth2 ;
+     int12->veclen = 1 ;
+     int12->contrdepth = contrdepth2 ;
 
-     inteval[icontrdepth2].two_alpha0_bra[0] = 2.0 * alphaA[icontrdepthA];
-     inteval[icontrdepth2].two_alpha0_ket[0] = 2.0 * alphaB[icontrdepthB];
+     int12->two_alpha0_bra[0] = 2.0 * alphaA[icontrdepthA];
+     int12->two_alpha0_ket[0] = 2.0 * alphaB[icontrdepthB];
 
      icontrdepth2++ ;
    }
@@ -251,7 +253,7 @@ void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA 
  for( int icontrdepthA=0; icontrdepthA < contrdepthA; icontrdepthA++)  {
    for( int icontrdepthB=0; icontrdepthB < contrdepthB; icontrdepthB++)  {
 
-     Libint_elecpot1_t* int12 ;
+     Libint_elecpot1_t* int12 = &inteval[icontrdepth2]  ;
 
      alphaP = alphaA[icontrdepthA] + alphaB[icontrdepthB] ;
      ksiP = alphaA[icontrdepthA] * alphaB[icontrdepthB] / alphaP ;
@@ -288,10 +290,11 @@ void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
      int12->two_alpha0_bra[0] = 2.0 * alphaA[icontrdepthA] ;
      int12->two_alpha0_ket[0] = 2.0 * alphaB[icontrdepthB] ;
-     int12->rho12_over_alpha1[0] = alphaB[icontrdepthA] / alphaP ;
+     int12->rho12_over_alpha1[0] = alphaB[icontrdepthB] / alphaP ;
 #if LIBINT2_DEFINED(eri, rho12_over_alpha2)
-     int12->rho12_over_alpha2[0] = alphaA[icontrdepthB] / alphaP ;
+     int12->rho12_over_alpha2[0] = alphaA[icontrdepthA] / alphaP ;
 #endif
+
 
      U = alphaP * ( ( C[0] - P[0] ) * ( C[0] - P[0] ) + ( C[1] - P[1] ) * ( C[1] - P[1] ) + ( C[2] - P[2] ) * ( C[2] - P[2] ) ) ;
      boys_function_c(F, am+1, U);
@@ -299,7 +302,7 @@ void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA 
      pfac = 2.0 * ( M_PI / alphaP ) * exp( - ksiP * ab2 ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am) ;
 
      double* elecpot = int12->LIBINT_T_S_ELECPOT_S(0);
-     for( int l=0; l <= am ; ++l , ++elecpot ) *elecpot = pfac * F[l] ;
+     for( int l=0; l <= am+1 ; ++l , ++elecpot ) *elecpot = pfac * F[l] ;
 
 
      icontrdepth2++ ;
@@ -308,14 +311,17 @@ void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
 
  LIBINT2_PREFIXED_NAME(libint2_build_elecpot1)[amA][amB](inteval);
-
- cout << "===================================\n" ;
- for( int i12=0; i12 < ni*9 ; i12++ ) {
+/*
+ *  FBFB
+ cout << "==== " << C[0] << " ==========================\n" ;
+ for( int i12=0; i12 < ni*6 ; i12++ ) {
    cout << i12 << "   " << inteval[0].targets[0][i12] << endl;
  }
  cout << "===================================\n" ;
+*/
+
  for( int i12=0; i12 < ni ; i12++ ) {
-   elecpotAx[i12]+= inteval[0].targets[0][i12] ;
+   elecpotAx[i12]+= inteval[0].targets[0][i12+ni*0] ;
  }
  for( int i12=0; i12 < ni ; i12++ ) {
    elecpotAy[i12]+= inteval[0].targets[0][i12+ni*1] ;

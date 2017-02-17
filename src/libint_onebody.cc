@@ -50,34 +50,35 @@ void libint_overlap(int amA, int contrdepthA , double A [] , double alphaA [], d
  for( int icontrdepthA=0; icontrdepthA < contrdepthA; icontrdepthA++)  {
    for( int icontrdepthB=0; icontrdepthB < contrdepthB; icontrdepthB++)  {
 
+     Libint_overlap_t* int12 = &inteval[icontrdepth2] ;
      alphaP = alphaA[icontrdepthA] + alphaB[icontrdepthB] ;
      P[0] = (alphaA[icontrdepthA] * A[0] + alphaB[icontrdepthB] * B[0] ) / alphaP ;
      P[1] = (alphaA[icontrdepthA] * A[1] + alphaB[icontrdepthB] * B[1] ) / alphaP ;
      P[2] = (alphaA[icontrdepthA] * A[2] + alphaB[icontrdepthB] * B[2] ) / alphaP ;
 
 
-     inteval[icontrdepth2].AB_x[0] = B[0] - A[0] ;
-     inteval[icontrdepth2].AB_y[0] = B[1] - A[1] ;
-     inteval[icontrdepth2].AB_z[0] = B[2] - A[2] ;
-     inteval[icontrdepth2].PA_x[0] = A[0] - P[0] ;
-     inteval[icontrdepth2].PA_y[0] = A[1] - P[1] ;
-     inteval[icontrdepth2].PA_z[0] = A[2] - P[2] ;
-     inteval[icontrdepth2].PB_x[0] = B[0] - P[0] ;
-     inteval[icontrdepth2].PB_y[0] = B[1] - P[1] ;
-     inteval[icontrdepth2].PB_z[0] = B[2] - P[2] ;
+     int12->AB_x[0] = B[0] - A[0] ;
+     int12->AB_y[0] = B[1] - A[1] ;
+     int12->AB_z[0] = B[2] - A[2] ;
+     int12->PA_x[0] = A[0] - P[0] ;
+     int12->PA_y[0] = A[1] - P[1] ;
+     int12->PA_z[0] = A[2] - P[2] ;
+     int12->PB_x[0] = B[0] - P[0] ;
+     int12->PB_y[0] = B[1] - P[1] ;
+     int12->PB_z[0] = B[2] - P[2] ;
 
 
-     inteval[icontrdepth2]._0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am)
-                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_x[0] * inteval[icontrdepth2].AB_x[0] / alphaP );
-     inteval[icontrdepth2]._0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
-                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_y[0] * inteval[icontrdepth2].AB_y[0] / alphaP );
-     inteval[icontrdepth2]._0_Overlap_0_z[0] = sqrt( M_PI / alphaP ) 
-                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_z[0] * inteval[icontrdepth2].AB_z[0] / alphaP );
+     int12->_0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am)
+                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_x[0] * int12->AB_x[0] / alphaP );
+     int12->_0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
+                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_y[0] * int12->AB_y[0] / alphaP );
+     int12->_0_Overlap_0_z[0] = sqrt( M_PI / alphaP ) 
+                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_z[0] * int12->AB_z[0] / alphaP );
  
-     inteval[icontrdepth2].oo2z[0] = 0.5 / alphaP ;
+     int12->oo2z[0] = 0.5 / alphaP ;
     
-     inteval[icontrdepth2].veclen = 1 ;
-     inteval[icontrdepth2].contrdepth = contrdepth2 ;
+     int12->veclen = 1 ;
+     int12->contrdepth = contrdepth2 ;
 
      icontrdepth2++ ;
    }
@@ -147,6 +148,7 @@ void libint_kinetic(int amA, int contrdepthA , double A [] , double alphaA [], d
  for( int icontrdepthA=0; icontrdepthA < contrdepthA; icontrdepthA++)  {
    for( int icontrdepthB=0; icontrdepthB < contrdepthB; icontrdepthB++)  {
 
+     Libint_kinetic_t* int12 = &inteval[icontrdepth2] ;
      alphaP = alphaA[icontrdepthA] + alphaB[icontrdepthB] ;
      ksiP = alphaA[icontrdepthA] * alphaB[icontrdepthB] / alphaP ;
      P[0] = (alphaA[icontrdepthA] * A[0] + alphaB[icontrdepthB] * B[0] ) / alphaP ;
@@ -154,36 +156,36 @@ void libint_kinetic(int amA, int contrdepthA , double A [] , double alphaA [], d
      P[2] = (alphaA[icontrdepthA] * A[2] + alphaB[icontrdepthB] * B[2] ) / alphaP ;
 
 
-     inteval[icontrdepth2].AB_x[0] = B[0] - A[0] ;
-     inteval[icontrdepth2].AB_y[0] = B[1] - A[1] ;
-     inteval[icontrdepth2].AB_z[0] = B[2] - A[2] ;
-     inteval[icontrdepth2].PA_x[0] = A[0] - P[0] ;
-     inteval[icontrdepth2].PA_y[0] = A[1] - P[1] ;
-     inteval[icontrdepth2].PA_z[0] = A[2] - P[2] ;
-     inteval[icontrdepth2].PB_x[0] = B[0] - P[0] ;
-     inteval[icontrdepth2].PB_y[0] = B[1] - P[1] ;
-     inteval[icontrdepth2].PB_z[0] = B[2] - P[2] ;
+     int12->AB_x[0] = B[0] - A[0] ;
+     int12->AB_y[0] = B[1] - A[1] ;
+     int12->AB_z[0] = B[2] - A[2] ;
+     int12->PA_x[0] = A[0] - P[0] ;
+     int12->PA_y[0] = A[1] - P[1] ;
+     int12->PA_z[0] = A[2] - P[2] ;
+     int12->PB_x[0] = B[0] - P[0] ;
+     int12->PB_y[0] = B[1] - P[1] ;
+     int12->PB_z[0] = B[2] - P[2] ;
 
-     ab2 =  inteval[icontrdepth2].AB_x[0] * inteval[icontrdepth2].AB_x[0] 
-          + inteval[icontrdepth2].AB_y[0] * inteval[icontrdepth2].AB_y[0]
-          + inteval[icontrdepth2].AB_z[0] * inteval[icontrdepth2].AB_z[0] ;
+     ab2 =  int12->AB_x[0] * int12->AB_x[0] 
+          + int12->AB_y[0] * int12->AB_y[0]
+          + int12->AB_z[0] * int12->AB_z[0] ;
 
      pfac[icontrdepth2] = ksiP * ( 3.0 - 2.0 * ksiP * ab2 ) ;
 
-     inteval[icontrdepth2]._0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am)
-                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_x[0] * inteval[icontrdepth2].AB_x[0] / alphaP );
-     inteval[icontrdepth2]._0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
-                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_y[0] * inteval[icontrdepth2].AB_y[0] / alphaP );
-     inteval[icontrdepth2]._0_Overlap_0_z[0] = sqrt( M_PI / alphaP ) 
-                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * inteval[icontrdepth2].AB_z[0] * inteval[icontrdepth2].AB_z[0] / alphaP );
+     int12->_0_Overlap_0_x[0] = sqrt( M_PI / alphaP ) * cA[icontrdepthA] * cB[icontrdepthB] * pow(-1,am)
+                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_x[0] * int12->AB_x[0] / alphaP );
+     int12->_0_Overlap_0_y[0] = sqrt( M_PI / alphaP ) 
+                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_y[0] * int12->AB_y[0] / alphaP );
+     int12->_0_Overlap_0_z[0] = sqrt( M_PI / alphaP ) 
+                                                * exp( - alphaA[icontrdepthA] * alphaB[icontrdepthB] * int12->AB_z[0] * int12->AB_z[0] / alphaP );
 
-     inteval[icontrdepth2].oo2z[0] = 0.5 / alphaP ;
+     int12->oo2z[0] = 0.5 / alphaP ;
     
-     inteval[icontrdepth2].veclen = 1 ;
-     inteval[icontrdepth2].contrdepth = contrdepth2 ;
+     int12->veclen = 1 ;
+     int12->contrdepth = contrdepth2 ;
 
-     inteval[icontrdepth2].two_alpha0_bra[0] = 2.0 * alphaA[icontrdepthA];
-     inteval[icontrdepth2].two_alpha0_ket[0] = 2.0 * alphaB[icontrdepthB];
+     int12->two_alpha0_bra[0] = 2.0 * alphaA[icontrdepthA];
+     int12->two_alpha0_ket[0] = 2.0 * alphaB[icontrdepthB];
 
      icontrdepth2++ ;
    }
@@ -247,7 +249,6 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
 
  LIBINT2_PREFIXED_NAME(libint2_init_elecpot)(inteval, ammax, 0);
 
- Libint_elecpot_t* int12 ;
  double alphaP, ksiP ;
  double P[3];
  double ab2, pfac ;
@@ -256,7 +257,7 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
  for( int icontrdepthA=0; icontrdepthA < contrdepthA; icontrdepthA++)  {
    for( int icontrdepthB=0; icontrdepthB < contrdepthB; icontrdepthB++)  {
 
-     int12 = &inteval[icontrdepth2] ;
+     Libint_elecpot_t* int12 = &inteval[icontrdepth2] ;
 
      alphaP = alphaA[icontrdepthA] + alphaB[icontrdepthB] ;
      ksiP = alphaA[icontrdepthA] * alphaB[icontrdepthB] / alphaP ;
