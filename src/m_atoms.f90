@@ -209,7 +209,6 @@ subroutine nucleus_nucleus_force()
  integer              :: iatom,jatom
 !=====
 
- force(:,:) = 0.0_dp
  do iatom=1,natom
    do jatom=1,natom
      if( iatom == jatom ) cycle
