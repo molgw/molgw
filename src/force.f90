@@ -245,21 +245,22 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
        enddo
      enddo
    enddo
-   write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'H atom ',iatom,':',force_har(:,iatom)
-   write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'X atom ',iatom,':',force_exx(:,iatom)
+!   write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'H atom ',iatom,':',force_har(:,iatom)
+!   write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'X atom ',iatom,':',force_exx(:,iatom)
  enddo
 
- do ijshellpair=1,nshellpair
-   ishell = index_shellpair(1,ijshellpair)
-   jshell = index_shellpair(2,ijshellpair)
-   ni = number_basis_function_am( basis%gaussian_type , shell(ishell)%am )
-   nj = number_basis_function_am( basis%gaussian_type , shell(jshell)%am )
+ do klshellpair=1,nshellpair
+   kshell = index_shellpair(1,klshellpair)
+   lshell = index_shellpair(2,klshellpair)
+   nk = number_basis_function_am( basis%gaussian_type , shell(kshell)%am )
+   nl = number_basis_function_am( basis%gaussian_type , shell(lshell)%am )
 
-   do klshellpair=1,nshellpair
-     kshell = index_shellpair(1,klshellpair)
-     lshell = index_shellpair(2,klshellpair)
-     nk = number_basis_function_am( basis%gaussian_type , shell(kshell)%am )
-     nl = number_basis_function_am( basis%gaussian_type , shell(lshell)%am )
+   do ijshellpair=1,nshellpair
+     ishell = index_shellpair(1,ijshellpair)
+     jshell = index_shellpair(2,ijshellpair)
+     ni = number_basis_function_am( basis%gaussian_type , shell(ishell)%am )
+     nj = number_basis_function_am( basis%gaussian_type , shell(jshell)%am )
+
 
      allocate(shell_gradA(ni,nj,nk,nl,3))
      allocate(shell_gradB(ni,nj,nk,nl,3))
@@ -267,182 +268,80 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
      allocate(shell_gradD(ni,nj,nk,nl,3))
      call calculate_eri_4center_shell_grad(basis,0.0_dp,ijshellpair,klshellpair,&
                                            shell_gradA,shell_gradB,shell_gradC,shell_gradD)
-     write(*,'(a,4(i3,1x),4(1x,f20.12))') ' === ',ishell,jshell,kshell,lshell,shell_gradA(:,:,:,:,1), &
-                                                                              shell_gradB(:,:,:,:,1), &
-                                                                              shell_gradC(:,:,:,:,1), &
-                                                                              shell_gradD(:,:,:,:,1)
-#if 1
-     do iatom=1,natom
+!     write(*,'(a,4(i3,1x),4(1x,f20.12))') ' === ',ishell,jshell,kshell,lshell,shell_gradA(:,:,:,:,1), &
+!                                                                              shell_gradB(:,:,:,:,1), &
+!                                                                              shell_gradC(:,:,:,:,1), &
+!                                                                              shell_gradD(:,:,:,:,1)
+     ibf = ishell
+     jbf = jshell
+     kbf = kshell
+     lbf = lshell
+     iatom = basis%bff(ibf)%iatom 
+     force_har(:,iatom) = force_har(:,iatom) - 2.0_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradA(1,1,1,1,:)
+
+     if( kshell /= lshell ) then
        ibf = ishell
        jbf = jshell
+       kbf = lshell
+       lbf = kshell
+       iatom = basis%bff(ibf)%iatom 
+       force_har(:,iatom) = force_har(:,iatom) - 2.0_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradA(1,1,1,1,:)
+     endif
+
+     if( ishell /= jshell ) then
+       ibf = jshell
+       jbf = ishell
        kbf = kshell
        lbf = lshell
-       if( basis%bff(ibf)%iatom == iatom ) then
-         force_har(1,iatom) = force_har(1,iatom) - 2.0_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradA(1,1,1,1,1)
-       endif
-       if( kshell /= lshell ) then
-         ibf = ishell
-         jbf = jshell
-         kbf = lshell
-         lbf = kshell
-         if( basis%bff(ibf)%iatom == iatom ) then
-          force_har(1,iatom) = force_har(1,iatom) - 2.0_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradA(1,1,1,1,1)
-         endif
-       endif
+       iatom = basis%bff(ibf)%iatom 
+       force_har(:,iatom) = force_har(:,iatom) - 2.0_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradB(1,1,1,1,:)
 
-       if( ishell /= jshell ) then
+       if( kshell /= lshell ) then
          ibf = jshell
          jbf = ishell
-         kbf = kshell
-         lbf = lshell
-         if( basis%bff(ibf)%iatom == iatom ) then
-           force_har(1,iatom) = force_har(1,iatom) - 2.0_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradB(1,1,1,1,1)
-         endif
-
-         if( kshell /= lshell ) then
-           ibf = jshell
-           jbf = ishell
-           kbf = lshell
-           lbf = kshell
-           if( basis%bff(ibf)%iatom == iatom ) then
-             force_har(1,iatom) = force_har(1,iatom) - 2.0_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradB(1,1,1,1,1)
-           endif
-         endif
+         kbf = lshell
+         lbf = kshell
+         iatom = basis%bff(ibf)%iatom 
+         force_har(:,iatom) = force_har(:,iatom) - 2.0_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradB(1,1,1,1,:)
        endif
+     endif
 
-     enddo
+     !
+     ! Exchange
+     !
+     ibf = ishell
+     jbf = jshell
+     kbf = kshell
+     lbf = lshell
+     iatom = basis%bff(ibf)%iatom 
+     force_exx(:,iatom) = force_exx(:,iatom) + 2.0_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradA(1,1,1,1,:) / spin_fact
 
-     do iatom=1,natom
+     if( kshell /= lshell ) then
        ibf = ishell
        jbf = jshell
+       kbf = lshell
+       lbf = kshell
+       iatom = basis%bff(ibf)%iatom 
+       force_exx(:,iatom) = force_exx(:,iatom) + 2.0_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradA(1,1,1,1,:) / spin_fact
+     endif
+
+     if( ishell /= jshell ) then
+       ibf = jshell
+       jbf = ishell
        kbf = kshell
        lbf = lshell
-       if( basis%bff(ibf)%iatom == iatom ) &
-         force_exx(1,iatom) = force_exx(1,iatom) - 0.5_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradA(1,1,1,1,1)
-       if( basis%bff(jbf)%iatom == iatom ) &
-         force_exx(1,iatom) = force_exx(1,iatom) - 0.5_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradB(1,1,1,1,1)
-       if( basis%bff(kbf)%iatom == iatom ) &
-         force_exx(1,iatom) = force_exx(1,iatom) + 0.5_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradC(1,1,1,1,1)
-       if( basis%bff(lbf)%iatom == iatom ) &
-         force_exx(1,iatom) = force_exx(1,iatom) + 0.5_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradD(1,1,1,1,1)
+       iatom = basis%bff(ibf)%iatom 
+       force_exx(:,iatom) = force_exx(:,iatom) + 2.0_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradB(1,1,1,1,:) / spin_fact
 
        if( kshell /= lshell ) then
-         ibf = ishell
-         jbf = jshell
-         kbf = lshell
-         lbf = kshell
-         if( basis%bff(ibf)%iatom == iatom ) &
-           force_exx(1,iatom) = force_exx(1,iatom) - 0.5_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradA(1,1,1,1,1)
-         if( basis%bff(jbf)%iatom == iatom ) &
-           force_exx(1,iatom) = force_exx(1,iatom) - 0.5_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradB(1,1,1,1,1)
-         if( basis%bff(kbf)%iatom == iatom ) &
-           force_exx(1,iatom) = force_exx(1,iatom) + 0.5_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradD(1,1,1,1,1)
-         if( basis%bff(lbf)%iatom == iatom ) &
-           force_exx(1,iatom) = force_exx(1,iatom) + 0.5_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradC(1,1,1,1,1)
-       endif
-
-       if( ishell /= jshell ) then
          ibf = jshell
          jbf = ishell
-         kbf = kshell
-         lbf = lshell
-         if( basis%bff(ibf)%iatom == iatom ) &
-           force_exx(1,iatom) = force_exx(1,iatom) - 0.5_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradB(1,1,1,1,1)
-         if( basis%bff(jbf)%iatom == iatom ) &
-           force_exx(1,iatom) = force_exx(1,iatom) - 0.5_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradA(1,1,1,1,1)
-         if( basis%bff(kbf)%iatom == iatom ) &
-           force_exx(1,iatom) = force_exx(1,iatom) + 0.5_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradC(1,1,1,1,1)
-         if( basis%bff(lbf)%iatom == iatom ) &
-           force_exx(1,iatom) = force_exx(1,iatom) + 0.5_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradD(1,1,1,1,1)
-
-         if( kshell /= lshell ) then
-           ibf = jshell
-           jbf = ishell
-           kbf = lshell
-           lbf = kshell
-           if( basis%bff(ibf)%iatom == iatom ) &
-             force_exx(1,iatom) = force_exx(1,iatom) - 0.5_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradB(1,1,1,1,1)
-           if( basis%bff(jbf)%iatom == iatom ) &
-             force_exx(1,iatom) = force_exx(1,iatom) - 0.5_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradA(1,1,1,1,1)
-           if( basis%bff(kbf)%iatom == iatom ) &
-             force_exx(1,iatom) = force_exx(1,iatom) + 0.5_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradD(1,1,1,1,1)
-           if( basis%bff(lbf)%iatom == iatom ) &
-             force_exx(1,iatom) = force_exx(1,iatom) + 0.5_dp * p_matrix(ibf,jbf,1) * p_matrix(kbf,lbf,1) * shell_gradC(1,1,1,1,1)
-         endif
-       endif
-
-     enddo
-#endif
-
-#if 0
-     do iatom=1,natom
-       ibf = ishell
-       jbf = jshell
-       kbf = kshell
-       lbf = lshell
-       write(*,*) 'EXCHANGE1',iatom,'   ',ibf,jbf,kbf,lbf
-       if( basis%bff(ibf)%iatom == iatom ) &
-         force(1,iatom) = force(1,iatom) + 0.50_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradA(1,1,1,1,1)
-       if( basis%bff(jbf)%iatom == iatom ) &
-         force(1,iatom) = force(1,iatom) + 0.50_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradB(1,1,1,1,1)
-       if( basis%bff(kbf)%iatom == iatom ) &
-         force(1,iatom) = force(1,iatom) + 0.50_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradC(1,1,1,1,1)
-       if( basis%bff(lbf)%iatom == iatom ) &
-         force(1,iatom) = force(1,iatom) + 0.50_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradD(1,1,1,1,1)
-
-       if( kshell /= lshell ) then
-         ibf = ishell
-         jbf = jshell
          kbf = lshell
          lbf = kshell
-         write(*,*) 'EXCHANGE2',iatom,'   ',ibf,jbf,kbf,lbf
-         if( basis%bff(ibf)%iatom == iatom ) &
-           force(1,iatom) = force(1,iatom) + 0.50_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradA(1,1,1,1,1)
-         if( basis%bff(jbf)%iatom == iatom ) &
-           force(1,iatom) = force(1,iatom) + 0.50_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradB(1,1,1,1,1)
-         if( basis%bff(kbf)%iatom == iatom ) &
-           force(1,iatom) = force(1,iatom) + 0.50_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradC(1,1,1,1,1)
-         if( basis%bff(lbf)%iatom == iatom ) &
-           force(1,iatom) = force(1,iatom) + 0.50_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradD(1,1,1,1,1)
+         iatom = basis%bff(ibf)%iatom 
+         force_exx(:,iatom) = force_exx(:,iatom) + 2.0_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradB(1,1,1,1,:) / spin_fact
        endif
-
-       if( ishell /= jshell ) then
-         ibf = jshell
-         jbf = ishell
-         kbf = kshell
-         lbf = lshell
-         write(*,*) 'EXCHANGE3',iatom,'   ',ibf,jbf,kbf,lbf
-         if( basis%bff(ibf)%iatom == iatom ) &
-           force(1,iatom) = force(1,iatom) + 0.50_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradA(1,1,1,1,1)
-         if( basis%bff(jbf)%iatom == iatom ) &
-           force(1,iatom) = force(1,iatom) + 0.50_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradB(1,1,1,1,1)
-         if( basis%bff(kbf)%iatom == iatom ) &
-           force(1,iatom) = force(1,iatom) + 0.50_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradC(1,1,1,1,1)
-         if( basis%bff(lbf)%iatom == iatom ) &
-           force(1,iatom) = force(1,iatom) + 0.50_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradD(1,1,1,1,1)
-         
-
-         if( kshell /= lshell ) then
-           ibf = jshell
-           jbf = ishell
-           kbf = lshell
-           lbf = kshell
-           write(*,*) 'EXCHANGE4',iatom,'   ',ibf,jbf,kbf,lbf
-           if( basis%bff(ibf)%iatom == iatom ) &
-             force(1,iatom) = force(1,iatom) + 0.50_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradA(1,1,1,1,1)
-           if( basis%bff(jbf)%iatom == iatom ) &
-             force(1,iatom) = force(1,iatom) + 0.50_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradB(1,1,1,1,1)
-           if( basis%bff(kbf)%iatom == iatom ) &
-             force(1,iatom) = force(1,iatom) + 0.50_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradC(1,1,1,1,1)
-           if( basis%bff(lbf)%iatom == iatom ) &
-             force(1,iatom) = force(1,iatom) + 0.50_dp * p_matrix(ibf,kbf,1) * p_matrix(jbf,lbf,1) * shell_gradD(1,1,1,1,1)
-
-         endif
-       endif
-
-     enddo
-#endif
-
+     endif
 
      deallocate(shell_gradA,shell_gradB,shell_gradC,shell_gradD)
    enddo
@@ -454,13 +353,17 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  enddo
  write(stdout,'(1x,a,/)') ' ==================== '
 
+ write(stdout,'(/,1x,a)') ' ====== Exchange Forces ====== '
+ do iatom=1,natom
+   write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'atom ',iatom,':',force_exx(:,iatom)
+ enddo
+ write(stdout,'(1x,a,/)') ' ==================== '
+
 
  allocate(grad_tmp(basis%nbf,basis%nbf,natom+2,3))
  write(stdout,'(/,1x,a)') ' ====== Nucleus repulsion Forces ====== '
  write(*,'(1x,a)') 'Atoms                  Fx               Fy                 Fz'
  call setup_nucleus_grad_libint(print_matrix_,basis,grad_tmp)
-! write(stdout,'(/,1x,a)') ' ====== Hellman Feynman Forces ====== '
-! write(*,'(1x,a)') 'Atoms                  Fx               Fy                 Fz'
  call nucleus_nucleus_force()
  do iatom=1,natom
    write(*,'(1x,a,i4,a,2x,3(2x,f16.8))') 'atom ',iatom,':',force_nuc_nuc(:,iatom)
@@ -473,17 +376,19 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  ! Total forces
  !
 
- force(:,:) = force_nuc_nuc(:,:) + force_kin(:,:) + force_nuc(:,:) + force_har(:,:)
+ force(:,:) = force_nuc_nuc(:,:) + force_kin(:,:) + force_nuc(:,:) + force_har(:,:) + force_exx(:,:) * alpha_hybrid
 
- write(stdout,'(/,1x,a)') ' ====== Final Forces ====== '
+ write(stdout,'(/,1x,a)') ' ====== Total Forces ====== '
  do iatom=1,natom
    write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'atom ',iatom,':',force(:,iatom)
  enddo
- write(stdout,'(/,1x,a)') ' Hellman-Feynman Forces'
+ write(stdout,'(/,1x,a)') ' ====== Hellman Feynman Forces ====== '
+ write(*,'(1x,a)') 'Atoms                  Fx               Fy                 Fz'
  do iatom=1,natom
    write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'atom ',iatom,':',force_hl(:,iatom)
  enddo
- write(stdout,'(/,1x,a)') ' Pulay Forces'
+ write(stdout,'(/,1x,a)') ' ====== Pulay Forces ====== '
+ write(*,'(1x,a)') 'Atoms                  Fx               Fy                 Fz'
  do iatom=1,natom
    write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'atom ',iatom,':',force(:,iatom) - force_hl(:,iatom)
  enddo
