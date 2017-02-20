@@ -26,6 +26,15 @@ module m_atoms
  real(dp),allocatable,protected :: vel(:,:)
  real(dp),allocatable,public    :: force(:,:)
 
+ ! See we keep these arrays in the long-term
+ real(dp),allocatable,public    :: force_nuc_nuc(:,:)
+ real(dp),allocatable,public    :: force_kin(:,:)
+ real(dp),allocatable,public    :: force_nuc(:,:)
+ real(dp),allocatable,public    :: force_har(:,:)
+ real(dp),allocatable,public    :: force_exx(:,:)
+ real(dp),allocatable,public    :: force_exc(:,:)
+ real(dp),allocatable,public    :: force_hl(:,:)
+
  logical,protected              :: inversion=.TRUE.
  logical,protected              :: linear=.TRUE.
  logical,protected              :: planar=.TRUE.
@@ -57,7 +66,16 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read,calculate_forces)
  allocate(basis_element(natom_basis))
  allocate(x(3,natom_basis))
  ! For relaxation or dynamics only 
- if( calculate_forces ) allocate(force(3,natom))
+ if( calculate_forces ) then
+   allocate(force(3,natom))
+   allocate(force_nuc_nuc(3,natom))
+   allocate(force_kin(3,natom))
+   allocate(force_nuc(3,natom))
+   allocate(force_har(3,natom))
+   allocate(force_exx(3,natom))
+   allocate(force_exc(3,natom))
+   allocate(force_hl(3,natom))
+ endif
 
  zatom(1:natom)              = zatom_read(1:natom)
  ! Ghost atoms do not have a positive nucleus
@@ -180,6 +198,13 @@ subroutine destroy_atoms()
  if(ALLOCATED(basis_element)) deallocate(basis_element)
  if(ALLOCATED(x))             deallocate(x)
  if(ALLOCATED(force))         deallocate(force)
+ if(ALLOCATED(force_nuc_nuc)) deallocate(force_nuc_nuc)
+ if(ALLOCATED(force_kin))     deallocate(force_kin)
+ if(ALLOCATED(force_nuc))     deallocate(force_nuc)
+ if(ALLOCATED(force_har))     deallocate(force_har)
+ if(ALLOCATED(force_exx))     deallocate(force_exx)
+ if(ALLOCATED(force_exc))     deallocate(force_exc)
+ if(ALLOCATED(force_hl))      deallocate(force_hl)
 
 end subroutine destroy_atoms
 
@@ -209,15 +234,13 @@ subroutine nucleus_nucleus_force()
  integer              :: iatom,jatom
 !=====
 
+ force_nuc_nuc(:,:) = 0.0_dp
  do iatom=1,natom
    do jatom=1,natom
      if( iatom == jatom ) cycle
-     force(1,iatom) = force(1,iatom) + zatom(iatom) * zatom(jatom) / ( SUM( (x(:,iatom) - x(:,jatom))**2) )**1.50_dp &
-                          * ( x(1,iatom) - x(1,jatom) )
-     force(2,iatom) = force(2,iatom) + zatom(iatom) * zatom(jatom) / ( SUM( (x(:,iatom) - x(:,jatom))**2) )**1.50_dp &
-                          * ( x(2,iatom) - x(2,jatom) )
-     force(3,iatom) = force(3,iatom) + zatom(iatom) * zatom(jatom) / ( SUM( (x(:,iatom) - x(:,jatom))**2) )**1.50_dp &
-                          * ( x(3,iatom) - x(3,jatom) )
+     force_nuc_nuc(:,iatom) = force_nuc_nuc(:,iatom) &
+                               + zatom(iatom) * zatom(jatom) / ( SUM( (x(:,iatom) - x(:,jatom))**2) )**1.50_dp &
+                                  * ( x(:,iatom) - x(:,jatom) )
    enddo
  enddo
 
