@@ -43,6 +43,7 @@ module m_eri
    real(dp),allocatable :: alpha(:)
    real(dp),allocatable :: coeff(:)
    real(dp)             :: x0(3)
+   integer              :: iatom
    integer              :: istart,iend   ! index of the shell's basis functions in the basis set
  end type shell_type
 
@@ -351,6 +352,8 @@ subroutine setup_shell_list(basis)
        shell(ishell)%coeff(:) = basis%bf(ibf)%coeff(:) &
                  * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**shell(ishell)%am * shell(ishell)%alpha(:)**( 0.25_dp * ( 2.0_dp*shell(ishell)%am + 3.0_dp ) )
 
+       shell(ishell)%iatom = basis%bf(ibf)%iatom
+
        jbf = jbf + 1
        shell(ishell)%istart = jbf
        jbf = jbf + number_basis_function_am( basis%gaussian_type , shell(ishell)%am ) - 1
@@ -409,6 +412,8 @@ subroutine setup_shell_list_auxil(auxil_basis)
        ! Include here the normalization part that does not depend on (nx,ny,nz)
        shell_auxil(ishell)%coeff(:) = auxil_basis%bf(ibf)%coeff(:) &
                  * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**shell_auxil(ishell)%am * shell_auxil(ishell)%alpha(:)**( 0.25_dp * ( 2.0_dp*shell_auxil(ishell)%am + 3.0_dp ) )
+
+       shell_auxil(ishell)%iatom = auxil_basis%bf(ibf)%iatom
 
        jbf = jbf + 1
        shell_auxil(ishell)%istart = jbf

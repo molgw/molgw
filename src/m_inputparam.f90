@@ -50,6 +50,7 @@ module m_inputparam
  character(len=100) :: calc_name
  character(len=100) :: scf_name
  character(len=100) :: postscf_name
+ logical            :: is_core
  logical            :: is_dft
  logical            :: need_exchange
  logical            :: need_exchange_lr
@@ -187,7 +188,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%selfenergy_approx   = 0
  calc_type%postscf_name        = 'None'
  calc_type%is_selfenergy       = .FALSE.
- 
+ calc_type%is_core             = .FALSE.
 
  ipos=index(input_key,'+',.TRUE.)
 
@@ -288,6 +289,9 @@ subroutine init_calculation_type(calc_type,input_key)
  case('CI')
    calc_type%is_ci         = .TRUE.
    alpha_hybrid            = 1.00_dp
+ case('CORE')
+   alpha_hybrid            = 0.0_dp
+   calc_type%is_core       = .TRUE.
  case('H','HARTREE')
    alpha_hybrid            = 0.0_dp
  case('HF')

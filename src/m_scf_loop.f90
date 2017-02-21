@@ -148,6 +148,11 @@ subroutine scf_loop(is_restart,&
        call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
      endif
    endif
+   ! calc_type%is_core is only meant for debugging
+   if( calc_type%is_core ) then
+     hamiltonian_hartree(:,:) = 0.0_dp
+     en%hart = 0.0_dp
+   endif
    do ispin=1,nspin
      hamiltonian(:,:,ispin) = hamiltonian(:,:,ispin) + hamiltonian_hartree(:,:)
    enddo
