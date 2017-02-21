@@ -33,6 +33,7 @@ module m_atoms
  real(dp),allocatable,public    :: force_har(:,:)
  real(dp),allocatable,public    :: force_exx(:,:)
  real(dp),allocatable,public    :: force_exc(:,:)
+ real(dp),allocatable,public    :: force_ovp(:,:)
  real(dp),allocatable,public    :: force_hl(:,:)
 
  logical,protected              :: inversion=.TRUE.
@@ -74,6 +75,7 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read,calculate_forces)
    allocate(force_har(3,natom))
    allocate(force_exx(3,natom))
    allocate(force_exc(3,natom))
+   allocate(force_ovp(3,natom))
    allocate(force_hl(3,natom))
  endif
 
@@ -204,6 +206,7 @@ subroutine destroy_atoms()
  if(ALLOCATED(force_har))     deallocate(force_har)
  if(ALLOCATED(force_exx))     deallocate(force_exx)
  if(ALLOCATED(force_exc))     deallocate(force_exc)
+ if(ALLOCATED(force_ovp))     deallocate(force_ovp)
  if(ALLOCATED(force_hl))      deallocate(force_hl)
 
 end subroutine destroy_atoms

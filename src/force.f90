@@ -33,15 +33,16 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  integer                 :: ishell,jshell,kshell,lshell
  integer                 :: ni,nj,nk,nl
  real(dp),allocatable    :: grad_tmp(:,:,:,:)
- real(dp),allocatable    :: q_matrix(:,:)
+ real(dp),allocatable    :: r_matrix(:,:)
+#ifdef PSP
  real(dp),allocatable    :: psp_matrix(:,:,:,:,:)
+#endif
  real(dp),allocatable    :: grad_onebody(:,:,:)
  real(dp),allocatable    :: p_matrix(:,:,:)
  real(dp),allocatable    :: shell_gradA(:,:,:,:,:)
  real(dp),allocatable    :: shell_gradB(:,:,:,:,:)
  real(dp),allocatable    :: shell_gradC(:,:,:,:,:)
  real(dp),allocatable    :: shell_gradD(:,:,:,:,:)
- real(dp) :: eh,ex
 !=====
 
 #ifndef HAVE_LIBINT_ONEBODY
@@ -52,14 +53,16 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  write(stdout,'(/,1x,a)') 'Calculate the forces'
 
  allocate(p_matrix(basis%nbf,basis%nbf,nspin))
- allocate(q_matrix(basis%nbf,basis%nbf))
+ allocate(r_matrix(basis%nbf,basis%nbf))
+#ifdef PSP
  allocate(psp_matrix(basis%nbf,basis%nbf,nspin,natom,3))
+#endif
  call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
- call setup_energy_density_matrix(basis%nbf,nstate,c_matrix,occupation,energy,q_matrix)
+ call setup_energy_density_matrix(basis%nbf,nstate,c_matrix,occupation,energy,r_matrix)
 
 
  call dump_out_matrix(.TRUE.,'=== P-matrix ===',basis%nbf,nspin,p_matrix)
- call dump_out_matrix(.TRUE.,'=== Q-matrix ===',basis%nbf,nspin,q_matrix)
+ call dump_out_matrix(.TRUE.,'=== R-matrix ===',basis%nbf,nspin,r_matrix)
 
 
  write(stdout,'(/,1x,a)') ' ====== Pulay Forces ====== '
@@ -70,6 +73,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  allocate(grad_onebody(basis%nbf,basis%nbf,3))
  call setup_overlap_grad_libint(print_matrix_,basis,grad_onebody)
 
+#ifdef PSP
  psp_matrix(:,:,:,:,:) = 0.0_dp
  do iatom=1,natom
    do ibf=1,basis%nbf
@@ -87,27 +91,17 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  enddo
  call dump_out_matrix(.TRUE.,'=== PSP-matrix Atom 1 ===',basis%nbf,nspin,psp_matrix(:,:,1,1,1))
  call dump_out_matrix(.TRUE.,'=== PSP-matrix Atom 2 ===',basis%nbf,nspin,psp_matrix(:,:,1,2,1))
+#endif
 
-
-! To be checked!
-! force(:,:) = 0.0_dp
-! do iatom=1,natom
-!   do jbf=1,basis%nbf
-!     if( basis%bff(jbf)%iatom == iatom ) then
-!       force(1,iatom) = force(1,iatom) - DOT_PRODUCT( q_matrix(jbf,:) , grad_onebody(:,jbf,1) )
-!       force(2,iatom) = force(2,iatom) - DOT_PRODUCT( q_matrix(jbf,:) , grad_onebody(:,jbf,2) )
-!       force(3,iatom) = force(3,iatom) - DOT_PRODUCT( q_matrix(jbf,:) , grad_onebody(:,jbf,3) )
-!     endif
-!   enddo
-!   do ibf=1,basis%nbf
-!     if( basis%bff(ibf)%iatom == iatom ) then
-!       force(1,iatom) = force(1,iatom) - DOT_PRODUCT( q_matrix(ibf,:) , grad_onebody(:,ibf,1) )
-!       force(2,iatom) = force(2,iatom) - DOT_PRODUCT( q_matrix(ibf,:) , grad_onebody(:,ibf,2) )
-!       force(3,iatom) = force(3,iatom) - DOT_PRODUCT( q_matrix(ibf,:) , grad_onebody(:,ibf,3) )
-!     endif
-!   enddo
-!   write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'atom ',iatom,':',force(:,iatom)
-! enddo
+ write(stdout,'(/,1x,a)') ' ====== Overlap Forces ====== '
+ force_ovp(:,:) = 0.0_dp
+ do ibf=1,basis%nbf
+   iatom = basis%bff(ibf)%iatom
+   force_ovp(:,iatom) = force_ovp(:,iatom) + 2.0_dp * MATMUL( r_matrix(ibf,:) , grad_onebody(:,ibf,:) )
+ enddo
+ do iatom=1,natom
+   write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'atom ',iatom,':',force_ovp(:,iatom)
+ enddo
  deallocate(grad_onebody)
 
  !
@@ -131,6 +125,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
 
  deallocate(grad_onebody)
 
+#ifdef PSP
  do iatom=1,natom
    do ispin=1,nspin
      do jbf=1,basis%nbf
@@ -141,6 +136,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
    enddo
    write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'atom ',iatom,':',force_kin(:,iatom)
  enddo
+#endif
 
  !
  ! Kinetic energy force is done !
@@ -173,6 +169,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  enddo
  force_nuc(:,:) = force_nuc(:,:) + force_hl(:,:)
 
+#ifdef PSP
  do iatom=1,natom
    do ispin=1,nspin
      do jbf=1,basis%nbf
@@ -183,6 +180,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
    enddo
    write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'atom ',iatom,':',force_nuc(:,iatom)
  enddo
+#endif
 
 
  deallocate(grad_tmp)
@@ -198,37 +196,10 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  force_har(:,:) = 0.0_dp
  force_exx(:,:) = 0.0_dp
 
- eh = 0.0_dp
- do ispin=1,nspin
-   do ibf=1,basis%nbf
-     do jbf=1,basis%nbf
-       do kbf=1,basis%nbf
-         do lbf=1,basis%nbf
-           eh = eh + 0.50_dp * p_matrix(ibf,jbf,ispin) * eri(ibf,jbf,kbf,lbf) * p_matrix(kbf,lbf,ispin)
-         enddo
-       enddo
-     enddo
-   enddo
- enddo
- write(stdout,*) 'Hartree Energy:', eh
-
- ex = 0.0_dp
- do ispin=1,nspin
-   do ibf=1,basis%nbf
-     do jbf=1,basis%nbf
-       do kbf=1,basis%nbf
-         do lbf=1,basis%nbf
-           ex = ex - 0.50_dp * p_matrix(ibf,kbf,ispin) * eri(ibf,jbf,kbf,lbf) * p_matrix(jbf,lbf,ispin) / spin_fact
-         enddo
-       enddo
-     enddo
-   enddo
- enddo
- write(stdout,*) 'Exchange Energy:', ex
-
  write(stdout,'(/,1x,a)') ' ====== Pulay Forces 2body ints ====== '
  write(*,'(1x,a)') 'Atoms                  Fx               Fy                 Fz'
 
+#ifdef PSP
  do iatom=1,natom
    do ispin=1,nspin
      do lbf=1,basis%nbf
@@ -246,6 +217,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
      enddo
    enddo
  enddo
+#endif
 
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
@@ -266,10 +238,6 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
      allocate(shell_gradD(ni,nj,nk,nl,3))
      call calculate_eri_4center_shell_grad(basis,0.0_dp,ijshellpair,klshellpair,&
                                            shell_gradA,shell_gradB,shell_gradC,shell_gradD)
-!     write(*,'(a,4(i3,1x),4(1x,f20.12))') ' === ',ishell,jshell,kshell,lshell,shell_gradA(:,:,:,:,1), &
-!                                                                              shell_gradB(:,:,:,:,1), &
-!                                                                              shell_gradC(:,:,:,:,1), &
-!                                                                              shell_gradD(:,:,:,:,1)
 
      !
      ! Hartree
@@ -374,8 +342,11 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  !
  ! Total forces
  !
-
- force(:,:) = force_nuc_nuc(:,:) + force_kin(:,:) + force_nuc(:,:) + force_har(:,:) + force_exx(:,:) * alpha_hybrid
+ force(:,:) = force_nuc_nuc(:,:) & 
+              + force_kin(:,:) + force_nuc(:,:) + force_har(:,:) + force_exx(:,:) * alpha_hybrid
+#ifndef PSP
+ force(:,:) = force(:,:) + force_ovp(:,:)
+#endif
 
  write(stdout,'(/,1x,a)') ' ====== Total Forces ====== '
  do iatom=1,natom
@@ -395,7 +366,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
 
 
  deallocate(p_matrix)
- deallocate(q_matrix)
+ deallocate(r_matrix)
 
 
 end subroutine calculate_force
