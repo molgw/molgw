@@ -155,7 +155,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
 
  write(stdout,'(/,1x,a,f26.16,/)') 'Nucleus energy',SUM( hnuc(:,:) * SUM(p_matrix(:,:,:),DIM=3) )
 
- allocate(grad_tmp(basis%nbf,basis%nbf,natom+2,3))
+ allocate(grad_tmp(basis%nbf,basis%nbf,natom+1,3))
  call setup_nucleus_grad_libint(print_matrix_,basis,grad_tmp)
 
 
@@ -163,7 +163,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  write(*,'(1x,a)') 'Atoms                  Fx               Fy                 Fz'
  do ibf=1,basis%nbf
    iatom = basis%bff(ibf)%iatom
-   force_nuc(:,iatom) = force_nuc(1,iatom) + 2.0_dp * MATMUL( SUM( p_matrix(ibf,:,:),DIM=2) , grad_tmp(ibf,:,natom+1,:) )
+   force_nuc(:,iatom) = force_nuc(:,iatom) + 2.0_dp * MATMUL( SUM( p_matrix(ibf,:,:),DIM=2) , grad_tmp(ibf,:,natom+1,:) )
  enddo
 
  do iatom=1,natom
@@ -192,8 +192,8 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
 
 
  !
- ! Hartree to be tested
- ! Fock to be tested 
+ ! Hartree ok!
+ ! Fock ok!
  ! 
  force_har(:,:) = 0.0_dp
  force_exx(:,:) = 0.0_dp
@@ -245,8 +245,6 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
        enddo
      enddo
    enddo
-!   write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'H atom ',iatom,':',force_har(:,iatom)
-!   write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'X atom ',iatom,':',force_exx(:,iatom)
  enddo
 
  do klshellpair=1,nshellpair
@@ -272,6 +270,10 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
 !                                                                              shell_gradB(:,:,:,:,1), &
 !                                                                              shell_gradC(:,:,:,:,1), &
 !                                                                              shell_gradD(:,:,:,:,1)
+
+     !
+     ! Hartree
+     !
      ibf = ishell
      jbf = jshell
      kbf = kshell
@@ -360,16 +362,13 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  write(stdout,'(1x,a,/)') ' ==================== '
 
 
- allocate(grad_tmp(basis%nbf,basis%nbf,natom+2,3))
  write(stdout,'(/,1x,a)') ' ====== Nucleus repulsion Forces ====== '
  write(*,'(1x,a)') 'Atoms                  Fx               Fy                 Fz'
- call setup_nucleus_grad_libint(print_matrix_,basis,grad_tmp)
  call nucleus_nucleus_force()
  do iatom=1,natom
    write(*,'(1x,a,i4,a,2x,3(2x,f16.8))') 'atom ',iatom,':',force_nuc_nuc(:,iatom)
  enddo
  write(stdout,'(1x,a,/)') ' ==================== '
- deallocate(grad_tmp)
 
 
  !

@@ -311,14 +311,6 @@ void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA 
 
 
  LIBINT2_PREFIXED_NAME(libint2_build_elecpot1)[amA][amB](inteval);
-/*
- *  FBFB
- cout << "==== " << C[0] << " ==========================\n" ;
- for( int i12=0; i12 < ni*6 ; i12++ ) {
-   cout << i12 << "   " << inteval[0].targets[0][i12] << endl;
- }
- cout << "===================================\n" ;
-*/
 
  for( int i12=0; i12 < ni ; i12++ ) {
    elecpotAx[i12]+= inteval[0].targets[0][i12+ni*0] ;

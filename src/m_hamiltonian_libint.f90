@@ -553,7 +553,7 @@ subroutine setup_nucleus_grad_libint(print_matrix_,basis,hamiltonian_nucleus_gra
  implicit none
  logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
- real(dp),intent(out)       :: hamiltonian_nucleus_grad(basis%nbf,basis%nbf,natom+2,3)
+ real(dp),intent(out)       :: hamiltonian_nucleus_grad(basis%nbf,basis%nbf,natom+1,3)
 !=====
  integer              :: natom_local
  integer              :: ibf,jbf
@@ -658,21 +658,18 @@ subroutine setup_nucleus_grad_libint(print_matrix_,basis,hamiltonian_nucleus_gra
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBx,matrixB)
        hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,iatom  ,1) = matrixA(:,:) + matrixB(:,:)
        hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+1,1) = hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+1,1) + matrixA(:,:)
-       hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+2,1) = hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+2,1) + matrixB(:,:)
 
        ! Y
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAy,matrixA)
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBy,matrixB)
        hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,iatom  ,2) = matrixA(:,:) + matrixB(:,:)
        hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+1,2) = hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+1,2) + matrixA(:,:)
-       hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+2,2) = hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+2,1) + matrixB(:,:)
 
        ! Z
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAz,matrixA)
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBz,matrixB)
        hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,iatom  ,3) = matrixA(:,:) + matrixB(:,:)
        hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+1,3) = hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+1,3) + matrixA(:,:)
-       hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+2,3) = hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+2,1) + matrixB(:,:)
 
      enddo
      deallocate(alphaA,alphaB,cA,cB)
