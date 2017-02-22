@@ -1,0 +1,13 @@
+&molgw
+ scf='lda'
+
+ no_4center='yes'
+
+ natom=2
+ alpha_mixing=0.7
+ mixing_scheme='simple'
+
+ length_unit='bohr'
+/
+1   0.7 0. 0.   cc-pVDZ cc-pVDZ-RI
+1  -0.7 0. 0.   cc-pVTZ cc-pVTZ-RI

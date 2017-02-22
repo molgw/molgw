@@ -27,6 +27,16 @@ SCF Total Energy          ,  -2.8611875289     , 0 , 1.0e-7
 gKS HOMO energy           , -24.970619         , 0 , 1.0e-4
 gKS LUMO energy           ,  17.314207         , 0 , 1.0e-4
 
+h2_basis_nori.in          , LDA H2 molecule with an atom-dependent basis set
+SCF Total Energy          ,  -1.1306882151     , 0 , 1.0e-7
+gKS HOMO energy           , -10.061109         , 0 , 1.0e-4
+gKS LUMO energy           ,   7.282713         , 0 , 1.0e-4
+
+h2_basis_ri.in            , LDA H2 molecule with an atom-dependent basis set with RI
+SCF Total Energy          ,  -1.1351648702     , 0 , 1.0e-7
+gKS HOMO energy           , -10.247609         , 0 , 1.0e-4
+gKS LUMO energy           ,   1.328924         , 0 , 1.0e-4
+
 b_temperature.in          , LDA boron atom cc-pVTZ with finite temperature
 SCF Total Energy          , -24.3458246337     , 0 , 1.0e-7
 Fermi level               ,  -4.065450         , 0 , 1.0e-4
