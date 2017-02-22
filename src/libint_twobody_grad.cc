@@ -557,42 +557,24 @@ void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA 
  LIBINT2_PREFIXED_NAME(libint2_build_eri1)[amA][amB][amC][amD](inteval);
 
 
- for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
-   eriAx[i1234] = inteval[0].targets[0][i1234 + 0*ni] ;
- }
- for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
-   eriAy[i1234] = inteval[0].targets[0][i1234 + 1*ni] ;
- }
- for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
-   eriAz[i1234] = inteval[0].targets[0][i1234 + 2*ni] ;
- }
- for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
-   eriBx[i1234] = inteval[0].targets[0][i1234 + 3*ni] ;
- }
- for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
-   eriBy[i1234] = inteval[0].targets[0][i1234 + 4*ni] ;
- }
- for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
-   eriBz[i1234] = inteval[0].targets[0][i1234 + 5*ni] ;
- }
- for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
-   eriCx[i1234] = inteval[0].targets[0][i1234 + 6*ni] ;
- }
- for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
-   eriCy[i1234] = inteval[0].targets[0][i1234 + 7*ni] ;
- }
- for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
-   eriCz[i1234] = inteval[0].targets[0][i1234 + 8*ni] ;
- }
- for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
-   eriDx[i1234] = inteval[0].targets[0][i1234 + 9*ni] ;
- }
- for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
-   eriDy[i1234] = inteval[0].targets[0][i1234 +10*ni] ;
- }
- for( int i1234 = 0; i1234 < ni ; ++i1234 ) {
-   eriDz[i1234] = inteval[0].targets[0][i1234 +11*ni] ;
- }
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) eriAx[i1234] = inteval[0].targets[0][i1234 + 0*ni] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) eriAy[i1234] = inteval[0].targets[0][i1234 + 1*ni] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) eriAz[i1234] = inteval[0].targets[0][i1234 + 2*ni] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) eriBx[i1234] = inteval[0].targets[0][i1234 + 3*ni] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) eriBy[i1234] = inteval[0].targets[0][i1234 + 4*ni] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) eriBz[i1234] = inteval[0].targets[0][i1234 + 5*ni] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) eriDx[i1234] = inteval[0].targets[0][i1234 + 6*ni] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) eriDy[i1234] = inteval[0].targets[0][i1234 + 7*ni] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) eriDz[i1234] = inteval[0].targets[0][i1234 + 8*ni] ;
+
+/*
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) eriCx[i1234] = inteval[0].targets[0][i1234 + 9*ni] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) eriCy[i1234] = inteval[0].targets[0][i1234 +10*ni] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) eriCz[i1234] = inteval[0].targets[0][i1234 +11*ni] ;
+*/
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) eriCx[i1234] = -eriAx[i1234] -eriBx[i1234] -eriDx[i1234] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) eriCy[i1234] = -eriAy[i1234] -eriBy[i1234] -eriDy[i1234] ;
+ for( int i1234 = 0; i1234 < ni ; ++i1234 ) eriCz[i1234] = -eriAz[i1234] -eriBz[i1234] -eriDz[i1234] ;
 
 
 

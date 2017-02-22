@@ -28,7 +28,8 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  real(dp),intent(in)        :: hnuc(basis%nbf,basis%nbf)
 !=====
  integer                 :: ijshellpair,klshellpair
- integer                 :: istate,iatom,ispin
+ integer                 :: istate,ispin
+ integer                 :: iatom,jatom,katom,latom
  integer                 :: ibf,jbf,kbf,lbf
  integer                 :: ishell,jshell,kshell,lshell
  integer                 :: ni,nj,nk,nl
@@ -61,6 +62,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
  call setup_energy_density_matrix(basis%nbf,nstate,c_matrix,occupation,energy,r_matrix)
 
+ call dump_out_matrix(.TRUE.,'=== P-matrix ===',basis%nbf,nspin,p_matrix)
 
 
  allocate(grad_onebody(basis%nbf,basis%nbf,3))
@@ -108,7 +110,6 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  allocate(grad_onebody(basis%nbf,basis%nbf,3))
  call setup_kinetic_grad_libint(print_matrix_,basis,grad_onebody)
 
-
  write(stdout,'(/,1x,a)') ' ====== Kinetic Energy Forces ====== '
  write(*,'(1x,a)') 'Atoms                  Fx               Fy                 Fz'
  do ibf=1,basis%nbf
@@ -147,7 +148,6 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  allocate(grad_tmp(basis%nbf,basis%nbf,natom+1,3))
  call setup_nucleus_grad_libint(print_matrix_,basis,grad_tmp)
 
-
  write(stdout,'(/,1x,a)') ' ====== Nucleus Energy Forces ====== '
  write(*,'(1x,a)') 'Atoms                  Fx               Fy                 Fz'
  do ibf=1,basis%nbf
@@ -156,9 +156,13 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  enddo
 
  do iatom=1,natom
-   force_hl(1,iatom) = force_hl(1,iatom) - SUM( SUM( p_matrix(:,:,:),DIM=3 ) * grad_tmp(:,:,iatom,1) )
-   force_hl(2,iatom) = force_hl(2,iatom) - SUM( SUM( p_matrix(:,:,:),DIM=3 ) * grad_tmp(:,:,iatom,2) )
-   force_hl(3,iatom) = force_hl(3,iatom) - SUM( SUM( p_matrix(:,:,:),DIM=3 ) * grad_tmp(:,:,iatom,3) )
+   write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'NUC atom ',iatom,':',force_nuc(:,iatom)
+ enddo
+
+ do iatom=1,natom
+   force_hl(1,iatom) = force_hl(1,iatom) + SUM( SUM( p_matrix(:,:,:),DIM=3 ) * grad_tmp(:,:,iatom,1) )
+   force_hl(2,iatom) = force_hl(2,iatom) + SUM( SUM( p_matrix(:,:,:),DIM=3 ) * grad_tmp(:,:,iatom,2) )
+   force_hl(3,iatom) = force_hl(3,iatom) + SUM( SUM( p_matrix(:,:,:),DIM=3 ) * grad_tmp(:,:,iatom,3) )
  enddo
  force_nuc(:,:) = force_nuc(:,:) + force_hl(:,:)
 
@@ -224,15 +228,22 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
      ni = number_basis_function_am( basis%gaussian_type , shell(ishell)%am )
      nj = number_basis_function_am( basis%gaussian_type , shell(jshell)%am )
 
-     if( shell(ishell)%am + shell(jshell)%am > shell(kshell)%am + shell(lshell)%am ) cycle
+!     if( shell(ishell)%am + shell(jshell)%am + shell(kshell)%am + shell(lshell)%am > 1 ) cycle
 
+     if( shell(ishell)%am + shell(jshell)%am > shell(kshell)%am + shell(lshell)%am ) cycle
      allocate(shell_gradA(ni,nj,nk,nl,3))
      allocate(shell_gradB(ni,nj,nk,nl,3))
      allocate(shell_gradC(ni,nj,nk,nl,3))
      allocate(shell_gradD(ni,nj,nk,nl,3))
      call calculate_eri_4center_shell_grad(basis,0.0_dp,ijshellpair,klshellpair,&
                                            shell_gradA,shell_gradB,shell_gradC,shell_gradD)
-
+!     if( ishell == 1 .AND. jshell == 1 .AND. kshell == 3 .AND. lshell == 4 ) then
+!       write(*,*) 'FBFB1 3444',shell_gradA(:,:,:,:,1)
+!       write(*,*) 'FBFB2 3444',shell_gradB(:,:,:,:,1)
+!       write(*,*) 'FBFB3 3444',shell_gradC(:,:,:,:,1)
+!       write(*,*) 'FBFB4 3444',shell_gradD(:,:,:,:,1)
+!       write(*,*) eri(1,1,3,6),eri(1,1,4,6),eri(1,1,5,6)
+!     endif
      !
      ! Hartree
      !
@@ -278,7 +289,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
 
      !
      ! When the opposite is not calculated by LIBINT:
-     if( shell(ishell)%am + shell(jshell)%am /= shell(kshell)%am + shell(lshell)%am ) then
+     if( shell(ishell)%am + shell(jshell)%am < shell(kshell)%am + shell(lshell)%am ) then
        if( ishell /= jshell ) then
          fact = -4.0_dp
        else
@@ -321,7 +332,6 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
 
 
      endif
-
 
      !
      ! Exchange
@@ -488,7 +498,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
 
  write(stdout,'(/,1x,a)') ' ====== Exchange Forces ====== '
  do iatom=1,natom
-   write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'atom ',iatom,':',force_exx(:,iatom)
+   write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'atom ',iatom,':',force_exx(:,iatom) * alpha_hybrid
  enddo
  write(stdout,'(1x,a,/)') ' ==================== '
 
@@ -527,6 +537,15 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  enddo
  write(stdout,'(1x,a,/)') ' ==================== '
 
+ write(stdout,'(/,1x,a)') ' ====== nuc_nuc  kin  nuc har exx Forces ====== '
+ do iatom=1,natom
+   write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'atom ',iatom,':',force_nuc_nuc(:,iatom)
+   write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'atom ',iatom,':',force_kin(:,iatom)
+   write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'atom ',iatom,':',force_nuc(:,iatom)
+   write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'atom ',iatom,':',force_har(:,iatom)
+   write(*,'(1x,a,i4,a,2x,3(2x,e16.8))') 'atom ',iatom,':',force_exx(:,iatom) * alpha_hybrid
+ enddo
+ write(stdout,'(1x,a,/)') ' ==================== '
 
  deallocate(p_matrix)
  deallocate(r_matrix)

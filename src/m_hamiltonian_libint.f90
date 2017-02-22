@@ -643,6 +643,7 @@ subroutine setup_nucleus_grad_libint(print_matrix_,basis,hamiltonian_nucleus_gra
        array_cart_gradBz(:) = 0.0_dp
 
        C(:) = x(:,iatom)
+
 #ifdef HAVE_LIBINT_ONEBODY
        call libint_elecpot_grad(amA,contrdepthA,A,alphaA,cA, &
                                 amB,contrdepthB,B,alphaB,cB, &
@@ -656,19 +657,19 @@ subroutine setup_nucleus_grad_libint(print_matrix_,basis,hamiltonian_nucleus_gra
        ! X
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAx,matrixA)
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBx,matrixB)
-       hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,iatom  ,1) = matrixA(:,:) + matrixB(:,:)
+       hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,iatom  ,1) = -matrixA(:,:) - matrixB(:,:)
        hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+1,1) = hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+1,1) + matrixA(:,:)
 
        ! Y
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAy,matrixA)
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBy,matrixB)
-       hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,iatom  ,2) = matrixA(:,:) + matrixB(:,:)
+       hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,iatom  ,2) = -matrixA(:,:) - matrixB(:,:)
        hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+1,2) = hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+1,2) + matrixA(:,:)
 
        ! Z
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAz,matrixA)
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradBz,matrixB)
-       hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,iatom  ,3) = matrixA(:,:) + matrixB(:,:)
+       hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,iatom  ,3) = -matrixA(:,:) - matrixB(:,:)
        hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+1,3) = hamiltonian_nucleus_grad(ibf:ibf+ni-1,jbf:jbf+nj-1,natom+1,3) + matrixA(:,:)
 
      enddo

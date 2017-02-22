@@ -290,7 +290,7 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%is_ci         = .TRUE.
    alpha_hybrid            = 1.00_dp
  case('CORE')
-   alpha_hybrid            = 0.0_dp
+   alpha_hybrid            = 0.00_dp
    calc_type%is_core       = .TRUE.
  case('H','HARTREE')
    alpha_hybrid            = 0.0_dp
