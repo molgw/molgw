@@ -858,37 +858,31 @@ subroutine read_inputfile_namelist()
    allocate(ecp_basis_name(natom+nghost))
    allocate(ecp_auxil_basis_name(natom+nghost))
    allocate(ecp_small_basis_name(natom+nghost))
-   basis_name(:)           = basis
-   auxil_basis_name(:)     = auxil_basis
-   small_basis_name(:)     = small_basis
-   ecp_basis_name(:)       = ecp_basis
-   ecp_auxil_basis_name(:) = ecp_auxil_basis
-   ecp_small_basis_name(:) = ecp_small_basis
+   basis_name(:)           = standardize_basis_name(basis)
+   auxil_basis_name(:)     = standardize_basis_name(auxil_basis)
+   small_basis_name(:)     = standardize_basis_name(small_basis)
+   ecp_basis_name(:)       = standardize_basis_name(ecp_basis)
+   ecp_auxil_basis_name(:) = standardize_basis_name(ecp_auxil_basis)
+   ecp_small_basis_name(:) = standardize_basis_name(ecp_small_basis)
 
    allocate(x_read(3,natom+nghost),zatom_read(natom+nghost))
    do iatom=1,natom+nghost
+     ! First, read the full line
      read(inputfile,'(a)') line_char
+
+     ! Then, try to interpret it
      read(line_char,*,iostat=info2) atom_symbol,x_read(:,iatom),ctmp1,ctmp2
      if( info2 == 0 ) then
-       basis_name(iatom)           = TRIM(ctmp1)
-       ecp_basis_name(iatom)       = TRIM(ctmp1)
-       auxil_basis_name(iatom)     = TRIM(ctmp2)
-       ecp_auxil_basis_name(iatom) = TRIM(ctmp2)
+       basis_name(iatom)           = standardize_basis_name(TRIM(ctmp1))
+       ecp_basis_name(iatom)       = standardize_basis_name(TRIM(ctmp1))
+       auxil_basis_name(iatom)     = standardize_basis_name(TRIM(ctmp2))
+       ecp_auxil_basis_name(iatom) = standardize_basis_name(TRIM(ctmp2))
 
-!       ctmp = ADJUSTL(ctmp)
-!       inextblank = INDEX(ctmp,' ')
-!       basis_name(iatom)     = TRIM(ctmp(1:inextblank))
-!       ecp_basis_name(iatom) = TRIM(ctmp(1:inextblank))
-!       write(*,*) 'ahah',inextblank,TRIM(ctmp(1:inextblank)),TRIM(ctmp(inextblank:))
-!       if( LEN(TRIM(ctmp(inextblank:))) > 0 ) then
-!         auxil_basis_name(iatom)     = TRIM(ctmp(inextblank:))
-!         ecp_auxil_basis_name(iatom) = TRIM(ctmp(inextblank:))
-!       endif
      else
        read(line_char,*,iostat=info1) atom_symbol,x_read(:,iatom),ctmp1
        if( info1 == 0 ) then
-         basis_name(iatom)     = TRIM(ctmp1)
-         ecp_basis_name(iatom) = TRIM(ctmp1)
+         basis_name(iatom)     = standardize_basis_name(TRIM(ctmp1))
+         ecp_basis_name(iatom) = standardize_basis_name(TRIM(ctmp1))
        else
          read(line_char,*) atom_symbol,x_read(:,iatom)
        endif
@@ -930,12 +924,12 @@ subroutine read_inputfile_namelist()
    allocate(ecp_basis_name(natom+nghost))
    allocate(ecp_auxil_basis_name(natom+nghost))
    allocate(ecp_small_basis_name(natom+nghost))
-   basis_name(:)           = basis
-   auxil_basis_name(:)     = auxil_basis
-   small_basis_name(:)     = small_basis
-   ecp_basis_name(:)       = ecp_basis
-   ecp_auxil_basis_name(:) = ecp_auxil_basis
-   ecp_small_basis_name(:) = ecp_small_basis
+   basis_name(:)           = standardize_basis_name(basis)
+   auxil_basis_name(:)     = standardize_basis_name(auxil_basis)
+   small_basis_name(:)     = standardize_basis_name(small_basis)
+   ecp_basis_name(:)       = standardize_basis_name(ecp_basis)
+   ecp_auxil_basis_name(:) = standardize_basis_name(ecp_auxil_basis)
+   ecp_small_basis_name(:) = standardize_basis_name(ecp_small_basis)
 
    allocate(x_read(3,natom+nghost),zatom_read(natom+nghost))
    do iatom=1,natom+nghost
@@ -1021,8 +1015,8 @@ contains
 
 function interpret_quality(quality) result(quality_level)
  implicit none
- character(len=12),intent(inout) :: quality
- integer                         :: quality_level
+ character(len=12),intent(in) :: quality
+ integer                      :: quality_level
 !===== 
 
  select case(TRIM(quality))
@@ -1044,13 +1038,11 @@ end function interpret_quality
 
 function yesno(char3)
  implicit none
- character(len=3),intent(inout) :: char3
- logical                        :: yesno
+ character(len=3),intent(in) :: char3
+ logical                     :: yesno
 !=====
  
- char3 = capitalize(char3)
-
- select case(TRIM(char3))
+ select case(TRIM(capitalize(char3)))
  case('YES','Y')
    yesno=.TRUE.
  case('NO','N')
@@ -1060,6 +1052,32 @@ function yesno(char3)
  end select
  
 end function yesno
+
+
+function standardize_basis_name(basis_name_in) result(basis_name_out)
+ implicit none
+ character(len=*),intent(in)       :: basis_name_in
+ character(len=LEN(basis_name_in)) :: basis_name_out
+!=====
+ integer :: istring
+!=====
+
+ do istring=1,LEN(basis_name_in)
+
+   basis_name_out(istring:istring) = basis_name_in(istring:istring)
+
+   if( basis_name_in(istring:istring) == '*' ) then
+     basis_name_out(istring:istring) = 's'
+   endif
+
+   if( basis_name_in(istring:istring) == '+' ) then
+     basis_name_out(istring:istring) = 'p'
+   endif
+
+ enddo
+
+end function standardize_basis_name
+
 
 end subroutine read_inputfile_namelist
 

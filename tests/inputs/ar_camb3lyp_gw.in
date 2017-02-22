@@ -5,7 +5,7 @@
  nspin=1
 
  gaussian_type='cart'
- basis='6-31pGs'
+ basis='6-31+G*'
  auxil_basis='cc-pVTZ-RI'
  basis_path='../../basis/'
 
