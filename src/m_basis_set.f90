@@ -71,8 +71,8 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  implicit none
  character(len=4),intent(in)   :: gaussian_type
  character(len=100),intent(in) :: basis_path
- character(len=100),intent(in) :: basis_name
- character(len=100),intent(in) :: ecp_basis_name
+ character(len=100),intent(in) :: basis_name(natom_basis)
+ character(len=100),intent(in) :: ecp_basis_name(natom_basis)
  type(basis_set),intent(out)   :: basis
 !=====
  character(len=100)            :: basis_filename
@@ -94,7 +94,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  basis%gaussian_type = gaussian_type
  basis%ammax         = -1
 
- if(TRIM(basis_name)=='none') return
+ if(TRIM(basis_name(1))=='none') return
 
  !
  ! LOOP OVER ATOMS
@@ -104,12 +104,12 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
    if( nelement_ecp > 0 ) then 
      if( ANY( element_ecp(:) == basis_element(iatom) ) ) then
-       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(ecp_basis_name))
+       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(ecp_basis_name(iatom)))
      else
-       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
+       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name(iatom)))
      endif
    else
-     basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
+     basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name(iatom)))
    endif
   
    inquire(file=TRIM(basis_filename),exist=file_exists)
@@ -152,12 +152,12 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
    if( nelement_ecp > 0 ) then 
      if( ANY( element_ecp(:) == basis_element(iatom) ) ) then
-       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(ecp_basis_name))
+       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(ecp_basis_name(iatom)))
      else
-       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
+       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name(iatom)))
      endif
    else
-     basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
+     basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name(iatom)))
    endif
   
    open(newunit=basisfile,file=TRIM(basis_filename),status='old')
