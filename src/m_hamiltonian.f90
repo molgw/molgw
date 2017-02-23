@@ -901,7 +901,7 @@ subroutine setup_energy_density_matrix(nbf,nstate,c_matrix,occupation,energy,q_m
 !=====
 
  call start_clock(timing_density_matrix)
- write(stdout,'(1x,a)') 'Build density matrix'
+ write(stdout,'(1x,a)') 'Build energy-density matrix'
 
  q_matrix(:,:) = 0.0_dp
  do ispin=1,nspin
