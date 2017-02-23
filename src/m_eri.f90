@@ -49,7 +49,8 @@ module m_eri
 
  integer,protected                      :: nshell
  integer,protected                      :: nshell_auxil
- type(shell_type),protected,allocatable :: shell(:)
+! type(shell_type),protected,allocatable :: shell(:) FBFB debug
+ type(shell_type),public,allocatable :: shell(:)
  type(shell_type),protected,allocatable :: shell_auxil(:)
  integer,private,allocatable            :: shell_bf(:)
 
