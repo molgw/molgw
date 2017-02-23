@@ -45,14 +45,16 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  real(dp),allocatable    :: shell_gradB(:,:,:,:,:)
  real(dp),allocatable    :: shell_gradC(:,:,:,:,:)
  real(dp),allocatable    :: shell_gradD(:,:,:,:,:)
+#if 0
  !debug FBFB
  real(dp),allocatable    :: shellABCD(:,:,:,:)
  real(dp),allocatable    :: shellABCD1(:,:,:,:)
  real(dp),allocatable    :: shellABCD2(:,:,:,:)
  real(dp),allocatable    :: shellABCD3(:,:,:,:)
  real(dp),allocatable    :: shellABCD4(:,:,:,:)
- real(dp),parameter      :: dx=1.0e-4_dp
-  integer :: amtot
+ real(dp),parameter      :: dx=1.0e-5_dp
+ integer :: amtot
+#endif
 !=====
 
 #ifndef HAVE_LIBINT_ONEBODY
@@ -224,6 +226,9 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  enddo
 #endif
 
+
+#if 0
+ ! FBFB section to be removed
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
    lshell = index_shellpair(2,klshellpair)
@@ -249,26 +254,21 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
 
      write(*,*) ijshellpair, klshellpair
      call calculate_eri_4center_shell(basis,0.0_dp,ijshellpair,klshellpair,shellABCD)
-     write(100,*) shellABCD(:,:,:,:)
 
      shell(ishell)%x0(1) = shell(ishell)%x0(1) + dx
      call calculate_eri_4center_shell(basis,0.0_dp,ijshellpair,klshellpair,shellABCD1)
-     write(101,*) shellABCD1(:,:,:,:)
      shell(ishell)%x0(1) = shell(ishell)%x0(1) - dx
 
      shell(jshell)%x0(1) = shell(jshell)%x0(1) + dx
      call calculate_eri_4center_shell(basis,0.0_dp,ijshellpair,klshellpair,shellABCD2)
-     write(102,*) shellABCD2(:,:,:,:)
      shell(jshell)%x0(1) = shell(jshell)%x0(1) - dx
 
      shell(kshell)%x0(1) = shell(kshell)%x0(1) + dx
      call calculate_eri_4center_shell(basis,0.0_dp,ijshellpair,klshellpair,shellABCD3)
-     write(103,*) shellABCD3(:,:,:,:)
      shell(kshell)%x0(1) = shell(kshell)%x0(1) - dx
 
      shell(lshell)%x0(1) = shell(lshell)%x0(1) + dx
      call calculate_eri_4center_shell(basis,0.0_dp,ijshellpair,klshellpair,shellABCD4)
-     write(104,*) shellABCD4(:,:,:,:)
      shell(lshell)%x0(1) = shell(lshell)%x0(1) - dx
 
 
@@ -280,16 +280,15 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
      allocate(shell_gradD(ni,nj,nk,nl,3))
      call calculate_eri_4center_shell_grad(basis,0.0_dp,ijshellpair,klshellpair,&
                                            shell_gradA,shell_gradB,shell_gradC,shell_gradD)
-     write(201,*) shell_gradA(:,:,:,:,1)
-     write(202,*) shell_gradB(:,:,:,:,1)
-     write(203,*) shell_gradC(:,:,:,:,1)
-     write(204,*) shell_gradD(:,:,:,:,1)
-!     write(205,*) ANY( ABS(shell_gradA(:,:,:,:,1)+shell_gradB(:,:,:,:,1)+shell_gradC(:,:,:,:,1)+shell_gradD(:,:,:,:,1)) > 1.0e-14 )
+!     write(201,*) shell_gradA(:,:,:,:,1)
+!     write(202,*) shell_gradB(:,:,:,:,1)
+!     write(203,*) shell_gradC(:,:,:,:,1)
+!     write(204,*) shell_gradD(:,:,:,:,1)
 
-     write(301,*) ( shellABCD1(:,:,:,:)-shellABCD(:,:,:,:) ) / dx - shell_gradA(:,:,:,:,1)
-     write(302,*) ( shellABCD2(:,:,:,:)-shellABCD(:,:,:,:) ) / dx - shell_gradB(:,:,:,:,1)
-     write(303,*) ( shellABCD3(:,:,:,:)-shellABCD(:,:,:,:) ) / dx - shell_gradC(:,:,:,:,1)
-     write(304,*) ( shellABCD4(:,:,:,:)-shellABCD(:,:,:,:) ) / dx - shell_gradD(:,:,:,:,1)
+!     write(301,*) ( shellABCD1(:,:,:,:)-shellABCD(:,:,:,:) ) / dx - shell_gradA(:,:,:,:,1)
+!     write(302,*) ( shellABCD2(:,:,:,:)-shellABCD(:,:,:,:) ) / dx - shell_gradB(:,:,:,:,1)
+!     write(303,*) ( shellABCD3(:,:,:,:)-shellABCD(:,:,:,:) ) / dx - shell_gradC(:,:,:,:,1)
+!     write(304,*) ( shellABCD4(:,:,:,:)-shellABCD(:,:,:,:) ) / dx - shell_gradD(:,:,:,:,1)
 
      write(*,*) 'FBFB',MAXVAL( ABS( ( shellABCD1(:,:,:,:)-shellABCD(:,:,:,:) ) / dx - shell_gradA(:,:,:,:,1) ) )
      write(*,*) 'FBFB',MAXVAL( ABS( ( shellABCD2(:,:,:,:)-shellABCD(:,:,:,:) ) / dx - shell_gradB(:,:,:,:,1) ) )
@@ -314,19 +313,31 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
      endif
 
      if( MAXVAL( ABS( ( shellABCD3(:,:,:,:)-shellABCD(:,:,:,:) ) / dx - shell_gradC(:,:,:,:,1) ) ) > 0.0001 ) then
+       write(90,*) shell(ishell)%am,shell(jshell)%am,shell(kshell)%am,shell(lshell)%am, MAXVAL( ABS( ( shellABCD3(:,:,:,:)-shellABCD(:,:,:,:) ) / dx - shell_gradC(:,:,:,:,1) ) )
+!       if( shell(jshell)%am+shell(lshell)%am == 0 ) stop 'WEIRDO'
+     else
+       write(91,*) shell(ishell)%am,shell(jshell)%am,shell(kshell)%am,shell(lshell)%am, MAXVAL( ABS( ( shellABCD3(:,:,:,:)-shellABCD(:,:,:,:) ) / dx - shell_gradC(:,:,:,:,1) ) )
+!       if( shell(jshell)%am+shell(lshell)%am /= 0 ) stop 'WEIRDODO'
+     endif
+     if( MAXVAL( ABS( ( shellABCD3(:,:,:,:)-shellABCD(:,:,:,:) ) / dx - shell_gradC(:,:,:,:,1) ) ) > 0.0001 ) then
        write(*,*) '========= Problem with gradCx',amtot
        write(*,*) shell(ishell)%iatom,shell(ishell)%am
        write(*,*) shell(jshell)%iatom,shell(jshell)%am
        write(*,*) shell(kshell)%iatom,shell(kshell)%am
        write(*,*) shell(lshell)%iatom,shell(lshell)%am
        write(*,*) '============================='
-       write(*,*) shell_gradC(:,:,:,:,1)
-       write(*,*) shell_gradD(:,:,:,:,1)
-       write(*,*) ( shellABCD3(:,:,:,:)-shellABCD(:,:,:,:) ) / dx
-       write(*,*) ( shellABCD4(:,:,:,:)-shellABCD(:,:,:,:) ) / dx
+!       write(*,*) shell_gradC(:,:,:,:,1)
+!       write(*,*) shell_gradD(:,:,:,:,1)
+!       write(*,*) ( shellABCD3(:,:,:,:)-shellABCD(:,:,:,:) ) / dx
+!       write(*,*) ( shellABCD4(:,:,:,:)-shellABCD(:,:,:,:) ) / dx
      else
        if( amtot >= 2 ) then
-                 write(*,*) 'SURPRISED',amtot
+         write(*,*) '======= SURPRISED C',amtot
+         write(*,*) shell(ishell)%iatom,shell(ishell)%am
+         write(*,*) shell(jshell)%iatom,shell(jshell)%am
+         write(*,*) shell(kshell)%iatom,shell(kshell)%am
+         write(*,*) shell(lshell)%iatom,shell(lshell)%am
+         write(*,*) '============================='
        endif
      endif
 
@@ -339,7 +350,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
        write(*,*) '============================='
      else
        if( amtot >= 2 ) then
-         write(*,*) 'SURPRISED',amtot
+         write(*,*) 'SURPRISED D',amtot
        endif
      endif
 
@@ -356,6 +367,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
    enddo
  enddo
  call die('enough')
+#endif
 
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
@@ -627,7 +639,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
    enddo
  enddo
 
- ! debugging
+ ! is_core is an inefficient way to get the Kinetic+Nucleus hamiltonian
  if( calc_type%is_core ) force_har(:,:) = 0.0_dp
 
  write(stdout,'(/,1x,a)') ' ====== Hartree Forces ====== '
@@ -714,11 +726,6 @@ subroutine force_twobody_hartree_add(deriv,shell1,shell2,shell3,shell4,shell_gra
  case(4)
    iatom = shell(shell4)%iatom
  end select
-
-!FBFB write(*,*) 'S1',SIZE(shell_grad(:,:,:,:,:),DIM=1),shell(shell1)%iend-shell(shell1)%istart+1
-!FBFB write(*,*) 'S2',SIZE(shell_grad(:,:,:,:,:),DIM=2),shell(shell2)%iend-shell(shell2)%istart+1
-!FBFB write(*,*) 'S3',SIZE(shell_grad(:,:,:,:,:),DIM=3),shell(shell3)%iend-shell(shell3)%istart+1
-!FBFB write(*,*) 'S4',SIZE(shell_grad(:,:,:,:,:),DIM=4),shell(shell4)%iend-shell(shell4)%istart+1
 
  do lbf=shell(shell4)%istart,shell(shell4)%iend
    do kbf=shell(shell3)%istart,shell(shell3)%iend
