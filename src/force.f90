@@ -6,7 +6,7 @@
 ! the calculation of the forces (requires LIBINT with gradients)
 !
 !=========================================================================
-subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
+subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
  use m_definitions
  use m_warning
  use m_timing
@@ -24,8 +24,6 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(in)        :: energy(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(in)        :: hkin(basis%nbf,basis%nbf)
- real(dp),intent(in)        :: hnuc(basis%nbf,basis%nbf)
 !=====
  integer                 :: ijshellpair,klshellpair
  integer                 :: istate,ispin
@@ -120,6 +118,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix,hkin,hnuc)
  !
  ! Hartree-Fock energy forces
  ! 
+ write(stdout,'(1x,a)') 'Calculate the Hartee-Fock part with 4-center integrals gradient (LIBINT)'
  force_har(:,:) = 0.0_dp
  force_exx(:,:) = 0.0_dp
 

@@ -1,6 +1,8 @@
 &molgw
  move_nuclei='relax'
  scf='hf'
+ tolscf=1.0e-10
+ nscf=50
 
  basis='cc-pVDZ'
  basis_path='../../basis/'
