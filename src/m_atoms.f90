@@ -213,6 +213,19 @@ end subroutine destroy_atoms
 
 
 !=========================================================================
+subroutine relax_atoms(lbfgs_plan)
+ use m_lbfgs,only: lbfgs_state,lbfgs_execute
+ implicit none
+
+ type(lbfgs_state),intent(inout) :: lbfgs_plan
+!=====
+
+ call lbfgs_execute(lbfgs_plan)
+
+end subroutine relax_atoms
+
+
+!=========================================================================
 subroutine nucleus_nucleus_energy(energy)
  implicit none
  real(dp),intent(out) :: energy

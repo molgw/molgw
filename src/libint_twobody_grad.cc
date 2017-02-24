@@ -16,6 +16,7 @@
 
 /* Code */
 
+#ifdef HAVE_LIBINT_ONEBODY
 
 /* ==========================================================================                    
  *                           2-center integrals
@@ -581,5 +582,5 @@ void libint_4center_grad(int amA, int contrdepthA , double A [] , double alphaA 
 }
 }
 
-
+#endif
 /* ========================================================================== */

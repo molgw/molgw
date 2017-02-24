@@ -23,9 +23,21 @@
 extern "C" {
 void libint_init(int *ammax, bool *has_onebody, bool *has_gradient) {
  LIBINT2_PREFIXED_NAME(libint2_static_init)();
- *has_onebody  = LIBINT2_SUPPORT_ONEBODY ;
- *has_gradient = ( LIBINT2_DERIV_ERI_ORDER > 0 );
+
  *ammax = LIBINT2_MAX_AM ;
+
+#ifdef LIBINT2_SUPPORT_ONEBODY 
+ *has_onebody  = LIBINT2_SUPPORT_ONEBODY ;
+#else
+ *has_onebody  = false ;
+#endif
+
+#ifdef LIBINT2_DERIV_ERI_ORDER
+ *has_gradient = ( LIBINT2_DERIV_ERI_ORDER > 0 );
+#else
+ *has_gradient = false ;
+#endif
+
 }
 }
 

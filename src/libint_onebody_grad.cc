@@ -340,4 +340,4 @@ void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA 
 }
 
 #endif
-
+/* ========================================================================== */

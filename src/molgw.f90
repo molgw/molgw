@@ -37,6 +37,7 @@ program molgw
  use m_ecp
  use m_gaussian
  use m_basis_set
+ use m_lbfgs
  use m_eri
  use m_eri_calculate
  use m_eri_ao_mo
@@ -54,6 +55,7 @@ program molgw
  type(basis_set)         :: basis
  type(basis_set)         :: auxil_basis
  type(spectral_function) :: wpol
+ type(lbfgs_state)       :: lbfgs_plan
  integer                 :: restart_type
  integer                 :: nstate
  logical                 :: is_restart,is_big_restart,is_basis_restart
@@ -176,6 +178,11 @@ program molgw
  call clean_allocate('Nucleus operator V',hamiltonian_nucleus,m_ham,n_ham)
  call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin) ! Never distributed
 
+ !
+ ! Prepare relaxation with LBFGS
+ if( move_nuclei == 'relax' ) then
+   call lbfgs_init(lbfgs_plan,3*natom,5)
+ endif
 
  !
  ! Build up the overlap matrix S
@@ -392,20 +399,21 @@ program molgw
  endif
 
 
+ !
+ ! If requested, evaluate the forces
+ if( move_nuclei == 'relax' ) then
+   call calculate_force(basis,nstate,occupation,energy,c_matrix)
+   call relax_atoms(lbfgs_plan)
+   call lbfgs_destroy(lbfgs_plan)
+ endif
+
 
  !
  !
  ! Part 3 / 3 : Post-processings
  !
  !
- 
  call start_clock(timing_postscf)
-
- !
- ! If requested, evaluate the forces
- if( move_nuclei == 'relax' ) then
-   call calculate_force(basis,nstate,occupation,energy,c_matrix)
- endif
 
 
  if( print_multipole_ ) then
