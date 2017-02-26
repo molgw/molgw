@@ -49,7 +49,7 @@ subroutine lbfgs_init(lbfgs_plan,ndim,history_record,diag_guess)
  type(lbfgs_state),intent(inout) :: lbfgs_plan
  integer,intent(in)              :: ndim
  integer,intent(in)              :: history_record
- real(dp),optional,intent(in)    :: diag_guess(ndim)
+ real(dp),optional,intent(in)    :: diag_guess
 !===== 
  integer :: nwork
 !===== 
@@ -69,7 +69,7 @@ subroutine lbfgs_init(lbfgs_plan,ndim,history_record,diag_guess)
  lbfgs_plan%line_stp    = 1.0_dp
 
  if( PRESENT(diag_guess) ) then
-   lbfgs_plan%diag(:) = diag_guess(:)
+   lbfgs_plan%diag(:) = diag_guess
  else
    lbfgs_plan%diag(:) = 1.0_dp
  endif

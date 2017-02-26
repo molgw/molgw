@@ -86,6 +86,8 @@ module m_inputparam
  logical,protected                :: is_virtual_fno
  integer,protected                :: nexcitation
  integer,protected                :: nspin
+ integer,protected                :: nstep
+ real(dp),protected               :: tolforce
  real(dp),protected               :: spin_fact
  integer,protected                :: nscf
  real(dp),protected               :: alpha_mixing
@@ -632,20 +634,8 @@ subroutine summary_input(grid_quality,integral_quality)
  write(stdout,'(a30,l3)')   ' - RESTART files       ',print_restart_
  write(stdout,'(a30,l3)')   ' - big RESTART file    ',print_bigrestart_
 
+ call output_positions()
 
- write(stdout,*)
- write(stdout,*) '================================'
- write(stdout,*) '      Atom list'
- write(stdout,*) '                       bohr                                        angstrom'
- do iatom=1,natom
-   write(stdout,'(2x,a2,3(1x,f12.6),6x,3(1x,f12.6))') element_name(REAL(basis_element(natom),dp)),x(:,iatom),x(:,iatom)*bohr_A
- enddo
- if( nghost>0) write(stdout,'(a)') ' == ghost list'
- do ighost=1,nghost
-   write(stdout,'(2x,a2,3(1x,f12.6),6x,3(1x,f12.6))') element_name(REAL(basis_element(natom+ighost),dp)),x(:,natom+ighost),x(:,natom+ighost)*bohr_A
- enddo
-
- write(stdout,*) '================================'
  write(stdout,'(a,i5)') ' Number of bonds ',nbond
  if(inversion) then
    write(stdout,*) 'Molecule has inversion symmetry'
@@ -965,6 +955,12 @@ subroutine read_inputfile_namelist()
    call die('Need to compile MOLGW with HAVE_LIBINT_ONEBODY to have move_nuclei different from no')
  endif
 #endif
+
+ !
+ ! If no nuclei motion is requested, then override nstep and set it to 1
+ if( move_nuclei == 'no' ) then
+   nstep = 1
+ endif
 
  has_auxil_basis = TRIM(auxil_basis_name(1)) /= '' .OR. TRIM(ecp_auxil_basis_name(1)) /= ''
  has_small_basis = TRIM(small_basis_name(1)) /= '' .OR. TRIM(ecp_small_basis_name(1)) /= ''

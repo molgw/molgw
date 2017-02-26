@@ -391,8 +391,13 @@ GW HOMO energy            , -12.165369         , 0 , 1.0e-4
 GW LUMO energy            ,   0.871728         , 0 , 1.0e-4
 
 h2_relax.in               , H2 forces without RI
-SCF Total Energy          ,      -0.9219085941 , 0 , 1.0e-7
-atom    1                 ,       0.0715246257 , 0 , 1.0e-6
-atom    2                 ,      -0.0715246257 , 0 , 1.0e-6
-
+SCF Total Energy          ,      -1.1313335905 , 0 , 1.0e-7
+H-F force atom      1     ,      0.5090922298  , 0 , 1.0e-6
+H-F force atom      2     ,     -0.5090922298  , 0 , 1.0e-6
+Pulay force atom    1     ,     -0.5090885778  , 0 , 1.0e-6
+Pulay force atom    2     ,      0.5090885778  , 0 , 1.0e-6
+Total force atom    1     ,      0.0000036520  , 0 , 1.0e-6
+Total force atom    2     ,     -0.0000036520  , 0 , 1.0e-6
+atom    1   H             ,      -0.692180     , 0 , 1.0e-4
+atom    2   H             ,       0.692180     , 0 , 1.0e-4
 

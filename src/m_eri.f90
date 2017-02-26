@@ -49,8 +49,7 @@ module m_eri
 
  integer,protected                      :: nshell
  integer,protected                      :: nshell_auxil
-! type(shell_type),protected,allocatable :: shell(:) FBFB debug
- type(shell_type),public,allocatable :: shell(:)
+ type(shell_type),protected,allocatable :: shell(:)
  type(shell_type),protected,allocatable :: shell_auxil(:)
  integer,private,allocatable            :: shell_bf(:)
 
@@ -707,9 +706,22 @@ subroutine destroy_eri_3center()
  implicit none
 !=====
 
+ if(ALLOCATED(iproc_ibf_auxil)) then
+   deallocate(iproc_ibf_auxil)
+ endif
+ if(ALLOCATED(nbf_local_iproc)) then
+   deallocate(nbf_local_iproc)
+ endif
+ if(ALLOCATED(ibf_auxil_g)) then
+   deallocate(ibf_auxil_g)
+ endif
+ if(ALLOCATED(ibf_auxil_l)) then
+   deallocate(ibf_auxil_l)
+ endif
  if(ALLOCATED(eri_3center)) then
    call clean_deallocate('3-center integrals',eri_3center)
  endif
+
 #ifdef SCASCA
  if(ALLOCATED(eri_3center_sca)) then
    call clean_deallocate('3-center integrals SCALAPACK',eri_3center_sca)
@@ -724,6 +736,18 @@ subroutine destroy_eri_3center_lr()
  implicit none
 !=====
 
+ if(ALLOCATED(iproc_ibf_auxil_lr)) then
+   deallocate(iproc_ibf_auxil_lr)
+ endif
+ if(ALLOCATED(nbf_local_iproc_lr)) then
+   deallocate(nbf_local_iproc_lr)
+ endif
+ if(ALLOCATED(ibf_auxil_g_lr)) then
+   deallocate(ibf_auxil_g_lr)
+ endif
+ if(ALLOCATED(ibf_auxil_l_lr)) then
+   deallocate(ibf_auxil_l_lr)
+ endif
  if(ALLOCATED(eri_3center_lr)) then
    call clean_deallocate('3-center LR integrals',eri_3center_lr)
  endif

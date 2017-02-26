@@ -400,17 +400,17 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
  write(stdout,'(/,1x,a)') ' ====== Hellman-Feynman Forces ====== '
  write(*,'(1x,a,22x,a,19x,a,19x,a)') 'Atoms','Fx','Fy','Fz'
  do iatom=1,natom
-   write(*,'(3x,a,i4,a,2x,3(2x,f19.10))') 'atom ',iatom,':',force_hl(:,iatom)
+   write(*,'(3x,a,i4,a,2x,3(2x,f19.10))') 'H-F force atom   ',iatom,':',force_hl(:,iatom)
  enddo
  write(stdout,'(/,1x,a)') ' ====== Pulay Forces ====== '
  write(*,'(1x,a,22x,a,19x,a,19x,a)') 'Atoms','Fx','Fy','Fz'
  do iatom=1,natom
-   write(*,'(3x,a,i4,a,2x,3(2x,f19.10))') 'atom ',iatom,':',force(:,iatom) - force_hl(:,iatom)
+   write(*,'(3x,a,i4,a,2x,3(2x,f19.10))') 'Pulay force atom ',iatom,':',force(:,iatom) - force_hl(:,iatom)
  enddo
  write(stdout,'(/,1x,a)') ' ====== Total Forces ====== '
  write(*,'(1x,a,22x,a,19x,a,19x,a)') 'Atoms','Fx','Fy','Fz'
  do iatom=1,natom
-   write(*,'(3x,a,i4,a,2x,3(2x,f19.10))') 'atom ',iatom,':',force(:,iatom)
+   write(*,'(3x,a,i4,a,2x,3(2x,f19.10))') 'Total force atom ',iatom,':',force(:,iatom)
  enddo
  write(stdout,'(1x,a,/)') ' ==================== '
 

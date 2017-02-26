@@ -213,16 +213,60 @@ end subroutine destroy_atoms
 
 
 !=========================================================================
-subroutine relax_atoms(lbfgs_plan)
- use m_lbfgs,only: lbfgs_state,lbfgs_execute
+subroutine relax_atoms(lbfgs_plan,etotal)
+ use m_lbfgs
  implicit none
 
  type(lbfgs_state),intent(inout) :: lbfgs_plan
+ real(dp),intent(in)             :: etotal
+!=====
+ integer  :: info,iatom,idir
+ real(dp) :: xnew(3,natom)
 !=====
 
- call lbfgs_execute(lbfgs_plan)
+ xnew(:,:) = x(:,:)
+
+ info = lbfgs_execute(lbfgs_plan,xnew,etotal,-force)
+
+ ! Do not move the atoms by more than 0.20 bohr
+ do iatom=1,natom
+   do idir=1,3
+     if( ABS( xnew(idir,iatom) - x(idir,iatom) ) > 0.20_dp ) then
+       xnew(idir,iatom) = x(idir,iatom) + SIGN( 0.20_dp , xnew(idir,iatom) - x(idir,iatom) )
+     endif
+   enddo
+ enddo
+
+ x(:,:) = xnew(:,:)
 
 end subroutine relax_atoms
+
+
+!=========================================================================
+subroutine output_positions()
+ implicit none
+!=====
+ integer :: ighost,iatom
+!=====
+
+ write(stdout,'(/,1x,a)') '================================'
+ write(stdout,*) '      Atom list'
+ write(stdout,*) '                       bohr                                        angstrom'
+ do iatom=1,natom
+   write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',iatom, &
+                                                           element_name(REAL(basis_element(natom),dp)),': ',  &
+                                                           x(:,iatom),x(:,iatom)*bohr_A
+ enddo
+ if( nghost>0) write(stdout,'(a)') ' == ghost list'
+ do ighost=1,nghost
+   write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'ghost ',iatom, &
+                                           element_name(REAL(basis_element(natom+ighost),dp)),': ',  &
+                                           x(:,natom+ighost),x(:,natom+ighost)*bohr_A
+ enddo
+ write(stdout,'(1x,a,/)') '================================'
+
+
+end subroutine output_positions
 
 
 !=========================================================================
