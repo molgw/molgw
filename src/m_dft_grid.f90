@@ -13,6 +13,7 @@ module m_dft_grid
  use m_mpi
  use m_memory
  use m_timing
+ use m_cart_to_pure
  use m_inputparam,only: partition_scheme
  
  !
@@ -550,12 +551,14 @@ subroutine calculate_basis_functions_r(basis,rr,basis_function_r)
  real(dp),intent(in)        :: rr(3)
  real(dp),intent(out)       :: basis_function_r(basis%nbf)
 !=====
+ integer              :: gt
  integer              :: ibf,ibf_cart,i_cart
  integer              :: ni,ni_cart,li
  real(dp),allocatable :: basis_function_r_cart(:)
 !=====
 
 
+ gt = get_gaussian_type_tag(basis%gaussian_type)
  ibf_cart = 1
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
@@ -568,7 +571,7 @@ subroutine calculate_basis_functions_r(basis,rr,basis_function_r)
    do i_cart=1,ni_cart
      basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
    enddo
-   basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li)%matrix(:,:) )
+   basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
    deallocate(basis_function_r_cart)
 
    ibf      = ibf      + ni
@@ -588,12 +591,13 @@ subroutine calculate_basis_functions_gradr(basis,rr,basis_function_gradr)
  real(dp),intent(in)        :: rr(3)
  real(dp),intent(out)       :: basis_function_gradr(3,basis%nbf)
 !=====
+ integer              :: gt
  integer              :: ibf,ibf_cart,i_cart
  integer              :: ni,ni_cart,li
  real(dp),allocatable :: basis_function_gradr_cart(:,:)
 !=====
 
-
+ gt = get_gaussian_type_tag(basis%gaussian_type)
  ibf_cart = 1
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
@@ -607,7 +611,7 @@ subroutine calculate_basis_functions_gradr(basis,rr,basis_function_gradr)
      basis_function_gradr_cart(:,i_cart) = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr)
    enddo
 
-   basis_function_gradr(:,ibf:ibf+ni-1) = MATMUL( basis_function_gradr_cart(:,:) , cart_to_pure(li)%matrix(:,:) )
+   basis_function_gradr(:,ibf:ibf+ni-1) = MATMUL( basis_function_gradr_cart(:,:) , cart_to_pure(li,gt)%matrix(:,:) )
 
    deallocate(basis_function_gradr_cart)
 
@@ -629,12 +633,14 @@ subroutine calculate_basis_functions_laplr(basis,rr,basis_function_gradr,basis_f
  real(dp),intent(out)       :: basis_function_gradr(3,basis%nbf)
  real(dp),intent(out)       :: basis_function_laplr(3,basis%nbf)
 !=====
+ integer              :: gt
  integer              :: ibf,ibf_cart,i_cart
  integer              :: ni,ni_cart,li
  real(dp),allocatable :: basis_function_gradr_cart(:,:)
  real(dp),allocatable :: basis_function_laplr_cart(:,:)
 !=====
 
+ gt = get_gaussian_type_tag(basis%gaussian_type)
 
  ibf_cart = 1
  ibf      = 1
@@ -653,8 +659,8 @@ subroutine calculate_basis_functions_laplr(basis,rr,basis_function_gradr,basis_f
 
    enddo
 
-   basis_function_gradr(:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_cart(:,:) , cart_to_pure(li)%matrix(:,:) )
-   basis_function_laplr(:,ibf:ibf+ni-1) = MATMUL(  basis_function_laplr_cart(:,:) , cart_to_pure(li)%matrix(:,:) )
+   basis_function_gradr(:,ibf:ibf+ni-1) = MATMUL(  basis_function_gradr_cart(:,:) , cart_to_pure(li,gt)%matrix(:,:) )
+   basis_function_laplr(:,ibf:ibf+ni-1) = MATMUL(  basis_function_laplr_cart(:,:) , cart_to_pure(li,gt)%matrix(:,:) )
    deallocate(basis_function_gradr_cart,basis_function_laplr_cart)
 
    ibf      = ibf      + ni

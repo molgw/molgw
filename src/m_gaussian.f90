@@ -10,6 +10,7 @@ module m_gaussian
  use m_definitions
  use m_mpi
  use m_gos
+ use m_cart_to_pure
 
  ! type containing all the information for one unnormalized cartesian gaussian
  ! x**nx * y**ny * z**nz * exp( - alpha * ( x**2 + y**2 + z**2 ) )
@@ -18,13 +19,15 @@ module m_gaussian
    character(len=1) :: amc
    integer          :: nx,ny,nz
    real(dp)         :: alpha
-   real(dp)         :: x0(3)         ! center of the gaussian
-   real(dp)         :: norm_factor   ! normalization factor for the gaussian squared
+   real(dp)         :: x0(3)                ! center of the gaussian
+   real(dp)         :: norm_factor          ! normalization factor for the gaussian squared
+   real(dp)         :: common_norm_factor   ! normalization factor for the gaussian squared
+                                            ! without the nx,ny,nz dependence
  end type gaussian
 
  interface
    subroutine boys_function_c(fnt,n,t) BIND(C,NAME='boys_function_c')
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
+     import :: C_INT,C_DOUBLE
      integer(C_INT),value       :: n
      real(C_DOUBLE),value       :: t
      real(C_DOUBLE),intent(out) :: fnt(0:n)
@@ -51,9 +54,11 @@ subroutine init_gaussian_general(nx,ny,nz,alpha,x0,ga)
 
  ga%alpha = alpha
 
- ga%norm_factor = ( 2.0_dp / pi )**0.75_dp &
-                 * 2.0_dp**ga%am * ga%alpha**( 0.25_dp * ( 2.0_dp*ga%am + 3.0_dp ) ) &
-                 / SQRT( REAL( double_factorial(2*nx-1) * double_factorial(2*ny-1) * double_factorial(2*nz-1) , dp ) )
+ ga%common_norm_factor = ( 2.0_dp / pi )**0.75_dp &
+                 * 2.0_dp**ga%am * ga%alpha**( 0.25_dp * ( 2.0_dp*ga%am + 3.0_dp ) ) 
+                 
+ ga%norm_factor = ga%common_norm_factor &
+                   / SQRT( REAL( double_factorial(2*nx-1) * double_factorial(2*ny-1) * double_factorial(2*nz-1) , dp ) )
 
  ga%x0(:) = x0(:)
 
@@ -215,45 +220,6 @@ subroutine product_gaussian(ga,gb,gprod)
  call init_gaussian_general(ga%nx+gb%nx,ga%ny+gb%ny,ga%nz+gb%nz,ga%alpha+gb%alpha,ga%x0,gprod)
 
 end subroutine product_gaussian
-
-
-!=========================================================================
-subroutine overlap(ga,gb,s_ab)
- use m_tools
- implicit none
- type(gaussian),intent(in) :: ga,gb
- real(dp),intent(out) :: s_ab
-!=====
- type(gaussian) :: gprod
-!=====
-
- if( ANY( ABS(ga%x0(:) - gb%x0(:)) > 1.d-6 ) ) call die('different positions not implemented')
-
- call product_gaussian(ga,gb,gprod)
-
- s_ab = integral_1d(gprod%alpha,gprod%nx) &
-       *integral_1d(gprod%alpha,gprod%ny) &
-       *integral_1d(gprod%alpha,gprod%nz)
-
-contains
-
-  function integral_1d(alpha,nx)
-   real(dp),intent(in) :: alpha
-   integer,intent(in) :: nx
-   real(dp) :: integral_1d
-  
-   !
-   ! formula obtained from Wolfram online integrator!
-   !
-   if( mod(nx,2) == 1 ) then
-     integral_1d=0.0_dp
-   else
-     integral_1d = alpha**( -0.5_dp * ( nx + 1 ) ) * gamma_function( 0.5_dp * ( nx + 1 ) )
-   endif
-  
-  end function integral_1d
-
-end subroutine overlap
 
 
 !=========================================================================
@@ -699,40 +665,6 @@ subroutine nucleus_recurrence(zatom,c,ga,gb,v_ab)
 
 
 end subroutine nucleus_recurrence
-
-
-!=========================================================================
-subroutine numerical_overlap(ga,gb,s_ab)
- implicit none
- type(gaussian),intent(in) :: ga,gb
- real(dp),intent(out)      :: s_ab
-!=====
- integer,parameter  :: nx=100
- real(dp),parameter :: rmax=10.
- real(dp)           :: dx,rtmp,x(3)
- integer            :: ix,iy,iz
-!=====
-
- dx = rmax/REAL(nx,dp)
-
- rtmp=0.0_dp
- do ix=1,nx
-   x(1) = ( REAL(ix,dp)/REAL(nx,dp) - 0.5 ) * rmax
-   do iy=1,nx
-     x(2) = ( REAL(iy,dp)/REAL(nx,dp) - 0.5 ) * rmax
-     do iz=1,nx
-       x(3) = ( REAL(iz,dp)/REAL(nx,dp) - 0.5 ) * rmax
-  
-       rtmp = rtmp + eval_gaussian(ga,x) * eval_gaussian(gb,x) * dx**3
-  
-     enddo
-   enddo
- enddo
-
-! write(stdout,*) 'check S_ab',rtmp
- s_ab = rtmp
-
-end subroutine numerical_overlap
 
 
 !=========================================================================

@@ -23,6 +23,18 @@ module m_atoms
  integer,allocatable,protected  :: basis_element(:)
 
  real(dp),allocatable,protected :: x(:,:)
+ real(dp),allocatable,protected :: vel(:,:)
+ real(dp),allocatable,public    :: force(:,:)
+
+ ! See we keep these arrays in the long-term
+ real(dp),allocatable,public    :: force_nuc_nuc(:,:)
+ real(dp),allocatable,public    :: force_kin(:,:)
+ real(dp),allocatable,public    :: force_nuc(:,:)
+ real(dp),allocatable,public    :: force_har(:,:)
+ real(dp),allocatable,public    :: force_exx(:,:)
+ real(dp),allocatable,public    :: force_exc(:,:)
+ real(dp),allocatable,public    :: force_ovp(:,:)
+ real(dp),allocatable,public    :: force_hl(:,:)
 
  logical,protected              :: inversion=.TRUE.
  logical,protected              :: linear=.TRUE.
@@ -35,11 +47,12 @@ contains
 
 
 !=========================================================================
-subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read)
+subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read,calculate_forces)
  use m_tools,only: cross_product
  implicit none
  integer,intent(in)  :: natom_read,nghost_read
  real(dp),intent(in) :: zatom_read(natom_read+nghost_read),x_read(3,natom_read+nghost_read)
+ logical,intent(in)  :: calculate_forces
 !=====
  integer  :: iatom,jatom
  real(dp) :: x21(3),x31(3)
@@ -53,6 +66,18 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read)
  allocate(zatom(natom_basis))
  allocate(basis_element(natom_basis))
  allocate(x(3,natom_basis))
+ ! For relaxation or dynamics only 
+ if( calculate_forces ) then
+   allocate(force(3,natom))
+   allocate(force_nuc_nuc(3,natom))
+   allocate(force_kin(3,natom))
+   allocate(force_nuc(3,natom))
+   allocate(force_har(3,natom))
+   allocate(force_exx(3,natom))
+   allocate(force_exc(3,natom))
+   allocate(force_ovp(3,natom))
+   allocate(force_hl(3,natom))
+ endif
 
  zatom(1:natom)              = zatom_read(1:natom)
  ! Ghost atoms do not have a positive nucleus
@@ -69,7 +94,7 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read)
      if( NORM2( x(:,iatom)-x(:,jatom) ) < 0.2 ) then
        write(stdout,*) 'Atoms',iatom,jatom
        write(stdout,*) 'are closer than 0.2 bohr'
-       call die('atoms too close')
+       call issue_warning('Some atoms are too close')
      endif
    enddo
  enddo
@@ -171,11 +196,77 @@ subroutine destroy_atoms()
  implicit none
 !=====
 
- if(ALLOCATED(zatom)) deallocate(zatom)
+ if(ALLOCATED(zatom))         deallocate(zatom)
  if(ALLOCATED(basis_element)) deallocate(basis_element)
- if(ALLOCATED(x)) deallocate(x)
+ if(ALLOCATED(x))             deallocate(x)
+ if(ALLOCATED(force))         deallocate(force)
+ if(ALLOCATED(force_nuc_nuc)) deallocate(force_nuc_nuc)
+ if(ALLOCATED(force_kin))     deallocate(force_kin)
+ if(ALLOCATED(force_nuc))     deallocate(force_nuc)
+ if(ALLOCATED(force_har))     deallocate(force_har)
+ if(ALLOCATED(force_exx))     deallocate(force_exx)
+ if(ALLOCATED(force_exc))     deallocate(force_exc)
+ if(ALLOCATED(force_ovp))     deallocate(force_ovp)
+ if(ALLOCATED(force_hl))      deallocate(force_hl)
 
 end subroutine destroy_atoms
+
+
+!=========================================================================
+subroutine relax_atoms(lbfgs_plan,etotal)
+ use m_lbfgs
+ implicit none
+
+ type(lbfgs_state),intent(inout) :: lbfgs_plan
+ real(dp),intent(in)             :: etotal
+!=====
+ integer  :: info,iatom,idir
+ real(dp) :: xnew(3,natom)
+!=====
+
+ xnew(:,:) = x(:,:)
+
+ info = lbfgs_execute(lbfgs_plan,xnew,etotal,-force)
+
+ ! Do not move the atoms by more than 0.20 bohr
+ do iatom=1,natom
+   do idir=1,3
+     if( ABS( xnew(idir,iatom) - x(idir,iatom) ) > 0.20_dp ) then
+       xnew(idir,iatom) = x(idir,iatom) + SIGN( 0.20_dp , xnew(idir,iatom) - x(idir,iatom) )
+     endif
+   enddo
+ enddo
+
+ x(:,:) = xnew(:,:)
+
+end subroutine relax_atoms
+
+
+!=========================================================================
+subroutine output_positions()
+ implicit none
+!=====
+ integer :: ighost,iatom
+!=====
+
+ write(stdout,'(/,1x,a)') '================================'
+ write(stdout,*) '      Atom list'
+ write(stdout,*) '                       bohr                                        angstrom'
+ do iatom=1,natom
+   write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',iatom, &
+                                                           element_name(REAL(basis_element(natom),dp)),': ',  &
+                                                           x(:,iatom),x(:,iatom)*bohr_A
+ enddo
+ if( nghost>0) write(stdout,'(a)') ' == ghost list'
+ do ighost=1,nghost
+   write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'ghost ',iatom, &
+                                           element_name(REAL(basis_element(natom+ighost),dp)),': ',  &
+                                           x(:,natom+ighost),x(:,natom+ighost)*bohr_A
+ enddo
+ write(stdout,'(1x,a,/)') '================================'
+
+
+end subroutine output_positions
 
 
 !=========================================================================
@@ -194,6 +285,26 @@ subroutine nucleus_nucleus_energy(energy)
  enddo
 
 end subroutine nucleus_nucleus_energy
+
+
+!=========================================================================
+subroutine nucleus_nucleus_force()
+ implicit none
+!=====
+ integer              :: iatom,jatom
+!=====
+
+ force_nuc_nuc(:,:) = 0.0_dp
+ do iatom=1,natom
+   do jatom=1,natom
+     if( iatom == jatom ) cycle
+     force_nuc_nuc(:,iatom) = force_nuc_nuc(:,iatom) &
+                               + zatom(iatom) * zatom(jatom) / ( SUM( (x(:,iatom) - x(:,jatom))**2) )**1.50_dp &
+                                  * ( x(:,iatom) - x(:,jatom) )
+   enddo
+ enddo
+
+end subroutine nucleus_nucleus_force
 
 
 !=========================================================================

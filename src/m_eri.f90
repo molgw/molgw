@@ -7,12 +7,13 @@
 !
 !=========================================================================
 module m_eri
- use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
  use m_definitions
  use m_mpi
  use m_memory
  use m_basis_set
  use m_timing
+ use m_cart_to_pure
+ use m_libint_tools
 
 
  real(dp),parameter,public :: TOO_LOW_EIGENVAL=1.0e-6_dp
@@ -23,10 +24,12 @@ module m_eri
 
  real(dp),private           :: TOL_INT
 
- real(prec_eri),public,allocatable :: eri_4center(:)
- real(prec_eri),public,allocatable :: eri_4center_lr(:)
- real(prec_eri),public,allocatable :: eri_3center(:,:)
- real(prec_eri),public,allocatable :: eri_3center_lr(:,:)
+
+ real(dp),public,allocatable :: eri_4center(:)
+ real(dp),public,allocatable :: eri_4center_lr(:)
+ real(dp),public,allocatable :: eri_3center(:,:)
+ real(dp),public,allocatable :: eri_3center_lr(:,:)
+
 
  logical,protected,allocatable      :: negligible_shellpair(:,:)
  integer,protected,allocatable      :: index_pair_1d(:)
@@ -40,6 +43,7 @@ module m_eri
    real(dp),allocatable :: alpha(:)
    real(dp),allocatable :: coeff(:)
    real(dp)             :: x0(3)
+   integer              :: iatom
    integer              :: istart,iend   ! index of the shell's basis functions in the basis set
  end type shell_type
 
@@ -48,7 +52,6 @@ module m_eri
  type(shell_type),protected,allocatable :: shell(:)
  type(shell_type),protected,allocatable :: shell_auxil(:)
  integer,private,allocatable            :: shell_bf(:)
-! integer,private,allocatable            :: index_in_shell_bf(:)
 
 
  integer,private   :: nbf_eri         ! local copy of nbf
@@ -75,27 +78,6 @@ module m_eri
  integer,allocatable,protected :: ibf_auxil_g_lr(:)
  integer,allocatable,protected :: ibf_auxil_l_lr(:)
  integer,allocatable,protected :: nbf_local_iproc_lr(:)
-
-
- interface
-   function eval_contr_integral(am1,am2,am3,am4, &
-                                ng1,ng2,ng3,ng4, &
-                                coeff1,coeff2,coeff3,coeff4,&
-                                alpha1,alpha2,alpha3,alpha4,&
-                                x01,x02,x03,x04,&
-                                rcut, &
-                                int_shell) bind(C,name='eval_contr_integral')
-     use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
-     integer(C_INT) :: eval_contr_integral
-     integer(C_INT) :: am1,am2,am3,am4
-     integer(C_INT) :: ng1,ng2,ng3,ng4
-     real(C_DOUBLE) :: coeff1(1),coeff2(1),coeff3(1),coeff4(1)
-     real(C_DOUBLE) :: alpha1(1),alpha2(1),alpha3(1),alpha4(1)
-     real(C_DOUBLE) :: x01(1),x02(1),x03(1),x04(1)
-     real(C_DOUBLE) :: rcut
-     real(C_DOUBLE) :: int_shell(1)
-   end function eval_contr_integral
- end interface
 
 
 contains
@@ -151,7 +133,6 @@ subroutine deallocate_eri_4center()
 !=====
 
  if(ALLOCATED(eri_4center)) then
-   write(stdout,'(/,a)')     ' Deallocate ERI buffer'
    call clean_deallocate('4-center integrals',eri_4center)
  endif
 
@@ -164,7 +145,6 @@ subroutine deallocate_eri_4center_lr()
 !=====
 
  if(ALLOCATED(eri_4center_lr)) then
-   write(stdout,'(/,a)')     ' Deallocate LR ERI buffer'
    call clean_deallocate('4-center LR integrals',eri_4center_lr)
  endif
 
@@ -179,11 +159,9 @@ subroutine deallocate_eri()
 !=====
 
  if(ALLOCATED(eri_4center)) then
-   write(stdout,'(/,a)')     ' Deallocate ERI buffer'
    call clean_deallocate('4-center integrals',eri_4center)
  endif
  if(ALLOCATED(eri_4center_lr)) then
-   write(stdout,'(/,a)')     ' Deallocate LR ERI buffer'
    call clean_deallocate('4-center LR integrals',eri_4center_lr)
  endif
  if(ALLOCATED(negligible_shellpair))   deallocate(negligible_shellpair)
@@ -199,7 +177,6 @@ subroutine deallocate_eri()
  enddo
  if(ALLOCATED(shell))                 deallocate(shell)
  if(ALLOCATED(shell_bf))              deallocate(shell_bf)
-! if(ALLOCATED(index_in_shell_bf))     deallocate(index_in_shell_bf)
 
 
 end subroutine deallocate_eri
@@ -375,6 +352,8 @@ subroutine setup_shell_list(basis)
        shell(ishell)%coeff(:) = basis%bf(ibf)%coeff(:) &
                  * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**shell(ishell)%am * shell(ishell)%alpha(:)**( 0.25_dp * ( 2.0_dp*shell(ishell)%am + 3.0_dp ) )
 
+       shell(ishell)%iatom = basis%bf(ibf)%iatom
+
        jbf = jbf + 1
        shell(ishell)%istart = jbf
        jbf = jbf + number_basis_function_am( basis%gaussian_type , shell(ishell)%am ) - 1
@@ -398,10 +377,6 @@ subroutine setup_shell_list(basis)
    jbf = kbf + 1
    ibf = ibf + number_basis_function_am( 'CART' , basis%bf(ibf)%am )
  enddo
-! allocate(index_in_shell_bf(basis%nbf))
-! do ibf=1,basis%nbf
-!   index_in_shell_bf(ibf) = basis%bff(ibf)%index_in_shell
-! enddo
 
 
 end subroutine setup_shell_list
@@ -437,6 +412,8 @@ subroutine setup_shell_list_auxil(auxil_basis)
        ! Include here the normalization part that does not depend on (nx,ny,nz)
        shell_auxil(ishell)%coeff(:) = auxil_basis%bf(ibf)%coeff(:) &
                  * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**shell_auxil(ishell)%am * shell_auxil(ishell)%alpha(:)**( 0.25_dp * ( 2.0_dp*shell_auxil(ishell)%am + 3.0_dp ) )
+
+       shell_auxil(ishell)%iatom = auxil_basis%bf(ibf)%iatom
 
        jbf = jbf + 1
        shell_auxil(ishell)%istart = jbf
@@ -537,17 +514,12 @@ subroutine identify_negligible_shellpair(basis)
  type(basis_set),intent(in)   :: basis
 !=====
  integer                      :: info,ip
- integer                      :: iibf
- integer                      :: ibf,jbf,kbf,lbf
+ integer                      :: ibf,jbf
  integer                      :: n1c,n2c
  integer                      :: ni,nj
  integer                      :: ami,amj
  integer                      :: ishell,jshell
- integer                      :: ig1,ig2,ig3,ig4
- real(dp)                     :: zeta_12,rho,rho1,f0t(0:0),tt
- real(dp)                     :: p(3),q(3)
- real(dp),allocatable         :: integrals_tmp(:,:,:,:)
- real(dp),allocatable         :: integrals_cart(:,:,:,:)
+ real(dp),allocatable         :: integrals(:,:,:,:)
  real(dp)                     :: workload(nproc_world)
  integer                      :: shell_proc(nshell)
 !=====
@@ -591,9 +563,6 @@ subroutine identify_negligible_shellpair(basis)
 
    do ishell=1,nshell
      ami = shell(ishell)%am
-     !TODO: Here time could be saved by only checking ishell<= jshell
-     ! But then an interexchange of indexes would have to be implemented in
-     ! order to satisfy ami >= amj (required condition in libint)
      if( ami < amj ) cycle
 
      ni = number_basis_function_am( basis%gaussian_type , ami )
@@ -611,118 +580,20 @@ subroutine identify_negligible_shellpair(basis)
      coeff2(:) = shell(jshell)%coeff(:)
 
      allocate( int_shell( n1c*n2c*n1c*n2c ) )
-     allocate( integrals_cart(n1c,n2c,n1c,n2c) )
-     allocate( integrals_tmp (n1c,n2c,n1c,n2c) )
-
-     integrals_cart(:,:,:,:) = 0.0_dp
-
-     if(ami+amj==0) then
-
-       do ig4=1,ng2
-         do ig3=1,ng1
-           do ig2=1,ng2
-             do ig1=1,ng1
-
-               zeta_12 = alpha1(ig1) + alpha2(ig2)
-               p(:) = ( alpha1(ig1) * x01(:) + alpha2(ig2) * x02(:) ) / zeta_12 
-               q(:) = ( alpha1(ig3) * x01(:) + alpha2(ig4) * x02(:) ) / zeta_12 
-               !
-               ! Treat carefully the LR only integrals
-               rho1 = zeta_12 * zeta_12 / ( zeta_12 + zeta_12 )
-               rho  = rho1
-               tt = rho * SUM( (p(:)-q(:))**2 )
-               call boys_function_c(f0t(0),0,tt)
-
-               integrals_cart(1,1,1,1) = integrals_cart(1,1,1,1) + &
-                     2.0_dp*pi**(2.5_dp) / SQRT( zeta_12 + zeta_12 ) * f0t(0) &
-                     / zeta_12 * EXP( -alpha1(ig1)*alpha2(ig2)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) & 
-                     / zeta_12 * EXP( -alpha1(ig3)*alpha2(ig4)/zeta_12 * SUM( (x01(:)-x02(:))**2 ) ) &
-                     * SQRT( rho / rho1 ) &
-                     * coeff1(ig1) &
-                     * coeff2(ig2) &
-                     * coeff1(ig3) &
-                     * coeff2(ig4) * cart_to_pure_norm(0)%matrix(1,1)**4
-
-             enddo
-           enddo
-         enddo
-       enddo
-
-     else
-
-       info=eval_contr_integral(                &
-                               am1,am2,am1,am2, &
-                               ng1,ng2,ng1,ng2, &
-                               coeff1(1),coeff2(1),coeff1(1),coeff2(1),&
-                               alpha1(1),alpha2(1),alpha1(1),alpha2(1),&
-                               x01(1),x02(1),x01(1),x02(1),&
-                               0.0_C_DOUBLE, &
-                               int_shell(1))
 
 
-       if(info/=0) then
-         write(stdout,*) am1,am2,am1,am2
-         call die('ERI calculated by libint failed')
-       endif
+     call libint_4center(am1,ng1,x01,alpha1,coeff1, &
+                         am2,ng2,x02,alpha2,coeff2, &
+                         am1,ng1,x01,alpha1,coeff1, &
+                         am2,ng2,x02,alpha2,coeff2, &
+                         0.0_C_DOUBLE,int_shell)
 
-       iibf=0
-       do ibf=1,n1c
-         do jbf=1,n2c
-           do kbf=1,n1c
-             do lbf=1,n2c
-               iibf=iibf+1
-               integrals_cart(ibf,jbf,kbf,lbf) = int_shell(iibf)
-             enddo
-           enddo
-         enddo
-       enddo
+     call transform_libint_to_molgw_4d(basis%gaussian_type,ami,amj,ami,amj,int_shell,integrals)
 
-
-       do lbf=1,n2c
-         do kbf=1,n1c
-           do jbf=1,n2c
-             do ibf=1,ni
-               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(1:n1c,jbf,kbf,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1c,ibf) )
-             enddo
-           enddo
-         enddo
-       enddo
-
-       do lbf=1,n2c
-         do kbf=1,n1c
-           do jbf=1,nj
-             do ibf=1,ni
-               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,1:n2c,kbf,lbf) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2c,jbf) )
-             enddo
-           enddo
-         enddo
-       enddo
-
-       do lbf=1,n2c
-         do kbf=1,ni
-           do jbf=1,nj
-             do ibf=1,ni
-               integrals_tmp (ibf,jbf,kbf,lbf) = SUM( integrals_cart(ibf,jbf,1:n1c,lbf) * cart_to_pure_norm(shell(ishell)%am)%matrix(1:n1c,kbf) )
-             enddo
-           enddo
-         enddo
-       enddo
-
-       do lbf=1,nj
-         do kbf=1,ni
-           do jbf=1,nj
-             do ibf=1,ni
-               integrals_cart(ibf,jbf,kbf,lbf) = SUM( integrals_tmp (ibf,jbf,kbf,1:n2c) * cart_to_pure_norm(shell(jshell)%am)%matrix(1:n2c,lbf) )
-             enddo
-           enddo
-         enddo
-       enddo
-            
-     endif
 
      do ibf=1,ni
        do jbf=1,nj
-         if( ABS( integrals_cart(ibf,jbf,ibf,jbf) ) > TOL_INT**2 ) negligible_shellpair(ishell,jshell) = .FALSE.
+         if( ABS( integrals(ibf,jbf,ibf,jbf) ) > TOL_INT**2 ) negligible_shellpair(ishell,jshell) = .FALSE.
        enddo
      enddo
 
@@ -730,8 +601,7 @@ subroutine identify_negligible_shellpair(basis)
      ! Symmetrize
      negligible_shellpair(jshell,ishell) = negligible_shellpair(ishell,jshell)
 
-     deallocate(integrals_cart)
-     deallocate(integrals_tmp)
+     deallocate(integrals)
      deallocate(int_shell)
      deallocate(alpha1,alpha2)
      deallocate(coeff1,coeff2)
@@ -770,7 +640,9 @@ subroutine setup_shellpair()
    enddo
  enddo
  nshellpair = ishellpair
- write(stdout,'(/,a,i8,a,i8)') ' Non negligible shellpairs to be computed',nshellpair,'  over a total of',jshellpair
+ write(stdout,'(/,1x,a,i8,a,i8)') 'Non negligible shellpairs to be computed',nshellpair,'  over a total of',jshellpair
+ write(stdout,'(1x,a,f12.4)')     'Saving (%): ', REAL(jshellpair-nshellpair,dp)/REAL(jshellpair,dp)
+
  allocate(index_shellpair(2,nshellpair))
 
  ishellpair = 0
@@ -834,9 +706,22 @@ subroutine destroy_eri_3center()
  implicit none
 !=====
 
+ if(ALLOCATED(iproc_ibf_auxil)) then
+   deallocate(iproc_ibf_auxil)
+ endif
+ if(ALLOCATED(nbf_local_iproc)) then
+   deallocate(nbf_local_iproc)
+ endif
+ if(ALLOCATED(ibf_auxil_g)) then
+   deallocate(ibf_auxil_g)
+ endif
+ if(ALLOCATED(ibf_auxil_l)) then
+   deallocate(ibf_auxil_l)
+ endif
  if(ALLOCATED(eri_3center)) then
    call clean_deallocate('3-center integrals',eri_3center)
  endif
+
 #ifdef SCASCA
  if(ALLOCATED(eri_3center_sca)) then
    call clean_deallocate('3-center integrals SCALAPACK',eri_3center_sca)
@@ -851,6 +736,18 @@ subroutine destroy_eri_3center_lr()
  implicit none
 !=====
 
+ if(ALLOCATED(iproc_ibf_auxil_lr)) then
+   deallocate(iproc_ibf_auxil_lr)
+ endif
+ if(ALLOCATED(nbf_local_iproc_lr)) then
+   deallocate(nbf_local_iproc_lr)
+ endif
+ if(ALLOCATED(ibf_auxil_g_lr)) then
+   deallocate(ibf_auxil_g_lr)
+ endif
+ if(ALLOCATED(ibf_auxil_l_lr)) then
+   deallocate(ibf_auxil_l_lr)
+ endif
  if(ALLOCATED(eri_3center_lr)) then
    call clean_deallocate('3-center LR integrals',eri_3center_lr)
  endif
@@ -920,7 +817,7 @@ subroutine dump_out_eri(rcut)
    filename='molgw_eri_lr.data'
  endif
  write(stdout,*) 'Dump out the ERI into file'
- write(stdout,*) 'Size of file [bytes]',REAL(nsize,dp)*prec_eri
+ write(stdout,*) 'Size of file [bytes]',REAL(nsize,dp)*dp
 
  if( is_iomaster ) then
    open(newunit=erifile,file=TRIM(filename),form='unformatted')

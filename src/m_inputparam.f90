@@ -50,6 +50,7 @@ module m_inputparam
  character(len=100) :: calc_name
  character(len=100) :: scf_name
  character(len=100) :: postscf_name
+ logical            :: is_core
  logical            :: is_dft
  logical            :: need_exchange
  logical            :: need_exchange_lr
@@ -85,9 +86,12 @@ module m_inputparam
  logical,protected                :: is_virtual_fno
  integer,protected                :: nexcitation
  integer,protected                :: nspin
+ integer,protected                :: nstep
+ real(dp),protected               :: tolforce
  real(dp),protected               :: spin_fact
  integer,protected                :: nscf
  real(dp),protected               :: alpha_mixing
+ character(len=100),protected     :: move_nuclei
  character(len=100),protected     :: xyz_file
  character(len=100),protected     :: basis_path
  character(len=100),allocatable,protected :: basis_name(:)
@@ -186,6 +190,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%selfenergy_approx   = 0
  calc_type%postscf_name        = 'None'
  calc_type%is_selfenergy       = .FALSE.
+ calc_type%is_core             = .FALSE.
 
  ipos=index(input_key,'+',.TRUE.)
 
@@ -286,6 +291,9 @@ subroutine init_calculation_type(calc_type,input_key)
  case('CI')
    calc_type%is_ci         = .TRUE.
    alpha_hybrid            = 1.00_dp
+ case('CORE')
+   alpha_hybrid            = 0.00_dp
+   calc_type%is_core       = .TRUE.
  case('H','HARTREE')
    alpha_hybrid            = 0.0_dp
  case('HF')
@@ -626,20 +634,8 @@ subroutine summary_input(grid_quality,integral_quality)
  write(stdout,'(a30,l3)')   ' - RESTART files       ',print_restart_
  write(stdout,'(a30,l3)')   ' - big RESTART file    ',print_bigrestart_
 
+ call output_positions()
 
- write(stdout,*)
- write(stdout,*) '================================'
- write(stdout,*) '      Atom list'
- write(stdout,*) '                       bohr                                        angstrom'
- do iatom=1,natom
-   write(stdout,'(2x,a2,3(1x,f12.6),6x,3(1x,f12.6))') element_name(REAL(basis_element(natom),dp)),x(:,iatom),x(:,iatom)*bohr_A
- enddo
- if( nghost>0) write(stdout,'(a)') ' == ghost list'
- do ighost=1,nghost
-   write(stdout,'(2x,a2,3(1x,f12.6),6x,3(1x,f12.6))') element_name(REAL(basis_element(natom+ighost),dp)),x(:,natom+ighost),x(:,natom+ighost)*bohr_A
- enddo
-
- write(stdout,*) '================================'
  write(stdout,'(a,i5)') ' Number of bonds ',nbond
  if(inversion) then
    write(stdout,*) 'Molecule has inversion symmetry'
@@ -954,6 +950,17 @@ subroutine read_inputfile_namelist()
 
  endif
 
+#ifndef HAVE_LIBINT_ONEBODY
+ if( move_nuclei /= 'no' ) then
+   call die('Need to compile MOLGW with HAVE_LIBINT_ONEBODY to have move_nuclei different from no')
+ endif
+#endif
+
+ !
+ ! If no nuclei motion is requested, then override nstep and set it to 1
+ if( move_nuclei == 'no' ) then
+   nstep = 1
+ endif
 
  has_auxil_basis = TRIM(auxil_basis_name(1)) /= '' .OR. TRIM(ecp_auxil_basis_name(1)) /= ''
  has_small_basis = TRIM(small_basis_name(1)) /= '' .OR. TRIM(ecp_small_basis_name(1)) /= ''
@@ -972,7 +979,7 @@ subroutine read_inputfile_namelist()
 
 
  x_read(:,:) = x_read(:,:) * length_factor
- call init_atoms(natom,nghost,zatom_read,x_read)
+ call init_atoms(natom,nghost,zatom_read,x_read,(move_nuclei/='no'))
  deallocate(x_read,zatom_read)
 
  call init_ecp(ecp_elements,basis_path,ecp_type,ecp_level)

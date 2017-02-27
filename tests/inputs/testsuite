@@ -140,21 +140,21 @@ MP2 Total Energy          , -109.3823851303    , 0 , 1.0e-7
 SE+MP2  Total En          , -109.3823851303    , 0 , 1.0e-7
 
 boron_gw_spinpolarized.in , GW@BLYP boron atom without RI with spin
-Hartree Energy            ,   11.6344175422   , 0 , 1.0e-7
-XC Energy                 ,   -3.8788239774   , 0 , 1.0e-7
+Hartree Energy            ,   11.6347873536   , 0 , 1.0e-7
+XC Energy                 ,   -3.8789558610   , 0 , 1.0e-7
 Number of electrons       ,    3.000000       , 0 , 1.0e-3
 Number of electrons       ,    2.000000       , 1 , 1.0e-3
-gKS HOMO energy           ,   -4.011284       , 0 , 1.0e-4
-gKS HOMO energy           ,   -8.519013       , 1 , 1.0e-4
-gKS LUMO energy           ,   -3.405726       , 0 , 1.0e-4
-gKS LUMO energy           ,   -3.172052       , 1 , 1.0e-4
+gKS HOMO energy           ,   -4.014004       , 0 , 1.0e-4
+gKS HOMO energy           ,   -8.517953       , 1 , 1.0e-4
+gKS LUMO energy           ,   -3.400664       , 0 , 1.0e-4
+gKS LUMO energy           ,   -3.171443       , 1 , 1.0e-4
 Total Spin S**2           ,    0.7528         , 0 , 1.0e-3
-RPA energy                ,   -0.1402933151   , 0 , 1.0e-7
-Lowest neutral excitation ,    0.987826       , 0 , 1.0e-4
-GW HOMO energy            ,   -7.659691       , 0 , 1.0e-4
-GW HOMO energy            ,  -12.475216       , 1 , 1.0e-4
-GW LUMO energy            ,    0.017788       , 0 , 1.0e-4
-GW LUMO energy            ,    0.457163       , 1 , 1.0e-4
+RPA energy                ,   -0.1402371135   , 0 , 1.0e-7
+Lowest neutral excitation ,    0.996562       , 0 , 1.0e-4
+GW HOMO energy            ,   -7.660110       , 0 , 1.0e-4
+GW HOMO energy            ,  -12.474309       , 1 , 1.0e-4
+GW LUMO energy            ,    0.018705       , 0 , 1.0e-4
+GW LUMO energy            ,    0.458939       , 1 , 1.0e-4
 
 co2.in                    , GW@LDA CO2 without RI with 6-31G
 Kinetic Energy            ,    186.4258076613  , 0 , 1.0e-7
@@ -390,4 +390,14 @@ GW small basis LUMO energy,   0.949613         , 0 , 1.0e-4
 GW HOMO energy            , -12.165369         , 0 , 1.0e-4
 GW LUMO energy            ,   0.871728         , 0 , 1.0e-4
 
+h2_relax.in               , H2 forces without RI
+SCF Total Energy          ,      -1.1313335905 , 0 , 1.0e-7
+H-F force atom      1     ,      0.5090922298  , 0 , 1.0e-6
+H-F force atom      2     ,     -0.5090922298  , 0 , 1.0e-6
+Pulay force atom    1     ,     -0.5090885778  , 0 , 1.0e-6
+Pulay force atom    2     ,      0.5090885778  , 0 , 1.0e-6
+Total force atom    1     ,      0.0000036520  , 0 , 1.0e-6
+Total force atom    2     ,     -0.0000036520  , 0 , 1.0e-6
+atom    1   H             ,      -0.692180     , 0 , 1.0e-4
+atom    2   H             ,       0.692180     , 0 , 1.0e-4
 
