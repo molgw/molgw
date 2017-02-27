@@ -5,6 +5,7 @@
  nscf=50
 
  basis='6-31G**'
+ no_4center='no'
 
  natom=2
  alpha_mixing=0.7

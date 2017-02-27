@@ -2,6 +2,7 @@
  scf='lda'
  tolscf=1.0e-9
  npulay_hist=8
+ no_4center='no'
 
  postscf='gw'
  frozencore='yes'

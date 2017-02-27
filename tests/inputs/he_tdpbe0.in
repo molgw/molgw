@@ -4,6 +4,7 @@
 
  basis='cc-pVTZ'
  basis_path='../../basis/'
+ no_4center='no'
 
  natom=1
  alpha_mixing=0.5

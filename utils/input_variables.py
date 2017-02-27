@@ -195,7 +195,7 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='no_4center'
 vl[i].family   ='scf'
-vl[i].default  ='no'
+vl[i].default  ='yes'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='If switched on, the auxiliary basis set is used in both SCF cycles and in post-scf methods.\
 This avoids the calculation and the storage of the 4-center Coulomb integrals.'

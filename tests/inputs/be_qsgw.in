@@ -2,6 +2,7 @@
  scf='gw'
 
  basis='cc-pVDZ'
+ no_4center='no'
 
  natom=1
  alpha_mixing=0.5

@@ -1,5 +1,6 @@
 &molgw
  scf='hf'
+ no_4center='no'
 
  ecp_basis='cc-pVDZ-PP'
 
