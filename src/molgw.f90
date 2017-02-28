@@ -115,9 +115,12 @@ program molgw
  endif
 
  !
- ! Atomic motion loop
+ ! Nucleus motion loop
+ !
  do istep=1,nstep
-   write(stdout,'(/,/,1x,a,i5,/)') ' === LBFGS step ',istep
+   if( move_nuclei == 'relax' ) then
+     write(stdout,'(/,/,1x,a,i5,/)') ' === LBFGS step ',istep
+   endif
 
    call start_clock(timing_prescf)
   
@@ -416,10 +419,10 @@ program molgw
      call output_positions()
 
      if( MAXVAL(force(:,:)) < tolforce ) then
-       write(stdout,'(1x,a,e16.6,a,e16.6)') 'Forces are converged: ',MAXVAL(force(:,:)) , '   < ',tolforce
+       write(stdout,'(1x,a,es16.6,a,es16.6,/)') 'Forces are     converged: ',MAXVAL(force(:,:)) , '   < ',tolforce
        exit
      else
-       write(stdout,'(1x,a,e16.6,a,e16.6)') 'Forces are not converged: ',MAXVAL(force(:,:)) , '   > ',tolforce
+       write(stdout,'(1x,a,es16.6,a,es16.6,/)') 'Forces are not converged: ',MAXVAL(force(:,:)) , '   > ',tolforce
        !
        ! If it is not the last step, then deallocate everything and start over
        if( istep /= nstep ) then

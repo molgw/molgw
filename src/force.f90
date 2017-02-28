@@ -25,6 +25,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
  real(dp),intent(in)        :: energy(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
 !=====
+ real(dp),parameter      :: TOL_DENSITY_MATRIX=1.0e-2
  integer                 :: ijshellpair,klshellpair
  integer                 :: istate,ispin
  integer                 :: iatom,jatom,katom,latom
@@ -40,6 +41,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
  real(dp),allocatable    :: shell_gradB(:,:,:,:,:)
  real(dp),allocatable    :: shell_gradC(:,:,:,:,:)
  real(dp),allocatable    :: shell_gradD(:,:,:,:,:)
+ logical,allocatable     :: skip_shellpair(:,:)
 !=====
 
 #ifndef HAVE_LIBINT_ONEBODY
@@ -55,6 +57,24 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
  allocate(r_matrix(basis%nbf,basis%nbf))
  call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
  call setup_energy_density_matrix(basis%nbf,nstate,c_matrix,occupation,energy,r_matrix)
+
+ !
+ ! Filter out the low density matrix shells
+ allocate(skip_shellpair(nshell,nshell))
+ skip_shellpair(:,:) = .TRUE.
+ do ijshellpair=1,nshellpair
+   ishell = index_shellpair(1,ijshellpair)
+   jshell = index_shellpair(2,ijshellpair)
+   do jbf=shell(jshell)%istart,shell(jshell)%iend
+     do ibf=shell(ishell)%istart,shell(ishell)%iend
+       if( ANY( ABS(p_matrix(ibf,jbf,:) / spin_fact) > TOL_DENSITY_MATRIX ) ) then
+         skip_shellpair(ishell,jshell) = .FALSE.
+         skip_shellpair(jshell,ishell) = .FALSE.
+       endif
+     enddo
+   enddo
+ enddo
+ write(stdout,'(1x,a,i6,a,i6)') 'Shell pair skipped due to low density matrix screening:',COUNT( skip_shellpair(:,:) ),' / ',nshell**2
 
 
  !
@@ -119,9 +139,10 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
  ! Hartree-Fock energy forces
  ! 
  write(stdout,'(1x,a)') 'Calculate the Hartee-Fock part with 4-center integrals gradient (LIBINT)'
+
+
  force_har(:,:) = 0.0_dp
  force_exx(:,:) = 0.0_dp
-
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
    lshell = index_shellpair(2,klshellpair)
@@ -134,7 +155,13 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
      ni = number_basis_function_am( basis%gaussian_type , shell(ishell)%am )
      nj = number_basis_function_am( basis%gaussian_type , shell(jshell)%am )
 
+     if( skip_shellpair(ishell,jshell) .AND. skip_shellpair(kshell,lshell) &
+             .AND.  skip_shellpair(ishell,kshell) .AND. skip_shellpair(jshell,lshell)  &
+             .AND.  skip_shellpair(ishell,lshell) .AND. skip_shellpair(jshell,kshell) ) then
+       cycle
+     endif
 
+     ! Libint ordering is strict!
      if( shell(ishell)%am + shell(jshell)%am > shell(kshell)%am + shell(lshell)%am ) cycle
      allocate(shell_gradA(ni,nj,nk,nl,3))
      allocate(shell_gradB(ni,nj,nk,nl,3))
@@ -142,122 +169,24 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
      allocate(shell_gradD(ni,nj,nk,nl,3))
      call calculate_eri_4center_shell_grad(basis,0.0_dp,ijshellpair,klshellpair,&
                                            shell_gradA,shell_gradB,shell_gradC,shell_gradD)
+
      !
      ! Hartree
      !
-     if( kshell /= lshell ) then
-       fact = -4.0_dp
-     else
-       fact = -2.0_dp
-     endif
-
-     iatom = shell(ishell)%iatom
-     do lbf=shell(lshell)%istart,shell(lshell)%iend
-       do kbf=shell(kshell)%istart,shell(kshell)%iend
-         do jbf=shell(jshell)%istart,shell(jshell)%iend
-           do ibf=shell(ishell)%istart,shell(ishell)%iend
-             force_har(:,iatom) = force_har(:,iatom)  &
-                                   + fact * SUM( p_matrix(ibf,jbf,:) * p_matrix(kbf,lbf,:) ) &
-                                      * shell_gradA(ibf-shell(ishell)%istart+1,       &
-                                                    jbf-shell(jshell)%istart+1,       &
-                                                    kbf-shell(kshell)%istart+1,       &
-                                                    lbf-shell(lshell)%istart+1,:)
-           enddo
-         enddo
-       enddo
-     enddo
-
-     if( ishell /= jshell ) then
-       iatom = shell(jshell)%iatom
-       do lbf=shell(lshell)%istart,shell(lshell)%iend
-         do kbf=shell(kshell)%istart,shell(kshell)%iend
-           do jbf=shell(jshell)%istart,shell(jshell)%iend
-             do ibf=shell(ishell)%istart,shell(ishell)%iend
-               force_har(:,iatom) = force_har(:,iatom)  &
-                                     + fact * SUM( p_matrix(jbf,ibf,:) * p_matrix(kbf,lbf,:) ) &
-                                        * shell_gradB(ibf-shell(ishell)%istart+1,       &
-                                                      jbf-shell(jshell)%istart+1,       &
-                                                      kbf-shell(kshell)%istart+1,       &
-                                                      lbf-shell(lshell)%istart+1,:)
-             enddo
-           enddo
-         enddo
-       enddo
-     endif
-
-     !
-     ! When the opposite is not calculated by LIBINT:
-     if( shell(ishell)%am + shell(jshell)%am < shell(kshell)%am + shell(lshell)%am ) then
-       if( ishell /= jshell ) then
+     if( .NOT. ( skip_shellpair(ishell,jshell) .AND. skip_shellpair(kshell,lshell) ) ) then
+       if( kshell /= lshell ) then
          fact = -4.0_dp
        else
          fact = -2.0_dp
        endif
 
-       iatom = shell(kshell)%iatom
-       do lbf=shell(lshell)%istart,shell(lshell)%iend
-         do kbf=shell(kshell)%istart,shell(kshell)%iend
-           do jbf=shell(jshell)%istart,shell(jshell)%iend
-             do ibf=shell(ishell)%istart,shell(ishell)%iend
-               force_har(:,iatom) = force_har(:,iatom)  &
-                                     + fact * SUM( p_matrix(kbf,lbf,:) * p_matrix(ibf,jbf,:) ) &
-                                        * shell_gradC(ibf-shell(ishell)%istart+1,       &
-                                                      jbf-shell(jshell)%istart+1,       &
-                                                      kbf-shell(kshell)%istart+1,       &
-                                                      lbf-shell(lshell)%istart+1,:)
-             enddo
-           enddo
-         enddo
-       enddo
-
-       if( kshell /= lshell ) then
-         iatom = shell(lshell)%iatom
-         do lbf=shell(lshell)%istart,shell(lshell)%iend
-           do kbf=shell(kshell)%istart,shell(kshell)%iend
-             do jbf=shell(jshell)%istart,shell(jshell)%iend
-               do ibf=shell(ishell)%istart,shell(ishell)%iend
-                 force_har(:,iatom) = force_har(:,iatom)  &
-                                       + fact * SUM( p_matrix(lbf,kbf,:) * p_matrix(ibf,jbf,:) ) &
-                                          * shell_gradD(ibf-shell(ishell)%istart+1,       &
-                                                        jbf-shell(jshell)%istart+1,       &
-                                                        kbf-shell(kshell)%istart+1,       &
-                                                        lbf-shell(lshell)%istart+1,:)
-               enddo
-             enddo
-           enddo
-         enddo
-       endif
-
-
-     endif
-
-     !
-     ! Exchange
-     !
-     iatom = shell(ishell)%iatom
-     do lbf=shell(lshell)%istart,shell(lshell)%iend
-       do kbf=shell(kshell)%istart,shell(kshell)%iend
-         do jbf=shell(jshell)%istart,shell(jshell)%iend
-           do ibf=shell(ishell)%istart,shell(ishell)%iend
-             force_exx(:,iatom) = force_exx(:,iatom)  &
-                                   + 2.0_dp / spin_fact * SUM( p_matrix(ibf,kbf,:) * p_matrix(jbf,lbf,:) ) &
-                                      * shell_gradA(ibf-shell(ishell)%istart+1,       &
-                                                    jbf-shell(jshell)%istart+1,       &
-                                                    kbf-shell(kshell)%istart+1,       &
-                                                    lbf-shell(lshell)%istart+1,:)
-           enddo
-         enddo
-       enddo
-     enddo
-
-     if( kshell /= lshell ) then
        iatom = shell(ishell)%iatom
        do lbf=shell(lshell)%istart,shell(lshell)%iend
          do kbf=shell(kshell)%istart,shell(kshell)%iend
            do jbf=shell(jshell)%istart,shell(jshell)%iend
              do ibf=shell(ishell)%istart,shell(ishell)%iend
-               force_exx(:,iatom) = force_exx(:,iatom)  & 
-                                     + 2.0_dp / spin_fact * SUM( p_matrix(ibf,lbf,:) * p_matrix(jbf,kbf,:) ) &
+               force_har(:,iatom) = force_har(:,iatom)  &
+                                     + fact * SUM( p_matrix(ibf,jbf,:) * p_matrix(kbf,lbf,:) ) &
                                         * shell_gradA(ibf-shell(ishell)%istart+1,       &
                                                       jbf-shell(jshell)%istart+1,       &
                                                       kbf-shell(kshell)%istart+1,       &
@@ -266,33 +195,15 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
            enddo
          enddo
        enddo
-     endif
 
-     if( ishell /= jshell ) then
-       iatom = shell(jshell)%iatom
-       do lbf=shell(lshell)%istart,shell(lshell)%iend
-         do kbf=shell(kshell)%istart,shell(kshell)%iend
-           do jbf=shell(jshell)%istart,shell(jshell)%iend
-             do ibf=shell(ishell)%istart,shell(ishell)%iend
-               force_exx(:,iatom) = force_exx(:,iatom)  & 
-                                     + 2.0_dp / spin_fact * SUM( p_matrix(jbf,kbf,:) * p_matrix(ibf,lbf,:) ) &
-                                        * shell_gradB(ibf-shell(ishell)%istart+1,       &
-                                                      jbf-shell(jshell)%istart+1,       &
-                                                      kbf-shell(kshell)%istart+1,       &
-                                                      lbf-shell(lshell)%istart+1,:)
-             enddo
-           enddo
-         enddo
-       enddo
-
-       if( kshell /= lshell ) then
+       if( ishell /= jshell ) then
          iatom = shell(jshell)%iatom
          do lbf=shell(lshell)%istart,shell(lshell)%iend
            do kbf=shell(kshell)%istart,shell(kshell)%iend
              do jbf=shell(jshell)%istart,shell(jshell)%iend
                do ibf=shell(ishell)%istart,shell(ishell)%iend
-                 force_exx(:,iatom) = force_exx(:,iatom)  & 
-                                       + 2.0_dp / spin_fact * SUM( p_matrix(jbf,lbf,:) * p_matrix(ibf,kbf,:) ) &
+                 force_har(:,iatom) = force_har(:,iatom)  &
+                                       + fact * SUM( p_matrix(ibf,jbf,:) * p_matrix(kbf,lbf,:) ) &
                                           * shell_gradB(ibf-shell(ishell)%istart+1,       &
                                                         jbf-shell(jshell)%istart+1,       &
                                                         kbf-shell(kshell)%istart+1,       &
@@ -302,35 +213,23 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
            enddo
          enddo
        endif
-     endif
 
-     !
-     ! When the opposite is not calculated by LIBINT:
-     if( shell(ishell)%am + shell(jshell)%am /= shell(kshell)%am + shell(lshell)%am ) then
-       iatom = shell(kshell)%iatom
-       do lbf=shell(lshell)%istart,shell(lshell)%iend
-         do kbf=shell(kshell)%istart,shell(kshell)%iend
-           do jbf=shell(jshell)%istart,shell(jshell)%iend
-             do ibf=shell(ishell)%istart,shell(ishell)%iend
-               force_exx(:,iatom) = force_exx(:,iatom)  & 
-                                     + 2.0_dp / spin_fact * SUM( p_matrix(jbf,lbf,:) * p_matrix(ibf,kbf,:) ) &
-                                        * shell_gradC(ibf-shell(ishell)%istart+1,       &
-                                                      jbf-shell(jshell)%istart+1,       &
-                                                      kbf-shell(kshell)%istart+1,       &
-                                                      lbf-shell(lshell)%istart+1,:)
-             enddo
-           enddo
-         enddo
-       enddo
+       !
+       ! When the opposite is not calculated by LIBINT:
+       if( shell(ishell)%am + shell(jshell)%am < shell(kshell)%am + shell(lshell)%am ) then
+         if( ishell /= jshell ) then
+           fact = -4.0_dp
+         else
+           fact = -2.0_dp
+         endif
 
-       if( ishell /= jshell ) then
          iatom = shell(kshell)%iatom
          do lbf=shell(lshell)%istart,shell(lshell)%iend
            do kbf=shell(kshell)%istart,shell(kshell)%iend
              do jbf=shell(jshell)%istart,shell(jshell)%iend
                do ibf=shell(ishell)%istart,shell(ishell)%iend
-                 force_exx(:,iatom) = force_exx(:,iatom)  & 
-                                       + 2.0_dp / spin_fact * SUM( p_matrix(ibf,lbf,:) * p_matrix(jbf,kbf,:) ) &
+                 force_har(:,iatom) = force_har(:,iatom)  &
+                                       + fact * SUM( p_matrix(kbf,lbf,:) * p_matrix(ibf,jbf,:) ) &
                                           * shell_gradC(ibf-shell(ishell)%istart+1,       &
                                                         jbf-shell(jshell)%istart+1,       &
                                                         kbf-shell(kshell)%istart+1,       &
@@ -339,32 +238,15 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
              enddo
            enddo
          enddo
-       endif
 
-       if( kshell /= lshell ) then
-         iatom = shell(lshell)%iatom
-         do lbf=shell(lshell)%istart,shell(lshell)%iend
-           do kbf=shell(kshell)%istart,shell(kshell)%iend
-             do jbf=shell(jshell)%istart,shell(jshell)%iend
-               do ibf=shell(ishell)%istart,shell(ishell)%iend
-                 force_exx(:,iatom) = force_exx(:,iatom)  & 
-                                       + 2.0_dp / spin_fact * SUM( p_matrix(jbf,kbf,:) * p_matrix(ibf,lbf,:) ) &
-                                          * shell_gradD(ibf-shell(ishell)%istart+1,       &
-                                                        jbf-shell(jshell)%istart+1,       &
-                                                        kbf-shell(kshell)%istart+1,       &
-                                                        lbf-shell(lshell)%istart+1,:)
-               enddo
-             enddo
-           enddo
-         enddo
-         if( ishell /= jshell ) then
+         if( kshell /= lshell ) then
            iatom = shell(lshell)%iatom
            do lbf=shell(lshell)%istart,shell(lshell)%iend
              do kbf=shell(kshell)%istart,shell(kshell)%iend
                do jbf=shell(jshell)%istart,shell(jshell)%iend
                  do ibf=shell(ishell)%istart,shell(ishell)%iend
-                   force_exx(:,iatom) = force_exx(:,iatom)  & 
-                                         + 2.0_dp / spin_fact * SUM( p_matrix(ibf,kbf,:) * p_matrix(jbf,lbf,:) ) &
+                   force_har(:,iatom) = force_har(:,iatom)  &
+                                         + fact * SUM( p_matrix(lbf,kbf,:) * p_matrix(ibf,jbf,:) ) &
                                             * shell_gradD(ibf-shell(ishell)%istart+1,       &
                                                           jbf-shell(jshell)%istart+1,       &
                                                           kbf-shell(kshell)%istart+1,       &
@@ -373,17 +255,170 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
                enddo
              enddo
            enddo
+         endif
+
+
+       endif
+     endif
+
+     !
+     ! Exchange
+     !
+     if( .NOT. ( skip_shellpair(ishell,kshell) .AND. skip_shellpair(jshell,lshell) ) &
+         .OR. .NOT. ( skip_shellpair(ishell,lshell) .AND. skip_shellpair(jshell,kshell) ) ) then
+       iatom = shell(ishell)%iatom
+       do lbf=shell(lshell)%istart,shell(lshell)%iend
+         do kbf=shell(kshell)%istart,shell(kshell)%iend
+           do jbf=shell(jshell)%istart,shell(jshell)%iend
+             do ibf=shell(ishell)%istart,shell(ishell)%iend
+               force_exx(:,iatom) = force_exx(:,iatom)  &
+                                     + 2.0_dp / spin_fact * SUM( p_matrix(ibf,kbf,:) * p_matrix(jbf,lbf,:) ) &
+                                        * shell_gradA(ibf-shell(ishell)%istart+1,       &
+                                                      jbf-shell(jshell)%istart+1,       &
+                                                      kbf-shell(kshell)%istart+1,       &
+                                                      lbf-shell(lshell)%istart+1,:)
+             enddo
+           enddo
+         enddo
+       enddo
+
+       if( kshell /= lshell ) then
+         iatom = shell(ishell)%iatom
+         do lbf=shell(lshell)%istart,shell(lshell)%iend
+           do kbf=shell(kshell)%istart,shell(kshell)%iend
+             do jbf=shell(jshell)%istart,shell(jshell)%iend
+               do ibf=shell(ishell)%istart,shell(ishell)%iend
+                 force_exx(:,iatom) = force_exx(:,iatom)  & 
+                                       + 2.0_dp / spin_fact * SUM( p_matrix(ibf,lbf,:) * p_matrix(jbf,kbf,:) ) &
+                                          * shell_gradA(ibf-shell(ishell)%istart+1,       &
+                                                        jbf-shell(jshell)%istart+1,       &
+                                                        kbf-shell(kshell)%istart+1,       &
+                                                        lbf-shell(lshell)%istart+1,:)
+               enddo
+             enddo
+           enddo
+         enddo
+       endif
+
+       if( ishell /= jshell ) then
+         iatom = shell(jshell)%iatom
+         do lbf=shell(lshell)%istart,shell(lshell)%iend
+           do kbf=shell(kshell)%istart,shell(kshell)%iend
+             do jbf=shell(jshell)%istart,shell(jshell)%iend
+               do ibf=shell(ishell)%istart,shell(ishell)%iend
+                 force_exx(:,iatom) = force_exx(:,iatom)  & 
+                                       + 2.0_dp / spin_fact * SUM( p_matrix(jbf,kbf,:) * p_matrix(ibf,lbf,:) ) &
+                                          * shell_gradB(ibf-shell(ishell)%istart+1,       &
+                                                        jbf-shell(jshell)%istart+1,       &
+                                                        kbf-shell(kshell)%istart+1,       &
+                                                        lbf-shell(lshell)%istart+1,:)
+               enddo
+             enddo
+           enddo
+         enddo
+
+         if( kshell /= lshell ) then
+           iatom = shell(jshell)%iatom
+           do lbf=shell(lshell)%istart,shell(lshell)%iend
+             do kbf=shell(kshell)%istart,shell(kshell)%iend
+               do jbf=shell(jshell)%istart,shell(jshell)%iend
+                 do ibf=shell(ishell)%istart,shell(ishell)%iend
+                   force_exx(:,iatom) = force_exx(:,iatom)  & 
+                                         + 2.0_dp / spin_fact * SUM( p_matrix(jbf,lbf,:) * p_matrix(ibf,kbf,:) ) &
+                                            * shell_gradB(ibf-shell(ishell)%istart+1,       &
+                                                          jbf-shell(jshell)%istart+1,       &
+                                                          kbf-shell(kshell)%istart+1,       &
+                                                          lbf-shell(lshell)%istart+1,:)
+                 enddo
+               enddo
+             enddo
+           enddo
+         endif
+       endif
+
+       !
+       ! When the opposite is not calculated by LIBINT:
+       if( shell(ishell)%am + shell(jshell)%am /= shell(kshell)%am + shell(lshell)%am ) then
+         iatom = shell(kshell)%iatom
+         do lbf=shell(lshell)%istart,shell(lshell)%iend
+           do kbf=shell(kshell)%istart,shell(kshell)%iend
+             do jbf=shell(jshell)%istart,shell(jshell)%iend
+               do ibf=shell(ishell)%istart,shell(ishell)%iend
+                 force_exx(:,iatom) = force_exx(:,iatom)  & 
+                                       + 2.0_dp / spin_fact * SUM( p_matrix(jbf,lbf,:) * p_matrix(ibf,kbf,:) ) &
+                                          * shell_gradC(ibf-shell(ishell)%istart+1,       &
+                                                        jbf-shell(jshell)%istart+1,       &
+                                                        kbf-shell(kshell)%istart+1,       &
+                                                        lbf-shell(lshell)%istart+1,:)
+               enddo
+             enddo
+           enddo
+         enddo
+
+         if( ishell /= jshell ) then
+           iatom = shell(kshell)%iatom
+           do lbf=shell(lshell)%istart,shell(lshell)%iend
+             do kbf=shell(kshell)%istart,shell(kshell)%iend
+               do jbf=shell(jshell)%istart,shell(jshell)%iend
+                 do ibf=shell(ishell)%istart,shell(ishell)%iend
+                   force_exx(:,iatom) = force_exx(:,iatom)  & 
+                                         + 2.0_dp / spin_fact * SUM( p_matrix(ibf,lbf,:) * p_matrix(jbf,kbf,:) ) &
+                                            * shell_gradC(ibf-shell(ishell)%istart+1,       &
+                                                          jbf-shell(jshell)%istart+1,       &
+                                                          kbf-shell(kshell)%istart+1,       &
+                                                          lbf-shell(lshell)%istart+1,:)
+                 enddo
+               enddo
+             enddo
+           enddo
+         endif
+
+         if( kshell /= lshell ) then
+           iatom = shell(lshell)%iatom
+           do lbf=shell(lshell)%istart,shell(lshell)%iend
+             do kbf=shell(kshell)%istart,shell(kshell)%iend
+               do jbf=shell(jshell)%istart,shell(jshell)%iend
+                 do ibf=shell(ishell)%istart,shell(ishell)%iend
+                   force_exx(:,iatom) = force_exx(:,iatom)  & 
+                                         + 2.0_dp / spin_fact * SUM( p_matrix(jbf,kbf,:) * p_matrix(ibf,lbf,:) ) &
+                                            * shell_gradD(ibf-shell(ishell)%istart+1,       &
+                                                          jbf-shell(jshell)%istart+1,       &
+                                                          kbf-shell(kshell)%istart+1,       &
+                                                          lbf-shell(lshell)%istart+1,:)
+                 enddo
+               enddo
+             enddo
+           enddo
+           if( ishell /= jshell ) then
+             iatom = shell(lshell)%iatom
+             do lbf=shell(lshell)%istart,shell(lshell)%iend
+               do kbf=shell(kshell)%istart,shell(kshell)%iend
+                 do jbf=shell(jshell)%istart,shell(jshell)%iend
+                   do ibf=shell(ishell)%istart,shell(ishell)%iend
+                     force_exx(:,iatom) = force_exx(:,iatom)  & 
+                                           + 2.0_dp / spin_fact * SUM( p_matrix(ibf,kbf,:) * p_matrix(jbf,lbf,:) ) &
+                                              * shell_gradD(ibf-shell(ishell)%istart+1,       &
+                                                            jbf-shell(jshell)%istart+1,       &
+                                                            kbf-shell(kshell)%istart+1,       &
+                                                            lbf-shell(lshell)%istart+1,:)
+                   enddo
+                 enddo
+               enddo
+             enddo
+
+           endif
 
          endif
 
        endif
-
      endif
 
 
      deallocate(shell_gradA,shell_gradB,shell_gradC,shell_gradD)
    enddo
  enddo
+
+ deallocate(skip_shellpair)
 
  ! is_core is an inefficient way to get the Kinetic+Nucleus hamiltonian
  if( calc_type%is_core ) force_har(:,:) = 0.0_dp
