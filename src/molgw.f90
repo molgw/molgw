@@ -298,7 +298,7 @@ program molgw
        call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
 #endif
        if( nelement_ecp > 0 ) then
-         call setup_nucleus_ecp(basis,hamiltonian_nucleus)
+         call setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
        endif
      endif
    endif
@@ -346,8 +346,9 @@ program molgw
            call dft_approximate_vhxc_sca(basis,m_ham,n_ham,hamiltonian_tmp(:,:,1))
          endif
        else
-         call dft_approximate_vhxc(basis,hamiltonian_tmp(:,:,1))
+         call dft_approximate_vhxc(print_matrix_,basis,hamiltonian_tmp(:,:,1))
        endif
+
        hamiltonian_tmp(:,:,1) = hamiltonian_tmp(:,:,1) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
      case('CORE')
        hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
