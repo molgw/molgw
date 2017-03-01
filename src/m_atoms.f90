@@ -254,7 +254,7 @@ subroutine output_positions()
  write(stdout,*) '                       bohr                                        angstrom'
  do iatom=1,natom
    write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',iatom, &
-                                                           element_name(REAL(basis_element(natom),dp)),': ',  &
+                                                           element_name(REAL(basis_element(iatom),dp)),': ',  &
                                                            x(:,iatom),x(:,iatom)*bohr_A
  enddo
  if( nghost>0) write(stdout,'(a)') ' == ghost list'
