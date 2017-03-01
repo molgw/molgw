@@ -4,7 +4,6 @@
  temperature=0.005
  
  scf='lda'
- no_4center='no'
 
  basis='cc-pVDZ'
 

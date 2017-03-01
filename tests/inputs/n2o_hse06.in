@@ -6,7 +6,6 @@
 
  basis='6-31G'
  gaussian_type='cart'
- no_4center='no'
 
  print_multipole='yes'
 

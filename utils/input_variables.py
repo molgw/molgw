@@ -144,8 +144,7 @@ vl[i].family   ='general'
 vl[i].datatype ='characters'
 vl[i].comment  ='Sets the auxiliary basis set. \
 For instance, cc-pVDZ-RI for a Weigend basis set. \
-If present, the auxiliary basis will be used for postscf calculations (TD-DFT, BSE, or GW) \
-If specifically requested with no_4center, the auxiliary basis can be used for scf cycles too.'
+If present, the auxiliary basis will be used for both the scf cycles and the postscf calculations (TD-DFT, BSE, or GW).'
 
 #================================
 vl.append(variable())
@@ -189,16 +188,6 @@ vl[i].default  ='pure'
 vl[i].datatype ='characters'
 vl[i].comment  ='Asks for pure or spherical Gaussian type orbitals with \'pure\' \
 or for Cartesian Gaussian orbital with \'cart\'.'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
-vl[i].keyword  ='no_4center'
-vl[i].family   ='scf'
-vl[i].default  ='yes'
-vl[i].datatype ='yes/no'
-vl[i].comment  ='If switched on, the auxiliary basis set is used in both SCF cycles and in post-scf methods.\
-This avoids the calculation and the storage of the 4-center Coulomb integrals.'
 
 #================================
 vl.append(variable())

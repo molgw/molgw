@@ -3,7 +3,6 @@
 
  basis='cc-pVTZ'
  auxil_basis='cc-pVTZ-RI'
- no_4center='yes'
 
  postscf='g0w0'
  frozencore='yes'

@@ -32,7 +32,7 @@ module m_eri
 
 
  logical,protected,allocatable      :: negligible_shellpair(:,:)
- integer,protected,allocatable      :: index_pair_1d(:)
+ integer,private  ,allocatable      :: index_pair_1d(:)
  integer,protected,allocatable      :: index_basis(:,:)
  integer,protected,allocatable      :: index_shellpair(:,:)
  integer,protected                  :: nshellpair
@@ -166,7 +166,8 @@ subroutine deallocate_index_pair()
  implicit none
 
 !=====
- call clean_deallocate('index pair',index_pair_1d)
+
+ if(ALLOCATED(index_pair_1d)) call clean_deallocate('index pair',index_pair_1d)
 
 end subroutine deallocate_index_pair
 

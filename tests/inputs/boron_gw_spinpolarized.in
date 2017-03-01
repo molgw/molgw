@@ -8,7 +8,6 @@
  magnetization=1.0
  basis='cc-pVTZ'
  grid_quality='vh'
- no_4center='no'
 
  selfenergy_state_range= 2
  nomega_sigma = 101

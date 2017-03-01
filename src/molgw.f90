@@ -149,20 +149,22 @@ program molgw
    !
    ! ERI are stored "privately" in the module m_eri
    call prepare_eri(basis)
-   if( .NOT. is_full_auxil) then
+
+   if( .NOT. has_auxil_basis ) then
+     !
+     ! If no auxiliary basis is given,
+     ! then calculate the required 4-center integrals
      call calculate_eri(print_eri_,basis,0.0_dp)
      !
      ! for Range-separated hybrids, calculate the long-range ERI
      if(calc_type%need_exchange_lr) then
        call calculate_eri(print_eri_,basis,rcut)
      endif
-   endif
-  
-   !
-   ! If an auxiliary basis is given,
-   ! then set it up now and calculate the required ERI: 2- and 3-center integrals
-   !
-   if( has_auxil_basis ) then
+
+   else
+     !
+     ! If an auxiliary basis is given,
+     ! then set it up now and calculate the required ERI: 2- and 3-center integrals
      write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
      call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type,auxil_basis)
   
@@ -182,7 +184,7 @@ program molgw
      endif
   
    endif
-   ! Coulomb integrals have been computed and stored
+   ! ERI integrals have been computed and stored
    !
   
   
@@ -382,8 +384,8 @@ program molgw
    if( .NOT. (calc_type%selfenergy_approx == LW                         &
               .OR. calc_type%selfenergy_approx == LW2                   &
               .OR. calc_type%selfenergy_approx == GSIGMA )              &
-       .AND. .NOT. ( parallel_ham .AND. .NOT. parallel_buffer )         &
-       .AND. is_full_auxil ) then
+       .AND. .NOT. ( parallel_ham .AND. .NOT. parallel_buffer ) &
+       .AND. has_auxil_basis ) then
      call deallocate_index_pair()
    endif
   
@@ -478,8 +480,6 @@ program molgw
  !
  ! Deallocate all what you can at this stage
  !
- ! If an auxiliary basis is given, the 4-center integrals are not needed anymore
- if( has_auxil_basis ) call deallocate_eri_4center()
  ! If RSH calculations were performed, then deallocate the LR integrals which
  ! are not needed anymore
  if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()

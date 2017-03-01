@@ -135,7 +135,7 @@ subroutine scf_loop(is_restart,&
    !
    ! Hartree contribution to the Hamiltonian
    !
-   if( .NOT. is_full_auxil) then
+   if( .NOT. has_auxil_basis ) then
      call setup_hartree(print_matrix_,basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
    else
      if( parallel_ham ) then
@@ -188,7 +188,7 @@ subroutine scf_loop(is_restart,&
    ! Use hamiltonian_exx as a temporary matrix (no need to save it for later use)
    if(calc_type%need_exchange_lr) then
 
-     if( .NOT. is_full_auxil) then
+     if( .NOT. has_auxil_basis ) then
        call setup_exchange_longrange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,energy_tmp)
      else
        if( parallel_ham ) then
@@ -210,7 +210,7 @@ subroutine scf_loop(is_restart,&
    ! Exchange contribution to the Hamiltonian
    if( calc_type%need_exchange ) then
 
-     if( .NOT. is_full_auxil) then
+     if( .NOT. has_auxil_basis ) then
        call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
      else
        if( parallel_ham ) then
@@ -403,7 +403,7 @@ subroutine scf_loop(is_restart,&
  !
  ! Get the exchange operator if not already calculated
  !
- if( .NOT. is_full_auxil) then
+ if( .NOT. has_auxil_basis ) then
    if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
  else
    if( ABS(en%exx) < 1.0e-6_dp ) then

@@ -118,7 +118,6 @@ module m_inputparam
  integer,protected                :: integral_level
  logical,protected                :: has_auxil_basis
  logical,protected                :: has_small_basis
- logical,protected                :: is_full_auxil
  !
  ! the boring small complex number eta: (0.0_dp,0.001_dp) is typically over converged
  ! Having a larger ieta value smoothen the oscillation far from the HOMO-LUMO gap
@@ -767,7 +766,6 @@ subroutine read_inputfile_namelist()
 
  ignore_restart_    = yesno(ignore_restart)
  ignore_bigrestart_ = yesno(ignore_bigrestart)
- is_full_auxil      = yesno(no_4center)
  is_tda             = yesno(tda)
  is_triplet         = yesno(triplet)
  is_frozencore      = yesno(frozencore)
@@ -964,12 +962,6 @@ subroutine read_inputfile_namelist()
 
  has_auxil_basis = TRIM(auxil_basis_name(1)) /= '' .OR. TRIM(ecp_auxil_basis_name(1)) /= ''
  has_small_basis = TRIM(small_basis_name(1)) /= '' .OR. TRIM(ecp_small_basis_name(1)) /= ''
-
- if( is_full_auxil .AND. .NOT. has_auxil_basis) then
-   write(stdout,*) 'A calculation with no 4 center integrals has been requested'
-   write(stdout,*) 'However no auxiliary basis has been provided in the input file'
-   call die('Please provide MOLGW with an auxiliary basis set')
- endif
 
  if( .NOT. has_auxil_basis .AND. nproc_world > 1 ) then
    write(stdout,*) 'Parallelization is not available without an auxiliary basis'

@@ -1,7 +1,6 @@
 &molgw
  scf='lda'
 
- no_4center='yes'
 
  natom=2
  alpha_mixing=0.7

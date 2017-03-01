@@ -187,16 +187,16 @@ RPA Total energy          ,   -526.9633301175  , 0 , 1.0e-7
  GW HOMO energy           ,    -15.012653      , 0 , 1.0e-4
  GW LUMO energy           ,      3.143477      , 0 , 1.0e-4
 
-h2_pbe_gw.in              , PBE H2 molecule cc-pVDZ and G0W0
+h2_pbe_gw.in              , PBE H2 molecule cc-pVDZ and G0W0 wo RI
 SCF Total Energy          ,     -1.0727602939  , 0 , 1.0e-7
 gKS HOMO energy           ,     -8.191536      , 0 , 1.0e-4
 gKS LUMO energy           ,     -2.674684      , 0 , 1.0e-4
-RPA energy                ,     -0.0837682569  , 0 , 1.0e-7
-Lowest neutral excitation ,      9.996186      , 0 , 1.0e-4
+RPA energy                ,     -0.0838669374  , 0 , 1.0e-7
+Lowest neutral excitation ,      9.996355      , 0 , 1.0e-4
 Singles correction        ,     -0.0029125289  , 0 , 1.0e-7
 Total EXX Energy          ,     -1.0186704037  , 0 , 1.0e-7
-GW HOMO energy            ,    -12.854961      , 0 , 1.0e-4
-GW LUMO energy            ,      1.475164      , 0 , 1.0e-4
+GW HOMO energy            ,    -12.857222      , 0 , 1.0e-4
+GW LUMO energy            ,      1.474561      , 0 , 1.0e-4
 
 h2_hse06_overlap_gw.in    , HSE06 H2 molecule aug-cc-pVDZ and G0W0 with a filtered overlap
 Exchange Energy           ,     -0.1340583009  , 0 , 1.0e-7

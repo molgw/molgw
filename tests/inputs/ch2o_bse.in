@@ -11,7 +11,6 @@
 
  basis='cc-pVDZ'
  auxil_basis='cc-pVDZ-RI'
- no_4center='yes'
  basis_path='../../basis/'
 
  natom=4

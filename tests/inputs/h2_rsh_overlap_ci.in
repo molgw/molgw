@@ -13,7 +13,6 @@
  min_overlap=5.0e-4
 
  basis='aug-cc-pVDZ'
- no_4center='no'
 
  alpha_mixing=0.7
  nscf=15

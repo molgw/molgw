@@ -4,7 +4,6 @@
  tolscf=1.0e-10
 
  basis='cc-pVDZ'
- no_4center='no'
 
  postscf='mp2_selfenergy'
  selfenergy_state_min=1

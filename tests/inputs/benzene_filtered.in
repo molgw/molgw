@@ -8,7 +8,6 @@
 
  basis='6-31G'
  auxil_basis='aug-cc-pVTZ-RI'
- no_4center='yes'
 
  natom=12
 /
