@@ -106,16 +106,16 @@ subroutine calculate_eri_4center(basis,rcut)
    ! 1) amk+aml >= ami+amj
    ! 2) amk>=aml
    ! 3) ami>=amj
-   amk = shell(kshell)%am
-   aml = shell(lshell)%am
+   amk = basis%shell(kshell)%am
+   aml = basis%shell(lshell)%am
 
 
    do ijshellpair=1,nshellpair
      ishell = index_shellpair(1,ijshellpair)
      jshell = index_shellpair(2,ijshellpair)
 
-     ami = shell(ishell)%am
-     amj = shell(jshell)%am
+     ami = basis%shell(ishell)%am
+     amj = basis%shell(jshell)%am
      if( amk+aml < ami+amj ) cycle
 
      ni = number_basis_function_am( basis%gaussian_type , ami )
@@ -124,35 +124,35 @@ subroutine calculate_eri_4center(basis,rcut)
      nl = number_basis_function_am( basis%gaussian_type , aml )
 
 
-     am1 = shell(ishell)%am
-     am2 = shell(jshell)%am
-     am3 = shell(kshell)%am
-     am4 = shell(lshell)%am
+     am1 = basis%shell(ishell)%am
+     am2 = basis%shell(jshell)%am
+     am3 = basis%shell(kshell)%am
+     am4 = basis%shell(lshell)%am
      n1c = number_basis_function_am( 'CART' , ami )
      n2c = number_basis_function_am( 'CART' , amj )
      n3c = number_basis_function_am( 'CART' , amk )
      n4c = number_basis_function_am( 'CART' , aml )
-     ng1 = shell(ishell)%ng
-     ng2 = shell(jshell)%ng
-     ng3 = shell(kshell)%ng
-     ng4 = shell(lshell)%ng
+     ng1 = basis%shell(ishell)%ng
+     ng2 = basis%shell(jshell)%ng
+     ng3 = basis%shell(kshell)%ng
+     ng4 = basis%shell(lshell)%ng
      allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
-     alpha1(:) = shell(ishell)%alpha(:) 
-     alpha2(:) = shell(jshell)%alpha(:)
-     alpha3(:) = shell(kshell)%alpha(:)
-     alpha4(:) = shell(lshell)%alpha(:)
-     x01(:) = shell(ishell)%x0(:)
-     x02(:) = shell(jshell)%x0(:)
-     x03(:) = shell(kshell)%x0(:)
-     x04(:) = shell(lshell)%x0(:)
-     allocate(coeff1(shell(ishell)%ng))
-     allocate(coeff2(shell(jshell)%ng))
-     allocate(coeff3(shell(kshell)%ng))
-     allocate(coeff4(shell(lshell)%ng))
-     coeff1(:)=shell(ishell)%coeff(:)
-     coeff2(:)=shell(jshell)%coeff(:)
-     coeff3(:)=shell(kshell)%coeff(:)
-     coeff4(:)=shell(lshell)%coeff(:)
+     alpha1(:) = basis%shell(ishell)%alpha(:) 
+     alpha2(:) = basis%shell(jshell)%alpha(:)
+     alpha3(:) = basis%shell(kshell)%alpha(:)
+     alpha4(:) = basis%shell(lshell)%alpha(:)
+     x01(:) = basis%shell(ishell)%x0(:)
+     x02(:) = basis%shell(jshell)%x0(:)
+     x03(:) = basis%shell(kshell)%x0(:)
+     x04(:) = basis%shell(lshell)%x0(:)
+     allocate(coeff1(basis%shell(ishell)%ng))
+     allocate(coeff2(basis%shell(jshell)%ng))
+     allocate(coeff3(basis%shell(kshell)%ng))
+     allocate(coeff4(basis%shell(lshell)%ng))
+     coeff1(:)=basis%shell(ishell)%coeff(:)
+     coeff2(:)=basis%shell(jshell)%coeff(:)
+     coeff3(:)=basis%shell(kshell)%coeff(:)
+     coeff4(:)=basis%shell(lshell)%coeff(:)
 
      allocate(int_shell(n1c*n2c*n3c*n4c))
 
@@ -169,10 +169,10 @@ subroutine calculate_eri_4center(basis,rcut)
          do kbf=1,nk
            do jbf=1,nj
              do ibf=1,ni
-               eri_4center( index_eri(shell(ishell)%istart+ibf-1, &
-                                      shell(jshell)%istart+jbf-1, &
-                                      shell(kshell)%istart+kbf-1, &
-                                      shell(lshell)%istart+lbf-1) ) = integrals(ibf,jbf,kbf,lbf)
+               eri_4center( index_eri(basis%shell(ishell)%istart+ibf-1, &
+                                      basis%shell(jshell)%istart+jbf-1, &
+                                      basis%shell(kshell)%istart+kbf-1, &
+                                      basis%shell(lshell)%istart+lbf-1) ) = integrals(ibf,jbf,kbf,lbf)
              enddo
            enddo
          enddo
@@ -182,10 +182,10 @@ subroutine calculate_eri_4center(basis,rcut)
          do kbf=1,nk
            do jbf=1,nj
              do ibf=1,ni
-               eri_4center_lr( index_eri(shell(ishell)%istart+ibf-1, &
-                                         shell(jshell)%istart+jbf-1, &
-                                         shell(kshell)%istart+kbf-1, &
-                                         shell(lshell)%istart+lbf-1) ) = integrals(ibf,jbf,kbf,lbf)
+               eri_4center_lr( index_eri(basis%shell(ishell)%istart+ibf-1, &
+                                         basis%shell(jshell)%istart+jbf-1, &
+                                         basis%shell(kshell)%istart+kbf-1, &
+                                         basis%shell(lshell)%istart+lbf-1) ) = integrals(ibf,jbf,kbf,lbf)
              enddo
            enddo
          enddo
@@ -251,15 +251,15 @@ subroutine calculate_eri_4center_shell(basis,rcut,ijshellpair,klshellpair,&
  ! 1) amk+aml >= ami+amj
  ! 2) amk>=aml
  ! 3) ami>=amj
- amk = shell(kshell)%am
- aml = shell(lshell)%am
+ amk = basis%shell(kshell)%am
+ aml = basis%shell(lshell)%am
 
 
  ishell = index_shellpair(1,ijshellpair)
  jshell = index_shellpair(2,ijshellpair)
 
- ami = shell(ishell)%am
- amj = shell(jshell)%am
+ ami = basis%shell(ishell)%am
+ amj = basis%shell(jshell)%am
  if( amk+aml < ami+amj ) call die('calculate_4center_shell: wrong ordering')
 
  ni = number_basis_function_am( basis%gaussian_type , ami )
@@ -268,35 +268,35 @@ subroutine calculate_eri_4center_shell(basis,rcut,ijshellpair,klshellpair,&
  nl = number_basis_function_am( basis%gaussian_type , aml )
 
 
- am1 = shell(ishell)%am
- am2 = shell(jshell)%am
- am3 = shell(kshell)%am
- am4 = shell(lshell)%am
+ am1 = basis%shell(ishell)%am
+ am2 = basis%shell(jshell)%am
+ am3 = basis%shell(kshell)%am
+ am4 = basis%shell(lshell)%am
  n1c = number_basis_function_am( 'CART' , ami )
  n2c = number_basis_function_am( 'CART' , amj )
  n3c = number_basis_function_am( 'CART' , amk )
  n4c = number_basis_function_am( 'CART' , aml )
- ng1 = shell(ishell)%ng
- ng2 = shell(jshell)%ng
- ng3 = shell(kshell)%ng
- ng4 = shell(lshell)%ng
+ ng1 = basis%shell(ishell)%ng
+ ng2 = basis%shell(jshell)%ng
+ ng3 = basis%shell(kshell)%ng
+ ng4 = basis%shell(lshell)%ng
  allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
- alpha1(:) = shell(ishell)%alpha(:) 
- alpha2(:) = shell(jshell)%alpha(:)
- alpha3(:) = shell(kshell)%alpha(:)
- alpha4(:) = shell(lshell)%alpha(:)
- x01(:) = shell(ishell)%x0(:)
- x02(:) = shell(jshell)%x0(:)
- x03(:) = shell(kshell)%x0(:)
- x04(:) = shell(lshell)%x0(:)
- allocate(coeff1(shell(ishell)%ng))
- allocate(coeff2(shell(jshell)%ng))
- allocate(coeff3(shell(kshell)%ng))
- allocate(coeff4(shell(lshell)%ng))
- coeff1(:)=shell(ishell)%coeff(:)
- coeff2(:)=shell(jshell)%coeff(:)
- coeff3(:)=shell(kshell)%coeff(:)
- coeff4(:)=shell(lshell)%coeff(:)
+ alpha1(:) = basis%shell(ishell)%alpha(:) 
+ alpha2(:) = basis%shell(jshell)%alpha(:)
+ alpha3(:) = basis%shell(kshell)%alpha(:)
+ alpha4(:) = basis%shell(lshell)%alpha(:)
+ x01(:) = basis%shell(ishell)%x0(:)
+ x02(:) = basis%shell(jshell)%x0(:)
+ x03(:) = basis%shell(kshell)%x0(:)
+ x04(:) = basis%shell(lshell)%x0(:)
+ allocate(coeff1(basis%shell(ishell)%ng))
+ allocate(coeff2(basis%shell(jshell)%ng))
+ allocate(coeff3(basis%shell(kshell)%ng))
+ allocate(coeff4(basis%shell(lshell)%ng))
+ coeff1(:)=basis%shell(ishell)%coeff(:)
+ coeff2(:)=basis%shell(jshell)%coeff(:)
+ coeff3(:)=basis%shell(kshell)%coeff(:)
+ coeff4(:)=basis%shell(lshell)%coeff(:)
 
  allocate(shell_libint(n1c*n2c*n3c*n4c))
 
@@ -378,15 +378,15 @@ subroutine calculate_eri_4center_shell_grad(basis,rcut,ijshellpair,klshellpair,&
  ! 1) amk+aml >= ami+amj
  ! 2) amk>=aml
  ! 3) ami>=amj
- amk = shell(kshell)%am
- aml = shell(lshell)%am
+ amk = basis%shell(kshell)%am
+ aml = basis%shell(lshell)%am
 
 
  ishell = index_shellpair(1,ijshellpair)
  jshell = index_shellpair(2,ijshellpair)
 
- ami = shell(ishell)%am
- amj = shell(jshell)%am
+ ami = basis%shell(ishell)%am
+ amj = basis%shell(jshell)%am
  if( amk+aml < ami+amj ) call die('calculate_4center_shell_grad: wrong ordering')
 
  ni = number_basis_function_am( basis%gaussian_type , ami )
@@ -395,35 +395,35 @@ subroutine calculate_eri_4center_shell_grad(basis,rcut,ijshellpair,klshellpair,&
  nl = number_basis_function_am( basis%gaussian_type , aml )
 
 
- am1 = shell(ishell)%am
- am2 = shell(jshell)%am
- am3 = shell(kshell)%am
- am4 = shell(lshell)%am
+ am1 = basis%shell(ishell)%am
+ am2 = basis%shell(jshell)%am
+ am3 = basis%shell(kshell)%am
+ am4 = basis%shell(lshell)%am
  n1c = number_basis_function_am( 'CART' , ami )
  n2c = number_basis_function_am( 'CART' , amj )
  n3c = number_basis_function_am( 'CART' , amk )
  n4c = number_basis_function_am( 'CART' , aml )
- ng1 = shell(ishell)%ng
- ng2 = shell(jshell)%ng
- ng3 = shell(kshell)%ng
- ng4 = shell(lshell)%ng
+ ng1 = basis%shell(ishell)%ng
+ ng2 = basis%shell(jshell)%ng
+ ng3 = basis%shell(kshell)%ng
+ ng4 = basis%shell(lshell)%ng
  allocate(alpha1(ng1),alpha2(ng2),alpha3(ng3),alpha4(ng4))
- alpha1(:) = shell(ishell)%alpha(:) 
- alpha2(:) = shell(jshell)%alpha(:)
- alpha3(:) = shell(kshell)%alpha(:)
- alpha4(:) = shell(lshell)%alpha(:)
- x01(:) = shell(ishell)%x0(:)
- x02(:) = shell(jshell)%x0(:)
- x03(:) = shell(kshell)%x0(:)
- x04(:) = shell(lshell)%x0(:)
- allocate(coeff1(shell(ishell)%ng))
- allocate(coeff2(shell(jshell)%ng))
- allocate(coeff3(shell(kshell)%ng))
- allocate(coeff4(shell(lshell)%ng))
- coeff1(:)=shell(ishell)%coeff(:)
- coeff2(:)=shell(jshell)%coeff(:)
- coeff3(:)=shell(kshell)%coeff(:)
- coeff4(:)=shell(lshell)%coeff(:)
+ alpha1(:) = basis%shell(ishell)%alpha(:) 
+ alpha2(:) = basis%shell(jshell)%alpha(:)
+ alpha3(:) = basis%shell(kshell)%alpha(:)
+ alpha4(:) = basis%shell(lshell)%alpha(:)
+ x01(:) = basis%shell(ishell)%x0(:)
+ x02(:) = basis%shell(jshell)%x0(:)
+ x03(:) = basis%shell(kshell)%x0(:)
+ x04(:) = basis%shell(lshell)%x0(:)
+ allocate(coeff1(basis%shell(ishell)%ng))
+ allocate(coeff2(basis%shell(jshell)%ng))
+ allocate(coeff3(basis%shell(kshell)%ng))
+ allocate(coeff4(basis%shell(lshell)%ng))
+ coeff1(:)=basis%shell(ishell)%coeff(:)
+ coeff2(:)=basis%shell(jshell)%coeff(:)
+ coeff3(:)=basis%shell(kshell)%coeff(:)
+ coeff4(:)=basis%shell(lshell)%coeff(:)
 
  allocate(gradAx(n1c*n2c*n3c*n4c))
  allocate(gradAy(n1c*n2c*n3c*n4c))
@@ -540,8 +540,6 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  call start_clock(timing_eri_2center)
 
 
- if( .NOT. ALLOCATED(shell_auxil) ) call setup_shell_list_auxil(auxil_basis)
-
 
  is_longrange = (rcut > 1.0e-12_dp)
  rcut_libint = rcut
@@ -581,22 +579,22 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  eri_2center_tmp(:,:) = 0.0_dp
 
 
- do kshell=1,nshell_auxil
-   amk = shell_auxil(kshell)%am
+ do kshell=1,auxil_basis%nshell
+   amk = auxil_basis%shell(kshell)%am
    nk  = number_basis_function_am( auxil_basis%gaussian_type , amk )
 
    ! Check if this shell is actually needed for the local matrix
    skip_shell = .TRUE.
    do kbf=1,nk
-     kglobal = shell_auxil(kshell)%istart + kbf - 1
+     kglobal = auxil_basis%shell(kshell)%istart + kbf - 1
      skip_shell = skip_shell .AND. .NOT. ( ipcol_3center == INDXG2P(kglobal,block_col,0,first_col,npcol_3center) )
    enddo
 
    if( skip_shell ) cycle
 
  
-   do ishell=1,nshell_auxil
-     ami = shell_auxil(ishell)%am
+   do ishell=1,auxil_basis%nshell
+     ami = auxil_basis%shell(ishell)%am
      ni = number_basis_function_am( auxil_basis%gaussian_type , ami )
 
      !
@@ -612,29 +610,29 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
      ! Check if this shell is actually needed for the local matrix
      skip_shell = .TRUE.
      do ibf=1,ni
-       iglobal = shell_auxil(ishell)%istart + ibf - 1
+       iglobal = auxil_basis%shell(ishell)%istart + ibf - 1
        skip_shell = skip_shell .AND. .NOT. ( iprow_3center == INDXG2P(iglobal,block_row,0,first_row,nprow_3center) )
      enddo
 
      if( skip_shell ) cycle
 
 
-     am1 = shell_auxil(ishell)%am
-     am3 = shell_auxil(kshell)%am
+     am1 = auxil_basis%shell(ishell)%am
+     am3 = auxil_basis%shell(kshell)%am
      n1c = number_basis_function_am( 'CART' , ami )
      n3c = number_basis_function_am( 'CART' , amk )
      allocate( int_shell( n1c*n3c ) )
-     ng1 = shell_auxil(ishell)%ng
-     ng3 = shell_auxil(kshell)%ng
+     ng1 = auxil_basis%shell(ishell)%ng
+     ng3 = auxil_basis%shell(kshell)%ng
      allocate(alpha1(ng1),alpha3(ng3))
-     alpha1(:) = shell_auxil(ishell)%alpha(:) 
-     alpha3(:) = shell_auxil(kshell)%alpha(:)
-     x01(:) = shell_auxil(ishell)%x0(:)
-     x03(:) = shell_auxil(kshell)%x0(:)
-     allocate(coeff1(shell_auxil(ishell)%ng))
-     allocate(coeff3(shell_auxil(kshell)%ng))
-     coeff1(:)=shell_auxil(ishell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
-     coeff3(:)=shell_auxil(kshell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
+     alpha1(:) = auxil_basis%shell(ishell)%alpha(:) 
+     alpha3(:) = auxil_basis%shell(kshell)%alpha(:)
+     x01(:) = auxil_basis%shell(ishell)%x0(:)
+     x03(:) = auxil_basis%shell(kshell)%x0(:)
+     allocate(coeff1(auxil_basis%shell(ishell)%ng))
+     allocate(coeff3(auxil_basis%shell(kshell)%ng))
+     coeff1(:)=auxil_basis%shell(ishell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
+     coeff3(:)=auxil_basis%shell(kshell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
 
 
      call libint_2center(am1,ng1,x01,alpha1,coeff1, &
@@ -651,7 +649,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 
      
      do kbf=1,nk
-       kglobal = shell_auxil(kshell)%istart + kbf - 1
+       kglobal = auxil_basis%shell(kshell)%istart + kbf - 1
 
        if( ipcol_3center == INDXG2P(kglobal,block_col,0,first_col,npcol_3center) ) then
          klocal = INDXG2L(kglobal,block_col,0,first_col,npcol_3center)
@@ -660,7 +658,7 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
        endif
 
        do ibf=1,ni
-         iglobal = shell_auxil(ishell)%istart + ibf - 1
+         iglobal = auxil_basis%shell(ishell)%istart + ibf - 1
 
          if( iprow_3center == INDXG2P(iglobal,block_row,0,first_row,nprow_3center) ) then
            ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow_3center)
@@ -889,8 +887,8 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    kshell = index_shellpair(1,klshellpair)
    lshell = index_shellpair(2,klshellpair)
 
-   amk = shell(kshell)%am
-   aml = shell(lshell)%am
+   amk = basis%shell(kshell)%am
+   aml = basis%shell(lshell)%am
    nk = number_basis_function_am( basis%gaussian_type , amk )
    nl = number_basis_function_am( basis%gaussian_type , aml )
 
@@ -899,7 +897,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    skip_shell = .TRUE.
    do lbf=1,nl
      do kbf=1,nk
-       klpair_global = index_pair(shell(kshell)%istart+kbf-1,shell(lshell)%istart+lbf-1)
+       klpair_global = index_pair(basis%shell(kshell)%istart+kbf-1,basis%shell(lshell)%istart+lbf-1)
 
        skip_shell = skip_shell .AND. .NOT. ( ipcol_3center == INDXG2P(klpair_global,block_col,0,first_col,npcol_3center) )
      enddo
@@ -908,15 +906,15 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
    if( skip_shell ) cycle
 
 
-   do ishell=1,nshell_auxil
+   do ishell=1,auxil_basis%nshell
 
-     ami = shell_auxil(ishell)%am
+     ami = auxil_basis%shell(ishell)%am
      ni = number_basis_function_am( auxil_basis%gaussian_type , ami )
 
      ! Check if this shell is actually needed for the local matrix
      skip_shell = .TRUE.
      do ibf=1,ni
-       iglobal = shell_auxil(ishell)%istart + ibf - 1
+       iglobal = auxil_basis%shell(ishell)%istart + ibf - 1
        skip_shell = skip_shell .AND. .NOT. ( iprow_3center == INDXG2P(iglobal,block_row,0,first_row,nprow_3center) )
      enddo
 
@@ -929,20 +927,20 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
      n1c = number_basis_function_am( 'CART' , ami )
      n3c = number_basis_function_am( 'CART' , amk )
      n4c = number_basis_function_am( 'CART' , aml )
-     ng1 = shell_auxil(ishell)%ng
-     ng3 = shell(kshell)%ng
-     ng4 = shell(lshell)%ng
+     ng1 = auxil_basis%shell(ishell)%ng
+     ng3 = basis%shell(kshell)%ng
+     ng4 = basis%shell(lshell)%ng
      allocate(alpha1(ng1),alpha3(ng3),alpha4(ng4))
      allocate(coeff1(ng1),coeff3(ng3),coeff4(ng4))
-     alpha1(:) = shell_auxil(ishell)%alpha(:) 
-     alpha3(:) = shell(kshell)%alpha(:)
-     alpha4(:) = shell(lshell)%alpha(:)
-     coeff1(:) = shell_auxil(ishell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
-     coeff3(:) = shell(kshell)%coeff(:)
-     coeff4(:) = shell(lshell)%coeff(:)
-     x01(:) = shell_auxil(ishell)%x0(:)
-     x03(:) = shell(kshell)%x0(:)
-     x04(:) = shell(lshell)%x0(:)
+     alpha1(:) = auxil_basis%shell(ishell)%alpha(:) 
+     alpha3(:) = basis%shell(kshell)%alpha(:)
+     alpha4(:) = basis%shell(lshell)%alpha(:)
+     coeff1(:) = auxil_basis%shell(ishell)%coeff(:) * cart_to_pure_norm(0,agt)%matrix(1,1)
+     coeff3(:) = basis%shell(kshell)%coeff(:)
+     coeff4(:) = basis%shell(lshell)%coeff(:)
+     x01(:) = auxil_basis%shell(ishell)%x0(:)
+     x03(:) = basis%shell(kshell)%x0(:)
+     x04(:) = basis%shell(lshell)%x0(:)
 
 
      allocate( int_shell(n1c*n3c*n4c) )
@@ -957,12 +955,12 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
      
      do lbf=1,nl
        do kbf=1,nk
-         klpair_global = index_pair(shell(kshell)%istart+kbf-1,shell(lshell)%istart+lbf-1)
+         klpair_global = index_pair(basis%shell(kshell)%istart+kbf-1,basis%shell(lshell)%istart+lbf-1)
          if( ipcol_3center /= INDXG2P(klpair_global,block_col,0,first_col,npcol_3center) ) cycle
          jlocal = INDXG2L(klpair_global,block_col,0,first_col,npcol_3center)
 
          do ibf=1,ni
-           ibf_auxil_global = shell_auxil(ishell)%istart+ibf-1
+           ibf_auxil_global = auxil_basis%shell(ishell)%istart+ibf-1
            if( iprow_3center /= INDXG2P(ibf_auxil_global,block_row,0,first_row,nprow_3center) ) cycle
            ilocal = INDXG2L(ibf_auxil_global,block_row,0,first_row,nprow_3center)
 
@@ -978,7 +976,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
      deallocate(alpha1,alpha3,alpha4)
      deallocate(coeff1,coeff3,coeff4)
 
-   enddo ! ishell_auxil
+   enddo ! ishell
 
  enddo ! klshellpair
 
@@ -1142,8 +1140,8 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
    kshell = index_shellpair(1,klshellpair)
    lshell = index_shellpair(2,klshellpair)
 
-   amk = shell(kshell)%am
-   aml = shell(lshell)%am
+   amk = basis%shell(kshell)%am
+   aml = basis%shell(lshell)%am
 
    nk = number_basis_function_am( basis%gaussian_type , amk )
    nl = number_basis_function_am( basis%gaussian_type , aml )
@@ -1154,19 +1152,19 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
    n3c = number_basis_function_am( 'CART' , amk )
    n4c = number_basis_function_am( 'CART' , aml )
    ng1 = ng_rho
-   ng3 = shell(kshell)%ng
-   ng4 = shell(lshell)%ng
+   ng3 = basis%shell(kshell)%ng
+   ng4 = basis%shell(lshell)%ng
    allocate(alpha1(ng1),alpha3(ng3),alpha4(ng4))
    allocate(coeff1(ng1),coeff3(ng3),coeff4(ng4))
    alpha1(:) = alpha_rho(:)
-   alpha3(:) = shell(kshell)%alpha(:)
-   alpha4(:) = shell(lshell)%alpha(:)
+   alpha3(:) = basis%shell(kshell)%alpha(:)
+   alpha4(:) = basis%shell(lshell)%alpha(:)
    coeff1(:) = coeff_rho(:) / 2.0_dp**1.25_dp / pi**0.75_dp * alpha_rho(:)**1.5_dp * cart_to_pure_norm(0,PUREG)%matrix(1,1)
-   coeff3(:) = shell(kshell)%coeff(:)
-   coeff4(:) = shell(lshell)%coeff(:)
+   coeff3(:) = basis%shell(kshell)%coeff(:)
+   coeff4(:) = basis%shell(lshell)%coeff(:)
    x01(:) = x0_rho(:)
-   x03(:) = shell(kshell)%x0(:)
-   x04(:) = shell(lshell)%x0(:)
+   x03(:) = basis%shell(kshell)%x0(:)
+   x04(:) = basis%shell(lshell)%x0(:)
 
    allocate( int_shell(n3c*n4c) )
 
@@ -1182,8 +1180,8 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
    if( parallel_ham .AND. parallel_buffer ) then    
      do lbf=1,nl
        do kbf=1,nk
-         iglobal = shell(kshell)%istart+kbf-1
-         jglobal = shell(lshell)%istart+lbf-1
+         iglobal = basis%shell(kshell)%istart+kbf-1
+         jglobal = basis%shell(lshell)%istart+lbf-1
          ilocal = iglobal
          jlocal = jglobal
          if( kshell == lshell ) then ! To avoid double-counting   
@@ -1198,16 +1196,16 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
 
      do lbf=1,nl
        do kbf=1,nk
-         iglobal = shell(kshell)%istart+kbf-1
-         jglobal = shell(lshell)%istart+lbf-1
+         iglobal = basis%shell(kshell)%istart+kbf-1
+         jglobal = basis%shell(lshell)%istart+lbf-1
          ilocal = rowindex_global_to_local('H',iglobal)
          jlocal = colindex_global_to_local('H',jglobal)
          if( ilocal*jlocal /= 0 ) then
            vhrho(ilocal,jlocal) = integrals(1,kbf,lbf)
          endif
          ! And the symmetric too
-         iglobal = shell(lshell)%istart+lbf-1
-         jglobal = shell(kshell)%istart+kbf-1
+         iglobal = basis%shell(lshell)%istart+lbf-1
+         jglobal = basis%shell(kshell)%istart+kbf-1
          ilocal = rowindex_global_to_local('H',iglobal)
          jlocal = colindex_global_to_local('H',jglobal)
          if( ilocal*jlocal /= 0 ) then

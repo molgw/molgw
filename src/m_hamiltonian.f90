@@ -299,12 +299,13 @@ end subroutine setup_nucleus
 
 
 !=========================================================================
-subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
+subroutine setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
  use m_basis_set
  use m_atoms
  use m_dft_grid
  use m_ecp
  implicit none
+ logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  real(dp),intent(inout)     :: hamiltonian_nucleus(basis%nbf,basis%nbf)
 !=====
@@ -328,6 +329,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  real(dp),allocatable :: int_fixed_r(:,:)
  real(dp),external    :: real_spherical_harmonics
  integer              :: necp,ie
+ character(len=100)   :: title
  logical              :: element_has_ecp
 !=====
 
@@ -453,6 +455,8 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
 
  call xsum_world(hamiltonian_nucleus)
 
+ title='=== ECP Nucleus potential contribution ==='
+ call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_nucleus)
 
  call stop_clock(timing_ecp)
 
@@ -1579,12 +1583,13 @@ end subroutine dft_exc_vxc
 
 
 !=========================================================================
-subroutine dft_approximate_vhxc(basis,vhxc_ij)
+subroutine dft_approximate_vhxc(print_matrix_,basis,vhxc_ij)
  use m_basis_set
  use m_dft_grid
  use m_eri_calculate
  implicit none
 
+ logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: vhxc_ij(basis%nbf,basis%nbf)
 !=====
@@ -1623,7 +1628,6 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  enddo
 
  write(stdout,*) 'Simple LDA functional on a coarse grid'
-
  !
  ! Create a temporary grid with low quality
  ! This grid is to be destroyed at the end of the present subroutine

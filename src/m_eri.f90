@@ -37,21 +37,7 @@ module m_eri
  integer,protected,allocatable      :: index_shellpair(:,:)
  integer,protected                  :: nshellpair
 
- type shell_type
-   integer              :: am
-   integer              :: ng
-   real(dp),allocatable :: alpha(:)
-   real(dp),allocatable :: coeff(:)
-   real(dp)             :: x0(3)
-   integer              :: iatom
-   integer              :: istart,iend   ! index of the shell's basis functions in the basis set
- end type shell_type
-
- integer,protected                      :: nshell
- integer,protected                      :: nshell_auxil
- type(shell_type),protected,allocatable :: shell(:)
- type(shell_type),protected,allocatable :: shell_auxil(:)
- integer,private,allocatable            :: shell_bf(:)
+ integer,private,allocatable        :: shell_bf(:)
 
 
  integer,private   :: nbf_eri         ! local copy of nbf
@@ -113,10 +99,10 @@ subroutine prepare_eri(basis)
 
 
  if(.NOT.ALLOCATED(negligible_shellpair)) then
-   call setup_shell_list(basis)
-   allocate(negligible_shellpair(nshell,nshell))
+   call setup_shell_index(basis)
+   allocate(negligible_shellpair(basis%nshell,basis%nshell))
    call identify_negligible_shellpair(basis)
-   call setup_shellpair()
+   call setup_shellpair(basis)
    call setup_basispair()
  endif
 
@@ -169,13 +155,6 @@ subroutine deallocate_eri()
  if(ALLOCATED(index_pair_1d)) call clean_deallocate('index pair',index_pair_1d)
  if(ALLOCATED(index_basis))   call clean_deallocate('index basis',index_basis)
 
- ! 
- ! Cleanly deallocate the shell objects
- do ishell=1,nshell
-   if(ALLOCATED(shell(ishell)%alpha)) deallocate( shell(ishell)%alpha )
-   if(ALLOCATED(shell(ishell)%coeff)) deallocate( shell(ishell)%coeff )
- enddo
- if(ALLOCATED(shell))                 deallocate(shell)
  if(ALLOCATED(shell_bf))              deallocate(shell_bf)
 
 
@@ -322,7 +301,7 @@ end function eri_ri_lr
 
 
 !=========================================================================
-subroutine setup_shell_list(basis)
+subroutine setup_shell_index(basis)
  implicit none
 
  type(basis_set),intent(in)   :: basis
@@ -331,38 +310,6 @@ subroutine setup_shell_list(basis)
  integer :: ishell
 !=====
 
-
- nshell = basis%nshell
- allocate(shell(nshell))
-
- !
- ! Set up shells information
- jbf=0
- do ishell=1,nshell
-   do ibf=1,basis%nbf_cart
-     if( basis%bf(ibf)%shell_index == ishell ) then
-       shell(ishell)%am    = basis%bf(ibf)%am
-       shell(ishell)%x0(:) = basis%bf(ibf)%x0(:)
-       shell(ishell)%ng    = basis%bf(ibf)%ngaussian
-       allocate( shell(ishell)%alpha(shell(ishell)%ng) )
-       allocate( shell(ishell)%coeff(shell(ishell)%ng) )
-       shell(ishell)%alpha(:) = basis%bf(ibf)%g(:)%alpha
-       !
-       ! Include here the normalization part that does not depend on (nx,ny,nz)
-       shell(ishell)%coeff(:) = basis%bf(ibf)%coeff(:) &
-                 * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**shell(ishell)%am * shell(ishell)%alpha(:)**( 0.25_dp * ( 2.0_dp*shell(ishell)%am + 3.0_dp ) )
-
-       shell(ishell)%iatom = basis%bf(ibf)%iatom
-
-       jbf = jbf + 1
-       shell(ishell)%istart = jbf
-       jbf = jbf + number_basis_function_am( basis%gaussian_type , shell(ishell)%am ) - 1
-       shell(ishell)%iend   = jbf
-       exit
-
-     endif
-   enddo
- enddo
 
  !
  ! Set up the correspondence between basis function and shells (the inverse of
@@ -379,53 +326,7 @@ subroutine setup_shell_list(basis)
  enddo
 
 
-end subroutine setup_shell_list
-
-
-!=========================================================================
-subroutine setup_shell_list_auxil(auxil_basis)
- implicit none
- 
- type(basis_set),intent(in)   :: auxil_basis
-!=====
- integer :: ibf,jbf
- integer :: ishell
-!=====
-
-
- nshell_auxil = auxil_basis%nshell
- allocate(shell_auxil(nshell_auxil))
-
- !
- ! Set up shells information
- jbf=0
- do ishell=1,nshell_auxil
-   do ibf=1,auxil_basis%nbf_cart
-     if(auxil_basis%bf(ibf)%shell_index==ishell) then
-       shell_auxil(ishell)%am    = auxil_basis%bf(ibf)%am
-       shell_auxil(ishell)%x0(:) = auxil_basis%bf(ibf)%x0(:)
-       shell_auxil(ishell)%ng    = auxil_basis%bf(ibf)%ngaussian
-       allocate( shell_auxil(ishell)%alpha(shell_auxil(ishell)%ng) )
-       allocate( shell_auxil(ishell)%coeff(shell_auxil(ishell)%ng) )
-       shell_auxil(ishell)%alpha(:) = auxil_basis%bf(ibf)%g(:)%alpha
-       !
-       ! Include here the normalization part that does not depend on (nx,ny,nz)
-       shell_auxil(ishell)%coeff(:) = auxil_basis%bf(ibf)%coeff(:) &
-                 * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**shell_auxil(ishell)%am * shell_auxil(ishell)%alpha(:)**( 0.25_dp * ( 2.0_dp*shell_auxil(ishell)%am + 3.0_dp ) )
-
-       shell_auxil(ishell)%iatom = auxil_basis%bf(ibf)%iatom
-
-       jbf = jbf + 1
-       shell_auxil(ishell)%istart = jbf
-       jbf = jbf + number_basis_function_am( auxil_basis%gaussian_type , shell_auxil(ishell)%am ) - 1
-       shell_auxil(ishell)%iend   = jbf
-       exit
-
-     endif
-   enddo
- enddo
-
-end subroutine setup_shell_list_auxil
+end subroutine setup_shell_index
 
 
 !=========================================================================
@@ -521,7 +422,7 @@ subroutine identify_negligible_shellpair(basis)
  integer                      :: ishell,jshell
  real(dp),allocatable         :: integrals(:,:,:,:)
  real(dp)                     :: workload(nproc_world)
- integer                      :: shell_proc(nshell)
+ integer                      :: shell_proc(basis%nshell)
 !=====
 ! variables used to call C
  integer(C_INT)               :: am1,am2
@@ -538,8 +439,8 @@ subroutine identify_negligible_shellpair(basis)
  !
  ! Load balancing
  workload(:) = 0.0_dp
- do jshell=1,nshell
-   amj = shell(jshell)%am
+ do jshell=1,basis%nshell
+   amj = basis%shell(jshell)%am
    ip = MINLOC(workload(:),DIM=1)
    !
    ! Cost function was evaluated from a few runs
@@ -550,34 +451,34 @@ subroutine identify_negligible_shellpair(basis)
 
  negligible_shellpair(:,:) = .TRUE.
 
- do jshell=1,nshell
+ do jshell=1,basis%nshell
    !
    ! Workload is distributed here
    if( shell_proc(jshell) /= rank_world ) cycle
 
-   amj = shell(jshell)%am
+   amj = basis%shell(jshell)%am
    nj  = number_basis_function_am( basis%gaussian_type , amj )
    n2c = number_basis_function_am( 'CART' , amj )
-   am2 = shell(jshell)%am
-   ng2 = shell(jshell)%ng
+   am2 = basis%shell(jshell)%am
+   ng2 = basis%shell(jshell)%ng
 
-   do ishell=1,nshell
-     ami = shell(ishell)%am
+   do ishell=1,basis%nshell
+     ami = basis%shell(ishell)%am
      if( ami < amj ) cycle
 
      ni = number_basis_function_am( basis%gaussian_type , ami )
      n1c = number_basis_function_am( 'CART' , ami )
-     am1 = shell(ishell)%am
-     ng1 = shell(ishell)%ng
+     am1 = basis%shell(ishell)%am
+     ng1 = basis%shell(ishell)%ng
 
      allocate(alpha1(ng1),alpha2(ng2))
      allocate(coeff1(ng1),coeff2(ng2))
-     alpha1(:) = shell(ishell)%alpha(:)
-     alpha2(:) = shell(jshell)%alpha(:)
-     x01(:) = shell(ishell)%x0(:)
-     x02(:) = shell(jshell)%x0(:)
-     coeff1(:) = shell(ishell)%coeff(:)
-     coeff2(:) = shell(jshell)%coeff(:)
+     alpha1(:) = basis%shell(ishell)%alpha(:)
+     alpha2(:) = basis%shell(jshell)%alpha(:)
+     x01(:) = basis%shell(ishell)%x0(:)
+     x02(:) = basis%shell(jshell)%x0(:)
+     coeff1(:) = basis%shell(ishell)%coeff(:)
+     coeff2(:) = basis%shell(jshell)%coeff(:)
 
      allocate( int_shell( n1c*n2c*n1c*n2c ) )
 
@@ -618,9 +519,11 @@ end subroutine identify_negligible_shellpair
 
 
 !=========================================================================
-subroutine setup_shellpair()
+subroutine setup_shellpair(basis)
  implicit none
 
+ type(basis_set),intent(in) :: basis
+!=====
  integer :: ishell,jshell
  integer :: ami,amj
  integer :: ishellpair,jshellpair
@@ -628,13 +531,13 @@ subroutine setup_shellpair()
 
  ishellpair = 0
  jshellpair = 0
- do jshell=1,nshell
+ do jshell=1,basis%nshell
    do ishell=1,jshell 
      jshellpair = jshellpair + 1
      ! skip the identified negligible shell pairs
      if( negligible_shellpair(ishell,jshell) ) cycle
-     ami = shell(ishell)%am
-     amj = shell(jshell)%am
+     ami = basis%shell(ishell)%am
+     amj = basis%shell(jshell)%am
      ishellpair = ishellpair + 1
 
    enddo
@@ -646,12 +549,12 @@ subroutine setup_shellpair()
  allocate(index_shellpair(2,nshellpair))
 
  ishellpair = 0
- do jshell=1,nshell
+ do jshell=1,basis%nshell
    do ishell=1,jshell 
      ! skip the identified negligible shell pairs
      if( negligible_shellpair(ishell,jshell) ) cycle
-     ami = shell(ishell)%am
-     amj = shell(jshell)%am
+     ami = basis%shell(ishell)%am
+     amj = basis%shell(jshell)%am
      ishellpair = ishellpair + 1
      ! Reverse if needed the order of the shell so to maximize the angular
      ! momentum of the first shell

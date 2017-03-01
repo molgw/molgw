@@ -35,6 +35,17 @@ module m_basis_set
    real(dp),allocatable         :: coeff(:)                   ! Their mixing coefficients
  end type
 
+ type shell_type
+   integer              :: am
+   integer              :: ng
+   real(dp),allocatable :: alpha(:)
+   real(dp),allocatable :: coeff(:)
+   real(dp)             :: x0(3)
+   integer              :: iatom
+   integer              :: istart,iend                        ! index of the shell's basis functions in the final basis set
+ end type shell_type
+
+
  !
  ! A basis set is a list of basis functions
  type basis_set
@@ -52,6 +63,7 @@ module m_basis_set
    character(len=4)                 :: gaussian_type   ! CART or PURE
    type(basis_function),allocatable :: bf(:)           ! Cartesian basis function
    type(basis_function),allocatable :: bff(:)          ! Final basis function (can be Cartesian or Pure)
+   type(shell_type),allocatable     :: shell(:)
 
  end type basis_set
 
@@ -69,12 +81,13 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  type(basis_set),intent(out)   :: basis
 !=====
  character(len=100)            :: basis_filename
- integer                       :: ibf,jbf,kbf,ng,ig,shell_index,ibf_file
+ integer                       :: ibf,jbf,kbf,ng,ig
+ integer                       :: ishell,ishell_file
  integer                       :: jbf_cart
- real(dp),allocatable          :: alpha(:),coeff(:),coeff2(:)
+ real(dp),allocatable          :: alpha(:),coeff(:)
  logical                       :: file_exists
  integer                       :: basisfile
- integer                       :: am_read,nbf_file
+ integer                       :: am_read,nshell_file
  logical,parameter             :: normalized=.TRUE.
  integer                       :: iatom
  integer                       :: index_in_shell
@@ -84,6 +97,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
  basis%nbf           = 0
  basis%nbf_cart      = 0
+ basis%nshell        = 0
  basis%gaussian_type = gaussian_type
  basis%ammax         = -1
 
@@ -91,7 +105,6 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
  !
  ! LOOP OVER ATOMS
- ! TODO could be reduced to the type of atoms in the future
  !
  do iatom=1,natom_basis
 
@@ -114,13 +127,15 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
    !
    ! read first to get all the dimensions
    open(newunit=basisfile,file=TRIM(basis_filename),status='old')
-   read(basisfile,*) nbf_file
-   if(nbf_file<1) call die('ERROR in basis set file')
-   do ibf_file=1,nbf_file
+   read(basisfile,*) nshell_file
+   if(nshell_file<1) call die('ERROR in basis set file')
+   do ishell_file=1,nshell_file
      read(basisfile,*) ng,am_read
      if(ng<1) call die('ERROR in basis set file')
+     if(am_read==10) call die('Deprecated basis set file with shared exponent SP orbitals. Please split them')
      basis%nbf_cart = basis%nbf_cart + number_basis_function_am('CART'             ,am_read)
      basis%nbf      = basis%nbf      + number_basis_function_am(basis%gaussian_type,am_read)
+     basis%nshell   = basis%nshell   + 1
      do ig=1,ng
        read(basisfile,*) 
      enddo
@@ -135,12 +150,15 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  if(basis%gaussian_type=='PURE') then
    write(stdout,'(a50,i8)') 'Total number of cart. functions:',basis%nbf_cart
  endif
+ write(stdout,'(a50,i8)') 'Number of shells:',basis%nshell
+
  allocate(basis%bf(basis%nbf_cart))
  allocate(basis%bff(basis%nbf))
+ allocate(basis%shell(basis%nshell))
 
  jbf         = 0
  jbf_cart    = 0
- shell_index = 0
+ ishell      = 0
  do iatom=1,natom_basis
 
    if( nelement_ecp > 0 ) then 
@@ -154,101 +172,83 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
    endif
   
    open(newunit=basisfile,file=TRIM(basis_filename),status='old')
-   read(basisfile,*) nbf_file
-   do ibf_file=1,nbf_file
+   read(basisfile,*) nshell_file
+   do ishell_file=1,nshell_file
      read(basisfile,*) ng,am_read
-     allocate(alpha(ng),coeff(ng),coeff2(ng))
+     allocate(alpha(ng),coeff(ng))
   
-     if(am_read<10) then
-       do ig=1,ng
-         read(basisfile,*) alpha(ig),coeff(ig)
-       enddo
-     else
-       do ig=1,ng
-         read(basisfile,*) alpha(ig),coeff(ig),coeff2(ig)
-       enddo
-     endif
-  
-!     ! rescale the gaussian decay rate whenever zatom /= basis_element
-!     if( abs( zatom(iatom) - REAL(basis_element(iatom),dp) ) > 1.d-6 ) then
-!       alpha(:) = alpha(:) * ( zatom(iatom) / REAL(basis_element(iatom),dp) )**2
-!       write(stdout,*) 'rescaling momentum',am_read
-!       write(stdout,*) 'smallest rescaled alpha:',MINVAL(alpha(:))
-!     endif
+     do ig=1,ng
+       read(basisfile,*) alpha(ig),coeff(ig)
+     enddo
   
      x0(:) = x(:,iatom)
 
-     shell_index = shell_index + 1
+     !
+     ! Shell setup
+     !
+     ishell = ishell + 1
 
-     select case(am_read)
-     case(10) ! SP shared exponent
-       ! Cartesian basis functions
-       jbf_cart = jbf_cart + 1 ; call init_basis_function(normalized,ng,0,0,0,iatom,x0,alpha,coeff,shell_index,1,basis%bf(jbf_cart))
-       shell_index = shell_index + 1
-       jbf_cart = jbf_cart + 1 ; call init_basis_function(normalized,ng,1,0,0,iatom,x0,alpha,coeff2,shell_index,1,basis%bf(jbf_cart))
-       jbf_cart = jbf_cart + 1 ; call init_basis_function(normalized,ng,0,1,0,iatom,x0,alpha,coeff2,shell_index,2,basis%bf(jbf_cart))
-       jbf_cart = jbf_cart + 1 ; call init_basis_function(normalized,ng,0,0,1,iatom,x0,alpha,coeff2,shell_index,3,basis%bf(jbf_cart))
+     basis%shell(ishell)%am    = am_read
+     basis%shell(ishell)%iatom = iatom
+     basis%shell(ishell)%x0(:) = x0(:)
+     basis%shell(ishell)%ng    = ng
+     allocate(basis%shell(ishell)%alpha(ng))
+     allocate(basis%shell(ishell)%coeff(ng))
+     basis%shell(ishell)%alpha(:) = alpha(:)
+     basis%shell(ishell)%istart = jbf + 1
+     basis%shell(ishell)%iend   = jbf + number_basis_function_am(gaussian_type,am_read)
 
-       ! Final basis function
+
+     !
+     ! Basis function setup
+     !
+
+     !
+     ! Ordering of Libint as explained in Kenny et al. J. Comput Chem. 29, 562 (2008).
+     !
+     nx = am_read
+     ny = 0
+     nz = 0
+     index_in_shell = 0
+     do 
+       ! Add the new basis function
+       jbf_cart = jbf_cart + 1 
+       index_in_shell = index_in_shell + 1
+       call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bf(jbf_cart))
        if(basis%gaussian_type == 'CART') then
-         jbf     = jbf     + 1 ; call init_basis_function(normalized,ng,0,0,0,iatom,x0,alpha,coeff,shell_index,1,basis%bff(jbf))
-         shell_index = shell_index + 1
-         jbf     = jbf     + 1 ; call init_basis_function(normalized,ng,1,0,0,iatom,x0,alpha,coeff2,shell_index,1,basis%bff(jbf))
-         jbf     = jbf     + 1 ; call init_basis_function(normalized,ng,0,1,0,iatom,x0,alpha,coeff2,shell_index,2,basis%bff(jbf))
-         jbf     = jbf     + 1 ; call init_basis_function(normalized,ng,0,0,1,iatom,x0,alpha,coeff2,shell_index,3,basis%bff(jbf))
+         jbf = jbf + 1
+         call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bff(jbf))
+       endif
+
+       ! Break the loop when nz is equal to l
+       if( nz == am_read ) exit
+
+       if( nz < am_read - nx ) then
+         ny = ny - 1
+         nz = nz + 1
        else
-         jbf     = jbf     + 1 ; call init_basis_function_pure(normalized,ng,0, 0,iatom,x0,alpha,coeff,shell_index,1,basis%bff(jbf))
-         shell_index = shell_index + 1
-         jbf     = jbf     + 1 ; call init_basis_function_pure(normalized,ng,1,-1,iatom,x0,alpha,coeff2,shell_index,1,basis%bff(jbf))
-         jbf     = jbf     + 1 ; call init_basis_function_pure(normalized,ng,1, 0,iatom,x0,alpha,coeff2,shell_index,2,basis%bff(jbf))
-         jbf     = jbf     + 1 ; call init_basis_function_pure(normalized,ng,1, 1,iatom,x0,alpha,coeff2,shell_index,3,basis%bff(jbf))
+         nx = nx - 1
+         ny = am_read - nx
+         nz = 0
        endif
 
-     case default
+     enddo
 
-       !
-       ! Ordering of Libint as explained in Kenny et al. J. Comput Chem. 29, 562 (2008).
-       !
-       nx = am_read
-       ny = 0
-       nz = 0
-       index_in_shell = 0
-       do 
-         ! Add the new basis function
-         jbf_cart = jbf_cart + 1 
+     index_in_shell = 0
+     if(basis%gaussian_type == 'PURE') then
+       do mm=-am_read,am_read
+         jbf = jbf + 1
          index_in_shell = index_in_shell + 1
-         call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell_index,index_in_shell,basis%bf(jbf_cart))
-         if(basis%gaussian_type == 'CART') then
-           jbf = jbf + 1
-           call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell_index,index_in_shell,basis%bff(jbf))
-         endif
-
-         ! Break the loop when nz is equal to l
-         if( nz == am_read ) exit
-
-         if( nz < am_read - nx ) then
-           ny = ny - 1
-           nz = nz + 1
-         else
-           nx = nx - 1
-           ny = am_read - nx
-           nz = 0
-         endif
-
+         call init_basis_function_pure(normalized,ng,am_read,mm,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bff(jbf))
        enddo
+     endif
 
-       index_in_shell = 0
-       if(basis%gaussian_type == 'PURE') then
-         do mm=-am_read,am_read
-           jbf = jbf + 1
-           index_in_shell = index_in_shell + 1
-           call init_basis_function_pure(normalized,ng,am_read,mm,iatom,x0,alpha,coeff,shell_index,index_in_shell,basis%bff(jbf))
-         enddo
-       endif
-
-     end select
+     !
+     ! Include here the normalization part that does not depend on (nx,ny,nz)
+     basis%shell(ishell)%coeff(:) = basis%bf(jbf_cart-number_basis_function_am(gaussian_type,am_read)+1)%coeff(:) &
+               * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**am_read * alpha(:)**( 0.25_dp * ( 2.0_dp*am_read + 3.0_dp ) )
   
-     deallocate(alpha,coeff,coeff2)
+     deallocate(alpha,coeff)
    enddo
    close(basisfile)
 
@@ -257,8 +257,6 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  enddo
  
 
- basis%nshell = shell_index
- write(stdout,'(a50,i8)') 'Number of shells:',basis%nshell
 
  ! Find the maximum angular momentum employed in the basis set
  basis%ammax=-1
@@ -296,13 +294,18 @@ subroutine destroy_basis_set(basis)
 
  type(basis_set),intent(inout) :: basis
 !=====
- integer :: ibf
+ integer :: ibf,ishell
 !=====
 
 ! do ibf=1,basis%nbf
 !   call destroy_basis_function(basis%bf(ibf))
 ! enddo
  deallocate(basis%bf)
+ do ishell=1,basis%nshell
+   if(ALLOCATED(basis%shell(ishell)%alpha)) deallocate( basis%shell(ishell)%alpha )
+   if(ALLOCATED(basis%shell(ishell)%coeff)) deallocate( basis%shell(ishell)%coeff )
+ enddo
+ deallocate(basis%shell)
 
 end subroutine destroy_basis_set
 
