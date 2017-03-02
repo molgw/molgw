@@ -6,7 +6,6 @@
 
  basis='cc-pVDZ'
  auxil_basis='cc-pVDZ-RI'
- no_4center='yes'
 
  postscf='g0w0gamma0'
  selfenergy_state_min=7

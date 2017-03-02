@@ -10,6 +10,7 @@
 subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
  use m_definitions
  use m_mpi
+ use m_cart_to_pure
  use m_basis_set
  use m_eri_ao_mo
  use m_inputparam,only: nspin,spin_fact,ncoreg,nvirtualg,is_frozencore
@@ -350,6 +351,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
  integer,parameter     :: neig=6
  integer,parameter     :: nblock=1
  integer,parameter     :: ncycle=12
+ integer               :: gt
  integer               :: bigm,bigm_max
  integer               :: ieig,jeig,keig,neigc,icycle,iblock,jblock
  real(dp),allocatable  :: bb(:,:),qq(:,:),atilde(:,:),ab(:,:)
@@ -391,6 +393,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
    call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,1,nstate,1,nstate)
  endif
 
+ gt = get_gaussian_type_tag(basis%gaussian_type)
 
  write(stdout,*) 'Obtain the one-electron Hamiltonian in the HF basis'
 
@@ -813,7 +816,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
        do i_cart=1,ni_cart
          basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
        enddo
-       basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li)%matrix(:,:) )
+       basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
        deallocate(basis_function_r_cart)
   
        ibf      = ibf      + ni

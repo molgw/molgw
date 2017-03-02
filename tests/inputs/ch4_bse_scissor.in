@@ -7,7 +7,6 @@
  scissor=0.05
  basis='aug-cc-pVDZ'
  auxil_basis='aug-cc-pVDZ-RI'
- no_4center='yes'
  frozencore='yes'
 
  nvirtualw=30

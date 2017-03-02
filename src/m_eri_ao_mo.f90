@@ -7,7 +7,6 @@
 !
 !=========================================================================
 module m_eri_ao_mo
- use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE
  use m_definitions
  use m_mpi
  use m_memory
@@ -16,9 +15,9 @@ module m_eri_ao_mo
  use m_eri
 
 
- real(prec_eri),protected,allocatable :: eri_3center_eigen(:,:,:,:)
- real(prec_eri),protected,allocatable :: eri_3center_eigen_lr(:,:,:,:)
- real(prec_eri),protected,allocatable :: eri_3center_eigen_mixed(:,:,:,:)
+ real(dp),protected,allocatable :: eri_3center_eigen(:,:,:,:)
+ real(dp),protected,allocatable :: eri_3center_eigen_lr(:,:,:,:)
+ real(dp),protected,allocatable :: eri_3center_eigen_mixed(:,:,:,:)
 
 
 contains

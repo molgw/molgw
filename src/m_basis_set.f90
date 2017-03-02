@@ -13,19 +13,12 @@ module m_basis_set
  use m_mpi
  use m_timing
  use m_elements
- use m_tools, only: diagonalize,invert,double_factorial,orbital_momentum_name
+ use m_tools, only: orbital_momentum_name
  use m_atoms
  use m_ecp
  use m_gaussian
+ use m_cart_to_pure
 
-
- type transform
-   real(dp),allocatable         :: matrix(:,:)
- end type
- integer,parameter              :: lmax_transform     = 7
- integer,parameter              :: lmax_transform_pure= 5
- type(transform)                :: cart_to_pure(0:lmax_transform)
- type(transform)                :: cart_to_pure_norm(0:lmax_transform)
 
  type basis_function
    integer                      :: shell_index                ! This basis function belongs to a shell of basis functions
@@ -41,6 +34,17 @@ module m_basis_set
    type(gaussian),allocatable   :: g(:)                       ! The primitive gaussian functions
    real(dp),allocatable         :: coeff(:)                   ! Their mixing coefficients
  end type
+
+ type shell_type
+   integer              :: am
+   integer              :: ng
+   real(dp),allocatable :: alpha(:)
+   real(dp),allocatable :: coeff(:)
+   real(dp)             :: x0(3)
+   integer              :: iatom
+   integer              :: istart,iend                        ! index of the shell's basis functions in the final basis set
+ end type shell_type
+
 
  !
  ! A basis set is a list of basis functions
@@ -59,6 +63,7 @@ module m_basis_set
    character(len=4)                 :: gaussian_type   ! CART or PURE
    type(basis_function),allocatable :: bf(:)           ! Cartesian basis function
    type(basis_function),allocatable :: bff(:)          ! Final basis function (can be Cartesian or Pure)
+   type(shell_type),allocatable     :: shell(:)
 
  end type basis_set
 
@@ -71,17 +76,18 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  implicit none
  character(len=4),intent(in)   :: gaussian_type
  character(len=100),intent(in) :: basis_path
- character(len=100),intent(in) :: basis_name
- character(len=100),intent(in) :: ecp_basis_name
+ character(len=100),intent(in) :: basis_name(natom_basis)
+ character(len=100),intent(in) :: ecp_basis_name(natom_basis)
  type(basis_set),intent(out)   :: basis
 !=====
  character(len=100)            :: basis_filename
- integer                       :: ibf,jbf,kbf,ng,ig,shell_index,ibf_file
+ integer                       :: ibf,jbf,kbf,ng,ig
+ integer                       :: ishell,ishell_file
  integer                       :: jbf_cart
- real(dp),allocatable          :: alpha(:),coeff(:),coeff2(:)
+ real(dp),allocatable          :: alpha(:),coeff(:)
  logical                       :: file_exists
  integer                       :: basisfile
- integer                       :: am_read,nbf_file
+ integer                       :: am_read,nshell_file
  logical,parameter             :: normalized=.TRUE.
  integer                       :: iatom
  integer                       :: index_in_shell
@@ -91,25 +97,25 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
  basis%nbf           = 0
  basis%nbf_cart      = 0
+ basis%nshell        = 0
  basis%gaussian_type = gaussian_type
  basis%ammax         = -1
 
- if(TRIM(basis_name)=='none') return
+ if(TRIM(basis_name(1))=='none') return
 
  !
  ! LOOP OVER ATOMS
- ! TODO could be reduced to the type of atoms in the future
  !
  do iatom=1,natom_basis
 
    if( nelement_ecp > 0 ) then 
      if( ANY( element_ecp(:) == basis_element(iatom) ) ) then
-       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(ecp_basis_name))
+       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(ecp_basis_name(iatom)))
      else
-       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
+       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name(iatom)))
      endif
    else
-     basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
+     basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name(iatom)))
    endif
   
    inquire(file=TRIM(basis_filename),exist=file_exists)
@@ -121,13 +127,15 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
    !
    ! read first to get all the dimensions
    open(newunit=basisfile,file=TRIM(basis_filename),status='old')
-   read(basisfile,*) nbf_file
-   if(nbf_file<1) call die('ERROR in basis set file')
-   do ibf_file=1,nbf_file
+   read(basisfile,*) nshell_file
+   if(nshell_file<1) call die('ERROR in basis set file')
+   do ishell_file=1,nshell_file
      read(basisfile,*) ng,am_read
      if(ng<1) call die('ERROR in basis set file')
+     if(am_read==10) call die('Deprecated basis set file with shared exponent SP orbitals. Please split them')
      basis%nbf_cart = basis%nbf_cart + number_basis_function_am('CART'             ,am_read)
      basis%nbf      = basis%nbf      + number_basis_function_am(basis%gaussian_type,am_read)
+     basis%nshell   = basis%nshell   + 1
      do ig=1,ng
        read(basisfile,*) 
      enddo
@@ -142,120 +150,105 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  if(basis%gaussian_type=='PURE') then
    write(stdout,'(a50,i8)') 'Total number of cart. functions:',basis%nbf_cart
  endif
+ write(stdout,'(a50,i8)') 'Number of shells:',basis%nshell
+
  allocate(basis%bf(basis%nbf_cart))
  allocate(basis%bff(basis%nbf))
+ allocate(basis%shell(basis%nshell))
 
  jbf         = 0
  jbf_cart    = 0
- shell_index = 0
+ ishell      = 0
  do iatom=1,natom_basis
 
    if( nelement_ecp > 0 ) then 
      if( ANY( element_ecp(:) == basis_element(iatom) ) ) then
-       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(ecp_basis_name))
+       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(ecp_basis_name(iatom)))
      else
-       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
+       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name(iatom)))
      endif
    else
-     basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name))
+     basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name(iatom)))
    endif
   
    open(newunit=basisfile,file=TRIM(basis_filename),status='old')
-   read(basisfile,*) nbf_file
-   do ibf_file=1,nbf_file
+   read(basisfile,*) nshell_file
+   do ishell_file=1,nshell_file
      read(basisfile,*) ng,am_read
-     allocate(alpha(ng),coeff(ng),coeff2(ng))
+     allocate(alpha(ng),coeff(ng))
   
-     if(am_read<10) then
-       do ig=1,ng
-         read(basisfile,*) alpha(ig),coeff(ig)
-       enddo
-     else
-       do ig=1,ng
-         read(basisfile,*) alpha(ig),coeff(ig),coeff2(ig)
-       enddo
-     endif
-  
-!     ! rescale the gaussian decay rate whenever zatom /= basis_element
-!     if( abs( zatom(iatom) - REAL(basis_element(iatom),dp) ) > 1.d-6 ) then
-!       alpha(:) = alpha(:) * ( zatom(iatom) / REAL(basis_element(iatom),dp) )**2
-!       write(stdout,*) 'rescaling momentum',am_read
-!       write(stdout,*) 'smallest rescaled alpha:',MINVAL(alpha(:))
-!     endif
+     do ig=1,ng
+       read(basisfile,*) alpha(ig),coeff(ig)
+     enddo
   
      x0(:) = x(:,iatom)
 
-     shell_index = shell_index + 1
+     !
+     ! Shell setup
+     !
+     ishell = ishell + 1
 
-     select case(am_read)
-     case(10) ! SP shared exponent
-       ! Cartesian basis functions
-       jbf_cart = jbf_cart + 1 ; call init_basis_function(normalized,ng,0,0,0,iatom,x0,alpha,coeff,shell_index,1,basis%bf(jbf_cart))
-       shell_index = shell_index + 1
-       jbf_cart = jbf_cart + 1 ; call init_basis_function(normalized,ng,1,0,0,iatom,x0,alpha,coeff2,shell_index,1,basis%bf(jbf_cart))
-       jbf_cart = jbf_cart + 1 ; call init_basis_function(normalized,ng,0,1,0,iatom,x0,alpha,coeff2,shell_index,2,basis%bf(jbf_cart))
-       jbf_cart = jbf_cart + 1 ; call init_basis_function(normalized,ng,0,0,1,iatom,x0,alpha,coeff2,shell_index,3,basis%bf(jbf_cart))
+     basis%shell(ishell)%am    = am_read
+     basis%shell(ishell)%iatom = iatom
+     basis%shell(ishell)%x0(:) = x0(:)
+     basis%shell(ishell)%ng    = ng
+     allocate(basis%shell(ishell)%alpha(ng))
+     allocate(basis%shell(ishell)%coeff(ng))
+     basis%shell(ishell)%alpha(:) = alpha(:)
+     basis%shell(ishell)%istart = jbf + 1
+     basis%shell(ishell)%iend   = jbf + number_basis_function_am(gaussian_type,am_read)
 
-       ! Final basis function
+
+     !
+     ! Basis function setup
+     !
+
+     !
+     ! Ordering of Libint as explained in Kenny et al. J. Comput Chem. 29, 562 (2008).
+     !
+     nx = am_read
+     ny = 0
+     nz = 0
+     index_in_shell = 0
+     do 
+       ! Add the new basis function
+       jbf_cart = jbf_cart + 1 
+       index_in_shell = index_in_shell + 1
+       call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bf(jbf_cart))
        if(basis%gaussian_type == 'CART') then
-         jbf     = jbf     + 1 ; call init_basis_function(normalized,ng,0,0,0,iatom,x0,alpha,coeff,shell_index,1,basis%bff(jbf))
-         shell_index = shell_index + 1
-         jbf     = jbf     + 1 ; call init_basis_function(normalized,ng,1,0,0,iatom,x0,alpha,coeff2,shell_index,1,basis%bff(jbf))
-         jbf     = jbf     + 1 ; call init_basis_function(normalized,ng,0,1,0,iatom,x0,alpha,coeff2,shell_index,2,basis%bff(jbf))
-         jbf     = jbf     + 1 ; call init_basis_function(normalized,ng,0,0,1,iatom,x0,alpha,coeff2,shell_index,3,basis%bff(jbf))
+         jbf = jbf + 1
+         call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bff(jbf))
+       endif
+
+       ! Break the loop when nz is equal to l
+       if( nz == am_read ) exit
+
+       if( nz < am_read - nx ) then
+         ny = ny - 1
+         nz = nz + 1
        else
-         jbf     = jbf     + 1 ; call init_basis_function_pure(normalized,ng,0, 0,iatom,x0,alpha,coeff,shell_index,1,basis%bff(jbf))
-         shell_index = shell_index + 1
-         jbf     = jbf     + 1 ; call init_basis_function_pure(normalized,ng,1,-1,iatom,x0,alpha,coeff2,shell_index,1,basis%bff(jbf))
-         jbf     = jbf     + 1 ; call init_basis_function_pure(normalized,ng,1, 0,iatom,x0,alpha,coeff2,shell_index,2,basis%bff(jbf))
-         jbf     = jbf     + 1 ; call init_basis_function_pure(normalized,ng,1, 1,iatom,x0,alpha,coeff2,shell_index,3,basis%bff(jbf))
+         nx = nx - 1
+         ny = am_read - nx
+         nz = 0
        endif
 
-     case default
+     enddo
 
-       !
-       ! Ordering of Libint as explained in Kenny et al. J. Comput Chem. 29, 562 (2008).
-       !
-       nx = am_read
-       ny = 0
-       nz = 0
-       index_in_shell = 0
-       do 
-         ! Add the new basis function
-         jbf_cart = jbf_cart + 1 
+     index_in_shell = 0
+     if(basis%gaussian_type == 'PURE') then
+       do mm=-am_read,am_read
+         jbf = jbf + 1
          index_in_shell = index_in_shell + 1
-         call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell_index,index_in_shell,basis%bf(jbf_cart))
-         if(basis%gaussian_type == 'CART') then
-           jbf = jbf + 1
-           call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell_index,index_in_shell,basis%bff(jbf))
-         endif
-
-         ! Break the loop when nz is equal to l
-         if( nz == am_read ) exit
-
-         if( nz < am_read - nx ) then
-           ny = ny - 1
-           nz = nz + 1
-         else
-           nx = nx - 1
-           ny = am_read - nx
-           nz = 0
-         endif
-
+         call init_basis_function_pure(normalized,ng,am_read,mm,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bff(jbf))
        enddo
+     endif
 
-       index_in_shell = 0
-       if(basis%gaussian_type == 'PURE') then
-         do mm=-am_read,am_read
-           jbf = jbf + 1
-           index_in_shell = index_in_shell + 1
-           call init_basis_function_pure(normalized,ng,am_read,mm,iatom,x0,alpha,coeff,shell_index,index_in_shell,basis%bff(jbf))
-         enddo
-       endif
-
-     end select
+     !
+     ! Include here the normalization part that does not depend on (nx,ny,nz)
+     basis%shell(ishell)%coeff(:) = basis%bf(jbf_cart-number_basis_function_am(gaussian_type,am_read)+1)%coeff(:) &
+               * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**am_read * alpha(:)**( 0.25_dp * ( 2.0_dp*am_read + 3.0_dp ) )
   
-     deallocate(alpha,coeff,coeff2)
+     deallocate(alpha,coeff)
    enddo
    close(basisfile)
 
@@ -264,8 +257,6 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  enddo
  
 
- basis%nshell = shell_index
- write(stdout,'(a50,i8)') 'Number of shells:',basis%nshell
 
  ! Find the maximum angular momentum employed in the basis set
  basis%ammax=-1
@@ -303,13 +294,18 @@ subroutine destroy_basis_set(basis)
 
  type(basis_set),intent(inout) :: basis
 !=====
- integer :: ibf
+ integer :: ibf,ishell
 !=====
 
 ! do ibf=1,basis%nbf
 !   call destroy_basis_function(basis%bf(ibf))
 ! enddo
  deallocate(basis%bf)
+ do ishell=1,basis%nshell
+   if(ALLOCATED(basis%shell(ishell)%alpha)) deallocate( basis%shell(ishell)%alpha )
+   if(ALLOCATED(basis%shell(ishell)%coeff)) deallocate( basis%shell(ishell)%coeff )
+ enddo
+ deallocate(basis%shell)
 
 end subroutine destroy_basis_set
 
@@ -585,50 +581,6 @@ subroutine destroy_basis_function(bf)
  deallocate(bf%g,bf%coeff)
 
 end subroutine destroy_basis_function
-
-
-!=========================================================================
-function number_basis_function_am(gaussian_type,am)
- implicit none
- character(len=4),intent(in) :: gaussian_type
- integer,intent(in)          :: am
- integer                     :: number_basis_function_am
-!=====
-
- select case(gaussian_type)
- case('CART')
-   select case(am)
-   case(0)
-     number_basis_function_am = 1
-   case(1)
-     number_basis_function_am = 3
-   case(2)
-     number_basis_function_am = 6
-   case(3)
-     number_basis_function_am = 10
-   case(4)
-     number_basis_function_am = 15
-   case(5)
-     number_basis_function_am = 21
-   case(6)
-     number_basis_function_am = 28
-   case(7)
-     number_basis_function_am = 36
-   case(10) ! stands for SP orbitals
-     number_basis_function_am = 4 
-   case default
-     write(stdout,*) 'am=',am
-     call die('number_basis_function_am: not implemented')
-   end select
- case('PURE')
-   if(am/=10) then
-     number_basis_function_am = 2 * am + 1
-   else ! stands for SP orbitals
-     number_basis_function_am = 4 
-   endif
- end select
-
-end function number_basis_function_am
 
 
 !=========================================================================
@@ -1148,10 +1100,10 @@ subroutine gos_basis_function(bf1,bf2,qvec,gos_bf1bf2)
  implicit none
  type(basis_function),intent(in)  :: bf1,bf2
  real(dp),intent(in)              :: qvec(3)
- complex(dpc),intent(out)         :: gos_bf1bf2
+ complex(dp),intent(out)          :: gos_bf1bf2
 !=====
  integer                          :: ig,jg
- complex(dpc)                     :: gos_one_gaussian
+ complex(dp)                      :: gos_one_gaussian
 !=====
 
  gos_bf1bf2 = 0.0_dp
@@ -1164,247 +1116,6 @@ subroutine gos_basis_function(bf1,bf2,qvec,gos_bf1bf2)
 
 
 end subroutine gos_basis_function
-
-
-!=========================================================================
-subroutine setup_cart_to_pure_transforms(gaussian_type)
- implicit none
-
- character(len=4),intent(in) :: gaussian_type
-!=====
- integer  :: il,ni,ii,jj,kk
- integer  :: nx,ny,nz
-!=====
-
- write(stdout,*) 'Setting up the cartesian to pure transforms'
-
- if(gaussian_type == 'CART') then
-
-   do il=0,lmax_transform
-     ni = number_basis_function_am('CART',il)
-     allocate(cart_to_pure     (il)%matrix(ni,ni))
-     allocate(cart_to_pure_norm(il)%matrix(ni,ni))
-     cart_to_pure(il)%matrix(:,:) = 0.0_dp
-     do ii=1,ni
-       cart_to_pure(il)%matrix(ii,ii) = 1.0_dp
-     enddo
-   enddo
-
- else
-   ! Formula were read from Ref. 
-   ! H.B. Schlegel and M.J. Frisch, INTERNATIONAL JOURNAL OF QUANTUM CHEMISTRY  54, 83-87 (1995).
-  
-   !
-   ! Transform for momentum S
-   allocate(cart_to_pure     (0)%matrix(1,1))
-   allocate(cart_to_pure_norm(0)%matrix(1,1))
-   cart_to_pure(0)%matrix(1,1) = 1.0_dp
-  
-   !
-   ! Transform for momentum P
-   allocate(cart_to_pure     (1)%matrix(3,3))
-   allocate(cart_to_pure_norm(1)%matrix(3,3))
-   cart_to_pure(1)%matrix(:,:) = 0.0_dp
-   cart_to_pure(1)%matrix(3,2) = 1.0_dp
-   cart_to_pure(1)%matrix(1,3) = 1.0_dp
-   cart_to_pure(1)%matrix(2,1) = 1.0_dp
-  
-   !
-   ! Transform for momentum D
-   allocate(cart_to_pure     (2)%matrix(6,5))
-   allocate(cart_to_pure_norm(2)%matrix(6,5))
-   cart_to_pure(2)%matrix(:,:) =  0.0_dp
-  
-   cart_to_pure(2)%matrix(2,1) =  1.0_dp
-  
-   cart_to_pure(2)%matrix(5,2) =  1.0_dp
-  
-   cart_to_pure(2)%matrix(6,3) =  1.0_dp
-   cart_to_pure(2)%matrix(1,3) = -0.5_dp
-   cart_to_pure(2)%matrix(4,3) = -0.5_dp
-  
-   cart_to_pure(2)%matrix(3,4) =  1.0_dp
-  
-   cart_to_pure(2)%matrix(1,5) =  SQRT(3.0/4.0)
-   cart_to_pure(2)%matrix(4,5) = -SQRT(3.0/4.0)
-  
-   !
-   ! Transform for momentum F
-   allocate(cart_to_pure     (3)%matrix(10,7))
-   allocate(cart_to_pure_norm(3)%matrix(10,7))
-   cart_to_pure(3)%matrix( :,:) =  0.0_dp
-  
-   cart_to_pure(3)%matrix(10,4) =  1.0_dp
-   cart_to_pure(3)%matrix( 3,4) = -3.0/(2.0*SQRT(5.0))
-   cart_to_pure(3)%matrix( 8,4) = -3.0/(2.0*SQRT(5.0))
-  
-   cart_to_pure(3)%matrix( 6,5) =  SQRT(6.0/5.0)
-   cart_to_pure(3)%matrix( 1,5) = -SQRT(6.0)/4.0
-   cart_to_pure(3)%matrix( 4,5) = -SQRT(6.0/5.0)/4.0
-  
-   cart_to_pure(3)%matrix( 9,3) =  SQRT(6.0/5.0)
-   cart_to_pure(3)%matrix( 7,3) = -SQRT(6.0)/4.0
-   cart_to_pure(3)%matrix( 2,3) = -SQRT(6.0/5.0)/4.0
-  
-   cart_to_pure(3)%matrix( 3,6) =  SQRT(3.0/4.0)
-   cart_to_pure(3)%matrix( 8,6) = -SQRT(3.0/4.0)
-  
-   cart_to_pure(3)%matrix( 5,2) = -1.0_dp
-  
-   cart_to_pure(3)%matrix( 1,7) =  SQRT(10.0)/4.0
-   cart_to_pure(3)%matrix( 4,7) = -SQRT(2.0)*3.0/4.0
-  
-   cart_to_pure(3)%matrix( 7,1) = -SQRT(10.0)/4.0
-   cart_to_pure(3)%matrix( 2,1) =  SQRT(2.0)*3.0/4.0
-
-   !
-   ! Transform for momentum G
-   allocate(cart_to_pure     (4)%matrix(15,9))
-   allocate(cart_to_pure_norm(4)%matrix(15,9))
-   cart_to_pure(4)%matrix( :,:) =  0.0_dp
-
-   cart_to_pure(4)%matrix(15,5) =  1.0_dp
-   cart_to_pure(4)%matrix( 1,5) =  3.0/8.0
-   cart_to_pure(4)%matrix(11,5) =  3.0/8.0
-   cart_to_pure(4)%matrix( 6,5) = -3.0*SQRT(3.0/35.0)
-   cart_to_pure(4)%matrix(13,5) = -3.0*SQRT(3.0/35.0)
-   cart_to_pure(4)%matrix( 4,5) =  3.0*SQRT(3.0/35.0)/4.0
-
-   cart_to_pure(4)%matrix(10,6) =  SQRT(10.0/7.0)
-   cart_to_pure(4)%matrix( 3,6) = -0.75*SQRT(10.0/7.0)
-   cart_to_pure(4)%matrix( 8,6) = -0.75*SQRT( 2.0/7.0)
-
-   cart_to_pure(4)%matrix(14,4) =  SQRT(10.0/7.0)
-   cart_to_pure(4)%matrix(12,4) = -0.75*SQRT(10.0/7.0)
-   cart_to_pure(4)%matrix( 5,4) = -0.75*SQRT( 2.0/7.0)
-
-   cart_to_pure(4)%matrix( 6,7) =  1.5*SQRT( 3.0/7.0)
-   cart_to_pure(4)%matrix(13,7) = -1.5*SQRT( 3.0/7.0)
-   cart_to_pure(4)%matrix( 1,7) = -0.25*SQRT(5.0)
-   cart_to_pure(4)%matrix(11,7) =  0.25*SQRT(5.0)
-
-   cart_to_pure(4)%matrix( 9,3) =  3.0/SQRT(7.0)
-   cart_to_pure(4)%matrix( 2,3) = -0.5*SQRT(5.0/7.0)
-   cart_to_pure(4)%matrix( 7,3) = -0.5*SQRT(5.0/7.0)
-
-   cart_to_pure(4)%matrix( 3,8) =  0.25*SQRT(10.0)
-   cart_to_pure(4)%matrix( 8,8) = -0.75*SQRT(2.0)
-
-   cart_to_pure(4)%matrix(12,2) = -0.25*SQRT(10.0)
-   cart_to_pure(4)%matrix( 5,2) =  0.75*SQRT(2.0)
-
-   cart_to_pure(4)%matrix( 1,9) =  0.125*SQRT(35.0)
-   cart_to_pure(4)%matrix(11,9) =  0.125*SQRT(35.0)
-   cart_to_pure(4)%matrix( 4,9) = -0.75*SQRT(3.0)
-
-   cart_to_pure(4)%matrix( 2,1) =  SQRT(5.0/4.0)
-   cart_to_pure(4)%matrix( 7,1) = -SQRT(5.0/4.0)
-
-   !
-   ! Transform for momentum H
-   allocate(cart_to_pure     (5)%matrix(21,11))
-   allocate(cart_to_pure_norm(5)%matrix(21,11))
-   cart_to_pure(5)%matrix( :, :) =  0.0_dp
-
-   cart_to_pure(5)%matrix(21, 6) =  1.0_dp
-   cart_to_pure(5)%matrix(10, 6) = -5.0*SQRT(2.0/21.0)
-   cart_to_pure(5)%matrix(19, 6) = -5.0*SQRT(2.0/21.0)
-   cart_to_pure(5)%matrix( 3, 6) =  5.0/8.0*SQRT(2.0)
-   cart_to_pure(5)%matrix(17, 6) = -5.0/8.0*SQRT(2.0)
-   cart_to_pure(5)%matrix( 8, 6) =  0.25*SQRT(30.0/7.0)
-
-   cart_to_pure(5)%matrix(15, 7) =  SQRT(5.0/3.0)
-   cart_to_pure(5)%matrix( 6, 7) = -1.5*SQRT(5.0/7.0)
-   cart_to_pure(5)%matrix(13, 7) = -1.5/SQRT(7.0)
-   cart_to_pure(5)%matrix( 1, 7) = -0.125*SQRT(15.0)
-   cart_to_pure(5)%matrix(11, 7) =  0.125*SQRT(5.0/3.0)
-   cart_to_pure(5)%matrix( 4, 7) =  0.25*SQRT(5.0/7.0)
-
-   cart_to_pure(5)%matrix(20, 5) =  SQRT(5.0/3.0)
-   cart_to_pure(5)%matrix(18, 5) = -1.5*SQRT(5.0/7.0)
-   cart_to_pure(5)%matrix( 9, 5) = -1.5/SQRT(7.0)
-   cart_to_pure(5)%matrix(16, 5) = -0.125*SQRT(15.0)
-   cart_to_pure(5)%matrix( 2, 5) =  0.125*SQRT(5.0/3.0)
-   cart_to_pure(5)%matrix( 7, 5) =  0.25*SQRT(5.0/7.0)
-
-   cart_to_pure(5)%matrix(10, 8) =  SQRT(5.0/4.0)
-   cart_to_pure(5)%matrix(19, 8) = -SQRT(5.0/4.0)
-   cart_to_pure(5)%matrix( 3, 8) = -0.25*SQRT(35.0/3.0)
-   cart_to_pure(5)%matrix(17, 8) =  0.25*SQRT(35.0/3.0)
-
-   cart_to_pure(5)%matrix(14, 4) =  SQRT(5.0/3.0)
-   cart_to_pure(5)%matrix( 5, 4) =  -0.5*SQRT(5.0/3.0)
-   cart_to_pure(5)%matrix(12, 4) =  -0.5*SQRT(5.0/3.0)
-
-   cart_to_pure(5)%matrix( 6, 9) =  0.5*SQRT(10.0/3.0)
-   cart_to_pure(5)%matrix(13, 9) = -0.5*SQRT(6.0)
-   cart_to_pure(5)%matrix( 1, 9) = -SQRT(70.0)/16.0
-   cart_to_pure(5)%matrix(11, 9) =  SQRT(70.0)/16.0
-   cart_to_pure(5)%matrix( 4, 9) =  0.125*SQRT(10.0/3.0)
-
-   cart_to_pure(5)%matrix(18, 3) = -0.5*SQRT(10.0/3.0)
-   cart_to_pure(5)%matrix( 9, 3) =  0.5*SQRT(6.0)
-   cart_to_pure(5)%matrix(16, 3) =  SQRT(70.0)/16.0
-   cart_to_pure(5)%matrix( 2, 3) = -SQRT(70.0)/16.0
-   cart_to_pure(5)%matrix( 7, 3) = -0.125*SQRT(10.0/3.0)
-
-   cart_to_pure(5)%matrix( 3,10) =  0.125*SQRT(35.0)
-   cart_to_pure(5)%matrix(17,10) =  0.125*SQRT(35.0)
-   cart_to_pure(5)%matrix( 8,10) = -0.75*SQRT(3.0)
-
-   cart_to_pure(5)%matrix( 5, 2) =  0.5*SQRT(5.0)
-   cart_to_pure(5)%matrix(12, 2) = -0.5*SQRT(5.0)
-
-   cart_to_pure(5)%matrix( 1,11) =  3.0*SQRT(14.0)/16.0
-   cart_to_pure(5)%matrix(11,11) = -5.0*SQRT(14.0)/16.0
-   cart_to_pure(5)%matrix( 4,11) = -5.0*SQRT(6.0)/8.0
-
-   cart_to_pure(5)%matrix(16, 1) =  3.0*SQRT(14.0)/16.0
-   cart_to_pure(5)%matrix( 2, 1) = -5.0*SQRT(14.0)/16.0
-   cart_to_pure(5)%matrix( 7, 1) =  5.0*SQRT(6.0)/8.0
-
-   !
-   ! Complement with diagonal if necessary
-   do il=lmax_transform_pure+1,lmax_transform
-     ni = number_basis_function_am('CART',il)
-     allocate(cart_to_pure     (il)%matrix(ni,ni))
-     allocate(cart_to_pure_norm(il)%matrix(ni,ni))
-     cart_to_pure(il)%matrix(:,:) = 0.0_dp
-     do ii=1,ni
-       cart_to_pure(il)%matrix(ii,ii) = 1.0_dp
-     enddo
-   enddo
-
- endif
-
-
- !
- ! Copy cart_to_pure into cart_to_pure_norm
- do il=0,lmax_transform
-   cart_to_pure_norm(il)%matrix(:,:) = cart_to_pure(il)%matrix(:,:)
- enddo
- !
- ! Then introduce the normalization coefficient part that depends on (nx,ny,nz)
- do il=0,lmax_transform
-   kk=0
-   do ii=0,il
-     nx = il - ii
-     do jj=0,ii
-       kk = kk + 1
-       ny = ii - jj
-       nz = jj
-       cart_to_pure_norm(il)%matrix(kk,:) = cart_to_pure_norm(il)%matrix(kk,:) &
-                 / SQRT( REAL( double_factorial(2*nx-1) * double_factorial(2*ny-1) * double_factorial(2*nz-1) , dp ) )
-         
-     enddo
-   enddo
- enddo
-
-
- write(stdout,*) 'Transformations set up completed'
- write(stdout,*) 
-
-end subroutine setup_cart_to_pure_transforms
 
 
 !=========================================================================

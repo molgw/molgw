@@ -82,6 +82,7 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
  real(dp),allocatable :: v2sigma2_c(:)
 !=====
 
+#ifdef HAVE_LIBXC
  if( is_triplet ) then
    nspin_tddft = 2
  else
@@ -254,6 +255,7 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
  deallocate( vsigma_c )
  deallocate( v2rhosigma_c )
  deallocate( v2sigma2_c )
+#endif
 
 end subroutine prepare_tddft
 

@@ -16,7 +16,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  use m_inputparam
  use m_eri
  use m_eri_calculate
- use m_eri_calculate_lr
  use m_eri_ao_mo
  use m_dft_grid
  use m_scf,only: en
@@ -369,9 +368,9 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    if( calc_type%is_lr_mbpt ) then
 
      ! 2-center integrals
-     call calculate_eri_2center_lr(auxil_basis,rcut_mbpt)
+     call calculate_eri_2center_scalapack(auxil_basis,rcut_mbpt)
      ! 3-center integrals
-     call calculate_eri_3center_lr(basis,auxil_basis,rcut_mbpt)
+     call calculate_eri_3center_scalapack(basis,auxil_basis,rcut_mbpt)
 
      call cohsex_selfenergy_lr(nstate,basis,occupation,energy_g,exchange_m_vxc_diag, &
                                c_matrix,wpol,matrix_tmp,sigc,en%gw)

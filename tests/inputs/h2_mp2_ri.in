@@ -1,6 +1,5 @@
 &molgw
  scf='lda'
- no_4center='yes'
  nspin=2
  magnetization=2.0
 

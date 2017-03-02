@@ -14,6 +14,7 @@ module m_hamiltonian
  use m_scalapack
  use m_warning
  use m_memory
+ use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
 
 
@@ -28,6 +29,7 @@ subroutine setup_overlap(print_matrix_,basis,s_matrix)
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: s_matrix(basis%nbf,basis%nbf)
 !=====
+ integer              :: gt
  integer              :: ibf,jbf
  integer              :: ibf_cart,jbf_cart
  integer              :: i_cart,j_cart
@@ -38,6 +40,7 @@ subroutine setup_overlap(print_matrix_,basis,s_matrix)
 
  call start_clock(timing_overlap)
  write(stdout,'(/,a)') ' Setup overlap matrix S'
+ gt = get_gaussian_type_tag(basis%gaussian_type)
 
  ibf_cart = 1
  jbf_cart = 1
@@ -59,8 +62,8 @@ subroutine setup_overlap(print_matrix_,basis,s_matrix)
          call overlap_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
        enddo
      enddo
-     s_matrix(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
-                                                   MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+     s_matrix(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
+                                                   MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
 
 
      deallocate(matrix_cart)
@@ -92,12 +95,15 @@ subroutine setup_overlap_mixedbasis(print_matrix_,basis1,basis2,s_matrix)
  type(basis_set),intent(in) :: basis1,basis2
  real(dp),intent(out)       :: s_matrix(basis1%nbf,basis2%nbf)
 !=====
+ integer              :: gt
  integer              :: ibf,jbf
  integer              :: ibf_cart,jbf_cart
  integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  real(dp),allocatable :: matrix_cart(:,:)
 !=====
+
+ gt = get_gaussian_type_tag(basis1%gaussian_type)
 
  ibf_cart = 1
  jbf_cart = 1
@@ -119,8 +125,8 @@ subroutine setup_overlap_mixedbasis(print_matrix_,basis1,basis2,s_matrix)
          call overlap_basis_function(basis1%bf(ibf_cart+i_cart-1),basis2%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
        enddo
      enddo
-     s_matrix(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
-                                                   MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+     s_matrix(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
+                                                   MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
 
 
      deallocate(matrix_cart)
@@ -147,6 +153,7 @@ subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: hamiltonian_kinetic(basis%nbf,basis%nbf)
 !=====
+ integer              :: gt
  integer              :: ibf,jbf
  integer              :: ibf_cart,jbf_cart
  integer              :: i_cart,j_cart
@@ -157,6 +164,7 @@ subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
 
  call start_clock(timing_hamiltonian_kin)
  write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian'
+ gt = get_gaussian_type_tag(basis%gaussian_type)
 
  ibf_cart = 1
  jbf_cart = 1
@@ -178,8 +186,8 @@ subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
          call kinetic_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
        enddo
      enddo
-     hamiltonian_kinetic(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
-                                                              MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+     hamiltonian_kinetic(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
+                                                              MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
 
 
      deallocate(matrix_cart)
@@ -211,6 +219,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: hamiltonian_nucleus(basis%nbf,basis%nbf)
 !=====
+ integer              :: gt
  integer              :: natom_local
  integer              :: ibf,jbf
  integer              :: ibf_cart,jbf_cart
@@ -224,6 +233,8 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
 
  call start_clock(timing_hamiltonian_nuc)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian'
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+
  if( nproc_world > 1 ) then
    natom_local=0
    do iatom=1,natom
@@ -259,8 +270,8 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
          enddo
        enddo
      enddo
-     hamiltonian_nucleus(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
-                                                              MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) ) 
+     hamiltonian_nucleus(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
+                                                              MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) ) 
 
 
      deallocate(matrix_cart)
@@ -288,12 +299,13 @@ end subroutine setup_nucleus
 
 
 !=========================================================================
-subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
+subroutine setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
  use m_basis_set
  use m_atoms
  use m_dft_grid
  use m_ecp
  implicit none
+ logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  real(dp),intent(inout)     :: hamiltonian_nucleus(basis%nbf,basis%nbf)
 !=====
@@ -317,6 +329,7 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  real(dp),allocatable :: int_fixed_r(:,:)
  real(dp),external    :: real_spherical_harmonics
  integer              :: necp,ie
+ character(len=100)   :: title
  logical              :: element_has_ecp
 !=====
 
@@ -442,6 +455,8 @@ subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
 
  call xsum_world(hamiltonian_nucleus)
 
+ title='=== ECP Nucleus potential contribution ==='
+ call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_nucleus)
 
  call stop_clock(timing_ecp)
 
@@ -877,6 +892,43 @@ end subroutine setup_density_matrix
 
 
 !=========================================================================
+subroutine setup_energy_density_matrix(nbf,nstate,c_matrix,occupation,energy,q_matrix)
+ implicit none
+ integer,intent(in)   :: nbf,nstate
+ real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
+ real(dp),intent(in)  :: occupation(nstate,nspin)
+ real(dp),intent(in)  :: energy(nstate,nspin)
+ real(dp),intent(out) :: q_matrix(nbf,nbf)
+!=====
+ integer :: ispin,ibf,jbf
+ integer :: istate
+!=====
+
+ call start_clock(timing_density_matrix)
+ write(stdout,'(1x,a)') 'Build energy-density matrix'
+
+ q_matrix(:,:) = 0.0_dp
+ do ispin=1,nspin
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty ) cycle
+     call DSYR('L',nbf,occupation(istate,ispin)*energy(istate,ispin),c_matrix(:,istate,ispin),1,q_matrix(:,:),nbf)
+   enddo
+ enddo
+
+
+ ! Symmetrize
+ do jbf=1,nbf
+   do ibf=jbf+1,nbf
+     q_matrix(jbf,ibf) = q_matrix(ibf,jbf)
+   enddo
+ enddo
+ call stop_clock(timing_density_matrix)
+
+
+end subroutine setup_energy_density_matrix
+
+
+!=========================================================================
 subroutine test_density_matrix(nbf,nspin,p_matrix,s_matrix)
  implicit none
  integer,intent(in)   :: nbf,nspin
@@ -917,9 +969,12 @@ subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occu
  real(dp),intent(out) :: occupation(nstate,nspin)
 !=====
  real(dp)             :: remaining_electrons(nspin)
+ real(dp)             :: electrons_mu,mu,delta_mu,grad_electrons
+ real(dp)             :: mu_change
  integer              :: istate,nlines,ilines
  logical              :: file_exists
  integer              :: occfile
+ integer              :: iter
 !=====
 
  if( temperature < 1.0e-8_dp ) then
@@ -953,12 +1008,39 @@ subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occu
    endif
 
  else
+
    !
    ! Finite temperature case
    !
-   call die('Finite temperature not implemented yet')
+   write(stdout,'(1x,a,f12.6)') 'Find new the occupations and Fermi level for temperature (Ha): ',temperature
+
+   mu = -0.1_dp
+   delta_mu = 1.0e-5_dp
+   electrons_mu = -1.0_dp
+   iter = 0
+   mu_change = 0.0_dp
+
+   do while( ABS( electrons_mu - electrons ) > 1.0e-8_dp .AND. iter <= 100 )
+
+     iter = iter + 1
+     mu = mu + mu_change
+
+     occupation(:,:) = fermi_dirac(energy,mu)
+     electrons_mu    = SUM( occupation(:,:) )
+
+     grad_electrons = ( SUM( fermi_dirac(energy,mu+delta_mu) ) - SUM( fermi_dirac(energy,mu-delta_mu) ) ) / ( 2.0_dp* delta_mu )
+
+     ! Maximum change is made bounded within +/- 0.10 Hartree
+     mu_change = -( electrons_mu - electrons ) / grad_electrons
+     mu_change = MAX( MIN( mu_change , 0.10_dp / REAL(iter) ), -0.10_dp / REAL(iter) )
+
+!     write(*,*) iter,mu,mu_change,0.10_dp / REAL(iter),electrons_mu
+
+   enddo
 
  endif
+
+ write(stdout,'(1x,a,f12.6)') 'Fermi level (eV): ',mu * Ha_eV
 
  !
  ! final check
@@ -973,6 +1055,19 @@ subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occu
  endif 
 
  call dump_out_occupation('=== Occupations ===',nstate,nspin,occupation)
+
+contains
+
+function fermi_dirac(energy,mu)
+ implicit none
+ real(dp),intent(in) :: energy(nstate,nspin)
+ real(dp),intent(in) :: mu
+ real(dp)            :: fermi_dirac(nstate,nspin)
+!=====
+
+ fermi_dirac(:,:) = spin_fact / ( 1.0_dp + EXP( ( energy(:,:) - mu ) / temperature ) )
+
+end function fermi_dirac
 
 end subroutine set_occupation
 
@@ -1488,12 +1583,13 @@ end subroutine dft_exc_vxc
 
 
 !=========================================================================
-subroutine dft_approximate_vhxc(basis,vhxc_ij)
+subroutine dft_approximate_vhxc(print_matrix_,basis,vhxc_ij)
  use m_basis_set
  use m_dft_grid
  use m_eri_calculate
  implicit none
 
+ logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: vhxc_ij(basis%nbf,basis%nbf)
 !=====
@@ -1506,7 +1602,6 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  real(dp)             :: rhor
  real(dp)             :: vxc,excr,exc
  real(dp)             :: vsigma(2*nspin-1)
- real(dp)             :: vhartree
  real(dp)             :: vhgau(basis%nbf,basis%nbf)
  integer              :: iatom,igau,ngau
  real(dp),allocatable :: alpha(:),coeff(:)
@@ -1533,7 +1628,6 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
  enddo
 
  write(stdout,*) 'Simple LDA functional on a coarse grid'
-
  !
  ! Create a temporary grid with low quality
  ! This grid is to be destroyed at the end of the present subroutine
@@ -1557,7 +1651,7 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
 
    !
    ! calculate the density at point r for spin up and spin down
-   call setup_atomic_density(rr,rhor,vhartree)
+   call setup_atomic_density(rr,rhor)
 
    !
    ! Normalization
@@ -1603,25 +1697,27 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
  use m_atoms
  implicit none
 
- integer,intent(in)                 :: nstate
- type(basis_set),intent(in)         :: basis
- real(dp),intent(in)                :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
+ integer,intent(in)         :: nstate
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
 !=====
- integer                            :: istate,astate,iaspin
- integer                            :: mstate,pstate,mpspin
- integer                            :: ibf,jbf
- integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
- integer                            :: iatom,idir
- real(dp)                           :: dipole(3)
- real(dp),allocatable               :: dipole_basis(:,:,:)
- real(dp),allocatable               :: dipole_cart(:,:,:)
- real(dp)                           :: p_matrix(basis%nbf,basis%nbf,nspin)
+ integer                    :: gt
+ integer                    :: istate,astate,iaspin
+ integer                    :: mstate,pstate,mpspin
+ integer                    :: ibf,jbf
+ integer                    :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
+ integer                    :: iatom,idir
+ real(dp)                   :: dipole(3)
+ real(dp),allocatable       :: dipole_basis(:,:,:)
+ real(dp),allocatable       :: dipole_cart(:,:,:)
+ real(dp)                   :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
 
 
 ! call start_clock(timing_spectrum)
 
  write(stdout,'(/,a)') ' Calculate the static dipole'
+ gt = get_gaussian_type_tag(basis%gaussian_type)
 
 
  !
@@ -1652,8 +1748,8 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
      enddo
 
      do idir=1,3
-       dipole_basis(idir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
-             MATMUL(  dipole_cart(idir,:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+       dipole_basis(idir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
+             MATMUL(  dipole_cart(idir,:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
      enddo
 
      deallocate(dipole_cart)
@@ -1695,26 +1791,28 @@ subroutine static_quadrupole(nstate,basis,occupation,c_matrix)
  use m_atoms
  implicit none
 
- integer,intent(in)                 :: nstate
- type(basis_set),intent(in)         :: basis
- real(dp),intent(in)                :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
+ integer,intent(in)         :: nstate
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
 !=====
- integer                            :: istate,astate,iaspin
- integer                            :: mstate,pstate,mpspin
- integer                            :: ibf,jbf
- integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
- integer                            :: iatom,idir,jdir
- real(dp)                           :: trace
- real(dp)                           :: quad(3,3)
- real(dp),allocatable               :: quad_basis(:,:,:,:)
- real(dp),allocatable               :: quad_cart(:,:,:,:)
- real(dp)                           :: p_matrix(basis%nbf,basis%nbf,nspin)
+ integer                    :: gt
+ integer                    :: istate,astate,iaspin
+ integer                    :: mstate,pstate,mpspin
+ integer                    :: ibf,jbf
+ integer                    :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
+ integer                    :: iatom,idir,jdir
+ real(dp)                   :: trace
+ real(dp)                   :: quad(3,3)
+ real(dp),allocatable       :: quad_basis(:,:,:,:)
+ real(dp),allocatable       :: quad_cart(:,:,:,:)
+ real(dp)                   :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
 
 
 ! call start_clock(timing_spectrum)
 
  write(stdout,'(/,a)') ' Calculate the static quadrupole'
+ gt = get_gaussian_type_tag(basis%gaussian_type)
 
 
  !
@@ -1746,8 +1844,8 @@ subroutine static_quadrupole(nstate,basis,occupation,c_matrix)
 
      do jdir=1,3
        do idir=1,3
-         quad_basis(idir,jdir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
-               MATMUL(  quad_cart(idir,jdir,:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+         quad_basis(idir,jdir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
+               MATMUL(  quad_cart(idir,jdir,:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
        enddo
      enddo
 

@@ -6,7 +6,6 @@
  postscf='td'
  basis='aug-cc-pVDZ'
  auxil_basis='aug-cc-pVDZ-RI'
- no_4center='yes'
  frozencore='yes'
 
  natom=5

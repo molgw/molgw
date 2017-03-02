@@ -23,9 +23,30 @@ gKS HOMO energy           , -24.969849         , 0 , 1.0e-4
 gKS LUMO energy           ,  17.323932         , 0 , 1.0e-4
 
 he_auxil.in               , HF helium atom cc-pVTZ with RI
-SCF Total Energy          , -2.8611875289      , 0 , 1.0e-7
+SCF Total Energy          ,  -2.8611875289     , 0 , 1.0e-7
 gKS HOMO energy           , -24.970619         , 0 , 1.0e-4
 gKS LUMO energy           ,  17.314207         , 0 , 1.0e-4
+
+h2_basis_nori.in          , LDA H2 molecule with an atom-dependent basis set
+SCF Total Energy          ,  -1.1306882151     , 0 , 1.0e-7
+gKS HOMO energy           , -10.061109         , 0 , 1.0e-4
+gKS LUMO energy           ,   7.282713         , 0 , 1.0e-4
+
+h2_basis_ri.in            , LDA H2 molecule with an atom-dependent basis set with RI
+SCF Total Energy          ,  -1.1351648702     , 0 , 1.0e-7
+gKS HOMO energy           , -10.247609         , 0 , 1.0e-4
+gKS LUMO energy           ,   1.328924         , 0 , 1.0e-4
+
+b_temperature.in          , LDA boron atom cc-pVTZ with finite temperature
+SCF Total Energy          , -24.3458246337     , 0 , 1.0e-7
+Fermi level               ,  -4.065450         , 0 , 1.0e-4
+gKS HOMO energy           ,  -3.970996         , 0 , 1.0e-4
+gKS HOMO energy           ,  -2.931370         , 1 , 1.0e-4
+
+acetamide.in              , one single LDA cycle based on a guessed starting point
+SCF Total Energy          , -207.1430859034    , 0 , 1.0e-7
+gKS HOMO energy           ,    0.560330        , 0 , 1.0e-4
+gKS LUMO energy           ,    2.254836        , 0 , 1.0e-4
 
 zn_ecp.in                 , HF zinc atom with ECP and no RI
 SCF Total Energy          , -225.9507739234    , 0 , 1.0e-7
@@ -119,21 +140,21 @@ MP2 Total Energy          , -109.3823851303    , 0 , 1.0e-7
 SE+MP2  Total En          , -109.3823851303    , 0 , 1.0e-7
 
 boron_gw_spinpolarized.in , GW@BLYP boron atom without RI with spin
-Hartree Energy            ,   11.6344175422   , 0 , 1.0e-7
-XC Energy                 ,   -3.8788239774   , 0 , 1.0e-7
+Hartree Energy            ,   11.6347873536   , 0 , 1.0e-7
+XC Energy                 ,   -3.8789558610   , 0 , 1.0e-7
 Number of electrons       ,    3.000000       , 0 , 1.0e-3
 Number of electrons       ,    2.000000       , 1 , 1.0e-3
-gKS HOMO energy           ,   -4.011284       , 0 , 1.0e-4
-gKS HOMO energy           ,   -8.519013       , 1 , 1.0e-4
-gKS LUMO energy           ,   -3.405726       , 0 , 1.0e-4
-gKS LUMO energy           ,   -3.172052       , 1 , 1.0e-4
+gKS HOMO energy           ,   -4.014004       , 0 , 1.0e-4
+gKS HOMO energy           ,   -8.517953       , 1 , 1.0e-4
+gKS LUMO energy           ,   -3.400664       , 0 , 1.0e-4
+gKS LUMO energy           ,   -3.171443       , 1 , 1.0e-4
 Total Spin S**2           ,    0.7528         , 0 , 1.0e-3
-RPA energy                ,   -0.1402933151   , 0 , 1.0e-7
-Lowest neutral excitation ,    0.987826       , 0 , 1.0e-4
-GW HOMO energy            ,   -7.659691       , 0 , 1.0e-4
-GW HOMO energy            ,  -12.475216       , 1 , 1.0e-4
-GW LUMO energy            ,    0.017788       , 0 , 1.0e-4
-GW LUMO energy            ,    0.457163       , 1 , 1.0e-4
+RPA energy                ,   -0.1402371135   , 0 , 1.0e-7
+Lowest neutral excitation ,    0.996562       , 0 , 1.0e-4
+GW HOMO energy            ,   -7.660110       , 0 , 1.0e-4
+GW HOMO energy            ,  -12.474309       , 1 , 1.0e-4
+GW LUMO energy            ,    0.018705       , 0 , 1.0e-4
+GW LUMO energy            ,    0.458939       , 1 , 1.0e-4
 
 co2.in                    , GW@LDA CO2 without RI with 6-31G
 Kinetic Energy            ,    186.4258076613  , 0 , 1.0e-7
@@ -166,16 +187,16 @@ RPA Total energy          ,   -526.9633301175  , 0 , 1.0e-7
  GW HOMO energy           ,    -15.012653      , 0 , 1.0e-4
  GW LUMO energy           ,      3.143477      , 0 , 1.0e-4
 
-h2_pbe_gw.in              , PBE H2 molecule cc-pVDZ and G0W0
+h2_pbe_gw.in              , PBE H2 molecule cc-pVDZ and G0W0 wo RI
 SCF Total Energy          ,     -1.0727602939  , 0 , 1.0e-7
 gKS HOMO energy           ,     -8.191536      , 0 , 1.0e-4
 gKS LUMO energy           ,     -2.674684      , 0 , 1.0e-4
-RPA energy                ,     -0.0837682569  , 0 , 1.0e-7
-Lowest neutral excitation ,      9.996186      , 0 , 1.0e-4
+RPA energy                ,     -0.0838669374  , 0 , 1.0e-7
+Lowest neutral excitation ,      9.996355      , 0 , 1.0e-4
 Singles correction        ,     -0.0029125289  , 0 , 1.0e-7
 Total EXX Energy          ,     -1.0186704037  , 0 , 1.0e-7
-GW HOMO energy            ,    -12.854961      , 0 , 1.0e-4
-GW LUMO energy            ,      1.475164      , 0 , 1.0e-4
+GW HOMO energy            ,    -12.857222      , 0 , 1.0e-4
+GW LUMO energy            ,      1.474561      , 0 , 1.0e-4
 
 h2_hse06_overlap_gw.in    , HSE06 H2 molecule aug-cc-pVDZ and G0W0 with a filtered overlap
 Exchange Energy           ,     -0.1340583009  , 0 , 1.0e-7
@@ -369,4 +390,14 @@ GW small basis LUMO energy,   0.949613         , 0 , 1.0e-4
 GW HOMO energy            , -12.165369         , 0 , 1.0e-4
 GW LUMO energy            ,   0.871728         , 0 , 1.0e-4
 
+h2_relax.in               , H2 forces without RI
+SCF Total Energy          ,      -1.1313335905 , 0 , 1.0e-5
+H-F force atom      1     ,      0.5090922298  , 0 , 1.0e-3
+H-F force atom      2     ,     -0.5090922298  , 0 , 1.0e-3
+Pulay force atom    1     ,     -0.5090885778  , 0 , 1.0e-3
+Pulay force atom    2     ,      0.5090885778  , 0 , 1.0e-3
+Total force atom    1     ,      0.0000036520  , 0 , 1.0e-6
+Total force atom    2     ,     -0.0000036520  , 0 , 1.0e-6
+atom    1   H             ,      -0.692180     , 0 , 1.0e-3
+atom    2   H             ,       0.692180     , 0 , 1.0e-3
 

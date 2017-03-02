@@ -45,20 +45,19 @@ Then
 `make`
 
 - BLAS and LAPACK linear algebra libraries are required.
-- libint is required: (version 2.0.x or 2.1.x, newest versions have not been tested)
-https://sourceforge.net/projects/libint/files/latest/download?source=files
+- libint is required: (version 2.2.x or newer)
+https://github.com/evaleev/libint/releases
 - libxc is required: (version >= 3.0.0) for DFT calculations
 http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-3.0.0.tar.gz
 
 
 ##Basis sets
-Basis sets can be obtained from https://bse.pnl.gov/bse/portal
+More basis sets can be obtained from [Basis Set Exchange](https://bse.pnl.gov/bse/portal)
 The file can be generated from a NWChem file using the script
 `~molgw/utils/basis_nwchem2molgw.py B_aug-cc-pVDZ.nwchem`
 
 
 ##Usage
-The basis file needs to be located in the working directory.
 
 `./molgw helium.in > helium.out`
 
@@ -66,19 +65,19 @@ Example input files can be found in `~molgw/tests/`
 
 
 ##Known issues
-- QPscGW scf loop is quite unstable for large basis sets, use a low alpha (<= 0.50), use a large eta
+- QPscGW scf loop might be quite unstable for large basis sets, use a large eta
 - TD-DFT GGA kernel can induce very large numerical values which limits the numerical stability and breaks some comparison with other codes.
 Especially when compiling with gfortran/gcc. ifort/icc behaves much better.
 
 
 ##Information for developers
 
-Besides the calls to the libint library, MOLGW is entirely written in Fortran2003.
+Besides the calls to the libint library, MOLGW is entirely written in Fortran2003/2008.
 The source files can be found in src/.
 
 ### Coding Rules
 The Fortran intent in/out/inout is compulsory for the arguments of a subroutine.
-One character variable names are strictly forbidden.
+One character variable names are discouraged.
 
 The careful developer should try
 - to follow the overall layout and the conventions of the code (double space indent, separation of the list of variables arguments/local, loop counters naming, etc.)

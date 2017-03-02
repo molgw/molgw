@@ -1,0 +1,12 @@
+&molgw
+ nspin=2
+ magnetization=1.0
+ temperature=0.005
+ 
+ scf='lda'
+
+ basis='cc-pVDZ'
+
+ natom=1
+/
+B 0. 0. 0.

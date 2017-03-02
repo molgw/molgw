@@ -6,7 +6,6 @@
  postscf='gw'
  basis='cc-pVDZ'
  auxil_basis='cc-pVDZ-RI'
- no_4center='yes'
  frozencore='yes'
  dft_core=5
  selfenergy_state_range=3

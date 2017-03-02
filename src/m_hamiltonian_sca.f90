@@ -16,6 +16,7 @@ module m_hamiltonian_sca
  use m_timing
  use m_warning
  use m_memory
+ use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
 
 
@@ -23,17 +24,20 @@ contains
 
 
 !=========================================================================
-subroutine matrix_cart_to_local(ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,matrix_local)
+subroutine matrix_cart_to_local(gaussian_type,ibf,jbf,li,lj,ni_cart,nj_cart, &
+                                matrix_cart,ni,nj,m_ham,n_ham,matrix_local)
  use m_basis_set
  implicit none
 
- integer,intent(in)     :: ibf,jbf
- integer,intent(in)     :: li,lj
- integer,intent(in)     :: ni_cart,nj_cart,ni,nj
- integer,intent(in)     :: m_ham,n_ham
- real(dp),intent(in)    :: matrix_cart(ni_cart,nj_cart)
- real(dp),intent(inout) :: matrix_local(m_ham,n_ham)
+ character(len=4),intent(in) :: gaussian_type
+ integer,intent(in)          :: ibf,jbf
+ integer,intent(in)          :: li,lj
+ integer,intent(in)          :: ni_cart,nj_cart,ni,nj
+ integer,intent(in)          :: m_ham,n_ham
+ real(dp),intent(in)         :: matrix_cart(ni_cart,nj_cart)
+ real(dp),intent(inout)      :: matrix_local(m_ham,n_ham)
 !=====
+ integer  :: gt
  integer  :: iglobal,jglobal
  integer  :: ilocal,jlocal
  real(dp) :: matrix_final(ibf:ibf+ni-1,jbf:jbf+nj-1)
@@ -41,8 +45,10 @@ subroutine matrix_cart_to_local(ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,
 
 #ifdef HAVE_SCALAPACK
 
- matrix_final(:,:) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
-                             MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+ gt = get_gaussian_type_tag(gaussian_type)
+
+ matrix_final(:,:) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
+                             MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
 
  do jglobal=jbf,jbf+nj-1
    jlocal = colindex_global_to_local('H',jglobal)
@@ -106,7 +112,7 @@ subroutine setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
        enddo
      enddo
 
-     call matrix_cart_to_local(ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,s_matrix)
+     call matrix_cart_to_local(basis%gaussian_type,ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,s_matrix)
 
 
      deallocate(matrix_cart)
@@ -177,7 +183,7 @@ subroutine setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic
        enddo
      enddo
 
-     call matrix_cart_to_local(ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,hamiltonian_kinetic)
+     call matrix_cart_to_local(basis%gaussian_type,ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,hamiltonian_kinetic)
 
      deallocate(matrix_cart,matrix_final)
      jbf      = jbf      + nj
@@ -262,7 +268,7 @@ subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus
        enddo
      enddo
 
-     call matrix_cart_to_local(ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,hamiltonian_nucleus)
+     call matrix_cart_to_local(basis%gaussian_type,ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,hamiltonian_nucleus)
 
 
      deallocate(matrix_cart)
@@ -416,6 +422,8 @@ subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_mat
 
  exchange_ij(:,:,:) = 0.0_dp
 
+#ifdef HAVE_SCALAPACK
+
  write(stdout,*) 'SCALAPACK local grid',nprow_3center,npcol_3center
  write(stdout,*) 'This is process:',iprow_3center,ipcol_3center
  write(stdout,*) 'Size of the non-SCALAPACK 3-center integrals:',nauxil_3center,npair
@@ -468,7 +476,6 @@ subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_mat
 
      call start_clock(timing_tmp1)
      tmp(:,:) = 0.0_dp
-#if 1
      do ipair_local=1,nwork
        ipair_global = INDXL2G(ipair_local,block_col,ipcol_3center,first_col,npcol_3center)
        ibf = index_basis(1,ipair_global)
@@ -477,16 +484,6 @@ subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_mat
        if( ibf /= jbf )  &
          tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3center_sca(:,ipair_local)
      enddo
-#else
-     do ipair_local=1,nwork
-       ipair = ipair_local
-       ibf = index_basis(1,ipair)
-       jbf = index_basis(2,ipair)
-       tmp(:,ibf) = tmp(:,ibf) + c_matrix_i(jbf) * eri_3center_sca(:,ipair)
-       if( ibf /= jbf )  &
-         tmp(:,jbf) = tmp(:,jbf) + c_matrix_i(ibf) * eri_3center_sca(:,ipair)
-     enddo
-#endif
      call stop_clock(timing_tmp1)
 
 
@@ -533,6 +530,7 @@ subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_mat
  endif
  call xsum_world(eexchange)
 
+#endif
  call stop_clock(timing_exchange)
 
 
@@ -1108,7 +1106,6 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  real(dp)             :: rhor
  real(dp)             :: vxc,exc,excr
  real(dp)             :: vsigma(2*nspin-1)
- real(dp)             :: vhartree
  real(dp)             :: vhgau(m_ham,n_ham)
  integer              :: iatom,igau,ngau
  real(dp),allocatable :: alpha(:),coeff(:)
@@ -1161,7 +1158,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
 
    !
    ! calculate the density at point r for spin up and spin down
-   call setup_atomic_density(rr,rhor,vhartree)
+   call setup_atomic_density(rr,rhor)
 
    !
    ! Normalization
