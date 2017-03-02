@@ -46,13 +46,13 @@ Then
 
 - BLAS and LAPACK linear algebra libraries are required.
 - libint is required: (version 2.2.x or newer)
-[https://github.com/evaleev/libint/releases]
+https://github.com/evaleev/libint/releases
 - libxc is required: (version >= 3.0.0) for DFT calculations
-[http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-3.0.0.tar.gz]
+http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-3.0.0.tar.gz
 
 
 ##Basis sets
-More basis sets can be obtained from (Basis Set Exchange)[https://bse.pnl.gov/bse/portal]
+More basis sets can be obtained from [Basis Set Exchange](https://bse.pnl.gov/bse/portal)
 The file can be generated from a NWChem file using the script
 `~molgw/utils/basis_nwchem2molgw.py B_aug-cc-pVDZ.nwchem`
 
