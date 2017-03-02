@@ -107,6 +107,7 @@ module m_inputparam
  character(len=100),protected     :: error_prop_types
  character(len=100),protected     :: error_pred_corrs
  character(len=100),protected     :: error_time_steps
+ character(len=100),protected     :: error_n_hists
  real(dp),protected               :: diis_switch
  real(dp),protected               :: tolscf
  real(dp),protected               :: toldav
@@ -166,6 +167,7 @@ module m_inputparam
  real(dp),protected               :: excit_kappa, excit_omega, excit_time0
  real(dp),protected               :: excit_dir(3)
  real(dp),protected               :: write_step
+ integer,protected                :: n_hist
  logical,protected                :: print_tddft_matrices_
  logical,protected                :: print_cube_rho_tddft_
  logical,protected                :: calc_p_matrix_error_

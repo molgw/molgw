@@ -47,7 +47,7 @@ extern "C" {
 int libint_init() {
   /* this initializes internal Libint data structures -- must happen once in the program */
   LIBINT2_PREFIXED_NAME(libint2_static_init)();
-  return LIBINT2_MAX_AM_ERI;
+  return LIBINT2_MAX_AM_eri;
 }
 }
 
@@ -79,7 +79,7 @@ int eval_contr_integral(
 
  /* LIBINT2_MAX_AM_ERI is a macro defined in libint2.h that specifies the maximum angular momentum
     this Libint library instance can handle */
- if( ammax > LIBINT2_MAX_AM_ERI)
+ if( ammax > LIBINT2_MAX_AM_eri)
    return 1;
 
  LIBINT2_PREFIXED_NAME( libint2_init_eri)(&inteval[0], ammax, 0);

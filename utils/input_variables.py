@@ -983,6 +983,24 @@ vl[i].default  ='PC0'
 vl[i].datatype ='characters'
 vl[i].comment  ='Set of predictor-corrector schemes for each propagator from the list error_prop_types for the p_matrix test in the real-time dynamics'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='n_hist'
+vl[i].family   ='post'
+vl[i].default  =2
+vl[i].datatype ='integer'
+vl[i].comment  ='Number of memorised previous hamiltonian values for its extrapolation in the real-time dynamics. n_hist=1 means that H(t_i+1)=H(t_i); n_hist=2 : H(t_i+1)=a*H(t_i)+b*(t_i-1); etc.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='error_n_hists'
+vl[i].family   ='io'
+vl[i].default  ='2'
+vl[i].datatype ='characters'
+vl[i].comment  ='Set of n_hist for each propagator from the list error_prop_types for the p_matrix test in the real-time dynamics'
+
 #============================================================================
 #            Fortran output: input variable namelist and their default value
 #============================================================================
