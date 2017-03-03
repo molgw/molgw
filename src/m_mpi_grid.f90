@@ -395,7 +395,7 @@ end subroutine xsum_grid_ra4d
 !=========================================================================
 subroutine xsum_grid_ca1d(array)
  implicit none
- complex(dpc),intent(inout) :: array(:)
+ complex(dp),intent(inout) :: array(:)
 !=====
  integer :: n1
  integer :: ier=0
@@ -416,7 +416,7 @@ end subroutine xsum_grid_ca1d
 !=========================================================================
 subroutine xsum_grid_ca2d(array)
  implicit none
- complex(dpc),intent(inout) :: array(:,:)
+ complex(dp),intent(inout) :: array(:,:)
 !=====
  integer :: n1,n2
  integer :: ier=0
@@ -438,7 +438,7 @@ end subroutine xsum_grid_ca2d
 !=========================================================================
 subroutine xsum_grid_ca4d(array)
  implicit none
- complex(dpc),intent(inout) :: array(:,:,:,:)
+ complex(dp),intent(inout) :: array(:,:,:,:)
 !=====
  integer :: n1,n2,n3,n4
  integer :: ier=0

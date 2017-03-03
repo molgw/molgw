@@ -19,6 +19,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  use m_mpi
  use m_scalapack
  use m_tools
+ use m_cart_to_pure
  use m_block_diago
  use m_basis_set
  use m_spectral_function
@@ -373,6 +374,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  real(dp),intent(in)                :: xmy_matrix(m_x,n_x)
  real(dp),intent(in)                :: eigenvalue(chi%npole_reso_apb)
 !=====
+ integer                            :: gt
  integer                            :: nexc
  integer                            :: t_ia,t_jb
  integer                            :: t_ia_global,t_jb_global
@@ -406,6 +408,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
 
  write(stdout,'(/,a)') ' Calculate the optical spectrum'
 
+ gt = get_gaussian_type_tag(basis%gaussian_type)
 
  nexc = nexcitation
  if( nexc == 0 ) nexc = chi%npole_reso_apb
@@ -438,8 +441,8 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
      enddo
 
      do idir=1,3
-       dipole_basis(idir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
-             MATMUL(  dipole_cart(idir,:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+       dipole_basis(idir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
+             MATMUL(  dipole_cart(idir,:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
      enddo
 
      deallocate(dipole_cart)
@@ -692,6 +695,7 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
  use m_mpi
  use m_scalapack
  use m_tools
+ use m_cart_to_pure
  use m_inputparam
  use m_basis_set
  use m_dft_grid
@@ -706,6 +710,7 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
  real(dp),intent(in)                :: xpy_matrix(m_x,n_x)
  real(dp),intent(in)                :: eigenvalue(chi%npole_reso_apb)
 !=====
+ integer                            :: gt
  integer                            :: t_ia,t_jb
  integer                            :: t_ia_global,t_jb_global
  integer                            :: nmat
@@ -718,10 +723,10 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
  complex(dp)                        :: omega(nomega)
  real(dp)                           :: coeff
  real(dp)                           :: dynamical_pol(nomega),structure_factor(nomega)
- complex(dpc)                       :: bethe_sumrule
- complex(dpc),allocatable           :: gos_basis(:,:),gos_tmp(:,:),gos_state(:,:,:)
- complex(dpc),allocatable           :: gos_cart(:,:)
- complex(dpc),allocatable           :: residue(:)
+ complex(dp)                        :: bethe_sumrule
+ complex(dp),allocatable            :: gos_basis(:,:),gos_tmp(:,:),gos_state(:,:,:)
+ complex(dp),allocatable            :: gos_cart(:,:)
+ complex(dp),allocatable            :: residue(:)
  real(dp)                           :: qvec(3)
  integer,parameter                  :: nq=0 ! 1000
  integer                            :: iq
@@ -739,6 +744,7 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
  !
 
  write(stdout,'(/,a)') ' Calculate the stopping power'
+ gt = get_gaussian_type_tag(basis%gaussian_type)
 
  if (nspin/=1) then
    msg='no nspin/=1 allowed'
@@ -809,8 +815,8 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
          enddo
        enddo
   
-       gos_basis(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
-             MATMUL(  gos_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+       gos_basis(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
+             MATMUL(  gos_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
   
        deallocate(gos_cart)
   

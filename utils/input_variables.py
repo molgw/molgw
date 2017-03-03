@@ -68,6 +68,34 @@ GWGAMMA (EXPERIMENTAL) stands for vertex corrections.'
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='move_nuclei'
+vl[i].family   ='general'
+vl[i].default  ='no'
+vl[i].datatype ='characters'
+vl[i].comment  ='Tells the code to move or not the position of the nuclei. \
+Available options are \'no\' or \'relax\'.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='nstep'
+vl[i].family   ='general'
+vl[i].default  = 50
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the number of steps when moving the nuclei.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='tolforce'
+vl[i].family   ='general'
+vl[i].default  = 1.0e-5
+vl[i].datatype ='real'
+vl[i].comment  ='Sets the target threshold for the maximum force component after nuclei relaxation.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='alpha_hybrid'
 vl[i].family   ='scf'
 vl[i].default  =0.
@@ -116,8 +144,7 @@ vl[i].family   ='general'
 vl[i].datatype ='characters'
 vl[i].comment  ='Sets the auxiliary basis set. \
 For instance, cc-pVDZ-RI for a Weigend basis set. \
-If present, the auxiliary basis will be used for postscf calculations (TD-DFT, BSE, or GW) \
-If specifically requested with no_4center, the auxiliary basis can be used for scf cycles too.'
+If present, the auxiliary basis will be used for both the scf cycles and the postscf calculations (TD-DFT, BSE, or GW).'
 
 #================================
 vl.append(variable())
@@ -161,16 +188,6 @@ vl[i].default  ='pure'
 vl[i].datatype ='characters'
 vl[i].comment  ='Asks for pure or spherical Gaussian type orbitals with \'pure\' \
 or for Cartesian Gaussian orbital with \'cart\'.'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
-vl[i].keyword  ='no_4center'
-vl[i].family   ='scf'
-vl[i].default  ='no'
-vl[i].datatype ='yes/no'
-vl[i].comment  ='If switched on, the auxiliary basis set is used in both SCF cycles and in post-scf methods.\
-This avoids the calculation and the storage of the 4-center Coulomb integrals.'
 
 #================================
 vl.append(variable())

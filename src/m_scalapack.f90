@@ -127,7 +127,80 @@ module m_scalapack
  integer,external :: NUMROC,INDXL2G,INDXG2L,INDXG2P,PDLATRA
 #endif
 
+
 contains
+
+
+#ifndef HAVE_SCALAPACK
+!=========================================================================
+! Fake SCALAPACK subroutines to be able to run without SCALAPACK
+!
+!=========================================================================
+function NUMROC(n_in,idum1,idum2,idum3,idum4)
+ implicit none
+ integer,intent(in) :: n_in
+ integer,intent(in) :: idum1,idum2,idum3,idum4
+ integer            :: NUMROC
+!=====
+
+ NUMROC = n_in
+
+end function NUMROC
+
+
+!=========================================================================
+subroutine DESCINIT(descdum,idum1,idum2,idum3,idum4,idum5,idum6,cntxtdum,idum7,info)
+ implicit none
+ integer,intent(in)  :: descdum(NDEL)
+ integer,intent(in)  :: idum1,idum2,idum3,idum4,idum5,idum6,idum7
+ integer,intent(in)  :: cntxtdum
+ integer,intent(out) :: info
+!=====
+
+ info = 0
+
+end subroutine DESCINIT
+
+
+!=========================================================================
+function INDXL2G(ilocal,idum1,idum2,idum3,idum4)
+ implicit none
+ integer,intent(in)  :: ilocal
+ integer,intent(in)  :: idum1,idum2,idum3,idum4
+ integer             :: INDXL2G 
+!===== 
+
+ INDXL2G = ilocal
+
+end function INDXL2G
+
+
+!=========================================================================
+function INDXG2L(iglobal,idum1,idum2,idum3,idum4)
+ implicit none
+ integer,intent(in)  :: iglobal
+ integer,intent(in)  :: idum1,idum2,idum3,idum4
+ integer             :: INDXG2L 
+!===== 
+
+ INDXG2L = iglobal
+
+end function INDXG2L
+
+
+!=========================================================================
+function INDXG2P(iglobal,idum1,idum2,idum3,idum4)
+ implicit none
+ integer,intent(in)  :: iglobal
+ integer,intent(in)  :: idum1,idum2,idum3,idum4
+ integer             :: INDXG2P 
+!===== 
+
+ INDXG2P = 0
+
+end function INDXG2P
+
+#endif
 
 
 !=========================================================================
@@ -1552,27 +1625,17 @@ subroutine init_scalapack()
  call BLACS_GRIDINIT( cntxt_cd, 'R', nprow_cd, npcol_cd )
  call BLACS_GRIDINFO( cntxt_cd, nprow_cd, npcol_cd, iprow_cd, ipcol_cd )
 
-
-
-#ifdef DEBUG
- write(stdout,'(/,a)')           ' ==== SCALAPACK info'
- write(stdout,'(a)')             '   Squared distribution'
- write(stdout,'(a50,1x,i8)')      'Number of proc:',nprow_sd*npcol_sd
- write(stdout,'(a50,1x,i8,1x,i8)') 'Grid of procs:',nprow_sd,npcol_sd
- write(stdout,'(a)')             '       Row distribution'
- write(stdout,'(a50,1x,i8)')      'Number of proc:',nprow_rd*npcol_rd
- write(stdout,'(a50,1x,i8,1x,i8)') 'Grid of procs:',nprow_rd,npcol_rd
- write(stdout,'(a)')             '    Column distribution'
- write(stdout,'(a50,1x,i8)')      'Number of proc:',nprow_cd*npcol_cd
- write(stdout,'(a50,1x,i8,1x,i8)') 'Grid of procs:',nprow_cd,npcol_cd
- write(stdout,'(/)')
-#endif
- 
 #else
+ ! If SCALAPACK is not present, fill the variable with fake values
  nprow_sd = 1
  npcol_sd = 1
  iprow_sd = 0
  ipcol_sd = 0
+ cntxt_3center = 1
+ nprow_3center = 1
+ npcol_3center = 1
+ ipcol_3center = 0
+ iprow_3center = 0
 #endif
 
 end subroutine init_scalapack
@@ -1874,9 +1937,6 @@ function rowindex_global_to_local(distribution,iglobal)
  integer,intent(in)          :: iglobal
  integer                     :: rowindex_global_to_local
 !=====
-#ifdef HAVE_SCALAPACK
- integer,external :: INDXG2P,INDXG2L
-#endif
 !=====
  !
  ! returns the local index if this is proc in charge

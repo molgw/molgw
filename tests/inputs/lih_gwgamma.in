@@ -6,7 +6,6 @@
 
   basis='cc-pVTZ'
   auxil_basis='cc-pVTZ-RI'
-  no_4center='yes'
 
   mpi_nproc_ortho=2
 

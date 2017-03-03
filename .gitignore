@@ -1,5 +1,7 @@
 molgw
+molgw.tgz
 *.mod
 *.o
 *.swp
 src/my_machine.arch
+tests/tmp_*

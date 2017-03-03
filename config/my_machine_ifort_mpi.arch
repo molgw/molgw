@@ -5,17 +5,17 @@ LIBTOOL=libtool --mode=link --tag=FC
 # Parallel MPI SCALAPACK compilation
 FC=mpif90 -fpp
 
-CPPFLAGS= -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK
+CPPFLAGS= -DHAVE_LIBXC -DHAVE_MPI -DHAVE_SCALAPACK # -DHAVE_LIBINT_ONEBODY
 
 CXX=icpc
-FCOPTS= -O3 -xhost -opt-matmul
+FCOPTS= -O3 -xhost -qopt-matmul
 CXXOPTS= -O3 -xhost  
 
 LAPACK= -mkl=sequential
 
-SCALAPACK= -L{MKLROOT}/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -lpthread -lm
+SCALAPACK= -L${MKLROOT}/lib/intel64 -lmkl_scalapack_lp64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_openmpi_lp64 -lpthread -lm
 
-LIBXC_ROOT=${HOME}/src/libxc-2.2.0_ifort/
+LIBXC_ROOT=${HOME}/src/libxc-3.0.0_ifort/
 
-LIBINT_ROOT=${HOME}/src/libint-2.0.3-stable_ifort/
+LIBINT_ROOT=${HOME}/src/libint-2.2.0_ifort/
 

@@ -14,7 +14,6 @@
 
  basis='aug-cc-pVDZ'
  auxil_basis='aug-cc-pVDZ-RI'
- no_4center='yes'
 
  ecp_basis='aug-cc-pVDZ-PP'
  ecp_auxil_basis='aug-cc-pVDZ-PP-RI'

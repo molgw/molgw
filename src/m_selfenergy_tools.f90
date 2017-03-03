@@ -495,7 +495,7 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,ham
      call destroy_dft_grid()
    endif
 
-   if( .NOT. is_full_auxil ) then
+   if( .NOT. has_auxil_basis ) then
      call setup_exchange(print_matrix_,basis%nbf,p_matrix_tmp,hexx_val,eexx)
    else
      if( parallel_ham ) then

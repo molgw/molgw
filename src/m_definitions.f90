@@ -8,12 +8,10 @@
 !=========================================================================
 module m_definitions
  use,intrinsic :: iso_fortran_env, only: OUTPUT_UNIT,ERROR_UNIT
+ use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE,C_BOOL
 
  integer,parameter  :: dp=KIND(0.d0)
  integer,parameter  :: sp=KIND(0.0)
- integer,parameter  :: dpc=KIND((0.d0,0.d0))
-
- integer,parameter  :: prec_eri=dp
 
  integer,protected  :: stdout = OUTPUT_UNIT
  integer,parameter  :: stderr = ERROR_UNIT
@@ -30,9 +28,9 @@ module m_definitions
 
  !
  ! Mathematical constants
- real(dp),parameter     :: pi    =3.14159265358979323_dp
- real(dp),parameter     :: pi2   =pi**2
- complex(dpc),parameter :: im    =(0.0_dp,1.0_dp)
+ real(dp),parameter     :: pi    = 3.14159265358979323_dp
+ real(dp),parameter     :: pi2   = pi**2
+ complex(dp),parameter  :: im    = (0.0_dp,1.0_dp)
 
 
  ! 

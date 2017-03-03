@@ -8,6 +8,9 @@
  namelist /molgw/   &
     scf,       &
     postscf,       &
+    move_nuclei,       &
+    nstep,       &
+    tolforce,       &
     alpha_hybrid,       &
     beta_hybrid,       &
     gamma_hybrid,       &
@@ -17,7 +20,6 @@
     small_basis,       &
     ecp_small_basis,       &
     gaussian_type,       &
-    no_4center,       &
     nspin,       &
     charge,       &
     magnetization,       &
@@ -109,6 +111,9 @@
 
  scf=''
  postscf=''
+ move_nuclei='no'
+ nstep=50
+ tolforce=1e-05_dp 
  alpha_hybrid=0.0_dp 
  beta_hybrid=0.0_dp 
  gamma_hybrid=1000000.0_dp 
@@ -118,7 +123,6 @@
  small_basis=''
  ecp_small_basis=''
  gaussian_type='pure'
- no_4center='no'
  nspin=1
  charge=0.0_dp 
  magnetization=0.0_dp 

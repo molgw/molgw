@@ -7,6 +7,9 @@
 
  write(stdout,'(1x,a24,6x,a)') 'scf',scf 
  write(stdout,'(1x,a24,6x,a)') 'postscf',postscf 
+ write(stdout,'(1x,a24,6x,a)') 'move_nuclei',move_nuclei 
+ write(stdout,'(1x,a24,2x,i8)') 'nstep',nstep 
+ write(stdout,'(1x,a24,2x,es16.8)') 'tolforce',tolforce 
  write(stdout,'(1x,a24,2x,es16.8)') 'alpha_hybrid',alpha_hybrid 
  write(stdout,'(1x,a24,2x,es16.8)') 'beta_hybrid',beta_hybrid 
  write(stdout,'(1x,a24,2x,es16.8)') 'gamma_hybrid',gamma_hybrid 
@@ -16,7 +19,6 @@
  write(stdout,'(1x,a24,6x,a)') 'small_basis',small_basis 
  write(stdout,'(1x,a24,6x,a)') 'ecp_small_basis',ecp_small_basis 
  write(stdout,'(1x,a24,6x,a)') 'gaussian_type',gaussian_type 
- write(stdout,'(1x,a24,6x,a)') 'no_4center',no_4center 
  write(stdout,'(1x,a24,2x,i8)') 'nspin',nspin 
  write(stdout,'(1x,a24,2x,es16.8)') 'charge',charge 
  write(stdout,'(1x,a24,2x,es16.8)') 'magnetization',magnetization 

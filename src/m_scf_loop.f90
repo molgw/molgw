@@ -32,7 +32,6 @@ subroutine scf_loop(is_restart,&
  use m_scf
  use m_eri
  use m_eri_calculate
- use m_eri_calculate_lr
  use m_eri_ao_mo
  use m_dft_grid
  use m_spectral_function
@@ -135,7 +134,7 @@ subroutine scf_loop(is_restart,&
    !
    ! Hartree contribution to the Hamiltonian
    !
-   if( .NOT. is_full_auxil) then
+   if( .NOT. has_auxil_basis ) then
      call setup_hartree(print_matrix_,basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
    else
      if( parallel_ham ) then
@@ -147,6 +146,11 @@ subroutine scf_loop(is_restart,&
      else
        call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
      endif
+   endif
+   ! calc_type%is_core is an inefficient way to get the Kinetic+Nucleus Hamiltonian
+   if( calc_type%is_core ) then
+     hamiltonian_hartree(:,:) = 0.0_dp
+     en%hart = 0.0_dp
    endif
    do ispin=1,nspin
      hamiltonian(:,:,ispin) = hamiltonian(:,:,ispin) + hamiltonian_hartree(:,:)
@@ -183,7 +187,7 @@ subroutine scf_loop(is_restart,&
    ! Use hamiltonian_exx as a temporary matrix (no need to save it for later use)
    if(calc_type%need_exchange_lr) then
 
-     if( .NOT. is_full_auxil) then
+     if( .NOT. has_auxil_basis ) then
        call setup_exchange_longrange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,energy_tmp)
      else
        if( parallel_ham ) then
@@ -205,7 +209,7 @@ subroutine scf_loop(is_restart,&
    ! Exchange contribution to the Hamiltonian
    if( calc_type%need_exchange ) then
 
-     if( .NOT. is_full_auxil) then
+     if( .NOT. has_auxil_basis ) then
        call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
      else
        if( parallel_ham ) then
@@ -213,7 +217,7 @@ subroutine scf_loop(is_restart,&
 #ifndef SCASCA
            call setup_exchange_ri_buffer_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
 #else
-           call issue_warning('FBFB hack sca')
+           call issue_warning('FBFB devel SCASCA')
            call setup_exchange_ri_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
 #endif
          else
@@ -348,6 +352,11 @@ subroutine scf_loop(is_restart,&
    write(stdout,'(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):',en%tot
 
 
+   ! If fractional occupancies are allowed, then recalculate the occupations
+   if( temperature > 1.0e-8_dp ) then
+     call set_occupation(nstate,temperature,electrons,magnetization,energy,occupation)
+   endif
+
    !
    ! Setup the new density matrix: p_matrix
    ! Save the old one for the convergence criterium
@@ -393,7 +402,7 @@ subroutine scf_loop(is_restart,&
  !
  ! Get the exchange operator if not already calculated
  !
- if( .NOT. is_full_auxil) then
+ if( .NOT. has_auxil_basis ) then
    if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
  else
    if( ABS(en%exx) < 1.0e-6_dp ) then
@@ -739,7 +748,6 @@ subroutine get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamilton
  real(dp),intent(out)   :: hamiltonian_fock(:,:,:)
 !=====
  real(dp),allocatable   :: hfock_local(:,:,:)
- integer                :: rank_master
 !=====
 
  if( parallel_ham ) then
@@ -767,7 +775,6 @@ subroutine form_c_matrix_global(nbf,nstate,c_matrix)
  real(dp),allocatable,intent(inout) :: c_matrix(:,:,:)
 !=====
  real(dp),allocatable :: c_matrix_local(:,:,:)
- integer              :: rank_master
 !=====
 
  if( .NOT. parallel_ham ) return    ! Nothing to do

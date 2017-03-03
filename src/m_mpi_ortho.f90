@@ -317,7 +317,7 @@ end subroutine xsum_ortho_ra4d
 !=========================================================================
 subroutine xsum_ortho_ca1d(array)
  implicit none
- complex(dpc),intent(inout) :: array(:)
+ complex(dp),intent(inout) :: array(:)
 !=====
  integer :: n1
  integer :: ier=0
@@ -338,7 +338,7 @@ end subroutine xsum_ortho_ca1d
 !=========================================================================
 subroutine xsum_ortho_ca2d(array)
  implicit none
- complex(dpc),intent(inout) :: array(:,:)
+ complex(dp),intent(inout) :: array(:,:)
 !=====
  integer :: n1,n2
  integer :: ier=0
@@ -360,7 +360,7 @@ end subroutine xsum_ortho_ca2d
 !=========================================================================
 subroutine xsum_ortho_ca3d(array)
  implicit none
- complex(dpc),intent(inout) :: array(:,:,:)
+ complex(dp),intent(inout) :: array(:,:,:)
 !=====
  integer :: n1,n2,n3
  integer :: ier=0
@@ -383,7 +383,7 @@ end subroutine xsum_ortho_ca3d
 !=========================================================================
 subroutine xsum_ortho_ca4d(array)
  implicit none
- complex(dpc),intent(inout) :: array(:,:,:,:)
+ complex(dp),intent(inout) :: array(:,:,:,:)
 !=====
  integer :: n1,n2,n3,n4
  integer :: ier=0

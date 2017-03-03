@@ -6,7 +6,6 @@
 
  basis='aug-cc-pVTZ'
  auxil_basis='aug-cc-pVTZ-RI'
- no_4center='yes'
 
  print_multipole='yes'
 

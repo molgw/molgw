@@ -455,6 +455,7 @@ subroutine xdiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  real(dp),intent(out)   :: p_matrix(m_ham_scf,n_ham_scf,nspin)
  real(dp),intent(out)   :: ham(m_ham_scf,n_ham_scf,nspin)
 !=====
+ type(lbfgs_state)      :: lbfgs_plan
  integer                :: ispin
  integer                :: ihist,jhist,khist
  real(dp),allocatable   :: matrix_tmp1(:,:)
@@ -528,7 +529,7 @@ subroutine xdiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
      ti(2:) = 0.2_dp
    enddo
 
-   call setup_lbfgs(nhist_current)
+   call lbfgs_init(lbfgs_plan,nhist_current,5)
 
    do ibfgs=1,nbfgs
 
@@ -549,7 +550,7 @@ subroutine xdiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
      gradf(:) = eval_gradf_xdiis(ci,dcdt) 
 
      ! Perform a LBGS step
-     info = lbfgs_wrapper(ti,f_xdiis,gradf)
+     info = lbfgs_execute(lbfgs_plan,ti,f_xdiis,gradf)
 
      !
      ! If the coefficient ci are identical within 1.0e-4, then consider they are converged
@@ -561,7 +562,7 @@ subroutine xdiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
    enddo
 
-   call destroy_lbfgs()
+   call lbfgs_destroy(lbfgs_plan)
 
    sum_ti2 = SUM( ti(:)**2 )
    ci(:) = ti(:)**2 / sum_ti2

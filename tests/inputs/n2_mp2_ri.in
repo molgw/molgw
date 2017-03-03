@@ -5,7 +5,6 @@
 
  basis='cc-pVTZ'
  auxil_basis='cc-pVTZ-RI'
- no_4center='yes'
 
  postscf='mp2_selfenergy'
  selfenergy_state_min=1

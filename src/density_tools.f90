@@ -6,7 +6,7 @@
 ! rho(r), grad rho(r), vxc in specific case, etc..
 !
 !=========================================================================
-subroutine setup_atomic_density(rr,rhor,vhartree)
+subroutine setup_atomic_density(rr,rhor)
  use m_definitions
  use m_atoms
  use m_gaussian
@@ -14,7 +14,7 @@ subroutine setup_atomic_density(rr,rhor,vhartree)
  implicit none
 
  real(dp),intent(in)  :: rr(3)
- real(dp),intent(out) :: rhor,vhartree
+ real(dp),intent(out) :: rhor
 !=====
  real(dp),parameter   :: bondcharge=1.000_dp
  integer              :: iatom,igau,ngau
@@ -23,7 +23,6 @@ subroutine setup_atomic_density(rr,rhor,vhartree)
 !=====
 
  rhor = 0.0_dp
- vhartree = 0.0_dp
  do iatom=1,natom
 
    ngau = 4
@@ -34,7 +33,6 @@ subroutine setup_atomic_density(rr,rhor,vhartree)
 
    do igau=1,ngau
      rhor     = rhor     + SQRT(alpha(igau)/pi)**3 * EXP( -alpha(igau)*dr**2) * coeff(igau)
-     vhartree = vhartree + ERF(SQRT(alpha(igau))*dr)/dr * coeff(igau)
    enddo
 
    deallocate(alpha,coeff)

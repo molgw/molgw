@@ -26,7 +26,7 @@ contains
 !=========================================================================
 subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matrix,nstate_small)
  use m_inputparam
- use m_tools,only: diagonalize
+ use m_tools,only: diagonalize,invert
  use m_basis_set
  use m_hamiltonian
  use m_hamiltonian_sca
@@ -76,7 +76,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  ! Initialize the small basis set
  write(stdout,*) 'Set up a smaller basis set to optimize the virtual orbital space'
  call init_basis_set(basis_path,small_basis_name,ecp_small_basis_name,gaussian_type,basis_small)
- call issue_warning('Reduce the virtual orbital subspace by using a smaller basis set: '//TRIM(small_basis_name))
+ call issue_warning('Reduce the virtual orbital subspace by using a smaller basis set: '//TRIM(small_basis_name(1)))
 
  ! Get the overlap matrix of the wavefunction basis set S: s_matrix
  call clean_allocate('Overlap matrix S',s_matrix,basis%nbf,basis%nbf)
@@ -333,7 +333,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
  ! Initialize the small basis set
  write(stdout,*) 'Set up a smaller basis set to optimize the virtual orbital space'
  call init_basis_set(basis_path,small_basis_name,ecp_small_basis_name,gaussian_type,basis_small)
- call issue_warning('Reduce the virtual orbital subspace by using a smaller basis set: '//TRIM(small_basis_name))
+ call issue_warning('Reduce the virtual orbital subspace by using a smaller basis set: '//TRIM(small_basis_name(1)))
 
  if( cntxt > 0 ) then
 

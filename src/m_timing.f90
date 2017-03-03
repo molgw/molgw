@@ -57,6 +57,7 @@ module m_timing
  integer,parameter :: timing_gwgamma             = 38
  integer,parameter :: timing_ecp                 = 39
  integer,parameter :: timing_density_matrix      = 40
+ integer,parameter :: timing_force               = 41
  
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -181,7 +182,7 @@ subroutine output_timing()
  write(stdout,*)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'Single Excitations'  ,timing(timing_single_excitation),calls(timing_single_excitation)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'FNO generation'      ,timing(timing_fno),calls(timing_fno)
- write(stdout,*)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'Forces'              ,timing(timing_force),calls(timing_force)
 
  write(stdout,*)
  write(stdout,'(a)') '                 -------------------------------------'

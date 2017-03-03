@@ -13,9 +13,9 @@
 <p>
 <a href=#nspin>nspin</a> <a href=#charge>charge</a> <a href=#magnetization>magnetization</a> <a href=#temperature>temperature</a> <a href=#length_unit>length_unit</a> <a href=#natom>natom</a> <a href=#xyz_file>xyz_file</a> <a href=#nghost>nghost</a> <h3>General input variables</h3>
 <p>
-<a href=#scf>scf</a> <a href=#basis>basis</a> <a href=#auxil_basis>auxil_basis</a> <a href=#gaussian_type>gaussian_type</a> <a href=#ecp_type>ecp_type</a> <a href=#ecp_elements>ecp_elements</a> <a href=#ecp_quality>ecp_quality</a> <a href=#ecp_basis>ecp_basis</a> <a href=#ecp_auxil_basis>ecp_auxil_basis</a> <h3>Self-consistency input variables</h3>
+<a href=#scf>scf</a> <a href=#move_nuclei>move_nuclei</a> <a href=#nstep>nstep</a> <a href=#tolforce>tolforce</a> <a href=#basis>basis</a> <a href=#auxil_basis>auxil_basis</a> <a href=#gaussian_type>gaussian_type</a> <a href=#ecp_type>ecp_type</a> <a href=#ecp_elements>ecp_elements</a> <a href=#ecp_quality>ecp_quality</a> <a href=#ecp_basis>ecp_basis</a> <a href=#ecp_auxil_basis>ecp_auxil_basis</a> <h3>Self-consistency input variables</h3>
 <p>
-<a href=#alpha_hybrid>alpha_hybrid</a> <a href=#beta_hybrid>beta_hybrid</a> <a href=#gamma_hybrid>gamma_hybrid</a> <a href=#no_4center>no_4center</a> <a href=#grid_quality>grid_quality</a> <a href=#integral_quality>integral_quality</a> <a href=#partition_scheme>partition_scheme</a> <a href=#nscf>nscf</a> <a href=#alpha_mixing>alpha_mixing</a> <a href=#mixing_scheme>mixing_scheme</a> <a href=#diis_switch>diis_switch</a> <a href=#level_shifting_energy>level_shifting_energy</a> <a href=#init_hamiltonian>init_hamiltonian</a> <a href=#tolscf>tolscf</a> <a href=#min_overlap>min_overlap</a> <a href=#npulay_hist>npulay_hist</a> <h3>Correlation and excited states post-treatment input variables</h3>
+<a href=#alpha_hybrid>alpha_hybrid</a> <a href=#beta_hybrid>beta_hybrid</a> <a href=#gamma_hybrid>gamma_hybrid</a> <a href=#grid_quality>grid_quality</a> <a href=#integral_quality>integral_quality</a> <a href=#partition_scheme>partition_scheme</a> <a href=#nscf>nscf</a> <a href=#alpha_mixing>alpha_mixing</a> <a href=#mixing_scheme>mixing_scheme</a> <a href=#diis_switch>diis_switch</a> <a href=#level_shifting_energy>level_shifting_energy</a> <a href=#init_hamiltonian>init_hamiltonian</a> <a href=#tolscf>tolscf</a> <a href=#min_overlap>min_overlap</a> <a href=#npulay_hist>npulay_hist</a> <h3>Correlation and excited states post-treatment input variables</h3>
 <p>
 <a href=#postscf>postscf</a> <a href=#tddft_grid_quality>tddft_grid_quality</a> <a href=#tda>tda</a> <a href=#triplet>triplet</a> <a href=#nexcitation>nexcitation</a> <a href=#toldav>toldav</a> <a href=#frozencore>frozencore</a> <a href=#ncoreg>ncoreg</a> <a href=#ncorew>ncorew</a> <a href=#nvirtualg>nvirtualg</a> <a href=#nvirtualw>nvirtualw</a> <a href=#nvirtualspa>nvirtualspa</a> <a href=#selfenergy_state_min>selfenergy_state_min</a> <a href=#selfenergy_state_max>selfenergy_state_max</a> <a href=#selfenergy_state_range>selfenergy_state_range</a> <a href=#nomega_sigma>nomega_sigma</a> <a href=#step_sigma>step_sigma</a> <a href=#eta>eta</a> <a href=#scissor>scissor</a> <a href=#alpha_cohsex>alpha_cohsex</a> <a href=#beta_cohsex>beta_cohsex</a> <a href=#dft_core>dft_core</a> <a href=#gamma_cohsex>gamma_cohsex</a> <a href=#delta_cohsex>delta_cohsex</a> <a href=#epsilon_cohsex>epsilon_cohsex</a> <a href=#virtual_fno>virtual_fno</a> <a href=#rcut_mbpt>rcut_mbpt</a> <a href=#gwgamma_tddft>gwgamma_tddft</a> <a href=#time_step>time_step</a> <a href=#time_sim>time_sim</a> <a href=#prop_type>prop_type</a> <a href=#excit_type>excit_type</a> <a href=#excit_kappa>excit_kappa</a> <a href=#excit_omega>excit_omega</a> <a href=#excit_time0>excit_time0</a> <a href=#excit_dir>excit_dir</a> <a href=#print_tddft_matrices>print_tddft_matrices</a> <a href=#pred_corr>pred_corr</a> <a href=#n_hist>n_hist</a> <h3>IO input variables</h3>
 <p>
@@ -47,6 +47,24 @@ GnWn stands for GW with eigenvalue self-consistentcy on both G and W.
 MP2 stands for guess what.
 GWGAMMA (EXPERIMENTAL) stands for vertex corrections.</li><br>
 <hr>
+<a name=move_nuclei><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>move_nuclei</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: no<br><br>
+Tells the code to move or not the position of the nuclei. Available options are 'no' or 'relax'.</li><br>
+<hr>
+<a name=nstep><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nstep</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: 50<br><br>
+Sets the number of steps when moving the nuclei.</li><br>
+<hr>
+<a name=tolforce><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>tolforce</b>  </span>  
+<br><br>
+<i>Optional</i><br>
+Default: 1e-05<br><br>
+Sets the target threshold for the maximum force component after nuclei relaxation.</li><br>
+<hr>
 <a name=alpha_hybrid><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>alpha_hybrid</b>  </span>  
 <br><br>
 <i>Optional</i><br>
@@ -75,7 +93,7 @@ Sets the basis set For Pople sets, use 6-31G for instance or 6-31pGs, where p st
 <br><br>
 <i>Optional</i><br>
 Default: None<br><br>
-Sets the auxiliary basis set. For instance, cc-pVDZ-RI for a Weigend basis set. If present, the auxiliary basis will be used for postscf calculations (TD-DFT, BSE, or GW) If specifically requested with no_4center, the auxiliary basis can be used for scf cycles too.</li><br>
+Sets the auxiliary basis set. For instance, cc-pVDZ-RI for a Weigend basis set. If present, the auxiliary basis will be used for both the scf cycles and the postscf calculations (TD-DFT, BSE, or GW).</li><br>
 <hr>
 <a name=basis_path><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>basis_path</b>  </span>  
 <br><br>
@@ -102,12 +120,6 @@ Calls for a smaller basis set used to represent the virtual orbital space with f
 <i>Optional</i><br>
 Default: pure<br><br>
 Asks for pure or spherical Gaussian type orbitals with 'pure' or for Cartesian Gaussian orbital with 'cart'.</li><br>
-<hr>
-<a name=no_4center><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>no_4center</b>  </span>  
-<br><br>
-<i>Optional</i><br>
-Default: no<br><br>
-If switched on, the auxiliary basis set is used in both SCF cycles and in post-scf methods.This avoids the calculation and the storage of the 4-center Coulomb integrals.</li><br>
 <hr>
 <a name=nspin><li>                 <span style="display:inline-block;background:#EEEEEE;width:400px">               <b>nspin</b>  </span>  
 <br><br>

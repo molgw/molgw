@@ -14,6 +14,7 @@ module m_hamiltonian_buffer
  use m_warning
  use m_memory
  use m_scalapack
+ use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact
 
 
@@ -152,6 +153,7 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
  integer,intent(in)         :: m_ham,n_ham
  real(dp),intent(out)       :: hamiltonian_nucleus(m_ham,n_ham)
 !=====
+ integer              :: gt
  integer              :: natom_local
  integer              :: ibf,jbf
  integer              :: ibf_cart,jbf_cart
@@ -164,6 +166,7 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
 
  call start_clock(timing_hamiltonian_nuc)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK buffer'
+ gt = get_gaussian_type_tag(basis%gaussian_type)
 
  buffer(:,:) = 0.0_dp
 
@@ -203,8 +206,8 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
          enddo
        enddo
      enddo
-     buffer(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li)%matrix(:,:)) , &
-                                                MATMUL( matrix_cart(:,:) , cart_to_pure(lj)%matrix(:,:) ) )
+     buffer(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
+                                                MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
 
 
      deallocate(matrix_cart)
@@ -789,7 +792,6 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
  real(dp)             :: rhor
  real(dp)             :: vxc,exc,excr
  real(dp)             :: vsigma(2*nspin-1)
- real(dp)             :: vhartree
  real(dp)             :: vhgau(m_ham,n_ham)
  integer              :: iatom,igau,ngau
  real(dp),allocatable :: alpha(:),coeff(:)
@@ -846,7 +848,7 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
 
    !
    ! calculate the density at point r for spin up and spin down
-   call setup_atomic_density(rr,rhor,vhartree)
+   call setup_atomic_density(rr,rhor)
 
    !
    ! Normalization
