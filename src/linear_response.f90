@@ -1227,3 +1227,67 @@ end subroutine chi_to_sqrtvchisqrtv_auxil_spa
 
 
 !=========================================================================
+subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
+ use m_definitions
+ use m_timing
+ use m_warning
+ use m_memory
+ use m_inputparam
+ use m_mpi
+ use m_scalapack
+ use m_tools
+ use m_cart_to_pure
+ use m_block_diago
+ use m_basis_set
+ use m_spectral_function
+ use m_eri_ao_mo
+ implicit none
+
+ type(basis_set),intent(in)            :: basis,auxil_basis
+ integer,intent(in)                    :: nstate
+ real(dp),intent(in)                   :: occupation(nstate,nspin)
+ real(dp),intent(in)                   :: energy(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(out)                  :: rpa_correlation
+ type(spectral_function),intent(inout) :: wpol_out
+!=====
+ integer,parameter    :: nomega=1
+ real(dp),allocatable :: chi(:,:)
+ real(dp),allocatable :: omega(:)
+ integer  :: mlocal,nlocal
+ integer  :: info,imat
+ integer  :: desc_chi(NDEL)
+!=====
+
+ allocate(omega(nomega))
+
+ omega(:) = 0.0_dp
+
+ if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
+
+ wpol_out%nprodbasis = nauxil_3center
+
+! call static_polarizability(nstate,occupation,energy,wpol_out)
+! write(stdout,*) '========== FBFB ref',wpol_out%w0(1,1)
+! do imat=1,nauxil_2center
+!   write(stdout,*) imat,imat,wpol_out%w0(imat,imat)
+! enddo
+
+
+ mlocal = NUMROC(nauxil_2center,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+ nlocal = NUMROC(nauxil_2center,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
+ call clean_allocate('Chi',chi,mlocal,nlocal)
+
+ call DESCINIT(desc_chi,nauxil_2center,nauxil_2center,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+ call dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wpol_out,desc_chi,mlocal,nlocal,chi)
+
+
+ call destroy_eri_3center_eigen()
+
+ deallocate(omega)
+ call clean_deallocate('Chi',chi)
+
+
+end subroutine test_polarizability
+
+
+!=========================================================================

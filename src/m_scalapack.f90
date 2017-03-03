@@ -2091,7 +2091,7 @@ function rowindex_local_to_global_descriptor(desc,ilocal)
 
 #ifdef HAVE_SCALAPACK
  call BLACS_GRIDINFO(desc(CTXT_A),nprow,npcol,iprow,ipcol)
- rowindex_local_to_global_descriptor = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
+ rowindex_local_to_global_descriptor = INDXL2G(ilocal,desc(MB_A),iprow,desc(RSRC_A),nprow)
 #else
  rowindex_local_to_global_descriptor = ilocal
 #endif
@@ -2159,7 +2159,7 @@ function colindex_local_to_global_descriptor(desc,ilocal)
 
 #ifdef HAVE_SCALAPACK
  call BLACS_GRIDINFO(desc(CTXT_A),nprow,npcol,iprow,ipcol)
- colindex_local_to_global_descriptor = INDXL2G(ilocal,block_col,ipcol,first_col,npcol)
+ colindex_local_to_global_descriptor = INDXL2G(ilocal,desc(NB_A),ipcol,desc(CSRC_A),npcol)
 #else
  colindex_local_to_global_descriptor = ilocal
 #endif

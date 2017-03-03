@@ -547,7 +547,11 @@ program molgw
    call destroy_spectral_function(wpol)
  endif
   
-
+ if( .FALSE. ) then
+   call init_spectral_function(nstate,occupation,wpol)
+   call test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+   call destroy_spectral_function(wpol)
+ endif
  !
  ! Self-energy calculation: PT2, GW, GWGamma, COHSEX
  !
