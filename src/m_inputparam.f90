@@ -47,23 +47,6 @@ module m_inputparam
  integer,parameter :: SOX          = 222
 
  type calculation_type
-<<<<<<< HEAD
-   character(len=100) :: calc_name
-   character(len=100) :: scf_name
-   character(len=100) :: postscf_name
-   logical            :: is_dft
-   logical            :: need_exchange
-   logical            :: need_exchange_lr
-   logical            :: need_rpa
-   logical            :: is_lr_mbpt
-   logical            :: is_gw
-   logical            :: is_mp2
-   logical            :: is_selfenergy
-   logical            :: is_ci
-   logical            :: is_bse,is_td,is_real_time
-   integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
-   integer            :: selfenergy_approx         ! GW, COHSEX, PT2
-=======
  character(len=100) :: calc_name
  character(len=100) :: scf_name
  character(len=100) :: postscf_name
@@ -80,7 +63,6 @@ module m_inputparam
  logical            :: is_bse,is_td
  integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
  integer            :: selfenergy_approx         ! GW, COHSEX, PT2
->>>>>>> bfd3a71a5b5c0b0f9b7953c2fd4e964b69c5bac3
 #ifdef HAVE_LIBXC
    type(xc_f90_pointer_t),allocatable :: xc_func(:)
    type(xc_f90_pointer_t),allocatable :: xc_info(:)
