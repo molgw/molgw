@@ -62,8 +62,8 @@ end function matrix_trace
 !=========================================================================
 function matrix_trace_cmplx(matrix)
  implicit none
- complex(dpc),intent(in) :: matrix(:,:)
- complex(dpc)            :: matrix_trace_cmplx
+ complex(dp),intent(in) :: matrix(:,:)
+ complex(dp)            :: matrix_trace_cmplx
 !=====
  integer :: n1,i1
 !=====
@@ -237,9 +237,9 @@ subroutine invert_inplace_cdp(n,matrix)
  implicit none
 
  integer,intent(in) :: n
- complex(dpc),intent(in) :: matrix(n,n)
+ complex(dp),intent(in) :: matrix(n,n)
 !=====
- complex(dpc) :: work(n)
+ complex(dp) :: work(n)
  integer     :: ipiv(n),info
 !=====
 
@@ -279,11 +279,11 @@ end subroutine diagonalize_wo_vectors_dp
 subroutine diagonalize_cdp(n,matrix,eigval,eigvec)
  implicit none
  integer,intent(in) :: n
- complex(dpc),intent(in) :: matrix(n,n)
+ complex(dp),intent(in) :: matrix(n,n)
  real(dp),intent(out) :: eigval(n)
- complex(dpc),intent(out) :: eigvec(n,n)
+ complex(dp),intent(out) :: eigvec(n,n)
 
- complex(dpc) :: work(2*n-1)
+ complex(dp) :: work(2*n-1)
  real(dp) :: rwork(3*n-2)
  integer :: info
 

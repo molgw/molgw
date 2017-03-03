@@ -711,16 +711,16 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,occupation,c_matrix_cmplx,p_matrix
  integer,intent(in)         :: nbf,nstate
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(out)       :: eexchange
- complex(dpc),intent(in)    :: c_matrix_cmplx(nbf,nstate,nspin)
- complex(dpc),intent(in)    :: p_matrix_cmplx(nbf,nbf,nspin)
- complex(dpc),intent(out)   :: exchange_ij_cmplx(nbf,nbf,nspin)
+ complex(dp),intent(in)    :: c_matrix_cmplx(nbf,nstate,nspin)
+ complex(dp),intent(in)    :: p_matrix_cmplx(nbf,nbf,nspin)
+ complex(dp),intent(out)   :: exchange_ij_cmplx(nbf,nbf,nspin)
 !=====
  integer                    :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
  integer                    :: index_ij
  integer                    :: nocc
  real(dp)                   :: eigval(nbf)
  integer                    :: ipair
- complex(dpc),allocatable   :: tmp_cmplx(:,:)
+ complex(dp),allocatable   :: tmp_cmplx(:,:)
 !=====
 
 ! write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
@@ -972,9 +972,9 @@ end subroutine setup_density_matrix
 subroutine setup_density_matrix_cmplx(nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
  implicit none
  integer,intent(in)   :: nbf,nstate
- complex(dpc),intent(in)  :: c_matrix_cmplx(nbf,nstate,nspin)
+ complex(dp),intent(in)  :: c_matrix_cmplx(nbf,nstate,nspin)
  real(dp),intent(in)  :: occupation(nstate,nspin)
- complex(dpc),intent(out) :: p_matrix_cmplx(nbf,nbf,nspin)
+ complex(dp),intent(out) :: p_matrix_cmplx(nbf,nbf,nspin)
 !=====
  integer :: ispin,ibf,jbf
  integer :: istate
@@ -1008,9 +1008,9 @@ end subroutine setup_density_matrix_cmplx
 subroutine setup_density_matrix_cmplx_slow(nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
  implicit none
  integer,intent(in)   :: nbf,nstate
- complex(dpc),intent(in)  :: c_matrix_cmplx(nbf,nstate,nspin)
+ complex(dp),intent(in)  :: c_matrix_cmplx(nbf,nstate,nspin)
  real(dp),intent(in)  :: occupation(nstate,nspin)
- complex(dpc),intent(out) :: p_matrix_cmplx(nbf,nbf,nspin)
+ complex(dp),intent(out) :: p_matrix_cmplx(nbf,nbf,nspin)
 !=====
  integer :: ispin,ibf,jbf
 !=====
@@ -1738,7 +1738,7 @@ subroutine dft_exc_vxc_cmplx(basis,nstate,occupation,c_matrix_cmplx,p_matrix,vxc
  real(dp),intent(in)        :: p_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: exc_xc
- complex(dpc),intent(in)    :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ complex(dp),intent(in)    :: c_matrix_cmplx(basis%nbf,nstate,nspin)
 !=====
 
  real(dp),parameter :: TOL_RHO=1.0e-10_dp
@@ -2193,10 +2193,11 @@ subroutine static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole)
 
  integer,intent(in)                 :: nstate
  type(basis_set),intent(in)         :: basis
- real(dpc),intent(in)               :: occupation(nstate,nspin)
- complex(dpc),intent(in)            :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ real(dp),intent(in)               :: occupation(nstate,nspin)
+ complex(dp),intent(in)            :: c_matrix_cmplx(basis%nbf,nstate,nspin)
  real(dp),intent(out)               :: dipole(3)
 !=====
+ integer                            :: gt
  integer                            :: istate,astate,iaspin
  integer                            :: mstate,pstate,mpspin
  integer                            :: ibf,jbf
@@ -2212,6 +2213,7 @@ subroutine static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole)
 
 ! write(stdout,'(/,a)') ' Calculate the static dipole'
 
+ gt = get_gaussian_type_tag(basis%gaussian_type)
 
  !
  ! First precalculate all the needed dipole in the basis set
@@ -2241,8 +2243,8 @@ subroutine static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole)
      enddo
 
      do idir=1,3
-       dipole_basis(ibf:ibf+ni-1,jbf:jbf+nj-1,idir) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
-             MATMUL(  dipole_cart(:,:,idir) , cart_to_pure(lj)%matrix(:,:) ) )
+       dipole_basis(ibf:ibf+ni-1,jbf:jbf+nj-1,idir) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
+             MATMUL(  dipole_cart(:,:,idir) , cart_to_pure(lj,gt)%matrix(:,:) ) )
      enddo
 
      deallocate(dipole_cart)
@@ -2284,6 +2286,7 @@ subroutine calculate_dipole_basis_cmplx(basis,dipole_basis)
  type(basis_set),intent(in)         :: basis
  real(dp),allocatable,intent(out)   :: dipole_basis(:,:,:)
 !=====
+ integer                            :: gt
  integer                            :: istate,astate,iaspin
  integer                            :: mstate,pstate,mpspin
  integer                            :: ibf,jbf
@@ -2296,6 +2299,7 @@ subroutine calculate_dipole_basis_cmplx(basis,dipole_basis)
 ! call start_clock(timing_spectrum)
 
 ! write(stdout,'(/,a)') ' Calculate the static dipole'
+ gt = get_gaussian_type_tag(basis%gaussian_type)
 
 
  !
@@ -2326,8 +2330,8 @@ subroutine calculate_dipole_basis_cmplx(basis,dipole_basis)
      enddo
 
      do idir=1,3
-       dipole_basis(ibf:ibf+ni-1,jbf:jbf+nj-1,idir) = MATMUL( TRANSPOSE( cart_to_pure(li)%matrix(:,:) ) , &
-             MATMUL(  dipole_cart(:,:,idir) , cart_to_pure(lj)%matrix(:,:) ) )
+       dipole_basis(ibf:ibf+ni-1,jbf:jbf+nj-1,idir) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
+             MATMUL(  dipole_cart(:,:,idir) , cart_to_pure(lj,gt)%matrix(:,:) ) )
      enddo
 
      deallocate(dipole_cart)

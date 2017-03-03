@@ -651,9 +651,9 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  integer,intent(in)         :: nstate
  integer,intent(in)         :: m_c,n_c
  real(dp),intent(in)        :: occupation(nstate,nspin)
- complex(dpc),intent(in)    :: c_matrix_cmplx(m_c,n_c,nspin)
- complex(dpc),intent(in)    :: p_matrix_cmplx(m_ham,n_ham,nspin)
- complex(dpc),intent(out)   :: hamiltonian_hxc_cmplx(m_ham,n_ham,nspin)
+ complex(dp),intent(in)    :: c_matrix_cmplx(m_c,n_c,nspin)
+ complex(dp),intent(in)    :: p_matrix_cmplx(m_ham,n_ham,nspin)
+ complex(dp),intent(out)   :: hamiltonian_hxc_cmplx(m_ham,n_ham,nspin)
 !=====
  integer         :: ispin
  real(dp)        :: c_matrix(m_c,n_c,nspin)

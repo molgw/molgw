@@ -52,6 +52,7 @@ module m_inputparam
  character(len=100) :: postscf_name
  logical            :: is_core
  logical            :: is_dft
+ logical            :: is_real_time
  logical            :: need_exchange
  logical            :: need_exchange_lr
  logical            :: need_rpa

@@ -875,6 +875,7 @@ subroutine plot_cube_wfn_cmplx(nstate,basis,occupation,c_matrix_cmplx,num)
  complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nstate,nspin)
  integer                    :: num
 !=====
+ integer                    :: gt
  integer                    :: nx
  integer                    :: ny
  integer                    :: nz
@@ -898,6 +899,9 @@ subroutine plot_cube_wfn_cmplx(nstate,basis,occupation,c_matrix_cmplx,num)
 !=====
 
  if( .NOT. is_iomaster ) return
+
+  gt = get_gaussian_type_tag(basis%gaussian_type)
+
 
  write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
  ! Find highest occupied state
@@ -982,7 +986,7 @@ subroutine plot_cube_wfn_cmplx(nstate,basis,occupation,c_matrix_cmplx,num)
          do i_cart=1,ni_cart
            basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
          enddo
-         basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li)%matrix(:,:) )
+         basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
          deallocate(basis_function_r_cart)
     
          ibf      = ibf      + ni

@@ -129,11 +129,11 @@ subroutine calc_density_r_cmplx(nspin,nbf,nstate,occupation,c_matrix_cmplx,basis
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(in)        :: basis_function_r(nbf)
  real(dp),intent(out)       :: rhor(nspin)
- complex(dpc),intent(in)    :: c_matrix_cmplx(nbf,nstate,nspin)
+ complex(dp),intent(in)    :: c_matrix_cmplx(nbf,nstate,nspin)
  !=====
  integer                    :: ispin,istate
- complex(dpc)               :: phi_ir_cmplx
- complex(dpc)               :: test
+ complex(dp)               :: phi_ir_cmplx
+ complex(dp)               :: test
  !=====
 
  !
@@ -236,7 +236,7 @@ subroutine calc_density_gradr_cmplx(nspin,nbf,nstate,occupation,c_matrix_cmplx,b
  real(dp),intent(in)        :: basis_function_r(nbf)
  real(dp),intent(in)        :: basis_function_gradr(3,nbf)
  real(dp),intent(out)       :: grad_rhor(3,nspin)
- real(dpc),intent(in)       :: c_matrix_cmplx(nbf,nstate,nspin)
+ real(dp),intent(in)       :: c_matrix_cmplx(nbf,nstate,nspin)
 !=====
  integer              :: ispin,ibf,istate
  complex(dp)          :: phi_ir_cmplx
