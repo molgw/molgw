@@ -1250,17 +1250,37 @@ subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matr
  real(dp),intent(out)                  :: rpa_correlation
  type(spectral_function),intent(inout) :: wpol_out
 !=====
- integer,parameter    :: nomega=1
+ integer              :: nomega
  real(dp),allocatable :: chi(:,:)
- real(dp),allocatable :: omega(:)
- integer  :: mlocal,nlocal
- integer  :: info,imat
- integer  :: desc_chi(NDEL)
+ real(dp),allocatable :: omega(:),weight(:),erpa_omega(:)
+ integer              :: mlocal,nlocal
+ integer              :: info,iomega
+ integer              :: desc_chi(NDEL)
+ integer              :: uf
 !=====
 
- allocate(omega(nomega))
+ open(newunit=uf,file='manual_imag_axis',status='old',action='read')
+ read(uf,*) nomega
+ close(uf)
 
- omega(:) = 0.0_dp
+ if( nomega < 1 ) call die('test_polarizability: manual_imag_axis file should provide a positive integral number of frequencies')
+
+ allocate(omega(nomega))
+ allocate(weight(nomega))
+ allocate(erpa_omega(nomega))
+ weight(:) = 1.0_dp / REAL(nomega,dp)
+ omega(:)  = 0.0_dp
+
+ call coeffs_gausslegint(0.0_dp,1.0_dp,omega,weight,nomega)
+
+ ! Variable change [0,1] -> [0,+\inf[
+ write(stdout,*) 'Frequencies (Ha)'
+ do iomega=1,nomega
+   weight(iomega) = weight(iomega) / (1.0_dp - omega(iomega))**2
+   omega(iomega) = omega(iomega) / ( 1.0_dp - omega(iomega) )
+   write(stdout,'(i4,2(2x,f14.6))') iomega,omega(iomega),weight(iomega)
+ enddo
+
 
  if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
 
@@ -1278,12 +1298,12 @@ subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matr
  call clean_allocate('Chi',chi,mlocal,nlocal)
 
  call DESCINIT(desc_chi,nauxil_2center,nauxil_2center,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
- call dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wpol_out,desc_chi,mlocal,nlocal,chi)
-
+ call dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wpol_out,desc_chi,mlocal,nlocal,chi,erpa_omega)
+ write(stdout,'(/,1x,a,f18.10)') 'RPA correlation energy (Ha): ',SUM( erpa_omega(:) * weight(:) ) / (2.0_dp * pi)
 
  call destroy_eri_3center_eigen()
 
- deallocate(omega)
+ deallocate(omega,weight,erpa_omega)
  call clean_deallocate('Chi',chi)
 
 

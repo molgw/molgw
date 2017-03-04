@@ -215,7 +215,7 @@ end subroutine dynamical_polarizability
 
 
 !=========================================================================
-subroutine dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wpol_in,desc_chi,mlocal,nlocal,chi)
+subroutine dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wpol_in,desc_chi,mlocal,nlocal,chi,erpa_omega)
  use m_definitions
  use m_timing
  use m_warning
@@ -238,6 +238,7 @@ subroutine dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wp
  integer,intent(in)                    :: desc_chi(NDEL)
  integer,intent(in)                    :: mlocal,nlocal
  real(dp),intent(out)                  :: chi(mlocal,nlocal)
+ real(dp),intent(out)                  :: erpa_omega(nomega)
 !=====
  integer              :: iomega
  integer              :: ilocal,jlocal
@@ -250,6 +251,7 @@ subroutine dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wp
  real(dp),allocatable :: chi0(:,:)
  real(dp),allocatable :: one_m_chi0(:,:)
  real(dp),allocatable :: one_m_chi0m1(:,:)
+ real(dp)             :: eigval(nauxil_2center)
  integer              :: desc_eri3_t(NDEL)
 !=====
 
@@ -267,10 +269,13 @@ subroutine dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wp
  endif
 
 
+ call clean_allocate('Chi0',chi0,mlocal,nlocal)
+ call clean_allocate('1-Chi0',one_m_chi0,mlocal,nlocal)
+ call clean_allocate('(1-Chi0)**-1',one_m_chi0m1,mlocal,nlocal)
+ call clean_allocate('TMP 3-center MO integrals',eri_3center_t,nauxil_3center,wpol_in%npole_reso_apb)
 
  do iomega=1,nomega
 
-   call clean_allocate('TMP 3-center MO integrals',eri_3center_t,nauxil_3center,wpol_in%npole_reso_apb)
 
    call DESCINIT(desc_eri3_t,nauxil_2center,wpol_in%npole_reso_apb,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,nauxil_3center),info)
 
@@ -291,15 +296,12 @@ subroutine dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wp
 
    enddo
 
-   call clean_allocate('Chi0',chi0,mlocal,nlocal)
 
    call PDSYRK('L','N',nauxil_2center,wpol_in%npole_reso_apb,1.0_dp,eri_3center_t,1,1,desc_eri3_t,0.0_dp,chi0,1,1,desc_chi)
    chi0(:,:) = -chi0(:,:)
 
 
-   call clean_deallocate('TMP 3-center MO integrals',eri_3center_t)
 
-   call clean_allocate('1-Chi0',one_m_chi0,mlocal,nlocal)
 
    ! Symmetrize chi0
    call symmetrize_matrix_sca('L',nauxil_2center,desc_chi,chi0,desc_chi,one_m_chi0)
@@ -314,10 +316,14 @@ subroutine dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wp
      enddo
    enddo
 
-   call clean_allocate('(1-Chi0)**-1',one_m_chi0m1,mlocal,nlocal)
+
+   one_m_chi0m1(:,:) = one_m_chi0(:,:)
+   call diagonalize_sca(nauxil_2center,desc_chi,one_m_chi0m1,eigval)
+   erpa_omega(iomega) = SUM( LOG(eigval(:)) + 1.0_dp - eigval(:) )
 
 
    call invert_sca(desc_chi,one_m_chi0,one_m_chi0m1)
+
 
    call PDGEMM('N','N',nauxil_2center,nauxil_2center,nauxil_2center, &
                1.0_dp,one_m_chi0m1,1,1,desc_chi,    &
@@ -325,13 +331,12 @@ subroutine dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wp
                0.0_dp,chi         ,1,1,desc_chi)
 
 
-
-   call clean_deallocate('1-Chi0',one_m_chi0)
-   call clean_deallocate('(1-Chi0)**-1',one_m_chi0m1)
-   call clean_deallocate('Chi0',chi0)
-
-
  enddo
+
+ call clean_deallocate('TMP 3-center MO integrals',eri_3center_t)
+ call clean_deallocate('1-Chi0',one_m_chi0)
+ call clean_deallocate('(1-Chi0)**-1',one_m_chi0m1)
+ call clean_deallocate('Chi0',chi0)
 
 #endif
 
