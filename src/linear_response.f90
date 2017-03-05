@@ -1257,6 +1257,8 @@ subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matr
  integer              :: info,iomega
  integer              :: desc_chi(NDEL)
  integer              :: uf
+ real(dp),parameter   :: alpha=1.0_dp ! 0.50_dp
+ real(dp),parameter   :: beta=1.0_dp ! 6.0_dp
 !=====
 
  write(stdout,'(/,1x,a,/)') 'Calculation of RPA polarizability on a grid: SCALAPACK'
@@ -1278,8 +1280,8 @@ subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matr
  ! Variable change [0,1] -> [0,+\inf[
  write(stdout,*) 'Frequencies (Ha)    Weights'
  do iomega=1,nomega
-   weight(iomega) = weight(iomega) / (1.0_dp - omega(iomega))**2
-   omega(iomega) = omega(iomega) / ( 1.0_dp - omega(iomega) )
+   weight(iomega) = weight(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha * (1.0_dp -  omega(iomega))**(-alpha-1.0_dp) * beta
+   omega(iomega)  =   1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) * ( 1.0_dp / (1.0_dp-omega(iomega))**alpha - 1.0_dp ) * beta
    write(stdout,'(i4,2(2x,f14.6))') iomega,omega(iomega),weight(iomega)
  enddo
 
@@ -1288,16 +1290,16 @@ subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matr
 
  wpol_out%nprodbasis = nauxil_3center
 
-! call static_polarizability(nstate,occupation,energy,wpol_out)
-! write(stdout,*) '========== FBFB ref',wpol_out%w0(1,1)
-! do imat=1,nauxil_2center
-!   write(stdout,*) imat,imat,wpol_out%w0(imat,imat)
-! enddo
 
 #ifdef HAVE_SCALAPACK
- mlocal = NUMROC(nauxil_2center,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
- nlocal = NUMROC(nauxil_2center,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
- call DESCINIT(desc_chi,nauxil_2center,nauxil_2center,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+! mlocal = NUMROC(nauxil_2center,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+! nlocal = NUMROC(nauxil_2center,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
+! call DESCINIT(desc_chi,nauxil_2center,nauxil_2center,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+
+ mlocal = NUMROC(nauxil_2center,block_row,iprow_sd,first_row,nprow_sd)
+ nlocal = NUMROC(nauxil_2center,block_col,ipcol_sd,first_col,npcol_sd)
+ call DESCINIT(desc_chi,nauxil_2center,nauxil_2center,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
+
 #else
  mlocal = nauxil_2center
  nlocal = nauxil_2center
