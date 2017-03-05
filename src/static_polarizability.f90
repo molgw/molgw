@@ -255,7 +255,7 @@ subroutine dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wp
  integer              :: desc_eri3_t(NDEL)
 !=====
 
- call start_clock(timing_pola_static)
+ call start_clock(timing_pola_dynamic)
 
 #ifdef HAVE_SCALAPACK
  write(stdout,'(/,a)') ' Calculate the dynamical polarizability within RPA: SCALAPACK'
@@ -340,7 +340,7 @@ subroutine dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wp
 
 #endif
 
- call stop_clock(timing_pola_static)
+ call stop_clock(timing_pola_dynamic)
 
 end subroutine dynamical_polarizability_sca
 

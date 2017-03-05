@@ -1259,6 +1259,8 @@ subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matr
  integer              :: uf
 !=====
 
+ write(stdout,'(/,1x,a,/)') 'Calculation of RPA polarizability on a grid: SCALAPACK'
+
  open(newunit=uf,file='manual_imag_axis',status='old',action='read')
  read(uf,*) nomega
  close(uf)
@@ -1274,7 +1276,7 @@ subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matr
  call coeffs_gausslegint(0.0_dp,1.0_dp,omega,weight,nomega)
 
  ! Variable change [0,1] -> [0,+\inf[
- write(stdout,*) 'Frequencies (Ha)'
+ write(stdout,*) 'Frequencies (Ha)    Weights'
  do iomega=1,nomega
    weight(iomega) = weight(iomega) / (1.0_dp - omega(iomega))**2
    omega(iomega) = omega(iomega) / ( 1.0_dp - omega(iomega) )
@@ -1292,13 +1294,21 @@ subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matr
 !   write(stdout,*) imat,imat,wpol_out%w0(imat,imat)
 ! enddo
 
-
+#ifdef HAVE_SCALAPACK
  mlocal = NUMROC(nauxil_2center,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
  nlocal = NUMROC(nauxil_2center,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
+ call DESCINIT(desc_chi,nauxil_2center,nauxil_2center,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+#else
+ mlocal = nauxil_2center
+ nlocal = nauxil_2center
+#endif
  call clean_allocate('Chi',chi,mlocal,nlocal)
 
- call DESCINIT(desc_chi,nauxil_2center,nauxil_2center,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
+ write(stdout,'(1x,a,i7,a,i7)') 'Matrix sizes   ',nauxil_2center,' x ',nauxil_2center
+ write(stdout,'(1x,a,i7,a,i7)') 'Distributed in ',mlocal,' x ',nlocal
+
  call dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wpol_out,desc_chi,mlocal,nlocal,chi,erpa_omega)
+
  write(stdout,'(/,1x,a,f18.10)') 'RPA correlation energy (Ha): ',SUM( erpa_omega(:) * weight(:) ) / (2.0_dp * pi)
 
  call destroy_eri_3center_eigen()

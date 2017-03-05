@@ -58,6 +58,7 @@ module m_timing
  integer,parameter :: timing_ecp                 = 39
  integer,parameter :: timing_density_matrix      = 40
  integer,parameter :: timing_force               = 41
+ integer,parameter :: timing_pola_dynamic        = 42
  
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -193,6 +194,9 @@ subroutine output_timing()
  endif
  if( calls(timing_pola_static) > 0 ) then
    write(stdout,'(a30,6x,f12.2,2x,i8)') 'Static polarization',timing(timing_pola_static),calls(timing_pola_static)
+ endif
+ if( calls(timing_pola_dynamic) > 0 ) then
+   write(stdout,'(a30,6x,f12.2,2x,i8)') 'Dynamic polarization',timing(timing_pola_dynamic),calls(timing_pola_dynamic)
  endif
  write(stdout,'(a32,4x,f12.2,2x,i8)') '    Build 2 particle H' ,timing(timing_build_h2p),calls(timing_build_h2p)
  write(stdout,'(a34,2x,f12.2,2x,i8)') '           Common part' ,timing(timing_build_common),calls(timing_build_common)
