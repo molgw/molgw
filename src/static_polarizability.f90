@@ -277,11 +277,10 @@ subroutine dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wp
  call BLACS_GRIDINFO(desc_chi(CTXT_A),nprow,npcol,iprow,ipcol)
  meri3 = NUMROC(nauxil_2center        ,desc_chi(MB_A),iprow,desc_chi(RSRC_A),nprow)
  neri3 = NUMROC(wpol_in%npole_reso_apb,desc_chi(NB_A),ipcol,desc_chi(CSRC_A),npcol)
- call clean_allocate('TMP 3-center MO integrals',eri3_sca,meri3,neri3)
  call DESCINIT(desc_eri3_final,nauxil_2center,wpol_in%npole_reso_apb,desc_chi(MB_A),desc_chi(NB_A), &
-               desc_chi(RSRC_A),desc_chi(RSRC_A),desc_chi(CTXT_A),MAX(1,meri3),info)
+               desc_chi(RSRC_A),desc_chi(CSRC_A),desc_chi(CTXT_A),MAX(1,meri3),info)
 
-
+ call clean_allocate('TMP 3-center MO integrals',eri3_sca,meri3,neri3)
  call clean_allocate('TMP 3-center MO integrals',eri3_t,nauxil_3center,wpol_in%npole_reso_apb)
  call clean_allocate('Chi0',chi0,mchi,nchi)
  call clean_allocate('1-Chi0',one_m_chi0,mchi,nchi)
@@ -291,6 +290,8 @@ subroutine dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wp
 
 
  do iomega=1,nomega
+   write(stdout,'(1x,a,i4,a,i4)') 'Loop on frequencies: ',iomega,' / ',nomega
+
    !
    ! First evaluate v^{1/2} \chi_0 v^{1/2}
    !
@@ -308,10 +309,8 @@ subroutine dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wp
 
    enddo
 
-   
    call PDGEMR2D(nauxil_2center,wpol_in%npole_reso_apb,eri3_t,1,1,desc_eri3_t, &
-                                                     eri3_sca,1,1,desc_eri3_final,desc_chi(CTXT_A))
-
+                                                       eri3_sca,1,1,desc_eri3_final,desc_chi(CTXT_A))
 
    call PDSYRK('L','N',nauxil_2center,wpol_in%npole_reso_apb,1.0_dp,eri3_sca,1,1,desc_eri3_final,0.0_dp,chi0,1,1,desc_chi)
    chi0(:,:) = -chi0(:,:)
@@ -333,6 +332,7 @@ subroutine dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wp
 
 
    one_m_chi0m1(:,:) = one_m_chi0(:,:)
+
    call diagonalize_sca(nauxil_2center,desc_chi,one_m_chi0m1,eigval)
    erpa_omega(iomega) = SUM( LOG(eigval(:)) + 1.0_dp - eigval(:) )
 

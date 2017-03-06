@@ -14,7 +14,7 @@ module m_spectral_function
  use m_memory
  use m_inputparam
  use m_atoms
- use m_eri,only: nbf_local_iproc,iproc_ibf_auxil,ibf_auxil_l
+ use m_eri,only: iproc_ibf_auxil,ibf_auxil_l
  use m_eri_calculate,only: nauxil_2center,nauxil_3center
 
  !
@@ -511,7 +511,7 @@ subroutine read_spectral_function(sf,reading_status)
  sf%npole_reso = npole_read
 
  if( has_auxil_basis ) then
-   call allocate_spectral_function(nbf_local_iproc(rank_auxil),sf)
+   call allocate_spectral_function(nauxil_3center,sf)
  else
    call allocate_spectral_function(nprodbasis_read,sf)
  endif

@@ -548,8 +548,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
      ! And calculate it
      call PDGEMM('T','N',wpol%npole_reso,nvirtual_G-ncore_G-1,nauxil_2center, &
                              1.0_dp,wresidue_sd,1,1,desc_wsd,    &
-                                   eri_3tmp_sd,1,1,desc_3sd,    &
-                             0.0_dp,bra,1,1,desc_bra)
+                                    eri_3tmp_sd,1,1,desc_3sd,    &
+                             0.0_dp,bra        ,1,1,desc_bra)
      call clean_deallocate('TMP 3center eigen',eri_3tmp_sd)
 
 

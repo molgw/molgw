@@ -36,13 +36,13 @@ module m_scalapack
  ! SCALAPACK variables
  !
  integer,parameter :: NDEL=9
- integer,parameter :: block_col = 32
  integer,parameter :: block_row = 32
+ integer,parameter :: block_col = 32
  integer,parameter :: first_row = 0
  integer,parameter :: first_col = 0
  
  ! Specific values for the MPI / SCALAPACK transposition
- integer,parameter :: MBLOCK_AUXIL = 1
+ integer,protected :: MBLOCK_AUXIL = 1
  integer,parameter :: NBLOCK_AUXIL = 1
 
  integer,protected :: nproc_sca = 1
@@ -1782,6 +1782,8 @@ subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
  call BLACS_GRIDINFO(cntxt_auxil,nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil)
  call xmax_ortho(nprow_auxil)
  call xmax_ortho(npcol_auxil)
+ call xmax_ortho(iprow_auxil)
+ call xmax_ortho(ipcol_auxil)
 #endif
 
 
@@ -2165,6 +2167,27 @@ function colindex_local_to_global_descriptor(desc,ilocal)
 #endif
 
 end function colindex_local_to_global_descriptor
+
+
+!=========================================================================
+subroutine set_auxil_block_size(block_size_max)
+ implicit none
+ integer,intent(in) :: block_size_max
+!=====
+!=====
+
+ if( block_size_max < 1 ) then
+   write(stdout,*) 'Too many processors used for too few auxiliary basis functions'
+   call die('set_auxil_block_size: reduce the number of processors')
+ endif
+
+ MBLOCK_AUXIL = 2**( FLOOR( LOG(REAL(block_size_max,dp)) / LOG( 2.0_dp ) ) )
+
+ MBLOCK_AUXIL = MIN(MBLOCK_AUXIL,block_row)
+
+ write(stdout,'(/1x,a,i4)') 'SCALAPACK block size for auxiliary basis: ',MBLOCK_AUXIL
+
+end subroutine set_auxil_block_size
 
 
 !=========================================================================

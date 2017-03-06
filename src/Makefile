@@ -146,7 +146,7 @@ gwgamma_selfenergy.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_timing.f90 m
       m_inputparam.f90 m_tddft_fxc.f90 m_selfenergy_tools.f90 gwgamma_selfenergy.f90
 	$(FC_W_OPTS) -c gwgamma_selfenergy.f90 $(LIBXC_INCS)
 
-gw_selfenergy.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
+gw_selfenergy.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_timing.f90 m_warning.f90 m_scalapack.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
       m_inputparam.f90 m_selfenergy_tools.f90 gw_selfenergy.f90
 	$(FC_W_OPTS) -c gw_selfenergy.f90 $(LIBXC_INCS)
 
@@ -154,7 +154,8 @@ bse.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_timing.f90 m_warning.f90 m_
         bse.f90
 	$(FC_W_OPTS) -c bse.f90 $(LIBXC_INCS)
 
-static_polarizability.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_tools.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 m_inputparam.f90 \
+static_polarizability.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_tools.f90 m_scalapack.f90 \
+      	m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 m_inputparam.f90 \
         static_polarizability.f90
 	$(FC_W_OPTS) -c static_polarizability.f90 $(LIBXC_INCS)
 

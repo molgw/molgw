@@ -1278,11 +1278,11 @@ subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matr
  call coeffs_gausslegint(0.0_dp,1.0_dp,omega,weight,nomega)
 
  ! Variable change [0,1] -> [0,+\inf[
- write(stdout,*) 'Frequencies (Ha)    Weights'
+ write(stdout,'(a)') '    #    Frequencies (Ha)    Quadrature weights'
  do iomega=1,nomega
    weight(iomega) = weight(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha * (1.0_dp -  omega(iomega))**(-alpha-1.0_dp) * beta
    omega(iomega)  =   1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) * ( 1.0_dp / (1.0_dp-omega(iomega))**alpha - 1.0_dp ) * beta
-   write(stdout,'(i4,2(2x,f14.6))') iomega,omega(iomega),weight(iomega)
+   write(stdout,'(i5,2(2x,f14.6))') iomega,omega(iomega),weight(iomega)
  enddo
 
 
@@ -1314,6 +1314,9 @@ subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matr
  write(stdout,'(/,1x,a,f18.10)') 'RPA correlation energy (Ha): ',SUM( erpa_omega(:) * weight(:) ) / (2.0_dp * pi)
 
  call destroy_eri_3center_eigen()
+
+
+
 
  deallocate(omega,weight,erpa_omega)
  call clean_deallocate('Chi',chi)
