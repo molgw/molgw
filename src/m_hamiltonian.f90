@@ -1038,9 +1038,9 @@ subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occu
 
    enddo
 
- endif
+   write(stdout,'(1x,a,f12.6)') 'Fermi level (eV): ', mu * Ha_eV
 
- write(stdout,'(1x,a,f12.6)') 'Fermi level (eV): ',mu * Ha_eV
+ endif
 
  !
  ! final check
