@@ -152,7 +152,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  !
  if(     calc_type%selfenergy_approx == GV .OR. calc_type%selfenergy_approx == GSIGMA .OR.  calc_type%selfenergy_approx == LW &
     .OR. calc_type%selfenergy_approx == LW2 &
-    .OR. calc_type%selfenergy_approx == G0W0_IOMEGA .OR. calc_type%selfenergy_approx == GWTILDE &
+    .OR. calc_type%selfenergy_approx == G0W0_IOMEGA &
     .OR. calc_type%selfenergy_approx == GW   .OR. calc_type%selfenergy_approx == COHSEX   &
     .OR. calc_type%selfenergy_approx == GnW0 .OR. calc_type%selfenergy_approx == GnWn   ) then
 

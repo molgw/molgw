@@ -1227,7 +1227,7 @@ end subroutine chi_to_sqrtvchisqrtv_auxil_spa
 
 
 !=========================================================================
-subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
+subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol)
  use m_definitions
  use m_timing
  use m_warning
@@ -1241,6 +1241,7 @@ subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matr
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
+ use m_selfenergy_tools
  implicit none
 
  type(basis_set),intent(in)            :: basis,auxil_basis
@@ -1248,10 +1249,10 @@ subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matr
  real(dp),intent(in)                   :: occupation(nstate,nspin)
  real(dp),intent(in)                   :: energy(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(out)                  :: rpa_correlation
- type(spectral_function),intent(inout) :: wpol_out
+ type(spectral_function),intent(inout) :: wpol
 !=====
  integer              :: nomega
- real(dp),allocatable :: chi(:,:)
+ real(dp),allocatable :: chi(:,:,:)
  real(dp),allocatable :: omega(:),weight(:),erpa_omega(:)
  integer              :: mlocal,nlocal
  integer              :: info,iomega
@@ -1288,7 +1289,7 @@ subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matr
 
  if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
 
- wpol_out%nprodbasis = nauxil_3center
+ wpol%nprodbasis = nauxil_3center
 
 
 #ifdef HAVE_SCALAPACK
@@ -1304,19 +1305,29 @@ subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matr
  mlocal = nauxil_2center
  nlocal = nauxil_2center
 #endif
- call clean_allocate('Chi',chi,mlocal,nlocal)
+ call clean_allocate('Chi',chi,mlocal,nlocal,nomega)
 
  write(stdout,'(1x,a,i7,a,i7)') 'Matrix sizes   ',nauxil_2center,' x ',nauxil_2center
  write(stdout,'(1x,a,i7,a,i7)') 'Distributed in ',mlocal,' x ',nlocal
 
- call dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wpol_out,desc_chi,mlocal,nlocal,chi,erpa_omega)
+ call dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wpol,desc_chi,mlocal,nlocal,chi,erpa_omega)
 
  write(stdout,'(/,1x,a,f18.10)') 'RPA correlation energy (Ha): ',SUM( erpa_omega(:) * weight(:) ) / (2.0_dp * pi)
 
  call destroy_eri_3center_eigen()
 
+ !
+ ! Self-energy
+ !
 
+ ! Set nsemin, nsemax ncore_G and nvirtual_G
+ call selfenergy_set_state_range(nstate,occupation)
 
+ if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_G+1,nvirtual_G-1,nsemin,nsemax)
+
+ call gw_selfenergy_imag_sca(nstate,occupation,energy,nomega,omega,weight,wpol,desc_chi,mlocal,nlocal,chi)
+
+ call destroy_eri_3center_eigen()
 
  deallocate(omega,weight,erpa_omega)
  call clean_deallocate('Chi',chi)

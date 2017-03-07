@@ -40,7 +40,6 @@ module m_inputparam
  integer,parameter :: TUNED_COHSEX = 215
  integer,parameter :: G0W0_IOMEGA  = 216
  integer,parameter :: G0W0GAMMA0   = 217
- integer,parameter :: GWTILDE      = 218
  integer,parameter :: G0W0SOX0     = 219
  integer,parameter :: PT2          = 220
  integer,parameter :: ONE_RING     = 221
@@ -237,9 +236,6 @@ subroutine init_calculation_type(calc_type,input_key)
    case('G0W0_IOMEGA')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0_IOMEGA
-   case('GWTILDE')
-     calc_type%is_gw    =.TRUE.
-     calc_type%selfenergy_approx = GWTILDE
    case('G0W0SOX0')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0SOX0
