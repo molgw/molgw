@@ -55,11 +55,7 @@ module m_spectral_function
    real(dp),allocatable :: residue_left(:,:)       ! first index runs on n, second index on i
 
    !
-   ! Static W might be stored directly in the auxiliary basis
-   real(dp),allocatable :: w0(:,:)
-
-   !
-   ! Dynamic W might be stored directly in the auxiliary basis
+   ! Static or Dynamic W might be stored directly in the auxiliary basis
    real(dp),allocatable :: chi(:,:,:)
    integer              :: mchi,nchi
    integer              :: desc_chi(NDEL)
@@ -120,12 +116,12 @@ end function index_prodstate
 
 
 !=========================================================================
-subroutine init_spectral_function(nstate,occupation,imaginary_axis_grid,sf)
+subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
  use m_tools,only: coeffs_gausslegint
  implicit none
  integer,intent(in)                    :: nstate
  real(dp),intent(in)                   :: occupation(:,:)
- logical,intent(in)                    :: imaginary_axis_grid
+ integer,intent(in)                    :: nomega_in
  type(spectral_function),intent(out)   :: sf
 !=====
  integer                               :: ijspin,istate,jstate,itrans,jtrans
@@ -268,22 +264,30 @@ subroutine init_spectral_function(nstate,occupation,imaginary_axis_grid,sf)
    call issue_warning(msg)
  endif
 
- if( imaginary_axis_grid ) then
-   !
-   ! Set the sampling points for Chi (quadrature)
-   sf%nomega_quad    = 16
+ !
+ ! Set the sampling points for Chi (quadrature)
+ sf%nomega_quad    = nomega_in
 
+ if( sf%nomega_quad > 0 ) then
    allocate(sf%weight_quad(sf%nomega_quad))
    allocate(sf%omega_quad(sf%nomega_quad))
-   call coeffs_gausslegint(0.0_dp,1.0_dp,sf%omega_quad,sf%weight_quad,sf%nomega_quad)
 
-   ! Variable change [0,1] -> [0,+\inf[
-   write(stdout,'(a)') '    #    Frequencies (Ha)    Quadrature weights'
-   do iomega=1,sf%nomega_quad
-     sf%weight_quad(iomega) = sf%weight_quad(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha * (1.0_dp -  sf%omega_quad(iomega))**(-alpha-1.0_dp) * beta
-     sf%omega_quad(iomega)  =   1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) * ( 1.0_dp / (1.0_dp-sf%omega_quad(iomega))**alpha - 1.0_dp ) * beta
-     write(stdout,'(i5,2(2x,f14.6))') iomega,sf%omega_quad(iomega),sf%weight_quad(iomega)
-   enddo
+   if( sf%nomega_quad > 1 ) then
+     call coeffs_gausslegint(0.0_dp,1.0_dp,sf%omega_quad,sf%weight_quad,sf%nomega_quad)
+  
+     write(stdout,'(/,1x,a)') 'Numerical integration on a grid along the imaginary axis'
+     ! Variable change [0,1] -> [0,+\inf[
+     write(stdout,'(a)') '    #    Frequencies (Ha)    Quadrature weights'
+     do iomega=1,sf%nomega_quad
+       sf%weight_quad(iomega) = sf%weight_quad(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha * (1.0_dp -  sf%omega_quad(iomega))**(-alpha-1.0_dp) * beta
+       sf%omega_quad(iomega)  =   1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) * ( 1.0_dp / (1.0_dp-sf%omega_quad(iomega))**alpha - 1.0_dp ) * beta
+       write(stdout,'(i5,2(2x,f14.6))') iomega,sf%omega_quad(iomega),sf%weight_quad(iomega)
+     enddo
+   else
+     ! Only one omega means static case
+     sf%weight_quad(1) = 1.0_dp
+     sf%omega_quad(1)  = 0.0_dp
+   endif
  endif
 
 
@@ -368,9 +372,6 @@ subroutine destroy_spectral_function(sf)
  if(ALLOCATED(sf%pole))             deallocate(sf%pole)
  if(ALLOCATED(sf%residue_left)) then
    call clean_deallocate('Left residue',sf%residue_left)
- endif
- if(ALLOCATED(sf%w0)) then
-   call clean_deallocate('Static W',sf%w0)
  endif
  if(ALLOCATED(sf%chi)) then
    call clean_deallocate('Chi',sf%chi)

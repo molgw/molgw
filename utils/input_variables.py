@@ -456,6 +456,15 @@ vl[i].comment  ='Sets the starting state beyond which states are accounted for w
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='nomega_imag'
+vl[i].family   ='post'
+vl[i].default  = 16
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the number of frequencies used to perform the integral on the imaginary axis'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='selfenergy_state_min'
 vl[i].family   ='post'
 vl[i].default  =1
@@ -480,7 +489,6 @@ vl[i].default  =100000
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets the range of states around the HOMO level for the self-energy evaluation. For instance, selfenergy_state_range=0 will trigger the calculation of the HOMO only. \
             selfenergy_state_range=1 will trigger the evaluation of the HOMO-1, HOMO, HOMO+1. etc.'
-
 
 #================================
 vl.append(variable())

@@ -122,6 +122,7 @@ module m_inputparam
  ! Having a larger ieta value smoothen the oscillation far from the HOMO-LUMO gap
  complex(dp),protected            :: ieta
 
+ integer,protected                :: nomega_imag
  integer,protected                :: nomega_sigma
  real(dp),protected               :: step_sigma
  real(dp),protected               :: level_shifting_energy

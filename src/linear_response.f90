@@ -120,7 +120,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  ! It is stored in object wpol_static
  !
  if( calc_type%is_bse ) then
-   call init_spectral_function(nstate,occupation,.FALSE.,wpol_static)
+   call init_spectral_function(nstate,occupation,1,wpol_static)
    call read_spectral_function(wpol_static,reading_status)
 
    ! If a SCREENED_COULOMB file cannot be found,

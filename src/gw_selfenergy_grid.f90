@@ -43,27 +43,22 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
  real(dp),allocatable :: one_m_chi0m1(:,:)
  real(dp)             :: eigval(nauxil_2center)
  integer              :: desc_eri3_t(NDEL)
- integer              :: iprow,ipcol,nprow,npcol
  integer              :: desc_eri3_final(NDEL)
  integer              :: meri3,neri3
 !=====
 
  call start_clock(timing_pola_dynamic)
 
- write(stdout,'(/,1x,a)') 'Calculation of RPA polarizability on imaginary axis grid:'
-
- call BLACS_GRIDINFO(wpol%desc_chi(CTXT_A),nprow,npcol,iprow,ipcol)
- write(stdout,'(1x,a,i4,a,i4)') 'SCALAPACK grid',nprow,' x ',npcol
+ write(stdout,'(/,1x,a)') 'Calculation of RPA polarizability on imaginary axis grid'
+#ifdef HAVE_SCALAPACK
+ write(stdout,'(1x,a,i4,a,i4)') 'SCALAPACK grid',nprow_sd,' x ',npcol_sd
+#endif
 
 
  if( wpol%nomega_quad < 1 ) call die('polarizability_grid_sca: manual_imag_axis file should provide a positive integral number of frequencies')
 
  if( .NOT. has_auxil_basis ) then
    call die('dynamical_polarizability_sca requires an auxiliary basis')
- endif
-
- if( nspin == 2 ) then
-   call die('dynamical_polarizability_sca: nspin==2 not implemented')
  endif
 
 
@@ -83,9 +78,8 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
 
  !
  ! Get the processor grid included in the input wpol%desc_chi
- call BLACS_GRIDINFO(wpol%desc_chi(CTXT_A),nprow,npcol,iprow,ipcol)
- meri3 = NUMROC(nauxil_2center        ,wpol%desc_chi(MB_A),iprow,wpol%desc_chi(RSRC_A),nprow)
- neri3 = NUMROC(wpol%npole_reso_apb,wpol%desc_chi(NB_A),ipcol,wpol%desc_chi(CSRC_A),npcol)
+ meri3 = NUMROC(nauxil_2center     ,wpol%desc_chi(MB_A),iprow_sd,wpol%desc_chi(RSRC_A),nprow_sd)
+ neri3 = NUMROC(wpol%npole_reso_apb,wpol%desc_chi(NB_A),ipcol_sd,wpol%desc_chi(CSRC_A),npcol_sd)
  call DESCINIT(desc_eri3_final,nauxil_2center,wpol%npole_reso_apb,wpol%desc_chi(MB_A),wpol%desc_chi(NB_A), &
                wpol%desc_chi(RSRC_A),wpol%desc_chi(CSRC_A),wpol%desc_chi(CTXT_A),MAX(1,meri3),info)
 

@@ -40,7 +40,7 @@ subroutine static_polarizability(nstate,occupation,energy,wpol_out)
    call die('static_polarizability requires an auxiliary basis')
  endif
 
- call clean_allocate('Static W',wpol_out%w0,nauxil_2center,nauxil_2center)
+ call clean_allocate('Static W',wpol_out%chi,nauxil_2center,nauxil_2center,1)
  
  call clean_allocate('temp chi0 matrix',vsqchi0vsq,nauxil_2center,nauxil_2center)
 
@@ -84,15 +84,15 @@ subroutine static_polarizability(nstate,occupation,energy,wpol_out)
  ! Second calculate v^{1/2} \chi v^{1/2} = ( 1 -  v^{1/2} \chi_0 v^{1/2} )^{-1} 
  !                                             * v^{1/2} \chi_0 v^{1/2}
  !
- wpol_out%w0(:,:) = -vsqchi0vsq(:,:)
+ wpol_out%chi(:,:,1) = -vsqchi0vsq(:,:)
  forall(jbf_auxil=1:nauxil_2center)
-   wpol_out%w0(jbf_auxil,jbf_auxil) = 1.0_dp + wpol_out%w0(jbf_auxil,jbf_auxil)
+   wpol_out%chi(jbf_auxil,jbf_auxil,1) = 1.0_dp + wpol_out%chi(jbf_auxil,jbf_auxil,1)
  end forall
 
 
  ! TODO I should use SCALAPACK for the next two operations
- call invert(nauxil_2center,wpol_out%w0)
- wpol_out%w0(:,:) = MATMUL( wpol_out%w0(:,:) , vsqchi0vsq(:,:) )
+ call invert(nauxil_2center,wpol_out%chi(:,:,1))
+ wpol_out%chi(:,:,1) = MATMUL( wpol_out%chi(:,:,1) , vsqchi0vsq(:,:) )
 
 
  call clean_deallocate('temp chi0 matrix',vsqchi0vsq)

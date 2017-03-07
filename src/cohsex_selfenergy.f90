@@ -35,8 +35,8 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,
 
  call start_clock(timing_self)
 
- if( .NOT. has_auxil_basis )    call die('cohsex: no RI is not coded')
- if( .NOT. ALLOCATED(wpol%w0) ) call die('cohsex: static W should be available here')
+ if( .NOT. has_auxil_basis )     call die('cohsex: no RI is not coded')
+ if( .NOT. ALLOCATED(wpol%chi) ) call die('cohsex: static W should be available here')
 
 
  select case(calc_type%selfenergy_approx)
@@ -101,7 +101,7 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,
 
        do jbf_auxil=1,nauxil_3center
          jbf_auxil_global = ibf_auxil_g(jbf_auxil)
-         w0_local(jbf_auxil) = wpol%w0(ibf_auxil_global,jbf_auxil_global)
+         w0_local(jbf_auxil) = wpol%chi(ibf_auxil_global,jbf_auxil_global,1)
        enddo
 
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (sqrt(v) * chi * v)
@@ -240,8 +240,8 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
 
  call start_clock(timing_self)
 
- if( .NOT. has_auxil_basis )    call die('cohsex: no RI is not coded')
- if( .NOT. ALLOCATED(wpol%w0) ) call die('cohsex: static W should be available here')
+ if( .NOT. has_auxil_basis )     call die('cohsex: no RI is not coded')
+ if( .NOT. ALLOCATED(wpol%chi) ) call die('cohsex: static W should be available here')
 
  call assert_experimental()
 
@@ -268,7 +268,7 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
 
  allocate( wp0_tmp(nbf_auxil,nbf_auxil) )
  allocate( wp0_rotation(nauxil_2center_lr,nauxil_2center_lr) )
- wp0_tmp(:,:)      = MATMUL( eri_2center_rotation(:,:) , MATMUL( wpol%w0(:,:) , TRANSPOSE( eri_2center_rotation(:,:) ) ) )
+ wp0_tmp(:,:)      = MATMUL( eri_2center_rotation(:,:) , MATMUL( wpol%chi(:,:,1) , TRANSPOSE( eri_2center_rotation(:,:) ) ) )
  wp0_rotation(:,:) = MATMUL( TRANSPOSE(eri_2center_rotation_lr(:,:)) , MATMUL( wp0_tmp(:,:) , eri_2center_rotation_lr(:,:) ) )
  deallocate( wp0_tmp )
 #endif

@@ -199,11 +199,11 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
            vcoul1 = eri_eigen_ri(mstate,istate,ispin,bstate,kstate,ispin)   &
                    +DOT_PRODUCT( eri_3center_eigen(:,mstate,istate,ispin) , &
-                                 MATMUL( wpol%w0(:,:) , eri_3center_eigen(:,bstate,kstate,ispin) ) )
+                                 MATMUL( wpol%chi(:,:,1) , eri_3center_eigen(:,bstate,kstate,ispin) ) )
 !FBFB           vcoul2 = eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin)
            vcoul2 = eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin)   &
                    +DOT_PRODUCT( eri_3center_eigen(:,istate,bstate,ispin) , &
-                                 MATMUL( wpol%w0(:,:) , eri_3center_eigen(:,kstate,mstate,ispin) ) )
+                                 MATMUL( wpol%chi(:,:,1) , eri_3center_eigen(:,kstate,mstate,ispin) ) )
            !
            ! calculate only the diagonal !
            do iomega=-se%nomega,se%nomega
@@ -230,11 +230,11 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
            vcoul1 = eri_eigen_ri(mstate,astate,ispin,jstate,cstate,ispin)   &
                    +DOT_PRODUCT( eri_3center_eigen(:,mstate,astate,ispin) , &
-                                 MATMUL( wpol%w0(:,:) , eri_3center_eigen(:,jstate,cstate,ispin) ) )
+                                 MATMUL( wpol%chi(:,:,1) , eri_3center_eigen(:,jstate,cstate,ispin) ) )
 !FBFB           vcoul2 = eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin)
            vcoul2 = eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin)   &
                    +DOT_PRODUCT( eri_3center_eigen(:,jstate,astate,ispin) , &
-                                 MATMUL( wpol%w0(:,:) , eri_3center_eigen(:,mstate,cstate,ispin) ) )
+                                 MATMUL( wpol%chi(:,:,1) , eri_3center_eigen(:,mstate,cstate,ispin) ) )
            !
            ! calculate only the diagonal !
            do iomega=-se%nomega,se%nomega

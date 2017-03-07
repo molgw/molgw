@@ -157,7 +157,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
     .OR. calc_type%selfenergy_approx == GnW0 .OR. calc_type%selfenergy_approx == GnWn   ) then
 
 
-   call init_spectral_function(nstate_small,occupation,(calc_type%selfenergy_technique==imaginary_axis),wpol)
+   call init_spectral_function(nstate_small,occupation,nomega_imag,wpol)
 
    ! Try to read a spectral function file in order to skip the polarizability calculation
    ! Skip the reading if GnWn (=evGW) is requested
@@ -264,7 +264,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  ! GWGamma
  !
  if( calc_type%selfenergy_approx == G0W0GAMMA0 .OR. calc_type%selfenergy_approx == G0W0SOX0 ) then
-   call init_spectral_function(nstate,occupation,.FALSE.,wpol)
+   call init_spectral_function(nstate,occupation,0,wpol)
    call read_spectral_function(wpol,reading_status)
    ! If reading has failed, then do the calculation
    if( reading_status /= 0 ) then
@@ -321,7 +321,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  if( calc_type%selfenergy_approx == COHSEX_DEVEL .OR. calc_type%selfenergy_approx == TUNED_COHSEX ) then
 
    if( .NOT. has_auxil_basis ) call die('cohsex needs an auxiliary basis')
-   call init_spectral_function(nstate,occupation,.FALSE.,wpol)
+   call init_spectral_function(nstate,occupation,1,wpol)
    call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
    !
    ! Calculate v^{1/2} \chi v^{1/2}
