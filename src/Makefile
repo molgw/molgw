@@ -75,7 +75,8 @@ level037: m_selfenergy_tools.o m_virtual_orbital_space.o
 
 level038: m_scf_loop.o
 
-level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o density_tools.o \
+level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfenergy.o gw_selfenergy_grid.o \
+	  gwgamma_selfenergy.o cohsex_selfenergy.o bse.o density_tools.o \
           io.o restart.o mp2.o selfenergy_evaluation.o force.o molgw.o
 
 
@@ -96,7 +97,7 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
         m_eri_calculate.o m_eri_ao_mo.o m_tddft_fxc.o \
         m_spectral_function.o m_hamiltonian.o m_hamiltonian_libint.o m_hamiltonian_sca.o m_hamiltonian_buffer.o \
         m_virtual_orbital_space.o pt2_selfenergy.o \
-        linear_response.o static_polarizability.o gw_selfenergy.o gwgamma_selfenergy.o \
+        linear_response.o static_polarizability.o gw_selfenergy.o gw_selfenergy_grid.o gwgamma_selfenergy.o \
         cohsex_selfenergy.o bse.o density_tools.o io.o restart.o mp2.o m_scf_loop.o selfenergy_evaluation.o force.o \
         molgw.o
 	$(LINKER) \
@@ -109,7 +110,8 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
                         m_spectral_function.o \
                         libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
                         boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt2_selfenergy.o \
-                        mp2.o gw_selfenergy.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o linear_response.o static_polarizability.o density_tools.o io.o restart.o \
+                        mp2.o gw_selfenergy.o gw_selfenergy_grid.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o \
+			linear_response.o static_polarizability.o density_tools.o io.o restart.o \
                         m_hamiltonian.o m_hamiltonian_libint.o m_hamiltonian_sca.o m_hamiltonian_buffer.o m_scf_loop.o \
                         pdbssolver1.o selfenergy_evaluation.o real_spherical_harmonics.o force.o \
                         molgw.o \
@@ -149,6 +151,10 @@ gwgamma_selfenergy.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_timing.f90 m
 gw_selfenergy.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_timing.f90 m_warning.f90 m_scalapack.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
       m_inputparam.f90 m_selfenergy_tools.f90 gw_selfenergy.f90
 	$(FC_W_OPTS) -c gw_selfenergy.f90 $(LIBXC_INCS)
+
+gw_selfenergy_grid.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_timing.f90 m_warning.f90 m_scalapack.f90 m_basis_set.f90 m_spectral_function.f90 m_eri_ao_mo.f90 \
+      m_inputparam.f90 m_selfenergy_tools.f90 gw_selfenergy_grid.f90
+	$(FC_W_OPTS) -c gw_selfenergy_grid.f90 $(LIBXC_INCS)
 
 bse.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_timing.f90 m_warning.f90 m_tools.f90 m_basis_set.f90 m_spectral_function.f90 m_inputparam.f90 m_tddft_fxc.f90 \
         bse.f90

@@ -12,6 +12,7 @@ module m_spectral_function
  use m_timing 
  use m_warning
  use m_memory
+ use m_scalapack
  use m_inputparam
  use m_atoms
  use m_eri,only: iproc_ibf_auxil,ibf_auxil_l
@@ -56,6 +57,15 @@ module m_spectral_function
    !
    ! Static W might be stored directly in the auxiliary basis
    real(dp),allocatable :: w0(:,:)
+
+   !
+   ! Dynamic W might be stored directly in the auxiliary basis
+   real(dp),allocatable :: chi(:,:,:)
+   integer              :: mchi,nchi
+   integer              :: desc_chi(NDEL)
+   integer              :: nomega_quad           ! Number of quadrature points
+   real(dp),allocatable :: omega_quad(:)         ! quadrature points for numerical integration
+   real(dp),allocatable :: weight_quad(:)        ! quadrature weight for numerical integration
 
  end type spectral_function
 
@@ -110,13 +120,18 @@ end function index_prodstate
 
 
 !=========================================================================
-subroutine init_spectral_function(nstate,occupation,sf)
+subroutine init_spectral_function(nstate,occupation,imaginary_axis_grid,sf)
+ use m_tools,only: coeffs_gausslegint
  implicit none
  integer,intent(in)                    :: nstate
  real(dp),intent(in)                   :: occupation(:,:)
+ logical,intent(in)                    :: imaginary_axis_grid
  type(spectral_function),intent(out)   :: sf
 !=====
  integer                               :: ijspin,istate,jstate,itrans,jtrans
+ integer                               :: iomega
+ real(dp),parameter                    :: alpha=1.0_dp ! 0.50_dp
+ real(dp),parameter                    :: beta=1.0_dp ! 6.0_dp
 !=====
 
  if( nstate > SIZE( occupation(:,:) , DIM=1 ) ) then
@@ -253,6 +268,25 @@ subroutine init_spectral_function(nstate,occupation,sf)
    call issue_warning(msg)
  endif
 
+ if( imaginary_axis_grid ) then
+   !
+   ! Set the sampling points for Chi (quadrature)
+   sf%nomega_quad    = 16
+
+   allocate(sf%weight_quad(sf%nomega_quad))
+   allocate(sf%omega_quad(sf%nomega_quad))
+   call coeffs_gausslegint(0.0_dp,1.0_dp,sf%omega_quad,sf%weight_quad,sf%nomega_quad)
+
+   ! Variable change [0,1] -> [0,+\inf[
+   write(stdout,'(a)') '    #    Frequencies (Ha)    Quadrature weights'
+   do iomega=1,sf%nomega_quad
+     sf%weight_quad(iomega) = sf%weight_quad(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha * (1.0_dp -  sf%omega_quad(iomega))**(-alpha-1.0_dp) * beta
+     sf%omega_quad(iomega)  =   1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) * ( 1.0_dp / (1.0_dp-sf%omega_quad(iomega))**alpha - 1.0_dp ) * beta
+     write(stdout,'(i5,2(2x,f14.6))') iomega,sf%omega_quad(iomega),sf%weight_quad(iomega)
+   enddo
+ endif
+
+
 
 end subroutine init_spectral_function
 
@@ -338,6 +372,11 @@ subroutine destroy_spectral_function(sf)
  if(ALLOCATED(sf%w0)) then
    call clean_deallocate('Static W',sf%w0)
  endif
+ if(ALLOCATED(sf%chi)) then
+   call clean_deallocate('Chi',sf%chi)
+ endif
+ if(ALLOCATED(sf%weight_quad)) deallocate(sf%weight_quad)
+ if(ALLOCATED(sf%omega_quad))  deallocate(sf%omega_quad)
 
  write(stdout,'(/,a)') ' Spectral function destroyed'
 

@@ -820,7 +820,7 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
 
 #if 1
    
-   call set_auxil_block_size(nbf_auxil_basis/nprow_auxil/4)
+   call set_auxil_block_size(nbf_auxil_basis/(nprow_auxil*4))
 
    do iproc=0,nprow_auxil-1
      nbf_local_iproc(iproc) = NUMROC(nbf_auxil_basis,MBLOCK_AUXIL,iproc,first_row,nprow_auxil)

@@ -420,7 +420,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
    write(stdout,*) 'Perform an eigenvalue self-consistent GnWn calculation: SCALAPACK'
  case default
    write(stdout,*) 'type:',selfenergy_approx
-   call die('gw_selfenergy: calculation type unknown')
+   call die('gw_selfenergy_scalapack: calculation type unknown')
  end select
 
 

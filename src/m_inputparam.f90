@@ -235,7 +235,8 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%selfenergy_approx = COHSEX_DEVEL
    case('G0W0_IOMEGA')
      calc_type%is_gw    =.TRUE.
-     calc_type%selfenergy_approx = G0W0_IOMEGA
+     calc_type%selfenergy_approx    = G0W0_IOMEGA
+     calc_type%selfenergy_technique = imaginary_axis
    case('G0W0SOX0')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0SOX0

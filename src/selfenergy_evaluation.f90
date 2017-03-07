@@ -59,7 +59,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  write(stdout,'(/,1x,a)') '=================================================='
 
  select case(calc_type%selfenergy_approx)
- case(GW,GnW0,GnWn)
+ case(GW,GnW0,GnWn,G0W0_IOMEGA)
    selfenergy_tag='GW'
  case(PT2)
    selfenergy_tag='PT2'
@@ -157,7 +157,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
     .OR. calc_type%selfenergy_approx == GnW0 .OR. calc_type%selfenergy_approx == GnWn   ) then
 
 
-   call init_spectral_function(nstate_small,occupation,wpol)
+   call init_spectral_function(nstate_small,occupation,(calc_type%selfenergy_technique==imaginary_axis),wpol)
 
    ! Try to read a spectral function file in order to skip the polarizability calculation
    ! Skip the reading if GnWn (=evGW) is requested
@@ -169,7 +169,11 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    endif
    ! If reading has failed, then do the calculation
    if( reading_status /= 0 ) then
-     call polarizability(basis,auxil_basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+     if( calc_type%selfenergy_technique /= imaginary_axis ) then
+       call polarizability(basis,auxil_basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+     else
+       call polarizability_grid_scalapack(basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+     endif
    endif
 
    en%tot = en%tot + en%rpa
@@ -184,13 +188,21 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    ! TODO: extend it to COHSEX
    if( has_auxil_basis &
      .AND. (calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GnW0  &
-                                              .OR. calc_type%selfenergy_approx == GnWn) ) then
-     call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+       .OR. calc_type%selfenergy_approx == GnWn .OR. calc_type%selfenergy_approx == G0W0_IOMEGA) ) then
+     if( calc_type%selfenergy_technique /= imaginary_axis ) then
+       call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+     else
+       call gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy_g,c_matrix,wpol,se)
+     endif
    else
      call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
    endif
 #else
-   call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+   if( calc_type%selfenergy_technique /= imaginary_axis ) then
+     call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+   else
+     call gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy_g,c_matrix,wpol,se)
+   endif
 #endif
 
    
@@ -252,7 +264,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  ! GWGamma
  !
  if( calc_type%selfenergy_approx == G0W0GAMMA0 .OR. calc_type%selfenergy_approx == G0W0SOX0 ) then
-   call init_spectral_function(nstate,occupation,wpol)
+   call init_spectral_function(nstate,occupation,.FALSE.,wpol)
    call read_spectral_function(wpol,reading_status)
    ! If reading has failed, then do the calculation
    if( reading_status /= 0 ) then
@@ -309,7 +321,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  if( calc_type%selfenergy_approx == COHSEX_DEVEL .OR. calc_type%selfenergy_approx == TUNED_COHSEX ) then
 
    if( .NOT. has_auxil_basis ) call die('cohsex needs an auxiliary basis')
-   call init_spectral_function(nstate,occupation,wpol)
+   call init_spectral_function(nstate,occupation,.FALSE.,wpol)
    call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
    !
    ! Calculate v^{1/2} \chi v^{1/2}

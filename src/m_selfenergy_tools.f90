@@ -381,7 +381,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
  real(dp),intent(in)                 :: energy0(nstate,nspin)
  type(selfenergy_grid),intent(inout) :: se
 !=====
- integer :: iomega,istate
+ integer            :: iomega,istate
 !=====
 
 
@@ -395,7 +395,14 @@ subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
 
 
  case(imaginary_axis)
-   se%nomega =  32
+   !
+   ! Set the sampling points for Sigma
+   se%nomega = nomega_sigma/2
+   allocate(se%omega(-se%nomega:se%nomega))
+   do iomega=-se%nomega,se%nomega
+     se%omega(iomega) = step_sigma * iomega
+   enddo
+
 
  case(one_shot)
    select case(calc_type%selfenergy_approx)

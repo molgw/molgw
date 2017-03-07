@@ -120,7 +120,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  ! It is stored in object wpol_static
  !
  if( calc_type%is_bse ) then
-   call init_spectral_function(nstate,occupation,wpol_static)
+   call init_spectral_function(nstate,occupation,.FALSE.,wpol_static)
    call read_spectral_function(wpol_static,reading_status)
 
    ! If a SCREENED_COULOMB file cannot be found,
@@ -1225,7 +1225,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,a_diag,wpol)
 
 end subroutine chi_to_sqrtvchisqrtv_auxil_spa
 
-
+#if 0
 !=========================================================================
 subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol)
  use m_definitions
@@ -1334,6 +1334,6 @@ subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matr
 
 
 end subroutine test_polarizability
-
+#endif
 
 !=========================================================================

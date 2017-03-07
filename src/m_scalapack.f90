@@ -15,7 +15,7 @@
 module m_scalapack
  use m_definitions
  use m_warning
- use m_tools,only: diagonalize
+ use m_tools,only: diagonalize,invert
  use m_mpi
 #ifdef HAVE_MPI
  use mpi
@@ -149,13 +149,16 @@ end function NUMROC
 
 
 !=========================================================================
-subroutine DESCINIT(descdum,idum1,idum2,idum3,idum4,idum5,idum6,cntxtdum,idum7,info)
+subroutine DESCINIT(desc,mmat,nmat,idum3,idum4,idum5,idum6,cntxtdum,idum7,info)
  implicit none
- integer,intent(in)  :: descdum(NDEL)
- integer,intent(in)  :: idum1,idum2,idum3,idum4,idum5,idum6,idum7
- integer,intent(in)  :: cntxtdum
- integer,intent(out) :: info
+ integer,intent(inout) :: desc(NDEL)
+ integer,intent(in)    :: mmat,nmat,idum3,idum4,idum5,idum6,idum7
+ integer,intent(in)    :: cntxtdum
+ integer,intent(out)   :: info
 !=====
+
+ desc(M_A) = mmat
+ desc(N_A) = nmat
 
  info = 0
 
@@ -199,6 +202,22 @@ function INDXG2P(iglobal,idum1,idum2,idum3,idum4)
  INDXG2P = 0
 
 end function INDXG2P
+
+
+!=========================================================================
+subroutine BLACS_GRIDINFO(icntxt,nprow,npcol,iprow,ipcol)
+ implicit none
+ integer,intent(in)  :: icntxt
+ integer,intent(out) :: nprow,npcol,iprow,ipcol
+!===== 
+!===== 
+ nprow = 1
+ npcol = 1
+ iprow = 0
+ ipcol = 0
+
+end subroutine BLACS_GRIDINFO
+
 
 #endif
 
@@ -1566,6 +1585,11 @@ subroutine invert_sca(desc,matrix,matrix_inv)
 
  deallocate(ipiv)
  deallocate(work,iwork)
+#else
+
+ n = SIZE( matrix , DIM=1 )
+ call invert(n,matrix,matrix_inv)
+
 #endif
 
 end subroutine invert_sca
@@ -1778,13 +1802,13 @@ subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
  enddo
  call BLACS_GRIDMAP(cntxt_auxil,usermap,nproc_auxil,nproc_auxil,1)
  deallocate(usermap)
+#endif
 
  call BLACS_GRIDINFO(cntxt_auxil,nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil)
  call xmax_ortho(nprow_auxil)
  call xmax_ortho(npcol_auxil)
  call xmax_ortho(iprow_auxil)
  call xmax_ortho(ipcol_auxil)
-#endif
 
 
 #ifdef DEBUG
