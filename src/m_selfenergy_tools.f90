@@ -30,7 +30,7 @@ module m_selfenergy_tools
  ! Selfenergy evaluated on a frequency grid
  type selfenergy_grid
    integer                 :: nomega
-   real(dp),allocatable    :: omega(:)
+   complex(dp),allocatable :: omega(:)
    real(dp),allocatable    :: energy0(:,:)
    complex(dp),allocatable :: sigma(:,:,:)
  end type
@@ -122,17 +122,18 @@ subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,se)
    write(stdout,'(1x,a,a)') 'Writing selfenergy in file: ', TRIM(filename)
    open(newunit=selfenergyfile,file=filename)
 
-   write(selfenergyfile,'(a)') '# omega (eV)          Re SigmaC (eV)    omega - e_gKS - Vxc + SigmaX (eV)     A (eV^-1) '
+   write(selfenergyfile,'(a)') '# omega (eV)          Re SigmaC (eV)    omega - e_gKS - Vxc + SigmaX (eV)     A (eV^-1)    Im SigmaC (eV)'
 
    do iomega=-se%nomega,se%nomega
      spectral_function_w(:) = 1.0_dp / pi * ABS(   &
                                        AIMAG( 1.0_dp   &
                                          / ( se%omega(iomega) - exchange_m_vxc(pstate,:) - se%sigma(iomega,pstate,:) ) ) )
 
-     write(selfenergyfile,'(20(f14.6,2x))') ( se%omega(iomega) + se%energy0(pstate,:) )*Ha_eV,     &
+     write(selfenergyfile,'(20(f16.8,2x))') ( se%omega(iomega) + se%energy0(pstate,:) )*Ha_eV,     &
                                             REAL(se%sigma(iomega,pstate,:),dp) * Ha_eV,            &
                                             ( se%omega(iomega) - exchange_m_vxc(pstate,:) )*Ha_eV, &
-                                            spectral_function_w(:) / Ha_eV
+                                            spectral_function_w(:) / Ha_eV,    &
+                                            AIMAG(se%sigma(iomega,pstate,:)) * Ha_eV
    enddo
    write(selfenergyfile,*)
    close(selfenergyfile)
@@ -215,7 +216,7 @@ subroutine find_qp_energy_graphical(se,nstate,exchange_m_vxc,energy0,energy_qp_g
      ! E_GW - E_gKS = \Sigma_c(E_GW) + \Sigma_x - v_xc
      !
      ! Remember: omega = E_GW - E_gKS
-     energy_qp_g(pstate,aspin) = find_fixed_point(se%nomega,se%omega,sigma_xc_m_vxc,info) + energy0(pstate,aspin)
+     energy_qp_g(pstate,aspin) = find_fixed_point(se%nomega,REAL(se%omega,dp),sigma_xc_m_vxc,info) + energy0(pstate,aspin)
      if( info /= 0 ) then
        write(stdout,'(1x,a,i4,2x,i4)') 'Unreliable graphical solution of the QP equation for state,spin: ',pstate,aspin
        call issue_warning('No fixed point found for the QP equation. Try to increase nomega_sigma or step_sigma.')
@@ -381,7 +382,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
  real(dp),intent(in)                 :: energy0(nstate,nspin)
  type(selfenergy_grid),intent(inout) :: se
 !=====
- integer            :: iomega,istate
+ integer            :: iomega,pstate
 !=====
 
 
@@ -400,7 +401,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
    se%nomega = nomega_sigma/2
    allocate(se%omega(-se%nomega:se%nomega))
    do iomega=-se%nomega,se%nomega
-     se%omega(iomega) = step_sigma * iomega
+     se%omega(iomega) = step_sigma * iomega ! * im
    enddo
 
 
@@ -427,7 +428,15 @@ subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
  !
  ! Set the central point of the grid
  allocate(se%energy0(nsemin:nsemax,nspin))
- se%energy0(nsemin:nsemax,:) = energy0(nsemin:nsemax,:)
+ select case(selfenergy_technique)
+ case(imaginary_axis)
+   ! Find the center of the HOMO-LUMO gap
+   forall(pstate=nsemin:nsemax)
+     se%energy0(pstate,:) = 0.5_dp * ( energy0(nhomo_G,:) + energy0(nhomo_G+1,:) )
+   end forall
+ case default
+   se%energy0(nsemin:nsemax,:) = energy0(nsemin:nsemax,:)
+ end select
 
  !
  ! Set the central point of the grid
@@ -580,7 +589,139 @@ subroutine apply_qs_approximation(nbf,nstate,s_matrix,c_matrix,selfenergy)
  enddo
 
 end subroutine apply_qs_approximation
+ 
 
+!=========================================================================
+subroutine self_energy_fit(nstate,energy,se)
+ implicit none
+
+ integer,intent(in)                  :: nstate
+ real(dp),intent(in)                 :: energy(nstate,nspin)
+ type(selfenergy_grid),intent(inout) :: se
+!=====
+ integer :: pstate,pspin
+ integer :: iomega
+ integer :: imc,ipp
+ integer :: nchi2
+ integer,parameter :: nmc=1000000
+ integer,parameter :: npp=1
+ real(dp)          :: ap(npp),bp(npp),cp(npp)
+ real(dp)          :: am(npp),bm(npp),cm(npp)
+ real(dp)          :: ap_min(npp),bp_min(npp),cp_min(npp)
+ real(dp)          :: am_min(npp),bm_min(npp),cm_min(npp)
+ real(dp)          :: chi2,chi2_min
+ real(dp)          :: shift(6*npp)
+!=====
+
+ do pspin=1,nspin
+   do pstate=nsemin,nsemax
+
+     !
+     ! First clean up the self-energy
+     !
+     do iomega=-se%nomega,se%nomega
+
+       if( ( REAL(se%omega(iomega) + se%energy0(pstate,pspin),dp) < energy(nhomo_G,pspin) + 0.02_dp )   &
+         .OR. ( REAL(se%omega(iomega) + se%energy0(pstate,pspin),dp) > energy(nhomo_G+1,pspin) - 0.02_dp ) ) then
+
+          se%sigma(iomega,pstate,pspin) = 0.0_dp
+
+       endif
+
+     enddo
+
+     !
+     ! Then optimization
+     do ipp=1,npp
+       ap(ipp) = 1.0_dp * ipp
+       am(ipp) = 1.0_dp * ipp
+       bp(ipp) = 0.1_dp * ipp
+       bm(ipp) = 0.1_dp * ipp
+       cp(ipp) = 0.1_dp / ipp
+       cm(ipp) = 0.1_dp / ipp
+     enddo
+     chi2_min = HUGE(1.0_dp)
+
+     do imc=1,nmc
+
+       chi2 = 0.0_dp
+       nchi2 = 0
+       do iomega=-se%nomega,se%nomega
+         if( ABS( se%sigma(iomega,pstate,pspin) ) > 1.0e-12_dp ) then
+           chi2 = chi2 + ABS( se%sigma(iomega,pstate,pspin) - eval_func( se%omega(iomega) + se%energy0(pstate,pspin) ) )**2
+           nchi2 = nchi2 + 1
+         endif
+       enddo
+       chi2 = chi2 / REAL(nchi2,dp)
+
+       if( chi2 < chi2_min ) then
+         chi2_min = chi2
+
+         write(*,*) imc,chi2_min
+         write(*,*) ap(:),bp(:),cp(:)
+         write(*,*) am(:),bm(:),cm(:)
+         write(*,*)
+         do ipp=1,npp
+           ap_min(ipp) = ap(ipp)
+           am_min(ipp) = am(ipp)
+           bp_min(ipp) = bp(ipp)
+           bm_min(ipp) = bm(ipp)
+           cp_min(ipp) = cp(ipp)
+           cm_min(ipp) = cm(ipp)
+         enddo
+       endif
+
+       call RANDOM_NUMBER(shift)
+       do ipp=1,npp
+         ap(ipp) = ap_min(ipp) + shift(npp*(ipp-1)+1) * 0.01
+         am(ipp) = am_min(ipp) + shift(npp*(ipp-1)+2) * 0.01
+         bp(ipp) = bp_min(ipp) + shift(npp*(ipp-1)+3) * 0.001
+         bm(ipp) = bm_min(ipp) + shift(npp*(ipp-1)+4) * 0.001
+         cp(ipp) = cp_min(ipp) + shift(npp*(ipp-1)+5) * 0.1
+         cm(ipp) = cm_min(ipp) + shift(npp*(ipp-1)+6) * 0.1
+       enddo
+     enddo
+
+     do ipp=1,npp
+       ap(ipp) = ap_min(ipp)
+       am(ipp) = am_min(ipp)
+       bp(ipp) = bp_min(ipp)
+       bm(ipp) = bm_min(ipp)
+       cp(ipp) = cp_min(ipp)
+       cm(ipp) = cm_min(ipp)
+     enddo
+     do iomega=-se%nomega,se%nomega
+       write(500+pstate,'(6(1x,f18.8))') (se%omega(iomega) + se%energy0(pstate,pspin))*Ha_eV, &
+                                         se%sigma(iomega,pstate,pspin)*Ha_eV, &
+                                         eval_func( se%omega(iomega) + se%energy0(pstate,pspin) )*Ha_eV
+     enddo
+
+
+   enddo
+ enddo
+
+
+
+
+contains
+
+function eval_func(zz)
+ implicit none
+ complex(dp),intent(in) :: zz
+ complex(dp)            :: eval_func
+!=====
+ integer :: ipp
+!=====
+
+ eval_func = 0.0_dp
+ do ipp=1,npp
+   eval_func = eval_func + cp(ipp) / ( zz - ( ap(ipp)**2 - im * bp(ipp)**2 ) ) &
+                         + cm(ipp) / ( zz + ( am(ipp)**2 - im * bm(ipp)**2 ) )
+ enddo
+
+end function eval_func
+
+end subroutine self_energy_fit
 
 !=========================================================================
 end module m_selfenergy_tools
