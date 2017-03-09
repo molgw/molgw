@@ -105,11 +105,6 @@ subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,se)
  ! Just the master writes
  if( .NOT. is_iomaster ) return
 
- if( se%nomega < 1 ) then
-   call issue_warning('Only one frequency is available for this self-energy. Do not write the requested Sigma(omega) file')
-   return
- endif
-
  write(stdout,'(/,1x,a)') 'Write Sigma(omega) on file'
 
  !

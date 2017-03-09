@@ -218,8 +218,8 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
            do iomega=-se%nomega,se%nomega
              se%sigma(iomega,pstate,ispin) = se%sigma(iomega,pstate,ispin) &
                       + bra(ipole,pstate) * bra(ipole,pstate)                                          & 
-                        * ( fact_full_i  / ( energy(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) + wpol%pole(ipole) - ieta )  &
-                          + fact_empty_i / ( energy(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) - wpol%pole(ipole) + ieta ) )
+                        * ( fact_full_i  / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) + wpol%pole(ipole) - ieta )  &
+                          + fact_empty_i / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) - wpol%pole(ipole) + ieta ) )
            enddo
          enddo
 
@@ -513,8 +513,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
          do iomega=-se%nomega,se%nomega
            se%sigma(iomega,pstate,pspin) = se%sigma(iomega,pstate,pspin) &
                     + bra(ilocal,jlocal) * bra(ilocal,jlocal)                    & 
-                      * ( fact_full_i  / ( energy(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) + wpol%pole(ipole) - ieta )   &
-                        + fact_empty_i / ( energy(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) - wpol%pole(ipole) + ieta )  )
+                      * ( fact_full_i  / ( se%energy0(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) + wpol%pole(ipole) - ieta )   &
+                        + fact_empty_i / ( se%energy0(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) - wpol%pole(ipole) + ieta )  )
          enddo !iomega
        enddo  !ilocal -> ipole
      enddo !jlocal -> istate
