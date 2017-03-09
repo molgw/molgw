@@ -30,9 +30,12 @@ module m_selfenergy_tools
  ! Selfenergy evaluated on a frequency grid
  type selfenergy_grid
    integer                 :: nomega
+   integer                 :: nomegai
    complex(dp),allocatable :: omega(:)
+   complex(dp),allocatable :: omegai(:)
    real(dp),allocatable    :: energy0(:,:)
    complex(dp),allocatable :: sigma(:,:,:)
+   complex(dp),allocatable :: sigmai(:,:,:)
  end type
 
 
@@ -117,19 +120,27 @@ subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,se)
    write(stdout,'(1x,a,a)') 'Writing selfenergy in file: ', TRIM(filename)
    open(newunit=selfenergyfile,file=filename)
 
-   write(selfenergyfile,'(a)') '# omega (eV)          Re SigmaC (eV)    omega - e_gKS - Vxc + SigmaX (eV)     A (eV^-1)    Im SigmaC (eV)'
+   write(selfenergyfile,'(a)') '#       omega (eV)          Re SigmaC (eV)     Im SigmaC (eV)    omega - e_gKS - Vxc + SigmaX (eV)     A (eV^-1)'
 
    do iomega=-se%nomega,se%nomega
      spectral_function_w(:) = 1.0_dp / pi * ABS(   &
                                        AIMAG( 1.0_dp   &
                                          / ( se%omega(iomega) - exchange_m_vxc(pstate,:) - se%sigma(iomega,pstate,:) ) ) )
 
-     write(selfenergyfile,'(20(f16.8,2x))') ( se%omega(iomega) + se%energy0(pstate,:) )*Ha_eV,     &
-                                            REAL(se%sigma(iomega,pstate,:),dp) * Ha_eV,            &
-                                            ( se%omega(iomega) - exchange_m_vxc(pstate,:) )*Ha_eV, &
-                                            spectral_function_w(:) / Ha_eV,    &
-                                            AIMAG(se%sigma(iomega,pstate,:)) * Ha_eV
+     write(selfenergyfile,'(20(f16.8,2x))') ( se%omega(iomega) + se%energy0(pstate,:) )*Ha_eV,             &
+                                            REAL(se%sigma(iomega,pstate,:),dp) * Ha_eV,                    &
+                                            AIMAG(se%sigma(iomega,pstate,:)) * Ha_eV,                      &
+                                            REAL( se%omega(iomega) - exchange_m_vxc(pstate,:) ,dp )*Ha_eV, &
+                                            spectral_function_w(:) / Ha_eV
    enddo
+   if( se%nomegai > 0 ) then
+     do iomega=-se%nomegai,se%nomegai
+       write(selfenergyfile,'(20(f16.8,2x))') ( se%omegai(iomega) + se%energy0(pstate,:) )*Ha_eV,     &
+                                              REAL(se%sigmai(iomega,pstate,:),dp) * Ha_eV,            &
+                                              AIMAG(se%sigmai(iomega,pstate,:)) * Ha_eV,              &
+                                              0.0_dp,0.0_dp
+     enddo
+   endif
    write(selfenergyfile,*)
    close(selfenergyfile)
 
@@ -380,31 +391,36 @@ subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
  integer            :: iomega,pstate
 !=====
 
+ se%nomegai = 0
+ se%nomega  = 0
 
  select case(selfenergy_technique)
  
  case(EVSC,static)
 
-   se%nomega = 0
    allocate(se%omega(-se%nomega:se%nomega))
    se%omega(0) = 0.0_dp
 
-
  case(imaginary_axis)
    !
-   ! Set the sampling points for Sigma
+   ! Set the final sampling points for Sigma
    se%nomega = nomega_sigma/2
    allocate(se%omega(-se%nomega:se%nomega))
    do iomega=-se%nomega,se%nomega
-     se%omega(iomega) = step_sigma * iomega ! * im
+     se%omega(iomega) = step_sigma * iomega
+   enddo
+
+   !
+   ! Set the calculated sampling points for Sigma
+   se%nomegai = nomega_sigma / 2
+   allocate(se%omegai(-se%nomegai:se%nomegai))
+   do iomega=-se%nomegai,se%nomegai
+     se%omegai(iomega) = step_sigma * iomega * im * 10.0_dp
    enddo
 
 
  case(one_shot)
    select case(calc_type%selfenergy_approx)
-   case(GV,COHSEX,COHSEX_DEVEL)
-     se%nomega = 0
-
    case(GSIGMA)
      se%nomega = 1
 
@@ -423,6 +439,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
  !
  ! Set the central point of the grid
  allocate(se%energy0(nsemin:nsemax,nspin))
+
  select case(selfenergy_technique)
  case(imaginary_axis)
    ! Find the center of the HOMO-LUMO gap
@@ -436,6 +453,10 @@ subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
  !
  ! Set the central point of the grid
  allocate(se%sigma(-se%nomega:se%nomega,nsemin:nsemax,nspin))
+ select case(selfenergy_technique)
+ case(imaginary_axis)
+   allocate(se%sigmai(-se%nomegai:se%nomegai,nsemin:nsemax,nspin))
+ end select
 
 
 end subroutine init_selfenergy_grid
@@ -448,9 +469,11 @@ subroutine destroy_selfenergy_grid(se)
 !=====
 
  se%nomega = 0
- if( ALLOCATED(se%omega) ) deallocate(se%omega)
+ if( ALLOCATED(se%omega) )  deallocate(se%omega)
+ if( ALLOCATED(se%omegai) ) deallocate(se%omegai)
  deallocate(se%energy0)
  deallocate(se%sigma)
+ if( ALLOCATED(se%sigmai) ) deallocate(se%sigmai)
 
 end subroutine destroy_selfenergy_grid
 
@@ -588,6 +611,7 @@ end subroutine apply_qs_approximation
 
 !=========================================================================
 subroutine self_energy_fit(nstate,energy,se)
+ use m_lbfgs
  implicit none
 
  integer,intent(in)                  :: nstate
@@ -596,16 +620,16 @@ subroutine self_energy_fit(nstate,energy,se)
 !=====
  integer :: pstate,pspin
  integer :: iomega
- integer :: imc,ipp
- integer :: nchi2
- integer,parameter :: nmc=1000000
- integer,parameter :: npp=1
- real(dp)          :: ap(npp),bp(npp),cp(npp)
- real(dp)          :: am(npp),bm(npp),cm(npp)
- real(dp)          :: ap_min(npp),bp_min(npp),cp_min(npp)
- real(dp)          :: am_min(npp),bm_min(npp),cm_min(npp)
+ integer :: imc,ipp,ii,info
+ real(dp),parameter :: dq=1.0e-6_dp
+ integer,parameter :: nmc=0 ! 1000000
+ integer,parameter :: npp=4
+ real(dp)          :: coeff(6*npp),coeff_min(6*npp)
+ real(dp)          :: coeffdq(6*npp)
+ real(dp)          :: dchi2(6*npp)
  real(dp)          :: chi2,chi2_min
  real(dp)          :: shift(6*npp)
+ type(lbfgs_state) :: lbfgs_plan
 !=====
 
  do pspin=1,nspin
@@ -614,83 +638,86 @@ subroutine self_energy_fit(nstate,energy,se)
      !
      ! First clean up the self-energy
      !
-     do iomega=-se%nomega,se%nomega
-
-       if( ( REAL(se%omega(iomega) + se%energy0(pstate,pspin),dp) < energy(nhomo_G,pspin) + 0.02_dp )   &
-         .OR. ( REAL(se%omega(iomega) + se%energy0(pstate,pspin),dp) > energy(nhomo_G+1,pspin) - 0.02_dp ) ) then
-
-          se%sigma(iomega,pstate,pspin) = 0.0_dp
-
-       endif
-
-     enddo
+!     do iomega=-se%nomega,se%nomega
+!
+!       if( ( REAL(se%omega(iomega) + se%energy0(pstate,pspin),dp) < energy(nhomo_G,pspin) + 0.02_dp )   &
+!         .OR. ( REAL(se%omega(iomega) + se%energy0(pstate,pspin),dp) > energy(nhomo_G+1,pspin) - 0.02_dp ) ) then
+!
+!          se%sigma(iomega,pstate,pspin) = 0.0_dp
+!
+!       endif
+!
+!     enddo
 
      !
      ! Then optimization
      do ipp=1,npp
-       ap(ipp) = 1.0_dp * ipp
-       am(ipp) = 1.0_dp * ipp
-       bp(ipp) = 0.1_dp * ipp
-       bm(ipp) = 0.1_dp * ipp
-       cp(ipp) = 0.1_dp / ipp
-       cm(ipp) = 0.1_dp / ipp
+       coeff(1+(ipp-1)*6) = 0.5_dp  * ipp
+       coeff(2+(ipp-1)*6) = 0.5_dp  * ipp
+       coeff(3+(ipp-1)*6) = 0.1_dp  / ipp
+       coeff(4+(ipp-1)*6) = 0.1_dp  / ipp
+       coeff(5+(ipp-1)*6) = 0.1_dp  / ipp
+       coeff(6+(ipp-1)*6) = 0.1_dp  / ipp
      enddo
      chi2_min = HUGE(1.0_dp)
 
+     call lbfgs_init(lbfgs_plan,6*npp,5,diag_guess=1.0_dp)
+     do imc=1,100
+       chi2 = eval_chi2(coeff)
+       write(stdout,*) 'chi2=',chi2
+       do ipp=1,npp
+         do ii=1,6
+           coeffdq(:) = coeff(:)
+           coeffdq(ii+(ipp-1)*6) = coeffdq(ii+(ipp-1)*6) + dq 
+           dchi2(ii+(ipp-1)*6) = ( eval_chi2(coeffdq) - eval_chi2(coeff) ) / dq
+           !write(stdout,*) ii,ipp,ii+(ipp-1)*6,eval_chi2(coeffdq),eval_chi2(coeff),dchi2(ii+(ipp-1)*6) 
+         enddo
+       enddo
+       !write(stdout,*) dchi2(:) 
+       info = lbfgs_execute(lbfgs_plan,coeff,chi2,dchi2)
+
+     enddo
+     call lbfgs_destroy(lbfgs_plan)
+     coeff_min(:) = coeff(:)
+     chi2_min = eval_chi2(coeff_min)
+     write(stdout,*) coeff_min(:) 
+
      do imc=1,nmc
 
-       chi2 = 0.0_dp
-       nchi2 = 0
-       do iomega=-se%nomega,se%nomega
-         if( ABS( se%sigma(iomega,pstate,pspin) ) > 1.0e-12_dp ) then
-           chi2 = chi2 + ABS( se%sigma(iomega,pstate,pspin) - eval_func( se%omega(iomega) + se%energy0(pstate,pspin) ) )**2
-           nchi2 = nchi2 + 1
-         endif
-       enddo
-       chi2 = chi2 / REAL(nchi2,dp)
+       chi2 = eval_chi2(coeff)
 
        if( chi2 < chi2_min ) then
          chi2_min = chi2
 
          write(*,*) imc,chi2_min
-         write(*,*) ap(:),bp(:),cp(:)
-         write(*,*) am(:),bm(:),cm(:)
          write(*,*)
-         do ipp=1,npp
-           ap_min(ipp) = ap(ipp)
-           am_min(ipp) = am(ipp)
-           bp_min(ipp) = bp(ipp)
-           bm_min(ipp) = bm(ipp)
-           cp_min(ipp) = cp(ipp)
-           cm_min(ipp) = cm(ipp)
-         enddo
+         coeff_min(:) = coeff(:)
+
        endif
 
        call RANDOM_NUMBER(shift)
        do ipp=1,npp
-         ap(ipp) = ap_min(ipp) + shift(npp*(ipp-1)+1) * 0.01
-         am(ipp) = am_min(ipp) + shift(npp*(ipp-1)+2) * 0.01
-         bp(ipp) = bp_min(ipp) + shift(npp*(ipp-1)+3) * 0.001
-         bm(ipp) = bm_min(ipp) + shift(npp*(ipp-1)+4) * 0.001
-         cp(ipp) = cp_min(ipp) + shift(npp*(ipp-1)+5) * 0.1
-         cm(ipp) = cm_min(ipp) + shift(npp*(ipp-1)+6) * 0.1
+         coeff(1+(ipp-1)*6) = coeff_min(1+(ipp-1)*6) + shift(1+6*(ipp-1)) * 0.01
+         coeff(2+(ipp-1)*6) = coeff_min(2+(ipp-1)*6) + shift(2+6*(ipp-1)) * 0.01
+         coeff(3+(ipp-1)*6) = coeff_min(3+(ipp-1)*6) + shift(3+6*(ipp-1)) * 0.001
+         coeff(4+(ipp-1)*6) = coeff_min(4+(ipp-1)*6) + shift(4+6*(ipp-1)) * 0.001
+         coeff(5+(ipp-1)*6) = coeff_min(5+(ipp-1)*6) + shift(5+6*(ipp-1)) * 0.1
+         coeff(6+(ipp-1)*6) = coeff_min(6+(ipp-1)*6) + shift(6+6*(ipp-1)) * 0.1
        enddo
      enddo
 
-     do ipp=1,npp
-       ap(ipp) = ap_min(ipp)
-       am(ipp) = am_min(ipp)
-       bp(ipp) = bp_min(ipp)
-       bm(ipp) = bm_min(ipp)
-       cp(ipp) = cp_min(ipp)
-       cm(ipp) = cm_min(ipp)
-     enddo
-     do iomega=-se%nomega,se%nomega
-       write(500+pstate,'(6(1x,f18.8))') (se%omega(iomega) + se%energy0(pstate,pspin))*Ha_eV, &
-                                         se%sigma(iomega,pstate,pspin)*Ha_eV, &
-                                         eval_func( se%omega(iomega) + se%energy0(pstate,pspin) )*Ha_eV
+
+     do iomega=-se%nomegai,se%nomegai
+       write(500+pstate,'(6(1x,f18.8))') (se%omegai(iomega) + se%energy0(pstate,pspin))*Ha_eV, &
+                                         se%sigmai(iomega,pstate,pspin)*Ha_eV, &
+                                         eval_func(coeff_min, se%omegai(iomega) + se%energy0(pstate,pspin) )*Ha_eV
      enddo
 
+      
+     ! Extrapolate to the final desired omega's
+     do iomega=-se%nomega,se%nomega
+       se%sigma(iomega,pstate,pspin) = eval_func(coeff_min, se%omega(iomega) + se%energy0(pstate,pspin) )
+     enddo
 
    enddo
  enddo
@@ -700,8 +727,10 @@ subroutine self_energy_fit(nstate,energy,se)
 
 contains
 
-function eval_func(zz)
+
+function eval_func(coeff_in,zz)
  implicit none
+ real(dp),intent(in)    :: coeff_in(6*npp)
  complex(dp),intent(in) :: zz
  complex(dp)            :: eval_func
 !=====
@@ -710,11 +739,34 @@ function eval_func(zz)
 
  eval_func = 0.0_dp
  do ipp=1,npp
-   eval_func = eval_func + cp(ipp) / ( zz - ( ap(ipp)**2 - im * bp(ipp)**2 ) ) &
-                         + cm(ipp) / ( zz + ( am(ipp)**2 - im * bm(ipp)**2 ) )
+   eval_func = eval_func + coeff_in(5+(ipp-1)*6) &
+                             / ( zz - ( coeff_in(1+(ipp-1)*6)**2 - im * coeff_in(3+(ipp-1)*6)**2 ) ) &
+                         + coeff_in(6+(ipp-1)*6) &
+                             / ( zz + ( coeff_in(2+(ipp-1)*6)**2 - im * coeff_in(4+(ipp-1)*6)**2 ) )
  enddo
 
 end function eval_func
+
+
+function eval_chi2(coeff_in)
+ implicit none
+ real(dp),intent(in)    :: coeff_in(6*npp)
+ real(dp)               :: eval_chi2
+!=====
+ integer :: iomega
+!=====
+
+ eval_chi2 = 0.0_dp
+ do iomega=-se%nomegai,se%nomegai
+   eval_chi2 = eval_chi2         &
+                + ABS( se%sigmai(iomega,pstate,pspin) &
+                      - eval_func(coeff_in, se%omegai(iomega) + se%energy0(pstate,pspin) ) )**2 &
+                               / REAL(2*se%nomegai+1,dp)
+ enddo
+
+
+end function eval_chi2
+
 
 end subroutine self_energy_fit
 

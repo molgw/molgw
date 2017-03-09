@@ -208,7 +208,6 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy,c_matrix,
  type(spectral_function),intent(in)  :: wpol
  type(selfenergy_grid),intent(inout) :: se
 !=====
- real(dp),parameter   :: omega_sigma = 0.0_dp ! to be modified in the future
  integer              :: iomegas
  integer              :: iomega
  integer              :: ilocal,jlocal
@@ -260,7 +259,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy,c_matrix,
  call DESCINIT(desc_eri3_t,nauxil_2center,prange,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,nauxil_3center),info)
 
 
- se%sigma(:,:,:) = 0.0_dp
+ se%sigmai(:,:,:) = 0.0_dp
 
  do mpspin=1,nspin
    do mstate=nsemin,nsemax
@@ -285,14 +284,14 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy,c_matrix,
                   0.0_dp,chi_eri3_sca        ,nauxil_2center)
 #endif
 
-       do iomegas=-se%nomega,se%nomega
+       do iomegas=0,se%nomegai
          do plocal=1,neri3
            pstate = INDXL2G(plocal,wpol%desc_chi(NB_A),ipcol,wpol%desc_chi(CSRC_A),npcol)
-           se%sigma(iomegas,mstate,mpspin) = se%sigma(iomegas,mstate,mpspin) &
-                         - wpol%weight_quad(iomega) * (  1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omega(iomegas) - energy(pstate,mpspin) ) &
-                                                                  + im * ( omega_sigma + wpol%omega_quad(iomega) ) )   &
-                                                       + 1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omega(iomegas) - energy(pstate,mpspin) )  &
-                                                                  + im * ( omega_sigma - wpol%omega_quad(iomega) ) ) ) &
+           se%sigmai(iomegas,mstate,mpspin) = se%sigmai(iomegas,mstate,mpspin) &
+                         - wpol%weight_quad(iomega) * (  1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(iomegas) - energy(pstate,mpspin) ) &
+                                                                  + im * wpol%omega_quad(iomega) )   &
+                                                       + 1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(iomegas) - energy(pstate,mpspin) )  &
+                                                                  - im * wpol%omega_quad(iomega) )  ) &
                             * DOT_PRODUCT( eri3_sca(:,plocal) , chi_eri3_sca(:,plocal) )  &
                                   /  (2.0_dp * pi)
          enddo
@@ -302,7 +301,11 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy,c_matrix,
 
    enddo
  enddo
- call xsum_world(se%sigma)
+ call xsum_world(se%sigmai)
+
+ forall(iomegas=1:se%nomegai)
+   se%sigmai(-iomegas,:,:) = CONJG( se%sigmai(iomegas,:,:) )
+ end forall
 
  call clean_deallocate('TMP 3-center MO integrals',eri3_sca)
  call clean_deallocate('TMP 3-center MO integrals',chi_eri3_sca)

@@ -409,7 +409,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  allocate(energy_qp_new(nstate,nspin))
 
  select case(calc_type%selfenergy_approx)
- case(GW,PT2,ONE_RING,SOX,G0W0Gamma0,G0W0SOX0)
+ case(GW,PT2,ONE_RING,SOX,G0W0Gamma0,G0W0SOX0,G0W0_IOMEGA)
    allocate(energy_qp_z(nstate,nspin))
    allocate(zz(nsemin:nsemax,nspin))
    call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
