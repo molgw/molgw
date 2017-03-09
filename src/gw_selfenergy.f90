@@ -9,6 +9,7 @@
 subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,wpol,se,energy_gw)
  use m_definitions
  use m_mpi
+ use m_mpi_ortho
  use m_timing 
  use m_inputparam
  use m_warning,only: issue_warning
@@ -601,6 +602,7 @@ end subroutine gw_selfenergy_scalapack
 subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpol,selfenergy)
  use m_definitions
  use m_mpi
+ use m_mpi_ortho
  use m_timing 
  use m_inputparam
  use m_warning,only: issue_warning

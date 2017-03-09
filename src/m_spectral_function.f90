@@ -13,7 +13,6 @@ module m_spectral_function
  use m_warning
  use m_memory
  use m_inputparam
- use m_atoms
  use m_eri,only: nbf_local_iproc,iproc_ibf_auxil,ibf_auxil_l
  use m_eri_calculate,only: nauxil_2center,nauxil_3center
 
