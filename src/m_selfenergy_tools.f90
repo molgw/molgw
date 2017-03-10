@@ -418,7 +418,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
    se%nomegai = nomega_sigma / 2
    allocate(se%omegai(-se%nomegai:se%nomegai))
    do iomega=-se%nomegai,se%nomegai
-     se%omegai(iomega) = step_sigma * iomega * im * 10.0_dp
+     se%omegai(iomega) = step_sigma * iomega * im * 3.0_dp
    enddo
 
 
@@ -449,6 +449,12 @@ subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
    forall(pstate=nsemin:nsemax)
      se%energy0(pstate,:) = 0.5_dp * ( energy0(nhomo_G,:) + energy0(nhomo_G+1,:) )
    end forall
+   forall(pstate=nsemin:nhomo_G)
+     se%energy0(pstate,:) = energy0(nhomo_G,:) + 0.05_dp
+   end forall
+   forall(pstate=nhomo_G+1:nsemax)
+     se%energy0(pstate,:) = energy0(nhomo_G+1,:) - 0.05_dp
+   end forall
  case default
    se%energy0(nsemin:nsemax,:) = energy0(nsemin:nsemax,:)
  end select
@@ -471,7 +477,8 @@ subroutine destroy_selfenergy_grid(se)
  type(selfenergy_grid),intent(inout) :: se
 !=====
 
- se%nomega = 0
+ se%nomega  = 0
+ se%nomegai = 0
  if( ALLOCATED(se%omega) )  deallocate(se%omega)
  if( ALLOCATED(se%omegai) ) deallocate(se%omegai)
  deallocate(se%energy0)
@@ -623,14 +630,14 @@ subroutine self_energy_fit(nstate,energy,se)
 !=====
  integer :: pstate,pspin
  integer :: iomega
- integer :: imc,ipp,ii,info
- real(dp),parameter :: dq=1.0e-6_dp
- integer,parameter :: nmc=0 ! 1000000
+ integer :: ilbfgs,ipp,ii,info
+ real(dp),parameter :: dq=1.0e-5_dp
+ integer,parameter :: nlbfgs=100
  integer,parameter :: npp=4
- real(dp)          :: coeff(6*npp),coeff_min(6*npp)
+ real(dp)          :: coeff(6*npp)
  real(dp)          :: coeffdq(6*npp)
  real(dp)          :: dchi2(6*npp)
- real(dp)          :: chi2,chi2_min
+ real(dp)          :: chi2
  real(dp)          :: shift(6*npp)
  type(lbfgs_state) :: lbfgs_plan
 !=====
@@ -639,87 +646,57 @@ subroutine self_energy_fit(nstate,energy,se)
    do pstate=nsemin,nsemax
 
      !
-     ! First clean up the self-energy
-     !
-!     do iomega=-se%nomega,se%nomega
-!
-!       if( ( REAL(se%omega(iomega) + se%energy0(pstate,pspin),dp) < energy(nhomo_G,pspin) + 0.02_dp )   &
-!         .OR. ( REAL(se%omega(iomega) + se%energy0(pstate,pspin),dp) > energy(nhomo_G+1,pspin) - 0.02_dp ) ) then
-!
-!          se%sigma(iomega,pstate,pspin) = 0.0_dp
-!
-!       endif
-!
-!     enddo
-
-     !
-     ! Then optimization
+     ! Optimization: first guess
      do ipp=1,npp
        coeff(1+(ipp-1)*6) = 0.5_dp  * ipp
        coeff(2+(ipp-1)*6) = 0.5_dp  * ipp
-       coeff(3+(ipp-1)*6) = 0.1_dp  / ipp
-       coeff(4+(ipp-1)*6) = 0.1_dp  / ipp
-       coeff(5+(ipp-1)*6) = 0.1_dp  / ipp
-       coeff(6+(ipp-1)*6) = 0.1_dp  / ipp
+       coeff(3+(ipp-1)*6) = 0.01_dp * ipp
+       coeff(4+(ipp-1)*6) = 0.01_dp * ipp
+       coeff(5+(ipp-1)*6) = 0.3_dp  / ipp
+       coeff(6+(ipp-1)*6) = 0.3_dp  / ipp
      enddo
-     chi2_min = HUGE(1.0_dp)
+     chi2 = eval_chi2(coeff)
 
      call lbfgs_init(lbfgs_plan,6*npp,5,diag_guess=1.0_dp)
-     do imc=1,100
-       chi2 = eval_chi2(coeff)
+     do ilbfgs=1,nlbfgs
        write(stdout,*) 'chi2=',chi2
        do ipp=1,npp
          do ii=1,6
            coeffdq(:) = coeff(:)
            coeffdq(ii+(ipp-1)*6) = coeffdq(ii+(ipp-1)*6) + dq 
            dchi2(ii+(ipp-1)*6) = ( eval_chi2(coeffdq) - eval_chi2(coeff) ) / dq
-           !write(stdout,*) ii,ipp,ii+(ipp-1)*6,eval_chi2(coeffdq),eval_chi2(coeff),dchi2(ii+(ipp-1)*6) 
          enddo
        enddo
-       !write(stdout,*) dchi2(:) 
        info = lbfgs_execute(lbfgs_plan,coeff,chi2,dchi2)
-
+       chi2 = eval_chi2(coeff)
+       if( chi2 < 5.0e-8_dp ) exit
      enddo
      call lbfgs_destroy(lbfgs_plan)
-     coeff_min(:) = coeff(:)
-     chi2_min = eval_chi2(coeff_min)
-     write(stdout,*) coeff_min(:) 
-
-     do imc=1,nmc
-
-       chi2 = eval_chi2(coeff)
-
-       if( chi2 < chi2_min ) then
-         chi2_min = chi2
-
-         write(*,*) imc,chi2_min
-         write(*,*)
-         coeff_min(:) = coeff(:)
-
-       endif
-
-       call RANDOM_NUMBER(shift)
-       do ipp=1,npp
-         coeff(1+(ipp-1)*6) = coeff_min(1+(ipp-1)*6) + shift(1+6*(ipp-1)) * 0.01
-         coeff(2+(ipp-1)*6) = coeff_min(2+(ipp-1)*6) + shift(2+6*(ipp-1)) * 0.01
-         coeff(3+(ipp-1)*6) = coeff_min(3+(ipp-1)*6) + shift(3+6*(ipp-1)) * 0.001
-         coeff(4+(ipp-1)*6) = coeff_min(4+(ipp-1)*6) + shift(4+6*(ipp-1)) * 0.001
-         coeff(5+(ipp-1)*6) = coeff_min(5+(ipp-1)*6) + shift(5+6*(ipp-1)) * 0.1
-         coeff(6+(ipp-1)*6) = coeff_min(6+(ipp-1)*6) + shift(6+6*(ipp-1)) * 0.1
-       enddo
+     write(stdout,'(/,1x,a)') '=========================='
+     write(stdout,'(1x,a)') '   #           Coeff              Re Pole            Im Pole'
+     do ipp=1,npp
+       write(stdout,'(1x,i4,3(2x,f18.8))') 2*ipp-1,                   &
+                                           coeff(5+(ipp-1)*6)**2, &
+                                           coeff(1+(ipp-1)*6)**2, &
+                                          -coeff(3+(ipp-1)*6)**2
+       write(stdout,'(1x,i4,3(2x,f18.8))') 2*ipp,                     &
+                                           coeff(6+(ipp-1)*6)**2, &
+                                          -coeff(2+(ipp-1)*6)**2, &
+                                           coeff(4+(ipp-1)*6)**2
      enddo
+     write(stdout,'(1x,a)') '=========================='
 
 
      do iomega=-se%nomegai,se%nomegai
        write(500+pstate,'(6(1x,f18.8))') (se%omegai(iomega) + se%energy0(pstate,pspin))*Ha_eV, &
                                          se%sigmai(iomega,pstate,pspin)*Ha_eV, &
-                                         eval_func(coeff_min, se%omegai(iomega) + se%energy0(pstate,pspin) )*Ha_eV
+                                         eval_func(coeff, se%omegai(iomega) + se%energy0(pstate,pspin) )*Ha_eV
      enddo
 
       
      ! Extrapolate to the final desired omega's
      do iomega=-se%nomega,se%nomega
-       se%sigma(iomega,pstate,pspin) = eval_func(coeff_min, se%omega(iomega) + se%energy0(pstate,pspin) )
+       se%sigma(iomega,pstate,pspin) = eval_func(coeff, se%omega(iomega) + se%energy0(pstate,pspin) )
      enddo
 
    enddo
@@ -742,9 +719,9 @@ function eval_func(coeff_in,zz)
 
  eval_func = 0.0_dp
  do ipp=1,npp
-   eval_func = eval_func + coeff_in(5+(ipp-1)*6) &
+   eval_func = eval_func + coeff_in(5+(ipp-1)*6)**2 &
                              / ( zz - ( coeff_in(1+(ipp-1)*6)**2 - im * coeff_in(3+(ipp-1)*6)**2 ) ) &
-                         + coeff_in(6+(ipp-1)*6) &
+                         + coeff_in(6+(ipp-1)*6)**2 &
                              / ( zz + ( coeff_in(2+(ipp-1)*6)**2 - im * coeff_in(4+(ipp-1)*6)**2 ) )
  enddo
 
@@ -756,16 +733,23 @@ function eval_chi2(coeff_in)
  real(dp),intent(in)    :: coeff_in(6*npp)
  real(dp)               :: eval_chi2
 !=====
- integer :: iomega
+ integer  :: iomega
+ real(dp) :: weight
+ real(dp) :: norm
 !=====
 
  eval_chi2 = 0.0_dp
+ norm      = 0.0_dp
  do iomega=-se%nomegai,se%nomegai
+   weight = 1.0_dp / ABS(1.0_dp+se%omegai(iomega))**2
    eval_chi2 = eval_chi2         &
                 + ABS( se%sigmai(iomega,pstate,pspin) &
                       - eval_func(coeff_in, se%omegai(iomega) + se%energy0(pstate,pspin) ) )**2 &
-                               / REAL(2*se%nomegai+1,dp)
- enddo
+                      * weight
+   norm = norm + weight
+                              
+ enddo 
+ eval_chi2 = eval_chi2 / norm
 
 
 end function eval_chi2
