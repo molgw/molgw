@@ -52,8 +52,35 @@ function number_basis_function_am(gaussian_type,am)
  integer                     :: number_basis_function_am
 !=====
 
- select case(gaussian_type)
- case('CART')
+ ! Above LMAX_TRANSFORM_PURE only Cartesian gaussian are implemented
+ if( am <= LMAX_TRANSFORM_PURE ) then
+   select case(gaussian_type)
+   case('CART')
+     select case(am)
+     case(0)
+       number_basis_function_am = 1
+     case(1)
+       number_basis_function_am = 3
+     case(2)
+       number_basis_function_am = 6
+     case(3)
+       number_basis_function_am = 10
+     case(4)
+       number_basis_function_am = 15
+     case(5)
+       number_basis_function_am = 21
+     case(6)
+       number_basis_function_am = 28
+     case(7)
+       number_basis_function_am = 36
+     case default
+       write(stdout,*) 'am=',am
+       call die('number_basis_function_am: not implemented')
+     end select
+   case('PURE')
+     number_basis_function_am = 2 * am + 1
+   end select
+ else
    select case(am)
    case(0)
      number_basis_function_am = 1
@@ -71,19 +98,11 @@ function number_basis_function_am(gaussian_type,am)
      number_basis_function_am = 28
    case(7)
      number_basis_function_am = 36
-   case(10) ! stands for SP orbitals
-     number_basis_function_am = 4 
    case default
      write(stdout,*) 'am=',am
      call die('number_basis_function_am: not implemented')
    end select
- case('PURE')
-   if(am/=10) then
-     number_basis_function_am = 2 * am + 1
-   else ! stands for SP orbitals
-     number_basis_function_am = 4 
-   endif
- end select
+ endif
 
 end function number_basis_function_am
 
