@@ -89,12 +89,13 @@ end subroutine selfenergy_set_state_range
 
 
 !=========================================================================
-subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,se)
+subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,energy0,se)
  implicit none
 
  character(len=*)    :: filename_root
  integer,intent(in)  :: nstate
  real(dp),intent(in) :: exchange_m_vxc(nstate,nspin)
+ real(dp),intent(in) :: energy0(nstate,nspin)
  type(selfenergy_grid),intent(in) :: se
 !=====
  character(len=3)   :: ctmp
@@ -125,12 +126,13 @@ subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,se)
    do iomega=-se%nomega,se%nomega
      spectral_function_w(:) = 1.0_dp / pi * ABS(   &
                                        AIMAG( 1.0_dp   &
-                                         / ( se%omega(iomega) - exchange_m_vxc(pstate,:) - se%sigma(iomega,pstate,:) ) ) )
+                                         / ( se%energy0(pstate,:)+se%omega(iomega) - energy0(pstate,:)  &
+                                               - exchange_m_vxc(pstate,:) - se%sigma(iomega,pstate,:) ) ) )
 
      write(selfenergyfile,'(20(f16.8,2x))') ( se%omega(iomega) + se%energy0(pstate,:) )*Ha_eV,             &
                                             REAL(se%sigma(iomega,pstate,:),dp) * Ha_eV,                    &
                                             AIMAG(se%sigma(iomega,pstate,:)) * Ha_eV,                      &
-                                            REAL( se%omega(iomega) - exchange_m_vxc(pstate,:) ,dp )*Ha_eV, &
+                                            (REAL(se%omega(iomega),dp)+se%energy0(pstate,:) - energy0(pstate,:) - exchange_m_vxc(pstate,:) )*Ha_eV, &
                                             spectral_function_w(:) / Ha_eV
    enddo
    if( se%nomegai > 0 ) then
@@ -160,8 +162,8 @@ subroutine find_qp_energy_linearization(se,nstate,exchange_m_vxc,energy0,energy_
  real(dp),intent(out)             :: energy_qp_z(nstate,nspin)
  real(dp),intent(out),optional    :: zz(nsemin:nsemax,nspin)
 !=====
- integer  :: pstate,aspin
- real(dp) :: zz_a(nspin)
+ integer  :: pstate,pspin
+ real(dp) :: zz_p(nspin)
 !=====
 
  ! First, a dummy initialization
@@ -171,15 +173,17 @@ subroutine find_qp_energy_linearization(se,nstate,exchange_m_vxc,energy0,energy_
  do pstate=nsemin,nsemax
 
    if( se%nomega > 0 .AND. PRESENT(zz) ) then
-     zz_a(:) = ( REAL(se%sigma(1,pstate,:),dp) - REAL(se%sigma(-1,pstate,:),dp) ) / ( se%omega(1) - se%omega(-1) )
-     zz_a(:) = 1.0_dp / ( 1.0_dp - zz_a(:) )
+     zz_p(:) = ( REAL(se%sigma(1,pstate,:),dp) - REAL(se%sigma(-1,pstate,:),dp) ) / ( se%omega(1) - se%omega(-1) )
+     zz_p(:) = 1.0_dp / ( 1.0_dp - zz_p(:) )
      ! Contrain Z to be in [0:1] to avoid crazy values
-     do aspin=1,nspin
-       zz_a(aspin) = MIN( MAX(zz_a(aspin),0.0_dp) , 1.0_dp )
+     do pspin=1,nspin
+       zz_p(pspin) = MIN( MAX(zz_p(pspin),0.0_dp) , 1.0_dp )
      enddo
 
-     zz(pstate,:)          = zz_a(:)
-     energy_qp_z(pstate,:) = energy0(pstate,:) + zz_a(:) * ( REAL(se%sigma(0,pstate,:),dp) + exchange_m_vxc(pstate,:) )
+     zz(pstate,:)          = zz_p(:)
+     energy_qp_z(pstate,:) = se%energy0(pstate,:)  &
+             + zz_p(:) * ( energy0(pstate,:) - se%energy0(pstate,:)  &
+                            + REAL(se%sigma(0,pstate,:),dp) + exchange_m_vxc(pstate,:) )
 
    else
 
@@ -202,7 +206,7 @@ subroutine find_qp_energy_graphical(se,nstate,exchange_m_vxc,energy0,energy_qp_g
  real(dp),intent(in)  :: exchange_m_vxc(nstate,nspin),energy0(nstate,nspin)
  real(dp),intent(out) :: energy_qp_g(nstate,nspin)
 !=====
- integer  :: pstate,aspin
+ integer  :: pstate,pspin
  integer  :: info
  real(dp) :: sigma_xc_m_vxc(-se%nomega:se%nomega)
 !=====
@@ -215,16 +219,15 @@ subroutine find_qp_energy_graphical(se,nstate,exchange_m_vxc,energy0,energy_qp_g
 
    if( MODULO(pstate-nsemin,nproc_world) /= rank_world ) cycle
 
-   do aspin=1,nspin
-     sigma_xc_m_vxc(:) = REAL(se%sigma(:,pstate,aspin),dp) + exchange_m_vxc(pstate,aspin)
+   do pspin=1,nspin
+     sigma_xc_m_vxc(:) = REAL(se%sigma(:,pstate,pspin),dp) + exchange_m_vxc(pstate,pspin)
      !
      ! QP equation:
-     ! E_GW - E_gKS = \Sigma_c(E_GW) + \Sigma_x - v_xc
+     ! E_GW = E0 + \omega =  E_gKS + \Sigma_c(E0+\omega) + \Sigma_x - v_xc
      !
-     ! Remember: omega = E_GW - E_gKS
-     energy_qp_g(pstate,aspin) = find_fixed_point(se%nomega,REAL(se%omega,dp),sigma_xc_m_vxc,info) + energy0(pstate,aspin)
+     energy_qp_g(pstate,pspin) = find_fixed_point(se%nomega,REAL(se%omega,dp)+se%energy0(pstate,pspin),sigma_xc_m_vxc(:)+energy0(pstate,pspin),info)
      if( info /= 0 ) then
-       write(stdout,'(1x,a,i4,2x,i4)') 'Unreliable graphical solution of the QP equation for state,spin: ',pstate,aspin
+       write(stdout,'(1x,a,i4,2x,i4)') 'Unreliable graphical solution of the QP equation for state,spin: ',pstate,pspin
        call issue_warning('No fixed point found for the QP equation. Try to increase nomega_sigma or step_sigma.')
      endif
    enddo
