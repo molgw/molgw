@@ -449,12 +449,12 @@ subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
    forall(pstate=nsemin:nsemax)
      se%energy0(pstate,:) = 0.5_dp * ( energy0(nhomo_G,:) + energy0(nhomo_G+1,:) )
    end forall
-   forall(pstate=nsemin:nhomo_G)
-     se%energy0(pstate,:) = energy0(nhomo_G,:) + 0.05_dp
-   end forall
-   forall(pstate=nhomo_G+1:nsemax)
-     se%energy0(pstate,:) = energy0(nhomo_G+1,:) - 0.05_dp
-   end forall
+!   forall(pstate=nsemin:nhomo_G)
+!     se%energy0(pstate,:) = energy0(nhomo_G,:) + 0.05_dp
+!   end forall
+!   forall(pstate=nhomo_G+1:nsemax)
+!     se%energy0(pstate,:) = energy0(nhomo_G+1,:) - 0.05_dp
+!   end forall
  case default
    se%energy0(nsemin:nsemax,:) = energy0(nsemin:nsemax,:)
  end select
@@ -631,14 +631,14 @@ subroutine self_energy_fit(nstate,energy,se)
  integer :: pstate,pspin
  integer :: iomega
  integer :: ilbfgs,ipp,ii,info
- real(dp),parameter :: dq=1.0e-5_dp
+ real(dp),parameter :: dq=1.0e-4_dp
  integer,parameter :: nlbfgs=100
- integer,parameter :: npp=4
- real(dp)          :: coeff(6*npp)
- real(dp)          :: coeffdq(6*npp)
- real(dp)          :: dchi2(6*npp)
+ integer,parameter :: npp=6
+ integer,parameter :: nparam=6
+ real(dp)          :: coeff(nparam*npp)
+ real(dp)          :: coeffdq(nparam*npp)
+ real(dp)          :: dchi2(nparam*npp)
  real(dp)          :: chi2
- real(dp)          :: shift(6*npp)
  type(lbfgs_state) :: lbfgs_plan
 !=====
 
@@ -648,23 +648,23 @@ subroutine self_energy_fit(nstate,energy,se)
      !
      ! Optimization: first guess
      do ipp=1,npp
-       coeff(1+(ipp-1)*6) = 0.5_dp  * ipp
-       coeff(2+(ipp-1)*6) = 0.5_dp  * ipp
-       coeff(3+(ipp-1)*6) = 0.01_dp * ipp
-       coeff(4+(ipp-1)*6) = 0.01_dp * ipp
-       coeff(5+(ipp-1)*6) = 0.3_dp  / ipp
-       coeff(6+(ipp-1)*6) = 0.3_dp  / ipp
+       coeff(1+(ipp-1)*nparam) = 0.5_dp  * ipp
+       coeff(2+(ipp-1)*nparam) = 0.5_dp  * ipp
+       coeff(3+(ipp-1)*nparam) = 0.01_dp * ipp
+       coeff(4+(ipp-1)*nparam) = 0.01_dp * ipp
+       coeff(5+(ipp-1)*nparam) = 0.3_dp  / ipp
+       coeff(6+(ipp-1)*nparam) = 0.3_dp  / ipp
      enddo
      chi2 = eval_chi2(coeff)
 
-     call lbfgs_init(lbfgs_plan,6*npp,5,diag_guess=1.0_dp)
+     call lbfgs_init(lbfgs_plan,nparam*npp,5,diag_guess=1.0_dp)
      do ilbfgs=1,nlbfgs
        write(stdout,*) 'chi2=',chi2
        do ipp=1,npp
-         do ii=1,6
+         do ii=1,nparam
            coeffdq(:) = coeff(:)
-           coeffdq(ii+(ipp-1)*6) = coeffdq(ii+(ipp-1)*6) + dq 
-           dchi2(ii+(ipp-1)*6) = ( eval_chi2(coeffdq) - eval_chi2(coeff) ) / dq
+           coeffdq(ii+(ipp-1)*nparam) = coeffdq(ii+(ipp-1)*nparam) + dq 
+           dchi2(ii+(ipp-1)*nparam) = ( eval_chi2(coeffdq) - eval_chi2(coeff) ) / dq
          enddo
        enddo
        info = lbfgs_execute(lbfgs_plan,coeff,chi2,dchi2)
@@ -675,14 +675,14 @@ subroutine self_energy_fit(nstate,energy,se)
      write(stdout,'(/,1x,a)') '=========================='
      write(stdout,'(1x,a)') '   #           Coeff              Re Pole            Im Pole'
      do ipp=1,npp
-       write(stdout,'(1x,i4,3(2x,f18.8))') 2*ipp-1,                   &
-                                           coeff(5+(ipp-1)*6)**2, &
-                                           coeff(1+(ipp-1)*6)**2, &
-                                          -coeff(3+(ipp-1)*6)**2
-       write(stdout,'(1x,i4,3(2x,f18.8))') 2*ipp,                     &
-                                           coeff(6+(ipp-1)*6)**2, &
-                                          -coeff(2+(ipp-1)*6)**2, &
-                                           coeff(4+(ipp-1)*6)**2
+       write(stdout,'(1x,i4,4(2x,f18.8))') 2*ipp-1,                   &
+                                           coeff(5+(ipp-1)*nparam)**2, &
+                                           coeff(1+(ipp-1)*nparam)**2, &
+                                          -coeff(3+(ipp-1)*nparam)**2
+       write(stdout,'(1x,i4,4(2x,f18.8))') 2*ipp,                     &
+                                           coeff(6+(ipp-1)*nparam)**2, &
+                                          -coeff(2+(ipp-1)*nparam)**2, &
+                                           coeff(4+(ipp-1)*nparam)**2
      enddo
      write(stdout,'(1x,a)') '=========================='
 
@@ -710,7 +710,7 @@ contains
 
 function eval_func(coeff_in,zz)
  implicit none
- real(dp),intent(in)    :: coeff_in(6*npp)
+ real(dp),intent(in)    :: coeff_in(nparam*npp)
  complex(dp),intent(in) :: zz
  complex(dp)            :: eval_func
 !=====
@@ -719,10 +719,10 @@ function eval_func(coeff_in,zz)
 
  eval_func = 0.0_dp
  do ipp=1,npp
-   eval_func = eval_func + coeff_in(5+(ipp-1)*6)**2 &
-                             / ( zz - ( coeff_in(1+(ipp-1)*6)**2 - im * coeff_in(3+(ipp-1)*6)**2 ) ) &
-                         + coeff_in(6+(ipp-1)*6)**2 &
-                             / ( zz + ( coeff_in(2+(ipp-1)*6)**2 - im * coeff_in(4+(ipp-1)*6)**2 ) )
+   eval_func = eval_func + coeff_in(5+(ipp-1)*nparam)**2  &
+                             / ( zz - ( coeff_in(1+(ipp-1)*nparam)**2 - im * coeff_in(3+(ipp-1)*nparam)**2 ) ) &
+                         + coeff_in(6+(ipp-1)*nparam)**2  &
+                             / ( zz + ( coeff_in(2+(ipp-1)*nparam)**2 - im * coeff_in(4+(ipp-1)*nparam)**2 ) )
  enddo
 
 end function eval_func
@@ -730,21 +730,21 @@ end function eval_func
 
 function eval_chi2(coeff_in)
  implicit none
- real(dp),intent(in)    :: coeff_in(6*npp)
+ real(dp),intent(in)    :: coeff_in(nparam*npp)
  real(dp)               :: eval_chi2
 !=====
- integer  :: iomega
+ integer  :: iomegai
  real(dp) :: weight
  real(dp) :: norm
 !=====
 
  eval_chi2 = 0.0_dp
  norm      = 0.0_dp
- do iomega=-se%nomegai,se%nomegai
-   weight = 1.0_dp / ABS(1.0_dp+se%omegai(iomega))**2
+ do iomegai=-se%nomegai,se%nomegai
+   weight = 1.0_dp / ABS(1.0_dp+se%omegai(iomegai))**2
    eval_chi2 = eval_chi2         &
-                + ABS( se%sigmai(iomega,pstate,pspin) &
-                      - eval_func(coeff_in, se%omegai(iomega) + se%energy0(pstate,pspin) ) )**2 &
+                + ABS( se%sigmai(iomegai,pstate,pspin) &
+                      - eval_func(coeff_in, se%omegai(iomegai) + se%energy0(pstate,pspin) ) )**2 &
                       * weight
    norm = norm + weight
                               
@@ -756,6 +756,33 @@ end function eval_chi2
 
 
 end subroutine self_energy_fit
+
+
+!=========================================================================
+subroutine self_energy_fit2(nstate,energy,se)
+ use m_tools,only: pade
+ implicit none
+
+ integer,intent(in)                  :: nstate
+ real(dp),intent(in)                 :: energy(nstate,nspin)
+ type(selfenergy_grid),intent(inout) :: se
+!=====
+ integer :: pstate,pspin
+ integer :: iomega
+!=====
+
+ do pspin=1,nspin
+   do pstate=nsemin,nsemax
+     do iomega=-se%nomega,se%nomega
+       se%sigma(iomega,pstate,pspin) = pade( 2*se%nomegai+1, se%omegai(:) + se%energy0(pstate,pspin), se%sigmai(:,pstate,pspin)  , &
+                                              se%omega(iomega) + se%energy0(pstate,pspin) )
+     enddo
+   enddo
+ enddo
+
+
+end subroutine self_energy_fit2
+
 
 !=========================================================================
 end module m_selfenergy_tools
