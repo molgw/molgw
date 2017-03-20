@@ -10,6 +10,7 @@ module m_eri
  use m_definitions
  use m_mpi
  use m_memory
+ use m_warning
  use m_basis_set
  use m_timing
  use m_cart_to_pure

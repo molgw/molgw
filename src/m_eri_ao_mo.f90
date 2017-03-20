@@ -260,6 +260,7 @@ end subroutine calculate_eri_3center_eigen_lr
 !=================================================================
 subroutine calculate_eri_3center_eigen_mixed(nbf,nstate,c_matrix)
  use m_inputparam,only: nspin
+ use m_warning
  implicit none
 
  integer,intent(in)   :: nbf,nstate

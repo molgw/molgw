@@ -14,7 +14,6 @@ module m_spectral_function
  use m_memory
  use m_scalapack
  use m_inputparam
- use m_atoms
  use m_eri,only: iproc_ibf_auxil,ibf_auxil_l
  use m_eri_calculate,only: nauxil_2center,nauxil_3center
 

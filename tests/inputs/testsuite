@@ -27,6 +27,11 @@ SCF Total Energy          ,  -2.8611875289     , 0 , 1.0e-7
 gKS HOMO energy           , -24.970619         , 0 , 1.0e-4
 gKS LUMO energy           ,  17.314207         , 0 , 1.0e-4
 
+ne.in                     , HF neon atom cc-pV6Z with RI
+SCF Total Energy          , -127.6276462163    , 0 , 1.0e-7
+gKS HOMO energy           ,  -19.406424        , 0 , 1.0e-4
+gKS LUMO energy           ,    9.700079        , 0 , 1.0e-4
+
 h2_basis_nori.in          , LDA H2 molecule with an atom-dependent basis set
 SCF Total Energy          ,  -1.1306882151     , 0 , 1.0e-7
 gKS HOMO energy           , -10.061109         , 0 , 1.0e-4

@@ -18,7 +18,6 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  use m_inputparam
  use m_mpi
  use m_scalapack
- use m_tools
  use m_cart_to_pure
  use m_block_diago
  use m_basis_set
@@ -358,12 +357,10 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  use m_memory
  use m_mpi
  use m_scalapack
- use m_tools
  use m_inputparam
  use m_basis_set
  use m_dft_grid
  use m_spectral_function
- use m_atoms
  implicit none
 
  integer,intent(in)                 :: nstate,m_x,n_x
@@ -694,13 +691,11 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
  use m_memory
  use m_mpi
  use m_scalapack
- use m_tools
  use m_cart_to_pure
  use m_inputparam
  use m_basis_set
  use m_dft_grid
  use m_spectral_function
- use m_atoms
  implicit none
 
  integer,intent(in)                 :: nstate,m_x,n_x
@@ -1063,7 +1058,6 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,w
  use m_warning
  use m_scalapack
  use m_basis_set
- use m_eri
  use m_eri_ao_mo
  use m_spectral_function
  implicit none

@@ -9,7 +9,9 @@
 subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,se,emp2)
  use m_definitions
  use m_mpi
+ use m_mpi_ortho
  use m_warning
+ use m_timing
  use m_basis_set
  use m_eri_ao_mo
  use m_inputparam

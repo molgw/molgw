@@ -9,9 +9,10 @@
 subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
  use m_definitions
  use m_mpi
+ use m_mpi_ortho
  use m_timing 
  use m_inputparam
- use m_warning,only: issue_warning,msg
+ use m_warning
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo

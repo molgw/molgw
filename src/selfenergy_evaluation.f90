@@ -143,7 +143,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  endif
 
 
- call init_selfenergy_grid(calc_type%selfenergy_technique,nstate,energy,se)
+ call init_selfenergy_grid(calc_type%selfenergy_technique,nstate,energy_g,se)
 
 
 

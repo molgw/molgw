@@ -11,7 +11,6 @@ module m_basis_set
  use m_definitions
  use m_warning
  use m_mpi
- use m_timing
  use m_elements
  use m_tools, only: orbital_momentum_name
  use m_atoms
