@@ -193,7 +193,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
      else
        call gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy_g,c_matrix,wpol,se)
-       call self_energy_fit2(nstate,energy_g,se)
+       call self_energy_pade(nstate,energy_g,se)
      endif
    else
      call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)

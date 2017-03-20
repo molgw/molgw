@@ -449,12 +449,6 @@ subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
    forall(pstate=nsemin:nsemax)
      se%energy0(pstate,:) = 0.5_dp * ( energy0(nhomo_G,:) + energy0(nhomo_G+1,:) )
    end forall
-!   forall(pstate=nsemin:nhomo_G)
-!     se%energy0(pstate,:) = energy0(nhomo_G,:) + 0.05_dp
-!   end forall
-!   forall(pstate=nhomo_G+1:nsemax)
-!     se%energy0(pstate,:) = energy0(nhomo_G+1,:) - 0.05_dp
-!   end forall
  case default
    se%energy0(nsemin:nsemax,:) = energy0(nsemin:nsemax,:)
  end select
@@ -759,7 +753,7 @@ end subroutine self_energy_fit
 
 
 !=========================================================================
-subroutine self_energy_fit2(nstate,energy,se)
+subroutine self_energy_pade(nstate,energy,se)
  use m_tools,only: pade
  implicit none
 
@@ -767,21 +761,23 @@ subroutine self_energy_fit2(nstate,energy,se)
  real(dp),intent(in)                 :: energy(nstate,nspin)
  type(selfenergy_grid),intent(inout) :: se
 !=====
- integer :: pstate,pspin
- integer :: iomega
+ integer  :: pstate,pspin
+ integer  :: iomega
+ real(dp) :: sign_eta
 !=====
 
  do pspin=1,nspin
    do pstate=nsemin,nsemax
      do iomega=-se%nomega,se%nomega
+       sign_eta = -SIGN( 1.0_dp , REAL(se%omega(iomega),dp) )
        se%sigma(iomega,pstate,pspin) = pade( 2*se%nomegai+1, se%omegai(:) + se%energy0(pstate,pspin), se%sigmai(:,pstate,pspin)  , &
-                                              se%omega(iomega) + se%energy0(pstate,pspin) )
+                                              se%omega(iomega) + se%energy0(pstate,pspin) + ieta * sign_eta )
      enddo
    enddo
  enddo
 
 
-end subroutine self_energy_fit2
+end subroutine self_energy_pade
 
 
 !=========================================================================
