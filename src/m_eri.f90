@@ -58,13 +58,11 @@ module m_eri
  integer,allocatable,protected :: iproc_ibf_auxil(:)
  integer,allocatable,protected :: ibf_auxil_g(:)       ! auxil bf index from local to global
  integer,allocatable,protected :: ibf_auxil_l(:)       ! auxil bf index from global to local
- integer,allocatable,protected :: nbf_local_iproc(:)
 
 ! Parallelization information for the auxiliary basis (LR part)
  integer,allocatable,protected :: iproc_ibf_auxil_lr(:)
  integer,allocatable,protected :: ibf_auxil_g_lr(:)
  integer,allocatable,protected :: ibf_auxil_l_lr(:)
- integer,allocatable,protected :: nbf_local_iproc_lr(:)
 
 
 contains
@@ -614,9 +612,6 @@ subroutine destroy_eri_3center()
  if(ALLOCATED(iproc_ibf_auxil)) then
    deallocate(iproc_ibf_auxil)
  endif
- if(ALLOCATED(nbf_local_iproc)) then
-   deallocate(nbf_local_iproc)
- endif
  if(ALLOCATED(ibf_auxil_g)) then
    deallocate(ibf_auxil_g)
  endif
@@ -643,9 +638,6 @@ subroutine destroy_eri_3center_lr()
 
  if(ALLOCATED(iproc_ibf_auxil_lr)) then
    deallocate(iproc_ibf_auxil_lr)
- endif
- if(ALLOCATED(nbf_local_iproc_lr)) then
-   deallocate(nbf_local_iproc_lr)
  endif
  if(ALLOCATED(ibf_auxil_g_lr)) then
    deallocate(ibf_auxil_g_lr)
@@ -813,6 +805,7 @@ end function cost_function_eri
 
 !=========================================================================
 subroutine distribute_auxil_basis(nbf_auxil_basis)
+ use m_scalapack
  implicit none
 
  integer,intent(in)  :: nbf_auxil_basis
@@ -820,13 +813,37 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
  integer :: ibf
  integer :: ibf_local
  integer :: iproc
+ integer :: ilocal,iglobal
+ integer :: nbf_local_iproc(0:nproc_auxil-1)
 !=====
 
  if( parallel_buffer ) then
-   ! Use nproc instead nproc_local
+
+#if 1
+   
+   call set_auxil_block_size(nbf_auxil_basis/(nprow_auxil*4))
+
+   do iproc=0,nprow_auxil-1
+     nbf_local_iproc(iproc) = NUMROC(nbf_auxil_basis,MBLOCK_AUXIL,iproc,first_row,nprow_auxil)
+   enddo
+
+   nauxil_3center = nbf_local_iproc(iprow_auxil)
+
+   allocate(ibf_auxil_g(nauxil_3center))
+   do ilocal=1,nauxil_3center
+     ibf_auxil_g(ilocal) = INDXL2G(ilocal,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+   enddo
+   allocate(ibf_auxil_l(nbf_auxil_basis))
+   allocate(iproc_ibf_auxil(nbf_auxil_basis))
+   do iglobal=1,nbf_auxil_basis
+     ibf_auxil_l(iglobal)     = INDXG2L(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
+     iproc_ibf_auxil(iglobal) = INDXG2P(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
+   enddo
+
+#else
+
   
    allocate(iproc_ibf_auxil(nbf_auxil_basis))
-   allocate(nbf_local_iproc(0:nproc_auxil-1))
   
    iproc              = nproc_auxil - 1
    nbf_local_iproc(:) = 0
@@ -853,11 +870,32 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
        ibf_auxil_l(ibf)       = ibf_local
      endif
    enddo
+#endif
   
  else
 
+   ! Use SCALAPACK routines to distribute the auxiliary basis
+   ! Assume a processor grid: nproc_auxil x 1
+
+#if 1
+   
+   call set_auxil_block_size(nbf_auxil_basis/nprow_auxil/2)
+
+   nauxil_3center = NUMROC(nbf_auxil_basis,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+   allocate(ibf_auxil_g(nauxil_3center))
+   do ilocal=1,nauxil_3center
+     ibf_auxil_g(ilocal) = INDXL2G(ilocal,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+   enddo
+   allocate(ibf_auxil_l(nbf_auxil_basis))
    allocate(iproc_ibf_auxil(nbf_auxil_basis))
-   allocate(nbf_local_iproc(0:nproc_local-1))
+   do iglobal=1,nbf_auxil_basis
+     ibf_auxil_l(iglobal)     = INDXG2L(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
+     iproc_ibf_auxil(iglobal) = INDXG2P(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
+   enddo
+
+#else
+
+   allocate(iproc_ibf_auxil(nbf_auxil_basis))
   
    iproc              = nproc_local-1
    nbf_local_iproc(:) = 0
@@ -884,14 +922,14 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
        ibf_auxil_l(ibf)       = ibf_local
      endif
    enddo
+
+#endif
   
  endif
 
  write(stdout,'(/,a)') ' Distribute auxiliary basis functions among processors'
- do iproc=0,0
-   write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc(iproc),' auxiliary basis functions'
- enddo
-
+ write(stdout,'(1x,a,i4,a,i6,a)') 'Max auxiliary basis functions ',MAXVAL(nbf_local_iproc(:)),' for processor ',MAXLOC(nbf_local_iproc,DIM=1)
+ write(stdout,'(1x,a,i4,a,i6,a)') 'Min auxiliary basis functions ',MINVAL(nbf_local_iproc(:)),' for processor ',MINLOC(nbf_local_iproc,DIM=1)
 
 
 end subroutine distribute_auxil_basis
@@ -899,6 +937,7 @@ end subroutine distribute_auxil_basis
 
 !=========================================================================
 subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
+ use m_scalapack
  implicit none
 
  integer,intent(in)  :: nbf_auxil_basis
@@ -906,10 +945,33 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
  integer :: ibf
  integer :: ibf_local
  integer :: iproc
+ integer :: ilocal,iglobal
+ integer :: nbf_local_iproc_lr(0:nproc_auxil-1)
 !=====
 
+   
+#ifdef HAVE_SCALAPACK
+
+ do iproc=0,nprow_auxil-1
+   nbf_local_iproc_lr(iproc) = NUMROC(nbf_auxil_basis,MBLOCK_AUXIL,iproc,first_row,nprow_auxil)
+ enddo
+
+ nauxil_3center_lr = nbf_local_iproc_lr(iprow_auxil)
+
+ allocate(ibf_auxil_g_lr(nauxil_3center_lr))
+ do ilocal=1,nauxil_3center_lr
+   ibf_auxil_g_lr(ilocal) = INDXL2G(ilocal,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
+ enddo
+ allocate(ibf_auxil_l_lr(nbf_auxil_basis))
  allocate(iproc_ibf_auxil_lr(nbf_auxil_basis))
- allocate(nbf_local_iproc_lr(0:nproc_auxil-1))
+ do iglobal=1,nbf_auxil_basis
+   ibf_auxil_l_lr(iglobal)     = INDXG2L(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
+   iproc_ibf_auxil_lr(iglobal) = INDXG2P(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
+ enddo
+
+#else
+
+ allocate(iproc_ibf_auxil_lr(nbf_auxil_basis))
 
  iproc = nproc_auxil - 1
  nbf_local_iproc_lr(:) = 0
@@ -937,10 +999,11 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
    endif
  enddo
 
+#endif
+
  write(stdout,'(/,a)') ' Distribute LR auxiliary basis functions among processors'
- do iproc=0,0
-   write(stdout,'(a,i4,a,i6,a)')   ' Proc: ',iproc,' treats ',nbf_local_iproc_lr(iproc),' auxiliary basis functions'
- enddo
+ write(stdout,'(1x,a,i4,a,i6,a)')   'Max auxiliary basis functions ',MAXVAL(nbf_local_iproc_lr(:)),' for processor ',MAXLOC(nbf_local_iproc_lr,DIM=1)
+ write(stdout,'(1x,a,i4,a,i6,a)')   'Min auxiliary basis functions ',MINVAL(nbf_local_iproc_lr(:)),' for processor ',MINLOC(nbf_local_iproc_lr,DIM=1)
 
 
 end subroutine distribute_auxil_basis_lr

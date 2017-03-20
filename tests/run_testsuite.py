@@ -250,7 +250,7 @@ for iinput in range(ninput):
     continue
 
   inp     = input_files[iinput]
-  out     = input_files[iinput]+'_out'
+  out     = input_files[iinput].split('.in')[0]+'.out'
   restart = restarting[iinput]
 
   print('\nRunning test file: '+inp)

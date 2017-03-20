@@ -59,7 +59,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  write(stdout,'(/,1x,a)') '=================================================='
 
  select case(calc_type%selfenergy_approx)
- case(GW,GnW0,GnWn)
+ case(GW,GnW0,GnWn,G0W0_IOMEGA)
    selfenergy_tag='GW'
  case(PT2)
    selfenergy_tag='PT2'
@@ -143,7 +143,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  endif
 
 
- call init_selfenergy_grid(calc_type%selfenergy_technique,nstate,energy,se)
+ call init_selfenergy_grid(calc_type%selfenergy_technique,nstate,energy_g,se)
 
 
 
@@ -152,12 +152,12 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  !
  if(     calc_type%selfenergy_approx == GV .OR. calc_type%selfenergy_approx == GSIGMA .OR.  calc_type%selfenergy_approx == LW &
     .OR. calc_type%selfenergy_approx == LW2 &
-    .OR. calc_type%selfenergy_approx == G0W0_IOMEGA .OR. calc_type%selfenergy_approx == GWTILDE &
+    .OR. calc_type%selfenergy_approx == G0W0_IOMEGA &
     .OR. calc_type%selfenergy_approx == GW   .OR. calc_type%selfenergy_approx == COHSEX   &
     .OR. calc_type%selfenergy_approx == GnW0 .OR. calc_type%selfenergy_approx == GnWn   ) then
 
 
-   call init_spectral_function(nstate_small,occupation,wpol)
+   call init_spectral_function(nstate_small,occupation,nomega_imag,wpol)
 
    ! Try to read a spectral function file in order to skip the polarizability calculation
    ! Skip the reading if GnWn (=evGW) is requested
@@ -169,7 +169,11 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    endif
    ! If reading has failed, then do the calculation
    if( reading_status /= 0 ) then
-     call polarizability(basis,auxil_basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+     if( calc_type%selfenergy_technique /= imaginary_axis ) then
+       call polarizability(basis,auxil_basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+     else
+       call polarizability_grid_scalapack(basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+     endif
    endif
 
    en%tot = en%tot + en%rpa
@@ -184,13 +188,22 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    ! TODO: extend it to COHSEX
    if( has_auxil_basis &
      .AND. (calc_type%selfenergy_approx == GW .OR. calc_type%selfenergy_approx == GnW0  &
-                                              .OR. calc_type%selfenergy_approx == GnWn) ) then
-     call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+       .OR. calc_type%selfenergy_approx == GnWn .OR. calc_type%selfenergy_approx == G0W0_IOMEGA) ) then
+     if( calc_type%selfenergy_technique /= imaginary_axis ) then
+       call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
+     else
+       call gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy_g,c_matrix,wpol,se)
+       call self_energy_pade(nstate,energy_g,se)
+     endif
    else
      call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
    endif
 #else
-   call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+   if( calc_type%selfenergy_technique /= imaginary_axis ) then
+     call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+   else
+     call gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy_g,c_matrix,wpol,se)
+   endif
 #endif
 
    
@@ -230,9 +243,9 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      call onering_selfenergy(ONE_RING,nstate,basis,occupation,energy_g,c_matrix,se3,en%mp2)
 
      if( print_sigma_ ) then
-       call write_selfenergy_omega('selfenergy_GW_small',nstate,exchange_m_vxc_diag,se)
-       call write_selfenergy_omega('selfenergy_1ring_big',nstate,exchange_m_vxc_diag,se3)
-       call write_selfenergy_omega('selfenergy_1ring_small',nstate,exchange_m_vxc_diag,se2)
+       call write_selfenergy_omega('selfenergy_GW_small'   ,nstate,exchange_m_vxc_diag,energy_g,se)
+       call write_selfenergy_omega('selfenergy_1ring_big'  ,nstate,exchange_m_vxc_diag,energy_g,se3)
+       call write_selfenergy_omega('selfenergy_1ring_small',nstate,exchange_m_vxc_diag,energy_g,se2)
      endif
 
      !
@@ -252,7 +265,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  ! GWGamma
  !
  if( calc_type%selfenergy_approx == G0W0GAMMA0 .OR. calc_type%selfenergy_approx == G0W0SOX0 ) then
-   call init_spectral_function(nstate,occupation,wpol)
+   call init_spectral_function(nstate,occupation,0,wpol)
    call read_spectral_function(wpol,reading_status)
    ! If reading has failed, then do the calculation
    if( reading_status /= 0 ) then
@@ -309,7 +322,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  if( calc_type%selfenergy_approx == COHSEX_DEVEL .OR. calc_type%selfenergy_approx == TUNED_COHSEX ) then
 
    if( .NOT. has_auxil_basis ) call die('cohsex needs an auxiliary basis')
-   call init_spectral_function(nstate,occupation,wpol)
+   call init_spectral_function(nstate,occupation,1,wpol)
    call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
    !
    ! Calculate v^{1/2} \chi v^{1/2}
@@ -389,14 +402,14 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  ! Output the quasiparticle energies, the self-energy etc.
  !
  if( print_sigma_ ) then
-   call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),nstate,exchange_m_vxc_diag,se)
+   call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),nstate,exchange_m_vxc_diag,energy_g,se)
  endif
 
 
  allocate(energy_qp_new(nstate,nspin))
 
  select case(calc_type%selfenergy_approx)
- case(GW,PT2,ONE_RING,SOX,G0W0Gamma0,G0W0SOX0)
+ case(GW,PT2,ONE_RING,SOX,G0W0Gamma0,G0W0SOX0,G0W0_IOMEGA)
    allocate(energy_qp_z(nstate,nspin))
    allocate(zz(nsemin:nsemax,nspin))
    call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)

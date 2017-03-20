@@ -61,16 +61,10 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
    write(stdout,*) 'Perform the calculation of Tr[ SigmaG ]'
  case(GV)
    write(stdout,*) 'Perform a perturbative HF calculation'
- case(GWTILDE)
-   write(stdout,*) 'Perform a one-shot GWtilde calculation'
-   call assert_experimental()
  case(GW)
    write(stdout,*) 'Perform a one-shot G0W0 calculation'
  case(ONE_RING)
    write(stdout,*) 'Perform a one-shot one-ring calculation'
- case(G0W0_IOMEGA)
-   write(stdout,*) 'Perform a one-shot G0W0 calculation EXPERIMENTAL!'
-   call assert_experimental()
  case(COHSEX)
    write(stdout,*) 'Perform a COHSEX calculation'
    if( ABS(alpha_cohsex - 1.0_dp) > 1.0e-4_dp .OR. ABS(beta_cohsex - 1.0_dp) > 1.0e-4_dp ) then
@@ -106,7 +100,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  !
  ! The ones with imaginary frequencies
  select case(selfenergy_approx)
- case(LW,LW2,G0W0_IOMEGA)
+ case(LW,LW2)
    allocate(omegac(1:se%nomega))
    
    allocate(x1(se%nomega),weights(se%nomega))  
@@ -135,7 +129,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  ! Which calculation type needs a complex sigma?
  !
  select case(selfenergy_approx)
- case(LW,LW2,G0W0_IOMEGA)                     ! matrix complex
+ case(LW,LW2)                     ! matrix complex
    allocate(selfenergy_omegac(1:se%nomega,nsemin:nsemax,nsemin:nsemax,nspin))
    selfenergy_omegac(:,:,:,:) = 0.0_dp
  end select
@@ -225,42 +219,10 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
            do iomega=-se%nomega,se%nomega
              se%sigma(iomega,pstate,ispin) = se%sigma(iomega,pstate,ispin) &
                       + bra(ipole,pstate) * bra(ipole,pstate)                                          & 
-                        * ( fact_full_i  / ( energy(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) + wpol%pole(ipole) - ieta )  &
-                          + fact_empty_i / ( energy(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) - wpol%pole(ipole) + ieta ) )
+                        * ( fact_full_i  / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) + wpol%pole(ipole) - ieta )  &
+                          + fact_empty_i / ( se%energy0(pstate,ispin) + se%omega(iomega) - energy(istate,ispin) - wpol%pole(ipole) + ieta ) )
            enddo
          enddo
-
-       case(GWTILDE)
-
-         allocate(vsqchi0vsqm1(nauxil_2center,nauxil_2center))
-
-         do pstate=nsemin,nsemax
-           do iomega=-se%nomega,se%nomega
-             omega_m_ei = energy(pstate,ispin) + se%omega(iomega) - energy(istate,ispin)
-             call dynamical_polarizability(nstate,occupation,energy,omega_m_ei,wpol,vsqchi0vsqm1)
-
-             bra2 = DOT_PRODUCT( eri_3center_eigen(:,pstate,istate,ispin) , MATMUL( vsqchi0vsqm1(:,:) , wpol%residue_left(:,ipole)) )
-
-             se%sigma(iomega,pstate,ispin) = se%sigma(iomega,pstate,ispin) &
-                      + bra2 * bra(ipole,pstate)                                          & 
-                        * ( fact_full_i  / ( omega_m_ei + wpol%pole(ipole) - ieta )   &
-                          + fact_empty_i / ( omega_m_ei - wpol%pole(ipole) + ieta )  )
-           enddo
-         enddo
-
-         deallocate(vsqchi0vsqm1)
-
-       case(G0W0_IOMEGA)
-
-         do pstate=nsemin,nsemax
-           do iomega=1,se%nomega
-             selfenergy_omegac(iomega,pstate,1,ispin) = selfenergy_omegac(iomega,pstate,1,ispin) &
-                    + bra(ipole,pstate) * bra(ipole,pstate)                                          & 
-                      * ( fact_full_i  / ( omegac(iomega) - energy(istate,ispin) + wpol%pole(ipole) ) &  !  - ieta )    &
-                        + fact_empty_i / ( omegac(iomega) - energy(istate,ispin) - wpol%pole(ipole) ) )  ! + ieta )  )
-           enddo
-         enddo
-
 
        case(COHSEX)
 
@@ -310,25 +272,6 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  !
  ! Only the EXPERIMENTAL features need to do some post-processing here!
  select case(selfenergy_approx)
- case(G0W0_IOMEGA) !==========================================================
-
-   if( is_iomaster ) then
-
-     do pstate=nsemin,nsemax
-       write(ctmp,'(i3.3)') pstate
-       write(stdout,'(1x,a,a)') 'Printing file: ','selfenergy_omegac_state'//TRIM(ctmp)
-       open(newunit=selfenergyfile,file='selfenergy_omegac_state'//TRIM(ctmp))
-       write(selfenergyfile,'(a)') '# Re omega (eV)  Im omega (eV)  SigmaC (eV) '
-       do iomega=1,se%nomega
-         write(selfenergyfile,'(20(f12.6,2x))') omegac(iomega)*Ha_eV,                                     &
-                                            selfenergy_omegac(iomega,pstate,1,:)*Ha_eV
-       enddo
-       write(selfenergyfile,*)
-       close(selfenergyfile)
-     enddo
-
-   endif
-
  case(GSIGMA) !==========================================================
 
    energy_gw = 0.5_dp * SUM(se%sigma(1,:,:)) * spin_fact
@@ -478,7 +421,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
    write(stdout,*) 'Perform an eigenvalue self-consistent GnWn calculation: SCALAPACK'
  case default
    write(stdout,*) 'type:',selfenergy_approx
-   call die('gw_selfenergy: calculation type unknown')
+   call die('gw_selfenergy_scalapack: calculation type unknown')
  end select
 
 
@@ -549,8 +492,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
      ! And calculate it
      call PDGEMM('T','N',wpol%npole_reso,nvirtual_G-ncore_G-1,nauxil_2center, &
                              1.0_dp,wresidue_sd,1,1,desc_wsd,    &
-                                   eri_3tmp_sd,1,1,desc_3sd,    &
-                             0.0_dp,bra,1,1,desc_bra)
+                                    eri_3tmp_sd,1,1,desc_3sd,    &
+                             0.0_dp,bra        ,1,1,desc_bra)
      call clean_deallocate('TMP 3center eigen',eri_3tmp_sd)
 
 
@@ -571,8 +514,8 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
          do iomega=-se%nomega,se%nomega
            se%sigma(iomega,pstate,pspin) = se%sigma(iomega,pstate,pspin) &
                     + bra(ilocal,jlocal) * bra(ilocal,jlocal)                    & 
-                      * ( fact_full_i  / ( energy(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) + wpol%pole(ipole) - ieta )   &
-                        + fact_empty_i / ( energy(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) - wpol%pole(ipole) + ieta )  )
+                      * ( fact_full_i  / ( se%energy0(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) + wpol%pole(ipole) - ieta )   &
+                        + fact_empty_i / ( se%energy0(pstate,pspin) + se%omega(iomega) - energy(istate,pspin) - wpol%pole(ipole) + ieta )  )
          enddo !iomega
        enddo  !ilocal -> ipole
      enddo !jlocal -> istate

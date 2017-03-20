@@ -12,8 +12,9 @@ module m_spectral_function
  use m_timing 
  use m_warning
  use m_memory
+ use m_scalapack
  use m_inputparam
- use m_eri,only: nbf_local_iproc,iproc_ibf_auxil,ibf_auxil_l
+ use m_eri,only: iproc_ibf_auxil,ibf_auxil_l
  use m_eri_calculate,only: nauxil_2center,nauxil_3center
 
  !
@@ -53,8 +54,13 @@ module m_spectral_function
    real(dp),allocatable :: residue_left(:,:)       ! first index runs on n, second index on i
 
    !
-   ! Static W might be stored directly in the auxiliary basis
-   real(dp),allocatable :: w0(:,:)
+   ! Static or Dynamic W might be stored directly in the auxiliary basis
+   real(dp),allocatable :: chi(:,:,:)
+   integer              :: mchi,nchi
+   integer              :: desc_chi(NDEL)
+   integer              :: nomega_quad           ! Number of quadrature points
+   real(dp),allocatable :: omega_quad(:)         ! quadrature points for numerical integration
+   real(dp),allocatable :: weight_quad(:)        ! quadrature weight for numerical integration
 
  end type spectral_function
 
@@ -109,13 +115,18 @@ end function index_prodstate
 
 
 !=========================================================================
-subroutine init_spectral_function(nstate,occupation,sf)
+subroutine init_spectral_function(nstate,occupation,nomega_in,sf)
+ use m_tools,only: coeffs_gausslegint
  implicit none
  integer,intent(in)                    :: nstate
  real(dp),intent(in)                   :: occupation(:,:)
+ integer,intent(in)                    :: nomega_in
  type(spectral_function),intent(out)   :: sf
 !=====
  integer                               :: ijspin,istate,jstate,itrans,jtrans
+ integer                               :: iomega
+ real(dp),parameter                    :: alpha=1.0_dp ! 0.50_dp
+ real(dp),parameter                    :: beta=1.0_dp ! 6.0_dp
 !=====
 
  if( nstate > SIZE( occupation(:,:) , DIM=1 ) ) then
@@ -252,6 +263,33 @@ subroutine init_spectral_function(nstate,occupation,sf)
    call issue_warning(msg)
  endif
 
+ !
+ ! Set the sampling points for Chi (quadrature)
+ sf%nomega_quad    = nomega_in
+
+ if( sf%nomega_quad > 0 ) then
+   allocate(sf%weight_quad(sf%nomega_quad))
+   allocate(sf%omega_quad(sf%nomega_quad))
+
+   if( sf%nomega_quad > 1 ) then
+     call coeffs_gausslegint(0.0_dp,1.0_dp,sf%omega_quad,sf%weight_quad,sf%nomega_quad)
+  
+     write(stdout,'(/,1x,a)') 'Numerical integration on a grid along the imaginary axis'
+     ! Variable change [0,1] -> [0,+\inf[
+     write(stdout,'(a)') '    #    Frequencies (eV)    Quadrature weights'
+     do iomega=1,sf%nomega_quad
+       sf%weight_quad(iomega) = sf%weight_quad(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha * (1.0_dp -  sf%omega_quad(iomega))**(-alpha-1.0_dp) * beta
+       sf%omega_quad(iomega)  =   1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) * ( 1.0_dp / (1.0_dp-sf%omega_quad(iomega))**alpha - 1.0_dp ) * beta
+       write(stdout,'(i5,2(2x,f14.6))') iomega,sf%omega_quad(iomega)*Ha_eV,sf%weight_quad(iomega)
+     enddo
+   else
+     ! Only one omega means static case
+     sf%weight_quad(1) = 1.0_dp
+     sf%omega_quad(1)  = 0.0_dp
+   endif
+ endif
+
+
 
 end subroutine init_spectral_function
 
@@ -334,9 +372,11 @@ subroutine destroy_spectral_function(sf)
  if(ALLOCATED(sf%residue_left)) then
    call clean_deallocate('Left residue',sf%residue_left)
  endif
- if(ALLOCATED(sf%w0)) then
-   call clean_deallocate('Static W',sf%w0)
+ if(ALLOCATED(sf%chi)) then
+   call clean_deallocate('Chi',sf%chi)
  endif
+ if(ALLOCATED(sf%weight_quad)) deallocate(sf%weight_quad)
+ if(ALLOCATED(sf%omega_quad))  deallocate(sf%omega_quad)
 
  write(stdout,'(/,a)') ' Spectral function destroyed'
 
@@ -510,7 +550,7 @@ subroutine read_spectral_function(sf,reading_status)
  sf%npole_reso = npole_read
 
  if( has_auxil_basis ) then
-   call allocate_spectral_function(nbf_local_iproc(rank_auxil),sf)
+   call allocate_spectral_function(nauxil_3center,sf)
  else
    call allocate_spectral_function(nprodbasis_read,sf)
  endif

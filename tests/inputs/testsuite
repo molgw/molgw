@@ -154,7 +154,7 @@ gKS HOMO energy           ,   -8.517953       , 1 , 1.0e-4
 gKS LUMO energy           ,   -3.400664       , 0 , 1.0e-4
 gKS LUMO energy           ,   -3.171443       , 1 , 1.0e-4
 Total Spin S**2           ,    0.7528         , 0 , 1.0e-3
-RPA energy                ,   -0.1402371135   , 0 , 1.0e-7
+RPA correlation energy    ,   -0.1402371135   , 0 , 1.0e-7
 Lowest neutral excitation ,    0.996562       , 0 , 1.0e-4
 GW HOMO energy            ,   -7.660110       , 0 , 1.0e-4
 GW HOMO energy            ,  -12.474309       , 1 , 1.0e-4
@@ -172,7 +172,7 @@ GW LUMO energy            ,     -1.357914      , 0 , 1.0e-4
 
 cdo_ecp_gw.in             , CdO- (ECP) within GW@PBE0 with level shifting
 SCF Total Energy          ,    -242.8403297283 , 0 , 1.0e-7
-RPA energy                ,      -0.9666447760 , 0 , 1.0e-7
+RPA correlation energy    ,      -0.9666447760 , 0 , 1.0e-7
 GW HOMO energy            ,      -1.787167     , 0 , 1.0e-4
 GW HOMO energy            ,      -1.350953     , 1 , 1.0e-4
 GW LUMO energy            ,       3.687303     , 0 , 1.0e-4
@@ -196,7 +196,7 @@ h2_pbe_gw.in              , PBE H2 molecule cc-pVDZ and G0W0 wo RI
 SCF Total Energy          ,     -1.0727602939  , 0 , 1.0e-7
 gKS HOMO energy           ,     -8.191536      , 0 , 1.0e-4
 gKS LUMO energy           ,     -2.674684      , 0 , 1.0e-4
-RPA energy                ,     -0.0838669374  , 0 , 1.0e-7
+RPA correlation energy    ,     -0.0838669374  , 0 , 1.0e-7
 Lowest neutral excitation ,      9.996355      , 0 , 1.0e-4
 Singles correction        ,     -0.0029125289  , 0 , 1.0e-7
 Total EXX Energy          ,     -1.0186704037  , 0 , 1.0e-7
@@ -306,20 +306,20 @@ polarizability trace      ,     13.358524       , 0 , 1.0e-4
 
 oh_m_1.in                 , GnWn (eigenvalue self-consistent) on OH- 1st iteration
 SCF Total Energy          ,    -75.7671834802   , 0 , 1.0e-7
-RPA energy                ,     -0.2924060323   , 0 , 1.0e-7
+RPA correlation energy    ,     -0.2924060323   , 0 , 1.0e-7
 Galitskii-Migdal formula  ,     -0.5031685208   , 0 , 1.0e-7
 GW HOMO energy            ,     -1.100134       , 0 , 1.0e-4
 GW LUMO energy            ,      5.328126       , 0 , 1.0e-4
 
 oh_m_2.in                 , GnWn (eigenvalue self-consistent) on OH- 2nd iteration , Restart
 Galitskii-Migdal formula  ,     -0.4816111091   , 0 , 1.0e-7
-RPA energy                ,     -0.2780353842   , 0 , 1.0e-7
+RPA correlation energy    ,     -0.2780353842   , 0 , 1.0e-7
 GW HOMO energy            ,     -1.208873       , 0 , 1.0e-4
 GW LUMO energy            ,      5.337010       , 0 , 1.0e-4
 
 oh_m_3.in                 , GnWn (eigenvalue self-consistent) on OH- 3rd iteration , Restart
 Galitskii-Migdal formula  ,     -0.4785659835   , 0 , 1.0e-7
-RPA energy                ,     -0.2760358773   , 0 , 1.0e-7
+RPA correlation energy    ,     -0.2760358773   , 0 , 1.0e-7
 GW HOMO energy            ,     -1.207707       , 0 , 1.0e-4
 GW LUMO energy            ,      5.336834       , 0 , 1.0e-4
 
@@ -349,7 +349,7 @@ SCF Total Energy          , -78.0413852386      , 0 , 1.0e-7
 
 lih_gwgamma.in            , LiH: GWGamma@PBE0 with non-auxiliary basis parallelization (=ortho paral)
 SCF Total Energy          ,    -8.0512581571    , 0 , 1.0e-7
-RPA energy                ,    -0.0854827210    , 0 , 1.0e-7
+RPA correlation energy    ,    -0.0854827210    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.426968        , 0 , 1.0e-4
 GWGamma HOMO energy       ,    -8.003938        , 0 , 1.0e-4
 
@@ -359,7 +359,7 @@ gKS HOMO energy           ,   -13.734359        , 0 , 1.0e-4
 gKS HOMO energy           ,   -13.734359        , 1 , 1.0e-4
 gKS LUMO energy           ,     0.899610        , 0 , 1.0e-4
 gKS LUMO energy           ,     0.899610        , 1 , 1.0e-4
-RPA energy                ,    -0.3765925757    , 0 , 1.0e-7
+RPA correlation energy    ,    -0.3765925757    , 0 , 1.0e-7
 GW HOMO energy            ,   -14.590159        , 0 , 1.0e-4
 GW HOMO energy            ,   -14.590159        , 1 , 1.0e-4
 GW LUMO energy            ,     4.439916        , 0 , 1.0e-4
@@ -405,4 +405,12 @@ Total force atom    1     ,      0.0000036520  , 0 , 1.0e-6
 Total force atom    2     ,     -0.0000036520  , 0 , 1.0e-6
 atom    1   H             ,      -0.692180     , 0 , 1.0e-3
 atom    2   H             ,       0.692180     , 0 , 1.0e-3
+
+h2o_pade.in               , GW calculation with Pade analaytic continuation
+SCF Total Energy          , -76.3799206260     , 0 , 1.0e-7
+RPA correlation energy    ,  -0.4083284532     , 0 , 1.0e-7
+RPA Total energy          , -76.4638070494     , 0 , 1.0e-7
+GW HOMO energy            , -12.137634         , 0 , 1.0e-4
+GW LUMO energy            ,   0.860260         , 0 , 1.0e-4
+
 

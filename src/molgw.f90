@@ -542,12 +542,11 @@ program molgw
  ! works for DFT, HF, and hybrid
  !
  if(calc_type%is_td .OR. calc_type%is_bse) then
-   call init_spectral_function(nstate,occupation,wpol)
+   call init_spectral_function(nstate,occupation,0,wpol)
    call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
    call destroy_spectral_function(wpol)
  endif
   
-
  !
  ! Self-energy calculation: PT2, GW, GWGamma, COHSEX
  !

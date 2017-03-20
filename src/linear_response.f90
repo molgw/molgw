@@ -119,7 +119,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  ! It is stored in object wpol_static
  !
  if( calc_type%is_bse ) then
-   call init_spectral_function(nstate,occupation,wpol_static)
+   call init_spectral_function(nstate,occupation,1,wpol_static)
    call read_spectral_function(wpol_static,reading_status)
 
    ! If a SCREENED_COULOMB file cannot be found,
@@ -286,7 +286,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  if(is_rpa) then
    write(stdout,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
    write(stdout,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
-   write(stdout,'(/,a,f16.10)') ' RPA energy (Ha): ',rpa_correlation
+   write(stdout,'(/,a,f16.10)') ' RPA correlation energy (Ha): ',rpa_correlation
  endif
 
  write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy (eV):',MINVAL(ABS(eigenvalue(1:nexc)))*Ha_eV

@@ -282,7 +282,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
    enddo
  endif
 
- write(stdout,'(a,/)') ' Basis set is ready and fit'
+ write(stdout,'(a,/)') ' Basis set is fit and ready'
 
 end subroutine init_basis_set
 

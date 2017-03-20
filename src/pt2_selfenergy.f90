@@ -204,7 +204,7 @@ subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c
  type(selfenergy_grid),intent(inout) :: se
  real(dp),intent(out)       :: emp2
 !=====
- type(spectral_function) :: vsqrtchi0vsqrt
+ type(spectral_function) :: chi0
  integer                 :: jstate,bstate,jbspin,t_jb
 !=====
 
@@ -219,31 +219,31 @@ subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c
  write(stdout,'(/,a)') ' Perform the one-ring self-energy calculation'
  write(stdout,*) 'with the perturbative approach'
 
- call init_spectral_function(nvirtual_G-1,occupation,vsqrtchi0vsqrt)
- call allocate_spectral_function(nauxil_3center,vsqrtchi0vsqrt)
+ call init_spectral_function(nvirtual_G-1,occupation,0,chi0)
+ call allocate_spectral_function(nauxil_3center,chi0)
  
  call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
 
 
- do t_jb=1,vsqrtchi0vsqrt%npole_reso
-   jstate = vsqrtchi0vsqrt%transition_table_apb(1,t_jb)
-   bstate = vsqrtchi0vsqrt%transition_table_apb(2,t_jb)
-   jbspin = vsqrtchi0vsqrt%transition_table_apb(3,t_jb)
+ do t_jb=1,chi0%npole_reso
+   jstate = chi0%transition_table_apb(1,t_jb)
+   bstate = chi0%transition_table_apb(2,t_jb)
+   jbspin = chi0%transition_table_apb(3,t_jb)
 
-   vsqrtchi0vsqrt%residue_left(:,t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin) * SQRT(spin_fact)
-   vsqrtchi0vsqrt%pole(t_jb)           = energy(bstate,jbspin) - energy(jstate,jbspin)
+   chi0%residue_left(:,t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin) * SQRT(spin_fact)
+   chi0%pole(t_jb)           = energy(bstate,jbspin) - energy(jstate,jbspin)
 
  end do
 
  call destroy_eri_3center_eigen()
 
 #ifdef HAVE_SCALAPACK
- call gw_selfenergy_scalapack(ONE_RING,nstate,basis,occupation,energy,c_matrix,vsqrtchi0vsqrt,se)
+ call gw_selfenergy_scalapack(ONE_RING,nstate,basis,occupation,energy,c_matrix,chi0,se)
 #else
- call gw_selfenergy(ONE_RING,nstate,basis,occupation,energy,c_matrix,vsqrtchi0vsqrt,se,emp2)
+ call gw_selfenergy(ONE_RING,nstate,basis,occupation,energy,c_matrix,chi0,se,emp2)
 #endif
  
- call destroy_spectral_function(vsqrtchi0vsqrt)
+ call destroy_spectral_function(chi0)
 
  call stop_clock(timing_mp2_self)
 
