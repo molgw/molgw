@@ -287,7 +287,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  if(is_rpa) then
    write(stdout,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
    write(stdout,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
-   write(stdout,'(/,a,f16.10)') ' RPA energy (Ha): ',rpa_correlation
+   write(stdout,'(/,a,f16.10)') ' RPA correlation energy (Ha): ',rpa_correlation
  endif
 
  write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy (eV):',MINVAL(ABS(eigenvalue(1:nexc)))*Ha_eV
@@ -1225,115 +1225,5 @@ subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,a_diag,wpol)
 
 end subroutine chi_to_sqrtvchisqrtv_auxil_spa
 
-#if 0
-!=========================================================================
-subroutine test_polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol)
- use m_definitions
- use m_timing
- use m_warning
- use m_memory
- use m_inputparam
- use m_mpi
- use m_scalapack
- use m_tools
- use m_cart_to_pure
- use m_block_diago
- use m_basis_set
- use m_spectral_function
- use m_eri_ao_mo
- use m_selfenergy_tools
- implicit none
-
- type(basis_set),intent(in)            :: basis,auxil_basis
- integer,intent(in)                    :: nstate
- real(dp),intent(in)                   :: occupation(nstate,nspin)
- real(dp),intent(in)                   :: energy(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(out)                  :: rpa_correlation
- type(spectral_function),intent(inout) :: wpol
-!=====
- integer              :: nomega
- real(dp),allocatable :: chi(:,:,:)
- real(dp),allocatable :: omega(:),weight(:),erpa_omega(:)
- integer              :: mlocal,nlocal
- integer              :: info,iomega
- integer              :: desc_chi(NDEL)
- integer              :: uf
- real(dp),parameter   :: alpha=1.0_dp ! 0.50_dp
- real(dp),parameter   :: beta=1.0_dp ! 6.0_dp
-!=====
-
- write(stdout,'(/,1x,a,/)') 'Calculation of RPA polarizability on a grid: SCALAPACK'
-
- open(newunit=uf,file='manual_imag_axis',status='old',action='read')
- read(uf,*) nomega
- close(uf)
-
- if( nomega < 1 ) call die('test_polarizability: manual_imag_axis file should provide a positive integral number of frequencies')
-
- allocate(omega(nomega))
- allocate(weight(nomega))
- allocate(erpa_omega(nomega))
- weight(:) = 1.0_dp / REAL(nomega,dp)
- omega(:)  = 0.0_dp
-
- call coeffs_gausslegint(0.0_dp,1.0_dp,omega,weight,nomega)
-
- ! Variable change [0,1] -> [0,+\inf[
- write(stdout,'(a)') '    #    Frequencies (Ha)    Quadrature weights'
- do iomega=1,nomega
-   weight(iomega) = weight(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha * (1.0_dp -  omega(iomega))**(-alpha-1.0_dp) * beta
-   omega(iomega)  =   1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) * ( 1.0_dp / (1.0_dp-omega(iomega))**alpha - 1.0_dp ) * beta
-   write(stdout,'(i5,2(2x,f14.6))') iomega,omega(iomega),weight(iomega)
- enddo
-
-
- if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
-
- wpol%nprodbasis = nauxil_3center
-
-
-#ifdef HAVE_SCALAPACK
-! mlocal = NUMROC(nauxil_2center,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
-! nlocal = NUMROC(nauxil_2center,NBLOCK_AUXIL,ipcol_auxil,first_col,npcol_auxil)
-! call DESCINIT(desc_chi,nauxil_2center,nauxil_2center,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,mlocal),info)
-
- mlocal = NUMROC(nauxil_2center,block_row,iprow_sd,first_row,nprow_sd)
- nlocal = NUMROC(nauxil_2center,block_col,ipcol_sd,first_col,npcol_sd)
- call DESCINIT(desc_chi,nauxil_2center,nauxil_2center,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mlocal),info)
-
-#else
- mlocal = nauxil_2center
- nlocal = nauxil_2center
-#endif
- call clean_allocate('Chi',chi,mlocal,nlocal,nomega)
-
- write(stdout,'(1x,a,i7,a,i7)') 'Matrix sizes   ',nauxil_2center,' x ',nauxil_2center
- write(stdout,'(1x,a,i7,a,i7)') 'Distributed in ',mlocal,' x ',nlocal
-
- call dynamical_polarizability_sca(nstate,occupation,energy,nomega,omega,wpol,desc_chi,mlocal,nlocal,chi,erpa_omega)
-
- write(stdout,'(/,1x,a,f18.10)') 'RPA correlation energy (Ha): ',SUM( erpa_omega(:) * weight(:) ) / (2.0_dp * pi)
-
- call destroy_eri_3center_eigen()
-
- !
- ! Self-energy
- !
-
- ! Set nsemin, nsemax ncore_G and nvirtual_G
- call selfenergy_set_state_range(nstate,occupation)
-
- if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_G+1,nvirtual_G-1,nsemin,nsemax)
-
- call gw_selfenergy_imag_sca(nstate,occupation,energy,nomega,omega,weight,wpol,desc_chi,mlocal,nlocal,chi)
-
- call destroy_eri_3center_eigen()
-
- deallocate(omega,weight,erpa_omega)
- call clean_deallocate('Chi',chi)
-
-
-end subroutine test_polarizability
-#endif
 
 !=========================================================================
