@@ -458,7 +458,7 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='nomega_imag'
 vl[i].family   ='post'
-vl[i].default  = 16
+vl[i].default  = 0
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets the number of frequencies used to perform the integral on the imaginary axis'
 

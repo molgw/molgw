@@ -3,6 +3,13 @@
 =========================================
 
 
+
+## What's new in version 1.D
+### Overview
+Simple bug fix with respect to previous version
+
+
+
 ## What's new in version 1.C
 
 ### Overview
