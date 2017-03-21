@@ -1018,6 +1018,17 @@ vl[i].default  ='2'
 vl[i].datatype ='characters'
 vl[i].comment  ='Set of n_hist for each propagator from the list error_prop_types for the p_matrix test in the real-time dynamics'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='n_iter'
+vl[i].family   ='io'
+vl[i].default  ='2'
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the number of iterations for the PC7 in the real-time dynamics'
+
+
+
 #============================================================================
 #            Fortran output: input variable namelist and their default value
 #============================================================================
