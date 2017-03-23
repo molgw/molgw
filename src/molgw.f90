@@ -522,6 +522,7 @@ program molgw
  if( calc_type%is_mp2 ) then
 
    if(has_auxil_basis) then
+     call mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,en%mp2)
      call mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,en%mp2)
    else
      call mp2_energy(nstate,basis,occupation,c_matrix,energy,en%mp2)
@@ -536,6 +537,28 @@ program molgw
    write(stdout,*)
 
  endif
+
+
+ !
+ ! final evaluation for MP3 total energy
+ !
+ if( calc_type%is_mp3 ) then
+   if(has_auxil_basis) then
+     call mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,en%mp3)
+   else
+     call die('MP3 energy without RI not implemented')
+   endif
+   write(stdout,'(a,2x,f19.10)') ' MP3 Energy       (Ha):',en%mp3
+   write(stdout,*) 
+
+   en%tot = en%tot + en%mp3
+
+   write(stdout,'(a,2x,f19.10)') ' MP3 Total Energy (Ha):',en%tot
+   write(stdout,'(a,2x,f19.10)') ' SE+MP3  Total En (Ha):',en%tot+en%se
+   write(stdout,*)
+
+ endif
+
 
  !
  ! Time Dependent calculations

@@ -125,6 +125,246 @@ subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
 end subroutine mp2_energy_ri
 
 
+!=========================================================================
+subroutine mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,emp3)
+ use m_definitions
+ use m_mpi
+ use m_cart_to_pure
+ use m_basis_set
+ use m_eri_ao_mo
+ use m_inputparam,only: nspin,spin_fact,ncoreg,nvirtualg,is_frozencore
+ implicit none
+
+ integer,intent(in)         :: nstate
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(out)       :: emp3
+!====
+ integer                    :: astate,bstate,cstate,dstate,istate,jstate,kstate,lstate
+ integer                    :: iaspin,jbspin,kcspin
+ integer                    :: cspin,dspin,kspin,lspin
+ real(dp)                   :: energy_denom
+ real(dp)                   :: tmp_iajb,tmp_ibja
+ real(dp)                   :: contrib1,contrib2,contrib3
+ real(dp)                   :: fact
+ real(dp)                   :: denom1,denom2,numer1,numer2
+ integer                    :: nocc(nspin)
+ integer                    :: ncore,nstate_mp3
+ real(dp)                   :: t_ijab_tilde,x_ijab,t_ijcd,t_klab,t_kjac,t_kiac,t_ikac
+!=====
+
+ call start_clock(timing_mp2_energy)
+
+ write(stdout,'(/,a)') ' RI-MP3 correlation calculation'
+
+ if( nspin > 1 ) call die('MP3 not implemented for unrestricted calculations')
+
+ ncore = ncoreg
+ if(is_frozencore) then
+   if( ncore == 0) ncore = atoms_core_states()
+ endif
+
+ call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore+1,nstate,ncore+1,nstate)
+
+ nstate_mp3 = MIN( nvirtualg-1, nstate )
+
+
+
+ emp3 = 0.0_dp
+ contrib1 = 0.0_dp
+ contrib2 = 0.0_dp
+ contrib3 = 0.0_dp
+
+
+ do iaspin=1,nspin
+   !
+   ! First, set up the list of occupied states
+   nocc(iaspin) = ncore
+   do istate=ncore+1,nstate
+     if( occupation(istate,iaspin) < completely_empty ) cycle
+     nocc(iaspin) = istate
+   enddo
+ enddo
+
+
+#if 0
+ do iaspin=1,nspin
+   do istate=ncore+1,nocc(iaspin)
+     do astate=nocc(iaspin)+1,nstate_mp3
+
+       do jbspin=1,nspin
+         do jstate=ncore+1,nocc(iaspin)
+           do bstate=nocc(iaspin)+1,nstate_mp3
+
+             denom1 = energy(istate,iaspin) + energy(jstate,jbspin) &
+                                   - energy(astate,iaspin) - energy(bstate,jbspin)
+             numer1 = eri_eigen_ri(astate,istate,iaspin,bstate,jstate,jbspin)
+             if( iaspin == jbspin ) numer1 = numer1 - eri_eigen_ri(astate,jstate,iaspin,bstate,istate,jbspin) / spin_fact
+
+             !
+             ! Contrib1 
+             cspin = iaspin
+             dspin = jbspin
+             do cstate=nocc(iaspin)+1,nstate_mp3
+               do dstate=nocc(iaspin)+1,nstate_mp3
+
+                 denom2 = energy(istate,iaspin) + energy(jstate,jbspin) &
+                                       - energy(cstate,iaspin) - energy(dstate,jbspin)
+                 numer2 = eri_eigen_ri(cstate,istate,iaspin,dstate,jstate,jbspin)
+                 if( cspin == dspin ) numer2 = numer2 - eri_eigen_ri(cstate,jstate,iaspin,dstate,istate,jbspin) / spin_fact
+
+                 contrib1 = contrib1 + 0.125_dp * numer1 / denom1 * numer2 / denom2 &
+                                      * eri_eigen_ri(astate,cstate,iaspin,bstate,dstate,jbspin)
+                 if( cspin == dspin ) &
+                   contrib1 = contrib1 - 0.125_dp * numer1 / denom1 * numer2 / denom2 &
+                                      * eri_eigen_ri(astate,dstate,iaspin,bstate,cstate,jbspin) / spin_fact 
+
+               enddo
+             enddo
+
+             !
+             ! Contrib2 
+             kspin = iaspin
+             lspin = jbspin
+             do kstate=ncore+1,nocc(iaspin)
+               do lstate=ncore+1,nocc(iaspin)
+
+                 denom2 = energy(kstate,iaspin) + energy(lstate,jbspin) &
+                                       - energy(astate,iaspin) - energy(bstate,jbspin)
+                 numer2 = eri_eigen_ri(astate,kstate,iaspin,bstate,lstate,jbspin)
+                 if( kspin == lspin ) numer2 = numer2 - eri_eigen_ri(astate,lstate,iaspin,bstate,kstate,jbspin) / spin_fact
+
+                 contrib2 = contrib2 + 0.125_dp * numer1 / denom1 * numer2 / denom2 &
+                                      * eri_eigen_ri(kstate,istate,iaspin,lstate,jstate,jbspin) 
+                 if( kspin == lspin ) &
+                   contrib2 = contrib2 - 0.125_dp * numer1 / denom1 * numer2 / denom2 &
+                                      * eri_eigen_ri(kstate,jstate,iaspin,lstate,istate,jbspin) / spin_fact 
+
+               enddo
+             enddo
+
+             !
+             ! Contrib3
+             do kcspin=1,nspin
+               do kstate=ncore+1,nocc(iaspin)
+                 do cstate=nocc(iaspin)+1,nstate_mp3
+
+                   denom2 = energy(kstate,iaspin) + energy(jstate,jbspin) &
+                                         - energy(cstate,iaspin) - energy(bstate,jbspin)
+                   numer2 = eri_eigen_ri(cstate,kstate,kcspin,bstate,jstate,jbspin)
+                   if( kcspin == jbspin ) numer2 = numer2 - eri_eigen_ri(cstate,jstate,kcspin,kstate,bstate,jbspin) / spin_fact
+
+                   contrib3 = contrib3 + numer1 / denom1 * numer2 / denom2 &
+                                        * eri_eigen_ri(astate,istate,iaspin,kstate,cstate,kcspin)
+                   if( iaspin == kcspin ) &
+                     contrib3 = contrib3 - numer1 / denom1 * numer2 / denom2 &
+                                            * eri_eigen_ri(astate,cstate,iaspin,kstate,istate,kcspin) / spin_fact
+
+
+                 enddo
+               enddo
+             enddo
+
+
+
+       enddo
+     enddo
+   enddo
+ enddo
+#else
+
+ ! From Helgaker's book
+ write(stdout,*) 'From Helgaker book'
+ iaspin=1
+ jbspin=1
+
+ do istate=ncore+1,nocc(iaspin)
+   do astate=nocc(iaspin)+1,nstate_mp3
+     do jstate=ncore+1,nocc(iaspin)
+       do bstate=nocc(iaspin)+1,nstate_mp3
+
+         t_ijab_tilde = - 2.0_dp * ( 2.0_dp * eri_eigen_ri(istate,astate,iaspin,jstate,bstate,jbspin)  &
+                                     - eri_eigen_ri(istate,bstate,iaspin,jstate,astate,jbspin) ) &
+                                       / ( energy(astate,iaspin) + energy(bstate,jbspin) - energy(istate,iaspin) - energy(jstate,jbspin) )
+
+         !FIXME: Commenting this is inconsistent with Helgaker however yields the correct numerical results
+         !if( istate == jstate .AND. astate == bstate ) t_ijab_tilde = t_ijab_tilde * 2.0_dp
+
+         x_ijab = 0.0_dp
+         !
+         ! Contrib1 
+         do cstate=nocc(iaspin)+1,nstate_mp3
+           do dstate=nocc(iaspin)+1,nstate_mp3
+
+             t_ijcd = - eri_eigen_ri(istate,cstate,iaspin,jstate,dstate,jbspin)  &
+                          / ( energy(cstate,iaspin) + energy(dstate,jbspin) - energy(istate,iaspin) - energy(jstate,jbspin) )
+
+             x_ijab = x_ijab + 0.5_dp * eri_eigen_ri(astate,cstate,iaspin,bstate,dstate,jbspin) * t_ijcd
+
+           enddo
+         enddo
+
+         !
+         ! Contrib2 
+         do kstate=ncore+1,nocc(iaspin)
+           do lstate=ncore+1,nocc(iaspin)
+
+             t_klab = - eri_eigen_ri(kstate,astate,iaspin,lstate,bstate,jbspin)  &
+                          / ( energy(astate,iaspin) + energy(bstate,jbspin) - energy(kstate,iaspin) - energy(lstate,jbspin) )
+
+             x_ijab = x_ijab + 0.5_dp * eri_eigen_ri(kstate,istate,iaspin,lstate,jstate,jbspin) * t_klab
+
+           enddo
+         enddo
+
+         !
+         ! Contrib3
+         do kstate=ncore+1,nocc(iaspin)
+           do cstate=nocc(iaspin)+1,nstate_mp3
+
+             t_ikac = - eri_eigen_ri(istate,astate,iaspin,kstate,cstate,jbspin)  &
+                          / ( energy(astate,iaspin) + energy(cstate,jbspin) - energy(istate,iaspin) - energy(kstate,jbspin) )
+
+             x_ijab = x_ijab + ( 2.0_dp * eri_eigen_ri(bstate,jstate,iaspin,kstate,cstate,jbspin) &
+                                  - eri_eigen_ri(bstate,cstate,iaspin,kstate,jstate,jbspin) ) * t_ikac
+
+
+             t_kjac = - eri_eigen_ri(kstate,astate,iaspin,jstate,cstate,jbspin)  &
+                          / ( energy(astate,iaspin) + energy(cstate,jbspin) - energy(kstate,iaspin) - energy(jstate,jbspin) )
+             x_ijab = x_ijab - eri_eigen_ri(bstate,cstate,iaspin,kstate,istate,jbspin) * t_kjac
+
+             t_kiac = - eri_eigen_ri(kstate,astate,iaspin,istate,cstate,jbspin)  &
+                          / ( energy(astate,iaspin) + energy(cstate,jbspin) - energy(kstate,iaspin) - energy(istate,jbspin) )
+             x_ijab = x_ijab - eri_eigen_ri(bstate,jstate,iaspin,kstate,cstate,jbspin) * t_kiac
+
+
+           enddo
+         enddo
+
+         contrib1 = contrib1 + t_ijab_tilde * x_ijab
+
+       enddo
+     enddo
+   enddo
+ enddo
+#endif
+
+
+
+ emp3 = contrib1 + contrib2 + contrib3
+! write(stdout,'(/,a)')       ' MP3 contributions'
+! write(stdout,'(a,f16.10)')   ' 2-ring diagram  :',contrib1
+! write(stdout,'(a,f16.10)')   ' SOX diagram     :',contrib2
+! write(stdout,'(a,f16.10)')   ' SOX diagram     :',contrib3
+! write(stdout,'(a,f16.10,/)') ' MP3 correlation :',emp3
+
+ call destroy_eri_3center_eigen()
+ call stop_clock(timing_mp2_energy)
+
+end subroutine mp3_energy_ri
+
+
 !==================================================================
 subroutine mp2_energy(nstate,basis,occupation,c_matrix,energy,emp2)
  use m_definitions
@@ -604,7 +844,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
    do icycle=1,ncycle
 
      bigm = icycle * neig
-     write(*,*) 'icycle bigm',icycle,bigm
+     write(stdout,*) 'icycle bigm',icycle,bigm
 
 
      atilde(1:bigm,1:bigm) = MATMUL( TRANSPOSE(bb(:,1:bigm)) , ab(:,1:bigm) )

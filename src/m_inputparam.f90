@@ -57,6 +57,7 @@ module m_inputparam
    logical            :: is_lr_mbpt
    logical            :: is_gw
    logical            :: is_mp2
+   logical            :: is_mp3
    logical            :: is_selfenergy
    logical            :: is_ci
    logical            :: is_bse,is_td
@@ -258,6 +259,9 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%is_lr_mbpt = .TRUE.
    case('MP2')
      calc_type%is_mp2   =.TRUE.
+   case('MP3')
+     calc_type%is_mp2   =.TRUE.
+     calc_type%is_mp3   =.TRUE.
    case('MP2_SELFENERGY','PT2')
      calc_type%selfenergy_approx = PT2
    case('ONE_RING','ONE-RING','ONERING')
