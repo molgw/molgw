@@ -2105,7 +2105,6 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
  real(dp),allocatable       :: dipole_cart(:,:,:)
  real(dp)                   :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
- integer :: unitfile,var_i
 
 ! call start_clock(timing_spectrum)
 
@@ -2163,17 +2162,6 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
    dipole(idir) = -SUM( dipole_basis(idir,:,:) * SUM( p_matrix(:,:,:) , DIM=3 ) )
  enddo
 
-!****INTERVENTIONS****
-!print *, "dipoe_basis WRITING"
-!open(newunit=unitfile, file='dipole_basis.dat')
-!do idir=1,3
-!   do var_i=1, basis%nbf
-!      write(unitfile,*) dipole_basis(idir,var_i,:)
-!   enddo
-!enddo
-!close(unitfile)
-!****INTERVENTIONS****
-
  deallocate(dipole_basis)
 
  do iatom=1,natom
@@ -2189,12 +2177,13 @@ end subroutine static_dipole
 subroutine static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole)
  use m_basis_set
  use m_atoms
+ use m_timing
  implicit none
 
  integer,intent(in)                 :: nstate
  type(basis_set),intent(in)         :: basis
- real(dp),intent(in)               :: occupation(nstate,nspin)
- complex(dp),intent(in)            :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ real(dp),intent(in)                :: occupation(nstate,nspin)
+ complex(dp),intent(in)             :: c_matrix_cmplx(basis%nbf,nstate,nspin)
  real(dp),intent(out)               :: dipole(3)
 !=====
  integer                            :: gt
@@ -2207,7 +2196,9 @@ subroutine static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole)
  real(dp),allocatable               :: dipole_cart(:,:,:)
  complex(dp)                        :: p_matrix_cmplx(basis%nbf,basis%nbf,nspin)
 !=====
- integer :: unitfile,var_i
+
+call start_clock(timing_tddft_dipole)
+
 
 ! call start_clock(timing_spectrum)
 
@@ -2271,15 +2262,38 @@ subroutine static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole)
    dipole(:) = dipole(:) + zatom(iatom) * x(:,iatom)
  enddo
 
-! write(stdout,'(1x,a,3(2x,f14.6))') 'Dipole (a.u.):  ',dipole(:)
-! write(stdout,'(1x,a,3(2x,f14.6))') 'Dipole (Debye): ',dipole(:) * au_debye
+call stop_clock(timing_tddft_dipole)
 
 end subroutine static_dipole_cmplx
 
+!=========================================================================
+subroutine static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
+ use m_basis_set
+ use m_atoms
+ use m_timing
+ implicit none
 
+!=====
+ type(basis_set),intent(in)  :: basis
+ real(dp),intent(in)         :: dipole_basis(basis%nbf,basis%nbf,3)
+ complex(dp),intent(in)      :: p_matrix_cmplx(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(out)        :: dipole(3)
+!=====
+ integer                     :: iatom,idir
+
+ ! Minus sign for electrons
+ do idir=1,3
+   dipole(idir) = real( -SUM( dipole_basis(:,:,idir) * SUM( p_matrix_cmplx(:,:,:) , DIM=3 ) ),dp)
+ enddo
+
+ do iatom=1,natom
+   dipole(:) = dipole(:) + zatom(iatom) * x(:,iatom)
+ enddo
+
+end subroutine static_dipole_fast_cmplx
 
 !=========================================================================
-subroutine calculate_dipole_basis_cmplx(basis,dipole_basis)
+subroutine calculate_dipole_basis(basis,dipole_basis)
  use m_basis_set
  use m_atoms
  implicit none
@@ -2343,7 +2357,8 @@ subroutine calculate_dipole_basis_cmplx(basis,dipole_basis)
    ibf      = ibf      + ni
    ibf_cart = ibf_cart + ni_cart
  enddo
-end subroutine calculate_dipole_basis_cmplx
+
+end subroutine calculate_dipole_basis
 
 
 
