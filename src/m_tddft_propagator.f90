@@ -404,6 +404,17 @@ subroutine tddft_time_loop(nstate,                           &
      call get_extrap_coefs_lagr(m_nods,x_pred,extrap_coefs,n_hist_cur)
    end if
 
+   if(pred_corr_cur=='PC2B' .OR. pred_corr_cur=='PC2C') then
+     ham_dim_cur=n_hist_cur
+     do iextr=1,n_hist_cur
+       m_nods(iextr)=(iextr-1.0_dp)*0.5_dp
+     end do
+     x_pred=(n_hist_cur-1.0_dp)*0.5_dp+0.25_dp
+     if(pred_corr_cur=='PC2B') call get_extrap_coefs_lagr(m_nods,x_pred,extrap_coefs,n_hist_cur)
+     if(pred_corr_cur=='PC2C') call get_extrap_coefs_aspc(extrap_coefs,n_hist_cur)
+   end if
+
+
    if(pred_corr_cur=='PC3' .OR. pred_corr_cur=='PC4') then
      ham_dim_cur=n_hist_cur+2
      do iextr=1,n_hist_cur
@@ -554,8 +565,19 @@ subroutine tddft_time_loop(nstate,                           &
 
    ! ///////////////////////////////////
 
-   if(pred_corr_cur=='PC2B') then 
-     hamiltonian_fock_cmplx=(0.0_dp,0.0_dp)
+   if(pred_corr_cur=='PC2B' .OR. pred_corr_cur=='PC2C') then 
+     h_small_cmplx=(0.0_dp,0.0_dp)
+     !--0--EXTRAPOLATE---- 
+     do iextr=1,n_hist_cur
+       h_small_cmplx=h_small_cmplx+extrap_coefs(iextr)*h_small_hist_cmplx(:,:,:,iextr)
+     end do
+     ! n_hist_cur-2  <---  n_hist_cur; n_hist_cur-3 <-- n_hist_cur-1
+     if(n_hist_cur > 2) then
+       do iextr=1,n_hist_cur-2
+         h_small_hist_cmplx(:,:,:,iextr)=h_small_hist_cmplx(:,:,:,iextr+2)
+       end do
+     end if
+
      !--1--PROPAGATE----| C(t)--U[H(1/4dt)]-->C(t+dt/2)
      call propagate_orth(nstate,basis,time_step_cur/2.0_dp,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)  
      !--2--CALCULATE- H(t+dt/4) 
@@ -574,7 +596,8 @@ subroutine tddft_time_loop(nstate,                           &
                                         hamiltonian_fock_cmplx,  &
                                         ref_)
        
-     !--3--PROPAGATION----| 
+    if (n_hist_cur > 1) h_small_hist_cmplx(:,:,:,n_hist_cur-1)=h_small_cmplx 
+    !--3--PROPAGATION----| 
      call propagate_orth(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)
 
      call setup_hamiltonian_fock_cmplx( basis,                   &
@@ -594,7 +617,7 @@ subroutine tddft_time_loop(nstate,                           &
        
      !--5--UPDATE----| 
      c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
-  
+     h_small_hist_cmplx(:,:,:,n_hist_cur)=h_small_cmplx
    end if
    ! ///////////////////////////////////
 
