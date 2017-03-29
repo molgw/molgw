@@ -11,6 +11,8 @@ CPPFLAGS=
 LIBTOOL=
 LAPACK=
 SCALAPACK=
+ELPA=
+ELPA_INCS=
 #LIBXC_ROOT= 
 #LIBINT_ROOT=
 
@@ -119,6 +121,7 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
                         $(SCALAPACK) $(LAPACK)   \
                         $(LIBXC) $(LIBXC _INCS)  \
                         $(LIBINT) $(LIBINT_INCS) \
+                        $(ELPA) $(ELPA_INCS) \
                         $(LINKS)
 
 molgw.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_lbfgs.f90 \
@@ -218,7 +221,7 @@ pt2_selfenergy.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_timing.f90 m_war
 	$(FC_W_OPTS) -c pt2_selfenergy.f90 $(LIBXC_INCS)
 
 pdbssolver1.o: pdbssolver1.f
-	$(FC_W_OPTS) -c pdbssolver1.f $(LIBXC_INCS)
+	$(FC_W_OPTS) -c pdbssolver1.f $(LIBXC_INCS) $(ELPA_INCS)
 
 boys_function.o: boys_function.f90
 	$(FC_W_OPTS) -c boys_function.f90 $(LIBXC_INCS)
@@ -287,7 +290,7 @@ m_inputparam.o: m_definitions.f90 m_mpi.f90  m_elements.f90 m_warning.f90 m_atom
 	$(FC_W_OPTS) -c m_inputparam.f90 $(LIBXC_INCS)
 
 m_block_diago.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_mpi.f90 m_tools.f90 m_scalapack.f90 m_block_diago.f90
-	$(FC_W_OPTS) -c m_block_diago.f90 $(LIBXC_INCS)
+	$(FC_W_OPTS) -c m_block_diago.f90 $(LIBXC_INCS) $(ELPA_INCS)
 
 m_atoms.o: m_definitions.f90 m_warning.f90 m_elements.f90 m_tools.f90 m_lbfgs.f90 m_atoms.f90
 	$(FC_W_OPTS) -c m_atoms.f90 $(LIBXC_INCS)

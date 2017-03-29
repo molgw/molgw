@@ -133,6 +133,10 @@ end subroutine diago_4blocks_chol
 !=========================================================================
 subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matrix,&
                                  bigomega,desc_x,m_x,n_x,xpy_matrix)
+#ifdef HAVE_ELPA
+ use elpa1
+ use elpa
+#endif
  implicit none
 
  integer,intent(in)     :: nmat,m_apb,n_apb,m_x,n_x
@@ -145,6 +149,10 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
  integer              :: info
  integer              :: ilocal,jlocal,iglobal,jglobal
  real(dp)             :: amb_diag_sqrt(nmat)
+#ifdef HAVE_ELPA
+ logical         :: success
+ integer         :: comm_row,comm_col
+#endif
 !=====
 
  call start_clock(timing_diago_h2p)
@@ -171,7 +179,14 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
 
 
  ! Diagonalization
+#ifdef HAVE_ELPA
+ info = get_elpa_communicators(comm_world,iprow_sd,ipcol_sd,comm_row,comm_col)
+ success = elpa_solve_evp_real(nmat,nmat,apb_matrix,m_apb,bigomega,xpy_matrix,m_x,desc_apb(MB_A),n_apb, &
+                               comm_row,comm_col,comm_world)
+ write(stdout,*) 'ELPA diago success:',success
+#else
  call diagonalize_sca(nmat,desc_apb,apb_matrix,bigomega,desc_x,xpy_matrix)
+#endif
 
  bigomega(:) = SQRT( bigomega(:) )
 

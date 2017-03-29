@@ -74,6 +74,8 @@ try:
   fout = open('tmp_prepare_source','r')
   for line in fout:
     sha = line.strip()
+  if 'fatal' in sha:
+    sha = []
 except:
   pass
 
