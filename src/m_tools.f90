@@ -911,4 +911,61 @@ end subroutine append_to_list_r
 
 
 !=========================================================================
+function pade(n,z,f,zz)
+ implicit none
+
+ integer,intent(in)     :: n
+ complex(dp),intent(in) :: zz
+ complex(dp),intent(in) :: z(n),f(n)
+ complex(dp) :: pade
+!=====
+ complex(dp) :: a(n)
+ complex(dp) :: Az(0:n), Bz(0:n)
+ integer     :: i
+!=====
+
+ call calculate_pade_a(a,n,z,f)
+
+ Az(0) = (0.0_dp,0.0_dp)
+ Az(1) = a(1)
+ Bz(0) = (1.0_dp,0.0_dp)
+ Bz(1) = (1.0_dp,0.0_dp)
+
+ do i=1,n-1
+   Az(i+1) = Az(i) + ( zz - z(i) ) * a(i+1) * Az(i-1)
+   Bz(i+1) = Bz(i) + ( zz - z(i) ) * a(i+1) * Bz(i-1)
+ end do
+
+ pade = Az(n) / Bz(n)
+
+end function pade
+
+
+!=========================================================================
+subroutine calculate_pade_a(a,n,z,f)
+ implicit none
+
+ integer,intent(in)      :: n
+ complex(dp),intent(in)  :: z(n),f(n)
+ complex(dp),intent(out) :: a(n)
+!=====
+ integer     :: i,j
+ complex(dp) :: g(n,n)
+!=====
+
+ g(1,1:n) = f(1:n)
+
+ do i=2,n
+   do j=i,n
+     g(i,j) = (g(i-1,i-1) - g(i-1,j)) / ( (z(j) - z(i-1)) * g(i-1,j) )
+   end do
+ end do
+ do i=1,n
+   a(i) = g(i,i)
+ end do
+
+
+end subroutine calculate_pade_a
+
+!=========================================================================
 end module m_tools

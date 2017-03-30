@@ -1173,9 +1173,9 @@ subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occu
 
    enddo
 
- endif
+   write(stdout,'(1x,a,f12.6)') 'Fermi level (eV): ', mu * Ha_eV
 
- write(stdout,'(1x,a,f12.6)') 'Fermi level (eV): ',mu * Ha_eV
+ endif
 
  !
  ! final check
@@ -2197,9 +2197,6 @@ subroutine static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole)
  complex(dp)                        :: p_matrix_cmplx(basis%nbf,basis%nbf,nspin)
 !=====
 
-call start_clock(timing_tddft_dipole)
-
-
 ! call start_clock(timing_spectrum)
 
 ! write(stdout,'(/,a)') ' Calculate the static dipole'
@@ -2261,8 +2258,6 @@ call start_clock(timing_tddft_dipole)
  do iatom=1,natom
    dipole(:) = dipole(:) + zatom(iatom) * x(:,iatom)
  enddo
-
-call stop_clock(timing_tddft_dipole)
 
 end subroutine static_dipole_cmplx
 

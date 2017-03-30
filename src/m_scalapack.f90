@@ -15,7 +15,7 @@
 module m_scalapack
  use m_definitions
  use m_warning
- use m_tools,only: diagonalize
+ use m_tools,only: diagonalize,invert
  use m_mpi
 #ifdef HAVE_MPI
  use mpi
@@ -36,13 +36,13 @@ module m_scalapack
  ! SCALAPACK variables
  !
  integer,parameter :: NDEL=9
- integer,parameter :: block_col = 32
  integer,parameter :: block_row = 32
+ integer,parameter :: block_col = 32
  integer,parameter :: first_row = 0
  integer,parameter :: first_col = 0
  
  ! Specific values for the MPI / SCALAPACK transposition
- integer,parameter :: MBLOCK_AUXIL = 1
+ integer,protected :: MBLOCK_AUXIL = 1
  integer,parameter :: NBLOCK_AUXIL = 1
 
  integer,protected :: nproc_sca = 1
@@ -149,13 +149,16 @@ end function NUMROC
 
 
 !=========================================================================
-subroutine DESCINIT(descdum,idum1,idum2,idum3,idum4,idum5,idum6,cntxtdum,idum7,info)
+subroutine DESCINIT(desc,mmat,nmat,idum3,idum4,idum5,idum6,cntxtdum,idum7,info)
  implicit none
- integer,intent(in)  :: descdum(NDEL)
- integer,intent(in)  :: idum1,idum2,idum3,idum4,idum5,idum6,idum7
- integer,intent(in)  :: cntxtdum
- integer,intent(out) :: info
+ integer,intent(inout) :: desc(NDEL)
+ integer,intent(in)    :: mmat,nmat,idum3,idum4,idum5,idum6,idum7
+ integer,intent(in)    :: cntxtdum
+ integer,intent(out)   :: info
 !=====
+
+ desc(M_A) = mmat
+ desc(N_A) = nmat
 
  info = 0
 
@@ -199,6 +202,22 @@ function INDXG2P(iglobal,idum1,idum2,idum3,idum4)
  INDXG2P = 0
 
 end function INDXG2P
+
+
+!=========================================================================
+subroutine BLACS_GRIDINFO(icntxt,nprow,npcol,iprow,ipcol)
+ implicit none
+ integer,intent(in)  :: icntxt
+ integer,intent(out) :: nprow,npcol,iprow,ipcol
+!===== 
+!===== 
+ nprow = 1
+ npcol = 1
+ iprow = 0
+ ipcol = 0
+
+end subroutine BLACS_GRIDINFO
+
 
 #endif
 
@@ -614,6 +633,61 @@ subroutine diagonalize_outofplace_sca(nglobal,desc,matrix,eigval,desc_eigvec,eig
 
 
 end subroutine diagonalize_outofplace_sca
+
+
+!=========================================================================
+! Diagonalize a distributed matrix with PDSYEVR
+!=========================================================================
+subroutine diagonalize_sca_pdsyevr(nglobal,desc,matrix,eigval,desc_eigvec,eigvec)
+ implicit none
+ integer,intent(in)     :: nglobal
+ integer,intent(in)     :: desc(NDEL)
+ integer,intent(in)     :: desc_eigvec(NDEL)
+ real(dp),intent(inout) :: matrix(:,:)
+ real(dp),intent(out)   :: eigval(nglobal)
+ real(dp),intent(out)   :: eigvec(:,:)
+!=====
+ integer              :: lwork,info
+ real(dp),allocatable :: work(:)
+ integer              :: neigval,neigvec
+ integer,allocatable  :: iwork(:)
+ integer              :: liwork
+!=====
+
+#ifdef HAVE_SCALAPACK
+
+ !
+ ! First call to get the dimension of the array work
+ lwork = -1
+ allocate(work(3))
+ liwork = -1
+ allocate(iwork(1))
+ call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+
+
+ !
+ ! Second call to actually perform the diago
+ lwork = NINT(work(1))
+
+ deallocate(work)
+ allocate(work(lwork))
+ liwork = iwork(1)
+ deallocate(iwork)
+ allocate(iwork(liwork))
+ call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+
+ deallocate(work)
+ deallocate(iwork)
+
+
+#else
+
+ call diagonalize(nglobal,matrix,eigval,eigvec)
+
+#endif
+
+
+end subroutine diagonalize_sca_pdsyevr
 
 
 !=========================================================================
@@ -1566,6 +1640,11 @@ subroutine invert_sca(desc,matrix,matrix_inv)
 
  deallocate(ipiv)
  deallocate(work,iwork)
+#else
+
+ n = SIZE( matrix , DIM=1 )
+ call invert(n,matrix,matrix_inv)
+
 #endif
 
 end subroutine invert_sca
@@ -1778,11 +1857,13 @@ subroutine init_scalapack_other(nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
  enddo
  call BLACS_GRIDMAP(cntxt_auxil,usermap,nproc_auxil,nproc_auxil,1)
  deallocate(usermap)
+#endif
 
  call BLACS_GRIDINFO(cntxt_auxil,nprow_auxil,npcol_auxil,iprow_auxil,ipcol_auxil)
  call xmax_ortho(nprow_auxil)
  call xmax_ortho(npcol_auxil)
-#endif
+ call xmax_ortho(iprow_auxil)
+ call xmax_ortho(ipcol_auxil)
 
 
 #ifdef DEBUG
@@ -2091,7 +2172,7 @@ function rowindex_local_to_global_descriptor(desc,ilocal)
 
 #ifdef HAVE_SCALAPACK
  call BLACS_GRIDINFO(desc(CTXT_A),nprow,npcol,iprow,ipcol)
- rowindex_local_to_global_descriptor = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
+ rowindex_local_to_global_descriptor = INDXL2G(ilocal,desc(MB_A),iprow,desc(RSRC_A),nprow)
 #else
  rowindex_local_to_global_descriptor = ilocal
 #endif
@@ -2159,12 +2240,33 @@ function colindex_local_to_global_descriptor(desc,ilocal)
 
 #ifdef HAVE_SCALAPACK
  call BLACS_GRIDINFO(desc(CTXT_A),nprow,npcol,iprow,ipcol)
- colindex_local_to_global_descriptor = INDXL2G(ilocal,block_col,ipcol,first_col,npcol)
+ colindex_local_to_global_descriptor = INDXL2G(ilocal,desc(NB_A),ipcol,desc(CSRC_A),npcol)
 #else
  colindex_local_to_global_descriptor = ilocal
 #endif
 
 end function colindex_local_to_global_descriptor
+
+
+!=========================================================================
+subroutine set_auxil_block_size(block_size_max)
+ implicit none
+ integer,intent(in) :: block_size_max
+!=====
+!=====
+
+ if( block_size_max < 1 ) then
+   write(stdout,*) 'Too many processors used for too few auxiliary basis functions'
+   call die('set_auxil_block_size: reduce the number of processors')
+ endif
+
+ MBLOCK_AUXIL = 2**( FLOOR( LOG(REAL(block_size_max,dp)) / LOG( 2.0_dp ) ) )
+
+ MBLOCK_AUXIL = MIN(MBLOCK_AUXIL,block_row)
+
+ write(stdout,'(/1x,a,i4)') 'SCALAPACK block size for auxiliary basis: ',MBLOCK_AUXIL
+
+end subroutine set_auxil_block_size
 
 
 !=========================================================================

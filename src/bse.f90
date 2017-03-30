@@ -799,7 +799,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
 
  nmat = desc_apb(M_A)
  ! Is it an exchange or a screened exchange calculation
- is_bse = ALLOCATED(wpol_static%w0) .OR. ALLOCATED(wpol_static%residue_left)
+ is_bse = ALLOCATED(wpol_static%chi) .OR. ALLOCATED(wpol_static%residue_left)
 
 
  !
@@ -825,10 +825,10 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
   
   
      !
-     ! Test if w0 is already available or if we need to calculate it first
-     if( ALLOCATED(wpol_static%w0) ) then
+     ! Test if chi is already available or if we need to calculate it first
+     if( ALLOCATED(wpol_static%chi) ) then
   
-       vsqrt_chi_vsqrt(:,:) = wpol_static%w0(:,:)
+       vsqrt_chi_vsqrt(:,:) = wpol_static%chi(:,:,1)
   
      else if( ALLOCATED(wpol_static%residue_left) ) then
 
@@ -859,8 +859,8 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
    do iaspin=1,nspin
   
      !
-     ! Test if w0 is already available or if we need to calculate it first
-     if( ALLOCATED(wpol_static%w0) ) then
+     ! Test if chi is already available or if we need to calculate it first
+     if( ALLOCATED(wpol_static%chi) ) then
   
        allocate(wp0_i(ncore_W+1:nvirtual_W-1,jstate_min:jstate_max))
        allocate(w0_local(nauxil_3center))
@@ -869,7 +869,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
   
          do jbf_auxil=1,nauxil_3center
            jbf_auxil_global = ibf_auxil_g(jbf_auxil)
-           w0_local(jbf_auxil) = wpol_static%w0(ibf_auxil_global,jbf_auxil_global)
+           w0_local(jbf_auxil) = wpol_static%chi(ibf_auxil_global,jbf_auxil_global,1)
          enddo
   
          do jstate=jstate_min,jstate_max

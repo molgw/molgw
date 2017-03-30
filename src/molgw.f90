@@ -547,17 +547,38 @@ program molgw
 
  endif
 
+
+ !
+ ! final evaluation for MP3 total energy
+ !
+ if( calc_type%is_mp3 ) then
+   if(has_auxil_basis) then
+     call mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,en%mp3)
+   else
+     call die('MP3 energy without RI not implemented')
+   endif
+   write(stdout,'(a,2x,f19.10)') ' MP3 Energy       (Ha):',en%mp3
+   write(stdout,*) 
+
+   en%tot = en%tot + en%mp3
+
+   write(stdout,'(a,2x,f19.10)') ' MP3 Total Energy (Ha):',en%tot
+   write(stdout,'(a,2x,f19.10)') ' SE+MP3  Total En (Ha):',en%tot+en%se
+   write(stdout,*)
+
+ endif
+
+
  !
  ! Time Dependent calculations
  ! works for DFT, HF, and hybrid
  !
  if(calc_type%is_td .OR. calc_type%is_bse) then
-   call init_spectral_function(nstate,occupation,wpol)
+   call init_spectral_function(nstate,occupation,0,wpol)
    call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
    call destroy_spectral_function(wpol)
  endif
   
-
  !
  ! Self-energy calculation: PT2, GW, GWGamma, COHSEX
  !

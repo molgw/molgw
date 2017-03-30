@@ -18,7 +18,6 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  use m_inputparam
  use m_mpi
  use m_scalapack
- use m_tools
  use m_cart_to_pure
  use m_block_diago
  use m_basis_set
@@ -58,9 +57,9 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
 
  write(stdout,'(/,a)') ' Calculating the polarizability'
  if(is_triplet) then
-   write(stdout,'(a)') ' Triplet state'
+   write(stdout,'(a)') ' Triplet final state'
  else
-   write(stdout,'(a)') ' Singlet state'
+   write(stdout,'(a)') ' Singlet final state'
  endif
 
  if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1)
@@ -120,7 +119,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  ! It is stored in object wpol_static
  !
  if( calc_type%is_bse ) then
-   call init_spectral_function(nstate,occupation,wpol_static)
+   call init_spectral_function(nstate,occupation,1,wpol_static)
    call read_spectral_function(wpol_static,reading_status)
 
    ! If a SCREENED_COULOMB file cannot be found,
@@ -287,7 +286,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  if(is_rpa) then
    write(stdout,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
    write(stdout,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
-   write(stdout,'(/,a,f16.10)') ' RPA energy (Ha): ',rpa_correlation
+   write(stdout,'(/,a,f16.10)') ' RPA correlation energy (Ha): ',rpa_correlation
  endif
 
  write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy (eV):',MINVAL(ABS(eigenvalue(1:nexc)))*Ha_eV
@@ -358,12 +357,10 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  use m_memory
  use m_mpi
  use m_scalapack
- use m_tools
  use m_inputparam
  use m_basis_set
  use m_dft_grid
  use m_spectral_function
- use m_atoms
  implicit none
 
  integer,intent(in)                 :: nstate,m_x,n_x
@@ -694,13 +691,11 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
  use m_memory
  use m_mpi
  use m_scalapack
- use m_tools
  use m_cart_to_pure
  use m_inputparam
  use m_basis_set
  use m_dft_grid
  use m_spectral_function
- use m_atoms
  implicit none
 
  integer,intent(in)                 :: nstate,m_x,n_x
@@ -1063,7 +1058,6 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,w
  use m_warning
  use m_scalapack
  use m_basis_set
- use m_eri
  use m_eri_ao_mo
  use m_spectral_function
  implicit none

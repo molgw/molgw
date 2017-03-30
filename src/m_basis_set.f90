@@ -11,7 +11,6 @@ module m_basis_set
  use m_definitions
  use m_warning
  use m_mpi
- use m_timing
  use m_elements
  use m_tools, only: orbital_momentum_name
  use m_atoms
@@ -283,7 +282,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
    enddo
  endif
 
- write(stdout,'(a,/)') ' Basis set is ready and fit'
+ write(stdout,'(a,/)') ' Basis set is fit and ready'
 
 end subroutine init_basis_set
 

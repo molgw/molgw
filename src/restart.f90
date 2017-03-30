@@ -11,6 +11,7 @@
 !=========================================================================
 subroutine write_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
  use m_definitions
+ use m_timing
  use m_mpi
  use m_inputparam
  use m_atoms

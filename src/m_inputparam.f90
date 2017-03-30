@@ -40,7 +40,6 @@ module m_inputparam
  integer,parameter :: TUNED_COHSEX = 215
  integer,parameter :: G0W0_IOMEGA  = 216
  integer,parameter :: G0W0GAMMA0   = 217
- integer,parameter :: GWTILDE      = 218
  integer,parameter :: G0W0SOX0     = 219
  integer,parameter :: PT2          = 220
  integer,parameter :: ONE_RING     = 221
@@ -59,6 +58,7 @@ module m_inputparam
  logical            :: is_lr_mbpt
  logical            :: is_gw
  logical            :: is_mp2
+ logical            :: is_mp3
  logical            :: is_selfenergy
  logical            :: is_ci
  logical            :: is_bse,is_td
@@ -132,6 +132,7 @@ module m_inputparam
  ! Having a larger ieta value smoothen the oscillation far from the HOMO-LUMO gap
  complex(dp),protected            :: ieta
 
+ integer,protected                :: nomega_imag
  integer,protected                :: nomega_sigma
  real(dp),protected               :: step_sigma
  real(dp),protected               :: level_shifting_energy
@@ -199,6 +200,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%is_lr_mbpt          = .FALSE.
  calc_type%is_gw               = .FALSE.
  calc_type%is_mp2              = .FALSE.
+ calc_type%is_mp3              = .FALSE.
  calc_type%is_ci               = .FALSE.
  calc_type%is_bse              = .FALSE.
  calc_type%is_td               = .FALSE.
@@ -254,10 +256,8 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%selfenergy_approx = COHSEX_DEVEL
    case('G0W0_IOMEGA')
      calc_type%is_gw    =.TRUE.
-     calc_type%selfenergy_approx = G0W0_IOMEGA
-   case('GWTILDE')
-     calc_type%is_gw    =.TRUE.
-     calc_type%selfenergy_approx = GWTILDE
+     calc_type%selfenergy_approx    = G0W0_IOMEGA
+     calc_type%selfenergy_technique = imaginary_axis
    case('G0W0SOX0')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0SOX0
@@ -278,6 +278,9 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%is_lr_mbpt = .TRUE.
    case('MP2')
      calc_type%is_mp2   =.TRUE.
+   case('MP3')
+     calc_type%is_mp2   =.TRUE.
+     calc_type%is_mp3   =.TRUE.
    case('MP2_SELFENERGY','PT2')
      calc_type%selfenergy_approx = PT2
    case('ONE_RING','ONE-RING','ONERING')

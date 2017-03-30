@@ -18,7 +18,8 @@ subroutine header()
  implicit none
 
 #ifdef _OPENMP
- integer,external :: OMP_get_max_threads
+ integer,external  :: OMP_get_max_threads
+ character(len=64) :: msg
 #endif
  character(len=40)   :: git_sha
  integer             :: values(8) 
@@ -709,14 +710,15 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
  integer                    :: nx
  integer                    :: ny
  integer                    :: nz
- real(dp),parameter         :: length=4.0_dp
+ real(dp),parameter         :: length=3.499470_dp
  integer                    :: ibf
  integer                    :: istate1,istate2,istate,ispin
  real(dp)                   :: rr(3)
  real(dp),allocatable       :: phi(:,:)
  real(dp)                   :: u(3),a(3)
  logical                    :: file_exists
- real(dp)                   :: xxmin,xxmax,ymin,ymax,zmin,zmax
+ real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
+ real(dp)                   :: dx,dy,dz
  real(dp)                   :: basis_function_r(basis%nbf)
  integer                    :: ix,iy,iz,iatom
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
@@ -749,12 +751,21 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
  allocate(phi(istate1:istate2,nspin))
  write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
 
- xxmin = MINVAL( x(1,:) ) - length
- xxmax = MAXVAL( x(1,:) ) + length
+ xmin = MINVAL( x(1,:) ) - length
+ xmax = MAXVAL( x(1,:) ) + length
  ymin = MINVAL( x(2,:) ) - length
  ymax = MAXVAL( x(2,:) ) + length
  zmin = MINVAL( x(3,:) ) - length
  zmax = MAXVAL( x(3,:) ) + length
+ dx = (xmax-xmin)/REAL(nx,dp)
+ dy = (ymax-ymin)/REAL(ny,dp)
+ dz = (zmax-zmin)/REAL(nz,dp)
+! xmin = -15.001591d0
+! ymin = -15.001591d0
+! zmin = -17.037892d0
+! dx = 0.262502_dp
+! dy = 0.262502_dp
+! dz = 0.262502_dp
 
  allocate(ocubefile(istate1:istate2,nspin))
 
@@ -764,10 +775,10 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
      open(newunit=ocubefile(istate,ispin),file=file_name)
      write(ocubefile(istate,ispin),'(a)') 'cube file generated from MOLGW'
      write(ocubefile(istate,ispin),'(a,i4)') 'wavefunction ',istate1
-     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') natom,xxmin,ymin,zmin
-     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') nx,(xxmax-xxmin)/REAL(nx,dp),0.,0.
-     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') ny,0.,(ymax-ymin)/REAL(ny,dp),0.
-     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') nz,0.,0.,(zmax-zmin)/REAL(nz,dp)
+     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin,zmin
+     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') nx,dx,0.,0.
+     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') ny,0.,dy,0.
+     write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') nz,0.,0.,dz
      do iatom=1,natom
        write(ocubefile(istate,ispin),'(i6,4(2x,f12.6))') basis_element(iatom),0.0,x(:,iatom)
      enddo
@@ -776,16 +787,16 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
 
  !
  ! check whether istate1:istate2 spans all the occupied states
- if( istate1==1 .AND. ALL( occupation(istate2+1,:) < completely_empty ) ) then
+ if( ALL( occupation(istate2+1,:) < completely_empty ) ) then
    do ispin=1,nspin
      write(file_name,'(a,i1,a)') 'rho_',ispin,'.cube'
      open(newunit=ocuberho(ispin),file=file_name)
      write(ocuberho(ispin),'(a)') 'cube file generated from MOLGW'
      write(ocuberho(ispin),'(a,i4)') 'density for spin ',ispin
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xxmin,ymin,zmin
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,(xxmax-xxmin)/REAL(nx,dp),0.,0.
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,(ymax-ymin)/REAL(ny,dp),0.
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') nz,0.,0.,(zmax-zmin)/REAL(nz,dp)
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin,zmin
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,dx,0.,0.
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,dy,0.
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') nz,0.,0.,dz
      do iatom=1,natom
        write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,x(:,iatom)
      enddo
@@ -793,11 +804,11 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
  endif
 
  do ix=1,nx
-   rr(1) = ( xxmin + (ix-1)*(xxmax-xxmin)/REAL(nx,dp) ) 
+   rr(1) = xmin + (ix-1)*dx
    do iy=1,ny
-     rr(2) = ( ymin + (iy-1)*(ymax-ymin)/REAL(ny,dp) ) 
+     rr(2) = ymin + (iy-1)*dy
      do iz=1,nz
-       rr(3) = ( zmin + (iz-1)*(zmax-zmin)/REAL(nz,dp) ) 
+       rr(3) = zmin + (iz-1)*dz
 
 
        phi(:,:) = 0.0_dp
@@ -833,9 +844,9 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
 
        !
        ! check whether istate1:istate2 spans all the occupied states
-       if( istate1==1 .AND. ALL( occupation(istate2+1,:) < completely_empty ) ) then
+       if( ALL( occupation(istate2+1,:) < completely_empty ) ) then
          do ispin=1,nspin
-           write(ocuberho(ispin),'(50(e16.8,2x))') SUM( phi(:,ispin)**2 * occupation(istate1:istate2,ispin) ) * spin_fact
+           write(ocuberho(ispin),'(50(e16.8,2x))') SUM( phi(:,ispin)**2 * occupation(istate1:istate2,ispin) )
          enddo
        endif
 
@@ -852,10 +863,11 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
 
  deallocate(phi)
 
- do istate=istate1,istate2
-   do ispin=1,nspin
+ do ispin=1,nspin
+   do istate=istate1,istate2
      close(ocubefile(istate,ispin))
    enddo
+   close(ocuberho(ispin))
  enddo
 
 end subroutine plot_cube_wfn

@@ -47,9 +47,7 @@ end subroutine setup_atomic_density
 subroutine calc_density_pmatrix(nspin,basis,p_matrix,basis_function_r,rhor)
  use m_definitions
  use m_mpi
- use m_timing
  use m_basis_set
-! use m_dft_grid,only: bf_rad2
  implicit none
  integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
@@ -82,7 +80,6 @@ end subroutine calc_density_pmatrix
 subroutine calc_density_r(nspin,nbf,nstate,occupation,c_matrix,basis_function_r,rhor)
  use m_definitions
  use m_mpi
- use m_timing
  use m_basis_set
  implicit none
 
@@ -160,7 +157,6 @@ end subroutine calc_density_r_cmplx
 subroutine calc_density_gradr_pmatrix(nspin,nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
  use m_definitions
  use m_mpi
- use m_timing
  implicit none
  integer,intent(in)   :: nspin,nbf
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
@@ -189,7 +185,6 @@ end subroutine calc_density_gradr_pmatrix
 subroutine calc_density_gradr(nspin,nbf,nstate,occupation,c_matrix,basis_function_r,basis_function_gradr,grad_rhor)
  use m_definitions
  use m_mpi
- use m_timing
  use m_basis_set
  implicit none
  integer,intent(in)         :: nspin,nbf,nstate
@@ -268,7 +263,6 @@ subroutine calc_density_gradr_laplr(nspin,nbf,p_matrix,basis_function_r,basis_fu
  grad_rhor,tau,lapl_rhor)
  use m_definitions
  use m_mpi
- use m_timing
  implicit none
  integer,intent(in)   :: nspin,nbf
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)

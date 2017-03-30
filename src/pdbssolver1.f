@@ -13,6 +13,13 @@
      $                        LAMBDA, X1, IX, JX, DESCX, X2, WORK,
      $                        LWORK, IWORK, LIWORK, INFO )
 *
+#ifdef HAVE_MPI
+      USE MPI,only: MPI_COMM_WORLD
+#endif
+#ifdef HAVE_ELPA
+      USE ELPA1
+      USE ELPA
+#endif
       IMPLICIT NONE
 *
 *     .. Scalar Arguments ..
@@ -268,6 +275,10 @@
       INTEGER,ALLOCATABLE ::         ICLUSTR(:)
       DOUBLE PRECISION,ALLOCATABLE :: GAP(:)
 #endif
+#ifdef HAVE_ELPA
+      LOGICAL         :: SUCCESS
+      INTEGER         :: COMM_ROW,COMM_COL
+#endif
 *     ..
 *     .. Intrinsic Functions ..
       INTRINSIC          DBLE, DSQRT
@@ -408,6 +419,7 @@
       T_DIAG = MPI_WTIME()
 !      CALL PDSYEV( 'V', 'L', N, K, IK, JK, DESCK, LAMBDA, X1,
 !     $     IX, JX, DESCX, WORK( INDWORK ), LLWORK, ITMP )
+#ifndef HAVE_ELPA
 #ifdef SELECT_PDSYEVX
          ALLOCATE(ICLUSTR(2*NPROCS))
          ALLOCATE(GAP(NPROCS))
@@ -421,8 +433,19 @@
       CALL PDSYEVR( 'V', 'A', 'L', N, K, IK, JK, DESCK, ZERO, ZERO,
      $     1, N, DIMV, NZ, LAMBDA, X1, IX, JX, DESCX,
      $     WORK( INDWORK ), LLWORK, IWORK, LIWORK, ITMP )
-      T_DIAG = MPI_WTIME() - T_DIAG
 #endif
+
+#else
+      ITMP = GET_ELPA_COMMUNICATORS(MPI_COMM_WORLD,MYROW,MYCOL,
+     $                              COMM_ROW,COMM_COL)
+      SUCCESS = ELPA_SOLVE_EVP_REAL(N, N, K, DESCK(LLD_), LAMBDA,
+     $                  X1, DESCX(LLD_),
+     $                  DESCK(MB_), MCOLS,
+     $                  COMM_ROW, COMM_COL, MPI_COMM_WORLD)
+      ITMP = -1
+      IF (SUCCESS) ITMP = 0
+#endif
+      T_DIAG = MPI_WTIME() - T_DIAG
 *      IF ( MYROW+MYCOL .EQ. 0 )
 *     $   WRITE( *, * ) 't_diag = ', T_DIAG, ';'
       IF ( ITMP .NE. 0 ) THEN

@@ -9,9 +9,10 @@
 subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
  use m_definitions
  use m_mpi
+ use m_mpi_ortho
  use m_timing 
  use m_inputparam
- use m_warning,only: issue_warning,msg
+ use m_warning
  use m_basis_set
  use m_spectral_function
  use m_eri_ao_mo
@@ -199,11 +200,11 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
            vcoul1 = eri_eigen_ri(mstate,istate,ispin,bstate,kstate,ispin)   &
                    +DOT_PRODUCT( eri_3center_eigen(:,mstate,istate,ispin) , &
-                                 MATMUL( wpol%w0(:,:) , eri_3center_eigen(:,bstate,kstate,ispin) ) )
+                                 MATMUL( wpol%chi(:,:,1) , eri_3center_eigen(:,bstate,kstate,ispin) ) )
 !FBFB           vcoul2 = eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin)
            vcoul2 = eri_eigen_ri(istate,bstate,ispin,kstate,mstate,ispin)   &
                    +DOT_PRODUCT( eri_3center_eigen(:,istate,bstate,ispin) , &
-                                 MATMUL( wpol%w0(:,:) , eri_3center_eigen(:,kstate,mstate,ispin) ) )
+                                 MATMUL( wpol%chi(:,:,1) , eri_3center_eigen(:,kstate,mstate,ispin) ) )
            !
            ! calculate only the diagonal !
            do iomega=-se%nomega,se%nomega
@@ -230,11 +231,11 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
            vcoul1 = eri_eigen_ri(mstate,astate,ispin,jstate,cstate,ispin)   &
                    +DOT_PRODUCT( eri_3center_eigen(:,mstate,astate,ispin) , &
-                                 MATMUL( wpol%w0(:,:) , eri_3center_eigen(:,jstate,cstate,ispin) ) )
+                                 MATMUL( wpol%chi(:,:,1) , eri_3center_eigen(:,jstate,cstate,ispin) ) )
 !FBFB           vcoul2 = eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin)
            vcoul2 = eri_eigen_ri(astate,jstate,ispin,cstate,mstate,ispin)   &
                    +DOT_PRODUCT( eri_3center_eigen(:,jstate,astate,ispin) , &
-                                 MATMUL( wpol%w0(:,:) , eri_3center_eigen(:,mstate,cstate,ispin) ) )
+                                 MATMUL( wpol%chi(:,:,1) , eri_3center_eigen(:,mstate,cstate,ispin) ) )
            !
            ! calculate only the diagonal !
            do iomega=-se%nomega,se%nomega
@@ -437,9 +438,9 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
 
 ! if( print_sigma_) then
-!   call write_selfenergy_omega('selfenergy_sox'    ,nstate,energy,exchange_m_vxc_diag,sigma_sox)
-!   call write_selfenergy_omega('selfenergy_gamma'  ,nstate,energy,exchange_m_vxc_diag,sigma_gamma)
-!   call write_selfenergy_omega('selfenergy_gwgamma',nstate,energy,exchange_m_vxc_diag,sigma)
+!   call write_selfenergy_omega('selfenergy_sox'    ,nstate,energy,exchange_m_vxc_diag,energy,sigma_sox)
+!   call write_selfenergy_omega('selfenergy_gamma'  ,nstate,energy,exchange_m_vxc_diag,energy,sigma_gamma)
+!   call write_selfenergy_omega('selfenergy_gwgamma',nstate,energy,exchange_m_vxc_diag,energy,sigma)
 ! endif
  
 
