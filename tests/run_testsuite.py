@@ -60,6 +60,9 @@ def check_output(out,testinfo):
     if 'one CPU only' in line:
       print('Test not functional in parallel => skip it')
       return
+    if 'Need to compile MOLGW with HAVE_LIBINT_ONEBODY' in line:
+      print('Test not functional without gradients => skip it')
+      return
   #
   # Second check if there is a memory leak
   #

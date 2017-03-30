@@ -306,25 +306,11 @@ subroutine setup_shell_index(basis)
 
  type(basis_set),intent(in)   :: basis
 !=====
- integer :: ibf,jbf,kbf
- integer :: ishell
+ integer :: ibf
 !=====
 
-
- !
- ! Set up the correspondence between basis function and shells (the inverse of
- ! the previous table more or less)
- !
  allocate(shell_bf(basis%nbf))
- ibf=1
- jbf=1
- do while (ibf<=basis%nbf_cart)
-   kbf = jbf + number_basis_function_am( basis%gaussian_type , basis%bf(ibf)%am ) - 1
-   shell_bf(jbf:kbf) = basis%bf(ibf)%shell_index
-   jbf = kbf + 1
-   ibf = ibf + number_basis_function_am( 'CART' , basis%bf(ibf)%am )
- enddo
-
+ shell_bf(:) = basis%bff(:)%shell_index
 
 end subroutine setup_shell_index
 

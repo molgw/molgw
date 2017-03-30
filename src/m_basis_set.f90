@@ -35,6 +35,7 @@ module m_basis_set
  end type
 
  type shell_type
+   integer              :: ishell
    integer              :: am
    integer              :: ng
    real(dp),allocatable :: alpha(:)
@@ -98,7 +99,6 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  basis%nbf_cart      = 0
  basis%nshell        = 0
  basis%gaussian_type = gaussian_type
- basis%ammax         = -1
 
  if(TRIM(basis_name(1))=='none') return
 
@@ -187,15 +187,16 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
      !
      ishell = ishell + 1
 
-     basis%shell(ishell)%am    = am_read
-     basis%shell(ishell)%iatom = iatom
-     basis%shell(ishell)%x0(:) = x0(:)
-     basis%shell(ishell)%ng    = ng
+     basis%shell(ishell)%ishell = ishell
+     basis%shell(ishell)%am     = am_read
+     basis%shell(ishell)%iatom  = iatom
+     basis%shell(ishell)%x0(:)  = x0(:)
+     basis%shell(ishell)%ng     = ng
      allocate(basis%shell(ishell)%alpha(ng))
      allocate(basis%shell(ishell)%coeff(ng))
      basis%shell(ishell)%alpha(:) = alpha(:)
-     basis%shell(ishell)%istart = jbf + 1
-     basis%shell(ishell)%iend   = jbf + number_basis_function_am(gaussian_type,am_read)
+     basis%shell(ishell)%istart  = jbf + 1
+     basis%shell(ishell)%iend    = jbf + number_basis_function_am(gaussian_type,am_read)
 
 
      !
@@ -235,11 +236,16 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
      index_in_shell = 0
      if(basis%gaussian_type == 'PURE') then
-       do mm=-am_read,am_read
-         jbf = jbf + 1
-         index_in_shell = index_in_shell + 1
-         call init_basis_function_pure(normalized,ng,am_read,mm,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bff(jbf))
-       enddo
+       if(am_read <= LMAX_TRANSFORM_PURE) then
+         do mm=-am_read,am_read
+           jbf = jbf + 1
+           index_in_shell = index_in_shell + 1
+           call init_basis_function_pure(normalized,ng,am_read,mm,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bff(jbf))
+         enddo
+       else
+         basis%bff(jbf+1:jbf+number_basis_function_am('CART',am_read)) = basis%bf(jbf_cart-number_basis_function_am('CART',am_read)+1:jbf_cart) 
+         jbf = jbf + number_basis_function_am('CART',am_read)
+       endif
      endif
 
      !
@@ -258,25 +264,23 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
 
  ! Find the maximum angular momentum employed in the basis set
- basis%ammax=-1
- do ibf=1,basis%nbf
-   basis%ammax = MAX(basis%ammax,basis%bf(ibf)%am)
- enddo
+ basis%ammax = MAXVAL(basis%bf(:)%am)
+
  write(stdout,'(a50,i8)') 'Maximum angular momentum in the basis set:',basis%ammax
  write(stdout,'(a50,a8)') '                                          ',orbital_momentum_name(basis%ammax)
 
- if(basis%ammax > lmax_transform ) then      
+ if(basis%ammax > LMAX_TRANSFORM ) then      
    write(stdout,*) 'Maximum angular momentum',basis%ammax
    call die('angular momentum too high')
  endif
- if(basis%ammax > lmax_transform_pure .AND. basis%gaussian_type == 'PURE' ) then      
+ if(basis%ammax > LMAX_TRANSFORM_PURE .AND. basis%gaussian_type == 'PURE' ) then      
    call issue_warning('Maximum angular momentum greater than the cart to pure transforms implemented')
  endif
 
  !
  ! finally output the basis set for debugging
  if( .FALSE. ) then
-   do ibf=1,basis%nbf
+   do ibf=1,basis%nbf_cart
      write(stdout,*) ' Cartesian function number',ibf
      call print_basis_function(basis%bf(ibf))
    enddo

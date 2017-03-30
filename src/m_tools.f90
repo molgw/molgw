@@ -898,5 +898,6 @@ subroutine calculate_pade_a(a,n,z,f)
 
 end subroutine calculate_pade_a
 
+
 !=========================================================================
 end module m_tools

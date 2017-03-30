@@ -78,7 +78,7 @@ level037: m_selfenergy_tools.o m_virtual_orbital_space.o
 level038: m_scf_loop.o
 
 level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfenergy.o gw_selfenergy_grid.o \
-	  gwgamma_selfenergy.o cohsex_selfenergy.o bse.o density_tools.o \
+          gwgamma_selfenergy.o cohsex_selfenergy.o bse.o density_tools.o \
           io.o restart.o mp2.o selfenergy_evaluation.o force.o molgw.o
 
 
@@ -113,7 +113,7 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
                         libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
                         boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt2_selfenergy.o \
                         mp2.o gw_selfenergy.o gw_selfenergy_grid.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o \
-			linear_response.o static_polarizability.o density_tools.o io.o restart.o \
+                        linear_response.o static_polarizability.o density_tools.o io.o restart.o \
                         m_hamiltonian.o m_hamiltonian_libint.o m_hamiltonian_sca.o m_hamiltonian_buffer.o m_scf_loop.o \
                         pdbssolver1.o selfenergy_evaluation.o real_spherical_harmonics.o force.o \
                         molgw.o \
