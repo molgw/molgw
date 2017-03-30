@@ -636,6 +636,61 @@ end subroutine diagonalize_outofplace_sca
 
 
 !=========================================================================
+! Diagonalize a distributed matrix with PDSYEVR
+!=========================================================================
+subroutine diagonalize_sca_pdsyevr(nglobal,desc,matrix,eigval,desc_eigvec,eigvec)
+ implicit none
+ integer,intent(in)     :: nglobal
+ integer,intent(in)     :: desc(NDEL)
+ integer,intent(in)     :: desc_eigvec(NDEL)
+ real(dp),intent(inout) :: matrix(:,:)
+ real(dp),intent(out)   :: eigval(nglobal)
+ real(dp),intent(out)   :: eigvec(:,:)
+!=====
+ integer              :: lwork,info
+ real(dp),allocatable :: work(:)
+ integer              :: neigval,neigvec
+ integer,allocatable  :: iwork(:)
+ integer              :: liwork
+!=====
+
+#ifdef HAVE_SCALAPACK
+
+ !
+ ! First call to get the dimension of the array work
+ lwork = -1
+ allocate(work(3))
+ liwork = -1
+ allocate(iwork(1))
+ call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+
+
+ !
+ ! Second call to actually perform the diago
+ lwork = NINT(work(1))
+
+ deallocate(work)
+ allocate(work(lwork))
+ liwork = iwork(1)
+ deallocate(iwork)
+ allocate(iwork(liwork))
+ call PDSYEVR('V','A','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,0,0,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+
+ deallocate(work)
+ deallocate(iwork)
+
+
+#else
+
+ call diagonalize(nglobal,matrix,eigval,eigvec)
+
+#endif
+
+
+end subroutine diagonalize_sca_pdsyevr
+
+
+!=========================================================================
 ! Diagonalize a non-distributed matrix
 !
 !=========================================================================

@@ -50,7 +50,7 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  allocate(iwork(1))
  lwork=-1
  liwork=-1
- call pdbssolver1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
+ call PDBSSOLVER1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
                   bigomega,xpy_matrix,1,1,desc_x,xmy_matrix,               &
                   work,lwork,iwork,liwork,info)
  if(info/=0) call die('SCALAPACK failed')
@@ -63,7 +63,7 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  deallocate(iwork)
  allocate(iwork(liwork))
 
- call pdbssolver1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
+ call PDBSSOLVER1(nmat,apb_matrix,1,1,desc_apb,amb_matrix,1,1,desc_apb,    &
                   bigomega,xpy_matrix,1,1,desc_x,xmy_matrix,               &
                   work,lwork,iwork,liwork,info)
  if(info/=0) call die('SCALAPACK failed')
@@ -135,6 +135,7 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
                                  bigomega,desc_x,m_x,n_x,xpy_matrix)
 #ifdef HAVE_ELPA
  use elpa1
+ use elpa2
  use elpa
 #endif
  implicit none
@@ -182,10 +183,9 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
 #ifdef HAVE_ELPA
  info = get_elpa_communicators(comm_world,iprow_sd,ipcol_sd,comm_row,comm_col)
  success = elpa_solve_evp_real(nmat,nmat,apb_matrix,m_apb,bigomega,xpy_matrix,m_x,desc_apb(MB_A),n_apb, &
-                               comm_row,comm_col,comm_world)
- write(stdout,*) 'ELPA diago success:',success
+                               comm_row,comm_col,comm_world,method='2stage')
 #else
- call diagonalize_sca(nmat,desc_apb,apb_matrix,bigomega,desc_x,xpy_matrix)
+ call diagonalize_sca_pdsyevr(nmat,desc_apb,apb_matrix,bigomega,desc_x,xpy_matrix)
 #endif
 
  bigomega(:) = SQRT( bigomega(:) )

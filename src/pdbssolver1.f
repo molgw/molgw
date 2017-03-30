@@ -433,7 +433,6 @@
       CALL PDSYEVR( 'V', 'A', 'L', N, K, IK, JK, DESCK, ZERO, ZERO,
      $     1, N, DIMV, NZ, LAMBDA, X1, IX, JX, DESCX,
      $     WORK( INDWORK ), LLWORK, IWORK, LIWORK, ITMP )
-      T_DIAG = MPI_WTIME() - T_DIAG
 #endif
 
 #else
@@ -446,6 +445,7 @@
       ITMP = -1
       IF (SUCCESS) ITMP = 0
 #endif
+      T_DIAG = MPI_WTIME() - T_DIAG
 *      IF ( MYROW+MYCOL .EQ. 0 )
 *     $   WRITE( *, * ) 't_diag = ', T_DIAG, ';'
       IF ( ITMP .NE. 0 ) THEN

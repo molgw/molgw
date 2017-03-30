@@ -57,9 +57,9 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
 
  write(stdout,'(/,a)') ' Calculating the polarizability'
  if(is_triplet) then
-   write(stdout,'(a)') ' Triplet state'
+   write(stdout,'(a)') ' Triplet final state'
  else
-   write(stdout,'(a)') ' Singlet state'
+   write(stdout,'(a)') ' Singlet final state'
  endif
 
  if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1)
