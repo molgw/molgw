@@ -52,14 +52,15 @@ subroutine calculate_propagation(nstate,              &
  real(dp),intent(in)             :: hamiltonian_nucleus(basis%nbf,basis%nbf)
  real(dp),intent(in)             :: s_matrix_sqrt_inv(basis%nbf,nstate)
 !=====
- integer                    :: ntau, itau,idir, info, ispin, ibf
+ integer                    :: ntau, itau,idir, info, ispin, ibf,nomega,iomega
  integer                    :: file_dipolar_spectra
  integer                    :: file_real_dipolar_spectra
- integer                    :: file_aimag_dipolar_spectra, file_transform_excit,file_eexcit
+ integer                    :: file_aimag_dipolar_spectra, file_transforms,file_eexcit
  real(dp)                   :: time_cur, t_min=0.0_dp
  real(dp)                   :: omega_factor
  real(dp),allocatable       :: dipole_basis(:,:,:)
  complex(dp),allocatable    :: dipole_time_ref(:,:)
+ complex(dp),allocatable    :: dipole_time_damped(:,:)
  complex(dp),allocatable    :: trans_dipole_time(:,:)
  complex(dp),allocatable    :: trans_m_excit_field(:,:)
  type(C_PTR)                :: plan
@@ -98,10 +99,11 @@ subroutine calculate_propagation(nstate,              &
 
  ntau=int((time_sim-t_min)/time_step)+1
  
- allocate(dipole_time_ref(2*ntau,3))
- allocate(trans_dipole_time(2*ntau,3))
- allocate(m_excit_field(2*ntau,3))
- allocate(trans_m_excit_field(2*ntau,3))
+ allocate(dipole_time_ref(ntau,3))
+ allocate(dipole_time_damped(ntau,3))
+ allocate(trans_dipole_time(ntau,3))
+ allocate(m_excit_field(ntau,3))
+ allocate(trans_m_excit_field(ntau,3))
 
  if(calc_p_matrix_error_) then
    allocate(p_matrix_time_ref_cmplx(basis%nbf,basis%nbf,nspin,INT(time_sim/write_step)+1))
@@ -136,74 +138,58 @@ subroutine calculate_propagation(nstate,              &
 #ifdef HAVE_FFTW
  call start_clock(timing_tddft_fourier)
  !---Fourier Transform of dipole_time---
+
+ time_cur=t_min
+ do itau=1,ntau
+   dipole_time_damped(itau,:)=dipole_time_ref(itau,:)*exp(-time_cur/250.0_dp)
+   time_cur=t_min+itau*time_step
+ end do
+
  do idir=1,3
-   plan = fftw_plan_dft_1d(ntau,dipole_time_ref(1:ntau,idir),trans_dipole_time(1:ntau,idir),FFTW_FORWARD,FFTW_ESTIMATE)
-   call fftw_execute_dft(plan,dipole_time_ref(1:ntau,idir),trans_dipole_time(1:ntau,idir))
+   plan = fftw_plan_dft_1d(ntau,dipole_time_damped(1:ntau,idir),trans_dipole_time(1:ntau,idir),FFTW_FORWARD,FFTW_ESTIMATE)
+   call fftw_execute_dft(plan,dipole_time_damped(1:ntau,idir),trans_dipole_time(1:ntau,idir))
    call fftw_destroy_plan(plan)
    
  end do
 
+ trans_dipole_time =  trans_dipole_time / ntau
 
-! do idir=1,3
-!   plan = fftw_plan_dft_1d(ntau,trans_dipole_time(1:ntau,idir),dipole_time_ref(1:ntau,idir),FFTW_FORWARD,FFTW_ESTIMATE)
-!   call fftw_execute_dft(plan,trans_dipole_time(1:ntau,idir),dipole_time_ref(1:ntau,idir))
-!   call fftw_destroy_plan(plan)
-!
-! end do
+ do idir=1,3
+   plan = fftw_plan_dft_1d(ntau,m_excit_field(1:ntau,idir),trans_m_excit_field(1:ntau,idir),FFTW_FORWARD,FFTW_ESTIMATE)
+   call fftw_execute_dft(plan,m_excit_field(1:ntau,idir),trans_m_excit_field(1:ntau,idir))
+   call fftw_destroy_plan(plan)
+ end do
 
- open(newunit=file_transform_excit,file="transform_excit.dat")
-! open(newunit=file_aimag_dipolar_spectra,file="aimag_dipolar_spectra.dat")
-! open(newunit=file_real_dipolar_spectra,file="real_dipolar_spectra.dat")
+ trans_m_excit_field(:,:)=trans_m_excit_field(:,:) / ntau
+
+ open(newunit=file_transforms,file="transforms.dat")
  open(newunit=file_dipolar_spectra,file="dipolar_spectra.dat")
- do idir=1,3
-   plan = fftw_plan_dft_1d(2*ntau,m_excit_field(:,idir),trans_m_excit_field(:,idir),FFTW_FORWARD,FFTW_ESTIMATE)
-   call fftw_execute_dft(plan,m_excit_field(:,idir),trans_m_excit_field(:,idir))
-   call fftw_destroy_plan(plan)
- end do
-
- trans_m_excit_field(:,:)=trans_m_excit_field(:,:) / ( 2.0_dp * ntau )
-
- write(file_dipolar_spectra,*) "#abs(trans_dipole_time(i))/abs(trans_m_excit_field(j))"
  write(file_dipolar_spectra,*) "# omega(eV), Average, xx, xy, xz, yx, yy, yz, zx, zy, zz"
- do itau=1,ntau ! here itau correspons to frequency
-    omega_factor = 4.0_dp * pi * 2 * pi * itau / time_sim / c_speedlight
-    if(2*pi * itau / time_sim * Ha_eV < 500.0_dp) then
-  !   write(file_dipolar_spectra,*) pi*itau / time_sim * Ha_eV , abs(trans_dipole_time(itau,1))/abs(trans_m_excit_field(itau,1)), &
-  !   aimag(trans_dipole_time(itau,1)/trans_m_excit_field(itau,1))
-     write(file_dipolar_spectra,"(x,es16.8E3)",advance='no')       2*pi * itau / time_sim * Ha_eV
-!     write(file_aimag_dipolar_spectra,"(x,es16.8E3)",advance='no') 2*pi * itau / time_sim * Ha_eV
-!     write(file_real_dipolar_spectra,"(x,es16.8E3)",advance='no')  2*pi * itau / time_sim * Ha_eV   
-   
-     write(file_dipolar_spectra,"(3x,es16.8E3)",advance='no') &
-             SUM( abs(trans_dipole_time(itau,:)) / abs(trans_m_excit_field(itau,:)) ) / 3.0_dp * omega_factor
-!     write(file_aimag_dipolar_spectra,"(3x,es16.8E3)",advance='no') &
-!             SUM( aimag((trans_dipole_time(itau,:)) / (trans_m_excit_field(itau,:))) ) / 3.0_dp * omega_factor
-!     write(file_real_dipolar_spectra,"(3x,es16.8E3)",advance='no') &
-!             SUM( real((trans_dipole_time(itau,:)) / (trans_m_excit_field(itau,:))) ) / 3.0_dp * omega_factor
+ write(file_transforms,*) "# omega(eV), |E_x(omega)|, real(E_x(omega)), aimag(E_x(omega)), |d_x(omega)|, real(d_x(omega)), aimag(d_x(omega))"
+
+ nomega=ntau
+ do iomega=1,nomega/2 ! here iomega correspons to frequency
+   omega_factor = 4.0_dp * pi * 2 * pi * (iomega-1) / time_sim / c_speedlight
+   if(2*pi * iomega / time_sim * Ha_eV < 500.0_dp) then
+     write(file_dipolar_spectra,"(x,es16.8E3)",advance='no')  2*pi * iomega / time_sim * Ha_eV
   
+     write(file_dipolar_spectra,"(3x,es16.8E3)",advance='no') &
+             SUM( aimag((trans_dipole_time(iomega,:)) / (trans_m_excit_field(iomega,:))) ) / 3.0_dp * omega_factor
+ 
      do idir=1,3
        if( excit_dir(idir) > 1.0E-10_dp ) then
-  !       4.0_dp * pi * REAL(omega(iomega),dp) / c_speedlight 
-         write(file_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') abs(trans_dipole_time(itau,:))/abs(trans_m_excit_field(itau,idir)) * omega_factor
-!         write(file_aimag_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') aimag((trans_dipole_time(itau,:))/(trans_m_excit_field(itau,idir))) * omega_factor
-!         write(file_real_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') real((trans_dipole_time(itau,:))/(trans_m_excit_field(itau,idir))) * omega_factor
+         write(file_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') aimag((trans_dipole_time(iomega,:))/(trans_m_excit_field(iomega,idir))) * omega_factor
        else
          write(file_dipolar_spectra,"(3(es16.8E3))",advance='no') -1.0_dp, -1.0_dp, -1.0_dp
-!         write(file_aimag_dipolar_spectra,"(3(es16.8E3))",advance='no') -1.0_dp, -1.0_dp, -1.0_dp
-!         write(file_real_dipolar_spectra,"(3(es16.8E3))",advance='no') -1.0_dp, -1.0_dp, -1.0_dp
        end if
        if(idir==3) write(file_dipolar_spectra,*)
-!       if(idir==3) write(file_aimag_dipolar_spectra,*)
-!       if(idir==3) write(file_real_dipolar_spectra,*)
      end do
-     write(file_transform_excit,*) pi * itau / time_sim * Ha_eV, abs(trans_m_excit_field(itau,:))
+     write(file_transforms,*) pi * iomega / time_sim * Ha_eV, abs(trans_m_excit_field(iomega,1)), real(trans_m_excit_field(iomega,1)), aimag(trans_m_excit_field(iomega,1)), abs(trans_dipole_time(iomega,1)), real(trans_dipole_time(iomega,1)), aimag(trans_dipole_time(iomega,1)) 
    end if
  end do
 
- close(file_transform_excit)
+ close(file_transforms)
  close(file_dipolar_spectra)
- !close(file_aimag_dipolar_spectra)
- !close(file_real_dipolar_spectra)
  call stop_clock(timing_tddft_fourier)
 #else
  call issue_warning("tddft: calculate_propagation; fftw is not present") 
@@ -414,6 +400,15 @@ subroutine tddft_time_loop(nstate,                           &
      if(pred_corr_cur=='PC2C') call get_extrap_coefs_aspc(extrap_coefs,n_hist_cur)
    end if
 
+   if(pred_corr_cur=='PC2D' .OR. pred_corr_cur=='PC2E') then
+     ham_dim_cur=n_hist_cur+1
+     do iextr=1,n_hist_cur
+       m_nods(iextr)=(iextr-1.0_dp)*0.5_dp
+     end do
+     x_pred=(n_hist_cur-1.0_dp)*0.5_dp+0.5_dp
+     if(pred_corr_cur=='PC2D') call get_extrap_coefs_lagr(m_nods,x_pred,extrap_coefs,n_hist_cur)
+     if(pred_corr_cur=='PC2E') call get_extrap_coefs_aspc(extrap_coefs,n_hist_cur)
+   end if
 
    if(pred_corr_cur=='PC3' .OR. pred_corr_cur=='PC4') then
      ham_dim_cur=n_hist_cur+2
@@ -455,7 +450,6 @@ subroutine tddft_time_loop(nstate,                           &
      open(newunit=file_time_data,file="time_data.dat")
      open(newunit=file_excit_field,file="excitation.dat")
      open(newunit=file_dipole_time,file="dipole_time.dat")
-     write(file_time_data,*) "# time_cur enuc  ekin  ehart  eexx_hyb  exc   e_total eexcit trace"
    else
      write(name_time_data,'(5A,F5.3,A,I1,A,I1,A)') "time_data_", TRIM(pred_corr_cur), "_", TRIM(prop_type_cur), "_dt_", time_step_cur, &
                    "_hist_",n_hist_cur, "_iter_",n_iter_cur,".dat"
@@ -464,7 +458,8 @@ subroutine tddft_time_loop(nstate,                           &
      open(newunit=file_time_data,file=name_time_data)
      open(newunit=file_dipole_time,file=name_dipole_time)
    end if  
-  
+   write(file_time_data,*) " # time_cur     e_total             enuc            ekin               ehart            &
+                               eexx_hyb            exc             eexcit            P*S trace (# of els)" 
  end if
 
 !********start time loop*************
@@ -619,6 +614,65 @@ subroutine tddft_time_loop(nstate,                           &
      c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
      h_small_hist_cmplx(:,:,:,n_hist_cur)=h_small_cmplx
    end if
+
+   ! ///////////////////////////////////
+
+   if(pred_corr_cur=='PC2D' .OR. pred_corr_cur=='PC2E') then 
+     h_small_hist_cmplx(:,:,:,n_hist_cur+1)=(0.0_dp,0.0_dp)
+     !--0--EXTRAPOLATE---- 
+     do iextr=1,n_hist_cur
+       h_small_hist_cmplx(:,:,:,n_hist_cur+1)=h_small_hist_cmplx(:,:,:,n_hist_cur+1)+extrap_coefs(iextr)*h_small_hist_cmplx(:,:,:,iextr)
+     end do
+     !--1--PROPAGATE----| C(t)--U[H(1/4dt)]-->C(t+dt/2)
+     call propagate_orth(nstate,basis,time_step_cur/2.0_dp,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_hist_cmplx(:,:,:,n_hist_cur:n_hist_cur+1),s_matrix_sqrt_inv,"ETRS")  
+
+     ! n_hist_cur-2  <---  n_hist_cur; n_hist_cur-3 <-- n_hist_cur-1
+     if(n_hist_cur > 2) then
+       do iextr=1,n_hist_cur-2
+         h_small_hist_cmplx(:,:,:,iextr)=h_small_hist_cmplx(:,:,:,iextr+2)
+       end do
+     end if
+
+     !--2--CALCULATE- H(t+dt/4) 
+     call setup_hamiltonian_fock_cmplx( basis,                   &
+                                        nstate,                  &
+                                        itau,                    &
+                                        time_cur,                &
+                                        time_step_cur,           &
+                                        occupation,              &
+                                        c_matrix_cmplx,          &
+                                        hamiltonian_kinetic,     &
+                                        hamiltonian_nucleus,     &
+                                        h_small_cmplx,           &
+                                        s_matrix_sqrt_inv,       &
+                                        dipole_basis,            &
+                                        hamiltonian_fock_cmplx,  &
+                                        ref_)
+       
+    if (n_hist_cur > 1) h_small_hist_cmplx(:,:,:,n_hist_cur-1)=h_small_cmplx 
+    !--3--PROPAGATION----| 
+     call propagate_orth(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,"MAG2")
+
+     call setup_hamiltonian_fock_cmplx( basis,                   &
+                                        nstate,                  &
+                                        itau,                    &
+                                        time_cur,                &
+                                        time_step_cur,           &
+                                        occupation,              &
+                                        c_matrix_cmplx,          &
+                                        hamiltonian_kinetic,     &
+                                        hamiltonian_nucleus,     &
+                                        h_small_cmplx,           &
+                                        s_matrix_sqrt_inv,       &
+                                        dipole_basis,            &
+                                        hamiltonian_fock_cmplx,  &
+                                        ref_)
+       
+     !--5--UPDATE----| 
+     c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
+     h_small_hist_cmplx(:,:,:,n_hist_cur)=h_small_cmplx
+   end if
+
    ! ///////////////////////////////////
 
    ! Iterative propagation with Lagrange interpolation
@@ -805,7 +859,7 @@ subroutine tddft_time_loop(nstate,                           &
      if(mod(itau-1,mod_write)==0 ) then
        if(ref_) then
          if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,basis,occupation,c_matrix_cmplx,itau)
-         write(file_excit_field,*) time_cur, excit_field
+         write(file_excit_field,*) time_cur, abs(m_excit_field(itau,:))
        end if
        write(file_dipole_time,*) time_cur, dipole(:) * au_debye
        write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
