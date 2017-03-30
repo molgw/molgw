@@ -413,4 +413,12 @@ RPA Total energy          , -76.4638070494     , 0 , 1.0e-7
 GW HOMO energy            , -12.137634         , 0 , 1.0e-4
 GW LUMO energy            ,   0.860260         , 0 , 1.0e-4
 
+h2o_mp3.in                , MP3 total energy with RI
+SCF Total Energy          , -76.0262395455     , 0 , 1.0e-7
+MP2 Energy                ,  -0.2022870330     , 0 , 1.0e-7
+MP2 Total Energy          , -76.2285265785     , 0 , 1.0e-7
+MP3 Energy                ,  -0.0069228191     , 0 , 1.0e-7
+MP3 Total Energy          , -76.2354493975     , 0 , 1.0e-7
+SE+MP3  Total En          , -76.2354493975     , 0 , 1.0e-7
+
 

@@ -522,7 +522,6 @@ program molgw
  if( calc_type%is_mp2 ) then
 
    if(has_auxil_basis) then
-     call mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,en%mp2)
      call mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,en%mp2)
    else
      call mp2_energy(nstate,basis,occupation,c_matrix,energy,en%mp2)
