@@ -173,6 +173,9 @@ if len(mpirun) < 1:
     print('No MPI launcher has been provided. Set the number of cores back to 1')
   nprocs = 1
 
+if not os.path.isfile('../molgw') :
+  print('molgw executable not found!\nMight to compile it first?')
+  sys.exit(1)
 
 print('Running with ',nprocs,'cores')
 

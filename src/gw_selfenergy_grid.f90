@@ -262,7 +262,6 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy,c_matrix,
 
  call DESCINIT(desc_eri3_t,nauxil_2center,prange,MBLOCK_AUXIL,NBLOCK_AUXIL,first_row,first_col,cntxt_auxil,MAX(1,nauxil_3center),info)
 
-
  se%sigmai(:,:,:) = 0.0_dp
 
  do mpspin=1,nspin
@@ -274,6 +273,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy,c_matrix,
 #else
      eri3_sca(:,1:prange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,mstate,mpspin)
 #endif
+
 
      do iomega=1,wpol%nomega_quad
 #ifdef HAVE_SCALAPACK
@@ -290,7 +290,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy,c_matrix,
 
        do iomegas=0,se%nomegai
          do plocal=1,neri3
-           pstate = INDXL2G(plocal,wpol%desc_chi(NB_A),ipcol,wpol%desc_chi(CSRC_A),npcol)
+           pstate = INDXL2G(plocal,wpol%desc_chi(NB_A),ipcol,wpol%desc_chi(CSRC_A),npcol) + ncore_G
            se%sigmai(iomegas,mstate,mpspin) = se%sigmai(iomegas,mstate,mpspin) &
                          - wpol%weight_quad(iomega) * (  1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(iomegas) - energy(pstate,mpspin) ) &
                                                                   + im * wpol%omega_quad(iomega) )   &
