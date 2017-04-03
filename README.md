@@ -13,7 +13,7 @@ Many more details can be found ~/docs/molgw_manual.html
 or on the web site [molgw.org](http://www.molgw.org/start.html)
 
 
-##Features
+## Features
 
 MOLGW implements the following schemes:
 - Hartree-Fock
@@ -36,7 +36,7 @@ MOLGW implements the following schemes:
 - BSE
 
 
-##Installation
+## Installation
 
 MOLGW needs Fortran 2003 and C++ compilers.
 The machine dependent variables should be set in file `~molgw/src/my_machine.arch`
@@ -52,26 +52,26 @@ https://github.com/evaleev/libint/releases
 http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-3.0.0.tar.gz
 
 
-##Basis sets
+## Basis sets
 More basis sets can be obtained from [Basis Set Exchange](https://bse.pnl.gov/bse/portal)
 The file can be generated from a NWChem file using the script
 `~molgw/utils/basis_nwchem2molgw.py B_aug-cc-pVDZ.nwchem`
 
 
-##Usage
+## Usage
 
 `./molgw helium.in > helium.out`
 
 Example input files can be found in `~molgw/tests/`
 
 
-##Known issues
+## Known issues
 - QPscGW scf loop might be quite unstable for large basis sets, use a large eta
 - TD-DFT GGA kernel can induce very large numerical values which limits the numerical stability and breaks some comparison with other codes.
 Especially when compiling with gfortran/gcc. ifort/icc behaves much better.
 
 
-##Information for developers
+## Information for developers
 
 Besides the calls to the libint library, MOLGW is entirely written in Fortran2003/2008.
 The source files can be found in src/.
@@ -107,7 +107,7 @@ Please check carefully the dependence so to compile and add it to the right "lev
 The code should compile properly in parallel with "make -j".
 
 
-##Author
+## Author
 
 Fabien Bruneval
 
