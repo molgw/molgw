@@ -111,6 +111,8 @@ subroutine header()
  write(stdout,'(1x,a)')        'Running with LIBINT (to calculate the Coulomb integrals)'
  write(stdout,'(6x,a,i5,3x,a)') 'max angular momentum handled by your LIBINT compilation: ', &
                                 ammax,orbital_momentum_name(ammax)
+ call set_molgw_lmax(ammax)
+
 #ifdef HAVE_LIBINT_ONEBODY
  if( .NOT. has_onebody ) &
    call die('MOLGW compiled with LIBINT one-body terms, however the LIBINT compilation does not calculate the one-body terms')

@@ -591,6 +591,8 @@ program molgw
  if(has_auxil_basis) call destroy_basis_set(auxil_basis)
  call destroy_atoms()
 
+ call destroy_cart_to_pure_transforms()
+
  call total_memory_statement()
 
  call stop_clock(timing_postscf)

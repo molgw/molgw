@@ -236,16 +236,11 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
      index_in_shell = 0
      if(basis%gaussian_type == 'PURE') then
-       if(am_read <= LMAX_TRANSFORM_PURE) then
-         do mm=-am_read,am_read
-           jbf = jbf + 1
-           index_in_shell = index_in_shell + 1
-           call init_basis_function_pure(normalized,ng,am_read,mm,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bff(jbf))
-         enddo
-       else
-         basis%bff(jbf+1:jbf+number_basis_function_am('CART',am_read)) = basis%bf(jbf_cart-number_basis_function_am('CART',am_read)+1:jbf_cart) 
-         jbf = jbf + number_basis_function_am('CART',am_read)
-       endif
+       do mm=-am_read,am_read
+         jbf = jbf + 1
+         index_in_shell = index_in_shell + 1
+         call init_basis_function_pure(normalized,ng,am_read,mm,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bff(jbf))
+       enddo
      endif
 
      !
@@ -269,12 +264,10 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  write(stdout,'(a50,i8)') 'Maximum angular momentum in the basis set:',basis%ammax
  write(stdout,'(a50,a8)') '                                          ',orbital_momentum_name(basis%ammax)
 
- if(basis%ammax > LMAX_TRANSFORM ) then      
-   write(stdout,*) 'Maximum angular momentum',basis%ammax
-   call die('angular momentum too high')
- endif
- if(basis%ammax > LMAX_TRANSFORM_PURE .AND. basis%gaussian_type == 'PURE' ) then      
-   call issue_warning('Maximum angular momentum greater than the cart to pure transforms implemented')
+ if(basis%ammax > MOLGW_LMAX ) then      
+   write(stdout,*) 'Maximum angular momentum: ',basis%ammax
+   write(stdout,*) 'while this compilation of LIBINT only supports: ',MOLGW_LMAX
+   call die('init_basis_set: Angular momentum is too high')
  endif
 
  !

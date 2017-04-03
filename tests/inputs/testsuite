@@ -28,9 +28,9 @@ gKS HOMO energy           , -24.970619         , 0 , 1.0e-4
 gKS LUMO energy           ,  17.314207         , 0 , 1.0e-4
 
 ne.in                     , HF neon atom cc-pV6Z with RI
-SCF Total Energy          , -128.5470610244    , 0 , 1.0e-7
-gKS HOMO energy           ,  -23.140410        , 0 , 1.0e-4
-gKS LUMO energy           ,    9.981016        , 0 , 1.0e-4
+SCF Total Energy          , -128.5470596583    , 0 , 1.0e-7
+gKS HOMO energy           ,  -23.140408        , 0 , 1.0e-4
+gKS LUMO energy           ,   10.036631        , 0 , 1.0e-4
 
 h2_basis_nori.in          , LDA H2 molecule with an atom-dependent basis set
 SCF Total Energy          ,  -1.1306882151     , 0 , 1.0e-7
@@ -171,12 +171,12 @@ GW HOMO energy            ,    -11.039136      , 0 , 1.0e-4
 GW LUMO energy            ,     -1.357914      , 0 , 1.0e-4
 
 cdo_ecp_gw.in             , CdO- (ECP) within GW@PBE0 with level shifting
-SCF Total Energy          ,    -242.8403297283 , 0 , 1.0e-7
-RPA correlation energy    ,      -0.9666447760 , 0 , 1.0e-7
-GW HOMO energy            ,      -1.787167     , 0 , 1.0e-4
-GW HOMO energy            ,      -1.350953     , 1 , 1.0e-4
-GW LUMO energy            ,       3.687303     , 0 , 1.0e-4
-GW LUMO energy            ,       3.689409     , 1 , 1.0e-4
+SCF Total Energy          ,    -242.8403302221 , 0 , 1.0e-7
+RPA correlation energy    ,      -0.9666472866 , 0 , 1.0e-7
+GW HOMO energy            ,      -1.787172     , 0 , 1.0e-4
+GW HOMO energy            ,      -1.350967     , 1 , 1.0e-4
+GW LUMO energy            ,       3.687306     , 0 , 1.0e-4
+GW LUMO energy            ,       3.689422     , 1 , 1.0e-4
 
 sih4_dftcore.in           , GW@PBE0 with DFT core-valence interaction
 SCF Total Energy          ,   -291.7541352166  , 0 , 1.0e-7
