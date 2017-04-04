@@ -1346,7 +1346,7 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
  real(dp),intent(out)       :: exc_xc
 !=====
 
- real(dp),parameter :: TOL_RHO=1.0e-10_dp
+ real(dp),parameter :: TOL_RHO=1.0e-9_dp
  integer  :: idft_xc
  logical  :: require_gradient,require_laplacian
  integer  :: igrid,ibf,jbf,ispin
@@ -1466,7 +1466,7 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
          !
          ! Remove too small densities to stabilize the computation
          ! especially useful for Becke88
-         if( ANY( rhor(:) > 1.0e-9_dp ) ) then
+         if( ANY( rhor(:) > TOL_RHO ) ) then
            call xc_f90_gga_exc_vxc(calc_type%xc_func(idft_xc),1,rhor(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
          else
            exc_libxc(:)     = 0.0_dp
@@ -1595,6 +1595,7 @@ subroutine dft_exc_vxc_batch(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,ex
  real(dp),intent(out)       :: exc_xc
 !=====
  integer,parameter    :: BATCH_SIZE=64
+ real(dp),parameter   :: TOL_RHO=1.0e-9_dp
  logical              :: require_gradient,require_laplacian
  integer              :: idft_xc
  integer              :: ibf,jbf,ispin
@@ -1718,7 +1719,7 @@ subroutine dft_exc_vxc_batch(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,ex
        ! Remove too small densities to stabilize the computation
        ! especially useful for Becke88
        do ir=1,nr
-         if( ANY( rhor_batch(:,ir) < 1.0e-9_dp ) ) then
+         if( ALL( rhor_batch(:,ir) < TOL_RHO ) ) then
            exc_batch(ir)      = 0.0_dp
            vrho_batch(:,ir)   = 0.0_dp
            vsigma_batch(:,ir) = 0.0_dp
