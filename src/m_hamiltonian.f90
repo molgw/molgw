@@ -1638,7 +1638,7 @@ subroutine dft_exc_vxc_batch(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,ex
 
  if( require_laplacian ) call die('batch not implemented for laplacian yet')
 
- normalization(:)=0.0_dp
+ normalization(:) = 0.0_dp
 
  !
  ! Loop over batches of grid points
@@ -1694,6 +1694,8 @@ subroutine dft_exc_vxc_batch(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,ex
    endif
    call stop_clock(timing_tmp1)
 
+   ! Normalization
+   normalization(:) = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
 
    !
    ! LIBXC calls
@@ -1729,8 +1731,6 @@ subroutine dft_exc_vxc_batch(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,ex
 
      ! XC energy
      exc_xc = exc_xc + SUM( weight_batch(:) * exc_batch(:) * SUM(rhor_batch(:,:),DIM=1) ) * dft_xc_coef(idft_xc)
-     ! Normalization
-     normalization(:) = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
 
      dedd_r_batch(:,:) = dedd_r_batch(:,:) + vrho_batch(:,:) * dft_xc_coef(idft_xc)
 
