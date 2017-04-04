@@ -1,0 +1,24 @@
+&molgw
+
+ print_restart='no'
+ print_bigrestart='no'
+
+ ! Recipe for HSE06
+ scf='rsh'
+ alpha_hybrid = 0.25
+ beta_hybrid  =-0.25
+ gamma_hybrid = 0.11
+
+ nspin=2
+ magnetization=2.0
+
+ basis='6-31G*'
+ gaussian_type='CART'
+
+ nscf=30
+ tolscf=1.0e-10
+
+ natom=2
+/
+O   0.605 0. 0.
+O  -0.605 0. 0. 
