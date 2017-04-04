@@ -32,11 +32,11 @@ module m_dft_grid
  real(dp),parameter,private :: aa = 0.64_dp ! Scuseria value
 
  real(dp),parameter,private :: TOL_WEIGHT = 1.0e-14_dp
- real(dp),parameter,private :: TOL_BF     = 1.0e-06_dp
+ real(dp),parameter,private :: TOL_BF     = 1.0e-08_dp
 
  !
  ! Function evaluation storage
- integer,parameter,private :: ngrid_max_stored=20000
+ integer,parameter,private :: NGRID_MAX_STORED=20000
  integer,private           :: ngrid_stored
  real(dp),allocatable      :: bfr(:,:)
  real(dp),allocatable      :: bfgr(:,:,:)
@@ -406,7 +406,7 @@ subroutine prepare_basis_functions_r(basis)
  real(dp)                   :: basis_function_r(basis%nbf)
 !=====
 
- ngrid_stored = MIN(ngrid,ngrid_max_stored)
+ ngrid_stored = MIN(ngrid,NGRID_MAX_STORED)
 
  write(stdout,*) 'Precalculate the functions on N grid points',ngrid_stored
  call clean_allocate('basis ftns on grid',bfr,basis%nbf,ngrid_stored)
@@ -497,6 +497,22 @@ end subroutine get_basis_functions_r
 
 
 !=========================================================================
+subroutine get_basis_functions_r_batch(basis,igrid,nr,basis_function_r)
+ use m_basis_set
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+ integer,intent(in)         :: igrid,nr
+ real(dp),intent(out)       :: basis_function_r(basis%nbf,nr)
+!=====
+!=====
+
+ call calculate_basis_functions_r_batch(basis,nr,rr_grid(:,igrid:igrid+nr-1),basis_function_r)
+
+end subroutine get_basis_functions_r_batch
+
+
+!=========================================================================
 subroutine get_basis_functions_gradr(basis,igrid,basis_function_gradr)
  use m_basis_set
  implicit none
@@ -516,6 +532,22 @@ subroutine get_basis_functions_gradr(basis,igrid,basis_function_gradr)
  endif
 
 end subroutine get_basis_functions_gradr
+
+
+!=========================================================================
+subroutine get_basis_functions_gradr_batch(basis,igrid,nr,basis_function_gradr)
+ use m_basis_set
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+ integer,intent(in)         :: igrid,nr
+ real(dp),intent(out)       :: basis_function_gradr(basis%nbf,nr,3)
+!=====
+!=====
+
+ call calculate_basis_functions_gradr_batch(basis,nr,rr_grid(:,igrid:igrid+nr-1),basis_function_gradr)
+
+end subroutine get_basis_functions_gradr_batch
 
 
 !=========================================================================
@@ -583,6 +615,51 @@ end subroutine calculate_basis_functions_r
 
 
 !=========================================================================
+subroutine calculate_basis_functions_r_batch(basis,nr,rr,basis_function_r)
+ use m_basis_set
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+ integer,intent(in)         :: nr
+ real(dp),intent(in)        :: rr(3,nr)
+ real(dp),intent(out)       :: basis_function_r(basis%nbf,nr)
+!=====
+ integer              :: gt
+ integer              :: ir
+ integer              :: ibf,ibf_cart,i_cart
+ integer              :: ni,ni_cart,li
+ real(dp),allocatable :: basis_function_r_cart(:,:)
+!=====
+
+
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+ ibf_cart = 1
+ ibf      = 1
+ do while(ibf_cart<=basis%nbf_cart)
+   li      = basis%bf(ibf_cart)%am
+   ni_cart = number_basis_function_am('CART',li)
+   ni      = number_basis_function_am(basis%gaussian_type,li)
+
+   allocate(basis_function_r_cart(ni_cart,nr))
+
+   do ir=1,nr
+     do i_cart=1,ni_cart
+       basis_function_r_cart(i_cart,ir) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr(:,ir))
+     enddo
+   enddo
+
+   basis_function_r(ibf:ibf+ni-1,:) = MATMUL(  TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , basis_function_r_cart(:,:) )
+   deallocate(basis_function_r_cart)
+
+   ibf      = ibf      + ni
+   ibf_cart = ibf_cart + ni_cart
+ enddo
+
+
+end subroutine calculate_basis_functions_r_batch
+
+
+!=========================================================================
 subroutine calculate_basis_functions_gradr(basis,rr,basis_function_gradr)
  use m_basis_set
  implicit none
@@ -621,6 +698,53 @@ subroutine calculate_basis_functions_gradr(basis,rr,basis_function_gradr)
 
 
 end subroutine calculate_basis_functions_gradr
+
+
+!=========================================================================
+subroutine calculate_basis_functions_gradr_batch(basis,nr,rr,basis_function_gradr)
+ use m_basis_set
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+ integer,intent(in)         :: nr
+ real(dp),intent(in)        :: rr(3,nr)
+ real(dp),intent(out)       :: basis_function_gradr(basis%nbf,nr,3)
+!=====
+ integer              :: gt
+ integer              :: ir
+ integer              :: ibf,ibf_cart,i_cart
+ integer              :: ni,ni_cart,li
+ real(dp),allocatable :: basis_function_gradr_cart(:,:,:)
+!=====
+
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+ ibf_cart = 1
+ ibf      = 1
+ do while(ibf_cart<=basis%nbf_cart)
+   li      = basis%bf(ibf_cart)%am
+   ni_cart = number_basis_function_am('CART',li)
+   ni      = number_basis_function_am(basis%gaussian_type,li)
+
+   allocate(basis_function_gradr_cart(ni_cart,nr,3))
+
+   do ir=1,nr
+     do i_cart=1,ni_cart
+       basis_function_gradr_cart(i_cart,ir,:) = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr(:,ir))
+     enddo
+   enddo
+
+   basis_function_gradr(ibf:ibf+ni-1,:,1) = MATMUL(  TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , basis_function_gradr_cart(:,:,1) )
+   basis_function_gradr(ibf:ibf+ni-1,:,2) = MATMUL(  TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , basis_function_gradr_cart(:,:,2) )
+   basis_function_gradr(ibf:ibf+ni-1,:,3) = MATMUL(  TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , basis_function_gradr_cart(:,:,3) )
+
+   deallocate(basis_function_gradr_cart)
+
+   ibf      = ibf      + ni
+   ibf_cart = ibf_cart + ni_cart
+ enddo
+
+
+end subroutine calculate_basis_functions_gradr_batch
 
 
 !=========================================================================
@@ -680,6 +804,7 @@ subroutine setup_bf_radius(basis)
 !=====
  integer  :: igrid,ibf
  real(dp) :: basis_function_r(basis%nbf)
+ integer  :: icalc,icalc_tot
 !=====
 
  allocate(bf_rad2(basis%nbf))
@@ -688,12 +813,27 @@ subroutine setup_bf_radius(basis)
    call get_basis_functions_r(basis,igrid,basis_function_r)
    do ibf=1,basis%nbf
      if( ABS(basis_function_r(ibf)) > TOL_BF ) then
-       bf_rad2(ibf) = MAX( bf_rad2(ibf) , SUM( (rr_grid(:,igrid) - basis%bf(ibf)%x0(:))**2 ) )
+       bf_rad2(ibf) = MAX( bf_rad2(ibf) , SUM( (rr_grid(:,igrid) - basis%bff(ibf)%x0(:))**2 ) )
      endif
    enddo
  enddo
 
  call xmax_grid(bf_rad2)
+
+! do ibf=1,basis%nbf
+!   write(stdout,*) 'Bf , Radius',ibf,SQRT(bf_rad2(ibf))
+! enddo
+! icalc_tot=0
+! do igrid=1,ngrid
+!   icalc=0
+!   do ibf=1,basis%nbf
+!     if( SUM( (rr_grid(:,igrid) - basis%bff(ibf)%x0(:))**2 ) < bf_rad2(ibf) ) then
+!       icalc = icalc + 1
+!     endif
+!   enddo
+!   icalc_tot = icalc_tot + icalc
+! enddo
+! write(stdout,*) icalc_tot,' / ', basis%nbf * ngrid
 
 end subroutine setup_bf_radius
 

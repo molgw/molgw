@@ -178,7 +178,8 @@ subroutine scf_loop(is_restart,&
          en%xc = 0.0_dp
        endif
      else
-       call dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_xc,en%xc)
+!       call dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_xc,en%xc)
+       call dft_exc_vxc_batch(basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_xc,en%xc)
      endif
 
    endif
