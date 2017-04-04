@@ -1501,11 +1501,11 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
 
        else
 
-         dedgd_r(:,1) = dedgd_r(:,1) + 2.0_dp * vsigma(1) * grad_rhor(:,1) * dft_xc_coef(idft_xc) &
-                               + vsigma(2) * grad_rhor(:,2)
+         dedgd_r(:,1) = dedgd_r(:,1) + ( 2.0_dp * vsigma(1) * grad_rhor(:,1) &
+                                                + vsigma(2) * grad_rhor(:,2) ) * dft_xc_coef(idft_xc) 
 
-         dedgd_r(:,2) = dedgd_r(:,2) + 2.0_dp * vsigma(3) * grad_rhor(:,2) * dft_xc_coef(idft_xc) &
-                               + vsigma(2) * grad_rhor(:,1)
+         dedgd_r(:,2) = dedgd_r(:,2) + ( 2.0_dp * vsigma(3) * grad_rhor(:,2) &
+                                                + vsigma(2) * grad_rhor(:,1) ) * dft_xc_coef(idft_xc)
        endif
 
      endif

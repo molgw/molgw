@@ -699,11 +699,11 @@ subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_
 
          else
 
-           dedgd_r(:,1) = dedgd_r(:,1) + 2.0_dp * vsigma(1) * grad_rhor(:,1,igrid) * dft_xc_coef(idft_xc) &
-                                 + vsigma(2) * grad_rhor(:,2,igrid)
+           dedgd_r(:,1) = dedgd_r(:,1) + ( 2.0_dp * vsigma(1) * grad_rhor(:,1,igrid) & 
+                                                  + vsigma(2) * grad_rhor(:,2,igrid) ) * dft_xc_coef(idft_xc)
 
-           dedgd_r(:,2) = dedgd_r(:,2) + 2.0_dp * vsigma(3) * grad_rhor(:,2,igrid) * dft_xc_coef(idft_xc) &
-                                 + vsigma(2) * grad_rhor(:,1,igrid)
+           dedgd_r(:,2) = dedgd_r(:,2) + ( 2.0_dp * vsigma(3) * grad_rhor(:,2,igrid) &
+                                                  + vsigma(2) * grad_rhor(:,1,igrid) ) * dft_xc_coef(idft_xc)
          endif
 
        endif

@@ -325,7 +325,12 @@ GW LUMO energy            ,      5.336834       , 0 , 1.0e-4
 
 oh_0_1.in                 , GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 1st iteration
 Total Spin S**2           ,      0.7532         , 0 , 1.0e-3
+XC Energy                 ,     -4.5883907272   , 0 , 1.0e-7
 SCF Total Energy          ,    -75.7190424535   , 0 , 1.0e-7
+gKS HOMO energy           ,    -11.941970       , 0 , 1.0e-4
+gKS HOMO energy           ,    -11.070991       , 1 , 1.0e-4
+gKS LUMO energy           ,      0.060279       , 0 , 1.0e-4
+gKS LUMO energy           ,     -2.560124       , 1 , 1.0e-4
 RPA Total energy          ,    -75.6295502398   , 0 , 1.0e-7
 GW HOMO energy            ,    -13.404668       , 0 , 1.0e-4
 GW HOMO energy            ,    -12.467650       , 1 , 1.0e-4
