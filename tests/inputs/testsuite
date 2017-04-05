@@ -155,6 +155,7 @@ SE+MP2  Total En          , -109.3823851303    , 0 , 1.0e-7
 boron_gw_spinpolarized.in , GW@BLYP boron atom without RI with spin (unstable test: loosened thresholds)
 Hartree Energy            ,   11.6347873536   , 0 , 1.0e-4
 XC Energy                 ,   -3.8789558610   , 0 , 1.0e-4
+Total Energy              ,  -24.6512597384   , 0 , 1.0e-4
 Number of electrons       ,    3.000000       , 0 , 1.0e-3
 Number of electrons       ,    2.000000       , 1 , 1.0e-3
 gKS HOMO energy           ,   -4.014004       , 0 , 1.0e-3

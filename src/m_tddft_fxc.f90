@@ -151,10 +151,11 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
 
 
  max_v2sigma2 = -1.0_dp
- do igrid=1,ngrid
 
-   if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis)
-   if( require_gradient .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_gradr(basis)
+ if( .NOT. ALLOCATED(bfr) )                         call prepare_basis_functions_r(basis,1)
+ if( require_gradient .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_gradr(basis,1)
+
+ do igrid=1,ngrid
    !
    ! Get all the functions and gradients at point rr
    call get_basis_functions_r(basis,igrid,basis_function_r)

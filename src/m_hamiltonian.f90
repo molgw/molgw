@@ -1348,7 +1348,7 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
 
  real(dp),parameter :: TOL_RHO=1.0e-9_dp
  integer  :: idft_xc
- logical  :: require_gradient,require_laplacian
+ logical  :: require_gradient
  integer  :: igrid,ibf,jbf,ispin
  real(dp) :: normalization(nspin)
  real(dp) :: weight
@@ -1380,21 +1380,18 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
  write(stdout,*) 'Calculate DFT XC potential'
  
  require_gradient =.FALSE.
- require_laplacian=.FALSE.
  do idft_xc=1,ndft_xc
    if( ABS(dft_xc_coef(idft_xc)) < 1.0e-6_dp ) cycle
    if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
    if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) require_gradient  =.TRUE.
-   if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_MGGA    ) require_laplacian =.TRUE.
  enddo
 
 
  !
  ! If it is the first time, then set up the stored arrays
  !
- if( .NOT. ALLOCATED(bfr) )                          call prepare_basis_functions_r(basis)
- if( require_gradient  .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_gradr(basis)
- if( require_laplacian .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_laplr(basis)
+ if( .NOT. ALLOCATED(bfr) )                          call prepare_basis_functions_r(basis,1)
+ if( require_gradient  .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_gradr(basis,1)
 
  normalization(:)=0.0_dp
 
@@ -1417,10 +1414,6 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
    if( require_gradient ) then
      call get_basis_functions_gradr(basis,igrid,basis_function_gradr)
    endif
-   if( require_laplacian ) then
-     call get_basis_functions_laplr(basis,igrid,basis_function_gradr,basis_function_laplr)
-   endif
-
 
    !
    ! Normalization
@@ -1431,11 +1424,7 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
      call calc_density_gradr(nspin,basis%nbf,nstate,occupation,c_matrix,basis_function_r,basis_function_gradr,grad_rhor)
    endif
 
-   if( require_laplacian ) then
-     call calc_density_gradr_laplr(nspin,basis%nbf,p_matrix,basis_function_r,basis_function_gradr,basis_function_laplr,grad_rhor,tau,lapl_rhor)
-   endif
-
-   if( require_gradient .OR. require_laplacian ) then
+   if( require_gradient ) then
      sigma(1) = SUM( grad_rhor(:,1)**2 )
      if(nspin==2) then
        sigma(2) = SUM( grad_rhor(:,1) * grad_rhor(:,2) )
@@ -1596,7 +1585,7 @@ subroutine dft_exc_vxc_batch(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,ex
 !=====
  integer,parameter    :: BATCH_SIZE=64
  real(dp),parameter   :: TOL_RHO=1.0e-9_dp
- logical              :: require_gradient,require_laplacian
+ logical              :: require_gradient
  integer              :: idft_xc
  integer              :: ibf,jbf,ispin
  integer              :: igrid_start,igrid_end,ir,nr
@@ -1628,16 +1617,18 @@ subroutine dft_exc_vxc_batch(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,ex
  if( BATCH_SIZE /= 1 ) write(stdout,*) 'Using batches of size',BATCH_SIZE
  
  require_gradient =.FALSE.
- require_laplacian=.FALSE.
  do idft_xc=1,ndft_xc
    if( ABS(dft_xc_coef(idft_xc)) < 1.0e-6_dp ) cycle
    if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
    if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) require_gradient  =.TRUE.
-   if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_MGGA    ) require_laplacian =.TRUE.
  enddo
 
 
- if( require_laplacian ) call die('batch not implemented for laplacian yet')
+ !
+ ! Pre-calculate as many basis functions as possible!
+ if( .NOT. ALLOCATED(bfr) )                          call prepare_basis_functions_r(basis,BATCH_SIZE)
+ if( require_gradient  .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_gradr(basis,BATCH_SIZE)
+
 
  normalization(:) = 0.0_dp
 
@@ -1665,19 +1656,19 @@ subroutine dft_exc_vxc_batch(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,ex
 
    weight_batch(:) = w_grid(igrid_start:igrid_end)
 
-   call start_clock(timing_tmp9)
+!   call start_clock(timing_tmp9)
    call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
-   call stop_clock(timing_tmp9)
+!   call stop_clock(timing_tmp9)
    !
    ! Get the gradient at points r
-   call start_clock(timing_tmp8)
+!   call start_clock(timing_tmp8)
    if( require_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,nr,basis_function_gradr_batch)
-   call stop_clock(timing_tmp8)
+!   call stop_clock(timing_tmp8)
 
    !
    ! Calculate the density at points r for spin up and spin down
    ! Calculate grad rho at points r for spin up and spin down
-   call start_clock(timing_tmp1)
+!   call start_clock(timing_tmp1)
    if( .NOT. require_gradient ) then 
      call calc_density_r_batch(nspin,basis%nbf,nstate,nr,occupation,c_matrix,basis_function_r_batch,rhor_batch)
 
@@ -1693,7 +1684,7 @@ subroutine dft_exc_vxc_batch(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,ex
      enddo
 
    endif
-   call stop_clock(timing_tmp1)
+!   call stop_clock(timing_tmp1)
 
    ! Normalization
    normalization(:) = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
@@ -1701,7 +1692,7 @@ subroutine dft_exc_vxc_batch(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,ex
    !
    ! LIBXC calls
    !
-   call start_clock(timing_tmp2)
+!   call start_clock(timing_tmp2)
 
    dedd_r_batch(:,:) = 0.0_dp
    if( require_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
@@ -1761,7 +1752,7 @@ subroutine dft_exc_vxc_batch(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,ex
 
    enddo ! loop on the XC functional
 
-   call stop_clock(timing_tmp2)
+!   call stop_clock(timing_tmp2)
 
 
    if( ANY( dedd_r_batch(:,:) > 0.0_dp ) ) then
@@ -1773,7 +1764,7 @@ subroutine dft_exc_vxc_batch(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,ex
    !
    ! Eventually set up the vxc term
    !
-   call start_clock(timing_tmp3)
+!   call start_clock(timing_tmp3)
    !
    ! LDA and GGA
    allocate(tmp_batch(basis%nbf,nr))
@@ -1801,7 +1792,7 @@ subroutine dft_exc_vxc_batch(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,ex
      enddo
      deallocate(tmp_batch)
    endif
-   call stop_clock(timing_tmp3)
+!   call stop_clock(timing_tmp3)
 
 
 
@@ -1912,7 +1903,7 @@ subroutine dft_approximate_vhxc(print_matrix_,basis,vhxc_ij)
  !
  ! If it is the first time, set up the stored arrays
  !
- if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis)
+ if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis,1)
 
  normalization = 0.0_dp
  exc           = 0.0_dp

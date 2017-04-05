@@ -528,7 +528,7 @@ subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_
 
  real(dp),parameter :: TOL_RHO=1.0e-10_dp
  integer  :: idft_xc
- logical  :: require_gradient,require_laplacian
+ logical  :: require_gradient
  integer  :: igrid,ibf,jbf,ispin
  real(dp) :: normalization(nspin)
  real(dp) :: weight
@@ -566,24 +566,19 @@ subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_
  write(stdout,*) 'Calculate DFT XC potential: SCALAPACK buffer'
  
  require_gradient =.FALSE.
- require_laplacian=.FALSE.
  do idft_xc=1,ndft_xc
 
    if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
    if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) require_gradient  =.TRUE.
-   if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_MGGA    ) require_laplacian =.TRUE.
 
  enddo
-
- if( require_laplacian ) call die('meta-GGA not implemented in SCALAPACK buffer')
 
 
  !
  ! If it is the first time, then set up the stored arrays
  !
- if( .NOT. ALLOCATED(bfr) )                          call prepare_basis_functions_r(basis)
- if( require_gradient  .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_gradr(basis)
- if( require_laplacian .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_laplr(basis)
+ if( .NOT. ALLOCATED(bfr) )                          call prepare_basis_functions_r(basis,1)
+ if( require_gradient  .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_gradr(basis,1)
 
  normalization(:)=0.0_dp
 
@@ -639,7 +634,7 @@ subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_
 
      weight = w_grid(igrid)
 
-     if( require_gradient .OR. require_laplacian ) then
+     if( require_gradient ) then
        sigma(1) = SUM( grad_rhor(:,1,igrid)**2 )
        if(nspin==2) then
          sigma(2) = SUM( grad_rhor(:,1,igrid) * grad_rhor(:,2,igrid) )
@@ -833,7 +828,7 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
  !
  ! If it is the first time, set up the stored arrays
  !
- if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis)
+ if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis,1)
 
  normalization = 0.0_dp
  exc           = 0.0_dp

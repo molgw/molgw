@@ -1143,7 +1143,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  !
  ! If it is the first time, set up the stored arrays
  !
- if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis)
+ if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis,1)
 
  normalization = 0.0_dp
  exc           = 0.0_dp

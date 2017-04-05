@@ -40,7 +40,6 @@ module m_dft_grid
  integer,private           :: ngrid_stored
  real(dp),allocatable      :: bfr(:,:)
  real(dp),allocatable      :: bfgr(:,:,:)
- real(dp),allocatable      :: bflr(:,:,:)
 
 
 contains
@@ -375,9 +374,6 @@ subroutine destroy_dft_grid()
  if( ALLOCATED(bfgr) ) then
    call clean_deallocate('basis grad ftns on grid',bfgr)
  endif
- if( ALLOCATED(bflr) ) then
-   call clean_deallocate('basis lapl ftns on grid',bflr)
- endif
  call destroy_dft_grid_distribution()
  
 end subroutine destroy_dft_grid
@@ -395,83 +391,57 @@ end function smooth_step
 
 
 !=========================================================================
-subroutine prepare_basis_functions_r(basis)
+subroutine prepare_basis_functions_r(basis,batch_size)
  use m_basis_set
  implicit none
 
  type(basis_set),intent(in) :: basis
+ integer,intent(in)         :: batch_size
 !=====
  integer                    :: igrid
- real(dp)                   :: rr(3)
- real(dp)                   :: basis_function_r(basis%nbf)
 !=====
 
  ngrid_stored = MIN(ngrid,NGRID_MAX_STORED)
+ ! Enforce a multiple of batches
+ ngrid_stored = batch_size * ( ngrid_stored/batch_size )
 
- write(stdout,*) 'Precalculate the functions on N grid points',ngrid_stored
+ write(stdout,'(1x,a,i7)') 'Precalculate the functions on N grid points ',ngrid_stored
+ if( batch_size /= 1 ) then
+   write(stdout,'(3x,a,i5,a,i4)') 'which corresponds to ',ngrid_stored/batch_size,' batches of size ',batch_size
+ endif
  call clean_allocate('basis ftns on grid',bfr,basis%nbf,ngrid_stored)
 
 
- do igrid=1,ngrid_stored
-   rr(:) = rr_grid(:,igrid)
-   call calculate_basis_functions_r(basis,rr,basis_function_r)
-   bfr(:,igrid) = basis_function_r(:)
+ do igrid=1,ngrid_stored,batch_size
+   call calculate_basis_functions_r_batch(basis,batch_size,rr_grid(:,igrid:igrid+batch_size-1),bfr(:,igrid:igrid+batch_size-1))
  enddo
 
 end subroutine prepare_basis_functions_r
 
 
 !=========================================================================
-subroutine prepare_basis_functions_gradr(basis)
+subroutine prepare_basis_functions_gradr(basis,batch_size)
  use m_basis_set
  implicit none
 
  type(basis_set),intent(in) :: basis
+ integer,intent(in)         :: batch_size
 !=====
  integer                    :: igrid
- real(dp)                   :: rr(3)
- real(dp)                   :: basis_function_gradr(3,basis%nbf)
 !=====
 
  write(stdout,*) 'Precalculate the gradients on N grid points',ngrid_stored
- call clean_allocate('basis grad ftns on grid',bfgr,3,basis%nbf,ngrid_stored)
+ if( batch_size /= 1 ) then
+   write(stdout,'(3x,a,i5,a,i4)') 'which corresponds to ',ngrid_stored/batch_size,' batches of size ',batch_size
+ endif
+ call clean_allocate('basis grad ftns on grid',bfgr,basis%nbf,ngrid_stored,3)
 
 
- do igrid=1,ngrid_stored
-   rr(:) = rr_grid(:,igrid)
-   call calculate_basis_functions_gradr(basis,rr,basis_function_gradr)
-   bfgr(:,:,igrid) = basis_function_gradr(:,:)
+ do igrid=1,ngrid_stored,batch_size
+   call calculate_basis_functions_gradr_batch(basis,batch_size,rr_grid(:,igrid:igrid+batch_size-1),bfgr(:,igrid:igrid+batch_size-1,:))
  enddo
 
 end subroutine prepare_basis_functions_gradr
-
-
-!=========================================================================
-subroutine prepare_basis_functions_laplr(basis)
- use m_basis_set
- implicit none
-
- type(basis_set),intent(in) :: basis
-!=====
- integer                    :: igrid
- real(dp)                   :: rr(3)
- real(dp)                   :: basis_function_gradr(3,basis%nbf)
- real(dp)                   :: basis_function_laplr(3,basis%nbf)
-!=====
-
- write(stdout,*) 'Precalculate the laplacians on N grid points',ngrid_stored
- call clean_allocate('basis grad ftns on grid',bfgr,3,basis%nbf,ngrid_stored)
- call clean_allocate('basis lapl ftns on grid',bflr,3,basis%nbf,ngrid_stored)
-
-
- do igrid=1,ngrid_stored
-   rr(:) = rr_grid(:,igrid)
-   call calculate_basis_functions_laplr(basis,rr,basis_function_gradr,basis_function_laplr)
-   bfgr(:,:,igrid) = basis_function_gradr(:,:)
-   bflr(:,:,igrid) = basis_function_laplr(:,:)
- enddo
-
-end subroutine prepare_basis_functions_laplr
 
 
 !=========================================================================
@@ -507,7 +477,13 @@ subroutine get_basis_functions_r_batch(basis,igrid,nr,basis_function_r)
 !=====
 !=====
 
- call calculate_basis_functions_r_batch(basis,nr,rr_grid(:,igrid:igrid+nr-1),basis_function_r)
+ ! Check if the batch had been fully precalculated
+ ! else calculate it now.
+ if( igrid <= ngrid_stored .AND. igrid+nr-1 <= ngrid_stored ) then
+   basis_function_r(:,:) = bfr(:,igrid:igrid+nr-1)
+ else
+   call calculate_basis_functions_r_batch(basis,nr,rr_grid(:,igrid:igrid+nr-1),basis_function_r)
+ endif
 
 end subroutine get_basis_functions_r_batch
 
@@ -525,7 +501,7 @@ subroutine get_basis_functions_gradr(basis,igrid,basis_function_gradr)
 !=====
 
  if( igrid <= ngrid_stored ) then
-   basis_function_gradr(:,:) = bfgr(:,:,igrid) 
+   basis_function_gradr(:,:) = TRANSPOSE(bfgr(:,igrid,:))
  else
    rr(:) = rr_grid(:,igrid)
    call calculate_basis_functions_gradr(basis,rr,basis_function_gradr)
@@ -545,33 +521,15 @@ subroutine get_basis_functions_gradr_batch(basis,igrid,nr,basis_function_gradr)
 !=====
 !=====
 
- call calculate_basis_functions_gradr_batch(basis,nr,rr_grid(:,igrid:igrid+nr-1),basis_function_gradr)
-
-end subroutine get_basis_functions_gradr_batch
-
-
-!=========================================================================
-subroutine get_basis_functions_laplr(basis,igrid,basis_function_gradr,basis_function_laplr)
- use m_basis_set
- implicit none
-
- type(basis_set),intent(in) :: basis
- integer,intent(in)         :: igrid
- real(dp),intent(out)       :: basis_function_gradr(3,basis%nbf)
- real(dp),intent(out)       :: basis_function_laplr(3,basis%nbf)
-!=====
- real(dp)                   :: rr(3)
-!=====
-
- if( igrid <= ngrid_stored ) then
-   basis_function_gradr(:,:) = bfgr(:,:,igrid) 
-   basis_function_laplr(:,:) = bflr(:,:,igrid) 
+ ! Check if the batch had been fully precalculated
+ ! else calculate it now.
+ if( igrid <= ngrid_stored .AND. igrid+nr-1 <= ngrid_stored ) then
+   basis_function_gradr(:,:,:) = bfgr(:,igrid:igrid+nr-1,:)
  else
-   rr(:) = rr_grid(:,igrid)
-   call calculate_basis_functions_laplr(basis,rr,basis_function_gradr,basis_function_laplr)
+   call calculate_basis_functions_gradr_batch(basis,nr,rr_grid(:,igrid:igrid+nr-1),basis_function_gradr)
  endif
 
-end subroutine get_basis_functions_laplr
+end subroutine get_basis_functions_gradr_batch
 
 
 !=========================================================================
@@ -819,21 +777,6 @@ subroutine setup_bf_radius(basis)
  enddo
 
  call xmax_grid(bf_rad2)
-
-! do ibf=1,basis%nbf
-!   write(stdout,*) 'Bf , Radius',ibf,SQRT(bf_rad2(ibf))
-! enddo
-! icalc_tot=0
-! do igrid=1,ngrid
-!   icalc=0
-!   do ibf=1,basis%nbf
-!     if( SUM( (rr_grid(:,igrid) - basis%bff(ibf)%x0(:))**2 ) < bf_rad2(ibf) ) then
-!       icalc = icalc + 1
-!     endif
-!   enddo
-!   icalc_tot = icalc_tot + icalc
-! enddo
-! write(stdout,*) icalc_tot,' / ', basis%nbf * ngrid
 
 end subroutine setup_bf_radius
 
