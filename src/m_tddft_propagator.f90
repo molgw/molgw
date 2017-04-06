@@ -325,12 +325,15 @@ subroutine tddft_time_loop(nstate,                           &
  integer                    :: i_iter
  integer                    :: file_time_data, file_excit_field
  integer                    :: file_dipole_time,file_iter_norm 
- integer                    :: file_tmp(10)
+ integer                    :: file_q_matrix_ii(2),file_tmp(10)
+ integer                    :: n_elem_q_mat,i_elem_q_mat
  real(dp)                   :: time_cur, excit_field(3),time_min, time_one_iter
  real(dp)                   :: dipole(3)
  real(dp)                   :: energies_inst(nstate)
  complex(dp)                :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ complex(dp)                :: c_matrix_0_cmplx(basis%nbf,nstate,nspin)
  complex(dp)                :: c_matrix_orth_cmplx(nstate,nstate,nspin)
+ complex(dp)                :: q_matrix_cmplx(nstate,nstate,nspin)
  complex(dp)                :: hamiltonian_fock_cmplx(basis%nbf,basis%nbf,nspin)
  complex(dp)                :: p_matrix_cmplx(basis%nbf,basis%nbf,nspin)
  complex(dp),allocatable    :: h_small_hist_cmplx(:,:,:,:)
@@ -339,6 +342,8 @@ subroutine tddft_time_loop(nstate,                           &
  complex(dp)                :: e_test(nstate,nstate)
  character(len=50)          :: name_time_data,name_dipole_time
  character(len=50)          :: name_iter_norm
+ character(len=50)          :: name_file_q_matrix_ii
+ character(len=50)          :: format_q_matrix_ii
  logical                    :: calc_excit_ 
  logical                    :: is_identity_
 !==variables for extrapolation
@@ -356,6 +361,10 @@ subroutine tddft_time_loop(nstate,                           &
      open(newunit=file_time_data,file="time_data.dat")
      open(newunit=file_excit_field,file="excitation.dat")
      open(newunit=file_dipole_time,file="dipole_time.dat")
+     do ispin=1,nspin
+       write(name_file_q_matrix_ii,"(a,i1,a)") "q_matrix_ii_spin_", ispin, ".dat" 
+       open(newunit=file_q_matrix_ii(ispin),file=name_file_q_matrix_ii)
+     end do
    else
      write(name_time_data,'(5A,F5.3,A,I1,A,I1,A)') "time_data_", TRIM(pred_corr_cur), "_", TRIM(prop_type_cur), "_dt_", time_step_cur, &
                    "_hist_",n_hist_cur, "_iter_",n_iter_cur,".dat"
@@ -384,6 +393,10 @@ subroutine tddft_time_loop(nstate,                           &
    c_matrix_cmplx(:,:,:)=c_matrix(:,:,:)
  end if
 
+ c_matrix_0_cmplx=c_matrix_cmplx
+ n_elem_q_mat=MIN(nstate,10)
+ write(format_q_matrix_ii,"(a,i0,a)") "(F9.4,", n_elem_q_mat, "(2x,es16.8E3))"
+
  !Getting starting value of the Hamiltonian
 ! itau=0 to avoid excitation calculation
  call setup_hamiltonian_fock_cmplx( basis,                   &
@@ -401,6 +414,7 @@ subroutine tddft_time_loop(nstate,                           &
                                     hamiltonian_fock_cmplx,  &
                                     ref_)
  
+ ! In case of no restart, find the c_matrix_orth_cmplx by diagonalizing h_small
  if(ignore_tddft_restart_ .OR. (.NOT. restart_is_correct)) then
    do ispin=1, nspin
      call diagonalize(nstate,h_small_cmplx(:,:,ispin),energies_inst(:),c_matrix_orth_cmplx(:,:,ispin))
@@ -904,8 +918,20 @@ subroutine tddft_time_loop(nstate,                           &
      end if
    end if
 
-  time_cur=time_min+itau*time_step_cur
-   
+   do ispin=1,nspin
+     q_matrix_cmplx(:,:,ispin)=MATMUL(MATMUL(CONJG(TRANSPOSE(c_matrix_0_cmplx(:,:,ispin))),s_matrix),c_matrix_cmplx(:,:,ispin))
+     if( is_iomaster ) then
+       if(mod(itau-1,mod_write)==0 ) then
+         write(file_q_matrix_ii(ispin),"(F9.4)",advance='no') time_cur
+         do i_elem_q_mat=1, n_elem_q_mat
+           write(file_q_matrix_ii(ispin),"(2x,F9.4)",advance='no') REAL(q_matrix_cmplx(i_elem_q_mat,i_elem_q_mat,ispin))*AIMAG(q_matrix_cmplx(i_elem_q_mat,i_elem_q_mat,ispin))
+         end do
+         write(file_q_matrix_ii(ispin),*)
+       end if
+     end if
+   end do
+   write(stdout,"(a,F9.4)") "time_cur  ", time_cur
+   call print_square_2d_matrix_cmplx("q_matrix_cmplx",q_matrix_cmplx,nstate,stdout,4)
 !--TIMING
    if( is_iomaster ) then
      if(itau==3) then
@@ -916,6 +942,9 @@ subroutine tddft_time_loop(nstate,                           &
        call flush(stdout)
      end if
    end if
+
+  time_cur=time_min+itau*time_step_cur
+   
 !---
  end do
 !********end time loop*******************
