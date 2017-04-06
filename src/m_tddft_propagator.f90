@@ -353,7 +353,6 @@ subroutine tddft_time_loop(nstate,                           &
 !OPENING FILES
  if( is_iomaster ) then
    if(ref_) then
-
      open(newunit=file_time_data,file="time_data.dat")
      open(newunit=file_excit_field,file="excitation.dat")
      open(newunit=file_dipole_time,file="dipole_time.dat")
@@ -373,32 +372,19 @@ subroutine tddft_time_loop(nstate,                           &
  time_min=0.0_dp
 !===INITIAL CONDITIONS===
  
+ ! Getting c_matrix_cmplx(t=0) whether using RESTART_TDDFT file, whether using c_matrix
  if(.NOT. ignore_tddft_restart_) then
    call read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx,restart_is_correct)
    do ispin=1,nspin
      c_matrix_cmplx(:,:,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
    end do
-   if( restart_is_correct ) then
-     call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
-     en%kin = real(SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
-     en%nuc = real(SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
-     en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc !+ en%excit
-  
-     call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
-  
-     if( is_iomaster ) then
-       write(file_dipole_time,*) time_min, dipole(:) * au_debye
-       write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
-          time_min, en%tot, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
-     end if
-     time_min=time_min+time_step
-   end if
  end if
 
  if(ignore_tddft_restart_ .OR. (.NOT. restart_is_correct)) then
    c_matrix_cmplx(:,:,:)=c_matrix(:,:,:)
  end if
 
+ !Getting starting value of the Hamiltonian
 ! itau=0 to avoid excitation calculation
  call setup_hamiltonian_fock_cmplx( basis,                   &
                                     nstate,                  &
@@ -419,6 +405,24 @@ subroutine tddft_time_loop(nstate,                           &
    do ispin=1, nspin
      call diagonalize(nstate,h_small_cmplx(:,:,ispin),energies_inst(:),c_matrix_orth_cmplx(:,:,ispin))
    end do
+ end if
+
+ if( restart_is_correct ) then
+   call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
+
+   en%kin = real(SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+   en%nuc = real(SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+   en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc !+ en%excit
+
+   call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
+
+   if( is_iomaster ) then
+   ! Here time_min point coresponds to the end of calculation written in the RESTART_TDDFT
+     write(file_dipole_time,*) time_min, dipole(:) * au_debye
+     write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
+        time_min, en%tot, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
+   end if
+   time_min=time_min+time_step
  end if
 
 ! call print_square_2d_matrix_cmplx("c_matrix_cmplx of the beginning",c_matrix_cmplx,nstate,stdout,4)
