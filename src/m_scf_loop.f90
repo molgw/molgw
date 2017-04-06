@@ -712,7 +712,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  ! 
  if( calc_type%is_dft ) then
    call dft_exc_vxc_cmplx(basis,nstate,occupation,c_matrix_cmplx,p_matrix,hamiltonian_tmp,en%xc)
-   
+!   call dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_tmp,en%xc)  
    hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) + hamiltonian_tmp(:,:,:) 
  endif
 

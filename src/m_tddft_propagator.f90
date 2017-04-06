@@ -350,19 +350,54 @@ subroutine tddft_time_loop(nstate,                           &
 !=====
  mod_write = INT( write_step / time_step_cur )
 
+!OPENING FILES
+ if( is_iomaster ) then
+   if(ref_) then
+
+     open(newunit=file_time_data,file="time_data.dat")
+     open(newunit=file_excit_field,file="excitation.dat")
+     open(newunit=file_dipole_time,file="dipole_time.dat")
+   else
+     write(name_time_data,'(5A,F5.3,A,I1,A,I1,A)') "time_data_", TRIM(pred_corr_cur), "_", TRIM(prop_type_cur), "_dt_", time_step_cur, &
+                   "_hist_",n_hist_cur, "_iter_",n_iter_cur,".dat"
+     write(name_dipole_time,'(5A,F5.3,A,I1,A,I1,A)') "dipole_time_", TRIM(pred_corr_cur), "_", TRIM(prop_type_cur), "_dt_", time_step_cur, &
+                   "_hist_",n_hist_cur,"_iter_",n_iter_cur,".dat"
+     open(newunit=file_time_data,file=name_time_data)
+     open(newunit=file_dipole_time,file=name_dipole_time)
+   end if  
+   write(file_time_data,*) " # time_cur     e_total             enuc            ekin               ehart            &
+                               eexx_hyb            exc             eexcit            P*S trace (# of els)" 
+ end if
+
+
  time_min=0.0_dp
 !===INITIAL CONDITIONS===
  
  if(.NOT. ignore_tddft_restart_) then
-   call read_restart_tddft(basis,nstate,time_min,c_matrix_cmplx,restart_is_correct)
+   call read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx,restart_is_correct)
+   do ispin=1,nspin
+     c_matrix_cmplx(:,:,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
+   end do
+   if( restart_is_correct ) then
+     call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
+     en%kin = real(SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+     en%nuc = real(SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
+     en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc !+ en%excit
+  
+     call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
+  
+     if( is_iomaster ) then
+       write(file_dipole_time,*) time_min, dipole(:) * au_debye
+       write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
+          time_min, en%tot, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
+     end if
+     time_min=time_min+time_step
+   end if
  end if
 
  if(ignore_tddft_restart_ .OR. (.NOT. restart_is_correct)) then
    c_matrix_cmplx(:,:,:)=c_matrix(:,:,:)
  end if
-
- call print_square_2d_matrix_cmplx("c_matrix_cmplx of the beginning",c_matrix_cmplx,nstate,stdout,4)
- 
 
 ! itau=0 to avoid excitation calculation
  call setup_hamiltonian_fock_cmplx( basis,                   &
@@ -380,9 +415,13 @@ subroutine tddft_time_loop(nstate,                           &
                                     hamiltonian_fock_cmplx,  &
                                     ref_)
  
- do ispin=1, nspin
-   call diagonalize(nstate,h_small_cmplx(:,:,ispin),energies_inst(:),c_matrix_orth_cmplx(:,:,ispin))
- end do
+ if(ignore_tddft_restart_ .OR. (.NOT. restart_is_correct)) then
+   do ispin=1, nspin
+     call diagonalize(nstate,h_small_cmplx(:,:,ispin),energies_inst(:),c_matrix_orth_cmplx(:,:,ispin))
+   end do
+ end if
+
+! call print_square_2d_matrix_cmplx("c_matrix_cmplx of the beginning",c_matrix_cmplx,nstate,stdout,4)
 
  if(pred_corr_cur /= 'PC0' ) then
 
@@ -456,25 +495,7 @@ subroutine tddft_time_loop(nstate,                           &
 !===END INITIAL CONDITIONS===
 
 
- if( is_iomaster ) then
-   if(ref_) then
-     open(newunit=file_time_data,file="time_data.dat")
-     open(newunit=file_excit_field,file="excitation.dat")
-     open(newunit=file_dipole_time,file="dipole_time.dat")
-   else
-     write(name_time_data,'(5A,F5.3,A,I1,A,I1,A)') "time_data_", TRIM(pred_corr_cur), "_", TRIM(prop_type_cur), "_dt_", time_step_cur, &
-                   "_hist_",n_hist_cur, "_iter_",n_iter_cur,".dat"
-     write(name_dipole_time,'(5A,F5.3,A,I1,A,I1,A)') "dipole_time_", TRIM(pred_corr_cur), "_", TRIM(prop_type_cur), "_dt_", time_step_cur, &
-                   "_hist_",n_hist_cur,"_iter_",n_iter_cur,".dat"
-     open(newunit=file_time_data,file=name_time_data)
-     open(newunit=file_dipole_time,file=name_dipole_time)
-   end if  
-   write(file_time_data,*) " # time_cur     e_total             enuc            ekin               ehart            &
-                               eexx_hyb            exc             eexcit            P*S trace (# of els)" 
- end if
-
 !********start time loop*************
-
  time_cur=time_min
  do itau=1,ntau
    if(itau==3) call start_clock(timing_tddft_one_iter)
@@ -539,8 +560,10 @@ subroutine tddft_time_loop(nstate,                           &
        h_small_cmplx=h_small_cmplx+extrap_coefs(iextr)*h_small_hist_cmplx(:,:,:,iextr)
      end do
      !--2--PREDICTOR----| hamiltonian_fock_cmplx in the 1/4 of the current time interval
+
      call propagate_orth(nstate,basis,time_step_cur/2.0_dp,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)  
      !--3--CORRECTOR----| C(1/2)-->H(1/2)
+
      call setup_hamiltonian_fock_cmplx( basis,                   &
                                         nstate,                  &
                                         itau,                    &
@@ -857,7 +880,7 @@ subroutine tddft_time_loop(nstate,                           &
    call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
    en%kin = real(SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
    en%nuc = real(SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
-   en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc + en%excit
+   en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc !+ en%excit
 
    call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
    dipole_time(itau,:)=dipole(:)
@@ -873,28 +896,29 @@ subroutine tddft_time_loop(nstate,                           &
        end if
        write(file_dipole_time,*) time_cur, dipole(:) * au_debye
        write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
-          time_cur, en%tot, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(matmul(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
+          time_cur, en%tot, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
      end if
    end if
-   time_cur=time_min+itau*time_step_cur
+
+  time_cur=time_min+itau*time_step_cur
    
 !--TIMING
    if( is_iomaster ) then
-   if(itau==3) then
-     call stop_clock(timing_tddft_one_iter)
-     time_one_iter=timing(timing_tddft_one_iter)
-     write(stdout,"(1x,a30,2x,es14.6)") "Time of one iteration is", time_one_iter
-     write(stdout,"(1x,a30,2x,3(f12.2,a))") "Estimated calculation time is", time_one_iter*ntau, "s = ", time_one_iter*ntau/60, "min = ", time_one_iter*ntau/3600, "hrs"
-     call flush(stdout)
-   end if
+     if(itau==3) then
+       call stop_clock(timing_tddft_one_iter)
+       time_one_iter=timing(timing_tddft_one_iter)
+       write(stdout,"(1x,a30,2x,es14.6)") "Time of one iteration is", time_one_iter
+       write(stdout,"(1x,a30,2x,3(f12.2,a))") "Estimated calculation time is", time_one_iter*ntau, "s = ", time_one_iter*ntau/60, "min = ", time_one_iter*ntau/3600, "hrs"
+       call flush(stdout)
+     end if
    end if
 !---
  end do
 !********end time loop*******************
- call print_square_2d_matrix_cmplx("c_matrix_cmplx of the end",c_matrix_cmplx,nstate,stdout,4)
  
  if(print_tddft_restart_) then
-   call write_restart_tddft(basis,nstate,time_cur,c_matrix_cmplx)
+   !time_cur-time_step_cur to be consistent with the actual last moment of the simulation
+   call write_restart_tddft(nstate,time_cur-time_step_cur,c_matrix_orth_cmplx)
  end if
 
  close(file_time_data)
@@ -942,12 +966,11 @@ end subroutine check_identity_cmplx
 
 
 !==========================================
-subroutine write_restart_tddft(basis,nstate,time_cur,c_matrix_cmplx)
+subroutine write_restart_tddft(nstate,time_cur,c_matrix_orth_cmplx)
  use m_definitions
  implicit none
  integer,intent(in)         :: nstate
- type(basis_set),intent(in) :: basis
- complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ complex(dp),intent(in)     :: c_matrix_orth_cmplx(nstate,nstate,nspin)
  real(dp),intent(in)        :: time_cur
 !===
  integer                    :: restartfile
@@ -963,8 +986,6 @@ subroutine write_restart_tddft(basis,nstate,time_cur,c_matrix_cmplx)
  write(restartfile) natom
  write(restartfile) zatom(1:natom)
  write(restartfile) x(:,1:natom)
- ! nbf
-! write(restartfile) basis%nbf
  ! Nstate
  write(restartfile) nstate
  ! nspin
@@ -974,7 +995,7 @@ subroutine write_restart_tddft(basis,nstate,time_cur,c_matrix_cmplx)
  ! Complex wavefunction coefficients C
  do ispin=1,nspin
    do istate=1,nstate
-     write(restartfile) c_matrix_cmplx(:,istate,ispin)
+     write(restartfile) c_matrix_orth_cmplx(:,istate,ispin)
    enddo
  enddo
 
@@ -983,14 +1004,13 @@ subroutine write_restart_tddft(basis,nstate,time_cur,c_matrix_cmplx)
 end subroutine write_restart_tddft
 
 !==========================================
-subroutine read_restart_tddft(basis,nstate,time_cur,c_matrix_cmplx,restart_is_correct)
+subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx,restart_is_correct)
  use m_definitions
  implicit none
  integer,intent(in)         :: nstate
- type(basis_set),intent(in) :: basis
- complex(dp),intent(inout)  :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ complex(dp),intent(inout)  :: c_matrix_orth_cmplx(nstate,nstate,nspin)
  logical,intent(out)        :: restart_is_correct
- real(dp),intent(inout)     :: time_cur
+ real(dp),intent(inout)     :: time_min
 !===
  logical                    :: file_exists,same_geometry
  integer                    :: restartfile
@@ -1002,6 +1022,8 @@ subroutine read_restart_tddft(basis,nstate,time_cur,c_matrix_cmplx,restart_is_co
 !=====
 
  if( .NOT. is_iomaster) return
+
+ write(stdout,'(/,a)') ' Reading a RESTART_TDDFT file'
 
  restart_is_correct=.true.
 
@@ -1029,14 +1051,6 @@ subroutine read_restart_tddft(basis,nstate,time_cur,c_matrix_cmplx,restart_is_co
  endif
  deallocate(zatom_read,x_read)
 
- ! nbf
-! read(restartfile) nbf_read 
-! if(basis%nbf /= nbf_read) then
-!   call issue_warning('RESTART_TDDFT file: nbf is not the same, restart file will not be used')
-!   restart_is_correct=.false.
-!   return
-! end if
-
  ! Nstate
  read(restartfile) nstate_read
  if(nstate /= nstate_read) then
@@ -1054,12 +1068,13 @@ subroutine read_restart_tddft(basis,nstate,time_cur,c_matrix_cmplx,restart_is_co
  end if
  
  ! current time
- read(restartfile) time_cur
+ read(restartfile) time_min
+ write(stdout,"(a,f7.3)") "time_min= ", time_min
 
  ! Complex wavefunction coefficients C
  do ispin=1,nspin
    do istate=1,nstate
-     read(restartfile) c_matrix_cmplx(:,istate,ispin)
+     read(restartfile) c_matrix_orth_cmplx(:,istate,ispin)
    enddo
  enddo
 
@@ -1184,7 +1199,7 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      end do
      call invert(nstate , l_matrix_cmplx(:,:))
   
-     c_matrix_orth_cmplx(:,:,ispin) = matmul( l_matrix_cmplx(:,:),matmul( b_matrix_cmplx(:,:),c_matrix_orth_cmplx(:,:,ispin) ) )
+     c_matrix_orth_cmplx(:,:,ispin) = MATMUL( l_matrix_cmplx(:,:),MATMUL( b_matrix_cmplx(:,:),c_matrix_orth_cmplx(:,:,ispin) ) )
      deallocate(l_matrix_cmplx)
      deallocate(b_matrix_cmplx)
    case('MAG2')
@@ -1197,7 +1212,8 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      do ibf=1,nstate
        propagator_eigen(ibf,ibf) = exp(-im*time_step_cur*energies_inst(ibf))
      end do
-     c_matrix_orth_cmplx(:,:,ispin) = matmul( matmul( matmul( a_matrix_orth_cmplx(:,:), propagator_eigen(:,:)  ) , &
+
+     c_matrix_orth_cmplx(:,:,ispin) = MATMUL( MATMUL( MATMUL( a_matrix_orth_cmplx(:,:), propagator_eigen(:,:)  ) , &
              conjg(transpose(a_matrix_orth_cmplx(:,:)))  ), c_matrix_orth_cmplx(:,:,ispin) )
      deallocate(propagator_eigen)
      deallocate(a_matrix_orth_cmplx)
@@ -1247,7 +1263,7 @@ subroutine propagate_orth_ham_2(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
        end do
      end do
      c_matrix_orth_cmplx(:,:,ispin) = & 
-         matmul(matmul(matmul(matmul( matmul( matmul( a_matrix_orth_cmplx(:,:,2), propagator_eigen(:,:,2)  ) , conjg(transpose(a_matrix_orth_cmplx(:,:,2)))  ),  & 
+         MATMUL(MATMUL(MATMUL(MATMUL( MATMUL( MATMUL( a_matrix_orth_cmplx(:,:,2), propagator_eigen(:,:,2)  ) , conjg(transpose(a_matrix_orth_cmplx(:,:,2)))  ),  & 
                             a_matrix_orth_cmplx(:,:,1)), propagator_eigen(:,:,1)), conjg(transpose(a_matrix_orth_cmplx(:,:,1))) ), c_matrix_orth_cmplx(:,:,ispin) )
    case default
      call die('Invalid choice of the propagation algorithm for the given PC scheme. Change prop_type value in the input file')
@@ -1500,7 +1516,7 @@ subroutine propagate_non_orth(nstate,basis,time_step_cur,c_matrix_cmplx,hamilton
      end do
      call invert(basis%nbf , l_matrix_cmplx(:,:))
   
-     c_matrix_cmplx(:,:,ispin) = matmul( l_matrix_cmplx(:,:),matmul( b_matrix_cmplx(:,:),c_matrix_cmplx(:,:,ispin) ) )
+     c_matrix_cmplx(:,:,ispin) = MATMUL( l_matrix_cmplx(:,:),MATMUL( b_matrix_cmplx(:,:),c_matrix_cmplx(:,:,ispin) ) )
     deallocate(l_matrix_cmplx)
     deallocate(b_matrix_cmplx)
    case('MAG2')
@@ -1515,7 +1531,7 @@ subroutine propagate_non_orth(nstate,basis,time_step_cur,c_matrix_cmplx,hamilton
        propagator_eigen(ibf,ibf) = exp(-im*time_step_cur*energies_inst(ibf))
      end do
      !remove traspose
-     c_matrix_cmplx(:,:,ispin) = matmul( matmul( matmul( matmul( a_matrix_cmplx(:,:), propagator_eigen(:,:)  ) , &
+     c_matrix_cmplx(:,:,ispin) = MATMUL( MATMUL( MATMUL( MATMUL( a_matrix_cmplx(:,:), propagator_eigen(:,:)  ) , &
              conjg(transpose(a_matrix_cmplx(:,:)))  ), s_matrix(:,:) ), c_matrix_cmplx(:,:,ispin) )
      deallocate(energies_inst)
      deallocate(propagator_eigen)
