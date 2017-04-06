@@ -135,6 +135,7 @@ module m_inputparam
  integer,protected                :: scalapack_npcol
  integer,protected                :: mpi_nproc_ortho
  real(dp),protected               :: alpha_cohsex,beta_cohsex,gamma_cohsex,delta_cohsex,epsilon_cohsex
+ real(dp),protected               :: grid_memory
 
  logical,protected                :: gwgamma_tddft_
  logical,protected                :: ignore_restart_

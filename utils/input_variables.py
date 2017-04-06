@@ -685,8 +685,17 @@ vl[i].comment  ='Sets a rigid energy shift of the unoccupied states, so to mimic
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='grid_memory'
+vl[i].family   ='hardware'
+vl[i].default  =100.0
+vl[i].datatype ='real'
+vl[i].comment  ='Sets the maximum memory usage in Mb allowed to store the wavefunctions on the quadrature points for XC integrals.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='scalapack_block_min'
-vl[i].family   ='parallel'
+vl[i].family   ='hardware'
 vl[i].default  =400
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets the minimum block size to distribute a non-distributed matrix with SCALAPACK. \
@@ -697,7 +706,7 @@ If scalapack_block_min=500, then a 900x900 matrix will no be distributed.'
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='scalapack_nprow'
-vl[i].family   ='parallel'
+vl[i].family   ='hardware'
 vl[i].default  =1
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets number of row processors for SCALAPACK distribution of the SCF matrices.  \
@@ -707,7 +716,7 @@ nprow X npcol should be lower or equal to the number of processors.'
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='scalapack_npcol'
-vl[i].family   ='parallel'
+vl[i].family   ='hardware'
 vl[i].default  =1
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets number of column processors for SCALAPACK distribution of the SCF matrices.  \
@@ -717,7 +726,7 @@ nprow X npcol should be lower or equal to the number of processors.'
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='mpi_nproc_ortho'
-vl[i].family   ='parallel'
+vl[i].family   ='hardware'
 vl[i].default  =1
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets the number of processors left to parallelize on other directions. The main direction (auxiliary basis or DFT grid points) is obtained by \
@@ -990,7 +999,7 @@ for i in range(len(vl)):
 # Parallelization family
 fhtml.write('<h3>Parallelization input variables</h3>\n<p>\n')
 for i in range(len(vl)):
-  if vl[i].family =='parallel':
+  if vl[i].family =='hardware':
     fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
 

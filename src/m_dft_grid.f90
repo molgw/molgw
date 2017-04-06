@@ -14,7 +14,7 @@ module m_dft_grid
  use m_memory
  use m_timing
  use m_cart_to_pure
- use m_inputparam,only: partition_scheme
+ use m_inputparam,only: partition_scheme,grid_memory
  
  !
  ! Grid definition
@@ -36,7 +36,6 @@ module m_dft_grid
 
  !
  ! Function evaluation storage
- integer,parameter,private :: NGRID_MAX_STORED=20000
  integer,private           :: ngrid_stored
  real(dp),allocatable      :: bfr(:,:)
  real(dp),allocatable      :: bfgr(:,:,:)
@@ -399,9 +398,13 @@ subroutine prepare_basis_functions_r(basis,batch_size)
  integer,intent(in)         :: batch_size
 !=====
  integer                    :: igrid
+ integer                    :: ngrid_max_allowed
 !=====
 
- ngrid_stored = MIN(ngrid,NGRID_MAX_STORED)
+ ! grid_memory is given in Megabytes
+ ngrid_max_allowed = NINT( grid_memory * 1024.0_dp**2 / ( REAL(basis%nbf,dp) * REAL(dp,dp) ) )
+
+ ngrid_stored = MIN(ngrid,ngrid_max_allowed)
  ! Enforce a multiple of batches
  ngrid_stored = batch_size * ( ngrid_stored/batch_size )
 
