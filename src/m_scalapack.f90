@@ -472,6 +472,63 @@ end subroutine matmul_diag_sca
 
 
 !=========================================================================
+! Diagonalize a distributed matrix to get eigenvalues only
+!=========================================================================
+subroutine diagonalize_eigval_sca(nglobal,desc,matrix,eigval)
+ implicit none
+ integer,intent(in)     :: desc(NDEL),nglobal
+ real(dp),intent(in)    :: matrix(:,:)
+ real(dp),intent(out)   :: eigval(nglobal)
+!=====
+ integer              :: desc_eigvec(NDEL)
+ integer              :: mlocal,nlocal
+ integer              :: lwork,info
+ real(dp),allocatable :: work(:)
+ real(dp),allocatable :: eigvec(:,:)
+ integer              :: neigval,neigvec
+ integer,allocatable  :: iwork(:)
+ integer              :: liwork
+!=====
+
+#ifdef HAVE_SCALAPACK
+ desc_eigvec = desc
+
+ mlocal = SIZE( matrix , DIM=1 )
+ nlocal = SIZE( matrix , DIM=2 )
+
+ allocate(eigvec(1,1))
+
+ !
+ ! First call to get the dimension of the array work
+ lwork = -1
+ allocate(work(1))
+ call PDSYEV('N','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+
+
+ !
+ ! Second call to actually perform the diago
+ lwork = NINT(work(1))
+
+ deallocate(work)
+ allocate(work(lwork))
+ call PDSYEV('N','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,info)
+
+ deallocate(work)
+
+
+ deallocate(eigvec)
+
+#else
+
+ call diagonalize_wo_vectors(nglobal,matrix,eigval)
+
+#endif
+
+
+end subroutine diagonalize_eigval_sca
+
+
+!=========================================================================
 ! Diagonalize a distributed matrix
 !=========================================================================
 subroutine diagonalize_inplace_sca(nglobal,desc,matrix,eigval)

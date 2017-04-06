@@ -291,9 +291,11 @@ subroutine scf_loop(is_restart,&
 
    endif
 
+
    !
    ! Add the XC part of the hamiltonian to the total hamiltonian
    hamiltonian(:,:,:) = hamiltonian(:,:,:) + hamiltonian_xc(:,:,:)
+
    
    ! All the components of the energy have been calculated at this stage
    ! Sum up to get the total energy
@@ -570,7 +572,7 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
        exc = 0.0_dp
      endif
    else
-     call dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,exc)
+     call dft_exc_vxc_batch(basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,exc)
    endif
 
    hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) 
