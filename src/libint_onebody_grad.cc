@@ -313,22 +313,22 @@ void libint_elecpot_grad(int amA, int contrdepthA , double A [] , double alphaA 
  LIBINT2_PREFIXED_NAME(libint2_build_elecpot1)[amA][amB](inteval);
 
  for( int i12=0; i12 < ni ; i12++ ) {
-   elecpotAx[i12]+= inteval[0].targets[0][i12+ni*0] ;
+   elecpotAx[i12] = inteval[0].targets[0][i12+ni*0] ;
  }
  for( int i12=0; i12 < ni ; i12++ ) {
-   elecpotAy[i12]+= inteval[0].targets[0][i12+ni*1] ;
+   elecpotAy[i12] = inteval[0].targets[0][i12+ni*1] ;
  }
  for( int i12=0; i12 < ni ; i12++ ) {
-   elecpotAz[i12]+= inteval[0].targets[0][i12+ni*2] ;
+   elecpotAz[i12] = inteval[0].targets[0][i12+ni*2] ;
  }
  for( int i12=0; i12 < ni ; i12++ ) {
-   elecpotBx[i12]+= inteval[0].targets[0][i12+ni*3] ;
+   elecpotBx[i12] = inteval[0].targets[0][i12+ni*3] ;
  }
  for( int i12=0; i12 < ni ; i12++ ) {
-   elecpotBy[i12]+= inteval[0].targets[0][i12+ni*4] ;
+   elecpotBy[i12] = inteval[0].targets[0][i12+ni*4] ;
  }
  for( int i12=0; i12 < ni ; i12++ ) {
-   elecpotBz[i12]+= inteval[0].targets[0][i12+ni*5] ;
+   elecpotBz[i12] = inteval[0].targets[0][i12+ni*5] ;
  }
 
 

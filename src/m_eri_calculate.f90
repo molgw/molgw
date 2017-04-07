@@ -301,14 +301,12 @@ subroutine calculate_eri_4center_shell(basis,rcut,ijshellpair,klshellpair,&
 
  allocate(shell_libint(n1c*n2c*n3c*n4c))
 
-#ifdef HAVE_LIBINT_ONEBODY
  call libint_4center(am1,ng1,x01,alpha1,coeff1, &
                      am2,ng2,x02,alpha2,coeff2, &
                      am3,ng3,x03,alpha3,coeff3, &
                      am4,ng4,x04,alpha4,coeff4, &
                      rcut_libint, &
                      shell_libint)
-#endif
 
  call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,shell_libint,shellABCD)
 
@@ -451,29 +449,29 @@ subroutine calculate_eri_4center_shell_grad(basis,rcut,ijshellpair,klshellpair,&
                           gradDx,gradDy,gradDz)
 #endif
 
- call transform_libint_to_molgw_4d(basis%gaussian_type,ami,amj,amk,aml,gradAx,grad_tmp)
+ call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradAx,grad_tmp)
  shell_gradA(:,:,:,:,1) = grad_tmp(:,:,:,:) 
- call transform_libint_to_molgw_4d(basis%gaussian_type,ami,amj,amk,aml,gradAy,grad_tmp)
+ call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradAy,grad_tmp)
  shell_gradA(:,:,:,:,2) = grad_tmp(:,:,:,:) 
- call transform_libint_to_molgw_4d(basis%gaussian_type,ami,amj,amk,aml,gradAz,grad_tmp)
+ call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradAz,grad_tmp)
  shell_gradA(:,:,:,:,3) = grad_tmp(:,:,:,:) 
- call transform_libint_to_molgw_4d(basis%gaussian_type,ami,amj,amk,aml,gradBx,grad_tmp)
+ call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradBx,grad_tmp)
  shell_gradB(:,:,:,:,1) = grad_tmp(:,:,:,:) 
- call transform_libint_to_molgw_4d(basis%gaussian_type,ami,amj,amk,aml,gradBy,grad_tmp)
+ call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradBy,grad_tmp)
  shell_gradB(:,:,:,:,2) = grad_tmp(:,:,:,:) 
- call transform_libint_to_molgw_4d(basis%gaussian_type,ami,amj,amk,aml,gradBz,grad_tmp)
+ call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradBz,grad_tmp)
  shell_gradB(:,:,:,:,3) = grad_tmp(:,:,:,:) 
- call transform_libint_to_molgw_4d(basis%gaussian_type,ami,amj,amk,aml,gradCx,grad_tmp)
+ call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradCx,grad_tmp)
  shell_gradC(:,:,:,:,1) = grad_tmp(:,:,:,:) 
- call transform_libint_to_molgw_4d(basis%gaussian_type,ami,amj,amk,aml,gradCy,grad_tmp)
+ call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradCy,grad_tmp)
  shell_gradC(:,:,:,:,2) = grad_tmp(:,:,:,:) 
- call transform_libint_to_molgw_4d(basis%gaussian_type,ami,amj,amk,aml,gradCz,grad_tmp)
+ call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradCz,grad_tmp)
  shell_gradC(:,:,:,:,3) = grad_tmp(:,:,:,:) 
- call transform_libint_to_molgw_4d(basis%gaussian_type,ami,amj,amk,aml,gradDx,grad_tmp)
+ call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradDx,grad_tmp)
  shell_gradD(:,:,:,:,1) = grad_tmp(:,:,:,:) 
- call transform_libint_to_molgw_4d(basis%gaussian_type,ami,amj,amk,aml,gradDy,grad_tmp)
+ call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradDy,grad_tmp)
  shell_gradD(:,:,:,:,2) = grad_tmp(:,:,:,:) 
- call transform_libint_to_molgw_4d(basis%gaussian_type,ami,amj,amk,aml,gradDz,grad_tmp)
+ call transform_libint_to_molgw(basis%gaussian_type,ami,amj,amk,aml,gradDz,grad_tmp)
  shell_gradD(:,:,:,:,3) = grad_tmp(:,:,:,:) 
 
 
@@ -951,7 +949,7 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
                          am4,ng4,x04,alpha4,coeff4, &
                          rcut_libint,int_shell)
 
-     call transform_libint_to_molgw_3d(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
+     call transform_libint_to_molgw(auxil_basis%gaussian_type,ami,basis%gaussian_type,amk,aml,int_shell,integrals)
 
      
      do lbf=1,nl
@@ -1174,7 +1172,7 @@ subroutine calculate_eri_approximate_hartree(basis,mv,nv,x0_rho,ng_rho,coeff_rho
                        am4,ng4,x04,alpha4,coeff4, &
                        0.0_C_DOUBLE,int_shell)
 
-   call transform_libint_to_molgw_3d(basis%gaussian_type,0,basis%gaussian_type,amk,aml,int_shell,integrals)
+   call transform_libint_to_molgw(basis%gaussian_type,0,basis%gaussian_type,amk,aml,int_shell,integrals)
 
      
 

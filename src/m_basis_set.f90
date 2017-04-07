@@ -43,6 +43,7 @@ module m_basis_set
    real(dp)             :: x0(3)
    integer              :: iatom
    integer              :: istart,iend                        ! index of the shell's basis functions in the final basis set
+   integer              :: istart_cart,iend_cart              ! index of the shell's basis functions in the cartesian basis set
  end type shell_type
 
 
@@ -194,9 +195,12 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
      basis%shell(ishell)%ng     = ng
      allocate(basis%shell(ishell)%alpha(ng))
      allocate(basis%shell(ishell)%coeff(ng))
-     basis%shell(ishell)%alpha(:) = alpha(:)
-     basis%shell(ishell)%istart  = jbf + 1
-     basis%shell(ishell)%iend    = jbf + number_basis_function_am(gaussian_type,am_read)
+     basis%shell(ishell)%alpha(:)    = alpha(:)
+     basis%shell(ishell)%istart      = jbf + 1
+     basis%shell(ishell)%iend        = jbf + number_basis_function_am(gaussian_type,am_read)
+     basis%shell(ishell)%istart_cart = jbf_cart + 1
+     basis%shell(ishell)%iend_cart   = jbf_cart + number_basis_function_am('CART',am_read)
+     ! shell%coeff(:) is setup just after the basis functions
 
 
      !
@@ -293,8 +297,11 @@ subroutine destroy_basis_set(basis)
  integer :: ibf,ishell
 !=====
 
-! do ibf=1,basis%nbf
+! do ibf=1,basis%nbf_cart
 !   call destroy_basis_function(basis%bfc(ibf))
+! enddo
+! do ibf=1,basis%nbf
+!   call destroy_basis_function(basis%bff(ibf))
 ! enddo
  deallocate(basis%bfc)
  deallocate(basis%bff)

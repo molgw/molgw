@@ -249,6 +249,9 @@ module m_libint_tools
 
  end interface
 
+ interface transform_molgw_to_molgw
+   module procedure transform_molgw_to_molgw_2d
+ end interface
 
 
  interface transform_libint_to_molgw
@@ -260,6 +263,39 @@ module m_libint_tools
 
 
 contains
+
+
+!=========================================================================
+subroutine transform_molgw_to_molgw_2d(gaussian_type,am1,am2,array_in,matrix_out)
+ implicit none
+ character(len=4),intent(in)      :: gaussian_type
+ integer,intent(in)               :: am1,am2
+ real(C_DOUBLE),intent(in)        :: array_in(:)
+ real(dp),allocatable,intent(out) :: matrix_out(:,:)
+!=====
+ integer :: n1,n2,n1c,n2c
+ integer :: gt_tag
+ real(dp),allocatable :: matrix_tmp(:,:)
+!=====
+
+ gt_tag = get_gaussian_type_tag(gaussian_type)
+ n1c = number_basis_function_am('CART',am1)
+ n2c = number_basis_function_am('CART',am2)
+ n1  = number_basis_function_am(gaussian_type,am1)
+ n2  = number_basis_function_am(gaussian_type,am2)
+
+ if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1,n2))
+ allocate(matrix_tmp(n1,n2c))
+
+ ! Transform the 1st index
+ matrix_tmp(:,:) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c , n1c /) ) , cart_to_pure(am1,gt_tag)%matrix(1:n1c,1:n1) ) )
+
+ ! Transform the 2nd index
+ matrix_out(:,:) = MATMUL( matrix_tmp(:,:) , cart_to_pure(am2,gt_tag)%matrix(:,:) )
+
+ deallocate(matrix_tmp)
+
+end subroutine transform_molgw_to_molgw_2d
 
 
 !=========================================================================
@@ -395,6 +431,27 @@ subroutine transform_libint_to_molgw_4d(gaussian_type,am1,am2,am3,am4,array_in,m
 end subroutine transform_libint_to_molgw_4d
 
 
+!=========================================================================
+subroutine set_libint_shell(shell,amA,contrdepthA,A,alphaA,cA)
+ implicit none
+
+ type(shell_type),intent(in)            :: shell
+ integer(C_INT),intent(out)             :: amA,contrdepthA
+ real(C_DOUBLE),intent(out)             :: A(3)
+ real(C_DOUBLE),allocatable,intent(out) :: alphaA(:),cA(:)
+!=====
+!=====
+
+  allocate(alphaA(shell%ng))
+  allocate(cA(shell%ng))
+
+  contrdepthA = shell%ng
+  amA         = shell%am
+  A(:)        = shell%x0(:)
+  alphaA(:)   = shell%alpha(:)
+  cA(:)       = shell%coeff(:)
+
+end subroutine set_libint_shell
 
 
 end module m_libint_tools
