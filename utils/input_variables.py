@@ -665,7 +665,7 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='eta'
 vl[i].family   ='post'
-vl[i].default  ='0.001'
+vl[i].default  = 0.001
 vl[i].datatype ='real'
 vl[i].comment  ='Is a the tiny imaginary part used in the denominator of the Green\'s function to shift the pole off the axis, so to avoid divergences.\
 This is an energy in Hartree. \
@@ -678,7 +678,7 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='scissor'
 vl[i].family   ='post'
-vl[i].default  =0.
+vl[i].default  = 0.
 vl[i].datatype ='real'
 vl[i].comment  ='Sets a rigid energy shift of the unoccupied states, so to mimick a GW calculation without actually doing it.'
 
@@ -687,7 +687,7 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='grid_memory'
 vl[i].family   ='hardware'
-vl[i].default  =100.0
+vl[i].default  = 400.0
 vl[i].datatype ='real'
 vl[i].comment  ='Sets the maximum memory usage in Mb allowed to store the wavefunctions on the quadrature points for XC integrals.'
 
@@ -696,7 +696,7 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='scalapack_block_min'
 vl[i].family   ='hardware'
-vl[i].default  =400
+vl[i].default  = 400
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets the minimum block size to distribute a non-distributed matrix with SCALAPACK. \
 If scalapack_block_min=400, then a 900x900 matrix will be distributed on a 2x2 processor grid. \
@@ -997,7 +997,7 @@ for i in range(len(vl)):
     fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
 # Parallelization family
-fhtml.write('<h3>Parallelization input variables</h3>\n<p>\n')
+fhtml.write('<h3>Hardware input variables</h3>\n<p>\n')
 for i in range(len(vl)):
   if vl[i].family =='hardware':
     fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')

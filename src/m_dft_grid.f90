@@ -15,6 +15,7 @@ module m_dft_grid
  use m_timing
  use m_cart_to_pure
  use m_inputparam,only: partition_scheme,grid_memory
+ use m_basis_set
  
  !
  ! Grid definition
@@ -36,23 +37,28 @@ module m_dft_grid
 
  !
  ! Function evaluation storage
- integer,private           :: ngrid_stored
- real(dp),allocatable      :: bfr(:,:)
- real(dp),allocatable      :: bfgr(:,:,:)
+ integer,private              :: batch_size_
+ integer,private              :: ngrid_stored
+ real(dp),allocatable,private :: bfr(:,:)
+ real(dp),allocatable,private :: bfgr(:,:,:)
 
 
 contains
 
 
 !=========================================================================
-subroutine init_dft_grid(grid_level_in)
+subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,batch_size)
  use m_elements
  use m_atoms
  use m_tools,only: coeffs_gausslegint
  implicit none
 
- integer,intent(in)   :: grid_level_in
+ type(basis_set),intent(in) :: basis
+ integer,intent(in)         :: grid_level_in
+ logical,intent(in)         :: needs_gradient,precalculate_wfn
+ integer,intent(in)         :: batch_size
 !=====
+ integer              :: ngrid_max_allowed
  integer              :: iradial,iatom,iangular,ir,ir1,igrid
  integer              :: n1,n2,nangular,ngridmax
  real(dp)             :: weight,radius
@@ -351,6 +357,40 @@ subroutine init_dft_grid(grid_level_in)
 
  deallocate(rr_grid_tmp,w_grid_tmp)
 
+
+ !
+ ! Once the grid is set up, 
+ ! precalculate the wavefunctions and their gradient on a part of the grid
+ !
+
+ ! Save an internal copy of batch_size
+ batch_size_ = batch_size
+
+
+ if( precalculate_wfn ) then
+   !
+   ! grid_memory is given in Megabytes
+   ! If gradient is needed, the storage is 4 times larger
+   if( .NOT. needs_gradient ) then
+     ngrid_max_allowed = NINT( grid_memory * 1024.0_dp**2 / ( REAL(basis%nbf,dp) * REAL(dp,dp) ) )
+   else
+     ngrid_max_allowed = NINT( grid_memory * 1024.0_dp**2 / ( 4.0_dp * REAL(basis%nbf,dp) * REAL(dp,dp) ) )
+   endif
+
+   ngrid_stored = MIN(ngrid,ngrid_max_allowed)
+   ! Enforce a multiple of batches
+   ngrid_stored = batch_size * ( ngrid_stored/batch_size )
+
+   call prepare_basis_functions_r(basis,batch_size_)
+   if( needs_gradient ) then
+     call prepare_basis_functions_gradr(basis,batch_size_)
+   endif
+
+ else
+   ngrid_stored = 0
+ endif
+
+
  call stop_clock(timing_grid_generation)
 
 
@@ -391,29 +431,19 @@ end function smooth_step
 
 !=========================================================================
 subroutine prepare_basis_functions_r(basis,batch_size)
- use m_basis_set
  implicit none
 
  type(basis_set),intent(in) :: basis
  integer,intent(in)         :: batch_size
 !=====
  integer                    :: igrid
- integer                    :: ngrid_max_allowed
 !=====
-
- ! grid_memory is given in Megabytes
- ngrid_max_allowed = NINT( grid_memory * 1024.0_dp**2 / ( REAL(basis%nbf,dp) * REAL(dp,dp) ) )
-
- ngrid_stored = MIN(ngrid,ngrid_max_allowed)
- ! Enforce a multiple of batches
- ngrid_stored = batch_size * ( ngrid_stored/batch_size )
 
  write(stdout,'(1x,a,i7)') 'Precalculate the functions on N grid points ',ngrid_stored
  if( batch_size /= 1 ) then
    write(stdout,'(3x,a,i5,a,i4)') 'which corresponds to ',ngrid_stored/batch_size,' batches of size ',batch_size
  endif
  call clean_allocate('basis ftns on grid',bfr,basis%nbf,ngrid_stored)
-
 
  do igrid=1,ngrid_stored,batch_size
    call calculate_basis_functions_r_batch(basis,batch_size,rr_grid(:,igrid:igrid+batch_size-1),bfr(:,igrid:igrid+batch_size-1))
@@ -424,7 +454,6 @@ end subroutine prepare_basis_functions_r
 
 !=========================================================================
 subroutine prepare_basis_functions_gradr(basis,batch_size)
- use m_basis_set
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -449,7 +478,6 @@ end subroutine prepare_basis_functions_gradr
 
 !=========================================================================
 subroutine get_basis_functions_r(basis,igrid,basis_function_r)
- use m_basis_set
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -471,7 +499,6 @@ end subroutine get_basis_functions_r
 
 !=========================================================================
 subroutine get_basis_functions_r_batch(basis,igrid,nr,basis_function_r)
- use m_basis_set
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -493,7 +520,6 @@ end subroutine get_basis_functions_r_batch
 
 !=========================================================================
 subroutine get_basis_functions_gradr(basis,igrid,basis_function_gradr)
- use m_basis_set
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -515,7 +541,6 @@ end subroutine get_basis_functions_gradr
 
 !=========================================================================
 subroutine get_basis_functions_gradr_batch(basis,igrid,nr,basis_function_gradr)
- use m_basis_set
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -537,7 +562,6 @@ end subroutine get_basis_functions_gradr_batch
 
 !=========================================================================
 subroutine calculate_basis_functions_r(basis,rr,basis_function_r)
- use m_basis_set
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -577,7 +601,6 @@ end subroutine calculate_basis_functions_r
 
 !=========================================================================
 subroutine calculate_basis_functions_r_batch(basis,nr,rr,basis_function_r)
- use m_basis_set
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -622,7 +645,6 @@ end subroutine calculate_basis_functions_r_batch
 
 !=========================================================================
 subroutine calculate_basis_functions_gradr(basis,rr,basis_function_gradr)
- use m_basis_set
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -663,7 +685,6 @@ end subroutine calculate_basis_functions_gradr
 
 !=========================================================================
 subroutine calculate_basis_functions_gradr_batch(basis,nr,rr,basis_function_gradr)
- use m_basis_set
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -710,7 +731,6 @@ end subroutine calculate_basis_functions_gradr_batch
 
 !=========================================================================
 subroutine calculate_basis_functions_laplr(basis,rr,basis_function_gradr,basis_function_laplr)
- use m_basis_set
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -758,7 +778,6 @@ end subroutine calculate_basis_functions_laplr
 
 !=========================================================================
 subroutine setup_bf_radius(basis)
- use m_basis_set
  implicit none
 
  type(basis_set),intent(in) :: basis

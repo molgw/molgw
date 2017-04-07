@@ -345,13 +345,15 @@ end subroutine calc_density_gradr_laplr
 
 
 !=========================================================================
-subroutine teter_lda_vxc_exc(rhor,vxc,exc)
+subroutine teter_lda_vxc_exc(nr,rhor,vxc,exc)
  use m_definitions
  implicit none
 
- real(dp),intent(in) :: rhor
- real(dp),intent(out) :: vxc,exc
+ integer,intent(in)   :: nr
+ real(dp),intent(in)  :: rhor(nr)
+ real(dp),intent(out) :: vxc(nr),exc(nr)
 !=====
+ integer :: ir
  !
  ! The usual full LDA parameters of Teter
  real(dp),parameter :: a0p=.4581652932831429_dp
@@ -362,27 +364,29 @@ subroutine teter_lda_vxc_exc(rhor,vxc,exc)
  real(dp),parameter :: b2p=4.504130959426697_dp
  real(dp),parameter :: b3p=1.110667363742916_dp
  real(dp),parameter :: b4p=0.02359291751427506_dp
- real(dp)           :: d1m1
- real(dp)           :: dd1drs,dn1drs,dexcdrs
- real(dp)           :: n1,d1
- real(dp)           :: rs
+
+ real(dp)           :: dd1drs(nr)
+ real(dp)           :: dn1drs(nr)
+ real(dp)           :: dexcdrs(nr)
+ real(dp)           :: n1(nr)
+ real(dp)           :: d1(nr)
+ real(dp)           :: rs(nr)
 !=====
 
- rs = ( 3.0_dp / (4.0_dp*pi*rhor) )**(1.0_dp/3.0_dp) 
- n1 = a0p + rs * (a1p + rs * ( a2p + rs * a3p ) )
- d1 = rs * ( b1p + rs * ( b2p + rs * ( b3p + rs * b4p ) ) )
- d1m1 = 1.0_dp / d1
+ rs(:) = ( 3.0_dp / (4.0_dp*pi*rhor(:)) )**(1.0_dp/3.0_dp) 
+ n1(:) = a0p + rs(:) * (a1p + rs(:) * ( a2p + rs(:) * a3p ) )
+ d1(:) = rs(:) * ( b1p + rs(:) * ( b2p + rs(:) * ( b3p + rs(:) * b4p ) ) )
 
  ! Firstly, exchange-correlation energy
- exc = -n1 * d1m1
+ exc(:) = -n1(:) / d1(:)
 
  ! Secondly, exchange-correlation potential
- dn1drs = a1p + rs * ( 2.0_dp * a2p + rs * ( 3.0_dp * a3p ) )
- dd1drs = b1p + rs * ( 2.0_dp * b2p + rs * ( 3.0_dp * b3p + rs * ( 4.0_dp * b4p ) ) )
+ dn1drs(:) = a1p + rs(:) * ( 2.0_dp * a2p + rs(:) * ( 3.0_dp * a3p ) )
+ dd1drs(:) = b1p + rs(:) * ( 2.0_dp * b2p + rs(:) * ( 3.0_dp * b3p + rs(:) * ( 4.0_dp * b4p ) ) )
 
  ! dexcdrs is d(exc)/d(rs)
- dexcdrs = -( dn1drs + exc * dd1drs ) * d1m1
- vxc = exc - rs * dexcdrs / 3.0_dp
+ dexcdrs(:) = -( dn1drs(:) + exc(:) * dd1drs(:) ) / d1(:)
+ vxc(:) = exc(:) - rs(:) * dexcdrs(:) / 3.0_dp
 
 
 end subroutine teter_lda_vxc_exc

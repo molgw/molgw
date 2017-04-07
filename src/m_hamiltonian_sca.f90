@@ -1138,12 +1138,8 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  !
  ! Create a temporary grid with low quality
  ! This grid is to be destroyed at the end of the present subroutine
- call init_dft_grid(low)
+ call init_dft_grid(basis,low,.FALSE.,.FALSE.,1)
 
- !
- ! If it is the first time, set up the stored arrays
- !
- if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis,1)
 
  normalization = 0.0_dp
  exc           = 0.0_dp
@@ -1164,7 +1160,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
    ! Normalization
    normalization = normalization + rhor * weight
 
-   call teter_lda_vxc_exc(rhor,vxc,excr)
+   call teter_lda_vxc_exc(1,rhor,vxc,excr)
 
    !
    ! XC energy
