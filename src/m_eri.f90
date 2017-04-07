@@ -559,37 +559,6 @@ subroutine setup_shellpair(basis)
 end subroutine setup_shellpair
 
 
-!=========================================================================
-subroutine test_eri(basis)
- implicit none
- type(basis_set),intent(in)   :: basis
-!=====
- integer                      :: ibf,jbf,kbf,lbf
-!=====
-
- do jbf=1,nbf_eri
-   do ibf=1,nbf_eri
-     do lbf=1,nbf_eri
-       do kbf=1,nbf_eri
-         if( ABS(eri(ibf,jbf,kbf,lbf) - eri(kbf,lbf,ibf,jbf)) > 1.d-6 ) then
-           write(stdout,*) ibf,jbf,kbf,lbf,eri(ibf,jbf,kbf,lbf)
-           write(stdout,*) kbf,lbf,ibf,jbf,eri(kbf,lbf,ibf,jbf)
-           write(stdout,*) ibf,basis%bf(ibf)%amc
-           write(stdout,*) jbf,basis%bf(jbf)%amc
-           write(stdout,*) kbf,basis%bf(kbf)%amc
-           write(stdout,*) lbf,basis%bf(lbf)%amc
-           call die('ERI array not symmetric')
-         endif
-       enddo
-     enddo
-   enddo
- enddo
-
- call die('TESTING OK')
-
-end subroutine test_eri
-
-
 !=================================================================
 subroutine destroy_eri_3center()
  implicit none

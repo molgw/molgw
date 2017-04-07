@@ -579,14 +579,14 @@ subroutine calculate_basis_functions_r(basis,rr,basis_function_r)
  ibf_cart = 1
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    allocate(basis_function_r_cart(ni_cart))
 
    do i_cart=1,ni_cart
-     basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
+     basis_function_r_cart(i_cart) = eval_basis_function(basis%bfc(ibf_cart+i_cart-1),rr)
    enddo
    basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
    deallocate(basis_function_r_cart)
@@ -620,7 +620,7 @@ subroutine calculate_basis_functions_r_batch(basis,nr,rr,basis_function_r)
  ibf_cart = 1
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
@@ -628,7 +628,7 @@ subroutine calculate_basis_functions_r_batch(basis,nr,rr,basis_function_r)
 
    do ir=1,nr
      do i_cart=1,ni_cart
-       basis_function_r_cart(i_cart,ir) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr(:,ir))
+       basis_function_r_cart(i_cart,ir) = eval_basis_function(basis%bfc(ibf_cart+i_cart-1),rr(:,ir))
      enddo
    enddo
 
@@ -661,14 +661,14 @@ subroutine calculate_basis_functions_gradr(basis,rr,basis_function_gradr)
  ibf_cart = 1
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    allocate(basis_function_gradr_cart(3,ni_cart))
 
    do i_cart=1,ni_cart
-     basis_function_gradr_cart(:,i_cart) = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr)
+     basis_function_gradr_cart(:,i_cart) = eval_basis_function_grad(basis%bfc(ibf_cart+i_cart-1),rr)
    enddo
 
    basis_function_gradr(:,ibf:ibf+ni-1) = MATMUL( basis_function_gradr_cart(:,:) , cart_to_pure(li,gt)%matrix(:,:) )
@@ -703,7 +703,7 @@ subroutine calculate_basis_functions_gradr_batch(basis,nr,rr,basis_function_grad
  ibf_cart = 1
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
@@ -711,7 +711,7 @@ subroutine calculate_basis_functions_gradr_batch(basis,nr,rr,basis_function_grad
 
    do ir=1,nr
      do i_cart=1,ni_cart
-       basis_function_gradr_cart(i_cart,ir,:) = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr(:,ir))
+       basis_function_gradr_cart(i_cart,ir,:) = eval_basis_function_grad(basis%bfc(ibf_cart+i_cart-1),rr(:,ir))
      enddo
    enddo
 
@@ -750,7 +750,7 @@ subroutine calculate_basis_functions_laplr(basis,rr,basis_function_gradr,basis_f
  ibf_cart = 1
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
@@ -759,8 +759,8 @@ subroutine calculate_basis_functions_laplr(basis,rr,basis_function_gradr,basis_f
 
    do i_cart=1,ni_cart
 
-     basis_function_gradr_cart(:,i_cart)        = eval_basis_function_grad(basis%bf(ibf_cart+i_cart-1),rr)
-     basis_function_laplr_cart(:,i_cart)        = eval_basis_function_lapl(basis%bf(ibf_cart+i_cart-1),rr)
+     basis_function_gradr_cart(:,i_cart)        = eval_basis_function_grad(basis%bfc(ibf_cart+i_cart-1),rr)
+     basis_function_laplr_cart(:,i_cart)        = eval_basis_function_lapl(basis%bfc(ibf_cart+i_cart-1),rr)
 
    enddo
 

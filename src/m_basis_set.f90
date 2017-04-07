@@ -61,7 +61,7 @@ module m_basis_set
                                                        ! the same mixing coefficients 
                                                        ! and the same angular momentum
    character(len=4)                 :: gaussian_type   ! CART or PURE
-   type(basis_function),allocatable :: bf(:)           ! Cartesian basis function
+   type(basis_function),allocatable :: bfc(:)          ! Cartesian basis function
    type(basis_function),allocatable :: bff(:)          ! Final basis function (can be Cartesian or Pure)
    type(shell_type),allocatable     :: shell(:)
 
@@ -151,7 +151,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  endif
  write(stdout,'(a50,i8)') 'Number of shells:',basis%nshell
 
- allocate(basis%bf(basis%nbf_cart))
+ allocate(basis%bfc(basis%nbf_cart))
  allocate(basis%bff(basis%nbf))
  allocate(basis%shell(basis%nshell))
 
@@ -214,7 +214,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
        ! Add the new basis function
        jbf_cart = jbf_cart + 1 
        index_in_shell = index_in_shell + 1
-       call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bf(jbf_cart))
+       call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bfc(jbf_cart))
        if(basis%gaussian_type == 'CART') then
          jbf = jbf + 1
          call init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,ishell,index_in_shell,basis%bff(jbf))
@@ -245,7 +245,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
      !
      ! Include here the normalization part that does not depend on (nx,ny,nz)
-     basis%shell(ishell)%coeff(:) = basis%bf(jbf_cart-number_basis_function_am(gaussian_type,am_read)+1)%coeff(:) &
+     basis%shell(ishell)%coeff(:) = basis%bfc(jbf_cart-number_basis_function_am(gaussian_type,am_read)+1)%coeff(:) &
                * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**am_read * alpha(:)**( 0.25_dp * ( 2.0_dp*am_read + 3.0_dp ) )
   
      deallocate(alpha,coeff)
@@ -259,7 +259,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
 
 
  ! Find the maximum angular momentum employed in the basis set
- basis%ammax = MAXVAL(basis%bf(:)%am)
+ basis%ammax = MAXVAL(basis%bfc(:)%am)
 
  write(stdout,'(a50,i8)') 'Maximum angular momentum in the basis set:',basis%ammax
  write(stdout,'(a50,a8)') '                                          ',orbital_momentum_name(basis%ammax)
@@ -275,7 +275,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  if( .FALSE. ) then
    do ibf=1,basis%nbf_cart
      write(stdout,*) ' Cartesian function number',ibf
-     call print_basis_function(basis%bf(ibf))
+     call print_basis_function(basis%bfc(ibf))
    enddo
  endif
 
@@ -294,9 +294,10 @@ subroutine destroy_basis_set(basis)
 !=====
 
 ! do ibf=1,basis%nbf
-!   call destroy_basis_function(basis%bf(ibf))
+!   call destroy_basis_function(basis%bfc(ibf))
 ! enddo
- deallocate(basis%bf)
+ deallocate(basis%bfc)
+ deallocate(basis%bff)
  do ishell=1,basis%nshell
    if(ALLOCATED(basis%shell(ishell)%alpha)) deallocate( basis%shell(ishell)%alpha )
    if(ALLOCATED(basis%shell(ishell)%coeff)) deallocate( basis%shell(ishell)%coeff )
@@ -328,7 +329,7 @@ function compare_basis_set(basis1,basis2) result(same_basis_set)
  if( .NOT. same_basis_set ) return
 
  do ibf=1,basis1%nbf
-   same_basis_set = same_basis_set .AND. compare_basis_function(basis1%bf(ibf),basis2%bf(ibf))
+   same_basis_set = same_basis_set .AND. compare_basis_function(basis1%bfc(ibf),basis2%bfc(ibf))
  enddo
 
 
@@ -386,7 +387,7 @@ subroutine write_basis_set(unitfile,basis)
  write(unitfile)  basis%nshell        
  write(unitfile)  basis%gaussian_type
  do ibf=1,basis%nbf_cart
-   call write_basis_function(unitfile,basis%bf(ibf))
+   call write_basis_function(unitfile,basis%bfc(ibf))
  enddo
  
 
@@ -408,9 +409,9 @@ subroutine read_basis_set(unitfile,basis)
  read(unitfile)  basis%nbf_cart
  read(unitfile)  basis%nshell
  read(unitfile)  basis%gaussian_type
- allocate(basis%bf(basis%nbf_cart))
+ allocate(basis%bfc(basis%nbf_cart))
  do ibf=1,basis%nbf_cart
-   call read_basis_function(unitfile,basis%bf(ibf))
+   call read_basis_function(unitfile,basis%bfc(ibf))
  enddo
 
 

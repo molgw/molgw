@@ -59,12 +59,12 @@ subroutine setup_overlap_libint(print_matrix_,basis,s_matrix)
  ibf      = 1
  jbf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
@@ -72,16 +72,16 @@ subroutine setup_overlap_libint(print_matrix_,basis,s_matrix)
 
      amA = li
      amB = lj
-     contrdepthA = basis%bf(ibf_cart)%ngaussian
-     contrdepthB = basis%bf(jbf_cart)%ngaussian
-     A(:) = basis%bf(ibf_cart)%x0(:)
-     B(:) = basis%bf(jbf_cart)%x0(:)
+     contrdepthA = basis%bfc(ibf_cart)%ngaussian
+     contrdepthB = basis%bfc(jbf_cart)%ngaussian
+     A(:) = basis%bfc(ibf_cart)%x0(:)
+     B(:) = basis%bfc(jbf_cart)%x0(:)
      allocate(alphaA(contrdepthA),alphaB(contrdepthB))
-     alphaA(:) = basis%bf(ibf_cart)%g(:)%alpha
-     alphaB(:) = basis%bf(jbf_cart)%g(:)%alpha
+     alphaA(:) = basis%bfc(ibf_cart)%g(:)%alpha
+     alphaB(:) = basis%bfc(jbf_cart)%g(:)%alpha
      allocate(cA(contrdepthA),cB(contrdepthB))
-     cA(:) = basis%bf(ibf_cart)%coeff(:) * basis%bf(ibf_cart)%g(:)%common_norm_factor
-     cB(:) = basis%bf(jbf_cart)%coeff(:) * basis%bf(jbf_cart)%g(:)%common_norm_factor
+     cA(:) = basis%bfc(ibf_cart)%coeff(:) * basis%bfc(ibf_cart)%g(:)%common_norm_factor
+     cB(:) = basis%bfc(jbf_cart)%coeff(:) * basis%bfc(jbf_cart)%g(:)%common_norm_factor
      
 #ifdef HAVE_LIBINT_ONEBODY
      call libint_overlap(amA,contrdepthA,A,alphaA,cA, &
@@ -151,12 +151,12 @@ subroutine setup_overlap_grad_libint(print_matrix_,basis,s_matrix_grad)
  ibf      = 1
  jbf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
@@ -166,16 +166,16 @@ subroutine setup_overlap_grad_libint(print_matrix_,basis,s_matrix_grad)
 
      amA = li
      amB = lj
-     contrdepthA = basis%bf(ibf_cart)%ngaussian
-     contrdepthB = basis%bf(jbf_cart)%ngaussian
-     A(:) = basis%bf(ibf_cart)%x0(:)
-     B(:) = basis%bf(jbf_cart)%x0(:)
+     contrdepthA = basis%bfc(ibf_cart)%ngaussian
+     contrdepthB = basis%bfc(jbf_cart)%ngaussian
+     A(:) = basis%bfc(ibf_cart)%x0(:)
+     B(:) = basis%bfc(jbf_cart)%x0(:)
      allocate(alphaA(contrdepthA),alphaB(contrdepthB))
-     alphaA(:) = basis%bf(ibf_cart)%g(:)%alpha
-     alphaB(:) = basis%bf(jbf_cart)%g(:)%alpha
+     alphaA(:) = basis%bfc(ibf_cart)%g(:)%alpha
+     alphaB(:) = basis%bfc(jbf_cart)%g(:)%alpha
      allocate(cA(contrdepthA),cB(contrdepthB))
-     cA(:) = basis%bf(ibf_cart)%coeff(:) * basis%bf(ibf_cart)%g(:)%common_norm_factor
-     cB(:) = basis%bf(jbf_cart)%coeff(:) * basis%bf(jbf_cart)%g(:)%common_norm_factor
+     cA(:) = basis%bfc(ibf_cart)%coeff(:) * basis%bfc(ibf_cart)%g(:)%common_norm_factor
+     cB(:) = basis%bfc(jbf_cart)%coeff(:) * basis%bfc(jbf_cart)%g(:)%common_norm_factor
      
 #ifdef HAVE_LIBINT_ONEBODY
      call libint_overlap_grad(amA,contrdepthA,A,alphaA,cA, &
@@ -262,12 +262,12 @@ subroutine setup_kinetic_libint(print_matrix_,basis,hamiltonian_kinetic)
  ibf      = 1
  jbf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
@@ -276,16 +276,16 @@ subroutine setup_kinetic_libint(print_matrix_,basis,hamiltonian_kinetic)
 
      amA = li
      amB = lj
-     contrdepthA = basis%bf(ibf_cart)%ngaussian
-     contrdepthB = basis%bf(jbf_cart)%ngaussian
-     A(:) = basis%bf(ibf_cart)%x0(:)
-     B(:) = basis%bf(jbf_cart)%x0(:)
+     contrdepthA = basis%bfc(ibf_cart)%ngaussian
+     contrdepthB = basis%bfc(jbf_cart)%ngaussian
+     A(:) = basis%bfc(ibf_cart)%x0(:)
+     B(:) = basis%bfc(jbf_cart)%x0(:)
      allocate(alphaA(contrdepthA),alphaB(contrdepthB))
-     alphaA(:) = basis%bf(ibf_cart)%g(:)%alpha
-     alphaB(:) = basis%bf(jbf_cart)%g(:)%alpha
+     alphaA(:) = basis%bfc(ibf_cart)%g(:)%alpha
+     alphaB(:) = basis%bfc(jbf_cart)%g(:)%alpha
      allocate(cA(contrdepthA),cB(contrdepthB))
-     cA(:) = basis%bf(ibf_cart)%coeff(:) * basis%bf(ibf_cart)%g(:)%common_norm_factor
-     cB(:) = basis%bf(jbf_cart)%coeff(:) * basis%bf(jbf_cart)%g(:)%common_norm_factor
+     cA(:) = basis%bfc(ibf_cart)%coeff(:) * basis%bfc(ibf_cart)%g(:)%common_norm_factor
+     cB(:) = basis%bfc(jbf_cart)%coeff(:) * basis%bfc(jbf_cart)%g(:)%common_norm_factor
 
 #ifdef HAVE_LIBINT_ONEBODY
      call libint_kinetic(amA,contrdepthA,A,alphaA,cA, &
@@ -354,12 +354,12 @@ subroutine setup_kinetic_grad_libint(print_matrix_,basis,hamiltonian_kinetic_gra
  ibf      = 1
  jbf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
@@ -370,16 +370,16 @@ subroutine setup_kinetic_grad_libint(print_matrix_,basis,hamiltonian_kinetic_gra
 
      amA = li
      amB = lj
-     contrdepthA = basis%bf(ibf_cart)%ngaussian
-     contrdepthB = basis%bf(jbf_cart)%ngaussian
-     A(:) = basis%bf(ibf_cart)%x0(:)
-     B(:) = basis%bf(jbf_cart)%x0(:)
+     contrdepthA = basis%bfc(ibf_cart)%ngaussian
+     contrdepthB = basis%bfc(jbf_cart)%ngaussian
+     A(:) = basis%bfc(ibf_cart)%x0(:)
+     B(:) = basis%bfc(jbf_cart)%x0(:)
      allocate(alphaA(contrdepthA),alphaB(contrdepthB))
-     alphaA(:) = basis%bf(ibf_cart)%g(:)%alpha
-     alphaB(:) = basis%bf(jbf_cart)%g(:)%alpha
+     alphaA(:) = basis%bfc(ibf_cart)%g(:)%alpha
+     alphaB(:) = basis%bfc(jbf_cart)%g(:)%alpha
      allocate(cA(contrdepthA),cB(contrdepthB))
-     cA(:) = basis%bf(ibf_cart)%coeff(:) * basis%bf(ibf_cart)%g(:)%common_norm_factor
-     cB(:) = basis%bf(jbf_cart)%coeff(:) * basis%bf(jbf_cart)%g(:)%common_norm_factor
+     cA(:) = basis%bfc(ibf_cart)%coeff(:) * basis%bfc(ibf_cart)%g(:)%common_norm_factor
+     cB(:) = basis%bfc(jbf_cart)%coeff(:) * basis%bfc(jbf_cart)%g(:)%common_norm_factor
 
 #ifdef HAVE_LIBINT_ONEBODY
      call libint_kinetic_grad(amA,contrdepthA,A,alphaA,cA, &
@@ -479,12 +479,12 @@ subroutine setup_nucleus_libint(print_matrix_,basis,hamiltonian_nucleus)
  ibf      = 1
  jbf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
@@ -493,20 +493,20 @@ subroutine setup_nucleus_libint(print_matrix_,basis,hamiltonian_nucleus)
 
      amA = li
      amB = lj
-     contrdepthA = basis%bf(ibf_cart)%ngaussian
-     contrdepthB = basis%bf(jbf_cart)%ngaussian
-     A(:) = basis%bf(ibf_cart)%x0(:)
-     B(:) = basis%bf(jbf_cart)%x0(:)
+     contrdepthA = basis%bfc(ibf_cart)%ngaussian
+     contrdepthB = basis%bfc(jbf_cart)%ngaussian
+     A(:) = basis%bfc(ibf_cart)%x0(:)
+     B(:) = basis%bfc(jbf_cart)%x0(:)
      allocate(alphaA(contrdepthA),alphaB(contrdepthB))
-     alphaA(:) = basis%bf(ibf_cart)%g(:)%alpha
-     alphaB(:) = basis%bf(jbf_cart)%g(:)%alpha
+     alphaA(:) = basis%bfc(ibf_cart)%g(:)%alpha
+     alphaB(:) = basis%bfc(jbf_cart)%g(:)%alpha
      allocate(cA(contrdepthA),cB(contrdepthB))
-     cA(:) = basis%bf(ibf_cart)%coeff(:) * basis%bf(ibf_cart)%g(:)%common_norm_factor
+     cA(:) = basis%bfc(ibf_cart)%coeff(:) * basis%bfc(ibf_cart)%g(:)%common_norm_factor
 
      do iatom=1,natom
        if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
 
-       cB(:) = basis%bf(jbf_cart)%coeff(:) * basis%bf(jbf_cart)%g(:)%common_norm_factor * (-zatom(iatom))
+       cB(:) = basis%bfc(jbf_cart)%coeff(:) * basis%bfc(jbf_cart)%g(:)%common_norm_factor * (-zatom(iatom))
 
        C(:) = x(:,iatom)
 #ifdef HAVE_LIBINT_ONEBODY
@@ -602,12 +602,12 @@ subroutine setup_nucleus_grad_libint(print_matrix_,basis,hamiltonian_nucleus_gra
  ibf      = 1
  jbf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
@@ -620,20 +620,20 @@ subroutine setup_nucleus_grad_libint(print_matrix_,basis,hamiltonian_nucleus_gra
 
      amA = li
      amB = lj
-     contrdepthA = basis%bf(ibf_cart)%ngaussian
-     contrdepthB = basis%bf(jbf_cart)%ngaussian
-     A(:) = basis%bf(ibf_cart)%x0(:)
-     B(:) = basis%bf(jbf_cart)%x0(:)
+     contrdepthA = basis%bfc(ibf_cart)%ngaussian
+     contrdepthB = basis%bfc(jbf_cart)%ngaussian
+     A(:) = basis%bfc(ibf_cart)%x0(:)
+     B(:) = basis%bfc(jbf_cart)%x0(:)
      allocate(alphaA(contrdepthA),alphaB(contrdepthB))
-     alphaA(:) = basis%bf(ibf_cart)%g(:)%alpha
-     alphaB(:) = basis%bf(jbf_cart)%g(:)%alpha
+     alphaA(:) = basis%bfc(ibf_cart)%g(:)%alpha
+     alphaB(:) = basis%bfc(jbf_cart)%g(:)%alpha
      allocate(cA(contrdepthA),cB(contrdepthB))
-     cA(:) = basis%bf(ibf_cart)%coeff(:) * basis%bf(ibf_cart)%g(:)%common_norm_factor
+     cA(:) = basis%bfc(ibf_cart)%coeff(:) * basis%bfc(ibf_cart)%g(:)%common_norm_factor
 
      do iatom=1,natom
        if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
 
-       cB(:) = basis%bf(jbf_cart)%coeff(:) * basis%bf(jbf_cart)%g(:)%common_norm_factor * (-zatom(iatom))
+       cB(:) = basis%bfc(jbf_cart)%coeff(:) * basis%bfc(jbf_cart)%g(:)%common_norm_factor * (-zatom(iatom))
 
        array_cart_gradAx(:) = 0.0_dp
        array_cart_gradAy(:) = 0.0_dp

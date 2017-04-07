@@ -47,19 +47,19 @@ subroutine setup_overlap(print_matrix_,basis,s_matrix)
  ibf      = 1
  jbf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
      allocate(matrix_cart(ni_cart,nj_cart))
      do i_cart=1,ni_cart
        do j_cart=1,nj_cart
-         call overlap_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
+         call overlap_basis_function(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
        enddo
      enddo
      s_matrix(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
@@ -110,19 +110,19 @@ subroutine setup_overlap_mixedbasis(print_matrix_,basis1,basis2,s_matrix)
  ibf      = 1
  jbf      = 1
  do while(ibf_cart<=basis1%nbf_cart)
-   li      = basis1%bf(ibf_cart)%am
+   li      = basis1%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis1%gaussian_type,li)
 
    do while(jbf_cart<=basis2%nbf_cart)
-     lj      = basis2%bf(jbf_cart)%am
+     lj      = basis2%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis2%gaussian_type,lj)
 
      allocate(matrix_cart(ni_cart,nj_cart))
      do i_cart=1,ni_cart
        do j_cart=1,nj_cart
-         call overlap_basis_function(basis1%bf(ibf_cart+i_cart-1),basis2%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
+         call overlap_basis_function(basis1%bfc(ibf_cart+i_cart-1),basis2%bfc(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
        enddo
      enddo
      s_matrix(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
@@ -171,19 +171,19 @@ subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
  ibf      = 1
  jbf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
      allocate(matrix_cart(ni_cart,nj_cart))
      do i_cart=1,ni_cart
        do j_cart=1,nj_cart
-         call kinetic_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
+         call kinetic_basis_function(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
        enddo
      enddo
      hamiltonian_kinetic(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
@@ -250,12 +250,12 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
  ibf      = 1
  jbf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
@@ -265,7 +265,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
        if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
        do i_cart=1,ni_cart
          do j_cart=1,nj_cart
-           call nucleus_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
+           call nucleus_basis_function(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
            matrix_cart(i_cart,j_cart) = matrix_cart(i_cart,j_cart) + vnucleus_ij
          enddo
        enddo
@@ -1992,14 +1992,14 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
  ibf_cart = 1
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    jbf_cart = 1
    jbf      = 1
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
@@ -2008,7 +2008,7 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
 
      do i_cart=1,ni_cart
        do j_cart=1,nj_cart
-         call basis_function_dipole(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),dipole_cart(:,i_cart,j_cart))
+         call basis_function_dipole(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),dipole_cart(:,i_cart,j_cart))
        enddo
      enddo
 
@@ -2087,14 +2087,14 @@ subroutine static_quadrupole(nstate,basis,occupation,c_matrix)
  ibf_cart = 1
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    jbf_cart = 1
    jbf      = 1
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
@@ -2103,7 +2103,7 @@ subroutine static_quadrupole(nstate,basis,occupation,c_matrix)
 
      do i_cart=1,ni_cart
        do j_cart=1,nj_cart
-         call basis_function_quadrupole(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),quad_cart(:,:,i_cart,j_cart))
+         call basis_function_quadrupole(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),quad_cart(:,:,i_cart,j_cart))
        enddo
      enddo
 
