@@ -45,7 +45,7 @@ program molgw
  use m_spectral_function
  use m_hamiltonian
  use m_hamiltonian_sca
- use m_hamiltonian_libint
+ use m_hamiltonian_onebody
  use m_hamiltonian_buffer
  use m_selfenergy_tools
  use m_scf_loop
@@ -204,7 +204,7 @@ program molgw
    if( parallel_ham ) then
      call setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
    else
-     call setup_overlap_libint(print_matrix_,basis,s_matrix) 
+     call setup_overlap(print_matrix_,basis,s_matrix) 
    endif
   
    !
@@ -274,7 +274,7 @@ program molgw
      if( parallel_ham ) then
        call setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic)
      else
-       call setup_kinetic_libint(print_matrix_,basis,hamiltonian_kinetic)
+       call setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
      endif
     
      !
@@ -286,7 +286,7 @@ program molgw
          call setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
        endif
      else
-       call setup_nucleus_libint(print_matrix_,basis,hamiltonian_nucleus)
+       call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
 
        if( nelement_ecp > 0 ) then
          call setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)

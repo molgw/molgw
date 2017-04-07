@@ -7,7 +7,7 @@
 ! with no distribution of the memory
 !
 !=========================================================================
-module m_hamiltonian_libint
+module m_hamiltonian_onebody
  use m_definitions
  use m_timing
  use m_mpi
@@ -27,7 +27,7 @@ contains
 
 
 !=========================================================================
-subroutine setup_overlap_libint(print_matrix_,basis,s_matrix)
+subroutine setup_overlap(print_matrix_,basis,s_matrix)
  implicit none
  logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
@@ -117,7 +117,7 @@ subroutine setup_overlap_libint(print_matrix_,basis,s_matrix)
  call stop_clock(timing_overlap)
 
 
-end subroutine setup_overlap_libint
+end subroutine setup_overlap
 
 
 !=========================================================================
@@ -213,7 +213,7 @@ end subroutine setup_overlap_mixedbasis
 
 
 !=========================================================================
-subroutine setup_overlap_grad_libint(print_matrix_,basis,s_matrix_grad)
+subroutine setup_overlap_grad(print_matrix_,basis,s_matrix_grad)
  implicit none
  logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
@@ -306,11 +306,11 @@ subroutine setup_overlap_grad_libint(print_matrix_,basis,s_matrix_grad)
  call stop_clock(timing_overlap)
 
 
-end subroutine setup_overlap_grad_libint
+end subroutine setup_overlap_grad
 
 
 !=========================================================================
-subroutine setup_kinetic_libint(print_matrix_,basis,hamiltonian_kinetic)
+subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
  implicit none
  logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
@@ -399,11 +399,11 @@ subroutine setup_kinetic_libint(print_matrix_,basis,hamiltonian_kinetic)
 
  call stop_clock(timing_hamiltonian_kin)
 
-end subroutine setup_kinetic_libint
+end subroutine setup_kinetic
 
 
 !=========================================================================
-subroutine setup_kinetic_grad_libint(print_matrix_,basis,hamiltonian_kinetic_grad)
+subroutine setup_kinetic_grad(print_matrix_,basis,hamiltonian_kinetic_grad)
  implicit none
  logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
@@ -494,11 +494,11 @@ subroutine setup_kinetic_grad_libint(print_matrix_,basis,hamiltonian_kinetic_gra
 
  call stop_clock(timing_hamiltonian_kin)
 
-end subroutine setup_kinetic_grad_libint
+end subroutine setup_kinetic_grad
 
 
 !=========================================================================
-subroutine setup_nucleus_libint(print_matrix_,basis,hamiltonian_nucleus)
+subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
  use m_atoms
  implicit none
  logical,intent(in)         :: print_matrix_
@@ -615,11 +615,11 @@ subroutine setup_nucleus_libint(print_matrix_,basis,hamiltonian_nucleus)
 
  call stop_clock(timing_hamiltonian_nuc)
 
-end subroutine setup_nucleus_libint
+end subroutine setup_nucleus
 
 
 !=========================================================================
-subroutine setup_nucleus_grad_libint(print_matrix_,basis,hamiltonian_nucleus_grad)
+subroutine setup_nucleus_grad(print_matrix_,basis,hamiltonian_nucleus_grad)
  use m_atoms
  implicit none
  logical,intent(in)         :: print_matrix_
@@ -765,8 +765,8 @@ subroutine setup_nucleus_grad_libint(print_matrix_,basis,hamiltonian_nucleus_gra
 
  call stop_clock(timing_hamiltonian_nuc)
 
-end subroutine setup_nucleus_grad_libint
+end subroutine setup_nucleus_grad
 
 
-end module m_hamiltonian_libint
+end module m_hamiltonian_onebody
 !=========================================================================
