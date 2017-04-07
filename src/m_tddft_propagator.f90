@@ -326,7 +326,7 @@ subroutine tddft_time_loop(nstate,                           &
  integer                    :: file_time_data, file_excit_field
  integer                    :: file_dipole_time,file_iter_norm 
  integer                    :: file_q_matrix_ii(2),file_tmp(10)
- integer                    :: n_elem_q_mat,i_elem_q_mat
+ integer                    :: min_elem_q_mat,max_elem_q_mat,i_elem_q_mat
  real(dp)                   :: time_cur, excit_field(3),time_min, time_one_iter
  real(dp)                   :: dipole(3)
  real(dp)                   :: energies_inst(nstate)
@@ -343,7 +343,6 @@ subroutine tddft_time_loop(nstate,                           &
  character(len=50)          :: name_time_data,name_dipole_time
  character(len=50)          :: name_iter_norm
  character(len=50)          :: name_file_q_matrix_ii
- character(len=50)          :: format_q_matrix_ii
  logical                    :: calc_excit_ 
  logical                    :: is_identity_
 !==variables for extrapolation
@@ -354,6 +353,9 @@ subroutine tddft_time_loop(nstate,                           &
  logical                    :: restart_is_correct
 !=====
  mod_write = INT( write_step / time_step_cur )
+ min_elem_q_mat=1
+ max_elem_q_mat=10
+ max_elem_q_mat=MIN(nstate,max_elem_q_mat)
 
 !OPENING FILES
  if( is_iomaster ) then
@@ -394,8 +396,10 @@ subroutine tddft_time_loop(nstate,                           &
  end if
 
  c_matrix_0_cmplx=c_matrix_cmplx
- n_elem_q_mat=MIN(nstate,10)
- write(format_q_matrix_ii,"(a,i0,a)") "(F9.4,", n_elem_q_mat, "(2x,es16.8E3))"
+ do ispin=1,nspin
+   q_matrix_cmplx(:,:,ispin)=MATMUL(MATMUL(CONJG(TRANSPOSE(c_matrix_0_cmplx(:,:,ispin))),s_matrix),c_matrix_cmplx(:,:,ispin))
+!   call print_square_2d_matrix_cmplx("q_matrix_cmplx",q_matrix_cmplx,nstate,stdout,4)
+ end do
 
  !Getting starting value of the Hamiltonian
 ! itau=0 to avoid excitation calculation
@@ -923,15 +927,15 @@ subroutine tddft_time_loop(nstate,                           &
      if( is_iomaster ) then
        if(mod(itau-1,mod_write)==0 ) then
          write(file_q_matrix_ii(ispin),"(F9.4)",advance='no') time_cur
-         do i_elem_q_mat=1, n_elem_q_mat
-           write(file_q_matrix_ii(ispin),"(2x,F9.4)",advance='no') REAL(q_matrix_cmplx(i_elem_q_mat,i_elem_q_mat,ispin))*AIMAG(q_matrix_cmplx(i_elem_q_mat,i_elem_q_mat,ispin))
+         do i_elem_q_mat=min_elem_q_mat, max_elem_q_mat
+           write(file_q_matrix_ii(ispin),"(2x,F9.4)",advance='no') ABS((q_matrix_cmplx(i_elem_q_mat,i_elem_q_mat,ispin)))**2
          end do
          write(file_q_matrix_ii(ispin),*)
        end if
      end if
    end do
-   write(stdout,"(a,F9.4)") "time_cur  ", time_cur
-   call print_square_2d_matrix_cmplx("q_matrix_cmplx",q_matrix_cmplx,nstate,stdout,4)
+!   write(stdout,"(a,F9.4)") "time_cur  ", time_cur
+!   call print_square_2d_matrix_cmplx("q_matrix_cmplx",q_matrix_cmplx,nstate,stdout,4)
 !--TIMING
    if( is_iomaster ) then
      if(itau==3) then
