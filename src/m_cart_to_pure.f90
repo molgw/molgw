@@ -51,27 +51,7 @@ function number_basis_function_am(gaussian_type,am)
 
  select case(gaussian_type)
  case('CART')
-   select case(am)
-   case(0)
-     number_basis_function_am = 1
-   case(1)
-     number_basis_function_am = 3
-   case(2)
-     number_basis_function_am = 6
-   case(3)
-     number_basis_function_am = 10
-   case(4)
-     number_basis_function_am = 15
-   case(5)
-     number_basis_function_am = 21
-   case(6)
-     number_basis_function_am = 28
-   case(7)
-     number_basis_function_am = 36
-   case default
-     write(stdout,*) 'am=',am
-     call die('number_basis_function_am: not implemented')
-   end select
+   number_basis_function_am = ( ( am + 1 ) * ( am + 2 ) ) / 2
  case('PURE')
    number_basis_function_am = 2 * am + 1
  end select
