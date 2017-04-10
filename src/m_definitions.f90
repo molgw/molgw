@@ -16,6 +16,7 @@ module m_definitions
  integer,protected  :: stdout = OUTPUT_UNIT
  integer,parameter  :: stderr = ERROR_UNIT
 
+ integer,protected  :: MOLGW_LMAX
 
  !
  ! Physical constants
@@ -65,6 +66,18 @@ module m_definitions
 #endif
 
 contains
+
+
+!=========================================================================
+subroutine set_molgw_lmax(lmax)
+ implicit none
+ integer,intent(in) :: lmax
+!=====
+!=====
+
+ MOLGW_LMAX = lmax
+
+end subroutine set_molgw_lmax
 
 
 !=========================================================================

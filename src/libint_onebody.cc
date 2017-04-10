@@ -312,6 +312,7 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
 
  if( am == 0 ) {
 
+   elecpotAB[0] = 0.0 ;
    for( int icontrdepth2=0; icontrdepth2 < contrdepth2; icontrdepth2++) {
      elecpotAB[0] +=   inteval[icontrdepth2].LIBINT_T_S_ELECPOT_S(0)[0] ;
    }
@@ -320,7 +321,7 @@ void libint_elecpot(int amA, int contrdepthA , double A [] , double alphaA [], d
 
    LIBINT2_PREFIXED_NAME(libint2_build_elecpot)[amA][amB](inteval);
    for( int i12=0; i12 < nint(amA) * nint(amB) ; ++i12 ) {
-     elecpotAB[i12] += inteval[0].targets[0][i12] ;
+     elecpotAB[i12] = inteval[0].targets[0][i12] ;
    }
  }
 

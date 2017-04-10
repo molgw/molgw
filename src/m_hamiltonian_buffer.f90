@@ -186,12 +186,12 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
  ibf      = 1
  jbf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
@@ -201,7 +201,7 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
        if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
        do i_cart=1,ni_cart
          do j_cart=1,nj_cart
-           call nucleus_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
+           call nucleus_basis_function(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
            matrix_cart(i_cart,j_cart) = matrix_cart(i_cart,j_cart) + vnucleus_ij
          enddo
        enddo
@@ -528,28 +528,27 @@ subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_
 
  real(dp),parameter :: TOL_RHO=1.0e-10_dp
  integer  :: idft_xc
- logical  :: require_gradient,require_laplacian
  integer  :: igrid,ibf,jbf,ispin
  real(dp) :: normalization(nspin)
  real(dp) :: weight
 
- real(dp)             :: basis_function_r(basis%nbf)
- real(dp)             :: basis_function_gradr(3,basis%nbf)
- real(dp)             :: basis_function_laplr(3,basis%nbf)
+ real(dp) :: basis_function_r(basis%nbf)
+ real(dp) :: basis_function_gradr(3,basis%nbf)
+ real(dp) :: basis_function_laplr(3,basis%nbf)
 
- real(dp)             :: rhor(nspin,ngrid)
- real(dp)             :: grad_rhor(3,nspin,ngrid)
- real(dp)             :: sigma(2*nspin-1)
- real(dp)             :: tau(nspin),lapl_rhor(nspin)
- real(dp)             :: vxc_libxc(nspin)
- real(dp)             :: vxc_dummy(nspin)
- real(dp)             :: exc_libxc(1)
- real(dp)             :: vsigma(2*nspin-1)
- real(dp)             :: vlapl_rho(nspin),vtau(nspin)
- real(dp)             :: vxc_av(nspin)
- real(dp)             :: dedd_r(nspin)
- real(dp)             :: dedgd_r(3,nspin)
- real(dp)             :: gradtmp(basis%nbf)
+ real(dp) :: rhor(nspin,ngrid)
+ real(dp) :: grad_rhor(3,nspin,ngrid)
+ real(dp) :: sigma(2*nspin-1)
+ real(dp) :: tau(nspin),lapl_rhor(nspin)
+ real(dp) :: vxc_libxc(nspin)
+ real(dp) :: vxc_dummy(nspin)
+ real(dp) :: exc_libxc(1)
+ real(dp) :: vsigma(2*nspin-1)
+ real(dp) :: vlapl_rho(nspin),vtau(nspin)
+ real(dp) :: vxc_av(nspin)
+ real(dp) :: dedd_r(nspin)
+ real(dp) :: dedgd_r(3,nspin)
+ real(dp) :: gradtmp(basis%nbf)
 !=====
 
 ! if( nspin/=1 ) call die('DFT XC potential: SCALAPACK buffer not implemented for spin unrestricted')
@@ -565,25 +564,6 @@ subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_
 
  write(stdout,*) 'Calculate DFT XC potential: SCALAPACK buffer'
  
- require_gradient =.FALSE.
- require_laplacian=.FALSE.
- do idft_xc=1,ndft_xc
-
-   if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
-   if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) require_gradient  =.TRUE.
-   if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_MGGA    ) require_laplacian =.TRUE.
-
- enddo
-
- if( require_laplacian ) call die('meta-GGA not implemented in SCALAPACK buffer')
-
-
- !
- ! If it is the first time, then set up the stored arrays
- !
- if( .NOT. ALLOCATED(bfr) )                          call prepare_basis_functions_r(basis)
- if( require_gradient  .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_gradr(basis)
- if( require_laplacian .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_laplr(basis)
 
  normalization(:)=0.0_dp
 
@@ -609,7 +589,7 @@ subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_
      ! Skip all the rest if the density is too small
      if( rhor(ispin,igrid) < TOL_RHO ) cycle
 
-     if( require_gradient ) then
+     if( dft_xc_needs_gradient ) then
        call get_basis_functions_gradr(basis,igrid,basis_function_gradr)
      endif
 
@@ -618,7 +598,7 @@ subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_
      normalization(ispin) = normalization(ispin) + rhor(ispin,igrid) * weight
 
 
-     if( require_gradient ) then 
+     if( dft_xc_needs_gradient ) then 
        call calc_density_gradr(1,basis%nbf,nstate,occupation(:,ispin),buffer,basis_function_r,basis_function_gradr,grad_rhor(:,ispin,igrid))
      endif
 
@@ -639,7 +619,7 @@ subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_
 
      weight = w_grid(igrid)
 
-     if( require_gradient .OR. require_laplacian ) then
+     if( dft_xc_needs_gradient ) then
        sigma(1) = SUM( grad_rhor(:,1,igrid)**2 )
        if(nspin==2) then
          sigma(2) = SUM( grad_rhor(:,1,igrid) * grad_rhor(:,2,igrid) )
@@ -699,11 +679,11 @@ subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_
 
          else
 
-           dedgd_r(:,1) = dedgd_r(:,1) + 2.0_dp * vsigma(1) * grad_rhor(:,1,igrid) * dft_xc_coef(idft_xc) &
-                                 + vsigma(2) * grad_rhor(:,2,igrid)
+           dedgd_r(:,1) = dedgd_r(:,1) + ( 2.0_dp * vsigma(1) * grad_rhor(:,1,igrid) & 
+                                                  + vsigma(2) * grad_rhor(:,2,igrid) ) * dft_xc_coef(idft_xc)
 
-           dedgd_r(:,2) = dedgd_r(:,2) + 2.0_dp * vsigma(3) * grad_rhor(:,2,igrid) * dft_xc_coef(idft_xc) &
-                                 + vsigma(2) * grad_rhor(:,1,igrid)
+           dedgd_r(:,2) = dedgd_r(:,2) + ( 2.0_dp * vsigma(3) * grad_rhor(:,2,igrid) &
+                                                  + vsigma(2) * grad_rhor(:,1,igrid) ) * dft_xc_coef(idft_xc)
          endif
 
        endif
@@ -715,14 +695,14 @@ subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_
      !
      ! Get all the functions at point r
      call get_basis_functions_r(basis,igrid,basis_function_r)
-     if( require_gradient ) then
+     if( dft_xc_needs_gradient ) then
        call get_basis_functions_gradr(basis,igrid,basis_function_gradr)
      endif
 
      !
      ! Eventually set up the vxc term
      !
-     if( .NOT. require_gradient ) then 
+     if( .NOT. dft_xc_needs_gradient ) then 
        ! LDA
        call DSYR('L',basis%nbf,weight*dedd_r(ispin),basis_function_r,1,buffer,basis%nbf)
 
@@ -828,12 +808,7 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
  !
  ! Create a temporary grid with low quality
  ! This grid is to be destroyed at the end of the present subroutine
- call init_dft_grid(low)
-
- !
- ! If it is the first time, set up the stored arrays
- !
- if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis)
+ call init_dft_grid(basis,low,.FALSE.,.FALSE.,1)
 
  normalization = 0.0_dp
  exc           = 0.0_dp
@@ -854,7 +829,7 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
    ! Normalization
    normalization = normalization + rhor * weight
 
-   call teter_lda_vxc_exc(rhor,vxc,excr)
+   call teter_lda_vxc_exc(1,rhor,vxc,excr)
 
    !
    ! XC energy

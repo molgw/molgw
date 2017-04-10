@@ -63,7 +63,7 @@ subroutine calc_density_pmatrix(nspin,basis,p_matrix,basis_function_r,rhor)
  rhor(:)=0.0_dp
  do ispin=1,nspin
    do jbf=1,basis%nbf
-!     if( SUM( (basis%bf(jbf)%x0(:) - rr(:))**2 ) > bf_rad2(jbf) ) cycle
+!     if( SUM( (basis%bff(jbf)%x0(:) - rr(:))**2 ) > bf_rad2(jbf) ) cycle
      do ibf=1,basis%nbf
        rhor(ispin)=rhor(ispin)+p_matrix(ibf,jbf,ispin)&
                          * basis_function_r(ibf) &
@@ -91,6 +91,8 @@ subroutine calc_density_r(nspin,nbf,nstate,occupation,c_matrix,basis_function_r,
 !=====
  integer              :: ispin,istate
  real(dp)             :: phi_ir
+ real(dp),allocatable :: phir(:)
+ integer              :: nocc
 !=====
 
  !
@@ -99,6 +101,7 @@ subroutine calc_density_r(nspin,nbf,nstate,occupation,c_matrix,basis_function_r,
 
  do ispin=1,nspin
 
+#if 0
    do istate=1,nstate
      if( occupation(istate,ispin) < completely_empty ) cycle
 
@@ -106,6 +109,18 @@ subroutine calc_density_r(nspin,nbf,nstate,occupation,c_matrix,basis_function_r,
      rhor(ispin) = rhor(ispin) + phi_ir**2 * occupation(istate,ispin)
 
    enddo
+#else
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty ) cycle
+     nocc = istate
+   enddo
+   allocate(phir(nocc))
+   phir(:) = MATMUL( basis_function_r(:) , c_matrix(:,:nocc,ispin) )
+
+   rhor(ispin) = rhor(ispin) + SUM( phir(:)**2 * occupation(:nocc,ispin) )
+   deallocate(phir)
+
+#endif
 
  enddo
 
@@ -151,6 +166,50 @@ subroutine calc_density_r_cmplx(nspin,nbf,nstate,occupation,c_matrix_cmplx,basis
 
 end subroutine calc_density_r_cmplx
 
+
+
+!=========================================================================
+subroutine calc_density_r_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basis_function_r,rhor)
+ use m_definitions
+ use m_mpi
+ use m_basis_set
+ implicit none
+
+ integer,intent(in)         :: nspin,nbf,nstate,nr
+ real(dp),intent(in)        :: c_matrix(nbf,nstate,nspin)
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: basis_function_r(nbf,nr)
+ real(dp),intent(out)       :: rhor(nspin,nr)
+!=====
+ integer              :: ispin,istate,ir
+ real(dp),allocatable :: phir(:,:)
+ integer              :: nocc
+!=====
+
+ !
+ ! Calculate the density rho at points in batch
+ rhor(:,:)=0.0_dp
+
+ do ispin=1,nspin
+
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty ) cycle
+     nocc = istate
+   enddo
+
+   allocate(phir(nocc,nr))
+   phir(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_r(:,:) )
+
+   forall(ir=1:nr)
+     rhor(ispin,ir) = rhor(ispin,ir) + SUM( phir(:,ir)**2 * occupation(:nocc,ispin) )
+   endforall
+   deallocate(phir)
+
+
+ enddo
+
+
+end subroutine calc_density_r_batch
 
 
 !=========================================================================
@@ -257,6 +316,65 @@ subroutine calc_density_gradr_cmplx(nspin,nbf,nstate,occupation,c_matrix_cmplx,b
 
 end subroutine calc_density_gradr_cmplx
 
+!========================================================================
+subroutine calc_density_gradr_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basis_function_r,basis_function_gradr,rhor,grad_rhor)
+ use m_definitions
+ use m_mpi
+ use m_basis_set
+ implicit none
+
+ integer,intent(in)         :: nspin,nbf,nstate,nr
+ real(dp),intent(in)        :: c_matrix(nbf,nstate,nspin)
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: basis_function_r(nbf,nr)
+ real(dp),intent(in)        :: basis_function_gradr(nbf,nr,3)
+ real(dp),intent(out)       :: rhor(nspin,nr)
+ real(dp),intent(out)       :: grad_rhor(nspin,nr,3)
+!=====
+ integer              :: ispin,istate,ir
+ real(dp),allocatable :: phir(:,:)
+ real(dp),allocatable :: phir_gradx(:,:)
+ real(dp),allocatable :: phir_grady(:,:)
+ real(dp),allocatable :: phir_gradz(:,:)
+ integer              :: nocc
+!=====
+
+ !
+ ! Calculate rho and grad rho at points in batch
+ rhor(:,:)        = 0.0_dp
+ grad_rhor(:,:,:) = 0.0_dp
+
+ do ispin=1,nspin
+
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty ) cycle
+     nocc = istate
+   enddo
+
+   allocate(phir(nocc,nr))
+   allocate(phir_gradx(nocc,nr))
+   allocate(phir_grady(nocc,nr))
+   allocate(phir_gradz(nocc,nr))
+   phir(:,:)       = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_r(:,:) )
+   phir_gradx(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,1) )
+   phir_grady(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,2) )
+   phir_gradz(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,3) )
+
+   forall(ir=1:nr)
+     rhor(ispin,ir)        = rhor(ispin,ir)        + SUM( phir(:,ir)**2 * occupation(:nocc,ispin) )
+     grad_rhor(ispin,ir,1) = grad_rhor(ispin,ir,1) + 2.0_dp * SUM(  phir(:,ir) * phir_gradx(:,ir) * occupation(:nocc,ispin) )
+     grad_rhor(ispin,ir,2) = grad_rhor(ispin,ir,2) + 2.0_dp * SUM(  phir(:,ir) * phir_grady(:,ir) * occupation(:nocc,ispin) )
+     grad_rhor(ispin,ir,3) = grad_rhor(ispin,ir,3) + 2.0_dp * SUM(  phir(:,ir) * phir_gradz(:,ir) * occupation(:nocc,ispin) )
+   endforall
+
+   deallocate(phir)
+   deallocate(phir_gradx,phir_grady,phir_gradz)
+
+
+ enddo
+
+
+end subroutine calc_density_gradr_batch
 
 !=========================================================================
 subroutine calc_density_gradr_laplr(nspin,nbf,p_matrix,basis_function_r,basis_function_gradr,basis_function_laplr, &
@@ -304,13 +422,15 @@ end subroutine calc_density_gradr_laplr
 
 
 !=========================================================================
-subroutine teter_lda_vxc_exc(rhor,vxc,exc)
+subroutine teter_lda_vxc_exc(nr,rhor,vxc,exc)
  use m_definitions
  implicit none
 
- real(dp),intent(in) :: rhor
- real(dp),intent(out) :: vxc,exc
+ integer,intent(in)   :: nr
+ real(dp),intent(in)  :: rhor(nr)
+ real(dp),intent(out) :: vxc(nr),exc(nr)
 !=====
+ integer :: ir
  !
  ! The usual full LDA parameters of Teter
  real(dp),parameter :: a0p=.4581652932831429_dp
@@ -321,27 +441,29 @@ subroutine teter_lda_vxc_exc(rhor,vxc,exc)
  real(dp),parameter :: b2p=4.504130959426697_dp
  real(dp),parameter :: b3p=1.110667363742916_dp
  real(dp),parameter :: b4p=0.02359291751427506_dp
- real(dp)           :: d1m1
- real(dp)           :: dd1drs,dn1drs,dexcdrs
- real(dp)           :: n1,d1
- real(dp)           :: rs
+
+ real(dp)           :: dd1drs(nr)
+ real(dp)           :: dn1drs(nr)
+ real(dp)           :: dexcdrs(nr)
+ real(dp)           :: n1(nr)
+ real(dp)           :: d1(nr)
+ real(dp)           :: rs(nr)
 !=====
 
- rs = ( 3.0_dp / (4.0_dp*pi*rhor) )**(1.0_dp/3.0_dp) 
- n1 = a0p + rs * (a1p + rs * ( a2p + rs * a3p ) )
- d1 = rs * ( b1p + rs * ( b2p + rs * ( b3p + rs * b4p ) ) )
- d1m1 = 1.0_dp / d1
+ rs(:) = ( 3.0_dp / (4.0_dp*pi*rhor(:)) )**(1.0_dp/3.0_dp) 
+ n1(:) = a0p + rs(:) * (a1p + rs(:) * ( a2p + rs(:) * a3p ) )
+ d1(:) = rs(:) * ( b1p + rs(:) * ( b2p + rs(:) * ( b3p + rs(:) * b4p ) ) )
 
  ! Firstly, exchange-correlation energy
- exc = -n1 * d1m1
+ exc(:) = -n1(:) / d1(:)
 
  ! Secondly, exchange-correlation potential
- dn1drs = a1p + rs * ( 2.0_dp * a2p + rs * ( 3.0_dp * a3p ) )
- dd1drs = b1p + rs * ( 2.0_dp * b2p + rs * ( 3.0_dp * b3p + rs * ( 4.0_dp * b4p ) ) )
+ dn1drs(:) = a1p + rs(:) * ( 2.0_dp * a2p + rs(:) * ( 3.0_dp * a3p ) )
+ dd1drs(:) = b1p + rs(:) * ( 2.0_dp * b2p + rs(:) * ( 3.0_dp * b3p + rs(:) * ( 4.0_dp * b4p ) ) )
 
  ! dexcdrs is d(exc)/d(rs)
- dexcdrs = -( dn1drs + exc * dd1drs ) * d1m1
- vxc = exc - rs * dexcdrs / 3.0_dp
+ dexcdrs(:) = -( dn1drs(:) + exc(:) * dd1drs(:) ) / d1(:)
+ vxc(:) = exc(:) - rs(:) * dexcdrs(:) / 3.0_dp
 
 
 end subroutine teter_lda_vxc_exc

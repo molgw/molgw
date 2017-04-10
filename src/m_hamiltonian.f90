@@ -22,283 +22,6 @@ contains
 
 
 !=========================================================================
-subroutine setup_overlap(print_matrix_,basis,s_matrix)
- use m_basis_set
- implicit none
- logical,intent(in)         :: print_matrix_
- type(basis_set),intent(in) :: basis
- real(dp),intent(out)       :: s_matrix(basis%nbf,basis%nbf)
-!=====
- integer              :: gt
- integer              :: ibf,jbf
- integer              :: ibf_cart,jbf_cart
- integer              :: i_cart,j_cart
- integer              :: ni,nj,ni_cart,nj_cart,li,lj
- character(len=100)   :: title
- real(dp),allocatable :: matrix_cart(:,:)
-!=====
-
- call start_clock(timing_overlap)
- write(stdout,'(/,a)') ' Setup overlap matrix S'
- gt = get_gaussian_type_tag(basis%gaussian_type)
-
- ibf_cart = 1
- jbf_cart = 1
- ibf      = 1
- jbf      = 1
- do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
-   ni_cart = number_basis_function_am('CART',li)
-   ni      = number_basis_function_am(basis%gaussian_type,li)
-
-   do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
-     nj_cart = number_basis_function_am('CART',lj)
-     nj      = number_basis_function_am(basis%gaussian_type,lj)
-
-     allocate(matrix_cart(ni_cart,nj_cart))
-     do i_cart=1,ni_cart
-       do j_cart=1,nj_cart
-         call overlap_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
-       enddo
-     enddo
-     s_matrix(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
-                                                   MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
-
-
-     deallocate(matrix_cart)
-     jbf      = jbf      + nj
-     jbf_cart = jbf_cart + nj_cart
-   enddo
-   jbf      = 1
-   jbf_cart = 1
-
-   ibf      = ibf      + ni
-   ibf_cart = ibf_cart + ni_cart
-
- enddo
-
- title='=== Overlap matrix S ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,s_matrix)
-
- call stop_clock(timing_overlap)
-
-
-end subroutine setup_overlap
-
-
-!=========================================================================
-subroutine setup_overlap_mixedbasis(print_matrix_,basis1,basis2,s_matrix)
- use m_basis_set
- implicit none
- logical,intent(in)         :: print_matrix_
- type(basis_set),intent(in) :: basis1,basis2
- real(dp),intent(out)       :: s_matrix(basis1%nbf,basis2%nbf)
-!=====
- integer              :: gt
- integer              :: ibf,jbf
- integer              :: ibf_cart,jbf_cart
- integer              :: i_cart,j_cart
- integer              :: ni,nj,ni_cart,nj_cart,li,lj
- real(dp),allocatable :: matrix_cart(:,:)
-!=====
-
- gt = get_gaussian_type_tag(basis1%gaussian_type)
-
- ibf_cart = 1
- jbf_cart = 1
- ibf      = 1
- jbf      = 1
- do while(ibf_cart<=basis1%nbf_cart)
-   li      = basis1%bf(ibf_cart)%am
-   ni_cart = number_basis_function_am('CART',li)
-   ni      = number_basis_function_am(basis1%gaussian_type,li)
-
-   do while(jbf_cart<=basis2%nbf_cart)
-     lj      = basis2%bf(jbf_cart)%am
-     nj_cart = number_basis_function_am('CART',lj)
-     nj      = number_basis_function_am(basis2%gaussian_type,lj)
-
-     allocate(matrix_cart(ni_cart,nj_cart))
-     do i_cart=1,ni_cart
-       do j_cart=1,nj_cart
-         call overlap_basis_function(basis1%bf(ibf_cart+i_cart-1),basis2%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
-       enddo
-     enddo
-     s_matrix(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
-                                                   MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
-
-
-     deallocate(matrix_cart)
-     jbf      = jbf      + nj
-     jbf_cart = jbf_cart + nj_cart
-   enddo
-   jbf      = 1
-   jbf_cart = 1
-
-   ibf      = ibf      + ni
-   ibf_cart = ibf_cart + ni_cart
-
- enddo
-
-
-end subroutine setup_overlap_mixedbasis
-
-
-!=========================================================================
-subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
- use m_basis_set
- implicit none
- logical,intent(in)         :: print_matrix_
- type(basis_set),intent(in) :: basis
- real(dp),intent(out)       :: hamiltonian_kinetic(basis%nbf,basis%nbf)
-!=====
- integer              :: gt
- integer              :: ibf,jbf
- integer              :: ibf_cart,jbf_cart
- integer              :: i_cart,j_cart
- integer              :: ni,nj,ni_cart,nj_cart,li,lj
- character(len=100)   :: title
- real(dp),allocatable :: matrix_cart(:,:)
-!=====
-
- call start_clock(timing_hamiltonian_kin)
- write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian'
- gt = get_gaussian_type_tag(basis%gaussian_type)
-
- ibf_cart = 1
- jbf_cart = 1
- ibf      = 1
- jbf      = 1
- do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
-   ni_cart = number_basis_function_am('CART',li)
-   ni      = number_basis_function_am(basis%gaussian_type,li)
-
-   do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
-     nj_cart = number_basis_function_am('CART',lj)
-     nj      = number_basis_function_am(basis%gaussian_type,lj)
-
-     allocate(matrix_cart(ni_cart,nj_cart))
-     do i_cart=1,ni_cart
-       do j_cart=1,nj_cart
-         call kinetic_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
-       enddo
-     enddo
-     hamiltonian_kinetic(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
-                                                              MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
-
-
-     deallocate(matrix_cart)
-     jbf      = jbf      + nj
-     jbf_cart = jbf_cart + nj_cart
-   enddo
-   jbf      = 1
-   jbf_cart = 1
-
-   ibf      = ibf      + ni
-   ibf_cart = ibf_cart + ni_cart
-
- enddo
-
- title='===  Kinetic energy contribution ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_kinetic)
-
- call stop_clock(timing_hamiltonian_kin)
-
-end subroutine setup_kinetic
-
-
-!=========================================================================
-subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
- use m_basis_set
- use m_atoms
- implicit none
- logical,intent(in)         :: print_matrix_
- type(basis_set),intent(in) :: basis
- real(dp),intent(out)       :: hamiltonian_nucleus(basis%nbf,basis%nbf)
-!=====
- integer              :: gt
- integer              :: natom_local
- integer              :: ibf,jbf
- integer              :: ibf_cart,jbf_cart
- integer              :: i_cart,j_cart
- integer              :: ni,nj,ni_cart,nj_cart,li,lj
- integer              :: iatom
- character(len=100)   :: title
- real(dp),allocatable :: matrix_cart(:,:)
- real(dp)             :: vnucleus_ij
-!=====
-
- call start_clock(timing_hamiltonian_nuc)
- write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian'
- gt = get_gaussian_type_tag(basis%gaussian_type)
-
- if( nproc_world > 1 ) then
-   natom_local=0
-   do iatom=1,natom
-     if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
-     natom_local = natom_local + 1
-   enddo
-   write(stdout,'(a)')         '   Parallelizing over atoms'
-   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
- endif
-
- ibf_cart = 1
- jbf_cart = 1
- ibf      = 1
- jbf      = 1
- do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
-   ni_cart = number_basis_function_am('CART',li)
-   ni      = number_basis_function_am(basis%gaussian_type,li)
-
-   do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
-     nj_cart = number_basis_function_am('CART',lj)
-     nj      = number_basis_function_am(basis%gaussian_type,lj)
-
-     allocate(matrix_cart(ni_cart,nj_cart))
-     matrix_cart(:,:) = 0.0_dp
-     do iatom=1,natom
-       if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
-       do i_cart=1,ni_cart
-         do j_cart=1,nj_cart
-           call nucleus_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
-           matrix_cart(i_cart,j_cart) = matrix_cart(i_cart,j_cart) + vnucleus_ij
-         enddo
-       enddo
-     enddo
-     hamiltonian_nucleus(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
-                                                              MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) ) 
-
-
-     deallocate(matrix_cart)
-     jbf      = jbf      + nj
-     jbf_cart = jbf_cart + nj_cart
-   enddo
-   jbf      = 1
-   jbf_cart = 1
-
-   ibf      = ibf      + ni
-   ibf_cart = ibf_cart + ni_cart
-
- enddo
-
- !
- ! Reduce operation
- call xsum_world(hamiltonian_nucleus)
-
- title='===  Nucleus potential contribution ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_nucleus)
-
- call stop_clock(timing_hamiltonian_nuc)
-
-end subroutine setup_nucleus
-
-
-!=========================================================================
 subroutine setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
  use m_basis_set
  use m_atoms
@@ -1325,9 +1048,6 @@ end subroutine setup_sqrt_density_matrix
 
 !=========================================================================
 subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
- use m_definitions
- use m_mpi
- use m_timing
  use m_inputparam
  use m_basis_set
  use m_dft_grid
@@ -1347,28 +1067,25 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
  real(dp),intent(out)       :: exc_xc
 !=====
 
- real(dp),parameter :: TOL_RHO=1.0e-10_dp
+ real(dp),parameter :: TOL_RHO=1.0e-9_dp
  integer  :: idft_xc
- logical  :: require_gradient,require_laplacian
  integer  :: igrid,ibf,jbf,ispin
  real(dp) :: normalization(nspin)
  real(dp) :: weight
-
- real(dp)             :: basis_function_r(basis%nbf)
- real(dp)             :: basis_function_gradr(3,basis%nbf)
- real(dp)             :: basis_function_laplr(3,basis%nbf)
-
- real(dp)             :: rhor(nspin)
- real(dp)             :: grad_rhor(3,nspin)
- real(dp)             :: sigma(2*nspin-1)
- real(dp)             :: tau(nspin),lapl_rhor(nspin)
- real(dp)             :: vxc_libxc(nspin)
- real(dp)             :: exc_libxc(1)
- real(dp)             :: vsigma(2*nspin-1)
- real(dp)             :: vlapl_rho(nspin),vtau(nspin)
- real(dp)             :: dedd_r(nspin)
- real(dp)             :: dedgd_r(3,nspin)
- real(dp)             :: gradtmp(basis%nbf)
+ real(dp) :: basis_function_r(basis%nbf)
+ real(dp) :: basis_function_gradr(3,basis%nbf)
+ real(dp) :: basis_function_laplr(3,basis%nbf)
+ real(dp) :: rhor(nspin)
+ real(dp) :: grad_rhor(3,nspin)
+ real(dp) :: sigma(2*nspin-1)
+ real(dp) :: tau(nspin),lapl_rhor(nspin)
+ real(dp) :: vxc_libxc(nspin)
+ real(dp) :: exc_libxc(1)
+ real(dp) :: vsigma(2*nspin-1)
+ real(dp) :: vlapl_rho(nspin),vtau(nspin)
+ real(dp) :: dedd_r(nspin)
+ real(dp) :: dedgd_r(3,nspin)
+ real(dp) :: gradtmp(basis%nbf)
 !=====
 
  exc_xc = 0.0_dp
@@ -1381,25 +1098,7 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
 #ifdef HAVE_LIBXC
 
  write(stdout,*) 'Calculate DFT XC potential'
- 
- require_gradient =.FALSE.
- require_laplacian=.FALSE.
- do idft_xc=1,ndft_xc
-   if( ABS(dft_xc_coef(idft_xc)) < 1.0e-6_dp ) cycle
 
-   if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
-   if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) require_gradient  =.TRUE.
-   if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_MGGA    ) require_laplacian =.TRUE.
-
- enddo
-
-
- !
- ! If it is the first time, then set up the stored arrays
- !
- if( .NOT. ALLOCATED(bfr) )                          call prepare_basis_functions_r(basis)
- if( require_gradient  .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_gradr(basis)
- if( require_laplacian .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_laplr(basis)
 
  normalization(:)=0.0_dp
 
@@ -1419,28 +1118,20 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
 
    !
    ! Get the gradient and laplacian at point r
-   if( require_gradient ) then
+   if( dft_xc_needs_gradient ) then
      call get_basis_functions_gradr(basis,igrid,basis_function_gradr)
    endif
-   if( require_laplacian ) then
-     call get_basis_functions_laplr(basis,igrid,basis_function_gradr,basis_function_laplr)
-   endif
-
 
    !
    ! Normalization
    normalization(:) = normalization(:) + rhor(:) * weight
 
 
-   if( require_gradient ) then 
+   if( dft_xc_needs_gradient ) then 
      call calc_density_gradr(nspin,basis%nbf,nstate,occupation,c_matrix,basis_function_r,basis_function_gradr,grad_rhor)
    endif
 
-   if( require_laplacian ) then
-     call calc_density_gradr_laplr(nspin,basis%nbf,p_matrix,basis_function_r,basis_function_gradr,basis_function_laplr,grad_rhor,tau,lapl_rhor)
-   endif
-
-   if( require_gradient .OR. require_laplacian ) then
+   if( dft_xc_needs_gradient ) then
      sigma(1) = SUM( grad_rhor(:,1)**2 )
      if(nspin==2) then
        sigma(2) = SUM( grad_rhor(:,1) * grad_rhor(:,2) )
@@ -1471,7 +1162,7 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
          !
          ! Remove too small densities to stabilize the computation
          ! especially useful for Becke88
-         if( ANY( rhor(:) > 1.0e-9_dp ) ) then
+         if( ANY( rhor(:) > TOL_RHO ) ) then
            call xc_f90_gga_exc_vxc(calc_type%xc_func(idft_xc),1,rhor(1),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
          else
            exc_libxc(:)     = 0.0_dp
@@ -1506,11 +1197,11 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
 
        else
 
-         dedgd_r(:,1) = dedgd_r(:,1) + 2.0_dp * vsigma(1) * grad_rhor(:,1) * dft_xc_coef(idft_xc) &
-                               + vsigma(2) * grad_rhor(:,2)
+         dedgd_r(:,1) = dedgd_r(:,1) + ( 2.0_dp * vsigma(1) * grad_rhor(:,1) &
+                                                + vsigma(2) * grad_rhor(:,2) ) * dft_xc_coef(idft_xc) 
 
-         dedgd_r(:,2) = dedgd_r(:,2) + 2.0_dp * vsigma(3) * grad_rhor(:,2) * dft_xc_coef(idft_xc) &
-                               + vsigma(2) * grad_rhor(:,1)
+         dedgd_r(:,2) = dedgd_r(:,2) + ( 2.0_dp * vsigma(3) * grad_rhor(:,2) &
+                                                + vsigma(2) * grad_rhor(:,1) ) * dft_xc_coef(idft_xc)
        endif
 
      endif
@@ -1518,11 +1209,10 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
 
    enddo ! loop on the XC functional
 
-
    !
    ! Eventually set up the vxc term
    !
-   if( .NOT. require_gradient ) then 
+   if( .NOT. dft_xc_needs_gradient ) then 
      ! LDA
      do ispin=1,nspin
        call DSYR('L',basis%nbf,weight*dedd_r(ispin),basis_function_r,1,vxc_ij(:,:,ispin),basis%nbf)
@@ -1567,7 +1257,7 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
 
 #else
 !TODO write a call to teter to have MOLGW working without LIBXC
-!   call teter_lda_vxc_exc(rhor,vxc,exc)
+!   call teter_lda_vxc_exc(1,rhor,vxc,exc)
  write(stdout,*) 'XC energy and potential set to zero'
  write(stdout,*) 'LIBXC is not present'
 #endif
@@ -1580,6 +1270,278 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
 end subroutine dft_exc_vxc
 
 !=========================================================================
+subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
+ use m_inputparam
+ use m_basis_set
+ use m_dft_grid
+#ifdef HAVE_LIBXC
+ use libxc_funcs_m
+ use xc_f90_lib_m
+ use xc_f90_types_m
+#endif
+ implicit none
+
+ integer,intent(in)         :: batch_size
+ type(basis_set),intent(in) :: basis
+ integer,intent(in)         :: nstate
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(in)        :: p_matrix(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(out)       :: exc_xc
+!=====
+ real(dp),parameter   :: TOL_RHO=1.0e-9_dp
+ integer              :: idft_xc
+ integer              :: ibf,jbf,ispin
+ integer              :: igrid_start,igrid_end,ir,nr
+ real(dp)             :: normalization(nspin)
+ real(dp),allocatable :: weight_batch(:)
+ real(dp),allocatable :: tmp_batch(:,:)
+ real(dp),allocatable :: basis_function_r_batch(:,:)
+ real(dp),allocatable :: basis_function_gradr_batch(:,:,:)
+ real(dp),allocatable :: exc_batch(:)
+ real(dp),allocatable :: rhor_batch(:,:)
+ real(dp),allocatable :: vrho_batch(:,:)
+ real(dp),allocatable :: dedd_r_batch(:,:)
+ real(dp),allocatable :: grad_rhor_batch(:,:,:)
+ real(dp),allocatable :: sigma_batch(:,:)
+ real(dp),allocatable :: dedgd_r_batch(:,:,:)
+ real(dp),allocatable :: vsigma_batch(:,:)
+!=====
+
+ exc_xc = 0.0_dp
+ vxc_ij(:,:,:) = 0.0_dp
+ if( ndft_xc == 0 ) return
+
+ call start_clock(timing_dft)
+
+
+#ifdef HAVE_LIBXC
+
+ write(stdout,*) 'Calculate DFT XC potential'
+ if( batch_size /= 1 ) write(stdout,*) 'Using batches of size',batch_size
+ 
+
+ normalization(:) = 0.0_dp
+
+ !
+ ! Loop over batches of grid points
+ !
+ do igrid_start=1,ngrid,batch_size
+   igrid_end = MIN(ngrid,igrid_start+batch_size-1)
+   nr = igrid_end - igrid_start + 1
+
+   allocate(weight_batch(nr))
+   allocate(basis_function_r_batch(basis%nbf,nr))
+   allocate(basis_function_gradr_batch(basis%nbf,nr,3))
+   allocate(exc_batch(nr))
+   allocate(rhor_batch(nspin,nr))
+   allocate(vrho_batch(nspin,nr))
+   allocate(dedd_r_batch(nspin,nr))
+
+   if( dft_xc_needs_gradient ) then 
+     allocate(grad_rhor_batch(nspin,nr,3))
+     allocate(dedgd_r_batch(nspin,nr,3))
+     allocate(sigma_batch(2*nspin-1,nr))
+     allocate(vsigma_batch(2*nspin-1,nr))
+   endif
+
+   weight_batch(:) = w_grid(igrid_start:igrid_end)
+
+!   call start_clock(timing_tmp9)
+   call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
+!   call stop_clock(timing_tmp9)
+   !
+   ! Get the gradient at points r
+!   call start_clock(timing_tmp8)
+   if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,nr,basis_function_gradr_batch)
+!   call stop_clock(timing_tmp8)
+
+   !
+   ! Calculate the density at points r for spin up and spin down
+   ! Calculate grad rho at points r for spin up and spin down
+!   call start_clock(timing_tmp1)
+   if( .NOT. dft_xc_needs_gradient ) then 
+     call calc_density_r_batch(nspin,basis%nbf,nstate,nr,occupation,c_matrix,basis_function_r_batch,rhor_batch)
+
+   else
+     call calc_density_gradr_batch(nspin,basis%nbf,nstate,nr,occupation,c_matrix, &
+                                   basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
+     do ir=1,nr
+       sigma_batch(1,ir) = DOT_PRODUCT( grad_rhor_batch(1,ir,:) , grad_rhor_batch(1,ir,:) )
+       if( nspin == 2 ) then
+         sigma_batch(2,ir) = DOT_PRODUCT( grad_rhor_batch(1,ir,:) , grad_rhor_batch(2,ir,:) )
+         sigma_batch(3,ir) = DOT_PRODUCT( grad_rhor_batch(2,ir,:) , grad_rhor_batch(2,ir,:) )
+       endif
+     enddo
+
+   endif
+!   call stop_clock(timing_tmp1)
+
+   ! Normalization
+   normalization(:) = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
+
+   !
+   ! LIBXC calls
+   !
+!   call start_clock(timing_tmp2)
+
+   dedd_r_batch(:,:) = 0.0_dp
+   if( dft_xc_needs_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
+
+   do idft_xc=1,ndft_xc
+     if( ABS(dft_xc_coef(idft_xc)) < 1.0e-6_dp ) cycle
+
+     select case(xc_f90_info_family(calc_type%xc_info(idft_xc)))
+     case(XC_FAMILY_LDA)
+       call xc_f90_lda_exc_vxc(calc_type%xc_func(idft_xc),nr,rhor_batch(1,1),exc_batch(1),vrho_batch(1,1))
+
+     case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
+       call xc_f90_gga_exc_vxc(calc_type%xc_func(idft_xc),nr,rhor_batch(1,1),sigma_batch(1,1),exc_batch(1),vrho_batch(1,1),vsigma_batch(1,1))
+       
+       ! Remove too small densities to stabilize the computation
+       ! especially useful for Becke88
+       do ir=1,nr
+         if( ALL( rhor_batch(:,ir) < TOL_RHO ) ) then
+           exc_batch(ir)      = 0.0_dp
+           vrho_batch(:,ir)   = 0.0_dp
+           vsigma_batch(:,ir) = 0.0_dp
+         endif
+       enddo
+
+     case default
+       call die('functional is not LDA nor GGA nor hybrid')
+     end select
+
+     ! XC energy
+     exc_xc = exc_xc + SUM( weight_batch(:) * exc_batch(:) * SUM(rhor_batch(:,:),DIM=1) ) * dft_xc_coef(idft_xc)
+
+     dedd_r_batch(:,:) = dedd_r_batch(:,:) + vrho_batch(:,:) * dft_xc_coef(idft_xc)
+
+     !
+     ! Set up divergence term if needed (GGA case)
+     !
+     if( dft_xc_needs_gradient ) then
+       do ir=1,nr
+         if(nspin==1) then
+
+           dedgd_r_batch(1,ir,:) = dedgd_r_batch(1,ir,:)  &
+                      + 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) * dft_xc_coef(idft_xc)
+
+         else
+
+           dedgd_r_batch(1,ir,:) = dedgd_r_batch(1,ir,:) &
+                     + ( 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) &
+                                 + vsigma_batch(2,ir) * grad_rhor_batch(2,ir,:) ) * dft_xc_coef(idft_xc) 
+
+           dedgd_r_batch(2,ir,:) = dedgd_r_batch(2,ir,:) &
+                     + ( 2.0_dp * vsigma_batch(3,ir) * grad_rhor_batch(2,ir,:) &
+                                 + vsigma_batch(2,ir) * grad_rhor_batch(1,ir,:) ) * dft_xc_coef(idft_xc)
+         endif
+
+       enddo
+     endif
+
+   enddo ! loop on the XC functional
+
+!   call stop_clock(timing_tmp2)
+
+
+   if( ANY( dedd_r_batch(:,:) > 0.0_dp ) ) then
+     write(stdout,*) dedd_r_batch(:,:)
+     call die('positive xc potential not expected')
+   endif
+ 
+
+   !
+   ! Eventually set up the vxc term
+   !
+!   call start_clock(timing_tmp3)
+   !
+   ! LDA and GGA
+   allocate(tmp_batch(basis%nbf,nr))
+   do ispin=1,nspin
+     do ir=1,nr
+       tmp_batch(:,ir) = SQRT( -weight_batch(ir) * dedd_r_batch(ispin,ir) ) * basis_function_r_batch(:,ir)
+     enddo
+
+     call DSYRK('L','N',basis%nbf,nr,-1.0d0,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
+   enddo
+   deallocate(tmp_batch)
+   !
+   ! GGA-only
+   if( dft_xc_needs_gradient ) then 
+     allocate(tmp_batch(basis%nbf,nr))
+
+     do ispin=1,nspin
+
+       do ir=1,nr
+         tmp_batch(:,ir) = MATMUL( basis_function_gradr_batch(:,ir,:) , dedgd_r_batch(ispin,ir,:) * weight_batch(ir) )
+       enddo
+
+       call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
+
+     enddo
+     deallocate(tmp_batch)
+   endif
+!   call stop_clock(timing_tmp3)
+
+
+
+   deallocate(weight_batch)
+   deallocate(basis_function_r_batch)
+   deallocate(basis_function_gradr_batch)
+   deallocate(exc_batch)
+   deallocate(rhor_batch)
+   deallocate(vrho_batch)
+   deallocate(dedd_r_batch)
+   if( dft_xc_needs_gradient ) then 
+     deallocate(grad_rhor_batch)
+     deallocate(sigma_batch)
+     deallocate(dedgd_r_batch)
+     deallocate(vsigma_batch)
+   endif
+
+ enddo ! loop on the batches
+
+
+
+
+ ! Symmetrize now
+ do ispin=1,nspin
+   do jbf=1,basis%nbf
+     do ibf=jbf+1,basis%nbf 
+       vxc_ij(jbf,ibf,ispin) = vxc_ij(ibf,jbf,ispin)
+     enddo
+   enddo
+ enddo
+
+ !
+ ! Sum up the contributions from all procs only if needed
+ call xsum_grid(normalization)
+ call xsum_grid(vxc_ij)
+ call xsum_grid(exc_xc)
+
+! !
+! ! Destroy operations
+! do idft_xc=1,ndft_xc
+!   call xc_f90_func_end(calc_type%xc_func(idft_xc))
+! enddo
+
+#else
+ write(stdout,*) 'XC energy and potential set to zero'
+ write(stdout,*) 'LIBXC is not present'
+#endif
+
+ write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
+ write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
+
+ call stop_clock(timing_dft)
+
+end subroutine dft_exc_vxc_batch
+
+
+!=========================================================================
 subroutine dft_approximate_vhxc(print_matrix_,basis,vhxc_ij)
  use m_basis_set
  use m_dft_grid
@@ -1590,11 +1552,17 @@ subroutine dft_approximate_vhxc(print_matrix_,basis,vhxc_ij)
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: vhxc_ij(basis%nbf,basis%nbf)
 !=====
+ integer,parameter    :: BATCH_SIZE=64
+ real(dp),allocatable :: weight_batch(:)
+ real(dp),allocatable :: basis_function_r_batch(:,:)
+ real(dp),allocatable :: exc_batch(:)
+ real(dp),allocatable :: rhor_batch(:)
+ real(dp),allocatable :: vrho_batch(:)
  integer              :: idft_xc
  integer              :: igrid,ibf,jbf,ispin
- real(dp)             :: rr(3)
+ integer              :: igrid_start,igrid_end
+ integer              :: ir,nr
  real(dp)             :: normalization
- real(dp)             :: weight
  real(dp)             :: basis_function_r(basis%nbf)
  real(dp)             :: rhor
  real(dp)             :: vxc,excr,exc
@@ -1628,46 +1596,59 @@ subroutine dft_approximate_vhxc(print_matrix_,basis,vhxc_ij)
  !
  ! Create a temporary grid with low quality
  ! This grid is to be destroyed at the end of the present subroutine
- call init_dft_grid(low)
+ call init_dft_grid(basis,low,.FALSE.,.FALSE.,BATCH_SIZE)
 
- !
- ! If it is the first time, set up the stored arrays
- !
- if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis)
 
  normalization = 0.0_dp
  exc           = 0.0_dp
- do igrid=1,ngrid
+ do igrid_start=1,ngrid,BATCH_SIZE
+   igrid_end = MIN(ngrid,igrid_start+batch_size-1)
+   nr = igrid_end - igrid_start + 1
 
-   rr(:) = rr_grid(:,igrid)
-   weight = w_grid(igrid)
+   allocate(weight_batch(nr))
+   allocate(basis_function_r_batch(basis%nbf,nr))
+   allocate(exc_batch(nr))
+   allocate(rhor_batch(nr))
+   allocate(vrho_batch(nr))
+
+   weight_batch(:) = w_grid(igrid_start:igrid_end)
 
    !
    ! Get all the functions and gradients at point rr
-   call get_basis_functions_r(basis,igrid,basis_function_r)
+   call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
 
    !
-   ! calculate the density at point r for spin up and spin down
-   call setup_atomic_density(rr,rhor)
+   ! Calculate the density at points r
+   do ir=1,nr
+     igrid = igrid_start + ir - 1
+     call setup_atomic_density(rr_grid(:,igrid),rhor_batch(ir))
+   enddo
 
    !
    ! Normalization
-   normalization = normalization + rhor * weight
+   normalization = normalization + SUM( rhor_batch(:) * weight_batch(:) )
 
-   call teter_lda_vxc_exc(rhor,vxc,excr)
+   call teter_lda_vxc_exc(nr,rhor_batch,vrho_batch,exc_batch)
 
    !
    ! XC energy
-   exc = exc + excr * weight * rhor
+   exc = exc + SUM( exc_batch(:) * weight_batch(:) * rhor_batch(:) )
 
    !
    ! HXC
-   do jbf=1,basis%nbf
-     do ibf=1,basis%nbf 
-       vhxc_ij(ibf,jbf) =  vhxc_ij(ibf,jbf) + weight &
-           *  vxc * basis_function_r(ibf) * basis_function_r(jbf)
-     enddo
+   ! Hopefully, vrho is always negative
+   do ir=1,nr
+     basis_function_r_batch(:,ir) = SQRT( -weight_batch(ir) * vrho_batch(ir) ) * basis_function_r_batch(:,ir)
    enddo
+   call DSYRK('L','N',basis%nbf,nr,-1.0d0,basis_function_r_batch,basis%nbf,1.0d0,vhxc_ij,basis%nbf)
+
+!   call DSYR('L',basis%nbf,weight*vxc,basis_function_r,1,vhxc_ij,basis%nbf)
+
+   deallocate(weight_batch)
+   deallocate(basis_function_r_batch)
+   deallocate(exc_batch)
+   deallocate(rhor_batch)
+   deallocate(vrho_batch)
 
  enddo ! loop on the grid point
  !
@@ -1675,6 +1656,13 @@ subroutine dft_approximate_vhxc(print_matrix_,basis,vhxc_ij)
  call xsum_grid(normalization)
  call xsum_grid(exc)
  call xsum_grid(vhxc_ij)
+
+ ! Symmetrize vhxc
+ do ibf=1,basis%nbf
+   do jbf=ibf+1,basis%nbf
+     vhxc_ij(ibf,jbf) = vhxc_ij(jbf,ibf)
+   enddo
+ enddo
 
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization
  write(stdout,  '(a,2(2x,f12.6))') '      XC energy (Ha):',exc
@@ -1723,14 +1711,14 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
  ibf_cart = 1
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    jbf_cart = 1
    jbf      = 1
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
@@ -1739,7 +1727,7 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
 
      do i_cart=1,ni_cart
        do j_cart=1,nj_cart
-         call basis_function_dipole(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),dipole_cart(:,i_cart,j_cart))
+         call basis_function_dipole(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),dipole_cart(:,i_cart,j_cart))
        enddo
      enddo
 
@@ -1808,14 +1796,14 @@ subroutine calculate_dipole_basis(basis,dipole_basis)
  ibf_cart = 1
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    jbf_cart = 1
    jbf      = 1
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
@@ -1824,7 +1812,7 @@ subroutine calculate_dipole_basis(basis,dipole_basis)
 
      do i_cart=1,ni_cart
        do j_cart=1,nj_cart
-         call basis_function_dipole(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),dipole_cart(i_cart,j_cart,:))
+         call basis_function_dipole(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),dipole_cart(i_cart,j_cart,:))
        enddo
      enddo
 
@@ -1885,14 +1873,14 @@ subroutine static_quadrupole(nstate,basis,occupation,c_matrix)
  ibf_cart = 1
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    jbf_cart = 1
    jbf      = 1
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
@@ -1901,7 +1889,7 @@ subroutine static_quadrupole(nstate,basis,occupation,c_matrix)
 
      do i_cart=1,ni_cart
        do j_cart=1,nj_cart
-         call basis_function_quadrupole(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),quad_cart(:,:,i_cart,j_cart))
+         call basis_function_quadrupole(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),quad_cart(:,:,i_cart,j_cart))
        enddo
      enddo
 

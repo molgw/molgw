@@ -39,7 +39,7 @@ subroutine header()
 
  write(stdout,'(1x,70("="))') 
  write(stdout,'(/,/,12x,a,/)') 'Welcome to the fascinating world of MOLGW'
- write(stdout,'(24x,a)')       'version 1.C'
+ write(stdout,'(24x,a)')       'version 1.E'
  write(stdout,'(/,/,1x,70("="))') 
 
  write(stdout,'(/,a,a,/)') ' MOLGW commit git SHA: ',git_sha
@@ -111,6 +111,8 @@ subroutine header()
  write(stdout,'(1x,a)')        'Running with LIBINT (to calculate the Coulomb integrals)'
  write(stdout,'(6x,a,i5,3x,a)') 'max angular momentum handled by your LIBINT compilation: ', &
                                 ammax,orbital_momentum_name(ammax)
+ call set_molgw_lmax(ammax)
+
 #ifdef HAVE_LIBINT_ONEBODY
  if( .NOT. has_onebody ) &
    call die('MOLGW compiled with LIBINT one-body terms, however the LIBINT compilation does not calculate the one-body terms')
@@ -331,11 +333,11 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  ibf_cart = 1
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
-   iatom_ibf(ibf:ibf+ni-1) = basis%bf(ibf_cart)%iatom
+   iatom_ibf(ibf:ibf+ni-1) = basis%bfc(ibf_cart)%iatom
    li_ibf(ibf:ibf+ni-1) = li
 
    ibf      = ibf      + ni
@@ -441,14 +443,14 @@ subroutine plot_wfn(nstate,basis,c_matrix)
    ibf_cart = 1
    ibf      = 1
    do while(ibf_cart<=basis%nbf_cart)
-     li      = basis%bf(ibf_cart)%am
+     li      = basis%bfc(ibf_cart)%am
      ni_cart = number_basis_function_am('CART',li)
      ni      = number_basis_function_am(basis%gaussian_type,li)
 
      allocate(basis_function_r_cart(ni_cart))
 
      do i_cart=1,ni_cart
-       basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
+       basis_function_r_cart(i_cart) = eval_basis_function(basis%bfc(ibf_cart+i_cart-1),rr)
      enddo
      basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
      deallocate(basis_function_r_cart)
@@ -551,14 +553,14 @@ subroutine plot_rho(nstate,basis,occupation,c_matrix)
    ibf_cart = 1
    ibf      = 1
    do while(ibf_cart<=basis%nbf_cart)
-     li      = basis%bf(ibf_cart)%am
+     li      = basis%bfc(ibf_cart)%am
      ni_cart = number_basis_function_am('CART',li)
      ni      = number_basis_function_am(basis%gaussian_type,li)
 
      allocate(basis_function_r_cart(ni_cart))
 
      do i_cart=1,ni_cart
-       basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
+       basis_function_r_cart(i_cart) = eval_basis_function(basis%bfc(ibf_cart+i_cart-1),rr)
      enddo
      basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
      deallocate(basis_function_r_cart)
@@ -657,14 +659,14 @@ subroutine plot_rho_list(nstate,basis,occupation,c_matrix)
    ibf_cart = 1
    ibf      = 1
    do while(ibf_cart<=basis%nbf_cart)
-     li      = basis%bf(ibf_cart)%am
+     li      = basis%bfc(ibf_cart)%am
      ni_cart = number_basis_function_am('CART',li)
      ni      = number_basis_function_am(basis%gaussian_type,li)
 
      allocate(basis_function_r_cart(ni_cart))
 
      do i_cart=1,ni_cart
-       basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
+       basis_function_r_cart(i_cart) = eval_basis_function(basis%bfc(ibf_cart+i_cart-1),rr)
      enddo
      basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
      deallocate(basis_function_r_cart)
@@ -819,14 +821,14 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
        ibf_cart = 1
        ibf      = 1
        do while(ibf_cart<=basis%nbf_cart)
-         li      = basis%bf(ibf_cart)%am
+         li      = basis%bfc(ibf_cart)%am
          ni_cart = number_basis_function_am('CART',li)
          ni      = number_basis_function_am(basis%gaussian_type,li)
     
          allocate(basis_function_r_cart(ni_cart))
     
          do i_cart=1,ni_cart
-           basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
+           basis_function_r_cart(i_cart) = eval_basis_function(basis%bfc(ibf_cart+i_cart-1),rr)
          enddo
          basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
          deallocate(basis_function_r_cart)
@@ -989,14 +991,14 @@ subroutine plot_cube_wfn_cmplx(nstate,basis,occupation,c_matrix_cmplx,num)
        ibf_cart = 1
        ibf      = 1
        do while(ibf_cart<=basis%nbf_cart)
-         li      = basis%bf(ibf_cart)%am
+         li      = basis%bfc(ibf_cart)%am
          ni_cart = number_basis_function_am('CART',li)
          ni      = number_basis_function_am(basis%gaussian_type,li)
     
          allocate(basis_function_r_cart(ni_cart))
     
          do i_cart=1,ni_cart
-           basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
+           basis_function_r_cart(i_cart) = eval_basis_function(basis%bfc(ibf_cart+i_cart-1),rr)
          enddo
          basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
          deallocate(basis_function_r_cart)
@@ -1150,14 +1152,14 @@ function evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate,ispin,rr)
  ibf_cart = 1
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    allocate(basis_function_r_cart(ni_cart))
 
    do i_cart=1,ni_cart
-     basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
+     basis_function_r_cart(i_cart) = eval_basis_function(basis%bfc(ibf_cart+i_cart-1),rr)
    enddo
    basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
    deallocate(basis_function_r_cart)

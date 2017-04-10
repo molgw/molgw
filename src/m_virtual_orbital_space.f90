@@ -29,6 +29,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  use m_tools,only: diagonalize,invert
  use m_basis_set
  use m_hamiltonian
+ use m_hamiltonian_onebody
  use m_hamiltonian_sca
  implicit none
 
@@ -247,6 +248,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
  use m_inputparam
  use m_basis_set
  use m_hamiltonian
+ use m_hamiltonian_onebody
  use m_hamiltonian_sca
  implicit none
 

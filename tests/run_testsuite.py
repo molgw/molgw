@@ -60,6 +60,9 @@ def check_output(out,testinfo):
     if 'one CPU only' in line:
       print('Test not functional in parallel => skip it')
       return
+    if 'Need to compile MOLGW with HAVE_LIBINT_ONEBODY' in line:
+      print('Test not functional without gradients => skip it')
+      return
   #
   # Second check if there is a memory leak
   #
@@ -170,6 +173,9 @@ if len(mpirun) < 1:
     print('No MPI launcher has been provided. Set the number of cores back to 1')
   nprocs = 1
 
+if not os.path.isfile('../molgw') :
+  print('molgw executable not found!\nMight to compile it first?')
+  sys.exit(1)
 
 print('Running with ',nprocs,'cores')
 

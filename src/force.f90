@@ -16,7 +16,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
  use m_eri
  use m_eri_calculate
  use m_hamiltonian
- use m_hamiltonian_libint
+ use m_hamiltonian_onebody
  implicit none
 
  type(basis_set),intent(in) :: basis
@@ -87,7 +87,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
  ! Energy density matrix forces
  ! 
  allocate(grad_onebody(basis%nbf,basis%nbf,3))
- call setup_overlap_grad_libint(print_matrix_,basis,grad_onebody)
+ call setup_overlap_grad(print_matrix_,basis,grad_onebody)
 
  force_ovp(:,:) = 0.0_dp
  do ibf=1,basis%nbf
@@ -101,7 +101,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
  ! Kinetic energy forces
  ! 
  allocate(grad_onebody(basis%nbf,basis%nbf,3))
- call setup_kinetic_grad_libint(print_matrix_,basis,grad_onebody)
+ call setup_kinetic_grad(print_matrix_,basis,grad_onebody)
 
  force_kin(:,:) = 0.0_dp
  do ibf=1,basis%nbf
@@ -115,7 +115,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
  ! Nucleus energy forces
  ! 
  allocate(grad_nucleus(basis%nbf,basis%nbf,natom+1,3))
- call setup_nucleus_grad_libint(print_matrix_,basis,grad_nucleus)
+ call setup_nucleus_grad(print_matrix_,basis,grad_nucleus)
 
  force_nuc(:,:) = 0.0_dp
  do ibf=1,basis%nbf

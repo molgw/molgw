@@ -28,9 +28,9 @@ gKS HOMO energy           , -24.970619         , 0 , 1.0e-4
 gKS LUMO energy           ,  17.314207         , 0 , 1.0e-4
 
 ne.in                     , HF neon atom cc-pV6Z with RI
-SCF Total Energy          , -127.6276462163    , 0 , 1.0e-7
-gKS HOMO energy           ,  -19.406424        , 0 , 1.0e-4
-gKS LUMO energy           ,    9.700079        , 0 , 1.0e-4
+SCF Total Energy          , -128.5470596583    , 0 , 1.0e-7
+gKS HOMO energy           ,  -23.140408        , 0 , 1.0e-4
+gKS LUMO energy           ,   10.036631        , 0 , 1.0e-4
 
 h2_basis_nori.in          , LDA H2 molecule with an atom-dependent basis set
 SCF Total Energy          ,  -1.1306882151     , 0 , 1.0e-7
@@ -41,6 +41,14 @@ h2_basis_ri.in            , LDA H2 molecule with an atom-dependent basis set wit
 SCF Total Energy          ,  -1.1351648702     , 0 , 1.0e-7
 gKS HOMO energy           , -10.247609         , 0 , 1.0e-4
 gKS LUMO energy           ,   1.328924         , 0 , 1.0e-4
+
+o2_rsh.in                 , Range-separated hybrid mimicing HSE06 for triplet O2 wo RI
+SCF Total Energy          , -150.1671750256    , 0 , 1.0e-7
+XC Energy                 ,  -13.0323509136    , 0 , 1.0e-7
+gKS HOMO energy           ,   -8.324037        , 0 , 1.0e-4
+gKS HOMO energy           ,  -12.316390        , 1 , 1.0e-4
+gKS LUMO energy           ,    5.557588        , 0 , 1.0e-4
+gKS LUMO energy           ,   -3.007564        , 1 , 1.0e-4
 
 b_temperature.in          , LDA boron atom cc-pVTZ with finite temperature
 SCF Total Energy          , -24.3458246337     , 0 , 1.0e-7
@@ -144,22 +152,23 @@ MP2 Energy                ,   -0.4080027465    , 0 , 1.0e-7
 MP2 Total Energy          , -109.3823851303    , 0 , 1.0e-7
 SE+MP2  Total En          , -109.3823851303    , 0 , 1.0e-7
 
-boron_gw_spinpolarized.in , GW@BLYP boron atom without RI with spin
-Hartree Energy            ,   11.6347873536   , 0 , 1.0e-7
-XC Energy                 ,   -3.8789558610   , 0 , 1.0e-7
+boron_gw_spinpolarized.in , GW@BLYP boron atom without RI with spin (unstable test: loosened thresholds)
+Hartree Energy            ,   11.6347873536   , 0 , 1.0e-4
+XC Energy                 ,   -3.8789558610   , 0 , 1.0e-4
+Total Energy              ,  -24.6512597384   , 0 , 1.0e-4
 Number of electrons       ,    3.000000       , 0 , 1.0e-3
 Number of electrons       ,    2.000000       , 1 , 1.0e-3
-gKS HOMO energy           ,   -4.014004       , 0 , 1.0e-4
-gKS HOMO energy           ,   -8.517953       , 1 , 1.0e-4
-gKS LUMO energy           ,   -3.400664       , 0 , 1.0e-4
-gKS LUMO energy           ,   -3.171443       , 1 , 1.0e-4
+gKS HOMO energy           ,   -4.014004       , 0 , 1.0e-3
+gKS HOMO energy           ,   -8.517953       , 1 , 1.0e-3
+gKS LUMO energy           ,   -3.400664       , 0 , 5.0e-3
+gKS LUMO energy           ,   -3.171443       , 1 , 1.0e-3
 Total Spin S**2           ,    0.7528         , 0 , 1.0e-3
-RPA correlation energy    ,   -0.1402371135   , 0 , 1.0e-7
-Lowest neutral excitation ,    0.996562       , 0 , 1.0e-4
-GW HOMO energy            ,   -7.660110       , 0 , 1.0e-4
-GW HOMO energy            ,  -12.474309       , 1 , 1.0e-4
-GW LUMO energy            ,    0.018705       , 0 , 1.0e-4
-GW LUMO energy            ,    0.458939       , 1 , 1.0e-4
+RPA correlation energy    ,   -0.1402371135   , 0 , 1.0e-4
+Lowest neutral excitation ,    0.996562       , 0 , 5.0e-3
+GW HOMO energy            ,   -7.660110       , 0 , 1.0e-3
+GW HOMO energy            ,  -12.474309       , 1 , 1.0e-3
+GW LUMO energy            ,    0.018705       , 0 , 1.0e-3
+GW LUMO energy            ,    0.458939       , 1 , 1.0e-3
 
 co2.in                    , GW@LDA CO2 without RI with 6-31G
 Kinetic Energy            ,    186.4258076613  , 0 , 1.0e-7
@@ -171,12 +180,12 @@ GW HOMO energy            ,    -11.039136      , 0 , 1.0e-4
 GW LUMO energy            ,     -1.357914      , 0 , 1.0e-4
 
 cdo_ecp_gw.in             , CdO- (ECP) within GW@PBE0 with level shifting
-SCF Total Energy          ,    -242.8403297283 , 0 , 1.0e-7
-RPA correlation energy    ,      -0.9666447760 , 0 , 1.0e-7
-GW HOMO energy            ,      -1.787167     , 0 , 1.0e-4
-GW HOMO energy            ,      -1.350953     , 1 , 1.0e-4
-GW LUMO energy            ,       3.687303     , 0 , 1.0e-4
-GW LUMO energy            ,       3.689409     , 1 , 1.0e-4
+SCF Total Energy          ,    -242.8403302221 , 0 , 1.0e-7
+RPA correlation energy    ,      -0.9666472866 , 0 , 1.0e-7
+GW HOMO energy            ,      -1.787172     , 0 , 1.0e-4
+GW HOMO energy            ,      -1.350967     , 1 , 1.0e-4
+GW LUMO energy            ,       3.687306     , 0 , 1.0e-4
+GW LUMO energy            ,       3.689422     , 1 , 1.0e-4
 
 sih4_dftcore.in           , GW@PBE0 with DFT core-valence interaction
 SCF Total Energy          ,   -291.7541352166  , 0 , 1.0e-7
@@ -325,7 +334,12 @@ GW LUMO energy            ,      5.336834       , 0 , 1.0e-4
 
 oh_0_1.in                 , GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 1st iteration
 Total Spin S**2           ,      0.7532         , 0 , 1.0e-3
+XC Energy                 ,     -4.5883907272   , 0 , 1.0e-7
 SCF Total Energy          ,    -75.7190424535   , 0 , 1.0e-7
+gKS HOMO energy           ,    -11.941970       , 0 , 1.0e-4
+gKS HOMO energy           ,    -11.070991       , 1 , 1.0e-4
+gKS LUMO energy           ,      0.060279       , 0 , 1.0e-4
+gKS LUMO energy           ,     -2.560124       , 1 , 1.0e-4
 RPA Total energy          ,    -75.6295502398   , 0 , 1.0e-7
 GW HOMO energy            ,    -13.404668       , 0 , 1.0e-4
 GW HOMO energy            ,    -12.467650       , 1 , 1.0e-4
@@ -406,12 +420,12 @@ Total force atom    2     ,     -0.0000036520  , 0 , 1.0e-6
 atom    1   H             ,      -0.692180     , 0 , 1.0e-3
 atom    2   H             ,       0.692180     , 0 , 1.0e-3
 
-h2o_pade.in               , GW calculation with Pade analaytic continuation
+h2o_pade.in               , GW calculation with Pade analytic continuation
 SCF Total Energy          , -76.3799206260     , 0 , 1.0e-7
-RPA correlation energy    ,  -0.4083284532     , 0 , 1.0e-7
-RPA Total energy          , -76.4638070494     , 0 , 1.0e-7
-GW HOMO energy            , -12.137634         , 0 , 1.0e-4
-GW LUMO energy            ,   0.860260         , 0 , 1.0e-4
+RPA correlation energy    ,  -0.3844178479     , 0 , 1.0e-7
+RPA Total energy          , -76.4398964441     , 0 , 1.0e-7
+GW HOMO energy            , -12.131072         , 0 , 1.0e-4
+GW LUMO energy            ,   0.859763         , 0 , 1.0e-4
 
 h2o_mp3.in                , MP3 total energy with RI
 SCF Total Energy          , -76.0262395455     , 0 , 1.0e-7

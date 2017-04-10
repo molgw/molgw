@@ -203,6 +203,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
    else
      call gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy_g,c_matrix,wpol,se)
+     call self_energy_pade(nstate,energy_g,se)
    endif
 #endif
 
@@ -339,7 +340,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    if( ABS( delta_cohsex ) > 1.0e-6_dp ) then
 
      allocate(p_matrix(basis%nbf,basis%nbf,nspin))
-     call init_dft_grid(grid_level)
+     call init_dft_grid(basis,grid_level,.TRUE.,.FALSE.,1)
      call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
 
      ! Override the DFT XC correlation settings

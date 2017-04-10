@@ -665,7 +665,7 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='eta'
 vl[i].family   ='post'
-vl[i].default  ='0.001'
+vl[i].default  = 0.001
 vl[i].datatype ='real'
 vl[i].comment  ='Is a the tiny imaginary part used in the denominator of the Green\'s function to shift the pole off the axis, so to avoid divergences.\
 This is an energy in Hartree. \
@@ -678,16 +678,25 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='scissor'
 vl[i].family   ='post'
-vl[i].default  =0.
+vl[i].default  = 0.
 vl[i].datatype ='real'
 vl[i].comment  ='Sets a rigid energy shift of the unoccupied states, so to mimick a GW calculation without actually doing it.'
 
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='grid_memory'
+vl[i].family   ='hardware'
+vl[i].default  = 400.0
+vl[i].datatype ='real'
+vl[i].comment  ='Sets the maximum memory usage in Mb allowed to store the wavefunctions on the quadrature points for XC integrals.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='scalapack_block_min'
-vl[i].family   ='parallel'
-vl[i].default  =400
+vl[i].family   ='hardware'
+vl[i].default  = 400
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets the minimum block size to distribute a non-distributed matrix with SCALAPACK. \
 If scalapack_block_min=400, then a 900x900 matrix will be distributed on a 2x2 processor grid. \
@@ -697,7 +706,7 @@ If scalapack_block_min=500, then a 900x900 matrix will no be distributed.'
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='scalapack_nprow'
-vl[i].family   ='parallel'
+vl[i].family   ='hardware'
 vl[i].default  =1
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets number of row processors for SCALAPACK distribution of the SCF matrices.  \
@@ -707,7 +716,7 @@ nprow X npcol should be lower or equal to the number of processors.'
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='scalapack_npcol'
-vl[i].family   ='parallel'
+vl[i].family   ='hardware'
 vl[i].default  =1
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets number of column processors for SCALAPACK distribution of the SCF matrices.  \
@@ -717,7 +726,7 @@ nprow X npcol should be lower or equal to the number of processors.'
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='mpi_nproc_ortho'
-vl[i].family   ='parallel'
+vl[i].family   ='hardware'
 vl[i].default  =1
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets the number of processors left to parallelize on other directions. The main direction (auxiliary basis or DFT grid points) is obtained by \
@@ -864,7 +873,7 @@ vl[i].comment  ='Name of the auxiliary basis set to be used for elements specifi
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='time_step'
-vl[i].family   ='post'
+vl[i].family   ='rt_tddft'
 vl[i].default  =1.
 vl[i].datatype ='real'
 vl[i].comment  ='Time step for real-time dynamics in atomic units.'
@@ -873,7 +882,7 @@ vl[i].comment  ='Time step for real-time dynamics in atomic units.'
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='time_sim'
-vl[i].family   ='post'
+vl[i].family   ='rt_tddft'
 vl[i].default  =10.
 vl[i].datatype ='real'
 vl[i].comment  ='Duration of a real-time dynamics in atomic units.'
@@ -882,7 +891,7 @@ vl[i].comment  ='Duration of a real-time dynamics in atomic units.'
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='prop_type'
-vl[i].family   ='post'
+vl[i].family   ='rt_tddft'
 vl[i].default  ='CN'
 vl[i].datatype ='characters'
 vl[i].comment  ='Sets the type of propagation algorithm in the real-time dynamics. \
@@ -892,7 +901,7 @@ vl[i].comment  ='Sets the type of propagation algorithm in the real-time dynamic
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='excit_type'
-vl[i].family   ='post'
+vl[i].family   ='rt_tddft'
 vl[i].default  ='GAU'
 vl[i].datatype ='characters'
 vl[i].comment  ='Sets the type of excitation of a system in the real-time dynamics. \
@@ -904,7 +913,7 @@ vl[i].comment  ='Sets the type of excitation of a system in the real-time dynami
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='excit_kappa'
-vl[i].family   ='post'
+vl[i].family   ='rt_tddft'
 vl[i].default  =2.e-5
 vl[i].datatype ='real'
 vl[i].comment  ='Maximum Gaussian excitation field strength in atomic units.'
@@ -913,7 +922,7 @@ vl[i].comment  ='Maximum Gaussian excitation field strength in atomic units.'
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='excit_omega'
-vl[i].family   ='post'
+vl[i].family   ='rt_tddft'
 vl[i].default  =0.2
 vl[i].datatype ='real'
 vl[i].comment  ='The excitation pulse width in atomic units for the real-time dynamics.'
@@ -922,7 +931,7 @@ vl[i].comment  ='The excitation pulse width in atomic units for the real-time dy
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='excit_time0'
-vl[i].family   ='post'
+vl[i].family   ='rt_tddft'
 vl[i].default  =3.
 vl[i].datatype ='real'
 vl[i].comment  ='Center of the excitation pulse in atomic units for the real-time dynamics.'
@@ -931,7 +940,7 @@ vl[i].comment  ='Center of the excitation pulse in atomic units for the real-tim
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='excit_dir'
-vl[i].family   ='post'
+vl[i].family   ='rt_tddft'
 vl[i].default  =( 1.0 , 0.0, 0.0 )
 vl[i].datatype ='vector_1d_3'
 vl[i].comment  ='Excitation direction for the real-time dynamics.'
@@ -940,7 +949,7 @@ vl[i].comment  ='Excitation direction for the real-time dynamics.'
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='print_tddft_matrices'
-vl[i].family   ='post'
+vl[i].family   ='io_rt_tddft'
 vl[i].default  ='no'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='Prints some matrices of the real-time dynamics into the file check_matrix.dat.'
@@ -949,7 +958,7 @@ vl[i].comment  ='Prints some matrices of the real-time dynamics into the file ch
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='print_cube_rho_tddft'
-vl[i].family   ='io'
+vl[i].family   ='io_rt_tddft'
 vl[i].default  ='no'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='Prints electronic density in a 3D volumetric file with cube format for each simulation step in the real-time dynamics'
@@ -958,7 +967,7 @@ vl[i].comment  ='Prints electronic density in a 3D volumetric file with cube for
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='calc_p_matrix_error'
-vl[i].family   ='io'
+vl[i].family   ='io_rt_tddft'
 vl[i].default  ='no'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='Calculates difference between a reference propagator and a tested one in the real-time dynamics'
@@ -967,7 +976,7 @@ vl[i].comment  ='Calculates difference between a reference propagator and a test
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='error_prop_types'
-vl[i].family   ='io'
+vl[i].family   ='io_rt_tddft'
 vl[i].default  ='CN'
 vl[i].datatype ='characters'
 vl[i].comment  ='Set of the propagator types for the p_matrix tests in the real-time dynamics'
@@ -976,7 +985,7 @@ vl[i].comment  ='Set of the propagator types for the p_matrix tests in the real-
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='error_time_steps'
-vl[i].family   ='io'
+vl[i].family   ='io_rt_tddft'
 vl[i].default  ='0.1_dp'
 vl[i].datatype ='characters'
 vl[i].comment  ='Set of time steps for each propagator from the list error_prop_types for the p_matrix test in the real-time dynamics'
@@ -985,7 +994,7 @@ vl[i].comment  ='Set of time steps for each propagator from the list error_prop_
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='write_step'
-vl[i].family   ='io'
+vl[i].family   ='io_rt_tddft'
 vl[i].default  ='1'
 vl[i].datatype ='real'
 vl[i].comment  ='Determines the time step for data recording in the real-time dynamics'
@@ -994,7 +1003,7 @@ vl[i].comment  ='Determines the time step for data recording in the real-time dy
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='pred_corr'
-vl[i].family   ='post'
+vl[i].family   ='rt_tddft'
 vl[i].default  ='PC1'
 vl[i].datatype ='characters'
 vl[i].comment  ='Sets the predictor-corrector scheme in the real-time dynamics.'
@@ -1003,7 +1012,7 @@ vl[i].comment  ='Sets the predictor-corrector scheme in the real-time dynamics.'
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='error_pred_corrs'
-vl[i].family   ='io'
+vl[i].family   ='io_rt_tddft'
 vl[i].default  ='PC0'
 vl[i].datatype ='characters'
 vl[i].comment  ='Set of predictor-corrector schemes for each propagator from the list error_prop_types for the p_matrix test in the real-time dynamics'
@@ -1012,7 +1021,7 @@ vl[i].comment  ='Set of predictor-corrector schemes for each propagator from the
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='n_hist'
-vl[i].family   ='post'
+vl[i].family   ='rt_tddft'
 vl[i].default  =2
 vl[i].datatype ='integer'
 vl[i].comment  ='Number of memorised previous hamiltonian values for its extrapolation in the real-time dynamics. n_hist=1 means that H(t_i+1)=H(t_i); n_hist=2 : H(t_i+1)=a*H(t_i)+b*(t_i-1); etc.'
@@ -1021,7 +1030,7 @@ vl[i].comment  ='Number of memorised previous hamiltonian values for its extrapo
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='error_n_hists'
-vl[i].family   ='io'
+vl[i].family   ='io_rt_tddft'
 vl[i].default  ='2'
 vl[i].datatype ='characters'
 vl[i].comment  ='Set of n_hist for each propagator from the list error_prop_types for the p_matrix test in the real-time dynamics'
@@ -1030,7 +1039,7 @@ vl[i].comment  ='Set of n_hist for each propagator from the list error_prop_type
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='n_iter'
-vl[i].family   ='io'
+vl[i].family   ='rt_tddft'
 vl[i].default  ='2'
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets the number of iterations for the PC7 in the real-time dynamics'
@@ -1198,9 +1207,9 @@ for i in range(len(vl)):
     fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
 # Parallelization family
-fhtml.write('<h3>Parallelization input variables</h3>\n<p>\n')
+fhtml.write('<h3>Hardware input variables</h3>\n<p>\n')
 for i in range(len(vl)):
-  if vl[i].family =='parallel':
+  if vl[i].family =='hardware':
     fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
 

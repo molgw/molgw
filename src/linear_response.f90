@@ -417,14 +417,14 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  ibf_cart = 1
  ibf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    jbf_cart = 1
    jbf      = 1
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
@@ -433,7 +433,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
 
      do i_cart=1,ni_cart
        do j_cart=1,nj_cart
-         call basis_function_dipole(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),dipole_cart(:,i_cart,j_cart))
+         call basis_function_dipole(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),dipole_cart(:,i_cart,j_cart))
        enddo
      enddo
 
@@ -767,17 +767,6 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
   
 
  
-!TESTINGOK§ call basis_function_dipole(basis%bf(1),basis%bf(14),qvec)
-!TESTINGOK§ write(*,*) 'dipole',qvec(:)
-!TESTINGOK§ call overlap_basis_function(basis%bf(1),basis%bf(14),qvec(1))
-!TESTINGOK§ write(*,*) 'overlap',qvec(1)
-!TESTINGOK§ qvec(1)=0.00001
-!TESTINGOK§ qvec(2)=0.00000
-!TESTINGOK§ qvec(3)=0.00000
-!TESTINGOK§ call gos_basis_function(basis%bf(1),basis%bf(14),qvec,bethe_sumrule)
-!TESTINGOK§ write(*,*) 'bethe_sumrule',bethe_sumrule / qvec(1)/im
-!TESTINGOK§ call die('ENOUGH')
-
  do iq=1,nq
    qvec(1) = 0.0_dp
    qvec(2) = 0.0_dp
@@ -790,14 +779,14 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
    ibf_cart = 1
    ibf      = 1
    do while(ibf_cart<=basis%nbf_cart)
-     li      = basis%bf(ibf_cart)%am
+     li      = basis%bfc(ibf_cart)%am
      ni_cart = number_basis_function_am('CART',li)
      ni      = number_basis_function_am(basis%gaussian_type,li)
   
      jbf_cart = 1
      jbf      = 1
      do while(jbf_cart<=basis%nbf_cart)
-       lj      = basis%bf(jbf_cart)%am
+       lj      = basis%bfc(jbf_cart)%am
        nj_cart = number_basis_function_am('CART',lj)
        nj      = number_basis_function_am(basis%gaussian_type,lj)
   
@@ -806,7 +795,7 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
   
        do i_cart=1,ni_cart
          do j_cart=1,nj_cart
-           call gos_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),qvec,gos_cart(i_cart,j_cart))
+           call gos_basis_function(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),qvec,gos_cart(i_cart,j_cart))
          enddo
        enddo
   

@@ -144,6 +144,7 @@ module m_inputparam
  integer,protected                :: scalapack_npcol
  integer,protected                :: mpi_nproc_ortho
  real(dp),protected               :: alpha_cohsex,beta_cohsex,gamma_cohsex,delta_cohsex,epsilon_cohsex
+ real(dp),protected               :: grid_memory
 
  logical,protected                :: gwgamma_tddft_
  logical,protected                :: ignore_restart_
@@ -168,6 +169,7 @@ module m_inputparam
  integer,protected                :: ndft_xc = 0
  integer,protected,allocatable    :: dft_xc_type(:)
  real(dp),protected,allocatable   :: dft_xc_coef(:)
+ logical,protected                :: dft_xc_needs_gradient
 
  real(dp),protected               :: time_step, time_sim
  real(dp),protected               :: excit_kappa, excit_omega, excit_time0
@@ -612,6 +614,14 @@ subroutine init_dft_type(key,calc_type)
      call xc_f90_gga_x_wpbeh_set_par(calc_type%xc_func(idft_xc),gamma_hybrid )
    endif
  enddo
+
+ dft_xc_needs_gradient =.FALSE.
+ do idft_xc=1,ndft_xc
+   if( ABS(dft_xc_coef(idft_xc)) < 1.0e-6_dp ) cycle
+   if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_GGA     ) dft_xc_needs_gradient  =.TRUE.
+   if(xc_f90_info_family(calc_type%xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) dft_xc_needs_gradient  =.TRUE.
+ enddo
+
 #endif
 
 end subroutine init_dft_type

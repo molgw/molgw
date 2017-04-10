@@ -10,18 +10,15 @@ module m_cart_to_pure
  use m_definitions
  use m_warning
 
- integer,parameter              :: LMAX_TRANSFORM      = 7
- integer,parameter              :: LMAX_TRANSFORM_PURE = 5
-
  type transform
-   real(dp),allocatable         :: matrix(:,:)
+   real(dp),allocatable    :: matrix(:,:)
  end type
 
- type(transform)                :: cart_to_pure     (0:LMAX_TRANSFORM,2)
- type(transform)                :: cart_to_pure_norm(0:LMAX_TRANSFORM,2)
+ type(transform),allocatable,protected :: cart_to_pure     (:,:)
+ type(transform),allocatable,protected :: cart_to_pure_norm(:,:)
 
- integer,parameter              :: CARTG=1
- integer,parameter              :: PUREG=2
+ integer,parameter         :: CARTG=1
+ integer,parameter         :: PUREG=2
 
 
 contains
@@ -52,57 +49,12 @@ function number_basis_function_am(gaussian_type,am)
  integer                     :: number_basis_function_am
 !=====
 
- ! Above LMAX_TRANSFORM_PURE only Cartesian gaussian are implemented
- if( am <= LMAX_TRANSFORM_PURE ) then
-   select case(gaussian_type)
-   case('CART')
-     select case(am)
-     case(0)
-       number_basis_function_am = 1
-     case(1)
-       number_basis_function_am = 3
-     case(2)
-       number_basis_function_am = 6
-     case(3)
-       number_basis_function_am = 10
-     case(4)
-       number_basis_function_am = 15
-     case(5)
-       number_basis_function_am = 21
-     case(6)
-       number_basis_function_am = 28
-     case(7)
-       number_basis_function_am = 36
-     case default
-       write(stdout,*) 'am=',am
-       call die('number_basis_function_am: not implemented')
-     end select
-   case('PURE')
-     number_basis_function_am = 2 * am + 1
-   end select
- else
-   select case(am)
-   case(0)
-     number_basis_function_am = 1
-   case(1)
-     number_basis_function_am = 3
-   case(2)
-     number_basis_function_am = 6
-   case(3)
-     number_basis_function_am = 10
-   case(4)
-     number_basis_function_am = 15
-   case(5)
-     number_basis_function_am = 21
-   case(6)
-     number_basis_function_am = 28
-   case(7)
-     number_basis_function_am = 36
-   case default
-     write(stdout,*) 'am=',am
-     call die('number_basis_function_am: not implemented')
-   end select
- endif
+ select case(gaussian_type)
+ case('CART')
+   number_basis_function_am = ( ( am + 1 ) * ( am + 2 ) ) / 2
+ case('PURE')
+   number_basis_function_am = 2 * am + 1
+ end select
 
 end function number_basis_function_am
 
@@ -188,18 +140,23 @@ subroutine setup_cart_to_pure_transforms()
  implicit none
 
 !=====
- integer  :: il,ni,ii,jj,kk
+ integer  :: ni,nic
+ integer  :: ii,jj,kk
  integer  :: nx,ny,nz
+ integer  :: il,im
+ integer  :: it,iu,is
+ real(dp) :: rtmp
 !=====
 
+ write(stdout,'(/,1x,a,i2)') 'Setting up the cartesian to pure transforms up to l= ',MOLGW_LMAX
 
- write(stdout,'(/,1x,a)') 'Setting up the cartesian to pure transforms'
-
+ allocate(cart_to_pure     (0:MOLGW_LMAX,2))
+ allocate(cart_to_pure_norm(0:MOLGW_LMAX,2))
 
  !
  ! First setup trivial transforms in the case of CARTESIAN gaussians
  !
- do il=0,LMAX_TRANSFORM
+ do il=0,MOLGW_LMAX
    ni = number_basis_function_am('CART',il)
    allocate(cart_to_pure     (il,CARTG)%matrix(ni,ni))
    allocate(cart_to_pure_norm(il,CARTG)%matrix(ni,ni))
@@ -213,162 +170,76 @@ subroutine setup_cart_to_pure_transforms()
  !
  ! Second setup the complicated transforms in the case of PURE gaussians
  !
- ! Formula were read from Ref. 
- ! H.B. Schlegel and M.J. Frisch, INTERNATIONAL JOURNAL OF QUANTUM CHEMISTRY  54, 83-87 (1995).
- ! Formulas available up to l = 5, then use cartesian gaussian anyway
+ do il=0,MOLGW_LMAX
+   nic = number_basis_function_am('CART',il)
+   ni  = number_basis_function_am('PURE',il)
+   allocate(cart_to_pure(il,PUREG)%matrix(nic,ni))
+   allocate(cart_to_pure_norm(il,PUREG)%matrix(nic,ni))
+   cart_to_pure_norm(il,PUREG)%matrix(:,:) = 0.0_dp
 
- !
- ! Transform for momentum S
- allocate(cart_to_pure     (0,PUREG)%matrix(1,1))
- allocate(cart_to_pure_norm(0,PUREG)%matrix(1,1))
- cart_to_pure(0,PUREG)%matrix(1,1) = 1.0_dp
+   kk=0
+   do ii=0,il
+     nx = il - ii
+     do jj=0,ii
+       kk = kk + 1
+       ny = ii - jj
+       nz = jj
 
- !
- ! Transform for momentum P
- allocate(cart_to_pure     (1,PUREG)%matrix(3,3))
- allocate(cart_to_pure_norm(1,PUREG)%matrix(3,3))
- cart_to_pure(1,PUREG)%matrix(:,:) = 0.0_dp
- cart_to_pure(1,PUREG)%matrix(3,2) = 1.0_dp
- cart_to_pure(1,PUREG)%matrix(1,3) = 1.0_dp
- cart_to_pure(1,PUREG)%matrix(2,1) = 1.0_dp
+       rtmp = 0.0_dp
+       do it=0,il/2
+         do iu=0,it
+           if( 2*it-2*iu == nx .AND. 2*iu == ny .AND. il - 2*it == nz ) then
+             rtmp = rtmp + (-1)**it * 0.50_dp**(2*it) * cnk(il-it,it) * cnk(il,it) * cnk(it,iu)
+           endif
+         enddo
+       enddo
+       cart_to_pure_norm(il,PUREG)%matrix(kk,il+1) = rtmp / SQRT( double_factorial(2*il-1) )
 
- !
- ! Transform for momentum D
- allocate(cart_to_pure     (2,PUREG)%matrix(6,5))
- allocate(cart_to_pure_norm(2,PUREG)%matrix(6,5))
- cart_to_pure(2,PUREG)%matrix(:,:) =  0.0_dp
- cart_to_pure(2,PUREG)%matrix(2,1) =  1.0_dp
- cart_to_pure(2,PUREG)%matrix(5,2) =  1.0_dp
- cart_to_pure(2,PUREG)%matrix(6,3) =  1.0_dp
- cart_to_pure(2,PUREG)%matrix(1,3) = -0.5_dp
- cart_to_pure(2,PUREG)%matrix(4,3) = -0.5_dp
- cart_to_pure(2,PUREG)%matrix(3,4) =  1.0_dp
- cart_to_pure(2,PUREG)%matrix(1,5) =  SQRT(3.0_dp/4.0_dp)
- cart_to_pure(2,PUREG)%matrix(4,5) = -SQRT(3.0_dp/4.0_dp)
+       do im=1,il
+         rtmp = 0.0_dp
+         do it=0,(il-im)/2
+           do iu=0,it
+             do is=0,(im-1)/2
+               if( im + 2*it - 2*iu - 2*is -1 == nx &
+                 .AND. 2*iu + 2*is + 1 == ny &
+                 .AND. il - im - 2*it == nz ) then
+                 rtmp = rtmp + (-1)**(it+is) * 0.50_dp**(im+2*it) * SQRT( 2.0_dp * ank(il+im,il) / ank(il,il-im) ) &
+                           * cnk(it,iu) * cnk(im,2*is+1) * cnk(il-it,im+it) * cnk(il,it)
+               endif
 
- !
- ! Transform for momentum F
- allocate(cart_to_pure     (3,PUREG)%matrix(10,7))
- allocate(cart_to_pure_norm(3,PUREG)%matrix(10,7))
- cart_to_pure(3,PUREG)%matrix( :,:) =  0.0_dp
- cart_to_pure(3,PUREG)%matrix(10,4) =  1.0_dp
- cart_to_pure(3,PUREG)%matrix( 3,4) = -3.0_dp /(2.0_dp *SQRT(5.0_dp))
- cart_to_pure(3,PUREG)%matrix( 8,4) = -3.0_dp /(2.0_dp *SQRT(5.0_dp))
- cart_to_pure(3,PUREG)%matrix( 6,5) =  SQRT(6.0_dp/5.0_dp)
- cart_to_pure(3,PUREG)%matrix( 1,5) = -SQRT(6.0_dp)/4.0_dp
- cart_to_pure(3,PUREG)%matrix( 4,5) = -SQRT(6.0_dp/5.0_dp)/4.0_dp
- cart_to_pure(3,PUREG)%matrix( 9,3) =  SQRT(6.0_dp/5.0_dp)
- cart_to_pure(3,PUREG)%matrix( 7,3) = -SQRT(6.0_dp)/4.0_dp
- cart_to_pure(3,PUREG)%matrix( 2,3) = -SQRT(6.0_dp/5.0_dp)/4.0_dp
- cart_to_pure(3,PUREG)%matrix( 3,6) =  SQRT(3.0_dp/4.0_dp)
- cart_to_pure(3,PUREG)%matrix( 8,6) = -SQRT(3.0_dp/4.0_dp)
- cart_to_pure(3,PUREG)%matrix( 5,2) = -1.0_dp
- cart_to_pure(3,PUREG)%matrix( 1,7) =  SQRT(10.0_dp)/4.0_dp
- cart_to_pure(3,PUREG)%matrix( 4,7) = -SQRT(2.0_dp)*3.0_dp/4.0_dp
- cart_to_pure(3,PUREG)%matrix( 7,1) = -SQRT(10.0_dp)/4.0_dp
- cart_to_pure(3,PUREG)%matrix( 2,1) =  SQRT(2.0_dp)*3.0_dp/4.0_dp
+             enddo
+           enddo
+         enddo
+         cart_to_pure_norm(il,PUREG)%matrix(kk,il+1-im) = rtmp / SQRT( double_factorial(2*il-1) ) 
+       enddo
 
- !
- ! Transform for momentum G
- allocate(cart_to_pure     (4,PUREG)%matrix(15,9))
- allocate(cart_to_pure_norm(4,PUREG)%matrix(15,9))
- cart_to_pure(4,PUREG)%matrix( :,:) =  0.0_dp
- cart_to_pure(4,PUREG)%matrix(15,5) =  1.0_dp
- cart_to_pure(4,PUREG)%matrix( 1,5) =  3.0/8.0
- cart_to_pure(4,PUREG)%matrix(11,5) =  3.0/8.0
- cart_to_pure(4,PUREG)%matrix( 6,5) = -3.0*SQRT(3.0/35.0)
- cart_to_pure(4,PUREG)%matrix(13,5) = -3.0*SQRT(3.0/35.0)
- cart_to_pure(4,PUREG)%matrix( 4,5) =  3.0*SQRT(3.0/35.0)/4.0
- cart_to_pure(4,PUREG)%matrix(10,6) =  SQRT(10.0/7.0)
- cart_to_pure(4,PUREG)%matrix( 3,6) = -0.75*SQRT(10.0/7.0)
- cart_to_pure(4,PUREG)%matrix( 8,6) = -0.75*SQRT( 2.0/7.0)
- cart_to_pure(4,PUREG)%matrix(14,4) =  SQRT(10.0/7.0)
- cart_to_pure(4,PUREG)%matrix(12,4) = -0.75*SQRT(10.0/7.0)
- cart_to_pure(4,PUREG)%matrix( 5,4) = -0.75*SQRT( 2.0/7.0)
- cart_to_pure(4,PUREG)%matrix( 6,7) =  1.5*SQRT( 3.0/7.0)
- cart_to_pure(4,PUREG)%matrix(13,7) = -1.5*SQRT( 3.0/7.0)
- cart_to_pure(4,PUREG)%matrix( 1,7) = -0.25*SQRT(5.0)
- cart_to_pure(4,PUREG)%matrix(11,7) =  0.25*SQRT(5.0)
- cart_to_pure(4,PUREG)%matrix( 9,3) =  3.0/SQRT(7.0)
- cart_to_pure(4,PUREG)%matrix( 2,3) = -0.5*SQRT(5.0/7.0)
- cart_to_pure(4,PUREG)%matrix( 7,3) = -0.5*SQRT(5.0/7.0)
- cart_to_pure(4,PUREG)%matrix( 3,8) =  0.25*SQRT(10.0)
- cart_to_pure(4,PUREG)%matrix( 8,8) = -0.75*SQRT(2.0)
- cart_to_pure(4,PUREG)%matrix(12,2) = -0.25*SQRT(10.0)
- cart_to_pure(4,PUREG)%matrix( 5,2) =  0.75*SQRT(2.0)
- cart_to_pure(4,PUREG)%matrix( 1,9) =  0.125*SQRT(35.0)
- cart_to_pure(4,PUREG)%matrix(11,9) =  0.125*SQRT(35.0)
- cart_to_pure(4,PUREG)%matrix( 4,9) = -0.75*SQRT(3.0)
- cart_to_pure(4,PUREG)%matrix( 2,1) =  SQRT(5.0/4.0)
- cart_to_pure(4,PUREG)%matrix( 7,1) = -SQRT(5.0/4.0)
+       do im=1,il
+         rtmp = 0.0_dp
+         do it=0,(il-im)/2
+           do iu=0,it
+             do is=0,im/2
+               if( im + 2*it - 2*iu - 2*is == nx &
+                 .AND. 2*iu + 2*is == ny &
+                 .AND. il - im - 2*it == nz ) then
+                 rtmp = rtmp + (-1)**(it+is) * 0.50_dp**(im+2*it) * SQRT( 2.0_dp * ank(il+im,il) / ank(il,il-im) ) &
+                           * cnk(it,iu) * cnk(im,2*is) * cnk(il-it,im+it) * cnk(il,it)
+               endif
 
- !
- ! Transform for momentum H
- allocate(cart_to_pure     (5,PUREG)%matrix(21,11))
- allocate(cart_to_pure_norm(5,PUREG)%matrix(21,11))
- cart_to_pure(5,PUREG)%matrix( :, :) =  0.0_dp
- cart_to_pure(5,PUREG)%matrix(21, 6) =  1.0_dp
- cart_to_pure(5,PUREG)%matrix(10, 6) = -5.0*SQRT(2.0/21.0)
- cart_to_pure(5,PUREG)%matrix(19, 6) = -5.0*SQRT(2.0/21.0)
- cart_to_pure(5,PUREG)%matrix( 3, 6) =  5.0/8.0*SQRT(2.0)
- cart_to_pure(5,PUREG)%matrix(17, 6) = -5.0/8.0*SQRT(2.0)
- cart_to_pure(5,PUREG)%matrix( 8, 6) =  0.25*SQRT(30.0/7.0)
- cart_to_pure(5,PUREG)%matrix(15, 7) =  SQRT(5.0/3.0)
- cart_to_pure(5,PUREG)%matrix( 6, 7) = -1.5*SQRT(5.0/7.0)
- cart_to_pure(5,PUREG)%matrix(13, 7) = -1.5/SQRT(7.0)
- cart_to_pure(5,PUREG)%matrix( 1, 7) = -0.125*SQRT(15.0)
- cart_to_pure(5,PUREG)%matrix(11, 7) =  0.125*SQRT(5.0/3.0)
- cart_to_pure(5,PUREG)%matrix( 4, 7) =  0.25*SQRT(5.0/7.0)
- cart_to_pure(5,PUREG)%matrix(20, 5) =  SQRT(5.0/3.0)
- cart_to_pure(5,PUREG)%matrix(18, 5) = -1.5*SQRT(5.0/7.0)
- cart_to_pure(5,PUREG)%matrix( 9, 5) = -1.5/SQRT(7.0)
- cart_to_pure(5,PUREG)%matrix(16, 5) = -0.125*SQRT(15.0)
- cart_to_pure(5,PUREG)%matrix( 2, 5) =  0.125*SQRT(5.0/3.0)
- cart_to_pure(5,PUREG)%matrix( 7, 5) =  0.25*SQRT(5.0/7.0)
- cart_to_pure(5,PUREG)%matrix(10, 8) =  SQRT(5.0/4.0)
- cart_to_pure(5,PUREG)%matrix(19, 8) = -SQRT(5.0/4.0)
- cart_to_pure(5,PUREG)%matrix( 3, 8) = -0.25*SQRT(35.0/3.0)
- cart_to_pure(5,PUREG)%matrix(17, 8) =  0.25*SQRT(35.0/3.0)
- cart_to_pure(5,PUREG)%matrix(14, 4) =  SQRT(5.0/3.0)
- cart_to_pure(5,PUREG)%matrix( 5, 4) =  -0.5*SQRT(5.0/3.0)
- cart_to_pure(5,PUREG)%matrix(12, 4) =  -0.5*SQRT(5.0/3.0)
- cart_to_pure(5,PUREG)%matrix( 6, 9) =  0.5*SQRT(10.0/3.0)
- cart_to_pure(5,PUREG)%matrix(13, 9) = -0.5*SQRT(6.0)
- cart_to_pure(5,PUREG)%matrix( 1, 9) = -SQRT(70.0)/16.0
- cart_to_pure(5,PUREG)%matrix(11, 9) =  SQRT(70.0)/16.0
- cart_to_pure(5,PUREG)%matrix( 4, 9) =  0.125*SQRT(10.0/3.0)
- cart_to_pure(5,PUREG)%matrix(18, 3) = -0.5*SQRT(10.0/3.0)
- cart_to_pure(5,PUREG)%matrix( 9, 3) =  0.5*SQRT(6.0)
- cart_to_pure(5,PUREG)%matrix(16, 3) =  SQRT(70.0)/16.0
- cart_to_pure(5,PUREG)%matrix( 2, 3) = -SQRT(70.0)/16.0
- cart_to_pure(5,PUREG)%matrix( 7, 3) = -0.125*SQRT(10.0/3.0)
- cart_to_pure(5,PUREG)%matrix( 3,10) =  0.125*SQRT(35.0)
- cart_to_pure(5,PUREG)%matrix(17,10) =  0.125*SQRT(35.0)
- cart_to_pure(5,PUREG)%matrix( 8,10) = -0.75*SQRT(3.0)
- cart_to_pure(5,PUREG)%matrix( 5, 2) =  0.5*SQRT(5.0)
- cart_to_pure(5,PUREG)%matrix(12, 2) = -0.5*SQRT(5.0)
- cart_to_pure(5,PUREG)%matrix( 1,11) =  3.0*SQRT(14.0)/16.0
- cart_to_pure(5,PUREG)%matrix(11,11) = -5.0*SQRT(14.0)/16.0
- cart_to_pure(5,PUREG)%matrix( 4,11) = -5.0*SQRT(6.0)/8.0
- cart_to_pure(5,PUREG)%matrix(16, 1) =  3.0*SQRT(14.0)/16.0
- cart_to_pure(5,PUREG)%matrix( 2, 1) = -5.0*SQRT(14.0)/16.0
- cart_to_pure(5,PUREG)%matrix( 7, 1) =  5.0*SQRT(6.0)/8.0
+             enddo
+           enddo
+         enddo
+         cart_to_pure_norm(il,PUREG)%matrix(kk,il+1+im) = rtmp / SQRT( double_factorial(2*il-1) )
+       enddo
 
 
- !
- ! Complement with diagonal if necessary (formulas not available in the paper)
- do il=LMAX_TRANSFORM_PURE+1,LMAX_TRANSFORM
-   ni = number_basis_function_am('CART',il)
-   allocate(cart_to_pure     (il,PUREG)%matrix(ni,ni))
-   allocate(cart_to_pure_norm(il,PUREG)%matrix(ni,ni))
-   cart_to_pure(il,PUREG)%matrix(:,:) = cart_to_pure(il,CARTG)%matrix(:,:)
+     enddo
+   enddo
  enddo
-
-
+ 
 
  !
  ! Introduce the normalization coefficient part that depends on (nx,ny,nz)
- do il=0,LMAX_TRANSFORM
+ do il=0,MOLGW_LMAX
    kk=0
    do ii=0,il
      nx = il - ii
@@ -377,11 +248,11 @@ subroutine setup_cart_to_pure_transforms()
        ny = ii - jj
        nz = jj
        cart_to_pure_norm(il,CARTG)%matrix(kk,:) = cart_to_pure(il,CARTG)%matrix(kk,:) &
-                 / SQRT( REAL( double_factorial(2*nx-1) * double_factorial(2*ny-1) * double_factorial(2*nz-1) , dp ) )
+                 / SQRT( double_factorial(2*nx-1) * double_factorial(2*ny-1) * double_factorial(2*nz-1) )
 
-       cart_to_pure_norm(il,PUREG)%matrix(kk,:) = cart_to_pure(il,PUREG)%matrix(kk,:) &
-                 / SQRT( REAL( double_factorial(2*nx-1) * double_factorial(2*ny-1) * double_factorial(2*nz-1) , dp ) )
-         
+       cart_to_pure(il,PUREG)%matrix(kk,:) = cart_to_pure_norm(il,PUREG)%matrix(kk,:) &
+                     * SQRT( double_factorial(2*nx-1) * double_factorial(2*ny-1) * double_factorial(2*nz-1) )
+
      enddo
    enddo
  enddo
@@ -391,6 +262,62 @@ subroutine setup_cart_to_pure_transforms()
  write(stdout,*) 
 
 end subroutine setup_cart_to_pure_transforms
+
+
+!=========================================================================
+subroutine destroy_cart_to_pure_transforms()
+ implicit none
+
+!=====
+ integer :: il
+!=====
+
+ do il=0,MOLGW_LMAX
+   deallocate(cart_to_pure_norm(il,CARTG)%matrix)
+   deallocate(cart_to_pure_norm(il,PUREG)%matrix)
+ enddo
+
+end subroutine destroy_cart_to_pure_transforms
+
+
+!=========================================================================
+function cnk(n,k)
+ implicit none
+
+ integer,intent(in) :: n,k
+ real(dp)           :: cnk
+!=====
+ integer  :: i
+ real(dp) :: num,denom
+!=====
+
+ num   = 1.0_dp
+ denom = 1.0_dp
+ do i=0,k-1
+   num   = num   * REAL(n-i,dp)
+   denom = denom * ( i + 1.0_dp)
+ enddo
+ cnk = num / denom
+
+end function cnk
+
+
+!=========================================================================
+function ank(n,k)
+ implicit none
+
+ integer,intent(in) :: n,k
+ real(dp)           :: ank
+!=====
+ integer  :: i
+!=====
+
+ ank   = 1.0_dp
+ do i=n,k+1,-1
+   ank   = ank   * REAL(i,dp)
+ enddo
+
+end function ank
 
 
 !=========================================================================

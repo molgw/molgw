@@ -16,9 +16,9 @@ module m_tddft_fxc
  use m_inputparam
  use m_dft_grid
  use m_basis_set
+ use m_hamiltonian
 
  integer,private   :: nspin_tddft
- logical,private   :: require_gradient
 
  !
  ! fxc kernel
@@ -89,7 +89,7 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
    nspin_tddft = nspin
  endif
 
- call init_dft_grid(tddft_grid_level)
+ call init_dft_grid(basis,tddft_grid_level,dft_xc_needs_gradient,.FALSE.,1)
 
  allocate( rho_c(nspin_tddft)            )
  allocate( v2rho2_c(2*nspin_tddft-1)     )
@@ -101,7 +101,6 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
  !
  ! Prepare DFT kernel calculation with Libxc
  !
- require_gradient  =.FALSE.
  do idft_xc=1,ndft_xc
    if( ABS(dft_xc_coef(idft_xc)) < 1.0e-6_dp ) cycle
 
@@ -116,29 +115,19 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
    if( MODULO(xc_f90_info_flags( xc_info(idft_xc)),XC_FLAGS_HAVE_FXC*2) < XC_FLAGS_HAVE_FXC ) then
      call die('This functional does not have the kernel implemented in Libxc')
    endif
-   if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_GGA     ) require_gradient  =.TRUE.
-   if(xc_f90_info_family(xc_info(idft_xc)) == XC_FAMILY_HYB_GGA ) require_gradient  =.TRUE.
  enddo
 
  !
  ! calculate rho, grad rho and the kernel
  ! 
  ! Setup the density matrix P from C
-! call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
- do ispin=1,nspin
-   do jbf=1,basis%nbf
-     do ibf=1,basis%nbf
-       p_matrix(ibf,jbf,ispin) = SUM( occupation(:,ispin) * c_matrix(ibf,:,ispin) * c_matrix(jbf,:,ispin) )
-     enddo
-   enddo
- enddo
-
+ call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
 
 
  allocate(v2rho2(ngrid,2*nspin_tddft-1),wf_r(ngrid,basis%nbf,nspin))
  v2rho2(:,:) = 0.0_dp
 
- if(require_gradient) then
+ if( dft_xc_needs_gradient ) then
    allocate(vsigma(ngrid,2*nspin_tddft-1))
    allocate(v2rhosigma(ngrid,5*nspin_tddft-4))
    allocate(v2sigma2(ngrid,5*nspin_tddft-4))
@@ -151,10 +140,9 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
 
 
  max_v2sigma2 = -1.0_dp
- do igrid=1,ngrid
 
-   if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis)
-   if( require_gradient .AND. .NOT. ALLOCATED(bfgr) ) call prepare_basis_functions_gradr(basis)
+
+ do igrid=1,ngrid
    !
    ! Get all the functions and gradients at point rr
    call get_basis_functions_r(basis,igrid,basis_function_r)
@@ -164,7 +152,7 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
      wf_r(igrid,:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
    enddo
 
-   if( require_gradient ) then
+   if( dft_xc_needs_gradient ) then
      call get_basis_functions_gradr(basis,igrid,basis_function_gradr)
      !
      ! store the wavefunction in r
@@ -175,7 +163,7 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
 
 
    call calc_density_pmatrix(nspin,basis,p_matrix,basis_function_r,rhor_r)
-   if( require_gradient ) then
+   if( dft_xc_needs_gradient ) then
      call calc_density_gradr_pmatrix(nspin,basis%nbf,p_matrix,basis_function_r,basis_function_gradr,grad_rhor)
 
      rho_gradr(:,igrid,:) = grad_rhor(:,:)
@@ -218,7 +206,7 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
      !
      ! Remove the too large values for stability
      v2rho2_c(:) = MIN( v2rho2_c(:), kernel_capping )
-     if(require_gradient) then
+     if(dft_xc_needs_gradient) then
        max_v2sigma2 = MAX(ABS(v2sigma2_c(1)),max_v2sigma2)
        vsigma_c(:)     = MIN( vsigma_c(:), kernel_capping )
        v2rhosigma_c(:) = MIN( v2rhosigma_c(:), kernel_capping )
@@ -228,7 +216,7 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
      ! Store the result with the weight
      ! Remove too large values for stability
      v2rho2(igrid,:)     = v2rho2(igrid,:) + v2rho2_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
-     if(require_gradient) then
+     if(dft_xc_needs_gradient) then
        vsigma(igrid,:)     = vsigma(igrid,:)     + vsigma_c(:)     * w_grid(igrid) * dft_xc_coef(idft_xc)
        v2rhosigma(igrid,:) = v2rhosigma(igrid,:) + v2rhosigma_c(:) * w_grid(igrid) * dft_xc_coef(idft_xc)
        v2sigma2(igrid,:)   = v2sigma2(igrid,:)   + v2sigma2_c(:)   * w_grid(igrid) * dft_xc_coef(idft_xc)
@@ -236,7 +224,7 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
 
    enddo
  enddo
- if(require_gradient) then
+ if(dft_xc_needs_gradient) then
    call xmax_world(max_v2sigma2)
    write(stdout,'(a,e18.6)') ' Maximum numerical value for fxc: ',max_v2sigma2
 
@@ -273,7 +261,7 @@ function eval_fxc_rks_singlet(istate,jstate,ijspin,kstate,lstate,klspin)
                     * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
                     * v2rho2(:,ijspin) * 2.0_dp )
 
- if(require_gradient) then
+ if(dft_xc_needs_gradient) then
 
    grad_ij(1,:,ijspin) = wf_gradr(1,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(1,:,jstate,ijspin) * wf_r(:,istate,ijspin)
    grad_ij(2,:,ijspin) = wf_gradr(2,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(2,:,jstate,ijspin) * wf_r(:,istate,ijspin)
@@ -315,7 +303,7 @@ function eval_fxc_uks(istate,jstate,ijspin,kstate,lstate,klspin)
                     * ( v2rho2(:,1) + v2rho2(:,2) ) )
 
 
- if(require_gradient) then
+ if(dft_xc_needs_gradient) then
 
    grad_ij(1,:,ijspin) = wf_gradr(1,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(1,:,jstate,ijspin) * wf_r(:,istate,ijspin)
    grad_ij(2,:,ijspin) = wf_gradr(2,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(2,:,jstate,ijspin) * wf_r(:,istate,ijspin)
@@ -354,7 +342,7 @@ function eval_fxc_rks_triplet(istate,jstate,ijspin,kstate,lstate,klspin)
                                 * wf_r(:,kstate,klspin) * wf_r(:,lstate,klspin) &
                                 * ( v2rho2(:,1) - v2rho2(:,2) ) )
 
- if(require_gradient) then
+ if(dft_xc_needs_gradient) then
 
    grad_ij(1,:,ijspin) = wf_gradr(1,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(1,:,jstate,ijspin) * wf_r(:,istate,ijspin)
    grad_ij(2,:,ijspin) = wf_gradr(2,:,istate,ijspin) * wf_r(:,jstate,ijspin) + wf_gradr(2,:,jstate,ijspin) * wf_r(:,istate,ijspin)

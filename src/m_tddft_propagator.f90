@@ -53,6 +53,7 @@ subroutine calculate_propagation(nstate,              &
  real(dp),intent(in)             :: hamiltonian_nucleus(basis%nbf,basis%nbf)
  real(dp),intent(in)             :: s_matrix_sqrt_inv(basis%nbf,nstate)
 !=====
+ integer,parameter          :: BATCH_SIZE=1
  integer                    :: ntau, itau,idir, info, ispin, ibf,nomega,iomega
  integer                    :: file_dipolar_spectra
  integer                    :: file_real_dipolar_spectra
@@ -88,7 +89,7 @@ subroutine calculate_propagation(nstate,              &
  mod_write = INT( write_step / time_step ) ! write each write_step, assumed that time_step <= write_step
 
   if( calc_type%is_dft ) then
-     call init_dft_grid(grid_level)
+     call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.TRUE.,BATCH_SIZE)
   endif
 
  time_min=0.0_dp

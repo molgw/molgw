@@ -1,6 +1,13 @@
-=========================================
+-----------------------------------------
 #    MOLGW: Release Notes
-=========================================
+-----------------------------------------
+
+
+
+## What's new in version 1.E
+### Overview
+Bug fix with respect to previous version for high angular momenta (L>5)
+Considerable speed-up in the diagonalization of the RPA matrix thanks to the use of PDSYEVR instead of PDSYEV
 
 
 

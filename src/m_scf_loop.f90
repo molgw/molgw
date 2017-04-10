@@ -13,6 +13,7 @@ module m_scf_loop
  use m_memory
  use m_inputparam
 
+ integer,parameter,private :: BATCH_SIZE = 64
 contains
 
 
@@ -92,7 +93,7 @@ subroutine scf_loop(is_restart,&
  if( calc_type%is_dft ) then
    !
    ! Setup the grids for the quadrature of DFT potential/energy
-   call init_dft_grid(grid_level)
+   call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.TRUE.,BATCH_SIZE)
    ! The following is coded but not used... yet!
 !   call setup_bf_radius(basis)
  endif
@@ -177,7 +178,7 @@ subroutine scf_loop(is_restart,&
          en%xc = 0.0_dp
        endif
      else
-       call dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_xc,en%xc)
+       call dft_exc_vxc_batch(BATCH_SIZE,basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_xc,en%xc)
      endif
 
    endif
@@ -289,9 +290,13 @@ subroutine scf_loop(is_restart,&
 
    endif
 
+!FBFB electrostatic potential
+!   write(stdout,*) '== FBFB ==',(hamiltonian_nucleus(basis%nbf,basis%nbf)+hamiltonian_hartree(basis%nbf,basis%nbf))*Ha_eV
+
    !
    ! Add the XC part of the hamiltonian to the total hamiltonian
    hamiltonian(:,:,:) = hamiltonian(:,:,:) + hamiltonian_xc(:,:,:)
+
    
    ! All the components of the energy have been calculated at this stage
    ! Sum up to get the total energy
@@ -572,7 +577,7 @@ write(stdout,*) "------------------"
        exc = 0.0_dp
      endif
    else
-     call dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,exc)
+     call dft_exc_vxc_batch(BATCH_SIZE,basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,exc)
    endif
 
    hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) 

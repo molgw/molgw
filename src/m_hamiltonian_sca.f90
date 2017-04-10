@@ -96,19 +96,19 @@ subroutine setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
  ibf      = 1
  jbf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
      allocate(matrix_cart(ni_cart,nj_cart))
      do i_cart=1,ni_cart
        do j_cart=1,nj_cart
-         call overlap_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
+         call overlap_basis_function(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
        enddo
      enddo
 
@@ -166,12 +166,12 @@ subroutine setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic
  ibf      = 1
  jbf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
@@ -179,7 +179,7 @@ subroutine setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic
      allocate(matrix_final(ni,nj))
      do i_cart=1,ni_cart
        do j_cart=1,nj_cart
-         call kinetic_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
+         call kinetic_basis_function(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
        enddo
      enddo
 
@@ -247,12 +247,12 @@ subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus
  ibf      = 1
  jbf      = 1
  do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bf(ibf_cart)%am
+   li      = basis%bfc(ibf_cart)%am
    ni_cart = number_basis_function_am('CART',li)
    ni      = number_basis_function_am(basis%gaussian_type,li)
 
    do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bf(jbf_cart)%am
+     lj      = basis%bfc(jbf_cart)%am
      nj_cart = number_basis_function_am('CART',lj)
      nj      = number_basis_function_am(basis%gaussian_type,lj)
 
@@ -262,7 +262,7 @@ subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus
        if( rank_local /= MODULO(iatom-1,nproc_local) ) cycle
        do i_cart=1,ni_cart
          do j_cart=1,nj_cart
-           call nucleus_basis_function(basis%bf(ibf_cart+i_cart-1),basis%bf(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
+           call nucleus_basis_function(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
            matrix_cart(i_cart,j_cart) = matrix_cart(i_cart,j_cart) + vnucleus_ij
          enddo
        enddo
@@ -1240,12 +1240,8 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  !
  ! Create a temporary grid with low quality
  ! This grid is to be destroyed at the end of the present subroutine
- call init_dft_grid(low)
+ call init_dft_grid(basis,low,.FALSE.,.FALSE.,1)
 
- !
- ! If it is the first time, set up the stored arrays
- !
- if( .NOT. ALLOCATED(bfr) ) call prepare_basis_functions_r(basis)
 
  normalization = 0.0_dp
  exc           = 0.0_dp
@@ -1266,7 +1262,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
    ! Normalization
    normalization = normalization + rhor * weight
 
-   call teter_lda_vxc_exc(rhor,vxc,excr)
+   call teter_lda_vxc_exc(1,rhor,vxc,excr)
 
    !
    ! XC energy

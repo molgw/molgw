@@ -306,25 +306,11 @@ subroutine setup_shell_index(basis)
 
  type(basis_set),intent(in)   :: basis
 !=====
- integer :: ibf,jbf,kbf
- integer :: ishell
+ integer :: ibf
 !=====
 
-
- !
- ! Set up the correspondence between basis function and shells (the inverse of
- ! the previous table more or less)
- !
  allocate(shell_bf(basis%nbf))
- ibf=1
- jbf=1
- do while (ibf<=basis%nbf_cart)
-   kbf = jbf + number_basis_function_am( basis%gaussian_type , basis%bf(ibf)%am ) - 1
-   shell_bf(jbf:kbf) = basis%bf(ibf)%shell_index
-   jbf = kbf + 1
-   ibf = ibf + number_basis_function_am( 'CART' , basis%bf(ibf)%am )
- enddo
-
+ shell_bf(:) = basis%bff(:)%shell_index
 
 end subroutine setup_shell_index
 
@@ -571,37 +557,6 @@ subroutine setup_shellpair(basis)
 
 
 end subroutine setup_shellpair
-
-
-!=========================================================================
-subroutine test_eri(basis)
- implicit none
- type(basis_set),intent(in)   :: basis
-!=====
- integer                      :: ibf,jbf,kbf,lbf
-!=====
-
- do jbf=1,nbf_eri
-   do ibf=1,nbf_eri
-     do lbf=1,nbf_eri
-       do kbf=1,nbf_eri
-         if( ABS(eri(ibf,jbf,kbf,lbf) - eri(kbf,lbf,ibf,jbf)) > 1.d-6 ) then
-           write(stdout,*) ibf,jbf,kbf,lbf,eri(ibf,jbf,kbf,lbf)
-           write(stdout,*) kbf,lbf,ibf,jbf,eri(kbf,lbf,ibf,jbf)
-           write(stdout,*) ibf,basis%bf(ibf)%amc
-           write(stdout,*) jbf,basis%bf(jbf)%amc
-           write(stdout,*) kbf,basis%bf(kbf)%amc
-           write(stdout,*) lbf,basis%bf(lbf)%amc
-           call die('ERI array not symmetric')
-         endif
-       enddo
-     enddo
-   enddo
- enddo
-
- call die('TESTING OK')
-
-end subroutine test_eri
 
 
 !=================================================================

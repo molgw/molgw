@@ -6,6 +6,7 @@
  eta=1.0e-2
 
  postscf='g0w0_iomega'
+ frozencore='yes'
  selfenergy_state_range=1
  nomega_imag = 64
 

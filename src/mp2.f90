@@ -1048,14 +1048,14 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
      ibf_cart = 1
      ibf      = 1
      do while(ibf_cart<=basis%nbf_cart)
-       li      = basis%bf(ibf_cart)%am
+       li      = basis%bfc(ibf_cart)%am
        ni_cart = number_basis_function_am('CART',li)
        ni      = number_basis_function_am(basis%gaussian_type,li)
   
        allocate(basis_function_r_cart(ni_cart))
   
        do i_cart=1,ni_cart
-         basis_function_r_cart(i_cart) = eval_basis_function(basis%bf(ibf_cart+i_cart-1),rr)
+         basis_function_r_cart(i_cart) = eval_basis_function(basis%bfc(ibf_cart+i_cart-1),rr)
        enddo
        basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
        deallocate(basis_function_r_cart)
@@ -1178,7 +1178,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
   !   rr(1)= x(ix)
   !   rr(2)= y(iy)
   !   rr(3)= z(iz)
-  !   rhor_t(ix)=rhor_t(ix)+ eval_basis_function(basis%bf(1),rr)**2 * wy(iy) * wz(iz)
+  !   rhor_t(ix)=rhor_t(ix)+ eval_basis_function(basis%bfc(1),rr)**2 * wy(iy) * wz(iz)
   ! enddo !iz
   ! enddo !iy
   ! enddo !ix
