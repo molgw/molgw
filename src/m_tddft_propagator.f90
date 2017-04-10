@@ -12,6 +12,7 @@ module tddft_propagator
  use m_scf_loop
  use m_memory
  use m_hamiltonian
+ use m_hamiltonian_cmplx
  use m_inputparam
  use m_dft_grid
  use m_tools
