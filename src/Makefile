@@ -205,7 +205,7 @@ m_hamiltonian.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_tim
 
 m_hamiltonian_cmplx.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_atoms.f90 m_tools.f90 m_ecp.f90 m_cart_to_pure.f90 \
                  m_inputparam.f90 m_eri.f90 m_eri_calculate.f90 m_basis_set.f90 m_dft_grid.f90 m_hamiltonian_cmplx.f90
-        $(FC_W_OPTS) -c m_hamiltonian_cmplx.f90 $(LIBXC_INCS)
+	$(FC_W_OPTS) -c m_hamiltonian_cmplx.f90 $(LIBXC_INCS)
 
 density_tools.o: m_definitions.f90 m_atoms.f90 m_mpi.f90 m_gaussian.f90 m_inputparam.f90 m_basis_set.f90 density_tools.f90
 	$(FC_W_OPTS) -c density_tools.f90 $(LIBXC_INCS)

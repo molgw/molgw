@@ -640,6 +640,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  use m_scalapack
  use m_basis_set
  use m_hamiltonian
+ use m_hamiltonian_cmplx
  use m_hamiltonian_sca
  use m_hamiltonian_buffer
  use m_tools,only: matrix_trace_cmplx

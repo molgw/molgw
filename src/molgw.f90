@@ -49,7 +49,7 @@ program molgw
  use m_hamiltonian_buffer
  use m_selfenergy_tools
  use m_scf_loop
- use tddft_propagator
+ use m_tddft_propagator
  implicit none
 
 !=====

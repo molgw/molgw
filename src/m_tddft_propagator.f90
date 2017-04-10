@@ -6,7 +6,7 @@
 ! propagation of the wavefunction in time
 !
 !=========================================================================
-module tddft_propagator
+module m_tddft_propagator
  use m_definitions
  use m_basis_set 
  use m_scf_loop
@@ -1583,7 +1583,7 @@ subroutine propagate_non_orth(nstate,basis,time_step_cur,c_matrix_cmplx,hamilton
 end subroutine propagate_non_orth
 
 !=========================================================================
-end module tddft_propagator
+end module m_tddft_propagator
 !=========================================================================
 
 
