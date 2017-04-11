@@ -208,7 +208,7 @@ restart.o: m_definitions.f90 m_timing.f90 m_mpi.f90 m_atoms.f90 m_basis_set.f90 
 	$(FC_W_OPTS) -c restart.f90 $(LIBXC_INCS)
 
 mp2.o: m_definitions.f90 m_timing.f90 m_warning.f90 m_mpi.f90 m_cart_to_pure.f90 m_tools.f90 \
-       m_basis_set.f90 m_inputparam.f90 m_eri_ao_mo.f90 m_hamiltonian.f90 \
+       m_basis_set.f90 m_inputparam.f90 m_eri_ao_mo.f90 m_hamiltonian.f90 m_dft_grid.f90 \
        mp2.f90 
 	$(FC_W_OPTS) -c mp2.f90 $(LIBXC_INCS)
 

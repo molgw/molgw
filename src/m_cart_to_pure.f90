@@ -42,7 +42,7 @@ end function get_gaussian_type_tag
 
 
 !=========================================================================
-function number_basis_function_am(gaussian_type,am)
+pure function number_basis_function_am(gaussian_type,am)
  implicit none
  character(len=4),intent(in) :: gaussian_type
  integer,intent(in)          :: am
@@ -60,7 +60,7 @@ end function number_basis_function_am
 
 
 !==========================================
-function double_factorial(intin)
+pure function double_factorial(intin)
  implicit none
  integer,intent(in) :: intin
  real(dp) :: double_factorial
@@ -126,10 +126,6 @@ function double_factorial(intin)
    double_factorial = 6190283353629375.0_dp
  case(31) 
    double_factorial = 191898783962510625.0_dp
- case default
-   write(stdout,*) 'integer =',intin
-   write(stdout,*) 'double factorial not coded for this integer value'
-   double_factorial = 1
  end select
 
 end function double_factorial

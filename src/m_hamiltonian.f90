@@ -16,6 +16,7 @@ module m_hamiltonian
  use m_memory
  use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
+ use m_basis_set
 
 
 contains
@@ -23,7 +24,6 @@ contains
 
 !=========================================================================
 subroutine setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
- use m_basis_set
  use m_atoms
  use m_dft_grid
  use m_ecp
@@ -1051,7 +1051,6 @@ end subroutine setup_sqrt_density_matrix
 !=========================================================================
 subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
  use m_inputparam
- use m_basis_set
  use m_dft_grid
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
@@ -1275,7 +1274,6 @@ end subroutine dft_exc_vxc
 !=========================================================================
 subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
  use m_inputparam
- use m_basis_set
  use m_dft_grid
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
@@ -1546,7 +1544,6 @@ end subroutine dft_exc_vxc_batch
 
 !=========================================================================
 subroutine dft_approximate_vhxc(print_matrix_,basis,vhxc_ij)
- use m_basis_set
  use m_dft_grid
  use m_eri_calculate
  implicit none
@@ -1681,7 +1678,6 @@ end subroutine dft_approximate_vhxc
 
 !=========================================================================
 subroutine static_dipole(nstate,basis,occupation,c_matrix)
- use m_basis_set
  use m_atoms
  implicit none
 
@@ -1775,7 +1771,6 @@ end subroutine static_dipole
 
 !=========================================================================
 subroutine static_quadrupole(nstate,basis,occupation,c_matrix)
- use m_basis_set
  use m_atoms
  implicit none
 

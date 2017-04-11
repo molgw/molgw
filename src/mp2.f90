@@ -578,6 +578,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
  use m_basis_set
  use m_eri_ao_mo
  use m_inputparam,only: nspin,has_auxil_basis
+ use m_dft_grid
  implicit none
 !
  integer,parameter :: cip=dp
@@ -612,11 +613,8 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
  real(dp)              :: rhor_t(nx)
  integer,parameter     :: ny=nx,nz=nx
  integer               :: iy,iz
- real(dp)              :: xxx(nx),y(ny),z(nz)
  real(dp)              :: wx(nx),wy(ny),wz(nz)
  real(dp)              :: norm
- integer               :: ibf_cart,li,ni,ni_cart,i_cart
- real(dp),allocatable  :: basis_function_r_cart(:)
  real(dp)              :: basis_function_r(basis%nbf)
  real(dp)              :: eval_wfn(nstate)
  real(dp),allocatable  :: eri_hf_i(:,:,:,:)
@@ -1042,38 +1040,10 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
      rr(3)= 0.0
   
 
-     !
-     ! First precalculate all the needed basis function evaluations at point rr
-     !
-     ibf_cart = 1
-     ibf      = 1
-     do while(ibf_cart<=basis%nbf_cart)
-       li      = basis%bfc(ibf_cart)%am
-       ni_cart = number_basis_function_am('CART',li)
-       ni      = number_basis_function_am(basis%gaussian_type,li)
+     call calculate_basis_functions_r(basis,rr,basis_function_r)
   
-       allocate(basis_function_r_cart(ni_cart))
-  
-       do i_cart=1,ni_cart
-         basis_function_r_cart(i_cart) = eval_basis_function(basis%bfc(ibf_cart+i_cart-1),rr)
-       enddo
-       basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
-       deallocate(basis_function_r_cart)
-  
-       ibf      = ibf      + ni
-       ibf_cart = ibf_cart + ni_cart
-     enddo
-     !
-     ! Precalculation done!
-     !
+     eval_wfn(:) = MATMUL( basis_function_r(:) ,  c_matrix(:,:,1) )
 
-  
-     eval_wfn(:) = 0.0_dp
-     do istate=1,nstate
-       do ibf=1,basis%nbf
-         eval_wfn(istate) = eval_wfn(istate) + c_matrix(ibf,istate,1) * basis_function_r(ibf)
-       enddo
-     enddo
     
     do kconf=1,1
     

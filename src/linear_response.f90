@@ -361,6 +361,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  use m_basis_set
  use m_dft_grid
  use m_spectral_function
+ use m_hamiltonian_onebody
  implicit none
 
  integer,intent(in)                 :: nstate,m_x,n_x
@@ -378,7 +379,6 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  integer                            :: istate,astate,iaspin
  integer                            :: mstate,pstate,mpspin
  integer                            :: ibf,jbf
- integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
  integer                            :: iomega,idir,jdir
  integer,parameter                  :: nomega=600
  complex(dp)                        :: omega(nomega)
@@ -386,7 +386,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  real(dp)                           :: dynamical_pol(nomega,3,3),photoabsorp_cross(nomega,3,3)
  real(dp)                           :: static_polarizability(3,3)
  real(dp)                           :: oscillator_strength,trk_sumrule,mean_excitation
- real(dp),allocatable               :: dipole_basis(:,:,:),dipole_tmp(:,:,:),dipole_state(:,:,:,:)
+ real(dp),allocatable               :: dipole_basis(:,:,:),dipole_state(:,:,:,:)
  real(dp),allocatable               :: dipole_cart(:,:,:)
  real(dp),allocatable               :: residue(:,:)
  integer                            :: dynpolfile
@@ -413,65 +413,20 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  !
  ! First precalculate all the needed dipole in the basis set
  !
- allocate(dipole_basis(3,basis%nbf,basis%nbf))
- ibf_cart = 1
- ibf      = 1
- do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bfc(ibf_cart)%am
-   ni_cart = number_basis_function_am('CART',li)
-   ni      = number_basis_function_am(basis%gaussian_type,li)
-
-   jbf_cart = 1
-   jbf      = 1
-   do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bfc(jbf_cart)%am
-     nj_cart = number_basis_function_am('CART',lj)
-     nj      = number_basis_function_am(basis%gaussian_type,lj)
-
-     allocate(dipole_cart(3,ni_cart,nj_cart))
-
-
-     do i_cart=1,ni_cart
-       do j_cart=1,nj_cart
-         call basis_function_dipole(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),dipole_cart(:,i_cart,j_cart))
-       enddo
-     enddo
-
-     do idir=1,3
-       dipole_basis(idir,ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
-             MATMUL(  dipole_cart(idir,:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
-     enddo
-
-     deallocate(dipole_cart)
-
-     jbf      = jbf      + nj
-     jbf_cart = jbf_cart + nj_cart
-   enddo
-
-   ibf      = ibf      + ni
-   ibf_cart = ibf_cart + ni_cart
- enddo
+ call calculate_dipole_basis(basis,dipole_basis)
 
  !
  ! Get the dipole oscillator strength on states
- allocate(dipole_state(3,nstate,nstate,nspin))
- allocate(dipole_tmp(3,basis%nbf,nstate))
+ allocate(dipole_state(nstate,nstate,nspin,3))
 
- do mpspin=1,nspin
-   do mstate=1,nstate
-     do jbf=1,basis%nbf
-       dipole_tmp(:,jbf,mstate) = MATMUL( dipole_basis(:,:,jbf) , c_matrix(:,mstate,mpspin) )
-     enddo
+ do idir=1,3
+   do mpspin=1,nspin
+     dipole_state(:,:,mpspin,idir) = MATMUL( TRANSPOSE( c_matrix(:,:,mpspin) ) , &
+                                             MATMUL( dipole_basis(:,:,idir) , c_matrix(:,:,mpspin) ) )
    enddo
-
-   do pstate=1,nstate
-     do mstate=1,nstate
-       dipole_state(:,mstate,pstate,mpspin) = MATMUL( dipole_tmp(:,:,mstate) , c_matrix(:,pstate,mpspin) )
-     enddo
-   enddo
-
  enddo
- deallocate(dipole_basis,dipole_tmp)
+
+ deallocate(dipole_basis)
 
 
  allocate(residue(3,nexc))
@@ -711,15 +666,17 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
  integer                            :: nmat
  integer                            :: istate,astate,iaspin
  integer                            :: mpspin
+ integer                            :: ishell,jshell
+ integer                            :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
  integer                            :: ibf,jbf
- integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
+ integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart
  integer                            :: iomega,idir,jdir
  integer,parameter                  :: nomega=600
  complex(dp)                        :: omega(nomega)
  real(dp)                           :: coeff
  real(dp)                           :: dynamical_pol(nomega),structure_factor(nomega)
  complex(dp)                        :: bethe_sumrule
- complex(dp),allocatable            :: gos_basis(:,:),gos_tmp(:,:),gos_state(:,:,:)
+ complex(dp),allocatable            :: gos_basis(:,:),gos_state(:,:,:)
  complex(dp),allocatable            :: gos_cart(:,:)
  complex(dp),allocatable            :: residue(:)
  real(dp)                           :: qvec(3)
@@ -776,54 +733,49 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
    ! First precalculate all the needed GOS in the basis set
    !
    allocate(gos_basis(basis%nbf,basis%nbf))
-   ibf_cart = 1
-   ibf      = 1
-   do while(ibf_cart<=basis%nbf_cart)
-     li      = basis%bfc(ibf_cart)%am
-     ni_cart = number_basis_function_am('CART',li)
-     ni      = number_basis_function_am(basis%gaussian_type,li)
+
+   do jshell=1,basis%nshell
+     lj      = basis%shell(jshell)%am
+     nj_cart = number_basis_function_am('CART',lj)
+     nj      = number_basis_function_am(basis%gaussian_type,lj)
+     jbf1    = basis%shell(jshell)%istart
+     jbf1_cart = basis%shell(jshell)%istart_cart
+     jbf2    = basis%shell(jshell)%iend
   
-     jbf_cart = 1
-     jbf      = 1
-     do while(jbf_cart<=basis%nbf_cart)
-       lj      = basis%bfc(jbf_cart)%am
-       nj_cart = number_basis_function_am('CART',lj)
-       nj      = number_basis_function_am(basis%gaussian_type,lj)
-  
+     do ishell=1,basis%nshell
+       li      = basis%shell(ishell)%am
+       ni_cart = number_basis_function_am('CART',li)
+       ni      = number_basis_function_am(basis%gaussian_type,li)
+       ibf1    = basis%shell(ishell)%istart
+       ibf1_cart = basis%shell(ishell)%istart_cart
+       ibf2    = basis%shell(ishell)%iend
+
+
+
        allocate(gos_cart(ni_cart,nj_cart))
-  
   
        do i_cart=1,ni_cart
          do j_cart=1,nj_cart
-           call gos_basis_function(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),qvec,gos_cart(i_cart,j_cart))
+           call gos_basis_function(basis%bfc(ibf1_cart+i_cart-1),basis%bfc(jbf1_cart+j_cart-1),qvec,gos_cart(i_cart,j_cart))
          enddo
        enddo
   
-       gos_basis(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
-             MATMUL(  gos_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
+       gos_basis(ibf1:ibf2,jbf1:jbf2) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
+                                                MATMUL(  gos_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
   
        deallocate(gos_cart)
   
-       jbf      = jbf      + nj
-       jbf_cart = jbf_cart + nj_cart
      enddo
-  
-     ibf      = ibf      + ni
-     ibf_cart = ibf_cart + ni_cart
    enddo
   
    !
    ! Get the gos oscillator strength on states
    allocate(gos_state(basis%nbf,basis%nbf,nspin))
-   allocate(gos_tmp(basis%nbf,basis%nbf))
   
    do mpspin=1,nspin
-     gos_tmp(:,:) = MATMUL( TRANSPOSE( c_matrix(:,:,mpspin) ) , gos_basis(:,:) )
-  
-     gos_state(:,:,mpspin) = MATMUL( gos_tmp(:,:) , c_matrix(:,:,mpspin) )
-  
+     gos_state(:,:,mpspin) = MATMUL( TRANSPOSE( c_matrix(:,:,mpspin) ) ,  MATMUL( gos_basis(:,:) , c_matrix(:,:,mpspin) ) )
    enddo
-   deallocate(gos_basis,gos_tmp)
+   deallocate(gos_basis)
   
   
    nmat=chi%npole_reso_apb
