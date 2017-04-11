@@ -444,7 +444,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
 
      if( t_jb_global <= nexc) then
        residue(:,t_jb_global) = residue(:,t_jb_global) &
-                    + dipole_state(:,istate,astate,iaspin) * xpy_matrix(t_ia,t_jb) * SQRT(spin_fact)
+                    + dipole_state(istate,astate,iaspin,:) * xpy_matrix(t_ia,t_jb) * SQRT(spin_fact)
      endif
    enddo
 

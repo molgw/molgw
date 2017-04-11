@@ -150,7 +150,7 @@ if len(sys.argv) > 1:
     print('  --input  file      Only run this input file')
     print('  --debug            Outputs debug information for this script')
     sys.exit(0)
-  if '--keep' in sys.argv:
+  if '--keep' in sys.argv or '-keep' in sys.argv:
     keeptmp = True
   if '--np' in sys.argv:
     i = sys.argv.index('--np') + 1
@@ -161,6 +161,9 @@ if len(sys.argv) > 1:
     mpirun = sys.argv[i]
   if '--input' in sys.argv:
     i = sys.argv.index('--input') + 1
+    selected_input_file = sys.argv[i]
+  if '-input' in sys.argv:
+    i = sys.argv.index('-input') + 1
     selected_input_file = sys.argv[i]
   if '--debug' in sys.argv:
     debug = True
