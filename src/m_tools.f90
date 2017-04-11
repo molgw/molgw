@@ -216,12 +216,13 @@ subroutine diagonalize_wo_vectors_dp(n,matrix,eigval)
  integer,intent(in) :: n
  real(dp),intent(inout) :: matrix(n,n)
  real(dp),intent(out) :: eigval(n)
-
- real(dp) :: z(1,n)
- integer  :: iwork(5*n),ifail(n)
+!=====
  integer :: info
  real(dp) :: work(3*n-1)
+! integer  :: iwork(5*n),ifail(n)
+! real(dp) :: z(1,n)
 ! real(dp) :: work(8*n)
+!=====
  
  call DSYEV('N','U',n,matrix,n,eigval,work,3*n-1,info)
 

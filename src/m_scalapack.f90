@@ -15,7 +15,7 @@
 module m_scalapack
  use m_definitions
  use m_warning
- use m_tools,only: diagonalize,invert
+ use m_tools
  use m_mpi
 #ifdef HAVE_MPI
  use mpi
@@ -477,7 +477,7 @@ end subroutine matmul_diag_sca
 subroutine diagonalize_eigval_sca(nglobal,desc,matrix,eigval)
  implicit none
  integer,intent(in)     :: desc(NDEL),nglobal
- real(dp),intent(in)    :: matrix(:,:)
+ real(dp),intent(inout) :: matrix(:,:)
  real(dp),intent(out)   :: eigval(nglobal)
 !=====
  integer              :: desc_eigvec(NDEL)

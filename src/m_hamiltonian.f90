@@ -373,49 +373,6 @@ end subroutine setup_exchange_longrange
 
 
 !=========================================================================
-subroutine read_external_potential(print_matrix_,nbf,nspin,p_matrix,pot_read,eread)
- use m_eri
- implicit none
- logical,intent(in)   :: print_matrix_
- integer,intent(in)   :: nbf,nspin
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: pot_read(nbf,nbf,nspin)
- real(dp),intent(out) :: eread
-!=====
- integer              :: ibf,jbf,ispin
- character(len=100)   :: title
- logical              :: file_exists
- integer              :: potfile
-!=====
-
- pot_read(:,:,:)=0.0_dp
-
- inquire(file='manual_potential',exist=file_exists)
- if(file_exists) then
-   open(newunit=potfile,file='manual_potential',status='old')
-   do ispin=1,nspin
-     do jbf=1,nbf
-       do ibf=1,nbf
-         read(potfile,*) pot_read(ibf,jbf,ispin)
-       enddo
-     enddo
-   enddo
-   close(potfile)
-
- else
-   call die('file not found: manual_potential')
- endif
-
-
- title='=== Read potential contribution ==='
- call dump_out_matrix(print_matrix_,title,nbf,nspin,pot_read)
-
- eread = 0.5_dp*SUM(pot_read(:,:,:)*p_matrix(:,:,:))
-
-end subroutine read_external_potential
-
-
-!=========================================================================
 subroutine setup_density_matrix(nbf,nstate,c_matrix,occupation,p_matrix)
  implicit none
  integer,intent(in)   :: nbf,nstate
