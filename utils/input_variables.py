@@ -1048,7 +1048,7 @@ vl[i].comment  ='Sets the number of iterations for the PC7 in the real-time dyna
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='calc_spectrum'
-vl[i].family   ='io'
+vl[i].family   ='io_rt_tddft'
 vl[i].default  ='no'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='Calculates absorption spectrum in the real-time dynamics'
@@ -1057,7 +1057,7 @@ vl[i].comment  ='Calculates absorption spectrum in the real-time dynamics'
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='error_n_iters'
-vl[i].family   ='io'
+vl[i].family   ='io_rt_tddft'
 vl[i].default  ='2'
 vl[i].datatype ='characters'
 vl[i].comment  ='Set of iteration for propagation loop for each propagator from the list error_prop_types for the p_matrix test in the real-time dynamics'
@@ -1066,7 +1066,7 @@ vl[i].comment  ='Set of iteration for propagation loop for each propagator from 
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='ignore_tddft_restart'
-vl[i].family   ='io'
+vl[i].family   ='io_rt_tddft'
 vl[i].default  ='yes'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='Ignore the RESTART_TDDFT file.'
@@ -1075,7 +1075,7 @@ vl[i].comment  ='Ignore the RESTART_TDDFT file.'
 vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='print_tddft_restart'
-vl[i].family   ='io'
+vl[i].family   ='io_rt_tddft'
 vl[i].default  ='yes'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='Prints a RESTART_TDDFT file which contains wavefunction coefficients for the last time moment of a simulation.'
@@ -1212,6 +1212,17 @@ for i in range(len(vl)):
   if vl[i].family =='hardware':
     fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
+# Real-time TDDFT
+fhtml.write('<h3>Real time TDDFT</h3>\n<p>\n')
+for i in range(len(vl)):
+  if vl[i].family =='rt_tddft':
+    fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
+
+# IO Real-time TDDFT
+fhtml.write('<h3>IO Real time TDDFT</h3>\n<p>\n')
+for i in range(len(vl)):
+  if vl[i].family =='io_rt_tddft':
+    fhtml.write('<a href=#'+vl[i].keyword+'>'+vl[i].keyword+'</a> ')
 
 
 

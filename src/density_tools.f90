@@ -141,11 +141,10 @@ subroutine calc_density_r_cmplx(nspin,nbf,nstate,occupation,c_matrix_cmplx,basis
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(in)        :: basis_function_r(nbf)
  real(dp),intent(out)       :: rhor(nspin)
- complex(dp),intent(in)    :: c_matrix_cmplx(nbf,nstate,nspin)
+ complex(dp),intent(in)     :: c_matrix_cmplx(nbf,nstate,nspin)
  !=====
  integer                    :: ispin,istate
  complex(dp)               :: phi_ir_cmplx
- complex(dp)               :: test
  !=====
 
  !
@@ -153,13 +152,11 @@ subroutine calc_density_r_cmplx(nspin,nbf,nstate,occupation,c_matrix_cmplx,basis
  rhor(:)=0.0_dp
  
  do ispin=1,nspin
- test=(0.0_dp,0.0_dp)
    do istate=1,nstate
    if( occupation(istate,ispin) < completely_empty ) cycle
 
       phi_ir_cmplx = DOT_PRODUCT( basis_function_r(:) , c_matrix_cmplx(:,istate,ispin) )
       rhor(ispin) = rhor(ispin) + REAL( phi_ir_cmplx * CONJG(phi_ir_cmplx) * occupation(istate,ispin), dp )
-      test=test+phi_ir_cmplx * CONJG(phi_ir_cmplx) * occupation(istate,ispin)
     enddo
   enddo
 
@@ -210,6 +207,49 @@ subroutine calc_density_r_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basis_fu
 
 
 end subroutine calc_density_r_batch
+
+!=========================================================================
+subroutine calc_density_r_batch_cmplx(nspin,nbf,nstate,nr,occupation,c_matrix_cmplx,basis_function_r,rhor)
+ use m_definitions
+ use m_mpi
+ use m_basis_set
+ implicit none
+
+ integer,intent(in)         :: nspin,nbf,nstate,nr
+ complex(dp),intent(in)     :: c_matrix_cmplx(nbf,nstate,nspin)
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: basis_function_r(nbf,nr)
+ real(dp),intent(out)       :: rhor(nspin,nr)
+!=====
+ integer                 :: ispin,istate,ir
+ complex(dp),allocatable :: phir_cmplx(:,:)
+ integer                 :: nocc
+!=====
+
+ !
+ ! Calculate the density rho at points in batch
+ rhor(:,:)=0.0_dp
+
+ do ispin=1,nspin
+
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty ) cycle
+     nocc = istate
+   enddo
+
+   allocate(phir_cmplx(nocc,nr))
+   phir_cmplx(:,:) = MATMUL( TRANSPOSE(c_matrix_cmplx(:,:nocc,ispin)) , basis_function_r(:,:) )
+
+   forall(ir=1:nr)
+     rhor(ispin,ir) = rhor(ispin,ir) + REAL( SUM(phir_cmplx(:,ir) * CONJG(phir_cmplx(:,ir)) * occupation(:nocc,ispin) ) )
+   endforall
+   deallocate(phir_cmplx)
+
+
+ enddo
+
+
+end subroutine calc_density_r_batch_cmplx
 
 
 !=========================================================================
@@ -375,6 +415,69 @@ subroutine calc_density_gradr_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basi
 
 
 end subroutine calc_density_gradr_batch
+
+!========================================================================
+subroutine calc_density_gradr_batch_cmplx(nspin,nbf,nstate,nr,occupation,c_matrix_cmplx,basis_function_r,basis_function_gradr,rhor,grad_rhor)
+ use m_definitions
+ use m_mpi
+ use m_basis_set
+ implicit none
+
+ integer,intent(in)         :: nspin,nbf,nstate,nr
+ real(dp),intent(in)        :: c_matrix_cmplx(nbf,nstate,nspin)
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: basis_function_r(nbf,nr)
+ real(dp),intent(in)        :: basis_function_gradr(nbf,nr,3)
+ real(dp),intent(out)       :: rhor(nspin,nr)
+ real(dp),intent(out)       :: grad_rhor(nspin,nr,3)
+!=====
+ integer              :: ispin,istate,ir
+ complex(dp),allocatable :: phir_cmplx(:,:)
+ complex(dp),allocatable :: phir_gradx_cmplx(:,:)
+ complex(dp),allocatable :: phir_grady_cmplx(:,:)
+ complex(dp),allocatable :: phir_gradz_cmplx(:,:)
+ integer              :: nocc
+!=====
+
+ !
+ ! Calculate rho and grad rho at points in batch
+ rhor(:,:)        = 0.0_dp
+ grad_rhor(:,:,:) = 0.0_dp
+
+ do ispin=1,nspin
+
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty ) cycle
+     nocc = istate
+   enddo
+
+   allocate(phir_cmplx(nocc,nr))
+   allocate(phir_gradx_cmplx(nocc,nr))
+   allocate(phir_grady_cmplx(nocc,nr))
+   allocate(phir_gradz_cmplx(nocc,nr))
+   phir_cmplx(:,:)       = MATMUL( TRANSPOSE(c_matrix_cmplx(:,:nocc,ispin)) , basis_function_r(:,:) )
+   phir_gradx_cmplx(:,:) = MATMUL( TRANSPOSE(c_matrix_cmplx(:,:nocc,ispin)) , basis_function_gradr(:,:,1) )
+   phir_grady_cmplx(:,:) = MATMUL( TRANSPOSE(c_matrix_cmplx(:,:nocc,ispin)) , basis_function_gradr(:,:,2) )
+   phir_gradz_cmplx(:,:) = MATMUL( TRANSPOSE(c_matrix_cmplx(:,:nocc,ispin)) , basis_function_gradr(:,:,3) )
+
+   forall(ir=1:nr)
+     rhor(ispin,ir) = rhor(ispin,ir) + REAL( SUM( phir_cmplx(:,ir) * CONJG(phir_cmplx(:,ir)) * occupation(:nocc,ispin) ) )
+     grad_rhor(ispin,ir,1) = grad_rhor(ispin,ir,1) + REAL( SUM( (phir_cmplx(:,ir)*CONJG(phir_gradx_cmplx(:,ir)) + &
+                                          CONJG(phir_cmplx(:,ir))*phir_gradx_cmplx(:,ir) )*occupation(:nocc,ispin ) ) )
+     grad_rhor(ispin,ir,1) = grad_rhor(ispin,ir,1) + REAL( SUM( (phir_cmplx(:,ir)*CONJG(phir_grady_cmplx(:,ir)) + &
+                                          CONJG(phir_cmplx(:,ir))*phir_grady_cmplx(:,ir) )*occupation(:nocc,ispin ) ) )
+     grad_rhor(ispin,ir,1) = grad_rhor(ispin,ir,1) + REAL( SUM( (phir_cmplx(:,ir)*CONJG(phir_gradz_cmplx(:,ir)) + &
+                                          CONJG(phir_cmplx(:,ir))*phir_gradz_cmplx(:,ir) )*occupation(:nocc,ispin ) ) )
+   endforall
+
+   deallocate(phir_cmplx)
+   deallocate(phir_gradx_cmplx,phir_grady_cmplx,phir_gradz_cmplx)
+
+
+ enddo
+
+
+end subroutine calc_density_gradr_batch_cmplx
 
 !=========================================================================
 subroutine calc_density_gradr_laplr(nspin,nbf,p_matrix,basis_function_r,basis_function_gradr,basis_function_laplr, &

@@ -435,4 +435,11 @@ MP3 Energy                ,  -0.0069228191     , 0 , 1.0e-7
 MP3 Total Energy          , -76.2354493975     , 0 , 1.0e-7
 SE+MP3  Total En          , -76.2354493975     , 0 , 1.0e-7
 
+h2o_rt_tddft_hf_PC2B.in   , RT-TDDFT calculation T=200.0 dt=0.5 PC="PC2B"
+RT-TDDFT Total Energy     , -76.0278711796     , 0 , 1.0e-7
+RT-TDDFT Abs Dipole Moment,   2.0566142737     , 0 , 1.0e-7
+
+h2o_rt_tddft_lda_PC2B.in  , RT-TDDFT calculation T=20.0 dt=0.5 PC="PC2B"
+RT-TDDFT Total Energy     , -75.8540895100     , 0 , 1.0e-7
+RT-TDDFT Abs Dipole Moment,   1.9475311237     , 0 , 1.0e-7
 

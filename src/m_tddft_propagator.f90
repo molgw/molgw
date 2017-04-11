@@ -53,7 +53,7 @@ subroutine calculate_propagation(nstate,              &
  real(dp),intent(in)             :: hamiltonian_nucleus(basis%nbf,basis%nbf)
  real(dp),intent(in)             :: s_matrix_sqrt_inv(basis%nbf,nstate)
 !=====
- integer,parameter          :: BATCH_SIZE=1
+ integer,parameter          :: BATCH_SIZE=64
  integer                    :: ntau, itau,idir, info, ispin, ibf,nomega,iomega
  integer                    :: file_dipolar_spectra
  integer                    :: file_real_dipolar_spectra
@@ -143,7 +143,7 @@ subroutine calculate_propagation(nstate,              &
 
  time_cur=time_min
  do itau=1,ntau
-   dipole_time_damped(itau,:)=dipole_time_ref(itau,:)*exp(-time_cur/250.0_dp)
+   dipole_time_damped(itau,:)=dipole_time_ref(itau,:)*exp(-time_cur/500.0_dp)
    time_cur=time_min+itau*time_step
  end do
 
@@ -921,9 +921,14 @@ subroutine tddft_time_loop(nstate,                           &
        write(file_dipole_time,*) time_cur, dipole(:) * au_debye
        write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
           time_cur, en%tot, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
+       write(stdout,*)
+       write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time  (au):', time_cur
+       write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy     (Ha):',en%tot
+       write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Abs Dipole Moment (D):', NORM2(dipole(:)) * au_debye
      end if
    end if
 
+ !Q matrix (occupations) calculation
    do ispin=1,nspin
      q_matrix_cmplx(:,:,ispin)=MATMUL(MATMUL(CONJG(TRANSPOSE(c_matrix_0_cmplx(:,:,ispin))),s_matrix),c_matrix_cmplx(:,:,ispin))
      if( is_iomaster ) then
