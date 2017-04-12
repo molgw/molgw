@@ -171,14 +171,14 @@ subroutine calc_density_r_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basis_fu
 end subroutine calc_density_r_batch
 
 !=========================================================================
-subroutine calc_density_r_batch_cmplx(nspin,nbf,nstate,nr,occupation,c_matrix_cmplx,basis_function_r,rhor)
+subroutine calc_density_r_batch_cmplx(nspin,nbf,nstate,nocc_dim,nr,occupation,c_matrix_cmplx,basis_function_r,rhor)
  use m_definitions
  use m_mpi
  use m_basis_set
  implicit none
 
- integer,intent(in)         :: nspin,nbf,nstate,nr
- complex(dp),intent(in)     :: c_matrix_cmplx(nbf,nstate,nspin)
+ integer,intent(in)         :: nspin,nbf,nstate,nr,nocc_dim
+ complex(dp),intent(in)     :: c_matrix_cmplx(nbf,nocc_dim,nspin)
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(in)        :: basis_function_r(nbf,nr)
  real(dp),intent(out)       :: rhor(nspin,nr)
@@ -340,14 +340,14 @@ subroutine calc_density_gradr_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basi
 end subroutine calc_density_gradr_batch
 
 !========================================================================
-subroutine calc_density_gradr_batch_cmplx(nspin,nbf,nstate,nr,occupation,c_matrix_cmplx,basis_function_r,basis_function_gradr,rhor,grad_rhor)
+subroutine calc_density_gradr_batch_cmplx(nspin,nbf,nstate,nocc_dim,nr,occupation,c_matrix_cmplx,basis_function_r,basis_function_gradr,rhor,grad_rhor)
  use m_definitions
  use m_mpi
  use m_basis_set
  implicit none
 
- integer,intent(in)         :: nspin,nbf,nstate,nr
- real(dp),intent(in)        :: c_matrix_cmplx(nbf,nstate,nspin)
+ integer,intent(in)         :: nspin,nbf,nstate,nr,nocc_dim
+ real(dp),intent(in)        :: c_matrix_cmplx(nbf,nocc_dim,nspin)
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(in)        :: basis_function_r(nbf,nr)
  real(dp),intent(in)        :: basis_function_gradr(nbf,nr,3)

@@ -634,6 +634,7 @@ end subroutine  calculate_hamiltonian_hxc_ri
 !=========================================================================
 subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &        
                                               nstate,                 &        
+                                              nocc,                   &
                                               m_ham,                  &       
                                               n_ham,                  &       
                                               m_c,                    &     
@@ -655,6 +656,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  type(basis_set),intent(in) :: basis
  integer,intent(in)         :: m_ham,n_ham
  integer,intent(in)         :: nstate
+ integer,intent(in)         :: nocc
  integer,intent(in)         :: m_c,n_c
  real(dp),intent(in)        :: occupation(nstate,nspin)
  complex(dp),intent(in)    :: c_matrix_cmplx(m_c,n_c,nspin)
@@ -662,7 +664,6 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  complex(dp),intent(out)   :: hamiltonian_hxc_cmplx(m_ham,n_ham,nspin)
 !=====
  integer         :: ispin
- real(dp)        :: c_matrix(m_c,n_c,nspin)
  real(dp)        :: p_matrix(m_ham,n_ham,nspin)
  real(dp)        :: hamiltonian_tmp(m_ham,n_ham,nspin)
 !=====
@@ -676,7 +677,6 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  
  ! Initialize real arrays
  
- c_matrix=real(c_matrix_cmplx,dp)
  p_matrix=real(p_matrix_cmplx,dp)
  
  hamiltonian_hxc_cmplx = ( 0.0_dp , 0.0_dp ) 
@@ -685,7 +685,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  ! Exchange contribution to the Hamiltonian
  !
  if( calc_type%need_exchange ) then
-   call setup_exchange_ri_cmplx(basis%nbf,nstate,occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_hxc_cmplx,en%exx)
+   call setup_exchange_ri_cmplx(basis%nbf,nstate,nocc,occupation,c_matrix_cmplx,p_matrix_cmplx,hamiltonian_hxc_cmplx,en%exx)
    
    ! Rescale with alpha_hybrid for hybrid functionals
    en%exx_hyb = alpha_hybrid * en%exx
@@ -717,7 +717,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  ! DFT XC potential is added here
  ! 
  if( calc_type%is_dft ) then
-   call dft_exc_vxc_batch_cmplx(BATCH_SIZE,basis,nstate,occupation,c_matrix_cmplx,hamiltonian_tmp,en%xc)
+   call dft_exc_vxc_batch_cmplx(BATCH_SIZE,basis,nstate,nocc,occupation,c_matrix_cmplx,hamiltonian_tmp,en%xc)
    
    hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) + hamiltonian_tmp(:,:,:) 
  endif

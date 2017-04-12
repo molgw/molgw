@@ -22,23 +22,23 @@ contains
 
 
 !=========================================================================
-subroutine setup_exchange_ri_cmplx(nbf,nstate,occupation,c_matrix_cmplx,p_matrix_cmplx, &
+subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc_dim,occupation,c_matrix_cmplx,p_matrix_cmplx, &
                                    exchange_ij_cmplx,eexchange)
  use m_eri
  implicit none
- integer,intent(in)         :: nbf,nstate
+ integer,intent(in)         :: nbf,nstate,nocc_dim
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(out)       :: eexchange
- complex(dp),intent(in)    :: c_matrix_cmplx(nbf,nstate,nspin)
+ complex(dp),intent(in)    :: c_matrix_cmplx(nbf,nocc_dim,nspin)
  complex(dp),intent(in)    :: p_matrix_cmplx(nbf,nbf,nspin)
  complex(dp),intent(out)   :: exchange_ij_cmplx(nbf,nbf,nspin)
 !=====
  integer                    :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
  integer                    :: index_ij
- integer                    :: nocc
  real(dp)                   :: eigval(nbf)
  integer                    :: ipair
  complex(dp),allocatable   :: tmp_cmplx(:,:)
+ integer                    :: nocc
 !=====
 
 ! write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
@@ -54,7 +54,6 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,occupation,c_matrix_cmplx,p_matrix
      if( occupation(istate,ispin) < completely_empty)  cycle
      nocc = istate
    enddo
-
 
    do istate=1,nocc
      if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle
@@ -100,16 +99,16 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,occupation,c_matrix_cmplx,p_matrix
 end subroutine setup_exchange_ri_cmplx
 
 !=========================================================================
-subroutine setup_density_matrix_cmplx(nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
+subroutine setup_density_matrix_cmplx(nbf,nstate,nocc_dim,c_matrix_cmplx,occupation,p_matrix_cmplx)
  implicit none
- integer,intent(in)   :: nbf,nstate
- complex(dp),intent(in)  :: c_matrix_cmplx(nbf,nstate,nspin)
+ integer,intent(in)   :: nbf,nstate,nocc_dim
+ complex(dp),intent(in)  :: c_matrix_cmplx(nbf,nocc_dim,nspin)
  real(dp),intent(in)  :: occupation(nstate,nspin)
  complex(dp),intent(out) :: p_matrix_cmplx(nbf,nbf,nspin)
 !=====
  integer :: ispin,ibf,jbf
  integer :: istate
-
+ integer :: nocc
 !=====
 
  call start_clock(timing_density_matrix)
@@ -117,15 +116,22 @@ subroutine setup_density_matrix_cmplx(nbf,nstate,c_matrix_cmplx,occupation,p_mat
 
  p_matrix_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
  do ispin=1,nspin
+ 
+   ! Find highest occupied state
+   nocc = 0
    do istate=1,nstate
      if( occupation(istate,ispin) < completely_empty ) cycle
+     nocc = istate
+   enddo
+
+   do istate=1,nocc
      call ZHER('L',nbf,occupation(istate,ispin),c_matrix_cmplx(:,istate,ispin),1,p_matrix_cmplx(:,:,ispin),nbf)
    enddo
 
    ! Hermitianalize
    do jbf=1,nbf
      do ibf=jbf+1,nbf
-       p_matrix_cmplx(jbf,ibf,ispin) = conjg( p_matrix_cmplx(ibf,jbf,ispin) )
+       p_matrix_cmplx(jbf,ibf,ispin) = CONJG( p_matrix_cmplx(ibf,jbf,ispin) )
      enddo
    enddo
  enddo
@@ -136,17 +142,18 @@ subroutine setup_density_matrix_cmplx(nbf,nstate,c_matrix_cmplx,occupation,p_mat
 end subroutine setup_density_matrix_cmplx
 
 !=========================================================================
-subroutine setup_density_matrix_cmplx_slow(nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
+subroutine setup_density_matrix_cmplx_slow(nbf,nstate,nocc_dim,c_matrix_cmplx,occupation,p_matrix_cmplx)
  implicit none
- integer,intent(in)   :: nbf,nstate
- complex(dp),intent(in)  :: c_matrix_cmplx(nbf,nstate,nspin)
+ integer,intent(in)   :: nbf,nstate,nocc_dim
+ complex(dp),intent(in)  :: c_matrix_cmplx(nbf,nocc_dim,nspin)
  real(dp),intent(in)  :: occupation(nstate,nspin)
  complex(dp),intent(out) :: p_matrix_cmplx(nbf,nbf,nspin)
 !=====
- integer :: ispin,ibf,jbf
+ integer :: ispin,ibf,jbf,nocc
 !=====
 
  do ispin=1,nspin
+
    do jbf=1,nbf
      do ibf=1,nbf
        p_matrix_cmplx(ibf,jbf,ispin) = SUM( occupation(:,ispin) * c_matrix_cmplx(ibf,:,ispin) * conjg(c_matrix_cmplx(jbf,:,ispin)) )
@@ -158,7 +165,7 @@ subroutine setup_density_matrix_cmplx_slow(nbf,nstate,c_matrix_cmplx,occupation,
 end subroutine setup_density_matrix_cmplx_slow
 
 !=========================================================================
-subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,occupation,c_matrix_cmplx,vxc_ij,exc_xc)
+subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_matrix_cmplx,vxc_ij,exc_xc)
  use m_inputparam
  use m_basis_set
  use m_dft_grid
@@ -172,8 +179,9 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,occupation,c_matrix_c
  integer,intent(in)         :: batch_size
  type(basis_set),intent(in) :: basis
  integer,intent(in)         :: nstate
+ integer,intent(in)         :: nocc
  real(dp),intent(in)        :: occupation(nstate,nspin)
- complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nocc,nspin)
  real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: exc_xc
 !=====
@@ -249,10 +257,10 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,occupation,c_matrix_c
    ! Calculate grad rho at points r for spin up and spin down
 !   call start_clock(timing_tmp1)
    if( .NOT. dft_xc_needs_gradient ) then 
-     call calc_density_r_batch_cmplx(nspin,basis%nbf,nstate,nr,occupation,c_matrix_cmplx,basis_function_r_batch,rhor_batch)
+     call calc_density_r_batch_cmplx(nspin,basis%nbf,nstate,nocc,nr,occupation,c_matrix_cmplx,basis_function_r_batch,rhor_batch)
 
    else
-     call calc_density_gradr_batch_cmplx(nspin,basis%nbf,nstate,nr,occupation,c_matrix_cmplx, &
+     call calc_density_gradr_batch_cmplx(nspin,basis%nbf,nstate,nocc,nr,occupation,c_matrix_cmplx, &
                                    basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
      do ir=1,nr
        sigma_batch(1,ir) = DOT_PRODUCT( grad_rhor_batch(1,ir,:) , grad_rhor_batch(1,ir,:) )
@@ -428,7 +436,7 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,occupation,c_matrix_c
 end subroutine dft_exc_vxc_batch_cmplx
 
 !=========================================================================
-subroutine static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole)
+subroutine static_dipole_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,dipole)
  use m_basis_set
  use m_atoms
  use m_timing
@@ -436,8 +444,9 @@ subroutine static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole)
 
  integer,intent(in)                 :: nstate
  type(basis_set),intent(in)         :: basis
+ integer,intent(in)                 :: nocc
  real(dp),intent(in)                :: occupation(nstate,nspin)
- complex(dp),intent(in)             :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ complex(dp),intent(in)             :: c_matrix_cmplx(basis%nbf,nocc,nspin)
  real(dp),intent(out)               :: dipole(3)
 !=====
  integer                            :: gt
@@ -500,7 +509,7 @@ subroutine static_dipole_cmplx(nstate,basis,occupation,c_matrix_cmplx,dipole)
  enddo
 
 
- call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
+ call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
 
  ! Minus sign for electrons
  do idir=1,3

@@ -766,7 +766,7 @@ end subroutine plot_cube_wfn
 
 
 !=========================================================================
-subroutine plot_cube_wfn_cmplx(nstate,basis,occupation,c_matrix_cmplx,num)
+subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num)
  use m_definitions
  use m_mpi
  use m_inputparam, only: nspin,spin_fact
@@ -774,9 +774,10 @@ subroutine plot_cube_wfn_cmplx(nstate,basis,occupation,c_matrix_cmplx,num)
  use m_basis_set
  implicit none
  integer,intent(in)         :: nstate
+ integer,intent(in)         :: nocc_dim
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(nstate,nspin)
- complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nocc_dim,nspin)
  integer                    :: num
 !=====
  integer                    :: gt

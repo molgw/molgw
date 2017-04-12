@@ -28,6 +28,7 @@ module m_tddft_propagator
 ! real(dp),allocatable       :: dipole_basis(:,:,:)
  real(dp),allocatable       :: s_matrix_inv(:,:)
  complex(dp),allocatable    :: m_excit_field(:,:)
+ integer                    :: nocc
 contains
 
 
@@ -56,6 +57,7 @@ subroutine calculate_propagation(nstate,              &
 !=====
  integer,parameter          :: BATCH_SIZE=64
  integer                    :: ntau, itau,idir, info, ispin, ibf,nomega,iomega
+ integer                    :: istate
  integer                    :: file_dipolar_spectra
  integer                    :: file_real_dipolar_spectra
  integer                    :: file_aimag_dipolar_spectra, file_transforms,file_eexcit
@@ -84,6 +86,14 @@ subroutine calculate_propagation(nstate,              &
 #include "fftw3.f03"
 #endif
  
+ nocc=0
+ do ispin=1,nspin
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty ) cycle
+     if( istate > nocc ) nocc = istate
+   enddo
+ end do
+
  if(write_step / time_step - INT( write_step / time_step ) > 0.0E-10_dp) then
    call die("Tddft error: write_step is not multiple of time_step.")
  end if
@@ -333,16 +343,16 @@ subroutine tddft_time_loop(nstate,                           &
  real(dp)                   :: time_cur, excit_field(3),time_min, time_one_iter
  real(dp)                   :: dipole(3)
  real(dp)                   :: energies_inst(nstate)
- complex(dp)                :: c_matrix_cmplx(basis%nbf,nstate,nspin)
- complex(dp)                :: c_matrix_0_cmplx(basis%nbf,nstate,nspin)
- complex(dp)                :: c_matrix_orth_cmplx(nstate,nstate,nspin)
- complex(dp)                :: q_matrix_cmplx(nstate,nstate,nspin)
- complex(dp)                :: hamiltonian_fock_cmplx(basis%nbf,basis%nbf,nspin)
- complex(dp)                :: p_matrix_cmplx(basis%nbf,basis%nbf,nspin)
+ complex(dp),allocatable    :: c_matrix_cmplx(:,:,:)
+ complex(dp),allocatable    :: c_matrix_0_cmplx(:,:,:)
+ complex(dp),allocatable    :: c_matrix_orth_cmplx(:,:,:)
+ complex(dp),allocatable    :: q_matrix_cmplx(:,:,:)
+ complex(dp),allocatable    :: hamiltonian_fock_cmplx(:,:,:)
+ complex(dp),allocatable    :: p_matrix_cmplx(:,:,:)
  complex(dp),allocatable    :: h_small_hist_cmplx(:,:,:,:)
  complex(dp),allocatable    :: c_matrix_orth_hist_cmplx(:,:,:,:)
- complex(dp)                :: h_small_cmplx(nstate,nstate,nspin)
- complex(dp)                :: e_test(nstate,nstate)
+ complex(dp),allocatable    :: h_small_cmplx(:,:,:)
+ complex(dp),allocatable    :: c_matrix_buf_cmplx(:,:,:)
  character(len=50)          :: name_time_data,name_dipole_time
  character(len=50)          :: name_iter_norm
  character(len=50)          :: name_file_q_matrix_ii
@@ -356,9 +366,19 @@ subroutine tddft_time_loop(nstate,                           &
  logical                    :: restart_is_correct
 !=====
  mod_write = INT( write_step / time_step_cur )
+
  min_elem_q_mat=1
  max_elem_q_mat=10
  max_elem_q_mat=MIN(nstate,max_elem_q_mat)
+
+ allocate(c_matrix_cmplx(basis%nbf,nocc,nspin))
+ allocate(c_matrix_0_cmplx(basis%nbf,nstate,nspin))
+ allocate(c_matrix_orth_cmplx(nstate,nocc,nspin))
+ allocate(q_matrix_cmplx(nstate,nocc,nspin))
+ allocate(hamiltonian_fock_cmplx(basis%nbf,basis%nbf,nspin))
+ allocate(p_matrix_cmplx(basis%nbf,basis%nbf,nspin))
+ allocate(h_small_cmplx(nstate,nstate,nspin))
+ allocate(c_matrix_buf_cmplx(basis%nbf,nstate,nspin))
 
 !OPENING FILES
  if( is_iomaster ) then
@@ -395,17 +415,17 @@ subroutine tddft_time_loop(nstate,                           &
  end if
 
  if(ignore_tddft_restart_ .OR. (.NOT. restart_is_correct)) then
-   c_matrix_cmplx(:,:,:)=c_matrix(:,:,:)
+   c_matrix_cmplx(1:basis%nbf,1:nocc,1:nspin)=c_matrix(1:basis%nbf,1:nocc,1:nspin)
  end if
 
- c_matrix_0_cmplx=c_matrix_cmplx
+ c_matrix_0_cmplx(:,:,:)=c_matrix(:,:,:)
  do ispin=1,nspin
    q_matrix_cmplx(:,:,ispin)=MATMUL(MATMUL(CONJG(TRANSPOSE(c_matrix_0_cmplx(:,:,ispin))),s_matrix),c_matrix_cmplx(:,:,ispin))
 !   call print_square_2d_matrix_cmplx("q_matrix_cmplx",q_matrix_cmplx,nstate,stdout,4)
  end do
 
- !Getting starting value of the Hamiltonian
-! itau=0 to avoid excitation calculation
+ ! Getting starting value of the Hamiltonian
+ ! itau=0 to avoid excitation calculation
  call setup_hamiltonian_fock_cmplx( basis,                   &
                                     nstate,                  &
                                     0,                       &
@@ -424,16 +444,17 @@ subroutine tddft_time_loop(nstate,                           &
  ! In case of no restart, find the c_matrix_orth_cmplx by diagonalizing h_small
  if(ignore_tddft_restart_ .OR. (.NOT. restart_is_correct)) then
    do ispin=1, nspin
-     call diagonalize(nstate,h_small_cmplx(:,:,ispin),energies_inst(:),c_matrix_orth_cmplx(:,:,ispin))
+     call diagonalize(nstate,h_small_cmplx(:,:,ispin),energies_inst(:),c_matrix_buf_cmplx(1:basis%nbf,1:nstate,ispin))
    end do
+   c_matrix_orth_cmplx(1:nstate,1:nocc,1:nspin)=c_matrix_buf_cmplx(1:nstate,1:nocc,1:nspin)
  end if
 
  if( restart_is_correct ) then
-   call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
+   call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
 
    en%kin = real(SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
    en%nuc = real(SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
-   en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc !+ en%excit
+   en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc + en%excit
 
    call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
 
@@ -510,7 +531,7 @@ subroutine tddft_time_loop(nstate,                           &
    end if
 
    allocate(h_small_hist_cmplx(nstate,nstate,nspin,ham_dim_cur))
-   allocate(c_matrix_orth_hist_cmplx(nstate,nstate,nspin,1))
+   allocate(c_matrix_orth_hist_cmplx(nstate,nocc,nspin,1))
    do iextr=1,ham_dim_cur
      h_small_hist_cmplx(:,:,:,iextr)=h_small_cmplx(:,:,:)
    end do
@@ -902,7 +923,7 @@ subroutine tddft_time_loop(nstate,                           &
 !     write(stdout,*) "C**H*S*C is not identity at itau= ", itau
 !   end if
 
-   call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
+   call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
    en%kin = real(SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
    en%nuc = real(SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
    en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc !+ en%excit
@@ -916,7 +937,7 @@ subroutine tddft_time_loop(nstate,                           &
    if( is_iomaster ) then
      if(mod(itau-1,mod_write)==0 ) then
        if(ref_) then
-         if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,basis,occupation,c_matrix_cmplx,itau)
+         if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,itau)
          write(file_excit_field,*) time_cur, abs(m_excit_field(itau,:))
        end if
        write(file_dipole_time,*) time_cur, dipole(:) * au_debye
@@ -970,6 +991,14 @@ subroutine tddft_time_loop(nstate,                           &
  close(file_dipole_time)
  if(ref_) close(file_excit_field)
 
+ deallocate(c_matrix_cmplx)
+ deallocate(c_matrix_0_cmplx)
+ deallocate(c_matrix_orth_cmplx)
+ deallocate(q_matrix_cmplx)
+ deallocate(hamiltonian_fock_cmplx)
+ deallocate(p_matrix_cmplx)
+ deallocate(h_small_cmplx)
+
  if(pred_corr_cur /= 'PC0') then
    deallocate(h_small_hist_cmplx)
    deallocate(c_matrix_orth_hist_cmplx)
@@ -1015,7 +1044,7 @@ subroutine write_restart_tddft(nstate,time_cur,c_matrix_orth_cmplx)
  use m_definitions
  implicit none
  integer,intent(in)         :: nstate
- complex(dp),intent(in)     :: c_matrix_orth_cmplx(nstate,nstate,nspin)
+ complex(dp),intent(in)     :: c_matrix_orth_cmplx(nstate,nocc,nspin)
  real(dp),intent(in)        :: time_cur
 !===
  integer                    :: restartfile
@@ -1031,6 +1060,8 @@ subroutine write_restart_tddft(nstate,time_cur,c_matrix_orth_cmplx)
  write(restartfile) natom
  write(restartfile) zatom(1:natom)
  write(restartfile) x(:,1:natom)
+ ! nocc
+ write(restartfile) nocc
  ! Nstate
  write(restartfile) nstate
  ! nspin
@@ -1039,7 +1070,7 @@ subroutine write_restart_tddft(nstate,time_cur,c_matrix_orth_cmplx)
  write(restartfile) time_cur
  ! Complex wavefunction coefficients C
  do ispin=1,nspin
-   do istate=1,nstate
+   do istate=1,nocc
      write(restartfile) c_matrix_orth_cmplx(:,istate,ispin)
    enddo
  enddo
@@ -1053,7 +1084,7 @@ subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx,restart_is_cor
  use m_definitions
  implicit none
  integer,intent(in)         :: nstate
- complex(dp),intent(inout)  :: c_matrix_orth_cmplx(nstate,nstate,nspin)
+ complex(dp),intent(inout)  :: c_matrix_orth_cmplx(nstate,nocc,nspin)
  logical,intent(out)        :: restart_is_correct
  real(dp),intent(inout)     :: time_min
 !===
@@ -1063,7 +1094,7 @@ subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx,restart_is_cor
  integer                    :: natom_read
  real(dp),allocatable       :: zatom_read(:),x_read(:,:)
  real(dp)                   :: nbf_read
- integer                    :: nstate_read, nspin_read
+ integer                    :: nstate_read, nspin_read,nocc_read
 !=====
 
  if( .NOT. is_iomaster) return
@@ -1096,6 +1127,14 @@ subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx,restart_is_cor
  endif
  deallocate(zatom_read,x_read)
 
+ ! nocc
+ read(restartfile) nocc_read
+ if(nocc /= nocc_read) then
+   call issue_warning('RESTART_TDDFT file: nocc is not the same, restart file will not be used')
+   restart_is_correct=.false.
+   return
+ end if
+
  ! Nstate
  read(restartfile) nstate_read
  if(nstate /= nstate_read) then
@@ -1118,7 +1157,7 @@ subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx,restart_is_cor
 
  ! Complex wavefunction coefficients C
  do ispin=1,nspin
-   do istate=1,nstate
+   do istate=1,nocc
      read(restartfile) c_matrix_orth_cmplx(:,istate,ispin)
    enddo
  enddo
@@ -1208,8 +1247,8 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
  integer,intent(in)          :: nstate
  type(basis_set),intent(in)  :: basis
  real(dp),intent(in)         :: time_step_cur
- complex(dp),intent(inout)   :: c_matrix_orth_cmplx(nstate,nstate,nspin)
- complex(dp), intent(inout)  :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ complex(dp),intent(inout)   :: c_matrix_orth_cmplx(nstate,nocc,nspin)
+ complex(dp), intent(inout)  :: c_matrix_cmplx(basis%nbf,nocc,nspin)
  complex(dp),intent(in)      :: h_small_cmplx(nstate,nstate,nspin)
  real(dp),intent(in)         :: s_matrix_sqrt_inv(basis%nbf,nstate)
  character(len=4),intent(in) :: prop_type_cur
@@ -1281,8 +1320,8 @@ subroutine propagate_orth_ham_2(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
  integer,intent(in)          :: nstate
  type(basis_set),intent(in)  :: basis
  real(dp),intent(in)         :: time_step_cur
- complex(dp),intent(inout)   :: c_matrix_orth_cmplx(nstate,nstate,nspin)
- complex(dp), intent(inout)  :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ complex(dp),intent(inout)   :: c_matrix_orth_cmplx(nstate,nocc,nspin)
+ complex(dp), intent(inout)  :: c_matrix_cmplx(basis%nbf,nocc,nspin)
  complex(dp),intent(in)      :: h_small_hist2_cmplx(nstate,nstate,nspin,2)
  real(dp),intent(in)         :: s_matrix_sqrt_inv(basis%nbf,nstate)
  character(len=4),intent(in) :: prop_type_cur
@@ -1350,7 +1389,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
  real(dp),intent(in)          :: hamiltonian_nucleus(basis%nbf,basis%nbf)
  real(dp),intent(in)          :: dipole_basis(basis%nbf,basis%nbf,3)
  real(dp),intent(in)          :: s_matrix_sqrt_inv(basis%nbf,nstate)
- complex(dp),intent(in)       :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ complex(dp),intent(in)       :: c_matrix_cmplx(basis%nbf,nocc,nspin)
  complex(dp),intent(inout)    :: hamiltonian_fock_cmplx(basis%nbf,basis%nbf,nspin)
  complex(dp),intent(inout)    :: h_small_cmplx(nstate,nstate,nspin)
 !=====
@@ -1362,14 +1401,15 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
 
  call start_clock(timing_tddft_hamiltonian_fock)
 
- call setup_density_matrix_cmplx(basis%nbf,nstate,c_matrix_cmplx,occupation,p_matrix_cmplx)
+ call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
 !--Hamiltonian - Hartree Exchange Correlation---
  call calculate_hamiltonian_hxc_ri_cmplx(basis,                    &
                                          nstate,                   &
+                                         nocc,                     &
                                          basis%nbf,                &
                                          basis%nbf,                &
                                          basis%nbf,                &
-                                         nstate,                   &      
+                                         nocc,                     &      
                                          occupation,               &       
                                          c_matrix_cmplx,           &          
                                          p_matrix_cmplx,           &          
@@ -1524,7 +1564,7 @@ subroutine propagate_non_orth(nstate,basis,time_step_cur,c_matrix_cmplx,hamilton
  integer,intent(in)          :: nstate
  type(basis_set),intent(in)  :: basis
  real(dp),intent(in)         :: time_step_cur
- complex(dp),intent(inout)   :: c_matrix_cmplx(basis%nbf,nstate,nspin)
+ complex(dp),intent(inout)   :: c_matrix_cmplx(basis%nbf,nocc,nspin)
  complex(dp),intent(in)      :: hamiltonian_fock_cmplx(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)         :: s_matrix(basis%nbf,basis%nbf)
  real(dp),intent(in)         :: s_matrix_sqrt_inv(basis%nbf,nstate)
