@@ -1,6 +1,6 @@
 !=========================================================================
 ! This file is part of MOLGW.
-! Author: Fabien Bruneval
+! Authors: Fabien Bruneval, Ivan Maliyov
 !
 ! This module contains
 ! the methods to evaluate the Kohn-Sham Hamiltonian
@@ -766,6 +766,286 @@ subroutine setup_nucleus_grad(print_matrix_,basis,hamiltonian_nucleus_grad)
  call stop_clock(timing_hamiltonian_nuc)
 
 end subroutine setup_nucleus_grad
+
+
+!=========================================================================
+subroutine calculate_dipole_basis(basis,dipole_basis)
+ implicit none
+ type(basis_set),intent(in)         :: basis
+ real(dp),allocatable,intent(out)   :: dipole_basis(:,:,:)
+!=====
+ integer              :: gt
+ integer              :: ishell,jshell
+ integer              :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
+ integer              :: li,lj,ni_cart,nj_cart,i_cart,j_cart
+ integer              :: idir
+ real(dp),allocatable :: dipole_cart(:,:,:)
+!=====
+ integer :: unitfile,var_i
+
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+
+ allocate(dipole_basis(basis%nbf,basis%nbf,3))
+
+
+ do jshell=1,basis%nshell
+   lj        = basis%shell(jshell)%am
+   nj_cart   = number_basis_function_am('CART',lj)
+   jbf1      = basis%shell(jshell)%istart
+   jbf1_cart = basis%shell(jshell)%istart_cart
+   jbf2      = basis%shell(jshell)%iend
+
+   do ishell=1,basis%nshell
+     li        = basis%shell(ishell)%am
+     ni_cart   = number_basis_function_am('CART',li)
+     ibf1      = basis%shell(ishell)%istart
+     ibf1_cart = basis%shell(ishell)%istart_cart
+     ibf2      = basis%shell(ishell)%iend
+
+
+     allocate(dipole_cart(ni_cart,nj_cart,3))
+
+     do i_cart=1,ni_cart
+       do j_cart=1,nj_cart
+         call basis_function_dipole(basis%bfc(ibf1_cart+i_cart-1),basis%bfc(jbf1_cart+j_cart-1),dipole_cart(i_cart,j_cart,:))
+       enddo
+     enddo
+
+     do idir=1,3
+       dipole_basis(ibf1:ibf2,jbf1:jbf2,idir) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
+             MATMUL(  dipole_cart(:,:,idir) , cart_to_pure(lj,gt)%matrix(:,:) ) )
+     enddo
+
+     deallocate(dipole_cart)
+
+   enddo
+ enddo
+
+
+end subroutine calculate_dipole_basis
+
+
+!=========================================================================
+subroutine calculate_quadrupole_basis(basis,quadrupole_basis)
+ implicit none
+ type(basis_set),intent(in)         :: basis
+ real(dp),allocatable,intent(out)   :: quadrupole_basis(:,:,:,:)
+!=====
+ integer              :: gt
+ integer              :: ishell,jshell
+ integer              :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
+ integer              :: li,lj,ni_cart,nj_cart,i_cart,j_cart
+ integer              :: idir,jdir
+ real(dp),allocatable :: quadrupole_cart(:,:,:,:)
+!=====
+ integer :: unitfile,var_i
+
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+
+ allocate(quadrupole_basis(basis%nbf,basis%nbf,3,3))
+
+
+ do jshell=1,basis%nshell
+   lj        = basis%shell(jshell)%am
+   nj_cart   = number_basis_function_am('CART',lj)
+   jbf1      = basis%shell(jshell)%istart
+   jbf1_cart = basis%shell(jshell)%istart_cart
+   jbf2      = basis%shell(jshell)%iend
+
+   do ishell=1,basis%nshell
+     li        = basis%shell(ishell)%am
+     ni_cart   = number_basis_function_am('CART',li)
+     ibf1      = basis%shell(ishell)%istart
+     ibf1_cart = basis%shell(ishell)%istart_cart
+     ibf2      = basis%shell(ishell)%iend
+
+
+     allocate(quadrupole_cart(ni_cart,nj_cart,3,3))
+
+     do i_cart=1,ni_cart
+       do j_cart=1,nj_cart
+         call basis_function_quadrupole(basis%bfc(ibf1_cart+i_cart-1),basis%bfc(jbf1_cart+j_cart-1),quadrupole_cart(i_cart,j_cart,:,:))
+       enddo
+     enddo
+
+     do jdir=1,3
+       do idir=1,3
+         quadrupole_basis(ibf1:ibf2,jbf1:jbf2,idir,jdir) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
+               MATMUL(  quadrupole_cart(:,:,idir,jdir) , cart_to_pure(lj,gt)%matrix(:,:) ) )
+       enddo
+     enddo
+
+     deallocate(quadrupole_cart)
+
+   enddo
+ enddo
+
+
+end subroutine calculate_quadrupole_basis
+
+
+!=========================================================================
+subroutine setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
+ use m_atoms
+ use m_dft_grid
+ use m_ecp
+ implicit none
+ logical,intent(in)         :: print_matrix_
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(inout)     :: hamiltonian_nucleus(basis%nbf,basis%nbf)
+!=====
+ integer              :: natom_local
+ integer              :: ibf,jbf
+ integer              :: iatom
+ real(dp)             :: vnucleus_ij
+
+ integer              :: iecp
+ integer              :: iproj,nproj
+ integer              :: mm
+ integer              :: igrid
+ real(dp)             :: rr(3)
+ real(dp)             :: weight
+ real(dp)             :: basis_function_r(basis%nbf)
+ integer              :: iradial
+ integer              :: i1,n1
+ real(dp)             :: xtmp,phi,cos_theta
+ real(dp)             :: wxa(nradial_ecp),xa(nradial_ecp)
+ real(dp)             :: w1(nangular_ecp),x1(nangular_ecp),y1(nangular_ecp),z1(nangular_ecp)
+ real(dp),allocatable :: int_fixed_r(:,:)
+ real(dp),external    :: real_spherical_harmonics
+ integer              :: necp,ie
+ character(len=100)   :: title
+ logical              :: element_has_ecp
+!=====
+
+ ! Check if there are some ECP
+ if( nelement_ecp == 0 ) return
+
+
+ call start_clock(timing_ecp)
+
+ !
+ ! Since there will be an allreduce operation in the end, 
+ ! anticipate by dividing the input value of Hnucl by the number of procs
+ if( nproc_world > 1 ) then
+   hamiltonian_nucleus(:,:) = hamiltonian_nucleus(:,:) / nproc_world
+ endif
+
+ n1 = nangular_ecp
+ select case(nangular_ecp)
+ case(6)
+   call ld0006(x1,y1,z1,w1,n1)
+ case(14)
+   call ld0014(x1,y1,z1,w1,n1)
+ case(26)
+   call ld0026(x1,y1,z1,w1,n1)
+ case(38)
+   call ld0038(x1,y1,z1,w1,n1)
+ case(50)
+   call ld0050(x1,y1,z1,w1,n1)
+ case(74)
+   call ld0074(x1,y1,z1,w1,n1)
+ case(86)
+   call ld0086(x1,y1,z1,w1,n1)
+ case(110)
+   call ld0110(x1,y1,z1,w1,n1)
+ case(146)
+   call ld0146(x1,y1,z1,w1,n1)
+ case(170)
+   call ld0170(x1,y1,z1,w1,n1)
+ case(230)
+   call ld0230(x1,y1,z1,w1,n1)
+ case(302)
+   call ld0302(x1,y1,z1,w1,n1)
+ case(434)
+   call ld0434(x1,y1,z1,w1,n1)
+ case default
+   write(stdout,*) 'grid points: ',nangular_ecp
+   call die('setup_nucleus_ecp: Lebedev grid is not available')
+ end select
+
+
+ do iradial=1,nradial_ecp
+   xtmp = ( iradial - 0.5_dp ) / REAL(nradial_ecp,dp)
+   xa(iradial)   = -5.0_dp * log( 1.0_dp - xtmp**3)
+   wxa(iradial)  = 3.0_dp * 5.0_dp * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial_ecp,dp)
+ enddo
+
+
+ do iatom=1,natom
+   element_has_ecp = .FALSE.
+   do ie=1,nelement_ecp
+     if( element_ecp(ie) == basis_element(iatom) ) then
+       element_has_ecp = .TRUE.
+       exit
+     endif
+   enddo 
+
+   if( .NOT. element_has_ecp ) cycle
+
+   necp = ecp(ie)%necp
+     
+
+   nproj = 0
+   do iecp=1,necp
+     nproj = nproj + number_basis_function_am('PURE',ecp(ie)%lk(iecp))
+   enddo
+  
+  
+   allocate(int_fixed_r(basis%nbf,nproj))
+   do iradial=1,nradial_ecp
+     if( MODULO(iradial-1,nproc_world) /= rank_world ) cycle
+
+     int_fixed_r(:,:) = 0.0_dp
+     do i1=1,nangular_ecp
+       rr(1) = xa(iradial) * x1(i1) + x(1,iatom)
+       rr(2) = xa(iradial) * y1(i1) + x(2,iatom)
+       rr(3) = xa(iradial) * z1(i1) + x(3,iatom)
+       call calculate_basis_functions_r(basis,rr,basis_function_r)
+  
+       cos_theta = z1(i1)
+       phi       = ATAN2(y1(i1),x1(i1))
+  
+       iproj = 0
+       do iecp=1,necp
+         do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
+           iproj = iproj + 1
+           int_fixed_r(:,iproj) = int_fixed_r(:,iproj) + basis_function_r(:) &
+                                     * real_spherical_harmonics(ecp(ie)%lk(iecp),mm,cos_theta,phi) &
+                                        * w1(i1) * 4.0_dp * pi  
+         enddo
+       enddo
+     enddo
+  
+  
+     iproj = 0
+     do iecp=1,necp
+       do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
+         iproj = iproj + 1
+         do jbf=1,basis%nbf
+           do ibf=1,basis%nbf
+             hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
+                 + int_fixed_r(ibf,iproj) * int_fixed_r(jbf,iproj) * wxa(iradial) * xa(iradial)**2  &
+                    * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
+           enddo
+         enddo
+       enddo
+     enddo
+  
+   enddo
+  
+   deallocate(int_fixed_r)
+
+ enddo 
+
+ call xsum_world(hamiltonian_nucleus)
+
+ title='=== ECP Nucleus potential contribution ==='
+ call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_nucleus)
+
+ call stop_clock(timing_ecp)
+
+end subroutine setup_nucleus_ecp
 
 
 end module m_hamiltonian_onebody

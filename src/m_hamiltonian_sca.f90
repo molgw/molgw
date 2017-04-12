@@ -78,8 +78,8 @@ subroutine setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
  integer,intent(in)         :: m_ham,n_ham
  real(dp),intent(out)       :: s_matrix(m_ham,n_ham)
 !=====
- integer              :: ibf,jbf
- integer              :: ibf_cart,jbf_cart
+ integer              :: ishell,jshell
+ integer              :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
  integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  character(len=100)   :: title
@@ -91,40 +91,35 @@ subroutine setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
  call start_clock(timing_overlap)
  write(stdout,'(/,a)') ' Setup overlap matrix S: SCALAPACK'
 
- ibf_cart = 1
- jbf_cart = 1
- ibf      = 1
- jbf      = 1
- do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bfc(ibf_cart)%am
-   ni_cart = number_basis_function_am('CART',li)
-   ni      = number_basis_function_am(basis%gaussian_type,li)
+ do jshell=1,basis%nshell
+   lj        = basis%shell(jshell)%am
+   nj        = number_basis_function_am(basis%gaussian_type,lj)
+   nj_cart   = number_basis_function_am('CART',lj)
+   jbf1      = basis%shell(jshell)%istart
+   jbf1_cart = basis%shell(jshell)%istart_cart
+   jbf2      = basis%shell(jshell)%iend
 
-   do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bfc(jbf_cart)%am
-     nj_cart = number_basis_function_am('CART',lj)
-     nj      = number_basis_function_am(basis%gaussian_type,lj)
+   do ishell=1,basis%nshell
+     li        = basis%shell(ishell)%am
+     ni        = number_basis_function_am(basis%gaussian_type,li)
+     ni_cart   = number_basis_function_am('CART',li)
+     ibf1      = basis%shell(ishell)%istart
+     ibf1_cart = basis%shell(ishell)%istart_cart
+     ibf2      = basis%shell(ishell)%iend
+
 
      allocate(matrix_cart(ni_cart,nj_cart))
      do i_cart=1,ni_cart
        do j_cart=1,nj_cart
-         call overlap_basis_function(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
+         call overlap_basis_function(basis%bfc(ibf1_cart+i_cart-1),basis%bfc(jbf1_cart+j_cart-1),matrix_cart(i_cart,j_cart))
        enddo
      enddo
 
-     call matrix_cart_to_local(basis%gaussian_type,ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,s_matrix)
+     call matrix_cart_to_local(basis%gaussian_type,ibf1,jbf1,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,s_matrix)
 
 
      deallocate(matrix_cart)
-     jbf      = jbf      + nj
-     jbf_cart = jbf_cart + nj_cart
    enddo
-   jbf      = 1
-   jbf_cart = 1
-
-   ibf      = ibf      + ni
-   ibf_cart = ibf_cart + ni_cart
-
  enddo
 
  title='=== Overlap matrix S ==='
@@ -147,13 +142,12 @@ subroutine setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic
  integer,intent(in)         :: m_ham,n_ham
  real(dp),intent(out)       :: hamiltonian_kinetic(m_ham,n_ham)
 !=====
- integer              :: ibf,jbf
- integer              :: ibf_cart,jbf_cart
- integer              :: i_cart,j_cart,iglobal,jglobal,ilocal,jlocal
+ integer              :: ishell,jshell
+ integer              :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
+ integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  character(len=100)   :: title
  real(dp),allocatable :: matrix_cart(:,:)
- real(dp),allocatable :: matrix_final(:,:)
 !=====
 
 #ifdef HAVE_SCALAPACK
@@ -161,40 +155,34 @@ subroutine setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic
  call start_clock(timing_hamiltonian_kin)
  write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian: SCALAPACK'
 
- ibf_cart = 1
- jbf_cart = 1
- ibf      = 1
- jbf      = 1
- do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bfc(ibf_cart)%am
-   ni_cart = number_basis_function_am('CART',li)
-   ni      = number_basis_function_am(basis%gaussian_type,li)
+ do jshell=1,basis%nshell
+   lj        = basis%shell(jshell)%am
+   nj        = number_basis_function_am(basis%gaussian_type,lj)
+   nj_cart   = number_basis_function_am('CART',lj)
+   jbf1      = basis%shell(jshell)%istart
+   jbf1_cart = basis%shell(jshell)%istart_cart
+   jbf2      = basis%shell(jshell)%iend
 
-   do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bfc(jbf_cart)%am
-     nj_cart = number_basis_function_am('CART',lj)
-     nj      = number_basis_function_am(basis%gaussian_type,lj)
+   do ishell=1,basis%nshell
+     li        = basis%shell(ishell)%am
+     ni        = number_basis_function_am(basis%gaussian_type,li)
+     ni_cart   = number_basis_function_am('CART',li)
+     ibf1      = basis%shell(ishell)%istart
+     ibf1_cart = basis%shell(ishell)%istart_cart
+     ibf2      = basis%shell(ishell)%iend
+
 
      allocate(matrix_cart(ni_cart,nj_cart))
-     allocate(matrix_final(ni,nj))
      do i_cart=1,ni_cart
        do j_cart=1,nj_cart
-         call kinetic_basis_function(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),matrix_cart(i_cart,j_cart))
+         call kinetic_basis_function(basis%bfc(ibf1_cart+i_cart-1),basis%bfc(jbf1_cart+j_cart-1),matrix_cart(i_cart,j_cart))
        enddo
      enddo
 
-     call matrix_cart_to_local(basis%gaussian_type,ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,hamiltonian_kinetic)
+     call matrix_cart_to_local(basis%gaussian_type,ibf1,jbf1,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,hamiltonian_kinetic)
 
-     deallocate(matrix_cart,matrix_final)
-     jbf      = jbf      + nj
-     jbf_cart = jbf_cart + nj_cart
+     deallocate(matrix_cart)
    enddo
-   jbf      = 1
-   jbf_cart = 1
-
-   ibf      = ibf      + ni
-   ibf_cart = ibf_cart + ni_cart
-
  enddo
 
  title='===  Kinetic energy contribution ==='
@@ -217,9 +205,9 @@ subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus
  integer,intent(in)         :: m_ham,n_ham
  real(dp),intent(out)       :: hamiltonian_nucleus(m_ham,n_ham)
 !=====
+ integer              :: ishell,jshell
+ integer              :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
  integer              :: natom_local
- integer              :: ibf,jbf
- integer              :: ibf_cart,jbf_cart
  integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  integer              :: iatom
@@ -242,19 +230,23 @@ subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus
    write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
  endif
 
- ibf_cart = 1
- jbf_cart = 1
- ibf      = 1
- jbf      = 1
- do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bfc(ibf_cart)%am
-   ni_cart = number_basis_function_am('CART',li)
-   ni      = number_basis_function_am(basis%gaussian_type,li)
 
-   do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bfc(jbf_cart)%am
-     nj_cart = number_basis_function_am('CART',lj)
-     nj      = number_basis_function_am(basis%gaussian_type,lj)
+ do jshell=1,basis%nshell
+   lj        = basis%shell(jshell)%am
+   nj        = number_basis_function_am(basis%gaussian_type,lj)
+   nj_cart   = number_basis_function_am('CART',lj)
+   jbf1      = basis%shell(jshell)%istart
+   jbf1_cart = basis%shell(jshell)%istart_cart
+   jbf2      = basis%shell(jshell)%iend
+
+   do ishell=1,basis%nshell
+     li        = basis%shell(ishell)%am
+     ni        = number_basis_function_am(basis%gaussian_type,li)
+     ni_cart   = number_basis_function_am('CART',li)
+     ibf1      = basis%shell(ishell)%istart
+     ibf1_cart = basis%shell(ishell)%istart_cart
+     ibf2      = basis%shell(ishell)%iend
+
 
      allocate(matrix_cart(ni_cart,nj_cart))
      matrix_cart(:,:) = 0.0_dp
@@ -262,25 +254,17 @@ subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus
        if( rank_local /= MODULO(iatom-1,nproc_local) ) cycle
        do i_cart=1,ni_cart
          do j_cart=1,nj_cart
-           call nucleus_basis_function(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
+           call nucleus_basis_function(basis%bfc(ibf1_cart+i_cart-1),basis%bfc(jbf1_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
            matrix_cart(i_cart,j_cart) = matrix_cart(i_cart,j_cart) + vnucleus_ij
          enddo
        enddo
      enddo
 
-     call matrix_cart_to_local(basis%gaussian_type,ibf,jbf,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,hamiltonian_nucleus)
+     call matrix_cart_to_local(basis%gaussian_type,ibf1,jbf1,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,hamiltonian_nucleus)
 
 
      deallocate(matrix_cart)
-     jbf      = jbf      + nj
-     jbf_cart = jbf_cart + nj_cart
    enddo
-   jbf      = 1
-   jbf_cart = 1
-
-   ibf      = ibf      + ni
-   ibf_cart = ibf_cart + ni_cart
-
  enddo
 
  !

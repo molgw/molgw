@@ -154,9 +154,9 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
  real(dp),intent(out)       :: hamiltonian_nucleus(m_ham,n_ham)
 !=====
  integer              :: gt
+ integer              :: ishell,jshell
+ integer              :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
  integer              :: natom_local
- integer              :: ibf,jbf
- integer              :: ibf_cart,jbf_cart
  integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  integer              :: iatom
@@ -181,19 +181,22 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
  endif
 
 
- ibf_cart = 1
- jbf_cart = 1
- ibf      = 1
- jbf      = 1
- do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bfc(ibf_cart)%am
-   ni_cart = number_basis_function_am('CART',li)
-   ni      = number_basis_function_am(basis%gaussian_type,li)
+ do jshell=1,basis%nshell
+   lj        = basis%shell(jshell)%am
+   nj        = number_basis_function_am(basis%gaussian_type,lj)
+   nj_cart   = number_basis_function_am('CART',lj)
+   jbf1      = basis%shell(jshell)%istart
+   jbf1_cart = basis%shell(jshell)%istart_cart
+   jbf2      = basis%shell(jshell)%iend
 
-   do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bfc(jbf_cart)%am
-     nj_cart = number_basis_function_am('CART',lj)
-     nj      = number_basis_function_am(basis%gaussian_type,lj)
+   do ishell=1,basis%nshell
+     li        = basis%shell(ishell)%am
+     ni        = number_basis_function_am(basis%gaussian_type,li)
+     ni_cart   = number_basis_function_am('CART',li)
+     ibf1      = basis%shell(ishell)%istart
+     ibf1_cart = basis%shell(ishell)%istart_cart
+     ibf2      = basis%shell(ishell)%iend
+
 
      allocate(matrix_cart(ni_cart,nj_cart))
      matrix_cart(:,:) = 0.0_dp
@@ -201,25 +204,17 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
        if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
        do i_cart=1,ni_cart
          do j_cart=1,nj_cart
-           call nucleus_basis_function(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
+           call nucleus_basis_function(basis%bfc(ibf1_cart+i_cart-1),basis%bfc(jbf1_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
            matrix_cart(i_cart,j_cart) = matrix_cart(i_cart,j_cart) + vnucleus_ij
          enddo
        enddo
      enddo
-     buffer(ibf:ibf+ni-1,jbf:jbf+nj-1) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
-                                                MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
+     buffer(ibf1:ibf2,jbf1:jbf2) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
+                                           MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
 
 
      deallocate(matrix_cart)
-     jbf      = jbf      + nj
-     jbf_cart = jbf_cart + nj_cart
    enddo
-   jbf      = 1
-   jbf_cart = 1
-
-   ibf      = ibf      + ni
-   ibf_cart = ibf_cart + ni_cart
-
  enddo
 
 

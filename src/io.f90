@@ -306,7 +306,7 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
 !=====
- integer                    :: ibf,ibf_cart,li,ni,ni_cart
+ integer                    :: ibf,li,ibf1,ibf2,ishell
  integer                    :: natom1,natom2,istate,ispin
  logical                    :: file_exists
  integer                    :: pdosfile
@@ -330,18 +330,12 @@ subroutine mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  endif
  write(stdout,'(1x,a,i5,2x,i5)') 'Range of atoms considered: ',natom1,natom2
 
- ibf_cart = 1
- ibf      = 1
- do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bfc(ibf_cart)%am
-   ni_cart = number_basis_function_am('CART',li)
-   ni      = number_basis_function_am(basis%gaussian_type,li)
+ do ishell=1,basis%nshell
+   ibf1    = basis%shell(ishell)%istart
+   ibf2    = basis%shell(ishell)%iend
 
-   iatom_ibf(ibf:ibf+ni-1) = basis%bfc(ibf_cart)%iatom
-   li_ibf(ibf:ibf+ni-1) = li
-
-   ibf      = ibf      + ni
-   ibf_cart = ibf_cart + ni_cart
+   iatom_ibf(ibf1:ibf2) = basis%shell(ishell)%iatom
+   li_ibf(ibf1:ibf2)    = basis%shell(ishell)%am
  enddo
  
 
@@ -381,6 +375,7 @@ subroutine plot_wfn(nstate,basis,c_matrix)
  use m_atoms
  use m_cart_to_pure
  use m_basis_set
+ use m_dft_grid,only: calculate_basis_functions_r
  implicit none
  integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
@@ -397,8 +392,6 @@ subroutine plot_wfn(nstate,basis,c_matrix)
  logical                    :: file_exists
  real(dp)                   :: xxmin,xxmax
  real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ibf_cart,ni_cart,ni,li,i_cart
- real(dp),allocatable       :: basis_function_r_cart(:)
  integer                    :: wfrfile
 !=====
 
@@ -435,32 +428,8 @@ subroutine plot_wfn(nstate,basis,c_matrix)
  do ir=1,nr
    rr(:) = ( xxmin + (ir-1)*(xxmax-xxmin)/REAL(nr-1,dp) ) * u(:) + a(:)
 
-   phi(:,:) = 0.0_dp
    
-   !
-   ! First precalculate all the needed basis function evaluations at point rr
-   !
-   ibf_cart = 1
-   ibf      = 1
-   do while(ibf_cart<=basis%nbf_cart)
-     li      = basis%bfc(ibf_cart)%am
-     ni_cart = number_basis_function_am('CART',li)
-     ni      = number_basis_function_am(basis%gaussian_type,li)
-
-     allocate(basis_function_r_cart(ni_cart))
-
-     do i_cart=1,ni_cart
-       basis_function_r_cart(i_cart) = eval_basis_function(basis%bfc(ibf_cart+i_cart-1),rr)
-     enddo
-     basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
-     deallocate(basis_function_r_cart)
-
-     ibf      = ibf      + ni
-     ibf_cart = ibf_cart + ni_cart
-   enddo
-   !
-   ! Precalculation done!
-   !
+   call calculate_basis_functions_r(basis,rr,basis_function_r)
 
    do ispin=1,nspin
      phi(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,istate1:istate2,ispin) )
@@ -494,6 +463,7 @@ subroutine plot_rho(nstate,basis,occupation,c_matrix)
  use m_cart_to_pure
  use m_inputparam, only: nspin
  use m_basis_set
+ use m_dft_grid,only: calculate_basis_functions_r
  implicit none
  integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
@@ -511,8 +481,6 @@ subroutine plot_rho(nstate,basis,occupation,c_matrix)
  logical                    :: file_exists
  real(dp)                   :: xxmin,xxmax
  real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ibf_cart,ni_cart,ni,li,i_cart
- real(dp),allocatable       :: basis_function_r_cart(:)
  integer                    :: rhorfile
 !=====
 
@@ -545,32 +513,8 @@ subroutine plot_rho(nstate,basis,occupation,c_matrix)
  do ir=1,nr
    rr(:) = ( xxmin + (ir-1)*(xxmax-xxmin)/REAL(nr-1,dp) ) * u(:) + a(:)
 
-   phi(:,:) = 0.0_dp
-   
-   !
-   ! First precalculate all the needed basis function evaluations at point rr
-   !
-   ibf_cart = 1
-   ibf      = 1
-   do while(ibf_cart<=basis%nbf_cart)
-     li      = basis%bfc(ibf_cart)%am
-     ni_cart = number_basis_function_am('CART',li)
-     ni      = number_basis_function_am(basis%gaussian_type,li)
 
-     allocate(basis_function_r_cart(ni_cart))
-
-     do i_cart=1,ni_cart
-       basis_function_r_cart(i_cart) = eval_basis_function(basis%bfc(ibf_cart+i_cart-1),rr)
-     enddo
-     basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
-     deallocate(basis_function_r_cart)
-
-     ibf      = ibf      + ni
-     ibf_cart = ibf_cart + ni_cart
-   enddo
-   !
-   ! Precalculation done!
-   !
+   call calculate_basis_functions_r(basis,rr,basis_function_r)
 
    do ispin=1,nspin
      phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
@@ -597,6 +541,7 @@ subroutine plot_rho_list(nstate,basis,occupation,c_matrix)
  use m_cart_to_pure
  use m_inputparam, only: nspin
  use m_basis_set
+ use m_dft_grid,only: calculate_basis_functions_r
  implicit none
  integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
@@ -612,8 +557,6 @@ subroutine plot_rho_list(nstate,basis,occupation,c_matrix)
  logical                    :: file_exists
  real(dp)                   :: xxmin,xxmax
  real(dp)                   :: basis_function_r(basis%nbf)
- integer                    :: ibf_cart,ni_cart,ni,li,i_cart
- real(dp),allocatable       :: basis_function_r_cart(:)
  integer                    :: rhorfile
  integer                    :: ix,iy,iz
  integer,parameter          :: nx=75 ! 87
@@ -651,32 +594,8 @@ subroutine plot_rho_list(nstate,basis,occupation,c_matrix)
    rr(3) = iz-1
    rr(:) = rr0(:) + rr(:) * dx 
 
-   phi(:,:) = 0.0_dp
-   
-   !
-   ! First precalculate all the needed basis function evaluations at point rr
-   !
-   ibf_cart = 1
-   ibf      = 1
-   do while(ibf_cart<=basis%nbf_cart)
-     li      = basis%bfc(ibf_cart)%am
-     ni_cart = number_basis_function_am('CART',li)
-     ni      = number_basis_function_am(basis%gaussian_type,li)
 
-     allocate(basis_function_r_cart(ni_cart))
-
-     do i_cart=1,ni_cart
-       basis_function_r_cart(i_cart) = eval_basis_function(basis%bfc(ibf_cart+i_cart-1),rr)
-     enddo
-     basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
-     deallocate(basis_function_r_cart)
-
-     ibf      = ibf      + ni
-     ibf_cart = ibf_cart + ni_cart
-   enddo
-   !
-   ! Precalculation done!
-   !
+   call calculate_basis_functions_r(basis,rr,basis_function_r)
 
    do ispin=1,nspin
      phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
@@ -702,6 +621,7 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
  use m_cart_to_pure
  use m_atoms
  use m_basis_set
+ use m_dft_grid,only: calculate_basis_functions_r
  implicit none
  integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
@@ -709,11 +629,8 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
 !=====
  integer                    :: gt
- integer                    :: nx
- integer                    :: ny
- integer                    :: nz
+ integer                    :: nx,ny,nz
  real(dp),parameter         :: length=3.499470_dp
- integer                    :: ibf
  integer                    :: istate1,istate2,istate,ispin
  real(dp)                   :: rr(3)
  real(dp),allocatable       :: phi(:,:)
@@ -723,8 +640,6 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
  real(dp)                   :: dx,dy,dz
  real(dp)                   :: basis_function_r(basis%nbf)
  integer                    :: ix,iy,iz,iatom
- integer                    :: ibf_cart,ni_cart,ni,li,i_cart
- real(dp),allocatable       :: basis_function_r_cart(:)
  integer,allocatable        :: ocubefile(:,:)
  integer                    :: ocuberho(nspin)
  character(len=200)         :: file_name
@@ -813,32 +728,7 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
        rr(3) = zmin + (iz-1)*dz
 
 
-       phi(:,:) = 0.0_dp
-       
-       !
-       ! First precalculate all the needed basis function evaluations at point rr
-       !
-       ibf_cart = 1
-       ibf      = 1
-       do while(ibf_cart<=basis%nbf_cart)
-         li      = basis%bfc(ibf_cart)%am
-         ni_cart = number_basis_function_am('CART',li)
-         ni      = number_basis_function_am(basis%gaussian_type,li)
-    
-         allocate(basis_function_r_cart(ni_cart))
-    
-         do i_cart=1,ni_cart
-           basis_function_r_cart(i_cart) = eval_basis_function(basis%bfc(ibf_cart+i_cart-1),rr)
-         enddo
-         basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
-         deallocate(basis_function_r_cart)
-    
-         ibf      = ibf      + ni
-         ibf_cart = ibf_cart + ni_cart
-       enddo
-       !
-       ! Precalculation done!
-       !
+       call calculate_basis_functions_r(basis,rr,basis_function_r)
 
        do ispin=1,nspin
          phi(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,istate1:istate2,ispin) )
@@ -1123,58 +1013,30 @@ end subroutine read_energy_qp
 
 
 !=========================================================================
-function evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate,ispin,rr)
+subroutine evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate1,istate2,ispin,rr,wfn_i)
  use m_definitions
- use m_mpi
- use m_atoms
- use m_cart_to_pure
  use m_basis_set
+ use m_dft_grid,only: calculate_basis_functions_r
  implicit none
  integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
  integer,intent(in)         :: nstate
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- integer,intent(in)         :: istate,ispin
+ integer,intent(in)         :: istate1,istate2,ispin
  real(dp),intent(in)        :: rr(3)
- real(dp)                   :: evaluate_wfn_r
+ real(dp),intent(out)       :: wfn_i(istate1:istate2)
 !=====
- integer                    :: gt
- integer                    :: ibf_cart,ni_cart,ni,li,i_cart,ibf
- real(dp),allocatable       :: basis_function_r_cart(:)
  real(dp)                   :: basis_function_r(basis%nbf)
 !=====
 
- gt = get_gaussian_type_tag(basis%gaussian_type)
-
- !
  ! First precalculate all the needed basis function evaluations at point rr
- !
- ibf_cart = 1
- ibf      = 1
- do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bfc(ibf_cart)%am
-   ni_cart = number_basis_function_am('CART',li)
-   ni      = number_basis_function_am(basis%gaussian_type,li)
+ call calculate_basis_functions_r(basis,rr,basis_function_r)
 
-   allocate(basis_function_r_cart(ni_cart))
-
-   do i_cart=1,ni_cart
-     basis_function_r_cart(i_cart) = eval_basis_function(basis%bfc(ibf_cart+i_cart-1),rr)
-   enddo
-   basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
-   deallocate(basis_function_r_cart)
-
-   ibf      = ibf      + ni
-   ibf_cart = ibf_cart + ni_cart
- enddo
- !
- ! Precalculation done!
- !
-
- evaluate_wfn_r = DOT_PRODUCT( basis_function_r(:) , c_matrix(:,istate,ispin) )
+ ! Then rotate
+ wfn_i(istate1:istate2) = MATMUL( basis_function_r(:) , c_matrix(:,istate1:istate2,ispin) )
 
 
-end function evaluate_wfn_r
+end subroutine evaluate_wfn_r
 
 
 !=========================================================================
@@ -1191,20 +1053,19 @@ function wfn_parity(nstate,basis,c_matrix,istate,ispin)
  integer,intent(in)         :: istate,ispin
  integer                    :: wfn_parity
 !=====
- real(dp) :: phi_tmp1,phi_tmp2,xtmp(3)
- real(dp),external :: evaluate_wfn_r
+ real(dp) :: phi_tmp1(1),phi_tmp2(1),xtmp(3)
 !=====
 
  xtmp(1) = xcenter(1) +  2.0_dp
  xtmp(2) = xcenter(2) +  1.0_dp
  xtmp(3) = xcenter(3) +  3.0_dp
- phi_tmp1 = evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate,ispin,xtmp)
+ call evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate,istate,ispin,xtmp,phi_tmp1)
  xtmp(1) = xcenter(1) -  2.0_dp
  xtmp(2) = xcenter(2) -  1.0_dp
  xtmp(3) = xcenter(3) -  3.0_dp
- phi_tmp2 = evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate,ispin,xtmp)
+ call evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate,istate,ispin,xtmp,phi_tmp2)
 
- if( ABS(phi_tmp1 - phi_tmp2)/ABS(phi_tmp1) < 1.0e-6_dp ) then
+ if( ABS(phi_tmp1(1) - phi_tmp2(1))/ABS(phi_tmp1(1)) < 1.0e-6_dp ) then
    wfn_parity = 1
  else
    wfn_parity = -1
@@ -1228,23 +1089,23 @@ function wfn_reflection(nstate,basis,c_matrix,istate,ispin)
  integer,intent(in)         :: istate,ispin
  integer                    :: wfn_reflection
 !=====
- real(dp) :: phi_tmp1,phi_tmp2,xtmp1(3),xtmp2(3)
+ real(dp) :: phi_tmp1(1),phi_tmp2(1)
+ real(dp) :: xtmp1(3),xtmp2(3)
  real(dp) :: proj
- real(dp),external :: evaluate_wfn_r
 !=====
 
  xtmp1(1) = x(1,1) +  2.0_dp
  xtmp1(2) = x(2,1) +  1.0_dp
  xtmp1(3) = x(3,1) +  3.0_dp
- phi_tmp1 = evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate,ispin,xtmp1)
+ call evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate,istate,ispin,xtmp1,phi_tmp1)
 
  proj = DOT_PRODUCT( xtmp1 , xnormal )
  xtmp2(:) = xtmp1(:) -  2.0_dp * proj * xnormal(:)
- phi_tmp2 = evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate,ispin,xtmp2)
+ call evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate,istate,ispin,xtmp2,phi_tmp2)
 
- if( ABS(phi_tmp1 - phi_tmp2)/ABS(phi_tmp1) < 1.0e-6_dp ) then
+ if( ABS(phi_tmp1(1) - phi_tmp2(1))/ABS(phi_tmp1(1)) < 1.0e-6_dp ) then
    wfn_reflection = 1
- else if( ABS(phi_tmp1 + phi_tmp2)/ABS(phi_tmp1) < 1.0e-6_dp ) then
+ else if( ABS(phi_tmp1(1) + phi_tmp2(1))/ABS(phi_tmp1(1)) < 1.0e-6_dp ) then
    wfn_reflection = -1
  else 
    wfn_reflection = 0
