@@ -842,7 +842,7 @@ end subroutine setup_sqrt_density_matrix
 
 
 !=========================================================================
-subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
+subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,vxc_ij,exc_xc)
  use m_inputparam
  use m_dft_grid
 #ifdef HAVE_LIBXC
@@ -856,7 +856,6 @@ subroutine dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
  integer,intent(in)         :: nstate
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(in)        :: p_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: exc_xc
 !=====
@@ -1065,7 +1064,7 @@ end subroutine dft_exc_vxc
 
 
 !=========================================================================
-subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
+subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,vxc_ij,exc_xc)
  use m_inputparam
  use m_dft_grid
 #ifdef HAVE_LIBXC
@@ -1080,7 +1079,6 @@ subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,p_matri
  integer,intent(in)         :: nstate
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(in)        :: p_matrix(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: exc_xc
 !=====

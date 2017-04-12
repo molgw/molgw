@@ -529,7 +529,7 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,ham
    if( calc_type%is_dft ) then
      call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.FALSE.,1)
      call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation_tmp,p_matrix_tmp)
-     call dft_exc_vxc(basis,nstate,occupation_tmp,c_matrix,p_matrix_tmp,hxc_val,exc)
+     call dft_exc_vxc(basis,nstate,occupation_tmp,c_matrix,hxc_val,exc)
      call destroy_dft_grid()
    endif
 

@@ -179,7 +179,7 @@ subroutine scf_loop(is_restart,&
          en%xc = 0.0_dp
        endif
      else
-       call dft_exc_vxc_batch(BATCH_SIZE,basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_xc,en%xc)
+       call dft_exc_vxc_batch(BATCH_SIZE,basis,nstate,occupation,c_matrix,hamiltonian_xc,en%xc)
      endif
 
    endif
@@ -574,7 +574,7 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
        exc = 0.0_dp
      endif
    else
-     call dft_exc_vxc_batch(BATCH_SIZE,basis,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,exc)
+     call dft_exc_vxc_batch(BATCH_SIZE,basis,nstate,occupation,c_matrix,hamiltonian_spin_tmp,exc)
    endif
 
    hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) 
