@@ -624,6 +624,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
 
      do ipole=1,wpol%npole_reso
 
+       if( MODULO( ipole - 1 , nproc_auxil ) /= rank_auxil ) cycle
 
        select case(calc_type%selfenergy_approx)
 
@@ -671,7 +672,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
  enddo !ispin
 
  ! Sum up the contribution from different poles (= different procs)
- call xsum_ortho(selfenergy)
+ call xsum_world(selfenergy)
 
 
  ! Kotani's hermitianization trick
