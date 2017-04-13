@@ -47,6 +47,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  real(dp),allocatable    :: energy_qp_new(:,:),energy_qp_z(:,:)
  integer                 :: iomega
 #ifdef COHSEX_DEVEL
+ integer,parameter       :: BATCH_SIZE=64
  type(calculation_type)  :: calc_type_tmp
  real(dp),allocatable    :: p_matrix(:,:,:)
  integer                 :: istate
@@ -340,7 +341,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    if( ABS( delta_cohsex ) > 1.0e-6_dp ) then
 
      allocate(p_matrix(basis%nbf,basis%nbf,nspin))
-     call init_dft_grid(basis,grid_level,.TRUE.,.FALSE.,1)
+     call init_dft_grid(basis,grid_level,.TRUE.,.FALSE.,BATCH_SIZE)
      call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
 
      ! Override the DFT XC correlation settings
@@ -349,7 +350,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
 #ifdef HAVE_LIBXC
      call xc_f90_gga_x_hjs_set_par(calc_type_tmp%xc_func(1),1.0_dp/rcut_mbpt)
 #endif
-     call dft_exc_vxc(basis,nstate,occupation,c_matrix,matrix_tmp,exc)
+     call dft_exc_vxc_batch(BATCH_SIZE,basis,nstate,occupation,c_matrix,matrix_tmp,exc)
  
      write(stdout,*) '===== SigX SR ======'
      do ispin=1,nspin
