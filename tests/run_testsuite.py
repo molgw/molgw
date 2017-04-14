@@ -40,6 +40,10 @@ def clean_run(inp,out,restart):
       os.remove('SCREENED_COULOMB')
     except FileNotFoundError:
       pass
+    try:
+      os.remove('RESTART_TDDFT')
+    except FileNotFoundError:
+      pass
   fout = open(out, 'w')
   if len(mpirun) < 1:
     subprocess.call(['../../molgw',inp],stdout=fout,stderr=subprocess.STDOUT)

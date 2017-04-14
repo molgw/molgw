@@ -414,6 +414,8 @@ subroutine tddft_time_loop(nstate,                           &
    end do
  end if
 
+! call print_rect_2d_matrix_cmplx("c_matrix_orth_cmplx of beginning",c_matrix_orth_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
+! call print_rect_2d_matrix_cmplx("c_matrix_cmplx of beginning",c_matrix_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
  if(ignore_tddft_restart_ .OR. (.NOT. restart_is_correct)) then
    c_matrix_cmplx(1:basis%nbf,1:nocc,1:nspin)=c_matrix(1:basis%nbf,1:nocc,1:nspin)
  end if
@@ -463,6 +465,9 @@ subroutine tddft_time_loop(nstate,                           &
      write(file_dipole_time,*) time_min, dipole(:) * au_debye
      write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
         time_min, en%tot, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
+     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time  (au):', time_cur
+     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy     (Ha):',en%tot
+     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Abs Dipole Moment (D):', NORM2(dipole(:)) * au_debye
    end if
    time_min=time_min+time_step
  end if
@@ -923,6 +928,11 @@ subroutine tddft_time_loop(nstate,                           &
 !     write(stdout,*) "C**H*S*C is not identity at itau= ", itau
 !   end if
 
+   write(stdout,*) "time_cur = ", time_cur
+ 
+!   call print_rect_2d_matrix_cmplx("c_matrix_orth_cmplx",c_matrix_orth_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
+!   call print_rect_2d_matrix_cmplx("c_matrix_cmplx",c_matrix_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
+
    call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
    en%kin = real(SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
    en%nuc = real(SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
@@ -935,7 +945,8 @@ subroutine tddft_time_loop(nstate,                           &
    end if
 
    if( is_iomaster ) then
-     if(mod(itau-1,mod_write)==0 ) then
+     if( time_cur / write_step - INT(time_cur / write_step) < 1.0e-7_dp  ) then 
+!     if(mod(itau-1,mod_write)==0 ) then
        if(ref_) then
          if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,itau)
          write(file_excit_field,*) time_cur, abs(m_excit_field(itau,:))
@@ -954,7 +965,8 @@ subroutine tddft_time_loop(nstate,                           &
    do ispin=1,nspin
      q_matrix_cmplx(:,:,ispin)=MATMUL(MATMUL(CONJG(TRANSPOSE(c_matrix_0_cmplx(:,:,ispin))),s_matrix),c_matrix_cmplx(:,:,ispin))
      if( is_iomaster ) then
-       if(mod(itau-1,mod_write)==0 ) then
+       if( time_cur / write_step - INT(time_cur / write_step) < 1.0e-7_dp  ) then 
+!       if(mod(itau-1,mod_write)==0 ) then
          write(file_q_matrix_ii(ispin),"(F9.4)",advance='no') time_cur
          do i_elem_q_mat=min_elem_q_mat, max_elem_q_mat
            write(file_q_matrix_ii(ispin),"(2x,F9.4)",advance='no') ABS((q_matrix_cmplx(i_elem_q_mat,i_elem_q_mat,ispin)))**2
@@ -1514,7 +1526,27 @@ subroutine fill_unity(unity_matrix_cmplx,M)
  end do
 end subroutine
 
+!=======================================
+subroutine print_rect_2d_matrix_cmplx(desc,matrix_cmplx,size_n,size_m,write_unit,prec)
+ implicit none
+ integer, intent(in)      :: prec ! precision
+ integer, intent(in)      :: size_n,size_m, write_unit
+ complex(dp),intent(in)  :: matrix_cmplx(size_m,size_m)
+ character(*),intent(in)  :: desc
+!=====
+ character(100)  :: write_format1, write_format2, write_form
+ integer            :: ivar,beg
 
+! beg=4
+ beg=3
+ write(write_format1,*) '(',size_m," ('( ',F", prec+beg, ".", prec,"' ,',F", prec+beg, ".",prec,",' )  ') " ,')' ! (  1.01 ,  -0.03)  (  0.04 ,  0.10) 
+ write(write_format2,*) '(',size_m," (F", prec+beg, ".", prec,"' +  i',F", prec+beg, ".",prec,",'  ') " ,')'   ! 1.01 +  i  -0.03    0.03 +  i  0.10
+ write(write_unit,*) desc
+ do ivar=1,size_n
+   write(write_unit,write_format1) matrix_cmplx(ivar,:)
+ end do
+
+end subroutine print_rect_2d_matrix_cmplx
 
 !=======================================
 subroutine print_square_2d_matrix_cmplx(desc,matrix_cmplx,size_m,write_unit,prec)
