@@ -418,7 +418,7 @@ subroutine transform_libint_to_molgw_4d(gaussian_type,am1,am2,am3,am4,array_in,m
                                              cart_to_pure_norm(am2,gt_tag)%matrix(1:n2c,1:n2) ) )
    do i2=1,n2
      ! Transform the 3rd index
-     matrix_tmp3(1:n2,:) = TRANSPOSE( MATMUL( RESHAPE( matrix_tmp2(i2,:) , (/ n4c , n3c /) ) ,  &
+     matrix_tmp3(1:n3,:) = TRANSPOSE( MATMUL( RESHAPE( matrix_tmp2(i2,:) , (/ n4c , n3c /) ) ,  &
                                              cart_to_pure_norm(am3,gt_tag)%matrix(1:n3c,1:n3) ) )
 
      ! Transform the 4th index
