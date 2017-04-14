@@ -22,14 +22,14 @@ contains
 
 
 !=========================================================================
-subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc_dim,occupation,c_matrix_cmplx,p_matrix_cmplx, &
+subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc,occupation,c_matrix_cmplx,p_matrix_cmplx, &
                                    exchange_ij_cmplx,eexchange)
  use m_eri
  implicit none
- integer,intent(in)         :: nbf,nstate,nocc_dim
+ integer,intent(in)         :: nbf,nstate,nocc
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(out)       :: eexchange
- complex(dp),intent(in)    :: c_matrix_cmplx(nbf,nocc_dim,nspin)
+ complex(dp),intent(in)    :: c_matrix_cmplx(nbf,nocc,nspin)
  complex(dp),intent(in)    :: p_matrix_cmplx(nbf,nbf,nspin)
  complex(dp),intent(out)   :: exchange_ij_cmplx(nbf,nbf,nspin)
 !=====
@@ -38,7 +38,6 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc_dim,occupation,c_matrix_cmplx
  real(dp)                   :: eigval(nbf)
  integer                    :: ipair
  complex(dp),allocatable   :: tmp_cmplx(:,:)
- integer                    :: nocc
 !=====
 
 ! write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
@@ -47,13 +46,6 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc_dim,occupation,c_matrix_cmplx
  exchange_ij_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
  allocate(tmp_cmplx(nauxil_3center,nbf))
  do ispin=1,nspin
-
-   ! Find highest occupied state
-   nocc = 0
-   do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty)  cycle
-     nocc = istate
-   enddo
 
    do istate=1,nocc
      if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle
@@ -99,16 +91,15 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc_dim,occupation,c_matrix_cmplx
 end subroutine setup_exchange_ri_cmplx
 
 !=========================================================================
-subroutine setup_density_matrix_cmplx(nbf,nstate,nocc_dim,c_matrix_cmplx,occupation,p_matrix_cmplx)
+subroutine setup_density_matrix_cmplx(nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
  implicit none
- integer,intent(in)   :: nbf,nstate,nocc_dim
- complex(dp),intent(in)  :: c_matrix_cmplx(nbf,nocc_dim,nspin)
+ integer,intent(in)   :: nbf,nstate,nocc
+ complex(dp),intent(in)  :: c_matrix_cmplx(nbf,nocc,nspin)
  real(dp),intent(in)  :: occupation(nstate,nspin)
  complex(dp),intent(out) :: p_matrix_cmplx(nbf,nbf,nspin)
 !=====
  integer :: ispin,ibf,jbf
  integer :: istate
- integer :: nocc
 !=====
 
  call start_clock(timing_density_matrix)
@@ -117,13 +108,6 @@ subroutine setup_density_matrix_cmplx(nbf,nstate,nocc_dim,c_matrix_cmplx,occupat
  p_matrix_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
  do ispin=1,nspin
  
-   ! Find highest occupied state
-   nocc = 0
-   do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty ) cycle
-     nocc = istate
-   enddo
-
    do istate=1,nocc
      call ZHER('L',nbf,occupation(istate,ispin),c_matrix_cmplx(:,istate,ispin),1,p_matrix_cmplx(:,:,ispin),nbf)
    enddo

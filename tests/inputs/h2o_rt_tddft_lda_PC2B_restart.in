@@ -1,9 +1,9 @@
 &molgw
- scf='hf'
+ scf='lda'
  nspin=1
  magnetization=0.0
  ignore_restart='yes'
- ignore_tddft_restart='yes'
+ ignore_tddft_restart='no'
  print_tddft_restart='yes'
  basis='cc-pVDZ'
  auxil_basis='cc-pVDZ-RI'
@@ -11,7 +11,7 @@
  natom=3
  postscf='real_time'
  time_step=0.5
- time_sim=200.0
+ time_sim=20.0
  pred_corr="PC2B"
  n_hist=3
  prop_type='MAG2'

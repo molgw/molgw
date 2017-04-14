@@ -465,9 +465,10 @@ subroutine tddft_time_loop(nstate,                           &
      write(file_dipole_time,*) time_min, dipole(:) * au_debye
      write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
         time_min, en%tot, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
-     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time  (au):', time_cur
-     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy     (Ha):',en%tot
-     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Abs Dipole Moment (D):', NORM2(dipole(:)) * au_debye
+     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
+     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):',en%tot
+     write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment   (D):', dipole(:) * au_debye
+
    end if
    time_min=time_min+time_step
  end if
@@ -928,8 +929,6 @@ subroutine tddft_time_loop(nstate,                           &
 !     write(stdout,*) "C**H*S*C is not identity at itau= ", itau
 !   end if
 
-   write(stdout,*) "time_cur = ", time_cur
- 
 !   call print_rect_2d_matrix_cmplx("c_matrix_orth_cmplx",c_matrix_orth_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
 !   call print_rect_2d_matrix_cmplx("c_matrix_cmplx",c_matrix_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
 
@@ -957,7 +956,7 @@ subroutine tddft_time_loop(nstate,                           &
        write(stdout,*)
        write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time  (au):', time_cur
        write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy     (Ha):',en%tot
-       write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Abs Dipole Moment (D):', NORM2(dipole(:)) * au_debye
+       write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment     (D):', dipole(:) * au_debye
      end if
    end if
 
