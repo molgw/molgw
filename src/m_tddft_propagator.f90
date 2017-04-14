@@ -79,7 +79,7 @@ subroutine calculate_propagation(nstate,              &
  integer                    :: istep, iprop_type,ipred_corr,ihist,iiter
  character(len=4),allocatable  :: m_prop_types(:), m_pred_corrs(:)
  integer                    :: file_p_matrix_error, file_dipole_error
- character(len=100)          :: name_p_matrix_error, name_dipole_error
+ character(len=100)         :: name_p_matrix_error, name_dipole_error
  integer                    :: iwrite, nwrite, mod_write, mod_write_cur 
  integer                    :: n_time_steps,n_prop_types,n_pred_corrs,n_n_hists,n_n_iters
 #ifdef HAVE_FFTW
