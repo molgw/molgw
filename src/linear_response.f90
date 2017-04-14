@@ -10,7 +10,7 @@
 
 
 !=========================================================================
-subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
+subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
  use m_definitions
  use m_timing
  use m_warning
@@ -25,7 +25,7 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
  use m_eri_ao_mo
  implicit none
 
- type(basis_set),intent(in)            :: basis,auxil_basis
+ type(basis_set),intent(in)            :: basis
  integer,intent(in)                    :: nstate
  real(dp),intent(in)                   :: occupation(nstate,nspin)
  real(dp),intent(in)                   :: energy(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
@@ -347,6 +347,52 @@ subroutine polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,rp
 
 
 end subroutine polarizability
+
+
+!=========================================================================
+subroutine polarizability_onering(basis,nstate,occupation,energy,c_matrix,vchi0v)
+ use m_definitions
+ use m_timing
+ use m_warning
+ use m_memory
+ use m_inputparam
+ use m_mpi
+ use m_scalapack
+ use m_cart_to_pure
+ use m_block_diago
+ use m_basis_set
+ use m_spectral_function
+ use m_eri_ao_mo
+ implicit none
+
+ type(basis_set),intent(in)            :: basis
+ integer,intent(in)                    :: nstate
+ real(dp),intent(in)                   :: occupation(nstate,nspin)
+ real(dp),intent(in)                   :: energy(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
+ type(spectral_function),intent(inout) :: vchi0v
+!=====
+ integer :: t_jb
+ integer :: jstate,bstate,jbspin
+!=====
+
+ call allocate_spectral_function(nauxil_3center,vchi0v)
+
+ call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
+
+
+ do t_jb=1,vchi0v%npole_reso
+   jstate = vchi0v%transition_table_apb(1,t_jb)
+   bstate = vchi0v%transition_table_apb(2,t_jb)
+   jbspin = vchi0v%transition_table_apb(3,t_jb)
+
+   vchi0v%residue_left(:,t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin) * SQRT(spin_fact)
+   vchi0v%pole(t_jb)           = energy(bstate,jbspin) - energy(jstate,jbspin)
+
+ enddo
+
+ call destroy_eri_3center_eigen()
+
+end subroutine polarizability_onering
 
 
 !=========================================================================
@@ -1039,7 +1085,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,w
    bstate = wpol%transition_table_apb(2,t_jb)
    jbspin = wpol%transition_table_apb(3,t_jb)
    eri_3tmp(:,t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin)
- end do
+ enddo
 
  ! Use the symmetry ( I | k l ) to regroup (kl) and (lk) contributions
  ! and the block structure of eigenvector | X  Y |
@@ -1062,7 +1108,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,w
    bstate = wpol%transition_table_apb(2,t_jb)
    jbspin = wpol%transition_table_apb(3,t_jb)
    eri_3tmp(:,t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin)
- end do
+ enddo
 
  !
  ! Descriptors
@@ -1153,7 +1199,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,a_diag,wpol)
 
    wpol%residue_left(:,wpol%npole_reso_apb+t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin) * SQRT(spin_fact) 
 
- end do
+ enddo
 
 
  call stop_clock(timing_vchiv)

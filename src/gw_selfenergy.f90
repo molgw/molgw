@@ -149,7 +149,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
        do pstate=nsemin,nsemax
          ipstate = index_prodstate(istate,pstate) + (ispin-1) * index_prodstate(nvirtual_W-1,nvirtual_W-1)
          bra(:,pstate) = wpol%residue_left(ipstate,:)
-       end do
+       enddo
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
        bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )
@@ -574,6 +574,8 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
 
  write(stdout,*)
  select case(calc_type%selfenergy_approx)
+ case(ONE_RING)
+   write(stdout,*) 'Perform a QP self-consistent one-ring calculation (QS1-ring)'
  case(GW)
    write(stdout,*) 'Perform a QP self-consistent GW calculation (QSGW)'
  case(COHSEX)
@@ -606,7 +608,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
        do pstate=nsemin,nsemax
          ipstate = index_prodstate(istate,pstate) + (ispin-1) * index_prodstate(nvirtual_W-1,nvirtual_W-1)
          bra(:,pstate) = wpol%residue_left(ipstate,:)
-       end do
+       enddo
      else
        ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
        bra(:,nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nsemin:nsemax,istate,ispin) )

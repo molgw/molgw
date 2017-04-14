@@ -20,11 +20,11 @@ module m_inputparam
 
  !
  ! Self-energy evaluation technique
- integer,parameter :: one_shot       = 101
- integer,parameter :: QS             = 102
- integer,parameter :: EVSC           = 103
- integer,parameter :: imaginary_axis = 104
- integer,parameter :: static         = 105
+ integer,parameter :: one_shot          = 101
+ integer,parameter :: QS                = 102
+ integer,parameter :: EVSC              = 103
+ integer,parameter :: imaginary_axis    = 104
+ integer,parameter :: static_selfenergy = 105
 
  !
  ! Self-energy approximation
@@ -327,7 +327,7 @@ subroutine init_calculation_type(calc_type,input_key)
  ! Do we need LR Coulomb integrals?
  !
  calc_type%need_exchange    = ( alpha_hybrid > 1.0e-6 )
- calc_type%need_exchange_lr = ( rcut > 1.0e-6 )
+ calc_type%need_exchange_lr = ( rcut > 1.0e-6 ) .AND. ( ABS(alpha_hybrid_lr) > 1.0e-6 )
 
  calc_type%is_selfenergy = ( calc_type%selfenergy_approx > 0 )
 

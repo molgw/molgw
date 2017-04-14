@@ -399,7 +399,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
 
  select case(selfenergy_technique)
  
- case(EVSC,static)
+ case(EVSC,static_selfenergy)
 
    allocate(se%omega(-se%nomega:se%nomega))
    se%omega(0) = 0.0_dp

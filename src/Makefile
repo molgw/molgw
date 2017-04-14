@@ -383,5 +383,5 @@ docs:
 	mv notes.pdf ../docs/notes.pdf
 
 clean:
-	rm -f *.o *.mod molgw.tgz ../molgw
+	rm -f *.o *.mod ../molgw.tgz ../molgw
 

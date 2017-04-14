@@ -429,7 +429,7 @@ subroutine build_apb_hartree_auxil_scalapack(desc_apb,wpol,m_apb,n_apb,apb_matri
    bstate = wpol%transition_table_apb(2,t_jb_global)
    jbspin = wpol%transition_table_apb(3,t_jb_global)
    eri_3tmp(:,t_jb_global) = eri_3center_eigen(:,jstate,bstate,jbspin)
- end do
+ enddo
 
  !
  ! Descriptors

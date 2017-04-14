@@ -506,7 +506,7 @@ subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occu
      do istate=1,nstate
        occupation(istate,:) = MIN(remaining_electrons(:), spin_fact)
        remaining_electrons(:)  = remaining_electrons(:) - occupation(istate,:)
-     end do
+     enddo
    else
      write(stdout,*)
      write(stdout,*) 'occupations are read from file: manual_occupations'

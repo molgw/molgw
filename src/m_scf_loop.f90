@@ -244,7 +244,7 @@ subroutine scf_loop(is_restart,&
      if( parallel_ham ) call die('QSGW not implemented with parallel_ham')
 
      call init_spectral_function(nstate,occupation,0,wpol)
-     call polarizability(basis,auxil_basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+     call polarizability(basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
 
      if( ABS(en%rpa) > 1.e-6_dp) then
        en%tot = en%tot + en%rpa

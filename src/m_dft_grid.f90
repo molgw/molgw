@@ -353,7 +353,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
      endif
 
    endif
- end do
+ enddo
 
  deallocate(rr_grid_tmp,w_grid_tmp)
 

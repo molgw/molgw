@@ -42,7 +42,7 @@ SCF Total Energy          ,  -1.1351648702     , 0 , 1.0e-7
 gKS HOMO energy           , -10.247609         , 0 , 1.0e-4
 gKS LUMO energy           ,   1.328924         , 0 , 1.0e-4
 
-o2_rsh.in                 , Range-separated hybrid mimicing HSE06 for triplet O2 wo RI
+o2_rsh.in                 , Range-separated hybrid mimicing HSE08 for triplet O2 wo RI
 SCF Total Energy          , -150.1671750256    , 0 , 1.0e-7
 XC Energy                 ,  -13.0323509136    , 0 , 1.0e-7
 gKS HOMO energy           ,   -8.324037        , 0 , 1.0e-4

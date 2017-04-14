@@ -172,7 +172,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  do while( ANY( ABS(energy(nfrozen+1,:)-energy(nfrozen,:)) < 1.0e-4_dp ) )
    nfrozen = nfrozen + 1
    if( nfrozen == nstate_small ) exit
- end do
+ enddo
  
  write(stdout,'(1x,a,i6)') 'Leave the first states frozen up to: ',nfrozen
  c_big(:,1:nfrozen,:) = c_matrix(:,1:nfrozen,:)
@@ -477,7 +477,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
    do while( ANY( ABS(energy(nfrozen+1,:)-energy(nfrozen,:)) < 1.0e-4_dp ) )
      nfrozen = nfrozen + 1
      if( nfrozen == nstate_small ) exit
-   end do
+   enddo
    
    write(stdout,'(1x,a,i6)') 'Leave the first states frozen up to: ',nfrozen
 

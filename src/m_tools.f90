@@ -697,7 +697,7 @@ function capitalize(str)
  do ii=1,LEN_TRIM(str)
    ic = INDEX(low,str(ii:ii))
    if (ic > 0) capitalize(ii:ii) = cap(ic:ic)
- end do
+ enddo
 
 end function capitalize
 
@@ -866,7 +866,7 @@ function pade(n,z,f,zz)
  do i=1,n-1
    Az(i+1) = Az(i) + ( zz - z(i) ) * a(i+1) * Az(i-1)
    Bz(i+1) = Bz(i) + ( zz - z(i) ) * a(i+1) * Bz(i-1)
- end do
+ enddo
 
  pade = Az(n) / Bz(n)
 
@@ -890,11 +890,11 @@ subroutine calculate_pade_a(a,n,z,f)
  do i=2,n
    do j=i,n
      g(i,j) = (g(i-1,i-1) - g(i-1,j)) / ( (z(j) - z(i-1)) * g(i-1,j) )
-   end do
- end do
+   enddo
+ enddo
  do i=1,n
    a(i) = g(i,i)
- end do
+ enddo
 
 
 end subroutine calculate_pade_a
