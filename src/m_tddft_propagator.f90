@@ -1483,30 +1483,6 @@ subroutine calculate_excit_field(time_cur,excit_field)
  
 end subroutine calculate_excit_field
 
-!=======================================
-subroutine get_number_of_elements(string,num)
- implicit none
- character(len=100),intent(in)  ::  string
- integer,intent(inout)          :: num
-!===
- integer   :: i,pos
-
- pos=1
- num=0
-
- do
-   i=verify(string(pos:),' ')    !-- Find next non-blank 
-   if (i==0) exit                !-- No word found
-   num=num+1                     !-- Found something
-   pos=pos+i-1                   !-- Move to start of the word 
-   i=scan(string(pos:),' ')      !-- Find next blank 
-   if (i==0) exit                !-- No blank found
-   pos=pos+i-1                   !-- Move to the blank
- end do
-
-end subroutine get_number_of_elements
-
-
 
 !=======================================
 subroutine fill_unity(unity_matrix_cmplx,M)

@@ -3,6 +3,10 @@
 -----------------------------------------
 
 
+## What's new in version 1.F
+### Overview
+A few bugs specific to the recent versions of the Intel compilers have been fixed.
+
 
 ## What's new in version 1.E
 ### Overview
@@ -10,11 +14,9 @@ Bug fix with respect to previous version for high angular momenta (L>5)
 Considerable speed-up in the diagonalization of the RPA matrix thanks to the use of PDSYEVR instead of PDSYEV
 
 
-
 ## What's new in version 1.D
 ### Overview
 Simple bug fix with respect to previous version
-
 
 
 ## What's new in version 1.C

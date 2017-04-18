@@ -399,7 +399,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
 
  select case(selfenergy_technique)
  
- case(EVSC,static)
+ case(EVSC,static_selfenergy)
 
    allocate(se%omega(-se%nomega:se%nomega))
    se%omega(0) = 0.0_dp
@@ -499,6 +499,7 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,ham
  real(dp),intent(in)        :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: exchange_m_vxc_diag(nstate,nspin)
 !=====
+ integer,parameter    :: BATCH_SIZE=64
  integer              :: ispin,istate
  real(dp)             :: exc,eexx
  real(dp),allocatable :: occupation_tmp(:,:)
@@ -527,9 +528,9 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,ham
    occupation_tmp(1:dft_core,:) = 0.0_dp
 
    if( calc_type%is_dft ) then
-     call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.FALSE.,1)
+     call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.FALSE.,BATCH_SIZE)
      call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation_tmp,p_matrix_tmp)
-     call dft_exc_vxc(basis,nstate,occupation_tmp,c_matrix,p_matrix_tmp,hxc_val,exc)
+     call dft_exc_vxc_batch(BATCH_SIZE,basis,nstate,occupation_tmp,c_matrix,hxc_val,exc)
      call destroy_dft_grid()
    endif
 

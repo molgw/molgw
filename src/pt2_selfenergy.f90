@@ -204,7 +204,7 @@ subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c
  type(selfenergy_grid),intent(inout) :: se
  real(dp),intent(out)       :: emp2
 !=====
- type(spectral_function) :: chi0
+ type(spectral_function) :: vchi0v
  integer                 :: jstate,bstate,jbspin,t_jb
 !=====
 
@@ -219,31 +219,17 @@ subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c
  write(stdout,'(/,a)') ' Perform the one-ring self-energy calculation'
  write(stdout,*) 'with the perturbative approach'
 
- call init_spectral_function(nvirtual_G-1,occupation,0,chi0)
- call allocate_spectral_function(nauxil_3center,chi0)
- 
- call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
+ call init_spectral_function(nstate,occupation,0,vchi0v)
 
-
- do t_jb=1,chi0%npole_reso
-   jstate = chi0%transition_table_apb(1,t_jb)
-   bstate = chi0%transition_table_apb(2,t_jb)
-   jbspin = chi0%transition_table_apb(3,t_jb)
-
-   chi0%residue_left(:,t_jb) = eri_3center_eigen(:,jstate,bstate,jbspin) * SQRT(spin_fact)
-   chi0%pole(t_jb)           = energy(bstate,jbspin) - energy(jstate,jbspin)
-
- end do
-
- call destroy_eri_3center_eigen()
+ call polarizability_onering(basis,nstate,occupation,energy,c_matrix,vchi0v)
 
 #ifdef HAVE_SCALAPACK
- call gw_selfenergy_scalapack(ONE_RING,nstate,basis,occupation,energy,c_matrix,chi0,se)
+ call gw_selfenergy_scalapack(ONE_RING,nstate,basis,occupation,energy,c_matrix,vchi0v,se)
 #else
- call gw_selfenergy(ONE_RING,nstate,basis,occupation,energy,c_matrix,chi0,se,emp2)
+ call gw_selfenergy(ONE_RING,nstate,basis,occupation,energy,c_matrix,vchi0v,se,emp2)
 #endif
  
- call destroy_spectral_function(chi0)
+ call destroy_spectral_function(vchi0v)
 
  call stop_clock(timing_mp2_self)
 

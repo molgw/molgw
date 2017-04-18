@@ -475,7 +475,7 @@ subroutine identify_negligible_shellpair(basis)
                          am2,ng2,x02,alpha2,coeff2, &
                          0.0_C_DOUBLE,int_shell)
 
-     call transform_libint_to_molgw_4d(basis%gaussian_type,ami,amj,ami,amj,int_shell,integrals)
+     call transform_libint_to_molgw(basis%gaussian_type,ami,amj,ami,amj,int_shell,integrals)
 
 
      do ibf=1,ni

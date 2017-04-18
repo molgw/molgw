@@ -97,9 +97,6 @@ void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], d
      int12->PA_x[0] = 0 ;
      int12->PA_y[0] = 0 ;
      int12->PA_z[0] = 0 ;
-     int12->PB_x[0] = 0 ;
-     int12->PB_y[0] = 0 ;
-     int12->PB_z[0] = 0 ;
      int12->AB_x[0] = 0 ;
      int12->AB_y[0] = 0 ;
      int12->AB_z[0] = 0 ;
@@ -160,10 +157,6 @@ void libint_2center(int amA, int contrdepthA , double A [] , double alphaA [], d
      }
 
 
-     int12->_0_Overlap_0_x[0] = 0.0 ;
-     int12->_0_Overlap_0_y[0] = 0.0 ;
-     int12->_0_Overlap_0_z[0] = 0.0 ;
- 
      int12->veclen = 1 ;
      int12->contrdepth = contrdepth2 ;
 
@@ -269,9 +262,6 @@ void libint_3center(int amA, int contrdepthA , double A [] , double alphaA [], d
        int12->PA_x[0] = 0.0 ;
        int12->PA_y[0] = 0.0 ;
        int12->PA_z[0] = 0.0 ;
-       int12->PB_x[0] = 0.0 ;
-       int12->PB_y[0] = 0.0 ;
-       int12->PB_z[0] = 0.0 ;
        int12->AB_x[0] = 0.0 ;
        int12->AB_y[0] = 0.0 ;
        int12->AB_z[0] = 0.0 ;
@@ -340,10 +330,6 @@ void libint_3center(int amA, int contrdepthA , double A [] , double alphaA [], d
        }
 
 
-       int12->_0_Overlap_0_x[0] = 0.0 ;
-       int12->_0_Overlap_0_y[0] = 0.0 ;
-       int12->_0_Overlap_0_z[0] = 0.0 ;
- 
        int12->veclen = 1 ;
        int12->contrdepth = contrdepth3 ;
 
@@ -452,9 +438,6 @@ void libint_4center(int amA, int contrdepthA , double A [] , double alphaA [], d
          int12->PA_x[0] = P[0] - A[0] ;
          int12->PA_y[0] = P[1] - A[1] ;
          int12->PA_z[0] = P[2] - A[2] ;
-         int12->PB_x[0] = P[0] - B[0] ;
-         int12->PB_y[0] = P[1] - B[1] ;
-         int12->PB_z[0] = P[2] - B[2] ;
          int12->AB_x[0] = A[0] - B[0] ;
          int12->AB_y[0] = A[1] - B[1] ;
          int12->AB_z[0] = A[2] - B[2] ;
@@ -526,10 +509,6 @@ void libint_4center(int amA, int contrdepthA , double A [] , double alphaA [], d
          }
 
 
-         int12->_0_Overlap_0_x[0] = 0.0 ;
-         int12->_0_Overlap_0_y[0] = 0.0 ;
-         int12->_0_Overlap_0_z[0] = 0.0 ;
-   
          int12->veclen = 1 ;
          int12->contrdepth = contrdepth4 ;
 

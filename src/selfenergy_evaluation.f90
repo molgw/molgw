@@ -47,6 +47,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  real(dp),allocatable    :: energy_qp_new(:,:),energy_qp_z(:,:)
  integer                 :: iomega
 #ifdef COHSEX_DEVEL
+ integer,parameter       :: BATCH_SIZE=64
  type(calculation_type)  :: calc_type_tmp
  real(dp),allocatable    :: p_matrix(:,:,:)
  integer                 :: istate
@@ -55,8 +56,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
 !=====
 
  write(stdout,'(/,/,1x,a)') '=================================================='
- write(stdout,'(1x,a)')   'Self-energy evaluation starts here'
- write(stdout,'(/,1x,a)') '=================================================='
+ write(stdout,'(1x,a)')     'Self-energy evaluation starts here'
+ write(stdout,'(1x,a,/)')   '=================================================='
 
  select case(calc_type%selfenergy_approx)
  case(GW,GnW0,GnWn,G0W0_IOMEGA)
@@ -170,7 +171,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    ! If reading has failed, then do the calculation
    if( reading_status /= 0 ) then
      if( calc_type%selfenergy_technique /= imaginary_axis ) then
-       call polarizability(basis,auxil_basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+       call polarizability(basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
      else
        call polarizability_grid_scalapack(basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
      endif
@@ -229,11 +230,12 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      call output_new_homolumo('GW small basis',nstate,occupation,energy_qp_new,nsemin,nsemax)
      deallocate(energy_qp_new)
 
-     call init_selfenergy_grid(static,nstate,energy,se2)
-     call init_selfenergy_grid(static,nstate,energy,se3)
+     call init_selfenergy_grid(static_selfenergy,nstate,energy,se2)
+     call init_selfenergy_grid(static_selfenergy,nstate,energy,se3)
   
      ! Sigma^2 = Sigma^{1-ring}_small
-     call onering_selfenergy(ONE_RING,nstate,basis,occupation,energy_g,c_matrix,se2,en%mp2)
+     call onering_selfenergy(ONE_RING,nstate_small,basis,occupation(1:nstate_small,:), &
+                             energy_g(1:nstate_small,:),c_matrix(:,1:nstate_small,:),se2,en%mp2)
 
      ! Reset wavefunctions, eigenvalues and number of virtual orbitals in G
      call destroy_fno(basis,nstate,energy,c_matrix)
@@ -270,7 +272,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    call read_spectral_function(wpol,reading_status)
    ! If reading has failed, then do the calculation
    if( reading_status /= 0 ) then
-     call polarizability(basis,auxil_basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+     call polarizability(basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
    endif
 
    call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
@@ -340,7 +342,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    if( ABS( delta_cohsex ) > 1.0e-6_dp ) then
 
      allocate(p_matrix(basis%nbf,basis%nbf,nspin))
-     call init_dft_grid(basis,grid_level,.TRUE.,.FALSE.,1)
+     call init_dft_grid(basis,grid_level,.TRUE.,.FALSE.,BATCH_SIZE)
      call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
 
      ! Override the DFT XC correlation settings
@@ -349,7 +351,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
 #ifdef HAVE_LIBXC
      call xc_f90_gga_x_hjs_set_par(calc_type_tmp%xc_func(1),1.0_dp/rcut_mbpt)
 #endif
-     call dft_exc_vxc(basis,nstate,occupation,c_matrix,p_matrix,matrix_tmp,exc)
+     call dft_exc_vxc_batch(BATCH_SIZE,basis,nstate,occupation,c_matrix,matrix_tmp,exc)
  
      write(stdout,*) '===== SigX SR ======'
      do ispin=1,nspin

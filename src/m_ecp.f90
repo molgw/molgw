@@ -229,7 +229,7 @@ subroutine read_ecp_file(ecpunit,element,ecpi)
          call append_to_list(read_zeta,ecpi%zetak)
          call append_to_list(read_d,ecpi%dk)
        endif
-     end do
+     enddo
    else
      write(stdout,*) capitalize(line(1:i2-1)),line(1:i2-1)
      call die('problem reading ECP file')
