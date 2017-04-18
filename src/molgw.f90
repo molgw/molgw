@@ -271,7 +271,7 @@ program molgw
    !
    ! Calculate the parts of the hamiltonian that does not change along
    ! with the SCF cycles
-   if( .NOT. is_big_restart ) then
+   if( .NOT. is_big_restart .OR. calc_type%is_real_time ) then
      !
      ! Kinetic energy contribution
      if( parallel_ham ) then

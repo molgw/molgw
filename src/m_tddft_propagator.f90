@@ -1483,7 +1483,7 @@ subroutine calculate_excit_field(time_cur,excit_field)
  
 end subroutine calculate_excit_field
 
-
+!=======================================
 subroutine get_number_of_elements(string,num)
  implicit none
  character(len=100),intent(in)  ::  string

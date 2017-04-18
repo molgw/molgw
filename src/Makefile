@@ -92,8 +92,8 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
 ####################################################
 
 
-../spectrum: m_definitions.o spectrum.o
-	$(LINKER) m_definitions.o spectrum.o -o ../spectrum $(FFTW) $(FFTW_INCS) $(LINKS)
+../spectrum: m_definitions.o m_warning.o spectrum.o
+	$(LINKER) m_definitions.o m_warning.o spectrum.o -o ../spectrum $(FFTW) $(FFTW_INCS) $(LINKS)
 
 ../molgw: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
         lebedev_quadrature.o pdbssolver1.o boys_function.o \
@@ -370,7 +370,7 @@ m_definitions.o: m_definitions.f90
 m_tddft_propagator.o: m_tddft_propagator.f90 m_definitions.f90 m_basis_set.f90 m_scf_loop.f90 m_memory.f90
 	 $(FC_W_OPTS) -c m_tddft_propagator.f90 $(LIBXC_INCS) $(FFTW_INCS)  
 
-spectrum.o: m_definitions.f90 spectrum.f90
+spectrum.o: m_definitions.f90 m_warning.f90 spectrum.f90
 	$(FC_W_OPTS) -c spectrum.f90  $(FFTW_INCS) 
 
 tarball: 
@@ -402,5 +402,5 @@ docs:
 	mv notes.pdf ../docs/notes.pdf
 
 clean:
-	rm -f *.o *.mod molgw.tgz ../molgw
+	rm -f *.o *.mod molgw.tgz ../molgw ../spectrum
 
