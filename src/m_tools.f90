@@ -899,6 +899,31 @@ subroutine calculate_pade_a(a,n,z,f)
 
 end subroutine calculate_pade_a
 
+!=======================================
+subroutine get_number_of_elements(string,num)
+ implicit none
+ character(len=100),intent(in)  ::  string
+ integer,intent(inout)          :: num
+!===
+ integer   :: i,pos
 
-!=========================================================================
+ pos=1
+ num=0
+
+ do
+   i=VERIFY(string(pos:),' ')    !-- Find next non-blank 
+   if (i==0) exit                !-- No word found
+   num=num+1                     !-- Found something
+   pos=pos+i-1                   !-- Move to start of the word 
+   i=SCAN(string(pos:),' ')      !-- Find next blank 
+   if (i==0) exit                !-- No blank found
+   pos=pos+i-1                   !-- Move to the blank
+ end do
+
+end subroutine get_number_of_elements
+
+
+
 end module m_tools
+
+
