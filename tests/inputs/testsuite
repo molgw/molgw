@@ -313,24 +313,50 @@ Lowest neutral excitation ,      3.388914       , 0 , 1.0e-4
 Sum over oscillator strengths , 11.957363       , 0 , 1.0e-4
 polarizability trace      ,     13.358524       , 0 , 1.0e-4
 
+oh_m_gnwn.in              , GnWn (eigenvalue self-consistent) on OH- 1st iteration
+SCF Total Energy          ,    -75.7671834802   , 0 , 1.0e-7
+G0W0 HOMO energy          ,     -1.100134       , 0 , 1.0e-4
+G0W0 LUMO energy          ,      5.328126       , 0 , 1.0e-4
+G1W1 HOMO energy          ,     -1.208873       , 0 , 1.0e-4
+G1W1 LUMO energy          ,      5.337010       , 0 , 1.0e-4
+G2W2 HOMO energy          ,     -1.207707       , 0 , 1.0e-4
+G2W2 LUMO energy          ,      5.336834       , 0 , 1.0e-4
+
+oh_0_gnw0.in              , GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 1st iteration
+Total Spin S**2           ,      0.7532         , 0 , 1.0e-3
+XC Energy                 ,     -4.5883907272   , 0 , 1.0e-7
+SCF Total Energy          ,    -75.7190424535   , 0 , 1.0e-7
+gKS HOMO energy           ,    -11.941970       , 0 , 1.0e-4
+gKS HOMO energy           ,    -11.070991       , 1 , 1.0e-4
+gKS LUMO energy           ,      0.060279       , 0 , 1.0e-4
+gKS LUMO energy           ,     -2.560124       , 1 , 1.0e-4
+G0W0 HOMO energy          ,    -13.404668       , 0 , 1.0e-4
+G0W0 HOMO energy          ,    -12.467650       , 1 , 1.0e-4
+G0W0 LUMO energy          ,      0.964613       , 0 , 1.0e-4
+G0W0 LUMO energy          ,     -0.293379       , 1 , 1.0e-4
+G1W0 HOMO energy          ,    -13.340412       , 0 , 1.0e-4
+G1W0 HOMO energy          ,    -12.400933       , 1 , 1.0e-4
+G1W0 LUMO energy          ,      0.964805       , 0 , 1.0e-4
+G1W0 LUMO energy          ,     -0.331161       , 1 , 1.0e-4
+
 oh_m_1.in                 , GnWn (eigenvalue self-consistent) on OH- 1st iteration
 SCF Total Energy          ,    -75.7671834802   , 0 , 1.0e-7
 RPA correlation energy    ,     -0.2924060323   , 0 , 1.0e-7
 Galitskii-Migdal formula  ,     -0.5031685208   , 0 , 1.0e-7
-GW HOMO energy            ,     -1.100134       , 0 , 1.0e-4
-GW LUMO energy            ,      5.328126       , 0 , 1.0e-4
+G0W0 HOMO energy          ,     -1.100134       , 0 , 1.0e-4
+G0W0 LUMO energy          ,      5.328126       , 0 , 1.0e-4
 
 oh_m_2.in                 , GnWn (eigenvalue self-consistent) on OH- 2nd iteration , Restart
 Galitskii-Migdal formula  ,     -0.4816111091   , 0 , 1.0e-7
 RPA correlation energy    ,     -0.2780353842   , 0 , 1.0e-7
-GW HOMO energy            ,     -1.208873       , 0 , 1.0e-4
-GW LUMO energy            ,      5.337010       , 0 , 1.0e-4
+G0W0 HOMO energy          ,     -1.208873       , 0 , 1.0e-4
+G0W0 LUMO energy          ,      5.337010       , 0 , 1.0e-4
 
 oh_m_3.in                 , GnWn (eigenvalue self-consistent) on OH- 3rd iteration , Restart
 Galitskii-Migdal formula  ,     -0.4785659835   , 0 , 1.0e-7
 RPA correlation energy    ,     -0.2760358773   , 0 , 1.0e-7
-GW HOMO energy            ,     -1.207707       , 0 , 1.0e-4
-GW LUMO energy            ,      5.336834       , 0 , 1.0e-4
+G0W0 HOMO energy          ,     -1.207707       , 0 , 1.0e-4
+G0W0 LUMO energy          ,      5.336834       , 0 , 1.0e-4
 
 oh_0_1.in                 , GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 1st iteration
 Total Spin S**2           ,      0.7532         , 0 , 1.0e-3
@@ -341,16 +367,16 @@ gKS HOMO energy           ,    -11.070991       , 1 , 1.0e-4
 gKS LUMO energy           ,      0.060279       , 0 , 1.0e-4
 gKS LUMO energy           ,     -2.560124       , 1 , 1.0e-4
 RPA Total energy          ,    -75.6295502398   , 0 , 1.0e-7
-GW HOMO energy            ,    -13.404668       , 0 , 1.0e-4
-GW HOMO energy            ,    -12.467650       , 1 , 1.0e-4
-GW LUMO energy            ,      0.964613       , 0 , 1.0e-4
-GW LUMO energy            ,     -0.293379       , 1 , 1.0e-4
+G0W0 HOMO energy          ,    -13.404668       , 0 , 1.0e-4
+G0W0 HOMO energy          ,    -12.467650       , 1 , 1.0e-4
+G0W0 LUMO energy          ,      0.964613       , 0 , 1.0e-4
+G0W0 LUMO energy          ,     -0.293379       , 1 , 1.0e-4
 
 oh_0_2.in                 , GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 2nd iteration , Restart
-GW HOMO energy            ,    -13.340412       , 0 , 1.0e-4
-GW HOMO energy            ,    -12.400933       , 1 , 1.0e-4
-GW LUMO energy            ,      0.964805       , 0 , 1.0e-4
-GW LUMO energy            ,     -0.331161       , 1 , 1.0e-4
+G0W0 HOMO energy          ,    -13.340412       , 0 , 1.0e-4
+G0W0 HOMO energy          ,    -12.400933       , 1 , 1.0e-4
+G0W0 LUMO energy          ,      0.964805       , 0 , 1.0e-4
+G0W0 LUMO energy          ,     -0.331161       , 1 , 1.0e-4
 
 ethylene_davidson.in      , C2H4: BSE@HF for ethyelene with iterative Davidson diago
 SCF Total Energy          , -78.0413852386      , 0 , 1.0e-7

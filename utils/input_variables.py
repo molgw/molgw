@@ -363,6 +363,15 @@ vl[i].comment  ='Sets the history record length for Pulay DIIS.'
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='nstep_gw'
+vl[i].family   ='post'
+vl[i].default  ='1'
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the number of GW iterations for eigenvalue self-consistent GW calculations (GnWn or GnW0).'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='tda'
 vl[i].family   ='post'
 vl[i].default  ='no'

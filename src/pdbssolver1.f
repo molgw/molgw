@@ -13,10 +13,10 @@
      $                        LAMBDA, X1, IX, JX, DESCX, X2, WORK,
      $                        LWORK, IWORK, LIWORK, INFO )
 *
+#ifdef HAVE_ELPA
 #ifdef HAVE_MPI
       USE MPI,only: MPI_COMM_WORLD
 #endif
-#ifdef HAVE_ELPA
       USE ELPA1
       USE ELPA
 #endif
