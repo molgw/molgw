@@ -1,5 +1,5 @@
 &molgw
- scf='blyp'
+ scf='b3lyp'
 ! mixing_scheme='simple'
  nscf=50
 

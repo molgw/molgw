@@ -152,23 +152,23 @@ MP2 Energy                ,   -0.4080027465    , 0 , 1.0e-7
 MP2 Total Energy          , -109.3823851303    , 0 , 1.0e-7
 SE+MP2  Total En          , -109.3823851303    , 0 , 1.0e-7
 
-boron_gw_spinpolarized.in , GW@BLYP boron atom without RI with spin (unstable test: loosened thresholds)
-Hartree Energy            ,   11.6347873536   , 0 , 1.0e-4
-XC Energy                 ,   -3.8789558610   , 0 , 1.0e-4
-Total Energy              ,  -24.6512597384   , 0 , 1.0e-4
+boron_gw_spinpolarized.in , GW@B3LYP boron atom without RI with spin
+Hartree Energy            ,   11.6370412494   , 0 , 1.0e-7
+XC Energy                 ,   -3.1416439477   , 0 , 1.0e-7
+Total Energy              ,  -24.6637379914   , 0 , 1.0e-7
 Number of electrons       ,    3.000000       , 0 , 1.0e-3
 Number of electrons       ,    2.000000       , 1 , 1.0e-3
-gKS HOMO energy           ,   -4.014004       , 0 , 1.0e-3
-gKS HOMO energy           ,   -8.517953       , 1 , 1.0e-3
-gKS LUMO energy           ,   -3.400664       , 0 , 5.0e-3
-gKS LUMO energy           ,   -3.171443       , 1 , 1.0e-3
-Total Spin S**2           ,    0.7528         , 0 , 1.0e-3
-RPA correlation energy    ,   -0.1402371135   , 0 , 1.0e-4
-Lowest neutral excitation ,    0.996562       , 0 , 5.0e-3
-GW HOMO energy            ,   -7.660110       , 0 , 1.0e-3
-GW HOMO energy            ,  -12.474309       , 1 , 1.0e-3
-GW LUMO energy            ,    0.018705       , 0 , 1.0e-3
-GW LUMO energy            ,    0.458939       , 1 , 1.0e-3
+gKS HOMO energy           ,   -5.134781       , 0 , 1.0e-4
+gKS HOMO energy           ,   -9.587062       , 1 , 1.0e-4
+gKS LUMO energy           ,   -2.642436       , 0 , 1.0e-4
+gKS LUMO energy           ,   -2.398945       , 1 , 1.0e-4
+Total Spin S**2           ,    0.7533         , 0 , 1.0e-3
+RPA correlation energy    ,   -0.1222691899   , 0 , 1.0e-7
+Lowest neutral excitation ,    2.942325       , 0 , 1.0e-4
+GW HOMO energy            ,   -7.980595       , 0 , 1.0e-4
+GW HOMO energy            ,  -12.668791       , 1 , 1.0e-4
+GW LUMO energy            ,    0.156439       , 0 , 1.0e-4
+GW LUMO energy            ,    0.376273       , 1 , 1.0e-4
 
 co2.in                    , GW@LDA CO2 without RI with 6-31G
 Kinetic Energy            ,    186.4258076613  , 0 , 1.0e-7
@@ -248,7 +248,7 @@ gKS LUMO energy           ,      1.133775      , 0 , 1.0e-4
 
 h2_mp2.in                 , MP2 energy of H2 molecule aug-cc-pVDZ (spin-unrestricted)
 SCF Total Energy          ,     -1.0224203713  , 0 , 1.0e-7
-Total Spin S**2           ,     -0.0000        , 0 , 1.0e-3
+Total Spin S**2           ,      0.0000        , 0 , 1.0e-3
 MP2 Total Energy          ,     -1.0578154072  , 0 , 1.0e-7
 
 h2_mp2_ri.in              , MP2 energy of H2 molecule with RI and ferromagnetic configuration
