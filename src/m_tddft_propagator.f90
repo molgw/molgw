@@ -193,7 +193,7 @@ subroutine calculate_propagation(nstate,              &
        if( excit_dir(idir) > 1.0E-10_dp ) then
          write(file_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') aimag((trans_dipole_time(iomega,:))/(trans_m_excit_field(iomega,idir))) * omega_factor
        else
-         write(file_dipolar_spectra,"(3(es16.8E3))",advance='no') -1.0_dp, -1.0_dp, -1.0_dp
+         write(file_dipolar_spectra,"(3(3x,f5.2))",advance='no') -1.0_dp, -1.0_dp, -1.0_dp
        end if
        if(idir==3) write(file_dipolar_spectra,*)
      end do
@@ -369,7 +369,7 @@ subroutine tddft_time_loop(nstate,                           &
 
  min_elem_q_mat=1
  max_elem_q_mat=10
- max_elem_q_mat=MIN(nstate,max_elem_q_mat)
+ max_elem_q_mat=MIN(nocc,max_elem_q_mat)
 
  allocate(c_matrix_cmplx(basis%nbf,nocc,nspin))
  allocate(c_matrix_0_cmplx(basis%nbf,nstate,nspin))
@@ -398,8 +398,10 @@ subroutine tddft_time_loop(nstate,                           &
      open(newunit=file_time_data,file=name_time_data)
      open(newunit=file_dipole_time,file=name_dipole_time)
    end if  
-   write(file_time_data,*) " # time_cur     e_total             enuc            ekin               ehart            &
+   write(file_time_data,*) " # time(au)     e_total             enuc            ekin               ehart            &
                                eexx_hyb            exc             eexcit            P*S trace (# of els)" 
+   write(file_dipole_time,*) "# time(au)                      Dipole_x(D)               Dipole_y(D)               Dipole_z(D)"
+   write(file_excit_field,*) "# time(au)                      E_field_x(au)              E_field_y(au)              E_field_z(au)"
  end if
 
 
@@ -460,16 +462,16 @@ subroutine tddft_time_loop(nstate,                           &
 
    call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
 
-   if( is_iomaster ) then
-   ! Here time_min point coresponds to the end of calculation written in the RESTART_TDDFT
-     write(file_dipole_time,*) time_min, dipole(:) * au_debye
-     write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
-        time_min, en%tot, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
-     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
-     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):',en%tot
-     write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment   (D):', dipole(:) * au_debye
-
-   end if
+!   if( is_iomaster ) then
+!   ! Here time_min point coresponds to the end of calculation written in the RESTART_TDDFT
+!     write(file_dipole_time,*) time_min, dipole(:) * au_debye
+!     write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
+!        time_min, en%tot, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
+!     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
+!     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):',en%tot
+!     write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment   (D):', dipole(:) * au_debye
+!
+!   end if
    time_min=time_min+time_step
  end if
 
@@ -1482,7 +1484,6 @@ subroutine calculate_excit_field(time_cur,excit_field)
  end select
  
 end subroutine calculate_excit_field
-
 
 !=======================================
 subroutine fill_unity(unity_matrix_cmplx,M)
