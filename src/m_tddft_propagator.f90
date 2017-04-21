@@ -384,7 +384,7 @@ subroutine tddft_time_loop(nstate,                           &
  if( is_iomaster ) then
    if(ref_) then
      open(newunit=file_time_data,file="time_data.dat")
-     open(newunit=file_excit_field,file="excitation.dat")
+     open(newunit=file_excit_field,file="excitation_time.dat")
      open(newunit=file_dipole_time,file="dipole_time.dat")
      do ispin=1,nspin
        write(name_file_q_matrix_ii,"(a,i1,a)") "q_matrix_ii_spin_", ispin, ".dat" 
@@ -418,6 +418,7 @@ subroutine tddft_time_loop(nstate,                           &
 
 ! call print_rect_2d_matrix_cmplx("c_matrix_orth_cmplx of beginning",c_matrix_orth_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
 ! call print_rect_2d_matrix_cmplx("c_matrix_cmplx of beginning",c_matrix_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
+
  if(ignore_tddft_restart_ .OR. (.NOT. restart_is_correct)) then
    c_matrix_cmplx(1:basis%nbf,1:nocc,1:nspin)=c_matrix(1:basis%nbf,1:nocc,1:nspin)
  end if
@@ -462,16 +463,16 @@ subroutine tddft_time_loop(nstate,                           &
 
    call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
 
-!   if( is_iomaster ) then
-!   ! Here time_min point coresponds to the end of calculation written in the RESTART_TDDFT
-!     write(file_dipole_time,*) time_min, dipole(:) * au_debye
-!     write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
-!        time_min, en%tot, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
-!     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
-!     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):',en%tot
-!     write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment   (D):', dipole(:) * au_debye
-!
-!   end if
+   if( is_iomaster ) then
+   ! Here time_min point coresponds to the end of calculation written in the RESTART_TDDFT
+     write(file_dipole_time,*) time_min, dipole(:) * au_debye
+     write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
+        time_min, en%tot, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
+     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
+     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):',en%tot
+     write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment   (D):', dipole(:) * au_debye
+
+   end if
    time_min=time_min+time_step
  end if
 
@@ -926,10 +927,10 @@ subroutine tddft_time_loop(nstate,                           &
    end if
 
     
-!   call check_identity_cmplx(basis%nbf,basis%nbf,MATMUL(MATMUL(s_matrix(:,:) ,c_matrix_cmplx(:,:,nspin) ) ,TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin)))  ),is_identity_) 
-!   if(.NOT. is_identity_) then
-!     write(stdout,*) "C**H*S*C is not identity at itau= ", itau
-!   end if
+   call check_identity_cmplx(basis%nbf,basis%nbf,MATMUL(MATMUL(s_matrix(:,:) ,c_matrix_cmplx(:,:,nspin) ) ,TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin)))  ),is_identity_) 
+   if(.NOT. is_identity_) then
+     write(stdout,*) "C**H*S*C is not identity at itau= ", itau
+   end if
 
 !   call print_rect_2d_matrix_cmplx("c_matrix_orth_cmplx",c_matrix_orth_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
 !   call print_rect_2d_matrix_cmplx("c_matrix_cmplx",c_matrix_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
@@ -956,9 +957,9 @@ subroutine tddft_time_loop(nstate,                           &
        write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
           time_cur, en%tot, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
        write(stdout,*)
-       write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time  (au):', time_cur
-       write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy     (Ha):',en%tot
-       write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment     (D):', dipole(:) * au_debye
+       write(stdout,'(1x,a31,1x,f19.10)') 'RT-TDDFT Simulation time  (au):', time_cur
+       write(stdout,'(1x,a31,1x,f19.10)') 'RT-TDDFT Total Energy     (Ha):',en%tot
+       write(stdout,'(1x,a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment     (D):', dipole(:) * au_debye
      end if
    end if
 
@@ -983,8 +984,8 @@ subroutine tddft_time_loop(nstate,                           &
      if(itau==3) then
        call stop_clock(timing_tddft_one_iter)
        time_one_iter=timing(timing_tddft_one_iter)
-       write(stdout,"(1x,a30,2x,es14.6)") "Time of one iteration is", time_one_iter
-       write(stdout,"(1x,a30,2x,3(f12.2,a))") "Estimated calculation time is", time_one_iter*ntau, "s = ", time_one_iter*ntau/60, "min = ", time_one_iter*ntau/3600, "hrs"
+       write(stdout,"(1x,a30,2x,es14.6,1x,a)") "Time of one iteration is", time_one_iter,"s"
+       write(stdout,"(1x,a30,2x,3(f12.2,1x,a))") "Estimated calculation time is", time_one_iter*ntau, "s = ", time_one_iter*ntau/60, "min = ", time_one_iter*ntau/3600, "hrs"
        call flush(stdout)
      end if
    end if

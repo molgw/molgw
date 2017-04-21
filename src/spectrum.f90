@@ -221,7 +221,7 @@ subroutine get_spectrum_arguments( damp_factor,name_dipole_time,name_excitation,
 
  damp_factor=            500.0_dp
  name_dipole_time=      'dipole_time.dat'
- name_excitation=       'excitation.dat'
+ name_excitation=       'excitation_time.dat'
  name_dipolar_spectra=  'dipolar_spectra.dat'
  output_damped_=.false.
 
@@ -239,6 +239,18 @@ subroutine get_spectrum_arguments( damp_factor,name_dipole_time,name_excitation,
      read(ch_damp_factor,*)damp_factor
    case('-od','--output-damped')
      output_damped_=.true.
+   case('--help')
+     write(stdout,'(1x,a)') "Calculation of dipolar spectrum after RT-TDDFT simulation"
+     write(stdout,'(1x,a)') "-id, --input-dipole  file        indicate an input dipole time file"
+     write(stdout,'(1x,a)') "                                (if different from dipole_time.dat)"
+     write(stdout,'(1x,a)') "-ie, --input-excitation file    indicate an input excitation time file"
+     write(stdout,'(1x,a)') "                                (if different from excitation_time.dat)"
+     write(stdout,'(1x,a)') "-o , --output file               indicate an ouput spectrum file"
+     write(stdout,'(1x,a)') "                                (if different from dipolar_spectra.dat)"
+     write(stdout,'(1x,a)') "-d , --damping                   damping coefficient in au of time for the Fourier transform of dipolar moment"
+     write(stdout,'(1x,a)') "                               (value by default if 500 au)"
+     write(stdout,'(1x,a)') "-od, --output-damped            write damped dipole time dependence in to the dipole_damped.dat file" 
+     stop
    end select  
  end do
 
@@ -246,11 +258,11 @@ subroutine get_spectrum_arguments( damp_factor,name_dipole_time,name_excitation,
  write(stdout,'(12x,a)') 'This is the part of MOLGW posprocessing'
  write(stdout,'(1x,70("="))')
  write(stdout,'(/,10x,a,/)') ' === Input parameters  ==='
- write(stdout,'(1x,a,2x,es16.8)') 'Dipole damping factor       :',damp_factor
+ write(stdout,'(1x,a,2x,es16.8)')   'Dipole damping factor       :',damp_factor
  write(stdout,'(1x,a,2x,a50)')      'Input dipole time file      :',name_dipole_time
  write(stdout,'(1x,a,2x,a50)')      'Input excitaiton field file :',name_excitation
  write(stdout,'(1x,a,2x,a50)')      'Output dipolar spectra file :',name_dipolar_spectra
- write(stdout,'(1x,a,2x,l1)')     'Output damped dipole file   :',output_damped_
+ write(stdout,'(1x,a,2x,l1)')       'Output damped dipole file   :',output_damped_
  write(stdout,*)
 end subroutine get_spectrum_arguments
 
