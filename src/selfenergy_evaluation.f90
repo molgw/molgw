@@ -189,7 +189,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        ! If reading has failed, then do the calculation
        if( reading_status /= 0 ) then
          if( calc_type%selfenergy_technique /= imaginary_axis ) then
-           call polarizability(basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+           call polarizability(.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
          else
            call polarizability_grid_scalapack(basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
          endif
@@ -293,7 +293,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      call read_spectral_function(wpol,reading_status)
      ! If reading has failed, then do the calculation
      if( reading_status /= 0 ) then
-       call polarizability(basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+       call polarizability(.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
      endif
   
      call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
