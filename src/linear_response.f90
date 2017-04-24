@@ -494,7 +494,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
 
 
 
- write(stdout,'(/,a)') ' Excitation energies (eV)     Oscil. strengths   [Symmetry] '  
+ write(stdout,'(/,5x,a)') 'Excitation energies (eV)     Oscil. strengths   [Symmetry] '  
  trk_sumrule=0.0_dp
  mean_excitation=0.0_dp
  do t_jb_global=1,nexc
@@ -556,7 +556,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
        end select
      endif
 
-     write(stdout,'(1x,i4.4,a3,2(f18.8,2x),5x,a32)') t_jb_global,' : ', &
+     write(stdout,'(1x,a,1x,i4.4,a3,2(f18.8,2x),5x,a32)') 'Exc.',t_jb_global,' : ', &
                   eigenvalue(t_jb_global)*Ha_eV,oscillator_strength,symsymbol
 
      !

@@ -1,0 +1,19 @@
+&molgw
+ scf='QSGW'
+ eta=0.02
+ tolscf=1.0e-8
+ ignore_restart='yes'
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+
+ postscf='bse'
+ frozencore='no'
+ scissor=1.0e-5
+
+ length_unit='bohr'
+ natom=2
+/
+Be 0.0  0.0 -4.8500
+Be 0.0  0.0  4.8500
+

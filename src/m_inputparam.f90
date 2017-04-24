@@ -306,7 +306,7 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%selfenergy_approx = PT2
    calc_type%selfenergy_technique = QS
    alpha_hybrid            = 1.00_dp
- case('GW')
+ case('GW','QSGW')
    calc_type%is_gw                = .TRUE.
    calc_type%selfenergy_approx    = GW
    calc_type%selfenergy_technique = QS
