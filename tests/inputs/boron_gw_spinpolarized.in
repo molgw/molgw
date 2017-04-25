@@ -1,7 +1,8 @@
 &molgw
- scf='b3lyp'
+ scf='hf'
 ! mixing_scheme='simple'
  nscf=100
+ tolscf=1.0e-10
 
  postscf='gw'
  nspin=2
