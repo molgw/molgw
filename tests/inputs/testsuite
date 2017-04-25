@@ -153,22 +153,22 @@ MP2 Total Energy          , -109.3823851303    , 0 , 1.0e-7
 SE+MP2  Total En          , -109.3823851303    , 0 , 1.0e-7
 
 boron_gw_spinpolarized.in , GW@B3LYP boron atom without RI with spin
-Hartree Energy            ,   11.6370412494   , 0 , 1.0e-7
-XC Energy                 ,   -3.1416439477   , 0 , 1.0e-7
-Total Energy              ,  -24.6637379914   , 0 , 1.0e-7
+Hartree Energy            ,   11.6411653686   , 0 , 1.0e-7
+XC Energy                 ,   -3.1462906984   , 0 , 1.0e-7
+Total Energy              ,  -24.6608782982   , 0 , 1.0e-7
 Number of electrons       ,    3.000000       , 0 , 1.0e-3
 Number of electrons       ,    2.000000       , 1 , 1.0e-3
-gKS HOMO energy           ,   -5.134781       , 0 , 1.0e-4
-gKS HOMO energy           ,   -9.587062       , 1 , 1.0e-4
-gKS LUMO energy           ,   -2.642436       , 0 , 1.0e-4
-gKS LUMO energy           ,   -2.398945       , 1 , 1.0e-4
+gKS HOMO energy           ,   -5.066905       , 0 , 1.0e-4
+gKS HOMO energy           ,   -9.539988       , 1 , 1.0e-4
+gKS LUMO energy           ,   -2.556915       , 0 , 1.0e-4
+gKS LUMO energy           ,   -2.287125       , 1 , 1.0e-4
 Total Spin S**2           ,    0.7533         , 0 , 1.0e-3
-RPA correlation energy    ,   -0.1222691899   , 0 , 1.0e-7
-Lowest neutral excitation ,    2.942325       , 0 , 1.0e-4
-GW HOMO energy            ,   -7.980595       , 0 , 1.0e-4
-GW HOMO energy            ,  -12.668791       , 1 , 1.0e-4
-GW LUMO energy            ,    0.156439       , 0 , 1.0e-4
-GW LUMO energy            ,    0.376273       , 1 , 1.0e-4
+RPA correlation energy    ,   -0.0922392317   , 0 , 1.0e-7
+Lowest neutral excitation ,    2.988244       , 0 , 1.0e-4
+GW HOMO energy            ,   -7.818188       , 0 , 1.0e-4
+GW HOMO energy            ,  -12.599521       , 1 , 1.0e-4
+GW LUMO energy            ,    0.705333       , 0 , 1.0e-4
+GW LUMO energy            ,    0.881030       , 1 , 1.0e-4
 
 co2.in                    , GW@LDA CO2 without RI with 6-31G
 Kinetic Energy            ,    186.4258076613  , 0 , 1.0e-7
