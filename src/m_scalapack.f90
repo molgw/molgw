@@ -2279,13 +2279,13 @@ subroutine set_auxil_block_size(block_size_max)
 !=====
 
  if( block_size_max < 1 ) then
-   write(stdout,*) 'Too many processors used for too few auxiliary basis functions'
-   call die('set_auxil_block_size: reduce the number of processors')
+   MBLOCK_AUXIL = 1
+
+ else
+   MBLOCK_AUXIL = 2**( FLOOR( LOG(REAL(block_size_max,dp)) / LOG( 2.0_dp ) ) )
+   MBLOCK_AUXIL = MIN(MBLOCK_AUXIL,block_row)
+
  endif
-
- MBLOCK_AUXIL = 2**( FLOOR( LOG(REAL(block_size_max,dp)) / LOG( 2.0_dp ) ) )
-
- MBLOCK_AUXIL = MIN(MBLOCK_AUXIL,block_row)
 
  write(stdout,'(/1x,a,i4)') 'SCALAPACK block size for auxiliary basis: ',MBLOCK_AUXIL
 

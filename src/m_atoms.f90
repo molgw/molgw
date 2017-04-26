@@ -20,9 +20,11 @@ module m_atoms
  integer,protected              :: nbond
 
  real(dp),allocatable,public    :: zatom(:)
+ real(dp),allocatable,public    :: zbasis(:)
  integer,allocatable,protected  :: basis_element(:)
 
- real(dp),allocatable,protected :: x(:,:)
+ real(dp),allocatable,protected :: xatom(:,:)
+ real(dp),allocatable,protected :: xbasis(:,:)
  real(dp),allocatable,protected :: vel(:,:)
  real(dp),allocatable,public    :: force(:,:)
 
@@ -59,13 +61,14 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read,calculate_forces)
  real(dp) :: bond_length
 !=====
 
- natom  = natom_read
+ natom  = natom_read 
  nghost = nghost_read
  natom_basis = natom + nghost
 
- allocate(zatom(natom_basis))
+ allocate(zatom(natom))
  allocate(basis_element(natom_basis))
- allocate(x(3,natom_basis))
+ allocate(xbasis(3,natom_basis))
+ allocate(xatom(3,natom))
  ! For relaxation or dynamics only 
  if( calculate_forces ) then
    allocate(force(3,natom))
@@ -81,17 +84,18 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read,calculate_forces)
 
  zatom(1:natom)              = zatom_read(1:natom)
  ! Ghost atoms do not have a positive nucleus
- zatom(natom+1:natom+nghost) = 0.0_dp
+ !zatom(natom+1:natom+nghost) = 0.0_dp
  ! But ghost atoms have basis functions centered on them.
  basis_element(:)=NINT(zatom_read(:))
 
- x(:,:) = x_read(:,:)
+ xatom(:,:) = x_read(:,:)
+ xbasis(:,:) = x_read(:,:)
 
  !
  ! Check for atoms too close
  do iatom=1,natom
    do jatom=iatom+1,natom
-     if( NORM2( x(:,iatom)-x(:,jatom) ) < 0.2 ) then
+     if( NORM2( xatom(:,iatom)-xatom(:,jatom) ) < 0.2 ) then
        write(stdout,*) 'Atoms',iatom,jatom
        write(stdout,*) 'are closer than 0.2 bohr'
        call issue_warning('Some atoms are too close')
@@ -105,7 +109,7 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read,calculate_forces)
  do iatom=1,natom
    do jatom=iatom+1,natom
      bond_length =  element_covalent_radius(zatom(iatom)) + element_covalent_radius(zatom(jatom))
-     if( NORM2( x(:,iatom)-x(:,jatom) ) <  1.2_dp * bond_length  ) then
+     if( NORM2( xatom(:,iatom)-xatom(:,jatom) ) <  1.2_dp * bond_length  ) then
        nbond = nbond + 1
      endif
    enddo
@@ -118,9 +122,9 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read,calculate_forces)
  !
  ! Is the molecule linear, planar?
  if( natom > 2 ) then
-   x21(:) = x(:,2) - x(:,1)
+   x21(:) = xatom(:,2) - xatom(:,1)
    do iatom=3,natom
-     x31(:) = x(:,iatom) - x(:,1)
+     x31(:) = xatom(:,iatom) - xatom(:,1)
      call cross_product(x21,x31,xnormal)
      if( NORM2(xnormal(:)) > tol_geom ) then
        xnormal(:) = xnormal(:) / NORM2(xnormal(:))
@@ -130,7 +134,7 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read,calculate_forces)
    enddo
    if( .NOT. linear) then
      do iatom=1,natom
-       if( ABS(DOT_PRODUCT( x(:,iatom) , xnormal(:) )) > tol_geom ) planar=.FALSE.
+       if( ABS(DOT_PRODUCT( xatom(:,iatom) , xnormal(:) )) > tol_geom ) planar=.FALSE.
      enddo
    else
      planar=.FALSE.
@@ -177,10 +181,10 @@ subroutine get_bondcenter(ibond,xbond)
  jbond = 0
  do iatom=1,natom
    do jatom=iatom+1,natom
-     if( NORM2( x(:,iatom)-x(:,jatom) ) < 4.0 ) then
+     if( NORM2( xatom(:,iatom)-xatom(:,jatom) ) < 4.0 ) then
        jbond = jbond + 1
        if(jbond==ibond) then
-         xbond(:) = 0.5_dp * ( x(:,iatom) - x(:,jatom) )
+         xbond(:) = 0.5_dp * ( xatom(:,iatom) - xatom(:,jatom) )
          return
        endif
      endif
@@ -198,7 +202,8 @@ subroutine destroy_atoms()
 
  if(ALLOCATED(zatom))         deallocate(zatom)
  if(ALLOCATED(basis_element)) deallocate(basis_element)
- if(ALLOCATED(x))             deallocate(x)
+ if(ALLOCATED(xatom))         deallocate(xatom)
+ if(ALLOCATED(xbasis))        deallocate(xbasis)
  if(ALLOCATED(force))         deallocate(force)
  if(ALLOCATED(force_nuc_nuc)) deallocate(force_nuc_nuc)
  if(ALLOCATED(force_kin))     deallocate(force_kin)
@@ -224,20 +229,20 @@ subroutine relax_atoms(lbfgs_plan,etotal)
  real(dp) :: xnew(3,natom)
 !=====
 
- xnew(:,:) = x(:,:)
+ xnew(:,:) = xatom(:,:)
 
  info = lbfgs_execute(lbfgs_plan,xnew,etotal,-force)
 
  ! Do not move the atoms by more than 0.20 bohr
  do iatom=1,natom
    do idir=1,3
-     if( ABS( xnew(idir,iatom) - x(idir,iatom) ) > 0.20_dp ) then
-       xnew(idir,iatom) = x(idir,iatom) + SIGN( 0.20_dp , xnew(idir,iatom) - x(idir,iatom) )
+     if( ABS( xnew(idir,iatom) - xatom(idir,iatom) ) > 0.20_dp ) then
+       xnew(idir,iatom) = xatom(idir,iatom) + SIGN( 0.20_dp , xnew(idir,iatom) - xatom(idir,iatom) )
      endif
    enddo
  enddo
 
- x(:,:) = xnew(:,:)
+ xatom(:,:) = xnew(:,:)
 
 end subroutine relax_atoms
 
@@ -255,13 +260,13 @@ subroutine output_positions()
  do iatom=1,natom
    write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',iatom, &
                                                            element_name(REAL(basis_element(iatom),dp)),': ',  &
-                                                           x(:,iatom),x(:,iatom)*bohr_A
+                                                           xatom(:,iatom),xatom(:,iatom)*bohr_A
  enddo
  if( nghost>0) write(stdout,'(a)') ' == ghost list'
  do ighost=1,nghost
    write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'ghost ',iatom, &
                                            element_name(REAL(basis_element(natom+ighost),dp)),': ',  &
-                                           x(:,natom+ighost),x(:,natom+ighost)*bohr_A
+                                           xbasis(:,natom+ighost),xbasis(:,natom+ighost)*bohr_A
  enddo
  write(stdout,'(1x,a,/)') '================================'
 
@@ -280,7 +285,7 @@ subroutine nucleus_nucleus_energy(energy)
  energy = 0.0_dp
  do iatom=1,natom
    do jatom=iatom+1,natom
-     energy = energy + zatom(iatom) * zatom(jatom) / SQRT( SUM( (x(:,iatom) - x(:,jatom))**2) )
+     energy = energy + zatom(iatom) * zatom(jatom) / SQRT( SUM( (xatom(:,iatom) - xatom(:,jatom))**2) )
    enddo
  enddo
 
@@ -299,8 +304,8 @@ subroutine nucleus_nucleus_force()
    do jatom=1,natom
      if( iatom == jatom ) cycle
      force_nuc_nuc(:,iatom) = force_nuc_nuc(:,iatom) &
-                               + zatom(iatom) * zatom(jatom) / ( SUM( (x(:,iatom) - x(:,jatom))**2) )**1.50_dp &
-                                  * ( x(:,iatom) - x(:,jatom) )
+                               + zatom(iatom) * zatom(jatom) / ( SUM( (xatom(:,iatom) - xatom(:,jatom))**2) )**1.50_dp &
+                                  * ( xatom(:,iatom) - xatom(:,jatom) )
    enddo
  enddo
 
@@ -318,14 +323,14 @@ subroutine find_inversion()
 
  xcenter(:) = 0.0_dp
  do iatom=1,natom
-   xcenter(:) = xcenter(:) + x(:,iatom) / REAL(natom,dp)
+   xcenter(:) = xcenter(:) + xatom(:,iatom) / REAL(natom,dp)
  enddo
 
  do iatom=1,natom
-   xtmp(:) = 2.0_dp * xcenter(:) - x(:,iatom)
+   xtmp(:) = 2.0_dp * xcenter(:) - xatom(:,iatom)
    found = .FALSE.
    do jatom=1,natom
-     if( NORM2( xtmp(:) - x(:,jatom) ) < tol_geom ) then
+     if( NORM2( xtmp(:) - xatom(:,jatom) ) < tol_geom ) then
        if( ABS(zatom(iatom)-zatom(jatom)) < tol_geom ) found = .TRUE.
        exit
      endif

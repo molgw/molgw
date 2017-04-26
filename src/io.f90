@@ -420,8 +420,8 @@ subroutine plot_wfn(nstate,basis,c_matrix)
  write(stdout,'(a,3(2x,f8.3))') ' direction:',u(:)
  write(stdout,'(a,3(2x,f8.3))') ' origin:   ',a(:)
 
- xxmin = MINVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) - length
- xxmax = MAXVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) + length
+ xxmin = MINVAL( u(1)*xbasis(1,:) + u(2)*xbasis(2,:) + u(3)*xbasis(3,:) ) - length
+ xxmax = MAXVAL( u(1)*xbasis(1,:) + u(2)*xbasis(2,:) + u(3)*xbasis(3,:) ) + length
 
  phase(:,:)=1.0_dp
 
@@ -506,8 +506,8 @@ subroutine plot_rho(nstate,basis,occupation,c_matrix)
  write(stdout,'(a,3(2x,f8.3))') ' direction:',u(:)
  write(stdout,'(a,3(2x,f8.3))') ' origin:   ',a(:)
 
- xxmin = MINVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) - length
- xxmax = MAXVAL( u(1)*x(1,:) + u(2)*x(2,:) + u(3)*x(3,:) ) + length
+ xxmin = MINVAL( u(1)*xbasis(1,:) + u(2)*xbasis(2,:) + u(3)*xbasis(3,:) ) - length
+ xxmax = MAXVAL( u(1)*xbasis(1,:) + u(2)*xbasis(2,:) + u(3)*xbasis(3,:) ) + length
 
 
  do ir=1,nr
@@ -668,12 +668,12 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
  allocate(phi(istate1:istate2,nspin))
  write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
 
- xmin = MINVAL( x(1,:) ) - length
- xmax = MAXVAL( x(1,:) ) + length
- ymin = MINVAL( x(2,:) ) - length
- ymax = MAXVAL( x(2,:) ) + length
- zmin = MINVAL( x(3,:) ) - length
- zmax = MAXVAL( x(3,:) ) + length
+ xmin = MINVAL( xbasis(1,:) ) - length
+ xmax = MAXVAL( xbasis(1,:) ) + length
+ ymin = MINVAL( xbasis(2,:) ) - length
+ ymax = MAXVAL( xbasis(2,:) ) + length
+ zmin = MINVAL( xbasis(3,:) ) - length
+ zmax = MAXVAL( xbasis(3,:) ) + length
  dx = (xmax-xmin)/REAL(nx,dp)
  dy = (ymax-ymin)/REAL(ny,dp)
  dz = (zmax-zmin)/REAL(nz,dp)
@@ -697,7 +697,7 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
      write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') ny,0.,dy,0.
      write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') nz,0.,0.,dz
      do iatom=1,natom
-       write(ocubefile(istate,ispin),'(i6,4(2x,f12.6))') basis_element(iatom),0.0,x(:,iatom)
+       write(ocubefile(istate,ispin),'(i6,4(2x,f12.6))') basis_element(iatom),0.0,xatom(:,iatom)
      enddo
    enddo
  enddo
@@ -715,7 +715,7 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
      write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,dy,0.
      write(ocuberho(ispin),'(i6,3(f12.6,2x))') nz,0.,0.,dz
      do iatom=1,natom
-       write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,x(:,iatom)
+       write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
      enddo
    enddo
  endif
@@ -840,12 +840,12 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
 
 
 
- xxmin = MINVAL( x(1,:) ) - length
- xxmax = MAXVAL( x(1,:) ) + length
- ymin = MINVAL( x(2,:) ) - length
- ymax = MAXVAL( x(2,:) ) + length
- zmin = MINVAL( x(3,:) ) - length
- zmax = MAXVAL( x(3,:) ) + length
+ xxmin = MINVAL( xatom(1,:) ) - length
+ xxmax = MAXVAL( xatom(1,:) ) + length
+ ymin = MINVAL( xatom(2,:) ) - length
+ ymax = MAXVAL( xatom(2,:) ) + length
+ zmin = MINVAL( xatom(3,:) ) - length
+ zmax = MAXVAL( xatom(3,:) ) + length
 
 
 
@@ -862,7 +862,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
      write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,(ymax-ymin)/REAL(ny,dp),0.
      write(ocuberho(ispin),'(i6,3(f12.6,2x))') nz,0.,0.,(zmax-zmin)/REAL(nz,dp)
      do iatom=1,natom
-       write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,x(:,iatom)
+       write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
      enddo
    enddo
 
@@ -1095,9 +1095,9 @@ function wfn_reflection(nstate,basis,c_matrix,istate,ispin)
  real(dp) :: proj
 !=====
 
- xtmp1(1) = x(1,1) +  2.0_dp
- xtmp1(2) = x(2,1) +  1.0_dp
- xtmp1(3) = x(3,1) +  3.0_dp
+ xtmp1(1) = xatom(1,1) +  2.0_dp
+ xtmp1(2) = xatom(2,1) +  1.0_dp
+ xtmp1(3) = xatom(3,1) +  3.0_dp
  call evaluate_wfn_r(nspin,nstate,basis,c_matrix,istate,istate,ispin,xtmp1,phi_tmp1)
 
  proj = DOT_PRODUCT( xtmp1 , xnormal )

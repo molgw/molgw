@@ -37,6 +37,7 @@
     tolscf,       &
     min_overlap,       &
     npulay_hist,       &
+    nstep_gw,       &
     tda,       &
     triplet,       &
     nexcitation,       &
@@ -147,6 +148,7 @@
  tolscf=1e-07_dp 
  min_overlap=1e-05_dp 
  npulay_hist=6
+ nstep_gw=1
  tda='no'
  triplet='no'
  nexcitation=0

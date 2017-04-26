@@ -29,7 +29,7 @@ subroutine setup_atomic_density(rr,rhor)
    allocate(alpha(ngau),coeff(ngau))
    call element_atomicdensity(zatom(iatom),basis_element(iatom),coeff,alpha)
 
-   dr=NORM2( rr(:) - x(:,iatom) )
+   dr=NORM2( rr(:) - xatom(:,iatom) )
 
    do igau=1,ngau
      rhor     = rhor     + SQRT(alpha(igau)/pi)**3 * EXP( -alpha(igau)*dr**2) * coeff(igau)

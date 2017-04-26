@@ -88,6 +88,7 @@ module m_inputparam
  integer,protected                :: nexcitation
  integer,protected                :: nspin
  integer,protected                :: nstep
+ integer,protected                :: nstep_gw
  real(dp),protected               :: tolforce
  real(dp),protected               :: spin_fact
  integer,protected                :: nscf
@@ -328,7 +329,7 @@ subroutine init_calculation_type(calc_type,input_key)
    calc_type%selfenergy_approx = PT2
    calc_type%selfenergy_technique = QS
    alpha_hybrid            = 1.00_dp
- case('GW')
+ case('GW','QSGW')
    calc_type%is_gw                = .TRUE.
    calc_type%selfenergy_approx    = GW
    calc_type%selfenergy_technique = QS
@@ -855,8 +856,9 @@ subroutine read_inputfile_namelist()
    call die('units for lengths in input file not understood')
  end select
 
-
+ !
  ! A few consistency checks
+ !
  if(alpha_mixing<0.0 .OR. alpha_mixing > 1.0 ) call die('alpha_mixing should be inside [0,1]')
  if(ncoreg<0) call die('negative ncoreg is meaningless')
  if(ncorew<0) call die('negative ncorew is meaningless')
@@ -1047,9 +1049,14 @@ subroutine read_inputfile_namelist()
  endif
  call init_calculation_type(calc_type,input_key)
 
+ !
  ! Some additional checks
+ !
  if( nexcitation /=0 .AND. calc_type%is_gw ) then
    call die('Davidson diago is not compatible with GW. Set nexcitation to 0')
+ endif
+ if( nstep_gw > 1 .AND. calc_type%selfenergy_technique /= EVSC ) then
+   call die('nstep_gw > 1 is only valid when performing ev-GW. Change either postscf or nstep_gw')
  endif
 
  spin_fact = REAL(-nspin+3,dp)

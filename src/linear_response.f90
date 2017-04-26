@@ -10,7 +10,7 @@
 
 
 !=========================================================================
-subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
+subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
  use m_definitions
  use m_timing
  use m_warning
@@ -25,6 +25,7 @@ subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlatio
  use m_eri_ao_mo
  implicit none
 
+ logical,intent(in)                    :: is_gw
  type(basis_set),intent(in)            :: basis
  integer,intent(in)                    :: nstate
  real(dp),intent(in)                   :: occupation(nstate,nspin)
@@ -33,6 +34,7 @@ subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlatio
  type(spectral_function),intent(inout) :: wpol_out
 !=====
  type(spectral_function)   :: wpol_static
+ logical                   :: is_bse
  integer                   :: nmat,nexc
  real(dp)                  :: energy_gm
  real(dp)                  :: alpha_local
@@ -44,7 +46,6 @@ subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlatio
  real(dp)                  :: energy_qp(nstate,nspin)
  logical                   :: is_tddft
  logical                   :: is_ij
- logical                   :: is_rpa
  logical                   :: has_manual_tdhf
  integer                   :: reading_status
  integer                   :: tdhffile
@@ -67,18 +68,10 @@ subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlatio
  ! Set up all the switches to be able to treat
  ! GW, BSE, TDHF, TDDFT (semilocal or hybrid)
 
- !
- ! Set up flag is_rpa
- inquire(file='manual_rpa',exist=is_rpa)
- if(is_rpa) then
-   msg='RPA calculation is enforced'
-   call issue_warning(msg)
- endif
- is_rpa   = calc_type%is_gw .OR. is_rpa
-
  ! 
- ! Set up flag is_tddft
- is_tddft = calc_type%is_td .AND. calc_type%is_dft .AND. .NOT. is_rpa
+ ! Set up flag is_tddft and is_bse
+ is_tddft = calc_type%is_td .AND. calc_type%is_dft .AND. .NOT. is_gw
+ is_bse   = calc_type%is_bse .AND. .NOT. is_gw
 
  ! 
  ! Set up exchange content alpha_local
@@ -91,7 +84,7 @@ subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlatio
    write(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alpha ',alpha_local
    call issue_warning(msg)
  else
-   if(is_rpa) then
+   if(is_gw) then
      alpha_local = 0.0_dp
    else if(is_tddft) then
      alpha_local = alpha_hybrid
@@ -106,7 +99,7 @@ subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlatio
  !
  ! Prepare the QP energies
  !
- if( calc_type%is_bse ) then
+ if( is_bse ) then
    ! Get energy_qp 
    call get_energy_qp(nstate,energy,occupation,energy_qp)
  else
@@ -118,7 +111,7 @@ subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlatio
  ! BSE needs the static screening from a previous calculation
  ! It is stored in object wpol_static
  !
- if( calc_type%is_bse ) then
+ if( is_bse ) then
    call init_spectral_function(nstate,occupation,1,wpol_static)
    call read_spectral_function(wpol_static,reading_status)
 
@@ -155,7 +148,7 @@ subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlatio
  !
 
  ! Calculate the diagonal separately: it is needed for the single pole approximation
- if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) & 
+ if( nvirtual_SPA < nvirtual_W .AND. is_gw ) & 
      call build_a_diag_common(nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,a_diag)
 
  apb_matrix(:,:) = 0.0_dp
@@ -188,7 +181,7 @@ subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlatio
      call build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
    endif
 
-   if(calc_type%is_bse) then
+   if( is_bse ) then
      call destroy_spectral_function(wpol_static)
    endif
 
@@ -207,7 +200,7 @@ subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlatio
 
    !
    ! Step 3
-   if(calc_type%is_bse .AND. .NOT. is_rpa) then
+   if( is_bse ) then
      call build_amb_apb_bse(basis%nbf,nstate,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
      call destroy_spectral_function(wpol_static)
    endif
@@ -230,7 +223,7 @@ subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlatio
 
  call stop_clock(timing_build_h2p)
 
- if( is_rpa .AND. .NOT. is_tda ) call clean_deallocate('A-B',amb_matrix)
+ if( is_gw .AND. .NOT. is_tda ) call clean_deallocate('A-B',amb_matrix)
  
 
  !
@@ -245,14 +238,14 @@ subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlatio
  call init_desc('S',nmat,nexc,desc_x,m_x,n_x)
 
  call clean_allocate('X+Y',xpy_matrix,m_x,n_x)
- if( .NOT. is_rpa .OR. is_tda ) &
+ if( .NOT. is_gw .OR. is_tda ) &
    call clean_allocate('X-Y',xmy_matrix,m_x,n_x)
 
  !
  ! Diago using the 4 block structure and the symmetry of each block
  ! With or Without SCALAPACK
  !
- if( .NOT. is_rpa .OR. is_tda ) then
+ if( .NOT. is_gw .OR. is_tda ) then
    if( nexcitation == 0 ) then
      ! The following call works with AND without SCALAPACK
      call diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,eigenvalue,&
@@ -283,7 +276,7 @@ subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlatio
  !
  ! Second part of the RPA correlation energy: sum over positive eigenvalues
  rpa_correlation = rpa_correlation + 0.50_dp * SUM( ABS(eigenvalue(:)) )
- if(is_rpa) then
+ if( is_gw ) then
    write(stdout,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
    write(stdout,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
    write(stdout,'(/,a,f16.10)') ' RPA correlation energy (Ha): ',rpa_correlation
@@ -297,7 +290,7 @@ subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlatio
  ! Calculate the optical sprectrum
  ! and the dynamic dipole tensor
  !
- if( calc_type%is_td .OR. calc_type%is_bse ) then
+ if( calc_type%is_td .OR. is_bse ) then
    call optical_spectrum(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,xpy_matrix,xmy_matrix,eigenvalue)
 !   call stopping_power(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,xpy_matrix,eigenvalue)
  endif
@@ -311,16 +304,16 @@ subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlatio
  ! Calculate Wp= v * chi * v    if necessary
  ! and then write it down on file
  !
- if( print_w_ .OR. calc_type%is_gw ) then
+ if( print_w_ .OR. is_gw ) then
    if( has_auxil_basis) then
      call chi_to_sqrtvchisqrtv_auxil(basis%nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol_out,energy_gm)
      ! This following coding of the Galitskii-Migdal correlation energy is only working with
      ! an auxiliary basis
-     if(is_rpa) write(stdout,'(a,f16.10,/)') ' Correlation energy in the Galitskii-Migdal formula (Ha): ',energy_gm
+     if( is_gw ) write(stdout,'(a,f16.10,/)') ' Correlation energy in the Galitskii-Migdal formula (Ha): ',energy_gm
      
      ! Add the single pole approximation for the poles that have been neglected
      ! in the diagonalization
-     if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) & 
+     if( nvirtual_SPA < nvirtual_W .AND. is_gw ) & 
         call chi_to_sqrtvchisqrtv_auxil_spa(basis%nbf,a_diag,wpol_out)
 
    else
@@ -333,7 +326,7 @@ subroutine polarizability(basis,nstate,occupation,energy,c_matrix,rpa_correlatio
 
  endif
 
- if( .NOT. calc_type%is_gw ) call destroy_spectral_function(wpol_out)
+ if( .NOT. is_gw ) call destroy_spectral_function(wpol_out)
 
  write(stdout,*) 'Deallocate eigenvector array'
  call clean_deallocate('X+Y',xpy_matrix)
@@ -501,7 +494,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
 
 
 
- write(stdout,'(/,a)') ' Excitation energies (eV)     Oscil. strengths   [Symmetry] '  
+ write(stdout,'(/,5x,a)') 'Excitation energies (eV)     Oscil. strengths   [Symmetry] '  
  trk_sumrule=0.0_dp
  mean_excitation=0.0_dp
  do t_jb_global=1,nexc
@@ -563,7 +556,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
        end select
      endif
 
-     write(stdout,'(1x,i4.4,a3,2(f18.8,2x),5x,a32)') t_jb_global,' : ', &
+     write(stdout,'(1x,a,1x,i4.4,a3,2(f18.8,2x),5x,a32)') 'Exc.',t_jb_global,' : ', &
                   eigenvalue(t_jb_global)*Ha_eV,oscillator_strength,symsymbol
 
      !

@@ -36,6 +36,7 @@
  write(stdout,'(1x,a24,2x,es16.8)') 'tolscf',tolscf 
  write(stdout,'(1x,a24,2x,es16.8)') 'min_overlap',min_overlap 
  write(stdout,'(1x,a24,2x,i8)') 'npulay_hist',npulay_hist 
+ write(stdout,'(1x,a24,2x,i8)') 'nstep_gw',nstep_gw 
  write(stdout,'(1x,a24,6x,a)') 'tda',tda 
  write(stdout,'(1x,a24,6x,a)') 'triplet',triplet 
  write(stdout,'(1x,a24,2x,i8)') 'nexcitation',nexcitation 

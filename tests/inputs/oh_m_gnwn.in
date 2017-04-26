@@ -1,0 +1,17 @@
+&molgw
+ scf='bhandhlyp'
+ tolscf=1.0e-10
+ nscf=50
+
+ basis='aug-cc-pVDZ'
+ auxil_basis='aug-cc-pVDZ-RI'
+
+ postscf='GnWn'
+ frozencore='yes'
+ nstep_gw=3
+
+ charge=-1
+ natom=2
+/
+O    0.0000    0.0000    0.0000  
+H    0.4500   -0.1525   -0.8454 

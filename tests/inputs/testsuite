@@ -116,20 +116,20 @@ Total Energy              , -115.7433993446    , 0 , 1.0e-7
 
 he_tdpbe0.in              , TDDFT calculation of He atom with PBE0 without RI
 SCF Total Energy          ,   -2.8945155987    , 0 , 1.0e-7
-0001                      ,   32.27823228      , 0 , 1.0e-4
-0001                      ,    0.00000000      , 1 , 1.0e-4
-0002                      ,   50.92943400      , 0 , 1.0e-4
-0002                      ,    0.76144839      , 1 , 1.0e-4
+Exc. 0001                 ,   32.27823228      , 0 , 1.0e-4
+Exc. 0001                 ,    0.00000000      , 1 , 1.0e-4
+Exc. 0002                 ,   50.92943400      , 0 , 1.0e-4
+Exc. 0002                 ,    0.76144839      , 1 , 1.0e-4
 Sum over oscillator strengths ,  2.285259      , 0 , 1.0e-4
 Mean excitation energy    ,   50.958526        , 0 , 1.0e-4
 polarizability trace      ,    0.652132        , 0 , 1.0e-4
 
 he_tdpbe0_ri.in           , TDDFT calculation of He atom with PBE0 with RI
 SCF Total Energy          ,   -2.8945750464    , 0 , 1.0e-7
-0001                      ,   32.27007245      , 0 , 1.0e-4
-0001                      ,    0.00000000      , 1 , 1.0e-4
-0002                      ,   50.93742103      , 0 , 1.0e-4
-0002                      ,    0.76155796      , 1 , 1.0e-4
+Exc. 0001                 ,   32.27007245      , 0 , 1.0e-4
+Exc. 0001                 ,    0.00000000      , 1 , 1.0e-4
+Exc. 0002                 ,   50.93742103      , 0 , 1.0e-4
+Exc. 0002                 ,    0.76155796      , 1 , 1.0e-4
 Sum over oscillator strengths ,  2.285574      , 0 , 1.0e-4
 Mean excitation energy    ,   50.966087        , 0 , 1.0e-4
 polarizability trace      ,    0.652021        , 0 , 1.0e-4
@@ -152,23 +152,20 @@ MP2 Energy                ,   -0.4080027465    , 0 , 1.0e-7
 MP2 Total Energy          , -109.3823851303    , 0 , 1.0e-7
 SE+MP2  Total En          , -109.3823851303    , 0 , 1.0e-7
 
-boron_gw_spinpolarized.in , GW@BLYP boron atom without RI with spin (unstable test: loosened thresholds)
-Hartree Energy            ,   11.6347873536   , 0 , 1.0e-4
-XC Energy                 ,   -3.8789558610   , 0 , 1.0e-4
-Total Energy              ,  -24.6512597384   , 0 , 1.0e-4
-Number of electrons       ,    3.000000       , 0 , 1.0e-3
-Number of electrons       ,    2.000000       , 1 , 1.0e-3
-gKS HOMO energy           ,   -4.014004       , 0 , 1.0e-3
-gKS HOMO energy           ,   -8.517953       , 1 , 1.0e-3
-gKS LUMO energy           ,   -3.400664       , 0 , 5.0e-3
-gKS LUMO energy           ,   -3.171443       , 1 , 1.0e-3
-Total Spin S**2           ,    0.7528         , 0 , 1.0e-3
-RPA correlation energy    ,   -0.1402371135   , 0 , 1.0e-4
-Lowest neutral excitation ,    0.996562       , 0 , 5.0e-3
-GW HOMO energy            ,   -7.660110       , 0 , 1.0e-3
-GW HOMO energy            ,  -12.474309       , 1 , 1.0e-3
-GW LUMO energy            ,    0.018705       , 0 , 1.0e-3
-GW LUMO energy            ,    0.458939       , 1 , 1.0e-3
+boron_gw_spinpolarized.in , GW@HF boron atom without RI with spin
+Hartree Energy            ,   11.6084909105   , 0 , 1.0e-7
+Total Energy              ,  -24.5299616244   , 0 , 1.0e-7
+gKS HOMO energy           ,   -8.582101       , 0 , 1.0e-4
+gKS HOMO energy           ,  -12.136214       , 1 , 1.0e-4
+gKS LUMO energy           ,    1.465785       , 0 , 1.0e-4
+gKS LUMO energy           ,    1.834198       , 1 , 1.0e-4
+Total Spin S**2           ,    0.7575         , 0 , 1.0e-3
+RPA correlation energy    ,   -0.0608555452   , 0 , 1.0e-7
+Lowest neutral excitation ,   10.503027       , 0 , 1.0e-4
+GW HOMO energy            ,   -8.289499       , 0 , 1.0e-4
+GW HOMO energy            ,  -12.668274       , 1 , 1.0e-4
+GW LUMO energy            ,    0.872077       , 0 , 1.0e-4
+GW LUMO energy            ,    1.238943       , 1 , 1.0e-4
 
 co2.in                    , GW@LDA CO2 without RI with 6-31G
 Kinetic Energy            ,    186.4258076613  , 0 , 1.0e-7
@@ -248,7 +245,7 @@ gKS LUMO energy           ,      1.133775      , 0 , 1.0e-4
 
 h2_mp2.in                 , MP2 energy of H2 molecule aug-cc-pVDZ (spin-unrestricted)
 SCF Total Energy          ,     -1.0224203713  , 0 , 1.0e-7
-Total Spin S**2           ,     -0.0000        , 0 , 1.0e-3
+Total Spin S**2           ,      0.0000        , 0 , 1.0e-3
 MP2 Total Energy          ,     -1.0578154072  , 0 , 1.0e-7
 
 h2_mp2_ri.in              , MP2 energy of H2 molecule with RI and ferromagnetic configuration
@@ -271,29 +268,29 @@ sih4_hf.in                , TDHF SiH4 aug-cc-pVDZ
 SCF Total Energy          ,   -291.2427972343   , 0 , 1.0e-7
 Singles correction        ,     -0.0000000000   , 0 , 1.0e-7
 Est. HF Energy            ,   -291.2427972343   , 0 , 1.0e-7
-0001 :                    ,      9.81657258     , 0 , 1.0e-4
-0001 :                    ,      0.21703439     , 1 , 1.0e-4
-0010 :                    ,     11.17712689     , 0 , 1.0e-4
-0010 :                    ,      0.39234144     , 1 , 1.0e-4
+Exc. 0001                 ,      9.81657258     , 0 , 1.0e-4
+Exc. 0001                 ,      0.21703439     , 1 , 1.0e-4
+Exc. 0010                 ,     11.17712689     , 0 , 1.0e-4
+Exc. 0010                 ,      0.39234144     , 1 , 1.0e-4
 Sum over oscillator strengths ,  7.866846       , 0 , 1.0e-4
 polarizability trace      ,     30.035246       , 0 , 1.0e-4
 Mean excitation energy    ,     15.838736       , 0 , 1.0e-4
 
 sih4_hf_tda.in            , TDHF SiH4 aug-cc-pVDZ with TDA restarting from previous run, Restart
-0001 :                    ,      9.82654263     , 0 , 1.0e-4
-0001 :                    ,      0.22685574     , 1 , 1.0e-4
-0010 :                    ,     11.2463169      , 0 , 1.0e-4
-0010 :                    ,      0.40996808     , 1 , 1.0e-4
+Exc. 0001                 ,      9.82654263     , 0 , 1.0e-4
+Exc. 0001                 ,      0.22685574     , 1 , 1.0e-4
+Exc. 0010                 ,     11.2463169      , 0 , 1.0e-4
+Exc. 0010                 ,      0.40996808     , 1 , 1.0e-4
 
 ch4_bse_scissor.in        , BSE CH4 aug-cc-pVDZ without GW (scissor)
 XC Energy                 ,     -3.5802787452   , 0 , 1.0e-7
 gKS HOMO energy           ,    -12.451955       , 0 , 1.0e-4
 gKS LUMO energy           ,      0.291176       , 0 , 1.0e-4
 Scissor operator          ,      1.360569       , 0 , 1.0e-4
-0001 :                    ,      9.05385518     , 0 , 1.0e-4
-0001 :                    ,      0.13289440     , 1 , 1.0e-4
-0007 :                    ,     10.69387268     , 0 , 1.0e-4
-0007 :                    ,      0.00000001     , 1 , 1.0e-4
+Exc. 0001                 ,      9.05385518     , 0 , 1.0e-4
+Exc. 0001                 ,      0.13289440     , 1 , 1.0e-4
+Exc. 0007                 ,     10.69387268     , 0 , 1.0e-4
+Exc. 0007                 ,      0.00000001     , 1 , 1.0e-4
 Sum over oscillator strengths ,  4.642395       , 0 , 1.0e-4
 polarizability trace      ,     17.627303       , 0 , 1.0e-4
 Mean excitation energy    ,     14.812805       , 0 , 1.0e-4
@@ -313,24 +310,50 @@ Lowest neutral excitation ,      3.388914       , 0 , 1.0e-4
 Sum over oscillator strengths , 11.957363       , 0 , 1.0e-4
 polarizability trace      ,     13.358524       , 0 , 1.0e-4
 
+oh_m_gnwn.in              , GnWn (eigenvalue self-consistent) on OH- 1st iteration
+SCF Total Energy          ,    -75.7671834802   , 0 , 1.0e-7
+G0W0 HOMO energy          ,     -1.100134       , 0 , 1.0e-4
+G0W0 LUMO energy          ,      5.328126       , 0 , 1.0e-4
+G1W1 HOMO energy          ,     -1.208873       , 0 , 1.0e-4
+G1W1 LUMO energy          ,      5.337010       , 0 , 1.0e-4
+G2W2 HOMO energy          ,     -1.207707       , 0 , 1.0e-4
+G2W2 LUMO energy          ,      5.336834       , 0 , 1.0e-4
+
+oh_0_gnw0.in              , GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 1st iteration
+Total Spin S**2           ,      0.7532         , 0 , 1.0e-3
+XC Energy                 ,     -4.5883907272   , 0 , 1.0e-7
+SCF Total Energy          ,    -75.7190424535   , 0 , 1.0e-7
+gKS HOMO energy           ,    -11.941970       , 0 , 1.0e-4
+gKS HOMO energy           ,    -11.070991       , 1 , 1.0e-4
+gKS LUMO energy           ,      0.060279       , 0 , 1.0e-4
+gKS LUMO energy           ,     -2.560124       , 1 , 1.0e-4
+G0W0 HOMO energy          ,    -13.404668       , 0 , 1.0e-4
+G0W0 HOMO energy          ,    -12.467650       , 1 , 1.0e-4
+G0W0 LUMO energy          ,      0.964613       , 0 , 1.0e-4
+G0W0 LUMO energy          ,     -0.293379       , 1 , 1.0e-4
+G1W0 HOMO energy          ,    -13.340412       , 0 , 1.0e-4
+G1W0 HOMO energy          ,    -12.400933       , 1 , 1.0e-4
+G1W0 LUMO energy          ,      0.964805       , 0 , 1.0e-4
+G1W0 LUMO energy          ,     -0.331161       , 1 , 1.0e-4
+
 oh_m_1.in                 , GnWn (eigenvalue self-consistent) on OH- 1st iteration
 SCF Total Energy          ,    -75.7671834802   , 0 , 1.0e-7
 RPA correlation energy    ,     -0.2924060323   , 0 , 1.0e-7
 Galitskii-Migdal formula  ,     -0.5031685208   , 0 , 1.0e-7
-GW HOMO energy            ,     -1.100134       , 0 , 1.0e-4
-GW LUMO energy            ,      5.328126       , 0 , 1.0e-4
+G0W0 HOMO energy          ,     -1.100134       , 0 , 1.0e-4
+G0W0 LUMO energy          ,      5.328126       , 0 , 1.0e-4
 
 oh_m_2.in                 , GnWn (eigenvalue self-consistent) on OH- 2nd iteration , Restart
 Galitskii-Migdal formula  ,     -0.4816111091   , 0 , 1.0e-7
 RPA correlation energy    ,     -0.2780353842   , 0 , 1.0e-7
-GW HOMO energy            ,     -1.208873       , 0 , 1.0e-4
-GW LUMO energy            ,      5.337010       , 0 , 1.0e-4
+G0W0 HOMO energy          ,     -1.208873       , 0 , 1.0e-4
+G0W0 LUMO energy          ,      5.337010       , 0 , 1.0e-4
 
 oh_m_3.in                 , GnWn (eigenvalue self-consistent) on OH- 3rd iteration , Restart
 Galitskii-Migdal formula  ,     -0.4785659835   , 0 , 1.0e-7
 RPA correlation energy    ,     -0.2760358773   , 0 , 1.0e-7
-GW HOMO energy            ,     -1.207707       , 0 , 1.0e-4
-GW LUMO energy            ,      5.336834       , 0 , 1.0e-4
+G0W0 HOMO energy          ,     -1.207707       , 0 , 1.0e-4
+G0W0 LUMO energy          ,      5.336834       , 0 , 1.0e-4
 
 oh_0_1.in                 , GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 1st iteration
 Total Spin S**2           ,      0.7532         , 0 , 1.0e-3
@@ -341,25 +364,25 @@ gKS HOMO energy           ,    -11.070991       , 1 , 1.0e-4
 gKS LUMO energy           ,      0.060279       , 0 , 1.0e-4
 gKS LUMO energy           ,     -2.560124       , 1 , 1.0e-4
 RPA Total energy          ,    -75.6295502398   , 0 , 1.0e-7
-GW HOMO energy            ,    -13.404668       , 0 , 1.0e-4
-GW HOMO energy            ,    -12.467650       , 1 , 1.0e-4
-GW LUMO energy            ,      0.964613       , 0 , 1.0e-4
-GW LUMO energy            ,     -0.293379       , 1 , 1.0e-4
+G0W0 HOMO energy          ,    -13.404668       , 0 , 1.0e-4
+G0W0 HOMO energy          ,    -12.467650       , 1 , 1.0e-4
+G0W0 LUMO energy          ,      0.964613       , 0 , 1.0e-4
+G0W0 LUMO energy          ,     -0.293379       , 1 , 1.0e-4
 
 oh_0_2.in                 , GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 2nd iteration , Restart
-GW HOMO energy            ,    -13.340412       , 0 , 1.0e-4
-GW HOMO energy            ,    -12.400933       , 1 , 1.0e-4
-GW LUMO energy            ,      0.964805       , 0 , 1.0e-4
-GW LUMO energy            ,     -0.331161       , 1 , 1.0e-4
+G0W0 HOMO energy          ,    -13.340412       , 0 , 1.0e-4
+G0W0 HOMO energy          ,    -12.400933       , 1 , 1.0e-4
+G0W0 LUMO energy          ,      0.964805       , 0 , 1.0e-4
+G0W0 LUMO energy          ,     -0.331161       , 1 , 1.0e-4
 
 ethylene_davidson.in      , C2H4: BSE@HF for ethyelene with iterative Davidson diago
 SCF Total Energy          , -78.0413852386      , 0 , 1.0e-7
-0001 :                    ,      9.69283827     , 0 , 1.0e-4
-0001 :                    ,      0.49473918     , 1 , 1.0e-4
-0002 :                    ,     10.05948188     , 0 , 1.0e-4
-0002 :                    ,      0.03083017     , 1 , 1.0e-4
-0005 :                    ,     11.25700794     , 0 , 1.0e-4
-0005 :                    ,      0.00000000     , 1 , 1.0e-4
+Exc. 0001                 ,      9.69283827     , 0 , 1.0e-4
+Exc. 0001                 ,      0.49473918     , 1 , 1.0e-4
+Exc. 0002                 ,     10.05948188     , 0 , 1.0e-4
+Exc. 0002                 ,      0.03083017     , 1 , 1.0e-4
+Exc. 0005                 ,     11.25700794     , 0 , 1.0e-4
+Exc. 0005                 ,      0.00000000     , 1 , 1.0e-4
 
 lih_gwgamma.in            , LiH: GWGamma@PBE0 with non-auxiliary basis parallelization (=ortho paral)
 SCF Total Energy          ,    -8.0512581571    , 0 , 1.0e-7
@@ -385,14 +408,14 @@ GWGamma LUMO energy       ,     4.607546        , 1 , 1.0e-4
 
 ethene_p_tdhf.in          , C2H4+: TDHF with doublet configuration (spin unrestricted)
 SCF Total Energy          , -77.7149628447      , 0 , 1.0e-7
-0001                      ,   3.83416085        , 0 , 1.0e-4
-0001                      ,   0.00000000        , 1 , 1.0e-4
-0002                      ,   5.24071414        , 0 , 1.0e-4
-0002                      ,   0.00164979        , 1 , 1.0e-4
-0003                      ,   6.25466050        , 0 , 1.0e-4
-0003                      ,   0.21189336        , 1 , 1.0e-4
-0004                      ,   6.27559067        , 0 , 1.0e-4
-0004                      ,   0.00000000        , 1 , 1.0e-4
+Exc. 0001                 ,   3.83416085        , 0 , 1.0e-4
+Exc. 0001                 ,   0.00000000        , 1 , 1.0e-4
+Exc. 0002                 ,   5.24071414        , 0 , 1.0e-4
+Exc. 0002                 ,   0.00164979        , 1 , 1.0e-4
+Exc. 0003                 ,   6.25466050        , 0 , 1.0e-4
+Exc. 0003                 ,   0.21189336        , 1 , 1.0e-4
+Exc. 0004                 ,   6.27559067        , 0 , 1.0e-4
+Exc. 0004                 ,   0.00000000        , 1 , 1.0e-4
 
 h2o_gw_smallbasis.in      , H2O: GW@PBE0 using a small basis set for virtual orbitals
 SCF Total Energy          , -76.3743156395     , 0 , 1.0e-7
@@ -454,4 +477,16 @@ RT-TDDFT Total Energy     , -75.8540895111     , 0 , 1.0e-9
 RT-TDDFT Dipole Moment    ,   0.0002238101     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,   1.9475815318     , 1 , 1.0e-7
 RT-TDDFT Dipole Moment    ,   0.0001848704     , 2 , 1.0e-7
+
+be2_qsgw_bse.in           , BSE calculation after QSGW for Be2
+gKS HOMO energy           ,  -8.818516          , 0 , 1.0e-4
+gKS LUMO energy           ,   0.836309          , 0 , 1.0e-4
+Exc. 0001                 ,   5.02843848        , 0 , 1.0e-4
+Exc. 0001                 ,   0.87774973        , 1 , 1.0e-4
+Exc. 0002                 ,   5.19744839        , 0 , 1.0e-4
+Exc. 0002                 ,   0.00000000        , 1 , 1.0e-4
+Exc. 0003                 ,   5.19744839        , 0 , 1.0e-4
+Exc. 0003                 ,   0.00000000        , 1 , 1.0e-4
+Exc. 0004                 ,   5.42103143        , 0 , 1.0e-4
+Exc. 0004                 ,   0.89322698        , 1 , 1.0e-4
 

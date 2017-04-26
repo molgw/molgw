@@ -503,7 +503,7 @@ subroutine static_dipole_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,dipol
  deallocate(dipole_basis)
 
  do iatom=1,natom
-   dipole(:) = dipole(:) + zatom(iatom) * x(:,iatom)
+   dipole(:) = dipole(:) + zatom(iatom) * xatom(:,iatom)
  enddo
 
 end subroutine static_dipole_cmplx
@@ -529,7 +529,7 @@ subroutine static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
  enddo
 
  do iatom=1,natom
-   dipole(:) = dipole(:) + zatom(iatom) * x(:,iatom)
+   dipole(:) = dipole(:) + zatom(iatom) * xatom(:,iatom)
  enddo
 
 end subroutine static_dipole_fast_cmplx

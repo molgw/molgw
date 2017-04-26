@@ -48,7 +48,7 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
  deallocate(dipole_basis)
 
  do iatom=1,natom
-   dipole(:) = dipole(:) + zatom(iatom) * x(:,iatom)
+   dipole(:) = dipole(:) + zatom(iatom) * xatom(:,iatom)
  enddo
 
  write(stdout,'(1x,a,3(2x,f14.6))') 'Dipole (a.u.):  ',dipole(:)
@@ -104,7 +104,7 @@ subroutine static_quadrupole(nstate,basis,occupation,c_matrix)
 
  do iatom=1,natom
    do jdir=1,3
-     quad(:,jdir) = quad(:,jdir) + zatom(iatom) * x(:,iatom) * x(jdir,iatom)
+     quad(:,jdir) = quad(:,jdir) + zatom(iatom) * xatom(:,iatom) * xatom(jdir,iatom)
    enddo
  enddo
 

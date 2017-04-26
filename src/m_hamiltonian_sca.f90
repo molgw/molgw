@@ -254,7 +254,7 @@ subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus
        if( rank_local /= MODULO(iatom-1,nproc_local) ) cycle
        do i_cart=1,ni_cart
          do j_cart=1,nj_cart
-           call nucleus_basis_function(basis%bfc(ibf1_cart+i_cart-1),basis%bfc(jbf1_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
+           call nucleus_basis_function(basis%bfc(ibf1_cart+i_cart-1),basis%bfc(jbf1_cart+j_cart-1),zatom(iatom),xatom(:,iatom),vnucleus_ij)
            matrix_cart(i_cart,j_cart) = matrix_cart(i_cart,j_cart) + vnucleus_ij
          enddo
        enddo
@@ -1213,7 +1213,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
    allocate(alpha(ngau),coeff(ngau))
    call element_atomicdensity(zatom(iatom),basis_element(iatom),coeff,alpha)
 
-   call calculate_eri_approximate_hartree(basis,m_ham,n_ham,x(:,iatom),ngau,coeff,alpha,vhgau)
+   call calculate_eri_approximate_hartree(basis,m_ham,n_ham,xatom(:,iatom),ngau,coeff,alpha,vhgau)
    vhxc_ij(:,:) = vhxc_ij(:,:) + vhgau(:,:) 
 
    deallocate(alpha,coeff)

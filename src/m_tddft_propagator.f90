@@ -1082,7 +1082,7 @@ subroutine write_restart_tddft(nstate,time_cur,c_matrix_orth_cmplx)
  ! Atomic structure
  write(restartfile) natom
  write(restartfile) zatom(1:natom)
- write(restartfile) x(:,1:natom)
+ write(restartfile) xatom(:,1:natom)
  ! nocc
  write(restartfile) nocc
  ! Nstate
@@ -1142,7 +1142,7 @@ subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx,restart_is_cor
  read(restartfile) x_read(:,1:natom_read)
  if( natom_read /= natom  &
   .OR. ANY( ABS( zatom_read(1:MIN(natom_read,natom)) - zatom(1:MIN(natom_read,natom)) ) > 1.0e-5_dp ) &
-  .OR. ANY( ABS(   x_read(:,1:MIN(natom_read,natom)) - x(:,1:MIN(natom_read,natom))   ) > 1.0e-5_dp ) ) then
+  .OR. ANY( ABS(   x_read(:,1:MIN(natom_read,natom)) - xatom(:,1:MIN(natom_read,natom))   ) > 1.0e-5_dp ) ) then
    same_geometry = .FALSE.
    call issue_warning('RESTART_TDDFT file: Geometry has changed')
  else

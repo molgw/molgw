@@ -204,7 +204,7 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
        if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
        do i_cart=1,ni_cart
          do j_cart=1,nj_cart
-           call nucleus_basis_function(basis%bfc(ibf1_cart+i_cart-1),basis%bfc(jbf1_cart+j_cart-1),zatom(iatom),x(:,iatom),vnucleus_ij)
+           call nucleus_basis_function(basis%bfc(ibf1_cart+i_cart-1),basis%bfc(jbf1_cart+j_cart-1),zatom(iatom),xatom(:,iatom),vnucleus_ij)
            matrix_cart(i_cart,j_cart) = matrix_cart(i_cart,j_cart) + vnucleus_ij
          enddo
        enddo
@@ -790,7 +790,7 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
    !
    ! buffer +=  < i | v_h | j >
    ! buffer is not full. It needs to be symmetrized
-   call calculate_eri_approximate_hartree(basis,basis%nbf,basis%nbf,x(:,iatom),ngau,coeff,alpha,buffer)
+   call calculate_eri_approximate_hartree(basis,basis%nbf,basis%nbf,xatom(:,iatom),ngau,coeff,alpha,buffer)
 
    deallocate(alpha,coeff)
  enddo

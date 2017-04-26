@@ -251,14 +251,14 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
        if( MODULO(ir,nproc_world) /= rank_world ) cycle
 
        if( xa(iradial,iatom) < pruning_limit * radius ) then
-         rr_grid_tmp(1,ir) = xa(iradial,iatom) * x2(iangular) + x(1,iatom)
-         rr_grid_tmp(2,ir) = xa(iradial,iatom) * y2(iangular) + x(2,iatom)
-         rr_grid_tmp(3,ir) = xa(iradial,iatom) * z2(iangular) + x(3,iatom)
+         rr_grid_tmp(1,ir) = xa(iradial,iatom) * x2(iangular) + xbasis(1,iatom)
+         rr_grid_tmp(2,ir) = xa(iradial,iatom) * y2(iangular) + xbasis(2,iatom)
+         rr_grid_tmp(3,ir) = xa(iradial,iatom) * z2(iangular) + xbasis(3,iatom)
          weight   = wxa(iradial,iatom) * w2(iangular) * xa(iradial,iatom)**2 * 4.0_dp * pi
        else
-         rr_grid_tmp(1,ir) = xa(iradial,iatom) * x1(iangular) + x(1,iatom)
-         rr_grid_tmp(2,ir) = xa(iradial,iatom) * y1(iangular) + x(2,iatom)
-         rr_grid_tmp(3,ir) = xa(iradial,iatom) * z1(iangular) + x(3,iatom)
+         rr_grid_tmp(1,ir) = xa(iradial,iatom) * x1(iangular) + xbasis(1,iatom)
+         rr_grid_tmp(2,ir) = xa(iradial,iatom) * y1(iangular) + xbasis(2,iatom)
+         rr_grid_tmp(3,ir) = xa(iradial,iatom) * z1(iangular) + xbasis(3,iatom)
          weight   = wxa(iradial,iatom) * w1(iangular) * xa(iradial,iatom)**2 * 4.0_dp * pi
        endif
 
@@ -272,8 +272,8 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
          do katom=1,natom_basis
            do jatom=1,natom_basis
              if(katom==jatom) cycle
-             mu = ( NORM2(rr_grid_tmp(:,ir)-x(:,katom)) - NORM2(rr_grid_tmp(:,ir)-x(:,jatom)) ) &
-                       / NORM2(x(:,katom)-x(:,jatom))
+             mu = ( NORM2(rr_grid_tmp(:,ir)-xbasis(:,katom)) - NORM2(rr_grid_tmp(:,ir)-xbasis(:,jatom)) ) &
+                       / NORM2(xbasis(:,katom)-xbasis(:,jatom))
              s_becke(katom,jatom) = 0.5_dp * ( 1.0_dp - smooth_step(smooth_step(smooth_step(mu))) )
            enddo
          enddo
@@ -286,8 +286,8 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
          do katom=1,natom_basis
            do jatom=1,natom_basis
              if(katom==jatom) cycle
-             mu = ( NORM2(rr_grid_tmp(:,ir)-x(:,katom)) - NORM2(rr_grid_tmp(:,ir)-x(:,jatom)) ) &
-                       / NORM2(x(:,katom)-x(:,jatom))
+             mu = ( NORM2(rr_grid_tmp(:,ir)-xbasis(:,katom)) - NORM2(rr_grid_tmp(:,ir)-xbasis(:,jatom)) ) &
+                       / NORM2(xbasis(:,katom)-xbasis(:,jatom))
 
              if( mu < -aa ) then
                s_becke(katom,jatom) = 1.0_dp

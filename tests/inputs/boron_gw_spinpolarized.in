@@ -1,12 +1,13 @@
 &molgw
- scf='blyp'
+ scf='hf'
 ! mixing_scheme='simple'
- nscf=50
+ nscf=100
+ tolscf=1.0e-10
 
  postscf='gw'
  nspin=2
  magnetization=1.0
- basis='cc-pVTZ'
+ basis='cc-pVDZ'
  grid_quality='vh'
 
  selfenergy_state_range= 2
