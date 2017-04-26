@@ -568,7 +568,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
      do iatom=1,natom
        if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
 
-       C(:) = x(:,iatom)
+       C(:) = xatom(:,iatom)
 #ifdef HAVE_LIBINT_ONEBODY
        call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
                            amB,contrdepthB,B,alphaB,cB, &
@@ -581,7 +581,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
            ij = ij + 1
            ibf_cart = basis%shell(ishell)%istart_cart + i_cart - 1
            jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
-           call nucleus_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),zatom(iatom),x(:,iatom),nucleus)
+           call nucleus_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),zatom(iatom),xatom(:,iatom),nucleus)
            array_cart(ij) = array_cart(ij) + nucleus
          enddo
        enddo
@@ -698,7 +698,7 @@ subroutine setup_nucleus_grad(print_matrix_,basis,hamiltonian_nucleus_grad)
        if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
 
 
-       C(:) = x(:,iatom)
+       C(:) = xatom(:,iatom)
 
 #ifdef HAVE_LIBINT_ONEBODY
        call libint_elecpot_grad(amA,contrdepthA,A,alphaA,cA, &
@@ -998,9 +998,9 @@ subroutine setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
 
      int_fixed_r(:,:) = 0.0_dp
      do i1=1,nangular_ecp
-       rr(1) = xa(iradial) * x1(i1) + x(1,iatom)
-       rr(2) = xa(iradial) * y1(i1) + x(2,iatom)
-       rr(3) = xa(iradial) * z1(i1) + x(3,iatom)
+       rr(1) = xa(iradial) * x1(i1) + xatom(1,iatom)
+       rr(2) = xa(iradial) * y1(i1) + xatom(2,iatom)
+       rr(3) = xa(iradial) * z1(i1) + xatom(3,iatom)
        call calculate_basis_functions_r(basis,rr,basis_function_r)
   
        cos_theta = z1(i1)

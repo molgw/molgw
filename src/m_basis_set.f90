@@ -181,7 +181,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
        read(basisfile,*) alpha(ig),coeff(ig)
      enddo
   
-     x0(:) = x(:,iatom)
+     x0(:) = xbasis(:,iatom)
 
      !
      ! Shell setup
