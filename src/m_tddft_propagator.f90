@@ -23,7 +23,12 @@ module m_tddft_propagator
  interface propagate_orth
   module procedure propagate_orth_ham_1
   module procedure propagate_orth_ham_2
- end interface
+ end interface propagate_orth
+
+ interface print_2d_matrix
+  module procedure print_2d_matrix_real
+  module procedure print_2d_matrix_cmplx
+ end interface print_2d_matrix
 
 ! real(dp),allocatable       :: dipole_basis(:,:,:)
  real(dp),allocatable       :: s_matrix_inv(:,:)
@@ -416,8 +421,8 @@ subroutine tddft_time_loop(nstate,                           &
    end do
  end if
 
-! call print_rect_2d_matrix_cmplx("c_matrix_orth_cmplx of beginning",c_matrix_orth_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
-! call print_rect_2d_matrix_cmplx("c_matrix_cmplx of beginning",c_matrix_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
+! call print_2d_matrix("c_matrix_orth_cmplx of beginning",c_matrix_orth_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
+! call print_2d_matrix("c_matrix_cmplx of beginning",c_matrix_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
 
  if(ignore_tddft_restart_ .OR. (.NOT. restart_is_correct)) then
    c_matrix_cmplx(1:basis%nbf,1:nocc,1:nspin)=c_matrix(1:basis%nbf,1:nocc,1:nspin)
@@ -477,6 +482,8 @@ subroutine tddft_time_loop(nstate,                           &
  end if
 
 ! call print_square_2d_matrix_cmplx("c_matrix_cmplx of the beginning",c_matrix_cmplx,nstate,stdout,4)
+
+! call print_2d_matrix("check of beginning",MATMUL(MATMUL(s_matrix(:,:) ,c_matrix_cmplx(:,:,nspin) ) ,TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin)))  ),basis%nbf,nocc,stdout,4)
 
  if(pred_corr_cur /= 'PC0' ) then
 
@@ -927,13 +934,15 @@ subroutine tddft_time_loop(nstate,                           &
    end if
 
     
-   call check_identity_cmplx(basis%nbf,basis%nbf,MATMUL(MATMUL(s_matrix(:,:) ,c_matrix_cmplx(:,:,nspin) ) ,TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin)))  ),is_identity_) 
-   if(.NOT. is_identity_) then
-     write(stdout,*) "C**H*S*C is not identity at itau= ", itau
-   end if
+!   call check_identity_cmplx(basis%nbf,basis%nbf,MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) ),is_identity_) 
+!   if(.NOT. is_identity_) then
+!     write(stdout,*) "C**H*S*C is not identity at itau= ", itau
+!   end if
 
-!   call print_rect_2d_matrix_cmplx("c_matrix_orth_cmplx",c_matrix_orth_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
-!   call print_rect_2d_matrix_cmplx("c_matrix_cmplx",c_matrix_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
+!   call print_2d_matrix("check",MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) )   ,nocc,nocc,stdout,4)
+!   call print_2d_matrix("check",s_matrix,basis%nbf,basis%nbf,stdout,4)
+!   call print_2d_matrix("c_matrix_orth_cmplx",c_matrix_orth_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
+!   call print_2d_matrix("c_matrix_cmplx",c_matrix_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
 
    call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
    en%kin = real(SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
@@ -947,7 +956,7 @@ subroutine tddft_time_loop(nstate,                           &
    end if
 
    if( is_iomaster ) then
-     if( time_cur / write_step - INT(time_cur / write_step) < 1.0e-7_dp  ) then 
+     if( time_cur / (write_step)- NINT(time_cur / (write_step)) < 1.0e-7  ) then 
 !     if(mod(itau-1,mod_write)==0 ) then
        if(ref_) then
          if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,itau)
@@ -957,8 +966,8 @@ subroutine tddft_time_loop(nstate,                           &
        write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
           time_cur, en%tot, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
        write(stdout,*)
-       write(stdout,'(1x,a31,1x,f19.10)') 'RT-TDDFT Simulation time  (au):', time_cur
-       write(stdout,'(1x,a31,1x,f19.10)') 'RT-TDDFT Total Energy     (Ha):',en%tot
+       write(stdout,'(1x,a31,1x,f19.10)')  'RT-TDDFT Simulation time  (au):', time_cur
+       write(stdout,'(1x,a31,1x,f19.10)')  'RT-TDDFT Total Energy     (Ha):',en%tot
        write(stdout,'(1x,a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment     (D):', dipole(:) * au_debye
      end if
    end if
@@ -1167,7 +1176,7 @@ subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx,restart_is_cor
  
  ! current time
  read(restartfile) time_min
- write(stdout,"(a,f7.3)") "time_min= ", time_min
+ write(stdout,"(1x,a,f7.3)") "time_min= ", time_min
 
  ! Complex wavefunction coefficients C
  do ispin=1,nspin
@@ -1504,7 +1513,7 @@ subroutine fill_unity(unity_matrix_cmplx,M)
 end subroutine
 
 !=======================================
-subroutine print_rect_2d_matrix_cmplx(desc,matrix_cmplx,size_n,size_m,write_unit,prec)
+subroutine print_2d_matrix_cmplx(desc,matrix_cmplx,size_n,size_m,write_unit,prec)
  implicit none
  integer, intent(in)      :: prec ! precision
  integer, intent(in)      :: size_n,size_m, write_unit
@@ -1523,36 +1532,13 @@ subroutine print_rect_2d_matrix_cmplx(desc,matrix_cmplx,size_n,size_m,write_unit
    write(write_unit,write_format1) matrix_cmplx(ivar,:)
  end do
 
-end subroutine print_rect_2d_matrix_cmplx
+end subroutine print_2d_matrix_cmplx
 
 !=======================================
-subroutine print_square_2d_matrix_cmplx(desc,matrix_cmplx,size_m,write_unit,prec)
+subroutine print_2d_matrix_real(desc,matrix_real,size_n,size_m,write_unit,prec)
  implicit none
  integer, intent(in)      :: prec ! precision
- integer, intent(in)      :: size_m, write_unit
- complex(dp),intent(in)  :: matrix_cmplx(size_m,size_m)
- character(*),intent(in)  :: desc
-!=====
- character(100)  :: write_format1, write_format2, write_form
- integer            :: ivar,beg
-
-! beg=4
- beg=3
- write(write_format1,*) '(',size_m," ('( ',F", prec+beg, ".", prec,"' ,',F", prec+beg, ".",prec,",' )  ') " ,')' ! (  1.01 ,  -0.03)  (  0.04 ,  0.10) 
- write(write_format2,*) '(',size_m," (F", prec+beg, ".", prec,"' +  i',F", prec+beg, ".",prec,",'  ') " ,')'   ! 1.01 +  i  -0.03    0.03 +  i  0.10
- write(write_unit,*) desc
- do ivar=1,size_m
-   write(write_unit,write_format1) matrix_cmplx(ivar,:)          
- end do
-
-end subroutine print_square_2d_matrix_cmplx
-
-
-!=======================================
-subroutine print_square_2d_matrix_real(desc,matrix_real,size_m,write_unit,prec)
- implicit none
- integer, intent(in)      :: prec ! precision
- integer, intent(in)      :: size_m, write_unit
+ integer, intent(in)      :: size_n,size_m, write_unit
  real(dp),intent(in)      :: matrix_real(size_m,size_m)
  character(*),intent(in)  :: desc
 !=====
@@ -1561,10 +1547,10 @@ subroutine print_square_2d_matrix_real(desc,matrix_real,size_m,write_unit,prec)
 
  write(write_format1,*) '(',size_m," (F", prec+4, ".", prec,') ' ,')' 
  write(write_unit,*) desc
- do ivar=1,size_m
+ do ivar=1,size_n
    write(write_unit,write_format1) matrix_real(ivar,:)          
  end do
-end subroutine print_square_2d_matrix_real
+end subroutine print_2d_matrix_real
 
 
 !==========================================

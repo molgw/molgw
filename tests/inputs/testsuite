@@ -449,7 +449,7 @@ RT-TDDFT Dipole Moment    ,  -0.0002520906     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,   1.9475311033     , 1 , 1.0e-7
 RT-TDDFT Dipole Moment    ,  -0.0001272239     , 2 , 1.0e-7
 
-h2o_rt_tddft_lda_PC2B_restart.in  , test of RESTART_TDDFT does not work without preliminaryrun of previous input, RT-TDDFT calculation T=20.0 dt=0.5 PC="PC2B"
+h2o_rt_tddft_lda_PC2B_restart.in  , test of RESTART_TDDFT does not work without preliminary run of previous input, RT-TDDFT calculation T=20.0 dt=0.5 PC="PC2B"
 RT-TDDFT Total Energy     , -75.8540895111     , 0 , 1.0e-9
 RT-TDDFT Dipole Moment    ,   0.0002238101     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,   1.9475815318     , 1 , 1.0e-7
