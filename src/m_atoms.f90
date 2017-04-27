@@ -247,7 +247,9 @@ subroutine relax_atoms(lbfgs_plan,etotal)
    enddo
  enddo
 
- xatom(:,:) = xnew(:,:)
+ xatom(:,:)       = xnew(:,:)
+ ! Ghost atoms never move
+ xbasis(:,:natom) = xnew(:,:)
 
 end subroutine relax_atoms
 
