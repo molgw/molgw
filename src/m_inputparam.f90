@@ -993,12 +993,14 @@ subroutine read_inputfile_namelist()
  if( nelement_ecp > 0 ) then
    do iatom=1,natom
      do ielement_ecp=1,nelement_ecp
-       if( element_ecp(ielement_ecp) == basis_element(iatom) ) then
-         zatom(iatom) = zatom(iatom) - REAL( ecp(ielement_ecp)%nelec , dp )
+       if( element_ecp(ielement_ecp) == zbasis(iatom) ) then
+         zvalence(iatom) = zatom(iatom) - REAL( ecp(ielement_ecp)%nelec , dp )
          exit
        endif
      enddo
    enddo
+ else
+   zvalence(:) = zatom(:)
  endif
 
  !
@@ -1021,7 +1023,7 @@ subroutine read_inputfile_namelist()
  endif
 
  spin_fact = REAL(-nspin+3,dp)
- electrons = SUM(zatom(:)) - charge
+ electrons = SUM(zvalence(:)) - charge
 
 
  ! Echo the interpreted input variables

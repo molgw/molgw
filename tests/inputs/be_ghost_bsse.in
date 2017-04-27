@@ -1,0 +1,13 @@
+&molgw
+ scf='pbe'
+ tolscf=1.0e-8
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+
+ natom=1
+ nghost=1
+/
+Be 0.0  0.0  0.00
+Be 0.0  0.0  2.65
+

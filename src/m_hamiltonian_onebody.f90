@@ -573,7 +573,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
        call libint_elecpot(amA,contrdepthA,A,alphaA,cA, &
                            amB,contrdepthB,B,alphaB,cB, &
                            C,array_cart_C)
-       array_cart(:) = array_cart(:) - zatom(iatom) * array_cart_C(:) 
+       array_cart(:) = array_cart(:) - zvalence(iatom) * array_cart_C(:) 
 #else
        ij = 0
        do i_cart=1,ni_cart
@@ -581,7 +581,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
            ij = ij + 1
            ibf_cart = basis%shell(ishell)%istart_cart + i_cart - 1
            jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
-           call nucleus_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),zatom(iatom),xatom(:,iatom),nucleus)
+           call nucleus_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),zvalence(iatom),xatom(:,iatom),nucleus)
            array_cart(ij) = array_cart(ij) + nucleus
          enddo
        enddo
@@ -709,12 +709,12 @@ subroutine setup_nucleus_grad(print_matrix_,basis,hamiltonian_nucleus_grad)
 #else
        call die('nuclear potential gradient not implemented without LIBINT one-body terms')
 #endif
-       array_cart_gradAx(:) = array_cart_gradAx(:) * (-zatom(iatom))
-       array_cart_gradAy(:) = array_cart_gradAy(:) * (-zatom(iatom))
-       array_cart_gradAz(:) = array_cart_gradAz(:) * (-zatom(iatom))
-       array_cart_gradBx(:) = array_cart_gradBx(:) * (-zatom(iatom))
-       array_cart_gradBy(:) = array_cart_gradBy(:) * (-zatom(iatom))
-       array_cart_gradBz(:) = array_cart_gradBz(:) * (-zatom(iatom))
+       array_cart_gradAx(:) = array_cart_gradAx(:) * (-zvalence(iatom))
+       array_cart_gradAy(:) = array_cart_gradAy(:) * (-zvalence(iatom))
+       array_cart_gradAz(:) = array_cart_gradAz(:) * (-zvalence(iatom))
+       array_cart_gradBx(:) = array_cart_gradBx(:) * (-zvalence(iatom))
+       array_cart_gradBy(:) = array_cart_gradBy(:) * (-zvalence(iatom))
+       array_cart_gradBz(:) = array_cart_gradBz(:) * (-zvalence(iatom))
 
        ! X
        call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart_gradAx,matrixA)
@@ -975,7 +975,7 @@ subroutine setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
  do iatom=1,natom
    element_has_ecp = .FALSE.
    do ie=1,nelement_ecp
-     if( element_ecp(ie) == basis_element(iatom) ) then
+     if( element_ecp(ie) == zbasis(iatom) ) then
        element_has_ecp = .TRUE.
        exit
      endif

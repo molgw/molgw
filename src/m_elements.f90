@@ -34,17 +34,17 @@ contains
 
 
 !=========================================================================
-function element_core(zval,zelement)
+function element_core(zval,zatom)
  implicit none
  real(dp),intent(in) :: zval
- integer,intent(in)  :: zelement
+ real(dp),intent(in) :: zatom
  integer             :: element_core
 !=====
 
  !
- ! If zval /= zelement, this is certainly an effective core potential
+ ! If zval /= zatom, this is certainly an effective core potential
  ! and no core states should be frozen.
- if( ABS(zval - zelement) > 1.0e-3_dp ) then
+ if( ABS(zval - zatom) > 1.0e-3_dp ) then
    element_core = 0
  else
  
@@ -210,15 +210,15 @@ end function element_name
 
 
 !=========================================================================
-subroutine element_atomicdensity(zval,zelement,coeff,alpha)
+subroutine element_atomicdensity(zval,zatom,coeff,alpha)
  implicit none
  real(dp),intent(in)  :: zval
- integer,intent(in)   :: zelement
+ real(dp),intent(in)   :: zatom
  real(dp),intent(out) :: coeff(4)
  real(dp),intent(out) :: alpha(4)
 !=====
 
- select case(zelement)
+ select case(NINT(zatom))
  case( 1)
   alpha(1) = 0.191852  
   alpha(2) = 5.6143    
