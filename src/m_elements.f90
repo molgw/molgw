@@ -69,8 +69,8 @@ end function element_core
 !=========================================================================
 function element_covalent_radius(zatom)
  implicit none
- real(dp),intent(in) :: zatom
- real(dp)            :: element_covalent_radius
+ integer,intent(in) :: zatom
+ real(dp)           :: element_covalent_radius
 !=====
 
  !
@@ -79,7 +79,7 @@ function element_covalent_radius(zatom)
  !
  ! Values are first given in picometer
  ! They will be converted in bohr just after
- select case(NINT(zatom))
+ select case(zatom)
  case( 1)
    element_covalent_radius =  31.
  case( 2)

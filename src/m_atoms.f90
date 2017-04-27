@@ -108,7 +108,7 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read,calculate_forces)
  nbond = 0
  do iatom=1,natom
    do jatom=iatom+1,natom
-     bond_length =  element_covalent_radius(zatom(iatom)) + element_covalent_radius(zatom(jatom))
+     bond_length =  element_covalent_radius(NINT(zatom(iatom))) + element_covalent_radius(NINT(zatom(jatom)))
      if( NORM2( xatom(:,iatom)-xatom(:,jatom) ) <  1.2_dp * bond_length  ) then
        nbond = nbond + 1
      endif
