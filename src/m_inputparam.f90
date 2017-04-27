@@ -733,6 +733,7 @@ subroutine read_inputfile_namelist()
  integer              :: atom_number,info,iatom
  character(len=2)     :: atom_symbol
  real(dp),allocatable :: zatom_read(:),x_read(:,:)
+ real(dp)             :: vel_part(3)
  real(dp)             :: beta_hybrid
  character(len=12)    :: tddft_grid_quality
  character(len=12)    :: grid_quality
@@ -912,7 +913,7 @@ subroutine read_inputfile_namelist()
    ecp_auxil_basis_name(:) = standardize_basis_name(ecp_auxil_basis)
    ecp_small_basis_name(:) = standardize_basis_name(ecp_small_basis)
 
-   allocate(x_read(3,natom+nghost),zatom_read(natom+nghost))
+   allocate(x_read(3,natom+nghost),zatom_read(natom))
    do iatom=1,natom+nghost
      ! First, read the full line
      read(inputfile,'(a)') line_char
@@ -1024,7 +1025,7 @@ subroutine read_inputfile_namelist()
 
 
  x_read(:,:) = x_read(:,:) * length_factor
- call init_atoms(natom,nghost,zatom_read,x_read,(move_nuclei/='no'))
+ call init_atoms(natom,nghost,zatom_read,x_read,vel_part,(move_nuclei/='no'),excit_type)
  deallocate(x_read,zatom_read)
 
  call init_ecp(ecp_elements,basis_path,ecp_type,ecp_level)

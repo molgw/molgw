@@ -1089,6 +1089,15 @@ vl[i].default  ='yes'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='Prints a RESTART_TDDFT file which contains wavefunction coefficients for the last time moment of a simulation.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='vel_proj'
+vl[i].family   ='rt_tddft'
+vl[i].default  =( 0.0 , 0.0, 1.0 )
+vl[i].datatype ='vector_1d_3'
+vl[i].comment  ='Projectile initial velocity.'
+
 #============================================================================
 #            Fortran output: input variable namelist and their default value
 #============================================================================

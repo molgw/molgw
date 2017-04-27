@@ -18,6 +18,7 @@ module m_atoms
  integer,public                 :: nghost
  integer,protected              :: natom_type
  integer,protected              :: nbond
+ integer,public                 :: npart
 
  real(dp),allocatable,public    :: zatom(:)
  real(dp),allocatable,public    :: zbasis(:)
@@ -49,26 +50,38 @@ contains
 
 
 !=========================================================================
-subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read,calculate_forces)
+subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read,vel_part,calculate_forces,excit_type)
  use m_tools,only: cross_product
  implicit none
- integer,intent(in)  :: natom_read,nghost_read
- real(dp),intent(in) :: zatom_read(natom_read+nghost_read),x_read(3,natom_read+nghost_read)
- logical,intent(in)  :: calculate_forces
+ integer,intent(in)             :: natom_read,nghost_read
+ real(dp),intent(in)            :: zatom_read(natom_read),x_read(3,natom_read+nghost_read)
+ real(dp),intent(in)            :: vel_part(3)
+ logical,intent(in)             :: calculate_forces
+ character(len=12),intent(in)   :: excit_type
 !=====
  integer  :: iatom,jatom
  real(dp) :: x21(3),x31(3)
  real(dp) :: bond_length
 !=====
 
- natom  = natom_read 
+ npart=0
+ if(excit_type=="proj_simple") then
+   npart=1
+ end if
+
  nghost = nghost_read
+ natom  = natom_read + npart
  natom_basis = natom + nghost
 
  allocate(zatom(natom))
  allocate(basis_element(natom_basis))
  allocate(xbasis(3,natom_basis))
  allocate(xatom(3,natom))
+ allocate(vel(3,natom))
+ vel(:,:)=0.0_dp
+ if(excit_type=="proj_simple") then
+   vel(:,natom)=vel_part(:)
+ end if
  ! For relaxation or dynamics only 
  if( calculate_forces ) then
    allocate(force(3,natom))
