@@ -130,7 +130,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  do iatom=1,natom_basis
 
    select case(zbasis(iatom))
-   case(3,4,11,12,19,20,30)
+   case(3,4,11,12,19,20,30,48)
      alpha = 7.0_dp
    case default
      alpha = 5.0_dp

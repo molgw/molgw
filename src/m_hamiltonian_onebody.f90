@@ -975,7 +975,7 @@ subroutine setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
  do iatom=1,natom
    element_has_ecp = .FALSE.
    do ie=1,nelement_ecp
-     if( element_ecp(ie) == zbasis(iatom) ) then
+     if( ABS( element_ecp(ie) - zatom(iatom) ) < 1.0e-5_dp ) then
        element_has_ecp = .TRUE.
        exit
      endif

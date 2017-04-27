@@ -990,18 +990,15 @@ subroutine read_inputfile_namelist()
 
  call init_ecp(ecp_elements,basis_path,ecp_type,ecp_level)
  ! If ECP are used, tweak the nuclei charges here
- if( nelement_ecp > 0 ) then
-   do iatom=1,natom
-     do ielement_ecp=1,nelement_ecp
-       if( element_ecp(ielement_ecp) == zbasis(iatom) ) then
-         zvalence(iatom) = zatom(iatom) - REAL( ecp(ielement_ecp)%nelec , dp )
-         exit
-       endif
-     enddo
+ zvalence(:) = zatom(:)
+ do iatom=1,natom
+   do ielement_ecp=1,nelement_ecp
+     if( ABS( element_ecp(ielement_ecp) - zatom(iatom) ) < 1.0e-5_dp ) then
+       zvalence(iatom) = zatom(iatom) - REAL( ecp(ielement_ecp)%nelec , dp )
+       exit
+     endif
    enddo
- else
-   zvalence(:) = zatom(:)
- endif
+ enddo
 
  !
  ! Interpret the scf and postscf input parameters
