@@ -51,17 +51,23 @@ def clean_run(inp,out,restart):
 
 ###################################
 def check_output(out,testinfo):
-  global success,tested
+  global success,tested,test_skipped
 
   #
-  # First check if the test was aborted because of parallelization not available
+  # First check if the test was aborted because of some limitation at compilation
   #
   for line in open(tmpfolder+'/'+out,'r').readlines():
     if 'one CPU only' in line:
-      print('Test not functional in parallel => skip it')
+      print('Test not functional in parallel => skip test')
+      test_skipped += 1
       return
     if 'Need to compile MOLGW with HAVE_LIBINT_ONEBODY' in line:
-      print('Test not functional without gradients => skip it')
+      print('Test not functional without gradients => skip test')
+      test_skipped += 1
+      return
+    if  'Angular momentum is too high' in line:
+      print('LIBINT installation does not have the needed high angular momenta => skip test')
+      test_skipped += 1
       return
   #
   # Second check if there is a memory leak
@@ -247,8 +253,9 @@ except OSError:
 #  print('Temporary folder already exists: '+tmpfolder)
 ###################################
 
-success = 0
-tested = 0
+success      = 0
+tested       = 0
+test_skipped = 0
 
 fdiff = open(tmpfolder+'/diff', 'w')
 fdiff.write('#  test index          calculated                   reference                   difference        test status \n')
@@ -274,8 +281,10 @@ fdiff.close()
 
 print('\n\n===============================')
 print('      Test Summary \n')
-print('  Succesful tests:   ',success,' / ',tested,'\n')
-print(' Elapsed time (s):   ','{:.2f}'.format(time.time() - start_time) )
+print('        Succesful tests:   {0:} / {1:}\n'.format(success,tested))
+if test_skipped > 0 :
+  print('  Test files not tested:    {:}\n'.format(test_skipped))
+print('       Elapsed time (s):   ','{:.2f}'.format(time.time() - start_time) )
 print('===============================\n')
 
 
