@@ -891,6 +891,11 @@ subroutine read_inputfile_namelist()
  endif
 
 
+ nprojectile=0
+ if(excit_type=="proj_simple") then
+   nprojectile=1
+ end if
+
  !
  ! Read the atom positions if no xyz file is specified
  if( LEN(TRIM(xyz_file)) == 0 ) then
@@ -898,28 +903,23 @@ subroutine read_inputfile_namelist()
    ! In this case, natom must be set to a positive value
    if(natom<1) call die('natom<1')
 
+   natom_basis = natom + nghost
+   natom = natom + nprojectile
+
    !
    ! Need to know the number of atoms to allocate the basis arrays
-   allocate(auxil_basis_name(natom+nghost))
-   allocate(small_basis_name(natom+nghost))
-   allocate(basis_name(natom+nghost))
-   allocate(ecp_basis_name(natom+nghost))
-   allocate(ecp_auxil_basis_name(natom+nghost))
-   allocate(ecp_small_basis_name(natom+nghost))
+   allocate(auxil_basis_name(natom_basis))
+   allocate(small_basis_name(natom_basis))
+   allocate(basis_name(natom_basis))
+   allocate(ecp_basis_name(natom_basis))
+   allocate(ecp_auxil_basis_name(natom_basis))
+   allocate(ecp_small_basis_name(natom_basis))
    basis_name(:)           = standardize_basis_name(basis)
    auxil_basis_name(:)     = standardize_basis_name(auxil_basis)
    small_basis_name(:)     = standardize_basis_name(small_basis)
    ecp_basis_name(:)       = standardize_basis_name(ecp_basis)
    ecp_auxil_basis_name(:) = standardize_basis_name(ecp_auxil_basis)
    ecp_small_basis_name(:) = standardize_basis_name(ecp_small_basis)
-
-   nprojectile=0
-   if(excit_type=="proj_simple") then
-     nprojectile=1
-   end if
-
-   natom_basis = natom + nghost
-   natom = natom + nprojectile
 
    allocate(x_read(3,natom+nghost),zatom_read(natom+nghost))
    do iatom=1,natom+nghost
@@ -965,22 +965,23 @@ subroutine read_inputfile_namelist()
    endif
    open(newunit=xyzfile,file=TRIM(xyz_file),status='old')
    read(xyzfile,*) natom_read
-   if( natom /= 0 .AND. natom+nghost /= natom_read ) then
+   if( natom /= 0 .AND. natom+nghost+nprojectile /= natom_read ) then
      call die('the number of atoms in the input file does not correspond to the number of atoms in the xyz file')
    endif
    read(xyzfile,*) 
 
+!Natom read from xyz file but not from input file
    natom = natom_read-nghost
-   natom_basis = natom + nghost - nprojectile
+   natom_basis = natom_read - nprojectile
 
    !
    ! Need to know the number of atoms to allocate the basis arrays
-   allocate(auxil_basis_name(natom+nghost))
-   allocate(small_basis_name(natom+nghost))
-   allocate(basis_name(natom+nghost))
-   allocate(ecp_basis_name(natom+nghost))
-   allocate(ecp_auxil_basis_name(natom+nghost))
-   allocate(ecp_small_basis_name(natom+nghost))
+   allocate(auxil_basis_name(natom_basis))
+   allocate(small_basis_name(natom_basis))
+   allocate(basis_name(natom_basis))
+   allocate(ecp_basis_name(natom_basis))
+   allocate(ecp_auxil_basis_name(natom_basis))
+   allocate(ecp_small_basis_name(natom_basis))
    basis_name(:)           = standardize_basis_name(basis)
    auxil_basis_name(:)     = standardize_basis_name(auxil_basis)
    small_basis_name(:)     = standardize_basis_name(small_basis)
@@ -1030,8 +1031,6 @@ subroutine read_inputfile_namelist()
    write(stdout,*) 'Parallelization is not available without an auxiliary basis'
    call die('Please run with one CPU only or provide MOLGW with an auxiliary basis')
  endif
-
- natom_basis = natom + nghost
 
  x_read(:,:) = x_read(:,:) * length_factor
  call init_atoms(zatom_read,x_read,vel_part,(move_nuclei/='no'),excit_type)

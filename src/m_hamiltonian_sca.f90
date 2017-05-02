@@ -1206,7 +1206,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
 
  write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities: SCALAPACK'
 
- do iatom=1,natom
+ do iatom=1,natom-nprojectile
    if( rank_local /= MODULO(iatom,nproc_local) ) cycle
 
    ngau = 4

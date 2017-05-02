@@ -1145,7 +1145,7 @@ subroutine dft_approximate_vhxc(print_matrix_,basis,vhxc_ij)
 
  write(stdout,'(/,a)') ' Calculate approximate HXC potential with a superposition of atomic densities'
 
- do iatom=1,natom
+ do iatom=1,natom-nprojectile
    if( rank_grid /= MODULO(iatom,nproc_grid) ) cycle
 
    ngau = 4

@@ -63,6 +63,8 @@ subroutine init_atoms(zatom_read,x_read,vel_part,calculate_forces,excit_type)
  real(dp) :: bond_length
 !=====
 
+ ! here x_read contains all coordinates: first (natom-nprojectile) real atoms, then (nghost) ghost atoms and the last but not least (nprojectile) projectile (which is 0 or 1) 
+
  ! xatom and zatom designate the physical nuclei
  allocate(xatom(3,natom))
  allocate(zatom(natom))
@@ -89,14 +91,26 @@ subroutine init_atoms(zatom_read,x_read,vel_part,calculate_forces,excit_type)
    allocate(force_hl(3,natom))
  endif
 
- zatom(1:natom) = zatom_read(1:natom)
+ if(nghost==0) then
+   zatom(1:natom)=zatom_read(1:natom)
+ else
+   zatom(1:natom_basis - nghost)=zatom_read(1:natom_basis-nghost)
+   zatom(natom) = zatom_read(natom + nghost)
+ end if
+
  ! Ghost atoms do not have a positive nucleus
  !zatom(natom+1:natom+nghost) = 0.0_dp
  ! But ghost atoms have basis functions centered on them.
- zbasis(:)=NINT(zatom_read(:))
+ zbasis(1:natom_basis)=NINT(zatom_read(1:natom_basis))
 
- xatom(:,:)  = x_read(:,:natom)
- xbasis(:,:) = x_read(:,:)
+ if(nghost==0) then
+   xatom(:,1:natom)=x_read(:,1:natom)
+ else
+   xatom(:,1:natom_basis - nghost)=x_read(:,1:natom_basis-nghost)
+   xatom(:,natom) = x_read(:,natom + nghost)
+ end if
+
+ xbasis(:,1:natom_basis) = x_read(:,1:natom_basis)
 
  !
  ! Check for atoms too close
@@ -130,7 +144,7 @@ subroutine init_atoms(zatom_read,x_read,vel_part,calculate_forces,excit_type)
  ! Is the molecule linear, planar?
  if( natom > 2 ) then
    x21(:) = xatom(:,2) - xatom(:,1)
-   do iatom=3,natom
+   do iatom=3,natom-nprojectile
      x31(:) = xatom(:,iatom) - xatom(:,1)
      call cross_product(x21,x31,xnormal)
      if( NORM2(xnormal(:)) > tol_geom ) then
@@ -140,7 +154,7 @@ subroutine init_atoms(zatom_read,x_read,vel_part,calculate_forces,excit_type)
      endif
    enddo
    if( .NOT. linear) then
-     do iatom=1,natom
+     do iatom=1,natom-nprojectile
        if( ABS(DOT_PRODUCT( xatom(:,iatom) , xnormal(:) )) > tol_geom ) planar=.FALSE.
      enddo
    else
@@ -242,7 +256,7 @@ subroutine relax_atoms(lbfgs_plan,etotal)
  info = lbfgs_execute(lbfgs_plan,xnew,etotal,-force)
 
  ! Do not move the atoms by more than 0.20 bohr
- do iatom=1,natom
+ do iatom=1,natom-nprojectile
    do idir=1,3
      if( ABS( xnew(idir,iatom) - xatom(idir,iatom) ) > 0.20_dp ) then
        xnew(idir,iatom) = xatom(idir,iatom) + SIGN( 0.20_dp , xnew(idir,iatom) - xatom(idir,iatom) )
@@ -332,14 +346,14 @@ subroutine find_inversion()
 !=====
 
  xcenter(:) = 0.0_dp
- do iatom=1,natom
+ do iatom=1,natom-nprojectile
    xcenter(:) = xcenter(:) + xatom(:,iatom) / REAL(natom,dp)
  enddo
 
- do iatom=1,natom
+ do iatom=1,natom-nprojectile
    xtmp(:) = 2.0_dp * xcenter(:) - xatom(:,iatom)
    found = .FALSE.
-   do jatom=1,natom
+   do jatom=1,natom-nprojectile
      if( NORM2( xtmp(:) - xatom(:,jatom) ) < tol_geom ) then
        if( ABS(zatom(iatom)-zatom(jatom)) < tol_geom ) found = .TRUE.
        exit

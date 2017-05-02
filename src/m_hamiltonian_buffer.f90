@@ -780,7 +780,7 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
  vhxc_ij(:,:) = 0.0_dp
 
  buffer(:,:) = 0.0_dp
- do iatom=1,natom
+ do iatom=1,natom-nprojectile
    if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
 
    ngau = 4
