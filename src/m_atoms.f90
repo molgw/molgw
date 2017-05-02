@@ -13,16 +13,16 @@ module m_atoms
 
  real(dp),parameter,private     :: tol_geom=1.0e-5_dp
 
- integer,public                 :: natom_basis
+ integer,protected              :: natom_basis
  integer,public                 :: natom
  integer,public                 :: nghost
  integer,protected              :: natom_type
  integer,protected              :: nbond
- integer,public                 :: npart
+ integer,public                 :: nprojectile
 
- real(dp),allocatable,public    :: zatom(:)
- real(dp),allocatable,public    :: zbasis(:)
- integer,allocatable,protected  :: basis_element(:)
+ real(dp),allocatable,public    :: zvalence(:)
+ real(dp),allocatable,protected :: zatom(:)
+ integer,allocatable,protected  :: zbasis(:)
 
  real(dp),allocatable,protected :: xatom(:,:)
  real(dp),allocatable,protected :: xbasis(:,:)
@@ -54,7 +54,7 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read,vel_part,calculat
  use m_tools,only: cross_product
  implicit none
  integer,intent(in)             :: natom_read,nghost_read
- real(dp),intent(in)            :: zatom_read(natom_read),x_read(3,natom_read+nghost_read)
+ real(dp),intent(in)            :: zatom_read(natom_read+nghost_read),x_read(3,natom_read+nghost_read)
  real(dp),intent(in)            :: vel_part(3)
  logical,intent(in)             :: calculate_forces
  character(len=12),intent(in)   :: excit_type
@@ -64,19 +64,18 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read,vel_part,calculat
  real(dp) :: bond_length
 !=====
 
- npart=0
- if(excit_type=="proj_simple") then
-   npart=1
- end if
+! nghost      = nghost_read
+! natom       = natom_read + nprojectile
+! natom_basis = natom_read + nghost
 
- nghost = nghost_read
- natom  = natom_read + npart
- natom_basis = natom + nghost
-
- allocate(zatom(natom))
- allocate(basis_element(natom_basis))
- allocate(xbasis(3,natom_basis))
+ ! xatom and zatom designate the physical nuclei
  allocate(xatom(3,natom))
+ allocate(zatom(natom))
+ allocate(zvalence(natom))
+ ! xbasis and zbasis designate the basis centers and nature
+ allocate(zbasis(natom_basis))
+ allocate(xbasis(3,natom_basis))
+
  allocate(vel(3,natom))
  vel(:,:)=0.0_dp
  if(excit_type=="proj_simple") then
@@ -95,13 +94,13 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read,vel_part,calculat
    allocate(force_hl(3,natom))
  endif
 
- zatom(1:natom)              = zatom_read(1:natom)
+ zatom(1:natom) = zatom_read(1:natom)
  ! Ghost atoms do not have a positive nucleus
  !zatom(natom+1:natom+nghost) = 0.0_dp
  ! But ghost atoms have basis functions centered on them.
- basis_element(:)=NINT(zatom_read(:))
+ zbasis(:)=NINT(zatom_read(:))
 
- xatom(:,:) = x_read(:,:)
+ xatom(:,:)  = x_read(:,:natom)
  xbasis(:,:) = x_read(:,:)
 
  !
@@ -121,7 +120,7 @@ subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read,vel_part,calculat
  nbond = 0
  do iatom=1,natom
    do jatom=iatom+1,natom
-     bond_length =  element_covalent_radius(zatom(iatom)) + element_covalent_radius(zatom(jatom))
+     bond_length =  element_covalent_radius(NINT(zatom(iatom))) + element_covalent_radius(NINT(zatom(jatom)))
      if( NORM2( xatom(:,iatom)-xatom(:,jatom) ) <  1.2_dp * bond_length  ) then
        nbond = nbond + 1
      endif
@@ -176,7 +175,7 @@ function atoms_core_states()
 
  atoms_core_states=0
  do iatom=1,natom
-   atoms_core_states = atoms_core_states + element_core(zatom(iatom),basis_element(iatom))
+   atoms_core_states = atoms_core_states + element_core(zvalence(iatom),zatom(iatom))
  enddo
  
 end function atoms_core_states
@@ -214,7 +213,8 @@ subroutine destroy_atoms()
 !=====
 
  if(ALLOCATED(zatom))         deallocate(zatom)
- if(ALLOCATED(basis_element)) deallocate(basis_element)
+ if(ALLOCATED(zvalence))      deallocate(zvalence)
+ if(ALLOCATED(zbasis))        deallocate(zbasis)
  if(ALLOCATED(xatom))         deallocate(xatom)
  if(ALLOCATED(xbasis))        deallocate(xbasis)
  if(ALLOCATED(force))         deallocate(force)
@@ -255,7 +255,9 @@ subroutine relax_atoms(lbfgs_plan,etotal)
    enddo
  enddo
 
- xatom(:,:) = xnew(:,:)
+ xatom(:,:)       = xnew(:,:)
+ ! Ghost atoms never move
+ xbasis(:,:natom) = xnew(:,:)
 
 end subroutine relax_atoms
 
@@ -272,13 +274,13 @@ subroutine output_positions()
  write(stdout,*) '                       bohr                                        angstrom'
  do iatom=1,natom
    write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',iatom, &
-                                                           element_name(REAL(basis_element(iatom),dp)),': ',  &
+                                                           element_name(REAL(zbasis(iatom),dp)),': ',  &
                                                            xatom(:,iatom),xatom(:,iatom)*bohr_A
  enddo
  if( nghost>0) write(stdout,'(a)') ' == ghost list'
  do ighost=1,nghost
    write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'ghost ',iatom, &
-                                           element_name(REAL(basis_element(natom+ighost),dp)),': ',  &
+                                           element_name(REAL(zbasis(natom+ighost),dp)),': ',  &
                                            xbasis(:,natom+ighost),xbasis(:,natom+ighost)*bohr_A
  enddo
  write(stdout,'(1x,a,/)') '================================'
@@ -298,7 +300,7 @@ subroutine nucleus_nucleus_energy(energy)
  energy = 0.0_dp
  do iatom=1,natom
    do jatom=iatom+1,natom
-     energy = energy + zatom(iatom) * zatom(jatom) / SQRT( SUM( (xatom(:,iatom) - xatom(:,jatom))**2) )
+     energy = energy + zvalence(iatom) * zvalence(jatom) / SQRT( SUM( (xatom(:,iatom) - xatom(:,jatom))**2) )
    enddo
  enddo
 
@@ -317,7 +319,7 @@ subroutine nucleus_nucleus_force()
    do jatom=1,natom
      if( iatom == jatom ) cycle
      force_nuc_nuc(:,iatom) = force_nuc_nuc(:,iatom) &
-                               + zatom(iatom) * zatom(jatom) / ( SUM( (xatom(:,iatom) - xatom(:,jatom))**2) )**1.50_dp &
+                               + zvalence(iatom) * zvalence(jatom) / ( SUM( (xatom(:,iatom) - xatom(:,jatom))**2) )**1.50_dp &
                                   * ( xatom(:,iatom) - xatom(:,jatom) )
    enddo
  enddo

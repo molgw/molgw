@@ -27,7 +27,7 @@ subroutine setup_atomic_density(rr,rhor)
 
    ngau = 4
    allocate(alpha(ngau),coeff(ngau))
-   call element_atomicdensity(zatom(iatom),basis_element(iatom),coeff,alpha)
+   call element_atomicdensity(zvalence(iatom),zatom(iatom),coeff,alpha)
 
    dr=NORM2( rr(:) - xatom(:,iatom) )
 

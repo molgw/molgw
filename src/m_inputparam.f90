@@ -913,7 +913,15 @@ subroutine read_inputfile_namelist()
    ecp_auxil_basis_name(:) = standardize_basis_name(ecp_auxil_basis)
    ecp_small_basis_name(:) = standardize_basis_name(ecp_small_basis)
 
-   allocate(x_read(3,natom+nghost),zatom_read(natom))
+   nprojectile=0
+   if(excit_type=="proj_simple") then
+     nprojectile=1
+   end if
+
+   natom_basis = natom + nghost
+   natom = natom + nprojectile
+
+   allocate(x_read(3,natom+nghost),zatom_read(natom+nghost))
    do iatom=1,natom+nghost
      ! First, read the full line
      read(inputfile,'(a)') line_char
@@ -963,6 +971,7 @@ subroutine read_inputfile_namelist()
    read(xyzfile,*) 
 
    natom = natom_read-nghost
+   natom_basis = natom + nghost - nprojectile
 
    !
    ! Need to know the number of atoms to allocate the basis arrays
@@ -1030,16 +1039,15 @@ subroutine read_inputfile_namelist()
 
  call init_ecp(ecp_elements,basis_path,ecp_type,ecp_level)
  ! If ECP are used, tweak the nuclei charges here
- if( nelement_ecp > 0 ) then
-   do iatom=1,natom
-     do ielement_ecp=1,nelement_ecp
-       if( element_ecp(ielement_ecp) == basis_element(iatom) ) then
-         zatom(iatom) = zatom(iatom) - REAL( ecp(ielement_ecp)%nelec , dp )
-         exit
-       endif
-     enddo
+ zvalence(:) = zatom(:)
+ do iatom=1,natom
+   do ielement_ecp=1,nelement_ecp
+     if( ABS( element_ecp(ielement_ecp) - zatom(iatom) ) < 1.0e-5_dp ) then
+       zvalence(iatom) = zatom(iatom) - REAL( ecp(ielement_ecp)%nelec , dp )
+       exit
+     endif
    enddo
- endif
+ enddo
 
  !
  ! Interpret the scf and postscf input parameters
@@ -1061,7 +1069,7 @@ subroutine read_inputfile_namelist()
  endif
 
  spin_fact = REAL(-nspin+3,dp)
- electrons = SUM(zatom(:)) - charge
+ electrons = SUM(zvalence(:)) - charge
 
 
  ! Echo the interpreted input variables

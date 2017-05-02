@@ -697,7 +697,7 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
      write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') ny,0.,dy,0.
      write(ocubefile(istate,ispin),'(i6,3(f12.6,2x))') nz,0.,0.,dz
      do iatom=1,natom
-       write(ocubefile(istate,ispin),'(i6,4(2x,f12.6))') basis_element(iatom),0.0,xatom(:,iatom)
+       write(ocubefile(istate,ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
      enddo
    enddo
  enddo

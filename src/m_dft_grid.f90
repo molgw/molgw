@@ -129,8 +129,8 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  ! LOG3 radial grid
  do iatom=1,natom_basis
 
-   select case(NINT(zatom(iatom)))
-   case(3,4,11,12,19,20)
+   select case(zbasis(iatom))
+   case(3,4,11,12,19,20,30,48)
      alpha = 7.0_dp
    case default
      alpha = 5.0_dp
@@ -217,7 +217,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  ! Calculate the maximum number of grid points
  ngridmax = 0
  do iatom=1,natom_basis
-   radius = element_covalent_radius(REAL(basis_element(iatom),dp))
+   radius = element_covalent_radius(zbasis(iatom))
    do iradial=1,nradial
      if( xa(iradial,iatom) < pruning_limit * radius ) then
        ngridmax = ngridmax + nangular_coarse
@@ -235,7 +235,7 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  w_grid_tmp(:)    = 0.0_dp
  ir    = 0
  do iatom=1,natom_basis
-   radius = element_covalent_radius(REAL(basis_element(iatom),dp))
+   radius = element_covalent_radius(zbasis(iatom))
 
    do iradial=1,nradial
      if( xa(iradial,iatom) < pruning_limit * radius ) then

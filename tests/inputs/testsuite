@@ -50,6 +50,13 @@ gKS HOMO energy           ,  -12.316390        , 1 , 1.0e-4
 gKS LUMO energy           ,    5.557588        , 0 , 1.0e-4
 gKS LUMO energy           ,   -3.007564        , 1 , 1.0e-4
 
+be_ghost_bsse.in          , Be atom with addition functions on a ghost ato
+Kinetic Energy            ,   14.5578650555    , 0 , 1.0e-7
+Nucleus Energy            ,  -33.6357518059    , 0 , 1.0e-7
+Hartree Energy            ,    7.1727007457    , 0 , 1.0e-7
+XC Energy                 ,   -2.7227945659    , 0 , 1.0e-7
+SCF Total Energy          ,  -14.6279805707    , 0 , 1.0e-7
+
 b_temperature.in          , LDA boron atom cc-pVTZ with finite temperature
 SCF Total Energy          , -24.3458246337     , 0 , 1.0e-7
 Fermi level               ,  -4.065450         , 0 , 1.0e-4

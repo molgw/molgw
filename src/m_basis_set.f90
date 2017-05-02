@@ -109,13 +109,13 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  do iatom=1,natom_basis
 
    if( nelement_ecp > 0 ) then 
-     if( ANY( element_ecp(:) == basis_element(iatom) ) ) then
-       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(ecp_basis_name(iatom)))
+     if( ANY( element_ecp(:) == zbasis(iatom) ) ) then
+       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(zbasis(iatom),dp))))//'_'//TRIM(ecp_basis_name(iatom)))
      else
-       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name(iatom)))
+       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(zbasis(iatom),dp))))//'_'//TRIM(basis_name(iatom)))
      endif
    else
-     basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name(iatom)))
+     basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(zbasis(iatom),dp))))//'_'//TRIM(basis_name(iatom)))
    endif
   
    inquire(file=TRIM(basis_filename),exist=file_exists)
@@ -162,13 +162,13 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  do iatom=1,natom_basis
 
    if( nelement_ecp > 0 ) then 
-     if( ANY( element_ecp(:) == basis_element(iatom) ) ) then
-       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(ecp_basis_name(iatom)))
+     if( ANY( element_ecp(:) == zbasis(iatom) ) ) then
+       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(zbasis(iatom),dp))))//'_'//TRIM(ecp_basis_name(iatom)))
      else
-       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name(iatom)))
+       basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(zbasis(iatom),dp))))//'_'//TRIM(basis_name(iatom)))
      endif
    else
-     basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(basis_element(iatom),dp))))//'_'//TRIM(basis_name(iatom)))
+     basis_filename=ADJUSTL(TRIM(basis_path)//'/'//TRIM(ADJUSTL(element_name(REAL(zbasis(iatom),dp))))//'_'//TRIM(basis_name(iatom)))
    endif
   
    open(newunit=basisfile,file=TRIM(basis_filename),status='old')
