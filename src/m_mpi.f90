@@ -366,11 +366,11 @@ subroutine distribute_grid_workload()
        endif
      enddo
   
-     if( nproc_grid > 1 ) then
-       write(stdout,'(/,a)') ' Distribute work load among procs'
-       write(stdout,'(a,1x,f8.2)') ' Avg. tasks per cpu:',REAL(ngrid_mpi,dp) / REAL(nproc_grid,dp)
-       write(stdout,'(a,i6,a,i10)') ' proc # , grid points',rank_grid,' , ',ntask_grid_proc(rank_grid)
-     endif
+!     if( nproc_grid > 1 ) then
+!       write(stdout,'(/,a)') ' Distribute work load among procs'
+!       write(stdout,'(a,1x,f8.2)') ' Avg. tasks per cpu:',REAL(ngrid_mpi,dp) / REAL(nproc_grid,dp)
+!       write(stdout,'(a,i6,a,i10)') ' proc # , grid points',rank_grid,' , ',ntask_grid_proc(rank_grid)
+!     endif
   
    else
      !
