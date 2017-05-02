@@ -1028,7 +1028,7 @@ subroutine read_inputfile_namelist()
  call summary_input(grid_quality,integral_quality)
 
 
-contains
+contains  
 
 
 function interpret_quality(quality) result(quality_level)
