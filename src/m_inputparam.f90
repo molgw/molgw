@@ -982,10 +982,10 @@ subroutine read_inputfile_namelist()
    call die('Please run with one CPU only or provide MOLGW with an auxiliary basis')
  endif
 
-
+ natom_basis = natom + nghost
 
  x_read(:,:) = x_read(:,:) * length_factor
- call init_atoms(natom,nghost,zatom_read,x_read,(move_nuclei/='no'))
+ call init_atoms(zatom_read,x_read,(move_nuclei/='no'))
  deallocate(x_read,zatom_read)
 
  call init_ecp(ecp_elements,basis_path,ecp_type,ecp_level)
