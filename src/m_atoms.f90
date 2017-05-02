@@ -13,7 +13,7 @@ module m_atoms
 
  real(dp),parameter,private     :: tol_geom=1.0e-5_dp
 
- integer,protected              :: natom_basis
+ integer,public                 :: natom_basis
  integer,public                 :: natom
  integer,public                 :: nghost
  integer,protected              :: natom_type
@@ -50,23 +50,18 @@ contains
 
 
 !=========================================================================
-subroutine init_atoms(natom_read,nghost_read,zatom_read,x_read,vel_part,calculate_forces,excit_type)
+subroutine init_atoms(zatom_read,x_read,vel_part,calculate_forces,excit_type)
  use m_tools,only: cross_product
  implicit none
- integer,intent(in)             :: natom_read,nghost_read
- real(dp),intent(in)            :: zatom_read(natom_read+nghost_read),x_read(3,natom_read+nghost_read)
- real(dp),intent(in)            :: vel_part(3)
- logical,intent(in)             :: calculate_forces
+ real(dp),intent(in) :: zatom_read(natom+nghost),x_read(3,natom+nghost)
+ real(dp),intent(in) :: vel_part(3)
+ logical,intent(in)  :: calculate_forces
  character(len=12),intent(in)   :: excit_type
 !=====
  integer  :: iatom,jatom
  real(dp) :: x21(3),x31(3)
  real(dp) :: bond_length
 !=====
-
-! nghost      = nghost_read
-! natom       = natom_read + nprojectile
-! natom_basis = natom_read + nghost
 
  ! xatom and zatom designate the physical nuclei
  allocate(xatom(3,natom))
