@@ -186,6 +186,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%is_lr_mbpt          = .FALSE.
  calc_type%is_gw               = .FALSE.
  calc_type%is_mp2              = .FALSE.
+ calc_type%is_mp3              = .FALSE.
  calc_type%is_ci               = .FALSE.
  calc_type%is_bse              = .FALSE.
  calc_type%is_td               = .FALSE.
