@@ -10,13 +10,16 @@ program spectrum
  integer                    :: file_dipole_time, file_excitation, io
  integer                    :: file_dipole_damped
  integer                    :: irow,nrow,num_fields
+ integer                    :: itau_field_max 
  real(dp)                   :: time_cur, time_min, time_sim
  real(dp)                   :: damp_factor
  real(dp)                   :: omega_factor
  real(dp)                   :: average
  real(dp)                   :: div_factor
+ real(dp)                   :: excit_field_max
  real(dp)                   :: real_dipole(3)
  real(dp)                   :: real_excit_field(3)
+ real(dp)                   :: excit_dir(3)
  real(dp),allocatable       :: m_times(:)
  complex(dp),allocatable    :: dipole_time_ref(:,:)
  complex(dp),allocatable    :: dipole_time_damped(:,:)
@@ -116,6 +119,7 @@ program spectrum
  end if
 
  ! Fill the m_excit_field array
+ excit_field_max=0.0_dp
  itau=1
  open (newunit=file_excitation, file = name_excitation)
  do irow=1,nrow
@@ -127,11 +131,18 @@ program spectrum
        call die('Time values in the dipole_time file and excitation file are not the same')
      end if
      m_excit_field(itau,:)=real_excit_field(:)
+     if(length(real_excit_field(:))>excit_field_max) then
+       excit_field_max=length(real_excit_field(:))
+       itau_field_max=itau
+     end if
      itau=itau+1
    end if
  end do
  close (file_excitation)
 
+ excit_dir=m_excit_field(itau_field_max,:)/NORM2(REAL(m_excit_field(itau_field_max,:)))
+
+ write(stdout,*) "suka", excit_dir, length(excit_dir)
  ! Apply damping to the dipole
  if(output_damped_) then
    open (newunit=file_dipole_damped, file = name_dipole_damped)
@@ -180,7 +191,7 @@ program spectrum
 
      do idir=1,3
        if(NORM2(ABS(trans_m_excit_field(iomega,:)))>1.0e-15) then
-         write(file_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') AIMAG((trans_dipole_time(iomega,idir))/(ABS(REAL(trans_m_excit_field(iomega,:)))+im*ABS(AIMAG(trans_m_excit_field(iomega,:))))) * omega_factor
+         write(file_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') AIMAG((trans_dipole_time(iomega,idir))/(length(REAL(trans_m_excit_field(iomega,:)))+im*length(AIMAG(trans_m_excit_field(iomega,:))))) * omega_factor
        else
          write(file_dipolar_spectra,"(3(17x,f5.2))",advance='no') -1.0_dp
        end if
@@ -197,6 +208,17 @@ program spectrum
 #else
  call issue_warning("tddft: calculate_propagation; fftw is not present")
 #endif
+
+contains 
+
+!==========================================================================
+function length(vector)
+ implicit none
+ real(dp),intent(in)  ::  vector(3)
+ real(dp)             :: length
+  
+  length=SQRT(DOT_PRODUCT(vector,vector))
+end function length
 
 end program spectrum
 
