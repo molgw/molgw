@@ -23,7 +23,7 @@ subroutine setup_atomic_density(rr,rhor)
 !=====
 
  rhor = 0.0_dp
- do iatom=1,natom
+ do iatom=1,natom-nprojectile
 
    ngau = 4
    allocate(alpha(ngau),coeff(ngau))

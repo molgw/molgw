@@ -892,7 +892,7 @@ subroutine read_inputfile_namelist()
 
 
  nprojectile=0
- if(excit_type=="proj_simple") then
+ if(excit_type=="PROJ_SIMPLE") then
    nprojectile=1
  end if
 
@@ -953,7 +953,6 @@ subroutine read_inputfile_namelist()
      endif
      zatom_read(iatom) = atom_number
    enddo
-
  else
    !
    ! Try to open the xyz file
@@ -1069,7 +1068,6 @@ subroutine read_inputfile_namelist()
 
  spin_fact = REAL(-nspin+3,dp)
  electrons = SUM(zvalence(:)) - charge
-
 
  ! Echo the interpreted input variables
  call summary_input(grid_quality,integral_quality)

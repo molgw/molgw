@@ -75,7 +75,7 @@ subroutine init_atoms(zatom_read,x_read,vel_part,calculate_forces,excit_type)
 
  allocate(vel(3,natom))
  vel(:,:)=0.0_dp
- if(excit_type=="proj_simple") then
+ if(excit_type=="PROJ_SIMPLE") then
    vel(:,natom)=vel_part(:)
  end if
  ! For relaxation or dynamics only 
@@ -281,17 +281,24 @@ subroutine output_positions()
  write(stdout,'(/,1x,a)') '================================'
  write(stdout,*) '      Atom list'
  write(stdout,*) '                       bohr                                        angstrom'
- do iatom=1,natom
+ do iatom=1,natom-nprojectile
    write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',iatom, &
-                                                           element_name(REAL(zbasis(iatom),dp)),': ',  &
+                                                           element_name(REAL(zatom(iatom),dp)),': ',  &
                                                            xatom(:,iatom),xatom(:,iatom)*bohr_A
  enddo
  if( nghost>0) write(stdout,'(a)') ' == ghost list'
  do ighost=1,nghost
    write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'ghost ',iatom, &
-                                           element_name(REAL(zbasis(natom+ighost),dp)),': ',  &
-                                           xbasis(:,natom+ighost),xbasis(:,natom+ighost)*bohr_A
+                                           element_name(REAL(zbasis(natom-nprojectile+ighost),dp)),': ',  &
+                                           xbasis(:,natom-nprojectile+ighost),xbasis(:,natom-nprojectile+ighost)*bohr_A
  enddo
+ if(  nprojectile>0) then
+   write(stdout,'(a)') ' == projectile'
+   write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',iatom, &
+                                                           element_name(REAL(zatom(natom),dp)),': ',  &
+                                                           xatom(:,natom),xatom(:,natom)*bohr_A
+ end if
+
  write(stdout,'(1x,a,/)') '================================'
 
 
