@@ -99,14 +99,14 @@ subroutine calculate_propagation(nstate,              &
    enddo
  end do
 
- if(write_step / time_step - INT( write_step / time_step ) > 0.0E-10_dp) then
+ if(write_step / time_step - NINT( write_step / time_step ) > 0.0E-10_dp) then
    call die("Tddft error: write_step is not multiple of time_step.")
  end if
- mod_write = INT( write_step / time_step ) ! write each write_step, assumed that time_step <= write_step
+ mod_write = NINT( write_step / time_step ) ! write each write_step, assumed that time_step <= write_step
 
-  if( calc_type%is_dft ) then
-     call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.TRUE.,BATCH_SIZE)
-  endif
+ if( calc_type%is_dft ) then
+    call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.TRUE.,BATCH_SIZE)
+ endif
 
  time_min=0.0_dp
  allocate(s_matrix_inv(basis%nbf,basis%nbf))
@@ -952,11 +952,12 @@ subroutine tddft_time_loop(nstate,                           &
    call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
    dipole_time(itau,:)=dipole(:)
    if(mod(itau-1,mod_write)==0 .AND. calc_p_matrix_error_) then
-     p_matrix_time_cmplx(:,:,:,INT(itau/(mod_write+1.0E-5))+1)=p_matrix_cmplx(:,:,:) 
+!     p_matrix_time_cmplx(:,:,:,INT(itau/(mod_write+1.0E-5))+1)=p_matrix_cmplx(:,:,:) 
+     p_matrix_time_cmplx(:,:,:,NINT(itau/(mod_write)+0.0_dp)+1)=p_matrix_cmplx(:,:,:)
    end if
 
    if( is_iomaster ) then
-     if( time_cur / (write_step)- NINT(time_cur / (write_step)) < 1.0e-7  ) then 
+     if( ABS(time_cur / (write_step)- NINT(time_cur / (write_step))) < 1.0e-7  ) then 
 !     if(mod(itau-1,mod_write)==0 ) then
        if(ref_) then
          if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,itau)

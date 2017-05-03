@@ -25,6 +25,7 @@ program spectrum
  complex(dp),allocatable    :: trans_dipole_time(:,:)
  logical                    :: file_exists
  logical                    :: output_damped_
+ logical                    :: output_transforms_
  character(len=100)         :: name_dipole_time, name_excitation
  character(len=100)         :: name_dipolar_spectra, name_transforms='transforms.dat'
  character(len=100)         :: name_dipole_damped='dipole_damped.dat'
@@ -36,7 +37,7 @@ program spectrum
 
 ! ntau=int((time_sim-time_min)/time_step)+1
 
- call get_spectrum_arguments( damp_factor,name_dipole_time,name_excitation,name_dipolar_spectra,output_damped_)
+ call get_spectrum_arguments( damp_factor,name_dipole_time,name_excitation,name_dipolar_spectra,output_damped_,output_transforms_)
 
  inquire(file=name_dipole_time,exist=file_exists)
  if(.NOT. file_exists) then
@@ -164,10 +165,12 @@ program spectrum
  trans_m_excit_field(:,:)=trans_m_excit_field(:,:) / ntau
 
  ! Write absorption spectra in the dipolar_spectra file
- open(newunit=file_transforms,file=name_transforms)
+ if(output_transforms_) then
+   open(newunit=file_transforms,file=name_transforms)
+   write(file_transforms,*) "# omega(eV), |E_x(omega)|, real(E_x(omega)), aimag(E_x(omega)), |d_x(omega)|, real(d_x(omega)), aimag(d_x(omega))" 
+ end if
  open(newunit=file_dipolar_spectra,file=name_dipolar_spectra)
- write(file_dipolar_spectra,*) "# omega(eV), Average, xx, xy, xz, yx, yy, yz, zx, zy, zz"
- write(file_transforms,*) "# omega(eV), |E_x(omega)|, real(E_x(omega)), aimag(E_x(omega)), |d_x(omega)|, real(d_x(omega)), aimag(d_x(omega))"
+ write(file_dipolar_spectra,*) "# omega(eV), transform(dipole_x)/|transform(E)|, transform(dipole_y)/|transform(E)|, transform(dipole_z)/|transform(E)|" 
 
  nomega=ntau
  do iomega=1,nomega/2 ! here iomega correspons to frequency
@@ -175,26 +178,17 @@ program spectrum
    if(2*pi * iomega / time_sim * Ha_eV < 500.0_dp) then
      write(file_dipolar_spectra,"(x,es16.8E3)",advance='no')  2 * pi * iomega / time_sim * Ha_eV
 
-     average=0.0_dp
-     div_factor=0
      do idir=1,3
-       if(ABS(trans_m_excit_field(iomega,idir))>1.0e-15) then
-         div_factor=div_factor+1
-         average=average + AIMAG((trans_dipole_time(iomega,idir)) / (trans_m_excit_field(iomega,idir)))
-       end if
-     end do
-     average=average / div_factor * omega_factor
-     write(file_dipolar_spectra,"(3x,es16.8E3)",advance='no') average
-
-     do idir=1,3
-       if(ABS(trans_m_excit_field(iomega,idir))>1.0e-15) then
-         write(file_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') AIMAG((trans_dipole_time(iomega,:))/(trans_m_excit_field(iomega,idir))) * omega_factor
+       if(NORM2(ABS(trans_m_excit_field(iomega,:)))>1.0e-15) then
+         write(file_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') AIMAG((trans_dipole_time(iomega,idir))/(ABS(REAL(trans_m_excit_field(iomega,:)))+im*ABS(AIMAG(trans_m_excit_field(iomega,:))))) * omega_factor
        else
-         write(file_dipolar_spectra,"(3(17x,f5.2))",advance='no') -1.0_dp, -1.0_dp, -1.0_dp
+         write(file_dipolar_spectra,"(3(17x,f5.2))",advance='no') -1.0_dp
        end if
        if(idir==3) write(file_dipolar_spectra,*)
      end do
-     write(file_transforms,*) pi * iomega / time_sim * Ha_eV, abs(trans_m_excit_field(iomega,1)), REAL(trans_m_excit_field(iomega,1)), AIMAG(trans_m_excit_field(iomega,1)), abs(trans_dipole_time(iomega,1)), REAL(trans_dipole_time(iomega,1)), AIMAG(trans_dipole_time(iomega,1))
+     if(output_transforms_) then
+        write(file_transforms,*) pi * iomega / time_sim * Ha_eV, abs(trans_m_excit_field(iomega,1)), REAL(trans_m_excit_field(iomega,1)), AIMAG(trans_m_excit_field(iomega,1)), abs(trans_dipole_time(iomega,1)), REAL(trans_dipole_time(iomega,1)), AIMAG(trans_dipole_time(iomega,1))
+     end if
    end if
  end do
 
@@ -206,17 +200,20 @@ program spectrum
 
 end program spectrum
 
-subroutine get_spectrum_arguments( damp_factor,name_dipole_time,name_excitation,name_dipolar_spectra,output_damped_)
-
+!====================================================================================
+subroutine get_spectrum_arguments( damp_factor,name_dipole_time,name_excitation,name_dipolar_spectra,output_damped_,output_transforms_)
  use m_definitions
+ use m_warning
  implicit none
- integer                    :: iarg
- real(dp)                   :: damp_factor
- character(len=20)          :: arg_cur
- character(len=100)         :: name_dipole_time, name_excitation
- character(len=100)         :: name_dipolar_spectra 
- character(len=20)          :: ch_damp_factor 
- logical                    :: output_damped_
+ real(dp),          intent(inout)        :: damp_factor
+ character(len=100),intent(inout)        :: name_dipole_time, name_excitation
+ character(len=100),intent(inout)        :: name_dipolar_spectra 
+ logical,           intent(inout)        :: output_damped_
+ logical,           intent(inout)        :: output_transforms_
+!=====
+ integer             :: iarg
+ character(len=20)   :: arg_cur
+ character(len=20)   :: ch_damp_factor 
 !=====
 
  damp_factor=            500.0_dp
@@ -224,21 +221,29 @@ subroutine get_spectrum_arguments( damp_factor,name_dipole_time,name_excitation,
  name_excitation=       'excitation_time.dat'
  name_dipolar_spectra=  'dipolar_spectra.dat'
  output_damped_=.false.
+ output_transforms_=.false.
 
- do iarg=1,COMMAND_ARGUMENT_COUNT()
+ iarg=1
+ do while (iarg<=COMMAND_ARGUMENT_COUNT())
    call GET_COMMAND_ARGUMENT(iarg,arg_cur)
    select case (arg_cur)
    case ('-id','--input-dipole')
      call GET_COMMAND_ARGUMENT(iarg+1,name_dipole_time)
+     iarg=iarg+1
    case ('-ie','--input-excitation')
      call GET_COMMAND_ARGUMENT(iarg+1,name_excitation)
+     iarg=iarg+1
    case ('-o','--output')
      call GET_COMMAND_ARGUMENT(iarg+1,name_dipolar_spectra)
+     iarg=iarg+1
    case('-d','--damping')
      call GET_COMMAND_ARGUMENT(iarg+1,ch_damp_factor)
      read(ch_damp_factor,*)damp_factor
+     iarg=iarg+1
    case('-od','--output-damped')
      output_damped_=.true.
+   case('-ot','--output-transforms')
+     output_transforms_=.true.
    case('--help')
      write(stdout,'(1x,a)') "Calculation of dipolar spectrum after RT-TDDFT simulation"
      write(stdout,'(1x,a)') "-id, --input-dipole  file        indicate an input dipole time file"
@@ -250,8 +255,13 @@ subroutine get_spectrum_arguments( damp_factor,name_dipole_time,name_excitation,
      write(stdout,'(1x,a)') "-d , --damping                   damping coefficient in au of time for the Fourier transform of dipolar moment"
      write(stdout,'(1x,a)') "                               (value by default if 500 au)"
      write(stdout,'(1x,a)') "-od, --output-damped            write damped dipole time dependence in to the dipole_damped.dat file" 
+     write(stdout,'(1x,a)') "-ot, --output-transfoms         write some Fourier transforms in file transforms.dat" 
      stop
+   case default
+     write(stdout,*) "No instructions for: ", arg_cur
+     call die("Unknown command line option")
    end select  
+   iarg=iarg+1
  end do
 
  write(stdout,'(1x,70("="))')
@@ -263,6 +273,7 @@ subroutine get_spectrum_arguments( damp_factor,name_dipole_time,name_excitation,
  write(stdout,'(1x,a,2x,a50)')      'Input excitaiton field file :',name_excitation
  write(stdout,'(1x,a,2x,a50)')      'Output dipolar spectra file :',name_dipolar_spectra
  write(stdout,'(1x,a,2x,l1)')       'Output damped dipole file   :',output_damped_
+ write(stdout,'(1x,a,2x,l1)')       'Output Fourier transforms   :',output_transforms_
  write(stdout,*)
 end subroutine get_spectrum_arguments
 
