@@ -10,21 +10,16 @@ program spectrum
  integer                    :: file_dipole_time, file_excitation, io
  integer                    :: file_dipole_damped
  integer                    :: irow,nrow,num_fields
- integer                    :: itau_field_max 
  real(dp)                   :: time_cur, time_min, time_sim
  real(dp)                   :: damp_factor
  real(dp)                   :: omega_factor
  real(dp)                   :: average
  real(dp)                   :: div_factor
- real(dp)                   :: excit_field_max
  real(dp)                   :: real_dipole(3)
- real(dp)                   :: real_excit_field(3)
- real(dp)                   :: excit_dir(3)
+ real(dp)                   :: real_excit_field_dir
  real(dp),allocatable       :: m_times(:)
  complex(dp),allocatable    :: dipole_time_ref(:,:)
  complex(dp),allocatable    :: dipole_time_damped(:,:)
- complex(dp),allocatable    :: trans_m_excit_field(:,:)
- complex(dp),allocatable    :: m_excit_field(:,:)
  complex(dp),allocatable    :: trans_m_excit_field_dir(:)
  complex(dp),allocatable    :: m_excit_field_dir(:)
  complex(dp),allocatable    :: trans_dipole_time(:,:)
@@ -79,8 +74,6 @@ program spectrum
  allocate(m_times(ntau))
  allocate(dipole_time_ref(ntau,3))
  allocate(dipole_time_damped(ntau,3))
- allocate(m_excit_field(ntau,3))
- allocate(trans_m_excit_field(ntau,3))
  allocate(m_excit_field_dir(ntau))
  allocate(trans_m_excit_field_dir(ntau))
  allocate(trans_dipole_time(ntau,3))
@@ -112,7 +105,7 @@ program spectrum
    cur_string=ADJUSTL(cur_string)
    if(cur_string(1:1)/="#") then
      call get_number_of_elements(cur_string,num_fields)
-     if(num_fields/=4) call die('Excitation file must contain 4 columns: time Ex Ey Ez')
+     if(num_fields/=2) call die('Excitation file must contain 2 columns: time E_excit_dir')
      ntau_read = ntau_read + 1
    end if
  end do
@@ -123,34 +116,22 @@ program spectrum
  end if
 
  ! Fill the m_excit_field array
- excit_field_max=0.0_dp
  itau=1
  open (newunit=file_excitation, file = name_excitation)
  do irow=1,nrow
    read(file_excitation,'(A)')cur_string
    cur_string=ADJUSTL(cur_string)
    if(cur_string(1:1)/="#") then
-     read(cur_string,*)time_cur,real_excit_field(:)
+     read(cur_string,*)time_cur,real_excit_field_dir
      if(time_cur-m_times(itau)>1.0e-7_dp) then
        call die('Time values in the dipole_time file and excitation file are not the same')
      end if
-     m_excit_field(itau,:)=real_excit_field(:)
-     if(length(real_excit_field(:))>excit_field_max) then
-       excit_field_max=length(real_excit_field(:))
-       itau_field_max=itau
-     end if
+     m_excit_field_dir(itau)=real_excit_field_dir
      itau=itau+1
    end if
  end do
  close (file_excitation)
 
- excit_dir=m_excit_field(itau_field_max,:)/NORM2(REAL(m_excit_field(itau_field_max,:)))
-
- do itau=1,ntau
-   m_excit_field_dir(itau)=DOT_PRODUCT(m_excit_field(itau,:),excit_dir(:))
- end do
-
- write(stdout,*) "suka", excit_dir, length(excit_dir)
  ! Apply damping to the dipole
  if(output_damped_) then
    open (newunit=file_dipole_damped, file = name_dipole_damped)
@@ -174,13 +155,7 @@ program spectrum
 
  trans_dipole_time =  trans_dipole_time / ntau
 
- ! Fourier transform of m_excit_field
- do idir=1,3
-   plan = fftw_plan_dft_1d(ntau,m_excit_field(1:ntau,idir),trans_m_excit_field(1:ntau,idir),FFTW_FORWARD,FFTW_ESTIMATE)
-   call fftw_execute_dft(plan,m_excit_field(1:ntau,idir),trans_m_excit_field(1:ntau,idir))
-   call fftw_destroy_plan(plan)
- end do
- 
+ ! Fourier transform of m_excit_field_dir
  plan = fftw_plan_dft_1d(ntau,m_excit_field_dir(1:ntau),trans_m_excit_field_dir(1:ntau),FFTW_FORWARD,FFTW_ESTIMATE)
  call fftw_execute_dft(plan,m_excit_field_dir(1:ntau),trans_m_excit_field_dir(1:ntau))
  call fftw_destroy_plan(plan)
@@ -190,7 +165,7 @@ program spectrum
  ! Write absorption spectra in the dipolar_spectra file
  if(output_transforms_) then
    open(newunit=file_transforms,file=name_transforms)
-   write(file_transforms,*) "# omega(eV), |E_x(omega)|, real(E_x(omega)), aimag(E_x(omega)), |d_x(omega)|, real(d_x(omega)), aimag(d_x(omega))" 
+   write(file_transforms,*) "# omega(eV), |E_excit_dir(omega)|, real(E_excit_dir(omega)), aimag(E_excit_dir(omega)), |d_x(omega)|, real(d_x(omega)), aimag(d_x(omega))" 
  end if
  open(newunit=file_dipolar_spectra,file=name_dipolar_spectra)
  write(file_dipolar_spectra,*) "# omega(eV), transform(dipole_x)/|transform(E)|, transform(dipole_y)/|transform(E)|, transform(dipole_z)/|transform(E)|" 
@@ -202,8 +177,6 @@ program spectrum
      write(file_dipolar_spectra,"(x,es16.8E3)",advance='no')  2 * pi * iomega / time_sim * Ha_eV
 
      do idir=1,3
-!       if(NORM2(ABS(trans_m_excit_field(iomega,:)))>1.0e-15) then
-!         write(file_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') AIMAG((trans_dipole_time(iomega,idir))/(length(REAL(trans_m_excit_field(iomega,:)))+im*length(AIMAG(trans_m_excit_field(iomega,:))))) * omega_factor
        if(ABS(trans_m_excit_field_dir(iomega))>1.0e-15) then
          write(file_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') AIMAG((trans_dipole_time(iomega,idir))/trans_m_excit_field_dir(iomega)) * omega_factor
        else
@@ -212,7 +185,7 @@ program spectrum
        if(idir==3) write(file_dipolar_spectra,*)
      end do
      if(output_transforms_) then
-        write(file_transforms,*) pi * iomega / time_sim * Ha_eV, abs(trans_m_excit_field(iomega,1)), REAL(trans_m_excit_field(iomega,1)), AIMAG(trans_m_excit_field(iomega,1)), abs(trans_dipole_time(iomega,1)), REAL(trans_dipole_time(iomega,1)), AIMAG(trans_dipole_time(iomega,1))
+        write(file_transforms,*) pi * iomega / time_sim * Ha_eV, abs(trans_m_excit_field_dir(iomega)), REAL(trans_m_excit_field_dir(iomega)), AIMAG(trans_m_excit_field_dir(iomega)), abs(trans_dipole_time(iomega,1)), REAL(trans_dipole_time(iomega,1)), AIMAG(trans_dipole_time(iomega,1))
      end if
    end if
  end do
@@ -222,17 +195,6 @@ program spectrum
 #else
  call issue_warning("tddft: calculate_propagation; fftw is not present")
 #endif
-
-contains 
-
-!==========================================================================
-function length(vector)
- implicit none
- real(dp),intent(in)  ::  vector(3)
- real(dp)             :: length
-  
-  length=SQRT(DOT_PRODUCT(vector,vector))
-end function length
 
 end program spectrum
 

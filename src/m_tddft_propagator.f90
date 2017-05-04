@@ -32,7 +32,8 @@ module m_tddft_propagator
 
 ! real(dp),allocatable       :: dipole_basis(:,:,:)
  real(dp),allocatable       :: s_matrix_inv(:,:)
- complex(dp),allocatable    :: m_excit_field(:,:)
+ real(dp)                   :: excit_dir_norm(3)
+ complex(dp),allocatable    :: m_excit_field_dir(:)
  integer                    :: nocc
 contains
 
@@ -72,7 +73,7 @@ subroutine calculate_propagation(nstate,              &
  complex(dp),allocatable    :: dipole_time_ref(:,:)
  complex(dp),allocatable    :: dipole_time_damped(:,:)
  complex(dp),allocatable    :: trans_dipole_time(:,:)
- complex(dp),allocatable    :: trans_m_excit_field(:,:)
+ complex(dp),allocatable    :: trans_m_excit_field_dir(:)
  type(C_PTR)                :: plan
 !===== variables for the calc_p_matrix_error
  complex(dp),allocatable    :: p_matrix_time_test_cmplx(:,:,:,:)
@@ -108,6 +109,8 @@ subroutine calculate_propagation(nstate,              &
     call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.TRUE.,BATCH_SIZE)
  endif
 
+ excit_dir_norm(:)=excit_dir(:)/NORM2(excit_dir(:))
+
  time_min=0.0_dp
  allocate(s_matrix_inv(basis%nbf,basis%nbf))
  allocate(dipole_basis(basis%nbf,basis%nbf,3))
@@ -120,15 +123,15 @@ subroutine calculate_propagation(nstate,              &
  allocate(dipole_time_ref(ntau,3))
  allocate(dipole_time_damped(ntau,3))
  allocate(trans_dipole_time(ntau,3))
- allocate(m_excit_field(ntau,3))
- allocate(trans_m_excit_field(ntau,3))
+ allocate(m_excit_field_dir(ntau))
+ allocate(trans_m_excit_field_dir(ntau))
 
  if(calc_p_matrix_error_) then
    allocate(p_matrix_time_ref_cmplx(basis%nbf,basis%nbf,nspin,INT(time_sim/write_step)+1))
    allocate(dipole_time_test(2*ntau,3))
  end if
  dipole_time_ref(:,:)= ( 0.0_dp , 0.0_dp )
- m_excit_field(:,:)= ( 0.0_dp , 0.0_dp )
+ m_excit_field_dir(:)= ( 0.0_dp , 0.0_dp )
 
  write(stdout,"(A,F8.2,A,F9.5,A,I8)") "Calculate reference tddft loop for time_sim=", time_sim, " time_step=", time_step, " number of iterations", ntau
  call start_clock(timing_tddft_loop)
@@ -153,66 +156,6 @@ subroutine calculate_propagation(nstate,              &
  call stop_clock(timing_tddft_loop)
  write(stdout,*) "End of reference tddft loop"
  write(stdout,*)
-#ifdef HAVE_FFTW
- call start_clock(timing_tddft_fourier)
- !---Fourier Transform of dipole_time---
-
- time_cur=time_min
- do itau=1,ntau
-   dipole_time_damped(itau,:)=dipole_time_ref(itau,:)*exp(-time_cur/500.0_dp)
-   time_cur=time_min+itau*time_step
- end do
-
- do idir=1,3
-   plan = fftw_plan_dft_1d(ntau,dipole_time_damped(1:ntau,idir),trans_dipole_time(1:ntau,idir),FFTW_FORWARD,FFTW_ESTIMATE)
-   call fftw_execute_dft(plan,dipole_time_damped(1:ntau,idir),trans_dipole_time(1:ntau,idir))
-   call fftw_destroy_plan(plan)
-   
- end do
-
- trans_dipole_time =  trans_dipole_time / ntau
-
- do idir=1,3
-   plan = fftw_plan_dft_1d(ntau,m_excit_field(1:ntau,idir),trans_m_excit_field(1:ntau,idir),FFTW_FORWARD,FFTW_ESTIMATE)
-   call fftw_execute_dft(plan,m_excit_field(1:ntau,idir),trans_m_excit_field(1:ntau,idir))
-   call fftw_destroy_plan(plan)
- end do
-
- trans_m_excit_field(:,:)=trans_m_excit_field(:,:) / ntau
-
- open(newunit=file_transforms,file="transforms.dat")
- open(newunit=file_dipolar_spectra,file="dipolar_spectra.dat")
- write(file_dipolar_spectra,*) "# omega(eV), Average, xx, xy, xz, yx, yy, yz, zx, zy, zz"
- write(file_transforms,*) "# omega(eV), |E_x(omega)|, real(E_x(omega)), aimag(E_x(omega)), |d_x(omega)|, real(d_x(omega)), aimag(d_x(omega))"
-
- nomega=ntau
- do iomega=1,nomega/2 ! here iomega correspons to frequency
-   omega_factor = 4.0_dp * pi * 2 * pi * (iomega-1) / time_sim / c_speedlight
-   if(2*pi * iomega / time_sim * Ha_eV < 500.0_dp) then
-     write(file_dipolar_spectra,"(x,es16.8E3)",advance='no')  2*pi * iomega / time_sim * Ha_eV
-  
-     write(file_dipolar_spectra,"(3x,es16.8E3)",advance='no') &
-             SUM( aimag((trans_dipole_time(iomega,:)) / (trans_m_excit_field(iomega,:))) ) / 3.0_dp * omega_factor
- 
-     do idir=1,3
-       if( excit_dir(idir) > 1.0E-10_dp ) then
-         write(file_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') aimag((trans_dipole_time(iomega,:))/(trans_m_excit_field(iomega,idir))) * omega_factor
-       else
-         write(file_dipolar_spectra,"(3(3x,f5.2))",advance='no') -1.0_dp, -1.0_dp, -1.0_dp
-       end if
-       if(idir==3) write(file_dipolar_spectra,*)
-     end do
-     write(file_transforms,*) pi * iomega / time_sim * Ha_eV, abs(trans_m_excit_field(iomega,1)), real(trans_m_excit_field(iomega,1)), aimag(trans_m_excit_field(iomega,1)), abs(trans_dipole_time(iomega,1)), real(trans_dipole_time(iomega,1)), aimag(trans_dipole_time(iomega,1)) 
-   end if
- end do
-
- close(file_transforms)
- close(file_dipolar_spectra)
- call stop_clock(timing_tddft_fourier)
-#else
- call issue_warning("tddft: calculate_propagation; fftw is not present") 
-#endif  
-
  
  if( calc_p_matrix_error_ ) then
 
@@ -406,7 +349,7 @@ subroutine tddft_time_loop(nstate,                           &
    write(file_time_data,*) " # time(au)     e_total             enuc            ekin               ehart            &
                                eexx_hyb            exc             eexcit            P*S trace (# of els)" 
    write(file_dipole_time,*) "# time(au)                      Dipole_x(D)               Dipole_y(D)               Dipole_z(D)"
-   write(file_excit_field,*) "# time(au)                      E_field_x(au)              E_field_y(au)              E_field_z(au)"
+   write(file_excit_field,*) "# time(au)                      E_field_excit_dir(au)"
  end if
 
 
@@ -961,7 +904,7 @@ subroutine tddft_time_loop(nstate,                           &
 !     if(mod(itau-1,mod_write)==0 ) then
        if(ref_) then
          if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,itau)
-         write(file_excit_field,*) time_cur, abs(m_excit_field(itau,:))
+         write(file_excit_field,*) time_cur, real(m_excit_field_dir(itau))
        end if
        write(file_dipole_time,*) time_cur, dipole(:) * au_debye
        write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
@@ -1454,7 +1397,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
    if(excit_type == 'NO') calc_excit_=.false.
    if ( calc_excit_ ) then
      call calculate_excit_field(time_cur,excit_field)
-     if(ref_)  m_excit_field(itau,:)=excit_field(:)
+     if(ref_)  m_excit_field_dir(itau)=DOT_PRODUCT(excit_field(:),excit_dir_norm(:))
      do idir=1,3
        hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) - dipole_basis(:,:,idir) * excit_field(idir)
        en%excit=en%excit+real(SUM(dipole_basis(:,:,idir)*excit_field(idir)*p_matrix_cmplx(:,:,ispin)),dp)
@@ -1475,21 +1418,18 @@ subroutine calculate_excit_field(time_cur,excit_field)
  real(dp),intent(in)      :: time_cur ! time in au
  real(dp),intent(inout)   :: excit_field(3) ! electric field in 3 dimensions
 !=====
- real(dp)    :: norm_dir
-!=====
 
- norm_dir=NORM2(excit_dir(:))
 
  select case(excit_type)
  case('GAU') !Gaussian electic field
    excit_field(:) = excit_kappa * exp( -( time_cur-excit_time0 )**2 / 2.0_dp / excit_omega**2 ) * &
-                  & excit_dir(:) / norm_dir
+                  & excit_dir_norm(:)
  case('HSW') !Hann sine window
-   excit_field(:) = excit_kappa * sin( pi / excit_omega * ( time_cur - excit_time0  ) )**2 * excit_dir(:) / norm_dir
+   excit_field(:) = excit_kappa * sin( pi / excit_omega * ( time_cur - excit_time0  ) )**2 * excit_dir_norm(:) 
  case('DEL') ! Delta excitation
-   excit_field(:) = excit_kappa * excit_dir(:) / norm_dir
+   excit_field(:) = excit_kappa * excit_dir_norm(:) 
  case('STEP') ! Step excitation
-   excit_field(:) = excit_kappa * excit_dir(:) / norm_dir
+   excit_field(:) = excit_kappa * excit_dir_norm(:) 
  case default
     call die('Invalid choice for the excitation type. Change excit_type value in the input file')
  end select
