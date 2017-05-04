@@ -7,12 +7,15 @@
 !
 !=========================================================================
 module m_tddft_propagator
+ use m_atoms
  use m_definitions
  use m_basis_set 
  use m_scf_loop
  use m_memory
  use m_hamiltonian
+ use m_hamiltonian_sca
  use m_hamiltonian_onebody
+ use m_hamiltonian_buffer
  use m_hamiltonian_cmplx
  use m_inputparam
  use m_dft_grid
@@ -33,6 +36,7 @@ module m_tddft_propagator
 ! real(dp),allocatable       :: dipole_basis(:,:,:)
  real(dp),allocatable       :: s_matrix_inv(:,:)
  real(dp)                   :: excit_dir_norm(3)
+ real(dp),allocatable       :: xatom_start(:,:)
  complex(dp),allocatable    :: m_excit_field_dir(:)
  integer                    :: nocc
 contains
@@ -58,7 +62,7 @@ subroutine calculate_propagation(nstate,              &
  real(dp),intent(in)             :: c_matrix(basis%nbf,nstate,nspin) 
  real(dp),intent(in)             :: occupation(nstate,nspin)
  real(dp),intent(in)             :: hamiltonian_kinetic(basis%nbf,basis%nbf)
- real(dp),intent(in)             :: hamiltonian_nucleus(basis%nbf,basis%nbf)
+ real(dp),intent(inout)          :: hamiltonian_nucleus(basis%nbf,basis%nbf)
  real(dp),intent(in)             :: s_matrix_sqrt_inv(basis%nbf,nstate)
 !=====
  integer,parameter          :: BATCH_SIZE=64
@@ -274,7 +278,7 @@ subroutine tddft_time_loop(nstate,                           &
  real(dp),intent(in)                    :: c_matrix(basis%nbf,nstate,nspin) 
  real(dp),intent(in)                    :: occupation(nstate,nspin)
  real(dp),intent(in)                    :: hamiltonian_kinetic(basis%nbf,basis%nbf)
- real(dp),intent(in)                    :: hamiltonian_nucleus(basis%nbf,basis%nbf)
+ real(dp),intent(inout)                 :: hamiltonian_nucleus(basis%nbf,basis%nbf)
  real(dp),intent(in)                    :: s_matrix_sqrt_inv(basis%nbf,nstate)
  real(dp),intent(in)                    :: time_step_cur
  character(len=4),intent(in)            :: prop_type_cur,pred_corr_cur
@@ -355,7 +359,8 @@ subroutine tddft_time_loop(nstate,                           &
 
  time_min=0.0_dp
 !===INITIAL CONDITIONS===
- 
+ allocate(xatom_start(3,natom))
+ xatom_start=xatom
  ! Getting c_matrix_cmplx(t=0) whether using RESTART_TDDFT file, whether using c_matrix
  if(.NOT. ignore_tddft_restart_) then
    call read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx,restart_is_correct)
@@ -416,7 +421,7 @@ subroutine tddft_time_loop(nstate,                           &
      write(file_dipole_time,*) time_min, dipole(:) * au_debye
      write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
         time_min, en%tot, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
-     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
+     write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_min
      write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):',en%tot
      write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment   (D):', dipole(:) * au_debye
 
@@ -1353,7 +1358,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
  real(dp),intent(in)          :: time_step_cur
  real(dp),intent(in)          :: occupation(nstate,nspin)
  real(dp),intent(in)          :: hamiltonian_kinetic(basis%nbf,basis%nbf)
- real(dp),intent(in)          :: hamiltonian_nucleus(basis%nbf,basis%nbf)
+ real(dp),intent(inout)       :: hamiltonian_nucleus(basis%nbf,basis%nbf)
  real(dp),intent(in)          :: dipole_basis(basis%nbf,basis%nbf,3)
  real(dp),intent(in)          :: s_matrix_sqrt_inv(basis%nbf,nstate)
  complex(dp),intent(in)       :: c_matrix_cmplx(basis%nbf,nocc,nspin)
@@ -1383,28 +1388,56 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
                                          hamiltonian_fock_cmplx)                   
  do ispin=1, nspin                                                  
    en%excit=0.0_dp
-   !------
-   !--Hamiltonian - Static part--
-   hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
-   !--Hamiltonian - Excitation--
-   excit_field=0.0_dp
-   calc_excit_ = .false.
-   calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'GAU' )
-   calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'HSW'  .AND. abs(time_cur - excit_type%time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )  
-   calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'STEP' .AND. abs(time_cur - excit_type%time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )
-   calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'DEL'  .AND. abs(time_cur - excit_type%time0)<=time_step_cur ) 
-   if(itau==0) calc_excit_=.false.
-   if(excit_type%name == 'NO') calc_excit_=.false.
-   if ( calc_excit_ ) then
-     call calculate_excit_field(time_cur,excit_field)
-     if(ref_)  m_excit_field_dir(itau)=DOT_PRODUCT(excit_field(:),excit_dir_norm(:))
-     do idir=1,3
-       hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) - dipole_basis(:,:,idir) * excit_field(idir)
-       en%excit=en%excit+real(SUM(dipole_basis(:,:,idir)*excit_field(idir)*p_matrix_cmplx(:,:,ispin)),dp)
-     end do     
+   if(excit_type%is_light) then
+     !------
+     !--Hamiltonian - Static part--
+     hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+     !--Hamiltonian - Excitation--
+     excit_field=0.0_dp
+     calc_excit_ = .false.
+     calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'GAU' )
+     calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'HSW'  .AND. abs(time_cur - excit_type%time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )  
+     calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'STEP' .AND. abs(time_cur - excit_type%time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )
+     calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'DEL'  .AND. abs(time_cur - excit_type%time0)<=time_step_cur ) 
+     if(itau==0) calc_excit_=.false.
+     if(excit_type%name == 'NO') calc_excit_=.false.
+     if ( calc_excit_ ) then
+       call calculate_excit_field(time_cur,excit_field)
+       if(ref_)  m_excit_field_dir(itau)=DOT_PRODUCT(excit_field(:),excit_dir_norm(:))
+       do idir=1,3
+         hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) - dipole_basis(:,:,idir) * excit_field(idir)
+         en%excit=en%excit+real(SUM(dipole_basis(:,:,idir)*excit_field(idir)*p_matrix_cmplx(:,:,ispin)),dp)
+       end do     
+     end if
+     h_small_cmplx(:,:,ispin) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
+                     MATMUL( hamiltonian_fock_cmplx(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
+   end if ! light excitation
+   if(excit_type%is_projectile) then
+
+     xatom(:,natom)=xatom_start(:,natom) + vel(:,natom)*time_cur
+!     xatom(:,natom)=vel(:,natom)*time_cur
+     call output_positions()
+
+     call nucleus_nucleus_energy(en%nuc_nuc)
+  
+     !
+     ! Nucleus-electron interaction
+     if( parallel_ham ) then
+       if( parallel_buffer ) then
+         call setup_nucleus_buffer_sca(.false.,basis,basis%nbf,basis%nbf,hamiltonian_nucleus)
+       else
+         call setup_nucleus_sca(.false.,basis,basis%nbf,basis%nbf,hamiltonian_nucleus)
+       endif
+     else
+       call setup_nucleus(.false.,basis,hamiltonian_nucleus)
+
+       if( nelement_ecp > 0 ) then
+         call setup_nucleus_ecp(.false.,basis,hamiltonian_nucleus)
+       endif
+     endif
+     !-------------------------------
+     hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
    end if
-   h_small_cmplx(:,:,ispin) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
-                   MATMUL( hamiltonian_fock_cmplx(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
  end do ! spin loop
 
  call stop_clock(timing_tddft_hamiltonian_fock)

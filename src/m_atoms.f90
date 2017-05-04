@@ -24,7 +24,7 @@ module m_atoms
  real(dp),allocatable,protected :: zatom(:)
  integer,allocatable,protected  :: zbasis(:)
 
- real(dp),allocatable,protected :: xatom(:,:)
+ real(dp),allocatable           :: xatom(:,:)
  real(dp),allocatable,protected :: xbasis(:,:)
  real(dp),allocatable,protected :: vel(:,:)
  real(dp),allocatable,public    :: force(:,:)
