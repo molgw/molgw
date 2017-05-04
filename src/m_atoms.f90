@@ -50,13 +50,13 @@ contains
 
 
 !=========================================================================
-subroutine init_atoms(zatom_read,x_read,vel_part,calculate_forces,excit_type)
+subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_name)
  use m_tools,only: cross_product
  implicit none
  real(dp),intent(in) :: zatom_read(natom+nghost),x_read(3,natom+nghost)
- real(dp),intent(in) :: vel_part(3)
+ real(dp),intent(in) :: vel_projectile(3)
  logical,intent(in)  :: calculate_forces
- character(len=12),intent(in)   :: excit_type
+ character(len=12),intent(in)   :: excit_name
 !=====
  integer  :: iatom,jatom
  real(dp) :: x21(3),x31(3)
@@ -75,8 +75,8 @@ subroutine init_atoms(zatom_read,x_read,vel_part,calculate_forces,excit_type)
 
  allocate(vel(3,natom))
  vel(:,:)=0.0_dp
- if(excit_type=="PROJ_SIMPLE") then
-   vel(:,natom)=vel_part(:)
+ if(excit_name=="PROJ_SIMPLE") then
+   vel(:,natom)=vel_projectile(:)
  end if
  ! For relaxation or dynamics only 
  if( calculate_forces ) then

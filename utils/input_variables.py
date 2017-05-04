@@ -909,7 +909,7 @@ vl[i].comment  ='Sets the type of propagation algorithm in the real-time dynamic
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='excit_type'
+vl[i].keyword  ='excit_name'
 vl[i].family   ='rt_tddft'
 vl[i].default  ='GAU'
 vl[i].datatype ='characters'
@@ -1092,7 +1092,7 @@ vl[i].comment  ='Prints a RESTART_TDDFT file which contains wavefunction coeffic
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='vel_proj'
+vl[i].keyword  ='vel_projectile'
 vl[i].family   ='rt_tddft'
 vl[i].default  =( 0.0 , 0.0, 1.0 )
 vl[i].datatype ='vector_1d_3'

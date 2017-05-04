@@ -109,7 +109,7 @@ subroutine calculate_propagation(nstate,              &
     call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.TRUE.,BATCH_SIZE)
  endif
 
- excit_dir_norm(:)=excit_dir(:)/NORM2(excit_dir(:))
+ excit_dir_norm(:)=excit_type%dir(:)/NORM2(excit_type%dir(:))
 
  time_min=0.0_dp
  allocate(s_matrix_inv(basis%nbf,basis%nbf))
@@ -1389,12 +1389,12 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
    !--Hamiltonian - Excitation--
    excit_field=0.0_dp
    calc_excit_ = .false.
-   calc_excit_ = calc_excit_ .OR. ( excit_type == 'GAU' )
-   calc_excit_ = calc_excit_ .OR. ( excit_type == 'HSW'  .AND. abs(time_cur - excit_time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )  
-   calc_excit_ = calc_excit_ .OR. ( excit_type == 'STEP' .AND. abs(time_cur - excit_time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )
-   calc_excit_ = calc_excit_ .OR. ( excit_type == 'DEL'  .AND. abs(time_cur - excit_time0)<=time_step_cur ) 
+   calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'GAU' )
+   calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'HSW'  .AND. abs(time_cur - excit_type%time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )  
+   calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'STEP' .AND. abs(time_cur - excit_type%time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )
+   calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'DEL'  .AND. abs(time_cur - excit_type%time0)<=time_step_cur ) 
    if(itau==0) calc_excit_=.false.
-   if(excit_type == 'NO') calc_excit_=.false.
+   if(excit_type%name == 'NO') calc_excit_=.false.
    if ( calc_excit_ ) then
      call calculate_excit_field(time_cur,excit_field)
      if(ref_)  m_excit_field_dir(itau)=DOT_PRODUCT(excit_field(:),excit_dir_norm(:))
@@ -1420,16 +1420,16 @@ subroutine calculate_excit_field(time_cur,excit_field)
 !=====
 
 
- select case(excit_type)
+ select case(excit_type%name)
  case('GAU') !Gaussian electic field
-   excit_field(:) = excit_kappa * exp( -( time_cur-excit_time0 )**2 / 2.0_dp / excit_omega**2 ) * &
+   excit_field(:) = excit_type%kappa * exp( -( time_cur-excit_type%time0 )**2 / 2.0_dp / excit_omega**2 ) * &
                   & excit_dir_norm(:)
  case('HSW') !Hann sine window
-   excit_field(:) = excit_kappa * sin( pi / excit_omega * ( time_cur - excit_time0  ) )**2 * excit_dir_norm(:) 
+   excit_field(:) = excit_type%kappa * sin( pi / excit_omega * ( time_cur - excit_type%time0  ) )**2 * excit_dir_norm(:) 
  case('DEL') ! Delta excitation
-   excit_field(:) = excit_kappa * excit_dir_norm(:) 
+   excit_field(:) = excit_type%kappa * excit_dir_norm(:) 
  case('STEP') ! Step excitation
-   excit_field(:) = excit_kappa * excit_dir_norm(:) 
+   excit_field(:) = excit_type%kappa * excit_dir_norm(:) 
  case default
     call die('Invalid choice for the excitation type. Change excit_type value in the input file')
  end select

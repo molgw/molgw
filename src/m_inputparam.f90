@@ -70,6 +70,15 @@ module m_inputparam
 #endif
  end type calculation_type
 
+ type excitation_type
+ character(len=100)   :: name
+ logical              :: is_light
+ logical              :: is_projectile
+ real(dp)             :: kappa, omega, time0
+ real(dp)             :: dir(3)
+ end type
+
+ type(excitation_type),protected  :: excit_type
  ! There are the input variables of MOLGW
  ! They should not be modified anywhere else in the code.
  ! Declare them as protected and work on copies if absolutely necessary.
@@ -109,7 +118,7 @@ module m_inputparam
  character(len=12),protected      :: init_hamiltonian
  character(len=12),protected      :: prop_type
  character(len=12),protected      :: pred_corr
- character(len=12),protected      :: excit_type
+ character(len=12),protected      :: excit_name
  character(len=100),protected     :: error_prop_types
  character(len=100),protected     :: error_pred_corrs
  character(len=100),protected     :: error_time_steps
@@ -357,6 +366,26 @@ subroutine init_calculation_type(calc_type,input_key)
 
 end subroutine init_calculation_type
 
+!=========================================================================
+subroutine init_excitation_type(excit_type)
+ implicit none
+ type(excitation_type),intent(inout)  ::  excit_type
+!=====
+
+ excit_type%name  = excit_name
+ excit_type%kappa = excit_kappa 
+ excit_type%omega = excit_omega 
+ excit_type%time0 = excit_time0
+ excit_type%dir   = excit_dir 
+
+ if(excit_type%name=="PROJ_SIMPLE") then
+   excit_type%is_light=.false.
+   excit_type%is_projectile=.true.
+ else
+   excit_type%is_light=.true.
+   excit_type%is_projectile=.false.
+ end if
+end subroutine init_excitation_type
 
 !=========================================================================
 subroutine init_dft_type(key,calc_type)
@@ -733,7 +762,7 @@ subroutine read_inputfile_namelist()
  integer              :: atom_number,info,iatom
  character(len=2)     :: atom_symbol
  real(dp),allocatable :: zatom_read(:),x_read(:,:)
- real(dp)             :: vel_part(3)
+ real(dp)             :: vel_projectile(3)
  real(dp)             :: beta_hybrid
  character(len=12)    :: tddft_grid_quality
  character(len=12)    :: grid_quality
@@ -807,7 +836,7 @@ subroutine read_inputfile_namelist()
  length_unit        = capitalize(length_unit)
  init_hamiltonian   = capitalize(init_hamiltonian)
  prop_type          = capitalize(prop_type)
- excit_type         = capitalize(excit_type)
+ excit_name         = capitalize(excit_name)
  pred_corr          = capitalize(pred_corr)
  error_prop_types   = capitalize(error_prop_types)
  error_pred_corrs   = capitalize(error_pred_corrs)
@@ -890,9 +919,9 @@ subroutine read_inputfile_namelist()
    call issue_warning('mpi_nproc_ortho value is invalid. Override it and set mpi_nproc_ortho=1')
  endif
 
-
+ call init_excitation_type(excit_type)
  nprojectile=0
- if(excit_type=="PROJ_SIMPLE") then
+ if(excit_type%name=="PROJ_SIMPLE") then
    nprojectile=1
  end if
 
@@ -1032,7 +1061,7 @@ subroutine read_inputfile_namelist()
  endif
 
  x_read(:,:) = x_read(:,:) * length_factor
- call init_atoms(zatom_read,x_read,vel_part,(move_nuclei/='no'),excit_type)
+ call init_atoms(zatom_read,x_read,vel_projectile,(move_nuclei/='no'),excit_type%name)
  deallocate(x_read,zatom_read)
 
  call init_ecp(ecp_elements,basis_path,ecp_type,ecp_level)
