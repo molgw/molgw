@@ -25,6 +25,8 @@ program spectrum
  complex(dp),allocatable    :: dipole_time_damped(:,:)
  complex(dp),allocatable    :: trans_m_excit_field(:,:)
  complex(dp),allocatable    :: m_excit_field(:,:)
+ complex(dp),allocatable    :: trans_m_excit_field_dir(:)
+ complex(dp),allocatable    :: m_excit_field_dir(:)
  complex(dp),allocatable    :: trans_dipole_time(:,:)
  logical                    :: file_exists
  logical                    :: output_damped_
@@ -79,6 +81,8 @@ program spectrum
  allocate(dipole_time_damped(ntau,3))
  allocate(m_excit_field(ntau,3))
  allocate(trans_m_excit_field(ntau,3))
+ allocate(m_excit_field_dir(ntau))
+ allocate(trans_m_excit_field_dir(ntau))
  allocate(trans_dipole_time(ntau,3))
   
  ! Fill the dipole_time array
@@ -142,6 +146,10 @@ program spectrum
 
  excit_dir=m_excit_field(itau_field_max,:)/NORM2(REAL(m_excit_field(itau_field_max,:)))
 
+ do itau=1,ntau
+   m_excit_field_dir(itau)=DOT_PRODUCT(m_excit_field(itau,:),excit_dir(:))
+ end do
+
  write(stdout,*) "suka", excit_dir, length(excit_dir)
  ! Apply damping to the dipole
  if(output_damped_) then
@@ -173,7 +181,11 @@ program spectrum
    call fftw_destroy_plan(plan)
  end do
  
- trans_m_excit_field(:,:)=trans_m_excit_field(:,:) / ntau
+ plan = fftw_plan_dft_1d(ntau,m_excit_field_dir(1:ntau),trans_m_excit_field_dir(1:ntau),FFTW_FORWARD,FFTW_ESTIMATE)
+ call fftw_execute_dft(plan,m_excit_field_dir(1:ntau),trans_m_excit_field_dir(1:ntau))
+ call fftw_destroy_plan(plan)
+
+ trans_m_excit_field_dir(:)=trans_m_excit_field_dir(:) / ntau
 
  ! Write absorption spectra in the dipolar_spectra file
  if(output_transforms_) then
@@ -190,8 +202,10 @@ program spectrum
      write(file_dipolar_spectra,"(x,es16.8E3)",advance='no')  2 * pi * iomega / time_sim * Ha_eV
 
      do idir=1,3
-       if(NORM2(ABS(trans_m_excit_field(iomega,:)))>1.0e-15) then
-         write(file_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') AIMAG((trans_dipole_time(iomega,idir))/(length(REAL(trans_m_excit_field(iomega,:)))+im*length(AIMAG(trans_m_excit_field(iomega,:))))) * omega_factor
+!       if(NORM2(ABS(trans_m_excit_field(iomega,:)))>1.0e-15) then
+!         write(file_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') AIMAG((trans_dipole_time(iomega,idir))/(length(REAL(trans_m_excit_field(iomega,:)))+im*length(AIMAG(trans_m_excit_field(iomega,:))))) * omega_factor
+       if(ABS(trans_m_excit_field_dir(iomega))>1.0e-15) then
+         write(file_dipolar_spectra,"(3(3x,es16.8E3))",advance='no') AIMAG((trans_dipole_time(iomega,idir))/trans_m_excit_field_dir(iomega)) * omega_factor
        else
          write(file_dipolar_spectra,"(3(17x,f5.2))",advance='no') -1.0_dp
        end if
