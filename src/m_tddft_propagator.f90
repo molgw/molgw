@@ -350,7 +350,7 @@ subroutine tddft_time_loop(nstate,                           &
      open(newunit=file_time_data,file=name_time_data)
      open(newunit=file_dipole_time,file=name_dipole_time)
    end if  
-   write(file_time_data,*) " # time(au)     e_total             enuc            ekin               ehart            &
+   write(file_time_data,*) " # time(au)     e_total             enuc_nuc             enuc            ekin               ehart            &
                                eexx_hyb            exc             eexcit            P*S trace (# of els)" 
    write(file_dipole_time,*) "# time(au)                      Dipole_x(D)               Dipole_y(D)               Dipole_z(D)"
    write(file_excit_field,*) "# time(au)                      E_field_excit_dir(au)"
@@ -419,8 +419,8 @@ subroutine tddft_time_loop(nstate,                           &
    if( is_iomaster ) then
    ! Here time_min point coresponds to the end of calculation written in the RESTART_TDDFT
      write(file_dipole_time,*) time_min, dipole(:) * au_debye
-     write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
-        time_min, en%tot, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
+     write(file_time_data,"(F9.4,8(2x,es16.8E3),2x,2(2x,F7.2))") &
+        time_min, en%tot, en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
      write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_min
      write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):',en%tot
      write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment   (D):', dipole(:) * au_debye
@@ -912,11 +912,11 @@ subroutine tddft_time_loop(nstate,                           &
          write(file_excit_field,*) time_cur, real(m_excit_field_dir(itau))
        end if
        write(file_dipole_time,*) time_cur, dipole(:) * au_debye
-       write(file_time_data,"(F9.4,7(2x,es16.8E3),2x,2(2x,F7.2))") &
-          time_cur, en%tot, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
+       write(file_time_data,"(F9.4,8(2x,es16.8E3),2x,2(2x,F7.2))") &
+          time_cur, en%tot, en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
        write(stdout,*)
        write(stdout,'(1x,a31,1x,f19.10)')  'RT-TDDFT Simulation time  (au):', time_cur
-       write(stdout,'(1x,a31,1x,f19.10)')  'RT-TDDFT Total Energy     (Ha):',en%tot
+       write(stdout,'(1x,a31,1x,f19.10)')  'RT-TDDFT Total Energy     (Ha):', en%tot
        write(stdout,'(1x,a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment     (D):', dipole(:) * au_debye
      end if
    end if
@@ -1403,7 +1403,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
      if(excit_type%name == 'NO') calc_excit_=.false.
      if ( calc_excit_ ) then
        call calculate_excit_field(time_cur,excit_field)
-       if(ref_)  m_excit_field_dir(itau)=DOT_PRODUCT(excit_field(:),excit_dir_norm(:))
+       if(ref_)  m_excit_field_dir(itau)=NORM2(excit_field(:))
        do idir=1,3
          hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) - dipole_basis(:,:,idir) * excit_field(idir)
          en%excit=en%excit+real(SUM(dipole_basis(:,:,idir)*excit_field(idir)*p_matrix_cmplx(:,:,ispin)),dp)
@@ -1415,7 +1415,6 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
    if(excit_type%is_projectile) then
 
      xatom(:,natom)=xatom_start(:,natom) + vel(:,natom)*time_cur
-!     xatom(:,natom)=vel(:,natom)*time_cur
      call output_positions()
 
      call nucleus_nucleus_energy(en%nuc_nuc)

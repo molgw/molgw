@@ -668,12 +668,12 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
  allocate(phi(istate1:istate2,nspin))
  write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
 
- xmin = MINVAL( xbasis(1,:) ) - length
- xmax = MAXVAL( xbasis(1,:) ) + length
- ymin = MINVAL( xbasis(2,:) ) - length
- ymax = MAXVAL( xbasis(2,:) ) + length
- zmin = MINVAL( xbasis(3,:) ) - length
- zmax = MAXVAL( xbasis(3,:) ) + length
+ xmin =MIN(MINVAL( xatom(1,:) ),MINVAL( xbasis(1,:) )) - length
+ xmax =MAX(MAXVAL( xatom(1,:) ),MAXVAL( xbasis(1,:) )) + length
+ ymin =MIN(MINVAL( xatom(2,:) ),MINVAL( xbasis(2,:) )) - length
+ ymax =MAX(MAXVAL( xatom(2,:) ),MAXVAL( xbasis(2,:) )) + length
+ zmin =MIN(MINVAL( xatom(3,:) ),MINVAL( xbasis(3,:) )) - length
+ zmax =MAX(MAXVAL( xatom(3,:) ),MAXVAL( xbasis(3,:) )) + length
  dx = (xmax-xmin)/REAL(nx,dp)
  dy = (ymax-ymin)/REAL(ny,dp)
  dz = (zmax-zmin)/REAL(nz,dp)

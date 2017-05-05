@@ -1061,6 +1061,7 @@ subroutine read_inputfile_namelist()
  endif
 
  x_read(:,:) = x_read(:,:) * length_factor
+ vel_projectile(:) = vel_projectile(:) * length_factor
  call init_atoms(zatom_read,x_read,vel_projectile,(move_nuclei/='no'),excit_type%name)
  deallocate(x_read,zatom_read)
 
