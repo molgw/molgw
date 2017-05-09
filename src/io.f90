@@ -792,7 +792,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  complex(dp),allocatable    :: phi_cmplx(:,:)
  real(dp)                   :: u(3),a(3)
  logical                    :: file_exists
- real(dp)                   :: xxmin,xxmax,ymin,ymax,zmin,zmax
+ real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
  real(dp)                   :: basis_function_r(basis%nbf)
  integer                    :: ix,iy,iz,iatom
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
@@ -839,26 +839,22 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
 
 
 
+ xmin =MIN(MINVAL( xatom(1,:) ),MINVAL( xbasis(1,:) )) - length
+ xmax =MAX(MAXVAL( xatom(1,:) ),MAXVAL( xbasis(1,:) )) + length
+ ymin =MIN(MINVAL( xatom(2,:) ),MINVAL( xbasis(2,:) )) - length
+ ymax =MAX(MAXVAL( xatom(2,:) ),MAXVAL( xbasis(2,:) )) + length
+ zmin =MIN(MINVAL( xatom(3,:) ),MINVAL( xbasis(3,:) )) - length
+ zmax =MAX(MAXVAL( xatom(3,:) ),MAXVAL( xbasis(3,:) )) + length
 
- xxmin = MINVAL( xatom(1,:) ) - length
- xxmax = MAXVAL( xatom(1,:) ) + length
- ymin = MINVAL( xatom(2,:) ) - length
- ymax = MAXVAL( xatom(2,:) ) + length
- zmin = MINVAL( xatom(3,:) ) - length
- zmax = MAXVAL( xatom(3,:) ) + length
-
-
-
- 
-   do ispin=1,nspin
+ do ispin=1,nspin
 
 !     write(file_name,'(a,i1,a,i3.3,a)') 'rho_',ispin,'_',num,'.cube'
      write(file_name,'(i3.3,a)') num,'.cube'
      open(newunit=ocuberho(ispin),file=file_name)                
      write(ocuberho(ispin),'(a)') 'cube file generated from MOLG W'
      write(ocuberho(ispin),'(a,i4)') 'density for spin ',ispin   
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xxmin,ymin, zmin
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,(xxmax-xxmin)/ REAL(nx,dp),0.,0.
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin, zmin
+     write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,(xmax-xmin)/ REAL(nx,dp),0.,0.
      write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,(ymax-ymin)/REAL(ny,dp),0.
      write(ocuberho(ispin),'(i6,3(f12.6,2x))') nz,0.,0.,(zmax-zmin)/REAL(nz,dp)
      do iatom=1,natom
@@ -867,7 +863,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
    enddo
 
  do ix=1,nx
-   rr(1) = ( xxmin + (ix-1)*(xxmax-xxmin)/REAL(nx,dp) ) 
+   rr(1) = ( xmin + (ix-1)*(xmax-xmin)/REAL(nx,dp) ) 
    do iy=1,ny
      rr(2) = ( ymin + (iy-1)*(ymax-ymin)/REAL(ny,dp) ) 
      do iz=1,nz

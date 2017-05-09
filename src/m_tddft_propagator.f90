@@ -418,6 +418,7 @@ subroutine tddft_time_loop(nstate,                           &
 
    if( is_iomaster ) then
    ! Here time_min point coresponds to the end of calculation written in the RESTART_TDDFT
+     if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0)
      write(file_dipole_time,*) time_min, dipole(:) * au_debye
      write(file_time_data,"(F9.4,8(2x,es16.8E3),2x,2(2x,F7.2))") &
         time_min, en%tot, en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
@@ -1389,9 +1390,6 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
  do ispin=1, nspin                                                  
    en%excit=0.0_dp
    if(excit_type%is_light) then
-     !------
-     !--Hamiltonian - Static part--
-     hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
      !--Hamiltonian - Excitation--
      excit_field=0.0_dp
      calc_excit_ = .false.
@@ -1409,8 +1407,6 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
          en%excit=en%excit+real(SUM(dipole_basis(:,:,idir)*excit_field(idir)*p_matrix_cmplx(:,:,ispin)),dp)
        end do     
      end if
-     h_small_cmplx(:,:,ispin) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
-                     MATMUL( hamiltonian_fock_cmplx(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
    end if ! light excitation
    if(excit_type%is_projectile) then
 
@@ -1435,8 +1431,10 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
        endif
      endif
      !-------------------------------
-     hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
    end if
+   hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+   h_small_cmplx(:,:,ispin) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
+                   MATMUL( hamiltonian_fock_cmplx(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
  end do ! spin loop
 
  call stop_clock(timing_tddft_hamiltonian_fock)
