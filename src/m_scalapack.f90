@@ -124,7 +124,7 @@ module m_scalapack
  end interface gather_distributed_copy
 
 #ifdef HAVE_SCALAPACK
- integer,external :: NUMROC,INDXL2G,INDXG2L,INDXG2P,PDLATRA
+ integer,external :: NUMROC,INDXL2G,INDXG2L,INDXG2P,PDLATRA,PDLAMCH
 #endif
 
 
@@ -658,7 +658,6 @@ subroutine diagonalize_sca_pdsyevr(nglobal,desc,matrix,eigval,desc_eigvec,eigvec
  integer              :: iclustr(2*nprow_sd*npcol_sd)
  real(dp)             :: gap(nprow_sd*npcol_sd)
  integer              :: ifail(nglobal)
- real(dp),external    :: PDLAMCH
 #endif
 !=====
 
@@ -732,7 +731,6 @@ subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix_global,eigval)
  integer :: descm(NDEL),descz(NDEL)
  real(dp),allocatable :: matrix(:,:)
  integer :: rank_master
- integer,external :: NUMROC
 !=====
 
 #ifdef HAVE_SCALAPACK
@@ -825,7 +823,6 @@ subroutine product_ab_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix)
  integer :: descm(NDEL)
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
- integer,external :: NUMROC
 !=====
 
  mmat  = SIZE( a_matrix , DIM=1)
@@ -944,7 +941,6 @@ subroutine product_abc_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix,
  integer :: descm(NDEL)
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
- integer,external :: NUMROC
 !=====
 
  mmat  = SIZE( a_matrix , DIM=1)
@@ -1099,7 +1095,6 @@ subroutine product_transaba_scalapack(scalapack_block_min,a_matrix,b_matrix,c_ma
  integer :: descm(NDEL)
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
- integer,external :: NUMROC
 !=====
 
  kmat  = SIZE( a_matrix , DIM=1)
@@ -1383,7 +1378,6 @@ subroutine product_abc_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_mat
  integer :: descm(NDEL)
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
- integer,external :: NUMROC
 !=====
 
  mmat  = desca(M_A)
@@ -1457,7 +1451,6 @@ subroutine product_transaba_sca(desca,a_matrix_local,descb,b_matrix_local,descc,
  integer :: descm(NDEL)
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
- integer,external :: NUMROC
 !=====
 
 
@@ -1919,9 +1912,6 @@ function row_block_size(mglobal,iprow,nprow)
 
  integer,intent(in) :: mglobal,iprow,nprow
  integer            :: row_block_size
-#ifdef HAVE_SCALAPACK
- integer,external :: NUMROC 
-#endif
 !=====
 
 #ifdef HAVE_SCALAPACK
@@ -1939,9 +1929,6 @@ function col_block_size(nglobal,ipcol,npcol)
 
  integer,intent(in) :: nglobal,ipcol,npcol
  integer            :: col_block_size
-#ifdef HAVE_SCALAPACK
- integer,external :: NUMROC 
-#endif
 !=====
 
 #ifdef HAVE_SCALAPACK
@@ -1961,9 +1948,6 @@ subroutine init_desc(distribution,mglobal,nglobal,desc,mlocal,nlocal)
  integer,intent(out)         :: desc(NDEL),mlocal,nlocal
 !=====
  integer :: info
-#ifdef HAVE_SCALAPACK
- integer,external :: NUMROC 
-#endif
 !=====
 
 #ifdef HAVE_SCALAPACK
@@ -2090,9 +2074,6 @@ function colindex_global_to_local(distribution,iglobal)
  integer,intent(in)          :: iglobal
  integer                     :: colindex_global_to_local
 !=====
-#ifdef HAVE_SCALAPACK
- integer,external :: INDXG2P,INDXG2L
-#endif
 !=====
  !
  ! returns the local index if this is proc in charge
