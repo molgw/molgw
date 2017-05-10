@@ -495,11 +495,14 @@ program molgw
 
  !
  ! CI calculation is done here
- ! implemented for 2 electrons only!
+ ! implemented for 2 or 3 electrons only!
  !
  if(calc_type%is_ci) then
    if(nspin/=1) call die('for CI, nspin should be 1')
-   if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) call die('CI is implemented for 2 electrons only')
+
+   call full_ci_3electrons_spin(print_wfn_,nstate,1,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
+
+!   if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) call die('CI is implemented for 2 electrons only')
    call full_ci_2electrons_spin(print_wfn_,nstate,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
  endif
  call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
