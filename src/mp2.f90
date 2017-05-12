@@ -1487,3 +1487,326 @@ end subroutine full_ci_3electrons_spin
 
 
 !==================================================================
+subroutine full_ci_4electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix,nuc_nuc)
+ use m_definitions
+ use m_mpi
+ use m_warning
+ use m_tools
+ use m_basis_set
+ use m_eri_ao_mo
+ use m_inputparam,only: nspin,has_auxil_basis
+ use m_dft_grid
+ implicit none
+
+ logical,intent(in)         :: print_wfn_
+ integer,intent(in)         :: spinstate,nstate
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(in)        :: nuc_nuc
+!=====
+ real(dp)                   :: h_1body(nstate,nstate)
+ integer                    :: isporb,jsporb,ksporb,lsporb
+ integer                    :: istate,jstate,kstate,lstate
+ integer                    :: ispin,jspin,kspin,lspin
+ integer                    :: iisporb,ijsporb,iksporb,ilsporb
+ integer                    :: iistate,ijstate,ikstate,ilstate
+ integer                    :: iispin,ijspin,ikspin,ilspin
+ integer                    :: jisporb,jjsporb,jksporb,jlsporb
+ integer                    :: jistate,jjstate,jkstate,jlstate
+ integer                    :: jispin,jjspin,jkspin,jlspin
+ integer                    :: iconf,jconf,nconf
+ real(dp),allocatable       :: h_ci(:,:),eigvec(:,:),energy(:)
+ integer,allocatable        :: on_i(:),on_j(:)
+ logical,allocatable        :: mask(:)
+!=====
+
+ call start_clock(timing_full_ci)
+
+ write(stdout,'(/,1x,a,/)') 'Full CI for 4 electrons'
+
+ select case(spinstate)
+ case(0)
+   write(stdout,*) 'Spin singlet'
+ case(2)
+   write(stdout,*) 'Spin triplet'
+ case(4)
+   write(stdout,*) 'Spin quadruplet'
+ case default
+   call die('full_ci_4electrons: spin case not possible')
+ end select
+
+ if( .NOT. has_auxil_basis ) then
+   call die('full_ci_3electrons only works with auxiliary basis')
+ endif
+
+ ! Get the 3-center integrals in the MO basis
+ call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,1,nstate,1,nstate)
+
+ write(stdout,*) 'Obtain the one-electron Hamiltonian in the HF basis'
+ h_1body(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:,1)) , MATMUL( h_1e(:,:) , c_matrix(:,:,1) ) )
+
+
+ !
+ ! Follow the second-quantization notations from Hellgaker book Chapter 1.
+ ! Use occupation number vectors on_i(:) and on_j(:) filled with 0's and four 1's.
+ !
+
+ nconf = 0
+ do lsporb=1,2*nstate
+   do ksporb=lsporb+1,2*nstate
+     do jsporb=ksporb+1,2*nstate
+       do isporb=jsporb+1,2*nstate
+         ispin = 2*MODULO( isporb , 2 ) - 1
+         jspin = 2*MODULO( jsporb , 2 ) - 1
+         kspin = 2*MODULO( ksporb , 2 ) - 1
+         lspin = 2*MODULO( lsporb , 2 ) - 1
+         istate = (isporb+1) / 2
+         jstate = (jsporb+1) / 2
+         kstate = (ksporb+1) / 2
+         lstate = (lsporb+1) / 2
+         if( ispin + jspin + kspin + lspin == spinstate ) then
+           nconf = nconf + 1
+           write(stdout,'(1x,i6,a,4(1x,i4,1x,i2))') nconf,' :  ',istate,ispin,jstate,jspin,kstate,kspin,lstate,lspin
+         endif
+
+       enddo
+     enddo
+   enddo
+ enddo
+
+ write(stdout,*) 'nconf =',nconf
+
+ allocate(h_ci(nconf,nconf))
+ allocate(on_i(2*nstate))
+ allocate(on_j(2*nstate))
+ allocate(mask(2*nstate))
+ h_ci(:,:) = 0.0_dp
+
+ jconf = 0
+ do jlsporb=1,2*nstate
+   do jksporb=jlsporb+1,2*nstate
+     do jjsporb=jksporb+1,2*nstate
+       do jisporb=jjsporb+1,2*nstate
+         jispin = 2*MODULO( jisporb , 2 ) - 1
+         jjspin = 2*MODULO( jjsporb , 2 ) - 1
+         jkspin = 2*MODULO( jksporb , 2 ) - 1
+         jlspin = 2*MODULO( jlsporb , 2 ) - 1
+         jistate = (jisporb+1) / 2
+         jjstate = (jjsporb+1) / 2
+         jkstate = (jksporb+1) / 2
+         jlstate = (jksporb+1) / 2
+
+         if( jispin + jjspin + jkspin + jlspin /= spinstate ) cycle
+         jconf = jconf + 1
+
+         on_j(:) = 0
+         on_j(jisporb) = 1
+         on_j(jjsporb) = 1
+         on_j(jksporb) = 1
+         on_j(jlsporb) = 1
+
+         iconf = 0
+         do ilsporb=1,2*nstate
+           do iksporb=ilsporb+1,2*nstate
+             do ijsporb=iksporb+1,2*nstate
+               do iisporb=ijsporb+1,2*nstate
+                 iispin = 2*MODULO( iisporb , 2 ) - 1
+                 ijspin = 2*MODULO( ijsporb , 2 ) - 1
+                 ikspin = 2*MODULO( iksporb , 2 ) - 1
+                 ilspin = 2*MODULO( ilsporb , 2 ) - 1
+                 iistate = (iisporb+1) / 2
+                 ijstate = (ijsporb+1) / 2
+                 ikstate = (iksporb+1) / 2
+                 ilstate = (ilsporb+1) / 2
+
+                 if( iispin + ijspin + ikspin + ilspin /= spinstate ) cycle
+                 iconf = iconf + 1
+
+                 on_i(:) = 0
+                 on_i(iisporb) = 1
+                 on_i(ijsporb) = 1
+                 on_i(iksporb) = 1
+                 on_i(ilsporb) = 1
+
+
+                 !
+                 ! 1-body part
+                 !
+
+                 !
+                 ! Exact same ON-vector
+                 if( iconf == jconf ) then 
+                   h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
+                                + h_1body(iistate,iistate) + h_1body(ijstate,ijstate) + h_1body(ikstate,ikstate) + h_1body(ilstate,ilstate)
+                 endif
+
+                 !
+                 ! ON-vectors differ by one occupation number
+                 if( COUNT( on_j(:) - on_i(:) == 1 ) == 1 ) then
+                   jsporb = MAXLOC( on_j(:) - on_i(:) , DIM=1 )
+                   isporb = MINLOC( on_j(:) - on_i(:) , DIM=1 )
+                   jstate = ( jsporb + 1 ) / 2
+                   istate = ( isporb + 1 ) / 2
+                   ispin = 2*MODULO( isporb , 2 ) - 1
+                   jspin = 2*MODULO( jsporb , 2 ) - 1
+
+                   if( ispin == jspin ) &
+                     h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
+                                    + h_1body(istate,jstate) * gamma_sign(on_j,jsporb) * gamma_sign(on_i,isporb)
+
+                 endif
+
+
+
+                 !
+                 ! 2-body part
+                 !
+
+                 !
+                 ! Exact same ON-vector
+                 if( iconf == jconf ) then 
+                   do jsporb=1,2*nstate
+                     if( on_j(jsporb) == 0 ) cycle
+                     jstate = ( jsporb + 1 ) / 2
+                     jspin = 2*MODULO( jsporb , 2 ) - 1
+
+                     do isporb=1,2*nstate
+                       if( on_i(isporb) == 0 ) cycle
+                       istate = ( isporb + 1 ) / 2
+                       ispin = 2*MODULO( isporb , 2 ) - 1
+
+                       h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
+                                  + 0.5_dp * eri_eigen_ri(istate,istate,1,jstate,jstate,1)
+
+                       if( ispin == jspin ) &
+                         h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
+                                    - 0.5_dp * eri_eigen_ri(istate,jstate,1,jstate,istate,1)
+
+                     enddo
+                   enddo
+                 endif
+
+                 !
+                 ! ON-vectors differ by one occupation number
+                 if( COUNT( on_j(:) - on_i(:) == 1 ) == 1 ) then
+                   jsporb = MAXLOC( on_j(:) - on_i(:) , DIM=1 )
+                   isporb = MINLOC( on_j(:) - on_i(:) , DIM=1 )
+                   jstate = ( jsporb + 1 ) / 2
+                   istate = ( isporb + 1 ) / 2
+                   ispin = 2*MODULO( isporb , 2 ) - 1
+                   jspin = 2*MODULO( jsporb , 2 ) - 1
+
+                   do ksporb=1,2*nstate
+                     if( on_i(ksporb) == 0 ) cycle
+                     if( on_j(ksporb) == 0 ) cycle
+                     kstate = ( ksporb + 1 ) / 2
+                     kspin = 2*MODULO( ksporb , 2 ) - 1
+
+                     if( ispin == jspin ) &
+                       h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
+                                  + eri_eigen_ri(istate,jstate,1,kstate,kstate,1)   &
+                                       * gamma_sign(on_i,isporb) * gamma_sign(on_j,jsporb)
+
+                     if( ispin == kspin .AND. jspin == kspin ) &
+                       h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
+                                  - eri_eigen_ri(istate,kstate,1,kstate,jstate,1)  &
+                                       * gamma_sign(on_i,isporb) * gamma_sign(on_j,jsporb)
+                   enddo
+
+                 endif
+
+                 !
+                 ! ON-vectors differ by one occupation number
+                 if( COUNT( on_j(:) - on_i(:) == 1 ) == 2 ) then
+                   ! Find the two indexes k < l
+                   ksporb = MAXLOC( on_j(:) - on_i(:) , DIM=1 )
+                   mask(:)      = .TRUE.
+                   mask(ksporb) = .FALSE.
+                   lsporb = MAXLOC( on_j(:) - on_i(:) , DIM=1 , MASK=mask)
+
+                   ! Find the two indexes i < j
+                   isporb = MINLOC( on_j(:) - on_i(:) , DIM=1 )
+                   mask(:)      = .TRUE.
+                   mask(isporb) = .FALSE.
+                   jsporb = MINLOC( on_j(:) - on_i(:) , DIM=1 , MASK=mask)
+
+                   istate = ( isporb + 1 ) / 2
+                   jstate = ( jsporb + 1 ) / 2
+                   kstate = ( ksporb + 1 ) / 2
+                   lstate = ( lsporb + 1 ) / 2
+                   ispin = 2*MODULO( isporb , 2 ) - 1
+                   jspin = 2*MODULO( jsporb , 2 ) - 1
+                   kspin = 2*MODULO( ksporb , 2 ) - 1
+                   lspin = 2*MODULO( lsporb , 2 ) - 1
+
+                   if( ispin == kspin .AND. jspin == lspin ) &
+                     h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
+                                + eri_eigen_ri(istate,kstate,1,jstate,lstate,1)           &
+                                     * gamma_sign(on_i,isporb) * gamma_sign(on_i,jsporb)  &
+                                     * gamma_sign(on_j,ksporb) * gamma_sign(on_j,lsporb)
+
+                   if( ispin == lspin .AND. jspin == kspin ) &
+                     h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
+                                - eri_eigen_ri(istate,lstate,1,jstate,kstate,1)           &
+                                     * gamma_sign(on_i,isporb) * gamma_sign(on_i,jsporb)  &
+                                     * gamma_sign(on_j,ksporb) * gamma_sign(on_j,lsporb)
+
+                 endif
+
+
+               enddo
+             enddo
+           enddo
+         enddo
+
+       enddo
+     enddo
+   enddo
+ enddo
+
+ deallocate(mask,on_i,on_j)
+
+ allocate(energy(nconf))
+ allocate(eigvec(nconf,nconf))
+
+ call diagonalize(nconf,h_ci,energy,eigvec)
+
+
+
+ write(stdout,*) '     Ground-state energy (Ha):',energy(1)
+ write(stdout,*) '1st excited-state energy (Ha):',energy(2)
+
+ deallocate(h_ci,eigvec,energy)
+
+ call destroy_eri_3center_eigen()
+
+ call stop_clock(timing_full_ci)
+
+
+contains
+
+
+pure function gamma_sign(conf,isporb)
+ implicit none
+
+ integer,intent(in) :: conf(:)
+ integer,intent(in) :: isporb
+ integer            :: gamma_sign
+!=====
+ integer :: ii
+!=====
+
+! gamma_sign = 1
+! do ii=1,isporb-1
+!   if( conf(ii) == 1 ) gamma_sign = -gamma_sign
+! enddo
+
+ gamma_sign = 1 - 2 * MODULO( COUNT( conf(1:isporb-1) == 1 ) , 2 ) 
+
+end function gamma_sign
+
+
+end subroutine full_ci_4electrons_spin
+
+
+!==================================================================
