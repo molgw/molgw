@@ -530,7 +530,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
 !=====
 
  call start_clock(timing_hamiltonian_nuc)
- write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBINT)'
+! write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBINT)'
  if( nproc_world > 1 ) then
    natom_local=0
    do iatom=1,natom

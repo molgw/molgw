@@ -76,6 +76,7 @@ module m_timing
  integer,parameter :: timing_tddft_one_iter      = 112
  integer,parameter :: timing_tddft_propagation   = 113
  integer,parameter :: timing_tddft_hamiltonian_fock = 114
+ integer,parameter :: timing_print_cube_rho_tddft= 115
 
  integer           :: count_rate,count_max
  logical           :: time_running(NTIMING)
@@ -153,7 +154,7 @@ subroutine output_timing()
 
  write(stdout,'(a30,6x,f12.2)')  'Total pre SCF',timing(timing_prescf)
  write(stdout,'(a30,6x,f12.2)')      'Total SCF',timing(timing_scf)
- write(stdout,'(a30,6x,f12.2)') 'Total post SCF',timing(timing_postscf)
+ write(stdout,'(a30,6x,f12.2)') 'Total post SCF',timing(timing_postscf) + timing(timing_tddft_loop)
  write(stdout,'(/,a,/)') '                 -------------------------------------'
 
  write(stdout,'(a30,6x,f12.2,2x,i8)')          'Integral screening',timing(timing_eri_screening),calls(timing_eri_screening)
@@ -253,6 +254,9 @@ subroutine output_timing()
 !   write(stdout,'(a32,4x,f12.2,2x,i8)') 'Fourier Transforms for TD-DFT' ,timing(timing_tddft_fourier),calls(timing_tddft_fourier)
    write(stdout,'(a32,4x,f12.2,2x,i8)') 'Propagation for TD-DFT' ,timing(timing_tddft_propagation),calls(timing_tddft_propagation)
    write(stdout,'(a32,4x,f12.2,2x,i8)') 'Hamiltonian_fock calculation' ,timing(timing_tddft_hamiltonian_fock),calls(timing_tddft_hamiltonian_fock)
+   if(calls(timing_print_cube_rho_tddft)>0) then
+      write(stdout,'(a32,4x,f12.2,2x,i8)') 'Cube density file writing' ,timing(timing_print_cube_rho_tddft),calls(timing_print_cube_rho_tddft)
+   end if
  end if
 end subroutine output_timing
 

@@ -772,6 +772,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  use m_inputparam, only: nspin,spin_fact
  use m_atoms
  use m_basis_set
+ use m_timing
  implicit none
  integer,intent(in)         :: nstate
  integer,intent(in)         :: nocc_dim
@@ -804,11 +805,13 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
 !=====
 
  if( .NOT. is_iomaster ) return
+ 
+ call start_clock(timing_print_cube_rho_tddft)
 
-  gt = get_gaussian_type_tag(basis%gaussian_type)
+ gt = get_gaussian_type_tag(basis%gaussian_type)
 
 
- write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
+! write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
  ! Find highest occupied state
  nocc = 0
  do ispin=1,nspin
@@ -835,7 +838,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
    nz=40
  endif
  allocate(phi_cmplx(istate1:istate2,nspin))
- write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
+! write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
 
 
 
@@ -912,6 +915,8 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  end do
 
  deallocate(phi_cmplx)
+
+ call stop_clock(timing_print_cube_rho_tddft)
 
 end subroutine plot_cube_wfn_cmplx
 

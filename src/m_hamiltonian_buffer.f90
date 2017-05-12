@@ -165,7 +165,7 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
 !=====
 
  call start_clock(timing_hamiltonian_nuc)
- write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK buffer'
+! write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK buffer'
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
  buffer(:,:) = 0.0_dp
