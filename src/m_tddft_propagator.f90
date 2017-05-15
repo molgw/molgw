@@ -966,6 +966,10 @@ subroutine tddft_time_loop(nstate,                           &
      end if
    end if
 
+   if( print_tddft_restart_ .AND. mod(itau,100)==0 ) then
+     call write_restart_tddft(nstate,time_cur,c_matrix_orth_cmplx)
+   end if
+
   time_cur = time_min + itau*time_step_cur
   itau = itau + 1 
 !---
