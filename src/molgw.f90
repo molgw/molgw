@@ -445,13 +445,6 @@ program molgw
    call lbfgs_destroy(lbfgs_plan)
  endif
 
-!****PROPAGATOR****
- if(calc_type%is_real_time) then
-   write(stdout,*) "Start tddft propagator"
-   call calculate_propagation(nstate, basis, occupation, s_matrix, s_matrix_sqrt_inv, c_matrix,hamiltonian_kinetic,hamiltonian_nucleus)
-   write(stdout,*) "End tddft propagator"
- end if
-!********
 
  !
  !
@@ -460,6 +453,13 @@ program molgw
  !
  call start_clock(timing_postscf)
 
+!****PROPAGATOR****
+ if(calc_type%is_real_time) then
+   write(stdout,*) "Start tddft propagator"
+   call calculate_propagation(nstate, basis, occupation, s_matrix, s_matrix_sqrt_inv, c_matrix,hamiltonian_kinetic,hamiltonian_nucleus)
+   write(stdout,*) "End tddft propagator"
+ end if
+!********
 
  if( print_multipole_ ) then
    !

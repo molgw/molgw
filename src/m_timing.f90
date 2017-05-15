@@ -154,7 +154,7 @@ subroutine output_timing()
 
  write(stdout,'(a30,6x,f12.2)')  'Total pre SCF',timing(timing_prescf)
  write(stdout,'(a30,6x,f12.2)')      'Total SCF',timing(timing_scf)
- write(stdout,'(a30,6x,f12.2)') 'Total post SCF',timing(timing_postscf) + timing(timing_tddft_loop)
+ write(stdout,'(a30,6x,f12.2)') 'Total post SCF',timing(timing_postscf) 
  write(stdout,'(/,a,/)') '                 -------------------------------------'
 
  write(stdout,'(a30,6x,f12.2,2x,i8)')          'Integral screening',timing(timing_eri_screening),calls(timing_eri_screening)
