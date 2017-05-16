@@ -785,7 +785,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  integer                    :: nx
  integer                    :: ny
  integer                    :: nz
- integer                    :: nocc(2)
+ integer                    :: nocc(2),nocc_max
  real(dp),parameter         :: length=4.0_dp
  integer                    :: ibf
  integer                    :: istate1,istate2,istate,ispin
@@ -814,25 +814,26 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
 ! write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
  ! Find highest occupied state
  nocc = 0
+ nocc_max = 0
  do ispin=1,nspin
    do istate=1,nstate
      if( occupation(istate,ispin) < completely_empty)  cycle
      nocc(ispin) = istate
+     if( istate > nocc_max ) nocc_max = istate
    enddo 
    if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
      call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
    endif 
  enddo
 
- inquire(file='manual_cubewfn',exist=file_exists)
+ istate1= 1
+ istate2= nocc_max
+ inquire(file='manual_cubewfn_tddft',exist=file_exists)
  if(file_exists) then
-   open(newunit=icubefile,file='manual_cubewfn',status='old')
-   read(icubefile,*) istate1,istate2
+   open(newunit=icubefile,file='manual_cubewfn_tddft',status='old')
    read(icubefile,*) nx,ny,nz
    close(icubefile)
  else
-   istate1=1
-   istate2=nocc(1)
    nx=40
    ny=40
    nz=40
