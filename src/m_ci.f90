@@ -19,19 +19,149 @@ module m_ci
  use m_inputparam,only: nspin,has_auxil_basis
 
 
- real(dp),allocatable :: coeff_1e(:,:)
- real(dp),allocatable :: coeff_2e(:,:)
- real(dp),allocatable :: coeff_3e(:,:)
+ integer,private              :: sz_1e
+ integer,private              :: sz_2e
+ integer,private              :: sz_3e
+
+ real(dp),allocatable,private :: energy_1e(:)
+ real(dp),allocatable,private :: energy_2e(:)
+ real(dp),allocatable,private :: energy_3e(:)
+
+ real(dp),allocatable,private :: eigvec_1e(:,:)
+ real(dp),allocatable,private :: eigvec_2e(:,:)
+ real(dp),allocatable,private :: eigvec_3e(:,:)
 
 
 contains 
 
 
 !==================================================================
-subroutine full_ci_1electron_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix,nuc_nuc)
+subroutine full_ci_2electrons_selfenergy(nstate)
  implicit none
 
- logical,intent(in)         :: print_wfn_
+ integer,intent(in)         :: nstate
+!=====
+ integer                    :: nconf_1e,nconf_2e,nconf_3e
+ real(dp)                   :: ehomo
+ integer                    :: isporb,istate,ispin
+ integer                    :: iisporb,iistate,iispin,iconf
+ integer                    :: jisporb,jistate,jispin
+ integer                    :: jjsporb,jjstate,jjspin,jconf
+ integer                    :: on_i(2*nstate),on_j(2*nstate)
+ integer                    :: on_tmp(2*nstate)
+ real(dp)                   :: fhomo(2*nstate)
+!=====
+
+ write(stdout,'(/,1x,a)') 'Full CI self-energy for 2 electrons'
+
+ if( .NOT. ALLOCATED(energy_1e) ) call die('full_ci_2electrons_selfenergy: previous calculation for 1e needed')
+ if( .NOT. ALLOCATED(energy_2e) ) call die('full_ci_2electrons_selfenergy: previous calculation for 2e needed')
+
+ nconf_1e = SIZE(energy_1e)
+ nconf_2e = SIZE(energy_2e)
+
+ write(stdout,*) 'Previous CI calculation had spin state Sz(1e): ',sz_1e
+ write(stdout,*) 'Previous CI calculation had spin state Sz(2e): ',sz_2e
+
+ !
+ ! Check 1e configurations
+ !
+ iconf = 0
+ do iisporb=1,2*nstate
+   iispin = 2*MODULO( iisporb , 2 ) - 1
+   iistate = (iisporb+1) / 2
+   if( iispin == sz_1e ) then
+     iconf = iconf + 1
+!     write(stdout,'(1x,i6,a,3(1x,i4,1x,i2))') iconf,' :  ',iistate,iispin
+   endif
+ enddo
+ if( iconf /= nconf_1e ) call die('full_ci_2electrons_selfenergy: inconsistency in the configurations for 1 electron')
+
+ write(stdout,*)  eigvec_1e(1:10,1)
+
+ !
+ ! Check 2e configurations
+ !
+ jconf = 0
+ do jjsporb=1,2*nstate
+   do jisporb=jjsporb+1,2*nstate
+     jispin = 2*MODULO( jisporb , 2 ) - 1
+     jjspin = 2*MODULO( jjsporb , 2 ) - 1
+     jistate = (jisporb+1) / 2
+     jjstate = (jjsporb+1) / 2
+     if( jispin + jjspin == sz_2e ) then
+       jconf = jconf + 1
+!       write(stdout,'(1x,i6,a,3(1x,i4,1x,i2))') jconf,' :  ',jistate,jispin,jjstate,jjspin
+     endif
+   enddo
+ enddo
+ if( jconf /= nconf_2e ) call die('full_ci_2electrons_selfenergy: inconsistency in the configurations for 2 electrons')
+
+
+ !
+ ! Build the Lehman amplitude
+ !
+ fhomo(:) = 0.0_dp
+ jconf = 0
+ do jjsporb=1,2*nstate
+   do jisporb=jjsporb+1,2*nstate
+     jispin = 2*MODULO( jisporb , 2 ) - 1
+     jjspin = 2*MODULO( jjsporb , 2 ) - 1
+     jistate = (jisporb+1) / 2
+     jjstate = (jjsporb+1) / 2
+     if( jispin + jjspin /= 0 ) cycle
+     jconf = jconf + 1
+
+     on_j(:)       = 0
+     on_j(jisporb) = 1
+     on_j(jjsporb) = 1
+
+     iconf = 0
+     do iisporb=1,2*nstate
+       iispin = 2*MODULO( iisporb , 2 ) - 1
+       iistate = (iisporb+1) / 2
+       if( iispin /= 1 ) cycle
+       iconf = iconf + 1
+
+       on_i(:)       = 0
+       on_i(iisporb) = 1
+
+       do isporb=1,2*nstate
+         if( isporb == iisporb ) cycle
+         on_tmp(:) = on_i(:)
+         on_tmp(isporb) = on_tmp(isporb) + 1
+         if( ALL( on_j(:) - on_tmp(:) == 0 ) )   &
+           fhomo(isporb) = fhomo(isporb) + eigvec_1e(iconf,1) * eigvec_2e(jconf,1) * gamma_sign(on_i,isporb)
+       enddo
+
+
+     enddo
+
+   enddo
+ enddo
+
+ ehomo = energy_2e(1) - energy_1e(1)
+
+ write(stdout,*) 'Ehomo (eV): ',ehomo * Ha_eV
+
+ write(stdout,'(1x,a)') '=== fhomo'
+ do isporb=1,2*nstate
+   ispin = 2*MODULO( isporb , 2 ) - 1
+   istate = (isporb+1) / 2
+   if( ABS(fhomo(isporb)) > 1.0e-4_dp ) write(stdout,*) istate,ispin,fhomo(isporb)
+ enddo
+
+ write(stdout,'(1x,a,/)') '========='
+
+
+end subroutine full_ci_2electrons_selfenergy
+
+
+!==================================================================
+subroutine full_ci_1electron_on(save_coefficients,nstate,spinstate,basis,h_1e,c_matrix,nuc_nuc)
+ implicit none
+
+ logical,intent(in)         :: save_coefficients
  integer,intent(in)         :: spinstate,nstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,nstate,nspin)
@@ -48,26 +178,30 @@ subroutine full_ci_1electron_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix,
  integer                    :: jistate
  integer                    :: jispin
  integer                    :: iconf,jconf,nconf
- real(dp),allocatable       :: h_ci(:,:),eigvec(:,:),energy(:)
+ real(dp),allocatable       :: h_ci(:,:)
  integer,allocatable        :: on_i(:),on_j(:)
  logical,allocatable        :: mask(:)
 !=====
 
  call start_clock(timing_full_ci)
 
- write(stdout,'(/,1x,a,/)') 'Full CI for 1 electrons'
+ write(stdout,'(/,1x,a,/)') 'Full CI for 1 electron'
 
  select case(spinstate)
- case(-1)
+ case(-100)
    write(stdout,*) 'Any spin state'
+ case(-1)
+   write(stdout,*) 'Spin doublet: down'
  case(1)
-   write(stdout,*) 'Spin doublet'
+   write(stdout,*) 'Spin doublet: up'
  case default
-   call die('full_ci_2electrons: spin case not possible')
+   call die('full_ci_1electron: spin case not possible')
  end select
 
+ sz_1e = spinstate
+
  if( .NOT. has_auxil_basis ) then
-   call die('full_ci_1electrons only works with auxiliary basis')
+   call die('full_ci_1electron only works with auxiliary basis')
  endif
 
  ! Get the 3-center integrals in the MO basis
@@ -86,7 +220,7 @@ subroutine full_ci_1electron_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix,
  do isporb=1,2*nstate
    ispin = 2*MODULO( isporb , 2 ) - 1
    istate = (isporb+1) / 2
-   if( ispin == spinstate .OR. spinstate == -1 ) then
+   if( ispin == spinstate .OR. spinstate == -100 ) then
      nconf = nconf + 1
      write(stdout,'(1x,i6,a,3(1x,i4,1x,i2))') nconf,' :  ',istate,ispin
    endif
@@ -105,7 +239,7 @@ subroutine full_ci_1electron_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix,
  do jisporb=1,2*nstate
    jispin = 2*MODULO( jisporb , 2 ) - 1
    jistate = (jisporb+1) / 2
-   if( jispin /= spinstate .AND. spinstate /= -1) cycle
+   if( jispin /= spinstate .AND. spinstate /= -100) cycle
    jconf = jconf + 1
 
    on_j(:) = 0
@@ -116,7 +250,7 @@ subroutine full_ci_1electron_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix,
      iispin = 2*MODULO( iisporb , 2 ) - 1
      iistate = (iisporb+1) / 2
 
-     if( iispin /= spinstate .AND. spinstate /= -1 ) cycle
+     if( iispin /= spinstate .AND. spinstate /= -100 ) cycle
      iconf = iconf + 1
 
      on_i(:) = 0
@@ -257,20 +391,24 @@ subroutine full_ci_1electron_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix,
 
  deallocate(mask,on_i,on_j)
 
- allocate(energy(nconf))
- allocate(eigvec(nconf,nconf))
+ allocate(energy_1e(nconf))
+ allocate(eigvec_1e(nconf,nconf))
 
- call diagonalize(nconf,h_ci,energy,eigvec)
+ call diagonalize(nconf,h_ci,energy_1e,eigvec_1e)
 
- write(stdout,'(/,1x,a,f19.10,/)') '      Correlation energy (Ha): ',energy(1) - h_ci(1,1)
- write(stdout,'(1x,a,f19.10)')     '     Ground-state energy (Ha): ',energy(1) + nuc_nuc
- write(stdout,'(1x,a,f19.10)')     '1st excited-state energy (Ha): ',energy(2) + nuc_nuc
- write(stdout,'(1x,a,f19.10)')     '2nd excited-state energy (Ha): ',energy(3) + nuc_nuc
- write(stdout,'(1x,a,f19.10)')     '3rd excited-state energy (Ha): ',energy(4) + nuc_nuc
- write(stdout,'(1x,a,f19.10)')     '4th excited-state energy (Ha): ',energy(5) + nuc_nuc
+ write(stdout,'(/,1x,a,f19.10,/)') '      Correlation energy (Ha): ',energy_1e(1) - h_ci(1,1)
+ write(stdout,'(1x,a,f19.10)')     '     Ground-state energy (Ha): ',energy_1e(1) + nuc_nuc
+ write(stdout,'(1x,a,f19.10)')     '1st excited-state energy (Ha): ',energy_1e(2) + nuc_nuc
+ write(stdout,'(1x,a,f19.10)')     '2nd excited-state energy (Ha): ',energy_1e(3) + nuc_nuc
+ write(stdout,'(1x,a,f19.10)')     '3rd excited-state energy (Ha): ',energy_1e(4) + nuc_nuc
+ write(stdout,'(1x,a,f19.10)')     '4th excited-state energy (Ha): ',energy_1e(5) + nuc_nuc
 
+ if( .NOT. save_coefficients ) then
+   deallocate(energy_1e)
+   deallocate(eigvec_1e)
+ endif
 
- deallocate(h_ci,eigvec,energy)
+ deallocate(h_ci)
 
  call destroy_eri_3center_eigen()
 
@@ -281,10 +419,10 @@ end subroutine full_ci_1electron_on
 
 
 !==================================================================
-subroutine full_ci_2electrons_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix,nuc_nuc)
+subroutine full_ci_2electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c_matrix,nuc_nuc)
  implicit none
 
- logical,intent(in)         :: print_wfn_
+ logical,intent(in)         :: save_coefficients
  integer,intent(in)         :: spinstate,nstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,nstate,nspin)
@@ -301,7 +439,7 @@ subroutine full_ci_2electrons_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix
  integer                    :: jistate,jjstate
  integer                    :: jispin,jjspin
  integer                    :: iconf,jconf,nconf
- real(dp),allocatable       :: h_ci(:,:),eigvec(:,:),energy(:)
+ real(dp),allocatable       :: h_ci(:,:)
  integer,allocatable        :: on_i(:),on_j(:)
  logical,allocatable        :: mask(:)
 !=====
@@ -311,7 +449,7 @@ subroutine full_ci_2electrons_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix
  write(stdout,'(/,1x,a,/)') 'Full CI for 2 electrons'
 
  select case(spinstate)
- case(-1)
+ case(-100)
    write(stdout,*) 'Any spin state'
  case(0)
    write(stdout,*) 'Spin singlet'
@@ -320,6 +458,8 @@ subroutine full_ci_2electrons_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix
  case default
    call die('full_ci_2electrons: spin case not possible')
  end select
+
+ sz_2e = spinstate
 
  if( .NOT. has_auxil_basis ) then
    call die('full_ci_2electrons only works with auxiliary basis')
@@ -344,7 +484,7 @@ subroutine full_ci_2electrons_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix
      jspin = 2*MODULO( jsporb , 2 ) - 1
      istate = (isporb+1) / 2
      jstate = (jsporb+1) / 2
-     if( ispin + jspin == spinstate .OR. spinstate == -1 ) then
+     if( ispin + jspin == spinstate .OR. spinstate == -100 ) then
        nconf = nconf + 1
        write(stdout,'(1x,i6,a,3(1x,i4,1x,i2))') nconf,' :  ',istate,ispin,jstate,jspin
      endif
@@ -367,7 +507,7 @@ subroutine full_ci_2electrons_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix
      jjspin = 2*MODULO( jjsporb , 2 ) - 1
      jistate = (jisporb+1) / 2
      jjstate = (jjsporb+1) / 2
-     if( jispin + jjspin /= spinstate .AND. spinstate /= -1) cycle
+     if( jispin + jjspin /= spinstate .AND. spinstate /= -100) cycle
      jconf = jconf + 1
 
      on_j(:) = 0
@@ -382,7 +522,7 @@ subroutine full_ci_2electrons_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix
          iistate = (iisporb+1) / 2
          ijstate = (ijsporb+1) / 2
 
-         if( iispin + ijspin /= spinstate .AND. spinstate /= -1 ) cycle
+         if( iispin + ijspin /= spinstate .AND. spinstate /= -100 ) cycle
          iconf = iconf + 1
 
          on_i(:) = 0
@@ -526,20 +666,24 @@ subroutine full_ci_2electrons_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix
 
  deallocate(mask,on_i,on_j)
 
- allocate(energy(nconf))
- allocate(eigvec(nconf,nconf))
+ allocate(energy_2e(nconf))
+ allocate(eigvec_2e(nconf,nconf))
 
- call diagonalize(nconf,h_ci,energy,eigvec)
+ call diagonalize(nconf,h_ci,energy_2e,eigvec_2e)
 
- write(stdout,'(/,1x,a,f19.10,/)') '      Correlation energy (Ha): ',energy(1) - h_ci(1,1)
- write(stdout,'(1x,a,f19.10)')     '     Ground-state energy (Ha): ',energy(1) + nuc_nuc
- write(stdout,'(1x,a,f19.10)')     '1st excited-state energy (Ha): ',energy(2) + nuc_nuc
- write(stdout,'(1x,a,f19.10)')     '2nd excited-state energy (Ha): ',energy(3) + nuc_nuc
- write(stdout,'(1x,a,f19.10)')     '3rd excited-state energy (Ha): ',energy(4) + nuc_nuc
- write(stdout,'(1x,a,f19.10)')     '4th excited-state energy (Ha): ',energy(5) + nuc_nuc
+ write(stdout,'(/,1x,a,f19.10,/)') '      Correlation energy (Ha): ',energy_2e(1) - h_ci(1,1)
+ write(stdout,'(1x,a,f19.10)')     '     Ground-state energy (Ha): ',energy_2e(1) + nuc_nuc
+ write(stdout,'(1x,a,f19.10)')     '1st excited-state energy (Ha): ',energy_2e(2) + nuc_nuc
+ write(stdout,'(1x,a,f19.10)')     '2nd excited-state energy (Ha): ',energy_2e(3) + nuc_nuc
+ write(stdout,'(1x,a,f19.10)')     '3rd excited-state energy (Ha): ',energy_2e(4) + nuc_nuc
+ write(stdout,'(1x,a,f19.10)')     '4th excited-state energy (Ha): ',energy_2e(5) + nuc_nuc
 
+ if( .NOT. save_coefficients ) then
+   deallocate(energy_2e)
+   deallocate(eigvec_2e)
+ endif
 
- deallocate(h_ci,eigvec,energy)
+ deallocate(h_ci)
 
  call destroy_eri_3center_eigen()
 
@@ -550,10 +694,10 @@ end subroutine full_ci_2electrons_on
 
 
 !==================================================================
-subroutine full_ci_3electrons_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix,nuc_nuc)
+subroutine full_ci_3electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c_matrix,nuc_nuc)
  implicit none
 
- logical,intent(in)         :: print_wfn_
+ logical,intent(in)         :: save_coefficients
  integer,intent(in)         :: spinstate,nstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,nstate,nspin)
@@ -570,7 +714,7 @@ subroutine full_ci_3electrons_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix
  integer                    :: jistate,jjstate,jkstate
  integer                    :: jispin,jjspin,jkspin
  integer                    :: iconf,jconf,nconf
- real(dp),allocatable       :: h_ci(:,:),eigvec(:,:),energy(:)
+ real(dp),allocatable       :: h_ci(:,:)
  integer,allocatable        :: on_i(:),on_j(:)
  logical,allocatable        :: mask(:)
 !=====
@@ -811,18 +955,24 @@ subroutine full_ci_3electrons_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix
 
  deallocate(mask,on_i,on_j)
 
- allocate(energy(nconf))
- allocate(eigvec(nconf,nconf))
+ allocate(energy_3e(nconf))
+ allocate(eigvec_3e(nconf,nconf))
 
- call diagonalize(nconf,h_ci,energy,eigvec)
+ call diagonalize(nconf,h_ci,energy_3e,eigvec_3e)
 
- write(stdout,'(/,1x,a,f19.10,/)') '      Correlation energy (Ha): ',energy(1) - h_ci(1,1)
- write(stdout,'(1x,a,f19.10)')     '     Ground-state energy (Ha): ',energy(1) + nuc_nuc
- write(stdout,'(1x,a,f19.10)')     '1st excited-state energy (Ha): ',energy(2) + nuc_nuc
- write(stdout,'(1x,a,f19.10)')     '2nd excited-state energy (Ha): ',energy(3) + nuc_nuc
+ write(stdout,'(/,1x,a,f19.10,/)') '      Correlation energy (Ha): ',energy_3e(1) - h_ci(1,1)
+ write(stdout,'(1x,a,f19.10)')     '     Ground-state energy (Ha): ',energy_3e(1) + nuc_nuc
+ write(stdout,'(1x,a,f19.10)')     '1st excited-state energy (Ha): ',energy_3e(2) + nuc_nuc
+ write(stdout,'(1x,a,f19.10)')     '2nd excited-state energy (Ha): ',energy_3e(3) + nuc_nuc
+ write(stdout,'(1x,a,f19.10)')     '3rd excited-state energy (Ha): ',energy_3e(4) + nuc_nuc
+ write(stdout,'(1x,a,f19.10)')     '4th excited-state energy (Ha): ',energy_3e(5) + nuc_nuc
 
+ if( .NOT. save_coefficients ) then
+   deallocate(energy_3e)
+   deallocate(eigvec_3e)
+ endif
 
- deallocate(h_ci,eigvec,energy)
+ deallocate(h_ci)
 
  call destroy_eri_3center_eigen()
 
@@ -833,10 +983,10 @@ end subroutine full_ci_3electrons_on
 
 
 !==================================================================
-subroutine full_ci_4electrons_on(print_wfn_,nstate,spinstate,basis,h_1e,c_matrix,nuc_nuc)
+subroutine full_ci_4electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c_matrix,nuc_nuc)
  implicit none
 
- logical,intent(in)         :: print_wfn_
+ logical,intent(in)         :: save_coefficients
  integer,intent(in)         :: spinstate,nstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,nstate,nspin)
