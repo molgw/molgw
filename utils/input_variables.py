@@ -1098,6 +1098,15 @@ vl[i].default  =( 0.0 , 0.0, 1.0 )
 vl[i].datatype ='vector_1d_3'
 vl[i].comment  ='Projectile initial velocity.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='n_restart_tddft'
+vl[i].family   ='rt_tddft'
+vl[i].default  = 50
+vl[i].datatype ='integer'
+vl[i].comment  ='RESTART_TDDFT file will be written during simulation each n_retart_tddft iteration (provided that print_tddft_restart is yes)'
+
 #============================================================================
 #            Fortran output: input variable namelist and their default value
 #============================================================================

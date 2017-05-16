@@ -179,7 +179,7 @@ subroutine calculate_propagation(nstate,              &
    read(error_n_iters,*)m_n_iters(:)
 
    do istep=1, size(m_time_steps)
-     ntau=NINT((time_sim-time_min)/m_time_steps(istep))+1
+     ntau=NINT((time_sim-time_min)/m_time_steps(istep))
      call flush(stdout)
      mod_write_cur = NINT( write_step / m_time_steps(istep) )
      do ipred_corr=1, size(m_pred_corrs)
