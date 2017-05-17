@@ -64,7 +64,8 @@ module m_definitions
    module procedure norm2_ra4
  end interface
 #endif
-
+ 
+ logical     ::  in_tddft_loop=.false.
 contains
 
 

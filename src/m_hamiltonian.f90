@@ -92,7 +92,9 @@ subroutine setup_hartree_ri(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
  character(len=100)   :: title
 !=====
 
-! write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
+ if( .NOT. in_tddft_loop ) then
+   write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
+ end if
  call start_clock(timing_hartree)
 
 

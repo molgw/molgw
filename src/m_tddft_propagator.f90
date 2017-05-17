@@ -1,6 +1,6 @@
 !=========================================================================
 ! This file is part of MOLGW.
-! Author: Fabien Bruneval
+! Author: Ivan Maliyov
 !
 ! This module contains
 ! propagation of the wavefunction in time
@@ -321,6 +321,7 @@ subroutine tddft_time_loop(nstate,                           &
  real(dp)                   :: x_pred 
  logical                    :: restart_is_correct
 !=====
+
  mod_write = NINT( write_step / time_step_cur )
 
  min_elem_q_mat=1
@@ -521,6 +522,7 @@ subroutine tddft_time_loop(nstate,                           &
  time_cur=time_min
  iwrite_step = 1
  itau = 1
+ in_tddft_loop=.true.
  do while ( (time_cur - time_sim) < 1.0e-10 )
    if(itau==3) call start_clock(timing_tddft_one_iter)
    if(pred_corr_cur=='PC0') then
@@ -974,6 +976,7 @@ subroutine tddft_time_loop(nstate,                           &
   itau = itau + 1 
 !---
  end do
+ in_tddft_loop=.false.
 !********end time loop*******************
  
  if(print_tddft_restart_) then

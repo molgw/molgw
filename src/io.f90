@@ -810,8 +810,9 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
-
-! write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
+ if( .NOT. in_tddft_loop ) then
+   write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
+ end if
  ! Find highest occupied state
  nocc = 0
  nocc_max = 0
@@ -839,8 +840,9 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
    nz=40
  endif
  allocate(phi_cmplx(istate1:istate2,nspin))
-! write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
-
+ if( .NOT. in_tddft_loop ) then
+   write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
+ end if
 
 
  xmin =MIN(MINVAL( xatom(1,:) ),MINVAL( xbasis(1,:) )) - length

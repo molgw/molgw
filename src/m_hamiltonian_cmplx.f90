@@ -40,7 +40,9 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc,occupation,c_matrix_cmplx,p_m
  complex(dp),allocatable   :: tmp_cmplx(:,:)
 !=====
 
-! write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
+ if( .NOT. in_tddft_loop ) then
+   write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
+ end if
  call start_clock(timing_exchange)
 
  exchange_ij_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )

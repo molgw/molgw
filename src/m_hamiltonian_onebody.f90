@@ -530,15 +530,19 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
 !=====
 
  call start_clock(timing_hamiltonian_nuc)
-! write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBINT)'
+ if( .NOT. in_tddft_loop ) then 
+   write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBINT)'
+ end if
  if( nproc_world > 1 ) then
    natom_local=0
    do iatom=1,natom
      if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
      natom_local = natom_local + 1
    enddo
-   write(stdout,'(a)')         '   Parallelizing over atoms'
-   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
+   if( .NOT. in_tddft_loop ) then
+     write(stdout,'(a)')         '   Parallelizing over atoms'
+     write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
+   end if
  endif
 
 
@@ -662,8 +666,10 @@ subroutine setup_nucleus_grad(print_matrix_,basis,hamiltonian_nucleus_grad)
      if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
      natom_local = natom_local + 1
    enddo
-   write(stdout,'(a)')         '   Parallelizing over atoms'
-   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
+   if( .NOT. in_tddft_loop ) then
+     write(stdout,'(a)')         '   Parallelizing over atoms'
+     write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
+   end if
  endif
 
  hamiltonian_nucleus_grad(:,:,:,:) = 0.0_dp

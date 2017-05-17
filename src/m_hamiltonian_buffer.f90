@@ -165,7 +165,9 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
 !=====
 
  call start_clock(timing_hamiltonian_nuc)
-! write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK buffer'
+ if( .NOT. in_tddft_loop ) then
+   write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK buffer'
+ end if
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
  buffer(:,:) = 0.0_dp
@@ -176,8 +178,10 @@ subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_
      if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
      natom_local = natom_local + 1
    enddo
-   write(stdout,'(a)')         '   Parallelizing over atoms'
-   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
+   if( .NOT. in_tddft_loop ) then
+     write(stdout,'(a)')         '   Parallelizing over atoms'
+     write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
+   end if
  endif
 
 
