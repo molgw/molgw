@@ -14,6 +14,7 @@ module m_hamiltonian_sca
  use m_mpi
  use m_scalapack
  use m_timing
+ use m_tddft_variables
  use m_warning
  use m_memory
  use m_cart_to_pure

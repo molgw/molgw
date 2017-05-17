@@ -294,16 +294,31 @@ subroutine output_positions()
  enddo
  if(  nprojectile>0) then
    write(stdout,'(a)') ' == projectile'
-   write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',iatom, &
-                                                           element_name(REAL(zatom(natom),dp)),': ',  &
-                                                           xatom(:,natom),xatom(:,natom)*bohr_A
+   write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
+                                                           element_name(REAL(zatom(natom+nghost),dp)),': ',  &
+                                                           xatom(:,natom+nghost),xatom(:,natom+nghost)*bohr_A
  end if
 
  write(stdout,'(1x,a,/)') '================================'
 
-
 end subroutine output_positions
 
+!=========================================================================
+subroutine output_projectile_position()
+ implicit none
+!=====
+
+ write(stdout,*)
+ if(  nprojectile>0) then
+   write(stdout,'(a)') ' === projectile position: ----------bohr---------------    |||   ------------- angstrom----------===' 
+   write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
+                                                           element_name(REAL(zatom(natom+nghost),dp)),': ',  &
+                                                           xatom(:,natom+nghost),xatom(:,natom+nghost)*bohr_A
+ end if
+
+ write(stdout,'(1x,a,/)') '==================================================================================================='
+
+end subroutine output_projectile_position
 
 !=========================================================================
 subroutine nucleus_nucleus_energy(energy)

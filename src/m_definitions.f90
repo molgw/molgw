@@ -65,7 +65,6 @@ module m_definitions
  end interface
 #endif
  
- logical     ::  in_tddft_loop=.false.
 contains
 
 

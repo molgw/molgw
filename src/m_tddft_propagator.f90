@@ -331,7 +331,7 @@ subroutine tddft_time_loop(nstate,                           &
  allocate(c_matrix_cmplx(basis%nbf,nocc,nspin))
  allocate(c_matrix_0_cmplx(basis%nbf,nstate,nspin))
  allocate(c_matrix_orth_cmplx(nstate,nocc,nspin))
- allocate(q_matrix_cmplx(nstate,nocc,nspin))
+! allocate(q_matrix_cmplx(nstate,nocc,nspin))
  allocate(hamiltonian_fock_cmplx(basis%nbf,basis%nbf,nspin))
  allocate(p_matrix_cmplx(basis%nbf,basis%nbf,nspin))
  allocate(h_small_cmplx(nstate,nstate,nspin))
@@ -343,7 +343,7 @@ subroutine tddft_time_loop(nstate,                           &
      open(newunit=file_time_data,file="time_data.dat")
      do ispin=1,nspin
        write(name_file_q_matrix_ii,"(a,i1,a)") "q_matrix_ii_spin_", ispin, ".dat" 
-       open(newunit=file_q_matrix_ii(ispin),file=name_file_q_matrix_ii)
+!       open(newunit=file_q_matrix_ii(ispin),file=name_file_q_matrix_ii)
      end do
      if(excit_type%is_light) then
        open(newunit=file_dipole_time,file="dipole_time.dat")
@@ -389,10 +389,10 @@ subroutine tddft_time_loop(nstate,                           &
  end if
 
  c_matrix_0_cmplx(:,:,:)=c_matrix(:,:,:)
- do ispin=1,nspin
-   q_matrix_cmplx(:,:,ispin)=MATMUL(MATMUL(CONJG(TRANSPOSE(c_matrix_0_cmplx(:,:,ispin))),s_matrix),c_matrix_cmplx(:,:,ispin))
-!   call print_square_2d_matrix_cmplx("q_matrix_cmplx",q_matrix_cmplx,nstate,stdout,4)
- end do
+! do ispin=1,nspin
+!   q_matrix_cmplx(:,:,ispin)=MATMUL(MATMUL(CONJG(TRANSPOSE(c_matrix_0_cmplx(:,:,ispin))),s_matrix),c_matrix_cmplx(:,:,ispin))
+!!   call print_square_2d_matrix_cmplx("q_matrix_cmplx",q_matrix_cmplx,nstate,stdout,4)
+! end do
 
  ! Getting starting value of the Hamiltonian
  ! itau=0 to avoid excitation calculation
@@ -910,7 +910,7 @@ subroutine tddft_time_loop(nstate,                           &
 
    if( is_iomaster .AND. ABS(time_cur / (write_step)- NINT(time_cur / (write_step))) < 1.0e-7 ) then
 
-     call output_positions()
+     call output_projectile_position()
 
      call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
      en%kin = real(SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
@@ -987,15 +987,15 @@ subroutine tddft_time_loop(nstate,                           &
  close(file_time_data)
  if(excit_type%is_light) close(file_dipole_time)
  if( ref_ .AND. excit_type%is_light ) close(file_excit_field)
- if( ref_ ) then
-   do ispin=1,nspin
-     close(file_q_matrix_ii(ispin))
-   end do
- end if
+! if( ref_ ) then
+!   do ispin=1,nspin
+!     close(file_q_matrix_ii(ispin))
+!   end do
+! end if
  deallocate(c_matrix_cmplx)
  deallocate(c_matrix_0_cmplx)
  deallocate(c_matrix_orth_cmplx)
- deallocate(q_matrix_cmplx)
+! deallocate(q_matrix_cmplx)
  deallocate(hamiltonian_fock_cmplx)
  deallocate(p_matrix_cmplx)
  deallocate(h_small_cmplx)

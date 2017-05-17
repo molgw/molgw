@@ -769,6 +769,7 @@ end subroutine plot_cube_wfn
 subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num)
  use m_definitions
  use m_mpi
+ use m_tddft_variables
  use m_inputparam, only: nspin,spin_fact
  use m_atoms
  use m_basis_set

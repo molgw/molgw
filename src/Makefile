@@ -63,7 +63,7 @@ level005: m_warning.o m_gos.o real_spherical_harmonics.o
 
 level008: m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_local.o m_mpi_trans.o
 
-level010: m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o m_lbfgs.o m_cart_to_pure.o
+level010: m_tddft_variables.o m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o m_lbfgs.o m_cart_to_pure.o
 
 level015: m_scalapack.o m_atoms.o m_ecp.o m_gaussian.o
 
@@ -99,7 +99,7 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
         lebedev_quadrature.o pdbssolver1.o boys_function.o \
         m_warning.o m_gos.o real_spherical_harmonics.o m_lbfgs.o \
         m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_local.o m_mpi_trans.o  \
-        m_elements.o m_timing.o m_memory.o m_tools.o m_mpi.o m_cart_to_pure.o \
+        m_elements.o m_tddft_variables.o m_timing.o m_memory.o m_tools.o m_mpi.o m_cart_to_pure.o \
         m_scalapack.o m_atoms.o m_ecp.o m_gaussian.o m_block_diago.o \
         m_basis_set.o \
         m_inputparam.o \
@@ -113,7 +113,7 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
 	$(LINKER) \
                         m_definitions.o m_warning.o m_lbfgs.o m_elements.o m_cart_to_pure.o \
                         m_mpi.o m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_local.o m_mpi_trans.o \
-                        m_scalapack.o m_timing.o m_memory.o m_inputparam.o \
+                        m_scalapack.o m_tddft_variables.o m_timing.o m_memory.o m_inputparam.o \
                         m_tools.o m_scf.o m_selfenergy_tools.o m_atoms.o m_ecp.o \
                         m_gos.o m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_libint_tools.o \
                         m_eri_calculate.o m_eri_ao_mo.o m_tddft_fxc.o \
@@ -133,7 +133,7 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
                         $(ELPA) $(ELPA_INCS) \
                         $(LINKS)
 
-molgw.o: m_definitions.f90 m_warning.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_lbfgs.f90 \
+molgw.o: m_definitions.f90 m_warning.f90 m_tddft_variables.f90 m_timing.f90 m_memory.f90 m_inputparam.f90 m_tools.f90 m_lbfgs.f90 \
          m_atoms.f90 m_scf.f90 m_scalapack.f90  m_ecp.f90 \
          m_gaussian.f90 m_basis_set.f90  m_eri.f90 m_dft_grid.f90 m_spectral_function.f90 m_eri_calculate.f90 m_eri_ao_mo.f90 \
          m_hamiltonian.f90 m_hamiltonian_cmplx.f90 m_hamiltonian_onebody.f90 m_hamiltonian_sca.f90 m_hamiltonian_buffer.f90 m_selfenergy_tools.f90 m_scf_loop.f90 m_tddft_propagator.f90 \
@@ -346,6 +346,9 @@ m_tools.o: m_definitions.f90 m_warning.f90 m_tools.f90
 m_memory.o: m_definitions.f90 m_warning.f90 m_memory.f90
 	$(FC_W_OPTS) -c m_memory.f90 $(LIBXC_INCS)
 
+m_tddft_variables.o: m_tddft_variables.f90
+	$(FC_W_OPTS) -c m_tddft_variables.f90 $(LIBXC_INCS)
+
 m_timing.o: m_definitions.f90 m_warning.f90 m_timing.f90
 	$(FC_W_OPTS) -c m_timing.f90 $(LIBXC_INCS)
 
@@ -367,7 +370,7 @@ m_lbfgs.o: m_definitions.f90 m_lbfgs.f90
 m_definitions.o: m_definitions.f90
 	$(FC_W_OPTS) -c m_definitions.f90 $(LIBXC_INCS)
 
-m_tddft_propagator.o: m_tddft_propagator.f90 m_definitions.f90 m_basis_set.f90 m_scf_loop.f90 m_memory.f90
+m_tddft_propagator.o: m_tddft_propagator.f90 m_definitions.f90 m_basis_set.f90 m_scf_loop.f90 m_memory.f90 m_tddft_variables.f90
 	 $(FC_W_OPTS) -c m_tddft_propagator.f90 $(LIBXC_INCS) $(FFTW_INCS)  
 
 spectrum.o: m_definitions.f90 m_warning.f90 m_tools.f90 spectrum.f90

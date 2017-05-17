@@ -11,6 +11,7 @@ module m_hamiltonian_buffer
  use m_definitions
  use m_mpi
  use m_timing
+ use m_tddft_variables
  use m_warning
  use m_memory
  use m_scalapack

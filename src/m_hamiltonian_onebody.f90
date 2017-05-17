@@ -9,6 +9,7 @@
 !=========================================================================
 module m_hamiltonian_onebody
  use m_definitions
+ use m_tddft_variables
  use m_timing
  use m_mpi
  use m_scalapack
