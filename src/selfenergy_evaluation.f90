@@ -267,9 +267,9 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call onering_selfenergy(ONE_RING,nstate,basis,occupation,energy_g,c_matrix,se3,en%mp2)
   
        if( print_sigma_ ) then
-         call write_selfenergy_omega('selfenergy_GW_small'   ,nstate,exchange_m_vxc_diag,energy_g,se)
-         call write_selfenergy_omega('selfenergy_1ring_big'  ,nstate,exchange_m_vxc_diag,energy_g,se3)
-         call write_selfenergy_omega('selfenergy_1ring_small',nstate,exchange_m_vxc_diag,energy_g,se2)
+         call write_selfenergy_omega('selfenergy_GW_small'   ,nstate,exchange_m_vxc_diag,occupation,energy_g,se)
+         call write_selfenergy_omega('selfenergy_1ring_big'  ,nstate,exchange_m_vxc_diag,occupation,energy_g,se3)
+         call write_selfenergy_omega('selfenergy_1ring_small',nstate,exchange_m_vxc_diag,occupation,energy_g,se2)
        endif
   
        !
@@ -426,7 +426,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    ! Output the quasiparticle energies, the self-energy etc.
    !
    if( print_sigma_ ) then
-     call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),nstate,exchange_m_vxc_diag,energy_g,se)
+     call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),nstate,exchange_m_vxc_diag,occupation,energy_g,se)
    endif
   
   

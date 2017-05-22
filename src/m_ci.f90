@@ -16,7 +16,7 @@ module m_ci
  use m_timing
  use m_basis_set
  use m_eri_ao_mo
- use m_inputparam,only: nspin,has_auxil_basis
+ use m_inputparam,only: nspin,has_auxil_basis,ieta
 
 
  integer,private              :: sz_1e
@@ -36,32 +36,68 @@ contains
 
 
 !==================================================================
-subroutine full_ci_2electrons_selfenergy(nstate)
+subroutine full_ci_2electrons_selfenergy(nstate,occupation)
+ use m_selfenergy_tools
  implicit none
 
  integer,intent(in)         :: nstate
+ real(dp),intent(in)        :: occupation(nstate,nspin)
 !=====
+ integer,parameter          :: nomega=5000
+ integer,parameter          :: ns=-1
  integer                    :: nconf_1e,nconf_2e,nconf_3e
- real(dp)                   :: ehomo
+ integer                    :: is
  integer                    :: isporb,istate,ispin
- integer                    :: iisporb,iistate,iispin,iconf
+ integer                    :: jsporb,jstate,jspin
+! integer                    :: ksporb,kstate,kspin
+ integer                    :: iisporb,iistate,iispin
+ integer                    :: ijsporb,ijstate,ijspin
+ integer                    :: iksporb,ikstate,ikspin
  integer                    :: jisporb,jistate,jispin
- integer                    :: jjsporb,jjstate,jjspin,jconf
+ integer                    :: jjsporb,jjstate,jjspin
+ integer                    :: iconf,jconf
  integer                    :: on_i(2*nstate),on_j(2*nstate)
  integer                    :: on_tmp(2*nstate)
- real(dp)                   :: fhomo(2*nstate)
+ integer                    :: ns_occ,ns_virt
+ real(dp),allocatable       :: fs_occ(:,:),fs_virt(:,:)
+ real(dp),allocatable       :: es_occ(:),es_virt(:)
+ integer                    :: iomega
+ real(dp)                   :: omega
+ complex(dp)                :: gi_w
+ character(len=3)           :: ctmp3
+ character(len=1)           :: ctmp1
+ integer                    :: unit_gf
 !=====
 
  write(stdout,'(/,1x,a)') 'Full CI self-energy for 2 electrons'
 
  if( .NOT. ALLOCATED(energy_1e) ) call die('full_ci_2electrons_selfenergy: previous calculation for 1e needed')
  if( .NOT. ALLOCATED(energy_2e) ) call die('full_ci_2electrons_selfenergy: previous calculation for 2e needed')
+ if( .NOT. ALLOCATED(energy_3e) ) call die('full_ci_2electrons_selfenergy: previous calculation for 3e needed')
 
  nconf_1e = SIZE(energy_1e)
  nconf_2e = SIZE(energy_2e)
+ nconf_3e = SIZE(energy_3e)
 
- write(stdout,*) 'Previous CI calculation had spin state Sz(1e): ',sz_1e
- write(stdout,*) 'Previous CI calculation had spin state Sz(2e): ',sz_2e
+ write(stdout,'(1x,a,sp,i4)') 'Previous CI calculation had spin state Sz(1e): ',sz_1e
+ write(stdout,'(1x,a,i3)')    'Previous CI calculation had spin state Sz(2e): ',sz_2e
+ write(stdout,'(1x,a,sp,i4)') 'Previous CI calculation had spin state Sz(3e): ',sz_3e
+
+ !
+ ! Choose how many Lehmann excitations to calculate
+ ! If ns is negative, calculate all of them
+ if( ns > 0 ) then
+   ns_occ  = ns
+   ns_virt = ns
+ else
+   ns_occ  = nconf_1e
+   ns_virt = nconf_3e
+ endif
+
+ allocate(fs_occ(2*nstate,ns_occ))
+ allocate(fs_virt(2*nstate,ns_virt))
+ allocate(es_occ(ns_occ))
+ allocate(es_virt(ns_virt))
 
  !
  ! Check 1e configurations
@@ -70,14 +106,13 @@ subroutine full_ci_2electrons_selfenergy(nstate)
  do iisporb=1,2*nstate
    iispin = 2*MODULO( iisporb , 2 ) - 1
    iistate = (iisporb+1) / 2
-   if( iispin == sz_1e ) then
+   if( iispin == sz_1e .OR. sz_1e == -100 ) then
      iconf = iconf + 1
 !     write(stdout,'(1x,i6,a,3(1x,i4,1x,i2))') iconf,' :  ',iistate,iispin
    endif
  enddo
  if( iconf /= nconf_1e ) call die('full_ci_2electrons_selfenergy: inconsistency in the configurations for 1 electron')
 
- write(stdout,*)  eigvec_1e(1:10,1)
 
  !
  ! Check 2e configurations
@@ -97,11 +132,34 @@ subroutine full_ci_2electrons_selfenergy(nstate)
  enddo
  if( jconf /= nconf_2e ) call die('full_ci_2electrons_selfenergy: inconsistency in the configurations for 2 electrons')
 
+ !
+ ! Check 3e configurations
+ !
+ iconf = 0
+ do iksporb=1,2*nstate
+   do ijsporb=iksporb+1,2*nstate
+     do iisporb=ijsporb+1,2*nstate
+       iispin = 2 * MODULO( iisporb , 2 ) - 1
+       ijspin = 2 * MODULO( ijsporb , 2 ) - 1
+       ikspin = 2 * MODULO( iksporb , 2 ) - 1
+       iistate = (iisporb+1) / 2
+       ijstate = (ijsporb+1) / 2
+       ikstate = (iksporb+1) / 2
+       if( iispin + ijspin + ikspin == sz_3e .OR. sz_3e == -100 ) then
+         iconf = iconf + 1
+!         write(stdout,'(1x,i6,a,3(1x,i4,1x,i2))') iconf,' :  ',iistate,iispin,ijstate,ijspin,ikstate,ikspin
+       endif
+
+     enddo
+   enddo
+ enddo
+ if( iconf /= nconf_3e ) call die('full_ci_2electrons_selfenergy: inconsistency in the configurations for 3 electrons')
+
 
  !
- ! Build the Lehman amplitude
+ ! Build the Lehman amplitude for occupied states
  !
- fhomo(:) = 0.0_dp
+ fs_occ(:,:) = 0.0_dp
  jconf = 0
  do jjsporb=1,2*nstate
    do jisporb=jjsporb+1,2*nstate
@@ -120,7 +178,7 @@ subroutine full_ci_2electrons_selfenergy(nstate)
      do iisporb=1,2*nstate
        iispin = 2*MODULO( iisporb , 2 ) - 1
        iistate = (iisporb+1) / 2
-       if( iispin /= 1 ) cycle
+       if( iispin /= 1 .AND. sz_1e /= -100) cycle
        iconf = iconf + 1
 
        on_i(:)       = 0
@@ -130,8 +188,9 @@ subroutine full_ci_2electrons_selfenergy(nstate)
          if( isporb == iisporb ) cycle
          on_tmp(:) = on_i(:)
          on_tmp(isporb) = on_tmp(isporb) + 1
-         if( ALL( on_j(:) - on_tmp(:) == 0 ) )   &
-           fhomo(isporb) = fhomo(isporb) + eigvec_1e(iconf,1) * eigvec_2e(jconf,1) * gamma_sign(on_i,isporb)
+         if( ALL( on_j(:) - on_tmp(:) == 0 ) ) then
+           fs_occ(isporb,:) = fs_occ(isporb,:) + eigvec_1e(iconf,:ns_occ) * eigvec_2e(jconf,1) * gamma_sign(on_i,isporb)
+         endif
        enddo
 
 
@@ -140,19 +199,132 @@ subroutine full_ci_2electrons_selfenergy(nstate)
    enddo
  enddo
 
- ehomo = energy_2e(1) - energy_1e(1)
+ write(stdout,*) '====================='
+ write(stdout,*) 'Occupied states'
+ write(stdout,*)
 
- write(stdout,*) 'Ehomo (eV): ',ehomo * Ha_eV
+ do is=1,ns_occ
+   es_occ(is) = energy_2e(1) - energy_1e(is)
+   write(stdout,'(/,1x,a,i4,1x,f10.6)') '=== Excitation (eV): ',is,es_occ(is) * Ha_eV
+  
+   write(stdout,'(1x,a,i2,a)') '=== fs_occ(',is,')'
+   do isporb=1,2*nstate
+     ispin = 2*MODULO( isporb , 2 ) - 1
+     istate = (isporb+1) / 2
+     if( ABS(fs_occ(isporb,is)) > 1.0e-4_dp ) write(stdout,*) istate,ispin,fs_occ(isporb,is)
+   enddo
+  
+   write(stdout,'(1x,a,/)') '========='
 
- write(stdout,'(1x,a)') '=== fhomo'
- do isporb=1,2*nstate
-   ispin = 2*MODULO( isporb , 2 ) - 1
-   istate = (isporb+1) / 2
-   if( ABS(fhomo(isporb)) > 1.0e-4_dp ) write(stdout,*) istate,ispin,fhomo(isporb)
  enddo
 
- write(stdout,'(1x,a,/)') '========='
 
+
+ !
+ ! Build the Lehman amplitude for virtual states
+ !
+ fs_virt(:,:) = 0.0_dp
+ jconf = 0
+ do jjsporb=1,2*nstate
+   do jisporb=jjsporb+1,2*nstate
+     jispin = 2*MODULO( jisporb , 2 ) - 1
+     jjspin = 2*MODULO( jjsporb , 2 ) - 1
+     jistate = (jisporb+1) / 2
+     jjstate = (jjsporb+1) / 2
+     if( jispin + jjspin /= 0 ) cycle
+     jconf = jconf + 1
+
+     on_j(:)       = 0
+     on_j(jisporb) = 1
+     on_j(jjsporb) = 1
+
+     iconf = 0
+     do iksporb=1,2*nstate
+       do ijsporb=iksporb+1,2*nstate
+         do iisporb=ijsporb+1,2*nstate
+           iispin = 2*MODULO( iisporb , 2 ) - 1
+           ijspin = 2*MODULO( ijsporb , 2 ) - 1
+           ikspin = 2*MODULO( iksporb , 2 ) - 1
+           iistate = (iisporb+1) / 2
+           ijstate = (ijsporb+1) / 2
+           ikstate = (iksporb+1) / 2
+
+           if( iispin + ijspin + ikspin /= sz_3e .AND. sz_3e /= -100 ) cycle
+           iconf = iconf + 1
+
+           on_i(:)       = 0
+           on_i(iisporb) = 1
+           on_i(ijsporb) = 1
+           on_i(iksporb) = 1
+
+           do isporb=1,2*nstate
+             ! Cannot create an electron in a state that is already occupied
+             if( isporb == jisporb .OR. isporb == jjsporb ) cycle
+             on_tmp(:) = on_j(:)
+             on_tmp(isporb) = on_tmp(isporb) + 1
+             if( ALL( on_i(:) - on_tmp(:) == 0 ) ) then
+               fs_virt(isporb,:) = fs_virt(isporb,:) + eigvec_3e(iconf,:ns_virt) * eigvec_2e(jconf,1) * gamma_sign(on_j,isporb)
+             endif
+           enddo
+
+         enddo
+       enddo
+     enddo
+
+   enddo
+ enddo
+
+ write(stdout,*) '====================='
+ write(stdout,*) 'Virtual states'
+ write(stdout,*)
+
+ do is=1,ns_virt
+   es_virt(is) = energy_3e(is) - energy_2e(1)
+   write(stdout,'(/,1x,a,i4,1x,f10.6)') '=== Excitation (eV): ',is,es_virt(is) * Ha_eV
+  
+   write(stdout,'(1x,a,i2,a)') '=== fs_virt(',is,')'
+   do isporb=1,2*nstate
+     ispin = 2*MODULO( isporb , 2 ) - 1
+     istate = (isporb+1) / 2
+     if( ABS(fs_virt(isporb,is)) > 1.0e-4_dp ) write(stdout,*) istate,ispin,fs_virt(isporb,is)
+   enddo
+  
+   write(stdout,'(1x,a,/)') '========='
+
+ enddo
+
+ !
+ ! Set the range of states on which to evaluate the self-energy
+ call selfenergy_set_state_range(nstate,occupation)
+
+ do isporb=2*nsemin-1,2*nsemax
+   ispin = 2*MODULO( isporb , 2 ) - 1
+   istate = (isporb+1) / 2
+
+   write(ctmp3,'(i3.3)') istate
+   write(ctmp1,'(i1)') MODULO( isporb-1 , 2 ) + 1
+
+   open(newunit=unit_gf,file='exact_greens_function_state'//ctmp3//'_spin'//ctmp1//'.dat',action='write')
+   do iomega=-nomega,nomega
+     omega = iomega / REAL(nomega,dp) * 100.0_dp / Ha_eV
+     gi_w = 0.0_dp
+
+     do is=1,ns_virt
+       gi_w = gi_w + fs_virt(isporb,is)**2 / ( omega - es_virt(is) - ieta )
+     enddo
+     do is=1,ns_occ
+       gi_w = gi_w + fs_occ(isporb,is)**2 / ( omega - es_occ(is) + ieta )
+     enddo
+
+     write(unit_gf,'(4(1x,es18.8))') omega * Ha_eV, gi_w / Ha_eV, ABS(AIMAG(gi_w)) / pi / Ha_eV
+   enddo
+   close(unit_gf)
+ enddo
+
+
+
+ deallocate(fs_virt,fs_occ)
+ deallocate(es_virt,es_occ)
 
 end subroutine full_ci_2electrons_selfenergy
 
@@ -222,7 +394,7 @@ subroutine full_ci_1electron_on(save_coefficients,nstate,spinstate,basis,h_1e,c_
    istate = (isporb+1) / 2
    if( ispin == spinstate .OR. spinstate == -100 ) then
      nconf = nconf + 1
-     write(stdout,'(1x,i6,a,3(1x,i4,1x,i2))') nconf,' :  ',istate,ispin
+!     write(stdout,'(1x,i6,a,3(1x,i4,1x,i2))') nconf,' :  ',istate,ispin
    endif
 
  enddo
@@ -486,7 +658,7 @@ subroutine full_ci_2electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
      jstate = (jsporb+1) / 2
      if( ispin + jspin == spinstate .OR. spinstate == -100 ) then
        nconf = nconf + 1
-       write(stdout,'(1x,i6,a,3(1x,i4,1x,i2))') nconf,' :  ',istate,ispin,jstate,jspin
+!       write(stdout,'(1x,i6,a,3(1x,i4,1x,i2))') nconf,' :  ',istate,ispin,jstate,jspin
      endif
 
    enddo
@@ -723,7 +895,11 @@ subroutine full_ci_3electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
 
  write(stdout,'(/,1x,a,/)') 'Full CI for 3 electrons'
 
+ sz_3e = spinstate
+
  select case(spinstate)
+ case(-100)
+   write(stdout,*) 'Any spin state'
  case(1)
    write(stdout,*) 'Spin doublet'
  case(3)
@@ -758,9 +934,9 @@ subroutine full_ci_3electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
        istate = (isporb+1) / 2
        jstate = (jsporb+1) / 2
        kstate = (ksporb+1) / 2
-       if( ispin + jspin + kspin == spinstate ) then
+       if( ispin + jspin + kspin == spinstate .OR. spinstate == -100 ) then
          nconf = nconf + 1
-         write(stdout,'(1x,i6,a,3(1x,i4,1x,i2))') nconf,' :  ',istate,ispin,jstate,jspin,kstate,kspin
+!         write(stdout,'(1x,i6,a,3(1x,i4,1x,i2))') nconf,' :  ',istate,ispin,jstate,jspin,kstate,kspin
        endif
 
      enddo
@@ -785,7 +961,7 @@ subroutine full_ci_3electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
        jistate = (jisporb+1) / 2
        jjstate = (jjsporb+1) / 2
        jkstate = (jksporb+1) / 2
-       if( jispin + jjspin + jkspin /= spinstate ) cycle
+       if( jispin + jjspin + jkspin /= spinstate .AND. spinstate /= -100 ) cycle
        jconf = jconf + 1
 
        on_j(:) = 0
@@ -804,7 +980,7 @@ subroutine full_ci_3electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
              ijstate = (ijsporb+1) / 2
              ikstate = (iksporb+1) / 2
 
-             if( iispin + ijspin + ikspin /= spinstate ) cycle
+             if( iispin + ijspin + ikspin /= spinstate .AND. spinstate /= -100 ) cycle
              iconf = iconf + 1
 
              on_i(:) = 0
@@ -812,10 +988,6 @@ subroutine full_ci_3electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
              on_i(ijsporb) = 1
              on_i(iksporb) = 1
 
-!             write(*,*) 'I=',iconf,on_i(:)
-!             write(*,*) 'J=',jconf,on_j(:)
-!             write(*,*) COUNT( on_j(:) - on_i(:) == 1 )
-!             write(*,*)
 
              !
              ! 1-body part
@@ -1054,7 +1226,7 @@ subroutine full_ci_4electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
          lstate = (lsporb+1) / 2
          if( ispin + jspin + kspin + lspin == spinstate ) then
            nconf = nconf + 1
-           write(stdout,'(1x,i6,a,4(1x,i4,1x,i2))') nconf,' :  ',istate,ispin,jstate,jspin,kstate,kspin,lstate,lspin
+!           write(stdout,'(1x,i6,a,4(1x,i4,1x,i2))') nconf,' :  ',istate,ispin,jstate,jspin,kstate,kspin,lstate,lspin
          endif
 
        enddo

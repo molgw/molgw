@@ -71,11 +71,11 @@ level025: m_eri.o m_scf.o m_dft_grid.o
 
 level030: m_eri_calculate.o m_eri_ao_mo.o
 
-level035: m_spectral_function.o m_hamiltonian.o m_hamiltonian_onebody.o m_hamiltonian_sca.o m_hamiltonian_buffer.o m_ci.o
+level035: m_spectral_function.o m_hamiltonian.o m_hamiltonian_onebody.o m_hamiltonian_sca.o m_hamiltonian_buffer.o
 
 level037: m_selfenergy_tools.o m_virtual_orbital_space.o m_tddft_fxc.o
 
-level038: m_scf_loop.o
+level038: m_scf_loop.o m_ci.o
 
 level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfenergy.o gw_selfenergy_grid.o \
           gwgamma_selfenergy.o cohsex_selfenergy.o bse.o density_tools.o multipole_tools.o \
@@ -255,7 +255,7 @@ m_dft_grid.o: m_definitions.f90 m_memory.f90 m_inputparam.f90 m_warning.f90 m_ca
               m_dft_grid.f90
 	$(FC_W_OPTS) -c m_dft_grid.f90 $(LIBXC_INCS)
 
-m_ci.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_tools.f90 m_basis_set.f90 m_eri_ao_mo.f90 m_inputparam.f90 \
+m_ci.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_tools.f90 m_basis_set.f90 m_eri_ao_mo.f90 m_inputparam.f90 m_selfenergy_tools.o \
                        m_ci.f90 
 	$(FC_W_OPTS) -c m_ci.f90 $(LIBXC_INCS)
 

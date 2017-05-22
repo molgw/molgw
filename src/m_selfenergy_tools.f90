@@ -89,21 +89,21 @@ end subroutine selfenergy_set_state_range
 
 
 !=========================================================================
-subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,energy0,se)
+subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,occupation,energy0,se)
  implicit none
 
  character(len=*)    :: filename_root
  integer,intent(in)  :: nstate
  real(dp),intent(in) :: exchange_m_vxc(nstate,nspin)
- real(dp),intent(in) :: energy0(nstate,nspin)
+ real(dp),intent(in) :: occupation(nstate,nspin),energy0(nstate,nspin)
  type(selfenergy_grid),intent(in) :: se
 !=====
  character(len=3)   :: ctmp
  character(len=256) :: filename
  integer :: selfenergyfile
- integer :: pstate
+ integer :: pstate,pspin
  integer :: iomega
- real(dp) :: spectral_function_w(nspin)
+ real(dp) :: spectral_function_w(nspin),sign_occ(nspin)
 !=====
 
  ! Just the master writes
@@ -123,16 +123,20 @@ subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,energy0,se
 
    write(selfenergyfile,'(a)') '#       omega (eV)          Re SigmaC (eV)     Im SigmaC (eV)    omega - e_gKS - Vxc + SigmaX (eV)     A (eV^-1)'
 
+   do pspin=1,nspin
+     sign_occ(:) = SIGN( 1.0_dp , occupation(pstate,pspin) - spin_fact * 0.50_dp )
+   enddo
+
    do iomega=-se%nomega,se%nomega
      spectral_function_w(:) = 1.0_dp / pi * ABS(   &
                                        AIMAG( 1.0_dp   &
-                                         / ( se%energy0(pstate,:)+se%omega(iomega) - energy0(pstate,:)  &
+                                         / ( se%energy0(pstate,:) + se%omega(iomega) - energy0(pstate,:) + ieta * sign_occ(:) &  
                                                - exchange_m_vxc(pstate,:) - se%sigma(iomega,pstate,:) ) ) )
 
      write(selfenergyfile,'(20(f16.8,2x))') ( se%omega(iomega) + se%energy0(pstate,:) )*Ha_eV,             &
                                             REAL(se%sigma(iomega,pstate,:),dp) * Ha_eV,                    &
                                             AIMAG(se%sigma(iomega,pstate,:)) * Ha_eV,                      &
-                                            (REAL(se%omega(iomega),dp)+se%energy0(pstate,:) - energy0(pstate,:) - exchange_m_vxc(pstate,:) )*Ha_eV, &
+                                            ( REAL(se%omega(iomega),dp) + se%energy0(pstate,:) - energy0(pstate,:) - exchange_m_vxc(pstate,:) ) * Ha_eV, &
                                             spectral_function_w(:) / Ha_eV
    enddo
    if( se%nomegai > 0 ) then

@@ -501,11 +501,11 @@ program molgw
  if(calc_type%is_ci) then
    if(nspin/=1) call die('for CI, nspin should be 1')
 
-   call full_ci_1electron_on(.TRUE.,nstate, 1,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
+   call full_ci_1electron_on(.TRUE.,nstate, -100,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
    call full_ci_2electrons_on(.TRUE.,nstate,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
-   call full_ci_2electrons_selfenergy(nstate)
+   call full_ci_3electrons_on(.TRUE.,nstate,-100,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
+   call full_ci_2electrons_selfenergy(nstate,occupation)
 
-!   call full_ci_3electrons_on(.FALSE.,nstate,1,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
 !   call full_ci_4electrons_on(.FALSE.,nstate,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
 
 !   if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) call die('CI is implemented for 2 electrons only')
