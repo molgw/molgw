@@ -673,7 +673,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  en%exx     = 0.0_dp
  en%exx_hyb = 0.0_dp
 
- if ( parallel_ham ) call die('parallel_ham not yet implemented for propagator')
+ if ( parallel_ham ) call die('parallel_ham not yet implemented for tddft propagator')
  
  ! Initialize real arrays
  
@@ -693,7 +693,6 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  endif
 
 
-
  !
  ! Hartree contribution to the Hamiltonian
  !
@@ -702,12 +701,9 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
 
  ! #### Pass real arrays p_matrix and hamiltonian_tmp ####
    call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix,hamiltonian_tmp(:,:,1),en%hart)
-    
  do ispin=1,nspin
    hamiltonian_hxc_cmplx(:,:,ispin) = hamiltonian_hxc_cmplx(:,:,ispin) + hamiltonian_tmp(:,:,1)
  enddo
-
-
 
  !
  !  XC part of the Hamiltonian
@@ -721,8 +717,6 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
    
    hamiltonian_hxc_cmplx(:,:,:) = hamiltonian_hxc_cmplx(:,:,:) + hamiltonian_tmp(:,:,:) 
  endif
-
-
 
 ! write(file_time_data,"(6(x,e16.10,2x),'    ')",advance='no') enuc,ekin,ehart, eexx_hyb,exc, enuc+ekin+ehart+eexx_hyb+exc
  !

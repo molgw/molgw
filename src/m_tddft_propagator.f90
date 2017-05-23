@@ -132,7 +132,7 @@ subroutine calculate_propagation(nstate,              &
    if(excit_type%is_light) allocate(dipole_time_test(nwrite_step,3))
  end if
 
- write(stdout,"(x,A,F8.2,A,F9.5,A,I8)") "Calculate reference tddft loop for time_sim=", time_sim, " time_step=", time_step, " number of iterations", ntau
+ write(stdout,"(x,A,F8.2,A,F9.5,A,I8)") "Calculate the reference tddft loop for time_sim=", time_sim, " time_step=", time_step, " number of iterations", ntau
  call start_clock(timing_tddft_loop)
  call tddft_time_loop(nstate,                           &
                       basis,                            &
@@ -153,7 +153,7 @@ subroutine calculate_propagation(nstate,              &
                       dipole_time_ref,                  &
                       .true.)
  call stop_clock(timing_tddft_loop)
- write(stdout,*) "End of reference tddft loop"
+ write(stdout,*) "End of the reference tddft loop"
  write(stdout,*)
  
  if( calc_p_matrix_error_ ) then
@@ -216,25 +216,27 @@ subroutine calculate_propagation(nstate,              &
                                   dipole_time_test,                 &
                                   .false.)
              write(stdout,"(x,A)") "End of the tddft loop"
-             write(name_p_matrix_error,'(5A,F5.3,A,I1,A,I1,A)') "p_matrix_error_", TRIM(m_pred_corrs(ipred_corr)), "_", TRIM(m_prop_types(iprop_type)), &
-                   "_dt_", m_time_steps(istep),"_hist_",m_n_hists(ihist), "_iter_",m_n_iters(iiter),".dat" 
-             open(newunit=file_p_matrix_error,file=name_p_matrix_error)
-             if(excit_type%is_light) then
-               write(name_dipole_error,'(5A,F5.3,A,I1,A,I1,A)') "dipole_error_", TRIM(m_pred_corrs(ipred_corr)), "_", TRIM(m_prop_types(iprop_type)), & 
-                     "_dt_", m_time_steps(istep),"_hist_",m_n_hists(ihist),"_iter_",m_n_iters(iiter), ".dat"
-               open(newunit=file_dipole_error,file=name_dipole_error)
-             end if
-             time_min = time_read + write_step
-             time_cur = time_min
-             do iwrite_step=1, nwrite_step 
-               write(file_p_matrix_error,*) time_cur, SUM(ABS(p_matrix_time_ref_cmplx(:,:,:,iwrite_step) - p_matrix_time_test_cmplx(:,:,:,iwrite_step))) / (basis%nbf)**2
+             if( is_iomaster ) then
+               write(name_p_matrix_error,'(5A,F5.3,A,I1,A,I1,A)') "p_matrix_error_", TRIM(m_pred_corrs(ipred_corr)), "_", TRIM(m_prop_types(iprop_type)), &
+                     "_dt_", m_time_steps(istep),"_hist_",m_n_hists(ihist), "_iter_",m_n_iters(iiter),".dat" 
+               open(newunit=file_p_matrix_error,file=name_p_matrix_error)
                if(excit_type%is_light) then
-                 write(file_dipole_error,*) time_cur, SUM(ABS(dipole_time_ref(iwrite_step,:) - dipole_time_test(iwrite_step,:))) / (basis%nbf)**2
+                 write(name_dipole_error,'(5A,F5.3,A,I1,A,I1,A)') "dipole_error_", TRIM(m_pred_corrs(ipred_corr)), "_", TRIM(m_prop_types(iprop_type)), & 
+                       "_dt_", m_time_steps(istep),"_hist_",m_n_hists(ihist),"_iter_",m_n_iters(iiter), ".dat"
+                 open(newunit=file_dipole_error,file=name_dipole_error)
                end if
-               time_cur=time_min+iwrite_step*write_step
-             end do
-             close(file_p_matrix_error)     
-             close(file_dipole_error)
+               time_min = time_read + write_step
+               time_cur = time_min
+               do iwrite_step=1, nwrite_step 
+                 write(file_p_matrix_error,*) time_cur, SUM(ABS(p_matrix_time_ref_cmplx(:,:,:,iwrite_step) - p_matrix_time_test_cmplx(:,:,:,iwrite_step))) / (basis%nbf)**2
+                 if(excit_type%is_light) then
+                   write(file_dipole_error,*) time_cur, SUM(ABS(dipole_time_ref(iwrite_step,:) - dipole_time_test(iwrite_step,:))) / (basis%nbf)**2
+                 end if
+                 time_cur=time_min+iwrite_step*write_step
+               end do
+               close(file_p_matrix_error)     
+               close(file_dipole_error)
+             end if
            end do ! n_iter
          end do ! n_hist
        end do ! prop_type
@@ -365,7 +367,6 @@ subroutine tddft_time_loop(nstate,                           &
    if(excit_type%is_light) write(file_dipole_time,*) "# time(au)                      Dipole_x(D)               Dipole_y(D)               Dipole_z(D)"
  end if
 
-
  time_min=0.0_dp
 !===INITIAL CONDITIONS===
  if(ref_) then
@@ -430,6 +431,7 @@ subroutine tddft_time_loop(nstate,                           &
 
  if( is_iomaster ) then
  ! Here time_min point coresponds to the end of calculation written in the RESTART_TDDFT or to 0 a.u.
+   if(excit_type%is_projectile) call output_projectile_position()
    if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0)
    if(excit_type%is_light) write(file_dipole_time,*) time_min, dipole(:) * au_debye
    write(file_time_data,"(F9.4,8(2x,es16.8E3),2x,2(2x,F7.2))") &
@@ -517,7 +519,6 @@ subroutine tddft_time_loop(nstate,                           &
  end if
 !===END INITIAL CONDITIONS===
 
-
 !********start time loop*************
  time_cur=time_min
  iwrite_step = 1
@@ -542,7 +543,6 @@ subroutine tddft_time_loop(nstate,                           &
                                         hamiltonian_fock_cmplx,  &
                                         ref_)
    end if
-
    ! ///////////////////////////////////
    ! Following Van Voorhis, Phys Rev B 74 (2006)
      if(pred_corr_cur=='PC1') then
@@ -910,7 +910,7 @@ subroutine tddft_time_loop(nstate,                           &
 
    if( is_iomaster .AND. ABS(time_cur / (write_step)- NINT(time_cur / (write_step))) < 1.0e-7 ) then
 
-     call output_projectile_position()
+     if(excit_type%is_projectile) call output_projectile_position()
 
      call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
      en%kin = real(SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)

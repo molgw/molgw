@@ -98,7 +98,6 @@ subroutine setup_hartree_ri(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
  end if
  call start_clock(timing_hartree)
 
-
  allocate(partial_sum(nauxil_3center))
  partial_sum(:) = 0.0_dp
  do ipair=1,npair
