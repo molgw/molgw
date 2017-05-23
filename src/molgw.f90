@@ -504,10 +504,10 @@ program molgw
    call full_ci_1electron_on(.TRUE.,nstate, -100,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
    call full_ci_2electrons_on(.TRUE.,nstate,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
    call full_ci_3electrons_on(.TRUE.,nstate,-100,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
-   call full_ci_2electrons_selfenergy(nstate,occupation)
+   call full_ci_2electrons_selfenergy(occupation)
 
-   call full_ci_4electrons_on(.FALSE.,nstate,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
-   call full_ci_5electrons_on(.FALSE.,nstate,1,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
+!   call full_ci_4electrons_on(.FALSE.,nstate,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
+!   call full_ci_5electrons_on(.FALSE.,nstate,1,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
 
 !   if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) call die('CI is implemented for 2 electrons only')
 !   call full_ci_2electrons_spin(print_wfn_,nstate,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
