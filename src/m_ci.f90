@@ -142,6 +142,7 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
      endif
    enddo
    allocate(conf%sporb_occ(conf%nelec,conf%nconf))
+   iconf = 0
    do isporb=2*nfrozen_ci+1,2*nstate_ci
      sporb(1)  = isporb
      ispin(:)  = sporb_to_spin(  sporb(:) )
@@ -746,7 +747,8 @@ subroutine full_ci_1electron_on(save_coefficients,nstate,spinstate,basis,h_1e,c_
  call setup_configurations_ci(1,spinstate,conf_1e)
 
 
- allocate(h_ci(conf_1e%nconf,conf_1e%nconf))
+ call clean_allocate('CI hamiltonian',h_ci,conf_1e%nconf,conf_1e%nconf)
+
  call build_ci_hamiltonian(conf_1e,h_ci)
 
  allocate(energy_1e(conf_1e%nconf))
@@ -766,7 +768,7 @@ subroutine full_ci_1electron_on(save_coefficients,nstate,spinstate,basis,h_1e,c_
    deallocate(eigvec_1e)
  endif
 
- deallocate(h_ci)
+ call clean_deallocate('CI hamiltonian',h_ci)
 
  call stop_clock(timing_full_ci)
 
@@ -804,7 +806,7 @@ subroutine full_ci_2electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
  call setup_configurations_ci(2,spinstate,conf_2e)
 
 
- allocate(h_ci(conf_2e%nconf,conf_2e%nconf))
+ call clean_allocate('CI hamiltonian',h_ci,conf_2e%nconf,conf_2e%nconf)
  call build_ci_hamiltonian(conf_2e,h_ci)
 
  allocate(energy_2e(conf_2e%nconf))
@@ -824,7 +826,7 @@ subroutine full_ci_2electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
    deallocate(eigvec_2e)
  endif
 
- deallocate(h_ci)
+ call clean_deallocate('CI hamiltonian',h_ci)
 
  call stop_clock(timing_full_ci)
 
@@ -862,7 +864,8 @@ subroutine full_ci_3electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
  call setup_configurations_ci(3,spinstate,conf_3e)
 
 
- allocate(h_ci(conf_3e%nconf,conf_3e%nconf))
+ call clean_allocate('CI hamiltonian',h_ci,conf_3e%nconf,conf_3e%nconf)
+
  call build_ci_hamiltonian(conf_3e,h_ci)
 
  allocate(energy_3e(conf_3e%nconf))
@@ -882,7 +885,7 @@ subroutine full_ci_3electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
    deallocate(eigvec_3e)
  endif
 
- deallocate(h_ci)
+ call clean_deallocate('CI hamiltonian',h_ci)
 
  call stop_clock(timing_full_ci)
 
@@ -920,7 +923,8 @@ subroutine full_ci_4electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
  call setup_configurations_ci(4,spinstate,conf_4e)
 
 
- allocate(h_ci(conf_4e%nconf,conf_4e%nconf))
+ call clean_allocate('CI hamiltonian',h_ci,conf_4e%nconf,conf_4e%nconf)
+
  call build_ci_hamiltonian(conf_4e,h_ci)
 
  allocate(energy_4e(conf_4e%nconf))
@@ -940,7 +944,7 @@ subroutine full_ci_4electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
    deallocate(eigvec_4e)
  endif
 
- deallocate(h_ci)
+ call clean_deallocate('CI hamiltonian',h_ci)
 
  call stop_clock(timing_full_ci)
 
@@ -978,7 +982,8 @@ subroutine full_ci_5electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
  call setup_configurations_ci(5,spinstate,conf_5e)
 
 
- allocate(h_ci(conf_5e%nconf,conf_5e%nconf))
+ call clean_allocate('CI hamiltonian',h_ci,conf_5e%nconf,conf_5e%nconf)
+
  call build_ci_hamiltonian(conf_5e,h_ci)
 
  allocate(energy_5e(conf_5e%nconf))
@@ -998,7 +1003,7 @@ subroutine full_ci_5electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
    deallocate(eigvec_5e)
  endif
 
- deallocate(h_ci)
+ call clean_deallocate('CI hamiltonian',h_ci)
 
  call stop_clock(timing_full_ci)
 
