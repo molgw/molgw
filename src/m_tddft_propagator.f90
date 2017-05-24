@@ -958,14 +958,12 @@ subroutine tddft_time_loop(nstate,                           &
 !   write(stdout,"(a,F9.4)") "time_cur  ", time_cur
 !   call print_square_2d_matrix_cmplx("q_matrix_cmplx",q_matrix_cmplx,nstate,stdout,4)
 !--TIMING
-   if( is_iomaster ) then
-     if(itau==3) then
-       call stop_clock(timing_tddft_one_iter)
-       time_one_iter=timing(timing_tddft_one_iter)
-       write(stdout,"(1x,a30,2x,es14.6,1x,a)") "Time of one iteration is", time_one_iter,"s"
-       write(stdout,"(1x,a30,2x,3(f12.2,1x,a))") "Estimated calculation time is", time_one_iter*ntau, "s = ", time_one_iter*ntau/60, "min = ", time_one_iter*ntau/3600, "hrs"
-       call flush(stdout)
-     end if
+   if(itau==3) then
+     call stop_clock(timing_tddft_one_iter)
+     time_one_iter=timing(timing_tddft_one_iter)
+     write(stdout,"(1x,a30,2x,es14.6,1x,a)") "Time of one iteration is", time_one_iter,"s"
+     write(stdout,"(1x,a30,2x,3(f12.2,1x,a))") "Estimated calculation time is", time_one_iter*ntau, "s = ", time_one_iter*ntau/60, "min = ", time_one_iter*ntau/3600, "hrs"
+     call flush(stdout)
    end if
 
    if( print_tddft_restart_ .AND. mod(itau,100)==0 ) then
@@ -984,9 +982,11 @@ subroutine tddft_time_loop(nstate,                           &
    call write_restart_tddft(nstate,time_cur-time_step_cur,c_matrix_orth_cmplx)
  end if
 
- close(file_time_data)
- if(excit_type%is_light) close(file_dipole_time)
- if( ref_ .AND. excit_type%is_light ) close(file_excit_field)
+ if( is_iomaster) then 
+   close(file_time_data)
+   if( excit_type%is_light) close(file_dipole_time)
+   if( ref_ .AND. excit_type%is_light ) close(file_excit_field)
+ end if
 ! if( ref_ ) then
 !   do ispin=1,nspin
 !     close(file_q_matrix_ii(ispin))
