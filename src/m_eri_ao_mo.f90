@@ -172,6 +172,8 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix)
  integer,allocatable  :: id(:)
 !=====
 
+ write(stdout,'(/,1x,a)') 'Calculate all the 4-center MO integrals at once'
+
  if( nspin /= 1 ) call die('calculate_eri_4center_eigen_uks: requires spin-restricted calculation')
 
  nbf    = SIZE(c_matrix,DIM=1)

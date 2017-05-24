@@ -14,9 +14,10 @@ module m_ci
  use m_tools
  use m_memory
  use m_timing
+ use m_scalapack
  use m_basis_set
  use m_eri_ao_mo
- use m_inputparam,only: nspin,ieta,has_auxil_basis
+ use m_inputparam
 
 
  integer,private              :: nfrozen_ci
@@ -356,6 +357,7 @@ subroutine build_ci_hamiltonian(conf,h_ci)
  integer :: ksporb,lsporb,kstate,lstate,kspin,lspin
 !=====
 
+ call start_clock(timing_tmp1)
  !
  ! Follow the second-quantization notations from Hellgaker book Chapter 1.
  ! Use occupation number vectors on_i(:) and on_j(:) filled with 0's and three 1's.
@@ -374,7 +376,8 @@ subroutine build_ci_hamiltonian(conf,h_ci)
    enddo
 
 
-   do iconf=1,conf%nconf
+   ! Only fills the upper triangle
+   do iconf=1,jconf
      iisporb(:) = conf%sporb_occ(:,iconf)
      iispin(:)  = sporb_to_spin(  iisporb(:) )
      iistate(:) = sporb_to_state( iisporb(:) )
@@ -503,10 +506,15 @@ subroutine build_ci_hamiltonian(conf,h_ci)
      endif
 
 
+     !
+     ! Symmetrize here
+     h_ci(jconf,iconf) = h_ci(iconf,jconf)
+
    enddo
 
  enddo
 
+ call stop_clock(timing_tmp1)
 
 end subroutine build_ci_hamiltonian
 
@@ -930,7 +938,12 @@ subroutine full_ci_4electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
  allocate(energy_4e(conf_4e%nconf))
  allocate(eigvec_4e(conf_4e%nconf,conf_4e%nconf))
 
+#ifdef HAVE_SCALAPACK
  call diagonalize(conf_4e%nconf,h_ci,energy_4e,eigvec_4e)
+#else
+ call diagonalize_scalapack(scalapack_block_min,conf_4e%nconf,h_ci,energy_4e)
+ eigvec_4e(:,:) = h_ci(:,:)
+#endif
 
  write(stdout,'(/,1x,a,f19.10,/)') '      Correlation energy (Ha): ',energy_4e(1) - h_ci(1,1)
  write(stdout,'(1x,a,f19.10)')     '     Ground-state energy (Ha): ',energy_4e(1) + nuc_nuc
@@ -989,7 +1002,14 @@ subroutine full_ci_5electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
  allocate(energy_5e(conf_5e%nconf))
  allocate(eigvec_5e(conf_5e%nconf,conf_5e%nconf))
 
+ call start_clock(timing_tmp0)
+#ifdef HAVE_SCALAPACK
  call diagonalize(conf_5e%nconf,h_ci,energy_5e,eigvec_5e)
+#else
+ call diagonalize_scalapack(scalapack_block_min,conf_5e%nconf,h_ci,energy_5e)
+ eigvec_5e(:,:) = h_ci(:,:)
+#endif
+ call stop_clock(timing_tmp0)
 
  write(stdout,'(/,1x,a,f19.10,/)') '      Correlation energy (Ha): ',energy_5e(1) - h_ci(1,1)
  write(stdout,'(1x,a,f19.10)')     '     Ground-state energy (Ha): ',energy_5e(1) + nuc_nuc

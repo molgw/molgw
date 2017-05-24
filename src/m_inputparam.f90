@@ -980,7 +980,7 @@ subroutine read_inputfile_namelist()
 
  if( .NOT. has_auxil_basis .AND. nproc_world > 1 ) then
    write(stdout,*) 'Parallelization is not available without an auxiliary basis'
-   call die('Please run with one CPU only or provide MOLGW with an auxiliary basis')
+   call issue_warning('Please run with one CPU only or provide MOLGW with an auxiliary basis')
  endif
 
  natom_basis = natom + nghost
