@@ -1054,6 +1054,8 @@ subroutine write_restart_tddft(nstate,time_cur,c_matrix_orth_cmplx)
 
  if( .NOT. is_iomaster) return
  
+ call start_clock(timing_restart_tddft_file)
+
  write(stdout,'(/,a)') ' Writing a RESTART_TDDFT file'
 
  open(newunit=restartfile,file='RESTART_TDDFT',form='unformatted',action='write')
@@ -1078,7 +1080,83 @@ subroutine write_restart_tddft(nstate,time_cur,c_matrix_orth_cmplx)
 
  close(restartfile)
 
+ call stop_clock(timing_restart_tddft_file)
+
 end subroutine write_restart_tddft
+
+!==========================================
+subroutine check_restart_tddft(restart_is_correct)
+ use m_definitions
+ logical,intent(out)        :: restart_is_correct
+!===
+ logical                    :: file_exists
+ integer                    :: restartfile
+ integer                    :: ibf, istate,ispin
+ integer                    :: natom_read
+ real(dp),allocatable       :: zatom_read(:),x_read(:,:)
+ real(dp)                   :: nbf_read
+ integer                    :: nstate_read, nspin_read,nocc_read
+!=====
+
+ write(stdout,'(/,a)') ' Checking RESTART_TDDFT file'
+
+ restart_is_correct=.true.
+
+ inquire(file='RESTART_TDDFT',exist=file_exists)
+ if(.NOT. file_exists) then
+   write(stdout,'(/,a)') ' No RESTART file found'
+   restart_is_correct=.false.
+   return
+ endif
+
+ open(newunit=restartfile,file='RESTART_TDDFT',form='unformatted',status='old',action='read')
+
+ !Different number of atoms in restart and input files is not provided for tddft restart
+ !natom
+ read(restartfile) natom_read
+ if( natom_read /= natom ) then
+   call issue_warning('RESTART_TDDFT file: natom is not the same.')
+   restart_is_correct=.false.
+   return
+ end if
+
+ allocate(zatom_read(natom_read),x_read(3,natom_read))
+ read(restartfile) zatom_read(1:natom_read)
+ read(restartfile) x_read(:,1:natom_read)
+ if( natom_read /= natom  &
+  .OR. ANY( ABS( zatom_read(1:MIN(natom_read,natom)) - zatom(1:MIN(natom_read,natom)) ) > 1.0e-5_dp ) &
+  .OR. ANY( ABS(   x_read(:,1:MIN(natom_read,natom-nprojectile)) - xatom(:,1:MIN(natom_read,natom-nprojectile))   ) > 1.0e-5_dp ) ) then
+   call issue_warning('RESTART_TDDFT file: Geometry has changed')
+ endif
+ deallocate(zatom_read,x_read)
+
+ ! nocc
+ read(restartfile) nocc_read
+ if(nocc /= nocc_read) then
+   call issue_warning('RESTART_TDDFT file: nocc is not the same, restart file will not be used')
+   restart_is_correct=.false.
+   return
+ end if
+
+ ! nstate
+ read(restartfile) nstate_read
+ if(nstate /= nstate_read) then
+   call issue_warning('RESTART_TDDFT file: nstate is not the same, restart file will not be used')
+   restart_is_correct=.false.
+   return
+ end if
+
+ ! nspin
+ read(restartfile) nspin_read
+ if(nspin /= nspin_read) then
+   call issue_warning('RESTART_TDDFT file: nspin is not the same, restart file will not be used')
+   restart_is_correct=.false.
+   return
+ end if
+
+ close(restartfile)
+
+end subroutine check_restart_tddft
 
 !==========================================
 subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx,restart_is_correct)
@@ -1097,8 +1175,6 @@ subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx,restart_is_cor
  real(dp)                   :: nbf_read
  integer                    :: nstate_read, nspin_read,nocc_read
 !=====
-
- if( .NOT. is_iomaster) return
 
  write(stdout,'(/,a)') ' Reading a RESTART_TDDFT file'
 
