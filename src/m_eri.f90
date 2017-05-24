@@ -172,7 +172,7 @@ end subroutine deallocate_index_pair
 
 
 !=========================================================================
-function index_eri(ibf,jbf,kbf,lbf)
+pure function index_eri(ibf,jbf,kbf,lbf)
  implicit none
 
  integer,intent(in) :: ibf,jbf,kbf,lbf
@@ -195,7 +195,7 @@ end function index_eri
 
 
 !=========================================================================
-function index_pair(ibf,jbf)
+pure function index_pair(ibf,jbf)
  implicit none
 
  integer,intent(in) :: ibf,jbf
@@ -220,7 +220,7 @@ end function index_pair
 
 
 !=========================================================================
-function eri(ibf,jbf,kbf,lbf)
+elemental function eri(ibf,jbf,kbf,lbf)
  implicit none
  integer,intent(in) :: ibf,jbf,kbf,lbf
  real(dp)           :: eri
@@ -370,7 +370,7 @@ end subroutine setup_basispair
 
 
 !=========================================================================
-function negligible_basispair(ibf,jbf)
+pure function negligible_basispair(ibf,jbf)
  implicit none
 
  integer,intent(in) :: ibf,jbf

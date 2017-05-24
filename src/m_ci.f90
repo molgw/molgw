@@ -16,19 +16,13 @@ module m_ci
  use m_timing
  use m_basis_set
  use m_eri_ao_mo
- use m_inputparam,only: nspin,has_auxil_basis,ieta
+ use m_inputparam,only: nspin,ieta,has_auxil_basis
 
 
  integer,private              :: nfrozen_ci
  integer,private              :: nstate_ci
 
  real(dp),allocatable,private :: h_1body(:,:)
-
- integer,private              :: sz_1e   ! TODO REMOVE
- integer,private              :: sz_2e   ! TODO REMOVE
- integer,private              :: sz_3e   ! TODO REMOVE
- integer,private              :: sz_4e   ! TODO REMOVE
- integer,private              :: sz_5e   ! TODO REMOVE
 
  real(dp),allocatable,private :: energy_1e(:)
  real(dp),allocatable,private :: energy_2e(:)
@@ -430,11 +424,11 @@ subroutine build_ci_hamiltonian(conf,h_ci)
          do ielec=1,conf%nelec
            istate = iistate(ielec)
            h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
-                      + 0.5_dp * eri_eigen_ri(istate,istate,1,jstate,jstate,1)
+                      + 0.5_dp * eri_eigen(istate,istate,1,jstate,jstate,1)
 
            if( iispin(ielec) == jjspin(jelec) )  &
              h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
-                        - 0.5_dp * eri_eigen_ri(istate,jstate,1,jstate,istate,1)
+                        - 0.5_dp * eri_eigen(istate,jstate,1,jstate,istate,1)
 
          enddo
        enddo
@@ -458,12 +452,12 @@ subroutine build_ci_hamiltonian(conf,h_ci)
 
          if( ispin == jspin ) &
            h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
-                      + eri_eigen_ri(istate,jstate,1,kstate,kstate,1)   &
+                      + eri_eigen(istate,jstate,1,kstate,kstate,1)   &
                            * gamma_sign(on_i,isporb) * gamma_sign(on_j,jsporb)
 
          if( ispin == kspin .AND. jspin == kspin ) &
            h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
-                      - eri_eigen_ri(istate,kstate,1,kstate,jstate,1)  &
+                      - eri_eigen(istate,kstate,1,kstate,jstate,1)  &
                            * gamma_sign(on_i,isporb) * gamma_sign(on_j,jsporb)
        enddo
 
@@ -495,13 +489,13 @@ subroutine build_ci_hamiltonian(conf,h_ci)
 
        if( ispin == kspin .AND. jspin == lspin ) &
          h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
-                    + eri_eigen_ri(istate,kstate,1,jstate,lstate,1)           &
+                    + eri_eigen(istate,kstate,1,jstate,lstate,1)           &
                          * gamma_sign(on_i,isporb) * gamma_sign(on_i,jsporb)  &
                          * gamma_sign(on_j,ksporb) * gamma_sign(on_j,lsporb)
 
        if( ispin == lspin .AND. jspin == kspin ) &
          h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
-                    - eri_eigen_ri(istate,lstate,1,jstate,kstate,1)           &
+                    - eri_eigen(istate,lstate,1,jstate,kstate,1)           &
                          * gamma_sign(on_i,isporb) * gamma_sign(on_i,jsporb)  &
                          * gamma_sign(on_j,ksporb) * gamma_sign(on_j,lsporb)
 
@@ -555,9 +549,9 @@ subroutine full_ci_2electrons_selfenergy(occupation)
  if( .NOT. ALLOCATED(energy_2e) ) call die('full_ci_2electrons_selfenergy: previous calculation for 2e needed')
  if( .NOT. ALLOCATED(energy_3e) ) call die('full_ci_2electrons_selfenergy: previous calculation for 3e needed')
 
- write(stdout,'(1x,a,sp,i4)') 'Previous CI calculation had spin state Sz(1e): ',sz_1e
- write(stdout,'(1x,a,i3)')    'Previous CI calculation had spin state Sz(2e): ',sz_2e
- write(stdout,'(1x,a,sp,i4)') 'Previous CI calculation had spin state Sz(3e): ',sz_3e
+ write(stdout,'(1x,a,sp,i4)') 'Previous CI calculation had spin state Sz(1e): ',conf_1e%sz
+ write(stdout,'(1x,a,i3)')    'Previous CI calculation had spin state Sz(2e): ',conf_2e%sz
+ write(stdout,'(1x,a,sp,i4)') 'Previous CI calculation had spin state Sz(3e): ',conf_3e%sz
 
  !
  ! Choose how many Lehmann excitations to calculate
@@ -745,15 +739,6 @@ subroutine full_ci_1electron_on(save_coefficients,nstate,spinstate,basis,h_1e,c_
  nstate_ci  = nstate
 
 
- sz_1e = spinstate
-
- if( .NOT. has_auxil_basis ) then
-   call die('full_ci_1electrons only works with auxiliary basis')
- endif
-
- ! Get the 3-center integrals in the MO basis
- call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,1,nstate,1,nstate)
-
  ! Get the one-electron hamiltonian on the eigenstate basis
  call build_1e_hamiltonian(c_matrix,h_1e)
 
@@ -782,8 +767,6 @@ subroutine full_ci_1electron_on(save_coefficients,nstate,spinstate,basis,h_1e,c_
  endif
 
  deallocate(h_ci)
-
- call destroy_eri_3center_eigen()
 
  call stop_clock(timing_full_ci)
 
@@ -814,15 +797,6 @@ subroutine full_ci_2electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
  nstate_ci  = nstate
 
 
- sz_2e = spinstate
-
- if( .NOT. has_auxil_basis ) then
-   call die('full_ci_2electrons only works with auxiliary basis')
- endif
-
- ! Get the 3-center integrals in the MO basis
- call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,1,nstate,1,nstate)
-
  ! Get the one-electron hamiltonian on the eigenstate basis
  call build_1e_hamiltonian(c_matrix,h_1e)
 
@@ -851,8 +825,6 @@ subroutine full_ci_2electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
  endif
 
  deallocate(h_ci)
-
- call destroy_eri_3center_eigen()
 
  call stop_clock(timing_full_ci)
 
@@ -883,15 +855,6 @@ subroutine full_ci_3electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
  nstate_ci  = nstate
 
 
- sz_3e = spinstate
-
- if( .NOT. has_auxil_basis ) then
-   call die('full_ci_3electrons only works with auxiliary basis')
- endif
-
- ! Get the 3-center integrals in the MO basis
- call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,1,nstate,1,nstate)
-
  ! Get the one-electron hamiltonian on the eigenstate basis
  call build_1e_hamiltonian(c_matrix,h_1e)
 
@@ -920,8 +883,6 @@ subroutine full_ci_3electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
  endif
 
  deallocate(h_ci)
-
- call destroy_eri_3center_eigen()
 
  call stop_clock(timing_full_ci)
 
@@ -952,15 +913,6 @@ subroutine full_ci_4electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
  nstate_ci  = nstate
 
 
- sz_4e = spinstate
-
- if( .NOT. has_auxil_basis ) then
-   call die('full_ci_4electrons only works with auxiliary basis')
- endif
-
- ! Get the 3-center integrals in the MO basis
- call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,1,nstate,1,nstate)
-
  ! Get the one-electron hamiltonian on the eigenstate basis
  call build_1e_hamiltonian(c_matrix,h_1e)
 
@@ -989,8 +941,6 @@ subroutine full_ci_4electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
  endif
 
  deallocate(h_ci)
-
- call destroy_eri_3center_eigen()
 
  call stop_clock(timing_full_ci)
 
@@ -1021,15 +971,6 @@ subroutine full_ci_5electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
  nstate_ci  = nstate
 
 
- sz_5e = spinstate
-
- if( .NOT. has_auxil_basis ) then
-   call die('full_ci_5electrons only works with auxiliary basis')
- endif
-
- ! Get the 3-center integrals in the MO basis
- call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,1,nstate,1,nstate)
-
  ! Get the one-electron hamiltonian on the eigenstate basis
  call build_1e_hamiltonian(c_matrix,h_1e)
 
@@ -1058,8 +999,6 @@ subroutine full_ci_5electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
  endif
 
  deallocate(h_ci)
-
- call destroy_eri_3center_eigen()
 
  call stop_clock(timing_full_ci)
 

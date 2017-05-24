@@ -501,16 +501,28 @@ program molgw
  if(calc_type%is_ci) then
    if(nspin/=1) call die('molgw: CI calculations need spin-restriction. Set nspin to 1')
 
-   call full_ci_1electron_on(.TRUE.,nstate, -100,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
+   if(has_auxil_basis) then
+     call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,1,nstate,1,nstate)
+   else
+     call calculate_eri_4center_eigen_uks(c_matrix)
+   endif
+
+   call full_ci_1electron_on (.TRUE.,nstate,1,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
    call full_ci_2electrons_on(.TRUE.,nstate,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
-   call full_ci_3electrons_on(.TRUE.,nstate,-100,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
-   call full_ci_2electrons_selfenergy(occupation)
+   call full_ci_3electrons_on(.TRUE.,nstate,1,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
+!   call full_ci_2electrons_selfenergy(occupation)
 
 !   call full_ci_4electrons_on(.FALSE.,nstate,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
 !   call full_ci_5electrons_on(.FALSE.,nstate,1,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
 
 !   if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) call die('CI is implemented for 2 electrons only')
 !   call full_ci_2electrons_spin(print_wfn_,nstate,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
+
+   if(has_auxil_basis) then
+     call destroy_eri_3center_eigen()
+   else
+     call destroy_eri_4center_eigen_uks()
+   endif
  endif
  call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
  call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
