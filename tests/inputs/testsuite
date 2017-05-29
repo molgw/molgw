@@ -50,7 +50,7 @@ gKS HOMO energy           ,  -12.316390        , 1 , 1.0e-4
 gKS LUMO energy           ,    5.557588        , 0 , 1.0e-4
 gKS LUMO energy           ,   -3.007564        , 1 , 1.0e-4
 
-be_ghost_bsse.in          , Be atom with addition functions on a ghost ato
+be_ghost_bsse.in          , Be atom with addition basis functions on a ghost atom
 Kinetic Energy            ,   14.5578650555    , 0 , 1.0e-7
 Nucleus Energy            ,  -33.6357518059    , 0 , 1.0e-7
 Hartree Energy            ,    7.1727007457    , 0 , 1.0e-7

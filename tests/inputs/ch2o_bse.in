@@ -4,6 +4,7 @@
  tolscf=1.0e-10
  integral_quality='medium'
  grid_quality='medium'
+ read_restart='y'
 
  frozencore='yes'
 

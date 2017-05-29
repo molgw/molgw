@@ -108,7 +108,7 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
    element = element_name(REAL(element_ecp(ielement_ecp),dp))
    write(stdout,'(1x,a,a)') 'ECP for element: ',element
 
-   ecp_filename = TRIM(ecp_path)//TRIM(element)//'_'//TRIM(ecp_name)
+   ecp_filename = TRIM(ecp_path)//'/'//TRIM(element)//'_'//TRIM(ecp_name)
    inquire(file=TRIM(ecp_filename),exist=file_exists)
    if( .NOT. file_exists ) then
      write(stdout,*) 'Looking for file: ',ecp_filename

@@ -1160,12 +1160,12 @@ subroutine check_restart_tddft(nstate,restart_is_correct)
 end subroutine check_restart_tddft
 
 !==========================================
-subroutine read_restart_tddft(time_min,c_matrix_orth_cmplx)
+subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx)
  use m_definitions
  implicit none
  complex(dp),intent(inout)  :: c_matrix_orth_cmplx(nstate,nocc,nspin)
  real(dp),intent(inout)     :: time_min
- 
+ integer,intent(in)         :: nstate
 !===
  logical                    :: file_exists
  integer                    :: restartfile
@@ -1177,8 +1177,6 @@ subroutine read_restart_tddft(time_min,c_matrix_orth_cmplx)
 !=====
 
  write(stdout,'(/,a)') ' Reading a RESTART_TDDFT file'
-
- restart_is_correct=.true.
 
  inquire(file='RESTART_TDDFT',exist=file_exists)
  if(.NOT. file_exists) then
@@ -1192,7 +1190,7 @@ subroutine read_restart_tddft(time_min,c_matrix_orth_cmplx)
  read(restartfile) natom_read
  allocate(zatom_read(natom_read),x_read(3,natom_read))
  read(restartfile) zatom_read(1:natom_read)
- read(restartfile) x_atom_start(:,1:natom_read)
+ read(restartfile) xatom_start(:,1:natom_read)
  deallocate(zatom_read)
 
  ! nocc
