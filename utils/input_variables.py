@@ -911,7 +911,7 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='excit_name'
 vl[i].family   ='rt_tddft'
-vl[i].default  ='GAU'
+vl[i].default  ='NO'
 vl[i].datatype ='characters'
 vl[i].comment  ='Sets the type of excitation of a system in the real-time dynamics. \
                          \'GAU stands for a linearly polarized uniform Gaussian electric field\''

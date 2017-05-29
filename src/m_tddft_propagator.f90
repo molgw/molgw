@@ -22,6 +22,7 @@ module m_tddft_propagator
  use m_tools
  use m_scf
  use m_warning
+ use m_tddft_variables
 
  interface propagate_orth
   module procedure propagate_orth_ham_1
@@ -321,7 +322,6 @@ subroutine tddft_time_loop(nstate,                           &
  real(dp),allocatable       :: m_nods(:)
  real(dp),allocatable       :: extrap_coefs(:)
  real(dp)                   :: x_pred 
- logical                    :: restart_is_correct
 !=====
 
  mod_write = NINT( write_step / time_step_cur )
@@ -375,7 +375,7 @@ subroutine tddft_time_loop(nstate,                           &
  end if
  ! Getting c_matrix_cmplx(t=0) whether using RESTART_TDDFT file, whether using c_matrix
  if(.NOT. ignore_tddft_restart_) then
-   call read_restart_tddft(nstate,time_read,c_matrix_orth_cmplx,restart_is_correct)
+   call read_restart_tddft(nstate,time_read,c_matrix_orth_cmplx,restart_tddft_is_correct)
    time_min = time_read
    do ispin=1,nspin
      c_matrix_cmplx(:,:,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
@@ -385,7 +385,7 @@ subroutine tddft_time_loop(nstate,                           &
 ! call print_2d_matrix("c_matrix_orth_cmplx of beginning",c_matrix_orth_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
 ! call print_2d_matrix("c_matrix_cmplx of beginning",c_matrix_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
 
- if(ignore_tddft_restart_ .OR. (.NOT. restart_is_correct)) then
+ if(ignore_tddft_restart_ .OR. (.NOT. restart_tddft_is_correct)) then
    c_matrix_cmplx(1:basis%nbf,1:nocc,1:nspin)=c_matrix(1:basis%nbf,1:nocc,1:nspin)
  end if
 
@@ -413,7 +413,7 @@ subroutine tddft_time_loop(nstate,                           &
                                     ref_)
  
  ! In case of no restart, find the c_matrix_orth_cmplx by diagonalizing h_small
- if(ignore_tddft_restart_ .OR. (.NOT. restart_is_correct)) then
+ if(ignore_tddft_restart_ .OR. (.NOT. restart_tddft_is_correct)) then
    do ispin=1, nspin
      call diagonalize(nstate,h_small_cmplx(:,:,ispin),energies_inst(:),c_matrix_buf_cmplx(1:basis%nbf,1:nstate,ispin))
    end do
@@ -441,7 +441,7 @@ subroutine tddft_time_loop(nstate,                           &
    if(excit_type%is_light) write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment    (D):', dipole(:) * au_debye
 
  end if
-! if( .NOT. ignore_tddft_restart_ .AND. restart_is_correct ) then
+! if( .NOT. ignore_tddft_restart_ .AND. restart_tddft_is_correct ) then
  time_min=time_min+time_step_cur
  
 ! call print_square_2d_matrix_cmplx("c_matrix_cmplx of the beginning",c_matrix_cmplx,nstate,stdout,4)
@@ -1085,9 +1085,10 @@ subroutine write_restart_tddft(nstate,time_cur,c_matrix_orth_cmplx)
 end subroutine write_restart_tddft
 
 !==========================================
-subroutine check_restart_tddft(restart_is_correct)
+subroutine check_restart_tddft(nstate,restart_is_correct)
  use m_definitions
  logical,intent(out)        :: restart_is_correct
+ integer,intent(in)         :: nstate
 !===
  logical                    :: file_exists
  integer                    :: restartfile
@@ -1159,15 +1160,14 @@ subroutine check_restart_tddft(restart_is_correct)
 end subroutine check_restart_tddft
 
 !==========================================
-subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx,restart_is_correct)
+subroutine read_restart_tddft(time_min,c_matrix_orth_cmplx)
  use m_definitions
  implicit none
- integer,intent(in)         :: nstate
  complex(dp),intent(inout)  :: c_matrix_orth_cmplx(nstate,nocc,nspin)
- logical,intent(out)        :: restart_is_correct
  real(dp),intent(inout)     :: time_min
+ 
 !===
- logical                    :: file_exists,same_geometry
+ logical                    :: file_exists
  integer                    :: restartfile
  integer                    :: ibf, istate,ispin
  integer                    :: natom_read
@@ -1183,7 +1183,6 @@ subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx,restart_is_cor
  inquire(file='RESTART_TDDFT',exist=file_exists)
  if(.NOT. file_exists) then
    write(stdout,'(/,a)') ' No RESTART file found'
-   restart_is_correct=.false.
    return
  endif
 
@@ -1193,40 +1192,17 @@ subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx,restart_is_cor
  read(restartfile) natom_read
  allocate(zatom_read(natom_read),x_read(3,natom_read))
  read(restartfile) zatom_read(1:natom_read)
- read(restartfile) x_read(:,1:natom_read)
- if( natom_read /= natom  &
-  .OR. ANY( ABS( zatom_read(1:MIN(natom_read,natom)) - zatom(1:MIN(natom_read,natom)) ) > 1.0e-5_dp ) &
-  .OR. ANY( ABS(   x_read(:,1:MIN(natom_read,natom)) - xatom(:,1:MIN(natom_read,natom))   ) > 1.0e-5_dp ) ) then
-   same_geometry = .FALSE.
-   call issue_warning('RESTART_TDDFT file: Geometry has changed')
- else
-   same_geometry = .TRUE.
- endif
- deallocate(zatom_read,x_read)
+ read(restartfile) x_atom_start(:,1:natom_read)
+ deallocate(zatom_read)
 
  ! nocc
  read(restartfile) nocc_read
- if(nocc /= nocc_read) then
-   call issue_warning('RESTART_TDDFT file: nocc is not the same, restart file will not be used')
-   restart_is_correct=.false.
-   return
- end if
 
  ! Nstate
  read(restartfile) nstate_read
- if(nstate /= nstate_read) then
-   call issue_warning('RESTART_TDDFT file: nstate is not the same, restart file will not be used')
-   restart_is_correct=.false.
-   return
- end if
 
  ! nspin
  read(restartfile) nspin_read
- if(nspin /= nspin_read) then
-   call issue_warning('RESTART_TDDFT file: nspin is not the same, restart file will not be used')
-   restart_is_correct=.false.
-   return
- end if
  
  ! current time
  read(restartfile) time_min
@@ -1242,8 +1218,6 @@ subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx,restart_is_cor
  close(restartfile)
 
 end subroutine read_restart_tddft
-
-
 
 !==========================================
 subroutine get_extrap_coefs_lagr(m_nods,x_pred,extrap_coefs,n_hist_cur)
