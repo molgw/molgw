@@ -509,19 +509,11 @@ program molgw
 
    call prepare_ci(nstate,ncoreg,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix)
 
-   if( ABS( electrons - 2.0_dp * ncoreg - 2.0_dp ) < 1.0e-5_dp ) then
-     call full_ci_1electron_on (.TRUE.,1,en%nuc_nuc)
-     call full_ci_2electrons_on(.TRUE.,0,en%nuc_nuc)
-     call full_ci_3electrons_on(.TRUE.,1,en%nuc_nuc)
-     call full_ci_2electrons_selfenergy(occupation)
-   else if( ABS( electrons - 2.0_dp * ncoreg - 4.0_dp ) < 1.0e-5_dp ) then
-     call full_ci_3electrons_on(.TRUE.,1,en%nuc_nuc)
-     call full_ci_4electrons_on(.TRUE.,0,en%nuc_nuc)
-     call full_ci_5electrons_on(.TRUE.,1,en%nuc_nuc)
-     call full_ci_4electrons_selfenergy(occupation)
-   else
-     call die('molgw: CI self-energy is only implemented for 2 or 4 electrons')
-   endif
+   call full_ci_nelectrons_on( 1,NINT(electrons)-1,1,en%nuc_nuc)
+   call full_ci_nelectrons_on( 0,NINT(electrons)  ,0,en%nuc_nuc)
+   call full_ci_nelectrons_on(-1,NINT(electrons)+1,1,en%nuc_nuc)
+   call full_ci_nelectrons_selfenergy(occupation)
+
 
 !   if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) call die('CI is implemented for 2 electrons only')
 !   call full_ci_2electrons_spin(print_wfn_,nstate,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
@@ -531,6 +523,9 @@ program molgw
    else
      call destroy_eri_4center_eigen_uks()
    endif
+
+   call destroy_ci()
+
  endif
  call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
  call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
