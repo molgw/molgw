@@ -3,7 +3,7 @@
 ! Author: Fabien Bruneval
 !
 ! This module contains
-! full ci calculations for a few electrons  (1, 2, 3 and 4)
+! full ci calculations for a few electrons  (1, 2, 3, 4, 5)
 ! using occupation number vectors
 !
 !==================================================================
@@ -55,16 +55,18 @@ contains
 
 
 !==================================================================
-pure function gamma_sign(conf,isporb)
+! Sign introduced by creation/annihilation operators
+! as defined in Hellgaker's book (chapter 1 box 1)
+pure function gamma_sign(on,isporb)
  implicit none
 
- integer,intent(in) :: conf(:)
+ integer,intent(in) :: on(:)
  integer,intent(in) :: isporb
  integer            :: gamma_sign
 !=====
 !=====
 
- gamma_sign = 1 - 2 * MODULO( COUNT( conf(1:isporb-1) == 1 ) , 2 ) 
+ gamma_sign = 1 - 2 * MODULO( COUNT( on(1:isporb-1) == 1 ) , 2 ) 
 
 end function gamma_sign
 
@@ -97,6 +99,25 @@ elemental function sporb_to_state(isporb) result(istate)
  istate = ( isporb + 1 ) / 2
 
 end function sporb_to_state
+
+
+!==================================================================
+! From occupied spin-orbitals to an occupation-number vector
+pure function sporb_to_on(sporb_occ) result(on)
+ implicit none
+
+ integer,intent(in) :: sporb_occ(:)
+ integer :: on(2*nstate_ci)
+!=====
+ integer :: ielec
+!=====
+
+ on(:) = 0
+ do ielec=1,SIZE(sporb_occ)
+   on(sporb_occ(ielec)) = 1
+ enddo
+
+end function sporb_to_on
 
 
 !==================================================================
@@ -370,10 +391,7 @@ subroutine build_ci_hamiltonian(conf,h_ci)
    jjspin(:)  = sporb_to_spin(  jjsporb(:) )
    jjstate(:) = sporb_to_state( jjsporb(:) )
 
-   on_j(:) = 0
-   do ielec=1,conf%nelec
-     on_j(jjsporb(ielec)) = 1
-   enddo
+   on_j(:) = sporb_to_on(jjsporb)
 
 
    ! Only fills the upper triangle
@@ -382,10 +400,7 @@ subroutine build_ci_hamiltonian(conf,h_ci)
      iispin(:)  = sporb_to_spin(  iisporb(:) )
      iistate(:) = sporb_to_state( iisporb(:) )
 
-     on_i(:) = 0
-     do ielec=1,conf%nelec
-       on_i(iisporb(ielec)) = 1
-     enddo
+     on_i(:) = sporb_to_on(iisporb)
 
 
      !
@@ -547,6 +562,8 @@ subroutine full_ci_2electrons_selfenergy(occupation)
  integer                    :: unit_gf
 !=====
 
+ call start_clock(timing_ci_selfenergy)
+
  write(stdout,'(/,1x,a)') 'Full CI self-energy for 2 electrons'
 
 
@@ -587,20 +604,14 @@ subroutine full_ci_2electrons_selfenergy(occupation)
    jjspin(:)  = sporb_to_spin(  jjsporb(:) )
    jjstate(:) = sporb_to_state( jjsporb(:) )
 
-   on_j(:) = 0
-   do jelec=1,conf_2e%nelec
-     on_j(jjsporb(jelec)) = 1
-   enddo
+   on_j(:) = sporb_to_on(jjsporb)
 
    do iconf=1,conf_1e%nconf
      iisporb(:1) = conf_1e%sporb_occ(:,iconf)
      iispin(:1)  = sporb_to_spin(  iisporb(:1) )
      iistate(:1) = sporb_to_state( iisporb(:1) )
 
-     on_i(:) = 0
-     do ielec=1,conf_1e%nelec
-       on_i(iisporb(ielec)) = 1
-     enddo
+     on_i(:) = sporb_to_on(iisporb(:1))
 
      do isporb=2*nfrozen_ci+1,2*nstate_ci
        if( isporb == iisporb(1) ) cycle
@@ -644,20 +655,14 @@ subroutine full_ci_2electrons_selfenergy(occupation)
    jjspin(:)  = sporb_to_spin(  jjsporb(:) )
    jjstate(:) = sporb_to_state( jjsporb(:) )
 
-   on_j(:) = 0
-   do jelec=1,conf_2e%nelec
-     on_j(jjsporb(jelec)) = 1
-   enddo
+   on_j(:) = sporb_to_on(jjsporb)
 
    do iconf=1,conf_3e%nconf
      iisporb(:3) = conf_3e%sporb_occ(:,iconf)
      iispin(:3)  = sporb_to_spin(  iisporb(:3) )
      iistate(:3) = sporb_to_state( iisporb(:3) )
 
-     on_i(:) = 0
-     do ielec=1,conf_3e%nelec
-       on_i(iisporb(ielec)) = 1
-     enddo
+     on_i(:) = sporb_to_on(iisporb(:3))
 
 
      do isporb=2*nfrozen_ci+1,2*nstate_ci
@@ -722,7 +727,217 @@ subroutine full_ci_2electrons_selfenergy(occupation)
  deallocate(fs_virt,fs_occ)
  deallocate(es_virt,es_occ)
 
+ call stop_clock(timing_ci_selfenergy)
+
+
 end subroutine full_ci_2electrons_selfenergy
+
+
+!==================================================================
+subroutine full_ci_4electrons_selfenergy(occupation)
+ use m_selfenergy_tools
+ implicit none
+
+ real(dp),intent(in)        :: occupation(:,:)
+!=====
+ integer,parameter          :: nomega=5000
+ integer,parameter          :: ns=-1
+ integer                    :: ielec,jelec
+ integer                    :: is
+ integer                    :: iconf,jconf
+ integer                    :: on_i(2*nstate_ci),on_j(2*nstate_ci)
+ integer                    :: on_tmp(2*nstate_ci)
+ integer                    :: iisporb(5),iistate(5),iispin(5)
+ integer                    :: jjsporb(4),jjstate(4),jjspin(4)
+ integer                    :: isporb,istate,ispin
+ integer                    :: ns_occ,ns_virt
+ real(dp),allocatable       :: fs_occ(:,:),fs_virt(:,:)
+ real(dp),allocatable       :: es_occ(:),es_virt(:)
+ integer                    :: iomega
+ real(dp)                   :: omega
+ complex(dp)                :: gi_w
+ character(len=3)           :: ctmp3
+ character(len=1)           :: ctmp1
+ integer                    :: unit_gf
+!=====
+
+ call start_clock(timing_ci_selfenergy)
+
+ write(stdout,'(/,1x,a)') 'Full CI self-energy for 4 electrons'
+
+
+ !
+ ! Set the range of states on which to evaluate the self-energy
+ call selfenergy_set_state_range(nstate_ci,occupation)
+
+ if( .NOT. ALLOCATED(energy_3e) ) call die('full_ci_2electrons_selfenergy: previous calculation for 3e needed')
+ if( .NOT. ALLOCATED(energy_4e) ) call die('full_ci_2electrons_selfenergy: previous calculation for 4e needed')
+ if( .NOT. ALLOCATED(energy_5e) ) call die('full_ci_2electrons_selfenergy: previous calculation for 5e needed')
+
+ write(stdout,'(1x,a,sp,i4)') 'Previous CI calculation had spin state Sz(3e): ',conf_3e%sz
+ write(stdout,'(1x,a,i3)')    'Previous CI calculation had spin state Sz(4e): ',conf_4e%sz
+ write(stdout,'(1x,a,sp,i4)') 'Previous CI calculation had spin state Sz(5e): ',conf_5e%sz
+
+ !
+ ! Choose how many Lehmann excitations to calculate
+ ! If ns is negative, calculate all of them
+ if( ns > 0 ) then
+   ns_occ  = ns
+   ns_virt = ns
+ else
+   ns_occ  = conf_3e%nconf
+   ns_virt = conf_5e%nconf
+ endif
+
+ allocate(fs_occ(2*nstate_ci,ns_occ))
+ allocate(fs_virt(2*nstate_ci,ns_virt))
+ allocate(es_occ(ns_occ))
+ allocate(es_virt(ns_virt))
+
+ !
+ ! Build the Lehman amplitude for occupied states
+ !
+ fs_occ(:,:) = 0.0_dp
+ do jconf=1,conf_4e%nconf
+   jjsporb(:) = conf_4e%sporb_occ(:,jconf)
+   jjspin(:)  = sporb_to_spin(  jjsporb(:) )
+   jjstate(:) = sporb_to_state( jjsporb(:) )
+
+   on_j(:) = sporb_to_on(jjsporb)
+
+   do iconf=1,conf_3e%nconf
+     iisporb(:3) = conf_3e%sporb_occ(:,iconf)
+     iispin(:3)  = sporb_to_spin(  iisporb(:3) )
+     iistate(:3) = sporb_to_state( iisporb(:3) )
+
+     on_i(:) = sporb_to_on(iisporb(:3))
+
+     !
+     ! Evaluate for any s, < 4 , 0 | a_i^+ | 3 , s >
+     !
+     do isporb=2*nfrozen_ci+1,2*nstate_ci
+       if( isporb == iisporb(1) ) cycle
+       if( isporb == iisporb(2) ) cycle
+       if( isporb == iisporb(3) ) cycle
+       on_tmp(:) = on_i(:)
+       on_tmp(isporb) = on_tmp(isporb) + 1
+       if( ALL( on_j(:) - on_tmp(:) == 0 ) ) then
+         fs_occ(isporb,:) = fs_occ(isporb,:) + eigvec_3e(iconf,:ns_occ) * eigvec_4e(jconf,1) * gamma_sign(on_i,isporb)
+       endif
+     enddo
+
+   enddo
+ enddo
+
+ write(stdout,*) '====================='
+ write(stdout,*) 'Occupied states'
+ write(stdout,*)
+
+ do is=1,ns_occ
+   es_occ(is) = energy_4e(1) - energy_3e(is)
+   write(stdout,'(/,1x,a,i4,1x,f12.6)') '=== Excitation (eV): ',is,es_occ(is) * Ha_eV
+  
+!   write(stdout,'(1x,a,i2,a)') '=== fs_occ(',is,')'
+   do isporb=2*nfrozen_ci,2*nstate_ci
+     ispin  = sporb_to_spin(isporb)
+     istate = sporb_to_state(isporb)
+!     if( ABS(fs_occ(isporb,is)) > 1.0e-4_dp ) write(stdout,*) istate,ispin,fs_occ(isporb,is)
+   enddo
+  
+!   write(stdout,'(1x,a,/)') '========='
+
+ enddo
+
+
+
+ !
+ ! Build the Lehman amplitude for virtual states
+ !
+ fs_virt(:,:) = 0.0_dp
+ do jconf=1,conf_4e%nconf
+   jjsporb(:) = conf_4e%sporb_occ(:,jconf)
+   jjspin(:)  = sporb_to_spin(  jjsporb(:) )
+   jjstate(:) = sporb_to_state( jjsporb(:) )
+
+   on_j(:) = sporb_to_on(jjsporb)
+
+   do iconf=1,conf_5e%nconf
+     iisporb(:5) = conf_5e%sporb_occ(:,iconf)
+     iispin(:5)  = sporb_to_spin(  iisporb(:5) )
+     iistate(:5) = sporb_to_state( iisporb(:5) )
+
+     on_i(:) = sporb_to_on(iisporb(:5))
+
+
+     !
+     ! Evaluate for any s, < 5 , s | a_i^+ | 4 , 0 >
+     !
+     do isporb=2*nfrozen_ci+1,2*nstate_ci
+       ! Cannot create an electron in a state that is already occupied
+       if( isporb == jjsporb(1) .OR. isporb == jjsporb(2) ) cycle
+       if( isporb == jjsporb(3) .OR. isporb == jjsporb(4) ) cycle
+       on_tmp(:) = on_j(:)
+       on_tmp(isporb) = on_tmp(isporb) + 1
+       if( ALL( on_i(:) - on_tmp(:) == 0 ) ) then
+         fs_virt(isporb,:) = fs_virt(isporb,:) + eigvec_5e(iconf,:ns_virt) * eigvec_4e(jconf,1) * gamma_sign(on_j,isporb)
+       endif
+     enddo
+
+
+   enddo
+ enddo
+
+ write(stdout,*) '====================='
+ write(stdout,*) 'Virtual states'
+ write(stdout,*)
+
+ do is=1,ns_virt
+   es_virt(is) = energy_5e(is) - energy_4e(1)
+   write(stdout,'(/,1x,a,i4,1x,f12.6)') '=== Excitation (eV): ',is,es_virt(is) * Ha_eV
+  
+!   write(stdout,'(1x,a,i2,a)') '=== fs_virt(',is,')'
+   do isporb=2*nfrozen_ci+1,2*nstate_ci
+     ispin  = sporb_to_spin( isporb )
+     istate = sporb_to_state( isporb )
+!     if( ABS(fs_virt(isporb,is)) > 1.0e-4_dp ) write(stdout,*) istate,ispin,fs_virt(isporb,is)
+   enddo
+  
+!   write(stdout,'(1x,a,/)') '========='
+
+ enddo
+
+ do isporb=2*nsemin-1,2*nsemax
+   ispin = sporb_to_spin(isporb)
+   istate = sporb_to_state(isporb)
+
+   write(ctmp3,'(i3.3)') istate
+   write(ctmp1,'(i1)') MODULO( isporb-1 , 2 ) + 1
+
+   open(newunit=unit_gf,file='exact_greens_function_state'//ctmp3//'_spin'//ctmp1//'.dat',action='write')
+   do iomega=-nomega,nomega
+     omega = iomega / REAL(nomega,dp) * 100.0_dp / Ha_eV
+     gi_w = 0.0_dp
+
+     do is=1,ns_virt
+       gi_w = gi_w + fs_virt(isporb,is)**2 / ( omega - es_virt(is) - ieta )
+     enddo
+     do is=1,ns_occ
+       gi_w = gi_w + fs_occ(isporb,is)**2 / ( omega - es_occ(is) + ieta )
+     enddo
+
+     write(unit_gf,'(4(1x,es18.8))') omega * Ha_eV, gi_w / Ha_eV, ABS(AIMAG(gi_w)) / pi / Ha_eV
+   enddo
+   close(unit_gf)
+ enddo
+
+
+
+ deallocate(fs_virt,fs_occ)
+ deallocate(es_virt,es_occ)
+
+ call stop_clock(timing_ci_selfenergy)
+
+end subroutine full_ci_4electrons_selfenergy
 
 
 !==================================================================
