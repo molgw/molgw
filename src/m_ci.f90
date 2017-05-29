@@ -121,6 +121,27 @@ end function sporb_to_on
 
 
 !==================================================================
+subroutine prepare_ci(nstate_in,nfrozen_in,h_1e,c_matrix)
+ implicit none
+
+ integer,intent(in)  :: nstate_in,nfrozen_in
+ real(dp),intent(in) :: h_1e(:,:),c_matrix(:,:,:)
+!=====
+!=====
+
+ nstate_ci  = nstate_in
+ nfrozen_ci = nfrozen_in
+
+ write(stdout,'(/,1x,a,i4,a,i4)') 'Prepare CI with active states ranging from ',nfrozen_ci+1,' to ',nstate_ci
+
+ ! Calculate the one-electron hamiltonian on the eigenstate basis
+ call build_1e_hamiltonian(c_matrix,h_1e)
+
+
+end subroutine prepare_ci
+
+
+!==================================================================
 subroutine setup_configurations_ci(nelec,spinstate,conf)
  implicit none
 
@@ -170,8 +191,8 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
      ispin(:)  = sporb_to_spin(  sporb(:) )
      istate(:) = sporb_to_state( sporb(:) )
      if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-         iconf = iconf + 1
-         conf%sporb_occ(:,iconf) = sporb(:)
+       iconf = iconf + 1
+       conf%sporb_occ(:,iconf) = sporb(:)
      endif
    enddo
 
@@ -463,7 +484,7 @@ subroutine build_ci_hamiltonian(conf,h_ci)
        ispin  = sporb_to_spin(  isporb )
        jspin  = sporb_to_spin(  jsporb )
 
-       do ksporb=1,2*nstate_ci
+       do ksporb=2*nfrozen_ci+1,2*nstate_ci
          if( on_i(ksporb) == 0 ) cycle
          if( on_j(ksporb) == 0 ) cycle
          kstate = sporb_to_state( ksporb )
@@ -528,6 +549,34 @@ subroutine build_ci_hamiltonian(conf,h_ci)
    enddo
 
  enddo
+
+ write(*,*) '============================='
+ write(*,*) sporb_to_on(conf%sporb_occ(:,1))
+ write(*,*) h_ci(1,1)
+ write(*,*) '============================='
+#if 0
+ !
+ ! Frozen core
+ do iconf=1,conf%nconf
+   ! one-body part
+   do istate=1,nfrozen_ci
+     h_ci(iconf,iconf) = h_ci(iconf,iconf) + h_1body(istate,istate) * 2.0_dp
+   enddo
+   ! two-body part
+   do jstate=1,nfrozen_ci
+     do istate=1,nfrozen_ci
+       h_ci(iconf,iconf) = h_ci(iconf,iconf)  &
+                  + 2.0_dp * eri_eigen(istate,istate,1,jstate,jstate,1)
+
+       h_ci(iconf,iconf) = h_ci(iconf,iconf)  &
+                  - 1.0_dp * eri_eigen(istate,jstate,1,jstate,istate,1)
+
+     enddo
+   enddo
+ enddo
+ write(*,*) h_ci(1,1)
+! stop 'enough'
+#endif
 
  call stop_clock(timing_tmp1)
 
@@ -941,30 +990,19 @@ end subroutine full_ci_4electrons_selfenergy
 
 
 !==================================================================
-subroutine full_ci_1electron_on(save_coefficients,nstate,spinstate,basis,h_1e,c_matrix,nuc_nuc)
+subroutine full_ci_1electron_on(save_coefficients,spinstate,nuc_nuc)
  implicit none
 
  logical,intent(in)         :: save_coefficients
- integer,intent(in)         :: spinstate,nstate
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,nstate,nspin)
+ integer,intent(in)         :: spinstate
  real(dp),intent(in)        :: nuc_nuc
 !=====
- integer,parameter          :: nfrozen=0
  real(dp),allocatable       :: h_ci(:,:)
 !=====
 
  call start_clock(timing_full_ci)
 
  write(stdout,'(/,1x,a,/)') 'Full CI for 1 electron'
-
- ! Set the global variable
- nfrozen_ci = nfrozen
- nstate_ci  = nstate
-
-
- ! Get the one-electron hamiltonian on the eigenstate basis
- call build_1e_hamiltonian(c_matrix,h_1e)
 
 
  call setup_configurations_ci(1,spinstate,conf_1e)
@@ -979,7 +1017,8 @@ subroutine full_ci_1electron_on(save_coefficients,nstate,spinstate,basis,h_1e,c_
 
  call diagonalize(conf_1e%nconf,h_ci,energy_1e,eigvec_1e)
 
- write(stdout,'(/,1x,a,f19.10,/)') '      Correlation energy (Ha): ',energy_1e(1) - h_ci(1,1)
+ write(stdout,'(/,1x,a,f19.10)')   '     Uncorrelated energy (Ha): ',h_ci(1,1)
+ write(stdout,'(1x,a,f19.10,/)')   '      Correlation energy (Ha): ',energy_1e(1) - h_ci(1,1)
  write(stdout,'(1x,a,f19.10)')     '     Ground-state energy (Ha): ',energy_1e(1) + nuc_nuc
  write(stdout,'(1x,a,f19.10)')     '1st excited-state energy (Ha): ',energy_1e(2) + nuc_nuc
  write(stdout,'(1x,a,f19.10)')     '2nd excited-state energy (Ha): ',energy_1e(3) + nuc_nuc
@@ -1000,30 +1039,19 @@ end subroutine full_ci_1electron_on
 
 
 !==================================================================
-subroutine full_ci_2electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c_matrix,nuc_nuc)
+subroutine full_ci_2electrons_on(save_coefficients,spinstate,nuc_nuc)
  implicit none
 
  logical,intent(in)         :: save_coefficients
- integer,intent(in)         :: spinstate,nstate
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,nstate,nspin)
+ integer,intent(in)         :: spinstate
  real(dp),intent(in)        :: nuc_nuc
 !=====
- integer,parameter          :: nfrozen=0
  real(dp),allocatable       :: h_ci(:,:)
 !=====
 
  call start_clock(timing_full_ci)
 
  write(stdout,'(/,1x,a,/)') 'Full CI for 2 electrons'
-
- ! Set the global variable
- nfrozen_ci = nfrozen
- nstate_ci  = nstate
-
-
- ! Get the one-electron hamiltonian on the eigenstate basis
- call build_1e_hamiltonian(c_matrix,h_1e)
 
 
  call setup_configurations_ci(2,spinstate,conf_2e)
@@ -1037,7 +1065,8 @@ subroutine full_ci_2electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
 
  call diagonalize(conf_2e%nconf,h_ci,energy_2e,eigvec_2e)
 
- write(stdout,'(/,1x,a,f19.10,/)') '      Correlation energy (Ha): ',energy_2e(1) - h_ci(1,1)
+ write(stdout,'(/,1x,a,f19.10)')   '     Uncorrelated energy (Ha): ',h_ci(1,1)
+ write(stdout,'(1x,a,f19.10,/)')   '      Correlation energy (Ha): ',energy_2e(1) - h_ci(1,1)
  write(stdout,'(1x,a,f19.10)')     '     Ground-state energy (Ha): ',energy_2e(1) + nuc_nuc
  write(stdout,'(1x,a,f19.10)')     '1st excited-state energy (Ha): ',energy_2e(2) + nuc_nuc
  write(stdout,'(1x,a,f19.10)')     '2nd excited-state energy (Ha): ',energy_2e(3) + nuc_nuc
@@ -1058,30 +1087,19 @@ end subroutine full_ci_2electrons_on
 
 
 !==================================================================
-subroutine full_ci_3electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c_matrix,nuc_nuc)
+subroutine full_ci_3electrons_on(save_coefficients,spinstate,nuc_nuc)
  implicit none
 
  logical,intent(in)         :: save_coefficients
- integer,intent(in)         :: spinstate,nstate
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,nstate,nspin)
+ integer,intent(in)         :: spinstate
  real(dp),intent(in)        :: nuc_nuc
 !=====
- integer,parameter          :: nfrozen=0
  real(dp),allocatable       :: h_ci(:,:)
 !=====
 
  call start_clock(timing_full_ci)
 
  write(stdout,'(/,1x,a,/)') 'Full CI for 3 electrons'
-
- ! Set the global variable
- nfrozen_ci = nfrozen
- nstate_ci  = nstate
-
-
- ! Get the one-electron hamiltonian on the eigenstate basis
- call build_1e_hamiltonian(c_matrix,h_1e)
 
 
  call setup_configurations_ci(3,spinstate,conf_3e)
@@ -1096,7 +1114,8 @@ subroutine full_ci_3electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
 
  call diagonalize(conf_3e%nconf,h_ci,energy_3e,eigvec_3e)
 
- write(stdout,'(/,1x,a,f19.10,/)') '      Correlation energy (Ha): ',energy_3e(1) - h_ci(1,1)
+ write(stdout,'(/,1x,a,f19.10)')   '     Uncorrelated energy (Ha): ',h_ci(1,1)
+ write(stdout,'(1x,a,f19.10,/)')   '      Correlation energy (Ha): ',energy_3e(1) - h_ci(1,1)
  write(stdout,'(1x,a,f19.10)')     '     Ground-state energy (Ha): ',energy_3e(1) + nuc_nuc
  write(stdout,'(1x,a,f19.10)')     '1st excited-state energy (Ha): ',energy_3e(2) + nuc_nuc
  write(stdout,'(1x,a,f19.10)')     '2nd excited-state energy (Ha): ',energy_3e(3) + nuc_nuc
@@ -1117,30 +1136,19 @@ end subroutine full_ci_3electrons_on
 
 
 !==================================================================
-subroutine full_ci_4electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c_matrix,nuc_nuc)
+subroutine full_ci_4electrons_on(save_coefficients,spinstate,nuc_nuc)
  implicit none
 
  logical,intent(in)         :: save_coefficients
- integer,intent(in)         :: spinstate,nstate
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,nstate,nspin)
+ integer,intent(in)         :: spinstate
  real(dp),intent(in)        :: nuc_nuc
 !=====
- integer,parameter          :: nfrozen=0
  real(dp),allocatable       :: h_ci(:,:)
 !=====
 
  call start_clock(timing_full_ci)
 
  write(stdout,'(/,1x,a,/)') 'Full CI for 4 electrons'
-
- ! Set the global variable
- nfrozen_ci = nfrozen
- nstate_ci  = nstate
-
-
- ! Get the one-electron hamiltonian on the eigenstate basis
- call build_1e_hamiltonian(c_matrix,h_1e)
 
 
  call setup_configurations_ci(4,spinstate,conf_4e)
@@ -1160,7 +1168,8 @@ subroutine full_ci_4electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
  eigvec_4e(:,:) = h_ci(:,:)
 #endif
 
- write(stdout,'(/,1x,a,f19.10,/)') '      Correlation energy (Ha): ',energy_4e(1) - h_ci(1,1)
+ write(stdout,'(/,1x,a,f19.10)')   '     Uncorrelated energy (Ha): ',h_ci(1,1)
+ write(stdout,'(1x,a,f19.10,/)')   '      Correlation energy (Ha): ',energy_4e(1) - h_ci(1,1)
  write(stdout,'(1x,a,f19.10)')     '     Ground-state energy (Ha): ',energy_4e(1) + nuc_nuc
  write(stdout,'(1x,a,f19.10)')     '1st excited-state energy (Ha): ',energy_4e(2) + nuc_nuc
  write(stdout,'(1x,a,f19.10)')     '2nd excited-state energy (Ha): ',energy_4e(3) + nuc_nuc
@@ -1181,30 +1190,19 @@ end subroutine full_ci_4electrons_on
 
 
 !==================================================================
-subroutine full_ci_5electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c_matrix,nuc_nuc)
+subroutine full_ci_5electrons_on(save_coefficients,spinstate,nuc_nuc)
  implicit none
 
  logical,intent(in)         :: save_coefficients
- integer,intent(in)         :: spinstate,nstate
- type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: h_1e(basis%nbf,basis%nbf),c_matrix(basis%nbf,nstate,nspin)
+ integer,intent(in)         :: spinstate
  real(dp),intent(in)        :: nuc_nuc
 !=====
- integer,parameter          :: nfrozen=0
  real(dp),allocatable       :: h_ci(:,:)
 !=====
 
  call start_clock(timing_full_ci)
 
  write(stdout,'(/,1x,a,/)') 'Full CI for 5 electrons'
-
- ! Set the global variable
- nfrozen_ci = nfrozen
- nstate_ci  = nstate
-
-
- ! Get the one-electron hamiltonian on the eigenstate basis
- call build_1e_hamiltonian(c_matrix,h_1e)
 
 
  call setup_configurations_ci(5,spinstate,conf_5e)
@@ -1226,7 +1224,8 @@ subroutine full_ci_5electrons_on(save_coefficients,nstate,spinstate,basis,h_1e,c
 #endif
  call stop_clock(timing_tmp0)
 
- write(stdout,'(/,1x,a,f19.10,/)') '      Correlation energy (Ha): ',energy_5e(1) - h_ci(1,1)
+ write(stdout,'(/,1x,a,f19.10)')   '     Uncorrelated energy (Ha): ',h_ci(1,1)
+ write(stdout,'(1x,a,f19.10,/)')   '      Correlation energy (Ha): ',energy_5e(1) - h_ci(1,1)
  write(stdout,'(1x,a,f19.10)')     '     Ground-state energy (Ha): ',energy_5e(1) + nuc_nuc
  write(stdout,'(1x,a,f19.10)')     '1st excited-state energy (Ha): ',energy_5e(2) + nuc_nuc
  write(stdout,'(1x,a,f19.10)')     '2nd excited-state energy (Ha): ',energy_5e(3) + nuc_nuc
