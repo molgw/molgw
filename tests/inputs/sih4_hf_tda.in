@@ -1,7 +1,7 @@
 &molgw
  basis_path='../../basis/'
  scf='hf'
-
+ read_restart='y'
  postscf='td'
  tda='yes'
  basis='aug-cc-pVDZ'

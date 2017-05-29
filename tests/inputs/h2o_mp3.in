@@ -3,7 +3,7 @@
 
  basis='cc-pVDZ'
  auxil_basis='cc-pVTZ-RI'
- ignore_restart='yes'
+ read_restart='no'
 
  frozencore='yes'
  postscf='mp3'
