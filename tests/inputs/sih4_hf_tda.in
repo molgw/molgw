@@ -1,9 +1,13 @@
 &molgw
  basis_path='../../basis/'
  scf='hf'
+<<<<<<< HEAD
  nscf=1
  read_restart='yes'
 
+=======
+ read_restart='y'
+>>>>>>> 0bb58566ff63fe2778b41de3fde237e88cbd784e
  postscf='td'
  tda='yes'
  basis='aug-cc-pVDZ'

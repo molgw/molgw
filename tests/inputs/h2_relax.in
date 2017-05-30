@@ -3,7 +3,7 @@
  scf='hf'
  tolscf=1.0e-10
  nscf=50
- ignore_restart='yes'
+ read_restart='no'
 
  basis='6-31G**'
 

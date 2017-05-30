@@ -139,7 +139,7 @@ module m_inputparam
  real(dp),protected               :: grid_memory
 
  logical,protected                :: gwgamma_tddft_
- logical,protected                :: ignore_restart_
+ logical,protected                :: read_restart_
  logical,protected                :: ignore_bigrestart_
  logical,protected                :: print_matrix_
  logical,protected                :: print_eri_
@@ -694,7 +694,7 @@ subroutine read_inputfile_namelist()
  character(len=100)   :: ecp_small_basis
  character(len=100)   :: default_basis_path
  character(len=12)    :: length_unit
- character(len=3)     :: ignore_restart,ignore_bigrestart,no_4center
+ character(len=3)     :: read_restart,ignore_bigrestart,no_4center
  character(len=3)     :: print_matrix,print_eri,print_wfn,print_w,print_sigma
  character(len=3)     :: print_restart,print_bigrestart
  character(len=3)     :: print_pdos,print_cube,print_multipole
@@ -778,7 +778,7 @@ subroutine read_inputfile_namelist()
  length_unit        = capitalize(length_unit)
  init_hamiltonian   = capitalize(init_hamiltonian)
 
- ignore_restart_    = yesno(ignore_restart)
+ read_restart_      = yesno(read_restart)
  ignore_bigrestart_ = yesno(ignore_bigrestart)
  is_tda             = yesno(tda)
  is_triplet         = yesno(triplet)
