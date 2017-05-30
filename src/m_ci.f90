@@ -25,30 +25,12 @@ module m_ci
 
  real(dp),allocatable,private :: h_1body(:,:)
 
- real(dp),allocatable,private :: energy_1e(:)
- real(dp),allocatable,private :: energy_2e(:)
- real(dp),allocatable,private :: energy_3e(:)
- real(dp),allocatable,private :: energy_4e(:)
- real(dp),allocatable,private :: energy_5e(:)
-
- real(dp),allocatable,private :: eigvec_1e(:,:)
- real(dp),allocatable,private :: eigvec_2e(:,:)
- real(dp),allocatable,private :: eigvec_3e(:,:)
- real(dp),allocatable,private :: eigvec_4e(:,:)
- real(dp),allocatable,private :: eigvec_5e(:,:)
-
  type, private :: configurations
    integer             :: nelec
    integer             :: nconf
    integer             :: sz
    integer,allocatable :: sporb_occ(:,:)        ! spinor-orbitals with occupation equal to 1
  end type
-
- type(configurations),private :: conf_1e
- type(configurations),private :: conf_2e
- type(configurations),private :: conf_3e
- type(configurations),private :: conf_4e
- type(configurations),private :: conf_5e
 
  type(configurations),target,private :: conf_0
  type(configurations),target,private :: conf_p
@@ -160,23 +142,17 @@ subroutine destroy_ci()
  
  call clean_deallocate('Eigenstate-Fock operator',h_1body)
 
- if( ALLOCATED(conf_1e%sporb_occ) ) deallocate(conf_1e%sporb_occ)
- if( ALLOCATED(conf_2e%sporb_occ) ) deallocate(conf_2e%sporb_occ)
- if( ALLOCATED(conf_3e%sporb_occ) ) deallocate(conf_3e%sporb_occ)
- if( ALLOCATED(conf_4e%sporb_occ) ) deallocate(conf_4e%sporb_occ)
- if( ALLOCATED(conf_5e%sporb_occ) ) deallocate(conf_5e%sporb_occ)
+ if( ALLOCATED(conf_0%sporb_occ) ) deallocate(conf_0%sporb_occ)
+ if( ALLOCATED(conf_p%sporb_occ) ) deallocate(conf_p%sporb_occ)
+ if( ALLOCATED(conf_m%sporb_occ) ) deallocate(conf_m%sporb_occ)
 
- if( ALLOCATED(eigvec_1e) ) deallocate(eigvec_1e)
- if( ALLOCATED(eigvec_2e) ) deallocate(eigvec_2e)
- if( ALLOCATED(eigvec_3e) ) deallocate(eigvec_3e)
- if( ALLOCATED(eigvec_4e) ) deallocate(eigvec_4e)
- if( ALLOCATED(eigvec_5e) ) deallocate(eigvec_5e)
+ if( ALLOCATED(eigvec_0) ) deallocate(eigvec_0)
+ if( ALLOCATED(eigvec_p) ) deallocate(eigvec_p)
+ if( ALLOCATED(eigvec_m) ) deallocate(eigvec_m)
 
- if( ALLOCATED(energy_1e) ) deallocate(energy_1e)
- if( ALLOCATED(energy_2e) ) deallocate(energy_2e)
- if( ALLOCATED(energy_3e) ) deallocate(energy_3e)
- if( ALLOCATED(energy_4e) ) deallocate(energy_4e)
- if( ALLOCATED(energy_5e) ) deallocate(energy_5e)
+ if( ALLOCATED(energy_0) ) deallocate(energy_0)
+ if( ALLOCATED(energy_p) ) deallocate(energy_p)
+ if( ALLOCATED(energy_m) ) deallocate(energy_m)
 
 
 end subroutine destroy_ci
@@ -406,7 +382,9 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
    call die('setup_configurations_ci: number of active electrons not coded as of today')
  end select
 
- write(stdout,'(/,1x,a,i2,a,i6)') 'Electron count:',conf%nelec,'           Configurations: ',conf%nconf
+ write(stdout,'(/,1x,a,i2,a,i2,a,i6)') 'Electron count: ',conf%nelec, &
+                                       '         Active electrons: ',conf%nelec-2*nfrozen_ci, &
+                                       '           Configurations: ',conf%nconf
 
 
 end subroutine setup_configurations_ci
@@ -454,7 +432,7 @@ subroutine build_ci_hamiltonian(conf,h_ci)
  integer :: ksporb,lsporb,kstate,lstate,kspin,lspin
 !=====
 
- call start_clock(timing_tmp1)
+ call start_clock(timing_ham_ci)
  !
  ! Follow the second-quantization notations from Hellgaker book Chapter 1.
  ! Use occupation number vectors on_i(:) and on_j(:) filled with 0's and three 1's.
@@ -605,7 +583,7 @@ subroutine build_ci_hamiltonian(conf,h_ci)
 
  enddo
 
- call stop_clock(timing_tmp1)
+ call stop_clock(timing_ham_ci)
 
 end subroutine build_ci_hamiltonian
 
@@ -676,6 +654,9 @@ subroutine full_ci_nelectrons_selfenergy(occupation)
  !
  ! Build the Lehman amplitude for occupied states
  !
+ write(stdout,*) '====================='
+ write(stdout,*) 'Occupied states'
+
  allocate(iisporb(conf_p%nelec))
  allocate(iispin(conf_p%nelec))
  allocate(iistate(conf_p%nelec))
@@ -713,14 +694,11 @@ subroutine full_ci_nelectrons_selfenergy(occupation)
    enddo
  enddo
 
- write(stdout,*) '====================='
- write(stdout,*) 'Occupied states'
- write(stdout,*)
-
  do is=1,ns_occ
    es_occ(is) = energy_0(1) - energy_p(is)
 !   write(stdout,'(/,1x,a,i4,1x,f12.6)') '=== Excitation (eV): ',is,es_occ(is) * Ha_eV
  enddo
+ write(stdout,'(1x,a,f12.6,/)') '-IP (eV): ',es_occ(1) * Ha_eV
 
 
  deallocate(iisporb,iispin,iistate)
@@ -729,6 +707,9 @@ subroutine full_ci_nelectrons_selfenergy(occupation)
  !
  ! Build the Lehman amplitude for virtual states
  !
+ write(stdout,*) '====================='
+ write(stdout,*) 'Virtual states'
+
  allocate(iisporb(conf_m%nelec))
  allocate(iispin(conf_m%nelec))
  allocate(iistate(conf_m%nelec))
@@ -768,18 +749,16 @@ subroutine full_ci_nelectrons_selfenergy(occupation)
    enddo
  enddo
 
- write(stdout,*) '====================='
- write(stdout,*) 'Virtual states'
- write(stdout,*)
-
  do is=1,ns_virt
    es_virt(is) = energy_m(is) - energy_0(1)
 !   write(stdout,'(/,1x,a,i4,1x,f12.6)') '=== Excitation (eV): ',is,es_virt(is) * Ha_eV
  enddo
 
+ write(stdout,'(1x,a,f12.6,/)') '-EA (eV): ',es_virt(1) * Ha_eV
 
  deallocate(iisporb,iispin,iistate)
  deallocate(jjsporb,jjspin,jjstate)
+
 
 
  !
@@ -874,12 +853,15 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
    eigvec => eigvec_p
  end select
 
+ call start_clock(timing_ci_diago)
+ write(stdout,'(1x,a,i6,a,i6)') 'Diagonalize CI hamiltonian',conf%nconf,' x ',conf%nconf
 #ifdef HAVE_SCALAPACK
  call diagonalize(conf%nconf,h_ci,energy,eigvec)
 #else
  call diagonalize_scalapack(scalapack_block_min,conf%nconf,h_ci,energy)
  eigvec(:,:) = h_ci(:,:)
 #endif
+ call stop_clock(timing_ci_diago)
 
  write(stdout,'(/,1x,a,f19.10)')   '     Uncorrelated energy (Ha): ',h_ci(1,1)
  write(stdout,'(1x,a,f19.10,/)')   '      Correlation energy (Ha): ',energy(1) - h_ci(1,1)
