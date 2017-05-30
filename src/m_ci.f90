@@ -397,17 +397,18 @@ subroutine build_1e_hamiltonian(c_matrix,h_1e)
  real(dp),intent(in) :: c_matrix(:,:,:)
  real(dp),intent(in) :: h_1e(:,:)
 !=====
+ integer :: nstate
 !=====
 
- if( SIZE(c_matrix,DIM=2) /= nstate_ci        ) call die('build_1e_hamiltonian: nstate_ci not initialized yet')
  if( SIZE(c_matrix,DIM=1) /= SIZE(h_1e,DIM=2) ) call die('build_1e_hamiltonian: c_matrix and h_1e have inconsistent sizes')
  if( SIZE(h_1e,DIM=1)     /= SIZE(h_1e,DIM=2) ) call die('build_1e_hamiltonian: h_1e is not square')
+ nstate = SIZE(c_matrix,DIM=2)
 
  if( ALLOCATED(h_1body) ) return
 
  write(stdout,*) 'Obtain the one-electron Hamiltonian in the HF basis'
 
- call clean_allocate('Eigenstate-Fock operator',h_1body,nstate_ci,nstate_ci)
+ call clean_allocate('Eigenstate-Fock operator',h_1body,nstate,nstate)
  h_1body(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:,1)) , MATMUL( h_1e(:,:) , c_matrix(:,:,1) ) )
 
 

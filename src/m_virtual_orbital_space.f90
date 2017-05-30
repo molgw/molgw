@@ -582,7 +582,6 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
  real(dp),intent(inout)                :: energy(nstate,nspin)
  real(dp),intent(inout)                :: c_matrix(basis%nbf,nstate,nspin)
 !=====
- real(dp),parameter                    :: alpha_mp2=1.0_dp
  integer                               :: istate,jstate,astate,bstate,cstate
  integer                               :: ispin
  integer                               :: nocc,ncore,nvirtual,nvirtual_kept
@@ -608,11 +607,6 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
    return
  endif
 
- if( .NOT. has_auxil_basis ) then
-   call issue_warning('virtual_fno not implemented when no auxiliary basis is provided')
-   return
- endif
-
  if( nspin > 1 ) then
    call issue_warning('virtual_fno not implemented yet for spin polarized calculations')
    return
@@ -624,8 +618,11 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
  endif
 
 
- call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,1,nstate,1,nstate)
-
+ if(has_auxil_basis) then
+   call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,1,nstate,1,nstate)
+ else
+   call calculate_eri_4center_eigen_uks(c_matrix)
+ endif
 
  do ispin=1,nspin
    !
@@ -645,16 +642,19 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
 
    allocate(eri_ci_i(nocc+1:nstate))
 
-#if 1
+#if 0
    ! Approximation by Aquilante et al.
    do istate=ncore+1,nocc
      do cstate=nocc+1,nstate
 
        do astate=nocc+1,nstate
-         eri_ci_i(astate) = eri_eigen_ri_paral(cstate,istate,ispin,astate,istate,ispin) &
+!         eri_ci_i(astate) = eri_eigen_ri_paral(cstate,istate,ispin,astate,istate,ispin) &
+!                              / ( energy(istate,ispin) + energy(istate,ispin) - energy(astate,ispin) - energy(cstate,ispin) )
+
+         eri_ci_i(astate) = eri_eigen(cstate,istate,ispin,astate,istate,ispin) &
                               / ( energy(istate,ispin) + energy(istate,ispin) - energy(astate,ispin) - energy(cstate,ispin) )
        enddo
-       call xsum_auxil(eri_ci_i)
+!       call xsum_auxil(eri_ci_i)
 
        do bstate=nocc+1,nstate
          do astate=nocc+1,nstate
@@ -674,7 +674,7 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
    do bstate=nocc+1,nstate
      do astate=nocc+1,nstate
 
-#if 0
+#if 1
        ! Full calculation of the MP2 density matrix on virtual orbitals (See Taube and Bartlett)
        do cstate=nocc+1,nstate
          do istate=ncore+1,nocc
@@ -683,10 +683,10 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
              den_cb_ij = energy(istate,ispin) + energy(jstate,ispin) - energy(bstate,ispin) - energy(cstate,ispin)
              den_ca_ij = energy(istate,ispin) + energy(jstate,ispin) - energy(astate,ispin) - energy(cstate,ispin)
 
-             eri_ci_aj = eri_eigen_ri(cstate,istate,ispin,astate,jstate,ispin) &
-                          - eri_eigen_ri(cstate,jstate,ispin,astate,istate,ispin)  * alpha_mp2
-             eri_ci_bj = eri_eigen_ri(cstate,istate,ispin,bstate,jstate,ispin) &
-                         - eri_eigen_ri(cstate,jstate,ispin,bstate,istate,ispin)   * alpha_mp2
+             eri_ci_aj = eri_eigen(cstate,istate,ispin,astate,jstate,ispin) * spin_fact &
+                          - eri_eigen(cstate,jstate,ispin,astate,istate,ispin) 
+             eri_ci_bj = eri_eigen(cstate,istate,ispin,bstate,jstate,ispin) * spin_fact &
+                         - eri_eigen(cstate,jstate,ispin,bstate,istate,ispin)
 
              p_matrix_mp2(astate-nocc,bstate-nocc) = &
                   p_matrix_mp2(astate-nocc,bstate-nocc)  & 
@@ -695,15 +695,15 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
            enddo
          enddo
        enddo
-#elif 1
+#else
        ! Approximation by Aquilante et al.
        do cstate=nocc+1,nstate
          do istate=ncore+1,nocc
            den_cb_ij = energy(istate,ispin) + energy(istate,ispin) - energy(bstate,ispin) - energy(cstate,ispin)
            den_ca_ij = energy(istate,ispin) + energy(istate,ispin) - energy(astate,ispin) - energy(cstate,ispin)
 
-           eri_ci_aj = eri_eigen_ri(cstate,istate,ispin,astate,istate,ispin) 
-           eri_ci_bj = eri_eigen_ri(cstate,istate,ispin,bstate,istate,ispin) 
+           eri_ci_aj = eri_eigen(cstate,istate,ispin,astate,istate,ispin) 
+           eri_ci_bj = eri_eigen(cstate,istate,ispin,bstate,istate,ispin) 
 
            p_matrix_mp2(astate-nocc,bstate-nocc) = &
                 p_matrix_mp2(astate-nocc,bstate-nocc)  & 
@@ -711,36 +711,6 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
 
          enddo
        enddo
-#elif 0
-       do istate=ncore+1,nocc
-         ! Approximation by Aquilante et al.
-         den_cb_ij = energy(istate,ispin) + energy(istate,ispin) - energy(bstate,ispin) - energy(bstate,ispin)
-         den_ca_ij = energy(istate,ispin) + energy(istate,ispin) - energy(astate,ispin) - energy(astate,ispin)
-
-         eri_ci_aj = eri_eigen_ri(astate,istate,ispin,astate,istate,ispin) 
-         eri_ci_bj = eri_eigen_ri(bstate,istate,ispin,bstate,istate,ispin) 
-
-         p_matrix_mp2(astate-nocc,bstate-nocc) = &
-              p_matrix_mp2(astate-nocc,bstate-nocc)  & 
-                 + 0.50_dp * eri_ci_aj * eri_ci_bj / ( den_cb_ij * den_ca_ij )
-       enddo
-#else
-         do istate=ncore+1,nocc
-           do jstate=ncore+1,nocc
-
-             den_cb_ij = energy(istate,ispin) + energy(jstate,ispin) - energy(bstate,ispin) - energy(bstate,ispin)
-             den_ca_ij = energy(istate,ispin) + energy(jstate,ispin) - energy(astate,ispin) - energy(astate,ispin)
-
-             eri_ci_aj = eri_eigen_ri(astate,istate,ispin,astate,jstate,ispin) 
-             eri_ci_bj = eri_eigen_ri(bstate,istate,ispin,bstate,jstate,ispin) 
-
-             p_matrix_mp2(astate-nocc,bstate-nocc) = &
-                  p_matrix_mp2(astate-nocc,bstate-nocc)  &
-                     + 0.50_dp * eri_ci_aj * eri_ci_bj / ( den_cb_ij * den_ca_ij )
-
-           enddo
-         enddo
-
 #endif
 
      enddo
@@ -815,7 +785,11 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
 
 
 
- call destroy_eri_3center_eigen()
+ if(has_auxil_basis) then
+   call destroy_eri_3center_eigen()
+ else
+   call destroy_eri_4center_eigen_uks()
+ endif
 
  write(stdout,'(1x,a)') 'Optimized empty states with Frozen Natural Orbitals'
 

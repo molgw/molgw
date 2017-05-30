@@ -49,6 +49,7 @@ program molgw
  use m_hamiltonian_buffer
  use m_selfenergy_tools
  use m_scf_loop
+ use m_virtual_orbital_space
  use m_ci
  implicit none
 
@@ -501,13 +502,16 @@ program molgw
  if(calc_type%is_ci) then
    if(nspin/=1) call die('molgw: CI calculations need spin-restriction. Set nspin to 1')
 
+   if( is_virtual_fno ) then
+     call virtual_fno(basis,nstate,occupation,energy,c_matrix)
+   endif
    if(has_auxil_basis) then
      call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,1,nstate,1,nstate)
    else
      call calculate_eri_4center_eigen_uks(c_matrix)
    endif
 
-   call prepare_ci(nstate,ncoreg,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix)
+   call prepare_ci(MIN(nstate,nvirtualg-1),ncoreg,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix)
 
    call full_ci_nelectrons_on( 1,NINT(electrons)-1,1,en%nuc_nuc)
    call full_ci_nelectrons_on( 0,NINT(electrons)  ,0,en%nuc_nuc)
@@ -525,6 +529,10 @@ program molgw
    endif
 
    call destroy_ci()
+
+   if( is_virtual_fno ) then
+     call destroy_fno(basis,nstate,energy,c_matrix)
+   endif
 
  endif
  call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
