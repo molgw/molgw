@@ -340,6 +340,8 @@ subroutine gather_distributed_copy_nospin(desc,matrix,matrix_global)
 
  call xbcast_world(rank_master,matrix_global)
 
+#else
+  matrix_global(:,:) = matrix(:,:)
 #endif
 
 end subroutine gather_distributed_copy_nospin
@@ -399,6 +401,8 @@ subroutine gather_distributed_copy_spin(desc,matrix,matrix_global)
  endif
  call xbcast_world(rank_master,matrix_global)
 
+#else
+  matrix_global(:,:,:) = matrix(:,:,:)
 #endif
 
 end subroutine gather_distributed_copy_spin
@@ -1425,6 +1429,8 @@ subroutine product_abc_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_mat
 
  endif
 
+#else
+  d_matrix_local(:,:) = MATMUL( a_matrix_local(:,:) , MATMUL( b_matrix_local(:,:) , c_matrix_local(:,:) ) )
 #endif
 
 
@@ -1507,6 +1513,8 @@ subroutine product_transaba_sca(desca,a_matrix_local,descb,b_matrix_local,descc,
 
  endif
  
+#else
+  c_matrix_local(:,:) = MATMUL( TRANSPOSE(a_matrix_local) , MATMUL( b_matrix_local , a_matrix_local ) )
 #endif
 
 
