@@ -18,6 +18,7 @@ module m_ci
  use m_basis_set
  use m_eri_ao_mo
  use m_inputparam
+ use m_selfenergy_tools
 
 
  integer,private              :: nfrozen_ci
@@ -32,9 +33,9 @@ module m_ci
    integer,allocatable :: sporb_occ(:,:)        ! spinor-orbitals with occupation equal to 1
  end type
 
- type(configurations),target,private :: conf_0
- type(configurations),target,private :: conf_p
- type(configurations),target,private :: conf_m
+ type(configurations),target,private :: conf_0  ! Neutral    configuration: N electrons
+ type(configurations),target,private :: conf_p  ! +1-charged configuration: N-1 electrons
+ type(configurations),target,private :: conf_m  ! -1-charged configuration: N+1 electrons
 
  real(dp),allocatable,target,private :: energy_0(:)
  real(dp),allocatable,target,private :: energy_p(:)
@@ -590,11 +591,9 @@ end subroutine build_ci_hamiltonian
 
 
 !==================================================================
-subroutine full_ci_nelectrons_selfenergy(occupation)
- use m_selfenergy_tools
+subroutine full_ci_nelectrons_selfenergy()
  implicit none
 
- real(dp),intent(in)        :: occupation(:,:)
 !=====
  integer,parameter          :: nomega=5000
  integer,parameter          :: ns=-1
@@ -621,10 +620,6 @@ subroutine full_ci_nelectrons_selfenergy(occupation)
 
  write(stdout,'(/,1x,a,i4)') 'Full CI self-energy for electron count: ',conf_0%nelec
 
-
- !
- ! Set the range of states on which to evaluate the self-energy
- call selfenergy_set_state_range(nstate_ci,occupation)
 
  write(stdout,'(1x,a,i3,a,sp,i4)') 'Previous CI calculation had spin state Sz(',conf_p%nelec,'): ',conf_p%sz
  write(stdout,'(1x,a,i3,a,i3)')    'Previous CI calculation had spin state Sz(',conf_0%nelec,'): ',conf_0%sz

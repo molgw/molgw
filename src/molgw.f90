@@ -502,8 +502,12 @@ program molgw
  if(calc_type%is_ci) then
    if(nspin/=1) call die('molgw: CI calculations need spin-restriction. Set nspin to 1')
 
+   !
+   ! Set the range of states on which to evaluate the self-energy
+   call selfenergy_set_state_range(MIN(nstate,nvirtualg-1),occupation)
+
    if( is_virtual_fno ) then
-     call virtual_fno(basis,nstate,occupation,energy,c_matrix)
+     call virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
    endif
    if(has_auxil_basis) then
      call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,1,nstate,1,nstate)
@@ -516,7 +520,7 @@ program molgw
    call full_ci_nelectrons_on( 1,NINT(electrons)-1,1,en%nuc_nuc)
    call full_ci_nelectrons_on( 0,NINT(electrons)  ,0,en%nuc_nuc)
    call full_ci_nelectrons_on(-1,NINT(electrons)+1,1,en%nuc_nuc)
-   call full_ci_nelectrons_selfenergy(occupation)
+   call full_ci_nelectrons_selfenergy()
 
 
 !   if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) call die('CI is implemented for 2 electrons only')

@@ -111,7 +111,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      ! Be aware that the energies and the c_matrix for virtual orbitals are altered after this point
      ! and until they are restored in destroy_fno
      !
-     call virtual_fno(basis,nstate,occupation,energy,c_matrix)
+     call virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
    endif
    !
    ! Or alternatively use the small basis technique
