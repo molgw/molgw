@@ -37,6 +37,10 @@ module m_ci
  type(configurations),target,private :: conf_p  ! +1-charged configuration: N-1 electrons
  type(configurations),target,private :: conf_m  ! -1-charged configuration: N+1 electrons
 
+ integer,private                     :: desc_0(NDEL)
+ integer,private                     :: desc_p(NDEL)
+ integer,private                     :: desc_m(NDEL)
+
  real(dp),allocatable,target,private :: energy_0(:)
  real(dp),allocatable,target,private :: energy_p(:)
  real(dp),allocatable,target,private :: energy_m(:)
@@ -417,14 +421,17 @@ end subroutine build_1e_hamiltonian
 
 
 !==================================================================
-subroutine build_ci_hamiltonian(conf,h_ci)
+subroutine build_ci_hamiltonian(conf,desc_ham,h_ci)
  implicit none
 
  type(configurations),intent(in) :: conf
- real(dp)                        :: h_ci(conf%nconf,conf%nconf)
+ integer,intent(in)              :: desc_ham(NDEL)
+ real(dp)                        :: h_ci(:,:)
 !=====
  integer :: ielec,jelec
+ integer :: mconf,nconf
  integer :: iconf,jconf
+ integer :: iconf_global,jconf_global
  integer :: iisporb(conf%nelec),jjsporb(conf%nelec)
  integer :: iistate(conf%nelec),jjstate(conf%nelec)
  integer :: iispin(conf%nelec),jjspin(conf%nelec)
@@ -440,10 +447,14 @@ subroutine build_ci_hamiltonian(conf,h_ci)
  ! Use occupation number vectors on_i(:) and on_j(:) filled with 0's and three 1's.
  !
 
+ mconf = SIZE(h_ci,DIM=1)
+ nconf = SIZE(h_ci,DIM=2)
+
  h_ci(:,:) = 0.0_dp
 
- do jconf=1,conf%nconf
-   jjsporb(:) = conf%sporb_occ(:,jconf)
+ do jconf=1,nconf
+   jconf_global = colindex_local_to_global(desc_ham,jconf)
+   jjsporb(:) = conf%sporb_occ(:,jconf_global)
    jjspin(:)  = sporb_to_spin(  jjsporb(:) )
    jjstate(:) = sporb_to_state( jjsporb(:) )
 
@@ -451,8 +462,10 @@ subroutine build_ci_hamiltonian(conf,h_ci)
 
 
    ! Only fills the upper triangle
-   do iconf=1,jconf
-     iisporb(:) = conf%sporb_occ(:,iconf)
+   do iconf=1,mconf
+     iconf_global = rowindex_local_to_global(desc_ham,iconf)
+!     if( iconf_global > jconf_global ) cycle  !FBFB TODO: activate this
+     iisporb(:) = conf%sporb_occ(:,iconf_global)
      iispin(:)  = sporb_to_spin(  iisporb(:) )
      iistate(:) = sporb_to_state( iisporb(:) )
 
@@ -465,7 +478,7 @@ subroutine build_ci_hamiltonian(conf,h_ci)
 
      !
      ! Exact same ON-vector
-     if( iconf == jconf ) then 
+     if( iconf_global == jconf_global ) then 
        do ielec=1,conf%nelec
          h_ci(iconf,jconf) = h_ci(iconf,jconf) + h_1body(iistate(ielec),iistate(ielec))
        enddo
@@ -492,7 +505,7 @@ subroutine build_ci_hamiltonian(conf,h_ci)
 
      !
      ! Exact same ON-vector
-     if( iconf == jconf ) then 
+     if( iconf_global == jconf_global ) then 
        do jelec=1,conf%nelec
          jstate = jjstate(jelec)
 
@@ -577,9 +590,9 @@ subroutine build_ci_hamiltonian(conf,h_ci)
      endif
 
 
-     !
-     ! Symmetrize here
-     h_ci(jconf,iconf) = h_ci(iconf,jconf)
+!     !
+!     ! Symmetrize here
+!     h_ci(jconf,iconf) = h_ci(iconf,jconf)   ! TODO: SCALAPACKization of this
 
    enddo
 
@@ -599,7 +612,8 @@ subroutine full_ci_nelectrons_selfenergy()
  integer,parameter          :: ns=-1
  integer                    :: ielec,jelec
  integer                    :: is
- integer                    :: iconf,jconf
+ integer                    :: iconf,jconf,kconf
+ integer                    :: iconf_global,jconf_global,kconf_global
  integer                    :: on_i(2*nstate_ci),on_j(2*nstate_ci)
  integer                    :: on_tmp(2*nstate_ci)
  integer,allocatable        :: iisporb(:),iistate(:),iispin(:)
@@ -614,6 +628,7 @@ subroutine full_ci_nelectrons_selfenergy()
  character(len=3)           :: ctmp3
  character(len=1)           :: ctmp1
  integer                    :: unit_gf
+ real(dp)                   :: eigvec0(conf_0%nconf)
 !=====
 
  call start_clock(timing_ci_selfenergy)
@@ -641,6 +656,16 @@ subroutine full_ci_nelectrons_selfenergy()
  allocate(es_occ(ns_occ))
  allocate(es_virt(ns_virt))
 
+ eigvec0(:) = 0.0_dp
+ do jconf=1,SIZE(eigvec_0,DIM=2)
+   jconf_global = colindex_local_to_global(desc_0,jconf)
+   if( jconf_global /= 1 ) cycle
+   do iconf=1,SIZE(eigvec_0,DIM=1)
+     iconf_global = rowindex_local_to_global(desc_0,iconf)
+     eigvec0(iconf_global) = eigvec_0(iconf,jconf)
+   enddo
+ enddo
+ call xsum_world(eigvec0)
 
  allocate(jjsporb(conf_0%nelec))
  allocate(jjspin(conf_0%nelec))
@@ -665,8 +690,9 @@ subroutine full_ci_nelectrons_selfenergy()
 
    on_j(:) = sporb_to_on(jjsporb)
 
-   do iconf=1,conf_p%nconf
-     iisporb(:) = conf_p%sporb_occ(:,iconf)
+   do iconf=1,SIZE(eigvec_p,DIM=1)
+     iconf_global = rowindex_local_to_global(desc_p,iconf)
+     iisporb(:) = conf_p%sporb_occ(:,iconf_global)
      iispin(:)  = sporb_to_spin(  iisporb(:) )
      iistate(:) = sporb_to_state( iisporb(:) )
 
@@ -675,20 +701,23 @@ subroutine full_ci_nelectrons_selfenergy()
      !
      ! Evaluate for any s, < N , 0 | a_i^+ | N-1 , s >
      !
-!     do isporb=2*nfrozen_ci+1,2*nstate_ci
-!       if( isporb == iisporb(1) ) cycle
-!       if( isporb == iisporb(2) ) cycle
-!       if( isporb == iisporb(3) ) cycle
      do isporb=1,2*nstate_ci
        on_tmp(:) = on_i(:)
        on_tmp(isporb) = on_tmp(isporb) + 1
        if( ALL( on_j(:) - on_tmp(:) == 0 ) ) then
-         fs_occ(isporb,:) = fs_occ(isporb,:) + eigvec_p(iconf,:ns_occ) * eigvec_0(jconf,1) * gamma_sign(on_i,isporb)
+         do kconf=1,SIZE(eigvec_p,DIM=2)
+           kconf_global = colindex_local_to_global(desc_p,kconf)
+           if( kconf_global > ns_occ ) cycle
+           fs_occ(isporb,kconf_global) = fs_occ(isporb,kconf_global) &
+                                   + eigvec_p(iconf,kconf) * eigvec0(jconf) * gamma_sign(on_i,isporb)
+         enddo
        endif
      enddo
 
    enddo
  enddo
+
+ call xsum_world(fs_occ)
 
  do is=1,ns_occ
    es_occ(is) = energy_0(1) - energy_p(is)
@@ -718,8 +747,9 @@ subroutine full_ci_nelectrons_selfenergy()
 
    on_j(:) = sporb_to_on(jjsporb)
 
-   do iconf=1,conf_m%nconf
-     iisporb(:) = conf_m%sporb_occ(:,iconf)
+   do iconf=1,SIZE(eigvec_m,DIM=1)
+     iconf_global = rowindex_local_to_global(desc_m,iconf)
+     iisporb(:) = conf_m%sporb_occ(:,iconf_global)
      iispin(:)  = sporb_to_spin(  iisporb(:) )
      iistate(:) = sporb_to_state( iisporb(:) )
 
@@ -729,21 +759,24 @@ subroutine full_ci_nelectrons_selfenergy()
      !
      ! Evaluate for any s, < N+1 , s | a_i^+ | N , 0 >
      !
-!     do isporb=2*nfrozen_ci+1,2*nstate_ci
-!       ! Cannot create an electron in a state that is already occupied
-!       if( isporb == jjsporb(1) .OR. isporb == jjsporb(2) ) cycle
-!       if( isporb == jjsporb(3) .OR. isporb == jjsporb(4) ) cycle
      do isporb=1,2*nstate_ci
        on_tmp(:) = on_j(:)
        on_tmp(isporb) = on_tmp(isporb) + 1
        if( ALL( on_i(:) - on_tmp(:) == 0 ) ) then
-         fs_virt(isporb,:) = fs_virt(isporb,:) + eigvec_m(iconf,:ns_virt) * eigvec_0(jconf,1) * gamma_sign(on_j,isporb)
+         do kconf=1,SIZE(eigvec_m,DIM=2)
+           kconf_global = colindex_local_to_global(desc_m,kconf)
+           if( kconf_global > ns_virt ) cycle
+           fs_virt(isporb,kconf_global) = fs_virt(isporb,kconf_global)  &
+                           + eigvec_m(iconf,kconf) * eigvec0(jconf) * gamma_sign(on_j,isporb)
+         enddo
        endif
      enddo
 
 
    enddo
  enddo
+
+ call xsum_world(fs_virt)
 
  do is=1,ns_virt
    es_virt(is) = energy_m(is) - energy_0(1)
@@ -802,10 +835,14 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  integer,intent(in)         :: nelectron,spinstate
  real(dp),intent(in)        :: nuc_nuc
 !=====
- real(dp),allocatable       :: h_ci(:,:)
+ integer                      :: desc_ham(NDEL)
+ integer                      :: mham,nham
+ integer                      :: info
+ real(dp)                     :: ehf
+ real(dp),allocatable         :: h_ci(:,:)
  type(configurations),pointer :: conf
- real(dp),pointer :: energy(:)
- real(dp),pointer :: eigvec(:,:)
+ real(dp),pointer             :: energy(:)
+ real(dp),pointer             :: eigvec(:,:)
 !=====
 
  call start_clock(timing_full_ci)
@@ -826,25 +863,45 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  call setup_configurations_ci(nelectron,spinstate,conf)
 
 
- call clean_allocate('CI hamiltonian',h_ci,conf%nconf,conf%nconf)
+ mham = NUMROC(conf%nconf,block_row,iprow_sd,first_row,nprow_sd)
+ nham = NUMROC(conf%nconf,block_col,ipcol_sd,first_col,npcol_sd)
+ call DESCINIT(desc_ham,conf%nconf,conf%nconf,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mham),info)
 
- call build_ci_hamiltonian(conf,h_ci)
+ if( nprow_sd * npcol_sd > 1 ) then
+   write(stdout,'(1x,a,i5,a,i5)') 'Use SCALAPACK proc grid: ',nprow_sd,' x ',npcol_sd
+   write(stdout,'(1x,a,i5,a,i5)') '        Sub-matrix size: ',mham,' x ',nham
+ endif
 
+ call clean_allocate('CI hamiltonian',h_ci,mham,nham)
+
+
+ call build_ci_hamiltonian(conf,desc_ham,h_ci)
+
+ ! Hartree-Fock energy is obtained from the (1,1) element
+ if( rowindex_global_to_local(desc_ham,1) * colindex_global_to_local(desc_ham,1) /= 0 ) then
+   ehf = h_ci(rowindex_global_to_local(desc_ham,1),colindex_global_to_local(desc_ham,1))
+ else
+   ehf = 0
+ endif
+ call xsum_world(ehf)
 
  select case(save_coefficients)
  case(0)
+   desc_0(:) = desc_ham
    allocate(energy_0(conf%nconf))
-   allocate(eigvec_0(conf%nconf,conf%nconf))
+   allocate(eigvec_0(mham,nham))
    energy => energy_0
    eigvec => eigvec_0
  case(-1)
+   desc_m(:) = desc_ham
    allocate(energy_m(conf%nconf))
-   allocate(eigvec_m(conf%nconf,conf%nconf))
+   allocate(eigvec_m(mham,nham))
    energy => energy_m
    eigvec => eigvec_m
  case(1)
+   desc_p(:) = desc_ham
    allocate(energy_p(conf%nconf))
-   allocate(eigvec_p(conf%nconf,conf%nconf))
+   allocate(eigvec_p(mham,nham))
    energy => energy_p
    eigvec => eigvec_p
  end select
@@ -852,15 +909,16 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  call start_clock(timing_ci_diago)
  write(stdout,'(1x,a,i6,a,i6)') 'Diagonalize CI hamiltonian',conf%nconf,' x ',conf%nconf
 #ifdef HAVE_SCALAPACK
- call diagonalize(conf%nconf,h_ci,energy,eigvec)
+ call diagonalize_sca(conf%nconf,desc_ham,h_ci,energy,desc_ham,eigvec)
+! call diagonalize_scalapack(scalapack_block_min,conf%nconf,h_ci,energy)
+! eigvec(:,:) = h_ci(:,:)
 #else
- call diagonalize_scalapack(scalapack_block_min,conf%nconf,h_ci,energy)
- eigvec(:,:) = h_ci(:,:)
+ call diagonalize(conf%nconf,h_ci,energy,eigvec)
 #endif
  call stop_clock(timing_ci_diago)
 
- write(stdout,'(/,1x,a,f19.10)')   '     Uncorrelated energy (Ha): ',h_ci(1,1)
- write(stdout,'(1x,a,f19.10,/)')   '      Correlation energy (Ha): ',energy(1) - h_ci(1,1)
+ write(stdout,'(/,1x,a,f19.10)')   '     Uncorrelated energy (Ha): ',ehf
+ write(stdout,'(1x,a,f19.10,/)')   '      Correlation energy (Ha): ',energy(1) - ehf
  write(stdout,'(1x,a,f19.10)')     '     Ground-state energy (Ha): ',energy(1) + nuc_nuc
  write(stdout,'(1x,a,f19.10)')     '1st excited-state energy (Ha): ',energy(2) + nuc_nuc
  write(stdout,'(1x,a,f19.10)')     '2nd excited-state energy (Ha): ',energy(3) + nuc_nuc
