@@ -117,10 +117,13 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  !
  ! X-Y = L * Z / Omega^{1/2}
  ! X+Y = L^{-T} * Z * Omega^{1/2}
- forall(integer imat=1:nmat)
-   xpy_matrix(:,imat) = xpy_matrix(:,imat) * SQRT( bigomega(imat) )
-   xmy_matrix(:,imat) = xmy_matrix(:,imat) / SQRT( bigomega(imat) )
- end forall
+ block
+  integer :: imat
+  forall(imat=1:nmat)
+    xpy_matrix(:,imat) = xpy_matrix(:,imat) * SQRT( bigomega(imat) )
+    xmy_matrix(:,imat) = xmy_matrix(:,imat) / SQRT( bigomega(imat) )
+  end forall
+ end block
 
 
 #endif

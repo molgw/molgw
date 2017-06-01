@@ -37,7 +37,6 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
  integer              :: info
  real(dp)             :: docc,de,factor_sqrt
  real(dp),allocatable :: eri3_t(:,:)
- real(dp),allocatable :: eri3_sca(:,:)
  real(dp),allocatable :: chi0(:,:)
  real(dp),allocatable :: one_m_chi0(:,:)
  real(dp),allocatable :: one_m_chi0m1(:,:)
@@ -45,6 +44,9 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
  integer              :: desc_eri3_t(NDEL)
  integer              :: desc_eri3_final(NDEL)
  integer              :: meri3,neri3
+#ifdef HAVE_SCALAPACK
+ real(dp),allocatable :: eri3_sca(:,:)
+#endif
 !=====
 
  call start_clock(timing_pola_dynamic)
