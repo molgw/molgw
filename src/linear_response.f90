@@ -45,7 +45,6 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
  real(dp),allocatable      :: eigenvalue(:)
  real(dp)                  :: energy_qp(nstate,nspin)
  logical                   :: is_tddft
- logical                   :: is_ij
  logical                   :: has_manual_tdhf
  integer                   :: reading_status
  integer                   :: tdhffile
@@ -415,8 +414,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  integer                            :: t_ia,t_jb
  integer                            :: t_ia_global,t_jb_global
  integer                            :: istate,astate,iaspin
- integer                            :: mstate,pstate,mpspin
- integer                            :: ibf,jbf
+ integer                            :: mpspin
  integer                            :: iomega,idir,jdir
  integer,parameter                  :: nomega=600
  complex(dp)                        :: omega(nomega)
@@ -425,7 +423,6 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  real(dp)                           :: static_polarizability(3,3)
  real(dp)                           :: oscillator_strength,trk_sumrule,mean_excitation
  real(dp),allocatable               :: dipole_basis(:,:,:),dipole_state(:,:,:,:)
- real(dp),allocatable               :: dipole_cart(:,:,:)
  real(dp),allocatable               :: residue(:,:)
  integer                            :: dynpolfile
  integer                            :: photocrossfile
@@ -616,15 +613,13 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  dynamical_pol(:,:,:) = 0.0_dp
  static_polarizability(:,:) = 0.0_dp
  do t_ia=1,nexc
-   do idir=1,3
-     do jdir=1,3
-       dynamical_pol(:,idir,jdir) = dynamical_pol(:,idir,jdir) &
-                            + residue(idir,t_ia) * residue(jdir,t_ia) &
-                              * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ia) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ia) ) ) )
-       static_polarizability(idir,jdir) = static_polarizability(idir,jdir) &
-                      + 2.0_dp * residue(idir,t_ia) * residue(jdir,t_ia) / eigenvalue(t_ia)
-     enddo
-   enddo
+   forall(idir=1:3, jdir=1:3)
+     dynamical_pol(:,idir,jdir) = dynamical_pol(:,idir,jdir) &
+                          + residue(idir,t_ia) * residue(jdir,t_ia) &
+                            * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ia) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ia) ) ) )
+     static_polarizability(idir,jdir) = static_polarizability(idir,jdir) &
+                    + 2.0_dp * residue(idir,t_ia) * residue(jdir,t_ia) / eigenvalue(t_ia)
+   end forall
  enddo
  !
  ! Get the photoabsorption cross section
@@ -706,19 +701,16 @@ subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalu
  integer                            :: mpspin
  integer                            :: ishell,jshell
  integer                            :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
- integer                            :: ibf,jbf
  integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart
- integer                            :: iomega,idir,jdir
+ integer                            :: iomega,idir
  integer,parameter                  :: nomega=600
  complex(dp)                        :: omega(nomega)
- real(dp)                           :: coeff
  real(dp)                           :: dynamical_pol(nomega),structure_factor(nomega)
- complex(dp)                        :: bethe_sumrule
  complex(dp),allocatable            :: gos_basis(:,:),gos_state(:,:,:)
  complex(dp),allocatable            :: gos_cart(:,:)
  complex(dp),allocatable            :: residue(:)
  real(dp)                           :: qvec(3)
- integer,parameter                  :: nq=0 ! 1000
+ integer,parameter                  :: nq=1 ! 1000
  integer                            :: iq
  real(dp)                           :: fnq(chi%npole_reso_apb)
  integer,parameter                  :: nv=20
@@ -903,7 +895,6 @@ subroutine get_energy_qp(nstate,energy,occupation,energy_qp)
  real(dp),intent(out)                :: energy_qp(nstate,nspin)
 !=====
  integer  :: reading_status
- real(dp) :: scissor_energy(nspin)
  integer  :: mspin,mstate
 !=====
 
@@ -1053,7 +1044,6 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,
  integer                               :: jstate,bstate
  real(dp),allocatable                  :: eri_3tmp(:,:)
  real(dp),allocatable                  :: eri_3tmp_sd(:,:)
- real(dp),allocatable                  :: xpy_block(:,:)
  real(dp),allocatable                  :: vsqrt_xpy(:,:)
  integer                               :: desc_auxil(NDEL),desc_sd(NDEL)
  integer                               :: mlocal,nlocal

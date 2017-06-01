@@ -23,7 +23,9 @@ subroutine header()
 #endif
  character(len=40)   :: git_sha
  integer             :: values(8) 
+#ifdef FORTRAN2008
  character(len=1024) :: chartmp
+#endif
  integer             :: nchar,kchar,lchar
 !=====
 ! variables used to call C
@@ -161,6 +163,7 @@ end subroutine dump_out_occupation
 subroutine dump_out_energy(title,nstate,nspin,occupation,energy)
  use m_definitions
  use m_mpi
+ use m_inputparam,only: spin_fact
  implicit none
  character(len=*),intent(in) :: title
  integer,intent(in)          :: nstate,nspin
@@ -169,10 +172,8 @@ subroutine dump_out_energy(title,nstate,nspin,occupation,energy)
  integer,parameter :: MAXSIZE=300
 !=====
  integer  :: istate,ispin
- real(dp) :: spin_fact
 !=====
 
- spin_fact = REAL(-nspin+3,dp)
 
  write(stdout,'(/,1x,a)') TRIM(title)
 
@@ -617,7 +618,7 @@ end subroutine plot_rho_list
 subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
  use m_definitions
  use m_mpi
- use m_inputparam, only: nspin,spin_fact
+ use m_inputparam, only: nspin
  use m_cart_to_pure
  use m_atoms
  use m_basis_set

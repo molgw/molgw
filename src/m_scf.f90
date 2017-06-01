@@ -145,7 +145,6 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  real(dp),intent(inout) :: p_matrix(m_ham_scf,n_ham_scf,nspin)
  real(dp),intent(inout) :: ham(m_ham_scf,n_ham_scf,nspin)
 !=====
- integer                :: ihist
 !=====
 
  iscf = iscf + 1
@@ -456,8 +455,6 @@ subroutine xdiis_prediction(p_matrix,ham)
  type(lbfgs_state)      :: lbfgs_plan
  integer                :: ispin
  integer                :: ihist,jhist,khist
- real(dp),allocatable   :: matrix_tmp1(:,:)
- real(dp),allocatable   :: matrix_tmp2(:,:)
  real(dp),allocatable   :: alpha_diis_mc(:)
  real(dp)               :: ph_trace
  real(dp),allocatable   :: half_ph(:,:)

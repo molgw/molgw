@@ -82,7 +82,7 @@ subroutine init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,bas
  type(basis_set),intent(out)   :: basis
 !=====
  character(len=100)            :: basis_filename
- integer                       :: ibf,jbf,kbf,ng,ig
+ integer                       :: ibf,jbf,ng,ig
  integer                       :: ishell,ishell_file
  integer                       :: jbf_cart
  real(dp),allocatable          :: alpha(:),coeff(:)
@@ -294,7 +294,7 @@ subroutine destroy_basis_set(basis)
 
  type(basis_set),intent(inout) :: basis
 !=====
- integer :: ibf,ishell
+ integer :: ishell
 !=====
 
 ! do ibf=1,basis%nbf_cart
@@ -534,8 +534,6 @@ subroutine init_basis_function_pure(normalized,ng,am,mm,iatom,x0,alpha,coeff,she
  real(dp),intent(in)              :: coeff(ng)
  type(basis_function),intent(out) :: bf
 !=====
- integer                          :: ig
- real(dp)                         :: overlap
 !=====
 
  bf%ngaussian = ng
@@ -699,8 +697,6 @@ subroutine overlap_three_basis_function(bf1,bf2,bf3,overlap)
  real(dp),intent(out)            :: overlap
 !=====
  type(basis_function)            :: bf12
- integer                         :: ig,jg
- real(dp)                        :: overlap_one_gaussian
 !=====
 
  if(mod(bf1%nx+bf2%nx+bf3%nx,2)==1) then

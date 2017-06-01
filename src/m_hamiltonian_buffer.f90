@@ -58,10 +58,7 @@ subroutine reduce_hamiltonian_sca(m_ham,n_ham,matrix_local)
  real(dp),intent(out) :: matrix_local(m_ham,n_ham)
 !=====
  integer              :: nbf
- integer              :: ipcol,iprow,rank_dest
  integer              :: ilocal,jlocal,iglobal,jglobal
- integer              :: m_block,n_block
- real(dp),allocatable :: matrix_block(:,:)
 !=====
 
  call start_clock(timing_sca_distr1)
@@ -103,11 +100,7 @@ subroutine broadcast_hamiltonian_sca(m_ham,n_ham,matrix_local)
  real(dp),intent(in)  :: matrix_local(m_ham,n_ham)
 !=====
  integer              :: nbf
- integer              :: ipcol,iprow,rank_orig
- integer              :: ier
  integer              :: ilocal,jlocal,iglobal,jglobal
- integer              :: m_block,n_block
- real(dp),allocatable :: matrix_block(:,:)
 !=====
 
  call start_clock(timing_sca_distr2)
@@ -313,7 +306,6 @@ subroutine setup_exchange_ri_buffer_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupatio
 !=====
  integer              :: ibf,jbf,ispin,istate
  real(dp),allocatable :: tmp(:,:)
- real(dp)             :: eigval(nbf)
  integer              :: ipair
  real(dp)             :: c_matrix_i(nbf)
  integer              :: iglobal,ilocal,jlocal
@@ -411,7 +403,6 @@ subroutine setup_exchange_longrange_ri_buffer_sca(nbf,nstate,m_c,n_c,m_ham,n_ham
 !=====
  integer              :: ibf,jbf,ispin,istate
  real(dp),allocatable :: tmp(:,:)
- real(dp)             :: eigval(nbf)
  integer              :: ipair
  real(dp)             :: c_matrix_i(nbf)
  integer              :: iglobal,ilocal,jlocal
@@ -526,18 +517,13 @@ subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_
 
  real(dp) :: basis_function_r(basis%nbf)
  real(dp) :: basis_function_gradr(3,basis%nbf)
- real(dp) :: basis_function_laplr(3,basis%nbf)
 
  real(dp) :: rhor(nspin,ngrid)
  real(dp) :: grad_rhor(3,nspin,ngrid)
  real(dp) :: sigma(2*nspin-1)
- real(dp) :: tau(nspin),lapl_rhor(nspin)
  real(dp) :: vxc_libxc(nspin)
- real(dp) :: vxc_dummy(nspin)
  real(dp) :: exc_libxc(1)
  real(dp) :: vsigma(2*nspin-1)
- real(dp) :: vlapl_rho(nspin),vtau(nspin)
- real(dp) :: vxc_av(nspin)
  real(dp) :: dedd_r(nspin)
  real(dp) :: dedgd_r(3,nspin)
  real(dp) :: gradtmp(basis%nbf)
@@ -630,26 +616,18 @@ subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_
        select case(xc_f90_info_family(calc_type%xc_info(idft_xc)))
 
        case(XC_FAMILY_LDA)
-         if( dft_xc_type(idft_xc) < 1000 ) then 
-           call xc_f90_lda_exc_vxc(calc_type%xc_func(idft_xc),1,rhor(1,igrid),exc_libxc(1),vxc_libxc(1))
-         else
-           call my_lda_exc_vxc(nspin,dft_xc_type(idft_xc),rhor(:,igrid),exc_libxc(1),vxc_libxc)
-         endif
+         call xc_f90_lda_exc_vxc(calc_type%xc_func(idft_xc),1,rhor(1,igrid),exc_libxc(1),vxc_libxc(1))
 
        case(XC_FAMILY_GGA,XC_FAMILY_HYB_GGA)
-         if( dft_xc_type(idft_xc) < 2000 ) then 
-           !
-           ! Remove too small densities to stabilize the computation
-           ! especially useful for Becke88
-           if( ANY( rhor(:,igrid) > 1.0e-9_dp ) ) then
-             call xc_f90_gga_exc_vxc(calc_type%xc_func(idft_xc),1,rhor(1,igrid),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
-           else
-             exc_libxc(:)     = 0.0_dp
-             vxc_libxc(:)     = 0.0_dp
-             vsigma(:)        = 0.0_dp
-           endif
+         !
+         ! Remove too small densities to stabilize the computation
+         ! especially useful for Becke88
+         if( ANY( rhor(:,igrid) > 1.0e-9_dp ) ) then
+           call xc_f90_gga_exc_vxc(calc_type%xc_func(idft_xc),1,rhor(1,igrid),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
          else
-           call my_gga_exc_vxc_hjs(gamma_hybrid,rhor(1,igrid),sigma(1),exc_libxc(1),vxc_libxc(1),vsigma(1))
+           exc_libxc(:)     = 0.0_dp
+           vxc_libxc(:)     = 0.0_dp
+           vsigma(:)        = 0.0_dp
          endif
 
        case default
@@ -755,17 +733,14 @@ subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
  integer,intent(in)         :: m_ham,n_ham
  real(dp),intent(out)       :: vhxc_ij(m_ham,n_ham)
 !=====
- integer              :: idft_xc
- integer              :: igrid,ibf,jbf,ispin
+ integer              :: igrid
  real(dp)             :: rr(3)
  real(dp)             :: normalization
  real(dp)             :: weight
  real(dp)             :: basis_function_r(basis%nbf)
  real(dp)             :: rhor
  real(dp)             :: vxc,exc,excr
- real(dp)             :: vsigma(2*nspin-1)
- real(dp)             :: vhgau(m_ham,n_ham)
- integer              :: iatom,igau,ngau
+ integer              :: iatom,ngau
  real(dp),allocatable :: alpha(:),coeff(:)
  integer              :: ilocal,jlocal,iglobal,jglobal
 !=====

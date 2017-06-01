@@ -37,18 +37,12 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  real(dp)              :: fact_full_i,fact_empty_i
  real(dp)              :: fact_full_a,fact_empty_a
  real(dp)              :: energy_lw(nstate,nspin)
- character(len=3)      :: ctmp
- integer               :: selfenergyfile
-! GW tilde
- real(dp),allocatable  :: vsqchi0vsqm1(:,:)
- real(dp)              :: omega_m_ei,bra2
 ! LW devel
  complex(dp),allocatable :: omegac(:)
  complex(dp),allocatable :: selfenergy_omegac(:,:,:,:)
  complex(dp),allocatable :: matrix(:,:),eigvec(:,:)
  real(dp),allocatable    :: eigval(:),x1(:),weights(:)
  real(dp)                :: tr_log_gsigma,tr_gsigma,rdiag,mu
- real(dp),allocatable    :: c_matrix_exx(:,:,:)
 !=====
 
  call start_clock(timing_self)
@@ -392,12 +386,11 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  integer               :: iomega
  integer               :: istate,ipole
  real(dp)              :: fact_full_i,fact_empty_i
- integer               :: selfenergyfile
  integer               :: desc_wauxil(NDEL),desc_wsd(NDEL)
  integer               :: desc_3auxil(NDEL),desc_3sd(NDEL)
  integer               :: desc_bra(NDEL)
  integer               :: mlocal,nlocal
- integer               :: ilocal,jlocal,iglobal,jglobal
+ integer               :: ilocal,jlocal,jglobal
  integer               :: info
  real(dp),allocatable  :: eri_3tmp_auxil(:,:),eri_3tmp_sd(:,:)
  real(dp),allocatable  :: wresidue_sd(:,:)

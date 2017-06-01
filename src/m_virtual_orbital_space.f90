@@ -42,8 +42,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  integer,intent(out)                   :: nstate_small
 !=====
  integer                               :: ispin
- integer                               :: ibf
- integer                               :: istate,jstate
+ integer                               :: istate
  type(basis_set)                       :: basis_small
  real(dp),allocatable                  :: s_bigsmall(:,:)
  real(dp),allocatable                  :: s_small(:,:)
@@ -278,8 +277,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
  integer                    :: mf,nf
  integer                    :: mg,ng
  integer                    :: ispin
- integer                    :: ibf
- integer                    :: istate,jstate
+ integer                    :: istate
  integer                    :: nstate_tmp
  type(basis_set)            :: basis_small
  real(dp),allocatable       :: s_bigsmall_global(:,:)   !TODO: remove this in the future
@@ -589,7 +587,6 @@ subroutine virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
  real(dp),allocatable                  :: occupation_mp2(:),energy_virtual_kept(:)
  real(dp)                              :: eri_ci_aj,eri_ci_bj
  real(dp)                              :: den_ca_ij,den_cb_ij
- real(dp)                              :: en_mp2
  integer                               :: nvirtualmin
  real(dp),allocatable                  :: eri_ci_i(:)
 !=====

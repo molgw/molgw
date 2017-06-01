@@ -225,16 +225,18 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,c_matrix,wpol,se)
  type(spectral_function),intent(in) :: wpol
  type(selfenergy_grid),intent(inout) :: se
 !=====
- integer               :: homo
  integer               :: pstate
  integer               :: istate,ipspin
  real(dp)              :: fact_full_i,fact_empty_i
  integer               :: jbf_auxil
  integer               :: ibf_auxil_global,jbf_auxil_global
  real(dp),allocatable  :: wp0(:,:),wp0_i(:),w0_local(:)
- real(dp),allocatable  :: wp0_tmp(:,:),wp0_rotation(:,:)
- integer               :: nbf_auxil
+ real(dp),allocatable  :: wp0_rotation(:,:)
  real(dp)              :: sigx
+#ifdef COHSEX_DEVEL
+ real(dp),allocatable  :: wp0_tmp(:,:)
+ integer               :: nbf_auxil
+#endif
 !=====
 
  call start_clock(timing_self)

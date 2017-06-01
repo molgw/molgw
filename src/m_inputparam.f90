@@ -617,7 +617,6 @@ subroutine summary_input(grid_quality,integral_quality)
  character(len=12),intent(in) :: grid_quality
  character(len=12),intent(in) :: integral_quality
 !=====
- integer :: iatom,ighost
 !=====
 
  !
@@ -698,7 +697,7 @@ subroutine read_inputfile_namelist()
  character(len=100)   :: ecp_small_basis
  character(len=100)   :: default_basis_path
  character(len=12)    :: length_unit
- character(len=3)     :: ignore_restart,ignore_bigrestart,no_4center
+ character(len=3)     :: ignore_restart,ignore_bigrestart
  character(len=3)     :: print_matrix,print_eri,print_wfn,print_w,print_sigma
  character(len=3)     :: print_restart,print_bigrestart
  character(len=3)     :: print_pdos,print_cube,print_multipole
