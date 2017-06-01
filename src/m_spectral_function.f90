@@ -89,7 +89,7 @@ contains
 
 
 !=========================================================================
-function index_prodstate(istate,jstate)
+pure function index_prodstate(istate,jstate)
  implicit none
  integer,intent(in)  :: istate,jstate
  integer             :: index_prodstate
@@ -314,7 +314,7 @@ end subroutine allocate_spectral_function
 
 
 !=========================================================================
-function skip_transition(ib1,ib2,occ1,occ2)
+pure function skip_transition(ib1,ib2,occ1,occ2)
  implicit none
  logical             :: skip_transition
  integer,intent(in)  :: ib1,ib2
@@ -338,7 +338,7 @@ end function skip_transition
 
 
 !=========================================================================
-function skip_transition_apb(ib1,ib2,occ1,occ2)
+pure function skip_transition_apb(ib1,ib2,occ1,occ2)
  implicit none
  logical             :: skip_transition_apb
  integer,intent(in)  :: ib1,ib2

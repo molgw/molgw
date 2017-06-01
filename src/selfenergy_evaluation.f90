@@ -346,7 +346,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
   
      if( .NOT. has_auxil_basis ) call die('cohsex needs an auxiliary basis')
      call init_spectral_function(nstate,occupation,1,wpol)
-     call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
+     call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
      !
      ! Calculate v^{1/2} \chi v^{1/2}
      call static_polarizability(nstate,occupation,energy_w,wpol)

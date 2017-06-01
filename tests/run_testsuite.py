@@ -57,10 +57,10 @@ def check_output(out,testinfo):
   # First check if the test was aborted because of some limitation at compilation
   #
   for line in open(tmpfolder+'/'+out,'r').readlines():
-#    if 'one CPU only' in line:
-#      print('Test not functional in parallel => skip test')
-#      test_skipped += 1
-#      return
+    if 'one CPU only' in line:
+      print('Test not functional in parallel => skip test')
+      test_skipped += 1
+      return
     if 'Need to compile MOLGW with HAVE_LIBINT_ONEBODY' in line:
       print('Test not functional without gradients => skip test')
       test_skipped += 1

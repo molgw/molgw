@@ -410,6 +410,12 @@ RPA correlation energy    ,    -0.0854827210    , 0 , 1.0e-7
 GW HOMO energy            ,    -7.426968        , 0 , 1.0e-4
 GWGamma HOMO energy       ,    -8.003938        , 0 , 1.0e-4
 
+lih_gwgamma_nori.in       , LiH: GWGamma@PBE0 without RI
+SCF Total Energy          ,    -8.0461044345    , 0 , 1.0e-7
+RPA correlation energy    ,    -0.0363952366    , 0 , 1.0e-7
+GW HOMO energy            ,    -7.038813        , 0 , 1.0e-4
+GWGamma HOMO energy       ,    -7.702063        , 0 , 1.0e-4
+
 n2_gwgamma.in             , N2: GWGamma@BHLYP with frozencore and frozen virtual with ortho paral
 SCF Total Energy          ,  -109.4724604609    , 0 , 1.0e-7
 gKS HOMO energy           ,   -13.734359        , 0 , 1.0e-4

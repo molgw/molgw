@@ -52,7 +52,7 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,c_matrix,wpol,se)
  end select
 
 
- call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
+ call calculate_eri_3center_eigen(c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
 
  write(stdout,*) '=============='
  write(stdout,*) 'FBFB exchange'
@@ -247,7 +247,7 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,c_matrix,wpol,se)
  call assert_experimental()
 
 
- call calculate_eri_3center_eigen_lr(basis%nbf,nstate,c_matrix)
+ call calculate_eri_3center_eigen_lr(c_matrix)
 
 
  write(stdout,*)

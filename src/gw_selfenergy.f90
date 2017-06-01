@@ -75,9 +75,9 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
 
 
  if(has_auxil_basis) then
-   call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
+   call calculate_eri_3center_eigen(c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
    if( calc_type%selfenergy_approx == LW .OR. calc_type%selfenergy_approx == LW2 .OR. calc_type%selfenergy_approx == GSIGMA ) &
-       call calculate_eri_3center_eigen_mixed(basis%nbf,nstate,c_matrix)
+       call calculate_eri_3center_eigen_mixed(c_matrix)
  endif
 
 
@@ -346,7 +346,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  if(has_auxil_basis) then
    call destroy_eri_3center_eigen()
    if( calc_type%selfenergy_approx == LW .OR. calc_type%selfenergy_approx == LW2 .OR. calc_type%selfenergy_approx == GSIGMA ) &
-       call calculate_eri_3center_eigen_mixed(basis%nbf,nstate,c_matrix)
+       call calculate_eri_3center_eigen_mixed(c_matrix)
  endif
 
  if(ALLOCATED(omegac)) deallocate(omegac)
@@ -418,7 +418,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  end select
 
 
- call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_G+1,nvirtual_G-1,nsemin,nsemax)
+ call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,nsemin,nsemax)
 
 
 
@@ -582,7 +582,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
 
 
  if(has_auxil_basis) then
-   call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
+   call calculate_eri_3center_eigen(c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
  endif
 
  call clean_allocate('Temporary array',bra,1,wpol%npole_reso,nsemin,nsemax)

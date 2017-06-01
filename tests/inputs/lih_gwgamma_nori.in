@@ -1,0 +1,16 @@
+&molgw
+  scf='PBE0'
+
+  postscf='G0W0GAMMA0'
+  selfenergy_state_range=0
+
+  basis='6-31G*'
+  gaussian_type='CART'
+
+  mpi_nproc_ortho=2
+
+  natom=2
+/
+3           .000000     .000000     .410000
+1           .000000     .000000   -1.230000
+

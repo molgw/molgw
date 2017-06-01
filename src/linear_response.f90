@@ -62,7 +62,7 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
    write(stdout,'(a)') ' Singlet final state'
  endif
 
- if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1)
+ if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1)
 
  ! Set up all the switches to be able to treat
  ! GW, BSE, TDHF, TDDFT (semilocal or hybrid)
@@ -283,7 +283,7 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
 
  write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy (eV):',MINVAL(ABS(eigenvalue(1:nexc)))*Ha_eV
 
- if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
+ if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
 
  !
  ! Calculate the optical sprectrum
@@ -368,7 +368,7 @@ subroutine polarizability_onering(basis,nstate,energy,c_matrix,vchi0v)
 
  call allocate_spectral_function(nauxil_3center,vchi0v)
 
- call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
+ call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
 
 
  do t_jb=1,vchi0v%npole_reso

@@ -235,12 +235,13 @@ end subroutine destroy_eri_4center_eigen_uks
 
 
 !=================================================================
-subroutine calculate_eri_3center_eigen(nbf,nstate,c_matrix,mstate_min,mstate_max,nstate_min,nstate_max)
+subroutine calculate_eri_3center_eigen(c_matrix,mstate_min,mstate_max,nstate_min,nstate_max)
  implicit none
- integer,intent(in)   :: nbf,nstate
- real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
- integer,intent(in)   :: mstate_min,mstate_max,nstate_min,nstate_max
+ real(dp),intent(in)         :: c_matrix(:,:,:)
+ integer,optional,intent(in) :: mstate_min,mstate_max,nstate_min,nstate_max
 !=====
+ integer              :: nbf,nstate
+ integer              :: mstate_min_,mstate_max_,nstate_min_,nstate_max_
  integer              :: kbf,lbf
  integer              :: lstate
  integer              :: klspin
@@ -252,16 +253,42 @@ subroutine calculate_eri_3center_eigen(nbf,nstate,c_matrix,mstate_min,mstate_max
 
  write(stdout,'(/,a)') ' Calculate 3-center integrals on eigenstates'
 
+ nbf    = SIZE(c_matrix,DIM=1)
+ nstate = SIZE(c_matrix,DIM=2)
+
+ if( PRESENT(mstate_min) ) then
+   mstate_min_ = mstate_min
+ else
+   mstate_min_ = 1
+ endif
+
+ if( PRESENT(mstate_max) ) then
+   mstate_max_ = mstate_max
+ else
+   mstate_max_ = nstate
+ endif
+
+ if( PRESENT(nstate_min) ) then
+   nstate_min_ = nstate_min
+ else
+   nstate_min_ = 1
+ endif
+
+ if( PRESENT(nstate_max) ) then
+   nstate_max_ = nstate_max
+ else
+   nstate_max_ = nstate
+ endif
 
  !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
- call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_3center,mstate_min,mstate_max,nstate_min,nstate_max,1,nspin)
+ call clean_allocate('3-center MO integrals',eri_3center_eigen,1,nauxil_3center,mstate_min_,mstate_max_,nstate_min_,nstate_max_,1,nspin)
  eri_3center_eigen(:,:,:,:) = 0.0_dp
 
  call clean_allocate('TMP 3-center ints',eri_3center_tmp_l,nauxil_3center,nbf)
 
  do klspin=1,nspin
 
-   do lstate=nstate_min,nstate_max
+   do lstate=nstate_min_,nstate_max_
      if( MODULO( lstate - 1 , nproc_ortho ) /= rank_ortho ) cycle
 
      eri_3center_tmp_l(:,:) = 0.0_dp
@@ -279,7 +306,7 @@ subroutine calculate_eri_3center_eigen(nbf,nstate,c_matrix,mstate_min,mstate_max
 
 
      ! Transformation of the second index
-     eri_3center_eigen(:,mstate_min:mstate_max,lstate,klspin) = MATMUL( eri_3center_tmp_l(:,:) , c_matrix(:,mstate_min:mstate_max,klspin) )
+     eri_3center_eigen(:,mstate_min_:mstate_max_,lstate,klspin) = MATMUL( eri_3center_tmp_l(:,:) , c_matrix(:,mstate_min_:mstate_max_,klspin) )
 
    enddo
 
@@ -295,11 +322,11 @@ end subroutine calculate_eri_3center_eigen
 
 
 !=================================================================
-subroutine calculate_eri_3center_eigen_lr(nbf,nstate,c_matrix)
+subroutine calculate_eri_3center_eigen_lr(c_matrix)
  implicit none
- integer,intent(in)   :: nbf,nstate
- real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
 !=====
+ integer              :: nbf,nstate
  integer              :: kbf,lbf
  integer              :: lstate
  integer              :: klspin
@@ -310,7 +337,8 @@ subroutine calculate_eri_3center_eigen_lr(nbf,nstate,c_matrix)
  call start_clock(timing_eri_3center_eigen)
 
  write(stdout,'(/,a)') ' Calculate LR 3-center integrals on eigenstates'
-
+ nbf    = SIZE(c_matrix,DIM=1)
+ nstate = SIZE(c_matrix,DIM=2)
 
  !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
  call clean_allocate('LR 3-center MO integrals',eri_3center_eigen_lr,nauxil_3center_lr,nstate,nstate,nspin)
@@ -353,12 +381,12 @@ end subroutine calculate_eri_3center_eigen_lr
 
 
 !=================================================================
-subroutine calculate_eri_3center_eigen_mixed(nbf,nstate,c_matrix)
+subroutine calculate_eri_3center_eigen_mixed(c_matrix)
  implicit none
 
- integer,intent(in)   :: nbf,nstate
- real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
 !=====
+ integer              :: nbf,nstate
  integer              :: kbf,lbf
  integer              :: lstate
  integer              :: klspin
@@ -368,6 +396,9 @@ subroutine calculate_eri_3center_eigen_mixed(nbf,nstate,c_matrix)
 !=====
 
  call start_clock(timing_eri_3center_eigen)
+
+ nbf    = SIZE(c_matrix,DIM=1)
+ nstate = SIZE(c_matrix,DIM=2)
 
  inquire(file='fort.1000',exist=file_exists)
  if( .NOT. file_exists ) call die('fort.1000 not found')
