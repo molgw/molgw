@@ -146,13 +146,11 @@ subroutine read_ecp_file(ecpunit,element,ecpi)
  character(len=2),intent(in)                  :: element
  type(effective_core_potential),intent(inout) :: ecpi
 !=====
- integer :: iline,i1,i2,istat
- integer :: nelec
+ integer            :: iline,i1,i2,istat
  character(len=132) :: line,amc
- character(len=2)   :: element_read
- integer  :: read_n
- real(dp) :: read_zeta,read_d
- logical  :: end_of_file
+ integer            :: read_n
+ real(dp)           :: read_zeta,read_d
+ logical            :: end_of_file
 !=====
 
  ! Reading an ECP file in NWCHEM format

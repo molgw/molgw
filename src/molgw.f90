@@ -283,7 +283,7 @@ program molgw
      ! Nucleus-electron interaction
      if( parallel_ham ) then
        if( parallel_buffer ) then 
-         call setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
+         call setup_nucleus_buffer_sca(basis,m_ham,n_ham,hamiltonian_nucleus)
        else
          call setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
        endif
@@ -393,7 +393,7 @@ program molgw
    ! Only do it if the calculation is NOT a big restart
    if( .NOT. is_big_restart) then
      call scf_loop(is_restart,                                     &
-                   basis,auxil_basis,                              &
+                   basis,                                          &
                    nstate,m_ham,n_ham,m_c,n_c,                     &
                    s_matrix_sqrt_inv,s_matrix,                     &
                    hamiltonian_kinetic,hamiltonian_nucleus,        & 

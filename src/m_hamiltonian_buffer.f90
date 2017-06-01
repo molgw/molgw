@@ -144,11 +144,10 @@ end subroutine broadcast_hamiltonian_sca
 
 
 !=========================================================================
-subroutine setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
+subroutine setup_nucleus_buffer_sca(basis,m_ham,n_ham,hamiltonian_nucleus)
  use m_basis_set
  use m_atoms
  implicit none
- logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  integer,intent(in)         :: m_ham,n_ham
  real(dp),intent(out)       :: hamiltonian_nucleus(m_ham,n_ham)
@@ -228,11 +227,10 @@ end subroutine setup_nucleus_buffer_sca
 
 
 !=========================================================================
-subroutine setup_hartree_ri_buffer_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,hartree_ij,ehartree)
+subroutine setup_hartree_ri_buffer_sca(m_ham,n_ham,p_matrix,hartree_ij,ehartree)
  use m_eri
  implicit none
- logical,intent(in)   :: print_matrix_
- integer,intent(in)   :: nbf,m_ham,n_ham
+ integer,intent(in)   :: m_ham,n_ham
  real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
  real(dp),intent(out) :: hartree_ij(m_ham,n_ham)
  real(dp),intent(out) :: ehartree
@@ -499,7 +497,7 @@ end subroutine setup_exchange_longrange_ri_buffer_sca
 
 
 !=========================================================================
-subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,vxc_ij,exc_xc)
+subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,vxc_ij,exc_xc)
  use m_inputparam
  use m_basis_set
  use m_dft_grid
@@ -516,7 +514,6 @@ subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_
  integer,intent(in)         :: m_ham,n_ham
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(m_c,n_c,nspin)
- real(dp),intent(in)        :: p_matrix(m_ham,n_ham,nspin)
  real(dp),intent(out)       :: vxc_ij(m_ham,n_ham,nspin)
  real(dp),intent(out)       :: exc_xc
 !=====

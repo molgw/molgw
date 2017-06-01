@@ -25,19 +25,20 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
  type(selfenergy_grid),intent(inout) :: se
  real(dp),intent(out)       :: emp2
 !=====
- integer               :: pstate,qstate
- real(dp),allocatable  :: selfenergy_ring(:,:,:)
- real(dp),allocatable  :: selfenergy_sox(:,:,:)
- integer               :: iomega
- integer               :: istate,jstate,kstate
- integer               :: pqispin,jkspin
- real(dp)              :: fact_occ1,fact_occ2
- real(dp)              :: fi,fj,fk,ei,ej,ek
- real(dp)              :: omega
- real(dp)              :: fact_real,fact_energy
- real(dp)              :: emp2_sox,emp2_ring
- real(dp),allocatable  :: eri_eigenstate_i(:,:,:,:)
- real(dp)              :: coul_iqjk,coul_ijkq,coul_ipkj
+ integer                 :: pstate,qstate
+ complex(dp),allocatable :: selfenergy_ring(:,:,:)
+ complex(dp),allocatable :: selfenergy_sox(:,:,:)
+ integer                 :: iomega
+ integer                 :: istate,jstate,kstate
+ integer                 :: pqispin,jkspin
+ real(dp)                :: fact_occ1,fact_occ2
+ real(dp)                :: fi,fj,fk,ei,ej,ek
+ complex(dp)             :: omega
+ complex(dp)             :: fact_real
+ real(dp)                :: fact_energy
+ real(dp)                :: emp2_sox,emp2_ring
+ real(dp),allocatable    :: eri_eigenstate_i(:,:,:,:)
+ real(dp)                :: coul_iqjk,coul_ijkq,coul_ipkj
 !=====
 
  call start_clock(timing_mp2_self)
@@ -112,8 +113,9 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
              do iomega=-se%nomega,se%nomega
                omega = energy(qstate,pqispin) + se%omega(iomega)
 
-               fact_real   = REAL( fact_occ1 / (omega-ei+ej-ek+ieta) + fact_occ2 / (omega-ei+ej-ek-ieta) , dp)
-               fact_energy = REAL( fact_occ1 / (energy(pstate,pqispin)-ei+ej-ek+ieta) , dp )
+               fact_real   = fact_occ1 / ( omega - ei + ej - ek + ieta ) &
+                           + fact_occ2 / ( omega - ei + ej - ek - ieta )
+               fact_energy = REAL( fact_occ1 / (energy(pstate,pqispin) - ei + ej - ek + ieta) , dp )
 
                selfenergy_ring(iomega,pstate,pqispin) = selfenergy_ring(iomega,pstate,pqispin) &
                         + fact_real * coul_ipkj * coul_iqjk * spin_fact
@@ -205,7 +207,6 @@ subroutine onering_selfenergy(nstate,basis,occupation,energy,c_matrix,se,emp2)
  real(dp),intent(out)       :: emp2
 !=====
  type(spectral_function) :: vchi0v
- integer                 :: jstate,bstate,jbspin,t_jb
 !=====
 
  call start_clock(timing_mp2_self)
@@ -256,17 +257,18 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
  real(dp),intent(out)       :: selfenergy(basis%nbf,basis%nbf,nspin)
  real(dp),intent(out)       :: emp2
 !=====
- integer               :: pstate,qstate,qstate2
- real(dp),allocatable  :: selfenergy_ring(:,:,:)
- real(dp),allocatable  :: selfenergy_sox(:,:,:)
- integer               :: istate,jstate,kstate
- integer               :: pqispin,jkspin
- real(dp)              :: fact_occ1,fact_occ2
- real(dp)              :: fi,fj,fk,ei,ej,ek,ep,eq
- real(dp)              :: fact_real,fact_energy
- real(dp)              :: emp2_sox,emp2_ring
- real(dp),allocatable  :: eri_eigenstate_i(:,:,:,:)
- real(dp)              :: coul_iqjk,coul_ijkq,coul_ipkj
+ integer                 :: pstate,qstate
+ complex(dp),allocatable :: selfenergy_ring(:,:,:)
+ complex(dp),allocatable :: selfenergy_sox(:,:,:)
+ integer                 :: istate,jstate,kstate
+ integer                 :: pqispin,jkspin
+ real(dp)                :: fact_occ1,fact_occ2
+ real(dp)                :: fi,fj,fk,ei,ej,ek,ep,eq
+ complex(dp)             :: fact_real
+ real(dp)                :: fact_energy
+ real(dp)                :: emp2_sox,emp2_ring
+ real(dp),allocatable    :: eri_eigenstate_i(:,:,:,:)
+ real(dp)                :: coul_iqjk,coul_ijkq,coul_ipkj
 !=====
 
  call start_clock(timing_mp2_self)
@@ -341,8 +343,8 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
                ep = energy(pstate,pqispin) 
                eq = energy(qstate,pqispin) 
   
-               fact_real   = REAL( fact_occ1 / ( eq - ei + ej - ek + ieta) &
-                                 + fact_occ2 / ( eq - ei + ej - ek - ieta) , dp)
+               fact_real   = fact_occ1 / ( eq - ei + ej - ek + ieta) &
+                           + fact_occ2 / ( eq - ei + ej - ek - ieta)
                fact_energy = REAL( fact_occ1 / ( ep - ei + ej - ek + ieta) , dp )
   
                selfenergy_ring(pstate,qstate,pqispin) = selfenergy_ring(pstate,qstate,pqispin) &
@@ -393,7 +395,7 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
  endif
 
 
- selfenergy(:,:,:) = selfenergy_ring(:,:,:) + selfenergy_sox(:,:,:)
+ selfenergy(:,:,:) = REAL( selfenergy_ring(:,:,:) + selfenergy_sox(:,:,:) ,dp)
 
  call apply_qs_approximation(basis%nbf,nstate,s_matrix,c_matrix,selfenergy)
 

@@ -212,13 +212,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
 !=====
  integer              :: iomegas
  integer              :: iomega
- integer              :: ilocal,jlocal
- integer              :: iglobal,jglobal
- integer              :: t_ia
- integer              :: istate,astate,iaspin
  integer              :: info
- real(dp)             :: docc,de,factor_sqrt
- real(dp),allocatable :: eri3_t(:,:)
  real(dp),allocatable :: eri3_sca(:,:)
  real(dp),allocatable :: chi_eri3_sca(:,:)
  integer              :: desc_eri3_t(NDEL)

@@ -167,7 +167,7 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix)
 !=====
  integer              :: nbf,nstate
  integer              :: ibf,jbf,kbf,lbf
- integer              :: istate,jstate,kstate,lstate
+ integer              :: istate,jstate
  real(dp),allocatable :: eri_tmp3(:,:,:),eri_tmp2(:,:,:),eri_tmp1(:,:)
  integer,allocatable  :: id(:)
 !=====

@@ -553,6 +553,7 @@ subroutine init_basis_function_pure(normalized,ng,am,mm,iatom,x0,alpha,coeff,she
  bf%index_in_shell = index_in_shell
  bf%g(:)%alpha = alpha(:)
  bf%coeff(:)   = coeff(:)
+ if( normalized ) continue
 
 ! Do not need this
 

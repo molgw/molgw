@@ -36,7 +36,6 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  type(selfenergy_grid)   :: se,se2,se3
  character(len=36)       :: selfenergy_tag
  integer                 :: reading_status
- integer                 :: ispin
  integer                 :: nstate_small
  type(spectral_function) :: wpol
  real(dp),allocatable    :: matrix_tmp(:,:,:)
@@ -375,15 +374,18 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call dft_exc_vxc_batch(BATCH_SIZE,basis,nstate,occupation,c_matrix,matrix_tmp,exc)
    
        write(stdout,*) '===== SigX SR ======'
-       do ispin=1,nspin
-         do istate=1,nstate
-           sigc(istate,ispin) = DOT_PRODUCT( c_matrix(:,istate,ispin) , &
-                                     MATMUL( matrix_tmp(:,:,ispin) , c_matrix(:,istate,ispin ) ) )
-           write(stdout,*) istate,ispin,sigc(istate,ispin) * Ha_eV
+       block
+         integer :: ispin
+         do ispin=1,nspin
+           do istate=1,nstate
+             sigc(istate,ispin) = DOT_PRODUCT( c_matrix(:,istate,ispin) , &
+                                       MATMUL( matrix_tmp(:,:,ispin) , c_matrix(:,istate,ispin ) ) )
+             write(stdout,*) istate,ispin,sigc(istate,ispin) * Ha_eV
+           enddo
+           sigc(istate,ispin) = sigc(istate,ispin) * delta_cohsex 
          enddo
-       enddo
+       end block
        write(stdout,*) '===================='
-       sigc(istate,ispin) = sigc(istate,ispin) * delta_cohsex 
   
        deallocate(p_matrix)
        call destroy_dft_grid()
@@ -396,7 +398,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
   
 #endif
   
-     call cohsex_selfenergy(nstate,basis,occupation,energy_g,exchange_m_vxc_diag, & 
+     call cohsex_selfenergy(nstate,basis,occupation, & 
                             c_matrix,wpol,matrix_tmp,sigc,en%gw)
   
   
@@ -409,7 +411,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        ! 3-center integrals
        call calculate_eri_3center_scalapack(basis,auxil_basis,rcut_mbpt)
   
-       call cohsex_selfenergy_lr(nstate,basis,occupation,energy_g,exchange_m_vxc_diag, &
+       call cohsex_selfenergy_lr(nstate,basis,occupation, &
                                  c_matrix,wpol,matrix_tmp,sigc,en%gw)
      endif
   

@@ -274,10 +274,10 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  select case(selfenergy_approx)
  case(GSIGMA) !==========================================================
 
-   energy_gw = 0.5_dp * SUM(se%sigma(1,:,:)) * spin_fact
+   energy_gw = 0.5_dp * SUM(REAL(se%sigma(1,:,:),dp)) * spin_fact
    write(stdout,*) 'Tr[Sigma tilde G]:',2.0_dp*energy_gw
 
-   energy_gw = 0.5_dp * SUM(se%sigma(0,:,:)) * spin_fact
+   energy_gw = 0.5_dp * SUM(REAL(se%sigma(0,:,:))) * spin_fact
    write(stdout,*) '       Tr[SigmaG]:',2.0_dp*energy_gw
 
  case(LW)
