@@ -177,7 +177,7 @@ subroutine find_qp_energy_linearization(se,nstate,exchange_m_vxc,energy0,energy_
  do pstate=nsemin,nsemax
 
    if( se%nomega > 0 .AND. PRESENT(zz) ) then
-     zz_p(:) = ( REAL(se%sigma(1,pstate,:),dp) - REAL(se%sigma(-1,pstate,:),dp) ) / ( se%omega(1) - se%omega(-1) )
+     zz_p(:) = REAL( se%sigma(1,pstate,:) - se%sigma(-1,pstate,:) ,dp) / REAL( se%omega(1) - se%omega(-1) ,dp)
      zz_p(:) = 1.0_dp / ( 1.0_dp - zz_p(:) )
      ! Contrain Z to be in [0:1] to avoid crazy values
      do pspin=1,nspin
@@ -258,7 +258,6 @@ function find_fixed_point(nx,xx,fx,info) result(fixed_point)
  real(dp)            :: fixed_point
 !=====
  integer             :: ix,imin1,imin2
- real(dp)            :: rmin
  real(dp)            :: gx(-nx:nx)
  real(dp)            :: gpx
 !=====
@@ -539,7 +538,7 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,ham
    endif
 
    if( .NOT. has_auxil_basis ) then
-     call setup_exchange(print_matrix_,basis%nbf,p_matrix_tmp,hexx_val,eexx)
+     call setup_exchange(basis%nbf,p_matrix_tmp,hexx_val,eexx)
    else
      if( parallel_ham ) then
        call die('setup_exchange_m_vxc_diag: case not implemented')
@@ -619,12 +618,10 @@ end subroutine apply_qs_approximation
  
 
 !=========================================================================
-subroutine self_energy_fit(nstate,energy,se)
+subroutine self_energy_fit(se)
  use m_lbfgs
  implicit none
 
- integer,intent(in)                  :: nstate
- real(dp),intent(in)                 :: energy(nstate,nspin)
  type(selfenergy_grid),intent(inout) :: se
 !=====
  integer :: pstate,pspin
@@ -758,12 +755,10 @@ end subroutine self_energy_fit
 
 
 !=========================================================================
-subroutine self_energy_pade(nstate,energy,se)
+subroutine self_energy_pade(se)
  use m_tools,only: pade
  implicit none
 
- integer,intent(in)                  :: nstate
- real(dp),intent(in)                 :: energy(nstate,nspin)
  type(selfenergy_grid),intent(inout) :: se
 !=====
  integer  :: pstate,pspin

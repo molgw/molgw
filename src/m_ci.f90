@@ -610,7 +610,6 @@ subroutine full_ci_nelectrons_selfenergy()
 !=====
  integer,parameter          :: nomega=5000
  integer,parameter          :: ns=-1
- integer                    :: ielec,jelec
  integer                    :: is
  integer                    :: iconf,jconf,kconf
  integer                    :: iconf_global,jconf_global,kconf_global
@@ -917,13 +916,13 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
 #endif
  call stop_clock(timing_ci_diago)
 
- write(stdout,'(/,1x,a,f19.10)')   '     Uncorrelated energy (Ha): ',ehf
- write(stdout,'(1x,a,f19.10,/)')   '      Correlation energy (Ha): ',energy(1) - ehf
- write(stdout,'(1x,a,f19.10)')     '     Ground-state energy (Ha): ',energy(1) + nuc_nuc
- write(stdout,'(1x,a,f19.10)')     '1st excited-state energy (Ha): ',energy(2) + nuc_nuc
- write(stdout,'(1x,a,f19.10)')     '2nd excited-state energy (Ha): ',energy(3) + nuc_nuc
- write(stdout,'(1x,a,f19.10)')     '3rd excited-state energy (Ha): ',energy(4) + nuc_nuc
- write(stdout,'(1x,a,f19.10)')     '4th excited-state energy (Ha): ',energy(5) + nuc_nuc
+ write(stdout,'(/,1x,a,f19.10)')   '        Uncorrelated energy (Ha): ',ehf + nuc_nuc
+ write(stdout,'(1x,a,f19.10,/)')   '         Correlation energy (Ha): ',energy(1) - ehf
+ write(stdout,'(1x,a,f19.10)')     '     CI ground-state energy (Ha): ',energy(1) + nuc_nuc
+ write(stdout,'(1x,a,f19.10)')     'CI 1st excited-state energy (Ha): ',energy(2) + nuc_nuc
+ write(stdout,'(1x,a,f19.10)')     'CI 2nd excited-state energy (Ha): ',energy(3) + nuc_nuc
+ write(stdout,'(1x,a,f19.10)')     'CI 3rd excited-state energy (Ha): ',energy(4) + nuc_nuc
+ write(stdout,'(1x,a,f19.10)')     'CI 4th excited-state energy (Ha): ',energy(5) + nuc_nuc
 
  call clean_deallocate('CI hamiltonian',h_ci)
 

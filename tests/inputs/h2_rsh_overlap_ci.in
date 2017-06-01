@@ -3,7 +3,7 @@
  print_restart='no'
  print_bigrestart='no'
 
- ! Recipe for HSE06
+ ! Recipe for HSE08
  scf='rsh'
  alpha_hybrid = 0.25
  beta_hybrid  =-0.25

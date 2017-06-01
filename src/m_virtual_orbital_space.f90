@@ -87,7 +87,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
 
  ! Calculate the mixed overlap matrix Sbs: s_bigsmall
  call clean_allocate('Big-Small overlap Sbs',s_bigsmall,basis%nbf,basis_small%nbf)
- call setup_overlap_mixedbasis(.FALSE.,basis,basis_small,s_bigsmall)
+ call setup_overlap_mixedbasis(basis,basis_small,s_bigsmall)
 
  ! Calculate the overlap matrix in the small basis:
  !  tilde S = Sbs**T *  S**-1 * Sbs
@@ -362,7 +362,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
    ! Calculate the mixed overlap matrix Sbs: s_bigsmall
    !TODO: Distribute this from the beginning
    call clean_allocate('Big-Small overlap Sbs',s_bigsmall_global,basis%nbf,basis_small%nbf)
-   call setup_overlap_mixedbasis(.FALSE.,basis,basis_small,s_bigsmall_global)
+   call setup_overlap_mixedbasis(basis,basis_small,s_bigsmall_global)
    !
    ! Descriptor desc_bb_bs  mb,nb
    mb = NUMROC(basis%nbf      ,block_row,iprow,first_row,nprow)

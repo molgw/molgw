@@ -1,0 +1,12 @@
+&molgw
+ scf='hf'
+
+ basis='STO-6G'
+
+ postscf='ci_selfenergy'
+ 
+
+ natom=1
+/
+4    0.000000    0.0  0.0
+

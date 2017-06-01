@@ -224,12 +224,16 @@ gKS LUMO energy           ,      0.507931      , 0 , 1.0e-4
 GW HOMO energy            ,    -15.804859      , 0 , 1.0e-4   
 GW LUMO energy            ,      1.785876      , 0 , 1.0e-4
 
-h2_rsh_overlap_ci.in      , RSH recipe for HSE06 H2 molecule no RI and CI with a filtered overlap
+h2_rsh_overlap_ci.in      , RSH recipe for HSE08 H2 molecule no RI and CI with a filtered overlap
 Exchange Energy           ,     -0.1340776991  , 0 , 1.0e-7
 XC Energy                 ,     -0.5585487906  , 0 , 1.0e-7
 gKS HOMO energy           ,    -11.534702      , 0 , 1.0e-4   
 gKS LUMO energy           ,      0.508373      , 0 , 1.0e-4   
 CI ground-state energy    ,     -1.1645948686  , 0 , 1.0e-7
+CI 1st excited-state energy,    -0.7782051515  , 0 , 1.0e-7
+CI 2nd excited-state energy,    -0.7076536165  , 0 , 1.0e-7
+CI 3rd excited-state energy,    -0.6991862094  , 0 , 1.0e-7
+CI 4th excited-state energy,    -0.6832271665  , 0 , 1.0e-7
 
 be_qsgw.in                , QSGW Be atom cc-pVDZ without RI
 RPA Total energy          ,    -14.6144623635  , 0 , 1.0e-7
@@ -263,13 +267,22 @@ SOX diagram               ,      0.0373293160  , 0 , 1.0e-7
 
 h2_ci.in                  , Full CI for 2 electrons applied to H2
 SCF Total Energy          ,     -1.1636125481  , 0 , 1.0e-7
-Single determinant        ,     -1.1285529198  , 0 , 1.0e-7
+Uncorrelated energy       ,     -1.1285529195  , 0 , 1.0e-7
+Correlation energy        ,     -0.0360548711  , 0 , 1.0e-7
 CI ground-state energy    ,     -1.1646077906  , 0 , 1.0e-7
+CI 1st excited-state energy,    -0.7784013180  , 0 , 1.0e-7
+CI 2nd excited-state energy,    -0.7076718213  , 0 , 1.0e-7
+CI 3rd excited-state energy,    -0.6995673544  , 0 , 1.0e-7
+CI 4th excited-state energy,    -0.6832390122  , 0 , 1.0e-7
 
 h2_ci_ri.in               , Full CI for 2 electrons applied to H2 with RI
 SCF Total Energy          ,     -1.1636322091  , 0 , 1.0e-7
-Single determinant        ,     -1.1285642534  , 0 , 1.0e-7
+Uncorrelated energy       ,     -1.1285642532  , 0 , 1.0e-7
 CI ground-state energy    ,     -1.1646360042  , 0 , 1.0e-7
+CI 1st excited-state energy,    -0.7784041102  , 0 , 1.0e-7
+CI 2nd excited-state energy,    -0.7076928929  , 0 , 1.0e-7
+CI 3rd excited-state energy,    -0.6995866795  , 0 , 1.0e-7
+CI 4th excited-state energy,    -0.6832892656  , 0 , 1.0e-7
 
 sih4_hf.in                , TDHF SiH4 aug-cc-pVDZ
 SCF Total Energy          ,   -291.2427972343   , 0 , 1.0e-7
@@ -476,4 +489,35 @@ Exc. 0003                 ,   5.19744839        , 0 , 1.0e-4
 Exc. 0003                 ,   0.00000000        , 1 , 1.0e-4
 Exc. 0004                 ,   5.42103143        , 0 , 1.0e-4
 Exc. 0004                 ,   0.89322698        , 1 , 1.0e-4
+
+be_ci.in                  , CI calculation for boron atom (4e-)
+SCF Total Energy          ,    -14.5667640335   , 0 , 1.0e-7
+Uncorrelated energy       ,    -14.5667640335   , 0 , 1.0e-7
+Correlation energy        ,     -0.0467812361   , 0 , 1.0e-7
+CI ground-state energy    ,    -14.6135452696   , 0 , 1.0e-7
+CI 1st excited-state energy,   -14.5083864183   , 0 , 1.0e-7
+CI 2nd excited-state energy,   -14.5083864183   , 0 , 1.0e-7
+CI 3rd excited-state energy,   -14.5083864183   , 0 , 1.0e-7
+CI 4th excited-state energy,   -14.3718323663   , 0 , 1.0e-7
+
+be_ci_nocore.in           , CI calculation for boron atom without exciting coe electrons (2e-)
+SCF Total Energy          ,    -14.5723376310   , 0 , 1.0e-7
+Uncorrelated energy       ,    -14.5723376310   , 0 , 1.0e-7
+Correlation energy        ,     -0.0440450204   , 0 , 1.0e-7
+CI ground-state energy    ,    -14.6163826513   , 0 , 1.0e-7
+CI 1st excited-state energy,   -14.5113958769   , 0 , 1.0e-7
+CI 2nd excited-state energy,   -14.5113958769   , 0 , 1.0e-7
+CI 3rd excited-state energy,   -14.5113958769   , 0 , 1.0e-7
+CI 4th excited-state energy,   -14.3852527351   , 0 , 1.0e-7
+
+be_ci_self.in             , CI Green's function for boron atom
+SCF Total Energy          ,    -14.5033611239   , 0 , 1.0e-7
+Uncorrelated energy       ,    -14.2836640504   , 0 , 1.0e-7
+Correlation energy        ,     -0.0348561814   , 0 , 1.0e-7
+CI ground-state energy    ,    -14.3185202318   , 0 , 1.0e-7
+CI 1st excited-state energy,   -14.3185202318   , 0 , 1.0e-7
+CI 2nd excited-state energy,   -14.3185202318   , 0 , 1.0e-7
+-IP                       ,     -8.285061       , 0 , 1.0e-4
+-EA                       ,      6.464563       , 0 , 1.0e-4
+
 

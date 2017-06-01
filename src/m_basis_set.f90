@@ -551,6 +551,8 @@ subroutine init_basis_function_pure(normalized,ng,am,mm,iatom,x0,alpha,coeff,she
  bf%x0(:) = x0(:)
  bf%shell_index = shell_index
  bf%index_in_shell = index_in_shell
+ bf%g(:)%alpha = alpha(:)
+ bf%coeff(:)   = coeff(:)
 
 ! Do not need this
 

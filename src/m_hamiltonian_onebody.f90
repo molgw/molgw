@@ -35,12 +35,9 @@ subroutine setup_overlap(print_matrix_,basis,s_matrix)
 !=====
  integer              :: ishell,jshell
  integer              :: ibf1,ibf2,jbf1,jbf2
- integer              :: ibf_cart,jbf_cart
- integer              :: i_cart,j_cart,ij
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  character(len=100)   :: title
  real(dp),allocatable :: matrix(:,:)
- real(dp)             :: overlap
 
  real(C_DOUBLE),allocatable :: array_cart(:)
  integer(C_INT)             :: amA,contrdepthA
@@ -85,17 +82,20 @@ subroutine setup_overlap(print_matrix_,basis,s_matrix)
 
      call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 #else
-     ij = 0
-     do i_cart=1,ni_cart
-       do j_cart=1,nj_cart
-         ij = ij + 1
-         ibf_cart = basis%shell(ishell)%istart_cart + i_cart - 1
-         jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
-         call overlap_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),overlap)
-         array_cart(ij) = overlap
+     block 
+       integer :: i_cart,j_cart,ij
+       integer :: ibf_cart,jbf_cart
+       ij = 0
+       do i_cart=1,ni_cart
+         do j_cart=1,nj_cart
+           ij = ij + 1
+           ibf_cart = basis%shell(ishell)%istart_cart + i_cart - 1
+           jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
+           call overlap_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),array_cart(ij))
+         enddo
        enddo
-     enddo
-     call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
+       call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
+     end block
 #endif
 
      deallocate(alphaA,cA)
@@ -121,20 +121,15 @@ end subroutine setup_overlap
 
 
 !=========================================================================
-subroutine setup_overlap_mixedbasis(print_matrix_,basis1,basis2,s_matrix)
+subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
  implicit none
- logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis1,basis2
  real(dp),intent(out)       :: s_matrix(basis1%nbf,basis2%nbf)
 !=====
  integer              :: ishell,jshell
  integer              :: ibf1,ibf2,jbf1,jbf2
- integer              :: ibf_cart,jbf_cart
- integer              :: i_cart,j_cart,ij
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
- character(len=100)   :: title
  real(dp),allocatable :: matrix(:,:)
- real(dp)             :: overlap
 
  real(C_DOUBLE),allocatable :: array_cart(:)
  integer(C_INT)             :: amA,contrdepthA
@@ -181,17 +176,20 @@ subroutine setup_overlap_mixedbasis(print_matrix_,basis1,basis2,s_matrix)
 
      call transform_libint_to_molgw(basis1%gaussian_type,li,lj,array_cart,matrix)
 #else
-     ij = 0
-     do i_cart=1,ni_cart
-       do j_cart=1,nj_cart
-         ij = ij + 1
-         ibf_cart = basis1%shell(ishell)%istart_cart + i_cart - 1
-         jbf_cart = basis2%shell(jshell)%istart_cart + j_cart - 1
-         call overlap_basis_function(basis1%bfc(ibf_cart),basis2%bfc(jbf_cart),overlap)
-         array_cart(ij) = overlap
+     block 
+       integer :: i_cart,j_cart,ij
+       integer :: ibf_cart,jbf_cart
+       ij = 0
+       do i_cart=1,ni_cart
+         do j_cart=1,nj_cart
+           ij = ij + 1
+           ibf_cart = basis1%shell(ishell)%istart_cart + i_cart - 1
+           jbf_cart = basis2%shell(jshell)%istart_cart + j_cart - 1
+           call overlap_basis_function(basis1%bfc(ibf_cart),basis2%bfc(jbf_cart),array_cart(ij))
+         enddo
        enddo
-     enddo
-     call transform_molgw_to_molgw(basis1%gaussian_type,li,lj,array_cart,matrix)
+       call transform_molgw_to_molgw(basis1%gaussian_type,li,lj,array_cart,matrix)
+    end block
 #endif
 
      deallocate(alphaA,cA)
@@ -221,7 +219,6 @@ subroutine setup_overlap_grad(print_matrix_,basis,s_matrix_grad)
 !=====
  integer              :: ishell,jshell
  integer              :: ibf1,ibf2,jbf1,jbf2
- integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  character(len=100)   :: title
  real(dp),allocatable :: matrix(:,:)
@@ -318,12 +315,9 @@ subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
 !=====
  integer              :: ishell,jshell
  integer              :: ibf1,ibf2,jbf1,jbf2
- integer              :: ibf_cart,jbf_cart
- integer              :: i_cart,j_cart,ij
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  character(len=100)   :: title
  real(dp),allocatable :: matrix(:,:)
- real(dp)             :: kinetic
 
  real(C_DOUBLE),allocatable :: array_cart(:)
  integer(C_INT)             :: amA,contrdepthA
@@ -368,17 +362,20 @@ subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
                          array_cart)
      call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 #else
-     ij = 0
-     do i_cart=1,ni_cart
-       do j_cart=1,nj_cart
-         ij = ij + 1
-         ibf_cart = basis%shell(ishell)%istart_cart + i_cart - 1
-         jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
-         call kinetic_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),kinetic)
-         array_cart(ij) = kinetic
+     block
+       integer :: i_cart,j_cart,ij
+       integer :: ibf_cart,jbf_cart
+       ij = 0
+       do i_cart=1,ni_cart
+         do j_cart=1,nj_cart
+           ij = ij + 1
+           ibf_cart = basis%shell(ishell)%istart_cart + i_cart - 1
+           jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
+           call kinetic_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),array_cart(ij))
+         enddo
        enddo
-     enddo
-     call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
+       call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
+    end block
 #endif
      deallocate(alphaA,cA)
 
@@ -508,13 +505,10 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
  integer              :: ishell,jshell
  integer              :: ibf1,ibf2,jbf1,jbf2
  integer              :: natom_local
- integer              :: ibf_cart,jbf_cart,ij
- integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  integer              :: iatom
  character(len=100)   :: title
  real(dp),allocatable :: matrix(:,:)
- real(dp)             :: nucleus
 
  real(C_DOUBLE),allocatable        :: array_cart(:)
  real(C_DOUBLE),allocatable        :: array_cart_C(:)
@@ -575,16 +569,21 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
                            C,array_cart_C)
        array_cart(:) = array_cart(:) - zvalence(iatom) * array_cart_C(:) 
 #else
-       ij = 0
-       do i_cart=1,ni_cart
-         do j_cart=1,nj_cart
-           ij = ij + 1
-           ibf_cart = basis%shell(ishell)%istart_cart + i_cart - 1
-           jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
-           call nucleus_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),zvalence(iatom),xatom(:,iatom),nucleus)
-           array_cart(ij) = array_cart(ij) + nucleus
+       block
+         integer  :: i_cart,j_cart,ij
+         integer  :: ibf_cart,jbf_cart
+         real(dp) :: nucleus
+         ij = 0
+         do i_cart=1,ni_cart
+           do j_cart=1,nj_cart
+             ij = ij + 1
+             ibf_cart = basis%shell(ishell)%istart_cart + i_cart - 1
+             jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
+             call nucleus_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),zvalence(iatom),xatom(:,iatom),nucleus)
+             array_cart(ij) = array_cart(ij) + nucleus
+           enddo
          enddo
-       enddo
+      end block
 #endif
 
      enddo
@@ -629,11 +628,9 @@ subroutine setup_nucleus_grad(print_matrix_,basis,hamiltonian_nucleus_grad)
  integer              :: ishell,jshell
  integer              :: ibf1,ibf2,jbf1,jbf2
  integer              :: natom_local
- integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  integer              :: iatom
  character(len=100)   :: title
- real(dp)             :: vnucleus_ij
  real(dp),allocatable :: matrixA(:,:)
  real(dp),allocatable :: matrixB(:,:)
 
@@ -781,7 +778,6 @@ subroutine calculate_dipole_basis(basis,dipole_basis)
  integer              :: idir
  real(dp),allocatable :: dipole_cart(:,:,:)
 !=====
- integer :: unitfile,var_i
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -830,6 +826,7 @@ subroutine calculate_quadrupole_basis(basis,quadrupole_basis)
  implicit none
  type(basis_set),intent(in)         :: basis
  real(dp),allocatable,intent(out)   :: quadrupole_basis(:,:,:,:)
+
 !=====
  integer              :: gt
  integer              :: ishell,jshell
@@ -838,7 +835,6 @@ subroutine calculate_quadrupole_basis(basis,quadrupole_basis)
  integer              :: idir,jdir
  real(dp),allocatable :: quadrupole_cart(:,:,:,:)
 !=====
- integer :: unitfile,var_i
 
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -894,17 +890,13 @@ subroutine setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
  type(basis_set),intent(in) :: basis
  real(dp),intent(inout)     :: hamiltonian_nucleus(basis%nbf,basis%nbf)
 !=====
- integer              :: natom_local
  integer              :: ibf,jbf
  integer              :: iatom
- real(dp)             :: vnucleus_ij
 
  integer              :: iecp
  integer              :: iproj,nproj
  integer              :: mm
- integer              :: igrid
  real(dp)             :: rr(3)
- real(dp)             :: weight
  real(dp)             :: basis_function_r(basis%nbf)
  integer              :: iradial
  integer              :: i1,n1

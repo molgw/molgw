@@ -188,7 +188,7 @@ end subroutine polarizability_grid_scalapack
 
 
 !=========================================================================
-subroutine gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy,c_matrix,wpol,se)
+subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
  use m_definitions
  use m_timing
  use m_warning
@@ -205,7 +205,6 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy,c_matrix,
 
  type(basis_set),intent(in)          :: basis
  integer,intent(in)                  :: nstate
- real(dp),intent(in)                 :: occupation(nstate,nspin)
  real(dp),intent(in)                 :: energy(nstate,nspin)
  real(dp),intent(in)                 :: c_matrix(nstate,basis%nbf,nspin)
  type(spectral_function),intent(in)  :: wpol

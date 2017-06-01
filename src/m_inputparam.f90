@@ -28,6 +28,7 @@ module m_inputparam
 
  !
  ! Self-energy approximation
+ integer,parameter :: CI           =-201
  integer,parameter :: COHSEX       = 204
  integer,parameter :: GnW0         = 205
  integer,parameter :: GnWn         = 206
@@ -277,6 +278,9 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%selfenergy_technique = EVSC
    case('CI')
      calc_type%is_ci =.TRUE.
+   case('CI_SELFENERGY')
+     calc_type%is_ci =.TRUE.
+     calc_type%selfenergy_approx = CI
    case('BSE')
      calc_type%is_bse =.TRUE.
    case('TD')
@@ -331,7 +335,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%need_exchange    = ( alpha_hybrid > 1.0e-6 )
  calc_type%need_exchange_lr = ( rcut > 1.0e-6 ) .AND. ( ABS(alpha_hybrid_lr) > 1.0e-6 )
 
- calc_type%is_selfenergy = ( calc_type%selfenergy_approx > 0 )
+ calc_type%is_selfenergy = ( calc_type%selfenergy_approx /= 0 )
 
 end subroutine init_calculation_type
 

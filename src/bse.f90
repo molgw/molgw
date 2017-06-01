@@ -402,7 +402,6 @@ subroutine build_apb_hartree_auxil_scalapack(desc_apb,wpol,m_apb,n_apb,apb_matri
  integer              :: t_jb_global
  integer              :: jstate,bstate
  integer              :: jbspin
- real(dp),allocatable :: eri_3center_left(:),eri_3center_right(:)
  real(dp),allocatable :: eri_3tmp(:,:),eri_3tmp_sd(:,:)
  integer              :: desc_auxil(NDEL),desc_sd(NDEL)
  integer              :: mlocal,nlocal
@@ -460,7 +459,7 @@ end subroutine build_apb_hartree_auxil_scalapack
 
 
 !=========================================================================
-subroutine build_a_diag_common(nmat,nbf,nstate,c_matrix,energy,wpol,a_diag)
+subroutine build_a_diag_common(nbf,nstate,c_matrix,energy,wpol,a_diag)
  use m_definitions
  use m_timing
  use m_warning
@@ -472,13 +471,13 @@ subroutine build_a_diag_common(nmat,nbf,nstate,c_matrix,energy,wpol,a_diag)
  use m_tools 
  implicit none
 
- integer,intent(in)                 :: nmat,nbf,nstate
+ integer,intent(in)                 :: nbf,nstate
  real(dp),intent(in)                :: energy(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(nbf,nstate,nspin)
  type(spectral_function),intent(in) :: wpol
  real(dp),intent(out)               :: a_diag(wpol%npole_reso_spa)
 !=====
- integer              :: t_jb,t_jb_global
+ integer              :: t_jb
  integer              :: jstate,bstate
  integer              :: jbspin
  integer              :: jbmin
@@ -656,7 +655,7 @@ end subroutine build_apb_tddft
 
 
 !=========================================================================
-subroutine build_amb_apb_bse(nbf,nstate,wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+subroutine build_amb_apb_bse(wpol,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
  use m_definitions
  use m_timing
  use m_warning
@@ -670,7 +669,6 @@ subroutine build_amb_apb_bse(nbf,nstate,wpol,wpol_static,m_apb,n_apb,amb_matrix,
  use m_tools 
  implicit none
 
- integer,intent(in)                 :: nbf,nstate
  type(spectral_function),intent(in) :: wpol,wpol_static
  integer,intent(in)                 :: m_apb,n_apb
  real(dp),intent(inout)             :: amb_matrix(m_apb,n_apb),apb_matrix(m_apb,n_apb)
@@ -776,19 +774,20 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local,desc_apb,wpol,wpol_
  integer              :: nmat
  integer              :: t_ia,t_jb,t_ia_global,t_jb_global
  integer              :: istate,astate,jstate,bstate
- integer              :: jstate_prev
  integer              :: iaspin,jbspin
- integer              :: kbf
  real(dp)             :: wtmp
  integer              :: jstate_min,jstate_max
  integer              :: ipole,ibf_auxil,jbf_auxil,ibf_auxil_global,jbf_auxil_global
- real(dp),allocatable :: vsqrt_chi_vsqrt(:,:)
- real(dp),allocatable :: vsqrt_chi_vsqrt_i(:),residue_i(:),wp0_i(:,:)
  real(dp),allocatable :: wp0(:,:,:,:),w0_local(:)
  integer              :: iprow,ipcol,irank
  integer              :: m_apb_block,n_apb_block
  real(dp),allocatable :: amb_block(:,:)
  real(dp),allocatable :: apb_block(:,:)
+#ifdef HAVE_SCALAPACK
+ real(dp),allocatable :: vsqrt_chi_vsqrt_i(:),residue_i(:),wp0_i(:,:)
+#else
+ real(dp),allocatable :: vsqrt_chi_vsqrt(:,:)
+#endif
 !=====
 
  call start_clock(timing_build_bse)

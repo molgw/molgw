@@ -190,7 +190,7 @@ subroutine scf_loop(is_restart,&
    if(calc_type%need_exchange_lr) then
 
      if( .NOT. has_auxil_basis ) then
-       call setup_exchange_longrange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,energy_tmp)
+       call setup_exchange_longrange(basis%nbf,p_matrix,hamiltonian_exx,energy_tmp)
      else
        if( parallel_ham ) then
          if( parallel_buffer ) then
@@ -212,7 +212,7 @@ subroutine scf_loop(is_restart,&
    if( calc_type%need_exchange ) then
 
      if( .NOT. has_auxil_basis ) then
-       call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+       call setup_exchange(basis%nbf,p_matrix,hamiltonian_exx,en%exx)
      else
        if( parallel_ham ) then
          if( parallel_buffer ) then
@@ -409,7 +409,7 @@ subroutine scf_loop(is_restart,&
  ! Get the exchange operator if not already calculated
  !
  if( .NOT. has_auxil_basis ) then
-   if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+   if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(basis%nbf,p_matrix,hamiltonian_exx,en%exx)
  else
    if( ABS(en%exx) < 1.0e-6_dp ) then
      if( parallel_ham ) then

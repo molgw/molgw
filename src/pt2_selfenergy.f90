@@ -186,7 +186,7 @@ end subroutine pt2_selfenergy
 
 
 !=========================================================================
-subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matrix,se,emp2)
+subroutine onering_selfenergy(nstate,basis,occupation,energy,c_matrix,se,emp2)
  use m_definitions
  use m_mpi
  use m_warning
@@ -197,7 +197,7 @@ subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c
  use m_selfenergy_tools
  implicit none
 
- integer,intent(in)         :: selfenergy_approx,nstate
+ integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
@@ -221,7 +221,7 @@ subroutine onering_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c
 
  call init_spectral_function(nstate,occupation,0,vchi0v)
 
- call polarizability_onering(basis,nstate,occupation,energy,c_matrix,vchi0v)
+ call polarizability_onering(basis,nstate,energy,c_matrix,vchi0v)
 
 #ifdef HAVE_SCALAPACK
  call gw_selfenergy_scalapack(ONE_RING,nstate,basis,occupation,energy,c_matrix,vchi0v,se)

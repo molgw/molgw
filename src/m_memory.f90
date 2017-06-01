@@ -398,7 +398,6 @@ subroutine clean_deallocate_i1d(array_name,array)
  character(len=*),intent(in)       :: array_name
  integer,allocatable,intent(inout) :: array(:)
 !=====
- integer             :: info
  real(dp)            :: mem_mb
  integer             :: n1
 !=====
@@ -426,7 +425,6 @@ subroutine clean_deallocate_i2d(array_name,array)
  character(len=*),intent(in)       :: array_name
  integer,allocatable,intent(inout) :: array(:,:)
 !=====
- integer             :: info
  real(dp)            :: mem_mb
  integer             :: n1,n2
 !=====
@@ -455,7 +453,6 @@ subroutine clean_deallocate_1d(array_name,array)
  character(len=*),intent(in)       :: array_name
  real(dp),allocatable,intent(inout) :: array(:)
 !=====
- integer             :: info
  real(dp)            :: mem_mb
  integer             :: n1
 !=====
@@ -483,7 +480,6 @@ subroutine clean_deallocate_2d(array_name,array)
  character(len=*),intent(in)       :: array_name
  real(dp),allocatable,intent(inout) :: array(:,:)
 !=====
- integer             :: info
  real(dp)            :: mem_mb
  integer             :: n1,n2
 !=====
@@ -512,7 +508,6 @@ subroutine clean_deallocate_3d(array_name,array)
  character(len=*),intent(in)       :: array_name
  real(dp),allocatable,intent(inout) :: array(:,:,:)
 !=====
- integer             :: info
  real(dp)            :: mem_mb
  integer             :: n1,n2,n3
 !=====
@@ -542,7 +537,6 @@ subroutine clean_deallocate_4d(array_name,array)
  character(len=*),intent(in)       :: array_name
  real(dp),allocatable,intent(inout) :: array(:,:,:,:)
 !=====
- integer             :: info
  real(dp)            :: mem_mb
  integer             :: n1,n2,n3,n4
 !=====
@@ -713,7 +707,6 @@ subroutine clean_deallocate_s1d(array_name,array)
  character(len=*),intent(in)       :: array_name
  real(sp),allocatable,intent(inout) :: array(:)
 !=====
- integer             :: info
  real(dp)            :: mem_mb
  integer             :: n1
 !=====
@@ -741,7 +734,6 @@ subroutine clean_deallocate_s2d(array_name,array)
  character(len=*),intent(in)       :: array_name
  real(sp),allocatable,intent(inout) :: array(:,:)
 !=====
- integer             :: info
  real(dp)            :: mem_mb
  integer             :: n1,n2
 !=====
@@ -770,7 +762,6 @@ subroutine clean_deallocate_s3d(array_name,array)
  character(len=*),intent(in)       :: array_name
  real(sp),allocatable,intent(inout) :: array(:,:,:)
 !=====
- integer             :: info
  real(dp)            :: mem_mb
  integer             :: n1,n2,n3
 !=====
@@ -800,7 +791,6 @@ subroutine clean_deallocate_s4d(array_name,array)
  character(len=*),intent(in)       :: array_name
  real(sp),allocatable,intent(inout) :: array(:,:,:,:)
 !=====
- integer             :: info
  real(dp)            :: mem_mb
  integer             :: n1,n2,n3,n4
 !=====

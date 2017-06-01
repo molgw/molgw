@@ -212,8 +212,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        if( calc_type%selfenergy_technique /= imaginary_axis ) then
          call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
        else
-         call gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy_g,c_matrix,wpol,se)
-         call self_energy_pade(nstate,energy_g,se)
+         call gw_selfenergy_imag_scalapack(basis,nstate,energy_g,c_matrix,wpol,se)
+         call self_energy_pade(se)
        endif
      else
        call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
@@ -222,8 +222,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      if( calc_type%selfenergy_technique /= imaginary_axis ) then
        call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
      else
-       call gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy_g,c_matrix,wpol,se)
-       call self_energy_pade(nstate,energy_g,se)
+       call gw_selfenergy_imag_scalapack(basis,nstate,energy_g,c_matrix,wpol,se)
+       call self_energy_pade(se)
      endif
 #endif
   
@@ -255,7 +255,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call init_selfenergy_grid(static_selfenergy,nstate,energy,se3)
     
        ! Sigma^2 = Sigma^{1-ring}_small
-       call onering_selfenergy(ONE_RING,nstate_small,basis,occupation(1:nstate_small,:), &
+       call onering_selfenergy(nstate_small,basis,occupation(1:nstate_small,:), &
                                energy_g(1:nstate_small,:),c_matrix(:,1:nstate_small,:),se2,en%mp2)
   
        ! Reset wavefunctions, eigenvalues and number of virtual orbitals in G
@@ -264,7 +264,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call selfenergy_set_state_range(nstate,occupation)
   
        ! Sigma^3 = Sigma^{1-ring}_big
-       call onering_selfenergy(ONE_RING,nstate,basis,occupation,energy_g,c_matrix,se3,en%mp2)
+       call onering_selfenergy(nstate,basis,occupation,energy_g,c_matrix,se3,en%mp2)
   
        if( print_sigma_ ) then
          call write_selfenergy_omega('selfenergy_GW_small'   ,nstate,exchange_m_vxc_diag,occupation,energy_g,se)

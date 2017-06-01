@@ -149,7 +149,7 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
 
  ! Calculate the diagonal separately: it is needed for the single pole approximation
  if( nvirtual_SPA < nvirtual_W .AND. is_gw ) & 
-     call build_a_diag_common(nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,a_diag)
+     call build_a_diag_common(basis%nbf,nstate,c_matrix,energy_qp,wpol_out,a_diag)
 
  apb_matrix(:,:) = 0.0_dp
  amb_matrix(:,:) = 0.0_dp
@@ -201,7 +201,7 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
    !
    ! Step 3
    if( is_bse ) then
-     call build_amb_apb_bse(basis%nbf,nstate,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+     call build_amb_apb_bse(wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
      call destroy_spectral_function(wpol_static)
    endif
 
@@ -292,7 +292,7 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
  !
  if( calc_type%is_td .OR. is_bse ) then
    call optical_spectrum(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,xpy_matrix,xmy_matrix,eigenvalue)
-!   call stopping_power(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,xpy_matrix,eigenvalue)
+!   call stopping_power(nstate,basis,c_matrix,wpol_out,m_x,n_x,xpy_matrix,eigenvalue)
  endif
 
  !
@@ -306,7 +306,7 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
  !
  if( print_w_ .OR. is_gw ) then
    if( has_auxil_basis) then
-     call chi_to_sqrtvchisqrtv_auxil(basis%nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol_out,energy_gm)
+     call chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol_out,energy_gm)
      ! This following coding of the Galitskii-Migdal correlation energy is only working with
      ! an auxiliary basis
      if( is_gw ) write(stdout,'(a,f16.10,/)') ' Correlation energy in the Galitskii-Migdal formula (Ha): ',energy_gm
@@ -314,7 +314,7 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
      ! Add the single pole approximation for the poles that have been neglected
      ! in the diagonalization
      if( nvirtual_SPA < nvirtual_W .AND. is_gw ) & 
-        call chi_to_sqrtvchisqrtv_auxil_spa(basis%nbf,a_diag,wpol_out)
+        call chi_to_sqrtvchisqrtv_auxil_spa(a_diag,wpol_out)
 
    else
      call chi_to_vchiv(basis%nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol_out)
@@ -343,7 +343,7 @@ end subroutine polarizability
 
 
 !=========================================================================
-subroutine polarizability_onering(basis,nstate,occupation,energy,c_matrix,vchi0v)
+subroutine polarizability_onering(basis,nstate,energy,c_matrix,vchi0v)
  use m_definitions
  use m_timing
  use m_warning
@@ -360,7 +360,6 @@ subroutine polarizability_onering(basis,nstate,occupation,energy,c_matrix,vchi0v
 
  type(basis_set),intent(in)            :: basis
  integer,intent(in)                    :: nstate
- real(dp),intent(in)                   :: occupation(nstate,nspin)
  real(dp),intent(in)                   :: energy(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(inout) :: vchi0v
 !=====
@@ -678,7 +677,7 @@ end subroutine optical_spectrum
 
 
 !=========================================================================
-subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalue)
+subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalue)
  use m_definitions
  use m_timing
  use m_warning
@@ -694,7 +693,7 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
 
  integer,intent(in)                 :: nstate,m_x,n_x
  type(basis_set),intent(in)         :: basis
- real(dp),intent(in)                :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in) :: chi
  real(dp),intent(in)                :: xpy_matrix(m_x,n_x)
  real(dp),intent(in)                :: eigenvalue(chi%npole_reso_apb)
@@ -1033,7 +1032,7 @@ end subroutine chi_to_vchiv
 
 
 !=========================================================================
-subroutine chi_to_sqrtvchisqrtv_auxil(nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,energy_gm)
+subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,energy_gm)
  use m_definitions
  use m_warning
  use m_scalapack
@@ -1042,7 +1041,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,w
  use m_spectral_function
  implicit none
  
- integer,intent(in)                    :: nbf,m_x,n_x
+ integer,intent(in)                    :: m_x,n_x
  integer,intent(in)                    :: desc_x(NDEL)
  real(dp),intent(inout)                :: xpy_matrix(m_x,n_x)
  type(spectral_function),intent(inout) :: wpol
@@ -1162,7 +1161,7 @@ end subroutine chi_to_sqrtvchisqrtv_auxil
 
 
 !=========================================================================
-subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,a_diag,wpol)
+subroutine chi_to_sqrtvchisqrtv_auxil_spa(a_diag,wpol)
  use m_definitions
  use m_warning
  use m_basis_set
@@ -1170,7 +1169,6 @@ subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,a_diag,wpol)
  use m_spectral_function
  implicit none
  
- integer,intent(in)                    :: nbf
  type(spectral_function),intent(inout) :: wpol
  real(dp),intent(in)                   :: a_diag(wpol%npole_reso_spa)
 !=====

@@ -339,7 +339,7 @@ program molgw
            call dft_approximate_vhxc_sca(basis,m_ham,n_ham,hamiltonian_tmp(:,:,1))
          endif
        else
-         call dft_approximate_vhxc(print_matrix_,basis,hamiltonian_tmp(:,:,1))
+         call dft_approximate_vhxc(basis,hamiltonian_tmp(:,:,1))
        endif
 
        hamiltonian_tmp(:,:,1) = hamiltonian_tmp(:,:,1) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
@@ -497,7 +497,7 @@ program molgw
 
  !
  ! CI calculation is done here
- ! implemented for 2 or 3 electrons only!
+ ! implemented for a few electrons electrons only!
  !
  if(calc_type%is_ci) then
    if(nspin/=1) call die('molgw: CI calculations need spin-restriction. Set nspin to 1')
@@ -517,14 +517,14 @@ program molgw
 
    call prepare_ci(MIN(nstate,nvirtualg-1),ncoreg,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix)
 
-   call full_ci_nelectrons_on( 1,NINT(electrons)-1,1,en%nuc_nuc)
    call full_ci_nelectrons_on( 0,NINT(electrons)  ,0,en%nuc_nuc)
-   call full_ci_nelectrons_on(-1,NINT(electrons)+1,1,en%nuc_nuc)
-   call full_ci_nelectrons_selfenergy()
 
+   if(calc_type%is_selfenergy) then
+     call full_ci_nelectrons_on( 1,NINT(electrons)-1,1,en%nuc_nuc)
+     call full_ci_nelectrons_on(-1,NINT(electrons)+1,1,en%nuc_nuc)
+     call full_ci_nelectrons_selfenergy()
+   endif
 
-!   if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) call die('CI is implemented for 2 electrons only')
-!   call full_ci_2electrons_spin(print_wfn_,nstate,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
 
    if(has_auxil_basis) then
      call destroy_eri_3center_eigen()
