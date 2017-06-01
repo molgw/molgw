@@ -191,7 +191,7 @@ module m_inputparam
  logical,protected                :: print_cube_rho_tddft_
  logical,protected                :: calc_p_matrix_error_
  logical,protected                :: calc_spectrum_
- logical,protected                :: ignore_tddft_restart_
+ logical,protected                :: read_tddft_restart_
  logical,protected                :: print_tddft_restart_
 contains
 
@@ -756,7 +756,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_cube_rho_tddft
  character(len=3)     :: calc_p_matrix_error
  character(len=3)     :: calc_spectrum
- character(len=3)     :: ignore_tddft_restart
+ character(len=3)     :: read_tddft_restart
  character(len=3)     :: print_tddft_restart
  real(dp)             :: length_factor,eta
  integer              :: natom_read
@@ -864,7 +864,7 @@ subroutine read_inputfile_namelist()
  print_cube_rho_tddft_ = yesno(print_cube_rho_tddft)
  calc_p_matrix_error_  = yesno(calc_p_matrix_error)
  calc_spectrum_        = yesno(calc_spectrum)
- ignore_tddft_restart_ = yesno(ignore_tddft_restart)
+ read_tddft_restart_   = yesno(read_tddft_restart)
  print_tddft_restart_  = yesno(print_tddft_restart)
  tddft_grid_level      = interpret_quality(tddft_grid_quality)
  grid_level            = interpret_quality(grid_quality)

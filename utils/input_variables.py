@@ -1074,9 +1074,9 @@ vl[i].comment  ='Set of iteration for propagation loop for each propagator from 
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='ignore_tddft_restart'
+vl[i].keyword  ='read_tddft_restart'
 vl[i].family   ='io_rt_tddft'
-vl[i].default  ='yes'
+vl[i].default  ='no'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='Ignore the RESTART_TDDFT file.'
 

@@ -78,7 +78,8 @@ program molgw
 !=====
  integer :: var_i, var_j
  integer :: unitfile
-
+ integer :: nocc
+ integer :: ispin,istate
  !
  !
  ! Part 1 / 3 : Initialization 
@@ -300,11 +301,11 @@ program molgw
    endif
   
    !If RESTART_TDDFT file exists and is correct, skip the SCF loop and start RT-TDDFT simulation
-   if( .NOT. ignore_tddft_restart_ ) then
-     call check_restart_tddft(nstate,restart_tddft_is_correct) 
+   if( read_tddft_restart_ ) then
+     call check_restart_tddft(nstate,occupation,restart_tddft_is_correct) 
    end if
  
-   if( .NOT. restart_tddft_is_correct .OR. ignore_tddft_restart_ ) then
+   if( (.NOT. restart_tddft_is_correct) .OR. (.NOT. read_tddft_restart_) ) then
      if( is_basis_restart ) then
        !
        ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
@@ -461,13 +462,15 @@ program molgw
  !
  call start_clock(timing_postscf)
 
-!****PROPAGATOR****
+ !****RT-TDDFT SIMULATION****
  if(calc_type%is_real_time) then
-   write(stdout,*) "Start tddft propagator"
+   write(stdout,'(/,1x,a)') '=================================================='
+   write(stdout,'(x,a)') "RT-TDDFT simulation"
    call calculate_propagation(nstate, basis, occupation, s_matrix, s_matrix_sqrt_inv, c_matrix,hamiltonian_kinetic,hamiltonian_nucleus)
-   write(stdout,*) "End tddft propagator"
+   write(stdout,'(x,a)') "End of RT-TDDFT simulation"
+   write(stdout,'(1x,a)') '=================================================='
  end if
-!********
+ !********
 
  if( print_multipole_ ) then
    !

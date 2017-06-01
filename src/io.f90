@@ -770,10 +770,11 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  use m_definitions
  use m_mpi
  use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact
+ use m_inputparam, only: nspin,spin_fact,excit_type
  use m_atoms
  use m_basis_set
  use m_timing
+
  implicit none
  integer,intent(in)         :: nstate
  integer,intent(in)         :: nocc_dim
@@ -803,6 +804,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  integer                    :: ocuberho(nspin)
  character(len=200)         :: file_name
  integer                    :: icubefile
+ integer                    :: i_max_atom
 !=====
 
  if( .NOT. is_iomaster ) return
@@ -845,13 +847,18 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
    write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
  end if
 
-
- xmin =MIN(MINVAL( xatom(1,:) ),MINVAL( xbasis(1,:) )) - length
- xmax =MAX(MAXVAL( xatom(1,:) ),MAXVAL( xbasis(1,:) )) + length
- ymin =MIN(MINVAL( xatom(2,:) ),MINVAL( xbasis(2,:) )) - length
- ymax =MAX(MAXVAL( xatom(2,:) ),MAXVAL( xbasis(2,:) )) + length
- zmin =MIN(MINVAL( xatom(3,:) ),MINVAL( xbasis(3,:) )) - length
- zmax =MAX(MAXVAL( xatom(3,:) ),MAXVAL( xbasis(3,:) )) + length
+ if( excit_type%is_projectile ) then
+   i_max_atom=natom-nprojectile
+ else
+   i_max_atom=natom
+ endif
+ 
+ xmin =MIN(MINVAL( xatom(1,1:i_max_atom) ),MINVAL( xbasis(1,:) )) - length
+ xmax =MAX(MAXVAL( xatom(1,1:i_max_atom) ),MAXVAL( xbasis(1,:) )) + length
+ ymin =MIN(MINVAL( xatom(2,1:i_max_atom) ),MINVAL( xbasis(2,:) )) - length
+ ymax =MAX(MAXVAL( xatom(2,1:i_max_atom) ),MAXVAL( xbasis(2,:) )) + length
+ zmin =MIN(MINVAL( xatom(3,1:i_max_atom) ),MINVAL( xbasis(3,:) )) - length
+ zmax =MAX(MAXVAL( xatom(3,1:i_max_atom) ),MAXVAL( xbasis(3,:) )) + length
 
  do ispin=1,nspin
 
