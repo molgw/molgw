@@ -234,6 +234,10 @@ subroutine init_calculation_type(calc_type,input_key)
    case('GW','G0W0')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = GW
+   case('GWTDDFT','G0WTDDFT')
+     calc_type%is_gw    =.TRUE.
+     calc_type%selfenergy_approx = GW
+     calc_type%is_td    =.TRUE.
    case('COHSEX')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = COHSEX
@@ -250,6 +254,10 @@ subroutine init_calculation_type(calc_type,input_key)
    case('G0W0GAMMA0','GWGAMMA')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0GAMMA0
+   case('GWTDDFTGAMMA','G0WTDDFTGAMMA0')
+     calc_type%is_gw    =.TRUE.
+     calc_type%selfenergy_approx = G0W0GAMMA0
+     calc_type%is_td    =.TRUE.
    case('EVGWGAMMA','GNW0GAMMAN')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0GAMMA0

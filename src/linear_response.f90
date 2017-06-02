@@ -10,7 +10,7 @@
 
 
 !=========================================================================
-subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
+subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
  use m_definitions
  use m_timing
  use m_warning
@@ -25,7 +25,7 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
  use m_eri_ao_mo
  implicit none
 
- logical,intent(in)                    :: is_gw
+ logical,intent(in)                    :: enforce_rpa,calculate_w
  type(basis_set),intent(in)            :: basis
  integer,intent(in)                    :: nstate
  real(dp),intent(in)                   :: occupation(nstate,nspin)
@@ -44,12 +44,12 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
  real(dp),allocatable      :: xpy_matrix(:,:),xmy_matrix(:,:)
  real(dp),allocatable      :: eigenvalue(:)
  real(dp)                  :: energy_qp(nstate,nspin)
- logical                   :: is_tddft
+ logical                   :: is_tddft,is_rpa
  logical                   :: has_manual_tdhf
  integer                   :: reading_status
  integer                   :: tdhffile
  integer                   :: m_apb,n_apb,m_x,n_x
-! Scalapack variables
+! SCALAPACK variables
  integer                   :: desc_apb(NDEL),desc_x(NDEL)
 !=====
 
@@ -69,8 +69,8 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
 
  ! 
  ! Set up flag is_tddft and is_bse
- is_tddft = calc_type%is_td .AND. calc_type%is_dft .AND. .NOT. is_gw
- is_bse   = calc_type%is_bse .AND. .NOT. is_gw
+ is_tddft = calc_type%is_td .AND. calc_type%is_dft .AND. .NOT. enforce_rpa
+ is_bse   = calc_type%is_bse .AND. .NOT. enforce_rpa
 
  ! 
  ! Set up exchange content alpha_local
@@ -83,15 +83,16 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
    write(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alpha ',alpha_local
    call issue_warning(msg)
  else
-   if(is_gw) then
-     alpha_local = 0.0_dp
-   else if(is_tddft) then
+   if(calc_type%is_td) then        ! TDDFT or TDHF
      alpha_local = alpha_hybrid
-   else ! TDHF or BSE case
+   else if(is_bse) then  ! BSE
      alpha_local = 1.0_dp
+   else                  ! RPA
+     alpha_local = 0.0_dp
    endif
  endif
 
+ is_rpa = .NOT.(is_tddft) .AND. .NOT.(is_bse) .AND. (ABS(alpha_local)<1.0e-5_dp)
 
  call start_clock(timing_build_h2p)
 
@@ -147,7 +148,7 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
  !
 
  ! Calculate the diagonal separately: it is needed for the single pole approximation
- if( nvirtual_SPA < nvirtual_W .AND. is_gw ) & 
+ if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) & 
      call build_a_diag_common(basis%nbf,nstate,c_matrix,energy_qp,wpol_out,a_diag)
 
  apb_matrix(:,:) = 0.0_dp
@@ -222,7 +223,7 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
 
  call stop_clock(timing_build_h2p)
 
- if( is_gw .AND. .NOT. is_tda ) call clean_deallocate('A-B',amb_matrix)
+ if( is_rpa .AND. .NOT. is_tda ) call clean_deallocate('A-B',amb_matrix)
  
 
  !
@@ -237,14 +238,14 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
  call init_desc('S',nmat,nexc,desc_x,m_x,n_x)
 
  call clean_allocate('X+Y',xpy_matrix,m_x,n_x)
- if( .NOT. is_gw .OR. is_tda ) &
+ if( .NOT. is_rpa .OR. is_tda ) &
    call clean_allocate('X-Y',xmy_matrix,m_x,n_x)
 
  !
  ! Diago using the 4 block structure and the symmetry of each block
  ! With or Without SCALAPACK
  !
- if( .NOT. is_gw .OR. is_tda ) then
+ if( .NOT. is_rpa .OR. is_tda ) then
    if( nexcitation == 0 ) then
      ! The following call works with AND without SCALAPACK
      call diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,eigenvalue,&
@@ -275,7 +276,7 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
  !
  ! Second part of the RPA correlation energy: sum over positive eigenvalues
  rpa_correlation = rpa_correlation + 0.50_dp * SUM( ABS(eigenvalue(:)) )
- if( is_gw ) then
+ if( is_rpa ) then
    write(stdout,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
    write(stdout,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
    write(stdout,'(/,a,f16.10)') ' RPA correlation energy (Ha): ',rpa_correlation
@@ -303,16 +304,16 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
  ! Calculate Wp= v * chi * v    if necessary
  ! and then write it down on file
  !
- if( print_w_ .OR. is_gw ) then
+ if( print_w_ .OR. calculate_w ) then
    if( has_auxil_basis) then
      call chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol_out,energy_gm)
      ! This following coding of the Galitskii-Migdal correlation energy is only working with
      ! an auxiliary basis
-     if( is_gw ) write(stdout,'(a,f16.10,/)') ' Correlation energy in the Galitskii-Migdal formula (Ha): ',energy_gm
+     if( is_rpa ) write(stdout,'(a,f16.10,/)') ' Correlation energy in the Galitskii-Migdal formula (Ha): ',energy_gm
      
      ! Add the single pole approximation for the poles that have been neglected
      ! in the diagonalization
-     if( nvirtual_SPA < nvirtual_W .AND. is_gw ) & 
+     if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) & 
         call chi_to_sqrtvchisqrtv_auxil_spa(a_diag,wpol_out)
 
    else
@@ -323,9 +324,10 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
    ! If requested write the spectral function on file
    if( print_w_ ) call write_spectral_function(wpol_out)
 
+ else
+   call destroy_spectral_function(wpol_out)
  endif
 
- if( .NOT. is_gw ) call destroy_spectral_function(wpol_out)
 
  write(stdout,*) 'Deallocate eigenvector array'
  call clean_deallocate('X+Y',xpy_matrix)

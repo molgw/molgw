@@ -33,7 +33,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
  complex(dp),allocatable :: sigma_sox(:,:,:)
  integer                 :: astate,bstate,cstate
  integer                 :: istate,jstate,kstate,ispin,spole
- integer                 :: mstate,imstate
+ integer                 :: mstate
  real(dp),allocatable    :: bra(:,:)
  real(dp)                :: vcoul,vcoul1,vcoul2
  real(dp)                :: pole_s
@@ -273,7 +273,6 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
        else
          ! Here just grab the precalculated value
          forall(istate=ncore_G+1:nvirtual_G-1, mstate=ncore_G+1:MAX(nhomo_G,nsemax))
-!           imstate = index_prodstate(istate,mstate) + (ispin-1) * index_prodstate(nvirtual_W-1,nvirtual_W-1)
            bra(istate,mstate) = wpol%residue_left(index_prodstate(istate,mstate) + (ispin-1) * index_prodstate(nvirtual_W-1,nvirtual_W-1), &
                                                   spole)
          end forall

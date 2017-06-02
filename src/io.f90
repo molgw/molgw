@@ -24,9 +24,9 @@ subroutine header()
  character(len=40)   :: git_sha
  integer             :: values(8) 
 #ifdef FORTRAN2008
+ integer             :: nchar,kchar,lchar
  character(len=1024) :: chartmp
 #endif
- integer             :: nchar,kchar,lchar
 !=====
 ! variables used to call C
  integer(C_INT)      :: ammax
@@ -139,7 +139,7 @@ subroutine dump_out_occupation(title,nstate,nspin,occupation)
  real(dp),intent(in)         :: occupation(nstate,nspin)
 !=====
  integer :: ihomo
- integer :: istate,ispin
+ integer :: istate
 !=====
 
  write(stdout,'(/,1x,a)') TRIM(title)
@@ -171,7 +171,7 @@ subroutine dump_out_energy(title,nstate,nspin,occupation,energy)
 !=====
  integer,parameter :: MAXSIZE=300
 !=====
- integer  :: istate,ispin
+ integer  :: istate
 !=====
 
 
@@ -385,7 +385,7 @@ subroutine plot_wfn(nstate,basis,c_matrix)
  integer,parameter          :: nr=2000
  real(dp),parameter         :: length=10.0_dp
  integer                    :: gt
- integer                    :: ir,ibf
+ integer                    :: ir
  integer                    :: istate1,istate2,istate,ispin
  real(dp)                   :: rr(3)
  real(dp),allocatable       :: phi(:,:),phase(:,:)
@@ -474,8 +474,8 @@ subroutine plot_rho(nstate,basis,occupation,c_matrix)
  integer,parameter          :: nr=5000
  real(dp),parameter         :: length=4.0_dp
  integer                    :: gt
- integer                    :: ir,ibf
- integer                    :: istate1,istate2,istate,ispin
+ integer                    :: ir
+ integer                    :: ispin
  real(dp)                   :: rr(3)
  real(dp),allocatable       :: phi(:,:)
  real(dp)                   :: u(3),a(3)
@@ -550,8 +550,7 @@ subroutine plot_rho_list(nstate,basis,occupation,c_matrix)
  real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
 !=====
  integer                    :: gt
- integer                    :: ir,ibf
- integer                    :: istate1,istate2,istate,ispin
+ integer                    :: ispin
  real(dp)                   :: rr(3)
  real(dp),allocatable       :: phi(:,:)
  real(dp)                   :: u(3),a(3)

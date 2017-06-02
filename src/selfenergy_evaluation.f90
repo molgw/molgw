@@ -34,6 +34,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  real(dp),intent(in)        :: exchange_m_vxc_diag(nstate,nspin)
 !=====
  type(selfenergy_grid)   :: se,se2,se3
+ logical                 :: enforce_rpa
  character(len=36)       :: selfenergy_tag
  integer                 :: reading_status
  integer                 :: nstate_small
@@ -188,7 +189,9 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        ! If reading has failed, then do the calculation
        if( reading_status /= 0 ) then
          if( calc_type%selfenergy_technique /= imaginary_axis ) then
-           call polarizability(.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+           ! in case of BSE calculation, enforce RPA here
+           enforce_rpa = calc_type%is_bse
+           call polarizability(enforce_rpa,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
          else
            call polarizability_grid_scalapack(basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
          endif
@@ -292,7 +295,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      call read_spectral_function(wpol,reading_status)
      ! If reading has failed, then do the calculation
      if( reading_status /= 0 ) then
-       call polarizability(.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+       call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
      endif
   
      call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)

@@ -608,26 +608,26 @@ subroutine full_ci_nelectrons_selfenergy()
  implicit none
 
 !=====
- integer,parameter          :: nomega=5000
- integer,parameter          :: ns=-1
- integer                    :: is
- integer                    :: iconf,jconf,kconf
- integer                    :: iconf_global,jconf_global,kconf_global
- integer                    :: on_i(2*nstate_ci),on_j(2*nstate_ci)
- integer                    :: on_tmp(2*nstate_ci)
- integer,allocatable        :: iisporb(:),iistate(:),iispin(:)
- integer,allocatable        :: jjsporb(:),jjstate(:),jjspin(:)
- integer                    :: isporb,istate,ispin
- integer                    :: ns_occ,ns_virt
- real(dp),allocatable       :: fs_occ(:,:),fs_virt(:,:)
- real(dp),allocatable       :: es_occ(:),es_virt(:)
- integer                    :: iomega
- real(dp)                   :: omega
- complex(dp)                :: gi_w
- character(len=3)           :: ctmp3
- character(len=1)           :: ctmp1
- integer                    :: unit_gf
- real(dp)                   :: eigvec0(conf_0%nconf)
+ type(selfenergy_grid) :: se
+ integer,parameter     :: ns=-1
+ integer               :: is
+ integer               :: iconf,jconf,kconf
+ integer               :: iconf_global,jconf_global,kconf_global
+ integer               :: on_i(2*nstate_ci),on_j(2*nstate_ci)
+ integer               :: on_tmp(2*nstate_ci)
+ integer,allocatable   :: iisporb(:),iistate(:),iispin(:)
+ integer,allocatable   :: jjsporb(:),jjstate(:),jjspin(:)
+ integer               :: isporb,istate,ispin
+ integer               :: ns_occ,ns_virt
+ real(dp),allocatable  :: fs_occ(:,:),fs_virt(:,:)
+ real(dp),allocatable  :: es_occ(:),es_virt(:)
+ integer               :: iomega
+ complex(dp)           :: gi_w
+ character(len=3)      :: ctmp3
+ character(len=1)      :: ctmp1
+ integer               :: unit_gf
+ real(dp)              :: eigvec0(conf_0%nconf)
+ real(dp)              :: energy0(nsemax,nspin)
 !=====
 
  call start_clock(timing_ci_selfenergy)
@@ -788,6 +788,10 @@ subroutine full_ci_nelectrons_selfenergy()
  deallocate(jjsporb,jjspin,jjstate)
 
 
+ do istate=nsemin,nsemax
+   energy0(istate,:) = 0.0_dp
+ enddo
+ call init_selfenergy_grid(one_shot,nsemax,energy0,se)
 
  !
  ! Output CI Green's function
@@ -800,18 +804,17 @@ subroutine full_ci_nelectrons_selfenergy()
    write(ctmp1,'(i1)') MODULO( isporb-1 , 2 ) + 1
 
    open(newunit=unit_gf,file='exact_greens_function_state'//ctmp3//'_spin'//ctmp1//'.dat',action='write')
-   do iomega=-nomega,nomega
-     omega = iomega / REAL(nomega,dp) * 100.0_dp / Ha_eV
-     gi_w = 0.0_dp
+   do iomega=-se%nomega,se%nomega
 
+     gi_w = 0.0_dp
      do is=1,ns_virt
-       gi_w = gi_w + fs_virt(isporb,is)**2 / ( omega - es_virt(is) - ieta )
+       gi_w = gi_w + fs_virt(isporb,is)**2 / ( se%omega(iomega) - es_virt(is) - ieta )
      enddo
      do is=1,ns_occ
-       gi_w = gi_w + fs_occ(isporb,is)**2 / ( omega - es_occ(is) + ieta )
+       gi_w = gi_w + fs_occ(isporb,is)**2 / ( se%omega(iomega) - es_occ(is) + ieta )
      enddo
 
-     write(unit_gf,'(4(1x,es18.8))') omega * Ha_eV, gi_w / Ha_eV, ABS(AIMAG(gi_w)) / pi / Ha_eV
+     write(unit_gf,'(8(1x,es18.8))') se%omega(iomega) * Ha_eV, gi_w / Ha_eV, ABS(AIMAG(gi_w)) / pi / Ha_eV
    enddo
    close(unit_gf)
  enddo
@@ -820,6 +823,8 @@ subroutine full_ci_nelectrons_selfenergy()
 
  deallocate(fs_virt,fs_occ)
  deallocate(es_virt,es_occ)
+
+ call destroy_selfenergy_grid(se)
 
  call stop_clock(timing_ci_selfenergy)
 

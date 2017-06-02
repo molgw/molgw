@@ -394,7 +394,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
  real(dp),intent(in)                 :: energy0(nstate,nspin)
  type(selfenergy_grid),intent(inout) :: se
 !=====
- integer            :: iomega,pstate
+ integer :: iomega,pstate
 !=====
 
  se%nomegai = 0
