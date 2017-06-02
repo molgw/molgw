@@ -49,6 +49,8 @@ program molgw
  use m_hamiltonian_buffer
  use m_selfenergy_tools
  use m_scf_loop
+ use m_virtual_orbital_space
+ use m_ci
  implicit none
 
 !=====
@@ -281,7 +283,7 @@ program molgw
      ! Nucleus-electron interaction
      if( parallel_ham ) then
        if( parallel_buffer ) then 
-         call setup_nucleus_buffer_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
+         call setup_nucleus_buffer_sca(basis,m_ham,n_ham,hamiltonian_nucleus)
        else
          call setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
        endif
@@ -337,7 +339,7 @@ program molgw
            call dft_approximate_vhxc_sca(basis,m_ham,n_ham,hamiltonian_tmp(:,:,1))
          endif
        else
-         call dft_approximate_vhxc(print_matrix_,basis,hamiltonian_tmp(:,:,1))
+         call dft_approximate_vhxc(basis,hamiltonian_tmp(:,:,1))
        endif
 
        hamiltonian_tmp(:,:,1) = hamiltonian_tmp(:,:,1) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
@@ -391,7 +393,7 @@ program molgw
    ! Only do it if the calculation is NOT a big restart
    if( .NOT. is_big_restart) then
      call scf_loop(is_restart,                                     &
-                   basis,auxil_basis,                              &
+                   basis,                                          &
                    nstate,m_ham,n_ham,m_c,n_c,                     &
                    s_matrix_sqrt_inv,s_matrix,                     &
                    hamiltonian_kinetic,hamiltonian_nucleus,        & 
@@ -495,17 +497,47 @@ program molgw
 
  !
  ! CI calculation is done here
- ! implemented for 2 or 3 electrons only!
+ ! implemented for a few electrons electrons only!
  !
  if(calc_type%is_ci) then
-   if(nspin/=1) call die('for CI, nspin should be 1')
+   if(nspin/=1) call die('molgw: CI calculations need spin-restriction. Set nspin to 1')
 
-!   call full_ci_4electrons_spin(print_wfn_,nstate,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
+   !
+   ! Set the range of states on which to evaluate the self-energy
+   call selfenergy_set_state_range(MIN(nstate,nvirtualg-1),occupation)
 
-   call full_ci_3electrons_spin(print_wfn_,nstate,1,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
+   if( is_virtual_fno ) then
+     call virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
+   endif
+   if(has_auxil_basis) then
+     call calculate_eri_3center_eigen(c_matrix)
+   else
+     call calculate_eri_4center_eigen_uks(c_matrix)
+   endif
 
-!   if( ABS( electrons - 2.0_dp ) > 1.e-5_dp ) call die('CI is implemented for 2 electrons only')
-   call full_ci_2electrons_spin(print_wfn_,nstate,0,basis,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix,en%nuc_nuc)
+   call prepare_ci(MIN(nstate,nvirtualg-1),ncoreg,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix)
+
+   call full_ci_nelectrons_on( 0,NINT(electrons)  ,0,en%nuc_nuc)
+
+   if(calc_type%is_selfenergy) then
+     call full_ci_nelectrons_on( 1,NINT(electrons)-1,1,en%nuc_nuc)
+     call full_ci_nelectrons_on(-1,NINT(electrons)+1,1,en%nuc_nuc)
+     call full_ci_nelectrons_selfenergy()
+   endif
+
+
+   if(has_auxil_basis) then
+     call destroy_eri_3center_eigen()
+   else
+     call destroy_eri_4center_eigen_uks()
+   endif
+
+   call destroy_ci()
+
+   if( is_virtual_fno ) then
+     call destroy_fno(basis,nstate,energy,c_matrix)
+   endif
+
  endif
  call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
  call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
@@ -559,7 +591,7 @@ program molgw
  !
  if(calc_type%is_td .OR. calc_type%is_bse) then
    call init_spectral_function(nstate,occupation,0,wpol)
-   call polarizability(.FALSE.,basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+   call polarizability(.FALSE.,.FALSE.,basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
    call destroy_spectral_function(wpol)
  endif
   

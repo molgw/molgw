@@ -89,7 +89,7 @@ contains
 
 
 !=========================================================================
-function index_prodstate(istate,jstate)
+pure function index_prodstate(istate,jstate)
  implicit none
  integer,intent(in)  :: istate,jstate
  integer             :: index_prodstate
@@ -314,7 +314,7 @@ end subroutine allocate_spectral_function
 
 
 !=========================================================================
-function skip_transition(ib1,ib2,occ1,occ2)
+pure function skip_transition(ib1,ib2,occ1,occ2)
  implicit none
  logical             :: skip_transition
  integer,intent(in)  :: ib1,ib2
@@ -338,7 +338,7 @@ end function skip_transition
 
 
 !=========================================================================
-function skip_transition_apb(ib1,ib2,occ1,occ2)
+pure function skip_transition_apb(ib1,ib2,occ1,occ2)
  implicit none
  logical             :: skip_transition_apb
  integer,intent(in)  :: ib1,ib2
@@ -388,13 +388,11 @@ subroutine write_spectral_function(sf)
  implicit none
  type(spectral_function),intent(in) :: sf
 !=====
- integer             :: wfile
- integer             :: tmpfile
- integer             :: ipole,ibf_auxil
- integer             :: ierr
- logical             :: file_exists
+ integer              :: wfile
+ integer              :: ibf_auxil
+ integer              :: ierr
  real(dp),allocatable :: buffer(:)
- integer             :: iprodbasis
+ integer              :: iprodbasis
 #ifdef HAVE_MPI
  integer(kind=MPI_OFFSET_KIND) :: disp
 #endif
@@ -413,9 +411,12 @@ subroutine write_spectral_function(sf)
    write(wfile) sf%nprodbasis_total
    write(wfile) sf%npole_reso
    write(wfile) sf%pole(:)
-   do ipole=1,sf%npole_reso
-     write(wfile) sf%residue_left(:,ipole)
-   enddo
+   block
+     integer :: ipole
+     do ipole=1,sf%npole_reso
+       write(wfile) sf%residue_left(:,ipole)
+     enddo
+   end block
 
    close(wfile)
  endif

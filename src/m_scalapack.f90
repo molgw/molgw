@@ -22,15 +22,15 @@ module m_scalapack
 #endif
 
  ! Indexes in the BLACS descriptor
- integer,parameter :: DTYPE_A = 1
- integer,parameter :: CTXT_A  = 2
- integer,parameter :: M_A     = 3
- integer,parameter :: N_A     = 4
- integer,parameter :: MB_A    = 5
- integer,parameter :: NB_A    = 6
- integer,parameter :: RSRC_A  = 7
- integer,parameter :: CSRC_A  = 8
- integer,parameter :: LLD_A   = 9
+ integer,parameter :: DTYPE_A = 1     ! Dense or Sparse (always dense here)
+ integer,parameter :: CTXT_A  = 2     ! Context
+ integer,parameter :: M_A     = 3     ! Number of rows
+ integer,parameter :: N_A     = 4     ! Number of cols
+ integer,parameter :: MB_A    = 5     ! Blocking factor for rows
+ integer,parameter :: NB_A    = 6     ! Blocking factor for cols
+ integer,parameter :: RSRC_A  = 7     ! First row
+ integer,parameter :: CSRC_A  = 8     ! First col
+ integer,parameter :: LLD_A   = 9     ! Number of rows in the local sub-matrix
 
  !
  ! SCALAPACK variables
@@ -106,6 +106,16 @@ module m_scalapack
    module procedure rowindex_local_to_global_distrib
    module procedure rowindex_local_to_global_procindex
    module procedure rowindex_local_to_global_descriptor
+ end interface
+
+ interface rowindex_global_to_local
+   module procedure rowindex_global_to_local_distrib
+   module procedure rowindex_global_to_local_descriptor
+ end interface
+
+ interface colindex_global_to_local
+   module procedure colindex_global_to_local_distrib
+   module procedure colindex_global_to_local_descriptor
  end interface
 
  interface diagonalize_sca
@@ -2027,11 +2037,11 @@ end subroutine max_matrix_sca_sd
 
 
 !=========================================================================
-function rowindex_global_to_local(distribution,iglobal)
+function rowindex_global_to_local_distrib(distribution,iglobal) result(ilocal)
  implicit none
  character(len=1),intent(in) :: distribution
  integer,intent(in)          :: iglobal
- integer                     :: rowindex_global_to_local
+ integer                     :: ilocal
 !=====
 !=====
  !
@@ -2042,45 +2052,45 @@ function rowindex_global_to_local(distribution,iglobal)
  select case(distribution)
  case('S')
    if( iprow_sd == INDXG2P(iglobal,block_row,0,first_row,nprow_sd) ) then
-     rowindex_global_to_local = INDXG2L(iglobal,block_row,0,first_row,nprow_sd)
+     ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow_sd)
    else
-     rowindex_global_to_local = 0
+     ilocal = 0
    endif
  case('H')
    if( iprow_ham == INDXG2P(iglobal,block_row,0,first_row,nprow_ham) ) then
-     rowindex_global_to_local = INDXG2L(iglobal,block_row,0,first_row,nprow_ham)
+     ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow_ham)
    else
-     rowindex_global_to_local = 0
+     ilocal = 0
    endif
  case('R')
    if( iprow_rd == INDXG2P(iglobal,block_row,0,first_row,nprow_rd) ) then
-     rowindex_global_to_local = INDXG2L(iglobal,block_row,0,first_row,nprow_rd)
+     ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow_rd)
    else
-     rowindex_global_to_local = 0
+     ilocal = 0
    endif
  case('C')
    if( iprow_cd == INDXG2P(iglobal,block_row,0,first_row,nprow_cd) ) then
-     rowindex_global_to_local = INDXG2L(iglobal,block_row,0,first_row,nprow_cd)
+     ilocal = INDXG2L(iglobal,block_row,0,first_row,nprow_cd)
    else
-     rowindex_global_to_local = 0
+     ilocal = 0
    endif
  case default
    write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
    call die('BUG')
  end select
 #else
- rowindex_global_to_local = iglobal
+ ilocal = iglobal
 #endif
 
-end function rowindex_global_to_local
+end function rowindex_global_to_local_distrib
 
 
 !=========================================================================
-function colindex_global_to_local(distribution,iglobal)
+function colindex_global_to_local_distrib(distribution,jglobal) result(jlocal)
  implicit none
  character(len=1),intent(in) :: distribution
- integer,intent(in)          :: iglobal
- integer                     :: colindex_global_to_local
+ integer,intent(in)          :: jglobal
+ integer                     :: jlocal
 !=====
 !=====
  !
@@ -2090,92 +2100,92 @@ function colindex_global_to_local(distribution,iglobal)
 #ifdef HAVE_SCALAPACK
  select case(distribution)
  case('S')
-   if( ipcol_sd == INDXG2P(iglobal,block_col,0,first_col,npcol_sd) ) then
-     colindex_global_to_local = INDXG2L(iglobal,block_col,0,first_col,npcol_sd)
+   if( ipcol_sd == INDXG2P(jglobal,block_col,0,first_col,npcol_sd) ) then
+     jlocal = INDXG2L(jglobal,block_col,0,first_col,npcol_sd)
    else
-     colindex_global_to_local = 0
+     jlocal = 0
    endif
  case('H')
-   if( ipcol_ham == INDXG2P(iglobal,block_col,0,first_col,npcol_ham) ) then
-     colindex_global_to_local = INDXG2L(iglobal,block_col,0,first_col,npcol_ham)
+   if( ipcol_ham == INDXG2P(jglobal,block_col,0,first_col,npcol_ham) ) then
+     jlocal = INDXG2L(jglobal,block_col,0,first_col,npcol_ham)
    else
-     colindex_global_to_local = 0
+     jlocal = 0
    endif
  case('R')
-   if( ipcol_rd == INDXG2P(iglobal,block_col,0,first_col,npcol_rd) ) then
-     colindex_global_to_local = INDXG2L(iglobal,block_col,0,first_col,npcol_rd)
+   if( ipcol_rd == INDXG2P(jglobal,block_col,0,first_col,npcol_rd) ) then
+     jlocal = INDXG2L(jglobal,block_col,0,first_col,npcol_rd)
    else
-     colindex_global_to_local = 0
+     jlocal = 0
    endif
  case('C')
-   if( ipcol_cd == INDXG2P(iglobal,block_col,0,first_col,npcol_cd) ) then
-     colindex_global_to_local = INDXG2L(iglobal,block_col,0,first_col,npcol_cd)
+   if( ipcol_cd == INDXG2P(jglobal,block_col,0,first_col,npcol_cd) ) then
+     jlocal = INDXG2L(jglobal,block_col,0,first_col,npcol_cd)
    else
-     colindex_global_to_local = 0
+     jlocal = 0
    endif
  case default
    write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
    call die('BUG')
  end select
 #else
- colindex_global_to_local = iglobal
+ jlocal = jglobal
 #endif
 
-end function colindex_global_to_local
+end function colindex_global_to_local_distrib
 
 
 !=========================================================================
-function rowindex_local_to_global_distrib(distribution,ilocal)
+function rowindex_local_to_global_distrib(distribution,ilocal) result(iglobal)
  implicit none
  character(len=1),intent(in) :: distribution
  integer,intent(in)          :: ilocal
- integer                     :: rowindex_local_to_global_distrib
+ integer                     :: iglobal
 !=====
 !=====
 
 #ifdef HAVE_SCALAPACK
  select case(distribution)
  case('S')
-   rowindex_local_to_global_distrib = INDXL2G(ilocal,block_row,iprow_sd,first_row,nprow_sd)
+   iglobal = INDXL2G(ilocal,block_row,iprow_sd,first_row,nprow_sd)
  case('H')
-   rowindex_local_to_global_distrib = INDXL2G(ilocal,block_row,iprow_ham,first_row,nprow_ham)
+   iglobal = INDXL2G(ilocal,block_row,iprow_ham,first_row,nprow_ham)
  case('R')
-   rowindex_local_to_global_distrib = INDXL2G(ilocal,block_row,iprow_rd,first_row,nprow_rd)
+   iglobal = INDXL2G(ilocal,block_row,iprow_rd,first_row,nprow_rd)
  case('C')
-   rowindex_local_to_global_distrib = INDXL2G(ilocal,block_row,iprow_cd,first_row,nprow_cd)
+   iglobal = INDXL2G(ilocal,block_row,iprow_cd,first_row,nprow_cd)
  case default
    write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
    call die('BUG')
  end select
 #else
- rowindex_local_to_global_distrib = ilocal
+ iglobal = ilocal
 #endif
 
 end function rowindex_local_to_global_distrib
 
 
 !=========================================================================
-function rowindex_local_to_global_procindex(iprow,nprow,ilocal)
+function rowindex_local_to_global_procindex(iprow,nprow,ilocal) result(iglobal)
  implicit none
  integer,intent(in)          :: iprow,nprow,ilocal
- integer                     :: rowindex_local_to_global_procindex
+ integer                     :: iglobal
 !=====
 !=====
 
 #ifdef HAVE_SCALAPACK
- rowindex_local_to_global_procindex = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
+ iglobal = INDXL2G(ilocal,block_row,iprow,first_row,nprow)
 #else
- rowindex_local_to_global_procindex = ilocal
+ iglobal = ilocal
 #endif
 
 end function rowindex_local_to_global_procindex
 
 
 !=========================================================================
-function rowindex_local_to_global_descriptor(desc,ilocal)
+function rowindex_local_to_global_descriptor(desc,ilocal) result(iglobal)
  implicit none
  integer,intent(in)          :: desc(NDEL),ilocal
- integer                     :: rowindex_local_to_global_descriptor
+ integer                     :: iglobal
 !=====
 #ifdef HAVE_SCALAPACK
  integer          :: iprow,ipcol,nprow,npcol
@@ -2184,66 +2194,19 @@ function rowindex_local_to_global_descriptor(desc,ilocal)
 
 #ifdef HAVE_SCALAPACK
  call BLACS_GRIDINFO(desc(CTXT_A),nprow,npcol,iprow,ipcol)
- rowindex_local_to_global_descriptor = INDXL2G(ilocal,desc(MB_A),iprow,desc(RSRC_A),nprow)
+ iglobal = INDXL2G(ilocal,desc(MB_A),iprow,desc(RSRC_A),nprow)
 #else
- rowindex_local_to_global_descriptor = ilocal
+ iglobal = ilocal
 #endif
 
 end function rowindex_local_to_global_descriptor
 
 
 !=========================================================================
-function colindex_local_to_global_distrib(distribution,ilocal)
+function rowindex_global_to_local_descriptor(desc,iglobal) result(ilocal)
  implicit none
- character(len=1),intent(in) :: distribution
- integer,intent(in)          :: ilocal
- integer                     :: colindex_local_to_global_distrib
-!=====
-!=====
-
-#ifdef HAVE_SCALAPACK
- select case(distribution)
- case('S')
-   colindex_local_to_global_distrib = INDXL2G(ilocal,block_col,ipcol_sd,first_col,npcol_sd)
- case('H')
-   colindex_local_to_global_distrib = INDXL2G(ilocal,block_col,ipcol_ham,first_col,npcol_ham)
- case('R')
-   colindex_local_to_global_distrib = INDXL2G(ilocal,block_col,ipcol_rd,first_col,npcol_rd)
- case('C')
-   colindex_local_to_global_distrib = INDXL2G(ilocal,block_col,ipcol_cd,first_col,npcol_cd)
- case default
-   write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
-   call die('BUG')
- end select
-#else
- colindex_local_to_global_distrib = ilocal
-#endif
-
-end function colindex_local_to_global_distrib
-
-
-!=========================================================================
-function colindex_local_to_global_procindex(ipcol,npcol,ilocal)
- implicit none
- integer,intent(in)          :: ipcol,npcol,ilocal
- integer                     :: colindex_local_to_global_procindex
-!=====
-!=====
-
-#ifdef HAVE_SCALAPACK
- colindex_local_to_global_procindex = INDXL2G(ilocal,block_col,ipcol,first_col,npcol)
-#else
- colindex_local_to_global_procindex = ilocal
-#endif
-
-end function colindex_local_to_global_procindex
-
-
-!=========================================================================
-function colindex_local_to_global_descriptor(desc,ilocal)
- implicit none
- integer,intent(in)          :: desc(NDEL),ilocal
- integer                     :: colindex_local_to_global_descriptor
+ integer,intent(in)          :: desc(NDEL),iglobal
+ integer                     :: ilocal
 !=====
 #ifdef HAVE_SCALAPACK
  integer          :: iprow,ipcol,nprow,npcol
@@ -2252,12 +2215,109 @@ function colindex_local_to_global_descriptor(desc,ilocal)
 
 #ifdef HAVE_SCALAPACK
  call BLACS_GRIDINFO(desc(CTXT_A),nprow,npcol,iprow,ipcol)
- colindex_local_to_global_descriptor = INDXL2G(ilocal,desc(NB_A),ipcol,desc(CSRC_A),npcol)
+ if( iprow == INDXG2P(iglobal,desc(MB_A),0,desc(RSRC_A),nprow) ) then
+   ilocal = INDXG2L(iglobal,desc(MB_A),0,desc(RSRC_A),nprow)
+ else
+   ilocal = 0
+ endif
 #else
- colindex_local_to_global_descriptor = ilocal
+ ilocal = iglobal
+#endif
+
+end function rowindex_global_to_local_descriptor
+
+
+!=========================================================================
+function colindex_local_to_global_distrib(distribution,jlocal) result(jglobal)
+ implicit none
+ character(len=1),intent(in) :: distribution
+ integer,intent(in)          :: jlocal
+ integer                     :: jglobal
+!=====
+!=====
+
+#ifdef HAVE_SCALAPACK
+ select case(distribution)
+ case('S')
+   jglobal = INDXL2G(jlocal,block_col,ipcol_sd,first_col,npcol_sd)
+ case('H')
+   jglobal = INDXL2G(jlocal,block_col,ipcol_ham,first_col,npcol_ham)
+ case('R')
+   jglobal = INDXL2G(jlocal,block_col,ipcol_rd,first_col,npcol_rd)
+ case('C')
+   jglobal = INDXL2G(jlocal,block_col,ipcol_cd,first_col,npcol_cd)
+ case default
+   write(stdout,*) 'SCALAPACK distribution type does not exist',distribution
+   call die('BUG')
+ end select
+#else
+ jglobal = jlocal
+#endif
+
+end function colindex_local_to_global_distrib
+
+
+!=========================================================================
+function colindex_local_to_global_procindex(ipcol,npcol,jlocal) result(jglobal)
+ implicit none
+ integer,intent(in)          :: ipcol,npcol,jlocal
+ integer                     :: jglobal
+!=====
+!=====
+
+#ifdef HAVE_SCALAPACK
+ jglobal = INDXL2G(jlocal,block_col,ipcol,first_col,npcol)
+#else
+ jglobal = jlocal
+#endif
+
+end function colindex_local_to_global_procindex
+
+
+!=========================================================================
+function colindex_local_to_global_descriptor(desc,jlocal) result(jglobal)
+ implicit none
+ integer,intent(in)          :: desc(NDEL),jlocal
+ integer                     :: jglobal
+!=====
+#ifdef HAVE_SCALAPACK
+ integer          :: iprow,ipcol,nprow,npcol
+#endif
+!=====
+
+#ifdef HAVE_SCALAPACK
+ call BLACS_GRIDINFO(desc(CTXT_A),nprow,npcol,iprow,ipcol)
+ jglobal = INDXL2G(jlocal,desc(NB_A),ipcol,desc(CSRC_A),npcol)
+#else
+ jglobal = jlocal
 #endif
 
 end function colindex_local_to_global_descriptor
+
+
+!=========================================================================
+function colindex_global_to_local_descriptor(desc,jglobal) result(jlocal)
+ implicit none
+ integer,intent(in)          :: desc(NDEL),jglobal
+ integer                     :: jlocal
+!=====
+#ifdef HAVE_SCALAPACK
+ integer          :: iprow,ipcol,nprow,npcol
+#endif
+!=====
+
+#ifdef HAVE_SCALAPACK
+ call BLACS_GRIDINFO(desc(CTXT_A),nprow,npcol,iprow,ipcol)
+ if( ipcol == INDXG2P(jglobal,desc(NB_A),0,desc(CSRC_A),npcol) ) then
+   jlocal = INDXG2L(jglobal,desc(NB_A),0,desc(CSRC_A),npcol)
+ else
+   jlocal = 0
+ endif
+#else
+ jlocal = jglobal
+#endif
+
+end function colindex_global_to_local_descriptor
 
 
 !=========================================================================

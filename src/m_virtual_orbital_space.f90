@@ -42,8 +42,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  integer,intent(out)                   :: nstate_small
 !=====
  integer                               :: ispin
- integer                               :: ibf
- integer                               :: istate,jstate
+ integer                               :: istate
  type(basis_set)                       :: basis_small
  real(dp),allocatable                  :: s_bigsmall(:,:)
  real(dp),allocatable                  :: s_small(:,:)
@@ -87,7 +86,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
 
  ! Calculate the mixed overlap matrix Sbs: s_bigsmall
  call clean_allocate('Big-Small overlap Sbs',s_bigsmall,basis%nbf,basis_small%nbf)
- call setup_overlap_mixedbasis(.FALSE.,basis,basis_small,s_bigsmall)
+ call setup_overlap_mixedbasis(basis,basis_small,s_bigsmall)
 
  ! Calculate the overlap matrix in the small basis:
  !  tilde S = Sbs**T *  S**-1 * Sbs
@@ -278,8 +277,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
  integer                    :: mf,nf
  integer                    :: mg,ng
  integer                    :: ispin
- integer                    :: ibf
- integer                    :: istate,jstate
+ integer                    :: istate
  integer                    :: nstate_tmp
  type(basis_set)            :: basis_small
  real(dp),allocatable       :: s_bigsmall_global(:,:)   !TODO: remove this in the future
@@ -362,7 +360,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
    ! Calculate the mixed overlap matrix Sbs: s_bigsmall
    !TODO: Distribute this from the beginning
    call clean_allocate('Big-Small overlap Sbs',s_bigsmall_global,basis%nbf,basis_small%nbf)
-   call setup_overlap_mixedbasis(.FALSE.,basis,basis_small,s_bigsmall_global)
+   call setup_overlap_mixedbasis(basis,basis_small,s_bigsmall_global)
    !
    ! Descriptor desc_bb_bs  mb,nb
    mb = NUMROC(basis%nbf      ,block_row,iprow,first_row,nprow)
@@ -569,7 +567,7 @@ end subroutine setup_virtual_smallbasis_sca
 
 
 !=========================================================================
-subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
+subroutine virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
  use m_inputparam
  use m_tools,only: diagonalize
  use m_basis_set
@@ -577,12 +575,11 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
  implicit none
 
  type(basis_set),intent(in)            :: basis
- integer,intent(in)                    :: nstate
+ integer,intent(in)                    :: nstate,nsemax
  real(dp),intent(in)                   :: occupation(nstate,nspin)
  real(dp),intent(inout)                :: energy(nstate,nspin)
  real(dp),intent(inout)                :: c_matrix(basis%nbf,nstate,nspin)
 !=====
- real(dp),parameter                    :: alpha_mp2=1.0_dp
  integer                               :: istate,jstate,astate,bstate,cstate
  integer                               :: ispin
  integer                               :: nocc,ncore,nvirtual,nvirtual_kept
@@ -590,7 +587,6 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
  real(dp),allocatable                  :: occupation_mp2(:),energy_virtual_kept(:)
  real(dp)                              :: eri_ci_aj,eri_ci_bj
  real(dp)                              :: den_ca_ij,den_cb_ij
- real(dp)                              :: en_mp2
  integer                               :: nvirtualmin
  real(dp),allocatable                  :: eri_ci_i(:)
 !=====
@@ -608,11 +604,6 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
    return
  endif
 
- if( .NOT. has_auxil_basis ) then
-   call issue_warning('virtual_fno not implemented when no auxiliary basis is provided')
-   return
- endif
-
  if( nspin > 1 ) then
    call issue_warning('virtual_fno not implemented yet for spin polarized calculations')
    return
@@ -624,8 +615,11 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
  endif
 
 
- call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,1,nstate,1,nstate)
-
+ if(has_auxil_basis) then
+   call calculate_eri_3center_eigen(c_matrix)
+ else
+   call calculate_eri_4center_eigen_uks(c_matrix)
+ endif
 
  do ispin=1,nspin
    !
@@ -638,29 +632,32 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
 
 
 
-   nvirtual = nstate - nocc
+   nvirtual = nstate - nsemax
 
    allocate(p_matrix_mp2(nvirtual,nvirtual))
    p_matrix_mp2(:,:) = 0.0_dp
 
-   allocate(eri_ci_i(nocc+1:nstate))
+   allocate(eri_ci_i(nsemax+1:nstate))
 
-#if 1
+#if 0
    ! Approximation by Aquilante et al.
    do istate=ncore+1,nocc
      do cstate=nocc+1,nstate
 
        do astate=nocc+1,nstate
-         eri_ci_i(astate) = eri_eigen_ri_paral(cstate,istate,ispin,astate,istate,ispin) &
+!         eri_ci_i(astate) = eri_eigen_ri_paral(cstate,istate,ispin,astate,istate,ispin) &
+!                              / ( energy(istate,ispin) + energy(istate,ispin) - energy(astate,ispin) - energy(cstate,ispin) )
+
+         eri_ci_i(astate) = eri_eigen(cstate,istate,ispin,astate,istate,ispin) &
                               / ( energy(istate,ispin) + energy(istate,ispin) - energy(astate,ispin) - energy(cstate,ispin) )
        enddo
-       call xsum_auxil(eri_ci_i)
+!       call xsum_auxil(eri_ci_i)
 
-       do bstate=nocc+1,nstate
-         do astate=nocc+1,nstate
+       do bstate=nsemax+1,nstate
+         do astate=nsemax+1,nstate
 
-           p_matrix_mp2(astate-nocc,bstate-nocc) = &
-                p_matrix_mp2(astate-nocc,bstate-nocc)  &
+           p_matrix_mp2(astate-nsemax,bstate-nsemax) = &
+                p_matrix_mp2(astate-nsemax,bstate-nsemax)  &
                    + 0.50_dp * eri_ci_i(astate) * eri_ci_i(bstate)
 
          enddo
@@ -671,10 +668,10 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
    deallocate(eri_ci_i)
 #else
 
-   do bstate=nocc+1,nstate
-     do astate=nocc+1,nstate
+   do bstate=nsemax+1,nstate
+     do astate=nsemax+1,nstate
 
-#if 0
+#if 1
        ! Full calculation of the MP2 density matrix on virtual orbitals (See Taube and Bartlett)
        do cstate=nocc+1,nstate
          do istate=ncore+1,nocc
@@ -683,64 +680,34 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
              den_cb_ij = energy(istate,ispin) + energy(jstate,ispin) - energy(bstate,ispin) - energy(cstate,ispin)
              den_ca_ij = energy(istate,ispin) + energy(jstate,ispin) - energy(astate,ispin) - energy(cstate,ispin)
 
-             eri_ci_aj = eri_eigen_ri(cstate,istate,ispin,astate,jstate,ispin) &
-                          - eri_eigen_ri(cstate,jstate,ispin,astate,istate,ispin)  * alpha_mp2
-             eri_ci_bj = eri_eigen_ri(cstate,istate,ispin,bstate,jstate,ispin) &
-                         - eri_eigen_ri(cstate,jstate,ispin,bstate,istate,ispin)   * alpha_mp2
+             eri_ci_aj = eri_eigen(cstate,istate,ispin,astate,jstate,ispin) * spin_fact &
+                          - eri_eigen(cstate,jstate,ispin,astate,istate,ispin) 
+             eri_ci_bj = eri_eigen(cstate,istate,ispin,bstate,jstate,ispin) * spin_fact &
+                         - eri_eigen(cstate,jstate,ispin,bstate,istate,ispin)
 
-             p_matrix_mp2(astate-nocc,bstate-nocc) = &
-                  p_matrix_mp2(astate-nocc,bstate-nocc)  & 
+             p_matrix_mp2(astate-nsemax,bstate-nsemax) = &
+                  p_matrix_mp2(astate-nsemax,bstate-nsemax)  & 
                      + 0.50_dp * eri_ci_aj * eri_ci_bj / ( den_cb_ij * den_ca_ij )
 
            enddo
          enddo
        enddo
-#elif 1
+#else
        ! Approximation by Aquilante et al.
        do cstate=nocc+1,nstate
          do istate=ncore+1,nocc
            den_cb_ij = energy(istate,ispin) + energy(istate,ispin) - energy(bstate,ispin) - energy(cstate,ispin)
            den_ca_ij = energy(istate,ispin) + energy(istate,ispin) - energy(astate,ispin) - energy(cstate,ispin)
 
-           eri_ci_aj = eri_eigen_ri(cstate,istate,ispin,astate,istate,ispin) 
-           eri_ci_bj = eri_eigen_ri(cstate,istate,ispin,bstate,istate,ispin) 
+           eri_ci_aj = eri_eigen(cstate,istate,ispin,astate,istate,ispin) 
+           eri_ci_bj = eri_eigen(cstate,istate,ispin,bstate,istate,ispin) 
 
-           p_matrix_mp2(astate-nocc,bstate-nocc) = &
-                p_matrix_mp2(astate-nocc,bstate-nocc)  & 
+           p_matrix_mp2(astate-nsemax,bstate-nsemax) = &
+                p_matrix_mp2(astate-nsemax,bstate-nsemax)  & 
                    + 0.50_dp * eri_ci_aj * eri_ci_bj / ( den_cb_ij * den_ca_ij )
 
          enddo
        enddo
-#elif 0
-       do istate=ncore+1,nocc
-         ! Approximation by Aquilante et al.
-         den_cb_ij = energy(istate,ispin) + energy(istate,ispin) - energy(bstate,ispin) - energy(bstate,ispin)
-         den_ca_ij = energy(istate,ispin) + energy(istate,ispin) - energy(astate,ispin) - energy(astate,ispin)
-
-         eri_ci_aj = eri_eigen_ri(astate,istate,ispin,astate,istate,ispin) 
-         eri_ci_bj = eri_eigen_ri(bstate,istate,ispin,bstate,istate,ispin) 
-
-         p_matrix_mp2(astate-nocc,bstate-nocc) = &
-              p_matrix_mp2(astate-nocc,bstate-nocc)  & 
-                 + 0.50_dp * eri_ci_aj * eri_ci_bj / ( den_cb_ij * den_ca_ij )
-       enddo
-#else
-         do istate=ncore+1,nocc
-           do jstate=ncore+1,nocc
-
-             den_cb_ij = energy(istate,ispin) + energy(jstate,ispin) - energy(bstate,ispin) - energy(bstate,ispin)
-             den_ca_ij = energy(istate,ispin) + energy(jstate,ispin) - energy(astate,ispin) - energy(astate,ispin)
-
-             eri_ci_aj = eri_eigen_ri(astate,istate,ispin,astate,jstate,ispin) 
-             eri_ci_bj = eri_eigen_ri(bstate,istate,ispin,bstate,jstate,ispin) 
-
-             p_matrix_mp2(astate-nocc,bstate-nocc) = &
-                  p_matrix_mp2(astate-nocc,bstate-nocc)  &
-                     + 0.50_dp * eri_ci_aj * eri_ci_bj / ( den_cb_ij * den_ca_ij )
-
-           enddo
-         enddo
-
 #endif
 
      enddo
@@ -762,16 +729,19 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
 
    ham_virtual(:,:) = 0.0_dp
    do astate=1,nvirtual
-     ham_virtual(astate,astate) = energy(astate+nocc,ispin)
+     ham_virtual(astate,astate) = energy(astate+nsemax,ispin)
    enddo
 
-   nvirtual_kept = nvirtualmin - 1 - nocc
+   nvirtual_kept = nvirtualmin - 1 - nsemax
 
-   write(stdout,'(/,1x,a,i5)')    'Max state index included ',nvirtual_kept + nocc
-   write(stdout,'(1x,a,i5,a,i5)') 'Retain ',nvirtual_kept,' virtual orbitals out of ',nvirtual
-   write(stdout,'(1x,a,es14.6)')  'Occupation number of the last virtual state',occupation_mp2(nvirtual - (nocc + nvirtual_kept))
-   write(stdout,'(1x,a,es14.6,4x,es14.6)') '  to be compared to the first and last virtual states',occupation_mp2(nvirtual),occupation_mp2(1)
-   write(stdout,*)
+   write(stdout,'(/,1x,a,i5,a,i5)') 'Frozen states range from ',ncore+1,' to ',nsemax
+   write(stdout,'(3x,a,i5,a,i5)')   'Virtual states from    ',nsemax+1,' to ',nstate
+   write(stdout,'(5x,a,i5,a,i5,/)') 'have been reduced to ',nsemax+1,' to ',nsemax+nvirtual_kept
+!   write(stdout,'(/,1x,a,i5)')    'Max state index included ',nvirtual_kept + nsemax
+!   write(stdout,'(1x,a,i5,a,i5)') 'Retain ',nvirtual_kept,' virtual orbitals out of ',nvirtual
+!   write(stdout,'(1x,a,es14.6)')  'Occupation number of the last virtual state',occupation_mp2(nvirtual - (nsemax + nvirtual_kept))
+!   write(stdout,'(1x,a,es14.6,4x,es14.6)') '  to be compared to the first and last virtual states',occupation_mp2(nvirtual),occupation_mp2(1)
+!   write(stdout,*)
 
    allocate(ham_virtual_kept(nvirtual_kept,nvirtual_kept))
    allocate(energy_virtual_kept(nvirtual_kept))
@@ -793,17 +763,17 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
    !
    ! Save the original c_matrix and energies
    if( .NOT. ALLOCATED(energy_ref) ) then
-     allocate(energy_ref(nocc+1:nocc+nvirtual_kept,nspin))
-     allocate(c_matrix_ref(basis%nbf,nocc+1:nocc+nvirtual_kept,nspin))   ! TODO clean_allocate of this
+     allocate(energy_ref(nsemax+1:nsemax+nvirtual_kept,nspin))
+     allocate(c_matrix_ref(basis%nbf,nsemax+1:nsemax+nvirtual_kept,nspin))   ! TODO clean_allocate of this
 
-     energy_ref(nocc+1:nocc+nvirtual_kept,:)     = energy(nocc+1:nocc+nvirtual_kept,:)
-     c_matrix_ref(:,nocc+1:nocc+nvirtual_kept,:) = c_matrix(:,nocc+1:nocc+nvirtual_kept,:)
+     energy_ref(nsemax+1:nsemax+nvirtual_kept,:)     = energy(nsemax+1:nsemax+nvirtual_kept,:)
+     c_matrix_ref(:,nsemax+1:nsemax+nvirtual_kept,:) = c_matrix(:,nsemax+1:nsemax+nvirtual_kept,:)
    endif
 
    !
    ! And then override the c_matrix and the energy with the fresh new ones
-   energy(nocc+1:nocc+nvirtual_kept,ispin)     = energy_virtual_kept(:)
-   c_matrix(:,nocc+1:nocc+nvirtual_kept,ispin) = MATMUL( c_matrix(:,nocc+1:,ispin) ,  &
+   energy(nsemax+1:nsemax+nvirtual_kept,ispin)     = energy_virtual_kept(:)
+   c_matrix(:,nsemax+1:nsemax+nvirtual_kept,ispin) = MATMUL( c_matrix(:,nsemax+1:,ispin) ,  &
                                                     MATMUL( p_matrix_mp2(:,nvirtual-nvirtual_kept+1:) , &
                                                        ham_virtual_kept(:,:) ) )
 
@@ -815,7 +785,11 @@ subroutine virtual_fno(basis,nstate,occupation,energy,c_matrix)
 
 
 
- call destroy_eri_3center_eigen()
+ if(has_auxil_basis) then
+   call destroy_eri_3center_eigen()
+ else
+   call destroy_eri_4center_eigen_uks()
+ endif
 
  write(stdout,'(1x,a)') 'Optimized empty states with Frozen Natural Orbitals'
 

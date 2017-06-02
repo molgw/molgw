@@ -10,7 +10,7 @@
 
 
 !=========================================================================
-subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
+subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy,c_matrix,rpa_correlation,wpol_out)
  use m_definitions
  use m_timing
  use m_warning
@@ -25,7 +25,7 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
  use m_eri_ao_mo
  implicit none
 
- logical,intent(in)                    :: is_gw
+ logical,intent(in)                    :: enforce_rpa,calculate_w
  type(basis_set),intent(in)            :: basis
  integer,intent(in)                    :: nstate
  real(dp),intent(in)                   :: occupation(nstate,nspin)
@@ -44,13 +44,12 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
  real(dp),allocatable      :: xpy_matrix(:,:),xmy_matrix(:,:)
  real(dp),allocatable      :: eigenvalue(:)
  real(dp)                  :: energy_qp(nstate,nspin)
- logical                   :: is_tddft
- logical                   :: is_ij
+ logical                   :: is_tddft,is_rpa
  logical                   :: has_manual_tdhf
  integer                   :: reading_status
  integer                   :: tdhffile
  integer                   :: m_apb,n_apb,m_x,n_x
-! Scalapack variables
+! SCALAPACK variables
  integer                   :: desc_apb(NDEL),desc_x(NDEL)
 !=====
 
@@ -63,15 +62,15 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
    write(stdout,'(a)') ' Singlet final state'
  endif
 
- if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1)
+ if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nvirtual_W-1,ncore_W+1,nvirtual_W-1)
 
  ! Set up all the switches to be able to treat
  ! GW, BSE, TDHF, TDDFT (semilocal or hybrid)
 
  ! 
  ! Set up flag is_tddft and is_bse
- is_tddft = calc_type%is_td .AND. calc_type%is_dft .AND. .NOT. is_gw
- is_bse   = calc_type%is_bse .AND. .NOT. is_gw
+ is_tddft = calc_type%is_td .AND. calc_type%is_dft .AND. .NOT. enforce_rpa
+ is_bse   = calc_type%is_bse .AND. .NOT. enforce_rpa
 
  ! 
  ! Set up exchange content alpha_local
@@ -84,15 +83,16 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
    write(msg,'(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alpha ',alpha_local
    call issue_warning(msg)
  else
-   if(is_gw) then
-     alpha_local = 0.0_dp
-   else if(is_tddft) then
+   if(calc_type%is_td) then        ! TDDFT or TDHF
      alpha_local = alpha_hybrid
-   else ! TDHF or BSE case
+   else if(is_bse) then  ! BSE
      alpha_local = 1.0_dp
+   else                  ! RPA
+     alpha_local = 0.0_dp
    endif
  endif
 
+ is_rpa = .NOT.(is_tddft) .AND. .NOT.(is_bse) .AND. (ABS(alpha_local)<1.0e-5_dp)
 
  call start_clock(timing_build_h2p)
 
@@ -148,8 +148,8 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
  !
 
  ! Calculate the diagonal separately: it is needed for the single pole approximation
- if( nvirtual_SPA < nvirtual_W .AND. is_gw ) & 
-     call build_a_diag_common(nmat,basis%nbf,nstate,c_matrix,energy_qp,wpol_out,a_diag)
+ if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) & 
+     call build_a_diag_common(basis%nbf,nstate,c_matrix,energy_qp,wpol_out,a_diag)
 
  apb_matrix(:,:) = 0.0_dp
  amb_matrix(:,:) = 0.0_dp
@@ -201,7 +201,7 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
    !
    ! Step 3
    if( is_bse ) then
-     call build_amb_apb_bse(basis%nbf,nstate,wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
+     call build_amb_apb_bse(wpol_out,wpol_static,m_apb,n_apb,amb_matrix,apb_matrix)
      call destroy_spectral_function(wpol_static)
    endif
 
@@ -223,7 +223,7 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
 
  call stop_clock(timing_build_h2p)
 
- if( is_gw .AND. .NOT. is_tda ) call clean_deallocate('A-B',amb_matrix)
+ if( is_rpa .AND. .NOT. is_tda ) call clean_deallocate('A-B',amb_matrix)
  
 
  !
@@ -238,14 +238,14 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
  call init_desc('S',nmat,nexc,desc_x,m_x,n_x)
 
  call clean_allocate('X+Y',xpy_matrix,m_x,n_x)
- if( .NOT. is_gw .OR. is_tda ) &
+ if( .NOT. is_rpa .OR. is_tda ) &
    call clean_allocate('X-Y',xmy_matrix,m_x,n_x)
 
  !
  ! Diago using the 4 block structure and the symmetry of each block
  ! With or Without SCALAPACK
  !
- if( .NOT. is_gw .OR. is_tda ) then
+ if( .NOT. is_rpa .OR. is_tda ) then
    if( nexcitation == 0 ) then
      ! The following call works with AND without SCALAPACK
      call diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,eigenvalue,&
@@ -276,7 +276,7 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
  !
  ! Second part of the RPA correlation energy: sum over positive eigenvalues
  rpa_correlation = rpa_correlation + 0.50_dp * SUM( ABS(eigenvalue(:)) )
- if( is_gw ) then
+ if( is_rpa ) then
    write(stdout,'(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
    write(stdout,'(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
    write(stdout,'(/,a,f16.10)') ' RPA correlation energy (Ha): ',rpa_correlation
@@ -284,7 +284,7 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
 
  write(stdout,'(/,a,f12.6)') ' Lowest neutral excitation energy (eV):',MINVAL(ABS(eigenvalue(1:nexc)))*Ha_eV
 
- if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
+ if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
 
  !
  ! Calculate the optical sprectrum
@@ -292,7 +292,7 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
  !
  if( calc_type%is_td .OR. is_bse ) then
    call optical_spectrum(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,xpy_matrix,xmy_matrix,eigenvalue)
-!   call stopping_power(nstate,basis,occupation,c_matrix,wpol_out,m_x,n_x,xpy_matrix,eigenvalue)
+!   call stopping_power(nstate,basis,c_matrix,wpol_out,m_x,n_x,xpy_matrix,eigenvalue)
  endif
 
  !
@@ -304,17 +304,17 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
  ! Calculate Wp= v * chi * v    if necessary
  ! and then write it down on file
  !
- if( print_w_ .OR. is_gw ) then
+ if( print_w_ .OR. calculate_w ) then
    if( has_auxil_basis) then
-     call chi_to_sqrtvchisqrtv_auxil(basis%nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol_out,energy_gm)
+     call chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol_out,energy_gm)
      ! This following coding of the Galitskii-Migdal correlation energy is only working with
      ! an auxiliary basis
-     if( is_gw ) write(stdout,'(a,f16.10,/)') ' Correlation energy in the Galitskii-Migdal formula (Ha): ',energy_gm
+     if( is_rpa ) write(stdout,'(a,f16.10,/)') ' Correlation energy in the Galitskii-Migdal formula (Ha): ',energy_gm
      
      ! Add the single pole approximation for the poles that have been neglected
      ! in the diagonalization
-     if( nvirtual_SPA < nvirtual_W .AND. is_gw ) & 
-        call chi_to_sqrtvchisqrtv_auxil_spa(basis%nbf,a_diag,wpol_out)
+     if( nvirtual_SPA < nvirtual_W .AND. is_rpa ) & 
+        call chi_to_sqrtvchisqrtv_auxil_spa(a_diag,wpol_out)
 
    else
      call chi_to_vchiv(basis%nbf,nstate,c_matrix,xpy_matrix,eigenvalue,wpol_out)
@@ -324,9 +324,10 @@ subroutine polarizability(is_gw,basis,nstate,occupation,energy,c_matrix,rpa_corr
    ! If requested write the spectral function on file
    if( print_w_ ) call write_spectral_function(wpol_out)
 
+ else
+   call destroy_spectral_function(wpol_out)
  endif
 
- if( .NOT. is_gw ) call destroy_spectral_function(wpol_out)
 
  write(stdout,*) 'Deallocate eigenvector array'
  call clean_deallocate('X+Y',xpy_matrix)
@@ -343,7 +344,7 @@ end subroutine polarizability
 
 
 !=========================================================================
-subroutine polarizability_onering(basis,nstate,occupation,energy,c_matrix,vchi0v)
+subroutine polarizability_onering(basis,nstate,energy,c_matrix,vchi0v)
  use m_definitions
  use m_timing
  use m_warning
@@ -360,7 +361,6 @@ subroutine polarizability_onering(basis,nstate,occupation,energy,c_matrix,vchi0v
 
  type(basis_set),intent(in)            :: basis
  integer,intent(in)                    :: nstate
- real(dp),intent(in)                   :: occupation(nstate,nspin)
  real(dp),intent(in)                   :: energy(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(inout) :: vchi0v
 !=====
@@ -370,7 +370,7 @@ subroutine polarizability_onering(basis,nstate,occupation,energy,c_matrix,vchi0v
 
  call allocate_spectral_function(nauxil_3center,vchi0v)
 
- call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
+ call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
 
 
  do t_jb=1,vchi0v%npole_reso
@@ -416,8 +416,7 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  integer                            :: t_ia,t_jb
  integer                            :: t_ia_global,t_jb_global
  integer                            :: istate,astate,iaspin
- integer                            :: mstate,pstate,mpspin
- integer                            :: ibf,jbf
+ integer                            :: mpspin
  integer                            :: iomega,idir,jdir
  integer,parameter                  :: nomega=600
  complex(dp)                        :: omega(nomega)
@@ -426,7 +425,6 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  real(dp)                           :: static_polarizability(3,3)
  real(dp)                           :: oscillator_strength,trk_sumrule,mean_excitation
  real(dp),allocatable               :: dipole_basis(:,:,:),dipole_state(:,:,:,:)
- real(dp),allocatable               :: dipole_cart(:,:,:)
  real(dp),allocatable               :: residue(:,:)
  integer                            :: dynpolfile
  integer                            :: photocrossfile
@@ -617,15 +615,13 @@ subroutine optical_spectrum(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_mat
  dynamical_pol(:,:,:) = 0.0_dp
  static_polarizability(:,:) = 0.0_dp
  do t_ia=1,nexc
-   do idir=1,3
-     do jdir=1,3
-       dynamical_pol(:,idir,jdir) = dynamical_pol(:,idir,jdir) &
-                            + residue(idir,t_ia) * residue(jdir,t_ia) &
-                              * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ia) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ia) ) ) )
-       static_polarizability(idir,jdir) = static_polarizability(idir,jdir) &
-                      + 2.0_dp * residue(idir,t_ia) * residue(jdir,t_ia) / eigenvalue(t_ia)
-     enddo
-   enddo
+   forall(idir=1:3, jdir=1:3)
+     dynamical_pol(:,idir,jdir) = dynamical_pol(:,idir,jdir) &
+                          + residue(idir,t_ia) * residue(jdir,t_ia) &
+                            * ( AIMAG( -1.0_dp  / ( omega(:) - eigenvalue(t_ia) ) ) - AIMAG( -1.0_dp  / ( omega(:) + eigenvalue(t_ia) ) ) )
+     static_polarizability(idir,jdir) = static_polarizability(idir,jdir) &
+                    + 2.0_dp * residue(idir,t_ia) * residue(jdir,t_ia) / eigenvalue(t_ia)
+   end forall
  enddo
  !
  ! Get the photoabsorption cross section
@@ -678,7 +674,7 @@ end subroutine optical_spectrum
 
 
 !=========================================================================
-subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalue)
+subroutine stopping_power(nstate,basis,c_matrix,chi,m_x,n_x,xpy_matrix,eigenvalue)
  use m_definitions
  use m_timing
  use m_warning
@@ -694,7 +690,7 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
 
  integer,intent(in)                 :: nstate,m_x,n_x
  type(basis_set),intent(in)         :: basis
- real(dp),intent(in)                :: occupation(nstate,nspin),c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in) :: chi
  real(dp),intent(in)                :: xpy_matrix(m_x,n_x)
  real(dp),intent(in)                :: eigenvalue(chi%npole_reso_apb)
@@ -707,19 +703,16 @@ subroutine stopping_power(nstate,basis,occupation,c_matrix,chi,m_x,n_x,xpy_matri
  integer                            :: mpspin
  integer                            :: ishell,jshell
  integer                            :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
- integer                            :: ibf,jbf
  integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart
- integer                            :: iomega,idir,jdir
+ integer                            :: iomega,idir
  integer,parameter                  :: nomega=600
  complex(dp)                        :: omega(nomega)
- real(dp)                           :: coeff
  real(dp)                           :: dynamical_pol(nomega),structure_factor(nomega)
- complex(dp)                        :: bethe_sumrule
  complex(dp),allocatable            :: gos_basis(:,:),gos_state(:,:,:)
  complex(dp),allocatable            :: gos_cart(:,:)
  complex(dp),allocatable            :: residue(:)
  real(dp)                           :: qvec(3)
- integer,parameter                  :: nq=0 ! 1000
+ integer,parameter                  :: nq=1 ! 1000
  integer                            :: iq
  real(dp)                           :: fnq(chi%npole_reso_apb)
  integer,parameter                  :: nv=20
@@ -904,7 +897,6 @@ subroutine get_energy_qp(nstate,energy,occupation,energy_qp)
  real(dp),intent(out)                :: energy_qp(nstate,nspin)
 !=====
  integer  :: reading_status
- real(dp) :: scissor_energy(nspin)
  integer  :: mspin,mstate
 !=====
 
@@ -1033,7 +1025,7 @@ end subroutine chi_to_vchiv
 
 
 !=========================================================================
-subroutine chi_to_sqrtvchisqrtv_auxil(nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,energy_gm)
+subroutine chi_to_sqrtvchisqrtv_auxil(desc_x,m_x,n_x,xpy_matrix,eigenvalue,wpol,energy_gm)
  use m_definitions
  use m_warning
  use m_scalapack
@@ -1042,7 +1034,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,w
  use m_spectral_function
  implicit none
  
- integer,intent(in)                    :: nbf,m_x,n_x
+ integer,intent(in)                    :: m_x,n_x
  integer,intent(in)                    :: desc_x(NDEL)
  real(dp),intent(inout)                :: xpy_matrix(m_x,n_x)
  type(spectral_function),intent(inout) :: wpol
@@ -1054,7 +1046,6 @@ subroutine chi_to_sqrtvchisqrtv_auxil(nbf,desc_x,m_x,n_x,xpy_matrix,eigenvalue,w
  integer                               :: jstate,bstate
  real(dp),allocatable                  :: eri_3tmp(:,:)
  real(dp),allocatable                  :: eri_3tmp_sd(:,:)
- real(dp),allocatable                  :: xpy_block(:,:)
  real(dp),allocatable                  :: vsqrt_xpy(:,:)
  integer                               :: desc_auxil(NDEL),desc_sd(NDEL)
  integer                               :: mlocal,nlocal
@@ -1162,7 +1153,7 @@ end subroutine chi_to_sqrtvchisqrtv_auxil
 
 
 !=========================================================================
-subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,a_diag,wpol)
+subroutine chi_to_sqrtvchisqrtv_auxil_spa(a_diag,wpol)
  use m_definitions
  use m_warning
  use m_basis_set
@@ -1170,7 +1161,6 @@ subroutine chi_to_sqrtvchisqrtv_auxil_spa(nbf,a_diag,wpol)
  use m_spectral_function
  implicit none
  
- integer,intent(in)                    :: nbf
  type(spectral_function),intent(inout) :: wpol
  real(dp),intent(in)                   :: a_diag(wpol%npole_reso_spa)
 !=====

@@ -145,7 +145,6 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  real(dp),intent(inout) :: p_matrix(m_ham_scf,n_ham_scf,nspin)
  real(dp),intent(inout) :: ham(m_ham_scf,n_ham_scf,nspin)
 !=====
- integer                :: ihist
 !=====
 
  iscf = iscf + 1
@@ -197,7 +196,7 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  ! If ADIIS or EDIIS prediction, overwrite the hamiltonian with a new one
  if( ( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) .AND. adiis_regime ) then
-   call xdiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
+   call xdiis_prediction(p_matrix,ham)
  endif
 
  deallocate(alpha_diis)
@@ -447,19 +446,15 @@ end subroutine diis_prediction
 
 
 !=========================================================================
-subroutine xdiis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
+subroutine xdiis_prediction(p_matrix,ham)
  use m_lbfgs
  implicit none
- real(dp),intent(in)    :: s_matrix(m_ham_scf,n_ham_scf)
- real(dp),intent(in)    :: s_matrix_sqrt_inv(m_c_scf,n_c_scf)
  real(dp),intent(out)   :: p_matrix(m_ham_scf,n_ham_scf,nspin)
  real(dp),intent(out)   :: ham(m_ham_scf,n_ham_scf,nspin)
 !=====
  type(lbfgs_state)      :: lbfgs_plan
  integer                :: ispin
  integer                :: ihist,jhist,khist
- real(dp),allocatable   :: matrix_tmp1(:,:)
- real(dp),allocatable   :: matrix_tmp2(:,:)
  real(dp),allocatable   :: alpha_diis_mc(:)
  real(dp)               :: ph_trace
  real(dp),allocatable   :: half_ph(:,:)

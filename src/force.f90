@@ -27,8 +27,7 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
 !=====
  real(dp),parameter      :: TOL_DENSITY_MATRIX=1.0e-2
  integer                 :: ijshellpair,klshellpair
- integer                 :: istate,ispin
- integer                 :: iatom,jatom,katom,latom
+ integer                 :: iatom
  integer                 :: ibf,jbf,kbf,lbf
  integer                 :: ishell,jshell,kshell,lshell
  integer                 :: ni,nj,nk,nl

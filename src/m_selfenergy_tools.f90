@@ -89,21 +89,21 @@ end subroutine selfenergy_set_state_range
 
 
 !=========================================================================
-subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,energy0,se)
+subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,occupation,energy0,se)
  implicit none
 
  character(len=*)    :: filename_root
  integer,intent(in)  :: nstate
  real(dp),intent(in) :: exchange_m_vxc(nstate,nspin)
- real(dp),intent(in) :: energy0(nstate,nspin)
+ real(dp),intent(in) :: occupation(nstate,nspin),energy0(nstate,nspin)
  type(selfenergy_grid),intent(in) :: se
 !=====
  character(len=3)   :: ctmp
  character(len=256) :: filename
  integer :: selfenergyfile
- integer :: pstate
+ integer :: pstate,pspin
  integer :: iomega
- real(dp) :: spectral_function_w(nspin)
+ real(dp) :: spectral_function_w(nspin),sign_occ(nspin)
 !=====
 
  ! Just the master writes
@@ -123,16 +123,20 @@ subroutine write_selfenergy_omega(filename_root,nstate,exchange_m_vxc,energy0,se
 
    write(selfenergyfile,'(a)') '#       omega (eV)          Re SigmaC (eV)     Im SigmaC (eV)    omega - e_gKS - Vxc + SigmaX (eV)     A (eV^-1)'
 
+   do pspin=1,nspin
+     sign_occ(:) = SIGN( 1.0_dp , occupation(pstate,pspin) - spin_fact * 0.50_dp )
+   enddo
+
    do iomega=-se%nomega,se%nomega
      spectral_function_w(:) = 1.0_dp / pi * ABS(   &
                                        AIMAG( 1.0_dp   &
-                                         / ( se%energy0(pstate,:)+se%omega(iomega) - energy0(pstate,:)  &
+                                         / ( se%energy0(pstate,:) + se%omega(iomega) - energy0(pstate,:) + ieta * sign_occ(:) &  
                                                - exchange_m_vxc(pstate,:) - se%sigma(iomega,pstate,:) ) ) )
 
      write(selfenergyfile,'(20(f16.8,2x))') ( se%omega(iomega) + se%energy0(pstate,:) )*Ha_eV,             &
                                             REAL(se%sigma(iomega,pstate,:),dp) * Ha_eV,                    &
                                             AIMAG(se%sigma(iomega,pstate,:)) * Ha_eV,                      &
-                                            (REAL(se%omega(iomega),dp)+se%energy0(pstate,:) - energy0(pstate,:) - exchange_m_vxc(pstate,:) )*Ha_eV, &
+                                            ( REAL(se%omega(iomega),dp) + se%energy0(pstate,:) - energy0(pstate,:) - exchange_m_vxc(pstate,:) ) * Ha_eV, &
                                             spectral_function_w(:) / Ha_eV
    enddo
    if( se%nomegai > 0 ) then
@@ -173,7 +177,7 @@ subroutine find_qp_energy_linearization(se,nstate,exchange_m_vxc,energy0,energy_
  do pstate=nsemin,nsemax
 
    if( se%nomega > 0 .AND. PRESENT(zz) ) then
-     zz_p(:) = ( REAL(se%sigma(1,pstate,:),dp) - REAL(se%sigma(-1,pstate,:),dp) ) / ( se%omega(1) - se%omega(-1) )
+     zz_p(:) = REAL( se%sigma(1,pstate,:) - se%sigma(-1,pstate,:) ,dp) / REAL( se%omega(1) - se%omega(-1) ,dp)
      zz_p(:) = 1.0_dp / ( 1.0_dp - zz_p(:) )
      ! Contrain Z to be in [0:1] to avoid crazy values
      do pspin=1,nspin
@@ -254,7 +258,6 @@ function find_fixed_point(nx,xx,fx,info) result(fixed_point)
  real(dp)            :: fixed_point
 !=====
  integer             :: ix,imin1,imin2
- real(dp)            :: rmin
  real(dp)            :: gx(-nx:nx)
  real(dp)            :: gpx
 !=====
@@ -391,7 +394,7 @@ subroutine init_selfenergy_grid(selfenergy_technique,nstate,energy0,se)
  real(dp),intent(in)                 :: energy0(nstate,nspin)
  type(selfenergy_grid),intent(inout) :: se
 !=====
- integer            :: iomega,pstate
+ integer :: iomega,pstate
 !=====
 
  se%nomegai = 0
@@ -535,7 +538,7 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,ham
    endif
 
    if( .NOT. has_auxil_basis ) then
-     call setup_exchange(print_matrix_,basis%nbf,p_matrix_tmp,hexx_val,eexx)
+     call setup_exchange(basis%nbf,p_matrix_tmp,hexx_val,eexx)
    else
      if( parallel_ham ) then
        call die('setup_exchange_m_vxc_diag: case not implemented')
@@ -615,12 +618,10 @@ end subroutine apply_qs_approximation
  
 
 !=========================================================================
-subroutine self_energy_fit(nstate,energy,se)
+subroutine self_energy_fit(se)
  use m_lbfgs
  implicit none
 
- integer,intent(in)                  :: nstate
- real(dp),intent(in)                 :: energy(nstate,nspin)
  type(selfenergy_grid),intent(inout) :: se
 !=====
  integer :: pstate,pspin
@@ -754,12 +755,10 @@ end subroutine self_energy_fit
 
 
 !=========================================================================
-subroutine self_energy_pade(nstate,energy,se)
+subroutine self_energy_pade(se)
  use m_tools,only: pade
  implicit none
 
- integer,intent(in)                  :: nstate
- real(dp),intent(in)                 :: energy(nstate,nspin)
  type(selfenergy_grid),intent(inout) :: se
 !=====
  integer  :: pstate,pspin

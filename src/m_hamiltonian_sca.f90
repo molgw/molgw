@@ -297,7 +297,6 @@ subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,hartree_i
  integer              :: ibf_auxil,ipair
  integer              :: index_ij,index_kl
  real(dp),allocatable :: partial_sum(:)
- real(dp)             :: rtmp
  character(len=100)   :: title
 !=====
 
@@ -1091,7 +1090,7 @@ subroutine dft_approximate_vhxc_sca(basis,m_ham,n_ham,vhxc_ij)
  real(dp)             :: vxc,exc,excr
  real(dp)             :: vsigma(2*nspin-1)
  real(dp)             :: vhgau(m_ham,n_ham)
- integer              :: iatom,igau,ngau
+ integer              :: iatom,ngau
  real(dp),allocatable :: alpha(:),coeff(:)
  integer              :: ilocal,jlocal,iglobal,jglobal
 !=====

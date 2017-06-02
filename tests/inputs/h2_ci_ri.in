@@ -9,6 +9,8 @@
  alpha_mixing=0.7
  mixing_scheme='simple'
 
+ mpi_nproc_ortho=2
+
  postscf='ci'
  length_unit='bohr'
 /

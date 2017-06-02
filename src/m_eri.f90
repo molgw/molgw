@@ -75,7 +75,6 @@ subroutine prepare_eri(basis)
 !===== 
  type(basis_set),intent(in) :: basis
 !===== 
- logical            :: file_exists
 !===== 
 
  nbf_eri = basis%nbf
@@ -140,7 +139,6 @@ end subroutine deallocate_eri_4center_lr
 subroutine deallocate_eri()
  implicit none
 
- integer :: ishell
 !=====
 
  if(ALLOCATED(eri_4center)) then
@@ -172,7 +170,7 @@ end subroutine deallocate_index_pair
 
 
 !=========================================================================
-function index_eri(ibf,jbf,kbf,lbf)
+pure function index_eri(ibf,jbf,kbf,lbf)
  implicit none
 
  integer,intent(in) :: ibf,jbf,kbf,lbf
@@ -195,7 +193,7 @@ end function index_eri
 
 
 !=========================================================================
-function index_pair(ibf,jbf)
+pure function index_pair(ibf,jbf)
  implicit none
 
  integer,intent(in) :: ibf,jbf
@@ -220,7 +218,7 @@ end function index_pair
 
 
 !=========================================================================
-function eri(ibf,jbf,kbf,lbf)
+elemental function eri(ibf,jbf,kbf,lbf)
  implicit none
  integer,intent(in) :: ibf,jbf,kbf,lbf
  real(dp)           :: eri
@@ -258,7 +256,6 @@ function eri_ri(ibf,jbf,kbf,lbf)
  real(dp)           :: eri_ri
 !=====
  integer            :: index_ij,index_kl
- real(dp)           :: eri_1(1,1)
 !=====
 
  if( negligible_basispair(ibf,jbf) .OR. negligible_basispair(kbf,lbf) ) then
@@ -306,7 +303,6 @@ subroutine setup_shell_index(basis)
 
  type(basis_set),intent(in)   :: basis
 !=====
- integer :: ibf
 !=====
 
  allocate(shell_bf(basis%nbf))
@@ -319,7 +315,6 @@ end subroutine setup_shell_index
 subroutine setup_basispair()
  implicit none
 !=====
- integer :: ishell,jshell
  integer :: ibf,jbf,ijbf
 !=====
 
@@ -370,7 +365,7 @@ end subroutine setup_basispair
 
 
 !=========================================================================
-function negligible_basispair(ibf,jbf)
+pure function negligible_basispair(ibf,jbf)
  implicit none
 
  integer,intent(in) :: ibf,jbf
@@ -400,7 +395,7 @@ subroutine identify_negligible_shellpair(basis)
 
  type(basis_set),intent(in)   :: basis
 !=====
- integer                      :: info,ip
+ integer                      :: ip
  integer                      :: ibf,jbf
  integer                      :: n1c,n2c
  integer                      :: ni,nj
@@ -765,8 +760,6 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
 
  integer,intent(in)  :: nbf_auxil_basis
 !=====
- integer :: ibf
- integer :: ibf_local
  integer :: iproc
  integer :: ilocal,iglobal
  integer :: nbf_local_iproc(0:nproc_auxil-1)
@@ -774,8 +767,6 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
 
  if( parallel_buffer ) then
 
-#if 1
-   
    call set_auxil_block_size(nbf_auxil_basis/(nprow_auxil*4))
 
    do iproc=0,nprow_auxil-1
@@ -795,45 +786,11 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
      iproc_ibf_auxil(iglobal) = INDXG2P(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
    enddo
 
-#else
-
-  
-   allocate(iproc_ibf_auxil(nbf_auxil_basis))
-  
-   iproc              = nproc_auxil - 1
-   nbf_local_iproc(:) = 0
-   do ibf=1,nbf_auxil_basis
-  
-     iproc = MODULO(iproc+1,nproc_auxil)
-  
-     iproc_ibf_auxil(ibf) = iproc
-  
-     nbf_local_iproc(iproc) = nbf_local_iproc(iproc) + 1
-  
-   enddo
-  
-   nauxil_3center = nbf_local_iproc(rank_auxil)
-  
-   allocate(ibf_auxil_g(nauxil_3center))
-   allocate(ibf_auxil_l(nbf_auxil_basis))
-   ibf_auxil_l(:) = 0
-   ibf_local = 0
-   do ibf=1,nbf_auxil_basis
-     if( rank_auxil == iproc_ibf_auxil(ibf) ) then
-       ibf_local = ibf_local + 1
-       ibf_auxil_g(ibf_local) = ibf
-       ibf_auxil_l(ibf)       = ibf_local
-     endif
-   enddo
-#endif
-  
  else
 
    ! Use SCALAPACK routines to distribute the auxiliary basis
    ! Assume a processor grid: nproc_auxil x 1
 
-#if 1
-   
    call set_auxil_block_size(nbf_auxil_basis/nprow_auxil/2)
 
    nauxil_3center = NUMROC(nbf_auxil_basis,MBLOCK_AUXIL,iprow_auxil,first_row,nprow_auxil)
@@ -848,38 +805,6 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
      iproc_ibf_auxil(iglobal) = INDXG2P(iglobal,MBLOCK_AUXIL,0,first_row,nprow_auxil)
    enddo
 
-#else
-
-   allocate(iproc_ibf_auxil(nbf_auxil_basis))
-  
-   iproc              = nproc_local-1
-   nbf_local_iproc(:) = 0
-   do ibf=1,nbf_auxil_basis
-  
-     iproc = MODULO(iproc+1,nproc_local)
-  
-     iproc_ibf_auxil(ibf) = iproc
-  
-     nbf_local_iproc(iproc) = nbf_local_iproc(iproc) + 1
-  
-   enddo
-  
-   nauxil_3center = nbf_local_iproc(rank_local)
-  
-   allocate(ibf_auxil_g(nauxil_3center))
-   allocate(ibf_auxil_l(nbf_auxil_basis))
-   ibf_auxil_l(:) = 0
-   ibf_local = 0
-   do ibf=1,nbf_auxil_basis
-     if( rank_local == iproc_ibf_auxil(ibf) ) then
-       ibf_local = ibf_local + 1
-       ibf_auxil_g(ibf_local) = ibf
-       ibf_auxil_l(ibf)       = ibf_local
-     endif
-   enddo
-
-#endif
-  
  endif
 
  write(stdout,'(/,a)') ' Distribute auxiliary basis functions among processors'
@@ -897,8 +822,6 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
 
  integer,intent(in)  :: nbf_auxil_basis
 !=====
- integer :: ibf
- integer :: ibf_local
  integer :: iproc
  integer :: ilocal,iglobal
  integer :: nbf_local_iproc_lr(0:nproc_auxil-1)
@@ -926,33 +849,38 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
 
 #else
 
- allocate(iproc_ibf_auxil_lr(nbf_auxil_basis))
+ block 
+   integer :: ibf,ibf_local
+  
+   allocate(iproc_ibf_auxil_lr(nbf_auxil_basis))
+  
+   iproc = nproc_auxil - 1
+   nbf_local_iproc_lr(:) = 0
+   do ibf=1,nbf_auxil_basis
+  
+     iproc = MODULO(iproc+1,nproc_auxil)
+  
+     iproc_ibf_auxil_lr(ibf) = iproc
+  
+     nbf_local_iproc_lr(iproc) = nbf_local_iproc_lr(iproc) + 1
+  
+   enddo
+  
+   nauxil_3center_lr = nbf_local_iproc_lr(rank_auxil)
+  
+   allocate(ibf_auxil_g_lr(nauxil_3center_lr))
+   allocate(ibf_auxil_l_lr(nbf_auxil_basis))
+   ibf_auxil_l_lr(:) = 0
+   ibf_local = 0
+   do ibf=1,nbf_auxil_basis
+     if( rank_auxil == iproc_ibf_auxil_lr(ibf) ) then
+       ibf_local = ibf_local + 1
+       ibf_auxil_g_lr(ibf_local) = ibf
+       ibf_auxil_l_lr(ibf)       = ibf_local
+     endif
+   enddo
 
- iproc = nproc_auxil - 1
- nbf_local_iproc_lr(:) = 0
- do ibf=1,nbf_auxil_basis
-
-   iproc = MODULO(iproc+1,nproc_auxil)
-
-   iproc_ibf_auxil_lr(ibf) = iproc
-
-   nbf_local_iproc_lr(iproc) = nbf_local_iproc_lr(iproc) + 1
-
- enddo
-
- nauxil_3center_lr = nbf_local_iproc_lr(rank_auxil)
-
- allocate(ibf_auxil_g_lr(nauxil_3center_lr))
- allocate(ibf_auxil_l_lr(nbf_auxil_basis))
- ibf_auxil_l_lr(:) = 0
- ibf_local = 0
- do ibf=1,nbf_auxil_basis
-   if( rank_auxil == iproc_ibf_auxil_lr(ibf) ) then
-     ibf_local = ibf_local + 1
-     ibf_auxil_g_lr(ibf_local) = ibf
-     ibf_auxil_l_lr(ibf)       = ibf_local
-   endif
- enddo
+ end block
 
 #endif
 

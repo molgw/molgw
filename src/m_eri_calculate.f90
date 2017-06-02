@@ -227,7 +227,6 @@ subroutine calculate_eri_4center_shell(basis,rcut,ijshellpair,klshellpair,&
  integer                      :: n1c,n2c,n3c,n4c
  integer                      :: ni,nj,nk,nl
  integer                      :: ami,amj,amk,aml
- integer                      :: ibf,jbf,kbf,lbf
 !=====
 ! variables used to call C
  real(C_DOUBLE)               :: rcut_libint
@@ -340,7 +339,6 @@ subroutine calculate_eri_4center_shell_grad(basis,rcut,ijshellpair,klshellpair,&
  integer                      :: n1c,n2c,n3c,n4c
  integer                      :: ni,nj,nk,nl
  integer                      :: ami,amj,amk,aml
- integer                      :: ibf,jbf,kbf,lbf
  real(dp),allocatable         :: grad_tmp(:,:,:,:)
 !=====
 ! variables used to call C
@@ -513,7 +511,6 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  integer                      :: ibf,kbf
  integer                      :: agt
  integer                      :: info
- integer                      :: ibf_auxil,jbf_auxil
  integer                      :: nauxil_neglect,nauxil_kept
  real(dp)                     :: eigval(auxil_basis%nbf)
  real(dp),allocatable         :: integrals(:,:)
@@ -765,24 +762,29 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 
 #else
 
- ilocal = 0
- do jlocal=1,auxil_basis%nbf
-   if( eigval(jlocal) < TOO_LOW_EIGENVAL ) cycle
-   ilocal = ilocal + 1
-   eri_2center_sqrt(:,ilocal) = eri_2center_sqrt(:,jlocal) / SQRT( eigval(jlocal) )
- enddo
+ block
+   integer :: ibf_auxil,jbf_auxil
 
- if( .NOT. is_longrange ) then
-   do ibf_auxil=1,nauxil_3center
-     jbf_auxil = ibf_auxil_g(ibf_auxil)
-     eri_2center(:,ibf_auxil) = eri_2center_sqrt(:,jbf_auxil)
+   ilocal = 0
+   do jlocal=1,auxil_basis%nbf
+     if( eigval(jlocal) < TOO_LOW_EIGENVAL ) cycle
+     ilocal = ilocal + 1
+     eri_2center_sqrt(:,ilocal) = eri_2center_sqrt(:,jlocal) / SQRT( eigval(jlocal) )
    enddo
- else
-   do ibf_auxil=1,nauxil_3center_lr
-     jbf_auxil = ibf_auxil_g_lr(ibf_auxil)
-     eri_2center_lr(:,ibf_auxil) = eri_2center_sqrt(:,jbf_auxil)
-   enddo
- endif
+  
+   if( .NOT. is_longrange ) then
+     do ibf_auxil=1,nauxil_3center
+       jbf_auxil = ibf_auxil_g(ibf_auxil)
+       eri_2center(:,ibf_auxil) = eri_2center_sqrt(:,jbf_auxil)
+     enddo
+   else
+     do ibf_auxil=1,nauxil_3center_lr
+       jbf_auxil = ibf_auxil_g_lr(ibf_auxil)
+       eri_2center_lr(:,ibf_auxil) = eri_2center_sqrt(:,jbf_auxil)
+     enddo
+   endif
+
+ end block
 
 #endif
 
@@ -816,15 +818,13 @@ subroutine calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
  integer                      :: ni,nk,nl
  integer                      :: ami,amk,aml
  integer                      :: ibf,kbf,lbf
- integer                      :: ibf_auxil,jbf_auxil
  integer                      :: info
  real(dp),allocatable         :: integrals(:,:,:)
  real(dp),allocatable         :: eri_3center_tmp(:,:)
  integer                      :: klpair_global
- integer                      :: ibf_auxil_local,ibf_auxil_global
+ integer                      :: ibf_auxil_global
  integer                      :: mlocal,nlocal
- integer                      :: iglobal,jglobal,ilocal,jlocal
- integer                      :: kglobal,klocal
+ integer                      :: iglobal,ilocal,jlocal
  integer                      :: desc3center(NDEL)
  integer                      :: desc3tmp(NDEL)
  integer                      :: desc3final(NDEL)

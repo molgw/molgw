@@ -32,7 +32,7 @@ subroutine setup_hartree(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
  real(dp),intent(out) :: hartree_ij(nbf,nbf)
  real(dp),intent(out) :: ehartree
 !=====
- integer              :: ibf,jbf,kbf,lbf,ispin
+ integer              :: ibf,jbf,kbf,lbf
  character(len=100)   :: title
 !=====
 
@@ -84,9 +84,8 @@ subroutine setup_hartree_ri(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
  real(dp),intent(out) :: hartree_ij(nbf,nbf)
  real(dp),intent(out) :: ehartree
 !=====
- integer              :: ibf,jbf,kbf,lbf,ispin
- integer              :: ibf_auxil,ipair
- integer              :: index_ij,index_kl
+ integer              :: ibf,jbf,kbf,lbf
+ integer              :: ipair
  real(dp),allocatable :: partial_sum(:)
  real(dp)             :: rtmp
  character(len=100)   :: title
@@ -139,17 +138,15 @@ end subroutine setup_hartree_ri
 
 
 !=========================================================================
-subroutine setup_exchange(print_matrix_,nbf,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange(nbf,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
- logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
 !=====
  integer              :: ibf,jbf,kbf,lbf,ispin
- character(len=100)   :: title
 !=====
 
  write(stdout,*) 'Calculate Exchange term'
@@ -195,11 +192,9 @@ subroutine setup_exchange_ri(nbf,nstate,occupation,c_matrix,p_matrix,exchange_ij
  real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
 !=====
- integer              :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
- integer              :: index_ij
+ integer              :: ibf,jbf,ispin,istate
  integer              :: nocc
  real(dp),allocatable :: tmp(:,:)
- real(dp)             :: eigval(nbf)
  integer              :: ipair
 !=====
 
@@ -273,11 +268,8 @@ subroutine setup_exchange_longrange_ri(nbf,nstate,occupation,c_matrix,p_matrix,e
  real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
  real(dp),intent(out) :: eexchange
 !=====
- integer              :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
- integer              :: index_ij
- integer              :: nocc
+ integer              :: ibf,jbf,ispin,istate
  real(dp),allocatable :: tmp(:,:)
- real(dp)             :: eigval(nbf)
  integer              :: ipair
 !=====
 
@@ -331,10 +323,9 @@ end subroutine setup_exchange_longrange_ri
 
 
 !=========================================================================
-subroutine setup_exchange_longrange(print_matrix_,nbf,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_longrange(nbf,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
- logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
@@ -477,7 +468,6 @@ end subroutine test_density_matrix
 
 !=========================================================================
 subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occupation)
- use m_inputparam,only: print_matrix_
  implicit none
  integer,intent(in)   :: nstate
  real(dp),intent(in)  :: electrons,magnetization,temperature
@@ -615,7 +605,7 @@ subroutine evaluate_s2_operator(nbf,nstate,occupation,c_matrix,s_matrix)
  real(dp),intent(in)     :: c_matrix(nbf,nstate,nspin)
  real(dp),intent(in)     :: s_matrix(nbf,nbf)
 !=====
- integer                 :: ispin,istate,jstate
+ integer                 :: istate,jstate
  real(dp)                :: s2,s2_exact
  real(dp)                :: n1,n2,nmax,nmin
 !=====
@@ -658,8 +648,7 @@ subroutine level_shifting_up(nbf,nstate,s_matrix,c_matrix,occupation,level_shift
  real(dp),intent(in)    :: level_shifting_energy
  real(dp),intent(inout) :: hamiltonian(nbf,nbf,nspin)
 !=====
- integer  :: ispin
- integer  :: ibf,istate
+ integer  :: ispin,istate
  real(dp) :: sqrt_level_shifting(nstate)
  real(dp) :: matrix_tmp(nbf,nbf)
 !=====
@@ -712,8 +701,7 @@ subroutine level_shifting_down(nbf,nstate,s_matrix,c_matrix,occupation,level_shi
  real(dp),intent(inout) :: energy(nstate,nspin)
  real(dp),intent(inout) :: hamiltonian(nbf,nbf,nspin)
 !=====
- integer  :: ispin
- integer  :: ibf,istate
+ integer  :: ispin,istate
  real(dp) :: sqrt_level_shifting(nstate)
  real(dp) :: matrix_tmp(nbf,nbf)
 !=====
@@ -861,8 +849,8 @@ subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,vxc_ij,
  real(dp),intent(out)       :: exc_xc
 !=====
  real(dp),parameter   :: TOL_RHO=1.0e-9_dp
- integer              :: idft_xc
  integer              :: ibf,jbf,ispin
+ integer              :: idft_xc
  integer              :: igrid_start,igrid_end,ir,nr
  real(dp)             :: normalization(nspin)
  real(dp),allocatable :: weight_batch(:)
@@ -1112,12 +1100,11 @@ end subroutine dft_exc_vxc_batch
 
 
 !=========================================================================
-subroutine dft_approximate_vhxc(print_matrix_,basis,vhxc_ij)
+subroutine dft_approximate_vhxc(basis,vhxc_ij)
  use m_dft_grid
  use m_eri_calculate
  implicit none
 
- logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: vhxc_ij(basis%nbf,basis%nbf)
 !=====
@@ -1127,17 +1114,13 @@ subroutine dft_approximate_vhxc(print_matrix_,basis,vhxc_ij)
  real(dp),allocatable :: exc_batch(:)
  real(dp),allocatable :: rhor_batch(:)
  real(dp),allocatable :: vrho_batch(:)
- integer              :: idft_xc
- integer              :: igrid,ibf,jbf,ispin
+ integer              :: igrid,ibf,jbf
  integer              :: igrid_start,igrid_end
  integer              :: ir,nr
  real(dp)             :: normalization
- real(dp)             :: basis_function_r(basis%nbf)
- real(dp)             :: rhor
- real(dp)             :: vxc,excr,exc
- real(dp)             :: vsigma(2*nspin-1)
+ real(dp)             :: exc
  real(dp)             :: vhgau(basis%nbf,basis%nbf)
- integer              :: iatom,igau,ngau
+ integer              :: iatom,ngau
  real(dp),allocatable :: alpha(:),coeff(:)
 !=====
 
@@ -1211,7 +1194,6 @@ subroutine dft_approximate_vhxc(print_matrix_,basis,vhxc_ij)
    enddo
    call DSYRK('L','N',basis%nbf,nr,-1.0d0,basis_function_r_batch,basis%nbf,1.0d0,vhxc_ij,basis%nbf)
 
-!   call DSYR('L',basis%nbf,weight*vxc,basis_function_r,1,vhxc_ij,basis%nbf)
 
    deallocate(weight_batch)
    deallocate(basis_function_r_batch)

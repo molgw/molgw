@@ -28,6 +28,7 @@ module m_inputparam
 
  !
  ! Self-energy approximation
+ integer,parameter :: CI           =-201
  integer,parameter :: COHSEX       = 204
  integer,parameter :: GnW0         = 205
  integer,parameter :: GnWn         = 206
@@ -233,6 +234,10 @@ subroutine init_calculation_type(calc_type,input_key)
    case('GW','G0W0')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = GW
+   case('GWTDDFT','G0WTDDFT')
+     calc_type%is_gw    =.TRUE.
+     calc_type%selfenergy_approx = GW
+     calc_type%is_td    =.TRUE.
    case('COHSEX')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = COHSEX
@@ -249,6 +254,10 @@ subroutine init_calculation_type(calc_type,input_key)
    case('G0W0GAMMA0','GWGAMMA')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0GAMMA0
+   case('GWTDDFTGAMMA','G0WTDDFTGAMMA0')
+     calc_type%is_gw    =.TRUE.
+     calc_type%selfenergy_approx = G0W0GAMMA0
+     calc_type%is_td    =.TRUE.
    case('EVGWGAMMA','GNW0GAMMAN')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0GAMMA0
@@ -277,6 +286,9 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%selfenergy_technique = EVSC
    case('CI')
      calc_type%is_ci =.TRUE.
+   case('CI_SELFENERGY')
+     calc_type%is_ci =.TRUE.
+     calc_type%selfenergy_approx = CI
    case('BSE')
      calc_type%is_bse =.TRUE.
    case('TD')
@@ -331,7 +343,7 @@ subroutine init_calculation_type(calc_type,input_key)
  calc_type%need_exchange    = ( alpha_hybrid > 1.0e-6 )
  calc_type%need_exchange_lr = ( rcut > 1.0e-6 ) .AND. ( ABS(alpha_hybrid_lr) > 1.0e-6 )
 
- calc_type%is_selfenergy = ( calc_type%selfenergy_approx > 0 )
+ calc_type%is_selfenergy = ( calc_type%selfenergy_approx /= 0 )
 
 end subroutine init_calculation_type
 
@@ -613,7 +625,6 @@ subroutine summary_input(grid_quality,integral_quality)
  character(len=12),intent(in) :: grid_quality
  character(len=12),intent(in) :: integral_quality
 !=====
- integer :: iatom,ighost
 !=====
 
  !
@@ -694,7 +705,7 @@ subroutine read_inputfile_namelist()
  character(len=100)   :: ecp_small_basis
  character(len=100)   :: default_basis_path
  character(len=12)    :: length_unit
- character(len=3)     :: read_restart,ignore_bigrestart,no_4center
+ character(len=3)     :: read_restart,ignore_bigrestart
  character(len=3)     :: print_matrix,print_eri,print_wfn,print_w,print_sigma
  character(len=3)     :: print_restart,print_bigrestart
  character(len=3)     :: print_pdos,print_cube,print_multipole
@@ -980,7 +991,7 @@ subroutine read_inputfile_namelist()
 
  if( .NOT. has_auxil_basis .AND. nproc_world > 1 ) then
    write(stdout,*) 'Parallelization is not available without an auxiliary basis'
-   call die('Please run with one CPU only or provide MOLGW with an auxiliary basis')
+   call issue_warning('Please run with one CPU only or provide MOLGW with an auxiliary basis')
  endif
 
  natom_basis = natom + nghost
