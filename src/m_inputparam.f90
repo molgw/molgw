@@ -379,13 +379,17 @@ subroutine init_excitation_type(excit_type)
  excit_type%time0 = excit_time0
  excit_type%dir   = excit_dir 
 
- if(excit_type%name=="PROJ_SIMPLE") then
+ select case (excit_type%name)
+ case("PROJ_SIMPLE") 
    excit_type%is_light=.false.
    excit_type%is_projectile=.true.
- else
+ case("NO")
+   excit_type%is_light=.false.
+   excit_type%is_projectile=.false.
+ case default
    excit_type%is_light=.true.
    excit_type%is_projectile=.false.
- end if
+ end select
 end subroutine init_excitation_type
 
 !=========================================================================

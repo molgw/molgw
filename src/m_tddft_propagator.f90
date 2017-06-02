@@ -1446,7 +1446,6 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
      calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'STEP' .AND. abs(time_cur - excit_type%time0 - excit_omega/2.0_dp)<=excit_omega/2.0_dp )
      calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'DEL'  .AND. abs(time_cur - excit_type%time0)<=time_step_cur ) 
      if(itau==0) calc_excit_=.false.
-     if(excit_type%name == 'NO') calc_excit_=.false.   
      if ( calc_excit_ ) then
        call calculate_excit_field(time_cur,excit_field)
        if(ref_)  m_excit_field_dir=NORM2(excit_field(:))
