@@ -145,7 +145,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
  real(dp),allocatable       :: overlap_bigbasis_approx(:,:)
 !=====
 
- if( ignore_restart_ ) then
+ if( .NOT. read_restart_ ) then
    restart_type = NO_RESTART
    return
  endif

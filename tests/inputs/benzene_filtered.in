@@ -4,7 +4,7 @@
  nscf=16
  print_restart='no'
  print_bigrestart='no'
- ignore_restart='yes'
+ read_restart='no'
 
  basis='6-31G'
  auxil_basis='aug-cc-pVTZ-RI'
