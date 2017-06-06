@@ -41,13 +41,13 @@ module m_ci
  integer,private                     :: desc_p(NDEL)
  integer,private                     :: desc_m(NDEL)
 
- real(dp),allocatable,target,private :: energy_0(:)
- real(dp),allocatable,target,private :: energy_p(:)
- real(dp),allocatable,target,private :: energy_m(:)
+ real(dp),allocatable,private        :: energy_0(:)
+ real(dp),allocatable,private        :: energy_p(:)
+ real(dp),allocatable,private        :: energy_m(:)
 
- real(dp),allocatable,target,private :: eigvec_0(:,:)
- real(dp),allocatable,target,private :: eigvec_p(:,:)
- real(dp),allocatable,target,private :: eigvec_m(:,:)
+ real(dp),allocatable,private        :: eigvec_0(:,:)
+ real(dp),allocatable,private        :: eigvec_p(:,:)
+ real(dp),allocatable,private        :: eigvec_m(:,:)
 
 contains 
 
@@ -151,9 +151,9 @@ subroutine destroy_ci()
  if( ALLOCATED(conf_p%sporb_occ) ) deallocate(conf_p%sporb_occ)
  if( ALLOCATED(conf_m%sporb_occ) ) deallocate(conf_m%sporb_occ)
 
- if( ALLOCATED(eigvec_0) ) deallocate(eigvec_0)
- if( ALLOCATED(eigvec_p) ) deallocate(eigvec_p)
- if( ALLOCATED(eigvec_m) ) deallocate(eigvec_m)
+ if( ALLOCATED(eigvec_0) ) call clean_deallocate('CI eigenvectors',eigvec_0)
+ if( ALLOCATED(eigvec_p) ) call clean_deallocate('CI eigenvectors',eigvec_p)
+ if( ALLOCATED(eigvec_m) ) call clean_deallocate('CI eigenvectors',eigvec_m)
 
  if( ALLOCATED(energy_0) ) deallocate(energy_0)
  if( ALLOCATED(energy_p) ) deallocate(energy_p)
@@ -442,6 +442,8 @@ subroutine build_ci_hamiltonian(conf,desc_ham,h_ci)
 !=====
 
  call start_clock(timing_ham_ci)
+
+ write(stdout,'(1x,a)') 'Build CI hamiltonian'
  !
  ! Follow the second-quantization notations from Hellgaker book Chapter 1.
  ! Use occupation number vectors on_i(:) and on_j(:) filled with 0's and three 1's.
@@ -722,7 +724,7 @@ subroutine full_ci_nelectrons_selfenergy()
    es_occ(is) = energy_0(1) - energy_p(is)
 !   write(stdout,'(/,1x,a,i4,1x,f12.6)') '=== Excitation (eV): ',is,es_occ(is) * Ha_eV
  enddo
- write(stdout,'(1x,a,f12.6,/)') '-IP (eV): ',es_occ(1) * Ha_eV
+ write(stdout,'(1x,a,f12.6,4x,f12.6,/)')   '-IP (eV), Weight: ',es_occ(1) * Ha_eV,fs_occ(2*nfrozen_ci+conf_0%nelec,1)**2
 
 
  deallocate(iisporb,iispin,iistate)
@@ -782,7 +784,7 @@ subroutine full_ci_nelectrons_selfenergy()
 !   write(stdout,'(/,1x,a,i4,1x,f12.6)') '=== Excitation (eV): ',is,es_virt(is) * Ha_eV
  enddo
 
- write(stdout,'(1x,a,f12.6,/)') '-EA (eV): ',es_virt(1) * Ha_eV
+ write(stdout,'(1x,a,f12.6,4x,f12.6,/)') '-EA (eV), Weight: ',es_virt(1) * Ha_eV,fs_virt(2*nfrozen_ci+conf_0%nelec+1,1)**2
 
  deallocate(iisporb,iispin,iistate)
  deallocate(jjsporb,jjspin,jjstate)
@@ -819,6 +821,32 @@ subroutine full_ci_nelectrons_selfenergy()
    close(unit_gf)
  enddo
 
+ !
+ ! Output CI Green's function summed over spin
+ !
+ do isporb=2*nsemin-1,2*nsemax,2
+   istate = sporb_to_state(isporb)
+
+   write(ctmp3,'(i3.3)') istate
+
+   open(newunit=unit_gf,file='exact_greens_function_state'//ctmp3//'.dat',action='write')
+   do iomega=-se%nomega,se%nomega
+
+     gi_w = 0.0_dp
+     do is=1,ns_virt
+       gi_w = gi_w + fs_virt(isporb  ,is)**2 / ( se%omega(iomega) - es_virt(is) - ieta )
+       gi_w = gi_w + fs_virt(isporb+1,is)**2 / ( se%omega(iomega) - es_virt(is) - ieta )
+     enddo
+     do is=1,ns_occ
+       gi_w = gi_w + fs_occ(isporb  ,is)**2 / ( se%omega(iomega) - es_occ(is) + ieta )
+       gi_w = gi_w + fs_occ(isporb+1,is)**2 / ( se%omega(iomega) - es_occ(is) + ieta )
+     enddo
+
+     write(unit_gf,'(8(1x,es18.8))') se%omega(iomega) * Ha_eV, gi_w / Ha_eV, ABS(AIMAG(gi_w)) / pi / Ha_eV
+   enddo
+   close(unit_gf)
+ enddo
+
 
 
  deallocate(fs_virt,fs_occ)
@@ -845,8 +873,8 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  real(dp)                     :: ehf
  real(dp),allocatable         :: h_ci(:,:)
  type(configurations),pointer :: conf
- real(dp),pointer             :: energy(:)
- real(dp),pointer             :: eigvec(:,:)
+ real(dp),allocatable         :: energy(:)
+ real(dp),allocatable         :: eigvec(:,:)
 !=====
 
  call start_clock(timing_full_ci)
@@ -889,26 +917,9 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  endif
  call xsum_world(ehf)
 
- select case(save_coefficients)
- case(0)
-   desc_0(:) = desc_ham
-   allocate(energy_0(conf%nconf))
-   allocate(eigvec_0(mham,nham))
-   energy => energy_0
-   eigvec => eigvec_0
- case(-1)
-   desc_m(:) = desc_ham
-   allocate(energy_m(conf%nconf))
-   allocate(eigvec_m(mham,nham))
-   energy => energy_m
-   eigvec => eigvec_m
- case(1)
-   desc_p(:) = desc_ham
-   allocate(energy_p(conf%nconf))
-   allocate(eigvec_p(mham,nham))
-   energy => energy_p
-   eigvec => eigvec_p
- end select
+ call clean_allocate('CI eigenvectors',eigvec,mham,nham)
+ allocate(energy(conf%nconf))
+ 
 
  call start_clock(timing_ci_diago)
  write(stdout,'(1x,a,i6,a,i6)') 'Diagonalize CI hamiltonian',conf%nconf,' x ',conf%nconf
@@ -921,6 +932,8 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
 #endif
  call stop_clock(timing_ci_diago)
 
+ call clean_deallocate('CI hamiltonian',h_ci)
+
  write(stdout,'(/,1x,a,f19.10)')   '        Uncorrelated energy (Ha): ',ehf + nuc_nuc
  write(stdout,'(1x,a,f19.10,/)')   '         Correlation energy (Ha): ',energy(1) - ehf
  write(stdout,'(1x,a,f19.10)')     '     CI ground-state energy (Ha): ',energy(1) + nuc_nuc
@@ -929,7 +942,26 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  write(stdout,'(1x,a,f19.10)')     'CI 3rd excited-state energy (Ha): ',energy(4) + nuc_nuc
  write(stdout,'(1x,a,f19.10)')     'CI 4th excited-state energy (Ha): ',energy(5) + nuc_nuc
 
- call clean_deallocate('CI hamiltonian',h_ci)
+
+
+ select case(save_coefficients)
+ case(0)
+   desc_0(:) = desc_ham
+   call move_alloc(energy,energy_0)
+   call move_alloc(eigvec,eigvec_0)
+ case(-1)
+   desc_m(:) = desc_ham
+   call move_alloc(energy,energy_m)
+   call move_alloc(eigvec,eigvec_m)
+ case(1)
+   desc_p(:) = desc_ham
+   call move_alloc(energy,energy_p)
+   call move_alloc(eigvec,eigvec_p)
+ case default
+   call clean_deallocate('CI Eigenvectors',eigvec)
+   deallocate(energy)
+ end select
+
 
  call stop_clock(timing_full_ci)
 

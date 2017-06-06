@@ -450,7 +450,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
 
  write(stdout,'(/,a)') ' G0W0Gamma0 self-energy contributions at E0 (eV)'
  if(nspin==1) then
-   write(stdout,'(a)') '   #          E0         SigC_G0W0    SigC_SOX   SigC_Gamma0   SigC_TOT'
+   write(stdout,'(a)') '   #          E0             SigC_G0W0                 SigC_SOX                SigC_Gamma0                SigC_TOT'
  else
    write(stdout,'(a)') &
      '   #                E0                              SigC_G0W0            SigC_SOX             SigC_Gamma0                SigC_TOT'
