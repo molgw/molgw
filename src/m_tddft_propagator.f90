@@ -162,10 +162,10 @@ subroutine calculate_propagation(nstate,              &
 
  ! In case of no restart, find the c_matrix_orth_cmplx by diagonalizing h_small
  if( (.NOT. read_tddft_restart_) .OR. (.NOT. restart_tddft_is_correct)) then
-   allocate(c_matrix_buf_cmplx(basis%nbf,nstate,nspin))
+   allocate(c_matrix_buf_cmplx(nstate,nstate,nspin))
    allocate(energies_inst(nstate))
    do ispin=1, nspin
-     call diagonalize(nstate,h_small_start_cmplx(:,:,ispin),energies_inst(:),c_matrix_buf_cmplx(1:basis%nbf,1:nstate,ispin))
+     call diagonalize(nstate,h_small_start_cmplx(:,:,ispin),energies_inst(:),c_matrix_buf_cmplx(:,:,ispin))
    end do
    c_matrix_orth_start_cmplx(1:nstate,1:nocc,1:nspin)=c_matrix_buf_cmplx(1:nstate,1:nocc,1:nspin)
    deallocate(c_matrix_buf_cmplx)
@@ -848,16 +848,14 @@ subroutine tddft_time_loop(nstate,                           &
      h_small_hist_cmplx(:,:,:,1)=h_small_hist_cmplx(:,:,:,2)
    end if
 
-    
-!   call check_identity_cmplx(basis%nbf,basis%nbf,MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) ),is_identity_) 
-!   if(.NOT. is_identity_) then
-!     write(stdout,*) "C**H*S*C is not identity at itau= ", itau
-!   end if
+   call check_identity_cmplx(nocc,nocc,MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) ),is_identity_) 
+   if(.NOT. is_identity_) then
+     write(stdout,*) "C**H*S*C is not identity at itau= ", itau
+   end if
 
 !   call print_2d_matrix("check",MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) )   ,nocc,nocc,stdout,4)
-!   call print_2d_matrix("check",s_matrix,basis%nbf,basis%nbf,stdout,4)
-!   call print_2d_matrix("c_matrix_orth_cmplx",c_matrix_orth_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
 !   call print_2d_matrix("c_matrix_cmplx",c_matrix_cmplx(:,:,1),basis%nbf,nocc,stdout,4)
+!   call print_2d_matrix_cmplx("c_matrix_orth_cmplx",c_matrix_orth_cmplx(:,:,1),nstate,nocc,stdout,4)
 
    if( is_iomaster .AND. ABS(time_cur / (write_step)- NINT(time_cur / (write_step))) < 1.0e-7 ) then
 
@@ -1286,11 +1284,7 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
 
  call start_clock(timing_tddft_propagation)
 
-! a_matrix_cmplx(:,1:nstate) = MATMUL( s_matrix_sqrt_inv(:,:) , a_matrix_cmplx(:,:) )
-
  do ispin =1, nspin
-!   h_small_cmplx(:,:) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
- !                   MATMUL( hamiltonian_fock_cmplx(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
    select case (prop_type_cur)
    case('CN')
      allocate(l_matrix_cmplx(nstate,nstate))
@@ -1318,12 +1312,12 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      end do
 
      c_matrix_orth_cmplx(:,:,ispin) = MATMUL( MATMUL( MATMUL( a_matrix_orth_cmplx(:,:), propagator_eigen(:,:)  ) , &
-             conjg(transpose(a_matrix_orth_cmplx(:,:)))  ), c_matrix_orth_cmplx(:,:,ispin) )
+             CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:)))  ), c_matrix_orth_cmplx(:,:,ispin) )
      deallocate(propagator_eigen)
      deallocate(a_matrix_orth_cmplx)
      deallocate(energies_inst)
    case default
-     call die('Invalid choice for the propagation algorithm. Change prop_type_cur value in the input file')
+     call die('Invalid choice for the propagation algorithm. Change prop_type or error_prop_types value in the input file')
    end select
    c_matrix_cmplx(:,:,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
  end do
@@ -1535,7 +1529,7 @@ subroutine print_2d_matrix_cmplx(desc,matrix_cmplx,size_n,size_m,write_unit,prec
  implicit none
  integer, intent(in)      :: prec ! precision
  integer, intent(in)      :: size_n,size_m, write_unit
- complex(dp),intent(in)  :: matrix_cmplx(size_m,size_m)
+ complex(dp),intent(in)  :: matrix_cmplx(size_n,size_m)
  character(*),intent(in)  :: desc
 !=====
  character(100)  :: write_format1, write_format2

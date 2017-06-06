@@ -2,8 +2,8 @@
  scf='lda'
  nspin=1
  magnetization=0.0
- ignore_restart='yes'
- ignore_tddft_restart='no'
+ read_restart='no'
+ read_tddft_restart='yes'
  print_tddft_restart='yes'
  basis='cc-pVDZ'
  auxil_basis='cc-pVDZ-RI'
