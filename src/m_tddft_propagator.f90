@@ -1407,7 +1407,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
      ! Nucleus-electron interaction
      if( parallel_ham ) then
        if( parallel_buffer ) then
-         call setup_nucleus_buffer_sca(basis,basis%nbf,basis%nbf,hamiltonian_nucleus)
+         call setup_nucleus_buffer_sca(.false.,basis,basis%nbf,basis%nbf,hamiltonian_nucleus)
        else
          call setup_nucleus_sca(.false.,basis,basis%nbf,basis%nbf,hamiltonian_nucleus)
        endif

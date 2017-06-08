@@ -300,153 +300,145 @@ program molgw
      endif
    endif
   
-   !If RESTART_TDDFT file exists and is correct, skip the SCF loop and start RT-TDDFT simulation
-   if( read_tddft_restart_ ) then
-     call check_restart_tddft(nstate,occupation,restart_tddft_is_correct) 
-   end if
- 
-   if( (.NOT. restart_tddft_is_correct) .OR. (.NOT. read_tddft_restart_) ) then
-     if( is_basis_restart ) then
+   if( is_basis_restart ) then
+     !
+     ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
+     if( parallel_ham ) call die('basis_restart not implemented with distributed hamiltonian')
+     call issue_warning('basis restart is not fully implemented: use with care')
+  !   allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
+  !   hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) &
+  !                         + hamiltonian_hartree(:,:) + 0.5_dp * hamiltonian_xc(:,:,1)  &
+  !                                                    + 0.5_dp * hamiltonian_xc(:,:,nspin)
+     call diagonalize_hamiltonian_scalapack(nspin,basis%nbf,nstate,hamiltonian_fock,s_matrix_sqrt_inv,&
+                                            energy,c_matrix)
+  
+   endif
+  
+  
+   !
+   ! For self-consistent calculations (QSMP2, QSGW, QSCOHSEX) that depend on empty states,
+   ! ignore the restart file if it is not a big one
+   if( calc_type%selfenergy_technique == QS ) then
+     if( restart_type /= EMPTY_STATES_RESTART .AND. restart_type /= BIG_RESTART ) then
+       call issue_warning('RESTART file has been ignored, since it does not contain the required empty states')
+       is_restart = .FALSE.
+     endif
+   endif
+  
+  
+   if( .NOT. is_restart) then
+  
+     allocate(hamiltonian_tmp(m_ham,n_ham,1))
+  
+     select case(TRIM(init_hamiltonian))
+     case('GUESS')
        !
        ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
-       if( parallel_ham ) call die('basis_restart not implemented with distributed hamiltonian')
-       call issue_warning('basis restart is not fully implemented: use with care')
-    !   allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
-    !   hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) &
-    !                         + hamiltonian_hartree(:,:) + 0.5_dp * hamiltonian_xc(:,:,1)  &
-    !                                                    + 0.5_dp * hamiltonian_xc(:,:,nspin)
-       call diagonalize_hamiltonian_scalapack(nspin,basis%nbf,nstate,hamiltonian_fock,s_matrix_sqrt_inv,&
-                                              energy,c_matrix)
-    
-     endif
-    
-    
-     !
-     ! For self-consistent calculations (QSMP2, QSGW, QSCOHSEX) that depend on empty states,
-     ! ignore the restart file if it is not a big one
-     if( calc_type%selfenergy_technique == QS ) then
-       if( restart_type /= EMPTY_STATES_RESTART .AND. restart_type /= BIG_RESTART ) then
-         call issue_warning('RESTART file has been ignored, since it does not contain the required empty states')
-         is_restart = .FALSE.
-       endif
-     endif
-    
-    
-     if( .NOT. is_restart) then
-    
-       allocate(hamiltonian_tmp(m_ham,n_ham,1))
-    
-       select case(TRIM(init_hamiltonian))
-       case('GUESS')
-         !
-         ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
-         !
-         ! Calculate a very approximate vhxc based on simple gaussians placed on atoms
-         if( parallel_ham ) then
-           if( parallel_buffer ) then
-             call dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,hamiltonian_tmp(:,:,1))
-           else
-             call dft_approximate_vhxc_sca(basis,m_ham,n_ham,hamiltonian_tmp(:,:,1))
-           endif
-         else
-           call dft_approximate_vhxc(print_matrix_,basis,hamiltonian_tmp(:,:,1))
-         endif
-  
-         hamiltonian_tmp(:,:,1) = hamiltonian_tmp(:,:,1) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
-       case('CORE')
-         hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
-       case default
-         call die('molgw: init_hamiltonian option is not valid')
-       end select
-    
-    
-       write(stdout,'(/,a)') ' Approximate hamiltonian'
-    
+       !
+       ! Calculate a very approximate vhxc based on simple gaussians placed on atoms
        if( parallel_ham ) then
-         call diagonalize_hamiltonian_sca(1,1,desc_ham,hamiltonian_tmp,desc_c,s_matrix_sqrt_inv,energy,c_matrix)
-       else
-         call diagonalize_hamiltonian_scalapack(1,basis%nbf,nstate,hamiltonian_tmp(:,:,1),s_matrix_sqrt_inv,&
-                                                energy(:,1),c_matrix(:,:,1))
-       endif
-    
-       deallocate(hamiltonian_tmp)
-    
-       ! The hamiltonian is still spin-independent:
-       c_matrix(:,:,nspin) = c_matrix(:,:,1)
-      
-     endif
-    
-    
-     ! Deallocate the array index_pair when it is not needed
-     ! This array can be pretty large indeed.
-     ! index_pair is only need for the development version of Luttinger-Ward
-     ! or for the SCALAPACK with no buffer part of the code (which is not functional anyway)
-     ! or for the 4-center integrals code
-     if( .NOT. (calc_type%selfenergy_approx == LW                         &
-                .OR. calc_type%selfenergy_approx == LW2                   &
-                .OR. calc_type%selfenergy_approx == GSIGMA )              &
-         .AND. .NOT. ( parallel_ham .AND. .NOT. parallel_buffer ) &
-         .AND. has_auxil_basis ) then
-       call deallocate_index_pair()
-     endif
-    
-     call stop_clock(timing_prescf)
-    
-     !
-     !
-     ! Part 2 / 3 : SCF cycles
-     !
-     !
-    
-     !
-     ! Big SCF loop is in there
-     ! Only do it if the calculation is NOT a big restart
-     if( .NOT. is_big_restart) then
-       call scf_loop(is_restart,                                     &
-                     basis,auxil_basis,                              &
-                     nstate,m_ham,n_ham,m_c,n_c,                     &
-                     s_matrix_sqrt_inv,s_matrix,                     &
-                     hamiltonian_kinetic,hamiltonian_nucleus,        & 
-                     occupation,energy,                              &
-                     hamiltonian_fock,                               &
-                     c_matrix)
-     else
-       if( parallel_ham .AND. parallel_buffer ) call destroy_parallel_buffer()
-     endif
-    
-    
-     !
-     ! If requested, evaluate the forces
-     if( move_nuclei == 'relax' ) then
-       call calculate_force(basis,nstate,occupation,energy,c_matrix)
-       call relax_atoms(lbfgs_plan,en%tot)
-       call output_positions()
-  
-       if( MAXVAL(force(:,:)) < tolforce ) then
-         write(stdout,'(1x,a,es16.6,a,es16.6,/)') 'Forces are     converged: ',MAXVAL(force(:,:)) , '   < ',tolforce
-         exit
-       else
-         write(stdout,'(1x,a,es16.6,a,es16.6,/)') 'Forces are not converged: ',MAXVAL(force(:,:)) , '   > ',tolforce
-         !
-         ! If it is not the last step, then deallocate everything and start over
-         if( istep /= nstep ) then
-           call deallocate_eri()
-           if(has_auxil_basis) call destroy_eri_3center()
-           if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
-           call clean_deallocate('Overlap matrix S',s_matrix)
-           call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
-           call clean_deallocate('Fock operator F',hamiltonian_fock)
-           call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
-           call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
-           call clean_deallocate('Wavefunctions C',c_matrix)
-           deallocate(energy,occupation)
-           call destroy_basis_set(basis)
-           if(has_auxil_basis) call destroy_basis_set(auxil_basis)
+         if( parallel_buffer ) then
+           call dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,hamiltonian_tmp(:,:,1))
+         else
+           call dft_approximate_vhxc_sca(basis,m_ham,n_ham,hamiltonian_tmp(:,:,1))
          endif
+       else
+         call dft_approximate_vhxc(print_matrix_,basis,hamiltonian_tmp(:,:,1))
+       endif
+
+       hamiltonian_tmp(:,:,1) = hamiltonian_tmp(:,:,1) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+     case('CORE')
+       hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+     case default
+       call die('molgw: init_hamiltonian option is not valid')
+     end select
+  
+  
+     write(stdout,'(/,a)') ' Approximate hamiltonian'
+  
+     if( parallel_ham ) then
+       call diagonalize_hamiltonian_sca(1,1,desc_ham,hamiltonian_tmp,desc_c,s_matrix_sqrt_inv,energy,c_matrix)
+     else
+       call diagonalize_hamiltonian_scalapack(1,basis%nbf,nstate,hamiltonian_tmp(:,:,1),s_matrix_sqrt_inv,&
+                                              energy(:,1),c_matrix(:,:,1))
+     endif
+  
+     deallocate(hamiltonian_tmp)
+  
+     ! The hamiltonian is still spin-independent:
+     c_matrix(:,:,nspin) = c_matrix(:,:,1)
+    
+   endif
+  
+  
+   ! Deallocate the array index_pair when it is not needed
+   ! This array can be pretty large indeed.
+   ! index_pair is only need for the development version of Luttinger-Ward
+   ! or for the SCALAPACK with no buffer part of the code (which is not functional anyway)
+   ! or for the 4-center integrals code
+   if( .NOT. (calc_type%selfenergy_approx == LW                         &
+              .OR. calc_type%selfenergy_approx == LW2                   &
+              .OR. calc_type%selfenergy_approx == GSIGMA )              &
+       .AND. .NOT. ( parallel_ham .AND. .NOT. parallel_buffer ) &
+       .AND. has_auxil_basis ) then
+     call deallocate_index_pair()
+   endif
+  
+   call stop_clock(timing_prescf)
+  
+   !
+   !
+   ! Part 2 / 3 : SCF cycles
+   !
+   !
+  
+   !
+   ! Big SCF loop is in there
+   ! Only do it if the calculation is NOT a big restart
+   if( .NOT. is_big_restart) then
+     call scf_loop(is_restart,                                     &
+                   basis,auxil_basis,                              &
+                   nstate,m_ham,n_ham,m_c,n_c,                     &
+                   s_matrix_sqrt_inv,s_matrix,                     &
+                   hamiltonian_kinetic,hamiltonian_nucleus,        & 
+                   occupation,energy,                              &
+                   hamiltonian_fock,                               &
+                   c_matrix)
+   else
+     if( parallel_ham .AND. parallel_buffer ) call destroy_parallel_buffer()
+   endif
+  
+  
+   !
+   ! If requested, evaluate the forces
+   if( move_nuclei == 'relax' ) then
+     call calculate_force(basis,nstate,occupation,energy,c_matrix)
+     call relax_atoms(lbfgs_plan,en%tot)
+     call output_positions()
+
+     if( MAXVAL(force(:,:)) < tolforce ) then
+       write(stdout,'(1x,a,es16.6,a,es16.6,/)') 'Forces are     converged: ',MAXVAL(force(:,:)) , '   < ',tolforce
+       exit
+     else
+       write(stdout,'(1x,a,es16.6,a,es16.6,/)') 'Forces are not converged: ',MAXVAL(force(:,:)) , '   > ',tolforce
+       !
+       ! If it is not the last step, then deallocate everything and start over
+       if( istep /= nstep ) then
+         call deallocate_eri()
+         if(has_auxil_basis) call destroy_eri_3center()
+         if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
+         call clean_deallocate('Overlap matrix S',s_matrix)
+         call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
+         call clean_deallocate('Fock operator F',hamiltonian_fock)
+         call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
+         call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
+         call clean_deallocate('Wavefunctions C',c_matrix)
+         deallocate(energy,occupation)
+         call destroy_basis_set(basis)
+         if(has_auxil_basis) call destroy_basis_set(auxil_basis)
        endif
      endif
-   endif ! if .NOT. read_tddft_restart
-
+   endif
  enddo ! istep
 
 
