@@ -91,6 +91,7 @@
  write(stdout,'(1x,a24,6x,a)') 'ecp_basis',ecp_basis 
  write(stdout,'(1x,a24,6x,a)') 'ecp_auxil_basis',ecp_auxil_basis 
  write(stdout,'(1x,a24,6x,a)') 'ci_greens_function',ci_greens_function 
+ write(stdout,'(1x,a24,6x,a)') 'ci_excitation',ci_excitation 
 
 
 !======================================================================

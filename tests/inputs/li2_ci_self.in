@@ -1,0 +1,16 @@
+&molgw
+ scf='hf'
+
+ basis='6-31G'
+
+ postscf='ci_selfenergy'
+ ci_greens_function='holes'
+ ci_excitation='CISD'
+ 
+ nvirtualg=10
+
+ natom=2
+/
+3    0.000000    0.0  0.0
+3    2.670000    0.0  0.0
+

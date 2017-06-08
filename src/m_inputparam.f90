@@ -108,6 +108,7 @@ module m_inputparam
  character(len=12),protected      :: partition_scheme
  character(len=12),protected      :: init_hamiltonian
  character(len=12),protected      :: ci_greens_function
+ character(len=12),protected      :: ci_excitation
  real(dp),protected               :: diis_switch
  real(dp),protected               :: tolscf
  real(dp),protected               :: toldav
@@ -790,6 +791,7 @@ subroutine read_inputfile_namelist()
  length_unit        = capitalize(length_unit)
  init_hamiltonian   = capitalize(init_hamiltonian)
  ci_greens_function = capitalize(ci_greens_function)
+ ci_excitation      = capitalize(ci_excitation)
 
  ignore_restart_    = yesno(ignore_restart)
  ignore_bigrestart_ = yesno(ignore_bigrestart)

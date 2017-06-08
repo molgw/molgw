@@ -532,4 +532,16 @@ CI 2nd excited-state energy,   -14.3185202318   , 0 , 1.0e-7
 -IP (eV) and Weight       ,      0.892328       , 1 , 1.0e-3
 -EA                       ,      6.464563       , 0 , 1.0e-4
 
+li2_ci_self.in            , CI Green's function for Li2 limited to single and double excitations
+SCF Total Energy          ,    -14.8656863400   , 0 , 1.0e-7
+Uncorrelated energy       ,    -14.6876451256   , 0 , 1.0e-7
+Correlation energy        ,     -0.0080314929   , 0 , 1.0e-7
+CI ground-state energy    ,    -14.6956766185   , 0 , 1.0e-7
+CI 1st excited-state energy,   -14.5566215438   , 0 , 1.0e-7
+CI 2nd excited-state energy,   -14.5566215438   , 0 , 1.0e-7
+-IP                       ,     -4.954340       , 0 , 1.0e-4
+-IP (eV) and Weight       ,      0.897967       , 1 , 1.0e-3
+
+
+
 

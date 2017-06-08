@@ -175,6 +175,8 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
  integer :: ispin(nelec),istate(nelec)
  integer :: sporb(nelec)
  integer :: isporb,jsporb,ksporb,lsporb,msporb,nsporb
+ integer :: excitation_max
+ integer :: on_0(2*nstate_ci)
 !=====
 
  conf%nelec = nelec
@@ -201,6 +203,22 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
    call die('setup_configurations_ci: spin case not recognized')
  end select
 
+ select case(ci_excitation)
+ case('ALL')
+   excitation_max = 100
+ case('CISD')
+   excitation_max = 2
+ case('CISDT')
+   excitation_max = 3
+ case('CISDTQ')
+   excitation_max = 4
+ case default
+   call die('setup_configurations_ci: ci_excitation not understood')
+ end select
+
+ ! Set the ground state vector
+ on_0(:) = 0
+ on_0(1:conf%nelec) = 1
 
  ! First, freeze the core electrons in the lowest available spin-orbitals
  do isporb=1,2*nfrozen_ci
@@ -241,7 +259,9 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
        ispin(:)  = sporb_to_spin(  sporb(:) )
        istate(:) = sporb_to_state( sporb(:) )
        if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-         conf%nconf = conf%nconf + 1
+         if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+           conf%nconf = conf%nconf + 1
+         endif
        endif
      enddo
    enddo
@@ -254,8 +274,10 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
        ispin(:)  = sporb_to_spin( sporb(:) )
        istate(:) = sporb_to_state( sporb(:) )
        if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-         iconf = iconf + 1
-         conf%sporb_occ(:,iconf) = sporb(:)
+         if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+           iconf = iconf + 1
+           conf%sporb_occ(:,iconf) = sporb(:)
+         endif
        endif
      enddo
    enddo
@@ -272,7 +294,9 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
          ispin(:)  = sporb_to_spin(  sporb(:) )
          istate(:) = sporb_to_state( sporb(:) )
          if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-           conf%nconf = conf%nconf + 1
+           if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+             conf%nconf = conf%nconf + 1
+           endif
          endif
        enddo
      enddo
@@ -288,8 +312,10 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
          ispin(:)  = sporb_to_spin( sporb(:) )
          istate(:) = sporb_to_state( sporb(:) )
          if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-           iconf = iconf + 1
-           conf%sporb_occ(:,iconf) = sporb(:)
+           if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+             iconf = iconf + 1
+             conf%sporb_occ(:,iconf) = sporb(:)
+           endif
          endif
        enddo
      enddo
@@ -308,7 +334,9 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
            ispin(:)  = sporb_to_spin(  sporb(:) )
            istate(:) = sporb_to_state( sporb(:) )
            if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-             conf%nconf = conf%nconf + 1
+             if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+               conf%nconf = conf%nconf + 1
+             endif
            endif
          enddo
        enddo
@@ -327,8 +355,10 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
            ispin(:)  = sporb_to_spin( sporb(:) )
            istate(:) = sporb_to_state( sporb(:) )
            if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-             iconf = iconf + 1
-             conf%sporb_occ(:,iconf) = sporb(:)
+             if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+               iconf = iconf + 1
+               conf%sporb_occ(:,iconf) = sporb(:)
+             endif
            endif
          enddo
        enddo
@@ -350,7 +380,9 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
              ispin(:)  = sporb_to_spin(  sporb(:) )
              istate(:) = sporb_to_state( sporb(:) )
              if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-               conf%nconf = conf%nconf + 1
+               if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+                 conf%nconf = conf%nconf + 1
+               endif
              endif
            enddo
          enddo
@@ -372,8 +404,10 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
              ispin(:)  = sporb_to_spin( sporb(:) )
              istate(:) = sporb_to_state( sporb(:) )
              if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-               iconf = iconf + 1
-               conf%sporb_occ(:,iconf) = sporb(:)
+               if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+                 iconf = iconf + 1
+                 conf%sporb_occ(:,iconf) = sporb(:)
+               endif
              endif
            enddo
          enddo
@@ -398,7 +432,9 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
                ispin(:)  = sporb_to_spin(  sporb(:) )
                istate(:) = sporb_to_state( sporb(:) )
                if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-                 conf%nconf = conf%nconf + 1
+                 if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+                   conf%nconf = conf%nconf + 1
+                 endif
                endif
              enddo
            enddo
@@ -419,12 +455,14 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
                sporb(2*nfrozen_ci+3) = ksporb
                sporb(2*nfrozen_ci+4) = lsporb
                sporb(2*nfrozen_ci+5) = msporb
-               sporb(2*nfrozen_ci+6) = msporb
+               sporb(2*nfrozen_ci+6) = nsporb
                ispin(:)  = sporb_to_spin( sporb(:) )
                istate(:) = sporb_to_state( sporb(:) )
                if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-                 iconf = iconf + 1
-                 conf%sporb_occ(:,iconf) = sporb(:)
+                 if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+                   iconf = iconf + 1
+                   conf%sporb_occ(:,iconf) = sporb(:)
+                 endif
                endif
              enddo
            enddo

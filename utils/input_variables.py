@@ -888,6 +888,15 @@ vl[i].datatype ='characters'
 vl[i].experimental  ='yes'
 vl[i].comment  ='EXPERIMENTAL. Selects which part of the Green\'s function is to be calculated: holes, electrons, or both.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='ci_excitation'
+vl[i].family   ='post'
+vl[i].default  ='all'
+vl[i].datatype ='characters'
+vl[i].comment  ='Selects which excitations will be included in the CI expansion. Valid choices are \'all\', \'CISD\', \'CISDT\', \'CISDTQ\'.'
+
 
 
 

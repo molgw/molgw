@@ -91,7 +91,8 @@
     ecp_quality,       &
     ecp_basis,       &
     ecp_auxil_basis,       &
-    ci_greens_function
+    ci_greens_function,       &
+    ci_excitation
 
 !=====
 
@@ -181,6 +182,7 @@
  ecp_basis=''
  ecp_auxil_basis=''
  ci_greens_function='holes'
+ ci_excitation='all'
 
 
 !======================================================================
