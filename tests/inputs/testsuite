@@ -491,23 +491,27 @@ SE+MP3  Total En          , -76.2354493975     , 0 , 1.0e-7
 
 h2o_rt_tddft_hf_PC2B.in   , RT-TDDFT calculation T=200.0 dt=0.5 PC="PC2B"
 SCF Total Energy          , -76.0278711935     , 0 , 1.0e-7
-RT-TDDFT Total Energy     , -76.0278711796     , 0 , 1.0e-7
-RT-TDDFT Dipole Moment    ,   0.0002175533     , 0 , 1.0e-7
-RT-TDDFT Dipole Moment    ,   2.0566142540     , 1 , 1.0e-7
-RT-TDDFT Dipole Moment    ,  -0.0001838853     , 2 , 1.0e-7
+RT-TDDFT Total Energy     , -76.0278711836     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   0.0000779927     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   2.0565916321     , 1 , 1.0e-7
+RT-TDDFT Dipole Moment    ,  -0.0001037457     , 2 , 1.0e-7
 
 h2o_rt_tddft_lda_PC2B.in  , RT-TDDFT calculation T=20.0 dt=0.5 PC="PC2B"
 SCF Total Energy          , -75.8540895545     , 0 , 1.0e-7
-RT-TDDFT Total Energy     , -75.8540895100     , 0 , 1.0e-7
-RT-TDDFT Dipole Moment    ,  -0.0002520906     , 0 , 1.0e-7
-RT-TDDFT Dipole Moment    ,   1.9475311033     , 1 , 1.0e-7
-RT-TDDFT Dipole Moment    ,  -0.0001272239     , 2 , 1.0e-7
+RT-TDDFT Total Energy     , -75.8540895309     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,  -0.0001846589     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   1.9474309646     , 1 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   0.0000376516     , 2 , 1.0e-7
 
 h2o_rt_tddft_lda_PC2B_restart.in  , test of RESTART_TDDFT does not work without preliminary run of previous input, RT-TDDFT calculation T=20.0 dt=0.5 PC="PC2B"
-RT-TDDFT Total Energy     , -75.8540895111     , 0 , 1.0e-9
-RT-TDDFT Dipole Moment    ,   0.0002238101     , 0 , 1.0e-7
-RT-TDDFT Dipole Moment    ,   1.9475815318     , 1 , 1.0e-7
-RT-TDDFT Dipole Moment    ,   0.0001848704     , 2 , 1.0e-7
+RT-TDDFT Total Energy     ,  -75.8540895314     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,    0.0001669089     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,    1.9475062577     , 1 , 1.0e-7
+RT-TDDFT Dipole Moment    ,    0.0002922780     , 2 , 1.0e-7
+
+h2o_rt_tddft_h_projectile.in  , test of projectile without basis function PC="PC2B"
+SCF Total Energy          ,  -75.8551200924     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -75.3274189830     , 0 , 1.0e-7
 
 be2_qsgw_bse.in           , BSE calculation after QSGW for Be2
 gKS HOMO energy           ,  -8.818516          , 0 , 1.0e-4
