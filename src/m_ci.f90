@@ -174,7 +174,7 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
  integer :: iconf
  integer :: ispin(nelec),istate(nelec)
  integer :: sporb(nelec)
- integer :: isporb,jsporb,ksporb,lsporb,msporb
+ integer :: isporb,jsporb,ksporb,lsporb,msporb,nsporb
 !=====
 
  conf%nelec = nelec
@@ -375,6 +375,58 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
                iconf = iconf + 1
                conf%sporb_occ(:,iconf) = sporb(:)
              endif
+           enddo
+         enddo
+       enddo
+     enddo
+   enddo
+
+ case(6)
+   conf%nconf = 0
+   do nsporb=2*nfrozen_ci+1,2*nstate_ci
+     do msporb=nsporb+1,2*nstate_ci
+       do lsporb=msporb+1,2*nstate_ci
+         do ksporb=lsporb+1,2*nstate_ci
+           do jsporb=ksporb+1,2*nstate_ci
+             do isporb=jsporb+1,2*nstate_ci
+               sporb(2*nfrozen_ci+1) = isporb
+               sporb(2*nfrozen_ci+2) = jsporb
+               sporb(2*nfrozen_ci+3) = ksporb
+               sporb(2*nfrozen_ci+4) = lsporb
+               sporb(2*nfrozen_ci+5) = msporb
+               sporb(2*nfrozen_ci+6) = nsporb
+               ispin(:)  = sporb_to_spin(  sporb(:) )
+               istate(:) = sporb_to_state( sporb(:) )
+               if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
+                 conf%nconf = conf%nconf + 1
+               endif
+             enddo
+           enddo
+         enddo
+       enddo
+     enddo
+   enddo
+   allocate(conf%sporb_occ(conf%nelec,conf%nconf))
+   iconf = 0
+   do nsporb=2*nfrozen_ci+1,2*nstate_ci
+     do msporb=nsporb+1,2*nstate_ci
+       do lsporb=msporb+1,2*nstate_ci
+         do ksporb=lsporb+1,2*nstate_ci
+           do jsporb=ksporb+1,2*nstate_ci
+             do isporb=jsporb+1,2*nstate_ci
+               sporb(2*nfrozen_ci+1) = isporb
+               sporb(2*nfrozen_ci+2) = jsporb
+               sporb(2*nfrozen_ci+3) = ksporb
+               sporb(2*nfrozen_ci+4) = lsporb
+               sporb(2*nfrozen_ci+5) = msporb
+               sporb(2*nfrozen_ci+6) = msporb
+               ispin(:)  = sporb_to_spin( sporb(:) )
+               istate(:) = sporb_to_state( sporb(:) )
+               if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
+                 iconf = iconf + 1
+                 conf%sporb_occ(:,iconf) = sporb(:)
+               endif
+             enddo
            enddo
          enddo
        enddo
@@ -611,7 +663,6 @@ subroutine full_ci_nelectrons_selfenergy()
 
 !=====
  type(selfenergy_grid) :: se
- integer,parameter     :: ns=-1
  integer               :: is
  integer               :: iconf,jconf,kconf
  integer               :: iconf_global,jconf_global,kconf_global
@@ -629,34 +680,31 @@ subroutine full_ci_nelectrons_selfenergy()
  character(len=1)      :: ctmp1
  integer               :: unit_gf
  real(dp)              :: eigvec0(conf_0%nconf)
- real(dp)              :: energy0(nsemax,nspin)
+ real(dp)              :: energy0_dummy(nsemax,nspin)
 !=====
 
  call start_clock(timing_ci_selfenergy)
 
+ ns_occ  = 0
+ ns_virt = 0
  write(stdout,'(/,1x,a,i4)') 'Full CI self-energy for electron count: ',conf_0%nelec
-
-
- write(stdout,'(1x,a,i3,a,sp,i4)') 'Previous CI calculation had spin state Sz(',conf_p%nelec,'): ',conf_p%sz
  write(stdout,'(1x,a,i3,a,i3)')    'Previous CI calculation had spin state Sz(',conf_0%nelec,'): ',conf_0%sz
- write(stdout,'(1x,a,i3,a,sp,i4)') 'Previous CI calculation had spin state Sz(',conf_m%nelec,'): ',conf_m%sz
 
- !
- ! Choose how many Lehmann excitations to calculate
- ! If ns is negative, calculate all of them
- if( ns > 0 ) then
-   ns_occ  = ns
-   ns_virt = ns
- else
+ if( ALLOCATED(conf_p%sporb_occ) ) then
    ns_occ  = conf_p%nconf
+   write(stdout,'(1x,a,i4)') 'Hole part will evaluated with excitation counts ',ns_occ
+   write(stdout,'(1x,a,i3,a,sp,i4)') 'Previous CI calculation had spin state Sz(',conf_p%nelec,'): ',conf_p%sz
+ endif
+ if( ALLOCATED(conf_m%sporb_occ) ) then
    ns_virt = conf_m%nconf
+   write(stdout,'(1x,a,i4)') 'Electron part will evaluated with excitation counts ',ns_virt
+   write(stdout,'(1x,a,i3,a,sp,i4)') 'Previous CI calculation had spin state Sz(',conf_m%nelec,'): ',conf_m%sz
  endif
 
- allocate(fs_occ(2*nstate_ci,ns_occ))
- allocate(fs_virt(2*nstate_ci,ns_virt))
- allocate(es_occ(ns_occ))
- allocate(es_virt(ns_virt))
 
+
+ !
+ ! Gather the N-electron CI coefficients since only one is needed
  eigvec0(:) = 0.0_dp
  do jconf=1,SIZE(eigvec_0,DIM=2)
    jconf_global = colindex_local_to_global(desc_0,jconf)
@@ -676,124 +724,137 @@ subroutine full_ci_nelectrons_selfenergy()
  !
  ! Build the Lehman amplitude for occupied states
  !
- write(stdout,*) '====================='
- write(stdout,*) 'Occupied states'
+ if( ns_occ > 0 ) then
+   allocate(fs_occ(2*nstate_ci,ns_occ))
+   allocate(es_occ(ns_occ))
 
- allocate(iisporb(conf_p%nelec))
- allocate(iispin(conf_p%nelec))
- allocate(iistate(conf_p%nelec))
+   write(stdout,*) '====================='
+   write(stdout,*) 'Occupied states'
 
- fs_occ(:,:) = 0.0_dp
- do jconf=1,conf_0%nconf
-   jjsporb(:) = conf_0%sporb_occ(:,jconf)
-   jjspin(:)  = sporb_to_spin(  jjsporb(:) )
-   jjstate(:) = sporb_to_state( jjsporb(:) )
+   allocate(iisporb(conf_p%nelec))
+   allocate(iispin(conf_p%nelec))
+   allocate(iistate(conf_p%nelec))
 
-   on_j(:) = sporb_to_on(jjsporb)
+   fs_occ(:,:) = 0.0_dp
+   do jconf=1,conf_0%nconf
+     jjsporb(:) = conf_0%sporb_occ(:,jconf)
+     jjspin(:)  = sporb_to_spin(  jjsporb(:) )
+     jjstate(:) = sporb_to_state( jjsporb(:) )
 
-   do iconf=1,SIZE(eigvec_p,DIM=1)
-     iconf_global = rowindex_local_to_global(desc_p,iconf)
-     iisporb(:) = conf_p%sporb_occ(:,iconf_global)
-     iispin(:)  = sporb_to_spin(  iisporb(:) )
-     iistate(:) = sporb_to_state( iisporb(:) )
+     on_j(:) = sporb_to_on(jjsporb)
 
-     on_i(:) = sporb_to_on(iisporb(:))
+     do iconf=1,SIZE(eigvec_p,DIM=1)
+       iconf_global = rowindex_local_to_global(desc_p,iconf)
+       iisporb(:) = conf_p%sporb_occ(:,iconf_global)
+       iispin(:)  = sporb_to_spin(  iisporb(:) )
+       iistate(:) = sporb_to_state( iisporb(:) )
 
-     !
-     ! Evaluate for any s, < N , 0 | a_i^+ | N-1 , s >
-     !
-     do isporb=1,2*nstate_ci
-       on_tmp(:) = on_i(:)
-       on_tmp(isporb) = on_tmp(isporb) + 1
-       if( ALL( on_j(:) - on_tmp(:) == 0 ) ) then
-         do kconf=1,SIZE(eigvec_p,DIM=2)
-           kconf_global = colindex_local_to_global(desc_p,kconf)
-           if( kconf_global > ns_occ ) cycle
-           fs_occ(isporb,kconf_global) = fs_occ(isporb,kconf_global) &
-                                   + eigvec_p(iconf,kconf) * eigvec0(jconf) * gamma_sign(on_i,isporb)
-         enddo
-       endif
+       on_i(:) = sporb_to_on(iisporb(:))
+
+       !
+       ! Evaluate for any s, < N , 0 | a_i^+ | N-1 , s >
+       !
+       do isporb=1,2*nstate_ci
+         on_tmp(:) = on_i(:)
+         on_tmp(isporb) = on_tmp(isporb) + 1
+         if( ALL( on_j(:) - on_tmp(:) == 0 ) ) then
+           do kconf=1,SIZE(eigvec_p,DIM=2)
+             kconf_global = colindex_local_to_global(desc_p,kconf)
+             if( kconf_global > ns_occ ) cycle
+             fs_occ(isporb,kconf_global) = fs_occ(isporb,kconf_global) &
+                                     + eigvec_p(iconf,kconf) * eigvec0(jconf) * gamma_sign(on_i,isporb)
+           enddo
+         endif
+       enddo
+
      enddo
-
    enddo
- enddo
 
- call xsum_world(fs_occ)
+   call xsum_world(fs_occ)
 
- do is=1,ns_occ
-   es_occ(is) = energy_0(1) - energy_p(is)
-!   write(stdout,'(/,1x,a,i4,1x,f12.6)') '=== Excitation (eV): ',is,es_occ(is) * Ha_eV
- enddo
- write(stdout,'(1x,a,f12.6,4x,f12.6,/)')   '-IP (eV), Weight: ',es_occ(1) * Ha_eV,fs_occ(2*nfrozen_ci+conf_0%nelec,1)**2
+   do is=1,ns_occ
+     es_occ(is) = energy_0(1) - energy_p(is)
+   enddo
+   write(stdout,'(1x,a,f12.6,4x,f12.6,/)')   '-IP (eV) and Weight: ',es_occ(1) * Ha_eV,fs_occ(2*nfrozen_ci+conf_0%nelec,1)**2
 
+   deallocate(iisporb,iispin,iistate)
 
- deallocate(iisporb,iispin,iistate)
+ endif
 
 
  !
  ! Build the Lehman amplitude for virtual states
  !
- write(stdout,*) '====================='
- write(stdout,*) 'Virtual states'
+ if( ns_virt > 0 ) then
+   allocate(fs_virt(2*nstate_ci,ns_virt))
+   allocate(es_virt(ns_virt))
 
- allocate(iisporb(conf_m%nelec))
- allocate(iispin(conf_m%nelec))
- allocate(iistate(conf_m%nelec))
+   write(stdout,*) '====================='
+   write(stdout,*) 'Virtual states'
 
- fs_virt(:,:) = 0.0_dp
- do jconf=1,conf_0%nconf
-   jjsporb(:) = conf_0%sporb_occ(:,jconf)
-   jjspin(:)  = sporb_to_spin(  jjsporb(:) )
-   jjstate(:) = sporb_to_state( jjsporb(:) )
+   allocate(iisporb(conf_m%nelec))
+   allocate(iispin(conf_m%nelec))
+   allocate(iistate(conf_m%nelec))
 
-   on_j(:) = sporb_to_on(jjsporb)
+   fs_virt(:,:) = 0.0_dp
+   do jconf=1,conf_0%nconf
+     jjsporb(:) = conf_0%sporb_occ(:,jconf)
+     jjspin(:)  = sporb_to_spin(  jjsporb(:) )
+     jjstate(:) = sporb_to_state( jjsporb(:) )
 
-   do iconf=1,SIZE(eigvec_m,DIM=1)
-     iconf_global = rowindex_local_to_global(desc_m,iconf)
-     iisporb(:) = conf_m%sporb_occ(:,iconf_global)
-     iispin(:)  = sporb_to_spin(  iisporb(:) )
-     iistate(:) = sporb_to_state( iisporb(:) )
+     on_j(:) = sporb_to_on(jjsporb)
 
-     on_i(:) = sporb_to_on(iisporb(:))
+     do iconf=1,SIZE(eigvec_m,DIM=1)
+       iconf_global = rowindex_local_to_global(desc_m,iconf)
+       iisporb(:) = conf_m%sporb_occ(:,iconf_global)
+       iispin(:)  = sporb_to_spin(  iisporb(:) )
+       iistate(:) = sporb_to_state( iisporb(:) )
+
+       on_i(:) = sporb_to_on(iisporb(:))
 
 
-     !
-     ! Evaluate for any s, < N+1 , s | a_i^+ | N , 0 >
-     !
-     do isporb=1,2*nstate_ci
-       on_tmp(:) = on_j(:)
-       on_tmp(isporb) = on_tmp(isporb) + 1
-       if( ALL( on_i(:) - on_tmp(:) == 0 ) ) then
-         do kconf=1,SIZE(eigvec_m,DIM=2)
-           kconf_global = colindex_local_to_global(desc_m,kconf)
-           if( kconf_global > ns_virt ) cycle
-           fs_virt(isporb,kconf_global) = fs_virt(isporb,kconf_global)  &
-                           + eigvec_m(iconf,kconf) * eigvec0(jconf) * gamma_sign(on_j,isporb)
-         enddo
-       endif
+       !
+       ! Evaluate for any s, < N+1 , s | a_i^+ | N , 0 >
+       !
+       do isporb=1,2*nstate_ci
+         on_tmp(:) = on_j(:)
+         on_tmp(isporb) = on_tmp(isporb) + 1
+         if( ALL( on_i(:) - on_tmp(:) == 0 ) ) then
+           do kconf=1,SIZE(eigvec_m,DIM=2)
+             kconf_global = colindex_local_to_global(desc_m,kconf)
+             if( kconf_global > ns_virt ) cycle
+             fs_virt(isporb,kconf_global) = fs_virt(isporb,kconf_global)  &
+                             + eigvec_m(iconf,kconf) * eigvec0(jconf) * gamma_sign(on_j,isporb)
+           enddo
+         endif
+       enddo
+
+
      enddo
-
-
    enddo
- enddo
 
- call xsum_world(fs_virt)
+   call xsum_world(fs_virt)
 
- do is=1,ns_virt
-   es_virt(is) = energy_m(is) - energy_0(1)
-!   write(stdout,'(/,1x,a,i4,1x,f12.6)') '=== Excitation (eV): ',is,es_virt(is) * Ha_eV
- enddo
+   do is=1,ns_virt
+     es_virt(is) = energy_m(is) - energy_0(1)
+   enddo
 
- write(stdout,'(1x,a,f12.6,4x,f12.6,/)') '-EA (eV), Weight: ',es_virt(1) * Ha_eV,fs_virt(2*nfrozen_ci+conf_0%nelec+1,1)**2
+   write(stdout,'(1x,a,f12.6,4x,f12.6,/)') '-EA (eV) and Weight: ',es_virt(1) * Ha_eV,fs_virt(2*nfrozen_ci+conf_0%nelec+1,1)**2
 
- deallocate(iisporb,iispin,iistate)
+   deallocate(iisporb,iispin,iistate)
+
+ endif
+
  deallocate(jjsporb,jjspin,jjstate)
 
-
+ !
+ ! Setup the frequency grid
+ ! 
  do istate=nsemin,nsemax
-   energy0(istate,:) = 0.0_dp
+   energy0_dummy(istate,:) = 0.0_dp
  enddo
- call init_selfenergy_grid(one_shot,nsemax,energy0,se)
+ call init_selfenergy_grid(one_shot,nsemax,energy0_dummy,se)
+
 
  !
  ! Output CI Green's function
@@ -849,8 +910,8 @@ subroutine full_ci_nelectrons_selfenergy()
 
 
 
- deallocate(fs_virt,fs_occ)
- deallocate(es_virt,es_occ)
+ if( ALLOCATED(fs_virt) ) deallocate(fs_virt,es_virt)
+ if( ALLOCATED(fs_occ ) ) deallocate(fs_occ,es_occ)
 
  call destroy_selfenergy_grid(se)
 

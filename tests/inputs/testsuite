@@ -529,7 +529,7 @@ CI ground-state energy    ,    -14.3185202318   , 0 , 1.0e-7
 CI 1st excited-state energy,   -14.3185202318   , 0 , 1.0e-7
 CI 2nd excited-state energy,   -14.3185202318   , 0 , 1.0e-7
 -IP                       ,     -8.285061       , 0 , 1.0e-4
--IP                       ,      0.892328       , 1 , 1.0e-3
+-IP (eV) and Weight       ,      0.892328       , 1 , 1.0e-3
 -EA                       ,      6.464563       , 0 , 1.0e-4
 
 

@@ -878,6 +878,16 @@ vl[i].default  =''
 vl[i].datatype ='characters'
 vl[i].comment  ='Name of the auxiliary basis set to be used for elements specified in list ecp_elements.'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='ci_greens_function'
+vl[i].family   ='post'
+vl[i].default  ='holes'
+vl[i].datatype ='characters'
+vl[i].experimental  ='yes'
+vl[i].comment  ='EXPERIMENTAL. Selects which part of the Green\'s function is to be calculated: holes, electrons, or both.'
+
 
 
 

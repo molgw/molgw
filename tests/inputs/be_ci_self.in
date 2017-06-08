@@ -4,6 +4,7 @@
  basis='STO-6G'
 
  postscf='ci_selfenergy'
+ ci_greens_function='both'
  
 
  natom=1
