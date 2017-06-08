@@ -455,6 +455,7 @@ subroutine tddft_time_loop(nstate,                           &
    if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0)
    write(file_time_data,"(F9.4,8(2x,es16.8E3),2x,(2x,F10.5),(2x,F7.2))") &
       time_min, en%tot, en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
+   write(stdout,*)
    write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_min
    write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):', en%tot
 
@@ -827,6 +828,7 @@ subroutine tddft_time_loop(nstate,                           &
      end if
      write(file_time_data,"(F9.4,8(2x,es16.8E3),2x,(2x,F10.5),(2x,F7.2))") &
         time_cur, en%tot, en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
+     write(stdout,*)
      write(stdout,'(1x,a31,1x,f19.10)')  'RT-TDDFT Simulation time  (au):', time_cur
      write(stdout,'(1x,a31,1x,f19.10)')  'RT-TDDFT Total Energy     (Ha):', en%tot
      if(excit_type%is_light) write(stdout,'(1x,a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment      (D):', dipole(:) * au_debye
@@ -1407,7 +1409,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
      ! Nucleus-electron interaction
      if( parallel_ham ) then
        if( parallel_buffer ) then
-         call setup_nucleus_buffer_sca(.false.,basis,basis%nbf,basis%nbf,hamiltonian_nucleus)
+         call setup_nucleus_buffer_sca(basis,basis%nbf,basis%nbf,hamiltonian_nucleus)
        else
          call setup_nucleus_sca(.false.,basis,basis%nbf,basis%nbf,hamiltonian_nucleus)
        endif

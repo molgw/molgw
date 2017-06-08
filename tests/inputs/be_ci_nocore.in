@@ -1,0 +1,17 @@
+&molgw
+ scf='hf'
+
+ basis='cc-pVDZ'
+
+ postscf='ci'
+ nscf= 100
+ tolscf=1.0e-8
+ eta=0.01
+ ncoreg=1
+ nvirtualg=10
+
+
+ natom=1
+/
+4    0.000000    0.0  0.0
+

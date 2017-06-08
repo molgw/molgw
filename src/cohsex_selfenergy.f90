@@ -5,7 +5,7 @@
 ! This file contains the calculation of the COHSEX self-energy
 !
 !=========================================================================
-subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,c_matrix,wpol,se)
+subroutine cohsex_selfenergy(nstate,basis,occupation,c_matrix,wpol,se)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -19,7 +19,7 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,
 
  integer,intent(in)                  :: nstate
  type(basis_set)                     :: basis
- real(dp),intent(in)                 :: occupation(nstate,nspin),energy(nstate,nspin),exchange_m_vxc_diag(nstate,nspin)
+ real(dp),intent(in)                 :: occupation(nstate,nspin)
  real(dp),intent(in)                 :: c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in)  :: wpol
  type(selfenergy_grid),intent(inout) :: se
@@ -52,7 +52,7 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,energy,exchange_m_vxc_diag,
  end select
 
 
- call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
+ call calculate_eri_3center_eigen(c_matrix,nsemin,nsemax,ncore_G+1,nvirtual_G-1)
 
  write(stdout,*) '=============='
  write(stdout,*) 'FBFB exchange'
@@ -204,8 +204,7 @@ end subroutine cohsex_selfenergy
 
 
 !=========================================================================
-subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_diag, &
-                                c_matrix,wpol,se)
+subroutine cohsex_selfenergy_lr(nstate,basis,occupation,c_matrix,wpol,se)
  use m_definitions
  use m_mpi
  use m_timing 
@@ -221,21 +220,23 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
 
  integer,intent(in)                 :: nstate
  type(basis_set)                    :: basis
- real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin),exchange_m_vxc_diag(nstate,nspin)
+ real(dp),intent(in)                :: occupation(nstate,nspin)
  real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
  type(spectral_function),intent(in) :: wpol
  type(selfenergy_grid),intent(inout) :: se
 !=====
- integer               :: homo
  integer               :: pstate
  integer               :: istate,ipspin
  real(dp)              :: fact_full_i,fact_empty_i
  integer               :: jbf_auxil
  integer               :: ibf_auxil_global,jbf_auxil_global
  real(dp),allocatable  :: wp0(:,:),wp0_i(:),w0_local(:)
- real(dp),allocatable  :: wp0_tmp(:,:),wp0_rotation(:,:)
- integer               :: nbf_auxil
+ real(dp),allocatable  :: wp0_rotation(:,:)
  real(dp)              :: sigx
+#ifdef COHSEX_DEVEL
+ real(dp),allocatable  :: wp0_tmp(:,:)
+ integer               :: nbf_auxil
+#endif
 !=====
 
  call start_clock(timing_self)
@@ -246,7 +247,7 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
  call assert_experimental()
 
 
- call calculate_eri_3center_eigen_lr(basis%nbf,nstate,c_matrix)
+ call calculate_eri_3center_eigen_lr(c_matrix)
 
 
  write(stdout,*)
@@ -414,28 +415,6 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,energy,exchange_m_vxc_di
  case(TUNED_COHSEX) !==========================================================
 
   call die('coding is corrupted')
-! this is corrupted ! FIXME
-!
-!   sigc(nsemin:nsemax,:) = sigc(nsemin:nsemax,:) + se%sigma(0,nsemin:nsemax,:)
-!
-!   write(stdout,'(/,a)') ' COHSEX Eigenvalues (eV)'
-!   if(nspin==1) then
-!     write(stdout,*) '  #          E0        SigX-Vxc      SigC          Z         COHSEX'
-!   else
-!     write(stdout,'(a)') '  #                E0                      SigX-Vxc                    SigC                       Z                       COHSEX'
-!   endif
-!   do pstate=nsemin,nsemax
-!     energy_qp_new(pstate,:) = energy_qp(pstate,:) + sigc(pstate,:) + exchange_m_vxc_diag(pstate,:)
-!
-!     write(stdout,'(i4,1x,20(1x,f12.6))') pstate,energy_qp(pstate,:)*Ha_eV,               &
-!                                                 exchange_m_vxc_diag(pstate,:)*Ha_eV,     &
-!                                                 sigc(pstate,:)*Ha_eV, &
-!                                           1.0_dp ,energy_qp_new(pstate,:)*Ha_eV
-!   enddo
-!
-!   call write_energy_qp(nstate,energy_qp_new)
-
-
 
  end select
 

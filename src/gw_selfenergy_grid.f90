@@ -37,7 +37,6 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
  integer              :: info
  real(dp)             :: docc,de,factor_sqrt
  real(dp),allocatable :: eri3_t(:,:)
- real(dp),allocatable :: eri3_sca(:,:)
  real(dp),allocatable :: chi0(:,:)
  real(dp),allocatable :: one_m_chi0(:,:)
  real(dp),allocatable :: one_m_chi0m1(:,:)
@@ -45,6 +44,9 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
  integer              :: desc_eri3_t(NDEL)
  integer              :: desc_eri3_final(NDEL)
  integer              :: meri3,neri3
+#ifdef HAVE_SCALAPACK
+ real(dp),allocatable :: eri3_sca(:,:)
+#endif
 !=====
 
  call start_clock(timing_pola_dynamic)
@@ -72,7 +74,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
  write(stdout,'(1x,a,i7,a,i7)') 'Matrix sizes   ',nauxil_2center,' x ',nauxil_2center
  write(stdout,'(1x,a,i7,a,i7)') 'Distributed in ',wpol%mchi,' x ',wpol%nchi
 
- if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
+ if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
 
 
 
@@ -188,7 +190,7 @@ end subroutine polarizability_grid_scalapack
 
 
 !=========================================================================
-subroutine gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy,c_matrix,wpol,se)
+subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
  use m_definitions
  use m_timing
  use m_warning
@@ -205,7 +207,6 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy,c_matrix,
 
  type(basis_set),intent(in)          :: basis
  integer,intent(in)                  :: nstate
- real(dp),intent(in)                 :: occupation(nstate,nspin)
  real(dp),intent(in)                 :: energy(nstate,nspin)
  real(dp),intent(in)                 :: c_matrix(nstate,basis%nbf,nspin)
  type(spectral_function),intent(in)  :: wpol
@@ -213,13 +214,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy,c_matrix,
 !=====
  integer              :: iomegas
  integer              :: iomega
- integer              :: ilocal,jlocal
- integer              :: iglobal,jglobal
- integer              :: t_ia
- integer              :: istate,astate,iaspin
  integer              :: info
- real(dp)             :: docc,de,factor_sqrt
- real(dp),allocatable :: eri3_t(:,:)
  real(dp),allocatable :: eri3_sca(:,:)
  real(dp),allocatable :: chi_eri3_sca(:,:)
  integer              :: desc_eri3_t(NDEL)
@@ -245,7 +240,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy,c_matrix,
 #endif
 
 
- if( has_auxil_basis ) call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_G+1,nvirtual_G-1,nsemin,nsemax)
+ if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,nsemin,nsemax)
 
 
  prange = nvirtual_G - ncore_G - 1

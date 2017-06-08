@@ -2,6 +2,7 @@
 
  scf='b3lyp'
  tolscf=1.0e-10
+ nscf=1 
  integral_quality='medium'
  grid_quality='medium'
  read_restart='y'

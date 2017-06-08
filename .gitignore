@@ -4,5 +4,5 @@ molgw.tgz
 *.mod
 *.o
 *.swp
-src/my_machine.arch
+src/my_machine*.arch*
 tests/tmp_*

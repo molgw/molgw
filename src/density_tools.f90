@@ -90,7 +90,6 @@ subroutine calc_density_r(nspin,nbf,nstate,occupation,c_matrix,basis_function_r,
  real(dp),intent(out)       :: rhor(nspin)
 !=====
  integer              :: ispin,istate
- real(dp)             :: phi_ir
  real(dp),allocatable :: phir(:)
  integer              :: nocc
 !=====
@@ -101,15 +100,6 @@ subroutine calc_density_r(nspin,nbf,nstate,occupation,c_matrix,basis_function_r,
 
  do ispin=1,nspin
 
-#if 0
-   do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty ) cycle
-
-     phi_ir = DOT_PRODUCT( basis_function_r(:) , c_matrix(:,istate,ispin) )
-     rhor(ispin) = rhor(ispin) + phi_ir**2 * occupation(istate,ispin)
-
-   enddo
-#else
    do istate=1,nstate
      if( occupation(istate,ispin) < completely_empty ) cycle
      nocc = istate
@@ -120,7 +110,6 @@ subroutine calc_density_r(nspin,nbf,nstate,occupation,c_matrix,basis_function_r,
    rhor(ispin) = rhor(ispin) + SUM( phir(:)**2 * occupation(:nocc,ispin) )
    deallocate(phir)
 
-#endif
 
  enddo
 
@@ -249,7 +238,7 @@ subroutine calc_density_gradr(nspin,nbf,nstate,occupation,c_matrix,basis_functio
  real(dp),intent(in)        :: basis_function_gradr(3,nbf)
  real(dp),intent(out)       :: grad_rhor(3,nspin)
 !=====
- integer              :: ispin,ibf,istate
+ integer              :: ispin,istate
  real(dp)             :: phi_ir
  real(dp)             :: grad_phi_ir(3)
 !=====
@@ -444,7 +433,6 @@ subroutine teter_lda_vxc_exc(nr,rhor,vxc,exc)
  real(dp),intent(in)  :: rhor(nr)
  real(dp),intent(out) :: vxc(nr),exc(nr)
 !=====
- integer :: ir
  !
  ! The usual full LDA parameters of Teter
  real(dp),parameter :: a0p=.4581652932831429_dp
@@ -515,11 +503,11 @@ subroutine my_lda_exc_vxc(nspin,ixc,rhor,exc,vxc)
  real(dp),parameter :: alpha_zeta=1.0_dp - 1.0e-6_dp
  real(dp),parameter :: ft=4._dp/3._dp,rsfac=0.6203504908994000_dp
  real(dp),parameter :: rsfacm3=rsfac**(-3)
- real(dp) :: a0,a1,a2,a3,b1,b2,b3,b4,d1,d1m1,d2d1drs2,d2d1drsdf,d2excdf2
- real(dp) :: d2excdrs2,d2excdrsdf,d2excdz2,d2fxcdz2,d2n1drs2,d2n1drsdf,dd1df
- real(dp) :: dd1drs,dexcdf,dexcdrs,dexcdz,dfxcdz,dn1df,dn1drs,dvxcdrs
- real(dp) :: dvxcpdrho,dvxcpdz,fact,fxc,n1
- real(dp) :: rhom1,rs,vxcp,zet,zetm,zetm_third
+ real(dp) :: a0,a1,a2,a3,b1,b2,b3,b4,d1,d1m1
+ real(dp) :: dd1df
+ real(dp) :: dd1drs,dexcdf,dexcdrs,dexcdz,dfxcdz,dn1df,dn1drs
+ real(dp) :: fact,fxc,n1
+ real(dp) :: rs,vxcp,zet,zetm,zetm_third
  real(dp) :: zetp,zetp_third
 
 ! *************************************************************************
@@ -771,119 +759,6 @@ end subroutine my_lda_exc_vxc_mu
 
 
 !=========================================================================
-subroutine my_gga_exc_vxc_hjs(omega,nn,sigma,exc,vxc,vsigma)
- use m_definitions
- implicit none
-
- real(dp),intent(in)  :: omega,nn,sigma
- real(dp),intent(out) :: exc,vxc,vsigma
-!=====
- real(dp),parameter :: ss0=2.0
- ! HJS parameters
- real(dp),parameter :: aabar= 0.757211
- real(dp),parameter :: bb   =-0.106364
- real(dp),parameter :: cc   =-0.118649
- real(dp),parameter :: dd   = 0.609650
- real(dp),parameter :: ee   =-0.0477963
- ! PBE parameters
- real(dp),parameter :: a2= 0.0159941
- real(dp),parameter :: a3= 0.0852995
- real(dp),parameter :: a4=-0.160368
- real(dp),parameter :: a5= 0.152645
- real(dp),parameter :: a6=-0.0971263
- real(dp),parameter :: a7= 0.0422061
- real(dp),parameter :: b1= 5.33319
- real(dp),parameter :: b2=-12.4780
- real(dp),parameter :: b3=11.0988
- real(dp),parameter :: b4=-5.11013
- real(dp),parameter :: b5= 1.71468
- real(dp),parameter :: b6=-0.610380
- real(dp),parameter :: b7= 0.307555
- real(dp),parameter :: b8=-0.0770547
- real(dp),parameter :: b9= 0.0334840
-!=====
- real(dp) :: efac
- real(dp) :: nn_local,sigma_local,rs
- real(dp) :: ss
- real(dp) :: kf
- real(dp) :: nu
- real(dp) :: chi
- real(dp) :: lambda,eta,zeta
- real(dp) :: hh_s
- real(dp) :: ffbar_s
- real(dp) :: ggbar_s
- real(dp) :: factor_w
- real(dp) :: exc_nn,exc_sigma
- real(dp) :: fx,dfxds,dfxdnu
- real(dp) :: dsdsigma,dsdn,dnudn
-!=====
-
- efac=0.75_dp * (1.5_dp/pi)**(2.0_dp/3.0_dp)
-
-
-!HOME MADE    !
-!HOME MADE    ! first calculation
-!HOME MADE    nn_local = nn
-!HOME MADE    sigma_local = sigma
-!HOME MADE    
-!HOME MADE    rs = ( 3.0 / (4.0 *pi * nn_local) )**(1./3.)
-!HOME MADE    kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) / rs
-!HOME MADE    nu = omega / kf
-!HOME MADE    ss = SQRT(sigma_local) / ( 2.0_dp * kf * nn_local )
-!HOME MADE   
-!HOME MADE    hh_s = ( a2*ss**2 + a3*ss**3 + a4*ss**4 + a5*ss**5 + a6*ss**6 + a7*ss**7 ) &
-!HOME MADE         / ( 1.0_dp + b1*ss + b2*ss**2 + b3*ss**3 + b4*ss**4 + b5*ss**5 + b6*ss**6 + b7*ss**7 + b8*ss**8 + b9*ss**9 )
-!HOME MADE   
-!HOME MADE    ffbar_s = 1.0_dp - ss**2 / ( 27.0_dp * cc * (1.0_dp + ss**2/ss0**2 ) ) &
-!HOME MADE               - ss**2 * hh_s / (2.0_dp * cc )
-!HOME MADE   
-!HOME MADE   
-!HOME MADE    zeta   = ss**2 * hh_s
-!HOME MADE    eta    = aabar + ss**2 * hh_s
-!HOME MADE    lambda = dd    + ss**2 * hh_s
-!HOME MADE    chi = nu / SQRT( lambda + nu**2)
-!HOME MADE   
-!HOME MADE    ggbar_s = -2./5.*cc*ffbar_s*lambda -4./15.*bb*lambda**2 - 6./5.*aabar*lambda**3 &
-!HOME MADE             -4./5.*SQRT(pi)*lambda**(7./2.) &
-!HOME MADE             -12./5.*lambda**(7./2.) * ( SQRT(zeta)-SQRT(eta) )
-!HOME MADE    ggbar_s = ggbar_s / ee
-!HOME MADE   
-!HOME MADE   
-!HOME MADE    factor_w = aabar - 4./9.*bb/lambda*(1.0-chi) - 4./9.*cc*ffbar_s/lambda**2 * (1.0 - 1.5*chi+0.5*chi**3)  &
-!HOME MADE              -8./9.*ee*ggbar_s/lambda**3 * ( 1.0 - 15./8.*chi + 5./4.*chi**3 -3./8.*chi**5 ) &
-!HOME MADE              + 2.*nu   * ( SQRT(zeta+nu**2)- SQRT(eta+nu**2) ) &
-!HOME MADE              + 2.*zeta * LOG( ( nu + SQRT(zeta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) &
-!HOME MADE              - 2.*eta  * LOG( ( nu + SQRT( eta+nu**2) ) / ( nu + SQRT(lambda + nu**2) ) ) 
-!HOME MADE   
-!HOME MADE   
-!HOME MADE    exc = -efac/rs * factor_w
-!HOME MADE
-!HOME MADE write(stdout,*) 'exc1=',exc
-
- !
- ! call to the nwchem subroutine
- !
- rs = ( 3.0 / (4.0*pi*nn) )**(1.0/3.0)
- kf = (9.0_dp * pi / 4.0_dp)**(1.0_dp/3.0_dp) / rs
- ss = SQRT(sigma) / ( 2.0_dp * kf * nn )
-
- call HSE08Fx(omega,1,nn,ss,fx,dfxds,dfxdnu)
-
- exc = -efac/rs*fx
-
- dsdsigma= 1.0_dp / ( 4.0_dp * kf * nn * SQRT(sigma) )
-
- vsigma = -efac/rs * nn * dfxds * dsdsigma
-
- dsdn  = SQRT(sigma) / (2.0_dp * (3.0*pi**2)**(1./3.) ) * (-4.0/3.0) * nn**(-7.0/3.0)
- dnudn = omega / (3.0*pi**2)**(1./3.) * (-1.0/3.0) * nn**(-4.0/3.0)
- vxc = -efac/rs * nn * ( dfxds * dsdn + dfxdnu * dnudn ) - (4.0/3.0)*efac/rs *fx
-
-
-end subroutine my_gga_exc_vxc_hjs
-
-
-!=========================================================================
 subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
  use m_definitions
  implicit none
@@ -906,13 +781,13 @@ subroutine HSE08Fx(omega,ipol,rho,s,Fxhse,d10Fxhse,d01Fxhse)
  real(dp) :: s2,s3,s4,s5,s6,s7,s8,s9
  real(dp) :: Fs, d1Fs
  real(dp) :: zeta, lambda, eta, kf, nu, chi, lambda2
- real(dp) :: d1zeta,d1lambda,d1eta,d1nu,d1chi,d1lambda2
+ real(dp) :: d1zeta,d1lambda,d1eta,d1chi,d1lambda2
  real(dp) :: EGs,d1EGs
- real(dp) :: nu2,L2,L3,nu3,nu4,nu5,nu6
+ real(dp) :: nu2,L2,L3,nu3
  real(dp) :: Js,Ks,Ms,Ns
  real(dp) :: d1Js,d1Ks,d1Ms,d1Ns
  real(dp) :: tmp1,tmp2,tmp3,tmp4,tmp5,tmp6,tmp7,tmp8
- real(dp) :: tmp9,tmp10,tmp11,tmp12,tmp13,tmp14,tmp15
+ real(dp) :: tmp9,tmp10
  real(dp) :: Fxhse1,Fxhse2,Fxhse3,Fxhse4,Fxhse5,Fxhse6
  real(dp) :: d1Fxhse1,d1Fxhse2,d1Fxhse3,d1Fxhse4,d1Fxhse5
  real(dp) :: d1Fxhse6,d1Fxhse7

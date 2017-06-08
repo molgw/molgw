@@ -60,13 +60,13 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
  real(dp),intent(in)              :: occupation(nstate,nspin)
 !=====
 #ifdef HAVE_LIBXC
- type(xc_f90_pointer_t) :: xc_func(ndft_xc),xc_functest
- type(xc_f90_pointer_t) :: xc_info(ndft_xc),xc_infotest
+ type(xc_f90_pointer_t) :: xc_func(ndft_xc)
+ type(xc_f90_pointer_t) :: xc_info(ndft_xc)
 #endif
  real(dp),parameter   :: kernel_capping=1.0e14_dp
  character(len=256)   :: string
  integer              :: idft_xc,igrid
- integer              :: ispin,ibf,jbf
+ integer              :: ispin
  real(dp)             :: basis_function_r(basis%nbf)
  real(dp)             :: basis_function_gradr(3,basis%nbf)
  real(dp)             :: rhor_r(nspin)

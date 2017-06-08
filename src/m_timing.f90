@@ -59,6 +59,9 @@ module m_timing
  integer,parameter :: timing_density_matrix      = 40
  integer,parameter :: timing_force               = 41
  integer,parameter :: timing_pola_dynamic        = 42
+ integer,parameter :: timing_ci_selfenergy       = 43
+ integer,parameter :: timing_ham_ci              = 44
+ integer,parameter :: timing_ci_diago            = 45
  
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -218,7 +221,14 @@ subroutine output_timing()
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'MP2 self-energy'    ,timing(timing_mp2_self),calls(timing_mp2_self)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'GWGamma self-energy',timing(timing_gwgamma),calls(timing_gwgamma)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'MP2 energy'         ,timing(timing_mp2_energy),calls(timing_mp2_energy)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'Full CI for 2e'     ,timing(timing_full_ci),calls(timing_full_ci)
+ if( calls(timing_full_ci) > 0 ) then
+   write(stdout,'(a30,6x,f12.2,2x,i8)') 'Full CI for few electrons',timing(timing_full_ci),calls(timing_full_ci)
+   write(stdout,'(a30,6x,f12.2,2x,i8)') '                   CI ham',timing(timing_ham_ci),calls(timing_ham_ci)
+   write(stdout,'(a30,6x,f12.2,2x,i8)') '                 CI diago',timing(timing_ci_diago),calls(timing_ci_diago)
+ endif
+ if( calls(timing_ci_selfenergy) > 0 ) then
+   write(stdout,'(a30,6x,f12.2,2x,i8)') 'CI s-e for few electrons',timing(timing_ci_selfenergy),calls(timing_ci_selfenergy)
+ endif
 
  write(stdout,*)
  write(stdout,'(a)') '                 -------------------------------------'

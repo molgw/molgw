@@ -1,0 +1,11 @@
+&molgw
+ scf='hf'
+
+ basis='6-31G'
+
+ postscf='ci'
+
+ natom=1
+/
+4    0.000000    0.0  0.0
+

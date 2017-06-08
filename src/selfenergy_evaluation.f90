@@ -34,9 +34,9 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  real(dp),intent(in)        :: exchange_m_vxc_diag(nstate,nspin)
 !=====
  type(selfenergy_grid)   :: se,se2,se3
+ logical                 :: enforce_rpa
  character(len=36)       :: selfenergy_tag
  integer                 :: reading_status
- integer                 :: ispin
  integer                 :: nstate_small
  type(spectral_function) :: wpol
  real(dp),allocatable    :: matrix_tmp(:,:,:)
@@ -111,7 +111,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      ! Be aware that the energies and the c_matrix for virtual orbitals are altered after this point
      ! and until they are restored in destroy_fno
      !
-     call virtual_fno(basis,nstate,occupation,energy,c_matrix)
+     call virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
    endif
    !
    ! Or alternatively use the small basis technique
@@ -189,7 +189,9 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        ! If reading has failed, then do the calculation
        if( reading_status /= 0 ) then
          if( calc_type%selfenergy_technique /= imaginary_axis ) then
-           call polarizability(.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+           ! in case of BSE calculation, enforce RPA here
+           enforce_rpa = calc_type%is_bse
+           call polarizability(enforce_rpa,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
          else
            call polarizability_grid_scalapack(basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
          endif
@@ -212,8 +214,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        if( calc_type%selfenergy_technique /= imaginary_axis ) then
          call gw_selfenergy_scalapack(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se)
        else
-         call gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy_g,c_matrix,wpol,se)
-         call self_energy_pade(nstate,energy_g,se)
+         call gw_selfenergy_imag_scalapack(basis,nstate,energy_g,c_matrix,wpol,se)
+         call self_energy_pade(se)
        endif
      else
        call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
@@ -222,8 +224,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      if( calc_type%selfenergy_technique /= imaginary_axis ) then
        call gw_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
      else
-       call gw_selfenergy_imag_scalapack(basis,nstate,occupation,energy_g,c_matrix,wpol,se)
-       call self_energy_pade(nstate,energy_g,se)
+       call gw_selfenergy_imag_scalapack(basis,nstate,energy_g,c_matrix,wpol,se)
+       call self_energy_pade(se)
      endif
 #endif
   
@@ -255,7 +257,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call init_selfenergy_grid(static_selfenergy,nstate,energy,se3)
     
        ! Sigma^2 = Sigma^{1-ring}_small
-       call onering_selfenergy(ONE_RING,nstate_small,basis,occupation(1:nstate_small,:), &
+       call onering_selfenergy(nstate_small,basis,occupation(1:nstate_small,:), &
                                energy_g(1:nstate_small,:),c_matrix(:,1:nstate_small,:),se2,en%mp2)
   
        ! Reset wavefunctions, eigenvalues and number of virtual orbitals in G
@@ -264,12 +266,12 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call selfenergy_set_state_range(nstate,occupation)
   
        ! Sigma^3 = Sigma^{1-ring}_big
-       call onering_selfenergy(ONE_RING,nstate,basis,occupation,energy_g,c_matrix,se3,en%mp2)
+       call onering_selfenergy(nstate,basis,occupation,energy_g,c_matrix,se3,en%mp2)
   
        if( print_sigma_ ) then
-         call write_selfenergy_omega('selfenergy_GW_small'   ,nstate,exchange_m_vxc_diag,energy_g,se)
-         call write_selfenergy_omega('selfenergy_1ring_big'  ,nstate,exchange_m_vxc_diag,energy_g,se3)
-         call write_selfenergy_omega('selfenergy_1ring_small',nstate,exchange_m_vxc_diag,energy_g,se2)
+         call write_selfenergy_omega('selfenergy_GW_small'   ,nstate,exchange_m_vxc_diag,occupation,energy_g,se)
+         call write_selfenergy_omega('selfenergy_1ring_big'  ,nstate,exchange_m_vxc_diag,occupation,energy_g,se3)
+         call write_selfenergy_omega('selfenergy_1ring_small',nstate,exchange_m_vxc_diag,occupation,energy_g,se2)
        endif
   
        !
@@ -293,7 +295,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      call read_spectral_function(wpol,reading_status)
      ! If reading has failed, then do the calculation
      if( reading_status /= 0 ) then
-       call polarizability(.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+       call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
      endif
   
      call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
@@ -347,7 +349,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
   
      if( .NOT. has_auxil_basis ) call die('cohsex needs an auxiliary basis')
      call init_spectral_function(nstate,occupation,1,wpol)
-     call calculate_eri_3center_eigen(basis%nbf,nstate,c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
+     call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1)
      !
      ! Calculate v^{1/2} \chi v^{1/2}
      call static_polarizability(nstate,occupation,energy_w,wpol)
@@ -375,15 +377,18 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call dft_exc_vxc_batch(BATCH_SIZE,basis,nstate,occupation,c_matrix,matrix_tmp,exc)
    
        write(stdout,*) '===== SigX SR ======'
-       do ispin=1,nspin
-         do istate=1,nstate
-           sigc(istate,ispin) = DOT_PRODUCT( c_matrix(:,istate,ispin) , &
-                                     MATMUL( matrix_tmp(:,:,ispin) , c_matrix(:,istate,ispin ) ) )
-           write(stdout,*) istate,ispin,sigc(istate,ispin) * Ha_eV
+       block
+         integer :: ispin
+         do ispin=1,nspin
+           do istate=1,nstate
+             sigc(istate,ispin) = DOT_PRODUCT( c_matrix(:,istate,ispin) , &
+                                       MATMUL( matrix_tmp(:,:,ispin) , c_matrix(:,istate,ispin ) ) )
+             write(stdout,*) istate,ispin,sigc(istate,ispin) * Ha_eV
+           enddo
+           sigc(istate,ispin) = sigc(istate,ispin) * delta_cohsex 
          enddo
-       enddo
+       end block
        write(stdout,*) '===================='
-       sigc(istate,ispin) = sigc(istate,ispin) * delta_cohsex 
   
        deallocate(p_matrix)
        call destroy_dft_grid()
@@ -396,7 +401,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
   
 #endif
   
-     call cohsex_selfenergy(nstate,basis,occupation,energy_g,exchange_m_vxc_diag, & 
+     call cohsex_selfenergy(nstate,basis,occupation, & 
                             c_matrix,wpol,matrix_tmp,sigc,en%gw)
   
   
@@ -409,7 +414,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        ! 3-center integrals
        call calculate_eri_3center_scalapack(basis,auxil_basis,rcut_mbpt)
   
-       call cohsex_selfenergy_lr(nstate,basis,occupation,energy_g,exchange_m_vxc_diag, &
+       call cohsex_selfenergy_lr(nstate,basis,occupation, &
                                  c_matrix,wpol,matrix_tmp,sigc,en%gw)
      endif
   
@@ -426,7 +431,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    ! Output the quasiparticle energies, the self-energy etc.
    !
    if( print_sigma_ ) then
-     call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),nstate,exchange_m_vxc_diag,energy_g,se)
+     call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag),nstate,exchange_m_vxc_diag,occupation,energy_g,se)
    endif
   
   

@@ -783,7 +783,6 @@ subroutine setup_bf_radius(basis)
 !=====
  integer  :: igrid,ibf
  real(dp) :: basis_function_r(basis%nbf)
- integer  :: icalc,icalc_tot
 !=====
 
  allocate(bf_rad2(basis%nbf))

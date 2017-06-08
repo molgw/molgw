@@ -19,7 +19,7 @@ contains
 
 !=========================================================================
 subroutine scf_loop(is_restart,& 
-                    basis,auxil_basis,&
+                    basis,&
                     nstate,m_ham,n_ham,m_c,n_c,&
                     s_matrix_sqrt_inv,s_matrix,&
                     hamiltonian_kinetic,hamiltonian_nucleus,&
@@ -45,7 +45,6 @@ subroutine scf_loop(is_restart,&
 !=====
  logical,intent(in)                 :: is_restart
  type(basis_set),intent(in)         :: basis
- type(basis_set),intent(in)         :: auxil_basis
  integer,intent(in)                 :: nstate,m_ham,n_ham,m_c,n_c
  real(dp),intent(in)                :: s_matrix_sqrt_inv(m_c,n_c)
  real(dp),intent(in)                :: s_matrix(m_ham,n_ham)
@@ -140,7 +139,7 @@ subroutine scf_loop(is_restart,&
    else
      if( parallel_ham ) then
        if( parallel_buffer ) then
-         call setup_hartree_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
+         call setup_hartree_ri_buffer_sca(m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
        else
          call setup_hartree_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
        endif
@@ -171,7 +170,7 @@ subroutine scf_loop(is_restart,&
 
      if( parallel_ham ) then
        if( parallel_buffer ) then
-         call dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_xc,en%xc)
+         call dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,hamiltonian_xc,en%xc)
        else
          call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
          hamiltonian_xc(:,:,:) = 0.0_dp
@@ -189,7 +188,7 @@ subroutine scf_loop(is_restart,&
    if(calc_type%need_exchange_lr) then
 
      if( .NOT. has_auxil_basis ) then
-       call setup_exchange_longrange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,energy_tmp)
+       call setup_exchange_longrange(basis%nbf,p_matrix,hamiltonian_exx,energy_tmp)
      else
        if( parallel_ham ) then
          if( parallel_buffer ) then
@@ -211,7 +210,7 @@ subroutine scf_loop(is_restart,&
    if( calc_type%need_exchange ) then
 
      if( .NOT. has_auxil_basis ) then
-       call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+       call setup_exchange(basis%nbf,p_matrix,hamiltonian_exx,en%exx)
      else
        if( parallel_ham ) then
          if( parallel_buffer ) then
@@ -243,7 +242,7 @@ subroutine scf_loop(is_restart,&
      if( parallel_ham ) call die('QSGW not implemented with parallel_ham')
 
      call init_spectral_function(nstate,occupation,0,wpol)
-     call polarizability(.TRUE.,basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+     call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
 
      if( ABS(en%rpa) > 1.e-6_dp) then
        en%tot = en%tot + en%rpa
@@ -408,7 +407,7 @@ subroutine scf_loop(is_restart,&
  ! Get the exchange operator if not already calculated
  !
  if( .NOT. has_auxil_basis ) then
-   if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(print_matrix_,basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+   if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(basis%nbf,p_matrix,hamiltonian_exx,en%exx)
  else
    if( ABS(en%exx) < 1.0e-6_dp ) then
      if( parallel_ham ) then
@@ -541,7 +540,7 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
  !
  if( parallel_ham ) then
    if( parallel_buffer ) then
-     call setup_hartree_ri_buffer_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_tmp,ehart)
+     call setup_hartree_ri_buffer_sca(m_ham,n_ham,p_matrix,hamiltonian_tmp,ehart)
    else
      call setup_hartree_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_tmp,ehart)
    endif
@@ -570,7 +569,7 @@ write(stdout,*) "------------------"
 
    if( parallel_ham ) then
      if( parallel_buffer ) then
-       call dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,exc)
+       call dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,hamiltonian_spin_tmp,exc)
      else
        call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
        hamiltonian_spin_tmp(:,:,:) = 0.0_dp
