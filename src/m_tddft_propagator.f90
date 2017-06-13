@@ -1226,10 +1226,14 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
 !=====
  integer                    :: ispin
  integer                    :: ibf
+ integer                    :: istate,jstate
+ complex(dp),allocatable    :: m_tmp_1(:,:)
+ complex(dp),allocatable    :: m_tmp_2(:,:)
 !==variables for the MAG2 propagator
  complex(dp),allocatable    :: a_matrix_orth_cmplx(:,:)
  real(dp),allocatable       :: energies_inst(:)
  complex(dp),allocatable    :: propagator_eigen(:,:)
+ complex(dp)                   :: exp_tmp
 !==variables for the CN propagator
  complex(dp),allocatable    :: l_matrix_cmplx(:,:) ! Follow the notation of M.A.L.Marques, C.A.Ullrich et al, 
  complex(dp),allocatable    :: b_matrix_cmplx(:,:) ! TDDFT Book, Springer (2006), !p205
@@ -1244,34 +1248,46 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      allocate(b_matrix_cmplx(nstate,nstate))
      l_matrix_cmplx(:,:)= im * time_step_cur / 2.0_dp * h_small_cmplx(:,:,ispin)
      b_matrix_cmplx(:,:)=-l_matrix_cmplx(:,:)
-     do ibf=1,nstate
-       b_matrix_cmplx(ibf,ibf)=b_matrix_cmplx(ibf,ibf)+1.0_dp
-       l_matrix_cmplx(ibf,ibf)=l_matrix_cmplx(ibf,ibf)+1.0_dp
+     do istate=1,nstate
+       b_matrix_cmplx(istate,istate)=b_matrix_cmplx(istate,istate)+1.0_dp
+       l_matrix_cmplx(istate,istate)=l_matrix_cmplx(istate,istate)+1.0_dp
      end do
      call invert(nstate , l_matrix_cmplx(:,:))
   
-     c_matrix_orth_cmplx(:,:,ispin) = MATMUL( l_matrix_cmplx(:,:),MATMUL( b_matrix_cmplx(:,:),c_matrix_orth_cmplx(:,:,ispin) ) )
+     b_matrix_cmplx(:,:)            = MATMUL( b_matrix_cmplx(:,:),c_matrix_orth_cmplx(:,:,ispin) )
+     c_matrix_orth_cmplx(:,:,ispin) = MATMUL( l_matrix_cmplx(:,:),b_matrix_cmplx(:,:) )
+!    c_matrix_orth_cmplx(:,:,ispin) = MATMUL( l_matrix_cmplx(:,:),MATMUL( b_matrix_cmplx(:,:),c_matrix_orth_cmplx(:,:,ispin) ) )
      deallocate(l_matrix_cmplx)
      deallocate(b_matrix_cmplx)
    case('MAG2')
-     allocate(propagator_eigen(nstate,nstate))
+     allocate(m_tmp_1(nstate,nstate))
      allocate(a_matrix_orth_cmplx(nstate,nstate))
      allocate(energies_inst(nstate))
      call start_clock(timing_propagate_diago)
      call diagonalize(nstate,h_small_cmplx(:,:,ispin),energies_inst(:),a_matrix_orth_cmplx)
      call stop_clock(timing_propagate_diago)
  
-     propagator_eigen(:,:) = ( 0.0_dp , 0.0_dp ) 
-    
-     do ibf=1,nstate
-       propagator_eigen(ibf,ibf) = exp(-im*time_step_cur*energies_inst(ibf))
-     end do
+!     propagator_eigen(:,:) = ( 0.0_dp , 0.0_dp ) 
+!     do ibf=1,nstate
+!       propagator_eigen(ibf,ibf) = exp(-im*time_step_cur*energies_inst(ibf))
+!     end do
 
      call start_clock(timing_propagate_matmul)
-     c_matrix_orth_cmplx(:,:,ispin) = MATMUL( MATMUL( MATMUL( a_matrix_orth_cmplx(:,:), propagator_eigen(:,:)  ) , &
-             CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:)))  ), c_matrix_orth_cmplx(:,:,ispin) )
+
+     do jstate=1,nstate
+       exp_tmp = exp(-im*time_step_cur*energies_inst(jstate) )
+       do istate=1,nstate
+         m_tmp_1(istate,jstate) = a_matrix_orth_cmplx(istate,jstate) * exp_tmp
+       enddo
+     enddo
+
+     a_matrix_orth_cmplx(:,:)       = MATMUL(m_tmp_1(:,:),CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:))))
+     c_matrix_orth_cmplx(:,:,ispin) = MATMUL( a_matrix_orth_cmplx(:,:), c_matrix_orth_cmplx(:,:,ispin) )
+!    c_matrix_orth_cmplx(:,:,ispin) = MATMUL( MATMUL( MATMUL( a_matrix_orth_cmplx(:,:), propagator_eigen(:,:)  ) , &
+!            CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:)))  ), c_matrix_orth_cmplx(:,:,ispin) )
+
      call stop_clock(timing_propagate_matmul)
-     deallocate(propagator_eigen)
+     deallocate(m_tmp_1)
      deallocate(a_matrix_orth_cmplx)
      deallocate(energies_inst)
    case default
