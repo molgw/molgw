@@ -263,14 +263,16 @@ subroutine output_timing()
 
  if( calls(timing_tddft_loop) > 0 ) then
    write(stdout,*)
-   write(stdout,'(a32,4x,f12.2,2x,i8)') '                  TD-DFT Loop' ,timing(timing_tddft_loop),calls(timing_tddft_loop)
-!   write(stdout,'(a32,4x,f12.2,2x,i8)') 'Fourier Transforms for TD-DFT' ,timing(timing_tddft_fourier),calls(timing_tddft_fourier)
-   write(stdout,'(a32,4x,f12.2,2x,i8)') 'Propagation for TD-DFT' ,timing(timing_tddft_propagation),calls(timing_tddft_propagation)
-   write(stdout,'(a32,4x,f12.2,2x,i8)') 'Hamiltonian_fock calculation' ,timing(timing_tddft_hamiltonian_fock),calls(timing_tddft_hamiltonian_fock)
-   write(stdout,'(a32,4x,f12.2,2x,i8)') 'RESTART_TDDFT file writing' ,timing(timing_restart_tddft_file),calls(timing_restart_tddft_file)
+   write(stdout,'(a32,4x,f12.2,2x,i8)') '                  TD-DFT Loop'  ,timing(timing_tddft_loop),calls(timing_tddft_loop)
+   write(stdout,'(a32,4x,f12.2,2x,i8)') 'Propagation for TD-DFT'         ,timing(timing_tddft_propagation),calls(timing_tddft_propagation)
+   write(stdout,'(a32,4x,f12.2,2x,i8)') 'Hamiltonian_fock calculation'   ,timing(timing_tddft_hamiltonian_fock),calls(timing_tddft_hamiltonian_fock)
+   write(stdout,'(a32,4x,f12.2,2x,i8)') 'RESTART_TDDFT file writing'     ,timing(timing_restart_tddft_file),calls(timing_restart_tddft_file)
    if(calls(timing_print_cube_rho_tddft)>0) then
-      write(stdout,'(a32,4x,f12.2,2x,i8)') 'Cube density file writing' ,timing(timing_print_cube_rho_tddft),calls(timing_print_cube_rho_tddft)
+      write(stdout,'(a32,4x,f12.2,2x,i8)') 'Cube density file writing'   ,timing(timing_print_cube_rho_tddft),calls(timing_print_cube_rho_tddft)
    end if
+   write(stdout,'(a32,4x,f12.2,2x,i8)') 'Diago in tddft propagation'     ,timing(timing_propagate_diago),calls(timing_propagate_diago)
+   write(stdout,'(a32,4x,f12.2,2x,i8)') 'Diago in tddft matmul'          ,timing(timing_propagate_matmul),calls(timing_propagate_matmul)
+
  end if
 end subroutine output_timing
 

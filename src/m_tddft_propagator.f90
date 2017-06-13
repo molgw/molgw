@@ -1257,15 +1257,20 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      allocate(propagator_eigen(nstate,nstate))
      allocate(a_matrix_orth_cmplx(nstate,nstate))
      allocate(energies_inst(nstate))
+     call start_clock(timing_propagate_diago)
      call diagonalize(nstate,h_small_cmplx(:,:,ispin),energies_inst(:),a_matrix_orth_cmplx)
+     call stop_clock(timing_propagate_diago)
+ 
      propagator_eigen(:,:) = ( 0.0_dp , 0.0_dp ) 
     
      do ibf=1,nstate
        propagator_eigen(ibf,ibf) = exp(-im*time_step_cur*energies_inst(ibf))
      end do
 
+     call start_clock(timing_propagate_matmul)
      c_matrix_orth_cmplx(:,:,ispin) = MATMUL( MATMUL( MATMUL( a_matrix_orth_cmplx(:,:), propagator_eigen(:,:)  ) , &
              CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:)))  ), c_matrix_orth_cmplx(:,:,ispin) )
+     call stop_clock(timing_propagate_matmul)
      deallocate(propagator_eigen)
      deallocate(a_matrix_orth_cmplx)
      deallocate(energies_inst)
