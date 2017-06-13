@@ -81,6 +81,8 @@ module m_timing
  integer,parameter :: timing_tddft_hamiltonian_fock = 114
  integer,parameter :: timing_print_cube_rho_tddft= 115
  integer,parameter :: timing_restart_tddft_file  = 116
+ integer,parameter :: timing_propagate_diago     = 117
+ integer,parameter :: timing_propagate_matmul    = 118
 
  integer           :: count_rate,count_max
  logical           :: time_running(NTIMING)

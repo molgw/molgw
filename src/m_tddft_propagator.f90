@@ -846,7 +846,7 @@ subroutine tddft_time_loop(nstate,                           &
      write(stdout,"(1x,a30,2x,es14.6,1x,a)") "Time of one iteration is", time_one_iter,"s"
      write(stdout,"(1x,a30,2x,3(f12.2,1x,a))") "Estimated calculation time is", time_one_iter*ntau, "s = ", time_one_iter*ntau/60, "min = ", time_one_iter*ntau/3600, "hrs"
      write(stdout,'(1x,a)') '**********************************'
-     call flush(stdout)
+     flush(stdout)
    end if
 
    if( print_tddft_restart_ .AND. mod(itau,n_restart_tddft)==0 .AND. ref_ ) then
