@@ -418,6 +418,7 @@ subroutine tddft_time_loop(nstate,                           &
  xatom                  = xatom_start
  en                     = en_start
 
+ time_min=time_read
  !OPENING FILES
  if( is_iomaster ) then
    if(ref_) then
@@ -426,6 +427,7 @@ subroutine tddft_time_loop(nstate,                           &
        open(newunit=file_dipole_time,file="dipole_time.dat")
        open(newunit=file_excit_field,file="excitation_time.dat")
        write(file_excit_field,*) "# time(au)                      E_field_excit_dir(au)"
+       write(file_excit_field,*) time_min, REAL(m_excit_field_dir) 
      end if
    else
      write(name_time_data,'(5A,F5.3,A,I1,A,I1,A)') "time_data_", TRIM(pred_corr_cur), "_", TRIM(prop_type_cur), "_dt_", time_step_cur, &
@@ -449,7 +451,6 @@ subroutine tddft_time_loop(nstate,                           &
 
  if(excit_type%is_light) call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
 
- time_min=time_read
  if( is_iomaster ) then
  ! Here time_min point coresponds to the end of calculation written in the RESTART_TDDFT or to 0 a.u.
    if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0)
@@ -1254,8 +1255,9 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      end do
      call invert(nstate , l_matrix_cmplx(:,:))
   
-     b_matrix_cmplx(:,:)            = MATMUL( b_matrix_cmplx(:,:),c_matrix_orth_cmplx(:,:,ispin) )
-     c_matrix_orth_cmplx(:,:,ispin) = MATMUL( l_matrix_cmplx(:,:),b_matrix_cmplx(:,:) )
+     b_matrix_cmplx(:,:)            = MATMUL( l_matrix_cmplx(:,:),b_matrix_cmplx(:,:))
+     c_matrix_orth_cmplx(:,:,ispin) = MATMUL( b_matrix_cmplx(:,:),c_matrix_orth_cmplx(:,:,ispin))
+
 !    c_matrix_orth_cmplx(:,:,ispin) = MATMUL( l_matrix_cmplx(:,:),MATMUL( b_matrix_cmplx(:,:),c_matrix_orth_cmplx(:,:,ispin) ) )
      deallocate(l_matrix_cmplx)
      deallocate(b_matrix_cmplx)
