@@ -860,13 +860,13 @@ subroutine full_ci_nelectrons_selfenergy()
  write(stdout,'(1x,a,i3,a,i3)')    'Previous CI calculation had spin state Sz(',conf_0%nelec,'): ',conf_0%sz
 
  if( ALLOCATED(conf_p%sporb_occ) ) then
-   ns_occ  = conf_p%nconf
-   write(stdout,'(1x,a,i4)') 'Hole part will evaluated with excitation counts ',ns_occ
+   ns_occ  = conf_p%nstate
+   write(stdout,'(1x,a,i4)') 'Hole part will evaluated with excitations: ',ns_occ
    write(stdout,'(1x,a,i3,a,sp,i4)') 'Previous CI calculation had spin state Sz(',conf_p%nelec,'): ',conf_p%sz
  endif
  if( ALLOCATED(conf_m%sporb_occ) ) then
-   ns_virt = conf_m%nconf
-   write(stdout,'(1x,a,i4)') 'Electron part will evaluated with excitation counts ',ns_virt
+   ns_virt = conf_m%nstate
+   write(stdout,'(1x,a,i4)') 'Electron part will evaluated with excitations: ',ns_virt
    write(stdout,'(1x,a,i3,a,sp,i4)') 'Previous CI calculation had spin state Sz(',conf_m%nelec,'): ',conf_m%sz
  endif
 
@@ -943,6 +943,7 @@ subroutine full_ci_nelectrons_selfenergy()
 
    do is=1,ns_occ
      es_occ(is) = energy_0(1) - energy_p(is)
+     !write(100,*) is,es_occ(is) * Ha_eV
    enddo
    write(stdout,'(1x,a,f12.6,4x,f12.6,/)')   '-IP (eV) and Weight: ',es_occ(1) * Ha_eV,fs_occ(2*nfrozen_ci+conf_0%nelec,1)**2
 
@@ -1125,6 +1126,11 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  end select
 
  call setup_configurations_ci(nelectron,spinstate,conf)
+ if( save_coefficients == 0 ) then
+   conf%nstate = 1
+ else
+   conf%nstate = conf%nconf
+ endif
 
 
  mham = NUMROC(conf%nconf,block_row,iprow_sd,first_row,nprow_sd)
@@ -1149,7 +1155,6 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  endif
  call xsum_world(ehf)
 
- conf%nstate = 5 !  conf%nconf ! 5
  mvec = NUMROC(conf%nconf,block_row,iprow_sd,first_row,nprow_sd)
  nvec = NUMROC(conf%nstate,block_col,ipcol_sd,first_col,npcol_sd)
  call DESCINIT(desc_vec,conf%nconf,conf%nstate,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mvec),info)
