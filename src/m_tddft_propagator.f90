@@ -1230,11 +1230,11 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
  integer                    :: istate,jstate
  complex(dp),allocatable    :: m_tmp_1(:,:)
  complex(dp),allocatable    :: m_tmp_2(:,:)
+ complex(dp),allocatable    :: m_tmp_3(:,:)
 !==variables for the MAG2 propagator
  complex(dp),allocatable    :: a_matrix_orth_cmplx(:,:)
  real(dp),allocatable       :: energies_inst(:)
  complex(dp),allocatable    :: propagator_eigen(:,:)
- complex(dp)                   :: exp_tmp
 !==variables for the CN propagator
  complex(dp),allocatable    :: l_matrix_cmplx(:,:) ! Follow the notation of M.A.L.Marques, C.A.Ullrich et al, 
  complex(dp),allocatable    :: b_matrix_cmplx(:,:) ! TDDFT Book, Springer (2006), !p205
@@ -1262,7 +1262,6 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      deallocate(l_matrix_cmplx)
      deallocate(b_matrix_cmplx)
    case('MAG2')
-     allocate(m_tmp_1(nstate,nstate))
      allocate(a_matrix_orth_cmplx(nstate,nstate))
      allocate(energies_inst(nstate))
      call start_clock(timing_propagate_diago)
@@ -1276,21 +1275,27 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
 
      call start_clock(timing_propagate_matmul)
 
-     do jstate=1,nstate
-       exp_tmp = exp(-im*time_step_cur*energies_inst(jstate) )
-       do istate=1,nstate
-         m_tmp_1(istate,jstate) = a_matrix_orth_cmplx(istate,jstate) * exp_tmp
-       enddo
-     enddo
+     allocate(m_tmp_1(nstate,nstate))
+     forall (jstate=1:nstate)
+       m_tmp_1(:,jstate) = a_matrix_orth_cmplx(:,jstate) * exp(-im*time_step_cur*energies_inst(jstate) )
+     end forall
 
-     a_matrix_orth_cmplx(:,:)       = MATMUL(m_tmp_1(:,:),CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:))))
-     c_matrix_orth_cmplx(:,:,ispin) = MATMUL( a_matrix_orth_cmplx(:,:), c_matrix_orth_cmplx(:,:,ispin) )
+     allocate(m_tmp_2(nstate,nstate))
+     !              herm nrows  ncols  nsum                        nrows de A et de C          nrows de B   beta                nrows de C
+     call ZGEMM('N','C',nstate,nstate,nstate,(1.0_dp,0.0_dp),m_tmp_1,nstate,a_matrix_orth_cmplx,nstate,(0.0_dp,0.0_dp),m_tmp_2,nstate)
+!     a_matrix_orth_cmplx(:,:)       = MATMUL(m_tmp_1(:,:),CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:))))
+
+     deallocate(a_matrix_orth_cmplx)
+     deallocate(m_tmp_1)
+     allocate(m_tmp_3(nstate,nocc))
+     call ZGEMM('N','N',nstate,nocc,nstate,(1.0_dp,0.0_dp),m_tmp_2,nstate,c_matrix_orth_cmplx,nstate,(0.0_dp,0.0_dp),m_tmp_3,nstate)
+!     c_matrix_orth_cmplx(:,:,ispin) = MATMUL( a_matrix_orth_cmplx(:,:), c_matrix_orth_cmplx(:,:,ispin) )
+     deallocate(m_tmp_2)
+     c_matrix_orth_cmplx(:,:,ispin) = m_tmp_3
 !    c_matrix_orth_cmplx(:,:,ispin) = MATMUL( MATMUL( MATMUL( a_matrix_orth_cmplx(:,:), propagator_eigen(:,:)  ) , &
 !            CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:)))  ), c_matrix_orth_cmplx(:,:,ispin) )
-
+     deallocate(m_tmp_3)
      call stop_clock(timing_propagate_matmul)
-     deallocate(m_tmp_1)
-     deallocate(a_matrix_orth_cmplx)
      deallocate(energies_inst)
    case default
      call die('Invalid choice for the propagation algorithm. Change prop_type or error_prop_types value in the input file')
