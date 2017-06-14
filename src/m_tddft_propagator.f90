@@ -1300,7 +1300,9 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
    case default
      call die('Invalid choice for the propagation algorithm. Change prop_type or error_prop_types value in the input file')
    end select
+   call start_clock(timing_tmp2)
    c_matrix_cmplx(:,:,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
+   call stop_clock(timing_tmp2)
  end do
 
  call stop_clock(timing_tddft_propagation)
@@ -1451,8 +1453,10 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
      !-------------------------------
    end if
    hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
+   call start_clock(timing_tmp1)
    h_small_cmplx(:,:,ispin) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
                    MATMUL( hamiltonian_fock_cmplx(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
+   call stop_clock(timing_tmp1)
  end do ! spin loop
 
  !kinetic and nuclei-elecrons energy contributions 
