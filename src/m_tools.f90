@@ -334,6 +334,137 @@ end subroutine diagonalize_generalized_sym
 
 
 !=========================================================================
+subroutine diagonalize_davidson(tolerance,ham,neig,eigval,eigvec)
+ implicit none
+
+ real(dp),intent(in)  :: tolerance
+ real(dp),intent(in)  :: ham(:,:)
+ integer,intent(in)   :: neig
+ real(dp),intent(out) :: eigval(:)
+ real(dp),intent(out) :: eigvec(:,:)
+!=====
+ integer              :: ncycle
+ integer              :: nmat,imat
+ integer              :: mm,mm_max
+ integer              :: ieig,icycle
+ real(dp),allocatable :: bb(:,:),atilde(:,:),ab(:,:),qq(:,:)
+ real(dp),allocatable :: lambda(:),alphavec(:,:)
+ real(dp)             :: residual_norm
+!=====
+
+ write(stdout,'(/,1x,a,i5)') 'Davidson diago for eigenvector count: ',neig
+
+ nmat = SIZE(ham(:,:),DIM=1)
+ eigval(:) = 0.0_dp
+
+
+ ncycle = 20
+ mm     = neig
+ mm_max = mm * ncycle
+ if( mm_max > nmat ) then
+   ncycle = nmat / neig
+   mm_max = mm * ncycle
+ endif
+
+ allocate(bb(nmat,mm_max))
+ allocate(atilde(mm_max,mm_max))
+ allocate(ab(nmat,mm_max))
+
+ allocate(qq(nmat,neig))
+
+ !
+ ! Initialize with stupid coefficients
+ bb(:,1:neig) = 0.01_dp
+ forall(ieig=1:neig)
+   bb(ieig,ieig) = 1.0_dp
+ end forall
+ call orthogonalize(bb(:,1:neig))
+
+
+ ab(:,1:mm) = MATMUL( ham(:,:) , bb(:,1:mm) )
+
+
+ do icycle=1,ncycle
+
+   mm = icycle * neig
+   write(stdout,*) 'icycle mm',icycle,mm
+
+
+   atilde(1:mm,1:mm) = MATMUL( TRANSPOSE(bb(:,1:mm)) , ab(:,1:mm) )
+
+
+   allocate(lambda(mm),alphavec(mm,mm))
+   call diagonalize(mm,atilde(1:mm,1:mm),lambda,alphavec)
+
+   write(stdout,*) 'icycle',icycle,lambda(1:mm)
+
+   residual_norm = 0.0_dp
+   do ieig=1,neig
+
+     qq(:,ieig) = MATMUL( ab(:,1:mm) ,  alphavec(1:mm,ieig) ) &
+                   - lambda(ieig) * MATMUL( bb(:,1:mm) , alphavec(1:mm,ieig) )
+
+     residual_norm = MAX( residual_norm , NORM2(qq(:,ieig)) )
+   enddo
+
+   write(stdout,'(1x,a,1x,i4,1x,es12.4)') 'Max residual norm for cycle: ',icycle,residual_norm
+
+   !
+   ! Convergence reached... or not
+   if( icycle == ncycle .OR. residual_norm < tolerance ) then
+     eigval(1:neig) = lambda(1:neig)
+     eigvec(:,1:neig) = MATMUL( bb(:,1:mm) , alphavec(1:mm,1:neig) )
+     deallocate(lambda,alphavec)
+     exit
+   endif
+
+
+   !
+   ! New trial vectors
+   !
+   forall(imat=1:nmat,ieig=1:neig)
+     bb(imat,mm+ieig) = qq(imat,ieig) / ( lambda(ieig) - ham(imat,imat) )
+   end forall
+   call orthogonalize(bb(:,:mm+neig))
+
+
+
+   ab(:,mm+1:mm+neig) = MATMUL( ham(:,:) , bb(:,mm+1:mm+neig) )
+
+
+   deallocate(lambda,alphavec)
+
+ enddo ! icycle
+
+ deallocate(ab,atilde)
+
+end subroutine diagonalize_davidson
+
+
+!=========================================================================
+subroutine orthogonalize(vec)
+ implicit none
+!=====
+ real(dp),intent(inout) :: vec(:,:)
+!=====
+ integer :: ii,ivec,jvec,nvec
+!=====
+
+ nvec = SIZE(vec(:,:),DIM=2)
+
+ do ivec=1,nvec
+   ! Orthogonalize to previous vectors
+   do jvec=1,ivec-1
+     vec(:,ivec) = vec(:,ivec) - vec(:,jvec) * DOT_PRODUCT( vec(:,ivec) , vec(:,jvec) ) / DOT_PRODUCT( vec(:,jvec) , vec(:,jvec) )
+   enddo
+   ! Normalize
+   vec(:,ivec) = vec(:,ivec) / NORM2( vec(:,ivec) )
+ enddo
+
+end subroutine orthogonalize
+
+
+!=========================================================================
 subroutine coeffs_gausslegint(xmin,xmax,x,weights,n)
 !
 ! Compute the coefficients (supports and weights)

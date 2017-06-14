@@ -80,10 +80,10 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
 
  !
  ! Get the processor grid included in the input wpol%desc_chi
- meri3 = NUMROC(nauxil_2center     ,wpol%desc_chi(MB_A),iprow_sd,wpol%desc_chi(RSRC_A),nprow_sd)
- neri3 = NUMROC(wpol%npole_reso_apb,wpol%desc_chi(NB_A),ipcol_sd,wpol%desc_chi(CSRC_A),npcol_sd)
- call DESCINIT(desc_eri3_final,nauxil_2center,wpol%npole_reso_apb,wpol%desc_chi(MB_A),wpol%desc_chi(NB_A), &
-               wpol%desc_chi(RSRC_A),wpol%desc_chi(CSRC_A),wpol%desc_chi(CTXT_A),MAX(1,meri3),info)
+ meri3 = NUMROC(nauxil_2center     ,wpol%desc_chi(MB_),iprow_sd,wpol%desc_chi(RSRC_),nprow_sd)
+ neri3 = NUMROC(wpol%npole_reso_apb,wpol%desc_chi(NB_),ipcol_sd,wpol%desc_chi(CSRC_),npcol_sd)
+ call DESCINIT(desc_eri3_final,nauxil_2center,wpol%npole_reso_apb,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
+               wpol%desc_chi(RSRC_),wpol%desc_chi(CSRC_),wpol%desc_chi(CTXT_),MAX(1,meri3),info)
 
 #ifdef HAVE_SCALAPACK
  call clean_allocate('TMP 3-center MO integrals',eri3_sca,meri3,neri3)
@@ -120,7 +120,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
 
 #ifdef HAVE_SCALAPACK
    call PDGEMR2D(nauxil_2center,wpol%npole_reso_apb,eri3_t,1,1,desc_eri3_t, &
-                                                  eri3_sca,1,1,desc_eri3_final,wpol%desc_chi(CTXT_A))
+                                                  eri3_sca,1,1,desc_eri3_final,wpol%desc_chi(CTXT_))
 #endif
 
 #ifdef HAVE_SCALAPACK
@@ -233,7 +233,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
  call start_clock(timing_self)
 
  write(stdout,'(/,1x,a)') 'GW self-energy on a grid of imaginary frequencies'
- call BLACS_GRIDINFO(wpol%desc_chi(CTXT_A),nprow,npcol,iprow,ipcol)
+ call BLACS_GRIDINFO(wpol%desc_chi(CTXT_),nprow,npcol,iprow,ipcol)
 
 #ifdef HAVE_SCALAPACK
  write(stdout,'(1x,a,i4,a,i4)') 'SCALAPACK grid',nprow,' x ',npcol
@@ -246,10 +246,10 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
  prange = nvirtual_G - ncore_G - 1
 
  ! Get the processor grid included in the input wpol%desc_chi
- meri3 = NUMROC(nauxil_2center,wpol%desc_chi(MB_A),iprow,wpol%desc_chi(RSRC_A),nprow)
- neri3 = NUMROC(prange        ,wpol%desc_chi(NB_A),ipcol,wpol%desc_chi(CSRC_A),npcol)
- call DESCINIT(desc_eri3_final,nauxil_2center,prange,wpol%desc_chi(MB_A),wpol%desc_chi(NB_A), &
-               wpol%desc_chi(RSRC_A),wpol%desc_chi(CSRC_A),wpol%desc_chi(CTXT_A),MAX(1,meri3),info)
+ meri3 = NUMROC(nauxil_2center,wpol%desc_chi(MB_),iprow,wpol%desc_chi(RSRC_),nprow)
+ neri3 = NUMROC(prange        ,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol)
+ call DESCINIT(desc_eri3_final,nauxil_2center,prange,wpol%desc_chi(MB_),wpol%desc_chi(NB_), &
+               wpol%desc_chi(RSRC_),wpol%desc_chi(CSRC_),wpol%desc_chi(CTXT_),MAX(1,meri3),info)
 
  call clean_allocate('TMP 3-center MO integrals',eri3_sca,meri3,neri3)
  call clean_allocate('TMP 3-center MO integrals',chi_eri3_sca,meri3,neri3)
@@ -263,7 +263,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
 
 #ifdef HAVE_SCALAPACK
      call PDGEMR2D(nauxil_2center,prange,eri_3center_eigen(:,:,mstate,mpspin),1,1,desc_eri3_t, &
-                                                                     eri3_sca,1,1,desc_eri3_final,wpol%desc_chi(CTXT_A))
+                                                                     eri3_sca,1,1,desc_eri3_final,wpol%desc_chi(CTXT_))
 #else
      eri3_sca(:,1:prange) = eri_3center_eigen(:,ncore_G+1:nvirtual_G-1,mstate,mpspin)
 #endif
@@ -284,7 +284,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
 
        do iomegas=0,se%nomegai
          do plocal=1,neri3
-           pstate = INDXL2G(plocal,wpol%desc_chi(NB_A),ipcol,wpol%desc_chi(CSRC_A),npcol) + ncore_G
+           pstate = INDXL2G(plocal,wpol%desc_chi(NB_),ipcol,wpol%desc_chi(CSRC_),npcol) + ncore_G
            se%sigmai(iomegas,mstate,mpspin) = se%sigmai(iomegas,mstate,mpspin) &
                          - wpol%weight_quad(iomega) * (  1.0_dp / ( ( se%energy0(mstate,mpspin) + se%omegai(iomegas) - energy(pstate,mpspin) ) &
                                                                   + im * wpol%omega_quad(iomega) )   &

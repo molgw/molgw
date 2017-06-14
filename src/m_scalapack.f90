@@ -22,15 +22,15 @@ module m_scalapack
 #endif
 
  ! Indexes in the BLACS descriptor
- integer,parameter :: DTYPE_A = 1     ! Dense or Sparse (always dense here)
- integer,parameter :: CTXT_A  = 2     ! Context
- integer,parameter :: M_A     = 3     ! Number of rows
- integer,parameter :: N_A     = 4     ! Number of cols
- integer,parameter :: MB_A    = 5     ! Blocking factor for rows
- integer,parameter :: NB_A    = 6     ! Blocking factor for cols
- integer,parameter :: RSRC_A  = 7     ! First row
- integer,parameter :: CSRC_A  = 8     ! First col
- integer,parameter :: LLD_A   = 9     ! Number of rows in the local sub-matrix
+ integer,parameter :: DTYPE_ = 1     ! Dense or Sparse (always dense here)
+ integer,parameter :: CTXT_  = 2     ! Context
+ integer,parameter :: M_     = 3     ! Number of rows
+ integer,parameter :: N_     = 4     ! Number of cols
+ integer,parameter :: MB_    = 5     ! Blocking factor for rows
+ integer,parameter :: NB_    = 6     ! Blocking factor for cols
+ integer,parameter :: RSRC_  = 7     ! First row
+ integer,parameter :: CSRC_  = 8     ! First col
+ integer,parameter :: LLD_   = 9     ! Number of rows in the local sub-matrix
 
  !
  ! SCALAPACK variables
@@ -167,8 +167,8 @@ subroutine DESCINIT(desc,mmat,nmat,idum3,idum4,idum5,idum6,cntxtdum,idum7,info)
  integer,intent(out)   :: info
 !=====
 
- desc(M_A) = mmat
- desc(N_A) = nmat
+ desc(M_) = mmat
+ desc(N_) = nmat
 
  info = 0
 
@@ -249,7 +249,7 @@ subroutine create_distributed_copy_nospin(matrix_global,desc,matrix)
  mlocal = SIZE( matrix , DIM=1 )
  nlocal = SIZE( matrix , DIM=2 )
 
- if( desc(CTXT_A) > 0 ) then
+ if( desc(CTXT_) > 0 ) then
    do jlocal=1,nlocal
      jglobal = colindex_local_to_global(desc,jlocal)
      do ilocal=1,mlocal
@@ -282,7 +282,7 @@ subroutine create_distributed_copy_spin(matrix_global,desc,matrix)
  nlocal = SIZE( matrix , DIM=2 )
  ndim3  = SIZE( matrix , DIM=3 )
 
- if( desc(CTXT_A) > 0 ) then
+ if( desc(CTXT_) > 0 ) then
    do idim3=1,ndim3
      do jlocal=1,nlocal
        jglobal = colindex_local_to_global(desc,jlocal)
@@ -316,7 +316,7 @@ subroutine gather_distributed_copy_nospin(desc,matrix,matrix_global)
 
 #ifdef HAVE_SCALAPACK
 
- cntxt = desc(CTXT_A)
+ cntxt = desc(CTXT_)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
 
  ! Find the master
@@ -333,6 +333,7 @@ subroutine gather_distributed_copy_nospin(desc,matrix,matrix_global)
    nlocal  = SIZE( matrix , DIM=2 )
    mglobal = SIZE( matrix_global , DIM=1 )
    nglobal = SIZE( matrix_global , DIM=2 )
+   write(300+rank_world,*) mlocal,nlocal,mglobal,nglobal
 
    matrix_global(:,:) = 0.0_dp
    do jlocal=1,nlocal
@@ -349,6 +350,10 @@ subroutine gather_distributed_copy_nospin(desc,matrix,matrix_global)
  endif
 
  call xbcast_world(rank_master,matrix_global)
+
+#else
+
+ matrix_global(:,:) = matrix(:,:)
 
 #endif
 
@@ -374,7 +379,7 @@ subroutine gather_distributed_copy_spin(desc,matrix,matrix_global)
 
 #ifdef HAVE_SCALAPACK
 
- cntxt = desc(CTXT_A)
+ cntxt = desc(CTXT_)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
 
  ! Find the master
@@ -680,7 +685,7 @@ subroutine diagonalize_sca_pdsyevr(nglobal,desc,matrix,eigval,desc_eigvec,eigvec
  liwork = -1
  allocate(iwork(1))
 #ifdef SELECT_PDSYEVX
- ABSTOL = PDLAMCH(desc(CTXT_A), 'U')
+ ABSTOL = PDLAMCH(desc(CTXT_), 'U')
  call PDSYEVX('V','A','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,0,0, &
               ABSTOL,neigval,neigvec,eigval,0.0_dp,                  &
               eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,        &
@@ -720,6 +725,88 @@ subroutine diagonalize_sca_pdsyevr(nglobal,desc,matrix,eigval,desc_eigvec,eigvec
 
 
 end subroutine diagonalize_sca_pdsyevr
+
+
+!=========================================================================
+! Partially diagonalize a distributed matrix with PDSYEVR
+!=========================================================================
+subroutine diagonalize_sca_pdsyevr_partial(nglobal,neig,desc,matrix,eigval,desc_eigvec,eigvec)
+ implicit none
+ integer,intent(in)     :: nglobal,neig
+ integer,intent(in)     :: desc(NDEL)
+ integer,intent(in)     :: desc_eigvec(NDEL)
+ real(dp),intent(inout) :: matrix(:,:)
+ real(dp),intent(out)   :: eigval(nglobal)
+ real(dp),intent(out)   :: eigvec(:,:)
+!=====
+ integer              :: lwork,info
+ real(dp),allocatable :: work(:)
+ integer              :: neigval,neigvec
+ integer,allocatable  :: iwork(:)
+ integer              :: liwork
+ integer              :: ifail(nglobal)
+ real(dp)             :: ABSTOL
+#ifdef HAVE_SCALAPACK
+ integer              :: iclustr(2*nprow_sd*npcol_sd)
+ real(dp)             :: gap(nprow_sd*npcol_sd)
+#endif
+ real(dp),external    :: DLAMCH
+!=====
+
+#ifdef HAVE_SCALAPACK
+
+ !
+ ! First call to get the dimension of the array work
+ lwork = -1
+ allocate(work(3))
+ liwork = -1
+ allocate(iwork(1))
+! call PDSYEVR('V','I','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,1,neig,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+ ABSTOL = PDLAMCH(desc(CTXT_), 'U')
+ call PDSYEVX('V','I','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,1,neig, &
+              ABSTOL,neigval,neigvec,eigval,0.0_dp,                     &
+              eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,           &
+              ifail,iclustr,gap,info)
+
+
+ !
+ ! Second call to actually perform the diago
+ lwork = NINT(work(1))
+
+ deallocate(work)
+ allocate(work(lwork))
+ liwork = iwork(1)
+ deallocate(iwork)
+ allocate(iwork(liwork))
+! call PDSYEVR('V','I','L',nglobal,matrix,1,1,desc,0.0d0,0.0d0,1,neig,neigval,neigvec,eigval,eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,info)
+ call PDSYEVX('V','I','L',nglobal,matrix,1,1,desc,0.0_dp,0.0_dp,1,neig, &
+              ABSTOL,neigval,neigvec,eigval,0.0_dp,                     &
+              eigvec,1,1,desc_eigvec,work,lwork,iwork,liwork,           &
+              ifail,iclustr,gap,info)
+
+ deallocate(work)
+ deallocate(iwork)
+
+#else
+
+ ABSTOL = 2.0_dp * DLAMCH('S')
+ allocate(iwork(5*nglobal))
+ lwork=-1
+ allocate(work(1))
+ call DSYEVX('V','I','L',nglobal,matrix,nglobal,0.d0,0.d0,1,neig,ABSTOL,neigval,eigval,eigvec,nglobal,work,lwork,iwork,ifail,info)
+
+ lwork = NINT(work(1))
+ deallocate(work)
+ allocate(work(lwork))
+ call DSYEVX('V','I','L',nglobal,matrix,nglobal,0.d0,0.d0,1,neig,ABSTOL,neigval,eigval,eigvec,nglobal,work,lwork,iwork,ifail,info)
+ deallocate(work)
+ deallocate(iwork)
+
+
+#endif
+
+
+end subroutine diagonalize_sca_pdsyevr_partial
 
 
 !=========================================================================
@@ -1390,14 +1477,14 @@ subroutine product_abc_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_mat
  integer :: info
 !=====
 
- mmat  = desca(M_A)
- kmat1 = desca(N_A)
- kmat  = descb(M_A)
- lmat1 = descb(N_A)
- lmat  = descc(M_A)
- nmat1 = descc(N_A)
- mmat1 = descd(M_A)
- nmat  = descd(N_A)
+ mmat  = desca(M_)
+ kmat1 = desca(N_)
+ kmat  = descb(M_)
+ lmat1 = descb(N_)
+ lmat  = descc(M_)
+ nmat1 = descc(N_)
+ mmat1 = descd(M_)
+ nmat  = descd(N_)
 
  if( mmat1 /= mmat ) call die('Dimension error in product_abc_scalapack')
  if( nmat1 /= nmat ) call die('Dimension error in product_abc_scalapack')
@@ -1407,7 +1494,7 @@ subroutine product_abc_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_mat
 
 #ifdef HAVE_SCALAPACK
 
- cntxt = desca(CTXT_A)
+ cntxt = desca(CTXT_)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
  write(stdout,'(a,i4,a,i4)') ' Matrix product A * B * C using SCALAPACK with a grid',nprow,' x ',npcol
 
@@ -1464,12 +1551,12 @@ subroutine product_transaba_sca(desca,a_matrix_local,descb,b_matrix_local,descc,
 !=====
 
 
- kmat  = desca(M_A)
- mmat  = desca(N_A)
- kmat1 = descb(M_A)
- kmat2 = descb(N_A)
- mmat1 = descc(M_A)
- mmat2 = descc(N_A)
+ kmat  = desca(M_)
+ mmat  = desca(N_)
+ kmat1 = descb(M_)
+ kmat2 = descb(N_)
+ mmat1 = descc(M_)
+ mmat2 = descc(N_)
 
  if( mmat1 /= mmat ) then
    write(msg,*) 'mmat1 /= mmat',mmat1,mmat
@@ -1489,7 +1576,7 @@ subroutine product_transaba_sca(desca,a_matrix_local,descb,b_matrix_local,descc,
  endif
 
 #ifdef HAVE_SCALAPACK
- cntxt = desca(CTXT_A)
+ cntxt = desca(CTXT_)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
  write(stdout,'(a,i4,a,i4)') ' Matrix product A**T * B * A using SCALAPACK with a grid',nprow,' x ',npcol
  
@@ -1639,7 +1726,7 @@ subroutine invert_sca(desc,matrix,matrix_inv)
 !=====
 
 #ifdef HAVE_SCALAPACK
- n = desc(M_A)
+ n = desc(M_)
  mlocal = SIZE( matrix , DIM=1 )
  nlocal = SIZE( matrix , DIM=2 )
  matrix_inv(:,:) = matrix(:,:)
@@ -1987,9 +2074,9 @@ subroutine init_desc(distribution,mglobal,nglobal,desc,mlocal,nlocal)
 
 #else
  desc(:)     = 0
- desc(M_A)   = mglobal
- desc(N_A)   = nglobal
- desc(LLD_A) = mglobal
+ desc(M_)   = mglobal
+ desc(N_)   = nglobal
+ desc(LLD_) = mglobal
  mlocal = mglobal
  nlocal = nglobal
 #endif
@@ -2185,8 +2272,8 @@ function rowindex_local_to_global_descriptor(desc,ilocal) result(iglobal)
 !=====
 
 #ifdef HAVE_SCALAPACK
- call BLACS_GRIDINFO(desc(CTXT_A),nprow,npcol,iprow,ipcol)
- iglobal = INDXL2G(ilocal,desc(MB_A),iprow,desc(RSRC_A),nprow)
+ call BLACS_GRIDINFO(desc(CTXT_),nprow,npcol,iprow,ipcol)
+ iglobal = INDXL2G(ilocal,desc(MB_),iprow,desc(RSRC_),nprow)
 #else
  iglobal = ilocal
 #endif
@@ -2206,9 +2293,9 @@ function rowindex_global_to_local_descriptor(desc,iglobal) result(ilocal)
 !=====
 
 #ifdef HAVE_SCALAPACK
- call BLACS_GRIDINFO(desc(CTXT_A),nprow,npcol,iprow,ipcol)
- if( iprow == INDXG2P(iglobal,desc(MB_A),0,desc(RSRC_A),nprow) ) then
-   ilocal = INDXG2L(iglobal,desc(MB_A),0,desc(RSRC_A),nprow)
+ call BLACS_GRIDINFO(desc(CTXT_),nprow,npcol,iprow,ipcol)
+ if( iprow == INDXG2P(iglobal,desc(MB_),0,desc(RSRC_),nprow) ) then
+   ilocal = INDXG2L(iglobal,desc(MB_),0,desc(RSRC_),nprow)
  else
    ilocal = 0
  endif
@@ -2278,8 +2365,8 @@ function colindex_local_to_global_descriptor(desc,jlocal) result(jglobal)
 !=====
 
 #ifdef HAVE_SCALAPACK
- call BLACS_GRIDINFO(desc(CTXT_A),nprow,npcol,iprow,ipcol)
- jglobal = INDXL2G(jlocal,desc(NB_A),ipcol,desc(CSRC_A),npcol)
+ call BLACS_GRIDINFO(desc(CTXT_),nprow,npcol,iprow,ipcol)
+ jglobal = INDXL2G(jlocal,desc(NB_),ipcol,desc(CSRC_),npcol)
 #else
  jglobal = jlocal
 #endif
@@ -2299,9 +2386,9 @@ function colindex_global_to_local_descriptor(desc,jglobal) result(jlocal)
 !=====
 
 #ifdef HAVE_SCALAPACK
- call BLACS_GRIDINFO(desc(CTXT_A),nprow,npcol,iprow,ipcol)
- if( ipcol == INDXG2P(jglobal,desc(NB_A),0,desc(CSRC_A),npcol) ) then
-   jlocal = INDXG2L(jglobal,desc(NB_A),0,desc(CSRC_A),npcol)
+ call BLACS_GRIDINFO(desc(CTXT_),nprow,npcol,iprow,ipcol)
+ if( ipcol == INDXG2P(jglobal,desc(NB_),0,desc(CSRC_),npcol) ) then
+   jlocal = INDXG2L(jglobal,desc(NB_),0,desc(CSRC_),npcol)
  else
    jlocal = 0
  endif

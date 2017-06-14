@@ -185,7 +185,7 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
  block
    integer :: info
    info = get_elpa_communicators(comm_world,iprow_sd,ipcol_sd,comm_row,comm_col)
-   success = elpa_solve_evp_real(nmat,nmat,apb_matrix,m_apb,bigomega,xpy_matrix,m_x,desc_apb(MB_A),n_apb, &
+   success = elpa_solve_evp_real(nmat,nmat,apb_matrix,m_apb,bigomega,xpy_matrix,m_x,desc_apb(MB_),n_apb, &
                                  comm_row,comm_col,comm_world,method='2stage')
  end block
 #else

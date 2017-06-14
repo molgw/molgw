@@ -833,9 +833,9 @@ subroutine diagonalize_hamiltonian_sca(ispin_min,ispin_max,desc_h,hamiltonian,de
 
 #ifdef HAVE_SCALAPACK
 
- cntxt  = desc_h(CTXT_A)
- nbf    = desc_h(M_A)
- nstate = desc_sqrt(N_A)
+ cntxt  = desc_h(CTXT_)
+ nbf    = desc_h(M_)
+ nstate = desc_sqrt(N_)
  m_ham  = SIZE(hamiltonian, DIM=1 )
  n_ham  = SIZE(hamiltonian, DIM=2 )
  m_c    = SIZE(c_matrix, DIM=1 )
@@ -844,9 +844,9 @@ subroutine diagonalize_hamiltonian_sca(ispin_min,ispin_max,desc_h,hamiltonian,de
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
 
  if(cntxt_ham > 0 ) then
-   m_small = NUMROC(nstate,desc_h(MB_A),iprow,desc_h(RSRC_A),nprow)
-   n_small = NUMROC(nstate,desc_h(NB_A),ipcol,desc_h(CSRC_A),npcol)
-   call DESCINIT(desc_small,nstate,nstate,desc_h(MB_A),desc_h(NB_A),desc_h(RSRC_A),desc_h(CSRC_A),cntxt,m_small,info)
+   m_small = NUMROC(nstate,desc_h(MB_),iprow,desc_h(RSRC_),nprow)
+   n_small = NUMROC(nstate,desc_h(NB_),ipcol,desc_h(CSRC_),npcol)
+   call DESCINIT(desc_small,nstate,nstate,desc_h(MB_),desc_h(NB_),desc_h(RSRC_),desc_h(CSRC_),cntxt,m_small,info)
    allocate(h_small(m_small,n_small))
 
    do ispin=ispin_min,ispin_max
@@ -933,9 +933,9 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix, &
 
  write(stdout,'(/,a)') ' Calculate overlap matrix square-root S^{1/2}: SCALAPACK'
 
- if( desc_s(M_A) /= desc_s(N_A) ) call die('setup_sqrt_overlap_sca: S matrix should be square')
- cntxt = desc_s(CTXT_A)
- nbf   = desc_s(M_A)
+ if( desc_s(M_) /= desc_s(N_) ) call die('setup_sqrt_overlap_sca: S matrix should be square')
+ cntxt = desc_s(CTXT_)
+ nbf   = desc_s(M_)
  ms    = SIZE(s_matrix, DIM=1 )
  ns    = SIZE(s_matrix, DIM=2 )
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
@@ -953,9 +953,9 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix, &
 
    ! 
    ! Initialize the descriptor of the rectangular matric S^{-1/2}
-   msqrt = NUMROC(nbf   ,desc_s(MB_A),iprow,desc_s(RSRC_A),nprow)
-   nsqrt = NUMROC(nstate,desc_s(NB_A),ipcol,desc_s(CSRC_A),npcol)
-   call DESCINIT(desc_sqrt,nbf,nstate,desc_s(MB_A),desc_s(NB_A),desc_s(RSRC_A),desc_s(CSRC_A),cntxt,msqrt,info)
+   msqrt = NUMROC(nbf   ,desc_s(MB_),iprow,desc_s(RSRC_),nprow)
+   nsqrt = NUMROC(nstate,desc_s(NB_),ipcol,desc_s(CSRC_),npcol)
+   call DESCINIT(desc_sqrt,nbf,nstate,desc_s(MB_),desc_s(NB_),desc_s(RSRC_),desc_s(CSRC_),cntxt,msqrt,info)
    
  else
    nstate = 0
@@ -988,10 +988,10 @@ subroutine setup_sqrt_overlap_sca(TOL_OVERLAP,desc_s,s_matrix, &
    do iglobal=1,nbf
      if( s_eigval(iglobal) > TOL_OVERLAP ) then
        jglobal = jglobal + 1
-       if( iprow /= INDXG2P(iglobal,desc_s(MB_A),0,desc_s(RSRC_A),nprow) ) cycle
-       if( ipcol /= INDXG2P(jglobal,desc_s(NB_A),0,desc_s(CSRC_A),npcol) ) cycle
-       ilocal = INDXG2L(iglobal,desc_s(MB_A),0,desc_s(RSRC_A),nprow)
-       jlocal = INDXG2L(jglobal,desc_s(NB_A),0,desc_s(CSRC_A),npcol)
+       if( iprow /= INDXG2P(iglobal,desc_s(MB_),0,desc_s(RSRC_),nprow) ) cycle
+       if( ipcol /= INDXG2P(jglobal,desc_s(NB_),0,desc_s(CSRC_),npcol) ) cycle
+       ilocal = INDXG2L(iglobal,desc_s(MB_),0,desc_s(RSRC_),nprow)
+       jlocal = INDXG2L(jglobal,desc_s(NB_),0,desc_s(CSRC_),npcol)
 
        if( ilocal * jlocal /= 0 ) then
          diag(ilocal,jlocal) = 1.0_dp / SQRT( s_eigval(iglobal) )
