@@ -891,11 +891,21 @@ vl[i].comment  ='EXPERIMENTAL. Selects which part of the Green\'s function is to
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='ci_excitation'
+vl[i].keyword  ='ci_type'
 vl[i].family   ='post'
 vl[i].default  ='all'
 vl[i].datatype ='characters'
 vl[i].comment  ='Selects which excitations will be included in the CI expansion. Valid choices are \'all\', \'CISD\', \'CISDT\', \'CISDTQ\'.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='ci_nstate'
+vl[i].family   ='post'
+vl[i].default  =1000000
+vl[i].datatype ='integer'
+vl[i].comment  ='Selects how many CI states should be calculated in the diagonalization. If ci_nstate is equal to the number of configuration, \
+ a Davidson partial diagonalization is performed, else a full (SCA)LAPACK diagonalization is triggered.'
 
 
 

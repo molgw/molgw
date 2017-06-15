@@ -204,7 +204,7 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
    call die('setup_configurations_ci: spin case not recognized')
  end select
 
- select case(ci_excitation)
+ select case(ci_type)
  case('ALL')
    excitation_max = 100
  case('CISD')
@@ -214,7 +214,7 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
  case('CISDTQ')
    excitation_max = 4
  case default
-   call die('setup_configurations_ci: ci_excitation not understood')
+   call die('setup_configurations_ci: ci_type not understood')
  end select
 
  ! Set the ground state vector
@@ -721,6 +721,16 @@ subroutine build_ci_hamiltonian(conf,desc_ham,h_ci)
 
      endif
 
+#if 0
+     block
+     if( iconf_global == 193 .AND. jconf_global == 1 ) then
+       write(200,*) 'one body'
+       write(200,*) iisporb(:)
+       write(200,*) jjsporb(:)
+       write(200,*) iprow_sd,ipcol_sd, h_ci(iconf,jconf)
+     endif
+     end block
+#endif
 
      !
      ! 2-body part
@@ -812,6 +822,17 @@ subroutine build_ci_hamiltonian(conf,desc_ham,h_ci)
 
      endif
 
+#if 0
+     block
+     if( iconf_global == 193 .AND. jconf_global == 1 ) then
+       write(200,*) 'two body',isporb,jsporb,ksporb,lsporb
+       write(200,*) 'two body',eri_eigen(istate,kstate,1,jstate,lstate,1)
+       write(200,*) 'two body',eri_eigen(istate,lstate,1,jstate,kstate,1)
+       write(200,*) iconf,jconf,iconf_global,jconf_global
+       write(200,*) iprow_sd,ipcol_sd, h_ci(iconf,jconf)
+     endif
+     end block
+#endif
 
 !     !
 !     ! Symmetrize here
@@ -1127,7 +1148,7 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
 
  call setup_configurations_ci(nelectron,spinstate,conf)
  if( save_coefficients == 0 ) then
-   conf%nstate = 1
+   conf%nstate = MIN(ci_nstate,conf%nconf)
  else
    conf%nstate = conf%nconf
  endif
@@ -1146,12 +1167,38 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
 
 
  call build_ci_hamiltonian(conf,desc_ham,h_ci)
+#if 0
+ block
+   integer :: ilocal,jlocal
+   integer :: iglobal,jglobal
+   real(dp) :: matrix(conf%nconf,conf%nconf)
+
+   if( conf%nconf > 193 ) then
+   matrix(:,:) = 0.0_dp
+   do jlocal=1,nham
+     jglobal = colindex_local_to_global(desc_ham,jlocal)
+     do ilocal=1,mham
+       iglobal = rowindex_local_to_global(desc_ham,ilocal)
+       matrix(iglobal,jglobal) = h_ci(ilocal,jlocal)
+     enddo
+   enddo
+   call xsum_world(matrix)
+   do jglobal=1,1 ! 1,conf%nconf
+     do iglobal=193,193 ! 1,conf%nconf
+       write(100+rank_world,'(i6,i6,1x,f12.6)') iglobal,jglobal,matrix(iglobal,jglobal)
+     enddo
+   enddo
+
+   flush(100+rank_world)
+   endif
+ end block
+#endif
 
  ! Hartree-Fock energy is obtained from the (1,1) element
  if( rowindex_global_to_local(desc_ham,1) * colindex_global_to_local(desc_ham,1) /= 0 ) then
    ehf = h_ci(rowindex_global_to_local(desc_ham,1),colindex_global_to_local(desc_ham,1))
  else
-   ehf = 0
+   ehf = 0.0_dp
  endif
  call xsum_world(ehf)
 

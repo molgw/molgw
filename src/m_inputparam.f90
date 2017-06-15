@@ -89,9 +89,10 @@ module m_inputparam
  integer,protected                :: nspin
  integer,protected                :: nstep
  integer,protected                :: nstep_gw
+ integer,protected                :: ci_nstate
+ integer,protected                :: nscf
  real(dp),protected               :: tolforce
  real(dp),protected               :: spin_fact
- integer,protected                :: nscf
  real(dp),protected               :: alpha_mixing
  character(len=100),protected     :: move_nuclei
  character(len=100),protected     :: xyz_file
@@ -108,7 +109,7 @@ module m_inputparam
  character(len=12),protected      :: partition_scheme
  character(len=12),protected      :: init_hamiltonian
  character(len=12),protected      :: ci_greens_function
- character(len=12),protected      :: ci_excitation
+ character(len=12),protected      :: ci_type
  real(dp),protected               :: diis_switch
  real(dp),protected               :: tolscf
  real(dp),protected               :: toldav
@@ -791,7 +792,7 @@ subroutine read_inputfile_namelist()
  length_unit        = capitalize(length_unit)
  init_hamiltonian   = capitalize(init_hamiltonian)
  ci_greens_function = capitalize(ci_greens_function)
- ci_excitation      = capitalize(ci_excitation)
+ ci_type            = capitalize(ci_type)
 
  ignore_restart_    = yesno(ignore_restart)
  ignore_bigrestart_ = yesno(ignore_bigrestart)

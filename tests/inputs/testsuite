@@ -511,6 +511,16 @@ CI 2nd excited-state energy,   -14.5083864183   , 0 , 1.0e-7
 CI 3rd excited-state energy,   -14.5083864183   , 0 , 1.0e-7
 CI 4th excited-state energy,   -14.3718323663   , 0 , 1.0e-7
 
+be_ci_davidson.in         , CI calculation for boron atom (Davidson diago)
+SCF Total Energy          ,    -14.5667640335   , 0 , 1.0e-7
+Uncorrelated energy       ,    -14.5667640335   , 0 , 1.0e-7
+Correlation energy        ,     -0.0467812361   , 0 , 1.0e-7
+CI ground-state energy    ,    -14.6135452696   , 0 , 1.0e-7
+CI 1st excited-state energy,   -14.5083864183   , 0 , 1.0e-7
+CI 2nd excited-state energy,   -14.5083864183   , 0 , 1.0e-7
+CI 3rd excited-state energy,   -14.5083864183   , 0 , 1.0e-7
+CI 4th excited-state energy,   -14.3718323663   , 0 , 1.0e-7
+
 be_ci_nocore.in           , CI calculation for boron atom without exciting coe electrons (2e-)
 SCF Total Energy          ,    -14.5723376310   , 0 , 1.0e-7
 Uncorrelated energy       ,    -14.5723376310   , 0 , 1.0e-7

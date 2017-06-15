@@ -5,7 +5,7 @@
 
  postscf='ci_selfenergy'
  ci_greens_function='holes'
- ci_excitation='CISD'
+ ci_type='CISD'
  
  nvirtualg=10
 

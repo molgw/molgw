@@ -270,31 +270,30 @@ program molgw
    !
    ! Calculate the parts of the hamiltonian that does not change along
    ! with the SCF cycles
-   if( .NOT. is_big_restart ) then
-     !
-     ! Kinetic energy contribution
-     if( parallel_ham ) then
-       call setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic)
+   !
+   ! Kinetic energy contribution
+   if( parallel_ham ) then
+     call setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic)
+   else
+     call setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
+   endif
+  
+   !
+   ! Nucleus-electron interaction
+   if( parallel_ham ) then
+     if( parallel_buffer ) then 
+       call setup_nucleus_buffer_sca(basis,m_ham,n_ham,hamiltonian_nucleus)
      else
-       call setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
+       call setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
      endif
-    
-     !
-     ! Nucleus-electron interaction
-     if( parallel_ham ) then
-       if( parallel_buffer ) then 
-         call setup_nucleus_buffer_sca(basis,m_ham,n_ham,hamiltonian_nucleus)
-       else
-         call setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
-       endif
-     else
-       call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
+   else
+     call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
 
-       if( nelement_ecp > 0 ) then
-         call setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
-       endif
+     if( nelement_ecp > 0 ) then
+       call setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
      endif
    endif
+
   
    if( is_basis_restart ) then
      !
