@@ -642,12 +642,170 @@ end subroutine build_1e_hamiltonian
 
 
 !==================================================================
+function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
+ implicit none
+
+ integer,intent(in) :: iisporb(:)
+ integer,intent(in) :: jjsporb(:)
+ real(dp)           :: h_ci_ij
+!=====
+ integer :: nelec
+ integer :: ielec,jelec
+ integer,allocatable :: iistate(:),jjstate(:)
+ integer,allocatable :: iispin(:),jjspin(:)
+ integer :: on_i(2*nstate_ci),on_j(2*nstate_ci)
+ logical :: mask(2*nstate_ci)
+ integer :: isporb,jsporb,istate,jstate,ispin,jspin
+ integer :: ksporb,lsporb,kstate,lstate,kspin,lspin
+ integer :: excitation_order
+!=====
+
+ h_ci_ij = 0.0_dp
+
+ nelec = SIZE(iisporb)
+ allocate(iistate(nelec),jjstate(nelec))
+ allocate(iispin(nelec),jjspin(nelec))
+
+ iispin(:)  = sporb_to_spin(  iisporb(:) )
+ iistate(:) = sporb_to_state( iisporb(:) )
+ on_i(:)    = sporb_to_on( iisporb(:) )
+ jjspin(:)  = sporb_to_spin(  jjsporb(:) )
+ jjstate(:) = sporb_to_state( jjsporb(:) )
+ on_j(:)    = sporb_to_on( jjsporb(:) )
+
+ excitation_order = COUNT( on_j(:) - on_i(:) == 1 )
+
+ if( excitation_order > 2 ) return
+
+ !
+ ! 1-body part
+ !
+
+ !
+ ! Exact same ON-vector
+ if( excitation_order == 0  ) then
+   do ielec=1,nelec
+     h_ci_ij = h_ci_ij + h_1body(iistate(ielec),iistate(ielec))
+   enddo
+ endif
+
+ !
+ ! ON-vectors differ by one occupation number
+ if( excitation_order == 1 ) then
+   jsporb = MAXLOC( on_j(:) - on_i(:) , DIM=1 )
+   isporb = MINLOC( on_j(:) - on_i(:) , DIM=1 )
+   istate = sporb_to_state( isporb )
+   jstate = sporb_to_state( jsporb )
+
+   if( sporb_to_spin( isporb ) == sporb_to_spin( jsporb ) ) &
+     h_ci_ij = h_ci_ij  &
+                    + h_1body(istate,jstate) * gamma_sign(on_j,jsporb) * gamma_sign(on_i,isporb)
+ endif
+
+ !
+ ! 2-body part
+ !
+
+ !
+ ! Exact same ON-vector
+ if( excitation_order == 0  ) then
+   do jelec=1,nelec
+     jstate = jjstate(jelec)
+
+     do ielec=1,nelec
+       istate = iistate(ielec)
+       h_ci_ij = h_ci_ij  &
+                  + 0.5_dp * eri_eigen(istate,istate,1,jstate,jstate,1)
+
+       if( iispin(ielec) == jjspin(jelec) )  &
+         h_ci_ij = h_ci_ij  &
+                    - 0.5_dp * eri_eigen(istate,jstate,1,jstate,istate,1)
+
+     enddo
+   enddo
+ endif
+
+ !
+ ! ON-vectors differ by one occupation number
+ if( excitation_order == 1 ) then
+   isporb = MINLOC( on_j(:) - on_i(:) , DIM=1 )
+   jsporb = MAXLOC( on_j(:) - on_i(:) , DIM=1 )
+   istate = sporb_to_state( isporb )
+   jstate = sporb_to_state( jsporb )
+   ispin  = sporb_to_spin(  isporb )
+   jspin  = sporb_to_spin(  jsporb )
+
+   do ksporb=1,2*nstate_ci
+     if( on_i(ksporb) == 0 ) cycle
+     if( on_j(ksporb) == 0 ) cycle
+     kstate = sporb_to_state( ksporb )
+     kspin  = sporb_to_spin(  ksporb )
+
+     if( ispin == jspin ) &
+       h_ci_ij = h_ci_ij  &
+                  + eri_eigen(istate,jstate,1,kstate,kstate,1)   &
+                       * gamma_sign(on_i,isporb) * gamma_sign(on_j,jsporb)
+
+     if( ispin == kspin .AND. jspin == kspin ) &
+       h_ci_ij = h_ci_ij  &
+                  - eri_eigen(istate,kstate,1,kstate,jstate,1)  &
+                       * gamma_sign(on_i,isporb) * gamma_sign(on_j,jsporb)
+   enddo
+
+ endif
+
+ !
+ ! ON-vectors differ by two occupation numbers
+ if( excitation_order == 2 ) then
+   ! Find the two indexes k < l
+   ksporb = MAXLOC( on_j(:) - on_i(:) , DIM=1 )
+   mask(:)      = .TRUE.
+   mask(ksporb) = .FALSE.
+   lsporb = MAXLOC( on_j(:) - on_i(:) , DIM=1 , MASK=mask)
+
+   ! Find the two indexes i < j
+   isporb = MINLOC( on_j(:) - on_i(:) , DIM=1 )
+   mask(:)      = .TRUE.
+   mask(isporb) = .FALSE.
+   jsporb = MINLOC( on_j(:) - on_i(:) , DIM=1 , MASK=mask)
+
+   istate = sporb_to_state( isporb )
+   jstate = sporb_to_state( jsporb )
+   kstate = sporb_to_state( ksporb )
+   lstate = sporb_to_state( lsporb )
+   ispin  = sporb_to_spin(  isporb )
+   jspin  = sporb_to_spin(  jsporb )
+   kspin  = sporb_to_spin(  ksporb )
+   lspin  = sporb_to_spin(  lsporb )
+
+   if( ispin == kspin .AND. jspin == lspin ) &
+     h_ci_ij = h_ci_ij  &
+                + eri_eigen(istate,kstate,1,jstate,lstate,1)           &
+                     * gamma_sign(on_i,isporb) * gamma_sign(on_i,jsporb)  &
+                     * gamma_sign(on_j,ksporb) * gamma_sign(on_j,lsporb)
+
+   if( ispin == lspin .AND. jspin == kspin ) &
+     h_ci_ij = h_ci_ij  &
+                - eri_eigen(istate,lstate,1,jstate,kstate,1)           &
+                     * gamma_sign(on_i,isporb) * gamma_sign(on_i,jsporb)  &
+                     * gamma_sign(on_j,ksporb) * gamma_sign(on_j,lsporb)
+
+ endif
+
+
+ deallocate(iistate,jjstate)
+ deallocate(iispin,jjspin)
+
+end function hamiltonian_ci
+
+
+!==================================================================
 subroutine build_ci_hamiltonian(conf,desc_ham,h_ci)
  implicit none
 
  type(configurations),intent(in) :: conf
  integer,intent(in)              :: desc_ham(NDEL)
- real(dp)                        :: h_ci(:,:)
+ real(dp),intent(out)            :: h_ci(:,:)
 !=====
  integer :: ielec,jelec
  integer :: mconf,nconf
@@ -720,17 +878,6 @@ subroutine build_ci_hamiltonian(conf,desc_ham,h_ci)
                         + h_1body(istate,jstate) * gamma_sign(on_j,jsporb) * gamma_sign(on_i,isporb)
 
      endif
-
-#if 0
-     block
-     if( iconf_global == 193 .AND. jconf_global == 1 ) then
-       write(200,*) 'one body'
-       write(200,*) iisporb(:)
-       write(200,*) jjsporb(:)
-       write(200,*) iprow_sd,ipcol_sd, h_ci(iconf,jconf)
-     endif
-     end block
-#endif
 
      !
      ! 2-body part
@@ -822,17 +969,6 @@ subroutine build_ci_hamiltonian(conf,desc_ham,h_ci)
 
      endif
 
-#if 0
-     block
-     if( iconf_global == 193 .AND. jconf_global == 1 ) then
-       write(200,*) 'two body',isporb,jsporb,ksporb,lsporb
-       write(200,*) 'two body',eri_eigen(istate,kstate,1,jstate,lstate,1)
-       write(200,*) 'two body',eri_eigen(istate,lstate,1,jstate,kstate,1)
-       write(200,*) iconf,jconf,iconf_global,jconf_global
-       write(200,*) iprow_sd,ipcol_sd, h_ci(iconf,jconf)
-     endif
-     end block
-#endif
 
 !     !
 !     ! Symmetrize here
@@ -1150,6 +1286,7 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  if( save_coefficients == 0 ) then
    conf%nstate = MIN(ci_nstate,conf%nconf)
  else
+   conf%nstate = MIN(ci_nstate,conf%nconf)
    conf%nstate = conf%nconf
  endif
 
@@ -1167,32 +1304,7 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
 
 
  call build_ci_hamiltonian(conf,desc_ham,h_ci)
-#if 0
- block
-   integer :: ilocal,jlocal
-   integer :: iglobal,jglobal
-   real(dp) :: matrix(conf%nconf,conf%nconf)
 
-   if( conf%nconf > 193 ) then
-   matrix(:,:) = 0.0_dp
-   do jlocal=1,nham
-     jglobal = colindex_local_to_global(desc_ham,jlocal)
-     do ilocal=1,mham
-       iglobal = rowindex_local_to_global(desc_ham,ilocal)
-       matrix(iglobal,jglobal) = h_ci(ilocal,jlocal)
-     enddo
-   enddo
-   call xsum_world(matrix)
-   do jglobal=1,1 ! 1,conf%nconf
-     do iglobal=193,193 ! 1,conf%nconf
-       write(100+rank_world,'(i6,i6,1x,f12.6)') iglobal,jglobal,matrix(iglobal,jglobal)
-     enddo
-   enddo
-
-   flush(100+rank_world)
-   endif
- end block
-#endif
 
  ! Hartree-Fock energy is obtained from the (1,1) element
  if( rowindex_global_to_local(desc_ham,1) * colindex_global_to_local(desc_ham,1) /= 0 ) then
@@ -1310,7 +1422,7 @@ subroutine diagonalize_davidson_sca(tolerance,desc_ham,ham,neig,eigval,desc_vec,
  enddo
  call xsum_world(ham_diag)
 
- ncycle = 20
+ ncycle = 30
  mm     = neig
  mm_max = mm * ncycle
  if( mm_max > mmat ) then
