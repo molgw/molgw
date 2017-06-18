@@ -85,6 +85,7 @@ module m_mpi_auxil
    module procedure xsum_auxil_ca1d
    module procedure xsum_auxil_ca2d
    module procedure xsum_auxil_ca4d
+   module procedure xsum_auxil_procindex_ra1d
    module procedure xsum_auxil_procindex_ra2d
  end interface
 
@@ -483,6 +484,32 @@ subroutine xsum_auxil_ca4d(array)
  endif
 
 end subroutine xsum_auxil_ca4d
+
+
+!=========================================================================
+subroutine xsum_auxil_procindex_ra1d(iproc,array)
+ implicit none
+ integer,intent(in)     :: iproc
+ real(dp),intent(inout) :: array(:)
+!=====
+ integer :: n1
+ integer :: ier=0
+!=====
+
+ n1 = SIZE( array, DIM=1 )
+
+#ifdef HAVE_MPI
+ if( rank_auxil == iproc ) then
+   call MPI_REDUCE( MPI_IN_PLACE, array, n1, MPI_DOUBLE_PRECISION, MPI_SUM, iproc, comm_auxil, ier)
+ else
+   call MPI_REDUCE( array, array, n1, MPI_DOUBLE_PRECISION, MPI_SUM, iproc, comm_auxil, ier)
+ endif
+#endif
+ if(ier/=0) then
+   write(stdout,*) 'error in mpi_reduce'
+ endif
+
+end subroutine xsum_auxil_procindex_ra1d
 
 
 !=========================================================================
