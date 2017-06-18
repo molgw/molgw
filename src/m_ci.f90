@@ -807,17 +807,9 @@ subroutine build_ci_hamiltonian(conf,desc_ham,h_ci)
  integer,intent(in)              :: desc_ham(NDEL)
  real(dp),intent(out)            :: h_ci(:,:)
 !=====
- integer :: ielec,jelec
  integer :: mconf,nconf
  integer :: iconf,jconf
  integer :: iconf_global,jconf_global
- integer :: iisporb(conf%nelec),jjsporb(conf%nelec)
- integer :: iistate(conf%nelec),jjstate(conf%nelec)
- integer :: iispin(conf%nelec),jjspin(conf%nelec)
- integer :: on_i(2*nstate_ci),on_j(2*nstate_ci)
- logical :: mask(2*nstate_ci)
- integer :: isporb,jsporb,istate,jstate,ispin,jspin
- integer :: ksporb,lsporb,kstate,lstate,kspin,lspin
 !=====
 
  call start_clock(timing_ham_ci)
@@ -831,147 +823,15 @@ subroutine build_ci_hamiltonian(conf,desc_ham,h_ci)
  mconf = SIZE(h_ci,DIM=1)
  nconf = SIZE(h_ci,DIM=2)
 
- h_ci(:,:) = 0.0_dp
-
  do jconf=1,nconf
    jconf_global = colindex_local_to_global(desc_ham,jconf)
-   jjsporb(:) = conf%sporb_occ(:,jconf_global)
-   jjspin(:)  = sporb_to_spin(  jjsporb(:) )
-   jjstate(:) = sporb_to_state( jjsporb(:) )
 
-   on_j(:) = sporb_to_on(jjsporb)
-
-
-   ! Only fills the upper triangle
    do iconf=1,mconf
      iconf_global = rowindex_local_to_global(desc_ham,iconf)
 !     if( iconf_global > jconf_global ) cycle  !FBFB TODO: activate this
-     iisporb(:) = conf%sporb_occ(:,iconf_global)
-     iispin(:)  = sporb_to_spin(  iisporb(:) )
-     iistate(:) = sporb_to_state( iisporb(:) )
 
-     on_i(:) = sporb_to_on(iisporb)
+     h_ci(iconf,jconf) = hamiltonian_ci(conf%sporb_occ(:,iconf_global),conf%sporb_occ(:,jconf_global))
 
-
-     !
-     ! 1-body part
-     !
-
-     !
-     ! Exact same ON-vector
-     if( iconf_global == jconf_global ) then 
-       do ielec=1,conf%nelec
-         h_ci(iconf,jconf) = h_ci(iconf,jconf) + h_1body(iistate(ielec),iistate(ielec))
-       enddo
-     endif
-
-     !
-     ! ON-vectors differ by one occupation number
-     if( COUNT( on_j(:) - on_i(:) == 1 ) == 1 ) then
-       jsporb = MAXLOC( on_j(:) - on_i(:) , DIM=1 )
-       isporb = MINLOC( on_j(:) - on_i(:) , DIM=1 )
-       istate = sporb_to_state( isporb )
-       jstate = sporb_to_state( jsporb )
-
-       if( sporb_to_spin( isporb ) == sporb_to_spin( jsporb ) ) &
-         h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
-                        + h_1body(istate,jstate) * gamma_sign(on_j,jsporb) * gamma_sign(on_i,isporb)
-
-     endif
-
-     !
-     ! 2-body part
-     !
-
-     !
-     ! Exact same ON-vector
-     if( iconf_global == jconf_global ) then 
-       do jelec=1,conf%nelec
-         jstate = jjstate(jelec)
-
-         do ielec=1,conf%nelec
-           istate = iistate(ielec)
-           h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
-                      + 0.5_dp * eri_eigen(istate,istate,1,jstate,jstate,1)
-
-           if( iispin(ielec) == jjspin(jelec) )  &
-             h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
-                        - 0.5_dp * eri_eigen(istate,jstate,1,jstate,istate,1)
-
-         enddo
-       enddo
-     endif
-
-     !
-     ! ON-vectors differ by one occupation number
-     if( COUNT( on_j(:) - on_i(:) == 1 ) == 1 ) then
-       isporb = MINLOC( on_j(:) - on_i(:) , DIM=1 )
-       jsporb = MAXLOC( on_j(:) - on_i(:) , DIM=1 )
-       istate = sporb_to_state( isporb )
-       jstate = sporb_to_state( jsporb )
-       ispin  = sporb_to_spin(  isporb )
-       jspin  = sporb_to_spin(  jsporb )
-
-       do ksporb=1,2*nstate_ci
-         if( on_i(ksporb) == 0 ) cycle
-         if( on_j(ksporb) == 0 ) cycle
-         kstate = sporb_to_state( ksporb )
-         kspin  = sporb_to_spin(  ksporb )
-
-         if( ispin == jspin ) &
-           h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
-                      + eri_eigen(istate,jstate,1,kstate,kstate,1)   &
-                           * gamma_sign(on_i,isporb) * gamma_sign(on_j,jsporb)
-
-         if( ispin == kspin .AND. jspin == kspin ) &
-           h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
-                      - eri_eigen(istate,kstate,1,kstate,jstate,1)  &
-                           * gamma_sign(on_i,isporb) * gamma_sign(on_j,jsporb)
-       enddo
-
-     endif
-
-     !
-     ! ON-vectors differ by two occupation numbers
-     if( COUNT( on_j(:) - on_i(:) == 1 ) == 2 ) then
-       ! Find the two indexes k < l
-       ksporb = MAXLOC( on_j(:) - on_i(:) , DIM=1 )
-       mask(:)      = .TRUE.
-       mask(ksporb) = .FALSE.
-       lsporb = MAXLOC( on_j(:) - on_i(:) , DIM=1 , MASK=mask)
-
-       ! Find the two indexes i < j
-       isporb = MINLOC( on_j(:) - on_i(:) , DIM=1 )
-       mask(:)      = .TRUE.
-       mask(isporb) = .FALSE.
-       jsporb = MINLOC( on_j(:) - on_i(:) , DIM=1 , MASK=mask)
-
-       istate = sporb_to_state( isporb )
-       jstate = sporb_to_state( jsporb )
-       kstate = sporb_to_state( ksporb )
-       lstate = sporb_to_state( lsporb )
-       ispin  = sporb_to_spin(  isporb )
-       jspin  = sporb_to_spin(  jsporb )
-       kspin  = sporb_to_spin(  ksporb )
-       lspin  = sporb_to_spin(  lsporb )
-
-       if( ispin == kspin .AND. jspin == lspin ) &
-         h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
-                    + eri_eigen(istate,kstate,1,jstate,lstate,1)           &
-                         * gamma_sign(on_i,isporb) * gamma_sign(on_i,jsporb)  &
-                         * gamma_sign(on_j,ksporb) * gamma_sign(on_j,lsporb)
-
-       if( ispin == lspin .AND. jspin == kspin ) &
-         h_ci(iconf,jconf) = h_ci(iconf,jconf)  &
-                    - eri_eigen(istate,lstate,1,jstate,kstate,1)           &
-                         * gamma_sign(on_i,isporb) * gamma_sign(on_i,jsporb)  &
-                         * gamma_sign(on_j,ksporb) * gamma_sign(on_j,lsporb)
-
-     endif
-
-
-!     !
-!     ! Symmetrize here
 !     h_ci(jconf,iconf) = h_ci(iconf,jconf)   ! TODO: SCALAPACKization of this
 
    enddo
@@ -1255,6 +1115,7 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  integer,intent(in)         :: nelectron,spinstate
  real(dp),intent(in)        :: nuc_nuc
 !=====
+ logical,parameter            :: incore=.FALSE.
  integer                      :: desc_ham(NDEL)
  integer                      :: mham,nham
  integer                      :: desc_vec(NDEL)
@@ -1286,50 +1147,51 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  if( save_coefficients == 0 ) then
    conf%nstate = MIN(ci_nstate,conf%nconf)
  else
-   conf%nstate = MIN(ci_nstate,conf%nconf)
    conf%nstate = conf%nconf
+   conf%nstate = MIN(ci_nstate,conf%nconf)
  endif
 
-
- mham = NUMROC(conf%nconf,block_row,iprow_sd,first_row,nprow_sd)
- nham = NUMROC(conf%nconf,block_col,ipcol_sd,first_col,npcol_sd)
- call DESCINIT(desc_ham,conf%nconf,conf%nconf,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mham),info)
-
- if( nprow_sd * npcol_sd > 1 ) then
-   write(stdout,'(1x,a,i5,a,i5)') 'Use SCALAPACK proc grid: ',nprow_sd,' x ',npcol_sd
-   write(stdout,'(1x,a,i5,a,i5)') '        Sub-matrix size: ',mham,' x ',nham
- endif
-
- call clean_allocate('CI hamiltonian',h_ci,mham,nham)
-
-
- call build_ci_hamiltonian(conf,desc_ham,h_ci)
-
-
- ! Hartree-Fock energy is obtained from the (1,1) element
- if( rowindex_global_to_local(desc_ham,1) * colindex_global_to_local(desc_ham,1) /= 0 ) then
-   ehf = h_ci(rowindex_global_to_local(desc_ham,1),colindex_global_to_local(desc_ham,1))
- else
-   ehf = 0.0_dp
- endif
- call xsum_world(ehf)
-
- mvec = NUMROC(conf%nconf,block_row,iprow_sd,first_row,nprow_sd)
- nvec = NUMROC(conf%nstate,block_col,ipcol_sd,first_col,npcol_sd)
- call DESCINIT(desc_vec,conf%nconf,conf%nstate,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mvec),info)
- call clean_allocate('CI eigenvectors',eigvec,mvec,nvec)
  allocate(energy(conf%nconf))
+ ehf = hamiltonian_ci(conf%sporb_occ(:,1),conf%sporb_occ(:,1))
+
+ if( incore .OR. conf%nstate == conf%nconf ) then
+   mham = NUMROC(conf%nconf,block_row,iprow_sd,first_row,nprow_sd)
+   nham = NUMROC(conf%nconf,block_col,ipcol_sd,first_col,npcol_sd)
+   call DESCINIT(desc_ham,conf%nconf,conf%nconf,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mham),info)
+  
+   if( nprow_sd * npcol_sd > 1 ) then
+     write(stdout,'(1x,a,i5,a,i5)') 'Use SCALAPACK proc grid: ',nprow_sd,' x ',npcol_sd
+     write(stdout,'(1x,a,i5,a,i5)') '        Sub-matrix size: ',mham,' x ',nham
+   endif
+  
+   call clean_allocate('CI hamiltonian',h_ci,mham,nham)
+  
+  
+   call build_ci_hamiltonian(conf,desc_ham,h_ci)
+
+
+   mvec = NUMROC(conf%nconf,block_row,iprow_sd,first_row,nprow_sd)
+   nvec = NUMROC(conf%nstate,block_col,ipcol_sd,first_col,npcol_sd)
+   call DESCINIT(desc_vec,conf%nconf,conf%nstate,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mvec),info)
+   call clean_allocate('CI eigenvectors',eigvec,mvec,nvec)
  
+ else
+   call clean_allocate('CI eigenvectors',eigvec,conf%nconf,conf%nstate)
+ endif
 
  call start_clock(timing_ci_diago)
  if( conf%nstate == conf%nconf ) then
    write(stdout,'(1x,a,i6,a,i6)') 'Full diagonalization of CI hamiltonian',conf%nconf,' x ',conf%nconf
    call diagonalize_sca(conf%nconf,desc_ham,h_ci,energy,desc_ham,eigvec)
-!   call diagonalize_sca_pdsyevr(conf%nconf,desc_ham,h_ci,energy,desc_vec,eigvec)
  else
    write(stdout,'(1x,a,i6,a,i6)') 'Partial diagonalization of CI hamiltonian',conf%nconf,' x ',conf%nconf
-   !call diagonalize_davidson(tolscf,h_ci,conf%nstate,energy,eigvec)
-   call diagonalize_davidson_sca(tolscf,desc_ham,h_ci,conf%nstate,energy,desc_vec,eigvec)
+   call start_clock(timing_tmp0)
+   if( incore ) then
+     call diagonalize_davidson_sca(tolscf,desc_ham,h_ci,conf%nstate,energy,desc_vec,eigvec)
+   else
+     call diagonalize_davidson_ci(tolscf,conf,conf%nstate,energy,eigvec)
+   endif
+   call stop_clock(timing_tmp0)
  endif
 
  call stop_clock(timing_ci_diago)
@@ -1455,6 +1317,7 @@ subroutine diagonalize_davidson_sca(tolerance,desc_ham,ham,neig,eigval,desc_vec,
    jglobal = colindex_local_to_global(desc_ham,jlocal)
    do ilocal=1,mbb
      iglobal = rowindex_local_to_global(desc_ham,ilocal)
+     bb(ilocal,jlocal) = MIN( EXP( -REAL(iglobal,dp) ) , 0.1_dp )
      if( iglobal == jglobal ) bb(ilocal,jlocal) = 1.0_dp
    enddo
  enddo
@@ -1564,6 +1427,153 @@ subroutine diagonalize_davidson_sca(tolerance,desc_ham,ham,neig,eigval,desc_vec,
 
 
 end subroutine diagonalize_davidson_sca
+
+
+!=========================================================================
+subroutine diagonalize_davidson_ci(tolerance,conf,neig,eigval,eigvec)
+ implicit none
+
+ real(dp),intent(in)  :: tolerance
+ type(configurations),intent(in) :: conf
+ integer,intent(in)   :: neig
+ real(dp),intent(out) :: eigval(conf%nconf)
+ real(dp),intent(out) :: eigvec(conf%nconf,neig)
+!=====
+ integer              :: ncycle
+ integer              :: iconf,jconf
+ integer              :: mm,mm_max
+ integer              :: ieig,icycle
+ real(dp),allocatable :: bb(:,:),atilde(:,:),ab(:,:),qq(:,:)
+ real(dp),allocatable :: lambda(:),alphavec(:,:)
+ real(dp)             :: residual_norm,norm2_i
+ integer              :: desc_bb(NDEL)
+ integer              :: mbb,nbb
+ integer              :: desc_qq(NDEL)
+ integer              :: mqq,nqq
+ integer              :: desc_at(NDEL)
+ integer              :: mat,nat
+ integer              :: info
+ integer              :: ilocal,jlocal,iglobal,jglobal
+ real(dp)             :: ham_diag(conf%nconf)
+!=====
+
+ write(stdout,'(/,1x,a,i5)') 'Davidson diago for eigenvector count: ',neig
+
+ eigval(:) = 0.0_dp
+
+ do iconf=1,conf%nconf
+   ham_diag(iconf) = hamiltonian_ci(conf%sporb_occ(:,iconf),conf%sporb_occ(:,iconf))
+ enddo
+
+ ncycle = 30
+ mm     = neig
+ mm_max = mm * ncycle
+ if( mm_max > conf%nconf ) then
+   ncycle = conf%nconf / neig
+   mm_max = mm * ncycle
+ endif
+
+ allocate(bb(conf%nconf,mm_max))
+ allocate(ab(conf%nconf,mm_max))
+ allocate(qq(conf%nconf,neig))
+
+
+
+ !
+ ! Initialize with stupid coefficients
+! bb(:,1:neig) = 0.01_dp
+ forall(iconf=1:conf%nconf)
+   bb(iconf,1:neig) = MIN( EXP( -REAL(iconf,dp) ) , 0.1_dp )
+ end forall
+ forall(ieig=1:neig)
+   bb(ieig,ieig) = 1.0_dp
+ end forall
+ call orthogonalize(bb(:,1:neig))
+
+
+ call start_clock(timing_tmp3)
+ ab(:,:) = 0.0_dp
+ do jconf=1,conf%nconf
+   if( ALL( ABS(bb(jconf,1:neig)) < 1.0e-6 ) ) cycle 
+   do iconf=1,conf%nconf
+     ab(iconf,1:neig) = ab(iconf,1:neig) &
+            + hamiltonian_ci(conf%sporb_occ(:,iconf),conf%sporb_occ(:,jconf)) * bb(jconf,1:neig) 
+   enddo
+ enddo
+ call stop_clock(timing_tmp3)
+
+
+ do icycle=1,ncycle
+
+   mm = icycle * neig
+
+   allocate(lambda(mm))
+   allocate(atilde(mm,mm),alphavec(mm,mm))
+
+   atilde(:,:) = MATMUL( TRANSPOSE(bb(:,1:mm)) , ab(:,1:mm) )
+
+   call diagonalize(mm,atilde,lambda,alphavec)
+
+   deallocate(atilde)
+
+   !write(stdout,*) 'icycle',icycle,lambda(1:mm)
+
+   residual_norm = 0.0_dp
+   do ieig=1,neig
+     qq(:,ieig) = MATMUL( ab(:,1:mm) ,  alphavec(1:mm,ieig) ) &
+                   - lambda(ieig) * MATMUL( bb(:,1:mm) , alphavec(1:mm,ieig) )
+     residual_norm = MAX( residual_norm , NORM2(qq(:,ieig)) )
+   enddo
+
+   write(stdout,'(1x,a,1x,i4,1x,es12.4)') 'Max residual norm for cycle: ',icycle,residual_norm
+
+
+
+   !
+   ! Convergence reached... or not
+   if( icycle == ncycle .OR. residual_norm < tolerance ) then
+     eigval(1:neig) = lambda(1:neig)
+     eigvec(:,1:neig) = MATMUL( bb(:,1:mm) , alphavec(1:mm,1:neig) )
+     deallocate(alphavec)
+     exit
+   endif
+
+
+   !
+   ! New trial vectors
+   !
+   forall(iconf=1:conf%nconf,ieig=1:neig)
+     bb(iconf,mm+ieig) = qq(iconf,ieig) / ( lambda(ieig) - ham_diag(iconf) )
+   end forall
+   call orthogonalize(bb(:,:mm+neig))
+
+
+   !ab(:,mm+1:mm+neig) = MATMUL( ham(:,:) , bb(:,mm+1:mm+neig) )
+
+   call start_clock(timing_tmp4)
+   ab(:,mm+1:mm+neig) = 0.0_dp
+   do jconf=1,conf%nconf
+     ! Saves ~10%
+     if( ALL( ABS(bb(jconf,mm+1:mm+neig)) < 1.0e-6 ) ) cycle 
+     do iconf=1,conf%nconf
+       ab(iconf,mm+1:mm+neig) = ab(iconf,mm+1:mm+neig) &
+              + hamiltonian_ci(conf%sporb_occ(:,iconf),conf%sporb_occ(:,jconf)) * bb(jconf,mm+1:mm+neig) 
+     enddo
+   enddo
+   call stop_clock(timing_tmp4)
+
+
+   deallocate(lambda)
+   deallocate(alphavec)
+
+
+ enddo ! icycle
+
+ if( ALLOCATED(lambda) ) deallocate(lambda)
+ deallocate(ab,qq,bb)
+
+
+end subroutine diagonalize_davidson_ci
 
 
 !=========================================================================
