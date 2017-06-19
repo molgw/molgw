@@ -1193,9 +1193,9 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  else
    write(stdout,'(1x,a,i8,a,i8)') 'Partial diagonalization of CI hamiltonian',conf%nconf,' x ',conf%nconf
    if( incore ) then
-     call diagonalize_davidson_sca(tolscf,desc_ham,h_ci,conf%nstate,energy,desc_vec,eigvec)
+     call diagonalize_davidson_sca(toldav,desc_ham,h_ci,conf%nstate,energy,desc_vec,eigvec)
    else
-     call diagonalize_davidson_ci(tolscf,conf,conf%nstate,energy,desc_vec,eigvec)
+     call diagonalize_davidson_ci(toldav,conf,conf%nstate,energy,desc_vec,eigvec)
    endif
  endif
 
@@ -1241,16 +1241,18 @@ end subroutine full_ci_nelectrons_on
 
 
 !=========================================================================
-subroutine diagonalize_davidson_ci(tolerance,conf,neig,eigval,desc_vec,eigvec)
+subroutine diagonalize_davidson_ci(tolerance,conf,neig_calc,eigval,desc_vec,eigvec)
  implicit none
 
  real(dp),intent(in)  :: tolerance
  type(configurations),intent(in) :: conf
- integer,intent(in)   :: neig
+ integer,intent(in)   :: neig_calc
  integer,intent(in)   :: desc_vec(NDEL)
  real(dp),intent(out) :: eigval(conf%nconf)
  real(dp),intent(out) :: eigvec(:,:)
 !=====
+ integer,parameter    :: dim_factor=1
+ integer              :: neig_dim
  integer              :: ncycle
  integer              :: iconf,jconf,kconf,iconf_global,kconf_global
  integer              :: mm,mm_max
@@ -1266,6 +1268,8 @@ subroutine diagonalize_davidson_ci(tolerance,conf,neig,eigval,desc_vec,eigvec)
  integer              :: mbb,nbb
  integer              :: desc_at(NDEL)
  integer              :: mat,nat
+ integer              :: desc_qq(NDEL)
+ integer              :: mqq,nqq
  integer              :: info
  integer              :: ilocal,jlocal,iglobal,jglobal
  real(dp)             :: ham_diag(conf%nconf)
@@ -1273,11 +1277,11 @@ subroutine diagonalize_davidson_ci(tolerance,conf,neig,eigval,desc_vec,eigvec)
  integer              :: mb,nb,rdest,mb_local
 !=====
 
- write(stdout,'(/,1x,a,i5)') 'Davidson diago for eigenvector count: ',neig
+ write(stdout,'(/,1x,a,i5)') 'Davidson diago for eigenvector count: ',neig_calc
 
  mvec = SIZE(eigvec(:,:),DIM=1)
  nvec = SIZE(eigvec(:,:),DIM=2)
- if( nvec /= neig ) call die('diagonalize_davidson_ci: distribution grid not allowed')
+ if( nvec /= neig_calc ) call die('diagonalize_davidson_ci: distribution grid not allowed')
 
  !
  ! Local scalapack information all obtained from the input desc_vec
@@ -1297,12 +1301,13 @@ subroutine diagonalize_davidson_ci(tolerance,conf,neig,eigval,desc_vec,eigvec)
    ham_diag(iconf) = hamiltonian_ci(conf%sporb_occ(:,iconf),conf%sporb_occ(:,iconf))
  enddo
 
+ neig_dim = neig_calc * dim_factor
  ncycle = 30
  mm     = 0
- mm_max = neig * ncycle
+ mm_max = neig_dim * ncycle
  if( mm_max > conf%nconf ) then
-   ncycle = conf%nconf / neig
-   mm_max = neig * ncycle
+   ncycle = conf%nconf / neig_dim
+   mm_max = neig_dim * ncycle
  endif
 
  mbb = NUMROC(conf%nconf,mb,iprow,first_row,nprow)
@@ -1311,7 +1316,11 @@ subroutine diagonalize_davidson_ci(tolerance,conf,neig,eigval,desc_vec,eigvec)
 
  call clean_allocate('Trial vectors',bb,mbb,nbb)
  call clean_allocate('Hamiltonian applications',ab,mbb,nbb)
- call clean_allocate('Error vectors',qq,mvec,nvec)
+
+ mqq = NUMROC(conf%nconf,mb,iprow,first_row,nprow)
+ nqq = NUMROC(neig_dim  ,nb,ipcol,first_col,npcol)
+ call DESCINIT(desc_qq,conf%nconf,neig_dim,mb,nb,first_row,first_col,cntxt,MAX(1,mqq),info)
+ call clean_allocate('Error vectors',qq,mqq,nqq)
 
 
  !
@@ -1324,33 +1333,10 @@ subroutine diagonalize_davidson_ci(tolerance,conf,neig,eigval,desc_vec,eigvec)
      if( iglobal == jglobal ) bb(ilocal,jlocal) = 1.0_dp
    enddo
  enddo
- call orthogonalize_sca(desc_bb,1,neig,bb)
+ call orthogonalize_sca(desc_bb,1,neig_dim,bb)
 
 
- !call start_clock(timing_tmp3)
 
-#if 0
- allocate(ab_i(neig))
- allocate(h_i(mvec))
- do iconf_global=1,conf%nconf
-   rdest = INDXG2P(iconf_global,mb,0,first_row,nprow)
-   do kconf=1,mvec
-     kconf_global = rowindex_local_to_global(desc_bb,kconf)
-     h_i(kconf) = hamiltonian_ci(conf%sporb_occ(:,iconf_global),conf%sporb_occ(:,kconf_global))
-   enddo
-   ab_i(:) = 0.0_dp
-   do kconf=1,mvec
-     ab_i(:) = ab_i(:) + h_i(kconf) * bb(kconf,1:neig)
-   enddo
-   call DGSUM2D(cntxt,'A',' ',1,neig,ab_i,1,rdest,0)
-   if( iprow == rdest ) then
-     iconf = rowindex_global_to_local(desc_bb,iconf_global)
-     ab(iconf,mm+1:mm+neig) = ab_i(:)
-   endif
-
- enddo
- deallocate(ab_i,h_i)
-#else
  ! Block per block algo
  do iconf_min=1,conf%nconf,mb
    iconf_max = MIN( iconf_min + mb - 1 , conf%nconf)
@@ -1359,35 +1345,33 @@ subroutine diagonalize_davidson_ci(tolerance,conf,neig,eigval,desc_vec,eigvec)
    rdest = INDXG2P(iconf_min,mb,0,first_row,nprow)
 
    allocate(h_iblock(iconf_min:iconf_max,mvec))
-   allocate(ab_iblock(iconf_min:iconf_max,neig))
+   allocate(ab_iblock(iconf_min:iconf_max,neig_dim))
 
    forall(iconf=iconf_min:iconf_max,kconf=1:mvec)
      h_iblock(iconf,kconf) = hamiltonian_ci(conf%sporb_occ(:,iconf), &
                                             conf%sporb_occ(:,indxl2g_pure(kconf,mb,iprow,first_row,nprow)))
    end forall
 
-   !ab_iblock(:,:) = MATMUL( h_iblock(:,:) , bb(:,mm+1:mm+neig) )
-   call DGEMM('N','N',mb_local,neig,mvec,     &
+   !ab_iblock(:,:) = MATMUL( h_iblock(:,:) , bb(:,mm+1:mm+neig_dim) )
+   call DGEMM('N','N',mb_local,neig_dim,mvec,     &
               1.0_dp,h_iblock,mb_local,       &
                      bb(1,mm+1),mvec,         &
               0.0_dp,ab_iblock,mb_local)
 
-   call DGSUM2D(cntxt,'A',' ',mb_local,neig,ab_iblock,1,rdest,0)
+   call DGSUM2D(cntxt,'A',' ',mb_local,neig_dim,ab_iblock,1,rdest,0)
    if( iprow == rdest ) then
      iconf = rowindex_global_to_local(desc_bb,iconf_min)
-     ab(iconf:iconf+mb_local-1,mm+1:mm+neig) = ab_iblock(:,:)
+     ab(iconf:iconf+mb_local-1,mm+1:mm+neig_dim) = ab_iblock(:,:)
    endif
    deallocate(h_iblock)
    deallocate(ab_iblock)
  enddo
-#endif
 
- !call stop_clock(timing_tmp3)
 
 
  do icycle=1,ncycle
 
-   mm = icycle * neig
+   mm = icycle * neig_dim
 
    allocate(lambda(mm))
 
@@ -1406,25 +1390,25 @@ subroutine diagonalize_davidson_ci(tolerance,conf,neig,eigval,desc_vec,eigvec)
    !write(stdout,*) 'icycle',icycle,lambda(1:mm)
 
    ! qq = bb * alphavec
-   call PDGEMM('N','N',conf%nconf,neig,mm,1.0_dp,bb,1,1,desc_bb,alphavec,1,1,desc_at,0.0_dp,qq,1,1,desc_vec)
-   eigvec(:,:) = qq(:,:)
-   eigval(1:neig) = lambda(1:neig)
+   call PDGEMM('N','N',conf%nconf,neig_dim,mm,1.0_dp,bb,1,1,desc_bb,alphavec,1,1,desc_at,0.0_dp,qq,1,1,desc_qq)
+   eigvec(:,1:neig_calc) = qq(:,1:neig_calc)
+   eigval(1:neig_calc)   = lambda(1:neig_calc)
    ! qq = qq * Lambda
-   do ieig=1,neig
-     call PDSCAL(conf%nconf,lambda(ieig),qq,1,ieig,desc_vec,1)
+   do ieig=1,neig_dim
+     call PDSCAL(conf%nconf,lambda(ieig),qq,1,ieig,desc_qq,1)
    enddo
 
 
    ! qq = ab * alphavec - lambda * bb * alphavec
-   call PDGEMM('N','N',conf%nconf,neig,mm,1.0_dp,ab,1,1,desc_bb,alphavec,1,1,desc_at,-1.0_dp,qq,1,1,desc_vec)
+   call PDGEMM('N','N',conf%nconf,neig_dim,mm,1.0_dp,ab,1,1,desc_bb,alphavec,1,1,desc_at,-1.0_dp,qq,1,1,desc_qq)
 
 
    deallocate(alphavec)
 
    residual_norm = 0.0_dp
-   do ieig=1,neig
+   do ieig=1,neig_calc
      norm2_i = 0.0_dp
-     call PDNRM2(conf%nconf,norm2_i,qq,1,ieig,desc_vec,1)
+     call PDNRM2(conf%nconf,norm2_i,qq,1,ieig,desc_qq,1)
      residual_norm = MAX( residual_norm , norm2_i )
    enddo
    call xmax_world(residual_norm)
@@ -1443,49 +1427,22 @@ subroutine diagonalize_davidson_ci(tolerance,conf,neig,eigval,desc_vec,eigvec)
    !
    ! New trial vectors
    !
-   do jlocal=1,nvec
-     jglobal = colindex_local_to_global(desc_vec,jlocal)
-     do ilocal=1,mvec
-       iglobal = rowindex_local_to_global(desc_vec,ilocal)
+   do jlocal=1,nqq
+     jglobal = colindex_local_to_global(desc_qq,jlocal)
+     do ilocal=1,mqq
+       iglobal = rowindex_local_to_global(desc_qq,ilocal)
        qq(ilocal,jlocal) = qq(ilocal,jlocal) / ( lambda(jglobal) - ham_diag(iglobal) )
      enddo
    enddo
 
-   call PDGEMR2D(conf%nconf,neig,qq,1,1,desc_vec,bb,1,mm+1,desc_bb,cntxt)
+   call PDGEMR2D(conf%nconf,neig_dim,qq,1,1,desc_qq,bb,1,mm+1,desc_bb,cntxt)
 
-   call orthogonalize_sca(desc_bb,mm+1,mm+neig,bb)
+   call orthogonalize_sca(desc_bb,mm+1,mm+neig_dim,bb)
 
 
 
    !call start_clock(timing_tmp4)
 
-#if 0
-   allocate(ab_i(neig))
-   allocate(h_i(mvec))
-   do iconf_global=1,conf%nconf
-     rdest = INDXG2P(iconf_global,mb,0,first_row,nprow)
-     !call start_clock(timing_tmp5)
-     !$OMP PARALLEL PRIVATE(kconf_global) 
-     !$OMP DO 
-     do kconf=1,mvec
-       kconf_global = rowindex_local_to_global(desc_bb,kconf)
-       h_i(kconf) = hamiltonian_ci(conf%sporb_occ(:,iconf_global),conf%sporb_occ(:,kconf_global))
-     enddo
-     !$OMP END DO
-     !$OMP END PARALLEL
-     !call stop_clock(timing_tmp5)
-     ab_i(:) = MATMUL( h_i(:) , bb(:,mm+1:mm+neig) )
-     !call start_clock(timing_tmp7)
-     call DGSUM2D(cntxt,'A',' ',1,neig,ab_i,1,rdest,0)
-     if( iprow == rdest ) then
-       iconf = rowindex_global_to_local(desc_bb,iconf_global)
-       ab(iconf,mm+1:mm+neig) = ab_i(:)
-     endif
-     !call stop_clock(timing_tmp7)
-   enddo
-   deallocate(h_i)
-   deallocate(ab_i)
-#else
    ! Block per block algo
    do iconf_min=1,conf%nconf,mb
      iconf_max = MIN( iconf_min + mb - 1 , conf%nconf)
@@ -1494,28 +1451,33 @@ subroutine diagonalize_davidson_ci(tolerance,conf,neig,eigval,desc_vec,eigvec)
      rdest = INDXG2P(iconf_min,mb,0,first_row,nprow)
 
      allocate(h_iblock(iconf_min:iconf_max,mvec))
-     allocate(ab_iblock(iconf_min:iconf_max,neig))
+     allocate(ab_iblock(iconf_min:iconf_max,neig_dim))
 
+     !call start_clock(timing_tmp5)
      forall(iconf=iconf_min:iconf_max,kconf=1:mvec)
        h_iblock(iconf,kconf) = hamiltonian_ci(conf%sporb_occ(:,iconf), &
                                               conf%sporb_occ(:,indxl2g_pure(kconf,mb,iprow,first_row,nprow)))
      end forall
+     !call stop_clock(timing_tmp5)
 
-     !ab_iblock(:,:) = MATMUL( h_iblock(:,:) , bb(:,mm+1:mm+neig) )
-     call DGEMM('N','N',mb_local,neig,mvec,     &
+     !call start_clock(timing_tmp6)
+     !ab_iblock(:,:) = MATMUL( h_iblock(:,:) , bb(:,mm+1:mm+neig_dim) )
+     call DGEMM('N','N',mb_local,neig_dim,mvec,     &
                 1.0_dp,h_iblock,mb_local,       &
                        bb(1,mm+1),mvec,         &
                 0.0_dp,ab_iblock,mb_local)
+     !call stop_clock(timing_tmp6)
 
-     call DGSUM2D(cntxt,'A',' ',mb_local,neig,ab_iblock,1,rdest,0)
+     !call start_clock(timing_tmp7)
+     call DGSUM2D(cntxt,'A',' ',mb_local,neig_dim,ab_iblock,1,rdest,0)
      if( iprow == rdest ) then
        iconf = rowindex_global_to_local(desc_bb,iconf_min)
-       ab(iconf:iconf+mb_local-1,mm+1:mm+neig) = ab_iblock(:,:)
+       ab(iconf:iconf+mb_local-1,mm+1:mm+neig_dim) = ab_iblock(:,:)
      endif
+     !call stop_clock(timing_tmp7)
      deallocate(h_iblock)
      deallocate(ab_iblock)
    enddo
-#endif
 
    !call stop_clock(timing_tmp4)
 
