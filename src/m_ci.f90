@@ -165,11 +165,12 @@ end subroutine destroy_ci
 
 
 !==================================================================
-subroutine setup_configurations_ci(nelec,spinstate,conf)
+subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  implicit none
 
  integer,intent(in)               :: nelec
  integer,intent(in)               :: spinstate
+ character(len=*),intent(in)      :: ci_type_in
  type(configurations),intent(out) :: conf
 !=====
  integer :: iconf
@@ -204,7 +205,7 @@ subroutine setup_configurations_ci(nelec,spinstate,conf)
    call die('setup_configurations_ci: spin case not recognized')
  end select
 
- select case(ci_type)
+ select case(ci_type_in)
  case('ALL')
    excitation_max = 100
  case('CISD')
@@ -675,40 +676,20 @@ pure function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
 
  excitation_order = COUNT( on_j(:) - on_i(:) == 1 )
 
- if( excitation_order > 2 ) return
-
- !
- ! 1-body part
- !
+ select case(excitation_order)
 
  !
  ! Exact same ON-vector
- if( excitation_order == 0  ) then
+ case(0)
+   !
+   ! 1-body part
+   !
    do ielec=1,nelec
      h_ci_ij = h_ci_ij + h_1body(iistate(ielec),iistate(ielec))
    enddo
- endif
-
- !
- ! ON-vectors differ by one occupation number
- if( excitation_order == 1 ) then
-   jsporb = MAXLOC( on_j(:) - on_i(:) , DIM=1 )
-   isporb = MINLOC( on_j(:) - on_i(:) , DIM=1 )
-   istate = sporb_to_state( isporb )
-   jstate = sporb_to_state( jsporb )
-
-   if( sporb_to_spin( isporb ) == sporb_to_spin( jsporb ) ) &
-     h_ci_ij = h_ci_ij  &
-                    + h_1body(istate,jstate) * gamma_sign(on_j,jsporb) * gamma_sign(on_i,isporb)
- endif
-
- !
- ! 2-body part
- !
-
- !
- ! Exact same ON-vector
- if( excitation_order == 0  ) then
+   !
+   ! 2-body part
+   !
    do jelec=1,nelec
      jstate = jjstate(jelec)
 
@@ -723,11 +704,26 @@ pure function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
 
      enddo
    enddo
- endif
+
 
  !
  ! ON-vectors differ by one occupation number
- if( excitation_order == 1 ) then
+ case(1)
+   !
+   ! 1-body part
+   !
+   jsporb = MAXLOC( on_j(:) - on_i(:) , DIM=1 )
+   isporb = MINLOC( on_j(:) - on_i(:) , DIM=1 )
+   istate = sporb_to_state( isporb )
+   jstate = sporb_to_state( jsporb )
+
+   if( sporb_to_spin( isporb ) == sporb_to_spin( jsporb ) ) &
+     h_ci_ij = h_ci_ij  &
+                    + h_1body(istate,jstate) * gamma_sign(on_j,jsporb) * gamma_sign(on_i,isporb)
+
+   !
+   ! 2-body part
+   !
    isporb = MINLOC( on_j(:) - on_i(:) , DIM=1 )
    jsporb = MAXLOC( on_j(:) - on_i(:) , DIM=1 )
    istate = sporb_to_state( isporb )
@@ -752,11 +748,13 @@ pure function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
                        * gamma_sign(on_i,isporb) * gamma_sign(on_j,jsporb)
    enddo
 
- endif
 
  !
  ! ON-vectors differ by two occupation numbers
- if( excitation_order == 2 ) then
+ case(2)
+   !
+   ! 2-body part
+   !
    ! Find the two indexes k < l
    ksporb = MAXLOC( on_j(:) - on_i(:) , DIM=1 )
    mask(:)      = .TRUE.
@@ -790,8 +788,7 @@ pure function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
                      * gamma_sign(on_i,isporb) * gamma_sign(on_i,jsporb)  &
                      * gamma_sign(on_j,ksporb) * gamma_sign(on_j,lsporb)
 
- endif
-
+ end select
 
  deallocate(iistate,jjstate)
  deallocate(iispin,jjspin)
@@ -1127,6 +1124,11 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  type(configurations),pointer :: conf
  real(dp),allocatable         :: energy(:)
  real(dp),allocatable         :: eigvec(:,:)
+
+ type(configurations)         :: conf_sd
+ real(dp),allocatable         :: eigvec_sd(:,:)
+ integer                      :: desc_vec_sd(NDEL)
+ integer                      :: mvec_sd,nvec_sd
 !=====
 
  call start_clock(timing_full_ci)
@@ -1144,7 +1146,7 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
    call die('full_ci_nelectrons_on: error')
  end select
 
- call setup_configurations_ci(nelectron,spinstate,conf)
+ call setup_configurations_ci(nelectron,spinstate,ci_type,conf)
  if( save_coefficients == 0 ) then
    conf%nstate = MIN(ci_nstate,conf%nconf)
  else
@@ -1184,6 +1186,7 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
    nvec = NUMROC(conf%nstate,mb,ipcol_auxil,first_col,npcol_auxil)
    call DESCINIT(desc_vec,conf%nconf,conf%nstate,mb,mb,first_row,first_col,cntxt_auxil,MAX(1,mvec),info)
    call clean_allocate('CI eigenvectors',eigvec,mvec,nvec)
+   eigvec(:,:) = 0.0_dp
  endif
 
  call start_clock(timing_ci_diago)
@@ -1195,6 +1198,20 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
    if( incore ) then
      call diagonalize_davidson_sca(toldav,desc_ham,h_ci,conf%nstate,energy,desc_vec,eigvec)
    else
+
+#if 1
+     call setup_configurations_ci(nelectron,spinstate,'CISD',conf_sd)
+     conf_sd%nstate = conf%nstate
+     mvec_sd = NUMROC(conf_sd%nconf,mb,iprow_auxil,first_row,nprow_auxil)
+     nvec_sd = NUMROC(conf_sd%nstate,mb,ipcol_auxil,first_col,npcol_auxil)
+     call DESCINIT(desc_vec_sd,conf_sd%nconf,conf_sd%nstate,mb,mb,first_row,first_col,cntxt_auxil,MAX(1,mvec),info)
+     call clean_allocate('CISD eigenvectors',eigvec_sd,mvec_sd,nvec_sd)
+     eigvec_sd(:,:) = 0.0_dp
+     call diagonalize_davidson_ci(toldav,conf_sd,conf_sd%nstate,energy(1:conf_sd%nconf),desc_vec_sd,eigvec_sd)
+     call translate_eigvec_ci(conf_sd,desc_vec_sd,eigvec_sd,conf,desc_vec,eigvec)
+     call clean_deallocate('CISD eigenvectors',eigvec_sd)
+#endif
+
      call diagonalize_davidson_ci(toldav,conf,conf%nstate,energy,desc_vec,eigvec)
    endif
  endif
@@ -1333,6 +1350,10 @@ subroutine diagonalize_davidson_ci(tolerance,conf,neig_calc,eigval,desc_vec,eigv
      if( iglobal == jglobal ) bb(ilocal,jlocal) = 1.0_dp
    enddo
  enddo
+ if( ABS(eigvec(1,1)) > 1.0e-12_dp ) then 
+   write(stdout,*) 'Found a guess for the eigenvectors'
+   bb(:,1:neig_calc) = eigvec(:,:)
+ endif
  call orthogonalize_sca(desc_bb,1,neig_dim,bb)
 
 
@@ -1496,5 +1517,66 @@ subroutine diagonalize_davidson_ci(tolerance,conf,neig_calc,eigval,desc_vec,eigv
 end subroutine diagonalize_davidson_ci
 
 
+
+!==================================================================
+subroutine translate_eigvec_ci(conf_in,desc_vec_in,eigvec_in,conf_out,desc_vec_out,eigvec_out)
+ implicit none
+
+ type(configurations),intent(in) :: conf_in,conf_out
+ integer,intent(in)              :: desc_vec_in(NDEL),desc_vec_out(NDEL)
+ real(dp),intent(in)             :: eigvec_in(:,:)
+ real(dp),intent(out)            :: eigvec_out(:,:)
+!=====
+ integer :: iconf_in,iconf_out,iconf_in_local,iconf_out_local
+ integer :: neig
+ logical :: found
+ real(dp),allocatable :: eigvec_tmp(:)
+!=====
+
+ neig = SIZE(eigvec_in(:,:),DIM=2)
+ allocate(eigvec_tmp(neig))
+
+ write(stdout,'(/,1x,a)') 'Tranpose the CI eigvectors'
+ write(stdout,'(1x,a,i8)') 'Initial space: ',conf_in%nconf
+ write(stdout,'(1x,a,i8)') '  Final space: ',conf_out%nconf
+
+ ! Preliminary checks
+ if( conf_in%nelec /= conf_out%nelec ) then
+   call die('translate_eigvec_ci: configuration spaces have different number of electrons')
+ endif
+
+
+ do iconf_in=1,conf_in%nconf
+   found = .FALSE.
+   iconf_in_local = rowindex_global_to_local(desc_vec_in,iconf_in)
+   if( iconf_in_local /= 0 ) then
+     eigvec_tmp(:) = eigvec_in(iconf_in_local,1:neig)
+   else
+     eigvec_tmp(:) = 0.0_dp
+   endif
+   call xsum_auxil(eigvec_tmp)
+
+   do iconf_out=1,conf_out%nconf
+     if( ALL( conf_in%sporb_occ(:,iconf_in) == conf_out%sporb_occ(:,iconf_out) ) ) then
+       found = .TRUE.
+
+       iconf_out_local = rowindex_global_to_local(desc_vec_out,iconf_out)
+       if( iconf_out_local /= 0 ) &
+         eigvec_out(iconf_out_local,1:neig) = eigvec_tmp(:)
+
+     endif
+   enddo
+
+   if( .NOT. found) then
+     call die('translate_eigvec_ci: final configuration spaces does not contain the initial configuration space')
+   endif
+ enddo
+
+ deallocate(eigvec_tmp)
+
+end subroutine translate_eigvec_ci
+
+
+!==================================================================
 end module m_ci
 !==================================================================
