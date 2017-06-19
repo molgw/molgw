@@ -28,7 +28,7 @@ contains
 
 
 !=========================================================================
-function eri_eigen(istate,jstate,ijspin,kstate,lstate,klspin)
+pure function eri_eigen(istate,jstate,ijspin,kstate,lstate,klspin)
  implicit none
  integer,intent(in) :: ijspin,klspin
  integer,intent(in) :: istate,jstate,kstate,lstate
@@ -37,7 +37,7 @@ function eri_eigen(istate,jstate,ijspin,kstate,lstate,klspin)
 
  if(has_auxil_basis) then
    eri_eigen = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,ijspin) , eri_3center_eigen(:,kstate,lstate,klspin) )
-   call xsum_auxil(eri_eigen)
+!   call xsum_auxil(eri_eigen)
  else
    eri_eigen = eri_4center_eigen_uks(istate,jstate,kstate,lstate)
  endif
