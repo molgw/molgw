@@ -1114,6 +1114,7 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
 !=====
  logical,parameter            :: incore=.FALSE.
  character(len=12)            :: filename_eigvec
+ integer,parameter            :: mb_max=512
  integer                      :: mb_sd,mb
  integer                      :: desc_ham(NDEL)
  integer                      :: mham,nham
@@ -1185,7 +1186,7 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
    !
    ! cntxt_auxil is a row-only distribution: ( Ncore x 1 )
    ! use a calculated block_size = mb
-   mb = MIN( 128 , 2**FLOOR( LOG(REAL(conf%nconf/nprow_auxil,dp)) / LOG(2.0_dp) ) )
+   mb = MIN( mb_max , 2**FLOOR( LOG(REAL(conf%nconf/nprow_auxil,dp)) / LOG(2.0_dp) ) )
    mvec = NUMROC(conf%nconf,mb,iprow_auxil,first_row,nprow_auxil)
    nvec = NUMROC(conf%nstate,mb,ipcol_auxil,first_col,npcol_auxil)
    call DESCINIT(desc_vec,conf%nconf,conf%nstate,mb,mb,first_row,first_col,cntxt_auxil,MAX(1,mvec),info)
@@ -1209,7 +1210,7 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
      if( read_status /= 0 ) then
        call setup_configurations_ci(nelectron,spinstate,'CISD',conf_sd)
        conf_sd%nstate = conf%nstate
-       mb_sd = MIN( 128 , 2**FLOOR( LOG(REAL(conf_sd%nconf/nprow_auxil,dp)) / LOG(2.0_dp) ) )
+       mb_sd = MIN( mb_max , 2**FLOOR( LOG(REAL(conf_sd%nconf/nprow_auxil,dp)) / LOG(2.0_dp) ) )
 
        mvec_sd = NUMROC(conf_sd%nconf,mb_sd,iprow_auxil,first_row,nprow_auxil)
        nvec_sd = NUMROC(conf_sd%nstate,mb_sd,ipcol_auxil,first_col,npcol_auxil)
@@ -1431,9 +1432,6 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
    eigvec(:,1:neig_calc) = qq(:,1:neig_calc)
    eigval(1:neig_calc)   = lambda(1:neig_calc)
 
-   ! Write down found CI eigenvectors at each cycle
-   call write_eigvec_ci(filename,conf,desc_vec,eigvec)
-
    ! qq = qq * Lambda
    do ieig=1,neig_dim
      call PDSCAL(conf%nconf,lambda(ieig),qq,1,ieig,desc_qq,1)
@@ -1456,6 +1454,9 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
 
    write(stdout,'(1x,a,i4,1x,i5,1x,es12.4,1x,f19.10)') 'Cycle, Subspace dim, Max residual norm, Electronic energy: ', &
                                                       icycle,mm,residual_norm,lambda(1)
+
+   ! Write down found CI eigenvectors at each cycle
+   call write_eigvec_ci(filename,conf,desc_vec,eigvec)
 
 
    !
@@ -1607,7 +1608,7 @@ subroutine write_eigvec_ci(filename,conf,desc_vec,eigvec)
  real(dp),intent(in)             :: eigvec(:,:)
 !=====
  integer :: iconf,iconf_local
- integer :: neig
+ integer :: neig,ieig
  integer :: cifile
  real(dp),allocatable :: eigvec_tmp(:)
 !=====
@@ -1617,7 +1618,7 @@ subroutine write_eigvec_ci(filename,conf,desc_vec,eigvec)
  call start_clock(timing_ci_write)
 
  neig = SIZE(eigvec(:,:),DIM=2)
- allocate(eigvec_tmp(neig))
+ allocate(eigvec_tmp(conf%nconf))
 
  if( neig /= conf%nstate ) call die('write_eigvec_ci: distribution grid should be row-only')
 
@@ -1630,13 +1631,12 @@ subroutine write_eigvec_ci(filename,conf,desc_vec,eigvec)
    write(cifile) conf%nstate
  endif
 
- do iconf=1,conf%nconf
-   iconf_local = rowindex_global_to_local(desc_vec,iconf)
-   if( iconf_local /= 0 ) then
-     eigvec_tmp(:) = eigvec(iconf_local,1:conf%nstate)
-   else
-     eigvec_tmp(:) = 0.0_dp
-   endif
+ do ieig=1,neig
+   eigvec_tmp(:) = 0.0_dp
+   do iconf_local=1,SIZE(eigvec(:,:),DIM=1)
+     iconf = rowindex_local_to_global(desc_vec,iconf_local)
+     eigvec_tmp(iconf) = eigvec(iconf_local,ieig)
+   enddo
    call xsum_auxil(iomaster,eigvec_tmp)
    if( is_iomaster ) write(cifile) eigvec_tmp(:)
  enddo
@@ -1661,7 +1661,7 @@ subroutine read_eigvec_ci(filename,conf,desc_vec,eigvec,read_status)
 !=====
  logical :: file_exists
  integer :: iconf,iconf_local
- integer :: neig
+ integer :: neig,ieig
  integer :: cifile
  real(dp),allocatable :: eigvec_tmp(:)
  integer :: nconf_read,nstate_read
@@ -1692,16 +1692,16 @@ subroutine read_eigvec_ci(filename,conf,desc_vec,eigvec,read_status)
  endif
 
 
- allocate(eigvec_tmp(conf%nstate))
+ allocate(eigvec_tmp(conf%nconf))
 
- do iconf=1,conf%nconf
-   iconf_local = rowindex_global_to_local(desc_vec,iconf)
+ do ieig=1,neig
    read(cifile) eigvec_tmp(:)
+   do iconf_local=1,SIZE(eigvec(:,:),DIM=1)
+     iconf = rowindex_local_to_global(desc_vec,iconf_local)
 
-   if( iconf_local /= 0 ) then
-     eigvec(iconf_local,1:conf%nstate) = eigvec_tmp(:)
-   endif
+     eigvec(iconf_local,ieig) = eigvec_tmp(iconf)
 
+   enddo
  enddo
  close(cifile)
 
