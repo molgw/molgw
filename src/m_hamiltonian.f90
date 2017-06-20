@@ -1006,8 +1006,13 @@ subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,vxc_ij,
 
 
    if( ANY( dedd_r_batch(:,:) > 0.0_dp ) ) then
-     write(stdout,*) dedd_r_batch(:,:)
-     call die('positive xc potential not expected')
+     !write(stdout,*) dedd_r_batch(:,:)
+     call issue_warning('Positive xc potential should not happen. Discard it but be careful with the final.')
+     do ir=1,nr
+       do ispin=1,nspin
+         dedd_r_batch(ispin,ir) = MIN( dedd_r_batch(ispin,ir) , -1.0e-16_dp )
+       enddo
+     enddo
    endif
  
 
