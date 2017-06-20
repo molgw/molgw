@@ -48,7 +48,7 @@ module m_mpi
 !===================================================
 
 
- integer,private   :: iomaster = 0
+ integer,protected :: iomaster = 0
  logical,protected :: is_iomaster = .TRUE.
 
  integer,private :: ngrid_mpi
