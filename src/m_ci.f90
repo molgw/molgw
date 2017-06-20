@@ -1114,7 +1114,7 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
 !=====
  logical,parameter            :: incore=.FALSE.
  character(len=12)            :: filename_eigvec
- integer,parameter            :: mb=128
+ integer                      :: mb_sd,mb
  integer                      :: desc_ham(NDEL)
  integer                      :: mham,nham
  integer                      :: desc_vec(NDEL)
@@ -1184,7 +1184,8 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  else
    !
    ! cntxt_auxil is a row-only distribution: ( Ncore x 1 )
-   ! use block_size = mb
+   ! use a calculated block_size = mb
+   mb = MIN( 128 , 2**FLOOR( LOG(REAL(conf%nconf/nprow_auxil,dp)) / LOG(2.0_dp) ) )
    mvec = NUMROC(conf%nconf,mb,iprow_auxil,first_row,nprow_auxil)
    nvec = NUMROC(conf%nstate,mb,ipcol_auxil,first_col,npcol_auxil)
    call DESCINIT(desc_vec,conf%nconf,conf%nstate,mb,mb,first_row,first_col,cntxt_auxil,MAX(1,mvec),info)
@@ -1208,9 +1209,11 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
      if( read_status /= 0 ) then
        call setup_configurations_ci(nelectron,spinstate,'CISD',conf_sd)
        conf_sd%nstate = conf%nstate
-       mvec_sd = NUMROC(conf_sd%nconf,mb,iprow_auxil,first_row,nprow_auxil)
-       nvec_sd = NUMROC(conf_sd%nstate,mb,ipcol_auxil,first_col,npcol_auxil)
-       call DESCINIT(desc_vec_sd,conf_sd%nconf,conf_sd%nstate,mb,mb,first_row,first_col,cntxt_auxil,MAX(1,mvec),info)
+       mb_sd = MIN( 128 , 2**FLOOR( LOG(REAL(conf_sd%nconf/nprow_auxil,dp)) / LOG(2.0_dp) ) )
+
+       mvec_sd = NUMROC(conf_sd%nconf,mb_sd,iprow_auxil,first_row,nprow_auxil)
+       nvec_sd = NUMROC(conf_sd%nstate,mb_sd,ipcol_auxil,first_col,npcol_auxil)
+       call DESCINIT(desc_vec_sd,conf_sd%nconf,conf_sd%nstate,mb_sd,mb_sd,first_row,first_col,cntxt_auxil,MAX(1,mvec),info)
        call clean_allocate('CISD eigenvectors',eigvec_sd,mvec_sd,nvec_sd)
        eigvec_sd(:,:) = 0.0_dp
        call diagonalize_davidson_ci(toldav,'',conf_sd,conf_sd%nstate,energy(1:conf_sd%nconf),desc_vec_sd,eigvec_sd)
@@ -1328,7 +1331,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  enddo
 
  neig_dim = neig_calc * dim_factor
- ncycle = 30
+ ncycle = 15
  mm     = 0
  mm_max = neig_dim * ncycle
  if( mm_max > conf%nconf ) then
@@ -1672,7 +1675,7 @@ subroutine read_eigvec_ci(filename,conf,desc_vec,eigvec,read_status)
 
  inquire(file=TRIM(filename),exist=file_exists)
  if( .NOT. file_exists ) then
-   write(stdout,'(a,a,a)') 'File ',TRIM(filename),' not found'
+   write(stdout,'(1x,a,a,a)') 'File ',TRIM(filename),' does not exist'
    return
  endif
 
