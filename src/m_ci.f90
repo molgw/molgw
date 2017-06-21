@@ -33,8 +33,6 @@ module m_ci
    integer             :: sz
    integer,allocatable :: sporb_occ(:,:)        ! spinor-orbitals with occupation equal to 1
    integer,allocatable :: excitation(:)
-   integer,allocatable :: llimit(:)
-   integer,allocatable :: ulimit(:)
  end type
 
  type(configurations),target,private :: conf_0  ! Neutral    configuration: N electrons
@@ -180,7 +178,7 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  character(len=*),intent(in)      :: ci_type_in
  type(configurations),intent(out) :: conf
 !=====
- integer :: iconf
+ integer :: iconf,jconf
  integer :: ispin(nelec),istate(nelec)
  integer :: sporb(nelec)
  integer :: isporb,jsporb,ksporb,lsporb,msporb,nsporb,osporb,psporb
@@ -256,8 +254,8 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
    conf%nconf = 0
    do jsporb=2*nfrozen_ci+1,2*nstate_ci
      do isporb=jsporb+1,2*nstate_ci
-       sporb(2*nfrozen_ci+1)  = isporb
-       sporb(2*nfrozen_ci+2)  = jsporb
+       sporb(2*nfrozen_ci+1)  = jsporb
+       sporb(2*nfrozen_ci+2)  = isporb
        ispin(:)  = sporb_to_spin(  sporb(:) )
        istate(:) = sporb_to_state( sporb(:) )
        if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
@@ -272,9 +270,9 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
    do ksporb=2*nfrozen_ci+1,2*nstate_ci
      do jsporb=ksporb+1,2*nstate_ci
        do isporb=jsporb+1,2*nstate_ci
-         sporb(2*nfrozen_ci+1) = isporb
+         sporb(2*nfrozen_ci+1) = ksporb
          sporb(2*nfrozen_ci+2) = jsporb
-         sporb(2*nfrozen_ci+3) = ksporb
+         sporb(2*nfrozen_ci+3) = isporb
          ispin(:)  = sporb_to_spin(  sporb(:) )
          istate(:) = sporb_to_state( sporb(:) )
          if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
@@ -291,10 +289,10 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
      do ksporb=lsporb+1,2*nstate_ci
        do jsporb=ksporb+1,2*nstate_ci
          do isporb=jsporb+1,2*nstate_ci
-           sporb(2*nfrozen_ci+1) = isporb
-           sporb(2*nfrozen_ci+2) = jsporb
-           sporb(2*nfrozen_ci+3) = ksporb
-           sporb(2*nfrozen_ci+4) = lsporb
+           sporb(2*nfrozen_ci+1) = lsporb
+           sporb(2*nfrozen_ci+2) = ksporb
+           sporb(2*nfrozen_ci+3) = jsporb
+           sporb(2*nfrozen_ci+4) = isporb
            ispin(:)  = sporb_to_spin(  sporb(:) )
            istate(:) = sporb_to_state( sporb(:) )
            if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
@@ -313,11 +311,11 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
        do ksporb=lsporb+1,2*nstate_ci
          do jsporb=ksporb+1,2*nstate_ci
            do isporb=jsporb+1,2*nstate_ci
-             sporb(2*nfrozen_ci+1) = isporb
-             sporb(2*nfrozen_ci+2) = jsporb
+             sporb(2*nfrozen_ci+1) = msporb
+             sporb(2*nfrozen_ci+2) = lsporb
              sporb(2*nfrozen_ci+3) = ksporb
-             sporb(2*nfrozen_ci+4) = lsporb
-             sporb(2*nfrozen_ci+5) = msporb
+             sporb(2*nfrozen_ci+4) = jsporb
+             sporb(2*nfrozen_ci+5) = isporb
              ispin(:)  = sporb_to_spin(  sporb(:) )
              istate(:) = sporb_to_state( sporb(:) )
              if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
@@ -338,12 +336,12 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
          do ksporb=lsporb+1,2*nstate_ci
            do jsporb=ksporb+1,2*nstate_ci
              do isporb=jsporb+1,2*nstate_ci
-               sporb(2*nfrozen_ci+1) = isporb
-               sporb(2*nfrozen_ci+2) = jsporb
-               sporb(2*nfrozen_ci+3) = ksporb
-               sporb(2*nfrozen_ci+4) = lsporb
-               sporb(2*nfrozen_ci+5) = msporb
-               sporb(2*nfrozen_ci+6) = nsporb
+               sporb(2*nfrozen_ci+1) = nsporb
+               sporb(2*nfrozen_ci+2) = msporb
+               sporb(2*nfrozen_ci+3) = lsporb
+               sporb(2*nfrozen_ci+4) = ksporb
+               sporb(2*nfrozen_ci+5) = jsporb
+               sporb(2*nfrozen_ci+6) = isporb
                ispin(:)  = sporb_to_spin(  sporb(:) )
                istate(:) = sporb_to_state( sporb(:) )
                if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
@@ -366,13 +364,13 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
            do ksporb=lsporb+1,2*nstate_ci
              do jsporb=ksporb+1,2*nstate_ci
                do isporb=jsporb+1,2*nstate_ci
-                 sporb(2*nfrozen_ci+1) = isporb
-                 sporb(2*nfrozen_ci+2) = jsporb
-                 sporb(2*nfrozen_ci+3) = ksporb
+                 sporb(2*nfrozen_ci+1) = osporb
+                 sporb(2*nfrozen_ci+2) = nsporb
+                 sporb(2*nfrozen_ci+3) = msporb
                  sporb(2*nfrozen_ci+4) = lsporb
-                 sporb(2*nfrozen_ci+5) = msporb
-                 sporb(2*nfrozen_ci+6) = nsporb
-                 sporb(2*nfrozen_ci+7) = osporb
+                 sporb(2*nfrozen_ci+5) = ksporb
+                 sporb(2*nfrozen_ci+6) = jsporb
+                 sporb(2*nfrozen_ci+7) = isporb
                  ispin(:)  = sporb_to_spin(  sporb(:) )
                  istate(:) = sporb_to_state( sporb(:) )
                  if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
@@ -397,14 +395,14 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
              do ksporb=lsporb+1,2*nstate_ci
                do jsporb=ksporb+1,2*nstate_ci
                  do isporb=jsporb+1,2*nstate_ci
-                   sporb(2*nfrozen_ci+1) = isporb
-                   sporb(2*nfrozen_ci+2) = jsporb
-                   sporb(2*nfrozen_ci+3) = ksporb
-                   sporb(2*nfrozen_ci+4) = lsporb
-                   sporb(2*nfrozen_ci+5) = msporb
-                   sporb(2*nfrozen_ci+6) = nsporb
-                   sporb(2*nfrozen_ci+7) = osporb
-                   sporb(2*nfrozen_ci+8) = psporb
+                   sporb(2*nfrozen_ci+1) = psporb
+                   sporb(2*nfrozen_ci+2) = osporb
+                   sporb(2*nfrozen_ci+3) = nsporb
+                   sporb(2*nfrozen_ci+4) = msporb
+                   sporb(2*nfrozen_ci+5) = lsporb
+                   sporb(2*nfrozen_ci+6) = ksporb
+                   sporb(2*nfrozen_ci+7) = jsporb
+                   sporb(2*nfrozen_ci+8) = isporb
                    ispin(:)  = sporb_to_spin(  sporb(:) )
                    istate(:) = sporb_to_state( sporb(:) )
                    if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
@@ -452,8 +450,8 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
    case(2)
      do jsporb=2*nfrozen_ci+1,2*nstate_ci
        do isporb=jsporb+1,2*nstate_ci
-         sporb(2*nfrozen_ci+1)  = isporb
-         sporb(2*nfrozen_ci+2)  = jsporb
+         sporb(2*nfrozen_ci+1)  = jsporb
+         sporb(2*nfrozen_ci+2)  = isporb
          ispin(:)  = sporb_to_spin( sporb(:) )
          istate(:) = sporb_to_state( sporb(:) )
          if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
@@ -470,9 +468,9 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
      do ksporb=2*nfrozen_ci+1,2*nstate_ci
        do jsporb=ksporb+1,2*nstate_ci
          do isporb=jsporb+1,2*nstate_ci
-           sporb(2*nfrozen_ci+1) = isporb
+           sporb(2*nfrozen_ci+1) = ksporb
            sporb(2*nfrozen_ci+2) = jsporb
-           sporb(2*nfrozen_ci+3) = ksporb
+           sporb(2*nfrozen_ci+3) = isporb
            ispin(:)  = sporb_to_spin( sporb(:) )
            istate(:) = sporb_to_state( sporb(:) )
            if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
@@ -490,10 +488,10 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
        do ksporb=lsporb+1,2*nstate_ci
          do jsporb=ksporb+1,2*nstate_ci
            do isporb=jsporb+1,2*nstate_ci
-             sporb(2*nfrozen_ci+1) = isporb
-             sporb(2*nfrozen_ci+2) = jsporb
-             sporb(2*nfrozen_ci+3) = ksporb
-             sporb(2*nfrozen_ci+4) = lsporb
+             sporb(2*nfrozen_ci+1) = lsporb
+             sporb(2*nfrozen_ci+2) = ksporb
+             sporb(2*nfrozen_ci+3) = jsporb
+             sporb(2*nfrozen_ci+4) = isporb
              ispin(:)  = sporb_to_spin( sporb(:) )
              istate(:) = sporb_to_state( sporb(:) )
              if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
@@ -513,11 +511,11 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
          do ksporb=lsporb+1,2*nstate_ci
            do jsporb=ksporb+1,2*nstate_ci
              do isporb=jsporb+1,2*nstate_ci
-               sporb(2*nfrozen_ci+1) = isporb
-               sporb(2*nfrozen_ci+2) = jsporb
+               sporb(2*nfrozen_ci+1) = msporb
+               sporb(2*nfrozen_ci+2) = lsporb
                sporb(2*nfrozen_ci+3) = ksporb
-               sporb(2*nfrozen_ci+4) = lsporb
-               sporb(2*nfrozen_ci+5) = msporb
+               sporb(2*nfrozen_ci+4) = jsporb
+               sporb(2*nfrozen_ci+5) = isporb
                ispin(:)  = sporb_to_spin( sporb(:) )
                istate(:) = sporb_to_state( sporb(:) )
                if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
@@ -539,12 +537,12 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
            do ksporb=lsporb+1,2*nstate_ci
              do jsporb=ksporb+1,2*nstate_ci
                do isporb=jsporb+1,2*nstate_ci
-                 sporb(2*nfrozen_ci+1) = isporb
-                 sporb(2*nfrozen_ci+2) = jsporb
-                 sporb(2*nfrozen_ci+3) = ksporb
-                 sporb(2*nfrozen_ci+4) = lsporb
-                 sporb(2*nfrozen_ci+5) = msporb
-                 sporb(2*nfrozen_ci+6) = nsporb
+                 sporb(2*nfrozen_ci+1) = nsporb
+                 sporb(2*nfrozen_ci+2) = msporb
+                 sporb(2*nfrozen_ci+3) = lsporb
+                 sporb(2*nfrozen_ci+4) = ksporb
+                 sporb(2*nfrozen_ci+5) = jsporb
+                 sporb(2*nfrozen_ci+6) = isporb
                  ispin(:)  = sporb_to_spin( sporb(:) )
                  istate(:) = sporb_to_state( sporb(:) )
                  if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
@@ -568,13 +566,13 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
              do ksporb=lsporb+1,2*nstate_ci
                do jsporb=ksporb+1,2*nstate_ci
                  do isporb=jsporb+1,2*nstate_ci
-                   sporb(2*nfrozen_ci+1) = isporb
-                   sporb(2*nfrozen_ci+2) = jsporb
-                   sporb(2*nfrozen_ci+3) = ksporb
+                   sporb(2*nfrozen_ci+1) = osporb
+                   sporb(2*nfrozen_ci+2) = nsporb
+                   sporb(2*nfrozen_ci+3) = msporb
                    sporb(2*nfrozen_ci+4) = lsporb
-                   sporb(2*nfrozen_ci+5) = msporb
-                   sporb(2*nfrozen_ci+6) = nsporb
-                   sporb(2*nfrozen_ci+7) = osporb
+                   sporb(2*nfrozen_ci+5) = ksporb
+                   sporb(2*nfrozen_ci+6) = jsporb
+                   sporb(2*nfrozen_ci+7) = isporb
                    ispin(:)  = sporb_to_spin( sporb(:) )
                    istate(:) = sporb_to_state( sporb(:) )
                    if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
@@ -600,14 +598,14 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
                do ksporb=lsporb+1,2*nstate_ci
                  do jsporb=ksporb+1,2*nstate_ci
                    do isporb=jsporb+1,2*nstate_ci
-                     sporb(2*nfrozen_ci+1) = isporb
-                     sporb(2*nfrozen_ci+2) = jsporb
-                     sporb(2*nfrozen_ci+3) = ksporb
-                     sporb(2*nfrozen_ci+4) = lsporb
-                     sporb(2*nfrozen_ci+5) = msporb
-                     sporb(2*nfrozen_ci+6) = nsporb
-                     sporb(2*nfrozen_ci+7) = osporb
-                     sporb(2*nfrozen_ci+8) = psporb
+                     sporb(2*nfrozen_ci+1) = psporb
+                     sporb(2*nfrozen_ci+2) = osporb
+                     sporb(2*nfrozen_ci+3) = nsporb
+                     sporb(2*nfrozen_ci+4) = msporb
+                     sporb(2*nfrozen_ci+5) = lsporb
+                     sporb(2*nfrozen_ci+6) = ksporb
+                     sporb(2*nfrozen_ci+7) = jsporb
+                     sporb(2*nfrozen_ci+8) = isporb
                      ispin(:)  = sporb_to_spin( sporb(:) )
                      istate(:) = sporb_to_state( sporb(:) )
                      if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
@@ -633,6 +631,7 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  do iconf=1,conf%nconf
    conf%excitation(iconf) = COUNT( sporb_to_on(conf%sporb_occ(:,iconf)) - on_0(:) == 1 )
  enddo
+
 
  write(stdout,'(/,1x,a,i2,a,i2,a,i8)') 'Electron count: ',conf%nelec, &
                                        '         Active electrons: ',conf%nelec-2*nfrozen_ci, &
@@ -669,7 +668,7 @@ end subroutine build_1e_hamiltonian
 
 
 !==================================================================
-pure function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
+function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
  implicit none
 
  integer,intent(in) :: iisporb(:)
@@ -1413,10 +1412,12 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
    allocate(h_iblock(iconf_min:iconf_max,mvec))
    allocate(ab_iblock(iconf_min:iconf_max,neig_dim))
 
-   forall(iconf=iconf_min:iconf_max,kconf=1:mvec)
-     h_iblock(iconf,kconf) = hamiltonian_ci(conf%sporb_occ(:,iconf), &
-                                            conf%sporb_occ(:,indxl2g_pure(kconf,mb,iprow,first_row,nprow)))
-   end forall
+   do kconf=1,mvec
+     do iconf=iconf_min,iconf_max
+       h_iblock(iconf,kconf) = hamiltonian_ci(conf%sporb_occ(:,iconf), &
+                                              conf%sporb_occ(:,indxl2g_pure(kconf,mb,iprow,first_row,nprow)))
+     enddo
+   enddo
    sparsity = sparsity + COUNT( ABS(h_iblock(:,:)) > 1.0e-10_dp )
 
    !ab_iblock(:,:) = MATMUL( h_iblock(:,:) , bb(:,mm+1:mm+neig_dim) )
@@ -1527,10 +1528,12 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
      allocate(ab_iblock(iconf_min:iconf_max,neig_dim))
 
      !call start_clock(timing_tmp5)
-     forall(iconf=iconf_min:iconf_max,kconf=1:mvec)
-       h_iblock(iconf,kconf) = hamiltonian_ci(conf%sporb_occ(:,iconf), &
-                                              conf%sporb_occ(:,indxl2g_pure(kconf,mb,iprow,first_row,nprow)))
-     end forall
+     do kconf=1,mvec
+       do iconf=iconf_min,iconf_max
+         h_iblock(iconf,kconf) = hamiltonian_ci(conf%sporb_occ(:,iconf), &
+                                                conf%sporb_occ(:,indxl2g_pure(kconf,mb,iprow,first_row,nprow)))
+       enddo
+     enddo
      !call stop_clock(timing_tmp5)
 
      !call start_clock(timing_tmp6)
@@ -1719,6 +1722,7 @@ subroutine read_eigvec_ci(filename,conf,desc_vec,eigvec,read_status)
 
  if( nconf_read /= conf%nconf .OR. nstate_read /= conf%nstate ) then
    call issue_warning(TRIM(filename)//' file not compatible: ignore it')
+   close(cifile)
    return
  endif
 
