@@ -51,6 +51,13 @@ module m_ci
  real(dp),allocatable,private        :: eigvec_p(:,:)
  real(dp),allocatable,private        :: eigvec_m(:,:)
 
+ type, private ::  sparse_matrix
+   real(dp)             :: nnz_total
+   real(dp),allocatable :: val(:)
+   integer,allocatable  :: row_ind(:)
+   integer,allocatable  :: col_ptr(:)
+ end type
+
 contains 
 
 
@@ -866,6 +873,61 @@ end subroutine build_ci_hamiltonian
 
 
 !==================================================================
+subroutine build_ci_hamiltonian_sparse(conf,desc,h)
+ implicit none
+
+ type(configurations),intent(in)   :: conf
+ integer,intent(in)                :: desc(NDEL)
+ type(sparse_matrix),intent(inout) :: h
+!=====
+ integer :: nnz_max,ii,mvec
+ integer :: iconf,jconf
+ integer :: iconf_global,jconf_global
+ integer :: cntxt,nprow,npcol,iprow,ipcol
+ real(dp) :: h_ij
+!=====
+
+ call start_clock(timing_ham_ci)
+
+ write(stdout,'(1x,a)') 'Build CI hamiltonian with sparse storage'
+ !
+ ! Follow the second-quantization notations from Hellgaker book Chapter 1.
+ ! Use occupation number vectors on_i(:) and on_j(:) filled with 0's and three 1's.
+ !
+
+ nnz_max = SIZE(h%val)
+
+ cntxt = desc(CTXT_)
+ call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+ mvec = NUMROC(conf%nconf,desc(MB_),iprow,first_row,nprow)
+
+ ii = 0
+ h%col_ptr(1) = ii + 1
+ do jconf=1,mvec
+   jconf_global = rowindex_local_to_global(desc,jconf)
+
+   do iconf=1,conf%nconf
+
+     h_ij  = hamiltonian_ci(conf%sporb_occ(:,iconf),conf%sporb_occ(:,jconf_global))
+
+     if( ABS(h_ij) < 1.e-8_dp ) cycle
+
+     ii = ii + 1
+     if( ii > nnz_max ) call die('too many non-zero elements')
+     h%val(ii) = h_ij
+     h%row_ind(ii) = iconf
+
+   enddo
+   h%col_ptr(jconf+1) = ii + 1
+
+ enddo
+
+ call stop_clock(timing_ham_ci)
+
+end subroutine build_ci_hamiltonian_sparse
+
+
+!==================================================================
 subroutine full_ci_nelectrons_selfenergy()
  implicit none
 
@@ -1137,7 +1199,7 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  integer,intent(in)         :: nelectron,spinstate
  real(dp),intent(in)        :: nuc_nuc
 !=====
- logical,parameter            :: incore=.FALSE.
+ logical,parameter            :: incore=.TRUE.
  character(len=12)            :: filename_eigvec
  integer,parameter            :: mb_max=512
  integer                      :: mb_sd,mb
@@ -1156,6 +1218,9 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  real(dp),allocatable         :: eigvec_sd(:,:)
  integer                      :: desc_vec_sd(NDEL)
  integer                      :: mvec_sd,nvec_sd
+
+ integer,parameter            :: nnz_max=10000000
+ type(sparse_matrix)          :: h
 !=====
 
  call start_clock(timing_full_ci)
@@ -1186,7 +1251,7 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  allocate(energy(conf%nconf))
  ehf = hamiltonian_ci(conf%sporb_occ(:,1),conf%sporb_occ(:,1))
 
- if( incore .OR. conf%nstate == conf%nconf ) then
+ if( conf%nstate == conf%nconf ) then
    mham = NUMROC(conf%nconf,block_row,iprow_sd,first_row,nprow_sd)
    nham = NUMROC(conf%nconf,block_col,ipcol_sd,first_col,npcol_sd)
    call DESCINIT(desc_ham,conf%nconf,conf%nconf,block_row,block_col,first_row,first_col,cntxt_sd,MAX(1,mham),info)
@@ -1226,7 +1291,23 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  else
    write(stdout,'(1x,a,i8,a,i8)') 'Partial diagonalization of CI hamiltonian',conf%nconf,' x ',conf%nconf
    if( incore ) then
-     call diagonalize_davidson_sca(toldav,desc_ham,h_ci,conf%nstate,energy,desc_vec,eigvec)
+!     call diagonalize_davidson_sca(toldav,desc_ham,h_ci,conf%nstate,energy,desc_vec,eigvec)
+     write(stdout,'(1x,a,i12)') 'Hard coded maximum of non-zero terms: ',nnz_max
+     call clean_allocate('Sparce CI values',h%val,nnz_max)
+     call clean_allocate('Sparce CI indexes',h%row_ind,nnz_max)
+     allocate(h%col_ptr(conf%nconf+1))
+
+     call build_ci_hamiltonian_sparse(conf,desc_vec,h)
+
+     h%nnz_total = REAL( h%col_ptr(mvec+1) ,dp)
+     call xsum_auxil(h%nnz_total)
+     write(stdout,*) 'Ratio        :',h%nnz_total/REAL(conf%nconf,dp)**2
+
+     call diagonalize_davidson_ci(toldav,filename_eigvec,conf,conf%nstate,energy,desc_vec,eigvec,h)
+     call clean_deallocate('Sparce CI values',h%val)
+     call clean_deallocate('Sparce CI indexes',h%row_ind)
+     deallocate(h%col_ptr)
+
    else
 
    
@@ -1294,7 +1375,7 @@ end subroutine full_ci_nelectrons_on
 
 
 !=========================================================================
-subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc_vec,eigvec)
+subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc_vec,eigvec,h)
  implicit none
 
  real(dp),intent(in)             :: tolerance
@@ -1304,6 +1385,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  integer,intent(in)              :: desc_vec(NDEL)
  real(dp),intent(out)            :: eigval(conf%nconf)
  real(dp),intent(out)            :: eigvec(:,:)
+ type(sparse_matrix),intent(in),optional :: h
 !=====
  integer,parameter    :: dim_factor=1
  integer              :: neig_dim
@@ -1331,9 +1413,13 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  integer              :: cntxt,nprow,npcol,iprow,ipcol
  integer              :: mb,nb,rdest,mb_local
  real(dp)             :: sparsity
+ integer              :: ii
 !=====
 
  write(stdout,'(/,1x,a,i5)') 'Davidson diago for eigenvector count: ',neig_calc
+ if( PRESENT(h) ) then
+   write(stdout,*) 'Sparse matrix implementation'
+ endif
 
  mvec = SIZE(eigvec(:,:),DIM=1)
  nvec = SIZE(eigvec(:,:),DIM=2)
@@ -1412,12 +1498,24 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
    allocate(h_iblock(iconf_min:iconf_max,mvec))
    allocate(ab_iblock(iconf_min:iconf_max,neig_dim))
 
-   do kconf=1,mvec
-     do iconf=iconf_min,iconf_max
-       h_iblock(iconf,kconf) = hamiltonian_ci(conf%sporb_occ(:,iconf), &
-                                              conf%sporb_occ(:,indxl2g_pure(kconf,mb,iprow,first_row,nprow)))
+   if( .NOT. PRESENT(h) ) then
+     do kconf=1,mvec
+       kconf_global = indxl2g_pure(kconf,mb,iprow,first_row,nprow)
+       do iconf=iconf_min,iconf_max
+         h_iblock(iconf,kconf) = hamiltonian_ci(conf%sporb_occ(:,iconf), &
+                                                conf%sporb_occ(:,kconf_global))
+       enddo
      enddo
-   enddo
+   else
+     h_iblock(:,:) = 0.0_dp
+     do kconf=1,mvec
+       kconf_global = indxl2g_pure(kconf,mb,iprow,first_row,nprow)
+       do ii=h%col_ptr(kconf),h%col_ptr(kconf+1)-1
+         if( h%row_ind(ii) >= iconf_min .AND. h%row_ind(ii) <= iconf_max ) &
+           h_iblock(h%row_ind(ii), kconf) = h%val(ii)
+       enddo
+     enddo
+   endif
    sparsity = sparsity + COUNT( ABS(h_iblock(:,:)) > 1.0e-10_dp )
 
    !ab_iblock(:,:) = MATMUL( h_iblock(:,:) , bb(:,mm+1:mm+neig_dim) )
@@ -1528,12 +1626,23 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
      allocate(ab_iblock(iconf_min:iconf_max,neig_dim))
 
      !call start_clock(timing_tmp5)
-     do kconf=1,mvec
-       do iconf=iconf_min,iconf_max
-         h_iblock(iconf,kconf) = hamiltonian_ci(conf%sporb_occ(:,iconf), &
-                                                conf%sporb_occ(:,indxl2g_pure(kconf,mb,iprow,first_row,nprow)))
+     if( .NOT. PRESENT(h) ) then
+       do kconf=1,mvec
+         do iconf=iconf_min,iconf_max
+           h_iblock(iconf,kconf) = hamiltonian_ci(conf%sporb_occ(:,iconf), &
+                                                  conf%sporb_occ(:,indxl2g_pure(kconf,mb,iprow,first_row,nprow)))
+         enddo
        enddo
-     enddo
+     else
+       h_iblock(:,:) = 0.0_dp
+       do kconf=1,mvec
+         kconf_global = indxl2g_pure(kconf,mb,iprow,first_row,nprow)
+         do ii=h%col_ptr(kconf),h%col_ptr(kconf+1)-1
+           if( h%row_ind(ii) >= iconf_min .AND. h%row_ind(ii) <= iconf_max ) &
+             h_iblock(h%row_ind(ii), kconf) = h%val(ii)
+         enddo
+       enddo
+     endif
      !call stop_clock(timing_tmp5)
 
      !call start_clock(timing_tmp6)
