@@ -9,6 +9,7 @@
  mixing_scheme='simple'
 
  postscf='ci'
+ ci_nstate=1000
  length_unit='bohr'
 /
 1   0.7 0. 0.

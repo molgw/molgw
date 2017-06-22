@@ -90,6 +90,7 @@ module m_inputparam
  integer,protected                :: nstep
  integer,protected                :: nstep_gw
  integer,protected                :: ci_nstate
+ integer,protected                :: ci_nstate_self
  integer,protected                :: nscf
  real(dp),protected               :: tolforce
  real(dp),protected               :: spin_fact

@@ -902,9 +902,19 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='ci_nstate'
 vl[i].family   ='post'
-vl[i].default  =1000000
+vl[i].default  = 1
 vl[i].datatype ='integer'
-vl[i].comment  ='Selects how many CI states should be calculated in the diagonalization. If ci_nstate is equal to the number of configuration, \
+vl[i].comment  ='Selects how many CI states should be calculated in the diagonalization. If ci_nstate is lower than the number of configuration, \
+ a Davidson partial diagonalization is performed, else a full (SCA)LAPACK diagonalization is triggered.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='ci_nstate_self'
+vl[i].family   ='post'
+vl[i].default  = 1
+vl[i].datatype ='integer'
+vl[i].comment  ='Selects how many CI states in the N+1 or N-1 electron calculations. If ci_nstate_self is lower than the number of configuration, \
  a Davidson partial diagonalization is performed, else a full (SCA)LAPACK diagonalization is triggered.'
 
 

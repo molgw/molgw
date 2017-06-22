@@ -6,6 +6,7 @@
  postscf='ci_selfenergy'
  ci_greens_function='holes'
  ci_type='CISD'
+ ci_nstate_self=6
  
  nvirtualg=10
 

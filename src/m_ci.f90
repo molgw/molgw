@@ -1243,9 +1243,9 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
 
  call setup_configurations_ci(nelectron,spinstate,ci_type,conf)
  if( save_coefficients == 0 ) then
-   conf%nstate = 1                         ! MIN(ci_nstate,conf%nconf)
+   conf%nstate = MIN(ci_nstate,conf%nconf)
  else
-   conf%nstate = MIN(ci_nstate,conf%nconf) ! conf%nconf
+   conf%nstate = MIN(ci_nstate_self,conf%nconf)
  endif
 
  allocate(energy(conf%nconf))
