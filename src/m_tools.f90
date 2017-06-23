@@ -334,16 +334,16 @@ end subroutine diagonalize_generalized_sym
 
 
 !=========================================================================
-subroutine diagonalize_davidson(tolerance,ham,neig,eigval,eigvec)
+subroutine diagonalize_davidson(tolerance,nstep,ham,neig,eigval,eigvec)
  implicit none
 
  real(dp),intent(in)  :: tolerance
+ integer,intent(inout) :: nstep
  real(dp),intent(in)  :: ham(:,:)
  integer,intent(in)   :: neig
  real(dp),intent(out) :: eigval(:)
  real(dp),intent(out) :: eigvec(:,:)
 !=====
- integer              :: ncycle
  integer              :: nmat,imat
  integer              :: mm,mm_max
  integer              :: ieig,icycle
@@ -358,12 +358,11 @@ subroutine diagonalize_davidson(tolerance,ham,neig,eigval,eigvec)
  eigval(:) = 0.0_dp
 
 
- ncycle = 20
  mm     = neig
- mm_max = mm * ncycle
+ mm_max = mm * nstep
  if( mm_max > nmat ) then
-   ncycle = nmat / neig
-   mm_max = mm * ncycle
+   nstep = nmat / neig
+   mm_max = mm * nstep
  endif
 
  allocate(bb(nmat,mm_max))
@@ -384,7 +383,7 @@ subroutine diagonalize_davidson(tolerance,ham,neig,eigval,eigvec)
  ab(:,1:mm) = MATMUL( ham(:,:) , bb(:,1:mm) )
 
 
- do icycle=1,ncycle
+ do icycle=1,nstep
 
    mm = icycle * neig
    write(stdout,*) 'icycle mm',icycle,mm
@@ -411,7 +410,7 @@ subroutine diagonalize_davidson(tolerance,ham,neig,eigval,eigvec)
 
    !
    ! Convergence reached... or not
-   if( icycle == ncycle .OR. residual_norm < tolerance ) then
+   if( icycle == nstep .OR. residual_norm < tolerance ) then
      eigval(1:neig) = lambda(1:neig)
      eigvec(:,1:neig) = MATMUL( bb(:,1:mm) , alphavec(1:mm,1:neig) )
      deallocate(lambda,alphavec)

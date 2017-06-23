@@ -404,7 +404,16 @@ vl[i].keyword  ='toldav'
 vl[i].family   ='post'
 vl[i].default  =1.0e-4
 vl[i].datatype ='real'
-vl[i].comment  ='Sets the tolerance criterium for the maximum norm of the residual in the Davidson diagonalization of TD-DFT or BSE.'
+vl[i].comment  ='Sets the tolerance criterium for the maximum norm of the residual in the Davidson diagonalization of TD-DFT, BSE, and full CI.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='nstep_dav'
+vl[i].family   ='post'
+vl[i].default  =15
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the maximum number of Davidson partial diagonalization steps. Used for TD-DFT, BSE, and full CI.'
 
 #================================
 vl.append(variable())

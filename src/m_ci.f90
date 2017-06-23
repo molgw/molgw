@@ -1370,7 +1370,7 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
 
      h%nnz_total = REAL( h%col_ptr(mvec+1) ,dp)
      call xsum_auxil(h%nnz_total)
-     write(stdout,*) 'Ratio        :',h%nnz_total/REAL(conf%nconf,dp)**2
+     write(stdout,'(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ',h%nnz_total / REAL(conf%nconf,dp)**2 * 100.0_dp
 
      call read_eigvec_ci(filename_eigvec,conf,desc_vec,eigvec,read_status)
 
@@ -1464,8 +1464,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  type(sparse_matrix),intent(in),optional :: h
 !=====
  integer,parameter    :: dim_factor=1
- integer              :: neig_dim
- integer              :: ncycle
+ integer              :: neig_dim,nstep
  integer              :: iconf,jconf,kconf,iconf_global,kconf_global
  integer              :: mm,mm_max
  integer              :: ieig,icycle
@@ -1488,7 +1487,6 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  real(dp)             :: rtmp
  integer              :: cntxt,nprow,npcol,iprow,ipcol
  integer              :: mb,nb,rdest,mb_local
- real(dp)             :: sparsity
  integer              :: ii
 !=====
 
@@ -1521,12 +1519,14 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  enddo
 
  neig_dim = neig_calc * dim_factor
- ncycle = 15
+ nstep = nstep_dav
  mm     = 0
- mm_max = neig_dim * ncycle
+ mm_max = neig_dim * nstep
  if( mm_max > conf%nconf ) then
-   ncycle = conf%nconf / neig_dim
-   mm_max = neig_dim * ncycle
+   nstep = conf%nconf / neig_dim
+   mm_max = neig_dim * nstep
+   write(stdout,'(1x,a)')    'Diagonalization problem is too small'
+   write(stdout,'(1x,a,i4)') 'Number of Davidson steps has been reduced to ',nstep
  endif
 
  mbb = NUMROC(conf%nconf,mb,iprow,first_row,nprow)
@@ -1563,7 +1563,6 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  call orthogonalize_sca(desc_bb,1,neig_dim,bb)
 
 
- sparsity = 0.0_dp
 
  ! Block per block algo
  do iconf_min=1,conf%nconf,mb
@@ -1593,7 +1592,6 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
        enddo
      enddo
    endif
-   sparsity = sparsity + COUNT( ABS(h_iblock(:,:)) > 1.0e-10_dp )
 
    !ab_iblock(:,:) = MATMUL( h_iblock(:,:) , bb(:,mm+1:mm+neig_dim) )
    call DGEMM('N','N',mb_local,neig_dim,mvec,     &
@@ -1610,11 +1608,9 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
    deallocate(ab_iblock)
  enddo
 
- call xsum_auxil(sparsity)
- write(stdout,'(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ',sparsity / REAL(conf%nconf,dp) / REAL(conf%nconf,dp) * 100.0_dp
 
 
- do icycle=1,ncycle
+ do icycle=1,nstep
 
    mm = icycle * neig_dim
 
@@ -1668,7 +1664,12 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
 
    !
    ! Convergence reached... or not
-   if( icycle == ncycle .OR. residual_norm < tolerance ) then
+   if( residual_norm < tolerance ) then
+     write(stdout,'(1x,a,es12.4)') 'Desired accuracy has been reached: ',toldav
+     exit
+   endif
+   if( icycle == nstep ) then
+     write(stdout,'(1x,a,es12.4)') 'Maximum number of Davidson steps performed without reaching desired accuracy: ',toldav
      exit
    endif
 

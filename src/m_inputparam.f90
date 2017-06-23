@@ -114,6 +114,7 @@ module m_inputparam
  real(dp),protected               :: diis_switch
  real(dp),protected               :: tolscf
  real(dp),protected               :: toldav
+ integer,protected                :: nstep_dav
  real(dp),protected               :: min_overlap
  real(dp),protected               :: electrons,charge
  real(dp),protected               :: temperature
