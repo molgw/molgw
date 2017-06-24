@@ -53,6 +53,7 @@ module m_ci
 
  type, private ::  sparse_matrix
    real(dp)             :: nnz_total
+   integer              :: nnz
    real(dp),allocatable :: val(:)
    integer,allocatable  :: row_ind(:)
    integer,allocatable  :: col_ptr(:)
@@ -676,6 +677,38 @@ end subroutine build_1e_hamiltonian
 
 
 !==================================================================
+pure function hamiltonian_ci_is_zero(iisporb,jjsporb) RESULT(h_ci_ij_is_zero)
+ implicit none
+
+ integer,intent(in) :: iisporb(:)
+ integer,intent(in) :: jjsporb(:)
+ logical            :: h_ci_ij_is_zero
+!=====
+ integer :: nelec
+ integer :: ielec,jelec
+ integer :: excitation_order,same_sporb
+!=====
+
+ nelec = SIZE(iisporb)
+
+ same_sporb = 0
+ do ielec=1,nelec
+   do jelec=1,nelec
+     if( iisporb(ielec) == jjsporb(jelec) ) then
+       same_sporb = same_sporb + 1
+       exit
+     endif
+   enddo
+ enddo
+
+ excitation_order = nelec - same_sporb
+
+ h_ci_ij_is_zero = ( excitation_order > 2 )
+
+end function hamiltonian_ci_is_zero
+
+
+!==================================================================
 function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
  implicit none
 
@@ -948,7 +981,7 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
  integer,intent(in)                :: desc(NDEL)
  type(sparse_matrix),intent(inout) :: h
 !=====
- integer :: nnz_max,ii,mvec
+ integer :: ii,mvec
  integer :: iconf,jconf
  integer :: iconf_global,jconf_global
  integer :: cntxt,nprow,npcol,iprow,ipcol
@@ -963,11 +996,27 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
  ! Use occupation number vectors on_i(:) and on_j(:) filled with 0's and three 1's.
  !
 
- nnz_max = SIZE(h%val)
 
  cntxt = desc(CTXT_)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
  mvec = NUMROC(conf%nconf,desc(MB_),iprow,first_row,nprow)
+
+ !
+ ! Find the maximum size of the sparse CI hamiltonian
+ h%nnz = 0
+ do jconf=1,mvec
+   jconf_global = rowindex_local_to_global(desc,jconf)
+   do iconf=1,conf%nconf
+     if( .NOT. hamiltonian_ci_is_zero(conf%sporb_occ(:,iconf),conf%sporb_occ(:,jconf_global)) ) h%nnz = h%nnz + 1
+   enddo
+ enddo
+ h%nnz_total = REAL( h%nnz , dp )
+ call xsum_auxil(h%nnz_total)
+ write(stdout,'(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ',h%nnz_total / REAL(conf%nconf,dp)**2 * 100.0_dp
+
+ call clean_allocate('Sparce CI values',h%val,h%nnz)
+ call clean_allocate('Sparce CI indexes',h%row_ind,h%nnz)
+ allocate(h%col_ptr(conf%nconf+1))
 
  ii = 0
  h%col_ptr(1) = ii + 1
@@ -981,7 +1030,6 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
      if( ABS(h_ij) < 1.e-8_dp ) cycle
 
      ii = ii + 1
-     if( ii > nnz_max ) call die('too many non-zero elements')
      h%val(ii) = h_ij
      h%row_ind(ii) = iconf
 
@@ -989,6 +1037,11 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
    h%col_ptr(jconf+1) = ii + 1
 
  enddo
+
+ h%nnz_total = REAL( h%col_ptr(mvec+1) ,dp)
+ call xsum_auxil(h%nnz_total)
+ write(stdout,'(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ',h%nnz_total / REAL(conf%nconf,dp)**2 * 100.0_dp
+
 
  call stop_clock(timing_ham_ci)
 
@@ -1114,7 +1167,8 @@ subroutine full_ci_nelectrons_selfenergy()
      es_occ(is) = energy_0(1) - energy_p(is)
      !write(100,*) is,es_occ(is) * Ha_eV
    enddo
-   write(stdout,'(1x,a,f12.6,4x,f12.6,/)')   '-IP (eV) and Weight: ',es_occ(1) * Ha_eV,fs_occ(2*nfrozen_ci+conf_0%nelec,1)**2
+   write(stdout,'(1x,a,f12.6,4x,f12.6)') '-IP (eV) and Weight: ',es_occ(1) * Ha_eV,fs_occ(2*nfrozen_ci+conf_0%nelec,1)**2
+   write(stdout,'(1x,a,f12.6,/)')        'Lowest excit.  (eV): ',es_occ(ns_occ) * Ha_eV
 
    deallocate(iisporb,iispin,iistate)
 
@@ -1287,7 +1341,6 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  integer                      :: desc_vec_sd(NDEL)
  integer                      :: mvec_sd,nvec_sd
 
- integer,parameter            :: nnz_max=10000000
  type(sparse_matrix)          :: h
 !=====
 
@@ -1361,16 +1414,8 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
    write(stdout,'(1x,a,i8,a,i8)') 'Partial diagonalization of CI hamiltonian',conf%nconf,' x ',conf%nconf
    if( incore ) then
 !     call diagonalize_davidson_sca(toldav,desc_ham,h_ci,conf%nstate,energy,desc_vec,eigvec)
-     write(stdout,'(1x,a,i12)') 'Hard coded maximum of non-zero terms: ',nnz_max
-     call clean_allocate('Sparce CI values',h%val,nnz_max)
-     call clean_allocate('Sparce CI indexes',h%row_ind,nnz_max)
-     allocate(h%col_ptr(conf%nconf+1))
 
      call build_ci_hamiltonian_sparse(conf,desc_vec,h)
-
-     h%nnz_total = REAL( h%col_ptr(mvec+1) ,dp)
-     call xsum_auxil(h%nnz_total)
-     write(stdout,'(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ',h%nnz_total / REAL(conf%nconf,dp)**2 * 100.0_dp
 
      call read_eigvec_ci(filename_eigvec,conf,desc_vec,eigvec,read_status)
 
@@ -1465,15 +1510,12 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
 !=====
  integer,parameter    :: dim_factor=1
  integer              :: neig_dim,nstep
- integer              :: iconf,jconf,kconf,iconf_global,kconf_global
+ integer              :: iconf
  integer              :: mm,mm_max
  integer              :: ieig,icycle
  integer              :: mvec,nvec
  real(dp),allocatable :: bb(:,:),atilde(:,:),ab(:,:),qq(:,:)
  real(dp),allocatable :: lambda(:),alphavec(:,:)
- real(dp),allocatable :: ab_i(:),ab_iblock(:,:)
- real(dp),allocatable :: h_i(:),h_iblock(:,:)
- integer              :: iconf_min,iconf_max
  real(dp)             :: residual_norm,norm2_i
  integer              :: desc_bb(NDEL)
  integer              :: mbb,nbb
@@ -1486,14 +1528,13 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  real(dp)             :: ham_diag(conf%nconf)
  real(dp)             :: rtmp
  integer              :: cntxt,nprow,npcol,iprow,ipcol
- integer              :: mb,nb,rdest,mb_local
- integer              :: ii
+ integer              :: mb,nb
 !=====
 
  write(stdout,'(/,1x,a,i5)') 'Davidson diago for eigenvector count: ',neig_calc
  if( PRESENT(h) ) then
-   write(stdout,'(1x,a,f10.3)') 'Sparse matrix incore implementation with buffer size (Mb): ', &
-                                SIZE(h%val(:))*8.0_dp / 1024.0_dp**2
+   write(stdout,'(1x,a,f10.3)') 'Sparse matrix incore implementation with storage size (Mb): ', &
+                                h%nnz * 8.0_dp / 1024.0_dp**2
  endif
 
  mvec = SIZE(eigvec(:,:),DIM=1)
@@ -1563,51 +1604,8 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  call orthogonalize_sca(desc_bb,1,neig_dim,bb)
 
 
-
- ! Block per block algo
- do iconf_min=1,conf%nconf,mb
-   iconf_max = MIN( iconf_min + mb - 1 , conf%nconf)
-   mb_local = iconf_max - iconf_min + 1
-
-   rdest = INDXG2P(iconf_min,mb,0,first_row,nprow)
-
-   allocate(h_iblock(iconf_min:iconf_max,mvec))
-   allocate(ab_iblock(iconf_min:iconf_max,neig_dim))
-
-   if( .NOT. PRESENT(h) ) then
-     do kconf=1,mvec
-       kconf_global = indxl2g_pure(kconf,mb,iprow,first_row,nprow)
-       do iconf=iconf_min,iconf_max
-         h_iblock(iconf,kconf) = hamiltonian_ci(conf%sporb_occ(:,iconf), &
-                                                conf%sporb_occ(:,kconf_global))
-       enddo
-     enddo
-   else
-     h_iblock(:,:) = 0.0_dp
-     do kconf=1,mvec
-       kconf_global = indxl2g_pure(kconf,mb,iprow,first_row,nprow)
-       do ii=h%col_ptr(kconf),h%col_ptr(kconf+1)-1
-         if( h%row_ind(ii) >= iconf_min .AND. h%row_ind(ii) <= iconf_max ) &
-           h_iblock(h%row_ind(ii), kconf) = h%val(ii)
-       enddo
-     enddo
-   endif
-
-   !ab_iblock(:,:) = MATMUL( h_iblock(:,:) , bb(:,mm+1:mm+neig_dim) )
-   call DGEMM('N','N',mb_local,neig_dim,mvec,     &
-              1.0_dp,h_iblock,mb_local,       &
-                     bb(1,mm+1),mvec,         &
-              0.0_dp,ab_iblock,mb_local)
-
-   call DGSUM2D(cntxt,'A',' ',mb_local,neig_dim,ab_iblock,1,rdest,0)
-   if( iprow == rdest ) then
-     iconf = rowindex_global_to_local(desc_bb,iconf_min)
-     ab(iconf:iconf+mb_local-1,mm+1:mm+neig_dim) = ab_iblock(:,:)
-   endif
-   deallocate(h_iblock)
-   deallocate(ab_iblock)
- enddo
-
+ ! Obtain Ab matrix
+ call get_ab()
 
 
  do icycle=1,nstep
@@ -1690,60 +1688,8 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
    call orthogonalize_sca(desc_bb,mm+1,mm+neig_dim,bb)
 
 
-
-   !call start_clock(timing_tmp4)
-
-   ! Block per block algo
-   do iconf_min=1,conf%nconf,mb
-     iconf_max = MIN( iconf_min + mb - 1 , conf%nconf)
-     mb_local = iconf_max - iconf_min + 1
-
-     rdest = INDXG2P(iconf_min,mb,0,first_row,nprow)
-
-     allocate(h_iblock(iconf_min:iconf_max,mvec))
-     allocate(ab_iblock(iconf_min:iconf_max,neig_dim))
-
-     !call start_clock(timing_tmp5)
-     if( .NOT. PRESENT(h) ) then
-       do kconf=1,mvec
-         do iconf=iconf_min,iconf_max
-           h_iblock(iconf,kconf) = hamiltonian_ci(conf%sporb_occ(:,iconf), &
-                                                  conf%sporb_occ(:,indxl2g_pure(kconf,mb,iprow,first_row,nprow)))
-         enddo
-       enddo
-     else
-       h_iblock(:,:) = 0.0_dp
-       do kconf=1,mvec
-         kconf_global = indxl2g_pure(kconf,mb,iprow,first_row,nprow)
-         do ii=h%col_ptr(kconf),h%col_ptr(kconf+1)-1
-           if( h%row_ind(ii) >= iconf_min .AND. h%row_ind(ii) <= iconf_max ) &
-             h_iblock(h%row_ind(ii), kconf) = h%val(ii)
-         enddo
-       enddo
-     endif
-     !call stop_clock(timing_tmp5)
-
-     !call start_clock(timing_tmp6)
-     !ab_iblock(:,:) = MATMUL( h_iblock(:,:) , bb(:,mm+1:mm+neig_dim) )
-     call DGEMM('N','N',mb_local,neig_dim,mvec,     &
-                1.0_dp,h_iblock,mb_local,       &
-                       bb(1,mm+1),mvec,         &
-                0.0_dp,ab_iblock,mb_local)
-     !call stop_clock(timing_tmp6)
-
-     !call start_clock(timing_tmp7)
-     call DGSUM2D(cntxt,'A',' ',mb_local,neig_dim,ab_iblock,1,rdest,0)
-     if( iprow == rdest ) then
-       iconf = rowindex_global_to_local(desc_bb,iconf_min)
-       ab(iconf:iconf+mb_local-1,mm+1:mm+neig_dim) = ab_iblock(:,:)
-     endif
-     !call stop_clock(timing_tmp7)
-     deallocate(h_iblock)
-     deallocate(ab_iblock)
-   enddo
-
-   !call stop_clock(timing_tmp4)
-
+   ! Obtain Ab matrix
+   call get_ab()
 
    deallocate(lambda)
 
@@ -1755,6 +1701,88 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  call clean_deallocate('Hamiltonian applications',ab)
  call clean_deallocate('Error vectors',qq)
 
+contains
+
+subroutine get_ab()
+ implicit none
+
+!=====
+ integer              :: iconf_min,iconf_max
+ integer              :: ii,rdest,mb_local
+ integer              :: kconf,kconf_global
+ real(dp),allocatable :: ab_iblock(:,:),h_iblock(:,:)
+!=====
+
+ if( .NOT. PRESENT(h) ) then
+   do iconf_min=1,conf%nconf,mb
+     iconf_max = MIN( iconf_min + mb - 1 , conf%nconf)
+     mb_local = iconf_max - iconf_min + 1
+
+     rdest = INDXG2P(iconf_min,mb,0,first_row,nprow)
+
+     allocate(h_iblock(iconf_min:iconf_max,mvec))
+     allocate(ab_iblock(iconf_min:iconf_max,neig_dim))
+
+     do kconf=1,mvec
+       kconf_global = indxl2g_pure(kconf,mb,iprow,first_row,nprow)
+       do iconf=iconf_min,iconf_max
+         h_iblock(iconf,kconf) = hamiltonian_ci(conf%sporb_occ(:,iconf), &
+                                                conf%sporb_occ(:,kconf_global))
+       enddo
+     enddo
+
+     !ab_iblock(:,:) = MATMUL( h_iblock(:,:) , bb(:,mm+1:mm+neig_dim) )
+     call DGEMM('N','N',mb_local,neig_dim,mvec,     &
+                1.0_dp,h_iblock,mb_local,       &
+                       bb(1,mm+1),mvec,         &
+                0.0_dp,ab_iblock,mb_local)
+
+     call DGSUM2D(cntxt,'A',' ',mb_local,neig_dim,ab_iblock,1,rdest,0)
+     if( iprow == rdest ) then
+       iconf = rowindex_global_to_local(desc_bb,iconf_min)
+       ab(iconf:iconf+mb_local-1,mm+1:mm+neig_dim) = ab_iblock(:,:)
+     endif
+     deallocate(h_iblock)
+     deallocate(ab_iblock)
+   enddo
+
+ else 
+
+   do iconf_min=1,conf%nconf,mb
+     iconf_max = MIN( iconf_min + mb - 1 , conf%nconf)
+     mb_local = iconf_max - iconf_min + 1
+
+     rdest = INDXG2P(iconf_min,mb,0,first_row,nprow)
+
+     allocate(h_iblock(iconf_min:iconf_max,mvec))
+     allocate(ab_iblock(iconf_min:iconf_max,neig_dim))
+
+     h_iblock(:,:) = 0.0_dp
+     do kconf=1,mvec
+       kconf_global = indxl2g_pure(kconf,mb,iprow,first_row,nprow)
+       do ii=h%col_ptr(kconf),h%col_ptr(kconf+1)-1
+         if( h%row_ind(ii) >= iconf_min .AND. h%row_ind(ii) <= iconf_max ) &
+           h_iblock(h%row_ind(ii), kconf) = h%val(ii)
+       enddo
+     enddo
+
+     !ab_iblock(:,:) = MATMUL( h_iblock(:,:) , bb(:,mm+1:mm+neig_dim) )
+     call DGEMM('N','N',mb_local,neig_dim,mvec,     &
+                1.0_dp,h_iblock,mb_local,       &
+                       bb(1,mm+1),mvec,         &
+                0.0_dp,ab_iblock,mb_local)
+
+     call DGSUM2D(cntxt,'A',' ',mb_local,neig_dim,ab_iblock,1,rdest,0)
+     if( iprow == rdest ) then
+       iconf = rowindex_global_to_local(desc_bb,iconf_min)
+       ab(iconf:iconf+mb_local-1,mm+1:mm+neig_dim) = ab_iblock(:,:)
+     endif
+     deallocate(h_iblock)
+     deallocate(ab_iblock)
+   enddo
+ endif
+
+end subroutine get_ab
 
 end subroutine diagonalize_davidson_ci
 
