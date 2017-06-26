@@ -653,15 +653,6 @@ subroutine summary_input(grid_quality,integral_quality)
  write(stdout,'(a25,2x,a)') ' Grid quality: ',grid_quality
  write(stdout,'(a25,2x,a)') ' Integral quality: ',integral_quality
  write(stdout,*)
- write(stdout,'(a19)')      ' IO options:'
- write(stdout,'(a30,l3)')   ' - matrices details:   ',print_matrix_       
- write(stdout,'(a30,l3)')   ' - ERI file:           ',print_eri_          
- write(stdout,'(a30,l3)')   ' - ignore big RESTART: ',ignore_bigrestart_
- write(stdout,'(a30,l3)')   ' - plot some wfns:     ',print_wfn_          
- write(stdout,'(a30,l3)')   ' - dump spectral functs',print_w_
- write(stdout,'(a30,l3)')   ' - dump self-energy    ',print_sigma_
- write(stdout,'(a30,l3)')   ' - RESTART files       ',print_restart_
- write(stdout,'(a30,l3)')   ' - big RESTART file    ',print_bigrestart_
 
  call output_positions()
 

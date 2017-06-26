@@ -340,7 +340,6 @@ subroutine gather_distributed_copy_nospin(desc,matrix,matrix_global)
    nlocal  = SIZE( matrix , DIM=2 )
    mglobal = SIZE( matrix_global , DIM=1 )
    nglobal = SIZE( matrix_global , DIM=2 )
-   write(300+rank_world,*) mlocal,nlocal,mglobal,nglobal
 
    matrix_global(:,:) = 0.0_dp
    do jlocal=1,nlocal

@@ -727,6 +727,10 @@ function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
  integer :: excitation_order,same_sporb
 !=====
 
+ !
+ ! Follow the second-quantization rules from Hellgaker book Chapter 1.
+ !
+
  h_ci_ij = 0.0_dp
 
  nelec = SIZE(iisporb)
@@ -754,6 +758,10 @@ function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
  jjstate(:) = sporb_to_state( jjsporb(:) )
 
 
+ !
+ ! Identify the spin-orbitals that differ between the two Slater determinants
+ ! If only one differs, bra: i      |  ket: k
+ ! If two differ,       bra: i < j  |  ket: k < l
  select case(excitation_order)
  case(1)
    do ielec=1,nelec
@@ -867,7 +875,7 @@ function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
      ! 1-body part
      !
      h_ci_ij = h_ci_ij  &
-                    + h_1body(istate,kstate) * gamma_sign_sporb(jjsporb,ksporb) * gamma_sign_sporb(iisporb,isporb)
+                + h_1body(istate,kstate) * gamma_sign_sporb(jjsporb,ksporb) * gamma_sign_sporb(iisporb,isporb)
 
      !
      ! 2-body part
@@ -897,9 +905,6 @@ function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
    !
    ! 2-body part
    !
-   ! Find the two indexes k < l
-   ! Find the two indexes i < j
-
    istate = sporb_to_state( isporb )
    jstate = sporb_to_state( jsporb )
    kstate = sporb_to_state( ksporb )
@@ -945,10 +950,6 @@ subroutine build_ci_hamiltonian(conf,desc_ham,h_ci)
  call start_clock(timing_ham_ci)
 
  write(stdout,'(1x,a)') 'Build CI hamiltonian'
- !
- ! Follow the second-quantization notations from Hellgaker book Chapter 1.
- ! Use occupation number vectors on_i(:) and on_j(:) filled with 0's and three 1's.
- !
 
  mconf = SIZE(h_ci,DIM=1)
  nconf = SIZE(h_ci,DIM=2)
@@ -991,10 +992,6 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
  call start_clock(timing_ham_ci)
 
  write(stdout,'(1x,a)') 'Build CI hamiltonian with sparse storage'
- !
- ! Follow the second-quantization notations from Hellgaker book Chapter 1.
- ! Use occupation number vectors on_i(:) and on_j(:) filled with 0's and three 1's.
- !
 
 
  cntxt = desc(CTXT_)

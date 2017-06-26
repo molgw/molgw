@@ -57,7 +57,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
 #endif
 
 
- if( wpol%nomega_quad < 1 ) call die('polarizability_grid_sca: manual_imag_axis file should provide a positive integral number of frequencies')
+ if( wpol%nomega_quad < 1 ) call die('polarizability_grid_sca: nomega_imag input variable should be greater than 1')
 
  if( .NOT. has_auxil_basis ) then
    call die('dynamical_polarizability_sca requires an auxiliary basis')
