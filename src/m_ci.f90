@@ -1919,6 +1919,8 @@ subroutine read_eigvec_ci(filename,conf,desc_vec,eigvec,eigval,nstate_read,resid
  eigvec(:,:) = 0.0_dp
  eigval(:)   = 0.0_dp
  read_status = 1
+ residual_norm = 1.0e8_dp
+ nstate_read = 0
 
  if( neig /= conf%nstate ) call die('read_eigvec_ci: distribution grid should be row-only')
 
