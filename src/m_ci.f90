@@ -1327,6 +1327,8 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  integer                      :: desc_vec(NDEL)
  integer                      :: mvec,nvec
  integer                      :: info,read_status
+ integer                      :: nstate_read
+ real(dp)                     :: residual_norm
  real(dp)                     :: ehf
  real(dp),allocatable         :: h_ci(:,:)
  type(configurations),pointer :: conf
@@ -1410,23 +1412,26 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  else
    write(stdout,'(1x,a,i8,a,i8)') 'Partial diagonalization of CI hamiltonian',conf%nconf,' x ',conf%nconf
    if( incore ) then
-!     call diagonalize_davidson_sca(toldav,desc_ham,h_ci,conf%nstate,energy,desc_vec,eigvec)
 
-     call build_ci_hamiltonian_sparse(conf,desc_vec,h)
 
-     call read_eigvec_ci(filename_eigvec,conf,desc_vec,eigvec,read_status)
-
-     call start_clock(timing_ci_diago)
-     call diagonalize_davidson_ci(toldav,filename_eigvec,conf,conf%nstate,energy,desc_vec,eigvec,h)
-     call stop_clock(timing_ci_diago)
-     call clean_deallocate('Sparce CI values',h%val)
-     call clean_deallocate('Sparce CI indexes',h%row_ind)
-     deallocate(h%col_ptr)
+     call read_eigvec_ci(filename_eigvec,conf,desc_vec,eigvec,energy,nstate_read,residual_norm,read_status)
+     if( residual_norm < toldav .AND. nstate_read == conf%nstate ) then
+       write(stdout,'(1x,a)') 'All CI eigenvectors are obtained from a previous converged calculation. Skip diagonalization'
+       write(stdout,'(1x,a,es12.4,/)') 'Residual norm: ',residual_norm
+     else
+       call build_ci_hamiltonian_sparse(conf,desc_vec,h)
+       call start_clock(timing_ci_diago)
+       call diagonalize_davidson_ci(toldav,filename_eigvec,conf,conf%nstate,energy,desc_vec,eigvec,h)
+       call stop_clock(timing_ci_diago)
+       call clean_deallocate('Sparce CI values',h%val)
+       call clean_deallocate('Sparce CI indexes',h%row_ind)
+       deallocate(h%col_ptr)
+     endif
 
    else
 
    
-     call read_eigvec_ci(filename_eigvec,conf,desc_vec,eigvec,read_status)
+     call read_eigvec_ci(filename_eigvec,conf,desc_vec,eigvec,energy,nstate_read,residual_norm,read_status)
 
      if( read_status /= 0 ) then
        call setup_configurations_ci(nelectron,spinstate,'CISD',conf_sd)
@@ -1654,7 +1659,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
                                                       icycle,mm,residual_norm,lambda(1)
 
    ! Write down found CI eigenvectors at each cycle
-   call write_eigvec_ci(filename,conf,desc_vec,eigvec)
+   call write_eigvec_ci(filename,conf,desc_vec,eigvec,eigval,residual_norm)
 
 
    !
@@ -1835,13 +1840,15 @@ end subroutine translate_eigvec_ci
 
 
 !==================================================================
-subroutine write_eigvec_ci(filename,conf,desc_vec,eigvec)
+subroutine write_eigvec_ci(filename,conf,desc_vec,eigvec,eigval,residual_norm)
  implicit none
 
  character(len=*),intent(in)     :: filename
  type(configurations),intent(in) :: conf
  integer,intent(in)              :: desc_vec(NDEL)
  real(dp),intent(in)             :: eigvec(:,:)
+ real(dp),intent(in)             :: eigval(:)
+ real(dp),intent(in)             :: residual_norm
 !=====
  integer :: iconf,iconf_local
  integer :: neig,ieig
@@ -1865,6 +1872,8 @@ subroutine write_eigvec_ci(filename,conf,desc_vec,eigvec)
    open(newunit=cifile,file=TRIM(filename),form='unformatted',status='unknown',action='write')
    write(cifile) conf%nconf
    write(cifile) conf%nstate
+   write(cifile) residual_norm
+   write(cifile) eigval(1:conf%nstate)
  endif
 
  do ieig=1,neig
@@ -1886,7 +1895,7 @@ end subroutine write_eigvec_ci
 
 
 !==================================================================
-subroutine read_eigvec_ci(filename,conf,desc_vec,eigvec,read_status)
+subroutine read_eigvec_ci(filename,conf,desc_vec,eigvec,eigval,nstate_read,residual_norm,read_status)
  implicit none
 
  character(len=*),intent(in)     :: filename
@@ -1894,17 +1903,21 @@ subroutine read_eigvec_ci(filename,conf,desc_vec,eigvec,read_status)
  integer,intent(in)              :: desc_vec(NDEL)
  integer,intent(out)             :: read_status
  real(dp),intent(out)            :: eigvec(:,:)
+ real(dp),intent(out)            :: eigval(:)
+ integer,intent(out)             :: nstate_read
+ real(dp),intent(out)            :: residual_norm
 !=====
  logical :: file_exists
  integer :: iconf,iconf_local
  integer :: neig,ieig
  integer :: cifile
  real(dp),allocatable :: eigvec_tmp(:)
- integer :: nconf_read,nstate_read
+ integer :: nconf_read
 !=====
 
  neig = SIZE(eigvec(:,:),DIM=2)
  eigvec(:,:) = 0.0_dp
+ eigval(:)   = 0.0_dp
  read_status = 1
 
  if( neig /= conf%nstate ) call die('read_eigvec_ci: distribution grid should be row-only')
@@ -1921,9 +1934,17 @@ subroutine read_eigvec_ci(filename,conf,desc_vec,eigvec,read_status)
 
  read(cifile) nconf_read
  read(cifile) nstate_read
+ read(cifile) residual_norm
+ read(cifile) eigval(1:nstate_read)
 
- if( nconf_read /= conf%nconf .OR. nstate_read /= conf%nstate ) then
+ if( nconf_read /= conf%nconf ) then
    call issue_warning(TRIM(filename)//' file not compatible: ignore it')
+   close(cifile)
+   return
+ endif
+
+ if( nstate_read < conf%nstate ) then
+   call issue_warning(TRIM(filename)//' file contains fewer states than required. Read and use them anyway')
    close(cifile)
    return
  endif
@@ -1931,7 +1952,8 @@ subroutine read_eigvec_ci(filename,conf,desc_vec,eigvec,read_status)
 
  allocate(eigvec_tmp(conf%nconf))
 
- do ieig=1,neig
+ nstate_read = MIN(conf%nstate,nstate_read)
+ do ieig=1,nstate_read
    read(cifile) eigvec_tmp(:)
    do iconf_local=1,SIZE(eigvec(:,:),DIM=1)
      iconf = rowindex_local_to_global(desc_vec,iconf_local)
@@ -1941,6 +1963,7 @@ subroutine read_eigvec_ci(filename,conf,desc_vec,eigvec,read_status)
    enddo
  enddo
  close(cifile)
+
 
  deallocate(eigvec_tmp)
 
