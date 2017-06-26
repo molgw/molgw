@@ -1706,8 +1706,10 @@ subroutine get_ab()
 !=====
  integer              :: iconf_min,iconf_max
  integer              :: ii,rdest,mb_local
+ integer              :: iconf,iconf_global
  integer              :: kconf,kconf_global
  real(dp),allocatable :: ab_iblock(:,:),h_iblock(:,:)
+ real(dp),allocatable :: ab_i(:)
 !=====
 
  if( .NOT. PRESENT(h) ) then
@@ -1745,38 +1747,26 @@ subroutine get_ab()
 
  else 
 
-   do iconf_min=1,conf%nconf,mb
-     iconf_max = MIN( iconf_min + mb - 1 , conf%nconf)
-     mb_local = iconf_max - iconf_min + 1
-
-     rdest = INDXG2P(iconf_min,mb,0,first_row,nprow)
-
-     allocate(h_iblock(iconf_min:iconf_max,mvec))
-     allocate(ab_iblock(iconf_min:iconf_max,neig_dim))
-
-     h_iblock(:,:) = 0.0_dp
+   allocate(ab_i(conf%nconf))
+   do ieig=mm+1,mm+neig_dim
+  
+     ab_i(:) = 0.0_dp
      do kconf=1,mvec
-       kconf_global = indxl2g_pure(kconf,mb,iprow,first_row,nprow)
        do ii=h%col_ptr(kconf),h%col_ptr(kconf+1)-1
-         if( h%row_ind(ii) >= iconf_min .AND. h%row_ind(ii) <= iconf_max ) &
-           h_iblock(h%row_ind(ii), kconf) = h%val(ii)
+         ab_i(h%row_ind(ii)) = ab_i(h%row_ind(ii)) + h%val(ii) * bb(kconf,ieig)
        enddo
      enddo
-
-     !ab_iblock(:,:) = MATMUL( h_iblock(:,:) , bb(:,mm+1:mm+neig_dim) )
-     call DGEMM('N','N',mb_local,neig_dim,mvec,     &
-                1.0_dp,h_iblock,mb_local,       &
-                       bb(1,mm+1),mvec,         &
-                0.0_dp,ab_iblock,mb_local)
-
-     call DGSUM2D(cntxt,'A',' ',mb_local,neig_dim,ab_iblock,1,rdest,0)
-     if( iprow == rdest ) then
-       iconf = rowindex_global_to_local(desc_bb,iconf_min)
-       ab(iconf:iconf+mb_local-1,mm+1:mm+neig_dim) = ab_iblock(:,:)
-     endif
-     deallocate(h_iblock)
-     deallocate(ab_iblock)
+  
+     call DGSUM2D(cntxt,'A',' ',conf%nconf,1,ab_i,1,-1,-1)
+  
+     do iconf=1,mvec
+       iconf_global = rowindex_local_to_global(desc_bb,iconf)
+       ab(iconf,ieig) = ab_i(iconf_global)
+     enddo
+  
    enddo
+   deallocate(ab_i)
+
  endif
 
 end subroutine get_ab
