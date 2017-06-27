@@ -281,7 +281,7 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='nscf'
 vl[i].family   ='scf'
-vl[i].default  =30
+vl[i].default  =50
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets the maximum number of SCF cycles'
 
