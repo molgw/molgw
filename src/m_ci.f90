@@ -24,15 +24,18 @@ module m_ci
  integer,private              :: nfrozen_ci
  integer,private              :: nstate_ci
 
+ real(dp),private             :: h_frozen_frozen
+ real(dp),allocatable,private :: h_frozen_active(:)
+
  real(dp),allocatable,private :: h_1body(:,:)
 
  type, private :: configurations
    integer             :: nelec
+   integer             :: nelec_active
    integer             :: nconf
    integer             :: nstate
    integer             :: sz
    integer,allocatable :: sporb_occ(:,:)        ! spinor-orbitals with occupation equal to 1
-   integer,allocatable :: excitation(:)
  end type
 
  type(configurations),target,private :: conf_0  ! Neutral    configuration: N electrons
@@ -162,9 +165,6 @@ subroutine destroy_ci()
  if( ALLOCATED(conf_p%sporb_occ) ) deallocate(conf_p%sporb_occ)
  if( ALLOCATED(conf_m%sporb_occ) ) deallocate(conf_m%sporb_occ)
 
- if( ALLOCATED(conf_0%excitation) ) deallocate(conf_0%excitation)
- if( ALLOCATED(conf_p%excitation) ) deallocate(conf_p%excitation)
- if( ALLOCATED(conf_m%excitation) ) deallocate(conf_m%excitation)
 
  if( ALLOCATED(eigvec_0) ) call clean_deallocate('CI eigenvectors',eigvec_0)
  if( ALLOCATED(eigvec_p) ) call clean_deallocate('CI eigenvectors',eigvec_p)
@@ -174,6 +174,7 @@ subroutine destroy_ci()
  if( ALLOCATED(energy_p) ) deallocate(energy_p)
  if( ALLOCATED(energy_m) ) deallocate(energy_m)
 
+ if( ALLOCATED(h_frozen_active) ) deallocate(h_frozen_active)
 
 end subroutine destroy_ci
 
@@ -188,19 +189,22 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  type(configurations),intent(out) :: conf
 !=====
  integer :: iconf,jconf
- integer :: ispin(nelec),istate(nelec)
- integer :: sporb(nelec)
+ integer :: ispin(nelec-2*nfrozen_ci),istate(nelec-2*nfrozen_ci)
+ integer :: sporb(nelec-2*nfrozen_ci)
+ integer :: sporb0(nelec-2*nfrozen_ci)
  integer :: isporb,jsporb,ksporb,lsporb,msporb,nsporb,osporb,psporb
  integer :: iexcitation,excitation_max
- integer :: on_0(2*nstate_ci)
+ integer :: kstate,lstate
+ integer :: ielec
 !=====
 
  call start_clock(timing_ci_config)
 
  write(stdout,'(/,1x,a,a)') 'Setup CI space with excitations: ',ci_type_in
 
- conf%nelec = nelec
- conf%sz    = spinstate
+ conf%nelec        = nelec
+ conf%nelec_active = nelec - 2*nfrozen_ci
+ conf%sz           = spinstate
 
  if( MODULO(conf%nelec,2) /= MODULO(conf%sz,2) ) then
    write(stdout,*) 'nelec=',conf%nelec
@@ -225,36 +229,31 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
 
  select case(ci_type_in)
  case('ALL')
-   excitation_max = conf%nelec
+   excitation_max = conf%nelec_active
  case('CISD')
-   excitation_max = 2
+   excitation_max = MIN(2,conf%nelec_active)
  case('CISDT')
-   excitation_max = 3
+   excitation_max = MIN(3,conf%nelec_active)
  case('CISDTQ')
-   excitation_max = 4
+   excitation_max = MIN(4,conf%nelec_active)
  case default
    call die('setup_configurations_ci: ci_type not understood')
  end select
 
  ! Set the ground state vector
- on_0(:) = 0
- on_0(1:conf%nelec) = 1
-
- ! First, freeze the core electrons in the lowest available spin-orbitals
- do isporb=1,2*nfrozen_ci
-   sporb(isporb) = isporb
+ do ielec=1,conf%nelec_active
+   sporb0(ielec) = ielec + 2 * nfrozen_ci
  enddo
 
-
- select case(conf%nelec-2*nfrozen_ci)
+ select case(conf%nelec_active)
  case(1)
    conf%nconf = 0
    do isporb=2*nfrozen_ci+1,2*nstate_ci
-     sporb(2*nfrozen_ci+1) = isporb
+     sporb(1) = isporb
      ispin(:)  = sporb_to_spin(  sporb(:) )
      istate(:) = sporb_to_state( sporb(:) )
      if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-       if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+       if( spinorbital_diff_order(sporb,sporb0) <= excitation_max ) then
          conf%nconf = conf%nconf + 1
        endif
      endif
@@ -263,12 +262,12 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
    conf%nconf = 0
    do jsporb=2*nfrozen_ci+1,2*nstate_ci
      do isporb=jsporb+1,2*nstate_ci
-       sporb(2*nfrozen_ci+1)  = jsporb
-       sporb(2*nfrozen_ci+2)  = isporb
+       sporb(1)  = jsporb
+       sporb(2)  = isporb
        ispin(:)  = sporb_to_spin(  sporb(:) )
        istate(:) = sporb_to_state( sporb(:) )
        if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-         if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+         if( spinorbital_diff_order(sporb,sporb0) <= excitation_max ) then
            conf%nconf = conf%nconf + 1
          endif
        endif
@@ -279,13 +278,13 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
    do ksporb=2*nfrozen_ci+1,2*nstate_ci
      do jsporb=ksporb+1,2*nstate_ci
        do isporb=jsporb+1,2*nstate_ci
-         sporb(2*nfrozen_ci+1) = ksporb
-         sporb(2*nfrozen_ci+2) = jsporb
-         sporb(2*nfrozen_ci+3) = isporb
+         sporb(1) = ksporb
+         sporb(2) = jsporb
+         sporb(3) = isporb
          ispin(:)  = sporb_to_spin(  sporb(:) )
          istate(:) = sporb_to_state( sporb(:) )
          if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-           if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+           if( spinorbital_diff_order(sporb,sporb0) <= excitation_max ) then
              conf%nconf = conf%nconf + 1
            endif
          endif
@@ -298,14 +297,14 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
      do ksporb=lsporb+1,2*nstate_ci
        do jsporb=ksporb+1,2*nstate_ci
          do isporb=jsporb+1,2*nstate_ci
-           sporb(2*nfrozen_ci+1) = lsporb
-           sporb(2*nfrozen_ci+2) = ksporb
-           sporb(2*nfrozen_ci+3) = jsporb
-           sporb(2*nfrozen_ci+4) = isporb
+           sporb(1) = lsporb
+           sporb(2) = ksporb
+           sporb(3) = jsporb
+           sporb(4) = isporb
            ispin(:)  = sporb_to_spin(  sporb(:) )
            istate(:) = sporb_to_state( sporb(:) )
            if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-             if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+             if( spinorbital_diff_order(sporb,sporb0) <= excitation_max ) then
                conf%nconf = conf%nconf + 1
              endif
            endif
@@ -320,15 +319,15 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
        do ksporb=lsporb+1,2*nstate_ci
          do jsporb=ksporb+1,2*nstate_ci
            do isporb=jsporb+1,2*nstate_ci
-             sporb(2*nfrozen_ci+1) = msporb
-             sporb(2*nfrozen_ci+2) = lsporb
-             sporb(2*nfrozen_ci+3) = ksporb
-             sporb(2*nfrozen_ci+4) = jsporb
-             sporb(2*nfrozen_ci+5) = isporb
+             sporb(1) = msporb
+             sporb(2) = lsporb
+             sporb(3) = ksporb
+             sporb(4) = jsporb
+             sporb(5) = isporb
              ispin(:)  = sporb_to_spin(  sporb(:) )
              istate(:) = sporb_to_state( sporb(:) )
              if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-               if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+               if( spinorbital_diff_order(sporb,sporb0) <= excitation_max ) then
                  conf%nconf = conf%nconf + 1
                endif
              endif
@@ -345,16 +344,16 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
          do ksporb=lsporb+1,2*nstate_ci
            do jsporb=ksporb+1,2*nstate_ci
              do isporb=jsporb+1,2*nstate_ci
-               sporb(2*nfrozen_ci+1) = nsporb
-               sporb(2*nfrozen_ci+2) = msporb
-               sporb(2*nfrozen_ci+3) = lsporb
-               sporb(2*nfrozen_ci+4) = ksporb
-               sporb(2*nfrozen_ci+5) = jsporb
-               sporb(2*nfrozen_ci+6) = isporb
+               sporb(1) = nsporb
+               sporb(2) = msporb
+               sporb(3) = lsporb
+               sporb(4) = ksporb
+               sporb(5) = jsporb
+               sporb(6) = isporb
                ispin(:)  = sporb_to_spin(  sporb(:) )
                istate(:) = sporb_to_state( sporb(:) )
                if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-                 if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+                 if( spinorbital_diff_order(sporb,sporb0) <= excitation_max ) then
                    conf%nconf = conf%nconf + 1
                  endif
                endif
@@ -373,17 +372,17 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
            do ksporb=lsporb+1,2*nstate_ci
              do jsporb=ksporb+1,2*nstate_ci
                do isporb=jsporb+1,2*nstate_ci
-                 sporb(2*nfrozen_ci+1) = osporb
-                 sporb(2*nfrozen_ci+2) = nsporb
-                 sporb(2*nfrozen_ci+3) = msporb
-                 sporb(2*nfrozen_ci+4) = lsporb
-                 sporb(2*nfrozen_ci+5) = ksporb
-                 sporb(2*nfrozen_ci+6) = jsporb
-                 sporb(2*nfrozen_ci+7) = isporb
+                 sporb(1) = osporb
+                 sporb(2) = nsporb
+                 sporb(3) = msporb
+                 sporb(4) = lsporb
+                 sporb(5) = ksporb
+                 sporb(6) = jsporb
+                 sporb(7) = isporb
                  ispin(:)  = sporb_to_spin(  sporb(:) )
                  istate(:) = sporb_to_state( sporb(:) )
                  if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-                   if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+                   if( spinorbital_diff_order(sporb,sporb0) <= excitation_max ) then
                      conf%nconf = conf%nconf + 1
                    endif
                  endif
@@ -404,18 +403,18 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
              do ksporb=lsporb+1,2*nstate_ci
                do jsporb=ksporb+1,2*nstate_ci
                  do isporb=jsporb+1,2*nstate_ci
-                   sporb(2*nfrozen_ci+1) = psporb
-                   sporb(2*nfrozen_ci+2) = osporb
-                   sporb(2*nfrozen_ci+3) = nsporb
-                   sporb(2*nfrozen_ci+4) = msporb
-                   sporb(2*nfrozen_ci+5) = lsporb
-                   sporb(2*nfrozen_ci+6) = ksporb
-                   sporb(2*nfrozen_ci+7) = jsporb
-                   sporb(2*nfrozen_ci+8) = isporb
+                   sporb(1) = psporb
+                   sporb(2) = osporb
+                   sporb(3) = nsporb
+                   sporb(4) = msporb
+                   sporb(5) = lsporb
+                   sporb(6) = ksporb
+                   sporb(7) = jsporb
+                   sporb(8) = isporb
                    ispin(:)  = sporb_to_spin(  sporb(:) )
                    istate(:) = sporb_to_state( sporb(:) )
                    if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-                     if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) <= excitation_max ) then
+                     if( spinorbital_diff_order(sporb,sporb0) <= excitation_max ) then
                        conf%nconf = conf%nconf + 1
                      endif
                    endif
@@ -429,26 +428,25 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
    enddo
 
  case default
-   write(stdout,*) 'Active elecrons:',conf%nelec-2*nfrozen_ci
+   write(stdout,*) 'Active elecrons:',conf%nelec_active
    call die('setup_configurations_ci: number of active electrons not coded as of today')
  end select
 
 
- allocate(conf%sporb_occ(conf%nelec,conf%nconf))
- allocate(conf%excitation(conf%nconf))
+ allocate(conf%sporb_occ(conf%nelec_active,conf%nconf))
 
  iconf = 0
  ! Then populate the rest
  do iexcitation=0,excitation_max
 
-   select case(conf%nelec-2*nfrozen_ci)
+   select case(conf%nelec_active)
    case(1)
      do isporb=2*nfrozen_ci+1,2*nstate_ci
-       sporb(2*nfrozen_ci+1) = isporb
+       sporb(1) = isporb
        ispin(:)  = sporb_to_spin(  sporb(:) )
        istate(:) = sporb_to_state( sporb(:) )
        if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-         if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) == iexcitation ) then
+         if( spinorbital_diff_order(sporb,sporb0) == iexcitation ) then
            iconf = iconf + 1
            conf%sporb_occ(:,iconf) = sporb(:)
          endif
@@ -459,12 +457,12 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
    case(2)
      do jsporb=2*nfrozen_ci+1,2*nstate_ci
        do isporb=jsporb+1,2*nstate_ci
-         sporb(2*nfrozen_ci+1)  = jsporb
-         sporb(2*nfrozen_ci+2)  = isporb
+         sporb(1)  = jsporb
+         sporb(2)  = isporb
          ispin(:)  = sporb_to_spin( sporb(:) )
          istate(:) = sporb_to_state( sporb(:) )
          if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-           if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) == iexcitation ) then
+           if( spinorbital_diff_order(sporb,sporb0) == iexcitation ) then
              iconf = iconf + 1
              conf%sporb_occ(:,iconf) = sporb(:)
            endif
@@ -477,13 +475,13 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
      do ksporb=2*nfrozen_ci+1,2*nstate_ci
        do jsporb=ksporb+1,2*nstate_ci
          do isporb=jsporb+1,2*nstate_ci
-           sporb(2*nfrozen_ci+1) = ksporb
-           sporb(2*nfrozen_ci+2) = jsporb
-           sporb(2*nfrozen_ci+3) = isporb
+           sporb(1) = ksporb
+           sporb(2) = jsporb
+           sporb(3) = isporb
            ispin(:)  = sporb_to_spin( sporb(:) )
            istate(:) = sporb_to_state( sporb(:) )
            if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-             if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) == iexcitation ) then
+             if( spinorbital_diff_order(sporb,sporb0) == iexcitation ) then
                iconf = iconf + 1
                conf%sporb_occ(:,iconf) = sporb(:)
              endif
@@ -497,14 +495,14 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
        do ksporb=lsporb+1,2*nstate_ci
          do jsporb=ksporb+1,2*nstate_ci
            do isporb=jsporb+1,2*nstate_ci
-             sporb(2*nfrozen_ci+1) = lsporb
-             sporb(2*nfrozen_ci+2) = ksporb
-             sporb(2*nfrozen_ci+3) = jsporb
-             sporb(2*nfrozen_ci+4) = isporb
+             sporb(1) = lsporb
+             sporb(2) = ksporb
+             sporb(3) = jsporb
+             sporb(4) = isporb
              ispin(:)  = sporb_to_spin( sporb(:) )
              istate(:) = sporb_to_state( sporb(:) )
              if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-               if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) == iexcitation ) then
+               if( spinorbital_diff_order(sporb,sporb0) == iexcitation ) then
                  iconf = iconf + 1
                  conf%sporb_occ(:,iconf) = sporb(:)
                endif
@@ -520,15 +518,15 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
          do ksporb=lsporb+1,2*nstate_ci
            do jsporb=ksporb+1,2*nstate_ci
              do isporb=jsporb+1,2*nstate_ci
-               sporb(2*nfrozen_ci+1) = msporb
-               sporb(2*nfrozen_ci+2) = lsporb
-               sporb(2*nfrozen_ci+3) = ksporb
-               sporb(2*nfrozen_ci+4) = jsporb
-               sporb(2*nfrozen_ci+5) = isporb
+               sporb(1) = msporb
+               sporb(2) = lsporb
+               sporb(3) = ksporb
+               sporb(4) = jsporb
+               sporb(5) = isporb
                ispin(:)  = sporb_to_spin( sporb(:) )
                istate(:) = sporb_to_state( sporb(:) )
                if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-                 if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) == iexcitation ) then
+                 if( spinorbital_diff_order(sporb,sporb0) == iexcitation ) then
                    iconf = iconf + 1
                    conf%sporb_occ(:,iconf) = sporb(:)
                  endif
@@ -546,16 +544,16 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
            do ksporb=lsporb+1,2*nstate_ci
              do jsporb=ksporb+1,2*nstate_ci
                do isporb=jsporb+1,2*nstate_ci
-                 sporb(2*nfrozen_ci+1) = nsporb
-                 sporb(2*nfrozen_ci+2) = msporb
-                 sporb(2*nfrozen_ci+3) = lsporb
-                 sporb(2*nfrozen_ci+4) = ksporb
-                 sporb(2*nfrozen_ci+5) = jsporb
-                 sporb(2*nfrozen_ci+6) = isporb
+                 sporb(1) = nsporb
+                 sporb(2) = msporb
+                 sporb(3) = lsporb
+                 sporb(4) = ksporb
+                 sporb(5) = jsporb
+                 sporb(6) = isporb
                  ispin(:)  = sporb_to_spin( sporb(:) )
                  istate(:) = sporb_to_state( sporb(:) )
                  if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-                   if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) == iexcitation ) then
+                   if( spinorbital_diff_order(sporb,sporb0) == iexcitation ) then
                      iconf = iconf + 1
                      conf%sporb_occ(:,iconf) = sporb(:)
                    endif
@@ -575,17 +573,17 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
              do ksporb=lsporb+1,2*nstate_ci
                do jsporb=ksporb+1,2*nstate_ci
                  do isporb=jsporb+1,2*nstate_ci
-                   sporb(2*nfrozen_ci+1) = osporb
-                   sporb(2*nfrozen_ci+2) = nsporb
-                   sporb(2*nfrozen_ci+3) = msporb
-                   sporb(2*nfrozen_ci+4) = lsporb
-                   sporb(2*nfrozen_ci+5) = ksporb
-                   sporb(2*nfrozen_ci+6) = jsporb
-                   sporb(2*nfrozen_ci+7) = isporb
+                   sporb(1) = osporb
+                   sporb(2) = nsporb
+                   sporb(3) = msporb
+                   sporb(4) = lsporb
+                   sporb(5) = ksporb
+                   sporb(6) = jsporb
+                   sporb(7) = isporb
                    ispin(:)  = sporb_to_spin( sporb(:) )
                    istate(:) = sporb_to_state( sporb(:) )
                    if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-                     if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) == iexcitation ) then
+                     if( spinorbital_diff_order(sporb,sporb0) == iexcitation ) then
                        iconf = iconf + 1
                        conf%sporb_occ(:,iconf) = sporb(:)
                      endif
@@ -607,18 +605,18 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
                do ksporb=lsporb+1,2*nstate_ci
                  do jsporb=ksporb+1,2*nstate_ci
                    do isporb=jsporb+1,2*nstate_ci
-                     sporb(2*nfrozen_ci+1) = psporb
-                     sporb(2*nfrozen_ci+2) = osporb
-                     sporb(2*nfrozen_ci+3) = nsporb
-                     sporb(2*nfrozen_ci+4) = msporb
-                     sporb(2*nfrozen_ci+5) = lsporb
-                     sporb(2*nfrozen_ci+6) = ksporb
-                     sporb(2*nfrozen_ci+7) = jsporb
-                     sporb(2*nfrozen_ci+8) = isporb
+                     sporb(1) = psporb
+                     sporb(2) = osporb
+                     sporb(3) = nsporb
+                     sporb(4) = msporb
+                     sporb(5) = lsporb
+                     sporb(6) = ksporb
+                     sporb(7) = jsporb
+                     sporb(8) = isporb
                      ispin(:)  = sporb_to_spin( sporb(:) )
                      istate(:) = sporb_to_state( sporb(:) )
                      if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-                       if( COUNT( sporb_to_on(sporb) - on_0(:) == 1 ) == iexcitation ) then
+                       if( spinorbital_diff_order(sporb,sporb0) == iexcitation ) then
                          iconf = iconf + 1
                          conf%sporb_occ(:,iconf) = sporb(:)
                        endif
@@ -637,14 +635,36 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
 
  enddo
 
- do iconf=1,conf%nconf
-   conf%excitation(iconf) = COUNT( sporb_to_on(conf%sporb_occ(:,iconf)) - on_0(:) == 1 )
- enddo
-
+ if( iconf /= conf%nconf ) call die('setup_configurations_ci: bug')
 
  write(stdout,'(/,1x,a,i2,a,i2,a,i8)') 'Electron count: ',conf%nelec, &
-                                       '         Active electrons: ',conf%nelec-2*nfrozen_ci, &
+                                       '         Active electrons: ',conf%nelec_active, &
                                        '           Configurations: ',conf%nconf
+ !
+ ! Calculate the frozen-frozen contribution to the Hamiltonian
+ !
+ h_frozen_frozen = 0.0_dp
+ do kstate=1,nfrozen_ci
+   h_frozen_frozen = h_frozen_frozen + 2.0_dp * h_1body(kstate,kstate)
+   do lstate=1,nfrozen_ci
+     h_frozen_frozen = h_frozen_frozen + 2.0_dp * eri_eigen(kstate,kstate,1,lstate,lstate,1) - eri_eigen(kstate,lstate,1,kstate,lstate,1)
+   enddo
+ enddo
+ !
+ ! Calculate the frozen-active contribution to the Hamiltonian
+ !
+ if( .NOT. ALLOCATED(h_frozen_active) ) then
+   allocate(h_frozen_active(nfrozen_ci+1:nstate_ci))
+
+   h_frozen_active(:) = 0.0_dp
+   do lstate=nfrozen_ci+1,nstate_ci
+     do kstate=1,nfrozen_ci
+       h_frozen_active(lstate) = h_frozen_active(lstate) &
+                     + 2.0_dp * eri_eigen(kstate,kstate,1,lstate,lstate,1) - 1.0_dp * eri_eigen(kstate,lstate,1,kstate,lstate,1)
+     enddo
+   enddo
+
+ endif
 
  call stop_clock(timing_ci_config)
 
@@ -677,35 +697,31 @@ end subroutine build_1e_hamiltonian
 
 
 !==================================================================
-pure function hamiltonian_ci_is_zero(iisporb,jjsporb) RESULT(h_ci_ij_is_zero)
+pure function spinorbital_diff_order(iisporb,jjsporb)
  implicit none
 
  integer,intent(in) :: iisporb(:)
  integer,intent(in) :: jjsporb(:)
- logical            :: h_ci_ij_is_zero
+ integer            :: spinorbital_diff_order
 !=====
- integer :: nelec
+ integer :: nelec_i,nelec_j
  integer :: ielec,jelec
- integer :: excitation_order,same_sporb
 !=====
 
- nelec = SIZE(iisporb)
+ nelec_i = SIZE(iisporb)
+ nelec_j = SIZE(jjsporb)
 
- same_sporb = 0
- do ielec=1,nelec
-   do jelec=1,nelec
+ spinorbital_diff_order = MAX(nelec_i,nelec_j)
+ do ielec=1,nelec_i
+   do jelec=1,nelec_j
      if( iisporb(ielec) == jjsporb(jelec) ) then
-       same_sporb = same_sporb + 1
+       spinorbital_diff_order = spinorbital_diff_order - 1
        exit
      endif
    enddo
  enddo
 
- excitation_order = nelec - same_sporb
-
- h_ci_ij_is_zero = ( excitation_order > 2 )
-
-end function hamiltonian_ci_is_zero
+end function spinorbital_diff_order
 
 
 !==================================================================
@@ -716,7 +732,7 @@ function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
  integer,intent(in) :: jjsporb(:)
  real(dp)           :: h_ci_ij
 !=====
- integer :: nelec
+ integer :: nelec_active
  integer :: ielec,jelec
  integer,allocatable :: iistate(:),jjstate(:)
  integer,allocatable :: iispin(:),jjspin(:)
@@ -725,6 +741,7 @@ function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
  integer :: ksporb,lsporb,kstate,lstate,kspin,lspin
  integer :: msporb,mstate,mspin
  integer :: excitation_order,same_sporb
+ integer :: sign_factor
 !=====
 
  !
@@ -733,11 +750,11 @@ function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
 
  h_ci_ij = 0.0_dp
 
- nelec = SIZE(iisporb)
+ nelec_active = SIZE(iisporb)
 
  same_sporb = 0
- do ielec=1,nelec
-   do jelec=1,nelec
+ do ielec=1,nelec_active
+   do jelec=1,nelec_active
      if( iisporb(ielec) == jjsporb(jelec) ) then
        same_sporb = same_sporb + 1
        exit
@@ -745,12 +762,12 @@ function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
    enddo
  enddo
 
- excitation_order = nelec - same_sporb
+ excitation_order = nelec_active - same_sporb
 
  if( excitation_order > 2 ) return
 
- allocate(iistate(nelec),jjstate(nelec))
- allocate(iispin(nelec),jjspin(nelec))
+ allocate(iistate(nelec_active),jjstate(nelec_active))
+ allocate(iispin(nelec_active),jjspin(nelec_active))
 
  iispin(:)  = sporb_to_spin(  iisporb(:) )
  iistate(:) = sporb_to_state( iisporb(:) )
@@ -764,10 +781,10 @@ function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
  ! If two differ,       bra: i < j  |  ket: k < l
  select case(excitation_order)
  case(1)
-   do ielec=1,nelec
+   do ielec=1,nelec_active
      if( iisporb(ielec) < jjsporb(ielec) ) then
        isporb = iisporb(ielec)
-       do jelec=nelec,ielec,-1
+       do jelec=nelec_active,ielec,-1
          if( iisporb(jelec) /= jjsporb(jelec) ) then
            ksporb = jjsporb(jelec)
            exit
@@ -776,7 +793,7 @@ function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
        exit
      else if( iisporb(ielec) > jjsporb(ielec) ) then
        ksporb = jjsporb(ielec)
-       do jelec=nelec,ielec,-1
+       do jelec=nelec_active,ielec,-1
          if( iisporb(jelec) /= jjsporb(jelec) ) then
            isporb = iisporb(jelec)
            exit
@@ -788,9 +805,9 @@ function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
 
  case(2)
    first = .TRUE.
-   do ielec=1,nelec
+   do ielec=1,nelec_active
      found = .FALSE.
-     do jelec=1,nelec
+     do jelec=1,nelec_active
        if( iisporb(ielec) == jjsporb(jelec) ) then
          found = .TRUE.
          exit
@@ -808,9 +825,9 @@ function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
    enddo
 
    first = .TRUE.
-   do jelec=1,nelec
+   do jelec=1,nelec_active
      found = .FALSE.
-     do ielec=1,nelec
+     do ielec=1,nelec_active
        if( iisporb(ielec) == jjsporb(jelec) ) then
          found = .TRUE.
          exit
@@ -836,20 +853,27 @@ function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
  !
  ! Exact same ON-vector
  case(0)
+
+   h_ci_ij = h_frozen_frozen
+   do ielec=1,nelec_active
+     istate = iistate(ielec)
+     h_ci_ij = h_ci_ij + h_frozen_active(istate)
+   enddo
+
    !
    ! 1-body part
    !
-   do ielec=1,nelec
+   do ielec=1,nelec_active
      h_ci_ij = h_ci_ij + h_1body(iistate(ielec),iistate(ielec))
    enddo
    !
    ! 2-body part
    !
-   do jelec=1,nelec
+   do jelec=1,nelec_active
      jstate = jjstate(jelec)
      jspin  = jjspin(jelec)
 
-     do ielec=1,nelec
+     do ielec=1,nelec_active
        istate = iistate(ielec)
        h_ci_ij = h_ci_ij  &
                   + 0.5_dp * eri_eigen(istate,istate,1,jstate,jstate,1)
@@ -861,7 +885,6 @@ function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
      enddo
    enddo
 
-
  !
  ! ON-vectors differ by one occupation number
  case(1)
@@ -869,8 +892,10 @@ function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
    kstate = sporb_to_state( ksporb )
    ispin  = sporb_to_spin(  isporb )
    kspin  = sporb_to_spin(  ksporb )
+   sign_factor = gamma_sign_sporb(iisporb,isporb) * gamma_sign_sporb(jjsporb,ksporb)
 
    if( ispin == kspin ) then
+
      !
      ! 1-body part
      !
@@ -880,21 +905,27 @@ function hamiltonian_ci(iisporb,jjsporb) RESULT(h_ci_ij)
      !
      ! 2-body part
      !
-     do ielec=1,nelec
+
+     ! Frozen states contribution
+     do mstate=1,nfrozen_ci
+       h_ci_ij = h_ci_ij + 2.0_dp * eri_eigen(istate,kstate,1,mstate,mstate,1) * sign_factor   &
+                                  - eri_eigen(istate,mstate,1,kstate,mstate,1) * sign_factor
+     enddo
+     ! Active states contribution
+     do ielec=1,nelec_active
        msporb = iisporb(ielec)
        ! msporb should an occupied spin-orbtial of both i and j
        if( msporb == isporb ) cycle
        mstate = sporb_to_state( msporb )
        mspin  = sporb_to_spin(  msporb )
 
+
        h_ci_ij = h_ci_ij  &
-                  + eri_eigen(istate,kstate,1,mstate,mstate,1)   &
-                       * gamma_sign_sporb(iisporb,isporb) * gamma_sign_sporb(jjsporb,ksporb)
+                  + eri_eigen(istate,kstate,1,mstate,mstate,1) * sign_factor
 
        if( ispin == mspin ) &
          h_ci_ij = h_ci_ij  &
-                    - eri_eigen(istate,mstate,1,mstate,kstate,1)  &
-                         * gamma_sign_sporb(iisporb,isporb) * gamma_sign_sporb(jjsporb,ksporb)
+                    - eri_eigen(istate,mstate,1,mstate,kstate,1)  * sign_factor
      enddo
 
    endif
@@ -957,16 +988,12 @@ subroutine build_ci_hamiltonian(conf,desc_ham,h_ci)
  do jconf=1,nconf
    jconf_global = colindex_local_to_global(desc_ham,jconf)
 
-   do iconf=1,mconf
+   do iconf=1,mconf   !TODO use symmetry of H to reduce the calculation by 2
      iconf_global = rowindex_local_to_global(desc_ham,iconf)
-!     if( iconf_global > jconf_global ) cycle  !FBFB TODO: activate this
 
      h_ci(iconf,jconf) = hamiltonian_ci(conf%sporb_occ(:,iconf_global),conf%sporb_occ(:,jconf_global))
 
-!     h_ci(jconf,iconf) = h_ci(iconf,jconf)   ! TODO: SCALAPACKization of this
-
    enddo
-
  enddo
 
  call stop_clock(timing_ham_ci)
@@ -989,7 +1016,6 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
  real(dp) :: h_ij
 !=====
 
- call start_clock(timing_ham_ci)
 
  write(stdout,'(1x,a)') 'Build CI hamiltonian with sparse storage'
 
@@ -997,19 +1023,25 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
  cntxt = desc(CTXT_)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
  mvec = NUMROC(conf%nconf,desc(MB_),iprow,first_row,nprow)
-
+ 
+ call start_clock(timing_zeroes_ci)
  !
  ! Find the maximum size of the sparse CI hamiltonian
  h%nnz = 0
  do jconf=1,mvec
    jconf_global = rowindex_local_to_global(desc,jconf)
    do iconf=1,conf%nconf
-     if( .NOT. hamiltonian_ci_is_zero(conf%sporb_occ(:,iconf),conf%sporb_occ(:,jconf_global)) ) h%nnz = h%nnz + 1
+     if( spinorbital_diff_order(conf%sporb_occ(:,iconf),conf%sporb_occ(:,jconf_global)) <= 2 ) h%nnz = h%nnz + 1
    enddo
  enddo
  h%nnz_total = REAL( h%nnz , dp )
  call xsum_auxil(h%nnz_total)
  write(stdout,'(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ',h%nnz_total / REAL(conf%nconf,dp)**2 * 100.0_dp
+
+ call stop_clock(timing_zeroes_ci)
+
+
+ call start_clock(timing_ham_ci)
 
  call clean_allocate('Sparce CI values',h%val,h%nnz)
  call clean_allocate('Sparce CI indexes',h%row_ind,h%nnz)
@@ -1069,6 +1101,8 @@ subroutine full_ci_nelectrons_selfenergy()
  integer               :: unit_gf
  real(dp)              :: eigvec0(conf_0%nconf)
  real(dp)              :: energy0_dummy(nsemax,nspin)
+ logical               :: found
+ integer               :: ielec,jelec
 !=====
 
  call start_clock(timing_ci_selfenergy)
@@ -1080,7 +1114,7 @@ subroutine full_ci_nelectrons_selfenergy()
 
  if( ALLOCATED(conf_p%sporb_occ) ) then
    ns_occ  = conf_p%nstate
-   write(stdout,'(1x,a,i4)') 'Hole part will evaluated with excitations: ',ns_occ
+   write(stdout,'(1x,a,i4)') 'Hole     part will evaluated with excitations: ',ns_occ
    write(stdout,'(1x,a,i3,a,sp,i4)') 'Previous CI calculation had spin state Sz(',conf_p%nelec,'): ',conf_p%sz
  endif
  if( ALLOCATED(conf_m%sporb_occ) ) then
@@ -1104,9 +1138,9 @@ subroutine full_ci_nelectrons_selfenergy()
  enddo
  call xsum_world(eigvec0)
 
- allocate(jjsporb(conf_0%nelec))
- allocate(jjspin(conf_0%nelec))
- allocate(jjstate(conf_0%nelec))
+ allocate(jjsporb(conf_0%nelec_active))
+ allocate(jjspin(conf_0%nelec_active))
+ allocate(jjstate(conf_0%nelec_active))
 
 
  !
@@ -1119,9 +1153,9 @@ subroutine full_ci_nelectrons_selfenergy()
    write(stdout,*) '====================='
    write(stdout,*) 'Occupied states'
 
-   allocate(iisporb(conf_p%nelec))
-   allocate(iispin(conf_p%nelec))
-   allocate(iistate(conf_p%nelec))
+   allocate(iisporb(conf_p%nelec_active))
+   allocate(iispin(conf_p%nelec_active))
+   allocate(iistate(conf_p%nelec_active))
 
    fs_occ(:,:) = 0.0_dp
    do jconf=1,conf_0%nconf
@@ -1129,30 +1163,38 @@ subroutine full_ci_nelectrons_selfenergy()
      jjspin(:)  = sporb_to_spin(  jjsporb(:) )
      jjstate(:) = sporb_to_state( jjsporb(:) )
 
-     on_j(:) = sporb_to_on(jjsporb)
-
      do iconf=1,SIZE(eigvec_p,DIM=1)
        iconf_global = rowindex_local_to_global(desc_p,iconf)
        iisporb(:) = conf_p%sporb_occ(:,iconf_global)
        iispin(:)  = sporb_to_spin(  iisporb(:) )
        iistate(:) = sporb_to_state( iisporb(:) )
 
-       on_i(:) = sporb_to_on(iisporb(:))
+
+       if( spinorbital_diff_order(iisporb,jjsporb) /= 1 ) cycle
+
+       !
+       ! Find the only spinorbital that differs
+       do jelec=1,conf_0%nelec_active
+         do ielec=1,conf_p%nelec_active
+           found = .FALSE.
+           if( jjsporb(jelec) == iisporb(ielec) ) then
+             found = .TRUE.
+             exit
+           endif
+         enddo
+         if( .NOT. found ) then
+           isporb = jjsporb(jelec)
+         endif
+       enddo
 
        !
        ! Evaluate for any s, < N , 0 | a_i^+ | N-1 , s >
        !
-       do isporb=1,2*nstate_ci
-         on_tmp(:) = on_i(:)
-         on_tmp(isporb) = on_tmp(isporb) + 1
-         if( ALL( on_j(:) - on_tmp(:) == 0 ) ) then
-           do kconf=1,SIZE(eigvec_p,DIM=2)
-             kconf_global = colindex_local_to_global(desc_p,kconf)
-             if( kconf_global > ns_occ ) cycle
-             fs_occ(isporb,kconf_global) = fs_occ(isporb,kconf_global) &
-                                     + eigvec_p(iconf,kconf) * eigvec0(jconf) * gamma_sign_sporb(iisporb,isporb)
-           enddo
-         endif
+       do kconf=1,SIZE(eigvec_p,DIM=2)
+         kconf_global = colindex_local_to_global(desc_p,kconf)
+         if( kconf_global > ns_occ ) cycle
+         fs_occ(isporb,kconf_global) = fs_occ(isporb,kconf_global) &
+                                 + eigvec_p(iconf,kconf) * eigvec0(jconf) * gamma_sign_sporb(iisporb,isporb)
        enddo
 
      enddo
@@ -1164,7 +1206,7 @@ subroutine full_ci_nelectrons_selfenergy()
      es_occ(is) = energy_0(1) - energy_p(is)
      !write(100,*) is,es_occ(is) * Ha_eV
    enddo
-   write(stdout,'(1x,a,f12.6,4x,f12.6)') '-IP (eV) and Weight: ',es_occ(1) * Ha_eV,fs_occ(2*nfrozen_ci+conf_0%nelec,1)**2
+   write(stdout,'(1x,a,f12.6,4x,f12.6)') '-IP (eV) and Weight: ',es_occ(1) * Ha_eV,fs_occ(conf_0%nelec,1)**2
    write(stdout,'(1x,a,f12.6,/)')        'Lowest excit.  (eV): ',es_occ(ns_occ) * Ha_eV
 
    deallocate(iisporb,iispin,iistate)
@@ -1182,9 +1224,9 @@ subroutine full_ci_nelectrons_selfenergy()
    write(stdout,*) '====================='
    write(stdout,*) 'Virtual states'
 
-   allocate(iisporb(conf_m%nelec))
-   allocate(iispin(conf_m%nelec))
-   allocate(iistate(conf_m%nelec))
+   allocate(iisporb(conf_m%nelec_active))
+   allocate(iispin(conf_m%nelec_active))
+   allocate(iistate(conf_m%nelec_active))
 
    fs_virt(:,:) = 0.0_dp
    do jconf=1,conf_0%nconf
@@ -1192,31 +1234,39 @@ subroutine full_ci_nelectrons_selfenergy()
      jjspin(:)  = sporb_to_spin(  jjsporb(:) )
      jjstate(:) = sporb_to_state( jjsporb(:) )
 
-     on_j(:) = sporb_to_on(jjsporb)
-
      do iconf=1,SIZE(eigvec_m,DIM=1)
        iconf_global = rowindex_local_to_global(desc_m,iconf)
        iisporb(:) = conf_m%sporb_occ(:,iconf_global)
        iispin(:)  = sporb_to_spin(  iisporb(:) )
        iistate(:) = sporb_to_state( iisporb(:) )
 
-       on_i(:) = sporb_to_on(iisporb(:))
+
+       if( spinorbital_diff_order(iisporb,jjsporb) /= 1 ) cycle
+
+       !
+       ! Find the only spinorbital that differs
+       do ielec=1,conf_m%nelec_active
+         do jelec=1,conf_0%nelec_active
+           found = .FALSE.
+           if( jjsporb(jelec) == iisporb(ielec) ) then
+             found = .TRUE.
+             exit
+           endif
+         enddo
+         if( .NOT. found ) then
+           isporb = iisporb(ielec)
+         endif
+       enddo
 
 
        !
        ! Evaluate for any s, < N+1 , s | a_i^+ | N , 0 >
        !
-       do isporb=1,2*nstate_ci
-         on_tmp(:) = on_j(:)
-         on_tmp(isporb) = on_tmp(isporb) + 1
-         if( ALL( on_i(:) - on_tmp(:) == 0 ) ) then
-           do kconf=1,SIZE(eigvec_m,DIM=2)
-             kconf_global = colindex_local_to_global(desc_m,kconf)
-             if( kconf_global > ns_virt ) cycle
-             fs_virt(isporb,kconf_global) = fs_virt(isporb,kconf_global)  &
-                             + eigvec_m(iconf,kconf) * eigvec0(jconf) * gamma_sign_sporb(jjsporb,isporb)
-           enddo
-         endif
+       do kconf=1,SIZE(eigvec_m,DIM=2)
+         kconf_global = colindex_local_to_global(desc_m,kconf)
+         if( kconf_global > ns_virt ) cycle
+         fs_virt(isporb,kconf_global) = fs_virt(isporb,kconf_global)  &
+                         + eigvec_m(iconf,kconf) * eigvec0(jconf) * gamma_sign_sporb(jjsporb,isporb)
        enddo
 
 
@@ -1229,7 +1279,7 @@ subroutine full_ci_nelectrons_selfenergy()
      es_virt(is) = energy_m(is) - energy_0(1)
    enddo
 
-   write(stdout,'(1x,a,f12.6,4x,f12.6,/)') '-EA (eV) and Weight: ',es_virt(1) * Ha_eV,fs_virt(2*nfrozen_ci+conf_0%nelec+1,1)**2
+   write(stdout,'(1x,a,f12.6,4x,f12.6,/)') '-EA (eV) and Weight: ',es_virt(1) * Ha_eV,fs_virt(conf_0%nelec+1,1)**2
 
    deallocate(iisporb,iispin,iistate)
 
@@ -1320,7 +1370,7 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
 !=====
  logical,parameter            :: incore=.TRUE.
  character(len=12)            :: filename_eigvec
- integer,parameter            :: mb_max=512
+ integer,parameter            :: mb_max=64
  integer                      :: mb_sd,mb
  integer                      :: desc_ham(NDEL)
  integer                      :: mham,nham
@@ -1415,7 +1465,7 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
 
 
      call read_eigvec_ci(filename_eigvec,conf,desc_vec,eigvec,energy,nstate_read,residual_norm,read_status)
-     if( residual_norm < toldav .AND. nstate_read == conf%nstate ) then
+     if( residual_norm < toldav .AND. nstate_read == conf%nstate .AND. read_status == 0 ) then
        write(stdout,'(1x,a)') 'All CI eigenvectors are obtained from a previous converged calculation. Skip diagonalization'
        write(stdout,'(1x,a,es12.4,/)') 'Residual norm: ',residual_norm
      else
@@ -1807,6 +1857,9 @@ subroutine translate_eigvec_ci(conf_in,desc_vec_in,eigvec_in,conf_out,desc_vec_o
    call die('translate_eigvec_ci: configuration spaces have different number of electrons')
  endif
 
+ if( conf_in%nelec_active /= conf_out%nelec_active ) then
+   call die('translate_eigvec_ci: configuration spaces have different number of active electrons')
+ endif
 
  do iconf_in=1,conf_in%nconf
    found = .FALSE.

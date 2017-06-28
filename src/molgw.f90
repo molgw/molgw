@@ -511,7 +511,7 @@ program molgw
    if(has_auxil_basis) then
      call calculate_eri_3center_eigen(c_matrix)
    else
-     call calculate_eri_4center_eigen_uks(c_matrix)
+     call calculate_eri_4center_eigen_uks(c_matrix,1,MIN(nstate,nvirtualg-1))  ! TODO set the nstate_min to a more finely tuned value
    endif
 
    call prepare_ci(MIN(nstate,nvirtualg-1),ncoreg,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix)

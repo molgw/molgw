@@ -64,6 +64,7 @@ module m_timing
  integer,parameter :: timing_ci_diago            = 45
  integer,parameter :: timing_ci_write            = 46
  integer,parameter :: timing_ci_config           = 47
+ integer,parameter :: timing_zeroes_ci           = 48
  
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -218,6 +219,7 @@ subroutine output_timing()
  if( calls(timing_full_ci) > 0 ) then
    write(stdout,'(a30,6x,f12.2,2x,i8)') 'Full CI for few electrons',timing(timing_full_ci),calls(timing_full_ci)
    write(stdout,'(a30,6x,f12.2,2x,i8)') '  Setup CI configurations',timing(timing_ci_config),calls(timing_ci_config)
+   write(stdout,'(a30,6x,f12.2,2x,i8)') '            CI ham zeroes',timing(timing_zeroes_ci),calls(timing_zeroes_ci)
    write(stdout,'(a30,6x,f12.2,2x,i8)') '                   CI ham',timing(timing_ham_ci),calls(timing_ham_ci)
    write(stdout,'(a30,6x,f12.2,2x,i8)') '                 CI diago',timing(timing_ci_diago),calls(timing_ci_diago)
    write(stdout,'(a30,6x,f12.2,2x,i8)') '   CI eigenvector writing',timing(timing_ci_write),calls(timing_ci_write)

@@ -618,7 +618,7 @@ subroutine virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
  if(has_auxil_basis) then
    call calculate_eri_3center_eigen(c_matrix)
  else
-   call calculate_eri_4center_eigen_uks(c_matrix)
+   call calculate_eri_4center_eigen_uks(c_matrix,1,nstate)
  endif
 
  do ispin=1,nspin

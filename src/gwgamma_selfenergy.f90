@@ -66,7 +66,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
  if(has_auxil_basis) then
    call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
  else
-   call calculate_eri_4center_eigen_uks(c_matrix) ! ,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
+   call calculate_eri_4center_eigen_uks(c_matrix,ncore_G+1,nvirtual_G-1)
  endif
 
 
