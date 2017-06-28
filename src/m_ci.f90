@@ -114,25 +114,6 @@ end function sporb_to_state
 
 
 !==================================================================
-! From occupied spin-orbitals to an occupation-number vector
-pure function sporb_to_on(sporb_occ) result(on)
- implicit none
-
- integer,intent(in) :: sporb_occ(:)
- integer :: on(2*nstate_ci)
-!=====
- integer :: ielec
-!=====
-
- on(:) = 0
- do ielec=1,SIZE(sporb_occ)
-   on(sporb_occ(ielec)) = 1
- enddo
-
-end function sporb_to_on
-
-
-!==================================================================
 subroutine prepare_ci(nstate_in,nfrozen_in,h_1e,c_matrix)
  implicit none
 
@@ -1361,7 +1342,7 @@ end subroutine full_ci_nelectrons_selfenergy
 
 
 !==================================================================
-subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
+subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
  implicit none
 
  integer,intent(in)         :: save_coefficients
@@ -1408,7 +1389,7 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
    conf => conf_p
    filename_eigvec = 'EIGVEC_CI_P' 
  case default
-   call die('full_ci_nelectrons_on: error')
+   call die('full_ci_nelectrons: error')
  end select
 
  call setup_configurations_ci(nelectron,spinstate,ci_type,conf)
@@ -1512,13 +1493,15 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
 
  write(stdout,'(/,1x,a,f19.10)')   '        Uncorrelated energy (Ha): ',ehf + nuc_nuc
  write(stdout,'(1x,a,f19.10,/)')   '         Correlation energy (Ha): ',energy(1) - ehf
- write(stdout,'(1x,a,f19.10)')     '     CI ground-state energy (Ha): ',energy(1) + nuc_nuc
- if( conf%nstate >= 5 ) then
-   write(stdout,'(1x,a,f19.10)')     'CI 1st excited-state energy (Ha): ',energy(2) + nuc_nuc
-   write(stdout,'(1x,a,f19.10)')     'CI 2nd excited-state energy (Ha): ',energy(3) + nuc_nuc
-   write(stdout,'(1x,a,f19.10)')     'CI 3rd excited-state energy (Ha): ',energy(4) + nuc_nuc
-   write(stdout,'(1x,a,f19.10)')     'CI 4th excited-state energy (Ha): ',energy(5) + nuc_nuc
- endif
+ write(stdout,'(1x,a,f19.10)')     '     CI ground-state energy (Ha)           : ',energy(1) + nuc_nuc
+ if( conf%nstate > 1 ) &
+   write(stdout,'(1x,a,f19.10,5x,f12.6)')     'CI 1st excited-state energy (Ha), diff (eV): ',energy(2) + nuc_nuc, (energy(2)-energy(1)) * Ha_eV
+ if( conf%nstate > 2 ) &
+   write(stdout,'(1x,a,f19.10,5x,f12.6)')     'CI 2nd excited-state energy (Ha), diff (eV): ',energy(3) + nuc_nuc, (energy(3)-energy(1)) * Ha_eV
+ if( conf%nstate > 3 ) &
+   write(stdout,'(1x,a,f19.10,5x,f12.6)')     'CI 3rd excited-state energy (Ha), diff (eV): ',energy(4) + nuc_nuc, (energy(4)-energy(1)) * Ha_eV
+ if( conf%nstate > 4 ) &
+   write(stdout,'(1x,a,f19.10,5x,f12.6)')     'CI 4th excited-state energy (Ha), diff (eV): ',energy(5) + nuc_nuc, (energy(5)-energy(1)) * Ha_eV
 
 
 
@@ -1544,7 +1527,7 @@ subroutine full_ci_nelectrons_on(save_coefficients,nelectron,spinstate,nuc_nuc)
  call stop_clock(timing_full_ci)
 
 
-end subroutine full_ci_nelectrons_on
+end subroutine full_ci_nelectrons
 
 
 !=========================================================================

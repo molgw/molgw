@@ -91,6 +91,7 @@ module m_inputparam
  integer,protected                :: nstep_gw
  integer,protected                :: ci_nstate
  integer,protected                :: ci_nstate_self
+ integer,protected                :: ci_spin_multiplicity
  integer,protected                :: nscf
  real(dp),protected               :: tolforce
  real(dp),protected               :: spin_fact

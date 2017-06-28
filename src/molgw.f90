@@ -516,14 +516,14 @@ program molgw
 
    call prepare_ci(MIN(nstate,nvirtualg-1),ncoreg,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix)
 
-   call full_ci_nelectrons_on(0,NINT(electrons),0,en%nuc_nuc)
+   call full_ci_nelectrons(0,NINT(electrons),ci_spin_multiplicity-1,en%nuc_nuc)
 
    if(calc_type%is_selfenergy) then
      if( ci_greens_function == 'BOTH' .OR. ci_greens_function == 'HOLES' ) then
-       call full_ci_nelectrons_on( 1,NINT(electrons)-1,1,en%nuc_nuc)
+       call full_ci_nelectrons( 1,NINT(electrons)-1,1,en%nuc_nuc)
      endif
      if( ci_greens_function == 'BOTH' .OR. ci_greens_function == 'ELECTRONS' ) then
-       call full_ci_nelectrons_on(-1,NINT(electrons)+1,1,en%nuc_nuc)
+       call full_ci_nelectrons(-1,NINT(electrons)+1,1,en%nuc_nuc)
      endif
      call full_ci_nelectrons_selfenergy()
    endif
