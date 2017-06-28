@@ -816,7 +816,7 @@ function hamiltonian_ci(keyi,iisporb,keyj,jjsporb) RESULT(h_ci_ij)
  ! If only one differs, bra: i      |  ket: k
  ! If two differ,       bra: i < j  |  ket: k < l
  select case(excitation_order)
- case(1)
+ case(2)
    do ielec=1,nelec_active
      if( iisporb(ielec) < jjsporb(ielec) ) then
        isporb = iisporb(ielec)
@@ -839,7 +839,7 @@ function hamiltonian_ci(keyi,iisporb,keyj,jjsporb) RESULT(h_ci_ij)
      endif
    enddo
 
- case(2)
+ case(4)
    first = .TRUE.
    do ielec=1,nelec_active
      found = .FALSE.
@@ -923,7 +923,7 @@ function hamiltonian_ci(keyi,iisporb,keyj,jjsporb) RESULT(h_ci_ij)
 
  !
  ! ON-vectors differ by one occupation number
- case(1)
+ case(2)
    istate = sporb_to_state( isporb )
    kstate = sporb_to_state( ksporb )
    ispin  = sporb_to_spin(  isporb )
@@ -968,7 +968,7 @@ function hamiltonian_ci(keyi,iisporb,keyj,jjsporb) RESULT(h_ci_ij)
 
  !
  ! ON-vectors differ by two occupation numbers
- case(2)
+ case(4)
    !
    ! 2-body part
    !
