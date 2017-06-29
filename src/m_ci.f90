@@ -86,6 +86,21 @@ end function gamma_sign_sporb
 
 
 !==================================================================
+pure function gamma_sign_key(key,isporb)
+ implicit none
+
+ integer(key_int),intent(in) :: key
+ integer,intent(in) :: isporb
+ integer            :: gamma_sign_key
+!=====
+!=====
+
+ gamma_sign_key = POPPAR( IAND(key,MASKR(isporb-2*nfrozen_ci)) ) * 2 - 1
+
+end function gamma_sign_key
+
+
+!==================================================================
 ! From spin-orbital index, get the spin = +1 or -1
 pure function get_key(sporb_occ) result(key)
  implicit none
@@ -763,14 +778,13 @@ function hamiltonian_ci(keyi,iisporb,keyj,jjsporb) RESULT(h_ci_ij)
 !=====
  integer :: nelec_active
  integer :: ielec,jelec
- integer,allocatable :: iistate(:),jjstate(:)
- integer,allocatable :: iispin(:),jjspin(:)
- logical :: found,first
  integer :: isporb,jsporb,istate,jstate,ispin,jspin
  integer :: ksporb,lsporb,kstate,lstate,kspin,lspin
  integer :: msporb,mstate,mspin
- integer :: excitation_order
  integer :: sign_factor
+ integer(kind=key_int) :: key_ieor,keyii,keyjj
+ integer,allocatable :: iistate(:),jjstate(:)
+ integer,allocatable :: iispin(:),jjspin(:)
 !=====
 
  !
@@ -779,99 +793,22 @@ function hamiltonian_ci(keyi,iisporb,keyj,jjsporb) RESULT(h_ci_ij)
 
  h_ci_ij = 0.0_dp
 
- nelec_active = SIZE(iisporb)
-
- excitation_order = key_diff_order(keyi,keyj)
-
- if( excitation_order > 4 ) return
-
- allocate(iistate(nelec_active),jjstate(nelec_active))
- allocate(iispin(nelec_active),jjspin(nelec_active))
-
- iispin(:)  = sporb_to_spin(  iisporb(:) )
- iistate(:) = sporb_to_state( iisporb(:) )
- jjspin(:)  = sporb_to_spin(  jjsporb(:) )
- jjstate(:) = sporb_to_state( jjsporb(:) )
-
-
- !
- ! Identify the spin-orbitals that differ between the two Slater determinants
- ! If only one differs, bra: i      |  ket: k
- ! If two differ,       bra: i < j  |  ket: k < l
- select case(excitation_order)
- case(2)
-   do ielec=1,nelec_active
-     if( iisporb(ielec) < jjsporb(ielec) ) then
-       isporb = iisporb(ielec)
-       do jelec=nelec_active,ielec,-1
-         if( iisporb(jelec) /= jjsporb(jelec) ) then
-           ksporb = jjsporb(jelec)
-           exit
-         endif
-       enddo
-       exit
-     else if( iisporb(ielec) > jjsporb(ielec) ) then
-       ksporb = jjsporb(ielec)
-       do jelec=nelec_active,ielec,-1
-         if( iisporb(jelec) /= jjsporb(jelec) ) then
-           isporb = iisporb(jelec)
-           exit
-         endif
-       enddo
-       exit
-     endif
-   enddo
-
- case(4)
-   first = .TRUE.
-   do ielec=1,nelec_active
-     found = .FALSE.
-     do jelec=1,nelec_active
-       if( iisporb(ielec) == jjsporb(jelec) ) then
-         found = .TRUE.
-         exit
-       endif
-     enddo
-     if( .NOT. found ) then
-       if( first ) then
-         isporb = iisporb(ielec)
-         first = .FALSE.
-       else
-         jsporb = iisporb(ielec)
-         exit
-       endif
-     endif
-   enddo
-
-   first = .TRUE.
-   do jelec=1,nelec_active
-     found = .FALSE.
-     do ielec=1,nelec_active
-       if( iisporb(ielec) == jjsporb(jelec) ) then
-         found = .TRUE.
-         exit
-       endif
-     enddo
-     if( .NOT. found ) then
-       if( first ) then
-         ksporb = jjsporb(jelec)
-         first = .FALSE.
-       else
-         lsporb = jjsporb(jelec)
-         exit
-       endif
-     endif
-   enddo
-
- end select
-
-
-
- select case(excitation_order)
-
- !
- ! Exact same ON-vector
+ select case(key_diff_order(keyi,keyj))
  case(0)
+   !
+   ! Exact same ON-vector
+
+   nelec_active = POPCNT(keyi)
+
+
+   allocate(iistate(nelec_active),jjstate(nelec_active))
+   allocate(iispin(nelec_active),jjspin(nelec_active))
+
+   iispin(:)  = sporb_to_spin(  iisporb(:) )
+   iistate(:) = sporb_to_state( iisporb(:) )
+   jjspin(:)  = sporb_to_spin(  jjsporb(:) )
+   jjstate(:) = sporb_to_state( jjsporb(:) )
+
 
    h_ci_ij = h_frozen_frozen
    do ielec=1,nelec_active
@@ -904,22 +841,38 @@ function hamiltonian_ci(keyi,iisporb,keyj,jjsporb) RESULT(h_ci_ij)
      enddo
    enddo
 
- !
- ! ON-vectors differ by one occupation number
+   deallocate(iistate,jjstate)
+   deallocate(iispin,jjspin)
+
+
  case(2)
+   !
+   ! ON-vectors differ by one occupation number
+
+   !
+   ! Identify the spin-orbitals that differ between the two Slater determinants
+   ! If only one differs, bra: i      |  ket: k
+   key_ieor = IEOR(keyi,keyj)
+   keyii    = IAND(key_ieor,keyi)
+   keyjj    = IAND(key_ieor,keyj)
+
+   isporb = TRAILZ(keyii) + 2 * nfrozen_ci + 1
+   ksporb = TRAILZ(keyjj) + 2 * nfrozen_ci + 1 
+
+
    istate = sporb_to_state( isporb )
    kstate = sporb_to_state( ksporb )
    ispin  = sporb_to_spin(  isporb )
    kspin  = sporb_to_spin(  ksporb )
-   sign_factor = gamma_sign_sporb(iisporb,isporb) * gamma_sign_sporb(jjsporb,ksporb)
+   sign_factor = gamma_sign_key(keyi,isporb) * gamma_sign_key(keyj,ksporb)
+
 
    if( ispin == kspin ) then
 
      !
      ! 1-body part
      !
-     h_ci_ij = h_ci_ij  &
-                + h_1body(istate,kstate) * gamma_sign_sporb(jjsporb,ksporb) * gamma_sign_sporb(iisporb,isporb)
+     h_ci_ij = h_1body(istate,kstate) * sign_factor
 
      !
      ! 2-body part
@@ -930,8 +883,9 @@ function hamiltonian_ci(keyi,iisporb,keyj,jjsporb) RESULT(h_ci_ij)
        h_ci_ij = h_ci_ij + 2.0_dp * eri_eigen(istate,kstate,1,mstate,mstate,1) * sign_factor   &
                                   - eri_eigen(istate,mstate,1,kstate,mstate,1) * sign_factor
      enddo
+
      ! Active states contribution
-     do ielec=1,nelec_active
+     do ielec=1,POPCNT(keyi)
        msporb = iisporb(ielec)
        ! msporb should an occupied spin-orbtial of both i and j
        if( msporb == isporb ) cycle
@@ -939,19 +893,32 @@ function hamiltonian_ci(keyi,iisporb,keyj,jjsporb) RESULT(h_ci_ij)
        mspin  = sporb_to_spin(  msporb )
 
 
-       h_ci_ij = h_ci_ij  &
-                  + eri_eigen(istate,kstate,1,mstate,mstate,1) * sign_factor
+       h_ci_ij = h_ci_ij + eri_eigen(istate,kstate,1,mstate,mstate,1) * sign_factor
 
        if( ispin == mspin ) &
-         h_ci_ij = h_ci_ij  &
-                    - eri_eigen(istate,mstate,1,mstate,kstate,1)  * sign_factor
+         h_ci_ij = h_ci_ij - eri_eigen(istate,mstate,1,mstate,kstate,1)  * sign_factor
+
      enddo
 
    endif
 
- !
- ! ON-vectors differ by two occupation numbers
  case(4)
+   !
+   ! ON-vectors differ by two occupation numbers
+
+   !
+   ! Identify the spin-orbitals that differ between the two Slater determinants
+   ! If only one differs, bra: i      |  ket: k
+   ! If two differ,       bra: i < j  |  ket: k < l
+   key_ieor = IEOR(keyi,keyj)
+   keyii    = IAND(key_ieor,keyi)
+   keyjj    = IAND(key_ieor,keyj)
+
+   isporb = TRAILZ(keyii) + 2 * nfrozen_ci + 1
+   ksporb = TRAILZ(keyjj) + 2 * nfrozen_ci + 1 
+   jsporb = LEADZ(0_key_int) - LEADZ(keyii) + 2 * nfrozen_ci
+   lsporb = LEADZ(0_key_int) - LEADZ(keyjj) + 2 * nfrozen_ci
+
    !
    ! 2-body part
    !
@@ -964,22 +931,18 @@ function hamiltonian_ci(keyi,iisporb,keyj,jjsporb) RESULT(h_ci_ij)
    kspin  = sporb_to_spin(  ksporb )
    lspin  = sporb_to_spin(  lsporb )
 
+   sign_factor = gamma_sign_key(keyi,isporb) * gamma_sign_key(keyi,jsporb)  &
+               * gamma_sign_key(keyj,ksporb) * gamma_sign_key(keyj,lsporb)
+
    if( ispin == kspin .AND. jspin == lspin ) &
-     h_ci_ij = h_ci_ij  &
-                + eri_eigen(istate,kstate,1,jstate,lstate,1)           &
-                     * gamma_sign_sporb(iisporb,isporb) * gamma_sign_sporb(iisporb,jsporb)  &
-                     * gamma_sign_sporb(jjsporb,ksporb) * gamma_sign_sporb(jjsporb,lsporb)
+     h_ci_ij = eri_eigen(istate,kstate,1,jstate,lstate,1) * sign_factor
 
    if( ispin == lspin .AND. jspin == kspin ) &
-     h_ci_ij = h_ci_ij  &
-                - eri_eigen(istate,lstate,1,jstate,kstate,1)           &
-                     * gamma_sign_sporb(iisporb,isporb) * gamma_sign_sporb(iisporb,jsporb)  &
-                     * gamma_sign_sporb(jjsporb,ksporb) * gamma_sign_sporb(jjsporb,lsporb)
+     h_ci_ij = h_ci_ij - eri_eigen(istate,lstate,1,jstate,kstate,1) * sign_factor
+
 
  end select
 
- deallocate(iistate,jjstate)
- deallocate(iispin,jjspin)
 
 end function hamiltonian_ci
 
