@@ -1,7 +1,8 @@
 &molgw
  scf='bhandhlyp'
  tolscf=1.0e-10
- nscf=50
+ nscf=1 
+ read_restart='y'
 
  basis='aug-cc-pVDZ'
  auxil_basis='aug-cc-pVDZ-RI'

@@ -529,11 +529,11 @@ vl[i].comment  ='Sets the spacing between frequencies in the GW self-energy eval
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='ignore_restart'
+vl[i].keyword  ='read_restart'
 vl[i].family   ='io'
 vl[i].default  ='no'
 vl[i].datatype ='yes/no'
-vl[i].comment  ='Ignore the RESTART file and restart from scratch.'
+vl[i].comment  ='Read the RESTART file and restart from it.'
 
 #================================
 vl.append(variable())

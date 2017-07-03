@@ -4,7 +4,7 @@
  nscf=1
  print_restart='no'
  print_bigrestart='no'
- ignore_restart='yes'
+ read_restart='no'
 
  basis='cc-pVDZ'
  auxil_basis='cc-pVDZ-RI'

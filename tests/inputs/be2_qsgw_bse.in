@@ -2,7 +2,7 @@
  scf='QSGW'
  eta=0.02
  tolscf=1.0e-8
- ignore_restart='yes'
+ read_restart='no'
 
  basis='cc-pVDZ'
  auxil_basis='cc-pVDZ-RI'
