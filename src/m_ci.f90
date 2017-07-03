@@ -63,6 +63,7 @@ module m_ci
    integer,allocatable  :: col_ptr(:)
  end type
 
+
 contains 
 
 
@@ -980,7 +981,7 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
  integer,intent(in)                :: desc(NDEL)
  type(sparse_matrix),intent(inout) :: h
 !=====
- integer :: ii,mvec
+ integer :: ii,mvec,nnztmp
  integer :: iconf,jconf
  integer :: iconf_global,jconf_global
  integer :: cntxt,nprow,npcol,iprow,ipcol
@@ -1001,13 +1002,21 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
  h%nnz = 0
  do jconf=1,mvec
    jconf_global = rowindex_local_to_global(desc,jconf)
-   do iconf=1,conf%nconf
+   do iconf=1,jconf_global-1   ! Use symmetry of H 
      if( key_diff_order(conf%key(iconf),conf%key(jconf_global)) <= 4 ) h%nnz = h%nnz + 1
    enddo
  enddo
  h%nnz_total = REAL( h%nnz , dp )
  call xsum_auxil(h%nnz_total)
- write(stdout,'(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ',h%nnz_total / REAL(conf%nconf,dp)**2 * 100.0_dp
+ write(stdout,'(1x,a,i10)')  'CI hamiltonian elements on this proc: ',h%nnz
+ nnztmp = h%nnz
+ call xmin_auxil(nnztmp)
+ write(stdout,'(1x,a,i10)')  'Min CI hamiltonian elements on a proc: ',nnztmp
+ nnztmp = h%nnz
+ call xmax_auxil(nnztmp)
+ write(stdout,'(1x,a,i10)')  'Max CI hamiltonian elements on a proc: ',nnztmp
+ ! total number of terms in the triangular matrix is N * (N-1) / 2
+ write(stdout,'(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ',h%nnz_total / REAL(conf%nconf,dp) / REAL(conf%nconf-1,dp) * 200.0_dp
 
  call stop_clock(timing_zeroes_ci)
 
@@ -1023,7 +1032,7 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
  do jconf=1,mvec
    jconf_global = rowindex_local_to_global(desc,jconf)
 
-   do iconf=1,conf%nconf
+   do iconf=1,jconf_global-1  ! Use symmetry of H 
 
      h_ij  = hamiltonian_ci(conf%key(iconf),conf%key(jconf_global))
 
@@ -1040,7 +1049,7 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
 
  h%nnz_total = REAL( h%col_ptr(mvec+1) ,dp)
  call xsum_auxil(h%nnz_total)
- write(stdout,'(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ',h%nnz_total / REAL(conf%nconf,dp)**2 * 100.0_dp
+ write(stdout,'(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ',h%nnz_total / REAL(conf%nconf,dp) / REAL(conf%nconf-1,dp) * 200.0_dp
 
 
  call stop_clock(timing_ham_ci)
@@ -1682,11 +1691,12 @@ subroutine get_ab()
 
 !=====
  integer              :: iconf_min,iconf_max
- integer              :: ii,rdest,mb_local
+ integer              :: ii,jj,rdest,mb_local
  integer              :: iconf,iconf_global
  integer              :: kconf,kconf_global
  real(dp),allocatable :: ab_iblock(:,:),h_iblock(:,:)
  real(dp),allocatable :: ab_i(:)
+ real(dp),allocatable :: bb_i(:)
 !=====
 
  if( .NOT. PRESENT(h) ) then
@@ -1723,10 +1733,27 @@ subroutine get_ab()
 
  else 
 
-   allocate(ab_i(conf%nconf))
+   allocate(ab_i(conf%nconf),bb_i(conf%nconf))
    do ieig=mm+1,mm+neig_dim
   
+     bb_i(:) = 0.0_dp
+     do iconf=1,mvec
+       iconf_global = rowindex_local_to_global(desc_bb,iconf)
+       bb_i(iconf_global) =  bb(iconf,ieig)
+     enddo
+     call DGSUM2D(cntxt,'A',' ',conf%nconf,1,bb_i,1,-1,-1)
+
      ab_i(:) = 0.0_dp
+     ! Use symmetry of H here
+     do kconf=1,mvec
+       kconf_global = indxl2g_pure(kconf,mb,iprow,first_row,nprow)
+       ab_i(kconf_global) = ham_diag(kconf_global) * bb(kconf,ieig)
+
+       do jj=h%col_ptr(kconf),h%col_ptr(kconf+1)-1
+         ab_i(kconf_global) = ab_i(kconf_global) + h%val(jj) * bb_i(h%row_ind(jj))
+       enddo
+     enddo
+
      do kconf=1,mvec
        do ii=h%col_ptr(kconf),h%col_ptr(kconf+1)-1
          ab_i(h%row_ind(ii)) = ab_i(h%row_ind(ii)) + h%val(ii) * bb(kconf,ieig)
@@ -1741,7 +1768,7 @@ subroutine get_ab()
      enddo
   
    enddo
-   deallocate(ab_i)
+   deallocate(ab_i,bb_i)
 
  endif
 
