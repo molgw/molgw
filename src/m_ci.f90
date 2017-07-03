@@ -71,21 +71,6 @@ contains
 ! Sign introduced by creation/annihilation operators
 ! as defined in Hellgaker's book (chapter 1 box 1)
 !==================================================================
-pure function gamma_sign_sporb(sporb_occ,isporb)
- implicit none
-
- integer,intent(in) :: sporb_occ(:)
- integer,intent(in) :: isporb
- integer            :: gamma_sign_sporb
-!=====
-!=====
-
- gamma_sign_sporb = 1 - 2 * MODULO( COUNT( sporb_occ(:) < isporb ) , 2 ) 
-
-end function gamma_sign_sporb
-
-
-!==================================================================
 pure function gamma_sign_key(key,isporb)
  implicit none
 
@@ -117,6 +102,34 @@ pure function get_key(sporb_occ) result(key)
  enddo
 
 end function get_key
+
+
+!==================================================================
+! From spin-orbital index, get the spin = +1 or -1
+subroutine get_sporb_occ(key,sporb_occ)
+ implicit none
+
+ integer(kind=key_int),intent(in) :: key
+ integer,intent(out)              :: sporb_occ(:)
+!=====
+ integer :: nelec
+ integer :: ielec
+ integer :: keytmp
+!=====
+
+ nelec = POPCNT(key)
+
+ ielec = 0
+ keytmp = key
+ do while( POPCNT(keytmp) > 0 )
+   ielec = ielec + 1
+   sporb_occ(ielec) = TRAILZ(keytmp)+2*nfrozen_ci+1
+   keytmp = keytmp - SHIFTL(1,TRAILZ(keytmp))
+ enddo
+
+
+end subroutine get_sporb_occ
+
 
 !==================================================================
 ! From spin-orbital index, get the spin = +1 or -1
@@ -161,6 +174,10 @@ subroutine prepare_ci(nstate_in,nfrozen_in,h_1e,c_matrix)
  nfrozen_ci = nfrozen_in
 
  write(stdout,'(/,1x,a,i4,a,i4)') 'Prepare CI with active states ranging from ',nfrozen_ci+1,' to ',nstate_ci
+
+ write(stdout,'(1x,a,i4)') '    Max active space size: ',LEADZ(0_key_int)
+ write(stdout,'(1x,a,i4)') 'Current active space size: ',2 * (nstate_ci -nfrozen_ci)
+ if( 2 * (nstate_ci -nfrozen_ci) > LEADZ(0_key_int) ) call die('prepare_ci: current active space too large')
 
  ! Calculate the one-electron hamiltonian on the eigenstate basis
  call build_1e_hamiltonian(c_matrix,h_1e)
@@ -209,7 +226,7 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  integer :: sporb(nelec-2*nfrozen_ci)
  integer :: sporb0(nelec-2*nfrozen_ci)
  integer :: isporb,jsporb,ksporb,lsporb,msporb,nsporb,osporb,psporb
- integer :: iexcitation,excitation_max
+ integer :: excitation_max
  integer :: kstate,lstate
  integer :: ielec
  integer(kind=key_int) :: key0,keyi
@@ -725,35 +742,6 @@ end subroutine build_1e_hamiltonian
 
 
 !==================================================================
-pure function spinorbital_diff_order(iisporb,jjsporb)
- implicit none
-
- integer,intent(in) :: iisporb(:)
- integer,intent(in) :: jjsporb(:)
- integer            :: spinorbital_diff_order
-!=====
- integer :: nelec_i,nelec_j
- integer :: ielec,jelec
-!=====
-
- nelec_i = SIZE(iisporb)
- nelec_j = SIZE(jjsporb)
-
- spinorbital_diff_order = 0
- do ielec=1,nelec_i
-   do jelec=1,nelec_j
-     if( iisporb(ielec) == jjsporb(jelec) ) then
-       spinorbital_diff_order = spinorbital_diff_order + 1
-       exit
-     endif
-   enddo
- enddo
- spinorbital_diff_order = MAX(nelec_i,nelec_j) - spinorbital_diff_order
-
-end function spinorbital_diff_order
-
-
-!==================================================================
 function key_diff_order(key1,key2) RESULT(order)
  implicit none
 
@@ -768,12 +756,10 @@ end function key_diff_order
 
 
 !==================================================================
-function hamiltonian_ci(keyi,iisporb,keyj,jjsporb) RESULT(h_ci_ij)
+function hamiltonian_ci(keyi,keyj) RESULT(h_ci_ij)
  implicit none
 
  integer(kind=key_int),intent(in) :: keyi,keyj
- integer,intent(in) :: iisporb(:)
- integer,intent(in) :: jjsporb(:)
  real(dp)           :: h_ci_ij
 !=====
  integer :: nelec_active
@@ -782,9 +768,10 @@ function hamiltonian_ci(keyi,iisporb,keyj,jjsporb) RESULT(h_ci_ij)
  integer :: ksporb,lsporb,kstate,lstate,kspin,lspin
  integer :: msporb,mstate,mspin
  integer :: sign_factor
- integer(kind=key_int) :: key_ieor,keyii,keyjj
+ integer(kind=key_int) :: key_ieor,key_iand,keyii,keyjj
  integer,allocatable :: iistate(:),jjstate(:)
  integer,allocatable :: iispin(:),jjspin(:)
+ integer,allocatable :: iisporb(:),jjsporb(:)
 !=====
 
  !
@@ -801,14 +788,18 @@ function hamiltonian_ci(keyi,iisporb,keyj,jjsporb) RESULT(h_ci_ij)
    nelec_active = POPCNT(keyi)
 
 
+   allocate(iisporb(nelec_active),jjsporb(nelec_active))
    allocate(iistate(nelec_active),jjstate(nelec_active))
    allocate(iispin(nelec_active),jjspin(nelec_active))
 
+   call get_sporb_occ(keyi,iisporb)
+   call get_sporb_occ(keyj,jjsporb)
    iispin(:)  = sporb_to_spin(  iisporb(:) )
    iistate(:) = sporb_to_state( iisporb(:) )
    jjspin(:)  = sporb_to_spin(  jjsporb(:) )
    jjstate(:) = sporb_to_state( jjsporb(:) )
 
+   deallocate(iisporb,jjsporb)
 
    h_ci_ij = h_frozen_frozen
    do ielec=1,nelec_active
@@ -853,6 +844,7 @@ function hamiltonian_ci(keyi,iisporb,keyj,jjsporb) RESULT(h_ci_ij)
    ! Identify the spin-orbitals that differ between the two Slater determinants
    ! If only one differs, bra: i      |  ket: k
    key_ieor = IEOR(keyi,keyj)
+   key_iand = IAND(keyi,keyj)
    keyii    = IAND(key_ieor,keyi)
    keyjj    = IAND(key_ieor,keyj)
 
@@ -885,10 +877,12 @@ function hamiltonian_ci(keyi,iisporb,keyj,jjsporb) RESULT(h_ci_ij)
      enddo
 
      ! Active states contribution
-     do ielec=1,POPCNT(keyi)
-       msporb = iisporb(ielec)
-       ! msporb should an occupied spin-orbtial of both i and j
-       if( msporb == isporb ) cycle
+     ! Comes from the states that are occupied in both i and j
+     do while( POPCNT(key_iand) > 0 )
+
+       msporb = TRAILZ(key_iand) + 2 * nfrozen_ci + 1
+       key_iand = key_iand - SHIFTL(1,TRAILZ(key_iand))
+
        mstate = sporb_to_state( msporb )
        mspin  = sporb_to_spin(  msporb )
 
@@ -973,8 +967,7 @@ subroutine build_ci_hamiltonian(conf,desc_ham,h_ci)
    do iconf=1,mconf   !TODO use symmetry of H to reduce the calculation by 2
      iconf_global = rowindex_local_to_global(desc_ham,iconf)
 
-     h_ci(iconf,jconf) = hamiltonian_ci(conf%key(iconf_global),conf%sporb_occ(:,iconf_global),  &
-                                        conf%key(jconf_global),conf%sporb_occ(:,jconf_global))
+     h_ci(iconf,jconf) = hamiltonian_ci(conf%key(iconf_global),conf%key(jconf_global))
 
    enddo
  enddo
@@ -1037,7 +1030,7 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
 
    do iconf=1,conf%nconf
 
-     h_ij  = hamiltonian_ci(conf%key(iconf),conf%sporb_occ(:,iconf),conf%key(jconf_global),conf%sporb_occ(:,jconf_global))
+     h_ij  = hamiltonian_ci(conf%key(iconf),conf%key(jconf_global))
 
      if( ABS(h_ij) < 1.e-8_dp ) cycle
 
@@ -1069,8 +1062,6 @@ subroutine full_ci_nelectrons_selfenergy()
  integer               :: is
  integer               :: iconf,jconf,kconf
  integer               :: iconf_global,jconf_global,kconf_global
- integer               :: on_i(2*nstate_ci),on_j(2*nstate_ci)
- integer               :: on_tmp(2*nstate_ci)
  integer,allocatable   :: iisporb(:),iistate(:),iispin(:)
  integer,allocatable   :: jjsporb(:),jjstate(:),jjspin(:)
  integer               :: isporb,istate,ispin
@@ -1180,7 +1171,7 @@ subroutine full_ci_nelectrons_selfenergy()
          kconf_global = colindex_local_to_global(desc_p,kconf)
          if( kconf_global > ns_occ ) cycle
          fs_occ(isporb,kconf_global) = fs_occ(isporb,kconf_global) &
-                                 + eigvec_p(iconf,kconf) * eigvec0(jconf) * gamma_sign_sporb(iisporb,isporb)
+                                 + eigvec_p(iconf,kconf) * eigvec0(jconf) * gamma_sign_key(keyi,isporb)
        enddo
 
      enddo
@@ -1254,7 +1245,7 @@ subroutine full_ci_nelectrons_selfenergy()
          kconf_global = colindex_local_to_global(desc_m,kconf)
          if( kconf_global > ns_virt ) cycle
          fs_virt(isporb,kconf_global) = fs_virt(isporb,kconf_global)  &
-                         + eigvec_m(iconf,kconf) * eigvec0(jconf) * gamma_sign_sporb(jjsporb,isporb)
+                         + eigvec_m(iconf,kconf) * eigvec0(jconf) * gamma_sign_key(keyj,isporb)
        enddo
 
 
@@ -1407,7 +1398,7 @@ subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
  endif
 
  allocate(energy(conf%nconf))
- ehf = hamiltonian_ci(conf%key(1),conf%sporb_occ(:,1),conf%key(1),conf%sporb_occ(:,1))
+ ehf = hamiltonian_ci(conf%key(1),conf%key(1))
 
  if( conf%nstate == conf%nconf ) then
    mham = NUMROC(conf%nconf,block_row,iprow_sd,first_row,nprow_sd)
@@ -1598,7 +1589,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  !
  ! All procs have the full diagonal
  do iconf=1,conf%nconf
-   ham_diag(iconf) = hamiltonian_ci(conf%key(iconf),conf%sporb_occ(:,iconf),conf%key(iconf),conf%sporb_occ(:,iconf))
+   ham_diag(iconf) = hamiltonian_ci(conf%key(iconf),conf%key(iconf))
  enddo
 
  neig_dim = neig_calc * dim_factor
@@ -1770,8 +1761,7 @@ subroutine get_ab()
      do kconf=1,mvec
        kconf_global = indxl2g_pure(kconf,mb,iprow,first_row,nprow)
        do iconf=iconf_min,iconf_max
-         h_iblock(iconf,kconf) = hamiltonian_ci(conf%key(iconf),conf%sporb_occ(:,iconf), &
-                                                conf%key(kconf_global),conf%sporb_occ(:,kconf_global))
+         h_iblock(iconf,kconf) = hamiltonian_ci(conf%key(iconf),conf%key(kconf_global))
        enddo
      enddo
 
