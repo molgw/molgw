@@ -426,7 +426,7 @@ subroutine tddft_time_loop(nstate,                           &
      if(excit_type%is_light) then
        open(newunit=file_dipole_time,file="dipole_time.dat")
        open(newunit=file_excit_field,file="excitation_time.dat")
-       write(file_excit_field,*) "# time(au)                      E_field_excit_dir(au)"
+       write(file_excit_field,"(A)") "# time(au)                      E_field_excit_dir(au)"
        write(file_excit_field,*) time_min, REAL(m_excit_field_dir) 
      end if
    else
@@ -441,7 +441,7 @@ subroutine tddft_time_loop(nstate,                           &
    end if  
    write(file_time_data,"(A)") " # time(au)     e_total             enuc_nuc             enuc            ekin               ehart            &
                                &eexx_hyb            exc             eexcit            P*S trace (# of els)" 
-   if(excit_type%is_light) write(file_dipole_time,*) "# time(au)                      Dipole_x(D)               Dipole_y(D)               Dipole_z(D)"
+   if(excit_type%is_light) write(file_dipole_time,"(A)") "# time(au)                      Dipole_x(D)               Dipole_y(D)               Dipole_z(D)"
  end if
 
  !Printing initial values of energy and dipole taken from SCF of RESTART_TDDFT
@@ -461,7 +461,7 @@ subroutine tddft_time_loop(nstate,                           &
    write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):', en%tot
 
    if(excit_type%is_light) then 
-     write(file_dipole_time,*) time_min, dipole(:) * au_debye
+     write(file_dipole_time,'(4f19.10)') time_min, dipole(:) * au_debye
      write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment    (D):', dipole(:) * au_debye
    end if
    if(excit_type%is_projectile) call output_projectile_position()
@@ -817,7 +817,7 @@ subroutine tddft_time_loop(nstate,                           &
 
      if(ref_) then
        if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step)
-       if(excit_type%is_light) write(file_excit_field,*) time_cur, REAL(m_excit_field_dir)
+       if(excit_type%is_light) write(file_excit_field,'(2f19.10)') time_cur, REAL(m_excit_field_dir)
      end if
      if(calc_p_matrix_error_) then
        p_matrix_time_cmplx(:,:,:,iwrite_step)=p_matrix_cmplx(:,:,:)
@@ -825,7 +825,7 @@ subroutine tddft_time_loop(nstate,                           &
      if(excit_type%is_light) then
        call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
        dipole_time(iwrite_step,:)=dipole(:)
-       write(file_dipole_time,*) time_cur, dipole(:) * au_debye
+       write(file_dipole_time,'(4f19.10)') time_cur, dipole(:) * au_debye
      end if
      write(file_time_data,"(F9.4,8(2x,es16.8E3),2x,(2x,F10.5),(2x,F7.2))") &
         time_cur, en%tot, en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
