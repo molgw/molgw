@@ -1005,15 +1005,15 @@ subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,vxc_ij,
 !   call stop_clock(timing_tmp2)
 
 
-   if( ANY( dedd_r_batch(:,:) > 0.0_dp ) ) then
-     !write(stdout,*) dedd_r_batch(:,:)
-     call issue_warning('Positive xc potential should not happen. Discard the positive values, but be careful with the final result.')
-     do ir=1,nr
-       do ispin=1,nspin
-         dedd_r_batch(ispin,ir) = MIN( dedd_r_batch(ispin,ir) , -1.0e-16_dp )
-       enddo
-     enddo
-   endif
+!   if( ANY( dedd_r_batch(:,:) > 0.0_dp ) ) then
+!     !write(stdout,*) dedd_r_batch(:,:)
+!     call issue_warning('Positive xc potential should not happen. Discard the positive values, but be careful with the final result.')
+!     do ir=1,nr
+!       do ispin=1,nspin
+!         dedd_r_batch(ispin,ir) = MIN( dedd_r_batch(ispin,ir) , -1.0e-16_dp )
+!       enddo
+!     enddo
+!   endif
  
 
    !
@@ -1024,17 +1024,16 @@ subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,vxc_ij,
    ! LDA and GGA
    allocate(tmp_batch(basis%nbf,nr))
    do ispin=1,nspin
-     do ir=1,nr
-       tmp_batch(:,ir) = SQRT( -weight_batch(ir) * dedd_r_batch(ispin,ir) ) * basis_function_r_batch(:,ir)
-     enddo
+     forall(ir=1:nr)
+       tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir)
+     end forall
 
-     call DSYRK('L','N',basis%nbf,nr,-1.0d0,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
+!     call DSYRK('L','N',basis%nbf,nr,-1.0d0,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
+     call DGEMM('N','T',basis%nbf,basis%nbf,nr,1.0d0,tmp_batch,basis%nbf,basis_function_r_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
    enddo
-   deallocate(tmp_batch)
    !
    ! GGA-only
    if( dft_xc_needs_gradient ) then 
-     allocate(tmp_batch(basis%nbf,nr))
 
      do ispin=1,nspin
 
@@ -1045,8 +1044,8 @@ subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,vxc_ij,
        call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
 
      enddo
-     deallocate(tmp_batch)
    endif
+   deallocate(tmp_batch)
 !   call stop_clock(timing_tmp3)
 
 
