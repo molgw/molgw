@@ -330,7 +330,7 @@ subroutine calc_density_gradr_batch_cmplx(nspin,nbf,nstate,nocc,nr,occupation,c_
  implicit none
 
  integer,intent(in)         :: nspin,nbf,nstate,nr,nocc
- real(dp),intent(in)        :: c_matrix_cmplx(nbf,nocc,nspin)
+ complex(dp),intent(in)     :: c_matrix_cmplx(nbf,nocc,nspin)
  real(dp),intent(in)        :: occupation(nstate,nspin)
  real(dp),intent(in)        :: basis_function_r(nbf,nr)
  real(dp),intent(in)        :: basis_function_gradr(nbf,nr,3)

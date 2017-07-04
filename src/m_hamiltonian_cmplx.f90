@@ -215,13 +215,13 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
 
    allocate(weight_batch(nr))
    allocate(basis_function_r_batch(basis%nbf,nr))
-   allocate(basis_function_gradr_batch(basis%nbf,nr,3))
    allocate(exc_batch(nr))
    allocate(rhor_batch(nspin,nr))
    allocate(vrho_batch(nspin,nr))
    allocate(dedd_r_batch(nspin,nr))
 
    if( dft_xc_needs_gradient ) then 
+     allocate(basis_function_gradr_batch(basis%nbf,nr,3))
      allocate(grad_rhor_batch(nspin,nr,3))
      allocate(dedgd_r_batch(nspin,nr,3))
      allocate(sigma_batch(2*nspin-1,nr))
@@ -256,7 +256,6 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
          sigma_batch(3,ir) = DOT_PRODUCT( grad_rhor_batch(2,ir,:) , grad_rhor_batch(2,ir,:) )
        endif
      enddo
-
    endif
 !   call stop_clock(timing_tmp1)
 
@@ -328,7 +327,6 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
 
 !   call stop_clock(timing_tmp2)
 
-
    if( ANY( dedd_r_batch(:,:) > 0.0_dp ) ) then
      write(stdout,*) dedd_r_batch(:,:)
      call die('positive xc potential not expected')
@@ -368,16 +366,16 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
    endif
 !   call stop_clock(timing_tmp3)
 
-
+    
 
    deallocate(weight_batch)
    deallocate(basis_function_r_batch)
-   deallocate(basis_function_gradr_batch)
    deallocate(exc_batch)
    deallocate(rhor_batch)
    deallocate(vrho_batch)
    deallocate(dedd_r_batch)
    if( dft_xc_needs_gradient ) then 
+     deallocate(basis_function_gradr_batch)
      deallocate(grad_rhor_batch)
      deallocate(sigma_batch)
      deallocate(dedgd_r_batch)
