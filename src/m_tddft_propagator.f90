@@ -1389,13 +1389,16 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
  complex(dp),intent(in)           :: c_matrix_cmplx(basis%nbf,nocc,nspin)
  complex(dp),intent(inout)        :: hamiltonian_fock_cmplx(basis%nbf,basis%nbf,nspin)
  complex(dp),intent(inout)        :: h_small_cmplx(nstate,nstate,nspin)
+ complex(dp),allocatable          :: m_tmp_1(:,:)
 !=====
  logical        :: calc_excit_
  integer        :: ispin, idir
  real(dp)       :: excit_field(3)
  complex(dp)    :: p_matrix_cmplx(basis%nbf,basis%nbf,nspin)
+ complex(dp)    :: s_matrix_sqrt_inv_cmplx(basis%nbf,nstate)
 !=====
 
+ s_matrix_sqrt_inv_cmplx = s_matrix_sqrt_inv
  call start_clock(timing_tddft_hamiltonian_fock)
 
  call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
@@ -1454,8 +1457,18 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
    end if
    hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
    call start_clock(timing_tmp1)
-   h_small_cmplx(:,:,ispin) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
-                   MATMUL( hamiltonian_fock_cmplx(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
+   allocate(m_tmp_1(basis%nbf,nstate))
+   !          herm nop nrows  ncols  nsum                           nrows de op(A) et de C                       nrows de B   beta               nrows de C
+
+   call ZHEMM('L','U',basis%nbf,nstate,(1.0_dp,0.0_dp),hamiltonian_fock_cmplx(:,:,ispin),basis%nbf,s_matrix_sqrt_inv_cmplx,basis%nbf,(0.0_dp,0.0_dp),m_tmp_1,basis%nbf)
+!   call ZGEMM('N','N',basis%nbf,nstate,basis%nbf,(1.0_dp,0.0_dp),hamiltonian_fock_cmplx(:,:,ispin),basis%nbf,s_matrix_sqrt_inv_cmplx,basis%nbf,(0.0_dp,0.0_dp),m_tmp_1,basis%nbf)
+   call ZGEMM('T','N',nstate,nstate,basis%nbf,(1.0_dp,0.0_dp),s_matrix_sqrt_inv_cmplx,nstate,m_tmp_1,basis%nbf,(0.0_dp,0.0_dp),h_small_cmplx(:,:,ispin),nstate)
+
+   deallocate(m_tmp_1)
+
+!   h_small_cmplx(:,:,ispin) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
+!                   MATMUL( hamiltonian_fock_cmplx(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
+  
    call stop_clock(timing_tmp1)
  end do ! spin loop
 
