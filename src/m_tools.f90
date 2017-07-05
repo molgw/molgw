@@ -997,31 +997,62 @@ subroutine calculate_pade_a(a,n,z,f)
 
 end subroutine calculate_pade_a
 
-!=======================================
-subroutine get_number_of_elements(string,num)
+
+!=========================================================================
+function get_number_of_elements(string) result(num)
  implicit none
- character(len=100),intent(in)  ::  string
- integer,intent(inout)          :: num
-!===
+ character(len=*),intent(in)  :: string
+ integer                      :: num
+!=====
  integer   :: i,pos
+!=====
 
  pos=1
  num=0
 
  do
-   i=VERIFY(string(pos:),' ')    !-- Find next non-blank 
-   if (i==0) exit                !-- No word found
-   num=num+1                     !-- Found something
-   pos=pos+i-1                   !-- Move to start of the word 
-   i=SCAN(string(pos:),' ')      !-- Find next blank 
-   if (i==0) exit                !-- No blank found
-   pos=pos+i-1                   !-- Move to the blank
+   i = VERIFY(string(pos:),' ')  !-- Find next non-blank 
+   if( i == 0 ) exit             !-- No word found
+   num = num + 1                 !-- Found something
+   pos = pos + i - 1             !-- Move to start of the word 
+   i = SCAN(string(pos:),' ')    !-- Find next blank 
+   if( i == 0 ) exit             !-- No blank found
+   pos = pos + i - 1             !-- Move to the blank
  end do
 
-end subroutine get_number_of_elements
+end function get_number_of_elements
+
+!=========================================================================
+subroutine string_to_integers(string_in,iarray)
+ implicit none
+
+ character(len=*),intent(in) :: string_in
+ integer,intent(inout)       :: iarray(:)
+!=====
+ character(len=128) :: string
+ integer            :: ilen,inextblank,ii
+!=====
+
+ string = string_in
+
+ ilen = LEN(TRIM(string))
+ ii = 0
+ do while( ilen > 0 )
+   string = ADJUSTL(string)
+   inextblank = INDEX(string,' ')
+   ii = ii + 1
+   if( ii > SIZE(iarray) ) exit
+   read(string(1:inextblank-1),*) iarray(ii)
+   string = string(inextblank+1:)
+   ilen = LEN(TRIM(string))
+ enddo
+
+end subroutine string_to_integers
+
 
 
 
 end module m_tools
 
 
+!=========================================================================

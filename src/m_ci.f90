@@ -20,7 +20,8 @@ module m_ci
  use m_inputparam
  use m_selfenergy_tools
 
- integer,parameter,private    :: key_int=8
+ integer,parameter,private     :: key_int=8
+ integer(kind=key_int),private :: mask_spin_up,mask_spin_down
 
  integer,private              :: nfrozen_ci
  integer,private              :: nstate_ci
@@ -32,7 +33,7 @@ module m_ci
 
  type, private :: configurations
    integer             :: nelec
-   integer             :: nelec_active
+   integer             :: nelec_valence
    integer             :: nconf
    integer             :: nstate
    integer             :: sz
@@ -86,7 +87,6 @@ end function gamma_sign_key
 
 
 !==================================================================
-! From spin-orbital index, get the spin = +1 or -1
 pure function get_key(sporb_occ) result(key)
  implicit none
 
@@ -98,37 +98,101 @@ pure function get_key(sporb_occ) result(key)
 
  key = 0
  do ielec=1,SIZE(sporb_occ)
-   key = key + SHIFTL(1,sporb_occ(ielec)-2*nfrozen_ci-1)
+   key = key + SHIFTL(1_key_int,sporb_occ(ielec)-2*nfrozen_ci-1)
  enddo
 
 end function get_key
 
 
 !==================================================================
-! From spin-orbital index, get the spin = +1 or -1
-subroutine get_sporb_occ(key,sporb_occ)
+subroutine increment_sporb(sporb)
+ implicit none
+
+ integer,intent(inout) :: sporb(:)
+!=====
+ integer :: nelec,ielec,jelec
+ logical :: room
+!=====
+
+ nelec = SIZE(sporb)
+
+ sporb(nelec) = sporb(nelec) + 1
+
+ if( sporb(nelec) > 2 * nstate_ci ) then
+   room = .FALSE.
+   do ielec=nelec-1,1,-1
+     if( sporb(ielec) < 2 * nstate_ci - (nelec - ielec) ) then
+       room = .TRUE.
+       sporb(ielec) = sporb(ielec) + 1
+       do jelec=ielec+1,nelec
+         sporb(jelec) = sporb(jelec-1) + 1
+       enddo
+       exit
+     endif
+   enddo
+   ! If there is no room to increment again, then return a conventional zero
+   if( .NOT. room ) sporb(:) = 0
+ endif
+
+end subroutine increment_sporb
+
+
+!==================================================================
+pure function get_totalspin_from_key(key) result(totalspin)
  implicit none
 
  integer(kind=key_int),intent(in) :: key
- integer,intent(out)              :: sporb_occ(:)
+ integer :: totalspin
 !=====
- integer :: nelec
- integer :: ielec
- integer :: keytmp
 !=====
 
- nelec = POPCNT(key)
+ totalspin = POPCNT(IAND(key,mask_spin_up)) - POPCNT(IAND(key,mask_spin_down))
+
+end function get_totalspin_from_key
+
+
+!==================================================================
+! From key, get the spins = +1 or -1
+subroutine get_spins_from_key(key,ispin)
+ implicit none
+
+ integer(kind=key_int),intent(in) :: key
+ integer,intent(out)              :: ispin(:)
+!=====
+ integer :: ipos,ielec
+!=====
 
  ielec = 0
- keytmp = key
- do while( POPCNT(keytmp) > 0 )
-   ielec = ielec + 1
-   sporb_occ(ielec) = TRAILZ(keytmp)+2*nfrozen_ci+1
-   keytmp = keytmp - SHIFTL(1,TRAILZ(keytmp))
+ do ipos=0,BIT_SIZE(key)-1
+   if( BTEST(key,ipos) ) then
+     ielec = ielec + 1
+     ispin(ielec) = 2 * MODULO( ipos + 1 , 2 ) - 1
+   endif
  enddo
 
+end subroutine get_spins_from_key
 
-end subroutine get_sporb_occ
+
+!==================================================================
+! From key, get the states
+subroutine get_states_from_key(key,istate)
+ implicit none
+
+ integer(kind=key_int),intent(in) :: key
+ integer,intent(out)              :: istate(:)
+!=====
+ integer :: ipos,ielec
+!=====
+
+ ielec = 0
+ do ipos=0,BIT_SIZE(key)-1
+   if( BTEST(key,ipos) ) then
+     ielec = ielec + 1
+     istate(ielec) = ( ipos + 2 ) / 2 + nfrozen_ci
+   endif
+ enddo
+
+end subroutine get_states_from_key
 
 
 !==================================================================
@@ -168,6 +232,7 @@ subroutine prepare_ci(nstate_in,nfrozen_in,h_1e,c_matrix)
  integer,intent(in)  :: nstate_in,nfrozen_in
  real(dp),intent(in) :: h_1e(:,:),c_matrix(:,:,:)
 !=====
+ integer :: ipos
 !=====
 
  nstate_ci  = nstate_in
@@ -175,12 +240,19 @@ subroutine prepare_ci(nstate_in,nfrozen_in,h_1e,c_matrix)
 
  write(stdout,'(/,1x,a,i4,a,i4)') 'Prepare CI with active states ranging from ',nfrozen_ci+1,' to ',nstate_ci
 
- write(stdout,'(1x,a,i4)') '    Max active space size: ',LEADZ(0_key_int)
+ write(stdout,'(1x,a,i4)') '    Max active space size: ',BIT_SIZE(0_key_int)
  write(stdout,'(1x,a,i4)') 'Current active space size: ',2 * (nstate_ci -nfrozen_ci)
- if( 2 * (nstate_ci -nfrozen_ci) > LEADZ(0_key_int) ) call die('prepare_ci: current active space too large')
+ if( 2 * (nstate_ci -nfrozen_ci) > BIT_SIZE(0_key_int) ) call die('prepare_ci: current active space too large')
 
  ! Calculate the one-electron hamiltonian on the eigenstate basis
  call build_1e_hamiltonian(c_matrix,h_1e)
+
+ mask_spin_up   = 0
+ mask_spin_down = 0
+ do ipos=0,BIT_SIZE(1_key_int)
+   mask_spin_up   = mask_spin_up   + SHIFTL(1_key_int,2*ipos  )
+   mask_spin_down = mask_spin_down + SHIFTL(1_key_int,2*ipos+1)
+ enddo
 
 
 end subroutine prepare_ci
@@ -221,14 +293,16 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  type(configurations),intent(out) :: conf
 !=====
  integer :: iconf,jconf
- integer :: ispin(nelec-2*nfrozen_ci),istate(nelec-2*nfrozen_ci)
- integer :: sporb(nelec-2*nfrozen_ci)
- integer :: sporb0(nelec-2*nfrozen_ci)
- integer :: isporb,jsporb,ksporb,lsporb,msporb,nsporb,osporb,psporb
  integer :: excitation_max
  integer :: kstate,lstate
  integer :: ielec
- integer(kind=key_int) :: key0,keyi
+ integer(kind=key_int) :: key0,keyi,key_inactive,key_active,key_test
+ integer(kind=key_int),allocatable :: key_singles(:)
+ integer :: fu,is
+ logical :: file_exists
+ character(len=142) :: string
+ integer :: active_states(nstate_ci-nfrozen_ci+1)
+ integer,allocatable :: sporbtmp(:)
 !=====
 
  call start_clock(timing_ci_config)
@@ -236,7 +310,6 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  write(stdout,'(/,1x,a,a)') 'Setup CI space with excitations: ',ci_type_in
 
  conf%nelec        = nelec
- conf%nelec_active = nelec - 2*nfrozen_ci
  conf%sz           = spinstate
 
  if( MODULO(conf%nelec,2) /= MODULO(conf%sz,2) .AND. .NOT. conf%sz == -100 ) then
@@ -262,407 +335,106 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
 
  select case(ci_type_in)
  case('ALL')
-   excitation_max = conf%nelec_active
+   excitation_max = 100
  case('CISD')
-   excitation_max = MIN(2,conf%nelec_active)
+   excitation_max = 2
  case('CISDT')
-   excitation_max = MIN(3,conf%nelec_active)
+   excitation_max = 3
  case('CISDTQ')
-   excitation_max = MIN(4,conf%nelec_active)
+   excitation_max = 4
  case default
    call die('setup_configurations_ci: ci_type not understood')
  end select
 
- ! Set the ground state vector
- do ielec=1,conf%nelec_active
-   sporb0(ielec) = ielec + 2 * nfrozen_ci
+ !
+ ! If file manual_ci is present, select which spinorbitals are active
+ key_inactive = 0_key_int
+ active_states(:) = 1
+ inquire(file='manual_ci',exist=file_exists)
+ if(file_exists) then
+   open(newunit=fu,file='manual_ci',status='old',action='read')
+   read(fu,'(a)') string
+   close(fu)
+   call string_to_integers(string,active_states)
+ endif
+ do is=1,SIZE(active_states)
+   if( active_states(is) == 0 ) then
+     key_inactive = key_inactive + SHIFTL(1_key_int,2*is-2)
+     key_inactive = key_inactive + SHIFTL(1_key_int,2*is-1)
+   endif
  enddo
- key0 = get_key(sporb0)
+ ! Active is the complementary of inactive
+ key_active = -( key_inactive + 1_key_int )
 
- select case(conf%nelec_active)
- case(1)
-   conf%nconf = 0
-   do isporb=2*nfrozen_ci+1,2*nstate_ci
-     sporb(1) = isporb
-     ispin(:)  = sporb_to_spin(  sporb(:) )
-     keyi = get_key(sporb)
-     if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-       if( key_diff_order(keyi,key0) <= 2*excitation_max ) then
-         conf%nconf = conf%nconf + 1
+
+ ! Set the ground state vector
+ key0 = 0_key_int
+ do ielec=1,conf%nelec-2*nfrozen_ci
+   key0 = key0 + SHIFTL(1_key_int,ielec-1)
+ enddo
+ 
+ conf%nelec_valence = conf%nelec - 2 * nfrozen_ci
+
+
+ allocate(sporbtmp(conf%nelec_valence))
+
+ ! First, determine the total number of CI configurations
+ do ielec=1,conf%nelec_valence
+   sporbtmp(ielec) = ielec + 2 * nfrozen_ci
+ enddo
+ iconf = 0
+ do
+   key_test = get_key(sporbtmp)
+
+
+   ! Check if key_test does not activate inactive states
+   if( IAND(key_test,key_inactive) == IAND(key0,key_inactive) ) then
+
+     ! Check if the excitation is not too high
+     if( key_diff_order(key_test,key0) <= 2*excitation_max ) then
+
+       ! Check if key_test does not have the correct total spin state
+       if( get_totalspin_from_key(key_test) == spinstate .OR. spinstate == -100 ) then
+         iconf = iconf + 1
        endif
      endif
-   enddo
- case(2)
-   conf%nconf = 0
-   do jsporb=2*nfrozen_ci+1,2*nstate_ci
-     do isporb=jsporb+1,2*nstate_ci
-       sporb(1)  = jsporb
-       sporb(2)  = isporb
-       ispin(:)  = sporb_to_spin(  sporb(:) )
-       keyi = get_key(sporb)
-       if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-         if( key_diff_order(keyi,key0) <= 2*excitation_max ) then
-           conf%nconf = conf%nconf + 1
-         endif
-       endif
-     enddo
-   enddo
- case(3)
-   conf%nconf = 0
-   do ksporb=2*nfrozen_ci+1,2*nstate_ci
-     do jsporb=ksporb+1,2*nstate_ci
-       do isporb=jsporb+1,2*nstate_ci
-         sporb(1) = ksporb
-         sporb(2) = jsporb
-         sporb(3) = isporb
-         ispin(:)  = sporb_to_spin(  sporb(:) )
-         keyi = get_key(sporb)
-         if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-           if( key_diff_order(keyi,key0) <= 2*excitation_max ) then
-             conf%nconf = conf%nconf + 1
-           endif
-         endif
-       enddo
-     enddo
-   enddo
- case(4)
-   conf%nconf = 0
-   do lsporb=2*nfrozen_ci+1,2*nstate_ci
-     do ksporb=lsporb+1,2*nstate_ci
-       do jsporb=ksporb+1,2*nstate_ci
-         do isporb=jsporb+1,2*nstate_ci
-           sporb(1) = lsporb
-           sporb(2) = ksporb
-           sporb(3) = jsporb
-           sporb(4) = isporb
-           ispin(:)  = sporb_to_spin(  sporb(:) )
-           keyi = get_key(sporb)
-           if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-             if( key_diff_order(keyi,key0) <= 2*excitation_max ) then
-               conf%nconf = conf%nconf + 1
-             endif
-           endif
-         enddo
-       enddo
-     enddo
-   enddo
- case(5)
-   conf%nconf = 0
-   do msporb=2*nfrozen_ci+1,2*nstate_ci
-     do lsporb=msporb+1,2*nstate_ci
-       do ksporb=lsporb+1,2*nstate_ci
-         do jsporb=ksporb+1,2*nstate_ci
-           do isporb=jsporb+1,2*nstate_ci
-             sporb(1) = msporb
-             sporb(2) = lsporb
-             sporb(3) = ksporb
-             sporb(4) = jsporb
-             sporb(5) = isporb
-             ispin(:)  = sporb_to_spin(  sporb(:) )
-             keyi = get_key(sporb)
-             if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-               if( key_diff_order(keyi,key0) <= 2*excitation_max ) then
-                 conf%nconf = conf%nconf + 1
-               endif
-             endif
-           enddo
-         enddo
-       enddo
-     enddo
-   enddo
- case(6)
-   conf%nconf = 0
-   do nsporb=2*nfrozen_ci+1,2*nstate_ci
-     do msporb=nsporb+1,2*nstate_ci
-       do lsporb=msporb+1,2*nstate_ci
-         do ksporb=lsporb+1,2*nstate_ci
-           do jsporb=ksporb+1,2*nstate_ci
-             do isporb=jsporb+1,2*nstate_ci
-               sporb(1) = nsporb
-               sporb(2) = msporb
-               sporb(3) = lsporb
-               sporb(4) = ksporb
-               sporb(5) = jsporb
-               sporb(6) = isporb
-               ispin(:)  = sporb_to_spin(  sporb(:) )
-               keyi = get_key(sporb)
-               if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-                 if( key_diff_order(keyi,key0) <= 2*excitation_max ) then
-                   conf%nconf = conf%nconf + 1
-                 endif
-               endif
-             enddo
-           enddo
-         enddo
-       enddo
-     enddo
-   enddo
- case(7)
-   conf%nconf = 0
-   do osporb=2*nfrozen_ci+1,2*nstate_ci
-     do nsporb=osporb+1,2*nstate_ci
-       do msporb=nsporb+1,2*nstate_ci
-         do lsporb=msporb+1,2*nstate_ci
-           do ksporb=lsporb+1,2*nstate_ci
-             do jsporb=ksporb+1,2*nstate_ci
-               do isporb=jsporb+1,2*nstate_ci
-                 sporb(1) = osporb
-                 sporb(2) = nsporb
-                 sporb(3) = msporb
-                 sporb(4) = lsporb
-                 sporb(5) = ksporb
-                 sporb(6) = jsporb
-                 sporb(7) = isporb
-                 ispin(:)  = sporb_to_spin(  sporb(:) )
-                 keyi = get_key(sporb)
-                 if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-                   if( key_diff_order(keyi,key0) <= 2*excitation_max ) then
-                     conf%nconf = conf%nconf + 1
-                   endif
-                 endif
-               enddo
-             enddo
-           enddo
-         enddo
-       enddo
-     enddo
-   enddo
- case(8)
-   conf%nconf = 0
-   do psporb=2*nfrozen_ci+1,2*nstate_ci
-     do osporb=psporb+1,2*nstate_ci
-       do nsporb=osporb+1,2*nstate_ci
-         do msporb=nsporb+1,2*nstate_ci
-           do lsporb=msporb+1,2*nstate_ci
-             do ksporb=lsporb+1,2*nstate_ci
-               do jsporb=ksporb+1,2*nstate_ci
-                 do isporb=jsporb+1,2*nstate_ci
-                   sporb(1) = psporb
-                   sporb(2) = osporb
-                   sporb(3) = nsporb
-                   sporb(4) = msporb
-                   sporb(5) = lsporb
-                   sporb(6) = ksporb
-                   sporb(7) = jsporb
-                   sporb(8) = isporb
-                   ispin(:)  = sporb_to_spin(  sporb(:) )
-                   keyi = get_key(sporb)
-                   if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-                     if( key_diff_order(keyi,key0) <= 2*excitation_max ) then
-                       conf%nconf = conf%nconf + 1
-                     endif
-                   endif
-                 enddo
-               enddo
-             enddo
-           enddo
-         enddo
-       enddo
-     enddo
-   enddo
+   endif
 
- case default
-   write(stdout,*) 'Active elecrons:',conf%nelec_active
-   call die('setup_configurations_ci: number of active electrons not coded as of today')
- end select
-
+   call increment_sporb(sporbtmp)
+   if( sporbtmp(1) == 0 ) exit
+ enddo
+ conf%nconf = iconf
 
  allocate(conf%key(conf%nconf))
 
+ ! Second, generate and store all the keys
+ do ielec=1,conf%nelec_valence
+   sporbtmp(ielec) = ielec + 2 * nfrozen_ci
+ enddo
  iconf = 0
- select case(conf%nelec_active)
- case(1)
-   do isporb=2*nfrozen_ci+1,2*nstate_ci
-     sporb(1) = isporb
-     ispin(:)  = sporb_to_spin(  sporb(:) )
-     keyi = get_key(sporb)
-     if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-       if( key_diff_order(keyi,key0) <= 2*excitation_max ) then
+ do
+   key_test = get_key(sporbtmp)
+
+
+   ! Check if key_test does not activate inactive states
+   if( IAND(key_test,key_inactive) == IAND(key0,key_inactive) ) then
+
+     ! Check if the excitation is not too high
+     if( key_diff_order(key_test,key0) <= 2*excitation_max ) then
+
+       ! Check if key_test does not have the correct total spin state
+       if( get_totalspin_from_key(key_test) == spinstate .OR. spinstate == -100 ) then
          iconf = iconf + 1
-         conf%key(iconf) = get_key(sporb)
+         conf%key(iconf) = key_test
        endif
      endif
-   enddo
+   endif
 
+   call increment_sporb(sporbtmp)
+   if( sporbtmp(1) == 0 ) exit
+ enddo
 
- case(2)
-   do jsporb=2*nfrozen_ci+1,2*nstate_ci
-     do isporb=jsporb+1,2*nstate_ci
-       sporb(1)  = jsporb
-       sporb(2)  = isporb
-       ispin(:)  = sporb_to_spin( sporb(:) )
-       keyi = get_key(sporb)
-       if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-         if( key_diff_order(keyi,key0) <= 2*excitation_max ) then
-           iconf = iconf + 1
-           conf%key(iconf) = get_key(sporb)
-         endif
-       endif
-     enddo
-   enddo
-
-
- case(3)
-   do ksporb=2*nfrozen_ci+1,2*nstate_ci
-     do jsporb=ksporb+1,2*nstate_ci
-       do isporb=jsporb+1,2*nstate_ci
-         sporb(1) = ksporb
-         sporb(2) = jsporb
-         sporb(3) = isporb
-         ispin(:)  = sporb_to_spin( sporb(:) )
-         keyi = get_key(sporb)
-         if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-           if( key_diff_order(keyi,key0) <= 2*excitation_max ) then
-             iconf = iconf + 1
-             conf%key(iconf) = get_key(sporb)
-           endif
-         endif
-       enddo
-     enddo
-   enddo
-
- case(4)
-   do lsporb=2*nfrozen_ci+1,2*nstate_ci
-     do ksporb=lsporb+1,2*nstate_ci
-       do jsporb=ksporb+1,2*nstate_ci
-         do isporb=jsporb+1,2*nstate_ci
-           sporb(1) = lsporb
-           sporb(2) = ksporb
-           sporb(3) = jsporb
-           sporb(4) = isporb
-           ispin(:)  = sporb_to_spin( sporb(:) )
-           keyi = get_key(sporb)
-           if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-             if( key_diff_order(keyi,key0) <= 2*excitation_max ) then
-               iconf = iconf + 1
-               conf%key(iconf) = get_key(sporb)
-             endif
-           endif
-         enddo
-       enddo
-     enddo
-   enddo
-
- case(5)
-   do msporb=2*nfrozen_ci+1,2*nstate_ci
-     do lsporb=msporb+1,2*nstate_ci
-       do ksporb=lsporb+1,2*nstate_ci
-         do jsporb=ksporb+1,2*nstate_ci
-           do isporb=jsporb+1,2*nstate_ci
-             sporb(1) = msporb
-             sporb(2) = lsporb
-             sporb(3) = ksporb
-             sporb(4) = jsporb
-             sporb(5) = isporb
-             ispin(:)  = sporb_to_spin( sporb(:) )
-             keyi = get_key(sporb)
-             if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-               if( key_diff_order(keyi,key0) <= 2*excitation_max ) then
-                 iconf = iconf + 1
-                 conf%key(iconf) = get_key(sporb)
-               endif
-             endif
-           enddo
-         enddo
-       enddo
-     enddo
-   enddo
-
- case(6)
-   do nsporb=2*nfrozen_ci+1,2*nstate_ci
-     do msporb=nsporb+1,2*nstate_ci
-       do lsporb=msporb+1,2*nstate_ci
-         do ksporb=lsporb+1,2*nstate_ci
-           do jsporb=ksporb+1,2*nstate_ci
-             do isporb=jsporb+1,2*nstate_ci
-               sporb(1) = nsporb
-               sporb(2) = msporb
-               sporb(3) = lsporb
-               sporb(4) = ksporb
-               sporb(5) = jsporb
-               sporb(6) = isporb
-               ispin(:)  = sporb_to_spin( sporb(:) )
-               keyi = get_key(sporb)
-               if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-                 if( key_diff_order(keyi,key0) <= 2*excitation_max ) then
-                   iconf = iconf + 1
-                   conf%key(iconf) = get_key(sporb)
-                 endif
-               endif
-             enddo
-           enddo
-         enddo
-       enddo
-     enddo
-   enddo
-
- case(7)
-   do osporb=2*nfrozen_ci+1,2*nstate_ci
-     do nsporb=osporb+1,2*nstate_ci
-       do msporb=nsporb+1,2*nstate_ci
-         do lsporb=msporb+1,2*nstate_ci
-           do ksporb=lsporb+1,2*nstate_ci
-             do jsporb=ksporb+1,2*nstate_ci
-               do isporb=jsporb+1,2*nstate_ci
-                 sporb(1) = osporb
-                 sporb(2) = nsporb
-                 sporb(3) = msporb
-                 sporb(4) = lsporb
-                 sporb(5) = ksporb
-                 sporb(6) = jsporb
-                 sporb(7) = isporb
-                 ispin(:)  = sporb_to_spin( sporb(:) )
-                 keyi = get_key(sporb)
-                 if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-                   if( key_diff_order(keyi,key0) <= 2*excitation_max ) then
-                     iconf = iconf + 1
-                     conf%key(iconf) = get_key(sporb)
-                   endif
-                 endif
-               enddo
-             enddo
-           enddo
-         enddo
-       enddo
-     enddo
-   enddo
-
- case(8)
-   do psporb=2*nfrozen_ci+1,2*nstate_ci
-     do osporb=psporb+1,2*nstate_ci
-       do nsporb=osporb+1,2*nstate_ci
-         do msporb=nsporb+1,2*nstate_ci
-           do lsporb=msporb+1,2*nstate_ci
-             do ksporb=lsporb+1,2*nstate_ci
-               do jsporb=ksporb+1,2*nstate_ci
-                 do isporb=jsporb+1,2*nstate_ci
-                   sporb(1) = psporb
-                   sporb(2) = osporb
-                   sporb(3) = nsporb
-                   sporb(4) = msporb
-                   sporb(5) = lsporb
-                   sporb(6) = ksporb
-                   sporb(7) = jsporb
-                   sporb(8) = isporb
-                   ispin(:)  = sporb_to_spin( sporb(:) )
-                   keyi = get_key(sporb)
-                   if( SUM(ispin(:)) == spinstate .OR. spinstate == -100 ) then
-                     if( key_diff_order(keyi,key0) <= 2*excitation_max ) then
-                       iconf = iconf + 1
-                       conf%key(iconf) = get_key(sporb)
-                     endif
-                   endif
-                 enddo
-               enddo
-             enddo
-           enddo
-         enddo
-       enddo
-     enddo
-   enddo
-
-
- end select
+ deallocate(sporbtmp)
 
 
  if( iconf /= conf%nconf ) then
@@ -677,9 +449,9 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  endif
 
 
- write(stdout,'(/,1x,a,i2,a,i2,a,i8)') 'Electron count: ',conf%nelec, &
-                                       '         Active electrons: ',conf%nelec_active, &
-                                       '           Configurations: ',conf%nconf
+ write(stdout,'(/,1x,a,i2,/,1x,a,i2,/,1x,a,i8)') 'Valence electrons: ',conf%nelec_valence, &
+                                                 ' Active electrons: ',POPCNT(IAND(key0,key_active)), &
+                                                 '   Configurations: ',conf%nconf
 
  !
  ! Calculate the frozen-frozen contribution to the Hamiltonian
@@ -746,7 +518,7 @@ function key_diff_order(key1,key2) RESULT(order)
 !=====
 !=====
 
- order = POPCNT( IEOR(key1,key2) ) ! / 2
+ order = POPCNT( IEOR(key1,key2) )
 
 end function key_diff_order
 
@@ -758,7 +530,7 @@ function hamiltonian_ci(keyi,keyj) RESULT(h_ci_ij)
  integer(kind=key_int),intent(in) :: keyi,keyj
  real(dp)           :: h_ci_ij
 !=====
- integer :: nelec_active
+ integer :: nelec_valence
  integer :: ielec,jelec
  integer :: isporb,jsporb,istate,jstate,ispin,jspin
  integer :: ksporb,lsporb,kstate,lstate,kspin,lspin
@@ -781,24 +553,24 @@ function hamiltonian_ci(keyi,keyj) RESULT(h_ci_ij)
    !
    ! Exact same ON-vector
 
-   nelec_active = POPCNT(keyi)
+   nelec_valence = POPCNT(keyi)
 
 
-   allocate(iisporb(nelec_active),jjsporb(nelec_active))
-   allocate(iistate(nelec_active),jjstate(nelec_active))
-   allocate(iispin(nelec_active),jjspin(nelec_active))
+   allocate(iistate(nelec_valence),jjstate(nelec_valence))
+   allocate(iispin(nelec_valence),jjspin(nelec_valence))
 
-   call get_sporb_occ(keyi,iisporb)
-   call get_sporb_occ(keyj,jjsporb)
-   iispin(:)  = sporb_to_spin(  iisporb(:) )
-   iistate(:) = sporb_to_state( iisporb(:) )
-   jjspin(:)  = sporb_to_spin(  jjsporb(:) )
-   jjstate(:) = sporb_to_state( jjsporb(:) )
+!   iispin(:)  = sporb_to_spin(  iisporb(:) )
+!   iistate(:) = sporb_to_state( iisporb(:) )
+!   jjspin(:)  = sporb_to_spin(  jjsporb(:) )
+!   jjstate(:) = sporb_to_state( jjsporb(:) )
+   call get_spins_from_key(keyi,iispin)
+   call get_states_from_key(keyi,iistate)
+   call get_spins_from_key(keyj,jjspin)
+   call get_states_from_key(keyj,jjstate)
 
-   deallocate(iisporb,jjsporb)
 
    h_ci_ij = h_frozen_frozen
-   do ielec=1,nelec_active
+   do ielec=1,nelec_valence
      istate = iistate(ielec)
      h_ci_ij = h_ci_ij + h_frozen_active(istate)
    enddo
@@ -806,17 +578,17 @@ function hamiltonian_ci(keyi,keyj) RESULT(h_ci_ij)
    !
    ! 1-body part
    !
-   do ielec=1,nelec_active
+   do ielec=1,nelec_valence
      h_ci_ij = h_ci_ij + h_1body(iistate(ielec),iistate(ielec))
    enddo
    !
    ! 2-body part
    !
-   do jelec=1,nelec_active
+   do jelec=1,nelec_valence
      jstate = jjstate(jelec)
      jspin  = jjspin(jelec)
 
-     do ielec=1,nelec_active
+     do ielec=1,nelec_valence
        istate = iistate(ielec)
        h_ci_ij = h_ci_ij  &
                   + 0.5_dp * eri_eigen(istate,istate,1,jstate,jstate,1)
@@ -877,7 +649,7 @@ function hamiltonian_ci(keyi,keyj) RESULT(h_ci_ij)
      do while( POPCNT(key_iand) > 0 )
 
        msporb = TRAILZ(key_iand) + 2 * nfrozen_ci + 1
-       key_iand = key_iand - SHIFTL(1,TRAILZ(key_iand))
+       key_iand = key_iand - SHIFTL(1_key_int,TRAILZ(key_iand))
 
        mstate = sporb_to_state( msporb )
        mspin  = sporb_to_spin(  msporb )
@@ -906,8 +678,8 @@ function hamiltonian_ci(keyi,keyj) RESULT(h_ci_ij)
 
    isporb = TRAILZ(keyii) + 2 * nfrozen_ci + 1
    ksporb = TRAILZ(keyjj) + 2 * nfrozen_ci + 1 
-   jsporb = LEADZ(0_key_int) - LEADZ(keyii) + 2 * nfrozen_ci
-   lsporb = LEADZ(0_key_int) - LEADZ(keyjj) + 2 * nfrozen_ci
+   jsporb = BIT_SIZE(0_key_int) - LEADZ(keyii) + 2 * nfrozen_ci
+   lsporb = BIT_SIZE(0_key_int) - LEADZ(keyjj) + 2 * nfrozen_ci
 
    !
    ! 2-body part
@@ -1008,7 +780,7 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
  enddo
  h%nnz_total = REAL( h%nnz , dp )
  call xsum_auxil(h%nnz_total)
- write(stdout,'(1x,a,i10)')  'CI hamiltonian elements on this proc: ',h%nnz
+ write(stdout,'(1x,a,i10)')  ' CI hamiltonian elements on this proc: ',h%nnz
  nnztmp = h%nnz
  call xmin_auxil(nnztmp)
  write(stdout,'(1x,a,i10)')  'Min CI hamiltonian elements on a proc: ',nnztmp
@@ -1805,7 +1577,7 @@ subroutine translate_eigvec_ci(conf_in,desc_vec_in,eigvec_in,conf_out,desc_vec_o
    call die('translate_eigvec_ci: configuration spaces have different number of electrons')
  endif
 
- if( conf_in%nelec_active /= conf_out%nelec_active ) then
+ if( conf_in%nelec_valence /= conf_out%nelec_valence ) then
    call die('translate_eigvec_ci: configuration spaces have different number of active electrons')
  endif
 

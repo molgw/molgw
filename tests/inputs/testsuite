@@ -267,6 +267,8 @@ SOX diagram               ,      0.0373293160  , 0 , 1.0e-7
 
 h2_ci.in                  , Full CI for 2 electrons applied to H2
 SCF Total Energy          ,     -1.1636125481  , 0 , 1.0e-7
+Active electrons          ,        2           , 0 , 1.0e-7
+Configurations            ,      324           , 0 , 1.0e-7
 Uncorrelated energy       ,     -1.1285529195  , 0 , 1.0e-7
 Correlation energy        ,     -0.0360548711  , 0 , 1.0e-7
 CI ground-state energy    ,     -1.1646077906  , 0 , 1.0e-7
