@@ -511,7 +511,14 @@ RT-TDDFT Dipole Moment    ,    0.0002922780     , 2 , 1.0e-7
 
 h2o_rt_tddft_h_projectile.in  , test of projectile without basis function PC="PC2B"
 SCF Total Energy          ,  -75.8551200924     , 0 , 1.0e-7
-RT-TDDFT Total Energy     ,  -75.3274189830     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -75.0285116443     , 0 , 1.0e-7
+
+h2o_rt_tddft_h_proj_pbe0.in , proj without basis pbe0
+SCF Total Energy          ,  -76.3418386927     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -75.5708214863     , 0 , 1.0e-7
+
+h2o_rt_tddft_h_proj_pbe0_restart.in , proj without basis pbe0 restart, RESTART_TDDFT
+RT-TDDFT Total Energy     ,  -75.5093024264     , 0 , 1.0e-7
 
 be2_qsgw_bse.in           , BSE calculation after QSGW for Be2
 gKS HOMO energy           ,  -8.818516          , 0 , 1.0e-4

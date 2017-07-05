@@ -1,0 +1,24 @@
+&molgw
+ scf='pbe0'
+ read_restart='no'
+ read_tddft_restart='no'
+ print_tddft_restart='yes'
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+ charge=1
+ natom=3
+ postscf='real_time'
+ time_step=0.1
+ time_sim=5.0
+ pred_corr="PC2B"
+ n_hist=3
+ prop_type='MAG2'
+ excit_name='proj_simple'
+ vel_projectile= 0.0 0.0 2.0
+ write_step=0.1
+/
+8    0.000  0.000   0.000
+1    0.757  0.586   0.000
+1   -0.757  0.586   0.000
+1    0.0    0.586  -5.0
+
