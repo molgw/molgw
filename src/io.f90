@@ -191,7 +191,7 @@ subroutine dump_out_energy(title,nstate,nspin,occupation,energy)
      write(stdout,'(1x,i3,2(2(1x,f12.5)),4x,2(f8.4,2x))') istate,energy(istate,:),energy(istate,:)*Ha_eV,occupation(istate,:)
    end select
    if(istate < nstate) then
-     if( ANY( occupation(istate+1,:) < spin_fact/2.0_dp .AND. occupation(istate,:) > spin_fact/2.0 ) ) then 
+     if( ANY( occupation(istate+1,:) < spin_fact/2.0_dp .AND. occupation(istate,:) > spin_fact/2.0_dp ) ) then 
         if(nspin==1) then
           write(stdout,'(a)') '  -----------------------------'
         else

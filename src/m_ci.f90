@@ -8,6 +8,7 @@
 !
 !==================================================================
 module m_ci
+ use m_bitwise
  use m_definitions
  use m_mpi
  use m_warning
@@ -20,9 +21,11 @@ module m_ci
  use m_inputparam
  use m_selfenergy_tools
 
- integer,parameter,private     :: key_int=8
+ integer,parameter,private     :: key_int=16
  integer(kind=key_int),private :: mask_spin_up,mask_spin_down
+ integer(C_INT),parameter      :: n=2
 
+ 
  integer,private              :: nfrozen_ci
  integer,private              :: nstate_ci
 
@@ -254,6 +257,47 @@ subroutine prepare_ci(nstate_in,nfrozen_in,h_1e,c_matrix)
    mask_spin_down = mask_spin_down + SHIFTL(1_key_int,2*ipos+1)
  enddo
 
+ block 
+   integer :: key1(n),key2(n),key3(n)
+   integer :: i
+
+   key1(:) = 1023
+   key2(:) = 255
+   call bitwise_and(key1,key2,key3)
+   write(*,'(*(1x,b32.32))') key1(:)
+   write(*,'(*(1x,b32.32))') key2(:)
+   write(*,'(*(1x,b32.32))') key3(:)
+   call bitwise_xor(key1,key2,key3)
+   write(*,'(*(1x,b32.32))') key1(:)
+   write(*,'(*(1x,b32.32))') key2(:)
+   write(*,'(*(1x,b32.32))') key3(:)
+
+   call bitwise_maskr(3,key3)
+   write(*,'(*(b32.32))') (key3(i),i=n,1,-1)
+   write(*,*) bitwise_popcnt(key3)
+   write(*,*) bitwise_poppar(key3)
+   call bitwise_maskr(36,key3)
+   write(*,'(*(b32.32))') (key3(i),i=n,1,-1)
+   write(*,*) bitwise_popcnt(key3)
+   write(*,*) bitwise_poppar(key3)
+   key1(1) = 0
+   key1(2) = 8
+   write(*,'(*(b32.32))') (key1(i),i=n,1,-1)
+   write(*,*) bitwise_trailz(key1)
+   write(*,*) bitwise_leadz(key1)
+   key1(1) = 8
+   key1(2) = 0
+   write(*,'(*(b32.32))') (key1(i),i=n,1,-1)
+   write(*,*) bitwise_trailz(key1)
+   write(*,*) bitwise_leadz(key1)
+   call bitwise_add_onebit(12,key1)
+   write(*,'(*(b32.32))') (key1(i),i=n,1,-1)
+   call bitwise_add_onebit(48,key1)
+   write(*,'(*(b32.32))') (key1(i),i=n,1,-1)
+   call bitwise_sub_onebit(48,key1)
+   write(*,'(*(b32.32))') (key1(i),i=n,1,-1)
+   
+ end block
 
 end subroutine prepare_ci
 
@@ -295,13 +339,16 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  integer :: iconf,jconf
  integer :: excitation_max
  integer :: kstate,lstate
- integer :: ielec
- integer(kind=key_int) :: key0,keyi,key_inactive,key_active,key_test
- integer(kind=key_int),allocatable :: key_singles(:)
+ integer :: ielec,isporb
+ integer(kind=key_int) :: keyi,key_inactive,key_active,key_test
+ integer :: nref,iref
+ integer(kind=key_int),allocatable :: key_ref(:)
  integer :: fu,is
  logical :: file_exists
  character(len=142) :: string
+ character(len=2)   :: ctmp2
  integer :: active_states(nstate_ci-nfrozen_ci+1)
+ integer :: ref_sporb(2*(nstate_ci-nfrozen_ci+1))
  integer,allocatable :: sporbtmp(:)
 !=====
 
@@ -309,8 +356,9 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
 
  write(stdout,'(/,1x,a,a)') 'Setup CI space with excitations: ',ci_type_in
 
- conf%nelec        = nelec
- conf%sz           = spinstate
+ conf%nelec         = nelec
+ conf%nelec_valence = conf%nelec - 2 * nfrozen_ci
+ conf%sz            = spinstate
 
  if( MODULO(conf%nelec,2) /= MODULO(conf%sz,2) .AND. .NOT. conf%sz == -100 ) then
    write(stdout,*) 'nelec=',conf%nelec
@@ -367,17 +415,46 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  key_active = -( key_inactive + 1_key_int )
 
 
+ !
  ! Set the ground state vector
- key0 = 0_key_int
- do ielec=1,conf%nelec-2*nfrozen_ci
-   key0 = key0 + SHIFTL(1_key_int,ielec-1)
+ write(ctmp2,'(i2.2)') nelec
+ inquire(file='manual_ci_ref_'//ctmp2,exist=file_exists)
+ if(file_exists) then
+   open(newunit=fu,file='manual_ci_ref_'//ctmp2,status='old',action='read')
+   read(fu,'(i8)') nref
+   allocate(key_ref(nref))
+
+   do iref=1,nref
+     ref_sporb(:) = 0
+     read(fu,'(a)')  string
+     call string_to_integers(string,ref_sporb)
+     if( SUM(ref_sporb(:)) /= conf%nelec_valence ) &
+         call die('setup_configuration_ci: manual_ci_ref_xx file does not have the correct number of valence electrons')
+     key_ref(iref) = 0_key_int
+     do isporb=1,SIZE(ref_sporb)
+       if( ref_sporb(isporb) == 1 ) &
+         key_ref(iref) = key_ref(iref) + SHIFTL(1_key_int,isporb-1)
+     enddo
+   enddo
+   close(fu)
+
+ else
+   nref = 1
+   allocate(key_ref(nref))
+   key_ref(1) = 0_key_int
+   do ielec=1,conf%nelec-2*nfrozen_ci
+     key_ref(1) = key_ref(1) + SHIFTL(1_key_int,ielec-1)
+   enddo
+ endif
+ write(stdout,'(1x,a,i4)') 'Number of reference states: ',nref
+ do iref=1,nref
+   write(stdout,'(1x,a,b64.64)') 'Reference state key: ',key_ref(iref)
  enddo
- 
- conf%nelec_valence = conf%nelec - 2 * nfrozen_ci
 
 
  allocate(sporbtmp(conf%nelec_valence))
 
+ !
  ! First, determine the total number of CI configurations
  do ielec=1,conf%nelec_valence
    sporbtmp(ielec) = ielec + 2 * nfrozen_ci
@@ -386,19 +463,18 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  do
    key_test = get_key(sporbtmp)
 
-
-   ! Check if key_test does not activate inactive states
-   if( IAND(key_test,key_inactive) == IAND(key0,key_inactive) ) then
+!   ! Check if key_test does not activate inactive states
+!   if( IAND(key_test,key_inactive) == IAND(key0,key_inactive) ) then
 
      ! Check if the excitation is not too high
-     if( key_diff_order(key_test,key0) <= 2*excitation_max ) then
+     if( keys_diff_order(key_test,key_ref) <= 2*excitation_max ) then
 
        ! Check if key_test does not have the correct total spin state
        if( get_totalspin_from_key(key_test) == spinstate .OR. spinstate == -100 ) then
          iconf = iconf + 1
        endif
      endif
-   endif
+!   endif
 
    call increment_sporb(sporbtmp)
    if( sporbtmp(1) == 0 ) exit
@@ -407,6 +483,7 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
 
  allocate(conf%key(conf%nconf))
 
+ !
  ! Second, generate and store all the keys
  do ielec=1,conf%nelec_valence
    sporbtmp(ielec) = ielec + 2 * nfrozen_ci
@@ -416,11 +493,11 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
    key_test = get_key(sporbtmp)
 
 
-   ! Check if key_test does not activate inactive states
-   if( IAND(key_test,key_inactive) == IAND(key0,key_inactive) ) then
+!   ! Check if key_test does not activate inactive states
+!   if( IAND(key_test,key_inactive) == IAND(key0,key_inactive) ) then
 
      ! Check if the excitation is not too high
-     if( key_diff_order(key_test,key0) <= 2*excitation_max ) then
+     if( keys_diff_order(key_test,key_ref) <= 2*excitation_max ) then
 
        ! Check if key_test does not have the correct total spin state
        if( get_totalspin_from_key(key_test) == spinstate .OR. spinstate == -100 ) then
@@ -428,13 +505,14 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
          conf%key(iconf) = key_test
        endif
      endif
-   endif
+!   endif
 
    call increment_sporb(sporbtmp)
    if( sporbtmp(1) == 0 ) exit
  enddo
 
  deallocate(sporbtmp)
+ deallocate(key_ref)
 
 
  if( iconf /= conf%nconf ) then
@@ -449,9 +527,8 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  endif
 
 
- write(stdout,'(/,1x,a,i2,/,1x,a,i2,/,1x,a,i8)') 'Valence electrons: ',conf%nelec_valence, &
-                                                 ' Active electrons: ',POPCNT(IAND(key0,key_active)), &
-                                                 '   Configurations: ',conf%nconf
+ write(stdout,'(/,1x,a,i2,/,1x,a,i8)') 'Valence electrons: ',conf%nelec_valence, &
+                                       '   Configurations: ',conf%nconf
 
  !
  ! Calculate the frozen-frozen contribution to the Hamiltonian
@@ -521,6 +598,24 @@ function key_diff_order(key1,key2) RESULT(order)
  order = POPCNT( IEOR(key1,key2) )
 
 end function key_diff_order
+
+
+!==================================================================
+function keys_diff_order(key1,keys2) RESULT(order)
+ implicit none
+
+ integer(kind=key_int),intent(in) :: key1,keys2(:)
+ integer                          :: order
+!=====
+ integer :: iref
+!=====
+
+ order = 1000
+ do iref=1,SIZE(keys2(:))
+   order = MIN(order,POPCNT( IEOR(key1,keys2(iref)) ))
+ enddo
+
+end function keys_diff_order
 
 
 !==================================================================
@@ -1746,6 +1841,7 @@ subroutine read_eigvec_ci(filename,conf,desc_vec,eigvec,eigval,nstate_read,resid
  read_status = 0
 
 end subroutine read_eigvec_ci
+
 
 
 !==================================================================

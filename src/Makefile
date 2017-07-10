@@ -4,8 +4,10 @@
 PYTHON=python
 FC=gfortran
 CXX=g++
+CC=gcc
 FCOPTS=
 CXXOPTS= 
+CCOPTS=
 OPENMP=
 CPPFLAGS=
 LIBTOOL=
@@ -21,6 +23,7 @@ include ./my_machine.arch
 
 FC_W_OPTS= $(FC) $(FCOPTS) $(OPENMP) $(CPPFLAGS)
 CXX_W_OPTS= $(CXX) $(CXXOPTS) $(CPPFLAGS)
+CC_W_OPTS= $(CC) $(CCOPTS) $(CPPFLAGS)
 LINKER= $(LIBTOOL) $(FC_W_OPTS)
 
 LINKS= -lstdc++ -lm
@@ -52,7 +55,7 @@ all:
 	+make  level040
 	+make  ../molgw
 
-level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
+level000: m_definitions.o m_bitwise.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
           lebedev_quadrature.o pdbssolver1.o boys_function.o 
 
 level005: m_warning.o m_gos.o real_spherical_harmonics.o 
@@ -87,7 +90,7 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
 
 
 
-../molgw: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
+../molgw: m_definitions.o m_bitwise.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
         lebedev_quadrature.o pdbssolver1.o boys_function.o \
         m_warning.o m_gos.o real_spherical_harmonics.o m_lbfgs.o \
         m_mpi_world.o m_mpi_auxil.o m_mpi_grid.o m_mpi_ortho.o m_mpi_local.o m_mpi_trans.o  \
@@ -110,7 +113,7 @@ level040: pt2_selfenergy.o linear_response.o static_polarizability.o gw_selfener
                         m_gos.o m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_libint_tools.o \
                         m_eri_calculate.o m_eri_ao_mo.o m_tddft_fxc.o \
                         m_spectral_function.o m_ci.o \
-                        libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
+                        m_bitwise.o libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
                         boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt2_selfenergy.o \
                         mp2.o gw_selfenergy.o gw_selfenergy_grid.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o \
                         linear_response.o static_polarizability.o density_tools.o multipole_tools.o io.o restart.o \
@@ -237,6 +240,9 @@ real_spherical_harmonics.o: m_definitions.f90 real_spherical_harmonics.f90
 lebedev_quadrature.o: lebedev_quadrature.f
 	$(FC_W_OPTS) -c lebedev_quadrature.f $(LIBXC_INCS)
 
+m_bitwise.o: m_bitwise.f90
+	$(FC_W_OPTS) -c m_bitwise.f90
+
 libint_onebody.o: libint_molgw.h libint_onebody.cc
 	$(CXX_W_OPTS) -c libint_onebody.cc $(LIBINT_INCS)
 
@@ -256,7 +262,7 @@ m_dft_grid.o: m_definitions.f90 m_memory.f90 m_inputparam.f90 m_warning.f90 m_ca
               m_dft_grid.f90
 	$(FC_W_OPTS) -c m_dft_grid.f90 $(LIBXC_INCS)
 
-m_ci.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_tools.f90 m_basis_set.f90 m_eri_ao_mo.f90 m_inputparam.f90 m_scalapack.f90 m_selfenergy_tools.f90 \
+m_ci.o: m_definitions.f90 m_bitwise.f90 m_mpi.f90 m_timing.f90 m_warning.f90 m_memory.f90 m_tools.f90 m_basis_set.f90 m_eri_ao_mo.f90 m_inputparam.f90 m_scalapack.f90 m_selfenergy_tools.f90 \
                        m_ci.f90 
 	$(FC_W_OPTS) -c m_ci.f90 $(LIBXC_INCS)
 

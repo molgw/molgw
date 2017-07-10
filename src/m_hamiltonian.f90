@@ -520,7 +520,9 @@ subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occu
    !
    write(stdout,'(1x,a,f12.6)') 'Find new the occupations and Fermi level for temperature (Ha): ',temperature
 
-   mu = -0.1_dp
+   ! First, set mu half way between the HOMO and the LUMO
+   mu = 0.50_dp * ( energy(NINT(electrons/2.0_dp)+1,1) + energy(NINT(electrons/2.0_dp),1) )
+
    delta_mu = 1.0e-5_dp
    electrons_mu = -1.0_dp
    iter = 0
@@ -550,7 +552,7 @@ subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occu
 
  !
  ! final check
- if( ABS( SUM(occupation(:,:)) - electrons ) > 1.0e-7_dp ) then
+ if( ABS( SUM(occupation(:,:)) - electrons ) > 1.0e-4_dp ) then
    write(stdout,*) 'occupation set up failed to give the right number of electrons'
    write(stdout,*) 'sum of occupations',SUM(occupation(:,:))
    write(stdout,*) 'electrons',electrons
