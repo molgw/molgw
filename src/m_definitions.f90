@@ -25,6 +25,7 @@ module m_definitions
  real(dp),parameter    :: Ha_eV        = 27.21138505_dp
  real(dp),parameter    :: bohr_A       = 0.52917721092_dp
  real(dp),parameter    :: c_speedlight = 137.035999074_dp
+ real(dp),parameter    :: Ha_K         = 315775.0431159572_dp
 
 
  !

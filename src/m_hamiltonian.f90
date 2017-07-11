@@ -518,7 +518,8 @@ subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occu
    !
    ! Finite temperature case
    !
-   write(stdout,'(1x,a,f12.6)') 'Find new the occupations and Fermi level for temperature (Ha): ',temperature
+   write(stdout,'(1x,a,f12.6,3x,f15.3)') 'Find new the occupations and Fermi level for temperature (Ha) (K): ', & 
+                                         temperature,temperature * Ha_K
 
    ! First, set mu half way between the HOMO and the LUMO
    mu = 0.50_dp * ( energy(NINT(electrons/2.0_dp)+1,1) + energy(NINT(electrons/2.0_dp),1) )

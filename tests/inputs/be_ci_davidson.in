@@ -4,7 +4,7 @@
  basis='6-31G'
 
  postscf='ci'
- ci_nstate=5
+ ci_nstate=6
 
  natom=1
 /

@@ -8,7 +8,6 @@
 !
 !==================================================================
 module m_ci
- use m_bitwise
  use m_definitions
  use m_mpi
  use m_warning
@@ -21,9 +20,8 @@ module m_ci
  use m_inputparam
  use m_selfenergy_tools
 
- integer,parameter,private     :: key_int=16
+ integer,parameter,private     :: key_int=8
  integer(kind=key_int),private :: mask_spin_up,mask_spin_down
- integer(C_INT),parameter      :: n=2
 
  
  integer,private              :: nfrozen_ci
@@ -256,48 +254,6 @@ subroutine prepare_ci(nstate_in,nfrozen_in,h_1e,c_matrix)
    mask_spin_up   = mask_spin_up   + SHIFTL(1_key_int,2*ipos  )
    mask_spin_down = mask_spin_down + SHIFTL(1_key_int,2*ipos+1)
  enddo
-
- block 
-   integer :: key1(n),key2(n),key3(n)
-   integer :: i
-
-   key1(:) = 1023
-   key2(:) = 255
-   call bitwise_and(key1,key2,key3)
-   write(*,'(*(1x,b32.32))') key1(:)
-   write(*,'(*(1x,b32.32))') key2(:)
-   write(*,'(*(1x,b32.32))') key3(:)
-   call bitwise_xor(key1,key2,key3)
-   write(*,'(*(1x,b32.32))') key1(:)
-   write(*,'(*(1x,b32.32))') key2(:)
-   write(*,'(*(1x,b32.32))') key3(:)
-
-   call bitwise_maskr(3,key3)
-   write(*,'(*(b32.32))') (key3(i),i=n,1,-1)
-   write(*,*) bitwise_popcnt(key3)
-   write(*,*) bitwise_poppar(key3)
-   call bitwise_maskr(36,key3)
-   write(*,'(*(b32.32))') (key3(i),i=n,1,-1)
-   write(*,*) bitwise_popcnt(key3)
-   write(*,*) bitwise_poppar(key3)
-   key1(1) = 0
-   key1(2) = 8
-   write(*,'(*(b32.32))') (key1(i),i=n,1,-1)
-   write(*,*) bitwise_trailz(key1)
-   write(*,*) bitwise_leadz(key1)
-   key1(1) = 8
-   key1(2) = 0
-   write(*,'(*(b32.32))') (key1(i),i=n,1,-1)
-   write(*,*) bitwise_trailz(key1)
-   write(*,*) bitwise_leadz(key1)
-   call bitwise_add_onebit(12,key1)
-   write(*,'(*(b32.32))') (key1(i),i=n,1,-1)
-   call bitwise_add_onebit(48,key1)
-   write(*,'(*(b32.32))') (key1(i),i=n,1,-1)
-   call bitwise_sub_onebit(48,key1)
-   write(*,'(*(b32.32))') (key1(i),i=n,1,-1)
-   
- end block
 
 end subroutine prepare_ci
 
