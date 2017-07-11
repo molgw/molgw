@@ -195,28 +195,6 @@ end function get_spinz_from_key
 
 
 !==================================================================
-! From key, get the spins = +1 or -1
-subroutine get_spins_from_key(key,ispin)
- implicit none
-
- integer(kind=key_int),intent(in) :: key
- integer,intent(out)              :: ispin(:)
-!=====
- integer :: ipos,ielec
-!=====
-
- ielec = 0
- do ipos=0,BIT_SIZE(key)-1
-   if( BTEST(key,ipos) ) then
-     ielec = ielec + 1
-     ispin(ielec) = 2 * MODULO( ipos + 1 , 2 ) - 1
-   endif
- enddo
-
-end subroutine get_spins_from_key
-
-
-!==================================================================
 ! From key, get the spins = 1 or 2
 subroutine get_spins_from_keyud(keyud,ispin)
  implicit none
@@ -261,28 +239,6 @@ subroutine get_states_from_keyud(keyud,istate)
  enddo
 
 end subroutine get_states_from_keyud
-
-
-!==================================================================
-! From key, get the states
-subroutine get_states_from_key(key,istate)
- implicit none
-
- integer(kind=key_int),intent(in) :: key
- integer,intent(out)              :: istate(:)
-!=====
- integer :: ipos,ielec
-!=====
-
- ielec = 0
- do ipos=0,BIT_SIZE(key)-1
-   if( BTEST(key,ipos) ) then
-     ielec = ielec + 1
-     istate(ielec) = ( ipos + 2 ) / 2 + nfrozen_ci
-   endif
- enddo
-
-end subroutine get_states_from_key
 
 
 !==================================================================
@@ -384,11 +340,11 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  integer :: iconf,jconf
  integer :: excitation_max
  integer :: kstate,lstate
- integer :: ielec,isporb
- integer(kind=key_int) :: keyi,key_inactive,key_active,key_test
+ integer :: ielec,isporb,ispin
+ integer(kind=key_int) :: key_inactive,key_active,key_test
  integer(kind=key_int) :: keyud_test(2)
  integer :: nref,iref
- integer(kind=key_int),allocatable :: key_ref(:)
+ integer(kind=key_int),allocatable :: keyud_ref(:,:)
  integer :: fu,is
  logical :: file_exists
  character(len=142) :: string
@@ -468,7 +424,7 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  if(file_exists) then
    open(newunit=fu,file='manual_ci_ref_'//ctmp2,status='old',action='read')
    read(fu,'(i8)') nref
-   allocate(key_ref(nref))
+   allocate(keyud_ref(2,nref))
 
    do iref=1,nref
      ref_sporb(:) = 0
@@ -476,25 +432,28 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
      call string_to_integers(string,ref_sporb)
      if( SUM(ref_sporb(:)) /= conf%nelec_valence ) &
          call die('setup_configuration_ci: manual_ci_ref_xx file does not have the correct number of valence electrons')
-     key_ref(iref) = 0_key_int
+     keyud_ref(:,iref) = 0_key_int
      do isporb=1,SIZE(ref_sporb)
+       ispin = 2 * MODULO(ielec,2) + 1
        if( ref_sporb(isporb) == 1 ) &
-         key_ref(iref) = key_ref(iref) + SHIFTL(1_key_int,isporb-1)
+         keyud_ref(ispin,iref) = keyud_ref(ispin,iref) + SHIFTL(1_key_int,isporb-1)
+    ! FBFB POSSIBLY BROKEN HERE
      enddo
    enddo
    close(fu)
 
  else
    nref = 1
-   allocate(key_ref(nref))
-   key_ref(1) = 0_key_int
-   do ielec=1,conf%nelec-2*nfrozen_ci
-     key_ref(1) = key_ref(1) + SHIFTL(1_key_int,ielec-1)
+   allocate(keyud_ref(2,nref))
+   keyud_ref(:,1) = 0_key_int
+   do ielec=1,conf%nelec_valence
+     ispin = 2 - MODULO(ielec,2)
+     keyud_ref(ispin,1) = keyud_ref(ispin,1) + SHIFTL(1_key_int,(ielec-1)/2)
    enddo
  endif
  write(stdout,'(1x,a,i4)') 'Number of reference states: ',nref
  do iref=1,nref
-   write(stdout,'(1x,a,b64.64)') 'Reference state key: ',key_ref(iref)
+   write(stdout,'(1x,a,*(1x,b64.64))') 'Reference state key: ',keyud_ref(:,iref)
  enddo
 
 
@@ -508,12 +467,13 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  iconf = 0
  do
    key_test = get_key(sporbtmp)
+   keyud_test = get_keyud(sporbtmp)
 
 !   ! Check if key_test does not activate inactive states
 !   if( IAND(key_test,key_inactive) == IAND(key0,key_inactive) ) then
 
      ! Check if the excitation is not too high
-     if( keys_diff_order(key_test,key_ref) <= 2*excitation_max ) then
+     if( keysud_diff_order(keyud_test,keyud_ref) <= 2*excitation_max ) then
 
        ! Check if key_test does not have the correct total spin state
        if( get_spinz_from_key(key_test) == spinstate .OR. spinstate == -100 ) then
@@ -545,7 +505,7 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
 !   if( IAND(key_test,key_inactive) == IAND(key0,key_inactive) ) then
 
      ! Check if the excitation is not too high
-     if( keys_diff_order(key_test,key_ref) <= 2*excitation_max ) then
+     if( keysud_diff_order(keyud_test,keyud_ref) <= 2*excitation_max ) then
 
        ! Check if key_test does not have the correct total spin state
        if( get_spinz_from_key(key_test) == spinstate .OR. spinstate == -100 ) then
@@ -561,7 +521,7 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  enddo
 
  deallocate(sporbtmp)
- deallocate(key_ref)
+ deallocate(keyud_ref)
 
 
  if( iconf /= conf%nconf ) then
@@ -630,20 +590,6 @@ end subroutine build_1e_hamiltonian
 
 
 !==================================================================
-function key_diff_order(key1,key2) RESULT(order)
- implicit none
-
- integer(kind=key_int),intent(in) :: key1,key2
- integer                          :: order
-!=====
-!=====
-
- order = POPCNT( IEOR(key1,key2) )
-
-end function key_diff_order
-
-
-!==================================================================
 function keyud_diff_order(keyud1,keyud2) RESULT(order)
  implicit none
 
@@ -658,28 +604,27 @@ end function keyud_diff_order
 
 
 !==================================================================
-function keys_diff_order(key1,keys2) RESULT(order)
+function keysud_diff_order(keyud1,keysud2) RESULT(order)
  implicit none
 
- integer(kind=key_int),intent(in) :: key1,keys2(:)
+ integer(kind=key_int),intent(in) :: keyud1(2),keysud2(:,:)
  integer                          :: order
 !=====
  integer :: iref
 !=====
 
  order = 1000
- do iref=1,SIZE(keys2(:))
-   order = MIN(order,POPCNT( IEOR(key1,keys2(iref)) ))
+ do iref=1,SIZE(keysud2,DIM=2)
+   order = MIN(order, keyud_diff_order(keyud1,keysud2(:,iref)) )
  enddo
 
-end function keys_diff_order
+end function keysud_diff_order
 
 
 !==================================================================
-function hamiltonian_ci(keyi,keyudi,keyj,keyudj) RESULT(h_ci_ij)
+function hamiltonian_ci(keyudi,keyudj) RESULT(h_ci_ij)
  implicit none
 
- integer(kind=key_int),intent(in) :: keyi,keyj
  integer(kind=key_int),intent(in) :: keyudi(2),keyudj(2)
  real(dp)           :: h_ci_ij
 !=====
@@ -905,8 +850,7 @@ subroutine build_ci_hamiltonian(conf,desc_ham,h_ci)
    do iconf=1,mconf   !TODO use symmetry of H to reduce the calculation by 2
      iconf_global = rowindex_local_to_global(desc_ham,iconf)
 
-     h_ci(iconf,jconf) = hamiltonian_ci(conf%key(iconf_global),conf%keyud(:,iconf_global),  &
-                                        conf%key(jconf_global),conf%keyud(:,jconf_global))
+     h_ci(iconf,jconf) = hamiltonian_ci(conf%keyud(:,iconf_global),conf%keyud(:,jconf_global))
 
    enddo
  enddo
@@ -946,7 +890,7 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
  do jconf=1,mvec
    jconf_global = rowindex_local_to_global(desc,jconf)
    do iconf=1,jconf_global-1   ! Use symmetry of H 
-     if( key_diff_order(conf%key(iconf),conf%key(jconf_global)) <= 4 ) h%nnz = h%nnz + 1
+     if( keyud_diff_order(conf%keyud(:,iconf),conf%keyud(:,jconf_global)) <= 4 ) h%nnz = h%nnz + 1
    enddo
  enddo
  h%nnz_total = REAL( h%nnz , dp )
@@ -977,7 +921,7 @@ subroutine build_ci_hamiltonian_sparse(conf,desc,h)
 
    do iconf=1,jconf_global-1  ! Use symmetry of H 
 
-     h_ij  = hamiltonian_ci(conf%key(iconf),conf%keyud(:,iconf),conf%key(jconf_global),conf%keyud(:,jconf_global))
+     h_ij  = hamiltonian_ci(conf%keyud(:,iconf),conf%keyud(:,jconf_global))
 
      if( ABS(h_ij) < 1.e-8_dp ) cycle
 
@@ -1023,6 +967,7 @@ subroutine full_ci_nelectrons_selfenergy()
  logical               :: found
  integer               :: ielec,jelec
  integer(kind=key_int) :: keyi,keyj
+ integer(kind=key_int) :: keyudi(2),keyudj(2)
 !=====
 
  call start_clock(timing_ci_selfenergy)
@@ -1073,12 +1018,14 @@ subroutine full_ci_nelectrons_selfenergy()
    fs_occ(:,:) = 0.0_dp
    do jconf=1,conf_0%nconf
      keyj = conf_0%key(jconf)
+     keyudj(:) = conf_0%keyud(:,jconf)
 
      do iconf=1,SIZE(eigvec_p,DIM=1)
        iconf_global = rowindex_local_to_global(desc_p,iconf)
        keyi = conf_p%key(iconf_global)
+       keyudi(:) = conf_p%keyud(:,iconf_global)
 
-       if( key_diff_order(keyi,keyj) /= 1 ) cycle
+       if( keyud_diff_order(keyudi,keyudj) /= 1 ) cycle
 
        ! Find the only spinorbital that differs
        isporb = TRAILZ(IEOR(keyi,keyj)) + 2 * nfrozen_ci + 1
@@ -1123,13 +1070,15 @@ subroutine full_ci_nelectrons_selfenergy()
    fs_virt(:,:) = 0.0_dp
    do jconf=1,conf_0%nconf
      keyj = conf_0%key(jconf)
+     keyudj(:) = conf_0%keyud(:,jconf)
 
      do iconf=1,SIZE(eigvec_m,DIM=1)
        iconf_global = rowindex_local_to_global(desc_m,iconf)
        keyi = conf_m%key(iconf_global)
+       keyudi(:) = conf_p%keyud(:,iconf_global)
 
 
-       if( key_diff_order(keyi,keyj) /= 1 ) cycle
+       if( keyud_diff_order(keyudi,keyudj) /= 1 ) cycle
 
        ! Find the only spinorbital that differs
        isporb = TRAILZ(IEOR(keyi,keyj)) + 2 * nfrozen_ci + 1
@@ -1291,7 +1240,7 @@ subroutine full_ci_nelectrons(save_coefficients,nelectron,spinstate,nuc_nuc)
  endif
 
  allocate(energy(conf%nconf))
- ehf = hamiltonian_ci(conf%key(1),conf%keyud(:,1),conf%key(1),conf%keyud(:,1))
+ ehf = hamiltonian_ci(conf%keyud(:,1),conf%keyud(:,1))
 
  if( conf%nstate == conf%nconf ) then
    mham = NUMROC(conf%nconf,block_row,iprow_sd,first_row,nprow_sd)
@@ -1482,7 +1431,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  !
  ! All procs have the full diagonal
  do iconf=1,conf%nconf
-   ham_diag(iconf) = hamiltonian_ci(conf%key(iconf),conf%keyud(:,iconf),conf%key(iconf),conf%keyud(:,iconf))
+   ham_diag(iconf) = hamiltonian_ci(conf%keyud(:,iconf),conf%keyud(:,iconf))
  enddo
 
  neig_dim = neig_calc * dim_factor
@@ -1655,7 +1604,7 @@ subroutine get_ab()
      do kconf=1,mvec
        kconf_global = indxl2g_pure(kconf,mb,iprow,first_row,nprow)
        do iconf=iconf_min,iconf_max
-         h_iblock(iconf,kconf) = hamiltonian_ci(conf%key(iconf),conf%keyud(:,iconf),conf%key(kconf_global),conf%keyud(:,kconf_global))
+         h_iblock(iconf,kconf) = hamiltonian_ci(conf%keyud(:,iconf),conf%keyud(:,kconf_global))
        enddo
      enddo
 
