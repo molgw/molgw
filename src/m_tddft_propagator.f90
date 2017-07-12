@@ -227,23 +227,23 @@ subroutine calculate_propagation(nstate,              &
 
  if( calc_p_matrix_error_ ) then
 
-   call get_number_of_elements(error_pred_corrs,n_pred_corrs)
+   n_pred_corrs = get_number_of_elements(error_pred_corrs)
    allocate(m_pred_corrs(n_pred_corrs))
    read(error_pred_corrs,*)m_pred_corrs(:)
 
-   call get_number_of_elements(error_prop_types,n_prop_types)
+   n_pred_corrs = get_number_of_elements(error_prop_types)
    allocate(m_prop_types(n_prop_types))
    read(error_prop_types,*)m_prop_types(:) 
   
-   call get_number_of_elements(error_time_steps,n_time_steps)
+   n_time_steps = get_number_of_elements(error_time_steps)
    allocate(m_time_steps(n_time_steps))
    read(error_time_steps,*)m_time_steps(:)
 
-   call get_number_of_elements(error_n_hists,n_n_hists)
+   n_n_hists = get_number_of_elements(error_n_hists)
    allocate(m_n_hists(n_n_hists))
    read(error_n_hists,*)m_n_hists(:)
 
-   call get_number_of_elements(error_n_iters,n_n_iters)
+   n_n_iters = get_number_of_elements(error_n_iters)
    allocate(m_n_iters(n_n_iters))
    read(error_n_iters,*)m_n_iters(:)
 

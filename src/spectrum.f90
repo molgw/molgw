@@ -64,7 +64,7 @@ program spectrum
    nrow = nrow + 1
    cur_string=ADJUSTL(cur_string)
    if(cur_string(1:1)/="#") then
-     call get_number_of_elements(cur_string,num_fields)
+     num_fields = get_number_of_elements(cur_string)
      if(num_fields/=4) call die('Dipole file must contain 4 columns: time dx dy dz')
      ntau = ntau + 1
    end if
@@ -104,7 +104,7 @@ program spectrum
    nrow = nrow + 1
    cur_string=ADJUSTL(cur_string)
    if(cur_string(1:1)/="#") then
-     call get_number_of_elements(cur_string,num_fields)
+     num_fields = get_number_of_elements(cur_string)
      if(num_fields/=2) call die('Excitation file must contain 2 columns: time E_excit_dir')
      ntau_read = ntau_read + 1
    end if
