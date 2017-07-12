@@ -34,6 +34,8 @@ module m_ci
  type, private :: configurations
    integer             :: nelec
    integer             :: nelec_valence
+   integer             :: nelec_valence_up
+   integer             :: nelec_valence_down
    integer             :: nconf
    integer             :: nstate
    integer             :: sz
@@ -93,22 +95,21 @@ end function gamma_sign_keyud
 
 
 !==================================================================
-pure function get_keyud(sporb_occ) result(keyud)
+pure function get_keyud(sporbup,sporbdown) result(keyud)
  implicit none
 
- integer,intent(in)    :: sporb_occ(:)
+ integer,intent(in)    :: sporbup(:),sporbdown(:)
  integer(kind=key_int) :: keyud(2)
 !=====
  integer :: ielec
 !=====
 
  keyud(:) = 0_key_int
- do ielec=1,SIZE(sporb_occ)
-   if( MODULO(sporb_occ(ielec),2) == 1 ) then
-     keyud(1) = keyud(1) + SHIFTL(1_key_int,(sporb_occ(ielec)-1)/2-nfrozen_ci)
-   else
-     keyud(2) = keyud(2) + SHIFTL(1_key_int,(sporb_occ(ielec)-1)/2-nfrozen_ci)
-   endif
+ do ielec=1,SIZE(sporbup)
+   keyud(1) = keyud(1) + SHIFTL(1_key_int,sporbup(ielec)-1-nfrozen_ci)
+ enddo
+ do ielec=1,SIZE(sporbdown)
+   keyud(2) = keyud(2) + SHIFTL(1_key_int,sporbdown(ielec)-1-nfrozen_ci)
  enddo
 
 end function get_keyud
@@ -128,10 +129,10 @@ subroutine increment_sporb(sporb)
 
  sporb(nelec) = sporb(nelec) + 1
 
- if( sporb(nelec) > 2 * nstate_ci ) then
+ if( sporb(nelec) > nstate_ci ) then
    room = .FALSE.
    do ielec=nelec-1,1,-1
-     if( sporb(ielec) < 2 * nstate_ci - (nelec - ielec) ) then
+     if( sporb(ielec) < nstate_ci - (nelec - ielec) ) then
        room = .TRUE.
        sporb(ielec) = sporb(ielec) + 1
        do jelec=ielec+1,nelec
@@ -224,8 +225,8 @@ subroutine prepare_ci(nstate_in,nfrozen_in,h_1e,c_matrix)
  write(stdout,'(/,1x,a,i4,a,i4)') 'Prepare CI with active states ranging from ',nfrozen_ci+1,' to ',nstate_ci
 
  write(stdout,'(1x,a,i4)') '    Max active space size: ',BIT_SIZE(0_key_int)
- write(stdout,'(1x,a,i4)') 'Current active space size: ',2 * (nstate_ci -nfrozen_ci)
- if( 2 * (nstate_ci -nfrozen_ci) > BIT_SIZE(0_key_int) ) call die('prepare_ci: current active space too large')
+ write(stdout,'(1x,a,i4)') 'Current active space size: ',nstate_ci -nfrozen_ci
+ if( nstate_ci -nfrozen_ci > BIT_SIZE(0_key_int) ) call die('prepare_ci: current active space too large')
 
  ! Calculate the one-electron hamiltonian on the eigenstate basis
  call build_1e_hamiltonian(c_matrix,h_1e)
@@ -281,16 +282,18 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  character(len=2)   :: ctmp2
  integer :: active_states(nstate_ci-nfrozen_ci+1)
  integer :: ref_sporb(2*(nstate_ci-nfrozen_ci+1))
- integer,allocatable :: sporbtmp(:)
+ integer,allocatable :: sporbup(:),sporbdown(:)
 !=====
 
  call start_clock(timing_ci_config)
 
  write(stdout,'(/,1x,a,a)') 'Setup CI space with excitations: ',ci_type_in
 
- conf%nelec         = nelec
- conf%nelec_valence = conf%nelec - 2 * nfrozen_ci
- conf%sz            = spinstate
+ conf%nelec              = nelec
+ conf%sz                 = spinstate
+ conf%nelec_valence      = conf%nelec - 2 * nfrozen_ci
+ conf%nelec_valence_up   = ( conf%nelec_valence + spinstate ) / 2
+ conf%nelec_valence_down = ( conf%nelec_valence - spinstate ) / 2
 
  if( MODULO(conf%nelec,2) /= MODULO(conf%sz,2) .AND. .NOT. conf%sz == -100 ) then
    write(stdout,*) 'nelec=',conf%nelec
@@ -367,28 +370,35 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  enddo
 
 
- allocate(sporbtmp(conf%nelec_valence))
+ allocate(sporbup(conf%nelec_valence_up))
+ allocate(sporbdown(conf%nelec_valence_down))
 
  !
  ! First, determine the total number of CI configurations
- do ielec=1,conf%nelec_valence
-   sporbtmp(ielec) = ielec + 2 * nfrozen_ci
+ do ielec=1,conf%nelec_valence_up
+   sporbup(ielec) = ielec + nfrozen_ci
  enddo
+
  iconf = 0
- do
-   keyud_test = get_keyud(sporbtmp)
+ ! Spin up loop
+ do 
+   do ielec=1,conf%nelec_valence_down
+     sporbdown(ielec) = ielec + nfrozen_ci
+   enddo
 
-   ! Check if the excitation is not too high
-   if( keysud_diff_order(keyud_test,keyud_ref) <= 2*excitation_max ) then
+   ! Spin down loop
+   do
+     keyud_test = get_keyud(sporbup,sporbdown)
 
-     ! Check if key_test does not have the correct total spin state
-     if( get_spinz_from_keyud(keyud_test) == spinstate ) then
+     ! Check if the excitation is not too high
+     if( keysud_diff_order(keyud_test,keyud_ref) <= 2*excitation_max ) then
        iconf = iconf + 1
      endif
-   endif
-
-   call increment_sporb(sporbtmp)
-   if( sporbtmp(1) == 0 ) exit
+     call increment_sporb(sporbdown)
+     if( sporbdown(1) == 0 ) exit
+   enddo
+   call increment_sporb(sporbup)
+   if( sporbup(1) == 0 ) exit
  enddo
  conf%nconf = iconf
 
@@ -396,28 +406,35 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
 
  !
  ! Second, generate and store all the keys
- do ielec=1,conf%nelec_valence
-   sporbtmp(ielec) = ielec + 2 * nfrozen_ci
+ do ielec=1,conf%nelec_valence_up
+   sporbup(ielec) = ielec + nfrozen_ci
  enddo
+
  iconf = 0
+ ! Spin up loop
  do
-   keyud_test = get_keyud(sporbtmp)
+   do ielec=1,conf%nelec_valence_down
+     sporbdown(ielec) = ielec + nfrozen_ci
+   enddo
 
-   ! Check if the excitation is not too high
-   if( keysud_diff_order(keyud_test,keyud_ref) <= 2*excitation_max ) then
+   ! Spin down loop
+   do
+     keyud_test = get_keyud(sporbup,sporbdown)
 
-     ! Check if key_test does not have the correct total spin state
-     if( get_spinz_from_keyud(keyud_test) == spinstate ) then
+     ! Check if the excitation is not too high
+     if( keysud_diff_order(keyud_test,keyud_ref) <= 2*excitation_max ) then
        iconf = iconf + 1
        conf%keyud(:,iconf) = keyud_test(:)
      endif
-   endif
 
-   call increment_sporb(sporbtmp)
-   if( sporbtmp(1) == 0 ) exit
+     call increment_sporb(sporbdown)
+     if( sporbdown(1) == 0 ) exit
+   enddo
+   call increment_sporb(sporbup)
+   if( sporbup(1) == 0 ) exit
  enddo
 
- deallocate(sporbtmp)
+ deallocate(sporbup,sporbdown)
  deallocate(keyud_ref)
 
 
@@ -427,8 +444,11 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  endif
 
 
- write(stdout,'(/,1x,a,i2,/,1x,a,i8)') 'Valence electrons: ',conf%nelec_valence, &
-                                       '   Configurations: ',conf%nconf
+ write(stdout,'(/,3(1x,a,i2,/),1x,a,i8)')       &
+                        'Valence electrons: ',conf%nelec_valence,      &
+                        '     Up electrons: ',conf%nelec_valence_up,   &
+                        '   Down electrons: ',conf%nelec_valence_down, &
+                        '   Configurations: ',conf%nconf
 
  !
  ! Calculate the frozen-frozen contribution to the Hamiltonian
@@ -1284,8 +1304,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  real(dp),intent(out)            :: eigvec(:,:)
  type(sparse_matrix),intent(in),optional :: h
 !=====
- integer,parameter    :: dim_factor=1
- integer              :: neig_dim,nstep
+ integer              :: nstep
  integer              :: iconf
  integer              :: mm,mm_max
  integer              :: ieig,icycle
@@ -1305,6 +1324,10 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  real(dp)             :: rtmp
  integer              :: cntxt,nprow,npcol,iprow,ipcol
  integer              :: mb,nb
+ real(dp)             :: value_min
+ integer              :: index_min
+ integer              :: index_trial(neig_calc)
+ logical              :: still_available(conf%nconf)
 !=====
 
  write(stdout,'(/,1x,a,i5)') 'Davidson diago for eigenvector count: ',neig_calc
@@ -1335,16 +1358,32 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
    ham_diag(iconf) = hamiltonian_ci(conf%keyud(:,iconf),conf%keyud(:,iconf))
  enddo
 
- neig_dim = neig_calc * dim_factor
  nstep = nstep_dav
  mm     = 0
- mm_max = neig_dim * nstep
+ mm_max = neig_calc * nstep
  if( mm_max > conf%nconf ) then
-   nstep = conf%nconf / neig_dim
-   mm_max = neig_dim * nstep
+   nstep = conf%nconf / neig_calc
+   mm_max = neig_calc * nstep
    write(stdout,'(1x,a)')    'Diagonalization problem is too small'
    write(stdout,'(1x,a,i4)') 'Number of Davidson steps has been reduced to ',nstep
  endif
+
+ ! 
+ ! Find the smallest diagonal terms => good candidates for initial trial vectors
+ still_available(:) = .TRUE.
+ do ieig=1,neig_calc
+   index_min = 0
+   value_min = 10000.0_dp
+   do iconf=1,conf%nconf
+     if( .NOT. still_available(iconf) ) cycle
+     if( ham_diag(iconf) < value_min ) then
+       value_min = ham_diag(iconf)
+       index_min = iconf
+     endif
+   enddo
+   index_trial(ieig) = index_min
+   still_available(index_min) = .FALSE.
+ enddo
 
  mbb = NUMROC(conf%nconf,mb,iprow,first_row,nprow)
  nbb = NUMROC(mm_max    ,nb,ipcol,first_col,npcol)
@@ -1354,19 +1393,18 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
  call clean_allocate('Hamiltonian applications',ab,mbb,nbb)
 
  mqq = NUMROC(conf%nconf,mb,iprow,first_row,nprow)
- nqq = NUMROC(neig_dim  ,nb,ipcol,first_col,npcol)
- call DESCINIT(desc_qq,conf%nconf,neig_dim,mb,nb,first_row,first_col,cntxt,MAX(1,mqq),info)
+ nqq = NUMROC(neig_calc ,nb,ipcol,first_col,npcol)
+ call DESCINIT(desc_qq,conf%nconf,neig_calc,mb,nb,first_row,first_col,cntxt,MAX(1,mqq),info)
  call clean_allocate('Error vectors',qq,mqq,nqq)
 
 
  !
  ! Initialize with stupid coefficients
- do jlocal=1,nbb
-   jglobal = colindex_local_to_global(desc_bb,jlocal)
+ do ieig=1,neig_calc
    do ilocal=1,mbb
      iglobal = rowindex_local_to_global(desc_bb,ilocal)
-     bb(ilocal,jlocal) = MIN( EXP( -REAL(iglobal,dp) ) , 0.1_dp )
-     if( iglobal == jglobal ) bb(ilocal,jlocal) = 1.0_dp
+     bb(ilocal,ieig) = MIN( EXP( -REAL(iglobal,dp) ) , 0.1_dp )
+     if( iglobal == index_trial(ieig) ) bb(ilocal,ieig) = 1.0_dp
    enddo
  enddo
  !
@@ -1377,7 +1415,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
    write(stdout,*) 'Found existing eigenvectors'
    bb(:,1:neig_calc) = eigvec(:,:)
  endif
- call orthogonalize_sca(desc_bb,1,neig_dim,bb)
+ call orthogonalize_sca(desc_bb,1,neig_calc,bb)
 
 
  ! Obtain Ab matrix
@@ -1386,7 +1424,7 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
 
  do icycle=1,nstep
 
-   mm = icycle * neig_dim
+   mm = icycle * neig_calc
 
    allocate(lambda(mm))
 
@@ -1405,18 +1443,18 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
    !write(stdout,*) 'icycle',icycle,lambda(1:mm)
 
    ! qq = bb * alphavec
-   call PDGEMM('N','N',conf%nconf,neig_dim,mm,1.0_dp,bb,1,1,desc_bb,alphavec,1,1,desc_at,0.0_dp,qq,1,1,desc_qq)
+   call PDGEMM('N','N',conf%nconf,neig_calc,mm,1.0_dp,bb,1,1,desc_bb,alphavec,1,1,desc_at,0.0_dp,qq,1,1,desc_qq)
    eigvec(:,1:neig_calc) = qq(:,1:neig_calc)
    eigval(1:neig_calc)   = lambda(1:neig_calc)
 
    ! qq = qq * Lambda
-   do ieig=1,neig_dim
+   do ieig=1,neig_calc
      call PDSCAL(conf%nconf,lambda(ieig),qq,1,ieig,desc_qq,1)
    enddo
 
 
    ! qq = ab * alphavec - lambda * bb * alphavec
-   call PDGEMM('N','N',conf%nconf,neig_dim,mm,1.0_dp,ab,1,1,desc_bb,alphavec,1,1,desc_at,-1.0_dp,qq,1,1,desc_qq)
+   call PDGEMM('N','N',conf%nconf,neig_calc,mm,1.0_dp,ab,1,1,desc_bb,alphavec,1,1,desc_at,-1.0_dp,qq,1,1,desc_qq)
 
 
    deallocate(alphavec)
@@ -1459,9 +1497,9 @@ subroutine diagonalize_davidson_ci(tolerance,filename,conf,neig_calc,eigval,desc
      enddo
    enddo
 
-   call PDGEMR2D(conf%nconf,neig_dim,qq,1,1,desc_qq,bb,1,mm+1,desc_bb,cntxt)
+   call PDGEMR2D(conf%nconf,neig_calc,qq,1,1,desc_qq,bb,1,mm+1,desc_bb,cntxt)
 
-   call orthogonalize_sca(desc_bb,mm+1,mm+neig_dim,bb)
+   call orthogonalize_sca(desc_bb,mm+1,mm+neig_calc,bb)
 
 
    ! Obtain Ab matrix
@@ -1500,7 +1538,7 @@ subroutine get_ab()
      rdest = INDXG2P(iconf_min,mb,0,first_row,nprow)
 
      allocate(h_iblock(iconf_min:iconf_max,mvec))
-     allocate(ab_iblock(iconf_min:iconf_max,neig_dim))
+     allocate(ab_iblock(iconf_min:iconf_max,neig_calc))
 
      do kconf=1,mvec
        kconf_global = indxl2g_pure(kconf,mb,iprow,first_row,nprow)
@@ -1509,16 +1547,16 @@ subroutine get_ab()
        enddo
      enddo
 
-     !ab_iblock(:,:) = MATMUL( h_iblock(:,:) , bb(:,mm+1:mm+neig_dim) )
-     call DGEMM('N','N',mb_local,neig_dim,mvec,     &
+     !ab_iblock(:,:) = MATMUL( h_iblock(:,:) , bb(:,mm+1:mm+neig_calc) )
+     call DGEMM('N','N',mb_local,neig_calc,mvec,     &
                 1.0_dp,h_iblock,mb_local,       &
                        bb(1,mm+1),mvec,         &
                 0.0_dp,ab_iblock,mb_local)
 
-     call DGSUM2D(cntxt,'A',' ',mb_local,neig_dim,ab_iblock,1,rdest,0)
+     call DGSUM2D(cntxt,'A',' ',mb_local,neig_calc,ab_iblock,1,rdest,0)
      if( iprow == rdest ) then
        iconf = rowindex_global_to_local(desc_bb,iconf_min)
-       ab(iconf:iconf+mb_local-1,mm+1:mm+neig_dim) = ab_iblock(:,:)
+       ab(iconf:iconf+mb_local-1,mm+1:mm+neig_calc) = ab_iblock(:,:)
      endif
      deallocate(h_iblock)
      deallocate(ab_iblock)
@@ -1527,7 +1565,7 @@ subroutine get_ab()
  else 
 
    allocate(ab_i(conf%nconf),bb_i(conf%nconf))
-   do ieig=mm+1,mm+neig_dim
+   do ieig=mm+1,mm+neig_calc
   
      bb_i(:) = 0.0_dp
      do iconf=1,mvec
