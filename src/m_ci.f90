@@ -326,6 +326,10 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
    excitation_max = 3
  case('CISDTQ')
    excitation_max = 4
+ case('CISDTQ5')
+   excitation_max = 5
+ case('CISDTQ56')
+   excitation_max = 6
  case default
    call die('setup_configurations_ci: ci_type not understood')
  end select
