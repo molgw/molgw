@@ -20,7 +20,7 @@ module m_ci
  use m_inputparam
  use m_selfenergy_tools
 
- integer,parameter,private     :: key_int=8
+ integer,parameter,private     :: key_int=16
 
  
  integer,private              :: nfrozen_ci
@@ -272,9 +272,9 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  integer :: iconf,jconf
  integer :: excitation_max
  integer :: kstate,lstate
- integer :: ielec,isporb,ispin
- integer(kind=key_int) :: keyud_test(2)
+ integer :: ielec,isporb,ispin,istate
  integer :: nref,iref
+ integer(kind=key_int) :: keyud_test(2)
  integer(kind=key_int),allocatable :: keyud_ref(:,:)
  integer :: fu,is
  logical :: file_exists
@@ -283,6 +283,7 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
  integer :: active_states(nstate_ci-nfrozen_ci+1)
  integer :: ref_sporb(2*(nstate_ci-nfrozen_ci+1))
  integer,allocatable :: sporbup(:),sporbdown(:)
+ integer :: order_up,order_down
 !=====
 
  call start_clock(timing_ci_config)
@@ -344,14 +345,17 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
      read(fu,'(a)')  string
      call string_to_integers(string,ref_sporb)
      if( SUM(ref_sporb(:)) /= conf%nelec_valence ) &
-         call die('setup_configuration_ci: manual_ci_ref_xx file does not have the correct number of valence electrons')
+       call die('setup_configuration_ci: manual_ci_ref_xx file does not have the correct number of valence electrons')
      keyud_ref(:,iref) = 0_key_int
      do isporb=1,SIZE(ref_sporb)
-       ispin = 2 * MODULO(ielec,2) + 1
+       ispin = MODULO(isporb-1,2) + 1
+       istate = (isporb+1)/2 
        if( ref_sporb(isporb) == 1 ) &
-         keyud_ref(ispin,iref) = keyud_ref(ispin,iref) + SHIFTL(1_key_int,isporb-1)
-    ! FBFB POSSIBLY BROKEN HERE
+         keyud_ref(ispin,iref) = keyud_ref(ispin,iref) + SHIFTL(1_key_int,istate-1)
      enddo
+     if( get_spinz_from_keyud(keyud_ref(:,iref)) /= spinstate ) then
+       call die('setup_configuration_ci: manual_ci_ref_xx file does not represent the correct spin state')
+     endif
    enddo
    close(fu)
 
@@ -386,17 +390,30 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
      sporbdown(ielec) = ielec + nfrozen_ci
    enddo
 
-   ! Spin down loop
-   do
-     keyud_test = get_keyud(sporbup,sporbdown)
+   keyud_test = get_keyud(sporbup,sporbdown)
+   order_up = keys_diff_order(keyud_test(1),keyud_ref(1,:))
 
-     ! Check if the excitation is not too high
-     if( keysud_diff_order(keyud_test,keyud_ref) <= 2*excitation_max ) then
-       iconf = iconf + 1
-     endif
-     call increment_sporb(sporbdown)
-     if( sporbdown(1) == 0 ) exit
-   enddo
+   if( order_up <= 2*excitation_max ) then
+
+     ! Spin down loop
+     do
+       keyud_test = get_keyud(sporbup,sporbdown)
+       order_down = keys_diff_order(keyud_test(2),keyud_ref(2,:))
+
+       ! Check if the excitation is not too high
+       if( order_up + order_down <= 2*excitation_max ) then
+         iconf = iconf + 1
+       endif
+       if( SIZE(sporbdown) > 0 ) then
+         call increment_sporb(sporbdown)
+         if( sporbdown(1) == 0 ) exit
+       else
+         exit
+       endif
+     enddo
+
+   endif
+
    call increment_sporb(sporbup)
    if( sporbup(1) == 0 ) exit
  enddo
@@ -417,19 +434,32 @@ subroutine setup_configurations_ci(nelec,spinstate,ci_type_in,conf)
      sporbdown(ielec) = ielec + nfrozen_ci
    enddo
 
-   ! Spin down loop
-   do
-     keyud_test = get_keyud(sporbup,sporbdown)
+   keyud_test = get_keyud(sporbup,sporbdown)
+   order_up = keys_diff_order(keyud_test(1),keyud_ref(1,:))
 
-     ! Check if the excitation is not too high
-     if( keysud_diff_order(keyud_test,keyud_ref) <= 2*excitation_max ) then
-       iconf = iconf + 1
-       conf%keyud(:,iconf) = keyud_test(:)
-     endif
+   if( order_up <= 2*excitation_max ) then
 
-     call increment_sporb(sporbdown)
-     if( sporbdown(1) == 0 ) exit
-   enddo
+     ! Spin down loop
+     do
+       keyud_test = get_keyud(sporbup,sporbdown)
+       order_down = keys_diff_order(keyud_test(2),keyud_ref(2,:))
+
+       ! Check if the excitation is not too high
+       if( order_up + order_down <= 2*excitation_max ) then
+         iconf = iconf + 1
+         conf%keyud(:,iconf) = keyud_test(:)
+       endif
+
+       if( SIZE(sporbdown) > 0 ) then
+         call increment_sporb(sporbdown)
+         if( sporbdown(1) == 0 ) exit
+       else
+         exit
+       endif
+     enddo
+
+   endif
+
    call increment_sporb(sporbup)
    if( sporbup(1) == 0 ) exit
  enddo
@@ -521,6 +551,20 @@ end function keyud_diff_order
 
 
 !==================================================================
+function key_diff_order(key1,key2) RESULT(order)
+ implicit none
+
+ integer(kind=key_int),intent(in) :: key1,key2
+ integer                          :: order
+!=====
+!=====
+
+ order = POPCNT( IEOR(key1,key2) )
+
+end function key_diff_order
+
+
+!==================================================================
 function keysud_diff_order(keyud1,keysud2) RESULT(order)
  implicit none
 
@@ -536,6 +580,24 @@ function keysud_diff_order(keyud1,keysud2) RESULT(order)
  enddo
 
 end function keysud_diff_order
+
+
+!==================================================================
+function keys_diff_order(key1,keys2) RESULT(order)
+ implicit none
+
+ integer(kind=key_int),intent(in) :: key1,keys2(:)
+ integer                          :: order
+!=====
+ integer :: iref
+!=====
+
+ order = 1000
+ do iref=1,SIZE(keys2)
+   order = MIN(order, key_diff_order(key1,keys2(iref)) )
+ enddo
+
+end function keys_diff_order
 
 
 !==================================================================
@@ -770,10 +832,6 @@ subroutine build_ci_hamiltonian(conf,desc_ham,h_ci)
      h_ci(iconf,jconf) = hamiltonian_ci(conf%keyud(:,iconf_global),conf%keyud(:,jconf_global))
 
    enddo
- enddo
-
- do iconf=1,mconf
-   write(100,*) iconf,h_ci(iconf,iconf)
  enddo
 
  call stop_clock(timing_ham_ci)
@@ -1088,6 +1146,16 @@ subroutine full_ci_nelectrons_selfenergy()
      write(unit_gf,'(8(1x,es18.8))') se%omega(iomega) * Ha_eV, gi_w / Ha_eV, ABS(AIMAG(gi_w)) / pi / Ha_eV
    enddo
    close(unit_gf)
+
+   open(newunit=unit_gf,file='exact_spectral_function_state'//ctmp3//'.dat',action='write')
+   do is=1,ns_virt
+     write(unit_gf,'(8(1x,es18.8))') es_virt(is) * Ha_eV, SUM(fs_virt(istate,:,is)**2)
+   enddo
+   do is=1,ns_occ
+     write(unit_gf,'(8(1x,es18.8))') es_occ(is) * Ha_eV, SUM(fs_occ(istate,:,is)**2)
+   enddo
+   close(unit_gf)
+
  enddo
 
 
