@@ -334,6 +334,136 @@ end subroutine diagonalize_generalized_sym
 
 
 !=========================================================================
+subroutine diagonalize_davidson(tolerance,nstep,ham,neig,eigval,eigvec)
+ implicit none
+
+ real(dp),intent(in)  :: tolerance
+ integer,intent(inout) :: nstep
+ real(dp),intent(in)  :: ham(:,:)
+ integer,intent(in)   :: neig
+ real(dp),intent(out) :: eigval(:)
+ real(dp),intent(out) :: eigvec(:,:)
+!=====
+ integer              :: nmat,imat
+ integer              :: mm,mm_max
+ integer              :: ieig,icycle
+ real(dp),allocatable :: bb(:,:),atilde(:,:),ab(:,:),qq(:,:)
+ real(dp),allocatable :: lambda(:),alphavec(:,:)
+ real(dp)             :: residual_norm
+!=====
+
+ write(stdout,'(/,1x,a,i5)') 'Davidson diago for eigenvector count: ',neig
+
+ nmat = SIZE(ham(:,:),DIM=1)
+ eigval(:) = 0.0_dp
+
+
+ mm     = neig
+ mm_max = mm * nstep
+ if( mm_max > nmat ) then
+   nstep = nmat / neig
+   mm_max = mm * nstep
+ endif
+
+ allocate(bb(nmat,mm_max))
+ allocate(atilde(mm_max,mm_max))
+ allocate(ab(nmat,mm_max))
+
+ allocate(qq(nmat,neig))
+
+ !
+ ! Initialize with stupid coefficients
+ bb(:,1:neig) = 0.01_dp
+ forall(ieig=1:neig)
+   bb(ieig,ieig) = 1.0_dp
+ end forall
+ call orthogonalize(bb(:,1:neig))
+
+
+ ab(:,1:mm) = MATMUL( ham(:,:) , bb(:,1:mm) )
+
+
+ do icycle=1,nstep
+
+   mm = icycle * neig
+   write(stdout,*) 'icycle mm',icycle,mm
+
+
+   atilde(1:mm,1:mm) = MATMUL( TRANSPOSE(bb(:,1:mm)) , ab(:,1:mm) )
+
+
+   allocate(lambda(mm),alphavec(mm,mm))
+   call diagonalize(mm,atilde(1:mm,1:mm),lambda,alphavec)
+
+   write(stdout,*) 'icycle',icycle,lambda(1:mm)
+
+   residual_norm = 0.0_dp
+   do ieig=1,neig
+
+     qq(:,ieig) = MATMUL( ab(:,1:mm) ,  alphavec(1:mm,ieig) ) &
+                   - lambda(ieig) * MATMUL( bb(:,1:mm) , alphavec(1:mm,ieig) )
+
+     residual_norm = MAX( residual_norm , NORM2(qq(:,ieig)) )
+   enddo
+
+   write(stdout,'(1x,a,1x,i4,1x,es12.4)') 'Max residual norm for cycle: ',icycle,residual_norm
+
+   !
+   ! Convergence reached... or not
+   if( icycle == nstep .OR. residual_norm < tolerance ) then
+     eigval(1:neig) = lambda(1:neig)
+     eigvec(:,1:neig) = MATMUL( bb(:,1:mm) , alphavec(1:mm,1:neig) )
+     deallocate(lambda,alphavec)
+     exit
+   endif
+
+
+   !
+   ! New trial vectors
+   !
+   forall(imat=1:nmat,ieig=1:neig)
+     bb(imat,mm+ieig) = qq(imat,ieig) / ( lambda(ieig) - ham(imat,imat) )
+   end forall
+   call orthogonalize(bb(:,:mm+neig))
+
+
+
+   ab(:,mm+1:mm+neig) = MATMUL( ham(:,:) , bb(:,mm+1:mm+neig) )
+
+
+   deallocate(lambda,alphavec)
+
+ enddo ! icycle
+
+ deallocate(ab,atilde)
+
+end subroutine diagonalize_davidson
+
+
+!=========================================================================
+subroutine orthogonalize(vec)
+ implicit none
+!=====
+ real(dp),intent(inout) :: vec(:,:)
+!=====
+ integer :: ii,ivec,jvec,nvec
+!=====
+
+ nvec = SIZE(vec(:,:),DIM=2)
+
+ do ivec=1,nvec
+   ! Orthogonalize to previous vectors
+   do jvec=1,ivec-1
+     vec(:,ivec) = vec(:,ivec) - vec(:,jvec) * DOT_PRODUCT( vec(:,ivec) , vec(:,jvec) ) / DOT_PRODUCT( vec(:,jvec) , vec(:,jvec) )
+   enddo
+   ! Normalize
+   vec(:,ivec) = vec(:,ivec) / NORM2( vec(:,ivec) )
+ enddo
+
+end subroutine orthogonalize
+
+
+!=========================================================================
 subroutine coeffs_gausslegint(xmin,xmax,x,weights,n)
 !
 ! Compute the coefficients (supports and weights)
@@ -867,31 +997,62 @@ subroutine calculate_pade_a(a,n,z,f)
 
 end subroutine calculate_pade_a
 
-!=======================================
-subroutine get_number_of_elements(string,num)
+
+!=========================================================================
+function get_number_of_elements(string) result(num)
  implicit none
- character(len=100),intent(in)  ::  string
- integer,intent(inout)          :: num
-!===
+ character(len=*),intent(in)  :: string
+ integer                      :: num
+!=====
  integer   :: i,pos
+!=====
 
  pos=1
  num=0
 
  do
-   i=VERIFY(string(pos:),' ')    !-- Find next non-blank 
-   if (i==0) exit                !-- No word found
-   num=num+1                     !-- Found something
-   pos=pos+i-1                   !-- Move to start of the word 
-   i=SCAN(string(pos:),' ')      !-- Find next blank 
-   if (i==0) exit                !-- No blank found
-   pos=pos+i-1                   !-- Move to the blank
+   i = VERIFY(string(pos:),' ')  !-- Find next non-blank 
+   if( i == 0 ) exit             !-- No word found
+   num = num + 1                 !-- Found something
+   pos = pos + i - 1             !-- Move to start of the word 
+   i = SCAN(string(pos:),' ')    !-- Find next blank 
+   if( i == 0 ) exit             !-- No blank found
+   pos = pos + i - 1             !-- Move to the blank
  end do
 
-end subroutine get_number_of_elements
+end function get_number_of_elements
+
+!=========================================================================
+subroutine string_to_integers(string_in,iarray)
+ implicit none
+
+ character(len=*),intent(in) :: string_in
+ integer,intent(inout)       :: iarray(:)
+!=====
+ character(len=128) :: string
+ integer            :: ilen,inextblank,ii
+!=====
+
+ string = string_in
+
+ ilen = LEN(TRIM(string))
+ ii = 0
+ do while( ilen > 0 )
+   string = ADJUSTL(string)
+   inextblank = INDEX(string,' ')
+   ii = ii + 1
+   if( ii > SIZE(iarray) ) exit
+   read(string(1:inextblank-1),*) iarray(ii)
+   string = string(inextblank+1:)
+   ilen = LEN(TRIM(string))
+ enddo
+
+end subroutine string_to_integers
+
 
 
 
 end module m_tools
 
 
+!=========================================================================

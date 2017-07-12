@@ -267,6 +267,7 @@ SOX diagram               ,      0.0373293160  , 0 , 1.0e-7
 
 h2_ci.in                  , Full CI for 2 electrons applied to H2
 SCF Total Energy          ,     -1.1636125481  , 0 , 1.0e-7
+Configurations            ,      324           , 0 , 1.0e-7
 Uncorrelated energy       ,     -1.1285529195  , 0 , 1.0e-7
 Correlation energy        ,     -0.0360548711  , 0 , 1.0e-7
 CI ground-state energy    ,     -1.1646077906  , 0 , 1.0e-7
@@ -511,6 +512,16 @@ CI 2nd excited-state energy,   -14.5083864183   , 0 , 1.0e-7
 CI 3rd excited-state energy,   -14.5083864183   , 0 , 1.0e-7
 CI 4th excited-state energy,   -14.3718323663   , 0 , 1.0e-7
 
+be_ci_davidson.in         , CI calculation for boron atom (Davidson diago)
+SCF Total Energy          ,    -14.5667640335   , 0 , 1.0e-7
+Uncorrelated energy       ,    -14.5667640335   , 0 , 1.0e-7
+Correlation energy        ,     -0.0467812361   , 0 , 1.0e-7
+CI ground-state energy    ,    -14.6135452696   , 0 , 1.0e-7
+CI 1st excited-state energy,   -14.5083864183   , 0 , 1.0e-7
+CI 2nd excited-state energy,   -14.5083864183   , 0 , 1.0e-7
+CI 3rd excited-state energy,   -14.5083864183   , 0 , 1.0e-7
+CI 4th excited-state energy,   -14.3718323663   , 0 , 1.0e-7
+
 be_ci_nocore.in           , CI calculation for boron atom without exciting coe electrons (2e-)
 SCF Total Energy          ,    -14.5723376310   , 0 , 1.0e-7
 Uncorrelated energy       ,    -14.5723376310   , 0 , 1.0e-7
@@ -529,6 +540,19 @@ CI ground-state energy    ,    -14.3185202318   , 0 , 1.0e-7
 CI 1st excited-state energy,   -14.3185202318   , 0 , 1.0e-7
 CI 2nd excited-state energy,   -14.3185202318   , 0 , 1.0e-7
 -IP                       ,     -8.285061       , 0 , 1.0e-4
+-IP (eV) and Weight       ,      0.892328       , 1 , 1.0e-3
 -EA                       ,      6.464563       , 0 , 1.0e-4
+
+li2_ci_self.in            , CI Green's function for Li2 limited to single and double excitations
+SCF Total Energy          ,    -14.8656863400   , 0 , 1.0e-7
+Uncorrelated energy       ,    -14.6876451256   , 0 , 1.0e-7
+Correlation energy        ,     -0.0080314929   , 0 , 1.0e-7
+CI ground-state energy    ,    -14.6956766185   , 0 , 1.0e-7
+CI 1st excited-state energy,   -14.5566215438   , 0 , 1.0e-7
+CI 2nd excited-state energy,   -14.5566215438   , 0 , 1.0e-7
+-IP                       ,     -4.954340       , 0 , 1.0e-4
+-IP (eV) and Weight       ,      0.897967       , 1 , 1.0e-3
+
+
 
 

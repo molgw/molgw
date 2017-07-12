@@ -385,7 +385,7 @@ subroutine write_basis_set(unitfile,basis)
  integer,intent(in)         :: unitfile
  type(basis_set),intent(in) :: basis
 !=====
- integer :: ibf
+ integer :: ibf,ishell
 !=====
 
  write(unitfile)  basis%ammax         
@@ -395,6 +395,9 @@ subroutine write_basis_set(unitfile,basis)
  write(unitfile)  basis%gaussian_type
  do ibf=1,basis%nbf_cart
    call write_basis_function(unitfile,basis%bfc(ibf))
+ enddo
+ do ishell=1,basis%nshell
+   call write_basis_shell(unitfile,basis%shell(ishell))
  enddo
  
 
@@ -408,7 +411,7 @@ subroutine read_basis_set(unitfile,basis)
  integer,intent(in)          :: unitfile
  type(basis_set),intent(out) :: basis
 !=====
- integer :: ibf
+ integer :: ibf,ishell
 !=====
 
  read(unitfile)  basis%ammax
@@ -419,6 +422,10 @@ subroutine read_basis_set(unitfile,basis)
  allocate(basis%bfc(basis%nbf_cart))
  do ibf=1,basis%nbf_cart
    call read_basis_function(unitfile,basis%bfc(ibf))
+ enddo
+ allocate(basis%shell(basis%nshell))
+ do ishell=1,basis%nshell
+   call read_basis_shell(unitfile,basis%shell(ishell))
  enddo
 
 
@@ -474,6 +481,52 @@ subroutine read_basis_function(unitfile,bf)
  read(unitfile)  bf%coeff(:)
 
 end subroutine read_basis_function
+
+
+!=========================================================================
+subroutine write_basis_shell(unitfile,shell)
+ implicit none
+
+ integer,intent(in)          :: unitfile
+ type(shell_type),intent(in) :: shell
+!=====
+!=====
+
+ write(unitfile) shell%ishell
+ write(unitfile) shell%am
+ write(unitfile) shell%ng
+ write(unitfile) shell%alpha(:)
+ write(unitfile) shell%coeff(:)
+ write(unitfile) shell%x0(:)
+ write(unitfile) shell%iatom
+ write(unitfile) shell%istart,shell%iend
+ write(unitfile) shell%istart_cart,shell%iend_cart
+
+end subroutine write_basis_shell
+
+
+!=========================================================================
+subroutine read_basis_shell(unitfile,shell)
+ implicit none
+
+ integer,intent(in)           :: unitfile
+ type(shell_type),intent(out) :: shell
+!=====
+!=====
+
+ read(unitfile) shell%ishell
+ read(unitfile) shell%am
+ read(unitfile) shell%ng
+ allocate(shell%alpha(shell%ng))
+ read(unitfile) shell%alpha(:)
+ allocate(shell%coeff(shell%ng))
+ read(unitfile) shell%coeff(:)
+ read(unitfile) shell%x0(:)
+ read(unitfile) shell%iatom
+ read(unitfile) shell%istart,shell%iend
+ read(unitfile) shell%istart_cart,shell%iend_cart
+
+end subroutine read_basis_shell
 
 
 !=========================================================================

@@ -89,9 +89,12 @@ module m_inputparam
  integer,protected                :: nspin
  integer,protected                :: nstep
  integer,protected                :: nstep_gw
+ integer,protected                :: ci_nstate
+ integer,protected                :: ci_nstate_self
+ integer,protected                :: ci_spin_multiplicity
+ integer,protected                :: nscf
  real(dp),protected               :: tolforce
  real(dp),protected               :: spin_fact
- integer,protected                :: nscf
  real(dp),protected               :: alpha_mixing
  character(len=100),protected     :: move_nuclei
  character(len=100),protected     :: xyz_file
@@ -107,9 +110,12 @@ module m_inputparam
  character(len=12),protected      :: mixing_scheme
  character(len=12),protected      :: partition_scheme
  character(len=12),protected      :: init_hamiltonian
+ character(len=12),protected      :: ci_greens_function
+ character(len=12),protected      :: ci_type
  real(dp),protected               :: diis_switch
  real(dp),protected               :: tolscf
  real(dp),protected               :: toldav
+ integer,protected                :: nstep_dav
  real(dp),protected               :: min_overlap
  real(dp),protected               :: electrons,charge
  real(dp),protected               :: temperature
@@ -648,15 +654,6 @@ subroutine summary_input(grid_quality,integral_quality)
  write(stdout,'(a25,2x,a)') ' Grid quality: ',grid_quality
  write(stdout,'(a25,2x,a)') ' Integral quality: ',integral_quality
  write(stdout,*)
- write(stdout,'(a19)')      ' IO options:'
- write(stdout,'(a30,l3)')   ' - matrices details:   ',print_matrix_       
- write(stdout,'(a30,l3)')   ' - ERI file:           ',print_eri_          
- write(stdout,'(a30,l3)')   ' - ignore big RESTART: ',ignore_bigrestart_
- write(stdout,'(a30,l3)')   ' - plot some wfns:     ',print_wfn_          
- write(stdout,'(a30,l3)')   ' - dump spectral functs',print_w_
- write(stdout,'(a30,l3)')   ' - dump self-energy    ',print_sigma_
- write(stdout,'(a30,l3)')   ' - RESTART files       ',print_restart_
- write(stdout,'(a30,l3)')   ' - big RESTART file    ',print_bigrestart_
 
  call output_positions()
 
@@ -788,6 +785,8 @@ subroutine read_inputfile_namelist()
  mixing_scheme      = capitalize(mixing_scheme)
  length_unit        = capitalize(length_unit)
  init_hamiltonian   = capitalize(init_hamiltonian)
+ ci_greens_function = capitalize(ci_greens_function)
+ ci_type            = capitalize(ci_type)
 
  read_restart_      = yesno(read_restart)
  ignore_bigrestart_ = yesno(ignore_bigrestart)

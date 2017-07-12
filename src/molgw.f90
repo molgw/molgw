@@ -270,31 +270,30 @@ program molgw
    !
    ! Calculate the parts of the hamiltonian that does not change along
    ! with the SCF cycles
-   if( .NOT. is_big_restart ) then
-     !
-     ! Kinetic energy contribution
-     if( parallel_ham ) then
-       call setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic)
+   !
+   ! Kinetic energy contribution
+   if( parallel_ham ) then
+     call setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic)
+   else
+     call setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
+   endif
+  
+   !
+   ! Nucleus-electron interaction
+   if( parallel_ham ) then
+     if( parallel_buffer ) then 
+       call setup_nucleus_buffer_sca(basis,m_ham,n_ham,hamiltonian_nucleus)
      else
-       call setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
+       call setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
      endif
-    
-     !
-     ! Nucleus-electron interaction
-     if( parallel_ham ) then
-       if( parallel_buffer ) then 
-         call setup_nucleus_buffer_sca(basis,m_ham,n_ham,hamiltonian_nucleus)
-       else
-         call setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
-       endif
-     else
-       call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
+   else
+     call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
 
-       if( nelement_ecp > 0 ) then
-         call setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
-       endif
+     if( nelement_ecp > 0 ) then
+       call setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
      endif
    endif
+
   
    if( is_basis_restart ) then
      !
@@ -512,16 +511,20 @@ program molgw
    if(has_auxil_basis) then
      call calculate_eri_3center_eigen(c_matrix)
    else
-     call calculate_eri_4center_eigen_uks(c_matrix)
+     call calculate_eri_4center_eigen_uks(c_matrix,1,MIN(nstate,nvirtualg-1))  ! TODO set the nstate_min to a more finely tuned value
    endif
 
    call prepare_ci(MIN(nstate,nvirtualg-1),ncoreg,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix)
 
-   call full_ci_nelectrons_on( 0,NINT(electrons)  ,0,en%nuc_nuc)
+   call full_ci_nelectrons(0,NINT(electrons),ci_spin_multiplicity-1,en%nuc_nuc)
 
    if(calc_type%is_selfenergy) then
-     call full_ci_nelectrons_on( 1,NINT(electrons)-1,1,en%nuc_nuc)
-     call full_ci_nelectrons_on(-1,NINT(electrons)+1,1,en%nuc_nuc)
+     if( ci_greens_function == 'BOTH' .OR. ci_greens_function == 'HOLES' ) then
+       call full_ci_nelectrons( 1,NINT(electrons)-1,1,en%nuc_nuc)
+     endif
+     if( ci_greens_function == 'BOTH' .OR. ci_greens_function == 'ELECTRONS' ) then
+       call full_ci_nelectrons(-1,NINT(electrons)+1,1,en%nuc_nuc)
+     endif
      call full_ci_nelectrons_selfenergy()
    endif
 

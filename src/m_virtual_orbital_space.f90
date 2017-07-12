@@ -318,7 +318,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
 
 
  ! First set up the SCALAPACK grid
- cntxt = desc_ham(CTXT_A)
+ cntxt = desc_ham(CTXT_)
  call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
  write(stdout,'(1x,a,i4,a,i4)') 'SCALAPACK with a grid',nprow,' x ',npcol
 
@@ -618,7 +618,7 @@ subroutine virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
  if(has_auxil_basis) then
    call calculate_eri_3center_eigen(c_matrix)
  else
-   call calculate_eri_4center_eigen_uks(c_matrix)
+   call calculate_eri_4center_eigen_uks(c_matrix,1,nstate)
  endif
 
  do ispin=1,nspin
@@ -832,7 +832,7 @@ subroutine destroy_fno(basis,nstate,energy,c_matrix)
  else
 
    call gather_distributed_copy(desc_bb_sb,c_local,c_matrix)
-   if( desc_bb_sb(CTXT_A) > 0 ) then
+   if( desc_bb_sb(CTXT_) > 0 ) then
      call clean_deallocate('Distributed C',c_local)
    endif
 

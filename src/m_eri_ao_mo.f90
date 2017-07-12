@@ -160,10 +160,11 @@ end subroutine calculate_eri_4center_eigen
 
 
 !=================================================================
-subroutine calculate_eri_4center_eigen_uks(c_matrix)
+subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
  implicit none
 
  real(dp),intent(in)    :: c_matrix(:,:,:)
+ integer,intent(in)     :: nstate_min,nstate_max
 !=====
  integer              :: nbf,nstate
  integer              :: ibf,jbf,kbf,lbf
@@ -181,9 +182,10 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix)
 
  call start_clock(timing_basis_transform)
 
- call clean_allocate('4-center MO integrals',eri_4center_eigen_uks,nstate,nstate,nstate,nstate)
+ call clean_allocate('4-center MO integrals',eri_4center_eigen_uks, &
+                     nstate_min,nstate_max,nstate_min,nstate_max,nstate_min,nstate_max,nstate_min,nstate_max)
 
- allocate(eri_tmp3(nbf,nbf,nbf),eri_tmp2(nstate,nbf,nbf),eri_tmp1(nstate,nbf))
+ allocate(eri_tmp3(nbf,nbf,nbf),eri_tmp2(nstate_min:nstate_max,nbf,nbf),eri_tmp1(nstate_min:nstate_max,nbf))
  
  allocate(id(nbf))
  forall(ibf=1:nbf)
@@ -191,7 +193,7 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix)
  end forall
 
 
- do istate=1,nstate
+ do istate=nstate_min,nstate_max
 
    do lbf=1,nbf
      do kbf=1,nbf
@@ -203,13 +205,14 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix)
 
 
    do lbf=1,nbf
-     eri_tmp2(1:nstate,1:nbf,lbf) = MATMUL( TRANSPOSE(c_matrix(:,1:nstate,1)) , eri_tmp3(:,1:nbf,lbf) )
+     eri_tmp2(nstate_min:nstate_max,1:nbf,lbf) = MATMUL( TRANSPOSE(c_matrix(:,nstate_min:nstate_max,1)) , eri_tmp3(:,1:nbf,lbf) )
    enddo
 
-   do jstate=1,nstate
-     eri_tmp1(1:nstate,1:nbf) = MATMUL( TRANSPOSE(c_matrix(:,:,1)) ,  eri_tmp2(jstate,:,1:nbf) )
+   do jstate=nstate_min,nstate_max
+     eri_tmp1(nstate_min:nstate_max,1:nbf) = MATMUL( TRANSPOSE(c_matrix(:,nstate_min:nstate_max,1)) ,  eri_tmp2(jstate,:,1:nbf) )
 
-     eri_4center_eigen_uks(istate,jstate,1:nstate,1:nstate) = MATMUL( eri_tmp1(1:nstate,1:nbf) , c_matrix(1:nbf,1:nstate,1) )
+     eri_4center_eigen_uks(istate,jstate,nstate_min:nstate_max,nstate_min:nstate_max) =   &
+                       MATMUL( eri_tmp1(:,:) , c_matrix(:,nstate_min:nstate_max,1) )
    enddo
 
  enddo

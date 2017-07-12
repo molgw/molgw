@@ -185,7 +185,7 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
  block
    integer :: info
    info = get_elpa_communicators(comm_world,iprow_sd,ipcol_sd,comm_row,comm_col)
-   success = elpa_solve_evp_real(nmat,nmat,apb_matrix,m_apb,bigomega,xpy_matrix,m_x,desc_apb(MB_A),n_apb, &
+   success = elpa_solve_evp_real(nmat,nmat,apb_matrix,m_apb,bigomega,xpy_matrix,m_x,desc_apb(MB_),n_apb, &
                                  comm_row,comm_col,comm_world,method='2stage')
  end block
 #else
@@ -213,12 +213,13 @@ end subroutine diago_4blocks_rpa_sca
 
 
 !=========================================================================
-subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
+subroutine diago_4blocks_davidson(toldav,nstep,nexcitation,nmat,amb_diag_rpa, &
                                   desc_apb,m_apb,n_apb,amb_matrix,apb_matrix, &
                                   bigomega,desc_x,m_x,n_x,xpy_matrix,xmy_matrix)
  implicit none
 
  real(dp),intent(in)    :: toldav
+ integer,intent(in)     :: nstep
  integer,intent(in)     :: nexcitation
  integer,intent(in)     :: nmat,m_apb,n_apb,m_x,n_x
  integer,intent(in)     :: desc_apb(NDEL),desc_x(NDEL)
@@ -231,7 +232,6 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
 !=====
  integer              :: descb(NDEL),desce(NDEL)
  integer,parameter    :: SMALL_BLOCK=4
- integer,parameter    :: NCYCLE=20
  integer              :: nbb,nbbc,nbba
  integer              :: ibb,jbb
  integer              :: icycle
@@ -265,7 +265,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
 
  !
  ! Maximum dimension of the iterative subspace (tilde matrices)
- nbb = MIN( nexcitation * ( 1 + 2 * NCYCLE ) , nmat)
+ nbb = MIN( nexcitation * ( 1 + 2 * nstep ) , nmat)
 
  !
  ! Allocate the small matrices
@@ -375,7 +375,7 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
  call DGEMM('T','N',nbbc,nbbc,nmat,1.0_dp,bb(:,1:nbbc),nmat,amb_bb(:,1:nbbc),nmat,0.0_dp,bb_amb_bb(1:nbbc,1:nbbc),nbbc)
 
 
- do icycle=1,NCYCLE
+ do icycle=1,nstep
 
    allocate(apb_tilde(nbbc,nbbc),amb_tilde(nbbc,nbbc))
    allocate(c_tilde(nbbc,nbbc))
@@ -453,8 +453,8 @@ subroutine diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa, &
      write(stdout,'(a,es12.4,a,es12.4)') ' Davidson diago converged ',tolres,' is lower than ',toldav
      exit
    endif
-   if( icycle == NCYCLE ) then
-     write(stdout,'(a,1x,i4)')           ' Maximum iteration number reached',NCYCLE
+   if( icycle == nstep ) then
+     write(stdout,'(a,1x,i4)')           ' Maximum iteration number reached',nstep
      write(stdout,'(a,es12.4,a,es12.4)') ' Davidson diago not converged ',tolres,' is larger than ',toldav
      call issue_warning('TDDFT or BSE Davidson diago not fully converged')
      exit

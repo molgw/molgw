@@ -20,6 +20,7 @@
  mixing_scheme='simple'
 
  postscf='ci'
+ ci_nstate=10
 
  natom=2
  length_unit='bohr'
