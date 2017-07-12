@@ -4,8 +4,10 @@
 PYTHON=python
 FC=gfortran
 CXX=g++
+CC=gcc
 FCOPTS=
 CXXOPTS= 
+CCOPTS=
 OPENMP=
 CPPFLAGS=
 LIBTOOL=
@@ -22,6 +24,7 @@ include ./my_machine.arch
 
 FC_W_OPTS= $(FC) $(FCOPTS) $(OPENMP) $(CPPFLAGS)
 CXX_W_OPTS= $(CXX) $(CXXOPTS) $(CPPFLAGS)
+CC_W_OPTS= $(CC) $(CCOPTS) $(CPPFLAGS)
 LINKER= $(LIBTOOL) $(FC_W_OPTS)
 
 LINKS= -lstdc++ -lm

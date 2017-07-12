@@ -518,9 +518,12 @@ subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occu
    !
    ! Finite temperature case
    !
-   write(stdout,'(1x,a,f12.6)') 'Find new the occupations and Fermi level for temperature (Ha): ',temperature
+   write(stdout,'(1x,a,f12.6,3x,f15.3)') 'Find new the occupations and Fermi level for temperature (Ha) (K): ', & 
+                                         temperature,temperature * Ha_K
 
-   mu = -0.1_dp
+   ! First, set mu half way between the HOMO and the LUMO
+   mu = 0.50_dp * ( energy(NINT(electrons/2.0_dp)+1,1) + energy(NINT(electrons/2.0_dp),1) )
+
    delta_mu = 1.0e-5_dp
    electrons_mu = -1.0_dp
    iter = 0
@@ -550,7 +553,7 @@ subroutine set_occupation(nstate,temperature,electrons,magnetization,energy,occu
 
  !
  ! final check
- if( ABS( SUM(occupation(:,:)) - electrons ) > 1.0e-7_dp ) then
+ if( ABS( SUM(occupation(:,:)) - electrons ) > 1.0e-4_dp ) then
    write(stdout,*) 'occupation set up failed to give the right number of electrons'
    write(stdout,*) 'sum of occupations',SUM(occupation(:,:))
    write(stdout,*) 'electrons',electrons
@@ -1005,10 +1008,15 @@ subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,vxc_ij,
 !   call stop_clock(timing_tmp2)
 
 
-   if( ANY( dedd_r_batch(:,:) > 0.0_dp ) ) then
-     write(stdout,*) dedd_r_batch(:,:)
-     call die('positive xc potential not expected')
-   endif
+!   if( ANY( dedd_r_batch(:,:) > 0.0_dp ) ) then
+!     !write(stdout,*) dedd_r_batch(:,:)
+!     call issue_warning('Positive xc potential should not happen. Discard the positive values, but be careful with the final result.')
+!     do ir=1,nr
+!       do ispin=1,nspin
+!         dedd_r_batch(ispin,ir) = MIN( dedd_r_batch(ispin,ir) , -1.0e-16_dp )
+!       enddo
+!     enddo
+!   endif
  
 
    !
@@ -1019,17 +1027,16 @@ subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,vxc_ij,
    ! LDA and GGA
    allocate(tmp_batch(basis%nbf,nr))
    do ispin=1,nspin
-     do ir=1,nr
-       tmp_batch(:,ir) = SQRT( -weight_batch(ir) * dedd_r_batch(ispin,ir) ) * basis_function_r_batch(:,ir)
-     enddo
+     forall(ir=1:nr)
+       tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir)
+     end forall
 
-     call DSYRK('L','N',basis%nbf,nr,-1.0d0,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
+!     call DSYRK('L','N',basis%nbf,nr,-1.0d0,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
+     call DGEMM('N','T',basis%nbf,basis%nbf,nr,1.0d0,tmp_batch,basis%nbf,basis_function_r_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
    enddo
-   deallocate(tmp_batch)
    !
    ! GGA-only
    if( dft_xc_needs_gradient ) then 
-     allocate(tmp_batch(basis%nbf,nr))
 
      do ispin=1,nspin
 
@@ -1040,8 +1047,8 @@ subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,vxc_ij,
        call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
 
      enddo
-     deallocate(tmp_batch)
    endif
+   deallocate(tmp_batch)
 !   call stop_clock(timing_tmp3)
 
 

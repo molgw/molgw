@@ -281,7 +281,7 @@ vl.append(variable())
 i = len(vl) - 1
 vl[i].keyword  ='nscf'
 vl[i].family   ='scf'
-vl[i].default  =30
+vl[i].default  =50
 vl[i].datatype ='integer'
 vl[i].comment  ='Sets the maximum number of SCF cycles'
 
@@ -404,7 +404,16 @@ vl[i].keyword  ='toldav'
 vl[i].family   ='post'
 vl[i].default  =1.0e-4
 vl[i].datatype ='real'
-vl[i].comment  ='Sets the tolerance criterium for the maximum norm of the residual in the Davidson diagonalization of TD-DFT or BSE.'
+vl[i].comment  ='Sets the tolerance criterium for the maximum norm of the residual in the Davidson diagonalization of TD-DFT, BSE, and full CI.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='nstep_dav'
+vl[i].family   ='post'
+vl[i].default  =15
+vl[i].datatype ='integer'
+vl[i].comment  ='Sets the maximum number of Davidson partial diagonalization steps. Used for TD-DFT, BSE, and full CI.'
 
 #================================
 vl.append(variable())
@@ -905,6 +914,15 @@ vl[i].default  ='CN'
 vl[i].datatype ='characters'
 vl[i].comment  ='Sets the type of propagation algorithm in the real-time dynamics. \
                  \'CN stands for Crank-Nickolson\''
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='ci_greens_function'
+vl[i].family   ='post'
+vl[i].default  ='holes'
+vl[i].datatype ='characters'
+vl[i].experimental  ='yes'
+vl[i].comment  ='EXPERIMENTAL. Selects which part of the Green\'s function is to be calculated: holes, electrons, or both.'
 
 #================================
 vl.append(variable())
@@ -916,8 +934,16 @@ vl[i].datatype ='characters'
 vl[i].comment  ='Sets the type of excitation of a system in the real-time dynamics. \
                          \'GAU stands for a linearly polarized uniform Gaussian electric field\''
 
-# For excitation field parameters follow notations from article Lopata et al. Modeling Fast Electron ... J. Chem Theory Comput, 2011
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='ci_type'
+vl[i].family   ='post'
+vl[i].default  ='all'
+vl[i].datatype ='characters'
+vl[i].comment  ='Selects which excitations will be included in the CI expansion. Valid choices are \'all\', \'CISD\', \'CISDT\', \'CISDTQ\'.'
 
+# For excitation field parameters follow notations from article Lopata et al. Modeling Fast Electron ... J. Chem Theory Comput, 2011
 #================================
 vl.append(variable())
 i = len(vl) - 1
@@ -926,6 +952,16 @@ vl[i].family   ='rt_tddft'
 vl[i].default  =2.e-5
 vl[i].datatype ='real'
 vl[i].comment  ='Maximum Gaussian excitation field strength in atomic units.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='ci_nstate'
+vl[i].family   ='post'
+vl[i].default  = 1
+vl[i].datatype ='integer'
+vl[i].comment  ='Selects how many CI states should be calculated in the diagonalization. If ci_nstate is lower than the number of configuration, \
+ a Davidson partial diagonalization is performed, else a full (SCA)LAPACK diagonalization is triggered.'
 
 #================================
 vl.append(variable())
@@ -939,11 +975,30 @@ vl[i].comment  ='The excitation pulse width in atomic units for the real-time dy
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='ci_nstate_self'
+vl[i].family   ='post'
+vl[i].default  = 1
+vl[i].datatype ='integer'
+vl[i].comment  ='Selects how many CI states in the N+1 or N-1 electron calculations. If ci_nstate_self is lower than the number of configuration, \
+ a Davidson partial diagonalization is performed, else a full (SCA)LAPACK diagonalization is triggered.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='excit_time0'
 vl[i].family   ='rt_tddft'
 vl[i].default  =3.
 vl[i].datatype ='real'
 vl[i].comment  ='Center of the excitation pulse in atomic units for the real-time dynamics.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='ci_spin_multiplicity'
+vl[i].family   ='post'
+vl[i].default  = 1
+vl[i].datatype ='integer'
+vl[i].comment  ='Spin multiplicity in CI calculations.'
 
 #================================
 vl.append(variable())

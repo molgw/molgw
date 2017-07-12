@@ -253,7 +253,7 @@ subroutine polarizability(enforce_rpa,calculate_w,basis,nstate,occupation,energy
 
    else ! Partial diagonalization with Davidson
      ! The following call works with AND without SCALAPACK
-     call diago_4blocks_davidson(toldav,nexcitation,nmat,amb_diag_rpa,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix, & 
+     call diago_4blocks_davidson(toldav,nstep_dav,nexcitation,nmat,amb_diag_rpa,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix, & 
                                  eigenvalue,desc_x,m_x,n_x,xpy_matrix,xmy_matrix)
    endif
  else
