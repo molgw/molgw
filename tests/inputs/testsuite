@@ -521,6 +521,9 @@ RT-TDDFT Total Energy     ,  -75.5708214863     , 0 , 1.0e-7
 h2o_rt_tddft_h_proj_pbe0_restart.in , proj without basis pbe0 restart, RESTART_TDDFT
 RT-TDDFT Total Energy     ,  -75.5093024264     , 0 , 1.0e-7
 
+h2o_rt_tddft_min_overlap.in , proj wihtout basis nstate ne nbf
+RT-TDDFT Total Energy     ,  -75.6302125045     , 0 , 1.0e-7
+
 be2_qsgw_bse.in           , BSE calculation after QSGW for Be2
 gKS HOMO energy           ,  -8.818516          , 0 , 1.0e-4
 gKS LUMO energy           ,   0.836309          , 0 , 1.0e-4

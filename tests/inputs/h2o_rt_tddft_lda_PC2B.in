@@ -10,8 +10,8 @@
  charge=0
  natom=3
  postscf='real_time'
- time_step=0.5
- time_sim=20.0
+ time_step=0.1
+ time_sim=2.0
  pred_corr="PC2B"
  n_hist=3
  prop_type='MAG2'

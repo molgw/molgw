@@ -294,11 +294,11 @@ subroutine calculate_propagation(nstate,              &
              write(stdout,"(1x,a)") "__________________________________________________"
 
              if( is_iomaster ) then
-               write(name_p_matrix_error,'(5A,F5.3,A,I1,A,I1,A)') "p_matrix_error_", TRIM(m_pred_corrs(ipred_corr)), "_", TRIM(m_prop_types(iprop_type)), &
+               write(name_p_matrix_error,'(5A,F6.3,A,I1,A,I1,A)') "p_matrix_error_", TRIM(m_pred_corrs(ipred_corr)), "_", TRIM(m_prop_types(iprop_type)), &
                      "_dt_", m_time_steps(istep),"_hist_",m_n_hists(ihist), "_iter_",m_n_iters(iiter),".dat" 
                open(newunit=file_p_matrix_error,file=name_p_matrix_error)
                if(excit_type%is_light) then
-                 write(name_dipole_error,'(5A,F5.3,A,I1,A,I1,A)') "dipole_error_", TRIM(m_pred_corrs(ipred_corr)), "_", TRIM(m_prop_types(iprop_type)), & 
+                 write(name_dipole_error,'(5A,F6.3,A,I1,A,I1,A)') "dipole_error_", TRIM(m_pred_corrs(ipred_corr)), "_", TRIM(m_prop_types(iprop_type)), & 
                        "_dt_", m_time_steps(istep),"_hist_",m_n_hists(ihist),"_iter_",m_n_iters(iiter), ".dat"
                  open(newunit=file_dipole_error,file=name_dipole_error)
                end if
@@ -430,10 +430,10 @@ subroutine tddft_time_loop(nstate,                           &
        write(file_excit_field,*) time_min, REAL(m_excit_field_dir) 
      end if
    else
-     write(name_time_data,'(5A,F5.3,A,I1,A,I1,A)') "time_data_", TRIM(pred_corr_cur), "_", TRIM(prop_type_cur), "_dt_", time_step_cur, &
+     write(name_time_data,'(5A,F6.3,A,I1,A,I1,A)') "time_data_", TRIM(pred_corr_cur), "_", TRIM(prop_type_cur), "_dt_", time_step_cur, &
                    "_hist_",n_hist_cur, "_iter_",n_iter_cur,".dat"
      if(excit_type%is_light) then
-       write(name_dipole_time,'(5A,F5.3,A,I1,A,I1,A)') "dipole_time_", TRIM(pred_corr_cur), "_", TRIM(prop_type_cur), "_dt_", time_step_cur, &
+       write(name_dipole_time,'(5A,F6.3,A,I1,A,I1,A)') "dipole_time_", TRIM(pred_corr_cur), "_", TRIM(prop_type_cur), "_dt_", time_step_cur, &
                      "_hist_",n_hist_cur,"_iter_",n_iter_cur,".dat"
        open(newunit=file_dipole_time,file=name_dipole_time)
      end if
@@ -1462,7 +1462,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
 
    call ZHEMM('L','U',basis%nbf,nstate,(1.0_dp,0.0_dp),hamiltonian_fock_cmplx(:,:,ispin),basis%nbf,s_matrix_sqrt_inv_cmplx,basis%nbf,(0.0_dp,0.0_dp),m_tmp_1,basis%nbf)
 !   call ZGEMM('N','N',basis%nbf,nstate,basis%nbf,(1.0_dp,0.0_dp),hamiltonian_fock_cmplx(:,:,ispin),basis%nbf,s_matrix_sqrt_inv_cmplx,basis%nbf,(0.0_dp,0.0_dp),m_tmp_1,basis%nbf)
-   call ZGEMM('T','N',nstate,nstate,basis%nbf,(1.0_dp,0.0_dp),s_matrix_sqrt_inv_cmplx,nstate,m_tmp_1,basis%nbf,(0.0_dp,0.0_dp),h_small_cmplx(:,:,ispin),nstate)
+   call ZGEMM('T','N',nstate,nstate,basis%nbf,(1.0_dp,0.0_dp),s_matrix_sqrt_inv_cmplx,basis%nbf,m_tmp_1,basis%nbf,(0.0_dp,0.0_dp),h_small_cmplx(:,:,ispin),nstate)
 
    deallocate(m_tmp_1)
 
