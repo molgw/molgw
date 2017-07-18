@@ -51,6 +51,7 @@ program molgw
  use m_scf_loop
  use m_virtual_orbital_space
  use m_ci
+ use m_adc
  implicit none
 
 !=====
@@ -495,8 +496,7 @@ program molgw
  call clean_deallocate('Fock operator F',hamiltonian_fock)
 
  !
- ! CI calculation is done here
- ! implemented for a few electrons electrons only!
+ ! CI calculation
  !
  if(calc_type%is_ci) then
    if(nspin/=1) call die('molgw: CI calculations need spin-restriction. Set nspin to 1')
@@ -544,6 +544,12 @@ program molgw
  endif
  call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
  call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
+ !
+ ! CI calculation
+ !
+ if(calc_type%is_adc) then
+   call adc2(basis,nstate,occupation,energy,c_matrix)
+ endif
 
  !
  ! final evaluation for MP2 total energy

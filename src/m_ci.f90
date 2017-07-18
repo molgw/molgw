@@ -1879,7 +1879,6 @@ subroutine read_eigvec_ci(filename,conf,desc_vec,eigvec,eigval,nstate_read,resid
 end subroutine read_eigvec_ci
 
 
-
 !==================================================================
 end module m_ci
 !==================================================================
