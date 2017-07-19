@@ -1,0 +1,13 @@
+&molgw
+ scf='pbe0'
+ read_restart='no'
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVTZ-RI'
+ temperature=5.0e-2
+
+ natom=3
+/
+8    0.000000     0.000000     0.119105    
+1    0.000000     0.760508    -0.476421
+1    0.000000    -0.760508    -0.476421
