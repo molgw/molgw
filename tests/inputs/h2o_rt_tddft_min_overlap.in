@@ -1,0 +1,22 @@
+&molgw
+ scf='lda'
+ basis='cc-pVDZ'
+ min_overlap=1e-1
+ auxil_basis='cc-pVDZ-RI'
+ charge=1
+ natom=3
+ postscf='real_time'
+ time_step=0.1
+ time_sim=2.0
+ pred_corr="PC2B"
+ n_hist=3
+ n_iter=2
+ prop_type='CN'
+ excit_name='proj_simple'
+ vel_projectile= 0.0 0.0 2.0
+ write_step=1.0
+/
+8    0.000  0.000   0.000
+1    0.757  0.586   0.000
+1   -0.757  0.586   0.000
+1    0.0    0.586  -5.0
