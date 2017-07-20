@@ -553,6 +553,10 @@ CI 2nd excited-state energy,   -14.5566215438   , 0 , 1.0e-7
 -IP                       ,     -4.954340       , 0 , 1.0e-4
 -IP (eV) and Weight       ,      0.897967       , 1 , 1.0e-3
 
+h2o_temperature.in        , for a restart test with non-zero temperature
+SCF Total Energy          ,    -76.3174966596   , 0 , 1.0e-7
 
+h2o_restart_temperature.in , restart with non-zero temperature, Restart
+SCF Total Energy          ,    -76.3174966596   , 0 , 1.0e-7
 
 
