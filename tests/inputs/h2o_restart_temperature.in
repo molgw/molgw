@@ -4,7 +4,7 @@
  ignore_bigrestart='yes'
 
  basis='cc-pVDZ'
- auxil_basis='cc-pVTZ-RI'
+ auxil_basis='cc-pVDZ-RI'
  temperature=5.0e-2
  nscf=1
 
