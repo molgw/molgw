@@ -120,7 +120,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
  integer,intent(out)        :: restart_type
  integer,intent(in)         :: nstate
  type(basis_set),intent(in) :: basis
- real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(inout)     :: occupation(nstate,nspin)
  real(dp),intent(out)       :: c_matrix(basis%nbf,nstate,nspin),energy(nstate,nspin)
  real(dp),intent(out)       :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
 !=====
@@ -251,9 +251,14 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
  ! Occupations
  allocate(occupation_read(nstate_read,nspin_read))
  read(restartfile) occupation_read(:,:)
- if( ANY( ABS( occupation_read(1:MIN(nstate_read,nstate),:) &
-             - occupation(1:MIN(nstate_read,nstate),:) )  > 1.0e-5_dp ) ) then
-   call issue_warning('RESTART file: Occupations have changed')
+ if( ANY( ABS( occupation_read(1:MIN(nstate_read,nstate),:) - occupation(1:MIN(nstate_read,nstate),:) )  > 1.0e-5_dp ) ) then
+   if( temperature > 1.0e-8_dp) then
+     occupation(1:MIN(nstate_read,nstate),:)=occupation_read(1:MIN(nstate_read,nstate),:)
+     write(stdout,'(1xa)') "Reading occupations from a RESTART file"
+     call dump_out_occupation('=== Occupations ===',nstate,nspin,occupation)
+   else
+     call issue_warning('RESTART file: Occupations have changed')
+   endif
  endif
  deallocate(occupation_read)
 

@@ -44,6 +44,18 @@ def clean_run(inp,out,restart):
       os.remove('RESTART_TDDFT')
     except FileNotFoundError:
       pass
+    try:
+      os.remove('EIGVEC_CI_0')
+    except FileNotFoundError:
+      pass
+    try:
+      os.remove('EIGVEC_CI_P')
+    except FileNotFoundError:
+      pass
+    try:
+      os.remove('EIGVEC_CI_M')
+    except FileNotFoundError:
+      pass
   fout = open(out, 'w')
   if len(mpirun) < 1:
     subprocess.call(['../../molgw',inp],stdout=fout,stderr=subprocess.STDOUT)
