@@ -1030,6 +1030,15 @@ vl[i].comment  ='Prints electronic density in a 3D volumetric file with cube for
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='print_line_rho_tddft'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints electronic density along a line, which parameters must be provided in manual_plot_rho_tddft file.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='calc_p_matrix_error'
 vl[i].family   ='io_rt_tddft'
 vl[i].default  ='no'

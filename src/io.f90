@@ -510,7 +510,6 @@ subroutine plot_rho(nstate,basis,occupation,c_matrix)
  xxmin = MINVAL( u(1)*xbasis(1,:) + u(2)*xbasis(2,:) + u(3)*xbasis(3,:) ) - length
  xxmax = MAXVAL( u(1)*xbasis(1,:) + u(2)*xbasis(2,:) + u(3)*xbasis(3,:) ) + length
 
-
  do ir=1,nr
    rr(:) = ( xxmin + (ir-1)*(xxmax-xxmin)/REAL(nr-1,dp) ) * u(:) + a(:)
 
@@ -866,17 +865,17 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  dz = (zmax-zmin)/REAL(nz,dp)
 
  do ispin=1,nspin
-  write(file_name,'(i3.3,a)') num,'.cube'
-  open(newunit=ocuberho(ispin),file=file_name)                
-  write(ocuberho(ispin),'(a)') 'cube file generated from MOLG W'
-  write(ocuberho(ispin),'(a,i4)') 'density for spin ',ispin   
-  write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin, zmin
-  write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,dx,0.,0.
-  write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,dy,0.
-  write(ocuberho(ispin),'(i6,3(f12.6,2x))') nz,0.,0.,dz
-  do iatom=1,natom
-    write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
-  enddo
+   write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'.cube'
+   open(newunit=ocuberho(ispin),file=file_name)                
+   write(ocuberho(ispin),'(a)') 'cube file generated from MOLG W'
+   write(ocuberho(ispin),'(a,i4)') 'density for spin ',ispin   
+   write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin, zmin
+   write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,dx,0.,0.
+   write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,dy,0.
+   write(ocuberho(ispin),'(i6,3(f12.6,2x))') nz,0.,0.,dz
+   do iatom=1,natom
+     write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
+   enddo
  enddo
 
  do ix=1,nx
@@ -908,6 +907,116 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
 
 end subroutine plot_cube_wfn_cmplx
 
+!=========================================================================
+subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur)
+ use m_definitions
+ use m_mpi
+ use m_tddft_variables
+ use m_inputparam, only: nspin,spin_fact,excit_type
+ use m_atoms
+ use m_basis_set
+ use m_timing
+ use m_dft_grid,only: calculate_basis_functions_r
+
+ implicit none
+ integer,intent(in)         :: nstate
+ integer,intent(in)         :: nocc_dim
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nocc_dim,nspin)
+ integer                    :: num
+ real(dp),intent(in)        :: time_cur
+!=====
+ integer,parameter          :: nr=5000
+ integer                    :: gt
+ integer                    :: nocc(2),nocc_max
+ real(dp),parameter         :: length=6.0_dp
+ integer                    :: ibf
+ integer                    :: istate1,istate2,istate,ispin
+ real(dp)                   :: rr(3)
+ complex(dp),allocatable    :: phi_cmplx(:,:)
+ real(dp)                   :: point_a(3),point_b(3),u(3)
+ logical                    :: file_exists
+ real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
+ real(dp)                   :: xxmin,xxmax
+ real(dp)                   :: dx,dy,dz
+ real(dp)                   :: basis_function_r(basis%nbf)
+ integer                    :: ir,iatom
+ integer                    :: ibf_cart,ni_cart,ni,li,i_cart
+ real(dp),allocatable       :: basis_function_r_cart(:)
+ integer,allocatable        :: ocubefile(:,:)
+ integer                    :: line_rho(nspin)
+ character(len=200)         :: file_name
+ integer                    :: linefile
+ integer                    :: i_max_atom
+ real(dp)                   :: vec_length
+!=====
+
+ if( .NOT. is_iomaster ) return
+ 
+ call start_clock(timing_print_line_rho_tddft)
+
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+
+ if( .NOT. in_tddft_loop ) then
+   write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions along one line'
+ end if
+ ! Find highest occupied state
+ nocc = 0
+ nocc_max = 0
+ do ispin=1,nspin
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty)  cycle
+     nocc(ispin) = istate
+     if( istate > nocc_max ) nocc_max = istate
+   enddo 
+   if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
+     call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
+   endif 
+ enddo
+
+ inquire(file='manual_plot_rho_tddft',exist=file_exists)
+ if(file_exists) then
+   open(newunit=linefile,file='manual_plot_rho_tddft',status='old')
+   read(linefile,*) point_a(:)
+   read(linefile,*) point_b(:)
+   close(linefile)
+ else
+   point_a = (/ 0.0_dp, 0.0_dp, 0.0_dp  /)
+   point_b = (/ 5.0_dp, 5.0_dp, 5.0_dp  /)
+   call issue_warning('plot_line_wfn_cmplx: manual_plot_rho_tddft file was not found')
+ endif
+ u(:) = point_b(:) - point_a(:)
+ u(:) = u(:) / NORM2(u)
+ allocate(phi_cmplx(nstate,nspin))
+
+ do ispin=1,nspin
+   write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'_line_density.dat'
+   open(newunit=line_rho(ispin),file=file_name)                
+   write(line_rho(ispin),'(a)') '# line density file generated from MOLGW'
+   write(line_rho(ispin),'(a,f9.5)') '# time_cur = ', time_cur
+ enddo
+
+ do ir=0,nr
+   rr(:) = (ir + 0.0_dp) / nr * ( point_b(:) - point_a(:) ) + point_a(:)
+
+   call calculate_basis_functions_r(basis,rr,basis_function_r)
+
+   do ispin=1,nspin
+     phi_cmplx(:,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,:,ispin) )
+     write(line_rho(ispin),'(50(e16.8,2x))') DOT_PRODUCT(rr(:),u(:)),SUM( abs(phi_cmplx(:,ispin))**2 * occupation(:,ispin) ) 
+   enddo
+ enddo
+
+ do ispin=1,nspin
+   close(line_rho(ispin))
+ end do
+
+ deallocate(phi_cmplx)
+
+ call stop_clock(timing_print_line_rho_tddft)
+
+end subroutine plot_rho_cmplx 
 
 
 !=========================================================================

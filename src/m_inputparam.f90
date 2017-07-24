@@ -196,6 +196,7 @@ module m_inputparam
  integer,protected                :: n_restart_tddft
  logical,protected                :: print_tddft_matrices_
  logical,protected                :: print_cube_rho_tddft_
+ logical,protected                :: print_line_rho_tddft_
  logical,protected                :: calc_p_matrix_error_
  logical,protected                :: calc_spectrum_
  logical,protected                :: read_tddft_restart_
@@ -766,6 +767,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: gwgamma_tddft
  character(len=3)     :: print_tddft_matrices
  character(len=3)     :: print_cube_rho_tddft
+ character(len=3)     :: print_line_rho_tddft
  character(len=3)     :: calc_p_matrix_error
  character(len=3)     :: calc_spectrum
  character(len=3)     :: read_tddft_restart
@@ -876,6 +878,8 @@ subroutine read_inputfile_namelist()
  gwgamma_tddft_        = yesno(gwgamma_tddft)
  print_tddft_matrices_ = yesno(print_tddft_matrices)
  print_cube_rho_tddft_ = yesno(print_cube_rho_tddft)
+ print_line_rho_tddft_ = yesno(print_line_rho_tddft)
+ 
  calc_p_matrix_error_  = yesno(calc_p_matrix_error)
  calc_spectrum_        = yesno(calc_spectrum)
  read_tddft_restart_   = yesno(read_tddft_restart)

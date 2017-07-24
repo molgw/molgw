@@ -86,6 +86,7 @@ module m_timing
  integer,parameter :: timing_restart_tddft_file  = 116
  integer,parameter :: timing_propagate_diago     = 117
  integer,parameter :: timing_propagate_matmul    = 118
+ integer,parameter :: timing_print_line_rho_tddft= 119
 
  integer           :: count_rate,count_max
  logical           :: time_running(NTIMING)
@@ -275,6 +276,9 @@ subroutine output_timing()
    write(stdout,'(a32,4x,f12.2,2x,i8)') 'RESTART_TDDFT file writing'     ,timing(timing_restart_tddft_file),calls(timing_restart_tddft_file)
    if(calls(timing_print_cube_rho_tddft)>0) then
       write(stdout,'(a32,4x,f12.2,2x,i8)') 'Cube density file writing'   ,timing(timing_print_cube_rho_tddft),calls(timing_print_cube_rho_tddft)
+   end if
+   if(calls(timing_print_line_rho_tddft)>0) then
+      write(stdout,'(a32,4x,f12.2,2x,i8)') 'Line density file writing'   ,timing(timing_print_line_rho_tddft),calls(timing_print_line_rho_tddft)
    end if
    write(stdout,'(a32,4x,f12.2,2x,i8)') 'Diago in tddft propagation'     ,timing(timing_propagate_diago),calls(timing_propagate_diago)
    write(stdout,'(a32,4x,f12.2,2x,i8)') 'Matmul in tddft propagation'    ,timing(timing_propagate_matmul),calls(timing_propagate_matmul)
