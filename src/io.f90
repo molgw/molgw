@@ -774,6 +774,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  use m_atoms
  use m_basis_set
  use m_timing
+ use m_dft_grid,only: calculate_basis_functions_r
 
  implicit none
  integer,intent(in)         :: nstate
@@ -796,6 +797,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  real(dp)                   :: u(3),a(3)
  logical                    :: file_exists
  real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
+ real(dp)                   :: dx,dy,dz
  real(dp)                   :: basis_function_r(basis%nbf)
  integer                    :: ix,iy,iz,iatom
  integer                    :: ibf_cart,ni_cart,ni,li,i_cart
@@ -859,57 +861,32 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  ymax =MAX(MAXVAL( xatom(2,1:i_max_atom) ),MAXVAL( xbasis(2,:) )) + length
  zmin =MIN(MINVAL( xatom(3,1:i_max_atom) ),MINVAL( xbasis(3,:) )) - length
  zmax =MAX(MAXVAL( xatom(3,1:i_max_atom) ),MAXVAL( xbasis(3,:) )) + length
+ dx = (xmax-xmin)/REAL(nx,dp)
+ dy = (ymax-ymin)/REAL(ny,dp)
+ dz = (zmax-zmin)/REAL(nz,dp)
 
  do ispin=1,nspin
-
-!     write(file_name,'(a,i1,a,i3.3,a)') 'rho_',ispin,'_',num,'.cube'
-     write(file_name,'(i3.3,a)') num,'.cube'
-     open(newunit=ocuberho(ispin),file=file_name)                
-     write(ocuberho(ispin),'(a)') 'cube file generated from MOLG W'
-     write(ocuberho(ispin),'(a,i4)') 'density for spin ',ispin   
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin, zmin
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,(xmax-xmin)/ REAL(nx,dp),0.,0.
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,(ymax-ymin)/REAL(ny,dp),0.
-     write(ocuberho(ispin),'(i6,3(f12.6,2x))') nz,0.,0.,(zmax-zmin)/REAL(nz,dp)
-     do iatom=1,natom
-       write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
-     enddo
-   enddo
+  write(file_name,'(i3.3,a)') num,'.cube'
+  open(newunit=ocuberho(ispin),file=file_name)                
+  write(ocuberho(ispin),'(a)') 'cube file generated from MOLG W'
+  write(ocuberho(ispin),'(a,i4)') 'density for spin ',ispin   
+  write(ocuberho(ispin),'(i6,3(f12.6,2x))') natom,xmin,ymin, zmin
+  write(ocuberho(ispin),'(i6,3(f12.6,2x))') nx,dx,0.,0.
+  write(ocuberho(ispin),'(i6,3(f12.6,2x))') ny,0.,dy,0.
+  write(ocuberho(ispin),'(i6,3(f12.6,2x))') nz,0.,0.,dz
+  do iatom=1,natom
+    write(ocuberho(ispin),'(i6,4(2x,f12.6))') NINT(zatom(iatom)),0.0,xatom(:,iatom)
+  enddo
+ enddo
 
  do ix=1,nx
-   rr(1) = ( xmin + (ix-1)*(xmax-xmin)/REAL(nx,dp) ) 
+   rr(1) = ( xmin + (ix-1)*dx ) 
    do iy=1,ny
-     rr(2) = ( ymin + (iy-1)*(ymax-ymin)/REAL(ny,dp) ) 
+     rr(2) = ( ymin + (iy-1)*dy ) 
      do iz=1,nz
-       rr(3) = ( zmin + (iz-1)*(zmax-zmin)/REAL(nz,dp) ) 
+       rr(3) = ( zmin + (iz-1)*dz ) 
 
-
-       phi_cmplx(:,:) = ( 0.0_dp, 0.0_dp )
-       
-       !
-       ! First precalculate all the needed basis function evaluations at point rr
-       !
-       ibf_cart = 1
-       ibf      = 1
-       do while(ibf_cart<=basis%nbf_cart)
-         li      = basis%bfc(ibf_cart)%am
-         ni_cart = number_basis_function_am('CART',li)
-         ni      = number_basis_function_am(basis%gaussian_type,li)
-    
-         allocate(basis_function_r_cart(ni_cart))
-    
-         do i_cart=1,ni_cart
-           basis_function_r_cart(i_cart) = eval_basis_function(basis%bfc(ibf_cart+i_cart-1),rr)
-         enddo
-         basis_function_r(ibf:ibf+ni-1) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li,gt)%matrix(:,:) )
-         deallocate(basis_function_r_cart)
-    
-         ibf      = ibf      + ni
-         ibf_cart = ibf_cart + ni_cart
-       enddo
-       !
-       ! Precalculation done!
-       !
+       call calculate_basis_functions_r(basis,rr,basis_function_r)
 
        do ispin=1,nspin
          istate2=nocc(ispin)
