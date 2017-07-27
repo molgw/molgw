@@ -82,6 +82,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      selfenergy_tag='G'//TRIM(ADJUSTL(selfenergy_tag))//'W'//TRIM(ADJUSTL(selfenergy_tag))
    case(PT2)
      selfenergy_tag='PT2'
+   case(PT3)
+     selfenergy_tag='PT3'
    case(ONE_RING)
      selfenergy_tag='ONE_RING'
    case(SOX)
@@ -339,7 +341,13 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      endif
   
    endif
-  
+
+   !
+   ! Selfenergy = PT3
+   ! 
+   if(   calc_type%selfenergy_approx == PT3  ) then
+     call pt3_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,se,en%mp2)
+   endif 
   
    !
    ! EXPERIMENTAL COHSEX implementation
@@ -438,7 +446,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    allocate(energy_qp_new(nstate,nspin))
   
    select case(calc_type%selfenergy_approx)
-   case(GW,PT2,ONE_RING,SOX,G0W0Gamma0,G0W0SOX0,G0W0_IOMEGA)
+   case(GW,PT2,PT3,ONE_RING,SOX,G0W0Gamma0,G0W0SOX0,G0W0_IOMEGA)
      allocate(energy_qp_z(nstate,nspin))
      allocate(zz(nsemin:nsemax,nspin))
      call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)

@@ -26,7 +26,7 @@ subroutine adc2(basis,nstate,occupation,energy,c_matrix)
  real(dp),intent(in) :: occupation(nstate,nspin),energy(nstate,nspin)
  real(dp),intent(in) :: c_matrix(basis%nbf,nstate,nspin)
 !=====
- integer,parameter :: ncycle=3
+ integer,parameter :: ncycle=1
  logical,parameter :: TWOPH_TDA=.FALSE.
  integer :: icycle
  integer :: ispin,pspin
@@ -70,9 +70,9 @@ subroutine adc2(basis,nstate,occupation,energy,c_matrix)
  nhole = nhomo - ncore_G
  npart = nvirtual_G - 1 - nhomo
 
- write(stdout,'(1x,a,i4,5x,a,i4,5x,a,i4)') 'Total states: ',nhole+npart,'Hole states: ',nhole,'Particle states: ',npart
+ write(stdout,'(1x,a,i4,5x,a,i4,5x,a,i4)') 'Total states: ',(nhole+npart)*nspin,'Hole states: ',nhole*nspin,'Particle states: ',npart*nspin
 
- bmat = nhole + npart + nhole * (npart * (npart+1)) / 2 + (nhole * (nhole+1)) / 2 * npart 
+ bmat = ( nhole + npart + nhole * (npart * (npart+1)) / 2 + (nhole * (nhole+1)) / 2 * npart ) * nspin
  write(stdout,*) 'ADC B matrix',bmat,' x ',bmat
 
  call clean_allocate('B matrix',b_matrix,bmat,bmat)
@@ -81,51 +81,6 @@ subroutine adc2(basis,nstate,occupation,energy,c_matrix)
  allocate(g_pq(ncore_G+1:nvirtual_G-1,ncore_G+1:nvirtual_G-1))
  allocate(siginf_pq(ncore_G+1:nvirtual_G-1,ncore_G+1:nvirtual_G-1))
 
-
-!FBFB
-#if 0
- block 
- real(dp) :: omega
- real(dp),allocatable :: sig_pt2(:)
-
- omega = -10.0_dp / Ha_eV
-
- allocate(sig_pt2(nsemin:nsemax))
- sig_pt2(:) = 0.0_dp
-
- write(stdout,*) eri_physics_as(1,2,3,3)
- write(stdout,*) eri_physics_as(2,1,3,3)
-
- do pstate=nsemin,nsemax
-   !
-   ! 2 particles - 1 hole
-   do istate=ncore_G+1,nhomo
-     do astate=nlumo,nvirtual_G-1
-       do bstate=nlumo,nvirtual_G-1
-         sig_pt2(pstate) = sig_pt2(pstate) + eri_physics_as(pstate,istate,astate,bstate) * eri_4center_eigen_uks(pstate,astate,istate,bstate)  &
-                                          / ( omega + energy(istate,1) - energy(astate,1) - energy(bstate,1) )
-       enddo
-     enddo
-   enddo
-   !
-   ! 2 holes - 1 particle
-   do istate=ncore_G+1,nhomo
-     do jstate=ncore_G+1,nhomo
-       do astate=nlumo,nvirtual_G-1
-         sig_pt2(pstate) = sig_pt2(pstate) + eri_physics_as(pstate,astate,istate,jstate) * eri_4center_eigen_uks(pstate,istate,astate,jstate)  &
-                                          / ( omega + energy(astate,1) - energy(istate,1) - energy(jstate,1) )
-       enddo
-     enddo
-   enddo
-
- enddo
-
- write(stdout,*) 'FBFB',sig_pt2(:)*Ha_eV
- stop 'ENOUGH'
-
- end block
-
-#endif
 
  siginf_pq(:,:) = 0.0_dp
 
@@ -138,8 +93,10 @@ subroutine adc2(basis,nstate,occupation,energy,c_matrix)
    b_matrix(ncore_G+1:nvirtual_G-1,ncore_G+1:nvirtual_G-1) = siginf_pq(:,:)
    jmat = 0
    do pstate=ncore_G+1,nvirtual_G-1
-     jmat = jmat + 1
-     b_matrix(jmat,jmat) = energy(pstate,ispin)
+     do pspin=1,nspin
+       jmat = jmat + 1
+       b_matrix(jmat,jmat) = energy(pstate,pspin)
+     enddo
    enddo
   
    !

@@ -20,7 +20,7 @@ module m_ci
  use m_inputparam
  use m_selfenergy_tools
 
- integer,parameter,private     :: key_int=16
+ integer,parameter,private     :: key_int=8
 
  
  integer,private              :: nfrozen_ci
