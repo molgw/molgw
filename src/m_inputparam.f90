@@ -46,6 +46,7 @@ module m_inputparam
  integer,parameter :: ONE_RING     = 221
  integer,parameter :: SOX          = 222
  integer,parameter :: PT3          = 223
+ integer,parameter :: TWO_RINGS    = 224
 
  type calculation_type
    character(len=100) :: calc_name
@@ -287,7 +288,9 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%selfenergy_approx = PT2
    case('MP3_SELFENERGY','PT3')
      calc_type%selfenergy_approx = PT3
-   case('ONE_RING','ONE-RING','ONERING')
+   case('TWO_RINGS','TWO-RINGS','TWORINGS','2RINGS')
+     calc_type%selfenergy_approx = TWO_RINGS
+   case('ONE_RING','ONE-RING','ONERING','1RING')
      calc_type%selfenergy_approx = ONE_RING
    case('SOX')
      calc_type%selfenergy_approx = SOX
