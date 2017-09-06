@@ -41,7 +41,7 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
  real(dp)                :: coul_iqjk,coul_ijkq,coul_ipkj
 !=====
 
- call start_clock(timing_mp2_self)
+ call start_clock(timing_pt_self)
 
  emp2_ring = 0.0_dp
  emp2_sox  = 0.0_dp
@@ -182,7 +182,7 @@ subroutine pt2_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
  deallocate(selfenergy_sox)
  if(has_auxil_basis) call destroy_eri_3center_eigen()
 
- call stop_clock(timing_mp2_self)
+ call stop_clock(timing_pt_self)
 
 end subroutine pt2_selfenergy
 
@@ -209,7 +209,7 @@ subroutine onering_selfenergy(nstate,basis,occupation,energy,c_matrix,se,emp2)
  type(spectral_function) :: vchi0v
 !=====
 
- call start_clock(timing_mp2_self)
+ call start_clock(timing_pt_self)
 
  if( .NOT. has_auxil_basis ) &
    call die('onering_selfenergy: only implemented when an auxiliary basis is available')
@@ -232,7 +232,7 @@ subroutine onering_selfenergy(nstate,basis,occupation,energy,c_matrix,se,emp2)
  
  call destroy_spectral_function(vchi0v)
 
- call stop_clock(timing_mp2_self)
+ call stop_clock(timing_pt_self)
 
 
 end subroutine onering_selfenergy
@@ -271,7 +271,7 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
  real(dp)                :: coul_iqjk,coul_ijkq,coul_ipkj
 !=====
 
- call start_clock(timing_mp2_self)
+ call start_clock(timing_pt_self)
 
  emp2_ring = 0.0_dp
  emp2_sox  = 0.0_dp
@@ -405,7 +405,7 @@ subroutine pt2_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,se
  deallocate(selfenergy_sox)
  if(has_auxil_basis) call destroy_eri_3center_eigen()
 
- call stop_clock(timing_mp2_self)
+ call stop_clock(timing_pt_self)
 
 end subroutine pt2_selfenergy_qs
 
@@ -444,6 +444,8 @@ subroutine pt3_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
  real(dp)                :: num1a,num1b,num2a,num2b,num3a,num3b
  real(dp)                :: numgw
 !=====
+
+ call start_clock(timing_pt_self)
 
  emp3 = 0.0_dp
  write(stdout,'(/,a)') ' Perform the third-order self-energy calculation'
@@ -785,6 +787,7 @@ subroutine pt3_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
  deallocate(selfenergy2)
  deallocate(selfenergygw)
 
+ call stop_clock(timing_pt_self)
 
 end subroutine pt3_selfenergy
 
