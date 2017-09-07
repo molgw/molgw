@@ -1,0 +1,18 @@
+&molgw
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+
+ scf='hf'
+ nscf=30
+ tolscf=1.0e-6
+
+ postscf='two-rings'
+ selfenergy_state_min=5
+ selfenergy_state_max=6
+ frozencore='yes'
+ 
+
+ natom=1
+/
+Ne   0. 0. 0.
+

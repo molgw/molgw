@@ -288,6 +288,9 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%selfenergy_approx = PT2
    case('MP3_SELFENERGY','PT3')
      calc_type%selfenergy_approx = PT3
+   case('EVMP3_SELFENERGY','EVPT3')
+     calc_type%selfenergy_approx = PT3
+     calc_type%selfenergy_technique = EVSC
    case('TWO_RINGS','TWO-RINGS','TWORINGS','2RINGS')
      calc_type%selfenergy_approx = TWO_RINGS
    case('ONE_RING','ONE-RING','ONERING','1RING')

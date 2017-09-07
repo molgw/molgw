@@ -348,7 +348,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    ! Selfenergy = PT3 or 2-rings
    ! 
    if( calc_type%selfenergy_approx == PT3 .OR. calc_type%selfenergy_approx == TWO_RINGS ) then
-     call pt3_selfenergy(calc_type%selfenergy_approx,nstate,basis,occupation,energy_g,c_matrix,se,en%mp2)
+     call pt3_selfenergy(calc_type%selfenergy_approx,calc_type%selfenergy_technique,nstate,basis,occupation,energy_g,c_matrix,se,en%mp2)
    endif 
   
    !
@@ -447,23 +447,26 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
   
    allocate(energy_qp_new(nstate,nspin))
   
-   select case(calc_type%selfenergy_approx)
-   case(GW,PT2,PT3,ONE_RING,TWO_RINGS,SOX,G0W0Gamma0,G0W0SOX0,G0W0_IOMEGA)
-     allocate(energy_qp_z(nstate,nspin))
-     allocate(zz(nsemin:nsemax,nspin))
-     call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
-     call find_qp_energy_graphical(se,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
-    
-     call output_qp_energy(TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
-     deallocate(zz)
-     deallocate(energy_qp_z)
-  
-   case(GnWn,GnW0,GV,COHSEX,COHSEX_DEVEL,TUNED_COHSEX)
+   if( calc_type%selfenergy_technique == EVSC ) then
      call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
-  
      call output_qp_energy(TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,1,se,energy_qp_new)
+   else
+     select case(calc_type%selfenergy_approx)
+     case(GW,PT2,PT3,ONE_RING,TWO_RINGS,SOX,G0W0Gamma0,G0W0SOX0,G0W0_IOMEGA)
+       allocate(energy_qp_z(nstate,nspin))
+       allocate(zz(nsemin:nsemax,nspin))
+       call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)
+       call find_qp_energy_graphical(se,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
+      
+       call output_qp_energy(TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,1,se,energy_qp_z,energy_qp_new,zz)
+       deallocate(zz)
+       deallocate(energy_qp_z)
   
-   end select
+     case(GnWn,GnW0,GV,COHSEX,COHSEX_DEVEL,TUNED_COHSEX)
+       call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_new)
+       call output_qp_energy(TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,1,se,energy_qp_new)
+     end select
+   endif
   
    !
    ! Write the QP energies on disk: ENERGY_QP file
