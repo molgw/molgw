@@ -660,7 +660,7 @@ subroutine pt3_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
          omega = energy(qstate,pqspin) + se%omega(iomega)
          denom1 = omega + energy(astate,pqspin) - energy(istate,pqspin) - energy(jstate,pqspin) - ieta
          denom2 = energy(istate,pqspin) + energy(jstate,pqspin) - energy(bstate,pqspin) - energy(cstate,pqspin)
-         selfenergy(iomega,C4,pstate,pqspin) = selfenergy(iomega,C4,pstate,pqspin) + num1 * num2 * num3 / ( denom1 * denom2 ) 
+         selfenergy(iomega,C4,pstate,pqspin) = selfenergy(iomega,C4,pstate,pqspin) + 2.0_dp * num1 * num2 * num3 / ( denom1 * denom2 ) 
        enddo
      enddo
      enddo
@@ -714,7 +714,7 @@ subroutine pt3_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
          denom1 = omega + energy(istate,pqspin) - energy(astate,pqspin) - energy(cstate,pqspin) + ieta
          denom2 = energy(jstate,pqspin) + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
          selfenergy(iomega,D2,pstate,pqspin) = selfenergy(iomega,D2,pstate,pqspin) &
-                    + 2.0_dp * ( num1a * ( num2a * -(2.0_dp)*num3a + num2b * num3a ) + num1b * ( num2a * num3b + num2b * num3a ) )   / ( denom1 * denom2 )
+                    + 2.0_dp * ( num1a * ( num2a * -(2.0_dp)*num3a + num2b * num3a ) + num1b * ( num2a * num3a + num2b * num3b ) )   / ( denom1 * denom2 )
        enddo
      enddo
      enddo
@@ -777,15 +777,14 @@ subroutine pt3_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_mat
    enddo
 
 
-   write(stdout,'(1x,a,*(7x,f14.6))') 'A1 A2',REAL(selfenergy(0,A1,pstate,:),dp) * Ha_eV, REAL(selfenergy(0,A2,pstate,:),dp) * Ha_eV
-   write(stdout,'(1x,a,*(7x,f14.6))') 'A3 A5',REAL(selfenergy(0,A3,pstate,:),dp) * Ha_eV, REAL(selfenergy(0,A5,pstate,:),dp) * Ha_eV
-   write(stdout,'(1x,a,*(7x,f14.6))') 'C1 C2',REAL(selfenergy(0,C1,pstate,:),dp) * Ha_eV, REAL(selfenergy(0,C2,pstate,:),dp) * Ha_eV
-   write(stdout,'(1x,a,*(7x,f14.6))') 'C4 C6',REAL(selfenergy(0,C4,pstate,:),dp) * Ha_eV, REAL(selfenergy(0,C6,pstate,:),dp) * Ha_eV
-   write(stdout,'(1x,a,*(7x,f14.6))') 'D1 D2',REAL(selfenergy(0,D1,pstate,:),dp) * Ha_eV, REAL(selfenergy(0,D2,pstate,:),dp) * Ha_eV
-   write(stdout,'(1x,a,*(7x,f14.6))') 'D4 D6',REAL(selfenergy(0,D4,pstate,:),dp) * Ha_eV, REAL(selfenergy(0,D6,pstate,:),dp) * Ha_eV
-   write(stdout,*)
    write(stdout,'(i4,*(7x,f14.6))') pstate,SUM(REAL(selfenergy(0,:,pstate,:),dp),DIM=1) * Ha_eV, &
-                               REAL(selfenergy2(0,pstate,pqspin),dp) * Ha_eV,REAL(selfenergygw(0,pstate,pqspin),dp) * Ha_eV
+                                    REAL(selfenergy2(0,pstate,pqspin),dp) * Ha_eV,REAL(selfenergygw(0,pstate,pqspin),dp) * Ha_eV
+!   write(stdout,'(1x,a,*(7x,f14.6))') ' A1  A2',REAL(selfenergy(0,A1,pstate,:),dp) * Ha_eV, REAL(selfenergy(0,A2,pstate,:),dp) * Ha_eV
+!   write(stdout,'(1x,a,*(7x,f14.6))') '2A3 2A5',REAL(selfenergy(0,A3,pstate,:),dp) * Ha_eV, REAL(selfenergy(0,A5,pstate,:),dp) * Ha_eV
+!   write(stdout,'(1x,a,*(7x,f14.6))') ' C1  D1',REAL(selfenergy(0,C1,pstate,:),dp) * Ha_eV, REAL(selfenergy(0,D1,pstate,:),dp) * Ha_eV
+!   write(stdout,'(1x,a,*(7x,f14.6))') '2C2 2D2',REAL(selfenergy(0,C2,pstate,:),dp) * Ha_eV, REAL(selfenergy(0,D2,pstate,:),dp) * Ha_eV
+!   write(stdout,'(1x,a,*(7x,f14.6))') '2C4 2D4',REAL(selfenergy(0,C4,pstate,:),dp) * Ha_eV, REAL(selfenergy(0,D4,pstate,:),dp) * Ha_eV
+!   write(stdout,'(1x,a,*(7x,f14.6))') ' C6  D6',REAL(selfenergy(0,C6,pstate,:),dp) * Ha_eV, REAL(selfenergy(0,D6,pstate,:),dp) * Ha_eV
  enddo
 
  if( selfenergy_approx == PT3 ) then
