@@ -63,7 +63,6 @@ module m_inputparam
    logical            :: is_mp3
    logical            :: is_selfenergy
    logical            :: is_ci
-   logical            :: is_adc
    logical            :: is_bse,is_td
    integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
    integer            :: selfenergy_approx         ! GW, COHSEX, PT2
@@ -305,8 +304,6 @@ subroutine init_calculation_type(calc_type,input_key)
    case('CI_SELFENERGY')
      calc_type%is_ci =.TRUE.
      calc_type%selfenergy_approx = CI
-   case('ADC','ADC(2)')
-     calc_type%is_adc =.TRUE.
    case('BSE')
      calc_type%is_bse =.TRUE.
    case('TD')
