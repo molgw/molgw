@@ -464,7 +464,7 @@ program molgw
  if( print_wfn_ )  call plot_rho(nstate,basis,occupation,c_matrix)
  if( print_cube_ ) call plot_cube_wfn(nstate,basis,occupation,c_matrix)
  if( print_pdos_ ) call mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
- if( .FALSE.     )  call plot_rho_list(nstate,basis,occupation,c_matrix)
+ if( .FALSE.     ) call plot_rho_list(nstate,basis,occupation,c_matrix)
 
 
  !
@@ -495,8 +495,7 @@ program molgw
  call clean_deallocate('Fock operator F',hamiltonian_fock)
 
  !
- ! CI calculation is done here
- ! implemented for a few electrons electrons only!
+ ! CI calculation
  !
  if(calc_type%is_ci) then
    if(nspin/=1) call die('molgw: CI calculations need spin-restriction. Set nspin to 1')

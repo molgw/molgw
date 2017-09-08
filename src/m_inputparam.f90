@@ -45,6 +45,8 @@ module m_inputparam
  integer,parameter :: PT2          = 220
  integer,parameter :: ONE_RING     = 221
  integer,parameter :: SOX          = 222
+ integer,parameter :: PT3          = 223
+ integer,parameter :: TWO_RINGS    = 224
 
  type calculation_type
    character(len=100) :: calc_name
@@ -283,7 +285,14 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%is_mp3   =.TRUE.
    case('MP2_SELFENERGY','PT2')
      calc_type%selfenergy_approx = PT2
-   case('ONE_RING','ONE-RING','ONERING')
+   case('MP3_SELFENERGY','PT3')
+     calc_type%selfenergy_approx = PT3
+   case('EVMP3_SELFENERGY','EVPT3')
+     calc_type%selfenergy_approx = PT3
+     calc_type%selfenergy_technique = EVSC
+   case('TWO_RINGS','TWO-RINGS','TWORINGS','2RINGS')
+     calc_type%selfenergy_approx = TWO_RINGS
+   case('ONE_RING','ONE-RING','ONERING','1RING')
      calc_type%selfenergy_approx = ONE_RING
    case('SOX')
      calc_type%selfenergy_approx = SOX
@@ -988,10 +997,10 @@ subroutine read_inputfile_namelist()
  has_auxil_basis = TRIM(auxil_basis_name(1)) /= '' .OR. TRIM(ecp_auxil_basis_name(1)) /= ''
  has_small_basis = TRIM(small_basis_name(1)) /= '' .OR. TRIM(ecp_small_basis_name(1)) /= ''
 
- if( .NOT. has_auxil_basis .AND. nproc_world > 1 ) then
-   write(stdout,*) 'Parallelization is not available without an auxiliary basis'
-   call issue_warning('Please run with one CPU only or provide MOLGW with an auxiliary basis')
- endif
+! if( .NOT. has_auxil_basis .AND. nproc_world > 1 ) then
+!   write(stdout,*) 'Parallelization is not available without an auxiliary basis'
+!   call issue_warning('Please run with one CPU only or provide MOLGW with an auxiliary basis')
+! endif
 
  natom_basis = natom + nghost
 

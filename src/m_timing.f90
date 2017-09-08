@@ -29,7 +29,7 @@ module m_timing
  integer,parameter :: timing_diago_h2p           = 10
  integer,parameter :: timing_pola_static         = 11
  integer,parameter :: timing_mp2_energy          = 12
- integer,parameter :: timing_mp2_self            = 13
+ integer,parameter :: timing_pt_self             = 13
  integer,parameter :: timing_basis_transform     = 14
  integer,parameter :: timing_single_excitation   = 15
  integer,parameter :: timing_eri_2center         = 16
@@ -213,7 +213,7 @@ subroutine output_timing()
  write(stdout,'(a32,4x,f12.2,2x,i8)') '      Optical spectrum' ,timing(timing_spectrum),calls(timing_spectrum)
  write(stdout,*)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'GW self-energy'     ,timing(timing_self),calls(timing_self)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'MP2 self-energy'    ,timing(timing_mp2_self),calls(timing_mp2_self)
+ write(stdout,'(a30,6x,f12.2,2x,i8)') 'PT self-energy'     ,timing(timing_pt_self),calls(timing_pt_self)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'GWGamma self-energy',timing(timing_gwgamma),calls(timing_gwgamma)
  write(stdout,'(a30,6x,f12.2,2x,i8)') 'MP2 energy'         ,timing(timing_mp2_energy),calls(timing_mp2_energy)
  if( calls(timing_full_ci) > 0 ) then
