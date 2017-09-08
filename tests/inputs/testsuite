@@ -567,7 +567,10 @@ gKS LUMO energy           ,     46.110304       , 0 , 1.0e-4
 TWO_RINGS HOMO energy     ,    -20.964659       , 0 , 1.0e-4
 TWO_RINGS LUMO energy     ,     45.419598       , 0 , 1.0e-4
 
+h2o_temperature.in        , for a restart test with non-zero temperature
+SCF Total Energy          ,    -76.3174966596   , 0 , 1.0e-7
 
-
+h2o_restart_temperature.in , restart with non-zero temperature, Restart
+SCF Total Energy          ,    -76.3174966596   , 0 , 1.0e-7
 
 
