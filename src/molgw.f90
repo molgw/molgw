@@ -463,7 +463,7 @@ program molgw
  if(calc_type%is_real_time) then
    write(stdout,'(/,1x,a)') '=================================================='
    write(stdout,'(x,a)') "RT-TDDFT simulation"
-   call calculate_propagation(nstate, basis, occupation, s_matrix, s_matrix_sqrt_inv, c_matrix,hamiltonian_kinetic,hamiltonian_nucleus)
+   call calculate_propagation(nstate, basis, occupation, c_matrix)
    write(stdout,'(x,a)') "End of RT-TDDFT simulation"
    write(stdout,'(1x,a)') '=================================================='
  end if

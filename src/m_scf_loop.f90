@@ -672,7 +672,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
  en%exx     = 0.0_dp
  en%exx_hyb = 0.0_dp
 
- if ( parallel_ham ) call die('parallel_ham not yet implemented for tddft propagator')
+! if ( parallel_ham ) call die('parallel_ham not yet implemented for tddft propagator')
  
  ! Initialize real arrays
  

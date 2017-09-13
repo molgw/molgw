@@ -49,11 +49,7 @@ contains
 subroutine calculate_propagation(nstate,              &  
                                  basis,               &  
                                  occupation,          &   
-                                 s_matrix,            & 
-                                 s_matrix_sqrt_inv,   &
-                                 c_matrix,            &
-                                 hamiltonian_kinetic, & 
-                                 hamiltonian_nucleus)
+                                 c_matrix)
  use ISO_C_BINDING
  use m_timing
  implicit none
@@ -61,16 +57,12 @@ subroutine calculate_propagation(nstate,              &
 !=====
  type(basis_set),intent(in)      :: basis
  integer,intent(in)              :: nstate 
- real(dp),intent(in)             :: s_matrix(basis%nbf,basis%nbf)
  real(dp),intent(in)             :: c_matrix(basis%nbf,nstate,nspin) 
  real(dp),intent(in)             :: occupation(nstate,nspin)
- real(dp),intent(in)             :: hamiltonian_kinetic(basis%nbf,basis%nbf)
- real(dp),intent(inout)          :: hamiltonian_nucleus(basis%nbf,basis%nbf)
- real(dp),intent(in)             :: s_matrix_sqrt_inv(basis%nbf,nstate)
 !=====
  integer,parameter          :: BATCH_SIZE=64
  integer                    :: ntau, itau,idir, info, ispin, ibf,nomega,iomega
- integer                    :: istate
+ integer                    :: istate, nstate_tmp
  integer                    :: nwrite_step, iwrite_step
  integer                    :: file_dipolar_spectra
  integer                    :: file_real_dipolar_spectra
@@ -80,6 +72,10 @@ subroutine calculate_propagation(nstate,              &
  real(dp),allocatable       :: dipole_basis(:,:,:)
  complex(dp),allocatable    :: dipole_time_ref(:,:)
  type(C_PTR)                :: plan
+ real(dp),allocatable       :: s_matrix(:,:)
+ real(dp),allocatable       :: s_matrix_sqrt_inv(:,:)
+ real(dp),allocatable       :: hamiltonian_kinetic(:,:)
+ real(dp),allocatable       :: hamiltonian_nucleus(:,:)
 !===== variables for the calc_p_matrix_error
  complex(dp),allocatable    :: p_matrix_time_test_cmplx(:,:,:,:)
  complex(dp),allocatable    :: p_matrix_time_ref_cmplx(:,:,:,:)
@@ -100,6 +96,32 @@ subroutine calculate_propagation(nstate,              &
  complex(dp),allocatable    :: hamiltonian_fock_start_cmplx(:,:,:)
  complex(dp),allocatable    :: h_small_start_cmplx(:,:,:)
  complex(dp),allocatable    :: c_matrix_buf_cmplx(:,:,:)
+
+! call clean_deallocate('Overlap matrix S',s_matrix)
+! call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
+! call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
+! call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
+
+ allocate(s_matrix(basis%nbf,basis%nbf))             
+! allocate(s_matrix_sqrt_inv(basis%nbf,nstate)) this matrix will be allocated in the subroutine
+ allocate(hamiltonian_kinetic(basis%nbf,basis%nbf))
+ allocate(hamiltonian_nucleus(basis%nbf,basis%nbf))
+
+ call setup_overlap(print_matrix_,basis,s_matrix)
+
+ call setup_sqrt_overlap(min_overlap,basis%nbf,s_matrix,nstate_tmp,s_matrix_sqrt_inv)
+ if(nstate/=nstate_tmp) then
+   call die('Error with nstate in the TDDFT propagator') 
+ end if
+
+ call setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
+ 
+ call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus) 
+ 
+ if( nelement_ecp > 0 ) then
+   call setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
+ endif
+
 
  if(write_step / time_step - NINT( write_step / time_step ) > 0.0E-10_dp) then
    call die("Tddft error: write_step is not multiple of time_step.")
@@ -321,6 +343,11 @@ subroutine calculate_propagation(nstate,              &
  end if
 
  if( calc_type%is_dft ) call destroy_dft_grid()
+
+ deallocate(s_matrix)             
+ call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
+ deallocate(hamiltonian_kinetic)
+ deallocate(hamiltonian_nucleus)
 
  deallocate(xatom_start)
  deallocate(s_matrix_inv)

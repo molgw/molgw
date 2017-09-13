@@ -986,6 +986,9 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
    point_b = (/ 5.0_dp, 5.0_dp, 5.0_dp  /)
    call issue_warning('plot_line_wfn_cmplx: manual_plot_rho_tddft file was not found')
  endif
+! point_b(:) = point_b(:) / bohr_A 
+! point_a(:) = point_a(:) / bohr_A
+! In analogy with cube file, this file is also in Bohr
  u(:) = point_b(:) - point_a(:)
  u(:) = u(:) / NORM2(u)
  allocate(phi_cmplx(nstate,nspin))
