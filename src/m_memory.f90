@@ -751,7 +751,7 @@ subroutine clean_deallocate_c2d(array_name,array)
  n1 = SIZE(array(:,:),DIM=1)
  n2 = SIZE(array(:,:),DIM=2)
 
- mem_mb = 2._dp**2*REAL(dp,dp) * REAL(n1,dp) * REAL(n2,dp) / 1024._dp**2
+ mem_mb = 2._dp*REAL(dp,dp) * REAL(n1,dp) * REAL(n2,dp) / 1024._dp**2
 
  ! The allocation itself
  deallocate(array)
@@ -780,7 +780,7 @@ subroutine clean_deallocate_c3d(array_name,array)
  n2 = SIZE(array(:,:,:),DIM=2)
  n3 = SIZE(array(:,:,:),DIM=3)
 
- mem_mb = 2._dp**3*REAL(dp,dp) * REAL(n1,dp) *REAL(n2,dp) * REAL(n3,dp) / 1024._dp**2
+ mem_mb = 2._dp*REAL(dp,dp) * REAL(n1,dp) *REAL(n2,dp) * REAL(n3,dp) / 1024._dp**2
 
  ! The allocation itself
  deallocate(array)
@@ -810,7 +810,7 @@ subroutine clean_deallocate_c4d(array_name,array)
  n3 = SIZE(array(:,:,:,:),DIM=3)
  n4 = SIZE(array(:,:,:,:),DIM=4)
 
- mem_mb = 2._dp**4*REAL(dp,dp) * REAL(n1,dp) *REAL(n2,dp) * REAL(n3,dp) * REAL(n4,dp)/ 1024._dp**2
+ mem_mb = 2._dp*REAL(dp,dp) * REAL(n1,dp) *REAL(n2,dp) * REAL(n3,dp) * REAL(n4,dp)/ 1024._dp**2
 
  ! The allocation itself
  deallocate(array)

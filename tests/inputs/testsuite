@@ -594,6 +594,20 @@ CI 2nd excited-state energy,   -14.5566215438   , 0 , 1.0e-7
 -IP                       ,     -4.954340       , 0 , 1.0e-4
 -IP (eV) and Weight       ,      0.897967       , 1 , 1.0e-3
 
+ne_pt3.in                 , 3rd order perturbation theory on neon atom
+SCF Total Energy          ,   -128.4887755517   , 0 , 1.0e-7
+gKS HOMO energy           ,    -22.642556       , 0 , 1.0e-4
+gKS LUMO energy           ,     46.111228       , 0 , 1.0e-4
+PT3 HOMO energy           ,    -21.446232       , 0 , 1.0e-4
+PT3 LUMO energy           ,     44.946098       , 0 , 1.0e-4
+
+ne_rings.in               , Perturbation theory with only 1- and 2-ring diagrams on neon atom (close to GW)
+SCF Total Energy          ,   -128.4900916481   , 0 , 1.0e-7
+gKS HOMO energy           ,    -22.639065       , 0 , 1.0e-4
+gKS LUMO energy           ,     46.110304       , 0 , 1.0e-4
+TWO_RINGS HOMO energy     ,    -20.964659       , 0 , 1.0e-4
+TWO_RINGS LUMO energy     ,     45.419598       , 0 , 1.0e-4
+
 h2o_temperature.in        , for a restart test with non-zero temperature
 SCF Total Energy          ,    -76.3174966596   , 0 , 1.0e-7
 
