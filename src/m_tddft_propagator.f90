@@ -102,10 +102,10 @@ subroutine calculate_propagation(nstate,              &
 ! call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
 ! call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
 
- allocate(s_matrix(basis%nbf,basis%nbf))             
+ call clean_allocate('Overlap matrix S for TDDFT',s_matrix,basis%nbf,basis%nbf)             
 ! allocate(s_matrix_sqrt_inv(basis%nbf,nstate)) this matrix will be allocated in the subroutine
- allocate(hamiltonian_kinetic(basis%nbf,basis%nbf))
- allocate(hamiltonian_nucleus(basis%nbf,basis%nbf))
+ call clean_allocate('Kinetic operator T for TDDFT',hamiltonian_kinetic,basis%nbf,basis%nbf)
+ call clean_allocate('Nucleus operator V for TDDFT',hamiltonian_nucleus,basis%nbf,basis%nbf)
 
  call setup_overlap(print_matrix_,basis,s_matrix)
 
@@ -140,10 +140,10 @@ subroutine calculate_propagation(nstate,              &
    enddo
  end do
 
- allocate(c_matrix_start_cmplx(basis%nbf,nocc,nspin))
- allocate(c_matrix_orth_start_cmplx(nstate,nocc,nspin))
- allocate(hamiltonian_fock_start_cmplx(basis%nbf,basis%nbf,nspin))
- allocate(h_small_start_cmplx(nstate,nstate,nspin))
+ call clean_allocate('Wavefunctions C for TDDFT',c_matrix_start_cmplx,basis%nbf,nocc,nspin)
+ call clean_allocate('Wavefunctions hist. C for TDDFT',c_matrix_orth_start_cmplx,nstate,nocc,nspin)
+ call clean_allocate('Hamiltonian Fock for TDDFT',hamiltonian_fock_start_cmplx,basis%nbf,basis%nbf,nspin)
+ call clean_allocate('h_small_start for TDDFT',h_small_start_cmplx,nstate,nstate,nspin)
  allocate(xatom_start(3,natom))
 
  if(excit_type%is_light) excit_dir_norm(:)=excit_type%dir(:)/NORM2(excit_type%dir(:))
@@ -184,17 +184,17 @@ subroutine calculate_propagation(nstate,              &
 
  ! In case of no restart, find the c_matrix_orth_cmplx by diagonalizing h_small
  if( (.NOT. read_tddft_restart_) .OR. (.NOT. restart_tddft_is_correct)) then
-   allocate(c_matrix_buf_cmplx(nstate,nstate,nspin))
+   call clean_allocate('c_matrix_buf for TDDFT',c_matrix_buf_cmplx,nstate,nstate,nspin)
    allocate(energies_inst(nstate))
    do ispin=1, nspin
      call diagonalize(nstate,h_small_start_cmplx(:,:,ispin),energies_inst(:),c_matrix_buf_cmplx(:,:,ispin))
    end do
    c_matrix_orth_start_cmplx(1:nstate,1:nocc,1:nspin)=c_matrix_buf_cmplx(1:nstate,1:nocc,1:nspin)
-   deallocate(c_matrix_buf_cmplx)
+   call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_buf_cmplx)
    deallocate(energies_inst)
  end if
 
- allocate(s_matrix_inv(basis%nbf,basis%nbf))
+ call clean_allocate('s_matrix_inv for TDDFT',s_matrix_inv,basis%nbf,basis%nbf)
 
  call invert(basis%nbf,s_matrix,s_matrix_inv)  
 
@@ -202,15 +202,15 @@ subroutine calculate_propagation(nstate,              &
  nwrite_step=NINT((time_sim - time_min)/write_step) 
 
  if(excit_type%is_light) then
-   allocate(dipole_basis(basis%nbf,basis%nbf,3))
+   call clean_allocate('Dipole_basis for TDDFT',dipole_basis,basis%nbf,basis%nbf,3)
    call calculate_dipole_basis(basis,dipole_basis)
    allocate(dipole_time_ref(nwrite_step,3))
    dipole_time_ref(:,:)= ( 0.0_dp , 0.0_dp )
  end if
 
  if(calc_p_matrix_error_) then
-   allocate(p_matrix_time_ref_cmplx(basis%nbf,basis%nbf,nspin,nwrite_step))
-   allocate(p_matrix_time_test_cmplx(basis%nbf,basis%nbf,nspin,nwrite_step))
+   call clean_allocate('p_matrix_time_ref for TDDFT',p_matrix_time_ref_cmplx,basis%nbf,basis%nbf,nspin,nwrite_step)
+   call clean_allocate('p_matrix_time_test for TDDFT',p_matrix_time_test_cmplx,basis%nbf,basis%nbf,nspin,nwrite_step)
    if(excit_type%is_light) allocate(dipole_time_test(nwrite_step,3))
  end if
 
@@ -344,18 +344,25 @@ subroutine calculate_propagation(nstate,              &
 
  if( calc_type%is_dft ) call destroy_dft_grid()
 
- deallocate(s_matrix)             
+ call clean_deallocate('Overlap matrix S for TDDFT',s_matrix)             
  call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
- deallocate(hamiltonian_kinetic)
- deallocate(hamiltonian_nucleus)
+ call clean_deallocate('Kinetic operator T for TDDFT',hamiltonian_kinetic)
+ call clean_deallocate('Nucleus operator V for TDDFT',hamiltonian_nucleus)
 
  deallocate(xatom_start)
- deallocate(s_matrix_inv)
- if(ALLOCATED(dipole_basis))             deallocate(dipole_basis)
+
  if(ALLOCATED(dipole_time_ref))          deallocate(dipole_time_ref)
  if(ALLOCATED(dipole_time_test))         deallocate(dipole_time_test)
- if(ALLOCATED(p_matrix_time_ref_cmplx))  deallocate(p_matrix_time_ref_cmplx)
- if(ALLOCATED(p_matrix_time_test_cmplx)) deallocate(p_matrix_time_test_cmplx)
+ call clean_deallocate('s_matrix_inv for TDDFT',s_matrix_inv)
+ call clean_deallocate('Dipole_basis for TDDFT',dipole_basis)
+ call clean_deallocate('p_matrix_time_ref for TDDFT',p_matrix_time_ref_cmplx)
+ call clean_deallocate('p_matrix_time_test for TDDFT',p_matrix_time_test_cmplx)
+
+ call clean_deallocate('Wavefunctions C for TDDFT',c_matrix_start_cmplx)
+ call clean_deallocate('Wavefunctions hist. C for TDDFT',c_matrix_orth_start_cmplx)
+ call clean_deallocate('Hamiltonian Fock for TDDFT',hamiltonian_fock_start_cmplx)
+ call clean_deallocate('h_small_start for TDDFT',h_small_start_cmplx)
+
 
 end subroutine calculate_propagation
 
@@ -432,11 +439,11 @@ subroutine tddft_time_loop(nstate,                           &
 
  mod_write = NINT( write_step / time_step_cur )
 
- allocate(c_matrix_cmplx(basis%nbf,nocc,nspin))
- allocate(c_matrix_orth_cmplx(nstate,nocc,nspin))
- allocate(hamiltonian_fock_cmplx(basis%nbf,basis%nbf,nspin))
- allocate(p_matrix_cmplx(basis%nbf,basis%nbf,nspin))
- allocate(h_small_cmplx(nstate,nstate,nspin))
+ call clean_allocate('c_matrix_cmplx for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
+ call clean_allocate('c_matrix_orth_cmplx for TDDFT',c_matrix_orth_cmplx,nstate,nocc,nspin)
+ call clean_allocate('hamiltonian_fock_cmplx for TDDFT',hamiltonian_fock_cmplx,basis%nbf,basis%nbf,nspin)
+ call clean_allocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
+ call clean_allocate('h_small_cmplx for TDDFT',h_small_cmplx,nstate,nstate,nspin)
 
  c_matrix_cmplx         = c_matrix_start_cmplx
  c_matrix_orth_cmplx    = c_matrix_orth_start_cmplx 
@@ -538,8 +545,8 @@ subroutine tddft_time_loop(nstate,                           &
      ham_dim_cur=2
    end if
 
-   allocate(h_small_hist_cmplx(nstate,nstate,nspin,ham_dim_cur))
-   allocate(c_matrix_orth_hist_cmplx(nstate,nocc,nspin,1))
+   call clean_allocate('h_small_hist_cmplx for TDDFT',h_small_hist_cmplx,nstate,nstate,nspin,ham_dim_cur)
+   call clean_allocate('c_matrix_orth_hist_cmplx for TDDFT',c_matrix_orth_hist_cmplx,nstate,nocc,nspin,1)
    do iextr=1,ham_dim_cur
      h_small_hist_cmplx(:,:,:,iextr)=h_small_cmplx(:,:,:)
    end do
@@ -901,17 +908,16 @@ subroutine tddft_time_loop(nstate,                           &
    if( ref_ .AND. excit_type%is_light ) close(file_excit_field)
  end if
 
- deallocate(c_matrix_cmplx)
- deallocate(c_matrix_orth_cmplx)
- deallocate(hamiltonian_fock_cmplx)
- deallocate(p_matrix_cmplx)
- deallocate(h_small_cmplx)
+ call clean_deallocate('c_matrix_cmplx for TDDFT',c_matrix_cmplx)
+ call clean_deallocate('c_matrix_orth_cmplx for TDDFT',c_matrix_orth_cmplx)
+ call clean_deallocate('hamiltonian_fock_cmplx for TDDFT',hamiltonian_fock_cmplx)
+ call clean_deallocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx)
+ call clean_deallocate('h_small_cmplx for TDDFT',h_small_cmplx)
+ call clean_deallocate('h_small_hist_cmplx for TDDFT',h_small_hist_cmplx)
+ call clean_deallocate('c_matrix_orth_hist_cmplx for TDDFT',c_matrix_orth_hist_cmplx)
 
- if(pred_corr_cur /= 'PC0') then
-   deallocate(h_small_hist_cmplx)
-   deallocate(c_matrix_orth_hist_cmplx)
-   deallocate(m_nods,extrap_coefs)
- end if
+ if(ALLOCATED(m_nods)) deallocate(m_nods)
+ if(ALLOCATED(extrap_coefs)) deallocate(extrap_coefs)
 
 end subroutine tddft_time_loop
 

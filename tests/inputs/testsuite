@@ -497,6 +497,13 @@ RT-TDDFT Dipole Moment    ,   0.0000779927     , 0 , 1.0e-7
 RT-TDDFT Dipole Moment    ,   2.0565916321     , 1 , 1.0e-7
 RT-TDDFT Dipole Moment    ,  -0.0001037457     , 2 , 1.0e-7
 
+h2o_rt_tddft_hf_PC2B_scalapack.in, Scalapack test RT-TDDFT calculation T=200.0 dt=0.5 PC="PC2B"
+SCF Total Energy          , -76.0278711935     , 0 , 1.0e-7
+RT-TDDFT Total Energy     , -76.0278711836     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   0.0000779927     , 0 , 1.0e-7
+RT-TDDFT Dipole Moment    ,   2.0565916321     , 1 , 1.0e-7
+RT-TDDFT Dipole Moment    ,  -0.0001037457     , 2 , 1.0e-7
+
 h2o_rt_tddft_lda_PC2B.in  , RT-TDDFT calculation T=20.0 dt=0.5 PC="PC2B"
 SCF Total Energy          , -75.8540895545     , 0 , 1.0e-7
 RT-TDDFT Total Energy     , -75.8540895309     , 0 , 1.0e-7
