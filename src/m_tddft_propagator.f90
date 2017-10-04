@@ -253,7 +253,7 @@ subroutine calculate_propagation(nstate,              &
    allocate(m_pred_corrs(n_pred_corrs))
    read(error_pred_corrs,*)m_pred_corrs(:)
 
-   n_pred_corrs = get_number_of_elements(error_prop_types)
+   n_prop_types = get_number_of_elements(error_prop_types)
    allocate(m_prop_types(n_prop_types))
    read(error_prop_types,*)m_prop_types(:) 
   
@@ -1475,19 +1475,19 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
      call nucleus_nucleus_energy(en%nuc_nuc)
      !
      ! Nucleus-electron interaction
-     if( parallel_ham ) then
-       if( parallel_buffer ) then
-         call setup_nucleus_buffer_sca(basis,basis%nbf,basis%nbf,hamiltonian_nucleus)
-       else
-         call setup_nucleus_sca(.false.,basis,basis%nbf,basis%nbf,hamiltonian_nucleus)
-       endif
-     else
+!     if( parallel_ham ) then
+!       if( parallel_buffer ) then
+!         call setup_nucleus_buffer_sca(basis,basis%nbf,basis%nbf,hamiltonian_nucleus)
+!       else
+!         call setup_nucleus_sca(.false.,basis,basis%nbf,basis%nbf,hamiltonian_nucleus)
+!       endif
+!     else
        call setup_nucleus(.false.,basis,hamiltonian_nucleus)
 
        if( nelement_ecp > 0 ) then
          call setup_nucleus_ecp(.false.,basis,hamiltonian_nucleus)
        endif
-     endif
+!     endif
      !-------------------------------
    end if
    hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)

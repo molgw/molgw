@@ -9,8 +9,8 @@
  auxil_basis='cc-pVDZ-RI'
  charge=0
  natom=3
- scalapack_nprow=2
- scalapack_npcol=2
+ scalapack_nprow=4
+ scalapack_npcol=4
  postscf='real_time'
  time_step=0.5
  time_sim=200.0

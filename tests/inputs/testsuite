@@ -528,6 +528,10 @@ RT-TDDFT Total Energy     ,  -75.5708214863     , 0 , 1.0e-7
 h2o_rt_tddft_h_proj_pbe0_restart.in , proj without basis pbe0 restart, RESTART_TDDFT
 RT-TDDFT Total Energy     ,  -75.5093024264     , 0 , 1.0e-7
 
+h2o_rt_tddft_h_proj_pbe0_scalapack.in , proj without basis pbe0
+SCF Total Energy          ,  -76.3418386927     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -75.5708214863     , 0 , 1.0e-7
+
 h2o_rt_tddft_min_overlap.in , proj wihtout basis nstate ne nbf
 RT-TDDFT Total Energy     ,  -75.6302125045     , 0 , 1.0e-7
 
