@@ -1492,6 +1492,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
    end if
    hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
    call start_clock(timing_tmp1)
+#if 0
    allocate(m_tmp_1(basis%nbf,nstate))
    !          herm nop nrows  ncols  nsum                           nrows de op(A) et de C                       nrows de B   beta               nrows de C
 
@@ -1500,7 +1501,9 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
    call ZGEMM('T','N',nstate,nstate,basis%nbf,(1.0_dp,0.0_dp),s_matrix_sqrt_inv_cmplx,basis%nbf,m_tmp_1,basis%nbf,(0.0_dp,0.0_dp),h_small_cmplx(:,:,ispin),nstate)
 
    deallocate(m_tmp_1)
-
+#else
+   call matmul_transaba_scalapack(scalapack_block_min,s_matrix_sqrt_inv_cmplx,hamiltonian_fock_cmplx(:,:,ispin),h_small_cmplx(:,:,ispin))
+#endif
 !   h_small_cmplx(:,:,ispin) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
 !                   MATMUL( hamiltonian_fock_cmplx(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
   
