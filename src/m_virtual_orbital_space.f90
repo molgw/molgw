@@ -380,7 +380,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
    ! tilde S = Sbs**T *  S**-1 * Sbs
    call clean_allocate('Overlap matrix Ssmall',s_small,mc,nc)
 !   s_small(:,:) = MATMUL( TRANSPOSE(s_bigsmall) , MATMUL( s_matrix_inv , s_bigsmall ) )
-   call product_transaba_sca(desc_bb_bs,s_bigsmall,desc_bb_bb,s_matrix_inv,desc_bs_bs,s_small)
+   call matmul_transaba_sca(desc_bb_bs,s_bigsmall,desc_bb_bb,s_matrix_inv,desc_bs_bs,s_small)
 
    ! Calculate ( tilde S )^{-1/2}
    !
@@ -415,10 +415,10 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
                   c_local(1,1,ispin),1,1,desc_bb_sb,  &
                   0.0_dp,matrix_tmp2,1,1,desc_bb_bb)
      ! H = S**T * M2 * S
-     call product_transaba_sca(desc_bb_bb,s_matrix,desc_bb_bb,matrix_tmp2,desc_bb_bb,h_big(:,:,ispin))
+     call matmul_transaba_sca(desc_bb_bb,s_matrix,desc_bb_bb,matrix_tmp2,desc_bb_bb,h_big(:,:,ispin))
      
      ! tilde H = Sbs**T * M2 * Sbs
-     call product_transaba_sca(desc_bb_bs,s_bigsmall,desc_bb_bb,matrix_tmp2,desc_bs_bs,h_small(:,:,ispin))
+     call matmul_transaba_sca(desc_bb_bs,s_bigsmall,desc_bb_bb,matrix_tmp2,desc_bs_bs,h_small(:,:,ispin))
 
      call clean_deallocate('Tmp matrix',matrix_tmp1)
      call clean_deallocate('Tmp matrix',matrix_tmp2)
@@ -450,7 +450,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
 
    ! Cbig = S**-1 * Sbs * tilde C
    do ispin=1,nspin
-     call product_abc_sca(desc_bb_bb,s_matrix_inv,desc_bb_bs,s_bigsmall,desc_bs_ss,c_small(:,:,ispin),desc_bb_ss,c_big(:,:,ispin))
+     call matmul_abc_sca(desc_bb_bb,s_matrix_inv,desc_bb_bs,s_bigsmall,desc_bs_ss,c_small(:,:,ispin),desc_bb_ss,c_big(:,:,ispin))
    enddo
 
 
@@ -501,7 +501,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
 
    ! Sbar = C'**T * S * C'
    ! s_bar(:,:) = MATMUL( TRANSPOSE(c_big(:,:,1)) , MATMUL( s_matrix , c_big(:,:,1) ) )
-   call product_transaba_sca(desc_bb_ss,c_big(:,:,1),desc_bb_bb,s_matrix,desc_ss_ss,s_bar)
+   call matmul_transaba_sca(desc_bb_ss,c_big(:,:,1),desc_bb_bb,s_matrix,desc_ss_ss,s_bar)
 
    call clean_deallocate('Overlap matrix S',s_matrix)
 
@@ -512,7 +512,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
    do ispin=1,nspin
      ! Sbar = C'**T * H * C'
      ! h_bar(:,:,ispin) = MATMUL( TRANSPOSE(c_big(:,:,ispin)) , MATMUL( h_big(:,:,ispin) , c_big(:,:,ispin) ) )
-     call product_transaba_sca(desc_bb_ss,c_big(:,:,1),desc_bb_bb,h_big(:,:,ispin),desc_ss_ss,h_bar(:,:,ispin))
+     call matmul_transaba_sca(desc_bb_ss,c_big(:,:,1),desc_bb_bb,h_big(:,:,ispin),desc_ss_ss,h_bar(:,:,ispin))
    enddo
 
    call clean_deallocate('Hamiltonian H',h_big)

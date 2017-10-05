@@ -374,9 +374,35 @@ end subroutine diagonalize_inplace_sp
 
 
 !=========================================================================
+subroutine diagonalize_inplace_cdp(n,matrix,eigval)
+ implicit none
+ integer,intent(in) :: n
+ complex(dp),intent(in) :: matrix(n,n)
+ real(dp),intent(out) :: eigval(n)
+!=====
+ complex(dp),allocatable :: work(:)
+ real(dp)    :: rwork(3*n-2)
+ integer     :: lwork,info
+!=====
+
+ lwork = -1
+ allocate(work(1))
+ call ZHEEV('V','U',n,matrix,n,eigval,work,lwork,rwork,info)
+ lwork = NINT(REAL(work(1),dp))
+ deallocate(work)
+
+ allocate(work(lwork))
+ call ZHEEV('V','U',n,matrix,n,eigval,work,lwork,rwork,info)
+ deallocate(work)
+
+end subroutine diagonalize_inplace_cdp
+
+
+!=========================================================================
 !
 ! Generalized eigenvalue problem
 !
+!=========================================================================
 subroutine diagonalize_generalized_sym(n,matrix,overlap,eigval,eigvec)
  implicit none
  integer,intent(in) :: n

@@ -315,10 +315,10 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
      !
      ! M1 = H * P * S
-     call product_abc_scalapack(scalapack_block_min,ham(:,:,ispin),p_matrix(:,:,ispin),s_matrix,matrix_tmp1)
+     call matmul_abc_scalapack(scalapack_block_min,ham(:,:,ispin),p_matrix(:,:,ispin),s_matrix,matrix_tmp1)
      !
      ! M2 = S * P * H
-     call product_abc_scalapack(scalapack_block_min,s_matrix,p_matrix(:,:,ispin),ham(:,:,ispin),matrix_tmp2)
+     call matmul_abc_scalapack(scalapack_block_min,s_matrix,p_matrix(:,:,ispin),ham(:,:,ispin),matrix_tmp2)
 
      ! M1 = M1 + M2
      matrix_tmp1(:,:) = matrix_tmp1(:,:) - matrix_tmp2(:,:)
@@ -326,7 +326,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
      !
      ! R = U^T * M1 * U
      ! Remeber that S = U * U^T
-     call product_transaba_scalapack(scalapack_block_min,s_matrix_sqrt_inv,matrix_tmp1,res_hist(:,:,ispin,1))
+     call matmul_transaba_scalapack(scalapack_block_min,s_matrix_sqrt_inv,matrix_tmp1,res_hist(:,:,ispin,1))
 
    enddo
 
