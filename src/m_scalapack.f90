@@ -752,7 +752,8 @@ subroutine diagonalize_inplace_sca_cdp(nglobal,desc,matrix,eigval)
  integer              :: desc_eigvec(NDEL)
  integer              :: mlocal,nlocal
  integer              :: lwork,lrwork,info
- complex(dp),allocatable :: work(:),rwork(:)
+ complex(dp),allocatable :: work(:)
+ real(dp),allocatable    :: rwork(:)
  complex(dp),allocatable :: eigvec(:,:)
 !=====
 
@@ -766,6 +767,7 @@ subroutine diagonalize_inplace_sca_cdp(nglobal,desc,matrix,eigval)
 
  !
  ! First call to get the dimension of the array work
+ ! It seems that there is a bug in SCALAPACK workspace query for rwork
  lwork  = -1
  lrwork = -1
  allocate(work(1))
@@ -777,12 +779,20 @@ subroutine diagonalize_inplace_sca_cdp(nglobal,desc,matrix,eigval)
  ! Second call to actually perform the diago
  lwork  = NINT(REAL(work(1),dp))
  lrwork = NINT(REAL(rwork(1),dp))
-
  deallocate(work)
+ deallocate(rwork)
+
+ ! Prefer to override the workspace size manually to fix the SCALAPACK bug
+ lrwork = 4 * nglobal - 2
+
  allocate(work(lwork))
+ allocate(rwork(lrwork))
+
  call PZHEEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,rwork,lrwork,info)
 
+
  deallocate(work)
+ deallocate(rwork)
 
 
  matrix(:,:) = eigvec(:,:)

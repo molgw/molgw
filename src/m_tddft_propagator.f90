@@ -34,7 +34,7 @@ module m_tddft_propagator
   module procedure print_2d_matrix_cmplx
  end interface print_2d_matrix
 
- ! Mettre private
+ ! Set to private
  real(dp)                   :: time_read
  real(dp)                   :: excit_dir_norm(3)
  real(dp),allocatable       :: s_matrix_inv(:,:)
@@ -42,6 +42,8 @@ module m_tddft_propagator
  type(energy_contributions) :: en_start
  complex(dp)                :: m_excit_field_dir
  integer,private            :: nocc
+
+
 contains
 
 
@@ -1300,7 +1302,12 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      allocate(a_matrix_orth_cmplx(nstate,nstate))
      allocate(energies_inst(nstate))
      call start_clock(timing_propagate_diago)
+#if 0
      call diagonalize(nstate,h_small_cmplx(:,:,ispin),energies_inst(:),a_matrix_orth_cmplx)
+#else
+     a_matrix_orth_cmplx(:,:) = h_small_cmplx(:,:,ispin)
+     call diagonalize_scalapack(scalapack_block_min,nstate,a_matrix_orth_cmplx,energies_inst)
+#endif
      call stop_clock(timing_propagate_diago)
  
 !     propagator_eigen(:,:) = ( 0.0_dp , 0.0_dp ) 
