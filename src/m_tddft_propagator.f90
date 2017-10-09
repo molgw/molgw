@@ -1275,7 +1275,10 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
 !==variables for the CN propagator
  complex(dp),allocatable    :: l_matrix_cmplx(:,:) ! Follow the notation of M.A.L.Marques, C.A.Ullrich et al, 
  complex(dp),allocatable    :: b_matrix_cmplx(:,:) ! TDDFT Book, Springer (2006), !p205
+ complex(dp)                :: s_matrix_sqrt_inv_cmplx(basis%nbf,nstate)
 !=====
+
+ s_matrix_sqrt_inv_cmplx = s_matrix_sqrt_inv
 
  call start_clock(timing_tddft_propagation)
 
@@ -1321,7 +1324,7 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      forall (jstate=1:nstate)
        m_tmp_1(:,jstate) = a_matrix_orth_cmplx(:,jstate) * exp(-im*time_step_cur*energies_inst(jstate) )
      end forall
-
+#if 0
      allocate(m_tmp_2(nstate,nstate))
      !              herm nrows  ncols  nsum                        nrows de A et de C          nrows de B   beta                nrows de C
      call ZGEMM('N','C',nstate,nstate,nstate,(1.0_dp,0.0_dp),m_tmp_1,nstate,a_matrix_orth_cmplx,nstate,(0.0_dp,0.0_dp),m_tmp_2,nstate)
@@ -1337,13 +1340,24 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
 !    c_matrix_orth_cmplx(:,:,ispin) = MATMUL( MATMUL( MATMUL( a_matrix_orth_cmplx(:,:), propagator_eigen(:,:)  ) , &
 !            CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:)))  ), c_matrix_orth_cmplx(:,:,ispin) )
      deallocate(m_tmp_3)
+#else
+   allocate(m_tmp_3(nstate,nocc))
+   call matmul_abc_scalapack(scalapack_block_min,m_tmp_1,CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:))),c_matrix_orth_cmplx(:,:,ispin),m_tmp_3  )
+    c_matrix_orth_cmplx(:,:,ispin) = m_tmp_3
+   deallocate(m_tmp_3)
+   deallocate(m_tmp_1)
+#endif
      call stop_clock(timing_propagate_matmul)
      deallocate(energies_inst)
    case default
      call die('Invalid choice for the propagation algorithm. Change prop_type or error_prop_types value in the input file')
    end select
    call start_clock(timing_tmp2)
+#if 0
    c_matrix_cmplx(:,:,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
+#else
+   call matmul_ab_scalapack(scalapack_block_min,s_matrix_sqrt_inv_cmplx,c_matrix_orth_cmplx(:,:,ispin),c_matrix_cmplx(:,:,ispin))
+#endif
    call stop_clock(timing_tmp2)
  end do
 

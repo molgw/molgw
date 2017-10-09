@@ -1409,14 +1409,14 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
  else ! Only one SCALAPACK proc
 
 !   c_matrix(:,:) = MATMUL( a_matrix , b_matrix )
-   call DGEMM('N','N',mmat,nmat,kmat,ONE,a_matrix,mmat,b_matrix,kmat,ZERO,c_matrix,mmat)
+   call ZGEMM('N','N',mmat,nmat,kmat,ONE,a_matrix,mmat,b_matrix,kmat,ZERO,c_matrix,mmat)
   
  endif
 
 #else
 
 ! c_matrix(:,:) = MATMUL( a_matrix , b_matrix )
- call DGEMM('N','N',mmat,nmat,kmat,ONE,a_matrix,mmat,b_matrix,kmat,ZERO,c_matrix,mmat)
+ call ZGEMM('N','N',mmat,nmat,kmat,ONE,a_matrix,mmat,b_matrix,kmat,ZERO,c_matrix,mmat)
 
 
 
