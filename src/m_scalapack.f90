@@ -1198,12 +1198,9 @@ subroutine matmul_ab_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matrix
  real(dp),allocatable   :: a_matrix_local(:,:)
  real(dp),allocatable   :: b_matrix_local(:,:)
  real(dp),allocatable   :: c_matrix_local(:,:)
- real(dp),allocatable   :: m_matrix_local(:,:)
- real(dp),allocatable   :: m_matrix(:,:)
  integer :: cntxt
  integer :: ma,na,mb,nb,mc,nc
  integer :: desca(NDEL),descb(NDEL),descc(NDEL)
- integer :: descm(NDEL)
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
 !=====
@@ -1259,7 +1256,7 @@ subroutine matmul_ab_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matrix
      mc = NUMROC(mmat,block_row,iprow,first_row,nprow)
      nc = NUMROC(nmat,block_col,ipcol,first_col,npcol)
      allocate(c_matrix_local(mc,nc))
-     call DESCINIT(descm,mmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
+     call DESCINIT(descc,mmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
   
      ! Calculate C = A * B
      call PDGEMM('N','N',mmat,nmat,kmat,1.0_dp,a_matrix_local,1,1,desca,    &
@@ -1314,12 +1311,9 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
  complex(dp),allocatable   :: a_matrix_local(:,:)
  complex(dp),allocatable   :: b_matrix_local(:,:)
  complex(dp),allocatable   :: c_matrix_local(:,:)
- complex(dp),allocatable   :: m_matrix_local(:,:)
- complex(dp),allocatable   :: m_matrix(:,:)
  integer :: cntxt
  integer :: ma,na,mb,nb,mc,nc
  integer :: desca(NDEL),descb(NDEL),descc(NDEL)
- integer :: descm(NDEL)
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
  complex(dp),parameter :: ONE  = (1.0_dp,0.0_dp)
@@ -1377,7 +1371,7 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
      mc = NUMROC(mmat,block_row,iprow,first_row,nprow)
      nc = NUMROC(nmat,block_col,ipcol,first_col,npcol)
      allocate(c_matrix_local(mc,nc))
-     call DESCINIT(descm,mmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
+     call DESCINIT(descc,mmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
   
      ! Calculate C = A * B
      call PZGEMM('N','N',mmat,nmat,kmat,ONE,a_matrix_local,1,1,desca,    &
