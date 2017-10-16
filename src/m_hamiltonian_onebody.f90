@@ -980,11 +980,12 @@ subroutine setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
 
    nproj = 0
    do iecp=1,necp
-     nproj = nproj + number_basis_function_am('PURE',ecp(ie)%lk(iecp))
+     if( ecp(ie)%lk(iecp) /= -1 ) then   ! -1 encodes a local component
+       nproj = nproj + number_basis_function_am('PURE',ecp(ie)%lk(iecp))
+     endif
    enddo
-  
-  
    allocate(int_fixed_r(basis%nbf,nproj))
+  
    do iradial=1,nradial_ecp
      if( MODULO(iradial-1,nproc_world) /= rank_world ) cycle
 
@@ -1000,28 +1001,43 @@ subroutine setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
   
        iproj = 0
        do iecp=1,necp
-         do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
-           iproj = iproj + 1
-           int_fixed_r(:,iproj) = int_fixed_r(:,iproj) + basis_function_r(:) &
-                                     * real_spherical_harmonics(ecp(ie)%lk(iecp),mm,cos_theta,phi) &
-                                        * w1(i1) * 4.0_dp * pi  
-         enddo
+
+         if( ecp(ie)%lk(iecp) == -1 ) then   ! -1 encodes a local component
+           do jbf=1,basis%nbf
+             do ibf=1,basis%nbf
+               hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
+                   + basis_function_r(ibf) * basis_function_r(jbf) * w1(i1) * 4.0_dp * pi  &
+                      * wxa(iradial) * xa(iradial)**2  &
+                      * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
+             enddo
+           enddo
+
+         else
+           do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
+             iproj = iproj + 1
+             int_fixed_r(:,iproj) = int_fixed_r(:,iproj) + basis_function_r(:) &
+                                       * real_spherical_harmonics(ecp(ie)%lk(iecp),mm,cos_theta,phi) &
+                                          * w1(i1) * 4.0_dp * pi  
+           enddo
+         endif
+
        enddo
-     enddo
-  
+     enddo ! (theta, phi) points
   
      iproj = 0
      do iecp=1,necp
-       do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
-         iproj = iproj + 1
-         do jbf=1,basis%nbf
-           do ibf=1,basis%nbf
-             hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
-                 + int_fixed_r(ibf,iproj) * int_fixed_r(jbf,iproj) * wxa(iradial) * xa(iradial)**2  &
-                    * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
+       if( ecp(ie)%lk(iecp) /= -1 ) then
+         do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
+           iproj = iproj + 1
+           do jbf=1,basis%nbf
+             do ibf=1,basis%nbf
+               hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
+                   + int_fixed_r(ibf,iproj) * int_fixed_r(jbf,iproj) * wxa(iradial) * xa(iradial)**2  &
+                      * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
+             enddo
            enddo
          enddo
-       enddo
+       endif
      enddo
   
    enddo
