@@ -1305,7 +1305,7 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      allocate(a_matrix_orth_cmplx(nstate,nstate))
      allocate(energies_inst(nstate))
      call start_clock(timing_propagate_diago)
-#if 0
+#ifdef SMALL_CALC
      call diagonalize(nstate,h_small_cmplx(:,:,ispin),energies_inst(:),a_matrix_orth_cmplx)
 #else
      a_matrix_orth_cmplx(:,:) = h_small_cmplx(:,:,ispin)
@@ -1324,7 +1324,7 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      forall (jstate=1:nstate)
        m_tmp_1(:,jstate) = a_matrix_orth_cmplx(:,jstate) * exp(-im*time_step_cur*energies_inst(jstate) )
      end forall
-#if 0
+#ifdef SMALL_CALC
      allocate(m_tmp_2(nstate,nstate))
      !              herm nrows  ncols  nsum                        nrows de A et de C          nrows de B   beta                nrows de C
      call ZGEMM('N','C',nstate,nstate,nstate,(1.0_dp,0.0_dp),m_tmp_1,nstate,a_matrix_orth_cmplx,nstate,(0.0_dp,0.0_dp),m_tmp_2,nstate)
@@ -1353,7 +1353,7 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      call die('Invalid choice for the propagation algorithm. Change prop_type or error_prop_types value in the input file')
    end select
    call start_clock(timing_tmp2)
-#if 0
+#ifdef SMALL_CALC
    c_matrix_cmplx(:,:,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
 #else
    call matmul_ab_scalapack(scalapack_block_min,s_matrix_sqrt_inv_cmplx,c_matrix_orth_cmplx(:,:,ispin),c_matrix_cmplx(:,:,ispin))
@@ -1513,7 +1513,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
    end if
    hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
    call start_clock(timing_tmp1)
-#if 0
+#ifdef SMALL_CALC
    allocate(m_tmp_1(basis%nbf,nstate))
    !          herm nop nrows  ncols  nsum                           nrows de op(A) et de C                       nrows de B   beta               nrows de C
 

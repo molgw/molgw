@@ -1091,6 +1091,7 @@ subroutine diagonalize_scalapack_dp(scalapack_block_min,nmat,matrix_global,eigva
 
  else ! Only one SCALAPACK proc
 
+   write(stdout,'(a)') ' Only one SCALAPACK proc'
    call diagonalize(nmat,matrix_global,eigval)
 
  endif
