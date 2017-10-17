@@ -108,7 +108,7 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
    element = element_name(REAL(element_ecp(ielement_ecp),dp))
    write(stdout,'(1x,a,a)') 'ECP for element: ',element
 
-   ecp_filename = TRIM(ecp_path)//'/'//TRIM(element)//'_'//TRIM(ecp_name)
+   ecp_filename = TRIM(ecp_path)//'/'//TRIM(ADJUSTL(element))//'_'//TRIM(ecp_name)
    inquire(file=TRIM(ecp_filename),exist=file_exists)
    if( .NOT. file_exists ) then
      write(stdout,*) 'Looking for file: ',ecp_filename
@@ -182,8 +182,8 @@ subroutine read_ecp_file(ecpunit,element,ecpi)
    endif
    i1 = INDEX(line,' ')
 
-   if( line(1:i1-1) /= TRIM(element) .AND. capitalize(line(1:i1-1)) /= TRIM(element) ) then
-     write(stdout,*) 'ECP file should only contain information about element '//TRIM(element)
+   if( line(1:i1-1) /= TRIM(element) .AND. capitalize(line(1:i1-1)) /= TRIM(ADJUSTL(element)) ) then
+     write(stdout,*) 'ECP file should only contain information about element '//TRIM(ADJUSTL(element))
      write(stdout,*) 'While '//line(1:i1-1)//' was found'
      call die('ECP file reading problem')
    endif
@@ -202,7 +202,8 @@ subroutine read_ecp_file(ecpunit,element,ecpi)
        .OR. amc == 'P'   &
        .OR. amc == 'D'   &
        .OR. amc == 'F'   &
-       .OR. amc == 'G'   ) then
+       .OR. amc == 'G'   &
+       .OR. amc == 'H'   ) then
      istat = 0
      do while(istat == 0)
        read(ecpunit,'(a)',iostat=istat) line

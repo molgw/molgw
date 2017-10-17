@@ -17,6 +17,7 @@ module m_scalapack
  use m_warning
  use m_tools
  use m_mpi
+ use m_tddft_variables
 #ifdef HAVE_MPI
  use mpi
 #endif
@@ -1138,8 +1139,11 @@ subroutine diagonalize_scalapack_cdp(scalapack_block_min,nmat,matrix_global,eigv
    call BLACS_GET( -1, 0, cntxt )
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-   write(stdout,'(a,i4,a,i4)') ' Diagonalization using SCALAPACK with a grid',nprow,' x ',npcol
 
+   if( .NOT. in_tddft_loop ) then
+     write(stdout,'(a,i4,a,i4)') ' Diagonalization using SCALAPACK with a grid',nprow,' x ',npcol
+   end if
+ 
    ! Find the master
    if( iprow == 0 .AND. ipcol == 0 ) then
      rank_master = rank_world
@@ -1209,12 +1213,9 @@ subroutine matmul_ab_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matrix
  real(dp),allocatable   :: a_matrix_local(:,:)
  real(dp),allocatable   :: b_matrix_local(:,:)
  real(dp),allocatable   :: c_matrix_local(:,:)
- real(dp),allocatable   :: m_matrix_local(:,:)
- real(dp),allocatable   :: m_matrix(:,:)
  integer :: cntxt
  integer :: ma,na,mb,nb,mc,nc
  integer :: desca(NDEL),descb(NDEL),descc(NDEL)
- integer :: descm(NDEL)
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
 !=====
@@ -1270,7 +1271,7 @@ subroutine matmul_ab_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matrix
      mc = NUMROC(mmat,block_row,iprow,first_row,nprow)
      nc = NUMROC(nmat,block_col,ipcol,first_col,npcol)
      allocate(c_matrix_local(mc,nc))
-     call DESCINIT(descm,mmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
+     call DESCINIT(descc,mmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
   
      ! Calculate C = A * B
      call PDGEMM('N','N',mmat,nmat,kmat,1.0_dp,a_matrix_local,1,1,desca,    &
@@ -1325,12 +1326,9 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
  complex(dp),allocatable   :: a_matrix_local(:,:)
  complex(dp),allocatable   :: b_matrix_local(:,:)
  complex(dp),allocatable   :: c_matrix_local(:,:)
- complex(dp),allocatable   :: m_matrix_local(:,:)
- complex(dp),allocatable   :: m_matrix(:,:)
  integer :: cntxt
  integer :: ma,na,mb,nb,mc,nc
  integer :: desca(NDEL),descb(NDEL),descc(NDEL)
- integer :: descm(NDEL)
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
  complex(dp),parameter :: ONE  = (1.0_dp,0.0_dp)
@@ -1360,8 +1358,10 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
    call BLACS_GET( -1, 0, cntxt )
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-   write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
-  
+
+   if( .NOT. in_tddft_loop ) then
+     write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
+   end if
    !
    ! Participate to the calculation only if the CPU has been selected 
    ! in the grid
@@ -1388,7 +1388,7 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
      mc = NUMROC(mmat,block_row,iprow,first_row,nprow)
      nc = NUMROC(nmat,block_col,ipcol,first_col,npcol)
      allocate(c_matrix_local(mc,nc))
-     call DESCINIT(descm,mmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
+     call DESCINIT(descc,mmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
   
      ! Calculate C = A * B
      call PZGEMM('N','N',mmat,nmat,kmat,ONE,a_matrix_local,1,1,desca,    &
@@ -1638,8 +1638,9 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matr
    call BLACS_GET( -1, 0, cntxt )
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-   write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
-  
+   if( .NOT. in_tddft_loop ) then
+     write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
+   end if
   
    !
    ! Participate to the diagonalization only if the CPU has been selected 
@@ -1957,8 +1958,10 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c
    call BLACS_GET( -1, 0, cntxt )
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-   write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
-  
+
+   if( .NOT. in_tddft_loop ) then
+     write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
+   end if
    !
    ! Participate to the diagonalization only if the CPU has been selected 
    ! in the grid

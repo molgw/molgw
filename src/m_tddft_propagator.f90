@@ -1322,7 +1322,7 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
 
      allocate(m_tmp_1(nstate,nstate))
      forall (jstate=1:nstate)
-       m_tmp_1(:,jstate) = a_matrix_orth_cmplx(:,jstate) * exp(-im*time_step_cur*energies_inst(jstate) )
+       m_tmp_1(:,jstate) = a_matrix_orth_cmplx(:,jstate) * EXP(-im*time_step_cur*energies_inst(jstate) )
      end forall
 #ifdef SMALL_CALC
      allocate(m_tmp_2(nstate,nstate))
@@ -1341,16 +1341,17 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
 !            CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:)))  ), c_matrix_orth_cmplx(:,:,ispin) )
      deallocate(m_tmp_3)
 #else
-   allocate(m_tmp_3(nstate,nocc))
-   call matmul_abc_scalapack(scalapack_block_min,m_tmp_1,CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:))),c_matrix_orth_cmplx(:,:,ispin),m_tmp_3  )
-    c_matrix_orth_cmplx(:,:,ispin) = m_tmp_3
-   deallocate(m_tmp_3)
-   deallocate(m_tmp_1)
+     allocate(m_tmp_3(nstate,nocc))
+     call matmul_abc_scalapack(scalapack_block_min,m_tmp_1,CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:))),c_matrix_orth_cmplx(:,:,ispin),m_tmp_3  )
+      c_matrix_orth_cmplx(:,:,ispin) = m_tmp_3
+     deallocate(m_tmp_3)
+     deallocate(m_tmp_1)
 #endif
      call stop_clock(timing_propagate_matmul)
      deallocate(energies_inst)
-   case default
-     call die('Invalid choice for the propagation algorithm. Change prop_type or error_prop_types value in the input file')
+     deallocate(a_matrix_orth_cmplx)
+     case default
+       call die('Invalid choice for the propagation algorithm. Change prop_type or error_prop_types value in the input file')
    end select
    call start_clock(timing_tmp2)
 #ifdef SMALL_CALC
