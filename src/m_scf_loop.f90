@@ -290,8 +290,6 @@ subroutine scf_loop(is_restart,&
 
    endif
 
-!FBFB electrostatic potential
-!   write(stdout,*) '== FBFB ==',(hamiltonian_nucleus(basis%nbf,basis%nbf)+hamiltonian_hartree(basis%nbf,basis%nbf))*Ha_eV
 
    !
    ! Add the XC part of the hamiltonian to the total hamiltonian
