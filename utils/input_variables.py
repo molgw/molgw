@@ -1061,7 +1061,16 @@ vl[i].keyword  ='error_time_steps'
 vl[i].family   ='io_rt_tddft'
 vl[i].default  ='0.1_dp'
 vl[i].datatype ='characters'
-vl[i].comment  ='Set of time steps for each propagator from the list error_prop_types for the p_matrix test in the real-time dynamics'
+vl[i].comment  ='set of time steps for each propagator from the list error_prop_types for the p_matrix test in the real-time dynamics'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='z_selected'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  =''
+vl[i].datatype ='characters'
+vl[i].comment  ='set of selected z coordinates of projectile for which propagation will be calculated'
 
 #================================
 vl.append(variable())

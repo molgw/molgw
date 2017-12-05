@@ -128,6 +128,7 @@ module m_inputparam
  character(len=100),protected     :: error_prop_types
  character(len=100),protected     :: error_pred_corrs
  character(len=100),protected     :: error_time_steps
+ character(len=100),protected     :: z_selected
  character(len=100),protected     :: error_n_hists
  character(len=100),protected     :: error_n_iters
  character(len=12),protected      :: ci_greens_function

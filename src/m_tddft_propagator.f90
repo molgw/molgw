@@ -42,6 +42,8 @@ module m_tddft_propagator
  type(energy_contributions) :: en_start
  complex(dp)                :: m_excit_field_dir
  integer,private            :: nocc
+ integer                    :: n_z_selected
+ real(dp),allocatable       :: m_z_selected(:)
 
 
 contains
@@ -221,6 +223,17 @@ subroutine calculate_propagation(nstate,              &
  write(stdout,"(x,A,F8.2,A,F9.5,A,I8)") "Calculate the reference tddft loop for time_sim=", time_sim, " time_step=", time_step, " number of iterations", ntau
  write(stdout,"(1x,a)") "__________________________________________________"
  write(stdout,*)
+ 
+ n_z_selected = get_number_of_elements(z_selected)
+ allocate(m_z_selected(n_z_selected))
+ read(z_selected,*)m_z_selected(:)
+
+ if(n_z_selected>0) then
+   m_z_selected(:)=m_z_selected(:)/bohr_A
+ end if
+
+! call bunch_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_start_cmplx,0,0.d0)  
+
  call start_clock(timing_tddft_loop)
  call tddft_time_loop(nstate,                           &
                       basis,                            &
@@ -420,7 +433,7 @@ subroutine tddft_time_loop(nstate,                           &
  integer                    :: file_time_data, file_excit_field
  integer                    :: file_dipole_time,file_iter_norm 
  integer                    :: file_tmp(10)
- real(dp)                   :: time_cur, time_min, time_one_iter
+ real(dp)                   :: time_cur, time_min, time_one_iter,time_step_tmp
  real(dp)                   :: dipole(3)
  complex(dp),allocatable    :: c_matrix_cmplx(:,:,:)
  complex(dp),allocatable    :: c_matrix_orth_cmplx(:,:,:)
@@ -438,7 +451,12 @@ subroutine tddft_time_loop(nstate,                           &
  real(dp),allocatable       :: extrap_coefs(:)
  real(dp)                   :: x_pred 
 !=====
+ integer                    :: isel,sel_cur
+ logical                    :: z_sel_
+ real(dp)                   :: z_sel_next
+!=====
 
+ z_sel_=.false.
  mod_write = NINT( write_step / time_step_cur )
 
  call clean_allocate('c_matrix_cmplx for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
@@ -475,12 +493,18 @@ subroutine tddft_time_loop(nstate,                           &
      end if
      open(newunit=file_time_data,file=name_time_data)
    end if  
-   write(file_time_data,"(A)") " # time(au)     e_total             enuc_nuc             enuc            ekin               ehart            &
-                               &eexx_hyb            exc             eexcit            P*S trace (# of els)" 
+   if(excit_type%is_projectile) then
+     write(file_time_data,"(A)") "  # time(au)     e_total        z_projectile        enuc_nuc            enuc             ekin              ehart&
+                               &           eexx_hyb            exc"
+   end if
+   if(excit_type%is_light) then
+     write(file_time_data,"(A)") " # time(au)     e_total             enuc_nuc             enuc            ekin               ehart            &
+                               &eexx_hyb            exc             eexcit" 
+   end if
    if(excit_type%is_light) write(file_dipole_time,"(A)") "# time(au)                      Dipole_x(D)               Dipole_y(D)               Dipole_z(D)"
  end if
 
- !Printing initial values of energy and dipole taken from SCF of RESTART_TDDFT
+ !Printing initial values of energy and dipole taken from SCF or RESTART_TDDFT
  call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
 
  en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc + en%excit
@@ -491,8 +515,14 @@ subroutine tddft_time_loop(nstate,                           &
  ! Here time_min point coresponds to the end of calculation written in the RESTART_TDDFT or to 0 a.u.
    if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0)
    if( print_line_rho_tddft_ ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
-   write(file_time_data,"(F9.4,8(2x,es16.8E3),2x,(2x,F10.5),(2x,F7.2))") &
-      time_min, en%tot, en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
+   if(excit_type%is_projectile) then
+     write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
+      time_min, en%tot, xatom(3,natom), en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc 
+   end if
+   if(excit_type%is_light) then
+     write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
+      time_min, en%tot, en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit
+   end if
    write(stdout,*)
    write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_min
    write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):', en%tot
@@ -564,6 +594,7 @@ subroutine tddft_time_loop(nstate,                           &
  in_tddft_loop=.true.
  do while ( (time_cur - time_sim) < 1.0e-10 )
    if(itau==3) call start_clock(timing_tddft_one_iter)
+
    if(pred_corr_cur=='PC0') then
      call propagate_orth(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)
      call setup_hamiltonian_fock_cmplx( basis,                   &
@@ -865,8 +896,16 @@ subroutine tddft_time_loop(nstate,                           &
        dipole_time(iwrite_step,:)=dipole(:)
        write(file_dipole_time,'(4f19.10)') time_cur, dipole(:) * au_debye
      end if
-     write(file_time_data,"(F9.4,8(2x,es16.8E3),2x,(2x,F10.5),(2x,F7.2))") &
-        time_cur, en%tot, en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit, matrix_trace_cmplx(MATMUL(p_matrix_cmplx(:,:,1),s_matrix(:,:)))
+
+     if(excit_type%is_projectile) then
+       write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
+        time_cur, en%tot, xatom(3,natom), en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc 
+     end if
+     if(excit_type%is_light) then
+       write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
+        time_cur, en%tot, en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit
+     end if
+
      write(stdout,*)
      write(stdout,'(1x,a31,1x,f19.10)')  'RT-TDDFT Simulation time  (au):', time_cur
      write(stdout,'(1x,a31,1x,f19.10)')  'RT-TDDFT Total Energy     (Ha):', en%tot
@@ -875,6 +914,45 @@ subroutine tddft_time_loop(nstate,                           &
      iwrite_step = iwrite_step + 1
 
    end if
+
+!--------------z_selected------------------------------------------
+   ! !!! REALIZED ONLY FOR A MOVEMENT ALONG Z DIRECTION
+   if(n_z_selected>0 .AND. &
+      & ANY((m_z_selected(:) > xatom(3,natom)) .AND.( m_z_selected(:) < xatom(3,natom) + vel(3,natom)*(time_step_cur)))) then
+     c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
+   end if
+
+   do isel=1,n_z_selected
+     if( (m_z_selected(isel) > xatom(3,natom)) .AND.( m_z_selected(isel) < xatom(3,natom) + vel(3,natom)*(time_step_cur))) then
+       time_step_tmp=(m_z_selected(isel)-xatom(3,natom)) / vel(3,natom)
+       call propagate_orth(nstate,basis,time_step_tmp,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)
+       call setup_hamiltonian_fock_cmplx( basis,                   &
+                                          nstate,                  &
+                                          itau,                    &
+                                          time_cur+time_step_tmp,  &
+                                          time_step_tmp,           &
+                                          occupation,              &
+                                          c_matrix_cmplx,          &
+                                          hamiltonian_kinetic,     &
+                                          hamiltonian_nucleus,     &
+                                          h_small_cmplx,           &
+                                          s_matrix_sqrt_inv,       &
+                                          dipole_basis,            &
+                                          hamiltonian_fock_cmplx,  &
+                                          ref_)
+       z_sel_=.true.
+       sel_cur=isel
+       !---write result
+       en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc + en%excit
+       write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
+         time_cur+time_step_tmp, en%tot, xatom(3,natom), en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc
+       !--- backup after a step
+       xatom(:,natom)=xatom_start(:,natom) + vel(:,natom)*(time_cur-time_read)
+       c_matrix_orth_cmplx(:,:,:)=c_matrix_orth_hist_cmplx(:,:,:,1)
+     end if
+   end do 
+!--------------end-z_selected------------------------------------------
+
 
 !--TIMING
    if(itau==3) then
