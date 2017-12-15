@@ -454,6 +454,10 @@ subroutine tddft_time_loop(nstate,                           &
  integer                    :: isel,sel_cur
  logical                    :: z_sel_
  real(dp)                   :: z_sel_next
+!==cube_diff varibales===
+ real(dp),allocatable       :: cube_density_start(:,:,:,:)
+ integer                    :: nx,ny,nz,unit_cube_diff
+ logical                    :: file_exists
 !=====
 
  z_sel_=.false.
@@ -471,6 +475,23 @@ subroutine tddft_time_loop(nstate,                           &
  h_small_cmplx          = h_small_start_cmplx
  xatom                  = xatom_start
  en                     = en_start
+
+!===cube_diff matrix allocation
+ if(print_cube_diff_tddft_) then
+   inquire(file='manual_cube_diff_tddft',exist=file_exists)
+   if(file_exists) then
+     open(newunit=unit_cube_diff,file='manual_cube_diff_tddft',status='old')
+     read(unit_cube_diff,*) nx,ny,nz
+     close(unit_cube_diff)
+   else
+     nx=40
+     ny=40
+     nz=40
+   endif
+   if(.NOT. ALLOCATED(cube_density_start)) then
+     allocate(cube_density_start(nx,ny,nz,nspin))
+   end if
+ end if
 
  time_min=time_read
  !OPENING FILES
@@ -514,6 +535,10 @@ subroutine tddft_time_loop(nstate,                           &
  if( is_iomaster ) then
  ! Here time_min point coresponds to the end of calculation written in the RESTART_TDDFT or to 0 a.u.
    if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0)
+   if(print_cube_diff_tddft_ ) then
+     call calc_cube_initial_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,cube_density_start,nx,ny,nz)
+     call plot_cube_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,cube_density_start,nx,ny,nz)
+   end if
    if( print_line_rho_tddft_ ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
    if(excit_type%is_projectile) then
      write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
@@ -885,6 +910,8 @@ subroutine tddft_time_loop(nstate,                           &
 
      if(ref_) then
        if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step)
+
+       if(print_cube_diff_tddft_ ) call plot_cube_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,cube_density_start,nx,ny,nz)
        if( print_line_rho_tddft_ ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
        if(excit_type%is_light) write(file_excit_field,'(2f19.10)') time_cur, REAL(m_excit_field_dir)
      end if
@@ -998,6 +1025,7 @@ subroutine tddft_time_loop(nstate,                           &
 
  if(ALLOCATED(m_nods)) deallocate(m_nods)
  if(ALLOCATED(extrap_coefs)) deallocate(extrap_coefs)
+ if(ALLOCATED(cube_density_start)) deallocate(cube_density_start)
 
 end subroutine tddft_time_loop
 

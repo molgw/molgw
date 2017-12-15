@@ -1180,6 +1180,15 @@ vl[i].default  = 50
 vl[i].datatype ='integer'
 vl[i].comment  ='RESTART_TDDFT file will be written during simulation each n_retart_tddft iteration (provided that print_tddft_restart is yes)'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='print_cube_diff_tddft'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints the difference of electronic density with respect to initial density in a 3D volumetric file with cube format for each simulation step in the real-time dynamics'
+
 #============================================================================
 #            Fortran output: input variable namelist and their default value
 #============================================================================

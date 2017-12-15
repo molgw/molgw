@@ -1188,7 +1188,6 @@ subroutine diagonalize_scalapack_cdp(scalapack_block_min,nmat,matrix_global,eigv
  endif
 
 #else
-
  call diagonalize(nmat,matrix_global,eigval)
 
 #endif
