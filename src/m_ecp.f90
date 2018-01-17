@@ -217,7 +217,7 @@ subroutine read_ecp_file(ecpunit,element,ecpi)
          end_of_file = .TRUE.
          exit
        endif
-       read(line,'(i3,e16.8,e16.8)',iostat=istat) read_n,read_zeta,read_d
+       read(line,*,iostat=istat) read_n,read_zeta,read_d
 
        ! For the time being, only code ECP with no local potential
        if( istat == 0 ) then
