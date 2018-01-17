@@ -1049,6 +1049,7 @@ function get_number_of_elements(string) result(num)
 
 end function get_number_of_elements
 
+
 !=========================================================================
 subroutine string_to_integers(string_in,iarray)
  implicit none
@@ -1056,8 +1057,8 @@ subroutine string_to_integers(string_in,iarray)
  character(len=*),intent(in) :: string_in
  integer,intent(inout)       :: iarray(:)
 !=====
- character(len=128) :: string
- integer            :: ilen,inextblank,ii
+ character(LEN(string_in)) :: string
+ integer                   :: ilen,inextblank,ii
 !=====
 
  string = string_in
@@ -1075,6 +1076,34 @@ subroutine string_to_integers(string_in,iarray)
  enddo
 
 end subroutine string_to_integers
+
+
+!=========================================================================
+subroutine string_to_reals(string_in,rarray)
+ implicit none
+
+ character(len=*),intent(in) :: string_in
+ real(dp),intent(inout)      :: rarray(:)
+!=====
+ character(LEN(string_in)) :: string
+ integer            :: ilen,inextblank,ii
+!=====
+
+ string = string_in
+
+ ilen = LEN(TRIM(string))
+ ii = 0
+ do while( ilen > 0 )
+   string = ADJUSTL(string)
+   inextblank = INDEX(string,' ')
+   ii = ii + 1
+   if( ii > SIZE(rarray) ) exit
+   read(string(1:inextblank-1),*) rarray(ii)
+   string = string(inextblank+1:)
+   ilen = LEN(TRIM(string))
+ enddo
+
+end subroutine string_to_reals
 
 
 
