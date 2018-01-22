@@ -232,7 +232,9 @@ subroutine calculate_propagation(nstate,              &
    m_z_selected(:)=m_z_selected(:)/bohr_A
  end if
 
-! call bunch_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_start_cmplx,0,0.d0)  
+ if( print_line_rho_tddft_ ) then
+   call bunch_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_start_cmplx,0,0.d0)  
+ end if
 
  call start_clock(timing_tddft_loop)
  call tddft_time_loop(nstate,                           &

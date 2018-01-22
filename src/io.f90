@@ -1342,9 +1342,9 @@ subroutine bunch_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,t
    endif 
  enddo
 
- inquire(file='manual_plot_rho_tddft',exist=file_exists)
+ inquire(file='manual_dens_traj_tddft',exist=file_exists)
  if(file_exists) then
-   open(newunit=linefile,file='manual_plot_rho_tddft',status='old')
+   open(newunit=linefile,file='manual_dens_traj_tddft',status='old')
    read(linefile,*) point_a(:)
    read(linefile,*) point_b(:)
    read(linefile,*) point_c(:)
@@ -1356,7 +1356,7 @@ subroutine bunch_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,t
    point_a = (/ 0.0_dp,  0.0_dp, -10.0_dp  /)
    point_b = (/ 0.0_dp,  0.0_dp,  10.0_dp  /)
    point_c = (/ 3.49_dp, 0.0_dp, -10.0_dp  /)
-   call issue_warning('plot_line_wfn_cmplx: manual_plot_rho_tddft file was not found')
+   call issue_warning('plot_line_wfn_cmplx: manual_dens_traj_tddft file was not found')
  endif
 ! point_b(:) = point_b(:) / bohr_A 
 ! point_a(:) = point_a(:) / bohr_A
