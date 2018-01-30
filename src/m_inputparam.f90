@@ -613,12 +613,18 @@ subroutine init_dft_type(key,calc_type)
 
    !
    ! Tune the range for range separated hybrids
+#ifdef LIBXC4
+   if( dft_xc_type(idft_xc) == XC_GGA_X_HJS_PBE .OR. dft_xc_type(idft_xc) == XC_GGA_X_WPBEH ) then
+     call xc_f90_func_set_ext_params(calc_type%xc_func(idft_xc), gamma_hybrid )
+   endif
+#else
    if( dft_xc_type(idft_xc) == XC_GGA_X_HJS_PBE ) then
      call xc_f90_gga_x_hjs_set_par(calc_type%xc_func(idft_xc), gamma_hybrid )
    endif
    if( dft_xc_type(idft_xc) == XC_GGA_X_WPBEH ) then
      call xc_f90_gga_x_wpbeh_set_par(calc_type%xc_func(idft_xc),gamma_hybrid )
    endif
+#endif
  enddo
 
  dft_xc_needs_gradient =.FALSE.
