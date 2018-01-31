@@ -410,17 +410,23 @@ subroutine init_excitation_type(excit_type)
  excit_type%time0 = excit_time0
  excit_type%dir   = excit_dir 
 
- select case (excit_type%name)
- case("PROJ_SIMPLE") 
-   excit_type%is_light=.false.
-   excit_type%is_projectile=.true.
- case("NO")
-   excit_type%is_light=.false.
-   excit_type%is_projectile=.false.
- case default
-   excit_type%is_light=.true.
-   excit_type%is_projectile=.false.
- end select
+ if( LEN(TRIM(excit_name)) /= 0 ) then
+   select case (excit_type%name)
+   case("NUCLEUS","ANTINUCLEUS") 
+     excit_type%is_light=.false.
+     excit_type%is_projectile=.true.
+   case("NO")
+     excit_type%is_light=.false.
+     excit_type%is_projectile=.false.
+   case("GAU","HSW","STEP","DEL")
+     excit_type%is_light=.true.
+     excit_type%is_projectile=.false.
+   case default
+     write(stdout,*) 'error reading excitation type'
+     write(stdout,*) TRIM(excit_name)
+     call die('excit_name is unknown')
+   end select
+ end if
 end subroutine init_excitation_type
 
 !=========================================================================
@@ -956,7 +962,7 @@ subroutine read_inputfile_namelist()
 
  call init_excitation_type(excit_type)
  nprojectile=0
- if(excit_type%name=="PROJ_SIMPLE") then
+ if( excit_type%is_projectile ) then
    nprojectile=1
  end if
 

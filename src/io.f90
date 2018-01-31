@@ -1326,7 +1326,7 @@ subroutine bunch_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,t
  gt = get_gaussian_type_tag(basis%gaussian_type)
 
  if( .NOT. in_tddft_loop ) then
-   write(stdout,'(/,1x,a)') 'Plotting some selected wavefunctions along one line'
+   write(stdout,'(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
  end if
  ! Find highest occupied state
  nocc = 0

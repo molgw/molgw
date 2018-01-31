@@ -127,8 +127,8 @@ subroutine calculate_propagation(nstate,              &
  endif
 
 
- if(write_step / time_step - NINT( write_step / time_step ) > 0.0E-10_dp) then
-   call die("Tddft error: write_step is not multiple of time_step.")
+ if(write_step / time_step - NINT( write_step / time_step ) > 0.0E-10_dp .OR. write_step < time_step ) then
+   call die("Tddft error: write_step is not a multiple of time_step or smaller than time_step.")
  end if
  mod_write = NINT( write_step / time_step ) ! write each write_step, assumed that time_step <= write_step
 
@@ -936,9 +936,9 @@ subroutine tddft_time_loop(nstate,                           &
      end if
 
      write(stdout,*)
-     write(stdout,'(1x,a31,1x,f19.10)')  'RT-TDDFT Simulation time  (au):', time_cur
-     write(stdout,'(1x,a31,1x,f19.10)')  'RT-TDDFT Total Energy     (Ha):', en%tot
-     if(excit_type%is_light) write(stdout,'(1x,a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment     (D):', dipole(:) * au_debye
+     write(stdout,'(1x,a31,1x,f19.10)')  'RT-TDDFT Simulation time (au):', time_cur
+     write(stdout,'(1x,a31,1x,f19.10)')  'RT-TDDFT Total Energy    (Ha):', en%tot
+     if(excit_type%is_light) write(stdout,'(1x,a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment    (D):', dipole(:) * au_debye
 
      iwrite_step = iwrite_step + 1
 

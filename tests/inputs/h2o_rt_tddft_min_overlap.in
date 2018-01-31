@@ -12,7 +12,7 @@
  n_hist=3
  n_iter=2
  prop_type='CN'
- excit_name='proj_simple'
+ excit_name='nucleus'
  vel_projectile= 0.0 0.0 2.0
  write_step=1.0
 /

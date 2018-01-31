@@ -75,7 +75,8 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
 
  allocate(vel(3,natom))
  vel(:,:)=0.0_dp
- if(excit_name=="PROJ_SIMPLE") then
+
+ if(excit_name=="NUCLEUS" .OR. excit_name=="ANTINUCLEUS") then
    vel(:,natom)=vel_projectile(:)
  end if
  ! For relaxation or dynamics only 
@@ -96,6 +97,10 @@ subroutine init_atoms(zatom_read,x_read,vel_projectile,calculate_forces,excit_na
  else
    zatom(1:natom_basis - nghost)=zatom_read(1:natom_basis-nghost)
    zatom(natom) = zatom_read(natom + nghost)
+ end if
+
+ if(excit_name=="ANTINUCLEUS") then
+   zatom(natom)=-zatom(natom)
  end if
 
  ! Ghost atoms do not have a positive nucleus
@@ -311,9 +316,19 @@ subroutine output_projectile_position()
  write(stdout,*)
  if(  nprojectile>0) then
    write(stdout,'(a)') ' === projectile position: ----------bohr---------------    |||   ------------- angstrom----------===' 
-   write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
+
+   if(zatom(natom+nghost)>=0) then
+     write(stdout,'(1x,a,i3,2x,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
                                                            element_name(REAL(zatom(natom+nghost),dp)),': ',  &
                                                            xatom(:,natom+nghost),xatom(:,natom+nghost)*bohr_A
+   end if
+
+   if(zatom(natom+nghost)<0) then
+     write(stdout,'(1x,a,i3,2x,a4,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ',natom+nghost, &
+                                                           'anti',element_name(REAL(zatom(natom+nghost),dp)),': ',  &
+                                                           xatom(:,natom+nghost),xatom(:,natom+nghost)*bohr_A
+   end if
+
  end if
 
  write(stdout,'(1x,a,/)') '==================================================================================================='

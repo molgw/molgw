@@ -13,7 +13,7 @@
  pred_corr="PC2B"
  n_hist=3
  prop_type='MAG2'
- excit_name='proj_simple'
+ excit_name='nucleus'
  vel_projectile= 0.0 0.0 2.0
  write_step=0.1
 /
