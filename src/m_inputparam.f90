@@ -148,6 +148,7 @@ module m_inputparam
  real(dp),protected               :: grid_memory
 
  logical,protected                :: gwgamma_tddft_
+ logical,protected                :: pt3_a_diagrams_
  logical,protected                :: read_restart_
  logical,protected                :: ignore_bigrestart_
  logical,protected                :: force_energy_qp_
@@ -718,6 +719,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_pdos,print_cube,print_multipole
  character(len=3)     :: tda,triplet,frozencore,virtual_fno
  character(len=3)     :: gwgamma_tddft
+ character(len=3)     :: pt3_a_diagrams
  real(dp)             :: length_factor,eta
  integer              :: natom_read
  integer              :: atom_number,info,iatom
@@ -817,6 +819,7 @@ subroutine read_inputfile_namelist()
  print_multipole_   = yesno(print_multipole)
  print_cube_        = yesno(print_cube)
  gwgamma_tddft_     = yesno(gwgamma_tddft)
+ pt3_a_diagrams_    = yesno(pt3_a_diagrams)
 
  tddft_grid_level   = interpret_quality(tddft_grid_quality)
  grid_level         = interpret_quality(grid_quality)

@@ -529,6 +529,15 @@ vl[i].comment  ='Sets the spacing between frequencies in the GW self-energy eval
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='pt3_a_diagrams'
+vl[i].family   ='post'
+vl[i].default  ='yes'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Switch whether to calculate the A diagrams family in PT3. A diagrams are the self-consistent diagrams (PT2 inclusions in the Green\'s function).'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='read_restart'
 vl[i].family   ='io'
 vl[i].default  ='no'

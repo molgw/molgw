@@ -55,6 +55,7 @@
     selfenergy_state_range,       &
     nomega_sigma,       &
     step_sigma,       &
+    pt3_a_diagrams,       &
     read_restart,       &
     ignore_bigrestart,       &
     force_energy_qp,       &
@@ -150,6 +151,7 @@
  selfenergy_state_range=100000
  nomega_sigma=51
  step_sigma=0.01_dp 
+ pt3_a_diagrams='yes'
  read_restart='no'
  ignore_bigrestart='no'
  force_energy_qp='no'

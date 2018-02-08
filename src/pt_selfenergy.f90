@@ -462,13 +462,13 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
  call start_clock(timing_pt_self)
 
  emp3 = 0.0_dp
- selfconsistent_diagrams = ( selfenergy_technique /= EVSC )
+ selfconsistent_diagrams = selfenergy_technique /= EVSC .AND. pt3_a_diagrams_
 
  write(stdout,'(/,a)') ' Perform the third-order self-energy calculation'
  if( selfconsistent_diagrams ) then
-   write(stdout,*) 'with the perturbative approach'
+   write(stdout,'(1x,a)') 'Include all the diagrams'
  else
-   write(stdout,*) 'with the eigenvalue self-consistent approach'
+   write(stdout,'(1x,a)') 'Do not include the A family of diagrams'
  endif
 
  if( nspin /= 1 ) call die('pt3_selfenergy: only implemented for spin restricted calculations')
