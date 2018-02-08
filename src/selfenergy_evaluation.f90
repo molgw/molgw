@@ -4,7 +4,7 @@
 !
 ! This file contains
 ! the driver for the different self-energy methods:
-! PT2, GW, evGW, COHSEX, GWGamma, etc.
+! PT2, PT3, GW, evGW, COHSEX, GWGamma, etc.
 !
 !=========================================================================
 subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_matrix, &
@@ -139,7 +139,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    !
    ! Choose which one-electron energies to use in G and in W
    !
-   if( calc_type%selfenergy_technique == EVSC ) then
+   if( calc_type%selfenergy_technique == EVSC .OR. force_energy_qp_ ) then
      call read_energy_qp(nstate,energy_g,reading_status)
      if(reading_status/=0) then
        call issue_warning('File energy_qp not found: assuming 1st iteration')

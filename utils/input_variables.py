@@ -547,6 +547,15 @@ vl[i].comment  ='Considers a big RESTART as if it was a small RESTART.'
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='force_energy_qp'
+vl[i].family   ='io'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Force the reading of the ENERGY_QP file whatever the postscf choice.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='print_matrix'
 vl[i].family   ='io'
 vl[i].default  ='no'
