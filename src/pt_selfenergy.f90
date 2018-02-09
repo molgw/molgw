@@ -574,6 +574,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 
 
    else
+
      ! B1 i,j    a
      do astate=nhomo_G+1,nvirtual_G-1
        if( MODULO( astate - (nhomo_G+1) , nproc_ortho ) /= rank_ortho ) cycle

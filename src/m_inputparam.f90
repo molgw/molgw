@@ -47,6 +47,7 @@ module m_inputparam
  integer,parameter :: SOX          = 222
  integer,parameter :: PT3          = 223
  integer,parameter :: TWO_RINGS    = 224
+ integer,parameter :: GWSOX        = 225
 
  type calculation_type
    character(len=100) :: calc_name
@@ -261,6 +262,9 @@ subroutine init_calculation_type(calc_type,input_key)
    case('G0W0SOX0')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0SOX0
+   case('GWSOX')
+     calc_type%is_gw    =.TRUE.
+     calc_type%selfenergy_approx = GWSOX
    case('G0W0GAMMA0','GWGAMMA')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0GAMMA0

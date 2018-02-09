@@ -33,7 +33,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  real(dp),intent(inout)     :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(in)        :: exchange_m_vxc_diag(nstate,nspin)
 !=====
- type(selfenergy_grid)   :: se,se2,se3
+ type(selfenergy_grid)   :: se,se2,se3,se_sox
  logical                 :: enforce_rpa
  character(len=36)       :: selfenergy_tag
  integer                 :: reading_status
@@ -91,6 +91,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    case(SOX)
      selfenergy_tag='SOX'
    case(G0W0SOX0)
+     selfenergy_tag='GWSOX'
+   case(GWSOX)
      selfenergy_tag='GWSOX'
    case(G0W0Gamma0)
      selfenergy_tag='GWGamma'
@@ -322,6 +324,36 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      call destroy_spectral_function(wpol)
    endif
   
+   !
+   ! selfenergy = GWSOX
+   !
+   if( calc_type%selfenergy_approx == GWSOX ) then
+     !
+     ! First perform a standard GW calculation
+     !
+     call init_spectral_function(nstate,occupation,0,wpol)
+     call read_spectral_function(wpol,reading_status)
+     ! If reading has failed, then do the calculation
+     if( reading_status /= 0 ) then
+       call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+     endif
+     call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+
+     !
+     ! Second perform a standard SOX calculation
+     ! 
+     call init_selfenergy_grid(calc_type%selfenergy_technique,nstate,energy_g,se_sox)
+     call pt2_selfenergy(SOX,nstate,basis,occupation,energy_g,c_matrix,se_sox,en%mp2)
+ 
+     
+     !
+     ! Finally add up the contributions and then destroy the se_sox object
+     !
+     se%sigma(:,:,:) = se%sigma(:,:,:) + se_sox%sigma(:,:,:)
+  
+     call destroy_selfenergy_grid(se_sox)
+
+   endif
   
    !
    ! Selfenergy = PT2
