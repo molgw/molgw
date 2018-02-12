@@ -479,10 +479,10 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
    call calculate_eri_4center_eigen_uks(c_matrix,ncore_G+1,nvirtual_G-1)
  endif
 
- allocate(selfenergy(-se%nomega:se%nomega,15,nsemin:nsemax,nspin))
+ allocate(selfenergy(-se%nomega:se%nomega,A1:RINGS,nsemin:nsemax,nspin))
 
- write(stdout,'(/,1x,a,8x,a,8x,a)') ' state    3rd order diagrams    2nd order diagrams   1-2-ring diagrams', &
-                                    'A diagrams           C diagrams           D diagrams','C1+C6+D1+D6'
+ write(stdout,'(/,1x,a,8x,a)') ' state    3rd order diagrams    2nd order diagrams   1-2-ring diagrams', &
+                               'A diagrams           C diagrams           D diagrams'
 
  selfenergy(:,:,:,:) = 0.0_dp
 
@@ -491,7 +491,9 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
    qstate = pstate
 
 
-   if( selfenergy_approx == TWO_RINGS )  then
+   select case(selfenergy_approx)
+
+   case(TWO_RINGS)
 
      ! B1 i,j    a
      do astate=nhomo_G+1,nvirtual_G-1
@@ -573,7 +575,7 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
 
 
 
-   else
+   case(PT3,GWPT3)
 
      ! B1 i,j    a
      do astate=nhomo_G+1,nvirtual_G-1
@@ -902,30 +904,30 @@ subroutine pt3_selfenergy(selfenergy_approx,selfenergy_technique,nstate,basis,oc
      enddo
      enddo
 
-   endif
+   case default
+     call die('pt3_selfenergy: invalid choice of diagrams')
+   end select
 
    call xsum_ortho(selfenergy(:,:,pstate,:))
 
-   write(stdout,'(i4,*(7x,f14.6))') pstate,SUM(REAL(selfenergy(0,:,pstate,:),dp),DIM=1) * Ha_eV, &
+   write(stdout,'(i4,*(7x,f14.6))') pstate,SUM(REAL(selfenergy(0,A1:B2,pstate,:),dp),DIM=1) * Ha_eV, &
                                     SUM(REAL(selfenergy(0,B1:B2,pstate,pqspin),dp),DIM=1) * Ha_eV,  &
                                     REAL(selfenergy(0,RINGS,pstate,pqspin),dp) * Ha_eV,     &
                                     SUM(REAL(selfenergy(0,A1:A5,pstate,pqspin),dp),DIM=1) * Ha_eV, &
                                     SUM(REAL(selfenergy(0,C1:C6,pstate,pqspin),dp),DIM=1) * Ha_eV, &
-                                    SUM(REAL(selfenergy(0,D1:D6,pstate,pqspin),dp),DIM=1) * Ha_eV, &
-                                    REAL(selfenergy(0,C1,pstate,pqspin)+selfenergy(0,C6,pstate,pqspin) &
-                                        +selfenergy(0,D1,pstate,pqspin)+selfenergy(0,D6,pstate,pqspin),dp) * Ha_eV   
+                                    SUM(REAL(selfenergy(0,D1:D6,pstate,pqspin),dp),DIM=1) * Ha_eV
  enddo
 
- if( selfenergy_approx == PT3 ) then
-!   se%sigma(:,:,:) = selfenergy2(:,:,:) + SUM(selfenergy(:,:,:,:),DIM=2)
-   se%sigma(:,:,:) =  SUM(REAL(selfenergy(:,B1:B2,:,:),dp),DIM=2) &
-                    + SUM(REAL(selfenergy(:,A1:A5,:,:),dp),DIM=2) &
-                    + SUM(REAL(selfenergy(:,C1:C6,:,:),dp),DIM=2) &
-                    + SUM(REAL(selfenergy(:,D1:D6,:,:),dp),DIM=2) !&
-!                    - REAL(selfenergy(:,RINGS,:,:),dp)
- else
+ select case(selfenergy_approx)
+ case(PT3)
+   se%sigma(:,:,:) = SUM(selfenergy(:,A1:B2,:,:),DIM=2)
+ case(GWPT3)
+   se%sigma(:,:,:) = SUM(selfenergy(:,A1:B2,:,:),DIM=2) - selfenergy(:,RINGS,:,:)
+ case(TWO_RINGS)
    se%sigma(:,:,:) = selfenergy(:,RINGS,:,:)
- endif
+ case default
+   call die('pt3_selfenergy: invalid choice of diagrams')
+ end select
 
  deallocate(selfenergy)
  if(has_auxil_basis) then

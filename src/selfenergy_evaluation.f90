@@ -33,7 +33,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  real(dp),intent(inout)     :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(in)        :: exchange_m_vxc_diag(nstate,nspin)
 !=====
- type(selfenergy_grid)   :: se,se2,se3,se_sox,se_pt3,se_2rings
+ type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3 
  logical                 :: enforce_rpa
  character(len=36)       :: selfenergy_tag
  integer                 :: reading_status
@@ -401,24 +401,17 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
 
      !
-     ! Second perform a standard PT3 calculation
+     ! Second perform a PT3 calculation minus the ring diagrams
      ! 
-     call init_selfenergy_grid(calc_type%selfenergy_technique,nstate,energy_g,se_pt3)
-     call pt3_selfenergy(PT3,calc_type%selfenergy_technique,nstate,basis,occupation,energy_g,c_matrix,se_pt3,en%mp2)
-
-     !
-     ! Third perform a standard 2-rings calculation
-     ! 
-     call init_selfenergy_grid(calc_type%selfenergy_technique,nstate,energy_g,se_2rings)
-     call pt3_selfenergy(TWO_RINGS,calc_type%selfenergy_technique,nstate,basis,occupation,energy_g,c_matrix,se_2rings,en%mp2)
+     call init_selfenergy_grid(calc_type%selfenergy_technique,nstate,energy_g,se_gwpt3)
+     call pt3_selfenergy(GWPT3,calc_type%selfenergy_technique,nstate,basis,occupation,energy_g,c_matrix,se_gwpt3,en%mp2)
 
      !
      ! Finally add up the contributions and then destroy the se_sox object
      !
-     se%sigma(:,:,:) = se%sigma(:,:,:) + se_pt3%sigma(:,:,:) -  se_2rings%sigma(:,:,:)
+     se%sigma(:,:,:) = se%sigma(:,:,:) + se_gwpt3%sigma(:,:,:)
   
-     call destroy_selfenergy_grid(se_pt3)
-     call destroy_selfenergy_grid(se_2rings)
+     call destroy_selfenergy_grid(se_gwpt3)
 
    endif 
   
