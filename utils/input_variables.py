@@ -574,6 +574,25 @@ vl[i].comment  ='Prints some matrices for debugging purposes.'
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='print_hartree'
+vl[i].family   ='io'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints the Hartree potential expectation value on eigenstates.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='print_exchange'
+vl[i].family   ='io'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints the Exchange operator expectation value on eigenstates.'
+
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='print_eri'
 vl[i].family   ='io'
 vl[i].default  ='no'

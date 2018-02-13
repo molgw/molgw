@@ -68,6 +68,7 @@ subroutine scf_loop(is_restart,&
  real(dp),allocatable    :: matrix_tmp(:,:,:)
  real(dp),allocatable    :: energy_exx(:,:)
  real(dp),allocatable    :: c_matrix_exx(:,:,:)
+ real(dp),allocatable    :: hartree_ii(:,:),exchange_ii(:,:)
 !=============================
 
 
@@ -290,8 +291,6 @@ subroutine scf_loop(is_restart,&
 
    endif
 
-!FBFB electrostatic potential
-!   write(stdout,*) '== FBFB ==',(hamiltonian_nucleus(basis%nbf,basis%nbf)+hamiltonian_hartree(basis%nbf,basis%nbf))*Ha_eV
 
    !
    ! Add the XC part of the hamiltonian to the total hamiltonian
@@ -428,6 +427,38 @@ subroutine scf_loop(is_restart,&
  !
  call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin)
  call get_fock_operator(hamiltonian,hamiltonian_xc,hamiltonian_exx,hamiltonian_fock)
+
+ !
+ ! Print out some expectation values if requested
+ ! Hartree
+ if( print_hartree_ ) then
+
+   allocate(hartree_ii(nstate,nspin))
+   do ispin=1,nspin
+     do istate=1,nstate
+        hartree_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix(:,istate,ispin) ) )
+     enddo
+   enddo
+
+   call dump_out_energy('=== Hartree expectation value ===',nstate,nspin,occupation,hartree_ii)
+   deallocate(hartree_ii)
+
+
+ endif
+ ! Exchange
+ if( print_exchange_ ) then
+
+   allocate(exchange_ii(nstate,nspin))
+   do ispin=1,nspin
+     do istate=1,nstate
+        exchange_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_exx(:,:,ispin) , c_matrix(:,istate,ispin) ) )
+     enddo
+   enddo
+
+   call dump_out_energy('=== Exchange expectation value ===',nstate,nspin,occupation,exchange_ii)
+   deallocate(exchange_ii)
+
+ endif
 
  !
  ! Cleanly deallocate the arrays
