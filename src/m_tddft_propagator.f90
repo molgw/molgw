@@ -232,7 +232,7 @@ subroutine calculate_propagation(nstate,              &
    m_z_selected(:)=m_z_selected(:)/bohr_A
  end if
 
- if( print_line_rho_tddft_ ) then
+ if( print_dens_traj_tddft_ ) then
    call bunch_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_start_cmplx,0,0.d0)  
  end if
 

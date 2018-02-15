@@ -13,11 +13,11 @@ program spectrum
  real(dp)                   :: time_cur, time_min, time_sim
  real(dp)                   :: damp_factor
  real(dp)                   :: omega_factor
- real(dp)                   :: average
  real(dp)                   :: div_factor
  real(dp)                   :: real_dipole(3)
  real(dp)                   :: real_excit_field_dir
  real(dp),allocatable       :: m_times(:)
+ complex(dp)                :: average
  complex(dp),allocatable    :: dipole_time_ref(:,:)
  complex(dp),allocatable    :: dipole_time_damped(:,:)
  complex(dp),allocatable    :: trans_m_excit_field_dir(:)
@@ -91,6 +91,10 @@ program spectrum
    end if
  end do
  close (file_dipole_time)
+
+ do idir=1,3
+   dipole_time_ref(:,idir)=dipole_time_ref(:,idir)-calc_average(dipole_time_ref(:,idir))
+ end do 
 
  time_sim=m_times(ntau) 
 
@@ -190,11 +194,32 @@ program spectrum
    end if
  end do
 
+ 
+ 
  close(file_transforms)
  close(file_dipolar_spectra)
 #else
  call issue_warning("tddft: calculate_propagation; fftw is not present")
 #endif
+
+contains
+!=========================================================================
+function calc_average(matrix) result(aver)
+ complex(dp)  :: matrix(:)
+ complex(dp)  :: aver
+!=====
+ integer  :: mdim,imat
+!=====
+  
+ mdim = SIZE( matrix, DIM=1)
+
+ aver=(0.0_dp,0.0_dp)
+ do imat=1,mdim
+   aver=aver+matrix(imat)
+ end do
+ aver=aver/mdim 
+
+end function calc_average
 
 end program spectrum
 
@@ -274,4 +299,3 @@ subroutine get_spectrum_arguments( damp_factor,name_dipole_time,name_excitation,
  write(stdout,'(1x,a,2x,l1)')       'Output Fourier transforms   :',output_transforms_
  write(stdout,*)
 end subroutine get_spectrum_arguments
-

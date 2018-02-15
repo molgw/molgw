@@ -1247,7 +1247,7 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
  do ispin=1,nspin
    write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'_line_density.dat'
    open(newunit=line_rho(ispin),file=file_name)                
-   write(line_rho(ispin),'(a,3i)') '# line density file generated from MOLGW for spin ',ispin
+   write(line_rho(ispin),'(a,i3)') '# line density file generated from MOLGW for spin ',ispin
    write(line_rho(ispin),'(a,f9.5)') '# time_cur = ', time_cur
  enddo
 
@@ -1368,7 +1368,7 @@ subroutine bunch_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,t
  do ispin=1,nspin
    write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'_integral_density.dat'
    open(newunit=line_rho(ispin),file=file_name)                
-   write(line_rho(ispin),'(a,3i)') '# density integral file generated from MOLGW for spin ',ispin
+   write(line_rho(ispin),'(a,i3)') '# density integral file generated from MOLGW for spin ',ispin
    write(line_rho(ispin),'(a,f9.5)') '# time_cur = ', time_cur
  enddo
 
