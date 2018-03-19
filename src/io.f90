@@ -922,6 +922,174 @@ end subroutine read_cube_wfn
 
 
 !=========================================================================
+subroutine read_gaussian_fchk(basis,p_matrix_out)
+ use m_definitions
+ use m_mpi
+ use m_basis_set
+ use m_inputparam
+ implicit none
+
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(out) :: p_matrix_out(basis%nbf,basis%nbf,nspin)
+!=====
+ character(len=64),parameter :: file_name='gaussian.fchk'
+ integer,parameter :: stride=5
+ logical :: file_exists,found
+ integer :: fu
+ integer :: istat
+ integer :: ispin,ibf,jbf,ijbf
+ integer :: nel
+ integer :: block_d(6,6)
+ integer :: block_f(10,10)
+ integer :: block_g(15,15)
+ real(dp) :: swap(basis%nbf,basis%nbf)
+ real(dp),allocatable :: p_matrix_read(:)
+ character(len=256) :: line
+ character(len=100) :: keyword
+!=====
+
+ p_matrix_out(:,:,:) = 0.0_dp
+
+ if( .NOT. is_iomaster ) return
+
+ if( nspin /= 1 ) then
+   write(stdout,*) 'read_gaussian_fchk: unrestricted calculations not coded yet'
+   return
+ endif
+
+ if( basis%gaussian_type /= 'CART' ) then
+   write(stdout,*) 'read_gaussian_fchk: Pure gaussians not coded yet'
+   return
+ endif
+
+ select case(TRIM(read_fchk))
+ case('SCF')
+   keyword = 'Total SCF Density'
+ case('CC')
+   keyword = 'Total CC Density'
+ case('MP2')
+   keyword = 'Total MP2 Density'
+ case default
+   write(stdout,*) 'Unknown density type in read_fchk'
+   return
+ end select
+
+ write(stdout,'(/,1x,a,a)') 'Reading an existing Gaussian formatted checkpoint point: ',&
+                            TRIM(file_name)
+ inquire(file=file_name,exist=file_exists)
+ if( .NOT. file_exists) then
+   write(stdout,*) 'File not found:',TRIM(file_name)
+   return
+ endif
+
+ write(stdout,'(1x,a,a)') 'Density matrix read: ',TRIM(read_fchk)
+
+ nel = (basis%nbf*(basis%nbf+1))/2
+ allocate(p_matrix_read(nel))
+
+
+ open(newunit=fu,file=TRIM(file_name),status='old',action='read')
+
+ ! Read the fchk file until the keyword is found
+ found = .FALSE.
+ do while( .NOT. found )
+   read(fu,'(a)',iostat=istat) line
+   if( IS_IOSTAT_END(istat) ) then
+     write(stdout,'(1x,a,a)') 'End of file reached without having found ',keyword
+     return
+   endif
+   found = ( INDEX(line,TRIM(keyword)) /= 0 )
+ enddo
+
+ do ispin=1,nspin
+   do ijbf=1,(nel/stride-1)*stride+1,stride
+     read(fu,*) p_matrix_read(ijbf:ijbf+stride-1)
+   enddo
+   if( modulo(nel,stride) /=0 ) read(fu,*) p_matrix_read((nel/stride)*stride+1:nel)
+   ijbf = 0
+   do ibf=1,basis%nbf
+     do jbf=1,ibf
+       ijbf = ijbf + 1
+       p_matrix_out(ibf,jbf,ispin) = p_matrix_read(ijbf)
+       p_matrix_out(jbf,ibf,ispin) = p_matrix_read(ijbf)
+     enddo
+   enddo
+ enddo
+ close(fu)
+
+
+ ! Reorder the basis functions from Gaussian to Libint convention
+ ! s and p orbitals are unchanged
+ ! gaussian d orbital order is xx, yy, zz, xy, yz, xz
+ ! libint   d orbital order is xx, xy, xz, yy, yz, zz
+
+ block_d(:,:) = RESHAPE( [ 1, 0, 0, 0, 0, 0, &
+                           0, 0, 0, 1, 0, 0, &
+                           0, 0, 0, 0, 1, 0, &
+                           0, 1, 0, 0, 0, 0, &
+                           0, 0, 0, 0, 0, 1, &
+                           0, 0, 1, 0, 0, 0 ] , [ 6, 6 ] )
+
+ block_f(:,:) = RESHAPE( [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &    !OK
+                           0, 0, 0, 0, 1, 0, 0, 0, 0, 0, &
+                           0, 0, 0, 0, 0, 1, 0, 0, 0, 0, &
+                           0, 0, 0, 1, 0, 0, 0, 0, 0, 0, &
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 1, &
+                           0, 0, 0, 0, 0, 0, 1, 0, 0, 0, &
+                           0, 1, 0, 0, 0, 0, 0, 0, 0, 0, &    !OK
+                           0, 0, 0, 0, 0, 0, 0, 0, 1, 0, &
+                           0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
+                           0, 0, 1, 0, 0, 0, 0, 0, 0, 0 ] , [ 10, 10 ] )    !OK
+
+ block_g(:,:) = RESHAPE( [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+                           0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+                           0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, &
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, &
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, &
+                           0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, &
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, &
+                           0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, &
+                           0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, &
+                           0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, &
+                           0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, &
+                           0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, &
+                           0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ] , [ 15, 15 ] )
+
+ swap(:,:) = 0.0_dp
+ ibf = 1
+ do while( ibf <= basis%nbf )
+   select case(basis%bfc(ibf)%am)
+   case(0)
+     swap(ibf,ibf) = 1.0_dp
+   case(1)
+     swap(ibf  ,ibf  ) = 1.0_dp
+     swap(ibf+1,ibf+1) = 1.0_dp
+     swap(ibf+2,ibf+2) = 1.0_dp
+   case(2)
+     swap(ibf:ibf+5,ibf:ibf+5) = block_d(:,:)
+   case(3)
+     swap(ibf:ibf+9,ibf:ibf+9) = block_f(:,:)
+   case(4)
+     swap(ibf:ibf+14,ibf:ibf+14) = block_g(:,:)
+   case default
+     call die('read_gaussian_fchk: too high angular momentum, not coded yet')
+   end select
+   ibf = ibf + number_basis_function_am('CART',basis%bfc(ibf)%am)
+ enddo
+
+ p_matrix_out(:,:,1) = MATMUL( TRANSPOSE(swap), MATMUL(p_matrix_out(:,:,1),swap) )
+
+
+
+
+ deallocate(p_matrix_read)
+
+end subroutine read_gaussian_fchk
+
+
+!=========================================================================
 subroutine write_energy_qp(nstate,energy_qp)
  use m_definitions
  use m_mpi

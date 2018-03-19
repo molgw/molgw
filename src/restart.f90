@@ -35,7 +35,7 @@ subroutine write_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ha
  if( .NOT. is_iomaster) return
 
  call start_clock(timing_restart_file)
- 
+
  select case(restart_type)
  case(SMALL_RESTART)
    write(stdout,'(/,a)') ' Writing a small RESTART file'
@@ -107,7 +107,7 @@ end subroutine write_restart
 
 
 !=========================================================================
-subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
+subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock,restart_filename)
  use m_definitions
  use m_mpi
  use m_inputparam
@@ -117,12 +117,13 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
  use m_tools,only: invert
  implicit none
 
- integer,intent(out)        :: restart_type
- integer,intent(in)         :: nstate
- type(basis_set),intent(in) :: basis
- real(dp),intent(inout)     :: occupation(nstate,nspin)
- real(dp),intent(out)       :: c_matrix(basis%nbf,nstate,nspin),energy(nstate,nspin)
- real(dp),intent(out)       :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
+ integer,intent(out)         :: restart_type
+ integer,intent(in)          :: nstate
+ type(basis_set),intent(in)  :: basis
+ real(dp),intent(inout)      :: occupation(nstate,nspin)
+ real(dp),intent(out)        :: c_matrix(basis%nbf,nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(out)        :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
+ character(len=*),intent(in) :: restart_filename
 !=====
  integer                    :: restartfile
  integer                    :: ispin,istate,ibf,nstate_local
@@ -145,20 +146,15 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
  real(dp),allocatable       :: overlap_bigbasis_approx(:,:)
 !=====
 
- if( .NOT. read_restart_ ) then
-   restart_type = NO_RESTART
-   return
- endif
-
- inquire(file='RESTART',exist=file_exists)
+ inquire(file=restart_filename,exist=file_exists)
  if(.NOT. file_exists) then
-   write(stdout,'(/,a)') ' No RESTART file found'
+   write(stdout,'(/,1x,a,a)') TRIM(restart_filename), 'file not found'
    restart_type = NO_RESTART
    return
  endif
 
 
- open(newunit=restartfile,file='RESTART',form='unformatted',status='old',action='read')
+ open(newunit=restartfile,file=restart_filename,form='unformatted',status='old',action='read')
 
 
  ! An integer to ensure backward compatibility in the future
@@ -269,7 +265,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
  energy(:,:) = 1000.0_dp
  energy(1:MIN(nstate,nstate_read),:) = energy_read(1:MIN(nstate,nstate_read),:)
  deallocate(energy_read)
- 
+
 
  ! Number of states written down in the RESTART file
  read(restartfile) nstate_local
@@ -365,7 +361,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
      enddo
 
      !
-     ! Disregard the term that are too wrong = evaluated overlap below 0.99 
+     ! Disregard the term that are too wrong = evaluated overlap below 0.99
      ! by giving a huge value to the Hartree
      ! part of the Hamiltonian
      do ibf=1,basis%nbf

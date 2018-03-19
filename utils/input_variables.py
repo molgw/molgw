@@ -275,7 +275,6 @@ vl[i].datatype ='characters'
 vl[i].comment  ='Sets the partition scheme for the xc quadrature. \
 Possible choices are \'becke\' or \'ssf\' (Stratmann-Scuseria-Frisch).'
 
-
 #================================
 vl.append(variable())
 i = len(vl) - 1
@@ -616,6 +615,18 @@ vl[i].family   ='io'
 vl[i].default  ='no'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='Prints some wavefunctions in a 3D volumetric file with cube format'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='read_fchk'
+vl[i].family   ='io'
+vl[i].default  ='no'
+vl[i].datatype ='characters'
+vl[i].comment  ='Triggers the reading of an external Gaussian formatted checkpoint file (named gaussian.fchk) that contains density matrices. \
+Basis sets have to be precisely the same in MOLGW and in Gaussian, which requires a manual input of the basis set in both codes. \
+Options are \'no\' (no reading), \'SCF\' (for self-consistent field), \'CC\' (for coupled-cluster), or \'MP2\' (for MP2). \
+Today, only works for Cartesian Gaussian and for spin restricted calculations.'
 
 #================================
 vl.append(variable())

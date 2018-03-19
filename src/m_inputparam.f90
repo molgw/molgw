@@ -103,6 +103,7 @@ module m_inputparam
  character(len=100),protected     :: move_nuclei
  character(len=100),protected     :: xyz_file
  character(len=100),protected     :: basis_path
+ character(len=100),protected     :: read_fchk
  character(len=100),allocatable,protected :: basis_name(:)
  character(len=100),allocatable,protected :: auxil_basis_name(:)
  character(len=100),allocatable,protected :: small_basis_name(:)
@@ -809,6 +810,7 @@ subroutine read_inputfile_namelist()
  init_hamiltonian   = capitalize(init_hamiltonian)
  ci_greens_function = capitalize(ci_greens_function)
  ci_type            = capitalize(ci_type)
+ read_fchk          = capitalize(read_fchk)
 
  read_restart_      = yesno(read_restart)
  ignore_bigrestart_ = yesno(ignore_bigrestart)

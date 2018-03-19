@@ -59,8 +59,10 @@ subroutine scf_loop(is_restart,&
  type(spectral_function) :: wpol
  logical                 :: is_converged,stopfile_found
  integer                 :: ispin,iscf,istate
+ integer                 :: ibf,jbf
  real(dp)                :: energy_tmp
  real(dp),allocatable    :: p_matrix(:,:,:)
+ real(dp),allocatable    :: p_matrix_out(:,:,:)
  real(dp),allocatable    :: hamiltonian(:,:,:)
  real(dp),allocatable    :: hamiltonian_hartree(:,:)
  real(dp),allocatable    :: hamiltonian_exx(:,:,:)
@@ -433,37 +435,97 @@ subroutine scf_loop(is_restart,&
  ! Hartree
  if( print_hartree_ ) then
 
-   do ispin=1,nspin
-     do istate=1,nstate
-        nucleus_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_nucleus(:,:) , c_matrix(:,istate,ispin) ) )
-     enddo
-   enddo
+   block
+     real(dp),allocatable :: c_matrix_restart(:,:,:)
+     real(dp),allocatable :: hfock_restart(:,:,:)
+     real(dp)             :: energy_restart(nstate,nspin)
+     integer              :: restart_type
+     character(len=64) :: restart_filename
 
-   call dump_out_energy('=== Nucleus expectation value ===',nstate,nspin,occupation,nucleus_ii)
+     call clean_allocate('RESTART: C',c_matrix_restart,basis%nbf,nstate,nspin)
+     call clean_allocate('RESTART: H',hfock_restart,basis%nbf,basis%nbf,nspin)
 
-   do ispin=1,nspin
-     do istate=1,nstate
-        hartree_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix(:,istate,ispin) ) )
-     enddo
-   enddo
+     restart_filename='RESTART_TEST'
+     call read_restart(restart_type,basis,nstate,occupation,c_matrix_restart,energy_restart,hfock_restart,restart_filename)
 
-   call dump_out_energy('=== Hartree expectation value ===',nstate,nspin,occupation,hartree_ii)
+     if( restart_type /= NO_RESTART ) then
+       write(stdout,'(1x,a,a)') 'RESTART file read: ',restart_filename
+       do ispin=1,nspin
+         do istate=1,nstate
+            nucleus_ii(istate,ispin)  = DOT_PRODUCT( c_matrix_restart(:,istate,ispin) , MATMUL( hamiltonian_nucleus(:,:) , c_matrix_restart(:,istate,ispin) ) )
+            hartree_ii(istate,ispin)  = DOT_PRODUCT( c_matrix_restart(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix_restart(:,istate,ispin) ) )
+            exchange_ii(istate,ispin) = DOT_PRODUCT( c_matrix_restart(:,istate,ispin) , MATMUL( hamiltonian_exx(:,:,ispin) , c_matrix_restart(:,istate,ispin) ) )
+         enddo
+       enddo
 
-   nucleus_ii(:,:) = hartree_ii(:,:) + nucleus_ii(:,:)
-   call dump_out_energy('=== Total electrostatic expectation value ===',nstate,nspin,occupation,nucleus_ii)
+     else
+       write(stdout,'(1x,a)') 'no RESTART file read'
+       do ispin=1,nspin
+         do istate=1,nstate
+            nucleus_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_nucleus(:,:) , c_matrix(:,istate,ispin) ) )
+            hartree_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix(:,istate,ispin) ) )
+            exchange_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_exx(:,:,ispin) , c_matrix(:,istate,ispin) ) )
+         enddo
+       enddo
 
+     endif
+     call dump_out_energy('=== Nucleus expectation value ===',nstate,nspin,occupation,nucleus_ii)
+     call dump_out_energy('=== Hartree expectation value ===',nstate,nspin,occupation,hartree_ii)
+     nucleus_ii(:,:) = hartree_ii(:,:) + nucleus_ii(:,:)
+     call dump_out_energy('=== Total electrostatic expectation value ===',nstate,nspin,occupation,nucleus_ii)
+     call dump_out_energy('=== Exchange expectation value ===',nstate,nspin,occupation,exchange_ii)
+
+     call clean_deallocate('RESTART: C',c_matrix_restart)
+     call clean_deallocate('RESTART: H',hfock_restart)
+   end block
 
  endif
- ! Exchange
- if( print_exchange_ ) then
 
-   do ispin=1,nspin
-     do istate=1,nstate
-        exchange_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_exx(:,:,ispin) , c_matrix(:,istate,ispin) ) )
+
+ !
+ ! Is there a Gaussian formatted checkpoint file to be read?
+ if( read_fchk /= 'NO' ) then
+   allocate(p_matrix_out(basis%nbf,basis%nbf,nspin))
+
+!   open(111,file='p_matrix.dat',action='write')
+!   do ispin=1,nspin
+!     do ibf=1,basis%nbf
+!       write(111,'(i5,*(2x,f12.6))') ibf,p_matrix(ibf,:,ispin)
+!     enddo
+!   enddo
+!   close(111)
+!   open(111,file='p_matrix.dat',action='read')
+!   do ispin=1,nspin
+!     do ibf=1,basis%nbf
+!       read(111,'(i5,*(2x,f12.6))') jbf,p_matrix_out(ibf,:,ispin)
+!     enddo
+!   enddo
+!   close(111)
+
+   call read_gaussian_fchk(basis,p_matrix_out)
+
+   ! Check if a p_matrix was effectively read
+   if( ANY( ABS(p_matrix_out(:,:,:)) > 0.01_dp ) ) then
+
+     call setup_hartree(print_matrix_,basis%nbf,p_matrix_out,hamiltonian_hartree,energy_tmp)
+     write(stdout,'(a50,1x,f19.10)') 'Hartree energy from input density matrix [Ha]:',energy_tmp
+     call setup_exchange(basis%nbf,p_matrix_out,hamiltonian_exx,energy_tmp)
+     write(stdout,'(a50,1x,f19.10)') 'Exchange energy from input density matrix [Ha]:',energy_tmp
+
+     deallocate(p_matrix_out)
+
+     do ispin=1,nspin
+       do istate=1,nstate
+          hartree_ii(istate,ispin)  =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix(:,istate,ispin) ) )
+          exchange_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_exx(:,:,ispin) , c_matrix(:,istate,ispin) ) )
+       enddo
      enddo
-   enddo
+     call dump_out_energy('=== Hartree expectation value from input density matrix ===',nstate,nspin,occupation,hartree_ii)
+     call dump_out_energy('=== Exchange expectation value from input density matrix ===',nstate,nspin,occupation,exchange_ii)
 
-   call dump_out_energy('=== Exchange expectation value ===',nstate,nspin,occupation,exchange_ii)
+   endif
+  
+   write(stdout,*)
 
  endif
 
