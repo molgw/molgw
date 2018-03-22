@@ -1094,7 +1094,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
 
  inquire(file='manual_dens_traj',exist=file_exists)
  if(file_exists) then
-   open(newunit=linefile,file='manual_dens_traj_tddft',status='old')
+   open(newunit=linefile,file='manual_dens_traj',status='old')
    read(linefile,*) point_a(:)
    read(linefile,*) point_b(:)
    read(linefile,*) point_c(:)
@@ -1106,7 +1106,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
    point_a = (/ 0.0_dp,  0.0_dp, -10.0_dp  /)
    point_b = (/ 0.0_dp,  0.0_dp,  10.0_dp  /)
    point_c = (/ 3.49_dp, 0.0_dp, -10.0_dp  /)
-   call issue_warning('plot_rho_traj_bunch: manual_dens_traj_tddft file was not found')
+   call issue_warning('plot_rho_traj_bunch: manual_dens_traj file was not found')
  endif
 ! point_b(:) = point_b(:) / bohr_A 
 ! point_a(:) = point_a(:) / bohr_A
