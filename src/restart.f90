@@ -148,7 +148,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
 
  inquire(file=restart_filename,exist=file_exists)
  if(.NOT. file_exists) then
-   write(stdout,'(/,1x,a,a)') TRIM(restart_filename), 'file not found'
+   write(stdout,'(/,1x,a,1x,a)') TRIM(restart_filename),'file not found'
    restart_type = NO_RESTART
    return
  endif
