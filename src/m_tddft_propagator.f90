@@ -432,15 +432,13 @@ subroutine tddft_time_loop(nstate,                           &
  integer                    :: i_iter, iwrite_step
  integer                    :: file_time_data, file_excit_field
  integer                    :: file_dipole_time,file_iter_norm 
- integer                    :: file_q_matrix_ii(2)
+ integer                    :: file_q_matrix(2)
  integer                    :: n_elem_q_mat,i_elem_q_mat
  integer                    :: istate
  real(dp)                   :: time_cur, time_min, time_one_iter,time_step_tmp
  real(dp)                   :: dipole(3)
  complex(dp),allocatable    :: c_matrix_cmplx(:,:,:)
  complex(dp),allocatable    :: c_matrix_orth_cmplx(:,:,:)
- complex(dp),allocatable    :: q_matrix_cmplx(:,:,:)
- complex(dp)                :: q_occ_cmplx(nstate)
  complex(dp),allocatable    :: hamiltonian_fock_cmplx(:,:,:)
  complex(dp),allocatable    :: p_matrix_cmplx(:,:,:)
  complex(dp),allocatable    :: h_small_hist_cmplx(:,:,:,:)
@@ -448,7 +446,7 @@ subroutine tddft_time_loop(nstate,                           &
  complex(dp),allocatable    :: h_small_cmplx(:,:,:)
  character(len=50)          :: name_time_data,name_dipole_time
  character(len=50)          :: name_iter_norm
- character(len=50)          :: name_file_q_matrix_ii
+ character(len=50)          :: name_file_q_matrix
  character(len=50)          :: format_q_matrix_ii
  logical                    :: is_identity_
 !==variables for extrapolation
@@ -464,6 +462,10 @@ subroutine tddft_time_loop(nstate,                           &
  real(dp),allocatable       :: cube_density_start(:,:,:,:)
  integer                    :: nx,ny,nz,unit_cube_diff
  logical                    :: file_exists
+!==qmatrix==
+ integer                    :: istate_min,istate_max
+ complex(dp),allocatable    :: q_matrix_cmplx(:,:,:)
+ real(dp)                   :: q_occ(2)
 !=====
 
  z_sel_=.false.
@@ -508,15 +510,19 @@ subroutine tddft_time_loop(nstate,                           &
  if( is_iomaster ) then
    if(ref_) then
      open(newunit=file_time_data,file="time_data.dat")
+
+     ! ---q_matrix---
+     if(calc_q_matrix_) then
+       do ispin=1,nspin
+         write(name_file_q_matrix,"(a,i1,a)") "q_matrix_", ispin, ".dat" 
+         open(newunit=file_q_matrix(ispin),file=name_file_q_matrix)
+       end do
+     end if
+
      if(excit_type%is_light) then
        open(newunit=file_dipole_time,file="dipole_time.dat")
        open(newunit=file_excit_field,file="excitation_time.dat")
 
-       ! ---q_matrix---
-       do ispin=1,nspin
-         write(name_file_q_matrix_ii,"(a,i1,a)") "q_matrix_ii_spin_", ispin, ".dat" 
-         open(newunit=file_q_matrix_ii(ispin),file=name_file_q_matrix_ii)
-       end do
 
        write(file_excit_field,"(A)") "# time(au)                      E_field_excit_dir(au)"
        write(file_excit_field,*) time_min, REAL(m_excit_field_dir) 
@@ -961,12 +967,21 @@ subroutine tddft_time_loop(nstate,                           &
 
 !-------q_matrix----------
    if(calc_q_matrix_) then 
+     istate_min=1
+     istate_max=natom
+     q_occ=0.0_dp
      do ispin=1,nspin
-!       q_matrix_cmplx(:,:,ispin)=MATMUL(MATMUL(CONJG(TRANSPOSE(c_matrix_0_cmplx(:,:,ispin))),s_matrix),c_matrix_cmplx(:,:,ispin))
-       do istate=1,nstate
-         q_occ_cmplx(istate)=SUM(q_matrix_cmplx(istate,:,ispin))
+       q_matrix_cmplx(:,:,ispin)=MATMUL(CONJG(TRANSPOSE(c_matrix_orth_start_cmplx(:,:,ispin))),c_matrix_orth_cmplx(:,:,ispin))
+
+       do istate=istate_min,istate_max
+         q_occ(1)=q_occ(1)+SUM(q_matrix_cmplx(istate,:,ispin))
        end do
-!       write(file_q_matrix_ii(ispin),*) time_cur, q_occ_cmplx(:)
+
+       do istate=istate_min+1,nstate
+         q_occ(2)=q_occ(2)+SUM(q_matrix_cmplx(istate,:,ispin))
+       end do
+         
+       write(file_q_matrix(ispin),*) time_cur, q_occ(:)
      end do
    end if
 
