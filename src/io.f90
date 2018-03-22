@@ -763,6 +763,405 @@ subroutine plot_cube_wfn(nstate,basis,occupation,c_matrix)
 
 end subroutine plot_cube_wfn
 
+!=========================================================================
+subroutine plot_rho_traj_bunch(nstate,nocc_dim,basis,occupation,c_matrix,num,time_cur)
+ use m_definitions
+ use m_mpi
+ use m_tddft_variables
+ use m_inputparam, only: nspin,spin_fact,excit_type
+ use m_atoms
+ use m_basis_set
+ use m_timing
+ use m_dft_grid,only: calculate_basis_functions_r
+
+ implicit none
+ integer,intent(in)         :: nstate
+ integer,intent(in)         :: nocc_dim
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+ integer                    :: num
+ real(dp),intent(in)        :: time_cur
+!=====
+ integer                    :: nr=1000,nh=100
+ integer                    :: gt
+ integer                    :: nocc(2),nocc_max
+ real(dp),parameter         :: length=6.0_dp
+ integer                    :: ibf
+ integer                    :: istate1,istate2,istate,ispin
+ real(dp)                   :: rr(3)
+ complex(dp),allocatable    :: phi(:,:)
+ real(dp)                   :: point_a(3),point_b(3),point_c(3),u(3)
+ real(dp)                   :: a_cur(3), b_cur(3)
+ logical                    :: file_exists
+ real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
+ real(dp)                   :: xxmin,xxmax
+ real(dp)                   :: dx,dy,dz
+ real(dp)                   :: basis_function_r(basis%nbf)
+ integer                    :: ir,ih,iatom
+ integer                    :: ibf_cart,ni_cart,ni,li,i_cart
+ real(dp),allocatable       :: basis_function_r_cart(:)
+ integer,allocatable        :: ocubefile(:,:)
+ integer                    :: line_rho(nspin)
+ character(len=200)         :: file_name
+ integer                    :: linefile
+ integer                    :: i_max_atom
+ real(dp)                   :: vec_length
+ real(dp)                   :: integral, deltar
+!=====
+
+ if( .NOT. is_iomaster ) return
+ 
+ call start_clock(timing_print_line_rho_tddft)
+
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+
+ if( .NOT. in_tddft_loop ) then
+   write(stdout,'(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
+ end if
+ ! Find highest occupied state
+ nocc = 0
+ nocc_max = 0
+ do ispin=1,nspin
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty)  cycle
+     nocc(ispin) = istate
+     if( istate > nocc_max ) nocc_max = istate
+   enddo 
+   if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
+     call die('Not all occupied states selected in the plot_rho_traj_bunch subroutine')
+   endif 
+ enddo
+
+ inquire(file='manual_dens_traj',exist=file_exists)
+ if(file_exists) then
+   open(newunit=linefile,file='manual_dens_traj_tddft',status='old')
+   read(linefile,*) point_a(:)
+   read(linefile,*) point_b(:)
+   read(linefile,*) point_c(:)
+   read(linefile,*) nr
+   read(linefile,*) nh
+  
+   close(linefile)
+ else
+   point_a = (/ 0.0_dp,  0.0_dp, -10.0_dp  /)
+   point_b = (/ 0.0_dp,  0.0_dp,  10.0_dp  /)
+   point_c = (/ 3.49_dp, 0.0_dp, -10.0_dp  /)
+   call issue_warning('plot_rho_traj_bunch: manual_dens_traj_tddft file was not found')
+ endif
+! point_b(:) = point_b(:) / bohr_A 
+! point_a(:) = point_a(:) / bohr_A
+! In analogy with cube file, this file is also in Bohr
+ u(:) = point_b(:) - point_a(:)
+ u(:) = u(:) / NORM2(u)
+ allocate(phi(nstate,nspin))
+
+ do ispin=1,nspin
+   write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'_integral_density.dat'
+   open(newunit=line_rho(ispin),file=file_name)                
+   write(line_rho(ispin),'(a,i3)') '# density integral file generated from MOLGW for spin ',ispin
+   write(line_rho(ispin),'(a,f9.5)') '# time_cur = ', time_cur
+ enddo
+
+ deltar=NORM2( point_b(:) - point_a(:) )/nr
+ do ih=0,nh
+   do ispin=1,nspin
+
+     a_cur(:)=point_a(:)+(point_c(:)-point_a(:))*ih/nh
+     b_cur(:)=point_b(:)+(point_c(:)-point_a(:))*ih/nh
+ 
+     integral=0.d0
+!     write(stdout,*) ih
+     do ir=0,nr
+       rr(:) = a_cur(:) + ( b_cur(:) - a_cur(:) ) * ir / nr
+       call calculate_basis_functions_r(basis,rr,basis_function_r)
+       phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
+       integral=integral+SUM( (phi(:,ispin))**2 * occupation(:,ispin) )*deltar
+     enddo
+
+     write(line_rho(ispin),'(50(e16.8,2x))') NORM2(a_cur(:)-point_a(:)),integral
+   enddo
+ enddo
+
+ do ispin=1,nspin
+   close(line_rho(ispin))
+ end do
+
+ deallocate(phi)
+
+ call stop_clock(timing_print_line_rho_tddft)
+
+end subroutine plot_rho_traj_bunch
+
+!=========================================================================
+!subroutine plot_rho_traj_bunch_parallel(nstate,nocc_dim,basis,occupation,c_matrix,num,time_cur)
+! use m_definitions
+! use m_mpi
+! use m_tddft_variables
+! use m_inputparam, only: nspin,spin_fact,excit_type
+! use m_atoms
+! use m_basis_set
+! use m_timing
+! use m_dft_grid,only: calculate_basis_functions_r
+!
+! implicit none
+! integer,intent(in)         :: nstate
+! integer,intent(in)         :: nocc_dim
+! type(basis_set),intent(in) :: basis
+! real(dp),intent(in)        :: occupation(nstate,nspin)
+! real(dp),intent(in)        :: c_matrix(basis%nbf,nocc_dim,nspin)
+! integer                    :: num
+! real(dp),intent(in)        :: time_cur
+!!=====
+! integer                    :: nr=1000,nh=100
+! integer                    :: gt
+! integer                    :: nocc(2),nocc_max
+! real(dp),parameter         :: length=6.0_dp
+! integer                    :: ibf
+! integer                    :: istate1,istate2,istate,ispin
+! real(dp)                   :: rr(3)
+! complex(dp),allocatable    :: phi(:,:)
+! real(dp)                   :: point_a(3),point_b(3),point_c(3),u(3)
+! real(dp)                   :: a_cur(3), b_cur(3)
+! logical                    :: file_exists
+! real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
+! real(dp)                   :: xxmin,xxmax
+! real(dp)                   :: dx,dy,dz
+! real(dp)                   :: basis_function_r(basis%nbf)
+! integer                    :: ir,ih,iatom
+! integer                    :: ibf_cart,ni_cart,ni,li,i_cart
+! real(dp),allocatable       :: basis_function_r_cart(:)
+! integer,allocatable        :: ocubefile(:,:)
+! integer                    :: line_rho(nspin)
+! character(len=200)         :: file_name
+! integer                    :: linefile
+! integer                    :: i_max_atom
+! real(dp)                   :: vec_length
+! real(dp)                   :: integral, deltar
+!!=====
+!
+! 
+! call start_clock(timing_print_line_rho_tddft)
+!
+! gt = get_gaussian_type_tag(basis%gaussian_type)
+!
+! if( .NOT. in_tddft_loop ) then
+!   write(stdout,'(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
+! end if
+! ! Find highest occupied state
+! nocc = 0
+! nocc_max = 0
+! do ispin=1,nspin
+!   do istate=1,nstate
+!     if( occupation(istate,ispin) < completely_empty)  cycle
+!     nocc(ispin) = istate
+!     if( istate > nocc_max ) nocc_max = istate
+!   enddo 
+!   if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
+!     call die('Not all occupied states selected in the plot_rho_traj_bunch subroutine')
+!   endif 
+! enddo
+!
+! inquire(file='manual_dens_traj',exist=file_exists)
+! if(file_exists) then
+!   open(newunit=linefile,file='manual_dens_traj_tddft',status='old')
+!   read(linefile,*) point_a(:)
+!   read(linefile,*) point_b(:)
+!   read(linefile,*) point_c(:)
+!   read(linefile,*) nr
+!   read(linefile,*) nh
+!  
+!   close(linefile)
+! else
+!   point_a = (/ 0.0_dp,  0.0_dp, -10.0_dp  /)
+!   point_b = (/ 0.0_dp,  0.0_dp,  10.0_dp  /)
+!   point_c = (/ 3.49_dp, 0.0_dp, -10.0_dp  /)
+!   call issue_warning('plot_rho_traj_bunch: manual_dens_traj_tddft file was not found')
+! endif
+!! point_b(:) = point_b(:) / bohr_A 
+!! point_a(:) = point_a(:) / bohr_A
+!! In analogy with cube file, this file is also in Bohr
+! u(:) = point_b(:) - point_a(:)
+! u(:) = u(:) / NORM2(u)
+! allocate(phi(nstate,nspin))
+!
+!
+! deltar=NORM2( point_b(:) - point_a(:) )/nr
+!
+! integral=0.d0
+! do ih=0,nh
+!! if(modulo(ih,npoc_world)/=rank_world) cycle
+!!integral(ih)
+!   do ispin=1,nspin
+!
+!     a_cur(:)=point_a(:)+(point_c(:)-point_a(:))*ih/nh
+!     b_cur(:)=point_b(:)+(point_c(:)-point_a(:))*ih/nh
+! 
+!!     write(stdout,*) ih
+!     do ir=0,nr
+!       rr(:) = a_cur(:) + ( b_cur(:) - a_cur(:) ) * ir / nr
+!       call calculate_basis_functions_r(basis,rr,basis_function_r)
+!       phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
+!       integral=integral+SUM( (phi(:,ispin))**2 * occupation(:,ispin) )*deltar
+!     enddo
+!
+!   enddo
+! enddo
+!
+! CALL xsum_world(integral(:))
+! if( .NOT. is_iomaster ) return
+! do ispin=1,nspin
+!   write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'_integral_density.dat'
+!   open(newunit=line_rho(ispin),file=file_name)                
+!   write(line_rho(ispin),'(a,i3)') '# density integral file generated from MOLGW for spin ',ispin
+!   write(line_rho(ispin),'(a,f9.5)') '# time_cur = ', time_cur
+! enddo
+!!     write(line_rho(ispin),'(50(e16.8,2x))') NORM2(a_cur(:)-point_a(:)),integral
+!! norm_array(ih)
+!
+! do ispin=1,nspin
+!   close(line_rho(ispin))
+! end do
+!
+! deallocate(phi)
+!
+! call stop_clock(timing_print_line_rho_tddft)
+!
+!end subroutine plot_rho_traj_bunch
+
+!=========================================================================
+subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time_cur)
+ use m_definitions
+ use m_mpi
+ use m_tddft_variables
+ use m_inputparam, only: nspin,spin_fact,excit_type
+ use m_atoms
+ use m_basis_set
+ use m_timing
+ use m_dft_grid,only: calculate_basis_functions_r
+
+ implicit none
+ integer,intent(in)         :: nstate
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+ integer                    :: num
+ real(dp),intent(in)        :: time_cur
+!=====
+ integer                    :: nr=1000,nh=100
+ integer                    :: gt
+ real(dp),parameter         :: length=6.0_dp
+ integer                    :: ibf
+ integer                    :: istate1,istate2,istate,ispin
+ real(dp)                   :: rr(3)
+ real(dp),allocatable       :: phi(:,:)
+ real(dp)                   :: point_a(3),point_b(3),point_c(3),u(3)
+ real(dp)                   :: a_cur(3), b_cur(3)
+ logical                    :: file_exists
+ real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
+ real(dp)                   :: xxmin,xxmax
+ real(dp)                   :: dx,dy,dz
+ real(dp)                   :: basis_function_r(basis%nbf)
+ integer                    :: ir,ih,iatom
+ integer                    :: ibf_cart,ni_cart,ni,li,i_cart
+ real(dp),allocatable       :: basis_function_r_cart(:)
+ integer,allocatable        :: ocubefile(:,:)
+ integer                    :: line_rho(nspin)
+ character(len=200)         :: file_name
+ integer                    :: linefile
+ integer                    :: i_max_atom
+ real(dp)                   :: vec_length
+ real(dp)                   :: deltar
+ real(dp),allocatable       :: integral,integral_total
+ integer                    :: istate_min,istate_max
+!=====
+
+ if( .NOT. is_iomaster ) return
+
+ integral=0.0_dp
+ integral_total=0.0_dp
+
+ istate_min=1
+ istate_max=natom
+
+ call start_clock(timing_print_line_rho_tddft)
+
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+
+ if( .NOT. in_tddft_loop ) then
+   write(stdout,'(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
+ end if
+
+ inquire(file='manual_dens_traj',exist=file_exists)
+ if(file_exists) then
+   open(newunit=linefile,file='manual_dens_traj_tddft',status='old')
+   read(linefile,*) point_a(:)
+   read(linefile,*) point_b(:)
+   read(linefile,*) point_c(:)
+   read(linefile,*) nr
+   read(linefile,*) nh
+  
+   close(linefile)
+ else
+   point_a = (/ 0.0_dp,  0.0_dp, -10.0_dp  /)
+   point_b = (/ 0.0_dp,  0.0_dp,  10.0_dp  /)
+   point_c = (/ 3.49_dp, 0.0_dp, -10.0_dp  /)
+   call issue_warning('plot_rho_traj_bunch: manual_dens_traj_tddft file was not found')
+ endif
+! point_b(:) = point_b(:) / bohr_A 
+! point_a(:) = point_a(:) / bohr_A
+! In analogy with cube file, this file is also in Bohr
+ u(:) = point_b(:) - point_a(:)
+ u(:) = u(:) / NORM2(u)
+ allocate(phi(nstate,nspin))
+
+ do ispin=1,nspin
+   write(file_name,'(i3.3,a,i1,a)') num,'_',ispin,'_contribution_integral_density.dat'
+   open(newunit=line_rho(ispin),file=file_name)
+   write(line_rho(ispin),'(a,i3)') '# density integral file generated from MOLGW for spin ',ispin
+   write(line_rho(ispin),'(a,f9.5)') '# time_cur = ', time_cur
+ enddo
+
+ deltar=NORM2( point_b(:) - point_a(:) )/nr
+
+ do ispin=1,nspin
+
+   do ih=0,nh
+
+     a_cur(:)=point_a(:)+(point_c(:)-point_a(:))*ih/nh
+     b_cur(:)=point_b(:)+(point_c(:)-point_a(:))*ih/nh
+ 
+     do ir=0,nr
+       rr(:) = a_cur(:) + ( b_cur(:) - a_cur(:) ) * ir / nr
+       call calculate_basis_functions_r(basis,rr,basis_function_r)
+       phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
+
+       do istate=istate_min,istate_max
+         integral=integral+(phi(istate,ispin))**2 * occupation(istate,ispin)*deltar
+       end do
+
+       integral_total=integral
+
+       do istate=istate_max+1,nstate
+         integral_total=integral_total+(phi(istate,ispin))**2 * occupation(istate,ispin)*deltar
+       end do
+
+       write(line_rho(ispin),'(50(e16.8,2x))') NORM2(a_cur(:)-point_a(:)),integral/NORM2(point_b(:)-point_a(:)),integral_total/NORM2(point_b(:)-point_a(:))
+
+     end do
+   enddo
+
+ enddo
+
+ do ispin=1,nspin
+   close(line_rho(ispin))
+ end do
+
+ deallocate(phi)
+
+ call stop_clock(timing_print_line_rho_tddft)
+
+end subroutine plot_rho_traj_bunch_contrib
 
 !=========================================================================
 subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num)
@@ -1273,7 +1672,7 @@ subroutine plot_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,ti
 end subroutine plot_rho_cmplx 
 
 !=========================================================================
-subroutine bunch_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur)
+subroutine plot_rho_traj_bunch_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,time_cur)
  use m_definitions
  use m_mpi
  use m_tddft_variables
@@ -1400,7 +1799,7 @@ subroutine bunch_rho_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,t
 
  call stop_clock(timing_print_line_rho_tddft)
 
-end subroutine bunch_rho_cmplx
+end subroutine plot_rho_traj_bunch_cmplx
 
 
 !=========================================================================

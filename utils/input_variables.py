@@ -1198,6 +1198,24 @@ vl[i].default  ='no'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='Prints the electronic density along the projectile trajectory for several impact parameters in the real-time dynamics'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='calc_q_matrix'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Calculate and print q_matrix which is the projection of a propagated state psi(t) onto the initial state psi(0) in the real-time dynamics'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='print_dens_traj'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints the electronic density along the projectile trajectory for several impact parameters using real wave function'
+
 #============================================================================
 #            Fortran output: input variable namelist and their default value
 #============================================================================

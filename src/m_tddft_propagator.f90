@@ -233,7 +233,7 @@ subroutine calculate_propagation(nstate,              &
  end if
 
  if( print_dens_traj_tddft_ ) then
-   call bunch_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_start_cmplx,0,0.d0)  
+   call plot_rho_traj_bunch_cmplx(nstate,nocc,basis,occupation,c_matrix_start_cmplx,0,0.d0)  
  end if
 
  call start_clock(timing_tddft_loop)
@@ -262,8 +262,6 @@ subroutine calculate_propagation(nstate,              &
  write(stdout,"(1x,a)") "End of the reference tddft loop"
  write(stdout,"(1x,a)") "__________________________________________________"
  
-! stop
-
  if( calc_p_matrix_error_ ) then
 
    n_pred_corrs = get_number_of_elements(error_pred_corrs)
@@ -434,11 +432,15 @@ subroutine tddft_time_loop(nstate,                           &
  integer                    :: i_iter, iwrite_step
  integer                    :: file_time_data, file_excit_field
  integer                    :: file_dipole_time,file_iter_norm 
- integer                    :: file_tmp(10)
+ integer                    :: file_q_matrix_ii(2)
+ integer                    :: n_elem_q_mat,i_elem_q_mat
+ integer                    :: istate
  real(dp)                   :: time_cur, time_min, time_one_iter,time_step_tmp
  real(dp)                   :: dipole(3)
  complex(dp),allocatable    :: c_matrix_cmplx(:,:,:)
  complex(dp),allocatable    :: c_matrix_orth_cmplx(:,:,:)
+ complex(dp),allocatable    :: q_matrix_cmplx(:,:,:)
+ complex(dp)                :: q_occ_cmplx(nstate)
  complex(dp),allocatable    :: hamiltonian_fock_cmplx(:,:,:)
  complex(dp),allocatable    :: p_matrix_cmplx(:,:,:)
  complex(dp),allocatable    :: h_small_hist_cmplx(:,:,:,:)
@@ -446,6 +448,8 @@ subroutine tddft_time_loop(nstate,                           &
  complex(dp),allocatable    :: h_small_cmplx(:,:,:)
  character(len=50)          :: name_time_data,name_dipole_time
  character(len=50)          :: name_iter_norm
+ character(len=50)          :: name_file_q_matrix_ii
+ character(len=50)          :: format_q_matrix_ii
  logical                    :: is_identity_
 !==variables for extrapolation
  integer                    :: iextr,ham_dim_cur
@@ -470,6 +474,10 @@ subroutine tddft_time_loop(nstate,                           &
  call clean_allocate('hamiltonian_fock_cmplx for TDDFT',hamiltonian_fock_cmplx,basis%nbf,basis%nbf,nspin)
  call clean_allocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
  call clean_allocate('h_small_cmplx for TDDFT',h_small_cmplx,nstate,nstate,nspin)
+
+ if(calc_q_matrix_) then
+   call clean_allocate('q_matrix for TDDFT',q_matrix_cmplx,nstate,nocc,nspin)
+ end if
 
  c_matrix_cmplx         = c_matrix_start_cmplx
  c_matrix_orth_cmplx    = c_matrix_orth_start_cmplx 
@@ -503,6 +511,13 @@ subroutine tddft_time_loop(nstate,                           &
      if(excit_type%is_light) then
        open(newunit=file_dipole_time,file="dipole_time.dat")
        open(newunit=file_excit_field,file="excitation_time.dat")
+
+       ! ---q_matrix---
+       do ispin=1,nspin
+         write(name_file_q_matrix_ii,"(a,i1,a)") "q_matrix_ii_spin_", ispin, ".dat" 
+         open(newunit=file_q_matrix_ii(ispin),file=name_file_q_matrix_ii)
+       end do
+
        write(file_excit_field,"(A)") "# time(au)                      E_field_excit_dir(au)"
        write(file_excit_field,*) time_min, REAL(m_excit_field_dir) 
      end if
@@ -944,6 +959,17 @@ subroutine tddft_time_loop(nstate,                           &
 
    end if
 
+!-------q_matrix----------
+   if(calc_q_matrix_) then 
+     do ispin=1,nspin
+!       q_matrix_cmplx(:,:,ispin)=MATMUL(MATMUL(CONJG(TRANSPOSE(c_matrix_0_cmplx(:,:,ispin))),s_matrix),c_matrix_cmplx(:,:,ispin))
+       do istate=1,nstate
+         q_occ_cmplx(istate)=SUM(q_matrix_cmplx(istate,:,ispin))
+       end do
+!       write(file_q_matrix_ii(ispin),*) time_cur, q_occ_cmplx(:)
+     end do
+   end if
+
 !--------------z_selected------------------------------------------
    ! !!! REALIZED ONLY FOR A MOVEMENT ALONG Z DIRECTION
    if(n_z_selected>0 .AND. &
@@ -1024,6 +1050,10 @@ subroutine tddft_time_loop(nstate,                           &
  call clean_deallocate('h_small_cmplx for TDDFT',h_small_cmplx)
  call clean_deallocate('h_small_hist_cmplx for TDDFT',h_small_hist_cmplx)
  call clean_deallocate('c_matrix_orth_hist_cmplx for TDDFT',c_matrix_orth_hist_cmplx)
+
+! if(calc_q_matrix_) then
+!   call clean_deallocate('q_matrix for TDDFT',q_matrix_cmplx,nstate,nocc,nspin)
+! end if
 
  if(ALLOCATED(m_nods)) deallocate(m_nods)
  if(ALLOCATED(extrap_coefs)) deallocate(extrap_coefs)

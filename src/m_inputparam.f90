@@ -202,7 +202,9 @@ module m_inputparam
  logical,protected                :: print_cube_diff_tddft_
  logical,protected                :: print_line_rho_tddft_
  logical,protected                :: print_dens_traj_tddft_
+ logical,protected                :: print_dens_traj_
  logical,protected                :: calc_p_matrix_error_
+ logical,protected                :: calc_q_matrix_
  logical,protected                :: calc_spectrum_
  logical,protected                :: read_tddft_restart_
  logical,protected                :: print_tddft_restart_
@@ -788,7 +790,9 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_cube_diff_tddft
  character(len=3)     :: print_line_rho_tddft
  character(len=3)     :: print_dens_traj_tddft
+ character(len=3)     :: print_dens_traj
  character(len=3)     :: calc_p_matrix_error
+ character(len=3)     :: calc_q_matrix
  character(len=3)     :: calc_spectrum
  character(len=3)     :: read_tddft_restart
  character(len=3)     :: print_tddft_restart
@@ -901,8 +905,10 @@ subroutine read_inputfile_namelist()
  print_cube_diff_tddft_ = yesno(print_cube_diff_tddft)
  print_line_rho_tddft_  = yesno(print_line_rho_tddft)
  print_dens_traj_tddft_ = yesno(print_dens_traj_tddft)
+ print_dens_traj_       = yesno(print_dens_traj)
  
  calc_p_matrix_error_  = yesno(calc_p_matrix_error)
+ calc_q_matrix_        = yesno(calc_q_matrix)
  calc_spectrum_        = yesno(calc_spectrum)
  read_tddft_restart_   = yesno(read_tddft_restart)
  print_tddft_restart_  = yesno(print_tddft_restart)
