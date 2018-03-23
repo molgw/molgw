@@ -1290,3 +1290,180 @@ end subroutine onering_density_matrix
 
 
 !=========================================================================
+subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix)
+ use m_definitions
+ use m_mpi
+ use m_mpi_ortho
+ use m_warning
+ use m_timing
+ use m_basis_set
+ use m_eri_ao_mo
+ use m_inputparam
+ use m_hamiltonian
+ use m_hamiltonian_onebody
+ use m_selfenergy_tools
+ use m_spectral_function
+ implicit none
+
+ integer,intent(in)                 :: nstate
+ type(basis_set),intent(in)         :: basis
+ real(dp),intent(in)                :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(in)                :: c_matrix(basis%nbf,nstate,nspin)
+ type(spectral_function),intent(in) :: wpol
+ real(dp),intent(out)               :: p_matrix(basis%nbf,basis%nbf,nspin)
+!=====
+ integer  :: pstate,qstate
+ integer  :: istate,jstate,kstate,lstate
+ integer  :: astate,bstate,cstate,dstate
+ integer  :: pqspin
+ real(dp) :: denom1,denom2
+ real(dp) :: num1,num2
+ real(dp) :: p_matrix_gw(nsemin:nsemax,nsemin:nsemax)
+ integer  :: t_ib,ipole
+ real(dp),allocatable :: bra_occ(:,:),bra_virt(:,:)
+!=====
+
+
+
+ write(stdout,'(/,a)') ' Calculate the GW density matrix'
+
+ if( nspin /= 1 ) call die('gw_density_matrix: only implemented for spin restricted calculations')
+ if( .NOT. has_auxil_basis)  call die('gw_density_matrix: only implemented without RI')
+
+ if(has_auxil_basis) then
+   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
+ else
+   call calculate_eri_4center_eigen_uks(c_matrix,ncore_G+1,nvirtual_G-1)
+ endif
+
+
+! Full calculation of the MP2 density matrix
+
+ p_matrix_gw(:,:) = 0.0_dp
+ pqspin = 1
+
+ allocate(bra_occ(wpol%npole_reso,ncore_G+1:nhomo_G))
+ allocate(bra_virt(wpol%npole_reso,nhomo_G+1:nvirtual_G-1))
+
+ ! A1
+ do astate=nhomo_G+1,nvirtual_G-1
+
+   bra_occ(:,ncore_G+1:nhomo_G) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nhomo_G,astate,pqspin) )
+
+   do kstate=ncore_G+1,nhomo_G
+   do jstate=ncore_G+1,nhomo_G
+     do ipole=1,wpol%npole_reso
+
+         denom1 = energy(kstate,pqspin) - energy(astate,pqspin) - wpol%pole(ipole)
+         denom2 = energy(jstate,pqspin) - energy(astate,pqspin) - wpol%pole(ipole)
+
+         num1 = 2.0_dp * bra_occ(ipole,jstate)
+         num2 = bra_occ(ipole,kstate)
+
+         p_matrix_gw(kstate,jstate) = p_matrix_gw(kstate,jstate) - num1 * num2 / ( denom1 * denom2 )
+
+     enddo
+   enddo
+   enddo
+ enddo
+
+ ! A2
+ do istate=ncore_G+1,nhomo_G
+
+   bra_virt(:,nhomo_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,istate,pqspin) )
+
+   do bstate=nhomo_G+1,nvirtual_G-1
+   do cstate=nhomo_G+1,nvirtual_G-1
+     do ipole=1,wpol%npole_reso
+
+         denom1 = energy(istate,pqspin) - energy(cstate,pqspin) - wpol%pole(ipole)
+         denom2 = energy(istate,pqspin) - energy(bstate,pqspin) - wpol%pole(ipole)
+
+         num1 = 2.0_dp * bra_virt(ipole,cstate)
+         num2 = bra_virt(ipole,bstate)
+
+         p_matrix_gw(cstate,bstate) = p_matrix_gw(cstate,bstate) + num1 * num2 / ( denom1 * denom2 )
+
+     enddo
+   enddo
+   enddo
+ enddo
+
+ ! A3    P_cj  sum over i,a,b
+ ! A4    P_jc  sum over i,a,b
+ do astate=nhomo_G+1,nvirtual_G-1
+
+   bra_occ(:,ncore_G+1:nhomo_G)       = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nhomo_G,astate,pqspin) )
+   bra_virt(:,nhomo_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,astate,pqspin) )
+
+   do cstate=nhomo_G+1,nvirtual_G-1
+   do jstate=ncore_G+1,nhomo_G
+     do ipole=1,wpol%npole_reso
+
+         denom1 = energy(jstate,pqspin) - energy(astate,pqspin) - wpol%pole(ipole)
+         denom2 = energy(jstate,pqspin) - energy(cstate,pqspin)
+         num1 = 2.0_dp * bra_virt(ipole,cstate)
+         num2 = bra_occ(ipole,jstate)
+
+         p_matrix_gw(cstate,jstate) = p_matrix_gw(cstate,jstate) + num1 * num2 / ( denom1 * denom2 )
+         p_matrix_gw(jstate,cstate) = p_matrix_gw(jstate,cstate) + num1 * num2 / ( denom1 * denom2 )
+
+     enddo
+   enddo
+   enddo
+ enddo
+
+ ! A5   P_bk  sum over i,j,a
+ ! A6   P_kb  sum over i,j,a
+ do istate=ncore_G+1,nhomo_G
+
+   bra_occ(:,ncore_G+1:nhomo_G)       = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nhomo_G,istate,pqspin) )
+   bra_virt(:,nhomo_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,istate,pqspin) )
+
+   do bstate=nhomo_G+1,nvirtual_G-1
+   do kstate=ncore_G+1,nhomo_G
+     do ipole=1,wpol%npole_reso
+
+         denom1 = energy(istate,pqspin) - energy(bstate,pqspin) - wpol%pole(ipole)
+         denom2 = energy(kstate,pqspin) - energy(bstate,pqspin)
+         num1 = 2.0_dp * bra_virt(ipole,bstate)
+         num2 = bra_occ(ipole,kstate)
+
+         p_matrix_gw(bstate,kstate) = p_matrix_gw(bstate,kstate) - num1 * num2 / ( denom1 * denom2 )
+         p_matrix_gw(kstate,bstate) = p_matrix_gw(kstate,bstate) - num1 * num2 / ( denom1 * denom2 )
+
+     enddo
+   enddo
+   enddo
+ enddo
+
+ deallocate(bra_occ)
+ deallocate(bra_virt)
+
+! open(111,file='p_matrix_pt2.dat',action='write')
+! do pstate=nsemin,nsemax
+!   write(111,'(*(2x,f12.6))') p_matrix_gw(pstate,:)
+! enddo
+! close(111)
+
+ ! Add the SCF density matrix to get to the total density matrix
+ do pstate=nsemin,nsemax
+   p_matrix_gw(pstate,pstate) = p_matrix_gw(pstate,pstate) + occupation(pstate,pqspin)
+ enddo
+
+ p_matrix(:,:,pqspin) = MATMUL( c_matrix(:,nsemin:nsemax,pqspin)  , &
+                          MATMUL( p_matrix_gw(nsemin:nsemax,nsemin:nsemax), &
+                             TRANSPOSE(c_matrix(:,nsemin:nsemax,pqspin)) ) )
+
+
+ if(has_auxil_basis) then
+   call destroy_eri_3center_eigen()
+ else
+   call destroy_eri_4center_eigen_uks()
+ endif
+
+
+end subroutine gw_density_matrix
+
+
+!=========================================================================

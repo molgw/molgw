@@ -484,14 +484,21 @@ subroutine scf_loop(is_restart,&
  if( read_fchk /= 'NO' ) then
    call clean_allocate('Temporary density matrix',p_matrix_out,basis%nbf,basis%nbf,nspin)
 
-   if( read_fchk == 'MOLGW' ) then
+   select case(TRIM(read_fchk))
+   case('MOLGW')
      ! This keyword calculates the PT2 density matrix as it is assumed in PT2 theory (differs from MP2 density matrix)
      call selfenergy_set_state_range(nstate,occupation)
      call pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix_out)
      !call onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix_out)
-   else
+   case('MOLGWGW')
+     call init_spectral_function(nstate,occupation,0,wpol)
+     call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
+     call selfenergy_set_state_range(nstate,occupation)
+     call gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_out)
+     call destroy_spectral_function(wpol)
+   case default
      call read_gaussian_fchk(basis,p_matrix_out)
-   endif
+   end select
 
    ! Check if a p_matrix was effectively read
    if( ANY( ABS(p_matrix_out(:,:,:)) > 0.01_dp ) ) then
