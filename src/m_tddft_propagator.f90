@@ -974,12 +974,10 @@ subroutine tddft_time_loop(nstate,                           &
 
        do istate=istate_min,istate_max
          q_occ(1)=q_occ(1)+SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2)
-         write(stdout,*) "suka1", istate, q_occ(1)
        end do
 
-       do istate=istate_min+1,nstate
+       do istate=istate_max+1,nstate
          q_occ(2)=q_occ(2)+SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2)
-         write(stdout,*) "suka2", istate, q_occ(2)
        end do
          
        write(file_q_matrix(ispin),*) time_cur, q_occ(:)
