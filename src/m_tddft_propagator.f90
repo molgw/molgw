@@ -976,7 +976,7 @@ subroutine tddft_time_loop(nstate,                           &
          q_occ(1)=q_occ(1)+SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2)
        end do
 
-       do istate=istate_max+1,nstate
+       do istate=istate_max+1,nstate-istate_max-1
          q_occ(2)=q_occ(2)+SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2)
        end do
          
