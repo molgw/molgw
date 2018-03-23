@@ -432,7 +432,6 @@ subroutine tddft_time_loop(nstate,                           &
  integer                    :: i_iter, iwrite_step
  integer                    :: file_time_data, file_excit_field
  integer                    :: file_dipole_time,file_iter_norm 
- integer                    :: file_q_matrix(2)
  integer                    :: n_elem_q_mat,i_elem_q_mat
  integer                    :: istate
  real(dp)                   :: time_cur, time_min, time_one_iter,time_step_tmp
@@ -446,8 +445,6 @@ subroutine tddft_time_loop(nstate,                           &
  complex(dp),allocatable    :: h_small_cmplx(:,:,:)
  character(len=50)          :: name_time_data,name_dipole_time
  character(len=50)          :: name_iter_norm
- character(len=50)          :: name_file_q_matrix
- character(len=50)          :: format_q_matrix_ii
  logical                    :: is_identity_
 !==variables for extrapolation
  integer                    :: iextr,ham_dim_cur
@@ -464,8 +461,10 @@ subroutine tddft_time_loop(nstate,                           &
  logical                    :: file_exists
 !==qmatrix==
  integer                    :: istate_min,istate_max
+ integer                    :: file_q_matrix(2)
  complex(dp),allocatable    :: q_matrix_cmplx(:,:,:)
  real(dp)                   :: q_occ(2)
+ character(len=50)          :: name_file_q_matrix
 !=====
 
  z_sel_=.false.
@@ -974,11 +973,13 @@ subroutine tddft_time_loop(nstate,                           &
        q_matrix_cmplx(:,:,ispin)=MATMUL(CONJG(TRANSPOSE(c_matrix_orth_start_cmplx(:,:,ispin))),c_matrix_orth_cmplx(:,:,ispin))
 
        do istate=istate_min,istate_max
-         q_occ(1)=q_occ(1)+SUM(q_matrix_cmplx(istate,:,ispin))
+         q_occ(1)=q_occ(1)+SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2)
+         write(stdout,*) "suka1", istate, q_occ(1)
        end do
 
        do istate=istate_min+1,nstate
-         q_occ(2)=q_occ(2)+SUM(q_matrix_cmplx(istate,:,ispin))
+         q_occ(2)=q_occ(2)+SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2)
+         write(stdout,*) "suka2", istate, q_occ(2)
        end do
          
        write(file_q_matrix(ispin),*) time_cur, q_occ(:)
