@@ -67,8 +67,6 @@ subroutine scf_loop(is_restart,&
  real(dp),allocatable    :: hamiltonian_exx(:,:,:)
  real(dp),allocatable    :: hamiltonian_xc(:,:,:)
  real(dp),allocatable    :: matrix_tmp(:,:,:)
- real(dp),allocatable    :: energy_exx(:,:)
- real(dp),allocatable    :: c_matrix_exx(:,:,:)
  real(dp)                :: nucleus_ii(nstate,nspin),hartree_ii(nstate,nspin),exchange_ii(nstate,nspin)
 !=============================
 
@@ -490,6 +488,7 @@ subroutine scf_loop(is_restart,&
      ! This keyword calculates the PT2 density matrix as it is assumed in PT2 theory (differs from MP2 density matrix)
      call selfenergy_set_state_range(nstate,occupation)
      call pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix_out)
+     !call onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix_out)
    else
      call read_gaussian_fchk(basis,p_matrix_out)
    endif
@@ -497,11 +496,24 @@ subroutine scf_loop(is_restart,&
    ! Check if a p_matrix was effectively read
    if( ANY( ABS(p_matrix_out(:,:,:)) > 0.01_dp ) ) then
 
-     call setup_hartree(print_matrix_,basis%nbf,p_matrix_out,hamiltonian_hartree,energy_tmp)
-     write(stdout,'(a50,1x,f19.10)') 'Hartree energy from input density matrix [Ha]:',energy_tmp
-     call setup_exchange(basis%nbf,p_matrix_out,hamiltonian_exx,energy_tmp)
-     write(stdout,'(a50,1x,f19.10)') 'Exchange energy from input density matrix [Ha]:',energy_tmp
-
+     if( .NOT. has_auxil_basis ) then
+       call setup_hartree(print_matrix_,basis%nbf,p_matrix_out,hamiltonian_hartree,energy_tmp)
+       write(stdout,'(a50,1x,f19.10)') 'Hartree energy from input density matrix [Ha]:',energy_tmp
+       call setup_exchange(basis%nbf,p_matrix_out,hamiltonian_exx,energy_tmp)
+       write(stdout,'(a50,1x,f19.10)') 'Exchange energy from input density matrix [Ha]:',energy_tmp
+     else
+       call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix_out,hamiltonian_hartree,energy_tmp)
+       write(stdout,'(a50,1x,f19.10)') 'Hartree energy from input density matrix [Ha]:',energy_tmp
+       block
+         integer  :: ibf
+         real(dp) :: c_matrix_tmp(basis%nbf,basis%nbf,nspin)
+         real(dp) :: occupation_tmp(basis%nbf,nspin)
+         !=====
+         call get_c_matrix_from_p_matrix(p_matrix_out,c_matrix_tmp,occupation_tmp)
+         call setup_exchange_ri(basis%nbf,basis%nbf,occupation_tmp,c_matrix_tmp,p_matrix_out,hamiltonian_exx,energy_tmp)
+       end block
+       write(stdout,'(a50,1x,f19.10)') 'Exchange energy from input density matrix [Ha]:',energy_tmp
+     endif
 
      do ispin=1,nspin
        do istate=1,nstate
@@ -512,16 +524,22 @@ subroutine scf_loop(is_restart,&
      call dump_out_energy('=== Hartree expectation value from input density matrix ===',nstate,nspin,occupation,hartree_ii)
      call dump_out_energy('=== Exchange expectation value from input density matrix ===',nstate,nspin,occupation,exchange_ii)
 
-     p_matrix_out(:,:,:) = p_matrix_out(:,:,:) - p_matrix(:,:,:)
-     call setup_hartree(print_matrix_,basis%nbf,p_matrix_out,hamiltonian_hartree,energy_tmp)
-     call setup_exchange(basis%nbf,p_matrix_out,hamiltonian_exx,energy_tmp)
-     do ispin=1,nspin
-       do istate=1,nstate
-          hartree_ii(istate,ispin)  =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix(:,istate,ispin) ) )
-          exchange_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_exx(:,:,ispin) , c_matrix(:,istate,ispin) ) )
-       enddo
-     enddo
-     call dump_out_energy('=== H+X expectation difference from input density matrix ===',nstate,nspin,occupation,hartree_ii+exchange_ii)
+
+!     ! Do it again for the difference
+!     p_matrix_out(:,:,:) = p_matrix_out(:,:,:) - p_matrix(:,:,:)
+!     if( .NOT. has_auxil_basis ) then
+!       call setup_hartree(print_matrix_,basis%nbf,p_matrix_out,hamiltonian_hartree,energy_tmp)
+!       call setup_exchange(basis%nbf,p_matrix_out,hamiltonian_exx,energy_tmp)
+!     else
+!       call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix_out,hamiltonian_hartree,energy_tmp)
+!     endif
+!     do ispin=1,nspin
+!       do istate=1,nstate
+!          hartree_ii(istate,ispin)  =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix(:,istate,ispin) ) )
+!          exchange_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_exx(:,:,ispin) , c_matrix(:,istate,ispin) ) )
+!       enddo
+!     enddo
+!     call dump_out_energy('=== H+X expectation difference from input density matrix ===',nstate,nspin,occupation,hartree_ii+exchange_ii)
 
    endif
   
@@ -566,31 +584,36 @@ subroutine scf_loop(is_restart,&
 
 
  ! A dirty section for the Luttinger-Ward functional
- if(calc_type%selfenergy_approx==LW .OR. calc_type%selfenergy_approx==LW2 .OR. calc_type%selfenergy_approx==GSIGMA) then
-   allocate(energy_exx(nstate,nspin))
-   allocate(c_matrix_exx(basis%nbf,nstate,nspin))
-   call issue_warning('ugly coding here write temp file fort.1000 and fort.1001')
-
-   do ispin=1,nspin
-     write(stdout,*) 'Diagonalization H_exx for spin channel',ispin
-     call diagonalize_generalized_sym(basis%nbf,&
-                                      hamiltonian_fock(:,:,ispin),s_matrix(:,:),&
-                                      energy_exx(:,ispin),c_matrix_exx(:,:,ispin))
-   enddo
-   write(stdout,*) 'FBFB LW sum(      epsilon) + Eii -<vxc> - EH + Ex',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
-   write(stdout,*) 'FBFB LW sum(tilde epsilon) + Eii - EH - Ex       ',SUM( occupation(:,:)*energy_exx(:,:) ) + en%nuc_nuc - en%hart - en%exx
-   open(1000,form='unformatted')
-   do ispin=1,nspin
-     do istate=1,nstate
-       write(1000) c_matrix_exx(:,istate,ispin)
+ block
+   real(dp),allocatable    :: energy_exx(:,:)
+   real(dp),allocatable    :: c_matrix_exx(:,:,:)
+   !=====
+   if(calc_type%selfenergy_approx==LW .OR. calc_type%selfenergy_approx==LW2 .OR. calc_type%selfenergy_approx==GSIGMA) then
+     allocate(energy_exx(nstate,nspin))
+     allocate(c_matrix_exx(basis%nbf,nstate,nspin))
+     call issue_warning('ugly coding here write temp file fort.1000 and fort.1001')
+  
+     do ispin=1,nspin
+       write(stdout,*) 'Diagonalization H_exx for spin channel',ispin
+       call diagonalize_generalized_sym(basis%nbf,&
+                                        hamiltonian_fock(:,:,ispin),s_matrix(:,:),&
+                                        energy_exx(:,ispin),c_matrix_exx(:,:,ispin))
      enddo
-   enddo
-   close(1000)
-   open(1001,form='unformatted')
-   write(1001) energy_exx(:,:)
-   close(1001)
-   deallocate(energy_exx,c_matrix_exx)
- endif
+     write(stdout,*) 'FBFB LW sum(      epsilon) + Eii -<vxc> - EH + Ex',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx
+     write(stdout,*) 'FBFB LW sum(tilde epsilon) + Eii - EH - Ex       ',SUM( occupation(:,:)*energy_exx(:,:) ) + en%nuc_nuc - en%hart - en%exx
+     open(1000,form='unformatted')
+     do ispin=1,nspin
+       do istate=1,nstate
+         write(1000) c_matrix_exx(:,istate,ispin)
+       enddo
+     enddo
+     close(1000)
+     open(1001,form='unformatted')
+     write(1001) energy_exx(:,:)
+     close(1001)
+     deallocate(energy_exx,c_matrix_exx)
+   endif
+ end block
 
 
 

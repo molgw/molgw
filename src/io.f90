@@ -995,7 +995,7 @@ subroutine read_gaussian_fchk(basis,p_matrix_out)
  do while( .NOT. found )
    read(fu,'(a)',iostat=istat) line
    if( IS_IOSTAT_END(istat) ) then
-     write(stdout,'(1x,a,a)') 'End of file reached without having found ',keyword
+     call issue_warning(TRIM(keyword)//' not found in file')
      return
    endif
    found = ( INDEX(line,TRIM(keyword)) /= 0 )

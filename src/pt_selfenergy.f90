@@ -1081,11 +1081,11 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
  enddo
  enddo
 
- open(111,file='p_matrix_pt2.dat',action='write')
- do pstate=nsemin,nsemax
-   write(111,'(*(2x,f12.6))') p_matrix_mp2(pstate,:)
- enddo
- close(111)
+! open(111,file='p_matrix_pt2.dat',action='write')
+! do pstate=nsemin,nsemax
+!   write(111,'(*(2x,f12.6))') p_matrix_mp2(pstate,:)
+! enddo
+! close(111)
 
  ! Add the SCF density matrix to get to the total density matrix
  do pstate=nsemin,nsemax
@@ -1115,6 +1115,178 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
 
 
 end subroutine pt2_density_matrix
+
+
+!=========================================================================
+subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
+ use m_definitions
+ use m_mpi
+ use m_mpi_ortho
+ use m_warning
+ use m_timing
+ use m_basis_set
+ use m_eri_ao_mo
+ use m_inputparam
+ use m_hamiltonian
+ use m_hamiltonian_onebody
+ use m_selfenergy_tools
+ implicit none
+
+ integer,intent(in)         :: nstate
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(out)       :: p_matrix(basis%nbf,basis%nbf,nspin)
+!=====
+ integer                 :: pstate,qstate
+ integer                 :: istate,jstate,kstate,lstate
+ integer                 :: astate,bstate,cstate,dstate
+ integer                 :: pqspin
+ real(dp)                :: denom1,denom2
+ real(dp)                :: num1,num2
+ real(dp)                :: p_matrix_mp2(nsemin:nsemax,nsemin:nsemax)
+!=====
+
+
+
+ write(stdout,'(/,a)') ' Calculate the PT2 density matrix'
+
+ if( nspin /= 1 ) call die('pt2_density_matrix: only implemented for spin restricted calculations')
+
+ if(has_auxil_basis) then
+   call calculate_eri_3center_eigen(c_matrix,ncore_G+1,nvirtual_G-1,ncore_G+1,nvirtual_G-1)
+ else
+   call calculate_eri_4center_eigen_uks(c_matrix,ncore_G+1,nvirtual_G-1)
+ endif
+
+
+! Full calculation of the MP2 density matrix
+
+ p_matrix_mp2(:,:) = 0.0_dp
+ pqspin = 1
+
+ ! A1
+ do istate=ncore_G+1,nhomo_G
+ do jstate=ncore_G+1,nhomo_G
+   do kstate=ncore_G+1,nhomo_G
+     do astate=nhomo_G+1,nvirtual_G-1
+       do bstate=nhomo_G+1,nvirtual_G-1
+
+         denom1 = energy(astate,pqspin) + energy(bstate,pqspin) - energy(istate,pqspin) - energy(kstate,pqspin)
+         denom2 = energy(astate,pqspin) + energy(bstate,pqspin) - energy(jstate,pqspin) - energy(kstate,pqspin)
+
+         num1 = 2.0_dp * eri_eigen(istate,astate,pqspin,kstate,bstate,pqspin)
+         num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,kstate,bstate,pqspin)
+
+         p_matrix_mp2(istate,jstate) = p_matrix_mp2(istate,jstate)  &
+                 - num1 * num2 / ( denom1 * denom2 )
+
+       enddo
+     enddo
+   enddo
+ enddo
+ enddo
+
+ ! A2
+ do astate=nhomo_G+1,nvirtual_G-1
+ do bstate=nhomo_G+1,nvirtual_G-1
+   do cstate=nhomo_G+1,nvirtual_G-1
+     do istate=ncore_G+1,nhomo_G
+       do jstate=ncore_G+1,nhomo_G
+
+         denom1 = energy(istate,pqspin) + energy(jstate,pqspin) - energy(astate,pqspin) - energy(cstate,pqspin)
+         denom2 = energy(istate,pqspin) + energy(jstate,pqspin) - energy(bstate,pqspin) - energy(cstate,pqspin)
+
+         num1 = 2.0_dp * eri_eigen(astate,istate,pqspin,cstate,jstate,pqspin)
+         num2 = 2.0_dp * eri_eigen(bstate,istate,pqspin,cstate,jstate,pqspin)
+
+         p_matrix_mp2(astate,bstate) = p_matrix_mp2(astate,bstate)  &
+                 + num1 * num2 / ( denom1 * denom2 )
+
+       enddo
+     enddo
+   enddo
+ enddo
+ enddo
+
+ ! A3    P_cj  sum over i,a,b
+ ! A4    P_jc  sum over i,a,b
+ do cstate=nhomo_G+1,nvirtual_G-1
+ do jstate=ncore_G+1,nhomo_G
+   do astate=nhomo_G+1,nvirtual_G-1
+     do bstate=nhomo_G+1,nvirtual_G-1
+       do istate=ncore_G+1,nhomo_G
+         denom1 = energy(jstate,pqspin) + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
+         denom2 = energy(jstate,pqspin) - energy(cstate,pqspin)
+         num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin)
+         num2 = 2.0_dp * eri_eigen(astate,cstate,pqspin,bstate,istate,pqspin)
+
+         p_matrix_mp2(cstate,jstate) = p_matrix_mp2(cstate,jstate)  &
+                                           + num1 * num2 / ( denom1 * denom2 )
+         p_matrix_mp2(jstate,cstate) = p_matrix_mp2(jstate,cstate)  &
+                                           + num1 * num2 / ( denom1 * denom2 )
+       enddo
+     enddo
+   enddo
+ enddo
+ enddo
+
+ ! A5   P_bk  sum over i,j,a
+ ! A6   P_kb  sum over i,j,a
+ do bstate=nhomo_G+1,nvirtual_G-1
+ do kstate=ncore_G+1,nhomo_G
+   do astate=nhomo_G+1,nvirtual_G-1
+     do istate=ncore_G+1,nhomo_G
+       do jstate=ncore_G+1,nhomo_G
+         denom1 = energy(jstate,pqspin) + energy(istate,pqspin) - energy(astate,pqspin) - energy(bstate,pqspin)
+         denom2 = energy(kstate,pqspin) - energy(bstate,pqspin)
+         num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin)
+         num2 = 2.0_dp * eri_eigen(istate,kstate,pqspin,jstate,astate,pqspin)
+
+         p_matrix_mp2(bstate,kstate) = p_matrix_mp2(bstate,kstate)  &
+                                           - num1 * num2 / ( denom1 * denom2 )
+         p_matrix_mp2(kstate,bstate) = p_matrix_mp2(kstate,bstate)  &
+                                           - num1 * num2 / ( denom1 * denom2 )
+       enddo
+     enddo
+   enddo
+ enddo
+ enddo
+
+! open(111,file='p_matrix_pt2.dat',action='write')
+! do pstate=nsemin,nsemax
+!   write(111,'(*(2x,f12.6))') p_matrix_mp2(pstate,:)
+! enddo
+! close(111)
+
+ ! Add the SCF density matrix to get to the total density matrix
+ do pstate=nsemin,nsemax
+   p_matrix_mp2(pstate,pstate) = p_matrix_mp2(pstate,pstate) + occupation(pstate,pqspin)
+ enddo
+
+ p_matrix(:,:,pqspin) = MATMUL( c_matrix(:,nsemin:nsemax,pqspin)  , &
+                          MATMUL( p_matrix_mp2(nsemin:nsemax,nsemin:nsemax), &
+                             TRANSPOSE(c_matrix(:,nsemin:nsemax,pqspin)) ) )
+
+!block
+! real(dp) :: hh(basis%nbf,basis%nbf)
+! real(dp) :: hartree_ii(nstate)
+! real(dp) :: energy_tmp
+! call setup_hartree(print_matrix_,basis%nbf,p_matrix,hh,energy_tmp)
+! do istate=1,nstate
+!   write(stdout,'(1x,a,i5,2x,f12.6)') 'Occ Occ Hartree ii ',istate,DOT_PRODUCT( c_matrix(:,istate,pqspin), MATMUL( hh(:,:), c_matrix(:,istate,pqspin) ) ) * Ha_eV
+! enddo
+!end block
+
+
+ if(has_auxil_basis) then
+   call destroy_eri_3center_eigen()
+ else
+   call destroy_eri_4center_eigen_uks()
+ endif
+
+
+end subroutine onering_density_matrix
 
 
 !=========================================================================
