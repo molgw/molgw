@@ -986,7 +986,7 @@ subroutine tddft_time_loop(nstate,                           &
          q_occ(3)=q_occ(3)+SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2)*occupation(istate,ispin)
        end do
          
-       write(file_q_matrix(ispin),*) time_cur, q_occ(:)
+       write(file_q_matrix(ispin),"(F9.4,10(2x,es16.8E3))") time_cur, q_occ(:)
      end do
    end if
 
