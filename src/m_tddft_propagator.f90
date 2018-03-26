@@ -460,10 +460,10 @@ subroutine tddft_time_loop(nstate,                           &
  integer                    :: nx,ny,nz,unit_cube_diff
  logical                    :: file_exists
 !==qmatrix==
- integer                    :: istate_min,istate_max
+ integer                    :: istate_cut(10)
  integer                    :: file_q_matrix(2)
  complex(dp),allocatable    :: q_matrix_cmplx(:,:,:)
- real(dp)                   :: q_occ(2)
+ real(dp)                   :: q_occ(10)
  character(len=50)          :: name_file_q_matrix
 !=====
 
@@ -966,18 +966,24 @@ subroutine tddft_time_loop(nstate,                           &
 
 !-------q_matrix----------
    if(calc_q_matrix_) then 
-     istate_min=1
-     istate_max=natom
+     istate_cut(1)=1
+     istate_cut(2)=natom
+     istate_cut(3)=natom+INT(natom/2.0_dp)
+     istate_cut(4)=nocc
      q_occ=0.0_dp
      do ispin=1,nspin
        q_matrix_cmplx(:,:,ispin)=MATMUL(CONJG(TRANSPOSE(c_matrix_orth_start_cmplx(:,:,ispin))),c_matrix_orth_cmplx(:,:,ispin))
 
-       do istate=istate_min,istate_max
+       do istate=istate_cut(1),istate_cut(2)
          q_occ(1)=q_occ(1)+SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2)*occupation(istate,ispin)
        end do
 
-       do istate=istate_max+1,nocc
+       do istate=istate_cut(2)+1,istate_cut(3)
          q_occ(2)=q_occ(2)+SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2)*occupation(istate,ispin)
+       end do
+         
+       do istate=istate_cut(3)+1,istate_cut(4)
+         q_occ(3)=q_occ(3)+SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2)*occupation(istate,ispin)
        end do
          
        write(file_q_matrix(ispin),*) time_cur, q_occ(:)
