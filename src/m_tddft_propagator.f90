@@ -973,11 +973,11 @@ subroutine tddft_time_loop(nstate,                           &
        q_matrix_cmplx(:,:,ispin)=MATMUL(CONJG(TRANSPOSE(c_matrix_orth_start_cmplx(:,:,ispin))),c_matrix_orth_cmplx(:,:,ispin))
 
        do istate=istate_min,istate_max
-         q_occ(1)=q_occ(1)+SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2)
+         q_occ(1)=q_occ(1)+SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2)*occupation(istate,ispin)
        end do
 
        do istate=istate_max+1,nocc
-         q_occ(2)=q_occ(2)+SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2)
+         q_occ(2)=q_occ(2)+SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2)*occupation(istate,ispin)
        end do
          
        write(file_q_matrix(ispin),*) time_cur, q_occ(:)
