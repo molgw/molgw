@@ -72,6 +72,7 @@ program molgw
  real(dp),allocatable    :: energy(:,:)
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
+ real(dp),allocatable    :: exchange_m_vxc(:,:,:)
  integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
  integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix
 !=====
@@ -302,10 +303,6 @@ program molgw
      ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
      if( parallel_ham ) call die('basis_restart not implemented with distributed hamiltonian')
      call issue_warning('basis restart is not fully implemented: use with care')
-  !   allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
-  !   hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) &
-  !                         + hamiltonian_hartree(:,:) + 0.5_dp * hamiltonian_xc(:,:,1)  &
-  !                                                    + 0.5_dp * hamiltonian_xc(:,:,nspin)
      call diagonalize_hamiltonian_scalapack(nspin,basis%nbf,nstate,hamiltonian_fock,s_matrix_sqrt_inv,&
                                             energy,c_matrix)
 
@@ -491,8 +488,23 @@ program molgw
  ! Prepare the diagonal of the matrix Sigma_x - Vxc
  ! for the forthcoming GW or PT2 corrections
  if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS ) then
+
    allocate(exchange_m_vxc_diag(nstate,nspin))
-   call setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag)
+   if( calc_type%selfenergy_static ) then
+     !
+     ! Calculate the static part of the self-energy at the first order and store it in exchange_m_vxc_diag
+     !
+     allocate(exchange_m_vxc(nstate,nstate,nspin))
+
+     call setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag,exchange_m_vxc)
+
+     call pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,exchange_m_vxc_diag)
+
+     deallocate(exchange_m_vxc)
+
+   else
+     call setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag)
+   endif
  endif
  call clean_deallocate('Fock operator F',hamiltonian_fock)
 

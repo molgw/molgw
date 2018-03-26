@@ -6,6 +6,70 @@
 ! the many-body perturbation theory to obtain the (perturbative) density matrix
 !
 !=========================================================================
+subroutine pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,p_matrix)
+ use m_definitions
+ use m_mpi
+ use m_mpi_ortho
+ use m_warning
+ use m_timing
+ use m_basis_set
+ use m_eri_ao_mo
+ use m_inputparam
+ use m_hamiltonian
+ use m_hamiltonian_onebody
+ use m_selfenergy_tools
+ implicit none
+
+ integer,intent(in)         :: nstate
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(in)        :: exchange_m_vxc(nstate,nstate,nspin)
+ real(dp),intent(out)       :: p_matrix(basis%nbf,basis%nbf,nspin)
+!=====
+ integer                 :: pstate,istate,astate
+ integer                 :: iaspin
+ integer                 :: ibf
+ real(dp)                :: denom
+ real(dp)                :: p_matrix_pt1(nstate,nstate)
+!=====
+
+ write(stdout,'(/,a)') ' Calculate the PT1 density matrix'
+
+ if( nspin /= 1 ) call die('pt1_density_matrix: only implemented for spin restricted calculations')
+
+ iaspin = 1
+ p_matrix_pt1(:,:) = 0.0_dp
+ do istate=ncore_G+1,nhomo_G
+   do astate=nhomo_G+1,nvirtual_G-1
+
+     denom = energy(istate,iaspin) - energy(astate,iaspin)
+     p_matrix_pt1(istate,astate) = p_matrix_pt1(istate,astate) + exchange_m_vxc(istate,astate,iaspin) / denom
+     p_matrix_pt1(astate,istate) = p_matrix_pt1(astate,istate) + exchange_m_vxc(istate,astate,iaspin) / denom
+
+   enddo
+ enddo
+
+! ! Add the SCF density matrix to get to the total density matrix
+! do pstate=ncore_G+1,nvirtual_G-1
+!   p_matrix_pt1(pstate,pstate) = p_matrix_pt1(pstate,pstate) + occupation(pstate,iaspin)
+! enddo
+
+ p_matrix(:,:,iaspin) = MATMUL( c_matrix(:,ncore_G+1:nvirtual_G-1,iaspin)  , &
+                          MATMUL( p_matrix_pt1(ncore_G+1:nvirtual_G-1,ncore_G+1:nvirtual_G-1), &
+                             TRANSPOSE(c_matrix(:,ncore_G+1:nvirtual_G-1,iaspin)) ) )
+
+! open(111,file='p_matrix_pt1.dat',action='write')
+! do ibf=1,basis%nbf
+!   write(111,'(*(2x,f12.6))') p_matrix(ibf,:,iaspin)
+! enddo
+! close(111)
+
+
+end subroutine pt1_density_matrix
+
+
+!=========================================================================
 subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
  use m_definitions
  use m_mpi
@@ -32,7 +96,7 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
  integer                 :: pqspin
  real(dp)                :: denom1,denom2
  real(dp)                :: num1,num2
- real(dp)                :: p_matrix_mp2(nsemin:nsemax,nsemin:nsemax)
+ real(dp)                :: p_matrix_pt2(nsemin:nsemax,nsemin:nsemax)
 !=====
 
 
@@ -50,7 +114,7 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
 
 ! Full calculation of the MP2 density matrix
 
- p_matrix_mp2(:,:) = 0.0_dp
+ p_matrix_pt2(:,:) = 0.0_dp
  pqspin = 1
 
  ! A1
@@ -67,7 +131,7 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
                       - eri_eigen(istate,bstate,pqspin,kstate,astate,pqspin)
          num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,kstate,bstate,pqspin)
 
-         p_matrix_mp2(istate,jstate) = p_matrix_mp2(istate,jstate)  &
+         p_matrix_pt2(istate,jstate) = p_matrix_pt2(istate,jstate)  &
                  - num1 * num2 / ( denom1 * denom2 )
 
        enddo
@@ -90,7 +154,7 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
                       - eri_eigen(astate,jstate,pqspin,cstate,istate,pqspin)
          num2 = 2.0_dp * eri_eigen(bstate,istate,pqspin,cstate,jstate,pqspin)
 
-         p_matrix_mp2(astate,bstate) = p_matrix_mp2(astate,bstate)  &
+         p_matrix_pt2(astate,bstate) = p_matrix_pt2(astate,bstate)  &
                  + num1 * num2 / ( denom1 * denom2 )
 
        enddo
@@ -111,9 +175,9 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
          num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
          num2 = 2.0_dp * eri_eigen(astate,cstate,pqspin,bstate,istate,pqspin)
 
-         p_matrix_mp2(cstate,jstate) = p_matrix_mp2(cstate,jstate)  &
+         p_matrix_pt2(cstate,jstate) = p_matrix_pt2(cstate,jstate)  &
                                            + num1 * num2 / ( denom1 * denom2 )
-         p_matrix_mp2(jstate,cstate) = p_matrix_mp2(jstate,cstate)  &
+         p_matrix_pt2(jstate,cstate) = p_matrix_pt2(jstate,cstate)  &
                                            + num1 * num2 / ( denom1 * denom2 )
        enddo
      enddo
@@ -133,9 +197,9 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
          num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin) - eri_eigen(jstate,bstate,pqspin,istate,astate,pqspin)
          num2 = 2.0_dp * eri_eigen(istate,kstate,pqspin,jstate,astate,pqspin)
 
-         p_matrix_mp2(bstate,kstate) = p_matrix_mp2(bstate,kstate)  &
+         p_matrix_pt2(bstate,kstate) = p_matrix_pt2(bstate,kstate)  &
                                            - num1 * num2 / ( denom1 * denom2 )
-         p_matrix_mp2(kstate,bstate) = p_matrix_mp2(kstate,bstate)  &
+         p_matrix_pt2(kstate,bstate) = p_matrix_pt2(kstate,bstate)  &
                                            - num1 * num2 / ( denom1 * denom2 )
        enddo
      enddo
@@ -145,17 +209,17 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
 
 ! open(111,file='p_matrix_pt2.dat',action='write')
 ! do pstate=nsemin,nsemax
-!   write(111,'(*(2x,f12.6))') p_matrix_mp2(pstate,:)
+!   write(111,'(*(2x,f12.6))') p_matrix_pt2(pstate,:)
 ! enddo
 ! close(111)
 
  ! Add the SCF density matrix to get to the total density matrix
  do pstate=nsemin,nsemax
-   p_matrix_mp2(pstate,pstate) = p_matrix_mp2(pstate,pstate) + occupation(pstate,pqspin)
+   p_matrix_pt2(pstate,pstate) = p_matrix_pt2(pstate,pstate) + occupation(pstate,pqspin)
  enddo
 
  p_matrix(:,:,pqspin) = MATMUL( c_matrix(:,nsemin:nsemax,pqspin)  , &
-                          MATMUL( p_matrix_mp2(nsemin:nsemax,nsemin:nsemax), &
+                          MATMUL( p_matrix_pt2(nsemin:nsemax,nsemin:nsemax), &
                              TRANSPOSE(c_matrix(:,nsemin:nsemax,pqspin)) ) )
 
 !block
@@ -206,7 +270,7 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
  integer                 :: pqspin
  real(dp)                :: denom1,denom2
  real(dp)                :: num1,num2
- real(dp)                :: p_matrix_mp2(nsemin:nsemax,nsemin:nsemax)
+ real(dp)                :: p_matrix_pt2(nsemin:nsemax,nsemin:nsemax)
 !=====
 
 
@@ -224,7 +288,7 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
 
 ! Full calculation of the MP2 density matrix
 
- p_matrix_mp2(:,:) = 0.0_dp
+ p_matrix_pt2(:,:) = 0.0_dp
  pqspin = 1
 
  ! A1
@@ -240,7 +304,7 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
          num1 = 2.0_dp * eri_eigen(istate,astate,pqspin,kstate,bstate,pqspin)
          num2 = 2.0_dp * eri_eigen(jstate,astate,pqspin,kstate,bstate,pqspin)
 
-         p_matrix_mp2(istate,jstate) = p_matrix_mp2(istate,jstate)  &
+         p_matrix_pt2(istate,jstate) = p_matrix_pt2(istate,jstate)  &
                  - num1 * num2 / ( denom1 * denom2 )
 
        enddo
@@ -262,7 +326,7 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
          num1 = 2.0_dp * eri_eigen(astate,istate,pqspin,cstate,jstate,pqspin)
          num2 = 2.0_dp * eri_eigen(bstate,istate,pqspin,cstate,jstate,pqspin)
 
-         p_matrix_mp2(astate,bstate) = p_matrix_mp2(astate,bstate)  &
+         p_matrix_pt2(astate,bstate) = p_matrix_pt2(astate,bstate)  &
                  + num1 * num2 / ( denom1 * denom2 )
 
        enddo
@@ -283,9 +347,9 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
          num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin)
          num2 = 2.0_dp * eri_eigen(astate,cstate,pqspin,bstate,istate,pqspin)
 
-         p_matrix_mp2(cstate,jstate) = p_matrix_mp2(cstate,jstate)  &
+         p_matrix_pt2(cstate,jstate) = p_matrix_pt2(cstate,jstate)  &
                                            + num1 * num2 / ( denom1 * denom2 )
-         p_matrix_mp2(jstate,cstate) = p_matrix_mp2(jstate,cstate)  &
+         p_matrix_pt2(jstate,cstate) = p_matrix_pt2(jstate,cstate)  &
                                            + num1 * num2 / ( denom1 * denom2 )
        enddo
      enddo
@@ -305,9 +369,9 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
          num1 = 2.0_dp * eri_eigen(jstate,astate,pqspin,istate,bstate,pqspin)
          num2 = 2.0_dp * eri_eigen(istate,kstate,pqspin,jstate,astate,pqspin)
 
-         p_matrix_mp2(bstate,kstate) = p_matrix_mp2(bstate,kstate)  &
+         p_matrix_pt2(bstate,kstate) = p_matrix_pt2(bstate,kstate)  &
                                            - num1 * num2 / ( denom1 * denom2 )
-         p_matrix_mp2(kstate,bstate) = p_matrix_mp2(kstate,bstate)  &
+         p_matrix_pt2(kstate,bstate) = p_matrix_pt2(kstate,bstate)  &
                                            - num1 * num2 / ( denom1 * denom2 )
        enddo
      enddo
@@ -317,17 +381,17 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
 
 ! open(111,file='p_matrix_pt2.dat',action='write')
 ! do pstate=nsemin,nsemax
-!   write(111,'(*(2x,f12.6))') p_matrix_mp2(pstate,:)
+!   write(111,'(*(2x,f12.6))') p_matrix_pt2(pstate,:)
 ! enddo
 ! close(111)
 
  ! Add the SCF density matrix to get to the total density matrix
  do pstate=nsemin,nsemax
-   p_matrix_mp2(pstate,pstate) = p_matrix_mp2(pstate,pstate) + occupation(pstate,pqspin)
+   p_matrix_pt2(pstate,pstate) = p_matrix_pt2(pstate,pstate) + occupation(pstate,pqspin)
  enddo
 
  p_matrix(:,:,pqspin) = MATMUL( c_matrix(:,nsemin:nsemax,pqspin)  , &
-                          MATMUL( p_matrix_mp2(nsemin:nsemax,nsemin:nsemax), &
+                          MATMUL( p_matrix_pt2(nsemin:nsemax,nsemin:nsemax), &
                              TRANSPOSE(c_matrix(:,nsemin:nsemax,pqspin)) ) )
 
 !block

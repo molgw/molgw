@@ -68,6 +68,7 @@ module m_inputparam
    logical            :: is_bse,is_td
    integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
    integer            :: selfenergy_approx         ! GW, COHSEX, PT2
+   logical            :: selfenergy_static
 #ifdef HAVE_LIBXC
    type(xc_f90_pointer_t),allocatable :: xc_func(:)
    type(xc_f90_pointer_t),allocatable :: xc_info(:)
@@ -196,21 +197,22 @@ subroutine init_calculation_type(calc_type,input_key)
 
  !
  ! default values
- calc_type%calc_name           =  TRIM(input_key)
- calc_type%is_dft              = .FALSE.
- calc_type%need_rpa            = .FALSE.
- calc_type%is_lr_mbpt          = .FALSE.
- calc_type%is_gw               = .FALSE.
- calc_type%is_mp2              = .FALSE.
- calc_type%is_mp3              = .FALSE.
- calc_type%is_ci               = .FALSE.
- calc_type%is_bse              = .FALSE.
- calc_type%is_td               = .FALSE.
- calc_type%selfenergy_technique= one_shot
- calc_type%selfenergy_approx   = 0
- calc_type%postscf_name        = 'None'
- calc_type%is_selfenergy       = .FALSE.
- calc_type%is_core             = .FALSE.
+ calc_type%calc_name            =  TRIM(input_key)
+ calc_type%is_dft               = .FALSE.
+ calc_type%need_rpa             = .FALSE.
+ calc_type%is_lr_mbpt           = .FALSE.
+ calc_type%is_gw                = .FALSE.
+ calc_type%is_mp2               = .FALSE.
+ calc_type%is_mp3               = .FALSE.
+ calc_type%is_ci                = .FALSE.
+ calc_type%is_bse               = .FALSE.
+ calc_type%is_td                = .FALSE.
+ calc_type%selfenergy_technique = one_shot
+ calc_type%selfenergy_approx    = 0
+ calc_type%selfenergy_static    = .FALSE.
+ calc_type%postscf_name         = 'None'
+ calc_type%is_selfenergy        = .FALSE.
+ calc_type%is_core              = .FALSE.
 
  ipos=index(input_key,'+',.TRUE.)
 
@@ -298,6 +300,9 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%is_mp3   =.TRUE.
    case('MP2_SELFENERGY','PT2')
      calc_type%selfenergy_approx = PT2
+   case('PT1PT2','PT1-PT2','PT12','PT1+PT2')
+     calc_type%selfenergy_approx = PT2
+     calc_type%selfenergy_static = .TRUE.
    case('MP3_SELFENERGY','PT3')
      calc_type%selfenergy_approx = PT3
    case('EVMP3_SELFENERGY','EVPT3')
@@ -393,7 +398,7 @@ subroutine init_dft_type(key,calc_type)
       'BHANDH','BHANDHLYP','BHLYP','B3LYP','B3LYP5', &
       'PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TUNED-CAM-B3LYP','HJSX')
    ndft_xc=1
- case('LDA','SPL','VWN','VWN_RPA','PBE','PBEH','BLYP','PW91')
+ case('LDA','SPL','VWN','VWN_RPA','PBE','PBEH','BLYP','PW91','RSHNOCOR')
    ndft_xc=2
  case('RSH')
    ndft_xc=3
@@ -560,6 +565,12 @@ subroutine init_dft_type(key,calc_type)
    dft_xc_coef(1) = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
    dft_xc_coef(2) = alpha_hybrid_lr
    dft_xc_coef(3) = 1.00_dp
+   rcut           = 1.0_dp / gamma_hybrid
+ case('RSHNOCOR')
+   dft_xc_type(1) = XC_GGA_X_PBE
+   dft_xc_type(2) = XC_GGA_X_HJS_PBE  ! HJS is not correct in Libxc <= 2.2.2
+   dft_xc_coef(1) = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
+   dft_xc_coef(2) = alpha_hybrid_lr
    rcut           = 1.0_dp / gamma_hybrid
  ! Testing
  case('TESTHSE')

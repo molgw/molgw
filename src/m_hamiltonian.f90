@@ -208,15 +208,18 @@ subroutine setup_exchange_ri(nbf,nstate,occupation,c_matrix,p_matrix,exchange_ij
  do ispin=1,nspin
 
    ! Find highest occupied state
+   ! Take care of negative occupations, this can happen if C comes from P^{1/2}
    nocc = 0
    do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty)  cycle
+     if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
      nocc = istate
    enddo
 
 
    do istate=1,nocc
      if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle
+
+     if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
 
      tmp(:,:) = 0.0_dp
      !$OMP PARALLEL PRIVATE(ibf,jbf) 

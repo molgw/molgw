@@ -944,3 +944,65 @@ end subroutine pt3_selfenergy
 
 
 !=========================================================================
+subroutine pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,exchange_m_vxc_diag)
+ use m_definitions
+ use m_mpi
+ use m_mpi_ortho
+ use m_warning
+ use m_timing
+ use m_basis_set
+ use m_eri_ao_mo
+ use m_inputparam
+ use m_selfenergy_tools
+ use m_hamiltonian
+ implicit none
+
+ integer,intent(in)         :: nstate
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin),energy(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(in)        :: exchange_m_vxc(nstate,nstate,nspin)
+ real(dp),intent(inout)     :: exchange_m_vxc_diag(nstate,nspin)
+!=====
+ integer  :: ispin,istate
+ real(dp) :: energy_tmp
+ real(dp) :: p_matrix_pt1(basis%nbf,basis%nbf,nspin)
+ real(dp) :: hh(basis%nbf,basis%nbf)
+ real(dp) :: hx(basis%nbf,basis%nbf,nspin)
+ real(dp) :: c_matrix_tmp(basis%nbf,basis%nbf,nspin)
+ real(dp) :: occupation_tmp(basis%nbf,nspin)
+!=====
+
+ !
+ ! Get the first-order correction to the density matrix
+ call pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,p_matrix_pt1)
+
+ if( .NOT. has_auxil_basis ) then
+   call setup_hartree(print_matrix_,basis%nbf,p_matrix_pt1,hh,energy_tmp)
+ else
+   call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix_pt1,hh,energy_tmp)
+ endif
+
+
+ if( .NOT. has_auxil_basis ) then
+   call setup_exchange(basis%nbf,p_matrix_pt1,hx,energy_tmp)
+ else
+   call get_c_matrix_from_p_matrix(p_matrix_pt1,c_matrix_tmp,occupation_tmp)
+   call setup_exchange_ri(basis%nbf,basis%nbf,occupation_tmp,c_matrix_tmp,p_matrix_pt1,hx,energy_tmp)
+ endif
+
+
+ do ispin=1,nspin
+   do istate=1,nstate
+      exchange_m_vxc_diag(istate,ispin) =  exchange_m_vxc_diag(istate,ispin) + DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hh(:,:) , c_matrix(:,istate,ispin) ) )
+      exchange_m_vxc_diag(istate,ispin) =  exchange_m_vxc_diag(istate,ispin) + DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hx(:,:,ispin) , c_matrix(:,istate,ispin) ) )
+   enddo
+ enddo
+
+
+
+
+end subroutine pt1_selfenergy
+
+
+!=========================================================================

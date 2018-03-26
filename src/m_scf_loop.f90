@@ -485,17 +485,29 @@ subroutine scf_loop(is_restart,&
    call clean_allocate('Temporary density matrix',p_matrix_out,basis%nbf,basis%nbf,nspin)
 
    select case(TRIM(read_fchk))
-   case('MOLGW')
+   case('MOLGWONE-RING')
+     ! This keyword calculates the PT2 density matrix as it is assumed in PT2 theory (differs from MP2 density matrix)
+     call selfenergy_set_state_range(nstate,occupation)
+     call onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix_out)
+   case('MOLGWPT2')
      ! This keyword calculates the PT2 density matrix as it is assumed in PT2 theory (differs from MP2 density matrix)
      call selfenergy_set_state_range(nstate,occupation)
      call pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix_out)
-     !call onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix_out)
    case('MOLGWGW')
      call init_spectral_function(nstate,occupation,0,wpol)
      call polarizability(.TRUE.,.TRUE.,basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
      call selfenergy_set_state_range(nstate,occupation)
      call gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_out)
      call destroy_spectral_function(wpol)
+   case('MOLGWPT1')
+     call selfenergy_set_state_range(nstate,occupation)
+     block
+       real(dp) :: exchange_m_vxc_diag(nstate,nspin)
+       real(dp) :: exchange_m_vxc(nstate,nstate,nspin)
+       call setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag,exchange_m_vxc)
+       call pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,p_matrix_out)
+     end block
+
    case default
      call read_gaussian_fchk(basis,p_matrix_out)
    end select
@@ -512,7 +524,6 @@ subroutine scf_loop(is_restart,&
        call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix_out,hamiltonian_hartree,energy_tmp)
        write(stdout,'(a50,1x,f19.10)') 'Hartree energy from input density matrix [Ha]:',energy_tmp
        block
-         integer  :: ibf
          real(dp) :: c_matrix_tmp(basis%nbf,basis%nbf,nspin)
          real(dp) :: occupation_tmp(basis%nbf,nspin)
          !=====

@@ -486,7 +486,7 @@ end subroutine destroy_selfenergy_grid
 
 
 !=========================================================================
-subroutine setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag)
+subroutine setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag,exchange_m_vxc)
  use m_inputparam
  use m_basis_set
  use m_dft_grid
@@ -494,13 +494,14 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,ham
  use m_hamiltonian_sca
  implicit none
 
- type(basis_set),intent(in) :: basis
- integer,intent(in)         :: nstate
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(in)        :: energy(nstate,nspin)
- real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(in)        :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
- real(dp),intent(out)       :: exchange_m_vxc_diag(nstate,nspin)
+ type(basis_set),intent(in)    :: basis
+ integer,intent(in)            :: nstate
+ real(dp),intent(in)           :: occupation(nstate,nspin)
+ real(dp),intent(in)           :: energy(nstate,nspin)
+ real(dp),intent(in)           :: c_matrix(basis%nbf,nstate,nspin)
+ real(dp),intent(in)           :: hamiltonian_fock(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(out)          :: exchange_m_vxc_diag(nstate,nspin)
+ real(dp),intent(out),optional :: exchange_m_vxc(nstate,nstate,nspin)
 !=====
  integer,parameter    :: BATCH_SIZE=64
  integer              :: ispin,istate
@@ -509,6 +510,11 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,ham
  real(dp),allocatable :: p_matrix_tmp(:,:,:)
  real(dp),allocatable :: hxc_val(:,:,:),hexx_val(:,:,:),hxmxc(:,:,:)
 !=====
+ 
+ if( PRESENT(exchange_m_vxc) ) then
+   write(stdout,*) 'Calculate the full \Sigma_x - Vxc matrix'
+ endif
+
 
  !
  ! Testing the core/valence splitting
@@ -553,27 +559,43 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,ham
    deallocate(occupation_tmp,p_matrix_tmp)
 
    !
-   ! Calculate the diagonal of the matrix Sigma_x - Vxc
+   ! Calculate the matrix Sigma_x - Vxc or its diagonal
    ! for the forthcoming GW corrections
-   exchange_m_vxc_diag(:,:) = 0.0_dp
+   !
+   if( PRESENT(exchange_m_vxc) ) then
+     do ispin=1,nspin
+        exchange_m_vxc(:,:,ispin) =  MATMUL(  TRANSPOSE(c_matrix(:,:,ispin)) , &
+                                             MATMUL( hxmxc(:,:,ispin) , c_matrix(:,:,ispin) ) )
+     enddo
+   endif
    do ispin=1,nspin
      do istate=1,nstate
-
         exchange_m_vxc_diag(istate,ispin) =  DOT_PRODUCT(  c_matrix(:,istate,ispin) , &
                                                 MATMUL( hxmxc(:,:,ispin) , c_matrix(:,istate,ispin) ) )
      enddo
    enddo
+
+
    deallocate(hxc_val,hexx_val,hxmxc)
 
  else
 
    !
-   ! Calculate the diagonal of the matrix Sigma_x - Vxc
+   ! Calculate the matrix Sigma_x - Vxc or its diagonal
    ! for the forthcoming GW corrections
-   exchange_m_vxc_diag(:,:) = 0.0_dp
+   !
+
+   if( PRESENT(exchange_m_vxc) ) then
+     do ispin=1,nspin
+        exchange_m_vxc(:,:,ispin) =  MATMUL( TRANSPOSE(c_matrix(:,:,ispin)) , &
+                                             MATMUL( hamiltonian_fock(:,:,ispin) , c_matrix(:,:,ispin) ) )
+       do istate=1,nstate
+         exchange_m_vxc(istate,istate,ispin) = exchange_m_vxc(istate,istate,ispin) - energy(istate,ispin)
+       enddo
+     enddo
+   endif
    do ispin=1,nspin
      do istate=1,nstate
-
         exchange_m_vxc_diag(istate,ispin) =  DOT_PRODUCT(  c_matrix(:,istate,ispin) , &
                                                 MATMUL( hamiltonian_fock(:,:,ispin) , c_matrix(:,istate,ispin) ) ) &
                                               - energy(istate,ispin)
@@ -583,7 +605,7 @@ subroutine setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,ham
  endif
 
 
-end subroutine setup_exchange_m_vxc_diag
+end subroutine setup_exchange_m_vxc
 
 
 !=========================================================================
