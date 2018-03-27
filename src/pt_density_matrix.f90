@@ -96,7 +96,7 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
  integer                 :: pqspin
  real(dp)                :: denom1,denom2
  real(dp)                :: num1,num2
- real(dp)                :: p_matrix_pt2(nsemin:nsemax,nsemin:nsemax)
+ real(dp)                :: p_matrix_pt2(nstate,nstate)
 !=====
 
 
@@ -208,19 +208,19 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
  enddo
 
 ! open(111,file='p_matrix_pt2.dat',action='write')
-! do pstate=nsemin,nsemax
+! do pstate=1,nstate
 !   write(111,'(*(2x,f12.6))') p_matrix_pt2(pstate,:)
 ! enddo
 ! close(111)
 
  ! Add the SCF density matrix to get to the total density matrix
- do pstate=nsemin,nsemax
+ do pstate=1,nstate
    p_matrix_pt2(pstate,pstate) = p_matrix_pt2(pstate,pstate) + occupation(pstate,pqspin)
  enddo
 
- p_matrix(:,:,pqspin) = MATMUL( c_matrix(:,nsemin:nsemax,pqspin)  , &
-                          MATMUL( p_matrix_pt2(nsemin:nsemax,nsemin:nsemax), &
-                             TRANSPOSE(c_matrix(:,nsemin:nsemax,pqspin)) ) )
+ p_matrix(:,:,pqspin) = MATMUL( c_matrix(:,:,pqspin)  , &
+                          MATMUL( p_matrix_pt2(:,:), &
+                             TRANSPOSE(c_matrix(:,:,pqspin)) ) )
 
 !block
 ! real(dp) :: hh(basis%nbf,basis%nbf)
@@ -270,7 +270,7 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
  integer                 :: pqspin
  real(dp)                :: denom1,denom2
  real(dp)                :: num1,num2
- real(dp)                :: p_matrix_pt2(nsemin:nsemax,nsemin:nsemax)
+ real(dp)                :: p_matrix_pt2(nstate,nstate)
 !=====
 
 
@@ -380,19 +380,19 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
  enddo
 
 ! open(111,file='p_matrix_pt2.dat',action='write')
-! do pstate=nsemin,nsemax
+! do pstate=1,nstate
 !   write(111,'(*(2x,f12.6))') p_matrix_pt2(pstate,:)
 ! enddo
 ! close(111)
 
  ! Add the SCF density matrix to get to the total density matrix
- do pstate=nsemin,nsemax
+ do pstate=1,nstate
    p_matrix_pt2(pstate,pstate) = p_matrix_pt2(pstate,pstate) + occupation(pstate,pqspin)
  enddo
 
- p_matrix(:,:,pqspin) = MATMUL( c_matrix(:,nsemin:nsemax,pqspin)  , &
-                          MATMUL( p_matrix_pt2(nsemin:nsemax,nsemin:nsemax), &
-                             TRANSPOSE(c_matrix(:,nsemin:nsemax,pqspin)) ) )
+ p_matrix(:,:,pqspin) = MATMUL( c_matrix(:,:,pqspin)  , &
+                          MATMUL( p_matrix_pt2(:,:), &
+                             TRANSPOSE(c_matrix(:,:,pqspin)) ) )
 
 !block
 ! real(dp) :: hh(basis%nbf,basis%nbf)
@@ -444,7 +444,7 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
  integer  :: pqspin
  real(dp) :: denom1,denom2
  real(dp) :: num1,num2
- real(dp) :: p_matrix_gw(nsemin:nsemax,nsemin:nsemax)
+ real(dp) :: p_matrix_gw(nstate,nstate)
  integer  :: t_ib,ipole
  real(dp),allocatable :: bra_occ(:,:),bra_virt(:,:)
 !=====
@@ -567,19 +567,19 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
  deallocate(bra_virt)
 
 ! open(111,file='p_matrix_pt2.dat',action='write')
-! do pstate=nsemin,nsemax
+! do pstate=1,nstate
 !   write(111,'(*(2x,f12.6))') p_matrix_gw(pstate,:)
 ! enddo
 ! close(111)
 
  ! Add the SCF density matrix to get to the total density matrix
- do pstate=nsemin,nsemax
+ do pstate=1,nstate
    p_matrix_gw(pstate,pstate) = p_matrix_gw(pstate,pstate) + occupation(pstate,pqspin)
  enddo
 
- p_matrix(:,:,pqspin) = MATMUL( c_matrix(:,nsemin:nsemax,pqspin)  , &
-                          MATMUL( p_matrix_gw(nsemin:nsemax,nsemin:nsemax), &
-                             TRANSPOSE(c_matrix(:,nsemin:nsemax,pqspin)) ) )
+ p_matrix(:,:,pqspin) = MATMUL( c_matrix(:,:,pqspin)  , &
+                          MATMUL( p_matrix_gw(:,:), &
+                             TRANSPOSE(c_matrix(:,:,pqspin)) ) )
 
 
  if(has_auxil_basis) then

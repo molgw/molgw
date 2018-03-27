@@ -300,7 +300,7 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%is_mp3   =.TRUE.
    case('MP2_SELFENERGY','PT2')
      calc_type%selfenergy_approx = PT2
-   case('PT1PT2','PT1-PT2','PT12','PT1+PT2')
+   case('PT1PT2','PT1-PT2','PT12')
      calc_type%selfenergy_approx = PT2
      calc_type%selfenergy_static = .TRUE.
    case('MP3_SELFENERGY','PT3')
