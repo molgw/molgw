@@ -9,6 +9,7 @@
 module m_eri_ao_mo
  use m_definitions
  use m_mpi
+ use m_mpi_ortho
  use m_memory
  use m_warning
  use m_basis_set
@@ -184,6 +185,7 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
 
  call clean_allocate('4-center MO integrals',eri_4center_eigen_uks, &
                      nstate_min,nstate_max,nstate_min,nstate_max,nstate_min,nstate_max,nstate_min,nstate_max)
+ eri_4center_eigen_uks(:,:,:,:) = 0.0_dp
 
  allocate(eri_tmp3(nbf,nbf,nbf),eri_tmp2(nstate_min:nstate_max,nbf,nbf),eri_tmp1(nstate_min:nstate_max,nbf))
  
@@ -194,6 +196,7 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
 
 
  do istate=nstate_min,nstate_max
+   if( MODULO( istate - nstate_min , nproc_ortho ) /= rank_ortho ) cycle
 
    do lbf=1,nbf
      do kbf=1,nbf
@@ -216,6 +219,8 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
    enddo
 
  enddo
+
+ call xsum_ortho(eri_4center_eigen_uks)
 
 
  deallocate(eri_tmp1,eri_tmp2,eri_tmp3)

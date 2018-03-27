@@ -47,6 +47,8 @@ module m_inputparam
  integer,parameter :: SOX          = 222
  integer,parameter :: PT3          = 223
  integer,parameter :: TWO_RINGS    = 224
+ integer,parameter :: GWSOX        = 225
+ integer,parameter :: GWPT3        = 226
 
  type calculation_type
    character(len=100) :: calc_name
@@ -66,6 +68,7 @@ module m_inputparam
    logical            :: is_bse,is_td
    integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
    integer            :: selfenergy_approx         ! GW, COHSEX, PT2
+   logical            :: selfenergy_static
 #ifdef HAVE_LIBXC
    type(xc_f90_pointer_t),allocatable :: xc_func(:)
    type(xc_f90_pointer_t),allocatable :: xc_info(:)
@@ -101,6 +104,7 @@ module m_inputparam
  character(len=100),protected     :: move_nuclei
  character(len=100),protected     :: xyz_file
  character(len=100),protected     :: basis_path
+ character(len=100),protected     :: read_fchk
  character(len=100),allocatable,protected :: basis_name(:)
  character(len=100),allocatable,protected :: auxil_basis_name(:)
  character(len=100),allocatable,protected :: small_basis_name(:)
@@ -148,8 +152,10 @@ module m_inputparam
  real(dp),protected               :: grid_memory
 
  logical,protected                :: gwgamma_tddft_
+ logical,protected                :: pt3_a_diagrams_
  logical,protected                :: read_restart_
  logical,protected                :: ignore_bigrestart_
+ logical,protected                :: force_energy_qp_
  logical,protected                :: print_matrix_
  logical,protected                :: print_eri_
  logical,protected                :: print_wfn_
@@ -160,6 +166,8 @@ module m_inputparam
  logical,protected                :: print_pdos_
  logical,protected                :: print_cube_
  logical,protected                :: print_multipole_
+ logical,protected                :: print_hartree_
+ logical,protected                :: print_exchange_
  real(dp),protected               :: rcut_mbpt
 
  real(dp),protected               :: alpha_hybrid    = 0.0_dp
@@ -189,21 +197,22 @@ subroutine init_calculation_type(calc_type,input_key)
 
  !
  ! default values
- calc_type%calc_name           =  TRIM(input_key)
- calc_type%is_dft              = .FALSE.
- calc_type%need_rpa            = .FALSE.
- calc_type%is_lr_mbpt          = .FALSE.
- calc_type%is_gw               = .FALSE.
- calc_type%is_mp2              = .FALSE.
- calc_type%is_mp3              = .FALSE.
- calc_type%is_ci               = .FALSE.
- calc_type%is_bse              = .FALSE.
- calc_type%is_td               = .FALSE.
- calc_type%selfenergy_technique= one_shot
- calc_type%selfenergy_approx   = 0
- calc_type%postscf_name        = 'None'
- calc_type%is_selfenergy       = .FALSE.
- calc_type%is_core             = .FALSE.
+ calc_type%calc_name            =  TRIM(input_key)
+ calc_type%is_dft               = .FALSE.
+ calc_type%need_rpa             = .FALSE.
+ calc_type%is_lr_mbpt           = .FALSE.
+ calc_type%is_gw                = .FALSE.
+ calc_type%is_mp2               = .FALSE.
+ calc_type%is_mp3               = .FALSE.
+ calc_type%is_ci                = .FALSE.
+ calc_type%is_bse               = .FALSE.
+ calc_type%is_td                = .FALSE.
+ calc_type%selfenergy_technique = one_shot
+ calc_type%selfenergy_approx    = 0
+ calc_type%selfenergy_static    = .FALSE.
+ calc_type%postscf_name         = 'None'
+ calc_type%is_selfenergy        = .FALSE.
+ calc_type%is_core              = .FALSE.
 
  ipos=index(input_key,'+',.TRUE.)
 
@@ -259,6 +268,12 @@ subroutine init_calculation_type(calc_type,input_key)
    case('G0W0SOX0')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0SOX0
+   case('GWSOX')
+     calc_type%is_gw    =.TRUE.
+     calc_type%selfenergy_approx = GWSOX
+   case('GWPT3')
+     calc_type%is_gw    =.TRUE.
+     calc_type%selfenergy_approx = GWPT3
    case('G0W0GAMMA0','GWGAMMA')
      calc_type%is_gw    =.TRUE.
      calc_type%selfenergy_approx = G0W0GAMMA0
@@ -285,6 +300,9 @@ subroutine init_calculation_type(calc_type,input_key)
      calc_type%is_mp3   =.TRUE.
    case('MP2_SELFENERGY','PT2')
      calc_type%selfenergy_approx = PT2
+   case('PT1PT2','PT1-PT2','PT12')
+     calc_type%selfenergy_approx = PT2
+     calc_type%selfenergy_static = .TRUE.
    case('MP3_SELFENERGY','PT3')
      calc_type%selfenergy_approx = PT3
    case('EVMP3_SELFENERGY','EVPT3')
@@ -380,7 +398,7 @@ subroutine init_dft_type(key,calc_type)
       'BHANDH','BHANDHLYP','BHLYP','B3LYP','B3LYP5', &
       'PBE0','HSE03','HSE06','HSE08','HCTH','CAM-B3LYP','TUNED-CAM-B3LYP','HJSX')
    ndft_xc=1
- case('LDA','SPL','VWN','VWN_RPA','PBE','PBEH','BLYP','PW91')
+ case('LDA','SPL','VWN','VWN_RPA','PBE','PBEH','BLYP','PW91','RSHNOCOR')
    ndft_xc=2
  case('RSH')
    ndft_xc=3
@@ -547,6 +565,12 @@ subroutine init_dft_type(key,calc_type)
    dft_xc_coef(1) = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
    dft_xc_coef(2) = alpha_hybrid_lr
    dft_xc_coef(3) = 1.00_dp
+   rcut           = 1.0_dp / gamma_hybrid
+ case('RSHNOCOR')
+   dft_xc_type(1) = XC_GGA_X_PBE
+   dft_xc_type(2) = XC_GGA_X_HJS_PBE  ! HJS is not correct in Libxc <= 2.2.2
+   dft_xc_coef(1) = 1.00_dp - (alpha_hybrid + alpha_hybrid_lr)
+   dft_xc_coef(2) = alpha_hybrid_lr
    rcut           = 1.0_dp / gamma_hybrid
  ! Testing
  case('TESTHSE')
@@ -717,12 +741,13 @@ subroutine read_inputfile_namelist()
  character(len=100)   :: ecp_small_basis
  character(len=100)   :: default_basis_path
  character(len=12)    :: length_unit
- character(len=3)     :: read_restart,ignore_bigrestart
+ character(len=3)     :: read_restart,ignore_bigrestart,force_energy_qp
  character(len=3)     :: print_matrix,print_eri,print_wfn,print_w,print_sigma
  character(len=3)     :: print_restart,print_bigrestart
- character(len=3)     :: print_pdos,print_cube,print_multipole
+ character(len=3)     :: print_pdos,print_cube,print_multipole,print_hartree,print_exchange
  character(len=3)     :: tda,triplet,frozencore,virtual_fno
  character(len=3)     :: gwgamma_tddft
+ character(len=3)     :: pt3_a_diagrams
  real(dp)             :: length_factor,eta
  integer              :: natom_read
  integer              :: atom_number,info,iatom
@@ -802,9 +827,11 @@ subroutine read_inputfile_namelist()
  init_hamiltonian   = capitalize(init_hamiltonian)
  ci_greens_function = capitalize(ci_greens_function)
  ci_type            = capitalize(ci_type)
+ read_fchk          = capitalize(read_fchk)
 
  read_restart_      = yesno(read_restart)
  ignore_bigrestart_ = yesno(ignore_bigrestart)
+ force_energy_qp_   = yesno(force_energy_qp)
  is_tda             = yesno(tda)
  is_triplet         = yesno(triplet)
  is_frozencore      = yesno(frozencore)
@@ -820,7 +847,10 @@ subroutine read_inputfile_namelist()
  print_pdos_        = yesno(print_pdos)
  print_multipole_   = yesno(print_multipole)
  print_cube_        = yesno(print_cube)
+ print_hartree_     = yesno(print_hartree)
+ print_exchange_    = yesno(print_exchange)
  gwgamma_tddft_     = yesno(gwgamma_tddft)
+ pt3_a_diagrams_    = yesno(pt3_a_diagrams)
 
  tddft_grid_level   = interpret_quality(tddft_grid_quality)
  grid_level         = interpret_quality(grid_quality)

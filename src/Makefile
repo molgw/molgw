@@ -80,7 +80,7 @@ level037: m_selfenergy_tools.o m_virtual_orbital_space.o m_tddft_fxc.o
 
 level038: m_scf_loop.o m_ci.o m_adc.o
 
-level040: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenergy.o gw_selfenergy_grid.o \
+level040: pt_selfenergy.o pt_density_matrix.o linear_response.o static_polarizability.o gw_selfenergy.o gw_selfenergy_grid.o \
           gwgamma_selfenergy.o cohsex_selfenergy.o bse.o density_tools.o multipole_tools.o \
           io.o restart.o mp2.o selfenergy_evaluation.o force.o molgw.o
 
@@ -101,7 +101,7 @@ level040: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenerg
         m_eri.o m_scf.o m_dft_grid.o m_libint_tools.o m_selfenergy_tools.o \
         m_eri_calculate.o m_eri_ao_mo.o m_tddft_fxc.o \
         m_spectral_function.o m_hamiltonian.o m_hamiltonian_onebody.o m_hamiltonian_sca.o m_hamiltonian_buffer.o m_ci.o m_adc.o \
-        m_virtual_orbital_space.o pt_selfenergy.o \
+        m_virtual_orbital_space.o pt_selfenergy.o pt_density_matrix.o \
         linear_response.o static_polarizability.o gw_selfenergy.o gw_selfenergy_grid.o gwgamma_selfenergy.o \
         cohsex_selfenergy.o bse.o density_tools.o multipole_tools.o io.o restart.o mp2.o m_scf_loop.o selfenergy_evaluation.o force.o \
         molgw.o
@@ -114,7 +114,7 @@ level040: pt_selfenergy.o linear_response.o static_polarizability.o gw_selfenerg
                         m_eri_calculate.o m_eri_ao_mo.o m_tddft_fxc.o \
                         m_spectral_function.o m_ci.o m_adc.o \
                         libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
-                        boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt_selfenergy.o \
+                        boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o pt_selfenergy.o pt_density_matrix.o \
                         mp2.o gw_selfenergy.o gw_selfenergy_grid.o gwgamma_selfenergy.o cohsex_selfenergy.o bse.o \
                         linear_response.o static_polarizability.o density_tools.o multipole_tools.o io.o restart.o \
                         m_hamiltonian.o m_hamiltonian_onebody.o m_hamiltonian_sca.o m_hamiltonian_buffer.o m_scf_loop.o \
@@ -227,6 +227,10 @@ m_virtual_orbital_space.o: m_definitions.f90 m_mpi.f90 m_timing.f90 m_warning.f9
 pt_selfenergy.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 \
                   m_spectral_function.f90 m_inputparam.f90 m_selfenergy_tools.f90 m_eri_ao_mo.f90 pt_selfenergy.f90
 	$(FC_W_OPTS) -c pt_selfenergy.f90 $(LIBXC_INCS)
+
+pt_density_matrix.o: m_definitions.f90 m_mpi.f90 m_mpi_ortho.f90 m_timing.f90 m_warning.f90 m_basis_set.f90 \
+                  m_spectral_function.f90 m_inputparam.f90 m_selfenergy_tools.f90 m_eri_ao_mo.f90 pt_density_matrix.f90
+	$(FC_W_OPTS) -c pt_density_matrix.f90 $(LIBXC_INCS)
 
 pdbssolver1.o: pdbssolver1.f
 	$(FC_W_OPTS) -c pdbssolver1.f $(LIBXC_INCS) $(ELPA_INCS)

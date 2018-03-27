@@ -93,9 +93,9 @@ function matrix_is_symmetric(n,matrix)
  logical             :: matrix_is_symmetric
  integer,intent(in)  :: n
  real(dp),intent(in) :: matrix(n,n)
-!===== 
+!=====
  integer :: ii,jj
-!===== 
+!=====
 
  matrix_is_symmetric = .TRUE.
  do ii=1,n
@@ -192,7 +192,7 @@ subroutine diagonalize_wo_vectors_dp(n,matrix,eigval)
 ! real(dp) :: z(1,n)
 ! real(dp) :: work(8*n)
 !=====
- 
+
  call DSYEV('N','U',n,matrix,n,eigval,work,3*n-1,info)
 
 ! call DSYEVX('N','A','U',n,matrix,n,0.0_dp,0.0_dp,0,0,&
@@ -231,7 +231,7 @@ subroutine diagonalize_dp(n,matrix,eigval,eigvec)
 
  real(dp) :: work(3*n-1)
  integer :: info
- 
+
  eigvec(:,:) = matrix(:,:)
 
  call DSYEV('V','U',n,eigvec,n,eigval,work,3*n-1,info)
@@ -508,8 +508,8 @@ subroutine coeffs_gausslegint(xmin,xmax,x,weights,n)
 !
 
  implicit none
-     
- integer,intent(in) :: n 
+
+ integer,intent(in) :: n
  real(dp),intent(in) :: xmin,xmax
  real(dp),intent(out) :: x(n),weights(n)
 !=====
@@ -524,24 +524,24 @@ subroutine coeffs_gausslegint(xmin,xmax,x,weights,n)
 
  do i=1,(n+1)/2
   z = COS(pi*(i-0.250_dp)/(n+0.50_dp))
- 
-  do 
+
+  do
 
     p1=1.0_dp
     p2=0.0_dp
- 
+
     do j=1,n
-     
+
      p3=p2
      p2=p1
      p1=((2.0_dp*j - 1.0_dp)*z*p2 - (j-1.0_dp)*p3)/j
-   
+
     enddo
-  
+
     pp=n*(p2-z*p1)/(1.0_dp - z**2)
     z1=z
     z=z1-p1/pp
-    
+
     if(abs(z-z1) < tol) exit
 
   enddo
@@ -1038,11 +1038,11 @@ function get_number_of_elements(string) result(num)
  num=0
 
  do
-   i = VERIFY(string(pos:),' ')  !-- Find next non-blank 
+   i = VERIFY(string(pos:),' ')  !-- Find next non-blank
    if( i == 0 ) exit             !-- No word found
    num = num + 1                 !-- Found something
-   pos = pos + i - 1             !-- Move to start of the word 
-   i = SCAN(string(pos:),' ')    !-- Find next blank 
+   pos = pos + i - 1             !-- Move to start of the word
+   i = SCAN(string(pos:),' ')    !-- Find next blank
    if( i == 0 ) exit             !-- No blank found
    pos = pos + i - 1             !-- Move to the blank
  end do
@@ -1079,6 +1079,25 @@ end subroutine string_to_integers
 
 
 !=========================================================================
+function determinant_3x3_matrix(mat) RESULT(det)
+ implicit none
+
+ real(dp) :: det
+ real(dp),intent(in) :: mat(3,3)
+!=====
+!=====
+
+ det =  mat(1,1) * mat(2,2) * mat(3,3)  &
+      + mat(1,2) * mat(2,3) * mat(3,1)  &
+      + mat(1,3) * mat(2,1) * mat(3,2)  &
+      - mat(1,3) * mat(2,2) * mat(3,1)  &
+      - mat(1,2) * mat(2,1) * mat(3,3)  &
+      - mat(1,1) * mat(2,3) * mat(3,2)
+
+end function determinant_3x3_matrix
+
+
+!=========================================================================
 subroutine string_to_reals(string_in,rarray)
  implicit none
 
@@ -1104,8 +1123,6 @@ subroutine string_to_reals(string_in,rarray)
  enddo
 
 end subroutine string_to_reals
-
-
 
 
 end module m_tools

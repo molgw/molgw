@@ -43,7 +43,7 @@ module m_eri
 
  integer,private   :: nbf_eri         ! local copy of nbf
  integer,protected :: nsize           ! size of the eri_4center array
- integer,protected :: npair         ! number of independent pairs (i,j) with i<=j 
+ integer,protected :: npair           ! number of independent pairs (i,j) with i<=j 
 
  integer,protected :: nauxil_3center     ! size of the 3-center matrix
                                          ! may differ from the total number of 3-center integrals due to

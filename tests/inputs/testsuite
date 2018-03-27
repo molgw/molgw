@@ -573,4 +573,9 @@ SCF Total Energy          ,    -76.3174966596   , 0 , 1.0e-7
 h2o_restart_temperature.in , restart with non-zero temperature, Restart
 SCF Total Energy          ,    -76.3174966596   , 0 , 1.0e-7
 
+co_pt1pt2.in              , PT1+PT2 perturbation theory for a non-Hartree-Fock starting point
+SCF Total Energy          ,   -113.1959990723   , 0 , 1.0e-7
+PT1PT2 HOMO energy        ,    -13.100347       , 0 , 1.0e-4
+PT1PT2 LUMO energy        ,      3.058181       , 0 , 1.0e-4
+
 

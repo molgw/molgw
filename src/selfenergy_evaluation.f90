@@ -4,7 +4,7 @@
 !
 ! This file contains
 ! the driver for the different self-energy methods:
-! PT2, GW, evGW, COHSEX, GWGamma, etc.
+! PT2, PT3, GW, evGW, COHSEX, GWGamma, etc.
 !
 !=========================================================================
 subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_matrix, &
@@ -33,7 +33,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  real(dp),intent(inout)     :: c_matrix(basis%nbf,nstate,nspin)
  real(dp),intent(in)        :: exchange_m_vxc_diag(nstate,nspin)
 !=====
- type(selfenergy_grid)   :: se,se2,se3
+ type(selfenergy_grid)   :: se,se2,se3,se_sox,se_gwpt3 
  logical                 :: enforce_rpa
  character(len=36)       :: selfenergy_tag
  integer                 :: reading_status
@@ -81,7 +81,11 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      write(selfenergy_tag,'(i3)') istep_gw-1
      selfenergy_tag='G'//TRIM(ADJUSTL(selfenergy_tag))//'W'//TRIM(ADJUSTL(selfenergy_tag))
    case(PT2)
-     selfenergy_tag='PT2'
+     if( calc_type%selfenergy_static ) then
+       selfenergy_tag='PT1PT2'
+     else
+       selfenergy_tag='PT2'
+     endif
    case(TWO_RINGS)
      selfenergy_tag='TWO_RINGS'
    case(PT3)
@@ -92,6 +96,10 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      selfenergy_tag='SOX'
    case(G0W0SOX0)
      selfenergy_tag='GWSOX'
+   case(GWSOX)
+     selfenergy_tag='GWSOX'
+   case(GWPT3)
+     selfenergy_tag='GWPT3'
    case(G0W0Gamma0)
      selfenergy_tag='GWGamma'
    case(COHSEX,COHSEX_DEVEL,TUNED_COHSEX)
@@ -139,7 +147,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    !
    ! Choose which one-electron energies to use in G and in W
    !
-   if( calc_type%selfenergy_technique == EVSC ) then
+   if( calc_type%selfenergy_technique == EVSC .OR. force_energy_qp_ ) then
      call read_energy_qp(nstate,energy_g,reading_status)
      if(reading_status/=0) then
        call issue_warning('File energy_qp not found: assuming 1st iteration')
@@ -322,6 +330,36 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      call destroy_spectral_function(wpol)
    endif
   
+   !
+   ! selfenergy = GWSOX
+   !
+   if( calc_type%selfenergy_approx == GWSOX ) then
+     !
+     ! First perform a standard GW calculation
+     !
+     call init_spectral_function(nstate,occupation,0,wpol)
+     call read_spectral_function(wpol,reading_status)
+     ! If reading has failed, then do the calculation
+     if( reading_status /= 0 ) then
+       call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+     endif
+     call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+
+     !
+     ! Second perform a standard SOX calculation
+     ! 
+     call init_selfenergy_grid(calc_type%selfenergy_technique,nstate,energy_g,se_sox)
+     call pt2_selfenergy(SOX,nstate,basis,occupation,energy_g,c_matrix,se_sox,en%mp2)
+ 
+     
+     !
+     ! Finally add up the contributions and then destroy the se_sox object
+     !
+     se%sigma(:,:,:) = se%sigma(:,:,:) + se_sox%sigma(:,:,:)
+  
+     call destroy_selfenergy_grid(se_sox)
+
+   endif
   
    !
    ! Selfenergy = PT2
@@ -349,6 +387,36 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
    ! 
    if( calc_type%selfenergy_approx == PT3 .OR. calc_type%selfenergy_approx == TWO_RINGS ) then
      call pt3_selfenergy(calc_type%selfenergy_approx,calc_type%selfenergy_technique,nstate,basis,occupation,energy_g,c_matrix,se,en%mp2)
+   endif 
+
+   !
+   ! selfenergy = GWPT3
+   !
+   if( calc_type%selfenergy_approx == GWPT3 ) then
+     !
+     ! First perform a standard GW calculation
+     !
+     call init_spectral_function(nstate,occupation,0,wpol)
+     call read_spectral_function(wpol,reading_status)
+     ! If reading has failed, then do the calculation
+     if( reading_status /= 0 ) then
+       call polarizability(.FALSE.,.TRUE.,basis,nstate,occupation,energy_w,c_matrix,en%rpa,wpol)
+     endif
+     call gw_selfenergy(GW,nstate,basis,occupation,energy_g,c_matrix,wpol,se,en%gw)
+
+     !
+     ! Second perform a PT3 calculation minus the ring diagrams
+     ! 
+     call init_selfenergy_grid(calc_type%selfenergy_technique,nstate,energy_g,se_gwpt3)
+     call pt3_selfenergy(GWPT3,calc_type%selfenergy_technique,nstate,basis,occupation,energy_g,c_matrix,se_gwpt3,en%mp2)
+
+     !
+     ! Finally add up the contributions and then destroy the se_sox object
+     !
+     se%sigma(:,:,:) = se%sigma(:,:,:) + se_gwpt3%sigma(:,:,:)
+  
+     call destroy_selfenergy_grid(se_gwpt3)
+
    endif 
   
    !
@@ -452,7 +520,7 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      call output_qp_energy(TRIM(selfenergy_tag),nstate,energy,exchange_m_vxc_diag,1,se,energy_qp_new)
    else
      select case(calc_type%selfenergy_approx)
-     case(GW,PT2,PT3,ONE_RING,TWO_RINGS,SOX,G0W0Gamma0,G0W0SOX0,G0W0_IOMEGA)
+     case(GW,PT2,PT3,ONE_RING,TWO_RINGS,SOX,G0W0Gamma0,G0W0SOX0,G0W0_IOMEGA,GWSOX,GWPT3)
        allocate(energy_qp_z(nstate,nspin))
        allocate(zz(nsemin:nsemax,nspin))
        call find_qp_energy_linearization(se,nstate,exchange_m_vxc_diag,energy,energy_qp_z,zz)

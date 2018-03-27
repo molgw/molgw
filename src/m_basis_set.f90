@@ -567,10 +567,12 @@ subroutine init_basis_function(normalized,ng,nx,ny,nz,iatom,x0,alpha,coeff,shell
  if( normalized ) then
    call overlap_basis_function(bf,bf,overlap)
    if( ABS(overlap-1.0_dp) > 2.0e-5_dp ) then
+     bf%coeff(:) = coeff(:) / SQRT( overlap )
 !     write(stdout,*) 'normalization is different from 1.0',overlap
 !     write(stdout,*) bf%nx,bf%ny,bf%nz
 !     write(stdout,*) 'assuming this is a generalized contraction and rescaling coefficients'
-     bf%coeff(:) = coeff(:) / SQRT( overlap )
+!     write(stdout,*) bf%coeff(:) 
+!     write(stdout,*)
    endif
  endif
  

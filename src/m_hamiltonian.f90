@@ -208,15 +208,18 @@ subroutine setup_exchange_ri(nbf,nstate,occupation,c_matrix,p_matrix,exchange_ij
  do ispin=1,nspin
 
    ! Find highest occupied state
+   ! Take care of negative occupations, this can happen if C comes from P^{1/2}
    nocc = 0
    do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty)  cycle
+     if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
      nocc = istate
    enddo
 
 
    do istate=1,nocc
      if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle
+
+     if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
 
      tmp(:,:) = 0.0_dp
      !$OMP PARALLEL PRIVATE(ibf,jbf) 
@@ -797,17 +800,19 @@ end subroutine setup_sqrt_overlap
 
 
 !=========================================================================
-subroutine setup_sqrt_density_matrix(nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
+subroutine setup_sqrt_density_matrix(p_matrix,p_matrix_sqrt,p_matrix_occ)
  use m_tools
  implicit none
 
- integer,intent(in)   :: nbf
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: p_matrix_sqrt(nbf,nbf,nspin)
- real(dp),intent(out) :: p_matrix_occ(nbf,nspin)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: p_matrix_sqrt(:,:,:)
+ real(dp),intent(out) :: p_matrix_occ(:,:)
 !=====
+ integer              :: nbf
  integer              :: ispin,ibf
 !=====
+
+ nbf = SIZE( p_matrix(:,:,:), DIM=1 )
 
  write(stdout,*) 'Calculate the square root of the density matrix'
  call start_clock(timing_sqrt_density_matrix)
@@ -830,6 +835,47 @@ subroutine setup_sqrt_density_matrix(nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
  call stop_clock(timing_sqrt_density_matrix)
 
 end subroutine setup_sqrt_density_matrix
+
+
+!=========================================================================
+subroutine get_c_matrix_from_p_matrix(p_matrix,c_matrix,occupation)
+ use m_tools
+ implicit none
+
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: c_matrix(:,:,:)
+ real(dp),intent(out) :: occupation(:,:)
+!=====
+ real(dp),allocatable :: p_matrix_sqrt(:,:)
+ integer              :: nbf,nstate
+ integer              :: ispin,ibf,istate
+!=====
+
+ nbf    = SIZE( p_matrix(:,:,:), DIM=1 )
+ nstate = SIZE( c_matrix(:,:,:), DIM=2 )
+ allocate(p_matrix_sqrt(nbf,nbf))
+
+ write(stdout,*) 'Calculate the square root of the density matrix to obtain the C matrix'
+ call start_clock(timing_sqrt_density_matrix)
+
+ do ispin=1,nspin
+
+   ! Minus the p_matrix so that the eigenvalues are ordered from the largest to the lowest
+   p_matrix_sqrt(:,:) = -p_matrix(:,:,ispin)
+
+   ! Diagonalization with or without SCALAPACK
+   call diagonalize_scalapack(scalapack_block_min,nbf,p_matrix_sqrt,occupation(:,ispin))
+
+   c_matrix(:,:,ispin) = p_matrix_sqrt(:,1:nstate)
+   occupation(:,ispin) = -occupation(:,ispin)
+
+ enddo
+
+ deallocate(p_matrix_sqrt)
+
+ call stop_clock(timing_sqrt_density_matrix)
+
+end subroutine get_c_matrix_from_p_matrix
 
 
 !=========================================================================
