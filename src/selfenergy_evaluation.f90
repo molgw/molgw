@@ -81,7 +81,11 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
      write(selfenergy_tag,'(i3)') istep_gw-1
      selfenergy_tag='G'//TRIM(ADJUSTL(selfenergy_tag))//'W'//TRIM(ADJUSTL(selfenergy_tag))
    case(PT2)
-     selfenergy_tag='PT2'
+     if( calc_type%selfenergy_static ) then
+       selfenergy_tag='PT1PT2'
+     else
+       selfenergy_tag='PT2'
+     endif
    case(TWO_RINGS)
      selfenergy_tag='TWO_RINGS'
    case(PT3)
