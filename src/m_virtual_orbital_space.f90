@@ -354,7 +354,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
    call DESCINIT(desc_bb_bb,basis%nbf,basis%nbf,block_row,block_col,first_row,first_col,cntxt,MAX(1,ma),info) 
    call clean_allocate('Overlap matrix S',s_matrix,ma,na)
    call clean_allocate('Overlap inverse S^{-1}',s_matrix_inv,ma,na)
-   call setup_overlap_sca(basis,ma,na,s_matrix)
+   call setup_overlap_sca(basis,s_matrix)
    call invert_sca(desc_bb_bb,s_matrix,s_matrix_inv)
 
    ! Calculate the mixed overlap matrix Sbs: s_bigsmall

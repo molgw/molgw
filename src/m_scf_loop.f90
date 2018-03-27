@@ -140,7 +140,7 @@ subroutine scf_loop(is_restart,&
    else
      if( parallel_ham ) then
        if( parallel_buffer ) then
-         call setup_hartree_ri_buffer_sca(m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
+         call setup_hartree_ri_buffer_sca(p_matrix,hamiltonian_hartree,en%hart)
        else
          call setup_hartree_ri_sca(p_matrix,hamiltonian_hartree,en%hart)
        endif
@@ -171,14 +171,14 @@ subroutine scf_loop(is_restart,&
 
      if( parallel_ham ) then
        if( parallel_buffer ) then
-         call dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,hamiltonian_xc,en%xc)
+         call dft_exc_vxc_buffer_sca(basis,occupation,c_matrix,hamiltonian_xc,en%xc)
        else
          call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
          hamiltonian_xc(:,:,:) = 0.0_dp
          en%xc = 0.0_dp
        endif
      else
-       call dft_exc_vxc_batch(BATCH_SIZE,basis,nstate,occupation,c_matrix,hamiltonian_xc,en%xc)
+       call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix,hamiltonian_xc,en%xc)
      endif
 
    endif
@@ -193,7 +193,7 @@ subroutine scf_loop(is_restart,&
      else
        if( parallel_ham ) then
          if( parallel_buffer ) then
-           call setup_exchange_longrange_ri_buffer_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,energy_tmp)
+           call setup_exchange_longrange_ri_buffer_sca(occupation,c_matrix,p_matrix,hamiltonian_exx,energy_tmp)
          else
            call die('Range-separated functionals not implemented with full SCALAPACK yet')
          endif
@@ -216,10 +216,10 @@ subroutine scf_loop(is_restart,&
        if( parallel_ham ) then
          if( parallel_buffer ) then
 #ifndef SCASCA
-           call setup_exchange_ri_buffer_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+           call setup_exchange_ri_buffer_sca(occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
 #else
            call issue_warning('FBFB devel SCASCA')
-           call setup_exchange_ri_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+           call setup_exchange_ri_sca(occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
 #endif
          else
            call die('Exchange with fully distributed hamiltonian: case not implemented yet')
@@ -305,7 +305,7 @@ subroutine scf_loop(is_restart,&
    ! All the unoccupied states are penalized with an energy =  level_shifting_energy
    if( level_shifting_energy > 1.0e-6_dp ) then
      if( parallel_ham ) call die('level_shifting: not implemented with parallel_ham')
-     call level_shifting_up(basis%nbf,nstate,s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
+     call level_shifting_up(s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
    endif
 
 
@@ -331,7 +331,7 @@ subroutine scf_loop(is_restart,&
    ! So that the "physical" energies are written down
    if( level_shifting_energy > 1.0e-6_dp ) then
      if( parallel_ham ) call die('level_shifting: not implemented with parallel_ham')
-     call level_shifting_down(basis%nbf,nstate,s_matrix,c_matrix,occupation,level_shifting_energy,energy,hamiltonian)
+     call level_shifting_down(s_matrix,c_matrix,occupation,level_shifting_energy,energy,hamiltonian)
    endif
 
    call dump_out_energy('=== Energies ===',nstate,nspin,occupation,energy)
@@ -411,7 +411,7 @@ subroutine scf_loop(is_restart,&
    if( ABS(en%exx) < 1.0e-6_dp ) then
      if( parallel_ham ) then
        if( parallel_buffer ) then
-         call setup_exchange_ri_buffer_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+         call setup_exchange_ri_buffer_sca(occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
        else
          call die('Exchange with fully distributed hamiltonian: case not implemented yet')
        endif
@@ -575,7 +575,7 @@ subroutine scf_loop(is_restart,&
 
  !
  ! Evaluate spin contamination
- call evaluate_s2_operator(basis%nbf,nstate,occupation,c_matrix,s_matrix)
+ call evaluate_s2_operator(occupation,c_matrix,s_matrix)
 
 
  ! A dirty section for the Luttinger-Ward functional
@@ -660,7 +660,7 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
  !
  if( parallel_ham ) then
    if( parallel_buffer ) then
-     call setup_hartree_ri_buffer_sca(m_ham,n_ham,p_matrix,hamiltonian_tmp,ehart)
+     call setup_hartree_ri_buffer_sca(p_matrix,hamiltonian_tmp,ehart)
    else
      call setup_hartree_ri_sca(p_matrix,hamiltonian_tmp,ehart)
    endif
@@ -685,14 +685,14 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
 
    if( parallel_ham ) then
      if( parallel_buffer ) then
-       call dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,hamiltonian_spin_tmp,exc)
+       call dft_exc_vxc_buffer_sca(basis,occupation,c_matrix,hamiltonian_spin_tmp,exc)
      else
        call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
        hamiltonian_spin_tmp(:,:,:) = 0.0_dp
        exc = 0.0_dp
      endif
    else
-     call dft_exc_vxc_batch(BATCH_SIZE,basis,nstate,occupation,c_matrix,hamiltonian_spin_tmp,exc)
+     call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix,hamiltonian_spin_tmp,exc)
    endif
 
    hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:)
@@ -707,7 +707,7 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
 
    if( parallel_ham ) then
      if( parallel_buffer ) then
-       call setup_exchange_longrange_ri_buffer_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
+       call setup_exchange_longrange_ri_buffer_sca(occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
      else
        call die('Range-separated functionals not implemented with full SCALAPACK yet')
      endif
@@ -728,7 +728,7 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
 
    if( parallel_ham ) then
      if( parallel_buffer ) then
-       call setup_exchange_ri_buffer_sca(basis%nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
+       call setup_exchange_ri_buffer_sca(occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
      else
        call die('Exchange with fully distributed hamiltonian: case not implemented yet')
      endif

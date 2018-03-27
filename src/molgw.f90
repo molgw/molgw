@@ -205,7 +205,7 @@ program molgw
    ! Build up the overlap matrix S
    ! S only depends onto the basis set
    if( parallel_ham ) then
-     call setup_overlap_sca(basis,m_ham,n_ham,s_matrix)
+     call setup_overlap_sca(basis,s_matrix)
    else
      call setup_overlap(basis,s_matrix)
    endif
@@ -278,7 +278,7 @@ program molgw
    !
    ! Kinetic energy contribution
    if( parallel_ham ) then
-     call setup_kinetic_sca(basis,m_ham,n_ham,hamiltonian_kinetic)
+     call setup_kinetic_sca(basis,hamiltonian_kinetic)
    else
      call setup_kinetic(basis,hamiltonian_kinetic)
    endif
@@ -287,9 +287,9 @@ program molgw
    ! Nucleus-electron interaction
    if( parallel_ham ) then
      if( parallel_buffer ) then
-       call setup_nucleus_buffer_sca(basis,m_ham,n_ham,hamiltonian_nucleus)
+       call setup_nucleus_buffer_sca(basis,hamiltonian_nucleus)
      else
-       call setup_nucleus_sca(basis,m_ham,n_ham,hamiltonian_nucleus)
+       call setup_nucleus_sca(basis,hamiltonian_nucleus)
      endif
    else
      call setup_nucleus(basis,hamiltonian_nucleus)

@@ -635,19 +635,21 @@ end subroutine matrix_basis_to_eigen
 
 
 !=========================================================================
-subroutine evaluate_s2_operator(nbf,nstate,occupation,c_matrix,s_matrix)
+subroutine evaluate_s2_operator(occupation,c_matrix,s_matrix)
  implicit none
- integer,intent(in)      :: nbf,nstate
- real(dp),intent(in)     :: occupation(nstate,nspin)
- real(dp),intent(in)     :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)     :: s_matrix(nbf,nbf)
+ real(dp),intent(in)     :: occupation(:,:)
+ real(dp),intent(in)     :: c_matrix(:,:,:)
+ real(dp),intent(in)     :: s_matrix(:,:)
 !=====
+ integer                 :: nstate
  integer                 :: istate,jstate
  real(dp)                :: s2,s2_exact
  real(dp)                :: n1,n2,nmax,nmin
 !=====
 
  if(nspin /= 2) return
+
+ nstate = SIZE(occupation,DIM=1)
 
  n1 = SUM( occupation(:,1) )
  n2 = SUM( occupation(:,2) )
@@ -676,18 +678,18 @@ end subroutine evaluate_s2_operator
 
 
 !=========================================================================
-subroutine level_shifting_up(nbf,nstate,s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
+subroutine level_shifting_up(s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
  implicit none
- integer,intent(in)     :: nbf,nstate
- real(dp),intent(in)    :: s_matrix(nbf,nbf)
- real(dp),intent(in)    :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)    :: occupation(nstate,nspin)
+ real(dp),intent(in)    :: s_matrix(:,:)
+ real(dp),intent(in)    :: c_matrix(:,:,:)
+ real(dp),intent(in)    :: occupation(:,:)
  real(dp),intent(in)    :: level_shifting_energy
- real(dp),intent(inout) :: hamiltonian(nbf,nbf,nspin)
+ real(dp),intent(inout) :: hamiltonian(:,:,:)
 !=====
- integer  :: ispin,istate
- real(dp) :: sqrt_level_shifting(nstate)
- real(dp) :: matrix_tmp(nbf,nbf)
+ integer              :: nstate
+ integer              :: ispin,istate
+ real(dp),allocatable :: sqrt_level_shifting(:)
+ real(dp),allocatable :: matrix_tmp(:,:)
 !=====
 
  write(stdout,'(/,a)')     ' Level shifting switched on'
@@ -697,6 +699,9 @@ subroutine level_shifting_up(nbf,nstate,s_matrix,c_matrix,occupation,level_shift
    call die('level_shifting_energy has to be positive!')
  endif
 
+ nstate = SIZE(occupation,DIM=1)
+ allocate(matrix_tmp,MOLD=s_matrix)
+ allocate(sqrt_level_shifting(nstate))
 
  do ispin=1,nspin
    !
@@ -723,29 +728,36 @@ subroutine level_shifting_up(nbf,nstate,s_matrix,c_matrix,occupation,level_shift
 
  enddo
  
+ deallocate(matrix_tmp)
+ deallocate(sqrt_level_shifting)
 
+ 
 end subroutine level_shifting_up
 
 
 !=========================================================================
-subroutine level_shifting_down(nbf,nstate,s_matrix,c_matrix,occupation,level_shifting_energy,energy,hamiltonian)
+subroutine level_shifting_down(s_matrix,c_matrix,occupation,level_shifting_energy,energy,hamiltonian)
  implicit none
- integer,intent(in)     :: nbf,nstate
- real(dp),intent(in)    :: s_matrix(nbf,nbf)
- real(dp),intent(in)    :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)    :: occupation(nstate,nspin)
+ real(dp),intent(in)    :: s_matrix(:,:)
+ real(dp),intent(in)    :: c_matrix(:,:,:)
+ real(dp),intent(in)    :: occupation(:,:)
+ real(dp),intent(inout) :: energy(:,:)
  real(dp),intent(in)    :: level_shifting_energy
- real(dp),intent(inout) :: energy(nstate,nspin)
- real(dp),intent(inout) :: hamiltonian(nbf,nbf,nspin)
+ real(dp),intent(inout) :: hamiltonian(:,:,:)
 !=====
- integer  :: ispin,istate
- real(dp) :: sqrt_level_shifting(nstate)
- real(dp) :: matrix_tmp(nbf,nbf)
+ integer              :: nstate
+ integer              :: ispin,istate
+ real(dp),allocatable :: sqrt_level_shifting(:)
+ real(dp),allocatable :: matrix_tmp(:,:)
 !=====
 
  if( level_shifting_energy < 0.0_dp ) then
    call die('level_shifting_energy has to be positive!')
  endif
+
+ nstate = SIZE(occupation,DIM=1)
+ allocate(matrix_tmp,MOLD=s_matrix)
+ allocate(sqrt_level_shifting(nstate))
 
  !
  ! Shift down the energies of the virtual orbitals
@@ -783,6 +795,8 @@ subroutine level_shifting_down(nbf,nstate,s_matrix,c_matrix,occupation,level_shi
 
  enddo
  
+ deallocate(matrix_tmp)
+ deallocate(sqrt_level_shifting)
 
 end subroutine level_shifting_down
 
@@ -916,7 +930,7 @@ end subroutine get_c_matrix_from_p_matrix
 
 
 !=========================================================================
-subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,vxc_ij,exc_xc)
+subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  use m_inputparam
  use m_dft_grid
 #ifdef HAVE_LIBXC
@@ -928,13 +942,13 @@ subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,vxc_ij,
 
  integer,intent(in)         :: batch_size
  type(basis_set),intent(in) :: basis
- integer,intent(in)         :: nstate
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(in)        :: c_matrix(:,:,:)
+ real(dp),intent(out)       :: vxc_ij(:,:,:)
  real(dp),intent(out)       :: exc_xc
 !=====
  real(dp),parameter   :: TOL_RHO=1.0e-9_dp
+ integer              :: nstate
  integer              :: ibf,jbf,ispin
  integer              :: idft_xc
  integer              :: igrid_start,igrid_end,ir,nr
@@ -959,6 +973,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,vxc_ij,
 
  call start_clock(timing_dft)
 
+ nstate = SIZE(occupation,DIM=1)
 
 #ifdef HAVE_LIBXC
 

@@ -25,7 +25,7 @@ contains
 
 !=========================================================================
 subroutine matrix_cart_to_local(gaussian_type,ibf,jbf,li,lj,ni_cart,nj_cart, &
-                                matrix_cart,ni,nj,m_ham,n_ham,matrix_local)
+                                matrix_cart,ni,nj,matrix_local)
  use m_basis_set
  implicit none
 
@@ -33,9 +33,8 @@ subroutine matrix_cart_to_local(gaussian_type,ibf,jbf,li,lj,ni_cart,nj_cart, &
  integer,intent(in)          :: ibf,jbf
  integer,intent(in)          :: li,lj
  integer,intent(in)          :: ni_cart,nj_cart,ni,nj
- integer,intent(in)          :: m_ham,n_ham
  real(dp),intent(in)         :: matrix_cart(ni_cart,nj_cart)
- real(dp),intent(inout)      :: matrix_local(m_ham,n_ham)
+ real(dp),intent(inout)      :: matrix_local(:,:)
 !=====
  integer  :: gt
  integer  :: iglobal,jglobal
@@ -70,12 +69,11 @@ end subroutine matrix_cart_to_local
 
 
 !=========================================================================
-subroutine setup_overlap_sca(basis,m_ham,n_ham,s_matrix)
+subroutine setup_overlap_sca(basis,s_matrix)
  use m_basis_set
  implicit none
  type(basis_set),intent(in) :: basis
- integer,intent(in)         :: m_ham,n_ham
- real(dp),intent(out)       :: s_matrix(m_ham,n_ham)
+ real(dp),intent(out)       :: s_matrix(:,:)
 !=====
  integer              :: ishell,jshell
  integer              :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
@@ -114,7 +112,7 @@ subroutine setup_overlap_sca(basis,m_ham,n_ham,s_matrix)
        enddo
      enddo
 
-     call matrix_cart_to_local(basis%gaussian_type,ibf1,jbf1,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,s_matrix)
+     call matrix_cart_to_local(basis%gaussian_type,ibf1,jbf1,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,s_matrix)
 
 
      deallocate(matrix_cart)
@@ -131,12 +129,11 @@ end subroutine setup_overlap_sca
 
 
 !=========================================================================
-subroutine setup_kinetic_sca(basis,m_ham,n_ham,hamiltonian_kinetic)
+subroutine setup_kinetic_sca(basis,hamiltonian_kinetic)
  use m_basis_set
  implicit none
  type(basis_set),intent(in) :: basis
- integer,intent(in)         :: m_ham,n_ham
- real(dp),intent(out)       :: hamiltonian_kinetic(m_ham,n_ham)
+ real(dp),intent(out)       :: hamiltonian_kinetic(:,:)
 !=====
  integer              :: ishell,jshell
  integer              :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
@@ -175,7 +172,7 @@ subroutine setup_kinetic_sca(basis,m_ham,n_ham,hamiltonian_kinetic)
        enddo
      enddo
 
-     call matrix_cart_to_local(basis%gaussian_type,ibf1,jbf1,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,hamiltonian_kinetic)
+     call matrix_cart_to_local(basis%gaussian_type,ibf1,jbf1,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,hamiltonian_kinetic)
 
      deallocate(matrix_cart)
    enddo
@@ -190,13 +187,12 @@ end subroutine setup_kinetic_sca
 
 
 !=========================================================================
-subroutine setup_nucleus_sca(basis,m_ham,n_ham,hamiltonian_nucleus)
+subroutine setup_nucleus_sca(basis,hamiltonian_nucleus)
  use m_basis_set
  use m_atoms
  implicit none
  type(basis_set),intent(in) :: basis
- integer,intent(in)         :: m_ham,n_ham
- real(dp),intent(out)       :: hamiltonian_nucleus(m_ham,n_ham)
+ real(dp),intent(out)       :: hamiltonian_nucleus(:,:)
 !=====
  integer              :: ishell,jshell
  integer              :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
@@ -253,7 +249,7 @@ subroutine setup_nucleus_sca(basis,m_ham,n_ham,hamiltonian_nucleus)
        enddo
      enddo
 
-     call matrix_cart_to_local(basis%gaussian_type,ibf1,jbf1,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,m_ham,n_ham,hamiltonian_nucleus)
+     call matrix_cart_to_local(basis%gaussian_type,ibf1,jbf1,li,lj,ni_cart,nj_cart,matrix_cart,ni,nj,hamiltonian_nucleus)
 
 
      deallocate(matrix_cart)
@@ -357,22 +353,22 @@ end subroutine setup_hartree_ri_sca
 
 
 !=========================================================================
-subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_ri_sca(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  use m_eri
  use m_eri_calculate,only: nauxil_2center
  implicit none
- integer,intent(in)   :: nbf,m_ham,n_ham
- integer,intent(in)   :: nstate,m_c,n_c
- real(dp),intent(in)  :: occupation(nstate,nspin)
- real(dp),intent(in)  :: c_matrix(m_c,n_c,nspin)
- real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
- real(dp),intent(out) :: exchange_ij(m_ham,n_ham,nspin)
+ real(dp),intent(in)  :: occupation(:,:)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: exchange_ij(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
+ integer              :: nbf
+ integer              :: nstate,m_c
  integer              :: ibf,jbf,ispin,istate
  real(dp),allocatable :: tmp(:,:)
- real(dp)             :: eigval(nbf)
- real(dp)             :: c_matrix_i(nbf)
+ real(dp),allocatable :: eigval(:)
+ real(dp),allocatable :: c_matrix_i(:)
  integer              :: iglobal,ilocal,jlocal
  integer :: mlocal,nlocal
  integer :: desc3final(NDEL)
@@ -389,9 +385,14 @@ subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_mat
  integer :: mbf_local,nbf_local
 !=====
 
+ call start_clock(timing_exchange)
 
  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: SCALAPACK no buffer'
- call start_clock(timing_exchange)
+
+ nstate = SIZE(occupation,DIM=1)
+ m_c    = SIZE(c_matrix,DIM=1)
+ nbf    = desc_ham(M_)
+ allocate(eigval(nbf),c_matrix_i(nbf))
 
  exchange_ij(:,:,:) = 0.0_dp
 
@@ -485,7 +486,7 @@ subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_mat
    call stop_clock(timing_tmp7)
 
    if( cntxt_ham > 0 ) then
-     allocate(matrix_tmp(m_ham,n_ham))
+     allocate(matrix_tmp,MOLD=exchange_ij(:,:,1))
      call symmetrize_matrix_sca('L',nbf,desc_ham,exchange_ij(:,:,ispin),desc_ham,matrix_tmp)
      deallocate(matrix_tmp)
    endif
@@ -504,39 +505,43 @@ subroutine setup_exchange_ri_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_mat
  call xsum_world(eexchange)
 
 #endif
- call stop_clock(timing_exchange)
 
+ deallocate(eigval,c_matrix_i)
+
+ call stop_clock(timing_exchange)
 
 
 end subroutine setup_exchange_ri_sca
 
 
 !=========================================================================
-subroutine setup_exchange_longrange_ri_sca(nbf,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_longrange_ri_sca(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
- integer,intent(in)   :: nbf
- real(dp),intent(in)  :: occupation(nbf,nspin)
- real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin)
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
+ real(dp),intent(in)  :: occupation(:,:)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: exchange_ij(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
+ integer              :: nbf
  integer              :: ibf,jbf,kbf,lbf,ispin,istate,ibf_auxil
  integer              :: index_ij
  integer              :: nocc
  real(dp),allocatable :: tmp(:,:)
- real(dp)             :: eigval(nbf)
+ real(dp)             :: eigval(desc_ham(M_))
  integer              :: ipair
 !=====
 
 #ifdef HAVE_SCALAPACK
 
- write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity: SCALAPACK'
  call start_clock(timing_exchange)
 
+ write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity: SCALAPACK'
 
- exchange_ij(:,:,:)=0.0_dp
+ nbf    = desc_ham(M_)
+
+ exchange_ij(:,:,:) = 0.0_dp
 
  allocate(tmp(nauxil_3center_lr,nbf))
 
