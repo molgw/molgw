@@ -119,19 +119,42 @@ module m_scalapack
  end interface
 
  interface diagonalize_sca
-   module procedure diagonalize_inplace_sca
-   module procedure diagonalize_outofplace_sca
+   module procedure diagonalize_inplace_sca_dp
+   module procedure diagonalize_outofplace_sca_dp
+   module procedure diagonalize_inplace_sca_cdp
+ end interface
+
+ interface diagonalize_scalapack
+   module procedure diagonalize_scalapack_dp
+   module procedure diagonalize_scalapack_cdp
  end interface
 
  interface create_distributed_copy
-   module procedure create_distributed_copy_nospin
-   module procedure create_distributed_copy_spin
+   module procedure create_distributed_copy_nospin_dp
+   module procedure create_distributed_copy_spin_dp
+   module procedure create_distributed_copy_nospin_cdp
  end interface create_distributed_copy
 
  interface gather_distributed_copy
-   module procedure gather_distributed_copy_nospin
-   module procedure gather_distributed_copy_spin
+   module procedure gather_distributed_copy_nospin_dp
+   module procedure gather_distributed_copy_spin_dp
+   module procedure gather_distributed_copy_nospin_cdp
  end interface gather_distributed_copy
+
+ interface matmul_ab_scalapack
+   module procedure matmul_ab_scalapack_dp
+   module procedure matmul_ab_scalapack_cdp
+ end interface matmul_ab_scalapack
+
+ interface matmul_abc_scalapack
+   module procedure matmul_abc_scalapack_dp
+   module procedure matmul_abc_scalapack_cdp
+ end interface matmul_abc_scalapack
+ 
+ interface matmul_transaba_scalapack
+   module procedure matmul_transaba_scalapack_dp
+   module procedure matmul_transaba_scalapack_cdp
+ end interface
 
 #ifdef HAVE_SCALAPACK
  integer,external :: NUMROC,INDXL2G,INDXG2L,INDXG2P,PDLATRA,PDLAMCH
@@ -256,7 +279,7 @@ end function indxl2g_pure
 ! Create a distributed copy of a global matrix owned by each core
 !
 !=========================================================================
-subroutine create_distributed_copy_nospin(matrix_global,desc,matrix)
+subroutine create_distributed_copy_nospin_dp(matrix_global,desc,matrix)
  implicit none
  integer,intent(in)   :: desc(NDEL)
  real(dp),intent(in)  :: matrix_global(:,:)
@@ -280,14 +303,14 @@ subroutine create_distributed_copy_nospin(matrix_global,desc,matrix)
  endif
 
 
-end subroutine create_distributed_copy_nospin
+end subroutine create_distributed_copy_nospin_dp
 
 
 !=========================================================================
 ! Create a distributed copy of a global matrix owned by each core
 ! with spin
 !=========================================================================
-subroutine create_distributed_copy_spin(matrix_global,desc,matrix)
+subroutine create_distributed_copy_spin_dp(matrix_global,desc,matrix)
  implicit none
  integer,intent(in)   :: desc(NDEL)
  real(dp),intent(in)  :: matrix_global(:,:,:)
@@ -315,14 +338,45 @@ subroutine create_distributed_copy_spin(matrix_global,desc,matrix)
  endif
 
 
-end subroutine create_distributed_copy_spin
+end subroutine create_distributed_copy_spin_dp
+
+
+!=========================================================================
+! Create a distributed copy of a global matrix owned by each core (complex)
+!
+!=========================================================================
+subroutine create_distributed_copy_nospin_cdp(matrix_global,desc,matrix)
+ implicit none
+ integer,intent(in)      :: desc(NDEL)
+ complex(dp),intent(in)  :: matrix_global(:,:)
+ complex(dp),intent(out) :: matrix(:,:)
+!=====
+ integer              :: mlocal,nlocal
+ integer              :: ilocal,jlocal,iglobal,jglobal
+!=====
+
+ mlocal = SIZE( matrix , DIM=1 )
+ nlocal = SIZE( matrix , DIM=2 )
+
+ if( desc(CTXT_) > 0 ) then
+   do jlocal=1,nlocal
+     jglobal = colindex_local_to_global(desc,jlocal)
+     do ilocal=1,mlocal
+       iglobal = rowindex_local_to_global(desc,ilocal)
+       matrix(ilocal,jlocal) = matrix_global(iglobal,jglobal)
+     enddo
+   enddo
+ endif
+
+
+end subroutine create_distributed_copy_nospin_cdp
 
 
 !=========================================================================
 ! Gather a distributed matrix into a global matrix owned by each core
 !
 !=========================================================================
-subroutine gather_distributed_copy_nospin(desc,matrix,matrix_global)
+subroutine gather_distributed_copy_nospin_dp(desc,matrix,matrix_global)
  implicit none
  integer,intent(in)               :: desc(NDEL)
  real(dp),allocatable,intent(in)  :: matrix(:,:)
@@ -376,14 +430,14 @@ subroutine gather_distributed_copy_nospin(desc,matrix,matrix_global)
 
 #endif
 
-end subroutine gather_distributed_copy_nospin
+end subroutine gather_distributed_copy_nospin_dp
 
 
 !=========================================================================
 ! Gather a distributed matrix into a global matrix owned by each core
 !
 !=========================================================================
-subroutine gather_distributed_copy_spin(desc,matrix,matrix_global)
+subroutine gather_distributed_copy_spin_dp(desc,matrix,matrix_global)
  implicit none
  integer,intent(in)               :: desc(NDEL)
  real(dp),allocatable,intent(in)  :: matrix(:,:,:)
@@ -437,8 +491,68 @@ subroutine gather_distributed_copy_spin(desc,matrix,matrix_global)
   matrix_global(:,:,:) = matrix(:,:,:)
 #endif
 
-end subroutine gather_distributed_copy_spin
+end subroutine gather_distributed_copy_spin_dp
 
+
+!=========================================================================
+! Gather a distributed matrix into a global matrix owned by each core (complex)
+!
+!=========================================================================
+subroutine gather_distributed_copy_nospin_cdp(desc,matrix,matrix_global)
+ implicit none
+ integer,intent(in)                  :: desc(NDEL)
+ complex(dp),allocatable,intent(in)  :: matrix(:,:)
+ complex(dp),intent(out)             :: matrix_global(:,:)
+!=====
+ integer              :: cntxt
+ integer              :: mlocal,nlocal,mglobal,nglobal
+ integer              :: ilocal,jlocal,iglobal,jglobal
+ integer              :: rank_master,iprow,ipcol,nprow,npcol
+!=====
+
+#ifdef HAVE_SCALAPACK
+
+ cntxt = desc(CTXT_)
+ call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+
+ ! Find the master
+ if( iprow == 0 .AND. ipcol == 0 ) then
+   rank_master = rank_world
+ else
+   rank_master = -1
+ endif
+ call xmax_world(rank_master)
+
+ if( cntxt > 0 ) then
+
+   mlocal  = SIZE( matrix , DIM=1 )
+   nlocal  = SIZE( matrix , DIM=2 )
+   mglobal = SIZE( matrix_global , DIM=1 )
+   nglobal = SIZE( matrix_global , DIM=2 )
+
+   matrix_global(:,:) = (0.0_dp, 0.0_dp)
+   do jlocal=1,nlocal
+     jglobal = colindex_local_to_global(desc,jlocal)
+     do ilocal=1,mlocal
+       iglobal = rowindex_local_to_global(desc,ilocal)
+       matrix_global(iglobal,jglobal) = matrix(ilocal,jlocal)
+     enddo
+   enddo
+
+   ! Only the master proc (0,0) gets the complete information
+   call ZGSUM2D(cntxt,'A',' ',mglobal,nglobal,matrix_global,nglobal,0,0)
+
+ endif
+
+ call xbcast_world(rank_master,matrix_global)
+
+#else
+
+ matrix_global(:,:) = matrix(:,:)
+
+#endif
+
+end subroutine gather_distributed_copy_nospin_cdp
 
 
 !=========================================================================
@@ -508,7 +622,8 @@ end subroutine matmul_diag_sca
 
 
 !=========================================================================
-! Diagonalize a distributed matrix to get eigenvalues only
+! Diagonalize a REAL SYMMETRIC distributed matrix to get eigenvalues only
+!
 !=========================================================================
 subroutine diagonalize_eigval_sca(nglobal,desc,matrix,eigval)
  implicit none
@@ -565,9 +680,10 @@ end subroutine diagonalize_eigval_sca
 
 
 !=========================================================================
-! Diagonalize a distributed matrix
+! Diagonalize a REAL SYMMETRIC distributed matrix
+!
 !=========================================================================
-subroutine diagonalize_inplace_sca(nglobal,desc,matrix,eigval)
+subroutine diagonalize_inplace_sca_dp(nglobal,desc,matrix,eigval)
  implicit none
  integer,intent(in)     :: desc(NDEL),nglobal
  real(dp),intent(inout) :: matrix(:,:)
@@ -620,13 +736,74 @@ subroutine diagonalize_inplace_sca(nglobal,desc,matrix,eigval)
 #endif
 
 
-end subroutine diagonalize_inplace_sca
+end subroutine diagonalize_inplace_sca_dp
 
 
 !=========================================================================
-! Diagonalize a distributed matrix
+! Diagonalize a COMPLEX HERMITIAN distributed matrix
+!
 !=========================================================================
-subroutine diagonalize_outofplace_sca(nglobal,desc,matrix,eigval,desc_eigvec,eigvec)
+subroutine diagonalize_inplace_sca_cdp(nglobal,desc,matrix,eigval)
+ implicit none
+ integer,intent(in)        :: desc(NDEL),nglobal
+ complex(dp),intent(inout) :: matrix(:,:)
+ real(dp),intent(out)      :: eigval(nglobal)
+!=====
+ integer              :: desc_eigvec(NDEL)
+ integer              :: mlocal,nlocal
+ integer              :: lwork,lrwork,info
+ complex(dp),allocatable :: work(:),rwork(:)
+ complex(dp),allocatable :: eigvec(:,:)
+!=====
+
+#ifdef HAVE_SCALAPACK
+ desc_eigvec = desc
+
+ mlocal = SIZE( matrix , DIM=1 )
+ nlocal = SIZE( matrix , DIM=2 )
+
+ allocate(eigvec(mlocal,nlocal))
+
+ !
+ ! First call to get the dimension of the array work
+ lwork  = -1
+ lrwork = -1
+ allocate(work(1))
+ allocate(rwork(1))
+ call PZHEEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,rwork,lrwork,info)
+
+
+ !
+ ! Second call to actually perform the diago
+ lwork  = NINT(REAL(work(1),dp))
+ lrwork = NINT(REAL(rwork(1),dp))
+
+ deallocate(work)
+ allocate(work(lwork))
+ call PZHEEV('V','L',nglobal,matrix,1,1,desc,eigval,eigvec,1,1,desc_eigvec,work,lwork,rwork,lrwork,info)
+
+ deallocate(work)
+
+
+ matrix(:,:) = eigvec(:,:)
+
+ deallocate(eigvec)
+
+#else
+
+ call diagonalize(nglobal,matrix,eigval)
+
+#endif
+
+
+end subroutine diagonalize_inplace_sca_cdp
+
+
+!=========================================================================
+! Diagonalize a REAL SYMMETRIC distributed matrix
+!
+!=========================================================================
+subroutine diagonalize_outofplace_sca_dp(nglobal,desc,matrix,eigval,desc_eigvec,eigvec)
  implicit none
  integer,intent(in)     :: nglobal
  integer,intent(in)     :: desc(NDEL)
@@ -669,11 +846,12 @@ subroutine diagonalize_outofplace_sca(nglobal,desc,matrix,eigval,desc_eigvec,eig
 #endif
 
 
-end subroutine diagonalize_outofplace_sca
+end subroutine diagonalize_outofplace_sca_dp
 
 
 !=========================================================================
 ! Diagonalize a distributed matrix with PDSYEVR
+!
 !=========================================================================
 subroutine diagonalize_sca_pdsyevr(nglobal,desc,matrix,eigval,desc_eigvec,eigvec)
  implicit none
@@ -834,7 +1012,7 @@ end subroutine diagonalize_sca_pdsyevr_partial
 ! Diagonalize a non-distributed matrix
 !
 !=========================================================================
-subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix_global,eigval)
+subroutine diagonalize_scalapack_dp(scalapack_block_min,nmat,matrix_global,eigval)
  implicit none
  integer,intent(in)     :: scalapack_block_min
  integer,intent(in)     :: nmat
@@ -914,14 +1092,101 @@ subroutine diagonalize_scalapack(scalapack_block_min,nmat,matrix_global,eigval)
 #endif
 
 
-end subroutine diagonalize_scalapack
+end subroutine diagonalize_scalapack_dp
 
 
 !=========================================================================
-! Calculate C = A * B for non-distributed matrices
+! Diagonalize a non-distributed matrix
 !
 !=========================================================================
-subroutine product_ab_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix)
+subroutine diagonalize_scalapack_cdp(scalapack_block_min,nmat,matrix_global,eigval)
+ implicit none
+ integer,intent(in)     :: scalapack_block_min
+ integer,intent(in)     :: nmat
+ complex(dp),intent(inout) :: matrix_global(nmat,nmat)
+ real(dp),intent(out)   :: eigval(nmat)
+!=====
+ integer :: cntxt
+ integer :: mlocal,nlocal
+ integer :: nprow,npcol,iprow,ipcol
+ integer :: info
+ integer :: iglobal,jglobal,ilocal,jlocal
+ integer :: descm(NDEL),descz(NDEL)
+ complex(dp),allocatable :: matrix(:,:)
+ integer :: rank_master
+!=====
+
+#ifdef HAVE_SCALAPACK
+ nprow = MIN(nprow_sd,nmat/scalapack_block_min)
+ npcol = MIN(npcol_sd,nmat/scalapack_block_min)
+ nprow = MAX(nprow,1)
+ npcol = MAX(npcol,1)
+
+ if( nprow /= 1 .OR. npcol /= 1 ) then
+
+   call BLACS_GET( -1, 0, cntxt )
+   call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
+   call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+   write(stdout,'(a,i4,a,i4)') ' Diagonalization using SCALAPACK with a grid',nprow,' x ',npcol
+
+   ! Find the master
+   if( iprow == 0 .AND. ipcol == 0 ) then
+     rank_master = rank_world
+   else
+     rank_master = -1
+   endif
+   call xmax_world(rank_master)
+
+   !
+   ! Participate to the diagonalization only if the CPU has been selected 
+   ! in the grid
+   if( cntxt > 0 ) then
+     mlocal = NUMROC(nmat,block_row,iprow,first_row,nprow)
+     nlocal = NUMROC(nmat,block_col,ipcol,first_col,npcol)
+
+     allocate(matrix(mlocal,nlocal))
+      
+     call DESCINIT(descm,nmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mlocal),info)
+
+     ! Set up the local copy of the matrix_global
+     call create_distributed_copy(matrix_global,descm,matrix)
+
+     call diagonalize_sca(nmat,descm,matrix,eigval)
+
+   endif
+
+   call gather_distributed_copy(descm,matrix,matrix_global)
+
+   if( cntxt > 0 ) then
+     deallocate(matrix)
+     call BLACS_GRIDEXIT( cntxt )
+   endif
+
+   ! Then the master proc (0,0) broadcasts to all the others
+   call xbcast_world(rank_master,eigval)
+
+
+ else ! Only one SCALAPACK proc
+
+   call diagonalize(nmat,matrix_global,eigval)
+
+ endif
+
+#else
+
+ call diagonalize(nmat,matrix_global,eigval)
+
+#endif
+
+
+end subroutine diagonalize_scalapack_cdp
+
+
+!=========================================================================
+! Calculate C = A * B for non-distributed REAL matrices
+!
+!=========================================================================
+subroutine matmul_ab_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matrix)
  implicit none
  integer,intent(in)     :: scalapack_block_min
  real(dp),intent(in)    :: a_matrix(:,:)
@@ -933,12 +1198,9 @@ subroutine product_ab_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix)
  real(dp),allocatable   :: a_matrix_local(:,:)
  real(dp),allocatable   :: b_matrix_local(:,:)
  real(dp),allocatable   :: c_matrix_local(:,:)
- real(dp),allocatable   :: m_matrix_local(:,:)
- real(dp),allocatable   :: m_matrix(:,:)
  integer :: cntxt
  integer :: ma,na,mb,nb,mc,nc
  integer :: desca(NDEL),descb(NDEL),descc(NDEL)
- integer :: descm(NDEL)
  integer :: nprow,npcol,iprow,ipcol
  integer :: info
 !=====
@@ -950,9 +1212,9 @@ subroutine product_ab_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix)
  lmat  = SIZE( c_matrix , DIM=1)
  nmat  = SIZE( c_matrix , DIM=2)
 
- if( kmat1 /= kmat ) call die('Dimension error in product_ab_scalapack')
- if( mmat  /= lmat ) call die('Dimension error in product_ab_scalapack')
- if( lmat1 /= nmat ) call die('Dimension error in product_ab_scalapack')
+ if( kmat1 /= kmat ) call die('Dimension error in matmul_ab_scalapack_dp')
+ if( mmat  /= lmat ) call die('Dimension error in matmul_ab_scalapack_dp')
+ if( lmat1 /= nmat ) call die('Dimension error in matmul_ab_scalapack_dp')
 
 
 #ifdef HAVE_SCALAPACK
@@ -994,7 +1256,7 @@ subroutine product_ab_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix)
      mc = NUMROC(mmat,block_row,iprow,first_row,nprow)
      nc = NUMROC(nmat,block_col,ipcol,first_col,npcol)
      allocate(c_matrix_local(mc,nc))
-     call DESCINIT(descm,mmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
+     call DESCINIT(descc,mmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
   
      ! Calculate C = A * B
      call PDGEMM('N','N',mmat,nmat,kmat,1.0_dp,a_matrix_local,1,1,desca,    &
@@ -1030,14 +1292,129 @@ subroutine product_ab_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix)
 #endif
 
 
-end subroutine product_ab_scalapack
+end subroutine matmul_ab_scalapack_dp
+
+
+!=========================================================================
+! Calculate C = A * B for non-distributed COMPLEX matrices
+!
+!=========================================================================
+subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matrix)
+ implicit none
+ integer,intent(in)      :: scalapack_block_min
+ complex(dp),intent(in)  :: a_matrix(:,:)
+ complex(dp),intent(in)  :: b_matrix(:,:)
+ complex(dp),intent(out) :: c_matrix(:,:)
+!=====
+ integer                   :: mmat,nmat,kmat,lmat
+ integer                   :: kmat1,lmat1
+ complex(dp),allocatable   :: a_matrix_local(:,:)
+ complex(dp),allocatable   :: b_matrix_local(:,:)
+ complex(dp),allocatable   :: c_matrix_local(:,:)
+ integer :: cntxt
+ integer :: ma,na,mb,nb,mc,nc
+ integer :: desca(NDEL),descb(NDEL),descc(NDEL)
+ integer :: nprow,npcol,iprow,ipcol
+ integer :: info
+ complex(dp),parameter :: ONE  = (1.0_dp,0.0_dp)
+ complex(dp),parameter :: ZERO = (0.0_dp,0.0_dp)
+!=====
+
+ mmat  = SIZE( a_matrix , DIM=1)
+ kmat1 = SIZE( a_matrix , DIM=2)
+ kmat  = SIZE( b_matrix , DIM=1)
+ lmat1 = SIZE( b_matrix , DIM=2)
+ lmat  = SIZE( c_matrix , DIM=1)
+ nmat  = SIZE( c_matrix , DIM=2)
+
+ if( kmat1 /= kmat ) call die('Dimension error in matmul_ab_scalapack_cdp')
+ if( mmat  /= lmat ) call die('Dimension error in matmul_ab_scalapack_cdp')
+ if( lmat1 /= nmat ) call die('Dimension error in matmul_ab_scalapack_cdp')
+
+
+#ifdef HAVE_SCALAPACK
+ nprow = MIN(nprow_sd,mmat/scalapack_block_min)
+ npcol = MIN(npcol_sd,nmat/scalapack_block_min)
+ nprow = MAX(nprow,1)
+ npcol = MAX(npcol,1)
+
+ if( nprow /= 1 .OR. npcol /= 1 ) then
+
+   call BLACS_GET( -1, 0, cntxt )
+   call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
+   call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+   write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
+  
+   !
+   ! Participate to the calculation only if the CPU has been selected 
+   ! in the grid
+   if( cntxt > 0 ) then
+  
+     !
+     ! Distribute A
+     ma = NUMROC(mmat,block_row,iprow,first_row,nprow)
+     na = NUMROC(kmat1,block_col,ipcol,first_col,npcol)
+     allocate(a_matrix_local(ma,na))
+     call DESCINIT(desca,mmat,kmat1,block_row,block_col,first_row,first_col,cntxt,MAX(1,ma),info)
+     ! Set up the local copy of the global matrix A
+     call create_distributed_copy(a_matrix,desca,a_matrix_local)
+     !
+     ! Distribute B
+     mb = NUMROC(kmat,block_row,iprow,first_row,nprow)
+     nb = NUMROC(lmat1,block_col,ipcol,first_col,npcol)
+     allocate(b_matrix_local(mb,nb))
+     call DESCINIT(descb,kmat,lmat1,block_row,block_col,first_row,first_col,cntxt,MAX(1,mb),info)
+     ! Set up the local copy of the global matrix B
+     call create_distributed_copy(b_matrix,descb,b_matrix_local)
+     !
+     ! Prepare C = A * B
+     mc = NUMROC(mmat,block_row,iprow,first_row,nprow)
+     nc = NUMROC(nmat,block_col,ipcol,first_col,npcol)
+     allocate(c_matrix_local(mc,nc))
+     call DESCINIT(descc,mmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
+  
+     ! Calculate C = A * B
+     call PZGEMM('N','N',mmat,nmat,kmat,ONE,a_matrix_local,1,1,desca,    &
+                  b_matrix_local,1,1,descb,ZERO,c_matrix_local,1,1,descc)
+
+     deallocate(a_matrix_local,b_matrix_local)
+
+
+   endif
+  
+   call gather_distributed_copy(descc,c_matrix_local,c_matrix)
+
+   if( cntxt > 0 ) then
+     deallocate(c_matrix_local)
+     call BLACS_GRIDEXIT( cntxt )
+   endif
+
+
+ else ! Only one SCALAPACK proc
+
+!   c_matrix(:,:) = MATMUL( a_matrix , b_matrix )
+   call ZGEMM('N','N',mmat,nmat,kmat,ONE,a_matrix,mmat,b_matrix,kmat,ZERO,c_matrix,mmat)
+  
+ endif
+
+#else
+
+! c_matrix(:,:) = MATMUL( a_matrix , b_matrix )
+ call ZGEMM('N','N',mmat,nmat,kmat,ONE,a_matrix,mmat,b_matrix,kmat,ZERO,c_matrix,mmat)
+
+
+
+#endif
+
+
+end subroutine matmul_ab_scalapack_cdp
 
 
 !=========================================================================
 ! Calculate D = A * B * C for non-distributed matrices
 !
 !=========================================================================
-subroutine product_abc_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix,d_matrix)
+subroutine matmul_abc_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matrix,d_matrix)
  implicit none
  integer,intent(in)     :: scalapack_block_min
  real(dp),intent(in)    :: a_matrix(:,:)
@@ -1070,10 +1447,10 @@ subroutine product_abc_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix,
  mmat1 = SIZE( d_matrix , DIM=1)
  nmat  = SIZE( d_matrix , DIM=2)
 
- if( mmat1 /= mmat ) call die('Dimension error in product_abc_scalapack')
- if( nmat1 /= nmat ) call die('Dimension error in product_abc_scalapack')
- if( kmat1 /= kmat ) call die('Dimension error in product_abc_scalapack')
- if( lmat1 /= lmat ) call die('Dimension error in product_abc_scalapack')
+ if( mmat1 /= mmat ) call die('Dimension error in matmul_abc_scalapack_dp')
+ if( nmat1 /= nmat ) call die('Dimension error in matmul_abc_scalapack_dp')
+ if( kmat1 /= kmat ) call die('Dimension error in matmul_abc_scalapack_dp')
+ if( lmat1 /= lmat ) call die('Dimension error in matmul_abc_scalapack_dp')
 
 
 #ifdef HAVE_SCALAPACK
@@ -1185,14 +1562,171 @@ subroutine product_abc_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix,
 #endif
 
 
-end subroutine product_abc_scalapack
+end subroutine matmul_abc_scalapack_dp
 
 
 !=========================================================================
-! Calculate C = A^T * B * A for non-distributed matrices
+! Calculate D = A * B * C for non-distributed COMPLEX matrices
 !
 !=========================================================================
-subroutine product_transaba_scalapack(scalapack_block_min,a_matrix,b_matrix,c_matrix)
+subroutine matmul_abc_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matrix,d_matrix)
+ implicit none
+ integer,intent(in)      :: scalapack_block_min
+ complex(dp),intent(in)  :: a_matrix(:,:)
+ complex(dp),intent(in)  :: b_matrix(:,:)
+ complex(dp),intent(in)  :: c_matrix(:,:)
+ complex(dp),intent(out) :: d_matrix(:,:)
+!=====
+ integer                 :: mmat,nmat,kmat,lmat
+ integer                 :: mmat1,nmat1,kmat1,lmat1
+ complex(dp),allocatable :: a_matrix_local(:,:)
+ complex(dp),allocatable :: b_matrix_local(:,:)
+ complex(dp),allocatable :: c_matrix_local(:,:)
+ complex(dp),allocatable :: d_matrix_local(:,:)
+ complex(dp),allocatable :: m_matrix_local(:,:)
+ complex(dp),allocatable :: m_matrix(:,:)
+ integer :: cntxt
+ integer :: ma,na,mb,nb,mc,nc,md,nd,mm,nm
+ integer :: desca(NDEL),descb(NDEL),descc(NDEL),descd(NDEL)
+ integer :: descm(NDEL)
+ integer :: nprow,npcol,iprow,ipcol
+ integer :: info
+ complex(dp),parameter :: ONE  = (1.0_dp,0.0_dp)
+ complex(dp),parameter :: ZERO = (0.0_dp,0.0_dp)
+!=====
+
+ mmat  = SIZE( a_matrix , DIM=1)
+ kmat1 = SIZE( a_matrix , DIM=2)
+ kmat  = SIZE( b_matrix , DIM=1)
+ lmat1 = SIZE( b_matrix , DIM=2)
+ lmat  = SIZE( c_matrix , DIM=1)
+ nmat1 = SIZE( c_matrix , DIM=2)
+ mmat1 = SIZE( d_matrix , DIM=1)
+ nmat  = SIZE( d_matrix , DIM=2)
+
+ if( mmat1 /= mmat ) call die('Dimension error in matmul_abc_scalapack_cdp')
+ if( nmat1 /= nmat ) call die('Dimension error in matmul_abc_scalapack_cdp')
+ if( kmat1 /= kmat ) call die('Dimension error in matmul_abc_scalapack_cdp')
+ if( lmat1 /= lmat ) call die('Dimension error in matmul_abc_scalapack_cdp')
+
+
+#ifdef HAVE_SCALAPACK
+ nprow = MIN(nprow_sd,mmat/scalapack_block_min)
+ npcol = MIN(npcol_sd,nmat/scalapack_block_min)
+ nprow = MAX(nprow,1)
+ npcol = MAX(npcol,1)
+
+ if( nprow /= 1 .OR. npcol /= 1 ) then
+
+   call BLACS_GET( -1, 0, cntxt )
+   call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
+   call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+   write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
+  
+  
+   !
+   ! Participate to the diagonalization only if the CPU has been selected 
+   ! in the grid
+   if( cntxt > 0 ) then
+  
+     !
+     ! Distribute A
+     ma = NUMROC(mmat,block_row,iprow,first_row,nprow)
+     na = NUMROC(kmat,block_col,ipcol,first_col,npcol)
+     allocate(a_matrix_local(ma,na))
+     call DESCINIT(desca,mmat,kmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,ma),info)
+     ! Set up the local copy of the global matrix A
+     call create_distributed_copy(a_matrix,desca,a_matrix_local)
+     !
+     ! Distribute B
+     mb = NUMROC(kmat,block_row,iprow,first_row,nprow)
+     nb = NUMROC(lmat,block_col,ipcol,first_col,npcol)
+     allocate(b_matrix_local(mb,nb))
+     call DESCINIT(descb,kmat,lmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mb),info)
+     ! Set up the local copy of the global matrix B
+     call create_distributed_copy(b_matrix,descb,b_matrix_local)
+     !
+     ! Prepare M = A * B
+     mm = NUMROC(mmat,block_row,iprow,first_row,nprow)
+     nm = NUMROC(lmat,block_col,ipcol,first_col,npcol)
+     allocate(m_matrix_local(mm,nm))
+     call DESCINIT(descm,mmat,lmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mm),info)
+  
+     ! Calculate M = A * B
+     call PZGEMM('N','N',mmat,lmat,kmat,ONE,a_matrix_local,1,1,desca,    &
+                  b_matrix_local,1,1,descb,ZERO,m_matrix_local,1,1,descm)
+
+     deallocate(a_matrix_local,b_matrix_local)
+
+     !
+     ! Distribute C
+     mc = NUMROC(lmat,block_row,iprow,first_row,nprow)
+     nc = NUMROC(nmat,block_col,ipcol,first_col,npcol)
+     allocate(c_matrix_local(mc,nc))
+     call DESCINIT(descc,lmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
+     ! Set up the local copy of the global matrix C
+     call create_distributed_copy(c_matrix,descc,c_matrix_local)
+
+     !
+     ! Prepare D = M * C
+     md = NUMROC(mmat,block_row,iprow,first_row,nprow)
+     nd = NUMROC(nmat,block_col,ipcol,first_col,npcol)
+     allocate(d_matrix_local(md,nd))
+     call DESCINIT(descd,mmat,nmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,md),info)
+
+     ! Calculate D = M * C
+     call PZGEMM('N','N',mmat,nmat,lmat,ONE,m_matrix_local,1,1,descm,    &
+                  c_matrix_local,1,1,descc,ZERO,d_matrix_local,1,1,descd)
+
+     deallocate(m_matrix_local,c_matrix_local)
+
+   endif
+  
+   call gather_distributed_copy(descd,d_matrix_local,d_matrix)
+
+   if( cntxt > 0 ) then
+     deallocate(d_matrix_local)
+     call BLACS_GRIDEXIT( cntxt )
+   endif
+
+
+ else ! Only one SCALAPACK proc
+
+   allocate(m_matrix(mmat,lmat))
+  
+!   m_matrix(:,:) = MATMUL( a_matrix , b_matrix )
+!   d_matrix(:,:) = MATMUL( m_matrix , c_matrix )
+   call ZGEMM('N','N',mmat,lmat,kmat,ONE,a_matrix,mmat,b_matrix,kmat,ZERO,m_matrix,mmat)
+   call ZGEMM('N','N',mmat,nmat,lmat,ONE,m_matrix,mmat,c_matrix,lmat,ZERO,d_matrix,mmat)
+
+  
+   deallocate(m_matrix)
+
+ endif
+
+#else
+
+ allocate(m_matrix(mmat,lmat))
+
+! m_matrix(:,:) = MATMUL( a_matrix , b_matrix )
+! d_matrix(:,:) = MATMUL( m_matrix , c_matrix )
+ call ZGEMM('N','N',mmat,lmat,kmat,ONE,a_matrix,mmat,b_matrix,kmat,ZERO,m_matrix,mmat)
+ call ZGEMM('N','N',mmat,nmat,lmat,ONE,m_matrix,mmat,c_matrix,lmat,ZERO,d_matrix,mmat)
+
+ deallocate(m_matrix)
+
+
+#endif
+
+
+end subroutine matmul_abc_scalapack_cdp
+
+
+!=========================================================================
+! Calculate C = A^T * B * A for non-distributed REAL matrices
+!
+!=========================================================================
+subroutine matmul_transaba_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matrix)
  implicit none
  integer,intent(in)     :: scalapack_block_min
  real(dp),intent(in)    :: a_matrix(:,:)
@@ -1224,19 +1758,19 @@ subroutine product_transaba_scalapack(scalapack_block_min,a_matrix,b_matrix,c_ma
 
  if( mmat1 /= mmat ) then
    write(msg,*) 'mmat1 /= mmat',mmat1,mmat
-   call die('Dimension error in product_transaba_scalapack'//msg)
+   call die('Dimension error in matmul_transaba_scalapack_dp'//msg)
  endif
  if( mmat2 /= mmat ) then
    write(msg,*) 'mmat2 /= mmat',mmat2,mmat
-   call die('Dimension error in product_transaba_scalapack'//msg)
+   call die('Dimension error in matmul_transaba_scalapack_dp'//msg)
  endif
  if( kmat1 /= kmat ) then
    write(msg,*) 'kmat1 /= kmat',kmat1,kmat
-   call die('Dimension error in product_transaba_scalapack'//msg)
+   call die('Dimension error in matmul_transaba_scalapack_dp'//msg)
  endif
  if( kmat2 /= kmat ) then
    write(msg,*) 'kmat2 /= kmat',kmat2,kmat
-   call die('Dimension error in product_transaba_scalapack'//msg)
+   call die('Dimension error in matmul_transaba_scalapack_dp'//msg)
  endif
 
 
@@ -1338,7 +1872,162 @@ subroutine product_transaba_scalapack(scalapack_block_min,a_matrix,b_matrix,c_ma
 #endif
 
 
-end subroutine product_transaba_scalapack
+end subroutine matmul_transaba_scalapack_dp
+
+
+!=========================================================================
+! Calculate C = A^T * B * A for non-distributed REAL matrices
+!
+!=========================================================================
+subroutine matmul_transaba_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matrix)
+ implicit none
+ integer,intent(in)      :: scalapack_block_min
+ complex(dp),intent(in)  :: a_matrix(:,:)
+ complex(dp),intent(in)  :: b_matrix(:,:)
+ complex(dp),intent(out) :: c_matrix(:,:)
+!=====
+ complex(dp),parameter   :: ONE  = (1.0_dp,0.0_dp)
+ complex(dp),parameter   :: ZERO = (0.0_dp,0.0_dp)
+ integer                 :: mmat,kmat
+ integer                 :: mmat1,kmat1
+ integer                 :: mmat2,kmat2
+ complex(dp),allocatable :: a_matrix_local(:,:)
+ complex(dp),allocatable :: b_matrix_local(:,:)
+ complex(dp),allocatable :: c_matrix_local(:,:)
+ complex(dp),allocatable :: m_matrix_local(:,:)
+ complex(dp),allocatable :: m_matrix(:,:)
+ integer :: cntxt
+ integer :: ma,na,mb,nb,mc,nc,mm,nm
+ integer :: desca(NDEL),descb(NDEL),descc(NDEL)
+ integer :: descm(NDEL)
+ integer :: nprow,npcol,iprow,ipcol
+ integer :: info
+!=====
+
+ kmat  = SIZE( a_matrix , DIM=1)
+ mmat  = SIZE( a_matrix , DIM=2)
+ kmat1 = SIZE( b_matrix , DIM=1)
+ kmat2 = SIZE( b_matrix , DIM=2)
+ mmat1 = SIZE( c_matrix , DIM=1)
+ mmat2 = SIZE( c_matrix , DIM=2)
+
+ if( mmat1 /= mmat ) then
+   write(msg,*) 'mmat1 /= mmat',mmat1,mmat
+   call die('Dimension error in matmul_transaba_scalapack_cdp'//msg)
+ endif
+ if( mmat2 /= mmat ) then
+   write(msg,*) 'mmat2 /= mmat',mmat2,mmat
+   call die('Dimension error in matmul_transaba_scalapack_cdp'//msg)
+ endif
+ if( kmat1 /= kmat ) then
+   write(msg,*) 'kmat1 /= kmat',kmat1,kmat
+   call die('Dimension error in matmul_transaba_scalapack_cdp'//msg)
+ endif
+ if( kmat2 /= kmat ) then
+   write(msg,*) 'kmat2 /= kmat',kmat2,kmat
+   call die('Dimension error in matmul_transaba_scalapack_cdp'//msg)
+ endif
+
+
+#ifdef HAVE_SCALAPACK
+ nprow = MIN(nprow_sd,mmat/scalapack_block_min)
+ npcol = MIN(npcol_sd,mmat/scalapack_block_min)
+ nprow = MAX(nprow,1)
+ npcol = MAX(npcol,1)
+
+ if( nprow /= 1 .OR. npcol /= 1 ) then
+
+   call BLACS_GET( -1, 0, cntxt )
+   call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
+   call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
+   write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
+  
+   !
+   ! Participate to the diagonalization only if the CPU has been selected 
+   ! in the grid
+   if( cntxt > 0 ) then
+  
+     !
+     ! Distribute A
+     ma = NUMROC(kmat,block_row,iprow,first_row,nprow)
+     na = NUMROC(mmat,block_col,ipcol,first_col,npcol)
+     allocate(a_matrix_local(ma,na))
+     call DESCINIT(desca,kmat,mmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,ma),info)
+     ! Set up the local copy of the global matrix A
+     call create_distributed_copy(a_matrix,desca,a_matrix_local)
+     !
+     ! Distribute B
+     mb = NUMROC(kmat,block_row,iprow,first_row,nprow)
+     nb = NUMROC(kmat,block_col,ipcol,first_col,npcol)
+     allocate(b_matrix_local(mb,nb))
+     call DESCINIT(descb,kmat,kmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mb),info)
+     ! Set up the local copy of the global matrix B
+     call create_distributed_copy(b_matrix,descb,b_matrix_local)
+     !
+     ! Prepare M = A^T * B
+     mm = NUMROC(mmat,block_row,iprow,first_row,nprow)
+     nm = NUMROC(kmat,block_col,ipcol,first_col,npcol)
+     allocate(m_matrix_local(mm,nm))
+     call DESCINIT(descm,mmat,kmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mm),info)
+  
+     ! Calculate M = A^T * B
+     call PZGEMM('T','N',mmat,kmat,kmat,ONE,a_matrix_local,1,1,desca,    &
+                  b_matrix_local,1,1,descb,ZERO,m_matrix_local,1,1,descm)
+
+     deallocate(b_matrix_local)
+
+     !
+     ! Prepare C = M * A
+     mc = NUMROC(mmat,block_row,iprow,first_row,nprow)
+     nc = NUMROC(mmat,block_col,ipcol,first_col,npcol)
+     allocate(c_matrix_local(mc,nc))
+     call DESCINIT(descc,mmat,mmat,block_row,block_col,first_row,first_col,cntxt,MAX(1,mc),info)
+
+     ! Calculate C = M * A
+     call PZGEMM('N','N',mmat,mmat,kmat,ONE,m_matrix_local,1,1,descm,    &
+                  a_matrix_local,1,1,desca,ZERO,c_matrix_local,1,1,descc)
+
+     deallocate(m_matrix_local,a_matrix_local)
+
+   endif
+
+   call gather_distributed_copy(descc,c_matrix_local,c_matrix)
+
+   if( cntxt > 0 ) then
+     deallocate(c_matrix_local)
+     call BLACS_GRIDEXIT( cntxt )
+   endif
+
+
+ else ! Only one SCALAPACK proc
+
+   allocate(m_matrix(mmat,kmat))
+  
+!   m_matrix(:,:) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
+!   c_matrix(:,:) = MATMUL( m_matrix , a_matrix )
+   call ZGEMM('T','N',mmat,kmat,kmat,ONE,a_matrix,kmat,b_matrix,kmat,ZERO,m_matrix,mmat)
+   call ZGEMM('N','N',mmat,mmat,kmat,ONE,m_matrix,mmat,a_matrix,kmat,ZERO,c_matrix,mmat)
+  
+   deallocate(m_matrix)
+
+ endif
+
+#else
+
+ allocate(m_matrix(mmat,kmat))
+
+! m_matrix(:,:) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
+! c_matrix(:,:) = MATMUL( m_matrix , a_matrix )
+ call ZGEMM('T','N',mmat,kmat,kmat,ONE,a_matrix,kmat,b_matrix,kmat,ZERO,m_matrix,mmat)
+ call ZGEMM('N','N',mmat,mmat,kmat,ONE,m_matrix,mmat,a_matrix,kmat,ZERO,c_matrix,mmat)
+
+ deallocate(m_matrix)
+
+
+#endif
+
+
+end subroutine matmul_transaba_scalapack_cdp
 
 
 !=========================================================================
@@ -1479,7 +2168,7 @@ end subroutine trace_transab_scalapack
 ! Calculate D = A * B * C for distributed matrices
 !
 !=========================================================================
-subroutine product_abc_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_matrix_local,descd,d_matrix_local)
+subroutine matmul_abc_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_matrix_local,descd,d_matrix_local)
  implicit none
  integer ,intent(in)  :: desca(NDEL),descb(NDEL),descc(NDEL),descd(NDEL)
  real(dp),intent(in)  :: a_matrix_local(:,:)
@@ -1507,10 +2196,10 @@ subroutine product_abc_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_mat
  mmat1 = descd(M_)
  nmat  = descd(N_)
 
- if( mmat1 /= mmat ) call die('Dimension error in product_abc_scalapack')
- if( nmat1 /= nmat ) call die('Dimension error in product_abc_scalapack')
- if( kmat1 /= kmat ) call die('Dimension error in product_abc_scalapack')
- if( lmat1 /= lmat ) call die('Dimension error in product_abc_scalapack')
+ if( mmat1 /= mmat ) call die('Dimension error in matmul_abc_scalapack')
+ if( nmat1 /= nmat ) call die('Dimension error in matmul_abc_scalapack')
+ if( kmat1 /= kmat ) call die('Dimension error in matmul_abc_scalapack')
+ if( lmat1 /= lmat ) call die('Dimension error in matmul_abc_scalapack')
 
 
 #ifdef HAVE_SCALAPACK
@@ -1548,14 +2237,14 @@ subroutine product_abc_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_mat
 #endif
 
 
-end subroutine product_abc_sca
+end subroutine matmul_abc_sca
 
 
 !=========================================================================
 ! Calculate C = A^T * B * A for distributed matrices
 !
 !=========================================================================
-subroutine product_transaba_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_matrix_local)
+subroutine matmul_transaba_sca(desca,a_matrix_local,descb,b_matrix_local,descc,c_matrix_local)
  implicit none
  integer,intent(in)     :: desca(NDEL),descb(NDEL),descc(NDEL)
  real(dp),intent(in)    :: a_matrix_local(:,:)
@@ -1583,19 +2272,19 @@ subroutine product_transaba_sca(desca,a_matrix_local,descb,b_matrix_local,descc,
 
  if( mmat1 /= mmat ) then
    write(msg,*) 'mmat1 /= mmat',mmat1,mmat
-   call die('Dimension error in product_transaba_scalapack'//msg)
+   call die('Dimension error in matmul_transaba_scalapack'//msg)
  endif
  if( mmat2 /= mmat ) then
    write(msg,*) 'mmat2 /= mmat',mmat2,mmat
-   call die('Dimension error in product_transaba_scalapack'//msg)
+   call die('Dimension error in matmul_transaba_scalapack'//msg)
  endif
  if( kmat1 /= kmat ) then
    write(msg,*) 'kmat1 /= kmat',kmat1,kmat
-   call die('Dimension error in product_transaba_scalapack'//msg)
+   call die('Dimension error in matmul_transaba_scalapack'//msg)
  endif
  if( kmat2 /= kmat ) then
    write(msg,*) 'kmat2 /= kmat',kmat2,kmat
-   call die('Dimension error in product_transaba_scalapack'//msg)
+   call die('Dimension error in matmul_transaba_scalapack'//msg)
  endif
 
 #ifdef HAVE_SCALAPACK
@@ -1632,7 +2321,7 @@ subroutine product_transaba_sca(desca,a_matrix_local,descb,b_matrix_local,descc,
 #endif
 
 
-end subroutine product_transaba_sca
+end subroutine matmul_transaba_sca
 
 
 !=========================================================================

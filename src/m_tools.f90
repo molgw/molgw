@@ -26,6 +26,7 @@ module m_tools
    module procedure diagonalize_cdp
    module procedure diagonalize_dp
    module procedure diagonalize_sp
+   module procedure diagonalize_inplace_cdp
    module procedure diagonalize_inplace_dp
    module procedure diagonalize_inplace_sp
  end interface
@@ -305,9 +306,35 @@ end subroutine diagonalize_inplace_sp
 
 
 !=========================================================================
+subroutine diagonalize_inplace_cdp(n,matrix,eigval)
+ implicit none
+ integer,intent(in) :: n
+ complex(dp),intent(in) :: matrix(n,n)
+ real(dp),intent(out) :: eigval(n)
+!=====
+ complex(dp),allocatable :: work(:)
+ real(dp)    :: rwork(3*n-2)
+ integer     :: lwork,info
+!=====
+
+ lwork = -1
+ allocate(work(1))
+ call ZHEEV('V','U',n,matrix,n,eigval,work,lwork,rwork,info)
+ lwork = NINT(REAL(work(1),dp))
+ deallocate(work)
+
+ allocate(work(lwork))
+ call ZHEEV('V','U',n,matrix,n,eigval,work,lwork,rwork,info)
+ deallocate(work)
+
+end subroutine diagonalize_inplace_cdp
+
+
+!=========================================================================
 !
 ! Generalized eigenvalue problem
 !
+!=========================================================================
 subroutine diagonalize_generalized_sym(n,matrix,overlap,eigval,eigvec)
  implicit none
  integer,intent(in) :: n
@@ -1030,8 +1057,8 @@ subroutine string_to_integers(string_in,iarray)
  character(len=*),intent(in) :: string_in
  integer,intent(inout)       :: iarray(:)
 !=====
- character(len=128) :: string
- integer            :: ilen,inextblank,ii
+ character(LEN(string_in)) :: string
+ integer                   :: ilen,inextblank,ii
 !=====
 
  string = string_in
@@ -1068,6 +1095,34 @@ function determinant_3x3_matrix(mat) RESULT(det)
       - mat(1,1) * mat(2,3) * mat(3,2)
 
 end function determinant_3x3_matrix
+
+
+!=========================================================================
+subroutine string_to_reals(string_in,rarray)
+ implicit none
+
+ character(len=*),intent(in) :: string_in
+ real(dp),intent(inout)      :: rarray(:)
+!=====
+ character(LEN(string_in)) :: string
+ integer            :: ilen,inextblank,ii
+!=====
+
+ string = string_in
+
+ ilen = LEN(TRIM(string))
+ ii = 0
+ do while( ilen > 0 )
+   string = ADJUSTL(string)
+   inextblank = INDEX(string,' ')
+   ii = ii + 1
+   if( ii > SIZE(rarray) ) exit
+   read(string(1:inextblank-1),*) rarray(ii)
+   string = string(inextblank+1:)
+   ilen = LEN(TRIM(string))
+ enddo
+
+end subroutine string_to_reals
 
 
 end module m_tools

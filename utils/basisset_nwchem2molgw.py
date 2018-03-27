@@ -93,7 +93,7 @@ for line in nwfile:
       coeff.append([])
       angmom.append([])
 
-    angmom_tmp = int(list_am.index(parsing[1])/2)
+    angmom_tmp = int(list_am.index(parsing[1].upper())/2)
 
     new_basisfunction = True
 
