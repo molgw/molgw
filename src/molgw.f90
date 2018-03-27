@@ -255,6 +255,8 @@ program molgw
    ! Try to read a RESTART file if it exists
    if( read_restart_ ) then
      call read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock,'RESTART')
+   else
+     restart_type = NO_RESTART
    endif
    is_restart       = ( restart_type /= NO_RESTART )
    is_big_restart   = ( restart_type == BIG_RESTART )
@@ -498,6 +500,7 @@ program molgw
 
      call setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag,exchange_m_vxc)
 
+     call selfenergy_set_state_range(MIN(nstate,nvirtualg-1),occupation)
      call pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,exchange_m_vxc_diag)
 
      deallocate(exchange_m_vxc)

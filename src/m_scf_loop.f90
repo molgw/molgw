@@ -485,6 +485,7 @@ subroutine scf_loop(is_restart,&
    call clean_allocate('Temporary density matrix',p_matrix_out,basis%nbf,basis%nbf,nspin)
 
    select case(TRIM(read_fchk))
+   ! Move all these possibilites in molgw.f90 next to PT1 calculation
    case('MOLGWONE-RING')
      ! This keyword calculates the PT2 density matrix as it is assumed in PT2 theory (differs from MP2 density matrix)
      call selfenergy_set_state_range(nstate,occupation)
@@ -499,14 +500,6 @@ subroutine scf_loop(is_restart,&
      call selfenergy_set_state_range(nstate,occupation)
      call gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matrix_out)
      call destroy_spectral_function(wpol)
-   case('MOLGWPT1')
-     call selfenergy_set_state_range(nstate,occupation)
-     block
-       real(dp) :: exchange_m_vxc_diag(nstate,nspin)
-       real(dp) :: exchange_m_vxc(nstate,nstate,nspin)
-       call setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag,exchange_m_vxc)
-       call pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,p_matrix_out)
-     end block
 
    case default
      call read_gaussian_fchk(basis,p_matrix_out)

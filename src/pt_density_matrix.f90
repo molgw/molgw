@@ -55,9 +55,9 @@ subroutine pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m
 !   p_matrix_pt1(pstate,pstate) = p_matrix_pt1(pstate,pstate) + occupation(pstate,iaspin)
 ! enddo
 
- p_matrix(:,:,iaspin) = MATMUL( c_matrix(:,ncore_G+1:nvirtual_G-1,iaspin)  , &
-                          MATMUL( p_matrix_pt1(ncore_G+1:nvirtual_G-1,ncore_G+1:nvirtual_G-1), &
-                             TRANSPOSE(c_matrix(:,ncore_G+1:nvirtual_G-1,iaspin)) ) )
+ p_matrix(:,:,iaspin) = MATMUL( c_matrix(:,:,iaspin)  , &
+                          MATMUL( p_matrix_pt1(:,:), &
+                             TRANSPOSE(c_matrix(:,:,iaspin)) ) )
 
 ! open(111,file='p_matrix_pt1.dat',action='write')
 ! do ibf=1,basis%nbf
