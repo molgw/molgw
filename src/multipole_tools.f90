@@ -38,7 +38,7 @@ subroutine static_dipole(nstate,basis,occupation,c_matrix)
  !
  call calculate_dipole_basis(basis,dipole_basis)
 
- call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
+ call setup_density_matrix(c_matrix,occupation,p_matrix)
 
  ! Minus sign for electrons
  do idir=1,3
@@ -91,7 +91,7 @@ subroutine static_quadrupole(nstate,basis,occupation,c_matrix)
  !
  call calculate_quadrupole_basis(basis,quad_basis)
 
- call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
+ call setup_density_matrix(c_matrix,occupation,p_matrix)
 
  ! Minus sign for electrons
  do jdir=1,3

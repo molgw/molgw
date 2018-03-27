@@ -979,17 +979,17 @@ subroutine pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc
 
  ! First, Hartree
  if( .NOT. has_auxil_basis ) then
-   call setup_hartree(basis%nbf,p_matrix_pt1,hh,energy_tmp)
+   call setup_hartree(p_matrix_pt1,hh,energy_tmp)
  else
-   call setup_hartree_ri(basis%nbf,p_matrix_pt1,hh,energy_tmp)
+   call setup_hartree_ri(p_matrix_pt1,hh,energy_tmp)
  endif
 
  ! Then, Exchange
  if( .NOT. has_auxil_basis ) then
-   call setup_exchange(basis%nbf,p_matrix_pt1,hx,energy_tmp)
+   call setup_exchange(p_matrix_pt1,hx,energy_tmp)
  else
    call get_c_matrix_from_p_matrix(p_matrix_pt1,c_matrix_tmp,occupation_tmp)
-   call setup_exchange_ri(basis%nbf,basis%nbf,occupation_tmp,c_matrix_tmp,p_matrix_pt1,hx,energy_tmp)
+   call setup_exchange_ri(occupation_tmp,c_matrix_tmp,p_matrix_pt1,hx,energy_tmp)
  endif
 
 

@@ -54,8 +54,8 @@ subroutine calculate_force(basis,nstate,occupation,energy,c_matrix)
 
  allocate(p_matrix(basis%nbf,basis%nbf,nspin))
  allocate(r_matrix(basis%nbf,basis%nbf))
- call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
- call setup_energy_density_matrix(basis%nbf,nstate,c_matrix,occupation,energy,r_matrix)
+ call setup_density_matrix(c_matrix,occupation,p_matrix)
+ call setup_energy_density_matrix(c_matrix,occupation,energy,r_matrix)
 
  !
  ! Filter out the low density matrix shells

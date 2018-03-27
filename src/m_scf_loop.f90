@@ -101,9 +101,9 @@ subroutine scf_loop(is_restart,&
  !
  ! Setup the density matrix: p_matrix
  if( parallel_ham ) then
-   call setup_density_matrix_sca(basis%nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham,n_ham,p_matrix)
+   call setup_density_matrix_sca(c_matrix,occupation,p_matrix)
  else
-   call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
+   call setup_density_matrix(c_matrix,occupation,p_matrix)
  endif
 
 
@@ -136,16 +136,16 @@ subroutine scf_loop(is_restart,&
    ! Hartree contribution to the Hamiltonian
    !
    if( .NOT. has_auxil_basis ) then
-     call setup_hartree(basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
+     call setup_hartree(p_matrix,hamiltonian_hartree,en%hart)
    else
      if( parallel_ham ) then
        if( parallel_buffer ) then
          call setup_hartree_ri_buffer_sca(m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
        else
-         call setup_hartree_ri_sca(basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
+         call setup_hartree_ri_sca(p_matrix,hamiltonian_hartree,en%hart)
        endif
      else
-       call setup_hartree_ri(basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
+       call setup_hartree_ri(p_matrix,hamiltonian_hartree,en%hart)
      endif
    endif
    ! calc_type%is_core is an inefficient way to get the Kinetic+Nucleus Hamiltonian
@@ -189,7 +189,7 @@ subroutine scf_loop(is_restart,&
    if(calc_type%need_exchange_lr) then
 
      if( .NOT. has_auxil_basis ) then
-       call setup_exchange_longrange(basis%nbf,p_matrix,hamiltonian_exx,energy_tmp)
+       call setup_exchange_longrange(p_matrix,hamiltonian_exx,energy_tmp)
      else
        if( parallel_ham ) then
          if( parallel_buffer ) then
@@ -198,7 +198,7 @@ subroutine scf_loop(is_restart,&
            call die('Range-separated functionals not implemented with full SCALAPACK yet')
          endif
        else
-         call setup_exchange_longrange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_exx,energy_tmp)
+         call setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,hamiltonian_exx,energy_tmp)
        endif
      endif
      ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
@@ -211,7 +211,7 @@ subroutine scf_loop(is_restart,&
    if( calc_type%need_exchange ) then
 
      if( .NOT. has_auxil_basis ) then
-       call setup_exchange(basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+       call setup_exchange(p_matrix,hamiltonian_exx,en%exx)
      else
        if( parallel_ham ) then
          if( parallel_buffer ) then
@@ -225,7 +225,7 @@ subroutine scf_loop(is_restart,&
            call die('Exchange with fully distributed hamiltonian: case not implemented yet')
          endif
        else
-         call setup_exchange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+         call setup_exchange_ri(occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
        endif
      endif
      ! Rescale with alpha_hybrid for hybrid functionals
@@ -364,9 +364,9 @@ subroutine scf_loop(is_restart,&
    ! Setup the new density matrix: p_matrix
    ! Save the old one for the convergence criterium
    if( parallel_ham ) then
-     call setup_density_matrix_sca(basis%nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham,n_ham,p_matrix)
+     call setup_density_matrix_sca(c_matrix,occupation,p_matrix)
    else
-     call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
+     call setup_density_matrix(c_matrix,occupation,p_matrix)
    endif
 
    is_converged = check_converged(p_matrix)
@@ -406,7 +406,7 @@ subroutine scf_loop(is_restart,&
  ! Get the exchange operator if not already calculated
  !
  if( .NOT. has_auxil_basis ) then
-   if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(basis%nbf,p_matrix,hamiltonian_exx,en%exx)
+   if( ABS(en%exx) < 1.0e-6_dp ) call setup_exchange(p_matrix,hamiltonian_exx,en%exx)
  else
    if( ABS(en%exx) < 1.0e-6_dp ) then
      if( parallel_ham ) then
@@ -416,7 +416,7 @@ subroutine scf_loop(is_restart,&
          call die('Exchange with fully distributed hamiltonian: case not implemented yet')
        endif
      else
-       call setup_exchange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
+       call setup_exchange_ri(occupation,c_matrix,p_matrix,hamiltonian_exx,en%exx)
      endif
    endif
  endif
@@ -509,19 +509,19 @@ subroutine scf_loop(is_restart,&
    if( ANY( ABS(p_matrix_out(:,:,:)) > 0.01_dp ) ) then
 
      if( .NOT. has_auxil_basis ) then
-       call setup_hartree(basis%nbf,p_matrix_out,hamiltonian_hartree,energy_tmp)
+       call setup_hartree(p_matrix_out,hamiltonian_hartree,energy_tmp)
        write(stdout,'(a50,1x,f19.10)') 'Hartree energy from input density matrix [Ha]:',energy_tmp
-       call setup_exchange(basis%nbf,p_matrix_out,hamiltonian_exx,energy_tmp)
+       call setup_exchange(p_matrix_out,hamiltonian_exx,energy_tmp)
        write(stdout,'(a50,1x,f19.10)') 'Exchange energy from input density matrix [Ha]:',energy_tmp
      else
-       call setup_hartree_ri(basis%nbf,p_matrix_out,hamiltonian_hartree,energy_tmp)
+       call setup_hartree_ri(p_matrix_out,hamiltonian_hartree,energy_tmp)
        write(stdout,'(a50,1x,f19.10)') 'Hartree energy from input density matrix [Ha]:',energy_tmp
        block
          real(dp) :: c_matrix_tmp(basis%nbf,basis%nbf,nspin)
          real(dp) :: occupation_tmp(basis%nbf,nspin)
          !=====
          call get_c_matrix_from_p_matrix(p_matrix_out,c_matrix_tmp,occupation_tmp)
-         call setup_exchange_ri(basis%nbf,basis%nbf,occupation_tmp,c_matrix_tmp,p_matrix_out,hamiltonian_exx,energy_tmp)
+         call setup_exchange_ri(occupation_tmp,c_matrix_tmp,p_matrix_out,hamiltonian_exx,energy_tmp)
        end block
        write(stdout,'(a50,1x,f19.10)') 'Exchange energy from input density matrix [Ha]:',energy_tmp
      endif
@@ -662,10 +662,10 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
    if( parallel_buffer ) then
      call setup_hartree_ri_buffer_sca(m_ham,n_ham,p_matrix,hamiltonian_tmp,ehart)
    else
-     call setup_hartree_ri_sca(basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_tmp,ehart)
+     call setup_hartree_ri_sca(p_matrix,hamiltonian_tmp,ehart)
    endif
  else
-   call setup_hartree_ri(basis%nbf,p_matrix,hamiltonian_tmp,ehart)
+   call setup_hartree_ri(p_matrix,hamiltonian_tmp,ehart)
  endif
 
  do ispin=1,nspin
@@ -712,7 +712,7 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
        call die('Range-separated functionals not implemented with full SCALAPACK yet')
      endif
    else
-     call setup_exchange_longrange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
+     call setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
    endif
    ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
    eexx_hyb = alpha_hybrid_lr * eexx
@@ -733,7 +733,7 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
        call die('Exchange with fully distributed hamiltonian: case not implemented yet')
      endif
    else
-     call setup_exchange_ri(basis%nbf,nstate,occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
+     call setup_exchange_ri(occupation,c_matrix,p_matrix,hamiltonian_spin_tmp,eexx)
    endif
    ! Rescale with alpha_hybrid for hybrid functionals
    eexx_hyb = eexx_hyb + alpha_hybrid * eexx

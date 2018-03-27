@@ -23,20 +23,23 @@ contains
 
 
 !=========================================================================
-subroutine setup_hartree(nbf,p_matrix,hartree_ij,ehartree)
+subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
  use m_eri
  implicit none
- integer,intent(in)   :: nbf
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: hartree_ij(nbf,nbf)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: hartree_ij(:,:)
  real(dp),intent(out) :: ehartree
 !=====
+ integer              :: nbf
  integer              :: ibf,jbf,kbf,lbf
  character(len=100)   :: title
 !=====
 
- write(stdout,*) 'Calculate Hartree term'
  call start_clock(timing_hartree)
+
+ write(stdout,*) 'Calculate Hartree term'
+
+ nbf = SIZE(hartree_ij(:,:),DIM=1)
 
  hartree_ij(:,:)=0.0_dp
 
@@ -74,14 +77,14 @@ end subroutine setup_hartree
 
 
 !=========================================================================
-subroutine setup_hartree_ri(nbf,p_matrix,hartree_ij,ehartree)
+subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
  use m_eri
  implicit none
- integer,intent(in)   :: nbf
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: hartree_ij(nbf,nbf)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: hartree_ij(:,:)
  real(dp),intent(out) :: ehartree
 !=====
+ integer              :: nbf
  integer              :: ibf,jbf,kbf,lbf
  integer              :: ipair
  real(dp),allocatable :: partial_sum(:)
@@ -89,9 +92,11 @@ subroutine setup_hartree_ri(nbf,p_matrix,hartree_ij,ehartree)
  character(len=100)   :: title
 !=====
 
- write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
  call start_clock(timing_hartree)
 
+ write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
+
+ nbf = SIZE(hartree_ij(:,:),DIM=1)
 
  allocate(partial_sum(nauxil_3center))
  partial_sum(:) = 0.0_dp
@@ -136,20 +141,22 @@ end subroutine setup_hartree_ri
 
 
 !=========================================================================
-subroutine setup_exchange(nbf,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
- integer,intent(in)   :: nbf
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: exchange_ij(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
+ integer              :: nbf
  integer              :: ibf,jbf,kbf,lbf,ispin
 !=====
 
- write(stdout,*) 'Calculate Exchange term'
  call start_clock(timing_exchange)
 
+ write(stdout,*) 'Calculate Exchange term'
+
+ nbf = SIZE(exchange_ij,DIM=1)
 
  exchange_ij(:,:,:)=0.0_dp
 
@@ -180,24 +187,28 @@ end subroutine setup_exchange
 
 
 !=========================================================================
-subroutine setup_exchange_ri(nbf,nstate,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
- integer,intent(in)   :: nbf,nstate
- real(dp),intent(in)  :: occupation(nstate,nspin)
- real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
+ real(dp),intent(in)  :: occupation(:,:)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: exchange_ij(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
+ integer              :: nbf,nstate
  integer              :: ibf,jbf,ispin,istate
  integer              :: nocc
  real(dp),allocatable :: tmp(:,:)
  integer              :: ipair
 !=====
 
- write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
  call start_clock(timing_exchange)
+
+ write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
+
+ nbf    = SIZE(exchange_ij,DIM=1)
+ nstate = SIZE(occupation(:,:),DIM=1)
 
  exchange_ij(:,:,:) = 0.0_dp
 
@@ -259,24 +270,27 @@ end subroutine setup_exchange_ri
 
 
 !=========================================================================
-subroutine setup_exchange_longrange_ri(nbf,nstate,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
- integer,intent(in)   :: nbf,nstate
- real(dp),intent(in)  :: occupation(nstate,nspin)
- real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
+ real(dp),intent(in)  :: occupation(:,:)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: exchange_ij(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
+ integer              :: nbf,nstate
  integer              :: ibf,jbf,ispin,istate
  real(dp),allocatable :: tmp(:,:)
  integer              :: ipair
 !=====
 
- write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity'
  call start_clock(timing_exchange)
 
+ write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity'
+
+ nbf    = SIZE(exchange_ij,DIM=1)
+ nstate = SIZE(occupation,DIM=1)
 
  exchange_ij(:,:,:) = 0.0_dp
 
@@ -324,20 +338,22 @@ end subroutine setup_exchange_longrange_ri
 
 
 !=========================================================================
-subroutine setup_exchange_longrange(nbf,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
- integer,intent(in)   :: nbf
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: exchange_ij(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
+ integer              :: nbf
  integer              :: ibf,jbf,kbf,lbf,ispin
 !=====
 
- write(stdout,*) 'Calculate Long-Range Exchange term'
  call start_clock(timing_exchange)
 
+ write(stdout,*) 'Calculate Long-Range Exchange term'
+
+ nbf = SIZE(exchange_ij,DIM=1)
 
  exchange_ij(:,:,:)=0.0_dp
 
@@ -365,19 +381,23 @@ end subroutine setup_exchange_longrange
 
 
 !=========================================================================
-subroutine setup_density_matrix(nbf,nstate,c_matrix,occupation,p_matrix)
+subroutine setup_density_matrix(c_matrix,occupation,p_matrix)
  implicit none
- integer,intent(in)   :: nbf,nstate
- real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)  :: occupation(nstate,nspin)
- real(dp),intent(out) :: p_matrix(nbf,nbf,nspin)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: occupation(:,:)
+ real(dp),intent(out) :: p_matrix(:,:,:)
 !=====
+ integer :: nbf,nstate
  integer :: ispin,ibf,jbf
  integer :: istate
 !=====
 
  call start_clock(timing_density_matrix)
+
  write(stdout,'(1x,a)') 'Build density matrix'
+
+ nbf    = SIZE(c_matrix(:,:,:),DIM=1)
+ nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
  p_matrix(:,:,:) = 0.0_dp
  do ispin=1,nspin
@@ -400,20 +420,24 @@ end subroutine setup_density_matrix
 
 
 !=========================================================================
-subroutine setup_energy_density_matrix(nbf,nstate,c_matrix,occupation,energy,q_matrix)
+subroutine setup_energy_density_matrix(c_matrix,occupation,energy,q_matrix)
  implicit none
- integer,intent(in)   :: nbf,nstate
- real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)  :: occupation(nstate,nspin)
- real(dp),intent(in)  :: energy(nstate,nspin)
- real(dp),intent(out) :: q_matrix(nbf,nbf)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: occupation(:,:)
+ real(dp),intent(in)  :: energy(:,:)
+ real(dp),intent(out) :: q_matrix(:,:)
 !=====
+ integer :: nbf,nstate
  integer :: ispin,ibf,jbf
  integer :: istate
 !=====
 
  call start_clock(timing_density_matrix)
+
  write(stdout,'(1x,a)') 'Build energy-density matrix'
+
+ nbf    = SIZE(c_matrix(:,:,:),DIM=1)
+ nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
  q_matrix(:,:) = 0.0_dp
  do ispin=1,nspin
@@ -430,6 +454,7 @@ subroutine setup_energy_density_matrix(nbf,nstate,c_matrix,occupation,energy,q_m
      q_matrix(jbf,ibf) = q_matrix(ibf,jbf)
    enddo
  enddo
+
  call stop_clock(timing_density_matrix)
 
 
@@ -437,18 +462,23 @@ end subroutine setup_energy_density_matrix
 
 
 !=========================================================================
-subroutine test_density_matrix(nbf,nspin,p_matrix,s_matrix)
+subroutine test_density_matrix(p_matrix,s_matrix)
  implicit none
- integer,intent(in)   :: nbf,nspin
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin),s_matrix(nbf,nbf)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(in)  :: s_matrix(:,:)
 !=====
+ integer              :: nbf
  integer              :: ispin
- real(dp)             :: matrix(nbf,nbf)
+ real(dp),allocatable :: matrix(:,:)
  character(len=100)   :: title
 !=====
 
+ nbf = SIZE(p_matrix(:,:,:),DIM=1)
+ allocate(matrix(nbf,nbf))
+
  write(stdout,*) 'Check equality PSP = P'
  write(stdout,*) ' valid only for integer occupation numbers'
+
  do ispin=1,nspin
 
    !
@@ -463,6 +493,7 @@ subroutine test_density_matrix(nbf,nspin,p_matrix,s_matrix)
 
  enddo
 
+ deallocate(matrix)
 
 end subroutine test_density_matrix
 
@@ -583,15 +614,17 @@ end subroutine set_occupation
 
 
 !=========================================================================
-subroutine matrix_basis_to_eigen(nbf,nstate,c_matrix,matrix_inout)
+subroutine matrix_basis_to_eigen(c_matrix,matrix_inout)
  implicit none
- integer,intent(in)      :: nbf,nstate
- real(dp),intent(in)     :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(inout)  :: matrix_inout(nbf,nbf,nspin)
+ real(dp),intent(in)     :: c_matrix(:,:,:)
+ real(dp),intent(inout)  :: matrix_inout(:,:,:)
 !=====
+ integer                 :: nbf,nstate
  integer                 :: ispin
 !=====
 
+ nbf    = SIZE(c_matrix(:,:,:),DIM=1)
+ nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
  do ispin=1,nspin
    matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
@@ -755,22 +788,27 @@ end subroutine level_shifting_down
 
 
 !=========================================================================
-subroutine setup_sqrt_overlap(TOL_OVERLAP,nbf,s_matrix,nstate,s_matrix_sqrt_inv)
+subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,s_matrix_sqrt_inv)
  use m_tools
  implicit none
 
  real(dp),intent(in)                :: TOL_OVERLAP
- integer,intent(in)                 :: nbf
- real(dp),intent(in)                :: s_matrix(nbf,nbf)
+ real(dp),intent(in)                :: s_matrix(:,:)
  integer,intent(out)                :: nstate
  real(dp),allocatable,intent(inout) :: s_matrix_sqrt_inv(:,:)
 !=====
+ integer  :: nbf
  integer  :: ibf,jbf
- real(dp) :: s_eigval(nbf)
- real(dp) :: matrix_tmp(nbf,nbf)
+ real(dp),allocatable :: s_eigval(:)
+ real(dp),allocatable :: matrix_tmp(:,:)
 !=====
 
  write(stdout,'(/,a)') ' Calculate overlap matrix square-root S^{1/2}'
+
+ nbf = SIZE(s_matrix,DIM=1)
+
+ allocate(matrix_tmp(nbf,nbf))
+ allocate(s_eigval(nbf))
 
  matrix_tmp(:,:) = s_matrix(:,:)
  ! Diagonalization with or without SCALAPACK
@@ -793,6 +831,7 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,nbf,s_matrix,nstate,s_matrix_sqrt_inv)
    endif
  enddo
 
+ deallocate(matrix_tmp,s_eigval)
 
 end subroutine setup_sqrt_overlap
 

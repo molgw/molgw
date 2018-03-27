@@ -224,7 +224,7 @@ program molgw
      n_c    = SIZE( s_matrix_sqrt_inv , DIM=2 )
 
    else
-     call setup_sqrt_overlap(min_overlap,basis%nbf,s_matrix,nstate,s_matrix_sqrt_inv)
+     call setup_sqrt_overlap(min_overlap,s_matrix,nstate,s_matrix_sqrt_inv)
 
      m_c = basis%nbf
      n_c = nstate

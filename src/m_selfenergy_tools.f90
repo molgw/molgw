@@ -538,18 +538,18 @@ subroutine setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamilton
 
    if( calc_type%is_dft ) then
      call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.FALSE.,BATCH_SIZE)
-     call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation_tmp,p_matrix_tmp)
+     call setup_density_matrix(c_matrix,occupation_tmp,p_matrix_tmp)
      call dft_exc_vxc_batch(BATCH_SIZE,basis,nstate,occupation_tmp,c_matrix,hxc_val,exc)
      call destroy_dft_grid()
    endif
 
    if( .NOT. has_auxil_basis ) then
-     call setup_exchange(basis%nbf,p_matrix_tmp,hexx_val,eexx)
+     call setup_exchange(p_matrix_tmp,hexx_val,eexx)
    else
      if( parallel_ham ) then
        call die('setup_exchange_m_vxc_diag: case not implemented')
      else
-       call setup_exchange_ri(basis%nbf,nstate,occupation_tmp,c_matrix,p_matrix_tmp,hexx_val,eexx)
+       call setup_exchange_ri(occupation_tmp,c_matrix,p_matrix_tmp,hexx_val,eexx)
      endif
    endif
 

@@ -204,7 +204,7 @@ m_hamiltonian.o: m_definitions.f90 m_mpi.f90 m_scalapack.f90 m_warning.f90 m_tim
 density_tools.o: m_definitions.f90 m_atoms.f90 m_mpi.f90 m_gaussian.f90 m_inputparam.f90 m_basis_set.f90 density_tools.f90
 	$(FC_W_OPTS) -c density_tools.f90 $(LIBXC_INCS)
 
-multipole_tools.o: m_definitions.f90 m_atoms.f90 m_mpi.f90 m_gaussian.f90 m_inputparam.f90 m_basis_set.f90 multipole_tools.f90
+multipole_tools.o: m_definitions.f90 m_atoms.f90 m_mpi.f90 m_gaussian.f90 m_inputparam.f90 m_basis_set.f90 m_hamiltonian.f90 m_hamiltonian_onebody.f90 multipole_tools.f90
 	$(FC_W_OPTS) -c multipole_tools.f90 $(LIBXC_INCS)
 
 io.o: my_machine.arch m_definitions.f90 m_mpi.f90 m_warning.f90 m_atoms.f90 m_cart_to_pure.f90 m_basis_set.f90 m_tools.f90 m_libint_tools.f90 m_inputparam.f90 \

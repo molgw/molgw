@@ -273,14 +273,14 @@ end subroutine setup_nucleus_sca
 
 
 !=========================================================================
-subroutine setup_hartree_ri_sca(nbf,m_ham,n_ham,p_matrix,hartree_ij,ehartree)
+subroutine setup_hartree_ri_sca(p_matrix,hartree_ij,ehartree)
  use m_eri
  implicit none
- integer,intent(in)   :: nbf,m_ham,n_ham
- real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
- real(dp),intent(out) :: hartree_ij(m_ham,n_ham)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: hartree_ij(:,:)
  real(dp),intent(out) :: ehartree
 !=====
+ integer              :: m_ham,n_ham
  integer              :: ilocal,jlocal
  integer              :: iglobal,jglobal
  integer              :: ibf,jbf,kbf,lbf,ispin
@@ -289,6 +289,9 @@ subroutine setup_hartree_ri_sca(nbf,m_ham,n_ham,p_matrix,hartree_ij,ehartree)
  real(dp),allocatable :: partial_sum(:)
  character(len=100)   :: title
 !=====
+
+ m_ham = SIZE(p_matrix,DIM=1)
+ n_ham = SIZE(p_matrix,DIM=2)
 
 #ifdef HAVE_SCALAPACK
 
@@ -572,21 +575,23 @@ end subroutine setup_exchange_longrange_ri_sca
 
 
 !=========================================================================
-subroutine setup_density_matrix_sca(nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham,n_ham,p_matrix)
+subroutine setup_density_matrix_sca(c_matrix,occupation,p_matrix)
  implicit none
- integer,intent(in)   :: nbf,nstate
- integer,intent(in)   :: m_ham,n_ham,m_c,n_c
- real(dp),intent(in)  :: c_matrix(m_c,n_c,nspin)
- real(dp),intent(in)  :: occupation(nstate,nspin)
- real(dp),intent(out) :: p_matrix(m_ham,n_ham,nspin)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: occupation(:,:)
+ real(dp),intent(out) :: p_matrix(:,:,:)
 !=====
+ integer  :: nbf,nstate
  integer  :: ispin,istate
- real(dp) :: matrix_tmp(m_ham,n_ham)
+ real(dp),allocatable :: matrix_tmp(:,:)
 !=====
 
 #ifdef HAVE_SCALAPACK
  call start_clock(timing_density_matrix)
  write(stdout,'(1x,a)') 'Build density matrix: SCALAPACK'
+
+ nbf    = desc_c(M_)
+ nstate = desc_c(N_)
 
  p_matrix(:,:,:) = 0.0_dp
 
@@ -596,7 +601,9 @@ subroutine setup_density_matrix_sca(nbf,nstate,m_c,n_c,c_matrix,occupation,m_ham
        if( occupation(istate,ispin) < completely_empty ) cycle
        call PDSYR('L',nbf,occupation(istate,ispin),c_matrix(:,:,ispin),1,istate,desc_c,1,p_matrix(:,:,ispin),1,1,desc_ham)
      enddo
+     allocate(matrix_tmp,MOLD=p_matrix(:,:,1))
      call symmetrize_matrix_sca('L',nbf,desc_ham,p_matrix(:,:,ispin),desc_ham,matrix_tmp)
+     deallocate(matrix_tmp)
    enddo
  endif
 

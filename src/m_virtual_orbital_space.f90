@@ -94,7 +94,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  s_small(:,:) = MATMUL( TRANSPOSE(s_bigsmall) , MATMUL( s_matrix_inv , s_bigsmall ) )
 
  ! Calculate ( tilde S )^{-1/2}
- call setup_sqrt_overlap(min_overlap,basis_small%nbf,s_small,nstate_small,s_small_sqrt_inv)
+ call setup_sqrt_overlap(min_overlap,s_small,nstate_small,s_small_sqrt_inv)
  call clean_deallocate('Overlap matrix Ssmall',s_small)
 
 
@@ -187,7 +187,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
 
  call clean_deallocate('Overlap matrix S',s_matrix)
 
- call setup_sqrt_overlap(min_overlap,nstate_small,s_bar,nstate_bar,s_bar_sqrt_inv)
+ call setup_sqrt_overlap(min_overlap,s_bar,nstate_bar,s_bar_sqrt_inv)
  if( nstate_small /= nstate_bar ) call die('virtual_smallbasis: this usually never happens')
  call clean_deallocate('Overlap selected states',s_bar)
 
