@@ -575,7 +575,7 @@ subroutine scf_loop(is_restart,&
 
  !
  ! Evaluate spin contamination
- call evaluate_s2_operator(occupation,c_matrix,s_matrix)
+ if( .NOT. parallel_ham ) call evaluate_s2_operator(occupation,c_matrix,s_matrix)
 
 
  ! A dirty section for the Luttinger-Ward functional

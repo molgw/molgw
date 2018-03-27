@@ -651,8 +651,8 @@ subroutine evaluate_s2_operator(occupation,c_matrix,s_matrix)
 
  nstate = SIZE(occupation,DIM=1)
 
- n1 = SUM( occupation(:,1) )
- n2 = SUM( occupation(:,2) )
+ n1 = SUM( occupation(:,1) )  ! Number of spin up   electrons
+ n2 = SUM( occupation(:,2) )  ! Number of spin down electrons
  nmax = MAX(n1,n2)
  nmin = MIN(n1,n2)
 
