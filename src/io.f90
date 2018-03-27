@@ -1071,15 +1071,14 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
  integer                    :: linefile
  integer                    :: i_max_atom
  real(dp)                   :: vec_length
- real(dp)                   :: deltar
- real(dp),allocatable       :: integral,integral_total
+ real(dp)                   :: deltar,path_length
+ real(dp)                   :: integral(2)
+ real(dp)                   :: integral_total
  integer                    :: istate_min,istate_max
 !=====
 
  if( .NOT. is_iomaster ) return
 
- integral=0.0_dp
- integral_total=0.0_dp
 
  istate_min=1
  istate_max=natom
@@ -1123,6 +1122,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
  enddo
 
  deltar=NORM2( point_b(:) - point_a(:) )/nr
+ path_length=NORM2(point_b(:)-point_a(:)) 
 
  do ispin=1,nspin
 
@@ -1131,24 +1131,27 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
      a_cur(:)=point_a(:)+(point_c(:)-point_a(:))*ih/nh
      b_cur(:)=point_b(:)+(point_c(:)-point_a(:))*ih/nh
  
+     integral=0.0_dp
+     integral_total=0.0_dp
+
      do ir=0,nr
        rr(:) = a_cur(:) + ( b_cur(:) - a_cur(:) ) * ir / nr
        call calculate_basis_functions_r(basis,rr,basis_function_r)
        phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
 
        do istate=istate_min,istate_max
-         integral=integral+(phi(istate,ispin))**2 * occupation(istate,ispin)*deltar
+         integral(1)=integral(1)+(phi(istate,ispin))**2 * occupation(istate,ispin)*deltar
        end do
 
-       integral_total=integral
+       do istate=istate_max+1,nstate 
+         integral(2)=integral(2)+(phi(istate,ispin))**2 * occupation(istate,ispin)*deltar
+       end do
 
-       do istate=istate_max+1,nstate
+       do istate=1,nstate
          integral_total=integral_total+(phi(istate,ispin))**2 * occupation(istate,ispin)*deltar
        end do
-
-       write(line_rho(ispin),'(50(e16.8,2x))') NORM2(a_cur(:)-point_a(:)),integral/NORM2(point_b(:)-point_a(:)),integral_total/NORM2(point_b(:)-point_a(:))
-
      end do
+     write(line_rho(ispin),'(50(e16.8,2x))') NORM2(a_cur(:)-point_a(:)),integral(1)/path_length,integral(2)/path_length,integral_total/path_length
    enddo
 
  enddo
