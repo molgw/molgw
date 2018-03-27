@@ -70,10 +70,9 @@ end subroutine matrix_cart_to_local
 
 
 !=========================================================================
-subroutine setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
+subroutine setup_overlap_sca(basis,m_ham,n_ham,s_matrix)
  use m_basis_set
  implicit none
- logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  integer,intent(in)         :: m_ham,n_ham
  real(dp),intent(out)       :: s_matrix(m_ham,n_ham)
@@ -122,8 +121,6 @@ subroutine setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
    enddo
  enddo
 
- title='=== Overlap matrix S ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,s_matrix)
 
  call stop_clock(timing_overlap)
 
@@ -134,10 +131,9 @@ end subroutine setup_overlap_sca
 
 
 !=========================================================================
-subroutine setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic)
+subroutine setup_kinetic_sca(basis,m_ham,n_ham,hamiltonian_kinetic)
  use m_basis_set
  implicit none
- logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  integer,intent(in)         :: m_ham,n_ham
  real(dp),intent(out)       :: hamiltonian_kinetic(m_ham,n_ham)
@@ -185,8 +181,6 @@ subroutine setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic
    enddo
  enddo
 
- title='===  Kinetic energy contribution ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_kinetic)
 
  call stop_clock(timing_hamiltonian_kin)
 
@@ -196,11 +190,10 @@ end subroutine setup_kinetic_sca
 
 
 !=========================================================================
-subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
+subroutine setup_nucleus_sca(basis,m_ham,n_ham,hamiltonian_nucleus)
  use m_basis_set
  use m_atoms
  implicit none
- logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  integer,intent(in)         :: m_ham,n_ham
  real(dp),intent(out)       :: hamiltonian_nucleus(m_ham,n_ham)
@@ -271,8 +264,6 @@ subroutine setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus
  ! Reduce operation
  call xsum_local(hamiltonian_nucleus)
 
- title='===  Nucleus potential contribution ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_nucleus)
 
  call stop_clock(timing_hamiltonian_nuc)
 
@@ -282,10 +273,9 @@ end subroutine setup_nucleus_sca
 
 
 !=========================================================================
-subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,hartree_ij,ehartree)
+subroutine setup_hartree_ri_sca(nbf,m_ham,n_ham,p_matrix,hartree_ij,ehartree)
  use m_eri
  implicit none
- logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf,m_ham,n_ham
  real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
  real(dp),intent(out) :: hartree_ij(m_ham,n_ham)
@@ -344,9 +334,6 @@ subroutine setup_hartree_ri_sca(print_matrix_,nbf,m_ham,n_ham,p_matrix,hartree_i
  ! Sum up the different contribution from different procs only if needed
  call xsum_local(hartree_ij)
 
-
- title='=== Hartree contribution ==='
- call dump_out_matrix(print_matrix_,title,nbf,1,hartree_ij)
 
  !
  ! Calculate the Hartree energy
@@ -522,10 +509,9 @@ end subroutine setup_exchange_ri_sca
 
 
 !=========================================================================
-subroutine setup_exchange_longrange_ri_sca(print_matrix_,nbf,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_longrange_ri_sca(nbf,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
- logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
  real(dp),intent(in)  :: occupation(nbf,nspin)
  real(dp),intent(in)  :: c_matrix(nbf,nbf,nspin)
@@ -575,7 +561,6 @@ subroutine setup_exchange_longrange_ri_sca(print_matrix_,nbf,occupation,c_matrix
 
  call xsum_local(exchange_ij)
 
- call dump_out_matrix(print_matrix_,'=== LR Exchange contribution ===',nbf,nspin,exchange_ij)
 
  eexchange = 0.5_dp*SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
 

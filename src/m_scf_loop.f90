@@ -136,16 +136,16 @@ subroutine scf_loop(is_restart,&
    ! Hartree contribution to the Hamiltonian
    !
    if( .NOT. has_auxil_basis ) then
-     call setup_hartree(print_matrix_,basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
+     call setup_hartree(basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
    else
      if( parallel_ham ) then
        if( parallel_buffer ) then
          call setup_hartree_ri_buffer_sca(m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
        else
-         call setup_hartree_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
+         call setup_hartree_ri_sca(basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_hartree,en%hart)
        endif
      else
-       call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
+       call setup_hartree_ri(basis%nbf,p_matrix,hamiltonian_hartree,en%hart)
      endif
    endif
    ! calc_type%is_core is an inefficient way to get the Kinetic+Nucleus Hamiltonian
@@ -257,7 +257,7 @@ subroutine scf_loop(is_restart,&
      allocate(matrix_tmp(m_ham,n_ham,nspin))
      call gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpol,matrix_tmp)
 
-     call dump_out_matrix(print_matrix_,'=== Self-energy ===',basis%nbf,nspin,matrix_tmp)
+     call dump_out_matrix(.FALSE.,'=== Self-energy ===',basis%nbf,nspin,matrix_tmp)
      call destroy_spectral_function(wpol)
 
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
@@ -283,7 +283,7 @@ subroutine scf_loop(is_restart,&
      en%tot = en%tot + en%mp2
      write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en%tot
 
-     call dump_out_matrix(print_matrix_,'=== Self-energy ===',basis%nbf,nspin,matrix_tmp)
+     call dump_out_matrix(.FALSE.,'=== Self-energy ===',basis%nbf,nspin,matrix_tmp)
 
      hamiltonian(:,:,:) = hamiltonian(:,:,:) + matrix_tmp(:,:,:)
      deallocate(matrix_tmp)
@@ -509,12 +509,12 @@ subroutine scf_loop(is_restart,&
    if( ANY( ABS(p_matrix_out(:,:,:)) > 0.01_dp ) ) then
 
      if( .NOT. has_auxil_basis ) then
-       call setup_hartree(print_matrix_,basis%nbf,p_matrix_out,hamiltonian_hartree,energy_tmp)
+       call setup_hartree(basis%nbf,p_matrix_out,hamiltonian_hartree,energy_tmp)
        write(stdout,'(a50,1x,f19.10)') 'Hartree energy from input density matrix [Ha]:',energy_tmp
        call setup_exchange(basis%nbf,p_matrix_out,hamiltonian_exx,energy_tmp)
        write(stdout,'(a50,1x,f19.10)') 'Exchange energy from input density matrix [Ha]:',energy_tmp
      else
-       call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix_out,hamiltonian_hartree,energy_tmp)
+       call setup_hartree_ri(basis%nbf,p_matrix_out,hamiltonian_hartree,energy_tmp)
        write(stdout,'(a50,1x,f19.10)') 'Hartree energy from input density matrix [Ha]:',energy_tmp
        block
          real(dp) :: c_matrix_tmp(basis%nbf,basis%nbf,nspin)
@@ -535,22 +535,6 @@ subroutine scf_loop(is_restart,&
      call dump_out_energy('=== Hartree expectation value from input density matrix ===',nstate,nspin,occupation,hartree_ii)
      call dump_out_energy('=== Exchange expectation value from input density matrix ===',nstate,nspin,occupation,exchange_ii)
 
-
-!     ! Do it again for the difference
-!     p_matrix_out(:,:,:) = p_matrix_out(:,:,:) - p_matrix(:,:,:)
-!     if( .NOT. has_auxil_basis ) then
-!       call setup_hartree(print_matrix_,basis%nbf,p_matrix_out,hamiltonian_hartree,energy_tmp)
-!       call setup_exchange(basis%nbf,p_matrix_out,hamiltonian_exx,energy_tmp)
-!     else
-!       call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix_out,hamiltonian_hartree,energy_tmp)
-!     endif
-!     do ispin=1,nspin
-!       do istate=1,nstate
-!          hartree_ii(istate,ispin)  =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix(:,istate,ispin) ) )
-!          exchange_ii(istate,ispin) =  DOT_PRODUCT( c_matrix(:,istate,ispin) , MATMUL( hamiltonian_exx(:,:,ispin) , c_matrix(:,istate,ispin) ) )
-!       enddo
-!     enddo
-!     call dump_out_energy('=== H+X expectation difference from input density matrix ===',nstate,nspin,occupation,hartree_ii+exchange_ii)
 
    endif
   
@@ -678,10 +662,10 @@ subroutine calculate_hamiltonian_hxc_ri(basis,nstate,m_ham,n_ham,m_c,n_c,occupat
    if( parallel_buffer ) then
      call setup_hartree_ri_buffer_sca(m_ham,n_ham,p_matrix,hamiltonian_tmp,ehart)
    else
-     call setup_hartree_ri_sca(print_matrix_,basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_tmp,ehart)
+     call setup_hartree_ri_sca(basis%nbf,m_ham,n_ham,p_matrix,hamiltonian_tmp,ehart)
    endif
  else
-   call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix,hamiltonian_tmp,ehart)
+   call setup_hartree_ri(basis%nbf,p_matrix,hamiltonian_tmp,ehart)
  endif
 
  do ispin=1,nspin

@@ -977,13 +977,14 @@ subroutine pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc
  ! Get the first-order correction to the density matrix
  call pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,p_matrix_pt1)
 
+ ! First, Hartree
  if( .NOT. has_auxil_basis ) then
-   call setup_hartree(print_matrix_,basis%nbf,p_matrix_pt1,hh,energy_tmp)
+   call setup_hartree(basis%nbf,p_matrix_pt1,hh,energy_tmp)
  else
-   call setup_hartree_ri(print_matrix_,basis%nbf,p_matrix_pt1,hh,energy_tmp)
+   call setup_hartree_ri(basis%nbf,p_matrix_pt1,hh,energy_tmp)
  endif
 
-
+ ! Then, Exchange
  if( .NOT. has_auxil_basis ) then
    call setup_exchange(basis%nbf,p_matrix_pt1,hx,energy_tmp)
  else

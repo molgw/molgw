@@ -23,10 +23,9 @@ contains
 
 
 !=========================================================================
-subroutine setup_hartree(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
+subroutine setup_hartree(nbf,p_matrix,hartree_ij,ehartree)
  use m_eri
  implicit none
- logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: hartree_ij(nbf,nbf)
@@ -62,7 +61,7 @@ subroutine setup_hartree(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
 
 
  title='=== Hartree contribution ==='
- call dump_out_matrix(print_matrix_,title,nbf,1,hartree_ij)
+ call dump_out_matrix(.FALSE.,title,nbf,1,hartree_ij)
 
  ehartree = 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,1))
  if( nspin == 2 ) then
@@ -75,10 +74,9 @@ end subroutine setup_hartree
 
 
 !=========================================================================
-subroutine setup_hartree_ri(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
+subroutine setup_hartree_ri(nbf,p_matrix,hartree_ij,ehartree)
  use m_eri
  implicit none
- logical,intent(in)   :: print_matrix_
  integer,intent(in)   :: nbf
  real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
  real(dp),intent(out) :: hartree_ij(nbf,nbf)
@@ -125,7 +123,7 @@ subroutine setup_hartree_ri(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
 
 
  title='=== Hartree contribution ==='
- call dump_out_matrix(print_matrix_,title,nbf,1,hartree_ij)
+ call dump_out_matrix(.FALSE.,title,nbf,1,hartree_ij)
 
  ehartree = 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,1))
  if( nspin == 2 ) then
