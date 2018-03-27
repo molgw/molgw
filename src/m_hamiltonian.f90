@@ -17,6 +17,7 @@ module m_hamiltonian
  use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
  use m_basis_set
+ use m_eri
 
 
 contains
@@ -24,7 +25,6 @@ contains
 
 !=========================================================================
 subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
- use m_eri
  implicit none
  real(dp),intent(in)  :: p_matrix(:,:,:)
  real(dp),intent(out) :: hartree_ij(:,:)
@@ -78,7 +78,6 @@ end subroutine setup_hartree
 
 !=========================================================================
 subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
- use m_eri
  implicit none
  real(dp),intent(in)  :: p_matrix(:,:,:)
  real(dp),intent(out) :: hartree_ij(:,:)
@@ -142,7 +141,6 @@ end subroutine setup_hartree_ri
 
 !=========================================================================
 subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
- use m_eri
  implicit none
  real(dp),intent(in)  :: p_matrix(:,:,:)
  real(dp),intent(out) :: exchange_ij(:,:,:)
@@ -188,7 +186,6 @@ end subroutine setup_exchange
 
 !=========================================================================
 subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
- use m_eri
  implicit none
  real(dp),intent(in)  :: occupation(:,:)
  real(dp),intent(in)  :: c_matrix(:,:,:)
@@ -271,7 +268,6 @@ end subroutine setup_exchange_ri
 
 !=========================================================================
 subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
- use m_eri
  implicit none
  real(dp),intent(in)  :: occupation(:,:)
  real(dp),intent(in)  :: c_matrix(:,:,:)
@@ -339,7 +335,6 @@ end subroutine setup_exchange_longrange_ri
 
 !=========================================================================
 subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
- use m_eri
  implicit none
  real(dp),intent(in)  :: p_matrix(:,:,:)
  real(dp),intent(out) :: exchange_ij(:,:,:)

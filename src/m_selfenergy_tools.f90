@@ -490,8 +490,7 @@ subroutine setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamilton
  use m_inputparam
  use m_basis_set
  use m_dft_grid
- use m_hamiltonian
- use m_hamiltonian_sca
+ use m_hamiltonian_wrapper
  implicit none
 
  type(basis_set),intent(in)    :: basis
@@ -543,15 +542,7 @@ subroutine setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamilton
      call destroy_dft_grid()
    endif
 
-   if( .NOT. has_auxil_basis ) then
-     call setup_exchange(p_matrix_tmp,hexx_val,eexx)
-   else
-     if( parallel_ham ) then
-       call die('setup_exchange_m_vxc_diag: case not implemented')
-     else
-       call setup_exchange_ri(occupation_tmp,c_matrix,p_matrix_tmp,hexx_val,eexx)
-     endif
-   endif
+   call calculate_exchange(p_matrix_tmp,hexx_val,occupation=occupation_tmp,c_matrix=c_matrix)
 
    hxc_val(:,:,:) = hxc_val(:,:,:) + alpha_hybrid * hexx_val(:,:,:)
    hxmxc(:,:,:) = hexx_val(:,:,:) - hxc_val(:,:,:) 

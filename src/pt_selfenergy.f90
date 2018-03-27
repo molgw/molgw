@@ -954,7 +954,7 @@ subroutine pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc
  use m_eri_ao_mo
  use m_inputparam
  use m_selfenergy_tools
- use m_hamiltonian
+ use m_hamiltonian_wrapper
  implicit none
 
  integer,intent(in)         :: nstate
@@ -978,20 +978,10 @@ subroutine pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc
  call pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,p_matrix_pt1)
 
  ! First, Hartree
- if( .NOT. has_auxil_basis ) then
-   call setup_hartree(p_matrix_pt1,hh,energy_tmp)
- else
-   call setup_hartree_ri(p_matrix_pt1,hh,energy_tmp)
- endif
+ call calculate_hartree(p_matrix_pt1,hh)
 
  ! Then, Exchange
- if( .NOT. has_auxil_basis ) then
-   call setup_exchange(p_matrix_pt1,hx,energy_tmp)
- else
-   call get_c_matrix_from_p_matrix(p_matrix_pt1,c_matrix_tmp,occupation_tmp)
-   call setup_exchange_ri(occupation_tmp,c_matrix_tmp,p_matrix_pt1,hx,energy_tmp)
- endif
-
+ call calculate_exchange(p_matrix_pt1,hx)
 
  do ispin=1,nspin
    do istate=1,nstate
