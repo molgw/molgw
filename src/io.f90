@@ -1151,7 +1151,9 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
          integral_total=integral_total+(phi(istate,ispin))**2 * occupation(istate,ispin)*deltar
        end do
      end do
-     write(line_rho(ispin),'(50(e16.8,2x))') NORM2(a_cur(:)-point_a(:)),integral(1)/path_length,integral(2)/path_length,integral_total/path_length
+     integral(:)=integral(:)/path_length
+     integral_total=integral_total/path_length
+     write(line_rho(ispin),'(50(e16.8,2x))') NORM2(a_cur(:)-point_a(:)),integral_total,integral(1),integral(2)
    enddo
 
  enddo
