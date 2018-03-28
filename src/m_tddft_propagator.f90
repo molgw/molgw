@@ -513,6 +513,7 @@ subroutine tddft_time_loop(nstate,                           &
 
      ! ---q_matrix---
      if(calc_q_matrix_) then
+       istate_cut(4)=nstate
        inquire(file='manual_q_matrix_param',exist=file_exists)
        if(file_exists) then
          open(newunit=file_q_matrix_param,file='manual_q_matrix_param',status='old')
