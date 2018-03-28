@@ -460,6 +460,7 @@ subroutine tddft_time_loop(nstate,                           &
  integer                    :: nx,ny,nz,unit_cube_diff
  logical                    :: file_exists
 !==qmatrix==
+ integer                    :: file_q_matrix_param
  integer                    :: istate_cut(10)
  integer                    :: file_q_matrix(2)
  complex(dp),allocatable    :: q_matrix_cmplx(:,:,:)
@@ -512,6 +513,18 @@ subroutine tddft_time_loop(nstate,                           &
 
      ! ---q_matrix---
      if(calc_q_matrix_) then
+       inquire(file='manual_q_matrix_param',exist=file_exists)
+       if(file_exists) then
+         open(newunit=file_q_matrix_param,file='manual_q_matrix_param',status='old')
+         read(linefile,*) istate_cut(1), istate_cut(2), istate_cut(3)
+         close(file_q_matrix_param)
+       else
+         istate_cut(1)=1
+         istate_cut(2)=natom-1
+         istate_cut(3)=natom+INT((natom-1)/2)
+         call issue_warning('plot_rho_traj_bunch_contrib: manual_q_matrix_param file was not found')
+       endif
+
        do ispin=1,nspin
          write(name_file_q_matrix,"(a,i1,a)") "q_matrix_", ispin, ".dat" 
          open(newunit=file_q_matrix(ispin),file=name_file_q_matrix)
@@ -966,10 +979,6 @@ subroutine tddft_time_loop(nstate,                           &
 
 !-------q_matrix----------
    if(calc_q_matrix_) then 
-     istate_cut(1)=1
-     istate_cut(2)=natom
-     istate_cut(3)=natom+INT(natom/2.0_dp)
-     istate_cut(4)=nocc
      q_occ=0.0_dp
      do ispin=1,nspin
        q_matrix_cmplx(:,:,ispin)=MATMUL(CONJG(TRANSPOSE(c_matrix_orth_start_cmplx(:,:,ispin))),c_matrix_orth_cmplx(:,:,ispin))

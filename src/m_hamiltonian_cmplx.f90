@@ -87,7 +87,7 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc,occupation,c_matrix_cmplx,p_m
  deallocate(tmp_cmplx)
  ! This interface should work also for complex exchange_ij_cmplx 
  call xsum_world(exchange_ij_cmplx)
- eexchange = real( 0.5_dp * SUM( exchange_ij_cmplx(:,:,:) * conjg(p_matrix_cmplx(:,:,:)) ),dp)
+ eexchange = REAL( 0.5_dp * SUM( exchange_ij_cmplx(:,:,:) * CONJG(p_matrix_cmplx(:,:,:)) ),dp)
 
  call stop_clock(timing_exchange)
 
@@ -127,29 +127,6 @@ subroutine setup_density_matrix_cmplx(nbf,nstate,nocc,c_matrix_cmplx,occupation,
 
 
 end subroutine setup_density_matrix_cmplx
-
-!=========================================================================
-subroutine setup_density_matrix_cmplx_slow(nbf,nstate,nocc_dim,c_matrix_cmplx,occupation,p_matrix_cmplx)
- implicit none
- integer,intent(in)   :: nbf,nstate,nocc_dim
- complex(dp),intent(in)  :: c_matrix_cmplx(nbf,nocc_dim,nspin)
- real(dp),intent(in)  :: occupation(nstate,nspin)
- complex(dp),intent(out) :: p_matrix_cmplx(nbf,nbf,nspin)
-!=====
- integer :: ispin,ibf,jbf,nocc
-!=====
-
- do ispin=1,nspin
-
-   do jbf=1,nbf
-     do ibf=1,nbf
-       p_matrix_cmplx(ibf,jbf,ispin) = SUM( occupation(:,ispin) * c_matrix_cmplx(ibf,:,ispin) * conjg(c_matrix_cmplx(jbf,:,ispin)) )
-     enddo
-   enddo
- enddo
-
-
-end subroutine setup_density_matrix_cmplx_slow
 
 !=========================================================================
 subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_matrix_cmplx,vxc_ij,exc_xc)
@@ -419,95 +396,6 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
  call stop_clock(timing_dft)
 
 end subroutine dft_exc_vxc_batch_cmplx
-
-!=========================================================================
-subroutine static_dipole_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,dipole)
- use m_basis_set
- use m_atoms
- use m_timing
- implicit none
-
- integer,intent(in)                 :: nstate
- type(basis_set),intent(in)         :: basis
- integer,intent(in)                 :: nocc
- real(dp),intent(in)                :: occupation(nstate,nspin)
- complex(dp),intent(in)             :: c_matrix_cmplx(basis%nbf,nocc,nspin)
- real(dp),intent(out)               :: dipole(3)
-!=====
- integer                            :: gt
- integer                            :: istate,astate,iaspin
- integer                            :: mstate,pstate,mpspin
- integer                            :: ibf,jbf
- integer                            :: ni,nj,li,lj,ni_cart,nj_cart,i_cart,j_cart,ibf_cart,jbf_cart
- integer                            :: iatom,idir
- real(dp),allocatable               :: dipole_basis(:,:,:)
- real(dp),allocatable               :: dipole_cart(:,:,:)
- complex(dp)                        :: p_matrix_cmplx(basis%nbf,basis%nbf,nspin)
-!=====
-
-! call start_clock(timing_spectrum)
-
-! write(stdout,'(/,a)') ' Calculate the static dipole'
-
- gt = get_gaussian_type_tag(basis%gaussian_type)
-
- !
- ! First precalculate all the needed dipole in the basis set
- !
- allocate(dipole_basis(basis%nbf,basis%nbf,3))
- ibf_cart = 1
- ibf      = 1
- do while(ibf_cart<=basis%nbf_cart)
-   li      = basis%bfc(ibf_cart)%am
-   ni_cart = number_basis_function_am('CART',li)
-   ni      = number_basis_function_am(basis%gaussian_type,li)
-
-   jbf_cart = 1
-   jbf      = 1
-   do while(jbf_cart<=basis%nbf_cart)
-     lj      = basis%bfc(jbf_cart)%am
-     nj_cart = number_basis_function_am('CART',lj)
-     nj      = number_basis_function_am(basis%gaussian_type,lj)
-
-     allocate(dipole_cart(ni_cart,nj_cart,3))
-
-
-     do i_cart=1,ni_cart
-       do j_cart=1,nj_cart
-         call basis_function_dipole(basis%bfc(ibf_cart+i_cart-1),basis%bfc(jbf_cart+j_cart-1),dipole_cart(i_cart,j_cart,:))
-       enddo
-     enddo
-
-     do idir=1,3
-       dipole_basis(ibf:ibf+ni-1,jbf:jbf+nj-1,idir) = MATMUL( TRANSPOSE( cart_to_pure(li,gt)%matrix(:,:) ) , &
-             MATMUL(  dipole_cart(:,:,idir) , cart_to_pure(lj,gt)%matrix(:,:) ) )
-     enddo
-
-     deallocate(dipole_cart)
-
-     jbf      = jbf      + nj
-     jbf_cart = jbf_cart + nj_cart
-   enddo
-
-   ibf      = ibf      + ni
-   ibf_cart = ibf_cart + ni_cart
- enddo
-
-
- call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
-
- ! Minus sign for electrons
- do idir=1,3
-   dipole(idir) = real( -SUM( dipole_basis(:,:,idir) * SUM( p_matrix_cmplx(:,:,:) , DIM=3 ) ),dp)
- enddo
-
- deallocate(dipole_basis)
-
- do iatom=1,natom
-   dipole(:) = dipole(:) + zatom(iatom) * xatom(:,iatom)
- enddo
-
-end subroutine static_dipole_cmplx
 
 !=========================================================================
 subroutine static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
