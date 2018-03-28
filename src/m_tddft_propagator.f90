@@ -516,7 +516,7 @@ subroutine tddft_time_loop(nstate,                           &
        inquire(file='manual_q_matrix_param',exist=file_exists)
        if(file_exists) then
          open(newunit=file_q_matrix_param,file='manual_q_matrix_param',status='old')
-         read(linefile,*) istate_cut(1), istate_cut(2), istate_cut(3)
+         read(file_q_matrix_param,*) istate_cut(1), istate_cut(2), istate_cut(3)
          close(file_q_matrix_param)
        else
          istate_cut(1)=1
