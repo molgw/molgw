@@ -15,7 +15,7 @@ module m_eri_calculate
  use m_basis_set
  use m_timing
  use m_cart_to_pure
- use m_inputparam,only: scalapack_block_min
+ use m_inputparam,only: scalapack_block_min,incore_
  use m_eri
  use m_libint_tools
 
@@ -41,21 +41,26 @@ subroutine calculate_eri(print_eri_,basis,rcut)
 
  call start_clock(timing_eri_4center)
 
- write(stdout,'(/,a,i12)') ' Number of integrals to be stored: ',nsize
-
- if( rcut < 1.0e-12_dp ) then
-   call clean_allocate('4-center integrals',eri_4center,nsize)
-   eri_4center(:) = 0.0_dp
- else
-   call clean_allocate('4-center LR integrals',eri_4center_lr,nsize)
-   eri_4center_lr(:) = 0.0_dp
- endif
-
- if( .NOT. read_eri(rcut) ) then
-   call calculate_eri_4center(basis,rcut)
-   if( print_eri_ ) then
-     call dump_out_eri(rcut)
+ if( incore_ ) then
+   write(stdout,'(/,a,i12)') ' Number of integrals to be stored: ',nsize
+  
+   if( rcut < 1.0e-12_dp ) then
+     call clean_allocate('4-center integrals',eri_4center,nsize)
+     eri_4center(:) = 0.0_dp
+   else
+     call clean_allocate('4-center LR integrals',eri_4center_lr,nsize)
+     eri_4center_lr(:) = 0.0_dp
    endif
+  
+   if( .NOT. read_eri(rcut) ) then
+     call calculate_eri_4center(basis,rcut)
+     if( print_eri_ ) then
+       call dump_out_eri(rcut)
+     endif
+   endif
+
+ else
+   write(stdout,'(/,1x,a)') 'Out of core option: no 4-center integrals ever stored'
  endif
 
  call stop_clock(timing_eri_4center)

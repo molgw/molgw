@@ -132,6 +132,7 @@ module m_inputparam
  integer,protected                :: integral_level
  logical,protected                :: has_auxil_basis
  logical,protected                :: has_small_basis
+ logical,protected                :: incore_
  !
  ! the boring small complex number eta: (0.0_dp,0.001_dp) is typically over converged
  ! Having a larger ieta value smoothen the oscillation far from the HOMO-LUMO gap
@@ -744,7 +745,7 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_eri,print_wfn,print_w,print_sigma
  character(len=3)     :: print_restart,print_bigrestart
  character(len=3)     :: print_pdos,print_cube,print_multipole,print_hartree,print_exchange
- character(len=3)     :: tda,triplet,frozencore,virtual_fno
+ character(len=3)     :: tda,triplet,frozencore,virtual_fno,incore
  character(len=3)     :: gwgamma_tddft
  character(len=3)     :: pt3_a_diagrams
  real(dp)             :: length_factor,eta
@@ -835,6 +836,7 @@ subroutine read_inputfile_namelist()
  is_triplet         = yesno(triplet)
  is_frozencore      = yesno(frozencore)
  is_virtual_fno     = yesno(virtual_fno)
+ incore_            = yesno(incore)
 
  print_eri_         = yesno(print_eri)
  print_wfn_         = yesno(print_wfn)

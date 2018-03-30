@@ -17,7 +17,7 @@ module m_hamiltonian
  use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
  use m_basis_set
- use m_eri
+ use m_eri_calculate
 
 
 contains
@@ -74,6 +74,152 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
  call stop_clock(timing_hartree)
 
 end subroutine setup_hartree
+
+
+!=========================================================================
+subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
+ implicit none
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: p_matrix(:,:,:)
+ real(dp),intent(out)       :: hartree_ij(:,:)
+ real(dp),intent(out)       :: ehartree
+!=====
+ real(dp),parameter      :: TOL_DENSITY_MATRIX=1.0e-7_dp
+ integer                 :: ijshellpair,klshellpair
+ integer                 :: iatom
+ integer                 :: ibf,jbf,kbf,lbf
+ integer                 :: ishell,jshell,kshell,lshell
+ integer                 :: ni,nj,nk,nl
+ real(dp)                :: fact_ij,fact_kl
+ real(dp),allocatable    :: shell_ijkl(:,:,:,:)
+ logical,allocatable     :: skip_shellpair(:,:)
+!=====
+
+ call start_clock(timing_hartree)
+
+ write(stdout,*) 'Calculate Hartree term with out-of-core integrals'
+
+
+
+ !
+ ! Filter out the low density matrix shells
+ !
+ allocate(skip_shellpair(basis%nshell,basis%nshell))
+ skip_shellpair(:,:) = .TRUE.
+ do ijshellpair=1,nshellpair
+   ishell = index_shellpair(1,ijshellpair)
+   jshell = index_shellpair(2,ijshellpair)
+   do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
+     do ibf=basis%shell(ishell)%istart,basis%shell(ishell)%iend
+       if( ANY( ABS(p_matrix(ibf,jbf,:) / spin_fact) > TOL_DENSITY_MATRIX ) ) then
+         skip_shellpair(ishell,jshell) = .FALSE.
+         skip_shellpair(jshell,ishell) = .FALSE.
+       endif
+     enddo
+   enddo
+ enddo
+ write(stdout,'(1x,a,i6,a,i6)') 'Shell pair skipped due to low density matrix screening:',COUNT( skip_shellpair(:,:) ),' / ',basis%nshell**2
+
+
+
+ hartree_ij(:,:) = 0.0_dp
+ do klshellpair=1,nshellpair
+   kshell = index_shellpair(1,klshellpair)
+   lshell = index_shellpair(2,klshellpair)
+   nk = number_basis_function_am( basis%gaussian_type , basis%shell(kshell)%am )
+   nl = number_basis_function_am( basis%gaussian_type , basis%shell(lshell)%am )
+
+   if( skip_shellpair(kshell,lshell) ) cycle
+
+   do ijshellpair=1,klshellpair
+     ishell = index_shellpair(1,ijshellpair)
+     jshell = index_shellpair(2,ijshellpair)
+     ni = number_basis_function_am( basis%gaussian_type , basis%shell(ishell)%am )
+     nj = number_basis_function_am( basis%gaussian_type , basis%shell(jshell)%am )
+
+     ! I don't know if it is a good idea
+     if( skip_shellpair(ishell,jshell) ) cycle
+
+
+     ! Libint ordering is enforced by the shell pair ordering
+
+
+     call calculate_eri_4center_shell(basis,0.0_dp,ijshellpair,klshellpair,shell_ijkl)
+     !write(*,*) ishell,jshell,kshell,lshell,shell_ijkl(:,:,:,:)
+
+
+     if( ishell /= jshell ) then
+       fact_ij = 2.0_dp
+     else
+       fact_ij = 1.0_dp
+     endif
+     if( kshell /= lshell ) then
+       fact_kl = 2.0_dp
+     else
+       fact_kl = 1.0_dp
+     endif
+
+     do lbf=basis%shell(lshell)%istart,basis%shell(lshell)%iend
+       do kbf=basis%shell(kshell)%istart,basis%shell(kshell)%iend
+         do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
+           do ibf=basis%shell(ishell)%istart,basis%shell(ishell)%iend
+
+             hartree_ij(ibf,jbf) = hartree_ij(ibf,jbf)  &
+                                   + SUM(p_matrix(kbf,lbf,:)) * fact_kl &
+                                      * shell_ijkl(ibf-basis%shell(ishell)%istart+1,       &
+                                                   jbf-basis%shell(jshell)%istart+1,       &
+                                                   kbf-basis%shell(kshell)%istart+1,       &
+                                                   lbf-basis%shell(lshell)%istart+1)
+           enddo
+         enddo
+       enddo
+     enddo
+
+     if( ijshellpair /= klshellpair ) then
+       do lbf=basis%shell(lshell)%istart,basis%shell(lshell)%iend
+         do kbf=basis%shell(kshell)%istart,basis%shell(kshell)%iend
+           do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
+             do ibf=basis%shell(ishell)%istart,basis%shell(ishell)%iend
+
+               hartree_ij(kbf,lbf) = hartree_ij(kbf,lbf)  &
+                                     + SUM(p_matrix(ibf,jbf,:)) * fact_ij &
+                                        * shell_ijkl(ibf-basis%shell(ishell)%istart+1,       &
+                                                     jbf-basis%shell(jshell)%istart+1,       &
+                                                     kbf-basis%shell(kshell)%istart+1,       &
+                                                     lbf-basis%shell(lshell)%istart+1)
+             enddo
+           enddo
+         enddo
+       enddo
+     endif
+
+     deallocate(shell_ijkl)
+
+   enddo
+ enddo
+
+
+ deallocate(skip_shellpair)
+
+
+ do concurrent (ibf=1:basis%nbf)
+    hartree_ij(ibf,ibf) = hartree_ij(ibf,ibf) * 0.5_dp
+ enddo
+
+ hartree_ij(:,:) = hartree_ij(:,:) + TRANSPOSE( hartree_ij(:,:) )
+
+
+
+ call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',basis%nbf,1,hartree_ij)
+
+ ehartree = 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,1))
+ if( nspin == 2 ) then
+   ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
+ endif
+
+ call stop_clock(timing_hartree)
+
+end subroutine setup_hartree_oneshell
 
 
 !=========================================================================

@@ -139,12 +139,21 @@ One may use ones own basis sets provided that the files are labeled X_mybasisset
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='auxil_basis'
+vl[i].keyword  ='incore'
 vl[i].family   ='general'
-vl[i].datatype ='characters'
-vl[i].comment  ='Sets the auxiliary basis set. \
-For instance, cc-pVDZ-RI for a Weigend basis set. \
-If present, the auxiliary basis will be used for both the scf cycles and the postscf calculations (TD-DFT, BSE, or GW).'
+vl[i].datatype ='yes/no'
+vl[i].default  ='yes'
+vl[i].comment  ='Specify if the 4-center integrals are all calculated at once and stored or if they are calculated on-the-fly.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='beta_hybrid'
+vl[i].family   ='scf'
+vl[i].default  =0.
+vl[i].datatype ='real'
+vl[i].comment  ='Only works for Range-Separated hybrid functionals scf=\'rsh\' \
+Sets the amount of long-range exact-exchange'
 
 #================================
 vl.append(variable())
@@ -177,7 +186,6 @@ vl[i].experimental='yes'
 vl[i].datatype ='characters'
 vl[i].comment  ='Calls for a smaller basis set used to represent the virtual orbital space with fewer functions. \
 This is the small basis set used for elements with an effective core potential. Only meaningful for GW.'
-
 
 #================================
 vl.append(variable())

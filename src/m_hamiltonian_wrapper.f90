@@ -39,7 +39,11 @@ subroutine calculate_hartree(basis,p_matrix,hhartree,eh)
 
  !
  if( .NOT. has_auxil_basis ) then
-   call setup_hartree(p_matrix,hhartree,ehartree)
+   if( incore_ ) then
+     call setup_hartree(p_matrix,hhartree,ehartree)
+   else
+     call setup_hartree_oneshell(basis,p_matrix,hhartree,ehartree)
+   endif
  else
    if( parallel_ham ) then
      if( parallel_buffer ) then
@@ -74,7 +78,13 @@ subroutine calculate_exchange_real(basis,p_matrix,hexx,ex,occupation,c_matrix)
 
 
  if( .NOT. has_auxil_basis ) then
-   call setup_exchange(p_matrix,hexx,eexx)
+   if( incore_ ) then
+     call setup_exchange(p_matrix,hexx,eexx)
+   else
+     call issue_warning('no out-of-core exchange implemented yet')
+     hexx(:,:,:) = 0.0_dp
+     eexx = 0.0_dp
+   endif
  else
    if( parallel_ham ) then
      if( parallel_buffer ) then
