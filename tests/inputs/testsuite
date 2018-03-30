@@ -69,7 +69,7 @@ gKS HOMO energy           ,    0.560330        , 0 , 1.0e-4
 gKS LUMO energy           ,    2.254836        , 0 , 1.0e-4
 
 zn_ecp.in                 , HF zinc atom with ECP and no RI
-SCF Total Energy          , -225.9507739234    , 0 , 1.0e-7
+SCF Total Energy          , -225.9509886619    , 0 , 1.0e-7
 gKS HOMO energy           ,  -8.086232         , 0 , 1.0e-4
 gKS LUMO energy           ,   1.864607         , 0 , 1.0e-4
 

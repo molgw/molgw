@@ -19,6 +19,9 @@ module m_hamiltonian_wrapper
  use m_hamiltonian_sca
  use m_hamiltonian_buffer
 
+ interface calculate_exchange
+   module procedure calculate_exchange_real
+ end interface
 
 contains
 
@@ -54,7 +57,7 @@ end subroutine calculate_hartree
 
 
 !=========================================================================
-subroutine calculate_exchange(p_matrix,hexx,ex,occupation,c_matrix)
+subroutine calculate_exchange_real(p_matrix,hexx,ex,occupation,c_matrix)
  implicit none
  real(dp),intent(in)  :: p_matrix(:,:,:)
  real(dp),intent(out) :: hexx(:,:,:)
@@ -102,7 +105,7 @@ subroutine calculate_exchange(p_matrix,hexx,ex,occupation,c_matrix)
 
  if( PRESENT(ex) ) ex = eexx
 
-end subroutine calculate_exchange
+end subroutine calculate_exchange_real
 
 
 !=========================================================================
