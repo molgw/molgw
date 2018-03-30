@@ -136,7 +136,7 @@ subroutine scf_loop(is_restart,&
    !
    ! Hartree contribution to the Hamiltonian
    !
-   call calculate_hartree(p_matrix,hamiltonian_hartree,eh=en%hart)
+   call calculate_hartree(basis,p_matrix,hamiltonian_hartree,eh=en%hart)
 
    ! calc_type%is_core is an inefficient way to get the Kinetic+Nucleus Hamiltonian
    if( calc_type%is_core ) then
@@ -178,7 +178,7 @@ subroutine scf_loop(is_restart,&
    ! Use hamiltonian_exx as a temporary matrix (no need to save it for later use)
    if(calc_type%need_exchange_lr) then
 
-     call calculate_exchange_lr(p_matrix,hamiltonian_exx,ex=energy_tmp,occupation=occupation,c_matrix=c_matrix)
+     call calculate_exchange_lr(basis,p_matrix,hamiltonian_exx,ex=energy_tmp,occupation=occupation,c_matrix=c_matrix)
      ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
      en%exx_hyb = en%exx_hyb + alpha_hybrid_lr * energy_tmp
      hamiltonian_xc(:,:,:) = hamiltonian_xc(:,:,:) + hamiltonian_exx(:,:,:) * alpha_hybrid_lr
@@ -189,7 +189,7 @@ subroutine scf_loop(is_restart,&
    ! Exchange contribution to the Hamiltonian
    if( calc_type%need_exchange ) then
 
-     call calculate_exchange(p_matrix,hamiltonian_exx,ex=en%exx,occupation=occupation,c_matrix=c_matrix)
+     call calculate_exchange(basis,p_matrix,hamiltonian_exx,ex=en%exx,occupation=occupation,c_matrix=c_matrix)
 
      ! Rescale with alpha_hybrid for hybrid functionals
      en%exx_hyb = en%exx_hyb + alpha_hybrid * en%exx
@@ -369,7 +369,7 @@ subroutine scf_loop(is_restart,&
  ! Get the exchange operator if not already calculated
  !
  if( ABS(en%exx) < 1.0e-6_dp ) then
-   call calculate_exchange(p_matrix,hamiltonian_exx,ex=en%exx,occupation=occupation,c_matrix=c_matrix)
+   call calculate_exchange(basis,p_matrix,hamiltonian_exx,ex=en%exx,occupation=occupation,c_matrix=c_matrix)
  endif
 
 
@@ -460,7 +460,7 @@ subroutine scf_loop(is_restart,&
    ! Check if a p_matrix was effectively read
    if( ANY( ABS(p_matrix_out(:,:,:)) > 0.01_dp ) ) then
 
-     call calculate_hartree(p_matrix_out,hamiltonian_hartree,eh=energy_tmp)
+     call calculate_hartree(basis,p_matrix_out,hamiltonian_hartree,eh=energy_tmp)
      write(stdout,'(a50,1x,f19.10)') 'Hartree energy from input density matrix [Ha]:',energy_tmp
 
      if( .NOT. has_auxil_basis ) then
@@ -610,7 +610,7 @@ subroutine calculate_hamiltonian_hxc(basis,nstate,occupation,c_matrix,p_matrix,h
  !
  ! Hartree contribution to the Hamiltonian
  !
- call calculate_hartree(p_matrix,hamiltonian_tmp,eh=ehart)
+ call calculate_hartree(basis,p_matrix,hamiltonian_tmp,eh=ehart)
 
  do ispin=1,nspin
    hamiltonian_hxc(:,:,ispin) = hamiltonian_tmp(:,:)
@@ -649,7 +649,7 @@ subroutine calculate_hamiltonian_hxc(basis,nstate,occupation,c_matrix,p_matrix,h
  if(calc_type%need_exchange_lr) then
    hamiltonian_spin_tmp(:,:,:) = 0.0_dp
 
-   call calculate_exchange_lr(p_matrix,hamiltonian_spin_tmp,ex=eexx,occupation=occupation,c_matrix=c_matrix)
+   call calculate_exchange_lr(basis,p_matrix,hamiltonian_spin_tmp,ex=eexx,occupation=occupation,c_matrix=c_matrix)
    ! Rescale with alpha_hybrid_lr for range-separated hybrid functionals
    eexx_hyb = alpha_hybrid_lr * eexx
    hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * alpha_hybrid_lr
@@ -663,7 +663,7 @@ subroutine calculate_hamiltonian_hxc(basis,nstate,occupation,c_matrix,p_matrix,h
  if( calc_type%need_exchange ) then
    hamiltonian_spin_tmp(:,:,:) = 0.0_dp
 
-   call calculate_exchange(p_matrix,hamiltonian_spin_tmp,ex=eexx,occupation=occupation,c_matrix=c_matrix)
+   call calculate_exchange(basis,p_matrix,hamiltonian_spin_tmp,ex=eexx,occupation=occupation,c_matrix=c_matrix)
    ! Rescale with alpha_hybrid for hybrid functionals
    eexx_hyb = eexx_hyb + alpha_hybrid * eexx
    hamiltonian_hxc(:,:,:) = hamiltonian_hxc(:,:,:) + hamiltonian_spin_tmp(:,:,:) * alpha_hybrid

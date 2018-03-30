@@ -14,7 +14,7 @@ module m_hamiltonian_wrapper
  use m_scalapack
  use m_warning
  use m_inputparam,only: has_auxil_basis
-
+ use m_basis_set
  use m_hamiltonian
  use m_hamiltonian_sca
  use m_hamiltonian_buffer
@@ -27,10 +27,11 @@ contains
 
 
 !=========================================================================
-subroutine calculate_hartree(p_matrix,hhartree,eh)
+subroutine calculate_hartree(basis,p_matrix,hhartree,eh)
  implicit none
- real(dp),intent(in)  :: p_matrix(:,:,:)
- real(dp),intent(out) :: hhartree(:,:)
+ type(basis_set),intent(in)    :: basis
+ real(dp),intent(in)           :: p_matrix(:,:,:)
+ real(dp),intent(out)          :: hhartree(:,:)
  real(dp),intent(out),optional :: eh
 !=====
  real(dp) :: ehartree
@@ -57,10 +58,11 @@ end subroutine calculate_hartree
 
 
 !=========================================================================
-subroutine calculate_exchange_real(p_matrix,hexx,ex,occupation,c_matrix)
+subroutine calculate_exchange_real(basis,p_matrix,hexx,ex,occupation,c_matrix)
  implicit none
- real(dp),intent(in)  :: p_matrix(:,:,:)
- real(dp),intent(out) :: hexx(:,:,:)
+ type(basis_set),intent(in)    :: basis
+ real(dp),intent(in)           :: p_matrix(:,:,:)
+ real(dp),intent(out)          :: hexx(:,:,:)
  real(dp),intent(out),optional :: ex
  real(dp),intent(in),optional  :: occupation(:,:)
  real(dp),intent(in),optional  :: c_matrix(:,:,:)
@@ -109,10 +111,11 @@ end subroutine calculate_exchange_real
 
 
 !=========================================================================
-subroutine calculate_exchange_lr(p_matrix,hexx,ex,occupation,c_matrix)
+subroutine calculate_exchange_lr(basis,p_matrix,hexx,ex,occupation,c_matrix)
  implicit none
- real(dp),intent(in)  :: p_matrix(:,:,:)
- real(dp),intent(out) :: hexx(:,:,:)
+ type(basis_set),intent(in)    :: basis
+ real(dp),intent(in)           :: p_matrix(:,:,:)
+ real(dp),intent(out)          :: hexx(:,:,:)
  real(dp),intent(out),optional :: ex
  real(dp),intent(in),optional  :: occupation(:,:)
  real(dp),intent(in),optional  :: c_matrix(:,:,:)

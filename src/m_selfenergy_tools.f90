@@ -542,7 +542,7 @@ subroutine setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamilton
      call destroy_dft_grid()
    endif
 
-   call calculate_exchange(p_matrix_tmp,hexx_val,occupation=occupation_tmp,c_matrix=c_matrix)
+   call calculate_exchange(basis,p_matrix_tmp,hexx_val,occupation=occupation_tmp,c_matrix=c_matrix)
 
    hxc_val(:,:,:) = hxc_val(:,:,:) + alpha_hybrid * hexx_val(:,:,:)
    hxmxc(:,:,:) = hexx_val(:,:,:) - hxc_val(:,:,:) 

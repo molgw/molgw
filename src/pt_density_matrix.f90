@@ -225,7 +225,7 @@ subroutine pt2_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matrix)
 !block
 ! real(dp) :: hh(basis%nbf,basis%nbf)
 ! real(dp) :: hartree_ii(nstate)
-! call calculate_hartree(p_matrix,hh)
+! call calculate_hartree(basis,p_matrix,hh)
 ! do istate=1,nstate
 !   write(stdout,'(1x,a,i5,2x,f12.6)') 'Occ Occ Hartree ii ',istate,DOT_PRODUCT( c_matrix(:,istate,pqspin), MATMUL( hh(:,:), c_matrix(:,istate,pqspin) ) ) * Ha_eV
 ! enddo
@@ -396,7 +396,7 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
 !block
 ! real(dp) :: hh(basis%nbf,basis%nbf)
 ! real(dp) :: hartree_ii(nstate)
-! call calculate_hartree(p_matrix,hh)
+! call calculate_hartree(basis,p_matrix,hh)
 ! do istate=1,nstate
 !   write(stdout,'(1x,a,i5,2x,f12.6)') 'Occ Occ Hartree ii ',istate,DOT_PRODUCT( c_matrix(:,istate,pqspin), MATMUL( hh(:,:), c_matrix(:,istate,pqspin) ) ) * Ha_eV
 ! enddo

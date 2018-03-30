@@ -978,10 +978,10 @@ subroutine pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc
  call pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,p_matrix_pt1)
 
  ! First, Hartree
- call calculate_hartree(p_matrix_pt1,hh)
+ call calculate_hartree(basis,p_matrix_pt1,hh)
 
  ! Then, Exchange
- call calculate_exchange(p_matrix_pt1,hx)
+ call calculate_exchange(basis,p_matrix_pt1,hx)
 
  do ispin=1,nspin
    do istate=1,nstate
