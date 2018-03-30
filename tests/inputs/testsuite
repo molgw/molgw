@@ -32,6 +32,16 @@ SCF Total Energy          , -128.5470596583    , 0 , 1.0e-7
 gKS HOMO energy           ,  -23.140408        , 0 , 1.0e-4
 gKS LUMO energy           ,   10.036631        , 0 , 1.0e-4
 
+na2_lda.in               , LDA Na2 molecule without RI
+SCF Total Energy          , -322.8615203603    , 0 , 1.0e-7
+gKS HOMO energy           ,   -3.230199        , 0 , 1.0e-4
+gKS LUMO energy           ,   -1.930441        , 0 , 1.0e-4
+
+na2_lda_outofcore.in      , LDA Na2 molecule without RI with out-of-core Coulomb integrals
+SCF Total Energy          , -322.8615203603    , 0 , 1.0e-7
+gKS HOMO energy           ,   -3.230199        , 0 , 1.0e-4
+gKS LUMO energy           ,   -1.930441        , 0 , 1.0e-4
+
 h2_basis_nori.in          , LDA H2 molecule with an atom-dependent basis set
 SCF Total Energy          ,  -1.1306882151     , 0 , 1.0e-7
 gKS HOMO energy           , -10.061109         , 0 , 1.0e-4

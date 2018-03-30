@@ -14,8 +14,8 @@
  write(stdout,'(1x,a24,2x,es16.8)') 'beta_hybrid',beta_hybrid 
  write(stdout,'(1x,a24,2x,es16.8)') 'gamma_hybrid',gamma_hybrid 
  write(stdout,'(1x,a24,6x,a)') 'basis',basis 
+ write(stdout,'(1x,a24,6x,a)') 'auxil_basis',auxil_basis 
  write(stdout,'(1x,a24,6x,a)') 'incore',incore 
- write(stdout,'(1x,a24,2x,es16.8)') 'beta_hybrid',beta_hybrid 
  write(stdout,'(1x,a24,6x,a)') 'basis_path',basis_path 
  write(stdout,'(1x,a24,6x,a)') 'small_basis',small_basis 
  write(stdout,'(1x,a24,6x,a)') 'ecp_small_basis',ecp_small_basis 

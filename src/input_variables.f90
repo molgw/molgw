@@ -15,8 +15,8 @@
     beta_hybrid,       &
     gamma_hybrid,       &
     basis,       &
+    auxil_basis,       &
     incore,       &
-    beta_hybrid,       &
     basis_path,       &
     small_basis,       &
     ecp_small_basis,       &
@@ -114,8 +114,8 @@
  beta_hybrid=0.0_dp 
  gamma_hybrid=1000000.0_dp 
  basis=''
+ auxil_basis=''
  incore='yes'
- beta_hybrid=0.0_dp 
  basis_path=''
  small_basis=''
  ecp_small_basis=''
