@@ -90,9 +90,9 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
  integer                 :: ibf,jbf,kbf,lbf
  integer                 :: ishell,jshell,kshell,lshell
  integer                 :: ni,nj,nk,nl
- real(dp)                :: fact_ij,fact_kl
+ real(dp)                :: fact
  real(dp),allocatable    :: shell_ijkl(:,:,:,:)
- logical,allocatable     :: skip_shellpair(:,:)
+ logical,allocatable     :: skip_shellpair(:)
 !=====
 
  call start_clock(timing_hartree)
@@ -104,21 +104,20 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
  !
  ! Filter out the low density matrix shells
  !
- allocate(skip_shellpair(basis%nshell,basis%nshell))
- skip_shellpair(:,:) = .TRUE.
+ allocate(skip_shellpair(nshellpair))
+ skip_shellpair(:) = .TRUE.
  do ijshellpair=1,nshellpair
    ishell = index_shellpair(1,ijshellpair)
    jshell = index_shellpair(2,ijshellpair)
    do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
      do ibf=basis%shell(ishell)%istart,basis%shell(ishell)%iend
        if( ANY( ABS(p_matrix(ibf,jbf,:) / spin_fact) > TOL_DENSITY_MATRIX ) ) then
-         skip_shellpair(ishell,jshell) = .FALSE.
-         skip_shellpair(jshell,ishell) = .FALSE.
+         skip_shellpair(ijshellpair) = .FALSE.
        endif
      enddo
    enddo
  enddo
- write(stdout,'(1x,a,i6,a,i6)') 'Shell pair skipped due to low density matrix screening:',COUNT( skip_shellpair(:,:) ),' / ',basis%nshell**2
+ write(stdout,'(1x,a,i6,a,i6)') 'Shell pair skipped due to low density matrix screening:',COUNT( skip_shellpair(:) ),' / ',nshellpair
 
 
 
@@ -129,7 +128,9 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
    nk = number_basis_function_am( basis%gaussian_type , basis%shell(kshell)%am )
    nl = number_basis_function_am( basis%gaussian_type , basis%shell(lshell)%am )
 
-   if( skip_shellpair(kshell,lshell) ) cycle
+   if( MODULO(klshellpair,nproc_world) /= rank_world ) cycle
+
+   if( skip_shellpair(klshellpair) ) cycle
 
    do ijshellpair=1,klshellpair
      ishell = index_shellpair(1,ijshellpair)
@@ -138,26 +139,16 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
      nj = number_basis_function_am( basis%gaussian_type , basis%shell(jshell)%am )
 
      ! I don't know if it is a good idea
-     if( skip_shellpair(ishell,jshell) ) cycle
+     if( skip_shellpair(ijshellpair) ) cycle
 
 
      ! Libint ordering is enforced by the shell pair ordering
-
-
      call calculate_eri_4center_shell(basis,0.0_dp,ijshellpair,klshellpair,shell_ijkl)
-     !write(*,*) ishell,jshell,kshell,lshell,shell_ijkl(:,:,:,:)
 
+     fact = 0.50_dp
+     if( ishell /= jshell ) fact = fact * 2.0_dp
+     if( kshell /= lshell ) fact = fact * 2.0_dp
 
-     if( ishell /= jshell ) then
-       fact_ij = 2.0_dp
-     else
-       fact_ij = 1.0_dp
-     endif
-     if( kshell /= lshell ) then
-       fact_kl = 2.0_dp
-     else
-       fact_kl = 1.0_dp
-     endif
 
      do lbf=basis%shell(lshell)%istart,basis%shell(lshell)%iend
        do kbf=basis%shell(kshell)%istart,basis%shell(kshell)%iend
@@ -165,7 +156,7 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
            do ibf=basis%shell(ishell)%istart,basis%shell(ishell)%iend
 
              hartree_ij(ibf,jbf) = hartree_ij(ibf,jbf)  &
-                                   + SUM(p_matrix(kbf,lbf,:)) * fact_kl &
+                                   + SUM(p_matrix(kbf,lbf,:)) * fact                       &
                                       * shell_ijkl(ibf-basis%shell(ishell)%istart+1,       &
                                                    jbf-basis%shell(jshell)%istart+1,       &
                                                    kbf-basis%shell(kshell)%istart+1,       &
@@ -182,7 +173,7 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
              do ibf=basis%shell(ishell)%istart,basis%shell(ishell)%iend
 
                hartree_ij(kbf,lbf) = hartree_ij(kbf,lbf)  &
-                                     + SUM(p_matrix(ibf,jbf,:)) * fact_ij &
+                                     + SUM(p_matrix(ibf,jbf,:)) * fact                       &
                                         * shell_ijkl(ibf-basis%shell(ishell)%istart+1,       &
                                                      jbf-basis%shell(jshell)%istart+1,       &
                                                      kbf-basis%shell(kshell)%istart+1,       &
@@ -202,13 +193,9 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
  deallocate(skip_shellpair)
 
 
- do concurrent (ibf=1:basis%nbf)
-    hartree_ij(ibf,ibf) = hartree_ij(ibf,ibf) * 0.5_dp
- enddo
-
  hartree_ij(:,:) = hartree_ij(:,:) + TRANSPOSE( hartree_ij(:,:) )
 
-
+ call xsum_world(hartree_ij)
 
  call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',basis%nbf,1,hartree_ij)
 

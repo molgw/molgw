@@ -1,6 +1,9 @@
 &molgw
  scf='LDA'
- basis='cc-pVDZ'
+ 
+ basis='6-31G*'
+ gaussian_type='CART'
+
  tolscf=1.0e-8
  nscf=50
 

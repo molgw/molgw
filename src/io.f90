@@ -216,7 +216,7 @@ subroutine dump_out_matrix(print_matrix,title,n,nspin,matrix)
  integer,intent(in)          :: n,nspin
  real(dp),intent(in)         :: matrix(n,n,nspin)
 !=====
- integer,parameter :: MAXSIZE=25
+ integer,parameter :: MAXSIZE=50
 !=====
  integer :: i,ispin
 !=====
