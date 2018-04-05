@@ -93,13 +93,42 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
  real(dp)                :: fact
  real(dp),allocatable    :: shell_ijkl(:,:,:,:)
  logical,allocatable     :: skip_shellpair(:)
+ real(dp)                :: cost(nshellpair)
+ real(dp)                :: cost2(nshellpair)
+ real(dp)                :: load(nproc_world)
+ integer                 :: shellpair_cpu(nshellpair)
+ logical                 :: mask(nshellpair)
 !=====
+
 
  call start_clock(timing_hartree)
 
  write(stdout,*) 'Calculate Hartree term with out-of-core integrals'
 
+ !
+ ! Phenomenological formula to evaluate the CPU time for each shell pair
+ do klshellpair=1,nshellpair
+   kshell = index_shellpair(1,klshellpair)
+   lshell = index_shellpair(2,klshellpair)
+   nk = number_basis_function_am('CART', basis%shell(kshell)%am )
+   nl = number_basis_function_am('CART', basis%shell(lshell)%am )
+   cost(klshellpair) =   5.0e-6_dp * ( nk * nl )**1.6   &
+                       + 9.0e-4_dp * ( basis%shell(kshell)%ng * basis%shell(lshell)%ng )
+ enddo
+ do klshellpair=1,nshellpair
+   cost2(klshellpair) = SUM(cost(1:klshellpair)) * cost(klshellpair)
+ enddo
 
+ !
+ ! Distribute workload among CPUs
+ mask(:) = .TRUE.
+ load(:) = 0.0_dp
+ do klshellpair=1,nshellpair
+   ijshellpair = MAXLOC(cost2(:), MASK=mask(:), DIM=1)
+   mask(ijshellpair) = .FALSE.
+   shellpair_cpu(ijshellpair) = MINLOC(load(:), DIM=1)
+   load(shellpair_cpu(ijshellpair)) = load(shellpair_cpu(ijshellpair)) +  cost2(ijshellpair)
+ enddo
 
  !
  ! Filter out the low density matrix shells
@@ -120,7 +149,6 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
  write(stdout,'(1x,a,i6,a,i6)') 'Shell pair skipped due to low density matrix screening:',COUNT( skip_shellpair(:) ),' / ',nshellpair
 
 
-
  hartree_ij(:,:) = 0.0_dp
  do klshellpair=1,nshellpair
    kshell = index_shellpair(1,klshellpair)
@@ -128,7 +156,8 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
    nk = number_basis_function_am( basis%gaussian_type , basis%shell(kshell)%am )
    nl = number_basis_function_am( basis%gaussian_type , basis%shell(lshell)%am )
 
-   if( MODULO(klshellpair,nproc_world) /= rank_world ) cycle
+   !if( MODULO(klshellpair,nproc_world) /= rank_world ) cycle
+   if( shellpair_cpu(klshellpair) - 1 /= rank_world ) cycle
 
    if( skip_shellpair(klshellpair) ) cycle
 
