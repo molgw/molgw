@@ -463,9 +463,14 @@ subroutine tddft_time_loop(nstate,                           &
  integer                    :: file_q_matrix_param
  integer                    :: istate_cut(10)
  integer                    :: file_q_matrix(2)
+ integer                    :: file_out_q_matrix
+ integer                    :: file_out_q_matrix_cmplx
+ integer                    :: iocc
  complex(dp),allocatable    :: q_matrix_cmplx(:,:,:)
  real(dp)                   :: q_occ(10)
  character(len=50)          :: name_file_q_matrix
+ real(dp),allocatable       :: energies_inst(:)
+ complex(dp),allocatable    :: c_matrix_orth_start_complete_cmplx(:,:,:)
 !=====
 
  z_sel_=.false.
@@ -476,10 +481,6 @@ subroutine tddft_time_loop(nstate,                           &
  call clean_allocate('hamiltonian_fock_cmplx for TDDFT',hamiltonian_fock_cmplx,basis%nbf,basis%nbf,nspin)
  call clean_allocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
  call clean_allocate('h_small_cmplx for TDDFT',h_small_cmplx,nstate,nstate,nspin)
-
- if(calc_q_matrix_) then
-   call clean_allocate('q_matrix for TDDFT',q_matrix_cmplx,nstate,nocc,nspin)
- end if
 
  c_matrix_cmplx         = c_matrix_start_cmplx
  c_matrix_orth_cmplx    = c_matrix_orth_start_cmplx 
@@ -513,6 +514,16 @@ subroutine tddft_time_loop(nstate,                           &
 
      ! ---q_matrix---
      if(calc_q_matrix_) then
+
+       open(newunit=file_out_q_matrix,file="q_matrix_hardcore.dat")
+       call clean_allocate('q_matrix for TDDFT',q_matrix_cmplx,nstate,nocc,nspin)
+       call clean_allocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
+       allocate(energies_inst(nstate))
+       do ispin=1, nspin
+         call diagonalize(nstate,h_small_start_cmplx(:,:,ispin),energies_inst(:),c_matrix_orth_start_complete_cmplx(:,:,ispin))
+       end do
+       deallocate(energies_inst)
+
        istate_cut(4)=nstate
        inquire(file='manual_q_matrix_param',exist=file_exists)
        if(file_exists) then
@@ -531,7 +542,7 @@ subroutine tddft_time_loop(nstate,                           &
          open(newunit=file_q_matrix(ispin),file=name_file_q_matrix)
        end do
      end if
-
+     ! ----end of q_matrix----
      if(excit_type%is_light) then
        open(newunit=file_dipole_time,file="dipole_time.dat")
        open(newunit=file_excit_field,file="excitation_time.dat")
@@ -982,20 +993,26 @@ subroutine tddft_time_loop(nstate,                           &
    if(calc_q_matrix_) then 
      q_occ=0.0_dp
      do ispin=1,nspin
-       q_matrix_cmplx(:,:,ispin)=MATMUL(CONJG(TRANSPOSE(c_matrix_orth_start_cmplx(:,:,ispin))),c_matrix_orth_cmplx(:,:,ispin))
+       q_matrix_cmplx(:,:,ispin)=MATMUL(CONJG(TRANSPOSE(c_matrix_orth_start_complete_cmplx(:,:,ispin))),c_matrix_orth_cmplx(:,:,ispin))
 
        do istate=istate_cut(1),istate_cut(2)
-         q_occ(1)=q_occ(1)+SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2)*occupation(istate,ispin)
+         do iocc=1,nocc
+           q_occ(1)=q_occ(1)+ABS(q_matrix_cmplx(istate,iocc,ispin))**2*occupation(iocc,ispin)
+         end do
        end do
 
        do istate=istate_cut(2)+1,istate_cut(3)
-         q_occ(2)=q_occ(2)+SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2)*occupation(istate,ispin)
+         do iocc=1,nocc
+           q_occ(2)=q_occ(2)+ABS(q_matrix_cmplx(istate,iocc,ispin)**2)*occupation(iocc,ispin)
+         end do
        end do
          
        do istate=istate_cut(3)+1,istate_cut(4)
-         q_occ(3)=q_occ(3)+SUM(ABS(q_matrix_cmplx(istate,:,ispin))**2)*occupation(istate,ispin)
+         do iocc=1,nocc
+           q_occ(3)=q_occ(3)+ABS(q_matrix_cmplx(istate,iocc,ispin))**2*occupation(iocc,ispin)
+         end do
        end do
-         
+          
        write(file_q_matrix(ispin),"(F9.4,10(2x,es16.8E3))") time_cur, q_occ(:)
      end do
    end if
