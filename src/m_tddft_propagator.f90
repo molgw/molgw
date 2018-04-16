@@ -463,7 +463,6 @@ subroutine tddft_time_loop(nstate,                           &
  integer                    :: file_q_matrix_param
  integer                    :: istate_cut(10)
  integer                    :: file_q_matrix(2)
- integer                    :: file_out_q_matrix
  integer                    :: file_out_q_matrix_cmplx
  integer                    :: iocc
  complex(dp),allocatable    :: q_matrix_cmplx(:,:,:)
@@ -515,7 +514,6 @@ subroutine tddft_time_loop(nstate,                           &
      ! ---q_matrix---
      if(calc_q_matrix_) then
 
-       open(newunit=file_out_q_matrix,file="q_matrix_hardcore.dat")
        call clean_allocate('q_matrix for TDDFT',q_matrix_cmplx,nstate,nocc,nspin)
        call clean_allocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
        allocate(energies_inst(nstate))
