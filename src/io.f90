@@ -1069,19 +1069,16 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
  integer                    :: line_rho(nspin)
  character(len=200)         :: file_name
  integer                    :: linefile
+ integer                    :: statesfile
  integer                    :: i_max_atom
+ integer                    :: istate_cut(3)
  real(dp)                   :: vec_length
  real(dp)                   :: deltar,path_length
- real(dp)                   :: integral(2)
- real(dp)                   :: integral_total
- integer                    :: istate_min,istate_max
+ real(dp)                   :: integral(3)
 !=====
 
  if( .NOT. is_iomaster ) return
 
-
- istate_min=1
- istate_max=natom
 
  call start_clock(timing_print_line_rho_tddft)
 
@@ -1107,6 +1104,19 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
    point_c = (/ 3.49_dp, 0.0_dp, -10.0_dp  /)
    call issue_warning('plot_rho_traj_bunch: manual_dens_traj file was not found')
  endif
+
+ istate_cut(3)=nstate
+ inquire(file='manual_dens_traj_states',exist=file_exists)
+ if(file_exists) then
+   open(newunit=statesfile,file='manual_dens_traj_states',status='old')
+   read(statesfile,*) istate_cut(1), istate_cut(2)
+   close(statesfile)
+ else
+   istate_cut(1)=1
+   istate_cut(2)=natom-1
+   call issue_warning('plot_rho_traj_bunch_contrib: manual_dens_traj_states file was not found')
+ endif
+
 ! point_b(:) = point_b(:) / bohr_A 
 ! point_a(:) = point_a(:) / bohr_A
 ! In analogy with cube file, this file is also in Bohr
@@ -1132,28 +1142,26 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
      b_cur(:)=point_b(:)+(point_c(:)-point_a(:))*ih/nh
  
      integral=0.0_dp
-     integral_total=0.0_dp
 
      do ir=0,nr
        rr(:) = a_cur(:) + ( b_cur(:) - a_cur(:) ) * ir / nr
        call calculate_basis_functions_r(basis,rr,basis_function_r)
        phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
 
-       do istate=istate_min,istate_max
+       do istate=istate_cut(1),istate_cut(2)
          integral(1)=integral(1)+(phi(istate,ispin))**2 * occupation(istate,ispin)*deltar
        end do
 
-       do istate=istate_max+1,nstate 
+       do istate=istate_cut(2)+1,istate_cut(3)
          integral(2)=integral(2)+(phi(istate,ispin))**2 * occupation(istate,ispin)*deltar
        end do
 
-       do istate=1,nstate
-         integral_total=integral_total+(phi(istate,ispin))**2 * occupation(istate,ispin)*deltar
+       do istate=istate_cut(1),istate_cut(3)
+         integral(3)=integral(3)+(phi(istate,ispin))**2 * occupation(istate,ispin)*deltar
        end do
      end do
      integral(:)=integral(:)/path_length
-     integral_total=integral_total/path_length
-     write(line_rho(ispin),'(50(e16.8,2x))') NORM2(a_cur(:)-point_a(:)),integral_total,integral(1),integral(2)
+     write(line_rho(ispin),'(50(e16.8,2x))') NORM2(a_cur(:)-point_a(:)),integral(:)
    enddo
 
  enddo

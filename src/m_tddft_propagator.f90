@@ -515,7 +515,7 @@ subroutine tddft_time_loop(nstate,                           &
      if(calc_q_matrix_) then
 
        call clean_allocate('q_matrix for TDDFT',q_matrix_cmplx,nstate,nocc,nspin)
-       call clean_allocate('c_matrix_buf for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
+       call clean_allocate('c_matrix_orth_start for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
        allocate(energies_inst(nstate))
        do ispin=1, nspin
          call diagonalize(nstate,h_small_start_cmplx(:,:,ispin),energies_inst(:),c_matrix_orth_start_complete_cmplx(:,:,ispin))
