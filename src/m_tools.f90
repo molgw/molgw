@@ -198,152 +198,185 @@ end subroutine invert_cdp
 
 
 !=========================================================================
-subroutine diagonalize_wo_vectors_dp(n,matrix,eigval)
+subroutine diagonalize_wo_vectors_dp(matrix,eigval)
  implicit none
- integer,intent(in) :: n
- real(dp),intent(inout) :: matrix(n,n)
- real(dp),intent(out) :: eigval(n)
+ real(dp),intent(inout) :: matrix(:,:)
+ real(dp),intent(out) :: eigval(:)
 !=====
+ integer :: nmat
  integer :: info
- real(dp) :: work(3*n-1)
+ real(dp),allocatable :: work(:)
 ! integer  :: iwork(5*n),ifail(n)
 ! real(dp) :: z(1,n)
 ! real(dp) :: work(8*n)
 !=====
 
- call DSYEV('N','U',n,matrix,n,eigval,work,3*n-1,info)
+ nmat = SIZE(matrix,DIM=1)
+ allocate(work(3*nmat-1))
 
-! call DSYEVX('N','A','U',n,matrix,n,0.0_dp,0.0_dp,0,0,&
-!                         1.0e-20_dp,n,eigval,z,1,work,8*n,iwork,&
+ call DSYEV('N','U',nmat,matrix,nmat,eigval,work,3*nmat-1,info)
+
+ deallocate(work)
+
+! call DSYEVX('N','A','U',nmat,matrix,nmat,0.0_dp,0.0_dp,0,0,&
+!                         1.0e-20_dp,nmat,eigval,z,1,work,8*nmat,iwork,&
 !                         ifail,info)
 
 end subroutine diagonalize_wo_vectors_dp
 
 
 !=========================================================================
-subroutine diagonalize_cdp(n,matrix,eigval,eigvec)
+subroutine diagonalize_cdp(matrix,eigval,eigvec)
  implicit none
- integer,intent(in) :: n
- complex(dp),intent(in) :: matrix(n,n)
- real(dp),intent(out) :: eigval(n)
- complex(dp),intent(out) :: eigvec(n,n)
-
- complex(dp) :: work(2*n-1)
- real(dp) :: rwork(3*n-2)
+ complex(dp),intent(in)  :: matrix(:,:)
+ real(dp),intent(out)    :: eigval(:)
+ complex(dp),intent(out) :: eigvec(:,:)
+!=====
+ integer :: nmat
+ complex(dp),allocatable :: work(:)
+ real(dp),allocatable    :: rwork(:)
  integer :: info
+!=====
+
+ nmat = SIZE(matrix,DIM=1)
+ allocate(work(2*nmat-1))
+ allocate(rwork(3*nmat-2))
 
  eigvec(:,:) = matrix(:,:)
 
- call ZHEEV('V','U',n,eigvec,n,eigval,work,2*n-1,rwork,info)
+ call ZHEEV('V','U',nmat,eigvec,nmat,eigval,work,2*nmat-1,rwork,info)
+
+ deallocate(work,rwork)
 
 end subroutine diagonalize_cdp
 
 
 !=========================================================================
-subroutine diagonalize_dp(n,matrix,eigval,eigvec)
+subroutine diagonalize_dp(matrix,eigval,eigvec)
  implicit none
- integer,intent(in) :: n
- real(dp),intent(in) :: matrix(n,n)
- real(dp),intent(out) :: eigval(n)
- real(dp),intent(out) :: eigvec(n,n)
-
- real(dp) :: work(3*n-1)
+ real(dp),intent(in)  :: matrix(:,:)
+ real(dp),intent(out) :: eigval(:)
+ real(dp),intent(out) :: eigvec(:,:)
+!=====
+ integer :: nmat
+ real(dp),allocatable :: work(:)
  integer :: info
+!=====
+
+ nmat = SIZE(matrix,DIM=1)
+ allocate(work(3*nmat-1))
 
  eigvec(:,:) = matrix(:,:)
 
- call DSYEV('V','U',n,eigvec,n,eigval,work,3*n-1,info)
+ call DSYEV('V','U',nmat,eigvec,nmat,eigval,work,3*nmat-1,info)
+
+ deallocate(work)
 
 end subroutine diagonalize_dp
 
 
 !=========================================================================
-subroutine diagonalize_sp(n,matrix,eigval,eigvec)
+subroutine diagonalize_sp(matrix,eigval,eigvec)
  implicit none
- integer,intent(in) :: n
- real(sp),intent(in) :: matrix(n,n)
- real(sp),intent(out) :: eigval(n)
- real(sp),intent(out) :: eigvec(n,n)
+ real(sp),intent(in)  :: matrix(:,:)
+ real(sp),intent(out) :: eigval(:)
+ real(sp),intent(out) :: eigvec(:,:)
+!=====
+ integer  :: nmat
+ real(sp),allocatable :: work(:)
+ integer  :: info
+!=====
 
- real(sp) :: work(3*n-1)
- integer :: info
+ nmat = SIZE(matrix,DIM=1)
+ allocate(work(3*nmat-1))
 
  eigvec(:,:) = matrix(:,:)
 
- call SSYEV('V','U',n,eigvec,n,eigval,work,3*n-1,info)
+ call SSYEV('V','U',nmat,eigvec,nmat,eigval,work,3*nmat-1,info)
+
+ deallocate(work)
 
 end subroutine diagonalize_sp
 
 
 !=========================================================================
-subroutine diagonalize_inplace_dp(n,matrix,eigval)
+subroutine diagonalize_inplace_dp(matrix,eigval)
  implicit none
- integer,intent(in) :: n
- real(dp),intent(inout) :: matrix(n,n)
- real(dp),intent(out) :: eigval(n)
+ real(dp),intent(inout) :: matrix(:,:)
+ real(dp),intent(out)   :: eigval(:)
 !=====
+ integer              :: nmat
  real(dp),allocatable :: work(:)
  integer              :: lwork,info
 !=====
 
+ nmat = SIZE(matrix,DIM=1)
+
  lwork = -1
  allocate(work(1))
- call DSYEV('V','U',n,matrix,n,eigval,work,lwork,info)
+ call DSYEV('V','U',nmat,matrix,nmat,eigval,work,lwork,info)
  lwork = NINT(work(1))
  deallocate(work)
 
  allocate(work(lwork))
- call DSYEV('V','U',n,matrix,n,eigval,work,lwork,info)
+ call DSYEV('V','U',nmat,matrix,nmat,eigval,work,lwork,info)
  deallocate(work)
 
 end subroutine diagonalize_inplace_dp
 
 
 !=========================================================================
-subroutine diagonalize_inplace_sp(n,matrix,eigval)
+subroutine diagonalize_inplace_sp(matrix,eigval)
  implicit none
- integer,intent(in) :: n
- real(sp),intent(inout) :: matrix(n,n)
- real(sp),intent(out) :: eigval(n)
+ real(sp),intent(inout) :: matrix(:,:)
+ real(sp),intent(out)   :: eigval(:)
 !=====
+ integer              :: nmat
  real(dp),allocatable :: work(:)
  integer              :: lwork,info
 !=====
 
+ nmat = SIZE(matrix,DIM=1)
+
  lwork = -1
  allocate(work(1))
- call SSYEV('V','U',n,matrix,n,eigval,work,lwork,info)
+ call SSYEV('V','U',nmat,matrix,nmat,eigval,work,lwork,info)
  lwork = NINT(work(1))
  deallocate(work)
 
  allocate(work(lwork))
- call SSYEV('V','U',n,matrix,n,eigval,work,lwork,info)
+ call SSYEV('V','U',nmat,matrix,nmat,eigval,work,lwork,info)
  deallocate(work)
 
 end subroutine diagonalize_inplace_sp
 
 
 !=========================================================================
-subroutine diagonalize_inplace_cdp(n,matrix,eigval)
+subroutine diagonalize_inplace_cdp(matrix,eigval)
  implicit none
- integer,intent(in) :: n
- complex(dp),intent(in) :: matrix(n,n)
- real(dp),intent(out) :: eigval(n)
+ complex(dp),intent(in) :: matrix(:,:)
+ real(dp),intent(out)   :: eigval(:)
 !=====
+ integer                 :: nmat
  complex(dp),allocatable :: work(:)
- real(dp)    :: rwork(3*n-2)
- integer     :: lwork,info
+ real(dp),allocatable    :: rwork(:)
+ integer                 :: lwork,info
 !=====
+
+ nmat = SIZE(matrix,DIM=1)
+ allocate(rwork(3*nmat-2))
 
  lwork = -1
  allocate(work(1))
- call ZHEEV('V','U',n,matrix,n,eigval,work,lwork,rwork,info)
+ call ZHEEV('V','U',nmat,matrix,nmat,eigval,work,lwork,rwork,info)
  lwork = NINT(REAL(work(1),dp))
  deallocate(work)
 
  allocate(work(lwork))
- call ZHEEV('V','U',n,matrix,n,eigval,work,lwork,rwork,info)
+ call ZHEEV('V','U',nmat,matrix,nmat,eigval,work,lwork,rwork,info)
  deallocate(work)
+
+ deallocate(rwork)
 
 end subroutine diagonalize_inplace_cdp
 
@@ -438,7 +471,7 @@ subroutine diagonalize_davidson(tolerance,nstep,ham,neig,eigval,eigvec)
 
 
    allocate(lambda(mm),alphavec(mm,mm))
-   call diagonalize(mm,atilde(1:mm,1:mm),lambda,alphavec)
+   call diagonalize(atilde(1:mm,1:mm),lambda,alphavec)
 
    write(stdout,*) 'icycle',icycle,lambda(1:mm)
 

@@ -761,7 +761,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
  ! full LAPACK diago
  write(stdout,*) 
  write(stdout,*) 'starting the diago'
- call diagonalize(nconf,hamiltonian,energy,eigenvector)
+ call diagonalize(hamiltonian,energy,eigenvector)
  write(stdout,*) 'Full diago DONE'
  write(stdout,*) energy(1:MIN(neig,nconf))
  write(stdout,'(a,i4,2x,20(1x,f7.4))') ' Full diago ',1,eigenvector(1:MIN(20,nconf),1)

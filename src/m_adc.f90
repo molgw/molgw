@@ -225,7 +225,7 @@ subroutine adc2(basis,nstate,occupation,energy,c_matrix)
   
   
   
-   call diagonalize(bmat,b_matrix,eigenvalue,x_matrix)
+   call diagonalize(b_matrix,eigenvalue,x_matrix)
   
    write(stdout,'(/,1x,a)') '================================='
    write(stdout,'(1x,a)') 'G Poles (eV)'
