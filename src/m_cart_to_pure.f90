@@ -291,7 +291,7 @@ function cnk(n,k)
  denom = 1.0_dp
  do i=0,k-1
    num   = num   * REAL(n-i,dp)
-   denom = denom * ( i + 1.0_dp)
+   denom = denom * ( REAL(i,dp) + 1.0_dp)
  enddo
  cnk = num / denom
 

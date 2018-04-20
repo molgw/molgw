@@ -751,32 +751,28 @@ subroutine overlap_three_basis_function(bf1,bf2,bf3,overlap)
  type(basis_function),intent(in) :: bf1,bf2,bf3
  real(dp),intent(out)            :: overlap
 !=====
- type(basis_function)            :: bf12
+ type(basis_function),allocatable :: bf12(:)
+ integer                          :: ibf
+ real(dp)                         :: overlap_tmp
 !=====
 
- if(mod(bf1%nx+bf2%nx+bf3%nx,2)==1) then
-   overlap=0.0_dp
-   return
- endif
- if(mod(bf1%ny+bf2%ny+bf3%ny,2)==1) then
-   overlap=0.0_dp
-   return
- endif
- if(mod(bf1%nz+bf2%nz+bf3%nz,2)==1) then
-   overlap=0.0_dp
-   return
- endif
  !
  ! first multiply the two first basis functions
  call basis_function_prod(bf1,bf2,bf12)
 
  !
  ! then overlap the product and the third basis function
- call overlap_basis_function(bf12,bf3,overlap)
+ overlap = 0.0_dp
+ do ibf=1,SIZE(bf12(:))
 
+   call overlap_basis_function(bf12(ibf),bf3,overlap_tmp)
+   overlap = overlap + overlap_tmp
+   call destroy_basis_function(bf12(ibf))
+
+ enddo
  !
  ! don't forget to destroy it, else memory is leaking
- call destroy_basis_function(bf12)
+ deallocate(bf12)
 
 
 end subroutine overlap_three_basis_function
@@ -830,40 +826,76 @@ end subroutine nucleus_basis_function
 !=========================================================================
 subroutine basis_function_prod(bf1,bf2,bfprod)
  implicit none
- type(basis_function),intent(in)  :: bf1,bf2
- type(basis_function),intent(out) :: bfprod
+ type(basis_function),intent(in)              :: bf1,bf2
+ type(basis_function),allocatable,intent(out) :: bfprod(:)
 !=====
- integer                         :: ig,jg,kg,ng
- real(dp),allocatable            :: coeff(:),alpha(:)
- logical,parameter               :: unnormalized=.FALSE.
- real(dp)                        :: x0_dummy(3)
- integer                         :: fake_shell=1
- integer                         :: fake_index=1
+ integer           :: ig,jg,kg
+ logical,parameter :: unnormalized=.FALSE.
+ integer           :: fake_shell=1
+ integer           :: fake_index=1
+ integer           :: nbfprod,ibf
+ integer           :: ix,iy,iz
+ real(dp)          :: coeff_xyzg(1),c_x,c_y,c_z
+ real(dp)          :: coeff
+ real(dp)          :: alpha(1)
+ real(dp)          :: x0(3)
+ real(dp)          :: exp_fact
 !=====
 
- !
- ! one could save some primitive gaussians in case of bf1 * bf1
- ! however it is a very small gain
- ng = bf1%ngaussian * bf2%ngaussian
- allocate(coeff(ng),alpha(ng))
- kg=0
- do ig=1,bf1%ngaussian
-   do jg=1,bf2%ngaussian
-     kg = kg + 1
-     alpha(kg) = bf1%g(ig)%alpha + bf2%g(jg)%alpha
-     coeff(kg) = bf1%coeff(ig) * bf2%coeff(jg) *  bf1%g(ig)%norm_factor * bf2%g(jg)%norm_factor 
+ nbfprod = ( 1 + bf1%nx + bf2%nx ) * ( 1 + bf1%ny + bf2%ny ) * ( 1 + bf1%nz + bf2%nz) * bf1%ngaussian * bf2%ngaussian
+
+ allocate(bfprod(nbfprod))
+
+ ibf = 0
+ do kg=1,bf1%ngaussian * bf2%ngaussian
+
+   alpha(1) = bf1%g(ig)%alpha + bf2%g(jg)%alpha
+   coeff = bf1%coeff(ig) * bf2%coeff(jg) *  bf1%g(ig)%norm_factor * bf2%g(jg)%norm_factor 
+   x0(:)  = ( bf1%g(ig)%alpha * bf1%x0(:) + bf2%g(jg)%alpha * bf2%x0(:) ) / alpha(1)
+   exp_fact = EXP( -bf1%g(ig)%alpha * bf2%g(jg)%alpha / alpha(1) * SUM( (bf1%x0(:)-bf2%x0(:))**2 ) )
+
+   do ix=0,bf1%nx + bf2%nx
+     c_x = c_1d(ix,bf1%nx,bf2%nx,bf1%x0(1),bf2%x0(1),x0(1))
+     do iy=0,bf1%ny + bf2%ny
+       c_y = c_1d(iy,bf1%ny,bf2%ny,bf1%x0(2),bf2%x0(2),x0(2))
+       do iz=0,bf1%nz + bf2%nz
+         c_z = c_1d(iz,bf1%nz,bf2%nz,bf1%x0(3),bf2%x0(3),x0(3))
+         ibf = ibf + 1
+
+         coeff_xyzg(1) = coeff * c_x * c_y * c_z
+         call init_basis_function(unnormalized,1,ix,iy,iz,0,x0,alpha,coeff_xyzg,fake_shell,fake_index,bfprod(ibf))
+
+         ! override the normalization
+         ! the product gaussians are UNnormalized
+         ! consistently with the ERI basis
+         bfprod(ibf)%g(1)%norm_factor = 1.0_dp
+
+       enddo
+     enddo
+   enddo
+
+ enddo
+
+
+contains
+
+function c_1d(ix,nx1,nx2,xi,xj,xk)
+ implicit none
+ integer,intent(in)  :: ix,nx1,nx2
+ real(dp),intent(in) :: xi,xj,xk
+ real(dp)            :: c_1d
+!=====
+ integer :: ii,jj
+!=====
+
+ c_1d = 0.0_dp
+ do ii=0,nx1
+   do jj=MAX(ix-ii,0),nx2
+     c_1d = c_1d + cnk(nx1,ii) * cnk(nx2,jj) * ( xk - xi )**(nx1-ii) * ( xk - xj )**(nx2-jj)
    enddo
  enddo
 
- call init_basis_function(unnormalized,ng,bf1%nx+bf2%nx,bf1%ny+bf2%ny,bf1%nz+bf2%nz,0,x0_dummy,alpha,coeff,fake_shell,fake_index,bfprod)
-
- !
- ! override the normalization
- ! the product gaussians are UNnormalized
- ! consistently with the ERI basis
- bfprod%g(:)%norm_factor = 1.0_dp
-
- deallocate(coeff,alpha)
+end function c_1d
 
 end subroutine basis_function_prod
 
