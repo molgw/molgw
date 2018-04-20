@@ -340,7 +340,7 @@ subroutine read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,ham
      call setup_overlap_mixedbasis(basis_read,basis_read,overlap_smallbasis)
 
      ! Invert the overlap of the read basis set
-     call invert(basis_read%nbf,overlap_smallbasis)
+     call invert(overlap_smallbasis)
 
      ! Get the scalar products between the old and the new basis sets
      ! Be aware: this is a rectangular matrix

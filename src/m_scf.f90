@@ -377,7 +377,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  a_matrix(nhist_current+1,1:nhist_current) = -1.0_dp
  a_matrix(nhist_current+1,nhist_current+1) =  0.0_dp
 
- call invert(nhist_current+1,a_matrix,a_matrix_inv)
+ call invert(a_matrix,a_matrix_inv)
 
  alpha_diis(1:nhist_current) = -a_matrix_inv(1:nhist_current,nhist_current+1)
 

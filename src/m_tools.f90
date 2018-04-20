@@ -111,70 +111,88 @@ end function matrix_is_symmetric
 
 
 !=========================================================================
-subroutine invert_dp(n,matrix,matrix_inv)
+subroutine invert_dp(matrix,matrix_inv)
  implicit none
 
- integer,intent(in)   :: n
- real(dp),intent(in)  :: matrix(n,n)
- real(dp),intent(out) :: matrix_inv(n,n)
+ real(dp),intent(in)  :: matrix(:,:)
+ real(dp),intent(out) :: matrix_inv(:,:)
 !=====
- real(dp) :: work(n)
- integer  :: ipiv(n),info
+ integer  :: nmat
+ real(dp),allocatable :: work(:)
+ integer,allocatable  :: ipiv(:)
+ integer              :: info
 !=====
+
+ nmat = SIZE( matrix(:,:) , DIM=1)
+ allocate(work(nmat))
+ allocate(ipiv(nmat))
 
  matrix_inv(:,:) = matrix(:,:)
 
- call DGETRF(n,n,matrix_inv,n,ipiv,info)
+ call DGETRF(nmat,nmat,matrix_inv,nmat,ipiv,info)
  if(info/=0) call die('FAILURE in DGETRF')
 
- call DGETRI(n,matrix_inv,n,ipiv,work,n,info)
+ call DGETRI(nmat,matrix_inv,nmat,ipiv,work,nmat,info)
  if(info/=0) call die('FAILURE in DGETRI')
 
+ deallocate(work,ipiv)
 
 end subroutine invert_dp
 
 
 !=========================================================================
-subroutine invert_inplace_dp(n,matrix)
+subroutine invert_inplace_dp(matrix)
  implicit none
 
- integer,intent(in)     :: n
- real(dp),intent(inout) :: matrix(n,n)
+ real(dp),intent(inout) :: matrix(:,:)
 !=====
- real(dp) :: work(n)
- integer  :: ipiv(n),info
+ integer              :: nmat
+ real(dp),allocatable :: work(:)
+ integer,allocatable  :: ipiv(:)
+ integer              :: info
 !=====
 
- call DGETRF(n,n,matrix,n,ipiv,info)
+ nmat = SIZE( matrix(:,:) , DIM=1)
+ allocate(work(nmat))
+ allocate(ipiv(nmat))
+
+ call DGETRF(nmat,nmat,matrix,nmat,ipiv,info)
  if(info/=0) call die('FAILURE in DGETRF')
 
- call DGETRI(n,matrix,n,ipiv,work,n,info)
+ call DGETRI(nmat,matrix,nmat,ipiv,work,nmat,info)
  if(info/=0) call die('FAILURE in DGETRI')
 
+ deallocate(work,ipiv)
 
 end subroutine invert_inplace_dp
 
 
 !=========================================================================
-subroutine invert_cdp(n,matrix,matrix_inv)
+subroutine invert_cdp(matrix,matrix_inv)
  implicit none
 
- integer,intent(in) :: n
- complex(dp),intent(in) :: matrix(n,n)
- complex(dp),intent(out) :: matrix_inv(n,n)
+ complex(dp),intent(in)  :: matrix(:,:)
+ complex(dp),intent(out) :: matrix_inv(:,:)
 !=====
- complex(dp) :: work(n)
- integer     :: ipiv(n),info
+ integer                 :: nmat
+ complex(dp),allocatable :: work(:)
+ integer,allocatable     :: ipiv(:)
+ integer                 :: info
 !=====
+
+ nmat = SIZE( matrix(:,:) , DIM=1)
+ allocate(work(nmat))
+ allocate(ipiv(nmat))
 
  matrix_inv(:,:) = matrix(:,:)
 
- call ZGETRF(n,n,matrix_inv,n,ipiv,info)
+ call ZGETRF(nmat,nmat,matrix_inv,nmat,ipiv,info)
  if(info/=0) call die('FAILURE in ZGETRF')
 
- call ZGETRI(n,matrix_inv,n,ipiv,work,n,info)
+ call ZGETRI(nmat,matrix_inv,nmat,ipiv,work,nmat,info)
  if(info/=0) call die('FAILURE in ZGETRI')
 
+ deallocate(work,ipiv)
 
 end subroutine invert_cdp
 

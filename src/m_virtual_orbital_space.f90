@@ -82,7 +82,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  call clean_allocate('Overlap matrix S',s_matrix,basis%nbf,basis%nbf)
  call clean_allocate('Overlap inverse S^{-1}',s_matrix_inv,basis%nbf,basis%nbf)
  call setup_overlap(basis,s_matrix)
- call invert(basis%nbf,s_matrix,s_matrix_inv)
+ call invert(s_matrix,s_matrix_inv)
 
  ! Calculate the mixed overlap matrix Sbs: s_bigsmall
  call clean_allocate('Big-Small overlap Sbs',s_bigsmall,basis%nbf,basis_small%nbf)

@@ -91,7 +91,7 @@ subroutine static_polarizability(nstate,occupation,energy,wpol_out)
 
 
  ! TODO I should use SCALAPACK for the next two operations
- call invert(nauxil_2center,wpol_out%chi(:,:,1))
+ call invert(wpol_out%chi(:,:,1))
  wpol_out%chi(:,:,1) = MATMUL( wpol_out%chi(:,:,1) , vsqchi0vsq(:,:) )
 
 

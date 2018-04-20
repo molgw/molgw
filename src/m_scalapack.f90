@@ -2469,8 +2469,7 @@ subroutine invert_sca(desc,matrix,matrix_inv)
  deallocate(work,iwork)
 #else
 
- n = SIZE( matrix , DIM=1 )
- call invert(n,matrix,matrix_inv)
+ call invert(matrix,matrix_inv)
 
 #endif
 
