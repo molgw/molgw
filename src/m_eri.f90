@@ -43,7 +43,7 @@ module m_eri
 
  integer,private   :: nbf_eri         ! local copy of nbf
  integer,protected :: nsize           ! size of the eri_4center array
- integer,protected :: npair         ! number of independent pairs (i,j) with i<=j 
+ integer,protected :: npair           ! number of independent pairs (i,j) with i<=j 
 
  integer,protected :: nauxil_3center     ! size of the 3-center matrix
                                          ! may differ from the total number of 3-center integrals due to
@@ -508,8 +508,11 @@ subroutine setup_shellpair(basis)
  integer :: ishell,jshell
  integer :: ami,amj
  integer :: ishellpair,jshellpair
+ integer :: ammax,amij
 !=====
 
+ !
+ ! First count the number of non-negligible shell pairs
  ishellpair = 0
  jshellpair = 0
  do jshell=1,basis%nshell
@@ -517,8 +520,6 @@ subroutine setup_shellpair(basis)
      jshellpair = jshellpair + 1
      ! skip the identified negligible shell pairs
      if( negligible_shellpair(ishell,jshell) ) cycle
-     ami = basis%shell(ishell)%am
-     amj = basis%shell(jshell)%am
      ishellpair = ishellpair + 1
 
    enddo
@@ -529,25 +530,38 @@ subroutine setup_shellpair(basis)
 
  allocate(index_shellpair(2,nshellpair))
 
- ishellpair = 0
- do jshell=1,basis%nshell
-   do ishell=1,jshell 
-     ! skip the identified negligible shell pairs
-     if( negligible_shellpair(ishell,jshell) ) cycle
-     ami = basis%shell(ishell)%am
-     amj = basis%shell(jshell)%am
-     ishellpair = ishellpair + 1
-     ! Reverse if needed the order of the shell so to maximize the angular
-     ! momentum of the first shell
-     if( ami >= amj ) then
-       index_shellpair(1,ishellpair) = ishell
-       index_shellpair(2,ishellpair) = jshell
-     else
-       index_shellpair(1,ishellpair) = jshell
-       index_shellpair(2,ishellpair) = ishell
-     endif
+ ammax = MAXVAL(basis%shell(:)%am)
 
+ !
+ ! Then order the shell pairs so to enforce the LIBINT condition:
+ ! If ijshellpair < klshellpair, then ami+amj < amk+aml
+ !
+ ishellpair = 0
+ do amij=0,2*ammax
+
+   do jshell=1,basis%nshell
+     do ishell=1,jshell
+       ! skip the identified negligible shell pairs
+       if( negligible_shellpair(ishell,jshell) ) cycle
+       ami = basis%shell(ishell)%am
+       amj = basis%shell(jshell)%am
+
+       if( ami + amj /= amij ) cycle
+
+       ishellpair = ishellpair + 1
+       ! Reverse if needed the order of the shell so to maximize the angular
+       ! momentum of the first shell
+       if( ami >= amj ) then
+         index_shellpair(1,ishellpair) = ishell
+         index_shellpair(2,ishellpair) = jshell
+       else
+         index_shellpair(1,ishellpair) = jshell
+         index_shellpair(2,ishellpair) = ishell
+       endif
+
+     enddo
    enddo
+
  enddo
 
 

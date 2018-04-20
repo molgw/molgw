@@ -672,7 +672,7 @@ subroutine diagonalize_eigval_sca(nglobal,desc,matrix,eigval)
 
 #else
 
- call diagonalize_wo_vectors(nglobal,matrix,eigval)
+ call diagonalize_wo_vectors(matrix,eigval)
 
 #endif
 
@@ -732,7 +732,7 @@ subroutine diagonalize_inplace_sca_dp(nglobal,desc,matrix,eigval)
 
 #else
 
- call diagonalize(nglobal,matrix,eigval)
+ call diagonalize(matrix,eigval)
 
 #endif
 
@@ -802,7 +802,7 @@ subroutine diagonalize_inplace_sca_cdp(nglobal,desc,matrix,eigval)
 
 #else
 
- call diagonalize(nglobal,matrix,eigval)
+ call diagonalize(matrix,eigval)
 
 #endif
 
@@ -1092,14 +1092,13 @@ subroutine diagonalize_scalapack_dp(scalapack_block_min,nmat,matrix_global,eigva
 
  else ! Only one SCALAPACK proc
 
-   write(stdout,'(a)') ' Only one SCALAPACK proc'
-   call diagonalize(nmat,matrix_global,eigval)
+   call diagonalize(matrix_global,eigval)
 
  endif
 
 #else
 
- call diagonalize(nmat,matrix_global,eigval)
+ call diagonalize(matrix_global,eigval)
 
 #endif
 
@@ -1183,12 +1182,13 @@ subroutine diagonalize_scalapack_cdp(scalapack_block_min,nmat,matrix_global,eigv
 
  else ! Only one SCALAPACK proc
 
-   call diagonalize(nmat,matrix_global,eigval)
+   call diagonalize(matrix_global,eigval)
 
  endif
 
 #else
- call diagonalize(nmat,matrix_global,eigval)
+
+ call diagonalize(matrix_global,eigval)
 
 #endif
 
@@ -2488,8 +2488,7 @@ subroutine invert_sca(desc,matrix,matrix_inv)
  deallocate(work,iwork)
 #else
 
- n = SIZE( matrix , DIM=1 )
- call invert(n,matrix,matrix_inv)
+ call invert(matrix,matrix_inv)
 
 #endif
 

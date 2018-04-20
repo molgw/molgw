@@ -17,12 +17,12 @@ module m_ecp
  integer,protected,allocatable    :: element_ecp(:)
 
  type effective_core_potential
-   integer              :: nelec
-   integer              :: necp
-   integer,allocatable  :: lk(:)
-   integer,allocatable  :: nk(:)
-   real(dp),allocatable :: dk(:)
-   real(dp),allocatable :: zetak(:)
+   integer              :: nelec          ! number of core electrons
+   integer              :: necp           ! number of projectors
+   integer,allocatable  :: lk(:)          ! angular momentum of the projector (-1 stands for local component)
+   integer,allocatable  :: nk(:)          ! r**(nk-2)
+   real(dp),allocatable :: dk(:)          ! dk coefficient
+   real(dp),allocatable :: zetak(:)       ! zetak coefficient (gaussian exponent)
  end type
 
  type(effective_core_potential),allocatable :: ecp(:)
@@ -46,6 +46,7 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
 !=====
  character(len=132) :: string,ecp_filename
  character(len=2)   :: element
+ character(len=5)   :: amc
  integer :: ecpfile
  integer :: ilen,inextblank,ielement_ecp,iecp
  logical :: file_exists
@@ -120,11 +121,16 @@ subroutine init_ecp(ecp_elements,ecp_path,ecp_name,ecp_level_in)
    close(ecpfile)
 
    write(stdout,'(6x,a,i3)') 'Core electrons ',ecp(ielement_ecp)%nelec
-   write(stdout,'(6x,a)') 'l_k  n_k       zeta_k          d_k  '
+   write(stdout,'(6x,a)') 'l_k      n_k       zeta_k          d_k  '
 
    do iecp=1,ecp(ielement_ecp)%necp
-     write(stdout,'(6x,a,2x,i3,2(2x,f14.6))') &
-                         orbital_momentum_name(ecp(ielement_ecp)%lk(iecp)), &
+     if( ecp(ielement_ecp)%lk(iecp) == -1 ) then
+       amc = 'local'
+     else
+       amc = orbital_momentum_name(ecp(ielement_ecp)%lk(iecp))
+     endif
+     write(stdout,'(6x,a,3x,i3,2(2x,f14.6))') &
+                         amc, &
                          ecp(ielement_ecp)%nk(iecp), &
                          ecp(ielement_ecp)%zetak(iecp), &
                          ecp(ielement_ecp)%dk(iecp) 
@@ -211,19 +217,15 @@ subroutine read_ecp_file(ecpunit,element,ecpi)
          end_of_file = .TRUE.
          exit
        endif
-       read(line,'(i3,e16.8,e16.8)',iostat=istat) read_n,read_zeta,read_d
+       read(line,*,iostat=istat) read_n,read_zeta,read_d
 
        ! For the time being, only code ECP with no local potential
-       if( amc == 'UL' ) then
-         if( ABS(read_d) > 1.0e-4_dp ) then
-           call die('For the time being, only coded for ECP with no local potential')
-         else 
-           cycle
-         endif
-       endif
-
        if( istat == 0 ) then
-         call append_to_list(orbital_momentum_number(amc),ecpi%lk)
+         if( amc == 'UL' ) then
+           call append_to_list(-1,ecpi%lk)
+         else
+           call append_to_list(orbital_momentum_number(amc),ecpi%lk)
+         endif
          call append_to_list(read_n,ecpi%nk)
          call append_to_list(read_zeta,ecpi%zetak)
          call append_to_list(read_d,ecpi%dk)

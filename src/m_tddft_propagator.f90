@@ -111,19 +111,19 @@ subroutine calculate_propagation(nstate,              &
  call clean_allocate('Kinetic operator T for TDDFT',hamiltonian_kinetic,basis%nbf,basis%nbf)
  call clean_allocate('Nucleus operator V for TDDFT',hamiltonian_nucleus,basis%nbf,basis%nbf)
 
- call setup_overlap(print_matrix_,basis,s_matrix)
+ call setup_overlap(basis,s_matrix)
 
- call setup_sqrt_overlap(min_overlap,basis%nbf,s_matrix,nstate_tmp,s_matrix_sqrt_inv)
+ call setup_sqrt_overlap(min_overlap,s_matrix,nstate_tmp,s_matrix_sqrt_inv)
  if(nstate/=nstate_tmp) then
    call die('Error with nstate in the TDDFT propagator') 
  end if
 
- call setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
+ call setup_kinetic(basis,hamiltonian_kinetic)
  
- call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus) 
+ call setup_nucleus(basis,hamiltonian_nucleus) 
  
  if( nelement_ecp > 0 ) then
-   call setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
+   call setup_nucleus_ecp(basis,hamiltonian_nucleus)
  endif
 
 
@@ -191,7 +191,7 @@ subroutine calculate_propagation(nstate,              &
    call clean_allocate('c_matrix_buf for TDDFT',c_matrix_buf_cmplx,nstate,nstate,nspin)
    allocate(energies_inst(nstate))
    do ispin=1, nspin
-     call diagonalize(nstate,h_small_start_cmplx(:,:,ispin),energies_inst(:),c_matrix_buf_cmplx(:,:,ispin))
+     call diagonalize(h_small_start_cmplx(:,:,ispin),energies_inst,c_matrix_buf_cmplx(:,:,ispin))
    end do
    c_matrix_orth_start_cmplx(1:nstate,1:nocc,1:nspin)=c_matrix_buf_cmplx(1:nstate,1:nocc,1:nspin)
    call clean_deallocate('c_matrix_buf for TDDFT',c_matrix_buf_cmplx)
@@ -200,7 +200,7 @@ subroutine calculate_propagation(nstate,              &
 
  call clean_allocate('s_matrix_inv for TDDFT',s_matrix_inv,basis%nbf,basis%nbf)
 
- call invert(basis%nbf,s_matrix,s_matrix_inv)  
+ call invert(s_matrix,s_matrix_inv)  
 
  ntau=NINT((time_sim-time_min)/time_step)
  nwrite_step=NINT((time_sim - time_min)/write_step) 
@@ -518,7 +518,7 @@ subroutine tddft_time_loop(nstate,                           &
        call clean_allocate('c_matrix_orth_start for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
        allocate(energies_inst(nstate))
        do ispin=1, nspin
-         call diagonalize(nstate,h_small_start_cmplx(:,:,ispin),energies_inst(:),c_matrix_orth_start_complete_cmplx(:,:,ispin))
+         call diagonalize(h_small_start_cmplx(:,:,ispin),energies_inst,c_matrix_orth_start_complete_cmplx(:,:,ispin))
        end do
        deallocate(energies_inst)
 
@@ -1476,7 +1476,7 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
        b_matrix_cmplx(istate,istate)=b_matrix_cmplx(istate,istate)+1.0_dp
        l_matrix_cmplx(istate,istate)=l_matrix_cmplx(istate,istate)+1.0_dp
      end do
-     call invert(nstate , l_matrix_cmplx(:,:))
+     call invert(l_matrix_cmplx)
   
      b_matrix_cmplx(:,:)            = MATMUL( l_matrix_cmplx(:,:),b_matrix_cmplx(:,:))
      c_matrix_orth_cmplx(:,:,ispin) = MATMUL( b_matrix_cmplx(:,:),c_matrix_orth_cmplx(:,:,ispin))
@@ -1489,7 +1489,7 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
      allocate(energies_inst(nstate))
      call start_clock(timing_propagate_diago)
 #ifdef SMALL_CALC
-     call diagonalize(nstate,h_small_cmplx(:,:,ispin),energies_inst(:),a_matrix_orth_cmplx)
+     call diagonalize(h_small_cmplx(:,:,ispin),energies_inst,a_matrix_orth_cmplx)
 #else
      a_matrix_orth_cmplx(:,:) = h_small_cmplx(:,:,ispin)
      call diagonalize_scalapack(scalapack_block_min,nstate,a_matrix_orth_cmplx,energies_inst)
@@ -1577,15 +1577,15 @@ subroutine propagate_orth_ham_2(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
    select case (prop_type_cur)
    case('ETRS')
      do iham=1,2
-       call diagonalize(nstate,h_small_hist2_cmplx(:,:,ispin,iham),energies_inst(:),a_matrix_orth_cmplx(:,:,iham))
+       call diagonalize(h_small_hist2_cmplx(:,:,ispin,iham),energies_inst,a_matrix_orth_cmplx(:,:,iham))
        propagator_eigen(:,:,iham) = ( 0.0_dp , 0.0_dp ) 
        do ibf=1,nstate
          propagator_eigen(ibf,ibf,iham) = exp(-im*time_step_cur/2.d0*energies_inst(ibf))
        end do
      end do
      c_matrix_orth_cmplx(:,:,ispin) = & 
-         MATMUL(MATMUL(MATMUL(MATMUL( MATMUL( MATMUL( a_matrix_orth_cmplx(:,:,2), propagator_eigen(:,:,2)  ) , conjg(transpose(a_matrix_orth_cmplx(:,:,2)))  ),  & 
-                            a_matrix_orth_cmplx(:,:,1)), propagator_eigen(:,:,1)), conjg(transpose(a_matrix_orth_cmplx(:,:,1))) ), c_matrix_orth_cmplx(:,:,ispin) )
+         MATMUL(MATMUL(MATMUL(MATMUL( MATMUL( MATMUL( a_matrix_orth_cmplx(:,:,2), propagator_eigen(:,:,2)  ) , CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:,2)))  ),  & 
+                            a_matrix_orth_cmplx(:,:,1)), propagator_eigen(:,:,1)), CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:,1))) ), c_matrix_orth_cmplx(:,:,ispin) )
    case default
      call die('Invalid choice of the propagation algorithm for the given PC scheme. Change prop_type value in the input file')
    end select
@@ -1687,10 +1687,10 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
 !         call setup_nucleus_sca(.false.,basis,basis%nbf,basis%nbf,hamiltonian_nucleus)
 !       endif
 !     else
-       call setup_nucleus(.false.,basis,hamiltonian_nucleus)
+       call setup_nucleus(basis,hamiltonian_nucleus)
 
        if( nelement_ecp > 0 ) then
-         call setup_nucleus_ecp(.false.,basis,hamiltonian_nucleus)
+         call setup_nucleus_ecp(basis,hamiltonian_nucleus)
        endif
 !     endif
      !-------------------------------
@@ -1816,7 +1816,7 @@ subroutine propagate_non_orth(nstate,basis,time_step_cur,c_matrix_cmplx,hamilton
  complex(dp),intent(in)      :: hamiltonian_fock_cmplx(basis%nbf,basis%nbf,nspin)
  real(dp),intent(in)         :: s_matrix(basis%nbf,basis%nbf)
  real(dp),intent(in)         :: s_matrix_sqrt_inv(basis%nbf,nstate)
- character(len=4),intent(in)            :: prop_type_cur
+ character(len=4),intent(in) :: prop_type_cur
 !=====
  integer                    :: ispin
 !==variables for the MAG2 propagator
@@ -1846,7 +1846,7 @@ subroutine propagate_non_orth(nstate,basis,time_step_cur,c_matrix_cmplx,hamilton
        b_matrix_cmplx(ibf,ibf)=b_matrix_cmplx(ibf,ibf)+1.0_dp
        l_matrix_cmplx(ibf,ibf)=l_matrix_cmplx(ibf,ibf)+1.0_dp
      end do
-     call invert(basis%nbf , l_matrix_cmplx(:,:))
+     call invert(l_matrix_cmplx)
   
      c_matrix_cmplx(:,:,ispin) = MATMUL( l_matrix_cmplx(:,:),MATMUL( b_matrix_cmplx(:,:),c_matrix_cmplx(:,:,ispin) ) )
     deallocate(l_matrix_cmplx)
@@ -1856,15 +1856,15 @@ subroutine propagate_non_orth(nstate,basis,time_step_cur,c_matrix_cmplx,hamilton
      allocate(propagator_eigen(basis%nbf,basis%nbf))
      allocate(a_matrix_cmplx(basis%nbf,nstate))
      propagator_eigen(:,:) = ( 0.0_dp , 0.0_dp ) 
-     call diagonalize(nstate,h_small_cmplx(:,:,ispin),energies_inst(:),a_matrix_cmplx)
-     a_matrix_cmplx(:,1:nstate) = MATMUL( s_matrix_sqrt_inv(:,:) , a_matrix_cmplx(:,:) )
+     call diagonalize(h_small_cmplx(:,:,ispin),energies_inst,a_matrix_cmplx)
+     a_matrix_cmplx(:,:) = MATMUL( s_matrix_sqrt_inv(:,:) , a_matrix_cmplx(:,:) )
     
      do ibf=1,basis%nbf
        propagator_eigen(ibf,ibf) = exp(-im*time_step_cur*energies_inst(ibf))
      end do
      !remove traspose
      c_matrix_cmplx(:,:,ispin) = MATMUL( MATMUL( MATMUL( MATMUL( a_matrix_cmplx(:,:), propagator_eigen(:,:)  ) , &
-             conjg(transpose(a_matrix_cmplx(:,:)))  ), s_matrix(:,:) ), c_matrix_cmplx(:,:,ispin) )
+             CONJG(TRANSPOSE(a_matrix_cmplx(:,:)))  ), s_matrix(:,:) ), c_matrix_cmplx(:,:,ispin) )
      deallocate(energies_inst)
      deallocate(propagator_eigen)
      deallocate(a_matrix_cmplx)

@@ -121,7 +121,7 @@ subroutine prepare_tddft(nstate,basis,c_matrix,occupation)
  ! calculate rho, grad rho and the kernel
  ! 
  ! Setup the density matrix P from C
- call setup_density_matrix(basis%nbf,nstate,c_matrix,occupation,p_matrix)
+ call setup_density_matrix(c_matrix,occupation,p_matrix)
 
 
  allocate(v2rho2(ngrid,2*nspin_tddft-1),wf_r(ngrid,basis%nbf,nspin))

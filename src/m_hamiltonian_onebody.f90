@@ -28,9 +28,8 @@ contains
 
 
 !=========================================================================
-subroutine setup_overlap(print_matrix_,basis,s_matrix)
+subroutine setup_overlap(basis,s_matrix)
  implicit none
- logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: s_matrix(basis%nbf,basis%nbf)
 !=====
@@ -112,7 +111,7 @@ subroutine setup_overlap(print_matrix_,basis,s_matrix)
  enddo
 
  title='=== Overlap matrix S (LIBINT) ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,s_matrix)
+ call dump_out_matrix(.FALSE.,title,basis%nbf,1,s_matrix)
 
  
  call stop_clock(timing_overlap)
@@ -212,9 +211,8 @@ end subroutine setup_overlap_mixedbasis
 
 
 !=========================================================================
-subroutine setup_overlap_grad(print_matrix_,basis,s_matrix_grad)
+subroutine setup_overlap_grad(basis,s_matrix_grad)
  implicit none
- logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: s_matrix_grad(basis%nbf,basis%nbf,3)
 !=====
@@ -295,11 +293,11 @@ subroutine setup_overlap_grad(print_matrix_,basis,s_matrix_grad)
  enddo
 
  title='=== Overlap matrix S (LIBINT) X ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,s_matrix_grad(:,:,1))
+ call dump_out_matrix(.FALSE.,title,basis%nbf,1,s_matrix_grad(:,:,1))
  title='=== Overlap matrix S (LIBINT) Y ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,s_matrix_grad(:,:,2))
+ call dump_out_matrix(.FALSE.,title,basis%nbf,1,s_matrix_grad(:,:,2))
  title='=== Overlap matrix S (LIBINT) Z ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,s_matrix_grad(:,:,3))
+ call dump_out_matrix(.FALSE.,title,basis%nbf,1,s_matrix_grad(:,:,3))
 
  call stop_clock(timing_overlap)
 
@@ -308,9 +306,8 @@ end subroutine setup_overlap_grad
 
 
 !=========================================================================
-subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
+subroutine setup_kinetic(basis,hamiltonian_kinetic)
  implicit none
- logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: hamiltonian_kinetic(basis%nbf,basis%nbf)
 !=====
@@ -393,7 +390,7 @@ subroutine setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
  enddo
 
  title='===  Kinetic energy contribution (LIBINT) ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_kinetic)
+ call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_kinetic)
 
  call stop_clock(timing_hamiltonian_kin)
 
@@ -401,9 +398,8 @@ end subroutine setup_kinetic
 
 
 !=========================================================================
-subroutine setup_kinetic_grad(print_matrix_,basis,hamiltonian_kinetic_grad)
+subroutine setup_kinetic_grad(basis,hamiltonian_kinetic_grad)
  implicit none
- logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: hamiltonian_kinetic_grad(basis%nbf,basis%nbf,3)
 !=====
@@ -484,11 +480,11 @@ subroutine setup_kinetic_grad(print_matrix_,basis,hamiltonian_kinetic_grad)
  enddo
 
  title='===  Kinetic energy contribution (LIBINT) X ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_kinetic_grad(:,:,1))
+ call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_kinetic_grad(:,:,1))
  title='===  Kinetic energy contribution (LIBINT) Y ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_kinetic_grad(:,:,2))
+ call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_kinetic_grad(:,:,2))
  title='===  Kinetic energy contribution (LIBINT) Z ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_kinetic_grad(:,:,3))
+ call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_kinetic_grad(:,:,3))
 
  call stop_clock(timing_hamiltonian_kin)
 
@@ -496,10 +492,9 @@ end subroutine setup_kinetic_grad
 
 
 !=========================================================================
-subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
+subroutine setup_nucleus(basis,hamiltonian_nucleus)
  use m_atoms
  implicit none
- logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: hamiltonian_nucleus(basis%nbf,basis%nbf)
 !=====
@@ -615,7 +610,7 @@ subroutine setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
  call xsum_world(hamiltonian_nucleus)
 
  title='===  Nucleus potential contribution (LIBINT) ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_nucleus)
+ call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_nucleus)
 
  call stop_clock(timing_hamiltonian_nuc)
 
@@ -623,10 +618,9 @@ end subroutine setup_nucleus
 
 
 !=========================================================================
-subroutine setup_nucleus_grad(print_matrix_,basis,hamiltonian_nucleus_grad)
+subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
  use m_atoms
  implicit none
- logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: hamiltonian_nucleus_grad(basis%nbf,basis%nbf,natom+1,3)
 !=====
@@ -761,11 +755,11 @@ subroutine setup_nucleus_grad(print_matrix_,basis,hamiltonian_nucleus_grad)
  call xsum_world(hamiltonian_nucleus_grad)
 
  title='===  Nucleus potential contribution (LIBINT) C1X==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_nucleus_grad(:,:,1,1))
+ call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_nucleus_grad(:,:,1,1))
  title='===  Nucleus potential contribution (LIBINT) C1Y==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_nucleus_grad(:,:,1,2))
+ call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_nucleus_grad(:,:,1,2))
  title='===  Nucleus potential contribution (LIBINT) C1Z==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_nucleus_grad(:,:,1,3))
+ call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_nucleus_grad(:,:,1,3))
 
  call stop_clock(timing_hamiltonian_nuc)
 
@@ -888,12 +882,11 @@ end subroutine calculate_quadrupole_basis
 
 
 !=========================================================================
-subroutine setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
+subroutine setup_nucleus_ecp(basis,hamiltonian_nucleus)
  use m_atoms
  use m_dft_grid
  use m_ecp
  implicit none
- logical,intent(in)         :: print_matrix_
  type(basis_set),intent(in) :: basis
  real(dp),intent(inout)     :: hamiltonian_nucleus(basis%nbf,basis%nbf)
 !=====
@@ -987,11 +980,12 @@ subroutine setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
 
    nproj = 0
    do iecp=1,necp
-     nproj = nproj + number_basis_function_am('PURE',ecp(ie)%lk(iecp))
+     if( ecp(ie)%lk(iecp) /= -1 ) then   ! -1 encodes a local component
+       nproj = nproj + number_basis_function_am('PURE',ecp(ie)%lk(iecp))
+     endif
    enddo
-  
-  
    allocate(int_fixed_r(basis%nbf,nproj))
+  
    do iradial=1,nradial_ecp
      if( MODULO(iradial-1,nproc_world) /= rank_world ) cycle
 
@@ -1007,28 +1001,43 @@ subroutine setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
   
        iproj = 0
        do iecp=1,necp
-         do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
-           iproj = iproj + 1
-           int_fixed_r(:,iproj) = int_fixed_r(:,iproj) + basis_function_r(:) &
-                                     * real_spherical_harmonics(ecp(ie)%lk(iecp),mm,cos_theta,phi) &
-                                        * w1(i1) * 4.0_dp * pi  
-         enddo
+
+         if( ecp(ie)%lk(iecp) == -1 ) then   ! -1 encodes a local component
+           do jbf=1,basis%nbf
+             do ibf=1,basis%nbf
+               hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
+                   + basis_function_r(ibf) * basis_function_r(jbf) * w1(i1) * 4.0_dp * pi  &
+                      * wxa(iradial) * xa(iradial)**2  &
+                      * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
+             enddo
+           enddo
+
+         else
+           do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
+             iproj = iproj + 1
+             int_fixed_r(:,iproj) = int_fixed_r(:,iproj) + basis_function_r(:) &
+                                       * real_spherical_harmonics(ecp(ie)%lk(iecp),mm,cos_theta,phi) &
+                                          * w1(i1) * 4.0_dp * pi  
+           enddo
+         endif
+
        enddo
-     enddo
-  
+     enddo ! (theta, phi) points
   
      iproj = 0
      do iecp=1,necp
-       do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
-         iproj = iproj + 1
-         do jbf=1,basis%nbf
-           do ibf=1,basis%nbf
-             hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
-                 + int_fixed_r(ibf,iproj) * int_fixed_r(jbf,iproj) * wxa(iradial) * xa(iradial)**2  &
-                    * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
+       if( ecp(ie)%lk(iecp) /= -1 ) then
+         do mm=-ecp(ie)%lk(iecp),ecp(ie)%lk(iecp)
+           iproj = iproj + 1
+           do jbf=1,basis%nbf
+             do ibf=1,basis%nbf
+               hamiltonian_nucleus(ibf,jbf) = hamiltonian_nucleus(ibf,jbf)  &
+                   + int_fixed_r(ibf,iproj) * int_fixed_r(jbf,iproj) * wxa(iradial) * xa(iradial)**2  &
+                      * ecp(ie)%dk(iecp) * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2)
+             enddo
            enddo
          enddo
-       enddo
+       endif
      enddo
   
    enddo
@@ -1040,7 +1049,7 @@ subroutine setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
  call xsum_world(hamiltonian_nucleus)
 
  title='=== ECP Nucleus potential contribution ==='
- call dump_out_matrix(print_matrix_,title,basis%nbf,1,hamiltonian_nucleus)
+ call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_nucleus)
 
  call stop_clock(timing_ecp)
 

@@ -18,27 +18,29 @@ module m_hamiltonian
  use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
  use m_basis_set
+ use m_eri_calculate
 
 
 contains
 
 
 !=========================================================================
-subroutine setup_hartree(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
- use m_eri
+subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
  implicit none
- logical,intent(in)   :: print_matrix_
- integer,intent(in)   :: nbf
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: hartree_ij(nbf,nbf)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: hartree_ij(:,:)
  real(dp),intent(out) :: ehartree
 !=====
+ integer              :: nbf
  integer              :: ibf,jbf,kbf,lbf
  character(len=100)   :: title
 !=====
 
- write(stdout,*) 'Calculate Hartree term'
  call start_clock(timing_hartree)
+
+ write(stdout,*) 'Calculate Hartree term'
+
+ nbf = SIZE(hartree_ij(:,:),DIM=1)
 
  hartree_ij(:,:)=0.0_dp
 
@@ -63,7 +65,7 @@ subroutine setup_hartree(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
 
 
  title='=== Hartree contribution ==='
- call dump_out_matrix(print_matrix_,title,nbf,1,hartree_ij)
+ call dump_out_matrix(.FALSE.,title,nbf,1,hartree_ij)
 
  ehartree = 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,1))
  if( nspin == 2 ) then
@@ -76,15 +78,175 @@ end subroutine setup_hartree
 
 
 !=========================================================================
-subroutine setup_hartree_ri(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
- use m_eri
+subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
  implicit none
- logical,intent(in)   :: print_matrix_
- integer,intent(in)   :: nbf
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: hartree_ij(nbf,nbf)
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: p_matrix(:,:,:)
+ real(dp),intent(out)       :: hartree_ij(:,:)
+ real(dp),intent(out)       :: ehartree
+!=====
+ real(dp),parameter      :: TOL_DENSITY_MATRIX=1.0e-7_dp
+ integer                 :: ijshellpair,klshellpair
+ integer                 :: iatom
+ integer                 :: ibf,jbf,kbf,lbf
+ integer                 :: ishell,jshell,kshell,lshell
+ integer                 :: ni,nj,nk,nl
+ real(dp)                :: fact
+ real(dp),allocatable    :: shell_ijkl(:,:,:,:)
+ logical,allocatable     :: skip_shellpair(:)
+ real(dp)                :: cost(nshellpair)
+ real(dp)                :: cost2(nshellpair)
+ real(dp)                :: load(nproc_world)
+ integer                 :: shellpair_cpu(nshellpair)
+ logical                 :: mask(nshellpair)
+!=====
+
+
+ call start_clock(timing_hartree)
+
+ write(stdout,*) 'Calculate Hartree term with out-of-core integrals'
+
+ !
+ ! Phenomenological formula to evaluate the CPU time for each shell pair
+ do klshellpair=1,nshellpair
+   kshell = index_shellpair(1,klshellpair)
+   lshell = index_shellpair(2,klshellpair)
+   nk = number_basis_function_am('CART', basis%shell(kshell)%am )
+   nl = number_basis_function_am('CART', basis%shell(lshell)%am )
+   cost(klshellpair) =   5.0e-6_dp * ( nk * nl )**1.6   &
+                       + 9.0e-4_dp * ( basis%shell(kshell)%ng * basis%shell(lshell)%ng )
+ enddo
+ do klshellpair=1,nshellpair
+   cost2(klshellpair) = SUM(cost(1:klshellpair)) * cost(klshellpair)
+ enddo
+
+ !
+ ! Distribute workload among CPUs
+ mask(:) = .TRUE.
+ load(:) = 0.0_dp
+ do klshellpair=1,nshellpair
+   ijshellpair = MAXLOC(cost2(:), MASK=mask(:), DIM=1)
+   mask(ijshellpair) = .FALSE.
+   shellpair_cpu(ijshellpair) = MINLOC(load(:), DIM=1)
+   load(shellpair_cpu(ijshellpair)) = load(shellpair_cpu(ijshellpair)) +  cost2(ijshellpair)
+ enddo
+
+ !
+ ! Filter out the low density matrix shells
+ !
+ allocate(skip_shellpair(nshellpair))
+ skip_shellpair(:) = .TRUE.
+ do ijshellpair=1,nshellpair
+   ishell = index_shellpair(1,ijshellpair)
+   jshell = index_shellpair(2,ijshellpair)
+   do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
+     do ibf=basis%shell(ishell)%istart,basis%shell(ishell)%iend
+       if( ANY( ABS(p_matrix(ibf,jbf,:) / spin_fact) > TOL_DENSITY_MATRIX ) ) then
+         skip_shellpair(ijshellpair) = .FALSE.
+       endif
+     enddo
+   enddo
+ enddo
+ write(stdout,'(1x,a,i6,a,i6)') 'Shell pair skipped due to low density matrix screening:',COUNT( skip_shellpair(:) ),' / ',nshellpair
+
+
+ hartree_ij(:,:) = 0.0_dp
+ do klshellpair=1,nshellpair
+   kshell = index_shellpair(1,klshellpair)
+   lshell = index_shellpair(2,klshellpair)
+   nk = number_basis_function_am( basis%gaussian_type , basis%shell(kshell)%am )
+   nl = number_basis_function_am( basis%gaussian_type , basis%shell(lshell)%am )
+
+   !if( MODULO(klshellpair,nproc_world) /= rank_world ) cycle
+   if( shellpair_cpu(klshellpair) - 1 /= rank_world ) cycle
+
+   if( skip_shellpair(klshellpair) ) cycle
+
+   do ijshellpair=1,klshellpair
+     ishell = index_shellpair(1,ijshellpair)
+     jshell = index_shellpair(2,ijshellpair)
+     ni = number_basis_function_am( basis%gaussian_type , basis%shell(ishell)%am )
+     nj = number_basis_function_am( basis%gaussian_type , basis%shell(jshell)%am )
+
+     ! I don't know if it is a good idea
+     if( skip_shellpair(ijshellpair) ) cycle
+
+
+     ! Libint ordering is enforced by the shell pair ordering
+     call calculate_eri_4center_shell(basis,0.0_dp,ijshellpair,klshellpair,shell_ijkl)
+
+     fact = 0.50_dp
+     if( ishell /= jshell ) fact = fact * 2.0_dp
+     if( kshell /= lshell ) fact = fact * 2.0_dp
+
+
+     do lbf=basis%shell(lshell)%istart,basis%shell(lshell)%iend
+       do kbf=basis%shell(kshell)%istart,basis%shell(kshell)%iend
+         do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
+           do ibf=basis%shell(ishell)%istart,basis%shell(ishell)%iend
+
+             hartree_ij(ibf,jbf) = hartree_ij(ibf,jbf)  &
+                                   + SUM(p_matrix(kbf,lbf,:)) * fact                       &
+                                      * shell_ijkl(ibf-basis%shell(ishell)%istart+1,       &
+                                                   jbf-basis%shell(jshell)%istart+1,       &
+                                                   kbf-basis%shell(kshell)%istart+1,       &
+                                                   lbf-basis%shell(lshell)%istart+1)
+           enddo
+         enddo
+       enddo
+     enddo
+
+     if( ijshellpair /= klshellpair ) then
+       do lbf=basis%shell(lshell)%istart,basis%shell(lshell)%iend
+         do kbf=basis%shell(kshell)%istart,basis%shell(kshell)%iend
+           do jbf=basis%shell(jshell)%istart,basis%shell(jshell)%iend
+             do ibf=basis%shell(ishell)%istart,basis%shell(ishell)%iend
+
+               hartree_ij(kbf,lbf) = hartree_ij(kbf,lbf)  &
+                                     + SUM(p_matrix(ibf,jbf,:)) * fact                       &
+                                        * shell_ijkl(ibf-basis%shell(ishell)%istart+1,       &
+                                                     jbf-basis%shell(jshell)%istart+1,       &
+                                                     kbf-basis%shell(kshell)%istart+1,       &
+                                                     lbf-basis%shell(lshell)%istart+1)
+             enddo
+           enddo
+         enddo
+       enddo
+     endif
+
+     deallocate(shell_ijkl)
+
+   enddo
+ enddo
+
+
+ deallocate(skip_shellpair)
+
+
+ hartree_ij(:,:) = hartree_ij(:,:) + TRANSPOSE( hartree_ij(:,:) )
+
+ call xsum_world(hartree_ij)
+
+ call dump_out_matrix(.FALSE.,'=== Hartree contribution ===',basis%nbf,1,hartree_ij)
+
+ ehartree = 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,1))
+ if( nspin == 2 ) then
+   ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
+ endif
+
+ call stop_clock(timing_hartree)
+
+end subroutine setup_hartree_oneshell
+
+
+!=========================================================================
+subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
+ implicit none
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: hartree_ij(:,:)
  real(dp),intent(out) :: ehartree
 !=====
+ integer              :: nbf
  integer              :: ibf,jbf,kbf,lbf
  integer              :: ipair
  real(dp),allocatable :: partial_sum(:)
@@ -96,6 +258,8 @@ subroutine setup_hartree_ri(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
    write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
  end if
  call start_clock(timing_hartree)
+
+ nbf = SIZE(hartree_ij(:,:),DIM=1)
 
  allocate(partial_sum(nauxil_3center))
  partial_sum(:) = 0.0_dp
@@ -127,7 +291,7 @@ subroutine setup_hartree_ri(print_matrix_,nbf,p_matrix,hartree_ij,ehartree)
 
 
  title='=== Hartree contribution ==='
- call dump_out_matrix(print_matrix_,title,nbf,1,hartree_ij)
+ call dump_out_matrix(.FALSE.,title,nbf,1,hartree_ij)
 
  ehartree = 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,1))
  if( nspin == 2 ) then
@@ -140,20 +304,21 @@ end subroutine setup_hartree_ri
 
 
 !=========================================================================
-subroutine setup_exchange(nbf,p_matrix,exchange_ij,eexchange)
- use m_eri
+subroutine setup_exchange(p_matrix,exchange_ij,eexchange)
  implicit none
- integer,intent(in)   :: nbf
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: exchange_ij(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
+ integer              :: nbf
  integer              :: ibf,jbf,kbf,lbf,ispin
 !=====
 
- write(stdout,*) 'Calculate Exchange term'
  call start_clock(timing_exchange)
 
+ write(stdout,*) 'Calculate Exchange term'
+
+ nbf = SIZE(exchange_ij,DIM=1)
 
  exchange_ij(:,:,:)=0.0_dp
 
@@ -184,24 +349,27 @@ end subroutine setup_exchange
 
 
 !=========================================================================
-subroutine setup_exchange_ri(nbf,nstate,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
- use m_eri
+subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  implicit none
- integer,intent(in)   :: nbf,nstate
- real(dp),intent(in)  :: occupation(nstate,nspin)
- real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
+ real(dp),intent(in)  :: occupation(:,:)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: exchange_ij(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
+ integer              :: nbf,nstate
  integer              :: ibf,jbf,ispin,istate
  integer              :: nocc
  real(dp),allocatable :: tmp(:,:)
  integer              :: ipair
 !=====
 
- write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
  call start_clock(timing_exchange)
+
+ write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
+
+ nbf    = SIZE(exchange_ij,DIM=1)
+ nstate = SIZE(occupation(:,:),DIM=1)
 
  exchange_ij(:,:,:) = 0.0_dp
 
@@ -210,15 +378,18 @@ subroutine setup_exchange_ri(nbf,nstate,occupation,c_matrix,p_matrix,exchange_ij
  do ispin=1,nspin
 
    ! Find highest occupied state
+   ! Take care of negative occupations, this can happen if C comes from P^{1/2}
    nocc = 0
    do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty)  cycle
+     if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
      nocc = istate
    enddo
 
 
    do istate=1,nocc
      if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle
+
+     if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
 
      tmp(:,:) = 0.0_dp
      !$OMP PARALLEL PRIVATE(ibf,jbf) 
@@ -259,24 +430,26 @@ subroutine setup_exchange_ri(nbf,nstate,occupation,c_matrix,p_matrix,exchange_ij
 end subroutine setup_exchange_ri
 
 !=========================================================================
-subroutine setup_exchange_longrange_ri(nbf,nstate,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
- use m_eri
+subroutine setup_exchange_longrange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  implicit none
- integer,intent(in)   :: nbf,nstate
- real(dp),intent(in)  :: occupation(nstate,nspin)
- real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
+ real(dp),intent(in)  :: occupation(:,:)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: exchange_ij(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
+ integer              :: nbf,nstate
  integer              :: ibf,jbf,ispin,istate
  real(dp),allocatable :: tmp(:,:)
  integer              :: ipair
 !=====
 
- write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity'
  call start_clock(timing_exchange)
 
+ write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity'
+
+ nbf    = SIZE(exchange_ij,DIM=1)
+ nstate = SIZE(occupation,DIM=1)
 
  exchange_ij(:,:,:) = 0.0_dp
 
@@ -324,20 +497,21 @@ end subroutine setup_exchange_longrange_ri
 
 
 !=========================================================================
-subroutine setup_exchange_longrange(nbf,p_matrix,exchange_ij,eexchange)
- use m_eri
+subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
  implicit none
- integer,intent(in)   :: nbf
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: exchange_ij(nbf,nbf,nspin)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: exchange_ij(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
+ integer              :: nbf
  integer              :: ibf,jbf,kbf,lbf,ispin
 !=====
 
- write(stdout,*) 'Calculate Long-Range Exchange term'
  call start_clock(timing_exchange)
 
+ write(stdout,*) 'Calculate Long-Range Exchange term'
+
+ nbf = SIZE(exchange_ij,DIM=1)
 
  exchange_ij(:,:,:)=0.0_dp
 
@@ -365,19 +539,23 @@ end subroutine setup_exchange_longrange
 
 
 !=========================================================================
-subroutine setup_density_matrix(nbf,nstate,c_matrix,occupation,p_matrix)
+subroutine setup_density_matrix(c_matrix,occupation,p_matrix)
  implicit none
- integer,intent(in)   :: nbf,nstate
- real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)  :: occupation(nstate,nspin)
- real(dp),intent(out) :: p_matrix(nbf,nbf,nspin)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: occupation(:,:)
+ real(dp),intent(out) :: p_matrix(:,:,:)
 !=====
+ integer :: nbf,nstate
  integer :: ispin,ibf,jbf
  integer :: istate
 !=====
 
  call start_clock(timing_density_matrix)
+
  write(stdout,'(1x,a)') 'Build density matrix'
+
+ nbf    = SIZE(c_matrix(:,:,:),DIM=1)
+ nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
  p_matrix(:,:,:) = 0.0_dp
  do ispin=1,nspin
@@ -399,20 +577,24 @@ subroutine setup_density_matrix(nbf,nstate,c_matrix,occupation,p_matrix)
 end subroutine setup_density_matrix
 
 !=========================================================================
-subroutine setup_energy_density_matrix(nbf,nstate,c_matrix,occupation,energy,q_matrix)
+subroutine setup_energy_density_matrix(c_matrix,occupation,energy,q_matrix)
  implicit none
- integer,intent(in)   :: nbf,nstate
- real(dp),intent(in)  :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)  :: occupation(nstate,nspin)
- real(dp),intent(in)  :: energy(nstate,nspin)
- real(dp),intent(out) :: q_matrix(nbf,nbf)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: occupation(:,:)
+ real(dp),intent(in)  :: energy(:,:)
+ real(dp),intent(out) :: q_matrix(:,:)
 !=====
+ integer :: nbf,nstate
  integer :: ispin,ibf,jbf
  integer :: istate
 !=====
 
  call start_clock(timing_density_matrix)
+
  write(stdout,'(1x,a)') 'Build energy-density matrix'
+
+ nbf    = SIZE(c_matrix(:,:,:),DIM=1)
+ nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
  q_matrix(:,:) = 0.0_dp
  do ispin=1,nspin
@@ -429,6 +611,7 @@ subroutine setup_energy_density_matrix(nbf,nstate,c_matrix,occupation,energy,q_m
      q_matrix(jbf,ibf) = q_matrix(ibf,jbf)
    enddo
  enddo
+
  call stop_clock(timing_density_matrix)
 
 
@@ -436,18 +619,23 @@ end subroutine setup_energy_density_matrix
 
 
 !=========================================================================
-subroutine test_density_matrix(nbf,nspin,p_matrix,s_matrix)
+subroutine test_density_matrix(p_matrix,s_matrix)
  implicit none
- integer,intent(in)   :: nbf,nspin
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin),s_matrix(nbf,nbf)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(in)  :: s_matrix(:,:)
 !=====
+ integer              :: nbf
  integer              :: ispin
- real(dp)             :: matrix(nbf,nbf)
+ real(dp),allocatable :: matrix(:,:)
  character(len=100)   :: title
 !=====
 
+ nbf = SIZE(p_matrix(:,:,:),DIM=1)
+ allocate(matrix(nbf,nbf))
+
  write(stdout,*) 'Check equality PSP = P'
  write(stdout,*) ' valid only for integer occupation numbers'
+
  do ispin=1,nspin
 
    !
@@ -462,6 +650,7 @@ subroutine test_density_matrix(nbf,nspin,p_matrix,s_matrix)
 
  enddo
 
+ deallocate(matrix)
 
 end subroutine test_density_matrix
 
@@ -582,15 +771,17 @@ end subroutine set_occupation
 
 
 !=========================================================================
-subroutine matrix_basis_to_eigen(nbf,nstate,c_matrix,matrix_inout)
+subroutine matrix_basis_to_eigen(c_matrix,matrix_inout)
  implicit none
- integer,intent(in)      :: nbf,nstate
- real(dp),intent(in)     :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(inout)  :: matrix_inout(nbf,nbf,nspin)
+ real(dp),intent(in)     :: c_matrix(:,:,:)
+ real(dp),intent(inout)  :: matrix_inout(:,:,:)
 !=====
+ integer                 :: nbf,nstate
  integer                 :: ispin
 !=====
 
+ nbf    = SIZE(c_matrix(:,:,:),DIM=1)
+ nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
  do ispin=1,nspin
    matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
@@ -601,13 +792,13 @@ end subroutine matrix_basis_to_eigen
 
 
 !=========================================================================
-subroutine evaluate_s2_operator(nbf,nstate,occupation,c_matrix,s_matrix)
+subroutine evaluate_s2_operator(occupation,c_matrix,s_matrix)
  implicit none
- integer,intent(in)      :: nbf,nstate
- real(dp),intent(in)     :: occupation(nstate,nspin)
- real(dp),intent(in)     :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)     :: s_matrix(nbf,nbf)
+ real(dp),intent(in)     :: occupation(:,:)
+ real(dp),intent(in)     :: c_matrix(:,:,:)
+ real(dp),intent(in)     :: s_matrix(:,:)
 !=====
+ integer                 :: nstate
  integer                 :: istate,jstate
  real(dp)                :: s2,s2_exact
  real(dp)                :: n1,n2,nmax,nmin
@@ -615,8 +806,10 @@ subroutine evaluate_s2_operator(nbf,nstate,occupation,c_matrix,s_matrix)
 
  if(nspin /= 2) return
 
- n1 = SUM( occupation(:,1) )
- n2 = SUM( occupation(:,2) )
+ nstate = SIZE(occupation,DIM=1)
+
+ n1 = SUM( occupation(:,1) )  ! Number of spin up   electrons
+ n2 = SUM( occupation(:,2) )  ! Number of spin down electrons
  nmax = MAX(n1,n2)
  nmin = MIN(n1,n2)
 
@@ -642,18 +835,18 @@ end subroutine evaluate_s2_operator
 
 
 !=========================================================================
-subroutine level_shifting_up(nbf,nstate,s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
+subroutine level_shifting_up(s_matrix,c_matrix,occupation,level_shifting_energy,hamiltonian)
  implicit none
- integer,intent(in)     :: nbf,nstate
- real(dp),intent(in)    :: s_matrix(nbf,nbf)
- real(dp),intent(in)    :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)    :: occupation(nstate,nspin)
+ real(dp),intent(in)    :: s_matrix(:,:)
+ real(dp),intent(in)    :: c_matrix(:,:,:)
+ real(dp),intent(in)    :: occupation(:,:)
  real(dp),intent(in)    :: level_shifting_energy
- real(dp),intent(inout) :: hamiltonian(nbf,nbf,nspin)
+ real(dp),intent(inout) :: hamiltonian(:,:,:)
 !=====
- integer  :: ispin,istate
- real(dp) :: sqrt_level_shifting(nstate)
- real(dp) :: matrix_tmp(nbf,nbf)
+ integer              :: nstate
+ integer              :: ispin,istate
+ real(dp),allocatable :: sqrt_level_shifting(:)
+ real(dp),allocatable :: matrix_tmp(:,:)
 !=====
 
  write(stdout,'(/,a)')     ' Level shifting switched on'
@@ -663,6 +856,9 @@ subroutine level_shifting_up(nbf,nstate,s_matrix,c_matrix,occupation,level_shift
    call die('level_shifting_energy has to be positive!')
  endif
 
+ nstate = SIZE(occupation,DIM=1)
+ allocate(matrix_tmp,MOLD=s_matrix)
+ allocate(sqrt_level_shifting(nstate))
 
  do ispin=1,nspin
    !
@@ -689,29 +885,36 @@ subroutine level_shifting_up(nbf,nstate,s_matrix,c_matrix,occupation,level_shift
 
  enddo
  
+ deallocate(matrix_tmp)
+ deallocate(sqrt_level_shifting)
 
+ 
 end subroutine level_shifting_up
 
 
 !=========================================================================
-subroutine level_shifting_down(nbf,nstate,s_matrix,c_matrix,occupation,level_shifting_energy,energy,hamiltonian)
+subroutine level_shifting_down(s_matrix,c_matrix,occupation,level_shifting_energy,energy,hamiltonian)
  implicit none
- integer,intent(in)     :: nbf,nstate
- real(dp),intent(in)    :: s_matrix(nbf,nbf)
- real(dp),intent(in)    :: c_matrix(nbf,nstate,nspin)
- real(dp),intent(in)    :: occupation(nstate,nspin)
+ real(dp),intent(in)    :: s_matrix(:,:)
+ real(dp),intent(in)    :: c_matrix(:,:,:)
+ real(dp),intent(in)    :: occupation(:,:)
+ real(dp),intent(inout) :: energy(:,:)
  real(dp),intent(in)    :: level_shifting_energy
- real(dp),intent(inout) :: energy(nstate,nspin)
- real(dp),intent(inout) :: hamiltonian(nbf,nbf,nspin)
+ real(dp),intent(inout) :: hamiltonian(:,:,:)
 !=====
- integer  :: ispin,istate
- real(dp) :: sqrt_level_shifting(nstate)
- real(dp) :: matrix_tmp(nbf,nbf)
+ integer              :: nstate
+ integer              :: ispin,istate
+ real(dp),allocatable :: sqrt_level_shifting(:)
+ real(dp),allocatable :: matrix_tmp(:,:)
 !=====
 
  if( level_shifting_energy < 0.0_dp ) then
    call die('level_shifting_energy has to be positive!')
  endif
+
+ nstate = SIZE(occupation,DIM=1)
+ allocate(matrix_tmp,MOLD=s_matrix)
+ allocate(sqrt_level_shifting(nstate))
 
  !
  ! Shift down the energies of the virtual orbitals
@@ -749,27 +952,34 @@ subroutine level_shifting_down(nbf,nstate,s_matrix,c_matrix,occupation,level_shi
 
  enddo
  
+ deallocate(matrix_tmp)
+ deallocate(sqrt_level_shifting)
 
 end subroutine level_shifting_down
 
 
 !=========================================================================
-subroutine setup_sqrt_overlap(TOL_OVERLAP,nbf,s_matrix,nstate,s_matrix_sqrt_inv)
+subroutine setup_sqrt_overlap(TOL_OVERLAP,s_matrix,nstate,s_matrix_sqrt_inv)
  use m_tools
  implicit none
 
  real(dp),intent(in)                :: TOL_OVERLAP
- integer,intent(in)                 :: nbf
- real(dp),intent(in)                :: s_matrix(nbf,nbf)
+ real(dp),intent(in)                :: s_matrix(:,:)
  integer,intent(out)                :: nstate
  real(dp),allocatable,intent(inout) :: s_matrix_sqrt_inv(:,:)
 !=====
+ integer  :: nbf
  integer  :: ibf,jbf
- real(dp) :: s_eigval(nbf)
- real(dp) :: matrix_tmp(nbf,nbf)
+ real(dp),allocatable :: s_eigval(:)
+ real(dp),allocatable :: matrix_tmp(:,:)
 !=====
 
  write(stdout,'(/,a)') ' Calculate overlap matrix square-root S^{1/2}'
+
+ nbf = SIZE(s_matrix,DIM=1)
+
+ allocate(matrix_tmp(nbf,nbf))
+ allocate(s_eigval(nbf))
 
  matrix_tmp(:,:) = s_matrix(:,:)
  ! Diagonalization with or without SCALAPACK
@@ -792,22 +1002,25 @@ subroutine setup_sqrt_overlap(TOL_OVERLAP,nbf,s_matrix,nstate,s_matrix_sqrt_inv)
    endif
  enddo
 
+ deallocate(matrix_tmp,s_eigval)
 
 end subroutine setup_sqrt_overlap
 
 
 !=========================================================================
-subroutine setup_sqrt_density_matrix(nbf,p_matrix,p_matrix_sqrt,p_matrix_occ)
+subroutine setup_sqrt_density_matrix(p_matrix,p_matrix_sqrt,p_matrix_occ)
  use m_tools
  implicit none
 
- integer,intent(in)   :: nbf
- real(dp),intent(in)  :: p_matrix(nbf,nbf,nspin)
- real(dp),intent(out) :: p_matrix_sqrt(nbf,nbf,nspin)
- real(dp),intent(out) :: p_matrix_occ(nbf,nspin)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: p_matrix_sqrt(:,:,:)
+ real(dp),intent(out) :: p_matrix_occ(:,:)
 !=====
+ integer              :: nbf
  integer              :: ispin,ibf
 !=====
+
+ nbf = SIZE( p_matrix(:,:,:), DIM=1 )
 
  write(stdout,*) 'Calculate the square root of the density matrix'
  call start_clock(timing_sqrt_density_matrix)
@@ -833,7 +1046,48 @@ end subroutine setup_sqrt_density_matrix
 
 
 !=========================================================================
-subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,vxc_ij,exc_xc)
+subroutine get_c_matrix_from_p_matrix(p_matrix,c_matrix,occupation)
+ use m_tools
+ implicit none
+
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: c_matrix(:,:,:)
+ real(dp),intent(out) :: occupation(:,:)
+!=====
+ real(dp),allocatable :: p_matrix_sqrt(:,:)
+ integer              :: nbf,nstate
+ integer              :: ispin,ibf,istate
+!=====
+
+ nbf    = SIZE( p_matrix(:,:,:), DIM=1 )
+ nstate = SIZE( c_matrix(:,:,:), DIM=2 )
+ allocate(p_matrix_sqrt(nbf,nbf))
+
+ write(stdout,*) 'Calculate the square root of the density matrix to obtain the C matrix'
+ call start_clock(timing_sqrt_density_matrix)
+
+ do ispin=1,nspin
+
+   ! Minus the p_matrix so that the eigenvalues are ordered from the largest to the lowest
+   p_matrix_sqrt(:,:) = -p_matrix(:,:,ispin)
+
+   ! Diagonalization with or without SCALAPACK
+   call diagonalize_scalapack(scalapack_block_min,nbf,p_matrix_sqrt,occupation(:,ispin))
+
+   c_matrix(:,:,ispin) = p_matrix_sqrt(:,1:nstate)
+   occupation(:,ispin) = -occupation(:,ispin)
+
+ enddo
+
+ deallocate(p_matrix_sqrt)
+
+ call stop_clock(timing_sqrt_density_matrix)
+
+end subroutine get_c_matrix_from_p_matrix
+
+
+!=========================================================================
+subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  use m_inputparam
  use m_dft_grid
 #ifdef HAVE_LIBXC
@@ -845,13 +1099,13 @@ subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,vxc_ij,
 
  integer,intent(in)         :: batch_size
  type(basis_set),intent(in) :: basis
- integer,intent(in)         :: nstate
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(out)       :: vxc_ij(basis%nbf,basis%nbf,nspin)
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(in)        :: c_matrix(:,:,:)
+ real(dp),intent(out)       :: vxc_ij(:,:,:)
  real(dp),intent(out)       :: exc_xc
 !=====
  real(dp),parameter   :: TOL_RHO=1.0e-9_dp
+ integer              :: nstate
  integer              :: ibf,jbf,ispin
  integer              :: idft_xc
  integer              :: igrid_start,igrid_end,ir,nr
@@ -876,6 +1130,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,nstate,occupation,c_matrix,vxc_ij,
 
  call start_clock(timing_dft)
 
+ nstate = SIZE(occupation,DIM=1)
 
 #ifdef HAVE_LIBXC
 

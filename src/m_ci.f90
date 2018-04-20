@@ -1056,7 +1056,7 @@ subroutine full_ci_nelectrons_selfenergy()
 
      do iconf=1,SIZE(eigvec_m,DIM=1)
        iconf_global = rowindex_local_to_global(desc_m,iconf)
-       keyudi(:) = conf_p%keyud(:,iconf_global)
+       keyudi(:) = conf_m%keyud(:,iconf_global)
 
 
        if( keyud_diff_order(keyudi,keyudj) /= 1 ) cycle

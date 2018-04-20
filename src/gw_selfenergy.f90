@@ -294,7 +294,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
        matrix(:,:) = selfenergy_omegac(iomega,:,:,ispin) + CONJG(TRANSPOSE( selfenergy_omegac(iomega,:,:,ispin) )) &
                     - MATMUL( selfenergy_omegac(iomega,:,:,ispin) , CONJG(TRANSPOSE( selfenergy_omegac(iomega,:,:,ispin) )) )
 
-       call diagonalize(nsemax-nsemin+1,matrix,eigval,eigvec)
+       call diagonalize(matrix,eigval,eigvec)
 
        tr_gsigma     = tr_gsigma     + rdiag                         * spin_fact / (2.0 * pi) * weights(iomega)
        tr_log_gsigma = tr_log_gsigma + SUM(LOG( 1.0_dp - eigval(:))) * spin_fact / (2.0 * pi) * weights(iomega)

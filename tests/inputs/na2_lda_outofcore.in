@@ -1,0 +1,17 @@
+&molgw
+ scf='LDA'
+ 
+ basis='6-31G*'
+ gaussian_type='CART'
+
+ tolscf=1.0e-8
+ nscf=50
+
+ incore='no'
+
+ read_restart='no'
+
+ natom=2
+/
+11           .000000     .000000    1.576262
+11           .000000     .000000   -1.576262

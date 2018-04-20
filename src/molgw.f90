@@ -74,8 +74,9 @@ program molgw
  real(dp),allocatable    :: energy(:,:)
  real(dp),allocatable    :: occupation(:,:)
  real(dp),allocatable    :: exchange_m_vxc_diag(:,:)
+ real(dp),allocatable    :: exchange_m_vxc(:,:,:)
  integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
- integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix 
+ integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix
 !=====
  integer :: var_i, var_j
  integer :: unitfile
@@ -83,7 +84,7 @@ program molgw
  integer :: ispin,istate
  !
  !
- ! Part 1 / 3 : Initialization 
+ ! Part 1 / 3 : Initialization
  !
  !
 
@@ -130,29 +131,29 @@ program molgw
    endif
 
    call start_clock(timing_prescf)
-  
+
    !
    ! Nucleus-nucleus repulsion contribution to the energy
    call nucleus_nucleus_energy(en%nuc_nuc)
-  
+
    !
-   ! Build up the basis set 
+   ! Build up the basis set
    !
    write(stdout,*) 'Setting up the basis set for wavefunctions'
    call init_basis_set(basis_path,basis_name,ecp_basis_name,gaussian_type,basis)
-  
+
    !
    ! SCALAPACK distribution of the hamiltonian
    call init_scalapack_other(basis%nbf,scalapack_nprow,scalapack_npcol,m_ham,n_ham)
    if( m_ham /= basis%nbf .OR. n_ham /= basis%nbf ) then
      call issue_warning('SCALAPACK is used to distribute the SCF hamiltonian')
    endif
-  
-  
+
+
    !
    !
    ! Precalculate the Coulomb integrals here
-   ! 
+   !
    !
    ! ERI are stored "privately" in the module m_eri
    call prepare_eri(basis)
@@ -174,28 +175,28 @@ program molgw
      ! then set it up now and calculate the required ERI: 2- and 3-center integrals
      write(stdout,'(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
      call init_basis_set(basis_path,auxil_basis_name,ecp_auxil_basis_name,gaussian_type,auxil_basis)
-  
+
      ! 2-center integrals
      call calculate_eri_2center_scalapack(auxil_basis,0.0_dp)
      ! 3-center integrals
      call calculate_eri_3center_scalapack(basis,auxil_basis,0.0_dp)
-  
-  
+
+
      ! If Range-Separated Hybrid are requested
-     ! If is_big_restart, these integrals are NOT needed, I chose code this! 
+     ! If is_big_restart, these integrals are NOT needed, I chose code this!
      if(calc_type%need_exchange_lr ) then
        ! 2-center integrals
        call calculate_eri_2center_scalapack(auxil_basis,rcut)
        ! 3-center integrals
        call calculate_eri_3center_scalapack(basis,auxil_basis,rcut)
      endif
-  
+
    endif
    ! ERI integrals have been computed and stored
    !
-  
-  
-  
+
+
+
    !
    ! Allocate the main arrays
    ! 2D arrays
@@ -203,44 +204,44 @@ program molgw
    call clean_allocate('Kinetic operator T',hamiltonian_kinetic,m_ham,n_ham)
    call clean_allocate('Nucleus operator V',hamiltonian_nucleus,m_ham,n_ham)
    call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin) ! Never distributed
-  
-  
+
+
    !
    ! Build up the overlap matrix S
    ! S only depends onto the basis set
    if( parallel_ham ) then
-     call setup_overlap_sca(print_matrix_,basis,m_ham,n_ham,s_matrix)
+     call setup_overlap_sca(basis,s_matrix)
    else
-     call setup_overlap(print_matrix_,basis,s_matrix) 
+     call setup_overlap(basis,s_matrix)
    endif
-  
+
    !
    ! Calculate the square root inverse of the overlap matrix S
    ! Eliminate those eigenvalues that are too small in order to stabilize the
    ! calculation
    !
    ! Crucial parameters are defined here: nstate
-   !                                      m_c and n_c 
+   !                                      m_c and n_c
    !
    if( parallel_ham ) then
      call setup_sqrt_overlap_sca(min_overlap,desc_ham,s_matrix,desc_c,nstate,s_matrix_sqrt_inv)
      m_c    = SIZE( s_matrix_sqrt_inv , DIM=1 )
      n_c    = SIZE( s_matrix_sqrt_inv , DIM=2 )
-  
+
    else
-     call setup_sqrt_overlap(min_overlap,basis%nbf,s_matrix,nstate,s_matrix_sqrt_inv)
-  
+     call setup_sqrt_overlap(min_overlap,s_matrix,nstate,s_matrix_sqrt_inv)
+
      m_c = basis%nbf
      n_c = nstate
-  
+
    endif
-  
+
    if( m_c /= basis%nbf .OR. n_c /= nstate ) then
      call issue_warning('SCALAPACK is used to distribute the wavefunction coefficients')
    endif
-  
-  
-  
+
+
+
    ! Allocate the main arrays
    ! 2D arrays
    call clean_allocate('Wavefunctions C',c_matrix,basis%nbf,nstate,nspin)  ! not distributed right now
@@ -248,77 +249,79 @@ program molgw
    allocate(occupation(nstate,nspin))
    allocate(    energy(nstate,nspin))
    if( parallel_ham .AND. parallel_buffer ) call allocate_parallel_buffer(basis%nbf)
-  
-  
+
+
    !
    ! Build the first occupation array
    ! as the energy are not known yet, set temperature to zero
    call set_occupation(nstate,0.0_dp,electrons,magnetization,energy,occupation)
-  
+
    !
    ! Try to read a RESTART file if it exists
-   call read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock)
+   if( read_restart_ ) then
+     call read_restart(restart_type,basis,nstate,occupation,c_matrix,energy,hamiltonian_fock,'RESTART')
+   else
+     restart_type = NO_RESTART
+   endif
    is_restart       = ( restart_type /= NO_RESTART )
    is_big_restart   = ( restart_type == BIG_RESTART )
    is_basis_restart = ( restart_type == BASIS_RESTART )
    if( is_restart .AND. (.NOT.is_big_restart) .AND. (.NOT.is_basis_restart) ) write(stdout,*) 'Restarting from a RESTART file'
    if( is_big_restart   ) write(stdout,*) 'Restarting from a finalized RESTART file'
    if( is_basis_restart ) write(stdout,*) 'Restarting from a finalized RESTART but with a different basis set'
-  
+
    if( parallel_ham .AND. .NOT. is_big_restart ) then
      call clean_allocate('Wavefunctions C',c_matrix_tmp,m_c,n_c,nspin)
      call create_distributed_copy(c_matrix,desc_c,c_matrix_tmp)
      call clean_deallocate('Wavefunctions C',c_matrix)
      call move_alloc(c_matrix_tmp,c_matrix)
    endif
-  
+
    !
    ! Calculate the parts of the hamiltonian that does not change along
    ! with the SCF cycles
    !
    ! Kinetic energy contribution
    if( parallel_ham ) then
-     call setup_kinetic_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_kinetic)
+     call setup_kinetic_sca(basis,hamiltonian_kinetic)
    else
-     call setup_kinetic(print_matrix_,basis,hamiltonian_kinetic)
+     call setup_kinetic(basis,hamiltonian_kinetic)
    endif
-  
+
    !
    ! Nucleus-electron interaction
    if( parallel_ham ) then
-     if( parallel_buffer ) then 
-       call setup_nucleus_buffer_sca(basis,m_ham,n_ham,hamiltonian_nucleus)
+     if( parallel_buffer ) then
+       call setup_nucleus_buffer_sca(basis,hamiltonian_nucleus)
      else
-       call setup_nucleus_sca(print_matrix_,basis,m_ham,n_ham,hamiltonian_nucleus)
+       call setup_nucleus_sca(basis,hamiltonian_nucleus)
      endif
    else
-     call setup_nucleus(print_matrix_,basis,hamiltonian_nucleus)
+     call setup_nucleus(basis,hamiltonian_nucleus)
 
      if( nelement_ecp > 0 ) then
-       call setup_nucleus_ecp(print_matrix_,basis,hamiltonian_nucleus)
+       call setup_nucleus_ecp(basis,hamiltonian_nucleus)
      endif
    endif
+
    !If RESTART_TDDFT file exists and is correct, skip the SCF loop and start RT-TDDFT simulation
    if( read_tddft_restart_ ) then
      call check_restart_tddft(nstate,occupation,restart_tddft_is_correct)
    end if
-  
+
+
    if( (.NOT. restart_tddft_is_correct) .OR. (.NOT. read_tddft_restart_) ) then
+
      if( is_basis_restart ) then
        !
        ! Setup the initial c_matrix by diagonalizing an approximate Hamiltonian
        if( parallel_ham ) call die('basis_restart not implemented with distributed hamiltonian')
        call issue_warning('basis restart is not fully implemented: use with care')
-    !   allocate(hamiltonian_tmp(basis%nbf,basis%nbf,1))
-    !   hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:) &
-    !                         + hamiltonian_hartree(:,:) + 0.5_dp * hamiltonian_xc(:,:,1)  &
-    !                                                    + 0.5_dp * hamiltonian_xc(:,:,nspin)
-       call diagonalize_hamiltonian_scalapack(nspin,basis%nbf,nstate,hamiltonian_fock,s_matrix_sqrt_inv,&
+       call diagonalize_hamiltonian_scalapack(nspin,basis%nbf,nstate,hamiltonian_fock,s_matrix_sqrt_inv, &
                                               energy,c_matrix)
-    
      endif
-    
-    
+
+
      !
      ! For self-consistent calculations (QSMP2, QSGW, QSCOHSEX) that depend on empty states,
      ! ignore the restart file if it is not a big one
@@ -328,12 +331,12 @@ program molgw
          is_restart = .FALSE.
        endif
      endif
-    
-    
+
+
      if( .NOT. is_restart) then
-    
+
        allocate(hamiltonian_tmp(m_ham,n_ham,1))
-    
+
        select case(TRIM(init_hamiltonian))
        case('GUESS')
          !
@@ -349,32 +352,32 @@ program molgw
          else
            call dft_approximate_vhxc(basis,hamiltonian_tmp(:,:,1))
          endif
-  
+
          hamiltonian_tmp(:,:,1) = hamiltonian_tmp(:,:,1) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
        case('CORE')
          hamiltonian_tmp(:,:,1) = hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
        case default
          call die('molgw: init_hamiltonian option is not valid')
        end select
-    
-    
+
+
        write(stdout,'(/,a)') ' Approximate hamiltonian'
-    
+
        if( parallel_ham ) then
          call diagonalize_hamiltonian_sca(1,1,desc_ham,hamiltonian_tmp,desc_c,s_matrix_sqrt_inv,energy,c_matrix)
        else
          call diagonalize_hamiltonian_scalapack(1,basis%nbf,nstate,hamiltonian_tmp(:,:,1),s_matrix_sqrt_inv,&
                                                 energy(:,1),c_matrix(:,:,1))
        endif
-    
+
        deallocate(hamiltonian_tmp)
-    
+
        ! The hamiltonian is still spin-independent:
        c_matrix(:,:,nspin) = c_matrix(:,:,1)
-      
+
      endif
-    
-    
+
+
      ! Deallocate the array index_pair when it is not needed
      ! This array can be pretty large indeed.
      ! index_pair is only need for the development version of Luttinger-Ward
@@ -387,15 +390,15 @@ program molgw
          .AND. has_auxil_basis ) then
        call deallocate_index_pair()
      endif
-    
+
      call stop_clock(timing_prescf)
-    
+
      !
      !
      ! Part 2 / 3 : SCF cycles
      !
      !
-    
+
      !
      ! Big SCF loop is in there
      ! Only do it if the calculation is NOT a big restart
@@ -404,22 +407,23 @@ program molgw
                      basis,                                          &
                      nstate,m_ham,n_ham,m_c,n_c,                     &
                      s_matrix_sqrt_inv,s_matrix,                     &
-                     hamiltonian_kinetic,hamiltonian_nucleus,        & 
+                     hamiltonian_kinetic,hamiltonian_nucleus,        &
                      occupation,energy,                              &
                      hamiltonian_fock,                               &
                      c_matrix)
      else
        if( parallel_ham .AND. parallel_buffer ) call destroy_parallel_buffer()
      endif
-    
-    
+
+
+
      !
      ! If requested, evaluate the forces
      if( move_nuclei == 'relax' ) then
        call calculate_force(basis,nstate,occupation,energy,c_matrix)
        call relax_atoms(lbfgs_plan,en%tot)
        call output_positions()
-  
+
        if( MAXVAL(force(:,:)) < tolforce ) then
          write(stdout,'(1x,a,es16.6,a,es16.6,/)') 'Forces are     converged: ',MAXVAL(force(:,:)) , '   < ',tolforce
          exit
@@ -483,6 +487,7 @@ program molgw
  if( print_pdos_ ) call mulliken_pdos(nstate,basis,s_matrix,c_matrix,occupation,energy)
  if( .FALSE.     ) call plot_rho_list(nstate,basis,occupation,c_matrix)
  if( print_dens_traj_ ) call plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,0,0.0_dp)
+ if( .FALSE. ) call read_cube_wfn(nstate,basis,occupation,c_matrix)
 
  !
  ! Deallocate all what you can at this stage
@@ -496,7 +501,7 @@ program molgw
  call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
 
 
- ! 
+ !
  !
  ! Post-processing start here
  !
@@ -506,8 +511,24 @@ program molgw
  ! Prepare the diagonal of the matrix Sigma_x - Vxc
  ! for the forthcoming GW or PT2 corrections
  if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS ) then
+
    allocate(exchange_m_vxc_diag(nstate,nspin))
-   call setup_exchange_m_vxc_diag(basis,nstate,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag)
+   if( calc_type%selfenergy_static ) then
+     !
+     ! Calculate the static part of the self-energy at the first order and store it in exchange_m_vxc_diag
+     !
+     allocate(exchange_m_vxc(nstate,nstate,nspin))
+
+     call setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag,exchange_m_vxc)
+
+     call selfenergy_set_state_range(MIN(nstate,nvirtualg-1),occupation)
+     call pt1_selfenergy(nstate,basis,occupation,energy,c_matrix,exchange_m_vxc,exchange_m_vxc_diag)
+
+     deallocate(exchange_m_vxc)
+
+   else
+     call setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamiltonian_fock,exchange_m_vxc_diag)
+   endif
  endif
  call clean_deallocate('Fock operator F',hamiltonian_fock)
 
@@ -573,7 +594,7 @@ program molgw
    endif
 
    write(stdout,'(a,2x,f19.10)') ' MP2 Energy       (Ha):',en%mp2
-   write(stdout,*) 
+   write(stdout,*)
    en%tot = en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%mp2
 
    write(stdout,'(a,2x,f19.10)') ' MP2 Total Energy (Ha):',en%tot
@@ -593,7 +614,7 @@ program molgw
      call die('MP3 energy without RI not implemented')
    endif
    write(stdout,'(a,2x,f19.10)') ' MP3 Energy       (Ha):',en%mp3
-   write(stdout,*) 
+   write(stdout,*)
 
    en%tot = en%tot + en%mp3
 
@@ -613,7 +634,7 @@ program molgw
    call polarizability(.FALSE.,.FALSE.,basis,nstate,occupation,energy,c_matrix,en%rpa,wpol)
    call destroy_spectral_function(wpol)
  endif
-  
+
  !
  ! Self-energy calculation: PT2, GW, GWGamma, COHSEX
  !

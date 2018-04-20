@@ -114,9 +114,9 @@ function matrix_is_symmetric(n,matrix)
  logical             :: matrix_is_symmetric
  integer,intent(in)  :: n
  real(dp),intent(in) :: matrix(n,n)
-!===== 
+!=====
  integer :: ii,jj
-!===== 
+!=====
 
  matrix_is_symmetric = .TRUE.
  do ii=1,n
@@ -132,242 +132,299 @@ end function matrix_is_symmetric
 
 
 !=========================================================================
-subroutine invert_dp(n,matrix,matrix_inv)
+subroutine invert_dp(matrix,matrix_inv)
  implicit none
 
- integer,intent(in)   :: n
- real(dp),intent(in)  :: matrix(n,n)
- real(dp),intent(out) :: matrix_inv(n,n)
+ real(dp),intent(in)  :: matrix(:,:)
+ real(dp),intent(out) :: matrix_inv(:,:)
 !=====
- real(dp) :: work(n)
- integer  :: ipiv(n),info
+ integer  :: nmat
+ real(dp),allocatable :: work(:)
+ integer,allocatable  :: ipiv(:)
+ integer              :: info
 !=====
+
+ nmat = SIZE( matrix(:,:) , DIM=1)
+ allocate(work(nmat))
+ allocate(ipiv(nmat))
 
  matrix_inv(:,:) = matrix(:,:)
 
- call DGETRF(n,n,matrix_inv,n,ipiv,info)
+ call DGETRF(nmat,nmat,matrix_inv,nmat,ipiv,info)
  if(info/=0) call die('FAILURE in DGETRF')
 
- call DGETRI(n,matrix_inv,n,ipiv,work,n,info)
+ call DGETRI(nmat,matrix_inv,nmat,ipiv,work,nmat,info)
  if(info/=0) call die('FAILURE in DGETRI')
 
+ deallocate(work,ipiv)
 
 end subroutine invert_dp
 
 
 !=========================================================================
-subroutine invert_inplace_dp(n,matrix)
+subroutine invert_inplace_dp(matrix)
  implicit none
 
- integer,intent(in)     :: n
- real(dp),intent(inout) :: matrix(n,n)
+ real(dp),intent(inout) :: matrix(:,:)
 !=====
- real(dp) :: work(n)
- integer  :: ipiv(n),info
+ integer              :: nmat
+ real(dp),allocatable :: work(:)
+ integer,allocatable  :: ipiv(:)
+ integer              :: info
 !=====
 
- call DGETRF(n,n,matrix,n,ipiv,info)
+ nmat = SIZE( matrix(:,:) , DIM=1)
+ allocate(work(nmat))
+ allocate(ipiv(nmat))
+
+ call DGETRF(nmat,nmat,matrix,nmat,ipiv,info)
  if(info/=0) call die('FAILURE in DGETRF')
 
- call DGETRI(n,matrix,n,ipiv,work,n,info)
+ call DGETRI(nmat,matrix,nmat,ipiv,work,nmat,info)
  if(info/=0) call die('FAILURE in DGETRI')
 
+ deallocate(work,ipiv)
 
 end subroutine invert_inplace_dp
 
 
 !=========================================================================
-subroutine invert_cdp(n,matrix,matrix_inv)
+subroutine invert_cdp(matrix,matrix_inv)
  implicit none
 
- integer,intent(in) :: n
- complex(dp),intent(in) :: matrix(n,n)
- complex(dp),intent(out) :: matrix_inv(n,n)
+ complex(dp),intent(in)  :: matrix(:,:)
+ complex(dp),intent(out) :: matrix_inv(:,:)
 !=====
- complex(dp) :: work(n)
- integer     :: ipiv(n),info
+ integer                 :: nmat
+ complex(dp),allocatable :: work(:)
+ integer,allocatable     :: ipiv(:)
+ integer                 :: info
 !=====
+
+ nmat = SIZE( matrix(:,:) , DIM=1)
+ allocate(work(nmat))
+ allocate(ipiv(nmat))
 
  matrix_inv(:,:) = matrix(:,:)
 
- call ZGETRF(n,n,matrix_inv,n,ipiv,info)
+ call ZGETRF(nmat,nmat,matrix_inv,nmat,ipiv,info)
  if(info/=0) call die('FAILURE in ZGETRF')
 
- call ZGETRI(n,matrix_inv,n,ipiv,work,n,info)
+ call ZGETRI(nmat,matrix_inv,nmat,ipiv,work,nmat,info)
  if(info/=0) call die('FAILURE in ZGETRI')
 
+ deallocate(work,ipiv)
 
 end subroutine invert_cdp
 
 
 !=========================================================================
-subroutine invert_inplace_cdp(n,matrix)
+subroutine invert_inplace_cdp(matrix)
  implicit none
-
- integer,intent(in) :: n
- complex(dp),intent(in) :: matrix(n,n)
+ complex(dp),intent(in) :: matrix(:,:)
 !=====
- complex(dp) :: work(n)
- integer     :: ipiv(n),info
+ integer                 :: nmat
+ complex(dp),allocatable :: work(:)
+ integer,allocatable     :: ipiv(:)
+ integer                 :: info
 !=====
 
- call ZGETRF(n,n,matrix,n,ipiv,info)
+ nmat = SIZE(matrix,DIM=1)
+ allocate(work(nmat))
+ allocate(ipiv(nmat))
+
+ call ZGETRF(nmat,nmat,matrix,nmat,ipiv,info)
  if(info/=0) call die('FAILURE in ZGETRF')
 
- call ZGETRI(n,matrix,n,ipiv,work,n,info)
+ call ZGETRI(nmat,matrix,nmat,ipiv,work,nmat,info)
  if(info/=0) call die('FAILURE in ZGETRI')
 
+
+ deallocate(work,ipiv)
 
 end subroutine invert_inplace_cdp
 
 
 !=========================================================================
-subroutine diagonalize_wo_vectors_dp(n,matrix,eigval)
+subroutine diagonalize_wo_vectors_dp(matrix,eigval)
  implicit none
- integer,intent(in) :: n
- real(dp),intent(inout) :: matrix(n,n)
- real(dp),intent(out) :: eigval(n)
+ real(dp),intent(inout) :: matrix(:,:)
+ real(dp),intent(out) :: eigval(:)
 !=====
+ integer :: nmat
  integer :: info
- real(dp) :: work(3*n-1)
+ real(dp),allocatable :: work(:)
 ! integer  :: iwork(5*n),ifail(n)
 ! real(dp) :: z(1,n)
 ! real(dp) :: work(8*n)
 !=====
- 
- call DSYEV('N','U',n,matrix,n,eigval,work,3*n-1,info)
 
-! call DSYEVX('N','A','U',n,matrix,n,0.0_dp,0.0_dp,0,0,&
-!                         1.0e-20_dp,n,eigval,z,1,work,8*n,iwork,&
+ nmat = SIZE(matrix,DIM=1)
+ allocate(work(3*nmat-1))
+
+ call DSYEV('N','U',nmat,matrix,nmat,eigval,work,3*nmat-1,info)
+
+ deallocate(work)
+
+! call DSYEVX('N','A','U',nmat,matrix,nmat,0.0_dp,0.0_dp,0,0,&
+!                         1.0e-20_dp,nmat,eigval,z,1,work,8*nmat,iwork,&
 !                         ifail,info)
 
 end subroutine diagonalize_wo_vectors_dp
 
 
 !=========================================================================
-subroutine diagonalize_cdp(n,matrix,eigval,eigvec)
+subroutine diagonalize_cdp(matrix,eigval,eigvec)
  implicit none
- integer,intent(in) :: n
- complex(dp),intent(in) :: matrix(n,n)
- real(dp),intent(out) :: eigval(n)
- complex(dp),intent(out) :: eigvec(n,n)
-
- complex(dp) :: work(2*n-1)
- real(dp) :: rwork(3*n-2)
+ complex(dp),intent(in)  :: matrix(:,:)
+ real(dp),intent(out)    :: eigval(:)
+ complex(dp),intent(out) :: eigvec(:,:)
+!=====
+ integer :: nmat
+ complex(dp),allocatable :: work(:)
+ real(dp),allocatable    :: rwork(:)
  integer :: info
+!=====
+
+ nmat = SIZE(matrix,DIM=1)
+ allocate(work(2*nmat-1))
+ allocate(rwork(3*nmat-2))
 
  eigvec(:,:) = matrix(:,:)
 
- call ZHEEV('V','U',n,eigvec,n,eigval,work,2*n-1,rwork,info)
+ call ZHEEV('V','U',nmat,eigvec,nmat,eigval,work,2*nmat-1,rwork,info)
+
+ deallocate(work,rwork)
 
 end subroutine diagonalize_cdp
 
 
 !=========================================================================
-subroutine diagonalize_dp(n,matrix,eigval,eigvec)
+subroutine diagonalize_dp(matrix,eigval,eigvec)
  implicit none
- integer,intent(in) :: n
- real(dp),intent(in) :: matrix(n,n)
- real(dp),intent(out) :: eigval(n)
- real(dp),intent(out) :: eigvec(n,n)
-
- real(dp) :: work(3*n-1)
+ real(dp),intent(in)  :: matrix(:,:)
+ real(dp),intent(out) :: eigval(:)
+ real(dp),intent(out) :: eigvec(:,:)
+!=====
+ integer :: nmat
+ real(dp),allocatable :: work(:)
  integer :: info
- 
+!=====
+
+ nmat = SIZE(matrix,DIM=1)
+ allocate(work(3*nmat-1))
+
  eigvec(:,:) = matrix(:,:)
 
- call DSYEV('V','U',n,eigvec,n,eigval,work,3*n-1,info)
+ call DSYEV('V','U',nmat,eigvec,nmat,eigval,work,3*nmat-1,info)
+
+ deallocate(work)
 
 end subroutine diagonalize_dp
 
 
 !=========================================================================
-subroutine diagonalize_sp(n,matrix,eigval,eigvec)
+subroutine diagonalize_sp(matrix,eigval,eigvec)
  implicit none
- integer,intent(in) :: n
- real(sp),intent(in) :: matrix(n,n)
- real(sp),intent(out) :: eigval(n)
- real(sp),intent(out) :: eigvec(n,n)
+ real(sp),intent(in)  :: matrix(:,:)
+ real(sp),intent(out) :: eigval(:)
+ real(sp),intent(out) :: eigvec(:,:)
+!=====
+ integer  :: nmat
+ real(sp),allocatable :: work(:)
+ integer  :: info
+!=====
 
- real(sp) :: work(3*n-1)
- integer :: info
+ nmat = SIZE(matrix,DIM=1)
+ allocate(work(3*nmat-1))
 
  eigvec(:,:) = matrix(:,:)
 
- call SSYEV('V','U',n,eigvec,n,eigval,work,3*n-1,info)
+ call SSYEV('V','U',nmat,eigvec,nmat,eigval,work,3*nmat-1,info)
+
+ deallocate(work)
 
 end subroutine diagonalize_sp
 
 
 !=========================================================================
-subroutine diagonalize_inplace_dp(n,matrix,eigval)
+subroutine diagonalize_inplace_dp(matrix,eigval)
  implicit none
- integer,intent(in) :: n
- real(dp),intent(inout) :: matrix(n,n)
- real(dp),intent(out) :: eigval(n)
+ real(dp),intent(inout) :: matrix(:,:)
+ real(dp),intent(out)   :: eigval(:)
 !=====
+ integer              :: nmat
  real(dp),allocatable :: work(:)
  integer              :: lwork,info
 !=====
 
+ nmat = SIZE(matrix,DIM=1)
+
  lwork = -1
  allocate(work(1))
- call DSYEV('V','U',n,matrix,n,eigval,work,lwork,info)
+ call DSYEV('V','U',nmat,matrix,nmat,eigval,work,lwork,info)
  lwork = NINT(work(1))
  deallocate(work)
 
  allocate(work(lwork))
- call DSYEV('V','U',n,matrix,n,eigval,work,lwork,info)
+ call DSYEV('V','U',nmat,matrix,nmat,eigval,work,lwork,info)
  deallocate(work)
 
 end subroutine diagonalize_inplace_dp
 
 
 !=========================================================================
-subroutine diagonalize_inplace_sp(n,matrix,eigval)
+subroutine diagonalize_inplace_sp(matrix,eigval)
  implicit none
- integer,intent(in) :: n
- real(sp),intent(inout) :: matrix(n,n)
- real(sp),intent(out) :: eigval(n)
+ real(sp),intent(inout) :: matrix(:,:)
+ real(sp),intent(out)   :: eigval(:)
 !=====
+ integer              :: nmat
  real(dp),allocatable :: work(:)
  integer              :: lwork,info
 !=====
 
+ nmat = SIZE(matrix,DIM=1)
+
  lwork = -1
  allocate(work(1))
- call SSYEV('V','U',n,matrix,n,eigval,work,lwork,info)
+ call SSYEV('V','U',nmat,matrix,nmat,eigval,work,lwork,info)
  lwork = NINT(work(1))
  deallocate(work)
 
  allocate(work(lwork))
- call SSYEV('V','U',n,matrix,n,eigval,work,lwork,info)
+ call SSYEV('V','U',nmat,matrix,nmat,eigval,work,lwork,info)
  deallocate(work)
 
 end subroutine diagonalize_inplace_sp
 
 
 !=========================================================================
-subroutine diagonalize_inplace_cdp(n,matrix,eigval)
+subroutine diagonalize_inplace_cdp(matrix,eigval)
  implicit none
- integer,intent(in) :: n
- complex(dp),intent(in) :: matrix(n,n)
- real(dp),intent(out) :: eigval(n)
+ complex(dp),intent(in) :: matrix(:,:)
+ real(dp),intent(out)   :: eigval(:)
 !=====
+ integer                 :: nmat
  complex(dp),allocatable :: work(:)
- real(dp)    :: rwork(3*n-2)
- integer     :: lwork,info
+ real(dp),allocatable    :: rwork(:)
+ integer                 :: lwork,info
 !=====
+
+ nmat = SIZE(matrix,DIM=1)
+ allocate(rwork(3*nmat-2))
 
  lwork = -1
  allocate(work(1))
- call ZHEEV('V','U',n,matrix,n,eigval,work,lwork,rwork,info)
+ call ZHEEV('V','U',nmat,matrix,nmat,eigval,work,lwork,rwork,info)
  lwork = NINT(REAL(work(1),dp))
  deallocate(work)
 
  allocate(work(lwork))
- call ZHEEV('V','U',n,matrix,n,eigval,work,lwork,rwork,info)
+ call ZHEEV('V','U',nmat,matrix,nmat,eigval,work,lwork,rwork,info)
  deallocate(work)
+
+ deallocate(rwork)
 
 end subroutine diagonalize_inplace_cdp
 
@@ -462,7 +519,7 @@ subroutine diagonalize_davidson(tolerance,nstep,ham,neig,eigval,eigvec)
 
 
    allocate(lambda(mm),alphavec(mm,mm))
-   call diagonalize(mm,atilde(1:mm,1:mm),lambda,alphavec)
+   call diagonalize(atilde(1:mm,1:mm),lambda,alphavec)
 
    write(stdout,*) 'icycle',icycle,lambda(1:mm)
 
@@ -550,8 +607,8 @@ subroutine coeffs_gausslegint(xmin,xmax,x,weights,n)
 !
 
  implicit none
-     
- integer,intent(in) :: n 
+
+ integer,intent(in) :: n
  real(dp),intent(in) :: xmin,xmax
  real(dp),intent(out) :: x(n),weights(n)
 !=====
@@ -566,24 +623,24 @@ subroutine coeffs_gausslegint(xmin,xmax,x,weights,n)
 
  do i=1,(n+1)/2
   z = COS(pi*(i-0.250_dp)/(n+0.50_dp))
- 
-  do 
+
+  do
 
     p1=1.0_dp
     p2=0.0_dp
- 
+
     do j=1,n
-     
+
      p3=p2
      p2=p1
      p1=((2.0_dp*j - 1.0_dp)*z*p2 - (j-1.0_dp)*p3)/j
-   
+
     enddo
-  
+
     pp=n*(p2-z*p1)/(1.0_dp - z**2)
     z1=z
     z=z1-p1/pp
-    
+
     if(abs(z-z1) < tol) exit
 
   enddo
@@ -1080,16 +1137,17 @@ function get_number_of_elements(string) result(num)
  num=0
 
  do
-   i = VERIFY(string(pos:),' ')  !-- Find next non-blank 
+   i = VERIFY(string(pos:),' ')  !-- Find next non-blank
    if( i == 0 ) exit             !-- No word found
    num = num + 1                 !-- Found something
-   pos = pos + i - 1             !-- Move to start of the word 
-   i = SCAN(string(pos:),' ')    !-- Find next blank 
+   pos = pos + i - 1             !-- Move to start of the word
+   i = SCAN(string(pos:),' ')    !-- Find next blank
    if( i == 0 ) exit             !-- No blank found
    pos = pos + i - 1             !-- Move to the blank
  end do
 
 end function get_number_of_elements
+
 
 !=========================================================================
 subroutine string_to_integers(string_in,iarray)
@@ -1098,8 +1156,8 @@ subroutine string_to_integers(string_in,iarray)
  character(len=*),intent(in) :: string_in
  integer,intent(inout)       :: iarray(:)
 !=====
- character(len=128) :: string
- integer            :: ilen,inextblank,ii
+ character(LEN(string_in)) :: string
+ integer                   :: ilen,inextblank,ii
 !=====
 
  string = string_in
@@ -1117,6 +1175,53 @@ subroutine string_to_integers(string_in,iarray)
  enddo
 
 end subroutine string_to_integers
+
+
+!=========================================================================
+function determinant_3x3_matrix(mat) RESULT(det)
+ implicit none
+
+ real(dp) :: det
+ real(dp),intent(in) :: mat(3,3)
+!=====
+!=====
+
+ det =  mat(1,1) * mat(2,2) * mat(3,3)  &
+      + mat(1,2) * mat(2,3) * mat(3,1)  &
+      + mat(1,3) * mat(2,1) * mat(3,2)  &
+      - mat(1,3) * mat(2,2) * mat(3,1)  &
+      - mat(1,2) * mat(2,1) * mat(3,3)  &
+      - mat(1,1) * mat(2,3) * mat(3,2)
+
+end function determinant_3x3_matrix
+
+
+!=========================================================================
+subroutine string_to_reals(string_in,rarray)
+ implicit none
+
+ character(len=*),intent(in) :: string_in
+ real(dp),intent(inout)      :: rarray(:)
+!=====
+ character(LEN(string_in)) :: string
+ integer            :: ilen,inextblank,ii
+!=====
+
+ string = string_in
+
+ ilen = LEN(TRIM(string))
+ ii = 0
+ do while( ilen > 0 )
+   string = ADJUSTL(string)
+   inextblank = INDEX(string,' ')
+   ii = ii + 1
+   if( ii > SIZE(rarray) ) exit
+   read(string(1:inextblank-1),*) rarray(ii)
+   string = string(inextblank+1:)
+   ilen = LEN(TRIM(string))
+ enddo
+
+end subroutine string_to_reals
 
 
 end module m_tools

@@ -149,6 +149,15 @@ If present, the auxiliary basis will be used for both the scf cycles and the pos
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='incore'
+vl[i].family   ='general'
+vl[i].datatype ='yes/no'
+vl[i].default  ='yes'
+vl[i].comment  ='Specify if the 4-center integrals are all calculated at once and stored or if they are calculated on-the-fly.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='basis_path'
 vl[i].family   ='io'
 vl[i].default  =''
@@ -274,7 +283,6 @@ vl[i].default  ='ssf'
 vl[i].datatype ='characters'
 vl[i].comment  ='Sets the partition scheme for the xc quadrature. \
 Possible choices are \'becke\' or \'ssf\' (Stratmann-Scuseria-Frisch).'
-
 
 #================================
 vl.append(variable())
@@ -529,6 +537,15 @@ vl[i].comment  ='Sets the spacing between frequencies in the GW self-energy eval
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='pt3_a_diagrams'
+vl[i].family   ='post'
+vl[i].default  ='yes'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Switch whether to calculate the A diagrams family in PT3. A diagrams are the self-consistent diagrams (PT2 inclusions in the Green\'s function).'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='read_restart'
 vl[i].family   ='io'
 vl[i].default  ='no'
@@ -547,11 +564,30 @@ vl[i].comment  ='Considers a big RESTART as if it was a small RESTART.'
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='print_matrix'
+vl[i].keyword  ='force_energy_qp'
 vl[i].family   ='io'
 vl[i].default  ='no'
 vl[i].datatype ='yes/no'
-vl[i].comment  ='Prints some matrices for debugging purposes.'
+vl[i].comment  ='Force the reading of the ENERGY_QP file whatever the postscf choice.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='print_hartree'
+vl[i].family   ='io'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints the Hartree potential expectation value on eigenstates.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='print_exchange'
+vl[i].family   ='io'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Prints the Exchange operator expectation value on eigenstates.'
+
 
 #================================
 vl.append(variable())
@@ -579,6 +615,18 @@ vl[i].family   ='io'
 vl[i].default  ='no'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='Prints some wavefunctions in a 3D volumetric file with cube format'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='read_fchk'
+vl[i].family   ='io'
+vl[i].default  ='no'
+vl[i].datatype ='characters'
+vl[i].comment  ='Triggers the reading of an external Gaussian formatted checkpoint file (named gaussian.fchk) that contains density matrices. \
+Basis sets have to be precisely the same in MOLGW and in Gaussian, which requires a manual input of the basis set in both codes. \
+Options are \'no\' (no reading), \'SCF\' (for self-consistent field), \'CC\' (for coupled-cluster), or \'MP2\' (for MP2). \
+Today, only works for Cartesian Gaussian and for spin restricted calculations.'
 
 #================================
 vl.append(variable())

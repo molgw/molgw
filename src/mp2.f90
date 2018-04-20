@@ -535,6 +535,8 @@ subroutine single_excitations(nstate,nbf,energy,occupation,c_matrix,fock_matrix,
 
  call start_clock(timing_single_excitation)
 
+ energy_se = 0.0_dp
+
  allocate(fock_matrix_eigen(nbf,nbf,nspin),stat=ier)
  ier = ABS(ier)
  call xmax_world(ier)
@@ -546,10 +548,9 @@ subroutine single_excitations(nstate,nbf,energy,occupation,c_matrix,fock_matrix,
  fock_matrix_eigen(:,:,:) = fock_matrix(:,:,:)
  !
  ! Rotate the Fock matrix to the eigenstate basis
- call matrix_basis_to_eigen(nbf,nstate,c_matrix,fock_matrix_eigen)
+ call matrix_basis_to_eigen(c_matrix,fock_matrix_eigen)
 
 
- energy_se = 0.0_dp
  do ispin=1,nspin
    ! loop on occupied states
    do istate=1,nstate
@@ -760,7 +761,7 @@ subroutine full_ci_2electrons_spin(print_wfn_,nstate,spinstate,basis,h_1e,c_matr
  ! full LAPACK diago
  write(stdout,*) 
  write(stdout,*) 'starting the diago'
- call diagonalize(nconf,hamiltonian,energy,eigenvector)
+ call diagonalize(hamiltonian,energy,eigenvector)
  write(stdout,*) 'Full diago DONE'
  write(stdout,*) energy(1:MIN(neig,nconf))
  write(stdout,'(a,i4,2x,20(1x,f7.4))') ' Full diago ',1,eigenvector(1:MIN(20,nconf),1)

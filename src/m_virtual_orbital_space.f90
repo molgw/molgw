@@ -81,8 +81,8 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  ! Get the overlap matrix of the wavefunction basis set S: s_matrix
  call clean_allocate('Overlap matrix S',s_matrix,basis%nbf,basis%nbf)
  call clean_allocate('Overlap inverse S^{-1}',s_matrix_inv,basis%nbf,basis%nbf)
- call setup_overlap(.FALSE.,basis,s_matrix)
- call invert(basis%nbf,s_matrix,s_matrix_inv)
+ call setup_overlap(basis,s_matrix)
+ call invert(s_matrix,s_matrix_inv)
 
  ! Calculate the mixed overlap matrix Sbs: s_bigsmall
  call clean_allocate('Big-Small overlap Sbs',s_bigsmall,basis%nbf,basis_small%nbf)
@@ -94,7 +94,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  s_small(:,:) = MATMUL( TRANSPOSE(s_bigsmall) , MATMUL( s_matrix_inv , s_bigsmall ) )
 
  ! Calculate ( tilde S )^{-1/2}
- call setup_sqrt_overlap(min_overlap,basis_small%nbf,s_small,nstate_small,s_small_sqrt_inv)
+ call setup_sqrt_overlap(min_overlap,s_small,nstate_small,s_small_sqrt_inv)
  call clean_deallocate('Overlap matrix Ssmall',s_small)
 
 
@@ -187,7 +187,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
 
  call clean_deallocate('Overlap matrix S',s_matrix)
 
- call setup_sqrt_overlap(min_overlap,nstate_small,s_bar,nstate_bar,s_bar_sqrt_inv)
+ call setup_sqrt_overlap(min_overlap,s_bar,nstate_bar,s_bar_sqrt_inv)
  if( nstate_small /= nstate_bar ) call die('virtual_smallbasis: this usually never happens')
  call clean_deallocate('Overlap selected states',s_bar)
 
@@ -354,7 +354,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
    call DESCINIT(desc_bb_bb,basis%nbf,basis%nbf,block_row,block_col,first_row,first_col,cntxt,MAX(1,ma),info) 
    call clean_allocate('Overlap matrix S',s_matrix,ma,na)
    call clean_allocate('Overlap inverse S^{-1}',s_matrix_inv,ma,na)
-   call setup_overlap_sca(.FALSE.,basis,ma,na,s_matrix)
+   call setup_overlap_sca(basis,s_matrix)
    call invert_sca(desc_bb_bb,s_matrix,s_matrix_inv)
 
    ! Calculate the mixed overlap matrix Sbs: s_bigsmall
@@ -717,7 +717,7 @@ subroutine virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
 #endif
 
    allocate(occupation_mp2(nvirtual))
-   call diagonalize(nvirtual,p_matrix_mp2,occupation_mp2)
+   call diagonalize(p_matrix_mp2,occupation_mp2)
 
 !   write(stdout,*) 
 !   do astate=1,nvirtual
@@ -751,7 +751,7 @@ subroutine virtual_fno(basis,nstate,nsemax,occupation,energy,c_matrix)
 
    deallocate(ham_virtual)
 
-   call diagonalize(nvirtual_kept,ham_virtual_kept,energy_virtual_kept)
+   call diagonalize(ham_virtual_kept,energy_virtual_kept)
 
 !   write(stdout,'(/,1x,a)') ' virtual state    FNO energy (eV)   reference energy (eV)'
 !   do astate=1,nvirtual_kept

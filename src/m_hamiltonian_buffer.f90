@@ -52,19 +52,21 @@ end subroutine destroy_parallel_buffer
 
 
 !=========================================================================
-subroutine reduce_hamiltonian_sca(m_ham,n_ham,matrix_local)
+subroutine reduce_hamiltonian_sca(matrix_local)
  implicit none
 
- integer,intent(in)   :: m_ham,n_ham
- real(dp),intent(out) :: matrix_local(m_ham,n_ham)
+ real(dp),intent(out) :: matrix_local(:,:)
 !=====
+ integer              :: m_ham,n_ham
  integer              :: nbf
  integer              :: ilocal,jlocal,iglobal,jglobal
 !=====
 
  call start_clock(timing_sca_distr1)
 
- nbf = SIZE(buffer(:,:),DIM=1)
+ nbf   = SIZE(buffer(:,:),DIM=1)
+ m_ham = SIZE(matrix_local,DIM=1)
+ n_ham = SIZE(matrix_local,DIM=2)
 
 #ifdef HAVE_SCALAPACK
 
@@ -94,12 +96,12 @@ end subroutine reduce_hamiltonian_sca
 
 
 !=========================================================================
-subroutine broadcast_hamiltonian_sca(m_ham,n_ham,matrix_local)
+subroutine broadcast_hamiltonian_sca(matrix_local)
  implicit none
 
- integer,intent(in)   :: m_ham,n_ham
- real(dp),intent(in)  :: matrix_local(m_ham,n_ham)
+ real(dp),intent(in)  :: matrix_local(:,:)
 !=====
+ integer              :: m_ham,n_ham
  integer              :: nbf
  integer              :: ilocal,jlocal,iglobal,jglobal
 !=====
@@ -107,6 +109,8 @@ subroutine broadcast_hamiltonian_sca(m_ham,n_ham,matrix_local)
  call start_clock(timing_sca_distr2)
 
  nbf = SIZE(buffer(:,:),DIM=1)
+ m_ham = SIZE(matrix_local,DIM=1)
+ n_ham = SIZE(matrix_local,DIM=2)
 
 #ifdef HAVE_SCALAPACK
  
@@ -138,13 +142,12 @@ end subroutine broadcast_hamiltonian_sca
 
 
 !=========================================================================
-subroutine setup_nucleus_buffer_sca(basis,m_ham,n_ham,hamiltonian_nucleus)
+subroutine setup_nucleus_buffer_sca(basis,hamiltonian_nucleus)
  use m_basis_set
  use m_atoms
  implicit none
  type(basis_set),intent(in) :: basis
- integer,intent(in)         :: m_ham,n_ham
- real(dp),intent(out)       :: hamiltonian_nucleus(m_ham,n_ham)
+ real(dp),intent(out)       :: hamiltonian_nucleus(:,:)
 !=====
  integer              :: gt
  integer              :: ishell,jshell
@@ -216,7 +219,7 @@ subroutine setup_nucleus_buffer_sca(basis,m_ham,n_ham,hamiltonian_nucleus)
 
 
  ! Sum up the buffers and store the result in the sub matrix hamiltonian_nucleus
- call reduce_hamiltonian_sca(m_ham,n_ham,hamiltonian_nucleus)
+ call reduce_hamiltonian_sca(hamiltonian_nucleus)
 
 
  call stop_clock(timing_hamiltonian_nuc)
@@ -225,12 +228,11 @@ end subroutine setup_nucleus_buffer_sca
 
 
 !=========================================================================
-subroutine setup_hartree_ri_buffer_sca(m_ham,n_ham,p_matrix,hartree_ij,ehartree)
+subroutine setup_hartree_ri_buffer_sca(p_matrix,hartree_ij,ehartree)
  use m_eri
  implicit none
- integer,intent(in)   :: m_ham,n_ham
- real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
- real(dp),intent(out) :: hartree_ij(m_ham,n_ham)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: hartree_ij(:,:)
  real(dp),intent(out) :: ehartree
 !=====
  integer              :: ibf,jbf,kbf,lbf
@@ -247,9 +249,9 @@ subroutine setup_hartree_ri_buffer_sca(m_ham,n_ham,p_matrix,hartree_ij,ehartree)
  ! First the buffer contains the density matrix p_matrix
  buffer(:,:) = 0.0_dp
 
- call broadcast_hamiltonian_sca(m_ham,n_ham,p_matrix(:,:,1))
+ call broadcast_hamiltonian_sca(p_matrix(:,:,1))
  if( nspin == 2 ) then
-   call broadcast_hamiltonian_sca(m_ham,n_ham,p_matrix(:,:,2))
+   call broadcast_hamiltonian_sca(p_matrix(:,:,2))
  endif
 
  allocate(partial_sum(nauxil_3center))
@@ -279,7 +281,7 @@ subroutine setup_hartree_ri_buffer_sca(m_ham,n_ham,p_matrix,hartree_ij,ehartree)
  deallocate(partial_sum)
 
  ! Sum up the buffers and store the result in the sub matrix hartree_ij
- call reduce_hamiltonian_sca(m_ham,n_ham,hartree_ij)
+ call reduce_hamiltonian_sca(hartree_ij)
 
  !
  ! Calculate the Hartree energy
@@ -298,26 +300,31 @@ end subroutine setup_hartree_ri_buffer_sca
 
 
 !=========================================================================
-subroutine setup_exchange_ri_buffer_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_ri_buffer_sca(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
- integer,intent(in)   :: nbf,m_ham,n_ham
- integer,intent(in)   :: nstate,m_c,n_c
- real(dp),intent(in)  :: occupation(nstate,nspin)
- real(dp),intent(in)  :: c_matrix(m_c,n_c,nspin)
- real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
- real(dp),intent(out) :: exchange_ij(m_ham,n_ham,nspin)
+ real(dp),intent(in)  :: occupation(:,:)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: exchange_ij(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
+ integer              :: nbf
+ integer              :: nstate,m_c
  integer              :: ibf,jbf,ispin,istate
  real(dp),allocatable :: tmp(:,:)
  integer              :: ipair
- real(dp)             :: c_matrix_i(nbf)
+ real(dp)             :: c_matrix_i(desc_c(M_))
  integer              :: iglobal,ilocal,jlocal
 !=====
 
- write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: SCALAPACK buffer'
  call start_clock(timing_exchange)
+
+ write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: SCALAPACK buffer'
+
+ nbf    = desc_c(M_)
+ m_c    = SIZE(c_matrix,DIM=1)
+ nstate = SIZE(occupation,DIM=1)
 
 
  allocate(tmp(nauxil_3center,nbf))
@@ -372,7 +379,7 @@ subroutine setup_exchange_ri_buffer_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupatio
    enddo
 
    ! Sum up the buffers and store the result in the sub matrix exchange_ij
-   call reduce_hamiltonian_sca(m_ham,n_ham,exchange_ij(:,:,ispin))
+   call reduce_hamiltonian_sca(exchange_ij(:,:,ispin))
 
  enddo
  deallocate(tmp)
@@ -395,27 +402,32 @@ end subroutine setup_exchange_ri_buffer_sca
 
 
 !=========================================================================
-subroutine setup_exchange_longrange_ri_buffer_sca(nbf,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,p_matrix,exchange_ij,eexchange)
+subroutine setup_exchange_longrange_ri_buffer_sca(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  use m_eri
  implicit none
- integer,intent(in)   :: nbf,m_ham,n_ham
- integer,intent(in)   :: nstate,m_c,n_c
- real(dp),intent(in)  :: occupation(nstate,nspin)
- real(dp),intent(in)  :: c_matrix(m_c,n_c,nspin)
- real(dp),intent(in)  :: p_matrix(m_ham,n_ham,nspin)
- real(dp),intent(out) :: exchange_ij(m_ham,n_ham,nspin)
+ real(dp),intent(in)  :: occupation(:,:)
+ real(dp),intent(in)  :: c_matrix(:,:,:)
+ real(dp),intent(in)  :: p_matrix(:,:,:)
+ real(dp),intent(out) :: exchange_ij(:,:,:)
  real(dp),intent(out) :: eexchange
 !=====
+ integer              :: nbf
+ integer              :: nstate,m_c
  integer              :: ibf,jbf,ispin,istate
  real(dp),allocatable :: tmp(:,:)
  integer              :: ipair
- real(dp)             :: c_matrix_i(nbf)
+ real(dp)             :: c_matrix_i(desc_c(M_))
  integer              :: iglobal,ilocal,jlocal
 !=====
 
 
- write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity: SCALAPACK buffer'
  call start_clock(timing_exchange)
+
+ write(stdout,*) 'Calculate LR Exchange term with Resolution-of-Identity: SCALAPACK buffer'
+
+ nbf    = desc_c(M_)
+ m_c    = SIZE(c_matrix,DIM=1)
+ nstate = SIZE(occupation,DIM=1)
 
 
  allocate(tmp(nauxil_3center_lr,nbf))
@@ -470,7 +482,7 @@ subroutine setup_exchange_longrange_ri_buffer_sca(nbf,nstate,m_c,n_c,m_ham,n_ham
    enddo
 
    ! Sum up the buffers and store the result in the sub matrix exchange_ij
-   call reduce_hamiltonian_sca(m_ham,n_ham,exchange_ij(:,:,ispin))
+   call reduce_hamiltonian_sca(exchange_ij(:,:,ispin))
 
  enddo
  deallocate(tmp)
@@ -493,7 +505,7 @@ end subroutine setup_exchange_longrange_ri_buffer_sca
 
 
 !=========================================================================
-subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_matrix,vxc_ij,exc_xc)
+subroutine dft_exc_vxc_buffer_sca(basis,occupation,c_matrix,vxc_ij,exc_xc)
  use m_inputparam
  use m_basis_set
  use m_dft_grid
@@ -505,37 +517,33 @@ subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_
  implicit none
 
  type(basis_set),intent(in) :: basis
- integer,intent(in)         :: nstate
- integer,intent(in)         :: m_c,n_c
- integer,intent(in)         :: m_ham,n_ham
- real(dp),intent(in)        :: occupation(nstate,nspin)
- real(dp),intent(in)        :: c_matrix(m_c,n_c,nspin)
- real(dp),intent(out)       :: vxc_ij(m_ham,n_ham,nspin)
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(in)        :: c_matrix(:,:,:)
+ real(dp),intent(out)       :: vxc_ij(:,:,:)
  real(dp),intent(out)       :: exc_xc
 !=====
-
  real(dp),parameter :: TOL_RHO=1.0e-10_dp
- integer  :: idft_xc
- integer  :: igrid,ibf,jbf,ispin
- real(dp) :: normalization(nspin)
- real(dp) :: weight
-
- real(dp) :: basis_function_r(basis%nbf)
- real(dp) :: basis_function_gradr(3,basis%nbf)
-
- real(dp) :: rhor(nspin,ngrid)
- real(dp) :: grad_rhor(3,nspin,ngrid)
- real(dp) :: sigma(2*nspin-1)
- real(dp) :: vxc_libxc(nspin)
- real(dp) :: exc_libxc(1)
- real(dp) :: vsigma(2*nspin-1)
- real(dp) :: dedd_r(nspin)
- real(dp) :: dedgd_r(3,nspin)
- real(dp) :: gradtmp(basis%nbf)
+ integer            :: nstate
+ integer            :: idft_xc
+ integer            :: igrid,ibf,jbf,ispin
+ real(dp)           :: normalization(nspin)
+ real(dp)           :: weight
+ real(dp)           :: basis_function_r(basis%nbf)
+ real(dp)           :: basis_function_gradr(3,basis%nbf)
+ real(dp)           :: rhor(nspin,ngrid)
+ real(dp)           :: grad_rhor(3,nspin,ngrid)
+ real(dp)           :: sigma(2*nspin-1)
+ real(dp)           :: vxc_libxc(nspin)
+ real(dp)           :: exc_libxc(1)
+ real(dp)           :: vsigma(2*nspin-1)
+ real(dp)           :: dedd_r(nspin)
+ real(dp)           :: dedgd_r(3,nspin)
+ real(dp)           :: gradtmp(basis%nbf)
 !=====
 
 ! if( nspin/=1 ) call die('DFT XC potential: SCALAPACK buffer not implemented for spin unrestricted')
 
+ nstate = SIZE(occupation,DIM=1)
  exc_xc = 0.0_dp
  vxc_ij(:,:,:) = 0.0_dp
  if( ndft_xc == 0 ) return
@@ -555,7 +563,7 @@ subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_
    !
    ! Buffer constains the c_matrix for a spin channel ispin
    buffer(:,:) = 0.0_dp
-   call broadcast_hamiltonian_sca(m_c,n_c,c_matrix(:,:,ispin))
+   call broadcast_hamiltonian_sca(c_matrix(:,:,ispin))
 
 
    do igrid=1,ngrid
@@ -697,7 +705,7 @@ subroutine dft_exc_vxc_buffer_sca(basis,nstate,m_c,n_c,m_ham,n_ham,occupation,c_
      enddo
    enddo
 
-   call reduce_hamiltonian_sca(m_ham,n_ham,vxc_ij(:,:,ispin))
+   call reduce_hamiltonian_sca(vxc_ij(:,:,ispin))
 
 
  enddo
