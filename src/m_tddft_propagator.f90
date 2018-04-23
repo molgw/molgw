@@ -481,6 +481,28 @@ subroutine tddft_time_loop(nstate,                           &
  call clean_allocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
  call clean_allocate('h_small_cmplx for TDDFT',h_small_cmplx,nstate,nstate,nspin)
 
+ if( ref_ .AND. calc_q_matrix_ ) then
+   call clean_allocate('q_matrix for TDDFT',q_matrix_cmplx,nstate,nocc,nspin)
+   call clean_allocate('c_matrix_orth_start for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
+   allocate(energies_inst(nstate))
+   do ispin=1, nspin
+     call diagonalize(h_small_start_cmplx(:,:,ispin),energies_inst,c_matrix_orth_start_complete_cmplx(:,:,ispin))
+   end do
+   deallocate(energies_inst)
+   istate_cut(4)=nstate
+   inquire(file='manual_q_matrix_param',exist=file_exists)
+   if(file_exists) then
+     open(newunit=file_q_matrix_param,file='manual_q_matrix_param',status='old')
+     read(file_q_matrix_param,*) istate_cut(1), istate_cut(2), istate_cut(3)
+     close(file_q_matrix_param)
+   else
+     istate_cut(1)=1
+     istate_cut(2)=natom-1
+     istate_cut(3)=natom+INT((natom-1)/2)
+     call issue_warning('plot_rho_traj_bunch_contrib: manual_q_matrix_param file was not found')
+   endif
+ end if
+
  c_matrix_cmplx         = c_matrix_start_cmplx
  c_matrix_orth_cmplx    = c_matrix_orth_start_cmplx 
  hamiltonian_fock_cmplx = hamiltonian_fock_start_cmplx
@@ -513,27 +535,6 @@ subroutine tddft_time_loop(nstate,                           &
 
      ! ---q_matrix---
      if(calc_q_matrix_) then
-
-       call clean_allocate('q_matrix for TDDFT',q_matrix_cmplx,nstate,nocc,nspin)
-       call clean_allocate('c_matrix_orth_start for TDDFT',c_matrix_orth_start_complete_cmplx,nstate,nstate,nspin)
-       allocate(energies_inst(nstate))
-       do ispin=1, nspin
-         call diagonalize(h_small_start_cmplx(:,:,ispin),energies_inst,c_matrix_orth_start_complete_cmplx(:,:,ispin))
-       end do
-       deallocate(energies_inst)
-
-       istate_cut(4)=nstate
-       inquire(file='manual_q_matrix_param',exist=file_exists)
-       if(file_exists) then
-         open(newunit=file_q_matrix_param,file='manual_q_matrix_param',status='old')
-         read(file_q_matrix_param,*) istate_cut(1), istate_cut(2), istate_cut(3)
-         close(file_q_matrix_param)
-       else
-         istate_cut(1)=1
-         istate_cut(2)=natom-1
-         istate_cut(3)=natom+INT((natom-1)/2)
-         call issue_warning('plot_rho_traj_bunch_contrib: manual_q_matrix_param file was not found')
-       endif
 
        do ispin=1,nspin
          write(name_file_q_matrix,"(a,i1,a)") "q_matrix_", ispin, ".dat" 
@@ -984,35 +985,35 @@ subroutine tddft_time_loop(nstate,                           &
      if(excit_type%is_light) write(stdout,'(1x,a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment    (D):', dipole(:) * au_debye
 
      iwrite_step = iwrite_step + 1
-
-   end if
-
-!-------q_matrix----------
-   if(calc_q_matrix_) then 
-     q_occ=0.0_dp
-     do ispin=1,nspin
-       q_matrix_cmplx(:,:,ispin)=MATMUL(CONJG(TRANSPOSE(c_matrix_orth_start_complete_cmplx(:,:,ispin))),c_matrix_orth_cmplx(:,:,ispin))
-
-       do istate=istate_cut(1),istate_cut(2)
-         do iocc=1,nocc
-           q_occ(1)=q_occ(1)+ABS(q_matrix_cmplx(istate,iocc,ispin))**2*occupation(iocc,ispin)
+  !-------q_matrix----------
+     if(calc_q_matrix_) then 
+       q_occ=0.0_dp
+       do ispin=1,nspin
+         q_matrix_cmplx(:,:,ispin)=MATMUL(CONJG(TRANSPOSE(c_matrix_orth_start_complete_cmplx(:,:,ispin))),c_matrix_orth_cmplx(:,:,ispin))
+  
+         do istate=istate_cut(1),istate_cut(2)
+           do iocc=1,nocc
+             q_occ(1)=q_occ(1)+ABS(q_matrix_cmplx(istate,iocc,ispin))**2*occupation(iocc,ispin)
+           end do
          end do
+  
+         do istate=istate_cut(2)+1,istate_cut(3)
+           do iocc=1,nocc
+             q_occ(2)=q_occ(2)+ABS(q_matrix_cmplx(istate,iocc,ispin)**2)*occupation(iocc,ispin)
+           end do
+         end do
+           
+         do istate=istate_cut(3)+1,istate_cut(4)
+           do iocc=1,nocc
+             q_occ(3)=q_occ(3)+ABS(q_matrix_cmplx(istate,iocc,ispin))**2*occupation(iocc,ispin)
+           end do
+         end do
+            
+         write(file_q_matrix(ispin),"(F9.4,10(2x,es16.8E3))") time_cur, q_occ(:)
        end do
+     end if
+  !---end q_matrix
 
-       do istate=istate_cut(2)+1,istate_cut(3)
-         do iocc=1,nocc
-           q_occ(2)=q_occ(2)+ABS(q_matrix_cmplx(istate,iocc,ispin)**2)*occupation(iocc,ispin)
-         end do
-       end do
-         
-       do istate=istate_cut(3)+1,istate_cut(4)
-         do iocc=1,nocc
-           q_occ(3)=q_occ(3)+ABS(q_matrix_cmplx(istate,iocc,ispin))**2*occupation(iocc,ispin)
-         end do
-       end do
-          
-       write(file_q_matrix(ispin),"(F9.4,10(2x,es16.8E3))") time_cur, q_occ(:)
-     end do
    end if
 
 !--------------z_selected------------------------------------------

@@ -1073,6 +1073,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
  integer                    :: linefile
  integer                    :: statesfile
  integer                    :: i_max_atom
+ integer                    :: nocc
  integer                    :: istate_cut(3)
  real(dp)                   :: vec_length
  real(dp)                   :: deltar,path_length
@@ -1081,6 +1082,13 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
 
  if( .NOT. is_iomaster ) return
 
+ nocc=0
+ do ispin=1,nspin
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty ) cycle
+     if( istate > nocc ) nocc = istate
+   enddo
+ end do
 
  call start_clock(timing_print_line_rho_tddft)
 
@@ -1135,34 +1143,33 @@ subroutine plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,num,time
 
  deltar=NORM2( point_b(:) - point_a(:) )/nr
  path_length=NORM2(point_b(:)-point_a(:)) 
-
  do ispin=1,nspin
 
    do ih=0,nh
 
-     a_cur(:)=point_a(:)+(point_c(:)-point_a(:))*ih/nh
-     b_cur(:)=point_b(:)+(point_c(:)-point_a(:))*ih/nh
+     a_cur(:)=point_a(:)+(point_c(:)-point_a(:))*REAL(ih,dp)/REAL(nh,dp)
+     b_cur(:)=point_b(:)+(point_c(:)-point_a(:))*REAL(ih,dp)/REAL(nh,dp)
  
      integral=0.0_dp
 
      do ir=0,nr
-       rr(:) = a_cur(:) + ( b_cur(:) - a_cur(:) ) * ir / nr
+       rr(:) = a_cur(:) + ( b_cur(:) - a_cur(:) ) * REAL(ir,dp) / REAL(nr,dp)
        call calculate_basis_functions_r(basis,rr,basis_function_r)
        phi(:,ispin) = MATMUL( basis_function_r(:) , c_matrix(:,:,ispin) )
 
        do istate=istate_cut(1),istate_cut(2)
-         integral(1)=integral(1)+(phi(istate,ispin))**2 * occupation(istate,ispin)*deltar
+         integral(1)=integral(1)+(phi(istate,ispin))**2 * occupation(istate,ispin)
        end do
 
-       do istate=istate_cut(2)+1,istate_cut(3)
-         integral(2)=integral(2)+(phi(istate,ispin))**2 * occupation(istate,ispin)*deltar
+       do istate=istate_cut(2)+1,nocc
+         integral(2)=integral(2)+(phi(istate,ispin))**2 * occupation(istate,ispin)
        end do
 
-       do istate=istate_cut(1),istate_cut(3)
-         integral(3)=integral(3)+(phi(istate,ispin))**2 * occupation(istate,ispin)*deltar
+       do istate=istate_cut(1),nocc
+         integral(3)=integral(3)+(phi(istate,ispin))**2 * occupation(istate,ispin)
        end do
      end do
-     integral(:)=integral(:)/path_length
+     integral(:)=integral(:)/REAL(nr+1,dp)
      write(line_rho(ispin),'(50(e16.8,2x))') NORM2(a_cur(:)-point_a(:)),integral(:)
    enddo
 
