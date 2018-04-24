@@ -38,6 +38,8 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  real(dp),allocatable :: work(:)
  integer,allocatable :: iwork(:)
 !=====
+ integer :: imat
+!=====
 
  call start_clock(timing_diago_h2p)
 
@@ -117,13 +119,10 @@ subroutine diago_4blocks_chol(nmat,desc_apb,m_apb,n_apb,amb_matrix,apb_matrix,&
  !
  ! X-Y = L * Z / Omega^{1/2}
  ! X+Y = L^{-T} * Z * Omega^{1/2}
- block
-  integer :: imat
-  forall(imat=1:nmat)
-    xpy_matrix(:,imat) = xpy_matrix(:,imat) * SQRT( bigomega(imat) )
-    xmy_matrix(:,imat) = xmy_matrix(:,imat) / SQRT( bigomega(imat) )
-  end forall
- end block
+ forall(imat=1:nmat)
+   xpy_matrix(:,imat) = xpy_matrix(:,imat) * SQRT( bigomega(imat) )
+   xmy_matrix(:,imat) = xmy_matrix(:,imat) / SQRT( bigomega(imat) )
+ end forall
 
 
 #endif
@@ -156,6 +155,8 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
  integer         :: comm_row,comm_col
 #endif
 !=====
+ integer :: info
+!=====
 
  call start_clock(timing_diago_h2p)
 
@@ -182,12 +183,9 @@ subroutine diago_4blocks_rpa_sca(nmat,desc_apb,m_apb,n_apb,amb_diag_rpa,apb_matr
 
  ! Diagonalization
 #ifdef HAVE_ELPA
- block
-   integer :: info
-   info = get_elpa_communicators(comm_world,iprow_sd,ipcol_sd,comm_row,comm_col)
-   success = elpa_solve_evp_real(nmat,nmat,apb_matrix,m_apb,bigomega,xpy_matrix,m_x,desc_apb(MB_),n_apb, &
+ info = get_elpa_communicators(comm_world,iprow_sd,ipcol_sd,comm_row,comm_col)
+ success = elpa_solve_evp_real(nmat,nmat,apb_matrix,m_apb,bigomega,xpy_matrix,m_x,desc_apb(MB_),n_apb, &
                                  comm_row,comm_col,comm_world,method='2stage')
- end block
 #else
  call diagonalize_sca_pdsyevr(nmat,desc_apb,apb_matrix,bigomega,desc_x,xpy_matrix)
 #endif

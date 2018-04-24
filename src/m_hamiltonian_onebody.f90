@@ -48,7 +48,9 @@ subroutine setup_overlap(basis,s_matrix)
  real(C_DOUBLE),allocatable :: alphaB(:)
  real(C_DOUBLE),allocatable :: cB(:)
 !=====
-
+ integer :: i_cart,j_cart,ij
+ integer :: ibf_cart,jbf_cart
+!=====
  call start_clock(timing_overlap)
  write(stdout,'(/,a)') ' Setup overlap matrix S (LIBINT)'
 
@@ -81,20 +83,16 @@ subroutine setup_overlap(basis,s_matrix)
 
      call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 #else
-     block 
-       integer :: i_cart,j_cart,ij
-       integer :: ibf_cart,jbf_cart
-       ij = 0
-       do i_cart=1,ni_cart
-         do j_cart=1,nj_cart
-           ij = ij + 1
-           ibf_cart = basis%shell(ishell)%istart_cart + i_cart - 1
-           jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
-           call overlap_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),array_cart(ij))
-         enddo
+     ij = 0
+     do i_cart=1,ni_cart
+       do j_cart=1,nj_cart
+         ij = ij + 1
+         ibf_cart = basis%shell(ishell)%istart_cart + i_cart - 1
+         jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
+         call overlap_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),array_cart(ij))
        enddo
-       call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
-     end block
+     enddo
+     call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 #endif
 
      deallocate(alphaA,cA)
@@ -140,6 +138,9 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
  real(C_DOUBLE),allocatable :: alphaB(:)
  real(C_DOUBLE),allocatable :: cB(:)
 !=====
+ integer :: i_cart,j_cart,ij
+ integer :: ibf_cart,jbf_cart
+!=====
 
  call start_clock(timing_overlap)
  write(stdout,'(/,a)') ' Setup mixed overlap matrix S (LIBINT)'
@@ -175,20 +176,16 @@ subroutine setup_overlap_mixedbasis(basis1,basis2,s_matrix)
 
      call transform_libint_to_molgw(basis1%gaussian_type,li,lj,array_cart,matrix)
 #else
-     block 
-       integer :: i_cart,j_cart,ij
-       integer :: ibf_cart,jbf_cart
-       ij = 0
-       do i_cart=1,ni_cart
-         do j_cart=1,nj_cart
-           ij = ij + 1
-           ibf_cart = basis1%shell(ishell)%istart_cart + i_cart - 1
-           jbf_cart = basis2%shell(jshell)%istart_cart + j_cart - 1
-           call overlap_basis_function(basis1%bfc(ibf_cart),basis2%bfc(jbf_cart),array_cart(ij))
-         enddo
+     ij = 0
+     do i_cart=1,ni_cart
+       do j_cart=1,nj_cart
+         ij = ij + 1
+         ibf_cart = basis1%shell(ishell)%istart_cart + i_cart - 1
+         jbf_cart = basis2%shell(jshell)%istart_cart + j_cart - 1
+         call overlap_basis_function(basis1%bfc(ibf_cart),basis2%bfc(jbf_cart),array_cart(ij))
        enddo
-       call transform_molgw_to_molgw(basis1%gaussian_type,li,lj,array_cart,matrix)
-    end block
+     enddo
+     call transform_molgw_to_molgw(basis1%gaussian_type,li,lj,array_cart,matrix)
 #endif
 
      deallocate(alphaA,cA)
@@ -326,6 +323,9 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
  real(C_DOUBLE),allocatable :: alphaB(:)
  real(C_DOUBLE),allocatable :: cB(:)
 !=====
+ integer :: i_cart,j_cart,ij
+ integer :: ibf_cart,jbf_cart
+!=====
 
  call start_clock(timing_hamiltonian_kin)
  write(stdout,'(/,a)') ' Setup kinetic part of the Hamiltonian (LIBINT)'
@@ -359,20 +359,16 @@ subroutine setup_kinetic(basis,hamiltonian_kinetic)
                          array_cart)
      call transform_libint_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 #else
-     block
-       integer :: i_cart,j_cart,ij
-       integer :: ibf_cart,jbf_cart
-       ij = 0
-       do i_cart=1,ni_cart
-         do j_cart=1,nj_cart
-           ij = ij + 1
-           ibf_cart = basis%shell(ishell)%istart_cart + i_cart - 1
-           jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
-           call kinetic_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),array_cart(ij))
-         enddo
+     ij = 0
+     do i_cart=1,ni_cart
+       do j_cart=1,nj_cart
+         ij = ij + 1
+         ibf_cart = basis%shell(ishell)%istart_cart + i_cart - 1
+         jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
+         call kinetic_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),array_cart(ij))
        enddo
-       call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
-    end block
+     enddo
+     call transform_molgw_to_molgw(basis%gaussian_type,li,lj,array_cart,matrix)
 #endif
      deallocate(alphaA,cA)
 
@@ -517,6 +513,10 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus)
  real(C_DOUBLE),allocatable        :: cB(:)
  real(C_DOUBLE)                    :: C(3)
 !=====
+ integer  :: i_cart,j_cart,ij
+ integer  :: ibf_cart,jbf_cart
+ real(dp) :: nucleus
+!=====
 
  call start_clock(timing_hamiltonian_nuc)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBINT)'
@@ -564,21 +564,16 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus)
                            C,array_cart_C)
        array_cart(:) = array_cart(:) - zvalence(iatom) * array_cart_C(:) 
 #else
-       block
-         integer  :: i_cart,j_cart,ij
-         integer  :: ibf_cart,jbf_cart
-         real(dp) :: nucleus
-         ij = 0
-         do i_cart=1,ni_cart
-           do j_cart=1,nj_cart
-             ij = ij + 1
-             ibf_cart = basis%shell(ishell)%istart_cart + i_cart - 1
-             jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
-             call nucleus_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),zvalence(iatom),xatom(:,iatom),nucleus)
-             array_cart(ij) = array_cart(ij) + nucleus
-           enddo
+       ij = 0
+       do i_cart=1,ni_cart
+         do j_cart=1,nj_cart
+           ij = ij + 1
+           ibf_cart = basis%shell(ishell)%istart_cart + i_cart - 1
+           jbf_cart = basis%shell(jshell)%istart_cart + j_cart - 1
+           call nucleus_basis_function(basis%bfc(ibf_cart),basis%bfc(jbf_cart),zvalence(iatom),xatom(:,iatom),nucleus)
+           array_cart(ij) = array_cart(ij) + nucleus
          enddo
-      end block
+       enddo
 #endif
 
      enddo
