@@ -1087,6 +1087,115 @@ end subroutine get_c_matrix_from_p_matrix
 
 
 !=========================================================================
+subroutine calc_normalization_r(batch_size,basis,occupation,c_matrix)
+ use m_inputparam
+ use m_dft_grid
+#ifdef HAVE_LIBXC
+ use libxc_funcs_m
+ use xc_f90_lib_m
+ use xc_f90_types_m
+#endif
+ implicit none
+
+ integer,intent(in)         :: batch_size
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(:,:)
+ real(dp),intent(in)        :: c_matrix(:,:,:)
+!=====
+ real(dp),parameter   :: TOL_RHO=1.0e-9_dp
+ integer              :: nstate
+ integer              :: ibf,jbf,ispin
+ integer              :: idft_xc
+ integer              :: igrid_start,igrid_end,ir,nr
+! boulette
+ real(dp)             :: normalization_r(nspin)
+! boulette
+ real(dp)             :: r_cyl,dr_cyl,r_cylmax
+ integer              :: nr_cyl,ir_cyl,file_out,igrid
+ real(dp),allocatable :: weight_batch(:)
+ real(dp),allocatable :: tmp_batch(:,:)
+ real(dp),allocatable :: basis_function_r_batch(:,:)
+ real(dp),allocatable :: basis_function_gradr_batch(:,:,:)
+ real(dp),allocatable :: rhor_batch(:,:)
+!=====
+
+ if( is_iomaster ) then
+   open(newunit=file_out,file="charge_cylinder.dat")
+ end if
+
+ if( ndft_xc == 0 ) return
+
+ call start_clock(timing_dft)
+
+ nstate = SIZE(occupation,DIM=1)
+#ifdef HAVE_LIBXC
+
+ write(stdout,*) 'Calculate DFT XC potential'
+ if( batch_size /= 1 ) write(stdout,*) 'Using batches of size',batch_size
+ 
+
+ !
+ ! Loop over batches of grid points
+ !
+
+ r_cyl=0.d0
+ nr_cyl=100
+ r_cylmax=10.d0
+ dr_cyl=r_cylmax/REAL(nr_cyl,dp)
+ do ir_cyl=1,nr_cyl
+   normalization_r(:) = 0.0_dp
+   do igrid_start=1,ngrid,batch_size
+     igrid_end = MIN(ngrid,igrid_start+batch_size-1)
+     nr = igrid_end - igrid_start + 1
+  
+     allocate(weight_batch(nr))
+     allocate(basis_function_r_batch(basis%nbf,nr))
+     allocate(basis_function_gradr_batch(basis%nbf,nr,3))
+     allocate(rhor_batch(nspin,nr))
+  
+     weight_batch(:) = w_grid(igrid_start:igrid_end)
+  
+     call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
+  
+     call calc_density_r_batch(nspin,basis%nbf,nstate,nr,occupation,c_matrix,basis_function_r_batch,rhor_batch)
+  
+  
+     ! Normalization
+       do ir=1,nr
+         igrid = igrid_start + ir - 1
+         if( NORM2(rr_grid(1:2,igrid)) <= r_cyl ) then
+           normalization_r(:) = normalization_r(:) + rhor_batch(:,ir) * weight_batch(ir)
+         endif
+       enddo
+  
+     deallocate(weight_batch)
+     deallocate(basis_function_r_batch)
+     deallocate(basis_function_gradr_batch)
+     deallocate(rhor_batch)
+  
+   enddo ! loop on the batches
+   call xsum_grid(normalization_r)
+   if( is_iomaster ) then
+     write(file_out,'(2F9.4)') r_cyl, normalization_r
+   end if
+   r_cyl=r_cyl+dr_cyl
+ enddo
+ !
+ ! Sum up the contributions from all procs only if needed
+
+
+#else
+ write(stdout,*) 'XC energy and potential set to zero'
+ write(stdout,*) 'LIBXC is not present'
+#endif
+
+! write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
+
+ call stop_clock(timing_dft)
+
+end subroutine calc_normalization_r
+
+!=========================================================================
 subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  use m_inputparam
  use m_dft_grid
@@ -1131,7 +1240,6 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  call start_clock(timing_dft)
 
  nstate = SIZE(occupation,DIM=1)
-
 #ifdef HAVE_LIBXC
 
  write(stdout,*) 'Calculate DFT XC potential'
@@ -1196,7 +1304,6 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
    ! Normalization
    normalization(:) = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
-
    !
    ! LIBXC calls
    !
