@@ -840,7 +840,8 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
  integer :: ilocal,iglobal
  integer :: nbf_local_iproc_lr(0:nproc_auxil-1)
 !=====
-
+ integer :: ibf,ibf_local
+!=====
    
 #ifdef HAVE_SCALAPACK
 
@@ -863,38 +864,33 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
 
 #else
 
- block 
-   integer :: ibf,ibf_local
-  
-   allocate(iproc_ibf_auxil_lr(nbf_auxil_basis))
-  
-   iproc = nproc_auxil - 1
-   nbf_local_iproc_lr(:) = 0
-   do ibf=1,nbf_auxil_basis
-  
-     iproc = MODULO(iproc+1,nproc_auxil)
-  
-     iproc_ibf_auxil_lr(ibf) = iproc
-  
-     nbf_local_iproc_lr(iproc) = nbf_local_iproc_lr(iproc) + 1
-  
-   enddo
-  
-   nauxil_3center_lr = nbf_local_iproc_lr(rank_auxil)
-  
-   allocate(ibf_auxil_g_lr(nauxil_3center_lr))
-   allocate(ibf_auxil_l_lr(nbf_auxil_basis))
-   ibf_auxil_l_lr(:) = 0
-   ibf_local = 0
-   do ibf=1,nbf_auxil_basis
-     if( rank_auxil == iproc_ibf_auxil_lr(ibf) ) then
-       ibf_local = ibf_local + 1
-       ibf_auxil_g_lr(ibf_local) = ibf
-       ibf_auxil_l_lr(ibf)       = ibf_local
-     endif
-   enddo
+ allocate(iproc_ibf_auxil_lr(nbf_auxil_basis))
 
- end block
+ iproc = nproc_auxil - 1
+ nbf_local_iproc_lr(:) = 0
+ do ibf=1,nbf_auxil_basis
+
+   iproc = MODULO(iproc+1,nproc_auxil)
+
+   iproc_ibf_auxil_lr(ibf) = iproc
+
+   nbf_local_iproc_lr(iproc) = nbf_local_iproc_lr(iproc) + 1
+
+ enddo
+
+ nauxil_3center_lr = nbf_local_iproc_lr(rank_auxil)
+
+ allocate(ibf_auxil_g_lr(nauxil_3center_lr))
+ allocate(ibf_auxil_l_lr(nbf_auxil_basis))
+ ibf_auxil_l_lr(:) = 0
+ ibf_local = 0
+ do ibf=1,nbf_auxil_basis
+   if( rank_auxil == iproc_ibf_auxil_lr(ibf) ) then
+     ibf_local = ibf_local + 1
+     ibf_auxil_g_lr(ibf_local) = ibf
+     ibf_auxil_l_lr(ibf)       = ibf_local
+   endif
+ enddo
 
 #endif
 

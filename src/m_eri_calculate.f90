@@ -537,6 +537,8 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
  real(C_DOUBLE),allocatable   :: coeff1(:),coeff3(:)
  real(C_DOUBLE),allocatable   :: int_shell(:)
 !=====
+ integer :: ibf_auxil,jbf_auxil
+!=====
 
  call start_clock(timing_eri_2center)
 
@@ -767,29 +769,25 @@ subroutine calculate_eri_2center_scalapack(auxil_basis,rcut)
 
 #else
 
- block
-   integer :: ibf_auxil,jbf_auxil
+ ilocal = 0
+ do jlocal=1,auxil_basis%nbf
+   if( eigval(jlocal) < TOO_LOW_EIGENVAL ) cycle
+   ilocal = ilocal + 1
+   eri_2center_sqrt(:,ilocal) = eri_2center_sqrt(:,jlocal) / SQRT( eigval(jlocal) )
+ enddo
 
-   ilocal = 0
-   do jlocal=1,auxil_basis%nbf
-     if( eigval(jlocal) < TOO_LOW_EIGENVAL ) cycle
-     ilocal = ilocal + 1
-     eri_2center_sqrt(:,ilocal) = eri_2center_sqrt(:,jlocal) / SQRT( eigval(jlocal) )
+ if( .NOT. is_longrange ) then
+   do ibf_auxil=1,nauxil_3center
+     jbf_auxil = ibf_auxil_g(ibf_auxil)
+     eri_2center(:,ibf_auxil) = eri_2center_sqrt(:,jbf_auxil)
    enddo
-  
-   if( .NOT. is_longrange ) then
-     do ibf_auxil=1,nauxil_3center
-       jbf_auxil = ibf_auxil_g(ibf_auxil)
-       eri_2center(:,ibf_auxil) = eri_2center_sqrt(:,jbf_auxil)
-     enddo
-   else
-     do ibf_auxil=1,nauxil_3center_lr
-       jbf_auxil = ibf_auxil_g_lr(ibf_auxil)
-       eri_2center_lr(:,ibf_auxil) = eri_2center_sqrt(:,jbf_auxil)
-     enddo
-   endif
+ else
+   do ibf_auxil=1,nauxil_3center_lr
+     jbf_auxil = ibf_auxil_g_lr(ibf_auxil)
+     eri_2center_lr(:,ibf_auxil) = eri_2center_sqrt(:,jbf_auxil)
+   enddo
+ endif
 
- end block
 
 #endif
 

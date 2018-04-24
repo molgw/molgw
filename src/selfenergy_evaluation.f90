@@ -55,6 +55,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  real(dp)                :: exc
 #endif
 !=====
+ integer :: ispin
+!=====
 
  write(stdout,'(/,/,1x,a)') '=================================================='
  write(stdout,'(1x,a)')     'Self-energy evaluation starts here'
@@ -455,17 +457,14 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
        call dft_exc_vxc_batch(BATCH_SIZE,basis,occupation,c_matrix,matrix_tmp,exc)
    
        write(stdout,*) '===== SigX SR ======'
-       block
-         integer :: ispin
-         do ispin=1,nspin
-           do istate=1,nstate
-             sigc(istate,ispin) = DOT_PRODUCT( c_matrix(:,istate,ispin) , &
-                                       MATMUL( matrix_tmp(:,:,ispin) , c_matrix(:,istate,ispin ) ) )
-             write(stdout,*) istate,ispin,sigc(istate,ispin) * Ha_eV
-           enddo
-           sigc(istate,ispin) = sigc(istate,ispin) * delta_cohsex 
+       do ispin=1,nspin
+         do istate=1,nstate
+           sigc(istate,ispin) = DOT_PRODUCT( c_matrix(:,istate,ispin) , &
+                                     MATMUL( matrix_tmp(:,:,ispin) , c_matrix(:,istate,ispin ) ) )
+           write(stdout,*) istate,ispin,sigc(istate,ispin) * Ha_eV
          enddo
-       end block
+         sigc(istate,ispin) = sigc(istate,ispin) * delta_cohsex 
+       enddo
        write(stdout,*) '===================='
   
        deallocate(p_matrix)

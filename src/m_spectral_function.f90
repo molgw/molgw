@@ -397,6 +397,8 @@ subroutine write_spectral_function(sf)
  integer(kind=MPI_OFFSET_KIND) :: disp
 #endif
 !=====
+ integer :: ipole
+!=====
 
  write(stdout,'(/,a,/)') ' Writing the spectral function on file: SCREENED_COULOMB' 
 
@@ -411,12 +413,9 @@ subroutine write_spectral_function(sf)
    write(wfile) sf%nprodbasis_total
    write(wfile) sf%npole_reso
    write(wfile) sf%pole(:)
-   block
-     integer :: ipole
-     do ipole=1,sf%npole_reso
-       write(wfile) sf%residue_left(:,ipole)
-     enddo
-   end block
+   do ipole=1,sf%npole_reso
+     write(wfile) sf%residue_left(:,ipole)
+   enddo
 
    close(wfile)
  endif

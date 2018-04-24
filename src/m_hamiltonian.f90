@@ -1127,16 +1127,12 @@ subroutine calc_normalization_r(batch_size,basis,occupation,c_matrix)
  vec_b=(/ 0.0_dp     ,  1.745_dp  /)
  vec_c=vec_b-vec_a
 
- if( ndft_xc == 0 ) return
-
  call start_clock(timing_dft)
 
  nstate = SIZE(occupation,DIM=1)
 #ifdef HAVE_LIBXC
 
  write(stdout,*) 'Calculate DFT XC potential'
- if( batch_size /= 1 ) write(stdout,*) 'Using batches of size',batch_size
- 
 
  !
  ! Loop over batches of grid points
@@ -1146,9 +1142,9 @@ subroutine calc_normalization_r(batch_size,basis,occupation,c_matrix)
  nr_cyl=100
  r_cylmax=10.d0
  dr_cyl=r_cylmax/REAL(nr_cyl,dp)
- charge_tri(:) = 0.0_dp
  do ir_cyl=1,nr_cyl
    charge_cyl(:) = 0.0_dp
+   charge_tri(:) = 0.0_dp
    do igrid_start=1,ngrid,batch_size
      igrid_end = MIN(ngrid,igrid_start+batch_size-1)
      nr = igrid_end - igrid_start + 1
@@ -1169,9 +1165,9 @@ subroutine calc_normalization_r(batch_size,basis,occupation,c_matrix)
        vec_r=rr_grid(1:2,igrid)
        vec_rp=vec_r-vec_a
        !if point is in the triangle (prism)
-       if( ir_cyl==0 .AND. DOT_PRODUCT(vec_a,vec_rp)<=0.0_dp &
+       if( ir_cyl==1 .AND. DOT_PRODUCT(vec_a,vec_rp)<=0.0_dp &
          & .AND. DOT_PRODUCT(vec_r,vec_c)>=0.0_dp .AND. ALL(vec_r(:)>=0.0_dp) ) then
-         charge_cyl(:) = charge_cyl(:) + rhor_batch(:,ir) * weight_batch(ir)
+         charge_tri(:) = charge_tri(:) + rhor_batch(:,ir) * weight_batch(ir)
        endif
        !if point is in the cylinder
        if( NORM2(vec_r) <= r_cyl ) then
@@ -1188,8 +1184,7 @@ subroutine calc_normalization_r(batch_size,basis,occupation,c_matrix)
    call xsum_grid(charge_cyl)
    call xsum_grid(charge_tri)
    if( is_iomaster ) then
-!     write(file_out,'(3F9.4)') r_cyl, charge_cyl,charge_tri
-     write(file_out,*) r_cyl, charge_cyl,charge_tri,vec_r
+     write(file_out,'(3F9.4)') r_cyl, charge_cyl,charge_tri
    end if
    r_cyl=r_cyl+dr_cyl
  enddo
