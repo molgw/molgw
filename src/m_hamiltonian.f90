@@ -1107,11 +1107,11 @@ subroutine calc_normalization_r(batch_size,basis,occupation,c_matrix)
  integer              :: ibf,jbf,ispin
  integer              :: idft_xc
  integer              :: igrid_start,igrid_end,ir,nr
-! boulette
- real(dp)             :: normalization_r(nspin)
-! boulette
+ real(dp)             :: charge_cyl(nspin),charge_tri(nspin)
  real(dp)             :: r_cyl,dr_cyl,r_cylmax
  integer              :: nr_cyl,ir_cyl,file_out,igrid
+ !vectors in the plane
+ real(dp)             :: vec_rp(2),vec_r(2),vec_a(2),vec_c(2),vec_b(2) 
  real(dp),allocatable :: weight_batch(:)
  real(dp),allocatable :: tmp_batch(:,:)
  real(dp),allocatable :: basis_function_r_batch(:,:)
@@ -1122,6 +1122,10 @@ subroutine calc_normalization_r(batch_size,basis,occupation,c_matrix)
  if( is_iomaster ) then
    open(newunit=file_out,file="charge_cylinder.dat")
  end if
+
+ vec_a=(/ 0.8725_dp,  0.8725_dp /)
+ vec_b=(/ 0.0_dp     ,  1.745_dp  /)
+ vec_c=vec_b-vec_a
 
  if( ndft_xc == 0 ) return
 
@@ -1142,8 +1146,9 @@ subroutine calc_normalization_r(batch_size,basis,occupation,c_matrix)
  nr_cyl=100
  r_cylmax=10.d0
  dr_cyl=r_cylmax/REAL(nr_cyl,dp)
+ charge_tri(:) = 0.0_dp
  do ir_cyl=1,nr_cyl
-   normalization_r(:) = 0.0_dp
+   charge_cyl(:) = 0.0_dp
    do igrid_start=1,ngrid,batch_size
      igrid_end = MIN(ngrid,igrid_start+batch_size-1)
      nr = igrid_end - igrid_start + 1
@@ -1159,14 +1164,20 @@ subroutine calc_normalization_r(batch_size,basis,occupation,c_matrix)
   
      call calc_density_r_batch(nspin,basis%nbf,nstate,nr,occupation,c_matrix,basis_function_r_batch,rhor_batch)
   
-  
-     ! Normalization
-       do ir=1,nr
-         igrid = igrid_start + ir - 1
-         if( NORM2(rr_grid(1:2,igrid)) <= r_cyl ) then
-           normalization_r(:) = normalization_r(:) + rhor_batch(:,ir) * weight_batch(ir)
-         endif
-       enddo
+     do ir=1,nr
+       igrid = igrid_start + ir - 1
+       vec_r=rr_grid(1:2,igrid)
+       vec_rp=vec_r-vec_a
+       !if point is in the triangle (prism)
+       if( ir_cyl==0 .AND. DOT_PRODUCT(vec_a,vec_rp)<=0.0_dp &
+         & .AND. DOT_PRODUCT(vec_r,vec_c)>=0.0_dp .AND. ALL(vec_r(:)>=0.0_dp) ) then
+         charge_cyl(:) = charge_cyl(:) + rhor_batch(:,ir) * weight_batch(ir)
+       endif
+       !if point is in the cylinder
+       if( NORM2(vec_r) <= r_cyl ) then
+         charge_cyl(:) = charge_cyl(:) + rhor_batch(:,ir) * weight_batch(ir)
+       endif
+     enddo
   
      deallocate(weight_batch)
      deallocate(basis_function_r_batch)
@@ -1174,9 +1185,11 @@ subroutine calc_normalization_r(batch_size,basis,occupation,c_matrix)
      deallocate(rhor_batch)
   
    enddo ! loop on the batches
-   call xsum_grid(normalization_r)
+   call xsum_grid(charge_cyl)
+   call xsum_grid(charge_tri)
    if( is_iomaster ) then
-     write(file_out,'(2F9.4)') r_cyl, normalization_r
+!     write(file_out,'(3F9.4)') r_cyl, charge_cyl,charge_tri
+     write(file_out,*) r_cyl, charge_cyl,charge_tri,vec_r
    end if
    r_cyl=r_cyl+dr_cyl
  enddo
