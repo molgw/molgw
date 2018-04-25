@@ -312,9 +312,9 @@ subroutine setup_exchange_ri_buffer_sca(occupation,c_matrix,p_matrix,exchange_ij
  integer              :: nbf
  integer              :: nstate,m_c
  integer              :: ibf,jbf,ispin,istate
- real(dp),allocatable :: tmp(:,:)
  integer              :: ipair
- real(dp)             :: c_matrix_i(desc_c(M_))
+ real(dp),allocatable :: tmp(:,:)
+ real(dp),allocatable :: c_matrix_i(:)
  integer              :: iglobal,ilocal,jlocal
 !=====
 
@@ -322,12 +322,13 @@ subroutine setup_exchange_ri_buffer_sca(occupation,c_matrix,p_matrix,exchange_ij
 
  write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity: SCALAPACK buffer'
 
- nbf    = desc_c(M_)
+ nbf    = SIZE(buffer(:,:),DIM=1)
  m_c    = SIZE(c_matrix,DIM=1)
  nstate = SIZE(occupation,DIM=1)
 
 
  allocate(tmp(nauxil_3center,nbf))
+ allocate(c_matrix_i(nbf))
 
  do ispin=1,nspin
 
