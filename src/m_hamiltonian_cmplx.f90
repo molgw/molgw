@@ -105,7 +105,7 @@ subroutine setup_density_matrix_cmplx(nbf,nstate,nocc,c_matrix_cmplx,occupation,
  integer :: istate
 !=====
 
- call start_clock(timing_density_matrix)
+ call start_clock(timing_density_matrix_cmplx)
 ! write(stdout,'(1x,a)') 'Build density matrix'
 
  p_matrix_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
@@ -122,7 +122,7 @@ subroutine setup_density_matrix_cmplx(nbf,nstate,nocc,c_matrix_cmplx,occupation,
      enddo
    enddo
  enddo
- call stop_clock(timing_density_matrix)
+ call stop_clock(timing_density_matrix_cmplx)
 
 
 

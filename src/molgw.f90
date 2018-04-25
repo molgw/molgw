@@ -461,15 +461,6 @@ program molgw
  !
  call start_clock(timing_postscf)
 
- !****RT-TDDFT SIMULATION****
- if(calc_type%is_real_time) then
-   write(stdout,'(/,1x,a)') '=================================================='
-   write(stdout,'(x,a)') "RT-TDDFT simulation"
-   call calculate_propagation(nstate, basis, occupation, c_matrix)
-   write(stdout,'(x,a)') "End of RT-TDDFT simulation"
-   write(stdout,'(1x,a)') '=================================================='
- end if
- !***************************
 
  ! boulette temporary section for the charge calculation
  call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.TRUE.,64)
@@ -492,14 +483,6 @@ program molgw
  if( print_dens_traj_ ) call plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,0,0.0_dp)
  if( .FALSE. ) call read_cube_wfn(nstate,basis,occupation,c_matrix)
 
- !
- ! Deallocate all what you can at this stage
- !
- ! If RSH calculations were performed, then deallocate the LR integrals which
- ! are not needed anymore
- if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()
- if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
-
  call clean_deallocate('Overlap matrix S',s_matrix)
  call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
 
@@ -509,6 +492,22 @@ program molgw
  ! Post-processing start here
  !
  !
+
+
+ !
+ ! RT-TDDFT Simulation
+ if(calc_type%is_real_time) then
+   call calculate_propagation(nstate, basis, occupation, c_matrix)
+ end if
+
+ !
+ ! Deallocate all what you can at this stage
+ !
+ ! If RSH calculations were performed, then deallocate the LR integrals which
+ ! are not needed anymore
+ if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()
+ if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
+
 
  !
  ! Prepare the diagonal of the matrix Sigma_x - Vxc
