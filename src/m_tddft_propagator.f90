@@ -36,6 +36,7 @@ module m_tddft_propagator
  end interface print_2d_matrix
 
  ! Set to private
+ !FBFB integer,private :: unit_cube  ! DO this
  real(dp)                   :: time_read
  real(dp),allocatable       :: xatom_start(:,:)
  type(energy_contributions) :: en_start
@@ -472,7 +473,7 @@ subroutine tddft_time_loop(nstate,                           &
  complex(dp),allocatable    :: c_matrix_orth_start_complete_cmplx(:,:,:)
 !=====
 
- z_sel_=.FALSE.
+ z_sel_=.FALSE.   !FBFB vire moi cette merde
  mod_write = NINT( write_step / time_step_cur )
 
  call clean_allocate('c_matrix_cmplx for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
@@ -571,8 +572,8 @@ subroutine tddft_time_loop(nstate,                           &
    if(excit_type%is_light) write(file_dipole_time,"(A)") "# time(au)                      Dipole_x(D)               Dipole_y(D)               Dipole_z(D)"
  end if
 
- !Printing initial values of energy and dipole taken from SCF or RESTART_TDDFT
-
+ !
+ ! Printing initial values of energy and dipole taken from SCF or RESTART_TDDFT
  en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc + en%excit
 
  if(excit_type%is_light) then
@@ -583,7 +584,7 @@ subroutine tddft_time_loop(nstate,                           &
  if( is_iomaster ) then
  ! Here time_min point coresponds to the end of calculation written in the RESTART_TDDFT or to 0 a.u.
    if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0)
-   if(print_cube_diff_tddft_ ) then
+   if( print_cube_diff_tddft_ ) then
      call calc_cube_initial_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,cube_density_start,nx,ny,nz)
      call plot_cube_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,cube_density_start,nx,ny,nz)
    end if
@@ -752,8 +753,8 @@ subroutine tddft_time_loop(nstate,                           &
                                         hamiltonian_fock_cmplx,  &
                                         ref_)
 
-    if (n_hist_cur > 1) h_small_hist_cmplx(:,:,:,n_hist_cur-1)=h_small_cmplx
-    !--3--PROPAGATION----|
+     if (n_hist_cur > 1) h_small_hist_cmplx(:,:,:,n_hist_cur-1)=h_small_cmplx
+     !--3--PROPAGATION----|
      call propagate_orth(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)
 
      call setup_hamiltonian_fock_cmplx( basis,                   &
@@ -1066,7 +1067,9 @@ subroutine tddft_time_loop(nstate,                           &
      time_one_iter=timing(timing_tddft_one_iter)
      write(stdout,'(/,1x,a)') '**********************************'
      write(stdout,"(1x,a30,2x,es14.6,1x,a)") "Time of one iteration is", time_one_iter,"s"
-     write(stdout,"(1x,a30,2x,3(f12.2,1x,a))") "Estimated calculation time is", time_one_iter*ntau, "s = ", time_one_iter*ntau/60, "min = ", time_one_iter*ntau/3600, "hrs"
+     write(stdout,"(1x,a30,2x,3(f12.2,1x,a))") "Estimated calculation time is", time_one_iter*ntau, "s  = ", &
+                                               time_one_iter*ntau/60.0_dp, &
+                                               "min  = ", time_one_iter*ntau/3600.0_dp, "hrs"
      write(stdout,'(1x,a)') '**********************************'
      flush(stdout)
    end if
@@ -1465,12 +1468,12 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
  complex(dp)                :: s_matrix_sqrt_inv_cmplx(basis%nbf,nstate)
 !=====
 
- s_matrix_sqrt_inv_cmplx = s_matrix_sqrt_inv
-
  call start_clock(timing_tddft_propagation)
 
- do ispin =1, nspin
-   select case (prop_type_cur)
+ s_matrix_sqrt_inv_cmplx = s_matrix_sqrt_inv
+
+ do ispin=1, nspin
+   select case(prop_type_cur)
    case('CN')
      allocate(l_matrix_cmplx(nstate,nstate))
      allocate(b_matrix_cmplx(nstate,nstate))
@@ -1491,62 +1494,39 @@ subroutine propagate_orth_ham_1(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
    case('MAG2')
      allocate(a_matrix_orth_cmplx(nstate,nstate))
      allocate(energies_inst(nstate))
+
+     !
+     ! First part, diagonalize
      call start_clock(timing_propagate_diago)
-#ifdef SMALL_CALC
-     call diagonalize(h_small_cmplx(:,:,ispin),energies_inst,a_matrix_orth_cmplx)
-#else
      a_matrix_orth_cmplx(:,:) = h_small_cmplx(:,:,ispin)
      call diagonalize_scalapack(scalapack_block_min,nstate,a_matrix_orth_cmplx,energies_inst)
-#endif
      call stop_clock(timing_propagate_diago)
 
-!     propagator_eigen(:,:) = ( 0.0_dp , 0.0_dp )
-!     do ibf=1,nstate
-!       propagator_eigen(ibf,ibf) = exp(-im*time_step_cur*energies_inst(ibf))
-!     end do
-
+     !
+     ! Second part, multiply matrices
      call start_clock(timing_propagate_matmul)
 
      allocate(m_tmp_1(nstate,nstate))
      forall (jstate=1:nstate)
        m_tmp_1(:,jstate) = a_matrix_orth_cmplx(:,jstate) * EXP(-im*time_step_cur*energies_inst(jstate) )
      end forall
-#ifdef SMALL_CALC
-     allocate(m_tmp_2(nstate,nstate))
-     !              herm nrows  ncols  nsum                        nrows de A et de C          nrows de B   beta                nrows de C
-     call ZGEMM('N','C',nstate,nstate,nstate,(1.0_dp,0.0_dp),m_tmp_1,nstate,a_matrix_orth_cmplx,nstate,(0.0_dp,0.0_dp),m_tmp_2,nstate)
-!     a_matrix_orth_cmplx(:,:)       = MATMUL(m_tmp_1(:,:),CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:))))
 
-     deallocate(a_matrix_orth_cmplx)
-     deallocate(m_tmp_1)
-     allocate(m_tmp_3(nstate,nocc))
-     call ZGEMM('N','N',nstate,nocc,nstate,(1.0_dp,0.0_dp),m_tmp_2,nstate,c_matrix_orth_cmplx,nstate,(0.0_dp,0.0_dp),m_tmp_3,nstate)
-!     c_matrix_orth_cmplx(:,:,ispin) = MATMUL( a_matrix_orth_cmplx(:,:), c_matrix_orth_cmplx(:,:,ispin) )
-     deallocate(m_tmp_2)
-     c_matrix_orth_cmplx(:,:,ispin) = m_tmp_3
-!    c_matrix_orth_cmplx(:,:,ispin) = MATMUL( MATMUL( MATMUL( a_matrix_orth_cmplx(:,:), propagator_eigen(:,:)  ) , &
-!            CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:)))  ), c_matrix_orth_cmplx(:,:,ispin) )
-     deallocate(m_tmp_3)
-#else
      allocate(m_tmp_3(nstate,nocc))
      call matmul_abc_scalapack(scalapack_block_min,m_tmp_1,CONJG(TRANSPOSE(a_matrix_orth_cmplx(:,:))),c_matrix_orth_cmplx(:,:,ispin),m_tmp_3  )
-      c_matrix_orth_cmplx(:,:,ispin) = m_tmp_3
+     c_matrix_orth_cmplx(:,:,ispin) = m_tmp_3
+
      deallocate(m_tmp_3)
      deallocate(m_tmp_1)
-#endif
-     call stop_clock(timing_propagate_matmul)
      deallocate(energies_inst)
      deallocate(a_matrix_orth_cmplx)
+     call stop_clock(timing_propagate_matmul)
+
      case default
        call die('Invalid choice for the propagation algorithm. Change prop_type or error_prop_types value in the input file')
    end select
-   call start_clock(timing_tmp2)
-#ifdef SMALL_CALC
-   c_matrix_cmplx(:,:,ispin) = MATMUL( s_matrix_sqrt_inv(:,:) , c_matrix_orth_cmplx(:,:,ispin) )
-#else
+
    call matmul_ab_scalapack(scalapack_block_min,s_matrix_sqrt_inv_cmplx,c_matrix_orth_cmplx(:,:,ispin),c_matrix_cmplx(:,:,ispin))
-#endif
-   call stop_clock(timing_tmp2)
+
  end do
 
  call stop_clock(timing_tddft_propagation)
@@ -1583,7 +1563,7 @@ subroutine propagate_orth_ham_2(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c
        call diagonalize(h_small_hist2_cmplx(:,:,ispin,iham),energies_inst,a_matrix_orth_cmplx(:,:,iham))
        propagator_eigen(:,:,iham) = ( 0.0_dp , 0.0_dp )
        do ibf=1,nstate
-         propagator_eigen(ibf,ibf,iham) = exp(-im*time_step_cur/2.d0*energies_inst(ibf))
+         propagator_eigen(ibf,ibf,iham) = EXP(-im*time_step_cur/2.d0*energies_inst(ibf))
        end do
      end do
      c_matrix_orth_cmplx(:,:,ispin) = &
@@ -1614,7 +1594,6 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
                                          dipole_basis,            &
                                          hamiltonian_fock_cmplx,  &
                                          ref_)
-
  implicit none
 !=====
  type(basis_set),intent(in)       :: basis
@@ -1640,8 +1619,9 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
  complex(dp)    :: s_matrix_sqrt_inv_cmplx(basis%nbf,nstate)
 !=====
 
- s_matrix_sqrt_inv_cmplx = s_matrix_sqrt_inv
  call start_clock(timing_tddft_hamiltonian_fock)
+
+ s_matrix_sqrt_inv_cmplx = s_matrix_sqrt_inv
 
  call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
 
