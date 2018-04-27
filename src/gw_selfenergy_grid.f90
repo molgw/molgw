@@ -49,7 +49,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
 #endif
 !=====
 
- call start_clock(timing_pola_dynamic)
+ call start_clock(timing_rpa_dynamic)
 
  write(stdout,'(/,1x,a)') 'Calculation of RPA polarizability on imaginary axis grid'
 #ifdef HAVE_SCALAPACK
@@ -183,7 +183,7 @@ subroutine polarizability_grid_scalapack(basis,nstate,occupation,energy,c_matrix
 
  write(stdout,'(/,1x,a,f16.10)') 'RPA correlation energy (Ha): ',erpa
 
- call stop_clock(timing_pola_dynamic)
+ call stop_clock(timing_rpa_dynamic)
 
 
 end subroutine polarizability_grid_scalapack
@@ -230,7 +230,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
    call die('gw_selfenergy_imag_sca requires an auxiliary basis')
  endif
 
- call start_clock(timing_self)
+ call start_clock(timing_gw_self)
 
  write(stdout,'(/,1x,a)') 'GW self-energy on a grid of imaginary frequencies'
  call BLACS_GRIDINFO(wpol%desc_chi(CTXT_),nprow,npcol,iprow,ipcol)
@@ -310,7 +310,7 @@ subroutine gw_selfenergy_imag_scalapack(basis,nstate,energy,c_matrix,wpol,se)
 
  call destroy_eri_3center_eigen()
 
- call stop_clock(timing_self)
+ call stop_clock(timing_gw_self)
 
 end subroutine gw_selfenergy_imag_scalapack
 
