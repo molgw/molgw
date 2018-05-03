@@ -81,16 +81,16 @@ module m_timing
  integer,parameter :: timing_tmp8                = 98
  integer,parameter :: timing_tmp9                = 99
 
- integer,parameter :: timing_tddft_loop          = 110
- integer,parameter :: timing_tddft_fourier       = 111
- integer,parameter :: timing_tddft_one_iter      = 112
- integer,parameter :: timing_tddft_propagation   = 113
+ integer,parameter :: timing_tddft_loop             = 110
+ integer,parameter :: timing_tddft_fourier          = 111
+ integer,parameter :: timing_tddft_one_iter         = 112
+ integer,parameter :: timing_tddft_propagation      = 113
  integer,parameter :: timing_tddft_hamiltonian_fock = 114
- integer,parameter :: timing_print_cube_rho_tddft= 115
- integer,parameter :: timing_restart_tddft_file  = 116
- integer,parameter :: timing_propagate_diago     = 117
- integer,parameter :: timing_propagate_matmul    = 118
- integer,parameter :: timing_print_line_rho_tddft= 119
+ integer,parameter :: timing_print_cube_rho_tddft   = 115
+ integer,parameter :: timing_restart_tddft_file     = 116
+ integer,parameter :: timing_propagate_diago        = 117
+ integer,parameter :: timing_propagate_matmul       = 118
+ integer,parameter :: timing_print_line_rho_tddft   = 119
 
  integer           :: count_rate,count_max
  logical           :: time_running(NTIMING)
@@ -169,16 +169,10 @@ subroutine output_timing()
 
  write(stdout,'(/,a,/)') '                 -------------------------------------'
 
-<<<<<<< HEAD
- write(stdout,'(a30,6x,f12.2)')  'Total pre SCF',timing(timing_prescf)
- write(stdout,'(a30,6x,f12.2)')      'Total SCF',timing(timing_scf)
- write(stdout,'(a30,6x,f12.2)') 'Total post SCF',timing(timing_postscf) 
-=======
  call output_timing_line('Total pre SCF' ,timing_prescf ,0,ONLY_ONE_CALL)
  call output_timing_line('Total SCF'     ,timing_scf    ,0,ONLY_ONE_CALL)
  call output_timing_line('Total post SCF',timing_postscf,0,ONLY_ONE_CALL)
 
->>>>>>> origin
  write(stdout,'(/,a,/)') '                 -------------------------------------'
  write(stdout,'(a,/)')   '                             Pre SCF'
 
@@ -207,39 +201,11 @@ subroutine output_timing()
  call output_timing_line('Virtual FNO generation',timing_fno,1)
  call output_timing_line('Forces',timing_force,1)
 
-<<<<<<< HEAD
- write(stdout,*)
- write(stdout,'(a)') '                 -------------------------------------'
- write(stdout,*)
 
- if( calls(timing_sca_distr1)+calls(timing_sca_distr2) > 0 ) then
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing SCA1   ' ,timing(timing_sca_distr1),calls(timing_sca_distr2)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing SCA2   ' ,timing(timing_sca_distr1),calls(timing_sca_distr2)
- endif
-
- if( calls(timing_tddft_loop) > 0 ) then
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'TD-DFT Loop'                    ,timing(timing_tddft_loop),calls(timing_tddft_loop)
-   write(stdout,'(a32,4x,f12.2,2x,i8)') 'Propagation for TD-DFT'         ,timing(timing_tddft_propagation),calls(timing_tddft_propagation)
-   write(stdout,'(a34,2x,f12.2,2x,i8)') 'Diago in tddft propagation'     ,timing(timing_propagate_diago),calls(timing_propagate_diago)
-   write(stdout,'(a34,2x,f12.2,2x,i8)') 'Matmul in tddft propagation'    ,timing(timing_propagate_matmul),calls(timing_propagate_matmul)
-
-   write(stdout,'(a32,4x,f12.2,2x,i8)') 'Hamiltonian_fock calculation'   ,timing(timing_tddft_hamiltonian_fock),calls(timing_tddft_hamiltonian_fock)
-   write(stdout,'(a34,2x,f12.2,2x,i8)') 'Complex density matrix'         ,timing(timing_density_matrix_cmplx),calls(timing_density_matrix_cmplx)
-
-   write(stdout,'(a30,4x,f12.2,2x,i8)') 'RESTART_TDDFT file writing'     ,timing(timing_restart_tddft_file),calls(timing_restart_tddft_file)
-
-   if(calls(timing_print_cube_rho_tddft)>0) then
-      write(stdout,'(a32,4x,f12.2,2x,i8)') 'Cube density file writing'   ,timing(timing_print_cube_rho_tddft),calls(timing_print_cube_rho_tddft)
-   end if
-   if(calls(timing_print_line_rho_tddft)>0) then
-      write(stdout,'(a32,4x,f12.2,2x,i8)') 'Line density file writing'   ,timing(timing_print_line_rho_tddft),calls(timing_print_line_rho_tddft)
-   end if
- end if
-
-=======
  write(stdout,'(/,a,/)') '                 -------------------------------------'
  write(stdout,'(a,/)')   '                            Post SCF'
 
+ ! Linear response polarization RPA or TDDFT or BSE
  call output_timing_line('Response function chi',timing_pola,1)
  call output_timing_line('3-center AO to MO transform',timing_eri_3center_eigen,2)
  call output_timing_line('4-center AO to MO transform',timing_eri_4center_eigen,2)
@@ -253,12 +219,13 @@ subroutine output_timing()
  call output_timing_line('Build W',timing_vchiv,2)
  call output_timing_line('Optical spectrum',timing_spectrum,2)
 
+ ! Self-energies
  call output_timing_line('GW self-energy',timing_gw_self,1)
  call output_timing_line('PT self-energy',timing_pt_self,1)
  call output_timing_line('GWGamma self-energy',timing_gwgamma_self,1)
  call output_timing_line('MP2 energy',timing_mp2_energy,1)
 
-
+ ! CI
  call output_timing_line('Full CI for few electrons',timing_full_ci,1)
  call output_timing_line('Setup CI configurations',timing_ci_config,2)
  call output_timing_line('Screen CI Hamiltonian zeroes',timing_zeroes_ci,2)
@@ -267,13 +234,25 @@ subroutine output_timing()
  call output_timing_line('CI eigenvector file writing',timing_ci_write,2)
  call output_timing_line('CI self-energy',timing_ci_selfenergy,2)
 
+ ! RT-TDDFT
+ call output_timing_line('TDDFT loop',timing_tddft_loop,1)
+ call output_timing_line('TDDFT Propagator',timing_tddft_propagation,2)
+ call output_timing_line('TDDFT propagator diago',timing_propagate_diago,3)
+ call output_timing_line('TDDFT propagator matmul',timing_propagate_matmul,3)
+
+ call output_timing_line('Hamiltonian calculation',timing_tddft_hamiltonian_fock,2)
+ call output_timing_line('Complex density matrix',timing_density_matrix_cmplx,3)
+
+ call output_timing_line('RESTART_TDDFT file writing',timing_restart_tddft_file,2)
+ call output_timing_line('Cube density file writing',timing_print_cube_rho_tddft,2)
+ call output_timing_line('Line density file writing',timing_print_line_rho_tddft,2)
+
  write(stdout,'(/,a,/)') '                 -------------------------------------'
 
 
 
  !
  ! Developer's timings for temporary use only!
->>>>>>> origin
  !
  if( ANY( calls(timing_tmp0:timing_tmp9) > 0 ) .OR. calls(timing_sca_distr1) > 0 .OR. calls(timing_sca_distr2) > 0 ) then
    write(stdout,'(a,/)')   '                            Testing'
@@ -292,11 +271,6 @@ subroutine output_timing()
    write(stdout,'(/,a,/)') '                 -------------------------------------'
  endif
 
-<<<<<<< HEAD
- write(stdout,'(/,a)') '                 -------------------------------------'
-
-=======
->>>>>>> origin
 
 end subroutine output_timing
 
@@ -311,7 +285,7 @@ subroutine output_timing_line(title,itiming,level,only_one_call)
  logical,intent(in),optional :: only_one_call
 !=====
  integer,parameter           :: max_length = 40
- character(len=50)           :: prepend
+ character(len=53)           :: prepend
  integer                     :: lt,lp
 !=====
 
