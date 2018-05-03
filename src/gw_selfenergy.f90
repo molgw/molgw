@@ -45,7 +45,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  real(dp)                :: tr_log_gsigma,tr_gsigma,rdiag,mu
 !=====
 
- call start_clock(timing_self)
+ call start_clock(timing_gw_self)
 
  write(stdout,*)
  select case(selfenergy_approx)
@@ -354,7 +354,7 @@ subroutine gw_selfenergy(selfenergy_approx,nstate,basis,occupation,energy,c_matr
  if(ALLOCATED(selfenergy_omegac)) deallocate(selfenergy_omegac)
 
 
- call stop_clock(timing_self)
+ call stop_clock(timing_gw_self)
 
 
 end subroutine gw_selfenergy
@@ -400,7 +400,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  if(.NOT. has_auxil_basis) return
 
 #ifdef HAVE_SCALAPACK
- call start_clock(timing_self)
+ call start_clock(timing_gw_self)
 
  write(stdout,*)
  select case(selfenergy_approx)
@@ -527,7 +527,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx,nstate,basis,occupation,ene
  call clean_deallocate('TMP distributed W',wresidue_sd)
  call destroy_eri_3center_eigen()
 
- call stop_clock(timing_self)
+ call stop_clock(timing_gw_self)
 
 #endif
 
@@ -563,7 +563,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
  real(dp)              :: fact_full_i,fact_empty_i
 !=====
 
- call start_clock(timing_self)
+ call start_clock(timing_gw_self)
 
  write(stdout,*)
  select case(calc_type%selfenergy_approx)
@@ -679,7 +679,7 @@ subroutine gw_selfenergy_qs(nstate,basis,occupation,energy,c_matrix,s_matrix,wpo
  if(has_auxil_basis) call destroy_eri_3center_eigen()
 
 
- call stop_clock(timing_self)
+ call stop_clock(timing_gw_self)
 
 
 end subroutine gw_selfenergy_qs
