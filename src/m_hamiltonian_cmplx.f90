@@ -44,7 +44,7 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc,occupation,c_matrix_cmplx,p_m
  if( .NOT. in_tddft_loop ) then
    write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
  end if
- call start_clock(timing_exchange)
+ call start_clock(timing_tddft_exchange)
 
  exchange_ij_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
  allocate(tmp_cmplx(nauxil_3center,nbf))
@@ -89,7 +89,7 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc,occupation,c_matrix_cmplx,p_m
  call xsum_world(exchange_ij_cmplx)
  eexchange = REAL( 0.5_dp * SUM( exchange_ij_cmplx(:,:,:) * CONJG(p_matrix_cmplx(:,:,:)) ),dp)
 
- call stop_clock(timing_exchange)
+ call stop_clock(timing_tddft_exchange)
 
 end subroutine setup_exchange_ri_cmplx
 
@@ -172,7 +172,7 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
  vxc_ij(:,:,:) = 0.0_dp
  if( ndft_xc == 0 ) return
 
- call start_clock(timing_dft)
+ call start_clock(timing_tddft_xc)
 
 
 #ifdef HAVE_LIBXC
@@ -393,7 +393,7 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
 ! write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
 ! write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
 
- call stop_clock(timing_dft)
+ call stop_clock(timing_tddft_xc)
 
 end subroutine dft_exc_vxc_batch_cmplx
 

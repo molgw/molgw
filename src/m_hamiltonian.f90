@@ -36,7 +36,6 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
  character(len=100)   :: title
 !=====
 
- call start_clock(timing_hartree)
 
  write(stdout,*) 'Calculate Hartree term'
 
@@ -72,7 +71,6 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
    ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
  endif
  write(stdout,*) "HeRe is ehartree", ehartree
- call stop_clock(timing_hartree)
 
 end subroutine setup_hartree
 
@@ -102,7 +100,6 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
 !=====
 
 
- call start_clock(timing_hartree)
 
  write(stdout,*) 'Calculate Hartree term with out-of-core integrals'
 
@@ -234,7 +231,6 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
    ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
  endif
 
- call stop_clock(timing_hartree)
 
 end subroutine setup_hartree_oneshell
 
@@ -254,10 +250,11 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
  character(len=100)   :: title
 !=====
 
- if( .NOT. in_tddft_loop ) then
+ if( in_tddft_loop ) then
+   call start_clock(timing_tddft_hartree)
+ else
    write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
  end if
- call start_clock(timing_hartree)
 
  nbf = SIZE(hartree_ij(:,:),DIM=1)
 
@@ -298,7 +295,9 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
    ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
  endif
 
- call stop_clock(timing_hartree)
+ if( in_tddft_loop ) then
+   call stop_clock(timing_tddft_hartree)
+ endif
 
 end subroutine setup_hartree_ri
 
@@ -1127,7 +1126,7 @@ subroutine calc_normalization_r(batch_size,basis,occupation,c_matrix)
  vec_b=(/ 0.0_dp     ,  1.745_dp  /)
  vec_c=vec_b-vec_a
 
- call start_clock(timing_dft)
+ call start_clock(timing_xc)
 
  nstate = SIZE(occupation,DIM=1)
 #ifdef HAVE_LIBXC
@@ -1199,7 +1198,7 @@ subroutine calc_normalization_r(batch_size,basis,occupation,c_matrix)
 
 ! write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
 
- call stop_clock(timing_dft)
+ call stop_clock(timing_xc)
 
 end subroutine calc_normalization_r
 
@@ -1245,7 +1244,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  vxc_ij(:,:,:) = 0.0_dp
  if( ndft_xc == 0 ) return
 
- call start_clock(timing_dft)
+ call start_clock(timing_xc)
 
  nstate = SIZE(occupation,DIM=1)
 #ifdef HAVE_LIBXC
@@ -1471,7 +1470,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
  write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
 
- call stop_clock(timing_dft)
+ call stop_clock(timing_xc)
 
 end subroutine dft_exc_vxc_batch
 
