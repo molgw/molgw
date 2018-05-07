@@ -19,7 +19,7 @@ keeptmp = False
 selected_input_file=''
 mpirun=''
 nprocs=1
-debug=False
+debug=True
 
 
 
