@@ -33,7 +33,7 @@ LIBXC=-L$(LIBXC_ROOT)/lib -Bstatic -lxcf90 -lxc -Bdynamic
 LIBINT=-L$(LIBINT_ROOT)/lib -lint2
 LIBINT_INCS=-I$(LIBINT_ROOT)/include/libint2 -I$(LIBINT_ROOT)/include
 FFTW=-L$(FFTW_ROOT)/lib/ #-lfftw3
-#FFTW_INCS=-I$(FFTW_ROOT)/include/ 
+FFTW_INCS=-I$(FFTW_ROOT)/include/ 
 
 .PHONY: all clean archive tarball docs input prepare_sourcecode
 
