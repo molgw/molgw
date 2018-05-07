@@ -21,7 +21,8 @@ mpirun=''
 nprocs=1
 debug=False
 
-
+in_timing_section=True
+sections_separator="--- Timings in (s) and # of calls ---"
 
 ###################################
 def clean_run(inp,out,restart):
@@ -130,8 +131,11 @@ def check_output(out,testinfo):
 
     key_found = False
 
+    in_timing_section=True
     for line in reversed(open(tmpfolder+'/'+out,'r').readlines()):
-      if key in line:
+      if sections_separator in line:
+        in_timing_section=False
+      if key in line and not in_timing_section:
         key_found = True
         parsing  = line.split(':')
         if debug:

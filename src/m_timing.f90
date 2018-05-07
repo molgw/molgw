@@ -89,6 +89,7 @@ module m_timing
  integer,parameter :: timing_tddft_xc               = 115
  integer,parameter :: timing_tddft_exchange         = 116
  integer,parameter :: timing_tddft_hartree          = 117
+ integer,parameter :: timing_tddft_hamiltonian_nuc  = 118
  integer,parameter :: timing_print_cube_rho_tddft   = 125
  integer,parameter :: timing_restart_tddft_file     = 126
  integer,parameter :: timing_propagate_diago        = 127
@@ -245,6 +246,7 @@ subroutine output_timing()
 
  call output_timing_line('Hamiltonian calculation',timing_tddft_hamiltonian_fock,2)
  call output_timing_line('Complex density matrix',timing_density_matrix_cmplx,3)
+ call output_timing_line('Electron-Nucleus potential',timing_tddft_hamiltonian_nuc,3)
  call output_timing_line('Hartree potential',timing_tddft_hartree,3)
  call output_timing_line('Exchange operator',timing_tddft_exchange,3)
  call output_timing_line('XC potential',timing_tddft_xc,3)
