@@ -18,7 +18,7 @@ module m_timing
  integer,parameter :: timing_scf                 = 82
  integer,parameter :: timing_postscf             = 83
 
- integer,parameter :: timing_dft                 =  2
+ integer,parameter :: timing_xc                  =  2
  integer,parameter :: timing_pola                =  3
  integer,parameter :: timing_gw_self             =  4
  integer,parameter :: timing_overlap             =  5
@@ -86,11 +86,14 @@ module m_timing
  integer,parameter :: timing_tddft_one_iter         = 112
  integer,parameter :: timing_tddft_propagation      = 113
  integer,parameter :: timing_tddft_hamiltonian_fock = 114
- integer,parameter :: timing_print_cube_rho_tddft   = 115
- integer,parameter :: timing_restart_tddft_file     = 116
- integer,parameter :: timing_propagate_diago        = 117
- integer,parameter :: timing_propagate_matmul       = 118
- integer,parameter :: timing_print_line_rho_tddft   = 119
+ integer,parameter :: timing_tddft_xc               = 115
+ integer,parameter :: timing_tddft_exchange         = 116
+ integer,parameter :: timing_tddft_hartree          = 117
+ integer,parameter :: timing_print_cube_rho_tddft   = 125
+ integer,parameter :: timing_restart_tddft_file     = 126
+ integer,parameter :: timing_propagate_diago        = 127
+ integer,parameter :: timing_propagate_matmul       = 128
+ integer,parameter :: timing_print_line_rho_tddft   = 129
 
  integer           :: count_rate,count_max
  logical           :: time_running(NTIMING)
@@ -193,7 +196,7 @@ subroutine output_timing()
  call output_timing_line('Density matrix',timing_density_matrix,1)
  call output_timing_line('Hartree potential',timing_hartree,1)
  call output_timing_line('Exchange operator',timing_exchange,1)
- call output_timing_line('DFT xc potential',timing_dft,1)
+ call output_timing_line('DFT xc potential',timing_xc,1)
  call output_timing_line('Hamiltonian diagonalization',timing_diago_hamiltonian,1)
  call output_timing_line('Pulay DIIS mixing',timing_diis,1)
  call output_timing_line('RESTART file writing',timing_restart_file,1)
@@ -242,6 +245,9 @@ subroutine output_timing()
 
  call output_timing_line('Hamiltonian calculation',timing_tddft_hamiltonian_fock,2)
  call output_timing_line('Complex density matrix',timing_density_matrix_cmplx,3)
+ call output_timing_line('Hartree potential',timing_tddft_hartree,3)
+ call output_timing_line('Exchange operator',timing_tddft_exchange,3)
+ call output_timing_line('XC potential',timing_tddft_xc,3)
 
  call output_timing_line('RESTART_TDDFT file writing',timing_restart_tddft_file,2)
  call output_timing_line('Cube density file writing',timing_print_cube_rho_tddft,2)

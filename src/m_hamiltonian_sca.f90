@@ -297,7 +297,6 @@ subroutine setup_hartree_ri_sca(p_matrix,hartree_ij,ehartree)
 #ifdef HAVE_SCALAPACK
 
  write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity: SCALAPACK'
- call start_clock(timing_hartree)
 
  allocate(partial_sum(nauxil_3center))
  partial_sum(:) = 0.0_dp
@@ -349,7 +348,6 @@ subroutine setup_hartree_ri_sca(p_matrix,hartree_ij,ehartree)
  call xsum_local(ehartree)
 
 
- call stop_clock(timing_hartree)
 
 
 #endif
