@@ -35,16 +35,12 @@ module m_tddft_propagator
   module procedure print_2d_matrix_cmplx
  end interface print_2d_matrix
 
- ! Set to private
- !FBFB integer,private :: unit_cube  ! DO this
- real(dp)                   :: time_read
- real(dp),allocatable       :: xatom_start(:,:)
- type(energy_contributions) :: en_start
- complex(dp)                :: m_excit_field_dir
- integer,private            :: nocc
- integer                    :: n_z_selected
- real(dp),allocatable       :: m_z_selected(:)
-
+ !integer,private :: unit_cube  
+ real(dp),private                   :: time_read
+ real(dp),allocatable,private       :: xatom_start(:,:)
+ type(energy_contributions),private :: en_start
+ complex(dp),private                :: m_excit_field_dir
+ integer,private                    :: nocc
 
 contains
 
@@ -77,6 +73,7 @@ subroutine calculate_propagation(nstate,              &
  real(dp),allocatable       :: hamiltonian_kinetic(:,:)
  real(dp),allocatable       :: hamiltonian_nucleus(:,:)
 !===== variables for the calc_p_matrix_error
+ logical                    :: calc_p_matrix_error_=.false.
  complex(dp),allocatable    :: p_matrix_time_test_cmplx(:,:,:,:)
  complex(dp),allocatable    :: p_matrix_time_ref_cmplx(:,:,:,:)
  complex(dp),allocatable    :: dipole_time_test(:,:)
@@ -220,16 +217,6 @@ subroutine calculate_propagation(nstate,              &
  write(stdout,"(1x,a)") "--------------------------------------------------"
  write(stdout,*)
 
-
- !FBFB Clean this mess or you're fired!
- n_z_selected = get_number_of_elements(z_selected)
- allocate(m_z_selected(n_z_selected))
- read(z_selected,*) m_z_selected(:)
-
- if(n_z_selected>0) then
-   m_z_selected(:)=m_z_selected(:)/bohr_A
- end if
-
  if( print_dens_traj_tddft_ ) then
    call plot_rho_traj_bunch_cmplx(nstate,nocc,basis,occupation,c_matrix_start_cmplx,0,0.d0)
  end if
@@ -259,103 +246,6 @@ subroutine calculate_propagation(nstate,              &
  write(stdout,"(1x,a)") "--------------------------------------------------"
  write(stdout,"(1x,a)") "End of the tddft loop"
  write(stdout,"(1x,a)") "--------------------------------------------------"
-
- !FBFB Clean this mess or you're fired!
- if( calc_p_matrix_error_ ) then
-
-   n_pred_corrs = get_number_of_elements(error_pred_corrs)
-   allocate(m_pred_corrs(n_pred_corrs))
-   read(error_pred_corrs,*)m_pred_corrs(:)
-
-   n_prop_types = get_number_of_elements(error_prop_types)
-   allocate(m_prop_types(n_prop_types))
-   read(error_prop_types,*)m_prop_types(:)
-
-   n_time_steps = get_number_of_elements(error_time_steps)
-   allocate(m_time_steps(n_time_steps))
-   read(error_time_steps,*)m_time_steps(:)
-
-   n_n_hists = get_number_of_elements(error_n_hists)
-   allocate(m_n_hists(n_n_hists))
-   read(error_n_hists,*)m_n_hists(:)
-
-   n_n_iters = get_number_of_elements(error_n_iters)
-   allocate(m_n_iters(n_n_iters))
-   read(error_n_iters,*)m_n_iters(:)
-
-   time_min = time_read + write_step
-   do istep=1, size(m_time_steps)
-     mod_write_cur = NINT( write_step / m_time_steps(istep) )
-     do ipred_corr=1, size(m_pred_corrs)
-       do iprop_type=1, size(m_prop_types)
-         do ihist=1, size(m_n_hists)
-           do iiter=1, size(m_n_iters)
-             if(write_step / m_time_steps(istep) - NINT( write_step / m_time_steps(istep) ) > 0.0E-10_dp) then
-               write(stdout,*) "The time_step ", m_time_steps(istep), " is not a multiple of write_step: ", write_step
-               call die("Tddft error: write_step is not multiple of one of time steps for the p_matrix error calculation.")
-             end if
-             if( m_time_steps(istep)>write_step) then
-               write(stdout,*) "The time_step ", m_time_steps(istep), " is larger than write_step: ", write_step
-               call die("Tddft error: one of time steps for the p_matrix error calculation is larger than write_step.")
-             end if
-             write(stdout,*)
-             write(stdout,"(1x,a)") "__________________________________________________"
-             write(stdout,"(x,5A,F9.5,A,I1,A,I1)") "Start of tddft loop for the p_matrix error for pred_corr: ", &
-                      m_pred_corrs(ipred_corr), "; prop_type: ", m_prop_types(iprop_type), " time_step: ", m_time_steps(istep), &
-                      " n_hist: ",m_n_hists(ihist), " and n_iter: ", m_n_iters(iiter)
-             write(stdout,"(1x,a)") "__________________________________________________"
-             write(stdout,*)
-             call tddft_time_loop(nstate,                           &
-                                  basis,                            &
-                                  occupation,                       &
-                                  dipole_basis,                     &
-                                  s_matrix,                         &
-                                  s_matrix_sqrt_inv,                &
-                                  c_matrix_start_cmplx,             &
-                                  c_matrix_orth_start_cmplx,        &
-                                  hamiltonian_kinetic,              &
-                                  hamiltonian_nucleus,              &
-                                  hamiltonian_fock_start_cmplx,     &
-                                  h_small_start_cmplx,              &
-                                  m_pred_corrs(ipred_corr),         &
-                                  m_prop_types(iprop_type),         &
-                                  m_time_steps(istep),              &
-                                  m_n_hists(ihist),                 &
-                                  m_n_iters(iiter),                 &
-                                  p_matrix_time_test_cmplx,         &
-                                  dipole_time_test,                 &
-                                  .FALSE.)
-             write(stdout,"(1x,a)") "__________________________________________________"
-             write(stdout,"(x,A)") "End of the tddft loop for p_matrix test"
-             write(stdout,"(1x,a)") "__________________________________________________"
-
-             if( is_iomaster ) then
-               write(name_p_matrix_error,'(5A,F6.3,A,I1,A,I1,A)') "p_matrix_error_", TRIM(m_pred_corrs(ipred_corr)), "_", TRIM(m_prop_types(iprop_type)), &
-                     "_dt_", m_time_steps(istep),"_hist_",m_n_hists(ihist), "_iter_",m_n_iters(iiter),".dat"
-               open(newunit=file_p_matrix_error,file=name_p_matrix_error)
-               if(excit_type%is_light) then
-                 write(name_dipole_error,'(5A,F6.3,A,I1,A,I1,A)') "dipole_error_", TRIM(m_pred_corrs(ipred_corr)), "_", TRIM(m_prop_types(iprop_type)), &
-                       "_dt_", m_time_steps(istep),"_hist_",m_n_hists(ihist),"_iter_",m_n_iters(iiter), ".dat"
-                 open(newunit=file_dipole_error,file=name_dipole_error)
-               end if
-               time_cur = time_min
-               do iwrite_step=1, nwrite_step
-                 write(file_p_matrix_error,*) time_cur, SUM(ABS(p_matrix_time_ref_cmplx(:,:,:,iwrite_step) - p_matrix_time_test_cmplx(:,:,:,iwrite_step))) / (basis%nbf)**2
-                 if(excit_type%is_light) then
-                   write(file_dipole_error,*) time_cur, SUM(ABS(dipole_time_ref(iwrite_step,:) - dipole_time_test(iwrite_step,:))) / (basis%nbf)**2
-                 end if
-                 time_cur=time_min+iwrite_step*write_step
-               end do
-               close(file_p_matrix_error)
-               close(file_dipole_error)
-             end if
-           end do ! n_iter
-         end do ! n_hist
-       end do ! prop_type
-     end do ! pred_corr
-   end do !time_step
- end if
- !FBFB END of Clean this mess or you're fired!
 
  if( calc_type%is_dft ) call destroy_dft_grid()
 
@@ -399,7 +289,7 @@ subroutine tddft_time_loop(nstate,                           &
                            h_small_start_cmplx,              &
                            pred_corr_cur,                    &
                            prop_type_cur,                    &
-                           time_step_cur,                    &
+                           time_step,                    &
                            n_hist_cur,                       &
                            n_iter_cur,                       &
                            p_matrix_time_cmplx,              &
@@ -423,7 +313,7 @@ subroutine tddft_time_loop(nstate,                           &
  complex(dp),intent(in)                 :: hamiltonian_fock_start_cmplx(basis%nbf,basis%nbf,nspin)
  complex(dp),intent(in)                 :: h_small_start_cmplx(nstate,nstate,nspin)
  real(dp),intent(in)                    :: s_matrix_sqrt_inv(basis%nbf,nstate)
- real(dp),intent(in)                    :: time_step_cur
+ real(dp),intent(in)                    :: time_step
  character(len=4),intent(in)            :: prop_type_cur,pred_corr_cur
  complex(dp),allocatable,intent(inout)  :: p_matrix_time_cmplx(:,:,:,:)
  complex(dp),allocatable,intent(inout)  :: dipole_time(:,:)
@@ -472,9 +362,11 @@ subroutine tddft_time_loop(nstate,                           &
  real(dp),allocatable       :: energies_inst(:)
  complex(dp),allocatable    :: c_matrix_orth_start_complete_cmplx(:,:,:)
 !=====
+!FBFB delete this fucking shit immediatly!!!
+ logical                    :: calc_p_matrix_error_=.false.
 
  z_sel_=.FALSE.   !FBFB vire moi cette merde
- mod_write = NINT( write_step / time_step_cur )
+ mod_write = NINT( write_step / time_step )
 
  call clean_allocate('c_matrix_cmplx for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
  call clean_allocate('c_matrix_orth_cmplx for TDDFT',c_matrix_orth_cmplx,nstate,nocc,nspin)
@@ -552,10 +444,10 @@ subroutine tddft_time_loop(nstate,                           &
        write(file_excit_field,*) time_min, REAL(m_excit_field_dir)
      end if
    else
-     write(name_time_data,'(5A,F6.3,A,I1,A,I1,A)') "time_data_", TRIM(pred_corr_cur), "_", TRIM(prop_type_cur), "_dt_", time_step_cur, &
+     write(name_time_data,'(5A,F6.3,A,I1,A,I1,A)') "time_data_", TRIM(pred_corr_cur), "_", TRIM(prop_type_cur), "_dt_", time_step, &
                    "_hist_",n_hist_cur, "_iter_",n_iter_cur,".dat"
      if(excit_type%is_light) then
-       write(name_dipole_time,'(5A,F6.3,A,I1,A,I1,A)') "dipole_time_", TRIM(pred_corr_cur), "_", TRIM(prop_type_cur), "_dt_", time_step_cur, &
+       write(name_dipole_time,'(5A,F6.3,A,I1,A,I1,A)') "dipole_time_", TRIM(pred_corr_cur), "_", TRIM(prop_type_cur), "_dt_", time_step, &
                      "_hist_",n_hist_cur,"_iter_",n_iter_cur,".dat"
        open(newunit=file_dipole_time,file=name_dipole_time)
      end if
@@ -608,7 +500,7 @@ subroutine tddft_time_loop(nstate,                           &
    if(excit_type%is_projectile) call output_projectile_position()
  end if
 
- time_min=time_min+time_step_cur
+ time_min=time_min+time_step
 
  if(pred_corr_cur /= 'PC0' ) then
 
@@ -670,12 +562,12 @@ subroutine tddft_time_loop(nstate,                           &
    if(itau==3) call start_clock(timing_tddft_one_iter)
 
    if(pred_corr_cur=='PC0') then
-     call propagate_orth(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)
+     call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)
      call setup_hamiltonian_fock_cmplx( basis,                   &
                                         nstate,                  &
                                         itau,                    &
                                         time_cur,                &
-                                        time_step_cur,           &
+                                        time_step,           &
                                         occupation,              &
                                         c_matrix_cmplx,          &
                                         hamiltonian_kinetic,     &
@@ -693,14 +585,14 @@ subroutine tddft_time_loop(nstate,                           &
      !--1--PREDICTOR----| H(2/4),H(6/4)-->H(9/4)
          h_small_cmplx= -3.0_dp/4.0_dp*h_small_hist_cmplx(:,:,:,1)+7.0_dp/4.0_dp*h_small_hist_cmplx(:,:,:,2)
      !--2--PREDICTOR----| C(8/4)---U[H(9/4)]--->C(10/4)
-     call propagate_orth(nstate,basis,time_step_cur/2.0_dp,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)
+     call propagate_orth(nstate,basis,time_step/2.0_dp,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)
 
      !--3--CORRECTOR----| C(10/4)-->H(10/4)
      call setup_hamiltonian_fock_cmplx( basis,                   &
                                         nstate,                  &
                                         itau,                    &
-                                        time_cur-time_step_cur/2.0_dp, &
-                                        time_step_cur,           &
+                                        time_cur-time_step/2.0_dp, &
+                                        time_step,           &
                                         occupation,              &
                                         c_matrix_cmplx,          &
                                         hamiltonian_kinetic,     &
@@ -712,7 +604,7 @@ subroutine tddft_time_loop(nstate,                           &
                                         ref_)
 
      !--4--PROPAGATION----| C(8/4)---U[H(10/4)]--->C(12/4)
-     call propagate_orth(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)
+     call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)
 
      !--5--UPDATE----| C(12/4)-->C(8/4); H(6/4)-->H(2/4); H(10/4)-->H(6/4)
      c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
@@ -736,13 +628,13 @@ subroutine tddft_time_loop(nstate,                           &
      end if
 
      !--1--PROPAGATE----| C(t)--U[H(1/4dt)]-->C(t+dt/2)
-     call propagate_orth(nstate,basis,time_step_cur/2.0_dp,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)
+     call propagate_orth(nstate,basis,time_step/2.0_dp,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)
      !--2--CALCULATE- H(t+dt/4)
      call setup_hamiltonian_fock_cmplx( basis,                   &
                                         nstate,                  &
                                         itau,                    &
-                                        time_cur-time_step_cur/2.0_dp, &
-                                        time_step_cur,           &
+                                        time_cur-time_step/2.0_dp, &
+                                        time_step,           &
                                         occupation,              &
                                         c_matrix_cmplx,          &
                                         hamiltonian_kinetic,     &
@@ -755,13 +647,13 @@ subroutine tddft_time_loop(nstate,                           &
 
      if (n_hist_cur > 1) h_small_hist_cmplx(:,:,:,n_hist_cur-1)=h_small_cmplx
      !--3--PROPAGATION----|
-     call propagate_orth(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)
+     call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)
 
      call setup_hamiltonian_fock_cmplx( basis,                   &
                                         nstate,                  &
                                         itau,                    &
                                         time_cur,                &
-                                        time_step_cur,           &
+                                        time_step,           &
                                         occupation,              &
                                         c_matrix_cmplx,          &
                                         hamiltonian_kinetic,     &
@@ -799,14 +691,14 @@ subroutine tddft_time_loop(nstate,                           &
      do i_iter=1,n_iter_cur
        h_small_cmplx(:,:,:)=h_small_hist_cmplx(:,:,:,n_hist_cur+1)
        !--3--PREDICTOR (propagation of C(0)-->C(1))
-       call propagate_orth(nstate,basis,time_step_cur,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)
+       call propagate_orth(nstate,basis,time_step,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)
 
        !--4--CORRECTOR----| C(1)-->H(1)
        call setup_hamiltonian_fock_cmplx( basis,                   &
                                           nstate,                  &
                                           itau,                    &
                                           time_cur,                &
-                                          time_step_cur,           &
+                                          time_step,           &
                                           occupation,              &
                                           c_matrix_cmplx,          &
                                           hamiltonian_kinetic,     &
@@ -831,7 +723,7 @@ subroutine tddft_time_loop(nstate,                           &
 !     close(file_iter_norm)
 
      !--5--PROPAGATION----| C(0)---U[H(1/2)]--->C(1)
-     call propagate_orth(nstate,basis,time_step_cur,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_hist_cmplx(:,:,:,n_hist_cur+1),s_matrix_sqrt_inv,prop_type_cur)
+     call propagate_orth(nstate,basis,time_step,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_hist_cmplx(:,:,:,n_hist_cur+1),s_matrix_sqrt_inv,prop_type_cur)
 
      !--6--UPDATE----|C(1)-->C(0)
      c_matrix_orth_cmplx(:,:,:)=c_matrix_orth_hist_cmplx(:,:,:,1)
@@ -864,13 +756,13 @@ subroutine tddft_time_loop(nstate,                           &
        c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
        h_small_cmplx(:,:,:)=h_small_hist_cmplx(:,:,:,n_hist_cur+1)
        !--3--PREDICTOR (propagation of C(0)-->C(1))
-       call propagate_orth(nstate,basis,time_step_cur,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_hist_cmplx(:,:,:,n_hist_cur:n_hist_cur+1),s_matrix_sqrt_inv,"ETRS")
+       call propagate_orth(nstate,basis,time_step,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_hist_cmplx(:,:,:,n_hist_cur:n_hist_cur+1),s_matrix_sqrt_inv,"ETRS")
        !--4--CORRECTOR----| C(1)-->H(1)
        call setup_hamiltonian_fock_cmplx( basis,                   &
                                           nstate,                  &
                                           itau,                    &
                                           time_cur,                &
-                                          time_step_cur,           &
+                                          time_step,           &
                                           occupation,              &
                                           c_matrix_cmplx,          &
                                           hamiltonian_kinetic,     &
@@ -893,7 +785,7 @@ subroutine tddft_time_loop(nstate,                           &
 !     close(file_iter_norm)
 
 !     !--5--PROPAGATION----| C(0)---U[H(1/2)]--->C(!1)
-!     call propagate_orth(nstate,basis,time_step_cur,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_hist_cmplx(:,:,:,n_hist_cur:n_hist_cur+1),s_matrix_sqrt_inv,"ETRS")
+!     call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_hist_cmplx(:,:,:,n_hist_cur:n_hist_cur+1),s_matrix_sqrt_inv,"ETRS")
 
      !--6--UPDATE----|
 !     c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
@@ -912,14 +804,14 @@ subroutine tddft_time_loop(nstate,                           &
      hamiltonian_fock_cmplx=(0.0_dp,0.0_dp)
      h_small_hist_cmplx(:,:,:,2)=(0.0_dp,0.0_dp)
 
-     call propagate_orth(nstate,basis,time_step_cur,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_hist_cmplx(:,:,:,1),s_matrix_sqrt_inv,"MAG2")
+     call propagate_orth(nstate,basis,time_step,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_hist_cmplx(:,:,:,1),s_matrix_sqrt_inv,"MAG2")
 
      do i_iter=1,n_iter_cur
        call setup_hamiltonian_fock_cmplx( basis,                   &
                                           nstate,                  &
                                           itau,                    &
                                           time_cur,                &
-                                          time_step_cur,           &
+                                          time_step,           &
                                           occupation,              &
                                           c_matrix_cmplx,          &
                                           hamiltonian_kinetic,     &
@@ -932,7 +824,7 @@ subroutine tddft_time_loop(nstate,                           &
 
        if(i_iter/=n_iter_cur) then
          c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
-         call propagate_orth(nstate,basis,time_step_cur,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_hist_cmplx(:,:,:,1:2),s_matrix_sqrt_inv,"ETRS")
+         call propagate_orth(nstate,basis,time_step,c_matrix_orth_hist_cmplx(:,:,:,1),c_matrix_cmplx,h_small_hist_cmplx(:,:,:,1:2),s_matrix_sqrt_inv,"ETRS")
        end if
      end do
 
@@ -1021,48 +913,9 @@ subroutine tddft_time_loop(nstate,                           &
 
    end if
 
-!--------------z_selected------------------------------------------
-   ! !!! REALIZED ONLY FOR A MOVEMENT ALONG Z DIRECTION
-   if(n_z_selected>0 .AND. &
-      & ANY((m_z_selected(:) > xatom(3,natom)) .AND.( m_z_selected(:) < xatom(3,natom) + vel(3,natom)*(time_step_cur)))) then
-     c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
-   end if
-
-   do isel=1,n_z_selected
-     if( (m_z_selected(isel) > xatom(3,natom)) .AND.( m_z_selected(isel) < xatom(3,natom) + vel(3,natom)*(time_step_cur))) then
-       time_step_tmp=(m_z_selected(isel)-xatom(3,natom)) / vel(3,natom)
-       call propagate_orth(nstate,basis,time_step_tmp,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type_cur)
-       call setup_hamiltonian_fock_cmplx( basis,                   &
-                                          nstate,                  &
-                                          itau,                    &
-                                          time_cur+time_step_tmp,  &
-                                          time_step_tmp,           &
-                                          occupation,              &
-                                          c_matrix_cmplx,          &
-                                          hamiltonian_kinetic,     &
-                                          hamiltonian_nucleus,     &
-                                          h_small_cmplx,           &
-                                          s_matrix_sqrt_inv,       &
-                                          dipole_basis,            &
-                                          hamiltonian_fock_cmplx,  &
-                                          ref_)
-       z_sel_=.TRUE.
-       sel_cur=isel
-       !---write result
-       en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc + en%excit
-       write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
-         time_cur+time_step_tmp, en%tot, xatom(3,natom), en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc
-       !--- backup after a step
-       xatom(:,natom)=xatom_start(:,natom) + vel(:,natom)*(time_cur-time_read)
-       c_matrix_orth_cmplx(:,:,:)=c_matrix_orth_hist_cmplx(:,:,:,1)
-     end if
-   end do
-!--------------end-z_selected------------------------------------------
-
-
 !--TIMING
    if(itau==3) then
-     ntau=NINT((time_sim-time_min)/time_step_cur)
+     ntau=NINT((time_sim-time_min)/time_step)
      call stop_clock(timing_tddft_one_iter)
      time_one_iter=timing(timing_tddft_one_iter)
      write(stdout,'(/,1x,a)') '**********************************'
@@ -1078,7 +931,7 @@ subroutine tddft_time_loop(nstate,                           &
      call write_restart_tddft(nstate,time_cur,c_matrix_orth_cmplx)
    end if
 
-  time_cur = time_min + itau*time_step_cur
+  time_cur = time_min + itau*time_step
   itau = itau + 1
 !---
  end do
@@ -1086,8 +939,8 @@ subroutine tddft_time_loop(nstate,                           &
 !********end time loop*******************
 
  if(print_tddft_restart_ .AND. ref_) then
-   !time_cur-time_step_cur to be consistent with the actual last moment of the simulation
-   call write_restart_tddft(nstate,time_cur-time_step_cur,c_matrix_orth_cmplx)
+   !time_cur-time_step to be consistent with the actual last moment of the simulation
+   call write_restart_tddft(nstate,time_cur-time_step,c_matrix_orth_cmplx)
  end if
 
  if( is_iomaster) then

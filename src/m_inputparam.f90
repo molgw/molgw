@@ -129,12 +129,6 @@ module m_inputparam
  character(len=12),protected      :: prop_type
  character(len=12),protected      :: pred_corr
  character(len=12),protected      :: excit_name
- character(len=100),protected     :: error_prop_types
- character(len=100),protected     :: error_pred_corrs
- character(len=100),protected     :: error_time_steps
- character(len=100),protected     :: z_selected
- character(len=100),protected     :: error_n_hists
- character(len=100),protected     :: error_n_iters
  character(len=12),protected      :: ci_greens_function
  character(len=12),protected      :: ci_type
  real(dp),protected               :: diis_switch
@@ -211,7 +205,6 @@ module m_inputparam
  logical,protected                :: print_line_rho_tddft_
  logical,protected                :: print_dens_traj_tddft_
  logical,protected                :: print_dens_traj_
- logical,protected                :: calc_p_matrix_error_
  logical,protected                :: calc_q_matrix_
  logical,protected                :: calc_spectrum_
  logical,protected                :: read_tddft_restart_
@@ -821,7 +814,6 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_line_rho_tddft
  character(len=3)     :: print_dens_traj_tddft
  character(len=3)     :: print_dens_traj
- character(len=3)     :: calc_p_matrix_error
  character(len=3)     :: calc_q_matrix
  character(len=3)     :: calc_spectrum
  character(len=3)     :: read_tddft_restart
@@ -908,8 +900,6 @@ subroutine read_inputfile_namelist()
  prop_type          = capitalize(prop_type)
  excit_name         = capitalize(excit_name)
  pred_corr          = capitalize(pred_corr)
- error_prop_types   = capitalize(error_prop_types)
- error_pred_corrs   = capitalize(error_pred_corrs)
  ci_greens_function = capitalize(ci_greens_function)
  ci_type            = capitalize(ci_type)
  read_fchk          = capitalize(read_fchk)
@@ -942,7 +932,6 @@ subroutine read_inputfile_namelist()
  print_line_rho_tddft_  = yesno(print_line_rho_tddft)
  print_dens_traj_tddft_ = yesno(print_dens_traj_tddft)
  print_dens_traj_       = yesno(print_dens_traj)
- calc_p_matrix_error_   = yesno(calc_p_matrix_error)
  calc_q_matrix_         = yesno(calc_q_matrix)
  calc_spectrum_         = yesno(calc_spectrum)
  read_tddft_restart_    = yesno(read_tddft_restart)
