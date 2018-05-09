@@ -71,7 +71,7 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc,occupation,c_matrix_cmplx,p_m
      ! C = A^H * A + C ; C - exchange_ij(:,:,ispin); A - tmp
      !    exchange_ij_cmplx(:,:,ispin) = exchange_ij_cmplx(:,:,ispin) - & 
      !            MATMUL( TRANSPOSE(tmp_cmplx(:,:)) , CONJG(tmp_cmplx(:,:)) ) * occupation(istate,ispin)/ spin_fact
-     call ZHERK('L','C',nbf,nauxil_3center,-occupation(istate,ispin)/spin_fact,tmp_cmplx,nauxil_3center,1.0_dp,exchange_ij_cmplx(:,:,ispin),nbf)
+     call ZHERK('L','C',nbf,nauxil_3center,-occupation(istate,ispin)/spin_fact,tmp_cmplx,nauxil_3center,1.0d0,exchange_ij_cmplx(:,:,ispin),nbf)
        
    enddo
    exchange_ij_cmplx(:,:,ispin)=CONJG(exchange_ij_cmplx(:,:,ispin))
@@ -122,7 +122,7 @@ subroutine setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
    do istate=1,nocc
      c_matrix_tmp(:,istate) = c_matrix_cmplx(:,istate,ispin) * SQRT(occupation(istate,ispin))
    enddo
-   call ZHERK('L','N',nbf,nocc,1.0_dp,c_matrix_tmp,nbf,0.0_dp,p_matrix_cmplx(:,:,ispin),nbf)
+   call ZHERK('L','N',nbf,nocc,1.0d0,c_matrix_tmp,nbf,0.0d0,p_matrix_cmplx(:,:,ispin),nbf)
  
    !do istate=1,nocc
    !  call ZHER('L',nbf,occupation(istate,ispin),c_matrix_cmplx(:,istate,ispin),1,p_matrix_cmplx(:,:,ispin),nbf)
