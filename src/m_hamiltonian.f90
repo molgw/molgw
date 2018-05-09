@@ -1148,14 +1148,14 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    nr = igrid_end - igrid_start + 1
 
    allocate(weight_batch(nr))
-   allocate(basis_function_r_batch(basis%nbf,nr))
-   allocate(basis_function_gradr_batch(basis%nbf,nr,3))
-   allocate(exc_batch(nr))
    allocate(rhor_batch(nspin,nr))
+   allocate(basis_function_r_batch(basis%nbf,nr))
+   allocate(exc_batch(nr))
    allocate(vrho_batch(nspin,nr))
    allocate(dedd_r_batch(nspin,nr))
 
    if( dft_xc_needs_gradient ) then 
+     allocate(basis_function_gradr_batch(basis%nbf,nr,3))
      allocate(grad_rhor_batch(nspin,nr,3))
      allocate(dedgd_r_batch(nspin,nr,3))
      allocate(sigma_batch(2*nspin-1,nr))
@@ -1164,19 +1164,14 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
    weight_batch(:) = w_grid(igrid_start:igrid_end)
 
-!   call start_clock(timing_tmp9)
    call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
-!   call stop_clock(timing_tmp9)
    !
    ! Get the gradient at points r
-!   call start_clock(timing_tmp8)
    if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,nr,basis_function_gradr_batch)
-!   call stop_clock(timing_tmp8)
 
    !
    ! Calculate the density at points r for spin up and spin down
    ! Calculate grad rho at points r for spin up and spin down
-!   call start_clock(timing_tmp1)
    if( .NOT. dft_xc_needs_gradient ) then 
      call calc_density_r_batch(nspin,basis%nbf,nstate,nr,occupation,c_matrix,basis_function_r_batch,rhor_batch)
 
@@ -1192,7 +1187,6 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
      enddo
 
    endif
-!   call stop_clock(timing_tmp1)
 
    ! Normalization
    normalization(:) = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
@@ -1200,7 +1194,6 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    !
    ! LIBXC calls
    !
-!   call start_clock(timing_tmp2)
 
    dedd_r_batch(:,:) = 0.0_dp
    if( dft_xc_needs_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
@@ -1260,24 +1253,12 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
    enddo ! loop on the XC functional
 
-!   call stop_clock(timing_tmp2)
 
-
-!   if( ANY( dedd_r_batch(:,:) > 0.0_dp ) ) then
-!     !write(stdout,*) dedd_r_batch(:,:)
-!     call issue_warning('Positive xc potential should not happen. Discard the positive values, but be careful with the final result.')
-!     do ir=1,nr
-!       do ispin=1,nspin
-!         dedd_r_batch(ispin,ir) = MIN( dedd_r_batch(ispin,ir) , -1.0e-16_dp )
-!       enddo
-!     enddo
-!   endif
- 
 
    !
    ! Eventually set up the vxc term
    !
-!   call start_clock(timing_tmp3)
+
    !
    ! LDA and GGA
    allocate(tmp_batch(basis%nbf,nr))
@@ -1286,7 +1267,6 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
        tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir)
      end forall
 
-!     call DSYRK('L','N',basis%nbf,nr,-1.0d0,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
      call DGEMM('N','T',basis%nbf,basis%nbf,nr,1.0d0,tmp_batch,basis%nbf,basis_function_r_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
    enddo
    !
@@ -1304,18 +1284,17 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
      enddo
    endif
    deallocate(tmp_batch)
-!   call stop_clock(timing_tmp3)
 
 
 
    deallocate(weight_batch)
    deallocate(basis_function_r_batch)
-   deallocate(basis_function_gradr_batch)
    deallocate(exc_batch)
    deallocate(rhor_batch)
    deallocate(vrho_batch)
    deallocate(dedd_r_batch)
    if( dft_xc_needs_gradient ) then 
+     deallocate(basis_function_gradr_batch)
      deallocate(grad_rhor_batch)
      deallocate(sigma_batch)
      deallocate(dedgd_r_batch)
@@ -1342,11 +1321,6 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  call xsum_grid(vxc_ij)
  call xsum_grid(exc_xc)
 
-! !
-! ! Destroy operations
-! do idft_xc=1,ndft_xc
-!   call xc_f90_func_end(calc_type%xc_func(idft_xc))
-! enddo
 
 #else
  write(stdout,*) 'XC energy and potential set to zero'
