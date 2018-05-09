@@ -519,7 +519,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
  real(dp),intent(out)       :: vxc_ij(:,:,:)
  real(dp),intent(out)       :: exc_xc
 !=====
- real(dp),parameter   :: TOL_RHO=1.0e-10_dp
+ real(dp),parameter   :: TOL_RHO=1.0e-9_dp
  integer              :: nstate
  integer              :: idft_xc
  integer              :: igrid_start,igrid_end,ir,nr
@@ -595,16 +595,16 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
      ! Calculate the density at points r for spin up and spin down
      ! Calculate grad rho at points r for spin up and spin down
      if( .NOT. dft_xc_needs_gradient ) then 
-       call calc_density_r_batch(1,basis%nbf,nstate,nr,occupation(:,ispin),buffer,basis_function_r_batch,rhor_batch)
+       call calc_density_r_batch(1,basis%nbf,nstate,nr,occupation(:,ispin),buffer(:,1:nstate),basis_function_r_batch,rhor_batch)
      else
-       call calc_density_gradr_batch(1,basis%nbf,nstate,nr,occupation(:,ispin),buffer, &
+       call calc_density_gradr_batch(1,basis%nbf,nstate,nr,occupation(:,ispin),buffer(:,1:nstate), &
                                      basis_function_r_batch,basis_function_gradr_batch,rhor_batch,grad_rhor_batch)
      endif
 
      ! Save the whole rhor and gradr
-     rhor(ispin,igrid_start:igrid_end) = rhor_batch(1,:)
+     rhor(ispin,igrid_start:igrid_end) = rhor_batch(1,1:nr)
      if( dft_xc_needs_gradient ) then 
-       grad_rhor(ispin,igrid_start:igrid_end,:) = grad_rhor_batch(1,:,:)
+       grad_rhor(ispin,igrid_start:igrid_end,:) = grad_rhor_batch(1,1:nr,:)
      endif
 
      !
@@ -640,7 +640,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
 
 
      ! Skip if the density is too small for the whole batch
-     if( ALL( rhor(ispin,igrid_start:igrid_end) < TOL_RHO ) ) cycle
+     if( ALL( rhor(:,igrid_start:igrid_end) < TOL_RHO ) ) cycle
 
      allocate(weight_batch(nr))
      allocate(dedd_r_batch(nspin,nr))
@@ -717,7 +717,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
        !
        if( dft_xc_needs_gradient ) then
          do ir=1,nr
-           if(nspin==1) then
+           if( nspin == 1 ) then
              
              dedgd_r_batch(1,ir,:) = dedgd_r_batch(1,ir,:)  &
                         + 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) * dft_xc_coef(idft_xc)
@@ -752,10 +752,10 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
      end forall
   
      call DGEMM('N','T',basis%nbf,basis%nbf,nr,1.0d0,tmp_batch,basis%nbf,basis_function_r_batch,basis%nbf,1.0d0,buffer,basis%nbf)
+
      !
      ! GGA-only
      if( dft_xc_needs_gradient ) then
-  
        do ir=1,nr
          tmp_batch(:,ir) = MATMUL( basis_function_gradr_batch(:,ir,:) , dedgd_r_batch(ispin,ir,:) * weight_batch(ir) )
        enddo
@@ -792,8 +792,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
 
    call reduce_hamiltonian_sca(vxc_ij(:,:,ispin))
 
-
- enddo
+ enddo ! spin
 
  !
  ! Sum up the contributions from all procs only if needed
