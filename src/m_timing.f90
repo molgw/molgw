@@ -164,18 +164,17 @@ end subroutine stop_clock
 subroutine output_timing()
  implicit none
 !=====
- logical,parameter :: ONLY_ONE_CALL = .TRUE.
 !=====
 
  write(stdout,'(/,a,/)') '                 --- Timings in (s) and # of calls ---'
 
- call output_timing_line('Total time' ,timing_total ,0,ONLY_ONE_CALL)
+ call output_timing_line('Total time' ,timing_total ,0)
 
  write(stdout,'(/,a,/)') '                 -------------------------------------'
 
- call output_timing_line('Total pre SCF' ,timing_prescf ,0,ONLY_ONE_CALL)
- call output_timing_line('Total SCF'     ,timing_scf    ,0,ONLY_ONE_CALL)
- call output_timing_line('Total post SCF',timing_postscf,0,ONLY_ONE_CALL)
+ call output_timing_line('Total pre SCF' ,timing_prescf ,0)
+ call output_timing_line('Total SCF'     ,timing_scf    ,0)
+ call output_timing_line('Total post SCF',timing_postscf,0)
 
  write(stdout,'(/,a,/)') '                 -------------------------------------'
  write(stdout,'(a,/)')   '                             Pre SCF'
@@ -284,23 +283,25 @@ end subroutine output_timing
 
 
 !=========================================================================
-subroutine output_timing_line(title,itiming,level,only_one_call)
+subroutine output_timing_line(title,itiming,level)
  implicit none
 
  character(len=*),intent(in) :: title
  integer,intent(in)          :: itiming
  integer,intent(in)          :: level
- logical,intent(in),optional :: only_one_call
 !=====
- integer,parameter           :: max_length = 40
- character(len=53)           :: prepend
- integer                     :: lt,lp
+ integer,parameter            :: max_length = 46
+ character(len=max_length+10) :: prepend
+ integer                      :: lt,lp
+ character(len=3)             :: key
 !=====
 
  ! No writing if the timing counter has never been used
  if( calls(itiming) < 1 ) return
 
  lt = LEN_TRIM(title)
+
+ if( lt > max_length ) call die('output_timing_line: title string too long. Shorten it or increase the string length. Ask developers')
 
  select case(level)
  case(0)
@@ -317,8 +318,10 @@ subroutine output_timing_line(title,itiming,level,only_one_call)
 
  prepend = TRIM(prepend) // REPEAT('-',max_length-lt-lp)
 
- if( PRESENT(only_one_call) ) then
-   write(stdout,'(1x,a41,4x,f12.2)') TRIM(title),timing(itiming)
+ write(key,'(i3.3)') max_length+1
+
+ if( level == 0 ) then
+   write(stdout,'(1x,a'//key//',4x,f12.2)') TRIM(title),timing(itiming)
  else
    write(stdout,'(1x,a,1x,a,4x,f12.2,2x,i8)') TRIM(prepend),TRIM(title),timing(itiming),calls(itiming)
  endif

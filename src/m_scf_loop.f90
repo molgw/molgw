@@ -172,7 +172,7 @@ subroutine scf_loop(is_restart,&
 
      if( parallel_ham ) then
        if( parallel_buffer ) then
-         call dft_exc_vxc_buffer_sca(basis,occupation,c_matrix,hamiltonian_xc,en%xc)
+         call dft_exc_vxc_buffer_sca(BATCH_SIZE,basis,occupation,c_matrix,hamiltonian_xc,en%xc)
        else
          call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
          hamiltonian_xc(:,:,:) = 0.0_dp
@@ -627,7 +627,7 @@ write(stdout,*) "------------------"
 
    if( parallel_ham ) then
      if( parallel_buffer ) then
-       call dft_exc_vxc_buffer_sca(basis,occupation,c_matrix,hamiltonian_spin_tmp,exc)
+       call dft_exc_vxc_buffer_sca(BATCH_SIZE,basis,occupation,c_matrix,hamiltonian_spin_tmp,exc)
      else
        call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
        hamiltonian_spin_tmp(:,:,:) = 0.0_dp
