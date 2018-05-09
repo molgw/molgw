@@ -117,10 +117,12 @@ program molgw
    call lbfgs_init(lbfgs_plan,3*natom,5,diag_guess=2.0_dp)
  endif
 
+
  !
  ! Nucleus motion loop
  !
  do istep=1,nstep
+
    if( move_nuclei == 'relax' ) then
      write(stdout,'(/,/,1x,a,i5,/)') ' === LBFGS step ',istep
    endif
