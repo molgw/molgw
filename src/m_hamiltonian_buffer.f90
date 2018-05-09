@@ -16,6 +16,7 @@ module m_hamiltonian_buffer
  use m_scalapack
  use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact
+ use m_hamiltonian_onebody
 
 
  real(dp),private,allocatable :: buffer(:,:)
@@ -148,76 +149,17 @@ subroutine setup_nucleus_buffer_sca(basis,hamiltonian_nucleus)
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: hamiltonian_nucleus(:,:)
 !=====
- integer              :: gt
- integer              :: ishell,jshell
- integer              :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
- integer              :: natom_local
- integer              :: i_cart,j_cart
- integer              :: ni,nj,ni_cart,nj_cart,li,lj
- integer              :: iatom
- real(dp),allocatable :: matrix_cart(:,:)
- real(dp)             :: vnucleus_ij
 !=====
 
- call start_clock(timing_hamiltonian_nuc)
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK buffer'
- gt = get_gaussian_type_tag(basis%gaussian_type)
 
  buffer(:,:) = 0.0_dp
-
- if( nproc_world > 1 ) then
-   natom_local=0
-   do iatom=1,natom
-     if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
-     natom_local = natom_local + 1
-   enddo
-   write(stdout,'(a)')         '   Parallelizing over atoms'
-   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
- endif
-
-
- do jshell=1,basis%nshell
-   lj        = basis%shell(jshell)%am
-   nj        = number_basis_function_am(basis%gaussian_type,lj)
-   nj_cart   = number_basis_function_am('CART',lj)
-   jbf1      = basis%shell(jshell)%istart
-   jbf1_cart = basis%shell(jshell)%istart_cart
-   jbf2      = basis%shell(jshell)%iend
-
-   do ishell=1,basis%nshell
-     li        = basis%shell(ishell)%am
-     ni        = number_basis_function_am(basis%gaussian_type,li)
-     ni_cart   = number_basis_function_am('CART',li)
-     ibf1      = basis%shell(ishell)%istart
-     ibf1_cart = basis%shell(ishell)%istart_cart
-     ibf2      = basis%shell(ishell)%iend
-
-
-     allocate(matrix_cart(ni_cart,nj_cart))
-     matrix_cart(:,:) = 0.0_dp
-     do iatom=1,natom
-       if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
-       do i_cart=1,ni_cart
-         do j_cart=1,nj_cart
-           call nucleus_basis_function(basis%bfc(ibf1_cart+i_cart-1),basis%bfc(jbf1_cart+j_cart-1),zvalence(iatom),xatom(:,iatom),vnucleus_ij)
-           matrix_cart(i_cart,j_cart) = matrix_cart(i_cart,j_cart) + vnucleus_ij
-         enddo
-       enddo
-     enddo
-     buffer(ibf1:ibf2,jbf1:jbf2) = MATMUL( TRANSPOSE(cart_to_pure(li,gt)%matrix(:,:)) , &
-                                           MATMUL( matrix_cart(:,:) , cart_to_pure(lj,gt)%matrix(:,:) ) )
-
-
-     deallocate(matrix_cart)
-   enddo
- enddo
-
+ call setup_nucleus(basis,buffer)
 
  ! Sum up the buffers and store the result in the sub matrix hamiltonian_nucleus
+ buffer(:,:) = buffer(:,:) / REAL(nproc_world,dp)
  call reduce_hamiltonian_sca(hamiltonian_nucleus)
 
-
- call stop_clock(timing_hamiltonian_nuc)
 
 end subroutine setup_nucleus_buffer_sca
 
