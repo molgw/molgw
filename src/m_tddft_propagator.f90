@@ -1619,7 +1619,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
  complex(dp)    :: s_matrix_sqrt_inv_cmplx(basis%nbf,nstate)
 !=====
 
- call start_clock(timing_tddft_hamiltonian_fock)
+ call start_clock(timing_tddft_hamiltonian)
 
  s_matrix_sqrt_inv_cmplx = s_matrix_sqrt_inv
 
@@ -1693,15 +1693,17 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
 
  !   h_small_cmplx(:,:,ispin) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
  !                   MATMUL( hamiltonian_fock_cmplx(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
+ call start_clock(timing_tddft_ham_orthobasis)
  do ispin=1,nspin
    call matmul_transaba_scalapack(scalapack_block_min,s_matrix_sqrt_inv_cmplx,hamiltonian_fock_cmplx(:,:,ispin),h_small_cmplx(:,:,ispin))
  end do ! spin loop
+ call stop_clock(timing_tddft_ham_orthobasis)
 
  ! kinetic and nuclei-electrons energy contributions
  en%kin = real(SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
  en%nuc = real(SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
 
- call stop_clock(timing_tddft_hamiltonian_fock)
+ call stop_clock(timing_tddft_hamiltonian)
 
 end subroutine setup_hamiltonian_fock_cmplx
 

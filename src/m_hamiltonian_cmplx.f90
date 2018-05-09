@@ -225,19 +225,14 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
 
    weight_batch(:) = w_grid(igrid_start:igrid_end)
 
-!   call start_clock(timing_tmp9)
    call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
-!   call stop_clock(timing_tmp9)
    !
    ! Get the gradient at points r
-!   call start_clock(timing_tmp8)
    if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,nr,basis_function_gradr_batch)
-!   call stop_clock(timing_tmp8)
 
    !
    ! Calculate the density at points r for spin up and spin down
    ! Calculate grad rho at points r for spin up and spin down
-!   call start_clock(timing_tmp1)
    if( .NOT. dft_xc_needs_gradient ) then 
      call calc_density_r_batch_cmplx(nspin,basis%nbf,nstate,nocc,nr,occupation,c_matrix_cmplx,basis_function_r_batch,rhor_batch)
 
@@ -252,7 +247,6 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
        endif
      enddo
    endif
-!   call stop_clock(timing_tmp1)
 
    ! Normalization
    normalization(:) = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
@@ -260,7 +254,6 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
    !
    ! LIBXC calls
    !
-!   call start_clock(timing_tmp2)
 
    dedd_r_batch(:,:) = 0.0_dp
    if( dft_xc_needs_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
@@ -320,33 +313,26 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
 
    enddo ! loop on the XC functional
 
-!   call stop_clock(timing_tmp2)
 
-   if( ANY( dedd_r_batch(:,:) > 0.0_dp ) ) then
-     write(stdout,*) dedd_r_batch(:,:)
-     call die('positive xc potential not expected')
-   endif
- 
 
    !
    ! Eventually set up the vxc term
    !
-!   call start_clock(timing_tmp3)
+
    !
    ! LDA and GGA
    allocate(tmp_batch(basis%nbf,nr))
    do ispin=1,nspin
-     do ir=1,nr
-       tmp_batch(:,ir) = SQRT( -weight_batch(ir) * dedd_r_batch(ispin,ir) ) * basis_function_r_batch(:,ir)
-     enddo
+     forall(ir=1:nr)
+       tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir)
+     end forall
 
-     call DSYRK('L','N',basis%nbf,nr,-1.0d0,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
+     call DGEMM('N','T',basis%nbf,basis%nbf,nr,1.0d0,tmp_batch,basis%nbf,basis_function_r_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
    enddo
-   deallocate(tmp_batch)
+
    !
    ! GGA-only
    if( dft_xc_needs_gradient ) then 
-     allocate(tmp_batch(basis%nbf,nr))
 
      do ispin=1,nspin
 
@@ -357,9 +343,8 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
        call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
 
      enddo
-     deallocate(tmp_batch)
    endif
-!   call stop_clock(timing_tmp3)
+   deallocate(tmp_batch)
 
     
 
