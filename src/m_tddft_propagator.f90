@@ -577,7 +577,7 @@ subroutine tddft_time_loop(nstate,                           &
  en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc + en%excit
 
  if(excit_type%is_light) then
-   call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
+   call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
    call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
  endif
 
@@ -956,7 +956,7 @@ subroutine tddft_time_loop(nstate,                           &
      if(excit_type%is_projectile) call output_projectile_position()
 
      !FBFB do something !
-     call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
+     call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
      en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc + en%excit
 
      if(ref_) then
@@ -1623,7 +1623,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
 
  s_matrix_sqrt_inv_cmplx = s_matrix_sqrt_inv
 
- call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
+ call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
 
  !--Hamiltonian - Hartree Exchange Correlation---
  call calculate_hamiltonian_hxc_ri_cmplx(basis,                    &
@@ -1657,8 +1657,8 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
      do idir=1,3
        do ispin=1, nspin
          hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) - dipole_basis(:,:,idir) * excit_field(idir)
+         en%excit=en%excit+REAL(SUM(dipole_basis(:,:,idir)*excit_field(idir)*p_matrix_cmplx(:,:,ispin)),dp)
        enddo
-       en%excit=en%excit+REAL(SUM(dipole_basis(:,:,idir)*excit_field(idir)*p_matrix_cmplx(:,:,ispin)),dp)
      end do
    end if
  end if ! light excitation

@@ -93,40 +93,58 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc,occupation,c_matrix_cmplx,p_m
 
 end subroutine setup_exchange_ri_cmplx
 
+
 !=========================================================================
-subroutine setup_density_matrix_cmplx(nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
+subroutine setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
  implicit none
- integer,intent(in)   :: nbf,nstate,nocc
- complex(dp),intent(in)  :: c_matrix_cmplx(nbf,nocc,nspin)
- real(dp),intent(in)  :: occupation(nstate,nspin)
- complex(dp),intent(out) :: p_matrix_cmplx(nbf,nbf,nspin)
+
+ complex(dp),intent(in)  :: c_matrix_cmplx(:,:,:)
+ real(dp),intent(in)     :: occupation(:,:)
+ complex(dp),intent(out) :: p_matrix_cmplx(:,:,:)
 !=====
+ integer :: nbf,nstate,nocc
  integer :: ispin,ibf,jbf
  integer :: istate
+ complex(dp),allocatable :: c_matrix_tmp(:,:)
 !=====
 
  call start_clock(timing_density_matrix_cmplx)
-! write(stdout,'(1x,a)') 'Build density matrix'
+
+ nbf    = SIZE(c_matrix_cmplx(:,:,:),DIM=1)
+ nocc   = SIZE(c_matrix_cmplx(:,:,:),DIM=2)
+ nstate = SIZE(occupation(:,:),DIM=1)
+
+ allocate(c_matrix_tmp(nbf,nstate))
 
  p_matrix_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
  do ispin=1,nspin
- 
-   do istate=1,nocc
-     call ZHER('L',nbf,occupation(istate,ispin),c_matrix_cmplx(:,istate,ispin),1,p_matrix_cmplx(:,:,ispin),nbf)
-   enddo
 
-   ! Hermitianalize
+   do istate=1,nocc
+     c_matrix_tmp(:,istate) = c_matrix_cmplx(:,istate,ispin) * SQRT(occupation(istate,ispin))
+   enddo
+   call ZHERK('L','N',nbf,nocc,1.0_dp,c_matrix_tmp,nbf,0.0_dp,p_matrix_cmplx(:,:,ispin),nbf)
+ 
+   !do istate=1,nocc
+   !  call ZHER('L',nbf,occupation(istate,ispin),c_matrix_cmplx(:,istate,ispin),1,p_matrix_cmplx(:,:,ispin),nbf)
+   !enddo
+  
+
+   ! Hermitianize
    do jbf=1,nbf
      do ibf=jbf+1,nbf
        p_matrix_cmplx(jbf,ibf,ispin) = CONJG( p_matrix_cmplx(ibf,jbf,ispin) )
      enddo
    enddo
+
  enddo
+
+ deallocate(c_matrix_tmp)
+
  call stop_clock(timing_density_matrix_cmplx)
 
 
-
 end subroutine setup_density_matrix_cmplx
+
 
 !=========================================================================
 subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_matrix_cmplx,vxc_ij,exc_xc)
