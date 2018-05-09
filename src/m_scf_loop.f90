@@ -521,7 +521,7 @@ subroutine scf_loop(is_restart,&
  ! Single excitation term
  !
  call single_excitations(nstate,basis%nbf,energy,occupation,c_matrix,hamiltonian_fock,en%se)
- write(stdout,'(a25,1x,f19.10)') 'Singles correction (Ha):',en%se
+ if( ABS(en%se) > 1.0e-6_dp )  write(stdout,'(a25,1x,f19.10)') 'Singles correction (Ha):',en%se
  write(stdout,'(a25,1x,f19.10,/)')   'Est. HF Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
 
  !

@@ -10,8 +10,8 @@ module m_definitions
  use,intrinsic :: iso_fortran_env, only: OUTPUT_UNIT,ERROR_UNIT
  use,intrinsic :: iso_c_binding, only: C_INT,C_DOUBLE,C_BOOL
 
- integer,parameter  :: dp=KIND(0.d0)
- integer,parameter  :: sp=KIND(0.0)
+ integer,parameter  :: dp = KIND(0.d0)
+ integer,parameter  :: sp = KIND(0.0)
 
  integer,protected  :: stdout = OUTPUT_UNIT
  integer,parameter  :: stderr = ERROR_UNIT
@@ -37,7 +37,7 @@ module m_definitions
 
  ! 
  ! Thresholds
- real(dp),parameter :: completely_empty=1.0e-5_dp
+ real(dp),parameter :: completely_empty = 1.0e-5_dp
 
 
  !
