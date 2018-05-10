@@ -1444,6 +1444,26 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
 end subroutine calc_cube_initial_cmplx
 
 !=========================================================================
+subroutine initialize_cube_diff_cmplx(nx,ny,nz,unit_cube_diff)
+ implicit none
+ integer,intent(inout)      :: nx,ny,nz,unit_cube_diff
+!=====
+ logical                    :: file_exists
+
+ inquire(file='manual_cube_diff_tddft',exist=file_exists)
+ if(file_exists) then
+   open(newunit=unit_cube_diff,file='manual_cube_diff_tddft',status='old')
+   read(unit_cube_diff,*) nx,ny,nz
+   close(unit_cube_diff)
+ else
+   nx=40
+   ny=40
+   nz=40
+ endif
+
+end subroutine initialize_cube_diff_cmplx
+
+!=========================================================================
 subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,cube_density_start,nx,ny,nz)
  use m_definitions
  use m_mpi

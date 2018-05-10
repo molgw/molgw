@@ -521,13 +521,13 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus)
  else
    call start_clock(timing_hamiltonian_nuc)
    write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBINT)'
- end if
-
 #ifdef HAVE_LIBINT_ONEBODY
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBINT)'
 #else
  write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (internal)'
 #endif
+ end if
+
 
 
  hamiltonian_nucleus(:,:) = 0.0_dp
