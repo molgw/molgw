@@ -16,6 +16,7 @@ module m_hamiltonian_buffer
  use m_scalapack
  use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact
+ use m_basis_set
  use m_hamiltonian_onebody
 
 
@@ -143,7 +144,6 @@ end subroutine broadcast_hamiltonian_sca
 
 !=========================================================================
 subroutine setup_overlap_buffer_sca(basis,overlap)
- use m_basis_set
  use m_atoms
  implicit none
  type(basis_set),intent(in) :: basis
@@ -163,8 +163,6 @@ end subroutine setup_overlap_buffer_sca
 
 !=========================================================================
 subroutine setup_kinetic_buffer_sca(basis,hamiltonian_kinetic)
- use m_basis_set
- use m_atoms
  implicit none
  type(basis_set),intent(in) :: basis
  real(dp),intent(out)       :: hamiltonian_kinetic(:,:)
@@ -182,17 +180,20 @@ end subroutine setup_kinetic_buffer_sca
 
 
 !=========================================================================
-subroutine setup_nucleus_buffer_sca(basis,hamiltonian_nucleus)
- use m_basis_set
- use m_atoms
+subroutine setup_nucleus_buffer_sca(basis,hamiltonian_nucleus,atom_list)
  implicit none
- type(basis_set),intent(in) :: basis
- real(dp),intent(out)       :: hamiltonian_nucleus(:,:)
+ type(basis_set),intent(in)  :: basis
+ real(dp),intent(out)        :: hamiltonian_nucleus(:,:)
+ integer,intent(in),optional :: atom_list(:)
 !=====
 !=====
 
  buffer(:,:) = 0.0_dp
- call setup_nucleus(basis,buffer)
+ if( PRESENT(atom_list) ) then
+   call setup_nucleus(basis,buffer,atom_list)
+ else
+   call setup_nucleus(basis,buffer)
+ endif
 
  ! Sum up the buffers and store the result in the sub matrix hamiltonian_nucleus
  buffer(:,:) = buffer(:,:) / REAL(nproc_world,dp)
@@ -482,7 +483,6 @@ end subroutine setup_exchange_longrange_ri_buffer_sca
 !=========================================================================
 subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  use m_inputparam
- use m_basis_set
  use m_dft_grid
 #ifdef HAVE_LIBXC
  use libxc_funcs_m
@@ -794,7 +794,6 @@ end subroutine dft_exc_vxc_buffer_sca
 
 !=========================================================================
 subroutine dft_approximate_vhxc_buffer_sca(basis,m_ham,n_ham,vhxc_ij)
- use m_basis_set
  use m_dft_grid
  use m_eri_calculate
  use m_tools,only: matrix_trace

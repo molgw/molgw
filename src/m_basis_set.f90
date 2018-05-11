@@ -829,7 +829,7 @@ subroutine basis_function_prod(bf1,bf2,bfprod)
  type(basis_function),intent(in)              :: bf1,bf2
  type(basis_function),allocatable,intent(out) :: bfprod(:)
 !=====
- integer           :: ig,jg,kg
+ integer           :: ig,jg
  logical,parameter :: unnormalized=.FALSE.
  integer           :: fake_shell=1
  integer           :: fake_index=1
@@ -847,33 +847,35 @@ subroutine basis_function_prod(bf1,bf2,bfprod)
  allocate(bfprod(nbfprod))
 
  ibf = 0
- do kg=1,bf1%ngaussian * bf2%ngaussian
+ do ig=1,bf1%ngaussian
+   do jg=1,bf2%ngaussian
 
-   alpha(1) = bf1%g(ig)%alpha + bf2%g(jg)%alpha
-   coeff = bf1%coeff(ig) * bf2%coeff(jg) *  bf1%g(ig)%norm_factor * bf2%g(jg)%norm_factor 
-   x0(:)  = ( bf1%g(ig)%alpha * bf1%x0(:) + bf2%g(jg)%alpha * bf2%x0(:) ) / alpha(1)
-   exp_fact = EXP( -bf1%g(ig)%alpha * bf2%g(jg)%alpha / alpha(1) * SUM( (bf1%x0(:)-bf2%x0(:))**2 ) )
+     alpha(1) = bf1%g(ig)%alpha + bf2%g(jg)%alpha
+     coeff = bf1%coeff(ig) * bf2%coeff(jg) *  bf1%g(ig)%norm_factor * bf2%g(jg)%norm_factor 
+     x0(:)  = ( bf1%g(ig)%alpha * bf1%x0(:) + bf2%g(jg)%alpha * bf2%x0(:) ) / alpha(1)
+     exp_fact = EXP( -bf1%g(ig)%alpha * bf2%g(jg)%alpha / alpha(1) * SUM( (bf1%x0(:)-bf2%x0(:))**2 ) )
 
-   do ix=0,bf1%nx + bf2%nx
-     c_x = c_1d(ix,bf1%nx,bf2%nx,bf1%x0(1),bf2%x0(1),x0(1))
-     do iy=0,bf1%ny + bf2%ny
-       c_y = c_1d(iy,bf1%ny,bf2%ny,bf1%x0(2),bf2%x0(2),x0(2))
-       do iz=0,bf1%nz + bf2%nz
-         c_z = c_1d(iz,bf1%nz,bf2%nz,bf1%x0(3),bf2%x0(3),x0(3))
-         ibf = ibf + 1
+     do ix=0,bf1%nx + bf2%nx
+       c_x = c_1d(ix,bf1%nx,bf2%nx,bf1%x0(1),bf2%x0(1),x0(1))
+       do iy=0,bf1%ny + bf2%ny
+         c_y = c_1d(iy,bf1%ny,bf2%ny,bf1%x0(2),bf2%x0(2),x0(2))
+         do iz=0,bf1%nz + bf2%nz
+           c_z = c_1d(iz,bf1%nz,bf2%nz,bf1%x0(3),bf2%x0(3),x0(3))
+           ibf = ibf + 1
 
-         coeff_xyzg(1) = coeff * c_x * c_y * c_z
-         call init_basis_function(unnormalized,1,ix,iy,iz,0,x0,alpha,coeff_xyzg,fake_shell,fake_index,bfprod(ibf))
+           coeff_xyzg(1) = coeff * c_x * c_y * c_z
+           call init_basis_function(unnormalized,1,ix,iy,iz,0,x0,alpha,coeff_xyzg,fake_shell,fake_index,bfprod(ibf))
 
-         ! override the normalization
-         ! the product gaussians are UNnormalized
-         ! consistently with the ERI basis
-         bfprod(ibf)%g(1)%norm_factor = 1.0_dp
+           ! override the normalization
+           ! the product gaussians are UNnormalized
+           ! consistently with the ERI basis
+           bfprod(ibf)%g(1)%norm_factor = 1.0_dp
 
+         enddo
        enddo
      enddo
-   enddo
 
+   enddo
  enddo
 
 
