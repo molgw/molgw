@@ -71,7 +71,7 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc,occupation,c_matrix_cmplx,p_m
      ! C = A^H * A + C ; C - exchange_ij(:,:,ispin); A - tmp
      !    exchange_ij_cmplx(:,:,ispin) = exchange_ij_cmplx(:,:,ispin) - & 
      !            MATMUL( TRANSPOSE(tmp_cmplx(:,:)) , CONJG(tmp_cmplx(:,:)) ) * occupation(istate,ispin)/ spin_fact
-     call ZHERK('L','C',nbf,nauxil_3center,-occupation(istate,ispin)/spin_fact,tmp_cmplx,nauxil_3center,1.0_dp,exchange_ij_cmplx(:,:,ispin),nbf)
+     call ZHERK('L','C',nbf,nauxil_3center,-occupation(istate,ispin)/spin_fact,tmp_cmplx,nauxil_3center,1.0d0,exchange_ij_cmplx(:,:,ispin),nbf)
        
    enddo
    exchange_ij_cmplx(:,:,ispin)=CONJG(exchange_ij_cmplx(:,:,ispin))
@@ -93,40 +93,58 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc,occupation,c_matrix_cmplx,p_m
 
 end subroutine setup_exchange_ri_cmplx
 
+
 !=========================================================================
-subroutine setup_density_matrix_cmplx(nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
+subroutine setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
  implicit none
- integer,intent(in)   :: nbf,nstate,nocc
- complex(dp),intent(in)  :: c_matrix_cmplx(nbf,nocc,nspin)
- real(dp),intent(in)  :: occupation(nstate,nspin)
- complex(dp),intent(out) :: p_matrix_cmplx(nbf,nbf,nspin)
+
+ complex(dp),intent(in)  :: c_matrix_cmplx(:,:,:)
+ real(dp),intent(in)     :: occupation(:,:)
+ complex(dp),intent(out) :: p_matrix_cmplx(:,:,:)
 !=====
+ integer :: nbf,nstate,nocc
  integer :: ispin,ibf,jbf
  integer :: istate
+ complex(dp),allocatable :: c_matrix_tmp(:,:)
 !=====
 
  call start_clock(timing_density_matrix_cmplx)
-! write(stdout,'(1x,a)') 'Build density matrix'
+
+ nbf    = SIZE(c_matrix_cmplx(:,:,:),DIM=1)
+ nocc   = SIZE(c_matrix_cmplx(:,:,:),DIM=2)
+ nstate = SIZE(occupation(:,:),DIM=1)
+
+ allocate(c_matrix_tmp(nbf,nstate))
 
  p_matrix_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
  do ispin=1,nspin
- 
-   do istate=1,nocc
-     call ZHER('L',nbf,occupation(istate,ispin),c_matrix_cmplx(:,istate,ispin),1,p_matrix_cmplx(:,:,ispin),nbf)
-   enddo
 
-   ! Hermitianalize
+   do istate=1,nocc
+     c_matrix_tmp(:,istate) = c_matrix_cmplx(:,istate,ispin) * SQRT(occupation(istate,ispin))
+   enddo
+   call ZHERK('L','N',nbf,nocc,1.0d0,c_matrix_tmp,nbf,0.0d0,p_matrix_cmplx(:,:,ispin),nbf)
+ 
+   !do istate=1,nocc
+   !  call ZHER('L',nbf,occupation(istate,ispin),c_matrix_cmplx(:,istate,ispin),1,p_matrix_cmplx(:,:,ispin),nbf)
+   !enddo
+  
+
+   ! Hermitianize
    do jbf=1,nbf
      do ibf=jbf+1,nbf
        p_matrix_cmplx(jbf,ibf,ispin) = CONJG( p_matrix_cmplx(ibf,jbf,ispin) )
      enddo
    enddo
+
  enddo
+
+ deallocate(c_matrix_tmp)
+
  call stop_clock(timing_density_matrix_cmplx)
 
 
-
 end subroutine setup_density_matrix_cmplx
+
 
 !=========================================================================
 subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_matrix_cmplx,vxc_ij,exc_xc)
@@ -207,19 +225,14 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
 
    weight_batch(:) = w_grid(igrid_start:igrid_end)
 
-!   call start_clock(timing_tmp9)
    call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
-!   call stop_clock(timing_tmp9)
    !
    ! Get the gradient at points r
-!   call start_clock(timing_tmp8)
    if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,nr,basis_function_gradr_batch)
-!   call stop_clock(timing_tmp8)
 
    !
    ! Calculate the density at points r for spin up and spin down
    ! Calculate grad rho at points r for spin up and spin down
-!   call start_clock(timing_tmp1)
    if( .NOT. dft_xc_needs_gradient ) then 
      call calc_density_r_batch_cmplx(nspin,basis%nbf,nstate,nocc,nr,occupation,c_matrix_cmplx,basis_function_r_batch,rhor_batch)
 
@@ -234,7 +247,6 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
        endif
      enddo
    endif
-!   call stop_clock(timing_tmp1)
 
    ! Normalization
    normalization(:) = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
@@ -242,7 +254,6 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
    !
    ! LIBXC calls
    !
-!   call start_clock(timing_tmp2)
 
    dedd_r_batch(:,:) = 0.0_dp
    if( dft_xc_needs_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
@@ -302,33 +313,26 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
 
    enddo ! loop on the XC functional
 
-!   call stop_clock(timing_tmp2)
 
-   if( ANY( dedd_r_batch(:,:) > 0.0_dp ) ) then
-     write(stdout,*) dedd_r_batch(:,:)
-     call die('positive xc potential not expected')
-   endif
- 
 
    !
    ! Eventually set up the vxc term
    !
-!   call start_clock(timing_tmp3)
+
    !
    ! LDA and GGA
    allocate(tmp_batch(basis%nbf,nr))
    do ispin=1,nspin
-     do ir=1,nr
-       tmp_batch(:,ir) = SQRT( -weight_batch(ir) * dedd_r_batch(ispin,ir) ) * basis_function_r_batch(:,ir)
-     enddo
+     forall(ir=1:nr)
+       tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir)
+     end forall
 
-     call DSYRK('L','N',basis%nbf,nr,-1.0d0,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
+     call DGEMM('N','T',basis%nbf,basis%nbf,nr,1.0d0,tmp_batch,basis%nbf,basis_function_r_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
    enddo
-   deallocate(tmp_batch)
+
    !
    ! GGA-only
    if( dft_xc_needs_gradient ) then 
-     allocate(tmp_batch(basis%nbf,nr))
 
      do ispin=1,nspin
 
@@ -339,9 +343,8 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
        call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
 
      enddo
-     deallocate(tmp_batch)
    endif
-!   call stop_clock(timing_tmp3)
+   deallocate(tmp_batch)
 
     
 

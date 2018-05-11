@@ -537,6 +537,17 @@ subroutine single_excitations(nstate,nbf,energy,occupation,c_matrix,fock_matrix,
 
  energy_se = 0.0_dp
 
+ ! Do not calculate this for fractional occupations
+ do ispin=1,nspin
+   do istate=1,nstate
+     if( occupation(istate,ispin) > completely_empty .AND. occupation(istate,ispin) < spin_fact - completely_empty ) then
+       write(stdout,'(1x,a)') 'Fractional occupations detected: do not calculate the singles correction'
+       return
+     endif
+   enddo
+ enddo
+
+
  allocate(fock_matrix_eigen(nbf,nbf,nspin),stat=ier)
  ier = ABS(ier)
  call xmax_world(ier)

@@ -136,10 +136,11 @@ subroutine calc_density_r_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basis_fu
 
  !
  ! Calculate the density rho at points in batch
- rhor(:,:)=0.0_dp
+ rhor(:,:) = 0.0_dp
 
  do ispin=1,nspin
 
+   nocc = 1
    do istate=1,nstate
      if( occupation(istate,ispin) < completely_empty ) cycle
      nocc = istate

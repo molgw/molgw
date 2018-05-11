@@ -234,7 +234,7 @@ subroutine calculate_propagation(nstate,              &
  en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc + en%excit
 
  if(excit_type%is_light) then
-   call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
+   call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
    call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
  endif
 
@@ -592,7 +592,7 @@ subroutine calculate_propagation(nstate,              &
      if(excit_type%is_projectile) call output_projectile_position()
 
      !FBFB do something !
-     call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
+     call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
      en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc + en%excit
 
      if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step)
@@ -1343,11 +1343,11 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
  complex(dp)    :: s_matrix_sqrt_inv_cmplx(basis%nbf,nstate)
 !=====
 
- call start_clock(timing_tddft_hamiltonian_fock)
+ call start_clock(timing_tddft_hamiltonian)
 
  s_matrix_sqrt_inv_cmplx = s_matrix_sqrt_inv
 
- call setup_density_matrix_cmplx(basis%nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
+ call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
 
  !--Hamiltonian - Hartree Exchange Correlation---
  call calculate_hamiltonian_hxc_ri_cmplx(basis,                    &
@@ -1417,15 +1417,17 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
 
  !   h_small_cmplx(:,:,ispin) = MATMUL( TRANSPOSE(s_matrix_sqrt_inv(:,:)) , &
  !                   MATMUL( hamiltonian_fock_cmplx(:,:,ispin) , s_matrix_sqrt_inv(:,:) ) )
+ call start_clock(timing_tddft_ham_orthobasis)
  do ispin=1,nspin
    call matmul_transaba_scalapack(scalapack_block_min,s_matrix_sqrt_inv_cmplx,hamiltonian_fock_cmplx(:,:,ispin),h_small_cmplx(:,:,ispin))
  end do ! spin loop
+ call stop_clock(timing_tddft_ham_orthobasis)
 
  ! kinetic and nuclei-electrons energy contributions
  en%kin = real(SUM( hamiltonian_kinetic(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
  en%nuc = real(SUM( hamiltonian_nucleus(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
 
- call stop_clock(timing_tddft_hamiltonian_fock)
+ call stop_clock(timing_tddft_hamiltonian)
 
 end subroutine setup_hamiltonian_fock_cmplx
 

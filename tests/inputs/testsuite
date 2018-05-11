@@ -297,7 +297,6 @@ CI 4th excited-state energy,    -0.6832892656  , 0 , 1.0e-7
 
 sih4_hf.in                , TDHF SiH4 aug-cc-pVDZ
 SCF Total Energy          ,   -291.2427972343   , 0 , 1.0e-7
-Singles correction        ,     -0.0000000000   , 0 , 1.0e-7
 Est. HF Energy            ,   -291.2427972343   , 0 , 1.0e-7
 Exc. 0001                 ,      9.81657258     , 0 , 1.0e-4
 Exc. 0001                 ,      0.21703439     , 1 , 1.0e-4
