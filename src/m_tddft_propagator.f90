@@ -41,6 +41,11 @@ module m_tddft_propagator
  real(dp),private                   :: time_read
  real(dp),allocatable,private       :: xatom_start(:,:)
  complex(dp),private                :: excit_field_norm
+ ! hamiltonian extrapolation variables
+ real(dp),allocatable,private       :: extrap_coefs(:)
+ complex(dp),allocatable,private    :: h_small_hist_cmplx(:,:,:,:)
+ complex(dp),allocatable,private    :: c_matrix_orth_hist_cmplx(:,:,:,:)
+ !-----------------------------------
 
 contains
 
@@ -61,6 +66,7 @@ subroutine calculate_propagation(nstate,              &
  integer                    :: ntau, ispin 
  integer                    :: istate, nstate_tmp
  integer                    :: nwrite_step 
+ integer                    :: iextr
  real(dp)                   :: time_min
  real(dp),allocatable       :: dipole_basis(:,:,:)
  real(dp),allocatable       :: s_matrix(:,:)
@@ -83,14 +89,7 @@ subroutine calculate_propagation(nstate,              &
  integer                    :: file_dipole_time,file_iter_norm ! keep this var
  real(dp)                   :: time_cur, time_one_iter
  complex(dp),allocatable    :: p_matrix_cmplx(:,:,:)
- complex(dp),allocatable    :: h_small_hist_cmplx(:,:,:,:)
- complex(dp),allocatable    :: c_matrix_orth_hist_cmplx(:,:,:,:)
  logical                    :: is_identity_ ! keep this varibale
-!==variables for extrapolation
- integer                    :: iextr,ham_dim_cur
- real(dp),allocatable       :: m_nods(:)
- real(dp),allocatable       :: extrap_coefs(:)
- real(dp)                   :: x_pred
 !==cube_diff varibales===
  real(dp),allocatable       :: cube_density_start(:,:,:,:)
  integer                    :: nx,ny,nz,unit_cube_diff
@@ -152,7 +151,7 @@ subroutine calculate_propagation(nstate,              &
 
  allocate(xatom_start(3,natom))
 
- !===INITIAL CONDITIONS===
+ write(stdout,'(/,a)') "===INITIAL CONDITIONS==="
  ! Getting c_matrix_cmplx(t=0) whether using RESTART_TDDFT file, whether using real c_matrix
  if( read_tddft_restart_ .AND. restart_tddft_is_correct ) then
    ! assign xatom_start, c_matrix_orth_cmplx, time_min with values given in RESTART File
@@ -243,67 +242,20 @@ subroutine calculate_propagation(nstate,              &
    call calc_cube_initial_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,cube_density_start,nx,ny,nz)
    call plot_cube_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,cube_density_start,nx,ny,nz)
  end if
+
  if( print_line_rho_tddft_ ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
 
  call print_tddft_values(time_min,file_time_data,file_dipole_time,file_excit_field)
 
  time_min=time_min+time_step
 
- if(pred_corr /= 'PC0' ) then
+ !
+ ! Extrapolation coefficients and history c_ and h_ matrices
+ call initialize_extrap_coefs(c_matrix_orth_cmplx,h_small_cmplx)
 
-   allocate(m_nods(n_hist),extrap_coefs(n_hist))
+ write(stdout,'(/,a)') "===END INITIAL CONDITIONS==="
 
-   if(pred_corr=='PC1') then
-     ham_dim_cur=2
-   end if
-
-   if(pred_corr=='PC2B') then
-     ham_dim_cur=n_hist
-     do iextr=1,n_hist
-       m_nods(iextr)=(iextr-1.0_dp)*0.5_dp
-     end do
-     x_pred=(n_hist-1.0_dp)*0.5_dp+0.25_dp
-     call get_extrap_coefs_lagr(m_nods,x_pred,extrap_coefs,n_hist)
-   end if
-
-   if(pred_corr=='PC3' .OR. pred_corr=='PC4') then
-     ham_dim_cur=n_hist+2
-     do iextr=1,n_hist
-       m_nods(iextr)=iextr-1.0_dp
-     end do
-     x_pred=n_hist
-     if(pred_corr=='PC3') call get_extrap_coefs_lagr(m_nods,x_pred,extrap_coefs,n_hist)
-     if(pred_corr=='PC4') call get_extrap_coefs_aspc(extrap_coefs,n_hist)
-   end if
-
-   if(pred_corr=='PC5' .OR. pred_corr=='PC6') then
-     ham_dim_cur=n_hist+1
-     do iextr=1,n_hist
-       m_nods(iextr)=iextr-1.0_dp
-     end do
-     x_pred=n_hist
-     if(pred_corr=='PC5') call get_extrap_coefs_lagr(m_nods,x_pred,extrap_coefs,n_hist)
-     if(pred_corr=='PC6') call get_extrap_coefs_aspc(extrap_coefs,n_hist)
-   end if
-
-   if(pred_corr=='PC7' ) then
-     ham_dim_cur=2
-   end if
-
-   call clean_allocate('h_small_hist_cmplx for TDDFT',h_small_hist_cmplx,nstate,nstate,nspin,ham_dim_cur)
-   call clean_allocate('c_matrix_orth_hist_cmplx for TDDFT',c_matrix_orth_hist_cmplx,nstate,nocc,nspin,1)
-   do iextr=1,ham_dim_cur
-     h_small_hist_cmplx(:,:,:,iextr)=h_small_cmplx(:,:,:)
-   end do
-   c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
-   m_nods(:)=0.0_dp
- end if
-!===END INITIAL CONDITIONS===
-
-!********start time loop*************
-! write(stdout,"(1x,a)") "--------------------------------------------------------"
-! write(stdout,"(1x,a,I5)") "Start of the tddft loop, number of iterations: ",ntau
-! write(stdout,"(1x,a)") "--------------------------------------------------------"
+ write(stdout,"(/,1x,a,I5,/)") "Start of the tddft loop, number of iterations: ",ntau
 
  time_cur=time_min
  iwrite_step = 1
@@ -312,7 +264,10 @@ subroutine calculate_propagation(nstate,              &
  do while ( (time_cur - time_sim) < 1.0e-10 )
    if(itau==3) call start_clock(timing_tddft_one_iter)
 
-   if(pred_corr=='PC0') then
+   select case (pred_corr)
+
+   ! ///////////////////////////////////
+   case('PC0') 
      call propagate_orth(nstate,basis,time_step,c_matrix_orth_cmplx,c_matrix_cmplx,h_small_cmplx,s_matrix_sqrt_inv,prop_type)
      call setup_hamiltonian_fock_cmplx( basis,                   &
                                         nstate,                  &
@@ -327,11 +282,11 @@ subroutine calculate_propagation(nstate,              &
                                         s_matrix_sqrt_inv,       &
                                         dipole_basis,            &
                                         hamiltonian_fock_cmplx)
-   end if
+
 
    ! ///////////////////////////////////
    ! Following Van Voorhis, Phys Rev B 74 (2006)
-   if(pred_corr=='PC1') then
+   case('PC1') 
      !--1--PREDICTOR----| H(2/4),H(6/4)-->H(9/4)
          h_small_cmplx= -3.0_dp/4.0_dp*h_small_hist_cmplx(:,:,:,1)+7.0_dp/4.0_dp*h_small_hist_cmplx(:,:,:,2)
      !--2--PREDICTOR----| C(8/4)---U[H(9/4)]--->C(10/4)
@@ -359,11 +314,10 @@ subroutine calculate_propagation(nstate,              &
      c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
      h_small_hist_cmplx(:,:,:,1)=h_small_hist_cmplx(:,:,:,2)
      h_small_hist_cmplx(:,:,:,2)=h_small_cmplx(:,:,:)
-   end if
+
 
    ! ///////////////////////////////////
-
-   if(pred_corr=='PC2B') then
+   case('PC2B') 
      h_small_cmplx=(0.0_dp,0.0_dp)
      !--0--EXTRAPOLATE----
      do iextr=1,n_hist
@@ -414,13 +368,13 @@ subroutine calculate_propagation(nstate,              &
      !--5--UPDATE----|
      c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
      h_small_hist_cmplx(:,:,:,n_hist)=h_small_cmplx
-   end if
-   ! ///////////////////////////////////
 
+
+   ! ///////////////////////////////////
    ! Iterative propagation with Lagrange interpolation
    ! ---------------|t-dt|-----------------|t|----------|t+dt/2)|----------|t+dt|
    !............|H(n_hist-1)|..........|H(n_hist)|....|H(n_hist+1)|.....|H(n_hist+2)|
-   if(pred_corr=='PC3' .OR. pred_corr=='PC4') then
+   case('PC3','PC4') 
      hamiltonian_fock_cmplx=(0.0_dp,0.0_dp)
      h_small_hist_cmplx(:,:,:,n_hist+2)=(0.0_dp,0.0_dp)
      !--1--EXTRAPOLATION WITH PREVIOUS STEPS----
@@ -477,14 +431,13 @@ subroutine calculate_propagation(nstate,              &
        h_small_hist_cmplx(:,:,:,iextr)=h_small_hist_cmplx(:,:,:,iextr+1)
      end do
      h_small_hist_cmplx(:,:,:,n_hist)=h_small_hist_cmplx(:,:,:,n_hist+2)
-   end if
+
 
    ! ///////////////////////////////////
-
    ! Iterative ETRS - enforced time-reversal symmetry
    ! ---------------|t-dt|-----------------|t|--------------------|t+dt|
    !............|H(n_hist-1)|..........|H(n_hist)|.............|H(n_hist+1)|
-   if(pred_corr=='PC5' .OR. pred_corr=='PC6') then
+   case('PC5','PC6') 
      hamiltonian_fock_cmplx=(0.0_dp,0.0_dp)
      h_small_hist_cmplx(:,:,:,n_hist+1)=(0.0_dp,0.0_dp)
      !--1--EXTRAPOLATION WITH PREVIOUS STEPS----
@@ -538,14 +491,13 @@ subroutine calculate_propagation(nstate,              &
      do iextr=1,n_hist
        h_small_hist_cmplx(:,:,:,iextr)=h_small_hist_cmplx(:,:,:,iextr+1)
      end do
-   end if
+
 
    ! ///////////////////////////////////
-
    ! ETRS proposed by Xavier Andrade
    ! ---------------|t-dt|-----------------|t|--------------------|t+dt|
    !............|---------|...............|H(1)|..................|H(2)|
-   if(pred_corr=='PC7' ) then
+   case('PC7' ) 
      hamiltonian_fock_cmplx=(0.0_dp,0.0_dp)
      h_small_hist_cmplx(:,:,:,2)=(0.0_dp,0.0_dp)
 
@@ -575,7 +527,8 @@ subroutine calculate_propagation(nstate,              &
      !--6--UPDATE----|C(1)-->C(0)
      c_matrix_orth_cmplx(:,:,:)=c_matrix_orth_hist_cmplx(:,:,:,1)
      h_small_hist_cmplx(:,:,:,1)=h_small_hist_cmplx(:,:,:,2)
-   end if
+
+   end select
 
    ! debug
    !call check_identity_cmplx(nocc,nocc,MATMUL(MATMUL(TRANSPOSE(CONJG(c_matrix_cmplx(:,:,nspin))),s_matrix(:,:)), c_matrix_cmplx(:,:,nspin) ),is_identity_)
@@ -695,7 +648,6 @@ subroutine calculate_propagation(nstate,              &
 !   call clean_deallocate('q_matrix for TDDFT',q_matrix_cmplx,nstate,nocc,nspin)
 ! end if
 
- if(ALLOCATED(m_nods)) deallocate(m_nods)
  if(ALLOCATED(extrap_coefs)) deallocate(extrap_coefs)
  if(ALLOCATED(cube_density_start)) deallocate(cube_density_start)
 
@@ -727,6 +679,69 @@ subroutine calculate_propagation(nstate,              &
 
 
 end subroutine calculate_propagation
+
+!==========================================
+subroutine initialize_extrap_coefs(c_matrix_orth_cmplx,h_small_cmplx)
+ implicit none
+ complex(dp),intent(in)    :: c_matrix_orth_cmplx(:,:,:)
+ complex(dp),intent(in)    :: h_small_cmplx(:,:,:)
+!=====
+ integer               :: iextr,ham_hist_dim,nstate
+ real(dp)              :: x_pred
+ real(dp),allocatable  :: m_nodes(:)
+!=====
+
+ nstate = SIZE(c_matrix_orth_cmplx,DIM=1)
+
+ allocate(m_nodes(n_hist),extrap_coefs(n_hist))
+
+ select case (pred_corr)
+ case('PC1') 
+   ham_hist_dim=2
+
+ case('PC2B') 
+   ham_hist_dim=n_hist
+   do iextr=1,n_hist
+     m_nodes(iextr)=(iextr-1.0_dp)*0.5_dp
+   end do
+   x_pred=(n_hist-1.0_dp)*0.5_dp+0.25_dp
+   call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,n_hist)
+
+ case('PC3','PC4') 
+   ham_hist_dim=n_hist+2
+   do iextr=1,n_hist
+     m_nodes(iextr)=iextr-1.0_dp
+   end do
+   x_pred=n_hist
+   if(pred_corr=='PC3') call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,n_hist)
+   if(pred_corr=='PC4') call get_extrap_coefs_aspc(extrap_coefs,n_hist)
+
+ case('PC5','PC6') 
+   ham_hist_dim=n_hist+1
+   do iextr=1,n_hist
+     m_nodes(iextr)=iextr-1.0_dp
+   end do
+   x_pred=n_hist
+   if(pred_corr=='PC5') call get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,n_hist)
+   if(pred_corr=='PC6') call get_extrap_coefs_aspc(extrap_coefs,n_hist)
+
+ case('PC7' ) 
+   ham_hist_dim=2
+
+ end select
+
+ if(pred_corr /= 'PC0' ) then
+   call clean_allocate('h_small_hist_cmplx for TDDFT',h_small_hist_cmplx,nstate,nstate,nspin,ham_hist_dim)
+   call clean_allocate('c_matrix_orth_hist_cmplx for TDDFT',c_matrix_orth_hist_cmplx,nstate,nocc,nspin,1)
+   do iextr=1,ham_hist_dim
+     h_small_hist_cmplx(:,:,:,iextr)=h_small_cmplx(:,:,:)
+   end do
+   c_matrix_orth_hist_cmplx(:,:,:,1)=c_matrix_orth_cmplx(:,:,:)
+ end if
+
+ deallocate(m_nodes)
+
+end subroutine initialize_extrap_coefs
 
 !==========================================
 subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_excit_field)
@@ -1097,11 +1112,11 @@ subroutine read_restart_tddft(nstate,time_min,c_matrix_orth_cmplx)
 end subroutine read_restart_tddft
 
 !==========================================
-subroutine get_extrap_coefs_lagr(m_nods,x_pred,extrap_coefs,n_hist_cur)
+subroutine get_extrap_coefs_lagr(m_nodes,x_pred,extrap_coefs,n_hist_cur)
  use m_definitions
  implicit none
  integer, intent(in)          :: n_hist_cur
- real(dp),intent(in)          :: m_nods(n_hist_cur)
+ real(dp),intent(in)          :: m_nodes(n_hist_cur)
  real(dp),intent(in)          :: x_pred
  real(dp),intent(inout)       :: extrap_coefs(n_hist_cur)
 !=====
@@ -1112,7 +1127,7 @@ subroutine get_extrap_coefs_lagr(m_nods,x_pred,extrap_coefs,n_hist_cur)
  do i=1,n_hist_cur
    do j=1,n_hist_cur
      if(i==j) cycle
-     extrap_coefs(i)=extrap_coefs(i)*(x_pred-m_nods(j))/(m_nods(i)-m_nods(j))
+     extrap_coefs(i)=extrap_coefs(i)*(x_pred-m_nodes(j))/(m_nodes(i)-m_nodes(j))
    end do
  end do
 end subroutine get_extrap_coefs_lagr
