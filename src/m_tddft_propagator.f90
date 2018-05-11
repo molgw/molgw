@@ -36,10 +36,11 @@ module m_tddft_propagator
  end interface print_2d_matrix
 
  !integer,private :: unit_cube  
+ integer,private                    :: nocc
+ real(dp),private                   :: dipole(3)
  real(dp),private                   :: time_read
  real(dp),allocatable,private       :: xatom_start(:,:)
- complex(dp),private                :: m_excit_field_dir
- integer,private                    :: nocc
+ complex(dp),private                :: excit_field_norm
 
 contains
 
@@ -81,7 +82,6 @@ subroutine calculate_propagation(nstate,              &
  integer                    :: file_time_data, file_excit_field
  integer                    :: file_dipole_time,file_iter_norm ! keep this var
  real(dp)                   :: time_cur, time_one_iter
- real(dp)                   :: dipole(3)
  complex(dp),allocatable    :: p_matrix_cmplx(:,:,:)
  complex(dp),allocatable    :: h_small_hist_cmplx(:,:,:,:)
  complex(dp),allocatable    :: c_matrix_orth_hist_cmplx(:,:,:,:)
@@ -224,29 +224,10 @@ subroutine calculate_propagation(nstate,              &
  end if
 
  time_min=time_read
- !OPENING FILES
- ! FBFB move this fucking shit into another fucking place
- if( is_iomaster ) then
-   open(newunit=file_time_data,file="time_data.dat")
-   if(excit_type%is_light) then
-     open(newunit=file_dipole_time,file="dipole_time.dat")
-     open(newunit=file_excit_field,file="excitation_time.dat")
 
-
-     write(file_excit_field,"(A)") "# time(au)                      E_field_excit_dir(au)"
-     write(file_excit_field,*) time_min, REAL(m_excit_field_dir)
-   end if
-
-   if(excit_type%is_projectile) then
-     write(file_time_data,"(A)") "  # time(au)     e_total        z_projectile        enuc_nuc            enuc             ekin              ehart&
-                               &           eexx_hyb            exc"
-   end if
-   if(excit_type%is_light) then
-     write(file_time_data,"(A)") " # time(au)     e_total             enuc_nuc             enuc            ekin               ehart            &
-                               &eexx_hyb            exc             eexcit"
-   end if
-   if(excit_type%is_light) write(file_dipole_time,"(A)") "# time(au)                      Dipole_x(D)               Dipole_y(D)               Dipole_z(D)"
- end if
+ !
+ ! Opening files and writing headers in files
+ call initialize_files(file_time_data,file_dipole_time,file_excit_field)
 
  !
  ! Printing initial values of energy and dipole taken from SCF or RESTART_TDDFT
@@ -257,32 +238,14 @@ subroutine calculate_propagation(nstate,              &
    call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
  endif
 
- if( is_iomaster ) then
- ! Here time_min point coresponds to the end of calculation written in the RESTART_TDDFT or to 0 a.u.
-   if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0)
-   if( print_cube_diff_tddft_ ) then
-     call calc_cube_initial_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,cube_density_start,nx,ny,nz)
-     call plot_cube_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,cube_density_start,nx,ny,nz)
-   end if
-   if( print_line_rho_tddft_ ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
-   if(excit_type%is_projectile) then
-     write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
-      time_min, en%tot, xatom(3,natom), en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc
-   end if
-   if(excit_type%is_light) then
-     write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
-      time_min, en%tot, en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit
-   end if
-   write(stdout,*)
-   write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_min
-   write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):', en%tot
-
-   if(excit_type%is_light) then
-     write(file_dipole_time,'(4f19.10)') time_min, dipole(:) * au_debye
-     write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment    (D):', dipole(:) * au_debye
-   end if
-   if(excit_type%is_projectile) call output_projectile_position()
+ if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0)
+ if( print_cube_diff_tddft_ ) then
+   call calc_cube_initial_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,cube_density_start,nx,ny,nz)
+   call plot_cube_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,cube_density_start,nx,ny,nz)
  end if
+ if( print_line_rho_tddft_ ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
+
+ call print_tddft_values(time_min,file_time_data,file_dipole_time,file_excit_field)
 
  time_min=time_min+time_step
 
@@ -635,7 +598,7 @@ subroutine calculate_propagation(nstate,              &
      if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step)
      if(print_cube_diff_tddft_ ) call plot_cube_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,cube_density_start,nx,ny,nz)
      if( print_line_rho_tddft_ ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
-     if(excit_type%is_light) write(file_excit_field,'(2f19.10)') time_cur, REAL(m_excit_field_dir)
+     if(excit_type%is_light) write(file_excit_field,'(2f19.10)') time_cur, REAL(excit_field_norm)
 
      if(excit_type%is_light) then
        call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
@@ -766,6 +729,70 @@ subroutine calculate_propagation(nstate,              &
 end subroutine calculate_propagation
 
 !==========================================
+subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_excit_field)
+ implicit none
+ integer,intent(in)    :: file_time_data,file_dipole_time,file_excit_field
+ real(dp),intent(in)   :: time_cur
+!=====
+
+ if( .NOT. is_iomaster ) return
+
+ write(stdout,*)
+ write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
+ write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):', en%tot
+
+ if(excit_type%is_projectile) then
+   write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
+      time_cur, en%tot, xatom(3,natom), en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc
+   call output_projectile_position()
+ end if
+
+ if(excit_type%is_light) then
+   write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
+    time_cur, en%tot, en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit
+   write(file_dipole_time,'(4f19.10)') time_cur, dipole(:) * au_debye
+   write(file_excit_field,'(2f19.10)') time_cur, REAL(excit_field_norm)
+   write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment    (D):', dipole(:) * au_debye
+ end if
+
+end subroutine print_tddft_values
+
+!==========================================
+subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field)
+ implicit none
+ integer,intent(inout)    :: file_time_data,file_excit_field,file_dipole_time
+!=====
+
+ if( .NOT. is_iomaster ) return
+
+ open(newunit=file_time_data,file="time_data.dat")
+
+ if(excit_type%is_light) then
+
+   open(newunit=file_dipole_time,file="dipole_time.dat")
+   open(newunit=file_excit_field,file="excitation_time.dat")
+
+   write(file_excit_field,"(A)") "# time(au)                      E_field_excit_dir(au)"
+
+ end if
+
+!---------------------------------
+ if(excit_type%is_projectile) then
+   write(file_time_data,"(A)") "  # time(au)     e_total        z_projectile        enuc_nuc            enuc             ekin              ehart&
+                             &           eexx_hyb            exc"
+ end if
+
+!---------------------------------
+ if(excit_type%is_light) then
+   write(file_time_data,"(A)") " # time(au)     e_total             enuc_nuc             enuc            ekin               ehart            &
+                             &eexx_hyb            exc             eexcit"
+ end if
+
+ if(excit_type%is_light) write(file_dipole_time,"(A)") "# time(au)                      Dipole_x(D)               Dipole_y(D)               Dipole_z(D)"
+
+end subroutine initialize_files
+
+!==========================================
 subroutine initialize_q(nstate,nocc,nspin,q_matrix_cmplx,c_matrix_orth_start_complete_cmplx,h_small_cmplx,istate_cut,file_q_matrix)
  implicit none
  integer,intent(in)                       :: nstate, nocc, nspin
@@ -863,7 +890,6 @@ subroutine write_restart_tddft(nstate,time_cur,c_matrix_orth_cmplx)
  if (.NOT. in_tddft_loop) then
    write(stdout,'(/,a,f19.10)') ' Writing a RESTART_TDDFT file, time_cur= ', time_cur
  endif
- write(stdout,*) "suka", natom
  open(newunit=restartfile,file='RESTART_TDDFT',form='unformatted',action='write')
  ! current time
  write(restartfile) time_cur
@@ -1351,7 +1377,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
    if(itau==0) calc_excit_=.FALSE.
    if ( calc_excit_ ) then
      call calculate_excit_field(time_cur,excit_field)
-     m_excit_field_dir=NORM2(excit_field(:))
+     excit_field_norm=NORM2(excit_field(:))
      do idir=1,3
        do ispin=1, nspin
          hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) - dipole_basis(:,:,idir) * excit_field(idir)
