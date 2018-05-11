@@ -77,7 +77,6 @@ subroutine setup_overlap(basis,s_matrix)
      allocate(array_cart(ni_cart*nj_cart))
 
 #ifdef HAVE_LIBINT_ONEBODY
-
      call libint_overlap(amA,contrdepthA,A,alphaA,cA, &
                          amB,contrdepthB,B,alphaB,cB, &
                          array_cart)
