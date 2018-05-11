@@ -142,6 +142,46 @@ end subroutine broadcast_hamiltonian_sca
 
 
 !=========================================================================
+subroutine setup_overlap_buffer_sca(basis,overlap)
+ use m_basis_set
+ use m_atoms
+ implicit none
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(out)       :: overlap(:,:)
+!=====
+!=====
+
+ buffer(:,:) = 0.0_dp
+ call setup_overlap(basis,buffer)
+
+ ! Sum up the buffers and store the result in the sub matrix overlap
+ buffer(:,:) = buffer(:,:) / REAL(nproc_world,dp)
+ call reduce_hamiltonian_sca(overlap)
+
+end subroutine setup_overlap_buffer_sca
+
+
+!=========================================================================
+subroutine setup_kinetic_buffer_sca(basis,hamiltonian_kinetic)
+ use m_basis_set
+ use m_atoms
+ implicit none
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(out)       :: hamiltonian_kinetic(:,:)
+!=====
+!=====
+
+ buffer(:,:) = 0.0_dp
+ call setup_kinetic(basis,buffer)
+
+ ! Sum up the buffers and store the result in the sub matrix hamiltonian_kinetic
+ buffer(:,:) = buffer(:,:) / REAL(nproc_world,dp)
+ call reduce_hamiltonian_sca(hamiltonian_kinetic)
+
+end subroutine setup_kinetic_buffer_sca
+
+
+!=========================================================================
 subroutine setup_nucleus_buffer_sca(basis,hamiltonian_nucleus)
  use m_basis_set
  use m_atoms
@@ -151,15 +191,12 @@ subroutine setup_nucleus_buffer_sca(basis,hamiltonian_nucleus)
 !=====
 !=====
 
- write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK buffer'
-
  buffer(:,:) = 0.0_dp
  call setup_nucleus(basis,buffer)
 
  ! Sum up the buffers and store the result in the sub matrix hamiltonian_nucleus
  buffer(:,:) = buffer(:,:) / REAL(nproc_world,dp)
  call reduce_hamiltonian_sca(hamiltonian_nucleus)
-
 
 end subroutine setup_nucleus_buffer_sca
 

@@ -203,11 +203,14 @@ program molgw
    call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin) ! Never distributed
 
 
+   ! Allocate the only complete array buffer basis%nbf x basis%nbf in case of SCALAPACK
+   if( parallel_ham .AND. parallel_buffer ) call allocate_parallel_buffer(basis%nbf)
+
    !
    ! Build up the overlap matrix S
    ! S only depends onto the basis set
    if( parallel_ham ) then
-     call setup_overlap_sca(basis,s_matrix)
+     call setup_overlap_buffer_sca(basis,s_matrix)
    else
      call setup_overlap(basis,s_matrix)
    endif
@@ -238,14 +241,12 @@ program molgw
    endif
 
 
-
-   ! Allocate the main arrays
+   ! Allocate the nstate arrays: c_matrix, occupation, energy
    ! 2D arrays
    call clean_allocate('Wavefunctions C',c_matrix,basis%nbf,nstate,nspin)  ! not distributed right now
    ! 1D arrays
    allocate(occupation(nstate,nspin))
    allocate(    energy(nstate,nspin))
-   if( parallel_ham .AND. parallel_buffer ) call allocate_parallel_buffer(basis%nbf)
 
 
    !
@@ -280,7 +281,7 @@ program molgw
    !
    ! Kinetic energy contribution
    if( parallel_ham ) then
-     call setup_kinetic_sca(basis,hamiltonian_kinetic)
+     call setup_kinetic_buffer_sca(basis,hamiltonian_kinetic)
    else
      call setup_kinetic(basis,hamiltonian_kinetic)
    endif
@@ -288,10 +289,9 @@ program molgw
    !
    ! Nucleus-electron interaction
    if( parallel_ham ) then
-     if( parallel_buffer ) then
-       call setup_nucleus_buffer_sca(basis,hamiltonian_nucleus)
-     else
-       call setup_nucleus_sca(basis,hamiltonian_nucleus)
+     call setup_nucleus_buffer_sca(basis,hamiltonian_nucleus)
+     if( nelement_ecp > 0 ) then
+       call die('ECP not implemented with SCALAPACK yet. Set scalapack_nprow = scalapack_npcol to 1.')
      endif
    else
      call setup_nucleus(basis,hamiltonian_nucleus)
