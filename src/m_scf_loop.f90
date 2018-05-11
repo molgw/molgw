@@ -741,7 +741,9 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
    ! Hartree contribution is real and depends only on real(p_matrix)
    !
    !call calculate_hartree(basis,p_matrix,hamiltonian_tmp(:,:,1),eh=en%hart)
+   call start_clock(timing_tddft_hartree)
    call setup_hartree_ri(p_matrix,hamiltonian_tmp(:,:,1),en%hart)
+   call stop_clock(timing_tddft_hartree)
 
  do ispin=1,nspin
    hamiltonian_hxc_cmplx(:,:,ispin) = hamiltonian_hxc_cmplx(:,:,ispin) + hamiltonian_tmp(:,:,1)

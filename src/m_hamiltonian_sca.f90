@@ -209,19 +209,15 @@ subroutine setup_nucleus_sca(basis,hamiltonian_nucleus)
 #ifdef HAVE_SCALAPACK
 
  call start_clock(timing_hamiltonian_nuc)
- if( .NOT. in_tddft_loop ) then
-   write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK'
- end if
+ write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK'
  if( nproc_local > 1 ) then
    natom_local=0
    do iatom=1,natom
      if( rank_local /= MODULO(iatom-1,nproc_local) ) cycle
      natom_local = natom_local + 1
    enddo
-   if( .NOT. in_tddft_loop ) then
-     write(stdout,'(a)')         '   Parallelizing over atoms'
-     write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
-   end if
+   write(stdout,'(a)')         '   Parallelizing over atoms'
+   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
  endif
 
 
