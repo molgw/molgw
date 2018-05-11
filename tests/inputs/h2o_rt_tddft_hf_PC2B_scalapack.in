@@ -5,8 +5,8 @@
  read_restart='no'
  read_tddft_restart='no'
  print_tddft_restart='yes'
- basis='cc-pVDZ'
- auxil_basis='cc-pVDZ-RI'
+ basis='cc-pVTZ'
+ auxil_basis='cc-pVTZ-RI'
  charge=0
  natom=3
  scalapack_nprow=4
