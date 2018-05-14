@@ -78,10 +78,7 @@ program molgw
  integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
  integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix
 !=====
- integer :: var_i, var_j
- integer :: unitfile
- integer :: nocc
- integer :: ispin,istate
+
  !
  !
  ! Part 1 / 3 : Initialization
