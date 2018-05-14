@@ -479,14 +479,9 @@ program molgw
  if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
 
  call clean_deallocate('Overlap matrix S',s_matrix)
+ call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
+ call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
  call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
-
-
- !
- !
- ! Post-processing start here
- !
- !
 
  !
  ! Prepare the diagonal of the matrix Sigma_x - Vxc
@@ -513,6 +508,14 @@ program molgw
  endif
  call clean_deallocate('Fock operator F',hamiltonian_fock)
 
+
+ !
+ !
+ ! Post-processing start here
+ !
+ !
+
+
  !
  ! CI calculation
  !
@@ -532,7 +535,7 @@ program molgw
      call calculate_eri_4center_eigen_uks(c_matrix,1,MIN(nstate,nvirtualg-1))  ! TODO set the nstate_min to a more finely tuned value
    endif
 
-   call prepare_ci(MIN(nstate,nvirtualg-1),ncoreg,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix)
+   call prepare_ci(basis,MIN(nstate,nvirtualg-1),ncoreg,c_matrix)
 
    call full_ci_nelectrons(0,NINT(electrons),ci_spin_multiplicity-1,en%nuc_nuc)
 
@@ -560,8 +563,6 @@ program molgw
    endif
 
  endif
- call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
- call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
 
  !
  ! final evaluation for MP2 total energy
