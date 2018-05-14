@@ -3376,23 +3376,37 @@ subroutine select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
  integer,intent(in)  :: scalapack_block_min,mmat,nmat
  integer,intent(out) :: nprow,npcol
 !=====
+ integer :: max_dim
 !=====
  
+ max_dim = MAX(mmat,nmat)
 
- if( nmat < mmat ) then
+ ! If mmat ~ nmat (within some tolerance, then use a square distribution!
+ if( ABS( REAL(mmat-nmat,dp) ) / REAL(max_dim,dp) < 0.50_dp ) then 
+   write(stdout,*) 'Enforce a squared distribution',mmat,nmat
+   nprow = MIN( FLOOR(SQRT(REAL(nproc_sca,dp))) , max_dim / scalapack_block_min )
+   nprow = MAX(nprow,1)
+   npcol = MIN( FLOOR(SQRT(REAL(nproc_sca,dp))) , max_dim / scalapack_block_min )
+   npcol = MAX(npcol,1)
+
+ else if( nmat < mmat ) then
 
    npcol = nmat / scalapack_block_min
+   npcol = MAX(npcol,1)
    nprow = MIN( nproc_sca / npcol , mmat / scalapack_block_min )
+   nprow = MAX(nprow,1)
 
  else
 
    nprow = mmat / scalapack_block_min
+   nprow = MAX(nprow,1)
    npcol = MIN( nproc_sca / nprow , nmat / scalapack_block_min )
+   npcol = MAX(npcol,1)
 
  endif
 
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+
+ if( nprow * npcol > nproc_sca ) call die('select_nprow_npcol: forbidden SCALAPACK grid')
 
 end subroutine select_nprow_npcol
 
