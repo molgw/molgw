@@ -10,7 +10,6 @@
 module m_hamiltonian_cmplx
  use m_definitions
  use m_timing
- use m_tddft_variables
  use m_mpi
  use m_scalapack
  use m_warning
@@ -41,9 +40,8 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc,occupation,c_matrix_cmplx,p_m
  complex(dp),allocatable   :: tmp_cmplx(:,:)
 !=====
 
- if( .NOT. in_tddft_loop ) then
-   write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
- end if
+ write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
+
  call start_clock(timing_tddft_exchange)
 
  exchange_ij_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
@@ -195,8 +193,8 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
 
 #ifdef HAVE_LIBXC
 
-! write(stdout,*) 'Calculate DFT XC potential'
-! if( batch_size /= 1 ) write(stdout,*) 'Using batches of size',batch_size
+ write(stdout,*) 'Calculate DFT XC potential'
+ if( batch_size /= 1 ) write(stdout,*) 'Using batches of size',batch_size
  
 
  normalization(:) = 0.0_dp

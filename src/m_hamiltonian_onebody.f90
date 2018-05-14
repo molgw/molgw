@@ -487,15 +487,15 @@ end subroutine setup_kinetic_grad
 
 
 !=========================================================================
-subroutine setup_nucleus(basis,hamiltonian_nucleus)
+subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
  use m_atoms
  implicit none
- type(basis_set),intent(in) :: basis
- real(dp),intent(out)       :: hamiltonian_nucleus(basis%nbf,basis%nbf)
+ type(basis_set),intent(in)  :: basis
+ real(dp),intent(out)        :: hamiltonian_nucleus(basis%nbf,basis%nbf)
+ integer,intent(in),optional :: atom_list(:)
 !=====
  integer              :: ishell,jshell
  integer              :: ibf1,ibf2,jbf1,jbf2
- integer              :: natom_local
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  integer              :: iatom
  real(dp),allocatable :: matrix(:,:)
@@ -519,13 +519,17 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus)
    call start_clock(timing_tddft_hamiltonian_nuc)
  else
    call start_clock(timing_hamiltonian_nuc)
+ end if
+
 #ifdef HAVE_LIBINT_ONEBODY
    write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBINT)'
 #else
    write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (internal)'
 #endif
- end if
 
+ if( PRESENT(atom_list) ) then
+   write(stdout,'(1x,a,i5,a)') 'Only calculate the contribution from ',SIZE(atom_list),' nucleus/nuclei'
+ endif
 
  hamiltonian_nucleus(:,:) = 0.0_dp
 
@@ -555,6 +559,10 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus)
      array_cart(:) = 0.0_dp
 
      do iatom=1,natom
+       ! Skip the contribution if iatom is not contained in the list
+       if( PRESENT(atom_list) ) then
+         if( ALL(atom_list(:) /= iatom ) ) cycle
+       endif
 
        C(:) = xatom(:,iatom)
 #ifdef HAVE_LIBINT_ONEBODY
@@ -650,10 +658,8 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
      if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
      natom_local = natom_local + 1
    enddo
-   if( .NOT. in_tddft_loop ) then
-     write(stdout,'(a)')         '   Parallelizing over atoms'
-     write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
-   end if
+   write(stdout,'(a)')         '   Parallelizing over atoms'
+   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
  endif
 
  hamiltonian_nucleus_grad(:,:,:,:) = 0.0_dp

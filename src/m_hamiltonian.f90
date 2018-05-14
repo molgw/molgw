@@ -10,7 +10,6 @@
 module m_hamiltonian
  use m_definitions
  use m_timing
- use m_tddft_variables
  use m_mpi
  use m_scalapack
  use m_warning
@@ -250,11 +249,8 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
  character(len=100)   :: title
 !=====
 
- if( in_tddft_loop ) then
-   call start_clock(timing_tddft_hartree)
- else
-   write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
- end if
+ write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
+ 
 
  nbf = SIZE(hartree_ij(:,:),DIM=1)
 
@@ -295,9 +291,6 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
    ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
  endif
 
- if( in_tddft_loop ) then
-   call stop_clock(timing_tddft_hartree)
- endif
 
 end subroutine setup_hartree_ri
 
