@@ -47,6 +47,7 @@ module m_tddft_propagator
  complex(dp),allocatable,private    :: c_matrix_orth_hist_cmplx(:,:,:,:)
  !-----------------------------------
  complex(dp),allocatable    :: q_matrix_cmplx(:,:,:)
+ integer,private            :: ntau
 
 contains
 
@@ -64,7 +65,7 @@ subroutine calculate_propagation(nstate,              &
  real(dp),intent(in)             :: occupation(nstate,nspin)
 !=====
  integer,parameter          :: BATCH_SIZE=64
- integer                    :: ntau, ispin 
+ integer                    :: ispin 
  integer                    :: istate, nstate_tmp
  integer                    :: nwrite_step 
  real(dp)                   :: time_min
@@ -101,8 +102,12 @@ subroutine calculate_propagation(nstate,              &
  complex(dp),allocatable    :: c_matrix_orth_start_complete_cmplx(:,:,:)
 !=====
 
+ call start_clock(timing_tddft_loop)
+
  write(stdout,'(/,/,1x,a)') '=================================================='
  write(stdout,'(x,a,/)')    'RT-TDDFT simulation'
+
+ call echo_tddft_variables()
 
  call clean_allocate('Overlap matrix S for TDDFT',s_matrix,basis%nbf,basis%nbf)
  call clean_allocate('Kinetic operator T for TDDFT',hamiltonian_kinetic,basis%nbf,basis%nbf)
@@ -208,7 +213,6 @@ subroutine calculate_propagation(nstate,              &
    call plot_rho_traj_bunch_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,0.d0)
  end if
 
- call start_clock(timing_tddft_loop)
 
  if( calc_q_matrix_ ) then
    call initialize_q(nstate,nocc,nspin,c_matrix_orth_start_complete_cmplx,h_small_cmplx,istate_cut,file_q_matrix)
@@ -251,15 +255,12 @@ subroutine calculate_propagation(nstate,              &
  ! Extrapolation coefficients and history c_ and h_ matrices
  call initialize_extrap_coefs(c_matrix_orth_cmplx,h_small_cmplx)
 
- write(stdout,'(/,a)') "===END INITIAL CONDITIONS==="
+ write(stdout,'(/,a)') "===END OF INITIAL CONDITIONS==="
 
 
  !
  ! TDDFT time loop
  !
-
- write(stdout,"(/,1x,a,I5,/)") "Start of the tddft loop, number of iterations: ",ntau
-
  time_cur=time_min
  iwrite_step = 1
  itau = 1
@@ -320,18 +321,10 @@ subroutine calculate_propagation(nstate,              &
    end if
 
    !
-   !--TIMING--
+   !--TIMING of one iteration--
    if(itau==3) then
-     ntau=NINT((time_sim-time_min)/time_step)
      call stop_clock(timing_tddft_one_iter)
-     time_one_iter=timing(timing_tddft_one_iter)
-     write(stdout,'(/,1x,a)') '**********************************'
-     write(stdout,"(1x,a30,2x,es14.6,1x,a)") "Time of one iteration is", time_one_iter,"s"
-     write(stdout,"(1x,a30,2x,3(f12.2,1x,a))") "Estimated calculation time is", time_one_iter*ntau, "s  = ", &
-                                               time_one_iter*ntau/60.0_dp, &
-                                               "min  = ", time_one_iter*ntau/3600.0_dp, "hrs"
-     write(stdout,'(1x,a)') '**********************************'
-     flush(stdout)
+     call output_timing_one_iter()
    end if
 
    ! ---print tdddft restart each n_restart_tddft steps---
@@ -361,19 +354,12 @@ subroutine calculate_propagation(nstate,              &
  call clean_deallocate('h_small_hist_cmplx for TDDFT',h_small_hist_cmplx)
  call clean_deallocate('c_matrix_orth_hist_cmplx for TDDFT',c_matrix_orth_hist_cmplx)
 
-! if(calc_q_matrix_) then
-!   call clean_deallocate('q_matrix for TDDFT',q_matrix_cmplx,nstate,nocc,nspin)
-! end if
+ if(calc_q_matrix_) then
+   call clean_deallocate('q_matrix for TDDFT',q_matrix_cmplx)
+ end if
 
  if(ALLOCATED(extrap_coefs)) deallocate(extrap_coefs)
  if(ALLOCATED(cube_density_start)) deallocate(cube_density_start)
-
-!end subroutine tddft_time_loop
-
- call stop_clock(timing_tddft_loop)
- write(stdout,"(1x,a)") "--------------------------------------------------------"
- write(stdout,"(1x,a)") "End of the tddft loop"
- write(stdout,"(1x,a)") "--------------------------------------------------------"
 
  if( calc_type%is_dft ) call destroy_dft_grid()
 
@@ -393,9 +379,43 @@ subroutine calculate_propagation(nstate,              &
 
  write(stdout,'(/,x,a)') "End of RT-TDDFT simulation"
  write(stdout,'(1x,a,/)') '=================================================='
-
+ call stop_clock(timing_tddft_loop)
 
 end subroutine calculate_propagation
+
+!==========================================
+subroutine echo_tddft_variables()
+ implicit none
+
+ write(stdout,'(/,1x,a)') 'The most important variables of this section:'
+ write(stdout,'(1x,a24,2x,es16.8)') 'Simulation time: time_sim',time_sim
+ write(stdout,'(1x,a24,2x,es16.8)') 'Time step: time_step',time_step
+ write(stdout,'(1x,a24,2x,es16.8)') 'Number of iterations: ntau',ntau
+ write(stdout,'(1x,a24,6x,a)')      'Predictor-corrector: pred_corr',pred_corr
+ write(stdout,'(1x,a24,6x,a)')      'Propagator: prop_type',prop_type
+ write(stdout,'(1x,a24,2x,i8)')     'Number of occupied states: nocc',nocc
+ write(stdout,'(1x,a24,2x,i8)')     'Historic of Hamiltonian: n_hist',n_hist
+
+end subroutine echo_tddft_variables
+
+!==========================================
+subroutine output_timing_one_iter()
+ implicit none
+ real(dp)           :: time_one_iter
+!=====
+ 
+  time_one_iter=timing(timing_tddft_one_iter)
+  write(stdout,'(/,1x,a)') '**********************************'
+  write(stdout,"(1x,a30,2x,es14.6,1x,a)") "Time of one iteration is", time_one_iter,"s"
+  write(stdout,"(1x,a30,2x,3(f12.2,1x,a))") "Estimated calculation time is", time_one_iter*ntau, "s  = ", &
+                                            time_one_iter*ntau/60.0_dp, &
+                                            "min  = ", time_one_iter*ntau/3600.0_dp, "hrs"
+  write(stdout,'(1x,a)') '**********************************'
+  flush(stdout)
+
+end subroutine output_timing_one_iter
+
+
 
 !==========================================
 subroutine predictor_corrector(basis,                  &
@@ -761,8 +781,8 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
 
  if( .NOT. is_iomaster ) return
 
- write(stdout,'(/,1x,a)')      '==================================================================================================='
- write(stdout,'(/,1x,a,i6,a)') '======================RT-TDDFT values for the interation ',itau,'=================================='
+ write(stdout,'(/,1x,a)')    '==================================================================================================='
+ write(stdout,'(1x,a,i6,a)') '===================== RT-TDDFT values for the interation ',itau,' ================================='
  write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
  write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):', en%tot
 
