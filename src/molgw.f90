@@ -499,7 +499,7 @@ program molgw
  !
  ! RT-TDDFT Simulation
  if(calc_type%is_real_time) then
-   call calculate_propagation(nstate, basis, occupation, c_matrix)
+   call calculate_propagation(basis,occupation,c_matrix)
  end if
 
  !

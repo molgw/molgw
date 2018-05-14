@@ -10,7 +10,6 @@
 module m_hamiltonian_cmplx
  use m_definitions
  use m_timing
- use m_tddft_variables
  use m_mpi
  use m_scalapack
  use m_warning
@@ -194,8 +193,8 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
 
 #ifdef HAVE_LIBXC
 
-! write(stdout,*) 'Calculate DFT XC potential'
-! if( batch_size /= 1 ) write(stdout,*) 'Using batches of size',batch_size
+ write(stdout,*) 'Calculate DFT XC potential'
+ if( batch_size /= 1 ) write(stdout,*) 'Using batches of size',batch_size
  
 
  normalization(:) = 0.0_dp

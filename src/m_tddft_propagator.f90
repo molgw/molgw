@@ -35,27 +35,23 @@ module m_tddft_propagator
   module procedure print_2d_matrix_cmplx
  end interface print_2d_matrix
 
- !integer,private :: unit_cube  
  integer,private                    :: nocc
  real(dp),private                   :: dipole(3)
  real(dp),private                   :: time_read
  real(dp),allocatable,private       :: xatom_start(:,:)
  complex(dp),private                :: excit_field_norm
 
+
 contains
 
 
 !=========================================================================
-subroutine calculate_propagation(nstate,              &
-                                 basis,               &
-                                 occupation,          &
-                                 c_matrix)
+subroutine calculate_propagation(basis,occupation,c_matrix)
  implicit none
 
  type(basis_set),intent(in) :: basis
- integer,intent(in)         :: nstate
- real(dp),intent(in)        :: c_matrix(basis%nbf,nstate,nspin)
- real(dp),intent(in)        :: occupation(nstate,nspin)
+ real(dp),intent(in)        :: c_matrix(:,:,:)
+ real(dp),intent(in)        :: occupation(:,:)
 !=====
  integer,parameter          :: BATCH_SIZE = 64
  integer                    :: fixed_atom_list(natom-nprojectile)
@@ -69,6 +65,7 @@ subroutine calculate_propagation(nstate,              &
  real(dp),allocatable       :: hamiltonian_kinetic(:,:)
  real(dp),allocatable       :: hamiltonian_nucleus(:,:)
 !=====initial values
+ integer                    :: nstate
  real(dp),allocatable       :: energies_inst(:)
  complex(dp),allocatable    :: c_matrix_cmplx(:,:,:)
  complex(dp),allocatable    :: c_matrix_orth_cmplx(:,:,:)
@@ -105,6 +102,8 @@ subroutine calculate_propagation(nstate,              &
 
  write(stdout,'(/,/,1x,a)') '=================================================='
  write(stdout,'(x,a,/)')    'RT-TDDFT simulation'
+
+ nstate = SIZE(occupation(:,:),DIM=1)
 
  call clean_allocate('Overlap matrix S for TDDFT',s_matrix,basis%nbf,basis%nbf)
  call clean_allocate('Kinetic operator T for TDDFT',hamiltonian_kinetic,basis%nbf,basis%nbf)

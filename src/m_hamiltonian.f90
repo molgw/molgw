@@ -10,7 +10,6 @@
 module m_hamiltonian
  use m_definitions
  use m_timing
- use m_tddft_variables
  use m_mpi
  use m_scalapack
  use m_warning
