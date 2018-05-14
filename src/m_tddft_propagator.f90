@@ -252,7 +252,7 @@ subroutine calculate_propagation(nstate,              &
  time_min=time_min+time_step
 
  !
- ! Extrapolation coefficients and history c_ and h_ matrices
+ ! Extrapolation coefficients and history c_ and h_ matrices (h_small_hist_cmplx)
  call initialize_extrap_coefs(c_matrix_orth_cmplx,h_small_cmplx)
 
  write(stdout,'(/,a)') "===END OF INITIAL CONDITIONS==="
@@ -390,7 +390,7 @@ subroutine echo_tddft_variables()
  write(stdout,'(/,1x,a)') 'The most important variables of this section:'
  write(stdout,'(1x,a24,2x,es16.8)') 'Simulation time: time_sim',time_sim
  write(stdout,'(1x,a24,2x,es16.8)') 'Time step: time_step',time_step
- write(stdout,'(1x,a24,2x,es16.8)') 'Number of iterations: ntau',ntau
+ write(stdout,'(1x,a24,2x,i8)') 'Number of iterations: ntau',ntau
  write(stdout,'(1x,a24,6x,a)')      'Predictor-corrector: pred_corr',pred_corr
  write(stdout,'(1x,a24,6x,a)')      'Propagator: prop_type',prop_type
  write(stdout,'(1x,a24,2x,i8)')     'Number of occupied states: nocc',nocc
