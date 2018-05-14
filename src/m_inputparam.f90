@@ -50,6 +50,12 @@ module m_inputparam
  integer,parameter :: GWSOX        = 225
  integer,parameter :: GWPT3        = 226
 
+ !
+ ! TDDFT variables
+ integer,parameter :: EXCIT_NO         = 501
+ integer,parameter :: EXCIT_LIGHT      = 502
+ integer,parameter :: EXCIT_PROJECTILE = 503
+
  type calculation_type
    character(len=100) :: calc_name
    character(len=100) :: scf_name
@@ -78,8 +84,7 @@ module m_inputparam
 
  type excitation_type
  character(len=100)   :: name
- logical              :: is_light
- logical              :: is_projectile
+ integer              :: form
  real(dp)             :: kappa, omega, time0
  real(dp)             :: dir(3)
  end type
@@ -426,16 +431,13 @@ subroutine init_excitation_type(excit_type)
  if( LEN(TRIM(excit_name)) /= 0 ) then
    select case (excit_type%name)
    case("NUCLEUS","ANTINUCLEUS") 
-     excit_type%is_light=.false.
-     excit_type%is_projectile=.true.
+     excit_type%form=EXCIT_PROJECTILE
    case("NO")
-     excit_type%is_light=.false.
-     excit_type%is_projectile=.false.
+     excit_type%form=EXCIT_NO
    case("GAU","HSW","STEP","DEL")
-     excit_type%is_light=.true.
-     excit_type%is_projectile=.false.
+     excit_type%form=EXCIT_LIGHT
    case default
-     write(stdout,*) 'error reading excitation type'
+     write(stdout,*) 'error reading excitation name (excit_name variable)'
      write(stdout,*) TRIM(excit_name)
      call die('excit_name is unknown')
    end select
@@ -993,7 +995,7 @@ subroutine read_inputfile_namelist()
 
  call init_excitation_type(excit_type)
  nprojectile=0
- if( excit_type%is_projectile ) then
+ if( excit_type%form==EXCIT_PROJECTILE ) then
    nprojectile=1
  end if
 

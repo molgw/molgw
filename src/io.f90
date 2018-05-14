@@ -1190,7 +1190,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  use m_definitions
  use m_mpi
  use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type
+ use m_inputparam, only: nspin,spin_fact,excit_type,EXCIT_PROJECTILE
  use m_atoms
  use m_basis_set
  use m_timing
@@ -1269,7 +1269,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
    write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
  end if
 
- if( excit_type%is_projectile ) then
+ if( excit_type%form==EXCIT_PROJECTILE ) then
    i_max_atom=natom-nprojectile
  else
    i_max_atom=natom
@@ -1333,7 +1333,7 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
  use m_definitions
  use m_mpi
  use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type
+ use m_inputparam, only: nspin,spin_fact,excit_type,EXCIT_PROJECTILE
  use m_atoms
  use m_basis_set
  use m_timing
@@ -1402,7 +1402,7 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
    write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
  end if
 
- if( excit_type%is_projectile ) then
+ if( excit_type%form==EXCIT_PROJECTILE ) then
    i_max_atom=natom-nprojectile
  else
    i_max_atom=natom
@@ -1468,7 +1468,7 @@ subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,
  use m_definitions
  use m_mpi
  use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type
+ use m_inputparam, only: nspin,spin_fact,excit_type,EXCIT_PROJECTILE
  use m_atoms
  use m_basis_set
  use m_timing
@@ -1540,7 +1540,7 @@ subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,
    write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
  end if
 
- if( excit_type%is_projectile ) then
+ if( excit_type%form==EXCIT_PROJECTILE ) then
    i_max_atom=natom-nprojectile
  else
    i_max_atom=natom

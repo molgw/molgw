@@ -156,7 +156,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix)
  call clean_allocate('Wavefunctions C for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
  call clean_allocate('Wavefunctions hist. C for TDDFT',c_matrix_orth_cmplx,nstate,nocc,nspin)
  call clean_allocate('Hamiltonian Fock for TDDFT',hamiltonian_fock_cmplx,basis%nbf,basis%nbf,nspin)
- call clean_allocate('h_small_start for TDDFT',h_small_cmplx,nstate,nstate,nspin)
+ call clean_allocate('h_small_cmplx for TDDFT',h_small_cmplx,nstate,nstate,nspin)
  call clean_allocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx,basis%nbf,basis%nbf,nspin)
 
  allocate(xatom_start(3,natom))
@@ -211,7 +211,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix)
  nwrite_step=NINT((time_sim - time_min)/write_step)
  
 
- if(excit_type%is_light) then
+ if(excit_type%form==EXCIT_LIGHT) then
    call clean_allocate('Dipole_basis for TDDFT',dipole_basis,basis%nbf,basis%nbf,3)
    call calculate_dipole_basis(basis,dipole_basis)
  end if
@@ -241,7 +241,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix)
  ! Printing initial values of energy and dipole taken from SCF or RESTART_TDDFT
  en%tot = en%nuc + en%kin + en%nuc_nuc + en%hart + en%exx_hyb + en%xc + en%excit
 
- if(excit_type%is_light) then
+ if(excit_type%form==EXCIT_LIGHT) then
    call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
    call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
  endif
@@ -308,7 +308,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix)
    ! 3) and 4) in case of light excitation
    if( ABS(time_cur / (write_step)- NINT(time_cur / (write_step))) < 1.0e-7 ) then
 
-     if(excit_type%is_light) then
+     if(excit_type%form==EXCIT_LIGHT) then
       call setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
       call static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole) 
      end if
@@ -353,8 +353,10 @@ subroutine calculate_propagation(basis,occupation,c_matrix)
 
  if( is_iomaster) then
    close(file_time_data)
-   if( excit_type%is_light) close(file_dipole_time)
-   if( excit_type%is_light ) close(file_excit_field)
+   if( excit_type%form==EXCIT_LIGHT) then
+     close(file_dipole_time)
+     close(file_excit_field)
+   end if
  end if
 
  call clean_deallocate('p_matrix_cmplx for TDDFT',p_matrix_cmplx)
@@ -382,7 +384,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix)
  call clean_deallocate('Wavefunctions C for TDDFT',c_matrix_cmplx)   
  call clean_deallocate('Wavefunctions hist. C for TDDFT',c_matrix_orth_cmplx)   
  call clean_deallocate('Hamiltonian Fock for TDDFT',hamiltonian_fock_cmplx)   
- call clean_deallocate('h_small_start for TDDFT',h_small_cmplx)  
+ call clean_deallocate('h_small_cmplx for TDDFT',h_small_cmplx)
 
  write(stdout,'(/,x,a)') "End of RT-TDDFT simulation"
  write(stdout,'(1x,a,/)') '=================================================='
@@ -790,23 +792,23 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
  if( .NOT. is_iomaster ) return
 
  write(stdout,'(/,1x,a)')    '==================================================================================================='
- write(stdout,'(1x,a,i6,a)') '===================== RT-TDDFT values for the interation ',itau,' ================================='
+ write(stdout,'(1x,a,i8,a)') '===================== RT-TDDFT values for the interation ',itau,' ================================='
  write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
  write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):', en%tot
 
- if(excit_type%is_projectile) then
+ select case(excit_type%form)
+ case(EXCIT_PROJECTILE)
    write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
       time_cur, en%tot, xatom(3,natom), en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc
    call output_projectile_position()
- end if
 
- if(excit_type%is_light) then
+ case(EXCIT_LIGHT)
    write(file_time_data,"(F9.4,8(2x,es16.8E3))") &
     time_cur, en%tot, en%nuc_nuc, en%nuc, en%kin, en%hart, en%exx_hyb, en%xc, en%excit
    write(file_dipole_time,'(4f19.10)') time_cur, dipole(:) * au_debye
    write(file_excit_field,'(2f19.10)') time_cur, REAL(excit_field_norm)
    write(stdout,'(a31,1x,3f19.10)') 'RT-TDDFT Dipole Moment    (D):', dipole(:) * au_debye
- end if
+ end select
 
  write(stdout,'(1x,a,/)')      '==================================================================================================='
 
@@ -823,7 +825,7 @@ subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field)
 
  open(newunit=file_time_data,file="time_data.dat")
 
- if(excit_type%is_light) then
+ if(excit_type%form==EXCIT_LIGHT) then
 
    open(newunit=file_dipole_time,file="dipole_time.dat")
    open(newunit=file_excit_field,file="excitation_time.dat")
@@ -833,18 +835,17 @@ subroutine initialize_files(file_time_data,file_dipole_time,file_excit_field)
  end if
 
 !---------------------------------
- if(excit_type%is_projectile) then
+ select case(excit_type%form) 
+ case(EXCIT_PROJECTILE)
    write(file_time_data,"(A)") "  # time(au)     e_total        z_projectile        enuc_nuc            enuc             ekin              ehart&
                              &           eexx_hyb            exc"
- end if
 
-!---------------------------------
- if(excit_type%is_light) then
+ case(EXCIT_LIGHT) 
    write(file_time_data,"(A)") " # time(au)     e_total             enuc_nuc             enuc            ekin               ehart            &
                              &eexx_hyb            exc             eexcit"
- end if
 
- if(excit_type%is_light) write(file_dipole_time,"(A)") "# time(au)                      Dipole_x(D)               Dipole_y(D)               Dipole_z(D)"
+   write(file_dipole_time,"(A)") "# time(au)                      Dipole_x(D)               Dipole_y(D)               Dipole_z(D)" 
+ end select
 
 end subroutine initialize_files
 
@@ -1475,9 +1476,11 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
  ! Excitation part of the Hamiltonian
  !
  en%excit = 0.0_dp
+
+ select case(excit_type%form)
  !
  ! Light excitation
- if(excit_type%is_light) then
+ case(EXCIT_LIGHT)
    excit_field=0.0_dp
    calc_excit_ = .FALSE.
    calc_excit_ = calc_excit_ .OR. ( excit_type%name == 'GAU' )
@@ -1495,11 +1498,10 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
        enddo
      end do
    end if
- end if ! light excitation
 
  !
  ! Projectile excitation
- if(excit_type%is_projectile) then
+ case(EXCIT_PROJECTILE)
    ! Move the projectile nucleus to the correct place:
    xatom(:,natom) = xatom_start(:,natom) + vel(:,natom) * ( time_cur - time_read )
    call nucleus_nucleus_energy(en%nuc_nuc)
@@ -1516,7 +1518,7 @@ subroutine setup_hamiltonian_fock_cmplx( basis,                   &
    en%excit = REAL( SUM( hamiltonian_projectile(:,:) * SUM(p_matrix_cmplx(:,:,:),DIM=3) ), dp)
    deallocate(hamiltonian_projectile)
 
- end if
+ end select
 
  do ispin=1,nspin
    hamiltonian_fock_cmplx(:,:,ispin) = hamiltonian_fock_cmplx(:,:,ispin) + hamiltonian_kinetic(:,:) + hamiltonian_nucleus(:,:)
