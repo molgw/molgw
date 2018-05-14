@@ -199,7 +199,7 @@ if len(mpirun) < 1:
   nprocs = 1
 
 if not os.path.isfile('../molgw') :
-  print('molgw executable not found!\nMight to compile it first?')
+  print('molgw executable not found!\nMay be you should compile it first? May be you moved it around?')
   sys.exit(1)
 
 print('Running with ',nprocs,'cores')

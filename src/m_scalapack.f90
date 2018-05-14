@@ -1030,10 +1030,7 @@ subroutine diagonalize_scalapack_dp(scalapack_block_min,nmat,matrix_global,eigva
 !=====
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,nmat/scalapack_block_min)
- npcol = MIN(npcol_sd,nmat/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,nmat,nmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
@@ -1117,10 +1114,7 @@ subroutine diagonalize_scalapack_cdp(scalapack_block_min,nmat,matrix_global,eigv
 !=====
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,nmat/scalapack_block_min)
- npcol = MIN(npcol_sd,nmat/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,nmat,nmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
@@ -1218,10 +1212,7 @@ subroutine matmul_ab_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matrix
 
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,mmat/scalapack_block_min)
- npcol = MIN(npcol_sd,nmat/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
@@ -1333,10 +1324,7 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
 
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,mmat/scalapack_block_min)
- npcol = MIN(npcol_sd,nmat/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
@@ -1454,10 +1442,7 @@ subroutine matmul_abc_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matri
 
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,mmat/scalapack_block_min)
- npcol = MIN(npcol_sd,nmat/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
@@ -1611,10 +1596,7 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matr
 
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,mmat/scalapack_block_min)
- npcol = MIN(npcol_sd,nmat/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
@@ -1775,10 +1757,7 @@ subroutine matmul_transaba_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_
 
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,mmat/scalapack_block_min)
- npcol = MIN(npcol_sd,mmat/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,mmat,mmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
@@ -1930,10 +1909,7 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c
 
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,mmat/scalapack_block_min)
- npcol = MIN(npcol_sd,mmat/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,mmat,mmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
@@ -2071,10 +2047,7 @@ subroutine trace_transab_scalapack(scalapack_block_min,a_matrix,b_matrix,ab_trac
  endif
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,kmat1/scalapack_block_min)
- npcol = MIN(npcol_sd,kmat2/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,kmat1,kmat2,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
@@ -3379,6 +3352,34 @@ subroutine orthogonalize_sca(desc_vec,mvec_ortho,nvec_ortho,vec)
 
 
 end subroutine orthogonalize_sca
+
+
+!=========================================================================
+subroutine select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
+ implicit none
+
+ integer,intent(in)  :: scalapack_block_min,mmat,nmat
+ integer,intent(out) :: nprow,npcol
+!=====
+!=====
+ 
+
+ if( nmat < mmat ) then
+
+   npcol = nmat / scalapack_block_min
+   nprow = MIN( nproc_sca / npcol , mmat / scalapack_block_min )
+
+ else
+
+   nprow = mmat / scalapack_block_min
+   npcol = MIN( nproc_sca / nprow , nmat / scalapack_block_min )
+
+ endif
+
+ nprow = MAX(nprow,1)
+ npcol = MAX(npcol,1)
+
+end subroutine select_nprow_npcol
 
 
 !=========================================================================
