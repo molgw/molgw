@@ -69,7 +69,6 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
  if( nspin == 2 ) then
    ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
  endif
- write(stdout,*) "HeRe is ehartree", ehartree
 
 end subroutine setup_hartree
 
@@ -1602,5 +1601,8 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
 
 end subroutine dft_approximate_vhxc
 
+
 end module m_hamiltonian
 !=========================================================================
+
+

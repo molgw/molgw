@@ -103,7 +103,7 @@ subroutine setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
  integer :: nbf,nstate,nocc
  integer :: ispin,ibf,jbf
  integer :: istate
- complex(dp),allocatable :: c_matrix_tmp(:,:)
+ complex(dp),allocatable :: c_matrix_sqrtocc(:,:)
 !=====
 
  call start_clock(timing_density_matrix_cmplx)
@@ -112,20 +112,18 @@ subroutine setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
  nocc   = SIZE(c_matrix_cmplx(:,:,:),DIM=2)
  nstate = SIZE(occupation(:,:),DIM=1)
 
- allocate(c_matrix_tmp(nbf,nstate))
+ if( ANY( occupation(:,:) < 0.0_dp ) ) call die('setup_density_matrix_cmplx: negative occupation number should not happen here.')
+
+ allocate(c_matrix_sqrtocc(nbf,nocc))
 
  p_matrix_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
  do ispin=1,nspin
 
    do istate=1,nocc
-     c_matrix_tmp(:,istate) = c_matrix_cmplx(:,istate,ispin) * SQRT(occupation(istate,ispin))
+     c_matrix_sqrtocc(:,istate) = c_matrix_cmplx(:,istate,ispin) * SQRT(occupation(istate,ispin))
    enddo
-   call ZHERK('L','N',nbf,nocc,1.0d0,c_matrix_tmp,nbf,0.0d0,p_matrix_cmplx(:,:,ispin),nbf)
+   call ZHERK('L','N',nbf,nocc,1.0d0,c_matrix_sqrtocc,nbf,0.0d0,p_matrix_cmplx(1,1,ispin),nbf)
  
-   !do istate=1,nocc
-   !  call ZHER('L',nbf,occupation(istate,ispin),c_matrix_cmplx(:,istate,ispin),1,p_matrix_cmplx(:,:,ispin),nbf)
-   !enddo
-  
 
    ! Hermitianize
    do jbf=1,nbf
@@ -136,7 +134,7 @@ subroutine setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
 
  enddo
 
- deallocate(c_matrix_tmp)
+ deallocate(c_matrix_sqrtocc)
 
  call stop_clock(timing_density_matrix_cmplx)
 
@@ -398,6 +396,7 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
 
 end subroutine dft_exc_vxc_batch_cmplx
 
+
 !=========================================================================
 subroutine static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
  use m_basis_set
@@ -423,6 +422,7 @@ subroutine static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
  enddo
 
 end subroutine static_dipole_fast_cmplx
+
 
 end module m_hamiltonian_cmplx
 !=========================================================================
