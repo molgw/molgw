@@ -86,7 +86,6 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
 !=====
  real(dp),parameter      :: TOL_DENSITY_MATRIX=1.0e-7_dp
  integer                 :: ijshellpair,klshellpair
- integer                 :: iatom
  integer                 :: ibf,jbf,kbf,lbf
  integer                 :: ishell,jshell,kshell,lshell
  integer                 :: ni,nj,nk,nl
@@ -1089,7 +1088,7 @@ subroutine get_c_matrix_from_p_matrix(p_matrix,c_matrix,occupation)
 !=====
  real(dp),allocatable :: p_matrix_sqrt(:,:)
  integer              :: nbf,nstate
- integer              :: ispin,ibf,istate
+ integer              :: ispin
 !=====
 
  nbf    = SIZE( p_matrix(:,:,:), DIM=1 )

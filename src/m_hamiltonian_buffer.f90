@@ -502,7 +502,7 @@ subroutine dft_exc_vxc_buffer_sca(batch_size,basis,occupation,c_matrix,vxc_ij,ex
  integer              :: nstate
  integer              :: idft_xc
  integer              :: igrid_start,igrid_end,ir,nr
- integer              :: igrid,ibf,jbf,ispin
+ integer              :: ibf,jbf,ispin
  real(dp)             :: normalization(nspin)
  real(dp)             :: rhor(nspin,ngrid)
  real(dp)             :: grad_rhor(nspin,ngrid,3)

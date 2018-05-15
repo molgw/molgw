@@ -273,7 +273,6 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
  integer                    :: mf,nf
  integer                    :: mg,ng
  integer                    :: ispin
- integer                    :: istate
  integer                    :: nstate_tmp
  type(basis_set)            :: basis_small
  real(dp),allocatable       :: s_bigsmall_global(:,:)   !TODO: remove this in the future

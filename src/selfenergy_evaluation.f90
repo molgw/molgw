@@ -53,9 +53,8 @@ subroutine selfenergy_evaluation(basis,auxil_basis,nstate,occupation,energy,c_ma
  real(dp),allocatable    :: p_matrix(:,:,:)
  integer                 :: istate
  real(dp)                :: exc
+ integer                 :: ispin
 #endif
-!=====
- integer :: ispin
 !=====
 
  write(stdout,'(/,/,1x,a)') '=================================================='
