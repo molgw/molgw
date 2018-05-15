@@ -19,6 +19,7 @@ module m_hamiltonian_sca
  use m_memory
  use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
+ use m_hamiltonian
 
 
 contains
@@ -547,7 +548,8 @@ subroutine setup_exchange_longrange_ri_sca(occupation,c_matrix,p_matrix,exchange
  do ispin=1,nspin
 
    ! Denombrate the strictly positive eigenvalues
-   nocc = COUNT( occupation(:,ispin) > completely_empty )
+   ! Pass occupation(:,ispin:ispin) to have a rank-two array and have the correct interface
+   nocc = get_number_occupied_states(occupation(:,ispin:ispin))
 
    do istate=1,nocc
      tmp(:,:) = 0.0_dp

@@ -13,6 +13,7 @@ module m_virtual_orbital_space
  use m_warning
  use m_memory
  use m_scalapack
+ use m_hamiltonian
 
  real(dp),allocatable,private :: energy_ref(:,:)
  real(dp),allocatable,private :: c_matrix_ref(:,:,:)
@@ -28,7 +29,6 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  use m_inputparam
  use m_tools,only: diagonalize,invert
  use m_basis_set
- use m_hamiltonian
  use m_hamiltonian_onebody
  use m_hamiltonian_sca
  implicit none
@@ -159,10 +159,7 @@ subroutine setup_virtual_smallbasis(basis,nstate,occupation,nsemax,energy,c_matr
  ! Frozen orbitals for occupied state plus the selfenergy braket
  !
  ! Find the highest occupied state
- do istate=1,nstate
-   if( ALL(occupation(istate,:) < completely_empty) ) cycle
-   nocc = istate
- enddo
+ nocc = get_number_occupied_states(occupation)
 
  ! Override the Cbig coefficients with the original C coefficients up to max(nocc,nsemax)
  nfrozen = MAX(nocc,nsemax)
@@ -246,7 +243,6 @@ end subroutine setup_virtual_smallbasis
 subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_matrix,nstate_small)
  use m_inputparam
  use m_basis_set
- use m_hamiltonian
  use m_hamiltonian_onebody
  use m_hamiltonian_sca
  implicit none
@@ -463,10 +459,7 @@ subroutine setup_virtual_smallbasis_sca(basis,nstate,occupation,nsemax,energy,c_
    ! Frozen orbitals for occupied state plus the selfenergy braket
    !
    ! Find the highest occupied state
-   do istate=1,nstate
-     if( ALL(occupation(istate,:) < completely_empty) ) cycle
-     nocc = istate
-   enddo
+   nocc = get_number_occupied_states(occupation)
   
    ! Override the Cbig coefficients with the original C coefficients up to max(nocc,nsemax)
    nfrozen = MAX(nocc,nsemax)
