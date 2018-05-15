@@ -502,9 +502,9 @@ subroutine setup_exchange_m_vxc(basis,nstate,occupation,energy,c_matrix,hamilton
  real(dp),intent(out)          :: exchange_m_vxc_diag(nstate,nspin)
  real(dp),intent(out),optional :: exchange_m_vxc(nstate,nstate,nspin)
 !=====
- integer,parameter    :: BATCH_SIZE=64
+ integer,parameter    :: BATCH_SIZE = 64
  integer              :: ispin,istate
- real(dp)             :: exc,eexx
+ real(dp)             :: exc
  real(dp),allocatable :: occupation_tmp(:,:)
  real(dp),allocatable :: p_matrix_tmp(:,:,:)
  real(dp),allocatable :: hxc_val(:,:,:),hexx_val(:,:,:),hxmxc(:,:,:)
