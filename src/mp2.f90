@@ -69,7 +69,7 @@ subroutine mp2_energy_ri(nstate,basis,occupation,energy,c_matrix,emp2)
    do istate=ncore+1,nocc(iaspin)
 
 
-     write(stdout,'(i4,2x,i4,a,i4)') iaspin,istate-ncore,' / ',nocc-ncore
+     write(stdout,'(i4,2x,i4,a,i4)') iaspin,istate-ncore,' / ',nocc(iaspin)-ncore
 
      do jbspin=1,nspin
 

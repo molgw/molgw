@@ -376,13 +376,7 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  do ispin=1,nspin
 
    ! Find highest occupied state
-   ! Take care of negative occupations, this can happen if C comes from P^{1/2}
-   nocc = 0
-   do istate=1,nstate
-     if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
-     nocc = istate
-   enddo
-
+   nocc = get_number_occupied_states(occupation)
 
    do istate=1,nocc
      if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle
@@ -530,7 +524,7 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
  enddo
 
 
- eexchange = 0.5_dp*SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
+ eexchange = 0.5_dp * SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
 
  call stop_clock(timing_exchange)
 
@@ -544,9 +538,10 @@ subroutine setup_density_matrix(c_matrix,occupation,p_matrix)
  real(dp),intent(in)  :: occupation(:,:)
  real(dp),intent(out) :: p_matrix(:,:,:)
 !=====
- integer :: nbf,nstate
+ integer :: nbf,nstate,nocc
  integer :: ispin,ibf,jbf
  integer :: istate
+ real(dp),allocatable :: c_matrix_sqrtocc(:,:)
 !=====
 
  call start_clock(timing_density_matrix)
@@ -556,12 +551,20 @@ subroutine setup_density_matrix(c_matrix,occupation,p_matrix)
  nbf    = SIZE(c_matrix(:,:,:),DIM=1)
  nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
+ if( ANY( occupation(:,:) < 0.0_dp ) ) call die('setup_density_matrix: negative occupation number should not happen here.')
+ ! Find the number of occupatied states
+ nocc = get_number_occupied_states(occupation)
+
+ allocate(c_matrix_sqrtocc(nbf,nocc))
+
  p_matrix(:,:,:) = 0.0_dp
  do ispin=1,nspin
-   do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty ) cycle
-     call DSYR('L',nbf,occupation(istate,ispin),c_matrix(:,istate,ispin),1,p_matrix(:,:,ispin),nbf)
+
+   do istate=1,nocc
+     c_matrix_sqrtocc(:,istate) = c_matrix(:,istate,ispin) * SQRT(occupation(istate,ispin))
    enddo
+
+   call DSYRK('L','N',nbf,nocc,1.0d0,c_matrix_sqrtocc,nbf,0.0d0,p_matrix(1,1,ispin),nbf)
 
    ! Symmetrize
    do jbf=1,nbf
@@ -570,6 +573,9 @@ subroutine setup_density_matrix(c_matrix,occupation,p_matrix)
      enddo
    enddo
  enddo
+
+ deallocate(c_matrix_sqrtocc)
+
  call stop_clock(timing_density_matrix)
 
 
@@ -768,6 +774,33 @@ function fermi_dirac(energy,mu)
 end function fermi_dirac
 
 end subroutine set_occupation
+
+
+!=========================================================================
+pure function get_number_occupied_states(occupation) result(nocc)
+ implicit none
+
+ real(dp),intent(in) :: occupation(:,:)
+ integer             :: nocc
+!=====
+ integer :: nstate,istate,ispin,nspin_local
+!=====
+
+ nstate      = SIZE(occupation(:,:),DIM=1)
+ nspin_local = SIZE(occupation(:,:),DIM=2)
+
+ ! Find highest occupied state
+ ! Take care of negative occupations, this can happen if C comes from P^{1/2}
+ nocc = 0
+ do ispin=1,nspin
+   do istate=1,nstate
+     if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
+     nocc = MAX(nocc,istate)
+   enddo
+ enddo
+
+
+end function get_number_occupied_states
 
 
 !=========================================================================

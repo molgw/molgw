@@ -3368,7 +3368,7 @@ subroutine select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
 
  ! If mmat ~ nmat (within some tolerance, then use a square distribution!
  if( ABS( REAL(mmat-nmat,dp) ) / REAL(max_dim,dp) < 0.50_dp ) then 
-   write(stdout,*) 'Enforce a squared distribution',mmat,nmat
+ 
    nprow = MIN( FLOOR(SQRT(REAL(nproc_sca,dp))) , max_dim / scalapack_block_min )
    nprow = MAX(nprow,1)
    npcol = MIN( FLOOR(SQRT(REAL(nproc_sca,dp))) , max_dim / scalapack_block_min )
