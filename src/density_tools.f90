@@ -81,6 +81,7 @@ subroutine calc_density_r(nspin,nbf,nstate,occupation,c_matrix,basis_function_r,
  use m_definitions
  use m_mpi
  use m_basis_set
+ use m_hamiltonian,only: get_number_occupied_states
  implicit none
 
  integer,intent(in)         :: nspin,nbf,nstate
@@ -100,10 +101,8 @@ subroutine calc_density_r(nspin,nbf,nstate,occupation,c_matrix,basis_function_r,
 
  do ispin=1,nspin
 
-   do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty ) cycle
-     nocc = istate
-   enddo
+   nocc = get_number_occupied_states(occupation)
+
    allocate(phir(nocc))
    phir(:) = MATMUL( basis_function_r(:) , c_matrix(:,:nocc,ispin) )
 
@@ -121,6 +120,7 @@ subroutine calc_density_r_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basis_fu
  use m_definitions
  use m_mpi
  use m_basis_set
+ use m_hamiltonian,only: get_number_occupied_states
  implicit none
 
  integer,intent(in)         :: nspin,nbf,nstate,nr
@@ -140,11 +140,7 @@ subroutine calc_density_r_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basis_fu
 
  do ispin=1,nspin
 
-   nocc = 1
-   do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty ) cycle
-     nocc = istate
-   enddo
+   nocc = get_number_occupied_states(occupation)
 
    allocate(phir(nocc,nr))
    phir(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_r(:,:) )
@@ -231,6 +227,7 @@ subroutine calc_density_gradr(nspin,nbf,nstate,occupation,c_matrix,basis_functio
  use m_definitions
  use m_mpi
  use m_basis_set
+ use m_hamiltonian,only: get_number_occupied_states
  implicit none
  integer,intent(in)         :: nspin,nbf,nstate
  real(dp),intent(in)        :: c_matrix(nbf,nstate,nspin)
@@ -268,6 +265,7 @@ subroutine calc_density_gradr_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basi
  use m_definitions
  use m_mpi
  use m_basis_set
+ use m_hamiltonian,only: get_number_occupied_states
  implicit none
 
  integer,intent(in)         :: nspin,nbf,nstate,nr
@@ -293,10 +291,7 @@ subroutine calc_density_gradr_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basi
 
  do ispin=1,nspin
 
-   do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty ) cycle
-     nocc = istate
-   enddo
+   nocc = get_number_occupied_states(occupation)
 
    allocate(phir(nocc,nr))
    allocate(phir_gradx(nocc,nr))

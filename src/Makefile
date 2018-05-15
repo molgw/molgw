@@ -80,9 +80,9 @@ level025: m_eri.o m_scf.o m_dft_grid.o
 
 level030: m_eri_calculate.o m_eri_ao_mo.o
 
-level034: m_spectral_function.o m_hamiltonian.o m_hamiltonian_cmplx.o m_hamiltonian_onebody.o m_hamiltonian_sca.o
+level034: m_spectral_function.o m_hamiltonian.o m_hamiltonian_cmplx.o m_hamiltonian_onebody.o
 
-level035: m_hamiltonian_buffer.o
+level035: m_hamiltonian_buffer.o m_hamiltonian_sca.o
 
 level036: m_hamiltonian_wrapper.o
 
