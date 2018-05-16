@@ -10,7 +10,6 @@
 module m_hamiltonian
  use m_definitions
  use m_timing
- use m_tddft_variables
  use m_mpi
  use m_scalapack
  use m_warning
@@ -36,7 +35,6 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
  character(len=100)   :: title
 !=====
 
- call start_clock(timing_hartree)
 
  write(stdout,*) 'Calculate Hartree term'
 
@@ -71,8 +69,6 @@ subroutine setup_hartree(p_matrix,hartree_ij,ehartree)
  if( nspin == 2 ) then
    ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
  endif
- write(stdout,*) "HeRe is ehartree", ehartree
- call stop_clock(timing_hartree)
 
 end subroutine setup_hartree
 
@@ -102,7 +98,6 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
 !=====
 
 
- call start_clock(timing_hartree)
 
  write(stdout,*) 'Calculate Hartree term with out-of-core integrals'
 
@@ -234,7 +229,6 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
    ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
  endif
 
- call stop_clock(timing_hartree)
 
 end subroutine setup_hartree_oneshell
 
@@ -254,10 +248,8 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
  character(len=100)   :: title
 !=====
 
- if( .NOT. in_tddft_loop ) then
-   write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
- end if
- call start_clock(timing_hartree)
+ write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity'
+ 
 
  nbf = SIZE(hartree_ij(:,:),DIM=1)
 
@@ -298,7 +290,6 @@ subroutine setup_hartree_ri(p_matrix,hartree_ij,ehartree)
    ehartree = ehartree + 0.5_dp*SUM(hartree_ij(:,:)*p_matrix(:,:,2))
  endif
 
- call stop_clock(timing_hartree)
 
 end subroutine setup_hartree_ri
 
@@ -378,13 +369,7 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
  do ispin=1,nspin
 
    ! Find highest occupied state
-   ! Take care of negative occupations, this can happen if C comes from P^{1/2}
-   nocc = 0
-   do istate=1,nstate
-     if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
-     nocc = istate
-   enddo
-
+   nocc = get_number_occupied_states(occupation)
 
    do istate=1,nocc
      if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle
@@ -531,7 +516,7 @@ subroutine setup_exchange_longrange(p_matrix,exchange_ij,eexchange)
  enddo
 
 
- eexchange = 0.5_dp*SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
+ eexchange = 0.5_dp * SUM(exchange_ij(:,:,:)*p_matrix(:,:,:))
 
  call stop_clock(timing_exchange)
 
@@ -545,9 +530,10 @@ subroutine setup_density_matrix(c_matrix,occupation,p_matrix)
  real(dp),intent(in)  :: occupation(:,:)
  real(dp),intent(out) :: p_matrix(:,:,:)
 !=====
- integer :: nbf,nstate
+ integer :: nbf,nstate,nocc
  integer :: ispin,ibf,jbf
  integer :: istate
+ real(dp),allocatable :: c_matrix_sqrtocc(:,:)
 !=====
 
  call start_clock(timing_density_matrix)
@@ -557,12 +543,20 @@ subroutine setup_density_matrix(c_matrix,occupation,p_matrix)
  nbf    = SIZE(c_matrix(:,:,:),DIM=1)
  nstate = SIZE(c_matrix(:,:,:),DIM=2)
 
+ if( ANY( occupation(:,:) < 0.0_dp ) ) call die('setup_density_matrix: negative occupation number should not happen here.')
+ ! Find the number of occupatied states
+ nocc = get_number_occupied_states(occupation)
+
+ allocate(c_matrix_sqrtocc(nbf,nocc))
+
  p_matrix(:,:,:) = 0.0_dp
  do ispin=1,nspin
-   do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty ) cycle
-     call DSYR('L',nbf,occupation(istate,ispin),c_matrix(:,istate,ispin),1,p_matrix(:,:,ispin),nbf)
+
+   do istate=1,nocc
+     c_matrix_sqrtocc(:,istate) = c_matrix(:,istate,ispin) * SQRT(occupation(istate,ispin))
    enddo
+
+   call DSYRK('L','N',nbf,nocc,1.0d0,c_matrix_sqrtocc,nbf,0.0d0,p_matrix(1,1,ispin),nbf)
 
    ! Symmetrize
    do jbf=1,nbf
@@ -571,6 +565,9 @@ subroutine setup_density_matrix(c_matrix,occupation,p_matrix)
      enddo
    enddo
  enddo
+
+ deallocate(c_matrix_sqrtocc)
+
  call stop_clock(timing_density_matrix)
 
 
@@ -768,6 +765,33 @@ function fermi_dirac(energy,mu)
 end function fermi_dirac
 
 end subroutine set_occupation
+
+
+!=========================================================================
+pure function get_number_occupied_states(occupation) result(nocc)
+ implicit none
+
+ real(dp),intent(in) :: occupation(:,:)
+ integer             :: nocc
+!=====
+ integer :: nstate,istate,ispin,nspin_local
+!=====
+
+ nstate      = SIZE(occupation(:,:),DIM=1)
+ nspin_local = SIZE(occupation(:,:),DIM=2)
+
+ ! Find highest occupied state
+ ! Take care of negative occupations, this can happen if C comes from P^{1/2}
+ nocc = 0
+ do ispin=1,nspin
+   do istate=1,nstate
+     if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
+     nocc = MAX(nocc,istate)
+   enddo
+ enddo
+
+
+end function get_number_occupied_states
 
 
 !=========================================================================
@@ -1127,7 +1151,7 @@ subroutine calc_normalization_r(batch_size,basis,occupation,c_matrix)
  vec_b=(/ 0.0_dp     ,  1.745_dp  /)
  vec_c=vec_b-vec_a
 
- call start_clock(timing_dft)
+ call start_clock(timing_xc)
 
  nstate = SIZE(occupation,DIM=1)
 #ifdef HAVE_LIBXC
@@ -1199,7 +1223,7 @@ subroutine calc_normalization_r(batch_size,basis,occupation,c_matrix)
 
 ! write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
 
- call stop_clock(timing_dft)
+ call stop_clock(timing_xc)
 
 end subroutine calc_normalization_r
 
@@ -1245,7 +1269,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  vxc_ij(:,:,:) = 0.0_dp
  if( ndft_xc == 0 ) return
 
- call start_clock(timing_dft)
+ call start_clock(timing_xc)
 
  nstate = SIZE(occupation,DIM=1)
 #ifdef HAVE_LIBXC
@@ -1264,14 +1288,14 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    nr = igrid_end - igrid_start + 1
 
    allocate(weight_batch(nr))
-   allocate(basis_function_r_batch(basis%nbf,nr))
-   allocate(basis_function_gradr_batch(basis%nbf,nr,3))
-   allocate(exc_batch(nr))
    allocate(rhor_batch(nspin,nr))
+   allocate(basis_function_r_batch(basis%nbf,nr))
+   allocate(exc_batch(nr))
    allocate(vrho_batch(nspin,nr))
    allocate(dedd_r_batch(nspin,nr))
 
    if( dft_xc_needs_gradient ) then 
+     allocate(basis_function_gradr_batch(basis%nbf,nr,3))
      allocate(grad_rhor_batch(nspin,nr,3))
      allocate(dedgd_r_batch(nspin,nr,3))
      allocate(sigma_batch(2*nspin-1,nr))
@@ -1280,19 +1304,14 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
    weight_batch(:) = w_grid(igrid_start:igrid_end)
 
-!   call start_clock(timing_tmp9)
    call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
-!   call stop_clock(timing_tmp9)
    !
    ! Get the gradient at points r
-!   call start_clock(timing_tmp8)
    if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,nr,basis_function_gradr_batch)
-!   call stop_clock(timing_tmp8)
 
    !
    ! Calculate the density at points r for spin up and spin down
    ! Calculate grad rho at points r for spin up and spin down
-!   call start_clock(timing_tmp1)
    if( .NOT. dft_xc_needs_gradient ) then 
      call calc_density_r_batch(nspin,basis%nbf,nstate,nr,occupation,c_matrix,basis_function_r_batch,rhor_batch)
 
@@ -1308,14 +1327,12 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
      enddo
 
    endif
-!   call stop_clock(timing_tmp1)
 
    ! Normalization
    normalization(:) = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
    !
    ! LIBXC calls
    !
-!   call start_clock(timing_tmp2)
 
    dedd_r_batch(:,:) = 0.0_dp
    if( dft_xc_needs_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
@@ -1375,24 +1392,12 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
 
    enddo ! loop on the XC functional
 
-!   call stop_clock(timing_tmp2)
 
-
-!   if( ANY( dedd_r_batch(:,:) > 0.0_dp ) ) then
-!     !write(stdout,*) dedd_r_batch(:,:)
-!     call issue_warning('Positive xc potential should not happen. Discard the positive values, but be careful with the final result.')
-!     do ir=1,nr
-!       do ispin=1,nspin
-!         dedd_r_batch(ispin,ir) = MIN( dedd_r_batch(ispin,ir) , -1.0e-16_dp )
-!       enddo
-!     enddo
-!   endif
- 
 
    !
    ! Eventually set up the vxc term
    !
-!   call start_clock(timing_tmp3)
+
    !
    ! LDA and GGA
    allocate(tmp_batch(basis%nbf,nr))
@@ -1401,7 +1406,6 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
        tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir)
      end forall
 
-!     call DSYRK('L','N',basis%nbf,nr,-1.0d0,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
      call DGEMM('N','T',basis%nbf,basis%nbf,nr,1.0d0,tmp_batch,basis%nbf,basis_function_r_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
    enddo
    !
@@ -1419,18 +1423,17 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
      enddo
    endif
    deallocate(tmp_batch)
-!   call stop_clock(timing_tmp3)
 
 
 
    deallocate(weight_batch)
    deallocate(basis_function_r_batch)
-   deallocate(basis_function_gradr_batch)
    deallocate(exc_batch)
    deallocate(rhor_batch)
    deallocate(vrho_batch)
    deallocate(dedd_r_batch)
    if( dft_xc_needs_gradient ) then 
+     deallocate(basis_function_gradr_batch)
      deallocate(grad_rhor_batch)
      deallocate(sigma_batch)
      deallocate(dedgd_r_batch)
@@ -1457,11 +1460,6 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  call xsum_grid(vxc_ij)
  call xsum_grid(exc_xc)
 
-! !
-! ! Destroy operations
-! do idft_xc=1,ndft_xc
-!   call xc_f90_func_end(calc_type%xc_func(idft_xc))
-! enddo
 
 #else
  write(stdout,*) 'XC energy and potential set to zero'
@@ -1471,7 +1469,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
  write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
  write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
 
- call stop_clock(timing_dft)
+ call stop_clock(timing_xc)
 
 end subroutine dft_exc_vxc_batch
 
@@ -1603,5 +1601,8 @@ subroutine dft_approximate_vhxc(basis,vhxc_ij)
 
 end subroutine dft_approximate_vhxc
 
+
 end module m_hamiltonian
 !=========================================================================
+
+

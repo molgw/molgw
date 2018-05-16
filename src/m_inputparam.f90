@@ -50,6 +50,12 @@ module m_inputparam
  integer,parameter :: GWSOX        = 225
  integer,parameter :: GWPT3        = 226
 
+ !
+ ! TDDFT variables
+ integer,parameter :: EXCIT_NO         = 501
+ integer,parameter :: EXCIT_LIGHT      = 502
+ integer,parameter :: EXCIT_PROJECTILE = 503
+
  type calculation_type
    character(len=100) :: calc_name
    character(len=100) :: scf_name
@@ -78,8 +84,7 @@ module m_inputparam
 
  type excitation_type
  character(len=100)   :: name
- logical              :: is_light
- logical              :: is_projectile
+ integer              :: form
  real(dp)             :: kappa, omega, time0
  real(dp)             :: dir(3)
  end type
@@ -129,12 +134,6 @@ module m_inputparam
  character(len=12),protected      :: prop_type
  character(len=12),protected      :: pred_corr
  character(len=12),protected      :: excit_name
- character(len=100),protected     :: error_prop_types
- character(len=100),protected     :: error_pred_corrs
- character(len=100),protected     :: error_time_steps
- character(len=100),protected     :: z_selected
- character(len=100),protected     :: error_n_hists
- character(len=100),protected     :: error_n_iters
  character(len=12),protected      :: ci_greens_function
  character(len=12),protected      :: ci_type
  real(dp),protected               :: diis_switch
@@ -211,7 +210,6 @@ module m_inputparam
  logical,protected                :: print_line_rho_tddft_
  logical,protected                :: print_dens_traj_tddft_
  logical,protected                :: print_dens_traj_
- logical,protected                :: calc_p_matrix_error_
  logical,protected                :: calc_q_matrix_
  logical,protected                :: calc_spectrum_
  logical,protected                :: read_tddft_restart_
@@ -433,16 +431,13 @@ subroutine init_excitation_type(excit_type)
  if( LEN(TRIM(excit_name)) /= 0 ) then
    select case (excit_type%name)
    case("NUCLEUS","ANTINUCLEUS") 
-     excit_type%is_light=.false.
-     excit_type%is_projectile=.true.
+     excit_type%form=EXCIT_PROJECTILE
    case("NO")
-     excit_type%is_light=.false.
-     excit_type%is_projectile=.false.
+     excit_type%form=EXCIT_NO
    case("GAU","HSW","STEP","DEL")
-     excit_type%is_light=.true.
-     excit_type%is_projectile=.false.
+     excit_type%form=EXCIT_LIGHT
    case default
-     write(stdout,*) 'error reading excitation type'
+     write(stdout,*) 'error reading excitation name (excit_name variable)'
      write(stdout,*) TRIM(excit_name)
      call die('excit_name is unknown')
    end select
@@ -821,7 +816,6 @@ subroutine read_inputfile_namelist()
  character(len=3)     :: print_line_rho_tddft
  character(len=3)     :: print_dens_traj_tddft
  character(len=3)     :: print_dens_traj
- character(len=3)     :: calc_p_matrix_error
  character(len=3)     :: calc_q_matrix
  character(len=3)     :: calc_spectrum
  character(len=3)     :: read_tddft_restart
@@ -908,8 +902,6 @@ subroutine read_inputfile_namelist()
  prop_type          = capitalize(prop_type)
  excit_name         = capitalize(excit_name)
  pred_corr          = capitalize(pred_corr)
- error_prop_types   = capitalize(error_prop_types)
- error_pred_corrs   = capitalize(error_pred_corrs)
  ci_greens_function = capitalize(ci_greens_function)
  ci_type            = capitalize(ci_type)
  read_fchk          = capitalize(read_fchk)
@@ -942,7 +934,6 @@ subroutine read_inputfile_namelist()
  print_line_rho_tddft_  = yesno(print_line_rho_tddft)
  print_dens_traj_tddft_ = yesno(print_dens_traj_tddft)
  print_dens_traj_       = yesno(print_dens_traj)
- calc_p_matrix_error_   = yesno(calc_p_matrix_error)
  calc_q_matrix_         = yesno(calc_q_matrix)
  calc_spectrum_         = yesno(calc_spectrum)
  read_tddft_restart_    = yesno(read_tddft_restart)
@@ -1004,7 +995,7 @@ subroutine read_inputfile_namelist()
 
  call init_excitation_type(excit_type)
  nprojectile=0
- if( excit_type%is_projectile ) then
+ if( excit_type%form==EXCIT_PROJECTILE ) then
    nprojectile=1
  end if
 

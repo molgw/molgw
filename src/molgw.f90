@@ -78,10 +78,7 @@ program molgw
  integer                 :: m_ham,n_ham                  ! distribute a  basis%nbf x basis%nbf   matrix
  integer                 :: m_c,n_c                      ! distribute a  basis%nbf x nstate      matrix
 !=====
- integer :: var_i, var_j
- integer :: unitfile
- integer :: nocc
- integer :: ispin,istate
+
  !
  !
  ! Part 1 / 3 : Initialization
@@ -122,10 +119,12 @@ program molgw
    call lbfgs_init(lbfgs_plan,3*natom,5,diag_guess=2.0_dp)
  endif
 
+
  !
  ! Nucleus motion loop
  !
  do istep=1,nstep
+
    if( move_nuclei == 'relax' ) then
      write(stdout,'(/,/,1x,a,i5,/)') ' === LBFGS step ',istep
    endif
@@ -206,11 +205,14 @@ program molgw
    call clean_allocate('Fock operator F',hamiltonian_fock,basis%nbf,basis%nbf,nspin) ! Never distributed
 
 
+   ! Allocate the only complete array buffer basis%nbf x basis%nbf in case of SCALAPACK
+   if( parallel_ham .AND. parallel_buffer ) call allocate_parallel_buffer(basis%nbf)
+
    !
    ! Build up the overlap matrix S
    ! S only depends onto the basis set
    if( parallel_ham ) then
-     call setup_overlap_sca(basis,s_matrix)
+     call setup_overlap_buffer_sca(basis,s_matrix)
    else
      call setup_overlap(basis,s_matrix)
    endif
@@ -241,14 +243,12 @@ program molgw
    endif
 
 
-
-   ! Allocate the main arrays
+   ! Allocate the nstate arrays: c_matrix, occupation, energy
    ! 2D arrays
    call clean_allocate('Wavefunctions C',c_matrix,basis%nbf,nstate,nspin)  ! not distributed right now
    ! 1D arrays
    allocate(occupation(nstate,nspin))
    allocate(    energy(nstate,nspin))
-   if( parallel_ham .AND. parallel_buffer ) call allocate_parallel_buffer(basis%nbf)
 
 
    !
@@ -283,7 +283,7 @@ program molgw
    !
    ! Kinetic energy contribution
    if( parallel_ham ) then
-     call setup_kinetic_sca(basis,hamiltonian_kinetic)
+     call setup_kinetic_buffer_sca(basis,hamiltonian_kinetic)
    else
      call setup_kinetic(basis,hamiltonian_kinetic)
    endif
@@ -291,10 +291,9 @@ program molgw
    !
    ! Nucleus-electron interaction
    if( parallel_ham ) then
-     if( parallel_buffer ) then
-       call setup_nucleus_buffer_sca(basis,hamiltonian_nucleus)
-     else
-       call setup_nucleus_sca(basis,hamiltonian_nucleus)
+     call setup_nucleus_buffer_sca(basis,hamiltonian_nucleus)
+     if( nelement_ecp > 0 ) then
+       call die('ECP not implemented with SCALAPACK yet. Set scalapack_nprow = scalapack_npcol to 1.')
      endif
    else
      call setup_nucleus(basis,hamiltonian_nucleus)
@@ -461,16 +460,8 @@ program molgw
  !
  call start_clock(timing_postscf)
 
- !****RT-TDDFT SIMULATION****
- if(calc_type%is_real_time) then
-   write(stdout,'(/,1x,a)') '=================================================='
-   write(stdout,'(x,a)') "RT-TDDFT simulation"
-   call calculate_propagation(nstate, basis, occupation, c_matrix)
-   write(stdout,'(x,a)') "End of RT-TDDFT simulation"
-   write(stdout,'(1x,a)') '=================================================='
- end if
- !***************************
 
+ !FBFB: Ivan, mind to clean this mess?
  ! boulette temporary section for the charge calculation
  call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.TRUE.,64)
  call calc_normalization_r(64,basis,occupation,c_matrix)
@@ -484,6 +475,7 @@ program molgw
    ! Evaluate the static quadrupole
    call static_quadrupole(nstate,basis,occupation,c_matrix)
  endif
+
  if( print_wfn_ )  call plot_wfn(nstate,basis,c_matrix)
  if( print_wfn_ )  call plot_rho(nstate,basis,occupation,c_matrix)
  if( print_cube_ ) call plot_cube_wfn(nstate,basis,occupation,c_matrix)
@@ -492,23 +484,11 @@ program molgw
  if( print_dens_traj_ ) call plot_rho_traj_bunch_contrib(nstate,basis,occupation,c_matrix,0,0.0_dp)
  if( .FALSE. ) call read_cube_wfn(nstate,basis,occupation,c_matrix)
 
- !
- ! Deallocate all what you can at this stage
- !
- ! If RSH calculations were performed, then deallocate the LR integrals which
- ! are not needed anymore
- if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()
- if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
-
  call clean_deallocate('Overlap matrix S',s_matrix)
+ call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
+ call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
  call clean_deallocate('Overlap sqrt S^{-1/2}',s_matrix_sqrt_inv)
 
-
- !
- !
- ! Post-processing start here
- !
- !
 
  !
  ! Prepare the diagonal of the matrix Sigma_x - Vxc
@@ -535,6 +515,28 @@ program molgw
  endif
  call clean_deallocate('Fock operator F',hamiltonian_fock)
 
+
+
+ !
+ !
+ ! Post-processing start here
+ !
+ !
+
+ !
+ ! RT-TDDFT Simulation
+ if(calc_type%is_real_time) then
+   call calculate_propagation(basis,occupation,c_matrix)
+ end if
+
+ !
+ ! If RSH calculations were performed, then deallocate the LR integrals which
+ ! are not needed anymore
+ !
+ if( calc_type%need_exchange_lr ) call deallocate_eri_4center_lr()
+ if( has_auxil_basis .AND. calc_type%need_exchange_lr ) call destroy_eri_3center_lr()
+
+
  !
  ! CI calculation
  !
@@ -554,7 +556,7 @@ program molgw
      call calculate_eri_4center_eigen_uks(c_matrix,1,MIN(nstate,nvirtualg-1))  ! TODO set the nstate_min to a more finely tuned value
    endif
 
-   call prepare_ci(MIN(nstate,nvirtualg-1),ncoreg,hamiltonian_kinetic+hamiltonian_nucleus,c_matrix)
+   call prepare_ci(basis,MIN(nstate,nvirtualg-1),ncoreg,c_matrix)
 
    call full_ci_nelectrons(0,NINT(electrons),ci_spin_multiplicity-1,en%nuc_nuc)
 
@@ -582,8 +584,6 @@ program molgw
    endif
 
  endif
- call clean_deallocate('Kinetic operator T',hamiltonian_kinetic)
- call clean_deallocate('Nucleus operator V',hamiltonian_nucleus)
 
  !
  ! final evaluation for MP2 total energy

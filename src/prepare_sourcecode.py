@@ -1,5 +1,9 @@
 #!/usr/bin/python3
 ###################################
+# This file is part of MOLGW.
+# Author: Fabien Bruneval
+# This python script generates the Fortran files: git_sha.f90 and basis_path.f90
+###################################
 
 
 import sys, os, time, shutil, subprocess

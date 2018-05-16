@@ -32,7 +32,7 @@ subroutine static_polarizability(nstate,occupation,energy,wpol_out)
  real(dp)                  :: docc,denom
 !=====
 
- call start_clock(timing_pola_static)
+ call start_clock(timing_rpa_static)
 
  write(stdout,'(/,a)') ' Calculate the static polarizability within RPA'
 
@@ -98,7 +98,7 @@ subroutine static_polarizability(nstate,occupation,energy,wpol_out)
  call clean_deallocate('temp chi0 matrix',vsqchi0vsq)
 
 
- call stop_clock(timing_pola_static)
+ call stop_clock(timing_rpa_static)
 
 end subroutine static_polarizability
 

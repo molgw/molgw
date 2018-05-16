@@ -1041,10 +1041,7 @@ subroutine diagonalize_scalapack_dp(scalapack_block_min,nmat,matrix_global,eigva
 !=====
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,nmat/scalapack_block_min)
- npcol = MIN(npcol_sd,nmat/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,nmat,nmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
@@ -1128,10 +1125,7 @@ subroutine diagonalize_scalapack_cdp(scalapack_block_min,nmat,matrix_global,eigv
 !=====
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,nmat/scalapack_block_min)
- npcol = MIN(npcol_sd,nmat/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,nmat,nmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
@@ -1139,9 +1133,7 @@ subroutine diagonalize_scalapack_cdp(scalapack_block_min,nmat,matrix_global,eigv
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
 
-   if( .NOT. in_tddft_loop ) then
-     write(stdout,'(a,i4,a,i4)') ' Diagonalization using SCALAPACK with a grid',nprow,' x ',npcol
-   end if
+   write(stdout,'(a,i4,a,i4)') ' Diagonalization using SCALAPACK with a grid',nprow,' x ',npcol
  
    ! Find the master
    if( iprow == 0 .AND. ipcol == 0 ) then
@@ -1232,10 +1224,7 @@ subroutine matmul_ab_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matrix
 
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,mmat/scalapack_block_min)
- npcol = MIN(npcol_sd,nmat/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
@@ -1347,10 +1336,7 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
 
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,mmat/scalapack_block_min)
- npcol = MIN(npcol_sd,nmat/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
@@ -1358,9 +1344,8 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matri
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
 
-   if( .NOT. in_tddft_loop ) then
-     write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
-   end if
+   write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
+
    !
    ! Participate to the calculation only if the CPU has been selected 
    ! in the grid
@@ -1470,10 +1455,7 @@ subroutine matmul_abc_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_matri
 
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,mmat/scalapack_block_min)
- npcol = MIN(npcol_sd,nmat/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
@@ -1627,20 +1609,17 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c_matr
 
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,mmat/scalapack_block_min)
- npcol = MIN(npcol_sd,nmat/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
    call BLACS_GET( -1, 0, cntxt )
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-   if( .NOT. in_tddft_loop ) then
-     write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
-   end if
-  
+
+   write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
+
+
    !
    ! Participate to the diagonalization only if the CPU has been selected 
    ! in the grid
@@ -1792,10 +1771,7 @@ subroutine matmul_transaba_scalapack_dp(scalapack_block_min,a_matrix,b_matrix,c_
 
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,mmat/scalapack_block_min)
- npcol = MIN(npcol_sd,mmat/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,mmat,mmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
@@ -1947,10 +1923,7 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c
 
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,mmat/scalapack_block_min)
- npcol = MIN(npcol_sd,mmat/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,mmat,mmat,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
@@ -1958,9 +1931,8 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min,a_matrix,b_matrix,c
    call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
    call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
 
-   if( .NOT. in_tddft_loop ) then
-     write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
-   end if
+   write(stdout,'(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid',nprow,' x ',npcol
+
    !
    ! Participate to the diagonalization only if the CPU has been selected 
    ! in the grid
@@ -2090,10 +2062,7 @@ subroutine trace_transab_scalapack(scalapack_block_min,a_matrix,b_matrix,ab_trac
  endif
 
 #ifdef HAVE_SCALAPACK
- nprow = MIN(nprow_sd,kmat1/scalapack_block_min)
- npcol = MIN(npcol_sd,kmat2/scalapack_block_min)
- nprow = MAX(nprow,1)
- npcol = MAX(npcol,1)
+ call select_nprow_npcol(scalapack_block_min,kmat1,kmat2,nprow,npcol)
 
  if( nprow /= 1 .OR. npcol /= 1 ) then
 
@@ -3398,6 +3367,48 @@ subroutine orthogonalize_sca(desc_vec,mvec_ortho,nvec_ortho,vec)
 
 
 end subroutine orthogonalize_sca
+
+
+!=========================================================================
+subroutine select_nprow_npcol(scalapack_block_min,mmat,nmat,nprow,npcol)
+ implicit none
+
+ integer,intent(in)  :: scalapack_block_min,mmat,nmat
+ integer,intent(out) :: nprow,npcol
+!=====
+ integer :: max_dim
+!=====
+ 
+ max_dim = MAX(mmat,nmat)
+
+ ! If mmat ~ nmat (within some tolerance, then use a square distribution!
+ if( ABS( REAL(mmat-nmat,dp) ) / REAL(max_dim,dp) < 0.50_dp ) then 
+ 
+   nprow = MIN( FLOOR(SQRT(REAL(nproc_sca,dp))) , max_dim / scalapack_block_min )
+   nprow = MAX(nprow,1)
+   npcol = MIN( FLOOR(SQRT(REAL(nproc_sca,dp))) , max_dim / scalapack_block_min )
+   npcol = MAX(npcol,1)
+
+ else if( nmat < mmat ) then
+
+   npcol = nmat / scalapack_block_min
+   npcol = MAX(npcol,1)
+   nprow = MIN( nproc_sca / npcol , mmat / scalapack_block_min )
+   nprow = MAX(nprow,1)
+
+ else
+
+   nprow = mmat / scalapack_block_min
+   nprow = MAX(nprow,1)
+   npcol = MIN( nproc_sca / nprow , nmat / scalapack_block_min )
+   npcol = MAX(npcol,1)
+
+ endif
+
+
+ if( nprow * npcol > nproc_sca ) call die('select_nprow_npcol: forbidden SCALAPACK grid')
+
+end subroutine select_nprow_npcol
 
 
 !=========================================================================
