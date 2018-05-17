@@ -3,7 +3,7 @@
 ! Author: Fabien Bruneval
 !
 ! This modules contains
-! the MPI information for grid parallelization
+! the MPI information for DFT grid parallelization
 !
 !=========================================================================
 module m_mpi_grid

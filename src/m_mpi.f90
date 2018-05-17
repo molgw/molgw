@@ -121,18 +121,21 @@ subroutine init_mpi_other_communicators(nproc_ortho_in)
  !
  ! Set up grid communicator
  !
- nproc_grid = nproc_world / nproc_ortho
+! nproc_grid = nproc_world / nproc_ortho
+!
+! color = MODULO( rank_world , nproc_ortho )
+! call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_grid,ier);
+!
+! call MPI_COMM_SIZE(comm_grid,nproc_grid,ier)
+! call MPI_COMM_RANK(comm_grid,rank_grid,ier)
+! if( nproc_grid /= nproc_world / nproc_ortho ) then
+!   write(stdout,*) rank_world,color,nproc_grid,nproc_world,nproc_ortho
+!   call die('Problem in init_mpi')
+! endif
 
- color = MODULO( rank_world , nproc_ortho )
- call MPI_COMM_SPLIT(comm_world,color,rank_world,comm_grid,ier);
-
- call MPI_COMM_SIZE(comm_grid,nproc_grid,ier)
- call MPI_COMM_RANK(comm_grid,rank_grid,ier)
- if( nproc_grid /= nproc_world / nproc_ortho ) then
-   write(stdout,*) rank_world,color,nproc_grid,nproc_world,nproc_ortho
-   call die('Problem in init_mpi')
- endif
-
+ nproc_grid = nproc_world
+ comm_grid = comm_world
+ rank_grid = rank_world
 
  !
  ! Set up auxil communicator

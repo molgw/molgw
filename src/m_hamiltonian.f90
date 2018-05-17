@@ -383,17 +383,16 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
      if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
 
      tmp(:,:) = 0.0_dp
-     !$OMP PARALLEL PRIVATE(ibf,jbf) 
-     !$OMP DO REDUCTION(+:tmp)
-     do ipair=1,npair
+     do ipair=1,nbf
+       ibf = index_basis(1,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair)
+     enddo
+     do ipair=nbf+1,npair
        ibf=index_basis(1,ipair)
        jbf=index_basis(2,ipair)
        tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair)
-       if( ibf /= jbf ) &
-            tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair)
+       tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair)
      enddo
-     !$OMP END DO
-     !$OMP END PARALLEL
 
      ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
@@ -791,7 +790,7 @@ pure function get_number_occupied_states(occupation) result(nocc)
  ! Find highest occupied state
  ! Take care of negative occupations, this can happen if C comes from P^{1/2}
  nocc = 0
- do ispin=1,nspin
+ do ispin=1,nspin_local
    do istate=1,nstate
      if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
      nocc = MAX(nocc,istate)
