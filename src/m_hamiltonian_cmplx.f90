@@ -214,7 +214,7 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
    if( dft_xc_needs_gradient ) then 
      allocate(basis_function_gradr_batch(basis%nbf,nr,3))
      allocate(grad_rhor_batch(nspin,nr,3))
-     allocate(dedgd_r_batch(nspin,nr,3))
+     allocate(dedgd_r_batch(3,nr,nspin))
      allocate(sigma_batch(2*nspin-1,nr))
      allocate(vsigma_batch(2*nspin-1,nr))
    endif
@@ -290,16 +290,16 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
        do ir=1,nr
          if(nspin==1) then
 
-           dedgd_r_batch(1,ir,:) = dedgd_r_batch(1,ir,:)  &
+           dedgd_r_batch(:,ir,1) = dedgd_r_batch(:,ir,1)  &
                       + 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) * dft_xc_coef(idft_xc)
 
          else
 
-           dedgd_r_batch(1,ir,:) = dedgd_r_batch(1,ir,:) &
+           dedgd_r_batch(:,ir,1) = dedgd_r_batch(:,ir,1) &
                      + ( 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) &
                                  + vsigma_batch(2,ir) * grad_rhor_batch(2,ir,:) ) * dft_xc_coef(idft_xc) 
 
-           dedgd_r_batch(2,ir,:) = dedgd_r_batch(2,ir,:) &
+           dedgd_r_batch(:,ir,2) = dedgd_r_batch(:,ir,2) &
                      + ( 2.0_dp * vsigma_batch(3,ir) * grad_rhor_batch(2,ir,:) &
                                  + vsigma_batch(2,ir) * grad_rhor_batch(1,ir,:) ) * dft_xc_coef(idft_xc)
          endif
@@ -315,32 +315,26 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
    ! Eventually set up the vxc term
    !
 
-   !
-   ! LDA and GGA
    allocate(tmp_batch(basis%nbf,nr))
    do ispin=1,nspin
-     forall(ir=1:nr)
-       tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir)
-     end forall
-
-     call DGEMM('N','T',basis%nbf,basis%nbf,nr,1.0d0,tmp_batch,basis%nbf,basis_function_r_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
-   enddo
-
-   !
-   ! GGA-only
-   if( dft_xc_needs_gradient ) then 
-
-     do ispin=1,nspin
-
-       do ir=1,nr
-         tmp_batch(:,ir) = MATMUL( basis_function_gradr_batch(:,ir,:) , dedgd_r_batch(ispin,ir,:) * weight_batch(ir) )
-       enddo
-
-       call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
-
+     !
+     ! LDA and GGA
+     do ir=1,nr
+       tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir) * 0.50_dp
      enddo
-   endif
+     !
+     ! GGA-only
+     if( dft_xc_needs_gradient ) then
+       do ir=1,nr
+         tmp_batch(:,ir) = tmp_batch(:,ir) &
+                          +  MATMUL( basis_function_gradr_batch(:,ir,:) , dedgd_r_batch(:,ir,ispin) * weight_batch(ir) )
+       enddo
+     endif
+
+     call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
+   enddo
    deallocate(tmp_batch)
+
 
     
 
