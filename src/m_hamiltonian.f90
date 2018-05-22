@@ -1188,7 +1188,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    if( dft_xc_needs_gradient ) then 
      allocate(basis_function_gradr_batch(basis%nbf,nr,3))
      allocate(grad_rhor_batch(nspin,nr,3))
-     allocate(dedgd_r_batch(nspin,nr,3))
+     allocate(dedgd_r_batch(3,nr,nspin))
      allocate(sigma_batch(2*nspin-1,nr))
      allocate(vsigma_batch(2*nspin-1,nr))
    endif
@@ -1262,24 +1262,27 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
      ! Set up divergence term if needed (GGA case)
      !
      if( dft_xc_needs_gradient ) then
-       do ir=1,nr
-         if(nspin==1) then
+       if(nspin==1) then
 
-           dedgd_r_batch(1,ir,:) = dedgd_r_batch(1,ir,:)  &
+         do ir=1,nr
+           dedgd_r_batch(:,ir,1) = dedgd_r_batch(:,ir,1)  &
                       + 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) * dft_xc_coef(idft_xc)
+         enddo
 
-         else
+       else
 
-           dedgd_r_batch(1,ir,:) = dedgd_r_batch(1,ir,:) &
+         do ir=1,nr
+           dedgd_r_batch(:,ir,1) = dedgd_r_batch(:,ir,1) &
                      + ( 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) &
                                  + vsigma_batch(2,ir) * grad_rhor_batch(2,ir,:) ) * dft_xc_coef(idft_xc) 
 
-           dedgd_r_batch(2,ir,:) = dedgd_r_batch(2,ir,:) &
+           dedgd_r_batch(:,ir,2) = dedgd_r_batch(:,ir,2) &
                      + ( 2.0_dp * vsigma_batch(3,ir) * grad_rhor_batch(2,ir,:) &
                                  + vsigma_batch(2,ir) * grad_rhor_batch(1,ir,:) ) * dft_xc_coef(idft_xc)
-         endif
+         enddo
 
-       enddo
+       endif
+
      endif
 
    enddo ! loop on the XC functional
@@ -1307,7 +1310,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
      do ispin=1,nspin
 
        do ir=1,nr
-         tmp_batch(:,ir) = MATMUL( basis_function_gradr_batch(:,ir,:) , dedgd_r_batch(ispin,ir,:) * weight_batch(ir) )
+         tmp_batch(:,ir) = MATMUL( basis_function_gradr_batch(:,ir,:) , dedgd_r_batch(:,ir,ispin) * weight_batch(ir) )
        enddo
 
        call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
