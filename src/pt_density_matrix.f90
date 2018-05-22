@@ -29,7 +29,6 @@ subroutine pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m
 !=====
  integer                 :: pstate,istate,astate
  integer                 :: iaspin
- integer                 :: ibf
  real(dp)                :: denom
  real(dp)                :: p_matrix_pt1(nstate,nstate)
 !=====
@@ -58,12 +57,6 @@ subroutine pt1_density_matrix(nstate,basis,occupation,energy,c_matrix,exchange_m
  p_matrix(:,:,iaspin) = MATMUL( c_matrix(:,:,iaspin)  , &
                           MATMUL( p_matrix_pt1(:,:), &
                              TRANSPOSE(c_matrix(:,:,iaspin)) ) )
-
-! open(111,file='p_matrix_pt1.dat',action='write')
-! do ibf=1,basis%nbf
-!   write(111,'(*(2x,f12.6))') p_matrix(ibf,:,iaspin)
-! enddo
-! close(111)
 
 
 end subroutine pt1_density_matrix
@@ -264,7 +257,7 @@ subroutine onering_density_matrix(nstate,basis,occupation,energy,c_matrix,p_matr
  real(dp),intent(out)       :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
  integer                 :: pstate,qstate
- integer                 :: istate,jstate,kstate,lstate
+ integer                 :: istate,jstate,kstate
  integer                 :: astate,bstate,cstate,dstate
  integer                 :: pqspin
  real(dp)                :: denom1,denom2
@@ -436,14 +429,14 @@ subroutine gw_density_matrix(nstate,basis,occupation,energy,c_matrix,wpol,p_matr
  type(spectral_function),intent(in) :: wpol
  real(dp),intent(out)               :: p_matrix(basis%nbf,basis%nbf,nspin)
 !=====
- integer  :: pstate,qstate
+ integer  :: pstate
  integer  :: istate,jstate,kstate,lstate
  integer  :: astate,bstate,cstate,dstate
  integer  :: pqspin
  real(dp) :: denom1,denom2
  real(dp) :: num1,num2
  real(dp) :: p_matrix_gw(nstate,nstate)
- integer  :: t_ib,ipole
+ integer  :: ipole
  real(dp),allocatable :: bra_occ(:,:),bra_virt(:,:)
 !=====
 

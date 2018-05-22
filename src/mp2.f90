@@ -145,9 +145,7 @@ subroutine mp3_energy_ri(nstate,basis,occupation,energy,c_matrix,emp3)
  integer                    :: iaspin,jbspin,kcspin
  integer                    :: cspin,dspin,kspin,lspin
  real(dp)                   :: energy_denom
- real(dp)                   :: tmp_iajb,tmp_ibja
  real(dp)                   :: contrib1,contrib2,contrib3
- real(dp)                   :: fact
  real(dp)                   :: denom1,denom2,numer1,numer2
  integer                    :: nocc(nspin)
  integer                    :: ncore,nstate_mp3
