@@ -17,7 +17,6 @@ module m_scalapack
  use m_warning
  use m_tools
  use m_mpi
- use m_tddft_variables
 #ifdef HAVE_MPI
  use mpi
 #endif
