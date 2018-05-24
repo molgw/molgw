@@ -353,6 +353,16 @@ vl[i].comment  ='Sets the residual norm target for the density matrix for the SC
 #================================
 vl.append(variable())
 i = len(vl) - 1
+vl[i].keyword  ='kerker_k0'
+vl[i].family   ='scf'
+vl[i].default  =0.0
+vl[i].datatype ='real'
+vl[i].experimental ='yes'
+vl[i].comment  ='Analog to k0 in Kerker preconditioning for metallic systems. Helps to damp charge oscillations to ensure better SCF convergence.'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
 vl[i].keyword  ='min_overlap'
 vl[i].family   ='scf'
 vl[i].default  =1.0e-5

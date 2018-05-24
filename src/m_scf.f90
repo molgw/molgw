@@ -86,7 +86,7 @@ subroutine init_scf(m_ham,n_ham,m_c,n_c,nbf,nstate)
 
  case('PULAY','DIIS')
    nhistmax         = npulay_hist
-   nhistmax_pmatrix = 1
+   nhistmax_pmatrix = npulay_hist
    allocate(a_matrix_hist(nhistmax,nhistmax))
 
  case('ADIIS','EDIIS')
@@ -133,6 +133,7 @@ subroutine destroy_scf()
  if(ALLOCATED(p_matrix_hist))    call clean_deallocate('Density matrix history',p_matrix_hist)
  if(ALLOCATED(a_matrix_hist))    deallocate(a_matrix_hist)
  if(ALLOCATED(p_dot_h_hist))     deallocate(p_dot_h_hist)
+ if(ALLOCATED(alpha_diis))       deallocate(alpha_diis)
 
 end subroutine destroy_scf
 
@@ -150,6 +151,7 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  iscf = iscf + 1
  nhist_current  = MIN(nhist_current+1,nhistmax) 
 
+ if( ALLOCATED(alpha_diis) ) deallocate(alpha_diis)
  allocate(alpha_diis(nhist_current))
 
  !
@@ -168,9 +170,12 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    a_matrix_hist(:,1)   = 0.0_dp
  endif
 
- if( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
+ if( mixing_scheme == 'DIIS' .OR. mixing_scheme == 'PULAY' &
+     .OR. mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
    p_matrix_hist(:,:,:,2:) = p_matrix_hist(:,:,:,1:nhistmax_pmatrix-1)
+ endif
 
+ if( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
    p_dot_h_hist(2:,2:) = p_dot_h_hist(1:nhistmax_pmatrix-1,1:nhistmax_pmatrix-1)
    p_dot_h_hist(1,:)   = 0.0_dp
    p_dot_h_hist(:,1)   = 0.0_dp
@@ -199,7 +204,6 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    call xdiis_prediction(p_matrix,ham)
  endif
 
- deallocate(alpha_diis)
 
 end subroutine hamiltonian_prediction
 
@@ -695,6 +699,103 @@ function eval_gradf_xdiis(xi,dxdt)
 end function eval_gradf_xdiis
 
 end subroutine xdiis_prediction
+
+
+!=========================================================================
+subroutine density_matrix_preconditioning(hkin,p_matrix_new)
+ implicit none
+
+ real(dp),intent(in)      :: hkin(:,:)
+ real(dp),intent(inout)   :: p_matrix_new(:,:,:)
+!=====
+ real(dp),allocatable     :: hkin_tmp(:,:)
+ real(dp),allocatable     :: hkin_inv(:,:)
+ real(dp),allocatable     :: delta_p_matrix(:,:)
+ real(dp),allocatable     :: p_matrix_in(:,:,:)
+ real(dp)                 :: diag(desc_ham(M_))
+ integer :: mlocal,nlocal
+ integer :: ilocal,jlocal
+ integer :: iglobal,jglobal
+ integer :: nbf,ispin,ihist
+!=====
+
+ nbf = SIZE(hkin,DIM=1)
+
+ if( nprow_ham * npcol_ham > 1 ) call die('not implemented yet')
+
+ write(stdout,'(1x,a,f8.3)') 'Preconditioning a la Kerker for the density matrix with k0: ',kerker_k0
+
+ allocate(hkin_tmp,SOURCE=hkin)
+ allocate(hkin_inv,MOLD=hkin)
+ allocate(delta_p_matrix,MOLD=hkin)
+ allocate(p_matrix_in,MOLD=p_matrix_new)
+
+#if 0
+ nbf = desc_ham(M_)
+ diag(:) = kerker_k0**2
+
+ if( cntxt_ham > 0 ) then
+   do jlocal=1,nlocal
+     do ilocal=1,mlocal
+       iglobal = rowindex_local_to_global(desc_ham,ilocal)
+       jglobal = rowindex_local_to_global(desc_ham,ilocal)
+       if( iglobal == jglobal ) hkin_tmp(ilocal,jlocal) = hkin_tmp(ilocal,jlocal) + 0.5_dp * kerker_k0**2
+     enddo
+   enddo
+ endif
+
+ call invert_sca(desc_ham,hkin_tmp,hkin_inv)
+
+ call matmul_diag_sca('L',diag,desc_ham,hkin_inv)
+
+ do ispin=1,nspin
+   hkin_tmp(:,:) = p_matrix_new(:,:,ispin) - p_matrix_hist(:,:,ispin,1)
+
+   call PDGEMM('N','N',nbf,nbf,nbf,1.0_dp,hkin_inv,1,1,desc_ham,    &
+                    hkin_tmp,1,1,desc_ham,0.0_dp,delta_p_matrix,1,1,desc_ham)
+
+   p_matrix_new(:,:,1) = p_matrix_hist(:,:,:,1) + p_matrix_new(:,:,:) - p_matrix_hist(:,:,:,1)
+
+ enddo
+#endif
+
+ do iglobal=1,nbf
+   hkin_tmp(iglobal,iglobal) = hkin_tmp(iglobal,iglobal) + 0.5_dp * kerker_k0**2 
+ enddo
+ call invert(hkin_tmp,hkin_inv)
+ hkin_inv(:,:) = -hkin_inv(:,:) * 0.5_dp * kerker_k0**2
+ do iglobal=1,nbf
+   hkin_inv(iglobal,iglobal) = hkin_inv(iglobal,iglobal) + 1.0_dp
+ enddo
+
+ write(stdout,*) '================================'
+ do iglobal=1,20
+   write(stdout,'(*(2x,f6.2))') hkin(iglobal,1:20)
+ enddo
+ write(stdout,*) '================================'
+ do iglobal=1,20
+   write(stdout,'(*(2x,f6.2))') hkin_inv(iglobal,1:20)
+ enddo
+ write(stdout,*) '================================'
+
+ p_matrix_in(:,:,:) = 0.0_dp
+ do ihist=1,nhist_current
+   p_matrix_in(:,:,:) = p_matrix_in(:,:,:) + alpha_diis(ihist) * p_matrix_hist(:,:,:,ihist)
+ enddo
+
+
+ do ispin=1,nspin
+   p_matrix_new(:,:,ispin) = p_matrix_in(:,:,ispin) + MATMUL( hkin_inv , p_matrix_new(:,:,ispin) - p_matrix_in(:,:,ispin) )
+ enddo
+ 
+
+ deallocate(hkin_tmp)
+ deallocate(hkin_inv)
+ deallocate(delta_p_matrix)
+ deallocate(p_matrix_in)
+
+
+end subroutine density_matrix_preconditioning
 
 
 !=========================================================================
