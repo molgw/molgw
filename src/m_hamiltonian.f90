@@ -365,10 +365,10 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
 
  allocate(tmp(nauxil_3center,nbf))
 
- do ispin=1,nspin
+ ! Find highest occupied state
+ nocc = get_number_occupied_states(occupation)
 
-   ! Find highest occupied state
-   nocc = get_number_occupied_states(occupation)
+ do ispin=1,nspin
 
    do istate=1,nocc
      if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle

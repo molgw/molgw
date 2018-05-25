@@ -343,6 +343,14 @@ subroutine scf_loop(is_restart,&
      call setup_density_matrix(c_matrix,occupation,p_matrix)
    endif
 
+
+   !
+   ! p_matrix preconditioning to damp out charge oscillations
+   !
+   if( kerker_k0 > 1.0e-6_dp .OR. density_matrix_damping > 1.0e-6_dp ) &
+      call density_matrix_preconditioning(hamiltonian_kinetic,s_matrix,p_matrix)
+
+
    is_converged = check_converged(p_matrix)
    inquire(file='STOP',exist=stopfile_found)
 

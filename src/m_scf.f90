@@ -16,9 +16,8 @@ module m_scf
  use m_scalapack
  use m_tools,only: invert
 
-
+ 
  integer,private              :: nhistmax
- integer,private              :: nhistmax_pmatrix
  integer,private              :: nhist_current
 
  integer,private              :: nstate_scf,nbf_scf             ! Physical dimensions
@@ -27,6 +26,7 @@ module m_scf
  integer,private              :: m_c_scf,n_c_scf                ! nbf    x nstate
  integer,private              :: m_r_scf,n_r_scf                ! nstate x nstate
 
+ real(dp),allocatable,private :: p_matrix_in(:,:,:)
  real(dp),allocatable,private :: ham_hist(:,:,:,:)
  real(dp),allocatable,private :: res_hist(:,:,:,:)
  real(dp),allocatable,private :: p_matrix_hist(:,:,:,:)
@@ -72,7 +72,7 @@ subroutine init_scf(m_ham,n_ham,m_c,n_c,nbf,nstate)
 
  nbf_scf    = nbf
  nstate_scf = nstate
- 
+
  m_ham_scf     = m_ham
  n_ham_scf     = n_ham
  m_c_scf       = m_c
@@ -83,17 +83,14 @@ subroutine init_scf(m_ham,n_ham,m_c,n_c,nbf,nstate)
  select case(mixing_scheme)
  case('SIMPLE')
    nhistmax         = 2
-   nhistmax_pmatrix = 1
 
  case('PULAY','DIIS')
    nhistmax         = npulay_hist
-   nhistmax_pmatrix = 1
    allocate(a_matrix_hist(nhistmax,nhistmax))
 
  case('ADIIS','EDIIS')
    adiis_regime = .TRUE.
    nhistmax         = npulay_hist
-   nhistmax_pmatrix = npulay_hist
    allocate(a_matrix_hist(nhistmax,nhistmax))
    allocate(p_dot_h_hist(nhistmax,nhistmax))
 
@@ -111,15 +108,16 @@ subroutine init_scf(m_ham,n_ham,m_c,n_c,nbf,nstate)
  call xmax_local(n_r_scf)
 
 
+ call clean_allocate('Input density matrix',p_matrix_in,m_ham,n_ham,nspin)
  call clean_allocate('Hamiltonian history',ham_hist,m_ham,n_ham,nspin,nhistmax)
- call clean_allocate('Density matrix history',p_matrix_hist,m_ham,n_ham,nspin,nhistmax_pmatrix)
- if( mixing_scheme /= 'SIMPLE' ) then 
+ call clean_allocate('Density matrix history',p_matrix_hist,m_ham,n_ham,nspin,nhistmax)
+ if( mixing_scheme /= 'SIMPLE' ) then
    call clean_allocate('Residual history',res_hist,m_r_scf,n_r_scf,nspin,nhistmax)
  endif
 
  allocate(en_hist(nhistmax))
 
- 
+
 end subroutine init_scf
 
 
@@ -129,6 +127,7 @@ subroutine destroy_scf()
 !=====
 
  if(ALLOCATED(en_hist))          deallocate(en_hist)
+ if(ALLOCATED(p_matrix_in))      call clean_deallocate('Input density matrix',p_matrix_in)
  if(ALLOCATED(ham_hist))         call clean_deallocate('Hamiltonian history',ham_hist)
  if(ALLOCATED(res_hist))         call clean_deallocate('Residual history',res_hist)
  if(ALLOCATED(p_matrix_hist))    call clean_deallocate('Density matrix history',p_matrix_hist)
@@ -149,7 +148,7 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 !=====
 
  iscf = iscf + 1
- nhist_current  = MIN(nhist_current+1,nhistmax) 
+ nhist_current  = MIN(nhist_current+1,nhistmax)
 
  allocate(alpha_diis(nhist_current))
 
@@ -158,8 +157,9 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  ! the newest is 1
  ! the oldest is nhistmax
  !
- en_hist(2:)          = en_hist(1:nhistmax-1)
- ham_hist(:,:,:,2:)   = ham_hist(:,:,:,1:nhistmax-1)
+ en_hist(2:)             = en_hist(1:nhistmax-1)
+ ham_hist(:,:,:,2:)      = ham_hist(:,:,:,1:nhistmax-1)
+ p_matrix_hist(:,:,:,2:) = p_matrix_hist(:,:,:,1:nhistmax-1)
  if( ALLOCATED(res_hist) ) then
    res_hist(:,:,:,2:)   = res_hist(:,:,:,1:nhistmax-1)
  endif
@@ -169,10 +169,9 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    a_matrix_hist(:,1)   = 0.0_dp
  endif
 
- if( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
-   p_matrix_hist(:,:,:,2:) = p_matrix_hist(:,:,:,1:nhistmax_pmatrix-1)
 
-   p_dot_h_hist(2:,2:) = p_dot_h_hist(1:nhistmax_pmatrix-1,1:nhistmax_pmatrix-1)
+ if( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
+   p_dot_h_hist(2:,2:) = p_dot_h_hist(1:nhistmax-1,1:nhistmax-1)
    p_dot_h_hist(1,:)   = 0.0_dp
    p_dot_h_hist(:,1)   = 0.0_dp
  endif
@@ -191,7 +190,7 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  if( mixing_scheme /= 'SIMPLE' ) then
    call diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  else
-   call simple_prediction(ham)
+   call simple_prediction(p_matrix,ham)
  endif
 
 
@@ -200,15 +199,17 @@ subroutine hamiltonian_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
    call xdiis_prediction(p_matrix,ham)
  endif
 
+ p_matrix_in(:,:,:) = p_matrix(:,:,:)
  deallocate(alpha_diis)
 
 end subroutine hamiltonian_prediction
 
 
 !=========================================================================
-subroutine simple_prediction(ham)
+subroutine simple_prediction(p_matrix,ham)
  implicit none
- real(dp),intent(inout) :: ham(m_ham_scf,n_ham_scf,nspin)
+ real(dp),intent(inout) :: p_matrix(:,:,:)
+ real(dp),intent(inout) :: ham(:,:,:)
 !=====
 !=====
 
@@ -217,7 +218,8 @@ subroutine simple_prediction(ham)
    alpha_diis(2) = 1.0_dp - alpha_mixing
 
    write(stdout,'(/,1x,a,f8.4)') 'Simple mixing with parameter:',alpha_mixing
-   ham(:,:,:) = alpha_mixing * ham_hist(:,:,:,1) + (1.0_dp - alpha_mixing) * ham_hist(:,:,:,2)
+   ham(:,:,:)      = alpha_mixing * ham_hist(:,:,:,1) + (1.0_dp - alpha_mixing) * ham_hist(:,:,:,2)
+   p_matrix(:,:,:) = alpha_mixing * p_matrix_hist(:,:,:,1) + (1.0_dp - alpha_mixing) * p_matrix_hist(:,:,:,2)
 
  endif
  ham_hist(:,:,:,1) = ham(:,:,:)
@@ -230,7 +232,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  implicit none
  real(dp),intent(in)    :: s_matrix(m_ham_scf,n_ham_scf)
  real(dp),intent(in)    :: s_matrix_sqrt_inv(m_c_scf,n_c_scf)
- real(dp),intent(in)    :: p_matrix(m_ham_scf,n_ham_scf,nspin)
+ real(dp),intent(inout) :: p_matrix(m_ham_scf,n_ham_scf,nspin)
  real(dp),intent(inout) :: ham(m_ham_scf,n_ham_scf,nspin)
 !=====
  integer                :: ispin
@@ -283,11 +285,11 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
        call PDGEMM('N','N',nbf_scf,nbf_scf,nbf_scf,1.0_dp,s_matrix,1,1,desc_ham,          &
                    p_matrix(:,:,ispin),1,1,desc_ham,0.0_dp,matrix_tmp1,1,1,desc_ham)
 
-       ! M2 = M2 - ( S * P ) * H 
+       ! M2 = M2 - ( S * P ) * H
        call PDGEMM('N','N',nbf_scf,nbf_scf,nbf_scf,1.0_dp,matrix_tmp1,1,1,desc_ham,          &
                    ham(:,:,ispin),1,1,desc_ham,-1.0_dp,matrix_tmp2,1,1,desc_ham)
 
-     
+
        deallocate(matrix_tmp1)
        allocate(matrix_tmp1(m_c_scf,n_c_scf))
 
@@ -363,7 +365,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
    do ihist=2,nhist_current
      a_matrix_hist(ihist,1) = SUM( res_hist(:,:,:,ihist) * res_hist(:,:,:,1) ) * nspin
-     a_matrix_hist(1,ihist) = a_matrix_hist(ihist,1) 
+     a_matrix_hist(1,ihist) = a_matrix_hist(ihist,1)
    enddo
 
  endif
@@ -373,7 +375,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
  !
  ! DIIS algorithm from Pulay (1980)
- ! 
+ !
  a_matrix(1:nhist_current,nhist_current+1) = -1.0_dp
  a_matrix(nhist_current+1,1:nhist_current) = -1.0_dp
  a_matrix(nhist_current+1,nhist_current+1) =  0.0_dp
@@ -393,7 +395,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  ! Output the residual history and coefficients
  !
  write(stdout,'(a,4x,30(2x,es12.5))') '  Residuals:',( SQRT(a_matrix(ihist,ihist)) , ihist=1,nhist_current )
- write(stdout,'(a,30(2x,f12.6))') ' Alpha DIIS: ',alpha_diis(1:nhist_current)
+ write(stdout,'(a,30(2x,f12.6))')     ' Alpha DIIS: ',alpha_diis(1:nhist_current)
 
 
  !
@@ -401,6 +403,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
  !
  residual_pred(:,:,:) = 0.0_dp
  ham(:,:,:) = 0.0_dp
+ p_matrix(:,:,:) = 0.0_dp
  if( parallel_ham ) then
 
 #ifdef HAVE_SCALAPACK
@@ -412,6 +415,7 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
        do ihist=1,nhist_current
          call PDGEADD('N',nstate_scf,nstate_scf,alpha_diis(ihist),res_hist(:,:,ispin,ihist),1,1,desc_r,1.0_dp,residual_pred(:,:,ispin),1,1,desc_r)
          call PDGEADD('N',nbf_scf,nbf_scf,alpha_diis(ihist),ham_hist(:,:,ispin,ihist),1,1,desc_ham,1.0_dp,ham(:,:,ispin),1,1,desc_ham)
+         call PDGEADD('N',nbf_scf,nbf_scf,alpha_diis(ihist),p_matrix_hist(:,:,ispin,ihist),1,1,desc_ham,1.0_dp,p_matrix(:,:,ispin),1,1,desc_ham)
        enddo
 
        residual = residual + PDLANGE('F',nstate_scf,nstate_scf,residual_pred(:,:,ispin),1,1,desc_r,work)**2
@@ -428,7 +432,8 @@ subroutine diis_prediction(s_matrix,s_matrix_sqrt_inv,p_matrix,ham)
 
    do ihist=1,nhist_current
      residual_pred(:,:,:) = residual_pred(:,:,:) + alpha_diis(ihist) * res_hist(:,:,:,ihist)
-     ham(:,:,:)           = ham(:,:,:)           + alpha_diis(ihist) * ham_hist(:,:,:,ihist) 
+     ham(:,:,:)           = ham(:,:,:)           + alpha_diis(ihist) * ham_hist(:,:,:,ihist)
+     p_matrix(:,:,:)      = p_matrix(:,:,:)      + alpha_diis(ihist) * p_matrix_hist(:,:,:,ihist)
    enddo
    write(stdout,'(a,2x,es12.5,/)') ' DIIS predicted residual:',NORM2( residual_pred(:,:,:) ) * SQRT(REAL(nspin,dp))
 
@@ -513,11 +518,11 @@ subroutine xdiis_prediction(p_matrix,ham)
  allocate(dcdt(nhist_current,nhist_current))
  allocate(gradf(nhist_current))
 
- ci(1)               = 1.0_dp 
+ ci(1)               = 1.0_dp
  ci(2:nhist_current) = 0.0_dp
  alpha_diis(:)  = ci(:)
  f_xdiis_min = eval_f_xdiis(ci)
-   
+
  if( nhist_current > 1 ) then
 
    do ihist=1,nhist_current
@@ -536,14 +541,14 @@ subroutine xdiis_prediction(p_matrix,ham)
        do ihist=1,nhist_current
          dcdt(ihist,jhist) = - 2.0_dp * ti(ihist)**2 * ti(jhist) / sum_ti2**2
        enddo
-       dcdt(jhist,jhist) = dcdt(jhist,jhist) + 2.0_dp * ti(jhist) / sum_ti2 
+       dcdt(jhist,jhist) = dcdt(jhist,jhist) + 2.0_dp * ti(jhist) / sum_ti2
      enddo
-  
+
 
      ! Evaluate XDIIS function
      f_xdiis =  eval_f_xdiis(ci)
 
-     gradf(:) = eval_gradf_xdiis(ci,dcdt) 
+     gradf(:) = eval_gradf_xdiis(ci,dcdt)
 
      ! Perform a LBGS step
      info = lbfgs_execute(lbfgs_plan,ti,f_xdiis,gradf)
@@ -570,7 +575,7 @@ subroutine xdiis_prediction(p_matrix,ham)
    endif
 
 
-   ! If a coefficient is too large, start again the minimization 
+   ! If a coefficient is too large, start again the minimization
    if( ANY( alpha_diis(2:) > alpha_max ) ) then
 
      !
@@ -590,24 +595,24 @@ subroutine xdiis_prediction(p_matrix,ham)
      alpha_diis(1)   = alpha_max
      alpha_diis(2:)  = (1.0_dp - alpha_max) / REAL(nhist_current-1,dp)
      f_xdiis_min = eval_f_xdiis(alpha_diis)
-    
+
      do imc=1,nmc
        if( MODULO( imc - 1 , nproc_world ) /= rank_world ) cycle
-     
+
        ! Find random coefficients that keep alpha_k = alpha_max and that sum up to 1
        call RANDOM_NUMBER(alpha_diis_mc)
        alpha_diis_mc(khist) = alpha_max
        sum_ti2 = ( SUM( alpha_diis_mc(:khist-1) ) + SUM( alpha_diis_mc(khist+1:) ) )
        alpha_diis_mc(:khist-1) = alpha_diis_mc(:khist-1) / sum_ti2 * (1.0_dp - alpha_max)
        alpha_diis_mc(khist+1:) = alpha_diis_mc(khist+1:) / sum_ti2 * (1.0_dp - alpha_max)
-    
+
        f_xdiis = eval_f_xdiis(alpha_diis_mc)
-    
+
        if( f_xdiis < f_xdiis_min ) then
          f_xdiis_min = f_xdiis
          alpha_diis(:) = alpha_diis_mc(:)
        endif
-    
+
      enddo
 
      ! Propage f_xdiis_min and alpha_diis to all procs
@@ -640,8 +645,8 @@ subroutine xdiis_prediction(p_matrix,ham)
  ham(:,:,:)      = 0.0_dp
  p_matrix(:,:,:) = 0.0_dp
  do ihist=1,nhist_current
-   ham(:,:,:)      = ham(:,:,:)      + alpha_diis(ihist) * ham_hist(:,:,:,ihist) 
-   p_matrix(:,:,:) = p_matrix(:,:,:) + alpha_diis(ihist) * p_matrix_hist(:,:,:,ihist) 
+   ham(:,:,:)      = ham(:,:,:)      + alpha_diis(ihist) * ham_hist(:,:,:,ihist)
+   p_matrix(:,:,:) = p_matrix(:,:,:) + alpha_diis(ihist) * p_matrix_hist(:,:,:,ihist)
  enddo
 
  deallocate(alpha_diis_mc)
@@ -657,7 +662,7 @@ function eval_f_xdiis(xi)
  real(dp),intent(in) :: xi(nhist_current)
  real(dp) :: eval_f_xdiis
 !=====
- 
+
  select case(mixing_scheme)
  case('EDIIS')
    eval_f_xdiis = DOT_PRODUCT( xi , MATMUL( half_ph , xi ) ) + DOT_PRODUCT( xi , diag )
@@ -665,7 +670,7 @@ function eval_f_xdiis(xi)
    eval_f_xdiis =  en_hist(1) - 2.0_dp * half_ph(1,1)  &
                 + 2.0_dp * DOT_PRODUCT( xi , half_ph(:,1) ) &
                 - 2.0_dp * DOT_PRODUCT( half_ph(1,:) , xi )  &
-                + 2.0_dp * DOT_PRODUCT( xi , MATMUL( half_ph , xi ) )  
+                + 2.0_dp * DOT_PRODUCT( xi , MATMUL( half_ph , xi ) )
  case default
    call die('eval_f_xdiis: sheme not allowed')
  end select
@@ -678,7 +683,7 @@ function eval_gradf_xdiis(xi,dxdt)
  real(dp),intent(in) :: dxdt(nhist_current,nhist_current)
  real(dp) :: eval_gradf_xdiis(nhist_current)
 !=====
- 
+
  select case(mixing_scheme)
  case('EDIIS')
    eval_gradf_xdiis(:) = MATMUL( diag , dxdt ) + MATMUL( TRANSPOSE(dxdt) , MATMUL( half_ph , xi ) )  &
@@ -688,7 +693,7 @@ function eval_gradf_xdiis(xi,dxdt)
                  2.0_dp * MATMUL( TRANSPOSE(dxdt) , half_ph(:,1) ) &
                - 2.0_dp * MATMUL( half_ph(1,:) , dxdt )  &
                + 2.0_dp * MATMUL( TRANSPOSE(dxdt) , MATMUL( half_ph , xi ) )  &
-               + 2.0_dp * MATMUL( xi , MATMUL( half_ph , dxdt ) )  
+               + 2.0_dp * MATMUL( xi , MATMUL( half_ph , dxdt ) )
  case default
    call die('eval_gradf_xdiis: sheme not allowed')
  end select
@@ -696,6 +701,145 @@ function eval_gradf_xdiis(xi,dxdt)
 end function eval_gradf_xdiis
 
 end subroutine xdiis_prediction
+
+
+!=========================================================================
+subroutine density_matrix_preconditioning(hkin,s_matrix,p_matrix_new)
+ implicit none
+
+ real(dp),intent(in)      :: hkin(:,:)
+ real(dp),intent(in)      :: s_matrix(:,:)
+ real(dp),intent(inout)   :: p_matrix_new(:,:,:)
+!=====
+ real(dp),allocatable     :: hkin_tmp(:,:)
+ real(dp),allocatable     :: hkin_inv(:,:)
+ real(dp),allocatable     :: delta_p_matrix(:,:)
+ real(dp)                 :: diag(desc_ham(M_))
+ integer :: mlocal,nlocal
+ integer :: ilocal,jlocal
+ integer :: iglobal,jglobal
+ integer :: nbf,ispin,ihist
+ real(dp),allocatable :: matrix(:,:)
+ real(dp) :: trace_ref,trace_current
+!=====
+
+
+ if( kerker_k0 > 1.0e-6_dp ) then
+
+   !
+   ! EXPERIMENTAL CODING which is not functional as of today
+   call assert_experimental()
+
+   nbf = SIZE(hkin,DIM=1)
+
+   if( nprow_ham * npcol_ham > 1 ) call die('not implemented yet')
+
+   write(stdout,'(1x,a,f8.3)') 'Preconditioning a la Kerker for the density matrix with k0: ',kerker_k0
+
+   allocate(hkin_tmp,SOURCE=hkin)
+   allocate(hkin_inv,MOLD=hkin)
+   allocate(delta_p_matrix,MOLD=hkin)
+
+#if 0
+   nbf = desc_ham(M_)
+   diag(:) = kerker_k0**2
+
+   if( cntxt_ham > 0 ) then
+     do jlocal=1,nlocal
+       do ilocal=1,mlocal
+         iglobal = rowindex_local_to_global(desc_ham,ilocal)
+         jglobal = rowindex_local_to_global(desc_ham,ilocal)
+         if( iglobal == jglobal ) hkin_tmp(ilocal,jlocal) = hkin_tmp(ilocal,jlocal) + 0.5_dp * kerker_k0**2
+       enddo
+     enddo
+   endif
+
+   call invert_sca(desc_ham,hkin_tmp,hkin_inv)
+
+   call matmul_diag_sca('L',diag,desc_ham,hkin_inv)
+
+   do ispin=1,nspin
+     hkin_tmp(:,:) = p_matrix_new(:,:,ispin) - p_matrix_hist(:,:,ispin,1)
+
+     call PDGEMM('N','N',nbf,nbf,nbf,1.0_dp,hkin_inv,1,1,desc_ham,    &
+                      hkin_tmp,1,1,desc_ham,0.0_dp,delta_p_matrix,1,1,desc_ham)
+
+     p_matrix_new(:,:,1) = p_matrix_hist(:,:,:,1) + p_matrix_new(:,:,:) - p_matrix_hist(:,:,:,1)
+
+   enddo
+#endif
+
+   do iglobal=1,nbf
+     hkin_tmp(iglobal,iglobal) = hkin_tmp(iglobal,iglobal) + 0.5_dp * kerker_k0**2
+   enddo
+   call invert(hkin_tmp,hkin_inv)
+   hkin_inv(:,:) = -hkin_inv(:,:) * 0.5_dp * kerker_k0**2
+   do iglobal=1,nbf
+     hkin_inv(iglobal,iglobal) = hkin_inv(iglobal,iglobal) + 1.0_dp
+   enddo
+
+   write(stdout,*) '================================'
+   do iglobal=1,20
+     write(stdout,'(*(2x,f6.2))') hkin(iglobal,1:20)
+   enddo
+   write(stdout,*) '================================'
+   do iglobal=1,20
+     write(stdout,'(*(2x,f6.2))') hkin_inv(iglobal,1:20)
+   enddo
+   write(stdout,*) '================================'
+
+   write(stdout,*) '=============P_MATRIX BEFORE===='
+   do iglobal=1,20
+     write(stdout,'(*(2x,f6.2))') p_matrix_new(iglobal,1:20,1)
+   enddo
+   write(stdout,*) '================================'
+
+   allocate(matrix(nbf,nbf))
+   matrix(:,:) = MATMUL( p_matrix_new(:,:,1) , s_matrix )
+   write(stdout,*) 'TRACE PS',matrix_trace(matrix)
+
+
+
+   do ispin=1,nspin
+     matrix(:,:) = MATMUL( p_matrix_in(:,:,ispin) , s_matrix )
+     trace_ref = matrix_trace(matrix)
+
+     p_matrix_new(:,:,ispin) = p_matrix_in(:,:,ispin) + MATMUL( hkin_inv , p_matrix_new(:,:,ispin) - p_matrix_in(:,:,ispin) )
+
+     matrix(:,:) = MATMUL( p_matrix_new(:,:,ispin) , s_matrix )
+     trace_current = matrix_trace(matrix)
+
+     p_matrix_new(:,:,ispin) = p_matrix_new(:,:,ispin) + p_matrix_in(:,:,ispin) * (trace_ref-trace_current) / trace_ref
+
+   enddo
+
+   write(stdout,*) '=============P_MATRIX AFTER ===='
+   do iglobal=1,20
+     write(stdout,'(*(2x,f6.2))') p_matrix_new(iglobal,1:20,1)
+   enddo
+   write(stdout,*) '================================'
+
+   matrix(:,:) = MATMUL( p_matrix_new(:,:,1) , s_matrix )
+   write(stdout,*) 'TRACE PS after',matrix_trace(matrix)
+   deallocate(matrix)
+
+   deallocate(hkin_tmp)
+   deallocate(hkin_inv)
+   deallocate(delta_p_matrix)
+
+ endif
+
+ if( density_matrix_damping > 1.0e-6 ) then
+
+   write(stdout,'(1x,a,f8.4)') 'Apply a density damping with mixing: ',density_matrix_damping
+   do ispin=1,nspin
+     p_matrix_new(:,:,:) = p_matrix_in(:,:,:) +  ( p_matrix_new(:,:,:) - p_matrix_in(:,:,:) ) * ( 1.0_dp - density_matrix_damping)
+   enddo
+
+ endif
+
+
+end subroutine density_matrix_preconditioning
 
 
 !=========================================================================
@@ -732,7 +876,7 @@ function check_converged(p_matrix_new)
    endif
  endif
 
- if( rms < tolscf ) then 
+ if( rms < tolscf ) then
    check_converged = .TRUE.
    write(stdout,*) ' ===> convergence has been reached'
    write(stdout,*)

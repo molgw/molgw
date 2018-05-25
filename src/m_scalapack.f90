@@ -2427,33 +2427,44 @@ subroutine invert_sca(desc,matrix,matrix_inv)
 !=====
 
 #ifdef HAVE_SCALAPACK
- n = desc(M_)
- mlocal = SIZE( matrix , DIM=1 )
- nlocal = SIZE( matrix , DIM=2 )
- matrix_inv(:,:) = matrix(:,:)
+ if( nprow_ham * npcol_ham > 1 ) then
 
- allocate(ipiv(block_row+mlocal))
+   if( cntxt_ham > 0 ) then
 
- call PDGETRF(n,n,matrix_inv,1,1,desc,ipiv,info)
+     n = desc(M_)
+     mlocal = SIZE( matrix , DIM=1 )
+     nlocal = SIZE( matrix , DIM=2 )
+     matrix_inv(:,:) = matrix(:,:)
+    
+     allocate(ipiv(block_row+mlocal))
+    
+     call PDGETRF(n,n,matrix_inv,1,1,desc,ipiv,info)
+    
+     if(info/=0) call die('FAILURE in PDGETRF')
+    
+     ! Query
+     allocate(work(1),iwork(1))
+     lwork  = -1
+     liwork = -1
+     call PDGETRI(n,matrix_inv,1,1,desc,ipiv,work, lwork, iwork, liwork, info )
+     if(info/=0) call die('FAILURE in PDGETRI')
+     
+     lwork  = NINT(work(1))
+     liwork = iwork(1)
+     deallocate(work,iwork)
+     allocate(work(lwork),iwork(liwork))
+     call PDGETRI(n,matrix_inv,1,1,desc,ipiv,work, lwork, iwork, liwork, info )
+     if(info/=0) call die('FAILURE in PDGETRI')
+    
+     deallocate(ipiv)
+     deallocate(work,iwork)
 
- if(info/=0) call die('FAILURE in PDGETRF')
+   endif
 
- ! Query
- allocate(work(1),iwork(1))
- lwork  = -1
- liwork = -1
- call PDGETRI(n,matrix_inv,1,1,desc,ipiv,work, lwork, iwork, liwork, info )
- if(info/=0) call die('FAILURE in PDGETRI')
- 
- lwork  = NINT(work(1))
- liwork = iwork(1)
- deallocate(work,iwork)
- allocate(work(lwork),iwork(liwork))
- call PDGETRI(n,matrix_inv,1,1,desc,ipiv,work, lwork, iwork, liwork, info )
- if(info/=0) call die('FAILURE in PDGETRI')
+ else
+   call invert(matrix,matrix_inv)
+ endif
 
- deallocate(ipiv)
- deallocate(work,iwork)
 #else
 
  call invert(matrix,matrix_inv)
