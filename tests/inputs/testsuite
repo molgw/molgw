@@ -42,6 +42,9 @@ SCF Total Energy          , -322.8615203603    , 0 , 1.0e-7
 gKS HOMO energy           ,   -3.230199        , 0 , 1.0e-4
 gKS LUMO energy           ,   -1.930441        , 0 , 1.0e-4
 
+na08_damping.in           , LDA Na8 cluster with density damping stopped after 2 SCF cycles
+SCF Total Energy          , -1232.7456930389   , 0 , 1.0e-7
+
 h2_basis_nori.in          , LDA H2 molecule with an atom-dependent basis set
 SCF Total Energy          ,  -1.1306882151     , 0 , 1.0e-7
 gKS HOMO energy           , -10.061109         , 0 , 1.0e-4
