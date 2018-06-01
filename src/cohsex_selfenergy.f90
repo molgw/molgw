@@ -33,7 +33,7 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,c_matrix,wpol,se)
  real(dp)              :: sigx
 !=====
 
- call start_clock(timing_self)
+ call start_clock(timing_gw_self)
 
  if( .NOT. has_auxil_basis )     call die('cohsex: no RI is not coded')
  if( .NOT. ALLOCATED(wpol%chi) ) call die('cohsex: static W should be available here')
@@ -197,7 +197,7 @@ subroutine cohsex_selfenergy(nstate,basis,occupation,c_matrix,wpol,se)
 
  call destroy_eri_3center_eigen()
 
- call stop_clock(timing_self)
+ call stop_clock(timing_gw_self)
 
 
 end subroutine cohsex_selfenergy
@@ -239,7 +239,7 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,c_matrix,wpol,se)
 #endif
 !=====
 
- call start_clock(timing_self)
+ call start_clock(timing_gw_self)
 
  if( .NOT. has_auxil_basis )     call die('cohsex: no RI is not coded')
  if( .NOT. ALLOCATED(wpol%chi) ) call die('cohsex: static W should be available here')
@@ -423,7 +423,7 @@ subroutine cohsex_selfenergy_lr(nstate,basis,occupation,c_matrix,wpol,se)
  call destroy_eri_3center_eigen_lr()
 
 
- call stop_clock(timing_self)
+ call stop_clock(timing_gw_self)
 
 
 end subroutine cohsex_selfenergy_lr

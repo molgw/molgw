@@ -1190,7 +1190,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
  use m_definitions
  use m_mpi
  use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type
+ use m_inputparam, only: nspin,spin_fact,excit_type,EXCIT_PROJECTILE
  use m_atoms
  use m_basis_set
  use m_timing
@@ -1269,7 +1269,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
    write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
  end if
 
- if( excit_type%is_projectile ) then
+ if( excit_type%form==EXCIT_PROJECTILE ) then
    i_max_atom=natom-nprojectile
  else
    i_max_atom=natom
@@ -1311,7 +1311,7 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
        do ispin=1,nspin
          istate2=nocc(ispin)
          phi_cmplx(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,istate1:istate2,ispin) )
-         write(ocuberho(ispin),'(50(e16.8,2x))') SUM( abs(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact
+         write(ocuberho(ispin),'(50(e16.8,2x))') SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact
        enddo
 
      enddo
@@ -1333,7 +1333,7 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
  use m_definitions
  use m_mpi
  use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type
+ use m_inputparam, only: nspin,spin_fact,excit_type,EXCIT_PROJECTILE
  use m_atoms
  use m_basis_set
  use m_timing
@@ -1402,7 +1402,7 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
    write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
  end if
 
- if( excit_type%is_projectile ) then
+ if( excit_type%form==EXCIT_PROJECTILE ) then
    i_max_atom=natom-nprojectile
  else
    i_max_atom=natom
@@ -1444,11 +1444,31 @@ subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmp
 end subroutine calc_cube_initial_cmplx
 
 !=========================================================================
+subroutine initialize_cube_diff_cmplx(nx,ny,nz,unit_cube_diff)
+ implicit none
+ integer,intent(inout)      :: nx,ny,nz,unit_cube_diff
+!=====
+ logical                    :: file_exists
+
+ inquire(file='manual_cube_diff_tddft',exist=file_exists)
+ if(file_exists) then
+   open(newunit=unit_cube_diff,file='manual_cube_diff_tddft',status='old')
+   read(unit_cube_diff,*) nx,ny,nz
+   close(unit_cube_diff)
+ else
+   nx=40
+   ny=40
+   nz=40
+ endif
+
+end subroutine initialize_cube_diff_cmplx
+
+!=========================================================================
 subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num,cube_density_start,nx,ny,nz)
  use m_definitions
  use m_mpi
  use m_tddft_variables
- use m_inputparam, only: nspin,spin_fact,excit_type
+ use m_inputparam, only: nspin,spin_fact,excit_type,EXCIT_PROJECTILE
  use m_atoms
  use m_basis_set
  use m_timing
@@ -1520,7 +1540,7 @@ subroutine plot_cube_diff_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,
    write(stdout,'(a,2(2x,i4))')   ' states:   ',istate1,istate2
  end if
 
- if( excit_type%is_projectile ) then
+ if( excit_type%form==EXCIT_PROJECTILE ) then
    i_max_atom=natom-nprojectile
  else
    i_max_atom=natom

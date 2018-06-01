@@ -19,6 +19,7 @@ module m_hamiltonian_sca
  use m_memory
  use m_cart_to_pure
  use m_inputparam,only: nspin,spin_fact,scalapack_block_min
+ use m_hamiltonian
 
 
 contains
@@ -209,19 +210,15 @@ subroutine setup_nucleus_sca(basis,hamiltonian_nucleus)
 #ifdef HAVE_SCALAPACK
 
  call start_clock(timing_hamiltonian_nuc)
- if( .NOT. in_tddft_loop ) then
-   write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK'
- end if
+ write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian: SCALAPACK'
  if( nproc_local > 1 ) then
    natom_local=0
    do iatom=1,natom
      if( rank_local /= MODULO(iatom-1,nproc_local) ) cycle
      natom_local = natom_local + 1
    enddo
-   if( .NOT. in_tddft_loop ) then
-     write(stdout,'(a)')         '   Parallelizing over atoms'
-     write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
-   end if
+   write(stdout,'(a)')         '   Parallelizing over atoms'
+   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
  endif
 
 
@@ -297,7 +294,6 @@ subroutine setup_hartree_ri_sca(p_matrix,hartree_ij,ehartree)
 #ifdef HAVE_SCALAPACK
 
  write(stdout,*) 'Calculate Hartree term with Resolution-of-Identity: SCALAPACK'
- call start_clock(timing_hartree)
 
  allocate(partial_sum(nauxil_3center))
  partial_sum(:) = 0.0_dp
@@ -349,7 +345,6 @@ subroutine setup_hartree_ri_sca(p_matrix,hartree_ij,ehartree)
  call xsum_local(ehartree)
 
 
- call stop_clock(timing_hartree)
 
 
 #endif
@@ -553,7 +548,8 @@ subroutine setup_exchange_longrange_ri_sca(occupation,c_matrix,p_matrix,exchange
  do ispin=1,nspin
 
    ! Denombrate the strictly positive eigenvalues
-   nocc = COUNT( occupation(:,ispin) > completely_empty )
+   ! Pass occupation(:,ispin:ispin) to have a rank-two array and have the correct interface
+   nocc = get_number_occupied_states(occupation(:,ispin:ispin))
 
    do istate=1,nocc
      tmp(:,:) = 0.0_dp

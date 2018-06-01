@@ -1087,42 +1087,6 @@ vl[i].comment  ='Prints electronic density along a line, which parameters must b
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='calc_p_matrix_error'
-vl[i].family   ='io_rt_tddft'
-vl[i].default  ='no'
-vl[i].datatype ='yes/no'
-vl[i].comment  ='Calculates difference between a reference propagator and a tested one in the real-time dynamics'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
-vl[i].keyword  ='error_prop_types'
-vl[i].family   ='io_rt_tddft'
-vl[i].default  ='CN'
-vl[i].datatype ='characters'
-vl[i].comment  ='Set of the propagator types for the p_matrix tests in the real-time dynamics'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
-vl[i].keyword  ='error_time_steps'
-vl[i].family   ='io_rt_tddft'
-vl[i].default  ='0.1_dp'
-vl[i].datatype ='characters'
-vl[i].comment  ='set of time steps for each propagator from the list error_prop_types for the p_matrix test in the real-time dynamics'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
-vl[i].keyword  ='z_selected'
-vl[i].family   ='io_rt_tddft'
-vl[i].default  =''
-vl[i].datatype ='characters'
-vl[i].comment  ='set of selected z coordinates of projectile for which propagation will be calculated'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
 vl[i].keyword  ='write_step'
 vl[i].family   ='io_rt_tddft'
 vl[i].default  ='1'
@@ -1141,29 +1105,11 @@ vl[i].comment  ='Sets the predictor-corrector scheme in the real-time dynamics.'
 #================================
 vl.append(variable())
 i = len(vl) - 1
-vl[i].keyword  ='error_pred_corrs'
-vl[i].family   ='io_rt_tddft'
-vl[i].default  ='PC0'
-vl[i].datatype ='characters'
-vl[i].comment  ='Set of predictor-corrector schemes for each propagator from the list error_prop_types for the p_matrix test in the real-time dynamics'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
 vl[i].keyword  ='n_hist'
 vl[i].family   ='rt_tddft'
 vl[i].default  =2
 vl[i].datatype ='integer'
 vl[i].comment  ='Number of memorised previous hamiltonian values for its extrapolation in the real-time dynamics. n_hist=1 means that H(t_i+1)=H(t_i); n_hist=2 : H(t_i+1)=a*H(t_i)+b*(t_i-1); etc.'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
-vl[i].keyword  ='error_n_hists'
-vl[i].family   ='io_rt_tddft'
-vl[i].default  ='2'
-vl[i].datatype ='characters'
-vl[i].comment  ='Set of n_hist for each propagator from the list error_prop_types for the p_matrix test in the real-time dynamics'
 
 #================================
 vl.append(variable())
@@ -1182,15 +1128,6 @@ vl[i].family   ='io_rt_tddft'
 vl[i].default  ='no'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='Calculates absorption spectrum in the real-time dynamics'
-
-#================================
-vl.append(variable())
-i = len(vl) - 1
-vl[i].keyword  ='error_n_iters'
-vl[i].family   ='io_rt_tddft'
-vl[i].default  ='2'
-vl[i].datatype ='characters'
-vl[i].comment  ='Set of iteration for propagation loop for each propagator from the list error_prop_types for the p_matrix test in the real-time dynamics'
 
 #================================
 vl.append(variable())
@@ -1263,6 +1200,15 @@ vl[i].family   ='io_rt_tddft'
 vl[i].default  ='no'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='Prints the electronic density along the projectile trajectory for several impact parameters using real wave function'
+
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='calc_dens_disc'
+vl[i].family   ='io_rt_tddft'
+vl[i].default  ='no'
+vl[i].datatype ='yes/no'
+vl[i].comment  ='Calculate electronic density in the discs during the real-time dynamics'
 
 #============================================================================
 #            Fortran output: input variable namelist and their default value

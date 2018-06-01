@@ -101,7 +101,7 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
  endif
 
 
- call start_clock(timing_basis_transform)
+ call start_clock(timing_eri_4center_eigen)
 
  eri_eigenstate_i(:,:,:,:)=0.0_dp
  eri_tmp2(:,:,:)=0.0_dp
@@ -155,7 +155,7 @@ subroutine calculate_eri_4center_eigen(nbf,nstate,c_matrix,istate,ijspin,eri_eig
  enddo !klspin
 
 
- call stop_clock(timing_basis_transform)
+ call stop_clock(timing_eri_4center_eigen)
 
 end subroutine calculate_eri_4center_eigen
 
@@ -181,7 +181,7 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
  nbf    = SIZE(c_matrix,DIM=1)
  nstate = SIZE(c_matrix,DIM=2)
 
- call start_clock(timing_basis_transform)
+ call start_clock(timing_eri_4center_eigen)
 
  call clean_allocate('4-center MO integrals',eri_4center_eigen_uks, &
                      nstate_min,nstate_max,nstate_min,nstate_max,nstate_min,nstate_max,nstate_min,nstate_max)
@@ -226,7 +226,7 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix,nstate_min,nstate_max)
  deallocate(eri_tmp1,eri_tmp2,eri_tmp3)
  deallocate(id)
 
- call stop_clock(timing_basis_transform)
+ call stop_clock(timing_eri_4center_eigen)
 
 end subroutine calculate_eri_4center_eigen_uks
 

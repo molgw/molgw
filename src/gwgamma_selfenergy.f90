@@ -40,7 +40,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
  real(dp)                :: fxc
 !=====
 
- call start_clock(timing_gwgamma)
+ call start_clock(timing_gwgamma_self)
 
  write(stdout,*)
  select case(calc_type%selfenergy_approx)
@@ -479,7 +479,7 @@ subroutine gwgamma_selfenergy(nstate,basis,occupation,energy,c_matrix,wpol,se)
    call destroy_tddft()
  endif
 
- call stop_clock(timing_gwgamma)
+ call stop_clock(timing_gwgamma_self)
 
 
 end subroutine gwgamma_selfenergy

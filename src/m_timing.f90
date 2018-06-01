@@ -12,25 +12,25 @@ module m_timing
 
  integer,parameter :: NTIMING=140
 
- integer,parameter :: timing_total             =  1
+ integer,parameter :: timing_total               =  1
 
- integer,parameter :: timing_prescf            = 81
- integer,parameter :: timing_scf               = 82
- integer,parameter :: timing_postscf           = 83
+ integer,parameter :: timing_prescf              = 81
+ integer,parameter :: timing_scf                 = 82
+ integer,parameter :: timing_postscf             = 83
 
- integer,parameter :: timing_dft                 =  2
+ integer,parameter :: timing_xc                  =  2
  integer,parameter :: timing_pola                =  3
- integer,parameter :: timing_self                =  4
+ integer,parameter :: timing_gw_self             =  4
  integer,parameter :: timing_overlap             =  5
  integer,parameter :: timing_eri_4center         =  6
  integer,parameter :: timing_exchange            =  7
  integer,parameter :: timing_hartree             =  8
  integer,parameter :: timing_sqrt_density_matrix =  9
  integer,parameter :: timing_diago_h2p           = 10
- integer,parameter :: timing_pola_static         = 11
+ integer,parameter :: timing_rpa_static          = 11
  integer,parameter :: timing_mp2_energy          = 12
  integer,parameter :: timing_pt_self             = 13
- integer,parameter :: timing_basis_transform     = 14
+ integer,parameter :: timing_eri_4center_eigen   = 14
  integer,parameter :: timing_single_excitation   = 15
  integer,parameter :: timing_eri_2center         = 16
  integer,parameter :: timing_eri_3center         = 17
@@ -54,17 +54,21 @@ module m_timing
  integer,parameter :: timing_sca_distr2          = 35
  integer,parameter :: timing_fno                 = 36
  integer,parameter :: timing_full_ci             = 37
- integer,parameter :: timing_gwgamma             = 38
+ integer,parameter :: timing_gwgamma_self        = 38
  integer,parameter :: timing_ecp                 = 39
  integer,parameter :: timing_density_matrix      = 40
  integer,parameter :: timing_force               = 41
- integer,parameter :: timing_pola_dynamic        = 42
+ integer,parameter :: timing_rpa_dynamic         = 42
  integer,parameter :: timing_ci_selfenergy       = 43
  integer,parameter :: timing_ham_ci              = 44
  integer,parameter :: timing_ci_diago            = 45
  integer,parameter :: timing_ci_write            = 46
  integer,parameter :: timing_ci_config           = 47
  integer,parameter :: timing_zeroes_ci           = 48
+ integer,parameter :: timing_density_matrix_cmplx= 49
+ integer,parameter :: timing_aomo_pola           = 50
+ integer,parameter :: timing_aomo_ci             = 51
+ integer,parameter :: timing_aomo_self           = 52
  
  integer,parameter :: timing_tmp0                = 90
  integer,parameter :: timing_tmp1                = 91
@@ -77,16 +81,22 @@ module m_timing
  integer,parameter :: timing_tmp8                = 98
  integer,parameter :: timing_tmp9                = 99
 
- integer,parameter :: timing_tddft_loop          = 110
- integer,parameter :: timing_tddft_fourier       = 111
- integer,parameter :: timing_tddft_one_iter      = 112
- integer,parameter :: timing_tddft_propagation   = 113
- integer,parameter :: timing_tddft_hamiltonian_fock = 114
- integer,parameter :: timing_print_cube_rho_tddft= 115
- integer,parameter :: timing_restart_tddft_file  = 116
- integer,parameter :: timing_propagate_diago     = 117
- integer,parameter :: timing_propagate_matmul    = 118
- integer,parameter :: timing_print_line_rho_tddft= 119
+ integer,parameter :: timing_tddft_loop             = 110
+ integer,parameter :: timing_tddft_fourier          = 111
+ integer,parameter :: timing_tddft_one_iter         = 112
+ integer,parameter :: timing_tddft_propagation      = 113
+ integer,parameter :: timing_tddft_hamiltonian      = 114
+ integer,parameter :: timing_tddft_xc               = 115
+ integer,parameter :: timing_tddft_exchange         = 116
+ integer,parameter :: timing_tddft_hartree          = 117
+ integer,parameter :: timing_tddft_hamiltonian_nuc  = 118
+ integer,parameter :: timing_tddft_ham_orthobasis   = 119
+ integer,parameter :: timing_print_cube_rho_tddft   = 125
+ integer,parameter :: timing_restart_tddft_file     = 126
+ integer,parameter :: timing_propagate_diago        = 127
+ integer,parameter :: timing_propagate_matmul       = 128
+ integer,parameter :: timing_print_line_rho_tddft   = 129
+ integer,parameter :: timing_calc_dens_disc         = 130
 
  integer           :: count_rate,count_max
  logical           :: time_running(NTIMING)
@@ -156,135 +166,172 @@ end subroutine stop_clock
 subroutine output_timing()
  implicit none
 !=====
+!=====
 
  write(stdout,'(/,a,/)') '                 --- Timings in (s) and # of calls ---'
 
- write(stdout,'(a30,6x,f12.2)')  'Total time',timing(timing_total)
+ call output_timing_line('Total time' ,timing_total ,0)
+
  write(stdout,'(/,a,/)') '                 -------------------------------------'
 
- write(stdout,'(a30,6x,f12.2)')  'Total pre SCF',timing(timing_prescf)
- write(stdout,'(a30,6x,f12.2)')      'Total SCF',timing(timing_scf)
- write(stdout,'(a30,6x,f12.2)') 'Total post SCF',timing(timing_postscf) 
+ call output_timing_line('Total pre SCF' ,timing_prescf ,0)
+ call output_timing_line('Total SCF'     ,timing_scf    ,0)
+ call output_timing_line('Total post SCF',timing_postscf,0)
+
+ write(stdout,'(/,a,/)') '                 -------------------------------------'
+ write(stdout,'(a,/)')   '                             Pre SCF'
+
+ call output_timing_line('Integral pre-screening',timing_eri_screening,1)
+ call output_timing_line('4-center integrals',timing_eri_4center,1)
+ call output_timing_line('2-center integrals',timing_eri_2center,1)
+ call output_timing_line('3-center integrals',timing_eri_3center,1)
+ call output_timing_line('Overlap matrix S',timing_overlap,1)
+ call output_timing_line('Approximate guess Hamiltonian',timing_approx_ham,1)
+ call output_timing_line('Kinetic Hamiltonian',timing_hamiltonian_kin,1)
+ call output_timing_line('Electron-nucleus Hamiltonian',timing_hamiltonian_nuc,1)
+ call output_timing_line('ECP Hamiltonian',timing_hamiltonian_ecp,1)
+
+ write(stdout,'(/,a,/)') '                 -------------------------------------'
+ write(stdout,'(a,/)')   '                                 SCF'
+
+ call output_timing_line('DFT Grid generation',timing_grid_generation,1)
+ call output_timing_line('Density matrix',timing_density_matrix,1)
+ call output_timing_line('Hartree potential',timing_hartree,1)
+ call output_timing_line('Exchange operator',timing_exchange,1)
+ call output_timing_line('DFT xc potential',timing_xc,1)
+ call output_timing_line('Hamiltonian diagonalization',timing_diago_hamiltonian,1)
+ call output_timing_line('Pulay DIIS mixing',timing_diis,1)
+ call output_timing_line('RESTART file writing',timing_restart_file,1)
+ call output_timing_line('Singles correction',timing_single_excitation,1)
+ call output_timing_line('Virtual FNO generation',timing_fno,1)
+ call output_timing_line('Forces',timing_force,1)
+
+
+ write(stdout,'(/,a,/)') '                 -------------------------------------'
+ write(stdout,'(a,/)')   '                            Post SCF'
+
+ ! Linear response polarization RPA or TDDFT or BSE
+ call output_timing_line('Response function chi',timing_pola,1)
+ call output_timing_line('3-center AO to MO transform',timing_eri_3center_eigen,2)
+ call output_timing_line('4-center AO to MO transform',timing_eri_4center_eigen,2)
+ call output_timing_line('Static polarization for BSE',timing_rpa_static,2)
+ call output_timing_line('Dynamic polarization',timing_rpa_dynamic,2)
+ call output_timing_line('Build 2-particle Hamiltonian',timing_build_h2p,2)
+ call output_timing_line('RPA part',timing_build_common,3)
+ call output_timing_line('TDDFT part',timing_build_tddft,3)
+ call output_timing_line('BSE part',timing_build_bse,3)
+ call output_timing_line('Diago 2 particle H',timing_diago_h2p,2)
+ call output_timing_line('Build W',timing_vchiv,2)
+ call output_timing_line('Optical spectrum',timing_spectrum,2)
+
+ ! Self-energies
+ call output_timing_line('GW self-energy',timing_gw_self,1)
+ call output_timing_line('PT self-energy',timing_pt_self,1)
+ call output_timing_line('GWGamma self-energy',timing_gwgamma_self,1)
+ call output_timing_line('MP2 energy',timing_mp2_energy,1)
+
+ ! CI
+ call output_timing_line('Full CI for few electrons',timing_full_ci,1)
+ call output_timing_line('Setup CI configurations',timing_ci_config,2)
+ call output_timing_line('Screen CI Hamiltonian zeroes',timing_zeroes_ci,2)
+ call output_timing_line('Build CI Hamiltonian',timing_ham_ci,2)
+ call output_timing_line('CI diagonalization',timing_ci_diago,2)
+ call output_timing_line('CI eigenvector file writing',timing_ci_write,2)
+ call output_timing_line('CI self-energy',timing_ci_selfenergy,2)
+
+ ! RT-TDDFT
+ call output_timing_line('TDDFT loop',timing_tddft_loop,1)
+ call output_timing_line('TDDFT Propagator',timing_tddft_propagation,2)
+ call output_timing_line('TDDFT propagator diago',timing_propagate_diago,3)
+ call output_timing_line('TDDFT propagator matmul',timing_propagate_matmul,3)
+
+ call output_timing_line('Hamiltonian calculation',timing_tddft_hamiltonian,2)
+ call output_timing_line('Complex density matrix',timing_density_matrix_cmplx,3)
+ call output_timing_line('Electron-Nucleus potential',timing_tddft_hamiltonian_nuc,3)
+ call output_timing_line('Hartree potential',timing_tddft_hartree,3)
+ call output_timing_line('Exchange operator',timing_tddft_exchange,3)
+ call output_timing_line('XC potential',timing_tddft_xc,3)
+ call output_timing_line('Orthogonal basis',timing_tddft_ham_orthobasis,3)
+
+ call output_timing_line('RESTART_TDDFT file writing',timing_restart_tddft_file,2)
+ call output_timing_line('Cube density file writing',timing_print_cube_rho_tddft,2)
+ call output_timing_line('Line density file writing',timing_print_line_rho_tddft,2)
+ call output_timing_line('Electronic density in discs',timing_calc_dens_disc,2)
+
  write(stdout,'(/,a,/)') '                 -------------------------------------'
 
- write(stdout,'(a30,6x,f12.2,2x,i8)')          'Integral screening',timing(timing_eri_screening),calls(timing_eri_screening)
- if( calls(timing_eri_4center) > 0 ) then
-   write(stdout,'(a30,6x,f12.2,2x,i8)')        '4-center integrals',timing(timing_eri_4center),calls(timing_eri_4center)
- endif
- if( calls(timing_eri_2center) > 0 ) then
-   write(stdout,'(a30,6x,f12.2,2x,i8)')        '2-center integrals',timing(timing_eri_2center),calls(timing_eri_2center)
-   write(stdout,'(a30,6x,f12.2,2x,i8)')        '3-center integrals',timing(timing_eri_3center),calls(timing_eri_3center)
- endif
- write(stdout,'(a30,6x,f12.2,2x,i8)')                    'Overlap S',timing(timing_overlap),calls(timing_overlap)
- write(stdout,'(a30,6x,f12.2,2x,i8)')           'Approx Hamiltonian',timing(timing_approx_ham),calls(timing_approx_ham)
- write(stdout,'(a30,6x,f12.2,2x,i8)')          'Kinetic Hamiltonian',timing(timing_hamiltonian_kin),calls(timing_hamiltonian_kin)
- write(stdout,'(a30,6x,f12.2,2x,i8)')  'Electron-nuclei Hamiltonian',timing(timing_hamiltonian_nuc),calls(timing_hamiltonian_nuc)
- write(stdout,'(a30,6x,f12.2,2x,i8)')  '            ECP Hamiltonian',timing(timing_ecp),calls(timing_ecp)
 
- write(stdout,*)
- write(stdout,'(a)') '                 -------------------------------------'
- write(stdout,*)
-
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'Grid generation'     ,timing(timing_grid_generation),calls(timing_grid_generation)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'Density Matrix'      ,timing(timing_density_matrix),calls(timing_density_matrix)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'Hartree'             ,timing(timing_hartree),calls(timing_hartree)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'Exchange'            ,timing(timing_exchange),calls(timing_exchange)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'DFT xc'              ,timing(timing_dft),calls(timing_dft)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'Hamiltonian diago'   ,timing(timing_diago_hamiltonian),calls(timing_diago_hamiltonian)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'Pulay DIIS'          ,timing(timing_diis),calls(timing_diis)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'RESTART file writing',timing(timing_restart_file),calls(timing_restart_file)
- write(stdout,*)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'Single Excitations'  ,timing(timing_single_excitation),calls(timing_single_excitation)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'FNO generation'      ,timing(timing_fno),calls(timing_fno)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'Forces'              ,timing(timing_force),calls(timing_force)
-
- write(stdout,*)
- write(stdout,'(a)') '                 -------------------------------------'
- write(stdout,*)
-
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'Total chi polarization' ,timing(timing_pola),calls(timing_pola)
- if( calls(timing_eri_3center_eigen) > 0 ) then
-   write(stdout,'(a30,6x,f12.2,2x,i8)')'Rotation 3-center integrals' ,timing(timing_eri_3center_eigen),calls(timing_eri_3center_eigen)
- endif
- if( calls(timing_basis_transform) > 0 ) then
-   write(stdout,'(a32,4x,f12.2,2x,i8)') 'ERI basis transform' ,timing(timing_basis_transform),calls(timing_basis_transform)
- endif
- if( calls(timing_pola_static) > 0 ) then
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'Static polarization',timing(timing_pola_static),calls(timing_pola_static)
- endif
- if( calls(timing_pola_dynamic) > 0 ) then
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'Dynamic polarization',timing(timing_pola_dynamic),calls(timing_pola_dynamic)
- endif
- write(stdout,'(a32,4x,f12.2,2x,i8)') '    Build 2 particle H' ,timing(timing_build_h2p),calls(timing_build_h2p)
- write(stdout,'(a34,2x,f12.2,2x,i8)') '           Common part' ,timing(timing_build_common),calls(timing_build_common)
- write(stdout,'(a34,2x,f12.2,2x,i8)') '            TDDFT part' ,timing(timing_build_tddft),calls(timing_build_tddft)
- write(stdout,'(a34,2x,f12.2,2x,i8)') '              BSE part' ,timing(timing_build_bse),calls(timing_build_bse)
- write(stdout,'(a32,4x,f12.2,2x,i8)') '    Diago 2 particle H' ,timing(timing_diago_h2p),calls(timing_diago_h2p)
- write(stdout,'(a32,4x,f12.2,2x,i8)') '               Build W' ,timing(timing_vchiv),calls(timing_vchiv)
- write(stdout,'(a32,4x,f12.2,2x,i8)') '      Optical spectrum' ,timing(timing_spectrum),calls(timing_spectrum)
- write(stdout,*)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'GW self-energy'     ,timing(timing_self),calls(timing_self)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'PT self-energy'     ,timing(timing_pt_self),calls(timing_pt_self)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'GWGamma self-energy',timing(timing_gwgamma),calls(timing_gwgamma)
- write(stdout,'(a30,6x,f12.2,2x,i8)') 'MP2 energy'         ,timing(timing_mp2_energy),calls(timing_mp2_energy)
- if( calls(timing_full_ci) > 0 ) then
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'Full CI for few electrons',timing(timing_full_ci),calls(timing_full_ci)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') '  Setup CI configurations',timing(timing_ci_config),calls(timing_ci_config)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') '            CI ham zeroes',timing(timing_zeroes_ci),calls(timing_zeroes_ci)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') '                   CI ham',timing(timing_ham_ci),calls(timing_ham_ci)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') '                 CI diago',timing(timing_ci_diago),calls(timing_ci_diago)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') '   CI eigenvector writing',timing(timing_ci_write),calls(timing_ci_write)
- endif
- if( calls(timing_ci_selfenergy) > 0 ) then
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'CI s-e for few electrons',timing(timing_ci_selfenergy),calls(timing_ci_selfenergy)
- endif
-
- write(stdout,*)
- write(stdout,'(a)') '                 -------------------------------------'
-
- if( calls(timing_sca_distr1)+calls(timing_sca_distr2) > 0 ) then
-   write(stdout,*)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing SCA1   ' ,timing(timing_sca_distr1),calls(timing_sca_distr2)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing SCA2   ' ,timing(timing_sca_distr1),calls(timing_sca_distr2)
- endif
 
  !
- ! developer's timings
- if( ANY( calls(timing_tmp0:timing_tmp9) > 0 ) ) then
-   write(stdout,*)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing tmp0   ' ,timing(timing_tmp0),calls(timing_tmp0)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing tmp1   ' ,timing(timing_tmp1),calls(timing_tmp1)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing tmp2   ' ,timing(timing_tmp2),calls(timing_tmp2)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing tmp3   ' ,timing(timing_tmp3),calls(timing_tmp3)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing tmp4   ' ,timing(timing_tmp4),calls(timing_tmp4)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing tmp5   ' ,timing(timing_tmp5),calls(timing_tmp5)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing tmp6   ' ,timing(timing_tmp6),calls(timing_tmp6)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing tmp7   ' ,timing(timing_tmp7),calls(timing_tmp7)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing tmp8   ' ,timing(timing_tmp8),calls(timing_tmp8)
-   write(stdout,'(a30,6x,f12.2,2x,i8)') 'timing tmp9   ' ,timing(timing_tmp9),calls(timing_tmp9)
-   write(stdout,*)
+ ! Developer's timings for temporary use only!
+ !
+ if( ANY( calls(timing_tmp0:timing_tmp9) > 0 ) .OR. calls(timing_sca_distr1) > 0 .OR. calls(timing_sca_distr2) > 0 ) then
+   write(stdout,'(a,/)')   '                            Testing'
+   call output_timing_line('timing SCALAPACK tmp1',timing_sca_distr1,1)
+   call output_timing_line('timing SCALAPACK tmp2',timing_sca_distr2,1)
+   call output_timing_line('Tmp timing 0',timing_tmp0,1)
+   call output_timing_line('Tmp timing 1',timing_tmp1,1)
+   call output_timing_line('Tmp timing 2',timing_tmp2,1)
+   call output_timing_line('Tmp timing 3',timing_tmp3,1)
+   call output_timing_line('Tmp timing 4',timing_tmp4,1)
+   call output_timing_line('Tmp timing 5',timing_tmp5,1)
+   call output_timing_line('Tmp timing 6',timing_tmp6,1)
+   call output_timing_line('Tmp timing 7',timing_tmp7,1)
+   call output_timing_line('Tmp timing 8',timing_tmp8,1)
+   call output_timing_line('Tmp timing 9',timing_tmp9,1)
+   write(stdout,'(/,a,/)') '                 -------------------------------------'
  endif
 
- write(stdout,*)
- write(stdout,'(a)') '                 -------------------------------------'
 
- if( calls(timing_tddft_loop) > 0 ) then
-   write(stdout,*)
-   write(stdout,'(a32,4x,f12.2,2x,i8)') '                  TD-DFT Loop'  ,timing(timing_tddft_loop),calls(timing_tddft_loop)
-   write(stdout,'(a32,4x,f12.2,2x,i8)') 'Propagation for TD-DFT'         ,timing(timing_tddft_propagation),calls(timing_tddft_propagation)
-   write(stdout,'(a32,4x,f12.2,2x,i8)') 'Hamiltonian_fock calculation'   ,timing(timing_tddft_hamiltonian_fock),calls(timing_tddft_hamiltonian_fock)
-   write(stdout,'(a32,4x,f12.2,2x,i8)') 'RESTART_TDDFT file writing'     ,timing(timing_restart_tddft_file),calls(timing_restart_tddft_file)
-   if(calls(timing_print_cube_rho_tddft)>0) then
-      write(stdout,'(a32,4x,f12.2,2x,i8)') 'Cube density file writing'   ,timing(timing_print_cube_rho_tddft),calls(timing_print_cube_rho_tddft)
-   end if
-   if(calls(timing_print_line_rho_tddft)>0) then
-      write(stdout,'(a32,4x,f12.2,2x,i8)') 'Line density file writing'   ,timing(timing_print_line_rho_tddft),calls(timing_print_line_rho_tddft)
-   end if
-   write(stdout,'(a32,4x,f12.2,2x,i8)') 'Diago in tddft propagation'     ,timing(timing_propagate_diago),calls(timing_propagate_diago)
-   write(stdout,'(a32,4x,f12.2,2x,i8)') 'Matmul in tddft propagation'    ,timing(timing_propagate_matmul),calls(timing_propagate_matmul)
-
- end if
 end subroutine output_timing
+
+
+!=========================================================================
+subroutine output_timing_line(title,itiming,level)
+ implicit none
+
+ character(len=*),intent(in) :: title
+ integer,intent(in)          :: itiming
+ integer,intent(in)          :: level
+!=====
+ integer,parameter            :: max_length = 46
+ character(len=max_length+10) :: prepend
+ integer                      :: lt,lp
+ character(len=3)             :: key
+!=====
+
+ ! No writing if the timing counter has never been used
+ if( calls(itiming) < 1 ) return
+
+ lt = LEN_TRIM(title)
+
+ if( lt > max_length ) call die('output_timing_line: title string too long. Shorten it or increase the string length. Ask developers')
+
+ select case(level)
+ case(0)
+   prepend = ''
+ case(1)
+   prepend = '|'
+ case(2)
+   prepend = '      |'
+ case(3)
+   prepend = '            |'
+ end select
+
+ lp = LEN_TRIM(prepend)
+
+ prepend = TRIM(prepend) // REPEAT('-',max_length-lt-lp)
+
+ write(key,'(i3.3)') max_length+1
+
+ if( level == 0 ) then
+   write(stdout,'(1x,a'//key//',4x,f12.2)') TRIM(title),timing(itiming)
+ else
+   write(stdout,'(1x,a,1x,a,4x,f12.2,2x,i8)') TRIM(prepend),TRIM(title),timing(itiming),calls(itiming)
+ endif
+
+
+end subroutine output_timing_line
 
 
 !=========================================================================

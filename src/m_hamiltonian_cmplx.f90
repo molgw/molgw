@@ -10,7 +10,6 @@
 module m_hamiltonian_cmplx
  use m_definitions
  use m_timing
- use m_tddft_variables
  use m_mpi
  use m_scalapack
  use m_warning
@@ -41,10 +40,9 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc,occupation,c_matrix_cmplx,p_m
  complex(dp),allocatable   :: tmp_cmplx(:,:)
 !=====
 
- if( .NOT. in_tddft_loop ) then
-   write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
- end if
- call start_clock(timing_exchange)
+ write(stdout,*) 'Calculate Exchange term with Resolution-of-Identity'
+
+ call start_clock(timing_tddft_exchange)
 
  exchange_ij_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
  allocate(tmp_cmplx(nauxil_3center,nbf))
@@ -71,7 +69,7 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc,occupation,c_matrix_cmplx,p_m
      ! C = A^H * A + C ; C - exchange_ij(:,:,ispin); A - tmp
      !    exchange_ij_cmplx(:,:,ispin) = exchange_ij_cmplx(:,:,ispin) - & 
      !            MATMUL( TRANSPOSE(tmp_cmplx(:,:)) , CONJG(tmp_cmplx(:,:)) ) * occupation(istate,ispin)/ spin_fact
-     call ZHERK('L','C',nbf,nauxil_3center,-occupation(istate,ispin)/spin_fact,tmp_cmplx,nauxil_3center,1.0_dp,exchange_ij_cmplx(:,:,ispin),nbf)
+     call ZHERK('L','C',nbf,nauxil_3center,-occupation(istate,ispin)/spin_fact,tmp_cmplx,nauxil_3center,1.0d0,exchange_ij_cmplx(:,:,ispin),nbf)
        
    enddo
    exchange_ij_cmplx(:,:,ispin)=CONJG(exchange_ij_cmplx(:,:,ispin))
@@ -89,44 +87,60 @@ subroutine setup_exchange_ri_cmplx(nbf,nstate,nocc,occupation,c_matrix_cmplx,p_m
  call xsum_world(exchange_ij_cmplx)
  eexchange = REAL( 0.5_dp * SUM( exchange_ij_cmplx(:,:,:) * CONJG(p_matrix_cmplx(:,:,:)) ),dp)
 
- call stop_clock(timing_exchange)
+ call stop_clock(timing_tddft_exchange)
 
 end subroutine setup_exchange_ri_cmplx
 
+
 !=========================================================================
-subroutine setup_density_matrix_cmplx(nbf,nstate,nocc,c_matrix_cmplx,occupation,p_matrix_cmplx)
+subroutine setup_density_matrix_cmplx(c_matrix_cmplx,occupation,p_matrix_cmplx)
  implicit none
- integer,intent(in)   :: nbf,nstate,nocc
- complex(dp),intent(in)  :: c_matrix_cmplx(nbf,nocc,nspin)
- real(dp),intent(in)  :: occupation(nstate,nspin)
- complex(dp),intent(out) :: p_matrix_cmplx(nbf,nbf,nspin)
+
+ complex(dp),intent(in)  :: c_matrix_cmplx(:,:,:)
+ real(dp),intent(in)     :: occupation(:,:)
+ complex(dp),intent(out) :: p_matrix_cmplx(:,:,:)
 !=====
+ integer :: nbf,nstate,nocc
  integer :: ispin,ibf,jbf
  integer :: istate
+ complex(dp),allocatable :: c_matrix_sqrtocc(:,:)
 !=====
 
- call start_clock(timing_density_matrix)
-! write(stdout,'(1x,a)') 'Build density matrix'
+ call start_clock(timing_density_matrix_cmplx)
+
+ nbf    = SIZE(c_matrix_cmplx(:,:,:),DIM=1)
+ nocc   = SIZE(c_matrix_cmplx(:,:,:),DIM=2)
+ nstate = SIZE(occupation(:,:),DIM=1)
+
+ if( ANY( occupation(:,:) < 0.0_dp ) ) call die('setup_density_matrix_cmplx: negative occupation number should not happen here.')
+
+ allocate(c_matrix_sqrtocc(nbf,nocc))
 
  p_matrix_cmplx(:,:,:) = ( 0.0_dp , 0.0_dp )
  do ispin=1,nspin
- 
-   do istate=1,nocc
-     call ZHER('L',nbf,occupation(istate,ispin),c_matrix_cmplx(:,istate,ispin),1,p_matrix_cmplx(:,:,ispin),nbf)
-   enddo
 
-   ! Hermitianalize
+   do istate=1,nocc
+     c_matrix_sqrtocc(:,istate) = c_matrix_cmplx(:,istate,ispin) * SQRT(occupation(istate,ispin))
+   enddo
+   call ZHERK('L','N',nbf,nocc,1.0d0,c_matrix_sqrtocc,nbf,0.0d0,p_matrix_cmplx(1,1,ispin),nbf)
+ 
+
+   ! Hermitianize
    do jbf=1,nbf
      do ibf=jbf+1,nbf
        p_matrix_cmplx(jbf,ibf,ispin) = CONJG( p_matrix_cmplx(ibf,jbf,ispin) )
      enddo
    enddo
- enddo
- call stop_clock(timing_density_matrix)
 
+ enddo
+
+ deallocate(c_matrix_sqrtocc)
+
+ call stop_clock(timing_density_matrix_cmplx)
 
 
 end subroutine setup_density_matrix_cmplx
+
 
 !=========================================================================
 subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_matrix_cmplx,vxc_ij,exc_xc)
@@ -172,13 +186,13 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
  vxc_ij(:,:,:) = 0.0_dp
  if( ndft_xc == 0 ) return
 
- call start_clock(timing_dft)
+ call start_clock(timing_tddft_xc)
 
 
 #ifdef HAVE_LIBXC
 
-! write(stdout,*) 'Calculate DFT XC potential'
-! if( batch_size /= 1 ) write(stdout,*) 'Using batches of size',batch_size
+ write(stdout,*) 'Calculate DFT XC potential'
+ if( batch_size /= 1 ) write(stdout,*) 'Using batches of size',batch_size
  
 
  normalization(:) = 0.0_dp
@@ -207,19 +221,14 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
 
    weight_batch(:) = w_grid(igrid_start:igrid_end)
 
-!   call start_clock(timing_tmp9)
    call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
-!   call stop_clock(timing_tmp9)
    !
    ! Get the gradient at points r
-!   call start_clock(timing_tmp8)
    if( dft_xc_needs_gradient ) call get_basis_functions_gradr_batch(basis,igrid_start,nr,basis_function_gradr_batch)
-!   call stop_clock(timing_tmp8)
 
    !
    ! Calculate the density at points r for spin up and spin down
    ! Calculate grad rho at points r for spin up and spin down
-!   call start_clock(timing_tmp1)
    if( .NOT. dft_xc_needs_gradient ) then 
      call calc_density_r_batch_cmplx(nspin,basis%nbf,nstate,nocc,nr,occupation,c_matrix_cmplx,basis_function_r_batch,rhor_batch)
 
@@ -234,7 +243,6 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
        endif
      enddo
    endif
-!   call stop_clock(timing_tmp1)
 
    ! Normalization
    normalization(:) = normalization(:) + MATMUL( rhor_batch(:,:) , weight_batch(:) )
@@ -242,7 +250,6 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
    !
    ! LIBXC calls
    !
-!   call start_clock(timing_tmp2)
 
    dedd_r_batch(:,:) = 0.0_dp
    if( dft_xc_needs_gradient ) dedgd_r_batch(:,:,:) = 0.0_dp
@@ -302,33 +309,26 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
 
    enddo ! loop on the XC functional
 
-!   call stop_clock(timing_tmp2)
 
-   if( ANY( dedd_r_batch(:,:) > 0.0_dp ) ) then
-     write(stdout,*) dedd_r_batch(:,:)
-     call die('positive xc potential not expected')
-   endif
- 
 
    !
    ! Eventually set up the vxc term
    !
-!   call start_clock(timing_tmp3)
+
    !
    ! LDA and GGA
    allocate(tmp_batch(basis%nbf,nr))
    do ispin=1,nspin
-     do ir=1,nr
-       tmp_batch(:,ir) = SQRT( -weight_batch(ir) * dedd_r_batch(ispin,ir) ) * basis_function_r_batch(:,ir)
-     enddo
+     forall(ir=1:nr)
+       tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir)
+     end forall
 
-     call DSYRK('L','N',basis%nbf,nr,-1.0d0,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
+     call DGEMM('N','T',basis%nbf,basis%nbf,nr,1.0d0,tmp_batch,basis%nbf,basis_function_r_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
    enddo
-   deallocate(tmp_batch)
+
    !
    ! GGA-only
    if( dft_xc_needs_gradient ) then 
-     allocate(tmp_batch(basis%nbf,nr))
 
      do ispin=1,nspin
 
@@ -339,9 +339,8 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
        call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
 
      enddo
-     deallocate(tmp_batch)
    endif
-!   call stop_clock(timing_tmp3)
+   deallocate(tmp_batch)
 
     
 
@@ -393,9 +392,10 @@ subroutine dft_exc_vxc_batch_cmplx(batch_size,basis,nstate,nocc,occupation,c_mat
 ! write(stdout,'(/,a,2(2x,f12.6))') ' Number of electrons:',normalization(:)
 ! write(stdout,'(a,2x,f12.6,/)')    '  DFT xc energy (Ha):',exc_xc
 
- call stop_clock(timing_dft)
+ call stop_clock(timing_tddft_xc)
 
 end subroutine dft_exc_vxc_batch_cmplx
+
 
 !=========================================================================
 subroutine static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
@@ -422,6 +422,124 @@ subroutine static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
  enddo
 
 end subroutine static_dipole_fast_cmplx
+
+!=========================================================================
+subroutine calc_density_in_disc_cmplx(batch_size,basis,occupation,c_matrix_cmplx,r_disc,num)
+ use m_inputparam
+ use m_dft_grid
+ use m_atoms
+ implicit none
+
+ integer,intent(in)         :: batch_size
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(:,:)
+ complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
+ real(dp),intent(in)        :: r_disc
+ integer,intent(in)         :: num
+!=====
+ real(dp),parameter   :: length=4.0_dp
+ integer              :: nstate,ndisc
+ integer              :: ibf,jbf,ispin
+ integer              :: idft_xc
+ integer              :: igrid_start,igrid_end,ir,nr
+ character(len=200)   :: file_name(2)
+ real(dp)             :: z_min,z_max
+ integer              :: file_out(2),igrid
+ !vectors in the plane
+ real(dp)             :: vec_r(3) 
+ real(dp),allocatable :: weight_batch(:)
+ real(dp),allocatable :: tmp_batch(:,:)
+ real(dp),allocatable :: basis_function_r_batch(:,:)
+ real(dp),allocatable :: rhor_batch(:,:)
+ real(dp)             :: dz_disc
+ real(dp),allocatable :: charge_disc(:,:)
+ integer              :: idisc,i_max_atom
+!=====
+
+ call start_clock(timing_calc_dens_disc)
+
+ ndisc=200
+
+ if( excit_type%form==EXCIT_PROJECTILE ) then
+   i_max_atom=natom-nprojectile
+ else
+   i_max_atom=natom
+ endif
+
+
+ z_min =MIN(MINVAL( xatom(3,1:i_max_atom) ),MINVAL( xbasis(3,:) )) - length
+ z_max =MAX(MAXVAL( xatom(3,1:i_max_atom) ),MAXVAL( xbasis(3,:) )) + length
+
+ nstate = SIZE(occupation,DIM=1)
+
+ write(stdout,*) 'Calculate electronic density in discs'
+
+ !
+ ! Loop over batches of grid points
+ !
+
+ allocate(charge_disc(ndisc,nspin))
+ charge_disc(:,:) = 0.0_dp
+
+ dz_disc=(z_max-z_min)/ndisc
+
+ write(stdout,*) "sukastart",ngrid,batch_size
+ 
+ do igrid_start=1,ngrid,batch_size
+   igrid_end = MIN(ngrid,igrid_start+batch_size-1)
+   nr = igrid_end - igrid_start + 1
+
+   allocate(weight_batch(nr))
+   allocate(basis_function_r_batch(basis%nbf,nr))
+   allocate(rhor_batch(nspin,nr))
+
+   weight_batch(:) = w_grid(igrid_start:igrid_end)
+
+   call get_basis_functions_r_batch(basis,igrid_start,nr,basis_function_r_batch)
+
+   call calc_density_r_batch_cmplx(nspin,basis%nbf,nstate,nr,occupation,c_matrix_cmplx,basis_function_r_batch,rhor_batch)
+
+   do ir=1,nr
+     igrid = igrid_start + ir - 1
+     vec_r=rr_grid(1:3,igrid)
+     do ispin=1,nspin
+       idisc = INT((vec_r(3)-z_min)/dz_disc) + 1
+       if( idisc > 0 .AND. idisc <= ndisc .AND. (vec_r(1)**2+vec_r(2)**2)**0.5_dp<=r_disc ) then
+         charge_disc(idisc,ispin)=charge_disc(idisc,ispin)+rhor_batch(ispin,ir) * weight_batch(ir)
+         write(stdout,'(a,i5,f8.2,f8.4,f8.2)') "suka", idisc,rhor_batch(:,ir),weight_batch(ir),charge_disc(idisc,ispin)
+       end if
+     enddo ! loop on the ispin
+   enddo ! loop on ir
+
+   deallocate(weight_batch)
+   deallocate(basis_function_r_batch)
+   deallocate(rhor_batch)
+
+ enddo ! loop on the batches
+ call xsum_grid(charge_disc(:,:))
+
+ if( is_iomaster ) then
+
+   do ispin=1,nspin
+     write(file_name(ispin),'(a,i3.3,a,i1,a,i2.2,f0.3,a)') 'disc_dens_',num, "_s_",ispin,"_r_",int(r_disc),r_disc-int(r_disc),".dat"
+     open(newunit=file_out(ispin),file=file_name)
+   enddo
+
+   do idisc=1,ndisc  
+     do ispin=1,nspin
+       write(file_out(ispin),'(2F12.4)') z_min+idisc*dz_disc,charge_disc(idisc,ispin)
+     end do
+   end do
+
+ end if
+ !
+ ! Sum up the contributions from all procs only if needed
+
+ deallocate(charge_disc)
+
+ call stop_clock(timing_calc_dens_disc)
+
+end subroutine calc_density_in_disc_cmplx
 
 end module m_hamiltonian_cmplx
 !=========================================================================

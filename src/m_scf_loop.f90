@@ -172,7 +172,7 @@ subroutine scf_loop(is_restart,&
 
      if( parallel_ham ) then
        if( parallel_buffer ) then
-         call dft_exc_vxc_buffer_sca(basis,occupation,c_matrix,hamiltonian_xc,en%xc)
+         call dft_exc_vxc_buffer_sca(BATCH_SIZE,basis,occupation,c_matrix,hamiltonian_xc,en%xc)
        else
          call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
          hamiltonian_xc(:,:,:) = 0.0_dp
@@ -520,7 +520,7 @@ subroutine scf_loop(is_restart,&
  ! Single excitation term
  !
  call single_excitations(nstate,basis%nbf,energy,occupation,c_matrix,hamiltonian_fock,en%se)
- write(stdout,'(a25,1x,f19.10)') 'Singles correction (Ha):',en%se
+ if( ABS(en%se) > 1.0e-6_dp )  write(stdout,'(a25,1x,f19.10)') 'Singles correction (Ha):',en%se
  write(stdout,'(a25,1x,f19.10,/)')   'Est. HF Energy (Ha):',en%nuc_nuc + en%kin + en%nuc + en%hart + en%exx + en%se
 
  !
@@ -627,7 +627,7 @@ write(stdout,*) "------------------"
 
    if( parallel_ham ) then
      if( parallel_buffer ) then
-       call dft_exc_vxc_buffer_sca(basis,occupation,c_matrix,hamiltonian_spin_tmp,exc)
+       call dft_exc_vxc_buffer_sca(BATCH_SIZE,basis,occupation,c_matrix,hamiltonian_spin_tmp,exc)
      else
        call issue_warning('Exc calculation with SCALAPACK is not coded yet. Just skip it')
        hamiltonian_spin_tmp(:,:,:) = 0.0_dp
@@ -741,7 +741,9 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
    ! Hartree contribution is real and depends only on real(p_matrix)
    !
    !call calculate_hartree(basis,p_matrix,hamiltonian_tmp(:,:,1),eh=en%hart)
+   call start_clock(timing_tddft_hartree)
    call setup_hartree_ri(p_matrix,hamiltonian_tmp(:,:,1),en%hart)
+   call stop_clock(timing_tddft_hartree)
 
  do ispin=1,nspin
    hamiltonian_hxc_cmplx(:,:,ispin) = hamiltonian_hxc_cmplx(:,:,ispin) + hamiltonian_tmp(:,:,1)

@@ -77,7 +77,6 @@ subroutine setup_overlap(basis,s_matrix)
      allocate(array_cart(ni_cart*nj_cart))
 
 #ifdef HAVE_LIBINT_ONEBODY
-
      call libint_overlap(amA,contrdepthA,A,alphaA,cA, &
                          amB,contrdepthB,B,alphaB,cB, &
                          array_cart)
@@ -488,20 +487,18 @@ end subroutine setup_kinetic_grad
 
 
 !=========================================================================
-subroutine setup_nucleus(basis,hamiltonian_nucleus)
+subroutine setup_nucleus(basis,hamiltonian_nucleus,atom_list)
  use m_atoms
  implicit none
- type(basis_set),intent(in) :: basis
- real(dp),intent(out)       :: hamiltonian_nucleus(basis%nbf,basis%nbf)
+ type(basis_set),intent(in)  :: basis
+ real(dp),intent(out)        :: hamiltonian_nucleus(basis%nbf,basis%nbf)
+ integer,intent(in),optional :: atom_list(:)
 !=====
  integer              :: ishell,jshell
  integer              :: ibf1,ibf2,jbf1,jbf2
- integer              :: natom_local
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  integer              :: iatom
- character(len=100)   :: title
  real(dp),allocatable :: matrix(:,:)
-
  real(C_DOUBLE),allocatable        :: array_cart(:)
  real(C_DOUBLE),allocatable        :: array_cart_C(:)
  integer(C_INT)                    :: amA,contrdepthA
@@ -513,28 +510,28 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus)
  real(C_DOUBLE),allocatable        :: alphaB(:)
  real(C_DOUBLE),allocatable        :: cB(:)
  real(C_DOUBLE)                    :: C(3)
-!=====
  integer  :: i_cart,j_cart,ij
  integer  :: ibf_cart,jbf_cart
  real(dp) :: nucleus
 !=====
 
- call start_clock(timing_hamiltonian_nuc)
- if( .NOT. in_tddft_loop ) then 
-   write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBINT)'
+ if( in_tddft_loop ) then 
+   call start_clock(timing_tddft_hamiltonian_nuc)
+ else
+   call start_clock(timing_hamiltonian_nuc)
  end if
- if( nproc_world > 1 ) then
-   natom_local=0
-   do iatom=1,natom
-     if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
-     natom_local = natom_local + 1
-   enddo
-   if( .NOT. in_tddft_loop ) then
-     write(stdout,'(a)')         '   Parallelizing over atoms'
-     write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
-   end if
+
+#ifdef HAVE_LIBINT_ONEBODY
+   write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBINT)'
+#else
+   write(stdout,'(/,a)') ' Setup nucleus-electron part of the Hamiltonian (internal)'
+#endif
+
+ if( PRESENT(atom_list) ) then
+   write(stdout,'(1x,a,i5,a)') 'Only calculate the contribution from ',SIZE(atom_list),' nucleus/nuclei'
  endif
 
+ hamiltonian_nucleus(:,:) = 0.0_dp
 
  do jshell=1,basis%nshell
    lj      = basis%shell(jshell)%am
@@ -542,6 +539,8 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus)
    nj      = number_basis_function_am(basis%gaussian_type,lj)
    jbf1    = basis%shell(jshell)%istart
    jbf2    = basis%shell(jshell)%iend
+
+   if( MODULO(jshell-1,nproc_world) /= rank_world ) cycle
 
    call set_libint_shell(basis%shell(jshell),amB,contrdepthB,B,alphaB,cB)
 
@@ -560,7 +559,10 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus)
      array_cart(:) = 0.0_dp
 
      do iatom=1,natom
-       if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
+       ! Skip the contribution if iatom is not contained in the list
+       if( PRESENT(atom_list) ) then
+         if( ALL(atom_list(:) /= iatom ) ) cycle
+       endif
 
        C(:) = xatom(:,iatom)
 #ifdef HAVE_LIBINT_ONEBODY
@@ -604,10 +606,13 @@ subroutine setup_nucleus(basis,hamiltonian_nucleus)
  ! Reduce operation
  call xsum_world(hamiltonian_nucleus)
 
- title='===  Nucleus potential contribution (LIBINT) ==='
- call dump_out_matrix(.FALSE.,title,basis%nbf,1,hamiltonian_nucleus)
+ call dump_out_matrix(.FALSE.,'===  Nucleus potential contribution ===',basis%nbf,1,hamiltonian_nucleus)
 
- call stop_clock(timing_hamiltonian_nuc)
+ if( in_tddft_loop ) then 
+   call stop_clock(timing_tddft_hamiltonian_nuc)
+ else
+   call stop_clock(timing_hamiltonian_nuc)
+ endif
 
 end subroutine setup_nucleus
 
@@ -653,10 +658,8 @@ subroutine setup_nucleus_grad(basis,hamiltonian_nucleus_grad)
      if( rank_world /= MODULO(iatom-1,nproc_world) ) cycle
      natom_local = natom_local + 1
    enddo
-   if( .NOT. in_tddft_loop ) then
-     write(stdout,'(a)')         '   Parallelizing over atoms'
-     write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
-   end if
+   write(stdout,'(a)')         '   Parallelizing over atoms'
+   write(stdout,'(a,i5,a,i5)') '   this proc treats ',natom_local,' over ',natom
  endif
 
  hamiltonian_nucleus_grad(:,:,:,:) = 0.0_dp

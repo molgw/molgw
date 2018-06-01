@@ -210,12 +210,16 @@ end subroutine get_states_from_keyud
 
 
 !==================================================================
-subroutine prepare_ci(nstate_in,nfrozen_in,h_1e,c_matrix)
+subroutine prepare_ci(basis,nstate_in,nfrozen_in,c_matrix)
+ use m_hamiltonian_onebody
  implicit none
 
- integer,intent(in)  :: nstate_in,nfrozen_in
- real(dp),intent(in) :: h_1e(:,:),c_matrix(:,:,:)
+ type(basis_set),intent(in) :: basis
+ integer,intent(in)         :: nstate_in,nfrozen_in
+ real(dp),intent(in)        :: c_matrix(:,:,:)
 !=====
+ real(dp) :: h_1e(basis%nbf,basis%nbf)
+ real(dp) :: hnuc(basis%nbf,basis%nbf)
  integer :: ipos
 !=====
 
@@ -227,6 +231,13 @@ subroutine prepare_ci(nstate_in,nfrozen_in,h_1e,c_matrix)
  write(stdout,'(1x,a,i4)') '    Max active space size: ',BIT_SIZE(0_key_int)
  write(stdout,'(1x,a,i4)') 'Current active space size: ',nstate_ci -nfrozen_ci
  if( nstate_ci -nfrozen_ci > BIT_SIZE(0_key_int) ) call die('prepare_ci: current active space too large')
+
+ call setup_kinetic(basis,h_1e)
+ call setup_nucleus(basis,hnuc)
+ if( nelement_ecp > 0 ) then
+   call setup_nucleus_ecp(basis,hnuc)
+ endif
+ h_1e(:,:) = h_1e(:,:) + hnuc(:,:)
 
  ! Calculate the one-electron hamiltonian on the eigenstate basis
  call build_1e_hamiltonian(c_matrix,h_1e)

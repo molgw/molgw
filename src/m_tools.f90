@@ -907,7 +907,7 @@ end subroutine cross_product
 
 
 !=========================================================================
-function capitalize(str)
+pure function capitalize(str)
  implicit none
  character(*), intent(in) :: str
  character(LEN(str))      :: capitalize
@@ -959,7 +959,7 @@ end function orbital_momentum_number
 
 
 !=========================================================================
-function orbital_momentum_name(am)
+pure function orbital_momentum_name(am)
  integer,intent(in) :: am
  character(len=1) :: orbital_momentum_name
 !=====
@@ -1125,7 +1125,7 @@ end subroutine calculate_pade_a
 
 
 !=========================================================================
-function get_number_of_elements(string) result(num)
+pure function get_number_of_elements(string) result(num)
  implicit none
  character(len=*),intent(in)  :: string
  integer                      :: num
@@ -1178,7 +1178,7 @@ end subroutine string_to_integers
 
 
 !=========================================================================
-function determinant_3x3_matrix(mat) RESULT(det)
+pure function determinant_3x3_matrix(mat) RESULT(det)
  implicit none
 
  real(dp) :: det
