@@ -247,10 +247,13 @@ subroutine calculate_propagation(basis,occupation,c_matrix)
  endif
 
  if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0)
+
  if( print_cube_diff_tddft_ ) then
    call calc_cube_initial_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,cube_density_start,nx,ny,nz)
    call plot_cube_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,cube_density_start,nx,ny,nz)
  end if
+
+ if( calc_dens_disc_ )       call calc_density_in_disc_cmplx(batch_size,basis,occupation,c_matrix_cmplx,200.d0,0) 
 
  if( print_line_rho_tddft_ ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
 
@@ -320,7 +323,7 @@ subroutine calculate_propagation(basis,occupation,c_matrix)
      if( print_line_rho_tddft_  ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
      if( print_cube_rho_tddft_  ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step)
      if( print_cube_diff_tddft_ ) call plot_cube_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,cube_density_start,nx,ny,nz)
-     if( calc_dens_disc_ )        call calc_density_in_disc_cmplx(batch_size,basis,occupation,c_matrix_cmplx,5.d0,iwrite_step) 
+     if( calc_dens_disc_ )        call calc_density_in_disc_cmplx(batch_size,basis,occupation,c_matrix_cmplx,200.d0,iwrite_step) 
 
      if(calc_q_matrix_) call calc_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_orth_cmplx,istate_cut,file_q_matrix,time_cur) 
 

@@ -1157,9 +1157,9 @@ subroutine calc_normalization_r(batch_size,basis,occupation,c_matrix)
  !
 
  r_cyl=0.d0
- nr_cyl=100
- r_cylmax=10.d0
- dr_cyl=r_cylmax/REAL(nr_cyl,dp)
+ nr_cyl=2
+ r_cylmax=30.d0
+ dr_cyl=r_cylmax/REAL(nr_cyl-1,dp)
  do ir_cyl=1,nr_cyl
    charge_cyl(:) = 0.0_dp
    charge_tri(:) = 0.0_dp
@@ -1182,11 +1182,11 @@ subroutine calc_normalization_r(batch_size,basis,occupation,c_matrix)
        igrid = igrid_start + ir - 1
        vec_r=rr_grid(1:2,igrid)
        vec_rp=vec_r-vec_a
+       charge_cyl(:) = charge_cyl(:) + rhor_batch(:,ir) * weight_batch(ir)
        !if point is in the triangle (prism)
        if( ir_cyl==1 .AND. DOT_PRODUCT(vec_a,vec_rp)<=0.0_dp &
          & .AND. DOT_PRODUCT(vec_r,vec_c)>=0.0_dp .AND. ALL(vec_r(:)>=0.0_dp) ) then
          charge_tri(:) = charge_tri(:) + rhor_batch(:,ir) * weight_batch(ir)
-         write(stdout,*) "suka", rhor_batch(:,ir),weight_batch(ir)
        endif
        !if point is in the cylinder
        if( NORM2(vec_r) <= r_cyl ) then
