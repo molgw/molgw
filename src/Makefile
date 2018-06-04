@@ -347,7 +347,7 @@ m_atoms.o: m_definitions.f90 m_warning.f90 m_elements.f90 m_tools.f90 m_lbfgs.f9
 m_ecp.o: m_definitions.f90 m_warning.f90 m_elements.f90 m_tools.f90 m_ecp.f90
 	$(FC_W_OPTS) -c m_ecp.f90 $(LIBXC_INCS)
 
-m_scalapack.o: m_definitions.f90 m_warning.f90 m_tools.f90 m_mpi.f90  m_scalapack.f90
+m_scalapack.o: m_definitions.f90 m_warning.f90 m_tools.f90 m_mpi.f90 m_scalapack.f90
 	$(FC_W_OPTS) -c m_scalapack.f90 $(LIBXC_INCS)
 
 m_mpi_world.o: m_definitions.f90 m_warning.f90 m_mpi_world.f90

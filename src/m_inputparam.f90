@@ -114,6 +114,8 @@ module m_inputparam
  integer,protected                :: ci_spin_multiplicity
  integer,protected                :: nscf
  real(dp),protected               :: tolforce
+ real(dp),protected               :: kerker_k0
+ real(dp),protected               :: density_matrix_damping
  real(dp),protected               :: spin_fact
  real(dp),protected               :: alpha_mixing
  character(len=100),protected     :: move_nuclei

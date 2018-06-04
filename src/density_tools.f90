@@ -39,7 +39,6 @@ subroutine setup_atomic_density(rr,rhor)
  enddo
 
 
-
 end subroutine setup_atomic_density
 
 
@@ -49,6 +48,7 @@ subroutine calc_density_pmatrix(nspin,basis,p_matrix,basis_function_r,rhor)
  use m_mpi
  use m_basis_set
  implicit none
+
  integer,intent(in)         :: nspin
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)  :: p_matrix(basis%nbf,basis%nbf,nspin)
@@ -90,28 +90,25 @@ subroutine calc_density_r(nspin,nbf,nstate,occupation,c_matrix,basis_function_r,
  real(dp),intent(in)        :: basis_function_r(nbf)
  real(dp),intent(out)       :: rhor(nspin)
 !=====
- integer              :: ispin,istate
+ integer              :: ispin
  real(dp),allocatable :: phir(:)
  integer              :: nocc
 !=====
 
+ nocc = get_number_occupied_states(occupation)
+ allocate(phir(nocc))
+
  !
  ! Calculate the density rho at point r
- rhor(:)=0.0_dp
-
  do ispin=1,nspin
 
-   nocc = get_number_occupied_states(occupation)
-
-   allocate(phir(nocc))
    phir(:) = MATMUL( basis_function_r(:) , c_matrix(:,:nocc,ispin) )
 
-   rhor(ispin) = rhor(ispin) + SUM( phir(:)**2 * occupation(:nocc,ispin) )
-   deallocate(phir)
-
+   rhor(ispin) = SUM( phir(:)**2 * occupation(:nocc,ispin) )
 
  enddo
 
+ deallocate(phir)
 
 end subroutine calc_density_r
 
@@ -129,30 +126,27 @@ subroutine calc_density_r_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basis_fu
  real(dp),intent(in)        :: basis_function_r(nbf,nr)
  real(dp),intent(out)       :: rhor(nspin,nr)
 !=====
- integer              :: ispin,istate,ir
+ integer              :: ispin,ir
  real(dp),allocatable :: phir(:,:)
  integer              :: nocc
 !=====
 
+ nocc = get_number_occupied_states(occupation)
+ allocate(phir(nocc,nr))
+
  !
  ! Calculate the density rho at points in batch
- rhor(:,:) = 0.0_dp
-
  do ispin=1,nspin
 
-   nocc = get_number_occupied_states(occupation)
-
-   allocate(phir(nocc,nr))
    phir(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_r(:,:) )
 
    forall(ir=1:nr)
-     rhor(ispin,ir) = rhor(ispin,ir) + SUM( phir(:,ir)**2 * occupation(:nocc,ispin) )
+     rhor(ispin,ir) = SUM( phir(:,ir)**2 * occupation(:nocc,ispin) )
    endforall
-   deallocate(phir)
-
 
  enddo
 
+ deallocate(phir)
 
 end subroutine calc_density_r_batch
 
@@ -276,7 +270,7 @@ subroutine calc_density_gradr_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basi
  real(dp),intent(out)       :: rhor(nspin,nr)
  real(dp),intent(out)       :: grad_rhor(nspin,nr,3)
 !=====
- integer              :: ispin,istate,ir
+ integer              :: ispin,ir
  real(dp),allocatable :: phir(:,:)
  real(dp),allocatable :: phir_gradx(:,:)
  real(dp),allocatable :: phir_grady(:,:)
@@ -284,36 +278,33 @@ subroutine calc_density_gradr_batch(nspin,nbf,nstate,nr,occupation,c_matrix,basi
  integer              :: nocc
 !=====
 
+ nocc = get_number_occupied_states(occupation)
+ allocate(phir(nocc,nr))
+ allocate(phir_gradx(nocc,nr))
+ allocate(phir_grady(nocc,nr))
+ allocate(phir_gradz(nocc,nr))
+
  !
  ! Calculate rho and grad rho at points in batch
- rhor(:,:)        = 0.0_dp
- grad_rhor(:,:,:) = 0.0_dp
 
  do ispin=1,nspin
 
-   nocc = get_number_occupied_states(occupation)
-
-   allocate(phir(nocc,nr))
-   allocate(phir_gradx(nocc,nr))
-   allocate(phir_grady(nocc,nr))
-   allocate(phir_gradz(nocc,nr))
    phir(:,:)       = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_r(:,:) )
    phir_gradx(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,1) )
    phir_grady(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,2) )
    phir_gradz(:,:) = MATMUL( TRANSPOSE(c_matrix(:,:nocc,ispin)) , basis_function_gradr(:,:,3) )
 
    forall(ir=1:nr)
-     rhor(ispin,ir)        = rhor(ispin,ir)        + SUM( phir(:,ir)**2 * occupation(:nocc,ispin) )
-     grad_rhor(ispin,ir,1) = grad_rhor(ispin,ir,1) + 2.0_dp * SUM(  phir(:,ir) * phir_gradx(:,ir) * occupation(:nocc,ispin) )
-     grad_rhor(ispin,ir,2) = grad_rhor(ispin,ir,2) + 2.0_dp * SUM(  phir(:,ir) * phir_grady(:,ir) * occupation(:nocc,ispin) )
-     grad_rhor(ispin,ir,3) = grad_rhor(ispin,ir,3) + 2.0_dp * SUM(  phir(:,ir) * phir_gradz(:,ir) * occupation(:nocc,ispin) )
+     rhor(ispin,ir)        = SUM( phir(:,ir)**2 * occupation(:nocc,ispin) )
+     grad_rhor(ispin,ir,1) = 2.0_dp * SUM(  phir(:,ir) * phir_gradx(:,ir) * occupation(:nocc,ispin) )
+     grad_rhor(ispin,ir,2) = 2.0_dp * SUM(  phir(:,ir) * phir_grady(:,ir) * occupation(:nocc,ispin) )
+     grad_rhor(ispin,ir,3) = 2.0_dp * SUM(  phir(:,ir) * phir_gradz(:,ir) * occupation(:nocc,ispin) )
    endforall
 
-   deallocate(phir)
-   deallocate(phir_gradx,phir_grady,phir_gradz)
-
-
  enddo
+
+ deallocate(phir)
+ deallocate(phir_gradx,phir_grady,phir_gradz)
 
 
 end subroutine calc_density_gradr_batch

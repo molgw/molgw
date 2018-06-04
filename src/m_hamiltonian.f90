@@ -83,7 +83,6 @@ subroutine setup_hartree_oneshell(basis,p_matrix,hartree_ij,ehartree)
 !=====
  real(dp),parameter      :: TOL_DENSITY_MATRIX=1.0e-7_dp
  integer                 :: ijshellpair,klshellpair
- integer                 :: iatom
  integer                 :: ibf,jbf,kbf,lbf
  integer                 :: ishell,jshell,kshell,lshell
  integer                 :: ni,nj,nk,nl
@@ -366,10 +365,10 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
 
  allocate(tmp(nauxil_3center,nbf))
 
- do ispin=1,nspin
+ ! Find highest occupied state
+ nocc = get_number_occupied_states(occupation)
 
-   ! Find highest occupied state
-   nocc = get_number_occupied_states(occupation)
+ do ispin=1,nspin
 
    do istate=1,nocc
      if( MODULO( istate-1 , nproc_ortho ) /= rank_ortho ) cycle
@@ -377,17 +376,16 @@ subroutine setup_exchange_ri(occupation,c_matrix,p_matrix,exchange_ij,eexchange)
      if( ABS(occupation(istate,ispin)) < completely_empty ) cycle
 
      tmp(:,:) = 0.0_dp
-     !$OMP PARALLEL PRIVATE(ibf,jbf) 
-     !$OMP DO REDUCTION(+:tmp)
-     do ipair=1,npair
+     do ipair=1,nbf
+       ibf = index_basis(1,ipair)
+       tmp(:,ibf) = tmp(:,ibf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair)
+     enddo
+     do ipair=nbf+1,npair
        ibf=index_basis(1,ipair)
        jbf=index_basis(2,ipair)
        tmp(:,ibf) = tmp(:,ibf) + c_matrix(jbf,istate,ispin) * eri_3center(:,ipair)
-       if( ibf /= jbf ) &
-            tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair)
+       tmp(:,jbf) = tmp(:,jbf) + c_matrix(ibf,istate,ispin) * eri_3center(:,ipair)
      enddo
-     !$OMP END DO
-     !$OMP END PARALLEL
 
      ! exchange_ij(:,:,ispin) = exchange_ij(:,:,ispin) &
      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
@@ -783,7 +781,7 @@ pure function get_number_occupied_states(occupation) result(nocc)
  ! Find highest occupied state
  ! Take care of negative occupations, this can happen if C comes from P^{1/2}
  nocc = 0
- do ispin=1,nspin
+ do ispin=1,nspin_local
    do istate=1,nstate
      if( ABS(occupation(istate,ispin)) < completely_empty )  cycle
      nocc = MAX(nocc,istate)
@@ -1080,7 +1078,7 @@ subroutine get_c_matrix_from_p_matrix(p_matrix,c_matrix,occupation)
 !=====
  real(dp),allocatable :: p_matrix_sqrt(:,:)
  integer              :: nbf,nstate
- integer              :: ispin,ibf,istate
+ integer              :: ispin
 !=====
 
  nbf    = SIZE( p_matrix(:,:,:), DIM=1 )
@@ -1286,7 +1284,7 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    if( dft_xc_needs_gradient ) then 
      allocate(basis_function_gradr_batch(basis%nbf,nr,3))
      allocate(grad_rhor_batch(nspin,nr,3))
-     allocate(dedgd_r_batch(nspin,nr,3))
+     allocate(dedgd_r_batch(3,nr,nspin))
      allocate(sigma_batch(2*nspin-1,nr))
      allocate(vsigma_batch(2*nspin-1,nr))
    endif
@@ -1359,24 +1357,27 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
      ! Set up divergence term if needed (GGA case)
      !
      if( dft_xc_needs_gradient ) then
-       do ir=1,nr
-         if(nspin==1) then
+       if(nspin==1) then
 
-           dedgd_r_batch(1,ir,:) = dedgd_r_batch(1,ir,:)  &
+         do ir=1,nr
+           dedgd_r_batch(:,ir,1) = dedgd_r_batch(:,ir,1)  &
                       + 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) * dft_xc_coef(idft_xc)
+         enddo
 
-         else
+       else
 
-           dedgd_r_batch(1,ir,:) = dedgd_r_batch(1,ir,:) &
+         do ir=1,nr
+           dedgd_r_batch(:,ir,1) = dedgd_r_batch(:,ir,1) &
                      + ( 2.0_dp * vsigma_batch(1,ir) * grad_rhor_batch(1,ir,:) &
                                  + vsigma_batch(2,ir) * grad_rhor_batch(2,ir,:) ) * dft_xc_coef(idft_xc) 
 
-           dedgd_r_batch(2,ir,:) = dedgd_r_batch(2,ir,:) &
+           dedgd_r_batch(:,ir,2) = dedgd_r_batch(:,ir,2) &
                      + ( 2.0_dp * vsigma_batch(3,ir) * grad_rhor_batch(2,ir,:) &
                                  + vsigma_batch(2,ir) * grad_rhor_batch(1,ir,:) ) * dft_xc_coef(idft_xc)
-         endif
+         enddo
 
-       enddo
+       endif
+
      endif
 
    enddo ! loop on the XC functional
@@ -1387,30 +1388,24 @@ subroutine dft_exc_vxc_batch(batch_size,basis,occupation,c_matrix,vxc_ij,exc_xc)
    ! Eventually set up the vxc term
    !
 
-   !
-   ! LDA and GGA
    allocate(tmp_batch(basis%nbf,nr))
    do ispin=1,nspin
-     forall(ir=1:nr)
-       tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir)
-     end forall
-
-     call DGEMM('N','T',basis%nbf,basis%nbf,nr,1.0d0,tmp_batch,basis%nbf,basis_function_r_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
-   enddo
-   !
-   ! GGA-only
-   if( dft_xc_needs_gradient ) then 
-
-     do ispin=1,nspin
-
-       do ir=1,nr
-         tmp_batch(:,ir) = MATMUL( basis_function_gradr_batch(:,ir,:) , dedgd_r_batch(ispin,ir,:) * weight_batch(ir) )
-       enddo
-
-       call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
-
+     !
+     ! LDA and GGA
+     do ir=1,nr
+       tmp_batch(:,ir) = weight_batch(ir) * dedd_r_batch(ispin,ir) * basis_function_r_batch(:,ir) * 0.50_dp
      enddo
-   endif
+     !
+     ! GGA-only
+     if( dft_xc_needs_gradient ) then
+       do ir=1,nr
+         tmp_batch(:,ir) = tmp_batch(:,ir) &
+                          +  MATMUL( basis_function_gradr_batch(:,ir,:) , dedgd_r_batch(:,ir,ispin) * weight_batch(ir) )
+       enddo
+     endif
+
+     call DSYR2K('L','N',basis%nbf,nr,1.0d0,basis_function_r_batch,basis%nbf,tmp_batch,basis%nbf,1.0d0,vxc_ij(:,:,ispin),basis%nbf)
+   enddo
    deallocate(tmp_batch)
 
 

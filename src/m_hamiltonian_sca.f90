@@ -81,7 +81,6 @@ subroutine setup_overlap_sca(basis,s_matrix)
  integer              :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
  integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
- character(len=100)   :: title
  real(dp),allocatable :: matrix_cart(:,:)
 !=====
 
@@ -141,7 +140,6 @@ subroutine setup_kinetic_sca(basis,hamiltonian_kinetic)
  integer              :: ibf1,ibf2,jbf1,jbf2,ibf1_cart,jbf1_cart
  integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
- character(len=100)   :: title
  real(dp),allocatable :: matrix_cart(:,:)
 !=====
 
@@ -202,7 +200,6 @@ subroutine setup_nucleus_sca(basis,hamiltonian_nucleus)
  integer              :: i_cart,j_cart
  integer              :: ni,nj,ni_cart,nj_cart,li,lj
  integer              :: iatom
- character(len=100)   :: title
  real(dp),allocatable :: matrix_cart(:,:)
  real(dp)             :: vnucleus_ij
 !=====
@@ -285,7 +282,6 @@ subroutine setup_hartree_ri_sca(p_matrix,hartree_ij,ehartree)
  integer              :: ibf_auxil,ipair
  integer              :: index_ij,index_kl
  real(dp),allocatable :: partial_sum(:)
- character(len=100)   :: title
 !=====
 
  m_ham = SIZE(p_matrix,DIM=1)

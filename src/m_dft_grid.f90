@@ -37,7 +37,6 @@ module m_dft_grid
 
  !
  ! Function evaluation storage
- integer,private              :: batch_size_
  integer,private              :: ngrid_stored
  real(dp),allocatable,private :: bfr(:,:)
  real(dp),allocatable,private :: bfgr(:,:,:)
@@ -368,9 +367,6 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
  ! precalculate the wavefunctions and their gradient on a part of the grid
  !
 
- ! Save an internal copy of batch_size
- batch_size_ = batch_size
-
 
  if( precalculate_wfn ) then
    !
@@ -386,9 +382,9 @@ subroutine init_dft_grid(basis,grid_level_in,needs_gradient,precalculate_wfn,bat
    ! Enforce a multiple of batches
    ngrid_stored = batch_size * ( ngrid_stored/batch_size )
 
-   call prepare_basis_functions_r(basis,batch_size_)
+   call prepare_basis_functions_r(basis,batch_size)
    if( needs_gradient ) then
-     call prepare_basis_functions_gradr(basis,batch_size_)
+     call prepare_basis_functions_gradr(basis,batch_size)
    endif
 
  else
