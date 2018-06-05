@@ -418,7 +418,7 @@ subroutine static_dipole_fast_cmplx(basis,p_matrix_cmplx,dipole_basis,dipole)
 end subroutine static_dipole_fast_cmplx
 
 !=========================================================================
-subroutine calc_density_in_disc_cmplx(batch_size,basis,occupation,c_matrix_cmplx,r_disc,num)
+subroutine calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_matrix_cmplx,num)
  use m_inputparam
  use m_dft_grid
  use m_atoms
@@ -428,7 +428,6 @@ subroutine calc_density_in_disc_cmplx(batch_size,basis,occupation,c_matrix_cmplx
  type(basis_set),intent(in) :: basis
  real(dp),intent(in)        :: occupation(:,:)
  complex(dp),intent(in)     :: c_matrix_cmplx(:,:,:)
- real(dp),intent(in)        :: r_disc
  integer,intent(in)         :: num
 !=====
  real(dp),parameter   :: length=10.0_dp
@@ -525,7 +524,7 @@ subroutine calc_density_in_disc_cmplx(batch_size,basis,occupation,c_matrix_cmplx
    do ispin=1,nspin
      write(file_out(ispin),'(a,3F12.6)') '# Projectile position (A): ',xatom(:,natom+nghost)*bohr_A
      do idisc=1,ndisc  
-       write(file_out(ispin),'(3F16.4)') (z_min+idisc*dz_disc)*bohr_A,charge_disc(idisc,ispin),count_z_section(idisc,ispin)
+       write(file_out(ispin),'(2F16.4,i6)') (z_min+idisc*dz_disc)*bohr_A,charge_disc(idisc,ispin),count_z_section(idisc,ispin)
      end do
      close(file_out(ispin))
    end do
@@ -538,7 +537,7 @@ subroutine calc_density_in_disc_cmplx(batch_size,basis,occupation,c_matrix_cmplx
 
  call stop_clock(timing_calc_dens_disc)
 
-end subroutine calc_density_in_disc_cmplx
+end subroutine calc_density_in_disc_cmplx_dft_grid
 
 end module m_hamiltonian_cmplx
 !=========================================================================

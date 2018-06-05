@@ -1329,6 +1329,157 @@ subroutine plot_cube_wfn_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,n
 end subroutine plot_cube_wfn_cmplx
 
 !=========================================================================
+subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,num)
+ use m_definitions
+ use m_mpi
+ use m_tddft_variables
+ use m_inputparam, only: nspin,spin_fact,excit_type,EXCIT_PROJECTILE,r_disc
+ use m_atoms
+ use m_basis_set
+ use m_timing
+ use m_dft_grid,only: calculate_basis_functions_r
+
+ implicit none
+ integer,intent(in)         :: nstate
+ integer,intent(in)         :: nocc_dim
+ type(basis_set),intent(in) :: basis
+ real(dp),intent(in)        :: occupation(nstate,nspin)
+ complex(dp),intent(in)     :: c_matrix_cmplx(basis%nbf,nocc_dim,nspin)
+ integer                    :: num
+!=====
+ integer                    :: gt
+ integer                    :: nx
+ integer                    :: ny
+ integer                    :: nz
+ integer                    :: nocc(2),nocc_max
+ real(dp),parameter         :: length=4.0_dp
+ integer                    :: ibf
+ integer                    :: istate1,istate2,istate,ispin
+ real(dp)                   :: rr(3)
+ complex(dp),allocatable    :: phi_cmplx(:,:)
+ real(dp)                   :: u(3),a(3)
+ logical                    :: file_exists
+ real(dp)                   :: xmin,xmax,ymin,ymax,zmin,zmax
+ real(dp)                   :: dx,dy,dz
+ real(dp)                   :: basis_function_r(basis%nbf)
+ integer                    :: ix,iy,iz,iatom
+ integer                    :: ibf_cart,ni_cart,ni,li,i_cart
+ real(dp),allocatable       :: basis_function_r_cart(:)
+ integer,allocatable        :: ocubefile(:,:)
+ integer                    :: file_out(nspin)
+ character(len=200)         :: file_name
+ integer                    :: icubefile
+ integer                    :: i_max_atom
+ real(dp),allocatable       :: charge_layer(:)
+!=====
+
+ call start_clock(timing_print_cube_rho_tddft)
+
+ gt = get_gaussian_type_tag(basis%gaussian_type)
+
+ if( .NOT. in_tddft_loop ) then
+   write(stdout,'(/,1x,a)') 'Calculate electronic density in discs'
+ end if
+ ! Find highest occupied state
+ nocc = 0
+ nocc_max = 0
+ do ispin=1,nspin
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty)  cycle
+     nocc(ispin) = istate
+     if( istate > nocc_max ) nocc_max = istate
+   enddo 
+   if( .NOT. (ALL( occupation(nocc(ispin)+1,:) < completely_empty )) ) then
+     call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
+   endif 
+ enddo
+
+ istate1= 1
+ istate2= nocc_max
+
+ inquire(file='manual_cubewfn_tddft',exist=file_exists)
+ if(file_exists) then
+   open(newunit=icubefile,file='manual_disc_density',status='old')
+   read(icubefile,*) nx,ny,nz
+   close(icubefile)
+ else
+   nx=40
+   ny=40
+   nz=256
+ endif
+ allocate(phi_cmplx(istate1:istate2,nspin))
+
+ if( excit_type%form==EXCIT_PROJECTILE ) then
+   i_max_atom=natom-nprojectile
+ else
+   i_max_atom=natom
+ endif
+ 
+ xmin =MINVAL( xatom(1,1:i_max_atom) ) - length
+ xmax =MAXVAL( xatom(1,1:i_max_atom) ) + length
+ ymin =MINVAL( xatom(2,1:i_max_atom) ) - length
+ ymax =MAXVAL( xatom(2,1:i_max_atom) ) + length
+ zmin =MINVAL( xatom(3,1:i_max_atom) ) - length
+ zmax =MAXVAL( xatom(3,1:i_max_atom) ) + length
+
+ dx = (xmax-xmin)/REAL(nx,dp)
+ dy = (ymax-ymin)/REAL(ny,dp)
+ dz = (zmax-zmin)/REAL(nz,dp)
+
+ if( is_iomaster ) then
+   do ispin=1,nspin
+     write(file_name,'(a,i3.3,a,i1,a,i3.3,f0.3,a)') 'disc_dens_',num, "_s_",ispin,"_r_",INT(r_disc),r_disc-INT(r_disc),".dat"
+     open(newunit=file_out(ispin),file=file_name)
+     write(file_out(ispin),'(a,3F12.6)') '# Projectile position (A): ',xatom(:,natom+nghost)*bohr_A
+   enddo
+ end if
+
+ allocate(charge_layer(nz))
+
+ do ispin=1,nspin
+   istate2=nocc(ispin)
+   charge_layer(:)=0.0_dp
+   do iz=1,nz
+     if(MODULO(iz-1,nproc_world)/=rank_world) cycle
+     rr(3) = ( zmin + (iz-1)*dz ) 
+     do ix=1,nx
+       rr(1) = ( xmin + (ix-1)*dx ) 
+       do iy=1,ny
+         rr(2) = ( ymin + (iy-1)*dy ) 
+         
+         if( (rr(1)**2+rr(2)**2)**0.5_dp <= r_disc ) then
+           call calculate_basis_functions_r(basis,rr,basis_function_r)
+           phi_cmplx(istate1:istate2,ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:,istate1:istate2,ispin) )
+           charge_layer(iz)=charge_layer(iz)+SUM( ABS(phi_cmplx(:,ispin))**2 * occupation(istate1:istate2,ispin) ) * spin_fact
+         end if
+
+       enddo
+     enddo
+   enddo
+
+   call xsum_world(charge_layer(:))
+
+   if( is_iomaster ) then
+     do iz=1,nz
+       rr(3) = ( zmin + (iz-1)*dz )
+       write(file_out(ispin),'(2F16.4)') rr(3)*bohr_A,charge_layer(iz)
+     end do
+   end if
+
+ enddo ! ispin
+
+
+ do ispin=1,nspin
+   close(file_out(ispin))
+ end do
+
+ deallocate(phi_cmplx)
+
+ call stop_clock(timing_print_cube_rho_tddft)
+
+end subroutine calc_density_in_disc_cmplx_regular
+
+!=========================================================================
 subroutine calc_cube_initial_cmplx(nstate,nocc_dim,basis,occupation,c_matrix_cmplx,cube_density_start,nx,ny,nz)
  use m_definitions
  use m_mpi

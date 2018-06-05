@@ -349,11 +349,11 @@ subroutine calc_density_gradr_batch_cmplx(nspin,nbf,nstate,nocc,nr,occupation,c_
 
    forall(ir=1:nr)
      rhor(ispin,ir) = rhor(ispin,ir) + REAL( SUM( phir_cmplx(:,ir) * CONJG(phir_cmplx(:,ir)) * occupation(:nocc,ispin) ) )
-     grad_rhor(ispin,ir,1) = grad_rhor(ispin,ir,1) + REAL( SUM( (phir_cmplx(:,ir)*CONJG(phir_gradx_cmplx(:,ir)) + &
+     grad_rhor(ispin,ir,1) = REAL( SUM( (phir_cmplx(:,ir)*CONJG(phir_gradx_cmplx(:,ir)) + &
                                           CONJG(phir_cmplx(:,ir))*phir_gradx_cmplx(:,ir) )*occupation(:nocc,ispin ) ) )
-     grad_rhor(ispin,ir,2) = grad_rhor(ispin,ir,2) + REAL( SUM( (phir_cmplx(:,ir)*CONJG(phir_grady_cmplx(:,ir)) + &
+     grad_rhor(ispin,ir,2) = REAL( SUM( (phir_cmplx(:,ir)*CONJG(phir_grady_cmplx(:,ir)) + &
                                           CONJG(phir_cmplx(:,ir))*phir_grady_cmplx(:,ir) )*occupation(:nocc,ispin ) ) )
-     grad_rhor(ispin,ir,3) = grad_rhor(ispin,ir,3) + REAL( SUM( (phir_cmplx(:,ir)*CONJG(phir_gradz_cmplx(:,ir)) + &
+     grad_rhor(ispin,ir,3) = REAL( SUM( (phir_cmplx(:,ir)*CONJG(phir_gradz_cmplx(:,ir)) + &
                                           CONJG(phir_cmplx(:,ir))*phir_gradz_cmplx(:,ir) )*occupation(:nocc,ispin ) ) )
    endforall
 
@@ -403,18 +403,13 @@ subroutine calc_density_current_rr_cmplx(nspin,nbf,nstate,nocc,nr,occupation,c_m
    phir_gradz_cmplx(:,:) = MATMUL( TRANSPOSE(c_matrix_cmplx(:,:nocc,ispin)) , basis_function_gradr(:,:,3) )
 
    forall(ir=1:nr)
-!     rhor(ispin,ir) = rhor(ispin,ir) + REAL( SUM( phir_cmplx(:,ir) * CONJG(phir_cmplx(:,ir)) * occupation(:nocc,ispin) ) )
-     jcurdens(ispin,ir,1) = jcurdens(ispin,ir,1) + REAL( SUM( (phir_cmplx(:,ir)*CONJG(phir_gradx_cmplx(:,ir)) + &
-                                          CONJG(phir_cmplx(:,ir))*phir_gradx_cmplx(:,ir) )*occupation(:nocc,ispin ) ) )
-     jcurdens(ispin,ir,2) = jcurdens(ispin,ir,2) + REAL( SUM( (phir_cmplx(:,ir)*CONJG(phir_grady_cmplx(:,ir)) + &
-                                          CONJG(phir_cmplx(:,ir))*phir_grady_cmplx(:,ir) )*occupation(:nocc,ispin ) ) )
-     jcurdens(ispin,ir,3) = jcurdens(ispin,ir,3) + REAL( SUM( (phir_cmplx(:,ir)*CONJG(phir_gradz_cmplx(:,ir)) + &
-                                          CONJG(phir_cmplx(:,ir))*phir_gradz_cmplx(:,ir) )*occupation(:nocc,ispin ) ) )
+     jcurdens(ispin,ir,1) = REAL( SUM(  -im * CONJG(phir_cmplx(:,ir)) * phir_gradx_cmplx(:,ir) * occupation(:nocc,ispin ) ) )
+     jcurdens(ispin,ir,2) = REAL( SUM(  -im * CONJG(phir_cmplx(:,ir)) * phir_grady_cmplx(:,ir) * occupation(:nocc,ispin ) ) )
+     jcurdens(ispin,ir,3) = REAL( SUM(  -im * CONJG(phir_cmplx(:,ir)) * phir_gradz_cmplx(:,ir) * occupation(:nocc,ispin ) ) )
    endforall
 
    deallocate(phir_cmplx)
    deallocate(phir_gradx_cmplx,phir_grady_cmplx,phir_gradz_cmplx)
-
 
  enddo
 

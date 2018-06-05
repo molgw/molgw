@@ -105,6 +105,14 @@ subroutine calculate_propagation(basis,occupation,c_matrix)
 
  nstate = SIZE(occupation(:,:),DIM=1)
 
+ nocc=0
+ do ispin=1,nspin
+   do istate=1,nstate
+     if( occupation(istate,ispin) < completely_empty ) cycle
+     if( istate > nocc ) nocc = istate
+   enddo
+ end do
+
  call echo_tddft_variables()
 
  call clean_allocate('Overlap matrix S for TDDFT',s_matrix,basis%nbf,basis%nbf)
@@ -144,14 +152,6 @@ subroutine calculate_propagation(basis,occupation,c_matrix)
  if( calc_type%is_dft ) then
     call init_dft_grid(basis,grid_level,dft_xc_needs_gradient,.TRUE.,BATCH_SIZE)
  endif
-
- nocc=0
- do ispin=1,nspin
-   do istate=1,nstate
-     if( occupation(istate,ispin) < completely_empty ) cycle
-     if( istate > nocc ) nocc = istate
-   enddo
- end do
 
  call clean_allocate('Wavefunctions C for TDDFT',c_matrix_cmplx,basis%nbf,nocc,nspin)
  call clean_allocate('Wavefunctions hist. C for TDDFT',c_matrix_orth_cmplx,nstate,nocc,nspin)
@@ -253,7 +253,8 @@ subroutine calculate_propagation(basis,occupation,c_matrix)
    call plot_cube_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,cube_density_start,nx,ny,nz)
  end if
 
- if( calc_dens_disc_ )       call calc_density_in_disc_cmplx(batch_size,basis,occupation,c_matrix_cmplx,200.d0,0) 
+! if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_dft_grid(batch_size,basis,occupation,c_matrix_cmplx,0) 
+ if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,basis,occupation,c_matrix_cmplx,0) 
 
  if( print_line_rho_tddft_ ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,0,time_min)
 
@@ -323,8 +324,9 @@ subroutine calculate_propagation(basis,occupation,c_matrix)
      if( print_line_rho_tddft_  ) call plot_rho_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,time_cur)
      if( print_cube_rho_tddft_  ) call plot_cube_wfn_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step)
      if( print_cube_diff_tddft_ ) call plot_cube_diff_cmplx(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step,cube_density_start,nx,ny,nz)
-     if( calc_dens_disc_ )        call calc_density_in_disc_cmplx(batch_size,basis,occupation,c_matrix_cmplx,200.d0,iwrite_step) 
-
+!     if( calc_dens_disc_ )        call calc_density_in_disc_cmplx(batch_size,basis,occupation,c_matrix_cmplx,iwrite_step) 
+     if( calc_dens_disc_ )       call calc_density_in_disc_cmplx_regular(nstate,nocc,basis,occupation,c_matrix_cmplx,iwrite_step)
+  
      if(calc_q_matrix_) call calc_q_matrix(occupation,c_matrix_orth_start_complete_cmplx,c_matrix_orth_cmplx,istate_cut,file_q_matrix,time_cur) 
 
      iwrite_step = iwrite_step + 1
@@ -402,13 +404,14 @@ subroutine echo_tddft_variables()
  implicit none
 
  write(stdout,'(/,1x,a)') 'The most important variables of this section:'
- write(stdout,'(1x,a24,2x,es16.8)') 'Simulation time: time_sim',time_sim
- write(stdout,'(1x,a24,2x,es16.8)') 'Time step: time_step',time_step
- write(stdout,'(1x,a24,2x,i8)') 'Number of iterations: ntau',ntau
- write(stdout,'(1x,a24,6x,a)')      'Predictor-corrector: pred_corr',pred_corr
- write(stdout,'(1x,a24,6x,a)')      'Propagator: prop_type',prop_type
- write(stdout,'(1x,a24,2x,i8)')     'Number of occupied states: nocc',nocc
- write(stdout,'(1x,a24,2x,i8)')     'Historic of Hamiltonian: n_hist',n_hist
+ write(stdout,'(2x,a30,2x,es16.8)') 'Simulation time: time_sim',time_sim
+ write(stdout,'(2x,a30,2x,es16.8)') 'Time step: time_step',time_step
+ write(stdout,'(2x,a30,2x,i8)') 'Number of iterations: ntau',NINT((time_sim)/time_step)
+ write(stdout,'(2x,a30,6x,a)')      'Predictor-corrector: pred_corr',pred_corr
+ write(stdout,'(2x,a30,6x,a)')      'Propagator: prop_type',prop_type
+ write(stdout,'(2x,a30,2x,i8)')     'Number of occupied states: nocc',nocc
+ write(stdout,'(2x,a30,2x,i8)')     'Historic of Hamiltonian: n_hist',n_hist
+ write(stdout,*) 
 
 end subroutine echo_tddft_variables
 
@@ -796,7 +799,7 @@ subroutine print_tddft_values(time_cur,file_time_data,file_dipole_time,file_exci
  if( .NOT. is_iomaster ) return
 
  write(stdout,'(/,1x,a)')    '==================================================================================================='
- write(stdout,'(1x,a,i8,a)') '===================== RT-TDDFT values for the interation ',itau,' ================================='
+ write(stdout,'(1x,a,i8,a)') '===================== RT-TDDFT values for the iteration  ',itau,' ================================='
  write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Simulation time (au):', time_cur
  write(stdout,'(a31,1x,f19.10)') 'RT-TDDFT Total Energy    (Ha):', en%tot
 

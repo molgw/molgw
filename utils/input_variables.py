@@ -1229,6 +1229,15 @@ vl[i].default  ='no'
 vl[i].datatype ='yes/no'
 vl[i].comment  ='Calculate electronic density in the discs during the real-time dynamics'
 
+#================================
+vl.append(variable())
+i = len(vl) - 1
+vl[i].keyword  ='r_disc'
+vl[i].family   ='rt_tddft'
+vl[i].default  = 200.0
+vl[i].datatype ='real'
+vl[i].comment  ='Radius of the disc for denisty calculations (option calc_dens_disc) for the real-time dynamics.'
+
 #============================================================================
 #            Fortran output: input variable namelist and their default value
 #============================================================================

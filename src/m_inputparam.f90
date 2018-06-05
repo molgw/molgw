@@ -204,6 +204,7 @@ module m_inputparam
  real(dp),protected               :: excit_kappa, excit_omega, excit_time0
  real(dp),protected               :: excit_dir(3)
  real(dp),protected               :: write_step
+ real(dp),protected               :: r_disc
  integer,protected                :: n_hist, n_iter
  integer,protected                :: n_restart_tddft
  logical,protected                :: print_tddft_matrices_
