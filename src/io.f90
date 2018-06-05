@@ -1464,9 +1464,8 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
        rr(3) = ( zmin + (iz-1)*dz )
        write(file_out(ispin),'(2F16.4)') rr(3)*bohr_A,charge_layer(iz)
      end do
+     close(file_out(ispin))
    end if
-
-   close(file_out(ispin))
 
  enddo ! ispin
 
