@@ -349,12 +349,9 @@ subroutine calc_density_gradr_batch_cmplx(nspin,nbf,nstate,nocc,nr,occupation,c_
 
    forall(ir=1:nr)
      rhor(ispin,ir) = rhor(ispin,ir) + REAL( SUM( phir_cmplx(:,ir) * CONJG(phir_cmplx(:,ir)) * occupation(:nocc,ispin) ) )
-     grad_rhor(ispin,ir,1) = REAL( SUM( (phir_cmplx(:,ir)*CONJG(phir_gradx_cmplx(:,ir)) + &
-                                          CONJG(phir_cmplx(:,ir))*phir_gradx_cmplx(:,ir) )*occupation(:nocc,ispin ) ) )
-     grad_rhor(ispin,ir,2) = REAL( SUM( (phir_cmplx(:,ir)*CONJG(phir_grady_cmplx(:,ir)) + &
-                                          CONJG(phir_cmplx(:,ir))*phir_grady_cmplx(:,ir) )*occupation(:nocc,ispin ) ) )
-     grad_rhor(ispin,ir,3) = REAL( SUM( (phir_cmplx(:,ir)*CONJG(phir_gradz_cmplx(:,ir)) + &
-                                          CONJG(phir_cmplx(:,ir))*phir_gradz_cmplx(:,ir) )*occupation(:nocc,ispin ) ) )
+     grad_rhor(ispin,ir,1) = 2.0_dp * REAL( SUM( phir_cmplx(:,ir)*CONJG(phir_gradx_cmplx(:,ir)) * occupation(:nocc,ispin ) ) )
+     grad_rhor(ispin,ir,2) = 2.0_dp * REAL( SUM( phir_cmplx(:,ir)*CONJG(phir_grady_cmplx(:,ir)) * occupation(:nocc,ispin ) ) )
+     grad_rhor(ispin,ir,3) = 2.0_dp * REAL( SUM( phir_cmplx(:,ir)*CONJG(phir_gradz_cmplx(:,ir)) * occupation(:nocc,ispin ) ) )
    endforall
 
    deallocate(phir_cmplx)
