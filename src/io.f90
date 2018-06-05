@@ -1466,12 +1466,9 @@ subroutine calc_density_in_disc_cmplx_regular(nstate,nocc_dim,basis,occupation,c
      end do
    end if
 
- enddo ! ispin
-
-
- do ispin=1,nspin
    close(file_out(ispin))
- end do
+
+ enddo ! ispin
 
  deallocate(phi_cmplx)
 
